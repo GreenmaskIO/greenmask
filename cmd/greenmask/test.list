@@ -1,0 +1,20 @@
+;
+; Archive created at 2023-05-14 10:43:55 UTC
+;     dbname: demo
+;     TOC Entries: 65
+;     Compression: -1
+;     Dump Version: 14.6 (Homebrew)
+;     Format: DIRECTORY
+;     Integer: 4 bytes
+;     Offset: 8 bytes
+;     Dumped from database version: 14.6 (Homebrew)
+;     Dumped by pg_dump version: 14.6 (Homebrew)
+;
+;
+; Selected TOC Entries:
+;
+
+6; 2615 16447 SCHEMA - bookings vvoitenko
+213; 1259 16460 TABLE bookings airports_data vvoitenko
+3818; 0 16460 TABLE DATA bookings airports_data vvoitenko
+3544; 2606 16510 CONSTRAINT bookings airports_data airports_data_pkey vvoitenko
