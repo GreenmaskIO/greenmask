@@ -1,0 +1,30 @@
+database:
+  connection: "postgres://test:1234@localhost/test?sslmode=disabled"
+  include_schemas: [ ]
+  exclude_schemas: [ ]
+  include_tables: [ ]
+  exclude_tables: [ ]
+  tables_rules:
+    - name: "metrics"
+      schema: "public"
+      columns:
+        - name: "id"
+          masker:
+            name: "dummy"
+            params: [ ]
+        - name: "type"
+          masker:
+            name: "dummy"
+            params: [ ]
+        - name: "value"
+          masker:
+            name: "dummy"
+            params: [ ]
+        - name: "delta"
+          masker:
+            name: "dummy"
+            params: [ ]
+        - name: "created_at"
+          masker:
+            name: "dummy"
+            params: [ ]

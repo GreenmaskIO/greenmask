@@ -1,0 +1,5 @@
+package runner
+
+func getConfig() {
+
+}
