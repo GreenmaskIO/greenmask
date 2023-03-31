@@ -1,5 +1,9 @@
 package runner
 
-func getConfig() {
+import (
+	"context"
+)
 
+type Task interface {
+	Execute(ctx context.Context) error
 }
