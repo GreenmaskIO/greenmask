@@ -121,7 +121,7 @@ func (pc *PostgresClient) Connect(ctx context.Context, dsn string) error {
 func (pc *PostgresClient) startTx(ctx context.Context) (pgx.Tx, error) {
 	tx, err := pc.conn.Begin(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("unable start transaction: %w", err)
+		return nil, fmt.Errorf("unable to start transaction: %w", err)
 	}
 
 	rows, err := tx.Query(ctx, "SET TRANSACTION ISOLATION LEVEL REPEATABLE READ")
@@ -218,7 +218,7 @@ func (pc *PostgresClient) RunBackup(ctx context.Context) error {
 	// 5. Upload pre-data and post-data
 	//		* determine the all tables, keep their sequence
 	//		* get min(pre-data.backupId) and min(post-data.backupId)
-	// 7. Make the TOC file records in format for each tables. Keep their order:
+	// 7. Make the TOC file records in format for each table. Keep their order:
 	//    11471; 1262 36497111 TABLE DATA - mydb postgres
 	//	  3359; 0 16451 TABLE DATA public metrics test
 	//
@@ -280,7 +280,7 @@ func (pc *PostgresClient) dumpTable(ctx context.Context, backupId int, table *do
 	defer tx.Rollback(ctx)
 
 	if _, err := tx.Exec(ctx, setIsolationLevelQuery); err != nil {
-		return fmt.Errorf("unable set transaction isolation level: %w", err)
+		return fmt.Errorf("unable to set transaction isolation level: %w", err)
 	}
 
 	if _, err := tx.Exec(ctx, setSnapshotQuery, pc.snapshot); err != nil {
@@ -304,7 +304,7 @@ func (pc *PostgresClient) dumpTable(ctx context.Context, backupId int, table *do
 		msg, err := frontend.Receive()
 		if err != nil {
 			// TODO: You must send asynchronous message that you have stopped in error
-			return fmt.Errorf("unable perform copy query: %w", err)
+			return fmt.Errorf("unable to perform copy query: %w", err)
 		}
 		switch v := msg.(type) {
 		case *pgproto3.CopyOutResponse:

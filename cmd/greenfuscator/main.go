@@ -1,8 +1,7 @@
 package main
 
 import (
-	"context"
-	"github.com/wwoytenko/greenfuscator/internal/postgres/client"
+	"github.com/wwoytenko/greenfuscator/internal/postgres/lib/toc"
 	"os"
 	"time"
 
@@ -18,15 +17,52 @@ func main() {
 	logger := log.Output(zerolog.ConsoleWriter{Out: os.Stderr, TimeFormat: time.RFC3339})
 	log.Logger = logger
 
-	cli := client.NewPostgresClient("/usr/bin")
-	if err := cli.Connect(context.Background(), "host=localhost user=postgres database=test"); err != nil {
+	srcFile, err := os.Open("/tmp/pg_dump_test/toc.dat")
+	if err != nil {
 		log.Fatal().Err(err)
 	}
+	defer srcFile.Close()
 
-	cli.RunBackup()
-
-	if err := DumpTable(con, &metricsTable); err != nil {
+	destFile, err := os.Create("/tmp/pg_dump_test/test/toc.dat")
+	if err != nil {
 		log.Fatal().Err(err)
 	}
+	defer destFile.Close()
 
+	ah := toc.NewArchiveHandle(srcFile, destFile, toc.ArchDirectory)
+	if err := ReadExistedTocFile(ah); err != nil {
+		log.Fatal().Err(err).Msg("error")
+	}
+
+	if err := WriteTocData(ah); err != nil {
+		log.Fatal().Err(err).Msg("error")
+	}
+
+}
+
+func ChangeEntities() {
+	// TODO:
+	//	1. Find the table definition
+}
+
+func ReadExistedTocFile(ah *toc.ArchiveHandle) error {
+	if err := ah.ReadHead(); err != nil {
+		return err
+	}
+
+	if err := ah.ReadToc(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func WriteTocData(ah *toc.ArchiveHandle) error {
+	if err := ah.WriteHead(); err != nil {
+		return err
+	}
+
+	if err := ah.WriteToc(); err != nil {
+		return err
+	}
+	return nil
 }
