@@ -801,3 +801,25 @@ func (ah *ArchiveHandle) WriteStr(data *string) error {
 	}
 	return nil
 }
+
+func (ah *ArchiveHandle) ReadFile() error {
+	if err := ah.ReadHead(); err != nil {
+		return err
+	}
+
+	if err := ah.ReadToc(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (ah *ArchiveHandle) WriteFile() error {
+	if err := ah.WriteHead(); err != nil {
+		return err
+	}
+
+	if err := ah.WriteToc(); err != nil {
+		return err
+	}
+	return nil
+}

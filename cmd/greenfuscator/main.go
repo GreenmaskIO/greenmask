@@ -1,9 +1,10 @@
 package main
 
 import (
-	"github.com/wwoytenko/greenfuscator/internal/postgres/lib/toc"
 	"os"
 	"time"
+
+	"github.com/wwoytenko/greenfuscator/internal/postgres/lib/toc"
 
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"

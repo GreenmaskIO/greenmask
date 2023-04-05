@@ -3,13 +3,15 @@ package client
 import (
 	"context"
 	"fmt"
-	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgproto3"
-	"github.com/rs/zerolog/log"
-	"github.com/wwoytenko/greenfuscator/internal/domains"
 	"io"
 	"os"
 	"path"
+
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgproto3"
+	"github.com/rs/zerolog/log"
+
+	"github.com/wwoytenko/greenfuscator/internal/domains"
 )
 
 const backupDir = "/tmp/pg_dump_test"
