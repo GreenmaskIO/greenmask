@@ -10,6 +10,10 @@ import (
 	"time"
 )
 
+const (
+	InvalidOid = 0
+)
+
 type crtm struct {
 	TmSec   int32
 	TmMin   int32
@@ -88,8 +92,8 @@ type ArchiveHandle struct {
 	//DumpId    *tableDataId   /* TABLE DATA ids, indexed by table dumpId */
 	//
 	//_tocEntry                 *currToc         /* Used when dumping data */
-	CompressionSpec CompressionSpecification /* Requested specification for
-	// * compression */
+	CompressionSpec CompressionSpecification /* Requested specification */
+	compression     int32
 	//bool        dosync      /* data requested to be synced on sight */
 	//ArchiveMode mode        /* File mode - r or w */
 	//void        *formatData /* Header data specific to srcFile format */
@@ -178,6 +182,7 @@ func (ah *ArchiveHandle) ReadHead() error {
 			return fmt.Errorf("unable to scan CompressionSpec.Algorithm: %w", err)
 		}
 		ah.CompressionSpec.Algorithm = int32(algorithm)
+		ah.compression = int32(algorithm)
 	} else if ah.version >= BackupVersions["1.2"] {
 		if ah.version < BackupVersions["1.4"] {
 			level, err := ah.ReadByte()
@@ -196,6 +201,7 @@ func (ah *ArchiveHandle) ReadHead() error {
 		}
 	} else {
 		ah.CompressionSpec.Level = PgCompressionGzip
+
 	}
 
 	// TODO: Ensure we support compression specification
@@ -393,7 +399,7 @@ func (ah *ArchiveHandle) ReadToc() error {
 			}
 			te.catalogId.tableOid = Oid(tableOid)
 		} else {
-			te.catalogId.tableOid = 0
+			te.catalogId.tableOid = InvalidOid
 		}
 		tmp, err := ah.ReadStr()
 		if err != nil {
@@ -403,7 +409,7 @@ func (ah *ArchiveHandle) ReadToc() error {
 		if err != nil {
 			return fmt.Errorf("cannot cast str to uint32: %w", err)
 		}
-		te.catalogId.tableOid = Oid(oid)
+		te.catalogId.oid = Oid(oid)
 
 		if err = ah.ScanStr(&te.tag, &te.desc); err != nil {
 			return fmt.Errorf("cannot read tag and desc: %w", err)
@@ -573,7 +579,8 @@ func (ah *ArchiveHandle) WriteHead() error {
 		return fmt.Errorf("cannot write format: %w", err)
 	}
 
-	if err := ah.WriteInt(-1); err != nil {
+	var compressionNotSet int32 = -1
+	if err := ah.WriteInt(compressionNotSet); err != nil {
 		return fmt.Errorf("cannot write CompressionSpec.Algorithm: %w", err)
 	}
 
@@ -613,6 +620,7 @@ func (ah *ArchiveHandle) WriteHead() error {
 	return nil
 }
 
+// 4
 func (ah *ArchiveHandle) WriteToc() error {
 	log.Printf("pos = %d", ah.GetCurFilePos())
 	var tocCount int32
