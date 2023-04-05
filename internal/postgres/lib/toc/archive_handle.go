@@ -34,9 +34,9 @@ type ArchiveHandle struct {
 	versionMinor byte
 	versionRev   byte
 
-	archiveRemoteVersion string /* When reading an archive, the
+	archiveRemoteVersion *string /* When reading an archive, the
 	 * version of the dumped DB */
-	archiveDumpVersion string /* When reading an archive, the version of
+	archiveDumpVersion *string /* When reading an archive, the version of
 	 * the dumper */
 
 	intSize uint32 /* Size of an integer in the archive */
@@ -46,7 +46,7 @@ type ArchiveHandle struct {
 
 	crtmDateTime crtm
 	createDate   time.Time /* Date archive created */
-	archDbName   string
+	archDbName   *string
 	//
 	//ArchiveEntryPtrType ArchiveEntryPtr /* Called for each metadata object */
 	//StartDataPtrType    StartDataPtr    /* Called when table data is about to be
@@ -229,35 +229,46 @@ func (ah *ArchiveHandle) ReadHead() error {
 	}
 
 	if ah.version >= BackupVersions["1.4"] {
-		if err = ah.ScanStr(&ah.archDbName); err != nil {
+		archDbName, err := ah.ReadStr()
+		if err != nil {
 			return fmt.Errorf("cannot read archdbname: %w", err)
 		}
+		ah.archDbName = archDbName
 	}
 
 	if ah.version >= BackupVersions["1.10"] {
-		if err = ah.ScanStr(&ah.archiveRemoteVersion, &ah.archiveDumpVersion); err != nil {
-			return fmt.Errorf("cannot remote and dump versions: %w", err)
+		archiveRemoteVersion, err := ah.ReadStr()
+		if err != nil {
+			return fmt.Errorf("cannot rad archiveRemoteVersion: %w", err)
 		}
+		ah.archiveRemoteVersion = archiveRemoteVersion
+
+		archiveDumpVersion, err := ah.ReadStr()
+		if err != nil {
+			return fmt.Errorf("cannot read archiveDumpVersion: %w", err)
+		}
+		ah.archiveDumpVersion = archiveDumpVersion
 	}
 
 	return nil
 }
 
-func (ah *ArchiveHandle) ReadStr() (string, error) {
+func (ah *ArchiveHandle) ReadStr() (*string, error) {
 	l, err := ah.ReadInt()
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	if l < 0 {
-		return "", nil
+		return nil, nil
 	}
 
 	buf := make([]byte, l)
 
 	if _, err := ah.srcFile.Read(buf); err != nil {
-		return "", err
+		return nil, err
 	}
-	return string(buf), nil
+	strVal := string(buf)
+	return &strVal, nil
 }
 
 func (ah *ArchiveHandle) GetCurFilePos() int64 {
@@ -343,19 +354,6 @@ func (ah *ArchiveHandle) ScanInt(byteVars ...*int32) error {
 	return nil
 }
 
-func (ah *ArchiveHandle) ScanStr(byteVars ...*string) error {
-
-	for idx, _ := range byteVars {
-		val, err := ah.ReadStr()
-		if err != nil {
-			return err
-		}
-		*byteVars[idx] = val
-	}
-
-	return nil
-}
-
 func (ah *ArchiveHandle) ReadToc() error {
 	//var tmp string
 	//var DumpId int32
@@ -393,7 +391,10 @@ func (ah *ArchiveHandle) ReadToc() error {
 			if err != nil {
 				return fmt.Errorf("cannot read catalogId: %w", err)
 			}
-			tableOid, err := strconv.ParseUint(tmp, 10, 32)
+			if tmp == nil {
+				return errors.New("unexpected nil pointer")
+			}
+			tableOid, err := strconv.ParseUint(*tmp, 10, 32)
 			if err != nil {
 				return fmt.Errorf("cannot cast str to uint32: %w", err)
 			}
@@ -405,15 +406,26 @@ func (ah *ArchiveHandle) ReadToc() error {
 		if err != nil {
 			return fmt.Errorf("cannot read catalogId: %w", err)
 		}
-		oid, err := strconv.ParseUint(tmp, 10, 32)
+		if tmp == nil {
+			return errors.New("unexpected nil pointer")
+		}
+		oid, err := strconv.ParseUint(*tmp, 10, 32)
 		if err != nil {
 			return fmt.Errorf("cannot cast str to uint32: %w", err)
 		}
 		te.catalogId.oid = Oid(oid)
 
-		if err = ah.ScanStr(&te.tag, &te.desc); err != nil {
-			return fmt.Errorf("cannot read tag and desc: %w", err)
+		tag, err := ah.ReadStr()
+		if err != nil {
+			return fmt.Errorf("cannot read tag: %w", err)
 		}
+		te.tag = tag
+
+		desc, err := ah.ReadStr()
+		if err != nil {
+			return fmt.Errorf("cannot read desc: %w", err)
+		}
+		te.desc = desc
 
 		if ah.version >= BackupVersions["1.11"] {
 			if err = ah.ScanInt(&te.section); err != nil {
@@ -423,37 +435,55 @@ func (ah *ArchiveHandle) ReadToc() error {
 			return errors.New("unsupported version")
 		}
 
-		if err = ah.ScanStr(&te.defn, &te.dropStmt); err != nil {
-			return fmt.Errorf("cannot read defn and dropStmt: %w", err)
+		defn, err := ah.ReadStr()
+		if err != nil {
+			return fmt.Errorf("cannot read defn: %w", err)
 		}
+		te.defn = defn
+
+		dropStmt, err := ah.ReadStr()
+		if err != nil {
+			return fmt.Errorf("cannot read dropStmt: %w", err)
+		}
+		te.dropStmt = dropStmt
 
 		if ah.version >= BackupVersions["1.3"] {
-			if err = ah.ScanStr(&te.copyStmt); err != nil {
+			copyStmt, err := ah.ReadStr()
+			if err != nil {
 				return fmt.Errorf("cannot read defn: %w", err)
 			}
+			te.copyStmt = copyStmt
 		}
 
 		if ah.version >= BackupVersions["1.6"] {
-			if err = ah.ScanStr(&te.namespace); err != nil {
+			namespace, err := ah.ReadStr()
+			if err != nil {
 				return fmt.Errorf("cannot read namespace: %w", err)
 			}
+			te.namespace = namespace
 		}
 
 		if ah.version >= BackupVersions["1.10"] {
-			if err = ah.ScanStr(&te.tablespace); err != nil {
+			tablespace, err := ah.ReadStr()
+			if err != nil {
 				return fmt.Errorf("cannot read tablespace: %w", err)
 			}
+			te.tablespace = tablespace
 		}
 
 		if ah.version >= BackupVersions["1.14"] {
-			if err = ah.ScanStr(&te.tableam); err != nil {
+			tableam, err := ah.ReadStr()
+			if err != nil {
 				return fmt.Errorf("cannot read tableam: %w", err)
 			}
+			te.tableam = tableam
 		}
 
-		if err = ah.ScanStr(&te.owner); err != nil {
+		owner, err := ah.ReadStr()
+		if err != nil {
 			return fmt.Errorf("cannot read tablespace: %w", err)
 		}
+		te.owner = owner
 
 		isSupported := true
 		if ah.version < BackupVersions["1.9"] {
@@ -463,7 +493,10 @@ func (ah *ArchiveHandle) ReadToc() error {
 			if err != nil {
 				return fmt.Errorf("cannot read catalogId: %w", err)
 			}
-			if tmp == "true" {
+			if tmp == nil {
+				return errors.New("unexpected nil pointer")
+			}
+			if *tmp == "true" {
 				isSupported = false
 			}
 		}
@@ -481,10 +514,11 @@ func (ah *ArchiveHandle) ReadToc() error {
 				if err != nil {
 					return fmt.Errorf("cannot read catalogId: %w", err)
 				}
-				if tmp == "" {
+				if tmp == nil {
 					break
 				}
-				val, err := strconv.ParseInt(tmp, 10, 32)
+
+				val, err := strconv.ParseInt(*tmp, 10, 32)
 				if err != nil {
 					return fmt.Errorf("unable to parse dependency int32 value: %w", err)
 				}
@@ -500,9 +534,11 @@ func (ah *ArchiveHandle) ReadToc() error {
 
 		te.dataLength = 0
 
-		if err = ah.ScanStr(&te.fileName); err != nil {
+		fileName, err := ah.ReadStr()
+		if err != nil {
 			return fmt.Errorf("cannot additional data fileName: %w", err)
 		}
+		te.fileName = fileName
 
 		// 		/* link completed entry into TOC circular list */
 		//		te->prev = AH->toc->prev;
@@ -643,12 +679,12 @@ func (ah *ArchiveHandle) WriteToc() error {
 
 		//oidStr := fmt.Sprintf("%d", te.catalogId.tableOid)
 		oidStr := strconv.FormatUint(uint64(te.catalogId.tableOid), 10)
-		if err := ah.WriteStr(oidStr); err != nil {
+		if err := ah.WriteStr(&oidStr); err != nil {
 			panic(fmt.Sprintf("unable to write tableOid: %s", err))
 		}
 
 		oidStr = strconv.FormatUint(uint64(te.catalogId.oid), 10)
-		if err := ah.WriteStr(oidStr); err != nil {
+		if err := ah.WriteStr(&oidStr); err != nil {
 			panic(fmt.Sprintf("unable to write Oid: %s", err))
 		}
 
@@ -682,23 +718,24 @@ func (ah *ArchiveHandle) WriteToc() error {
 		if err := ah.WriteStr(te.owner); err != nil {
 			panic(fmt.Sprintf("unable ro write owner: %s", err))
 		}
-		if err := ah.WriteStr("false"); err != nil {
+		someFalseValue := "false"
+		if err := ah.WriteStr(&someFalseValue); err != nil {
 			panic(fmt.Sprintf("unable to write \"false\" value: %s", err))
 		}
 
 		for _, d := range te.dependencies {
 			depStr := strconv.FormatInt(int64(d), 10)
-			if err := ah.WriteStr(depStr); err != nil {
+			if err := ah.WriteStr(&depStr); err != nil {
 				panic(fmt.Sprintf("unable to write entry dependency value: %s", err))
 			}
 		}
 		/* Terminate List */
-		if err := ah.WriteStr(""); err != nil {
+		if err := ah.WriteStr(nil); err != nil {
 			panic(fmt.Sprintf("unable to write entry dependencies list terminator: %s", err))
 		}
 
 		// WriteExtraTocPtr - write filename here
-		if err := ah.WriteStrEmpty(te.fileName); err != nil {
+		if err := ah.WriteStr(te.fileName); err != nil {
 			panic(fmt.Sprintf("unable to write fileName: %s", err))
 		}
 
@@ -747,37 +784,18 @@ func (ah *ArchiveHandle) WriteInt(i int32) error {
 	return nil
 }
 
-func (ah *ArchiveHandle) WriteStr(data string) error {
+func (ah *ArchiveHandle) WriteStr(data *string) error {
 
-	if data != "" {
-		if err := ah.WriteInt(int32(len([]byte(data)))); err != nil {
+	if data != nil {
+		if err := ah.WriteInt(int32(len([]byte(*data)))); err != nil {
 			return fmt.Errorf("unable to write str length: %w", err)
 		}
-		if err := ah.WriteBuf([]byte(data)); err != nil {
+		if err := ah.WriteBuf([]byte(*data)); err != nil {
 			return fmt.Errorf("unable to write string buffer: %w", err)
 		}
 	} else {
 
 		if err := ah.WriteInt(-1); err != nil {
-			return fmt.Errorf("unable to write empty string: %w", err)
-		}
-	}
-	return nil
-}
-
-// WriteStrEmpty - writes empty string instead of NULL
-func (ah *ArchiveHandle) WriteStrEmpty(data string) error {
-	if data != "" {
-		if err := ah.WriteInt(int32(len([]byte(data)))); err != nil {
-			return fmt.Errorf("unable to write str length: %w", err)
-		}
-
-		if err := ah.WriteBuf([]byte(data)); err != nil {
-			return fmt.Errorf("unable to write string buffer: %w", err)
-		}
-	} else {
-
-		if err := ah.WriteInt(0); err != nil {
 			return fmt.Errorf("unable to write empty string: %w", err)
 		}
 	}

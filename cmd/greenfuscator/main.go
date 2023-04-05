@@ -17,13 +17,13 @@ func main() {
 	logger := log.Output(zerolog.ConsoleWriter{Out: os.Stderr, TimeFormat: time.RFC3339})
 	log.Logger = logger
 
-	srcFile, err := os.Open("/tmp/pg_dump_test/toc.dat")
+	srcFile, err := os.Open("/tmp/pg_dump_test/diff_test/original/toc.dat")
 	if err != nil {
 		log.Fatal().Err(err)
 	}
 	defer srcFile.Close()
 
-	destFile, err := os.Create("/tmp/pg_dump_test/test/toc.dat")
+	destFile, err := os.Create("/tmp/pg_dump_test/test2/toc.dat")
 	if err != nil {
 		log.Fatal().Err(err)
 	}

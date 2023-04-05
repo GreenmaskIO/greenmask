@@ -22,19 +22,19 @@ type Entry struct {
 	section   int32
 	hadDumper int32 /* Archiver was passed a dumper routine (used
 	 * in restore) */
-	tag        string /* index tag */
-	namespace  string /* null or empty string if not in a schema */
-	tablespace string /* null if not in a tablespace; empty string
+	tag        *string /* index tag */
+	namespace  *string /* null or empty string if not in a schema */
+	tablespace *string /* null if not in a tablespace; empty string
 	 * means use database default */
-	tableam      string /* table access method, only for TABLE tags */
-	owner        string
-	desc         string
-	defn         string
-	dropStmt     string
-	copyStmt     string
+	tableam      *string /* table access method, only for TABLE tags */
+	owner        *string
+	desc         *string
+	defn         *string
+	dropStmt     *string
+	copyStmt     *string
 	dependencies []int32 /* dumpIds of objects this one depends on */
 	nDeps        int32   /* number of dependencies */
-	fileName     string
+	fileName     *string
 
 	dataDumper int32 /* Routine to dump data for object */
 	//const void *dataDumperArg /* Arg for above routine */
