@@ -2,11 +2,12 @@ package main
 
 import (
 	"context"
+	"os"
+	"time"
+
 	"github.com/wwoytenko/greenfuscator/internal/db/postgres"
 	"github.com/wwoytenko/greenfuscator/internal/db/postgres/pgdump"
 	"github.com/wwoytenko/greenfuscator/internal/domains"
-	"os"
-	"time"
 
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
