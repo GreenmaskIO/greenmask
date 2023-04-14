@@ -331,9 +331,9 @@ func (ah *ArchiveHandle) readToc() error {
 			if err != nil {
 				return fmt.Errorf("cannot cast str to uint32: %w", err)
 			}
-			te.CatalogId.tableOid = Oid(tableOid)
+			te.CatalogId.TableOid = Oid(tableOid)
 		} else {
-			te.CatalogId.tableOid = InvalidOid
+			te.CatalogId.TableOid = InvalidOid
 		}
 		tmp, err := ah.readStr()
 		if err != nil {
@@ -346,7 +346,7 @@ func (ah *ArchiveHandle) readToc() error {
 		if err != nil {
 			return fmt.Errorf("cannot cast str to uint32: %w", err)
 		}
-		te.CatalogId.oid = Oid(oid)
+		te.CatalogId.Oid = Oid(oid)
 
 		tag, err := ah.readStr()
 		if err != nil {
@@ -591,12 +591,12 @@ func (ah *ArchiveHandle) writeToc() error {
 			panic(fmt.Sprintf("unable to write DataDumper: %s", err))
 		}
 
-		oidStr := strconv.FormatUint(uint64(te.CatalogId.tableOid), 10)
+		oidStr := strconv.FormatUint(uint64(te.CatalogId.TableOid), 10)
 		if err := ah.writeStr(&oidStr); err != nil {
-			panic(fmt.Sprintf("unable to write tableOid: %s", err))
+			panic(fmt.Sprintf("unable to write TableOid: %s", err))
 		}
 
-		oidStr = strconv.FormatUint(uint64(te.CatalogId.oid), 10)
+		oidStr = strconv.FormatUint(uint64(te.CatalogId.Oid), 10)
 		if err := ah.writeStr(&oidStr); err != nil {
 			panic(fmt.Sprintf("unable to write Oid: %s", err))
 		}

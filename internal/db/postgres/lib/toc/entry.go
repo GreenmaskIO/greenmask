@@ -10,8 +10,8 @@ const (
 type Oid int
 
 type CatalogId struct {
-	tableOid Oid
-	oid      Oid
+	TableOid Oid
+	Oid      Oid
 }
 
 type Entry struct {

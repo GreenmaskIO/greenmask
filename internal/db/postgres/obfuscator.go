@@ -1,17 +1,20 @@
 package postgres
 
 import (
+	"compress/gzip"
 	"context"
+	//"errors"
 	"fmt"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/rs/zerolog/log"
-	"github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/toc"
-	"github.com/wwoytenko/greenfuscator/internal/db/postgres/pgdump"
-	"github.com/wwoytenko/greenfuscator/internal/domains"
 	"golang.org/x/exp/slices"
 	"os"
 	"path"
+
+	"github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/toc"
+	"github.com/wwoytenko/greenfuscator/internal/db/postgres/pgdump"
+	"github.com/wwoytenko/greenfuscator/internal/domains"
 )
 
 const (
@@ -19,7 +22,6 @@ const (
 	pgDumpPreDataDir              = "pg_dump/predata"
 	pgDumpDataDir                 = "pg_dump/data"
 	pgDumpPostDataDir             = "pg_dump/postdata"
-	copyDir                       = "copy"
 	dirPermissions    os.FileMode = 0750
 )
 
@@ -100,13 +102,14 @@ type TableDataRange struct {
 }
 
 type Obfuscator struct {
-	typeMap  map[string]string
-	dsn      string
-	conn     *pgx.Conn
-	snapshot string
-	backupId int
-	options  *pgdump.Options
-	pgDump   *pgdump.PgDump
+	typeMap   map[string]string
+	dsn       string
+	conn      *pgx.Conn
+	snapshot  string
+	backupId  int
+	options   *pgdump.Options
+	pgDump    *pgdump.PgDump
+	curDumpId int32
 }
 
 func NewObfuscator(binPath string, options *pgdump.Options) *Obfuscator {
@@ -160,9 +163,15 @@ func (o *Obfuscator) startTx(ctx context.Context) (pgx.Tx, error) {
 	return tx, nil
 }
 
+func (o *Obfuscator) getDumpId() int32 {
+	o.curDumpId--
+	return o.curDumpId
+}
+
 func (o *Obfuscator) tablesList(ctx context.Context, tx pgx.Tx, filters map[string]string) ([]domains.Table, error) {
 	tablesListQuery := `
-		SELECT n.nspname                              as "Schema",
+		SELECT c.oid::TEXT::INT, 
+		       n.nspname                              as "Schema",
 			   c.relname                              as "Name",
 			   pg_catalog.pg_get_userbyid(c.relowner) as "Owner"
 		FROM pg_catalog.pg_class c
@@ -180,17 +189,55 @@ func (o *Obfuscator) tablesList(ctx context.Context, tx pgx.Tx, filters map[stri
 		return nil, fmt.Errorf("perform query: %w", err)
 	}
 
+	// Generate table objects
 	tables := make([]domains.Table, 0)
+	defer rows.Close()
 	for rows.Next() {
 		table := domains.Table{}
-
-		if err := rows.Scan(&table.Schema, &table.Name, &table.Owner); err != nil {
+		table.DumpId = o.getDumpId()
+		if err := rows.Scan(&table.Oid, &table.Schema, &table.Name, &table.Owner); err != nil {
 			return nil, fmt.Errorf("unnable scan data: %w", err)
 		}
 		tables = append(tables, table)
 	}
 
+	// Assign columns to each table
+	for idx, _ := range tables {
+		columns, err := o.getTableColumns(ctx, tx, &tables[idx])
+		if err != nil {
+			return nil, fmt.Errorf("unnable to fill table colimns: %w", err)
+		}
+		tables[idx].Columns = columns
+	}
+
 	return tables, nil
+}
+
+func (o *Obfuscator) getTableColumns(ctx context.Context, tx pgx.Tx, t *domains.Table) ([]domains.Column, error) {
+	tableColumnsQuery := `
+		SELECT 
+		    a.attname,
+		  	pg_catalog.format_type(a.atttypid, a.atttypmod),
+		  	a.attnotnull
+		FROM pg_catalog.pg_attribute a
+		WHERE a.attrelid = $1 AND a.attnum > 0 AND NOT a.attisdropped
+		ORDER BY a.attnum
+	`
+
+	rows, err := tx.Query(ctx, tableColumnsQuery, t.Oid)
+	if err != nil {
+		return nil, fmt.Errorf("perform query: %w", err)
+	}
+	columns := make([]domains.Column, 0)
+	for rows.Next() {
+		column := domains.Column{}
+		if err = rows.Scan(&column.Name, &column.Type, &column.NotNull); err != nil {
+			return nil, fmt.Errorf("cannot scan column: %w", err)
+		}
+		columns = append(columns, column)
+	}
+
+	return columns, nil
 }
 
 func (o *Obfuscator) RunBackup(ctx context.Context) error {
@@ -223,9 +270,11 @@ func (o *Obfuscator) RunBackup(ctx context.Context) error {
 	// For details, please refer https://www.postgresql.org/message-id/20160126173717.GA565213%40alvherre.pgsql
 	// 8. Run COPY command
 	//      * apply the masker for each required attribute
-	//		* gzip data and store into BackupId.dat.gz
+	//		* gzip data and store into DumpId.dat.gz
 	// 9. Merge 3 TOC files into one
 	// 10. Delete tmp data
+	maxInt := 2147483647
+	o.curDumpId = int32(maxInt)
 
 	select {
 	case <-ctx.Done():
@@ -248,6 +297,12 @@ func (o *Obfuscator) RunBackup(ctx context.Context) error {
 			log.Warn().Err(err)
 		}
 	}()
+
+	tablesList, err := o.tablesList(ctx, tx, map[string]string{})
+	if err != nil {
+		return err
+	}
+	log.Debug().Msgf("tablesList = %+v\n", tablesList)
 
 	// N. Make --schemaonly dump in original dir
 	// N. Read Toc data and calculate  MinBackupId and MaxBackupId
@@ -307,6 +362,31 @@ func (o *Obfuscator) RunBackup(ctx context.Context) error {
 	tableOrder := o.GetTableOrder(preDataToc.GetEntries())
 	log.Printf("%+v\n", tableOrder)
 
+	// Performing TSV dump
+	for idx := range tablesList {
+		if err = o.dumpTable(ctx, o.options.FileName, &tablesList[idx]); err != nil {
+			return fmt.Errorf("unnable to perform dump of table %s.%s: %w", tablesList[idx].Schema, tablesList[idx].Name, err)
+		}
+	}
+
+	//o.setMaxDumpId(preDataToc.GetEntries(), postDataToc.GetEntries(), tablesList)
+
+	// Replacing dat
+	datEntries := dataToc.GetEntries()
+	for eIdx := range datEntries {
+		if datEntries[eIdx].Section == 3 {
+			for tIdx := range tablesList {
+				if int(datEntries[eIdx].CatalogId.Oid) == tablesList[tIdx].Oid {
+					datEntries[eIdx].DumpId = tablesList[tIdx].DumpId
+					fileName := fmt.Sprintf("%d.dat.gz", tablesList[tIdx].DumpId)
+					datEntries[eIdx].FileName = &fileName
+					break
+				}
+			}
+		}
+
+	}
+
 	mergedTocs, err := o.MergeTocEntries(preDataToc.GetEntries(), dataToc.GetEntries(), postDataToc.GetEntries())
 	if err != nil {
 		return fmt.Errorf("unable to merge TOC files: %w", err)
@@ -328,7 +408,7 @@ func (o *Obfuscator) createDirectories() error {
 	dir := o.options.FileName
 	log.Debug().Msg("create subdirectories")
 
-	for _, dirName := range []string{pgDumpDir, pgDumpPreDataDir, pgDumpDataDir, pgDumpPostDataDir, copyDir} {
+	for _, dirName := range []string{pgDumpDir, pgDumpPreDataDir, pgDumpDataDir, pgDumpPostDataDir} {
 		if err := os.Mkdir(path.Join(dir, dirName), dirPermissions); err != nil {
 			return fmt.Errorf("cannot create pg_dump directories: %w", err)
 		}
@@ -337,16 +417,44 @@ func (o *Obfuscator) createDirectories() error {
 	return nil
 }
 
-func (o *Obfuscator) dumpTable(ctx context.Context, backupId int, table *domains.Table) error {
-	var setIsolationLevelQuery = "SET TRANSACTION ISOLATION LEVEL REPEATABLE READ"
-	var setSnapshotQuery = "SET TRANSACTION SNAPSHOT '$1'"
-	var datFilePath = path.Join(o.options.FileName, fmt.Sprintf("%d.dat.gz", backupId))
+func (o *Obfuscator) setMaxDumpId(preData, postData []toc.Entry, tables []domains.Table) {
+	var maxDumpId int32
+	for _, item := range preData {
+		if item.DumpId > maxDumpId {
+			maxDumpId = item.DumpId
+		}
+	}
 
-	datFile, err := os.Open(datFilePath)
+	for _, item := range postData {
+		if item.DumpId > maxDumpId {
+			maxDumpId = item.DumpId
+		}
+	}
+
+	// TODO: It is just for testing purposes. Determine the algorithm first
+	maxDumpId += int32(len(tables)) * 4
+	o.curDumpId = maxDumpId
+
+	for idx := range tables {
+		o.curDumpId++
+		tables[idx].DumpId = o.curDumpId
+	}
+
+}
+
+// TODO: You need to review this code. It stuck on receiving from the Frontend
+func (o *Obfuscator) dumpTable(ctx context.Context, datDir string, table *domains.Table) error {
+	var setIsolationLevelQuery = "SET TRANSACTION ISOLATION LEVEL REPEATABLE READ"
+	var setSnapshotQuery = fmt.Sprintf("SET TRANSACTION SNAPSHOT '%s'", o.snapshot)
+	var datFilePath = path.Join(datDir, fmt.Sprintf("%d.dat.gz", table.DumpId))
+
+	datFile, err := os.Create(datFilePath)
 	if err != nil {
 		return fmt.Errorf("cannot open data file: %w", err)
 	}
 	defer datFile.Close()
+	writer := gzip.NewWriter(datFile)
+	defer writer.Close()
 
 	// Open file that wil contain table data
 
@@ -368,7 +476,7 @@ func (o *Obfuscator) dumpTable(ctx context.Context, backupId int, table *domains
 		return fmt.Errorf("unable to set transaction isolation level: %w", err)
 	}
 
-	if _, err := tx.Exec(ctx, setSnapshotQuery, o.snapshot); err != nil {
+	if _, err := tx.Exec(ctx, setSnapshotQuery); err != nil {
 		return fmt.Errorf("cannot import snapshot: %w", err)
 	}
 
@@ -377,10 +485,9 @@ func (o *Obfuscator) dumpTable(ctx context.Context, backupId int, table *domains
 		String: fmt.Sprintf("COPY \"%s\".\"%s\" TO STDOUT", table.Schema, table.Name),
 	})
 
-	// TODO: Do we really need to flush?
-	//if err := frontend.Flush(); err != nil {
-	//	return err
-	//}
+	if err := frontend.Flush(); err != nil {
+		return err
+	}
 
 	for {
 		msg, err := frontend.Receive()
@@ -406,7 +513,7 @@ func (o *Obfuscator) dumpTable(ctx context.Context, backupId int, table *domains
 				tupleData = tuple.GetMaskedTuple()
 			}
 
-			if _, err := datFile.Write(tupleData); err != nil {
+			if _, err := writer.Write(tupleData); err != nil {
 				return fmt.Errorf("cannot store data into dat file: %w", err)
 			}
 

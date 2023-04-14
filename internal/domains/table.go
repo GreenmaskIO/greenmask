@@ -14,7 +14,7 @@ type Table struct {
 	HasMasker bool
 	Oid       int
 	Owner     string
-	BackupId  int
+	DumpId    int32
 }
 
 func (t *Table) MakeTuple(data []byte) (*Tuple, error) {
@@ -34,5 +34,5 @@ func (t *Table) GetTocRecord() ([]byte, error) {
 		return nil, errors.New("schema name cannot be empty")
 	}
 
-	return []byte(fmt.Sprintf("%d; %d TABLE DATA %s %s %s\n", t.BackupId, 0, t.Schema, t.Name, t.Owner)), nil
+	return []byte(fmt.Sprintf("%d; %d TABLE DATA %s %s %s\n", t.DumpId, 0, t.Schema, t.Name, t.Owner)), nil
 }

@@ -96,14 +96,16 @@ type Options struct {
 	Role       string // --role=ROLENAME
 }
 
-func (*Options) GetPgDSN() (string, error) {
-	return "host=localhost port=5432 user=postgres dbname=postgres", nil
+func (o *Options) GetPgDSN() (string, error) {
+	//return "host=localhost port=5432 user=postgres dbname=postgres", nil
+	return fmt.Sprintf("host=%s port=%d user=%s dbname=%s", o.Host, o.Port, o.UserName, o.DbName), nil
 }
 
 func (o *Options) GetParams() []string {
 	args := []string{
 		"--username", o.UserName,
 		"--dbname", o.DbName,
+		"--username", o.UserName,
 		"--format", o.Format,
 	}
 	if o.SchemaOnly {
