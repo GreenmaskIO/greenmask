@@ -1,26 +1,10 @@
 connection: "postgres://test:1234@localhost/test?sslmode=disabled"
 engine: "postgres"
-include_schemas: [ ]
-exclude_schemas: [ ]
-include_tables: [ ]
-exclude_tables: [ ]
-table_rules:
+transformers:
   - schema: "public"
-    name: "metrics"
+    name: "test1"
     columns:
-      - name: "id"
-        masker: "dummy"
-        masker_params: [ ]
-      - name: "type"
-        masker: "dummy"
-        masker_params: [ ]
-      - name: "value"
-        masker: "dummy"
-        masker_params: [ ]
-      - name: "delta"
-        masker: "dummy"
-        masker_params: [ ]
-      - name: "created_at"
-        masker: "dummy"
-        masker_params: [ ]
-
+      - name: "title"
+        transformer:
+          name: "dummy"
+          params:

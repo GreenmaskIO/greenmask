@@ -2,8 +2,12 @@ package domains
 
 import (
 	"flag"
-	"github.com/wwoytenko/greenfuscator/internal/db/postgres/pgdump"
+	"github.com/rs/zerolog/log"
+	"gopkg.in/yaml.v3"
+	"os"
 	"sync"
+
+	"github.com/wwoytenko/greenfuscator/internal/db/postgres/pgdump"
 )
 
 var (
@@ -14,6 +18,8 @@ var (
 type Config struct {
 	BinPath       string
 	PgDumpOptions *pgdump.Options
+	configPath    string
+	YamlConfig    []Table `yaml:"transformers"`
 }
 
 func NewConfig() *Config {
@@ -24,11 +30,15 @@ func NewConfig() *Config {
 		port := flag.Int("port", 5432, "")
 		userName := flag.String("username", "postgres", "")
 		fileName := flag.String("file", "", "")
+		configPath := flag.String("config", "", "")
 
 		flag.Parse()
 
+		yamlConfig := make([]Table, 0)
 		config = &Config{
-			BinPath: *binPath,
+			BinPath:    *binPath,
+			configPath: *configPath,
+			YamlConfig: yamlConfig,
 			PgDumpOptions: &pgdump.Options{
 				FileName: *fileName,
 				DbName:   *dbname,
@@ -37,6 +47,20 @@ func NewConfig() *Config {
 				UserName: *userName,
 			},
 		}
+
+		if configPath != nil {
+
+			f, err := os.Open(*configPath)
+			if err != nil {
+				log.Fatal().Msgf("unable to open config file: %s", err)
+			}
+			defer f.Close()
+
+			if err := yaml.NewDecoder(f).Decode(config); err != nil {
+				log.Fatal().Msgf("unable to open config file: %s", err)
+			}
+		}
+
 	})
 	return config
 }

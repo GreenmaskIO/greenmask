@@ -3,7 +3,6 @@ package postgres
 import (
 	"compress/gzip"
 	"context"
-	//"errors"
 	"fmt"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgproto3"
@@ -15,6 +14,7 @@ import (
 	"github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/toc"
 	"github.com/wwoytenko/greenfuscator/internal/db/postgres/pgdump"
 	"github.com/wwoytenko/greenfuscator/internal/domains"
+	"github.com/wwoytenko/greenfuscator/internal/transformers"
 )
 
 const (
@@ -23,6 +23,7 @@ const (
 	pgDumpDataDir                 = "pg_dump/data"
 	pgDumpPostDataDir             = "pg_dump/postdata"
 	dirPermissions    os.FileMode = 0750
+	maxInt                        = 2147483647
 )
 
 var defaultTypeMap = map[string]string{
@@ -168,7 +169,7 @@ func (o *Obfuscator) getDumpId() int32 {
 	return o.curDumpId
 }
 
-func (o *Obfuscator) tablesList(ctx context.Context, tx pgx.Tx, filters map[string]string) ([]domains.Table, error) {
+func (o *Obfuscator) tablesList(ctx context.Context, tx pgx.Tx, confTables []domains.Table) ([]domains.Table, error) {
 	tablesListQuery := `
 		SELECT c.oid::TEXT::INT, 
 		       n.nspname                              as "Schema",
@@ -201,9 +202,25 @@ func (o *Obfuscator) tablesList(ctx context.Context, tx pgx.Tx, filters map[stri
 		tables = append(tables, table)
 	}
 
+	// TODO:
+	// 	1. Find table in the list if it is exists - return it and get transformers
+
 	// Assign columns to each table
 	for idx, _ := range tables {
-		columns, err := o.getTableColumns(ctx, tx, &tables[idx])
+		var tableConf *domains.Table
+		confIdx := slices.IndexFunc[domains.Table](confTables, func(v domains.Table) bool {
+			if tables[idx].Schema == v.Schema && tables[idx].Name == v.Name {
+				return true
+			}
+			return false
+		})
+
+		if confIdx != -1 {
+			tables[idx].HasMasker = true
+			tableConf = &confTables[confIdx]
+		}
+
+		columns, err := o.getTableColumns(ctx, tx, &tables[idx], tableConf)
 		if err != nil {
 			return nil, fmt.Errorf("unnable to fill table colimns: %w", err)
 		}
@@ -213,7 +230,7 @@ func (o *Obfuscator) tablesList(ctx context.Context, tx pgx.Tx, filters map[stri
 	return tables, nil
 }
 
-func (o *Obfuscator) getTableColumns(ctx context.Context, tx pgx.Tx, t *domains.Table) ([]domains.Column, error) {
+func (o *Obfuscator) getTableColumns(ctx context.Context, tx pgx.Tx, t *domains.Table, tableConf *domains.Table) ([]domains.Column, error) {
 	tableColumnsQuery := `
 		SELECT 
 		    a.attname,
@@ -234,6 +251,22 @@ func (o *Obfuscator) getTableColumns(ctx context.Context, tx pgx.Tx, t *domains.
 		if err = rows.Scan(&column.Name, &column.Type, &column.NotNull); err != nil {
 			return nil, fmt.Errorf("cannot scan column: %w", err)
 		}
+
+		if tableConf != nil {
+			confIdx := slices.IndexFunc[domains.Column](tableConf.Columns, func(v domains.Column) bool {
+				if column.Name == v.Name {
+					return true
+				}
+				return false
+			})
+			transformerName := tableConf.Columns[confIdx].Transform.Name
+			transformer, ok := transformers.TransformerMap[transformerName]
+			if !ok {
+				return nil, fmt.Errorf("unnable to find transformer with name %s", transformerName)
+			}
+			column.Transform = tableConf.Columns[confIdx].Transform
+		}
+
 		columns = append(columns, column)
 	}
 
@@ -269,11 +302,10 @@ func (o *Obfuscator) RunBackup(ctx context.Context) error {
 	//
 	// For details, please refer https://www.postgresql.org/message-id/20160126173717.GA565213%40alvherre.pgsql
 	// 8. Run COPY command
-	//      * apply the masker for each required attribute
+	//      * apply the transformers for each required attribute
 	//		* gzip data and store into DumpId.dat.gz
 	// 9. Merge 3 TOC files into one
 	// 10. Delete tmp data
-	maxInt := 2147483647
 	o.curDumpId = int32(maxInt)
 
 	select {
@@ -417,32 +449,6 @@ func (o *Obfuscator) createDirectories() error {
 	return nil
 }
 
-func (o *Obfuscator) setMaxDumpId(preData, postData []toc.Entry, tables []domains.Table) {
-	var maxDumpId int32
-	for _, item := range preData {
-		if item.DumpId > maxDumpId {
-			maxDumpId = item.DumpId
-		}
-	}
-
-	for _, item := range postData {
-		if item.DumpId > maxDumpId {
-			maxDumpId = item.DumpId
-		}
-	}
-
-	// TODO: It is just for testing purposes. Determine the algorithm first
-	maxDumpId += int32(len(tables)) * 4
-	o.curDumpId = maxDumpId
-
-	for idx := range tables {
-		o.curDumpId++
-		tables[idx].DumpId = o.curDumpId
-	}
-
-}
-
-// TODO: You need to review this code. It stuck on receiving from the Frontend
 func (o *Obfuscator) dumpTable(ctx context.Context, datDir string, table *domains.Table) error {
 	var setIsolationLevelQuery = "SET TRANSACTION ISOLATION LEVEL REPEATABLE READ"
 	var setSnapshotQuery = fmt.Sprintf("SET TRANSACTION SNAPSHOT '%s'", o.snapshot)
