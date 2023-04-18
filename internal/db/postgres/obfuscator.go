@@ -1,5 +1,9 @@
 package postgres
 
+// TODO:
+//		N. Dump data except some tables that cannot be
+// 		N. Create DATA section with TOC records
+
 import (
 	"compress/gzip"
 	"context"
@@ -230,7 +234,7 @@ func (o *Obfuscator) tablesList(ctx context.Context, tx pgx.Tx, confTables []dom
 	return tables, nil
 }
 
-func (o *Obfuscator) getTableColumns(ctx context.Context, tx pgx.Tx, t *domains.Table, tableConf *domains.Table) ([]domains.Column, error) {
+func (o *Obfuscator) getTableColumns(ctx context.Context, tx pgx.Tx, table *domains.Table, tableConf *domains.Table) ([]domains.Column, error) {
 	tableColumnsQuery := `
 		SELECT 
 		    a.attname,
@@ -241,7 +245,7 @@ func (o *Obfuscator) getTableColumns(ctx context.Context, tx pgx.Tx, t *domains.
 		ORDER BY a.attnum
 	`
 
-	rows, err := tx.Query(ctx, tableColumnsQuery, t.Oid)
+	rows, err := tx.Query(ctx, tableColumnsQuery, table.Oid)
 	if err != nil {
 		return nil, fmt.Errorf("perform query: %w", err)
 	}
@@ -264,7 +268,7 @@ func (o *Obfuscator) getTableColumns(ctx context.Context, tx pgx.Tx, t *domains.
 			if !ok {
 				return nil, fmt.Errorf("unnable to find transformer with name %s", transformerName)
 			}
-			column.Transform = tableConf.Columns[confIdx].Transform
+			column.Transform.Transformer = transformer
 		}
 
 		columns = append(columns, column)
@@ -273,7 +277,7 @@ func (o *Obfuscator) getTableColumns(ctx context.Context, tx pgx.Tx, t *domains.
 	return columns, nil
 }
 
-func (o *Obfuscator) RunBackup(ctx context.Context) error {
+func (o *Obfuscator) RunBackup(ctx context.Context, tableConfig []domains.Table) error {
 	// Algorithm:
 	// N. Check directories exists
 	// N. Create tmp dir for toc.dat - pre-data and post-data and data itself
@@ -330,7 +334,7 @@ func (o *Obfuscator) RunBackup(ctx context.Context) error {
 		}
 	}()
 
-	tablesList, err := o.tablesList(ctx, tx, map[string]string{})
+	tablesList, err := o.tablesList(ctx, tx, tableConfig)
 	if err != nil {
 		return err
 	}
@@ -401,9 +405,9 @@ func (o *Obfuscator) RunBackup(ctx context.Context) error {
 		}
 	}
 
-	//o.setMaxDumpId(preDataToc.GetEntries(), postDataToc.GetEntries(), tablesList)
-
 	// Replacing dat
+	// TODO: You need to create DATA section with TOC records
+	//
 	datEntries := dataToc.GetEntries()
 	for eIdx := range datEntries {
 		if datEntries[eIdx].Section == 3 {

@@ -2,7 +2,7 @@ package domains
 
 import (
 	"errors"
-	"fmt"
+	"github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/toc"
 
 	"github.com/rs/zerolog/log"
 )
@@ -26,7 +26,7 @@ func (t *Table) MakeTuple(data []byte) (*Tuple, error) {
 	return nil, errors.New("IMPLEMENT ME")
 }
 
-func (t *Table) GetTocRecord() ([]byte, error) {
+func (t *Table) GetTocRecord() (*toc.Entry, error) {
 	if t.Oid == 0 {
 		return nil, errors.New("oid cannot be 0")
 	}
@@ -34,5 +34,5 @@ func (t *Table) GetTocRecord() ([]byte, error) {
 		return nil, errors.New("schema name cannot be empty")
 	}
 
-	return []byte(fmt.Sprintf("%d; %d TABLE DATA %s %s %s\n", t.DumpId, 0, t.Schema, t.Name, t.Owner)), nil
+	return &toc.Entry{}, nil
 }

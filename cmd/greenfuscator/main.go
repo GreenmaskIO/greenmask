@@ -28,7 +28,7 @@ func main() {
 
 	pgObfuscator := postgres.NewObfuscator(config.BinPath, config.PgDumpOptions)
 
-	if err := pgObfuscator.RunBackup(context.Background()); err != nil {
+	if err := pgObfuscator.RunBackup(context.Background(), config.YamlConfig); err != nil {
 		log.Fatal().Err(err).Msg("cannot make a backup")
 	}
 
