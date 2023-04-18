@@ -11,23 +11,21 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/rs/zerolog/log"
-	"golang.org/x/exp/slices"
-	"os"
-	"path"
-
 	"github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/toc"
 	"github.com/wwoytenko/greenfuscator/internal/db/postgres/pgdump"
 	"github.com/wwoytenko/greenfuscator/internal/domains"
 	"github.com/wwoytenko/greenfuscator/internal/transformers"
+	"golang.org/x/exp/slices"
+	"os"
+	"path"
 )
 
 const (
-	pgDumpDir                     = "pg_dump"
-	pgDumpPreDataDir              = "pg_dump/predata"
-	pgDumpDataDir                 = "pg_dump/data"
-	pgDumpPostDataDir             = "pg_dump/postdata"
-	dirPermissions    os.FileMode = 0750
-	maxInt                        = 2147483647
+	pgDumpDir                    = "pg_dump"
+	pgDumpSchemaOnly             = "pg_dump/schema"
+	pgDumpDataDir                = "pg_dump/data"
+	dirPermissions   os.FileMode = 0750
+	maxInt                       = 2147483647
 )
 
 var defaultTypeMap = map[string]string{
@@ -144,6 +142,50 @@ func (o *Obfuscator) Connect(ctx context.Context) error {
 	o.conn = conn
 	o.dsn = dsn
 	return nil
+}
+
+func (o *Obfuscator) sequenceList(ctx context.Context, tx pgx.Tx) ([]domains.Sequence, error) {
+	// TODO: Provide filter rules - exclude seq or schema, etc.
+	tablesListQuery := `
+		SELECT n.nspname                              as "Schema",
+			   c.relname                              as "Name",
+			   pg_catalog.pg_get_userbyid(c.relowner) as "Owner",
+			   CASE
+				   WHEN pg_sequence_last_value(c.oid::regclass) ISNULL THEN
+					   FALSE
+				   ELSE
+					   TRUE
+				   END                                AS "IsCalled",
+			coalesce(pg_sequence_last_value(c.oid::regclass), s.seqstart) AS "LastVal"
+		FROM pg_catalog.pg_class c
+				 JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
+				 JOIN pg_catalog.pg_sequence s ON c.oid = s.seqrelid
+		WHERE c.relkind IN ('S', '')
+		  AND n.nspname <> 'pg_catalog'
+		  AND n.nspname !~ '^pg_toast'
+		  AND n.nspname <> 'information_schema'
+		ORDER BY 1, 2;
+	`
+
+	rows, err := tx.Query(ctx, tablesListQuery)
+	if err != nil {
+		return nil, fmt.Errorf("perform query: %w", err)
+	}
+
+	// Generate table objects
+	sequences := make([]domains.Sequence, 0)
+	defer rows.Close()
+	for rows.Next() {
+		sequence := domains.Sequence{}
+		sequence.DumpId = o.getDumpId()
+		if err := rows.Scan(&sequence.Schema, &sequence.Name,
+			&sequence.Owner, &sequence.IsCalled, &sequence.LastValue); err != nil {
+			return nil, fmt.Errorf("unnable scan data: %w", err)
+		}
+		sequences = append(sequences, sequence)
+	}
+
+	return sequences, nil
 }
 
 func (o *Obfuscator) startTx(ctx context.Context) (pgx.Tx, error) {
@@ -334,9 +376,14 @@ func (o *Obfuscator) RunBackup(ctx context.Context, tableConfig []domains.Table)
 		}
 	}()
 
+	sequenceList, err := o.sequenceList(ctx, tx)
+	if err != nil {
+		return fmt.Errorf("cannot retreive sequence list: %w", err)
+	}
+
 	tablesList, err := o.tablesList(ctx, tx, tableConfig)
 	if err != nil {
-		return err
+		return fmt.Errorf("cannot retreive table list: %w", err)
 	}
 	log.Debug().Msgf("tablesList = %+v\n", tablesList)
 
@@ -355,48 +402,17 @@ func (o *Obfuscator) RunBackup(ctx context.Context, tableConfig []domains.Table)
 	options := *o.options
 	options.Format = "d"
 	options.Verbose = true
-	options.Section = "pre-data"
-	options.FileName = path.Join(o.options.FileName, pgDumpPreDataDir)
+	options.SchemaOnly = true
+	options.FileName = path.Join(o.options.FileName, pgDumpSchemaOnly)
 	if err = o.pgDump.Run(ctx, &options); err != nil {
 		return err
 	}
 
-	// Dump pre data
-	options.Section = "data"
-	options.FileName = path.Join(o.options.FileName, pgDumpDataDir)
-	if err = o.pgDump.Run(ctx, &options); err != nil {
-		return err
-	}
-
-	// Dump data data
-	options.Section = "post-data"
-	options.FileName = path.Join(o.options.FileName, pgDumpPostDataDir)
-	if err = o.pgDump.Run(ctx, &options); err != nil {
-		return err
-	}
-
-	// Read predata TOC
-	log.Debug().Msg("Backing up data section")
-	preDataToc, err := toc.ReadFile(path.Join(o.options.FileName, pgDumpPreDataDir, "toc.dat"))
+	log.Debug().Msg("Reading schema section")
+	schemaToc, err := toc.ReadFile(path.Join(o.options.FileName, pgDumpSchemaOnly, "toc.dat"))
 	if err != nil {
 		return fmt.Errorf("error reading toc file: %w", err)
 	}
-
-	// Read data TOC
-	log.Debug().Msg("Backing up data section")
-	dataToc, err := toc.ReadFile(path.Join(o.options.FileName, pgDumpDataDir, "toc.dat"))
-	if err != nil {
-		return fmt.Errorf("error reading toc file: %w", err)
-	}
-
-	log.Debug().Msg("Backing up post-data section")
-	postDataToc, err := toc.ReadFile(path.Join(o.options.FileName, pgDumpPostDataDir, "toc.dat"))
-	if err != nil {
-		return fmt.Errorf("error reading toc file: %w", err)
-	}
-
-	tableOrder := o.GetTableOrder(preDataToc.GetEntries())
-	log.Printf("%+v\n", tableOrder)
 
 	// Performing TSV dump
 	for idx := range tablesList {
@@ -405,25 +421,12 @@ func (o *Obfuscator) RunBackup(ctx context.Context, tableConfig []domains.Table)
 		}
 	}
 
-	// Replacing dat
-	// TODO: You need to create DATA section with TOC records
-	//
-	datEntries := dataToc.GetEntries()
-	for eIdx := range datEntries {
-		if datEntries[eIdx].Section == 3 {
-			for tIdx := range tablesList {
-				if int(datEntries[eIdx].CatalogId.Oid) == tablesList[tIdx].Oid {
-					datEntries[eIdx].DumpId = tablesList[tIdx].DumpId
-					fileName := fmt.Sprintf("%d.dat.gz", tablesList[tIdx].DumpId)
-					datEntries[eIdx].FileName = &fileName
-					break
-				}
-			}
-		}
-
+	dataEntries, err := o.buildDataSection(schemaToc.GetEntries(), tablesList, sequenceList, nil)
+	if err != nil {
+		return fmt.Errorf("cannot build data section: %w", err)
 	}
 
-	mergedTocs, err := o.MergeTocEntries(preDataToc.GetEntries(), dataToc.GetEntries(), postDataToc.GetEntries())
+	mergedTocs, err := o.MergeTocEntries(schemaToc.GetEntries(), dataEntries)
 	if err != nil {
 		return fmt.Errorf("unable to merge TOC files: %w", err)
 	}
@@ -431,12 +434,51 @@ func (o *Obfuscator) RunBackup(ctx context.Context, tableConfig []domains.Table)
 
 	// Read post data TOC
 	targetTocFilePath := path.Join(o.options.FileName, "toc.dat")
-	preDataToc.SetEntries(mergedTocs)
-	if err = toc.WriteFile(preDataToc, targetTocFilePath); err != nil {
+	schemaToc.SetEntries(mergedTocs)
+	if err = toc.WriteFile(schemaToc, targetTocFilePath); err != nil {
 		return fmt.Errorf("error writing toc file: %w", err)
 	}
 
 	return nil
+}
+
+func (o *Obfuscator) buildDataSection(preData []toc.Entry, tables []domains.Table,
+	sequences []domains.Sequence, largeObjects *domains.LargeObjects) ([]toc.Entry, error) {
+
+	res := make([]toc.Entry, 0, len(tables)+len(sequences)+1)
+
+	sequenceOrder := o.GetSequenceOrder(preData)
+	tableOrder := o.GetTableOrder(preData)
+
+	for _, tableDef := range tableOrder {
+		for _, tableData := range tables {
+			if *tableDef.Namespace == tableData.Schema && *tableDef.Tag == tableData.Name {
+				tableData.Dependencies = []int32{tableDef.DumpId}
+				entry, err := tableData.GetTocEntry()
+				if err != nil {
+					return nil, fmt.Errorf("cannot get table TOC entry: %w", err)
+				}
+				res = append(res, *entry)
+				break
+			}
+		}
+	}
+
+	for _, sequenceDef := range sequenceOrder {
+		for _, sequenceData := range sequences {
+			if *sequenceDef.Namespace == sequenceData.Schema && *sequenceDef.Tag == sequenceData.Name {
+				sequenceData.Dependencies = []int32{sequenceDef.DumpId}
+				entry, err := sequenceData.GetTocEntry()
+				if err != nil {
+					return nil, fmt.Errorf("cannot get sequence TOC entry: %w", err)
+				}
+				res = append(res, *entry)
+				break
+			}
+		}
+	}
+
+	return res, nil
 }
 
 func (o *Obfuscator) createDirectories() error {
@@ -444,7 +486,7 @@ func (o *Obfuscator) createDirectories() error {
 	dir := o.options.FileName
 	log.Debug().Msg("create subdirectories")
 
-	for _, dirName := range []string{pgDumpDir, pgDumpPreDataDir, pgDumpDataDir, pgDumpPostDataDir} {
+	for _, dirName := range []string{pgDumpDir, pgDumpSchemaOnly, pgDumpDataDir} {
 		if err := os.Mkdir(path.Join(dir, dirName), dirPermissions); err != nil {
 			return fmt.Errorf("cannot create pg_dump directories: %w", err)
 		}
@@ -537,35 +579,48 @@ func (o *Obfuscator) dumpTable(ctx context.Context, datDir string, table *domain
 	}
 }
 
-func (o *Obfuscator) GetTableOrder(entries []toc.Entry) []string {
-	tableOrder := make([]string, 0)
+func (o *Obfuscator) GetTableOrder(entries []toc.Entry) []toc.Entry {
+	tableOrder := make([]toc.Entry, 0)
 	for _, item := range entries {
-		if *(item.Desc) == "TABLE" {
-			tableOrder = append(tableOrder, fmt.Sprintf("%s.%s", *item.Namespace, *item.Tag))
+		if item.Section == toc.SectionPreData && *(item.Desc) == "TABLE" {
+			tableOrder = append(tableOrder, item)
 		}
 
 	}
 	return tableOrder
 }
 
-func (o *Obfuscator) MergeTocEntries(preData, data, postData []toc.Entry) ([]toc.Entry, error) {
-	allEntries := make([]toc.Entry, 0)
-	allEntries = append(allEntries, preData...)
-	allEntries = append(allEntries, data...)
-	allEntries = append(allEntries, postData...)
-
-	res := make([]toc.Entry, 0, len(allEntries))
-
-	for _, item := range allEntries {
-		tocExists := slices.ContainsFunc[toc.Entry](res, func(entry toc.Entry) bool {
-			if entry.DumpId == item.DumpId {
-				return true
-			}
-			return false
-		})
-		if !tocExists {
-			res = append(res, item)
+func (o *Obfuscator) GetSequenceOrder(entries []toc.Entry) []toc.Entry {
+	tableOrder := make([]toc.Entry, 0)
+	for _, item := range entries {
+		if item.Section == toc.SectionPreData && *(item.Desc) == "SEQUENCE" {
+			tableOrder = append(tableOrder, item)
 		}
 	}
+	return tableOrder
+}
+
+func (o *Obfuscator) MergeTocEntries(schema, data []toc.Entry) ([]toc.Entry, error) {
+	res := make([]toc.Entry, 0, len(schema)+len(data))
+
+	preDataEnd := 0
+	postDataStart := 0
+
+	// Find predata last index and postdata first index
+	for idx, item := range schema {
+		if item.Section == toc.SectionPreData {
+			preDataEnd = idx
+		}
+		if item.Section == toc.SectionPostData {
+			postDataStart = idx
+			break
+		}
+	}
+
+	res = append(res, schema[:preDataEnd+1]...)
+	// Push data between post and pred
+	res = append(res, data...)
+	res = append(res, schema[postDataStart:]...)
+
 	return res, nil
 }
