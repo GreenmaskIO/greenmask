@@ -1,5 +1,14 @@
 package transformers
 
-func SimpleMasker(val string, params map[string]string) (string, error) {
-	return "blah blah", nil
+import (
+	"errors"
+	"github.com/wwoytenko/greenfuscator/internal/domains"
+)
+
+func ReplaceTransformer(column domains.Column, val string, params map[string]string) (string, error) {
+	val, ok := params["value"]
+	if !ok {
+		return "", errors.New("expected value key")
+	}
+	return val, nil
 }

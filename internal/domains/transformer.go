@@ -6,4 +6,4 @@ type Transformer struct {
 	Transformer TransformerFunc
 }
 
-type TransformerFunc func(val string, params map[string]string) (string, error)
+type TransformerFunc func(column Column, val string, params map[string]string) (string, error)

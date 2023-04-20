@@ -1,9 +1,12 @@
 package domains
 
 import (
+	"bytes"
+	"encoding/csv"
 	"errors"
 	"fmt"
 	"github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/toc"
+	"io"
 	"strings"
 
 	"github.com/rs/zerolog/log"
@@ -22,13 +25,43 @@ type Table struct {
 	Dependencies []int32
 }
 
-func (t *Table) MakeTuple(data []byte) (*Tuple, error) {
-	tuple := &Tuple{
-		Table:         t,
-		OriginalTuple: data,
+func (t *Table) TransformTuple(data []byte) ([]byte, error) {
+	if !t.HasMasker {
+		log.Warn().Msgf("called transformer for table %s.%s though it is not defined in config. maybe bug", t.Schema, t.Name)
+		return data, nil
 	}
-	log.Debug().Msgf("%+v\n", tuple)
-	return nil, errors.New("IMPLEMENT ME")
+	lineReader := csv.NewReader(bytes.NewReader(data))
+	lineReader.Comma = '\t'
+	values, err := lineReader.Read()
+	if err != nil {
+		return nil, fmt.Errorf("cannot read dump line: %w", err)
+	}
+
+	record := make([]string, 0, len(t.Columns))
+	for idx, column := range t.Columns {
+		transformedValue := values[idx]
+		if column.Transform.Name != "" {
+			transformedValue, err = column.Transform.Transformer(column, values[idx], column.Transform.Params)
+			if err != nil {
+				return nil, fmt.Errorf("transformer %s error: %w", column.Transform.Name, err)
+			}
+		}
+		record = append(record, transformedValue)
+	}
+
+	buf := bytes.Buffer{}
+	lineWriter := csv.NewWriter(&buf)
+	lineWriter.Comma = '\t'
+	if err = lineWriter.Write(record); err != nil {
+		return nil, fmt.Errorf("unnable to write line: %w", err)
+	}
+	lineWriter.Flush()
+
+	res, err := io.ReadAll(&buf)
+	if err != nil {
+		return nil, fmt.Errorf("cannot read data from tsv reader: %w", err)
+	}
+	return res, nil
 }
 
 func (t *Table) GetTocEntry() (*toc.Entry, error) {

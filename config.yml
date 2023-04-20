@@ -6,5 +6,6 @@ transformers:
     columns:
       - name: "title"
         transformer:
-          name: "dummy"
+          name: "replace"
           params:
+            value: "test"

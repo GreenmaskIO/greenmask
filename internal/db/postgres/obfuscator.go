@@ -305,12 +305,18 @@ func (o *Obfuscator) getTableColumns(ctx context.Context, tx pgx.Tx, table *doma
 				}
 				return false
 			})
-			transformerName := tableConf.Columns[confIdx].Transform.Name
-			transformer, ok := transformers.TransformerMap[transformerName]
-			if !ok {
-				return nil, fmt.Errorf("unnable to find transformer with name %s", transformerName)
+			if confIdx != -1 {
+				columnConf := tableConf.Columns[confIdx].Transform
+				transformer, ok := transformers.TransformerMap[columnConf.Name]
+				if !ok {
+					return nil, fmt.Errorf("unnable to find transformer with name %s", columnConf.Name)
+				}
+				column.Transform = domains.Transformer{
+					Name:        columnConf.Name,
+					Params:      columnConf.Params,
+					Transformer: transformer,
+				}
 			}
-			column.Transform.Transformer = transformer
 		}
 
 		columns = append(columns, column)
@@ -385,7 +391,6 @@ func (o *Obfuscator) RunBackup(ctx context.Context, tableConfig []domains.Table)
 	if err != nil {
 		return fmt.Errorf("cannot retreive table list: %w", err)
 	}
-	log.Debug().Msgf("tablesList = %+v\n", tablesList)
 
 	// N. Make --schemaonly dump in original dir
 	// N. Read Toc data and calculate  MinBackupId and MaxBackupId
@@ -430,7 +435,6 @@ func (o *Obfuscator) RunBackup(ctx context.Context, tableConfig []domains.Table)
 	if err != nil {
 		return fmt.Errorf("unable to merge TOC files: %w", err)
 	}
-	log.Debug().Msgf("mergedToc = %+v\n", mergedTocs)
 
 	// Read post data TOC
 	targetTocFilePath := path.Join(o.options.FileName, "toc.dat")
@@ -554,17 +558,13 @@ func (o *Obfuscator) dumpTable(ctx context.Context, datDir string, table *domain
 		case *pgproto3.CopyData:
 			tupleData := v.Data
 			if table.HasMasker {
-				tuple, err := table.MakeTuple(tupleData)
+				tupleData, err = table.TransformTuple(tupleData)
 				if err != nil {
 					return fmt.Errorf("cannot convert plain data to tuple: %w", err)
 				}
-
-				if err := tuple.MaskTuple(); err != nil {
-					return fmt.Errorf("cannot mask tuple: %w", err)
-				}
-				tupleData = tuple.GetMaskedTuple()
 			}
 
+			// TODO: Maybe you should check the count of written bytes
 			if _, err := writer.Write(tupleData); err != nil {
 				return fmt.Errorf("cannot store data into dat file: %w", err)
 			}
