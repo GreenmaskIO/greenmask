@@ -306,16 +306,17 @@ func (o *Obfuscator) getTableColumns(ctx context.Context, tx pgx.Tx, table *doma
 				return false
 			})
 			if confIdx != -1 {
-				columnConf := tableConf.Columns[confIdx].Transform
-				transformer, ok := transformers.TransformerMap[columnConf.Name]
+				transformerConf := tableConf.Columns[confIdx].TransformConf
+				makeTransformer, ok := transformers.TransformerMap[transformerConf.Name]
 				if !ok {
-					return nil, fmt.Errorf("unnable to find transformer with name %s", columnConf.Name)
+					return nil, fmt.Errorf("unnable to find transformer with name %s", transformerConf.Name)
 				}
-				column.Transform = domains.Transformer{
-					Name:        columnConf.Name,
-					Params:      columnConf.Params,
-					Transformer: transformer,
+				column.TransformConf = transformerConf
+				transformer, err := makeTransformer.NewTransformer(column.ColumnMeta, column.TransformConf.Params)
+				if err != nil {
+					return nil, fmt.Errorf("unable to init transformer \"%s\": %w", transformerConf.Name, err)
 				}
+				column.Transformer = transformer
 			}
 		}
 

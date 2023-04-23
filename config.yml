@@ -6,6 +6,24 @@ transformers:
     columns:
       - name: "title"
         transformer:
-          name: "replace"
+          name: "Replace"
           params:
             value: "test"
+  - schema: "public"
+    name: "cards_test"
+    columns:
+      - name: "card_number"
+        transformer:
+          name: "CreditCard"
+          params:
+            type: "Number"
+      - name: "ex_date"
+        transformer:
+          name: "CreditCard"
+          params:
+            type: "ExpirationDateString"
+      - name: "vendor"
+        transformer:
+          name: "CreditCard"
+          params:
+            type: "VendorName"

@@ -1,9 +1,10 @@
 package domains
 
-type Transformer struct {
-	Name        string            `yaml:"name"`
-	Params      map[string]string `yaml:"params"`
-	Transformer TransformerFunc
+type Transformer interface {
+	Transform(originalValue string) (string, error)
 }
 
-type TransformerFunc func(column Column, val string, params map[string]string) (string, error)
+type TransformerConfig struct {
+	Name   string            `yaml:"name"`
+	Params map[string]string `yaml:"params"`
+}

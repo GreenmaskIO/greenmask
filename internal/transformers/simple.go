@@ -5,10 +5,22 @@ import (
 	"github.com/wwoytenko/greenfuscator/internal/domains"
 )
 
-func ReplaceTransformer(column domains.Column, val string, params map[string]string) (string, error) {
+type ReplaceTransformer struct {
+	Column   domains.ColumnMeta
+	newValue string
+}
+
+func NewReplaceTransformer(column domains.ColumnMeta, params map[string]string) (domains.Transformer, error) {
 	val, ok := params["value"]
 	if !ok {
-		return "", errors.New("expected value key")
+		return nil, errors.New("expected value key")
 	}
-	return val, nil
+	return &ReplaceTransformer{
+		Column:   column,
+		newValue: val,
+	}, nil
+}
+
+func (rt *ReplaceTransformer) Transform(val string) (string, error) {
+	return rt.newValue, nil
 }
