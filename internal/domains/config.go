@@ -17,9 +17,9 @@ var (
 
 type Config struct {
 	BinPath       string
-	PgDumpOptions *pgdump.Options
+	PgDumpOptions *pgdump.Options `mapstructure:",squash"`
 	configPath    string
-	YamlConfig    []Table `yaml:"transformers"`
+	YamlConfig    []Table `mapstructure:"transformers"`
 }
 
 func NewConfig() *Config {

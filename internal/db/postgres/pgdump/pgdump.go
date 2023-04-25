@@ -37,7 +37,7 @@ func (pd *PgDump) Run(ctx context.Context, options *Options) error {
 
 type Options struct {
 	// General options:
-	FileName        string // --file=FILENAME
+	FileName        string `mapstructure:"file"` // --file=FILENAME
 	Format          string // --format=format p|c|d|t
 	Jobs            string // --jobs=NUM
 	Verbose         bool   // --verbose
@@ -87,10 +87,10 @@ type Options struct {
 	StrictNames                string // --strict-names
 	UseSetSessionAuthorization bool   // --use-set-session-authorization
 
-	DbName     string // --dbname=DBNAME
-	Host       string // --host=HOSTNAME
-	Port       int    // --port=PORT
-	UserName   string // --username=NAME
+	DbName     string `mapstructure:"dbname"`   // --dbname=DBNAME
+	Host       string `mapstructure:"host"`     // --host=HOSTNAME
+	Port       int    `mapstructure:"port"`     // --port=PORT
+	UserName   string `mapstructure:"username"` // --username=NAME
 	NoPassword string // --no-password
 	Password   string // --password
 	Role       string // --role=ROLENAME

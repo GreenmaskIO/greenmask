@@ -1,10 +1,10 @@
 package domains
 
 type Column struct {
-	Name string `yaml:"name"`
+	Name string `mapstructure:"name"`
 	ColumnMeta
-	TransformConf TransformerConfig `yaml:"transformer"`
-	Transformer   Transformer       `yaml:"-"`
+	TransformConf TransformerConfig `mapstructure:"transformer"`
+	Transformer   Transformer       `mapstructure:"-"`
 }
 
 type ColumnMeta struct {

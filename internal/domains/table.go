@@ -15,9 +15,9 @@ import (
 var TableDataDesc = "TABLE DATA"
 
 type Table struct {
-	Schema       string   `yaml:"schema"`
-	Name         string   `yaml:"name"`
-	Columns      []Column `yaml:"columns"`
+	Schema       string   `mapstructure:"schema"`
+	Name         string   `mapstructure:"name"`
+	Columns      []Column `mapstructure:"columns"`
 	HasMasker    bool
 	Oid          int
 	Owner        string
