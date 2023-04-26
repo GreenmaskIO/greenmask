@@ -48,6 +48,7 @@ type Options struct {
 
 	DataOnly                   bool     `mapstructure:"data-only"`
 	Blobs                      bool     `mapstructure:"blobs"`
+	NoBlobs                    bool     `mapstructure:"no-blobs"`
 	Clean                      bool     `mapstructure:"clean"`
 	Create                     bool     `mapstructure:"create"`
 	Extension                  []string `mapstructure:"extension"`

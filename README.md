@@ -32,6 +32,8 @@ that allows you to restore anything you want using pg_restore util.
 TODO:
 * Provide useful interface using cobra + viper
     * greenmask dump -c config.yml --any-params
+      * Implement parameters check that conflicts
+      * 
     * greenmask restore --any-params {{ dumpId }}
     * greenmask dump-fetch {{ dumpId }} {{ dir }} 
     * greenmask dump-list --detail --json
