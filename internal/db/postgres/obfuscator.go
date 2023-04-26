@@ -411,6 +411,7 @@ func (o *Obfuscator) RunBackup(ctx context.Context, tableConfig []domains.Table)
 	options.Format = "d"
 	options.Verbose = true
 	options.SchemaOnly = true
+	options.Snapshot = o.snapshot
 	options.FileName = path.Join(o.options.FileName, pgDumpSchemaOnly)
 	if err = o.pgDump.Run(ctx, &options); err != nil {
 		return err

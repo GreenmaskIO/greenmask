@@ -46,44 +46,47 @@ type Options struct {
 	LockWaitTimeout int    `mapstructure:"lock-wait-timeout"`
 	NoSync          bool   `mapstructure:"no-sync"`
 
-	DataOnly                   bool   `mapstructure:"data-only"`
-	Blobs                      bool   `mapstructure:"blobs"`
-	Clean                      bool   `mapstructure:"clean"`
-	Create                     bool   `mapstructure:"create"`
-	Extension                  string `mapstructure:"extension"`
-	Encoding                   string `mapstructure:"encoding"`
-	Schema                     string `mapstructure:"schema"`
-	ExcludeSchema              string `mapstructure:"exclude-schema"`
-	NoOwner                    bool   `mapstructure:"no-owner"`
-	SchemaOnly                 bool   `mapstructure:"schema-only"`
-	SuperUser                  string `mapstructure:"superuser"`
-	Table                      string `mapstructure:"table"`
-	ExcludeTable               string `mapstructure:"exclude-table"`
-	NoPrivileges               bool   `mapstructure:"no-privileges"`
-	DisableDollarQuoting       bool   `mapstructure:"disable-dollar-quoting"`
-	DisableTriggers            bool   `mapstructure:"disable-triggers"`
-	EnableRowSecurity          bool   `mapstructure:"enable-row-security"`
-	ExcludeTableData           bool   `mapstructure:"exclude-table-data"`
-	ExtraFloatDigits           string `mapstructure:"extra-float-digits"`
-	IfExists                   bool   `mapstructure:"if-exists"`
-	IncludeForeignData         string `mapstructure:"include-foreign-data"`
-	LoadViaPartitionRoot       bool   `mapstructure:"load-via-partition-root"`
-	NoComments                 bool   `mapstructure:"no-comments"`
-	NoPublications             bool   `mapstructure:"no-publications"`
-	NoSecurityLabels           bool   `mapstructure:"no-security-labels"`
-	NoSubscriptions            bool   `mapstructure:"no-subscriptions"`
-	NoSynchronizedSnapshots    bool   `mapstructure:"no-synchronized-snapshots"`
-	NoTableSpaces              bool   `mapstructure:"no-tablespaces"`
-	NoToastCompression         bool   `mapstructure:"no-toast-compression"`
-	NoUnloggedTableData        bool   `mapstructure:"no-unlogged-table-data"`
-	OnConflictDoNothing        bool   `mapstructure:"on-conflict-do-nothing"`
-	QuoteAllIdentifiers        bool   `mapstructure:"quote-all-identifiers"`
-	Section                    string `mapstructure:"section"`
-	SerializableDeferrable     string `mapstructure:"serializable-deferrable"`
-	Snapshot                   string `mapstructure:"snapshot"`
-	StrictNames                string `mapstructure:"strict-names"`
-	UseSetSessionAuthorization bool   `mapstructure:"use-set-session-authorization"`
+	DataOnly                   bool     `mapstructure:"data-only"`
+	Blobs                      bool     `mapstructure:"blobs"`
+	Clean                      bool     `mapstructure:"clean"`
+	Create                     bool     `mapstructure:"create"`
+	Extension                  []string `mapstructure:"extension"`
+	Encoding                   string   `mapstructure:"encoding"`
+	Schema                     []string `mapstructure:"schema"`
+	ExcludeSchema              []string `mapstructure:"exclude-schema"`
+	NoOwner                    bool     `mapstructure:"no-owner"`
+	SchemaOnly                 bool     `mapstructure:"schema-only"`
+	SuperUser                  string   `mapstructure:"superuser"`
+	Table                      []string `mapstructure:"table"`
+	ExcludeTable               []string `mapstructure:"exclude-table"`
+	NoPrivileges               bool     `mapstructure:"no-privileges"`
+	DisableDollarQuoting       bool     `mapstructure:"disable-dollar-quoting"`
+	DisableTriggers            bool     `mapstructure:"disable-triggers"`
+	EnableRowSecurity          bool     `mapstructure:"enable-row-security"`
+	ExcludeTableData           []string `mapstructure:"exclude-table-data"`
+	ExtraFloatDigits           string   `mapstructure:"extra-float-digits"`
+	IfExists                   bool     `mapstructure:"if-exists"`
+	IncludeForeignData         []string `mapstructure:"include-foreign-data"`
+	LoadViaPartitionRoot       bool     `mapstructure:"load-via-partition-root"`
+	NoComments                 bool     `mapstructure:"no-comments"`
+	NoPublications             bool     `mapstructure:"no-publications"`
+	NoSecurityLabels           bool     `mapstructure:"no-security-labels"`
+	NoSubscriptions            bool     `mapstructure:"no-subscriptions"`
+	NoSynchronizedSnapshots    bool     `mapstructure:"no-synchronized-snapshots"`
+	NoTableSpaces              bool     `mapstructure:"no-tablespaces"`
+	NoToastCompression         bool     `mapstructure:"no-toast-compression"`
+	NoUnloggedTableData        bool     `mapstructure:"no-unlogged-table-data"`
+	OnConflictDoNothing        bool     `mapstructure:"on-conflict-do-nothing"`
+	QuoteAllIdentifiers        bool     `mapstructure:"quote-all-identifiers"`
+	Section                    string   `mapstructure:"section"`
+	SerializableDeferrable     string   `mapstructure:"serializable-deferrable"`
+	Snapshot                   string   `mapstructure:"snapshot"`
+	StrictNames                string   `mapstructure:"strict-names"`
+	UseSetSessionAuthorization bool     `mapstructure:"use-set-session-authorization"`
 
+	// Specifies the name of the database to connect to. This is equivalent to specifying dbname as the first
+	// non-option argument on the command line. The dbname can be a connection string. If so, connection string
+	// parameters will override any conflicting command line options.
 	DbName     string `mapstructure:"dbname"`
 	Host       string `mapstructure:"host"`
 	Port       int    `mapstructure:"port"`

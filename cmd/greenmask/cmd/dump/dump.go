@@ -53,21 +53,22 @@ func init() {
 	DumpCmd.Flags().BoolP("no-blobs", "B", false, "exclude large objects in dump")
 	DumpCmd.Flags().BoolP("clean", "c", false, "clean (drop) database objects before recreating")
 	DumpCmd.Flags().BoolP("create", "C", false, "include commands to create database in dump")
-	DumpCmd.Flags().StringP("extension", "e", "", "dump the specified extension(s) only") // list of patterns
+	DumpCmd.Flags().StringSliceVarP(&Config.PgDumpOptions.Extension, "extension", "e", []string{}, "dump the specified extension(s) only")
 	DumpCmd.Flags().StringP("encoding", "E", "", "dump the data in encoding ENCODING")
-	DumpCmd.Flags().StringP("schema", "n", "", "dump the specified schema(s) only") // list of patterns
+	DumpCmd.Flags().StringSliceVarP(&Config.PgDumpOptions.Schema, "schema", "n", []string{}, "dump the specified schema(s) only")
+	DumpCmd.Flags().StringSliceVarP(&Config.PgDumpOptions.ExcludeSchema, "exclude-schema", "N", []string{}, "dump the specified schema(s) only")
 	DumpCmd.Flags().StringP("no-owner", "O", "", "skip restoration of object ownership in plain-text format")
 	DumpCmd.Flags().StringP("schema-only", "s", "", "dump only the schema, no data")
 	DumpCmd.Flags().StringP("superuser", "S", "", "superuser user name to use in plain-text format")
-	DumpCmd.Flags().StringP("table", "t", "", "dump the specified table(s) only")           // list of patterns
-	DumpCmd.Flags().StringP("exclude-table", "T", "", "do NOT dump the specified table(s)") // list of patterns
+	DumpCmd.Flags().StringSliceVarP(&Config.PgDumpOptions.Table, "table", "t", []string{}, "dump the specified table(s) only")
+	DumpCmd.Flags().StringSliceVarP(&Config.PgDumpOptions.ExcludeTable, "exclude-table", "T", []string{}, "do NOT dump the specified table(s)")
 	DumpCmd.Flags().BoolP("no-privileges", "X", false, "do not dump privileges (grant/revoke)")
 	DumpCmd.Flags().BoolP("disable-dollar-quoting", "", false, "disable dollar quoting, use SQL standard quoting")
 	DumpCmd.Flags().BoolP("disable-triggers", "", false, "disable triggers during data-only restore")
-	DumpCmd.Flags().StringP("exclude-table-data", "", "", "do NOT dump data for the specified table(s)") // list of patterns
+	DumpCmd.Flags().StringSliceVarP(&Config.PgDumpOptions.ExcludeTableData, "exclude-table-data", "", []string{}, "do NOT dump data for the specified table(s)")
 	DumpCmd.Flags().IntP("extra-float-digits", "", -1, "override default setting for extra_float_digits")
 	DumpCmd.Flags().BoolP("if-exists", "", false, "use IF EXISTS when dropping objects")
-	DumpCmd.Flags().StringP("include-foreign-data", "", "", "use IF EXISTS when dropping objects") // list of patterns
+	DumpCmd.Flags().StringSliceVarP(&Config.PgDumpOptions.IncludeForeignData, "include-foreign-data", "", []string{}, "use IF EXISTS when dropping objects")
 	DumpCmd.Flags().BoolP("load-via-partition-root", "", false, "load partitions via the root table")
 	DumpCmd.Flags().BoolP("no-comments", "", false, "do not dump comments")
 	DumpCmd.Flags().BoolP("no-publications", "", false, "do not dump publications")
@@ -97,6 +98,16 @@ func init() {
 
 	for _, flagName := range []string{
 		"file", "jobs", "verbose", "compress", "dbname", "host", "username", "lock-wait-timeout", "no-sync",
+
+		"data-only", "blobs", "no-blobs", "clean", "create", "extension", "encoding", "schema", "exclude-schema",
+		"no-owner", "schema-only", "superuser", "table", "exclude-table", "no-privileges", "disable-dollar-quoting",
+		"disable-triggers", "exclude-table-data", "extra-float-digits", "if-exists", "include-foreign-data",
+		"load-via-partition-root", "no-comments", "no-publications", "no-security-labels", "no-subscriptions",
+		"no-synchronized-snapshots", "no-tablespaces", "no-toast-compression", "no-unlogged-table-data",
+		"on-conflict-do-nothing", "quote-all-identifiers", "section", "serializable-deferrable", "snapshot",
+		"strict-names", "use-set-session-authorization",
+
+		"dbname", "host", "port", "username",
 	} {
 		flag := DumpCmd.Flags().Lookup(flagName)
 		if err := viper.BindPFlag(flagName, flag); err != nil {
@@ -104,14 +115,11 @@ func init() {
 		}
 	}
 
-	//viper.Set("lock-wait-timeout", -1)
-	//viper.Set("compress", -1)
-
-	//viper.SetDefault("dbname", "postgres")
-	//viper.SetDefault("host", "/var/run/postgres")
-	//viper.SetDefault("port", 5432)
-	//viper.SetDefault("username", "postgres")
-
+	viper.BindEnv("dbname", "PGDATABASE")
+	viper.BindEnv("host", "PGHOST")
+	//viper.BindEnv("dbname", "PGOPTIONS")
+	viper.BindEnv("port", "PGPORT")
+	viper.BindEnv("username", "PGUSER")
 }
 
 func initConfig() {
