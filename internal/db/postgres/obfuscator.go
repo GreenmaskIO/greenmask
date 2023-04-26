@@ -453,6 +453,8 @@ func (o *Obfuscator) RunBackup(ctx context.Context, tableConfig []domains.Table)
 func (o *Obfuscator) buildDataSection(preData []toc.Entry, tables []domains.Table,
 	sequences []domains.Sequence, largeObjects *domains.LargeObjects) ([]toc.Entry, error) {
 
+	log.Debug().Msgf("FIXME: implement Large Objects dumping")
+
 	res := make([]toc.Entry, 0, len(tables)+len(sequences)+1)
 
 	sequenceOrder := o.GetSequenceOrder(preData)
