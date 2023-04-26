@@ -5,8 +5,8 @@ import (
 )
 
 type Config struct {
-	BinPath       string          `mapstructure:"bin-path"`
-	PgDumpOptions *pgdump.Options `mapstructure:",squash"`
+	BinPath       string          `mapstructure:"bin_path"`
+	PgDumpOptions *pgdump.Options `mapstructure:"pg_dump_options"`
 	configPath    string
 	YamlConfig    []Table `mapstructure:"transformers"`
 }

@@ -38,7 +38,7 @@ TODO:
     * greenmask delete {{ dumpId }}
     * greenmask s3 [ls|rm|get|push]
 * Implement toc Read and Write suitable for any major versions
-* Provide to pg_dump calls snapshot name in order to export it
+* ~~Provide to pg_dump calls snapshot name in order to export it~~ 
 * Implement concurrently COPY command
 * Make json-like metadata that contains data from toc.dat file
 * Implement graceful shutdown

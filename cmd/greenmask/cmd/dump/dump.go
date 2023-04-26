@@ -91,6 +91,7 @@ func init() {
 	DumpCmd.Flags().StringP("host", "h", "/var/run/postgres", "database server host or socket directory")
 	DumpCmd.Flags().IntP("port", "p", 5432, "database server port number")
 	DumpCmd.Flags().StringP("username", "U", "postgres", "connect as specified database user")
+	DumpCmd.Flags().StringP("test", "", "postgres", "connect as specified database user")
 
 	if err := DumpCmd.MarkFlagRequired("file"); err != nil {
 		log.Fatal().Err(err).Msg("fatal")
@@ -110,10 +111,12 @@ func init() {
 		"dbname", "host", "port", "username",
 	} {
 		flag := DumpCmd.Flags().Lookup(flagName)
-		if err := viper.BindPFlag(flagName, flag); err != nil {
+		if err := viper.BindPFlag(fmt.Sprintf("%s.%s", "pg_dump_options", flagName), flag); err != nil {
 			log.Fatal().Err(err).Msg("fatal")
 		}
 	}
+
+	viper.BindPFlag("test.test", DumpCmd.Flags().Lookup("test"))
 
 	viper.BindEnv("dbname", "PGDATABASE")
 	viper.BindEnv("host", "PGHOST")
