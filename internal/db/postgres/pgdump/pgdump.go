@@ -3,11 +3,12 @@ package pgdump
 import (
 	"context"
 	"fmt"
-	"github.com/rs/zerolog/log"
 	"os"
 	"os/exec"
 	"path"
 	"strings"
+
+	"github.com/rs/zerolog/log"
 )
 
 const pgDumpExecutable = "pg_dump"
@@ -38,62 +39,58 @@ func (pd *PgDump) Run(ctx context.Context, options *Options) error {
 type Options struct {
 	// General options:
 	FileName        string `mapstructure:"file"` // --file=FILENAME
-	Format          string // --format=format p|c|d|t
-	Jobs            string // --jobs=NUM
-	Verbose         bool   // --verbose
-	Compression     int    // --compress=0-9
-	LockWaitTimeout int    // --lock-wait-timeout=TIMEOUT
-	NoSync          bool   // --no-sync
+	Format          string // Supports only directory format
+	Jobs            string `mapstructure:"jobs"`
+	Verbose         bool   `mapstructure:"verbose"`
+	Compression     int    `mapstructure:"compress"`
+	LockWaitTimeout int    `mapstructure:"lock-wait-timeout"`
+	NoSync          bool   `mapstructure:"no-sync"`
 
-	DataOnly                   bool   // --data-only
-	Blobs                      bool   // --blobs | --no-blobs
-	Clean                      bool   // --clean
-	Create                     bool   // --create
-	Extension                  string // --extension=PATTERN
-	Encoding                   string // --encoding=ENCODING
-	Schema                     string // --schema=PATTERN
-	ExcludeSchema              string // --exclude-schema=PATTERN
-	NoOwner                    bool   // --no-owner
-	SchemaOnly                 bool   // --schema-only
-	SuperUser                  string // --superuser=NAME
-	Table                      string // --table=PATTERN
-	ExcludeTable               string // --exclude-table=PATTERN
-	NoPrivileges               bool   // --exclude-table=PATTERN
-	ColumnInserts              bool   // --column-inserts
-	BinaryUpgrade              bool   // --binary-upgrade
-	DisableDollarQuoting       bool   // --disable-dollar-quoting
-	DisableTriggers            bool   // --disable-triggers
-	EnableRowSecurity          bool   // --enable-row-security
-	ExcludeTableData           bool   // --exclude-table-data=PATTERN
-	ExtraFloatDigits           string // --extra-float-digits=NUM
-	IfExists                   bool   // --extra-float-digits=NUM
-	IncludeForeignData         string // --include-foreign-data=PATTERN
-	Inserts                    bool   // --inserts
-	LoadViaPartitionRoot       bool   // --load-via-partition-root
-	NoComments                 bool   // --no-comments
-	NoPublications             bool   // --no-comments
-	NoSecurityLabels           bool   // --no-comments
-	NoSubscriptions            bool   // --no-subscriptions
-	NoSynchronizedSnapshots    bool   // --no-synchronized-snapshots
-	NoTableSpaces              bool   // --no-tablespaces
-	NoToastCompression         bool   // --no-toast-compression
-	NoUnloggedTableData        bool   // --no-unlogged-table-data
-	OnConflictDoNothing        bool   // --on-conflict-do-nothing
-	QuoteAllIdentifiers        bool   // --quote-all-identifiers
-	RowsPerInsert              int    // --rows-per-insert=NROWS
-	Section                    string // --section=SECTION
-	SerializableDeferrable     string // --serializable-deferrable
-	Snapshot                   string // --snapshot=SNAPSHOT
-	StrictNames                string // --strict-names
-	UseSetSessionAuthorization bool   // --use-set-session-authorization
+	DataOnly                   bool   `mapstructure:"data-only"`
+	Blobs                      bool   `mapstructure:"blobs"`
+	Clean                      bool   `mapstructure:"clean"`
+	Create                     bool   `mapstructure:"create"`
+	Extension                  string `mapstructure:"extension"`
+	Encoding                   string `mapstructure:"encoding"`
+	Schema                     string `mapstructure:"schema"`
+	ExcludeSchema              string `mapstructure:"exclude-schema"`
+	NoOwner                    bool   `mapstructure:"no-owner"`
+	SchemaOnly                 bool   `mapstructure:"schema-only"`
+	SuperUser                  string `mapstructure:"superuser"`
+	Table                      string `mapstructure:"table"`
+	ExcludeTable               string `mapstructure:"exclude-table"`
+	NoPrivileges               bool   `mapstructure:"no-privileges"`
+	DisableDollarQuoting       bool   `mapstructure:"disable-dollar-quoting"`
+	DisableTriggers            bool   `mapstructure:"disable-triggers"`
+	EnableRowSecurity          bool   `mapstructure:"enable-row-security"`
+	ExcludeTableData           bool   `mapstructure:"exclude-table-data"`
+	ExtraFloatDigits           string `mapstructure:"extra-float-digits"`
+	IfExists                   bool   `mapstructure:"if-exists"`
+	IncludeForeignData         string `mapstructure:"include-foreign-data"`
+	LoadViaPartitionRoot       bool   `mapstructure:"load-via-partition-root"`
+	NoComments                 bool   `mapstructure:"no-comments"`
+	NoPublications             bool   `mapstructure:"no-publications"`
+	NoSecurityLabels           bool   `mapstructure:"no-security-labels"`
+	NoSubscriptions            bool   `mapstructure:"no-subscriptions"`
+	NoSynchronizedSnapshots    bool   `mapstructure:"no-synchronized-snapshots"`
+	NoTableSpaces              bool   `mapstructure:"no-tablespaces"`
+	NoToastCompression         bool   `mapstructure:"no-toast-compression"`
+	NoUnloggedTableData        bool   `mapstructure:"no-unlogged-table-data"`
+	OnConflictDoNothing        bool   `mapstructure:"on-conflict-do-nothing"`
+	QuoteAllIdentifiers        bool   `mapstructure:"quote-all-identifiers"`
+	Section                    string `mapstructure:"section"`
+	SerializableDeferrable     string `mapstructure:"serializable-deferrable"`
+	Snapshot                   string `mapstructure:"snapshot"`
+	StrictNames                string `mapstructure:"strict-names"`
+	UseSetSessionAuthorization bool   `mapstructure:"use-set-session-authorization"`
 
-	DbName     string `mapstructure:"dbname"`   // --dbname=DBNAME
-	Host       string `mapstructure:"host"`     // --host=HOSTNAME
-	Port       int    `mapstructure:"port"`     // --port=PORT
-	UserName   string `mapstructure:"username"` // --username=NAME
-	NoPassword string // --no-password
-	Password   string // --password
-	Role       string // --role=ROLENAME
+	DbName     string `mapstructure:"dbname"`
+	Host       string `mapstructure:"host"`
+	Port       int    `mapstructure:"port"`
+	UserName   string `mapstructure:"username"`
+	NoPassword string `mapstructure:"no-password"`
+	Password   string `mapstructure:"password"`
+	Role       string `mapstructure:"role"`
 }
 
 func (o *Options) GetPgDSN() (string, error) {

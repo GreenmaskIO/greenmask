@@ -5,9 +5,10 @@ import (
 	"encoding/csv"
 	"errors"
 	"fmt"
-	"github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/toc"
 	"io"
 	"strings"
+
+	"github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/toc"
 
 	"github.com/rs/zerolog/log"
 )

@@ -8,16 +8,18 @@ import (
 	"compress/gzip"
 	"context"
 	"fmt"
+	"os"
+	"path"
+
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/rs/zerolog/log"
+	"golang.org/x/exp/slices"
+
 	"github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/toc"
 	"github.com/wwoytenko/greenfuscator/internal/db/postgres/pgdump"
 	"github.com/wwoytenko/greenfuscator/internal/domains"
 	"github.com/wwoytenko/greenfuscator/internal/transformers"
-	"golang.org/x/exp/slices"
-	"os"
-	"path"
 )
 
 const (

@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"github.com/spf13/cobra"
+
 	"github.com/wwoytenko/greenfuscator/cmd/greenmask/cmd/dump"
 )
 
@@ -24,5 +25,7 @@ func Execute() error {
 }
 
 func init() {
+	// Removing short help flag from default
+	rootCmd.PersistentFlags().BoolP("help", "", false, "help for greenmask")
 	rootCmd.AddCommand(dump.DumpCmd)
 }

@@ -3,13 +3,15 @@ package dump
 import (
 	"context"
 	"fmt"
+	"os"
+
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+
 	"github.com/wwoytenko/greenfuscator/internal/db/postgres"
 	"github.com/wwoytenko/greenfuscator/internal/db/postgres/pgdump"
 	"github.com/wwoytenko/greenfuscator/internal/domains"
-	"os"
 )
 
 var (
@@ -26,6 +28,7 @@ var (
 	cfgFile string
 	Config  = &domains.Config{
 		PgDumpOptions: &pgdump.Options{},
+		YamlConfig:    []domains.Table{},
 	}
 )
 
@@ -38,30 +41,77 @@ func init() {
 
 	// General options:
 	DumpCmd.Flags().StringP("file", "f", "", "output file or directory name")
-	DumpCmd.Flags().StringP("jobs", "j", "", "use this many parallel jobs to dump")
+	DumpCmd.Flags().IntP("jobs", "j", -1, "use this many parallel jobs to dump")
 	DumpCmd.Flags().StringP("verbose", "v", "", "verbose mode")
-	DumpCmd.Flags().IntP("compress", "Z", 0, "compression level for compressed formats")
+	DumpCmd.Flags().IntP("compress", "Z", -1, "compression level for compressed formats")
+	DumpCmd.Flags().IntP("lock-wait-timeout", "", -1, "fail after waiting TIMEOUT for a table lock")
+	DumpCmd.Flags().BoolP("no-sync", "", false, "do not wait for changes to be written safely to dis")
 
-	// Connection options
+	// Options controlling the output content:
+	DumpCmd.Flags().BoolP("data-only", "a", false, "dump only the data, not the schema")
+	DumpCmd.Flags().BoolP("blobs", "b", true, "include large objects in dump")
+	DumpCmd.Flags().BoolP("no-blobs", "B", false, "exclude large objects in dump")
+	DumpCmd.Flags().BoolP("clean", "c", false, "clean (drop) database objects before recreating")
+	DumpCmd.Flags().BoolP("create", "C", false, "include commands to create database in dump")
+	DumpCmd.Flags().StringP("extension", "e", "", "dump the specified extension(s) only") // list of patterns
+	DumpCmd.Flags().StringP("encoding", "E", "", "dump the data in encoding ENCODING")
+	DumpCmd.Flags().StringP("schema", "n", "", "dump the specified schema(s) only") // list of patterns
+	DumpCmd.Flags().StringP("no-owner", "O", "", "skip restoration of object ownership in plain-text format")
+	DumpCmd.Flags().StringP("schema-only", "s", "", "dump only the schema, no data")
+	DumpCmd.Flags().StringP("superuser", "S", "", "superuser user name to use in plain-text format")
+	DumpCmd.Flags().StringP("table", "t", "", "dump the specified table(s) only")           // list of patterns
+	DumpCmd.Flags().StringP("exclude-table", "T", "", "do NOT dump the specified table(s)") // list of patterns
+	DumpCmd.Flags().BoolP("no-privileges", "X", false, "do not dump privileges (grant/revoke)")
+	DumpCmd.Flags().BoolP("disable-dollar-quoting", "", false, "disable dollar quoting, use SQL standard quoting")
+	DumpCmd.Flags().BoolP("disable-triggers", "", false, "disable triggers during data-only restore")
+	DumpCmd.Flags().StringP("exclude-table-data", "", "", "do NOT dump data for the specified table(s)") // list of patterns
+	DumpCmd.Flags().IntP("extra-float-digits", "", -1, "override default setting for extra_float_digits")
+	DumpCmd.Flags().BoolP("if-exists", "", false, "use IF EXISTS when dropping objects")
+	DumpCmd.Flags().StringP("include-foreign-data", "", "", "use IF EXISTS when dropping objects") // list of patterns
+	DumpCmd.Flags().BoolP("load-via-partition-root", "", false, "load partitions via the root table")
+	DumpCmd.Flags().BoolP("no-comments", "", false, "do not dump comments")
+	DumpCmd.Flags().BoolP("no-publications", "", false, "do not dump publications")
+	DumpCmd.Flags().BoolP("no-security-labels", "", false, "do not dump security label assignments")
+	DumpCmd.Flags().BoolP("no-subscriptions", "", false, "do not dump subscriptions")
+	DumpCmd.Flags().BoolP("no-synchronized-snapshots", "", false, "do not use synchronized snapshots in parallel jobs")
+	DumpCmd.Flags().BoolP("no-tablespaces", "", false, "do not dump tablespace assignments")
+	DumpCmd.Flags().BoolP("no-toast-compression", "", false, "do not dump TOAST compression methods")
+	DumpCmd.Flags().BoolP("no-unlogged-table-data", "", false, "do not dump unlogged table data")
+	DumpCmd.Flags().BoolP("on-conflict-do-nothing", "", false, "add ON CONFLICT DO NOTHING to INSERT commands")
+	DumpCmd.Flags().BoolP("quote-all-identifiers", "", false, "quote all identifiers, even if not key words")
+	DumpCmd.Flags().StringP("section", "", "", "dump named section (pre-data, data, or post-data)")
+	DumpCmd.Flags().StringP("serializable-deferrable", "", "", "wait until the dump can run without anomalies")
+	DumpCmd.Flags().StringP("snapshot", "", "", "use given snapshot for the dump")
+	DumpCmd.Flags().BoolP("strict-names", "", false, "require table and/or schema include patterns to match at least one entity each")
+	DumpCmd.Flags().BoolP("use-set-session-authorization", "", false, "use SET SESSION AUTHORIZATION commands instead of ALTER OWNER commands to set ownership")
+
+	// Connection options:
 	DumpCmd.Flags().StringP("dbname", "d", "postgres", "database to dump")
-	DumpCmd.Flags().StringP("host", "", "/var/run/postgres", "database server host or socket directory")
+	DumpCmd.Flags().StringP("host", "h", "/var/run/postgres", "database server host or socket directory")
 	DumpCmd.Flags().IntP("port", "p", 5432, "database server port number")
 	DumpCmd.Flags().StringP("username", "U", "postgres", "connect as specified database user")
+
 	if err := DumpCmd.MarkFlagRequired("file"); err != nil {
 		log.Fatal().Err(err).Msg("fatal")
 	}
 
-	for _, flagName := range []string{"file", "jobs", "verbose", "compress", "dbname", "host", "username"} {
+	for _, flagName := range []string{
+		"file", "jobs", "verbose", "compress", "dbname", "host", "username", "lock-wait-timeout", "no-sync",
+	} {
 		flag := DumpCmd.Flags().Lookup(flagName)
 		if err := viper.BindPFlag(flagName, flag); err != nil {
 			log.Fatal().Err(err).Msg("fatal")
 		}
 	}
 
-	viper.SetDefault("dbname", "postgres")
-	viper.SetDefault("host", "/var/run/postgres")
-	viper.SetDefault("port", 5432)
-	viper.SetDefault("username", "postgres")
+	//viper.Set("lock-wait-timeout", -1)
+	//viper.Set("compress", -1)
+
+	//viper.SetDefault("dbname", "postgres")
+	//viper.SetDefault("host", "/var/run/postgres")
+	//viper.SetDefault("port", 5432)
+	//viper.SetDefault("username", "postgres")
+
 }
 
 func initConfig() {
