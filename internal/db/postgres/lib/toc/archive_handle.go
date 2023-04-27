@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/rs/zerolog/log"
 	"io"
-	"os"
 	"strconv"
 	"time"
 )
@@ -26,8 +25,8 @@ type crtm struct {
 }
 
 type ArchiveHandle struct {
-	srcFile         io.ReadSeeker
-	destFile        io.WriteSeeker
+	srcFile         io.Reader
+	destFile        io.Writer
 	tocWrittenBytes int
 	//Archive public  /* Public part of archive */
 	version              int /* Version of file */
@@ -55,7 +54,7 @@ type ArchiveHandle struct {
 	compression     int32
 }
 
-func NewArchiveHandle(srcFile io.ReadWriteSeeker, destFile io.ReadWriteSeeker) *ArchiveHandle {
+func NewArchiveHandle(srcFile io.Reader, destFile io.ReadWriteSeeker) *ArchiveHandle {
 	return &ArchiveHandle{
 		srcFile:  srcFile,
 		destFile: destFile,
@@ -209,11 +208,6 @@ func (ah *ArchiveHandle) readStr() (*string, error) {
 	}
 	strVal := string(buf)
 	return &strVal, nil
-}
-
-func (ah *ArchiveHandle) getCurFilePos() int64 {
-	pos, _ := ah.destFile.Seek(0, io.SeekCurrent)
-	return pos
 }
 
 func (ah *ArchiveHandle) readInt() (int32, error) {
@@ -716,14 +710,8 @@ func (ah *ArchiveHandle) writeStr(data *string) error {
 	return nil
 }
 
-func ReadFile(filaName string) (*ArchiveHandle, error) {
-	srcToc, err := os.Open(filaName)
-	if err != nil {
-		return nil, fmt.Errorf("unable to open TOC file: %w", err)
-	}
-	defer srcToc.Close()
-
-	ah := NewArchiveHandle(srcToc, nil)
+func ReadFile(reader io.Reader) (*ArchiveHandle, error) {
+	ah := NewArchiveHandle(reader, nil)
 
 	if err := ah.readHead(); err != nil {
 		return nil, err
@@ -735,13 +723,8 @@ func ReadFile(filaName string) (*ArchiveHandle, error) {
 	return ah, nil
 }
 
-func WriteFile(ah *ArchiveHandle, filaName string) error {
-	destToc, err := os.Create(filaName)
-	if err != nil {
-		return fmt.Errorf("unable to open TOC file: %w", err)
-	}
-	defer destToc.Close()
-	ah.destFile = destToc
+func WriteFile(ah *ArchiveHandle, writer io.Writer) error {
+	ah.destFile = writer
 
 	if err := ah.writeHead(); err != nil {
 		return err

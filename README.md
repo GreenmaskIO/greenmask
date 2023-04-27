@@ -38,7 +38,7 @@ TODO:
     * greenmask dump-fetch {{ dumpId }} {{ dir }} 
     * greenmask dump-list --detail --json
     * greenmask delete {{ dumpId }}
-    * greenmask s3 [ls|rm|get|push]
+    * greenmask st [ls|rm|get|put|cat]
 * Implement toc Read and Write suitable for any major versions
 * ~~Provide to pg_dump calls snapshot name in order to export it~~ 
 * Implement concurrently COPY command

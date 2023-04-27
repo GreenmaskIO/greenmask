@@ -3,11 +3,13 @@ package dump
 import (
 	"context"
 	"fmt"
-	"os"
-
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+	"github.com/wwoytenko/greenfuscator/internal/storage/directory"
+	"os"
+	"strconv"
+	"time"
 
 	"github.com/wwoytenko/greenfuscator/internal/db/postgres"
 	"github.com/wwoytenko/greenfuscator/internal/db/postgres/pgdump"
@@ -18,7 +20,16 @@ var (
 	DumpCmd = &cobra.Command{
 		Use: "dump",
 		Run: func(cmd *cobra.Command, args []string) {
-			pgObfuscator := postgres.NewObfuscator(Config.BinPath, Config.PgDumpOptions)
+			rootSt, err := directory.NewDirectory(Config.PgDumpOptions.FileName, 0750, 0650)
+			if err != nil {
+				log.Fatal().Err(err).Msg("error")
+			}
+
+			st, err := rootSt.CreateDir(context.Background(), strconv.FormatInt(time.Now().UnixMilli(), 10))
+			if err != nil {
+				log.Fatal().Err(err).Msg("cannot create directory in storage")
+			}
+			pgObfuscator := postgres.NewObfuscator(Config.BinPath, Config.PgDumpOptions, st)
 
 			if err := pgObfuscator.RunBackup(context.Background(), Config.YamlConfig); err != nil {
 				log.Fatal().Err(err).Msg("cannot make a backup")

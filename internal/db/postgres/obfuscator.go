@@ -8,12 +8,10 @@ import (
 	"compress/gzip"
 	"context"
 	"fmt"
-	"os"
-	"path"
-
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/rs/zerolog/log"
+	"github.com/wwoytenko/greenfuscator/internal/storage"
 	"golang.org/x/exp/slices"
 
 	"github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/toc"
@@ -23,11 +21,7 @@ import (
 )
 
 const (
-	pgDumpDir                    = "pg_dump"
-	pgDumpSchemaOnly             = "pg_dump/schema"
-	pgDumpDataDir                = "pg_dump/data"
-	dirPermissions   os.FileMode = 0750
-	maxInt                       = 2147483647
+	maxInt = 2147483647
 )
 
 var defaultTypeMap = map[string]string{
@@ -115,13 +109,15 @@ type Obfuscator struct {
 	options   *pgdump.Options
 	pgDump    *pgdump.PgDump
 	curDumpId int32
+	st        storage.Storager
 }
 
-func NewObfuscator(binPath string, options *pgdump.Options) *Obfuscator {
+func NewObfuscator(binPath string, options *pgdump.Options, st storage.Storager) *Obfuscator {
 	return &Obfuscator{
 		typeMap: defaultTypeMap,
 		options: options,
 		pgDump:  pgdump.NewPgDump(binPath),
+		st:      st,
 	}
 }
 
@@ -401,49 +397,66 @@ func (o *Obfuscator) RunBackup(ctx context.Context, tableConfig []domains.Table)
 	// N. Generate sequences setting up by
 	// N. Backing up blobs, change the Backup ID if is not suitable for free backupId rage
 
-	// N. Create subdirectory - for original, masking
-	if err = o.createDirectories(); err != nil {
-		return err
-	}
-
-	// Dump pre data
+	// Dump schema
 	options := *o.options
 	options.Format = "d"
 	options.Verbose = true
 	options.SchemaOnly = true
 	options.Snapshot = o.snapshot
-	options.FileName = path.Join(o.options.FileName, pgDumpSchemaOnly)
+
+	dumpDir, err := o.st.Getcwd(ctx)
+	if err != nil {
+		return fmt.Errorf("cannot get current working directory: %w", err)
+	}
+	options.FileName = dumpDir
 	if err = o.pgDump.Run(ctx, &options); err != nil {
 		return err
 	}
 
-	log.Debug().Msg("Reading schema section")
-	schemaToc, err := toc.ReadFile(path.Join(o.options.FileName, pgDumpSchemaOnly, "toc.dat"))
+	log.Debug().Msg("renaming toc file")
+	if err := o.st.Rename(ctx, "toc.dat", "~toc.dat"); err != nil {
+		return fmt.Errorf("cannot rename toc.dat file: %w", err)
+	}
+
+	log.Debug().Msg("reading schema section")
+	srcTocFile, err := o.st.GetReader(ctx, "~toc.dat")
+	if err != nil {
+		return err
+	}
+	defer srcTocFile.Close()
+	schemaToc, err := toc.ReadFile(srcTocFile)
 	if err != nil {
 		return fmt.Errorf("error reading toc file: %w", err)
 	}
 
-	// Performing TSV dump
 	for idx := range tablesList {
-		if err = o.dumpTable(ctx, o.options.FileName, &tablesList[idx]); err != nil {
+		log.Debug().Msgf("performing table dump for table %s.%s with dumpId %d", tablesList[idx].Name,
+			tablesList[idx].Schema, tablesList[idx].DumpId)
+		if err = o.dumpTable(ctx, &tablesList[idx]); err != nil {
 			return fmt.Errorf("unnable to perform dump of table %s.%s: %w", tablesList[idx].Schema, tablesList[idx].Name, err)
 		}
 	}
 
+	log.Debug().Msg("build toc data section")
 	dataEntries, err := o.buildDataSection(schemaToc.GetEntries(), tablesList, sequenceList, nil)
 	if err != nil {
 		return fmt.Errorf("cannot build data section: %w", err)
 	}
 
+	log.Debug().Msg("merge toc entries")
 	mergedTocs, err := o.MergeTocEntries(schemaToc.GetEntries(), dataEntries)
 	if err != nil {
 		return fmt.Errorf("unable to merge TOC files: %w", err)
 	}
 
-	// Read post data TOC
-	targetTocFilePath := path.Join(o.options.FileName, "toc.dat")
+	log.Debug().Msg("write built toc file")
+	destTocFile, err := o.st.GetWriter(ctx, "toc.dat")
+	if err != nil {
+		return err
+	}
+	defer destTocFile.Close()
 	schemaToc.SetEntries(mergedTocs)
-	if err = toc.WriteFile(schemaToc, targetTocFilePath); err != nil {
+	if err = toc.WriteFile(schemaToc, destTocFile); err != nil {
 		return fmt.Errorf("error writing toc file: %w", err)
 	}
 
@@ -453,7 +466,7 @@ func (o *Obfuscator) RunBackup(ctx context.Context, tableConfig []domains.Table)
 func (o *Obfuscator) buildDataSection(preData []toc.Entry, tables []domains.Table,
 	sequences []domains.Sequence, largeObjects *domains.LargeObjects) ([]toc.Entry, error) {
 
-	log.Debug().Msgf("FIXME: implement Large Objects dumping")
+	log.Warn().Msgf("FIXME: implement Large Objects dumping")
 
 	res := make([]toc.Entry, 0, len(tables)+len(sequences)+1)
 
@@ -491,26 +504,12 @@ func (o *Obfuscator) buildDataSection(preData []toc.Entry, tables []domains.Tabl
 	return res, nil
 }
 
-func (o *Obfuscator) createDirectories() error {
-	// TODO: Don't forget to check is it directory
-	dir := o.options.FileName
-	log.Debug().Msg("create subdirectories")
-
-	for _, dirName := range []string{pgDumpDir, pgDumpSchemaOnly, pgDumpDataDir} {
-		if err := os.Mkdir(path.Join(dir, dirName), dirPermissions); err != nil {
-			return fmt.Errorf("cannot create pg_dump directories: %w", err)
-		}
-	}
-
-	return nil
-}
-
-func (o *Obfuscator) dumpTable(ctx context.Context, datDir string, table *domains.Table) error {
+func (o *Obfuscator) dumpTable(ctx context.Context, table *domains.Table) error {
 	var setIsolationLevelQuery = "SET TRANSACTION ISOLATION LEVEL REPEATABLE READ"
 	var setSnapshotQuery = fmt.Sprintf("SET TRANSACTION SNAPSHOT '%s'", o.snapshot)
-	var datFilePath = path.Join(datDir, fmt.Sprintf("%d.dat.gz", table.DumpId))
+	//var datFilePath = path.Join(datDir, )
 
-	datFile, err := os.Create(datFilePath)
+	datFile, err := o.st.GetWriter(ctx, fmt.Sprintf("%d.dat.gz", table.DumpId))
 	if err != nil {
 		return fmt.Errorf("cannot open data file: %w", err)
 	}
@@ -559,8 +558,8 @@ func (o *Obfuscator) dumpTable(ctx context.Context, datDir string, table *domain
 		}
 		switch v := msg.(type) {
 		case *pgproto3.CopyOutResponse:
-			// TODO: Consider how CopyOutResponse would be helpful
-			log.Debug().Msgf("received CopyOutResponse: %+v", v)
+			// CopyOutResponse does not matter for us in TEXTUAL MODES
+			// https://www.postgresql.org/docs/current/sql-copy.html
 		case *pgproto3.CopyData:
 			tupleData := v.Data
 			if table.HasMasker {

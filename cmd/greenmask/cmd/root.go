@@ -28,4 +28,5 @@ func init() {
 	// Removing short help flag from default
 	rootCmd.PersistentFlags().BoolP("help", "", false, "help for greenmask")
 	rootCmd.AddCommand(dump.DumpCmd)
+	rootCmd.AddCommand(dump.ListDumpCmd)
 }
