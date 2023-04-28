@@ -1,71 +1,37 @@
 package toc
 
 import (
-	"container/ring"
 	"errors"
 	"fmt"
 	"github.com/rs/zerolog/log"
 	"io"
 	"strconv"
-	"time"
 )
 
 const (
 	InvalidOid = 0
 )
 
-type crtm struct {
-	TmSec   int32
-	TmMin   int32
-	TmHour  int32
-	TmMday  int32
-	TmMon   int32
-	TmYear  int32
-	TmIsDst int32
-}
-
 type ArchiveHandle struct {
+	Header
 	srcFile         io.Reader
 	destFile        io.Writer
 	tocWrittenBytes int
-	//Archive public  /* Public part of archive */
-	version              int /* Version of file */
-	versionMajor         byte
-	versionMinor         byte
-	versionRev           byte
-	archiveRemoteVersion *string /* When reading an archive, the
-	 * version of the dumped DB */
-	archiveDumpVersion *string /* When reading an archive, the version of
-	 * the dumper */
-	intSize uint32 /* Size of an integer in the archive */
-	offSize uint32 /* Size of a file offset in the archive */
-
-	format          byte /* Archive format */
-	crtmDateTime    crtm
-	createDate      time.Time /* Date archive created */
-	archDbName      *string
-	toc             *ring.Ring /* Header of circular list of TOC entries */
-	tocHead         *ring.Ring /* Header of circular list of TOC entries */
 	tocList         []Entry
-	tocCount        int32 /* Number of TOC entries */
-	maxDumpId       int32 /* largest DumpId among all TOC entries */
 	dumpId          int32
-	CompressionSpec CompressionSpecification /* Requested specification */
-	compression     int32
 }
 
 func NewArchiveHandle(srcFile io.Reader, destFile io.ReadWriteSeeker) *ArchiveHandle {
 	return &ArchiveHandle{
 		srcFile:  srcFile,
 		destFile: destFile,
-		format:   ArchTar,
-		toc:      nil,
+		Header: Header{
+			Format: ArchTar,
+		},
 	}
 }
 
 func (ah *ArchiveHandle) readHead() error {
-	var major, minor, rev byte
-	var format byte
 	magicString, err := ah.readBytes(5)
 	if err != nil {
 		log.Err(err)
@@ -73,57 +39,53 @@ func (ah *ArchiveHandle) readHead() error {
 	if string(magicString) != "PGDMP" {
 		return errors.New("did not find magic string in srcFile handler")
 	}
-	if err = ah.scanBytes(&major, &minor); err != nil {
+	if err = ah.scanBytes(&ah.VersionMajor, &ah.VersionMinor); err != nil {
 		return fmt.Errorf("unable to scan major and minor version data: %w", err)
 	}
-	ah.versionMajor = major
-	ah.versionMinor = minor
 
-	if major > 1 || (major == 1 && minor > 0) {
-		if err = ah.scanBytes(&rev); err != nil {
+	if ah.VersionMajor > 1 || (ah.VersionMajor == 1 && ah.VersionMinor > 0) {
+		if err = ah.scanBytes(&ah.VersionRev); err != nil {
 			return fmt.Errorf("unable to scan rev version data: %w", err)
 		}
-		ah.versionRev = rev
 	}
 
-	ah.version = MakeArchiveVersion(major, minor, rev)
+	ah.Version = MakeArchiveVersion(ah.VersionMajor, ah.VersionMinor, ah.VersionRev)
 
-	if ah.version < BackupVersions["1.0"] || ah.version > BackupVersions["1.15"] {
-		return fmt.Errorf("unsupported archive version %d.%d", major, minor)
+	if ah.Version < BackupVersions["1.0"] || ah.Version > BackupVersions["1.15"] {
+		return fmt.Errorf("unsupported archive version %d.%d", ah.VersionMajor, ah.VersionMinor)
 	}
 
 	intSize, err := ah.readByte()
 	if err != nil {
 		return fmt.Errorf("cannot read intSize value: %w", err)
 	}
-	ah.intSize = uint32(intSize)
+	ah.IntSize = uint32(intSize)
 
-	if ah.version >= BackupVersions["1.7"] {
+	if ah.Version >= BackupVersions["1.7"] {
 		offSize, err := ah.readByte()
 		if err != nil {
 			return fmt.Errorf("cannot read intSize value: %w", err)
 		}
-		ah.offSize = uint32(offSize)
+		ah.OffSize = uint32(offSize)
 	} else {
-		ah.offSize = ah.intSize
+		ah.OffSize = ah.IntSize
 	}
 
-	if err := ah.scanBytes(&format); err != nil {
+	if err := ah.scanBytes(&ah.Format); err != nil {
 		return fmt.Errorf("unable to scan bytes from TOC srcFile: %w", err)
 	}
-	if ArchTar != format {
-		return fmt.Errorf("unsupported format \"%s\" suports only directory", BackupFormats[format])
+	if ArchTar != ah.Format {
+		return fmt.Errorf("unsupported format \"%s\" suports only directory", BackupFormats[ah.Format])
 	}
 
-	if ah.version >= BackupVersions["1.15"] {
+	if ah.Version >= BackupVersions["1.15"] {
 		algorithm, err := ah.readByte()
 		if err != nil {
 			return fmt.Errorf("unable to scan CompressionSpec.Algorithm: %w", err)
 		}
 		ah.CompressionSpec.Algorithm = int32(algorithm)
-		ah.compression = int32(algorithm)
-	} else if ah.version >= BackupVersions["1.2"] {
-		if ah.version < BackupVersions["1.4"] {
+	} else if ah.Version >= BackupVersions["1.2"] {
+		if ah.Version < BackupVersions["1.4"] {
 			level, err := ah.readByte()
 			if err != nil {
 				return fmt.Errorf("unable to scan CompressionSpec.Level: %w", err)
@@ -145,12 +107,12 @@ func (ah *ArchiveHandle) readHead() error {
 
 	// TODO: Ensure we support compression specification
 
-	if ah.version >= BackupVersions["1.4"] {
+	if ah.Version >= BackupVersions["1.4"] {
 		var tmSec, tmMin, tmHour, tmDay, tmMon, tmYear, tmIsDst int32
 		if err = ah.scanInt(&tmSec, &tmMin, &tmHour, &tmDay, &tmMon, &tmYear, &tmIsDst); err != nil {
 			return fmt.Errorf("cannot scan backup date: %w", err)
 		}
-		ah.crtmDateTime = crtm{
+		ah.CrtmDateTime = Crtm{
 			TmSec:   tmSec,
 			TmMin:   tmMin,
 			TmHour:  tmHour,
@@ -159,34 +121,28 @@ func (ah *ArchiveHandle) readHead() error {
 			TmYear:  tmYear,
 			TmIsDst: tmIsDst,
 		}
-
-		loc, err := time.LoadLocation("UTC")
-		if err != nil {
-			return err
-		}
-		ah.createDate = time.Date(int(1900+tmYear), time.Month(tmMon), int(tmDay), int(tmHour), int(tmMin), int(tmSec), 0, loc)
 	}
 
-	if ah.version >= BackupVersions["1.4"] {
+	if ah.Version >= BackupVersions["1.4"] {
 		archDbName, err := ah.readStr()
 		if err != nil {
 			return fmt.Errorf("cannot read archdbname: %w", err)
 		}
-		ah.archDbName = archDbName
+		ah.ArchDbName = *archDbName
 	}
 
-	if ah.version >= BackupVersions["1.10"] {
+	if ah.Version >= BackupVersions["1.10"] {
 		archiveRemoteVersion, err := ah.readStr()
 		if err != nil {
 			return fmt.Errorf("cannot rad archiveRemoteVersion: %w", err)
 		}
-		ah.archiveRemoteVersion = archiveRemoteVersion
+		ah.ArchiveRemoteVersion = *archiveRemoteVersion
 
 		archiveDumpVersion, err := ah.readStr()
 		if err != nil {
 			return fmt.Errorf("cannot read archiveDumpVersion: %w", err)
 		}
-		ah.archiveDumpVersion = archiveDumpVersion
+		ah.ArchiveDumpVersion = *archiveDumpVersion
 	}
 
 	return nil
@@ -215,22 +171,22 @@ func (ah *ArchiveHandle) readInt() (int32, error) {
 	var err error
 	var res, bitShift int32
 
-	if ah.intSize != 4 {
+	if ah.IntSize != 4 {
 		return 0, errors.New("unsupported int32 size")
 	}
 
-	if ah.version == 0 {
+	if ah.Version == 0 {
 		return 0, errors.New("version cannot be 0")
 	}
 
-	if ah.version > BackupVersions["1.0"] {
+	if ah.Version > BackupVersions["1.0"] {
 		sign, err = ah.readByte()
 		if err != nil {
 			return 0, fmt.Errorf("cannot read srcFile byte: %s", err)
 		}
 	}
 
-	intBytes := make([]byte, ah.intSize)
+	intBytes := make([]byte, ah.IntSize)
 	if _, err := ah.srcFile.Read(intBytes); err != nil {
 		return 0, err
 	}
@@ -289,14 +245,13 @@ func (ah *ArchiveHandle) scanInt(byteVars ...*int32) error {
 
 func (ah *ArchiveHandle) readToc() error {
 
-	if err := ah.scanInt(&ah.tocCount); err != nil {
+	if err := ah.scanInt(&ah.TocCount); err != nil {
 		return fmt.Errorf("cannot scan tocCount: %w", err)
 	}
-	ah.maxDumpId = 0
 
 	tocList := make([]Entry, 0)
 
-	for i := int32(0); i < ah.tocCount; i++ {
+	for i := int32(0); i < ah.TocCount; i++ {
 		te := Entry{}
 		if err := ah.scanInt(&te.DumpId); err != nil {
 			return fmt.Errorf("cannot scan tocCount: %w", err)
@@ -305,15 +260,12 @@ func (ah *ArchiveHandle) readToc() error {
 		if te.DumpId <= 0 {
 			return fmt.Errorf("entry ID %d out of range perhaps a corrupt TOC", te.DumpId)
 		}
-		if te.DumpId > ah.maxDumpId {
-			ah.maxDumpId = te.DumpId
-		}
 
 		if err := ah.scanInt(&te.HadDumper); err != nil {
 			return fmt.Errorf("cannot scan hadDumer data: %w", err)
 		}
 
-		if ah.version >= BackupVersions["1.8"] {
+		if ah.Version >= BackupVersions["1.8"] {
 			tmp, err := ah.readStr()
 			if err != nil {
 				return fmt.Errorf("cannot read CatalogId: %w", err)
@@ -354,7 +306,7 @@ func (ah *ArchiveHandle) readToc() error {
 		}
 		te.Desc = desc
 
-		if ah.version >= BackupVersions["1.11"] {
+		if ah.Version >= BackupVersions["1.11"] {
 			if err = ah.scanInt(&te.Section); err != nil {
 				return fmt.Errorf("cannot Section: %w", err)
 			}
@@ -374,7 +326,7 @@ func (ah *ArchiveHandle) readToc() error {
 		}
 		te.DropStmt = dropStmt
 
-		if ah.version >= BackupVersions["1.3"] {
+		if ah.Version >= BackupVersions["1.3"] {
 			copyStmt, err := ah.readStr()
 			if err != nil {
 				return fmt.Errorf("cannot read Defn: %w", err)
@@ -382,7 +334,7 @@ func (ah *ArchiveHandle) readToc() error {
 			te.CopyStmt = copyStmt
 		}
 
-		if ah.version >= BackupVersions["1.6"] {
+		if ah.Version >= BackupVersions["1.6"] {
 			namespace, err := ah.readStr()
 			if err != nil {
 				return fmt.Errorf("cannot read Namespace: %w", err)
@@ -390,7 +342,7 @@ func (ah *ArchiveHandle) readToc() error {
 			te.Namespace = namespace
 		}
 
-		if ah.version >= BackupVersions["1.10"] {
+		if ah.Version >= BackupVersions["1.10"] {
 			tablespace, err := ah.readStr()
 			if err != nil {
 				return fmt.Errorf("cannot read Tablespace: %w", err)
@@ -398,7 +350,7 @@ func (ah *ArchiveHandle) readToc() error {
 			te.Tablespace = tablespace
 		}
 
-		if ah.version >= BackupVersions["1.14"] {
+		if ah.Version >= BackupVersions["1.14"] {
 			tableam, err := ah.readStr()
 			if err != nil {
 				return fmt.Errorf("cannot read Tableam: %w", err)
@@ -413,7 +365,7 @@ func (ah *ArchiveHandle) readToc() error {
 		te.Owner = owner
 
 		isSupported := true
-		if ah.version < BackupVersions["1.9"] {
+		if ah.Version < BackupVersions["1.9"] {
 			isSupported = false
 		} else {
 			tmp, err := ah.readStr()
@@ -434,7 +386,7 @@ func (ah *ArchiveHandle) readToc() error {
 		}
 
 		/* Read TOC entry Dependencies */
-		if ah.version >= BackupVersions["1.5"] {
+		if ah.Version >= BackupVersions["1.5"] {
 			te.Dependencies = make([]int32, 0, 10)
 			for {
 				tmp, err = ah.readStr()
@@ -466,23 +418,7 @@ func (ah *ArchiveHandle) readToc() error {
 			return fmt.Errorf("cannot additional data FileName: %w", err)
 		}
 		te.FileName = fileName
-
-		// 		/* link completed entry into TOC circular list */
-		//		te->prev = AH->toc->prev;
-		//		AH->toc->prev->next = te;
-		//		AH->toc->prev = te;
-		//		te->next = AH->toc;
-
 		tocList = append(tocList, te)
-
-		r := ring.New(1)
-		r.Value = te
-		if ah.toc == nil {
-			ah.toc = r
-			ah.tocHead = r
-		} else {
-			ah.toc.Link(r)
-		}
 
 	}
 	ah.tocList = tocList
@@ -503,23 +439,23 @@ func (ah *ArchiveHandle) writeHead() error {
 		return fmt.Errorf("cannot write magic str: %w", err)
 	}
 
-	if err := ah.writeByte(ah.versionMajor); err != nil {
+	if err := ah.writeByte(ah.VersionMajor); err != nil {
 		return fmt.Errorf("cannot write versionMajor: %w", err)
 	}
 
-	if err := ah.writeByte(ah.versionMinor); err != nil {
+	if err := ah.writeByte(ah.VersionMinor); err != nil {
 		return fmt.Errorf("cannot write versionMinor: %w", err)
 	}
 
-	if err := ah.writeByte(ah.versionRev); err != nil {
+	if err := ah.writeByte(ah.VersionRev); err != nil {
 		return fmt.Errorf("cannot write versionRev: %w", err)
 	}
 
-	if err := ah.writeByte(byte(ah.intSize)); err != nil {
+	if err := ah.writeByte(byte(ah.IntSize)); err != nil {
 		return fmt.Errorf("cannot write intSize: %w", err)
 	}
 
-	if err := ah.writeByte(byte(ah.offSize)); err != nil {
+	if err := ah.writeByte(byte(ah.OffSize)); err != nil {
 		return fmt.Errorf("cannot write offSize: %w", err)
 	}
 
@@ -532,36 +468,36 @@ func (ah *ArchiveHandle) writeHead() error {
 		return fmt.Errorf("cannot write CompressionSpec.Algorithm: %w", err)
 	}
 
-	if err := ah.writeInt(ah.crtmDateTime.TmSec); err != nil {
+	if err := ah.writeInt(ah.CrtmDateTime.TmSec); err != nil {
 		return fmt.Errorf("cannot write TmSec: %w", err)
 	}
 
-	if err := ah.writeInt(ah.crtmDateTime.TmMin); err != nil {
+	if err := ah.writeInt(ah.CrtmDateTime.TmMin); err != nil {
 		return fmt.Errorf("cannot write TmMin: %w", err)
 	}
-	if err := ah.writeInt(ah.crtmDateTime.TmHour); err != nil {
+	if err := ah.writeInt(ah.CrtmDateTime.TmHour); err != nil {
 		return fmt.Errorf("cannot write TmHour: %w", err)
 	}
-	if err := ah.writeInt(ah.crtmDateTime.TmMday); err != nil {
+	if err := ah.writeInt(ah.CrtmDateTime.TmMday); err != nil {
 		return fmt.Errorf("cannot write TmMday: %w", err)
 	}
-	if err := ah.writeInt(ah.crtmDateTime.TmMon); err != nil {
+	if err := ah.writeInt(ah.CrtmDateTime.TmMon); err != nil {
 		return fmt.Errorf("cannot write TmMon: %w", err)
 	}
-	if err := ah.writeInt(ah.crtmDateTime.TmYear); err != nil {
+	if err := ah.writeInt(ah.CrtmDateTime.TmYear); err != nil {
 		return fmt.Errorf("cannot write TmYear: %w", err)
 	}
-	if err := ah.writeInt(ah.crtmDateTime.TmIsDst); err != nil {
+	if err := ah.writeInt(ah.CrtmDateTime.TmIsDst); err != nil {
 		return fmt.Errorf("cannot write TmIsDst: %w", err)
 	}
 	//connectionString := ""
-	if err := ah.writeStr(ah.archDbName); err != nil {
+	if err := ah.writeStr(&ah.ArchDbName); err != nil {
 		return fmt.Errorf("cannot write archDbName: %w", err)
 	}
-	if err := ah.writeStr(ah.archiveRemoteVersion); err != nil {
+	if err := ah.writeStr(&ah.ArchiveRemoteVersion); err != nil {
 		return fmt.Errorf("cannot write archiveRemoteVersion: %w", err)
 	}
-	if err := ah.writeStr(ah.archiveDumpVersion); err != nil {
+	if err := ah.writeStr(&ah.ArchiveDumpVersion); err != nil {
 		return fmt.Errorf("cannot write archiveDumpVersion: %w", err)
 	}
 
@@ -683,7 +619,7 @@ func (ah *ArchiveHandle) writeInt(i int32) error {
 		return fmt.Errorf("unable to write sign byte: %w", err)
 	}
 
-	for b = 0; b < int32(ah.intSize); b++ {
+	for b = 0; b < int32(ah.IntSize); b++ {
 		if err := ah.writeByte(byte(i) & 0xFF); err != nil {
 			return fmt.Errorf("unable to write int byte: %w", err)
 		}
