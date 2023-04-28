@@ -20,8 +20,8 @@ type Header struct {
 	Format               byte
 	CompressionSpec      CompressionSpecification
 	CrtmDateTime         Crtm
-	ArchDbName           string
-	ArchiveRemoteVersion string /* When reading an archive, the version of the dumped DB */
-	ArchiveDumpVersion   string /* When reading an archive, the version of the dumper */
+	ArchDbName           *string
+	ArchiveRemoteVersion *string /* When reading an archive, the version of the dumped DB */
+	ArchiveDumpVersion   *string /* When reading an archive, the version of the dumper */
 	TocCount             int32
 }

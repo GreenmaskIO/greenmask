@@ -128,7 +128,7 @@ func (ah *ArchiveHandle) readHead() error {
 		if err != nil {
 			return fmt.Errorf("cannot read archdbname: %w", err)
 		}
-		ah.ArchDbName = *archDbName
+		ah.ArchDbName = archDbName
 	}
 
 	if ah.Version >= BackupVersions["1.10"] {
@@ -136,13 +136,13 @@ func (ah *ArchiveHandle) readHead() error {
 		if err != nil {
 			return fmt.Errorf("cannot rad archiveRemoteVersion: %w", err)
 		}
-		ah.ArchiveRemoteVersion = *archiveRemoteVersion
+		ah.ArchiveRemoteVersion = archiveRemoteVersion
 
 		archiveDumpVersion, err := ah.readStr()
 		if err != nil {
 			return fmt.Errorf("cannot read archiveDumpVersion: %w", err)
 		}
-		ah.ArchiveDumpVersion = *archiveDumpVersion
+		ah.ArchiveDumpVersion = archiveDumpVersion
 	}
 
 	return nil
@@ -491,13 +491,13 @@ func (ah *ArchiveHandle) writeHead() error {
 		return fmt.Errorf("cannot write TmIsDst: %w", err)
 	}
 	//connectionString := ""
-	if err := ah.writeStr(&ah.ArchDbName); err != nil {
+	if err := ah.writeStr(ah.ArchDbName); err != nil {
 		return fmt.Errorf("cannot write archDbName: %w", err)
 	}
-	if err := ah.writeStr(&ah.ArchiveRemoteVersion); err != nil {
+	if err := ah.writeStr(ah.ArchiveRemoteVersion); err != nil {
 		return fmt.Errorf("cannot write archiveRemoteVersion: %w", err)
 	}
-	if err := ah.writeStr(&ah.ArchiveDumpVersion); err != nil {
+	if err := ah.writeStr(ah.ArchiveDumpVersion); err != nil {
 		return fmt.Errorf("cannot write archiveDumpVersion: %w", err)
 	}
 
