@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"path"
+	"strconv"
 	"strings"
 
 	"github.com/rs/zerolog/log"
@@ -46,6 +47,7 @@ type Options struct {
 	LockWaitTimeout int    `mapstructure:"lock-wait-timeout"`
 	NoSync          bool   `mapstructure:"no-sync"`
 
+	// Options controlling the output content
 	DataOnly                   bool     `mapstructure:"data-only"`
 	Blobs                      bool     `mapstructure:"blobs"`
 	NoBlobs                    bool     `mapstructure:"no-blobs"`
@@ -80,20 +82,18 @@ type Options struct {
 	OnConflictDoNothing        bool     `mapstructure:"on-conflict-do-nothing"`
 	QuoteAllIdentifiers        bool     `mapstructure:"quote-all-identifiers"`
 	Section                    string   `mapstructure:"section"`
-	SerializableDeferrable     string   `mapstructure:"serializable-deferrable"`
+	SerializableDeferrable     bool     `mapstructure:"serializable-deferrable"`
 	Snapshot                   string   `mapstructure:"snapshot"`
-	StrictNames                string   `mapstructure:"strict-names"`
+	StrictNames                bool     `mapstructure:"strict-names"`
 	UseSetSessionAuthorization bool     `mapstructure:"use-set-session-authorization"`
 
-	// Specifies the name of the database to connect to. This is equivalent to specifying dbname as the first
-	// non-option argument on the command line. The dbname can be a connection string. If so, connection string
-	// parameters will override any conflicting command line options.
+	// Connection options:
 	DbName     string `mapstructure:"dbname"`
 	Host       string `mapstructure:"host"`
 	Port       int    `mapstructure:"port"`
 	UserName   string `mapstructure:"username"`
-	NoPassword string `mapstructure:"no-password"`
-	Password   string `mapstructure:"password"`
+	NoPassword bool   `mapstructure:"no-password"`
+	Password   bool   `mapstructure:"password"`
 	Role       string `mapstructure:"role"`
 }
 
@@ -106,23 +106,186 @@ func (o *Options) GetPgDSN() (string, error) {
 }
 
 func (o *Options) GetParams() []string {
-	args := []string{
-		"--username", o.UserName,
-		"--dbname", o.DbName,
-		"--username", o.UserName,
-		"--format", o.Format,
-	}
-	if o.SchemaOnly {
-		args = append(args, "--schema-only")
-	}
+	// TODO: dbname may be connection string itself, you have to prioritize it
+	var args []string
+
+	// General options:
 	if o.FileName != "" {
 		args = append(args, "--file", o.FileName)
+	}
+	if o.Format != "" {
+		args = append(args, "--format", o.Format)
+	}
+	if o.Jobs != -1 && !o.SchemaOnly {
+		args = append(args, "--jobs", strconv.FormatInt(int64(o.Jobs), 10))
 	}
 	if o.Verbose {
 		args = append(args, "--verbose")
 	}
+	if o.Compression != -1 {
+		args = append(args, "--compress", strconv.FormatInt(int64(o.Compression), 10))
+	}
+	if o.LockWaitTimeout != -1 {
+		args = append(args, "--lock-wait-timeout", strconv.FormatInt(int64(o.Compression), 10))
+	}
+	if o.NoSync {
+		args = append(args, "--no-sync")
+	}
+
+	// Options controlling the output content
+	if o.DataOnly {
+		args = append(args, "--data-only")
+	}
+	if o.Blobs && !o.NoBlobs {
+		args = append(args, "--blobs")
+	}
+	if o.NoBlobs && !o.Blobs {
+		args = append(args, "--no-blobs")
+	}
+	if o.Clean {
+		args = append(args, "--clean")
+	}
+	if o.Create {
+		args = append(args, "--create")
+	}
+	if len(o.Extension) > 0 {
+		for _, item := range o.Extension {
+			args = append(args, "--extension", item)
+		}
+	}
+	if o.Encoding != "" {
+		args = append(args, "--encoding", o.Encoding)
+	}
+	if len(o.Schema) > 0 {
+		for _, item := range o.Schema {
+			args = append(args, "--schema", item)
+		}
+	}
+	if len(o.ExcludeSchema) > 0 {
+		for _, item := range o.ExcludeSchema {
+			args = append(args, "--exclude-schema", item)
+		}
+	}
+	if o.NoOwner {
+		args = append(args, "--no-owner")
+	}
+	if o.SchemaOnly {
+		args = append(args, "--schema-only")
+	}
+	if o.SuperUser != "" {
+		args = append(args, "--superuser", o.SuperUser)
+	}
+	if len(o.Table) > 0 {
+		for _, item := range o.Table {
+			args = append(args, "--table", item)
+		}
+	}
+	if len(o.ExcludeTable) > 0 {
+		for _, item := range o.ExcludeTable {
+			args = append(args, "--exclude-table", item)
+		}
+	}
+	if o.NoPrivileges {
+		args = append(args, "--no-privileges")
+	}
+	if o.DisableDollarQuoting {
+		args = append(args, "--disable-dollar-quoting")
+	}
+	if o.DisableTriggers {
+		args = append(args, "--disable-triggers")
+	}
+	if o.EnableRowSecurity {
+		// TODO: Seems that this options affects COPY
+		log.Debug().Msgf("FIXME: Seems that this options affects COPY")
+		args = append(args, "--enable-row-security")
+	}
+	if len(o.ExcludeTableData) > 0 {
+		for _, item := range o.ExcludeTableData {
+			args = append(args, "--exclude-table-data", item)
+		}
+	}
+	if o.ExtraFloatDigits != "" {
+		args = append(args, "--extra-float-digits", o.ExtraFloatDigits)
+	}
+	if o.IfExists {
+		args = append(args, "--if-exists")
+	}
+	if len(o.IncludeForeignData) > 0 {
+		for _, item := range o.IncludeForeignData {
+			args = append(args, "--include-foreign-data", item)
+		}
+	}
+	if o.LoadViaPartitionRoot {
+		args = append(args, "--load-via-partition-root")
+	}
+	if o.NoComments {
+		args = append(args, "--no-comments")
+	}
+	if o.NoPublications {
+		args = append(args, "--no-publications")
+	}
+	if o.NoSecurityLabels {
+		args = append(args, "--no-security-labels")
+	}
+	if o.NoSubscriptions {
+		args = append(args, "--no-subscriptions")
+	}
+	if o.NoSynchronizedSnapshots {
+		args = append(args, "--no-synchronized-snapshots")
+	}
+	if o.NoTableSpaces {
+		args = append(args, "--no-tablespaces")
+	}
+	if o.NoToastCompression {
+		args = append(args, "--no-toast-compression")
+	}
+	if o.NoUnloggedTableData {
+		args = append(args, "--no-unlogged-table-data")
+	}
+	if o.OnConflictDoNothing {
+		args = append(args, "--on-conflict-do-nothing")
+	}
+	if o.QuoteAllIdentifiers {
+		args = append(args, "--quote-all-identifiers")
+	}
 	if o.Section != "" {
 		args = append(args, "--section", o.Section)
 	}
+	if o.SerializableDeferrable {
+		args = append(args, "--serializable-deferrable")
+	}
+	if o.Snapshot != "" {
+		args = append(args, "--snapshot", o.Snapshot)
+	}
+	if o.StrictNames {
+		args = append(args, "--strict-names")
+	}
+	if o.UseSetSessionAuthorization {
+		args = append(args, "--use-set-session-authorization")
+	}
+
+	// Connection options:
+	if o.DbName != "" {
+		args = append(args, "--dbname", o.DbName)
+	}
+	if o.Host != "" {
+		args = append(args, "--host", o.Host)
+	}
+	if o.Port != 5432 {
+		args = append(args, "--port", strconv.FormatInt(int64(o.Port), 10))
+	}
+	if o.UserName != "" {
+		args = append(args, "--username", o.UserName)
+	}
+	if o.NoPassword {
+		args = append(args, "--no-password")
+	}
+	if o.Password {
+		args = append(args, "--password")
+	}
+	if o.Role != "" {
+		args = append(args, "--role", o.Role)
+	}
+
 	return args
 }

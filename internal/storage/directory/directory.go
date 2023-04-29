@@ -74,7 +74,7 @@ func (d *Directory) Delete(ctx context.Context, filePath string, recursive bool)
 		}
 		return os.RemoveAll(path.Join(d.cwd, filePath))
 	}
-	return os.Remove(filePath)
+	return os.Remove(path.Join(d.cwd, filePath))
 }
 
 func (d *Directory) Chdir(ctx context.Context, dirPath string) error {

@@ -7,16 +7,17 @@ package postgres
 import (
 	"context"
 	"fmt"
+
 	"github.com/jackc/pgx/v5"
 	"github.com/rs/zerolog/log"
-	"github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/domains"
-	"github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/dumpers"
-	"github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/pgdump"
-	"github.com/wwoytenko/greenfuscator/internal/storage"
 	"golang.org/x/exp/slices"
 	"golang.org/x/sync/errgroup"
 
+	"github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/domains"
+	"github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/dumpers"
+	"github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/pgdump"
 	"github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/toc"
+	"github.com/wwoytenko/greenfuscator/internal/storage"
 	"github.com/wwoytenko/greenfuscator/internal/transformers"
 )
 
@@ -109,7 +110,6 @@ type Obfuscator struct {
 	typeMap   map[string]string
 	dsn       string
 	conn      *pgx.Conn
-	snapshot  string
 	backupId  int
 	options   *pgdump.Options
 	pgDump    *pgdump.PgDump
@@ -191,23 +191,38 @@ func (o *Obfuscator) sequenceList(ctx context.Context, tx pgx.Tx) ([]domains.Seq
 	return sequences, nil
 }
 
-func (o *Obfuscator) startTx(ctx context.Context) (pgx.Tx, error) {
+func (o *Obfuscator) startMainTx(ctx context.Context) (pgx.Tx, error) {
+	var isolationLevel = "REPEATABLE READ"
+	if o.options.SerializableDeferrable {
+		isolationLevel = "SERIALIZABLE DEFERRABLE"
+	}
+
 	tx, err := o.conn.Begin(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("unable to start transaction: %w", err)
 	}
 
-	rows, err := tx.Query(ctx, "SET TRANSACTION ISOLATION LEVEL REPEATABLE READ")
+	rows, err := tx.Query(ctx, fmt.Sprintf("SET TRANSACTION ISOLATION LEVEL %s", isolationLevel))
 	if err != nil {
 		tx.Rollback(ctx)
 		return nil, fmt.Errorf("cannot set transaction isolation level: %w", err)
 	}
 	rows.Close()
 
-	row := tx.QueryRow(ctx, "SELECT pg_export_snapshot()")
-	if err := row.Scan(&o.snapshot); err != nil {
-		tx.Rollback(ctx)
-		return nil, fmt.Errorf("cannot export snapshot: %w", err)
+	if o.options.Snapshot == "" {
+		log.Debug().Msg("performing snapshot export")
+		row := tx.QueryRow(ctx, "SELECT pg_export_snapshot()")
+		if err := row.Scan(&o.options.Snapshot); err != nil {
+			tx.Rollback(ctx)
+			return nil, fmt.Errorf("cannot export snapshot: %w", err)
+		}
+	} else {
+		var setSnapshotQuery = fmt.Sprintf("SET TRANSACTION SNAPSHOT '%s'", o.options.Snapshot)
+		log.Debug().Msgf("performing %s snapshot import", o.options.Snapshot)
+		if _, err := tx.Exec(ctx, setSnapshotQuery); err != nil {
+			return nil, fmt.Errorf("cannot import snapshot: %w", err)
+			tx.Rollback(ctx)
+		}
 	}
 
 	return tx, nil
@@ -368,7 +383,7 @@ func (o *Obfuscator) RunBackup(ctx context.Context, tableConfig []domains.Table)
 		return fmt.Errorf("cannot connect to db: %w", err)
 	}
 
-	tx, err := o.startTx(ctx)
+	tx, err := o.startMainTx(ctx)
 	if err != nil {
 		return fmt.Errorf("cannot prepare backup transaction: %w", err)
 	}
@@ -399,7 +414,6 @@ func (o *Obfuscator) RunBackup(ctx context.Context, tableConfig []domains.Table)
 	options.Format = "d"
 	options.Verbose = true
 	options.SchemaOnly = true
-	options.Snapshot = o.snapshot
 
 	dumpDir, err := o.st.Getcwd(ctx)
 	if err != nil {
@@ -420,7 +434,12 @@ func (o *Obfuscator) RunBackup(ctx context.Context, tableConfig []domains.Table)
 	if err != nil {
 		return err
 	}
-	defer srcTocFile.Close()
+	defer func() {
+		srcTocFile.Close()
+		if err := o.st.Delete(ctx, "~toc.dat", false); err != nil {
+			log.Warn().Err(err).Msgf("unable to delete temp file")
+		}
+	}()
 	schemaToc, err := toc.ReadFile(srcTocFile)
 	if err != nil {
 		return fmt.Errorf("error reading toc file: %w", err)
@@ -543,8 +562,12 @@ func (o *Obfuscator) MergeTocEntries(schema, data []*toc.Entry) ([]*toc.Entry, e
 }
 
 func (o *Obfuscator) dumpWorker(ctx context.Context, tasks <-chan DumpTask, result chan<- *toc.Entry, id int) error {
-	var setIsolationLevelQuery = "SET TRANSACTION ISOLATION LEVEL REPEATABLE READ"
-	var setSnapshotQuery = fmt.Sprintf("SET TRANSACTION SNAPSHOT '%s'", o.snapshot)
+	var isolationLevel = "REPEATABLE READ"
+	if o.options.SerializableDeferrable {
+		isolationLevel = "SERIALIZABLE DEFERRABLE"
+	}
+	var setIsolationLevelQuery = fmt.Sprintf("SET TRANSACTION ISOLATION LEVEL %s", isolationLevel)
+	var setSnapshotQuery = fmt.Sprintf("SET TRANSACTION SNAPSHOT '%s'", o.options.Snapshot)
 
 	for task := range tasks {
 		log.Debug().Msgf("worker %d: dumping %s", id, task.DebugInfo())

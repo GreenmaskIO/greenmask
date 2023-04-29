@@ -1,7 +1,5 @@
 pg_dump_options:
-  verbose: true
   dbname: "port=5432 user=vvoitenko dbname=test"
-  no-blobs: true
 
 transformers:
   - schema: "public"
