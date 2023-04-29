@@ -1,11 +1,12 @@
 package transformers
 
 import (
+	pgDomains "github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/domains"
 	"github.com/wwoytenko/greenfuscator/internal/domains"
 	"github.com/wwoytenko/greenfuscator/internal/transformers/faker"
 )
 
-type TransformerFabricFunction func(column domains.ColumnMeta, params map[string]string) (domains.Transformer, error)
+type TransformerFabricFunction func(column pgDomains.ColumnMeta, params map[string]string) (domains.Transformer, error)
 
 type TransformerMeta struct {
 	Description       string

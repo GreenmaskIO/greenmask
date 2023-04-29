@@ -4,13 +4,14 @@ import (
 	"errors"
 	"fmt"
 	"github.com/jaswdr/faker"
+	pgDomains "github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/domains"
 	"github.com/wwoytenko/greenfuscator/internal/domains"
 	"golang.org/x/exp/slices"
 	"strings"
 )
 
 type UserAgentTransformer struct {
-	Column domains.ColumnMeta
+	Column pgDomains.ColumnMeta
 	F      func() string
 }
 
@@ -18,7 +19,7 @@ func (uat *UserAgentTransformer) Transform(originalValue string) (string, error)
 	return uat.F(), nil
 }
 
-func NewUserAgentTransformer(column domains.ColumnMeta, params map[string]string) (domains.Transformer, error) {
+func NewUserAgentTransformer(column pgDomains.ColumnMeta, params map[string]string) (domains.Transformer, error) {
 	agents := []string{"Any", "Chrome", "Firefox", "Opera", "InternetExplorer", "Safari"}
 	agent, ok := params["agent"]
 	if !ok {

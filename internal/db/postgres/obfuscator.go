@@ -5,18 +5,18 @@ package postgres
 // 		N. Create DATA section with TOC records
 
 import (
-	"compress/gzip"
 	"context"
 	"fmt"
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/rs/zerolog/log"
+	"github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/domains"
+	"github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/dumpers"
+	"github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/pgdump"
 	"github.com/wwoytenko/greenfuscator/internal/storage"
 	"golang.org/x/exp/slices"
+	"golang.org/x/sync/errgroup"
 
 	"github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/toc"
-	"github.com/wwoytenko/greenfuscator/internal/db/postgres/pgdump"
-	"github.com/wwoytenko/greenfuscator/internal/domains"
 	"github.com/wwoytenko/greenfuscator/internal/transformers"
 )
 
@@ -92,6 +92,11 @@ var defaultTypeMap = map[string]string{
 	"interval":                    "string",
 	"uuid":                        "uuid",
 	"xml":                         "",
+}
+
+type DumpTask interface {
+	Execute(ctx context.Context, tx pgx.Tx, st storage.Storager) (*toc.Entry, error)
+	DebugInfo() string
 }
 
 type TableDataRange struct {
@@ -359,14 +364,6 @@ func (o *Obfuscator) RunBackup(ctx context.Context, tableConfig []domains.Table)
 	// 10. Delete tmp data
 	o.curDumpId = int32(maxInt)
 
-	select {
-	case <-ctx.Done():
-		return fmt.Errorf("context canceled: %w", ctx.Err())
-	default:
-	}
-	ctx, cancel := context.WithCancel(ctx)
-	defer cancel()
-
 	if err := o.Connect(ctx); err != nil {
 		return fmt.Errorf("cannot connect to db: %w", err)
 	}
@@ -429,27 +426,84 @@ func (o *Obfuscator) RunBackup(ctx context.Context, tableConfig []domains.Table)
 		return fmt.Errorf("error reading toc file: %w", err)
 	}
 
-	for idx := range tablesList {
-		log.Debug().Msgf("performing table dump for table %s.%s with dumpId %d", tablesList[idx].Name,
-			tablesList[idx].Schema, tablesList[idx].DumpId)
-		if err = o.dumpTable(ctx, &tablesList[idx]); err != nil {
-			return fmt.Errorf("unnable to perform dump of table %s.%s: %w", tablesList[idx].Schema, tablesList[idx].Name, err)
+	tables := make([]*toc.Entry, 0, len(tablesList))
+	sequences := make([]*toc.Entry, 0, len(sequenceList))
+	var largeObjects []*toc.Entry
+
+	tasks := make(chan DumpTask, o.options.Jobs)
+	result := make(chan *toc.Entry, o.options.Jobs)
+	defer close(result)
+
+	log.Debug().Msgf("planned %d workers", o.options.Jobs)
+	eg, gtx := errgroup.WithContext(ctx)
+	var tocDataEntries []*toc.Entry
+	for j := 0; j < o.options.Jobs; j++ {
+		eg.Go(func(id int) func() error {
+			return func() error {
+				if err := o.dumpWorker(gtx, tasks, result, id+1); err != nil {
+					return err
+				}
+				return nil
+			}
+		}(j))
+	}
+
+	// TODO: Implement LO dumping
+	log.Debug().Msg("FIXME: implement Large Objects dumper")
+
+	eg.Go(func() error {
+		defer close(tasks)
+		for _, table := range tablesList {
+			select {
+			case <-gtx.Done():
+				return gtx.Err()
+			default:
+			}
+			tasks <- dumpers.NewTableDumper(table)
 		}
+		for _, sequence := range sequenceList {
+			select {
+			case <-gtx.Done():
+				return gtx.Err()
+			default:
+			}
+			tasks <- dumpers.NewSequenceDumper(sequence)
+		}
+		return nil
+	})
+
+	eg.Go(func() error {
+		for i := 0; i < len(tablesList)+len(sequenceList)+len(largeObjects); i++ {
+			select {
+			case <-gtx.Done():
+				return gtx.Err()
+			case tocEntry := <-result:
+				switch *tocEntry.Desc {
+				case domains.TableDataDesc:
+					tables = append(tables, tocEntry)
+				case domains.SequenceSetDesc:
+					sequences = append(sequences, tocEntry)
+				case domains.LargeObjectDesc:
+					largeObjects = append(largeObjects, tocEntry)
+				default:
+					return fmt.Errorf("unexpected toc entry %s", *tocEntry.Desc)
+				}
+			}
+		}
+		return nil
+	})
+
+	if err := eg.Wait(); err != nil {
+		return fmt.Errorf("at least one worker exited with error: %w", err)
 	}
 
-	log.Debug().Msg("build toc data section")
-	dataEntries, err := o.buildDataSection(schemaToc.GetEntries(), tablesList, sequenceList, nil)
-	if err != nil {
-		return fmt.Errorf("cannot build data section: %w", err)
-	}
-
-	log.Debug().Msg("merge toc entries")
-	mergedTocs, err := o.MergeTocEntries(schemaToc.GetEntries(), dataEntries)
+	log.Debug().Msg("merging toc entries")
+	mergedTocs, err := o.MergeTocEntries(schemaToc.GetEntries(), tocDataEntries)
 	if err != nil {
 		return fmt.Errorf("unable to merge TOC files: %w", err)
 	}
 
-	log.Debug().Msg("write built toc file")
+	log.Debug().Msg("writing built toc file")
 	destTocFile, err := o.st.GetWriter(ctx, "toc.dat")
 	if err != nil {
 		return err
@@ -463,150 +517,8 @@ func (o *Obfuscator) RunBackup(ctx context.Context, tableConfig []domains.Table)
 	return nil
 }
 
-func (o *Obfuscator) buildDataSection(preData []toc.Entry, tables []domains.Table,
-	sequences []domains.Sequence, largeObjects *domains.LargeObjects) ([]toc.Entry, error) {
-
-	log.Warn().Msgf("FIXME: implement Large Objects dumping")
-
-	res := make([]toc.Entry, 0, len(tables)+len(sequences)+1)
-
-	sequenceOrder := o.GetSequenceOrder(preData)
-	tableOrder := o.GetTableOrder(preData)
-
-	for _, tableDef := range tableOrder {
-		for _, tableData := range tables {
-			if *tableDef.Namespace == tableData.Schema && *tableDef.Tag == tableData.Name {
-				tableData.Dependencies = []int32{tableDef.DumpId}
-				entry, err := tableData.GetTocEntry()
-				if err != nil {
-					return nil, fmt.Errorf("cannot get table TOC entry: %w", err)
-				}
-				res = append(res, *entry)
-				break
-			}
-		}
-	}
-
-	for _, sequenceDef := range sequenceOrder {
-		for _, sequenceData := range sequences {
-			if *sequenceDef.Namespace == sequenceData.Schema && *sequenceDef.Tag == sequenceData.Name {
-				sequenceData.Dependencies = []int32{sequenceDef.DumpId}
-				entry, err := sequenceData.GetTocEntry()
-				if err != nil {
-					return nil, fmt.Errorf("cannot get sequence TOC entry: %w", err)
-				}
-				res = append(res, *entry)
-				break
-			}
-		}
-	}
-
-	return res, nil
-}
-
-func (o *Obfuscator) dumpTable(ctx context.Context, table *domains.Table) error {
-	var setIsolationLevelQuery = "SET TRANSACTION ISOLATION LEVEL REPEATABLE READ"
-	var setSnapshotQuery = fmt.Sprintf("SET TRANSACTION SNAPSHOT '%s'", o.snapshot)
-	//var datFilePath = path.Join(datDir, )
-
-	datFile, err := o.st.GetWriter(ctx, fmt.Sprintf("%d.dat.gz", table.DumpId))
-	if err != nil {
-		return fmt.Errorf("cannot open data file: %w", err)
-	}
-	defer datFile.Close()
-	writer := gzip.NewWriter(datFile)
-	defer writer.Close()
-
-	// Open file that wil contain table data
-
-	// 1. Open a new connection
-	// 2. Export snapshot
-	conn, err := pgx.Connect(ctx, o.dsn)
-	if err != nil {
-		return fmt.Errorf("cannot connecti to server: %w", err)
-	}
-	defer conn.Close(ctx)
-
-	tx, err := conn.Begin(ctx)
-	if err != nil {
-		return fmt.Errorf("cannot start transaction: %w", err)
-	}
-	defer tx.Rollback(ctx)
-
-	if _, err := tx.Exec(ctx, setIsolationLevelQuery); err != nil {
-		return fmt.Errorf("unable to set transaction isolation level: %w", err)
-	}
-
-	if _, err := tx.Exec(ctx, setSnapshotQuery); err != nil {
-		return fmt.Errorf("cannot import snapshot: %w", err)
-	}
-
-	frontend := conn.PgConn().Frontend()
-	frontend.Send(&pgproto3.Query{
-		String: fmt.Sprintf("COPY \"%s\".\"%s\" TO STDOUT", table.Schema, table.Name),
-	})
-
-	if err := frontend.Flush(); err != nil {
-		return err
-	}
-
-	for {
-		msg, err := frontend.Receive()
-		if err != nil {
-			// TODO: You must send asynchronous message that you have stopped in error
-			return fmt.Errorf("unable to perform copy query: %w", err)
-		}
-		switch v := msg.(type) {
-		case *pgproto3.CopyOutResponse:
-			// CopyOutResponse does not matter for us in TEXTUAL MODES
-			// https://www.postgresql.org/docs/current/sql-copy.html
-		case *pgproto3.CopyData:
-			tupleData := v.Data
-			if table.HasMasker {
-				tupleData, err = table.TransformTuple(tupleData)
-				if err != nil {
-					return fmt.Errorf("cannot convert plain data to tuple: %w", err)
-				}
-			}
-
-			// TODO: Maybe you should check the count of written bytes
-			if _, err := writer.Write(tupleData); err != nil {
-				return fmt.Errorf("cannot store data into dat file: %w", err)
-			}
-
-		case *pgproto3.CopyDone:
-		case *pgproto3.CommandComplete:
-		case *pgproto3.ReadyForQuery:
-			return nil
-		default:
-			return fmt.Errorf("unknown backup message %+v", v)
-		}
-	}
-}
-
-func (o *Obfuscator) GetTableOrder(entries []toc.Entry) []toc.Entry {
-	tableOrder := make([]toc.Entry, 0)
-	for _, item := range entries {
-		if item.Section == toc.SectionPreData && *(item.Desc) == "TABLE" {
-			tableOrder = append(tableOrder, item)
-		}
-
-	}
-	return tableOrder
-}
-
-func (o *Obfuscator) GetSequenceOrder(entries []toc.Entry) []toc.Entry {
-	tableOrder := make([]toc.Entry, 0)
-	for _, item := range entries {
-		if item.Section == toc.SectionPreData && *(item.Desc) == "SEQUENCE" {
-			tableOrder = append(tableOrder, item)
-		}
-	}
-	return tableOrder
-}
-
-func (o *Obfuscator) MergeTocEntries(schema, data []toc.Entry) ([]toc.Entry, error) {
-	res := make([]toc.Entry, 0, len(schema)+len(data))
+func (o *Obfuscator) MergeTocEntries(schema, data []*toc.Entry) ([]*toc.Entry, error) {
+	res := make([]*toc.Entry, 0, len(schema)+len(data))
 
 	preDataEnd := 0
 	postDataStart := 0
@@ -628,4 +540,49 @@ func (o *Obfuscator) MergeTocEntries(schema, data []toc.Entry) ([]toc.Entry, err
 	res = append(res, schema[postDataStart:]...)
 
 	return res, nil
+}
+
+func (o *Obfuscator) dumpWorker(ctx context.Context, tasks <-chan DumpTask, result chan<- *toc.Entry, id int) error {
+	var setIsolationLevelQuery = "SET TRANSACTION ISOLATION LEVEL REPEATABLE READ"
+	var setSnapshotQuery = fmt.Sprintf("SET TRANSACTION SNAPSHOT '%s'", o.snapshot)
+
+	for task := range tasks {
+		log.Debug().Msgf("worker %d: dumping %s", id, task.DebugInfo())
+		select {
+		case <-ctx.Done():
+			log.Debug().Msgf("worker %d: dumping %s: existed due to cancelled context: %w", id, task.DebugInfo(), ctx.Err())
+			return ctx.Err()
+		default:
+		}
+		conn, err := pgx.Connect(ctx, o.dsn)
+		if err != nil {
+			return fmt.Errorf("cannot connecti to server: %w", err)
+		}
+		defer conn.Close(ctx)
+
+		tx, err := conn.Begin(ctx)
+		if err != nil {
+			return fmt.Errorf("cannot start transaction: %w", err)
+		}
+		defer tx.Rollback(ctx)
+
+		if !o.options.NoSynchronizedSnapshots {
+			if _, err := tx.Exec(ctx, setIsolationLevelQuery); err != nil {
+				return fmt.Errorf("unable to set transaction isolation level: %w", err)
+			}
+
+			if _, err := tx.Exec(ctx, setSnapshotQuery); err != nil {
+				return fmt.Errorf("cannot import snapshot: %w", err)
+			}
+		}
+
+		entry, err := task.Execute(ctx, tx, o.st)
+		if err != nil {
+			return err
+		}
+		result <- entry
+		log.Debug().Msgf("worker %d: %s: dumping is done", id, task.DebugInfo())
+	}
+
+	return nil
 }

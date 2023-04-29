@@ -9,6 +9,7 @@ require (
 	github.com/spf13/cobra v1.7.0
 	github.com/spf13/viper v1.15.0
 	golang.org/x/exp v0.0.0-20230321023759-10a507213a29
+	golang.org/x/sync v0.1.0
 	gopkg.in/yaml.v3 v3.0.1
 )
 

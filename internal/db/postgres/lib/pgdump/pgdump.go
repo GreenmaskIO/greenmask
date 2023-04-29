@@ -40,7 +40,7 @@ type Options struct {
 	// General options:
 	FileName        string `mapstructure:"file"` // --file=FILENAME
 	Format          string // Supports only directory format
-	Jobs            string `mapstructure:"jobs"`
+	Jobs            int    `mapstructure:"jobs"`
 	Verbose         bool   `mapstructure:"verbose"`
 	Compression     int    `mapstructure:"compress"`
 	LockWaitTimeout int    `mapstructure:"lock-wait-timeout"`

@@ -1,7 +1,7 @@
 package domains
 
 import (
-	"github.com/wwoytenko/greenfuscator/internal/db/postgres/pgdump"
+	"github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/pgdump"
 )
 
 type Config struct {

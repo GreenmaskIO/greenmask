@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/jaswdr/faker"
+	pgDomains "github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/domains"
 	"github.com/wwoytenko/greenfuscator/internal/domains"
 	"golang.org/x/exp/slices"
 	"strings"
@@ -12,13 +13,13 @@ import (
 type creditCardTransformerFunc func() string
 
 type CreditCardTransformer struct {
-	Column  domains.ColumnMeta
+	Column  pgDomains.ColumnMeta
 	Type    string
 	payment faker.Payment
 	F       creditCardTransformerFunc
 }
 
-func NewCreditCardTransformer(column domains.ColumnMeta, params map[string]string) (domains.Transformer, error) {
+func NewCreditCardTransformer(column pgDomains.ColumnMeta, params map[string]string) (domains.Transformer, error) {
 	types := []string{"Number", "VendorName", "ExpirationDateString"}
 	credType, ok := params["type"]
 	if !ok {

@@ -3,6 +3,7 @@ package faker
 import (
 	"errors"
 	"fmt"
+	pgDomains "github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/domains"
 	"strings"
 
 	"github.com/jaswdr/faker"
@@ -14,12 +15,12 @@ import (
 type addressTransformerFunction func() string
 
 type AddressTransformer struct {
-	Column domains.Column
+	Column pgDomains.Column
 	Type   string
 	F      addressTransformerFunction
 }
 
-func NewAddressTransformer(column domains.ColumnMeta, params map[string]string) (domains.Transformer, error) {
+func NewAddressTransformer(column pgDomains.ColumnMeta, params map[string]string) (domains.Transformer, error) {
 	types := []string{"CityPrefix", "SecondaryAddress", "State", "StateAbbr",
 		"CitySuffix", "StreetSuffix", "BuildingNumber", "City", "StreetName",
 		"StreetAddress", "PostCode", "Country", "CountryAbbr", "CountryCode",

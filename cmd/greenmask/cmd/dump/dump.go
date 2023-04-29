@@ -6,14 +6,14 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+	domains2 "github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/domains"
+	"github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/pgdump"
 	"github.com/wwoytenko/greenfuscator/internal/storage/directory"
 	"os"
 	"strconv"
 	"time"
 
 	"github.com/wwoytenko/greenfuscator/internal/db/postgres"
-	"github.com/wwoytenko/greenfuscator/internal/db/postgres/pgdump"
-	"github.com/wwoytenko/greenfuscator/internal/domains"
 )
 
 var (
@@ -25,21 +25,24 @@ var (
 				log.Fatal().Err(err).Msg("error")
 			}
 
-			st, err := rootSt.CreateDir(context.Background(), strconv.FormatInt(time.Now().UnixMilli(), 10))
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+
+			st, err := rootSt.CreateDir(ctx, strconv.FormatInt(time.Now().UnixMilli(), 10))
 			if err != nil {
 				log.Fatal().Err(err).Msg("cannot create directory in storage")
 			}
 			pgObfuscator := postgres.NewObfuscator(Config.BinPath, Config.PgDumpOptions, st)
 
-			if err := pgObfuscator.RunBackup(context.Background(), Config.YamlConfig); err != nil {
+			if err := pgObfuscator.RunBackup(ctx, Config.YamlConfig); err != nil {
 				log.Fatal().Err(err).Msg("cannot make a backup")
 			}
 		},
 	}
 	cfgFile string
-	Config  = &domains.Config{
+	Config  = &domains2.Config{
 		PgDumpOptions: &pgdump.Options{},
-		YamlConfig:    []domains.Table{},
+		YamlConfig:    []domains2.Table{},
 	}
 )
 
@@ -52,7 +55,7 @@ func init() {
 
 	// General options:
 	DumpCmd.Flags().StringP("file", "f", "", "output file or directory name")
-	DumpCmd.Flags().IntP("jobs", "j", -1, "use this many parallel jobs to dump")
+	DumpCmd.Flags().IntP("jobs", "j", 1, "use this many parallel jobs to dump")
 	DumpCmd.Flags().StringP("verbose", "v", "", "verbose mode")
 	DumpCmd.Flags().IntP("compress", "Z", -1, "compression level for compressed formats")
 	DumpCmd.Flags().IntP("lock-wait-timeout", "", -1, "fail after waiting TIMEOUT for a table lock")

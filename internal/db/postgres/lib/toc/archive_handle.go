@@ -17,7 +17,7 @@ type ArchiveHandle struct {
 	srcFile         io.Reader
 	destFile        io.Writer
 	tocWrittenBytes int
-	tocList         []Entry
+	tocList         []*Entry
 	dumpId          int32
 }
 
@@ -249,7 +249,7 @@ func (ah *ArchiveHandle) readToc() error {
 		return fmt.Errorf("cannot scan tocCount: %w", err)
 	}
 
-	tocList := make([]Entry, 0)
+	tocList := make([]*Entry, 0)
 
 	for i := int32(0); i < ah.TocCount; i++ {
 		te := Entry{}
@@ -418,18 +418,18 @@ func (ah *ArchiveHandle) readToc() error {
 			return fmt.Errorf("cannot additional data FileName: %w", err)
 		}
 		te.FileName = fileName
-		tocList = append(tocList, te)
+		tocList = append(tocList, &te)
 
 	}
 	ah.tocList = tocList
 	return nil
 }
 
-func (ah *ArchiveHandle) GetEntries() []Entry {
+func (ah *ArchiveHandle) GetEntries() []*Entry {
 	return ah.tocList
 }
 
-func (ah *ArchiveHandle) SetEntries(entries []Entry) {
+func (ah *ArchiveHandle) SetEntries(entries []*Entry) {
 	ah.tocList = entries
 }
 

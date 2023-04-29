@@ -16,7 +16,8 @@ func main() {
 	for {
 		n, err := f.Read(buf)
 		if err != nil {
-			log.Fatal().Err(err).Msg("error")
+			log.Debug().Err(err).Msg("error")
+			break
 		}
 		log.Printf("str = %s", buf[:n])
 	}

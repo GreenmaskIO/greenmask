@@ -1,0 +1,86 @@
+package dumpers
+
+import (
+	"compress/gzip"
+	"context"
+	"fmt"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgproto3"
+	"github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/domains"
+	"github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/toc"
+	"github.com/wwoytenko/greenfuscator/internal/storage"
+)
+
+type TableDumper struct {
+	table *domains.Table
+}
+
+func NewTableDumper(table domains.Table) *TableDumper {
+	return &TableDumper{
+		table: &table,
+	}
+}
+
+func (td *TableDumper) Execute(ctx context.Context, tx pgx.Tx, st storage.Storager) (*toc.Entry, error) {
+
+	datFile, err := st.GetWriter(ctx, fmt.Sprintf("%d.dat.gz", td.table.DumpId))
+	if err != nil {
+		return nil, fmt.Errorf("cannot open data file: %w", err)
+	}
+	defer datFile.Close()
+	writer := gzip.NewWriter(datFile)
+	defer writer.Close()
+
+	frontend := tx.Conn().PgConn().Frontend()
+	frontend.Send(&pgproto3.Query{
+		String: fmt.Sprintf("COPY \"%s\".\"%s\" TO STDOUT", td.table.Schema, td.table.Name),
+	})
+
+	if err := frontend.Flush(); err != nil {
+		return nil, err
+	}
+
+	for {
+		select {
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		default:
+
+		}
+		msg, err := frontend.Receive()
+		if err != nil {
+			return nil, fmt.Errorf("unable to perform copy query: %w", err)
+		}
+		switch v := msg.(type) {
+		case *pgproto3.CopyOutResponse:
+			// CopyOutResponse does not matter for us in TEXTUAL MODES
+			// https://www.postgresql.org/docs/current/sql-copy.html
+		case *pgproto3.CopyData:
+			tupleData := v.Data
+			if td.table.HasMasker {
+				tupleData, err = td.table.TransformTuple(tupleData)
+				if err != nil {
+					return nil, fmt.Errorf("cannot convert plain data to tuple: %w", err)
+				}
+			}
+
+			// TODO: Maybe you should check the count of written bytes
+			if _, err := writer.Write(tupleData); err != nil {
+				return nil, fmt.Errorf("cannot store data into dat file: %w", err)
+			}
+
+		case *pgproto3.CopyDone:
+		case *pgproto3.CommandComplete:
+		case *pgproto3.ReadyForQuery:
+			return td.table.GetTocEntry()
+		case *pgproto3.ErrorResponse:
+			return nil, fmt.Errorf("error from postgres connection msg = %s code=%s", v.Message, v.Code)
+		default:
+			return nil, fmt.Errorf("unknown backup message %+v", v)
+		}
+	}
+}
+
+func (td *TableDumper) DebugInfo() string {
+	return fmt.Sprintf("table %s.%s", td.table.Schema, td.table.Name)
+}
