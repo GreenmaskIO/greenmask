@@ -136,10 +136,10 @@ func (o *Options) GetParams() []string {
 	if o.DataOnly {
 		args = append(args, "--data-only")
 	}
-	if o.Blobs && !o.NoBlobs {
+	if o.Blobs {
 		args = append(args, "--blobs")
 	}
-	if o.NoBlobs && !o.Blobs {
+	if o.NoBlobs {
 		args = append(args, "--no-blobs")
 	}
 	if o.Clean {

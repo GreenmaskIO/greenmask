@@ -63,7 +63,7 @@ func init() {
 
 	// Options controlling the output content:
 	DumpCmd.Flags().BoolP("data-only", "a", false, "dump only the data, not the schema")
-	DumpCmd.Flags().BoolP("blobs", "b", true, "include large objects in dump")
+	DumpCmd.Flags().BoolP("blobs", "b", false, "include large objects in dump")
 	DumpCmd.Flags().BoolP("no-blobs", "B", false, "exclude large objects in dump")
 	DumpCmd.Flags().BoolP("clean", "c", false, "clean (drop) database objects before recreating")
 	DumpCmd.Flags().BoolP("create", "C", false, "include commands to create database in dump")
