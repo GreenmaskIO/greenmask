@@ -6,8 +6,8 @@ import (
 )
 
 var (
-	ListDumpCmd = &cobra.Command{
-		Use: "list-dump",
+	RestoreCmd = &cobra.Command{
+		Use: "restore",
 		Run: func(cmd *cobra.Command, args []string) {
 			log.Fatal().Msg("does not implemented")
 		},
@@ -15,5 +15,5 @@ var (
 )
 
 func init() {
-	ListDumpCmd.Flags().StringVar(&cfgFile, "test", "", "test flag")
+	RestoreCmd.Flags().StringVar(&cfgFile, "test", "", "test flag")
 }
