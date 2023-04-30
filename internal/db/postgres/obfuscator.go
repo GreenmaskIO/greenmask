@@ -229,7 +229,7 @@ func (o *Obfuscator) startMainTx(ctx context.Context) (pgx.Tx, error) {
 }
 
 func (o *Obfuscator) getDumpId() int32 {
-	o.curDumpId--
+	o.curDumpId++
 	return o.curDumpId
 }
 
@@ -345,39 +345,6 @@ func (o *Obfuscator) getTableColumns(ctx context.Context, tx pgx.Tx, table *doma
 }
 
 func (o *Obfuscator) RunBackup(ctx context.Context, tableConfig []domains.Table) error {
-	// Algorithm:
-	// N. Check directories exists
-	// N. Create tmp dir for toc.dat - pre-data and post-data and data itself
-	// 0. Create snapshot in REPEATABLE READ and use it during all the backup statements and calls
-	// 1. Determine all tables to back up. Get their OID's, attributes and types
-	// 2. If table has a rule we need to check:
-	//		* Type violation - do we have this Masking function for this type
-	//		* Does it have enough arguments, does arguments correct for this type
-	// 3. Dump pg_dump -U postgres -d test -Fd --section=pre-data -f ./tmp/pre-data
-	// 4. Dump pg_dump -U postgres -d test -Fd --section=pre-data -f ./tmp/post-data
-	// 5. Upload pre-data and post-data
-	//		* determine the all tables, keep their sequence
-	//		* get min(pre-data.backupId) and min(post-data.backupId)
-	// 7. Make the TOC file records in format for each table. Keep their order:
-	//    11471; 1262 36497111 TABLE DATA - mydb postgres
-	//	  3359; 0 16451 TABLE DATA public metrics test
-	//
-	//	  Where:
-	//      * 3359 - internal sequence between pre-data and post-data
-	//      * 0 - OID of pg_database catalog. Not required for section=data
-	//      * 16451 - OID of TABLE/SEQUENCE/LARGE OBJECT
-	//      * TABLE DATA - Object Type
-	//		* public - Object Schema
-	//      * metrics - Object Name (table name)
-	//      * test - Object Owner
-	//
-	// For details, please refer https://www.postgresql.org/message-id/20160126173717.GA565213%40alvherre.pgsql
-	// 8. Run COPY command
-	//      * apply the transformers for each required attribute
-	//		* gzip data and store into DumpId.dat.gz
-	// 9. Merge 3 TOC files into one
-	// 10. Delete tmp data
-	o.curDumpId = int32(maxInt)
 
 	if err := o.Connect(ctx); err != nil {
 		return fmt.Errorf("cannot connect to db: %w", err)
@@ -392,22 +359,6 @@ func (o *Obfuscator) RunBackup(ctx context.Context, tableConfig []domains.Table)
 			log.Warn().Err(err)
 		}
 	}()
-
-	sequenceList, err := o.sequenceList(ctx, tx)
-	if err != nil {
-		return fmt.Errorf("cannot retreive sequence list: %w", err)
-	}
-
-	tablesList, err := o.tablesList(ctx, tx, tableConfig)
-	if err != nil {
-		return fmt.Errorf("cannot retreive table list: %w", err)
-	}
-
-	// N. Make --schemaonly dump in original dir
-	// N. Read Toc data and calculate  MinBackupId and MaxBackupId
-	// N. Start Backup Tables into dir using backup order
-	// N. Generate sequences setting up by
-	// N. Backing up blobs, change the Backup ID if is not suitable for free backupId rage
 
 	// Dump schema
 	options := *o.options
@@ -444,9 +395,18 @@ func (o *Obfuscator) RunBackup(ctx context.Context, tableConfig []domains.Table)
 	if err != nil {
 		return fmt.Errorf("error reading toc file: %w", err)
 	}
+	o.curDumpId = schemaToc.MaxDumpId + 1
 
-	tables := make([]*toc.Entry, 0, len(tablesList))
-	sequences := make([]*toc.Entry, 0, len(sequenceList))
+	sequenceList, err := o.sequenceList(ctx, tx)
+	if err != nil {
+		return fmt.Errorf("cannot retreive sequence list: %w", err)
+	}
+
+	tablesList, err := o.tablesList(ctx, tx, tableConfig)
+	if err != nil {
+		return fmt.Errorf("cannot retreive table list: %w", err)
+	}
+
 	var largeObjects []*toc.Entry
 
 	tasks := make(chan DumpTask, o.options.Jobs)
@@ -455,14 +415,10 @@ func (o *Obfuscator) RunBackup(ctx context.Context, tableConfig []domains.Table)
 
 	log.Debug().Msgf("planned %d workers", o.options.Jobs)
 	eg, gtx := errgroup.WithContext(ctx)
-	var tocDataEntries []*toc.Entry
 	for j := 0; j < o.options.Jobs; j++ {
 		eg.Go(func(id int) func() error {
 			return func() error {
-				if err := o.dumpWorker(gtx, tasks, result, id+1); err != nil {
-					return err
-				}
-				return nil
+				return o.dumpWorker(gtx, tasks, result, id+1)
 			}
 		}(j))
 	}
@@ -491,7 +447,10 @@ func (o *Obfuscator) RunBackup(ctx context.Context, tableConfig []domains.Table)
 		return nil
 	})
 
+	tocDataEntries := make([]*toc.Entry, 0, len(tablesList)+len(sequenceList)+len(largeObjects))
 	eg.Go(func() error {
+		tables := make([]*toc.Entry, 0, len(tablesList))
+		sequences := make([]*toc.Entry, 0, len(sequenceList))
 		for i := 0; i < len(tablesList)+len(sequenceList)+len(largeObjects); i++ {
 			select {
 			case <-gtx.Done():
@@ -509,6 +468,8 @@ func (o *Obfuscator) RunBackup(ctx context.Context, tableConfig []domains.Table)
 				}
 			}
 		}
+		tocDataEntries = append(tocDataEntries, tables...)
+		tocDataEntries = append(tocDataEntries, sequences...)
 		return nil
 	})
 

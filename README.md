@@ -33,7 +33,6 @@ TODO:
 * Provide useful interface using cobra + viper
     * greenmask dump -c config.yml --any-params
       * Implement parameters check that conflicts
-      * 
     * greenmask restore --any-params {{ dumpId }}
     * greenmask dump-fetch {{ dumpId }} {{ dir }} 
     * greenmask dump-list --detail --json
@@ -41,11 +40,11 @@ TODO:
     * greenmask st [ls|rm|get|put|cat]
 * Implement toc Read and Write suitable for any major versions
 * ~~Provide to pg_dump calls snapshot name in order to export it~~ 
-* Implement concurrently COPY command
+* ~~Implement concurrently COPY command~~
 * Make json-like metadata that contains data from toc.dat file
 * Implement graceful shutdown
   * Mark dump as failed
-  * Terminate COPY commands
+  * ~~Terminate COPY commands~~
   * Delete tmp data from local storage
   * Terminate another forked processes if they are still alive
 * Validate passed config with transformers

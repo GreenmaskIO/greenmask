@@ -2,24 +2,34 @@ package main
 
 import (
 	"github.com/rs/zerolog/log"
+	"github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/toc"
 	"os"
 )
 
 func main() {
-	f, err := os.Open("/home/vadim/gits/woyten/greenfuscator/cmd/test/test.txt")
+	f, err := os.Open("/home/vadim/tmp/pg_dump_test/vanil/toc.dat")
+	if err != nil {
+		log.Fatal().Err(err).Msg("error")
+	}
+	res, err := os.Create("/home/vadim/tmp/pg_dump_test/vanil/new_toc.dat")
 	if err != nil {
 		log.Fatal().Err(err).Msg("error")
 	}
 	defer f.Close()
+	defer res.Close()
 
-	buf := make([]byte, 32)
-	for {
-		n, err := f.Read(buf)
-		if err != nil {
-			log.Debug().Err(err).Msg("error")
-			break
-		}
-		log.Printf("str = %s", buf[:n])
+	ah, err := toc.ReadFile(f)
+	if err != nil {
+		log.Fatal().Err(err).Msgf("err")
 	}
 
+	for _, item := range ah.GetEntries() {
+		if item.Section == toc.SectionData {
+			log.Printf("%+v\n", item)
+		}
+	}
+
+	if err := toc.WriteFile(ah, res); err != nil {
+		log.Fatal().Err(err).Msgf("err")
+	}
 }

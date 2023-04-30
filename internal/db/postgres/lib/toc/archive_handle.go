@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/rs/zerolog/log"
+	"golang.org/x/exp/slices"
 	"io"
 	"strconv"
 )
@@ -29,123 +30,6 @@ func NewArchiveHandle(srcFile io.Reader, destFile io.ReadWriteSeeker) *ArchiveHa
 			Format: ArchTar,
 		},
 	}
-}
-
-func (ah *ArchiveHandle) readHead() error {
-	magicString, err := ah.readBytes(5)
-	if err != nil {
-		log.Err(err)
-	}
-	if string(magicString) != "PGDMP" {
-		return errors.New("did not find magic string in srcFile handler")
-	}
-	if err = ah.scanBytes(&ah.VersionMajor, &ah.VersionMinor); err != nil {
-		return fmt.Errorf("unable to scan major and minor version data: %w", err)
-	}
-
-	if ah.VersionMajor > 1 || (ah.VersionMajor == 1 && ah.VersionMinor > 0) {
-		if err = ah.scanBytes(&ah.VersionRev); err != nil {
-			return fmt.Errorf("unable to scan rev version data: %w", err)
-		}
-	}
-
-	ah.Version = MakeArchiveVersion(ah.VersionMajor, ah.VersionMinor, ah.VersionRev)
-
-	if ah.Version < BackupVersions["1.0"] || ah.Version > BackupVersions["1.15"] {
-		return fmt.Errorf("unsupported archive version %d.%d", ah.VersionMajor, ah.VersionMinor)
-	}
-
-	intSize, err := ah.readByte()
-	if err != nil {
-		return fmt.Errorf("cannot read intSize value: %w", err)
-	}
-	ah.IntSize = uint32(intSize)
-
-	if ah.Version >= BackupVersions["1.7"] {
-		offSize, err := ah.readByte()
-		if err != nil {
-			return fmt.Errorf("cannot read intSize value: %w", err)
-		}
-		ah.OffSize = uint32(offSize)
-	} else {
-		ah.OffSize = ah.IntSize
-	}
-
-	if err := ah.scanBytes(&ah.Format); err != nil {
-		return fmt.Errorf("unable to scan bytes from TOC srcFile: %w", err)
-	}
-	if ArchTar != ah.Format {
-		return fmt.Errorf("unsupported format \"%s\" suports only directory", BackupFormats[ah.Format])
-	}
-
-	if ah.Version >= BackupVersions["1.15"] {
-		algorithm, err := ah.readByte()
-		if err != nil {
-			return fmt.Errorf("unable to scan CompressionSpec.Algorithm: %w", err)
-		}
-		ah.CompressionSpec.Algorithm = int32(algorithm)
-	} else if ah.Version >= BackupVersions["1.2"] {
-		if ah.Version < BackupVersions["1.4"] {
-			level, err := ah.readByte()
-			if err != nil {
-				return fmt.Errorf("unable to scan CompressionSpec.Level: %w", err)
-			}
-			ah.CompressionSpec.Level = int32(level)
-		} else {
-			if err = ah.scanInt(&ah.CompressionSpec.Level); err != nil {
-				return fmt.Errorf("unable to scan CompressionSpec.Level: %w", err)
-			}
-
-			if ah.CompressionSpec.Level != 0 {
-				ah.CompressionSpec.Algorithm = PgCompressionGzip
-			}
-		}
-	} else {
-		ah.CompressionSpec.Level = PgCompressionGzip
-
-	}
-
-	// TODO: Ensure we support compression specification
-
-	if ah.Version >= BackupVersions["1.4"] {
-		var tmSec, tmMin, tmHour, tmDay, tmMon, tmYear, tmIsDst int32
-		if err = ah.scanInt(&tmSec, &tmMin, &tmHour, &tmDay, &tmMon, &tmYear, &tmIsDst); err != nil {
-			return fmt.Errorf("cannot scan backup date: %w", err)
-		}
-		ah.CrtmDateTime = Crtm{
-			TmSec:   tmSec,
-			TmMin:   tmMin,
-			TmHour:  tmHour,
-			TmMday:  tmDay,
-			TmMon:   tmMon,
-			TmYear:  tmYear,
-			TmIsDst: tmIsDst,
-		}
-	}
-
-	if ah.Version >= BackupVersions["1.4"] {
-		archDbName, err := ah.readStr()
-		if err != nil {
-			return fmt.Errorf("cannot read archdbname: %w", err)
-		}
-		ah.ArchDbName = archDbName
-	}
-
-	if ah.Version >= BackupVersions["1.10"] {
-		archiveRemoteVersion, err := ah.readStr()
-		if err != nil {
-			return fmt.Errorf("cannot rad archiveRemoteVersion: %w", err)
-		}
-		ah.ArchiveRemoteVersion = archiveRemoteVersion
-
-		archiveDumpVersion, err := ah.readStr()
-		if err != nil {
-			return fmt.Errorf("cannot read archiveDumpVersion: %w", err)
-		}
-		ah.ArchiveDumpVersion = archiveDumpVersion
-	}
-
-	return nil
 }
 
 func (ah *ArchiveHandle) readStr() (*string, error) {
@@ -243,11 +127,134 @@ func (ah *ArchiveHandle) scanInt(byteVars ...*int32) error {
 	return nil
 }
 
+func (ah *ArchiveHandle) readHead() error {
+	magicString, err := ah.readBytes(5)
+	if err != nil {
+		log.Err(err)
+	}
+	if string(magicString) != "PGDMP" {
+		return errors.New("did not find magic string in srcFile handler")
+	}
+	if err = ah.scanBytes(&ah.VersionMajor, &ah.VersionMinor); err != nil {
+		return fmt.Errorf("unable to scan major and minor version data: %w", err)
+	}
+
+	if ah.VersionMajor > 1 || (ah.VersionMajor == 1 && ah.VersionMinor > 0) {
+		if err = ah.scanBytes(&ah.VersionRev); err != nil {
+			return fmt.Errorf("unable to scan rev version data: %w", err)
+		}
+	}
+
+	ah.Version = MakeArchiveVersion(ah.VersionMajor, ah.VersionMinor, ah.VersionRev)
+
+	if ah.Version < BackupVersions["1.0"] || ah.Version > BackupVersions[MaxVersion] {
+		return fmt.Errorf("unsupported archive version %d.%d", ah.VersionMajor, ah.VersionMinor)
+	}
+
+	// TODO: You should perform int value check if it is not suitable for current int size
+	// 	you have to write warnings
+	intSize, err := ah.readByte()
+	if err != nil {
+		return fmt.Errorf("cannot read intSize value: %w", err)
+	}
+	ah.IntSize = uint32(intSize)
+	if intSize > 32 {
+		return fmt.Errorf("sanity check on integer size %d failed", ah.IntSize)
+	}
+
+	if ah.Version >= BackupVersions["1.7"] {
+		offSize, err := ah.readByte()
+		if err != nil {
+			return fmt.Errorf("cannot read intSize value: %w", err)
+		}
+		ah.OffSize = uint32(offSize)
+	} else {
+		ah.OffSize = ah.IntSize
+	}
+
+	if err := ah.scanBytes(&ah.Format); err != nil {
+		return fmt.Errorf("unable to scan bytes from TOC srcFile: %w", err)
+	}
+	if ArchTar != ah.Format {
+		return fmt.Errorf("unsupported format \"%s\" suports only directory", BackupFormats[ah.Format])
+	}
+
+	// TODO: Warning this part is distinguish from the 15 pg version. Take a look on it once pg16 will be released
+	if ah.Version >= BackupVersions["1.15"] {
+		algorithm, err := ah.readByte()
+		if err != nil {
+			return fmt.Errorf("unable to scan CompressionSpec.Algorithm: %w", err)
+		}
+		ah.CompressionSpec.Algorithm = int32(algorithm)
+	} else if ah.Version >= BackupVersions["1.2"] {
+		if ah.Version < BackupVersions["1.4"] {
+			level, err := ah.readByte()
+			if err != nil {
+				return fmt.Errorf("unable to scan CompressionSpec.Level: %w", err)
+			}
+			ah.CompressionSpec.Level = int32(level)
+		} else {
+			if err = ah.scanInt(&ah.CompressionSpec.Level); err != nil {
+				return fmt.Errorf("unable to scan CompressionSpec.Level: %w", err)
+			}
+		}
+		if ah.CompressionSpec.Level != 0 {
+			ah.CompressionSpec.Algorithm = PgCompressionGzip
+		}
+	} else {
+		ah.CompressionSpec.Level = PgCompressionGzip
+
+	}
+
+	// TODO: Ensure we support compression specification
+
+	if ah.Version >= BackupVersions["1.4"] {
+		var tmSec, tmMin, tmHour, tmDay, tmMon, tmYear, tmIsDst int32
+		if err = ah.scanInt(&tmSec, &tmMin, &tmHour, &tmDay, &tmMon, &tmYear, &tmIsDst); err != nil {
+			return fmt.Errorf("cannot scan backup date: %w", err)
+		}
+		ah.CrtmDateTime = Crtm{
+			TmSec:   tmSec,
+			TmMin:   tmMin,
+			TmHour:  tmHour,
+			TmMday:  tmDay,
+			TmMon:   tmMon,
+			TmYear:  tmYear,
+			TmIsDst: tmIsDst,
+		}
+	}
+
+	if ah.Version >= BackupVersions["1.4"] {
+		archDbName, err := ah.readStr()
+		if err != nil {
+			return fmt.Errorf("cannot read archdbname: %w", err)
+		}
+		ah.ArchDbName = archDbName
+	}
+
+	if ah.Version >= BackupVersions["1.10"] {
+		archiveRemoteVersion, err := ah.readStr()
+		if err != nil {
+			return fmt.Errorf("cannot rad archiveRemoteVersion: %w", err)
+		}
+		ah.ArchiveRemoteVersion = archiveRemoteVersion
+
+		archiveDumpVersion, err := ah.readStr()
+		if err != nil {
+			return fmt.Errorf("cannot read archiveDumpVersion: %w", err)
+		}
+		ah.ArchiveDumpVersion = archiveDumpVersion
+	}
+
+	return nil
+}
+
 func (ah *ArchiveHandle) readToc() error {
 
 	if err := ah.scanInt(&ah.TocCount); err != nil {
 		return fmt.Errorf("cannot scan tocCount: %w", err)
 	}
+	ah.MaxDumpId = 0
 
 	tocList := make([]*Entry, 0)
 
@@ -255,6 +262,10 @@ func (ah *ArchiveHandle) readToc() error {
 		te := Entry{}
 		if err := ah.scanInt(&te.DumpId); err != nil {
 			return fmt.Errorf("cannot scan tocCount: %w", err)
+		}
+
+		if ah.MaxDumpId < te.DumpId {
+			ah.MaxDumpId = te.DumpId
 		}
 
 		if te.DumpId <= 0 {
@@ -311,7 +322,17 @@ func (ah *ArchiveHandle) readToc() error {
 				return fmt.Errorf("cannot Section: %w", err)
 			}
 		} else {
-			return errors.New("unsupported version")
+			if slices.Contains([]string{"COMMENT", "ACL", "ACL LANGUAGE"}, *te.Desc) {
+				te.Section = SectionNone
+			} else if slices.Contains([]string{"TABLE DATA", "BLOBS", "BLOB COMMENTS"}, *te.Desc) {
+				te.Section = SectionData
+			} else if slices.Contains([]string{
+				"CONSTRAINT", "CHECK CONSTRAINT", "FK CONSTRAINT", "INDEX", "RULE", "TRIGGER",
+			}, *te.Desc) {
+				te.Section = SectionPostData
+			} else {
+				te.Section = SectionPreData
+			}
 		}
 
 		defn, err := ah.readStr()
@@ -368,7 +389,7 @@ func (ah *ArchiveHandle) readToc() error {
 		if ah.Version < BackupVersions["1.9"] {
 			isSupported = false
 		} else {
-			tmp, err := ah.readStr()
+			tmp, err = ah.readStr()
 			if err != nil {
 				return fmt.Errorf("cannot read CatalogId: %w", err)
 			}
@@ -382,7 +403,6 @@ func (ah *ArchiveHandle) readToc() error {
 
 		if !isSupported {
 			log.Warn().Msg("restoring tables WITH OIDS is not supported anymore")
-			//return errors.New("unsupported version")
 		}
 
 		/* Read TOC entry Dependencies */
@@ -410,12 +430,13 @@ func (ah *ArchiveHandle) readToc() error {
 			te.Dependencies = nil
 			te.NDeps = 0
 		}
-
 		te.DataLength = 0
 
+		// TODO: Here we are executing ReadExtraTocPtr - and it depends on the objects or even versiob
+		//		 it may rise an error later.
 		fileName, err := ah.readStr()
 		if err != nil {
-			return fmt.Errorf("cannot additional data FileName: %w", err)
+			return fmt.Errorf("cannot read an additional FileName data: %w", err)
 		}
 		te.FileName = fileName
 		tocList = append(tocList, &te)

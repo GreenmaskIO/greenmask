@@ -8,6 +8,8 @@ const (
 	ArchDirectory byte = 5
 )
 
+const MaxVersion = "1.15"
+
 var (
 	BackupVersions = map[string]int{
 		"1.0":  MakeArchiveVersion(1, 0, 0),
