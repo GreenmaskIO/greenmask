@@ -268,7 +268,7 @@ func (o *Options) GetParams() []string {
 	if o.DbName != "" {
 		args = append(args, "--dbname", o.DbName)
 	}
-	if o.Host != "" {
+	if o.Host != "" && o.Host != "/var/run/postgres" {
 		args = append(args, "--host", o.Host)
 	}
 	if o.Port != 5432 {

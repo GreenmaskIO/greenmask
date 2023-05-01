@@ -1,9 +1,11 @@
 package main
 
 import (
-	"github.com/rs/zerolog/log"
-	"github.com/wwoytenko/greenfuscator/cmd/greenmask/cmd"
 	"time"
+
+	"github.com/rs/zerolog/log"
+
+	"github.com/wwoytenko/greenfuscator/cmd/greenmask/cmd"
 )
 
 func main() {
