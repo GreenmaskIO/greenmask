@@ -39,11 +39,15 @@ type Metadata struct {
 	CompletedAt    time.Time   `yaml:"completedAt"`
 	OriginalSize   int64       `json:"originalSize"`
 	CompressedSize int64       `json:"compressedSize"`
+	Transformers   []Table     `yaml:"transformers"`
 	Header         TocHeader   `json:"header"`
 	Entries        []*TocEntry `json:"entries"`
 }
 
-func NewMetadata(ahHeader toc.Header, ahEntries []*toc.Entry, tocFileSize int64, startedAt, completedAt time.Time) (*Metadata, error) {
+func NewMetadata(ahHeader toc.Header, ahEntries []*toc.Entry,
+	tocFileSize int64, startedAt, completedAt time.Time,
+	transformers []Table,
+) (*Metadata, error) {
 
 	var format string
 	switch ahHeader.Format {
@@ -119,6 +123,7 @@ func NewMetadata(ahHeader toc.Header, ahEntries []*toc.Entry, tocFileSize int64,
 		CompressedSize: totalCompressedSize,
 		StartedAt:      startedAt,
 		CompletedAt:    completedAt,
+		Transformers:   transformers,
 		Header: TocHeader{
 			CreationDate:    ahHeader.CrtmDateTime.Time(),
 			DbName:          *ahHeader.ArchDbName,

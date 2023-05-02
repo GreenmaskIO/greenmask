@@ -498,6 +498,7 @@ func (o *Obfuscator) RunBackup(ctx context.Context, tableConfig []domains.Table)
 	completedAt := time.Now()
 	metadata, err := domains.NewMetadata(schemaToc.Header, schemaToc.GetEntries(),
 		schemaToc.WrittenBytes, startedAt, completedAt,
+		tableConfig,
 	)
 	if err != nil {
 		return fmt.Errorf("unable build metadata: %w", err)

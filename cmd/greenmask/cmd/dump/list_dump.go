@@ -76,7 +76,8 @@ func listDumps() error {
 			status = "unknown or failed"
 		}
 
-		var creationDate, dbName, size, compressedSize, duration string
+		var creationDate, dbName, size, compressedSize, duration, transformed string
+		transformed = "false"
 		if metadataFound {
 			metadata, err := getMetadata(ctx, backup)
 			if err != nil {
@@ -88,6 +89,9 @@ func listDumps() error {
 			compressedSize = SizePretty(metadata.CompressedSize)
 			diff := metadata.CompletedAt.Sub(metadata.StartedAt)
 			duration = time.Time{}.Add(diff).Format("15:04:05")
+			if len(metadata.Transformers) > 0 {
+				transformed = "true"
+			}
 		}
 
 		data = append(data, []string{
@@ -97,12 +101,13 @@ func listDumps() error {
 			size,
 			compressedSize,
 			duration,
+			transformed,
 			status,
 		})
 	}
 
 	table := tablewriter.NewWriter(os.Stdout)
-	table.SetHeader([]string{"id", "date", "database", "size", "compressed size", "duration", "status"})
+	table.SetHeader([]string{"id", "date", "database", "size", "compressed size", "duration", "transformed", "status"})
 	table.AppendBulk(data)
 	table.Render()
 	return nil
