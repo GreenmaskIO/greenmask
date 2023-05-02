@@ -6,7 +6,9 @@ package postgres
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/rs/zerolog/log"
@@ -93,11 +95,6 @@ var defaultTypeMap = map[string]string{
 	"interval":                    "string",
 	"uuid":                        "uuid",
 	"xml":                         "",
-}
-
-type DumpTask interface {
-	Execute(ctx context.Context, tx pgx.Tx, st storage.Storager) (*toc.Entry, error)
-	DebugInfo() string
 }
 
 type TableDataRange struct {
@@ -346,6 +343,8 @@ func (o *Obfuscator) getTableColumns(ctx context.Context, tx pgx.Tx, table *doma
 
 func (o *Obfuscator) RunBackup(ctx context.Context, tableConfig []domains.Table) error {
 
+	startedAt := time.Now()
+
 	if err := o.Connect(ctx); err != nil {
 		return fmt.Errorf("cannot connect to db: %w", err)
 	}
@@ -409,7 +408,7 @@ func (o *Obfuscator) RunBackup(ctx context.Context, tableConfig []domains.Table)
 
 	var largeObjects []*toc.Entry
 
-	tasks := make(chan DumpTask, o.options.Jobs)
+	tasks := make(chan dumpers.DumpTask, o.options.Jobs)
 	result := make(chan *toc.Entry, o.options.Jobs)
 	defer close(result)
 
@@ -447,6 +446,7 @@ func (o *Obfuscator) RunBackup(ctx context.Context, tableConfig []domains.Table)
 		return nil
 	})
 
+	var originalSize, compressedSize int64
 	tocDataEntries := make([]*toc.Entry, 0, len(tablesList)+len(sequenceList)+len(largeObjects))
 	eg.Go(func() error {
 		tables := make([]*toc.Entry, 0, len(tablesList))
@@ -466,6 +466,8 @@ func (o *Obfuscator) RunBackup(ctx context.Context, tableConfig []domains.Table)
 				default:
 					return fmt.Errorf("unexpected toc entry %s", *tocEntry.Desc)
 				}
+				originalSize += tocEntry.OriginalSize
+				compressedSize += tocEntry.CompressedSize
 			}
 		}
 		tocDataEntries = append(tocDataEntries, tables...)
@@ -494,10 +496,27 @@ func (o *Obfuscator) RunBackup(ctx context.Context, tableConfig []domains.Table)
 		return fmt.Errorf("error writing toc file: %w", err)
 	}
 
+	completedAt := time.Now()
+	metadata, err := domains.NewMetadata(schemaToc.Header, schemaToc.GetEntries(),
+		schemaToc.WrittenBytes, startedAt, completedAt,
+	)
+	if err != nil {
+		return fmt.Errorf("unable build metadata: %w", err)
+	}
+	meta, err := o.st.GetWriter(ctx, "metadata.json")
+	if err != nil {
+		return fmt.Errorf("unable to open metadata file: %w", err)
+	}
+	defer meta.Close()
+	if err := json.NewEncoder(meta).Encode(metadata); err != nil {
+		return fmt.Errorf("unable to write metadata: %w", err)
+	}
+
 	return nil
 }
 
 func (o *Obfuscator) MergeTocEntries(schema, data []*toc.Entry) ([]*toc.Entry, error) {
+	// TODO: Assign dependencies and sort entries in the same order
 	res := make([]*toc.Entry, 0, len(schema)+len(data))
 
 	preDataEnd := 0
@@ -515,14 +534,13 @@ func (o *Obfuscator) MergeTocEntries(schema, data []*toc.Entry) ([]*toc.Entry, e
 	}
 
 	res = append(res, schema[:preDataEnd+1]...)
-	// Push data between post and pred
 	res = append(res, data...)
 	res = append(res, schema[postDataStart:]...)
 
 	return res, nil
 }
 
-func (o *Obfuscator) dumpWorker(ctx context.Context, tasks <-chan DumpTask, result chan<- *toc.Entry, id int) error {
+func (o *Obfuscator) dumpWorker(ctx context.Context, tasks <-chan dumpers.DumpTask, result chan<- *toc.Entry, id int) error {
 	var isolationLevel = "REPEATABLE READ"
 	if o.options.SerializableDeferrable {
 		isolationLevel = "SERIALIZABLE DEFERRABLE"

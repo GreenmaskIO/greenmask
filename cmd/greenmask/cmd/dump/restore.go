@@ -15,5 +15,4 @@ var (
 )
 
 func init() {
-	RestoreCmd.Flags().StringVar(&cfgFile, "test", "", "test flag")
 }

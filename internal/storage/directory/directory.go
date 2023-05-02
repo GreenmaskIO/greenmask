@@ -3,10 +3,12 @@ package directory
 import (
 	"context"
 	"errors"
-	"github.com/wwoytenko/greenfuscator/internal/storage"
 	"io"
 	"os"
 	"path"
+	"path/filepath"
+
+	"github.com/wwoytenko/greenfuscator/internal/storage"
 )
 
 type Directory struct {
@@ -33,6 +35,10 @@ func NewDirectory(cwd string, dirMode, fileMode os.FileMode) (*Directory, error)
 
 func (d *Directory) Getcwd(ctx context.Context) (string, error) {
 	return d.cwd, nil
+}
+
+func (d *Directory) Dirname(ctx context.Context) (string, error) {
+	return filepath.Base(d.cwd), nil
 }
 
 func (d *Directory) ListDir(ctx context.Context) (files []string, dirs []storage.Storager, err error) {

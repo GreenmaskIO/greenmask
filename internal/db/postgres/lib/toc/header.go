@@ -1,5 +1,7 @@
 package toc
 
+import "time"
+
 type Crtm struct {
 	TmSec   int32
 	TmMin   int32
@@ -8,6 +10,10 @@ type Crtm struct {
 	TmMon   int32
 	TmYear  int32
 	TmIsDst int32
+}
+
+func (c *Crtm) Time() time.Time {
+	return time.Date(1900+int(c.TmYear), time.Month(c.TmMon+1), int(c.TmMday), int(c.TmHour), int(c.TmMin), int(c.TmSec), 0, time.Local)
 }
 
 type Header struct {

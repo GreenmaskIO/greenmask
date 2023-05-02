@@ -3,10 +3,11 @@ package toc
 import (
 	"errors"
 	"fmt"
-	"github.com/rs/zerolog/log"
-	"golang.org/x/exp/slices"
 	"io"
 	"strconv"
+
+	"github.com/rs/zerolog/log"
+	"golang.org/x/exp/slices"
 )
 
 const (
@@ -15,11 +16,12 @@ const (
 
 type ArchiveHandle struct {
 	Header
-	srcFile         io.Reader
-	destFile        io.Writer
-	tocWrittenBytes int
-	tocList         []*Entry
-	dumpId          int32
+	srcFile      io.Reader
+	destFile     io.Writer
+	WrittenBytes int64
+	ReadBytes    int64
+	tocList      []*Entry
+	dumpId       int32
 }
 
 func NewArchiveHandle(srcFile io.Reader, destFile io.ReadWriteSeeker) *ArchiveHandle {
@@ -96,7 +98,9 @@ func (ah *ArchiveHandle) readByte() (byte, error) {
 
 func (ah *ArchiveHandle) readBytes(length int) ([]byte, error) {
 	bytes := make([]byte, length)
-	if _, err := ah.srcFile.Read(bytes); err != nil {
+	n, err := ah.srcFile.Read(bytes)
+	ah.ReadBytes += int64(n)
+	if err != nil {
 		return nil, err
 	}
 	return bytes, nil
@@ -810,7 +814,7 @@ func (ah *ArchiveHandle) writeToc() error {
 
 func (ah *ArchiveHandle) writeBuf(buf []byte) error {
 	n, err := ah.destFile.Write(buf)
-	ah.tocWrittenBytes += n
+	ah.WrittenBytes += int64(n)
 	if err != nil {
 		return err
 	}
@@ -881,7 +885,7 @@ func ReadFile(reader io.Reader) (*ArchiveHandle, error) {
 
 func WriteFile(ah *ArchiveHandle, writer io.Writer) error {
 	ah.destFile = writer
-
+	ah.WrittenBytes = 0
 	if err := ah.writeHeadV2(); err != nil {
 		return err
 	}

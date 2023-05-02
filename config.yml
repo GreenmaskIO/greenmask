@@ -1,30 +1,38 @@
-pg_dump_options:
-  dbname: "port=5432 user=vvoitenko dbname=test"
+common:
+  bin_path: "/usr/bin"
+  storage:
+    directory:
+      path: "/home/vadim/tmp/pg_dump_test"
 
-transformers:
-  - schema: "public"
-    name: "test1"
-    columns:
-      - name: "title"
-        transformer:
-          name: "Replace"
-          params:
-            value: "test"
-  - schema: "public"
-    name: "cards_test"
-    columns:
-      - name: "card_number"
-        transformer:
-          name: "CreditCard"
-          params:
-            type: "Number"
-      - name: "ex_date"
-        transformer:
-          name: "CreditCard"
-          params:
-            type: "ExpirationDateString"
-      - name: "vendor"
-        transformer:
-          name: "CreditCard"
-          params:
-            type: "VendorName"
+dump:
+  pg_dump_options:
+    verbose: true
+    dbname: "port=5432 user=vvoitenko dbname=test"
+
+  transformers:
+    - schema: "public"
+      name: "test1"
+      columns:
+        - name: "title"
+          transformer:
+            name: "Replace"
+            params:
+              value: "test"
+    - schema: "public"
+      name: "cards_test"
+      columns:
+        - name: "card_number"
+          transformer:
+            name: "CreditCard"
+            params:
+              type: "Number"
+        - name: "ex_date"
+          transformer:
+            name: "CreditCard"
+            params:
+              type: "ExpirationDateString"
+        - name: "vendor"
+          transformer:
+            name: "CreditCard"
+            params:
+              type: "VendorName"

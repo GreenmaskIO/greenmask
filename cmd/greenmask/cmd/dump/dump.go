@@ -3,15 +3,14 @@ package dump
 import (
 	"context"
 	"fmt"
+	"strconv"
+	"time"
+
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-	domains2 "github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/domains"
-	"github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/pgdump"
+	pgDomains "github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/domains"
 	"github.com/wwoytenko/greenfuscator/internal/storage/directory"
-	"os"
-	"strconv"
-	"time"
 
 	"github.com/wwoytenko/greenfuscator/internal/db/postgres"
 )
@@ -20,7 +19,7 @@ var (
 	DumpCmd = &cobra.Command{
 		Use: "dump",
 		Run: func(cmd *cobra.Command, args []string) {
-			rootSt, err := directory.NewDirectory(Config.PgDumpOptions.FileName, 0750, 0650)
+			rootSt, err := directory.NewDirectory(Config.Common.Storage.Directory.Path, 0750, 0650)
 			if err != nil {
 				log.Fatal().Err(err).Msg("error")
 			}
@@ -32,26 +31,17 @@ var (
 			if err != nil {
 				log.Fatal().Err(err).Msg("cannot create directory in storage")
 			}
-			pgObfuscator := postgres.NewObfuscator(Config.BinPath, Config.PgDumpOptions, st)
+			pgObfuscator := postgres.NewObfuscator(Config.Common.BinPath, &Config.Dump.PgDumpOptions, st)
 
-			if err := pgObfuscator.RunBackup(ctx, Config.YamlConfig); err != nil {
+			if err := pgObfuscator.RunBackup(ctx, Config.Dump.Transformers); err != nil {
 				log.Fatal().Err(err).Msg("cannot make a backup")
 			}
 		},
 	}
-	cfgFile string
-	Config  = &domains2.Config{
-		PgDumpOptions: &pgdump.Options{},
-		YamlConfig:    []domains2.Table{},
-	}
+	Config = pgDomains.NewConfig()
 )
 
 func init() {
-	cobra.OnInitialize(initConfig)
-
-	DumpCmd.Flags().StringVar(&cfgFile, "config", "", "config file")
-
-	// pg_dump options
 
 	// General options:
 	DumpCmd.Flags().StringP("file", "f", "", "output file or directory name")
@@ -67,22 +57,22 @@ func init() {
 	DumpCmd.Flags().BoolP("no-blobs", "B", false, "exclude large objects in dump")
 	DumpCmd.Flags().BoolP("clean", "c", false, "clean (drop) database objects before recreating")
 	DumpCmd.Flags().BoolP("create", "C", false, "include commands to create database in dump")
-	DumpCmd.Flags().StringSliceVarP(&Config.PgDumpOptions.Extension, "extension", "e", []string{}, "dump the specified extension(s) only")
+	DumpCmd.Flags().StringSliceVarP(&Config.Dump.PgDumpOptions.Extension, "extension", "e", []string{}, "dump the specified extension(s) only")
 	DumpCmd.Flags().StringP("encoding", "E", "", "dump the data in encoding ENCODING")
-	DumpCmd.Flags().StringSliceVarP(&Config.PgDumpOptions.Schema, "schema", "n", []string{}, "dump the specified schema(s) only")
-	DumpCmd.Flags().StringSliceVarP(&Config.PgDumpOptions.ExcludeSchema, "exclude-schema", "N", []string{}, "dump the specified schema(s) only")
+	DumpCmd.Flags().StringSliceVarP(&Config.Dump.PgDumpOptions.Schema, "schema", "n", []string{}, "dump the specified schema(s) only")
+	DumpCmd.Flags().StringSliceVarP(&Config.Dump.PgDumpOptions.ExcludeSchema, "exclude-schema", "N", []string{}, "dump the specified schema(s) only")
 	DumpCmd.Flags().StringP("no-owner", "O", "", "skip restoration of object ownership in plain-text format")
 	DumpCmd.Flags().StringP("schema-only", "s", "", "dump only the schema, no data")
 	DumpCmd.Flags().StringP("superuser", "S", "", "superuser user name to use in plain-text format")
-	DumpCmd.Flags().StringSliceVarP(&Config.PgDumpOptions.Table, "table", "t", []string{}, "dump the specified table(s) only")
-	DumpCmd.Flags().StringSliceVarP(&Config.PgDumpOptions.ExcludeTable, "exclude-table", "T", []string{}, "do NOT dump the specified table(s)")
+	DumpCmd.Flags().StringSliceVarP(&Config.Dump.PgDumpOptions.Table, "table", "t", []string{}, "dump the specified table(s) only")
+	DumpCmd.Flags().StringSliceVarP(&Config.Dump.PgDumpOptions.ExcludeTable, "exclude-table", "T", []string{}, "do NOT dump the specified table(s)")
 	DumpCmd.Flags().BoolP("no-privileges", "X", false, "do not dump privileges (grant/revoke)")
 	DumpCmd.Flags().BoolP("disable-dollar-quoting", "", false, "disable dollar quoting, use SQL standard quoting")
 	DumpCmd.Flags().BoolP("disable-triggers", "", false, "disable triggers during data-only restore")
-	DumpCmd.Flags().StringSliceVarP(&Config.PgDumpOptions.ExcludeTableData, "exclude-table-data", "", []string{}, "do NOT dump data for the specified table(s)")
+	DumpCmd.Flags().StringSliceVarP(&Config.Dump.PgDumpOptions.ExcludeTableData, "exclude-table-data", "", []string{}, "do NOT dump data for the specified table(s)")
 	DumpCmd.Flags().StringP("extra-float-digits", "", "", "override default setting for extra_float_digits")
 	DumpCmd.Flags().BoolP("if-exists", "", false, "use IF EXISTS when dropping objects")
-	DumpCmd.Flags().StringSliceVarP(&Config.PgDumpOptions.IncludeForeignData, "include-foreign-data", "", []string{}, "use IF EXISTS when dropping objects")
+	DumpCmd.Flags().StringSliceVarP(&Config.Dump.PgDumpOptions.IncludeForeignData, "include-foreign-data", "", []string{}, "use IF EXISTS when dropping objects")
 	DumpCmd.Flags().BoolP("load-via-partition-root", "", false, "load partitions via the root table")
 	DumpCmd.Flags().BoolP("no-comments", "", false, "do not dump comments")
 	DumpCmd.Flags().BoolP("no-publications", "", false, "do not dump publications")
@@ -107,9 +97,9 @@ func init() {
 	DumpCmd.Flags().StringP("username", "U", "postgres", "connect as specified database user")
 	DumpCmd.Flags().StringP("test", "", "postgres", "connect as specified database user")
 
-	if err := DumpCmd.MarkFlagRequired("file"); err != nil {
-		log.Fatal().Err(err).Msg("fatal")
-	}
+	//if err := DumpCmd.MarkFlagRequired("file"); err != nil {
+	//	log.Fatal().Err(err).Msg("fatal")
+	//}
 
 	for _, flagName := range []string{
 		"file", "jobs", "verbose", "compress", "dbname", "host", "username", "lock-wait-timeout", "no-sync",
@@ -125,42 +115,14 @@ func init() {
 		"dbname", "host", "port", "username",
 	} {
 		flag := DumpCmd.Flags().Lookup(flagName)
-		if err := viper.BindPFlag(fmt.Sprintf("%s.%s", "pg_dump_options", flagName), flag); err != nil {
+		if err := viper.BindPFlag(fmt.Sprintf("%s.%s", "dump.pg_dump_options", flagName), flag); err != nil {
 			log.Fatal().Err(err).Msg("fatal")
 		}
 	}
 
-	viper.BindPFlag("test.test", DumpCmd.Flags().Lookup("test"))
-
-	viper.BindEnv("dbname", "PGDATABASE")
-	viper.BindEnv("host", "PGHOST")
+	viper.BindEnv("dump.pg_dump_options.dbname", "PGDATABASE")
+	viper.BindEnv("dump.pg_dump_options.host", "PGHOST")
 	//viper.BindEnv("dbname", "PGOPTIONS")
-	viper.BindEnv("port", "PGPORT")
-	viper.BindEnv("username", "PGUSER")
-}
-
-func initConfig() {
-	if cfgFile != "" {
-		viper.SetConfigFile(cfgFile)
-	} else {
-		home, err := os.UserConfigDir()
-		cobra.CheckErr(err)
-
-		viper.AddConfigPath(home)
-		viper.SetConfigType("yaml")
-		viper.SetConfigType("yml")
-		viper.SetConfigName(".greenmask")
-	}
-
-	viper.AutomaticEnv()
-
-	// Why is here err == nil ?
-	if err := viper.ReadInConfig(); err == nil {
-		fmt.Println("Using config file:", viper.ConfigFileUsed())
-	}
-
-	if err := viper.Unmarshal(&Config); err != nil {
-		log.Fatal().Err(err).Msg("fatal")
-	}
-
+	viper.BindEnv("dump.pg_dump_options.port", "PGPORT")
+	viper.BindEnv("dump.pg_dump_options.username", "PGUSER")
 }

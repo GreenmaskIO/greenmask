@@ -16,14 +16,16 @@ import (
 var TableDataDesc = "TABLE DATA"
 
 type Table struct {
-	Schema       string   `mapstructure:"schema"`
-	Name         string   `mapstructure:"name"`
-	Columns      []Column `mapstructure:"columns"`
-	HasMasker    bool
-	Oid          int
-	Owner        string
-	DumpId       int32
-	Dependencies []int32
+	Schema         string   `mapstructure:"schema"`
+	Name           string   `mapstructure:"name"`
+	Columns        []Column `mapstructure:"columns"`
+	HasMasker      bool
+	Oid            int
+	Owner          string
+	DumpId         int32
+	Dependencies   []int32
+	OriginalSize   int64
+	CompressedSize int64
 }
 
 func (t *Table) TransformTuple(data []byte) ([]byte, error) {
@@ -82,20 +84,27 @@ func (t *Table) GetTocEntry() (*toc.Entry, error) {
 	copyStmt := fmt.Sprintf("COPY %s.%s (%s) FROM stdin;\n", t.Schema, t.Name, strings.Join(columns, ", "))
 	fileName := fmt.Sprintf("%d.dat.gz", t.DumpId)
 
+	dependencies := make([]int32, 0)
+	if len(t.Dependencies) != 0 {
+		dependencies = t.Dependencies
+	}
+
 	return &toc.Entry{
 		CatalogId: toc.CatalogId{
 			Oid: toc.Oid(t.Oid),
 		},
-		DumpId:       t.DumpId,
-		Section:      toc.SectionData,
-		HadDumper:    1,
-		Tag:          &t.Name,
-		Namespace:    &t.Schema,
-		Owner:        &t.Owner,
-		Desc:         &TableDataDesc,
-		CopyStmt:     &copyStmt,
-		Dependencies: t.Dependencies,
-		NDeps:        int32(len(t.Dependencies)),
-		FileName:     &fileName,
+		DumpId:         t.DumpId,
+		Section:        toc.SectionData,
+		HadDumper:      1,
+		Tag:            &t.Name,
+		Namespace:      &t.Schema,
+		Owner:          &t.Owner,
+		Desc:           &TableDataDesc,
+		CopyStmt:       &copyStmt,
+		Dependencies:   dependencies,
+		NDeps:          int32(len(dependencies)),
+		FileName:       &fileName,
+		OriginalSize:   t.OriginalSize,
+		CompressedSize: t.CompressedSize,
 	}, nil
 }

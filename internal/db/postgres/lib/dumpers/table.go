@@ -1,14 +1,15 @@
 package dumpers
 
 import (
-	"compress/gzip"
 	"context"
 	"fmt"
+
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/domains"
 	"github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/toc"
 	"github.com/wwoytenko/greenfuscator/internal/storage"
+	"github.com/wwoytenko/greenfuscator/internal/utils"
 )
 
 type TableDumper struct {
@@ -22,14 +23,13 @@ func NewTableDumper(table domains.Table) *TableDumper {
 }
 
 func (td *TableDumper) Execute(ctx context.Context, tx pgx.Tx, st storage.Storager) (*toc.Entry, error) {
-
 	datFile, err := st.GetWriter(ctx, fmt.Sprintf("%d.dat.gz", td.table.DumpId))
 	if err != nil {
 		return nil, fmt.Errorf("cannot open data file: %w", err)
 	}
 	defer datFile.Close()
-	writer := gzip.NewWriter(datFile)
-	defer writer.Close()
+	gz := utils.NewGzipWriter(datFile)
+	defer gz.Close()
 
 	frontend := tx.Conn().PgConn().Frontend()
 	frontend.Send(&pgproto3.Query{
@@ -64,14 +64,18 @@ func (td *TableDumper) Execute(ctx context.Context, tx pgx.Tx, st storage.Storag
 				}
 			}
 
-			// TODO: Maybe you should check the count of written bytes
-			if _, err := writer.Write(tupleData); err != nil {
+			if _, err := gz.Write(tupleData); err != nil {
 				return nil, fmt.Errorf("cannot store data into dat file: %w", err)
 			}
 
 		case *pgproto3.CopyDone:
 		case *pgproto3.CommandComplete:
 		case *pgproto3.ReadyForQuery:
+			if err = gz.Flush(); err != nil {
+				return nil, fmt.Errorf("cannot flush writer: %w", err)
+			}
+			td.table.OriginalSize = gz.ReceivedBytes()
+			td.table.CompressedSize = gz.WrittenBytes()
 			return td.table.GetTocEntry()
 		case *pgproto3.ErrorResponse:
 			return nil, fmt.Errorf("error from postgres connection msg = %s code=%s", v.Message, v.Code)
