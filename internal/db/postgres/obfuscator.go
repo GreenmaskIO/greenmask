@@ -362,7 +362,6 @@ func (o *Obfuscator) RunBackup(ctx context.Context, tableConfig []domains.Table)
 	// Dump schema
 	options := *o.options
 	options.Format = "d"
-	options.Verbose = true
 	options.SchemaOnly = true
 
 	dumpDir, err := o.st.Getcwd(ctx)
