@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"fmt"
 	"os"
 
 	"github.com/rs/zerolog/log"
@@ -61,9 +60,8 @@ func initConfig() {
 
 	viper.AutomaticEnv()
 
-	// Why is here err == nil ?
-	if err := viper.ReadInConfig(); err == nil {
-		fmt.Println("Using config file:", viper.ConfigFileUsed())
+	if err := viper.ReadInConfig(); err != nil {
+		log.Fatal().Err(err).Msg("unable to read config file")
 	}
 
 	if err := viper.Unmarshal(&Config); err != nil {
