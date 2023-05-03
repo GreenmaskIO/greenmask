@@ -12,9 +12,3 @@ type DumpTask interface {
 	Execute(ctx context.Context, tx pgx.Tx, st storage.Storager) (*toc.Entry, error)
 	DebugInfo() string
 }
-
-type TaskStats struct {
-	ReceivedBytes int64
-	WrittenBytes  int64
-	TocEntry      *toc.Entry
-}

@@ -411,6 +411,7 @@ func (d *Dump) RunDump(ctx context.Context, opt *pgdump.Options, tableConfig []d
 
 	var largeObjects []*toc.Entry
 
+	// TODO: You should use pointer to dumpers.DumpTask instead
 	tasks := make(chan dumpers.DumpTask, d.pgDumpOptions.Jobs)
 	result := make(chan *toc.Entry, d.pgDumpOptions.Jobs)
 	defer close(result)
@@ -434,17 +435,15 @@ func (d *Dump) RunDump(ctx context.Context, opt *pgdump.Options, tableConfig []d
 			select {
 			case <-gtx.Done():
 				return gtx.Err()
-			default:
+			case tasks <- dumpers.NewTableDumper(table):
 			}
-			tasks <- dumpers.NewTableDumper(table)
 		}
 		for _, sequence := range sequenceList {
 			select {
 			case <-gtx.Done():
 				return gtx.Err()
-			default:
+			case tasks <- dumpers.NewSequenceDumper(sequence):
 			}
-			tasks <- dumpers.NewSequenceDumper(sequence)
 		}
 		return nil
 	})
@@ -552,35 +551,40 @@ func (d *Dump) dumpWorker(ctx context.Context, tasks <-chan dumpers.DumpTask, re
 	var setIsolationLevelQuery = fmt.Sprintf("SET TRANSACTION ISOLATION LEVEL %s", isolationLevel)
 	var setSnapshotQuery = fmt.Sprintf("SET TRANSACTION SNAPSHOT '%s'", d.pgDumpOptions.Snapshot)
 
-	for task := range tasks {
-		log.Debug().Msgf("worker %d: dumping %s", id, task.DebugInfo())
+	conn, err := pgx.Connect(ctx, d.dsn)
+	if err != nil {
+		return fmt.Errorf("cannot connecti to server: %w", err)
+	}
+	defer conn.Close(ctx)
+
+	tx, err := conn.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("cannot start transaction: %w", err)
+	}
+	defer tx.Rollback(ctx)
+
+	if !d.pgDumpOptions.NoSynchronizedSnapshots {
+		if _, err := tx.Exec(ctx, setIsolationLevelQuery); err != nil {
+			return fmt.Errorf("unable to set transaction isolation level: %w", err)
+		}
+
+		if _, err := tx.Exec(ctx, setSnapshotQuery); err != nil {
+			return fmt.Errorf("cannot import snapshot: %w", err)
+		}
+	}
+
+	for {
+		var task dumpers.DumpTask
 		select {
 		case <-ctx.Done():
 			log.Debug().Msgf("worker %d: dumping %s: existed due to cancelled context: %w", id, task.DebugInfo(), ctx.Err())
 			return ctx.Err()
-		default:
-		}
-		conn, err := pgx.Connect(ctx, d.dsn)
-		if err != nil {
-			return fmt.Errorf("cannot connecti to server: %w", err)
-		}
-		defer conn.Close(ctx)
-
-		tx, err := conn.Begin(ctx)
-		if err != nil {
-			return fmt.Errorf("cannot start transaction: %w", err)
-		}
-		defer tx.Rollback(ctx)
-
-		if !d.pgDumpOptions.NoSynchronizedSnapshots {
-			if _, err := tx.Exec(ctx, setIsolationLevelQuery); err != nil {
-				return fmt.Errorf("unable to set transaction isolation level: %w", err)
-			}
-
-			if _, err := tx.Exec(ctx, setSnapshotQuery); err != nil {
-				return fmt.Errorf("cannot import snapshot: %w", err)
+		case task = <-tasks:
+			if task == nil {
+				return nil
 			}
 		}
+		log.Debug().Msgf("worker %d: dumping %s", id, task.DebugInfo())
 
 		entry, err := task.Execute(ctx, tx, d.st)
 		if err != nil {
@@ -590,5 +594,4 @@ func (d *Dump) dumpWorker(ctx context.Context, tasks <-chan dumpers.DumpTask, re
 		log.Debug().Msgf("worker %d: %s: dumping is done", id, task.DebugInfo())
 	}
 
-	return nil
 }

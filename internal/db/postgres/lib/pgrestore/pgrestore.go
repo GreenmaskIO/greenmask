@@ -18,7 +18,7 @@ type PgRestore struct {
 	BinPath string
 }
 
-func NewPgDump(binPath string) *PgRestore {
+func NewPgRestore(binPath string) *PgRestore {
 	return &PgRestore{
 		BinPath: binPath,
 	}
@@ -38,6 +38,9 @@ func (pr *PgRestore) Run(ctx context.Context, options *Options) error {
 }
 
 type Options struct {
+	// Custom
+	DirPath string
+
 	// General options:
 	DbName   string `mapstructure:"dbname"`
 	FileName string `mapstructure:"file"` // --file=FILENAME
@@ -245,6 +248,8 @@ func (o *Options) GetParams() []string {
 	if o.Role != "" {
 		args = append(args, "--role", o.Role)
 	}
+
+	args = append(args, o.DirPath)
 
 	return args
 }

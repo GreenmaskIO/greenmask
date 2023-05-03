@@ -4,10 +4,15 @@ common:
     directory:
       path: "/home/vadim/tmp/pg_dump_test"
 
+restore:
+  pg_restore_options:
+    verbose: true
+    dbname: "host=localhost port=5432 user=postgres dbname=demo_restore"
+
 dump:
   pg_dump_options:
     verbose: true
-    dbname: "port=5432 user=vvoitenko dbname=test"
+    dbname: "host=localhost port=5432 user=postgres dbname=test"
 
   transformers:
     - schema: "public"
