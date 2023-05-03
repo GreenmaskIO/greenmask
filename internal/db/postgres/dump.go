@@ -18,6 +18,7 @@ import (
 	"github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/domains"
 	"github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/dumpers"
 	"github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/pgdump"
+	"github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/pgrestore"
 	"github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/toc"
 	"github.com/wwoytenko/greenfuscator/internal/storage"
 	"github.com/wwoytenko/greenfuscator/internal/transformers"
@@ -103,31 +104,27 @@ type TableDataRange struct {
 	MinBackupId int
 }
 
-type Obfuscator struct {
-	typeMap   map[string]string
-	dsn       string
-	conn      *pgx.Conn
-	backupId  int
-	options   *pgdump.Options
-	pgDump    *pgdump.PgDump
+type Dump struct {
+	typeMap          map[string]string
+	dsn              string
+	conn             *pgx.Conn
+	pgDumpOptions    *pgdump.Options
+	pgRestoreOptions *pgrestore.Options
+	binPath          string
+	//pgDump    *pgdump.PgDump
 	curDumpId int32
 	st        storage.Storager
 }
 
-func NewObfuscator(binPath string, options *pgdump.Options, st storage.Storager) *Obfuscator {
-	return &Obfuscator{
+func NewDump(binPath string, st storage.Storager) *Dump {
+	return &Dump{
 		typeMap: defaultTypeMap,
-		options: options,
-		pgDump:  pgdump.NewPgDump(binPath),
+		binPath: binPath,
 		st:      st,
 	}
 }
 
-func (o *Obfuscator) Connect(ctx context.Context) error {
-	dsn, err := o.options.GetPgDSN()
-	if err != nil {
-		return fmt.Errorf("cannot build connection string: %w", err)
-	}
+func (d *Dump) Connect(ctx context.Context, dsn string) error {
 
 	conn, err := pgx.Connect(ctx, dsn)
 	if err != nil {
@@ -139,12 +136,12 @@ func (o *Obfuscator) Connect(ctx context.Context) error {
 		return err
 	}
 
-	o.conn = conn
-	o.dsn = dsn
+	d.conn = conn
+	d.dsn = dsn
 	return nil
 }
 
-func (o *Obfuscator) sequenceList(ctx context.Context, tx pgx.Tx) ([]domains.Sequence, error) {
+func (d *Dump) sequenceList(ctx context.Context, tx pgx.Tx) ([]domains.Sequence, error) {
 	// TODO: Provide filter rules - exclude seq or schema, etc.
 	tablesListQuery := `
 		SELECT n.nspname                              as "Schema",
@@ -177,7 +174,7 @@ func (o *Obfuscator) sequenceList(ctx context.Context, tx pgx.Tx) ([]domains.Seq
 	defer rows.Close()
 	for rows.Next() {
 		sequence := domains.Sequence{}
-		sequence.DumpId = o.getDumpId()
+		sequence.DumpId = d.getDumpId()
 		if err := rows.Scan(&sequence.Schema, &sequence.Name,
 			&sequence.Owner, &sequence.IsCalled, &sequence.LastValue); err != nil {
 			return nil, fmt.Errorf("unnable scan data: %w", err)
@@ -188,13 +185,13 @@ func (o *Obfuscator) sequenceList(ctx context.Context, tx pgx.Tx) ([]domains.Seq
 	return sequences, nil
 }
 
-func (o *Obfuscator) startMainTx(ctx context.Context) (pgx.Tx, error) {
+func (d *Dump) startMainTx(ctx context.Context) (pgx.Tx, error) {
 	var isolationLevel = "REPEATABLE READ"
-	if o.options.SerializableDeferrable {
+	if d.pgDumpOptions.SerializableDeferrable {
 		isolationLevel = "SERIALIZABLE DEFERRABLE"
 	}
 
-	tx, err := o.conn.Begin(ctx)
+	tx, err := d.conn.Begin(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("unable to start transaction: %w", err)
 	}
@@ -206,16 +203,16 @@ func (o *Obfuscator) startMainTx(ctx context.Context) (pgx.Tx, error) {
 	}
 	rows.Close()
 
-	if o.options.Snapshot == "" {
+	if d.pgDumpOptions.Snapshot == "" {
 		log.Debug().Msg("performing snapshot export")
 		row := tx.QueryRow(ctx, "SELECT pg_export_snapshot()")
-		if err := row.Scan(&o.options.Snapshot); err != nil {
+		if err := row.Scan(&d.pgDumpOptions.Snapshot); err != nil {
 			tx.Rollback(ctx)
 			return nil, fmt.Errorf("cannot export snapshot: %w", err)
 		}
 	} else {
-		var setSnapshotQuery = fmt.Sprintf("SET TRANSACTION SNAPSHOT '%s'", o.options.Snapshot)
-		log.Debug().Msgf("performing %s snapshot import", o.options.Snapshot)
+		var setSnapshotQuery = fmt.Sprintf("SET TRANSACTION SNAPSHOT '%s'", d.pgDumpOptions.Snapshot)
+		log.Debug().Msgf("performing %s snapshot import", d.pgDumpOptions.Snapshot)
 		if _, err := tx.Exec(ctx, setSnapshotQuery); err != nil {
 			return nil, fmt.Errorf("cannot import snapshot: %w", err)
 			tx.Rollback(ctx)
@@ -225,12 +222,12 @@ func (o *Obfuscator) startMainTx(ctx context.Context) (pgx.Tx, error) {
 	return tx, nil
 }
 
-func (o *Obfuscator) getDumpId() int32 {
-	o.curDumpId++
-	return o.curDumpId
+func (d *Dump) getDumpId() int32 {
+	d.curDumpId++
+	return d.curDumpId
 }
 
-func (o *Obfuscator) tablesList(ctx context.Context, tx pgx.Tx, confTables []domains.Table) ([]domains.Table, error) {
+func (d *Dump) tablesList(ctx context.Context, tx pgx.Tx, confTables []domains.Table) ([]domains.Table, error) {
 	tablesListQuery := `
 		SELECT c.oid::TEXT::INT, 
 		       n.nspname                              as "Schema",
@@ -256,7 +253,7 @@ func (o *Obfuscator) tablesList(ctx context.Context, tx pgx.Tx, confTables []dom
 	defer rows.Close()
 	for rows.Next() {
 		table := domains.Table{}
-		table.DumpId = o.getDumpId()
+		table.DumpId = d.getDumpId()
 		if err := rows.Scan(&table.Oid, &table.Schema, &table.Name, &table.Owner); err != nil {
 			return nil, fmt.Errorf("unnable scan data: %w", err)
 		}
@@ -281,7 +278,7 @@ func (o *Obfuscator) tablesList(ctx context.Context, tx pgx.Tx, confTables []dom
 			tableConf = &confTables[confIdx]
 		}
 
-		columns, err := o.getTableColumns(ctx, tx, &tables[idx], tableConf)
+		columns, err := d.getTableColumns(ctx, tx, &tables[idx], tableConf)
 		if err != nil {
 			return nil, fmt.Errorf("unnable to fill table colimns: %w", err)
 		}
@@ -291,7 +288,7 @@ func (o *Obfuscator) tablesList(ctx context.Context, tx pgx.Tx, confTables []dom
 	return tables, nil
 }
 
-func (o *Obfuscator) getTableColumns(ctx context.Context, tx pgx.Tx, table *domains.Table, tableConf *domains.Table) ([]domains.Column, error) {
+func (d *Dump) getTableColumns(ctx context.Context, tx pgx.Tx, table *domains.Table, tableConf *domains.Table) ([]domains.Column, error) {
 	tableColumnsQuery := `
 		SELECT 
 		    a.attname,
@@ -341,15 +338,22 @@ func (o *Obfuscator) getTableColumns(ctx context.Context, tx pgx.Tx, table *doma
 	return columns, nil
 }
 
-func (o *Obfuscator) RunBackup(ctx context.Context, tableConfig []domains.Table) error {
+func (d *Dump) RunDump(ctx context.Context, opt *pgdump.Options, tableConfig []domains.Table) error {
 
 	startedAt := time.Now()
+	d.pgDumpOptions = opt
+	pgDump := pgdump.NewPgDump(d.binPath)
 
-	if err := o.Connect(ctx); err != nil {
+	dsn, err := d.pgDumpOptions.GetPgDSN()
+	if err != nil {
+		return fmt.Errorf("cannot build connection string: %w", err)
+	}
+
+	if err := d.Connect(ctx, dsn); err != nil {
 		return fmt.Errorf("cannot connect to db: %w", err)
 	}
 
-	tx, err := o.startMainTx(ctx)
+	tx, err := d.startMainTx(ctx)
 	if err != nil {
 		return fmt.Errorf("cannot prepare backup transaction: %w", err)
 	}
@@ -360,32 +364,32 @@ func (o *Obfuscator) RunBackup(ctx context.Context, tableConfig []domains.Table)
 	}()
 
 	// Dump schema
-	options := *o.options
+	options := *d.pgDumpOptions
 	options.Format = "d"
 	options.SchemaOnly = true
 
-	dumpDir, err := o.st.Getcwd(ctx)
+	dumpDir, err := d.st.Getcwd(ctx)
 	if err != nil {
 		return fmt.Errorf("cannot get current working directory: %w", err)
 	}
 	options.FileName = dumpDir
-	if err = o.pgDump.Run(ctx, &options); err != nil {
+	if err = pgDump.Run(ctx, &options); err != nil {
 		return err
 	}
 
 	log.Debug().Msg("renaming toc file")
-	if err := o.st.Rename(ctx, "toc.dat", "~toc.dat"); err != nil {
+	if err := d.st.Rename(ctx, "toc.dat", "~toc.dat"); err != nil {
 		return fmt.Errorf("cannot rename toc.dat file: %w", err)
 	}
 
 	log.Debug().Msg("reading schema section")
-	srcTocFile, err := o.st.GetReader(ctx, "~toc.dat")
+	srcTocFile, err := d.st.GetReader(ctx, "~toc.dat")
 	if err != nil {
 		return err
 	}
 	defer func() {
 		srcTocFile.Close()
-		if err := o.st.Delete(ctx, "~toc.dat", false); err != nil {
+		if err := d.st.Delete(ctx, "~toc.dat", false); err != nil {
 			log.Warn().Err(err).Msgf("unable to delete temp file")
 		}
 	}()
@@ -393,30 +397,30 @@ func (o *Obfuscator) RunBackup(ctx context.Context, tableConfig []domains.Table)
 	if err != nil {
 		return fmt.Errorf("error reading toc file: %w", err)
 	}
-	o.curDumpId = schemaToc.MaxDumpId + 1
+	d.curDumpId = schemaToc.MaxDumpId + 1
 
-	sequenceList, err := o.sequenceList(ctx, tx)
+	sequenceList, err := d.sequenceList(ctx, tx)
 	if err != nil {
 		return fmt.Errorf("cannot retreive sequence list: %w", err)
 	}
 
-	tablesList, err := o.tablesList(ctx, tx, tableConfig)
+	tablesList, err := d.tablesList(ctx, tx, tableConfig)
 	if err != nil {
 		return fmt.Errorf("cannot retreive table list: %w", err)
 	}
 
 	var largeObjects []*toc.Entry
 
-	tasks := make(chan dumpers.DumpTask, o.options.Jobs)
-	result := make(chan *toc.Entry, o.options.Jobs)
+	tasks := make(chan dumpers.DumpTask, d.pgDumpOptions.Jobs)
+	result := make(chan *toc.Entry, d.pgDumpOptions.Jobs)
 	defer close(result)
 
-	log.Debug().Msgf("planned %d workers", o.options.Jobs)
+	log.Debug().Msgf("planned %d workers", d.pgDumpOptions.Jobs)
 	eg, gtx := errgroup.WithContext(ctx)
-	for j := 0; j < o.options.Jobs; j++ {
+	for j := 0; j < d.pgDumpOptions.Jobs; j++ {
 		eg.Go(func(id int) func() error {
 			return func() error {
-				return o.dumpWorker(gtx, tasks, result, id+1)
+				return d.dumpWorker(gtx, tasks, result, id+1)
 			}
 		}(j))
 	}
@@ -479,13 +483,13 @@ func (o *Obfuscator) RunBackup(ctx context.Context, tableConfig []domains.Table)
 	}
 
 	log.Debug().Msg("merging toc entries")
-	mergedTocs, err := o.MergeTocEntries(schemaToc.GetEntries(), tocDataEntries)
+	mergedTocs, err := d.MergeTocEntries(schemaToc.GetEntries(), tocDataEntries)
 	if err != nil {
 		return fmt.Errorf("unable to merge TOC files: %w", err)
 	}
 
 	log.Debug().Msg("writing built toc file")
-	destTocFile, err := o.st.GetWriter(ctx, "toc.dat")
+	destTocFile, err := d.st.GetWriter(ctx, "toc.dat")
 	if err != nil {
 		return err
 	}
@@ -503,7 +507,7 @@ func (o *Obfuscator) RunBackup(ctx context.Context, tableConfig []domains.Table)
 	if err != nil {
 		return fmt.Errorf("unable build metadata: %w", err)
 	}
-	meta, err := o.st.GetWriter(ctx, "metadata.json")
+	meta, err := d.st.GetWriter(ctx, "metadata.json")
 	if err != nil {
 		return fmt.Errorf("unable to open metadata file: %w", err)
 	}
@@ -515,7 +519,7 @@ func (o *Obfuscator) RunBackup(ctx context.Context, tableConfig []domains.Table)
 	return nil
 }
 
-func (o *Obfuscator) MergeTocEntries(schema, data []*toc.Entry) ([]*toc.Entry, error) {
+func (d *Dump) MergeTocEntries(schema, data []*toc.Entry) ([]*toc.Entry, error) {
 	// TODO: Assign dependencies and sort entries in the same order
 	res := make([]*toc.Entry, 0, len(schema)+len(data))
 
@@ -540,13 +544,13 @@ func (o *Obfuscator) MergeTocEntries(schema, data []*toc.Entry) ([]*toc.Entry, e
 	return res, nil
 }
 
-func (o *Obfuscator) dumpWorker(ctx context.Context, tasks <-chan dumpers.DumpTask, result chan<- *toc.Entry, id int) error {
+func (d *Dump) dumpWorker(ctx context.Context, tasks <-chan dumpers.DumpTask, result chan<- *toc.Entry, id int) error {
 	var isolationLevel = "REPEATABLE READ"
-	if o.options.SerializableDeferrable {
+	if d.pgDumpOptions.SerializableDeferrable {
 		isolationLevel = "SERIALIZABLE DEFERRABLE"
 	}
 	var setIsolationLevelQuery = fmt.Sprintf("SET TRANSACTION ISOLATION LEVEL %s", isolationLevel)
-	var setSnapshotQuery = fmt.Sprintf("SET TRANSACTION SNAPSHOT '%s'", o.options.Snapshot)
+	var setSnapshotQuery = fmt.Sprintf("SET TRANSACTION SNAPSHOT '%s'", d.pgDumpOptions.Snapshot)
 
 	for task := range tasks {
 		log.Debug().Msgf("worker %d: dumping %s", id, task.DebugInfo())
@@ -556,7 +560,7 @@ func (o *Obfuscator) dumpWorker(ctx context.Context, tasks <-chan dumpers.DumpTa
 			return ctx.Err()
 		default:
 		}
-		conn, err := pgx.Connect(ctx, o.dsn)
+		conn, err := pgx.Connect(ctx, d.dsn)
 		if err != nil {
 			return fmt.Errorf("cannot connecti to server: %w", err)
 		}
@@ -568,7 +572,7 @@ func (o *Obfuscator) dumpWorker(ctx context.Context, tasks <-chan dumpers.DumpTa
 		}
 		defer tx.Rollback(ctx)
 
-		if !o.options.NoSynchronizedSnapshots {
+		if !d.pgDumpOptions.NoSynchronizedSnapshots {
 			if _, err := tx.Exec(ctx, setIsolationLevelQuery); err != nil {
 				return fmt.Errorf("unable to set transaction isolation level: %w", err)
 			}
@@ -578,7 +582,7 @@ func (o *Obfuscator) dumpWorker(ctx context.Context, tasks <-chan dumpers.DumpTa
 			}
 		}
 
-		entry, err := task.Execute(ctx, tx, o.st)
+		entry, err := task.Execute(ctx, tx, d.st)
 		if err != nil {
 			return err
 		}

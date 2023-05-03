@@ -1,12 +1,14 @@
 package main
 
 import (
-	"github.com/rs/zerolog/log"
+	"log"
+
 	"github.com/wwoytenko/greenfuscator/cmd/greenmask/cmd"
 )
 
 func main() {
+	log.SetFlags(0)
 	if err := cmd.Execute(); err != nil {
-		log.Fatal().Err(err).Msg("Fatal")
+		log.Fatalln(err)
 	}
 }

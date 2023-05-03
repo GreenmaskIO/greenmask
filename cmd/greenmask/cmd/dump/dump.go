@@ -6,7 +6,8 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/rs/zerolog/log"
+	"log"
+
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	pgDomains "github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/domains"
@@ -21,7 +22,7 @@ var (
 		Run: func(cmd *cobra.Command, args []string) {
 			rootSt, err := directory.NewDirectory(Config.Common.Storage.Directory.Path, 0750, 0650)
 			if err != nil {
-				log.Fatal().Err(err).Msg("error")
+				log.Fatal(err)
 			}
 
 			ctx, cancel := context.WithCancel(context.Background())
@@ -29,12 +30,12 @@ var (
 
 			st, err := rootSt.CreateDir(ctx, strconv.FormatInt(time.Now().UnixMilli(), 10))
 			if err != nil {
-				log.Fatal().Err(err).Msg("cannot create directory in storage")
+				log.Fatalf("cannot create directory in storage: %s", err)
 			}
-			pgObfuscator := postgres.NewObfuscator(Config.Common.BinPath, &Config.Dump.PgDumpOptions, st)
+			dump := postgres.NewDump(Config.Common.BinPath, st)
 
-			if err := pgObfuscator.RunBackup(ctx, Config.Dump.Transformers); err != nil {
-				log.Fatal().Err(err).Msg("cannot make a backup")
+			if err := dump.RunDump(ctx, &Config.Dump.PgDumpOptions, Config.Dump.Transformers); err != nil {
+				log.Fatalf("cannot make a backup: %s", err)
 			}
 		},
 	}
@@ -42,6 +43,7 @@ var (
 )
 
 func init() {
+	log.SetPrefix("")
 
 	// General options:
 	DumpCmd.Flags().StringP("file", "f", "", "output file or directory name")
@@ -69,6 +71,7 @@ func init() {
 	DumpCmd.Flags().BoolP("no-privileges", "X", false, "do not dump privileges (grant/revoke)")
 	DumpCmd.Flags().BoolP("disable-dollar-quoting", "", false, "disable dollar quoting, use SQL standard quoting")
 	DumpCmd.Flags().BoolP("disable-triggers", "", false, "disable triggers during data-only restore")
+	DumpCmd.Flags().BoolP("enable-row-security", "", false, "enable row security (dump only content user has access to)")
 	DumpCmd.Flags().StringSliceVarP(&Config.Dump.PgDumpOptions.ExcludeTableData, "exclude-table-data", "", []string{}, "do NOT dump data for the specified table(s)")
 	DumpCmd.Flags().StringP("extra-float-digits", "", "", "override default setting for extra_float_digits")
 	DumpCmd.Flags().BoolP("if-exists", "", false, "use IF EXISTS when dropping objects")
@@ -106,17 +109,17 @@ func init() {
 
 		"data-only", "blobs", "no-blobs", "clean", "create", "extension", "encoding", "schema", "exclude-schema",
 		"no-owner", "schema-only", "superuser", "table", "exclude-table", "no-privileges", "disable-dollar-quoting",
-		"disable-triggers", "exclude-table-data", "extra-float-digits", "if-exists", "include-foreign-data",
-		"load-via-partition-root", "no-comments", "no-publications", "no-security-labels", "no-subscriptions",
-		"no-synchronized-snapshots", "no-tablespaces", "no-toast-compression", "no-unlogged-table-data",
-		"on-conflict-do-nothing", "quote-all-identifiers", "section", "serializable-deferrable", "snapshot",
-		"strict-names", "use-set-session-authorization",
+		"disable-triggers", "enable-row-security", "exclude-table-data", "extra-float-digits", "if-exists",
+		"include-foreign-data", "load-via-partition-root", "no-comments", "no-publications", "no-security-labels",
+		"no-subscriptions", "no-synchronized-snapshots", "no-tablespaces", "no-toast-compression",
+		"no-unlogged-table-data", "on-conflict-do-nothing", "quote-all-identifiers", "section",
+		"serializable-deferrable", "snapshot", "strict-names", "use-set-session-authorization",
 
 		"dbname", "host", "port", "username",
 	} {
 		flag := DumpCmd.Flags().Lookup(flagName)
 		if err := viper.BindPFlag(fmt.Sprintf("%s.%s", "dump.pg_dump_options", flagName), flag); err != nil {
-			log.Fatal().Err(err).Msg("fatal")
+			log.Fatal(err)
 		}
 	}
 

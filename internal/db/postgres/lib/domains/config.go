@@ -4,6 +4,7 @@ import (
 	"sync"
 
 	"github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/pgdump"
+	"github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/pgrestore"
 )
 
 var (
@@ -19,8 +20,9 @@ func NewConfig() *Config {
 }
 
 type Config struct {
-	Common     Common `mapstructure:"common"`
-	Dump       Dump   `mapstructure:"dump"`
+	Common     Common  `mapstructure:"common"`
+	Dump       Dump    `mapstructure:"dump"`
+	Restore    Restore `mapstructure:"restore"`
 	configPath string
 }
 
@@ -41,4 +43,8 @@ type Directory struct {
 type Dump struct {
 	PgDumpOptions pgdump.Options `mapstructure:"pg_dump_options"`
 	Transformers  []Table        `mapstructure:"transformers"`
+}
+
+type Restore struct {
+	PgRestoreOptions pgrestore.Options `mapstructure:"pg_restore_options"`
 }

@@ -1,11 +1,13 @@
 package cmd
 
 import (
+	"log"
 	"os"
 
-	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+	"github.com/wwoytenko/greenfuscator/cmd/greenmask/cmd/list_dump"
+	"github.com/wwoytenko/greenfuscator/cmd/greenmask/cmd/restore"
 
 	"github.com/wwoytenko/greenfuscator/cmd/greenmask/cmd/dump"
 	pgDomains "github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/domains"
@@ -35,12 +37,13 @@ func init() {
 	// Removing short help flag from default
 	rootCmd.PersistentFlags().BoolP("help", "", false, "help for greenmask")
 	rootCmd.AddCommand(dump.DumpCmd)
-	rootCmd.AddCommand(dump.ListDumpCmd)
+	rootCmd.AddCommand(list_dump.ListDumpCmd)
+	rootCmd.AddCommand(restore.RestoreCmd)
 
 	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file")
 
 	if err := rootCmd.MarkPersistentFlagRequired("config"); err != nil {
-		log.Fatal().Err(err).Msg("fatal")
+		log.Fatal(err)
 	}
 
 }
@@ -61,11 +64,11 @@ func initConfig() {
 	viper.AutomaticEnv()
 
 	if err := viper.ReadInConfig(); err != nil {
-		log.Fatal().Err(err).Msg("unable to read config file")
+		log.Fatalf("unable to read config file: %s", err.Error())
 	}
 
 	if err := viper.Unmarshal(&Config); err != nil {
-		log.Fatal().Err(err).Msg("fatal")
+		log.Fatal(err)
 	}
 
 }
