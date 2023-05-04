@@ -553,23 +553,23 @@ func (d *Dump) dumpWorker(ctx context.Context, tasks <-chan dumpers.DumpTask, re
 
 	conn, err := pgx.Connect(ctx, d.dsn)
 	if err != nil {
-		return fmt.Errorf("cannot connecti to server: %w", err)
+		return fmt.Errorf("cannot connecti to server (worker %d): %w", id, err)
 	}
 	defer conn.Close(ctx)
 
 	tx, err := conn.Begin(ctx)
 	if err != nil {
-		return fmt.Errorf("cannot start transaction: %w", err)
+		return fmt.Errorf("cannot start transaction (worker %d): %w", id, err)
 	}
 	defer tx.Rollback(ctx)
 
 	if !d.pgDumpOptions.NoSynchronizedSnapshots {
 		if _, err := tx.Exec(ctx, setIsolationLevelQuery); err != nil {
-			return fmt.Errorf("unable to set transaction isolation level: %w", err)
+			return fmt.Errorf("unable to set transaction isolation level (worker %d): %w", id, err)
 		}
 
 		if _, err := tx.Exec(ctx, setSnapshotQuery); err != nil {
-			return fmt.Errorf("cannot import snapshot: %w", err)
+			return fmt.Errorf("cannot import snapshot (worker %d): %w", id, err)
 		}
 	}
 
@@ -577,21 +577,21 @@ func (d *Dump) dumpWorker(ctx context.Context, tasks <-chan dumpers.DumpTask, re
 		var task dumpers.DumpTask
 		select {
 		case <-ctx.Done():
-			log.Debug().Msgf("worker %d: dumping %s: existed due to cancelled context: %w", id, task.DebugInfo(), ctx.Err())
+			log.Debug().Msgf("existed due to cancelled context (worker %d restoring %s): %w", id, task.DebugInfo(), ctx.Err())
 			return ctx.Err()
 		case task = <-tasks:
 			if task == nil {
 				return nil
 			}
 		}
-		log.Debug().Msgf("worker %d: dumping %s", id, task.DebugInfo())
+		log.Debug().Msgf("dumping %s (worker %d)", task.DebugInfo(), id)
 
 		entry, err := task.Execute(ctx, tx, d.st)
 		if err != nil {
 			return err
 		}
 		result <- entry
-		log.Debug().Msgf("worker %d: %s: dumping is done", id, task.DebugInfo())
+		log.Debug().Msgf("dumping %s is done (worker %d)", task.DebugInfo(), id)
 	}
 
 }
