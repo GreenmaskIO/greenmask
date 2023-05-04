@@ -6,6 +6,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/rs/zerolog/log"
+	"github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/domains"
 	"github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/pgrestore"
 	"github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/restorers"
 	"github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/toc"
@@ -106,12 +107,22 @@ func (r *Restore) RunRestore(ctx context.Context, opt *pgrestore.Options, dumpId
 			}
 
 			if entry.Section == toc.SectionData {
-				task := restorers.NewTableRestorer(entry, backupSt)
-				select {
-				case <-gtx.Done():
-					return gtx.Err()
-				case tasks <- task:
+				var task restorers.RestoreTask
+				switch *entry.Desc {
+				case domains.TableDataDesc:
+					task = restorers.NewTableRestorer(entry, backupSt)
+				case domains.SequenceSetDesc:
+					task = restorers.NewSequenceRestorer(entry)
+				case domains.LargeObjectDesc:
+					log.Debug().Msgf("FIXME: Implement Large Object restoration")
+				}
 
+				if task != nil {
+					select {
+					case <-gtx.Done():
+						return gtx.Err()
+					case tasks <- task:
+					}
 				}
 			}
 
@@ -130,30 +141,40 @@ func (r *Restore) restoreWorker(ctx context.Context, tasks <-chan restorers.Rest
 	// TODO: You should execute TX for each COPY stmt
 	conn, err := pgx.Connect(ctx, r.dsn)
 	if err != nil {
-		return fmt.Errorf("cannot connect to server: %w", err)
+		return fmt.Errorf("cannot connect to server (worker %d): %w", id, err)
 	}
-	defer conn.Close(ctx)
-
-	tx, err := conn.Begin(ctx)
-	if err != nil {
-		return fmt.Errorf("cannot start transaction: %w", err)
-	}
-	defer tx.Rollback(ctx)
+	defer func() {
+		if err := conn.Close(ctx); err != nil {
+			log.Warn().Err(err).Msgf("cannot close worker connection to DB")
+		}
+	}()
 
 	for {
 		var task restorers.RestoreTask
 		select {
 		case <-ctx.Done():
-			log.Debug().Msgf("worker %d: restoring %s: existed due to cancelled context: %w", id, task.DebugInfo(), ctx.Err())
+			log.Debug().Msgf("existed due to cancelled context (worker %d restoring %s): %w", id, task.DebugInfo(), ctx.Err())
 			return ctx.Err()
 		case task = <-tasks:
 			if task == nil {
 				return nil
 			}
 		}
+		log.Debug().Msgf("restoring %s (worker %d)", task.DebugInfo(), id)
 
-		if err := task.Execute(ctx, tx); err != nil {
-			return fmt.Errorf("unable to perform restoration task: %w", err)
+		// Open new transaction for each task
+		tx, err := conn.Begin(ctx)
+		if err != nil {
+			return fmt.Errorf("cannot start transaction (worker %d restoring %s): %w", id, task.DebugInfo(), err)
+		}
+		if err = task.Execute(ctx, tx); err != nil {
+			if txErr := tx.Rollback(ctx); txErr != nil {
+				log.Warn().Msgf("cannot rollback transaction (worker %d restoring %s): %s", id, task.DebugInfo(), txErr)
+			}
+			return fmt.Errorf("unable to perform restoration task (worker %d restoring %s): %w", id, task.DebugInfo(), err)
+		}
+		if err = tx.Commit(ctx); err != nil {
+			return fmt.Errorf("cannot commit transaction (worker %d restoring %s): %w", id, task.DebugInfo(), err)
 		}
 	}
 }

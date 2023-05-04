@@ -9,7 +9,6 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgproto3"
-	"github.com/rs/zerolog/log"
 	"github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/toc"
 	"github.com/wwoytenko/greenfuscator/internal/storage"
 )
@@ -50,15 +49,21 @@ func (td *TableRestorer) Execute(ctx context.Context, tx pgx.Tx) error {
 		return err
 	}
 
+	// Prepare for streaming the copy data
 	process := true
 	for process {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		default:
+		}
+
 		msg, err := frontend.Receive()
 		if err != nil {
 			return fmt.Errorf("unable to perform copy query: %w", err)
 		}
 		switch v := msg.(type) {
 		case *pgproto3.CopyInResponse:
-			log.Debug().Msgf("received CopyInResponse %+v", v)
 			process = false
 		case *pgproto3.ErrorResponse:
 			return fmt.Errorf("error from postgres connection msg = %s code=%s", v.Message, v.Code)
@@ -67,9 +72,9 @@ func (td *TableRestorer) Execute(ctx context.Context, tx pgx.Tx) error {
 		}
 	}
 
+	// Streaming copy data from table dump
 	buf := make([]byte, 1024)
 	for {
-
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
@@ -82,7 +87,7 @@ func (td *TableRestorer) Execute(ctx context.Context, tx pgx.Tx) error {
 				frontend.Send(&pgproto3.CopyDone{})
 				break
 			}
-			return fmt.Errorf("cannot read line from file: %w", err)
+			return fmt.Errorf("error readimg from table dump: %w", err)
 		}
 
 		frontend.Send(&pgproto3.CopyData{
@@ -94,6 +99,7 @@ func (td *TableRestorer) Execute(ctx context.Context, tx pgx.Tx) error {
 		return err
 	}
 
+	// Perform post streaming handling
 	for {
 		select {
 		case <-ctx.Done():
