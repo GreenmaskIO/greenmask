@@ -44,7 +44,7 @@ func Run(ctx context.Context, logger *zerolog.Logger, name string, args ...strin
 				}
 				return err
 			}
-			logger.Debug().Msg(string(line))
+			logger.Info().Msg(string(line))
 		}
 	})
 
