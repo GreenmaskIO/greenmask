@@ -6,13 +6,14 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/rs/zerolog/log"
+	"golang.org/x/sync/errgroup"
+
 	"github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/domains"
 	"github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/pgrestore"
 	"github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/restorers"
 	"github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/toc"
 	"github.com/wwoytenko/greenfuscator/internal/storage"
 	"github.com/wwoytenko/greenfuscator/internal/storage/directory"
-	"golang.org/x/sync/errgroup"
 )
 
 type Restore struct {
@@ -30,6 +31,7 @@ func NewRestore(binPath string, st storage.Storager) *Restore {
 }
 
 func (r *Restore) RunRestore(ctx context.Context, opt *pgrestore.Options, dumpId string) error {
+	log.Info().Msgf("restoring dump %s", dumpId)
 	r.options = opt
 	dsn, err := r.options.GetPgDSN()
 	if err != nil {
@@ -37,18 +39,14 @@ func (r *Restore) RunRestore(ctx context.Context, opt *pgrestore.Options, dumpId
 	}
 	r.dsn = dsn
 	pgRestore := pgrestore.NewPgRestore(r.binPath)
-	files, dirs, err := r.st.ListDir(ctx)
-	log.Debug().Msgf("%s", files)
+
+	_, dirs, err := r.st.ListDir(ctx)
 	if err != nil {
 		return fmt.Errorf("cannot walk through directory: %w", err)
 	}
 	var backupSt storage.Storager
 	for _, item := range dirs {
-		dirName, err := item.Dirname(ctx)
-		if err != nil {
-			return err
-		}
-		if dirName == dumpId {
+		if dumpId == item.Dirname() {
 			backupSt = item
 			break
 		}

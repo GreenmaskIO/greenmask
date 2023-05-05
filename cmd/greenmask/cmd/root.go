@@ -1,16 +1,16 @@
 package cmd
 
 import (
-	"github.com/wwoytenko/greenfuscator/cmd/greenmask/cmd/delete_backup"
 	"log"
 	"os"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+
+	"github.com/wwoytenko/greenfuscator/cmd/greenmask/cmd/delete_backup"
+	"github.com/wwoytenko/greenfuscator/cmd/greenmask/cmd/dump"
 	"github.com/wwoytenko/greenfuscator/cmd/greenmask/cmd/list_dump"
 	"github.com/wwoytenko/greenfuscator/cmd/greenmask/cmd/restore"
-
-	"github.com/wwoytenko/greenfuscator/cmd/greenmask/cmd/dump"
 	pgDomains "github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/domains"
 )
 

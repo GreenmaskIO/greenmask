@@ -8,9 +8,9 @@ import (
 	"io"
 	"strings"
 
-	"github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/toc"
-
 	"github.com/rs/zerolog/log"
+
+	"github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/toc"
 )
 
 var TableDataDesc = "TABLE DATA"

@@ -2,6 +2,7 @@ package faker
 
 import (
 	"github.com/jaswdr/faker"
+
 	pgDomains "github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/domains"
 	"github.com/wwoytenko/greenfuscator/internal/domains"
 )

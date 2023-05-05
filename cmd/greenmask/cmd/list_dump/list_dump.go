@@ -10,6 +10,7 @@ import (
 
 	"github.com/olekukonko/tablewriter"
 	"github.com/spf13/cobra"
+
 	"github.com/wwoytenko/greenfuscator/cmd/greenmask/cmd/dump"
 	pgDomains "github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/domains"
 	"github.com/wwoytenko/greenfuscator/internal/storage"
@@ -61,21 +62,12 @@ func listDumps() error {
 	var data [][]string
 
 	for _, backup := range dirs {
-		dumpId, err := backup.Dirname(ctx)
+		dumpId := backup.Dirname()
+
+		var status = "done"
+		metadataFound, err := backup.Exists(ctx, "metadata.json")
 		if err != nil {
 			log.Fatal(err)
-		}
-		backupFiles, _, err := backup.ListDir(ctx)
-		if err != nil {
-			log.Fatalf("cannot walk through backup: %s", err.Error())
-		}
-		var metadataFound bool
-		var status = "done"
-		for _, fileName := range backupFiles {
-			if fileName == "metadata.json" {
-				metadataFound = true
-				break
-			}
 		}
 		if !metadataFound {
 			status = "unknown or failed"

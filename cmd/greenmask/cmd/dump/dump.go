@@ -3,17 +3,16 @@ package dump
 import (
 	"context"
 	"fmt"
+	"log"
 	"strconv"
 	"time"
 
-	"log"
-
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-	pgDomains "github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/domains"
-	"github.com/wwoytenko/greenfuscator/internal/storage/directory"
 
 	"github.com/wwoytenko/greenfuscator/internal/db/postgres"
+	pgDomains "github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/domains"
+	"github.com/wwoytenko/greenfuscator/internal/storage/directory"
 )
 
 var (

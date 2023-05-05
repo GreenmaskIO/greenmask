@@ -2,6 +2,7 @@ package transformers
 
 import (
 	"errors"
+
 	pgDomains "github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/domains"
 	"github.com/wwoytenko/greenfuscator/internal/domains"
 )

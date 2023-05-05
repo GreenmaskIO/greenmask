@@ -2,6 +2,7 @@ package domains
 
 import (
 	"fmt"
+
 	"github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/toc"
 )
 

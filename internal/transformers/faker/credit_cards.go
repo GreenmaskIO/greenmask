@@ -3,11 +3,13 @@ package faker
 import (
 	"errors"
 	"fmt"
+	"strings"
+
 	"github.com/jaswdr/faker"
+	"golang.org/x/exp/slices"
+
 	pgDomains "github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/domains"
 	"github.com/wwoytenko/greenfuscator/internal/domains"
-	"golang.org/x/exp/slices"
-	"strings"
 )
 
 type creditCardTransformerFunc func() string

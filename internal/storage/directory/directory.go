@@ -7,6 +7,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"syscall"
 
 	"github.com/wwoytenko/greenfuscator/internal/storage"
 )
@@ -37,8 +38,8 @@ func (d *Directory) Getcwd(ctx context.Context) (string, error) {
 	return d.cwd, nil
 }
 
-func (d *Directory) Dirname(ctx context.Context) (string, error) {
-	return filepath.Base(d.cwd), nil
+func (d *Directory) Dirname() string {
+	return filepath.Base(d.cwd)
 }
 
 func (d *Directory) ListDir(ctx context.Context) (files []string, dirs []storage.Storager, err error) {
@@ -105,4 +106,15 @@ func (d *Directory) CreateDir(ctx context.Context, dirName string) (storage.Stor
 
 func (d *Directory) Rename(ctx context.Context, original, new string) error {
 	return os.Rename(path.Join(d.cwd, original), path.Join(d.cwd, new))
+}
+
+func (d *Directory) Exists(ctx context.Context, fileName string) (bool, error) {
+	_, err := os.Stat(path.Join(d.cwd, fileName))
+	if err != nil {
+		if errors.Is(err, syscall.ENOENT) {
+			return false, nil
+		}
+		return false, err
+	}
+	return true, nil
 }

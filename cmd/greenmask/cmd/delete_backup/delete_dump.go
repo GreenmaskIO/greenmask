@@ -3,10 +3,12 @@ package delete_backup
 import (
 	"context"
 	"fmt"
+	"log"
+
 	"github.com/spf13/cobra"
+
 	"github.com/wwoytenko/greenfuscator/cmd/greenmask/cmd/dump"
 	"github.com/wwoytenko/greenfuscator/internal/storage/directory"
-	"log"
 )
 
 var (
@@ -41,11 +43,7 @@ func deleteDump(dumpId string) error {
 
 	var found bool
 	for _, b := range dirs {
-		id, err := b.Dirname(ctx)
-		if err != nil {
-			return err
-		}
-		if id == dumpId {
+		if dumpId == b.Dirname() {
 			found = true
 		}
 	}

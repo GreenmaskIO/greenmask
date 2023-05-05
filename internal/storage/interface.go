@@ -7,7 +7,7 @@ import (
 
 type Storager interface {
 	Getcwd(ctx context.Context) (string, error)
-	Dirname(ctx context.Context) (string, error)
+	Dirname() string
 	ListDir(ctx context.Context) (files []string, dirs []Storager, err error)
 	GetReader(ctx context.Context, filePath string) (reader io.ReadCloser, err error)
 	GetWriter(ctx context.Context, filePath string) (writer io.WriteCloser, err error)
@@ -15,4 +15,5 @@ type Storager interface {
 	Chdir(ctx context.Context, dirPath string) error
 	CreateDir(ctx context.Context, dirName string) (Storager, error)
 	Rename(ctx context.Context, original, new string) error
+	Exists(ctx context.Context, fileName string) (bool, error)
 }

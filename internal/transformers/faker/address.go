@@ -3,8 +3,9 @@ package faker
 import (
 	"errors"
 	"fmt"
-	pgDomains "github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/domains"
 	"strings"
+
+	pgDomains "github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/domains"
 
 	"github.com/jaswdr/faker"
 	"golang.org/x/exp/slices"

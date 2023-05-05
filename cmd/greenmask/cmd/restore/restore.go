@@ -4,20 +4,23 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"path"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-	pgDomains "github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/domains"
-	"github.com/wwoytenko/greenfuscator/internal/storage/directory"
+	"golang.org/x/exp/slices"
 
 	"github.com/wwoytenko/greenfuscator/internal/db/postgres"
+	pgDomains "github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/domains"
+	"github.com/wwoytenko/greenfuscator/internal/storage/directory"
 )
 
 var (
 	RestoreCmd = &cobra.Command{
-		Use:  "restore [flags] dumpId",
+		Use:  "restore [flags] dumpId|latest",
 		Args: cobra.ExactArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
+			var dumpId string
 			st, err := directory.NewDirectory(Config.Common.Storage.Directory.Path, 0750, 0650)
 			if err != nil {
 				log.Fatal(err)
@@ -26,9 +29,44 @@ var (
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
 
+			if args[0] == "latest" {
+				var backupNames []string
+
+				_, dirs, err := st.ListDir(ctx)
+				if err != nil {
+					log.Fatalf("cannot walk through directory: %s", err)
+				}
+				for _, dir := range dirs {
+					exists, err := dir.Exists(ctx, "metadata.json")
+					if err != nil {
+						log.Fatalf("cannot check file existence: %s", err)
+					}
+					if exists {
+						backupNames = append(backupNames, dir.Dirname())
+					}
+				}
+
+				slices.SortFunc(backupNames, func(a, b string) bool {
+					if a > b {
+						return true
+					}
+					return false
+				})
+				dumpId = backupNames[0]
+			} else {
+				dumpId = args[0]
+				exists, err := st.Exists(ctx, path.Join(dumpId, "metadata.json"))
+				if err != nil {
+					log.Fatalf("cannot check file existence: %s", err)
+				}
+				if !exists {
+					log.Fatalf("choose another dump %s is failed", dumpId)
+				}
+			}
+
 			restore := postgres.NewRestore(Config.Common.BinPath, st)
 
-			if err := restore.RunRestore(ctx, &Config.Restore.PgRestoreOptions, args[0]); err != nil {
+			if err := restore.RunRestore(ctx, &Config.Restore.PgRestoreOptions, dumpId); err != nil {
 				log.Fatal(err)
 			}
 		},
