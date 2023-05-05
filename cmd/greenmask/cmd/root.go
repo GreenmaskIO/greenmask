@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"github.com/wwoytenko/greenfuscator/cmd/greenmask/cmd/delete_backup"
 	"log"
 	"os"
 
@@ -39,6 +40,7 @@ func init() {
 	rootCmd.AddCommand(dump.DumpCmd)
 	rootCmd.AddCommand(list_dump.ListDumpCmd)
 	rootCmd.AddCommand(restore.RestoreCmd)
+	rootCmd.AddCommand(delete_backup.DeleteCmd)
 
 	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file")
 

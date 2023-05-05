@@ -12,7 +12,7 @@ restore:
 dump:
   pg_dump_options:
     verbose: true
-    dbname: "host=localhost port=5432 user=postgres dbname=test"
+    dbname: "host=localhost port=5432 user=postgres dbname=demo"
 
   transformers:
     - schema: "public"
