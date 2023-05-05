@@ -27,8 +27,10 @@ type Config struct {
 }
 
 type Common struct {
-	BinPath string  `mapstructure:"bin_path"`
-	Storage Storage `mapstructure:"storage"`
+	LogFormat string  `mapstructure:"log-format"`
+	LogLevel  string  `mapstructure:"log-level"`
+	BinPath   string  `mapstructure:"bin_path" json:"bin_path,omitempty"`
+	Storage   Storage `mapstructure:"storage" json:"storage"`
 }
 
 type Storage struct {

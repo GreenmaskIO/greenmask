@@ -1,4 +1,4 @@
-package utils
+package count_writer
 
 import (
 	"compress/gzip"

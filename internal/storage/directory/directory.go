@@ -49,7 +49,11 @@ func (d *Directory) ListDir(ctx context.Context) (files []string, dirs []storage
 	}
 	for _, entry := range entries {
 		if entry.IsDir() {
-			dirs = append(dirs, &Directory{cwd: path.Join(d.cwd, entry.Name())})
+			dirs = append(dirs, &Directory{
+				cwd:      path.Join(d.cwd, entry.Name()),
+				dirMode:  d.dirMode,
+				fileMode: d.fileMode,
+			})
 		} else {
 			files = append(files, entry.Name())
 		}

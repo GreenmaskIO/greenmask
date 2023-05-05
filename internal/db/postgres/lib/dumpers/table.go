@@ -10,7 +10,7 @@ import (
 	"github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/domains"
 	"github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/toc"
 	"github.com/wwoytenko/greenfuscator/internal/storage"
-	"github.com/wwoytenko/greenfuscator/internal/utils"
+	"github.com/wwoytenko/greenfuscator/internal/utils/count_writer"
 )
 
 type TableDumper struct {
@@ -29,7 +29,7 @@ func (td *TableDumper) Execute(ctx context.Context, tx pgx.Tx, st storage.Storag
 		return nil, fmt.Errorf("cannot open data file: %w", err)
 	}
 	defer datFile.Close()
-	gz := utils.NewGzipWriter(datFile)
+	gz := count_writer.NewGzipWriter(datFile)
 	defer gz.Close()
 
 	frontend := tx.Conn().PgConn().Frontend()

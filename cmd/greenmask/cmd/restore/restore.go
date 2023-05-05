@@ -13,6 +13,7 @@ import (
 	"github.com/wwoytenko/greenfuscator/internal/db/postgres"
 	pgDomains "github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/domains"
 	"github.com/wwoytenko/greenfuscator/internal/storage/directory"
+	"github.com/wwoytenko/greenfuscator/internal/utils/logger"
 )
 
 var (
@@ -21,6 +22,11 @@ var (
 		Args: cobra.ExactArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			var dumpId string
+
+			if err := logger.SetLogLevel(Config.Common.LogLevel, Config.Common.LogFormat); err != nil {
+				log.Fatal(err)
+			}
+
 			st, err := directory.NewDirectory(Config.Common.Storage.Directory.Path, 0750, 0650)
 			if err != nil {
 				log.Fatal(err)

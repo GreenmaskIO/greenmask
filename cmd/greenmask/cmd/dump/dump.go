@@ -13,12 +13,17 @@ import (
 	"github.com/wwoytenko/greenfuscator/internal/db/postgres"
 	pgDomains "github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/domains"
 	"github.com/wwoytenko/greenfuscator/internal/storage/directory"
+	"github.com/wwoytenko/greenfuscator/internal/utils/logger"
 )
 
 var (
 	DumpCmd = &cobra.Command{
 		Use: "dump",
 		Run: func(cmd *cobra.Command, args []string) {
+			if err := logger.SetLogLevel(Config.Common.LogLevel, Config.Common.LogFormat); err != nil {
+				log.Fatal(err)
+			}
+
 			rootSt, err := directory.NewDirectory(Config.Common.Storage.Directory.Path, 0750, 0650)
 			if err != nil {
 				log.Fatal(err)
@@ -42,8 +47,6 @@ var (
 )
 
 func init() {
-	log.SetPrefix("")
-
 	// General options:
 	DumpCmd.Flags().StringP("file", "f", "", "output file or directory name")
 	DumpCmd.Flags().IntP("jobs", "j", 1, "use this many parallel jobs to dump")
@@ -98,10 +101,6 @@ func init() {
 	DumpCmd.Flags().IntP("port", "p", 5432, "database server port number")
 	DumpCmd.Flags().StringP("username", "U", "postgres", "connect as specified database user")
 	DumpCmd.Flags().StringP("test", "", "postgres", "connect as specified database user")
-
-	//if err := DumpCmd.MarkFlagRequired("file"); err != nil {
-	//	log.Fatal().Err(err).Msg("fatal")
-	//}
 
 	for _, flagName := range []string{
 		"file", "jobs", "verbose", "compress", "dbname", "host", "username", "lock-wait-timeout", "no-sync",

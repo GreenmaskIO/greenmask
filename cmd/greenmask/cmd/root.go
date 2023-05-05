@@ -1,9 +1,11 @@
 package cmd
 
 import (
+	"fmt"
 	"log"
 	"os"
 
+	"github.com/rs/zerolog"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
@@ -34,17 +36,42 @@ func Execute() error {
 }
 
 func init() {
+	log.SetFlags(0)
 	cobra.OnInitialize(initConfig)
 	// Removing short help flag from default
 	rootCmd.PersistentFlags().BoolP("help", "", false, "help for greenmask")
+	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file ")
+	rootCmd.PersistentFlags().StringP("log-format", "", "text", "logging format [plain|text]")
+	rootCmd.PersistentFlags().StringP("log-level", "", zerolog.LevelInfoValue,
+		fmt.Sprintf(
+			"logging level %s|%s|%s",
+			zerolog.LevelDebugValue,
+			zerolog.LevelInfoValue,
+			zerolog.LevelWarnValue,
+		),
+	)
+
 	rootCmd.AddCommand(dump.DumpCmd)
 	rootCmd.AddCommand(list_dump.ListDumpCmd)
 	rootCmd.AddCommand(restore.RestoreCmd)
 	rootCmd.AddCommand(delete_backup.DeleteCmd)
 
-	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file")
-
 	if err := rootCmd.MarkPersistentFlagRequired("config"); err != nil {
+		log.Fatal(err)
+	}
+
+	if err := viper.BindPFlag("common.log-format", rootCmd.PersistentFlags().Lookup("log-format")); err != nil {
+		log.Fatal(err)
+	}
+
+	if err := viper.BindPFlag("common.log-level", rootCmd.PersistentFlags().Lookup("log-level")); err != nil {
+		log.Fatal(err)
+	}
+
+	if err := viper.BindEnv("common.log-level", "LOG_LEVEL"); err != nil {
+		log.Fatal(err)
+	}
+	if err := viper.BindEnv("common.log-format", "LOG_FORMAT"); err != nil {
 		log.Fatal(err)
 	}
 

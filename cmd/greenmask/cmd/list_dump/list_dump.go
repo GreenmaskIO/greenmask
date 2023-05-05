@@ -15,22 +15,24 @@ import (
 	pgDomains "github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/domains"
 	"github.com/wwoytenko/greenfuscator/internal/storage"
 	"github.com/wwoytenko/greenfuscator/internal/storage/directory"
+	"github.com/wwoytenko/greenfuscator/internal/utils/logger"
 )
 
 var (
 	ListDumpCmd = &cobra.Command{
 		Use: "list-dump",
 		Run: func(cmd *cobra.Command, args []string) {
+			if err := logger.SetLogLevel(Config.Common.LogLevel, Config.Common.LogFormat); err != nil {
+				log.Fatal(err)
+			}
+
 			if err := listDumps(); err != nil {
 				log.Fatal(err)
 			}
 		},
 	}
+	Config = pgDomains.NewConfig()
 )
-
-func init() {
-	log.SetPrefix("")
-}
 
 func SizePretty(b int64) string {
 	const unit = 1024

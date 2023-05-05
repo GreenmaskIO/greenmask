@@ -3,13 +3,13 @@ package pgdump
 import (
 	"context"
 	"fmt"
-	"os"
-	"os/exec"
 	"path"
 	"strconv"
 	"strings"
 
 	"github.com/rs/zerolog/log"
+
+	"github.com/wwoytenko/greenfuscator/internal/utils/cmd_runner"
 )
 
 const pgDumpExecutable = "pg_dump"
@@ -26,15 +26,7 @@ func NewPgDump(binPath string) *PgDump {
 
 func (pd *PgDump) Run(ctx context.Context, options *Options) error {
 	log.Debug().Msgf("pg_dump: %s %s\n", path.Join(pd.BinPath, pgDumpExecutable), strings.Join(options.GetParams(), " "))
-	execOptions := options.GetParams()
-	cmd := exec.CommandContext(ctx, path.Join(pd.BinPath, pgDumpExecutable), execOptions...)
-	cmd.Stderr = os.Stderr
-	cmd.Stdout = os.Stdout
-	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("pg_dump runtime error: %w", err)
-	}
-
-	return nil
+	return cmd_runner.Run(ctx, &log.Logger, path.Join(pd.BinPath, pgDumpExecutable), options.GetParams()...)
 }
 
 type Options struct {
