@@ -72,7 +72,7 @@ func (r *Restore) RunRestore(ctx context.Context, opt *pgrestore.Options, dumpId
 	options.Section = "pre-data"
 	options.DirPath = dirname
 	if err = pgRestore.Run(ctx, &options); err != nil {
-		return fmt.Errorf("cannot restore pre-data section: %w", err)
+		return fmt.Errorf("cannot restore pre-data section using pg_restore: %w", err)
 	}
 
 	tocFile, err := backupSt.GetReader(ctx, "toc.dat")
@@ -130,6 +130,13 @@ func (r *Restore) RunRestore(ctx context.Context, opt *pgrestore.Options, dumpId
 
 	if err = eg.Wait(); err != nil {
 		return fmt.Errorf("at least one worker exited with error: %w", err)
+	}
+
+	options = *opt
+	options.Section = "post-data"
+	options.DirPath = dirname
+	if err = pgRestore.Run(ctx, &options); err != nil {
+		return fmt.Errorf("cannot restore post-data section using pg_restore: %w", err)
 	}
 
 	return nil
