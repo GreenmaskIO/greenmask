@@ -17,6 +17,7 @@ type Sequence struct {
 	LastValue    int64
 	Dependencies []int32
 	IsCalled     bool
+	ExcludeData  bool
 }
 
 func (s *Sequence) GetTocEntry() (*toc.Entry, error) {

@@ -47,6 +47,9 @@ var (
 )
 
 // TODO: Option that currently does not implemented:
+//   - extension
+//   - encoding
+//   - disable-triggers
 //   - lock-wait-timeout
 //   - no-sync
 //   - data-only

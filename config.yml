@@ -22,6 +22,7 @@ dump:
 #      - "public.cards_*"
     jobs: 5
 #    load-via-partition-root: true
+    exclude-table-data: "public.test1_id_seq"
 
   transformers:
     - schema: "public"

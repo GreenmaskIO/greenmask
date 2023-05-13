@@ -8,6 +8,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"sync/atomic"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -98,12 +99,6 @@ var defaultTypeMap = map[string]string{
 	"xml":                         "",
 }
 
-type TableDataRange struct {
-	TablesOrder []string
-	MaxBackupId int
-	MinBackupId int
-}
-
 type Dump struct {
 	typeMap          map[string]string
 	dsn              string
@@ -113,6 +108,8 @@ type Dump struct {
 	binPath          string
 	curDumpId        int32
 	st               storage.Storager
+	dumpTaskCount    int
+	allTaskPushed    bool
 }
 
 func NewDump(binPath string, st storage.Storager) *Dump {
@@ -229,13 +226,14 @@ func (d *Dump) objectList(ctx context.Context, tx pgx.Tx, confTables []domains.T
 		switch relKind {
 		case 'S':
 			sequences = append(sequences, &domains.Sequence{
-				Name:      name,
-				Schema:    schemaName,
-				Oid:       oid,
-				Owner:     owner,
-				DumpId:    d.getDumpId(),
-				LastValue: lastVal,
-				IsCalled:  isCalled,
+				Name:        name,
+				Schema:      schemaName,
+				Oid:         oid,
+				Owner:       owner,
+				DumpId:      d.getDumpId(),
+				LastValue:   lastVal,
+				IsCalled:    isCalled,
+				ExcludeData: excludeData,
 			})
 		case 'r':
 			fallthrough
@@ -315,7 +313,7 @@ func (d *Dump) startMainTx(ctx context.Context) (pgx.Tx, error) {
 }
 
 func (d *Dump) getDumpId() int32 {
-	d.curDumpId++
+	atomic.AddInt32(&d.curDumpId, 1)
 	return d.curDumpId
 }
 
@@ -408,19 +406,28 @@ func (d *Dump) RunDump(ctx context.Context, opt *pgdump.Options, tableConfig []d
 	eg.Go(func() error {
 		defer close(tasks)
 		for _, table := range tablesList {
+			if table.ExcludeData {
+				continue
+			}
 			select {
 			case <-gtx.Done():
 				return gtx.Err()
 			case tasks <- dumpers.NewTableDumper(*table):
 			}
+			d.dumpTaskCount++
 		}
 		for _, sequence := range sequenceList {
+			if sequence.ExcludeData {
+				continue
+			}
 			select {
 			case <-gtx.Done():
 				return gtx.Err()
 			case tasks <- dumpers.NewSequenceDumper(*sequence):
 			}
+			d.dumpTaskCount++
 		}
+		d.allTaskPushed = true
 		return nil
 	})
 
@@ -429,7 +436,7 @@ func (d *Dump) RunDump(ctx context.Context, opt *pgdump.Options, tableConfig []d
 	eg.Go(func() error {
 		tables := make([]*toc.Entry, 0, len(tablesList))
 		sequences := make([]*toc.Entry, 0, len(sequenceList))
-		for i := 0; i < len(tablesList)+len(sequenceList)+len(largeObjects); i++ {
+		for i := 0; !d.allTaskPushed || i < d.dumpTaskCount; i++ {
 			select {
 			case <-gtx.Done():
 				return gtx.Err()
