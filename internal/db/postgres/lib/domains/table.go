@@ -16,20 +16,25 @@ import (
 var TableDataDesc = "TABLE DATA"
 
 type Table struct {
-	Schema         string   `mapstructure:"schema"`
-	Name           string   `mapstructure:"name"`
-	Columns        []Column `mapstructure:"columns"`
-	HasMasker      bool
-	Oid            int
-	Owner          string
-	DumpId         int32
-	Dependencies   []int32
-	OriginalSize   int64
-	CompressedSize int64
+	Schema               string   `mapstructure:"schema"`
+	Name                 string   `mapstructure:"name"`
+	Columns              []Column `mapstructure:"columns"`
+	HasTransformer       bool
+	Oid                  int
+	Owner                string
+	RelKind              rune
+	RootPtName           string
+	RootPtSchema         string
+	ExcludeData          bool
+	DumpId               int32
+	Dependencies         []int32
+	OriginalSize         int64
+	CompressedSize       int64
+	LoadViaPartitionRoot bool
 }
 
 func (t *Table) TransformTuple(data []byte) ([]byte, error) {
-	if !t.HasMasker {
+	if !t.HasTransformer {
 		log.Warn().Msgf("called transformer for table %s.%s though it is not defined in config. maybe bug", t.Schema, t.Name)
 		return data, nil
 	}
@@ -81,7 +86,17 @@ func (t *Table) GetTocEntry() (*toc.Entry, error) {
 		columns = append(columns, column.Name)
 	}
 
-	copyStmt := fmt.Sprintf("COPY %s.%s (%s) FROM stdin;\n", t.Schema, t.Name, strings.Join(columns, ", "))
+	var query = "COPY %s.%s (%s) FROM stdin;\n"
+	var schemaName, tableName string
+	if t.LoadViaPartitionRoot {
+		schemaName = t.RootPtSchema
+		tableName = t.RootPtName
+	} else {
+		schemaName = t.Schema
+		tableName = t.Name
+	}
+	copyStmt := fmt.Sprintf(query, schemaName, tableName, strings.Join(columns, ", "))
+
 	fileName := fmt.Sprintf("%d.dat.gz", t.DumpId)
 
 	dependencies := make([]int32, 0)

@@ -12,11 +12,11 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/rs/zerolog/log"
-	"golang.org/x/exp/slices"
 	"golang.org/x/sync/errgroup"
 
 	"github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/domains"
 	"github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/dumpers"
+	"github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/pg_catalog"
 	"github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/pgdump"
 	"github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/pgrestore"
 	"github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/toc"
@@ -111,9 +111,8 @@ type Dump struct {
 	pgDumpOptions    *pgdump.Options
 	pgRestoreOptions *pgrestore.Options
 	binPath          string
-	//pgDump    *pgdump.PgDump
-	curDumpId int32
-	st        storage.Storager
+	curDumpId        int32
+	st               storage.Storager
 }
 
 func NewDump(binPath string, st storage.Storager) *Dump {
@@ -141,48 +140,141 @@ func (d *Dump) Connect(ctx context.Context, dsn string) error {
 	return nil
 }
 
-func (d *Dump) sequenceList(ctx context.Context, tx pgx.Tx) ([]domains.Sequence, error) {
-	// TODO: Provide filter rules - exclude seq or schema, etc.
-	tablesListQuery := `
-		SELECT n.nspname                              as "Schema",
-			   c.relname                              as "Name",
-			   pg_catalog.pg_get_userbyid(c.relowner) as "Owner",
-			   CASE
-				   WHEN pg_sequence_last_value(c.oid::regclass) ISNULL THEN
-					   FALSE
-				   ELSE
-					   TRUE
-				   END                                AS "IsCalled",
-			coalesce(pg_sequence_last_value(c.oid::regclass), s.seqstart) AS "LastVal"
-		FROM pg_catalog.pg_class c
-				 JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
-				 JOIN pg_catalog.pg_sequence s ON c.oid = s.seqrelid
-		WHERE c.relkind IN ('S', '')
-		  AND n.nspname <> 'pg_catalog'
-		  AND n.nspname !~ '^pg_toast'
-		  AND n.nspname <> 'information_schema'
-		ORDER BY 1, 2;
+func (d *Dump) setTableColumnsTransformers(ctx context.Context, tx pgx.Tx, table *domains.Table) error {
+	tableColumnsQuery := `
+		SELECT 
+		    a.attname,
+		  	pg_catalog.format_type(a.atttypid, a.atttypmod),
+		  	a.attnotnull
+		FROM pg_catalog.pg_attribute a
+		WHERE a.attrelid = $1 AND a.attnum > 0 AND NOT a.attisdropped
+		ORDER BY a.attnum
 	`
 
-	rows, err := tx.Query(ctx, tablesListQuery)
+	cfg := make(map[string]domains.Column, 0)
+	for _, c := range table.Columns {
+		cfg[c.Name] = c
+	}
+
+	rows, err := tx.Query(ctx, tableColumnsQuery, table.Oid)
 	if err != nil {
-		return nil, fmt.Errorf("perform query: %w", err)
+		return fmt.Errorf("perform query: %w", err)
+	}
+	columns := make([]domains.Column, 0)
+	for rows.Next() {
+		column := domains.Column{}
+		if err = rows.Scan(&column.Name, &column.Type, &column.NotNull); err != nil {
+			return fmt.Errorf("cannot scan column: %w", err)
+		}
+
+		if c, ok := cfg[column.Name]; ok {
+			transformerConf := c.TransformConf
+			makeTransformer, ok := transformers.TransformerMap[transformerConf.Name]
+			if !ok {
+				return fmt.Errorf("unnable to find transformer with name %s", transformerConf.Name)
+			}
+			column.TransformConf = transformerConf
+			transformer, err := makeTransformer.NewTransformer(c.ColumnMeta, c.TransformConf.Params)
+			if err != nil {
+				return fmt.Errorf("unable to init transformer \"%s\": %w", transformerConf.Name, err)
+			}
+			column.Transformer = transformer
+			table.HasTransformer = true
+		}
+
+		columns = append(columns, column)
+	}
+
+	table.Columns = columns
+	return nil
+}
+
+func (d *Dump) objectList(ctx context.Context, tx pgx.Tx, confTables []domains.Table) ([]*domains.Table, []*domains.Sequence, error) {
+
+	// making table map that will be used for merging pg catalog data and settings from config
+	cfg := make(map[string]domains.Table, 0)
+	for _, item := range confTables {
+		cfg[fmt.Sprintf("%s.%s", item.Schema, item.Name)] = item
+	}
+
+	// Building relation search query using regexp adaptation rules and pre-defined query templates
+	query, err := pg_catalog.BuildTableSearchQuery(d.pgDumpOptions.Table, d.pgDumpOptions.ExcludeTable,
+		d.pgDumpOptions.ExcludeTableData, d.pgDumpOptions.IncludeForeignData, d.pgDumpOptions.Schema,
+		d.pgDumpOptions.ExcludeSchema)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	rows, err := tx.Query(ctx, query)
+	if err != nil {
+		return nil, nil, fmt.Errorf("perform query: %w", err)
 	}
 
 	// Generate table objects
-	sequences := make([]domains.Sequence, 0)
+	sequences := make([]*domains.Sequence, 0)
+	tables := make([]*domains.Table, 0)
 	defer rows.Close()
 	for rows.Next() {
-		sequence := domains.Sequence{}
-		sequence.DumpId = d.getDumpId()
-		if err := rows.Scan(&sequence.Schema, &sequence.Name,
-			&sequence.Owner, &sequence.IsCalled, &sequence.LastValue); err != nil {
-			return nil, fmt.Errorf("unnable scan data: %w", err)
+		var oid int
+		var lastVal int64
+		var schemaName, name, owner, rootPtName, rootPtSchema string
+		var relKind rune
+		var excludeData, isCalled bool
+
+		if err = rows.Scan(&oid, &schemaName, &name, &owner, &relKind,
+			&rootPtSchema, &rootPtName, &excludeData, &isCalled, &lastVal,
+		); err != nil {
+			return nil, nil, fmt.Errorf("unnable scan data: %w", err)
 		}
-		sequences = append(sequences, sequence)
+		switch relKind {
+		case 'S':
+			sequences = append(sequences, &domains.Sequence{
+				Name:      name,
+				Schema:    schemaName,
+				Oid:       oid,
+				Owner:     owner,
+				DumpId:    d.getDumpId(),
+				LastValue: lastVal,
+				IsCalled:  isCalled,
+			})
+		case 'r':
+			fallthrough
+		case 'p':
+			fallthrough
+		case 'f':
+			var columns []domains.Column
+			t, ok := cfg[fmt.Sprintf("%s.%s", schemaName, name)]
+			if ok {
+				columns = t.Columns
+			}
+			table := &domains.Table{
+				Oid:                  oid,
+				Name:                 name,
+				Schema:               schemaName,
+				Columns:              columns,
+				Owner:                owner,
+				DumpId:               d.getDumpId(),
+				RelKind:              relKind,
+				RootPtSchema:         rootPtSchema,
+				RootPtName:           rootPtName,
+				ExcludeData:          excludeData,
+				LoadViaPartitionRoot: d.pgDumpOptions.LoadViaPartitionRoot,
+			}
+
+			tables = append(tables, table)
+		default:
+			return nil, nil, fmt.Errorf("unknown relkind \"%s\"", relKind)
+		}
 	}
 
-	return sequences, nil
+	// Assign columns and transformers for table
+	for _, table := range tables {
+		if err := d.setTableColumnsTransformers(ctx, tx, table); err != nil {
+			return nil, nil, fmt.Errorf("unable to set table columns: %w", err)
+		}
+	}
+
+	return tables, sequences, nil
 }
 
 func (d *Dump) startMainTx(ctx context.Context) (pgx.Tx, error) {
@@ -225,117 +317,6 @@ func (d *Dump) startMainTx(ctx context.Context) (pgx.Tx, error) {
 func (d *Dump) getDumpId() int32 {
 	d.curDumpId++
 	return d.curDumpId
-}
-
-func (d *Dump) tablesList(ctx context.Context, tx pgx.Tx, confTables []domains.Table) ([]domains.Table, error) {
-	tablesListQuery := `
-		SELECT c.oid::TEXT::INT, 
-		       n.nspname                              as "Schema",
-			   c.relname                              as "Name",
-			   pg_catalog.pg_get_userbyid(c.relowner) as "Owner"
-		FROM pg_catalog.pg_class c
-				 LEFT JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
-				 LEFT JOIN pg_catalog.pg_am am ON am.oid = c.relam
-		WHERE c.relkind IN ('r', 'p', '')
-		  AND n.nspname <> 'pg_catalog'
-		  AND n.nspname !~ '^pg_toast'
-		  AND n.nspname <> 'information_schema'
-		ORDER BY 1, 2;
-	`
-
-	rows, err := tx.Query(ctx, tablesListQuery)
-	if err != nil {
-		return nil, fmt.Errorf("perform query: %w", err)
-	}
-
-	// Generate table objects
-	tables := make([]domains.Table, 0)
-	defer rows.Close()
-	for rows.Next() {
-		table := domains.Table{}
-		table.DumpId = d.getDumpId()
-		if err := rows.Scan(&table.Oid, &table.Schema, &table.Name, &table.Owner); err != nil {
-			return nil, fmt.Errorf("unnable scan data: %w", err)
-		}
-		tables = append(tables, table)
-	}
-
-	// TODO:
-	// 	1. Find table in the list if it is exists - return it and get transformers
-
-	// Assign columns to each table
-	for idx, _ := range tables {
-		var tableConf *domains.Table
-		confIdx := slices.IndexFunc[domains.Table](confTables, func(v domains.Table) bool {
-			if tables[idx].Schema == v.Schema && tables[idx].Name == v.Name {
-				return true
-			}
-			return false
-		})
-
-		if confIdx != -1 {
-			tables[idx].HasMasker = true
-			tableConf = &confTables[confIdx]
-		}
-
-		columns, err := d.getTableColumns(ctx, tx, &tables[idx], tableConf)
-		if err != nil {
-			return nil, fmt.Errorf("unnable to fill table colimns: %w", err)
-		}
-		tables[idx].Columns = columns
-	}
-
-	return tables, nil
-}
-
-func (d *Dump) getTableColumns(ctx context.Context, tx pgx.Tx, table *domains.Table, tableConf *domains.Table) ([]domains.Column, error) {
-	tableColumnsQuery := `
-		SELECT 
-		    a.attname,
-		  	pg_catalog.format_type(a.atttypid, a.atttypmod),
-		  	a.attnotnull
-		FROM pg_catalog.pg_attribute a
-		WHERE a.attrelid = $1 AND a.attnum > 0 AND NOT a.attisdropped
-		ORDER BY a.attnum
-	`
-
-	rows, err := tx.Query(ctx, tableColumnsQuery, table.Oid)
-	if err != nil {
-		return nil, fmt.Errorf("perform query: %w", err)
-	}
-	columns := make([]domains.Column, 0)
-	for rows.Next() {
-		column := domains.Column{}
-		if err = rows.Scan(&column.Name, &column.Type, &column.NotNull); err != nil {
-			return nil, fmt.Errorf("cannot scan column: %w", err)
-		}
-
-		if tableConf != nil {
-			confIdx := slices.IndexFunc[domains.Column](tableConf.Columns, func(v domains.Column) bool {
-				if column.Name == v.Name {
-					return true
-				}
-				return false
-			})
-			if confIdx != -1 {
-				transformerConf := tableConf.Columns[confIdx].TransformConf
-				makeTransformer, ok := transformers.TransformerMap[transformerConf.Name]
-				if !ok {
-					return nil, fmt.Errorf("unnable to find transformer with name %s", transformerConf.Name)
-				}
-				column.TransformConf = transformerConf
-				transformer, err := makeTransformer.NewTransformer(column.ColumnMeta, column.TransformConf.Params)
-				if err != nil {
-					return nil, fmt.Errorf("unable to init transformer \"%s\": %w", transformerConf.Name, err)
-				}
-				column.Transformer = transformer
-			}
-		}
-
-		columns = append(columns, column)
-	}
-
-	return columns, nil
 }
 
 func (d *Dump) RunDump(ctx context.Context, opt *pgdump.Options, tableConfig []domains.Table) error {
@@ -399,14 +380,9 @@ func (d *Dump) RunDump(ctx context.Context, opt *pgdump.Options, tableConfig []d
 	}
 	d.curDumpId = schemaToc.MaxDumpId + 1
 
-	sequenceList, err := d.sequenceList(ctx, tx)
+	tablesList, sequenceList, err := d.objectList(ctx, tx, tableConfig)
 	if err != nil {
-		return fmt.Errorf("cannot retreive sequence list: %w", err)
-	}
-
-	tablesList, err := d.tablesList(ctx, tx, tableConfig)
-	if err != nil {
-		return fmt.Errorf("cannot retreive table list: %w", err)
+		return fmt.Errorf("cannot retreive sequence and table list: %w", err)
 	}
 
 	var largeObjects []*toc.Entry
@@ -435,14 +411,14 @@ func (d *Dump) RunDump(ctx context.Context, opt *pgdump.Options, tableConfig []d
 			select {
 			case <-gtx.Done():
 				return gtx.Err()
-			case tasks <- dumpers.NewTableDumper(table):
+			case tasks <- dumpers.NewTableDumper(*table):
 			}
 		}
 		for _, sequence := range sequenceList {
 			select {
 			case <-gtx.Done():
 				return gtx.Err()
-			case tasks <- dumpers.NewSequenceDumper(sequence):
+			case tasks <- dumpers.NewSequenceDumper(*sequence):
 			}
 		}
 		return nil

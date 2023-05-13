@@ -1,20 +1,23 @@
 common:
-  log-level: "info"
+  log-level: "debug"
   log-format: "text"
-  bin_path: "/usr/bin"
+  bin_path: "/opt/homebrew/bin"
   storage:
     directory:
-      path: "/home/vadim/tmp/pg_dump_test"
+      path: "/Users/vvoitenko/tmp/pgdump_test"
 
 restore:
   pg_restore_options:
     verbose: true
-    dbname: "host=localhost port=5432 user=postgres dbname=demo_restore"
+    dbname: "host=/tmp port=5432 user=vvoitenko dbname=demo_restore"
+#    dbname: "host=/tmp port=5432 user=vvoitenko dbname=test_restore"
 
 dump:
   pg_dump_options:
     verbose: true
-    dbname: "host=localhost port=5432 user=postgres dbname=demo"
+    dbname: "host=/tmp port=5432 user=vvoitenko dbname=demo"
+#    dbname: "host=/tmp port=5432 user=vvoitenko dbname=test"
+    jobs: 5
 
   transformers:
     - schema: "public"
@@ -25,21 +28,31 @@ dump:
             name: "Replace"
             params:
               value: "test"
-    - schema: "public"
-      name: "cards_test"
-      columns:
-        - name: "card_number"
-          transformer:
-            name: "CreditCard"
-            params:
-              type: "Number"
-        - name: "ex_date"
-          transformer:
-            name: "CreditCard"
-            params:
-              type: "ExpirationDateString"
-        - name: "vendor"
-          transformer:
-            name: "CreditCard"
-            params:
-              type: "VendorName"
+
+#    - schema: "public"
+#      name: "cards_test"
+#      columns:
+#        - name: "card_number"
+#          transformer:
+#            name: "CreditCard"
+#            params:
+#              type: "Number"
+#        - name: "ex_date"
+#          transformer:
+#            name: "CreditCard"
+#            params:
+#              type: "ExpirationDateString"
+#        - name: "vendor"
+#          transformer:
+#            name: "CreditCard"
+#            params:
+#              type: "VendorName"
+
+transformers:
+  custom:
+    bin_path: ""
+    type: "attr"
+    param:
+      a:
+      b:
+

@@ -58,7 +58,7 @@ func (td *TableDumper) Execute(ctx context.Context, tx pgx.Tx, st storage.Storag
 			// https://www.postgresql.org/docs/current/sql-copy.html
 		case *pgproto3.CopyData:
 			tupleData := v.Data
-			if td.table.HasMasker {
+			if td.table.HasTransformer {
 				tupleData, err = td.table.TransformTuple(tupleData)
 				if err != nil {
 					return nil, fmt.Errorf("cannot convert plain data to tuple: %w", err)
