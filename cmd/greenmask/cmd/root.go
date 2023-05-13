@@ -13,6 +13,7 @@ import (
 	"github.com/wwoytenko/greenfuscator/cmd/greenmask/cmd/dump"
 	"github.com/wwoytenko/greenfuscator/cmd/greenmask/cmd/list_dump"
 	"github.com/wwoytenko/greenfuscator/cmd/greenmask/cmd/restore"
+	"github.com/wwoytenko/greenfuscator/cmd/greenmask/cmd/show_dump"
 	pgDomains "github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/domains"
 )
 
@@ -52,9 +53,10 @@ func init() {
 	)
 
 	rootCmd.AddCommand(dump.DumpCmd)
-	rootCmd.AddCommand(list_dump.ListDumpCmd)
-	rootCmd.AddCommand(restore.RestoreCmd)
-	rootCmd.AddCommand(delete_backup.DeleteCmd)
+	rootCmd.AddCommand(list_dump.Cmd)
+	rootCmd.AddCommand(restore.Cmd)
+	rootCmd.AddCommand(delete_backup.Cmd)
+	rootCmd.AddCommand(show_dump.Cmd)
 
 	if err := rootCmd.MarkPersistentFlagRequired("config"); err != nil {
 		log.Fatal(err)

@@ -19,18 +19,18 @@ type Table struct {
 	Schema               string   `mapstructure:"schema"`
 	Name                 string   `mapstructure:"name"`
 	Columns              []Column `mapstructure:"columns"`
-	HasTransformer       bool
-	Oid                  int
-	Owner                string
-	RelKind              rune
-	RootPtName           string
-	RootPtSchema         string
-	ExcludeData          bool
-	DumpId               int32
-	Dependencies         []int32
-	OriginalSize         int64
-	CompressedSize       int64
-	LoadViaPartitionRoot bool
+	HasTransformer       bool     `json:"-" yaml:"-"`
+	Oid                  int      `json:"-" yaml:"-"`
+	Owner                string   `json:"-" yaml:"-"`
+	RelKind              rune     `json:"-" yaml:"-"`
+	RootPtName           string   `json:"-" yaml:"-"`
+	RootPtSchema         string   `json:"-" yaml:"-"`
+	ExcludeData          bool     `json:"-" yaml:"-"`
+	DumpId               int32    `json:"-" yaml:"-"`
+	Dependencies         []int32  `json:"-" yaml:"-"`
+	OriginalSize         int64    `json:"-" yaml:"-"`
+	CompressedSize       int64    `json:"-" yaml:"-"`
+	LoadViaPartitionRoot bool     `json:"-" yaml:"-"`
 }
 
 func (t *Table) TransformTuple(data []byte) ([]byte, error) {

@@ -46,6 +46,16 @@ var (
 	Config = pgDomains.NewConfig()
 )
 
+// TODO: Option that currently does not implemented:
+//   - lock-wait-timeout
+//   - no-sync
+//   - data-only
+//   - blobs
+//   - no-blobs
+//   - section
+//   - no-synchronized-snapshots
+//   - no-unlogged-table-data
+//   - strict-names
 func init() {
 	// General options:
 	DumpCmd.Flags().StringP("file", "f", "", "output file or directory name")

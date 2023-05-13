@@ -179,6 +179,7 @@ func (ah *ArchiveHandle) readHead() error {
 	if err := ah.scanBytes(&ah.Format); err != nil {
 		return fmt.Errorf("unable to scan bytes from TOC srcFile: %w", err)
 	}
+	// I don't know why, but when pg_dump creates dump as -Fc it has Tar format assigned
 	if ArchTar != ah.Format {
 		return fmt.Errorf("unsupported format \"%s\" suports only directory", BackupFormats[ah.Format])
 	}

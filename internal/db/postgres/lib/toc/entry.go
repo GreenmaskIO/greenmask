@@ -7,6 +7,13 @@ const (
 	SectionPostData       /* stuff to be processed after data */
 )
 
+var SectionMap = map[int32]string{
+	SectionNone:     "None",
+	SectionPreData:  "PreData",
+	SectionData:     "Data",
+	SectionPostData: "PostData",
+}
+
 type Oid int
 
 type CatalogId struct {

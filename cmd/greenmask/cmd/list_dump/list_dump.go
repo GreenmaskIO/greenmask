@@ -19,7 +19,7 @@ import (
 )
 
 var (
-	ListDumpCmd = &cobra.Command{
+	Cmd = &cobra.Command{
 		Use: "list-dump",
 		Run: func(cmd *cobra.Command, args []string) {
 			if err := logger.SetLogLevel(Config.Common.LogLevel, Config.Common.LogFormat); err != nil {

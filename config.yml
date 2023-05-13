@@ -17,7 +17,9 @@ dump:
 #    verbose: true
 #    dbname: "host=/tmp port=5432 user=vvoitenko dbname=demo"
     dbname: "user=postgres dbname=test"
-    exclude-schema: "(\"teSt\"*|test*)"
+#    exclude-schema: "(\"teSt\"*|test*)"
+#    table:
+#      - "public.cards_*"
     jobs: 5
 #    load-via-partition-root: true
 
