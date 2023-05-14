@@ -83,10 +83,10 @@ func (t *Table) GetTocEntry() (*toc.Entry, error) {
 	columns := make([]string, 0)
 
 	for _, column := range t.Columns {
-		columns = append(columns, column.Name)
+		columns = append(columns, fmt.Sprintf(`"%s"`, column.Name))
 	}
 
-	var query = "COPY %s.%s (%s) FROM stdin;\n"
+	var query = `COPY "%s"."%s" (%s) FROM stdin;`
 	var schemaName, tableName string
 	if t.LoadViaPartitionRoot && t.RootPtSchema != "" && t.RootPtName != "" {
 		schemaName = t.RootPtSchema
@@ -104,6 +104,13 @@ func (t *Table) GetTocEntry() (*toc.Entry, error) {
 		dependencies = t.Dependencies
 	}
 
+	name := fmt.Sprintf(`"%s"`, t.Name)
+	schema := fmt.Sprintf(`"%s"`, t.Schema)
+	owner := ""
+	if t.Owner != "" {
+		owner = fmt.Sprintf(`"%s"`, t.Owner)
+	}
+
 	return &toc.Entry{
 		CatalogId: toc.CatalogId{
 			Oid: toc.Oid(t.Oid),
@@ -111,9 +118,9 @@ func (t *Table) GetTocEntry() (*toc.Entry, error) {
 		DumpId:         t.DumpId,
 		Section:        toc.SectionData,
 		HadDumper:      1,
-		Tag:            &t.Name,
-		Namespace:      &t.Schema,
-		Owner:          &t.Owner,
+		Tag:            &name,
+		Namespace:      &schema,
+		Owner:          &owner,
 		Desc:           &TableDataDesc,
 		CopyStmt:       &copyStmt,
 		Dependencies:   dependencies,

@@ -22,6 +22,7 @@ var (
 var (
 	Cmd = &cobra.Command{
 		Use:   "show-dump [flags] dumpId|latest",
+		Args:  cobra.ExactArgs(1),
 		Short: "Print archive meta information (the same as pg_restore -l ./)",
 		Run: func(cmd *cobra.Command, args []string) {
 			var dumpId string

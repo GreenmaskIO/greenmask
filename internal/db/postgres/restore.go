@@ -1,12 +1,21 @@
 package postgres
 
 import (
+	"bufio"
+	"bytes"
 	"context"
+	"encoding/json"
+	"errors"
 	"fmt"
+	"io"
+	"os"
+	"regexp"
+	"strconv"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/rs/zerolog/log"
 	"golang.org/x/sync/errgroup"
+	"gopkg.in/yaml.v3"
 
 	"github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/domains"
 	"github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/pgrestore"
@@ -17,10 +26,11 @@ import (
 )
 
 type Restore struct {
-	binPath string
-	dsn     string
-	options *pgrestore.Options
-	st      storage.Storager
+	binPath    string
+	dsn        string
+	options    *pgrestore.Options
+	st         storage.Storager
+	dumpIdList map[int32]bool
 }
 
 func NewRestore(binPath string, st storage.Storager) *Restore {
@@ -33,6 +43,13 @@ func NewRestore(binPath string, st storage.Storager) *Restore {
 func (r *Restore) RunRestore(ctx context.Context, opt *pgrestore.Options, dumpId string) error {
 	log.Info().Msgf("restoring dump %s", dumpId)
 	r.options = opt
+	if r.options.UseList != "" {
+		// TODO: Implement toc entries ordering according to use-list
+		log.Warn().Msgf("FIXME: Implement toc entries ordering according to use-list")
+		if err := r.setRestoreList(r.options.UseList, r.options.ListFormat); err != nil {
+			return fmt.Errorf("restore list parsing error: %w", err)
+		}
+	}
 	dsn, err := r.options.GetPgDSN()
 	if err != nil {
 		return fmt.Errorf("cennot generate DSN: %w", err)
@@ -68,7 +85,7 @@ func (r *Restore) RunRestore(ctx context.Context, opt *pgrestore.Options, dumpId
 	if err != nil {
 		return fmt.Errorf("cannot get cwd for toc: %w", err)
 	}
-	options := *opt
+	options := *r.options
 	options.Section = "pre-data"
 	options.DirPath = dirname
 	if err = pgRestore.Run(ctx, &options); err != nil {
@@ -105,6 +122,16 @@ func (r *Restore) RunRestore(ctx context.Context, opt *pgrestore.Options, dumpId
 			}
 
 			if entry.Section == toc.SectionData {
+
+				if r.options.UseList != "" {
+					_, apply := r.dumpIdList[entry.DumpId]
+					if !apply {
+						log.Debug().Msgf("toc entry was skipped dumpId=%d section=%s type=%s name=%s schema=%s",
+							entry.DumpId, toc.SectionMap[entry.Section], *entry.Desc, *entry.Tag, *entry.Namespace)
+						continue
+					}
+				}
+
 				var task restorers.RestoreTask
 				switch *entry.Desc {
 				case domains.TableDataDesc:
@@ -132,7 +159,7 @@ func (r *Restore) RunRestore(ctx context.Context, opt *pgrestore.Options, dumpId
 		return fmt.Errorf("at least one worker exited with error: %w", err)
 	}
 
-	options = *opt
+	options = *r.options
 	options.Section = "post-data"
 	options.DirPath = dirname
 	if err = pgRestore.Run(ctx, &options); err != nil {
@@ -181,5 +208,96 @@ func (r *Restore) restoreWorker(ctx context.Context, tasks <-chan restorers.Rest
 		if err = tx.Commit(ctx); err != nil {
 			return fmt.Errorf("cannot commit transaction (worker %d restoring %s): %w", id, task.DebugInfo(), err)
 		}
+		log.Debug().Msgf("restoration complete %s (worker %d)", task.DebugInfo(), id)
 	}
+}
+
+func (r *Restore) setRestoreList(fileName string, format string) (err error) {
+	f, err := os.Open(fileName)
+	if err != nil {
+		return fmt.Errorf("unable to open list file: %w", err)
+	}
+	defer f.Close()
+	var res map[int32]bool
+	switch format {
+	case "text":
+		res, err = r.parseTextList(f)
+	case "yaml":
+		res, err = r.parseYamlList(f)
+	case "json":
+		res, err = r.parseJsonList(f)
+	}
+	if err != nil {
+		r.dumpIdList = res
+	}
+	return err
+}
+
+func (r *Restore) parseTextList(f *os.File) (map[int32]bool, error) {
+	const dumpIdGroup = 1
+	var lineNumber int
+	var lineBuf = make([]byte, 0, 1024)
+	buf := bytes.NewBuffer(lineBuf)
+	lr := bufio.NewReader(f)
+	pattern, err := regexp.Compile(`^\s*(?P<DumpId>\d+)\s*;.*$`)
+	if err != nil {
+		return nil, fmt.Errorf("cannot compile regexp: %s", err)
+	}
+	res := make(map[int32]bool, 0)
+	for {
+		line, isPrefix, err := lr.ReadLine()
+		if err != nil {
+			if errors.Is(err, io.EOF) {
+				return res, nil
+			}
+			return nil, fmt.Errorf("read line error: %w", err)
+		}
+		buf.Write(line)
+		if isPrefix {
+			continue
+		}
+		lineNumber++
+		found := pattern.FindStringSubmatch(buf.String())
+		if len(found) != 2 {
+			log.Debug().Msgf("text list parser: skipped line %d", lineNumber)
+			buf.Reset()
+			continue
+		}
+		dumpId, err := strconv.ParseInt(found[dumpIdGroup], 10, 32)
+		if err != nil {
+			return nil, fmt.Errorf("cannot parse dumpId at line %d", lineNumber)
+		}
+		res[int32(dumpId)] = true
+		buf.Reset()
+	}
+}
+
+func (r *Restore) parseYamlList(f *os.File) (map[int32]bool, error) {
+	meta := &domains.Metadata{}
+	if err := yaml.NewDecoder(f).Decode(meta); err != nil {
+		return nil, fmt.Errorf("metadata parsing error: %w", err)
+	}
+	res := make(map[int32]bool, 0)
+	for idx, entry := range meta.Entries {
+		if entry.DumpId == 0 {
+			return nil, fmt.Errorf("broken list file dumpId: must not be 0: entry number %d", idx)
+		}
+		res[entry.DumpId] = true
+	}
+	return res, nil
+}
+
+func (r *Restore) parseJsonList(f *os.File) (map[int32]bool, error) {
+	meta := &domains.Metadata{}
+	if err := json.NewDecoder(f).Decode(meta); err != nil {
+		return nil, fmt.Errorf("metadata parsing error: %w", err)
+	}
+	res := make(map[int32]bool, 0)
+	for idx, entry := range meta.Entries {
+		if entry.DumpId == 0 {
+			return nil, fmt.Errorf("broken list file dumpId: must not be 0: entry number %d", idx)
+		}
+		res[entry.DumpId] = true
+	}
+	return res, nil
 }

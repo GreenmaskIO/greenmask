@@ -49,6 +49,7 @@ type Options struct {
 	Index                      []string `mapstructure:"index"`
 	Jobs                       int      `mapstructure:"jobs"`
 	UseList                    string   `mapstructure:"use-list"`
+	ListFormat                 string   `mapstructure:"list-format"`
 	Schema                     []string `mapstructure:"schema"`
 	ExcludeSchema              []string `mapstructure:"exclude-schema"`
 	NoOwner                    bool     `mapstructure:"no-owner"`

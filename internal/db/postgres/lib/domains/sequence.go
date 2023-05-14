@@ -25,17 +25,24 @@ func (s *Sequence) GetTocEntry() (*toc.Entry, error) {
 	if !s.IsCalled {
 		isCalled = "false"
 	}
-	statement := fmt.Sprintf(`SELECT pg_catalog.setval('%s.%s', %d, %s)`, s.Schema, s.Name, s.LastValue, isCalled)
+	statement := fmt.Sprintf(`SELECT pg_catalog.setval('"%s"."%s"', %d, %s)`, s.Schema, s.Name, s.LastValue, isCalled)
 	fileName := ""
+
+	name := fmt.Sprintf(`"%s"`, s.Name)
+	schema := fmt.Sprintf(`"%s"`, s.Schema)
+	owner := ""
+	if s.Owner != "" {
+		owner = fmt.Sprintf(`"%s"`, s.Owner)
+	}
 
 	return &toc.Entry{
 		CatalogId:    toc.CatalogId{},
 		DumpId:       s.DumpId,
 		Section:      toc.SectionData,
 		HadDumper:    0,
-		Tag:          &s.Name,
-		Namespace:    &s.Schema,
-		Owner:        &s.Owner,
+		Tag:          &name,
+		Namespace:    &schema,
+		Owner:        &owner,
 		Desc:         &SequenceSetDesc,
 		Defn:         &statement,
 		Dependencies: s.Dependencies,

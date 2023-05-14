@@ -1,9 +1,5 @@
 package postgres
 
-// TODO:
-//		N. Dump data except some tables that cannot be
-// 		N. Create DATA section with TOC records
-
 import (
 	"context"
 	"encoding/json"
@@ -23,10 +19,6 @@ import (
 	"github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/toc"
 	"github.com/wwoytenko/greenfuscator/internal/storage"
 	"github.com/wwoytenko/greenfuscator/internal/transformers"
-)
-
-const (
-	maxInt = 2147483647
 )
 
 var defaultTypeMap = map[string]string{
@@ -108,8 +100,8 @@ type Dump struct {
 	binPath          string
 	curDumpId        int32
 	st               storage.Storager
-	dumpTaskCount    int
-	allTaskPushed    bool
+	dumpTaskCount    int32
+	allTaskPushed    atomic.Bool
 }
 
 func NewDump(binPath string, st storage.Storager) *Dump {
@@ -409,25 +401,31 @@ func (d *Dump) RunDump(ctx context.Context, opt *pgdump.Options, tableConfig []d
 			if table.ExcludeData {
 				continue
 			}
+			atomic.AddInt32(&d.dumpTaskCount, 1)
 			select {
 			case <-gtx.Done():
 				return gtx.Err()
 			case tasks <- dumpers.NewTableDumper(*table):
 			}
-			d.dumpTaskCount++
 		}
-		for _, sequence := range sequenceList {
+		for idx, sequence := range sequenceList {
 			if sequence.ExcludeData {
 				continue
 			}
+
+			// Once all task has been pushed we assign true value for allTaskPushed before writing into
+			// the channel
+			atomic.AddInt32(&d.dumpTaskCount, 1)
+			if idx == len(sequenceList)-1 {
+				d.allTaskPushed.Store(true)
+			}
+
 			select {
 			case <-gtx.Done():
 				return gtx.Err()
 			case tasks <- dumpers.NewSequenceDumper(*sequence):
 			}
-			d.dumpTaskCount++
 		}
-		d.allTaskPushed = true
 		return nil
 	})
 
@@ -436,7 +434,7 @@ func (d *Dump) RunDump(ctx context.Context, opt *pgdump.Options, tableConfig []d
 	eg.Go(func() error {
 		tables := make([]*toc.Entry, 0, len(tablesList))
 		sequences := make([]*toc.Entry, 0, len(sequenceList))
-		for i := 0; !d.allTaskPushed || i < d.dumpTaskCount; i++ {
+		for i := int32(0); !d.allTaskPushed.Load() || i < atomic.LoadInt32(&d.dumpTaskCount); i++ {
 			select {
 			case <-gtx.Done():
 				return gtx.Err()

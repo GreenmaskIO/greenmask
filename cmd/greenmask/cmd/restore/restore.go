@@ -99,7 +99,6 @@ func init() {
 	// General options:
 	Cmd.Flags().StringP("dbname", "d", "postgres", "connect to database name")
 	Cmd.Flags().StringP("file", "f", "", "output file name (- for stdout)")
-	Cmd.Flags().BoolP("list", "l", false, "print summarized TOC of the archive")
 	Cmd.Flags().StringP("verbose", "v", "", "verbose mode")
 	Cmd.Flags().StringP("version", "V", "", "output version information, then exit")
 
@@ -110,6 +109,7 @@ func init() {
 	Cmd.Flags().BoolP("exit-on-error", "e", false, "exit on error, default is to continue")
 	Cmd.Flags().StringSliceVarP(&Config.Restore.PgRestoreOptions.Index, "index", "i", []string{}, "restore named index")
 	Cmd.Flags().IntP("jobs", "j", 1, "use this many parallel jobs to restore")
+	Cmd.Flags().StringP("list-format", "", "text", "use table of contents in format of text, json or yaml")
 	Cmd.Flags().StringP("use-list", "L", "", "use table of contents from this file for selecting/ordering output")
 	Cmd.Flags().StringSliceVarP(&Config.Restore.PgRestoreOptions.Schema, "schema", "n", []string{}, "restore only objects in this schema")
 	Cmd.Flags().StringSliceVarP(&Config.Restore.PgRestoreOptions.ExcludeSchema, "exclude-schema", "N", []string{}, "do not restore objects in this schema")
@@ -141,9 +141,9 @@ func init() {
 	Cmd.Flags().StringP("username", "U", "postgres", "connect as specified database user")
 
 	for _, flagName := range []string{
-		"dbname", "file", "list", "verbose", "version",
+		"dbname", "file", "verbose", "version",
 
-		"data-only", "clean", "create", "exit-on-error", "jobs", "use-list", "schema", "exclude-schema",
+		"data-only", "clean", "create", "exit-on-error", "jobs", "list-format", "use-list", "schema", "exclude-schema",
 		"no-owner", "function", "schema-only", "superuser", "table", "trigger", "no-privileges", "single-transaction",
 		"disable-triggers", "enable-row-security", "if-exists", "no-comments", "no-data-for-failed-tables",
 		"no-security-labels", "no-subscriptions", "no-table-access-method", "no-tablespaces", "section",
