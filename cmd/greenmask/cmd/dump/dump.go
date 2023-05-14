@@ -46,8 +46,8 @@ var (
 	Config = pgDomains.NewConfig()
 )
 
+// TODO: Check how does work mixed options - use-list + tables, etc.
 // TODO: Option that currently does not implemented:
-//   - extension
 //   - encoding
 //   - disable-triggers
 //   - lock-wait-timeout

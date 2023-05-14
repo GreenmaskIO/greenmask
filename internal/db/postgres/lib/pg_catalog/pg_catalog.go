@@ -177,7 +177,3 @@ func BuildTableSearchQuery(includeTable, excludeTable, excludeTableData,
 	return fmt.Sprintf(totalQuery, tableDataExclusionCond, tableInclusionCond, tableExclusionCond,
 		schemaInclusionCond, schemaExclusionCond, foreignDataInclusionCond), nil
 }
-
-func BuildExtensionSearchQuery(extensions []string) (string, error) {
-	return "", nil
-}
