@@ -10,6 +10,7 @@ type Column struct {
 }
 
 type ColumnMeta struct {
-	Type    string `yaml:"-"`
-	NotNull bool   `yaml:"-"`
+	Type    string `json:"-" yaml:"-"`
+	TypeOid uint32 `json:"-" yaml:"-"`
+	NotNull bool   `json:"-" yaml:"-"`
 }

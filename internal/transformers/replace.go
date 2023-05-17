@@ -3,6 +3,8 @@ package transformers
 import (
 	"errors"
 
+	"github.com/jackc/pgx/v5/pgtype"
+
 	pgDomains "github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/domains"
 	"github.com/wwoytenko/greenfuscator/internal/domains"
 )
@@ -12,7 +14,7 @@ type ReplaceTransformer struct {
 	newValue string
 }
 
-func NewReplaceTransformer(column pgDomains.ColumnMeta, params map[string]string) (domains.Transformer, error) {
+func NewReplaceTransformer(column pgDomains.ColumnMeta, typeMap *pgtype.Map, params map[string]string) (domains.Transformer, error) {
 	val, ok := params["value"]
 	if !ok {
 		return nil, errors.New("expected value key")

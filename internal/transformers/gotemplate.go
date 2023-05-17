@@ -6,10 +6,13 @@ import (
 	"fmt"
 	"text/template"
 
+	"github.com/jackc/pgx/v5/pgtype"
+
 	pgDomains "github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/domains"
 	"github.com/wwoytenko/greenfuscator/internal/domains"
 )
 
+// TODO: Test this transformer
 var bufSize = 256
 
 type GoTemplateTransformer struct {
@@ -18,7 +21,7 @@ type GoTemplateTransformer struct {
 	buf      *bytes.Buffer
 }
 
-func NewGoTemplateTransformer(column pgDomains.ColumnMeta, params map[string]string) (domains.Transformer, error) {
+func NewGoTemplateTransformer(column pgDomains.ColumnMeta, typeMap *pgtype.Map, params map[string]string) (domains.Transformer, error) {
 	templateStr, ok := params["template"]
 	if !ok {
 		return nil, errors.New("expected template key")

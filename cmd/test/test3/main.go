@@ -42,9 +42,6 @@ func main() {
 		}
 		log.Print(string(buf))
 
-		typeFor, ok := typeMap.TypeForValue(v)
-		log.Print(typeFor, ok)
-
 	default:
 		log.Debug().Msg("unknown type")
 	}
