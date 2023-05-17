@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/rs/zerolog/log"
 	"golang.org/x/sync/errgroup"
 
@@ -92,7 +93,6 @@ var defaultTypeMap = map[string]string{
 }
 
 type Dump struct {
-	typeMap          map[string]string
 	dsn              string
 	conn             *pgx.Conn
 	pgDumpOptions    *pgdump.Options
@@ -102,11 +102,11 @@ type Dump struct {
 	st               storage.Storager
 	dumpTaskCount    int32
 	allTaskPushed    atomic.Bool
+	typeMap          *pgtype.Map
 }
 
 func NewDump(binPath string, st storage.Storager) *Dump {
 	return &Dump{
-		typeMap: defaultTypeMap,
 		binPath: binPath,
 		st:      st,
 	}
@@ -124,6 +124,7 @@ func (d *Dump) Connect(ctx context.Context, dsn string) error {
 		return err
 	}
 
+	d.typeMap = conn.TypeMap()
 	d.conn = conn
 	d.dsn = dsn
 	return nil
