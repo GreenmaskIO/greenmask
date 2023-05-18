@@ -23,6 +23,18 @@ type GoTemplateTransformer struct {
 	EncodePlan pgtype.EncodePlan
 }
 
+var GoTemplateTransformerMata = TransformerMeta{
+	Description: "Apply golang template value",
+	ParamsDescription: map[string]string{
+		"template": "go template string",
+	},
+	SupportedTypeOids: []int{
+		pgtype.TextOID,
+		pgtype.VarcharOID,
+	},
+	NewTransformer: NewGoTemplateTransformer,
+}
+
 func NewGoTemplateTransformer(column pgDomains.ColumnMeta, typeMap *pgtype.Map, params map[string]string) (domains.Transformer, error) {
 	var cast string
 	templateStr, ok := params["template"]
@@ -35,7 +47,7 @@ func NewGoTemplateTransformer(column pgDomains.ColumnMeta, typeMap *pgtype.Map, 
 	}
 	buf := bytes.NewBuffer(make([]byte, 0, bufSize))
 
-	t, plan, err := getPgCodeAndEncodingPlan(typeMap, column.TypeOid, cast)
+	t, plan, err := GetPgCodeAndEncodingPlan(typeMap, column.TypeOid, cast)
 	if err != nil {
 		return nil, err
 	}

@@ -34,7 +34,7 @@ func TestReplaceTransformer_Transform(t *testing.T) {
 		Type:    "date",
 		TypeOid: pgtype.DateOID,
 	}, typeMap, map[string]string{"value": "new_val"})
-	require.ErrorContains(t, err, "cannot decode start value")
+	require.ErrorContains(t, err, "cannot decode min value")
 
 	transformer, err = NewReplaceTransformer(domains.ColumnMeta{
 		Type:    "date",
@@ -44,5 +44,14 @@ func TestReplaceTransformer_Transform(t *testing.T) {
 	res, err = transformer.Transform("old_value")
 	require.NoError(t, err)
 	require.Equal(t, res, "2023-18-05")
+
+	transformer, err = NewReplaceTransformer(domains.ColumnMeta{
+		Type:    "date",
+		TypeOid: pgtype.UUIDOID,
+	}, typeMap, map[string]string{"value": "dd88a355-5dfa-4556-aaff-fe18302b285c"})
+	require.NoError(t, err)
+	res, err = transformer.Transform("3df11ba0-d408-42e1-9306-cd468e0669cb")
+	require.NoError(t, err)
+	require.Equal(t, res, "dd88a355-5dfa-4556-aaff-fe18302b285c")
 
 }

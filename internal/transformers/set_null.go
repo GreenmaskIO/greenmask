@@ -9,6 +9,17 @@ import (
 
 var defaultNullSeq = `\N`
 
+var SetNullTransformerMeta = TransformerMeta{
+	Description: `Set NULL value`,
+	ParamsDescription: map[string]string{
+		"nullSequence": "null sequence for COPY command (default \\N)",
+	},
+	SupportedTypeOids: []int{
+		AnyOid,
+	},
+	NewTransformer: NewSetNullTransformer,
+}
+
 type SetNullTransformer struct {
 	Column       pgDomains.ColumnMeta
 	nullSequence string

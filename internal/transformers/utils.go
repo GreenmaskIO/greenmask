@@ -1,7 +1,9 @@
 package transformers
 
 import (
+	"errors"
 	"fmt"
+	"math"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -21,36 +23,43 @@ type TransformerMeta struct {
 
 var (
 	TransformerMap = map[string]TransformerMeta{
-		"Replace": {
-			Description:       `Replace with value passed through "value" parameter`,
-			ParamsDescription: map[string]string{"value": "value that will be replaced instead of original"},
-			NewTransformer:    NewReplaceTransformer,
-		},
-		"UUID": {
-			Description:    `Generate random UUID`,
-			NewTransformer: NewUuidTransformer,
-			SupportedTypeOids: []int{
-				pgtype.TextOID,
-				pgtype.VarcharOID,
-				pgtype.UUIDOID,
-			},
-		},
-		"SetNull": {
-			Description:    `Set NULL value`,
-			NewTransformer: NewSetNullTransformer,
-		},
-		"GoTemplate": {
-			Description:    "",
-			NewTransformer: NewGoTemplateTransformer,
-		},
-		"RandomDate": {
-			Description:    "",
-			NewTransformer: NewRandomDateTransformer,
-		},
+		"Replace":      ReplaceTransformerMeta,
+		"UUID":         UuidTransformerMeta,
+		"SetNull":      SetNullTransformerMeta,
+		"GoTemplate":   GoTemplateTransformerMata,
+		"RandomDate":   RandomDateTransformerMeta,
+		"RandomInt":    RandomIntTransformerMeta,
+		"RandomFloat":  RandomFloatTransformerMeta,
+		"RandomString": RandomStringTransformerMeta,
 	}
 )
 
-func getPgCodeAndEncodingPlan(typeMap *pgtype.Map, typeOid uint32, castVal any) (*pgtype.Type, pgtype.EncodePlan, error) {
+var (
+	DateTypes = []int{
+		pgtype.DateOID,
+		pgtype.TimestampOID,
+		pgtype.TimestamptzOID,
+	}
+	StringTypes = []int{
+		pgtype.TextOID,
+		pgtype.VarcharOID,
+	}
+	IntTypes = []int{
+		pgtype.Int2OID,
+		pgtype.Int4OID,
+		pgtype.Int8OID,
+	}
+	FloatTypes = []int{
+		pgtype.Float4OID,
+		pgtype.Float8OID,
+	}
+	UuidTypes = []int{
+		pgtype.UUIDOID,
+		pgtype.TextOID,
+	}
+)
+
+func GetPgCodeAndEncodingPlan(typeMap *pgtype.Map, typeOid uint32, castVal any) (*pgtype.Type, pgtype.EncodePlan, error) {
 	t, ok := typeMap.TypeForOID(typeOid)
 	if !ok {
 		return nil, nil, fmt.Errorf("cannot match pgtype %d", typeOid)
@@ -61,4 +70,61 @@ func getPgCodeAndEncodingPlan(typeMap *pgtype.Map, typeOid uint32, castVal any) 
 		return nil, nil, fmt.Errorf("cannot find encoding plan for oid %d", t.OID)
 	}
 	return t, plan, nil
+}
+
+func CastFloat(t *pgtype.Type, typeMap *pgtype.Map, val string) (float64, error) {
+	var typeViolationErrStr = "value out of range: value must be from %f to %f"
+	var res float64
+	decoded, err := t.Codec.DecodeValue(typeMap, t.OID, pgx.TextFormatCode, []byte(val))
+	if err != nil {
+		return 0, fmt.Errorf("cannot decode maxend value: %w", err)
+	}
+	switch v := decoded.(type) {
+	case float32:
+		res = float64(v)
+		if math.Abs(res) < math.SmallestNonzeroFloat32 || math.Abs(res) > math.MaxFloat32 {
+			return 0, fmt.Errorf(typeViolationErrStr, math.SmallestNonzeroFloat32, math.MaxFloat32)
+		}
+	case float64:
+		res = v
+		if math.Abs(res) < math.SmallestNonzeroFloat64 || math.Abs(res) > math.MaxFloat64 {
+			return 0, fmt.Errorf(typeViolationErrStr, math.SmallestNonzeroFloat64, math.MaxFloat64)
+		}
+	default:
+		return 0, errors.New("cannot cast string to float type")
+	}
+	return res, nil
+}
+
+func CastInt(t *pgtype.Type, typeMap *pgtype.Map, val string) (int64, error) {
+	var typeViolationErrStr = "value out of range: value must be from %d to %d"
+	var res int64
+	decoded, err := t.Codec.DecodeValue(typeMap, t.OID, pgx.TextFormatCode, []byte(val))
+	if err != nil {
+		return 0, fmt.Errorf("cannot decode max value: %w", err)
+	}
+	switch v := decoded.(type) {
+	case int16:
+		res = int64(v)
+		if v < math.MinInt16 || v > math.MaxInt16 {
+			return 0, fmt.Errorf(typeViolationErrStr, math.MinInt16, math.MaxInt16)
+		}
+	case int32:
+		res = int64(v)
+		if v < math.MinInt32 || v > math.MaxInt32 {
+			return 0, fmt.Errorf(typeViolationErrStr, math.MinInt32, math.MaxInt32)
+		}
+	case int64:
+		res = v
+		if v < math.MinInt64 || v > math.MaxInt64 {
+			return 0, fmt.Errorf(typeViolationErrStr, math.MinInt64, math.MaxInt64)
+		}
+	default:
+		return 0, errors.New("cannot cast string to int type")
+	}
+	return res, nil
+}
+
+func Round(x, unit float64) float64 {
+	return math.Floor(x*unit) / unit
 }
