@@ -25,7 +25,7 @@ type RandomDateTransformer struct {
 }
 
 func NewRandomDateTransformer(column pgDomains.ColumnMeta, typeMap *pgtype.Map, params map[string]string) (domains.Transformer, error) {
-	var res = &RandomDateTransformer{}
+	var startDate, endDate time.Time
 	if typeMap == nil {
 		return nil, errors.New("typeMap cannot be nil")
 	}
@@ -44,17 +44,10 @@ func NewRandomDateTransformer(column pgDomains.ColumnMeta, typeMap *pgtype.Map, 
 		return nil, errors.New("end key cannot be empty string")
 	}
 
-	t, ok := typeMap.TypeForOID(column.TypeOid)
-	if !ok {
-		return nil, fmt.Errorf("cannot match type with pg type %d", column.TypeOid)
+	t, plan, err := getPgCodeAndEncodingPlan(typeMap, column.TypeOid, startDate)
+	if err != nil {
+		return nil, err
 	}
-	res.PgType = t
-
-	plan := typeMap.PlanEncode(t.OID, pgx.TextFormatCode, res.startDate)
-	if plan == nil {
-		return nil, fmt.Errorf("cannot find encoding plan for oid %d", t.OID)
-	}
-	res.EncodePlan = plan
 
 	val, err := t.Codec.DecodeValue(typeMap, t.OID, pgx.TextFormatCode, []byte(start))
 	if err != nil {
@@ -62,7 +55,7 @@ func NewRandomDateTransformer(column pgDomains.ColumnMeta, typeMap *pgtype.Map, 
 	}
 	switch v := val.(type) {
 	case time.Time:
-		res.startDate = v
+		startDate = v
 	default:
 		return nil, errors.New("cannot cast type of start key")
 	}
@@ -73,12 +66,20 @@ func NewRandomDateTransformer(column pgDomains.ColumnMeta, typeMap *pgtype.Map, 
 	}
 	switch v := val.(type) {
 	case time.Time:
-		res.endDate = v
+		endDate = v
 	default:
 		return nil, fmt.Errorf("cannot cast type of end key: unexpected type %+v", v)
 	}
-	res.delta = res.endDate.UnixMicro() - res.startDate.UnixMicro()
-	return res, nil
+	delta := endDate.UnixMicro() - startDate.UnixMicro()
+
+	return &RandomDateTransformer{
+		Column:     column,
+		PgType:     t,
+		EncodePlan: plan,
+		startDate:  startDate,
+		endDate:    startDate,
+		delta:      delta,
+	}, nil
 }
 
 func (gtt *RandomDateTransformer) Transform(val string) (string, error) {

@@ -7,18 +7,25 @@ import (
 	"github.com/wwoytenko/greenfuscator/internal/domains"
 )
 
-var defaultNullSeq = "\\N"
+var defaultNullSeq = `\N`
 
 type SetNullTransformer struct {
-	Column pgDomains.ColumnMeta
+	Column       pgDomains.ColumnMeta
+	nullSequence string
 }
 
 func NewSetNullTransformer(column pgDomains.ColumnMeta, typeMap *pgtype.Map, params map[string]string) (domains.Transformer, error) {
+	nullSequence, ok := params["nullSequence"]
+	if !ok {
+		nullSequence = defaultNullSeq
+	}
+
 	return &SetNullTransformer{
-		Column: column,
+		Column:       column,
+		nullSequence: nullSequence,
 	}, nil
 }
 
 func (rt *SetNullTransformer) Transform(val string) (string, error) {
-	return defaultNullSeq, nil
+	return rt.nullSequence, nil
 }

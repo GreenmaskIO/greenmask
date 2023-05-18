@@ -41,7 +41,7 @@ func TestRandomDateTransformer_Transform(t *testing.T) {
 		{
 			name: "test timestamp without timezone type",
 			column: domains.ColumnMeta{
-				Type:    "date",
+				Type:    "timestamp",
 				TypeOid: pgtype.TimestampOID,
 			},
 			params: map[string]string{
@@ -53,7 +53,7 @@ func TestRandomDateTransformer_Transform(t *testing.T) {
 		{
 			name: "test timestamp with timezone type",
 			column: domains.ColumnMeta{
-				Type:    "date",
+				Type:    "timestamptz",
 				TypeOid: pgtype.TimestamptzOID,
 			},
 			params: map[string]string{
