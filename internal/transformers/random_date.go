@@ -76,6 +76,9 @@ func NewRandomDateTransformer(column pgDomains.ColumnMeta, typeMap *pgtype.Map, 
 	}
 	ut, ok := params["useType"]
 	if ok {
+		if !slices.Contains([]string{"date", "timestamp", "timestamptz"}, ut) {
+			return nil, fmt.Errorf("unsupported type %s", ut)
+		}
 		useType = ut
 	}
 	tp, ok := params["truncate"]
