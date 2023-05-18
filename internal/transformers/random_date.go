@@ -22,7 +22,7 @@ var RandomDateTransformerMeta = TransformerMeta{
 		"min":      "min value",
 		"max":      "max value",
 		"truncate": "truncate date till the part (year, month, day, hour, second, nano)",
-		"useType":  "useful for text value when date type determination impossible. Default timestamp. (date, timestamp, timestamptz)",
+		"useType":  "use another type instead default timestamp for textual type (date, timestamp, timestamptz)",
 	},
 	SupportedTypeOids: []int{
 		pgtype.DateOID,
@@ -158,39 +158,4 @@ func generateRandomTimeTruncate(r *rand.Rand, startDate *time.Time, endDate *tim
 	delta := endDate.UnixMicro() - startDate.UnixMicro()
 	randVal := time.UnixMicro(r.Int63n(delta) + startDate.UnixMicro())
 	return truncateDate(&randVal, truncate)
-}
-
-// TODO: You should optimize this function or find another way to implement
-func truncateDate(t *time.Time, part *string) time.Time {
-	// year, month, day, hour, minute, second, nano
-	var month time.Month = 1
-	var day = 1
-	var year, hour, minute, second, nano int
-	switch *part {
-	case "nano":
-		nano = t.Nanosecond()
-		fallthrough
-	case "second":
-		second = t.Second()
-		fallthrough
-	case "minute":
-		minute = t.Minute()
-		fallthrough
-	case "hour":
-		hour = t.Hour()
-		fallthrough
-	case "day":
-		day = t.Day()
-		fallthrough
-	case "month":
-		month = t.Month()
-		fallthrough
-	case "year":
-		year = t.Year()
-	default:
-		panic(fmt.Sprintf(`wrong truncate value "%s"`, *part))
-	}
-	return time.Date(year, month, day, hour, minute, second, nano,
-		t.Location(),
-	)
 }

@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5/pgtype"
+	"golang.org/x/exp/slices"
 
 	pgDomains "github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/domains"
 	"github.com/wwoytenko/greenfuscator/internal/domains"
@@ -22,9 +23,8 @@ var RandomIntTransformerMeta = TransformerMeta{
 		pgtype.Int2OID,
 		pgtype.Int4OID,
 		pgtype.Int8OID,
-		//pgtype.TextOID,
-		//pgtype.VarcharOID,
-		//pgtype.NumericOID,
+		pgtype.TextOID,
+		pgtype.VarcharOID,
 	},
 	NewTransformer: NewRandomIntTransformer,
 }
@@ -35,12 +35,14 @@ type RandomIntTransformer struct {
 	EncodePlan pgtype.EncodePlan
 	min        int64
 	max        int64
-	delta      int64
 	rand       *rand.Rand
 }
 
 func NewRandomIntTransformer(column pgDomains.ColumnMeta, typeMap *pgtype.Map, params map[string]string) (domains.Transformer, error) {
 	var minInt, maxInt int64
+	var castVar int64
+	var useType = "int8"
+	var useOid = column.TypeOid
 	if typeMap == nil {
 		return nil, errors.New("typeMap cannot be nil")
 	}
@@ -59,7 +61,20 @@ func NewRandomIntTransformer(column pgDomains.ColumnMeta, typeMap *pgtype.Map, p
 		return nil, errors.New("max key cannot be empty string")
 	}
 
-	t, plan, err := GetPgCodeAndEncodingPlan(typeMap, column.TypeOid, minInt)
+	if !slices.Contains(IntTypes, int(column.TypeOid)) {
+		if slices.Contains(StringTypes, int(column.TypeOid)) {
+			castVar = int64(0)
+			adaptedType, ok := typeMap.TypeForName(useType)
+			if !ok {
+				return nil, fmt.Errorf("unsupporter int type %s", useType)
+			}
+			useOid = adaptedType.OID
+		} else {
+			return nil, fmt.Errorf("unsupported type oid %d", column.TypeOid)
+		}
+	}
+
+	t, plan, err := GetPgCodeAndEncodingPlan(typeMap, useOid, castVar)
 	if err != nil {
 		return nil, err
 	}
@@ -73,7 +88,6 @@ func NewRandomIntTransformer(column pgDomains.ColumnMeta, typeMap *pgtype.Map, p
 	if err != nil {
 		return nil, fmt.Errorf("cannot cast max value: %w", err)
 	}
-	delta := maxInt - minInt
 
 	return &RandomIntTransformer{
 		Column:     column,
@@ -81,13 +95,12 @@ func NewRandomIntTransformer(column pgDomains.ColumnMeta, typeMap *pgtype.Map, p
 		EncodePlan: plan,
 		min:        minInt,
 		max:        maxInt,
-		delta:      delta,
 		rand:       rand.New(rand.NewSource(time.Now().UnixMicro())),
 	}, nil
 }
 
 func (gtt *RandomIntTransformer) Transform(val string) (string, error) {
-	resInt := gtt.rand.Int63n(gtt.delta) + gtt.min
+	resInt := gtt.rand.Int63n(gtt.max-gtt.min) + gtt.min
 	res, err := gtt.EncodePlan.Encode(resInt, nil)
 	if err != nil {
 		return "", err

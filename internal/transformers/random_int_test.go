@@ -62,6 +62,18 @@ func TestRandomIntTransformer_Transform(t *testing.T) {
 			},
 			pattern: `^-*\d+$`,
 		},
+		{
+			name: "text with int8",
+			column: domains.ColumnMeta{
+				Type:    "text",
+				TypeOid: pgtype.TextOID,
+			},
+			params: map[string]string{
+				"min": "0",
+				"max": "100",
+			},
+			pattern: `^\d{1,3}$`,
+		},
 	}
 
 	for _, tt := range tests {

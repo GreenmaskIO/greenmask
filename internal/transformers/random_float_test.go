@@ -75,6 +75,19 @@ func TestRandomFloatTransformer_Transform(t *testing.T) {
 			},
 			pattern: `^-\d+$`,
 		},
+		{
+			name: "text with default float8",
+			column: domains.ColumnMeta{
+				Type:    "text",
+				TypeOid: pgtype.TextOID,
+			},
+			params: map[string]string{
+				"min":       "-100000",
+				"max":       "10.1241",
+				"precision": "3",
+			},
+			pattern: `^-*\d+[.]*\d{0,3}$`,
+		},
 	}
 
 	for _, tt := range tests {

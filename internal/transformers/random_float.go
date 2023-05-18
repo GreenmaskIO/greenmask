@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5/pgtype"
+	"golang.org/x/exp/slices"
 
 	pgDomains "github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/domains"
 	"github.com/wwoytenko/greenfuscator/internal/domains"
@@ -24,9 +25,8 @@ var RandomFloatTransformerMeta = TransformerMeta{
 	SupportedTypeOids: []int{
 		pgtype.Float4OID,
 		pgtype.Float8ArrayOID,
-		//pgtype.NumericOID,
-		//pgtype.VarcharOID,
-		//pgtype.TextOID,
+		pgtype.VarcharOID,
+		pgtype.TextOID,
 	},
 	NewTransformer: NewRandomFloatTransformer,
 }
@@ -42,6 +42,9 @@ type RandomFloatTransformer struct {
 }
 
 func NewRandomFloatTransformer(column pgDomains.ColumnMeta, typeMap *pgtype.Map, params map[string]string) (domains.Transformer, error) {
+	var castVar float64
+	var useType = "float8"
+	var useOid = column.TypeOid
 	var precisionSize int64 = 4
 	var minFloat, maxFloat float64
 	if typeMap == nil {
@@ -56,13 +59,28 @@ func NewRandomFloatTransformer(column pgDomains.ColumnMeta, typeMap *pgtype.Map,
 	}
 	end, ok := params["max"]
 	if !ok {
-		return nil, errors.New("expected maxend key")
+		return nil, errors.New("expected max key")
 	}
 	if end == "" {
-		return nil, errors.New("maxend key cannot be empty string")
+		return nil, errors.New("end key cannot be empty string")
+	}
+	ut, ok := params["useType"]
+	if ok {
+		useType = ut
+	}
+	if !slices.Contains(FloatTypes, int(column.TypeOid)) {
+		if slices.Contains(StringTypes, int(column.TypeOid)) {
+			adaptedType, ok := typeMap.TypeForName(useType)
+			if !ok {
+				return nil, fmt.Errorf("unsupporter date type %s", useType)
+			}
+			useOid = adaptedType.OID
+		} else {
+			return nil, fmt.Errorf("unsupported type oid %d", column.TypeOid)
+		}
 	}
 
-	t, plan, err := GetPgCodeAndEncodingPlan(typeMap, column.TypeOid, minFloat)
+	t, plan, err := GetPgCodeAndEncodingPlan(typeMap, useOid, castVar)
 	if err != nil {
 		return nil, err
 	}

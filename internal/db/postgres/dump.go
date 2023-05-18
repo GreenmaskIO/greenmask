@@ -7,6 +7,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	pgxdecimal "github.com/jackc/pgx-shopspring-decimal"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/rs/zerolog/log"
@@ -118,6 +119,7 @@ func (d *Dump) Connect(ctx context.Context, dsn string) error {
 	if err != nil {
 		return err
 	}
+	pgxdecimal.Register(conn.TypeMap())
 
 	if err := conn.Ping(ctx); err != nil {
 		conn.Close(ctx)

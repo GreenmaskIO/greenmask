@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -97,28 +98,18 @@ func CastFloat(t *pgtype.Type, typeMap *pgtype.Map, val string) (float64, error)
 }
 
 func CastInt(t *pgtype.Type, typeMap *pgtype.Map, val string) (int64, error) {
-	var typeViolationErrStr = "value out of range: value must be from %d to %d"
 	var res int64
 	decoded, err := t.Codec.DecodeValue(typeMap, t.OID, pgx.TextFormatCode, []byte(val))
 	if err != nil {
-		return 0, fmt.Errorf("cannot decode max value: %w", err)
+		return 0, err
 	}
 	switch v := decoded.(type) {
 	case int16:
 		res = int64(v)
-		if v < math.MinInt16 || v > math.MaxInt16 {
-			return 0, fmt.Errorf(typeViolationErrStr, math.MinInt16, math.MaxInt16)
-		}
 	case int32:
 		res = int64(v)
-		if v < math.MinInt32 || v > math.MaxInt32 {
-			return 0, fmt.Errorf(typeViolationErrStr, math.MinInt32, math.MaxInt32)
-		}
 	case int64:
 		res = v
-		if v < math.MinInt64 || v > math.MaxInt64 {
-			return 0, fmt.Errorf(typeViolationErrStr, math.MinInt64, math.MaxInt64)
-		}
 	default:
 		return 0, errors.New("cannot cast string to int type")
 	}
@@ -127,4 +118,39 @@ func CastInt(t *pgtype.Type, typeMap *pgtype.Map, val string) (int64, error) {
 
 func Round(x, unit float64) float64 {
 	return math.Floor(x*unit) / unit
+}
+
+// TODO: You should optimize this function or find another way to implement
+func truncateDate(t *time.Time, part *string) time.Time {
+	// year, month, day, hour, minute, second, nano
+	var month time.Month = 1
+	var day = 1
+	var year, hour, minute, second, nano int
+	switch *part {
+	case "nano":
+		nano = t.Nanosecond()
+		fallthrough
+	case "second":
+		second = t.Second()
+		fallthrough
+	case "minute":
+		minute = t.Minute()
+		fallthrough
+	case "hour":
+		hour = t.Hour()
+		fallthrough
+	case "day":
+		day = t.Day()
+		fallthrough
+	case "month":
+		month = t.Month()
+		fallthrough
+	case "year":
+		year = t.Year()
+	default:
+		panic(fmt.Sprintf(`wrong truncate value "%s"`, *part))
+	}
+	return time.Date(year, month, day, hour, minute, second, nano,
+		t.Location(),
+	)
 }

@@ -12,7 +12,7 @@ import (
 	"github.com/wwoytenko/greenfuscator/internal/domains"
 )
 
-// TODO: Consider about strict type usage and provide useful function to work with
+// TODO: Consider strict type usage and provide useful function to work with
 var bufSize = 256
 
 type GoTemplateTransformer struct {
