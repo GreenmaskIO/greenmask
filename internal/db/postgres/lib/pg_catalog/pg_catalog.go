@@ -13,6 +13,8 @@ const (
 	falseCond = "FALSE"
 )
 
+// TODO: Rewrite it using gotemplate
+
 func renderRelationCond(ss []string, defaultCond string) (string, error) {
 	res := defaultCond
 	template := "(n.nspname ~ '%s' AND c.relname ~ '%s')"

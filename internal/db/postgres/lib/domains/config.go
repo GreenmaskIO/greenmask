@@ -48,5 +48,6 @@ type Dump struct {
 }
 
 type Restore struct {
-	PgRestoreOptions pgrestore.Options `mapstructure:"pg_restore_options"`
+	PgRestoreOptions pgrestore.Options   `mapstructure:"pg_restore_options"`
+	Scripts          map[string][]Script `mapstructure:"scripts"`
 }

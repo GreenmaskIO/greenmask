@@ -3,8 +3,9 @@ package restore
 import (
 	"context"
 	"fmt"
-	"log"
 	"path"
+
+	"github.com/rs/zerolog/log"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -24,12 +25,12 @@ var (
 			var dumpId string
 
 			if err := logger.SetLogLevel(Config.Common.LogLevel, Config.Common.LogFormat); err != nil {
-				log.Fatal(err)
+				log.Fatal().Err(err).Msg("fatal")
 			}
 
 			st, err := directory.NewDirectory(Config.Common.Storage.Directory.Path, 0750, 0650)
 			if err != nil {
-				log.Fatal(err)
+				log.Fatal().Err(err).Msg("fatal")
 			}
 
 			ctx, cancel := context.WithCancel(context.Background())
@@ -40,12 +41,12 @@ var (
 
 				_, dirs, err := st.ListDir(ctx)
 				if err != nil {
-					log.Fatalf("cannot walk through directory: %s", err)
+					log.Fatal().Err(err).Msg("cannot walk through directory")
 				}
 				for _, dir := range dirs {
 					exists, err := dir.Exists(ctx, "metadata.json")
 					if err != nil {
-						log.Fatalf("cannot check file existence: %s", err)
+						log.Fatal().Err(err).Msg("cannot check file existence")
 					}
 					if exists {
 						backupNames = append(backupNames, dir.Dirname())
@@ -63,17 +64,24 @@ var (
 				dumpId = args[0]
 				exists, err := st.Exists(ctx, path.Join(dumpId, "metadata.json"))
 				if err != nil {
-					log.Fatalf("cannot check file existence: %s", err)
+					log.Fatal().Err(err).Msg("cannot check file existence")
 				}
 				if !exists {
-					log.Fatalf("choose another dump %s is failed", dumpId)
+					log.Fatal().Err(err).Msg("choose another dump is failed")
 				}
 			}
 
-			restore := postgres.NewRestore(Config.Common.BinPath, st)
+			if err := st.Chdir(ctx, dumpId); err != nil {
+				log.Fatal().Err(err).Msg("fatal")
+			}
 
-			if err := restore.RunRestore(ctx, &Config.Restore.PgRestoreOptions, dumpId); err != nil {
-				log.Fatal(err)
+			restore := postgres.NewRestore(Config.Common.BinPath, st, &Config.Restore.PgRestoreOptions, Config.Restore.Scripts)
+
+			log.Info().
+				Str("dumpId", dumpId).
+				Msgf("restoring dump")
+			if err := restore.RunRestore(ctx); err != nil {
+				log.Fatal().Err(err).Msg("fatal")
 			}
 		},
 	}
@@ -153,7 +161,7 @@ func init() {
 	} {
 		flag := Cmd.Flags().Lookup(flagName)
 		if err := viper.BindPFlag(fmt.Sprintf("%s.%s", "restore.pg_restore_options", flagName), flag); err != nil {
-			log.Fatal(err)
+			log.Fatal().Err(err).Msg("fatal")
 		}
 	}
 

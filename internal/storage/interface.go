@@ -6,7 +6,7 @@ import (
 )
 
 type Storager interface {
-	Getcwd(ctx context.Context) (string, error)
+	Getcwd() string
 	Dirname() string
 	ListDir(ctx context.Context) (files []string, dirs []Storager, err error)
 	GetReader(ctx context.Context, filePath string) (reader io.ReadCloser, err error)

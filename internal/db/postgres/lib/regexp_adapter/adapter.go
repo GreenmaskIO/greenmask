@@ -17,14 +17,12 @@ const (
 )
 
 var (
-	StateLowerCase                      StateName = "StateLowerCase"
-	StateKeepCase                       StateName = "StateKeepCase"
-	StateWildcard                       StateName = "StateWildcard"
-	StateDoubledQuotes                  StateName = "StateDoubledQuotes"
-	StateQuestionMark                   StateName = "StateQuestionMark"
-	StateRegularExpressionQuestionMark  StateName = "RegularExpressionQuestionMarkState"
-	StateRegularExpressionWildCardState StateName = "RegularExpressionWildCardState"
-	DefaultState                                  = &State{
+	StateLowerCase     StateName = "StateLowerCase"
+	StateKeepCase      StateName = "StateKeepCase"
+	StateWildcard      StateName = "StateWildcard"
+	StateDoubledQuotes StateName = "StateDoubledQuotes"
+	StateQuestionMark  StateName = "StateQuestionMark"
+	DefaultState                 = &State{
 		Name:   StateLowerCase,
 		Action: LowerCaseState,
 	}

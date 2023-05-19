@@ -136,7 +136,8 @@ func (d *Dump) setTableColumnsTransformers(ctx context.Context, tx pgx.Tx, table
 	tableColumnsQuery := `
 		SELECT 
 		    a.attname,
-		  	pg_catalog.format_type(a.atttypid, a.atttypmod),
+		    a.atttypid 	as typeoid,
+		  	pg_catalog.format_type(a.atttypid, a.atttypmod) as typename,
 		  	a.attnotnull
 		FROM pg_catalog.pg_attribute a
 		WHERE a.attrelid = $1 AND a.attnum > 0 AND NOT a.attisdropped
@@ -155,7 +156,7 @@ func (d *Dump) setTableColumnsTransformers(ctx context.Context, tx pgx.Tx, table
 	columns := make([]domains.Column, 0)
 	for rows.Next() {
 		column := domains.Column{}
-		if err = rows.Scan(&column.Name, &column.Type, &column.NotNull); err != nil {
+		if err = rows.Scan(&column.Name, &column.TypeOid, &column.Type, &column.NotNull); err != nil {
 			return fmt.Errorf("cannot scan column: %w", err)
 		}
 
@@ -166,7 +167,7 @@ func (d *Dump) setTableColumnsTransformers(ctx context.Context, tx pgx.Tx, table
 				return fmt.Errorf("unnable to find transformer with name %s", transformerConf.Name)
 			}
 			column.TransformConf = transformerConf
-			transformer, err := makeTransformer.NewTransformer(c.ColumnMeta, c.TransformConf.Params)
+			transformer, err := makeTransformer.NewTransformer(column.ColumnMeta, tx.Conn().TypeMap(), c.TransformConf.Params)
 			if err != nil {
 				return fmt.Errorf("unable to init transformer \"%s\": %w", transformerConf.Name, err)
 			}
@@ -245,6 +246,7 @@ func (d *Dump) objectList(ctx context.Context, tx pgx.Tx, confTables []domains.T
 				Name:                 name,
 				Schema:               schemaName,
 				Columns:              columns,
+				Query:                t.Query,
 				Owner:                owner,
 				DumpId:               d.getDumpId(),
 				RelKind:              relKind,
@@ -263,7 +265,7 @@ func (d *Dump) objectList(ctx context.Context, tx pgx.Tx, confTables []domains.T
 	// Assign columns and transformers for table
 	for _, table := range tables {
 		if err := d.setTableColumnsTransformers(ctx, tx, table); err != nil {
-			return nil, nil, fmt.Errorf("unable to set table columns: %w", err)
+			return nil, nil, err
 		}
 	}
 
@@ -326,6 +328,7 @@ func (d *Dump) RunDump(ctx context.Context, opt *pgdump.Options, tableConfig []d
 	if err := d.Connect(ctx, dsn); err != nil {
 		return fmt.Errorf("cannot connect to db: %w", err)
 	}
+	defer d.conn.Close(ctx)
 
 	tx, err := d.startMainTx(ctx)
 	if err != nil {
@@ -342,7 +345,7 @@ func (d *Dump) RunDump(ctx context.Context, opt *pgdump.Options, tableConfig []d
 	options.Format = "d"
 	options.SchemaOnly = true
 
-	dumpDir, err := d.st.Getcwd(ctx)
+	dumpDir := d.st.Getcwd()
 	if err != nil {
 		return fmt.Errorf("cannot get current working directory: %w", err)
 	}
@@ -396,7 +399,7 @@ func (d *Dump) RunDump(ctx context.Context, opt *pgdump.Options, tableConfig []d
 	}
 
 	// TODO: Implement LO dumping
-	log.Debug().Msg("FIXME: implement Large Objects dumper")
+	log.Warn().Msg("FIXME: implement Large Objects dumper")
 
 	eg.Go(func() error {
 		defer close(tasks)
@@ -561,21 +564,30 @@ func (d *Dump) dumpWorker(ctx context.Context, tasks <-chan dumpers.DumpTask, re
 		var task dumpers.DumpTask
 		select {
 		case <-ctx.Done():
-			log.Debug().Msgf("existed due to cancelled context (worker %d restoring %s): %w", id, task.DebugInfo(), ctx.Err())
+			log.Debug().
+				Err(ctx.Err()).
+				Int("workerID", id).
+				Str("objectName", task.DebugInfo()).
+				Msgf("existed due to cancelled context")
 			return ctx.Err()
 		case task = <-tasks:
 			if task == nil {
 				return nil
 			}
 		}
-		log.Debug().Msgf("dumping %s (worker %d)", task.DebugInfo(), id)
+		log.Debug().
+			Int("workerID", id).
+			Str("objectName", task.DebugInfo()).
+			Msgf("dumping started")
 
 		entry, err := task.Execute(ctx, tx, d.st)
 		if err != nil {
 			return err
 		}
 		result <- entry
-		log.Debug().Msgf("dumping %s is done (worker %d)", task.DebugInfo(), id)
+		log.Debug().
+			Int("workerID", id).
+			Str("objectName", task.DebugInfo()).
+			Msgf("dumping is done")
 	}
-
 }

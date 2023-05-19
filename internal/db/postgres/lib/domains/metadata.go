@@ -104,7 +104,8 @@ func NewMetadata(ahHeader toc.Header, ahEntries []*toc.Entry,
 
 			section, ok := toc.SectionMap[ahEntry.Section]
 			if !ok {
-				log.Warn().Msgf("unknown section with number: %d", ahEntry.Section)
+				log.Warn().
+					Msgf("unknown section with number: %d", ahEntry.Section)
 			}
 
 			entries = append(entries, &TocEntry{

@@ -19,6 +19,8 @@ type Table struct {
 	Schema               string   `mapstructure:"schema"`
 	Name                 string   `mapstructure:"name"`
 	Columns              []Column `mapstructure:"columns"`
+	Query                string   `mapstructure:"query"`
+	QueryTest            string   `mapstructure:"queryTest"`
 	HasTransformer       bool     `json:"-" yaml:"-"`
 	Oid                  int      `json:"-" yaml:"-"`
 	Owner                string   `json:"-" yaml:"-"`
@@ -70,6 +72,14 @@ func (t *Table) TransformTuple(data []byte) ([]byte, error) {
 		return nil, fmt.Errorf("cannot read data from tsv reader: %w", err)
 	}
 	return res, nil
+}
+
+func (t *Table) GetCopyFromStatement() (string, error) {
+	query := fmt.Sprintf("COPY \"%s\".\"%s\" TO STDOUT", t.Schema, t.Name)
+	if t.Query != "" {
+		query = fmt.Sprintf("COPY (%s) TO STDOUT", t.Query)
+	}
+	return query, nil
 }
 
 func (t *Table) GetTocEntry() (*toc.Entry, error) {

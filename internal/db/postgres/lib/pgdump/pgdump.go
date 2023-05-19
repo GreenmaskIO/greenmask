@@ -188,7 +188,7 @@ func (o *Options) GetParams() []string {
 	}
 	if o.EnableRowSecurity {
 		// TODO: Seems that this options affects COPY
-		log.Debug().Msgf("FIXME: Seems that this options affects COPY")
+		log.Warn().Msgf("FIXME: Seems that this options affects COPY and is not implemented")
 		args = append(args, "--enable-row-security")
 	}
 	if len(o.ExcludeTableData) > 0 {

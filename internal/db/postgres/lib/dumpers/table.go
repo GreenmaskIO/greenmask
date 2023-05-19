@@ -6,6 +6,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgproto3"
+	"github.com/rs/zerolog/log"
 
 	"github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/domains"
 	"github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/toc"
@@ -33,8 +34,15 @@ func (td *TableDumper) Execute(ctx context.Context, tx pgx.Tx, st storage.Storag
 	defer gz.Close()
 
 	frontend := tx.Conn().PgConn().Frontend()
+	query, err := td.table.GetCopyFromStatement()
+	log.Debug().
+		Str("query", query).
+		Msgf("dumping %s using copy query", td.DebugInfo())
+	if err != nil {
+		return nil, fmt.Errorf("cannot get COPY FROM statement: %w", err)
+	}
 	frontend.Send(&pgproto3.Query{
-		String: fmt.Sprintf("COPY \"%s\".\"%s\" TO STDOUT", td.table.Schema, td.table.Name),
+		String: query,
 	})
 
 	if err := frontend.Flush(); err != nil {

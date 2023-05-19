@@ -34,8 +34,8 @@ func NewDirectory(cwd string, dirMode, fileMode os.FileMode) (*Directory, error)
 	}, nil
 }
 
-func (d *Directory) Getcwd(ctx context.Context) (string, error) {
-	return d.cwd, nil
+func (d *Directory) Getcwd() string {
+	return d.cwd
 }
 
 func (d *Directory) Dirname() string {
@@ -89,13 +89,18 @@ func (d *Directory) Delete(ctx context.Context, filePath string, recursive bool)
 }
 
 func (d *Directory) Chdir(ctx context.Context, dirPath string) error {
-	fileInfo, err := os.Stat(dirPath)
+	newPath := dirPath
+	if dirPath[1] != '/' {
+		newPath = path.Join(d.cwd, dirPath)
+	}
+	fileInfo, err := os.Stat(newPath)
 	if err != nil {
 		return err
 	}
 	if !fileInfo.IsDir() {
 		return errors.New("received directory path is file")
 	}
+	d.cwd = newPath
 	return nil
 }
 
