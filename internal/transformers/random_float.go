@@ -80,7 +80,7 @@ func NewRandomFloatTransformer(column pgDomains.ColumnMeta, typeMap *pgtype.Map,
 		}
 	}
 
-	t, plan, err := GetPgCodeAndEncodingPlan(typeMap, useOid, castVar)
+	t, plan, err := GetPgTypeAndEncodingPlan(typeMap, useOid, castVar)
 	if err != nil {
 		return nil, err
 	}

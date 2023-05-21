@@ -13,6 +13,8 @@ import (
 
 const AnyOid = -1
 
+const defaultNullSeq = `\N`
+
 type UuidTransformer struct {
 	Column pgDomains.ColumnMeta
 }
@@ -30,7 +32,7 @@ var UuidTransformerMeta = TransformerMeta{
 func NewUuidTransformer(column pgDomains.ColumnMeta, typeMap *pgtype.Map, params map[string]string) (domains.Transformer, error) {
 	var cast = "db9abb12-3e84-4873-915d-27c17a1fea22"
 
-	t, _, err := GetPgCodeAndEncodingPlan(typeMap, column.TypeOid, cast)
+	t, _, err := GetPgTypeAndEncodingPlan(typeMap, column.TypeOid, cast)
 	if err != nil {
 		return nil, err
 	}

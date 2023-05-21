@@ -60,7 +60,7 @@ var (
 	}
 )
 
-func GetPgCodeAndEncodingPlan(typeMap *pgtype.Map, typeOid uint32, castVal any) (*pgtype.Type, pgtype.EncodePlan, error) {
+func GetPgTypeAndEncodingPlan(typeMap *pgtype.Map, typeOid uint32, castVal any) (*pgtype.Type, pgtype.EncodePlan, error) {
 	t, ok := typeMap.TypeForOID(typeOid)
 	if !ok {
 		return nil, nil, fmt.Errorf("cannot match pgtype %d", typeOid)
@@ -148,7 +148,7 @@ func truncateDate(t *time.Time, part *string) time.Time {
 	case "year":
 		year = t.Year()
 	default:
-		panic(fmt.Sprintf(`wrong truncate value "%s"`, *part))
+		panic(fmt.Sprintf(`wrong Truncate value "%s"`, *part))
 	}
 	return time.Date(year, month, day, hour, minute, second, nano,
 		t.Location(),

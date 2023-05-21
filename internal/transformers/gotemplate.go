@@ -47,7 +47,7 @@ func NewGoTemplateTransformer(column pgDomains.ColumnMeta, typeMap *pgtype.Map, 
 	}
 	buf := bytes.NewBuffer(make([]byte, 0, bufSize))
 
-	t, plan, err := GetPgCodeAndEncodingPlan(typeMap, column.TypeOid, cast)
+	t, plan, err := GetPgTypeAndEncodingPlan(typeMap, column.TypeOid, cast)
 	if err != nil {
 		return nil, err
 	}

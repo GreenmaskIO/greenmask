@@ -17,7 +17,6 @@ import (
 	"github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/dumpers"
 	"github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/pg_catalog"
 	"github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/pgdump"
-	"github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/pgrestore"
 	"github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/toc"
 	"github.com/wwoytenko/greenfuscator/internal/storage"
 	"github.com/wwoytenko/greenfuscator/internal/transformers"
@@ -94,16 +93,15 @@ var defaultTypeMap = map[string]string{
 }
 
 type Dump struct {
-	dsn              string
-	conn             *pgx.Conn
-	pgDumpOptions    *pgdump.Options
-	pgRestoreOptions *pgrestore.Options
-	binPath          string
-	curDumpId        int32
-	st               storage.Storager
-	dumpTaskCount    int32
-	allTaskPushed    atomic.Bool
-	typeMap          *pgtype.Map
+	dsn           string
+	conn          *pgx.Conn
+	pgDumpOptions *pgdump.Options
+	binPath       string
+	curDumpId     int32
+	st            storage.Storager
+	dumpTaskCount int32
+	allTaskPushed atomic.Bool
+	typeMap       *pgtype.Map
 }
 
 func NewDump(binPath string, st storage.Storager) *Dump {

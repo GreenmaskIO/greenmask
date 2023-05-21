@@ -14,7 +14,8 @@ import (
 )
 
 func TestRandomDateTransformer_Transform(t *testing.T) {
-	var connStr = "user=vvoitenko dbname=demo host=/tmp"
+	//var connStr = "user=vvoitenko dbname=demo host=/tmp"
+	var connStr = "user=postgres dbname=demo"
 	c, err := pgx.Connect(context.Background(), connStr)
 	require.NoError(t, err)
 	defer c.Close(context.Background())
@@ -23,7 +24,7 @@ func TestRandomDateTransformer_Transform(t *testing.T) {
 	tests := []struct {
 		name    string
 		column  domains.ColumnMeta
-		params  map[string]string
+		params  map[string]interface{}
 		pattern string
 	}{
 		{
@@ -32,7 +33,7 @@ func TestRandomDateTransformer_Transform(t *testing.T) {
 				Type:    "date",
 				TypeOid: pgtype.DateOID,
 			},
-			params: map[string]string{
+			params: map[string]interface{}{
 				"min": "2017-09-14",
 				"max": "2023-09-14",
 			},
@@ -44,7 +45,7 @@ func TestRandomDateTransformer_Transform(t *testing.T) {
 				Type:    "timestamp",
 				TypeOid: pgtype.TimestampOID,
 			},
-			params: map[string]string{
+			params: map[string]interface{}{
 				"min": "2018-12-15 23:34:17.946707",
 				"max": "2023-09-14 00:00:17.946707",
 			},
@@ -56,7 +57,7 @@ func TestRandomDateTransformer_Transform(t *testing.T) {
 				Type:    "timestamptz",
 				TypeOid: pgtype.TimestamptzOID,
 			},
-			params: map[string]string{
+			params: map[string]interface{}{
 				"min": "2018-12-15 23:34:17.946707+03",
 				"max": "2023-09-14 00:00:17.946707+03",
 			},
@@ -68,7 +69,7 @@ func TestRandomDateTransformer_Transform(t *testing.T) {
 				Type:    "text",
 				TypeOid: pgtype.TextOID,
 			},
-			params: map[string]string{
+			params: map[string]interface{}{
 				"min": "2018-09-14 00:00:17.0",
 				"max": "2023-09-14 00:00:17.0",
 			},
@@ -80,7 +81,7 @@ func TestRandomDateTransformer_Transform(t *testing.T) {
 				Type:    "text",
 				TypeOid: pgtype.TextOID,
 			},
-			params: map[string]string{
+			params: map[string]interface{}{
 				"min":     "2018-09-14",
 				"max":     "2023-09-14",
 				"useType": "date",
@@ -93,7 +94,7 @@ func TestRandomDateTransformer_Transform(t *testing.T) {
 				Type:    "text",
 				TypeOid: pgtype.TextOID,
 			},
-			params: map[string]string{
+			params: map[string]interface{}{
 				"min":     "2018-09-14 00:00:17.0",
 				"max":     "2023-09-14 00:00:17.0",
 				"useType": "timestamp",
@@ -106,7 +107,7 @@ func TestRandomDateTransformer_Transform(t *testing.T) {
 				Type:    "text",
 				TypeOid: pgtype.TextOID,
 			},
-			params: map[string]string{
+			params: map[string]interface{}{
 				"min":     "2018-12-15 23:34:17.946707+03",
 				"max":     "2023-09-14 00:00:17.946707+03",
 				"useType": "timestamptz",
@@ -119,7 +120,7 @@ func TestRandomDateTransformer_Transform(t *testing.T) {
 				Type:    "text",
 				TypeOid: pgtype.TextOID,
 			},
-			params: map[string]string{
+			params: map[string]interface{}{
 				"min":     "2018-12-15 23:34:17.946707+03",
 				"max":     "2023-09-14 00:00:17.946707+03",
 				"useType": "timestamptz",
@@ -127,12 +128,12 @@ func TestRandomDateTransformer_Transform(t *testing.T) {
 			pattern: `^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}.\d{1,6}Z$`,
 		},
 		{
-			name: "test timestamp type with truncate till day",
+			name: "test timestamp type with Truncate till day",
 			column: domains.ColumnMeta{
 				Type:    "timestamp",
 				TypeOid: pgtype.TimestampOID,
 			},
-			params: map[string]string{
+			params: map[string]interface{}{
 				"min":      "2018-12-15 23:34:17.946707",
 				"max":      "2023-09-14 00:00:17.946707",
 				"truncate": "month",
@@ -143,7 +144,7 @@ func TestRandomDateTransformer_Transform(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			transformer, err := NewRandomDateTransformer(tt.column, typeMap, tt.params)
+			transformer, err := NewRandomDateTransformerV2(tt.column, typeMap, tt.params)
 			require.NoError(t, err)
 			val, err := transformer.Transform("")
 			require.NoError(t, err)

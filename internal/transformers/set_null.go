@@ -7,8 +7,6 @@ import (
 	"github.com/wwoytenko/greenfuscator/internal/domains"
 )
 
-var defaultNullSeq = `\N`
-
 var SetNullTransformerMeta = TransformerMeta{
 	Description: `Set NULL value`,
 	ParamsDescription: map[string]string{

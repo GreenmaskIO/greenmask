@@ -1,18 +1,18 @@
 common:
   log-level: "info"
   log-format: "text"
-  #  bin_path: "/usr/bin"
-  bin_path: "/opt/homebrew/bin"
+  bin_path: "/usr/bin"
+#  bin_path: "/opt/homebrew/bin"
   storage:
     directory:
-      #      path: "/home/vadim/tmp/pg_dump_test"
-      path: "/Users/vvoitenko/tmp/pgdump_test"
+      path: "/home/vadim/tmp/pg_dump_test"
+#      path: "/Users/vvoitenko/tmp/pgdump_test"
 
 restore:
   pg_restore_options:
     #    verbose: true
-    #    dbname: "user=postgres dbname=test_restore"
-    dbname: "host=/tmp port=5432 user=vvoitenko dbname=demo_restore"
+    dbname: "user=postgres dbname=demo_restore"
+  #    dbname: "host=/tmp port=5432 user=vvoitenko dbname=demo_restore"
   #    use-list: "/Users/vvoitenko/gits/woyten/greenfuscator/cmd/greenmask/test.list"
 
   scripts:
@@ -50,8 +50,8 @@ restore:
 dump:
   pg_dump_options:
     #    verbose: true
-    dbname: "host=/tmp port=5432 user=vvoitenko dbname=demo"
-    #    dbname: "user=postgres dbname=test"
+    # dbname: "host=/tmp port=5432 user=vvoitenko dbname=demo"
+    dbname: "user=postgres dbname=demo"
     #    exclude-schema: "(\"teSt\"*|test*)"
     #    table:
     #      - "public.cards_*"

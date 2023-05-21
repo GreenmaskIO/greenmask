@@ -74,7 +74,7 @@ func NewRandomIntTransformer(column pgDomains.ColumnMeta, typeMap *pgtype.Map, p
 		}
 	}
 
-	t, plan, err := GetPgCodeAndEncodingPlan(typeMap, useOid, castVar)
+	t, plan, err := GetPgTypeAndEncodingPlan(typeMap, useOid, castVar)
 	if err != nil {
 		return nil, err
 	}

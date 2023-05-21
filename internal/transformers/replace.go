@@ -34,7 +34,7 @@ func NewReplaceTransformer(column pgDomains.ColumnMeta, typeMap *pgtype.Map, par
 		return nil, errors.New("expected value key")
 	}
 
-	t, _, err := GetPgCodeAndEncodingPlan(typeMap, column.TypeOid, cast)
+	t, _, err := GetPgTypeAndEncodingPlan(typeMap, column.TypeOid, cast)
 	if err != nil {
 		return nil, err
 	}
