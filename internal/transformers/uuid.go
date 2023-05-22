@@ -13,7 +13,7 @@ import (
 
 const AnyOid = -1
 
-const defaultNullSeq = `\N`
+const DefaultNullSeq = `\N`
 
 type UuidTransformer struct {
 	Column pgDomains.ColumnMeta

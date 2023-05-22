@@ -26,7 +26,7 @@ type SetNullTransformer struct {
 func NewSetNullTransformer(column pgDomains.ColumnMeta, typeMap *pgtype.Map, params map[string]string) (domains.Transformer, error) {
 	nullSequence, ok := params["nullSequence"]
 	if !ok {
-		nullSequence = defaultNullSeq
+		nullSequence = DefaultNullSeq
 	}
 
 	return &SetNullTransformer{

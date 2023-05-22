@@ -4,14 +4,49 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"reflect"
 	"time"
 
+	"github.com/go-playground/locales/en"
+	ut "github.com/go-playground/universal-translator"
+	"github.com/go-playground/validator"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/mitchellh/mapstructure"
+	"github.com/rs/zerolog/log"
 
 	pgDomains "github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/domains"
 	"github.com/wwoytenko/greenfuscator/internal/domains"
 )
+
+var (
+	validate            = validator.New()
+	translators         ut.Translator
+	enLocales           = en.New()
+	universalTranslator = ut.New(enLocales, enLocales)
+)
+
+func init() {
+	var found bool
+	translators, found = universalTranslator.GetTranslator("en")
+	if !found {
+		panic("translation not found")
+	}
+
+	err := validate.RegisterTranslation(
+		"required",
+		translators,
+		func(ut ut.Translator) error {
+			return ut.Add("required", "expected {0} key", true) // see universal-translator for details
+		},
+		func(ut ut.Translator, fe validator.FieldError) string {
+			t, _ := ut.T("required", fe.Field())
+			return t
+		})
+	if err != nil {
+		panic(fmt.Sprintf("cannot register translation: %s", err))
+	}
+}
 
 type TransformerFabricFunction func(column pgDomains.ColumnMeta, typeMap *pgtype.Map, params map[string]string) (domains.Transformer, error)
 
@@ -153,4 +188,113 @@ func truncateDate(t *time.Time, part *string) time.Time {
 	return time.Date(year, month, day, hour, minute, second, nano,
 		t.Location(),
 	)
+}
+
+type TransformerBase struct {
+	Column     pgDomains.ColumnMeta
+	PgType     *pgtype.Type
+	EncodePlan pgtype.EncodePlan
+	TypeMap    *pgtype.Map
+}
+
+func NewTransformerBase(column pgDomains.ColumnMeta, typeMap *pgtype.Map) (*TransformerBase, error) {
+	if typeMap == nil {
+		return nil, fmt.Errorf("typeMap cannot be nil")
+	}
+	t, plan, err := GetPgTypeAndEncodingPlan(typeMap, column.TypeOid, time.Time{})
+	if err != nil {
+		return nil, err
+	}
+	return &TransformerBase{
+		Column:     column,
+		PgType:     t,
+		EncodePlan: plan,
+		TypeMap:    typeMap,
+	}, nil
+}
+
+func (tb *TransformerBase) Transform(val string) (string, error) {
+	return "", nil
+}
+
+func (tb *TransformerBase) Scan(src string, dest interface{}) error {
+	val, err := tb.PgType.Codec.DecodeValue(tb.TypeMap, tb.Column.TypeOid, pgx.TextFormatCode, []byte(src))
+	if err != nil {
+		return fmt.Errorf("cannot decode value: %w", err)
+	}
+
+	if reflect.ValueOf(dest).Kind() == reflect.Ptr {
+		destType := reflect.Indirect(reflect.ValueOf(dest)).Type()
+		valType := reflect.TypeOf(val)
+		if destType != valType {
+			return fmt.Errorf("unpexpected types")
+		}
+	} else {
+		return fmt.Errorf("expected pointer")
+	}
+
+	switch destTyped := dest.(type) {
+	case *time.Time:
+		valTyped, ok := val.(time.Time)
+		if !ok {
+			return fmt.Errorf("expected time.Time value")
+		}
+		reflect.ValueOf(destTyped).Elem().Set(reflect.ValueOf(&valTyped).Elem())
+	default:
+		return fmt.Errorf("unsopported type")
+	}
+
+	return nil
+}
+
+func Scan(src string, dest interface{}, oid uint32, typeMap *pgtype.Map, pgType *pgtype.Type) error {
+	val, err := pgType.Codec.DecodeValue(typeMap, oid, pgx.TextFormatCode, []byte(src))
+	if err != nil {
+		return fmt.Errorf("cannot decode min value: %w", err)
+	}
+
+	if reflect.ValueOf(dest).Kind() == reflect.Ptr {
+		destType := reflect.Indirect(reflect.ValueOf(dest)).Type()
+		valType := reflect.TypeOf(val)
+		if destType != valType {
+			return fmt.Errorf("unpexpected types")
+		}
+	} else {
+		return fmt.Errorf("expected pointer")
+	}
+
+	switch destTyped := dest.(type) {
+	case *time.Time:
+		valTyped, ok := val.(time.Time)
+		if !ok {
+			return fmt.Errorf("expected time.Time value")
+		}
+		reflect.ValueOf(destTyped).Elem().Set(reflect.ValueOf(&valTyped).Elem())
+	default:
+		return fmt.Errorf("unsopported type")
+	}
+
+	return nil
+}
+
+func parseTransformerParams(src map[string]interface{}, dest interface{}) error {
+	if err := mapstructure.Decode(src, dest); err != nil {
+		return fmt.Errorf("parameters parsing error: %w", err)
+	}
+
+	if err := validate.Struct(dest); err != nil {
+		errs, ok := err.(validator.ValidationErrors)
+		if ok {
+			var firstErr string
+			for _, item := range errs.Translate(translators) {
+				if firstErr == "" {
+					firstErr = item
+				}
+				log.Warn().Msg(item)
+			}
+			return fmt.Errorf("validation error: %s", firstErr)
+		}
+		return fmt.Errorf("validation error: %w", err)
+	}
+	return nil
 }
