@@ -13,8 +13,8 @@ import (
 )
 
 func TestRandomDateTransformer_Transform(t *testing.T) {
-	var connStr = "user=vvoitenko dbname=demo host=/tmp"
-	//var connStr = "user=postgres dbname=demo"
+	//var connStr = "user=vvoitenko dbname=demo host=/tmp"
+	var connStr = "user=postgres dbname=demo"
 	c, err := pgx.Connect(context.Background(), connStr)
 	require.NoError(t, err)
 	defer c.Close(context.Background())
@@ -90,7 +90,8 @@ func TestRandomDateTransformer_Transform(t *testing.T) {
 }
 
 func TestRandomDateTransformer_Transform_errors(t *testing.T) {
-	var connStr = "user=vvoitenko dbname=demo host=/tmp"
+	//var connStr = "user=vvoitenko dbname=demo host=/tmp"
+	var connStr = "user=postgres dbname=demo"
 	c, err := pgx.Connect(context.Background(), connStr)
 	require.NoError(t, err)
 	defer c.Close(context.Background())

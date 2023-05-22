@@ -36,7 +36,7 @@ type dateGeneratorFunc func(r *rand.Rand, startDate *time.Time, endDate *time.Ti
 type RandomDateTransformerParams struct {
 	Min      string  `mapstructure:"min" validate:"required"`
 	Max      string  `mapstructure:"max" validate:"required"`
-	Truncate string  `mapstructure:"truncate"`
+	Truncate string  `mapstructure:"truncate" validate:"omitempty,oneof=year month day hour second nano"`
 	Nullable bool    `mapstructure:"nullable"`
 	Fraction float32 `mapstructure:"fraction"`
 }

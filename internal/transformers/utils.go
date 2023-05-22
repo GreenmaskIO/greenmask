@@ -46,6 +46,21 @@ func init() {
 	if err != nil {
 		panic(fmt.Sprintf("cannot register translation: %s", err))
 	}
+
+	err = validate.RegisterTranslation(
+		"oneof",
+		translators,
+		func(ut ut.Translator) error {
+			return ut.Add("oneof", "{0} value out of range", true) // see universal-translator for details
+		},
+		func(ut ut.Translator, fe validator.FieldError) string {
+			t, _ := ut.T("oneof", fe.Field())
+			return t
+		})
+	if err != nil {
+		panic(fmt.Sprintf("cannot register translation: %s", err))
+	}
+
 }
 
 type TransformerFabricFunction func(column pgDomains.ColumnMeta, typeMap *pgtype.Map, params map[string]string) (domains.Transformer, error)
