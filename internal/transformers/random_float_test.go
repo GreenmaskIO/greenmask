@@ -22,8 +22,9 @@ func TestRandomFloatTransformer_Transform(t *testing.T) {
 	tests := []struct {
 		name    string
 		column  domains.ColumnMeta
-		params  map[string]string
+		params  map[string]interface{}
 		pattern string
+		useType string
 	}{
 		{
 			name: "float4",
@@ -31,11 +32,11 @@ func TestRandomFloatTransformer_Transform(t *testing.T) {
 				Type:    "float4",
 				TypeOid: pgtype.Float4OID,
 			},
-			params: map[string]string{
-				"min": "1",
-				"max": "10",
+			params: map[string]interface{}{
+				"min": 1,
+				"max": 10,
 			},
-			pattern: `-*\d+[.]*\d+$`,
+			pattern: `-*\d+[.]*\d*$`,
 		},
 		{
 			name: "float8",
@@ -43,11 +44,11 @@ func TestRandomFloatTransformer_Transform(t *testing.T) {
 				Type:    "float8",
 				TypeOid: pgtype.Float8OID,
 			},
-			params: map[string]string{
-				"min": "1",
-				"max": "10",
+			params: map[string]interface{}{
+				"min": 1,
+				"max": 10,
 			},
-			pattern: `-*\d+[.]*\d+$`,
+			pattern: `-*\d+[.]*\d*$`,
 		},
 		{
 			name: "float8 ranges 1",
@@ -55,10 +56,10 @@ func TestRandomFloatTransformer_Transform(t *testing.T) {
 				Type:    "float8",
 				TypeOid: pgtype.Float8OID,
 			},
-			params: map[string]string{
-				"min":       "-100000",
-				"max":       "100000",
-				"precision": "10",
+			params: map[string]interface{}{
+				"min":       -100000,
+				"max":       100000,
+				"precision": 10,
 			},
 			pattern: `^-*\d+[.]*\d{0,10}$`,
 		},
@@ -68,10 +69,10 @@ func TestRandomFloatTransformer_Transform(t *testing.T) {
 				Type:    "float8",
 				TypeOid: pgtype.Float8OID,
 			},
-			params: map[string]string{
-				"min":       "-100000",
-				"max":       "-1",
-				"precision": "0",
+			params: map[string]interface{}{
+				"min":       -100000,
+				"max":       -1,
+				"precision": 0,
 			},
 			pattern: `^-\d+$`,
 		},
@@ -81,18 +82,19 @@ func TestRandomFloatTransformer_Transform(t *testing.T) {
 				Type:    "text",
 				TypeOid: pgtype.TextOID,
 			},
-			params: map[string]string{
-				"min":       "-100000",
-				"max":       "10.1241",
-				"precision": "3",
+			params: map[string]interface{}{
+				"min":       -100000,
+				"max":       10.1241,
+				"precision": 3,
 			},
+			useType: "float4",
 			pattern: `^-*\d+[.]*\d{0,3}$`,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			transformer, err := NewRandomFloatTransformer(tt.column, typeMap, tt.params)
+			transformer, err := NewRandomFloatTransformerV2(tt.column, typeMap, tt.useType, tt.params)
 			require.NoError(t, err)
 			val, err := transformer.Transform("")
 			require.NoError(t, err)

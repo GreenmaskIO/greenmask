@@ -19,7 +19,7 @@ var RandomDateTransformerMeta = TransformerMeta{
 		"min":      "min value",
 		"max":      "max value",
 		"truncate": "Truncate date till the part (year, month, day, hour, second, nano)",
-		"useType":  "use another type instead default timestamp for textual type (date, timestamp, timestamptz)",
+		"useType":  "use another type instead column type",
 		"nullable": "generate null value randomly (default false)",
 		"fraction": "NULL value distribution within the table (default Fraction 10%)",
 	},
@@ -55,11 +55,11 @@ var truncateParts = []string{"year", "month", "day", "hour", "second", "millisec
 func NewRandomDateTransformerV2(
 	column pgDomains.ColumnMeta,
 	typeMap *pgtype.Map,
-	//useType string,
+	useType string,
 	params map[string]interface{},
 ) (domains.Transformer, error) {
 
-	base, err := NewTransformerBase(column, typeMap)
+	base, err := NewTransformerBase(column, typeMap, useType, RandomDateTransformerMeta.SupportedTypeOids, time.Time{})
 	if err != nil {
 		return nil, fmt.Errorf("cannot build transformer base object: %w", err)
 	}

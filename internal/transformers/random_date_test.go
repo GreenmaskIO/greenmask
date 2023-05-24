@@ -13,8 +13,8 @@ import (
 )
 
 func TestRandomDateTransformer_Transform(t *testing.T) {
-	//var connStr = "user=vvoitenko dbname=demo host=/tmp"
-	var connStr = "user=postgres dbname=demo"
+	var connStr = "user=vvoitenko dbname=demo host=/tmp"
+	//var connStr = "user=postgres dbname=demo"
 	c, err := pgx.Connect(context.Background(), connStr)
 	require.NoError(t, err)
 	defer c.Close(context.Background())
@@ -79,7 +79,7 @@ func TestRandomDateTransformer_Transform(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			transformer, err := NewRandomDateTransformerV2(tt.column, typeMap, tt.params)
+			transformer, err := NewRandomDateTransformerV2(tt.column, typeMap, "", tt.params)
 			require.NoError(t, err)
 			val, err := transformer.Transform("")
 			require.NoError(t, err)
@@ -90,8 +90,8 @@ func TestRandomDateTransformer_Transform(t *testing.T) {
 }
 
 func TestRandomDateTransformer_Transform_errors(t *testing.T) {
-	//var connStr = "user=vvoitenko dbname=demo host=/tmp"
-	var connStr = "user=postgres dbname=demo"
+	var connStr = "user=vvoitenko dbname=demo host=/tmp"
+	//var connStr = "user=postgres dbname=demo"
 	c, err := pgx.Connect(context.Background(), connStr)
 	require.NoError(t, err)
 	defer c.Close(context.Background())
@@ -120,8 +120,10 @@ func TestRandomDateTransformer_Transform_errors(t *testing.T) {
 				Type:    "date",
 				TypeOid: pgtype.DateOID,
 			},
-			typeMap:     typeMap,
-			params:      map[string]interface{}{},
+			typeMap: typeMap,
+			params: map[string]interface{}{
+				"max": "2017-09-14",
+			},
 			errContains: "expected Min key",
 		},
 		{
@@ -193,7 +195,7 @@ func TestRandomDateTransformer_Transform_errors(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			_, err := NewRandomDateTransformerV2(tt.column, tt.typeMap, tt.params)
+			_, err := NewRandomDateTransformerV2(tt.column, tt.typeMap, "", tt.params)
 			require.ErrorContains(t, err, tt.errContains)
 
 		})

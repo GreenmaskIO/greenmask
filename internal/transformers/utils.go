@@ -14,6 +14,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/mitchellh/mapstructure"
 	"github.com/rs/zerolog/log"
+	"golang.org/x/exp/slices"
 
 	pgDomains "github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/domains"
 	"github.com/wwoytenko/greenfuscator/internal/domains"
@@ -210,13 +211,25 @@ type TransformerBase struct {
 	PgType     *pgtype.Type
 	EncodePlan pgtype.EncodePlan
 	TypeMap    *pgtype.Map
+	UseType    string
 }
 
-func NewTransformerBase(column pgDomains.ColumnMeta, typeMap *pgtype.Map) (*TransformerBase, error) {
+func NewTransformerBase(column pgDomains.ColumnMeta, typeMap *pgtype.Map, useType string, supportedOids []int, cast interface{}) (*TransformerBase, error) {
 	if typeMap == nil {
 		return nil, fmt.Errorf("typeMap cannot be nil")
 	}
-	t, plan, err := GetPgTypeAndEncodingPlan(typeMap, column.TypeOid, time.Time{})
+	var oid = column.TypeOid
+	if useType != "" {
+		t, ok := typeMap.TypeForName(useType)
+		if !ok {
+			return nil, fmt.Errorf("cannot find type %s", useType)
+		}
+		oid = t.OID
+		if !slices.Contains(supportedOids, int(oid)) {
+			return nil, fmt.Errorf("cannot use another type: %s type is not supported", useType)
+		}
+	}
+	t, plan, err := GetPgTypeAndEncodingPlan(typeMap, oid, cast)
 	if err != nil {
 		return nil, err
 	}
@@ -225,6 +238,7 @@ func NewTransformerBase(column pgDomains.ColumnMeta, typeMap *pgtype.Map) (*Tran
 		PgType:     t,
 		EncodePlan: plan,
 		TypeMap:    typeMap,
+		UseType:    useType,
 	}, nil
 }
 

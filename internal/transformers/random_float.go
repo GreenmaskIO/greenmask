@@ -1,15 +1,12 @@
 package transformers
 
 import (
-	"errors"
 	"fmt"
 	"math"
 	"math/rand"
-	"strconv"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgtype"
-	"golang.org/x/exp/slices"
 
 	pgDomains "github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/domains"
 	"github.com/wwoytenko/greenfuscator/internal/domains"
@@ -24,99 +21,64 @@ var RandomFloatTransformerMeta = TransformerMeta{
 	},
 	SupportedTypeOids: []int{
 		pgtype.Float4OID,
-		pgtype.Float8ArrayOID,
-		pgtype.VarcharOID,
-		pgtype.TextOID,
+		pgtype.Float8OID,
 	},
-	NewTransformer: NewRandomFloatTransformer,
+	//NewTransformer: NewRandomFloatTransformerV2,
+}
+
+type RandomFloatTransformerParams struct {
+	Min       float64 `mapstructure:"min" validate:"required"`
+	Max       float64 `mapstructure:"max" validate:"required"`
+	Precision int16   `mapstructure:"precision"`
+	Nullable  bool    `mapstructure:"nullable"`
+	Fraction  float32 `mapstructure:"fraction"`
 }
 
 type RandomFloatTransformer struct {
-	Column     pgDomains.ColumnMeta
-	PgType     *pgtype.Type
-	EncodePlan pgtype.EncodePlan
-	min        float64
-	max        float64
-	precision  float64
-	rand       *rand.Rand
+	TransformerBase
+	RandomFloatTransformerParams
+	precision float64
+	rand      *rand.Rand
 }
 
-func NewRandomFloatTransformer(column pgDomains.ColumnMeta, typeMap *pgtype.Map, params map[string]string) (domains.Transformer, error) {
-	var castVar float64
-	var useType = "float8"
-	var useOid = column.TypeOid
-	var precisionSize int64 = 4
-	var minFloat, maxFloat float64
-	if typeMap == nil {
-		return nil, errors.New("typeMap cannot be nil")
-	}
-	start, ok := params["min"]
-	if !ok {
-		return nil, errors.New("expected min key")
-	}
-	if start == "" {
-		return nil, errors.New("min key cannot be empty string")
-	}
-	end, ok := params["max"]
-	if !ok {
-		return nil, errors.New("expected max key")
-	}
-	if end == "" {
-		return nil, errors.New("end key cannot be empty string")
-	}
-	ut, ok := params["useType"]
-	if ok {
-		useType = ut
-	}
-	if !slices.Contains(FloatTypes, int(column.TypeOid)) {
-		if slices.Contains(StringTypes, int(column.TypeOid)) {
-			adaptedType, ok := typeMap.TypeForName(useType)
-			if !ok {
-				return nil, fmt.Errorf("unsupporter date type %s", useType)
-			}
-			useOid = adaptedType.OID
-		} else {
-			return nil, fmt.Errorf("unsupported type oid %d", column.TypeOid)
-		}
-	}
+func NewRandomFloatTransformerV2(
+	column pgDomains.ColumnMeta,
+	typeMap *pgtype.Map,
+	useType string,
+	params map[string]interface{},
+) (domains.Transformer, error) {
 
-	t, plan, err := GetPgTypeAndEncodingPlan(typeMap, useOid, castVar)
+	base, err := NewTransformerBase(column, typeMap, useType, RandomFloatTransformerMeta.SupportedTypeOids, float64(0))
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("cannot build transformer base object: %w", err)
 	}
 
-	minFloat, err = CastFloat(t, typeMap, start)
-	if err != nil {
-		return nil, fmt.Errorf("cannot cast min value: %w", err)
+	tParams := RandomFloatTransformerParams{
+		Precision: 4,
+		Fraction:  0.3,
 	}
 
-	maxFloat, err = CastFloat(t, typeMap, end)
-	if err != nil {
-		return nil, fmt.Errorf("cannot cast maxend value: %w", err)
+	if err := parseTransformerParams(params, &tParams); err != nil {
+		return nil, fmt.Errorf("parameters parsing error: %w", err)
 	}
 
-	precision, ok := params["precision"]
-	if ok {
-		precisionSize, err = strconv.ParseInt(precision, 10, 64)
-		if err != nil {
-			return nil, fmt.Errorf("cannot cast precision value to int")
-		}
+	res := &RandomFloatTransformer{
+		TransformerBase:              *base,
+		RandomFloatTransformerParams: tParams,
+		rand:                         rand.New(rand.NewSource(time.Now().UnixMicro())),
+		precision:                    math.Pow(10, float64(tParams.Precision)),
 	}
-	precisionFloat := math.Pow(10, float64(precisionSize))
 
-	return &RandomFloatTransformer{
-		Column:     column,
-		PgType:     t,
-		EncodePlan: plan,
-		min:        minFloat,
-		max:        maxFloat,
-		precision:  precisionFloat,
-		rand:       rand.New(rand.NewSource(time.Now().UnixMicro())),
-	}, nil
+	return res, nil
 }
 
 func (gtt *RandomFloatTransformer) Transform(val string) (string, error) {
-	resFloat := gtt.min + gtt.rand.Float64()*(gtt.max-gtt.min)
+	if gtt.Nullable {
+		if gtt.rand.Float32() < gtt.Fraction {
+			return DefaultNullSeq, nil
+		}
+	}
+	resFloat := gtt.Min + gtt.rand.Float64()*(gtt.Max-gtt.Min)
 	resFloat = Round(resFloat, gtt.precision)
 	res, err := gtt.EncodePlan.Encode(resFloat, nil)
 	if err != nil {
