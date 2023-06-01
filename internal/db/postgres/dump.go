@@ -9,7 +9,6 @@ import (
 
 	pgxdecimal "github.com/jackc/pgx-shopspring-decimal"
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/rs/zerolog/log"
 	"golang.org/x/sync/errgroup"
 
@@ -23,41 +22,42 @@ import (
 )
 
 type Dump struct {
-	dsn           string
-	conn          *pgx.Conn
-	pgDumpOptions *pgdump.Options
-	binPath       string
-	curDumpId     int32
-	st            storage.Storager
-	dumpTaskCount int32
-	allTaskPushed atomic.Bool
-	typeMap       *pgtype.Map
+	dsn            string
+	pgDumpOptions  *pgdump.Options
+	pgDump         *pgdump.PgDump
+	curDumpId      int32
+	st             storage.Storager
+	dumpTaskCount  int32
+	allTaskPushed  atomic.Bool
+	tableConfig    []domains.Table
+	ah             *toc.ArchiveHandle
+	tocDataEntries []*toc.Entry
 }
 
-func NewDump(binPath string, st storage.Storager) *Dump {
+func NewDump(binPath string, opt *pgdump.Options, st storage.Storager, tableConfig []domains.Table) *Dump {
 	return &Dump{
-		binPath: binPath,
-		st:      st,
+		pgDumpOptions: opt,
+		pgDump:        pgdump.NewPgDump(binPath),
+		st:            st,
+		tableConfig:   tableConfig,
 	}
 }
 
-func (d *Dump) Connect(ctx context.Context, dsn string) error {
+func (d *Dump) Connect(ctx context.Context, dsn string) (*pgx.Conn, error) {
 
 	conn, err := pgx.Connect(ctx, dsn)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	pgxdecimal.Register(conn.TypeMap())
 
 	if err := conn.Ping(ctx); err != nil {
 		conn.Close(ctx)
-		return err
+		return nil, err
 	}
 
-	d.typeMap = conn.TypeMap()
-	d.conn = conn
 	d.dsn = dsn
-	return nil
+	return conn, nil
 }
 
 func (d *Dump) setTableColumnsTransformers(ctx context.Context, tx pgx.Tx, table *domains.Table) error {
@@ -110,11 +110,10 @@ func (d *Dump) setTableColumnsTransformers(ctx context.Context, tx pgx.Tx, table
 	return nil
 }
 
-func (d *Dump) objectList(ctx context.Context, tx pgx.Tx, confTables []domains.Table) ([]*domains.Table, []*domains.Sequence, error) {
+func (d *Dump) objectList(ctx context.Context, tx pgx.Tx) ([]*domains.Table, []*domains.Sequence, error) {
 
-	// making table map that will be used for merging pg catalog data and settings from config
-	cfg := make(map[string]domains.Table, 0)
-	for _, item := range confTables {
+	cfg := make(map[string]domains.Table, len(d.tableConfig))
+	for _, item := range d.tableConfig {
 		cfg[fmt.Sprintf("%s.%s", item.Schema, item.Name)] = item
 	}
 
@@ -200,13 +199,13 @@ func (d *Dump) objectList(ctx context.Context, tx pgx.Tx, confTables []domains.T
 	return tables, sequences, nil
 }
 
-func (d *Dump) startMainTx(ctx context.Context) (pgx.Tx, error) {
+func (d *Dump) startMainTx(ctx context.Context, conn *pgx.Conn) (pgx.Tx, error) {
 	var isolationLevel = "REPEATABLE READ"
 	if d.pgDumpOptions.SerializableDeferrable {
 		isolationLevel = "SERIALIZABLE DEFERRABLE"
 	}
 
-	tx, err := d.conn.Begin(ctx)
+	tx, err := conn.Begin(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("unable to start transaction: %w", err)
 	}
@@ -242,43 +241,15 @@ func (d *Dump) getDumpId() int32 {
 	return d.curDumpId
 }
 
-func (d *Dump) RunDump(ctx context.Context, opt *pgdump.Options, tableConfig []domains.Table) error {
-
-	startedAt := time.Now()
-	d.pgDumpOptions = opt
-	pgDump := pgdump.NewPgDump(d.binPath)
-
-	dsn, err := d.pgDumpOptions.GetPgDSN()
-	if err != nil {
-		return fmt.Errorf("cannot build connection string: %w", err)
-	}
-
-	if err := d.Connect(ctx, dsn); err != nil {
-		return fmt.Errorf("cannot connect to db: %w", err)
-	}
-	defer d.conn.Close(ctx)
-
-	tx, err := d.startMainTx(ctx)
-	if err != nil {
-		return fmt.Errorf("cannot prepare backup transaction: %w", err)
-	}
-	defer func() {
-		if err := tx.Rollback(ctx); err != nil {
-			log.Warn().Err(err)
-		}
-	}()
-
+func (d *Dump) schemaOnlyDump(ctx context.Context, tx pgx.Tx) error {
 	// Dump schema
 	options := *d.pgDumpOptions
 	options.Format = "d"
 	options.SchemaOnly = true
 
 	dumpDir := d.st.Getcwd()
-	if err != nil {
-		return fmt.Errorf("cannot get current working directory: %w", err)
-	}
 	options.FileName = dumpDir
-	if err = pgDump.Run(ctx, &options); err != nil {
+	if err := d.pgDump.Run(ctx, &options); err != nil {
 		return err
 	}
 
@@ -302,16 +273,20 @@ func (d *Dump) RunDump(ctx context.Context, opt *pgdump.Options, tableConfig []d
 	if err != nil {
 		return fmt.Errorf("error reading toc file: %w", err)
 	}
+	d.ah = schemaToc
 	d.curDumpId = schemaToc.MaxDumpId + 1
 
-	tablesList, sequenceList, err := d.objectList(ctx, tx, tableConfig)
+	return nil
+}
+
+func (d *Dump) dataDump(ctx context.Context, tx pgx.Tx) error {
+	// TODO: You should use pointer to dumpers.DumpTask instead
+	var largeObjectsList []*domains.LargeObjects
+	tablesList, sequenceList, err := d.objectList(ctx, tx)
 	if err != nil {
 		return fmt.Errorf("building data objects: %w", err)
 	}
 
-	var largeObjects []*toc.Entry
-
-	// TODO: You should use pointer to dumpers.DumpTask instead
 	tasks := make(chan dumpers.DumpTask, d.pgDumpOptions.Jobs)
 	result := make(chan *toc.Entry, d.pgDumpOptions.Jobs)
 	defer close(result)
@@ -364,10 +339,11 @@ func (d *Dump) RunDump(ctx context.Context, opt *pgdump.Options, tableConfig []d
 	})
 
 	var originalSize, compressedSize int64
-	tocDataEntries := make([]*toc.Entry, 0, len(tablesList)+len(sequenceList)+len(largeObjects))
+	d.tocDataEntries = make([]*toc.Entry, 0, len(tablesList)+len(sequenceList)+len(largeObjectsList))
 	eg.Go(func() error {
 		tables := make([]*toc.Entry, 0, len(tablesList))
 		sequences := make([]*toc.Entry, 0, len(sequenceList))
+		largeObjects := make([]*toc.Entry, 0, 0)
 		for i := int32(0); !d.allTaskPushed.Load() || i < atomic.LoadInt32(&d.dumpTaskCount); i++ {
 			select {
 			case <-gtx.Done():
@@ -387,17 +363,20 @@ func (d *Dump) RunDump(ctx context.Context, opt *pgdump.Options, tableConfig []d
 				compressedSize += tocEntry.CompressedSize
 			}
 		}
-		tocDataEntries = append(tocDataEntries, tables...)
-		tocDataEntries = append(tocDataEntries, sequences...)
+		d.tocDataEntries = append(d.tocDataEntries, tables...)
+		d.tocDataEntries = append(d.tocDataEntries, sequences...)
 		return nil
 	})
 
 	if err := eg.Wait(); err != nil {
 		return fmt.Errorf("at least one worker exited with error: %w", err)
 	}
+	return nil
+}
 
+func (d *Dump) merge(ctx context.Context, tx pgx.Tx) error {
 	log.Debug().Msg("merging toc entries")
-	mergedTocs, err := d.MergeTocEntries(schemaToc.GetEntries(), tocDataEntries)
+	mergedTocs, err := d.MergeTocEntries(d.ah.GetEntries(), d.tocDataEntries)
 	if err != nil {
 		return fmt.Errorf("unable to merge TOC files: %w", err)
 	}
@@ -408,15 +387,17 @@ func (d *Dump) RunDump(ctx context.Context, opt *pgdump.Options, tableConfig []d
 		return err
 	}
 	defer destTocFile.Close()
-	schemaToc.SetEntries(mergedTocs)
-	if err = toc.WriteFile(schemaToc, destTocFile); err != nil {
+	d.ah.SetEntries(mergedTocs)
+	if err = toc.WriteFile(d.ah, destTocFile); err != nil {
 		return fmt.Errorf("error writing toc file: %w", err)
 	}
+	return nil
+}
 
-	completedAt := time.Now()
-	metadata, err := domains.NewMetadata(schemaToc.Header, schemaToc.GetEntries(),
-		schemaToc.WrittenBytes, startedAt, completedAt,
-		tableConfig,
+func (d *Dump) writeMetaData(ctx context.Context, startedAt, completedAt time.Time) error {
+	metadata, err := domains.NewMetadata(d.ah.Header, d.ah.GetEntries(),
+		d.ah.WrittenBytes, startedAt, completedAt,
+		d.tableConfig,
 	)
 	if err != nil {
 		return fmt.Errorf("unable build metadata: %w", err)
@@ -428,6 +409,50 @@ func (d *Dump) RunDump(ctx context.Context, opt *pgdump.Options, tableConfig []d
 	defer meta.Close()
 	if err := json.NewEncoder(meta).Encode(metadata); err != nil {
 		return fmt.Errorf("unable to write metadata: %w", err)
+	}
+	return nil
+}
+
+func (d *Dump) RunDump(ctx context.Context) error {
+
+	startedAt := time.Now()
+
+	dsn, err := d.pgDumpOptions.GetPgDSN()
+	if err != nil {
+		return fmt.Errorf("cannot build connection string: %w", err)
+	}
+
+	conn, err := d.Connect(ctx, dsn)
+	defer func() {
+		if err := conn.Close(ctx); err != nil {
+			log.Warn().Err(err)
+		}
+	}()
+
+	tx, err := d.startMainTx(ctx, conn)
+	if err != nil {
+		return fmt.Errorf("cannot prepare backup transaction: %w", err)
+	}
+	defer func() {
+		if err := tx.Rollback(ctx); err != nil {
+			log.Warn().Err(err)
+		}
+	}()
+
+	if err = d.schemaOnlyDump(ctx, tx); err != nil {
+		return fmt.Errorf("schema only stage dumping error: %w", err)
+	}
+
+	if err = d.dataDump(ctx, tx); err != nil {
+		return fmt.Errorf("data stage dumping error: %w", err)
+	}
+
+	if err = d.merge(ctx, tx); err != nil {
+		return fmt.Errorf("merge stage dumping error: %w", err)
+	}
+
+	if err = d.writeMetaData(ctx, startedAt, time.Now()); err != nil {
+		return fmt.Errorf("writeMetaData stage dumping error: %w", err)
 	}
 
 	return nil

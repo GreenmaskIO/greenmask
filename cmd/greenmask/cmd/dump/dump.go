@@ -36,9 +36,9 @@ var (
 			if err != nil {
 				log.Fatalf("cannot create directory in storage: %s", err)
 			}
-			dump := postgres.NewDump(Config.Common.BinPath, st)
+			dump := postgres.NewDump(Config.Common.BinPath, &Config.Dump.PgDumpOptions, st, Config.Dump.Transformers)
 
-			if err := dump.RunDump(ctx, &Config.Dump.PgDumpOptions, Config.Dump.Transformers); err != nil {
+			if err := dump.RunDump(ctx); err != nil {
 				log.Fatalf("cannot make a backup: %s", err)
 			}
 		},
