@@ -1,8 +1,8 @@
 common:
-  log-level: "info"
+  log-level: "debug"
   log-format: "text"
   bin_path: "/usr/bin"
-#  bin_path: "/opt/homebrew/bin"
+  #  bin_path: "/opt/homebrew/bin"
   storage:
     directory:
       path: "/home/vadim/tmp/pg_dump_test"
@@ -55,9 +55,9 @@ dump:
     #    exclude-schema: "(\"teSt\"*|test*)"
     #    table:
     #      - "public.cards_*"
-    jobs: 5
+    jobs: 10
     #    load-via-partition-root: true
-    exclude-table-data: "public.test1_id_seq"
+  #    exclude-table-data: "public.test1_id_seq"
 
   transformers:
     - schema: "bookings"
@@ -71,6 +71,44 @@ dump:
               min: "2023-01-01 10:43:31.318664+03"
               max: "2023-05-19 10:43:31.318664+03"
 
+    - schema: "bookings"
+      name: "test_int"
+      columns:
+        - name: "at1"
+          transformer:
+            name: "RandomInt"
+            params: {"nullable": true, min: 1, max: 100}
+        - name: "at2"
+          transformer:
+            name: "RandomInt"
+            params: {"nullable": true, min: 100, max: 200}
+        - name: "at3"
+          transformer:
+            name: "RandomInt"
+            params: {"nullable": true, min: 200, max: 300}
+        - name: "at4"
+          transformer:
+            name: "RandomInt"
+            params: { min: 300, max: 400 }
+        - name: "at5"
+          transformer:
+            name: "RandomInt"
+            params: { min: 400, max: 500 }
+        - name: "at6"
+          transformer:
+            name: "RandomInt"
+            params: { min: 500, max: 600 }
+
+    - schema: "bookings"
+      name: "test_bool"
+      columns:
+        - name: "at1"
+          transformer:
+            name: "RandomBool"
+            params: { "nullable": true}
+        - name: "at2"
+          transformer:
+            name: "RandomBool"
 
 transformers:
   custom:

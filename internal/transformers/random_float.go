@@ -12,6 +12,13 @@ import (
 	"github.com/wwoytenko/greenfuscator/internal/domains"
 )
 
+var RandomFloatTransformerSupportedOids = []int{
+	pgtype.Float4OID,
+	pgtype.Float8OID,
+}
+
+const defaultPrecision int16 = 4
+
 var RandomFloatTransformerMeta = TransformerMeta{
 	Description: "Generate random float",
 	ParamsDescription: map[string]string{
@@ -19,11 +26,8 @@ var RandomFloatTransformerMeta = TransformerMeta{
 		"max":       "max value",
 		"precision": "precision of the random value",
 	},
-	SupportedTypeOids: []int{
-		pgtype.Float4OID,
-		pgtype.Float8OID,
-	},
-	//NewTransformer: NewRandomFloatTransformerV2,
+	SupportedTypeOids: RandomFloatTransformerSupportedOids,
+	NewTransformer:    NewRandomFloatTransformer,
 }
 
 type RandomFloatTransformerParams struct {
@@ -41,25 +45,29 @@ type RandomFloatTransformer struct {
 	rand      *rand.Rand
 }
 
-func NewRandomFloatTransformerV2(
+func NewRandomFloatTransformer(
 	column pgDomains.ColumnMeta,
 	typeMap *pgtype.Map,
 	useType string,
 	params map[string]interface{},
 ) (domains.Transformer, error) {
 
-	base, err := NewTransformerBase(column, typeMap, useType, RandomFloatTransformerMeta.SupportedTypeOids, float64(0))
+	base, err := NewTransformerBase(column, typeMap, useType, RandomFloatTransformerSupportedOids, float64(0))
 	if err != nil {
 		return nil, fmt.Errorf("cannot build transformer base object: %w", err)
 	}
 
 	tParams := RandomFloatTransformerParams{
-		Precision: 4,
-		Fraction:  0.3,
+		Precision: defaultPrecision,
+		Fraction:  DefaultNullFraction,
 	}
 
 	if err := parseTransformerParams(params, &tParams); err != nil {
 		return nil, fmt.Errorf("parameters parsing error: %w", err)
+	}
+
+	if tParams.Nullable && base.Column.NotNull {
+		return nil, fmt.Errorf("transformer cannot be nullable on not null column")
 	}
 
 	res := &RandomFloatTransformer{

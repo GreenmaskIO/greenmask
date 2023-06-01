@@ -5,6 +5,6 @@ type Transformer interface {
 }
 
 type TransformerConfig struct {
-	Name   string            `mapstructure:"name"`
-	Params map[string]string `mapstructure:"params"`
+	Name   string                 `mapstructure:"name"`
+	Params map[string]interface{} `mapstructure:"params"`
 }

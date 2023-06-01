@@ -20,6 +20,8 @@ import (
 	"github.com/wwoytenko/greenfuscator/internal/domains"
 )
 
+const DefaultNullSeq = `\N`
+
 var (
 	validate            = validator.New()
 	translators         ut.Translator
@@ -64,7 +66,12 @@ func init() {
 
 }
 
-type TransformerFabricFunction func(column pgDomains.ColumnMeta, typeMap *pgtype.Map, params map[string]string) (domains.Transformer, error)
+type TransformerFabricFunction func(
+	column pgDomains.ColumnMeta,
+	typeMap *pgtype.Map,
+	useType string,
+	params map[string]interface{},
+) (domains.Transformer, error)
 
 type TransformerMeta struct {
 	Description       string
@@ -83,6 +90,7 @@ var (
 		"RandomInt":    RandomIntTransformerMeta,
 		"RandomFloat":  RandomFloatTransformerMeta,
 		"RandomString": RandomStringTransformerMeta,
+		"RandomBool":   RandomBoolTransformerMeta,
 	}
 )
 

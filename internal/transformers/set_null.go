@@ -1,21 +1,22 @@
 package transformers
 
 import (
+	"fmt"
+
 	"github.com/jackc/pgx/v5/pgtype"
 
 	pgDomains "github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/domains"
 	"github.com/wwoytenko/greenfuscator/internal/domains"
 )
 
+var SetNullTransformerSupportedOids = []int{
+	AnyOid,
+}
+
 var SetNullTransformerMeta = TransformerMeta{
-	Description: `Set NULL value`,
-	ParamsDescription: map[string]string{
-		"nullSequence": "null sequence for COPY command (default \\N)",
-	},
-	SupportedTypeOids: []int{
-		AnyOid,
-	},
-	NewTransformer: NewSetNullTransformer,
+	Description:       `Set NULL value`,
+	SupportedTypeOids: SetNullTransformerSupportedOids,
+	NewTransformer:    NewSetNullTransformer,
 }
 
 type SetNullTransformer struct {
@@ -23,15 +24,19 @@ type SetNullTransformer struct {
 	nullSequence string
 }
 
-func NewSetNullTransformer(column pgDomains.ColumnMeta, typeMap *pgtype.Map, params map[string]string) (domains.Transformer, error) {
-	nullSequence, ok := params["nullSequence"]
-	if !ok {
-		nullSequence = DefaultNullSeq
+func NewSetNullTransformer(
+	column pgDomains.ColumnMeta,
+	typeMap *pgtype.Map,
+	useType string,
+	params map[string]interface{},
+) (domains.Transformer, error) {
+	if column.NotNull {
+		return nil, fmt.Errorf("cannot aply null transformer at not null column")
 	}
 
 	return &SetNullTransformer{
 		Column:       column,
-		nullSequence: nullSequence,
+		nullSequence: DefaultNullSeq,
 	}, nil
 }
 

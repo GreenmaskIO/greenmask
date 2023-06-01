@@ -22,76 +22,6 @@ import (
 	"github.com/wwoytenko/greenfuscator/internal/transformers"
 )
 
-var defaultTypeMap = map[string]string{
-	"aclitem":                     "",
-	"any":                         "",
-	"anyarray":                    "",
-	"anycompatible":               "",
-	"anycompatiblearray":          "",
-	"anycompatiblemultirange":     "",
-	"anycompatiblenonarray":       "",
-	"anycompatiblerange":          "",
-	"anyelement":                  "",
-	"anyenum":                     "string",
-	"anymultirange":               "",
-	"anynonarray":                 "",
-	"anyrange":                    "",
-	"bigint":                      "int64",
-	"bit":                         "bool",
-	"bit varying":                 "",
-	"boolean":                     "bool",
-	"box":                         "",
-	"bytea":                       "[]byte",
-	"char":                        "",
-	"character":                   "string",
-	"character varying":           "string",
-	"cid":                         "",
-	"cidr":                        "",
-	"circle":                      "",
-	"cstring":                     "",
-	"date":                        "string",
-	"datemultirange":              "string",
-	"daterange":                   "string",
-	"double precision":            "float32",
-	"event_trigger":               "",
-	"fdw_handler":                 "",
-	"gtsvector":                   "",
-	"index_am_handler":            "",
-	"inet":                        "string",
-	"int2vector":                  "",
-	"int4multirange":              "",
-	"int4range":                   "",
-	"int8multirange":              "",
-	"int8range":                   "",
-	"integer":                     "int32",
-	"json":                        "",
-	"jsonb":                       "",
-	"jsonpath":                    "",
-	"line":                        "",
-	"lseg":                        "",
-	"macaddr":                     "",
-	"macaddr8":                    "",
-	"money":                       "float64",
-	"name":                        "string",
-	"numeric":                     "", // Use variadic digit types
-	"nummultirange":               "",
-	"numrange":                    "",
-	"path":                        "",
-	"point":                       "",
-	"polygon":                     "",
-	"real":                        "float32",
-	"smallint":                    "int16",
-	"text":                        "string",
-	"timestamp without time zone": "string", // TODO: Use date types or implement yourself
-	"timestamp with time zone":    "string",
-	"time without time zone":      "string",
-	"time with time zone":         "string",
-	"internal":                    "string",
-	"interval":                    "string",
-	"uuid":                        "uuid",
-	"xml":                         "",
-}
-
 type Dump struct {
 	dsn           string
 	conn          *pgx.Conn
@@ -162,12 +92,12 @@ func (d *Dump) setTableColumnsTransformers(ctx context.Context, tx pgx.Tx, table
 			transformerConf := c.TransformConf
 			makeTransformer, ok := transformers.TransformerMap[transformerConf.Name]
 			if !ok {
-				return fmt.Errorf("unnable to find transformer with name %s", transformerConf.Name)
+				return fmt.Errorf("unable to init transformer \"%s\" for table %s.%s on column %s: unnable to find transformer with name %s", transformerConf.Name, table.Schema, table.Name, column.Name, transformerConf.Name)
 			}
 			column.TransformConf = transformerConf
-			transformer, err := makeTransformer.NewTransformer(column.ColumnMeta, tx.Conn().TypeMap(), c.TransformConf.Params)
+			transformer, err := makeTransformer.NewTransformer(column.ColumnMeta, tx.Conn().TypeMap(), "", c.TransformConf.Params)
 			if err != nil {
-				return fmt.Errorf("unable to init transformer \"%s\": %w", transformerConf.Name, err)
+				return fmt.Errorf("unable to init transformer \"%s\" for table %s.%s on column %s: %w", transformerConf.Name, table.Schema, table.Name, column.Name, err)
 			}
 			column.Transformer = transformer
 			table.HasTransformer = true
@@ -376,7 +306,7 @@ func (d *Dump) RunDump(ctx context.Context, opt *pgdump.Options, tableConfig []d
 
 	tablesList, sequenceList, err := d.objectList(ctx, tx, tableConfig)
 	if err != nil {
-		return fmt.Errorf("cannot retreive sequence and table list: %w", err)
+		return fmt.Errorf("building data objects: %w", err)
 	}
 
 	var largeObjects []*toc.Entry

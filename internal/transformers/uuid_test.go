@@ -13,7 +13,7 @@ import (
 )
 
 func TestUuidTransformer_Transform(t *testing.T) {
-	var connStr = "user=vvoitenko dbname=demo host=/tmp"
+	var connStr = "user=postgres dbname=demo"
 	c, err := pgx.Connect(context.Background(), connStr)
 	require.NoError(t, err)
 	defer c.Close(context.Background())
@@ -22,7 +22,7 @@ func TestUuidTransformer_Transform(t *testing.T) {
 	transformer, err := NewUuidTransformer(domains.ColumnMeta{
 		Type:    "uuid",
 		TypeOid: pgtype.UUIDOID,
-	}, typeMap, nil)
+	}, typeMap, "", nil)
 	require.NoError(t, err)
 	res, err := transformer.Transform("old_val")
 	assert.NoError(t, err)
@@ -31,7 +31,7 @@ func TestUuidTransformer_Transform(t *testing.T) {
 	transformer, err = NewUuidTransformer(domains.ColumnMeta{
 		Type:    "uuid",
 		TypeOid: pgtype.TextOID,
-	}, typeMap, nil)
+	}, typeMap, "", nil)
 	require.NoError(t, err)
 	res, err = transformer.Transform("old_val")
 	assert.NoError(t, err)
@@ -40,6 +40,6 @@ func TestUuidTransformer_Transform(t *testing.T) {
 	transformer, err = NewUuidTransformer(domains.ColumnMeta{
 		Type:    "uuid",
 		TypeOid: pgtype.Int8OID,
-	}, typeMap, nil)
-	require.ErrorContains(t, err, "type int8 does not support uuid")
+	}, typeMap, "", nil)
+	require.ErrorContains(t, err, "cannot decode value: strconv.ParseInt")
 }

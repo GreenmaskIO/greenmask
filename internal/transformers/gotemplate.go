@@ -32,7 +32,7 @@ var GoTemplateTransformerMata = TransformerMeta{
 		pgtype.TextOID,
 		pgtype.VarcharOID,
 	},
-	NewTransformer: NewGoTemplateTransformer,
+	//NewTransformer: NewGoTemplateTransformer,
 }
 
 func NewGoTemplateTransformer(column pgDomains.ColumnMeta, typeMap *pgtype.Map, params map[string]string) (domains.Transformer, error) {

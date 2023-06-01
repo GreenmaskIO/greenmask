@@ -13,6 +13,12 @@ import (
 
 // TODO: Test this transformer
 
+var RandomDateTransformerSupportedOids = []int{
+	pgtype.DateOID,
+	pgtype.TimestampOID,
+	pgtype.TimestamptzOID,
+}
+
 var RandomDateTransformerMeta = TransformerMeta{
 	Description: "Generate random date",
 	ParamsDescription: map[string]string{
@@ -23,13 +29,11 @@ var RandomDateTransformerMeta = TransformerMeta{
 		"nullable": "generate null value randomly (default false)",
 		"fraction": "NULL value distribution within the table (default Fraction 10%)",
 	},
-	SupportedTypeOids: []int{
-		pgtype.DateOID,
-		pgtype.TimestampOID,
-		pgtype.TimestamptzOID,
-	},
-	//NewTransformer: NewRandomDateTransformer2,
+	SupportedTypeOids: RandomDateTransformerSupportedOids,
+	NewTransformer:    NewRandomDateTransformer,
 }
+
+var truncateParts = []string{"year", "month", "day", "hour", "second", "millisecond", "microsecond", "nanosecond"}
 
 type dateGeneratorFunc func(r *rand.Rand, startDate *time.Time, endDate *time.Time, truncate *string) time.Time
 
@@ -50,26 +54,28 @@ type RandomDateTransformer struct {
 	max      time.Time
 }
 
-var truncateParts = []string{"year", "month", "day", "hour", "second", "millisecond", "microsecond", "nanosecond"}
-
-func NewRandomDateTransformerV2(
+func NewRandomDateTransformer(
 	column pgDomains.ColumnMeta,
 	typeMap *pgtype.Map,
 	useType string,
 	params map[string]interface{},
 ) (domains.Transformer, error) {
 
-	base, err := NewTransformerBase(column, typeMap, useType, RandomDateTransformerMeta.SupportedTypeOids, time.Time{})
+	base, err := NewTransformerBase(column, typeMap, useType, RandomDateTransformerSupportedOids, time.Time{})
 	if err != nil {
 		return nil, fmt.Errorf("cannot build transformer base object: %w", err)
 	}
 
 	tParams := RandomDateTransformerParams{
-		Fraction: 0.3,
+		Fraction: DefaultNullFraction,
 	}
 
 	if err := parseTransformerParams(params, &tParams); err != nil {
 		return nil, fmt.Errorf("parameters parsing error: %w", err)
+	}
+
+	if tParams.Nullable && base.Column.NotNull {
+		return nil, fmt.Errorf("transformer cannot be nullable on not null column")
 	}
 
 	res := &RandomDateTransformer{

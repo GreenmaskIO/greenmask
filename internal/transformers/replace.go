@@ -1,8 +1,9 @@
 package transformers
 
 import (
-	"errors"
 	"fmt"
+	"math/rand"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -11,9 +12,8 @@ import (
 	"github.com/wwoytenko/greenfuscator/internal/domains"
 )
 
-type ReplaceTransformer struct {
-	Column   pgDomains.ColumnMeta
-	newValue string
+var ReplaceTransformerSupportedOids = []int{
+	AnyOid,
 }
 
 var ReplaceTransformerMeta = TransformerMeta{
@@ -21,36 +21,65 @@ var ReplaceTransformerMeta = TransformerMeta{
 	ParamsDescription: map[string]string{
 		"value": "replacing value",
 	},
-	SupportedTypeOids: []int{
-		AnyOid,
-	},
-	NewTransformer: NewReplaceTransformer,
+	SupportedTypeOids: ReplaceTransformerSupportedOids,
+	NewTransformer:    NewReplaceTransformer,
 }
 
-func NewReplaceTransformer(column pgDomains.ColumnMeta, typeMap *pgtype.Map, params map[string]string) (domains.Transformer, error) {
-	var cast string
-	val, ok := params["value"]
-	if !ok {
-		return nil, errors.New("expected value key")
-	}
+type ReplaceTransformerParams struct {
+	Value    string  `mapstructure:"value" validate:"required"`
+	Nullable bool    `mapstructure:"nullable"`
+	Fraction float32 `mapstructure:"fraction"`
+}
 
-	t, _, err := GetPgTypeAndEncodingPlan(typeMap, column.TypeOid, cast)
+type ReplaceTransformer struct {
+	TransformerBase
+	ReplaceTransformerParams
+	Column pgDomains.ColumnMeta
+	value  string
+	rand   *rand.Rand
+}
+
+func NewReplaceTransformer(
+	column pgDomains.ColumnMeta,
+	typeMap *pgtype.Map,
+	useType string,
+	params map[string]interface{},
+) (domains.Transformer, error) {
+	base, err := NewTransformerBase(column, typeMap, useType, ReplaceTransformerSupportedOids, "")
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("cannot build transformer base object: %w", err)
 	}
 
-	// Trying to cast the value according to the given pgtype
-	_, err = t.Codec.DecodeValue(typeMap, t.OID, pgx.TextFormatCode, []byte(val))
+	tParams := ReplaceTransformerParams{
+		Fraction: DefaultNullFraction,
+	}
+	if err := parseTransformerParams(params, &tParams); err != nil {
+		return nil, fmt.Errorf("parameters parsing error: %w", err)
+	}
+
+	res := &ReplaceTransformer{
+		TransformerBase:          *base,
+		ReplaceTransformerParams: tParams,
+		Column:                   column,
+		rand:                     rand.New(rand.NewSource(time.Now().UnixMicro())),
+	}
+
+	_, err = base.PgType.Codec.DecodeValue(typeMap, column.TypeOid, pgx.TextFormatCode, []byte(tParams.Value))
 	if err != nil {
-		return nil, fmt.Errorf("cannot decode min value: %w", err)
+		return nil, fmt.Errorf("cannot decode value: %w", err)
+	}
+	if tParams.Nullable && base.Column.NotNull {
+		return nil, fmt.Errorf("transformer cannot be nullable on not null column")
 	}
 
-	return &ReplaceTransformer{
-		Column:   column,
-		newValue: val,
-	}, nil
+	return res, nil
 }
 
 func (rt *ReplaceTransformer) Transform(val string) (string, error) {
-	return rt.newValue, nil
+	if rt.Nullable {
+		if rt.rand.Float32() < rt.Fraction {
+			return DefaultNullSeq, nil
+		}
+	}
+	return rt.Value, nil
 }

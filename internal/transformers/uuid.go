@@ -2,6 +2,8 @@ package transformers
 
 import (
 	"fmt"
+	"math/rand"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -11,42 +13,75 @@ import (
 	"github.com/wwoytenko/greenfuscator/internal/domains"
 )
 
-const AnyOid = -1
+const (
+	AnyOid              = -1
+	DefaultNullFraction = 0.3
+)
 
-const DefaultNullSeq = `\N`
+var UuidTransformerSupportedOids = []int{
+	pgtype.TextOID,
+	pgtype.VarcharOID,
+	pgtype.UUIDOID,
+}
+
+type UuidTransformerParams struct {
+	Nullable bool    `mapstructure:"nullable"`
+	Fraction float32 `mapstructure:"fraction"`
+}
 
 type UuidTransformer struct {
+	TransformerBase
+	UuidTransformerParams
 	Column pgDomains.ColumnMeta
+	rand   *rand.Rand
 }
 
 var UuidTransformerMeta = TransformerMeta{
-	Description: `Generate random UUID`,
-	SupportedTypeOids: []int{
-		pgtype.TextOID,
-		pgtype.VarcharOID,
-		pgtype.UUIDOID,
-	},
-	NewTransformer: NewUuidTransformer,
+	Description:       `Generate random UUID`,
+	SupportedTypeOids: UuidTransformerSupportedOids,
+	NewTransformer:    NewUuidTransformer,
 }
 
-func NewUuidTransformer(column pgDomains.ColumnMeta, typeMap *pgtype.Map, params map[string]string) (domains.Transformer, error) {
-	var cast = "db9abb12-3e84-4873-915d-27c17a1fea22"
-
-	t, _, err := GetPgTypeAndEncodingPlan(typeMap, column.TypeOid, cast)
+func NewUuidTransformer(
+	column pgDomains.ColumnMeta,
+	typeMap *pgtype.Map,
+	useType string,
+	params map[string]interface{},
+) (domains.Transformer, error) {
+	base, err := NewTransformerBase(column, typeMap, useType, RandomIntTransformerSupportedOids, uuid.New())
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("cannot build transformer base object: %w", err)
 	}
 
-	// Trying to cast the value according to the given pgtype
-	if _, err = t.Codec.DecodeValue(typeMap, t.OID, pgx.TextFormatCode, []byte(cast)); err != nil {
-		return nil, fmt.Errorf("type %s does not support uuid: %w", t.Name, err)
+	_, err = base.PgType.Codec.DecodeValue(typeMap, column.TypeOid, pgx.TextFormatCode, []byte("db9abb12-3e84-4873-915d-27c17a1fea22"))
+	if err != nil {
+		return nil, fmt.Errorf("cannot decode value: %w", err)
+	}
+
+	tParams := UuidTransformerParams{
+		Fraction: DefaultNullFraction,
+	}
+	if err := parseTransformerParams(params, &tParams); err != nil {
+		return nil, fmt.Errorf("parameters parsing error: %w", err)
+	}
+
+	if tParams.Nullable && base.Column.NotNull {
+		return nil, fmt.Errorf("transformer cannot be nullable on not null column")
 	}
 
 	return &UuidTransformer{
-		Column: column,
+		TransformerBase:       *base,
+		UuidTransformerParams: tParams,
+		Column:                column,
+		rand:                  rand.New(rand.NewSource(time.Now().UnixMicro())),
 	}, nil
 }
 
 func (rt *UuidTransformer) Transform(val string) (string, error) {
+	if rt.Nullable {
+		if rt.rand.Float32() < rt.Fraction {
+			return DefaultNullSeq, nil
+		}
+	}
 	return uuid.New().String(), nil
 }

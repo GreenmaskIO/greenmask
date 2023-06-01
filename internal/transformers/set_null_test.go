@@ -10,13 +10,8 @@ import (
 )
 
 func TestSetNullTransformer_Transform(t *testing.T) {
-	transformer, err := NewSetNullTransformer(domains.ColumnMeta{}, nil, nil)
+	transformer, err := NewSetNullTransformer(domains.ColumnMeta{}, nil, "", nil)
 	require.NoError(t, err)
 	res, err := transformer.Transform("old_val")
 	assert.Equal(t, `\N`, res)
-
-	transformer, err = NewSetNullTransformer(domains.ColumnMeta{}, nil, map[string]string{"nullSequence": "\\A"})
-	require.NoError(t, err)
-	res, err = transformer.Transform("old_val")
-	assert.Equal(t, `\A`, res)
 }

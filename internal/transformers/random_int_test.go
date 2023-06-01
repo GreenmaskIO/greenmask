@@ -81,7 +81,7 @@ func TestRandomIntTransformer_Transform(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			transformer, err := NewRandomIntTransformerV2(tt.column, typeMap, tt.useType, tt.params)
+			transformer, err := NewRandomIntTransformer(tt.column, typeMap, tt.useType, tt.params)
 			require.NoError(t, err)
 			val, err := transformer.Transform("")
 			require.NoError(t, err)

@@ -12,8 +12,7 @@ import (
 	"github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/domains"
 )
 
-// TODO: Cover error cases
-func TestRandomStringTransformer_Transform(t *testing.T) {
+func TestRandomBoolTransformer_Transform(t *testing.T) {
 	//var connStr = "user=vvoitenko dbname=demo host=/tmp"
 	var connStr = "user=postgres dbname=demo"
 	c, err := pgx.Connect(context.Background(), connStr)
@@ -25,51 +24,22 @@ func TestRandomStringTransformer_Transform(t *testing.T) {
 		name    string
 		column  domains.ColumnMeta
 		params  map[string]interface{}
-		useType string
 		pattern string
 	}{
 		{
-			name: "default fixed string",
+			name: "test bool type",
 			column: domains.ColumnMeta{
-				Type:    "text",
-				TypeOid: pgtype.TextOID,
+				Type:    "bool",
+				TypeOid: pgtype.BoolOID,
 			},
-			params: map[string]interface{}{
-				"min": 10,
-				"max": 10,
-			},
-			pattern: `^\w{10}$`,
-		},
-		{
-			name: "default floated string",
-			column: domains.ColumnMeta{
-				Type:    "text",
-				TypeOid: pgtype.TextOID,
-			},
-			params: map[string]interface{}{
-				"min": 2,
-				"max": 30,
-			},
-			pattern: `^\w{2,30}$`,
-		},
-		{
-			name: "default floated string",
-			column: domains.ColumnMeta{
-				Type:    "text",
-				TypeOid: pgtype.TextOID,
-			},
-			params: map[string]interface{}{
-				"min":     10,
-				"max":     10,
-				"symbols": "1234567890",
-			},
-			pattern: `^\d{10}$`,
+			params:  map[string]interface{}{},
+			pattern: `^(t|f)$`,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			transformer, err := NewRandomStringTransformer(tt.column, typeMap, tt.useType, tt.params)
+			transformer, err := NewRandomBoolTransformer(tt.column, typeMap, "", tt.params)
 			require.NoError(t, err)
 			val, err := transformer.Transform("")
 			require.NoError(t, err)

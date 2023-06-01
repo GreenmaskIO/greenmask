@@ -11,18 +11,20 @@ import (
 	"github.com/wwoytenko/greenfuscator/internal/domains"
 )
 
+var RandomIntTransformerSupportedOids = []int{
+	pgtype.Int2OID,
+	pgtype.Int4OID,
+	pgtype.Int8OID,
+}
+
 var RandomIntTransformerMeta = TransformerMeta{
 	Description: "Generate random int",
 	ParamsDescription: map[string]string{
 		"min": "min value",
 		"max": "max value",
 	},
-	SupportedTypeOids: []int{
-		pgtype.Int2OID,
-		pgtype.Int4OID,
-		pgtype.Int8OID,
-	},
-	//NewTransformer: NewRandomIntTransformerV2,
+	SupportedTypeOids: RandomIntTransformerSupportedOids,
+	NewTransformer:    NewRandomIntTransformer,
 }
 
 type RandomIntTransformerParams struct {
@@ -38,23 +40,27 @@ type RandomIntTransformer struct {
 	rand *rand.Rand
 }
 
-func NewRandomIntTransformerV2(
+func NewRandomIntTransformer(
 	column pgDomains.ColumnMeta,
 	typeMap *pgtype.Map,
 	useType string,
 	params map[string]interface{},
 ) (domains.Transformer, error) {
-	base, err := NewTransformerBase(column, typeMap, useType, RandomIntTransformerMeta.SupportedTypeOids, int64(1))
+	base, err := NewTransformerBase(column, typeMap, useType, RandomIntTransformerSupportedOids, int64(1))
 	if err != nil {
 		return nil, fmt.Errorf("cannot build transformer base object: %w", err)
 	}
 
 	tParams := RandomIntTransformerParams{
-		Fraction: 0.3,
+		Fraction: DefaultNullFraction,
 	}
 
 	if err := parseTransformerParams(params, &tParams); err != nil {
 		return nil, fmt.Errorf("parameters parsing error: %w", err)
+	}
+
+	if tParams.Nullable && base.Column.NotNull {
+		return nil, fmt.Errorf("transformer cannot be nullable on not null column")
 	}
 
 	res := &RandomIntTransformer{
@@ -81,6 +87,3 @@ func (gtt *RandomIntTransformer) Transform(val string) (string, error) {
 	}
 	return string(res), err
 }
-
-//100, 1000 = 1000 - 100
-//-100, 1000 = 1000 -(-100)

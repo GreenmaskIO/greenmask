@@ -1,10 +1,8 @@
 package transformers
 
 import (
-	"errors"
 	"fmt"
 	"math/rand"
-	"strconv"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgtype"
@@ -15,6 +13,11 @@ import (
 
 type getRandStringFunc func(r *rand.Rand, buf []rune, minLength, maxLength int64, symbols []rune) string
 
+var RandomStringTransformerSupportedOids = []int{
+	pgtype.VarcharOID,
+	pgtype.TextOID,
+}
+
 var RandomStringTransformerMeta = TransformerMeta{
 	Description: "Generate random string",
 	ParamsDescription: map[string]string{
@@ -22,73 +25,74 @@ var RandomStringTransformerMeta = TransformerMeta{
 		"maxLength": "max length of string",
 		"symbols":   "the characters range for random string",
 	},
-	SupportedTypeOids: []int{
-		pgtype.VarcharOID,
-		pgtype.TextOID,
-	},
-	NewTransformer: NewRandomStringTransformer,
+	SupportedTypeOids: RandomStringTransformerSupportedOids,
+	NewTransformer:    NewRandomStringTransformer,
+}
+
+type RandomStringTransformerParams struct {
+	Symbols  string  `mapstructure:"symbols"`
+	Min      int64   `mapstructure:"min" validate:"required"`
+	Max      int64   `mapstructure:"max" validate:"required"`
+	Nullable bool    `mapstructure:"nullable"`
+	Fraction float32 `mapstructure:"fraction"`
 }
 
 type RandomStringTransformer struct {
-	Column    pgDomains.ColumnMeta
-	symbols   []rune
-	minLength int64
-	maxLength int64
-	buf       []rune
-	rand      *rand.Rand
-	generate  getRandStringFunc
+	TransformerBase
+	RandomStringTransformerParams
+	symbols  []rune
+	buf      []rune
+	rand     *rand.Rand
+	generate getRandStringFunc
 }
 
-func NewRandomStringTransformer(column pgDomains.ColumnMeta, typeMap *pgtype.Map, params map[string]string) (domains.Transformer, error) {
+func NewRandomStringTransformer(
+	column pgDomains.ColumnMeta,
+	typeMap *pgtype.Map,
+	useType string,
+	params map[string]interface{},
+) (domains.Transformer, error) {
 	var generate getRandStringFunc = generateFixedString
-	var symbols = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
-	if typeMap == nil {
-		return nil, errors.New("typeMap cannot be nil")
-	}
-	s, ok := params["symbols"]
-	if ok {
-		symbols = []rune(s)
-	}
 
-	minLengthStr, ok := params["minLength"]
-	if !ok {
-		return nil, errors.New("expected length key")
-	}
-	minLength, err := strconv.ParseInt(minLengthStr, 10, 64)
+	base, err := NewTransformerBase(column, typeMap, useType, RandomStringTransformerSupportedOids, "")
 	if err != nil {
-		return nil, fmt.Errorf("cannot cast minLengthStr value to uint64")
+		return nil, fmt.Errorf("cannot build transformer base object: %w", err)
 	}
 
-	maxLengthStr, ok := params["minLength"]
-	if !ok {
-		return nil, errors.New("expected length key")
-	}
-	maxLength, err := strconv.ParseInt(maxLengthStr, 10, 64)
-	if err != nil {
-		return nil, fmt.Errorf("cannot cast minLengthStr value to uint64")
+	tParams := RandomStringTransformerParams{
+		Symbols:  "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ",
+		Fraction: DefaultNullFraction,
 	}
 
-	if maxLength < minLength {
-		return nil, fmt.Errorf("maxLength cannot be less than minLength")
+	if err := parseTransformerParams(params, &tParams); err != nil {
+		return nil, fmt.Errorf("parameters parsing error: %w", err)
 	}
 
-	if maxLength > minLength {
+	if tParams.Max != tParams.Min {
 		generate = generateFloatedString
 	}
 
+	if tParams.Nullable && base.Column.NotNull {
+		return nil, fmt.Errorf("transformer cannot be nullable on not null column")
+	}
+
 	return &RandomStringTransformer{
-		Column:    column,
-		rand:      rand.New(rand.NewSource(time.Now().UnixMicro())),
-		buf:       make([]rune, maxLength),
-		symbols:   symbols,
-		minLength: minLength,
-		maxLength: maxLength,
-		generate:  generate,
+		TransformerBase:               *base,
+		RandomStringTransformerParams: tParams,
+		rand:                          rand.New(rand.NewSource(time.Now().UnixMicro())),
+		buf:                           make([]rune, tParams.Max),
+		generate:                      generate,
+		symbols:                       []rune(tParams.Symbols),
 	}, nil
 }
 
 func (gtt *RandomStringTransformer) Transform(val string) (string, error) {
-	return gtt.generate(gtt.rand, gtt.buf, gtt.minLength, gtt.maxLength, gtt.symbols), nil
+	if gtt.Nullable {
+		if gtt.rand.Float32() < gtt.Fraction {
+			return DefaultNullSeq, nil
+		}
+	}
+	return gtt.generate(gtt.rand, gtt.buf, gtt.Min, gtt.Max, gtt.symbols), nil
 }
 
 func generateFixedString(r *rand.Rand, buf []rune, minLength, maxLength int64, symbols []rune) string {

@@ -12,19 +12,21 @@ import (
 )
 
 func TestReplaceTransformer_Transform(t *testing.T) {
-	var connStr = "user=vvoitenko dbname=demo host=/tmp"
+	var connStr = "user=postgres dbname=demo"
 	c, err := pgx.Connect(context.Background(), connStr)
 	require.NoError(t, err)
 	defer c.Close(context.Background())
 	typeMap := c.TypeMap()
 
-	transformer, err := NewReplaceTransformer(domains.ColumnMeta{}, typeMap, nil)
-	require.ErrorContains(t, err, "expected value key")
+	transformer, err := NewReplaceTransformer(domains.ColumnMeta{
+		Type:    "text",
+		TypeOid: pgtype.TextOID}, typeMap, "", nil)
+	require.ErrorContains(t, err, "validation error")
 
 	transformer, err = NewReplaceTransformer(domains.ColumnMeta{
 		Type:    "text",
 		TypeOid: pgtype.TextOID,
-	}, typeMap, map[string]string{"value": "new_val"})
+	}, typeMap, "", map[string]interface{}{"value": "new_val"})
 	require.NoError(t, err)
 	res, err := transformer.Transform("old_value")
 	require.NoError(t, err)
@@ -33,13 +35,13 @@ func TestReplaceTransformer_Transform(t *testing.T) {
 	transformer, err = NewReplaceTransformer(domains.ColumnMeta{
 		Type:    "date",
 		TypeOid: pgtype.DateOID,
-	}, typeMap, map[string]string{"value": "new_val"})
-	require.ErrorContains(t, err, "cannot decode min value")
+	}, typeMap, "", map[string]interface{}{"value": "new_val"})
+	require.ErrorContains(t, err, "invalid date format")
 
 	transformer, err = NewReplaceTransformer(domains.ColumnMeta{
 		Type:    "date",
 		TypeOid: pgtype.DateOID,
-	}, typeMap, map[string]string{"value": "2023-18-05"})
+	}, typeMap, "", map[string]interface{}{"value": "2023-18-05"})
 	require.NoError(t, err)
 	res, err = transformer.Transform("old_value")
 	require.NoError(t, err)
@@ -48,7 +50,7 @@ func TestReplaceTransformer_Transform(t *testing.T) {
 	transformer, err = NewReplaceTransformer(domains.ColumnMeta{
 		Type:    "date",
 		TypeOid: pgtype.UUIDOID,
-	}, typeMap, map[string]string{"value": "dd88a355-5dfa-4556-aaff-fe18302b285c"})
+	}, typeMap, "", map[string]interface{}{"value": "dd88a355-5dfa-4556-aaff-fe18302b285c"})
 	require.NoError(t, err)
 	res, err = transformer.Transform("3df11ba0-d408-42e1-9306-cd468e0669cb")
 	require.NoError(t, err)
