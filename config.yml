@@ -71,7 +71,7 @@ dump:
               min: "2023-01-01 10:43:31.318664+03"
               max: "2023-05-19 10:43:31.318664+03"
 
-    - schema: "bookings"
+    - schema: "typetest"
       name: "test_int"
       columns:
         - name: "at1"
@@ -99,7 +99,7 @@ dump:
             name: "RandomInt"
             params: { min: 500, max: 600 }
 
-    - schema: "bookings"
+    - schema: "typetest"
       name: "test_bool"
       columns:
         - name: "at1"
