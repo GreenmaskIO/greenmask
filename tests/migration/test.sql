@@ -23,4 +23,6 @@ create table typetest.test_int
     at6 INT8 NOT NULL DEFAULT 6
 );
 
-INSERT INTO typetest.test_int SELECT FROM generate_series(1, 100000);
+INSERT INTO typetest.test_int
+SELECT
+FROM generate_series(1, 100000);
