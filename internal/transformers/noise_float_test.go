@@ -15,8 +15,7 @@ import (
 	"github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/domains"
 )
 
-// TODO: Test the max/min value exceeded
-func TestNoiseIntTransformer_Transform(t *testing.T) {
+func TestNoiseFloatTransformer_Transform(t *testing.T) {
 	dsn := os.Getenv("GF_TEST_DSN")
 	require.NotEmpty(t, dsn, "GF_TEST_DSN env variable must be set")
 	c, err := pgx.Connect(context.Background(), dsn)
@@ -30,78 +29,94 @@ func TestNoiseIntTransformer_Transform(t *testing.T) {
 		params map[string]interface{}
 		input  string
 		result struct {
-			min, max int64
+			min, max float64
 		}
 		useType string
 		pattern string
 	}{
 		{
-			name: "int2",
+			name: "float4",
 			column: domains.ColumnMeta{
-				Type:    "int2",
-				TypeOid: pgtype.Int2OID,
+				Type:    "float4",
+				TypeOid: pgtype.Float4OID,
 			},
 			params: map[string]interface{}{
 				"ratio": 0.9,
 			},
 			input:   "100",
-			result:  struct{ min, max int64 }{min: 10, max: 190},
-			pattern: `^-*\d+$`,
+			result:  struct{ min, max float64 }{min: 10, max: 190},
+			pattern: `-*\d+[.]*\d*$`,
 		},
 		{
-			name: "int4",
+			name: "float8",
 			column: domains.ColumnMeta{
-				Type:    "int4",
-				TypeOid: pgtype.Int4OID,
+				Type:    "float8",
+				TypeOid: pgtype.Float8OID,
 			},
 			params: map[string]interface{}{
 				"ratio": 0.9,
 			},
 			input:   "100",
-			result:  struct{ min, max int64 }{min: 10, max: 190},
-			pattern: `^-*\d+$`,
+			result:  struct{ min, max float64 }{min: 10, max: 190},
+			pattern: `-*\d+[.]*\d*$`,
 		},
 		{
-			name: "int8",
+			name: "float8 ranges 1",
 			column: domains.ColumnMeta{
-				Type:    "int8",
-				TypeOid: pgtype.Int8OID,
+				Type:    "float8",
+				TypeOid: pgtype.Float8OID,
 			},
 			params: map[string]interface{}{
-				"ratio": 0.9,
+				"ratio":     0.9,
+				"precision": 10,
 			},
 			input:   "100",
-			result:  struct{ min, max int64 }{min: 10, max: 190},
+			result:  struct{ min, max float64 }{min: 10, max: 190},
+			pattern: `^-*\d+[.]*\d{0,10}$`,
+		},
+		{
+			name: "float8 ranges 1 with precision",
+			column: domains.ColumnMeta{
+				Type:    "float8",
+				TypeOid: pgtype.Float8OID,
+			},
+			params: map[string]interface{}{
+				"ratio":     0.9,
+				"precision": 0,
+			},
+			input:   "100",
+			result:  struct{ min, max float64 }{min: 10, max: 190},
 			pattern: `^-*\d+$`,
 		},
 		{
-			name: "text with int8",
+			name: "text with default float8",
 			column: domains.ColumnMeta{
 				Type:    "text",
 				TypeOid: pgtype.TextOID,
 			},
 			params: map[string]interface{}{
-				"ratio": 0.9,
+				"ratio":     0.9,
+				"precision": 3,
 			},
 			input:   "100",
-			result:  struct{ min, max int64 }{min: 10, max: 190},
-			useType: "int8",
-			pattern: `^\d{1,3}$`,
+			result:  struct{ min, max float64 }{min: 10, max: 190},
+			pattern: `^-*\d+[.]*\d{0,3}$`,
+			useType: "float4",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			transformer, err := NewNoiseIntTransformer(tt.column, typeMap, tt.useType, tt.params)
+			transformer, err := NewNoiseFloatTransformer(tt.column, typeMap, tt.useType, tt.params)
 			require.NoError(t, err)
 			res, err := transformer.Transform(tt.input)
 			require.NoError(t, err)
 			log.Println(res)
 			require.Regexp(t, tt.pattern, res)
-			resInt, err := strconv.ParseInt(res, 10, 64)
+			resFloat, err := strconv.ParseFloat(res, 64)
 			require.NoError(t, err)
-			assert.GreaterOrEqual(t, resInt, tt.result.min)
-			assert.LessOrEqual(t, resInt, tt.result.max)
+			assert.GreaterOrEqual(t, resFloat, tt.result.min)
+			assert.LessOrEqual(t, resFloat, tt.result.max)
 		})
 	}
 }

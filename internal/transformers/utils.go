@@ -256,7 +256,8 @@ func scan(src any, dest interface{}) error {
 		destType := reflect.Indirect(reflect.ValueOf(dest)).Type()
 		valType := reflect.TypeOf(src)
 		if destType != valType &&
-			(!strings.Contains(destType.Name(), "int") && !strings.Contains(valType.Name(), "int")) {
+			(!strings.Contains(destType.Name(), "int") && !strings.Contains(valType.Name(), "int")) &&
+			(!strings.Contains(destType.Name(), "float") && !strings.Contains(valType.Name(), "float")) {
 			return fmt.Errorf("unpexpected types")
 		}
 	} else {
@@ -281,6 +282,17 @@ func scan(src any, dest interface{}) error {
 			castVar = v
 		default:
 			return fmt.Errorf("expected int64 value")
+		}
+		reflect.ValueOf(destTyped).Elem().Set(reflect.ValueOf(&castVar).Elem())
+	case *float64:
+		var castVar float64
+		switch v := src.(type) {
+		case float32:
+			castVar = float64(v)
+		case float64:
+			castVar = v
+		default:
+			return fmt.Errorf("expected float64 value")
 		}
 		reflect.ValueOf(destTyped).Elem().Set(reflect.ValueOf(&castVar).Elem())
 	default:
