@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math"
 	"reflect"
+	"strings"
 	"time"
 
 	"github.com/go-playground/locales/en"
@@ -250,8 +251,43 @@ func NewTransformerBase(column pgDomains.ColumnMeta, typeMap *pgtype.Map, useTyp
 	}, nil
 }
 
-func (tb *TransformerBase) Transform(val string) (string, error) {
-	return "", nil
+func scan(src any, dest interface{}) error {
+	if reflect.ValueOf(dest).Kind() == reflect.Ptr {
+		destType := reflect.Indirect(reflect.ValueOf(dest)).Type()
+		valType := reflect.TypeOf(src)
+		if destType != valType &&
+			(!strings.Contains(destType.Name(), "int") && !strings.Contains(valType.Name(), "int")) {
+			return fmt.Errorf("unpexpected types")
+		}
+	} else {
+		return fmt.Errorf("expected pointer")
+	}
+
+	switch destTyped := dest.(type) {
+	case *time.Time:
+		valTyped, ok := src.(time.Time)
+		if !ok {
+			return fmt.Errorf("expected time.Time value")
+		}
+		reflect.ValueOf(destTyped).Elem().Set(reflect.ValueOf(&valTyped).Elem())
+	case *int64:
+		var castVar int64
+		switch v := src.(type) {
+		case int16:
+			castVar = int64(v)
+		case int32:
+			castVar = int64(v)
+		case int64:
+			castVar = v
+		default:
+			return fmt.Errorf("expected int64 value")
+		}
+		reflect.ValueOf(destTyped).Elem().Set(reflect.ValueOf(&castVar).Elem())
+	default:
+		return fmt.Errorf("unsopported type")
+	}
+
+	return nil
 }
 
 func (tb *TransformerBase) Scan(src string, dest interface{}) error {
@@ -260,28 +296,7 @@ func (tb *TransformerBase) Scan(src string, dest interface{}) error {
 		return fmt.Errorf("cannot decode value: %w", err)
 	}
 
-	if reflect.ValueOf(dest).Kind() == reflect.Ptr {
-		destType := reflect.Indirect(reflect.ValueOf(dest)).Type()
-		valType := reflect.TypeOf(val)
-		if destType != valType {
-			return fmt.Errorf("unpexpected types")
-		}
-	} else {
-		return fmt.Errorf("expected pointer")
-	}
-
-	switch destTyped := dest.(type) {
-	case *time.Time:
-		valTyped, ok := val.(time.Time)
-		if !ok {
-			return fmt.Errorf("expected time.Time value")
-		}
-		reflect.ValueOf(destTyped).Elem().Set(reflect.ValueOf(&valTyped).Elem())
-	default:
-		return fmt.Errorf("unsopported type")
-	}
-
-	return nil
+	return scan(val, dest)
 }
 
 func Scan(src string, dest interface{}, oid uint32, typeMap *pgtype.Map, pgType *pgtype.Type) error {
@@ -290,28 +305,7 @@ func Scan(src string, dest interface{}, oid uint32, typeMap *pgtype.Map, pgType 
 		return fmt.Errorf("cannot decode min value: %w", err)
 	}
 
-	if reflect.ValueOf(dest).Kind() == reflect.Ptr {
-		destType := reflect.Indirect(reflect.ValueOf(dest)).Type()
-		valType := reflect.TypeOf(val)
-		if destType != valType {
-			return fmt.Errorf("unpexpected types")
-		}
-	} else {
-		return fmt.Errorf("expected pointer")
-	}
-
-	switch destTyped := dest.(type) {
-	case *time.Time:
-		valTyped, ok := val.(time.Time)
-		if !ok {
-			return fmt.Errorf("expected time.Time value")
-		}
-		reflect.ValueOf(destTyped).Elem().Set(reflect.ValueOf(&valTyped).Elem())
-	default:
-		return fmt.Errorf("unsopported type")
-	}
-
-	return nil
+	return scan(val, dest)
 }
 
 func parseTransformerParams(src map[string]interface{}, dest interface{}) error {
