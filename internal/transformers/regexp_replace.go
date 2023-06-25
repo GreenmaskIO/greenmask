@@ -81,6 +81,9 @@ func NewRegexpReplaceTransformer(
 }
 
 func (rt *RegexpReplaceTransformer) Transform(val string) (string, error) {
+	if val == DefaultNullSeq {
+		return val, nil
+	}
 	if rt.Nullable {
 		if rt.rand.Float32() < rt.Fraction {
 			return DefaultNullSeq, nil
