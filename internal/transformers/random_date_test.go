@@ -14,9 +14,9 @@ import (
 )
 
 func TestRandomDateTransformer_Transform(t *testing.T) {
-	//var connStr = "user=vvoitenko dbname=demo host=/tmp"
-	var connStr = "user=postgres dbname=demo"
-	c, err := pgx.Connect(context.Background(), connStr)
+	dsn := os.Getenv("GF_TEST_DSN")
+	require.NotEmpty(t, dsn, "GF_TEST_DSN env variable must be set")
+	c, err := pgx.Connect(context.Background(), dsn)
 	require.NoError(t, err)
 	defer c.Close(context.Background())
 	typeMap := c.TypeMap()
