@@ -86,7 +86,7 @@ func NewJsonTransformer(
 	}
 
 	if tParams.Nullable && base.Column.NotNull {
-		return nil, fmt.Errorf("transformer cannot be nullable on not null column")
+		return nil, fmt.Errorf("transformer cannot be nullable at not null column")
 	}
 
 	return res, nil

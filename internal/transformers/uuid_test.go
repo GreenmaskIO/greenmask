@@ -43,5 +43,5 @@ func TestUuidTransformer_Transform(t *testing.T) {
 		Type:    "uuid",
 		TypeOid: pgtype.Int8OID,
 	}, typeMap, "", nil)
-	require.ErrorContains(t, err, "cannot decode value: strconv.ParseInt")
+	require.ErrorContains(t, err, "type is not supported")
 }

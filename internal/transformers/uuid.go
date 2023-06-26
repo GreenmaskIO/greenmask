@@ -48,7 +48,7 @@ func NewUuidTransformer(
 	useType string,
 	params map[string]interface{},
 ) (domains.Transformer, error) {
-	base, err := NewTransformerBase(column, typeMap, useType, RandomIntTransformerSupportedOids, uuid.New())
+	base, err := NewTransformerBase(column, typeMap, useType, UuidTransformerSupportedOids, uuid.New())
 	if err != nil {
 		return nil, fmt.Errorf("cannot build transformer base object: %w", err)
 	}
@@ -66,7 +66,7 @@ func NewUuidTransformer(
 	}
 
 	if tParams.Nullable && base.Column.NotNull {
-		return nil, fmt.Errorf("transformer cannot be nullable on not null column")
+		return nil, fmt.Errorf("transformer cannot be nullable at not null column")
 	}
 
 	return &UuidTransformer{

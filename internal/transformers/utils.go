@@ -1,7 +1,6 @@
 package transformers
 
 import (
-	"errors"
 	"fmt"
 	"math"
 	"reflect"
@@ -83,15 +82,21 @@ type TransformerMeta struct {
 
 var (
 	TransformerMap = map[string]TransformerMeta{
-		"Replace":      ReplaceTransformerMeta,
-		"UUID":         UuidTransformerMeta,
-		"SetNull":      SetNullTransformerMeta,
-		"GoTemplate":   GoTemplateTransformerMata,
-		"RandomDate":   RandomDateTransformerMeta,
-		"RandomInt":    RandomIntTransformerMeta,
-		"RandomFloat":  RandomFloatTransformerMeta,
-		"RandomString": RandomStringTransformerMeta,
-		"RandomBool":   RandomBoolTransformerMeta,
+		"Replace":       ReplaceTransformerMeta,
+		"RegexpReplace": RegexpReplaceTransformerMeta,
+		"UUID":          UuidTransformerMeta,
+		"SetNull":       SetNullTransformerMeta,
+		"GoTemplate":    GoTemplateTransformerMata,
+		"RandomDate":    RandomDateTransformerMeta,
+		"RandomInt":     RandomIntTransformerMeta,
+		"RandomFloat":   RandomFloatTransformerMeta,
+		"RandomString":  RandomStringTransformerMeta,
+		"RandomBool":    RandomBoolTransformerMeta,
+		"NoiseDate":     NoiseDateTransformerMeta,
+		"NoiseInt":      NoiseIntTransformerMeta,
+		"NoiseFloat":    NoiseFloatTransformerMeta,
+		"JsonFloat":     JsonTransformerMeta,
+		"MaskingFloat":  MaskingTransformerMeta,
 	}
 )
 
@@ -131,49 +136,6 @@ func GetPgTypeAndEncodingPlan(typeMap *pgtype.Map, typeOid uint32, castVal any) 
 		return nil, nil, fmt.Errorf("cannot find encoding plan for oid %d", t.OID)
 	}
 	return t, plan, nil
-}
-
-func CastFloat(t *pgtype.Type, typeMap *pgtype.Map, val string) (float64, error) {
-	var typeViolationErrStr = "value out of range: value must be from %f to %f"
-	var res float64
-	decoded, err := t.Codec.DecodeValue(typeMap, t.OID, pgx.TextFormatCode, []byte(val))
-	if err != nil {
-		return 0, fmt.Errorf("cannot decode maxend value: %w", err)
-	}
-	switch v := decoded.(type) {
-	case float32:
-		res = float64(v)
-		if math.Abs(res) < math.SmallestNonzeroFloat32 || math.Abs(res) > math.MaxFloat32 {
-			return 0, fmt.Errorf(typeViolationErrStr, math.SmallestNonzeroFloat32, math.MaxFloat32)
-		}
-	case float64:
-		res = v
-		if math.Abs(res) < math.SmallestNonzeroFloat64 || math.Abs(res) > math.MaxFloat64 {
-			return 0, fmt.Errorf(typeViolationErrStr, math.SmallestNonzeroFloat64, math.MaxFloat64)
-		}
-	default:
-		return 0, errors.New("cannot cast string to float type")
-	}
-	return res, nil
-}
-
-func CastInt(t *pgtype.Type, typeMap *pgtype.Map, val string) (int64, error) {
-	var res int64
-	decoded, err := t.Codec.DecodeValue(typeMap, t.OID, pgx.TextFormatCode, []byte(val))
-	if err != nil {
-		return 0, err
-	}
-	switch v := decoded.(type) {
-	case int16:
-		res = int64(v)
-	case int32:
-		res = int64(v)
-	case int64:
-		res = v
-	default:
-		return 0, errors.New("cannot cast string to int type")
-	}
-	return res, nil
 }
 
 func Round(x, unit float64) float64 {
@@ -234,9 +196,9 @@ func NewTransformerBase(column pgDomains.ColumnMeta, typeMap *pgtype.Map, useTyp
 			return nil, fmt.Errorf("cannot find type %s", useType)
 		}
 		oid = t.OID
-		if !slices.Contains(supportedOids, int(oid)) {
-			return nil, fmt.Errorf("cannot use another type: %s type is not supported", useType)
-		}
+	}
+	if !slices.Contains(supportedOids, AnyOid) && !slices.Contains(supportedOids, int(oid)) {
+		return nil, fmt.Errorf("cannot use type: %s type is not supported", useType)
 	}
 	t, plan, err := GetPgTypeAndEncodingPlan(typeMap, oid, cast)
 	if err != nil {
