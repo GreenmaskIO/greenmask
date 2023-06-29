@@ -14,7 +14,7 @@ import (
 var LargeObjectDesc = "BLOBS"
 
 type LargeObjects struct {
-	DumpId       int32
+	DumpId       DumpIdSequence
 	Dependencies []int32
 }
 
@@ -27,7 +27,7 @@ func (lo *LargeObjects) GetTocEntry() (*toc.Entry, error) {
 			Oid:      0,
 			TableOid: 0,
 		},
-		DumpId:       lo.DumpId,
+		DumpId:       int32(lo.DumpId),
 		Section:      toc.SectionData,
 		Tag:          &LargeObjectDesc,
 		Desc:         &LargeObjectDesc,

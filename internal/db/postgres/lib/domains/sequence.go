@@ -13,7 +13,7 @@ type Sequence struct {
 	Schema       string
 	Oid          int
 	Owner        string
-	DumpId       int32
+	DumpId       DumpIdSequence
 	LastValue    int64
 	Dependencies []int32
 	IsCalled     bool
@@ -37,7 +37,7 @@ func (s *Sequence) GetTocEntry() (*toc.Entry, error) {
 
 	return &toc.Entry{
 		CatalogId:    toc.CatalogId{},
-		DumpId:       s.DumpId,
+		DumpId:       int32(s.DumpId),
 		Section:      toc.SectionData,
 		HadDumper:    0,
 		Tag:          &name,

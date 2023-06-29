@@ -16,23 +16,23 @@ import (
 var TableDataDesc = "TABLE DATA"
 
 type Table struct {
-	Schema               string   `mapstructure:"schema"`
-	Name                 string   `mapstructure:"name"`
-	Columns              []Column `mapstructure:"columns"`
-	Query                string   `mapstructure:"query"`
-	QueryTest            string   `mapstructure:"queryTest"`
-	HasTransformer       bool     `json:"-" yaml:"-"`
-	Oid                  int      `json:"-" yaml:"-"`
-	Owner                string   `json:"-" yaml:"-"`
-	RelKind              rune     `json:"-" yaml:"-"`
-	RootPtName           string   `json:"-" yaml:"-"`
-	RootPtSchema         string   `json:"-" yaml:"-"`
-	ExcludeData          bool     `json:"-" yaml:"-"`
-	DumpId               int32    `json:"-" yaml:"-"`
-	Dependencies         []int32  `json:"-" yaml:"-"`
-	OriginalSize         int64    `json:"-" yaml:"-"`
-	CompressedSize       int64    `json:"-" yaml:"-"`
-	LoadViaPartitionRoot bool     `json:"-" yaml:"-"`
+	Schema               string         `mapstructure:"schema"`
+	Name                 string         `mapstructure:"name"`
+	Columns              []Column       `mapstructure:"columns"`
+	Query                string         `mapstructure:"query"`
+	QueryTest            string         `mapstructure:"queryTest"`
+	HasTransformer       bool           `json:"-" yaml:"-"`
+	Oid                  int            `json:"-" yaml:"-"`
+	Owner                string         `json:"-" yaml:"-"`
+	RelKind              rune           `json:"-" yaml:"-"`
+	RootPtName           string         `json:"-" yaml:"-"`
+	RootPtSchema         string         `json:"-" yaml:"-"`
+	ExcludeData          bool           `json:"-" yaml:"-"`
+	DumpId               DumpIdSequence `json:"-" yaml:"-"`
+	Dependencies         []int32        `json:"-" yaml:"-"`
+	OriginalSize         int64          `json:"-" yaml:"-"`
+	CompressedSize       int64          `json:"-" yaml:"-"`
+	LoadViaPartitionRoot bool           `json:"-" yaml:"-"`
 }
 
 func (t *Table) TransformTuple(data []byte) ([]byte, error) {
@@ -125,7 +125,7 @@ func (t *Table) GetTocEntry() (*toc.Entry, error) {
 		CatalogId: toc.CatalogId{
 			Oid: toc.Oid(t.Oid),
 		},
-		DumpId:         t.DumpId,
+		DumpId:         int32(t.DumpId),
 		Section:        toc.SectionData,
 		HadDumper:      1,
 		Tag:            &name,
