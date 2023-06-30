@@ -7,6 +7,8 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/rs/zerolog/log"
+	"golang.org/x/exp/slices"
 
 	pgdomains "github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/domains"
 	"github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/pg_catalog"
@@ -32,6 +34,43 @@ const (
 	WarningErrorLevel = "warning"
 )
 
+type ValidationErrors []error
+
+func (ves ValidationErrors) IsFatal() bool {
+	return slices.ContainsFunc(ves, func(err error) bool {
+		switch v := err.(type) {
+		case *ValidationError:
+			return v.ErrorLevel == FatalErrorLevel
+		default:
+			return true
+
+		}
+	})
+}
+
+func (ves ValidationErrors) LogErrors() {
+	for _, err := range ves {
+		switch v := err.(type) {
+		case *ValidationError:
+			event := log.Warn().
+				Str("ValidationLevel", v.Level).
+				Str("ValidationErrorLevel", v.ErrorLevel).
+				Str("SchemaName", v.Schema).
+				Str("TableName", v.Name)
+			if v.Column != "" {
+				event = event.Str("ColumnName", v.Column)
+			}
+			if v.Transformer != "" {
+				event = event.Str("TransformerName", v.Transformer)
+			}
+			event.Err(err).Msgf("validation error")
+
+		default:
+			log.Warn().Err(err).Msgf("internal error")
+		}
+	}
+}
+
 type ValidationError struct {
 	Level       string `json:"type,omitempty"`
 	ErrorLevel  string `json:"error-level,omitempty"`
@@ -42,12 +81,12 @@ type ValidationError struct {
 	err         error  `json:"err,omitempty"`
 }
 
-func (ve *ValidationError) Error() string {
+func (ve ValidationError) Error() string {
 	// TODO: Rewrite error formatting
 	return fmt.Sprintf("%s validation error: %s: %s: %s: %s: %s", ve.Level, ve.Schema, ve.Name, ve.Column, ve.Transformer, ve.err.Error())
 }
 
-func BuildTablesConfig(ctx context.Context, tx pgx.Tx, tableConfig []pgdomains.Table) (map[pgdomains.Oid]*pgdomains.Table, []error) {
+func BuildTablesConfig(ctx context.Context, tx pgx.Tx, tableConfig []pgdomains.Table) (map[pgdomains.Oid]*pgdomains.Table, ValidationErrors) {
 	tableSearchQuery := `
 		SELECT 
 		   c.oid::TEXT::INT, 
@@ -69,7 +108,7 @@ func BuildTablesConfig(ctx context.Context, tx pgx.Tx, tableConfig []pgdomains.T
 	`
 
 	tables := make(map[pgdomains.Oid]*pgdomains.Table, len(tableConfig))
-	var errs []error
+	var errs ValidationErrors
 
 	for _, t := range tableConfig {
 		var oid, rootOid pgdomains.Oid
@@ -150,8 +189,8 @@ errHandle:
 	return tables, nil
 }
 
-func getColumnsConfig(ctx context.Context, tx pgx.Tx, table pgdomains.Table) (map[string]pgdomains.Column, []error) {
-	var errs []error
+func getColumnsConfig(ctx context.Context, tx pgx.Tx, table pgdomains.Table) (map[string]pgdomains.Column, ValidationErrors) {
+	var errs ValidationErrors
 
 	tableColumnsQuery := `
 		SELECT 
