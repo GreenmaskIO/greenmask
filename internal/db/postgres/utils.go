@@ -6,16 +6,17 @@ import (
 	"fmt"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 
-	"github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/domains"
+	pgdomains "github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/domains"
 	"github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/pg_catalog"
 	"github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/pgdump"
+	domains "github.com/wwoytenko/greenfuscator/internal/domains"
 	"github.com/wwoytenko/greenfuscator/internal/transformers"
 )
 
 var (
 	TransformerNotFoundError = errors.New("transformer not found")
-	TransformerInitError     = errors.New("transformer cannot be initialized")
 	ColumnNotFoundError      = errors.New("column not found")
 )
 
@@ -42,22 +43,11 @@ type ValidationError struct {
 }
 
 func (ve *ValidationError) Error() string {
-	return fmt.Sprintf("%s validation error: %s: %s: %s: %s", ve.Level, ve.Schema, ve.Name, ve.Column, ve.err.Error())
+	// TODO: Rewrite error formatting
+	return fmt.Sprintf("%s validation error: %s: %s: %s: %s: %s", ve.Level, ve.Schema, ve.Name, ve.Column, ve.Transformer, ve.err.Error())
 }
 
-func getTable() {
-
-}
-
-func getTableConstraints() {
-
-}
-
-func getTableTriggers() {
-
-}
-
-func BuildTablesConfig(ctx context.Context, tx pgx.Tx, tableConfig []domains.Table, dumpIdSeq *domains.DumpId) (map[domains.Oid]*domains.Table, []error) {
+func BuildTablesConfig(ctx context.Context, tx pgx.Tx, tableConfig []pgdomains.Table) (map[pgdomains.Oid]*pgdomains.Table, []error) {
 	tableSearchQuery := `
 		SELECT 
 		   c.oid::TEXT::INT, 
@@ -78,20 +68,28 @@ func BuildTablesConfig(ctx context.Context, tx pgx.Tx, tableConfig []domains.Tab
           AND c.relname = $2 -- relname inclusion
 	`
 
-	tables := make(map[domains.Oid]*domains.Table, len(tableConfig))
+	tables := make(map[pgdomains.Oid]*pgdomains.Table, len(tableConfig))
 	var errs []error
 
 	for _, t := range tableConfig {
-		var oid, rootOid domains.Oid
+		var oid, rootOid pgdomains.Oid
 		var schemaName, name, owner, rootPtName, rootPtSchema string
 		var relKind rune
+		var table *pgdomains.Table
 
 		row := tx.QueryRow(ctx, tableSearchQuery, t.Name, t.Schema)
 		err := row.Scan(&oid, &schemaName, &name, &owner, &relKind,
 			&rootPtSchema, &rootPtName, &rootOid,
 		)
 		if err != nil {
-			errs = append(errs, fmt.Errorf("unnable scan data: %w", err))
+			errs = append(errs, &ValidationError{
+				Level:      TableValidationLevel,
+				ErrorLevel: FatalErrorLevel,
+				Schema:     schemaName,
+				Name:       name,
+				err:        fmt.Errorf("cannot scan tableSearchQuery: %w", err),
+			})
+			goto errHandle
 		}
 
 		switch relKind {
@@ -100,19 +98,15 @@ func BuildTablesConfig(ctx context.Context, tx pgx.Tx, tableConfig []domains.Tab
 		case 'p':
 			fallthrough
 		case 'f':
-			// TODO: 1. getColumns
-			//		 2. getConstraints
-
-			table := &domains.Table{
+			table = &pgdomains.Table{
 				Name:       name,
 				Schema:     schemaName,
 				Columns:    t.Columns,
 				ColumnsMap: t.ColumnsMap,
 				Query:      t.Query,
-				TableMeta: domains.TableMeta{
+				TableMeta: pgdomains.TableMeta{
 					Oid:          oid,
 					Owner:        owner,
-					DumpId:       dumpIdSeq.GetDumpId(),
 					RelKind:      relKind,
 					RootPtSchema: rootPtSchema,
 					RootPtName:   rootPtName,
@@ -120,19 +114,35 @@ func BuildTablesConfig(ctx context.Context, tx pgx.Tx, tableConfig []domains.Tab
 				},
 			}
 
-			tables[table.Oid] = table
 		default:
-			errs = append(errs, fmt.Errorf(`BUG found: unknown relkind "%c"`, relKind))
+			errs = append(errs, &ValidationError{
+				Level:      TableValidationLevel,
+				ErrorLevel: FatalErrorLevel,
+				Schema:     schemaName,
+				Name:       name,
+				err:        fmt.Errorf(`BUG found: unknown relkind "%c"`, relKind),
+			})
+			continue
 		}
+		// Assign table constraints
+		constraints, constraintErrs := getTableConstraints(ctx, tx, t)
+		if constraintErrs != nil {
+			errs = append(errs, constraintErrs...)
+			goto errHandle
+		}
+		table.Constraints = constraints
+
+		// Assign columns and transformers for table
+		columns, columnErrs := getColumnsConfig(ctx, tx, t)
+		if columnErrs != nil {
+			errs = append(errs, columnErrs...)
+		}
+		table.ColumnsMap = columns
+
+		tables[table.Oid] = table
 	}
 
-	// Assign columns and transformers for table
-	for _, table := range tables {
-		if err := setTableColumnsTransformers(ctx, tx, table); err != nil {
-			errs = append(errs, err)
-		}
-	}
-
+errHandle:
 	if errs != nil {
 		return nil, errs
 	}
@@ -140,7 +150,7 @@ func BuildTablesConfig(ctx context.Context, tx pgx.Tx, tableConfig []domains.Tab
 	return tables, nil
 }
 
-func getColumnsConfig(ctx context.Context, tx pgx.Tx, tableOid domains.Oid, table *domains.Table) (map[string]domains.Column, []error) {
+func getColumnsConfig(ctx context.Context, tx pgx.Tx, table pgdomains.Table) (map[string]pgdomains.Column, []error) {
 	var errs []error
 
 	tableColumnsQuery := `
@@ -149,51 +159,50 @@ func getColumnsConfig(ctx context.Context, tx pgx.Tx, tableOid domains.Oid, tabl
 		    a.atttypid 	as typeoid,
 		  	pg_catalog.format_type(a.atttypid, a.atttypmod) as typename,
 		  	a.attnotnull,
-		  	a.atttypmod
+		  	a.atttypmod,
+		  	a.attnum
 		FROM pg_catalog.pg_attribute a
 		WHERE a.attrelid = $1 AND a.attnum > 0 AND NOT a.attisdropped
 		ORDER BY a.attnum
 	`
 
-	res := make(map[string]domains.Column)
-	rows, err := tx.Query(ctx, tableColumnsQuery, tableOid)
+	res := make(map[string]pgdomains.Column)
+	rows, err := tx.Query(ctx, tableColumnsQuery, table.Oid)
+	if err != nil {
+		errs = append(errs, &ValidationError{
+			Level:      ColumnValidationLevel,
+			ErrorLevel: FatalErrorLevel,
+			Schema:     table.Schema,
+			Name:       table.Name,
+			err:        fmt.Errorf("unable execute tableColumnQuery: %w", err),
+		})
+		goto errHandle
+	}
+	defer rows.Close()
+
 	for rows.Next() {
-		var column domains.Column
-		var name string
-		if err = rows.Scan(&name, &column.TypeOid, &column.TypeName, &column.NotNull, &column.Length); err != nil {
-			panic(fmt.Sprintf("cannot scan column: %s", err))
+		var column pgdomains.Column
+		var columnName string
+		if err = rows.Scan(&columnName, &column.TypeOid, &column.TypeName,
+			&column.NotNull, &column.Length, &column.Num); err != nil {
+			errs = append(errs, &ValidationError{
+				Level:      ColumnValidationLevel,
+				ErrorLevel: FatalErrorLevel,
+				Schema:     table.Schema,
+				Name:       table.Name,
+				err:        fmt.Errorf("cannot scan tableColumnQuery: %w", err),
+			})
+			goto errHandle
 		}
 		// If column has transformer assign it
-		if c, ok := table.ColumnsMap[column.Name]; ok {
-			transformerConf := c.TransformConf
-			makeTransformer, ok := transformers.TransformerMap[transformerConf.Name]
-			if !ok {
-				errs = append(errs, &ValidationError{
-					Level:       TransformerValidationLevel,
-					ErrorLevel:  FatalErrorLevel,
-					Schema:      table.Schema,
-					Name:        table.Name,
-					Column:      name,
-					Transformer: transformerConf.Name,
-					err:         TransformerNotFoundError,
-				})
-			}
-			column.TransformConf = transformerConf
-			transformer, err := makeTransformer.NewTransformer(column.ColumnMeta, tx.Conn().TypeMap(), "", c.TransformConf.Params)
+		if c, ok := table.ColumnsMap[columnName]; ok {
+			transformer, err := getTransformerConfig(table, columnName, c.TransformConf, tx.Conn().TypeMap())
 			if err != nil {
-				errs = append(errs, &ValidationError{
-					Level:       TransformerValidationLevel,
-					ErrorLevel:  FatalErrorLevel,
-					Schema:      table.Schema,
-					Name:        table.Name,
-					Column:      name,
-					Transformer: transformerConf.Name,
-					err:         err,
-				})
+				errs = append(errs, err)
 			}
 			column.Transformer = transformer
 		}
-		res[name] = column
+		res[columnName] = column
 	}
 
 	for name, _ := range table.ColumnsMap {
@@ -209,6 +218,8 @@ func getColumnsConfig(ctx context.Context, tx pgx.Tx, tableOid domains.Oid, tabl
 		}
 	}
 
+errHandle:
+
 	if errs != nil {
 		return nil, errs
 	}
@@ -216,7 +227,110 @@ func getColumnsConfig(ctx context.Context, tx pgx.Tx, tableOid domains.Oid, tabl
 	return res, nil
 }
 
-func setTableColumnsTransformers(ctx context.Context, tx pgx.Tx, table *domains.Table) error {
+func getTransformerConfig(table pgdomains.Table, columnName string, transformerConfig domains.TransformerConfig, typeMap *pgtype.Map) (domains.Transformer, error) {
+	makeTransformer, ok := transformers.TransformerMap[transformerConfig.Name]
+	if !ok {
+		return nil, &ValidationError{
+			Level:       TransformerValidationLevel,
+			ErrorLevel:  FatalErrorLevel,
+			Schema:      table.Schema,
+			Name:        table.Name,
+			Column:      columnName,
+			Transformer: transformerConfig.Name,
+			err:         TransformerNotFoundError,
+		}
+	}
+	c, ok := table.ColumnsMap[columnName]
+	if !ok {
+		panic(fmt.Sprintf("column %s not found", columnName))
+	}
+	// TODO: Refactor useType - it must be in transformer params instead
+	transformer, err := makeTransformer.NewTransformer(c.ColumnMeta, typeMap, "", c.TransformConf.Params)
+	if err != nil {
+		return nil, &ValidationError{
+			Level:       TransformerValidationLevel,
+			ErrorLevel:  FatalErrorLevel,
+			Schema:      table.Schema,
+			Name:        table.Name,
+			Column:      columnName,
+			Transformer: transformerConfig.Name,
+			err:         err,
+		}
+	}
+	return transformer, nil
+}
+
+func getTableConstraints(ctx context.Context, tx pgx.Tx, table pgdomains.Table) ([]pgdomains.Constraint, []error) {
+	var errs []error
+	var res []pgdomains.Constraint
+
+	tableConstraintsQuery := `
+		SELECT pc.conname                                    AS "name",
+			   pn.nspname                                    AS "schema",
+			   pc.contype                                    AS "type",
+			   pc.contypid                                   AS domain_oid,
+			   pc.conparentid                                AS root_pt_constraint_oid,
+			   pc.confrelid                                  AS fk_ref_oid,
+			   pc.conkey                                     AS constrained_column_oids,
+			   pc.confkey                                    AS constrained_column_fk_oids,
+			   CASE
+				   WHEN pc.contype = 'p' THEN
+					   (SELECT array_agg(c.oid)
+						FROM pg_catalog.pg_constraint c
+						WHERE confrelid IN (SELECT pg_catalog.pg_partition_ancestors(pc.conrelid)
+											UNION ALL
+											VALUES (pc.conrelid))
+						  AND contype = 'f'
+						  AND conparentid = 0)
+				   END                                       AS referenced_tables,
+		
+			   pg_catalog.pg_get_constraintdef(pc.oid, true) AS def
+		FROM pg_constraint pc
+				 JOIN pg_namespace pn on pc.connamespace = pn.oid
+		WHERE conrelid = $1
+	`
+
+	rows, err := tx.Query(ctx, tableConstraintsQuery, table.Oid)
+	if err != nil {
+		errs = append(errs, &ValidationError{
+			Level:      ColumnValidationLevel,
+			ErrorLevel: FatalErrorLevel,
+			Schema:     table.Schema,
+			Name:       table.Name,
+			err:        fmt.Errorf("cannot execute tableConstraintsQuery: %w", err),
+		})
+		goto errHandle
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var c pgdomains.Constraint
+		err = rows.Scan(
+			&c.Name, &c.Schema, &c.Type, &c.Domain, &c.RootPtConstraint, &c.FkTable,
+			&c.ConstrainedColumns, &c.ReferencesColumns, &c.ReferencedTable, &c.Domain,
+		)
+		if err != nil {
+			errs = append(errs, &ValidationError{
+				Level:      TableValidationLevel,
+				ErrorLevel: FatalErrorLevel,
+				Schema:     table.Schema,
+				Name:       table.Name,
+				err:        fmt.Errorf("cannot scan tableConstraintsQuery: %w", err),
+			})
+			goto errHandle
+		}
+		res = append(res, c)
+	}
+
+errHandle:
+	if errs != nil {
+		return nil, errs
+	}
+
+	return res, nil
+}
+
+func setTableColumnsTransformers(ctx context.Context, tx pgx.Tx, table *pgdomains.Table) error {
 	tableColumnsQuery := `
 		SELECT 
 		    a.attname,
@@ -228,7 +342,7 @@ func setTableColumnsTransformers(ctx context.Context, tx pgx.Tx, table *domains.
 		ORDER BY a.attnum
 	`
 
-	cfg := make(map[string]domains.Column, 0)
+	cfg := make(map[string]pgdomains.Column, 0)
 	for _, c := range table.Columns {
 		cfg[c.Name] = c
 	}
@@ -237,9 +351,9 @@ func setTableColumnsTransformers(ctx context.Context, tx pgx.Tx, table *domains.
 	if err != nil {
 		return fmt.Errorf("perform query: %w", err)
 	}
-	columns := make([]domains.Column, 0)
+	columns := make([]pgdomains.Column, 0)
 	for rows.Next() {
-		column := domains.Column{}
+		column := pgdomains.Column{}
 		if err = rows.Scan(&column.Name, &column.TypeOid, &column.TypeName, &column.NotNull); err != nil {
 			return fmt.Errorf("cannot scan column: %w", err)
 		}
@@ -265,9 +379,9 @@ func setTableColumnsTransformers(ctx context.Context, tx pgx.Tx, table *domains.
 	return nil
 }
 
-func buildObjects(ctx context.Context, tx pgx.Tx, pgDumpOptions *pgdump.Options, tableConfig []domains.Table, dumpIdSeq *domains.DumpId) ([]*domains.Table, []*domains.Sequence, error) {
+func buildObjects(ctx context.Context, tx pgx.Tx, pgDumpOptions *pgdump.Options, tableConfig []pgdomains.Table, dumpIdSeq *pgdomains.DumpId) ([]*pgdomains.Table, []*pgdomains.Sequence, error) {
 
-	cfg := make(map[string]domains.Table, len(tableConfig))
+	cfg := make(map[string]pgdomains.Table, len(tableConfig))
 	for _, item := range tableConfig {
 		cfg[fmt.Sprintf("%s.%s", item.Schema, item.Name)] = item
 	}
@@ -286,8 +400,8 @@ func buildObjects(ctx context.Context, tx pgx.Tx, pgDumpOptions *pgdump.Options,
 	}
 
 	// Generate table objects
-	sequences := make([]*domains.Sequence, 0)
-	tables := make([]*domains.Table, 0)
+	sequences := make([]*pgdomains.Sequence, 0)
+	tables := make([]*pgdomains.Table, 0)
 	defer rows.Close()
 	for rows.Next() {
 		var oid int
@@ -303,10 +417,10 @@ func buildObjects(ctx context.Context, tx pgx.Tx, pgDumpOptions *pgdump.Options,
 		}
 		switch relKind {
 		case 'S':
-			sequences = append(sequences, &domains.Sequence{
+			sequences = append(sequences, &pgdomains.Sequence{
 				Name:        name,
 				Schema:      schemaName,
-				Oid:         oid,
+				Oid:         pgdomains.Oid(oid),
 				Owner:       owner,
 				DumpId:      dumpIdSeq.GetDumpId(),
 				LastValue:   lastVal,
@@ -318,18 +432,18 @@ func buildObjects(ctx context.Context, tx pgx.Tx, pgDumpOptions *pgdump.Options,
 		case 'p':
 			fallthrough
 		case 'f':
-			var columns []domains.Column
+			var columns []pgdomains.Column
 			t, ok := cfg[fmt.Sprintf("%s.%s", schemaName, name)]
 			if ok {
 				columns = t.Columns
 			}
-			table := &domains.Table{
+			table := &pgdomains.Table{
 				Name:    name,
 				Schema:  schemaName,
 				Columns: columns,
 				Query:   t.Query,
-				TableMeta: domains.TableMeta{
-					Oid:                  oid,
+				TableMeta: pgdomains.TableMeta{
+					Oid:                  pgdomains.Oid(oid),
 					Owner:                owner,
 					DumpId:               dumpIdSeq.GetDumpId(),
 					RelKind:              relKind,

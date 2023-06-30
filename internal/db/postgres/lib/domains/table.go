@@ -50,7 +50,7 @@ type TableMeta struct {
 	HasRules       bool  `json:"-" yaml:"-"`
 	HasTriggers    bool  `json:"-" yaml:"-"`
 	// List of the constraints at the table
-	Constraints []*Constraint `json:"-" yaml:"-"`
+	Constraints []Constraint `json:"-" yaml:"-"`
 }
 
 type Table struct {
