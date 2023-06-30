@@ -21,8 +21,8 @@ func TestJsonTransformer_Transform(t *testing.T) {
 	typeMap := c.TypeMap()
 
 	transformer, err := NewJsonTransformer(domains.ColumnMeta{
-		Type:    "text",
-		TypeOid: pgtype.JSONBOID,
+		TypeName: "text",
+		TypeOid:  pgtype.JSONBOID,
 	}, typeMap, "", map[string]interface{}{
 		"operations": []map[string]interface{}{
 			{

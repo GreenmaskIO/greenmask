@@ -2,9 +2,9 @@ package domains
 
 import "sync/atomic"
 
-type DumpIdSequence int32
+type DumpId int32
 
-func (di *DumpIdSequence) GetDumpId() DumpIdSequence {
+func (di *DumpId) GetDumpId() DumpId {
 	atomic.AddInt32((*int32)(di), 1)
 	return *di
 }

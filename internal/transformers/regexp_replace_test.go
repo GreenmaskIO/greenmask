@@ -21,8 +21,8 @@ func TestRegexpReplaceTransformer_Transform(t *testing.T) {
 	typeMap := c.TypeMap()
 
 	transformer, err := NewRegexpReplaceTransformer(domains.ColumnMeta{
-		Type:    "text",
-		TypeOid: pgtype.TextOID,
+		TypeName: "text",
+		TypeOid:  pgtype.TextOID,
 	}, typeMap, "", map[string]interface{}{"regexp": `(Hello)\s*world\s*(\!+\?)`, "replace": "$1 Mr NoName $2"})
 	require.NoError(t, err)
 	res, err := transformer.Transform("Hello world!!!?")

@@ -23,7 +23,7 @@ type Dump struct {
 	dsn            string
 	pgDumpOptions  *pgdump.Options
 	pgDump         *pgdump.PgDump
-	curDumpId      domains.DumpIdSequence
+	curDumpId      domains.DumpId
 	st             storage.Storager
 	dumpTaskCount  int32
 	allTaskPushed  atomic.Bool
@@ -128,7 +128,7 @@ func (d *Dump) schemaOnlyDump(ctx context.Context, tx pgx.Tx) error {
 		return fmt.Errorf("error reading toc file: %w", err)
 	}
 	d.ah = schemaToc
-	d.curDumpId = domains.DumpIdSequence(schemaToc.MaxDumpId + 1)
+	d.curDumpId = domains.DumpId(schemaToc.MaxDumpId + 1)
 
 	return nil
 }

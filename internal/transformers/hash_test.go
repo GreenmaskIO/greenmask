@@ -21,8 +21,8 @@ func TestHashTransformer_Transform(t *testing.T) {
 	typeMap := c.TypeMap()
 
 	transformer, err := NewHashTransformer(domains.ColumnMeta{
-		Type:    "text",
-		TypeOid: pgtype.TextOID,
+		TypeName: "text",
+		TypeOid:  pgtype.TextOID,
 	}, typeMap, "", map[string]interface{}{
 		"salt": "12345678",
 	})

@@ -22,8 +22,8 @@ func TestUuidTransformer_Transform(t *testing.T) {
 	typeMap := c.TypeMap()
 
 	transformer, err := NewUuidTransformer(domains.ColumnMeta{
-		Type:    "uuid",
-		TypeOid: pgtype.UUIDOID,
+		TypeName: "uuid",
+		TypeOid:  pgtype.UUIDOID,
 	}, typeMap, "", nil)
 	require.NoError(t, err)
 	res, err := transformer.Transform("old_val")
@@ -31,8 +31,8 @@ func TestUuidTransformer_Transform(t *testing.T) {
 	assert.Regexp(t, `^[\d\w]{8}-[\d\w]{4}-[\d\w]{4}-[\d\w]{4}-[\d\w]{12}$`, res)
 
 	transformer, err = NewUuidTransformer(domains.ColumnMeta{
-		Type:    "uuid",
-		TypeOid: pgtype.TextOID,
+		TypeName: "uuid",
+		TypeOid:  pgtype.TextOID,
 	}, typeMap, "", nil)
 	require.NoError(t, err)
 	res, err = transformer.Transform("old_val")
@@ -40,8 +40,8 @@ func TestUuidTransformer_Transform(t *testing.T) {
 	assert.Regexp(t, `^[\d\w]{8}-[\d\w]{4}-[\d\w]{4}-[\d\w]{4}-[\d\w]{12}$`, res)
 
 	transformer, err = NewUuidTransformer(domains.ColumnMeta{
-		Type:    "uuid",
-		TypeOid: pgtype.Int8OID,
+		TypeName: "uuid",
+		TypeOid:  pgtype.Int8OID,
 	}, typeMap, "", nil)
 	require.ErrorContains(t, err, "type is not supported")
 }

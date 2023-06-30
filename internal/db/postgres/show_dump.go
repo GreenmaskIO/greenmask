@@ -38,7 +38,7 @@ var templateString = `;
 ; Selected TOC Entries:
 ;
 {{- range .Entries }}
-{{ .DumpIdSequence }}; {{ .ObjectOid }} {{ .DatabaseOid }} {{ .ObjectType }} {{ if ne .Schema "" }}{{ .Schema }}{{ else }}-{{ end }} {{ .Name }} {{ .Owner }}
+{{ .DumpId }}; {{ .ObjectOid }} {{ .DatabaseOid }} {{ .ObjectType }} {{ if ne .Schema "" }}{{ .Schema }}{{ else }}-{{ end }} {{ .Name }} {{ .Owner }}
 {{- end }}
 `
 

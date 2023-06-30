@@ -38,8 +38,8 @@ func TestNoiseIntTransformer_Transform(t *testing.T) {
 		{
 			name: "int2",
 			column: domains.ColumnMeta{
-				Type:    "int2",
-				TypeOid: pgtype.Int2OID,
+				TypeName: "int2",
+				TypeOid:  pgtype.Int2OID,
 			},
 			params: map[string]interface{}{
 				"ratio": 0.9,
@@ -51,8 +51,8 @@ func TestNoiseIntTransformer_Transform(t *testing.T) {
 		{
 			name: "int4",
 			column: domains.ColumnMeta{
-				Type:    "int4",
-				TypeOid: pgtype.Int4OID,
+				TypeName: "int4",
+				TypeOid:  pgtype.Int4OID,
 			},
 			params: map[string]interface{}{
 				"ratio": 0.9,
@@ -64,8 +64,8 @@ func TestNoiseIntTransformer_Transform(t *testing.T) {
 		{
 			name: "int8",
 			column: domains.ColumnMeta{
-				Type:    "int8",
-				TypeOid: pgtype.Int8OID,
+				TypeName: "int8",
+				TypeOid:  pgtype.Int8OID,
 			},
 			params: map[string]interface{}{
 				"ratio": 0.9,
@@ -77,8 +77,8 @@ func TestNoiseIntTransformer_Transform(t *testing.T) {
 		{
 			name: "text with int8",
 			column: domains.ColumnMeta{
-				Type:    "text",
-				TypeOid: pgtype.TextOID,
+				TypeName: "text",
+				TypeOid:  pgtype.TextOID,
 			},
 			params: map[string]interface{}{
 				"ratio": 0.9,

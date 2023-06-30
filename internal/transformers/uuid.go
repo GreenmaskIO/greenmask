@@ -53,7 +53,7 @@ func NewUuidTransformer(
 		return nil, fmt.Errorf("cannot build transformer base object: %w", err)
 	}
 
-	_, err = base.PgType.Codec.DecodeValue(typeMap, column.TypeOid, pgx.TextFormatCode, []byte("db9abb12-3e84-4873-915d-27c17a1fea22"))
+	_, err = base.PgType.Codec.DecodeValue(typeMap, uint32(column.TypeOid), pgx.TextFormatCode, []byte("db9abb12-3e84-4873-915d-27c17a1fea22"))
 	if err != nil {
 		return nil, fmt.Errorf("cannot decode value: %w", err)
 	}

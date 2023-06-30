@@ -30,8 +30,8 @@ func TestRandomDateTransformer_Transform(t *testing.T) {
 		{
 			name: "test date type",
 			column: domains.ColumnMeta{
-				Type:    "date",
-				TypeOid: pgtype.DateOID,
+				TypeName: "date",
+				TypeOid:  pgtype.DateOID,
 			},
 			params: map[string]interface{}{
 				"min": "2017-09-14",
@@ -42,8 +42,8 @@ func TestRandomDateTransformer_Transform(t *testing.T) {
 		{
 			name: "test timestamp without timezone type",
 			column: domains.ColumnMeta{
-				Type:    "timestamp",
-				TypeOid: pgtype.TimestampOID,
+				TypeName: "timestamp",
+				TypeOid:  pgtype.TimestampOID,
 			},
 			params: map[string]interface{}{
 				"min": "2018-12-15 23:34:17.946707",
@@ -54,8 +54,8 @@ func TestRandomDateTransformer_Transform(t *testing.T) {
 		{
 			name: "test timestamp with timezone type",
 			column: domains.ColumnMeta{
-				Type:    "timestamptz",
-				TypeOid: pgtype.TimestamptzOID,
+				TypeName: "timestamptz",
+				TypeOid:  pgtype.TimestamptzOID,
 			},
 			params: map[string]interface{}{
 				"min": "2018-12-15 23:34:17.946707+03",
@@ -66,8 +66,8 @@ func TestRandomDateTransformer_Transform(t *testing.T) {
 		{
 			name: "test timestamp type with Truncate till day",
 			column: domains.ColumnMeta{
-				Type:    "timestamp",
-				TypeOid: pgtype.TimestampOID,
+				TypeName: "timestamp",
+				TypeOid:  pgtype.TimestampOID,
 			},
 			params: map[string]interface{}{
 				"min":      "2018-12-15 23:34:17.946707",
@@ -108,8 +108,8 @@ func TestRandomDateTransformer_Transform_errors(t *testing.T) {
 		{
 			name: "Check nil typeMap error",
 			column: domains.ColumnMeta{
-				Type:    "date",
-				TypeOid: pgtype.DateOID,
+				TypeName: "date",
+				TypeOid:  pgtype.DateOID,
 			},
 			typeMap:     nil,
 			params:      map[string]interface{}{},
@@ -118,8 +118,8 @@ func TestRandomDateTransformer_Transform_errors(t *testing.T) {
 		{
 			name: "Check min key not existing error",
 			column: domains.ColumnMeta{
-				Type:    "date",
-				TypeOid: pgtype.DateOID,
+				TypeName: "date",
+				TypeOid:  pgtype.DateOID,
 			},
 			typeMap: typeMap,
 			params: map[string]interface{}{
@@ -130,8 +130,8 @@ func TestRandomDateTransformer_Transform_errors(t *testing.T) {
 		{
 			name: "Check max key existing error",
 			column: domains.ColumnMeta{
-				Type:    "date",
-				TypeOid: pgtype.DateOID,
+				TypeName: "date",
+				TypeOid:  pgtype.DateOID,
 			},
 			typeMap: typeMap,
 			params: map[string]interface{}{
@@ -143,8 +143,8 @@ func TestRandomDateTransformer_Transform_errors(t *testing.T) {
 		{
 			name: "Check min key empty value",
 			column: domains.ColumnMeta{
-				Type:    "date",
-				TypeOid: pgtype.DateOID,
+				TypeName: "date",
+				TypeOid:  pgtype.DateOID,
 			},
 			typeMap: typeMap,
 			params: map[string]interface{}{
@@ -156,8 +156,8 @@ func TestRandomDateTransformer_Transform_errors(t *testing.T) {
 		{
 			name: "Check max empty value",
 			column: domains.ColumnMeta{
-				Type:    "date",
-				TypeOid: pgtype.DateOID,
+				TypeName: "date",
+				TypeOid:  pgtype.DateOID,
 			},
 			typeMap: typeMap,
 			params: map[string]interface{}{
@@ -169,8 +169,8 @@ func TestRandomDateTransformer_Transform_errors(t *testing.T) {
 		{
 			name: "Invalid min date format",
 			column: domains.ColumnMeta{
-				Type:    "date",
-				TypeOid: pgtype.DateOID,
+				TypeName: "date",
+				TypeOid:  pgtype.DateOID,
 			},
 			typeMap: typeMap,
 			params: map[string]interface{}{
@@ -182,8 +182,8 @@ func TestRandomDateTransformer_Transform_errors(t *testing.T) {
 		{
 			name: "Invalid max date format",
 			column: domains.ColumnMeta{
-				Type:    "date",
-				TypeOid: pgtype.DateOID,
+				TypeName: "date",
+				TypeOid:  pgtype.DateOID,
 			},
 			typeMap: typeMap,
 			params: map[string]interface{}{

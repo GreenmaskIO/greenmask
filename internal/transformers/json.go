@@ -34,7 +34,7 @@ type JsonTransformerParams struct {
 
 type Operation struct {
 	Operation string `mapstructure:"operation" validate:"required, oneof=delete set"`
-	//Type      string      `mapstructure:"type,omitempty" validate:"required, oneof=nil bool string int float "`
+	//TypeName      string      `mapstructure:"type,omitempty" validate:"required, oneof=nil bool string int float "`
 	Value interface{} `mapstructure:"value,omitempty"`
 	Path  string      `mapstructure:"path" validate:"required"`
 }

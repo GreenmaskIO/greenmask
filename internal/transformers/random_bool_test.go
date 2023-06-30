@@ -30,8 +30,8 @@ func TestRandomBoolTransformer_Transform(t *testing.T) {
 		{
 			name: "test bool type",
 			column: domains.ColumnMeta{
-				Type:    "bool",
-				TypeOid: pgtype.BoolOID,
+				TypeName: "bool",
+				TypeOid:  pgtype.BoolOID,
 			},
 			params:  map[string]interface{}{},
 			pattern: `^(t|f)$`,

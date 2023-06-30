@@ -32,8 +32,8 @@ func TestRandomStringTransformer_Transform(t *testing.T) {
 		{
 			name: "default fixed string",
 			column: domains.ColumnMeta{
-				Type:    "text",
-				TypeOid: pgtype.TextOID,
+				TypeName: "text",
+				TypeOid:  pgtype.TextOID,
 			},
 			params: map[string]interface{}{
 				"min": 10,
@@ -44,8 +44,8 @@ func TestRandomStringTransformer_Transform(t *testing.T) {
 		{
 			name: "default floated string",
 			column: domains.ColumnMeta{
-				Type:    "text",
-				TypeOid: pgtype.TextOID,
+				TypeName: "text",
+				TypeOid:  pgtype.TextOID,
 			},
 			params: map[string]interface{}{
 				"min": 2,
@@ -56,8 +56,8 @@ func TestRandomStringTransformer_Transform(t *testing.T) {
 		{
 			name: "default floated string",
 			column: domains.ColumnMeta{
-				Type:    "text",
-				TypeOid: pgtype.TextOID,
+				TypeName: "text",
+				TypeOid:  pgtype.TextOID,
 			},
 			params: map[string]interface{}{
 				"min":     10,

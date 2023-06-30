@@ -21,8 +21,8 @@ func TestMaskingTransformer_Transform(t *testing.T) {
 	typeMap := c.TypeMap()
 
 	transformer, err := NewMaskingTransformer(domains.ColumnMeta{
-		Type:    "text",
-		TypeOid: pgtype.TextOID,
+		TypeName: "text",
+		TypeOid:  pgtype.TextOID,
 	}, typeMap, "", map[string]interface{}{"type": "name"})
 	require.NoError(t, err)
 	res, err := transformer.Transform("abcdef test")
@@ -30,8 +30,8 @@ func TestMaskingTransformer_Transform(t *testing.T) {
 	require.Equal(t, "a**def t**t", res)
 
 	transformer, err = NewMaskingTransformer(domains.ColumnMeta{
-		Type:    "text",
-		TypeOid: pgtype.TextOID,
+		TypeName: "text",
+		TypeOid:  pgtype.TextOID,
 	}, typeMap, "", map[string]interface{}{"type": "password"})
 	require.NoError(t, err)
 	res, err = transformer.Transform("password_secure")

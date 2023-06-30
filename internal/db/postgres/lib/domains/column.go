@@ -2,6 +2,8 @@ package domains
 
 import "github.com/wwoytenko/greenfuscator/internal/domains"
 
+type AttNum int
+
 type Column struct {
 	ColumnMeta    `json:"-" yaml:"-"`
 	Name          string                    `mapstructure:"name" json:"name"`
@@ -10,7 +12,9 @@ type Column struct {
 }
 
 type ColumnMeta struct {
-	Type    string `json:"-" yaml:"-"`
-	TypeOid uint32 `json:"-" yaml:"-"`
-	NotNull bool   `json:"-" yaml:"-"`
+	Num      AttNum `json:"-" yaml:"-"`
+	TypeName string `json:"-" yaml:"-"`
+	TypeOid  Oid    `json:"-" yaml:"-"`
+	NotNull  bool   `json:"-" yaml:"-"`
+	Length   int64  `json:"-" yaml:"-"`
 }

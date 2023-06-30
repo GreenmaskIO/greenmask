@@ -125,8 +125,8 @@ var (
 	}
 )
 
-func GetPgTypeAndEncodingPlan(typeMap *pgtype.Map, typeOid uint32, castVal any) (*pgtype.Type, pgtype.EncodePlan, error) {
-	t, ok := typeMap.TypeForOID(typeOid)
+func GetPgTypeAndEncodingPlan(typeMap *pgtype.Map, typeOid pgDomains.Oid, castVal any) (*pgtype.Type, pgtype.EncodePlan, error) {
+	t, ok := typeMap.TypeForOID(uint32(typeOid))
 	if !ok {
 		return nil, nil, fmt.Errorf("cannot match pgtype %d", typeOid)
 	}
@@ -195,7 +195,7 @@ func NewTransformerBase(column pgDomains.ColumnMeta, typeMap *pgtype.Map, useTyp
 		if !ok {
 			return nil, fmt.Errorf("cannot find type %s", useType)
 		}
-		oid = t.OID
+		oid = pgDomains.Oid(t.OID)
 	}
 	if !slices.Contains(supportedOids, AnyOid) && !slices.Contains(supportedOids, int(oid)) {
 		return nil, fmt.Errorf("cannot use type: %s type is not supported", useType)
@@ -265,7 +265,7 @@ func scan(src any, dest interface{}) error {
 }
 
 func (tb *TransformerBase) Scan(src string, dest interface{}) error {
-	val, err := tb.PgType.Codec.DecodeValue(tb.TypeMap, tb.Column.TypeOid, pgx.TextFormatCode, []byte(src))
+	val, err := tb.PgType.Codec.DecodeValue(tb.TypeMap, uint32(tb.Column.TypeOid), pgx.TextFormatCode, []byte(src))
 	if err != nil {
 		return fmt.Errorf("cannot decode value: %w", err)
 	}

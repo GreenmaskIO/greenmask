@@ -37,8 +37,8 @@ func TestNoiseDateTransformer_Transform(t *testing.T) {
 		{
 			name: "test date type",
 			column: domains.ColumnMeta{
-				Type:    "date",
-				TypeOid: pgtype.DateOID,
+				TypeName: "date",
+				TypeOid:  pgtype.DateOID,
 			},
 			params: map[string]interface{}{
 				"ratio": "1 year 1 mons 1 day 01:01:01.01",
@@ -53,8 +53,8 @@ func TestNoiseDateTransformer_Transform(t *testing.T) {
 		{
 			name: "test timestamp without timezone type",
 			column: domains.ColumnMeta{
-				Type:    "timestamp",
-				TypeOid: pgtype.TimestampOID,
+				TypeName: "timestamp",
+				TypeOid:  pgtype.TimestampOID,
 			},
 			params: map[string]interface{}{
 				"ratio": "1 year 1 mons 1 day 01:01:01.01",
@@ -69,8 +69,8 @@ func TestNoiseDateTransformer_Transform(t *testing.T) {
 		{
 			name: "test timestamp with timezone type",
 			column: domains.ColumnMeta{
-				Type:    "timestamptz",
-				TypeOid: pgtype.TimestamptzOID,
+				TypeName: "timestamptz",
+				TypeOid:  pgtype.TimestamptzOID,
 			},
 			params: map[string]interface{}{
 				"ratio": "1 year 1 mons 1 day 01:01:01.01",
@@ -85,8 +85,8 @@ func TestNoiseDateTransformer_Transform(t *testing.T) {
 		{
 			name: "test timestamp type with Truncate till day",
 			column: domains.ColumnMeta{
-				Type:    "timestamp",
-				TypeOid: pgtype.TimestampOID,
+				TypeName: "timestamp",
+				TypeOid:  pgtype.TimestampOID,
 			},
 			params: map[string]interface{}{
 				"ratio":    "1 year 1 mons 1 day 01:01:01.01",

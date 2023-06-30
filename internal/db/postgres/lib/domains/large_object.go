@@ -14,7 +14,7 @@ import (
 var LargeObjectDesc = "BLOBS"
 
 type LargeObjects struct {
-	DumpId       DumpIdSequence
+	DumpId       DumpId
 	Dependencies []int32
 }
 

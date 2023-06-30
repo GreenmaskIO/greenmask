@@ -23,8 +23,8 @@ func TestGoTemplateTransformer_Transform(t *testing.T) {
 
 	var tmpl = `{{ if eq . "test" }}res1{{ else }}res2{{ end }}`
 	transformer, err := NewGoTemplateTransformer(domains.ColumnMeta{
-		Type:    "date",
-		TypeOid: pgtype.DateOID,
+		TypeName: "date",
+		TypeOid:  pgtype.DateOID,
 	}, typeMap, map[string]string{"template": tmpl})
 	require.NoError(t, err)
 	res, err := transformer.Transform("test")

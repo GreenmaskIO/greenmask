@@ -31,8 +31,8 @@ func TestRandomFloatTransformer_Transform(t *testing.T) {
 		{
 			name: "float4",
 			column: domains.ColumnMeta{
-				Type:    "float4",
-				TypeOid: pgtype.Float4OID,
+				TypeName: "float4",
+				TypeOid:  pgtype.Float4OID,
 			},
 			params: map[string]interface{}{
 				"min": 1,
@@ -43,8 +43,8 @@ func TestRandomFloatTransformer_Transform(t *testing.T) {
 		{
 			name: "float8",
 			column: domains.ColumnMeta{
-				Type:    "float8",
-				TypeOid: pgtype.Float8OID,
+				TypeName: "float8",
+				TypeOid:  pgtype.Float8OID,
 			},
 			params: map[string]interface{}{
 				"min": 1,
@@ -55,8 +55,8 @@ func TestRandomFloatTransformer_Transform(t *testing.T) {
 		{
 			name: "float8 ranges 1",
 			column: domains.ColumnMeta{
-				Type:    "float8",
-				TypeOid: pgtype.Float8OID,
+				TypeName: "float8",
+				TypeOid:  pgtype.Float8OID,
 			},
 			params: map[string]interface{}{
 				"min":       -100000,
@@ -68,8 +68,8 @@ func TestRandomFloatTransformer_Transform(t *testing.T) {
 		{
 			name: "float8 ranges 1 with precision",
 			column: domains.ColumnMeta{
-				Type:    "float8",
-				TypeOid: pgtype.Float8OID,
+				TypeName: "float8",
+				TypeOid:  pgtype.Float8OID,
 			},
 			params: map[string]interface{}{
 				"min":       -100000,
@@ -81,8 +81,8 @@ func TestRandomFloatTransformer_Transform(t *testing.T) {
 		{
 			name: "text with default float8",
 			column: domains.ColumnMeta{
-				Type:    "text",
-				TypeOid: pgtype.TextOID,
+				TypeName: "text",
+				TypeOid:  pgtype.TextOID,
 			},
 			params: map[string]interface{}{
 				"min":       -100000,

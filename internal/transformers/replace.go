@@ -64,7 +64,7 @@ func NewReplaceTransformer(
 		rand:                     rand.New(rand.NewSource(time.Now().UnixMicro())),
 	}
 
-	_, err = base.PgType.Codec.DecodeValue(typeMap, column.TypeOid, pgx.TextFormatCode, []byte(tParams.Value))
+	_, err = base.PgType.Codec.DecodeValue(typeMap, uint32(column.TypeOid), pgx.TextFormatCode, []byte(tParams.Value))
 	if err != nil {
 		return nil, fmt.Errorf("cannot decode value: %w", err)
 	}

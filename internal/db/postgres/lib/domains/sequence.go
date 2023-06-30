@@ -11,9 +11,9 @@ var SequenceSetDesc = "SEQUENCE SET"
 type Sequence struct {
 	Name         string
 	Schema       string
-	Oid          int
+	Oid          Oid
 	Owner        string
-	DumpId       DumpIdSequence
+	DumpId       DumpId
 	LastValue    int64
 	Dependencies []int32
 	IsCalled     bool

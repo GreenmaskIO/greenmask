@@ -9,34 +9,70 @@ import (
 	"strings"
 
 	"github.com/rs/zerolog/log"
+	"golang.org/x/exp/slices"
 
 	"github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/toc"
 )
 
 var TableDataDesc = "TABLE DATA"
 
+type TableMeta struct {
+	// Data that uses only for TocEntry
+	// DumpId - unique int value for the table instance
+	DumpId DumpId `json:"-" yaml:"-"`
+	// Dependencies - list of the table dependencies that must be delivered first
+	Dependencies []int32 `json:"-" yaml:"-"`
+
+	// Total metadata that changing dump behaviour
+	// Oid - pg_class.oid
+	Oid Oid `json:"-" yaml:"-"`
+	// Owner - table owner name
+	Owner string `json:"-" yaml:"-"`
+	// RelKind - relation type as in pg_class.relkind
+	RelKind rune `json:"-" yaml:"-"`
+	// Root - oid of the partition root
+	Root         Oid    `json:"-" yaml:"-"`
+	RootPtName   string `json:"-" yaml:"-"` // Deprecated
+	RootPtSchema string `json:"-" yaml:"-"` // Deprecated
+	// ExcludeData - exclude table data
+	ExcludeData bool `json:"-" yaml:"-"`
+	// OriginalSize - plain size of the COPY table data
+	OriginalSize int64 `json:"-" yaml:"-"`
+	// CompressedSize - compressed size of the COPY table data
+	CompressedSize int64 `json:"-" yaml:"-"`
+	// LoadViaPartitionRoot - generate COPY statement with load via partition root
+	LoadViaPartitionRoot bool `json:"-" yaml:"-"`
+
+	// Attributes that are important for Transformer validation
+	IsPartition    bool  `json:"-" yaml:"-"`
+	HasConstraints bool  `json:"-" yaml:"-"`
+	ChecksCount    int16 `json:"-" yaml:"-"`
+	HasRules       bool  `json:"-" yaml:"-"`
+	HasTriggers    bool  `json:"-" yaml:"-"`
+	// List of the constraints at the table
+	Constraints []*Constraint `json:"-" yaml:"-"`
+}
+
 type Table struct {
-	Schema               string         `mapstructure:"schema"`
-	Name                 string         `mapstructure:"name"`
-	Columns              []Column       `mapstructure:"columns"`
-	Query                string         `mapstructure:"query"`
-	QueryTest            string         `mapstructure:"queryTest"`
-	HasTransformer       bool           `json:"-" yaml:"-"`
-	Oid                  int            `json:"-" yaml:"-"`
-	Owner                string         `json:"-" yaml:"-"`
-	RelKind              rune           `json:"-" yaml:"-"`
-	RootPtName           string         `json:"-" yaml:"-"`
-	RootPtSchema         string         `json:"-" yaml:"-"`
-	ExcludeData          bool           `json:"-" yaml:"-"`
-	DumpId               DumpIdSequence `json:"-" yaml:"-"`
-	Dependencies         []int32        `json:"-" yaml:"-"`
-	OriginalSize         int64          `json:"-" yaml:"-"`
-	CompressedSize       int64          `json:"-" yaml:"-"`
-	LoadViaPartitionRoot bool           `json:"-" yaml:"-"`
+	TableMeta
+	Schema string `mapstructure:"schema"`
+	Name   string `mapstructure:"name"`
+	// Columns - must be replaced to map instead map[string]Columns
+	Columns    []Column          `mapstructure:"columns"`    // Deprecated
+	ColumnsMap map[string]Column `mapstructure:"columnsMap"` // Deprecated
+	Query      string            `mapstructure:"query"`
+	QueryTest  string            `mapstructure:"queryTest"`
+	//HasTransformer       bool           `json:"-" yaml:"-"`
+}
+
+func (t *Table) HasTransformer() bool {
+	return slices.ContainsFunc(t.Columns, func(column Column) bool {
+		return column.Transformer != nil
+	})
 }
 
 func (t *Table) TransformTuple(data []byte) ([]byte, error) {
-	if !t.HasTransformer {
+	if !t.HasTransformer() {
 		log.Warn().Msgf("called transformer for table %s.%s though it is not defined in config. maybe bug", t.Schema, t.Name)
 		return data, nil
 	}
