@@ -2,6 +2,7 @@ package postgres
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/jackc/pgx/v5"
@@ -12,17 +13,36 @@ import (
 	"github.com/wwoytenko/greenfuscator/internal/transformers"
 )
 
+var (
+	TransformerNotFoundError = errors.New("transformer not found")
+	TransformerInitError     = errors.New("transformer cannot be initialized")
+	ColumnNotFoundError      = errors.New("column not found")
+)
+
+const (
+	TransformerValidationLevel = "Transformer"
+	InternalValidationLevel    = "Internal"
+	ColumnValidationLevel      = "Column"
+	TableValidationLevel       = "Table"
+)
+
+const (
+	FatalErrorLevel   = "fatal"
+	WarningErrorLevel = "warning"
+)
+
 type ValidationError struct {
-	ValidationType string
-	Fatal          bool
-	Schema         string
-	Name           string
-	Column         string
-	err            error
+	Level       string `json:"type,omitempty"`
+	ErrorLevel  string `json:"error-level,omitempty"`
+	Schema      string `json:"schema,omitempty"`
+	Name        string `json:"name,omitempty"`
+	Column      string `json:"column,omitempty"`
+	Transformer string `json:"transformer,omitempty"`
+	err         error  `json:"err,omitempty"`
 }
 
 func (ve *ValidationError) Error() string {
-	return fmt.Sprintf("%s validation error: %s: %s: %s: %s", ve.ValidationType, ve.Schema, ve.Name, ve.Column, ve.err.Error())
+	return fmt.Sprintf("%s validation error: %s: %s: %s: %s", ve.Level, ve.Schema, ve.Name, ve.Column, ve.err.Error())
 }
 
 func getTable() {
@@ -46,7 +66,7 @@ func BuildTablesConfig(ctx context.Context, tx pgx.Tx, tableConfig []domains.Tab
 		   pg_catalog.pg_get_userbyid(c.relowner) as "Owner",
 		   c.relkind 							  as "RelKind",
 		   (coalesce(pn.nspname, '')) 			  as "rootPtSchema",
-		   (coalesce(pc.relname, '')) 			  as "rootPtName"
+		   (coalesce(pc.relname, '')) 			  as "rootPtName",
 		   (coalesce(pc.oid, '')) 			      as "rootOid"
         FROM pg_catalog.pg_class c
 				JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
@@ -84,10 +104,11 @@ func BuildTablesConfig(ctx context.Context, tx pgx.Tx, tableConfig []domains.Tab
 			//		 2. getConstraints
 
 			table := &domains.Table{
-				Name:    name,
-				Schema:  schemaName,
-				Columns: columns,
-				Query:   t.Query,
+				Name:       name,
+				Schema:     schemaName,
+				Columns:    t.Columns,
+				ColumnsMap: t.ColumnsMap,
+				Query:      t.Query,
 				TableMeta: domains.TableMeta{
 					Oid:          oid,
 					Owner:        owner,
@@ -96,7 +117,6 @@ func BuildTablesConfig(ctx context.Context, tx pgx.Tx, tableConfig []domains.Tab
 					RootPtSchema: rootPtSchema,
 					RootPtName:   rootPtName,
 					Root:         rootOid,
-					Constraints:,
 				},
 			}
 
@@ -149,21 +169,48 @@ func getColumnsConfig(ctx context.Context, tx pgx.Tx, tableOid domains.Oid, tabl
 			makeTransformer, ok := transformers.TransformerMap[transformerConf.Name]
 			if !ok {
 				errs = append(errs, &ValidationError{
-
+					Level:       TransformerValidationLevel,
+					ErrorLevel:  FatalErrorLevel,
+					Schema:      table.Schema,
+					Name:        table.Name,
+					Column:      name,
+					Transformer: transformerConf.Name,
+					err:         TransformerNotFoundError,
 				})
-				return nil, fmt.Errorf("unable to init transformer \"%s\" for table %s.%s on column %s: unnable to find transformer with name %s")
 			}
 			column.TransformConf = transformerConf
 			transformer, err := makeTransformer.NewTransformer(column.ColumnMeta, tx.Conn().TypeMap(), "", c.TransformConf.Params)
 			if err != nil {
-				return nil, fmt.Errorf("unable to init transformer \"%s\" for table %s.%s on column %s: %w", transformerConf.Name, table.Schema, table.Name, column.Name, err)
+				errs = append(errs, &ValidationError{
+					Level:       TransformerValidationLevel,
+					ErrorLevel:  FatalErrorLevel,
+					Schema:      table.Schema,
+					Name:        table.Name,
+					Column:      name,
+					Transformer: transformerConf.Name,
+					err:         err,
+				})
 			}
 			column.Transformer = transformer
 		}
 		res[name] = column
 	}
 
-	for k, v := range table.ColumnsMap {
+	for name, _ := range table.ColumnsMap {
+		if _, ok := res[name]; !ok {
+			errs = append(errs, &ValidationError{
+				Level:      ColumnValidationLevel,
+				ErrorLevel: FatalErrorLevel,
+				Schema:     table.Schema,
+				Name:       table.Name,
+				Column:     name,
+				err:        ColumnNotFoundError,
+			})
+		}
+	}
+
+	if errs != nil {
+		return nil, errs
 	}
 
 	return res, nil

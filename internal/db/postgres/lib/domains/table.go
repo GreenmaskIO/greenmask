@@ -58,8 +58,8 @@ type Table struct {
 	Schema string `mapstructure:"schema"`
 	Name   string `mapstructure:"name"`
 	// Columns - must be replaced to map instead map[string]Columns
-	Columns    []Column          `mapstructure:"columns"`    // Deprecated
-	ColumnsMap map[string]Column `mapstructure:"columnsMap"` // Deprecated
+	Columns    []Column          `mapstructure:"columns"` // Deprecated
+	ColumnsMap map[string]Column `mapstructure:"columnsMap"`
 	Query      string            `mapstructure:"query"`
 	QueryTest  string            `mapstructure:"queryTest"`
 	//HasTransformer       bool           `json:"-" yaml:"-"`
