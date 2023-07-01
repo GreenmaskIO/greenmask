@@ -24,6 +24,9 @@ var NoiseIntTransformerMeta = TransformerMeta{
 	},
 	SupportedTypeOids: NoiseIntTransformerSupportedOids,
 	NewTransformer:    NewNoiseIntTransformer,
+	Settings: NewTransformerSettings().
+		SetNullable().
+		SetVariadic(),
 }
 
 type NoiseIntTransformerParams struct {
@@ -40,12 +43,12 @@ type NoiseIntTransformer struct {
 }
 
 func NewNoiseIntTransformer(
-	column pgDomains.ColumnMeta,
+	table *pgDomains.TableMeta,
+	column *pgDomains.ColumnMeta,
 	typeMap *pgtype.Map,
-	useType string,
 	params map[string]interface{},
 ) (domains.Transformer, error) {
-	base, err := NewTransformerBase(column, typeMap, useType, NoiseIntTransformerSupportedOids, int64(1))
+	base, err := NewTransformerBase(table, column, NoiseIntTransformerMeta.Settings, params, typeMap, NoiseIntTransformerSupportedOids, int64(1))
 	if err != nil {
 		return nil, fmt.Errorf("cannot build transformer base object: %w", err)
 	}

@@ -33,6 +33,9 @@ var NoiseDateTransformerMeta = TransformerMeta{
 	},
 	SupportedTypeOids: NoiseDateTransformerSupportedOids,
 	NewTransformer:    NewNoiseDateTransformer,
+	Settings: NewTransformerSettings().
+		SetNullable().
+		SetVariadic(),
 }
 
 type NoiseDateTransformerParams struct {
@@ -52,13 +55,13 @@ type NoiseDateTransformer struct {
 }
 
 func NewNoiseDateTransformer(
-	column pgDomains.ColumnMeta,
+	table *pgDomains.TableMeta,
+	column *pgDomains.ColumnMeta,
 	typeMap *pgtype.Map,
-	useType string,
 	params map[string]interface{},
 ) (domains.Transformer, error) {
 
-	base, err := NewTransformerBase(column, typeMap, useType, NoiseDateTransformerSupportedOids, time.Time{})
+	base, err := NewTransformerBase(table, column, NoiseDateTransformerMeta.Settings, params, typeMap, NoiseDateTransformerSupportedOids, time.Time{})
 	if err != nil {
 		return nil, fmt.Errorf("cannot build transformer base object: %w", err)
 	}

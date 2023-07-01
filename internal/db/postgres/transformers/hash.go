@@ -16,11 +16,6 @@ import (
 
 // TODO: Make length truncation
 
-var HashTransformerSupportedOids = []int{
-	pgtype.TextOID,
-	pgtype.VarcharOID,
-}
-
 const saltLength = 32
 
 var HashTransformerMeta = TransformerMeta{
@@ -28,8 +23,11 @@ var HashTransformerMeta = TransformerMeta{
 	ParamsDescription: map[string]string{
 		"salt": "secret salt that uses for applying hash function",
 	},
-	SupportedTypeOids: HashTransformerSupportedOids,
-	NewTransformer:    NewHashTransformer,
+	NewTransformer: NewHashTransformer,
+	Settings: NewTransformerSettings().
+		SetNullable().
+		SetVariadic().
+		SetSupportedOids(StringTypes...),
 }
 
 type HashTransformerParams struct {
@@ -41,18 +39,18 @@ type HashTransformerParams struct {
 type HashTransformer struct {
 	TransformerBase
 	HashTransformerParams
-	Column pgDomains.ColumnMeta
-	rand   *rand.Rand
-	salt   []byte
+	rand *rand.Rand
+	salt []byte
 }
 
 func NewHashTransformer(
-	column pgDomains.ColumnMeta,
+	table *pgDomains.TableMeta,
+	column *pgDomains.ColumnMeta,
 	typeMap *pgtype.Map,
-	useType string,
 	params map[string]interface{},
+	settings *TransformerSettings,
 ) (domains.Transformer, error) {
-	base, err := NewTransformerBase(column, typeMap, useType, HashTransformerSupportedOids, "")
+	base, err := NewTransformerBase(table, column, settings, params, typeMap, "")
 	if err != nil {
 		return nil, fmt.Errorf("cannot build transformer base object: %w", err)
 	}
@@ -67,7 +65,6 @@ func NewHashTransformer(
 	res := &HashTransformer{
 		TransformerBase:       *base,
 		HashTransformerParams: tParams,
-		Column:                column,
 		rand:                  rand.New(rand.NewSource(time.Now().UnixMicro())),
 	}
 

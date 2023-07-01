@@ -32,23 +32,24 @@ type UuidTransformerParams struct {
 type UuidTransformer struct {
 	TransformerBase
 	UuidTransformerParams
-	Column pgDomains.ColumnMeta
-	rand   *rand.Rand
+	rand *rand.Rand
 }
 
 var UuidTransformerMeta = TransformerMeta{
 	Description:       `Generate random UUID`,
 	SupportedTypeOids: UuidTransformerSupportedOids,
 	NewTransformer:    NewUuidTransformer,
+	Settings: NewTransformerSettings().
+		SetNullable(),
 }
 
 func NewUuidTransformer(
-	column pgDomains.ColumnMeta,
+	table *pgDomains.TableMeta,
+	column *pgDomains.ColumnMeta,
 	typeMap *pgtype.Map,
-	useType string,
 	params map[string]interface{},
 ) (domains.Transformer, error) {
-	base, err := NewTransformerBase(column, typeMap, useType, UuidTransformerSupportedOids, uuid.New())
+	base, err := NewTransformerBase(table, column, UuidTransformerMeta.Settings, params, typeMap, UuidTransformerSupportedOids, uuid.New())
 	if err != nil {
 		return nil, fmt.Errorf("cannot build transformer base object: %w", err)
 	}
@@ -72,7 +73,6 @@ func NewUuidTransformer(
 	return &UuidTransformer{
 		TransformerBase:       *base,
 		UuidTransformerParams: tParams,
-		Column:                column,
 		rand:                  rand.New(rand.NewSource(time.Now().UnixMicro())),
 	}, nil
 }

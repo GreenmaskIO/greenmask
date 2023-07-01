@@ -13,8 +13,8 @@ import (
 	pgdomains "github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/domains"
 	"github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/pg_catalog"
 	"github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/pgdump"
+	"github.com/wwoytenko/greenfuscator/internal/db/postgres/transformers"
 	domains "github.com/wwoytenko/greenfuscator/internal/domains"
-	"github.com/wwoytenko/greenfuscator/internal/transformers"
 )
 
 var (
@@ -283,7 +283,7 @@ func getTransformerConfig(table pgdomains.Table, column pgdomains.Column, typeMa
 		panic(fmt.Sprintf("column %s not found", column.Name))
 	}
 	// TODO: Refactor useType - it must be in transformer params instead
-	transformer, err := makeTransformer.NewTransformer(column.ColumnMeta, typeMap, "", c.TransformConf.Params)
+	transformer, err := makeTransformer.NewTransformer(&table.TableMeta, &column.ColumnMeta, typeMap, c.TransformConf.Params)
 	if err != nil {
 		return nil, &ValidationError{
 			Level:       TransformerValidationLevel,
@@ -406,7 +406,7 @@ func setTableColumnsTransformers(ctx context.Context, tx pgx.Tx, table *pgdomain
 				return fmt.Errorf("unable to init transformer \"%s\" for table %s.%s on column %s: unnable to find transformer with name %s", transformerConf.Name, table.Schema, table.Name, column.Name, transformerConf.Name)
 			}
 			column.TransformConf = transformerConf
-			transformer, err := makeTransformer.NewTransformer(column.ColumnMeta, tx.Conn().TypeMap(), "", c.TransformConf.Params)
+			transformer, err := makeTransformer.NewTransformer(&table.TableMeta, &column.ColumnMeta, tx.Conn().TypeMap(), c.TransformConf.Params)
 			if err != nil {
 				return fmt.Errorf("unable to init transformer \"%s\" for table %s.%s on column %s: %w", transformerConf.Name, table.Schema, table.Name, column.Name, err)
 			}

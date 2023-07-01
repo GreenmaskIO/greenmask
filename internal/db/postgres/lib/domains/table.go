@@ -9,7 +9,6 @@ import (
 	"strings"
 
 	"github.com/rs/zerolog/log"
-	"golang.org/x/exp/slices"
 
 	"github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/toc"
 )
@@ -42,13 +41,6 @@ type TableMeta struct {
 	CompressedSize int64 `json:"-" yaml:"-"`
 	// LoadViaPartitionRoot - generate COPY statement with load via partition root
 	LoadViaPartitionRoot bool `json:"-" yaml:"-"`
-
-	// Attributes that are important for Transformer validation
-	IsPartition    bool  `json:"-" yaml:"-"`
-	HasConstraints bool  `json:"-" yaml:"-"`
-	ChecksCount    int16 `json:"-" yaml:"-"`
-	HasRules       bool  `json:"-" yaml:"-"`
-	HasTriggers    bool  `json:"-" yaml:"-"`
 	// List of the constraints at the table
 	Constraints []*Constraint `json:"-" yaml:"-"`
 }
@@ -59,16 +51,13 @@ type Table struct {
 	Name   string `mapstructure:"name"`
 	// Columns - must be replaced to map instead map[string]Columns
 	Columns         []*Column `mapstructure:"columns"`
+	Query           string    `mapstructure:"query"`
+	QueryTest       string    `mapstructure:"queryTest"`
 	TransformersMap map[string]*Column
-	Query           string `mapstructure:"query"`
-	QueryTest       string `mapstructure:"queryTest"`
-	//HasTransformer       bool           `json:"-" yaml:"-"`
 }
 
 func (t *Table) HasTransformer() bool {
-	return slices.ContainsFunc(t.Columns, func(column *Column) bool {
-		return column.Transformer != nil
-	})
+	return t.TransformersMap != nil
 }
 
 func (t *Table) TransformTuple(data []byte) ([]byte, error) {

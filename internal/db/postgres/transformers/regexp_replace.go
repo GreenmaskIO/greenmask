@@ -25,6 +25,9 @@ var RegexpReplaceTransformerMeta = TransformerMeta{
 	},
 	SupportedTypeOids: RegexpReplaceTransformerSupportedOids,
 	NewTransformer:    NewRegexpReplaceTransformer,
+	Settings: NewTransformerSettings().
+		SetNullable().
+		SetVariadic(),
 }
 
 type RegexpReplaceTransformerParams struct {
@@ -37,18 +40,17 @@ type RegexpReplaceTransformerParams struct {
 type RegexpReplaceTransformer struct {
 	TransformerBase
 	RegexpReplaceTransformerParams
-	Column pgDomains.ColumnMeta
 	rand   *rand.Rand
 	regexp *regexp.Regexp
 }
 
 func NewRegexpReplaceTransformer(
-	column pgDomains.ColumnMeta,
+	table *pgDomains.TableMeta,
+	column *pgDomains.ColumnMeta,
 	typeMap *pgtype.Map,
-	useType string,
 	params map[string]interface{},
 ) (domains.Transformer, error) {
-	base, err := NewTransformerBase(column, typeMap, useType, RegexpReplaceTransformerSupportedOids, "")
+	base, err := NewTransformerBase(table, column, RegexpReplaceTransformerMeta.Settings, params, typeMap, RegexpReplaceTransformerSupportedOids, "")
 	if err != nil {
 		return nil, fmt.Errorf("cannot build transformer base object: %w", err)
 	}
@@ -68,7 +70,6 @@ func NewRegexpReplaceTransformer(
 	res := &RegexpReplaceTransformer{
 		TransformerBase:                *base,
 		RegexpReplaceTransformerParams: tParams,
-		Column:                         column,
 		rand:                           rand.New(rand.NewSource(time.Now().UnixMicro())),
 		regexp:                         re,
 	}

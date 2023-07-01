@@ -19,6 +19,8 @@ var RandomBoolTransformerMeta = TransformerMeta{
 	Description:       "Generate random bool",
 	SupportedTypeOids: RandomBoolTransformerSupportedOids,
 	NewTransformer:    NewRandomBoolTransformer,
+	Settings: NewTransformerSettings().
+		SetNullable(),
 }
 
 type RandomBoolTransformerParams struct {
@@ -33,12 +35,12 @@ type RandomBoolTransformer struct {
 }
 
 func NewRandomBoolTransformer(
-	column pgDomains.ColumnMeta,
+	table *pgDomains.TableMeta,
+	column *pgDomains.ColumnMeta,
 	typeMap *pgtype.Map,
-	useType string,
 	params map[string]interface{},
 ) (domains.Transformer, error) {
-	base, err := NewTransformerBase(column, typeMap, useType, RandomBoolTransformerSupportedOids, true)
+	base, err := NewTransformerBase(table, column, RandomBoolTransformerMeta.Settings, params, typeMap, RandomBoolTransformerSupportedOids, true)
 	if err != nil {
 		return nil, fmt.Errorf("cannot build transformer base object: %w", err)
 	}

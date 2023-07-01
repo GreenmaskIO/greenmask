@@ -24,12 +24,13 @@ var JsonTransformerMeta = TransformerMeta{
 	},
 	SupportedTypeOids: JsonTransformerSupportedOids,
 	NewTransformer:    NewJsonTransformer,
+	Settings: NewTransformerSettings().
+		SetNullable().
+		SetVariadic(),
 }
 
 type JsonTransformerParams struct {
 	Operations []Operation `mapstructure:"operations"`
-	Nullable   bool        `mapstructure:"nullable"`
-	Fraction   float32     `mapstructure:"fraction"`
 }
 
 type Operation struct {
@@ -56,24 +57,21 @@ func (oo *Operation) Apply(inp string) (string, error) {
 type JsonTransformer struct {
 	TransformerBase
 	JsonTransformerParams
-	Column pgDomains.ColumnMeta
-	rand   *rand.Rand
+	rand *rand.Rand
 }
 
 func NewJsonTransformer(
-	column pgDomains.ColumnMeta,
+	table *pgDomains.TableMeta,
+	column *pgDomains.ColumnMeta,
 	typeMap *pgtype.Map,
-	useType string,
 	params map[string]interface{},
 ) (domains.Transformer, error) {
-	base, err := NewTransformerBase(column, typeMap, useType, JsonTransformerSupportedOids, "")
+	base, err := NewTransformerBase(table, column, JsonTransformerMeta.Settings, params, typeMap, JsonTransformerSupportedOids, "")
 	if err != nil {
 		return nil, fmt.Errorf("cannot build transformer base object: %w", err)
 	}
 
-	tParams := JsonTransformerParams{
-		Fraction: DefaultNullFraction,
-	}
+	tParams := JsonTransformerParams{}
 	if err := parseTransformerParams(params, &tParams); err != nil {
 		return nil, fmt.Errorf("parameters parsing error: %w", err)
 	}
@@ -81,12 +79,7 @@ func NewJsonTransformer(
 	res := &JsonTransformer{
 		TransformerBase:       *base,
 		JsonTransformerParams: tParams,
-		Column:                column,
 		rand:                  rand.New(rand.NewSource(time.Now().UnixMicro())),
-	}
-
-	if tParams.Nullable && base.Column.NotNull {
-		return nil, fmt.Errorf("transformer cannot be nullable at not null column")
 	}
 
 	return res, nil

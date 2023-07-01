@@ -2,6 +2,7 @@ package domains
 
 type Transformer interface {
 	Transform(originalValue string) (string, error)
+	Validate() []error
 }
 
 type TransformerConfig struct {

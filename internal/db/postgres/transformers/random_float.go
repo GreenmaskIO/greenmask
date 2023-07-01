@@ -28,6 +28,9 @@ var RandomFloatTransformerMeta = TransformerMeta{
 	},
 	SupportedTypeOids: RandomFloatTransformerSupportedOids,
 	NewTransformer:    NewRandomFloatTransformer,
+	Settings: NewTransformerSettings().
+		SetNullable().
+		SetVariadic(),
 }
 
 type RandomFloatTransformerParams struct {
@@ -46,13 +49,13 @@ type RandomFloatTransformer struct {
 }
 
 func NewRandomFloatTransformer(
-	column pgDomains.ColumnMeta,
+	table *pgDomains.TableMeta,
+	column *pgDomains.ColumnMeta,
 	typeMap *pgtype.Map,
-	useType string,
 	params map[string]interface{},
 ) (domains.Transformer, error) {
 
-	base, err := NewTransformerBase(column, typeMap, useType, RandomFloatTransformerSupportedOids, float64(0))
+	base, err := NewTransformerBase(table, column, RandomFloatTransformerMeta.Settings, params, typeMap, RandomFloatTransformerSupportedOids, float64(0))
 	if err != nil {
 		return nil, fmt.Errorf("cannot build transformer base object: %w", err)
 	}

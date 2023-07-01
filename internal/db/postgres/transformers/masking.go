@@ -36,6 +36,8 @@ var MaskingTransformerMeta = TransformerMeta{
 	},
 	SupportedTypeOids: MaskingTransformerSupportedOids,
 	NewTransformer:    NewMaskingTransformer,
+	Settings: NewTransformerSettings().
+		SetNullable(),
 }
 
 type maskingFunction func(val string) string
@@ -49,19 +51,18 @@ type MaskingTransformerParams struct {
 type MaskingTransformer struct {
 	TransformerBase
 	MaskingTransformerParams
-	Column          pgDomains.ColumnMeta
 	rand            *rand.Rand
 	masker          *masker.Masker
 	maskingFunction maskingFunction
 }
 
 func NewMaskingTransformer(
-	column pgDomains.ColumnMeta,
+	table *pgDomains.TableMeta,
+	column *pgDomains.ColumnMeta,
 	typeMap *pgtype.Map,
-	useType string,
 	params map[string]interface{},
 ) (domains.Transformer, error) {
-	base, err := NewTransformerBase(column, typeMap, useType, MaskingTransformerSupportedOids, "")
+	base, err := NewTransformerBase(table, column, MaskingTransformerMeta.Settings, params, typeMap, MaskingTransformerSupportedOids, "")
 	if err != nil {
 		return nil, fmt.Errorf("cannot build transformer base object: %w", err)
 	}
@@ -101,7 +102,6 @@ func NewMaskingTransformer(
 	res := &MaskingTransformer{
 		TransformerBase:          *base,
 		MaskingTransformerParams: tParams,
-		Column:                   column,
 		rand:                     rand.New(rand.NewSource(time.Now().UnixMicro())),
 		masker:                   masker.New(),
 		maskingFunction:          mf,

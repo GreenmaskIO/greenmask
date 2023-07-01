@@ -23,6 +23,8 @@ var ReplaceTransformerMeta = TransformerMeta{
 	},
 	SupportedTypeOids: ReplaceTransformerSupportedOids,
 	NewTransformer:    NewReplaceTransformer,
+	Settings: NewTransformerSettings().
+		SetVariadic(),
 }
 
 type ReplaceTransformerParams struct {
@@ -34,18 +36,17 @@ type ReplaceTransformerParams struct {
 type ReplaceTransformer struct {
 	TransformerBase
 	ReplaceTransformerParams
-	Column pgDomains.ColumnMeta
-	value  string
-	rand   *rand.Rand
+	value string
+	rand  *rand.Rand
 }
 
 func NewReplaceTransformer(
-	column pgDomains.ColumnMeta,
+	table *pgDomains.TableMeta,
+	column *pgDomains.ColumnMeta,
 	typeMap *pgtype.Map,
-	useType string,
 	params map[string]interface{},
 ) (domains.Transformer, error) {
-	base, err := NewTransformerBase(column, typeMap, useType, ReplaceTransformerSupportedOids, "")
+	base, err := NewTransformerBase(table, column, ReplaceTransformerMeta.Settings, params, typeMap, ReplaceTransformerSupportedOids, "")
 	if err != nil {
 		return nil, fmt.Errorf("cannot build transformer base object: %w", err)
 	}
@@ -60,7 +61,6 @@ func NewReplaceTransformer(
 	res := &ReplaceTransformer{
 		TransformerBase:          *base,
 		ReplaceTransformerParams: tParams,
-		Column:                   column,
 		rand:                     rand.New(rand.NewSource(time.Now().UnixMicro())),
 	}
 

@@ -31,6 +31,9 @@ var RandomDateTransformerMeta = TransformerMeta{
 	},
 	SupportedTypeOids: RandomDateTransformerSupportedOids,
 	NewTransformer:    NewRandomDateTransformer,
+	Settings: NewTransformerSettings().
+		SetNullable().
+		SetVariadic(),
 }
 
 var truncateParts = []string{"year", "month", "day", "hour", "second", "millisecond", "microsecond", "nanosecond"}
@@ -55,13 +58,13 @@ type RandomDateTransformer struct {
 }
 
 func NewRandomDateTransformer(
-	column pgDomains.ColumnMeta,
+	table *pgDomains.TableMeta,
+	column *pgDomains.ColumnMeta,
 	typeMap *pgtype.Map,
-	useType string,
 	params map[string]interface{},
 ) (domains.Transformer, error) {
 
-	base, err := NewTransformerBase(column, typeMap, useType, RandomDateTransformerSupportedOids, time.Time{})
+	base, err := NewTransformerBase(table, column, RandomDateTransformerMeta.Settings, params, typeMap, RandomDateTransformerSupportedOids, time.Time{})
 	if err != nil {
 		return nil, fmt.Errorf("cannot build transformer base object: %w", err)
 	}
