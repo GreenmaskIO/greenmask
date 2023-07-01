@@ -6,7 +6,7 @@ type AttNum int
 
 type Column struct {
 	ColumnMeta    `json:"-" yaml:"-"`
-	Name          string                    `mapstructure:"name" json:"name"` // Deprecated
+	Name          string                    `mapstructure:"name" json:"name"`
 	TransformConf domains.TransformerConfig `mapstructure:"transformer" json:"transformers" yaml:"transformers"`
 	Transformer   domains.Transformer       `mapstructure:"-" json:"-" yaml:"-"`
 }

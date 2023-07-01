@@ -50,7 +50,7 @@ type TableMeta struct {
 	HasRules       bool  `json:"-" yaml:"-"`
 	HasTriggers    bool  `json:"-" yaml:"-"`
 	// List of the constraints at the table
-	Constraints []Constraint `json:"-" yaml:"-"`
+	Constraints []*Constraint `json:"-" yaml:"-"`
 }
 
 type Table struct {
@@ -58,15 +58,15 @@ type Table struct {
 	Schema string `mapstructure:"schema"`
 	Name   string `mapstructure:"name"`
 	// Columns - must be replaced to map instead map[string]Columns
-	Columns    []Column          `mapstructure:"columns"` // Deprecated
-	ColumnsMap map[string]Column `mapstructure:"columnsMap"`
-	Query      string            `mapstructure:"query"`
-	QueryTest  string            `mapstructure:"queryTest"`
+	Columns         []*Column `mapstructure:"columns"`
+	TransformersMap map[string]*Column
+	Query           string `mapstructure:"query"`
+	QueryTest       string `mapstructure:"queryTest"`
 	//HasTransformer       bool           `json:"-" yaml:"-"`
 }
 
 func (t *Table) HasTransformer() bool {
-	return slices.ContainsFunc(t.Columns, func(column Column) bool {
+	return slices.ContainsFunc(t.Columns, func(column *Column) bool {
 		return column.Transformer != nil
 	})
 }

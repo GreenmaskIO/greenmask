@@ -13,12 +13,15 @@ import (
 
 func RunValidate(ctx context.Context, opt *pgdump.Options, tableConfig []domains.Table) error {
 
-	dsn, err := d.pgDumpOptions.GetPgDSN()
+	dsn, err := opt.GetPgDSN()
 	if err != nil {
 		return fmt.Errorf("cannot build connection string: %w", err)
 	}
 
 	conn, err := pgx.Connect(ctx, dsn)
+	if err != nil {
+		return err
+	}
 	defer func() {
 		if err := conn.Close(ctx); err != nil {
 			log.Warn().Err(err)

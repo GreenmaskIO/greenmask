@@ -38,9 +38,16 @@ var (
 			}
 			dump := postgres.NewDump(Config.Common.BinPath, &Config.Dump.PgDumpOptions, st, Config.Dump.Transformers)
 
-			if err := dump.RunDump(ctx); err != nil {
-				log.Fatalf("cannot make a backup: %s", err)
+			if Config.Dump.PgDumpOptions.Validate {
+				if err := postgres.RunValidate(ctx, &Config.Dump.PgDumpOptions, Config.Dump.Transformers); err != nil {
+					log.Fatalf("validation error: %s", err)
+				}
+			} else {
+				if err := dump.RunDump(ctx); err != nil {
+					log.Fatalf("cannot make a backup: %s", err)
+				}
 			}
+
 		},
 	}
 	Config = pgDomains.NewConfig()
@@ -115,6 +122,8 @@ func init() {
 	DumpCmd.Flags().StringP("username", "U", "postgres", "connect as specified database user")
 	DumpCmd.Flags().StringP("test", "", "postgres", "connect as specified database user")
 
+	DumpCmd.Flags().BoolP("validate", "", false, "validate config")
+
 	for _, flagName := range []string{
 		"file", "jobs", "verbose", "compress", "dbname", "host", "username", "lock-wait-timeout", "no-sync",
 
@@ -126,7 +135,7 @@ func init() {
 		"no-unlogged-table-data", "on-conflict-do-nothing", "quote-all-identifiers", "section",
 		"serializable-deferrable", "snapshot", "strict-names", "use-set-session-authorization",
 
-		"dbname", "host", "port", "username",
+		"dbname", "host", "port", "username", "validate",
 	} {
 		flag := DumpCmd.Flags().Lookup(flagName)
 		if err := viper.BindPFlag(fmt.Sprintf("%s.%s", "dump.pg_dump_options", flagName), flag); err != nil {

@@ -12,7 +12,7 @@ restore:
   pg_restore_options:
     #    verbose: true
     dbname: "user=postgres dbname=demo_restore"
-  #    dbname: "host=/tmp port=5432 user=vvoitenko dbname=demo_restore"
+#      dbname: "host=/tmp port=5432 user=vvoitenko dbname=demo_restore"
   #    use-list: "/Users/vvoitenko/gits/woyten/greenfuscator/cmd/greenmask/test.list"
 
   scripts:
@@ -89,7 +89,7 @@ dump:
         - name: "at4"
           transformer:
             name: "RandomInt"
-            params: { min: 300, max: 400 }
+            params: { "nullable": true, min: 300, max: 400 }
         - name: "at5"
           transformer:
             name: "RandomInt"
@@ -109,6 +109,8 @@ dump:
         - name: "at2"
           transformer:
             name: "RandomBool"
+
+
 
 transformers:
   custom:

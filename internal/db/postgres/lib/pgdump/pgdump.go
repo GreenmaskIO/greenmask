@@ -87,6 +87,8 @@ type Options struct {
 	NoPassword bool   `mapstructure:"no-password"`
 	Password   bool   `mapstructure:"password"`
 	Role       string `mapstructure:"role"`
+
+	Validate bool `mapstructure:"validate"`
 }
 
 func (o *Options) GetPgDSN() (string, error) {

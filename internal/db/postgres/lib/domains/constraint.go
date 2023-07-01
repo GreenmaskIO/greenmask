@@ -23,7 +23,7 @@ type Constraint struct {
 	Def string `json:"-" yaml:"-"`
 	// Type - type of the constraint. Possible values: c = check constraint, f = foreign key constraint,
 	//  	  p = primary key constraint, u = unique constraint, t = constraint trigger, x = exclusion constraint
-	Type string `json:"-" yaml:"-"`
+	Type rune `json:"-" yaml:"-"`
 	// Domain - The domain this constraint is on; zero if not a domain constraint
 	Domain Oid `json:"-" yaml:"-"`
 	// RootPtConstraint - The corresponding constraint of the parent partitioned table
