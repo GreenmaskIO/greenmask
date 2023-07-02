@@ -8,14 +8,8 @@ import (
 
 	"github.com/jackc/pgx/v5/pgtype"
 
-	pgDomains "github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/domains"
 	"github.com/wwoytenko/greenfuscator/internal/domains"
 )
-
-var NoiseFloatTransformerSupportedOids = []int{
-	pgtype.Float4OID,
-	pgtype.Float8OID,
-}
 
 var NoiseFloatTransformerMeta = TransformerMeta{
 	Description: "Generate random float",
@@ -23,11 +17,15 @@ var NoiseFloatTransformerMeta = TransformerMeta{
 		"ratio":     "max random percentage for noise",
 		"precision": "precision of the random value",
 	},
-	SupportedTypeOids: NoiseFloatTransformerSupportedOids,
-	NewTransformer:    NewNoiseFloatTransformer,
+	NewTransformer: NewNoiseFloatTransformer,
 	Settings: NewTransformerSettings().
 		SetNullable().
-		SetVariadic(),
+		SetVariadic().
+		SetCastVar(float64(0)).
+		SetSupportedOids(
+			pgtype.Float4OID,
+			pgtype.Float8OID,
+		),
 }
 
 type NoiseFloatTransformerParams struct {
@@ -46,16 +44,9 @@ type NoiseFloatTransformer struct {
 }
 
 func NewNoiseFloatTransformer(
-	table *pgDomains.TableMeta,
-	column *pgDomains.ColumnMeta,
-	typeMap *pgtype.Map,
+	base *TransformerBase,
 	params map[string]interface{},
 ) (domains.Transformer, error) {
-
-	base, err := NewTransformerBase(table, column, NoiseFloatTransformerMeta.Settings, params, typeMap, NoiseFloatTransformerSupportedOids, float64(0))
-	if err != nil {
-		return nil, fmt.Errorf("cannot build transformer base object: %w", err)
-	}
 
 	tParams := NoiseFloatTransformerParams{
 		Precision: defaultPrecision,

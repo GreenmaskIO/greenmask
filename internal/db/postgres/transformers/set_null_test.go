@@ -3,6 +3,7 @@ package transformers
 import (
 	"testing"
 
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -10,7 +11,20 @@ import (
 )
 
 func TestSetNullTransformer_Transform(t *testing.T) {
-	transformer, err := NewSetNullTransformer(domains.ColumnMeta{}, nil, "", nil)
+	typeMap, err := getTypeMap()
+	require.NoError(t, err)
+
+	table := &domains.TableMeta{
+		Oid: 123,
+	}
+
+	transformer, err := SetNullTransformerMeta.InstanceTransformer(
+		table,
+		&domains.ColumnMeta{
+			TypeOid: pgtype.UUIDOID,
+		},
+		typeMap,
+		nil)
 	require.NoError(t, err)
 	res, err := transformer.Transform("old_val")
 	assert.Equal(t, `\N`, res)

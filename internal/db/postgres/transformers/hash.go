@@ -10,7 +10,6 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 	"golang.org/x/crypto/scrypt"
 
-	pgDomains "github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/domains"
 	"github.com/wwoytenko/greenfuscator/internal/domains"
 )
 
@@ -27,7 +26,11 @@ var HashTransformerMeta = TransformerMeta{
 	Settings: NewTransformerSettings().
 		SetNullable().
 		SetVariadic().
-		SetSupportedOids(StringTypes...),
+		SetCastVar("").
+		SetSupportedOids(
+			pgtype.VarcharOID,
+			pgtype.TextOID,
+		),
 }
 
 type HashTransformerParams struct {
@@ -44,17 +47,9 @@ type HashTransformer struct {
 }
 
 func NewHashTransformer(
-	table *pgDomains.TableMeta,
-	column *pgDomains.ColumnMeta,
-	typeMap *pgtype.Map,
+	base *TransformerBase,
 	params map[string]interface{},
-	settings *TransformerSettings,
 ) (domains.Transformer, error) {
-	base, err := NewTransformerBase(table, column, settings, params, typeMap, "")
-	if err != nil {
-		return nil, fmt.Errorf("cannot build transformer base object: %w", err)
-	}
-
 	tParams := HashTransformerParams{
 		Fraction: DefaultNullFraction,
 	}

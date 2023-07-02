@@ -2,6 +2,7 @@ package transformers
 
 import (
 	"context"
+	"errors"
 	"os"
 	"testing"
 
@@ -12,20 +13,34 @@ import (
 	"github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/domains"
 )
 
-func TestHashTransformer_Transform(t *testing.T) {
+func getTypeMap() (*pgtype.Map, error) {
 	dsn := os.Getenv("GF_TEST_DSN")
-	require.NotEmpty(t, dsn, "GF_TEST_DSN env variable must be set")
+	if dsn == "" {
+		return nil, errors.New("GF_TEST_DSN env variable must be set")
+	}
 	c, err := pgx.Connect(context.Background(), dsn)
-	require.NoError(t, err)
+	if err != nil {
+		return nil, err
+	}
 	defer c.Close(context.Background())
-	typeMap := c.TypeMap()
+	return c.TypeMap(), nil
+}
 
-	transformer, err := NewHashTransformer(domains.ColumnMeta{
-		TypeName: "text",
-		TypeOid:  pgtype.TextOID,
-	}, typeMap, "", map[string]interface{}{
-		"salt": "12345678",
-	})
+func TestHashTransformer_Transform(t *testing.T) {
+	typeMap, err := getTypeMap()
+	require.NoError(t, err)
+
+	transformer, err := HashTransformerMeta.InstanceTransformer(
+		&domains.TableMeta{
+			Oid: 123,
+		},
+		&domains.ColumnMeta{
+			TypeOid: pgtype.TextOID,
+		},
+		typeMap,
+		map[string]interface{}{
+			"salt": "12345678",
+		})
 	require.NoError(t, err)
 	res, err := transformer.Transform("old_value")
 	require.NoError(t, err)

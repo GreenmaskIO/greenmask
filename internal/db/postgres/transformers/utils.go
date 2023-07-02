@@ -21,7 +21,10 @@ import (
 	"github.com/wwoytenko/greenfuscator/internal/domains"
 )
 
-const DefaultNullSeq = `\N`
+const (
+	DefaultNullSeq      = `\N`
+	DefaultNullFraction = 0.3
+)
 
 var (
 	validate            = validator.New()
@@ -68,11 +71,8 @@ func init() {
 }
 
 type TransformerFabricFunction func(
-	table *pgDomains.TableMeta,
-	column *pgDomains.ColumnMeta,
-	typeMap *pgtype.Map,
+	base *TransformerBase,
 	params map[string]interface{},
-	settings *TransformerSettings,
 ) (domains.Transformer, error)
 
 type TransformerMeta struct {
@@ -88,7 +88,11 @@ func (tm *TransformerMeta) InstanceTransformer(
 	typeMap *pgtype.Map,
 	params map[string]interface{},
 ) (domains.Transformer, error) {
-	return tm.NewTransformer(table, column, typeMap, params, tm.Settings)
+	base, err := NewTransformerBase(table, column, tm.Settings, params, typeMap, tm.Settings.CastVar)
+	if err != nil {
+		return nil, fmt.Errorf("cannot build transformer base object: %w", err)
+	}
+	return tm.NewTransformer(base, params)
 }
 
 var (
@@ -106,32 +110,7 @@ var (
 		"NoiseInt":      NoiseIntTransformerMeta,
 		"NoiseFloat":    NoiseFloatTransformerMeta,
 		"JsonFloat":     JsonTransformerMeta,
-		"MaskingFloat":  MaskingTransformerMeta,
-	}
-)
-
-var (
-	DateTypes = []int{
-		pgtype.DateOID,
-		pgtype.TimestampOID,
-		pgtype.TimestamptzOID,
-	}
-	StringTypes = []int{
-		pgtype.TextOID,
-		pgtype.VarcharOID,
-	}
-	IntTypes = []int{
-		pgtype.Int2OID,
-		pgtype.Int4OID,
-		pgtype.Int8OID,
-	}
-	FloatTypes = []int{
-		pgtype.Float4OID,
-		pgtype.Float8OID,
-	}
-	UuidTypes = []int{
-		pgtype.UUIDOID,
-		pgtype.TextOID,
+		"Masking":       MaskingTransformerMeta,
 	}
 )
 
@@ -193,6 +172,7 @@ type TransformerSettings struct {
 	Unique        bool
 	MaxLength     int64
 	SupportedOids []int
+	CastVar       interface{}
 }
 
 func NewTransformerSettings() *TransformerSettings {
@@ -224,6 +204,11 @@ func (tbs *TransformerSettings) SetSupportedOids(oids ...int) *TransformerSettin
 	return tbs
 }
 
+func (tbs *TransformerSettings) SetCastVar(castVar interface{}) *TransformerSettings {
+	tbs.CastVar = castVar
+	return tbs
+}
+
 const (
 	FatalErrorSeverity   = "fatal"
 	WarningErrorSeverity = "warning"
@@ -251,7 +236,7 @@ type TransformerValidationError struct {
 }
 
 func (tve *TransformerValidationError) Error() string {
-	return fmt.Sprintf("%s %s %s", tve.Severity, tve.Err)
+	return fmt.Sprintf("%s %s", tve.Severity, tve.Err)
 }
 
 type TransformerBaseParams struct {

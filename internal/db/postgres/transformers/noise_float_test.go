@@ -1,13 +1,10 @@
 package transformers
 
 import (
-	"context"
 	"log"
-	"os"
 	"strconv"
 	"testing"
 
-	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -16,29 +13,27 @@ import (
 )
 
 func TestNoiseFloatTransformer_Transform(t *testing.T) {
-	dsn := os.Getenv("GF_TEST_DSN")
-	require.NotEmpty(t, dsn, "GF_TEST_DSN env variable must be set")
-	c, err := pgx.Connect(context.Background(), dsn)
+	typeMap, err := getTypeMap()
 	require.NoError(t, err)
-	defer c.Close(context.Background())
-	typeMap := c.TypeMap()
-	// Positive cases
+
+	table := &domains.TableMeta{
+		Oid: 123,
+	}
+
 	tests := []struct {
 		name   string
-		column domains.ColumnMeta
+		column *domains.ColumnMeta
 		params map[string]interface{}
 		input  string
 		result struct {
 			min, max float64
 		}
-		useType string
 		pattern string
 	}{
 		{
 			name: "float4",
-			column: domains.ColumnMeta{
-				TypeName: "float4",
-				TypeOid:  pgtype.Float4OID,
+			column: &domains.ColumnMeta{
+				TypeOid: pgtype.Float4OID,
 			},
 			params: map[string]interface{}{
 				"ratio": 0.9,
@@ -49,9 +44,8 @@ func TestNoiseFloatTransformer_Transform(t *testing.T) {
 		},
 		{
 			name: "float8",
-			column: domains.ColumnMeta{
-				TypeName: "float8",
-				TypeOid:  pgtype.Float8OID,
+			column: &domains.ColumnMeta{
+				TypeOid: pgtype.Float8OID,
 			},
 			params: map[string]interface{}{
 				"ratio": 0.9,
@@ -62,9 +56,8 @@ func TestNoiseFloatTransformer_Transform(t *testing.T) {
 		},
 		{
 			name: "float8 ranges 1",
-			column: domains.ColumnMeta{
-				TypeName: "float8",
-				TypeOid:  pgtype.Float8OID,
+			column: &domains.ColumnMeta{
+				TypeOid: pgtype.Float8OID,
 			},
 			params: map[string]interface{}{
 				"ratio":     0.9,
@@ -76,9 +69,8 @@ func TestNoiseFloatTransformer_Transform(t *testing.T) {
 		},
 		{
 			name: "float8 ranges 1 with precision",
-			column: domains.ColumnMeta{
-				TypeName: "float8",
-				TypeOid:  pgtype.Float8OID,
+			column: &domains.ColumnMeta{
+				TypeOid: pgtype.Float8OID,
 			},
 			params: map[string]interface{}{
 				"ratio":     0.9,
@@ -90,24 +82,25 @@ func TestNoiseFloatTransformer_Transform(t *testing.T) {
 		},
 		{
 			name: "text with default float8",
-			column: domains.ColumnMeta{
-				TypeName: "text",
-				TypeOid:  pgtype.TextOID,
+			column: &domains.ColumnMeta{
+				TypeOid: pgtype.TextOID,
 			},
 			params: map[string]interface{}{
 				"ratio":     0.9,
 				"precision": 3,
+				"useType":   "float4",
 			},
 			input:   "100",
 			result:  struct{ min, max float64 }{min: 10, max: 190},
 			pattern: `^-*\d+[.]*\d{0,3}$`,
-			useType: "float4",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			transformer, err := NewNoiseFloatTransformer(tt.column, typeMap, tt.useType, tt.params)
+			transformer, err := NoiseFloatTransformerMeta.InstanceTransformer(
+				table, tt.column, typeMap, tt.params,
+			)
 			require.NoError(t, err)
 			res, err := transformer.Transform(tt.input)
 			require.NoError(t, err)

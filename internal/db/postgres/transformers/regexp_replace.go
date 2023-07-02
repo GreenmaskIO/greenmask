@@ -8,14 +8,8 @@ import (
 
 	"github.com/jackc/pgx/v5/pgtype"
 
-	pgDomains "github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/domains"
 	"github.com/wwoytenko/greenfuscator/internal/domains"
 )
-
-var RegexpReplaceTransformerSupportedOids = []int{
-	pgtype.VarcharOID,
-	pgtype.TextOID,
-}
 
 var RegexpReplaceTransformerMeta = TransformerMeta{
 	Description: `RegexpReplace with value passed through "value" parameter`,
@@ -23,11 +17,15 @@ var RegexpReplaceTransformerMeta = TransformerMeta{
 		"regexp":  "regular expression",
 		"replace": "replacement including regexp groups",
 	},
-	SupportedTypeOids: RegexpReplaceTransformerSupportedOids,
-	NewTransformer:    NewRegexpReplaceTransformer,
+	NewTransformer: NewRegexpReplaceTransformer,
 	Settings: NewTransformerSettings().
 		SetNullable().
-		SetVariadic(),
+		SetVariadic().
+		SetCastVar("").
+		SetSupportedOids(
+			pgtype.VarcharOID,
+			pgtype.TextOID,
+		),
 }
 
 type RegexpReplaceTransformerParams struct {
@@ -45,15 +43,9 @@ type RegexpReplaceTransformer struct {
 }
 
 func NewRegexpReplaceTransformer(
-	table *pgDomains.TableMeta,
-	column *pgDomains.ColumnMeta,
-	typeMap *pgtype.Map,
+	base *TransformerBase,
 	params map[string]interface{},
 ) (domains.Transformer, error) {
-	base, err := NewTransformerBase(table, column, RegexpReplaceTransformerMeta.Settings, params, typeMap, RegexpReplaceTransformerSupportedOids, "")
-	if err != nil {
-		return nil, fmt.Errorf("cannot build transformer base object: %w", err)
-	}
 
 	tParams := RegexpReplaceTransformerParams{
 		Fraction: DefaultNullFraction,

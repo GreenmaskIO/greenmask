@@ -8,14 +8,8 @@ import (
 
 	"github.com/jackc/pgx/v5/pgtype"
 
-	pgDomains "github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/domains"
 	"github.com/wwoytenko/greenfuscator/internal/domains"
 )
-
-var RandomFloatTransformerSupportedOids = []int{
-	pgtype.Float4OID,
-	pgtype.Float8OID,
-}
 
 const defaultPrecision int16 = 4
 
@@ -26,11 +20,15 @@ var RandomFloatTransformerMeta = TransformerMeta{
 		"max":       "max value",
 		"precision": "precision of the random value",
 	},
-	SupportedTypeOids: RandomFloatTransformerSupportedOids,
-	NewTransformer:    NewRandomFloatTransformer,
+	NewTransformer: NewRandomFloatTransformer,
 	Settings: NewTransformerSettings().
 		SetNullable().
-		SetVariadic(),
+		SetVariadic().
+		SetCastVar(float64(0)).
+		SetSupportedOids(
+			pgtype.Float4OID,
+			pgtype.Float8OID,
+		),
 }
 
 type RandomFloatTransformerParams struct {
@@ -49,16 +47,9 @@ type RandomFloatTransformer struct {
 }
 
 func NewRandomFloatTransformer(
-	table *pgDomains.TableMeta,
-	column *pgDomains.ColumnMeta,
-	typeMap *pgtype.Map,
+	base *TransformerBase,
 	params map[string]interface{},
 ) (domains.Transformer, error) {
-
-	base, err := NewTransformerBase(table, column, RandomFloatTransformerMeta.Settings, params, typeMap, RandomFloatTransformerSupportedOids, float64(0))
-	if err != nil {
-		return nil, fmt.Errorf("cannot build transformer base object: %w", err)
-	}
 
 	tParams := RandomFloatTransformerParams{
 		Precision: defaultPrecision,

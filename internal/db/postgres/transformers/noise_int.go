@@ -7,26 +7,24 @@ import (
 
 	"github.com/jackc/pgx/v5/pgtype"
 
-	pgDomains "github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/domains"
 	"github.com/wwoytenko/greenfuscator/internal/domains"
 )
-
-var NoiseIntTransformerSupportedOids = []int{
-	pgtype.Int2OID,
-	pgtype.Int4OID,
-	pgtype.Int8OID,
-}
 
 var NoiseIntTransformerMeta = TransformerMeta{
 	Description: "Make noise value for int",
 	ParamsDescription: map[string]string{
 		"ratio": "max random percentage for noise",
 	},
-	SupportedTypeOids: NoiseIntTransformerSupportedOids,
-	NewTransformer:    NewNoiseIntTransformer,
+	NewTransformer: NewNoiseIntTransformer,
 	Settings: NewTransformerSettings().
 		SetNullable().
-		SetVariadic(),
+		SetVariadic().
+		SetCastVar(int64(1)).
+		SetSupportedOids(
+			pgtype.Int2OID,
+			pgtype.Int4OID,
+			pgtype.Int8OID,
+		),
 }
 
 type NoiseIntTransformerParams struct {
@@ -43,16 +41,9 @@ type NoiseIntTransformer struct {
 }
 
 func NewNoiseIntTransformer(
-	table *pgDomains.TableMeta,
-	column *pgDomains.ColumnMeta,
-	typeMap *pgtype.Map,
+	base *TransformerBase,
 	params map[string]interface{},
 ) (domains.Transformer, error) {
-	base, err := NewTransformerBase(table, column, NoiseIntTransformerMeta.Settings, params, typeMap, NoiseIntTransformerSupportedOids, int64(1))
-	if err != nil {
-		return nil, fmt.Errorf("cannot build transformer base object: %w", err)
-	}
-
 	tParams := NoiseIntTransformerParams{
 		Fraction: DefaultNullFraction,
 	}

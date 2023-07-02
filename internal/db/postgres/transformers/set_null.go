@@ -1,24 +1,14 @@
 package transformers
 
 import (
-	"fmt"
-
-	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5/pgtype"
-
-	pgDomains "github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/domains"
 	"github.com/wwoytenko/greenfuscator/internal/domains"
 )
 
-var SetNullTransformerSupportedOids = []int{
-	AnyOid,
-}
-
 var SetNullTransformerMeta = TransformerMeta{
-	Description:       `Set NULL value`,
-	SupportedTypeOids: SetNullTransformerSupportedOids,
-	NewTransformer:    NewSetNullTransformer,
+	Description:    `Set NULL value`,
+	NewTransformer: NewSetNullTransformer,
 	Settings: NewTransformerSettings().
+		SetCastVar("").
 		SetNullable(),
 }
 
@@ -28,16 +18,14 @@ type SetNullTransformer struct {
 }
 
 func NewSetNullTransformer(
-	table *pgDomains.TableMeta,
-	column *pgDomains.ColumnMeta,
-	typeMap *pgtype.Map,
+	base *TransformerBase,
 	params map[string]interface{},
 ) (domains.Transformer, error) {
-	params["nullable"] = true
-	base, err := NewTransformerBase(table, column, UuidTransformerMeta.Settings, params, typeMap, UuidTransformerSupportedOids, uuid.New())
-	if err != nil {
-		return nil, fmt.Errorf("cannot build transformer base object: %w", err)
+	// We're always setting null
+	if params == nil {
+		params = make(map[string]interface{})
 	}
+	params["nullable"] = true
 
 	return &SetNullTransformer{
 		TransformerBase: *base,

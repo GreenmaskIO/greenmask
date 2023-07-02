@@ -1,12 +1,9 @@
 package transformers
 
 import (
-	"context"
 	"log"
-	"os"
 	"testing"
 
-	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/stretchr/testify/require"
 
@@ -14,24 +11,23 @@ import (
 )
 
 func TestRandomBoolTransformer_Transform(t *testing.T) {
-	dsn := os.Getenv("GF_TEST_DSN")
-	require.NotEmpty(t, dsn, "GF_TEST_DSN env variable must be set")
-	c, err := pgx.Connect(context.Background(), dsn)
+	typeMap, err := getTypeMap()
 	require.NoError(t, err)
-	defer c.Close(context.Background())
-	typeMap := c.TypeMap()
-	// Positive cases
+
+	table := &domains.TableMeta{
+		Oid: 123,
+	}
+
 	tests := []struct {
 		name    string
-		column  domains.ColumnMeta
+		column  *domains.ColumnMeta
 		params  map[string]interface{}
 		pattern string
 	}{
 		{
 			name: "test bool type",
-			column: domains.ColumnMeta{
-				TypeName: "bool",
-				TypeOid:  pgtype.BoolOID,
+			column: &domains.ColumnMeta{
+				TypeOid: pgtype.BoolOID,
 			},
 			params:  map[string]interface{}{},
 			pattern: `^(t|f)$`,
@@ -40,7 +36,7 @@ func TestRandomBoolTransformer_Transform(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			transformer, err := NewRandomBoolTransformer(tt.column, typeMap, "", tt.params)
+			transformer, err := RandomBoolTransformerMeta.InstanceTransformer(table, tt.column, typeMap, tt.params)
 			require.NoError(t, err)
 			val, err := transformer.Transform("")
 			require.NoError(t, err)

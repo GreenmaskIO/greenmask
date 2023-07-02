@@ -7,20 +7,18 @@ import (
 
 	"github.com/jackc/pgx/v5/pgtype"
 
-	pgDomains "github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/domains"
 	"github.com/wwoytenko/greenfuscator/internal/domains"
 )
 
-var RandomBoolTransformerSupportedOids = []int{
-	pgtype.BoolOID,
-}
-
 var RandomBoolTransformerMeta = TransformerMeta{
-	Description:       "Generate random bool",
-	SupportedTypeOids: RandomBoolTransformerSupportedOids,
-	NewTransformer:    NewRandomBoolTransformer,
+	Description:    "Generate random bool",
+	NewTransformer: NewRandomBoolTransformer,
 	Settings: NewTransformerSettings().
-		SetNullable(),
+		SetNullable().
+		SetCastVar(true).
+		SetSupportedOids(
+			pgtype.BoolOID,
+		),
 }
 
 type RandomBoolTransformerParams struct {
@@ -35,15 +33,9 @@ type RandomBoolTransformer struct {
 }
 
 func NewRandomBoolTransformer(
-	table *pgDomains.TableMeta,
-	column *pgDomains.ColumnMeta,
-	typeMap *pgtype.Map,
+	base *TransformerBase,
 	params map[string]interface{},
 ) (domains.Transformer, error) {
-	base, err := NewTransformerBase(table, column, RandomBoolTransformerMeta.Settings, params, typeMap, RandomBoolTransformerSupportedOids, true)
-	if err != nil {
-		return nil, fmt.Errorf("cannot build transformer base object: %w", err)
-	}
 
 	tParams := RandomBoolTransformerParams{
 		Fraction: 0.3,

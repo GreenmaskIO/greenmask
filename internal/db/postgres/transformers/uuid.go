@@ -9,20 +9,8 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 
-	pgDomains "github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/domains"
 	"github.com/wwoytenko/greenfuscator/internal/domains"
 )
-
-const (
-	AnyOid              = -1
-	DefaultNullFraction = 0.3
-)
-
-var UuidTransformerSupportedOids = []int{
-	pgtype.TextOID,
-	pgtype.VarcharOID,
-	pgtype.UUIDOID,
-}
 
 type UuidTransformerParams struct {
 	Nullable bool    `mapstructure:"nullable"`
@@ -36,25 +24,24 @@ type UuidTransformer struct {
 }
 
 var UuidTransformerMeta = TransformerMeta{
-	Description:       `Generate random UUID`,
-	SupportedTypeOids: UuidTransformerSupportedOids,
-	NewTransformer:    NewUuidTransformer,
+	Description:    `Generate random UUID`,
+	NewTransformer: NewUuidTransformer,
 	Settings: NewTransformerSettings().
-		SetNullable(),
+		SetNullable().
+		SetCastVar(uuid.New()).
+		SetSupportedOids(
+			pgtype.TextOID,
+			pgtype.VarcharOID,
+			pgtype.UUIDOID,
+		),
 }
 
 func NewUuidTransformer(
-	table *pgDomains.TableMeta,
-	column *pgDomains.ColumnMeta,
-	typeMap *pgtype.Map,
+	base *TransformerBase,
 	params map[string]interface{},
 ) (domains.Transformer, error) {
-	base, err := NewTransformerBase(table, column, UuidTransformerMeta.Settings, params, typeMap, UuidTransformerSupportedOids, uuid.New())
-	if err != nil {
-		return nil, fmt.Errorf("cannot build transformer base object: %w", err)
-	}
 
-	_, err = base.PgType.Codec.DecodeValue(typeMap, uint32(column.TypeOid), pgx.TextFormatCode, []byte("db9abb12-3e84-4873-915d-27c17a1fea22"))
+	_, err := base.PgType.Codec.DecodeValue(base.TypeMap, uint32(base.Column.TypeOid), pgx.TextFormatCode, []byte("db9abb12-3e84-4873-915d-27c17a1fea22"))
 	if err != nil {
 		return nil, fmt.Errorf("cannot decode value: %w", err)
 	}

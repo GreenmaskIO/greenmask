@@ -8,17 +8,10 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/sanyokbig/pqinterval"
 
-	pgDomains "github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/domains"
 	"github.com/wwoytenko/greenfuscator/internal/domains"
 )
 
 // TODO: Ensure pqinterval.Duration returns duration in int64 for date and time
-
-var NoiseDateTransformerSupportedOids = []int{
-	pgtype.DateOID,
-	pgtype.TimestampOID,
-	pgtype.TimestamptzOID,
-}
 
 type dateNoiseFunc func(r *rand.Rand, ration time.Duration, original *time.Time, truncate *string) time.Time
 
@@ -31,11 +24,15 @@ var NoiseDateTransformerMeta = TransformerMeta{
 		"nullable": "generate null value randomly (default false)",
 		"fraction": "NULL value distribution within the table (default Fraction 10%)",
 	},
-	SupportedTypeOids: NoiseDateTransformerSupportedOids,
-	NewTransformer:    NewNoiseDateTransformer,
+	NewTransformer: NewNoiseDateTransformer,
 	Settings: NewTransformerSettings().
 		SetNullable().
-		SetVariadic(),
+		SetCastVar(time.Time{}).
+		SetVariadic().SetSupportedOids(
+		pgtype.DateOID,
+		pgtype.TimestampOID,
+		pgtype.TimestamptzOID,
+	),
 }
 
 type NoiseDateTransformerParams struct {
@@ -55,16 +52,9 @@ type NoiseDateTransformer struct {
 }
 
 func NewNoiseDateTransformer(
-	table *pgDomains.TableMeta,
-	column *pgDomains.ColumnMeta,
-	typeMap *pgtype.Map,
+	base *TransformerBase,
 	params map[string]interface{},
 ) (domains.Transformer, error) {
-
-	base, err := NewTransformerBase(table, column, NoiseDateTransformerMeta.Settings, params, typeMap, NoiseDateTransformerSupportedOids, time.Time{})
-	if err != nil {
-		return nil, fmt.Errorf("cannot build transformer base object: %w", err)
-	}
 
 	tParams := NoiseDateTransformerParams{
 		Fraction: DefaultNullFraction,

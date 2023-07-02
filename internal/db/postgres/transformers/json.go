@@ -8,25 +8,23 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/tidwall/sjson"
 
-	pgDomains "github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/domains"
 	"github.com/wwoytenko/greenfuscator/internal/domains"
 )
-
-var JsonTransformerSupportedOids = []int{
-	pgtype.JSONOID,
-	pgtype.JSONBOID,
-}
 
 var JsonTransformerMeta = TransformerMeta{
 	Description: `Json with value passed through "value" parameter`,
 	ParamsDescription: map[string]string{
 		"operations": "json changing operations",
 	},
-	SupportedTypeOids: JsonTransformerSupportedOids,
-	NewTransformer:    NewJsonTransformer,
+	NewTransformer: NewJsonTransformer,
 	Settings: NewTransformerSettings().
 		SetNullable().
-		SetVariadic(),
+		SetVariadic().
+		SetCastVar("").
+		SetSupportedOids(
+			pgtype.JSONOID,
+			pgtype.JSONBOID,
+		),
 }
 
 type JsonTransformerParams struct {
@@ -61,15 +59,9 @@ type JsonTransformer struct {
 }
 
 func NewJsonTransformer(
-	table *pgDomains.TableMeta,
-	column *pgDomains.ColumnMeta,
-	typeMap *pgtype.Map,
+	base *TransformerBase,
 	params map[string]interface{},
 ) (domains.Transformer, error) {
-	base, err := NewTransformerBase(table, column, JsonTransformerMeta.Settings, params, typeMap, JsonTransformerSupportedOids, "")
-	if err != nil {
-		return nil, fmt.Errorf("cannot build transformer base object: %w", err)
-	}
 
 	tParams := JsonTransformerParams{}
 	if err := parseTransformerParams(params, &tParams); err != nil {

@@ -1,11 +1,8 @@
 package transformers
 
 import (
-	"context"
-	"os"
 	"testing"
 
-	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/stretchr/testify/require"
 
@@ -13,26 +10,33 @@ import (
 )
 
 func TestMaskingTransformer_Transform(t *testing.T) {
-	dsn := os.Getenv("GF_TEST_DSN")
-	require.NotEmpty(t, dsn, "GF_TEST_DSN env variable must be set")
-	c, err := pgx.Connect(context.Background(), dsn)
+	typeMap, err := getTypeMap()
 	require.NoError(t, err)
-	defer c.Close(context.Background())
-	typeMap := c.TypeMap()
 
-	transformer, err := NewMaskingTransformer(domains.ColumnMeta{
-		TypeName: "text",
-		TypeOid:  pgtype.TextOID,
-	}, typeMap, "", map[string]interface{}{"type": "name"})
+	transformer, err := MaskingTransformerMeta.InstanceTransformer(
+		&domains.TableMeta{
+			Oid: 123,
+		},
+		&domains.ColumnMeta{
+			TypeOid: pgtype.TextOID,
+		}, typeMap,
+		map[string]interface{}{"type": "name"},
+	)
 	require.NoError(t, err)
 	res, err := transformer.Transform("abcdef test")
 	require.NoError(t, err)
 	require.Equal(t, "a**def t**t", res)
 
-	transformer, err = NewMaskingTransformer(domains.ColumnMeta{
-		TypeName: "text",
-		TypeOid:  pgtype.TextOID,
-	}, typeMap, "", map[string]interface{}{"type": "password"})
+	transformer, err = MaskingTransformerMeta.InstanceTransformer(
+		&domains.TableMeta{
+			Oid: 123,
+		},
+		&domains.ColumnMeta{
+			TypeOid: pgtype.TextOID,
+		},
+		typeMap,
+		map[string]interface{}{"type": "password"},
+	)
 	require.NoError(t, err)
 	res, err = transformer.Transform("password_secure")
 	require.NoError(t, err)

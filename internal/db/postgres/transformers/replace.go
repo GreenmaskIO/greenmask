@@ -6,24 +6,18 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgtype"
 
-	pgDomains "github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/domains"
 	"github.com/wwoytenko/greenfuscator/internal/domains"
 )
-
-var ReplaceTransformerSupportedOids = []int{
-	AnyOid,
-}
 
 var ReplaceTransformerMeta = TransformerMeta{
 	Description: `Replace with value passed through "value" parameter`,
 	ParamsDescription: map[string]string{
 		"value": "replacing value",
 	},
-	SupportedTypeOids: ReplaceTransformerSupportedOids,
-	NewTransformer:    NewReplaceTransformer,
+	NewTransformer: NewReplaceTransformer,
 	Settings: NewTransformerSettings().
+		SetCastVar("").
 		SetVariadic(),
 }
 
@@ -41,15 +35,9 @@ type ReplaceTransformer struct {
 }
 
 func NewReplaceTransformer(
-	table *pgDomains.TableMeta,
-	column *pgDomains.ColumnMeta,
-	typeMap *pgtype.Map,
+	base *TransformerBase,
 	params map[string]interface{},
 ) (domains.Transformer, error) {
-	base, err := NewTransformerBase(table, column, ReplaceTransformerMeta.Settings, params, typeMap, ReplaceTransformerSupportedOids, "")
-	if err != nil {
-		return nil, fmt.Errorf("cannot build transformer base object: %w", err)
-	}
 
 	tParams := ReplaceTransformerParams{
 		Fraction: DefaultNullFraction,
@@ -64,7 +52,7 @@ func NewReplaceTransformer(
 		rand:                     rand.New(rand.NewSource(time.Now().UnixMicro())),
 	}
 
-	_, err = base.PgType.Codec.DecodeValue(typeMap, uint32(column.TypeOid), pgx.TextFormatCode, []byte(tParams.Value))
+	_, err := base.PgType.Codec.DecodeValue(base.TypeMap, uint32(base.Column.TypeOid), pgx.TextFormatCode, []byte(tParams.Value))
 	if err != nil {
 		return nil, fmt.Errorf("cannot decode value: %w", err)
 	}

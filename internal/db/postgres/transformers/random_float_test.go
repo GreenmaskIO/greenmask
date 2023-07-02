@@ -1,12 +1,9 @@
 package transformers
 
 import (
-	"context"
 	"log"
-	"os"
 	"testing"
 
-	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/stretchr/testify/require"
 
@@ -14,25 +11,23 @@ import (
 )
 
 func TestRandomFloatTransformer_Transform(t *testing.T) {
-	dsn := os.Getenv("GF_TEST_DSN")
-	require.NotEmpty(t, dsn, "GF_TEST_DSN env variable must be set")
-	c, err := pgx.Connect(context.Background(), dsn)
+	typeMap, err := getTypeMap()
 	require.NoError(t, err)
-	defer c.Close(context.Background())
-	typeMap := c.TypeMap()
-	// Positive cases
+
+	table := &domains.TableMeta{
+		Oid: 123,
+	}
+
 	tests := []struct {
 		name    string
-		column  domains.ColumnMeta
+		column  *domains.ColumnMeta
 		params  map[string]interface{}
 		pattern string
-		useType string
 	}{
 		{
 			name: "float4",
-			column: domains.ColumnMeta{
-				TypeName: "float4",
-				TypeOid:  pgtype.Float4OID,
+			column: &domains.ColumnMeta{
+				TypeOid: pgtype.Float4OID,
 			},
 			params: map[string]interface{}{
 				"min": 1,
@@ -42,9 +37,8 @@ func TestRandomFloatTransformer_Transform(t *testing.T) {
 		},
 		{
 			name: "float8",
-			column: domains.ColumnMeta{
-				TypeName: "float8",
-				TypeOid:  pgtype.Float8OID,
+			column: &domains.ColumnMeta{
+				TypeOid: pgtype.Float8OID,
 			},
 			params: map[string]interface{}{
 				"min": 1,
@@ -54,9 +48,8 @@ func TestRandomFloatTransformer_Transform(t *testing.T) {
 		},
 		{
 			name: "float8 ranges 1",
-			column: domains.ColumnMeta{
-				TypeName: "float8",
-				TypeOid:  pgtype.Float8OID,
+			column: &domains.ColumnMeta{
+				TypeOid: pgtype.Float8OID,
 			},
 			params: map[string]interface{}{
 				"min":       -100000,
@@ -67,9 +60,8 @@ func TestRandomFloatTransformer_Transform(t *testing.T) {
 		},
 		{
 			name: "float8 ranges 1 with precision",
-			column: domains.ColumnMeta{
-				TypeName: "float8",
-				TypeOid:  pgtype.Float8OID,
+			column: &domains.ColumnMeta{
+				TypeOid: pgtype.Float8OID,
 			},
 			params: map[string]interface{}{
 				"min":       -100000,
@@ -80,23 +72,22 @@ func TestRandomFloatTransformer_Transform(t *testing.T) {
 		},
 		{
 			name: "text with default float8",
-			column: domains.ColumnMeta{
-				TypeName: "text",
-				TypeOid:  pgtype.TextOID,
+			column: &domains.ColumnMeta{
+				TypeOid: pgtype.TextOID,
 			},
 			params: map[string]interface{}{
 				"min":       -100000,
 				"max":       10.1241,
 				"precision": 3,
+				"useType":   "float4",
 			},
-			useType: "float4",
 			pattern: `^-*\d+[.]*\d{0,3}$`,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			transformer, err := NewRandomFloatTransformer(tt.column, typeMap, tt.useType, tt.params)
+			transformer, err := RandomFloatTransformerMeta.InstanceTransformer(table, tt.column, typeMap, tt.params)
 			require.NoError(t, err)
 			val, err := transformer.Transform("")
 			require.NoError(t, err)

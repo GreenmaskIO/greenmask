@@ -1,13 +1,10 @@
 package transformers
 
 import (
-	"context"
 	"log"
-	"os"
 	"testing"
 	"time"
 
-	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -16,17 +13,17 @@ import (
 )
 
 func TestNoiseDateTransformer_Transform(t *testing.T) {
-	dsn := os.Getenv("GF_TEST_DSN")
-	require.NotEmpty(t, dsn, "GF_TEST_DSN env variable must be set")
-	c, err := pgx.Connect(context.Background(), dsn)
+	typeMap, err := getTypeMap()
 	require.NoError(t, err)
-	defer c.Close(context.Background())
-	typeMap := c.TypeMap()
 	loc := time.Now().Location()
+
+	table := &domains.TableMeta{
+		Oid: 123,
+	}
 
 	tests := []struct {
 		name   string
-		column domains.ColumnMeta
+		column *domains.ColumnMeta
 		params map[string]interface{}
 		input  string
 		result struct {
@@ -36,9 +33,8 @@ func TestNoiseDateTransformer_Transform(t *testing.T) {
 	}{
 		{
 			name: "test date type",
-			column: domains.ColumnMeta{
-				TypeName: "date",
-				TypeOid:  pgtype.DateOID,
+			column: &domains.ColumnMeta{
+				TypeOid: pgtype.DateOID,
 			},
 			params: map[string]interface{}{
 				"ratio": "1 year 1 mons 1 day 01:01:01.01",
@@ -52,9 +48,8 @@ func TestNoiseDateTransformer_Transform(t *testing.T) {
 		},
 		{
 			name: "test timestamp without timezone type",
-			column: domains.ColumnMeta{
-				TypeName: "timestamp",
-				TypeOid:  pgtype.TimestampOID,
+			column: &domains.ColumnMeta{
+				TypeOid: pgtype.TimestampOID,
 			},
 			params: map[string]interface{}{
 				"ratio": "1 year 1 mons 1 day 01:01:01.01",
@@ -68,9 +63,8 @@ func TestNoiseDateTransformer_Transform(t *testing.T) {
 		},
 		{
 			name: "test timestamp with timezone type",
-			column: domains.ColumnMeta{
-				TypeName: "timestamptz",
-				TypeOid:  pgtype.TimestamptzOID,
+			column: &domains.ColumnMeta{
+				TypeOid: pgtype.TimestamptzOID,
 			},
 			params: map[string]interface{}{
 				"ratio": "1 year 1 mons 1 day 01:01:01.01",
@@ -84,9 +78,8 @@ func TestNoiseDateTransformer_Transform(t *testing.T) {
 		},
 		{
 			name: "test timestamp type with Truncate till day",
-			column: domains.ColumnMeta{
-				TypeName: "timestamp",
-				TypeOid:  pgtype.TimestampOID,
+			column: &domains.ColumnMeta{
+				TypeOid: pgtype.TimestampOID,
 			},
 			params: map[string]interface{}{
 				"ratio":    "1 year 1 mons 1 day 01:01:01.01",
@@ -104,7 +97,9 @@ func TestNoiseDateTransformer_Transform(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			var resTime time.Time
-			transformer, err := NewNoiseDateTransformer(tt.column, typeMap, "", tt.params)
+			transformer, err := NoiseDateTransformerMeta.InstanceTransformer(
+				table, tt.column, typeMap, tt.params,
+			)
 			ndt := transformer.(*NoiseDateTransformer)
 			require.NoError(t, err)
 			res, err := transformer.Transform(tt.input)

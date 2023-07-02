@@ -7,15 +7,8 @@ import (
 
 	"github.com/jackc/pgx/v5/pgtype"
 
-	pgDomains "github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/domains"
 	"github.com/wwoytenko/greenfuscator/internal/domains"
 )
-
-var RandomIntTransformerSupportedOids = []int{
-	pgtype.Int2OID,
-	pgtype.Int4OID,
-	pgtype.Int8OID,
-}
 
 var RandomIntTransformerMeta = TransformerMeta{
 	Description: "Generate random int",
@@ -23,11 +16,16 @@ var RandomIntTransformerMeta = TransformerMeta{
 		"min": "min value",
 		"max": "max value",
 	},
-	SupportedTypeOids: RandomIntTransformerSupportedOids,
-	NewTransformer:    NewRandomIntTransformer,
+	NewTransformer: NewRandomIntTransformer,
 	Settings: NewTransformerSettings().
 		SetNullable().
-		SetVariadic(),
+		SetVariadic().
+		SetCastVar(int64(0)).
+		SetSupportedOids(
+			pgtype.Int2OID,
+			pgtype.Int4OID,
+			pgtype.Int8OID,
+		),
 }
 
 type RandomIntTransformerParams struct {
@@ -44,15 +42,9 @@ type RandomIntTransformer struct {
 }
 
 func NewRandomIntTransformer(
-	table *pgDomains.TableMeta,
-	column *pgDomains.ColumnMeta,
-	typeMap *pgtype.Map,
+	base *TransformerBase,
 	params map[string]interface{},
 ) (domains.Transformer, error) {
-	base, err := NewTransformerBase(table, column, RandomIntTransformerMeta.Settings, params, typeMap, RandomIntTransformerSupportedOids, int64(1))
-	if err != nil {
-		return nil, fmt.Errorf("cannot build transformer base object: %w", err)
-	}
 
 	tParams := RandomIntTransformerParams{
 		Fraction: DefaultNullFraction,

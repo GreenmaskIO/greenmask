@@ -8,7 +8,6 @@ import (
 	masker "github.com/ggwhite/go-masker"
 	"github.com/jackc/pgx/v5/pgtype"
 
-	pgDomains "github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/domains"
 	"github.com/wwoytenko/greenfuscator/internal/domains"
 )
 
@@ -24,20 +23,19 @@ const (
 	MURL        string = "url"
 )
 
-var MaskingTransformerSupportedOids = []int{
-	pgtype.TextOID,
-	pgtype.VarcharOID,
-}
-
 var MaskingTransformerMeta = TransformerMeta{
 	Description: `Masking with value passed through "value" parameter`,
 	ParamsDescription: map[string]string{
 		"value": "replacing value",
 	},
-	SupportedTypeOids: MaskingTransformerSupportedOids,
-	NewTransformer:    NewMaskingTransformer,
+	NewTransformer: NewMaskingTransformer,
 	Settings: NewTransformerSettings().
-		SetNullable(),
+		SetNullable().
+		SetCastVar("").
+		SetSupportedOids(
+			pgtype.TextOID,
+			pgtype.VarcharOID,
+		),
 }
 
 type maskingFunction func(val string) string
@@ -57,15 +55,9 @@ type MaskingTransformer struct {
 }
 
 func NewMaskingTransformer(
-	table *pgDomains.TableMeta,
-	column *pgDomains.ColumnMeta,
-	typeMap *pgtype.Map,
+	base *TransformerBase,
 	params map[string]interface{},
 ) (domains.Transformer, error) {
-	base, err := NewTransformerBase(table, column, MaskingTransformerMeta.Settings, params, typeMap, MaskingTransformerSupportedOids, "")
-	if err != nil {
-		return nil, fmt.Errorf("cannot build transformer base object: %w", err)
-	}
 
 	tParams := MaskingTransformerParams{
 		Fraction: DefaultNullFraction,

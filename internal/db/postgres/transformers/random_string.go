@@ -7,16 +7,10 @@ import (
 
 	"github.com/jackc/pgx/v5/pgtype"
 
-	pgDomains "github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/domains"
 	"github.com/wwoytenko/greenfuscator/internal/domains"
 )
 
 type getRandStringFunc func(r *rand.Rand, buf []rune, minLength, maxLength int64, symbols []rune) string
-
-var RandomStringTransformerSupportedOids = []int{
-	pgtype.VarcharOID,
-	pgtype.TextOID,
-}
 
 var RandomStringTransformerMeta = TransformerMeta{
 	Description: "Generate random string",
@@ -25,11 +19,15 @@ var RandomStringTransformerMeta = TransformerMeta{
 		"maxLength": "max length of string",
 		"symbols":   "the characters range for random string",
 	},
-	SupportedTypeOids: RandomStringTransformerSupportedOids,
-	NewTransformer:    NewRandomStringTransformer,
+	NewTransformer: NewRandomStringTransformer,
 	Settings: NewTransformerSettings().
 		SetNullable().
-		SetVariadic(),
+		SetVariadic().
+		SetCastVar("").
+		SetSupportedOids(
+			pgtype.VarcharOID,
+			pgtype.TextOID,
+		),
 }
 
 type RandomStringTransformerParams struct {
@@ -50,17 +48,10 @@ type RandomStringTransformer struct {
 }
 
 func NewRandomStringTransformer(
-	table *pgDomains.TableMeta,
-	column *pgDomains.ColumnMeta,
-	typeMap *pgtype.Map,
+	base *TransformerBase,
 	params map[string]interface{},
 ) (domains.Transformer, error) {
 	var generate getRandStringFunc = generateFixedString
-
-	base, err := NewTransformerBase(table, column, RandomStringTransformerMeta.Settings, params, typeMap, RandomStringTransformerSupportedOids, "")
-	if err != nil {
-		return nil, fmt.Errorf("cannot build transformer base object: %w", err)
-	}
 
 	tParams := RandomStringTransformerParams{
 		Symbols:  "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ",

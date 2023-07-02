@@ -1,12 +1,9 @@
 package transformers
 
 import (
-	"context"
 	"log"
-	"os"
 	"testing"
 
-	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/stretchr/testify/require"
 
@@ -14,24 +11,23 @@ import (
 )
 
 func TestRandomDateTransformer_Transform(t *testing.T) {
-	dsn := os.Getenv("GF_TEST_DSN")
-	require.NotEmpty(t, dsn, "GF_TEST_DSN env variable must be set")
-	c, err := pgx.Connect(context.Background(), dsn)
+	typeMap, err := getTypeMap()
 	require.NoError(t, err)
-	defer c.Close(context.Background())
-	typeMap := c.TypeMap()
-	// Positive cases
+
+	table := &domains.TableMeta{
+		Oid: 123,
+	}
+
 	tests := []struct {
 		name    string
-		column  domains.ColumnMeta
+		column  *domains.ColumnMeta
 		params  map[string]interface{}
 		pattern string
 	}{
 		{
 			name: "test date type",
-			column: domains.ColumnMeta{
-				TypeName: "date",
-				TypeOid:  pgtype.DateOID,
+			column: &domains.ColumnMeta{
+				TypeOid: pgtype.DateOID,
 			},
 			params: map[string]interface{}{
 				"min": "2017-09-14",
@@ -41,9 +37,8 @@ func TestRandomDateTransformer_Transform(t *testing.T) {
 		},
 		{
 			name: "test timestamp without timezone type",
-			column: domains.ColumnMeta{
-				TypeName: "timestamp",
-				TypeOid:  pgtype.TimestampOID,
+			column: &domains.ColumnMeta{
+				TypeOid: pgtype.TimestampOID,
 			},
 			params: map[string]interface{}{
 				"min": "2018-12-15 23:34:17.946707",
@@ -53,9 +48,8 @@ func TestRandomDateTransformer_Transform(t *testing.T) {
 		},
 		{
 			name: "test timestamp with timezone type",
-			column: domains.ColumnMeta{
-				TypeName: "timestamptz",
-				TypeOid:  pgtype.TimestamptzOID,
+			column: &domains.ColumnMeta{
+				TypeOid: pgtype.TimestamptzOID,
 			},
 			params: map[string]interface{}{
 				"min": "2018-12-15 23:34:17.946707+03",
@@ -65,9 +59,8 @@ func TestRandomDateTransformer_Transform(t *testing.T) {
 		},
 		{
 			name: "test timestamp type with Truncate till day",
-			column: domains.ColumnMeta{
-				TypeName: "timestamp",
-				TypeOid:  pgtype.TimestampOID,
+			column: &domains.ColumnMeta{
+				TypeOid: pgtype.TimestampOID,
 			},
 			params: map[string]interface{}{
 				"min":      "2018-12-15 23:34:17.946707",
@@ -80,7 +73,7 @@ func TestRandomDateTransformer_Transform(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			transformer, err := NewRandomDateTransformer(tt.column, typeMap, "", tt.params)
+			transformer, err := RandomDateTransformerMeta.InstanceTransformer(table, tt.column, typeMap, tt.params)
 			require.NoError(t, err)
 			val, err := transformer.Transform("")
 			require.NoError(t, err)
@@ -91,25 +84,24 @@ func TestRandomDateTransformer_Transform(t *testing.T) {
 }
 
 func TestRandomDateTransformer_Transform_errors(t *testing.T) {
-	dsn := os.Getenv("GF_TEST_DSN")
-	require.NotEmpty(t, dsn, "GF_TEST_DSN env variable must be set")
-	c, err := pgx.Connect(context.Background(), dsn)
+	typeMap, err := getTypeMap()
 	require.NoError(t, err)
-	defer c.Close(context.Background())
-	typeMap := c.TypeMap()
-	// Positive cases
+
+	table := &domains.TableMeta{
+		Oid: 123,
+	}
+
 	tests := []struct {
 		name        string
-		column      domains.ColumnMeta
+		column      *domains.ColumnMeta
 		params      map[string]interface{}
 		typeMap     *pgtype.Map
 		errContains string
 	}{
 		{
 			name: "Check nil typeMap error",
-			column: domains.ColumnMeta{
-				TypeName: "date",
-				TypeOid:  pgtype.DateOID,
+			column: &domains.ColumnMeta{
+				TypeOid: pgtype.DateOID,
 			},
 			typeMap:     nil,
 			params:      map[string]interface{}{},
@@ -117,9 +109,8 @@ func TestRandomDateTransformer_Transform_errors(t *testing.T) {
 		},
 		{
 			name: "Check min key not existing error",
-			column: domains.ColumnMeta{
-				TypeName: "date",
-				TypeOid:  pgtype.DateOID,
+			column: &domains.ColumnMeta{
+				TypeOid: pgtype.DateOID,
 			},
 			typeMap: typeMap,
 			params: map[string]interface{}{
@@ -129,9 +120,8 @@ func TestRandomDateTransformer_Transform_errors(t *testing.T) {
 		},
 		{
 			name: "Check max key existing error",
-			column: domains.ColumnMeta{
-				TypeName: "date",
-				TypeOid:  pgtype.DateOID,
+			column: &domains.ColumnMeta{
+				TypeOid: pgtype.DateOID,
 			},
 			typeMap: typeMap,
 			params: map[string]interface{}{
@@ -142,9 +132,8 @@ func TestRandomDateTransformer_Transform_errors(t *testing.T) {
 		},
 		{
 			name: "Check min key empty value",
-			column: domains.ColumnMeta{
-				TypeName: "date",
-				TypeOid:  pgtype.DateOID,
+			column: &domains.ColumnMeta{
+				TypeOid: pgtype.DateOID,
 			},
 			typeMap: typeMap,
 			params: map[string]interface{}{
@@ -155,9 +144,8 @@ func TestRandomDateTransformer_Transform_errors(t *testing.T) {
 		},
 		{
 			name: "Check max empty value",
-			column: domains.ColumnMeta{
-				TypeName: "date",
-				TypeOid:  pgtype.DateOID,
+			column: &domains.ColumnMeta{
+				TypeOid: pgtype.DateOID,
 			},
 			typeMap: typeMap,
 			params: map[string]interface{}{
@@ -168,9 +156,8 @@ func TestRandomDateTransformer_Transform_errors(t *testing.T) {
 		},
 		{
 			name: "Invalid min date format",
-			column: domains.ColumnMeta{
-				TypeName: "date",
-				TypeOid:  pgtype.DateOID,
+			column: &domains.ColumnMeta{
+				TypeOid: pgtype.DateOID,
 			},
 			typeMap: typeMap,
 			params: map[string]interface{}{
@@ -181,9 +168,8 @@ func TestRandomDateTransformer_Transform_errors(t *testing.T) {
 		},
 		{
 			name: "Invalid max date format",
-			column: domains.ColumnMeta{
-				TypeName: "date",
-				TypeOid:  pgtype.DateOID,
+			column: &domains.ColumnMeta{
+				TypeOid: pgtype.DateOID,
 			},
 			typeMap: typeMap,
 			params: map[string]interface{}{
@@ -196,7 +182,7 @@ func TestRandomDateTransformer_Transform_errors(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			_, err := NewRandomDateTransformer(tt.column, tt.typeMap, "", tt.params)
+			_, err := RandomDateTransformerMeta.InstanceTransformer(table, tt.column, tt.typeMap, tt.params)
 			require.ErrorContains(t, err, tt.errContains)
 
 		})

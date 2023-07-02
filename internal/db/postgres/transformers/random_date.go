@@ -7,17 +7,8 @@ import (
 
 	"github.com/jackc/pgx/v5/pgtype"
 
-	pgDomains "github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/domains"
 	"github.com/wwoytenko/greenfuscator/internal/domains"
 )
-
-// TODO: Test this transformer
-
-var RandomDateTransformerSupportedOids = []int{
-	pgtype.DateOID,
-	pgtype.TimestampOID,
-	pgtype.TimestamptzOID,
-}
 
 var RandomDateTransformerMeta = TransformerMeta{
 	Description: "Generate random date",
@@ -29,11 +20,16 @@ var RandomDateTransformerMeta = TransformerMeta{
 		"nullable": "generate null value randomly (default false)",
 		"fraction": "NULL value distribution within the table (default Fraction 10%)",
 	},
-	SupportedTypeOids: RandomDateTransformerSupportedOids,
-	NewTransformer:    NewRandomDateTransformer,
+	NewTransformer: NewRandomDateTransformer,
 	Settings: NewTransformerSettings().
 		SetNullable().
-		SetVariadic(),
+		SetVariadic().
+		SetCastVar(time.Time{}).
+		SetSupportedOids(
+			pgtype.DateOID,
+			pgtype.TimestampOID,
+			pgtype.TimestamptzOID,
+		),
 }
 
 var truncateParts = []string{"year", "month", "day", "hour", "second", "millisecond", "microsecond", "nanosecond"}
@@ -58,16 +54,9 @@ type RandomDateTransformer struct {
 }
 
 func NewRandomDateTransformer(
-	table *pgDomains.TableMeta,
-	column *pgDomains.ColumnMeta,
-	typeMap *pgtype.Map,
+	base *TransformerBase,
 	params map[string]interface{},
 ) (domains.Transformer, error) {
-
-	base, err := NewTransformerBase(table, column, RandomDateTransformerMeta.Settings, params, typeMap, RandomDateTransformerSupportedOids, time.Time{})
-	if err != nil {
-		return nil, fmt.Errorf("cannot build transformer base object: %w", err)
-	}
 
 	tParams := RandomDateTransformerParams{
 		Fraction: DefaultNullFraction,
@@ -92,11 +81,11 @@ func NewRandomDateTransformer(
 		res.generate = generateRandomTimeTruncate
 	}
 
-	if err = res.Scan(res.Min, &res.min); err != nil {
+	if err := res.Scan(res.Min, &res.min); err != nil {
 		return nil, fmt.Errorf("cannot decode min value: %w", err)
 	}
 
-	if err = res.Scan(res.Max, &res.max); err != nil {
+	if err := res.Scan(res.Max, &res.max); err != nil {
 		return nil, fmt.Errorf("cannot decode max value: %w", err)
 	}
 
