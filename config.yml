@@ -56,7 +56,7 @@ dump:
     #    exclude-schema: "(\"teSt\"*|test*)"
     #    table:
     #      - "public.cards_*"
-    jobs: 10
+#    jobs: 10
     #    load-via-partition-root: true
   #    exclude-table-data: "public.test1_id_seq"
 

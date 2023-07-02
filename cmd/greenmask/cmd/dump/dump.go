@@ -38,14 +38,8 @@ var (
 			}
 			dump := postgres.NewDump(Config.Common.BinPath, &Config.Dump.PgDumpOptions, st, Config.Dump.Transformers)
 
-			if Config.Dump.PgDumpOptions.Validate {
-				if err := postgres.RunValidate(ctx, &Config.Dump.PgDumpOptions, Config.Dump.Transformers); err != nil {
-					log.Fatalf("validation error: %s", err)
-				}
-			} else {
-				if err := dump.RunDump(ctx); err != nil {
-					log.Fatalf("cannot make a backup: %s", err)
-				}
+			if err := dump.RunDump(ctx); err != nil {
+				log.Fatalf("cannot make a backup: %s", err)
 			}
 
 		},

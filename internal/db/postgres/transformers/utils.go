@@ -209,36 +209,6 @@ func (tbs *TransformerSettings) SetCastVar(castVar interface{}) *TransformerSett
 	return tbs
 }
 
-const (
-	FatalErrorSeverity   = "fatal"
-	WarningErrorSeverity = "warning"
-
-	FkConstraintType         = "ForeignKey"
-	CheckConstraintType      = "Check"
-	NotNullConstraintType    = "Check"
-	PkConstraintType         = "PrimaryKey"
-	UniqueConstraintType     = "Unique"
-	ReferencesConstraintType = "PrimaryKey"
-	LengthConstraintType     = "Length"
-	ExclusionConstraintType  = "Exclusion"
-	TriggerConstraintType    = "TriggerConstraint"
-
-	ConstraintObject = "Constraint"
-)
-
-type TransformerValidationError struct {
-	ConstraintType   string
-	ConstraintName   string
-	ConstraintSchema string
-	ConstraintDef    string
-	Severity         string
-	Err              error
-}
-
-func (tve *TransformerValidationError) Error() string {
-	return fmt.Sprintf("%s %s", tve.Severity, tve.Err)
-}
-
 type TransformerBaseParams struct {
 	Nullable bool    `mapstructure:"nullable"`
 	Fraction float32 `mapstructure:"fraction"`
@@ -311,20 +281,20 @@ func NewTransformerBase(
 	}, nil
 }
 
-func (tb *TransformerBase) Validate() []error {
+func (tb *TransformerBase) Validate() domains.TransformerValidationErrors {
 	var errs []error
 	if tb.Nullable && tb.Column.NotNull {
-		errs = append(errs, &TransformerValidationError{
-			ConstraintType: NotNullConstraintType,
-			Severity:       WarningErrorSeverity,
+		errs = append(errs, &domains.TransformerValidationError{
+			ConstraintType: domains.NotNullConstraintType,
+			Severity:       domains.WarningErrorSeverity,
 			Err:            errors.New("column cannot be null"),
 		})
 	}
 
 	if tb.Settings.Variadic && tb.Column.Length != -1 {
-		errs = append(errs, &TransformerValidationError{
-			ConstraintType: LengthConstraintType,
-			Severity:       WarningErrorSeverity,
+		errs = append(errs, &domains.TransformerValidationError{
+			ConstraintType: domains.LengthConstraintType,
+			Severity:       domains.WarningErrorSeverity,
 			Err:            fmt.Errorf("possible constraint violation: column may be out of max size"),
 		})
 	}
@@ -335,77 +305,77 @@ func (tb *TransformerBase) Validate() []error {
 			switch item.Type {
 			case 'f':
 				if slices.Contains(item.ReferencesColumns, tb.Column.Num) {
-					errs = append(errs, &TransformerValidationError{
-						ConstraintType:   FkConstraintType,
+					errs = append(errs, &domains.TransformerValidationError{
+						ConstraintType:   domains.FkConstraintType,
 						ConstraintName:   item.Name,
 						ConstraintSchema: item.Schema,
 						ConstraintDef:    item.Def,
-						Severity:         WarningErrorSeverity,
+						Severity:         domains.WarningErrorSeverity,
 						Err:              fmt.Errorf("possible constraint violation: column involved into foreign key"),
 					})
 				}
 			case 'c':
 				if slices.Contains(item.ConstrainedColumns, tb.Column.Num) {
-					errs = append(errs, &TransformerValidationError{
-						ConstraintType:   CheckConstraintType,
+					errs = append(errs, &domains.TransformerValidationError{
+						ConstraintType:   domains.CheckConstraintType,
 						ConstraintName:   item.Name,
 						ConstraintSchema: item.Schema,
 						ConstraintDef:    item.Def,
-						Severity:         WarningErrorSeverity,
+						Severity:         domains.WarningErrorSeverity,
 						Err:              fmt.Errorf("possible constraint violation"),
 					})
 				}
 			case 'p':
-				if !tb.Settings.Unique {
-					errs = append(errs, &TransformerValidationError{
-						ConstraintType:   PkConstraintType,
+				if !tb.Settings.Unique && slices.Contains(item.ConstrainedColumns, tb.Column.Num) {
+					errs = append(errs, &domains.TransformerValidationError{
+						ConstraintType:   domains.PkConstraintType,
 						ConstraintName:   item.Name,
 						ConstraintSchema: item.Schema,
 						ConstraintDef:    item.Def,
-						Severity:         WarningErrorSeverity,
+						Severity:         domains.WarningErrorSeverity,
 						Err:              fmt.Errorf("possible constraint violation: transformer cannot guarantee uniqueness"),
 					})
 				}
-				if len(item.ReferencedTable) != 0 {
-					errs = append(errs, &TransformerValidationError{
-						ConstraintType:   PkConstraintType,
+				if len(item.ReferencedTable) != 0 && slices.Contains(item.ConstrainedColumns, tb.Column.Num) {
+					errs = append(errs, &domains.TransformerValidationError{
+						ConstraintType:   domains.PkConstraintType,
 						ConstraintName:   item.Name,
 						ConstraintSchema: item.Schema,
 						ConstraintDef:    item.Def,
-						Severity:         WarningErrorSeverity,
+						Severity:         domains.WarningErrorSeverity,
 						Err:              fmt.Errorf("possible constraint violation: primary key has referenced tables"),
 					})
 				}
 			case 'u':
-				if !tb.Settings.Unique {
-					errs = append(errs, &TransformerValidationError{
-						ConstraintType:   UniqueConstraintType,
+				if !tb.Settings.Unique && slices.Contains(item.ConstrainedColumns, tb.Column.Num) {
+					errs = append(errs, &domains.TransformerValidationError{
+						ConstraintType:   domains.UniqueConstraintType,
 						ConstraintName:   item.Name,
 						ConstraintSchema: item.Schema,
 						ConstraintDef:    item.Def,
-						Severity:         WarningErrorSeverity,
+						Severity:         domains.WarningErrorSeverity,
 						Err:              fmt.Errorf("possible constraint violation: transformer cannot guarantee uniqueness"),
 					})
 				}
 			case 't':
 				if slices.Contains(item.ConstrainedColumns, tb.Column.Num) {
-					errs = append(errs, &TransformerValidationError{
-						ConstraintType:   TriggerConstraintType,
+					errs = append(errs, &domains.TransformerValidationError{
+						ConstraintType:   domains.TriggerConstraintType,
 						ConstraintName:   item.Name,
 						ConstraintSchema: item.Schema,
 						ConstraintDef:    item.Def,
-						Severity:         WarningErrorSeverity,
+						Severity:         domains.WarningErrorSeverity,
 						Err:              fmt.Errorf("possible constraint violation"),
 					})
 				}
 			case 'x':
 				if slices.Contains(item.ConstrainedColumns, tb.Column.Num) {
-					errs = append(errs, &TransformerValidationError{
-						ConstraintType:   ExclusionConstraintType,
+					errs = append(errs, &domains.TransformerValidationError{
+						ConstraintType:   domains.ExclusionConstraintType,
 						ConstraintName:   item.Name,
 						ConstraintSchema: item.Schema,
 						ConstraintDef:    item.Def,
-						Severity:         WarningErrorSeverity,
+						Severity:         domains.WarningErrorSeverity,
 						Err:              fmt.Errorf("possible constraint violation"),
 					})
 				}

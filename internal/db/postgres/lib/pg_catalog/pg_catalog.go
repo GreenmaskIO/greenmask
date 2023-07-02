@@ -170,7 +170,6 @@ func BuildTableSearchQuery(includeTable, excludeTable, excludeTableData,
           AND %s -- schema inclusion
           AND NOT %s -- schema exclusion
           AND (s.srvname ISNULL OR %s) -- include foreign data
-          AND pg_catalog.pg_table_is_visible(c.oid)
 		  AND n.nspname <> 'pg_catalog'
 		  AND n.nspname !~ '^pg_toast'
 		  AND n.nspname <> 'information_schema'

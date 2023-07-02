@@ -96,11 +96,26 @@ func (d *Dump) startMainTx(ctx context.Context, conn *pgx.Conn) (pgx.Tx, error) 
 }
 
 func (d *Dump) Validate(ctx context.Context, tx pgx.Tx) (map[domains.Oid]*domains.Table, error) {
+	var fatal = false
+
 	tablesConfigMap, errs := BuildTablesConfig(ctx, tx, d.tablesConfig)
 	if errs != nil {
 		errs.LogErrors()
 	}
-	if errs.IsFatal() {
+	fatal = errs.IsFatal()
+
+	for _, table := range tablesConfigMap {
+		for _, transformer := range table.TransformersMap {
+			errs := transformer.Transformer.Validate()
+			if len(errs) != 0 {
+				if errs.IsFatal() {
+					fatal = true
+				}
+				errs.LogErrors(table.Schema, table.Name, transformer.Name, transformer.TransformConf.Name)
+			}
+		}
+	}
+	if fatal {
 		return nil, fmt.Errorf("fatal validation error")
 	}
 	return tablesConfigMap, nil

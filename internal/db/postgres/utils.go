@@ -177,6 +177,7 @@ func BuildTablesConfig(ctx context.Context, tx pgx.Tx, tableConfig []*pgdomains.
 			errs = append(errs, columnErrs...)
 		}
 		table.TransformersMap = columns
+		table.Columns = nil
 
 		tables[table.Oid] = table
 	}
@@ -456,9 +457,6 @@ func GetObjects(ctx context.Context, tx pgx.Tx, pgDumpOptions *pgdump.Options, t
 
 	// Assign columns and transformers for table
 	for _, table := range tables {
-		if table.TransformersMap != nil {
-			continue
-		}
 		if err := setTableColumns(ctx, tx, table); err != nil {
 			return nil, nil, err
 		}
