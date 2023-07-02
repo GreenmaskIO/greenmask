@@ -75,8 +75,9 @@ func (t *Table) TransformTuple(data []byte) ([]byte, error) {
 	record := make([]string, 0, len(t.Columns))
 	for idx, column := range t.Columns {
 		transformedValue := values[idx]
-		if column.TransformConf.Name != "" {
-			transformedValue, err = column.Transformer.Transform(values[idx])
+
+		if transformer, ok := t.TransformersMap[column.Name]; ok {
+			transformedValue, err = transformer.Transformer.Transform(values[idx])
 			if err != nil {
 				return nil, fmt.Errorf("transformer %s error: %w", column.TransformConf.Name, err)
 			}

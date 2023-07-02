@@ -27,17 +27,17 @@ type Dump struct {
 	st             storage.Storager
 	dumpTaskCount  int32
 	allTaskPushed  atomic.Bool
-	tableConfig    []domains.Table
+	tablesConfig   []*domains.Table
 	ah             *toc.ArchiveHandle
 	tocDataEntries []*toc.Entry
 }
 
-func NewDump(binPath string, opt *pgdump.Options, st storage.Storager, tableConfig []domains.Table) *Dump {
+func NewDump(binPath string, opt *pgdump.Options, st storage.Storager, tableConfig []*domains.Table) *Dump {
 	return &Dump{
 		pgDumpOptions: opt,
 		pgDump:        pgdump.NewPgDump(binPath),
 		st:            st,
-		tableConfig:   tableConfig,
+		tablesConfig:  tableConfig,
 	}
 }
 
@@ -95,6 +95,17 @@ func (d *Dump) startMainTx(ctx context.Context, conn *pgx.Conn) (pgx.Tx, error) 
 	return tx, nil
 }
 
+func (d *Dump) Validate(ctx context.Context, tx pgx.Tx) (map[domains.Oid]*domains.Table, error) {
+	tablesConfigMap, errs := BuildTablesConfig(ctx, tx, d.tablesConfig)
+	if errs != nil {
+		errs.LogErrors()
+	}
+	if errs.IsFatal() {
+		return nil, fmt.Errorf("fatal validation error")
+	}
+	return tablesConfigMap, nil
+}
+
 func (d *Dump) schemaOnlyDump(ctx context.Context, tx pgx.Tx) error {
 	// Dump schema
 	options := *d.pgDumpOptions
@@ -133,10 +144,10 @@ func (d *Dump) schemaOnlyDump(ctx context.Context, tx pgx.Tx) error {
 	return nil
 }
 
-func (d *Dump) dataDump(ctx context.Context, tx pgx.Tx) error {
+func (d *Dump) dataDump(ctx context.Context, tx pgx.Tx, tablesConfig map[domains.Oid]*domains.Table) error {
 	// TODO: You should use pointer to dumpers.DumpTask instead
 	var largeObjectsList []*domains.LargeObjects
-	tablesList, sequenceList, err := buildObjects(ctx, tx, d.pgDumpOptions, d.tableConfig, &d.curDumpId)
+	tablesList, sequenceList, err := GetObjects(ctx, tx, d.pgDumpOptions, tablesConfig, &d.curDumpId)
 	if err != nil {
 		return fmt.Errorf("building data objects: %w", err)
 	}
@@ -251,7 +262,7 @@ func (d *Dump) merge(ctx context.Context, tx pgx.Tx) error {
 func (d *Dump) writeMetaData(ctx context.Context, startedAt, completedAt time.Time) error {
 	metadata, err := domains.NewMetadata(d.ah.Header, d.ah.GetEntries(),
 		d.ah.WrittenBytes, startedAt, completedAt,
-		d.tableConfig,
+		d.tablesConfig,
 	)
 	if err != nil {
 		return fmt.Errorf("unable build metadata: %w", err)
@@ -277,6 +288,9 @@ func (d *Dump) RunDump(ctx context.Context) error {
 	}
 
 	conn, err := d.Connect(ctx, dsn)
+	if err != nil {
+		return err
+	}
 	defer func() {
 		if err := conn.Close(ctx); err != nil {
 			log.Warn().Err(err)
@@ -293,11 +307,20 @@ func (d *Dump) RunDump(ctx context.Context) error {
 		}
 	}()
 
+	tablesConfigMap, err := d.Validate(ctx, tx)
+	if err != nil {
+		return err
+	}
+	// Exiting if we are only validation the settings
+	if d.pgDumpOptions.Validate {
+		return nil
+	}
+
 	if err = d.schemaOnlyDump(ctx, tx); err != nil {
 		return fmt.Errorf("schema only stage dumping error: %w", err)
 	}
 
-	if err = d.dataDump(ctx, tx); err != nil {
+	if err = d.dataDump(ctx, tx, tablesConfigMap); err != nil {
 		return fmt.Errorf("data stage dumping error: %w", err)
 	}
 

@@ -43,14 +43,14 @@ type Metadata struct {
 	CompletedAt    time.Time   `yaml:"completedAt" json:"completedAt"`
 	OriginalSize   int64       `json:"originalSize" json:"originalSize"`
 	CompressedSize int64       `json:"compressedSize" json:"compressedSize"`
-	Transformers   []Table     `yaml:"transformers" json:"transformers"`
+	Transformers   []*Table    `yaml:"transformers" json:"transformers"`
 	Header         TocHeader   `json:"header" json:"header"`
 	Entries        []*TocEntry `json:"entries" json:"entries"`
 }
 
 func NewMetadata(ahHeader toc.Header, ahEntries []*toc.Entry,
 	tocFileSize int64, startedAt, completedAt time.Time,
-	transformers []Table,
+	transformers []*Table,
 ) (*Metadata, error) {
 
 	var format string

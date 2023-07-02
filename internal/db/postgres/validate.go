@@ -11,7 +11,7 @@ import (
 	"github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/pgdump"
 )
 
-func RunValidate(ctx context.Context, opt *pgdump.Options, tableConfig []domains.Table) error {
+func RunValidate(ctx context.Context, opt *pgdump.Options, tableConfig []*domains.Table) error {
 
 	dsn, err := opt.GetPgDSN()
 	if err != nil {

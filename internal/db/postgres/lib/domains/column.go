@@ -12,8 +12,9 @@ type Column struct {
 }
 
 type ColumnMeta struct {
-	Num     AttNum `json:"-" yaml:"-"`
-	TypeOid Oid    `json:"-" yaml:"-"`
-	NotNull bool   `json:"-" yaml:"-"`
-	Length  int64  `json:"-" yaml:"-"`
+	Num      AttNum `json:"-" yaml:"-"`
+	TypeName string `json:"-" yaml:"-"`
+	TypeOid  Oid    `json:"-" yaml:"-"`
+	NotNull  bool   `json:"-" yaml:"-"`
+	Length   int64  `json:"-" yaml:"-"`
 }

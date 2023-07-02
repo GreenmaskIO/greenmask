@@ -1,18 +1,19 @@
 common:
   log-level: "debug"
   log-format: "text"
-  bin_path: "/usr/bin"
-  #  bin_path: "/opt/homebrew/bin"
+    #  bin_path: "/usr/bin"
+  bin_path: "/opt/homebrew/bin"
   storage:
     directory:
-      path: "/home/vadim/tmp/pg_dump_test"
-#      path: "/Users/vvoitenko/tmp/pgdump_test"
+      #      path: "/home/vadim/tmp/pg_dump_test"
+      path: "/Users/vvoitenko/tmp/pgdump_test"
 
 restore:
   pg_restore_options:
+    jobs: 10
     #    verbose: true
-    dbname: "user=postgres dbname=demo_restore"
-#      dbname: "host=/tmp port=5432 user=vvoitenko dbname=demo_restore"
+    #    dbname: "user=postgres dbname=demo_restore"
+    dbname: "host=/tmp port=5432 user=vvoitenko dbname=demo_restore"
   #    use-list: "/Users/vvoitenko/gits/woyten/greenfuscator/cmd/greenmask/test.list"
 
   scripts:
@@ -50,8 +51,8 @@ restore:
 dump:
   pg_dump_options:
     #    verbose: true
-    # dbname: "host=/tmp port=5432 user=vvoitenko dbname=demo"
-    dbname: "user=postgres dbname=demo"
+    dbname: "host=/tmp port=5432 user=vvoitenko dbname=demo"
+    #    dbname: "user=postgres dbname=demo"
     #    exclude-schema: "(\"teSt\"*|test*)"
     #    table:
     #      - "public.cards_*"
@@ -61,7 +62,7 @@ dump:
 
   transformers:
     - schema: "bookings"
-      name: "flights2"
+      name: "flights"
       query: "select * from bookings.flights order by aircraft_code limit 10"
       columns:
         - name: "scheduled_departure"
@@ -77,19 +78,19 @@ dump:
         - name: "at1"
           transformer:
             name: "RandomInt"
-            params: {"nullable": true, min: 1, max: 100}
+            params: { "nullable": true, min: 1, max: 100 }
         - name: "at2"
           transformer:
             name: "RandomInt"
-            params: {"nullable": true, min: 100, max: 200}
+            params: { "nullable": true, min: 100, max: 200 }
         - name: "at3"
           transformer:
             name: "RandomInt"
-            params: {"nullable": true, min: 200, max: 300}
+            params: { "nullable": true, min: 200, max: 300 }
         - name: "at4"
           transformer:
             name: "RandomInt"
-            params: { "nullable": true, min: 300, max: 400 }
+            params: { min: 300, max: 400 }
         - name: "at5"
           transformer:
             name: "RandomInt"
@@ -105,7 +106,7 @@ dump:
         - name: "at1"
           transformer:
             name: "RandomBool"
-            params: { "nullable": true}
+            params: { "nullable": true }
         - name: "at2"
           transformer:
             name: "RandomBool"

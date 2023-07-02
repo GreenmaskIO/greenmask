@@ -44,7 +44,7 @@ type Directory struct {
 
 type Dump struct {
 	PgDumpOptions pgdump.Options `mapstructure:"pg_dump_options"`
-	Transformers  []Table        `mapstructure:"transformers"`
+	Transformers  []*Table       `mapstructure:"transformers"`
 }
 
 type Restore struct {

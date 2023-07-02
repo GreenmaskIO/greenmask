@@ -90,7 +90,7 @@ func (ve ValidationError) Error() string {
 	return fmt.Sprintf("%s validation error: %s: %s: %s: %s: %s", ve.Level, ve.Schema, ve.Name, ve.Column, ve.Transformer, ve.Err.Error())
 }
 
-func BuildTablesConfig(ctx context.Context, tx pgx.Tx, tableConfig []pgdomains.Table) (map[pgdomains.Oid]*pgdomains.Table, ValidationErrors) {
+func BuildTablesConfig(ctx context.Context, tx pgx.Tx, tableConfig []*pgdomains.Table) (map[pgdomains.Oid]*pgdomains.Table, ValidationErrors) {
 	tableSearchQuery := `
 		SELECT 
 		   c.oid::TEXT::INT, 
@@ -115,12 +115,13 @@ func BuildTablesConfig(ctx context.Context, tx pgx.Tx, tableConfig []pgdomains.T
 	var errs ValidationErrors
 
 	for _, t := range tableConfig {
-		schemaName := t.Schema
-		tableName := t.Name
+		table := t
+		schemaName := table.Schema
+		tableName := table.Name
 
-		row := tx.QueryRow(ctx, tableSearchQuery, t.Schema, t.Name)
-		err := row.Scan(&t.Oid, &t.Schema, &t.Name, &t.Owner, &t.RelKind,
-			&t.RootPtSchema, &t.RootPtName, &t.Root,
+		row := tx.QueryRow(ctx, tableSearchQuery, table.Schema, table.Name)
+		err := row.Scan(&table.Oid, &table.Schema, &table.Name, &table.Owner, &table.RelKind,
+			&table.RootPtSchema, &table.RootPtName, &table.Root,
 		)
 
 		if err != nil && errors.Is(err, pgx.ErrNoRows) {
@@ -129,7 +130,7 @@ func BuildTablesConfig(ctx context.Context, tx pgx.Tx, tableConfig []pgdomains.T
 				ErrorLevel: FatalErrorLevel,
 				Schema:     schemaName,
 				Name:       tableName,
-				Err:        fmt.Errorf("table %s.%s not found: %w", t.Schema, t.Name, err),
+				Err:        fmt.Errorf("table %s.%s not found: %w", table.Schema, table.Name, err),
 			})
 			continue
 		} else if err != nil {
@@ -146,7 +147,7 @@ func BuildTablesConfig(ctx context.Context, tx pgx.Tx, tableConfig []pgdomains.T
 		// Transforming slice of column transformersMap to map
 		transformersMap := make(map[string]*pgdomains.Column)
 
-		for _, item := range t.Columns {
+		for _, item := range table.Columns {
 			if _, ok := transformersMap[item.Name]; ok {
 				errs = append(errs, &ValidationError{
 					Level:      ColumnValidationLevel,
@@ -175,9 +176,9 @@ func BuildTablesConfig(ctx context.Context, tx pgx.Tx, tableConfig []pgdomains.T
 		if columnErrs != nil {
 			errs = append(errs, columnErrs...)
 		}
-		t.TransformersMap = columns
+		table.TransformersMap = columns
 
-		tables[t.Oid] = &t
+		tables[table.Oid] = table
 	}
 
 errHandle:
@@ -188,7 +189,7 @@ errHandle:
 	return tables, nil
 }
 
-func getColumnsConfig(ctx context.Context, tx pgx.Tx, table pgdomains.Table) (map[string]*pgdomains.Column, ValidationErrors) {
+func getColumnsConfig(ctx context.Context, tx pgx.Tx, table *pgdomains.Table) (map[string]*pgdomains.Column, ValidationErrors) {
 	var errs ValidationErrors
 
 	tableColumnsQuery := `
@@ -239,8 +240,8 @@ func getColumnsConfig(ctx context.Context, tx pgx.Tx, table pgdomains.Table) (ma
 				errs = append(errs, err)
 			}
 			column.Transformer = transformer
+			res[column.Name] = &column
 		}
-		res[column.Name] = &column
 	}
 
 	for name, _ := range table.TransformersMap {
@@ -265,7 +266,7 @@ errHandle:
 	return res, nil
 }
 
-func getTransformerConfig(table pgdomains.Table, column pgdomains.Column, typeMap *pgtype.Map) (domains.Transformer, error) {
+func getTransformerConfig(table *pgdomains.Table, column pgdomains.Column, typeMap *pgtype.Map) (domains.Transformer, error) {
 	makeTransformer, ok := transformers.TransformerMap[column.TransformConf.Name]
 	if !ok {
 		return nil, &ValidationError{
@@ -283,7 +284,7 @@ func getTransformerConfig(table pgdomains.Table, column pgdomains.Column, typeMa
 		panic(fmt.Sprintf("column %s not found", column.Name))
 	}
 	// TODO: Refactor useType - it must be in transformer params instead
-	transformer, err := makeTransformer.NewTransformer(&table.TableMeta, &column.ColumnMeta, typeMap, c.TransformConf.Params)
+	transformer, err := makeTransformer.InstanceTransformer(&table.TableMeta, &column.ColumnMeta, typeMap, c.TransformConf.Params)
 	if err != nil {
 		return nil, &ValidationError{
 			Level:       TransformerValidationLevel,
@@ -298,7 +299,7 @@ func getTransformerConfig(table pgdomains.Table, column pgdomains.Column, typeMa
 	return transformer, nil
 }
 
-func getTableConstraints(ctx context.Context, tx pgx.Tx, table pgdomains.Table) ([]*pgdomains.Constraint, []error) {
+func getTableConstraints(ctx context.Context, tx pgx.Tx, table *pgdomains.Table) ([]*pgdomains.Constraint, []error) {
 	var errs []error
 	var res []*pgdomains.Constraint
 
@@ -371,63 +372,10 @@ errHandle:
 	return res, nil
 }
 
-func setTableColumnsTransformers(ctx context.Context, tx pgx.Tx, table *pgdomains.Table) error {
-	tableColumnsQuery := `
-		SELECT 
-		    a.attname,
-		    a.atttypid 	as typeoid,
-		  	pg_catalog.format_type(a.atttypid, a.atttypmod) as typename,
-		  	a.attnotnull
-		FROM pg_catalog.pg_attribute a
-		WHERE a.attrelid = $1 AND a.attnum > 0 AND NOT a.attisdropped
-		ORDER BY a.attnum
-	`
-
-	cfg := make(map[string]*pgdomains.Column, 0)
-	for _, c := range table.Columns {
-		cfg[c.Name] = c
-	}
-
-	rows, err := tx.Query(ctx, tableColumnsQuery, table.Oid)
-	if err != nil {
-		return fmt.Errorf("perform query: %w", err)
-	}
-	columns := make([]*pgdomains.Column, 0)
-	for rows.Next() {
-		column := pgdomains.Column{}
-		if err = rows.Scan(&column.Name, &column.TypeOid, &column.TypeName, &column.NotNull); err != nil {
-			return fmt.Errorf("cannot scan column: %w", err)
-		}
-
-		if c, ok := cfg[column.Name]; ok {
-			transformerConf := c.TransformConf
-			makeTransformer, ok := transformers.TransformerMap[transformerConf.Name]
-			if !ok {
-				return fmt.Errorf("unable to init transformer \"%s\" for table %s.%s on column %s: unnable to find transformer with name %s", transformerConf.Name, table.Schema, table.Name, column.Name, transformerConf.Name)
-			}
-			column.TransformConf = transformerConf
-			transformer, err := makeTransformer.NewTransformer(&table.TableMeta, &column.ColumnMeta, tx.Conn().TypeMap(), c.TransformConf.Params)
-			if err != nil {
-				return fmt.Errorf("unable to init transformer \"%s\" for table %s.%s on column %s: %w", transformerConf.Name, table.Schema, table.Name, column.Name, err)
-			}
-			column.Transformer = transformer
-		}
-
-		columns = append(columns, &column)
-	}
-
-	table.Columns = columns
-	return nil
-}
-
-func buildObjects(ctx context.Context, tx pgx.Tx, pgDumpOptions *pgdump.Options, tableConfig []pgdomains.Table, dumpIdSeq *pgdomains.DumpId) ([]*pgdomains.Table, []*pgdomains.Sequence, error) {
-
-	cfg := make(map[string]pgdomains.Table, len(tableConfig))
-	for _, item := range tableConfig {
-		cfg[fmt.Sprintf("%s.%s", item.Schema, item.Name)] = item
-	}
+func GetObjects(ctx context.Context, tx pgx.Tx, pgDumpOptions *pgdump.Options, tablesConfig map[pgdomains.Oid]*pgdomains.Table, dumpIdSeq *pgdomains.DumpId) ([]*pgdomains.Table, []*pgdomains.Sequence, error) {
 
 	// Building relation search query using regexp adaptation rules and pre-defined query templates
+	// TODO: Refactor it to gotemplate
 	query, err := pg_catalog.BuildTableSearchQuery(pgDumpOptions.Table, pgDumpOptions.ExcludeTable,
 		pgDumpOptions.ExcludeTableData, pgDumpOptions.IncludeForeignData, pgDumpOptions.Schema,
 		pgDumpOptions.ExcludeSchema)
@@ -445,17 +393,20 @@ func buildObjects(ctx context.Context, tx pgx.Tx, pgDumpOptions *pgdump.Options,
 	tables := make([]*pgdomains.Table, 0)
 	defer rows.Close()
 	for rows.Next() {
-		var oid int
+		var oid pgdomains.Oid
 		var lastVal int64
 		var schemaName, name, owner, rootPtName, rootPtSchema string
 		var relKind rune
 		var excludeData, isCalled bool
+		var ok bool
 
 		if err = rows.Scan(&oid, &schemaName, &name, &owner, &relKind,
 			&rootPtSchema, &rootPtName, &excludeData, &isCalled, &lastVal,
 		); err != nil {
 			return nil, nil, fmt.Errorf("unnable scan data: %w", err)
 		}
+		var table *pgdomains.Table
+
 		switch relKind {
 		case 'S':
 			sequences = append(sequences, &pgdomains.Sequence{
@@ -473,26 +424,28 @@ func buildObjects(ctx context.Context, tx pgx.Tx, pgDumpOptions *pgdump.Options,
 		case 'p':
 			fallthrough
 		case 'f':
-			var columns []*pgdomains.Column
-			t, ok := cfg[fmt.Sprintf("%s.%s", schemaName, name)]
+			table, ok = tablesConfig[oid]
 			if ok {
-				columns = t.Columns
-			}
-			table := &pgdomains.Table{
-				Name:    name,
-				Schema:  schemaName,
-				Columns: columns,
-				Query:   t.Query,
-				TableMeta: pgdomains.TableMeta{
-					Oid:                  pgdomains.Oid(oid),
-					Owner:                owner,
-					DumpId:               dumpIdSeq.GetDumpId(),
-					RelKind:              relKind,
-					RootPtSchema:         rootPtSchema,
-					RootPtName:           rootPtName,
-					ExcludeData:          excludeData,
-					LoadViaPartitionRoot: pgDumpOptions.LoadViaPartitionRoot,
-				},
+				// If table was discovered during Transformer validation - use that object instead of a new
+				table.DumpId = dumpIdSeq.GetDumpId()
+				table.ExcludeData = excludeData
+				table.LoadViaPartitionRoot = pgDumpOptions.LoadViaPartitionRoot
+			} else {
+				// If not - create new table object
+				table = &pgdomains.Table{
+					Name:   name,
+					Schema: schemaName,
+					TableMeta: pgdomains.TableMeta{
+						Oid:                  oid,
+						Owner:                owner,
+						DumpId:               dumpIdSeq.GetDumpId(),
+						RelKind:              relKind,
+						RootPtSchema:         rootPtSchema,
+						RootPtName:           rootPtName,
+						ExcludeData:          excludeData,
+						LoadViaPartitionRoot: pgDumpOptions.LoadViaPartitionRoot,
+					},
+				}
 			}
 
 			tables = append(tables, table)
@@ -503,10 +456,47 @@ func buildObjects(ctx context.Context, tx pgx.Tx, pgDumpOptions *pgdump.Options,
 
 	// Assign columns and transformers for table
 	for _, table := range tables {
-		if err := setTableColumnsTransformers(ctx, tx, table); err != nil {
+		if table.TransformersMap != nil {
+			continue
+		}
+		if err := setTableColumns(ctx, tx, table); err != nil {
 			return nil, nil, err
 		}
 	}
 
 	return tables, sequences, nil
+}
+
+func setTableColumns(ctx context.Context, tx pgx.Tx, table *pgdomains.Table) error {
+	tableColumnsQuery := `
+		SELECT 
+		    a.attname,
+		    a.atttypid 	as typeoid,
+		  	pg_catalog.format_type(a.atttypid, a.atttypmod) as typename
+		FROM pg_catalog.pg_attribute a
+		WHERE a.attrelid = $1 AND a.attnum > 0 AND NOT a.attisdropped
+		ORDER BY a.attnum
+	`
+
+	cfg := make(map[string]*pgdomains.Column, 0)
+	for _, c := range table.Columns {
+		cfg[c.Name] = c
+	}
+
+	rows, err := tx.Query(ctx, tableColumnsQuery, table.Oid)
+	if err != nil {
+		return fmt.Errorf("perform query: %w", err)
+	}
+	columns := make([]*pgdomains.Column, 0)
+	for rows.Next() {
+		column := pgdomains.Column{}
+		if err = rows.Scan(&column.Name, &column.TypeOid, &column.TypeName); err != nil {
+			return fmt.Errorf("cannot scan column: %w", err)
+		}
+
+		columns = append(columns, &column)
+	}
+
+	table.Columns = columns
+	return nil
 }
