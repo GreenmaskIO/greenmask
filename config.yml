@@ -1,5 +1,5 @@
 common:
-  log-level: "debug"
+  log-level: "info"
   log-format: "text"
     #  bin_path: "/usr/bin"
   bin_path: "/opt/homebrew/bin"
@@ -56,9 +56,9 @@ dump:
     #    exclude-schema: "(\"teSt\"*|test*)"
     #    table:
     #      - "public.cards_*"
-#    jobs: 10
+    #    jobs: 10
     #    load-via-partition-root: true
-  #    exclude-table-data: "public.test1_id_seq"
+    #    exclude-table-data: "public.test1_id_seq"
 
   transformers:
     - schema: "bookings"
@@ -111,13 +111,10 @@ dump:
           transformer:
             name: "RandomBool"
 
-
-
-transformers:
+custom_transformers:
   custom:
     bin_path: ""
     type: "attr"
     param:
       a:
       b:
-

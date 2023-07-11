@@ -40,12 +40,12 @@ func (ves TransformerValidationErrors) IsFatal() bool {
 }
 
 type TransformerValidationError struct {
-	ConstraintType   string
-	ConstraintName   string
-	ConstraintSchema string
-	ConstraintDef    string
-	Severity         string
-	Err              error
+	ConstraintType   string `json:"constraintType,omitempty"`
+	ConstraintName   string `json:"constraintName,omitempty"`
+	ConstraintSchema string `json:"constraintSchema,omitempty"`
+	ConstraintDef    string `json:"constraintDef,omitempty"`
+	Severity         string `json:"severity,omitempty"`
+	Err              error  `json:"err,omitempty"`
 }
 
 func (tve *TransformerValidationError) Error() string {
