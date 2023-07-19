@@ -42,8 +42,7 @@ How to initialise:
     * If stdout contains smth raise make a notice that transformer send info to stdout unexpectedly
     * If stderr contains json that would be casted explicitly to the warning model that cast 
       it and determine the error level 
-    * 
-  * 
+
 
 Discussing issues:
 * Where does transformers stores?

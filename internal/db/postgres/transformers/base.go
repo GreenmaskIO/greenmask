@@ -13,11 +13,7 @@ import (
 	"github.com/wwoytenko/greenfuscator/internal/domains"
 )
 
-// TODO: Move those const def to postgres/transformers/base
 const (
-	FatalErrorSeverity   = "fatal"
-	WarningErrorSeverity = "warning"
-
 	FkConstraintType         = "ForeignKey"
 	CheckConstraintType      = "Check"
 	NotNullConstraintType    = "Check"
@@ -27,8 +23,6 @@ const (
 	LengthConstraintType     = "Length"
 	ExclusionConstraintType  = "Exclusion"
 	TriggerConstraintType    = "TriggerConstraint"
-
-	ConstraintObject = "Constraint"
 )
 
 type TransformerBaseParams struct {
@@ -101,6 +95,10 @@ func NewTransformerBase(
 		Table:                 table,
 		Settings:              settings,
 	}, nil
+}
+
+func (tb *TransformerBase) IsCustom() bool {
+	return tb.Settings.IsCustom
 }
 
 func (tb *TransformerBase) Validate() domains.RuntimeErrors {
