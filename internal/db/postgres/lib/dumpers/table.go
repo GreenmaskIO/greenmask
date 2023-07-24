@@ -67,6 +67,9 @@ func (td *TableDumper) Execute(ctx context.Context, tx pgx.Tx, st storage.Storag
 		case *pgproto3.CopyData:
 			tupleData := v.Data
 			if td.table.HasTransformer() {
+				// TODO:
+				// 	1. Use that place for implementing the pipeline dumper
+				//  2. Implement function closure depending on the plain or transformation dump
 				tupleData, err = td.table.TransformTuple(tupleData)
 				if err != nil {
 					return nil, fmt.Errorf("cannot convert plain data to tuple: %w", err)
