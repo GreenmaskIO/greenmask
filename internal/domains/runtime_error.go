@@ -104,8 +104,6 @@ func (re *RuntimeError) Log() *zerolog.Event {
 	if re.Err != nil {
 		event.Err(re.Err)
 	}
-	if re.Msg != "" {
-		event.Msg(re.Msg)
-	}
+	event.Msg(re.Msg)
 	return event
 }

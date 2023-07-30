@@ -7,6 +7,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"golang.org/x/exp/slices"
 
@@ -39,8 +40,8 @@ type ValidationErrors []error
 func (ves ValidationErrors) IsFatal() bool {
 	return slices.ContainsFunc(ves, func(err error) bool {
 		switch v := err.(type) {
-		case *ValidationError:
-			return v.ErrorLevel == FatalErrorLevel
+		case *domains.RuntimeError:
+			return v.Level == zerolog.ErrorLevel
 		default:
 			return true
 
@@ -51,43 +52,12 @@ func (ves ValidationErrors) IsFatal() bool {
 func (ves ValidationErrors) LogErrors() {
 	for _, err := range ves {
 		switch v := err.(type) {
-		case *ValidationError:
-			event := log.Warn().
-				Str("ValidationLevel", v.Level).
-				Str("ValidationErrorLevel", v.ErrorLevel)
-			if v.Schema != "" {
-				event.Str("SchemaName", v.Schema)
-			}
-			if v.Name != "" {
-				event.Str("TableName", v.Name)
-			}
-			if v.Column != "" {
-				event = event.Str("ColumnName", v.Column)
-			}
-			if v.Transformer != "" {
-				event = event.Str("TransformerName", v.Transformer)
-			}
-			event.Err(v.Err).Msgf("validation error")
-
+		case *domains.RuntimeError:
+			v.Log()
 		default:
 			log.Warn().Err(err).Msgf("internal error")
 		}
 	}
-}
-
-type ValidationError struct {
-	Level       string `json:"type,omitempty"`
-	ErrorLevel  string `json:"error-level,omitempty"`
-	Schema      string `json:"schema,omitempty"`
-	Name        string `json:"name,omitempty"`
-	Column      string `json:"column,omitempty"`
-	Transformer string `json:"transformer,omitempty"`
-	Err         error  `json:"err,omitempty"`
-}
-
-func (ve ValidationError) Error() string {
-	// TODO: Rewrite error formatting
-	return fmt.Sprintf("%s validation error: %s: %s: %s: %s: %s", ve.Level, ve.Schema, ve.Name, ve.Column, ve.Transformer, ve.Err.Error())
 }
 
 func BuildTablesConfig(ctx context.Context, tx pgx.Tx, tableConfig []*pgdomains.Table) (map[pgdomains.Oid]*pgdomains.Table, ValidationErrors) {
@@ -125,22 +95,22 @@ func BuildTablesConfig(ctx context.Context, tx pgx.Tx, tableConfig []*pgdomains.
 		)
 
 		if err != nil && errors.Is(err, pgx.ErrNoRows) {
-			errs = append(errs, &ValidationError{
-				Level:      TableValidationLevel,
-				ErrorLevel: FatalErrorLevel,
-				Schema:     schemaName,
-				Name:       tableName,
-				Err:        fmt.Errorf("table %s.%s not found: %w", table.Schema, table.Name, err),
-			})
+			errs = append(errs, domains.NewRuntimeError().
+				SetErr(fmt.Errorf("table %s.%s not found: %w", table.Schema, table.Name, err)).
+				SetLevel(zerolog.ErrorLevel).
+				AddMeta("Level", TableValidationLevel).
+				AddMeta("SchemaName", schemaName).
+				AddMeta("TableName", tableName),
+			)
 			continue
 		} else if err != nil {
-			errs = append(errs, &ValidationError{
-				Level:      TableValidationLevel,
-				ErrorLevel: FatalErrorLevel,
-				Schema:     schemaName,
-				Name:       tableName,
-				Err:        fmt.Errorf("cannot scan tableSearchQuery: %w", err),
-			})
+			errs = append(errs, domains.NewRuntimeError().
+				SetErr(fmt.Errorf("cannot scan tableSearchQuery: %w", err)).
+				SetLevel(zerolog.ErrorLevel).
+				AddMeta("Level", TableValidationLevel).
+				AddMeta("SchemaName", schemaName).
+				AddMeta("TableName", tableName),
+			)
 			goto errHandle
 		}
 
@@ -149,14 +119,14 @@ func BuildTablesConfig(ctx context.Context, tx pgx.Tx, tableConfig []*pgdomains.
 
 		for _, item := range table.Columns {
 			if _, ok := transformersMap[item.Name]; ok {
-				errs = append(errs, &ValidationError{
-					Level:      ColumnValidationLevel,
-					ErrorLevel: FatalErrorLevel,
-					Schema:     schemaName,
-					Name:       tableName,
-					Column:     item.Name,
-					Err:        fmt.Errorf("column doubled"),
-				})
+				errs = append(errs, domains.NewRuntimeError().
+					SetErr(fmt.Errorf("column doubled")).
+					SetLevel(zerolog.ErrorLevel).
+					AddMeta("Level", ColumnValidationLevel).
+					AddMeta("SchemaName", schemaName).
+					AddMeta("TableName", tableName).
+					AddMeta("ColumnName", item.Name),
+				)
 				goto errHandle
 			}
 			transformersMap[item.Name] = item
@@ -209,13 +179,13 @@ func getColumnsConfig(ctx context.Context, tx pgx.Tx, table *pgdomains.Table) (m
 	res := make(map[string]*pgdomains.Column)
 	rows, err := tx.Query(ctx, tableColumnsQuery, table.Oid)
 	if err != nil {
-		errs = append(errs, &ValidationError{
-			Level:      ColumnValidationLevel,
-			ErrorLevel: FatalErrorLevel,
-			Schema:     table.Schema,
-			Name:       table.Name,
-			Err:        fmt.Errorf("unable execute tableColumnQuery: %w", err),
-		})
+		errs = append(errs, domains.NewRuntimeError().
+			SetErr(fmt.Errorf("unable execute tableColumnQuery: %w", err)).
+			SetLevel(zerolog.ErrorLevel).
+			AddMeta("Level", ColumnValidationLevel).
+			AddMeta("SchemaName", table.Schema).
+			AddMeta("TableName", table.Name),
+		)
 		goto errHandle
 	}
 	defer rows.Close()
@@ -224,13 +194,13 @@ func getColumnsConfig(ctx context.Context, tx pgx.Tx, table *pgdomains.Table) (m
 		var column pgdomains.Column
 		if err = rows.Scan(&column.Name, &column.TypeOid, &column.TypeName,
 			&column.NotNull, &column.Length, &column.Num); err != nil {
-			errs = append(errs, &ValidationError{
-				Level:      ColumnValidationLevel,
-				ErrorLevel: FatalErrorLevel,
-				Schema:     table.Schema,
-				Name:       table.Name,
-				Err:        fmt.Errorf("cannot scan tableColumnQuery: %w", err),
-			})
+			errs = append(errs, domains.NewRuntimeError().
+				SetErr(fmt.Errorf("cannot scan tableColumnQuery: %w", err)).
+				SetLevel(zerolog.ErrorLevel).
+				AddMeta("Level", ColumnValidationLevel).
+				AddMeta("SchemaName", table.Schema).
+				AddMeta("TableName", table.Name),
+			)
 			goto errHandle
 		}
 		// If column has transformer assign it
@@ -247,14 +217,14 @@ func getColumnsConfig(ctx context.Context, tx pgx.Tx, table *pgdomains.Table) (m
 
 	for name, _ := range table.TransformersMap {
 		if _, ok := res[name]; !ok {
-			errs = append(errs, &ValidationError{
-				Level:      ColumnValidationLevel,
-				ErrorLevel: FatalErrorLevel,
-				Schema:     table.Schema,
-				Name:       table.Name,
-				Column:     name,
-				Err:        ErrColumnNotFound,
-			})
+			errs = append(errs, domains.NewRuntimeError().
+				SetErr(ErrColumnNotFound).
+				SetLevel(zerolog.ErrorLevel).
+				AddMeta("Level", ColumnValidationLevel).
+				AddMeta("SchemaName", table.Schema).
+				AddMeta("TableName", table.Name).
+				AddMeta("ColumnName", name),
+			)
 		}
 	}
 
@@ -270,15 +240,16 @@ errHandle:
 func getTransformerConfig(table *pgdomains.Table, column pgdomains.Column, typeMap *pgtype.Map) (domains.Transformer, error) {
 	makeTransformer, ok := transformers.TransformerMap[column.TransformConf.Name]
 	if !ok {
-		return nil, &ValidationError{
-			Level:       TransformerValidationLevel,
-			ErrorLevel:  FatalErrorLevel,
-			Schema:      table.Schema,
-			Name:        table.Name,
-			Column:      column.Name,
-			Transformer: column.TransformConf.Name,
-			Err:         ErrTransformerNotFound,
-		}
+
+		return nil, domains.NewRuntimeError().
+			SetErr(ErrColumnNotFound).
+			SetLevel(zerolog.ErrorLevel).
+			AddMeta("Level", TransformerValidationLevel).
+			AddMeta("SchemaName", table.Schema).
+			AddMeta("TableName", table.Name).
+			AddMeta("ColumnName", column.Name).
+			AddMeta("TransformerName", column.TransformConf.Name).
+			SetErr(ErrTransformerNotFound)
 	}
 	c, ok := table.TransformersMap[column.Name]
 	if !ok {
@@ -287,15 +258,15 @@ func getTransformerConfig(table *pgdomains.Table, column pgdomains.Column, typeM
 	// TODO: Refactor useType - it must be in transformer params instead
 	transformer, err := makeTransformer.InstanceTransformer(&table.TableMeta, &column.ColumnMeta, typeMap, c.TransformConf.Params)
 	if err != nil {
-		return nil, &ValidationError{
-			Level:       TransformerValidationLevel,
-			ErrorLevel:  FatalErrorLevel,
-			Schema:      table.Schema,
-			Name:        table.Name,
-			Column:      column.Name,
-			Transformer: c.TransformConf.Name,
-			Err:         err,
-		}
+		return nil, domains.NewRuntimeError().
+			SetErr(ErrColumnNotFound).
+			SetLevel(zerolog.ErrorLevel).
+			AddMeta("Level", TransformerValidationLevel).
+			AddMeta("SchemaName", table.Schema).
+			AddMeta("TableName", table.Name).
+			AddMeta("ColumnName", column.Name).
+			AddMeta("TransformerName", column.TransformConf.Name).
+			SetErr(fmt.Errorf("transformer initialization error: %w", err))
 	}
 	return transformer, nil
 }
@@ -331,13 +302,14 @@ func getTableConstraints(ctx context.Context, tx pgx.Tx, table *pgdomains.Table)
 
 	rows, err := tx.Query(ctx, tableConstraintsQuery, table.Oid)
 	if err != nil {
-		errs = append(errs, &ValidationError{
-			Level:      ColumnValidationLevel,
-			ErrorLevel: FatalErrorLevel,
-			Schema:     table.Schema,
-			Name:       table.Name,
-			Err:        fmt.Errorf("cannot execute tableConstraintsQuery: %w", err),
-		})
+		errs = append(errs, domains.NewRuntimeError().
+			SetErr(fmt.Errorf("cannot execute tableConstraintsQuery: %w", err)).
+			SetLevel(zerolog.ErrorLevel).
+			AddMeta("Level", ColumnValidationLevel).
+			AddMeta("SchemaName", table.Schema).
+			AddMeta("TableName", table.Name),
+		)
+
 		goto errHandle
 	}
 	defer rows.Close()
@@ -353,13 +325,13 @@ func getTableConstraints(ctx context.Context, tx pgx.Tx, table *pgdomains.Table)
 			&c.Def,
 		)
 		if err != nil {
-			errs = append(errs, &ValidationError{
-				Level:      TableValidationLevel,
-				ErrorLevel: FatalErrorLevel,
-				Schema:     table.Schema,
-				Name:       table.Name,
-				Err:        fmt.Errorf("cannot scan tableConstraintsQuery: %w", err),
-			})
+			errs = append(errs, domains.NewRuntimeError().
+				SetErr(fmt.Errorf("cannot scan tableConstraintsQuery: %w", err)).
+				SetLevel(zerolog.ErrorLevel).
+				AddMeta("Level", TableValidationLevel).
+				AddMeta("SchemaName", table.Schema).
+				AddMeta("TableName", table.Name),
+			)
 			goto errHandle
 		}
 		res = append(res, &c)
