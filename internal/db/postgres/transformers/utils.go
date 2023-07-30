@@ -165,16 +165,21 @@ func truncateDate(t *time.Time, part *string) time.Time {
 }
 
 type TransformerSettings struct {
-	Nullable      bool
-	Variadic      bool
-	Unique        bool
-	MaxLength     int64
-	SupportedOids []int
-	CastVar       interface{}
+	Nullable           bool  `json:"nullable,omitempty"`
+	Variadic           bool  `json:"variadic,omitempty"`
+	Unique             bool  `json:"unique,omitempty"`
+	MaxLength          int64 `json:"maxLength,omitempty"`
+	SupportedOids      []int
+	SupportedTypes     []string
+	CastVar            interface{}
+	IsCustom           bool
+	TransformationType domains.TransformationType `json:"transformationType,omitempty"`
 }
 
 func NewTransformerSettings() *TransformerSettings {
-	return &TransformerSettings{}
+	return &TransformerSettings{
+		TransformationType: domains.AttributeTransformation,
+	}
 }
 
 func (tbs *TransformerSettings) SetVariadic() *TransformerSettings {
@@ -204,6 +209,11 @@ func (tbs *TransformerSettings) SetSupportedOids(oids ...int) *TransformerSettin
 
 func (tbs *TransformerSettings) SetCastVar(castVar interface{}) *TransformerSettings {
 	tbs.CastVar = castVar
+	return tbs
+}
+
+func (tbs *TransformerSettings) SetTransformationType(tt domains.TransformationType) *TransformerSettings {
+	tbs.TransformationType = tt
 	return tbs
 }
 

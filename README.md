@@ -4,54 +4,59 @@ Stateless util for logical backup and data masking that backward compatible with
 
 # Description
 
-Greenfuscator is developing for simplifying process of staging environment deployment.
+Greenmask is developing for simplifying process of staging environment deployment.
 In one hand it has the masking and obfuscation features that may be declared in the config
 in another hand it has backward compatibility with pg_dump directory backup format
 that allows you to restore anything you want using pg_restore util.
 
+# TODO:
+1. Determine the way how to define the custom transformers:
+   * Parameters definition
+   * Settings such as unique, inline, tuple, types, include connection string
+   * Initialisation procedure
+   * Validation procedure and interaction protocol
+   * Testing framework and the way how to test
+   * Metadata model passing
+* Write the Greenmask library for the Python
+
+Models:
+* Error model
+  * Methods:
+    * Error()
+    * AddMeta(key, value)
+
+```yaml
+error:
+  message: ""
+  level: "info|warning|error"
+  meta: {} # The kv that will be printed out in the log
+```
+
+How to initialise:
+* Find transformer including statement list
+  * Find all the files that has *__tdef.yml
+  * In every file must be set the version of the API
+  * Find the executable
+  * If transformer supports validation run it with --validate and provide the required metadata
+    * Listen to stderr
+    * If stdout contains smth raise make a notice that transformer send info to stdout unexpectedly
+    * If stderr contains json that would be casted explicitly to the warning model that cast 
+      it and determine the error level 
+
+
+Discussing issues:
+* Where does transformers stores?
+* How they would be gathered and installed?
+* Where we can store the index of the existed transformers?
+* 
+
+
 # Components
 
-* Util interface - ordinary command line interface that proxying mostly of pg_dump parameters
-* TOC:
-  * ArchiveHandler - Parser for TOC files in pg_dump directory with read/write function. 
-    It implements TOC binary format that contains statement definition, dependencies and 
-    another meta-information. The algorithm base on original pg_dump implementation rewritten 
-    in GO
-  * Entry - Simple structure that describes TOC file entry 
-* PgDump - implements util for calling pg_dump using parameters that passed via Options
-* Domains:
-  * Config - simple YAML/ENV config with required params
-  * Column - describes table column with assigned Masker 
-    object that perform masking for that column
-  * Table - describes table and contains attributes: Schema, Name, Columns and some meta-data
-  * Tuple - instance of table record. Contains table pointer, original and masked tuple in bytes
-* Masker - Interface that receive attribute value by string and returns transformed values
-* Runner - parallel backup maker
-
+# Backlog
 
 TODO:
-* Provide useful interface using cobra + viper
-    * greenmask dump -c config.yml --any-params
-      * Implement parameters check that conflicts
-    * greenmask restore --any-params {{ dumpId }}
-    * greenmask dump-fetch {{ dumpId }} {{ dir }} 
-    * greenmask dump-list --detail --json
-    * greenmask delete {{ dumpId }}
-    * greenmask st [ls|rm|get|put|cat]
-* Implement toc Read and Write suitable for any major versions
-* ~~Provide to pg_dump calls snapshot name in order to export it~~ 
-* ~~Implement concurrently COPY command~~
 * Make json-like metadata that contains data from toc.dat file
-* Implement graceful shutdown
-  * Mark dump as failed
-  * ~~Terminate COPY commands~~
-  * Delete tmp data from local storage
-  * Terminate another forked processes if they are still alive
-* Validate passed config with transformers
-  * Tables exist
-  * Columns exists
-  * Transformer is suitable for type
-  * Transformer is suitable for column constraints, multi-column constraints
 * Unit tests
 * Integration tests
   * For every supported major version of postgresql

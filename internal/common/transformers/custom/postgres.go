@@ -1,0 +1,5 @@
+package custom
+
+func PostgresCustomTransformerFabric() {
+
+}
