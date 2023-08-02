@@ -15,21 +15,28 @@ func TestRegexpReplaceTransformer_Transform(t *testing.T) {
 
 	table := &domains.TableMeta{
 		Oid: 123,
+		Columns: []*domains.Column{
+			&domains.Column{
+				Name: "test",
+				ColumnMeta: domains.ColumnMeta{
+					TypeOid: pgtype.TextOID,
+				},
+			},
+		},
 	}
 
 	transformer, err := RegexpReplaceTransformerMeta.InstanceTransformer(
 		table,
-		&domains.ColumnMeta{
-			TypeOid: pgtype.TextOID,
-		},
 		typeMap,
 		map[string]interface{}{
 			"regexp":  `(Hello)\s*world\s*(\!+\?)`,
 			"replace": "$1 Mr NoName $2",
+			"column":  "test",
 		},
 	)
 	require.NoError(t, err)
-	res, err := transformer.Transform("Hello world!!!?")
+	tr := transformer.(*RegexpReplaceTransformer)
+	res, err := tr.TransformAttr("Hello world!!!?")
 	require.NoError(t, err)
 	require.Equal(t, "Hello Mr NoName !!!?", res)
 

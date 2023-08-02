@@ -29,6 +29,7 @@ type TransformerBaseParams struct {
 	Nullable bool    `mapstructure:"nullable"`
 	Fraction float32 `mapstructure:"fraction"`
 	UseType  string  `mapstructure:"useType"`
+	Column   string  `mapstructure:"column"`
 }
 
 type TransformerBase struct {
@@ -40,60 +41,79 @@ type TransformerBase struct {
 	TypeMap       *pgtype.Map
 	SupportedOids []int
 	Settings      *TransformerSettings
+	Params        map[string]interface{}
+	ColumnNum     int
 }
 
+// NewTransformerBase - initialise and check the transformer requirements depending on transformer type and it settings
 func NewTransformerBase(
 	table *pgDomains.TableMeta,
-	column *pgDomains.ColumnMeta,
 	settings *TransformerSettings,
 	params map[string]interface{},
 	typeMap *pgtype.Map,
 	cast interface{},
 ) (*TransformerBase, error) {
-
-	if column == nil {
-		return nil, fmt.Errorf("column is nil")
-	}
+	var err error
 
 	tParams := TransformerBaseParams{
 		Fraction: DefaultNullFraction,
 	}
-	if err := parseTransformerParams(params, &tParams); err != nil {
+	if err = parseTransformerParams(params, &tParams); err != nil {
 		return nil, fmt.Errorf("parameters parsing error: %w", err)
 	}
 
-	if typeMap == nil {
-		return nil, fmt.Errorf("typeMap cannot be nil")
+	if settings.Name == "" {
+		return nil, fmt.Errorf("fix transformer implementation: transformer name was not assigned")
 	}
-	var oid = column.TypeOid
-	if tParams.UseType != "" {
-		t, ok := typeMap.TypeForName(tParams.UseType)
-		if !ok {
-			return nil, fmt.Errorf("cannot find type %s", tParams.UseType)
-		}
-		oid = pgDomains.Oid(t.OID)
-	}
-	if len(settings.SupportedOids) != 0 && !slices.Contains(settings.SupportedOids, int(oid)) {
-		return nil, fmt.Errorf("cannot use type: %s type is not supported", tParams.UseType)
-	}
+
+	var columnNum int
 	var t *pgtype.Type
 	var plan pgtype.EncodePlan
-	var err error
-	if cast != nil {
-		t, plan, err = GetPgTypeAndEncodingPlan(typeMap, oid, cast)
-		if err != nil {
-			return nil, err
+	var column *pgDomains.ColumnMeta
+	if settings.TransformationType == domains.AttributeTransformation {
+		if tParams.Column == "" {
+			return nil, fmt.Errorf("column parameter must be set")
+		}
+		if typeMap == nil {
+			return nil, fmt.Errorf("typeMap cannot be nil")
+		}
+		columnNum = slices.IndexFunc(table.Columns, func(column *pgDomains.Column) bool {
+			return column.Name == tParams.Column
+		})
+		if columnNum == -1 {
+			return nil, fmt.Errorf(`column "%s" not found`, tParams.Column)
+		}
+		column = &table.Columns[columnNum].ColumnMeta
+		oid := column.TypeOid
+		if tParams.UseType != "" {
+			t, ok := typeMap.TypeForName(tParams.UseType)
+			if !ok {
+				return nil, fmt.Errorf("cannot find type %s", tParams.UseType)
+			}
+			oid = pgDomains.Oid(t.OID)
+		}
+		if len(settings.SupportedOids) != 0 && !slices.Contains(settings.SupportedOids, int(oid)) {
+			return nil, fmt.Errorf("cannot use type: %s type is not supported", tParams.UseType)
+		}
+
+		if cast != nil {
+			t, plan, err = GetPgTypeAndEncodingPlan(typeMap, oid, cast)
+			if err != nil {
+				return nil, err
+			}
 		}
 	}
 
 	return &TransformerBase{
-		Column:                column,
 		PgType:                t,
 		EncodePlan:            plan,
 		TypeMap:               typeMap,
 		TransformerBaseParams: tParams,
 		Table:                 table,
 		Settings:              settings,
+		Params:                params,
+		ColumnNum:             columnNum,
+		Column:                column,
 	}, nil
 }
 
@@ -101,7 +121,21 @@ func (tb *TransformerBase) IsCustom() bool {
 	return tb.Settings.IsCustom
 }
 
+func (tb *TransformerBase) GetTransformationType() domains.TransformationType {
+	return tb.Settings.TransformationType
+}
+
+func (tb *TransformerBase) GetParam(name string) (interface{}, bool) {
+	val, ok := tb.Params[name]
+	return val, ok
+}
+
+func (tb *TransformerBase) GetName() string {
+	return tb.Settings.Name
+}
+
 func (tb *TransformerBase) Validate() domains.RuntimeErrors {
+	// There must be logic according to the
 	var errs domains.RuntimeErrors
 	if tb.Nullable && tb.Column.NotNull {
 		errs = append(errs, domains.NewRuntimeError().

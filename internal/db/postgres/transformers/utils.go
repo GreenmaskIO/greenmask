@@ -1,7 +1,10 @@
 package transformers
 
 import (
+	"bytes"
+	"encoding/csv"
 	"fmt"
+	"io"
 	"math"
 	"reflect"
 	"strings"
@@ -33,20 +36,21 @@ var (
 
 var (
 	TransformerMap = map[string]TransformerMeta{
-		"Replace":       ReplaceTransformerMeta,
-		"RegexpReplace": RegexpReplaceTransformerMeta,
-		"UUID":          UuidTransformerMeta,
-		"SetNull":       SetNullTransformerMeta,
-		"RandomDate":    RandomDateTransformerMeta,
-		"RandomInt":     RandomIntTransformerMeta,
-		"RandomFloat":   RandomFloatTransformerMeta,
-		"RandomString":  RandomStringTransformerMeta,
-		"RandomBool":    RandomBoolTransformerMeta,
-		"NoiseDate":     NoiseDateTransformerMeta,
-		"NoiseInt":      NoiseIntTransformerMeta,
-		"NoiseFloat":    NoiseFloatTransformerMeta,
-		"JsonFloat":     JsonTransformerMeta,
-		"Masking":       MaskingTransformerMeta,
+		ReplaceTransformerName:       ReplaceTransformerMeta,
+		RegexpReplaceTransformerName: RegexpReplaceTransformerMeta,
+		RandomUuidTransformerName:    RandomUuidTransformerMeta,
+		SetNullTransformerName:       SetNullTransformerMeta,
+		RandomDateTransformerName:    RandomDateTransformerMeta,
+		RandomIntTransformerName:     RandomIntTransformerMeta,
+		RandomFloatTransformerName:   RandomFloatTransformerMeta,
+		RandomStringTransformerName:  RandomStringTransformerMeta,
+		RandomBoolTransformerName:    RandomBoolTransformerMeta,
+		NoiseDateTransformerName:     NoiseDateTransformerMeta,
+		NoiseIntTransformerName:      NoiseIntTransformerMeta,
+		NoiseFloatTransformerName:    NoiseFloatTransformerMeta,
+		JsonTransformerName:          JsonTransformerMeta,
+		MaskingTransformerName:       MaskingTransformerMeta,
+		HashTransformerName:          HashTransformerMeta,
 	}
 )
 
@@ -101,15 +105,17 @@ type TransformerMeta struct {
 
 func (tm *TransformerMeta) InstanceTransformer(
 	table *pgDomains.TableMeta,
-	column *pgDomains.ColumnMeta,
 	typeMap *pgtype.Map,
 	params map[string]interface{},
 ) (domains.Transformer, error) {
-	base, err := NewTransformerBase(table, column, tm.Settings, params, typeMap, tm.Settings.CastVar)
-	if err != nil {
-		return nil, fmt.Errorf("cannot build transformer base object: %w", err)
+	if tm.Settings.TransformationType == domains.AttributeTransformation {
+		base, err := NewTransformerBase(table, tm.Settings, params, typeMap, tm.Settings.CastVar)
+		if err != nil {
+			return nil, fmt.Errorf("cannot build transformer base: %w", err)
+		}
+		return tm.NewTransformer(base, params)
 	}
-	return tm.NewTransformer(base, params)
+	return nil, fmt.Errorf("unsupporterd transformer type")
 }
 
 func GetPgTypeAndEncodingPlan(typeMap *pgtype.Map, typeOid pgDomains.Oid, castVal any) (*pgtype.Type, pgtype.EncodePlan, error) {
@@ -165,10 +171,13 @@ func truncateDate(t *time.Time, part *string) time.Time {
 }
 
 type TransformerSettings struct {
-	Nullable           bool  `json:"nullable,omitempty"`
-	Variadic           bool  `json:"variadic,omitempty"`
-	Unique             bool  `json:"unique,omitempty"`
-	MaxLength          int64 `json:"maxLength,omitempty"`
+	Name      string `json:"nullable,omitempty"`
+	Nullable  bool   `json:"nullable,omitempty"`
+	Variadic  bool   `json:"variadic,omitempty"`
+	Unique    bool   `json:"unique,omitempty"`
+	MaxLength int64  `json:"maxLength,omitempty"`
+	// SupportedOids - list of the supported pg type oids. - will be replaced SupportedTypes instead
+	// Deprecated
 	SupportedOids      []int
 	SupportedTypes     []string
 	CastVar            interface{}
@@ -214,6 +223,11 @@ func (tbs *TransformerSettings) SetCastVar(castVar interface{}) *TransformerSett
 
 func (tbs *TransformerSettings) SetTransformationType(tt domains.TransformationType) *TransformerSettings {
 	tbs.TransformationType = tt
+	return tbs
+}
+
+func (tbs *TransformerSettings) SetName(name string) *TransformerSettings {
+	tbs.Name = name
 	return tbs
 }
 
@@ -298,4 +312,43 @@ func parseTransformerParams(src map[string]interface{}, dest interface{}) error 
 		}
 	}
 	return nil
+}
+
+func getColumnValueFromCsvRecord(data []byte, columnNum int) ([]string, string, error) {
+	record, err := parseCsvRecord(data)
+	if err != nil {
+		return nil, "", err
+	}
+	return record, record[columnNum], nil
+}
+
+func updateAttributeAndBuildRecord(data []string, val string, columnNum int) ([]byte, error) {
+	data[columnNum] = val
+	return buildCsvRecord(data)
+}
+
+func parseCsvRecord(data []byte) ([]string, error) {
+	lineReader := csv.NewReader(bytes.NewReader(data))
+	lineReader.Comma = '\t'
+	values, err := lineReader.Read()
+	if err != nil {
+		return nil, fmt.Errorf("cannot read dump line: %w", err)
+	}
+	return values, nil
+}
+
+func buildCsvRecord(data []string) ([]byte, error) {
+	buf := bytes.Buffer{}
+	lineWriter := csv.NewWriter(&buf)
+	lineWriter.Comma = '\t'
+	if err := lineWriter.Write(data); err != nil {
+		return nil, fmt.Errorf("unnable to write line: %w", err)
+	}
+	lineWriter.Flush()
+
+	res, err := io.ReadAll(&buf)
+	if err != nil {
+		return nil, fmt.Errorf("cannot read data from tsv reader: %w", err)
+	}
+	return res, nil
 }

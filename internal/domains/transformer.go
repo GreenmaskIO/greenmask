@@ -5,12 +5,17 @@ type TransformationType int
 const (
 	AttributeTransformation = iota
 	TupleTransformation
+	ShiftTransformation
+	BlendTransformation
 )
 
 type Transformer interface {
-	Transform(originalValue string) (string, error)
+	Transform([]byte) ([]byte, error)
 	Validate() RuntimeErrors
 	IsCustom() bool
+	GetName() string
+	GetTransformationType() TransformationType
+	GetParam(name string) (interface{}, bool)
 }
 
 type TransformerConfig struct {

@@ -10,6 +10,8 @@ import (
 	"github.com/wwoytenko/greenfuscator/internal/domains"
 )
 
+const RandomIntTransformerName = "RandomInt"
+
 var RandomIntTransformerMeta = TransformerMeta{
 	Description: "Generate random int",
 	ParamsDescription: map[string]string{
@@ -25,7 +27,8 @@ var RandomIntTransformerMeta = TransformerMeta{
 			pgtype.Int2OID,
 			pgtype.Int4OID,
 			pgtype.Int8OID,
-		),
+		).
+		SetName(RandomIntTransformerName),
 }
 
 type RandomIntTransformerParams struct {
@@ -68,17 +71,32 @@ func NewRandomIntTransformer(
 
 }
 
-func (gtt *RandomIntTransformer) Transform(val string) (string, error) {
+func (rit *RandomIntTransformer) TransformAttr(val string) (string, error) {
 
-	if gtt.Nullable {
-		if gtt.rand.Float32() < gtt.Fraction {
+	if rit.Nullable {
+		if rit.rand.Float32() < rit.Fraction {
 			return DefaultNullSeq, nil
 		}
 	}
-	resInt := gtt.rand.Int63n(gtt.Max-gtt.Min) + gtt.Min
-	res, err := gtt.EncodePlan.Encode(resInt, nil)
+	resInt := rit.rand.Int63n(rit.Max-rit.Min) + rit.Min
+	res, err := rit.EncodePlan.Encode(resInt, nil)
 	if err != nil {
 		return "", err
 	}
 	return string(res), err
+}
+
+func (rit *RandomIntTransformer) Transform(data []byte) ([]byte, error) {
+
+	record, attr, err := getColumnValueFromCsvRecord(data, rit.ColumnNum)
+	if err != nil {
+		return nil, fmt.Errorf("cannot parse csv record: %w", err)
+	}
+
+	transformedAttr, err := rit.TransformAttr(attr)
+	if err != nil {
+		return nil, err
+	}
+
+	return updateAttributeAndBuildRecord(record, transformedAttr, rit.ColumnNum)
 }

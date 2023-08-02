@@ -96,7 +96,7 @@ func BuildTablesConfig(ctx context.Context, tx pgx.Tx, tableConfig []*pgdomains.
 
 		if err != nil && errors.Is(err, pgx.ErrNoRows) {
 			errs = append(errs, domains.NewRuntimeError().
-				SetErr(fmt.Errorf("table %s.%s not found: %w", table.Schema, table.Name, err)).
+				SetErr(fmt.Errorf("table %s.%s not found", table.Schema, table.Name)).
 				SetLevel(zerolog.ErrorLevel).
 				AddMeta("Level", TableValidationLevel).
 				AddMeta("SchemaName", schemaName).
@@ -114,25 +114,6 @@ func BuildTablesConfig(ctx context.Context, tx pgx.Tx, tableConfig []*pgdomains.
 			goto errHandle
 		}
 
-		// Transforming slice of column transformersMap to map
-		transformersMap := make(map[string]*pgdomains.Column)
-
-		for _, item := range table.Columns {
-			if _, ok := transformersMap[item.Name]; ok {
-				errs = append(errs, domains.NewRuntimeError().
-					SetErr(fmt.Errorf("column doubled")).
-					SetLevel(zerolog.ErrorLevel).
-					AddMeta("Level", ColumnValidationLevel).
-					AddMeta("SchemaName", schemaName).
-					AddMeta("TableName", tableName).
-					AddMeta("ColumnName", item.Name),
-				)
-				goto errHandle
-			}
-			transformersMap[item.Name] = item
-		}
-		t.TransformersMap = transformersMap
-
 		// Assign table constraints
 		constraints, constraintErrs := getTableConstraints(ctx, tx, t)
 		if constraintErrs != nil {
@@ -146,8 +127,18 @@ func BuildTablesConfig(ctx context.Context, tx pgx.Tx, tableConfig []*pgdomains.
 		if columnErrs != nil {
 			errs = append(errs, columnErrs...)
 		}
-		table.TransformersMap = columns
-		table.Columns = nil
+		table.Columns = columns
+
+		// Init transformers
+		if len(table.TransformersConfig) > 0 {
+			for _, tc := range table.TransformersConfig {
+				transformer, err := initTransformer(table, tc, tx.Conn().TypeMap())
+				if err != nil {
+					errs = append(errs, err)
+				}
+				table.Transformers = append(table.Transformers, transformer)
+			}
+		}
 
 		tables[table.Oid] = table
 	}
@@ -160,7 +151,7 @@ errHandle:
 	return tables, nil
 }
 
-func getColumnsConfig(ctx context.Context, tx pgx.Tx, table *pgdomains.Table) (map[string]*pgdomains.Column, ValidationErrors) {
+func getColumnsConfig(ctx context.Context, tx pgx.Tx, table *pgdomains.Table) ([]*pgdomains.Column, ValidationErrors) {
 	var errs ValidationErrors
 
 	tableColumnsQuery := `
@@ -176,7 +167,7 @@ func getColumnsConfig(ctx context.Context, tx pgx.Tx, table *pgdomains.Table) (m
 		ORDER BY a.attnum
 	`
 
-	res := make(map[string]*pgdomains.Column)
+	var res []*pgdomains.Column
 	rows, err := tx.Query(ctx, tableColumnsQuery, table.Oid)
 	if err != nil {
 		errs = append(errs, domains.NewRuntimeError().
@@ -203,29 +194,6 @@ func getColumnsConfig(ctx context.Context, tx pgx.Tx, table *pgdomains.Table) (m
 			)
 			goto errHandle
 		}
-		// If column has transformer assign it
-		if c, ok := table.TransformersMap[column.Name]; ok {
-			column.TransformConf = c.TransformConf
-			transformer, err := getTransformerConfig(table, column, tx.Conn().TypeMap())
-			if err != nil {
-				errs = append(errs, err)
-			}
-			column.Transformer = transformer
-			res[column.Name] = &column
-		}
-	}
-
-	for name, _ := range table.TransformersMap {
-		if _, ok := res[name]; !ok {
-			errs = append(errs, domains.NewRuntimeError().
-				SetErr(ErrColumnNotFound).
-				SetLevel(zerolog.ErrorLevel).
-				AddMeta("Level", ColumnValidationLevel).
-				AddMeta("SchemaName", table.Schema).
-				AddMeta("TableName", table.Name).
-				AddMeta("ColumnName", name),
-			)
-		}
 	}
 
 errHandle:
@@ -237,26 +205,45 @@ errHandle:
 	return res, nil
 }
 
-func getTransformerConfig(table *pgdomains.Table, column pgdomains.Column, typeMap *pgtype.Map) (domains.Transformer, error) {
-	makeTransformer, ok := transformers.TransformerMap[column.TransformConf.Name]
+func initTransformer(table *pgdomains.Table, transformerConf domains.TransformerConfig, typeMap *pgtype.Map) (domains.Transformer, error) {
+	transformerMaker, ok := transformers.TransformerMap[transformerConf.Name]
 	if !ok {
-
 		return nil, domains.NewRuntimeError().
 			SetErr(ErrColumnNotFound).
 			SetLevel(zerolog.ErrorLevel).
 			AddMeta("Level", TransformerValidationLevel).
 			AddMeta("SchemaName", table.Schema).
 			AddMeta("TableName", table.Name).
-			AddMeta("ColumnName", column.Name).
-			AddMeta("TransformerName", column.TransformConf.Name).
+			AddMeta("TransformerName", transformerConf.Name).
 			SetErr(ErrTransformerNotFound)
 	}
-	c, ok := table.TransformersMap[column.Name]
-	if !ok {
-		panic(fmt.Sprintf("column %s not found", column.Name))
+	if transformerMaker.Settings.TransformationType == domains.AttributeTransformation {
+		columnName, ok := transformerConf.Params["column"]
+		if !ok {
+			return nil, domains.NewRuntimeError().
+				SetErr(ErrColumnNotFound).
+				SetLevel(zerolog.ErrorLevel).
+				AddMeta("Level", TransformerValidationLevel).
+				AddMeta("SchemaName", table.Schema).
+				AddMeta("TableName", table.Name).
+				AddMeta("TransformerName", transformerConf.Name).
+				SetErr(fmt.Errorf(`parameter "column" is required for attribute transformers`))
+		}
+		if !slices.ContainsFunc(table.Columns, func(column *pgdomains.Column) bool {
+			return column.Name == columnName
+		}) {
+			return nil, domains.NewRuntimeError().
+				SetErr(ErrColumnNotFound).
+				SetLevel(zerolog.ErrorLevel).
+				AddMeta("Level", TransformerValidationLevel).
+				AddMeta("SchemaName", table.Schema).
+				AddMeta("TableName", table.Name).
+				AddMeta("TransformerName", transformerConf.Name).
+				SetErr(fmt.Errorf(`column %s is not found`, columnName))
+		}
 	}
-	// TODO: Refactor useType - it must be in transformer params instead
-	transformer, err := makeTransformer.InstanceTransformer(&table.TableMeta, &column.ColumnMeta, typeMap, c.TransformConf.Params)
+
+	transformer, err := transformerMaker.InstanceTransformer(&table.TableMeta, typeMap, transformerConf.Params)
 	if err != nil {
 		return nil, domains.NewRuntimeError().
 			SetErr(ErrColumnNotFound).
@@ -264,8 +251,7 @@ func getTransformerConfig(table *pgdomains.Table, column pgdomains.Column, typeM
 			AddMeta("Level", TransformerValidationLevel).
 			AddMeta("SchemaName", table.Schema).
 			AddMeta("TableName", table.Name).
-			AddMeta("ColumnName", column.Name).
-			AddMeta("TransformerName", column.TransformConf.Name).
+			AddMeta("TransformerName", transformerConf.Name).
 			SetErr(fmt.Errorf("transformer initialization error: %w", err))
 	}
 	return transformer, nil

@@ -16,41 +16,60 @@ func TestUuidTransformer_Transform(t *testing.T) {
 
 	table := &domains.TableMeta{
 		Oid: 123,
+		Columns: []*domains.Column{
+			&domains.Column{
+				Name: "test1",
+				ColumnMeta: domains.ColumnMeta{
+					TypeOid: pgtype.UUIDOID,
+				},
+			},
+			&domains.Column{
+				Name: "test2",
+				ColumnMeta: domains.ColumnMeta{
+					TypeOid: pgtype.TextOID,
+				},
+			},
+			&domains.Column{
+				Name: "test3",
+				ColumnMeta: domains.ColumnMeta{
+					TypeOid: pgtype.Int8OID,
+				},
+			},
+		},
 	}
 
-	transformer, err := UuidTransformerMeta.InstanceTransformer(
+	transformer, err := RandomUuidTransformerMeta.InstanceTransformer(
 		table,
-		&domains.ColumnMeta{
-			TypeOid: pgtype.UUIDOID,
-		},
 		typeMap,
-		nil,
+		map[string]interface{}{
+			"column": "test1",
+		},
 	)
 	require.NoError(t, err)
-	res, err := transformer.Transform("old_val")
+	tr := transformer.(*RandomUuidTransformer)
+	res, err := tr.TransformAttr("old_val")
 	assert.NoError(t, err)
 	assert.Regexp(t, `^[\d\w]{8}-[\d\w]{4}-[\d\w]{4}-[\d\w]{4}-[\d\w]{12}$`, res)
 
-	transformer, err = UuidTransformerMeta.InstanceTransformer(
+	transformer, err = RandomUuidTransformerMeta.InstanceTransformer(
 		table,
-		&domains.ColumnMeta{
-			TypeOid: pgtype.TextOID,
-		},
 		typeMap,
-		nil,
+		map[string]interface{}{
+			"column": "test2",
+		},
 	)
 	require.NoError(t, err)
-	res, err = transformer.Transform("old_val")
+	tr = transformer.(*RandomUuidTransformer)
+	res, err = tr.TransformAttr("old_val")
 	assert.NoError(t, err)
 	assert.Regexp(t, `^[\d\w]{8}-[\d\w]{4}-[\d\w]{4}-[\d\w]{4}-[\d\w]{12}$`, res)
 
-	transformer, err = UuidTransformerMeta.InstanceTransformer(
+	transformer, err = RandomUuidTransformerMeta.InstanceTransformer(
 		table,
-		&domains.ColumnMeta{
-			TypeOid: pgtype.Int8OID,
-		},
 		typeMap,
-		nil,
+		map[string]interface{}{
+			"column": "test3",
+		},
 	)
 	require.ErrorContains(t, err, "type is not supported")
 }

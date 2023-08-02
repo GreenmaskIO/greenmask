@@ -11,6 +11,10 @@ import (
 	"github.com/wwoytenko/greenfuscator/internal/domains"
 )
 
+const (
+	JsonTransformerName = "Json"
+)
+
 var JsonTransformerMeta = TransformerMeta{
 	Description: `Json with value passed through "value" parameter`,
 	ParamsDescription: map[string]string{
@@ -24,7 +28,8 @@ var JsonTransformerMeta = TransformerMeta{
 		SetSupportedOids(
 			pgtype.JSONOID,
 			pgtype.JSONBOID,
-		),
+		).
+		SetName(JsonTransformerName),
 }
 
 type JsonTransformerParams struct {
@@ -77,18 +82,18 @@ func NewJsonTransformer(
 	return res, nil
 }
 
-func (rt *JsonTransformer) Transform(val string) (string, error) {
+func (jt *JsonTransformer) TransformAttr(val string) (string, error) {
 	var err error
 	if val == DefaultNullSeq {
 		return val, nil
 	}
-	if rt.Nullable {
-		if rt.rand.Float32() < rt.Fraction {
+	if jt.Nullable {
+		if jt.rand.Float32() < jt.Fraction {
 			return DefaultNullSeq, nil
 		}
 	}
 
-	for _, op := range rt.Operations {
+	for _, op := range jt.Operations {
 		val, err = op.Apply(val)
 		if err != nil {
 			return "", fmt.Errorf("cannot apply operation to the json value: %s: %s: %s", op.Operation, op.Path, op.Value)
@@ -96,4 +101,19 @@ func (rt *JsonTransformer) Transform(val string) (string, error) {
 	}
 
 	return val, nil
+}
+
+func (jt *JsonTransformer) Transform(data []byte) ([]byte, error) {
+
+	record, attr, err := getColumnValueFromCsvRecord(data, jt.ColumnNum)
+	if err != nil {
+		return nil, fmt.Errorf("cannot parse csv record: %w", err)
+	}
+
+	transformedAttr, err := jt.TransformAttr(attr)
+	if err != nil {
+		return nil, err
+	}
+
+	return updateAttributeAndBuildRecord(record, transformedAttr, jt.ColumnNum)
 }

@@ -10,7 +10,7 @@ import (
 	"github.com/wwoytenko/greenfuscator/internal/domains"
 )
 
-type getRandStringFunc func(r *rand.Rand, buf []rune, minLength, maxLength int64, symbols []rune) string
+const RandomStringTransformerName = "RandomString"
 
 var RandomStringTransformerMeta = TransformerMeta{
 	Description: "Generate random string",
@@ -27,8 +27,11 @@ var RandomStringTransformerMeta = TransformerMeta{
 		SetSupportedOids(
 			pgtype.VarcharOID,
 			pgtype.TextOID,
-		),
+		).
+		SetName(RandomStringTransformerName),
 }
+
+type getRandStringFunc func(r *rand.Rand, buf []rune, minLength, maxLength int64, symbols []rune) string
 
 type RandomStringTransformerParams struct {
 	Symbols  string  `mapstructure:"symbols"`
@@ -80,13 +83,28 @@ func NewRandomStringTransformer(
 	}, nil
 }
 
-func (gtt *RandomStringTransformer) Transform(val string) (string, error) {
-	if gtt.Nullable {
-		if gtt.rand.Float32() < gtt.Fraction {
+func (rst *RandomStringTransformer) TransformAttr(val string) (string, error) {
+	if rst.Nullable {
+		if rst.rand.Float32() < rst.Fraction {
 			return DefaultNullSeq, nil
 		}
 	}
-	return gtt.generate(gtt.rand, gtt.buf, gtt.Min, gtt.Max, gtt.symbols), nil
+	return rst.generate(rst.rand, rst.buf, rst.Min, rst.Max, rst.symbols), nil
+}
+
+func (rst *RandomStringTransformer) Transform(data []byte) ([]byte, error) {
+
+	record, attr, err := getColumnValueFromCsvRecord(data, rst.ColumnNum)
+	if err != nil {
+		return nil, fmt.Errorf("cannot parse csv record: %w", err)
+	}
+
+	transformedAttr, err := rst.TransformAttr(attr)
+	if err != nil {
+		return nil, err
+	}
+
+	return updateAttributeAndBuildRecord(record, transformedAttr, rst.ColumnNum)
 }
 
 func generateFixedString(r *rand.Rand, buf []rune, minLength, maxLength int64, symbols []rune) string {

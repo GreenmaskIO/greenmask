@@ -23,6 +23,10 @@ const (
 	MURL        string = "url"
 )
 
+const (
+	MaskingTransformerName = "Masking"
+)
+
 var MaskingTransformerMeta = TransformerMeta{
 	Description: `Masking with value passed through "value" parameter`,
 	ParamsDescription: map[string]string{
@@ -35,7 +39,8 @@ var MaskingTransformerMeta = TransformerMeta{
 		SetSupportedOids(
 			pgtype.TextOID,
 			pgtype.VarcharOID,
-		),
+		).
+		SetName(MaskingTransformerName),
 }
 
 type maskingFunction func(val string) string
@@ -106,14 +111,29 @@ func NewMaskingTransformer(
 	return res, nil
 }
 
-func (rt *MaskingTransformer) Transform(val string) (string, error) {
+func (mt *MaskingTransformer) TransformAttr(val string) (string, error) {
 	if val == DefaultNullSeq {
 		return val, nil
 	}
-	if rt.Nullable {
-		if rt.rand.Float32() < rt.Fraction {
+	if mt.Nullable {
+		if mt.rand.Float32() < mt.Fraction {
 			return DefaultNullSeq, nil
 		}
 	}
-	return rt.maskingFunction(val), nil
+	return mt.maskingFunction(val), nil
+}
+
+func (mt *MaskingTransformer) Transform(data []byte) ([]byte, error) {
+
+	record, attr, err := getColumnValueFromCsvRecord(data, mt.ColumnNum)
+	if err != nil {
+		return nil, fmt.Errorf("cannot parse csv record: %w", err)
+	}
+
+	transformedAttr, err := mt.TransformAttr(attr)
+	if err != nil {
+		return nil, err
+	}
+
+	return updateAttributeAndBuildRecord(record, transformedAttr, mt.ColumnNum)
 }

@@ -1,7 +1,7 @@
 common:
   log-level: "info"
   log-format: "text"
-    #  bin_path: "/usr/bin"
+  #  bin_path: "/usr/bin"
   bin_path: "/opt/homebrew/bin"
   storage:
     directory:
@@ -101,15 +101,16 @@ dump:
             params: { min: 500, max: 600 }
 
     - schema: "typetest"
-      name: "test_bool"
-      columns:
-        - name: "at1"
-          transformer:
-            name: "RandomBool"
-            params: { "nullable": true }
-        - name: "at2"
-          transformer:
-            name: "RandomBool"
+      name: "test_bool1"
+      transformers:
+        - name: "RandomBool"
+          params:
+            columnName: "at1"
+            nullable: true
+
+        - name: "RandomBool"
+          params:
+            columnName: "at2"
 
 custom_transformers:
   custom:

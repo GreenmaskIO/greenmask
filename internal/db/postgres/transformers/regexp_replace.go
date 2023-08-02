@@ -11,6 +11,8 @@ import (
 	"github.com/wwoytenko/greenfuscator/internal/domains"
 )
 
+const RegexpReplaceTransformerName = "RegexpReplace"
+
 var RegexpReplaceTransformerMeta = TransformerMeta{
 	Description: `RegexpReplace with value passed through "value" parameter`,
 	ParamsDescription: map[string]string{
@@ -25,7 +27,8 @@ var RegexpReplaceTransformerMeta = TransformerMeta{
 		SetSupportedOids(
 			pgtype.VarcharOID,
 			pgtype.TextOID,
-		),
+		).
+		SetName(RegexpReplaceTransformerName),
 }
 
 type RegexpReplaceTransformerParams struct {
@@ -73,14 +76,29 @@ func NewRegexpReplaceTransformer(
 	return res, nil
 }
 
-func (rt *RegexpReplaceTransformer) Transform(val string) (string, error) {
+func (rrt *RegexpReplaceTransformer) TransformAttr(val string) (string, error) {
 	if val == DefaultNullSeq {
 		return val, nil
 	}
-	if rt.Nullable {
-		if rt.rand.Float32() < rt.Fraction {
+	if rrt.Nullable {
+		if rrt.rand.Float32() < rrt.Fraction {
 			return DefaultNullSeq, nil
 		}
 	}
-	return rt.regexp.ReplaceAllString(val, rt.Replace), nil
+	return rrt.regexp.ReplaceAllString(val, rrt.Replace), nil
+}
+
+func (rrt *RegexpReplaceTransformer) Transform(data []byte) ([]byte, error) {
+
+	record, attr, err := getColumnValueFromCsvRecord(data, rrt.ColumnNum)
+	if err != nil {
+		return nil, fmt.Errorf("cannot parse csv record: %w", err)
+	}
+
+	transformedAttr, err := rrt.TransformAttr(attr)
+	if err != nil {
+		return nil, err
+	}
+
+	return updateAttributeAndBuildRecord(record, transformedAttr, rrt.ColumnNum)
 }

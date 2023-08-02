@@ -13,32 +13,43 @@ func TestMaskingTransformer_Transform(t *testing.T) {
 	typeMap, err := getTypeMap()
 	require.NoError(t, err)
 
-	transformer, err := MaskingTransformerMeta.InstanceTransformer(
-		&domains.TableMeta{
-			Oid: 123,
+	table := &domains.TableMeta{
+		Oid: 123,
+		Columns: []*domains.Column{
+			&domains.Column{
+				Name: "test",
+				ColumnMeta: domains.ColumnMeta{
+					TypeOid: pgtype.TextOID,
+				},
+			},
 		},
-		&domains.ColumnMeta{
-			TypeOid: pgtype.TextOID,
-		}, typeMap,
-		map[string]interface{}{"type": "name"},
+	}
+
+	transformer, err := MaskingTransformerMeta.InstanceTransformer(
+		table,
+		typeMap,
+		map[string]interface{}{
+			"type":   "name",
+			"column": "test",
+		},
 	)
 	require.NoError(t, err)
-	res, err := transformer.Transform("abcdef test")
+	tr := transformer.(*MaskingTransformer)
+	res, err := tr.TransformAttr("abcdef test")
 	require.NoError(t, err)
 	require.Equal(t, "a**def t**t", res)
 
 	transformer, err = MaskingTransformerMeta.InstanceTransformer(
-		&domains.TableMeta{
-			Oid: 123,
-		},
-		&domains.ColumnMeta{
-			TypeOid: pgtype.TextOID,
-		},
+		table,
 		typeMap,
-		map[string]interface{}{"type": "password"},
+		map[string]interface{}{
+			"type":   "password",
+			"column": "test",
+		},
 	)
 	require.NoError(t, err)
-	res, err = transformer.Transform("password_secure")
+	tr = transformer.(*MaskingTransformer)
+	res, err = tr.TransformAttr("password_secure")
 	require.NoError(t, err)
 	require.Equal(t, "************", res)
 

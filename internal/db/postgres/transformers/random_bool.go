@@ -10,6 +10,8 @@ import (
 	"github.com/wwoytenko/greenfuscator/internal/domains"
 )
 
+const RandomBoolTransformerName = "RandomBool"
+
 var RandomBoolTransformerMeta = TransformerMeta{
 	Description:    "Generate random bool",
 	NewTransformer: NewRandomBoolTransformer,
@@ -18,7 +20,8 @@ var RandomBoolTransformerMeta = TransformerMeta{
 		SetCastVar(true).
 		SetSupportedOids(
 			pgtype.BoolOID,
-		),
+		).
+		SetName(RandomBoolTransformerName),
 }
 
 type RandomBoolTransformerParams struct {
@@ -59,15 +62,30 @@ func NewRandomBoolTransformer(
 
 }
 
-func (gtt *RandomBoolTransformer) Transform(val string) (string, error) {
-	if gtt.Nullable {
-		if gtt.rand.Float32() < gtt.Fraction {
+func (rbt *RandomBoolTransformer) TransformAttr(val string) (string, error) {
+	if rbt.Nullable {
+		if rbt.rand.Float32() < rbt.Fraction {
 			return DefaultNullSeq, nil
 		}
 	}
-	res, err := gtt.EncodePlan.Encode(gtt.rand.Int63n(2) == 1, nil)
+	res, err := rbt.EncodePlan.Encode(rbt.rand.Int63n(2) == 1, nil)
 	if err != nil {
 		return "", err
 	}
 	return string(res), err
+}
+
+func (rbt *RandomBoolTransformer) Transform(data []byte) ([]byte, error) {
+
+	record, attr, err := getColumnValueFromCsvRecord(data, rbt.ColumnNum)
+	if err != nil {
+		return nil, fmt.Errorf("cannot parse csv record: %w", err)
+	}
+
+	transformedAttr, err := rbt.TransformAttr(attr)
+	if err != nil {
+		return nil, err
+	}
+
+	return updateAttributeAndBuildRecord(record, transformedAttr, rbt.ColumnNum)
 }

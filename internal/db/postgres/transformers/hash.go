@@ -15,7 +15,10 @@ import (
 
 // TODO: Make length truncation
 
-const saltLength = 32
+const (
+	saltLength          = 32
+	HashTransformerName = "Hash"
+)
 
 var HashTransformerMeta = TransformerMeta{
 	Description: `Replace with value passed through "value" parameter`,
@@ -30,7 +33,8 @@ var HashTransformerMeta = TransformerMeta{
 		SetSupportedOids(
 			pgtype.VarcharOID,
 			pgtype.TextOID,
-		),
+		).
+		SetName(HashTransformerName),
 }
 
 type HashTransformerParams struct {
@@ -80,18 +84,33 @@ func NewHashTransformer(
 	return res, nil
 }
 
-func (rt *HashTransformer) Transform(val string) (string, error) {
-	if val == DefaultNullSeq {
-		return val, nil
+func (ht *HashTransformer) TransformAttr(data string) (string, error) {
+	if data == DefaultNullSeq {
+		return data, nil
 	}
-	if rt.Nullable {
-		if rt.rand.Float32() < rt.Fraction {
+	if ht.Nullable {
+		if ht.rand.Float32() < ht.Fraction {
 			return DefaultNullSeq, nil
 		}
 	}
-	dk, err := scrypt.Key([]byte(val), rt.salt, 32768, 8, 1, 32)
+	dk, err := scrypt.Key([]byte(data), ht.salt, 32768, 8, 1, 32)
 	if err != nil {
 		return "", fmt.Errorf("cannot generate hash by value %w", err)
 	}
 	return base64.StdEncoding.EncodeToString(dk), nil
+}
+
+func (ht *HashTransformer) Transform(data []byte) ([]byte, error) {
+
+	record, attr, err := getColumnValueFromCsvRecord(data, ht.ColumnNum)
+	if err != nil {
+		return nil, fmt.Errorf("cannot parse csv record: %w", err)
+	}
+
+	transformedAttr, err := ht.TransformAttr(attr)
+	if err != nil {
+		return nil, err
+	}
+
+	return updateAttributeAndBuildRecord(record, transformedAttr, ht.ColumnNum)
 }

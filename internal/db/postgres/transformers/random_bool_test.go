@@ -14,31 +14,38 @@ func TestRandomBoolTransformer_Transform(t *testing.T) {
 	typeMap, err := getTypeMap()
 	require.NoError(t, err)
 
-	table := &domains.TableMeta{
-		Oid: 123,
-	}
-
 	tests := []struct {
 		name    string
-		column  *domains.ColumnMeta
+		table   *domains.TableMeta
 		params  map[string]interface{}
 		pattern string
 	}{
 		{
 			name: "test bool type",
-			column: &domains.ColumnMeta{
-				TypeOid: pgtype.BoolOID,
+			table: &domains.TableMeta{
+				Oid: 123,
+				Columns: []*domains.Column{
+					&domains.Column{
+						Name: "test",
+						ColumnMeta: domains.ColumnMeta{
+							TypeOid: pgtype.BoolOID,
+						},
+					},
+				},
 			},
-			params:  map[string]interface{}{},
+			params: map[string]interface{}{
+				"column": "test",
+			},
 			pattern: `^(t|f)$`,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			transformer, err := RandomBoolTransformerMeta.InstanceTransformer(table, tt.column, typeMap, tt.params)
+			transformer, err := RandomBoolTransformerMeta.InstanceTransformer(tt.table, typeMap, tt.params)
 			require.NoError(t, err)
-			val, err := transformer.Transform("")
+			tr := transformer.(*RandomBoolTransformer)
+			val, err := tr.TransformAttr("")
 			require.NoError(t, err)
 			log.Println(val)
 			require.Regexp(t, tt.pattern, val)

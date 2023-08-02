@@ -10,6 +10,8 @@ import (
 	"github.com/wwoytenko/greenfuscator/internal/domains"
 )
 
+const RandomDateTransformerName = "RandomDate"
+
 var RandomDateTransformerMeta = TransformerMeta{
 	Description: "Generate random date",
 	ParamsDescription: map[string]string{
@@ -29,7 +31,8 @@ var RandomDateTransformerMeta = TransformerMeta{
 			pgtype.DateOID,
 			pgtype.TimestampOID,
 			pgtype.TimestamptzOID,
-		),
+		).
+		SetName(RandomDateTransformerName),
 }
 
 var truncateParts = []string{"year", "month", "day", "hour", "second", "millisecond", "microsecond", "nanosecond"}
@@ -92,18 +95,33 @@ func NewRandomDateTransformer(
 	return res, nil
 }
 
-func (gtt *RandomDateTransformer) Transform(val string) (string, error) {
-	if gtt.Nullable {
-		if gtt.rand.Float32() < gtt.Fraction {
+func (rdt *RandomDateTransformer) TransformAttr(val string) (string, error) {
+	if rdt.Nullable {
+		if rdt.rand.Float32() < rdt.Fraction {
 			return DefaultNullSeq, nil
 		}
 	}
-	resTime := gtt.generate(gtt.rand, &gtt.min, &gtt.max, &gtt.Truncate)
-	res, err := gtt.EncodePlan.Encode(resTime, nil)
+	resTime := rdt.generate(rdt.rand, &rdt.min, &rdt.max, &rdt.Truncate)
+	res, err := rdt.EncodePlan.Encode(resTime, nil)
 	if err != nil {
 		return "", err
 	}
 	return string(res), err
+}
+
+func (rdt *RandomDateTransformer) Transform(data []byte) ([]byte, error) {
+
+	record, attr, err := getColumnValueFromCsvRecord(data, rdt.ColumnNum)
+	if err != nil {
+		return nil, fmt.Errorf("cannot parse csv record: %w", err)
+	}
+
+	transformedAttr, err := rdt.TransformAttr(attr)
+	if err != nil {
+		return nil, err
+	}
+
+	return updateAttributeAndBuildRecord(record, transformedAttr, rdt.ColumnNum)
 }
 
 func generateRandomTime(r *rand.Rand, startDate *time.Time, endDate *time.Time, truncate *string) time.Time {

@@ -11,7 +11,10 @@ import (
 	"github.com/wwoytenko/greenfuscator/internal/domains"
 )
 
-const defaultPrecision int16 = 4
+const (
+	defaultPrecision           int16 = 4
+	RandomFloatTransformerName       = "RandomFloat"
+)
 
 var RandomFloatTransformerMeta = TransformerMeta{
 	Description: "Generate random float",
@@ -28,7 +31,8 @@ var RandomFloatTransformerMeta = TransformerMeta{
 		SetSupportedOids(
 			pgtype.Float4OID,
 			pgtype.Float8OID,
-		),
+		).
+		SetName(RandomFloatTransformerName),
 }
 
 type RandomFloatTransformerParams struct {
@@ -74,17 +78,32 @@ func NewRandomFloatTransformer(
 	return res, nil
 }
 
-func (gtt *RandomFloatTransformer) Transform(val string) (string, error) {
-	if gtt.Nullable {
-		if gtt.rand.Float32() < gtt.Fraction {
+func (rft *RandomFloatTransformer) TransformAttr(val string) (string, error) {
+	if rft.Nullable {
+		if rft.rand.Float32() < rft.Fraction {
 			return DefaultNullSeq, nil
 		}
 	}
-	resFloat := gtt.Min + gtt.rand.Float64()*(gtt.Max-gtt.Min)
-	resFloat = Round(resFloat, gtt.precision)
-	res, err := gtt.EncodePlan.Encode(resFloat, nil)
+	resFloat := rft.Min + rft.rand.Float64()*(rft.Max-rft.Min)
+	resFloat = Round(resFloat, rft.precision)
+	res, err := rft.EncodePlan.Encode(resFloat, nil)
 	if err != nil {
 		return "", err
 	}
 	return string(res), err
+}
+
+func (rft *RandomFloatTransformer) Transform(data []byte) ([]byte, error) {
+
+	record, attr, err := getColumnValueFromCsvRecord(data, rft.ColumnNum)
+	if err != nil {
+		return nil, fmt.Errorf("cannot parse csv record: %w", err)
+	}
+
+	transformedAttr, err := rft.TransformAttr(attr)
+	if err != nil {
+		return nil, err
+	}
+
+	return updateAttributeAndBuildRecord(record, transformedAttr, rft.ColumnNum)
 }

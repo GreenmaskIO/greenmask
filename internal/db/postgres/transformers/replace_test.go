@@ -15,72 +15,98 @@ func TestReplaceTransformer_Transform(t *testing.T) {
 
 	table := &domains.TableMeta{
 		Oid: 123,
+		Columns: []*domains.Column{
+			&domains.Column{
+				Name: "test",
+				ColumnMeta: domains.ColumnMeta{
+					TypeOid: pgtype.TextOID,
+				},
+			},
+		},
 	}
 
 	transformer, err := ReplaceTransformerMeta.InstanceTransformer(
 		table,
-		&domains.ColumnMeta{
-			TypeOid: pgtype.TextOID,
-		},
 		typeMap,
-		nil,
+		map[string]interface{}{
+			"column": "test",
+		},
 	)
 	require.ErrorContains(t, err, "validation error")
 
 	transformer, err = ReplaceTransformerMeta.InstanceTransformer(
 		table,
-		&domains.ColumnMeta{
-			TypeOid: pgtype.TextOID,
-		},
 		typeMap,
 		map[string]interface{}{
-			"value": "new_val",
+			"value":  "new_val",
+			"column": "test",
 		},
 	)
 	require.NoError(t, err)
-	res, err := transformer.Transform("old_value")
+	tr := transformer.(*ReplaceTransformer)
+	res, err := tr.TransformAttr("old_value")
 	require.NoError(t, err)
 	require.Equal(t, res, "new_val")
 
+	table = &domains.TableMeta{
+		Oid: 123,
+		Columns: []*domains.Column{
+			&domains.Column{
+				Name: "test",
+				ColumnMeta: domains.ColumnMeta{
+					TypeOid: pgtype.DateOID,
+				},
+			},
+		},
+	}
+
 	transformer, err = ReplaceTransformerMeta.InstanceTransformer(
 		table,
-		&domains.ColumnMeta{
-			TypeOid: pgtype.DateOID,
-		},
 		typeMap,
 		map[string]interface{}{
-			"value": "new_val",
+			"value":  "new_val",
+			"column": "test",
 		},
 	)
 	require.ErrorContains(t, err, "invalid date format")
 
 	transformer, err = ReplaceTransformerMeta.InstanceTransformer(
 		table,
-		&domains.ColumnMeta{
-			TypeOid: pgtype.DateOID,
-		},
 		typeMap,
 		map[string]interface{}{
-			"value": "2023-18-05",
+			"value":  "2023-18-05",
+			"column": "test",
 		},
 	)
 	require.NoError(t, err)
-	res, err = transformer.Transform("old_value")
+	tr = transformer.(*ReplaceTransformer)
+	res, err = tr.TransformAttr("old_value")
 	require.NoError(t, err)
 	require.Equal(t, res, "2023-18-05")
 
+	table = &domains.TableMeta{
+		Oid: 123,
+		Columns: []*domains.Column{
+			&domains.Column{
+				Name: "test",
+				ColumnMeta: domains.ColumnMeta{
+					TypeOid: pgtype.UUIDOID,
+				},
+			},
+		},
+	}
+
 	transformer, err = ReplaceTransformerMeta.InstanceTransformer(
 		table,
-		&domains.ColumnMeta{
-			TypeOid: pgtype.UUIDOID,
-		},
 		typeMap,
 		map[string]interface{}{
-			"value": "dd88a355-5dfa-4556-aaff-fe18302b285c",
+			"value":  "dd88a355-5dfa-4556-aaff-fe18302b285c",
+			"column": "test",
 		},
 	)
 	require.NoError(t, err)
-	res, err = transformer.Transform("3df11ba0-d408-42e1-9306-cd468e0669cb")
+	tr = transformer.(*ReplaceTransformer)
+	res, err = tr.TransformAttr("3df11ba0-d408-42e1-9306-cd468e0669cb")
 	require.NoError(t, err)
 	require.Equal(t, res, "dd88a355-5dfa-4556-aaff-fe18302b285c")
 

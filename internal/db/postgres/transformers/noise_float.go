@@ -11,6 +11,8 @@ import (
 	"github.com/wwoytenko/greenfuscator/internal/domains"
 )
 
+const NoiseFloatTransformerName = "NoiseFloat"
+
 var NoiseFloatTransformerMeta = TransformerMeta{
 	Description: "Generate random float",
 	ParamsDescription: map[string]string{
@@ -25,7 +27,8 @@ var NoiseFloatTransformerMeta = TransformerMeta{
 		SetSupportedOids(
 			pgtype.Float4OID,
 			pgtype.Float8OID,
-		),
+		).
+		SetName(NoiseFloatTransformerName),
 }
 
 type NoiseFloatTransformerParams struct {
@@ -71,28 +74,43 @@ func NewNoiseFloatTransformer(
 	return res, nil
 }
 
-func (gtt *NoiseFloatTransformer) Transform(val string) (string, error) {
+func (nft *NoiseFloatTransformer) TransformAttr(val string) (string, error) {
 	if val == DefaultNullSeq {
 		return val, nil
 	}
-	if err := gtt.Scan(val, &gtt.val); err != nil {
+	if err := nft.Scan(val, &nft.val); err != nil {
 		return "", fmt.Errorf("cannot scan string into int64: %w", err)
 	}
 
-	if gtt.Nullable {
-		if gtt.rand.Float32() < gtt.Fraction {
+	if nft.Nullable {
+		if nft.rand.Float32() < nft.Fraction {
 			return DefaultNullSeq, nil
 		}
 	}
-	ratio := gtt.rand.Float64() * gtt.Ratio
-	negative := gtt.rand.Int63n(2) == 1
+	ratio := nft.rand.Float64() * nft.Ratio
+	negative := nft.rand.Int63n(2) == 1
 	if negative {
 		ratio = ratio * -1
 	}
-	gtt.val = Round(gtt.val+gtt.val*ratio, gtt.precision)
-	res, err := gtt.EncodePlan.Encode(gtt.val, nil)
+	nft.val = Round(nft.val+nft.val*ratio, nft.precision)
+	res, err := nft.EncodePlan.Encode(nft.val, nil)
 	if err != nil {
 		return "", err
 	}
 	return string(res), err
+}
+
+func (nft *NoiseFloatTransformer) Transform(data []byte) ([]byte, error) {
+
+	record, attr, err := getColumnValueFromCsvRecord(data, nft.ColumnNum)
+	if err != nil {
+		return nil, fmt.Errorf("cannot parse csv record: %w", err)
+	}
+
+	transformedAttr, err := nft.TransformAttr(attr)
+	if err != nil {
+		return nil, err
+	}
+
+	return updateAttributeAndBuildRecord(record, transformedAttr, nft.ColumnNum)
 }

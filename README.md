@@ -18,6 +18,7 @@ that allows you to restore anything you want using pg_restore util.
    * Testing framework and the way how to test
    * Metadata model passing
 * Write the Greenmask library for the Python
+* Reunion TableMeta and ColumnMeta with Table and Column types - if possible
 
 Models:
 * Error model

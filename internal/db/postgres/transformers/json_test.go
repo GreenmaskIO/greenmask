@@ -16,11 +16,18 @@ func TestJsonTransformer_Transform(t *testing.T) {
 	transformer, err := JsonTransformerMeta.InstanceTransformer(
 		&domains.TableMeta{
 			Oid: 123,
+			Columns: []*domains.Column{
+				&domains.Column{
+					Name: "test",
+					ColumnMeta: domains.ColumnMeta{
+						TypeOid: pgtype.JSONBOID,
+					},
+				},
+			},
 		},
-		&domains.ColumnMeta{
-			TypeOid: pgtype.JSONBOID,
-		}, typeMap,
+		typeMap,
 		map[string]interface{}{
+			"column": "test",
 			"operations": []map[string]interface{}{
 				{
 					"operation": "set",
@@ -43,8 +50,9 @@ func TestJsonTransformer_Transform(t *testing.T) {
 				},
 			},
 		})
+	tr := transformer.(*JsonTransformer)
 	require.NoError(t, err)
-	res, err := transformer.Transform(`{"name":{"last":"Anderson", "age": 5, "todelete": true}}`)
+	res, err := tr.TransformAttr(`{"name":{"last":"Anderson", "age": 5, "todelete": true}}`)
 	require.NoError(t, err)
 	require.JSONEq(t, `{"name":{"last":"Test","first":"Sara", "age": 10}}`, res)
 }

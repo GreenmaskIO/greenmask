@@ -13,6 +13,8 @@ import (
 
 // TODO: Ensure pqinterval.Duration returns duration in int64 for date and time
 
+const NoiseDateTransformerName = "NoiseDate"
+
 type dateNoiseFunc func(r *rand.Rand, ration time.Duration, original *time.Time, truncate *string) time.Time
 
 var NoiseDateTransformerMeta = TransformerMeta{
@@ -28,11 +30,13 @@ var NoiseDateTransformerMeta = TransformerMeta{
 	Settings: NewTransformerSettings().
 		SetNullable().
 		SetCastVar(time.Time{}).
-		SetVariadic().SetSupportedOids(
-		pgtype.DateOID,
-		pgtype.TimestampOID,
-		pgtype.TimestamptzOID,
-	),
+		SetVariadic().
+		SetSupportedOids(
+			pgtype.DateOID,
+			pgtype.TimestampOID,
+			pgtype.TimestamptzOID,
+		).
+		SetName(NoiseDateTransformerName),
 }
 
 type NoiseDateTransformerParams struct {
@@ -93,25 +97,40 @@ func NewNoiseDateTransformer(
 	return res, nil
 }
 
-func (gtt *NoiseDateTransformer) Transform(val string) (string, error) {
+func (ndt *NoiseDateTransformer) TransformAttr(val string) (string, error) {
 	if val == DefaultNullSeq {
 		return val, nil
 	}
-	if err := gtt.Scan(val, &gtt.val); err != nil {
+	if err := ndt.Scan(val, &ndt.val); err != nil {
 		return "", fmt.Errorf("cannot scan string into time.Time: %w", err)
 	}
 
-	if gtt.Nullable {
-		if gtt.rand.Float32() < gtt.Fraction {
+	if ndt.Nullable {
+		if ndt.rand.Float32() < ndt.Fraction {
 			return DefaultNullSeq, nil
 		}
 	}
-	resTime := gtt.generate(gtt.rand, gtt.ratio, &gtt.val, &gtt.Truncate)
-	res, err := gtt.EncodePlan.Encode(resTime, nil)
+	resTime := ndt.generate(ndt.rand, ndt.ratio, &ndt.val, &ndt.Truncate)
+	res, err := ndt.EncodePlan.Encode(resTime, nil)
 	if err != nil {
 		return "", err
 	}
 	return string(res), err
+}
+
+func (ndt *NoiseDateTransformer) Transform(data []byte) ([]byte, error) {
+
+	record, attr, err := getColumnValueFromCsvRecord(data, ndt.ColumnNum)
+	if err != nil {
+		return nil, fmt.Errorf("cannot parse csv record: %w", err)
+	}
+
+	transformedAttr, err := ndt.TransformAttr(attr)
+	if err != nil {
+		return nil, err
+	}
+
+	return updateAttributeAndBuildRecord(record, transformedAttr, ndt.ColumnNum)
 }
 
 func generateNoisedTime(r *rand.Rand, ratio time.Duration, val *time.Time, truncate *string) time.Time {

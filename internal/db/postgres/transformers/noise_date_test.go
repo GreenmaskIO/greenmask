@@ -17,13 +17,9 @@ func TestNoiseDateTransformer_Transform(t *testing.T) {
 	require.NoError(t, err)
 	loc := time.Now().Location()
 
-	table := &domains.TableMeta{
-		Oid: 123,
-	}
-
 	tests := []struct {
 		name   string
-		column *domains.ColumnMeta
+		table  *domains.TableMeta
 		params map[string]interface{}
 		input  string
 		result struct {
@@ -33,11 +29,20 @@ func TestNoiseDateTransformer_Transform(t *testing.T) {
 	}{
 		{
 			name: "test date type",
-			column: &domains.ColumnMeta{
-				TypeOid: pgtype.DateOID,
+			table: &domains.TableMeta{
+				Oid: 123,
+				Columns: []*domains.Column{
+					&domains.Column{
+						Name: "test",
+						ColumnMeta: domains.ColumnMeta{
+							TypeOid: pgtype.DateOID,
+						},
+					},
+				},
 			},
 			params: map[string]interface{}{
-				"ratio": "1 year 1 mons 1 day 01:01:01.01",
+				"ratio":  "1 year 1 mons 1 day 01:01:01.01",
+				"column": "test",
 			},
 			input: "2023-06-25",
 			result: struct{ min, max time.Time }{
@@ -48,11 +53,20 @@ func TestNoiseDateTransformer_Transform(t *testing.T) {
 		},
 		{
 			name: "test timestamp without timezone type",
-			column: &domains.ColumnMeta{
-				TypeOid: pgtype.TimestampOID,
+			table: &domains.TableMeta{
+				Oid: 123,
+				Columns: []*domains.Column{
+					&domains.Column{
+						Name: "test",
+						ColumnMeta: domains.ColumnMeta{
+							TypeOid: pgtype.TimestampOID,
+						},
+					},
+				},
 			},
 			params: map[string]interface{}{
-				"ratio": "1 year 1 mons 1 day 01:01:01.01",
+				"ratio":  "1 year 1 mons 1 day 01:01:01.01",
+				"column": "test",
 			},
 			input: "2023-06-25 00:00:00",
 			result: struct{ min, max time.Time }{
@@ -63,11 +77,20 @@ func TestNoiseDateTransformer_Transform(t *testing.T) {
 		},
 		{
 			name: "test timestamp with timezone type",
-			column: &domains.ColumnMeta{
-				TypeOid: pgtype.TimestamptzOID,
+			table: &domains.TableMeta{
+				Oid: 123,
+				Columns: []*domains.Column{
+					&domains.Column{
+						Name: "test",
+						ColumnMeta: domains.ColumnMeta{
+							TypeOid: pgtype.TimestamptzOID,
+						},
+					},
+				},
 			},
 			params: map[string]interface{}{
-				"ratio": "1 year 1 mons 1 day 01:01:01.01",
+				"ratio":  "1 year 1 mons 1 day 01:01:01.01",
+				"column": "test",
 			},
 			input: "2023-06-25 00:00:00.0+03",
 			result: struct{ min, max time.Time }{
@@ -78,12 +101,21 @@ func TestNoiseDateTransformer_Transform(t *testing.T) {
 		},
 		{
 			name: "test timestamp type with Truncate till day",
-			column: &domains.ColumnMeta{
-				TypeOid: pgtype.TimestampOID,
+			table: &domains.TableMeta{
+				Oid: 123,
+				Columns: []*domains.Column{
+					&domains.Column{
+						Name: "test",
+						ColumnMeta: domains.ColumnMeta{
+							TypeOid: pgtype.TimestampOID,
+						},
+					},
+				},
 			},
 			params: map[string]interface{}{
 				"ratio":    "1 year 1 mons 1 day 01:01:01.01",
 				"truncate": "month",
+				"column":   "test",
 			},
 			input: "2023-06-25 00:00:00",
 			result: struct{ min, max time.Time }{
@@ -98,15 +130,15 @@ func TestNoiseDateTransformer_Transform(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			var resTime time.Time
 			transformer, err := NoiseDateTransformerMeta.InstanceTransformer(
-				table, tt.column, typeMap, tt.params,
+				tt.table, typeMap, tt.params,
 			)
-			ndt := transformer.(*NoiseDateTransformer)
+			tr := transformer.(*NoiseDateTransformer)
 			require.NoError(t, err)
-			res, err := transformer.Transform(tt.input)
+			res, err := tr.TransformAttr(tt.input)
 			require.NoError(t, err)
 			log.Println(res)
 			require.Regexp(t, tt.pattern, res)
-			err = ndt.Scan(res, &resTime)
+			err = tr.Scan(res, &resTime)
 			require.NoError(t, err)
 			assert.WithinRangef(t, resTime, tt.result.min, tt.result.max, "result is not in range")
 		})

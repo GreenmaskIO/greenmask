@@ -26,23 +26,30 @@ func getTypeMap() (*pgtype.Map, error) {
 	return c.TypeMap(), nil
 }
 
-func TestHashTransformer_Transform(t *testing.T) {
+func TestHashTransformer_TransformAttr(t *testing.T) {
 	typeMap, err := getTypeMap()
 	require.NoError(t, err)
 
 	transformer, err := HashTransformerMeta.InstanceTransformer(
 		&domains.TableMeta{
 			Oid: 123,
-		},
-		&domains.ColumnMeta{
-			TypeOid: pgtype.TextOID,
+			Columns: []*domains.Column{
+				&domains.Column{
+					Name: "test",
+					ColumnMeta: domains.ColumnMeta{
+						TypeOid: pgtype.TextOID,
+					},
+				},
+			},
 		},
 		typeMap,
 		map[string]interface{}{
-			"salt": "12345678",
+			"column": "test",
+			"salt":   "12345678",
 		})
 	require.NoError(t, err)
-	res, err := transformer.Transform("old_value")
+	ht := transformer.(*HashTransformer)
+	res, err := ht.TransformAttr("old_value")
 	require.NoError(t, err)
 	require.Equal(t, res, "9n+v7qGp0ua+DgXtC9ClyjPHjWvWin6fKAmX5bZjcX4=")
 

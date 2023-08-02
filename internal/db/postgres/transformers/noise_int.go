@@ -10,6 +10,8 @@ import (
 	"github.com/wwoytenko/greenfuscator/internal/domains"
 )
 
+const NoiseIntTransformerName = "NoiseInt"
+
 var NoiseIntTransformerMeta = TransformerMeta{
 	Description: "Make noise value for int",
 	ParamsDescription: map[string]string{
@@ -24,7 +26,8 @@ var NoiseIntTransformerMeta = TransformerMeta{
 			pgtype.Int2OID,
 			pgtype.Int4OID,
 			pgtype.Int8OID,
-		),
+		).
+		SetName(NoiseIntTransformerName),
 }
 
 type NoiseIntTransformerParams struct {
@@ -66,28 +69,43 @@ func NewNoiseIntTransformer(
 
 }
 
-func (gtt *NoiseIntTransformer) Transform(val string) (string, error) {
+func (nit *NoiseIntTransformer) TransformAttr(val string) (string, error) {
 
 	if val == DefaultNullSeq {
 		return val, nil
 	}
-	if err := gtt.Scan(val, &gtt.val); err != nil {
+	if err := nit.Scan(val, &nit.val); err != nil {
 		return "", fmt.Errorf("cannot scan string into int64: %w", err)
 	}
 
-	if gtt.Nullable {
-		if gtt.rand.Float32() < gtt.Fraction {
+	if nit.Nullable {
+		if nit.rand.Float32() < nit.Fraction {
 			return DefaultNullSeq, nil
 		}
 	}
-	ratio := gtt.rand.Float64() * gtt.Ratio
-	negative := gtt.rand.Int63n(2) == 1
+	ratio := nit.rand.Float64() * nit.Ratio
+	negative := nit.rand.Int63n(2) == 1
 	if negative {
 		ratio = ratio * -1
 	}
-	res, err := gtt.EncodePlan.Encode(gtt.val+int64(float64(gtt.val)*ratio), nil)
+	res, err := nit.EncodePlan.Encode(nit.val+int64(float64(nit.val)*ratio), nil)
 	if err != nil {
 		return "", err
 	}
 	return string(res), err
+}
+
+func (nit *NoiseIntTransformer) Transform(data []byte) ([]byte, error) {
+
+	record, attr, err := getColumnValueFromCsvRecord(data, nit.ColumnNum)
+	if err != nil {
+		return nil, fmt.Errorf("cannot parse csv record: %w", err)
+	}
+
+	transformedAttr, err := nit.TransformAttr(attr)
+	if err != nil {
+		return nil, err
+	}
+
+	return updateAttributeAndBuildRecord(record, transformedAttr, nit.ColumnNum)
 }

@@ -1,17 +1,15 @@
 package domains
 
 import (
-	"bytes"
-	"encoding/csv"
 	"errors"
 	"fmt"
-	"io"
 	"strings"
 
-	"github.com/rs/zerolog/log"
-
 	"github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/toc"
+	"github.com/wwoytenko/greenfuscator/internal/domains"
 )
+
+const CopyColumnDelimiter = '\t'
 
 var TableDataDesc = "TABLE DATA"
 
@@ -41,63 +39,38 @@ type TableMeta struct {
 	CompressedSize int64 `json:"-" yaml:"-"`
 	// LoadViaPartitionRoot - generate COPY statement with load via partition root
 	LoadViaPartitionRoot bool `json:"-" yaml:"-"`
-	// List of the constraints at the table
+	// Constraints - List of the constraints at the table
 	Constraints []*Constraint `json:"-" yaml:"-"`
+	// Columns - List of the table columns (attributes)
+	Columns []*Column
 }
 
 type Table struct {
 	TableMeta
-	Schema string `mapstructure:"schema"`
-	Name   string `mapstructure:"name"`
-	// Columns - must be replaced to map instead map[string]Columns
-	Columns         []*Column `mapstructure:"columns"`
-	Query           string    `mapstructure:"query"`
-	QueryTest       string    `mapstructure:"queryTest"`
-	TransformersMap map[string]*Column
+	Schema             string                      `mapstructure:"schema"`
+	Name               string                      `mapstructure:"name"`
+	Query              string                      `mapstructure:"query"`
+	QueryTest          string                      `mapstructure:"queryTest"`
+	TransformersConfig []domains.TransformerConfig `mapstructure:"transformers"`
+	// Transformers - list of the initialised Transformers
+	Transformers []domains.Transformer
 }
 
 func (t *Table) HasTransformer() bool {
-	return t.TransformersMap != nil
+	return len(t.TransformersConfig) > 0
 }
 
 func (t *Table) TransformTuple(data []byte) ([]byte, error) {
-	if !t.HasTransformer() {
-		log.Warn().Msgf("called transformer for table %s.%s though it is not defined in config. maybe bug", t.Schema, t.Name)
-		return data, nil
-	}
-	lineReader := csv.NewReader(bytes.NewReader(data))
-	lineReader.Comma = '\t'
-	values, err := lineReader.Read()
-	if err != nil {
-		return nil, fmt.Errorf("cannot read dump line: %w", err)
-	}
+	var err error
 
-	record := make([]string, 0, len(t.Columns))
-	for idx, column := range t.Columns {
-		transformedValue := values[idx]
-
-		if transformer, ok := t.TransformersMap[column.Name]; ok {
-			transformedValue, err = transformer.Transformer.Transform(values[idx])
-			if err != nil {
-				return nil, fmt.Errorf("transformer %s error: %w", column.TransformConf.Name, err)
-			}
+	for _, transformer := range t.Transformers {
+		data, err = transformer.Transform(data)
+		if err != nil {
+			return nil, fmt.Errorf("transformer %s error: %w", transformer.GetName(), err)
 		}
-		record = append(record, transformedValue)
 	}
 
-	buf := bytes.Buffer{}
-	lineWriter := csv.NewWriter(&buf)
-	lineWriter.Comma = '\t'
-	if err = lineWriter.Write(record); err != nil {
-		return nil, fmt.Errorf("unnable to write line: %w", err)
-	}
-	lineWriter.Flush()
-
-	res, err := io.ReadAll(&buf)
-	if err != nil {
-		return nil, fmt.Errorf("cannot read data from tsv reader: %w", err)
-	}
-	return res, nil
+	return data, nil
 }
 
 func (t *Table) GetCopyFromStatement() (string, error) {

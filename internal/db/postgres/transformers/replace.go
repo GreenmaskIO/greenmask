@@ -10,6 +10,8 @@ import (
 	"github.com/wwoytenko/greenfuscator/internal/domains"
 )
 
+const ReplaceTransformerName = "Replace"
+
 var ReplaceTransformerMeta = TransformerMeta{
 	Description: `Replace with value passed through "value" parameter`,
 	ParamsDescription: map[string]string{
@@ -18,7 +20,8 @@ var ReplaceTransformerMeta = TransformerMeta{
 	NewTransformer: NewReplaceTransformer,
 	Settings: NewTransformerSettings().
 		SetCastVar("").
-		SetVariadic(),
+		SetVariadic().
+		SetName(ReplaceTransformerName),
 }
 
 type ReplaceTransformerParams struct {
@@ -63,11 +66,26 @@ func NewReplaceTransformer(
 	return res, nil
 }
 
-func (rt *ReplaceTransformer) Transform(val string) (string, error) {
+func (rt *ReplaceTransformer) TransformAttr(val string) (string, error) {
 	if rt.Nullable {
 		if rt.rand.Float32() < rt.Fraction {
 			return DefaultNullSeq, nil
 		}
 	}
 	return rt.Value, nil
+}
+
+func (rt *ReplaceTransformer) Transform(data []byte) ([]byte, error) {
+
+	record, attr, err := getColumnValueFromCsvRecord(data, rt.ColumnNum)
+	if err != nil {
+		return nil, fmt.Errorf("cannot parse csv record: %w", err)
+	}
+
+	transformedAttr, err := rt.TransformAttr(attr)
+	if err != nil {
+		return nil, err
+	}
+
+	return updateAttributeAndBuildRecord(record, transformedAttr, rt.ColumnNum)
 }

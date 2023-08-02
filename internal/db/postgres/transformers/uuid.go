@@ -12,20 +12,11 @@ import (
 	"github.com/wwoytenko/greenfuscator/internal/domains"
 )
 
-type UuidTransformerParams struct {
-	Nullable bool    `mapstructure:"nullable"`
-	Fraction float32 `mapstructure:"fraction"`
-}
+const RandomUuidTransformerName = "RandomUuid"
 
-type UuidTransformer struct {
-	TransformerBase
-	UuidTransformerParams
-	rand *rand.Rand
-}
-
-var UuidTransformerMeta = TransformerMeta{
+var RandomUuidTransformerMeta = TransformerMeta{
 	Description:    `Generate random UUID`,
-	NewTransformer: NewUuidTransformer,
+	NewTransformer: NewRandomUuidTransformer,
 	Settings: NewTransformerSettings().
 		SetNullable().
 		SetCastVar(uuid.New()).
@@ -33,10 +24,22 @@ var UuidTransformerMeta = TransformerMeta{
 			pgtype.TextOID,
 			pgtype.VarcharOID,
 			pgtype.UUIDOID,
-		),
+		).
+		SetName(RandomUuidTransformerName),
 }
 
-func NewUuidTransformer(
+type RandomUuidTransformerParams struct {
+	Nullable bool    `mapstructure:"nullable"`
+	Fraction float32 `mapstructure:"fraction"`
+}
+
+type RandomUuidTransformer struct {
+	TransformerBase
+	RandomUuidTransformerParams
+	rand *rand.Rand
+}
+
+func NewRandomUuidTransformer(
 	base *TransformerBase,
 	params map[string]interface{},
 ) (domains.Transformer, error) {
@@ -46,7 +49,7 @@ func NewUuidTransformer(
 		return nil, fmt.Errorf("cannot decode value: %w", err)
 	}
 
-	tParams := UuidTransformerParams{
+	tParams := RandomUuidTransformerParams{
 		Fraction: DefaultNullFraction,
 	}
 	if err := parseTransformerParams(params, &tParams); err != nil {
@@ -57,18 +60,33 @@ func NewUuidTransformer(
 		return nil, fmt.Errorf("transformer cannot be nullable at not null column")
 	}
 
-	return &UuidTransformer{
-		TransformerBase:       *base,
-		UuidTransformerParams: tParams,
-		rand:                  rand.New(rand.NewSource(time.Now().UnixMicro())),
+	return &RandomUuidTransformer{
+		TransformerBase:             *base,
+		RandomUuidTransformerParams: tParams,
+		rand:                        rand.New(rand.NewSource(time.Now().UnixMicro())),
 	}, nil
 }
 
-func (rt *UuidTransformer) Transform(val string) (string, error) {
-	if rt.Nullable {
-		if rt.rand.Float32() < rt.Fraction {
+func (ut *RandomUuidTransformer) TransformAttr(val string) (string, error) {
+	if ut.Nullable {
+		if ut.rand.Float32() < ut.Fraction {
 			return DefaultNullSeq, nil
 		}
 	}
 	return uuid.New().String(), nil
+}
+
+func (ut *RandomUuidTransformer) Transform(data []byte) ([]byte, error) {
+
+	record, attr, err := getColumnValueFromCsvRecord(data, ut.ColumnNum)
+	if err != nil {
+		return nil, fmt.Errorf("cannot parse csv record: %w", err)
+	}
+
+	transformedAttr, err := ut.TransformAttr(attr)
+	if err != nil {
+		return nil, err
+	}
+
+	return updateAttributeAndBuildRecord(record, transformedAttr, ut.ColumnNum)
 }
