@@ -99,21 +99,19 @@ func (d *Dump) startMainTx(ctx context.Context, conn *pgx.Conn) (pgx.Tx, error) 
 
 // logErrors - logging received errors from Validate. We need inject some attributes to the log so that it will be clear
 // in the output
-func logErrors(errs []error, schemaName, tableName, columnName, transformerName string) {
+func logErrors(errs []error, schemaName, tableName, transformerName string) {
 	for _, err := range errs {
 		switch v := err.(type) {
 		case *domains2.RuntimeError:
 			event := log.WithLevel(v.Level).
 				Str("SchemaName", schemaName).
 				Str("TableName", tableName).
-				Str("ColumnName", columnName).
 				Str("TransformerName", transformerName)
 			v.LogEvent(event)
 		default:
 			log.WithLevel(zerolog.ErrorLevel).
 				Str("SchemaName", schemaName).
 				Str("TableName", tableName).
-				Str("ColumnName", columnName).
 				Str("TransformerName", transformerName).
 				Err(err).
 				Msgf("internal error")
@@ -135,14 +133,14 @@ func (d *Dump) Validate(ctx context.Context, tx pgx.Tx) (map[domains.Oid]*domain
 
 	// Run .Validate method for each initialised transformer
 	for _, table := range tablesConfigMap {
-		for _, transformer := range table.TransformersMap {
-			errs := transformer.Transformer.Validate()
+		for _, transformer := range table.Transformers {
+			errs := transformer.Validate()
 			// Log validation errors
 			if len(errs) != 0 {
 				if errs.IsFatal() {
 					fatal = true
 				}
-				logErrors(errs, table.Schema, table.Name, transformer.Name, transformer.TransformConf.Name)
+				logErrors(errs, table.Schema, table.Name, transformer.GetName())
 			}
 		}
 	}

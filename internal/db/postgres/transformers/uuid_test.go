@@ -17,19 +17,19 @@ func TestUuidTransformer_Transform(t *testing.T) {
 	table := &domains.TableMeta{
 		Oid: 123,
 		Columns: []*domains.Column{
-			&domains.Column{
+			{
 				Name: "test1",
 				ColumnMeta: domains.ColumnMeta{
 					TypeOid: pgtype.UUIDOID,
 				},
 			},
-			&domains.Column{
+			{
 				Name: "test2",
 				ColumnMeta: domains.ColumnMeta{
 					TypeOid: pgtype.TextOID,
 				},
 			},
-			&domains.Column{
+			{
 				Name: "test3",
 				ColumnMeta: domains.ColumnMeta{
 					TypeOid: pgtype.Int8OID,

@@ -33,7 +33,7 @@ func TestNoiseIntTransformer_Transform(t *testing.T) {
 			table: &domains.TableMeta{
 				Oid: 123,
 				Columns: []*domains.Column{
-					&domains.Column{
+					{
 						Name: "test",
 						ColumnMeta: domains.ColumnMeta{
 							TypeOid: pgtype.Int2OID,
@@ -54,7 +54,7 @@ func TestNoiseIntTransformer_Transform(t *testing.T) {
 			table: &domains.TableMeta{
 				Oid: 123,
 				Columns: []*domains.Column{
-					&domains.Column{
+					{
 						Name: "test",
 						ColumnMeta: domains.ColumnMeta{
 							TypeOid: pgtype.Int4OID,
@@ -75,7 +75,7 @@ func TestNoiseIntTransformer_Transform(t *testing.T) {
 			table: &domains.TableMeta{
 				Oid: 123,
 				Columns: []*domains.Column{
-					&domains.Column{
+					{
 						Name: "test",
 						ColumnMeta: domains.ColumnMeta{
 							TypeOid: pgtype.Int8OID,
@@ -96,7 +96,7 @@ func TestNoiseIntTransformer_Transform(t *testing.T) {
 			table: &domains.TableMeta{
 				Oid: 123,
 				Columns: []*domains.Column{
-					&domains.Column{
+					{
 						Name: "test",
 						ColumnMeta: domains.ColumnMeta{
 							TypeOid: pgtype.TextOID,

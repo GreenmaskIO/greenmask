@@ -25,7 +25,7 @@ func TestRandomDateTransformer_Transform(t *testing.T) {
 			table: &domains.TableMeta{
 				Oid: 123,
 				Columns: []*domains.Column{
-					&domains.Column{
+					{
 						Name: "test",
 						ColumnMeta: domains.ColumnMeta{
 							TypeOid: pgtype.DateOID,
@@ -45,7 +45,7 @@ func TestRandomDateTransformer_Transform(t *testing.T) {
 			table: &domains.TableMeta{
 				Oid: 123,
 				Columns: []*domains.Column{
-					&domains.Column{
+					{
 						Name: "test",
 						ColumnMeta: domains.ColumnMeta{
 							TypeOid: pgtype.TimestampOID,
@@ -65,7 +65,7 @@ func TestRandomDateTransformer_Transform(t *testing.T) {
 			table: &domains.TableMeta{
 				Oid: 123,
 				Columns: []*domains.Column{
-					&domains.Column{
+					{
 						Name: "test",
 						ColumnMeta: domains.ColumnMeta{
 							TypeOid: pgtype.TimestamptzOID,
@@ -85,7 +85,7 @@ func TestRandomDateTransformer_Transform(t *testing.T) {
 			table: &domains.TableMeta{
 				Oid: 123,
 				Columns: []*domains.Column{
-					&domains.Column{
+					{
 						Name: "test",
 						ColumnMeta: domains.ColumnMeta{
 							TypeOid: pgtype.TimestampOID,
@@ -132,7 +132,7 @@ func TestRandomDateTransformer_Transform_errors(t *testing.T) {
 			table: &domains.TableMeta{
 				Oid: 123,
 				Columns: []*domains.Column{
-					&domains.Column{
+					{
 						Name: "test",
 						ColumnMeta: domains.ColumnMeta{
 							TypeOid: pgtype.DateOID,
@@ -151,7 +151,7 @@ func TestRandomDateTransformer_Transform_errors(t *testing.T) {
 			table: &domains.TableMeta{
 				Oid: 123,
 				Columns: []*domains.Column{
-					&domains.Column{
+					{
 						Name: "test",
 						ColumnMeta: domains.ColumnMeta{
 							TypeOid: pgtype.DateOID,
@@ -171,7 +171,7 @@ func TestRandomDateTransformer_Transform_errors(t *testing.T) {
 			table: &domains.TableMeta{
 				Oid: 123,
 				Columns: []*domains.Column{
-					&domains.Column{
+					{
 						Name: "test",
 						ColumnMeta: domains.ColumnMeta{
 							TypeOid: pgtype.DateOID,
@@ -192,7 +192,7 @@ func TestRandomDateTransformer_Transform_errors(t *testing.T) {
 			table: &domains.TableMeta{
 				Oid: 123,
 				Columns: []*domains.Column{
-					&domains.Column{
+					{
 						Name: "test",
 						ColumnMeta: domains.ColumnMeta{
 							TypeOid: pgtype.DateOID,
@@ -213,7 +213,7 @@ func TestRandomDateTransformer_Transform_errors(t *testing.T) {
 			table: &domains.TableMeta{
 				Oid: 123,
 				Columns: []*domains.Column{
-					&domains.Column{
+					{
 						Name: "test",
 						ColumnMeta: domains.ColumnMeta{
 							TypeOid: pgtype.DateOID,
@@ -234,7 +234,7 @@ func TestRandomDateTransformer_Transform_errors(t *testing.T) {
 			table: &domains.TableMeta{
 				Oid: 123,
 				Columns: []*domains.Column{
-					&domains.Column{
+					{
 						Name: "test",
 						ColumnMeta: domains.ColumnMeta{
 							TypeOid: pgtype.DateOID,
@@ -255,7 +255,7 @@ func TestRandomDateTransformer_Transform_errors(t *testing.T) {
 			table: &domains.TableMeta{
 				Oid: 123,
 				Columns: []*domains.Column{
-					&domains.Column{
+					{
 						Name: "test",
 						ColumnMeta: domains.ColumnMeta{
 							TypeOid: pgtype.DateOID,

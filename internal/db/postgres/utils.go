@@ -123,9 +123,10 @@ func BuildTablesConfig(ctx context.Context, tx pgx.Tx, tableConfig []*pgdomains.
 		t.Constraints = constraints
 
 		// Assign columns and transformersMap if were found
-		columns, columnErrs := getColumnsConfig(ctx, tx, t)
-		if columnErrs != nil {
-			errs = append(errs, columnErrs...)
+		columns, err := getColumnsConfig(ctx, tx, t)
+		if err != nil {
+			errs = append(errs, err)
+			return nil, errs
 		}
 		table.Columns = columns
 
@@ -151,8 +152,7 @@ errHandle:
 	return tables, nil
 }
 
-func getColumnsConfig(ctx context.Context, tx pgx.Tx, table *pgdomains.Table) ([]*pgdomains.Column, ValidationErrors) {
-	var errs ValidationErrors
+func getColumnsConfig(ctx context.Context, tx pgx.Tx, table *pgdomains.Table) ([]*pgdomains.Column, error) {
 
 	tableColumnsQuery := `
 		SELECT 
@@ -170,14 +170,12 @@ func getColumnsConfig(ctx context.Context, tx pgx.Tx, table *pgdomains.Table) ([
 	var res []*pgdomains.Column
 	rows, err := tx.Query(ctx, tableColumnsQuery, table.Oid)
 	if err != nil {
-		errs = append(errs, domains.NewRuntimeError().
+		return nil, domains.NewRuntimeError().
 			SetErr(fmt.Errorf("unable execute tableColumnQuery: %w", err)).
 			SetLevel(zerolog.ErrorLevel).
 			AddMeta("Level", ColumnValidationLevel).
 			AddMeta("SchemaName", table.Schema).
-			AddMeta("TableName", table.Name),
-		)
-		goto errHandle
+			AddMeta("TableName", table.Name)
 	}
 	defer rows.Close()
 
@@ -185,21 +183,14 @@ func getColumnsConfig(ctx context.Context, tx pgx.Tx, table *pgdomains.Table) ([
 		var column pgdomains.Column
 		if err = rows.Scan(&column.Name, &column.TypeOid, &column.TypeName,
 			&column.NotNull, &column.Length, &column.Num); err != nil {
-			errs = append(errs, domains.NewRuntimeError().
+			return nil, domains.NewRuntimeError().
 				SetErr(fmt.Errorf("cannot scan tableColumnQuery: %w", err)).
 				SetLevel(zerolog.ErrorLevel).
 				AddMeta("Level", ColumnValidationLevel).
 				AddMeta("SchemaName", table.Schema).
-				AddMeta("TableName", table.Name),
-			)
-			goto errHandle
+				AddMeta("TableName", table.Name)
 		}
-	}
-
-errHandle:
-
-	if errs != nil {
-		return nil, errs
+		res = append(res, &column)
 	}
 
 	return res, nil

@@ -42,7 +42,9 @@ type TableMeta struct {
 	// Constraints - List of the constraints at the table
 	Constraints []*Constraint `json:"-" yaml:"-"`
 	// Columns - List of the table columns (attributes)
-	Columns []*Column
+	Columns []*Column `json:"-" yaml:"-"`
+	// Transformers - list of the initialised Transformers
+	Transformers []domains.Transformer `json:"-" yaml:"-"`
 }
 
 type Table struct {
@@ -52,8 +54,6 @@ type Table struct {
 	Query              string                      `mapstructure:"query"`
 	QueryTest          string                      `mapstructure:"queryTest"`
 	TransformersConfig []domains.TransformerConfig `mapstructure:"transformers"`
-	// Transformers - list of the initialised Transformers
-	Transformers []domains.Transformer
 }
 
 func (t *Table) HasTransformer() bool {
