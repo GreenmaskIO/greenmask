@@ -53,7 +53,7 @@ type CustomTransformerMeta struct {
 
 func (ctm *CustomTransformerMeta) Instance() (domains.Transformer, error) {
 	if ctm.Proto == PipeProto {
-		return NewPipeExecTransformer(ctm), nil
+		return nil, nil
 	}
 	return nil, errors.New("unknown proto")
 }

@@ -171,18 +171,23 @@ func truncateDate(t *time.Time, part *string) time.Time {
 }
 
 type TransformerSettings struct {
-	Name      string `json:"nullable,omitempty"`
-	Nullable  bool   `json:"nullable,omitempty"`
-	Variadic  bool   `json:"variadic,omitempty"`
-	Unique    bool   `json:"unique,omitempty"`
-	MaxLength int64  `json:"maxLength,omitempty"`
+	Name               string                     `json:"name,omitempty"`
+	Nullable           bool                       `json:"nullable,omitempty"`
+	Variadic           bool                       `json:"variadic,omitempty"`
+	Unique             bool                       `json:"unique,omitempty"`
+	MaxLength          int64                      `json:"maxLength,omitempty"`
+	TransformationType domains.TransformationType `json:"transformationType,omitempty"`
+	// Custom transformer settings
+	Validate  bool `json:"validate,omitempty"`
+	Proto     bool `json:"proto,omitempty"`
+	Streaming bool `json:"streaming,omitempty"`
+
 	// SupportedOids - list of the supported pg type oids. - will be replaced SupportedTypes instead
 	// Deprecated
-	SupportedOids      []int
-	SupportedTypes     []string
-	CastVar            interface{}
-	IsCustom           bool
-	TransformationType domains.TransformationType `json:"transformationType,omitempty"`
+	SupportedOids  []int
+	SupportedTypes []string
+	CastVar        interface{}
+	IsCustom       bool
 }
 
 func NewTransformerSettings() *TransformerSettings {

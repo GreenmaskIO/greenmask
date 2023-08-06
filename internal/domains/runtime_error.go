@@ -63,6 +63,11 @@ func (re *RuntimeError) Unwrap() error {
 	return re.Err
 }
 
+func (re *RuntimeError) SetMsg(msg string) *RuntimeError {
+	re.Msg = msg
+	return re
+}
+
 func (re *RuntimeError) SetErr(err error) *RuntimeError {
 	re.Err = err
 	return re
