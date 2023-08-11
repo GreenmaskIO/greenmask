@@ -13,7 +13,7 @@ import (
 	"github.com/wwoytenko/greenfuscator/internal/domains"
 )
 
-func TestCustomTransformer(t *testing.T) {
+func TestCustomTransformer_Transform(t *testing.T) {
 	setting := transformers.NewTransformerSettings().
 		SetTransformationType(domains.TupleTransformation).
 		SetName("test")
@@ -51,4 +51,32 @@ func TestCustomTransformer(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, []byte("test3\ttest4\n"), res)
 
+}
+
+func TestCustomTransformer_Validate(t *testing.T) {
+	setting := transformers.NewTransformerSettings().
+		SetTransformationType(domains.TupleTransformation).
+		SetName("test")
+
+	table := &domains2.TableMeta{
+		Oid: 123,
+		Columns: []*domains2.Column{
+			{
+				Name: "test",
+				ColumnMeta: domains2.ColumnMeta{
+					TypeOid: pgtype.JSONBOID,
+				},
+			},
+		},
+	}
+
+	base, err := transformers.NewTransformerBase(table, setting, nil, nil, nil)
+	require.NoError(t, err)
+
+	customTransformer := NewCustomTransformer(base, "/usr/bin/cat")
+
+	ctx, ctxCancel := context.WithCancel(context.Background())
+	defer ctxCancel()
+	err = customTransformer.Validate(ctx)
+	require.NoError(t, err)
 }

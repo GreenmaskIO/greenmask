@@ -156,16 +156,16 @@ func (tb *TransformerBase) Validate() domains.RuntimeErrors {
 	if len(tb.Table.Constraints) != 0 {
 		for _, item := range tb.Table.Constraints {
 
-			switch item.Type {
+			switch item.ConstraintType {
 			case 'f':
 				if slices.Contains(item.ReferencesColumns, tb.Column.Num) {
 					errs = append(errs, domains.NewRuntimeError().
-						SetErr(fmt.Errorf("possible constraint violation: column involved into foreign key")).
+						SetErr(fmt.Errorf("possible constraint violation: column is involved into foreign key")).
 						SetLevel(zerolog.WarnLevel).
 						AddMeta("ConstraintType", FkConstraintType).
 						AddMeta("ConstraintName", item.Name).
 						AddMeta("ConstraintSchema", item.Schema).
-						AddMeta("ConstraintDef", item.Def),
+						AddMeta("ConstraintDef", item.Definition),
 					)
 				}
 			case 'c':
@@ -176,7 +176,7 @@ func (tb *TransformerBase) Validate() domains.RuntimeErrors {
 						AddMeta("ConstraintType", CheckConstraintType).
 						AddMeta("ConstraintName", item.Name).
 						AddMeta("ConstraintSchema", item.Schema).
-						AddMeta("ConstraintDef", item.Def),
+						AddMeta("ConstraintDef", item.Definition),
 					)
 				}
 			case 'p':
@@ -187,17 +187,17 @@ func (tb *TransformerBase) Validate() domains.RuntimeErrors {
 						AddMeta("ConstraintType", PkConstraintType).
 						AddMeta("ConstraintName", item.Name).
 						AddMeta("ConstraintSchema", item.Schema).
-						AddMeta("ConstraintDef", item.Def),
+						AddMeta("ConstraintDef", item.Definition),
 					)
 				}
-				if len(item.ReferencedTable) != 0 && slices.Contains(item.ConstrainedColumns, tb.Column.Num) {
+				if len(item.ReferencedTables) != 0 && slices.Contains(item.ConstrainedColumns, tb.Column.Num) {
 					errs = append(errs, domains.NewRuntimeError().
 						SetErr(fmt.Errorf("possible constraint violation: primary key has referenced tables")).
 						SetLevel(zerolog.WarnLevel).
 						AddMeta("ConstraintType", ReferencesConstraintType).
 						AddMeta("ConstraintName", item.Name).
 						AddMeta("ConstraintSchema", item.Schema).
-						AddMeta("ConstraintDef", item.Def),
+						AddMeta("ConstraintDef", item.Definition),
 					)
 				}
 			case 'u':
@@ -208,7 +208,7 @@ func (tb *TransformerBase) Validate() domains.RuntimeErrors {
 						AddMeta("ConstraintType", UniqueConstraintType).
 						AddMeta("ConstraintName", item.Name).
 						AddMeta("ConstraintSchema", item.Schema).
-						AddMeta("ConstraintDef", item.Def),
+						AddMeta("ConstraintDef", item.Definition),
 					)
 				}
 			case 't':
@@ -219,7 +219,7 @@ func (tb *TransformerBase) Validate() domains.RuntimeErrors {
 						AddMeta("ConstraintType", TriggerConstraintType).
 						AddMeta("ConstraintName", item.Name).
 						AddMeta("ConstraintSchema", item.Schema).
-						AddMeta("ConstraintDef", item.Def),
+						AddMeta("ConstraintDef", item.Definition),
 					)
 				}
 			case 'x':
@@ -230,7 +230,7 @@ func (tb *TransformerBase) Validate() domains.RuntimeErrors {
 						AddMeta("ConstraintType", ExclusionConstraintType).
 						AddMeta("ConstraintName", item.Name).
 						AddMeta("ConstraintSchema", item.Schema).
-						AddMeta("ConstraintDef", item.Def),
+						AddMeta("ConstraintDef", item.Definition),
 					)
 				}
 			}

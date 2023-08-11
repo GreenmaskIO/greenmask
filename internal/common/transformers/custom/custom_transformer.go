@@ -3,11 +3,14 @@ package custom
 import (
 	"bufio"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
+	"os"
 	"os/exec"
 	"sync/atomic"
+	"time"
 
 	"github.com/rs/zerolog/log"
 	"golang.org/x/sync/errgroup"
@@ -25,18 +28,21 @@ const (
 	ErrorState
 )
 
+const (
+	ValidateArgName = "--validate"
+)
+
 type CustomTransformer struct {
 	*transformers.TransformerBase
-	executable   string
-	validateArgs []string
-	runArgs      []string
-	cmd          *exec.Cmd
-	inChan       chan []byte
-	outChan      chan []byte
-	errChan      chan error
-	state        int32
-	eg           *errgroup.Group
-	gtx          context.Context
+	executable string
+	args       []string
+	cmd        *exec.Cmd
+	inChan     chan []byte
+	outChan    chan []byte
+	errChan    chan domains.RuntimeErrors
+	state      int32
+	eg         *errgroup.Group
+	gtx        context.Context
 }
 
 func NewCustomTransformer(
@@ -46,7 +52,7 @@ func NewCustomTransformer(
 	return &CustomTransformer{
 		TransformerBase: base,
 		executable:      executable,
-		runArgs:         args,
+		args:            args,
 	}
 }
 
@@ -125,7 +131,6 @@ func (ct *CustomTransformer) Wait() error {
 	if err := ct.cmd.Wait(); err != nil {
 		return fmt.Errorf("custom transformer runtime error: %w", err)
 	}
-	//log.Debug().Msg("custom transformer exited normally")
 	return nil
 
 }
@@ -149,15 +154,10 @@ func (ct *CustomTransformer) stdinWriter(ctx context.Context, stdin io.Writer) e
 }
 
 func (ct *CustomTransformer) stderrReader(ctx context.Context, stdout io.Reader) error {
-	ct.errChan = make(chan error, 1)
+	ct.errChan = make(chan domains.RuntimeErrors, 1)
 	defer close(ct.errChan)
 	lineScanner := bufio.NewReader(stdout)
 	for {
-		select {
-		case <-ctx.Done():
-			return ctx.Err()
-		default:
-		}
 		line, _, err := lineScanner.ReadLine()
 		if err != nil {
 			if errors.Is(err, io.EOF) {
@@ -165,7 +165,15 @@ func (ct *CustomTransformer) stderrReader(ctx context.Context, stdout io.Reader)
 			}
 			return err
 		}
-		log.Warn().Str("output", string(line)).Msg("stderr forwarding from custom transformer")
+		var re domains.RuntimeErrors
+		if err := json.Unmarshal(line, &re); err != nil {
+			log.Warn().Str("data", string(line)).Msgf("stderr forwarding")
+		}
+		select {
+		case <-ctx.Done():
+			return nil
+		case ct.errChan <- re:
+		}
 	}
 }
 
@@ -175,18 +183,17 @@ func (ct *CustomTransformer) stdoutReader(ctx context.Context, stderr io.Reader)
 	lineScanner := bufio.NewReader(stderr)
 	for {
 		line, _, err := lineScanner.ReadLine()
-		line = append(line, '\n')
 		if err != nil {
-			if errors.Is(err, io.EOF) {
+			if errors.Is(err, io.EOF) || errors.Is(err, os.ErrClosed) {
 				return nil
 			}
 			return err
 		}
+		line = append(line, '\n')
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
 		case ct.outChan <- line:
-			//log.Debug().Str("data", string(line)).Msg("received tuple from transformer: sent to channel")
 		}
 	}
 }
@@ -200,28 +207,71 @@ func (ct *CustomTransformer) getState() int32 {
 }
 
 func (ct *CustomTransformer) Init(ctx context.Context) (CancelFunction, error) {
-	return ct.init(ctx, ct.runArgs...)
+	return ct.init(ctx, ct.args...)
 }
 
 func (ct *CustomTransformer) Validate(ctx context.Context) domains.RuntimeErrors {
 	// Must start process validate and exit
 	var errs domains.RuntimeErrors
-	cancel, err := ct.init(ctx, ct.validateArgs...)
+	args := make([]string, len(ct.args)+2)
+	args = append(args, ct.args...)
+	args = append(args, ValidateArgName)
+	cancel, err := ct.init(ctx, args...)
 	if err != nil {
 		errs = append(errs, domains.NewRuntimeError().SetErr(err).SetMsg("transformer initialisation error"))
+		return errs
 	}
 	defer cancel()
 	validationErrs := ct.validate(ctx)
 	errs = append(errs, validationErrs...)
-	if errs != nil {
+	if len(errs) != 0 {
 		return errs
 	}
 	return nil
 }
 
 func (ct *CustomTransformer) validate(ctx context.Context) domains.RuntimeErrors {
-	// TODO: Validation logic here
-	return nil
+	ctx, cancel := context.WithTimeout(ctx, 60*time.Second)
+	defer cancel()
+	eg, gtx := errgroup.WithContext(ctx)
+
+	var res domains.RuntimeErrors
+	doneChan := make(chan struct{})
+
+	eg.Go(func() error {
+		for {
+			select {
+			case <-gtx.Done():
+				return nil
+			case <-doneChan:
+				return nil
+			case re := <-ct.errChan:
+				res = append(res, re)
+			}
+		}
+	})
+
+	eg.Go(func() error {
+		for {
+			select {
+			case <-gtx.Done():
+				return nil
+			case <-doneChan:
+				return nil
+			case data := <-ct.outChan:
+				if len(data) > 0 {
+					log.Warn().Str("data", string(data)).Msg("stdout forwarding from custom transformer")
+				}
+			}
+		}
+	})
+
+	eg.Go(ct.Wait)
+
+	if err := eg.Wait(); err != nil && len(res) == 0 {
+		return domains.RuntimeErrors{err}
+	}
+	return res
 }
 
 func (ct *CustomTransformer) Transform(data []byte) ([]byte, error) {
@@ -234,7 +284,6 @@ func (ct *CustomTransformer) Transform(data []byte) ([]byte, error) {
 func (ct *CustomTransformer) SendOriginalTuple(data []byte) error {
 	select {
 	case ct.inChan <- data:
-		//log.Debug().Str("data", string(data)).Msg("sent tuple to transformer: sent to channel")
 	case <-ct.gtx.Done():
 		return ct.gtx.Err()
 	}
@@ -243,16 +292,14 @@ func (ct *CustomTransformer) SendOriginalTuple(data []byte) error {
 }
 
 func (ct *CustomTransformer) ReceiveTransformedTuple() ([]byte, error) {
-	//log.Debug().Msg("trying to receive the message from transformer")
 	for {
 		// TODO: I don't know why but this code locks even when we send message to outChan
 		//		 though it must receive the message and continue execution. That's why I added
-		//		 loop there. But it mustn't here
+		//		 loop there. But it mustn't be here
 		select {
 		case <-ct.gtx.Done():
 			return nil, ct.gtx.Err()
 		case data := <-ct.outChan:
-			//log.Debug().Str("data", string(data)).Msg("received tuple from transformer: from channel")
 			if len(data) == 0 {
 				return nil, fmt.Errorf("received empty tupple after trasnformation")
 			}
@@ -260,5 +307,4 @@ func (ct *CustomTransformer) ReceiveTransformedTuple() ([]byte, error) {
 		default:
 		}
 	}
-
 }

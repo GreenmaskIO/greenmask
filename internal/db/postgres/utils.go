@@ -294,12 +294,12 @@ func getTableConstraints(ctx context.Context, tx pgx.Tx, table *pgdomains.Table)
 	for rows.Next() {
 		var c pgdomains.Constraint
 		err = rows.Scan(
-			&c.Name, &c.Schema, &c.Type,
+			&c.Name, &c.Schema, &c.ConstraintType,
 			&c.Domain, &c.RootPtConstraint, &c.FkTable,
 			&c.ConstrainedColumns,
 			&c.ReferencesColumns,
-			&c.ReferencedTable,
-			&c.Def,
+			&c.ReferencedTables,
+			&c.Definition,
 		)
 		if err != nil {
 			errs = append(errs, domains.NewRuntimeError().

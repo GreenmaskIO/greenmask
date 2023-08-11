@@ -113,7 +113,3 @@ dump:
 custom_transformers:
   custom:
     bin_path: ""
-    type: "attr"
-    param:
-      a:
-      b:
