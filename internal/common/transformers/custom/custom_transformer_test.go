@@ -6,6 +6,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/rs/zerolog/log"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	domains2 "github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/domains"
@@ -44,13 +45,12 @@ func TestCustomTransformer_Transform(t *testing.T) {
 	res, err := customTransformer.Transform([]byte("test1\ttest2\n"))
 	log.Debug().Str("data", string(res)).Msg("received result")
 	require.NoError(t, err)
-	require.Equal(t, []byte("test1\ttest2\n"), res)
+	require.Equal(t, []byte("test1\ttest2"), res)
 
 	res, err = customTransformer.Transform([]byte("test3\ttest4\n"))
 	log.Debug().Str("data", string(res)).Msg("received result")
 	require.NoError(t, err)
-	require.Equal(t, []byte("test3\ttest4\n"), res)
-
+	require.Equal(t, []byte("test3\ttest4"), res)
 }
 
 func TestCustomTransformer_Validate(t *testing.T) {
@@ -73,10 +73,11 @@ func TestCustomTransformer_Validate(t *testing.T) {
 	base, err := transformers.NewTransformerBase(table, setting, nil, nil, nil)
 	require.NoError(t, err)
 
-	customTransformer := NewCustomTransformer(base, "/usr/bin/cat")
+	customTransformer := NewCustomTransformer(base, "/usr/bin/bash", "-c", "echo 1")
 
 	ctx, ctxCancel := context.WithCancel(context.Background())
 	defer ctxCancel()
-	err = customTransformer.Validate(ctx)
-	require.NoError(t, err)
+	warnings, err := customTransformer.Validate(ctx)
+	assert.NoError(t, err)
+	assert.Empty(t, warnings)
 }

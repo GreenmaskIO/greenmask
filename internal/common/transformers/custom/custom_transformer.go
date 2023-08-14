@@ -29,7 +29,8 @@ const (
 )
 
 const (
-	ValidateArgName = "--validate"
+	ValidateArgName   = "--validate"
+	ValidationTimeout = 20 * time.Second
 )
 
 type CustomTransformer struct {
@@ -39,7 +40,7 @@ type CustomTransformer struct {
 	cmd        *exec.Cmd
 	inChan     chan []byte
 	outChan    chan []byte
-	errChan    chan domains.RuntimeErrors
+	errChan    chan *domains.ValidationWarning
 	state      int32
 	eg         *errgroup.Group
 	gtx        context.Context
@@ -65,22 +66,18 @@ func (ct *CustomTransformer) init(ctx context.Context, args ...string) (CancelFu
 	ct.state = InitialisationState
 	ct.cmd = exec.CommandContext(ctx, ct.executable, args...)
 
-	stdout, err := ct.cmd.StdoutPipe()
-	if err != nil {
-		cancel()
-		return nil, fmt.Errorf("unable to open stdout pipe")
-	}
+	stdoutReader, stdoutWriter := io.Pipe()
+	ct.cmd.Stdout = stdoutWriter
 
-	stderr, err := ct.cmd.StderrPipe()
-	if err != nil {
-		stdout.Close()
-		cancel()
-		return nil, fmt.Errorf("unable to open stdout pipe")
-	}
+	stderrReader, stderrWriter := io.Pipe()
+	ct.cmd.Stderr = stderrWriter
+
 	stdin, err := ct.cmd.StdinPipe()
 	if err != nil {
-		stdout.Close()
-		stderr.Close()
+		stdoutWriter.Close()
+		stderrWriter.Close()
+		stdoutReader.Close()
+		stderrReader.Close()
 		cancel()
 		return nil, fmt.Errorf("unable to open stdout pipe")
 	}
@@ -91,12 +88,14 @@ func (ct *CustomTransformer) init(ctx context.Context, args ...string) (CancelFu
 
 	cancelFunction := func() error {
 		cancel()
+		stdin.Close()
+		stdoutWriter.Close()
+		stderrWriter.Close()
 		if err := ct.eg.Wait(); err != nil && !errors.Is(err, context.Canceled) {
 			log.Warn().Msgf("error in closing function: %s", err.Error())
 		}
-		stdout.Close()
-		stderr.Close()
-		stdin.Close()
+		stdoutReader.Close()
+		stderrReader.Close()
 		close(ct.inChan)
 		return nil
 	}
@@ -107,22 +106,16 @@ func (ct *CustomTransformer) init(ctx context.Context, args ...string) (CancelFu
 	}
 
 	ct.eg.Go(func() error {
-		return ct.stderrReader(ct.gtx, stderr)
+		return ct.stderrReader(ct.gtx, stderrReader)
 	})
 
 	ct.eg.Go(func() error {
-		return ct.stdoutReader(ct.gtx, stdout)
+		return ct.stdoutReader(ct.gtx, stdoutReader)
 	})
 
 	ct.eg.Go(func() error {
 		return ct.stdinWriter(ct.gtx, stdin)
 	})
-
-	select {
-	case <-ct.gtx.Done():
-		return nil, ct.gtx.Err()
-	default:
-	}
 
 	return cancelFunction, nil
 }
@@ -154,48 +147,34 @@ func (ct *CustomTransformer) stdinWriter(ctx context.Context, stdin io.Writer) e
 }
 
 func (ct *CustomTransformer) stderrReader(ctx context.Context, stdout io.Reader) error {
-	ct.errChan = make(chan domains.RuntimeErrors, 1)
+	ct.errChan = make(chan *domains.ValidationWarning, 10)
 	defer close(ct.errChan)
-	lineScanner := bufio.NewReader(stdout)
-	for {
-		line, _, err := lineScanner.ReadLine()
-		if err != nil {
-			if errors.Is(err, io.EOF) {
-				return nil
-			}
-			return err
-		}
-		var re domains.RuntimeErrors
+	return lineReader(ctx, stdout, func(line []byte) error {
+		var re domains.ValidationWarning
 		if err := json.Unmarshal(line, &re); err != nil {
 			log.Warn().Str("data", string(line)).Msgf("stderr forwarding")
+			return nil
 		}
 		select {
 		case <-ctx.Done():
 			return nil
-		case ct.errChan <- re:
+		case ct.errChan <- &re:
 		}
-	}
+		return nil
+	})
 }
 
-func (ct *CustomTransformer) stdoutReader(ctx context.Context, stderr io.Reader) error {
+func (ct *CustomTransformer) stdoutReader(ctx context.Context, stdout io.Reader) error {
 	ct.outChan = make(chan []byte, 1)
 	defer close(ct.outChan)
-	lineScanner := bufio.NewReader(stderr)
-	for {
-		line, _, err := lineScanner.ReadLine()
-		if err != nil {
-			if errors.Is(err, io.EOF) || errors.Is(err, os.ErrClosed) {
-				return nil
-			}
-			return err
-		}
-		line = append(line, '\n')
+	return lineReader(ctx, stdout, func(line []byte) error {
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
 		case ct.outChan <- line:
+			return nil
 		}
-	}
+	})
 }
 
 func (ct *CustomTransformer) setErrState() {
@@ -210,39 +189,44 @@ func (ct *CustomTransformer) Init(ctx context.Context) (CancelFunction, error) {
 	return ct.init(ctx, ct.args...)
 }
 
-func (ct *CustomTransformer) Validate(ctx context.Context) domains.RuntimeErrors {
+func (ct *CustomTransformer) Validate(ctx context.Context) (domains.ValidationWarnings, error) {
 	// Must start process validate and exit
-	var errs domains.RuntimeErrors
-	args := make([]string, len(ct.args)+2)
+	args := make([]string, 0, len(ct.args)+2)
 	args = append(args, ct.args...)
-	args = append(args, ValidateArgName)
-	cancel, err := ct.init(ctx, args...)
+	//args = append(args, ValidateArgName)
+	cancelFunction, err := ct.init(ctx, args...)
 	if err != nil {
-		errs = append(errs, domains.NewRuntimeError().SetErr(err).SetMsg("transformer initialisation error"))
-		return errs
+		return nil, fmt.Errorf("transformer initialisation error: %w", err)
 	}
-	defer cancel()
-	validationErrs := ct.validate(ctx)
-	errs = append(errs, validationErrs...)
-	if len(errs) != 0 {
-		return errs
+	defer cancelFunction()
+	warnings, err := ct.validate(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("cannot perform transformer validation: %w", err)
 	}
-	return nil
+	return warnings, nil
 }
 
-func (ct *CustomTransformer) validate(ctx context.Context) domains.RuntimeErrors {
+func (ct *CustomTransformer) validate(ctx context.Context) (domains.ValidationWarnings, error) {
+	var res domains.ValidationWarnings
 	ctx, cancel := context.WithTimeout(ctx, 60*time.Second)
 	defer cancel()
 	eg, gtx := errgroup.WithContext(ctx)
 
-	var res domains.RuntimeErrors
 	doneChan := make(chan struct{})
+
+	eg.Go(func() error {
+		defer close(doneChan)
+		if err := ct.cmd.Wait(); err != nil {
+			return fmt.Errorf("custom transformer runtime error: %w", err)
+		}
+		return nil
+	})
 
 	eg.Go(func() error {
 		for {
 			select {
 			case <-gtx.Done():
-				return nil
+				return gtx.Err()
 			case <-doneChan:
 				return nil
 			case re := <-ct.errChan:
@@ -255,7 +239,7 @@ func (ct *CustomTransformer) validate(ctx context.Context) domains.RuntimeErrors
 		for {
 			select {
 			case <-gtx.Done():
-				return nil
+				return gtx.Err()
 			case <-doneChan:
 				return nil
 			case data := <-ct.outChan:
@@ -266,12 +250,10 @@ func (ct *CustomTransformer) validate(ctx context.Context) domains.RuntimeErrors
 		}
 	})
 
-	eg.Go(ct.Wait)
-
 	if err := eg.Wait(); err != nil && len(res) == 0 {
-		return domains.RuntimeErrors{err}
+		return nil, err
 	}
-	return res
+	return res, nil
 }
 
 func (ct *CustomTransformer) Transform(data []byte) ([]byte, error) {
@@ -304,6 +286,41 @@ func (ct *CustomTransformer) ReceiveTransformedTuple() ([]byte, error) {
 				return nil, fmt.Errorf("received empty tupple after trasnformation")
 			}
 			return data, nil
+		default:
+		}
+	}
+}
+
+func lineReader(ctx context.Context, r io.Reader, lineHook func(line []byte) error) error {
+	lineScanner := bufio.NewReader(r)
+	defer func() {
+		for {
+			line, _, err := lineScanner.ReadLine()
+			if err != nil {
+				return
+			}
+			if err := lineHook(line); err != nil {
+				return
+			}
+		}
+	}()
+
+	for {
+		line, _, err := lineScanner.ReadLine()
+		if err != nil {
+			if errors.Is(err, io.EOF) || errors.Is(err, os.ErrClosed) {
+				return nil
+			}
+			return err
+		}
+
+		if err := lineHook(line); err != nil {
+			return err
+		}
+
+		select {
+		case <-ctx.Done():
+			return nil
 		default:
 		}
 	}

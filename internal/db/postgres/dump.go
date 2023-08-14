@@ -9,7 +9,6 @@ import (
 
 	pgxdecimal "github.com/jackc/pgx-shopspring-decimal"
 	"github.com/jackc/pgx/v5"
-	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"golang.org/x/sync/errgroup"
 
@@ -17,7 +16,7 @@ import (
 	"github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/dumpers"
 	"github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/pgdump"
 	"github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/toc"
-	domains2 "github.com/wwoytenko/greenfuscator/internal/domains"
+	commondomains "github.com/wwoytenko/greenfuscator/internal/domains"
 	"github.com/wwoytenko/greenfuscator/internal/storage"
 )
 
@@ -97,25 +96,15 @@ func (d *Dump) startMainTx(ctx context.Context, conn *pgx.Conn) (pgx.Tx, error) 
 	return tx, nil
 }
 
-// logErrors - logging received errors from Validate. We need inject some attributes to the log so that it will be clear
+// logValidationWarnings - logging received errors from Validate. We need inject some attributes to the log so that it will be clear
 // in the output
-func logErrors(errs []error, schemaName, tableName, transformerName string) {
-	for _, err := range errs {
-		switch v := err.(type) {
-		case *domains2.RuntimeError:
-			event := log.WithLevel(v.Level).
-				Str("SchemaName", schemaName).
-				Str("TableName", tableName).
-				Str("TransformerName", transformerName)
-			v.LogEvent(event)
-		default:
-			log.WithLevel(zerolog.ErrorLevel).
-				Str("SchemaName", schemaName).
-				Str("TableName", tableName).
-				Str("TransformerName", transformerName).
-				Err(err).
-				Msgf("internal error")
-		}
+func logValidationWarnings(warnings commondomains.ValidationWarnings, schemaName, tableName, transformerName string) {
+	for _, w := range warnings {
+		event := log.WithLevel(commondomains.ValidationWarningLogSeverities[w.Level]).
+			Str("SchemaName", schemaName).
+			Str("TableName", tableName).
+			Str("TransformerName", transformerName)
+		w.LogEvent(event)
 	}
 }
 
@@ -124,23 +113,31 @@ func (d *Dump) Validate(ctx context.Context, tx pgx.Tx) (map[domains.Oid]*domain
 
 	// Initialise transformers, check table, columns and transformer exists
 	// validate type support and make a table config
-	tablesConfigMap, errs := BuildTablesConfig(ctx, tx, d.tablesConfig)
+	tablesConfigMap, warnings, err := BuildTablesConfig(ctx, tx, d.tablesConfig)
 	// Log the errors occurred during initialisation
-	if errs != nil {
-		errs.LogErrors()
+	if err != nil {
+		return nil, err
 	}
-	fatal = errs.IsFatal()
+	if warnings != nil {
+		fatal = warnings.IsFatal()
+	}
+	for _, w := range warnings {
+		w.Log()
+	}
 
 	// Run .Validate method for each initialised transformer
 	for _, table := range tablesConfigMap {
 		for _, transformer := range table.Transformers {
-			errs := transformer.Validate()
+			warnings, err = transformer.Validate()
+			if err != nil {
+				return nil, fmt.Errorf("fatal validation error: %w", err)
+			}
+			if warnings.IsFatal() {
+				fatal = true
+			}
 			// Log validation errors
-			if len(errs) != 0 {
-				if errs.IsFatal() {
-					fatal = true
-				}
-				logErrors(errs, table.Schema, table.Name, transformer.GetName())
+			if len(warnings) != 0 {
+				logValidationWarnings(warnings, table.Schema, table.Name, transformer.GetName())
 			}
 		}
 	}

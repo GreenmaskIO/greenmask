@@ -8,7 +8,6 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/rs/zerolog"
-	"github.com/rs/zerolog/log"
 	"golang.org/x/exp/slices"
 
 	pgdomains "github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/domains"
@@ -30,37 +29,7 @@ const (
 	TableValidationLevel       = "Table"
 )
 
-const (
-	FatalErrorLevel   = "fatal"
-	WarningErrorLevel = "warning"
-)
-
-type ValidationErrors []error
-
-func (ves ValidationErrors) IsFatal() bool {
-	return slices.ContainsFunc(ves, func(err error) bool {
-		switch v := err.(type) {
-		case *domains.RuntimeError:
-			return v.Level == zerolog.ErrorLevel
-		default:
-			return true
-
-		}
-	})
-}
-
-func (ves ValidationErrors) LogErrors() {
-	for _, err := range ves {
-		switch v := err.(type) {
-		case *domains.RuntimeError:
-			v.Log()
-		default:
-			log.Warn().Err(err).Msgf("internal error")
-		}
-	}
-}
-
-func BuildTablesConfig(ctx context.Context, tx pgx.Tx, tableConfig []*pgdomains.Table) (map[pgdomains.Oid]*pgdomains.Table, ValidationErrors) {
+func BuildTablesConfig(ctx context.Context, tx pgx.Tx, tableConfig []*pgdomains.Table) (map[pgdomains.Oid]*pgdomains.Table, domains.ValidationWarnings, error) {
 	tableSearchQuery := `
 		SELECT 
 		   c.oid::TEXT::INT, 
@@ -82,7 +51,7 @@ func BuildTablesConfig(ctx context.Context, tx pgx.Tx, tableConfig []*pgdomains.
 	`
 
 	tables := make(map[pgdomains.Oid]*pgdomains.Table, len(tableConfig))
-	var errs ValidationErrors
+	var warnings domains.ValidationWarnings
 
 	for _, t := range tableConfig {
 		table := t
@@ -95,38 +64,29 @@ func BuildTablesConfig(ctx context.Context, tx pgx.Tx, tableConfig []*pgdomains.
 		)
 
 		if err != nil && errors.Is(err, pgx.ErrNoRows) {
-			errs = append(errs, domains.NewRuntimeError().
-				SetErr(fmt.Errorf("table %s.%s not found", table.Schema, table.Name)).
-				SetLevel(zerolog.ErrorLevel).
+			warnings = append(warnings, domains.NewValidationWarning().
+				SetMsgf("table %s.%s not found", table.Schema, table.Name).
+				SetLevel(domains.ErrorValidationSeverity).
 				AddMeta("Level", TableValidationLevel).
 				AddMeta("SchemaName", schemaName).
 				AddMeta("TableName", tableName),
 			)
 			continue
 		} else if err != nil {
-			errs = append(errs, domains.NewRuntimeError().
-				SetErr(fmt.Errorf("cannot scan tableSearchQuery: %w", err)).
-				SetLevel(zerolog.ErrorLevel).
-				AddMeta("Level", TableValidationLevel).
-				AddMeta("SchemaName", schemaName).
-				AddMeta("TableName", tableName),
-			)
-			goto errHandle
+			return nil, nil, fmt.Errorf("cannot scan tableSearchQuery: %w", err)
 		}
 
 		// Assign table constraints
-		constraints, constraintErrs := getTableConstraints(ctx, tx, t)
-		if constraintErrs != nil {
-			errs = append(errs, constraintErrs...)
-			goto errHandle
+		constraints, err := getTableConstraints(ctx, tx, t)
+		if err != nil {
+			return nil, nil, err
 		}
 		t.Constraints = constraints
 
 		// Assign columns and transformersMap if were found
 		columns, err := getColumnsConfig(ctx, tx, t)
 		if err != nil {
-			errs = append(errs, err)
-			return nil, errs
+			return nil, nil, err
 		}
 		table.Columns = columns
 
@@ -135,7 +95,7 @@ func BuildTablesConfig(ctx context.Context, tx pgx.Tx, tableConfig []*pgdomains.
 			for _, tc := range table.TransformersConfig {
 				transformer, err := initTransformer(table, tc, tx.Conn().TypeMap())
 				if err != nil {
-					errs = append(errs, err)
+					return nil, nil, fmt.Errorf("transformer initialisation error: %w", err)
 				}
 				table.Transformers = append(table.Transformers, transformer)
 			}
@@ -144,12 +104,7 @@ func BuildTablesConfig(ctx context.Context, tx pgx.Tx, tableConfig []*pgdomains.
 		tables[table.Oid] = table
 	}
 
-errHandle:
-	if errs != nil {
-		return nil, errs
-	}
-
-	return tables, nil
+	return tables, warnings, nil
 }
 
 func getColumnsConfig(ctx context.Context, tx pgx.Tx, table *pgdomains.Table) ([]*pgdomains.Column, error) {
@@ -170,12 +125,7 @@ func getColumnsConfig(ctx context.Context, tx pgx.Tx, table *pgdomains.Table) ([
 	var res []*pgdomains.Column
 	rows, err := tx.Query(ctx, tableColumnsQuery, table.Oid)
 	if err != nil {
-		return nil, domains.NewRuntimeError().
-			SetErr(fmt.Errorf("unable execute tableColumnQuery: %w", err)).
-			SetLevel(zerolog.ErrorLevel).
-			AddMeta("Level", ColumnValidationLevel).
-			AddMeta("SchemaName", table.Schema).
-			AddMeta("TableName", table.Name)
+		return nil, fmt.Errorf("unable execute tableColumnQuery: %w", err)
 	}
 	defer rows.Close()
 
@@ -183,12 +133,7 @@ func getColumnsConfig(ctx context.Context, tx pgx.Tx, table *pgdomains.Table) ([
 		var column pgdomains.Column
 		if err = rows.Scan(&column.Name, &column.TypeOid, &column.TypeName,
 			&column.NotNull, &column.Length, &column.Num); err != nil {
-			return nil, domains.NewRuntimeError().
-				SetErr(fmt.Errorf("cannot scan tableColumnQuery: %w", err)).
-				SetLevel(zerolog.ErrorLevel).
-				AddMeta("Level", ColumnValidationLevel).
-				AddMeta("SchemaName", table.Schema).
-				AddMeta("TableName", table.Name)
+			return nil, fmt.Errorf("cannot scan tableColumnQuery: %w", err)
 		}
 		res = append(res, &column)
 	}
@@ -248,8 +193,7 @@ func initTransformer(table *pgdomains.Table, transformerConf domains.Transformer
 	return transformer, nil
 }
 
-func getTableConstraints(ctx context.Context, tx pgx.Tx, table *pgdomains.Table) ([]*pgdomains.Constraint, []error) {
-	var errs []error
+func getTableConstraints(ctx context.Context, tx pgx.Tx, table *pgdomains.Table) ([]*pgdomains.Constraint, error) {
 	var res []*pgdomains.Constraint
 
 	tableConstraintsQuery := `
@@ -279,15 +223,7 @@ func getTableConstraints(ctx context.Context, tx pgx.Tx, table *pgdomains.Table)
 
 	rows, err := tx.Query(ctx, tableConstraintsQuery, table.Oid)
 	if err != nil {
-		errs = append(errs, domains.NewRuntimeError().
-			SetErr(fmt.Errorf("cannot execute tableConstraintsQuery: %w", err)).
-			SetLevel(zerolog.ErrorLevel).
-			AddMeta("Level", ColumnValidationLevel).
-			AddMeta("SchemaName", table.Schema).
-			AddMeta("TableName", table.Name),
-		)
-
-		goto errHandle
+		return nil, fmt.Errorf("cannot execute tableConstraintsQuery: %w", err)
 	}
 	defer rows.Close()
 
@@ -302,21 +238,9 @@ func getTableConstraints(ctx context.Context, tx pgx.Tx, table *pgdomains.Table)
 			&c.Definition,
 		)
 		if err != nil {
-			errs = append(errs, domains.NewRuntimeError().
-				SetErr(fmt.Errorf("cannot scan tableConstraintsQuery: %w", err)).
-				SetLevel(zerolog.ErrorLevel).
-				AddMeta("Level", TableValidationLevel).
-				AddMeta("SchemaName", table.Schema).
-				AddMeta("TableName", table.Name),
-			)
-			goto errHandle
+			return nil, fmt.Errorf("cannot scan tableConstraintsQuery: %w", err)
 		}
 		res = append(res, &c)
-	}
-
-errHandle:
-	if errs != nil {
-		return nil, errs
 	}
 
 	return res, nil

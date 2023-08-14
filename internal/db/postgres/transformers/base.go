@@ -1,12 +1,10 @@
 package transformers
 
 import (
-	"errors"
 	"fmt"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
-	"github.com/rs/zerolog"
 	"golang.org/x/exp/slices"
 
 	pgDomains "github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/domains"
@@ -134,21 +132,21 @@ func (tb *TransformerBase) GetName() string {
 	return tb.Settings.Name
 }
 
-func (tb *TransformerBase) Validate() domains.RuntimeErrors {
+func (tb *TransformerBase) Validate() (domains.ValidationWarnings, error) {
 	// There must be logic according to the
-	var errs domains.RuntimeErrors
+	var warnings domains.ValidationWarnings
 	if tb.Nullable && tb.Column.NotNull {
-		errs = append(errs, domains.NewRuntimeError().
-			SetErr(errors.New("column cannot be null")).
-			SetLevel(zerolog.WarnLevel).
+		warnings = append(warnings, domains.NewValidationWarning().
+			SetMsg("column cannot be null").
+			SetLevel(domains.ErrorValidationSeverity).
 			AddMeta("ConstraintType", NotNullConstraintType),
 		)
 	}
 
 	if tb.Settings.Variadic && tb.Column.Length != -1 {
-		errs = append(errs, domains.NewRuntimeError().
-			SetErr(fmt.Errorf("possible constraint violation: column may be out of max size")).
-			SetLevel(zerolog.WarnLevel).
+		warnings = append(warnings, domains.NewValidationWarning().
+			SetMsg("possible constraint violation: column may be out of max size").
+			SetLevel(domains.WarningValidationSeverity).
 			AddMeta("ConstraintType", LengthConstraintType),
 		)
 	}
@@ -159,9 +157,9 @@ func (tb *TransformerBase) Validate() domains.RuntimeErrors {
 			switch item.ConstraintType {
 			case 'f':
 				if slices.Contains(item.ReferencesColumns, tb.Column.Num) {
-					errs = append(errs, domains.NewRuntimeError().
-						SetErr(fmt.Errorf("possible constraint violation: column is involved into foreign key")).
-						SetLevel(zerolog.WarnLevel).
+					warnings = append(warnings, domains.NewValidationWarning().
+						SetMsg("possible constraint violation: column is involved into foreign key").
+						SetLevel(domains.WarningValidationSeverity).
 						AddMeta("ConstraintType", FkConstraintType).
 						AddMeta("ConstraintName", item.Name).
 						AddMeta("ConstraintSchema", item.Schema).
@@ -170,9 +168,9 @@ func (tb *TransformerBase) Validate() domains.RuntimeErrors {
 				}
 			case 'c':
 				if slices.Contains(item.ConstrainedColumns, tb.Column.Num) {
-					errs = append(errs, domains.NewRuntimeError().
-						SetErr(fmt.Errorf("possible constraint violation")).
-						SetLevel(zerolog.WarnLevel).
+					warnings = append(warnings, domains.NewValidationWarning().
+						SetMsg("possible constraint violation").
+						SetLevel(domains.WarningValidationSeverity).
 						AddMeta("ConstraintType", CheckConstraintType).
 						AddMeta("ConstraintName", item.Name).
 						AddMeta("ConstraintSchema", item.Schema).
@@ -181,9 +179,9 @@ func (tb *TransformerBase) Validate() domains.RuntimeErrors {
 				}
 			case 'p':
 				if !tb.Settings.Unique && slices.Contains(item.ConstrainedColumns, tb.Column.Num) {
-					errs = append(errs, domains.NewRuntimeError().
-						SetErr(fmt.Errorf("possible constraint violation: transformer cannot guarantee uniqueness")).
-						SetLevel(zerolog.WarnLevel).
+					warnings = append(warnings, domains.NewValidationWarning().
+						SetMsg("possible constraint violation: transformer cannot guarantee uniqueness").
+						SetLevel(domains.WarningValidationSeverity).
 						AddMeta("ConstraintType", PkConstraintType).
 						AddMeta("ConstraintName", item.Name).
 						AddMeta("ConstraintSchema", item.Schema).
@@ -191,9 +189,9 @@ func (tb *TransformerBase) Validate() domains.RuntimeErrors {
 					)
 				}
 				if len(item.ReferencedTables) != 0 && slices.Contains(item.ConstrainedColumns, tb.Column.Num) {
-					errs = append(errs, domains.NewRuntimeError().
-						SetErr(fmt.Errorf("possible constraint violation: primary key has referenced tables")).
-						SetLevel(zerolog.WarnLevel).
+					warnings = append(warnings, domains.NewValidationWarning().
+						SetMsg("possible constraint violation: primary key has referenced tables").
+						SetLevel(domains.WarningValidationSeverity).
 						AddMeta("ConstraintType", ReferencesConstraintType).
 						AddMeta("ConstraintName", item.Name).
 						AddMeta("ConstraintSchema", item.Schema).
@@ -202,9 +200,9 @@ func (tb *TransformerBase) Validate() domains.RuntimeErrors {
 				}
 			case 'u':
 				if !tb.Settings.Unique && slices.Contains(item.ConstrainedColumns, tb.Column.Num) {
-					errs = append(errs, domains.NewRuntimeError().
-						SetErr(fmt.Errorf("possible constraint violation: transformer cannot guarantee uniqueness")).
-						SetLevel(zerolog.WarnLevel).
+					warnings = append(warnings, domains.NewValidationWarning().
+						SetMsg("possible constraint violation: transformer cannot guarantee uniqueness").
+						SetLevel(domains.WarningValidationSeverity).
 						AddMeta("ConstraintType", UniqueConstraintType).
 						AddMeta("ConstraintName", item.Name).
 						AddMeta("ConstraintSchema", item.Schema).
@@ -213,9 +211,9 @@ func (tb *TransformerBase) Validate() domains.RuntimeErrors {
 				}
 			case 't':
 				if slices.Contains(item.ConstrainedColumns, tb.Column.Num) {
-					errs = append(errs, domains.NewRuntimeError().
-						SetErr(fmt.Errorf("possible constraint violation")).
-						SetLevel(zerolog.WarnLevel).
+					warnings = append(warnings, domains.NewValidationWarning().
+						SetMsg("possible constraint violation").
+						SetLevel(domains.WarningValidationSeverity).
 						AddMeta("ConstraintType", TriggerConstraintType).
 						AddMeta("ConstraintName", item.Name).
 						AddMeta("ConstraintSchema", item.Schema).
@@ -224,9 +222,9 @@ func (tb *TransformerBase) Validate() domains.RuntimeErrors {
 				}
 			case 'x':
 				if slices.Contains(item.ConstrainedColumns, tb.Column.Num) {
-					errs = append(errs, domains.NewRuntimeError().
-						SetErr(fmt.Errorf("possible constraint violation")).
-						SetLevel(zerolog.WarnLevel).
+					warnings = append(warnings, domains.NewValidationWarning().
+						SetMsg("possible constraint violation").
+						SetLevel(domains.WarningValidationSeverity).
 						AddMeta("ConstraintType", ExclusionConstraintType).
 						AddMeta("ConstraintName", item.Name).
 						AddMeta("ConstraintSchema", item.Schema).
@@ -238,7 +236,7 @@ func (tb *TransformerBase) Validate() domains.RuntimeErrors {
 		}
 	}
 
-	return errs
+	return warnings, nil
 }
 
 func (tb *TransformerBase) Scan(src string, dest interface{}) error {

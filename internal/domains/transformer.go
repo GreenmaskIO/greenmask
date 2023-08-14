@@ -11,7 +11,7 @@ const (
 
 type Transformer interface {
 	Transform([]byte) ([]byte, error)
-	Validate() RuntimeErrors
+	Validate() (ValidationWarnings, error)
 	IsCustom() bool
 	GetName() string
 	GetTransformationType() TransformationType
