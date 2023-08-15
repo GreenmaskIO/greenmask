@@ -120,7 +120,7 @@ func (ndt *NoiseDateTransformer) TransformAttr(val string) (string, error) {
 
 func (ndt *NoiseDateTransformer) Transform(data []byte) ([]byte, error) {
 
-	record, attr, err := getColumnValueFromCsvRecord(data, ndt.ColumnNum)
+	record, attr, err := getColumnValueFromCsvRecord(ndt.Table, data, ndt.ColumnNum)
 	if err != nil {
 		return nil, fmt.Errorf("cannot parse csv record: %w", err)
 	}
@@ -130,7 +130,7 @@ func (ndt *NoiseDateTransformer) Transform(data []byte) ([]byte, error) {
 		return nil, err
 	}
 
-	return updateAttributeAndBuildRecord(record, transformedAttr, ndt.ColumnNum)
+	return updateAttributeAndBuildRecord(ndt.Table, record, transformedAttr, ndt.ColumnNum)
 }
 
 func generateNoisedTime(r *rand.Rand, ratio time.Duration, val *time.Time, truncate *string) time.Time {

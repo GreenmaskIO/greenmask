@@ -125,7 +125,7 @@ func (mt *MaskingTransformer) TransformAttr(val string) (string, error) {
 
 func (mt *MaskingTransformer) Transform(data []byte) ([]byte, error) {
 
-	record, attr, err := getColumnValueFromCsvRecord(data, mt.ColumnNum)
+	record, attr, err := getColumnValueFromCsvRecord(mt.Table, data, mt.ColumnNum)
 	if err != nil {
 		return nil, fmt.Errorf("cannot parse csv record: %w", err)
 	}
@@ -135,5 +135,5 @@ func (mt *MaskingTransformer) Transform(data []byte) ([]byte, error) {
 		return nil, err
 	}
 
-	return updateAttributeAndBuildRecord(record, transformedAttr, mt.ColumnNum)
+	return updateAttributeAndBuildRecord(mt.Table, record, transformedAttr, mt.ColumnNum)
 }

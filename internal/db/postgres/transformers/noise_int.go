@@ -97,7 +97,7 @@ func (nit *NoiseIntTransformer) TransformAttr(val string) (string, error) {
 
 func (nit *NoiseIntTransformer) Transform(data []byte) ([]byte, error) {
 
-	record, attr, err := getColumnValueFromCsvRecord(data, nit.ColumnNum)
+	record, attr, err := getColumnValueFromCsvRecord(nit.Table, data, nit.ColumnNum)
 	if err != nil {
 		return nil, fmt.Errorf("cannot parse csv record: %w", err)
 	}
@@ -107,5 +107,5 @@ func (nit *NoiseIntTransformer) Transform(data []byte) ([]byte, error) {
 		return nil, err
 	}
 
-	return updateAttributeAndBuildRecord(record, transformedAttr, nit.ColumnNum)
+	return updateAttributeAndBuildRecord(nit.Table, record, transformedAttr, nit.ColumnNum)
 }

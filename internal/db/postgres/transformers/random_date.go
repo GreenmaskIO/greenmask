@@ -111,7 +111,7 @@ func (rdt *RandomDateTransformer) TransformAttr(val string) (string, error) {
 
 func (rdt *RandomDateTransformer) Transform(data []byte) ([]byte, error) {
 
-	record, attr, err := getColumnValueFromCsvRecord(data, rdt.ColumnNum)
+	record, attr, err := getColumnValueFromCsvRecord(rdt.Table, data, rdt.ColumnNum)
 	if err != nil {
 		return nil, fmt.Errorf("cannot parse csv record: %w", err)
 	}
@@ -121,7 +121,7 @@ func (rdt *RandomDateTransformer) Transform(data []byte) ([]byte, error) {
 		return nil, err
 	}
 
-	return updateAttributeAndBuildRecord(record, transformedAttr, rdt.ColumnNum)
+	return updateAttributeAndBuildRecord(rdt.Table, record, transformedAttr, rdt.ColumnNum)
 }
 
 func generateRandomTime(r *rand.Rand, startDate *time.Time, endDate *time.Time, truncate *string) time.Time {

@@ -102,7 +102,7 @@ func (ht *HashTransformer) TransformAttr(data string) (string, error) {
 
 func (ht *HashTransformer) Transform(data []byte) ([]byte, error) {
 
-	record, attr, err := getColumnValueFromCsvRecord(data, ht.ColumnNum)
+	record, attr, err := getColumnValueFromCsvRecord(ht.Table, data, ht.ColumnNum)
 	if err != nil {
 		return nil, fmt.Errorf("cannot parse csv record: %w", err)
 	}
@@ -112,5 +112,5 @@ func (ht *HashTransformer) Transform(data []byte) ([]byte, error) {
 		return nil, err
 	}
 
-	return updateAttributeAndBuildRecord(record, transformedAttr, ht.ColumnNum)
+	return updateAttributeAndBuildRecord(ht.Table, record, transformedAttr, ht.ColumnNum)
 }

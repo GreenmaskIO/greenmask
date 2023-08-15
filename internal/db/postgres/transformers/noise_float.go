@@ -102,7 +102,7 @@ func (nft *NoiseFloatTransformer) TransformAttr(val string) (string, error) {
 
 func (nft *NoiseFloatTransformer) Transform(data []byte) ([]byte, error) {
 
-	record, attr, err := getColumnValueFromCsvRecord(data, nft.ColumnNum)
+	record, attr, err := getColumnValueFromCsvRecord(nft.Table, data, nft.ColumnNum)
 	if err != nil {
 		return nil, fmt.Errorf("cannot parse csv record: %w", err)
 	}
@@ -112,5 +112,5 @@ func (nft *NoiseFloatTransformer) Transform(data []byte) ([]byte, error) {
 		return nil, err
 	}
 
-	return updateAttributeAndBuildRecord(record, transformedAttr, nft.ColumnNum)
+	return updateAttributeAndBuildRecord(nft.Table, record, transformedAttr, nft.ColumnNum)
 }

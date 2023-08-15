@@ -44,7 +44,7 @@ func (snt *SetNullTransformer) TransformAttr(val string) (string, error) {
 
 func (snt *SetNullTransformer) Transform(data []byte) ([]byte, error) {
 
-	record, attr, err := getColumnValueFromCsvRecord(data, snt.ColumnNum)
+	record, attr, err := getColumnValueFromCsvRecord(snt.Table, data, snt.ColumnNum)
 	if err != nil {
 		return nil, fmt.Errorf("cannot parse csv record: %w", err)
 	}
@@ -54,5 +54,5 @@ func (snt *SetNullTransformer) Transform(data []byte) ([]byte, error) {
 		return nil, err
 	}
 
-	return updateAttributeAndBuildRecord(record, transformedAttr, snt.ColumnNum)
+	return updateAttributeAndBuildRecord(snt.Table, record, transformedAttr, snt.ColumnNum)
 }

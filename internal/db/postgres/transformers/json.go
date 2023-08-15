@@ -105,7 +105,7 @@ func (jt *JsonTransformer) TransformAttr(val string) (string, error) {
 
 func (jt *JsonTransformer) Transform(data []byte) ([]byte, error) {
 
-	record, attr, err := getColumnValueFromCsvRecord(data, jt.ColumnNum)
+	record, attr, err := getColumnValueFromCsvRecord(jt.Table, data, jt.ColumnNum)
 	if err != nil {
 		return nil, fmt.Errorf("cannot parse csv record: %w", err)
 	}
@@ -115,5 +115,5 @@ func (jt *JsonTransformer) Transform(data []byte) ([]byte, error) {
 		return nil, err
 	}
 
-	return updateAttributeAndBuildRecord(record, transformedAttr, jt.ColumnNum)
+	return updateAttributeAndBuildRecord(jt.Table, record, transformedAttr, jt.ColumnNum)
 }

@@ -88,7 +88,7 @@ func (rit *RandomIntTransformer) TransformAttr(val string) (string, error) {
 
 func (rit *RandomIntTransformer) Transform(data []byte) ([]byte, error) {
 
-	record, attr, err := getColumnValueFromCsvRecord(data, rit.ColumnNum)
+	record, attr, err := getColumnValueFromCsvRecord(rit.Table, data, rit.ColumnNum)
 	if err != nil {
 		return nil, fmt.Errorf("cannot parse csv record: %w", err)
 	}
@@ -98,5 +98,5 @@ func (rit *RandomIntTransformer) Transform(data []byte) ([]byte, error) {
 		return nil, err
 	}
 
-	return updateAttributeAndBuildRecord(record, transformedAttr, rit.ColumnNum)
+	return updateAttributeAndBuildRecord(rit.Table, record, transformedAttr, rit.ColumnNum)
 }

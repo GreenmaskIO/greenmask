@@ -1,10 +1,7 @@
 package transformers
 
 import (
-	"bytes"
-	"encoding/csv"
 	"fmt"
-	"io"
 	"math"
 	"reflect"
 	"strings"
@@ -19,6 +16,7 @@ import (
 	"github.com/rs/zerolog/log"
 
 	pgDomains "github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/domains"
+	"github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/pgcopy"
 	"github.com/wwoytenko/greenfuscator/internal/domains"
 )
 
@@ -319,41 +317,23 @@ func parseTransformerParams(src map[string]interface{}, dest interface{}) error 
 	return nil
 }
 
-func getColumnValueFromCsvRecord(data []byte, columnNum int) ([]string, string, error) {
-	record, err := parseCsvRecord(data)
+func getColumnValueFromCsvRecord(table *pgDomains.TableMeta, data []byte, columnNum int) ([]string, string, error) {
+	record, err := parseCsvRecord(table, data)
 	if err != nil {
 		return nil, "", err
 	}
 	return record, record[columnNum], nil
 }
 
-func updateAttributeAndBuildRecord(data []string, val string, columnNum int) ([]byte, error) {
+func updateAttributeAndBuildRecord(table *pgDomains.TableMeta, data []string, val string, columnNum int) ([]byte, error) {
 	data[columnNum] = val
-	return buildCsvRecord(data)
+	return buildCsvRecord(table, data)
 }
 
-func parseCsvRecord(data []byte) ([]string, error) {
-	lineReader := csv.NewReader(bytes.NewReader(data))
-	lineReader.Comma = '\t'
-	values, err := lineReader.Read()
-	if err != nil {
-		return nil, fmt.Errorf("cannot read dump line: %w", err)
-	}
-	return values, nil
+func parseCsvRecord(table *pgDomains.TableMeta, data []byte) ([]string, error) {
+	return pgcopy.LoadTuple(table, data)
 }
 
-func buildCsvRecord(data []string) ([]byte, error) {
-	buf := bytes.Buffer{}
-	lineWriter := csv.NewWriter(&buf)
-	lineWriter.Comma = '\t'
-	if err := lineWriter.Write(data); err != nil {
-		return nil, fmt.Errorf("unnable to write line: %w", err)
-	}
-	lineWriter.Flush()
-
-	res, err := io.ReadAll(&buf)
-	if err != nil {
-		return nil, fmt.Errorf("cannot read data from tsv reader: %w", err)
-	}
-	return res, nil
+func buildCsvRecord(table *pgDomains.TableMeta, data []string) ([]byte, error) {
+	return pgcopy.DumpTuple(table, data)
 }

@@ -95,7 +95,7 @@ func (rft *RandomFloatTransformer) TransformAttr(val string) (string, error) {
 
 func (rft *RandomFloatTransformer) Transform(data []byte) ([]byte, error) {
 
-	record, attr, err := getColumnValueFromCsvRecord(data, rft.ColumnNum)
+	record, attr, err := getColumnValueFromCsvRecord(rft.Table, data, rft.ColumnNum)
 	if err != nil {
 		return nil, fmt.Errorf("cannot parse csv record: %w", err)
 	}
@@ -105,5 +105,5 @@ func (rft *RandomFloatTransformer) Transform(data []byte) ([]byte, error) {
 		return nil, err
 	}
 
-	return updateAttributeAndBuildRecord(record, transformedAttr, rft.ColumnNum)
+	return updateAttributeAndBuildRecord(rft.Table, record, transformedAttr, rft.ColumnNum)
 }

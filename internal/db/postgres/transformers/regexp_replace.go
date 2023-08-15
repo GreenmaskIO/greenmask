@@ -90,7 +90,7 @@ func (rrt *RegexpReplaceTransformer) TransformAttr(val string) (string, error) {
 
 func (rrt *RegexpReplaceTransformer) Transform(data []byte) ([]byte, error) {
 
-	record, attr, err := getColumnValueFromCsvRecord(data, rrt.ColumnNum)
+	record, attr, err := getColumnValueFromCsvRecord(rrt.Table, data, rrt.ColumnNum)
 	if err != nil {
 		return nil, fmt.Errorf("cannot parse csv record: %w", err)
 	}
@@ -100,5 +100,5 @@ func (rrt *RegexpReplaceTransformer) Transform(data []byte) ([]byte, error) {
 		return nil, err
 	}
 
-	return updateAttributeAndBuildRecord(record, transformedAttr, rrt.ColumnNum)
+	return updateAttributeAndBuildRecord(rrt.Table, record, transformedAttr, rrt.ColumnNum)
 }

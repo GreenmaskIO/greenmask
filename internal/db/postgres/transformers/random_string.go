@@ -94,7 +94,7 @@ func (rst *RandomStringTransformer) TransformAttr(val string) (string, error) {
 
 func (rst *RandomStringTransformer) Transform(data []byte) ([]byte, error) {
 
-	record, attr, err := getColumnValueFromCsvRecord(data, rst.ColumnNum)
+	record, attr, err := getColumnValueFromCsvRecord(rst.Table, data, rst.ColumnNum)
 	if err != nil {
 		return nil, fmt.Errorf("cannot parse csv record: %w", err)
 	}
@@ -104,7 +104,7 @@ func (rst *RandomStringTransformer) Transform(data []byte) ([]byte, error) {
 		return nil, err
 	}
 
-	return updateAttributeAndBuildRecord(record, transformedAttr, rst.ColumnNum)
+	return updateAttributeAndBuildRecord(rst.Table, record, transformedAttr, rst.ColumnNum)
 }
 
 func generateFixedString(r *rand.Rand, buf []rune, minLength, maxLength int64, symbols []rune) string {

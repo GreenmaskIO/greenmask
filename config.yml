@@ -2,7 +2,7 @@ common:
   log-level: "debug"
   log-format: "text"
   bin_path: "/usr/bin"
-#  bin_path: "/opt/homebrew/bin"
+  #  bin_path: "/opt/homebrew/bin"
   storage:
     directory:
       path: "/home/vadim/tmp/pg_dump_test"
@@ -50,25 +50,34 @@ restore:
 
 dump:
   pg_dump_options:
-    #    verbose: true
-#    dbname: "host=/tmp port=5432 user=vvoitenko dbname=demo"
     dbname: "user=postgres dbname=demo"
-    #    exclude-schema: "(\"teSt\"*|test*)"
-    #    table:
-    #      - "public.cards_*"
-    #    jobs: 10
-    #    load-via-partition-root: true
-    #    exclude-table-data: "public.test1_id_seq"
+    jobs: 10
+    exclude-schema: "(\"teSt\"*|test*)"
+    load-via-partition-root: true
 
   transformation:
     - schema: "bookings"
-      name: "flights"
+      name: "flights2"
       transformers:
         - name: "RandomDate"
           params:
             min: "2023-01-01 10:43:31.318664+03"
             max: "2023-05-19 10:43:31.318664+03"
             column: "scheduled_departure"
+
+    - schema: "bookings"
+      name: "aircrafts_data"
+      transformers:
+        - name: "Json"
+          params:
+            column: "model"
+            operations:
+              - operation: "set"
+                path: "en"
+                value: "Boeing 777-300-2023"
+              - operation: "set"
+                path: "crewSize"
+                value: 10
 
 #    - schema: "typetest"
 #      name: "test_int"

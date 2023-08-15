@@ -78,7 +78,7 @@ func (ut *RandomUuidTransformer) TransformAttr(val string) (string, error) {
 
 func (ut *RandomUuidTransformer) Transform(data []byte) ([]byte, error) {
 
-	record, attr, err := getColumnValueFromCsvRecord(data, ut.ColumnNum)
+	record, attr, err := getColumnValueFromCsvRecord(ut.Table, data, ut.ColumnNum)
 	if err != nil {
 		return nil, fmt.Errorf("cannot parse csv record: %w", err)
 	}
@@ -88,5 +88,5 @@ func (ut *RandomUuidTransformer) Transform(data []byte) ([]byte, error) {
 		return nil, err
 	}
 
-	return updateAttributeAndBuildRecord(record, transformedAttr, ut.ColumnNum)
+	return updateAttributeAndBuildRecord(ut.Table, record, transformedAttr, ut.ColumnNum)
 }
