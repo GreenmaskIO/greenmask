@@ -3,10 +3,10 @@ package dump
 import (
 	"context"
 	"fmt"
-	"log"
 	"strconv"
 	"time"
 
+	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
@@ -21,12 +21,12 @@ var (
 		Use: "dump",
 		Run: func(cmd *cobra.Command, args []string) {
 			if err := logger.SetLogLevel(Config.Common.LogLevel, Config.Common.LogFormat); err != nil {
-				log.Fatal(err)
+				log.Fatal().Err(err).Msg("")
 			}
 
 			rootSt, err := directory.NewDirectory(Config.Common.Storage.Directory.Path, 0750, 0650)
 			if err != nil {
-				log.Fatal(err)
+				log.Fatal().Err(err).Msg("")
 			}
 
 			ctx, cancel := context.WithCancel(context.Background())
@@ -34,12 +34,12 @@ var (
 
 			st, err := rootSt.CreateDir(ctx, strconv.FormatInt(time.Now().UnixMilli(), 10))
 			if err != nil {
-				log.Fatalf("cannot create directory in storage: %s", err)
+				log.Fatal().Err(err).Msg("cannot create directory in storage")
 			}
 			dump := postgres.NewDump(Config.Common.BinPath, &Config.Dump.PgDumpOptions, st, Config.Dump.Transformation)
 
 			if err := dump.RunDump(ctx); err != nil {
-				log.Fatalf("cannot make a backup: %s", err)
+				log.Fatal().Err(err).Msg("cannot make a backup")
 			}
 
 		},
@@ -133,7 +133,7 @@ func init() {
 	} {
 		flag := DumpCmd.Flags().Lookup(flagName)
 		if err := viper.BindPFlag(fmt.Sprintf("%s.%s", "dump.pg_dump_options", flagName), flag); err != nil {
-			log.Fatal(err)
+			log.Fatal().Err(err).Msg("")
 		}
 	}
 

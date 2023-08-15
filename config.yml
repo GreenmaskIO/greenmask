@@ -2,22 +2,16 @@ common:
   log-level: "debug"
   log-format: "text"
   bin_path: "/usr/bin"
-  #  bin_path: "/opt/homebrew/bin"
   storage:
     directory:
       path: "/home/vadim/tmp/pg_dump_test"
-#      path: "/Users/vvoitenko/tmp/pgdump_test"
 
 restore:
   pg_restore_options:
     jobs: 10
-    #    verbose: true
     dbname: "user=postgres dbname=demo_restore"
-  #    dbname: "host=/tmp port=5432 user=vvoitenko dbname=demo_restore"
-  #    use-list: "/Users/vvoitenko/gits/woyten/greenfuscator/cmd/greenmask/test.list"
 
   scripts:
-    # preflight, pre-data, data, post-data, post-flight
     pre-flight:
       - name: "pre-flight test script [1]"
         query: "create table script_test(stage text)"
@@ -113,49 +107,3 @@ dump:
           params:
             ratio: 0.9
             column: "range"
-
-
-
-#    - schema: "typetest"
-#      name: "test_int"
-#      transformers:
-#        - name: "at1"
-#          transformer:
-#            name: "RandomInt"
-#            params: { "nullable": true, min: 1, max: 100 }
-#        - name: "at2"
-#          transformer:
-#            name: "RandomInt"
-#            params: { "nullable": true, min: 100, max: 200 }
-#        - name: "at3"
-#          transformer:
-#            name: "RandomInt"
-#            params: { "nullable": true, min: 200, max: 300 }
-#        - name: "at4"
-#          transformer:
-#            name: "RandomInt"
-#            params: { min: 300, max: 400 }
-#        - name: "at5"
-#          transformer:
-#            name: "RandomInt"
-#            params: { min: 400, max: 500 }
-#        - name: "at6"
-#          transformer:
-#            name: "RandomInt"
-#            params: { min: 500, max: 600 }
-
-#    - schema: "typetest"
-#      name: "test_bool1"
-#      transformers:
-#        - name: "RandomBool"
-#          params:
-#            column: "at1"
-#            nullable: true
-#
-#        - name: "RandomBool"
-#          params:
-#            column: "at2"
-
-custom_transformers:
-  custom:
-    bin_path: ""

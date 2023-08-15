@@ -53,6 +53,9 @@ func NewRuntimeError() *RuntimeError {
 
 func (re *RuntimeError) Error() string {
 	if re.Err != nil {
+		if re.Msg == "" {
+			return re.Err.Error()
+		}
 		return fmt.Sprintf("%s: %s", re.Msg, re.Err)
 	} else {
 		return re.Err.Error()

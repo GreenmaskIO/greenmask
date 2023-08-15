@@ -94,8 +94,17 @@ func BuildTablesConfig(ctx context.Context, tx pgx.Tx, tableConfig []*pgdomains.
 		if len(table.TransformersConfig) > 0 {
 			for _, tc := range table.TransformersConfig {
 				transformer, err := initTransformer(table, tc, tx.Conn().TypeMap())
-				if err != nil {
-					return nil, nil, fmt.Errorf("transformer initialisation error: %w", err)
+				var re *domains.RuntimeError
+				if err != nil && errors.As(err, &re) {
+					// TODO: You should rewrite it because here you are translation RuntimeError to ValidationWarning
+					w := domains.NewValidationWarning().SetMsg(re.Msg).SetLevel(domains.ErrorValidationSeverity)
+					w.Meta = re.Meta
+					if re.Err != nil {
+						w.AddMeta("Err", re.Err.Error())
+					}
+					warnings = append(warnings, w)
+				} else if err != nil {
+					return nil, nil, err
 				}
 				table.Transformers = append(table.Transformers, transformer)
 			}

@@ -118,11 +118,11 @@ func (d *Dump) Validate(ctx context.Context, tx pgx.Tx) (map[domains.Oid]*domain
 	if err != nil {
 		return nil, err
 	}
-	if warnings != nil {
-		fatal = warnings.IsFatal()
-	}
 	for _, w := range warnings {
 		w.Log()
+	}
+	if warnings != nil && warnings.IsFatal() {
+		return nil, fmt.Errorf("fatal validation error")
 	}
 
 	// Run .Validate method for each initialised transformer
