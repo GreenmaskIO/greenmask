@@ -15,7 +15,7 @@ import (
 //		1. Implement COPY using CSV format, but I suspect it may cause escaping problems
 //		2. Fully backport PostgreSQL COPY TEXT format
 
-func LoadTuple2(table *domains.TableMeta, data []byte) ([]string, error) {
+func LoadTuple(table *domains.TableMeta, data []byte) ([]string, error) {
 	lineReader := csv.NewReader(bytes.NewReader(data))
 	values, err := lineReader.Read()
 	if err != nil {
@@ -27,7 +27,7 @@ func LoadTuple2(table *domains.TableMeta, data []byte) ([]string, error) {
 	return values, nil
 }
 
-func DumpTuple2(table *domains.TableMeta, record []string) ([]byte, error) {
+func DumpTuple(table *domains.TableMeta, record []string) ([]byte, error) {
 	if len(table.Columns) != len(record) {
 		return nil, fmt.Errorf("wrong tuple length: expected %d received %d", len(table.Columns), len(record))
 	}
@@ -45,7 +45,7 @@ func DumpTuple2(table *domains.TableMeta, record []string) ([]byte, error) {
 	return res, nil
 }
 
-func LoadTuple(table *domains.TableMeta, data []byte) ([]string, error) {
+func LoadTuple2(table *domains.TableMeta, data []byte) ([]string, error) {
 	res := strings.Split(string(data[:len(data)-1]), "\t")
 	if len(table.Columns) != len(res) {
 		return nil, fmt.Errorf("wrong tuple length: expected %d received %d", len(table.Columns), len(res))
@@ -53,7 +53,7 @@ func LoadTuple(table *domains.TableMeta, data []byte) ([]string, error) {
 	return res, nil
 }
 
-func DumpTuple(table *domains.TableMeta, record []string) ([]byte, error) {
+func DumpTuple2(table *domains.TableMeta, record []string) ([]byte, error) {
 	if len(table.Columns) != len(record) {
 		return nil, fmt.Errorf("wrong tuple length: expected %d received %d", len(table.Columns), len(record))
 	}

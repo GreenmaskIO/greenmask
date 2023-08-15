@@ -74,9 +74,9 @@ func (t *Table) TransformTuple(data []byte) ([]byte, error) {
 }
 
 func (t *Table) GetCopyFromStatement() (string, error) {
-	query := fmt.Sprintf("COPY \"%s\".\"%s\" TO STDOUT", t.Schema, t.Name)
+	query := fmt.Sprintf("COPY \"%s\".\"%s\" TO STDOUT WITH (FORMAT CSV, NULL '\\N')", t.Schema, t.Name)
 	if t.Query != "" {
-		query = fmt.Sprintf("COPY (%s) TO STDOUT", t.Query)
+		query = fmt.Sprintf("COPY (%s) TO STDOUT WITH (FORMAT CSV, NULL '\\N')", t.Query)
 	}
 	return query, nil
 }
@@ -95,7 +95,7 @@ func (t *Table) GetTocEntry() (*toc.Entry, error) {
 		columns = append(columns, fmt.Sprintf(`"%s"`, column.Name))
 	}
 
-	var query = `COPY "%s"."%s" (%s) FROM stdin;`
+	var query = `COPY "%s"."%s" (%s) FROM stdin WITH (FORMAT CSV, NULL '\N');`
 	var schemaName, tableName string
 	if t.LoadViaPartitionRoot && t.RootPtSchema != "" && t.RootPtName != "" {
 		schemaName = t.RootPtSchema
