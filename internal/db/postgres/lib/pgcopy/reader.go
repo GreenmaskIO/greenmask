@@ -46,7 +46,7 @@ func DumpTuple2(table *domains.TableMeta, record []string) ([]byte, error) {
 }
 
 func LoadTuple(table *domains.TableMeta, data []byte) ([]string, error) {
-	res := strings.Split(string(data), "\t")
+	res := strings.Split(string(data[:len(data)-1]), "\t")
 	if len(table.Columns) != len(res) {
 		return nil, fmt.Errorf("wrong tuple length: expected %d received %d", len(table.Columns), len(res))
 	}
@@ -57,6 +57,7 @@ func DumpTuple(table *domains.TableMeta, record []string) ([]byte, error) {
 	if len(table.Columns) != len(record) {
 		return nil, fmt.Errorf("wrong tuple length: expected %d received %d", len(table.Columns), len(record))
 	}
-	res := strings.Join(record, "\t")
-	return []byte(res), nil
+	res := []byte(strings.Join(record, "\t"))
+	res = append(res, '\n')
+	return res, nil
 }

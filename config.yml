@@ -57,13 +57,43 @@ dump:
 
   transformation:
     - schema: "bookings"
-      name: "flights2"
+      name: "flights"
       transformers:
         - name: "RandomDate"
           params:
-            min: "2023-01-01 10:43:31.318664+03"
-            max: "2023-05-19 10:43:31.318664+03"
+            min: "2023-01-01 00:00:00.0+03"
+            max: "2023-01-02 00:00:00.0+03"
             column: "scheduled_departure"
+
+        - name: "RandomDate"
+          params:
+            min: "2023-02-01 01:00:00.0+03"
+            max: "2023-03-02 00:00:00.0+03"
+            column: "scheduled_arrival"
+
+        - name: "RegexpReplace"
+          params:
+            column: "departure_airport"
+            regexp: "DME"
+            replace: "SVO"
+
+        - name: "RegexpReplace"
+          params:
+            column: "status"
+            regexp: "On Time"
+            replace: "Delayed"
+
+        - name: "RandomDate"
+          params:
+            column: "actual_departure"
+            min: "2023-01-03 01:00:00.0+03"
+            max: "2023-01-04 00:00:00.0+03"
+
+        - name: "RandomDate"
+          params:
+            column: "actual_arrival"
+            min: "2023-01-04 01:00:00.0+03"
+            max: "2023-01-05 00:00:00.0+03"
 
     - schema: "bookings"
       name: "aircrafts_data"
@@ -78,6 +108,13 @@ dump:
               - operation: "set"
                 path: "crewSize"
                 value: 10
+
+        - name: "NoiseInt"
+          params:
+            ratio: 0.9
+            column: "range"
+
+
 
 #    - schema: "typetest"
 #      name: "test_int"

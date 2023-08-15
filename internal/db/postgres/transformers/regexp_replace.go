@@ -27,6 +27,8 @@ var RegexpReplaceTransformerMeta = TransformerMeta{
 		SetSupportedOids(
 			pgtype.VarcharOID,
 			pgtype.TextOID,
+			pgtype.QCharOID,
+			pgtype.BPCharOID,
 		).
 		SetName(RegexpReplaceTransformerName),
 }
