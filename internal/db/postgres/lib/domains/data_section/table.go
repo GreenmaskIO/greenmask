@@ -1,4 +1,4 @@
-package domains
+package data_section
 
 import (
 	"errors"
@@ -9,55 +9,48 @@ import (
 	"github.com/wwoytenko/greenfuscator/internal/domains"
 )
 
-const CopyColumnDelimiter = '\t'
-
 var TableDataDesc = "TABLE DATA"
 
-type TableMeta struct {
+type Table struct {
+	Schema string
+	Name   string
+	Query  string
+
 	// Data that uses only for TocEntry
 	// DumpId - unique int value for the table instance
-	DumpId DumpId `json:"-" yaml:"-"`
+	DumpId DumpId
 	// Dependencies - list of the table dependencies that must be delivered first
-	Dependencies []int32 `json:"-" yaml:"-"`
+	Dependencies []int32
 
 	// Total metadata that changing dump behaviour
 	// Oid - pg_class.oid
-	Oid Oid `json:"-" yaml:"-"`
+	Oid Oid
 	// Owner - table owner name
-	Owner string `json:"-" yaml:"-"`
+	Owner string
 	// RelKind - relation type as in pg_class.relkind
-	RelKind rune `json:"-" yaml:"-"`
+	RelKind rune
 	// Root - oid of the partition root
-	Root         Oid    `json:"-" yaml:"-"`
-	RootPtName   string `json:"-" yaml:"-"` // Deprecated
-	RootPtSchema string `json:"-" yaml:"-"` // Deprecated
+	Root         Oid
+	RootPtName   string // Deprecated
+	RootPtSchema string // Deprecated
 	// ExcludeData - exclude table data
-	ExcludeData bool `json:"-" yaml:"-"`
+	ExcludeData bool
 	// OriginalSize - plain size of the COPY table data
-	OriginalSize int64 `json:"-" yaml:"-"`
+	OriginalSize int64
 	// CompressedSize - compressed size of the COPY table data
-	CompressedSize int64 `json:"-" yaml:"-"`
+	CompressedSize int64
 	// LoadViaPartitionRoot - generate COPY statement with load via partition root
-	LoadViaPartitionRoot bool `json:"-" yaml:"-"`
+	LoadViaPartitionRoot bool
 	// Constraints - List of the constraints at the table
-	Constraints []*Constraint `json:"-" yaml:"-"`
+	Constraints []*Constraint
 	// Columns - List of the table columns (attributes)
-	Columns []*Column `json:"-" yaml:"-"`
+	Columns []*Column
 	// Transformers - list of the initialised Transformers
-	Transformers []domains.Transformer `json:"-" yaml:"-"`
-}
-
-type Table struct {
-	TableMeta
-	Schema             string                      `mapstructure:"schema"`
-	Name               string                      `mapstructure:"name"`
-	Query              string                      `mapstructure:"query"`
-	QueryTest          string                      `mapstructure:"queryTest"`
-	TransformersConfig []domains.TransformerConfig `mapstructure:"transformers"`
+	Transformers []domains.Transformer
 }
 
 func (t *Table) HasTransformer() bool {
-	return len(t.TransformersConfig) > 0
+	return len(t.Transformers) > 0
 }
 
 func (t *Table) TransformTuple(data []byte) ([]byte, error) {

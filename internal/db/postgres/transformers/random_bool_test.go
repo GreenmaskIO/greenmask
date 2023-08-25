@@ -7,7 +7,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/stretchr/testify/require"
 
-	"github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/domains"
+	"github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/domains/data_section"
 )
 
 func TestRandomBoolTransformer_Transform(t *testing.T) {
@@ -16,20 +16,18 @@ func TestRandomBoolTransformer_Transform(t *testing.T) {
 
 	tests := []struct {
 		name    string
-		table   *domains.TableMeta
+		table   *data_section.Table
 		params  map[string]interface{}
 		pattern string
 	}{
 		{
 			name: "test bool type",
-			table: &domains.TableMeta{
+			table: &data_section.Table{
 				Oid: 123,
-				Columns: []*domains.Column{
+				Columns: []*data_section.Column{
 					{
-						Name: "test",
-						ColumnMeta: domains.ColumnMeta{
-							TypeOid: pgtype.BoolOID,
-						},
+						Name:    "test",
+						TypeOid: pgtype.BoolOID,
 					},
 				},
 			},

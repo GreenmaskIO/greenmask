@@ -6,54 +6,40 @@ import (
 	"github.com/wwoytenko/greenfuscator/internal/domains"
 )
 
-const (
-	PostgresEngine = "PostgreSQL"
-	MySqlEngine    = "MySQL"
-	MongoDbEngine  = "MongoDb"
-)
-
-const (
-	NoValidate      = "NoValidate"
-	ValidateBuiltIn = "ValidateBuildIn"
-	ValidateCustom  = "ValidateCustom"
-)
-
-const (
-	PipeProto       = "Pipe"
-	UnixSocketProto = "UnixSocket"
-)
-
 type ParametersDefinition map[string]ParameterMeta
 
 type ParameterMeta struct {
 	Type     string
 	Default  string
-	Required string
+	Required bool
+	IsColumn bool
+	PgTypes  []string
 }
 
 type TransformerSettings struct {
-	Nullable           bool                       `json:"nullable,omitempty"`
-	Variadic           bool                       `json:"variadic,omitempty"`
-	Unique             bool                       `json:"unique,omitempty"`
-	MaxLength          int64                      `json:"maxLength,omitempty"`
-	SupportedTypes     []string                   `json:"supportedTypes,omitempty"`
-	TransformationType domains.TransformationType `json:"transformationType,omitempty"`
+	Name               string   `json:"name,omitempty"`
+	Description        string   `json:"description,omitempty"`
+	Nullable           bool     `json:"nullable,omitempty"`
+	Variadic           bool     `json:"variadic,omitempty"`
+	Unique             bool     `json:"unique,omitempty"`
+	MaxLength          int64    `json:"maxLength,omitempty"`
+	SupportedTypes     []string `json:"supportedTypes,omitempty"`
+	TransformationType string   `json:"transformationType,omitempty"`
 }
 
 type CustomTransformerMeta struct {
 	Name       string               `json:"name,omitempty"`
 	BinaryPath string               `json:"binaryPath,omitempty"`
-	Engines    []string             `json:"engines,omitempty"`
 	Parameters ParametersDefinition `json:"parameters,omitempty"`
 	Validate   string               `json:"validate,omitempty"`
-	ProvideDsn bool                 `json:"provideDsn,omitempty"`
 	Settings   TransformerSettings  `json:"settings,omitempty"`
-	Proto      string               `json:"proto,omitempty"`
 }
 
 func (ctm *CustomTransformerMeta) Instance() (domains.Transformer, error) {
-	if ctm.Proto == PipeProto {
-		return nil, nil
-	}
+	// Instancing path
+	// 1. Check binary file existence
+	// 2. Get meta if possible
+	// 2.1 Setup TransformerSettings accordingly
+	// 3. Return initialized transformer
 	return nil, errors.New("unknown proto")
 }

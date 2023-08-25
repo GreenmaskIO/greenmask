@@ -1,4 +1,4 @@
-package domains
+package config
 
 import (
 	"sync"
@@ -48,6 +48,18 @@ type Dump struct {
 }
 
 type Restore struct {
-	PgRestoreOptions pgrestore.Options   `mapstructure:"pg_restore_options"`
-	Scripts          map[string][]Script `mapstructure:"scripts"`
+	PgRestoreOptions pgrestore.Options             `mapstructure:"pg_restore_options"`
+	Scripts          map[string][]pgrestore.Script `mapstructure:"scripts"`
+}
+
+type TransformerConfig struct {
+	Name   string                 `mapstructure:"name"`
+	Params map[string]interface{} `mapstructure:"params"`
+}
+
+type Table struct {
+	Schema             string               `mapstructure:"schema"`
+	Name               string               `mapstructure:"name"`
+	Query              string               `mapstructure:"query"`
+	TransformersConfig []*TransformerConfig `mapstructure:"transformers"`
 }

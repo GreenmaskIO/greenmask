@@ -8,6 +8,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgtype"
 
+	"github.com/wwoytenko/greenfuscator/internal/db/postgres/transformers/utils"
 	"github.com/wwoytenko/greenfuscator/internal/domains"
 )
 
@@ -16,7 +17,7 @@ const (
 	RandomFloatTransformerName       = "RandomFloat"
 )
 
-var RandomFloatTransformerMeta = TransformerMeta{
+var RandomFloatTransformerMeta = utils.TransformerMeta{
 	Description: "Generate random float",
 	ParamsDescription: map[string]string{
 		"min":       "min value",
@@ -24,7 +25,7 @@ var RandomFloatTransformerMeta = TransformerMeta{
 		"precision": "precision of the random value",
 	},
 	NewTransformer: NewRandomFloatTransformer,
-	Settings: NewTransformerSettings().
+	Settings: utils.NewTransformerSettings().
 		SetNullable().
 		SetVariadic().
 		SetCastVar(float64(0)).
@@ -44,23 +45,23 @@ type RandomFloatTransformerParams struct {
 }
 
 type RandomFloatTransformer struct {
-	TransformerBase
+	utils.TransformerBase
 	RandomFloatTransformerParams
 	precision float64
 	rand      *rand.Rand
 }
 
 func NewRandomFloatTransformer(
-	base *TransformerBase,
+	base *utils.TransformerBase,
 	params map[string]interface{},
 ) (domains.Transformer, error) {
 
 	tParams := RandomFloatTransformerParams{
 		Precision: defaultPrecision,
-		Fraction:  DefaultNullFraction,
+		Fraction:  utils.DefaultNullFraction,
 	}
 
-	if err := parseTransformerParams(params, &tParams); err != nil {
+	if err := utils.ParseTransformerParams(params, &tParams); err != nil {
 		return nil, fmt.Errorf("parameters parsing error: %w", err)
 	}
 
@@ -81,11 +82,11 @@ func NewRandomFloatTransformer(
 func (rft *RandomFloatTransformer) TransformAttr(val string) (string, error) {
 	if rft.Nullable {
 		if rft.rand.Float32() < rft.Fraction {
-			return DefaultNullSeq, nil
+			return utils.DefaultNullSeq, nil
 		}
 	}
 	resFloat := rft.Min + rft.rand.Float64()*(rft.Max-rft.Min)
-	resFloat = Round(resFloat, rft.precision)
+	resFloat = round(resFloat, rft.precision)
 	res, err := rft.EncodePlan.Encode(resFloat, nil)
 	if err != nil {
 		return "", err
@@ -95,7 +96,7 @@ func (rft *RandomFloatTransformer) TransformAttr(val string) (string, error) {
 
 func (rft *RandomFloatTransformer) Transform(data []byte) ([]byte, error) {
 
-	record, attr, err := getColumnValueFromCsvRecord(rft.Table, data, rft.ColumnNum)
+	record, attr, err := utils.GetColumnValueFromCsvRecord(rft.Table, data, rft.ColumnNum)
 	if err != nil {
 		return nil, fmt.Errorf("cannot parse csv record: %w", err)
 	}
@@ -105,5 +106,5 @@ func (rft *RandomFloatTransformer) Transform(data []byte) ([]byte, error) {
 		return nil, err
 	}
 
-	return updateAttributeAndBuildRecord(rft.Table, record, transformedAttr, rft.ColumnNum)
+	return utils.UpdateAttributeAndBuildRecord(rft.Table, record, transformedAttr, rft.ColumnNum)
 }

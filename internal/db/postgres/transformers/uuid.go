@@ -9,15 +9,16 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 
+	"github.com/wwoytenko/greenfuscator/internal/db/postgres/transformers/utils"
 	"github.com/wwoytenko/greenfuscator/internal/domains"
 )
 
 const RandomUuidTransformerName = "RandomUuid"
 
-var RandomUuidTransformerMeta = TransformerMeta{
+var RandomUuidTransformerMeta = utils.TransformerMeta{
 	Description:    `Generate random UUID`,
 	NewTransformer: NewRandomUuidTransformer,
-	Settings: NewTransformerSettings().
+	Settings: utils.NewTransformerSettings().
 		SetNullable().
 		SetCastVar(uuid.New()).
 		SetSupportedOids(
@@ -34,13 +35,13 @@ type RandomUuidTransformerParams struct {
 }
 
 type RandomUuidTransformer struct {
-	TransformerBase
+	utils.TransformerBase
 	RandomUuidTransformerParams
 	rand *rand.Rand
 }
 
 func NewRandomUuidTransformer(
-	base *TransformerBase,
+	base *utils.TransformerBase,
 	params map[string]interface{},
 ) (domains.Transformer, error) {
 
@@ -50,9 +51,9 @@ func NewRandomUuidTransformer(
 	}
 
 	tParams := RandomUuidTransformerParams{
-		Fraction: DefaultNullFraction,
+		Fraction: utils.DefaultNullFraction,
 	}
-	if err := parseTransformerParams(params, &tParams); err != nil {
+	if err := utils.ParseTransformerParams(params, &tParams); err != nil {
 		return nil, fmt.Errorf("parameters parsing error: %w", err)
 	}
 
@@ -70,7 +71,7 @@ func NewRandomUuidTransformer(
 func (ut *RandomUuidTransformer) TransformAttr(val string) (string, error) {
 	if ut.Nullable {
 		if ut.rand.Float32() < ut.Fraction {
-			return DefaultNullSeq, nil
+			return utils.DefaultNullSeq, nil
 		}
 	}
 	return uuid.New().String(), nil
@@ -78,7 +79,7 @@ func (ut *RandomUuidTransformer) TransformAttr(val string) (string, error) {
 
 func (ut *RandomUuidTransformer) Transform(data []byte) ([]byte, error) {
 
-	record, attr, err := getColumnValueFromCsvRecord(ut.Table, data, ut.ColumnNum)
+	record, attr, err := utils.GetColumnValueFromCsvRecord(ut.Table, data, ut.ColumnNum)
 	if err != nil {
 		return nil, fmt.Errorf("cannot parse csv record: %w", err)
 	}
@@ -88,5 +89,5 @@ func (ut *RandomUuidTransformer) Transform(data []byte) ([]byte, error) {
 		return nil, err
 	}
 
-	return updateAttributeAndBuildRecord(ut.Table, record, transformedAttr, ut.ColumnNum)
+	return utils.UpdateAttributeAndBuildRecord(ut.Table, record, transformedAttr, ut.ColumnNum)
 }

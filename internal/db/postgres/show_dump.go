@@ -10,7 +10,7 @@ import (
 
 	"gopkg.in/yaml.v3"
 
-	"github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/domains"
+	storage2 "github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/domains/storage"
 	"github.com/wwoytenko/greenfuscator/internal/storage"
 )
 
@@ -43,7 +43,7 @@ var templateString = `;
 `
 
 func ShowDump(ctx context.Context, st storage.Storager, dumpId string, format string) error {
-	meta := &domains.Metadata{}
+	meta := &storage2.Metadata{}
 	r, err := st.GetReader(ctx, path.Join(dumpId, "metadata.json"))
 	if err != nil {
 		return fmt.Errorf("cannot get metadata: %w", err)
@@ -65,21 +65,21 @@ func ShowDump(ctx context.Context, st storage.Storager, dumpId string, format st
 	return nil
 }
 
-func printJson(meta *domains.Metadata) error {
+func printJson(meta *storage2.Metadata) error {
 	if err := json.NewEncoder(os.Stdout).Encode(meta); err != nil {
 		return fmt.Errorf("json render error: %w", err)
 	}
 	return nil
 }
 
-func printYaml(meta *domains.Metadata) error {
+func printYaml(meta *storage2.Metadata) error {
 	if err := yaml.NewEncoder(os.Stdout).Encode(meta); err != nil {
 		return fmt.Errorf("yaml render error: %w", err)
 	}
 	return nil
 }
 
-func printText(meta *domains.Metadata) error {
+func printText(meta *storage2.Metadata) error {
 	t, err := template.New(templateName).Parse(templateString)
 	if err != nil {
 		return fmt.Errorf("cannot parser TOC report template: %w", err)

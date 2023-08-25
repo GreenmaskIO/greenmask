@@ -8,6 +8,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/tidwall/sjson"
 
+	"github.com/wwoytenko/greenfuscator/internal/db/postgres/transformers/utils"
 	"github.com/wwoytenko/greenfuscator/internal/domains"
 )
 
@@ -15,13 +16,13 @@ const (
 	JsonTransformerName = "Json"
 )
 
-var JsonTransformerMeta = TransformerMeta{
+var JsonTransformerMeta = utils.TransformerMeta{
 	Description: `Json with value passed through "value" parameter`,
 	ParamsDescription: map[string]string{
 		"operations": "json changing operations",
 	},
 	NewTransformer: NewJsonTransformer,
-	Settings: NewTransformerSettings().
+	Settings: utils.NewTransformerSettings().
 		SetNullable().
 		SetVariadic().
 		SetCastVar("").
@@ -58,18 +59,18 @@ func (oo *Operation) Apply(inp string) (string, error) {
 }
 
 type JsonTransformer struct {
-	TransformerBase
+	utils.TransformerBase
 	JsonTransformerParams
 	rand *rand.Rand
 }
 
 func NewJsonTransformer(
-	base *TransformerBase,
+	base *utils.TransformerBase,
 	params map[string]interface{},
 ) (domains.Transformer, error) {
 
 	tParams := JsonTransformerParams{}
-	if err := parseTransformerParams(params, &tParams); err != nil {
+	if err := utils.ParseTransformerParams(params, &tParams); err != nil {
 		return nil, fmt.Errorf("parameters parsing error: %w", err)
 	}
 
@@ -84,12 +85,12 @@ func NewJsonTransformer(
 
 func (jt *JsonTransformer) TransformAttr(val string) (string, error) {
 	var err error
-	if val == DefaultNullSeq {
+	if val == utils.DefaultNullSeq {
 		return val, nil
 	}
 	if jt.Nullable {
 		if jt.rand.Float32() < jt.Fraction {
-			return DefaultNullSeq, nil
+			return utils.DefaultNullSeq, nil
 		}
 	}
 
@@ -105,7 +106,7 @@ func (jt *JsonTransformer) TransformAttr(val string) (string, error) {
 
 func (jt *JsonTransformer) Transform(data []byte) ([]byte, error) {
 
-	record, attr, err := getColumnValueFromCsvRecord(jt.Table, data, jt.ColumnNum)
+	record, attr, err := utils.GetColumnValueFromCsvRecord(jt.Table, data, jt.ColumnNum)
 	if err != nil {
 		return nil, fmt.Errorf("cannot parse csv record: %w", err)
 	}
@@ -115,5 +116,5 @@ func (jt *JsonTransformer) Transform(data []byte) ([]byte, error) {
 		return nil, err
 	}
 
-	return updateAttributeAndBuildRecord(jt.Table, record, transformedAttr, jt.ColumnNum)
+	return utils.UpdateAttributeAndBuildRecord(jt.Table, record, transformedAttr, jt.ColumnNum)
 }

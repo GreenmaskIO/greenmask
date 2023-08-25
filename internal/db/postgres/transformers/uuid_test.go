@@ -7,33 +7,27 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/domains"
+	"github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/domains/data_section"
 )
 
 func TestUuidTransformer_Transform(t *testing.T) {
 	typeMap, err := getTypeMap()
 	require.NoError(t, err)
 
-	table := &domains.TableMeta{
+	table := &data_section.Table{
 		Oid: 123,
-		Columns: []*domains.Column{
+		Columns: []*data_section.Column{
 			{
-				Name: "test1",
-				ColumnMeta: domains.ColumnMeta{
-					TypeOid: pgtype.UUIDOID,
-				},
+				Name:    "test1",
+				TypeOid: pgtype.UUIDOID,
 			},
 			{
-				Name: "test2",
-				ColumnMeta: domains.ColumnMeta{
-					TypeOid: pgtype.TextOID,
-				},
+				Name:    "test2",
+				TypeOid: pgtype.TextOID,
 			},
 			{
-				Name: "test3",
-				ColumnMeta: domains.ColumnMeta{
-					TypeOid: pgtype.Int8OID,
-				},
+				Name:    "test3",
+				TypeOid: pgtype.Int8OID,
 			},
 		},
 	}

@@ -7,7 +7,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/stretchr/testify/require"
 
-	"github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/domains"
+	"github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/domains/data_section"
 )
 
 func TestRandomDateTransformer_Transform(t *testing.T) {
@@ -16,20 +16,18 @@ func TestRandomDateTransformer_Transform(t *testing.T) {
 
 	tests := []struct {
 		name    string
-		table   *domains.TableMeta
+		table   *data_section.Table
 		params  map[string]interface{}
 		pattern string
 	}{
 		{
 			name: "test date type",
-			table: &domains.TableMeta{
+			table: &data_section.Table{
 				Oid: 123,
-				Columns: []*domains.Column{
+				Columns: []*data_section.Column{
 					{
-						Name: "test",
-						ColumnMeta: domains.ColumnMeta{
-							TypeOid: pgtype.DateOID,
-						},
+						Name:    "test",
+						TypeOid: pgtype.DateOID,
 					},
 				},
 			},
@@ -42,14 +40,12 @@ func TestRandomDateTransformer_Transform(t *testing.T) {
 		},
 		{
 			name: "test timestamp without timezone type",
-			table: &domains.TableMeta{
+			table: &data_section.Table{
 				Oid: 123,
-				Columns: []*domains.Column{
+				Columns: []*data_section.Column{
 					{
-						Name: "test",
-						ColumnMeta: domains.ColumnMeta{
-							TypeOid: pgtype.TimestampOID,
-						},
+						Name:    "test",
+						TypeOid: pgtype.TimestampOID,
 					},
 				},
 			},
@@ -62,14 +58,12 @@ func TestRandomDateTransformer_Transform(t *testing.T) {
 		},
 		{
 			name: "test timestamp with timezone type",
-			table: &domains.TableMeta{
+			table: &data_section.Table{
 				Oid: 123,
-				Columns: []*domains.Column{
+				Columns: []*data_section.Column{
 					{
-						Name: "test",
-						ColumnMeta: domains.ColumnMeta{
-							TypeOid: pgtype.TimestamptzOID,
-						},
+						Name:    "test",
+						TypeOid: pgtype.TimestamptzOID,
 					},
 				},
 			},
@@ -82,14 +76,12 @@ func TestRandomDateTransformer_Transform(t *testing.T) {
 		},
 		{
 			name: "test timestamp type with Truncate till day",
-			table: &domains.TableMeta{
+			table: &data_section.Table{
 				Oid: 123,
-				Columns: []*domains.Column{
+				Columns: []*data_section.Column{
 					{
-						Name: "test",
-						ColumnMeta: domains.ColumnMeta{
-							TypeOid: pgtype.TimestampOID,
-						},
+						Name:    "test",
+						TypeOid: pgtype.TimestampOID,
 					},
 				},
 			},
@@ -122,21 +114,19 @@ func TestRandomDateTransformer_Transform_errors(t *testing.T) {
 
 	tests := []struct {
 		name        string
-		table       *domains.TableMeta
+		table       *data_section.Table
 		params      map[string]interface{}
 		typeMap     *pgtype.Map
 		errContains string
 	}{
 		{
 			name: "Check nil typeMap error",
-			table: &domains.TableMeta{
+			table: &data_section.Table{
 				Oid: 123,
-				Columns: []*domains.Column{
+				Columns: []*data_section.Column{
 					{
-						Name: "test",
-						ColumnMeta: domains.ColumnMeta{
-							TypeOid: pgtype.DateOID,
-						},
+						Name:    "test",
+						TypeOid: pgtype.DateOID,
 					},
 				},
 			},
@@ -148,14 +138,12 @@ func TestRandomDateTransformer_Transform_errors(t *testing.T) {
 		},
 		{
 			name: "Check min key not existing error",
-			table: &domains.TableMeta{
+			table: &data_section.Table{
 				Oid: 123,
-				Columns: []*domains.Column{
+				Columns: []*data_section.Column{
 					{
-						Name: "test",
-						ColumnMeta: domains.ColumnMeta{
-							TypeOid: pgtype.DateOID,
-						},
+						Name:    "test",
+						TypeOid: pgtype.DateOID,
 					},
 				},
 			},
@@ -168,14 +156,12 @@ func TestRandomDateTransformer_Transform_errors(t *testing.T) {
 		},
 		{
 			name: "Check max key existing error",
-			table: &domains.TableMeta{
+			table: &data_section.Table{
 				Oid: 123,
-				Columns: []*domains.Column{
+				Columns: []*data_section.Column{
 					{
-						Name: "test",
-						ColumnMeta: domains.ColumnMeta{
-							TypeOid: pgtype.DateOID,
-						},
+						Name:    "test",
+						TypeOid: pgtype.DateOID,
 					},
 				},
 			},
@@ -189,14 +175,12 @@ func TestRandomDateTransformer_Transform_errors(t *testing.T) {
 		},
 		{
 			name: "Check min key empty value",
-			table: &domains.TableMeta{
+			table: &data_section.Table{
 				Oid: 123,
-				Columns: []*domains.Column{
+				Columns: []*data_section.Column{
 					{
-						Name: "test",
-						ColumnMeta: domains.ColumnMeta{
-							TypeOid: pgtype.DateOID,
-						},
+						Name:    "test",
+						TypeOid: pgtype.DateOID,
 					},
 				},
 			},
@@ -210,14 +194,12 @@ func TestRandomDateTransformer_Transform_errors(t *testing.T) {
 		},
 		{
 			name: "Check max empty value",
-			table: &domains.TableMeta{
+			table: &data_section.Table{
 				Oid: 123,
-				Columns: []*domains.Column{
+				Columns: []*data_section.Column{
 					{
-						Name: "test",
-						ColumnMeta: domains.ColumnMeta{
-							TypeOid: pgtype.DateOID,
-						},
+						Name:    "test",
+						TypeOid: pgtype.DateOID,
 					},
 				},
 			},
@@ -231,14 +213,12 @@ func TestRandomDateTransformer_Transform_errors(t *testing.T) {
 		},
 		{
 			name: "Invalid min date format",
-			table: &domains.TableMeta{
+			table: &data_section.Table{
 				Oid: 123,
-				Columns: []*domains.Column{
+				Columns: []*data_section.Column{
 					{
-						Name: "test",
-						ColumnMeta: domains.ColumnMeta{
-							TypeOid: pgtype.DateOID,
-						},
+						Name:    "test",
+						TypeOid: pgtype.DateOID,
 					},
 				},
 			},
@@ -252,14 +232,12 @@ func TestRandomDateTransformer_Transform_errors(t *testing.T) {
 		},
 		{
 			name: "Invalid max date format",
-			table: &domains.TableMeta{
+			table: &data_section.Table{
 				Oid: 123,
-				Columns: []*domains.Column{
+				Columns: []*data_section.Column{
 					{
-						Name: "test",
-						ColumnMeta: domains.ColumnMeta{
-							TypeOid: pgtype.DateOID,
-						},
+						Name:    "test",
+						TypeOid: pgtype.DateOID,
 					},
 				},
 			},

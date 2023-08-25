@@ -7,12 +7,13 @@ import (
 
 	"github.com/jackc/pgx/v5/pgtype"
 
+	"github.com/wwoytenko/greenfuscator/internal/db/postgres/transformers/utils"
 	"github.com/wwoytenko/greenfuscator/internal/domains"
 )
 
 const RandomStringTransformerName = "RandomString"
 
-var RandomStringTransformerMeta = TransformerMeta{
+var RandomStringTransformerMeta = utils.TransformerMeta{
 	Description: "Generate random string",
 	ParamsDescription: map[string]string{
 		"minLength": "min length of string. If you want to make string fixes set minLength equally to maxLength",
@@ -20,7 +21,7 @@ var RandomStringTransformerMeta = TransformerMeta{
 		"symbols":   "the characters range for random string",
 	},
 	NewTransformer: NewRandomStringTransformer,
-	Settings: NewTransformerSettings().
+	Settings: utils.NewTransformerSettings().
 		SetNullable().
 		SetVariadic().
 		SetCastVar("").
@@ -42,7 +43,7 @@ type RandomStringTransformerParams struct {
 }
 
 type RandomStringTransformer struct {
-	TransformerBase
+	utils.TransformerBase
 	RandomStringTransformerParams
 	symbols  []rune
 	buf      []rune
@@ -51,17 +52,17 @@ type RandomStringTransformer struct {
 }
 
 func NewRandomStringTransformer(
-	base *TransformerBase,
+	base *utils.TransformerBase,
 	params map[string]interface{},
 ) (domains.Transformer, error) {
 	var generate getRandStringFunc = generateFixedString
 
 	tParams := RandomStringTransformerParams{
 		Symbols:  "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ",
-		Fraction: DefaultNullFraction,
+		Fraction: utils.DefaultNullFraction,
 	}
 
-	if err := parseTransformerParams(params, &tParams); err != nil {
+	if err := utils.ParseTransformerParams(params, &tParams); err != nil {
 		return nil, fmt.Errorf("parameters parsing error: %w", err)
 	}
 
@@ -86,7 +87,7 @@ func NewRandomStringTransformer(
 func (rst *RandomStringTransformer) TransformAttr(val string) (string, error) {
 	if rst.Nullable {
 		if rst.rand.Float32() < rst.Fraction {
-			return DefaultNullSeq, nil
+			return utils.DefaultNullSeq, nil
 		}
 	}
 	return rst.generate(rst.rand, rst.buf, rst.Min, rst.Max, rst.symbols), nil
@@ -94,7 +95,7 @@ func (rst *RandomStringTransformer) TransformAttr(val string) (string, error) {
 
 func (rst *RandomStringTransformer) Transform(data []byte) ([]byte, error) {
 
-	record, attr, err := getColumnValueFromCsvRecord(rst.Table, data, rst.ColumnNum)
+	record, attr, err := utils.GetColumnValueFromCsvRecord(rst.Table, data, rst.ColumnNum)
 	if err != nil {
 		return nil, fmt.Errorf("cannot parse csv record: %w", err)
 	}
@@ -104,7 +105,7 @@ func (rst *RandomStringTransformer) Transform(data []byte) ([]byte, error) {
 		return nil, err
 	}
 
-	return updateAttributeAndBuildRecord(rst.Table, record, transformedAttr, rst.ColumnNum)
+	return utils.UpdateAttributeAndBuildRecord(rst.Table, record, transformedAttr, rst.ColumnNum)
 }
 
 func generateFixedString(r *rand.Rand, buf []rune, minLength, maxLength int64, symbols []rune) string {

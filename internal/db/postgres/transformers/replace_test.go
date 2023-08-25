@@ -6,21 +6,19 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/stretchr/testify/require"
 
-	"github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/domains"
+	"github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/domains/data_section"
 )
 
 func TestReplaceTransformer_Transform(t *testing.T) {
 	typeMap, err := getTypeMap()
 	require.NoError(t, err)
 
-	table := &domains.TableMeta{
+	table := &data_section.Table{
 		Oid: 123,
-		Columns: []*domains.Column{
+		Columns: []*data_section.Column{
 			{
-				Name: "test",
-				ColumnMeta: domains.ColumnMeta{
-					TypeOid: pgtype.TextOID,
-				},
+				Name:    "test",
+				TypeOid: pgtype.TextOID,
 			},
 		},
 	}
@@ -48,14 +46,12 @@ func TestReplaceTransformer_Transform(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, res, "new_val")
 
-	table = &domains.TableMeta{
+	table = &data_section.Table{
 		Oid: 123,
-		Columns: []*domains.Column{
+		Columns: []*data_section.Column{
 			{
-				Name: "test",
-				ColumnMeta: domains.ColumnMeta{
-					TypeOid: pgtype.DateOID,
-				},
+				Name:    "test",
+				TypeOid: pgtype.DateOID,
 			},
 		},
 	}
@@ -84,14 +80,12 @@ func TestReplaceTransformer_Transform(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, res, "2023-18-05")
 
-	table = &domains.TableMeta{
+	table = &data_section.Table{
 		Oid: 123,
-		Columns: []*domains.Column{
+		Columns: []*data_section.Column{
 			{
-				Name: "test",
-				ColumnMeta: domains.ColumnMeta{
-					TypeOid: pgtype.UUIDOID,
-				},
+				Name:    "test",
+				TypeOid: pgtype.UUIDOID,
 			},
 		},
 	}

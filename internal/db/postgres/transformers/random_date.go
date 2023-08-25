@@ -7,12 +7,13 @@ import (
 
 	"github.com/jackc/pgx/v5/pgtype"
 
+	"github.com/wwoytenko/greenfuscator/internal/db/postgres/transformers/utils"
 	"github.com/wwoytenko/greenfuscator/internal/domains"
 )
 
 const RandomDateTransformerName = "RandomDate"
 
-var RandomDateTransformerMeta = TransformerMeta{
+var RandomDateTransformerMeta = utils.TransformerMeta{
 	Description: "Generate random date",
 	ParamsDescription: map[string]string{
 		"min":      "min value",
@@ -23,7 +24,7 @@ var RandomDateTransformerMeta = TransformerMeta{
 		"fraction": "NULL value distribution within the table (default Fraction 10%)",
 	},
 	NewTransformer: NewRandomDateTransformer,
-	Settings: NewTransformerSettings().
+	Settings: utils.NewTransformerSettings().
 		SetNullable().
 		SetVariadic().
 		SetCastVar(time.Time{}).
@@ -48,7 +49,7 @@ type RandomDateTransformerParams struct {
 }
 
 type RandomDateTransformer struct {
-	TransformerBase
+	utils.TransformerBase
 	RandomDateTransformerParams
 	rand     *rand.Rand
 	generate dateGeneratorFunc
@@ -57,15 +58,15 @@ type RandomDateTransformer struct {
 }
 
 func NewRandomDateTransformer(
-	base *TransformerBase,
+	base *utils.TransformerBase,
 	params map[string]interface{},
 ) (domains.Transformer, error) {
 
 	tParams := RandomDateTransformerParams{
-		Fraction: DefaultNullFraction,
+		Fraction: utils.DefaultNullFraction,
 	}
 
-	if err := parseTransformerParams(params, &tParams); err != nil {
+	if err := utils.ParseTransformerParams(params, &tParams); err != nil {
 		return nil, fmt.Errorf("parameters parsing error: %w", err)
 	}
 
@@ -98,7 +99,7 @@ func NewRandomDateTransformer(
 func (rdt *RandomDateTransformer) TransformAttr(val string) (string, error) {
 	if rdt.Nullable {
 		if rdt.rand.Float32() < rdt.Fraction {
-			return DefaultNullSeq, nil
+			return utils.DefaultNullSeq, nil
 		}
 	}
 	resTime := rdt.generate(rdt.rand, &rdt.min, &rdt.max, &rdt.Truncate)
@@ -111,7 +112,7 @@ func (rdt *RandomDateTransformer) TransformAttr(val string) (string, error) {
 
 func (rdt *RandomDateTransformer) Transform(data []byte) ([]byte, error) {
 
-	record, attr, err := getColumnValueFromCsvRecord(rdt.Table, data, rdt.ColumnNum)
+	record, attr, err := utils.GetColumnValueFromCsvRecord(rdt.Table, data, rdt.ColumnNum)
 	if err != nil {
 		return nil, fmt.Errorf("cannot parse csv record: %w", err)
 	}
@@ -121,7 +122,7 @@ func (rdt *RandomDateTransformer) Transform(data []byte) ([]byte, error) {
 		return nil, err
 	}
 
-	return updateAttributeAndBuildRecord(rdt.Table, record, transformedAttr, rdt.ColumnNum)
+	return utils.UpdateAttributeAndBuildRecord(rdt.Table, record, transformedAttr, rdt.ColumnNum)
 }
 
 func generateRandomTime(r *rand.Rand, startDate *time.Time, endDate *time.Time, truncate *string) time.Time {

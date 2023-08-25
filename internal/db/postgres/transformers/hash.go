@@ -10,6 +10,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 	"golang.org/x/crypto/scrypt"
 
+	"github.com/wwoytenko/greenfuscator/internal/db/postgres/transformers/utils"
 	"github.com/wwoytenko/greenfuscator/internal/domains"
 )
 
@@ -20,13 +21,13 @@ const (
 	HashTransformerName = "Hash"
 )
 
-var HashTransformerMeta = TransformerMeta{
+var HashTransformerMeta = utils.TransformerMeta{
 	Description: `Replace with value passed through "value" parameter`,
 	ParamsDescription: map[string]string{
 		"salt": "secret salt that uses for applying hash function",
 	},
 	NewTransformer: NewHashTransformer,
-	Settings: NewTransformerSettings().
+	Settings: utils.NewTransformerSettings().
 		SetNullable().
 		SetVariadic().
 		SetCastVar("").
@@ -44,20 +45,20 @@ type HashTransformerParams struct {
 }
 
 type HashTransformer struct {
-	TransformerBase
+	utils.TransformerBase
 	HashTransformerParams
 	rand *rand.Rand
 	salt []byte
 }
 
 func NewHashTransformer(
-	base *TransformerBase,
+	base *utils.TransformerBase,
 	params map[string]interface{},
 ) (domains.Transformer, error) {
 	tParams := HashTransformerParams{
-		Fraction: DefaultNullFraction,
+		Fraction: utils.DefaultNullFraction,
 	}
-	if err := parseTransformerParams(params, &tParams); err != nil {
+	if err := utils.ParseTransformerParams(params, &tParams); err != nil {
 		return nil, fmt.Errorf("parameters parsing error: %w", err)
 	}
 
@@ -85,12 +86,12 @@ func NewHashTransformer(
 }
 
 func (ht *HashTransformer) TransformAttr(data string) (string, error) {
-	if data == DefaultNullSeq {
+	if data == utils.DefaultNullSeq {
 		return data, nil
 	}
 	if ht.Nullable {
 		if ht.rand.Float32() < ht.Fraction {
-			return DefaultNullSeq, nil
+			return utils.DefaultNullSeq, nil
 		}
 	}
 	dk, err := scrypt.Key([]byte(data), ht.salt, 32768, 8, 1, 32)
@@ -102,7 +103,7 @@ func (ht *HashTransformer) TransformAttr(data string) (string, error) {
 
 func (ht *HashTransformer) Transform(data []byte) ([]byte, error) {
 
-	record, attr, err := getColumnValueFromCsvRecord(ht.Table, data, ht.ColumnNum)
+	record, attr, err := utils.GetColumnValueFromCsvRecord(ht.Table, data, ht.ColumnNum)
 	if err != nil {
 		return nil, fmt.Errorf("cannot parse csv record: %w", err)
 	}
@@ -112,5 +113,5 @@ func (ht *HashTransformer) Transform(data []byte) ([]byte, error) {
 		return nil, err
 	}
 
-	return updateAttributeAndBuildRecord(ht.Table, record, transformedAttr, ht.ColumnNum)
+	return utils.UpdateAttributeAndBuildRecord(ht.Table, record, transformedAttr, ht.ColumnNum)
 }

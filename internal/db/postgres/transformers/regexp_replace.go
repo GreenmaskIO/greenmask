@@ -8,19 +8,20 @@ import (
 
 	"github.com/jackc/pgx/v5/pgtype"
 
+	"github.com/wwoytenko/greenfuscator/internal/db/postgres/transformers/utils"
 	"github.com/wwoytenko/greenfuscator/internal/domains"
 )
 
 const RegexpReplaceTransformerName = "RegexpReplace"
 
-var RegexpReplaceTransformerMeta = TransformerMeta{
+var RegexpReplaceTransformerMeta = utils.TransformerMeta{
 	Description: `RegexpReplace with value passed through "value" parameter`,
 	ParamsDescription: map[string]string{
 		"regexp":  "regular expression",
 		"replace": "replacement including regexp groups",
 	},
 	NewTransformer: NewRegexpReplaceTransformer,
-	Settings: NewTransformerSettings().
+	Settings: utils.NewTransformerSettings().
 		SetNullable().
 		SetVariadic().
 		SetCastVar("").
@@ -41,21 +42,21 @@ type RegexpReplaceTransformerParams struct {
 }
 
 type RegexpReplaceTransformer struct {
-	TransformerBase
+	utils.TransformerBase
 	RegexpReplaceTransformerParams
 	rand   *rand.Rand
 	regexp *regexp.Regexp
 }
 
 func NewRegexpReplaceTransformer(
-	base *TransformerBase,
+	base *utils.TransformerBase,
 	params map[string]interface{},
 ) (domains.Transformer, error) {
 
 	tParams := RegexpReplaceTransformerParams{
-		Fraction: DefaultNullFraction,
+		Fraction: utils.DefaultNullFraction,
 	}
-	if err := parseTransformerParams(params, &tParams); err != nil {
+	if err := utils.ParseTransformerParams(params, &tParams); err != nil {
 		return nil, fmt.Errorf("parameters parsing error: %w", err)
 	}
 
@@ -79,12 +80,12 @@ func NewRegexpReplaceTransformer(
 }
 
 func (rrt *RegexpReplaceTransformer) TransformAttr(val string) (string, error) {
-	if val == DefaultNullSeq {
+	if val == utils.DefaultNullSeq {
 		return val, nil
 	}
 	if rrt.Nullable {
 		if rrt.rand.Float32() < rrt.Fraction {
-			return DefaultNullSeq, nil
+			return utils.DefaultNullSeq, nil
 		}
 	}
 	return rrt.regexp.ReplaceAllString(val, rrt.Replace), nil
@@ -92,7 +93,7 @@ func (rrt *RegexpReplaceTransformer) TransformAttr(val string) (string, error) {
 
 func (rrt *RegexpReplaceTransformer) Transform(data []byte) ([]byte, error) {
 
-	record, attr, err := getColumnValueFromCsvRecord(rrt.Table, data, rrt.ColumnNum)
+	record, attr, err := utils.GetColumnValueFromCsvRecord(rrt.Table, data, rrt.ColumnNum)
 	if err != nil {
 		return nil, fmt.Errorf("cannot parse csv record: %w", err)
 	}
@@ -102,5 +103,5 @@ func (rrt *RegexpReplaceTransformer) Transform(data []byte) ([]byte, error) {
 		return nil, err
 	}
 
-	return updateAttributeAndBuildRecord(rrt.Table, record, transformedAttr, rrt.ColumnNum)
+	return utils.UpdateAttributeAndBuildRecord(rrt.Table, record, transformedAttr, rrt.ColumnNum)
 }

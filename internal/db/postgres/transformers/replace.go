@@ -7,18 +7,19 @@ import (
 
 	"github.com/jackc/pgx/v5"
 
+	"github.com/wwoytenko/greenfuscator/internal/db/postgres/transformers/utils"
 	"github.com/wwoytenko/greenfuscator/internal/domains"
 )
 
 const ReplaceTransformerName = "Replace"
 
-var ReplaceTransformerMeta = TransformerMeta{
+var ReplaceTransformerMeta = utils.TransformerMeta{
 	Description: `Replace with value passed through "value" parameter`,
 	ParamsDescription: map[string]string{
 		"value": "replacing value",
 	},
 	NewTransformer: NewReplaceTransformer,
-	Settings: NewTransformerSettings().
+	Settings: utils.NewTransformerSettings().
 		SetCastVar("").
 		SetVariadic().
 		SetName(ReplaceTransformerName),
@@ -31,21 +32,21 @@ type ReplaceTransformerParams struct {
 }
 
 type ReplaceTransformer struct {
-	TransformerBase
+	utils.TransformerBase
 	ReplaceTransformerParams
 	value string
 	rand  *rand.Rand
 }
 
 func NewReplaceTransformer(
-	base *TransformerBase,
+	base *utils.TransformerBase,
 	params map[string]interface{},
 ) (domains.Transformer, error) {
 
 	tParams := ReplaceTransformerParams{
-		Fraction: DefaultNullFraction,
+		Fraction: utils.DefaultNullFraction,
 	}
-	if err := parseTransformerParams(params, &tParams); err != nil {
+	if err := utils.ParseTransformerParams(params, &tParams); err != nil {
 		return nil, fmt.Errorf("parameters parsing error: %w", err)
 	}
 
@@ -69,7 +70,7 @@ func NewReplaceTransformer(
 func (rt *ReplaceTransformer) TransformAttr(val string) (string, error) {
 	if rt.Nullable {
 		if rt.rand.Float32() < rt.Fraction {
-			return DefaultNullSeq, nil
+			return utils.DefaultNullSeq, nil
 		}
 	}
 	return rt.Value, nil
@@ -77,7 +78,7 @@ func (rt *ReplaceTransformer) TransformAttr(val string) (string, error) {
 
 func (rt *ReplaceTransformer) Transform(data []byte) ([]byte, error) {
 
-	record, attr, err := getColumnValueFromCsvRecord(rt.Table, data, rt.ColumnNum)
+	record, attr, err := utils.GetColumnValueFromCsvRecord(rt.Table, data, rt.ColumnNum)
 	if err != nil {
 		return nil, fmt.Errorf("cannot parse csv record: %w", err)
 	}
@@ -87,5 +88,5 @@ func (rt *ReplaceTransformer) Transform(data []byte) ([]byte, error) {
 		return nil, err
 	}
 
-	return updateAttributeAndBuildRecord(rt.Table, record, transformedAttr, rt.ColumnNum)
+	return utils.UpdateAttributeAndBuildRecord(rt.Table, record, transformedAttr, rt.ColumnNum)
 }

@@ -12,7 +12,9 @@ import (
 	"github.com/rs/zerolog/log"
 	"golang.org/x/sync/errgroup"
 
-	"github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/domains"
+	"github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/domains/config"
+	"github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/domains/data_section"
+	storage2 "github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/domains/storage"
 	"github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/dumpers"
 	"github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/pgdump"
 	"github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/toc"
@@ -24,16 +26,16 @@ type Dump struct {
 	dsn            string
 	pgDumpOptions  *pgdump.Options
 	pgDump         *pgdump.PgDump
-	curDumpId      domains.DumpId
+	curDumpId      data_section.DumpId
 	st             storage.Storager
 	dumpTaskCount  int32
 	allTaskPushed  atomic.Bool
-	tablesConfig   []*domains.Table
+	tablesConfig   []*config.Table
 	ah             *toc.ArchiveHandle
 	tocDataEntries []*toc.Entry
 }
 
-func NewDump(binPath string, opt *pgdump.Options, st storage.Storager, tableConfig []*domains.Table) *Dump {
+func NewDump(binPath string, opt *pgdump.Options, st storage.Storager, tableConfig []*config.Table) *Dump {
 	return &Dump{
 		pgDumpOptions: opt,
 		pgDump:        pgdump.NewPgDump(binPath),
@@ -108,7 +110,7 @@ func logValidationWarnings(warnings commondomains.ValidationWarnings, schemaName
 	}
 }
 
-func (d *Dump) Validate(ctx context.Context, tx pgx.Tx) (map[domains.Oid]*domains.Table, error) {
+func (d *Dump) Validate(ctx context.Context, tx pgx.Tx) (map[data_section.Oid]*data_section.Table, error) {
 	var fatal = false
 
 	// Initialise transformers, check table, columns and transformer exists
@@ -180,14 +182,14 @@ func (d *Dump) schemaOnlyDump(ctx context.Context, tx pgx.Tx) error {
 		return fmt.Errorf("error reading toc file: %w", err)
 	}
 	d.ah = schemaToc
-	d.curDumpId = domains.DumpId(schemaToc.MaxDumpId + 1)
+	d.curDumpId = data_section.DumpId(schemaToc.MaxDumpId + 1)
 
 	return nil
 }
 
-func (d *Dump) dataDump(ctx context.Context, tx pgx.Tx, tablesConfig map[domains.Oid]*domains.Table) error {
+func (d *Dump) dataDump(ctx context.Context, tx pgx.Tx, tablesConfig map[data_section.Oid]*data_section.Table) error {
 	// TODO: You should use pointer to dumpers.DumpTask instead
-	var largeObjectsList []*domains.LargeObjects
+	var largeObjectsList []*data_section.LargeObjects
 	tablesList, sequenceList, err := GetObjects(ctx, tx, d.pgDumpOptions, tablesConfig, &d.curDumpId)
 	if err != nil {
 		return fmt.Errorf("building data objects: %w", err)
@@ -256,11 +258,11 @@ func (d *Dump) dataDump(ctx context.Context, tx pgx.Tx, tablesConfig map[domains
 				return gtx.Err()
 			case tocEntry := <-result:
 				switch *tocEntry.Desc {
-				case domains.TableDataDesc:
+				case data_section.TableDataDesc:
 					tables = append(tables, tocEntry)
-				case domains.SequenceSetDesc:
+				case data_section.SequenceSetDesc:
 					sequences = append(sequences, tocEntry)
-				case domains.LargeObjectDesc:
+				case data_section.LargeObjectDesc:
 					largeObjects = append(largeObjects, tocEntry)
 				default:
 					return fmt.Errorf("unexpected toc entry %s", *tocEntry.Desc)
@@ -301,7 +303,7 @@ func (d *Dump) merge(ctx context.Context, tx pgx.Tx) error {
 }
 
 func (d *Dump) writeMetaData(ctx context.Context, startedAt, completedAt time.Time) error {
-	metadata, err := domains.NewMetadata(d.ah.Header, d.ah.GetEntries(),
+	metadata, err := storage2.NewMetadata(d.ah.Header, d.ah.GetEntries(),
 		d.ah.WrittenBytes, startedAt, completedAt,
 		d.tablesConfig,
 	)

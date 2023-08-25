@@ -1,13 +1,17 @@
 package transformers
 
 import (
+	"errors"
 	"fmt"
 
+	"github.com/go-playground/validator"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/mitchellh/mapstructure"
+	"github.com/rs/zerolog/log"
 	"golang.org/x/exp/slices"
 
-	pgDomains "github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/domains"
+	"github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/domains/data_section"
 	"github.com/wwoytenko/greenfuscator/internal/domains"
 )
 
@@ -32,8 +36,8 @@ type TransformerBaseParams struct {
 
 type TransformerBase struct {
 	TransformerBaseParams
-	Table         *pgDomains.TableMeta
-	Column        *pgDomains.ColumnMeta
+	Table         *data_section.Table
+	Column        *data_section.Column
 	PgType        *pgtype.Type
 	EncodePlan    pgtype.EncodePlan
 	TypeMap       *pgtype.Map
@@ -45,7 +49,7 @@ type TransformerBase struct {
 
 // NewTransformerBase - initialise and check the transformer requirements depending on transformer type and it settings
 func NewTransformerBase(
-	table *pgDomains.TableMeta,
+	table *data_section.Table,
 	settings *TransformerSettings,
 	params map[string]interface{},
 	typeMap *pgtype.Map,
@@ -56,7 +60,7 @@ func NewTransformerBase(
 	tParams := TransformerBaseParams{
 		Fraction: DefaultNullFraction,
 	}
-	if err = parseTransformerParams(params, &tParams); err != nil {
+	if err = ParseTransformerParams(params, &tParams); err != nil {
 		return nil, fmt.Errorf("parameters parsing error: %w", err)
 	}
 
@@ -67,7 +71,7 @@ func NewTransformerBase(
 	var columnNum int
 	var t *pgtype.Type
 	var plan pgtype.EncodePlan
-	var column *pgDomains.ColumnMeta
+	var column *data_section.Column
 	if settings.TransformationType == domains.AttributeTransformation {
 		if tParams.Column == "" {
 			return nil, fmt.Errorf("column parameter must be set")
@@ -75,20 +79,20 @@ func NewTransformerBase(
 		if typeMap == nil {
 			return nil, fmt.Errorf("typeMap cannot be nil")
 		}
-		columnNum = slices.IndexFunc(table.Columns, func(column *pgDomains.Column) bool {
+		columnNum = slices.IndexFunc(table.Columns, func(column *data_section.Column) bool {
 			return column.Name == tParams.Column
 		})
 		if columnNum == -1 {
 			return nil, fmt.Errorf(`column "%s" not found`, tParams.Column)
 		}
-		column = &table.Columns[columnNum].ColumnMeta
+		column = table.Columns[columnNum]
 		oid := column.TypeOid
 		if tParams.UseType != "" {
 			t, ok := typeMap.TypeForName(tParams.UseType)
 			if !ok {
 				return nil, fmt.Errorf("cannot find type %s", tParams.UseType)
 			}
-			oid = pgDomains.Oid(t.OID)
+			oid = data_section.Oid(t.OID)
 		}
 		if len(settings.SupportedOids) != 0 && !slices.Contains(settings.SupportedOids, int(oid)) {
 			return nil, fmt.Errorf("cannot use type: %s type is not supported", tParams.UseType)
@@ -242,8 +246,32 @@ func (tb *TransformerBase) Validate() (domains.ValidationWarnings, error) {
 func (tb *TransformerBase) Scan(src string, dest interface{}) error {
 	val, err := tb.PgType.Codec.DecodeValue(tb.TypeMap, uint32(tb.Column.TypeOid), pgx.TextFormatCode, []byte(src))
 	if err != nil {
-		return fmt.Errorf("cannot decode value: %w", err)
+		return fmt.Errorf("cannot scan value: %w", err)
 	}
 
 	return scan(val, dest)
+}
+
+func ParseTransformerParams(src map[string]interface{}, dest interface{}) error {
+	if err := mapstructure.Decode(src, dest); err != nil {
+		return fmt.Errorf("parameters parsing error: %w", err)
+	}
+
+	if err := validate.Struct(dest); err != nil {
+		var errs validator.ValidationErrors
+		switch {
+		case errors.As(err, &errs):
+			var firstErr string
+			for _, item := range errs.Translate(translators) {
+				if firstErr == "" {
+					firstErr = item
+				}
+				log.Warn().Msg(item)
+			}
+			return fmt.Errorf("validation error: %s", firstErr)
+		default:
+			return fmt.Errorf("validation error: %w", err)
+		}
+	}
+	return nil
 }

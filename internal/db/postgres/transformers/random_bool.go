@@ -7,15 +7,16 @@ import (
 
 	"github.com/jackc/pgx/v5/pgtype"
 
+	"github.com/wwoytenko/greenfuscator/internal/db/postgres/transformers/utils"
 	"github.com/wwoytenko/greenfuscator/internal/domains"
 )
 
 const RandomBoolTransformerName = "RandomBool"
 
-var RandomBoolTransformerMeta = TransformerMeta{
+var RandomBoolTransformerMeta = utils.TransformerMeta{
 	Description:    "Generate random bool",
 	NewTransformer: NewRandomBoolTransformer,
-	Settings: NewTransformerSettings().
+	Settings: utils.NewTransformerSettings().
 		SetNullable().
 		SetCastVar(true).
 		SetSupportedOids(
@@ -30,13 +31,13 @@ type RandomBoolTransformerParams struct {
 }
 
 type RandomBoolTransformer struct {
-	TransformerBase
+	utils.TransformerBase
 	RandomBoolTransformerParams
 	rand *rand.Rand
 }
 
 func NewRandomBoolTransformer(
-	base *TransformerBase,
+	base *utils.TransformerBase,
 	params map[string]interface{},
 ) (domains.Transformer, error) {
 
@@ -44,7 +45,7 @@ func NewRandomBoolTransformer(
 		Fraction: 0.3,
 	}
 
-	if err := parseTransformerParams(params, &tParams); err != nil {
+	if err := utils.ParseTransformerParams(params, &tParams); err != nil {
 		return nil, fmt.Errorf("parameters parsing error: %w", err)
 	}
 
@@ -65,7 +66,7 @@ func NewRandomBoolTransformer(
 func (rbt *RandomBoolTransformer) TransformAttr(val string) (string, error) {
 	if rbt.Nullable {
 		if rbt.rand.Float32() < rbt.Fraction {
-			return DefaultNullSeq, nil
+			return utils.DefaultNullSeq, nil
 		}
 	}
 	res, err := rbt.EncodePlan.Encode(rbt.rand.Int63n(2) == 1, nil)
@@ -77,7 +78,7 @@ func (rbt *RandomBoolTransformer) TransformAttr(val string) (string, error) {
 
 func (rbt *RandomBoolTransformer) Transform(data []byte) ([]byte, error) {
 
-	record, attr, err := getColumnValueFromCsvRecord(rbt.Table, data, rbt.ColumnNum)
+	record, attr, err := utils.GetColumnValueFromCsvRecord(rbt.Table, data, rbt.ColumnNum)
 	if err != nil {
 		return nil, fmt.Errorf("cannot parse csv record: %w", err)
 	}
@@ -87,5 +88,5 @@ func (rbt *RandomBoolTransformer) Transform(data []byte) ([]byte, error) {
 		return nil, err
 	}
 
-	return updateAttributeAndBuildRecord(rbt.Table, record, transformedAttr, rbt.ColumnNum)
+	return utils.UpdateAttributeAndBuildRecord(rbt.Table, record, transformedAttr, rbt.ColumnNum)
 }

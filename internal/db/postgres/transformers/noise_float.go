@@ -8,19 +8,20 @@ import (
 
 	"github.com/jackc/pgx/v5/pgtype"
 
+	"github.com/wwoytenko/greenfuscator/internal/db/postgres/transformers/utils"
 	"github.com/wwoytenko/greenfuscator/internal/domains"
 )
 
 const NoiseFloatTransformerName = "NoiseFloat"
 
-var NoiseFloatTransformerMeta = TransformerMeta{
+var NoiseFloatTransformerMeta = utils.TransformerMeta{
 	Description: "Generate random float",
 	ParamsDescription: map[string]string{
 		"ratio":     "max random percentage for noise",
 		"precision": "precision of the random value",
 	},
 	NewTransformer: NewNoiseFloatTransformer,
-	Settings: NewTransformerSettings().
+	Settings: utils.NewTransformerSettings().
 		SetNullable().
 		SetVariadic().
 		SetCastVar(float64(0)).
@@ -39,7 +40,7 @@ type NoiseFloatTransformerParams struct {
 }
 
 type NoiseFloatTransformer struct {
-	TransformerBase
+	utils.TransformerBase
 	NoiseFloatTransformerParams
 	precision float64
 	rand      *rand.Rand
@@ -47,16 +48,16 @@ type NoiseFloatTransformer struct {
 }
 
 func NewNoiseFloatTransformer(
-	base *TransformerBase,
+	base *utils.TransformerBase,
 	params map[string]interface{},
 ) (domains.Transformer, error) {
 
 	tParams := NoiseFloatTransformerParams{
 		Precision: defaultPrecision,
-		Fraction:  DefaultNullFraction,
+		Fraction:  utils.DefaultNullFraction,
 	}
 
-	if err := parseTransformerParams(params, &tParams); err != nil {
+	if err := utils.ParseTransformerParams(params, &tParams); err != nil {
 		return nil, fmt.Errorf("parameters parsing error: %w", err)
 	}
 
@@ -75,7 +76,7 @@ func NewNoiseFloatTransformer(
 }
 
 func (nft *NoiseFloatTransformer) TransformAttr(val string) (string, error) {
-	if val == DefaultNullSeq {
+	if val == utils.DefaultNullSeq {
 		return val, nil
 	}
 	if err := nft.Scan(val, &nft.val); err != nil {
@@ -84,7 +85,7 @@ func (nft *NoiseFloatTransformer) TransformAttr(val string) (string, error) {
 
 	if nft.Nullable {
 		if nft.rand.Float32() < nft.Fraction {
-			return DefaultNullSeq, nil
+			return utils.DefaultNullSeq, nil
 		}
 	}
 	ratio := nft.rand.Float64() * nft.Ratio
@@ -92,7 +93,7 @@ func (nft *NoiseFloatTransformer) TransformAttr(val string) (string, error) {
 	if negative {
 		ratio = ratio * -1
 	}
-	nft.val = Round(nft.val+nft.val*ratio, nft.precision)
+	nft.val = round(nft.val+nft.val*ratio, nft.precision)
 	res, err := nft.EncodePlan.Encode(nft.val, nil)
 	if err != nil {
 		return "", err
@@ -102,7 +103,7 @@ func (nft *NoiseFloatTransformer) TransformAttr(val string) (string, error) {
 
 func (nft *NoiseFloatTransformer) Transform(data []byte) ([]byte, error) {
 
-	record, attr, err := getColumnValueFromCsvRecord(nft.Table, data, nft.ColumnNum)
+	record, attr, err := utils.GetColumnValueFromCsvRecord(nft.Table, data, nft.ColumnNum)
 	if err != nil {
 		return nil, fmt.Errorf("cannot parse csv record: %w", err)
 	}
@@ -112,5 +113,9 @@ func (nft *NoiseFloatTransformer) Transform(data []byte) ([]byte, error) {
 		return nil, err
 	}
 
-	return updateAttributeAndBuildRecord(nft.Table, record, transformedAttr, nft.ColumnNum)
+	return utils.UpdateAttributeAndBuildRecord(nft.Table, record, transformedAttr, nft.ColumnNum)
+}
+
+func round(x, unit float64) float64 {
+	return math.Floor(x*unit) / unit
 }

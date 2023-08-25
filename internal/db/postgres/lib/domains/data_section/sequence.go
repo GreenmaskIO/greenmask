@@ -1,4 +1,4 @@
-package domains
+package data_section
 
 import (
 	"fmt"

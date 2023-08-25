@@ -8,17 +8,17 @@ import (
 	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/rs/zerolog/log"
 
-	"github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/domains"
+	"github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/domains/data_section"
 	"github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/toc"
 	"github.com/wwoytenko/greenfuscator/internal/storage"
 	"github.com/wwoytenko/greenfuscator/internal/utils/count_writer"
 )
 
 type TableDumper struct {
-	table *domains.Table
+	table *data_section.Table
 }
 
-func NewTableDumper(table domains.Table) *TableDumper {
+func NewTableDumper(table data_section.Table) *TableDumper {
 	return &TableDumper{
 		table: &table,
 	}

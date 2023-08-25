@@ -7,7 +7,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/stretchr/testify/require"
 
-	"github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/domains"
+	"github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/domains/data_section"
 )
 
 // TODO: Cover error cases
@@ -17,20 +17,18 @@ func TestRandomIntTransformer_Transform(t *testing.T) {
 
 	tests := []struct {
 		name    string
-		table   *domains.TableMeta
+		table   *data_section.Table
 		params  map[string]interface{}
 		pattern string
 	}{
 		{
 			name: "int2",
-			table: &domains.TableMeta{
+			table: &data_section.Table{
 				Oid: 123,
-				Columns: []*domains.Column{
+				Columns: []*data_section.Column{
 					{
-						Name: "test",
-						ColumnMeta: domains.ColumnMeta{
-							TypeOid: pgtype.Int2OID,
-						},
+						Name:    "test",
+						TypeOid: pgtype.Int2OID,
 					},
 				},
 			},
@@ -43,14 +41,12 @@ func TestRandomIntTransformer_Transform(t *testing.T) {
 		},
 		{
 			name: "int4",
-			table: &domains.TableMeta{
+			table: &data_section.Table{
 				Oid: 123,
-				Columns: []*domains.Column{
+				Columns: []*data_section.Column{
 					{
-						Name: "test",
-						ColumnMeta: domains.ColumnMeta{
-							TypeOid: pgtype.Int4OID,
-						},
+						Name:    "test",
+						TypeOid: pgtype.Int4OID,
 					},
 				},
 			},
@@ -63,14 +59,12 @@ func TestRandomIntTransformer_Transform(t *testing.T) {
 		},
 		{
 			name: "int8",
-			table: &domains.TableMeta{
+			table: &data_section.Table{
 				Oid: 123,
-				Columns: []*domains.Column{
+				Columns: []*data_section.Column{
 					{
-						Name: "test",
-						ColumnMeta: domains.ColumnMeta{
-							TypeOid: pgtype.Int8OID,
-						},
+						Name:    "test",
+						TypeOid: pgtype.Int8OID,
 					},
 				},
 			},
@@ -83,14 +77,12 @@ func TestRandomIntTransformer_Transform(t *testing.T) {
 		},
 		{
 			name: "text with int8",
-			table: &domains.TableMeta{
+			table: &data_section.Table{
 				Oid: 123,
-				Columns: []*domains.Column{
+				Columns: []*data_section.Column{
 					{
-						Name: "test",
-						ColumnMeta: domains.ColumnMeta{
-							TypeOid: pgtype.TextOID,
-						},
+						Name:    "test",
+						TypeOid: pgtype.TextOID,
 					},
 				},
 			},

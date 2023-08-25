@@ -3,27 +3,28 @@ package transformers
 import (
 	"fmt"
 
+	"github.com/wwoytenko/greenfuscator/internal/db/postgres/transformers/utils"
 	"github.com/wwoytenko/greenfuscator/internal/domains"
 )
 
 const SetNullTransformerName = "SetNull"
 
-var SetNullTransformerMeta = TransformerMeta{
+var SetNullTransformerMeta = utils.TransformerMeta{
 	Description:    `Set NULL value`,
 	NewTransformer: NewSetNullTransformer,
-	Settings: NewTransformerSettings().
+	Settings: utils.NewTransformerSettings().
 		SetCastVar("").
 		SetNullable().
 		SetName(SetNullTransformerName),
 }
 
 type SetNullTransformer struct {
-	TransformerBase
+	utils.TransformerBase
 	nullSequence string
 }
 
 func NewSetNullTransformer(
-	base *TransformerBase,
+	base *utils.TransformerBase,
 	params map[string]interface{},
 ) (domains.Transformer, error) {
 	// We're always setting null
@@ -34,7 +35,7 @@ func NewSetNullTransformer(
 
 	return &SetNullTransformer{
 		TransformerBase: *base,
-		nullSequence:    DefaultNullSeq,
+		nullSequence:    utils.DefaultNullSeq,
 	}, nil
 }
 
@@ -44,7 +45,7 @@ func (snt *SetNullTransformer) TransformAttr(val string) (string, error) {
 
 func (snt *SetNullTransformer) Transform(data []byte) ([]byte, error) {
 
-	record, attr, err := getColumnValueFromCsvRecord(snt.Table, data, snt.ColumnNum)
+	record, attr, err := utils.GetColumnValueFromCsvRecord(snt.Table, data, snt.ColumnNum)
 	if err != nil {
 		return nil, fmt.Errorf("cannot parse csv record: %w", err)
 	}
@@ -54,5 +55,5 @@ func (snt *SetNullTransformer) Transform(data []byte) ([]byte, error) {
 		return nil, err
 	}
 
-	return updateAttributeAndBuildRecord(snt.Table, record, transformedAttr, snt.ColumnNum)
+	return utils.UpdateAttributeAndBuildRecord(snt.Table, record, transformedAttr, snt.ColumnNum)
 }

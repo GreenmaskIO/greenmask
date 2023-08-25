@@ -6,7 +6,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/stretchr/testify/require"
 
-	"github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/domains"
+	"github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/domains/data_section"
 )
 
 func TestJsonTransformer_Transform(t *testing.T) {
@@ -14,14 +14,12 @@ func TestJsonTransformer_Transform(t *testing.T) {
 	require.NoError(t, err)
 
 	transformer, err := JsonTransformerMeta.InstanceTransformer(
-		&domains.TableMeta{
+		&data_section.Table{
 			Oid: 123,
-			Columns: []*domains.Column{
+			Columns: []*data_section.Column{
 				{
-					Name: "test",
-					ColumnMeta: domains.ColumnMeta{
-						TypeOid: pgtype.JSONBOID,
-					},
+					Name:    "test",
+					TypeOid: pgtype.JSONBOID,
 				},
 			},
 		},

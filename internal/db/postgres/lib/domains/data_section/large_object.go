@@ -1,4 +1,4 @@
-package domains
+package data_section
 
 import (
 	"github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/toc"

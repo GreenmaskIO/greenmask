@@ -1,4 +1,4 @@
-package domains
+package storage
 
 import (
 	"fmt"
@@ -6,6 +6,7 @@ import (
 
 	"github.com/rs/zerolog/log"
 
+	"github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/domains/config"
 	"github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/toc"
 )
 
@@ -39,18 +40,18 @@ type TocEntry struct {
 }
 
 type Metadata struct {
-	StartedAt      time.Time   `yaml:"startedAt" json:"startedAt"`
-	CompletedAt    time.Time   `yaml:"completedAt" json:"completedAt"`
-	OriginalSize   int64       `json:"originalSize" json:"originalSize"`
-	CompressedSize int64       `json:"compressedSize" json:"compressedSize"`
-	Transformers   []*Table    `yaml:"transformers" json:"transformers"`
-	Header         TocHeader   `json:"header" json:"header"`
-	Entries        []*TocEntry `json:"entries" json:"entries"`
+	StartedAt      time.Time       `yaml:"startedAt" json:"startedAt"`
+	CompletedAt    time.Time       `yaml:"completedAt" json:"completedAt"`
+	OriginalSize   int64           `json:"originalSize" json:"originalSize"`
+	CompressedSize int64           `json:"compressedSize" json:"compressedSize"`
+	Transformers   []*config.Table `yaml:"transformers" json:"transformers"`
+	Header         TocHeader       `json:"header" json:"header"`
+	Entries        []*TocEntry     `json:"entries" json:"entries"`
 }
 
 func NewMetadata(ahHeader toc.Header, ahEntries []*toc.Entry,
 	tocFileSize int64, startedAt, completedAt time.Time,
-	transformers []*Table,
+	transformers []*config.Table,
 ) (*Metadata, error) {
 
 	var format string

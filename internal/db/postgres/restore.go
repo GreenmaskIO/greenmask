@@ -17,7 +17,8 @@ import (
 	"golang.org/x/sync/errgroup"
 	"gopkg.in/yaml.v3"
 
-	"github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/domains"
+	"github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/domains/data_section"
+	storage2 "github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/domains/storage"
 	"github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/pgrestore"
 	"github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/restorers"
 	"github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/toc"
@@ -41,7 +42,7 @@ const (
 type Restore struct {
 	binPath    string
 	dsn        string
-	scripts    map[string][]domains.Script
+	scripts    map[string][]pgrestore.Script
 	pgRestore  *pgrestore.PgRestore
 	restoreOpt *pgrestore.Options
 	st         storage.Storager
@@ -51,7 +52,7 @@ type Restore struct {
 	dumpSt     storage.Storager
 }
 
-func NewRestore(binPath string, st storage.Storager, opt *pgrestore.Options, s map[string][]domains.Script) *Restore {
+func NewRestore(binPath string, st storage.Storager, opt *pgrestore.Options, s map[string][]pgrestore.Script) *Restore {
 
 	return &Restore{
 		binPath:    binPath,
@@ -239,11 +240,11 @@ func (r *Restore) dataRestore(ctx context.Context, conn *pgx.Conn) error {
 
 				var task restorers.RestoreTask
 				switch *entry.Desc {
-				case domains.TableDataDesc:
+				case data_section.TableDataDesc:
 					task = restorers.NewTableRestorer(entry, r.st)
-				case domains.SequenceSetDesc:
+				case data_section.SequenceSetDesc:
 					task = restorers.NewSequenceRestorer(entry)
-				case domains.LargeObjectDesc:
+				case data_section.LargeObjectDesc:
 					log.Warn().Msgf("FIXME: Implement Large Object restoration")
 				}
 
@@ -461,7 +462,7 @@ func (r *Restore) parseTextList(f *os.File) (map[int32]bool, error) {
 }
 
 func (r *Restore) parseYamlList(f *os.File) (map[int32]bool, error) {
-	meta := &domains.Metadata{}
+	meta := &storage2.Metadata{}
 	if err := yaml.NewDecoder(f).Decode(meta); err != nil {
 		return nil, fmt.Errorf("metadata parsing error: %w", err)
 	}
@@ -476,7 +477,7 @@ func (r *Restore) parseYamlList(f *os.File) (map[int32]bool, error) {
 }
 
 func (r *Restore) parseJsonList(f *os.File) (map[int32]bool, error) {
-	meta := &domains.Metadata{}
+	meta := &storage2.Metadata{}
 	if err := json.NewDecoder(f).Decode(meta); err != nil {
 		return nil, fmt.Errorf("metadata parsing error: %w", err)
 	}

@@ -1,4 +1,4 @@
-package domains
+package data_section
 
 var (
 	// ConstraintTypes - map of the pg_constraints.contype to human-readable
@@ -25,28 +25,29 @@ var (
 //       Default   |
 //       Check     | CHECK (VALUE ~ '^\d{5}$'::text OR VALUE ~ '^\d{5}-\d{4}$'::text)
 
+// Constraint - structure defines constraint and it settings
 type Constraint struct {
 	// Oid - constraint oid pg_constraint.oid
-	Oid Oid `json:"-" yaml:"-"`
+	Oid Oid `json:"oid"`
 	// Name - constraint name
-	Name string `json:"-" yaml:"-"`
+	Name string `json:"name"`
 	// Schema - constraint schema name
-	Schema string `json:"-" yaml:"-"`
+	Schema string `json:"schema"`
 	// Definition - constraint definition
-	Definition string `json:"-" yaml:"-"`
+	Definition string `json:"definition"`
 	// ConstraintType - type of the constraint. Possible values: c = check constraint, f = foreign key constraint,
 	//  	  p = primary key constraint, u = unique constraint, t = constraint trigger, x = exclusion constraint
-	ConstraintType rune `json:"-" yaml:"-"`
+	ConstraintType rune `json:"constraintType"`
 	// Domain - The domain this constraint is on; zero if not a domain constraint
-	Domain Oid `json:"-" yaml:"-"`
+	Domain Oid `json:"domain"`
 	// RootPtConstraint - The corresponding constraint of the parent partitioned table
-	RootPtConstraint Oid `json:"-" yaml:"-"`
+	RootPtConstraint Oid `json:"rootPtConstraint"`
 	// FkTable - references table oid
-	FkTable Oid `json:"-" yaml:"-"`
+	FkTable Oid `json:"fkTable"`
 	// ConstrainedColumns - columns at the current table
-	ConstrainedColumns []AttNum `json:"-" yaml:"-"`
+	ConstrainedColumns []AttNum `json:"constrainedColumns"`
 	// ReferencesColumns - columns at the referenced table only for FK constraints
-	ReferencesColumns []AttNum `json:"-" yaml:"-"`
+	ReferencesColumns []AttNum `json:"referencesColumns"`
 	// ReferencesColumnNums - columns at the referenced table only for FK constraints
-	ReferencedTables []Oid `json:"-" yaml:"-"`
+	ReferencedTables []Oid `json:"referencedTables"`
 }

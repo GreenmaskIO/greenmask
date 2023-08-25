@@ -8,6 +8,7 @@ import (
 	masker "github.com/ggwhite/go-masker"
 	"github.com/jackc/pgx/v5/pgtype"
 
+	"github.com/wwoytenko/greenfuscator/internal/db/postgres/transformers/utils"
 	"github.com/wwoytenko/greenfuscator/internal/domains"
 )
 
@@ -27,13 +28,13 @@ const (
 	MaskingTransformerName = "Masking"
 )
 
-var MaskingTransformerMeta = TransformerMeta{
+var MaskingTransformerMeta = utils.TransformerMeta{
 	Description: `Masking with value passed through "value" parameter`,
 	ParamsDescription: map[string]string{
 		"value": "replacing value",
 	},
 	NewTransformer: NewMaskingTransformer,
-	Settings: NewTransformerSettings().
+	Settings: utils.NewTransformerSettings().
 		SetNullable().
 		SetCastVar("").
 		SetSupportedOids(
@@ -52,7 +53,7 @@ type MaskingTransformerParams struct {
 }
 
 type MaskingTransformer struct {
-	TransformerBase
+	utils.TransformerBase
 	MaskingTransformerParams
 	rand            *rand.Rand
 	masker          *masker.Masker
@@ -60,14 +61,14 @@ type MaskingTransformer struct {
 }
 
 func NewMaskingTransformer(
-	base *TransformerBase,
+	base *utils.TransformerBase,
 	params map[string]interface{},
 ) (domains.Transformer, error) {
 
 	tParams := MaskingTransformerParams{
-		Fraction: DefaultNullFraction,
+		Fraction: utils.DefaultNullFraction,
 	}
-	if err := parseTransformerParams(params, &tParams); err != nil {
+	if err := utils.ParseTransformerParams(params, &tParams); err != nil {
 		return nil, fmt.Errorf("parameters parsing error: %w", err)
 	}
 
@@ -112,12 +113,12 @@ func NewMaskingTransformer(
 }
 
 func (mt *MaskingTransformer) TransformAttr(val string) (string, error) {
-	if val == DefaultNullSeq {
+	if val == utils.DefaultNullSeq {
 		return val, nil
 	}
 	if mt.Nullable {
 		if mt.rand.Float32() < mt.Fraction {
-			return DefaultNullSeq, nil
+			return utils.DefaultNullSeq, nil
 		}
 	}
 	return mt.maskingFunction(val), nil
@@ -125,7 +126,7 @@ func (mt *MaskingTransformer) TransformAttr(val string) (string, error) {
 
 func (mt *MaskingTransformer) Transform(data []byte) ([]byte, error) {
 
-	record, attr, err := getColumnValueFromCsvRecord(mt.Table, data, mt.ColumnNum)
+	record, attr, err := utils.GetColumnValueFromCsvRecord(mt.Table, data, mt.ColumnNum)
 	if err != nil {
 		return nil, fmt.Errorf("cannot parse csv record: %w", err)
 	}
@@ -135,5 +136,5 @@ func (mt *MaskingTransformer) Transform(data []byte) ([]byte, error) {
 		return nil, err
 	}
 
-	return updateAttributeAndBuildRecord(mt.Table, record, transformedAttr, mt.ColumnNum)
+	return utils.UpdateAttributeAndBuildRecord(mt.Table, record, transformedAttr, mt.ColumnNum)
 }

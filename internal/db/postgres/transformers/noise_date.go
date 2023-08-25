@@ -8,6 +8,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/sanyokbig/pqinterval"
 
+	"github.com/wwoytenko/greenfuscator/internal/db/postgres/transformers/utils"
 	"github.com/wwoytenko/greenfuscator/internal/domains"
 )
 
@@ -17,7 +18,7 @@ const NoiseDateTransformerName = "NoiseDate"
 
 type dateNoiseFunc func(r *rand.Rand, ration time.Duration, original *time.Time, truncate *string) time.Time
 
-var NoiseDateTransformerMeta = TransformerMeta{
+var NoiseDateTransformerMeta = utils.TransformerMeta{
 	Description: "Generate random date",
 	ParamsDescription: map[string]string{
 		"ratio":    "max random duration for noise",
@@ -27,7 +28,7 @@ var NoiseDateTransformerMeta = TransformerMeta{
 		"fraction": "NULL value distribution within the table (default Fraction 10%)",
 	},
 	NewTransformer: NewNoiseDateTransformer,
-	Settings: NewTransformerSettings().
+	Settings: utils.NewTransformerSettings().
 		SetNullable().
 		SetCastVar(time.Time{}).
 		SetVariadic().
@@ -47,7 +48,7 @@ type NoiseDateTransformerParams struct {
 }
 
 type NoiseDateTransformer struct {
-	TransformerBase
+	utils.TransformerBase
 	NoiseDateTransformerParams
 	rand     *rand.Rand
 	generate dateNoiseFunc
@@ -56,15 +57,15 @@ type NoiseDateTransformer struct {
 }
 
 func NewNoiseDateTransformer(
-	base *TransformerBase,
+	base *utils.TransformerBase,
 	params map[string]interface{},
 ) (domains.Transformer, error) {
 
 	tParams := NoiseDateTransformerParams{
-		Fraction: DefaultNullFraction,
+		Fraction: utils.DefaultNullFraction,
 	}
 
-	if err := parseTransformerParams(params, &tParams); err != nil {
+	if err := utils.ParseTransformerParams(params, &tParams); err != nil {
 		return nil, fmt.Errorf("parameters parsing error: %w", err)
 	}
 
@@ -98,7 +99,7 @@ func NewNoiseDateTransformer(
 }
 
 func (ndt *NoiseDateTransformer) TransformAttr(val string) (string, error) {
-	if val == DefaultNullSeq {
+	if val == utils.DefaultNullSeq {
 		return val, nil
 	}
 	if err := ndt.Scan(val, &ndt.val); err != nil {
@@ -107,7 +108,7 @@ func (ndt *NoiseDateTransformer) TransformAttr(val string) (string, error) {
 
 	if ndt.Nullable {
 		if ndt.rand.Float32() < ndt.Fraction {
-			return DefaultNullSeq, nil
+			return utils.DefaultNullSeq, nil
 		}
 	}
 	resTime := ndt.generate(ndt.rand, ndt.ratio, &ndt.val, &ndt.Truncate)
@@ -120,7 +121,7 @@ func (ndt *NoiseDateTransformer) TransformAttr(val string) (string, error) {
 
 func (ndt *NoiseDateTransformer) Transform(data []byte) ([]byte, error) {
 
-	record, attr, err := getColumnValueFromCsvRecord(ndt.Table, data, ndt.ColumnNum)
+	record, attr, err := utils.GetColumnValueFromCsvRecord(ndt.Table, data, ndt.ColumnNum)
 	if err != nil {
 		return nil, fmt.Errorf("cannot parse csv record: %w", err)
 	}
@@ -130,7 +131,7 @@ func (ndt *NoiseDateTransformer) Transform(data []byte) ([]byte, error) {
 		return nil, err
 	}
 
-	return updateAttributeAndBuildRecord(ndt.Table, record, transformedAttr, ndt.ColumnNum)
+	return utils.UpdateAttributeAndBuildRecord(ndt.Table, record, transformedAttr, ndt.ColumnNum)
 }
 
 func generateNoisedTime(r *rand.Rand, ratio time.Duration, val *time.Time, truncate *string) time.Time {

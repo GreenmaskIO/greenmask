@@ -10,7 +10,8 @@ import (
 	"github.com/rs/zerolog"
 	"golang.org/x/exp/slices"
 
-	pgdomains "github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/domains"
+	"github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/domains/config"
+	"github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/domains/data_section"
 	"github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/pg_catalog"
 	"github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/pgdump"
 	"github.com/wwoytenko/greenfuscator/internal/db/postgres/transformers"
@@ -29,7 +30,7 @@ const (
 	TableValidationLevel       = "Table"
 )
 
-func BuildTablesConfig(ctx context.Context, tx pgx.Tx, tableConfig []*pgdomains.Table) (map[pgdomains.Oid]*pgdomains.Table, domains.ValidationWarnings, error) {
+func BuildTablesConfig(ctx context.Context, tx pgx.Tx, tableConfig []*config.Table) (map[data_section.Oid]*data_section.Table, domains.ValidationWarnings, error) {
 	tableSearchQuery := `
 		SELECT 
 		   c.oid::TEXT::INT, 
@@ -50,15 +51,15 @@ func BuildTablesConfig(ctx context.Context, tx pgx.Tx, tableConfig []*pgdomains.
           AND c.relname = $2 -- relname inclusion
 	`
 
-	tables := make(map[pgdomains.Oid]*pgdomains.Table, len(tableConfig))
+	tables := make(map[data_section.Oid]*data_section.Table, len(tableConfig))
 	var warnings domains.ValidationWarnings
 
 	for _, t := range tableConfig {
-		table := t
-		schemaName := table.Schema
-		tableName := table.Name
+		table := &data_section.Table{
+			TypeMap: tx.Conn().TypeMap(),
+		}
 
-		row := tx.QueryRow(ctx, tableSearchQuery, table.Schema, table.Name)
+		row := tx.QueryRow(ctx, tableSearchQuery, t.Schema, t.Name)
 		err := row.Scan(&table.Oid, &table.Schema, &table.Name, &table.Owner, &table.RelKind,
 			&table.RootPtSchema, &table.RootPtName, &table.Root,
 		)
@@ -68,8 +69,8 @@ func BuildTablesConfig(ctx context.Context, tx pgx.Tx, tableConfig []*pgdomains.
 				SetMsgf("table %s.%s not found", table.Schema, table.Name).
 				SetLevel(domains.ErrorValidationSeverity).
 				AddMeta("Level", TableValidationLevel).
-				AddMeta("SchemaName", schemaName).
-				AddMeta("TableName", tableName),
+				AddMeta("SchemaName", table.Schema).
+				AddMeta("TableName", table.Name),
 			)
 			continue
 		} else if err != nil {
@@ -77,22 +78,22 @@ func BuildTablesConfig(ctx context.Context, tx pgx.Tx, tableConfig []*pgdomains.
 		}
 
 		// Assign table constraints
-		constraints, err := getTableConstraints(ctx, tx, t)
+		constraints, err := getTableConstraints(ctx, tx, table)
 		if err != nil {
 			return nil, nil, err
 		}
-		t.Constraints = constraints
+		table.Constraints = constraints
 
 		// Assign columns and transformersMap if were found
-		columns, err := getColumnsConfig(ctx, tx, t)
+		columns, err := getColumnsConfig(ctx, tx, table)
 		if err != nil {
 			return nil, nil, err
 		}
 		table.Columns = columns
 
-		// Init transformers
-		if len(table.TransformersConfig) > 0 {
-			for _, tc := range table.TransformersConfig {
+		// InitTransformation transformers
+		if len(t.TransformersConfig) > 0 {
+			for _, tc := range t.TransformersConfig {
 				transformer, err := initTransformer(table, tc, tx.Conn().TypeMap())
 				var re *domains.RuntimeError
 				if err != nil && errors.As(err, &re) {
@@ -116,7 +117,7 @@ func BuildTablesConfig(ctx context.Context, tx pgx.Tx, tableConfig []*pgdomains.
 	return tables, warnings, nil
 }
 
-func getColumnsConfig(ctx context.Context, tx pgx.Tx, table *pgdomains.Table) ([]*pgdomains.Column, error) {
+func getColumnsConfig(ctx context.Context, tx pgx.Tx, table *data_section.Table) ([]*data_section.Column, error) {
 
 	tableColumnsQuery := `
 		SELECT 
@@ -131,7 +132,7 @@ func getColumnsConfig(ctx context.Context, tx pgx.Tx, table *pgdomains.Table) ([
 		ORDER BY a.attnum
 	`
 
-	var res []*pgdomains.Column
+	var res []*data_section.Column
 	rows, err := tx.Query(ctx, tableColumnsQuery, table.Oid)
 	if err != nil {
 		return nil, fmt.Errorf("unable execute tableColumnQuery: %w", err)
@@ -139,7 +140,7 @@ func getColumnsConfig(ctx context.Context, tx pgx.Tx, table *pgdomains.Table) ([
 	defer rows.Close()
 
 	for rows.Next() {
-		var column pgdomains.Column
+		var column data_section.Column
 		if err = rows.Scan(&column.Name, &column.TypeOid, &column.TypeName,
 			&column.NotNull, &column.Length, &column.Num); err != nil {
 			return nil, fmt.Errorf("cannot scan tableColumnQuery: %w", err)
@@ -150,7 +151,7 @@ func getColumnsConfig(ctx context.Context, tx pgx.Tx, table *pgdomains.Table) ([
 	return res, nil
 }
 
-func initTransformer(table *pgdomains.Table, transformerConf domains.TransformerConfig, typeMap *pgtype.Map) (domains.Transformer, error) {
+func initTransformer(table *data_section.Table, transformerConf *config.TransformerConfig, typeMap *pgtype.Map) (domains.Transformer, error) {
 	transformerMaker, ok := transformers.TransformerMap[transformerConf.Name]
 	if !ok {
 		return nil, domains.NewRuntimeError().
@@ -174,7 +175,7 @@ func initTransformer(table *pgdomains.Table, transformerConf domains.Transformer
 				AddMeta("TransformerName", transformerConf.Name).
 				SetErr(fmt.Errorf(`parameter "column" is required for attribute transformers`))
 		}
-		if !slices.ContainsFunc(table.Columns, func(column *pgdomains.Column) bool {
+		if !slices.ContainsFunc(table.Columns, func(column *data_section.Column) bool {
 			return column.Name == columnName
 		}) {
 			return nil, domains.NewRuntimeError().
@@ -188,7 +189,7 @@ func initTransformer(table *pgdomains.Table, transformerConf domains.Transformer
 		}
 	}
 
-	transformer, err := transformerMaker.InstanceTransformer(&table.TableMeta, typeMap, transformerConf.Params)
+	transformer, err := transformerMaker.InstanceTransformer(table, typeMap, transformerConf.Params)
 	if err != nil {
 		return nil, domains.NewRuntimeError().
 			SetErr(ErrColumnNotFound).
@@ -202,8 +203,8 @@ func initTransformer(table *pgdomains.Table, transformerConf domains.Transformer
 	return transformer, nil
 }
 
-func getTableConstraints(ctx context.Context, tx pgx.Tx, table *pgdomains.Table) ([]*pgdomains.Constraint, error) {
-	var res []*pgdomains.Constraint
+func getTableConstraints(ctx context.Context, tx pgx.Tx, table *data_section.Table) ([]*data_section.Constraint, error) {
+	var constraints []*data_section.Constraint
 
 	tableConstraintsQuery := `
 		SELECT pc.conname                                    AS "name",
@@ -237,7 +238,7 @@ func getTableConstraints(ctx context.Context, tx pgx.Tx, table *pgdomains.Table)
 	defer rows.Close()
 
 	for rows.Next() {
-		var c pgdomains.Constraint
+		var c data_section.Constraint
 		err = rows.Scan(
 			&c.Name, &c.Schema, &c.ConstraintType,
 			&c.Domain, &c.RootPtConstraint, &c.FkTable,
@@ -249,13 +250,13 @@ func getTableConstraints(ctx context.Context, tx pgx.Tx, table *pgdomains.Table)
 		if err != nil {
 			return nil, fmt.Errorf("cannot scan tableConstraintsQuery: %w", err)
 		}
-		res = append(res, &c)
+		constraints = append(constraints, &c)
 	}
 
-	return res, nil
+	return constraints, nil
 }
 
-func GetObjects(ctx context.Context, tx pgx.Tx, pgDumpOptions *pgdump.Options, tablesConfig map[pgdomains.Oid]*pgdomains.Table, dumpIdSeq *pgdomains.DumpId) ([]*pgdomains.Table, []*pgdomains.Sequence, error) {
+func GetObjects(ctx context.Context, tx pgx.Tx, pgDumpOptions *pgdump.Options, tablesConfig map[data_section.Oid]*data_section.Table, dumpIdSeq *data_section.DumpId) ([]*data_section.Table, []*data_section.Sequence, error) {
 
 	// Building relation search query using regexp adaptation rules and pre-defined query templates
 	// TODO: Refactor it to gotemplate
@@ -272,11 +273,11 @@ func GetObjects(ctx context.Context, tx pgx.Tx, pgDumpOptions *pgdump.Options, t
 	}
 
 	// Generate table objects
-	sequences := make([]*pgdomains.Sequence, 0)
-	tables := make([]*pgdomains.Table, 0)
+	sequences := make([]*data_section.Sequence, 0)
+	tables := make([]*data_section.Table, 0)
 	defer rows.Close()
 	for rows.Next() {
-		var oid pgdomains.Oid
+		var oid data_section.Oid
 		var lastVal int64
 		var schemaName, name, owner, rootPtName, rootPtSchema string
 		var relKind rune
@@ -288,14 +289,14 @@ func GetObjects(ctx context.Context, tx pgx.Tx, pgDumpOptions *pgdump.Options, t
 		); err != nil {
 			return nil, nil, fmt.Errorf("unnable scan data: %w", err)
 		}
-		var table *pgdomains.Table
+		var table *data_section.Table
 
 		switch relKind {
 		case 'S':
-			sequences = append(sequences, &pgdomains.Sequence{
+			sequences = append(sequences, &data_section.Sequence{
 				Name:        name,
 				Schema:      schemaName,
-				Oid:         pgdomains.Oid(oid),
+				Oid:         data_section.Oid(oid),
 				Owner:       owner,
 				DumpId:      dumpIdSeq.GetDumpId(),
 				LastValue:   lastVal,
@@ -315,19 +316,17 @@ func GetObjects(ctx context.Context, tx pgx.Tx, pgDumpOptions *pgdump.Options, t
 				table.LoadViaPartitionRoot = pgDumpOptions.LoadViaPartitionRoot
 			} else {
 				// If not - create new table object
-				table = &pgdomains.Table{
-					Name:   name,
-					Schema: schemaName,
-					TableMeta: pgdomains.TableMeta{
-						Oid:                  oid,
-						Owner:                owner,
-						DumpId:               dumpIdSeq.GetDumpId(),
-						RelKind:              relKind,
-						RootPtSchema:         rootPtSchema,
-						RootPtName:           rootPtName,
-						ExcludeData:          excludeData,
-						LoadViaPartitionRoot: pgDumpOptions.LoadViaPartitionRoot,
-					},
+				table = &data_section.Table{
+					Name:                 name,
+					Schema:               schemaName,
+					Oid:                  oid,
+					Owner:                owner,
+					DumpId:               dumpIdSeq.GetDumpId(),
+					RelKind:              relKind,
+					RootPtSchema:         rootPtSchema,
+					RootPtName:           rootPtName,
+					ExcludeData:          excludeData,
+					LoadViaPartitionRoot: pgDumpOptions.LoadViaPartitionRoot,
 				}
 			}
 
@@ -347,7 +346,7 @@ func GetObjects(ctx context.Context, tx pgx.Tx, pgDumpOptions *pgdump.Options, t
 	return tables, sequences, nil
 }
 
-func setTableColumns(ctx context.Context, tx pgx.Tx, table *pgdomains.Table) error {
+func setTableColumns(ctx context.Context, tx pgx.Tx, table *data_section.Table) error {
 	tableColumnsQuery := `
 		SELECT 
 		    a.attname,
@@ -358,7 +357,7 @@ func setTableColumns(ctx context.Context, tx pgx.Tx, table *pgdomains.Table) err
 		ORDER BY a.attnum
 	`
 
-	cfg := make(map[string]*pgdomains.Column, 0)
+	cfg := make(map[string]*data_section.Column, 0)
 	for _, c := range table.Columns {
 		cfg[c.Name] = c
 	}
@@ -367,9 +366,9 @@ func setTableColumns(ctx context.Context, tx pgx.Tx, table *pgdomains.Table) err
 	if err != nil {
 		return fmt.Errorf("perform query: %w", err)
 	}
-	columns := make([]*pgdomains.Column, 0)
+	columns := make([]*data_section.Column, 0)
 	for rows.Next() {
-		column := pgdomains.Column{}
+		column := data_section.Column{}
 		if err = rows.Scan(&column.Name, &column.TypeOid, &column.TypeName); err != nil {
 			return fmt.Errorf("cannot scan column: %w", err)
 		}

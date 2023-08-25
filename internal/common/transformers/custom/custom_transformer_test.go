@@ -10,16 +10,16 @@ import (
 	"github.com/stretchr/testify/require"
 
 	domains2 "github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/domains"
-	"github.com/wwoytenko/greenfuscator/internal/db/postgres/transformers"
+	"github.com/wwoytenko/greenfuscator/internal/db/postgres/transformers/utils"
 	"github.com/wwoytenko/greenfuscator/internal/domains"
 )
 
 func TestCustomTransformer_Transform(t *testing.T) {
-	setting := transformers.NewTransformerSettings().
+	setting := utils.NewTransformerSettings().
 		SetTransformationType(domains.TupleTransformation).
 		SetName("test")
 
-	table := &domains2.TableMeta{
+	table := &data_objects.TableMeta{
 		Oid: 123,
 		Columns: []*domains2.Column{
 			{
@@ -31,14 +31,14 @@ func TestCustomTransformer_Transform(t *testing.T) {
 		},
 	}
 
-	base, err := transformers.NewTransformerBase(table, setting, nil, nil, nil)
+	base, err := utils.NewTransformerBase(table, setting, nil, nil, nil)
 	require.NoError(t, err)
 
 	customTransformer := NewCustomTransformer(base, "/usr/bin/cat")
 
 	ctx, ctxCancel := context.WithCancel(context.Background())
 	defer ctxCancel()
-	tCancel, err := customTransformer.Init(ctx)
+	tCancel, err := customTransformer.InitTransformation(ctx)
 	require.NoError(t, err)
 	defer tCancel()
 
@@ -54,11 +54,11 @@ func TestCustomTransformer_Transform(t *testing.T) {
 }
 
 func TestCustomTransformer_Validate(t *testing.T) {
-	setting := transformers.NewTransformerSettings().
+	setting := utils.NewTransformerSettings().
 		SetTransformationType(domains.TupleTransformation).
 		SetName("test")
 
-	table := &domains2.TableMeta{
+	table := &data_objects.TableMeta{
 		Oid: 123,
 		Columns: []*domains2.Column{
 			{
@@ -70,10 +70,10 @@ func TestCustomTransformer_Validate(t *testing.T) {
 		},
 	}
 
-	base, err := transformers.NewTransformerBase(table, setting, nil, nil, nil)
+	base, err := utils.NewTransformerBase(table, setting, nil, nil, nil)
 	require.NoError(t, err)
 
-	customTransformer := NewCustomTransformer(base, "/usr/bin/bash", "-c", "echo 1")
+	customTransformer, _, := NewCustomTransformer(context.Background(), base, "/usr/bin/bash", "-c", "echo 1")
 
 	ctx, ctxCancel := context.WithCancel(context.Background())
 	defer ctxCancel()

@@ -6,16 +6,16 @@ import (
 
 	"github.com/jackc/pgx/v5"
 
-	"github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/domains"
+	"github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/domains/data_section"
 	"github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/toc"
 	"github.com/wwoytenko/greenfuscator/internal/storage"
 )
 
 type SequenceDumper struct {
-	sequence *domains.Sequence
+	sequence *data_section.Sequence
 }
 
-func NewSequenceDumper(sequence domains.Sequence) *SequenceDumper {
+func NewSequenceDumper(sequence data_section.Sequence) *SequenceDumper {
 	return &SequenceDumper{
 		sequence: &sequence,
 	}

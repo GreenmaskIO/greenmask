@@ -7,19 +7,20 @@ import (
 
 	"github.com/jackc/pgx/v5/pgtype"
 
+	"github.com/wwoytenko/greenfuscator/internal/db/postgres/transformers/utils"
 	"github.com/wwoytenko/greenfuscator/internal/domains"
 )
 
 const RandomIntTransformerName = "RandomInt"
 
-var RandomIntTransformerMeta = TransformerMeta{
+var RandomIntTransformerMeta = utils.TransformerMeta{
 	Description: "Generate random int",
 	ParamsDescription: map[string]string{
 		"min": "min value",
 		"max": "max value",
 	},
 	NewTransformer: NewRandomIntTransformer,
-	Settings: NewTransformerSettings().
+	Settings: utils.NewTransformerSettings().
 		SetNullable().
 		SetVariadic().
 		SetCastVar(int64(0)).
@@ -39,21 +40,21 @@ type RandomIntTransformerParams struct {
 }
 
 type RandomIntTransformer struct {
-	TransformerBase
+	utils.TransformerBase
 	RandomIntTransformerParams
 	rand *rand.Rand
 }
 
 func NewRandomIntTransformer(
-	base *TransformerBase,
+	base *utils.TransformerBase,
 	params map[string]interface{},
 ) (domains.Transformer, error) {
 
 	tParams := RandomIntTransformerParams{
-		Fraction: DefaultNullFraction,
+		Fraction: utils.DefaultNullFraction,
 	}
 
-	if err := parseTransformerParams(params, &tParams); err != nil {
+	if err := utils.ParseTransformerParams(params, &tParams); err != nil {
 		return nil, fmt.Errorf("parameters parsing error: %w", err)
 	}
 
@@ -75,7 +76,7 @@ func (rit *RandomIntTransformer) TransformAttr(val string) (string, error) {
 
 	if rit.Nullable {
 		if rit.rand.Float32() < rit.Fraction {
-			return DefaultNullSeq, nil
+			return utils.DefaultNullSeq, nil
 		}
 	}
 	resInt := rit.rand.Int63n(rit.Max-rit.Min) + rit.Min
@@ -88,7 +89,7 @@ func (rit *RandomIntTransformer) TransformAttr(val string) (string, error) {
 
 func (rit *RandomIntTransformer) Transform(data []byte) ([]byte, error) {
 
-	record, attr, err := getColumnValueFromCsvRecord(rit.Table, data, rit.ColumnNum)
+	record, attr, err := utils.GetColumnValueFromCsvRecord(rit.Table, data, rit.ColumnNum)
 	if err != nil {
 		return nil, fmt.Errorf("cannot parse csv record: %w", err)
 	}
@@ -98,5 +99,5 @@ func (rit *RandomIntTransformer) Transform(data []byte) ([]byte, error) {
 		return nil, err
 	}
 
-	return updateAttributeAndBuildRecord(rit.Table, record, transformedAttr, rit.ColumnNum)
+	return utils.UpdateAttributeAndBuildRecord(rit.Table, record, transformedAttr, rit.ColumnNum)
 }

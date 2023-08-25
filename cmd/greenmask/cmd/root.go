@@ -14,7 +14,7 @@ import (
 	"github.com/wwoytenko/greenfuscator/cmd/greenmask/cmd/list_dump"
 	"github.com/wwoytenko/greenfuscator/cmd/greenmask/cmd/restore"
 	"github.com/wwoytenko/greenfuscator/cmd/greenmask/cmd/show_dump"
-	pgDomains "github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/domains"
+	pgDomains "github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/domains/config"
 )
 
 var (
