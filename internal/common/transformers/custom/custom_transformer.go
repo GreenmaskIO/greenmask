@@ -9,7 +9,6 @@ import (
 	"io"
 	"os"
 	"os/exec"
-	"sync/atomic"
 	"time"
 
 	"github.com/rs/zerolog/log"
@@ -41,7 +40,6 @@ type CustomTransformer struct {
 	inChan     chan []byte
 	outChan    chan []byte
 	errChan    chan *domains.ValidationWarning
-	state      int32
 	eg         *errgroup.Group
 	gtx        context.Context
 }
@@ -63,7 +61,6 @@ func (ct *CustomTransformer) init(ctx context.Context, args ...string) (CancelFu
 	//	   process running
 	// 	2. Check the goroutine with defer outWriter.Close(). Ensure that closing pipes in tis way is required
 	ctx, cancel := context.WithCancel(ctx)
-	ct.state = InitialisationState
 	ct.cmd = exec.CommandContext(ctx, ct.executable, args...)
 
 	stdoutReader, stdoutWriter := io.Pipe()
@@ -175,14 +172,6 @@ func (ct *CustomTransformer) stdoutReader(ctx context.Context, stdout io.Reader)
 			return nil
 		}
 	})
-}
-
-func (ct *CustomTransformer) setErrState() {
-	atomic.StoreInt32(&ct.state, ErrorState)
-}
-
-func (ct *CustomTransformer) getState() int32 {
-	return atomic.LoadInt32(&ct.state)
 }
 
 func (ct *CustomTransformer) Init(ctx context.Context) (CancelFunction, error) {
