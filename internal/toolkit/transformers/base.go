@@ -1,14 +1,10 @@
 package transformers
 
 import (
-	"errors"
 	"fmt"
 
-	"github.com/go-playground/validator"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
-	"github.com/mitchellh/mapstructure"
-	"github.com/rs/zerolog/log"
 	"golang.org/x/exp/slices"
 
 	"github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/domains/data_section"
@@ -252,26 +248,26 @@ func (tb *TransformerBase) Scan(src string, dest interface{}) error {
 	return scan(val, dest)
 }
 
-func ParseTransformerParams(src map[string]interface{}, dest interface{}) error {
-	if err := mapstructure.Decode(src, dest); err != nil {
-		return fmt.Errorf("parameters parsing error: %w", err)
-	}
-
-	if err := validate.Struct(dest); err != nil {
-		var errs validator.ValidationErrors
-		switch {
-		case errors.As(err, &errs):
-			var firstErr string
-			for _, item := range errs.Translate(translators) {
-				if firstErr == "" {
-					firstErr = item
-				}
-				log.Warn().Msg(item)
-			}
-			return fmt.Errorf("validation error: %s", firstErr)
-		default:
-			return fmt.Errorf("validation error: %w", err)
-		}
-	}
-	return nil
-}
+//func ParseTransformerParams(src map[string]interface{}, dest interface{}) error {
+//	if err := mapstructure.Decode(src, dest); err != nil {
+//		return fmt.Errorf("parameters parsing error: %w", err)
+//	}
+//
+//	if err := validate.Struct(dest); err != nil {
+//		var errs validator.ValidationErrors
+//		switch {
+//		case errors.As(err, &errs):
+//			var firstErr string
+//			for _, item := range errs.Translate(translators) {
+//				if firstErr == "" {
+//					firstErr = item
+//				}
+//				log.Warn().Msg(item)
+//			}
+//			return fmt.Errorf("validation error: %s", firstErr)
+//		default:
+//			return fmt.Errorf("validation error: %w", err)
+//		}
+//	}
+//	return nil
+//}

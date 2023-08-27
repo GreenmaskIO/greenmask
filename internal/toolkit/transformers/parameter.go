@@ -12,19 +12,20 @@ type Unmarshaller func(parameter *Parameter, tableDriver *Driver, src []byte) (a
 type Validator func(v any) error
 
 type Parameter struct {
-	Name               string
-	Description        string
-	Required           bool
-	IsColumn           bool
-	AllowedColumnTypes []string
-	Unmarshaller       Unmarshaller
-	Validator          Validator
-	ColumnParameter    *Parameter
-	Column             *Column
-	CastPgType         string
-	ExpectedType       any // Must be pointer
-	DefaultValue       any // Must be pointer
-	value              any // Must be pointer
+	Name                  string
+	Description           string
+	Required              bool
+	IsColumn              bool
+	AllowedColumnTypes    []string
+	Unmarshaller          Unmarshaller
+	Validator             Validator
+	LinkParameter         string
+	LinkedColumnParameter *Parameter
+	Column                *Column
+	CastPgType            string
+	ExpectedType          any // Must be pointer
+	DefaultValue          any // Must be pointer
+	value                 any // Must be pointer
 }
 
 func MustNewParameter(name string, description string, expectedType any, defaultValue any,
@@ -84,7 +85,7 @@ func NewParameter(name string, description string, expectedType any, defaultValu
 }
 
 // Parse - parse received params from the config using table definition. dest parameter must be pointer
-func (p *Parameter) Parse(tableDriver *Driver, params map[string][]byte) error {
+func (p *Parameter) Parse(driver *Driver, params map[string][]byte) error {
 	if params == nil {
 		return fmt.Errorf("paramas cannot be nil")
 	}
@@ -98,22 +99,22 @@ func (p *Parameter) Parse(tableDriver *Driver, params map[string][]byte) error {
 
 	if p.Unmarshaller != nil {
 		// Perform custom unmarshalling
-		value, err := p.Unmarshaller(p, tableDriver, raw)
+		value, err := p.Unmarshaller(p, driver, raw)
 		if err != nil {
 			return fmt.Errorf("unable to perform custom unmarshaller: %w", err)
 		}
 		p.value = value
 	} else if p.CastPgType != "" {
 		// Perform decoding via pgx driver
-		if err := tableDriver.ScanByName(p.CastPgType, raw, p.value); err != nil {
+		if err := driver.ScanByName(p.CastPgType, raw, p.value); err != nil {
 			return fmt.Errorf("unable to scan parameter via Driver")
 		}
-
-	} else if p.ColumnParameter != nil {
+	} else if p.LinkedColumnParameter != nil {
+		// Try to scan value using pgx driver and pgtype defined in the linked column
 		if p.Column == nil {
 			return fmt.Errorf("parameter is linked but column was not assigned")
 		}
-		if err := tableDriver.ScanByOid(p.Column.TypeOid, raw, p.value); err != nil {
+		if err := driver.ScanByOid(p.Column.TypeOid, raw, p.value); err != nil {
 			return fmt.Errorf("unable to scan parameter via Driver")
 		}
 	} else {
@@ -150,14 +151,16 @@ func (p *Parameter) Scan(src any) error {
 	return errors.New("src must be pointer")
 }
 
-func (p *Parameter) SetColumnParameter(cp *Parameter) *Parameter {
-	if !p.IsColumn {
-		panic("cannot link non column parameter")
+func (p *Parameter) SetLinkParameter(name string) *Parameter {
+	if p.IsColumn {
+		panic("cannot link column parameter with column parameter")
 	}
-	if cp == nil {
-		panic("column parameter cannot be nil")
-	}
-	p.ColumnParameter = p
+	p.LinkParameter = name
+	return p
+}
+
+func (p *Parameter) SetIsColumn() *Parameter {
+	p.IsColumn = true
 	return p
 }
 

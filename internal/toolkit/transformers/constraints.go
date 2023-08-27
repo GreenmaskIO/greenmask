@@ -1,7 +1,7 @@
 package transformers
 
-type int int
-type uid32 uint32
+type Oid int
+type AttNum uint32
 
 var (
 	// ConstraintTypes - map of the pg_constraints.contype to human-readable
@@ -31,7 +31,7 @@ var (
 // Constraint - structure defines constraint and it settings
 type Constraint struct {
 	// Oid - constraint oid pg_constraint.oid
-	Oid uid32 `json:"oid"`
+	Oid Oid `json:"oid"`
 	// Name - constraint name
 	Name string `json:"name"`
 	// Schema - constraint schema name
@@ -42,15 +42,15 @@ type Constraint struct {
 	//  	  p = primary key constraint, u = unique constraint, t = constraint trigger, x = exclusion constraint
 	ConstraintType rune `json:"constraintType"`
 	// Domain - The domain this constraint is on; zero if not a domain constraint
-	Domain uid32 `json:"domain"`
+	Domain Oid `json:"domain"`
 	// RootPtConstraint - The corresponding constraint of the parent partitioned table
-	RootPtConstraint uid32 `json:"rootPtConstraint"`
+	RootPtConstraint Oid `json:"rootPtConstraint"`
 	// FkTable - references table oid
-	FkTable uid32 `json:"fkTable"`
+	FkTable Oid `json:"fkTable"`
 	// ConstrainedColumns - columns at the current table
-	ConstrainedColumns []int `json:"constrainedColumns"`
+	ConstrainedColumns []AttNum `json:"constrainedColumns"`
 	// ReferencesColumns - columns at the referenced table only for FK constraints
-	ReferencesColumns []int `json:"referencesColumns"`
+	ReferencesColumns []AttNum `json:"referencesColumns"`
 	// ReferencesColumnNums - columns at the referenced table only for FK constraints
-	ReferencedTables []uid32 `json:"referencedTables"`
+	ReferencedTables []Oid `json:"referencedTables"`
 }
