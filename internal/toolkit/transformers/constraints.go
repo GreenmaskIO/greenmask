@@ -1,56 +1,125 @@
 package transformers
 
-type Oid int
-type AttNum uint32
-
-var (
-	// ConstraintTypes - map of the pg_constraints.contype to human-readable
-	ConstraintTypes = map[string]string{
-		"c": "Check",
-		"f": "Foreign Key",
-		"p": "Primary Key",
-		"u": "Unique",
-		"t": "Constraint Trigger",
-		"x": "Exclusion",
-	}
+import (
+	"golang.org/x/exp/slices"
 )
 
-// TODO: You should add not only oid values but also the real name of the objects in
-//		 Domain, RootPtConstraint, FkTable, ConstrainedColumns, ReferencesColumns, ReferencedTables
-// 		 Using that data you can generate detail error and warnings on the custom transformer side
+type Constraint interface {
+	IsAffected(table *Table, column *Column) bool
+}
 
-// TODO: Add domain validation with structure:
-//		 Schema    | bookings
-//		 Name      | us_postal_code
-//       Type      | text
-//       Collation |
-//       Nullable  |
-//       Default   |
-//       Check     | CHECK (VALUE ~ '^\d{5}$'::text OR VALUE ~ '^\d{5}-\d{4}$'::text)
+type DefaultConstraintDefinition struct {
+	ConstraintSchema   string   `json:"constraintSchema"`
+	ConstraintName     string   `json:"constraintName"`
+	ConstraintOid      Oid      `json:"constraintOid"`
+	ConstrainedColumns []AttNum `json:"constrainedColumns,omitempty"`
+	TableSchema        string   `json:"tableSchema,omitempty"`
+	TableName          string   `json:"tableName,omitempty"`
+	TableOid           Oid      `json:"tableOid,omitempty"`
+	Definition         string   `json:"definition,omitempty"`
+	//RootPtConstraint   transformers.Oid      `json:"rootPtConstraint,omitempty"`
+}
 
-// Constraint - structure defines constraint and it settings
-type Constraint struct {
-	// Oid - constraint oid pg_constraint.oid
-	Oid Oid `json:"oid"`
-	// Name - constraint name
-	Name string `json:"name"`
-	// Schema - constraint schema name
-	Schema string `json:"schema"`
-	// Definition - constraint definition
-	Definition string `json:"definition"`
-	// ConstraintType - type of the constraint. Possible values: c = check constraint, f = foreign key constraint,
-	//  	  p = primary key constraint, u = unique constraint, t = constraint trigger, x = exclusion constraint
-	ConstraintType rune `json:"constraintType"`
-	// Domain - The domain this constraint is on; zero if not a domain constraint
-	Domain Oid `json:"domain"`
-	// RootPtConstraint - The corresponding constraint of the parent partitioned table
-	RootPtConstraint Oid `json:"rootPtConstraint"`
-	// FkTable - references table oid
-	FkTable Oid `json:"fkTable"`
-	// ConstrainedColumns - columns at the current table
-	ConstrainedColumns []AttNum `json:"constrainedColumns"`
-	// ReferencesColumns - columns at the referenced table only for FK constraints
-	ReferencesColumns []AttNum `json:"referencesColumns"`
-	// ReferencesColumnNums - columns at the referenced table only for FK constraints
-	ReferencedTables []Oid `json:"referencedTables"`
+func (dcd *DefaultConstraintDefinition) IsAffected(table *Table, column *Column) bool {
+	if table.Oid == dcd.TableOid {
+		return slices.Contains(dcd.ConstrainedColumns, column.Num)
+	}
+	return false
+}
+
+type Check DefaultConstraintDefinition
+
+func (c *Check) IsAffected(table *Table, column *Column) bool {
+	if table.Oid == c.TableOid {
+		return slices.Contains(c.ConstrainedColumns, column.Num)
+	}
+	return false
+}
+
+type Exclusion DefaultConstraintDefinition
+
+func (e *Exclusion) IsAffected(table *Table, column *Column) bool {
+	if table.Oid == e.TableOid {
+		return slices.Contains(e.ConstrainedColumns, column.Num)
+	}
+	return false
+}
+
+type ForeignKey DefaultConstraintDefinition
+
+func (fk *ForeignKey) IsAffected(table *Table, column *Column) bool {
+	if table.Oid == fk.TableOid {
+		return slices.Contains(fk.ConstrainedColumns, column.Num)
+	}
+	return false
+}
+
+type PrimaryKey DefaultConstraintDefinition
+
+func (pk *PrimaryKey) IsAffected(table *Table, column *Column) bool {
+	if table.Oid == pk.TableOid {
+		return slices.Contains(pk.ConstrainedColumns, column.Num)
+	}
+	return false
+}
+
+type PrimaryKeyReferences DefaultConstraintDefinition
+
+func (pkr *PrimaryKeyReferences) IsAffected(table *Table, column *Column) bool {
+	if table.Oid == pkr.TableOid {
+		return slices.Contains(pkr.ConstrainedColumns, column.Num)
+	}
+	return false
+}
+
+type Unique DefaultConstraintDefinition
+
+func (u *Unique) IsAffected(table *Table, column *Column) bool {
+	if table.Oid == u.TableOid {
+		return slices.Contains(u.ConstrainedColumns, column.Num)
+	}
+	return false
+}
+
+type TriggerConstraint DefaultConstraintDefinition
+
+func (tc *TriggerConstraint) IsAffected(table *Table, column *Column) bool {
+	if table.Oid == tc.TableOid {
+		return slices.Contains(tc.ConstrainedColumns, column.Num)
+	}
+	return false
+}
+
+type DomainConstrained struct {
+	TableSchema      string
+	TableName        string
+	TableOid         Oid
+	DomainOid        Oid
+	DomainSchema     string
+	DomainName       string
+	BaseTypeOid      Oid
+	BaseTypeName     string
+	ConstraintOid    Oid
+	ConstraintSchema string
+	ConstraintName   string
+	Definition       string
+}
+
+func (dc *DomainConstrained) IsAffected(table *Table, column *Column) bool {
+	if table.Oid == dc.TableOid && column.TypeOid == dc.DomainOid {
+		return true
+	}
+	return false
+}
+
+type DomainNotNullable struct {
+	TableSchema    string
+	TableName      string
+	TableOid       Oid
+	DomainOid      Oid
+	DomainSchema   string
+	DomainName     string
+	DomainNullable bool
+	BaseTypeOid    Oid
+	BaseTypeName   string
 }

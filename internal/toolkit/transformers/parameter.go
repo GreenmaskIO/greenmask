@@ -9,29 +9,102 @@ import (
 )
 
 type Unmarshaller func(parameter *Parameter, tableDriver *Driver, src []byte) (any, error)
-type Validator func(v any) error
+type ValueValidator func(v any) error
 
+const ColumnWithoutMaxLength = -1
+
+// ColumnProperties - column-like parameter properties that would help to understand the affection on the consistency
+type ColumnProperties struct {
+	// Nullable - shows that transformer can produce NULL value for the column. Togather with Affected shows that
+	// this parameter may generate null values and write it in this column. It only plays with Affected
+	Nullable bool `json:"nullable,omitempty"`
+	// Unique - shows that transformer guarantee that every transformer call the value will be unique. It only plays
+	// with Affected
+	Unique bool `json:"unique,omitempty"`
+	// Unique - defines max length of the value. It only plays with Affected. Togather with Affected shows
+	// that values will not exceed the length of the column. It only plays with Affected
+	MaxLength int64 `json:"maxLength,omitempty"`
+	// Affected - shows assigned column name will be affected after the transformation
+	Affected bool `json:"affected,omitempty"`
+	// AllowedColumnTypes - defines all the allowed column types in textual format. If not assigned (nil) then any
+	// of the types is valid
+	AllowedColumnTypes []string `json:"allowedColumnTypes,omitempty"`
+}
+
+func NewColumnProperties() *ColumnProperties {
+	return &ColumnProperties{
+		Nullable:  true,
+		MaxLength: ColumnWithoutMaxLength,
+	}
+}
+
+func (cp *ColumnProperties) SetNullable(v bool) *ColumnProperties {
+	cp.Nullable = v
+	return cp
+}
+
+func (cp *ColumnProperties) SetUnique(v bool) *ColumnProperties {
+	cp.Unique = v
+	return cp
+}
+
+func (cp *ColumnProperties) SetMaxLength(v int64) *ColumnProperties {
+	cp.MaxLength = v
+	return cp
+}
+
+func (cp *ColumnProperties) SetAffected(v bool) *ColumnProperties {
+	cp.Affected = v
+	return cp
+}
+
+// Parameter - wide parameter entity definition that contains properties that allows to check schema, find affection,
+// cast variable using some features and so on. It may be defined and assigned ot the Definition of the transformer
+// if transformer has any parameters
 type Parameter struct {
-	Name                  string
-	Description           string
-	Required              bool
-	IsColumn              bool
-	AllowedColumnTypes    []string
-	Unmarshaller          Unmarshaller
-	Validator             Validator
-	LinkParameter         string
-	LinkedColumnParameter *Parameter
-	Column                *Column
-	CastPgType            string
-	ExpectedType          any // Must be pointer
-	DefaultValue          any // Must be pointer
-	value                 any // Must be pointer
+	// Name - name of the parameter. Must be unique in the whole Transformer parameters slice
+	Name string `json:"name,omitempty"`
+	// Description - description of the parameter. Should contain the brief info about parameter
+	Description string `json:"description,omitempty"`
+	// Required - shows that parameter is required, and we expect we have to receive this value from config.
+	// Event when DefaultValue is defined it will case error
+	Required bool `json:"required,omitempty"`
+	// IsColumn - shows is this parameter column related. If so ColumnProperties must be defined and assigned
+	// otherwise it may cause an unhandled behaviour
+	IsColumn bool `json:"isColumn,omitempty"`
+	// LinkParameter - link with parameter with provided name. This is required if performing raw value encoding
+	// depends on the provided column type and/or relies on the database Driver
+	LinkParameter string `json:"linkParameter,omitempty"`
+	// CastPgType - name of PostgreSQL type that would be used for Decoding raw value to the real go type. Is this
+	// type does not exist will cause an error
+	CastPgType string `json:"castPgType,omitempty"`
+	// DefaultValue - default value of the parameter. Must be variable pointer and have the same type
+	// as in ExpectedType
+	DefaultValue any `json:"defaultValue,omitempty"`
+	// ColumnProperties - detail info about expected column properties that may help to diagnose the table schema
+	// and perform validation procedure
+	ColumnProperties *ColumnProperties `json:"columnProperties,omitempty"`
+	// Unmarshaller - unmarshal function for the parameter raw data []byte. Using by default json.Unmarshal function
+	Unmarshaller Unmarshaller `json:"-"`
+	// ValueValidator - value validator function that performs assertion and cause an error if it has violations
+	ValueValidator ValueValidator `json:"-"`
+	// LinkedParameter - column-like parameter that has been linked during parsing procedure. Warning, do not
+	// assign it manually, if you don't know the consequences
+	LinkedColumnParameter *Parameter `json:"-"`
+	// Column - column of the table that was assigned in the parsing procedure according to provided column name in
+	// parameter value. In this case value has textual column name
+	Column *Column `json:"-"`
+	// ExpectedType - expected type of the provided variable during scanning procedure. It must be pointer on the
+	// variable
+	ExpectedType any `json:"-"` // Must be pointer
+	// value - parsed value of the parameter. It must be pointer on the variable
+	value any
 }
 
 func MustNewParameter(name string, description string, expectedType any, defaultValue any,
-	unmarshaller Unmarshaller, validator Validator,
+	unmarshaller Unmarshaller, valueValidator ValueValidator,
 ) *Parameter {
-	p, err := NewParameter(name, description, expectedType, defaultValue, unmarshaller, validator)
+	p, err := NewParameter(name, description, expectedType, defaultValue, unmarshaller, valueValidator)
 	if err != nil {
 		panic(err)
 	}
@@ -39,7 +112,7 @@ func MustNewParameter(name string, description string, expectedType any, default
 }
 
 func NewParameter(name string, description string, expectedType any, defaultValue any,
-	unmarshaller Unmarshaller, validator Validator,
+	unmarshaller Unmarshaller, validator ValueValidator,
 ) (*Parameter, error) {
 
 	if expectedType == nil {
@@ -74,13 +147,13 @@ func NewParameter(name string, description string, expectedType any, defaultValu
 	}
 
 	return &Parameter{
-		Name:         name,
-		Description:  description,
-		ExpectedType: expectedType,
-		DefaultValue: defaultValue,
-		Unmarshaller: unmarshaller,
-		Validator:    validator,
-		value:        value,
+		Name:           name,
+		Description:    description,
+		ExpectedType:   expectedType,
+		DefaultValue:   defaultValue,
+		Unmarshaller:   unmarshaller,
+		ValueValidator: validator,
+		value:          value,
 	}, nil
 }
 
@@ -114,7 +187,7 @@ func (p *Parameter) Parse(driver *Driver, params map[string][]byte) error {
 		if p.Column == nil {
 			return fmt.Errorf("parameter is linked but column was not assigned")
 		}
-		if err := driver.ScanByOid(p.Column.TypeOid, raw, p.value); err != nil {
+		if err := driver.ScanByOid(uint32(p.Column.TypeOid), raw, p.value); err != nil {
 			return fmt.Errorf("unable to scan parameter via Driver")
 		}
 	} else {
@@ -124,8 +197,8 @@ func (p *Parameter) Parse(driver *Driver, params map[string][]byte) error {
 		}
 	}
 
-	if p.Validator != nil {
-		if err := p.Validator(p.value); err != nil {
+	if p.ValueValidator != nil {
+		if err := p.ValueValidator(p.value); err != nil {
 			return fmt.Errorf("validation error: %w", err)
 		}
 	}
@@ -159,8 +232,9 @@ func (p *Parameter) SetLinkParameter(name string) *Parameter {
 	return p
 }
 
-func (p *Parameter) SetIsColumn() *Parameter {
+func (p *Parameter) SetIsColumn(columnProperties *ColumnProperties) *Parameter {
 	p.IsColumn = true
+	p.ColumnProperties = columnProperties
 	return p
 }
 
