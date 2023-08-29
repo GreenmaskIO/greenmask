@@ -13,7 +13,7 @@ func scanPointer(src, dest any) error {
 		destInd := reflect.Indirect(destValue)
 		if srcInd.Kind() == destInd.Kind() {
 			if srcInd.CanSet() {
-				srcInd.Set(destInd)
+				destInd.Set(srcInd)
 				return nil
 			}
 			return errors.New("unable to set the value")

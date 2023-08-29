@@ -9,7 +9,7 @@ import (
 const (
 	FkConstraintType           = "ForeignKey"
 	CheckConstraintType        = "Check"
-	NotNullConstraintType      = "Check"
+	NotNullConstraintType      = "NotNull"
 	PkConstraintType           = "PrimaryKey"
 	PkConstraintReferencesType = "PrimaryKeyReferences"
 	UniqueConstraintType       = "Unique"

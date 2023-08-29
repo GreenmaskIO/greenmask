@@ -4,8 +4,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"reflect"
+	"time"
 
 	"github.com/pkg/errors"
+	"golang.org/x/exp/slices"
 )
 
 type Unmarshaller func(parameter *Parameter, tableDriver *Driver, src []byte) (any, error)
@@ -75,9 +77,12 @@ type Parameter struct {
 	// LinkParameter - link with parameter with provided name. This is required if performing raw value encoding
 	// depends on the provided column type and/or relies on the database Driver
 	LinkParameter string `json:"linkParameter,omitempty"`
-	// CastPgType - name of PostgreSQL type that would be used for Decoding raw value to the real go type. Is this
+	// CastDbType - name of PostgreSQL type that would be used for Decoding raw value to the real go type. Is this
 	// type does not exist will cause an error
-	CastPgType string `json:"castPgType,omitempty"`
+	CastDbType string `json:"castDbType,omitempty"`
+	// AllowedDbTypes - list of allowed column types that must be matched. Plays only when IsColumn.
+	// Is empty or nil any type is allowed
+	AllowedDbTypes []string `json:"allowedDbTypes"`
 	// DefaultValue - default value of the parameter. Must be variable pointer and have the same type
 	// as in ExpectedType
 	DefaultValue any `json:"defaultValue,omitempty"`
@@ -101,19 +106,15 @@ type Parameter struct {
 	value any
 }
 
-func MustNewParameter(name string, description string, expectedType any, defaultValue any,
-	unmarshaller Unmarshaller, valueValidator ValueValidator,
-) *Parameter {
-	p, err := NewParameter(name, description, expectedType, defaultValue, unmarshaller, valueValidator)
+func MustNewParameter(name string, description string, expectedType any, defaultValue any) *Parameter {
+	p, err := NewParameter(name, description, expectedType, defaultValue)
 	if err != nil {
 		panic(err)
 	}
 	return p
 }
 
-func NewParameter(name string, description string, expectedType any, defaultValue any,
-	unmarshaller Unmarshaller, validator ValueValidator,
-) (*Parameter, error) {
+func NewParameter(name string, description string, expectedType any, defaultValue any) (*Parameter, error) {
 
 	if expectedType == nil {
 		return nil, fmt.Errorf("expected value cannot be nil")
@@ -124,7 +125,7 @@ func NewParameter(name string, description string, expectedType any, defaultValu
 		return nil, fmt.Errorf("ExpectedType must be pointer")
 	}
 	eInd := reflect.Indirect(eValue)
-	if eInd.CanSet() {
+	if !eInd.CanSet() {
 		return nil, errors.New("ExpectedType is not settable")
 	}
 
@@ -147,81 +148,146 @@ func NewParameter(name string, description string, expectedType any, defaultValu
 	}
 
 	return &Parameter{
-		Name:           name,
-		Description:    description,
-		ExpectedType:   expectedType,
-		DefaultValue:   defaultValue,
-		Unmarshaller:   unmarshaller,
-		ValueValidator: validator,
-		value:          value,
+		Name:         name,
+		Description:  description,
+		ExpectedType: expectedType,
+		DefaultValue: defaultValue,
+		value:        value,
 	}, nil
 }
 
 // Parse - parse received params from the config using table definition. dest parameter must be pointer
-func (p *Parameter) Parse(driver *Driver, params map[string][]byte) error {
+func (p *Parameter) Parse(driver *Driver, params map[string][]byte, columnParams []*Parameter) (ValidationWarnings, error) {
+	// Check allowed pgTypes exists
+	for _, at := range p.AllowedDbTypes {
+		_, ok := driver.TypeMap.TypeForName(at)
+		if !ok {
+			return nil, fmt.Errorf("AllowedDbType with name %s is not found", at)
+		}
+	}
+
 	if params == nil {
-		return fmt.Errorf("paramas cannot be nil")
+		return nil, fmt.Errorf("paramas cannot be nil")
 	}
 	raw, ok := params[p.Name]
-	if !ok && p.Required {
-		return fmt.Errorf("paramater %s is required", p.Name)
+	if !ok {
+		if p.Required {
+			return nil, fmt.Errorf("paramater %s is required", p.Name)
+		} else if p.DefaultValue != nil {
+			p.value = p.DefaultValue
+		} else if !p.Required {
+			return nil, nil
+		}
 	}
-	if !ok && p.DefaultValue != nil {
-		p.value = p.DefaultValue
+
+	if p.LinkParameter != "" {
+		idx := slices.IndexFunc(columnParams, func(parameter *Parameter) bool {
+			return parameter.Name == p.LinkParameter
+		})
+		if idx == -1 {
+			return nil, fmt.Errorf("link parameter %s does not exist", p.LinkParameter)
+		}
+		cp := columnParams[idx]
+		if !cp.IsColumn {
+			return nil, fmt.Errorf("cannot link with non column parameter")
+		}
+		p.LinkedColumnParameter = cp
 	}
 
 	if p.Unmarshaller != nil {
 		// Perform custom unmarshalling
 		value, err := p.Unmarshaller(p, driver, raw)
 		if err != nil {
-			return fmt.Errorf("unable to perform custom unmarshaller: %w", err)
+			return nil, fmt.Errorf("unable to perform custom unmarshaller: %w", err)
 		}
 		p.value = value
-	} else if p.CastPgType != "" {
+	} else if p.CastDbType != "" {
 		// Perform decoding via pgx driver
-		if err := driver.ScanByName(p.CastPgType, raw, p.value); err != nil {
-			return fmt.Errorf("unable to scan parameter via Driver")
+		switch p.value.(type) {
+		case *time.Time:
+			val, err := driver.DecodeByTypeName(p.CastDbType, raw)
+			if err != nil {
+				return nil, fmt.Errorf("unable to scan parameter via Driver")
+			}
+			valTime := val.(time.Time)
+			p.value = &valTime
+		default:
+			if err := driver.ScanByTypeName(p.CastDbType, raw, p.value); err != nil {
+				return nil, fmt.Errorf("unable to scan parameter via Driver")
+			}
 		}
 	} else if p.LinkedColumnParameter != nil {
+
+		switch p.value.(type) {
+		case *time.Time:
+			val, err := driver.DecodeByTypeOid(uint32(p.LinkedColumnParameter.Column.TypeOid), raw)
+			if err != nil {
+				return nil, fmt.Errorf("unable to scan parameter via Driver")
+			}
+			valTime := val.(time.Time)
+			p.value = &valTime
+		default:
+			if err := driver.ScanByTypeOid(uint32(p.LinkedColumnParameter.Column.TypeOid), raw, p.value); err != nil {
+				return nil, fmt.Errorf("unable to scan parameter via Driver")
+			}
+		}
+
 		// Try to scan value using pgx driver and pgtype defined in the linked column
-		if p.Column == nil {
-			return fmt.Errorf("parameter is linked but column was not assigned")
+		if p.LinkedColumnParameter.Column == nil {
+			return nil, fmt.Errorf("parameter is linked but column was not assigned")
 		}
-		if err := driver.ScanByOid(uint32(p.Column.TypeOid), raw, p.value); err != nil {
-			return fmt.Errorf("unable to scan parameter via Driver")
-		}
+
+	} else if reflect.ValueOf(p.value).Kind() == reflect.String || (reflect.ValueOf(p.value).Kind() == reflect.Pointer &&
+		reflect.Indirect(reflect.ValueOf(p.value)).Kind() == reflect.String) {
+		// This is temporal solution for parsing string. Otherwise, it may cause an error in json.Unmarshall
+		val := string(raw)
+		p.value = &val
 	} else {
 		// Unmarshal as usual using json Umnarshaler
 		if err := json.Unmarshal(raw, p.value); err != nil {
-			return fmt.Errorf("unable to unmarshal value: %w", err)
+			return nil, fmt.Errorf("unable to unmarshal value: %w", err)
 		}
+	}
+
+	if p.IsColumn {
+		columnName, ok := p.value.(*string)
+		if !ok {
+			return nil, fmt.Errorf("unable to perform type assertion")
+		}
+		_, column, ok := driver.GetColumnByName(*columnName)
+		if !ok {
+			return ValidationWarnings{
+				NewValidationWarning().
+					SetMsg("column does not exist").
+					AddMeta("columnName", *columnName).
+					AddMeta("parameterName", p.Name),
+			}, nil
+		}
+		pgType, _ := driver.TypeMap.TypeForOID(uint32(column.TypeOid))
+		if len(p.AllowedDbTypes) > 0 && !slices.Contains(p.AllowedDbTypes, pgType.Name) {
+			return ValidationWarnings{
+				NewValidationWarning().
+					SetMsg("unsupported column type").
+					AddMeta("columnName", *columnName).
+					AddMeta("columnType", pgType.Name).
+					AddMeta("allowedDbTypes", p.AllowedDbTypes).
+					AddMeta("parameterName", p.Name),
+			}, nil
+		}
+		p.Column = column
 	}
 
 	if p.ValueValidator != nil {
 		if err := p.ValueValidator(p.value); err != nil {
-			return fmt.Errorf("validation error: %w", err)
+			return nil, fmt.Errorf("validation error: %w", err)
 		}
 	}
-	return nil
+	return nil, nil
 }
 
 // Scan - scan parsed value into received pointer. Param src must be pointer
-func (p *Parameter) Scan(src any) error {
-	srcValue := reflect.ValueOf(src)
-	destValue := reflect.ValueOf(p.value)
-	if srcValue.Kind() == destValue.Kind() {
-		srcInd := reflect.Indirect(srcValue)
-		destInd := reflect.Indirect(destValue)
-		if srcInd.Kind() == destInd.Kind() {
-			if srcInd.CanSet() {
-				srcInd.Set(destInd)
-				return nil
-			}
-			return errors.New("unable to set the value")
-		}
-		return errors.New("unexpected src type")
-	}
-	return errors.New("src must be pointer")
+func (p *Parameter) Scan(dest any) error {
+	return scanPointer(p.value, dest)
 }
 
 func (p *Parameter) SetLinkParameter(name string) *Parameter {
@@ -238,7 +304,29 @@ func (p *Parameter) SetIsColumn(columnProperties *ColumnProperties) *Parameter {
 	return p
 }
 
+func (p *Parameter) SetUnmarshaller(unmarshaller Unmarshaller) *Parameter {
+	p.Unmarshaller = unmarshaller
+	return p
+}
+
+func (p *Parameter) SetValueValidator(validator ValueValidator) *Parameter {
+	p.ValueValidator = validator
+	return p
+}
+
 // Value - returns parsed value that later might be cast via type assertion or so on
 func (p *Parameter) Value() any {
 	return p.value
+}
+
+func (p *Parameter) SelAllowedDbTypes(dbTypes []string) *Parameter {
+	// Checking database types exists
+	p.AllowedDbTypes = dbTypes
+	return p
+}
+
+func (p *Parameter) SetRequired(v bool) *Parameter {
+	// Checking database types exists
+	p.Required = v
+	return p
 }

@@ -29,7 +29,24 @@ func NewRecord(driver *Driver, rawData []string) *Record {
 }
 
 func (r *Record) GetTuple() (Tuple, error) {
-	return nil, fmt.Errorf("is not implemented")
+	if len(r.tuple) == len(r.driver.Table.Columns) {
+		return r.tuple, nil
+	}
+	for attName, _ := range r.driver.ColumnMap {
+		_, ok := r.tuple[attName]
+		if !ok {
+			idx, c, ok := r.driver.GetColumnByName(attName)
+			if !ok {
+				return nil, fmt.Errorf("attribute %s is not found", attName)
+			}
+			v, err := r.driver.DecodeByTypeOid(uint32(c.TypeOid), []byte(r.RawData[idx]))
+			if err != nil {
+				return nil, fmt.Errorf("error decoding attribute %s: %w", attName, err)
+			}
+			r.tuple[attName] = v
+		}
+	}
+	return r.tuple, nil
 }
 
 func (r *Record) SetTuple(t Tuple) error {
@@ -41,15 +58,14 @@ func (r *Record) SetTuple(t Tuple) error {
 }
 
 func (r *Record) ScanAttribute(name string, v any) error {
-	// Check attribute exists
 	val, ok := r.tuple[name]
 	if !ok {
-		idx, ok := r.columnIdx[name]
+		idx, column, ok := r.driver.GetColumnByName(name)
 		if !ok {
-			return errors.New("wrong column name")
+			return errors.New("unknown column name")
 		}
-		if err := r.driver.ScanByName(name, []byte(r.RawData[idx]), v); err != nil {
-			return fmt.Errorf("cannot scan attr by name: %w", err)
+		if err := r.driver.ScanByTypeOid(uint32(column.TypeOid), []byte(r.RawData[idx]), v); err != nil {
+			return fmt.Errorf("cannot scan: %w", err)
 		}
 		r.tuple[name] = v
 		return nil
@@ -57,19 +73,36 @@ func (r *Record) ScanAttribute(name string, v any) error {
 	return scanPointer(val, v)
 }
 
+func (r *Record) GetAttribute(name string) (any, error) {
+	var err error
+	val, ok := r.tuple[name]
+	if !ok {
+		idx, column, ok := r.driver.GetColumnByName(name)
+		if !ok {
+			return nil, errors.New("unknown column name")
+		}
+		val, err = r.driver.DecodeByTypeOid(uint32(column.TypeOid), []byte(r.RawData[idx]))
+		if err != nil {
+			return nil, fmt.Errorf("decode attr: %w", err)
+		}
+		r.tuple[name] = val
+	}
+	return val, nil
+}
+
 // SetAttribute - set transformed attribute to the tuple
 func (r *Record) SetAttribute(name string, v any) {
 	r.tuple[name] = v
 }
 
-// Encode - filling the record from buf with allocated data
-func (r *Record) Encode(buf []byte) ([]string, error) {
-	for name, value := range r.tuple {
-		idx, ok := r.columnIdx[name]
+// Encode - build CSV record
+func (r *Record) Encode() ([]string, error) {
+	for attrName, value := range r.tuple {
+		idx, ok := r.columnIdx[attrName]
 		if !ok {
-			return nil, fmt.Errorf("unknown column %s", name)
+			return nil, fmt.Errorf("unknown column %s", attrName)
 		}
-		res, err := r.driver.EncodeAttr(name, value, []byte(r.RawData[idx]))
+		res, err := r.driver.EncodeAttr(attrName, value, nil)
 		if err != nil {
 			return nil, fmt.Errorf("encoding error: %w", err)
 		}

@@ -40,22 +40,25 @@ func (d *Definition) SetSchemaValidator(v SchemaValidationFunc) *Definition {
 	return d
 }
 
-func (d *Definition) parseParameters(driver *Driver, rawParams map[string][]byte) (map[string]*Parameter, error) {
+func (d *Definition) parseParameters(driver *Driver, rawParams map[string][]byte) (ValidationWarnings, map[string]*Parameter, error) {
 	var params = make(map[string]*Parameter, len(d.Parameters))
 	for _, p := range d.Parameters {
 		params[p.Name] = &(*p)
 	}
+	var totalWarnings ValidationWarnings
 	for _, p := range params {
-		if err := p.Parse(driver, rawParams); err != nil {
-			return nil, fmt.Errorf("parameter %s parsing error: %w", p.Name, err)
+		warnings, err := p.Parse(driver, rawParams, nil)
+		if err != nil {
+			return nil, nil, fmt.Errorf("parameter %s parsing error: %w", p.Name, err)
 		}
+		totalWarnings = append(totalWarnings, warnings...)
 	}
-	return params, nil
+	return totalWarnings, params, nil
 }
 
 func (d *Definition) Instance(ctx context.Context, driver *Driver, rawParams map[string][]byte) (Transformer, ValidationWarnings, error) {
 	// Parse parameters and get the copy of parsed
-	params, err := d.parseParameters(driver, rawParams)
+	parametersWarnings, params, err := d.parseParameters(driver, rawParams)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -78,7 +81,12 @@ func (d *Definition) Instance(ctx context.Context, driver *Driver, rawParams map
 		return nil, nil, fmt.Errorf("transformer validation error: %w", err)
 	}
 
-	return t, append(schemaWarnings, transformerWarnings...), nil
+	res := make(ValidationWarnings, 0, len(parametersWarnings)+len(schemaWarnings)+len(transformerWarnings))
+	res = append(res, parametersWarnings...)
+	res = append(res, schemaWarnings...)
+	res = append(res, transformerWarnings...)
+
+	return t, res, nil
 }
 
 func validateTransformation(transformationType TransformationType) error {

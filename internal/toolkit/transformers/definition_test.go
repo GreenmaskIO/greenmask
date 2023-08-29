@@ -15,12 +15,12 @@ func TestDefinition(t *testing.T) {
 		Properties: MustNewProperties("test", "simple description", TupleTransformation),
 		//New:        NewTestTransformer,
 		Parameters: []*Parameter{
-			MustNewParameter("column", "a column name", new(int), nil, nil, nil).
+			MustNewParameter("column", "a column name", new(int), nil).
 				SetIsColumn(&ColumnProperties{
 					Affected:           true,
 					AllowedColumnTypes: []string{"timestamp"},
 				}),
-			MustNewParameter("replace", "replacement value", &time.Time{}, nil, nil, nil).
+			MustNewParameter("replace", "replacement value", &time.Time{}, nil).
 				SetLinkParameter("column"),
 		},
 	}
