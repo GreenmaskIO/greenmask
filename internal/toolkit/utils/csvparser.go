@@ -20,8 +20,10 @@ type Csv struct {
 }
 
 func NewCsv(r io.Reader, w io.Writer, driver *transformers.Driver) *Csv {
+	cr := csv.NewReader(r)
+	cr.ReuseRecord = true
 	return &Csv{
-		r:      csv.NewReader(r),
+		r:      cr,
 		w:      csv.NewWriter(w),
 		driver: driver,
 	}
@@ -37,7 +39,7 @@ func (c *Csv) Read() (*transformers.Record, error) {
 }
 
 func (c *Csv) Write(r *transformers.Record) error {
-	res, err := r.Encode(nil)
+	res, err := r.Encode()
 	if err != nil {
 		return fmt.Errorf("cannot encode record: %w", err)
 	}
