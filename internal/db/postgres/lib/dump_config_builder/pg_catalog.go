@@ -1,4 +1,4 @@
-package pg_catalog
+package dump_config_builder
 
 import (
 	"errors"

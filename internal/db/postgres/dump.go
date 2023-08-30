@@ -115,7 +115,7 @@ func (d *Dump) Validate(ctx context.Context, tx pgx.Tx) (map[toclib.Oid]*toclib.
 
 	// Initialise transformers, check table, columns and transformer exists
 	// validate type support and make a table config
-	tablesConfigMap, warnings, err := BuildTablesConfig(ctx, tx, d.tablesConfig)
+	tablesConfigMap, warnings, err := dump_config_builder.BuildTablesConfig(ctx, tx, d.tablesConfig)
 	// Log the errors occurred during initialisation
 	if err != nil {
 		return nil, err
@@ -190,7 +190,7 @@ func (d *Dump) schemaOnlyDump(ctx context.Context, tx pgx.Tx) error {
 func (d *Dump) dataDump(ctx context.Context, tx pgx.Tx, tablesConfig map[toclib.Oid]*toclib.Table) error {
 	// TODO: You should use pointer to dumpers.DumpTask instead
 	var largeObjectsList []*toclib.LargeObjects
-	tablesList, sequenceList, err := GetObjects(ctx, tx, d.pgDumpOptions, tablesConfig, &d.curDumpId)
+	tablesList, sequenceList, err := dump_config_builder.GetObjects(ctx, tx, d.pgDumpOptions, tablesConfig, &d.curDumpId)
 	if err != nil {
 		return fmt.Errorf("building data objects: %w", err)
 	}
