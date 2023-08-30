@@ -7,7 +7,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/stretchr/testify/require"
 
-	"github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/domains/data_section"
+	"github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/domains/toclib"
 )
 
 // TODO: Cover error cases
@@ -17,16 +17,16 @@ func TestRandomStringTransformer_Transform(t *testing.T) {
 
 	tests := []struct {
 		name    string
-		table   *data_section.Table
+		table   *toclib.Table
 		params  map[string]interface{}
 		useType string
 		pattern string
 	}{
 		{
 			name: "default fixed string",
-			table: &data_section.Table{
+			table: &toclib.Table{
 				Oid: 123,
-				Columns: []*data_section.Column{
+				Columns: []*toclib.Column{
 					{
 						Name:    "test",
 						TypeOid: pgtype.TextOID,
@@ -42,9 +42,9 @@ func TestRandomStringTransformer_Transform(t *testing.T) {
 		},
 		{
 			name: "default floated string",
-			table: &data_section.Table{
+			table: &toclib.Table{
 				Oid: 123,
-				Columns: []*data_section.Column{
+				Columns: []*toclib.Column{
 					{
 						Name:    "test",
 						TypeOid: pgtype.TextOID,
@@ -60,9 +60,9 @@ func TestRandomStringTransformer_Transform(t *testing.T) {
 		},
 		{
 			name: "default floated string",
-			table: &data_section.Table{
+			table: &toclib.Table{
 				Oid: 123,
-				Columns: []*data_section.Column{
+				Columns: []*toclib.Column{
 					{
 						Name:    "test",
 						TypeOid: pgtype.TextOID,

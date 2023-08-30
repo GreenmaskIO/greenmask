@@ -10,7 +10,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/stretchr/testify/require"
 
-	"github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/domains/data_section"
+	"github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/domains/toclib"
 )
 
 func getTypeMap() (*pgtype.Map, error) {
@@ -31,9 +31,9 @@ func TestHashTransformer_TransformAttr(t *testing.T) {
 	require.NoError(t, err)
 
 	transformer, err := HashTransformerMeta.InstanceTransformer(
-		&data_section.Table{
+		&toclib.Table{
 			Oid: 123,
-			Columns: []*data_section.Column{
+			Columns: []*toclib.Column{
 				{
 					Name:    "test",
 					TypeOid: pgtype.TextOID,

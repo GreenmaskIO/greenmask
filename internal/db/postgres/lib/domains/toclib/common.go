@@ -1,4 +1,4 @@
-package data_section
+package toclib
 
 import (
 	"sync/atomic"

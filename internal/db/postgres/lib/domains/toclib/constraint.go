@@ -1,4 +1,4 @@
-package data_section
+package toclib
 
 var (
 	// ConstraintTypes - map of the pg_constraints.contype to human-readable

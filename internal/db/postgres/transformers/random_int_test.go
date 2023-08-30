@@ -7,7 +7,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/stretchr/testify/require"
 
-	"github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/domains/data_section"
+	"github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/domains/toclib"
 )
 
 // TODO: Cover error cases
@@ -17,15 +17,15 @@ func TestRandomIntTransformer_Transform(t *testing.T) {
 
 	tests := []struct {
 		name    string
-		table   *data_section.Table
+		table   *toclib.Table
 		params  map[string]interface{}
 		pattern string
 	}{
 		{
 			name: "int2",
-			table: &data_section.Table{
+			table: &toclib.Table{
 				Oid: 123,
-				Columns: []*data_section.Column{
+				Columns: []*toclib.Column{
 					{
 						Name:    "test",
 						TypeOid: pgtype.Int2OID,
@@ -41,9 +41,9 @@ func TestRandomIntTransformer_Transform(t *testing.T) {
 		},
 		{
 			name: "int4",
-			table: &data_section.Table{
+			table: &toclib.Table{
 				Oid: 123,
-				Columns: []*data_section.Column{
+				Columns: []*toclib.Column{
 					{
 						Name:    "test",
 						TypeOid: pgtype.Int4OID,
@@ -59,9 +59,9 @@ func TestRandomIntTransformer_Transform(t *testing.T) {
 		},
 		{
 			name: "int8",
-			table: &data_section.Table{
+			table: &toclib.Table{
 				Oid: 123,
-				Columns: []*data_section.Column{
+				Columns: []*toclib.Column{
 					{
 						Name:    "test",
 						TypeOid: pgtype.Int8OID,
@@ -77,9 +77,9 @@ func TestRandomIntTransformer_Transform(t *testing.T) {
 		},
 		{
 			name: "text with int8",
-			table: &data_section.Table{
+			table: &toclib.Table{
 				Oid: 123,
-				Columns: []*data_section.Column{
+				Columns: []*toclib.Column{
 					{
 						Name:    "test",
 						TypeOid: pgtype.TextOID,

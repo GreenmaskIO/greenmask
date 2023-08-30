@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/domains/data_section"
+	"github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/domains/toclib"
 )
 
 func TestNoiseFloatTransformer_Transform(t *testing.T) {
@@ -18,7 +18,7 @@ func TestNoiseFloatTransformer_Transform(t *testing.T) {
 
 	tests := []struct {
 		name   string
-		table  *data_section.Table
+		table  *toclib.Table
 		params map[string]interface{}
 		input  string
 		result struct {
@@ -28,9 +28,9 @@ func TestNoiseFloatTransformer_Transform(t *testing.T) {
 	}{
 		{
 			name: "float4",
-			table: &data_section.Table{
+			table: &toclib.Table{
 				Oid: 123,
-				Columns: []*data_section.Column{
+				Columns: []*toclib.Column{
 					{
 						Name:    "test",
 						TypeOid: pgtype.Float4OID,
@@ -47,9 +47,9 @@ func TestNoiseFloatTransformer_Transform(t *testing.T) {
 		},
 		{
 			name: "float8",
-			table: &data_section.Table{
+			table: &toclib.Table{
 				Oid: 123,
-				Columns: []*data_section.Column{
+				Columns: []*toclib.Column{
 					{
 						Name:    "test",
 						TypeOid: pgtype.Float8OID,
@@ -66,9 +66,9 @@ func TestNoiseFloatTransformer_Transform(t *testing.T) {
 		},
 		{
 			name: "float8 ranges 1",
-			table: &data_section.Table{
+			table: &toclib.Table{
 				Oid: 123,
-				Columns: []*data_section.Column{
+				Columns: []*toclib.Column{
 					{
 						Name:    "test",
 						TypeOid: pgtype.Float8OID,
@@ -86,9 +86,9 @@ func TestNoiseFloatTransformer_Transform(t *testing.T) {
 		},
 		{
 			name: "float8 ranges 1 with precision",
-			table: &data_section.Table{
+			table: &toclib.Table{
 				Oid: 123,
-				Columns: []*data_section.Column{
+				Columns: []*toclib.Column{
 					{
 						Name:    "test",
 						TypeOid: pgtype.Float8OID,
@@ -106,9 +106,9 @@ func TestNoiseFloatTransformer_Transform(t *testing.T) {
 		},
 		{
 			name: "text with default float8",
-			table: &data_section.Table{
+			table: &toclib.Table{
 				Oid: 123,
-				Columns: []*data_section.Column{
+				Columns: []*toclib.Column{
 					{
 						Name:    "test",
 						TypeOid: pgtype.TextOID,

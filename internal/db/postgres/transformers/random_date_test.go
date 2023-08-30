@@ -7,7 +7,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/stretchr/testify/require"
 
-	"github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/domains/data_section"
+	"github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/domains/toclib"
 )
 
 func TestRandomDateTransformer_Transform(t *testing.T) {
@@ -16,15 +16,15 @@ func TestRandomDateTransformer_Transform(t *testing.T) {
 
 	tests := []struct {
 		name    string
-		table   *data_section.Table
+		table   *toclib.Table
 		params  map[string]interface{}
 		pattern string
 	}{
 		{
 			name: "test date type",
-			table: &data_section.Table{
+			table: &toclib.Table{
 				Oid: 123,
-				Columns: []*data_section.Column{
+				Columns: []*toclib.Column{
 					{
 						Name:    "test",
 						TypeOid: pgtype.DateOID,
@@ -40,9 +40,9 @@ func TestRandomDateTransformer_Transform(t *testing.T) {
 		},
 		{
 			name: "test timestamp without timezone type",
-			table: &data_section.Table{
+			table: &toclib.Table{
 				Oid: 123,
-				Columns: []*data_section.Column{
+				Columns: []*toclib.Column{
 					{
 						Name:    "test",
 						TypeOid: pgtype.TimestampOID,
@@ -58,9 +58,9 @@ func TestRandomDateTransformer_Transform(t *testing.T) {
 		},
 		{
 			name: "test timestamp with timezone type",
-			table: &data_section.Table{
+			table: &toclib.Table{
 				Oid: 123,
-				Columns: []*data_section.Column{
+				Columns: []*toclib.Column{
 					{
 						Name:    "test",
 						TypeOid: pgtype.TimestamptzOID,
@@ -76,9 +76,9 @@ func TestRandomDateTransformer_Transform(t *testing.T) {
 		},
 		{
 			name: "test timestamp type with Truncate till day",
-			table: &data_section.Table{
+			table: &toclib.Table{
 				Oid: 123,
-				Columns: []*data_section.Column{
+				Columns: []*toclib.Column{
 					{
 						Name:    "test",
 						TypeOid: pgtype.TimestampOID,
@@ -114,16 +114,16 @@ func TestRandomDateTransformer_Transform_errors(t *testing.T) {
 
 	tests := []struct {
 		name        string
-		table       *data_section.Table
+		table       *toclib.Table
 		params      map[string]interface{}
 		typeMap     *pgtype.Map
 		errContains string
 	}{
 		{
 			name: "Check nil typeMap error",
-			table: &data_section.Table{
+			table: &toclib.Table{
 				Oid: 123,
-				Columns: []*data_section.Column{
+				Columns: []*toclib.Column{
 					{
 						Name:    "test",
 						TypeOid: pgtype.DateOID,
@@ -138,9 +138,9 @@ func TestRandomDateTransformer_Transform_errors(t *testing.T) {
 		},
 		{
 			name: "Check min key not existing error",
-			table: &data_section.Table{
+			table: &toclib.Table{
 				Oid: 123,
-				Columns: []*data_section.Column{
+				Columns: []*toclib.Column{
 					{
 						Name:    "test",
 						TypeOid: pgtype.DateOID,
@@ -156,9 +156,9 @@ func TestRandomDateTransformer_Transform_errors(t *testing.T) {
 		},
 		{
 			name: "Check max key existing error",
-			table: &data_section.Table{
+			table: &toclib.Table{
 				Oid: 123,
-				Columns: []*data_section.Column{
+				Columns: []*toclib.Column{
 					{
 						Name:    "test",
 						TypeOid: pgtype.DateOID,
@@ -175,9 +175,9 @@ func TestRandomDateTransformer_Transform_errors(t *testing.T) {
 		},
 		{
 			name: "Check min key empty value",
-			table: &data_section.Table{
+			table: &toclib.Table{
 				Oid: 123,
-				Columns: []*data_section.Column{
+				Columns: []*toclib.Column{
 					{
 						Name:    "test",
 						TypeOid: pgtype.DateOID,
@@ -194,9 +194,9 @@ func TestRandomDateTransformer_Transform_errors(t *testing.T) {
 		},
 		{
 			name: "Check max empty value",
-			table: &data_section.Table{
+			table: &toclib.Table{
 				Oid: 123,
-				Columns: []*data_section.Column{
+				Columns: []*toclib.Column{
 					{
 						Name:    "test",
 						TypeOid: pgtype.DateOID,
@@ -213,9 +213,9 @@ func TestRandomDateTransformer_Transform_errors(t *testing.T) {
 		},
 		{
 			name: "Invalid min date format",
-			table: &data_section.Table{
+			table: &toclib.Table{
 				Oid: 123,
-				Columns: []*data_section.Column{
+				Columns: []*toclib.Column{
 					{
 						Name:    "test",
 						TypeOid: pgtype.DateOID,
@@ -232,9 +232,9 @@ func TestRandomDateTransformer_Transform_errors(t *testing.T) {
 		},
 		{
 			name: "Invalid max date format",
-			table: &data_section.Table{
+			table: &toclib.Table{
 				Oid: 123,
-				Columns: []*data_section.Column{
+				Columns: []*toclib.Column{
 					{
 						Name:    "test",
 						TypeOid: pgtype.DateOID,

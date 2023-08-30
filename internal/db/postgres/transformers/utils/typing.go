@@ -9,10 +9,10 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 
-	"github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/domains/data_section"
+	"github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/domains/toclib"
 )
 
-func GetPgTypeAndEncodingPlan(typeMap *pgtype.Map, typeOid data_section.Oid, castVal any) (*pgtype.Type, pgtype.EncodePlan, error) {
+func GetPgTypeAndEncodingPlan(typeMap *pgtype.Map, typeOid toclib.Oid, castVal any) (*pgtype.Type, pgtype.EncodePlan, error) {
 	t, ok := typeMap.TypeForOID(uint32(typeOid))
 	if !ok {
 		return nil, nil, fmt.Errorf("cannot match pgtype %d", typeOid)

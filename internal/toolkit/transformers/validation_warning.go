@@ -13,6 +13,14 @@ const (
 	DebugValidationSeverity   = "debug"
 )
 
+type Trace struct {
+	SchemaName      string `json:"schemaName,omitempty"`
+	TableName       string `json:"tableName,omitempty"`
+	TransformerName string `json:"transformerName,omitempty"`
+	ParameterName   string `json:"parameterName,omitempty"`
+	Msg             string `json:"msg,omitempty"`
+}
+
 type ValidationWarnings []*ValidationWarning
 
 func (re ValidationWarnings) IsFatal() bool {
@@ -24,6 +32,7 @@ func (re ValidationWarnings) IsFatal() bool {
 type ValidationWarning struct {
 	Msg   string                 `json:"msg,omitempty"`
 	Level string                 `json:"level,omitempty"`
+	Trace *Trace                 `json:"trace,omitempty"`
 	Meta  map[string]interface{} `json:"meta,omitempty"`
 }
 
@@ -51,5 +60,10 @@ func (re *ValidationWarning) SetLevel(level string) *ValidationWarning {
 
 func (re *ValidationWarning) AddMeta(key string, value interface{}) *ValidationWarning {
 	re.Meta[key] = value
+	return re
+}
+
+func (re *ValidationWarning) SetTrace(value *Trace) *ValidationWarning {
+	re.Trace = value
 	return re
 }

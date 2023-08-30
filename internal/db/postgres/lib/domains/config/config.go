@@ -53,8 +53,8 @@ type Restore struct {
 }
 
 type TransformerConfig struct {
-	Name   string                 `mapstructure:"name"`
-	Params map[string]interface{} `mapstructure:"params"`
+	Name   string            `mapstructure:"name"`
+	Params map[string][]byte `mapstructure:"params"`
 }
 
 type Table struct {

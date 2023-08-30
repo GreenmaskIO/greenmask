@@ -1,4 +1,4 @@
-package data_section
+package toclib
 
 type Column struct {
 	Name     string `json:"name"`

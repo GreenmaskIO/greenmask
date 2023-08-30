@@ -13,8 +13,8 @@ import (
 	"golang.org/x/sync/errgroup"
 
 	"github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/domains/config"
-	"github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/domains/data_section"
 	storage2 "github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/domains/storage"
+	"github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/domains/toclib"
 	"github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/dumpers"
 	"github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/pgdump"
 	"github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/toc"
@@ -26,7 +26,7 @@ type Dump struct {
 	dsn            string
 	pgDumpOptions  *pgdump.Options
 	pgDump         *pgdump.PgDump
-	curDumpId      data_section.DumpId
+	curDumpId      toclib.DumpId
 	st             storage.Storager
 	dumpTaskCount  int32
 	allTaskPushed  atomic.Bool
@@ -110,7 +110,7 @@ func logValidationWarnings(warnings commondomains.ValidationWarnings, schemaName
 	}
 }
 
-func (d *Dump) Validate(ctx context.Context, tx pgx.Tx) (map[data_section.Oid]*data_section.Table, error) {
+func (d *Dump) Validate(ctx context.Context, tx pgx.Tx) (map[toclib.Oid]*toclib.Table, error) {
 	var fatal = false
 
 	// Initialise transformers, check table, columns and transformer exists
@@ -182,14 +182,14 @@ func (d *Dump) schemaOnlyDump(ctx context.Context, tx pgx.Tx) error {
 		return fmt.Errorf("error reading toc file: %w", err)
 	}
 	d.ah = schemaToc
-	d.curDumpId = data_section.DumpId(schemaToc.MaxDumpId + 1)
+	d.curDumpId = toclib.DumpId(schemaToc.MaxDumpId + 1)
 
 	return nil
 }
 
-func (d *Dump) dataDump(ctx context.Context, tx pgx.Tx, tablesConfig map[data_section.Oid]*data_section.Table) error {
+func (d *Dump) dataDump(ctx context.Context, tx pgx.Tx, tablesConfig map[toclib.Oid]*toclib.Table) error {
 	// TODO: You should use pointer to dumpers.DumpTask instead
-	var largeObjectsList []*data_section.LargeObjects
+	var largeObjectsList []*toclib.LargeObjects
 	tablesList, sequenceList, err := GetObjects(ctx, tx, d.pgDumpOptions, tablesConfig, &d.curDumpId)
 	if err != nil {
 		return fmt.Errorf("building data objects: %w", err)
@@ -258,11 +258,11 @@ func (d *Dump) dataDump(ctx context.Context, tx pgx.Tx, tablesConfig map[data_se
 				return gtx.Err()
 			case tocEntry := <-result:
 				switch *tocEntry.Desc {
-				case data_section.TableDataDesc:
+				case toclib.TableDataDesc:
 					tables = append(tables, tocEntry)
-				case data_section.SequenceSetDesc:
+				case toclib.SequenceSetDesc:
 					sequences = append(sequences, tocEntry)
-				case data_section.LargeObjectDesc:
+				case toclib.LargeObjectDesc:
 					largeObjects = append(largeObjects, tocEntry)
 				default:
 					return fmt.Errorf("unexpected toc entry %s", *tocEntry.Desc)

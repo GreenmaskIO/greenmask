@@ -6,7 +6,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/stretchr/testify/require"
 
-	"github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/domains/data_section"
+	"github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/domains/toclib"
 )
 
 func TestJsonTransformer_Transform(t *testing.T) {
@@ -14,9 +14,9 @@ func TestJsonTransformer_Transform(t *testing.T) {
 	require.NoError(t, err)
 
 	transformer, err := JsonTransformerMeta.InstanceTransformer(
-		&data_section.Table{
+		&toclib.Table{
 			Oid: 123,
-			Columns: []*data_section.Column{
+			Columns: []*toclib.Column{
 				{
 					Name:    "test",
 					TypeOid: pgtype.JSONBOID,

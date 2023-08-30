@@ -17,8 +17,8 @@ import (
 	"golang.org/x/sync/errgroup"
 	"gopkg.in/yaml.v3"
 
-	"github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/domains/data_section"
 	storage2 "github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/domains/storage"
+	"github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/domains/toclib"
 	"github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/pgrestore"
 	"github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/restorers"
 	"github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/toc"
@@ -240,11 +240,11 @@ func (r *Restore) dataRestore(ctx context.Context, conn *pgx.Conn) error {
 
 				var task restorers.RestoreTask
 				switch *entry.Desc {
-				case data_section.TableDataDesc:
+				case toclib.TableDataDesc:
 					task = restorers.NewTableRestorer(entry, r.st)
-				case data_section.SequenceSetDesc:
+				case toclib.SequenceSetDesc:
 					task = restorers.NewSequenceRestorer(entry)
-				case data_section.LargeObjectDesc:
+				case toclib.LargeObjectDesc:
 					log.Warn().Msgf("FIXME: Implement Large Object restoration")
 				}
 

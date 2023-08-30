@@ -174,13 +174,16 @@ type Reader struct {
 
 	// lastRecord is a record cache and only used when ReuseRecord == true.
 	lastRecord []string
+
+	defaultFieldBufSize int
 }
 
 // NewReader returns a new Reader that reads from r.
 func NewReader(r io.Reader) *Reader {
 	return &Reader{
-		Comma: ',',
-		r:     bufio.NewReader(r),
+		Comma:               ',',
+		r:                   bufio.NewReader(r),
+		defaultFieldBufSize: 128,
 	}
 }
 

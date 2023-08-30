@@ -4,6 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/domains/dump"
+	"github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/domains/toclib"
+	"github.com/wwoytenko/greenfuscator/internal/db/postgres/transformers"
+	"github.com/wwoytenko/greenfuscator/internal/db/postgres/transformers2"
+	toolkit "github.com/wwoytenko/greenfuscator/internal/toolkit/transformers"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -11,10 +16,9 @@ import (
 	"golang.org/x/exp/slices"
 
 	"github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/domains/config"
-	"github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/domains/data_section"
 	"github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/pg_catalog"
 	"github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/pgdump"
-	"github.com/wwoytenko/greenfuscator/internal/db/postgres/transformers"
+	//"github.com/wwoytenko/greenfuscator/internal/db/postgres/transformers"
 	domains "github.com/wwoytenko/greenfuscator/internal/domains"
 )
 
@@ -30,7 +34,12 @@ const (
 	TableValidationLevel       = "Table"
 )
 
-func BuildTablesConfig(ctx context.Context, tx pgx.Tx, tableConfig []*config.Table) (map[data_section.Oid]*data_section.Table, domains.ValidationWarnings, error) {
+func BuildTablesConfig(ctx context.Context, tx pgx.Tx, tableConfig []*config.Table) (map[toolkit.Oid]*dump.Table, domains.ValidationWarnings, error) {
+	transformersMap, err := buildTransformersMap()
+	if err != nil {
+		return nil, nil, fmt.Errorf("cannot build transformer map: %w", err)
+	}
+
 	tableSearchQuery := `
 		SELECT 
 		   c.oid::TEXT::INT, 
@@ -51,17 +60,15 @@ func BuildTablesConfig(ctx context.Context, tx pgx.Tx, tableConfig []*config.Tab
           AND c.relname = $2 -- relname inclusion
 	`
 
-	tables := make(map[data_section.Oid]*data_section.Table, len(tableConfig))
+	tables := make(map[toolkit.Oid]*dump.Table, len(tableConfig))
 	var warnings domains.ValidationWarnings
 
 	for _, t := range tableConfig {
-		table := &data_section.Table{
-			TypeMap: tx.Conn().TypeMap(),
-		}
+		table := &dump.Table{}
 
 		row := tx.QueryRow(ctx, tableSearchQuery, t.Schema, t.Name)
 		err := row.Scan(&table.Oid, &table.Schema, &table.Name, &table.Owner, &table.RelKind,
-			&table.RootPtSchema, &table.RootPtName, &table.Root,
+			&table.RootPtSchema, &table.RootPtName, &table.RootOid,
 		)
 
 		if err != nil && errors.Is(err, pgx.ErrNoRows) {
@@ -94,19 +101,11 @@ func BuildTablesConfig(ctx context.Context, tx pgx.Tx, tableConfig []*config.Tab
 		// InitTransformation transformers
 		if len(t.TransformersConfig) > 0 {
 			for _, tc := range t.TransformersConfig {
-				transformer, err := initTransformer(table, tc, tx.Conn().TypeMap())
-				var re *domains.RuntimeError
-				if err != nil && errors.As(err, &re) {
-					// TODO: You should rewrite it because here you are translation RuntimeError to ValidationWarning
-					w := domains.NewValidationWarning().SetMsg(re.Msg).SetLevel(domains.ErrorValidationSeverity)
-					w.Meta = re.Meta
-					if re.Err != nil {
-						w.AddMeta("Err", re.Err.Error())
-					}
-					warnings = append(warnings, w)
-				} else if err != nil {
+				transformer, initWarnings, err := initTransformer2(ctx, table, tc, tx.Conn().TypeMap(), transformersMap)
+				if err != nil {
 					return nil, nil, err
 				}
+				warnings = append(warnings, initWarnings...)
 				table.Transformers = append(table.Transformers, transformer)
 			}
 		}
@@ -117,7 +116,7 @@ func BuildTablesConfig(ctx context.Context, tx pgx.Tx, tableConfig []*config.Tab
 	return tables, warnings, nil
 }
 
-func getColumnsConfig(ctx context.Context, tx pgx.Tx, table *data_section.Table) ([]*data_section.Column, error) {
+func getColumnsConfig(ctx context.Context, tx pgx.Tx, table *dump.Table) ([]*toolkit.Column, error) {
 
 	tableColumnsQuery := `
 		SELECT 
@@ -132,7 +131,7 @@ func getColumnsConfig(ctx context.Context, tx pgx.Tx, table *data_section.Table)
 		ORDER BY a.attnum
 	`
 
-	var res []*data_section.Column
+	var res []*toolkit.Column
 	rows, err := tx.Query(ctx, tableColumnsQuery, table.Oid)
 	if err != nil {
 		return nil, fmt.Errorf("unable execute tableColumnQuery: %w", err)
@@ -140,7 +139,7 @@ func getColumnsConfig(ctx context.Context, tx pgx.Tx, table *data_section.Table)
 	defer rows.Close()
 
 	for rows.Next() {
-		var column data_section.Column
+		var column toolkit.Column
 		if err = rows.Scan(&column.Name, &column.TypeOid, &column.TypeName,
 			&column.NotNull, &column.Length, &column.Num); err != nil {
 			return nil, fmt.Errorf("cannot scan tableColumnQuery: %w", err)
@@ -151,7 +150,44 @@ func getColumnsConfig(ctx context.Context, tx pgx.Tx, table *data_section.Table)
 	return res, nil
 }
 
-func initTransformer(table *data_section.Table, transformerConf *config.TransformerConfig, typeMap *pgtype.Map) (domains.Transformer, error) {
+func buildTransformersMap() (map[string]*toolkit.Definition, error) {
+	tm := make(map[string]*toolkit.Definition)
+	for _, td := range transformers2.DefaultTransformersList {
+		if _, ok := tm[td.Properties.Name]; ok {
+			return nil, fmt.Errorf("transformer with name %s already exists", td.Properties.Name)
+		}
+		tm[td.Properties.Name] = td
+	}
+	return tm, nil
+}
+
+func initTransformer2(ctx context.Context, t *dump.Table, c *config.TransformerConfig, tm *pgtype.Map, dm map[string]*toolkit.Definition) (toolkit.Transformer, toolkit.ValidationWarnings, error) {
+	var totalWarnings toolkit.ValidationWarnings
+	td, ok := dm[c.Name]
+	if !ok {
+		totalWarnings = append(totalWarnings,
+			toolkit.NewValidationWarning().
+				SetMsg("transformer not found").
+				SetLevel(toolkit.ErrorValidationSeverity).SetTrace(&toolkit.Trace{
+				SchemaName:      t.Schema,
+				TableName:       t.Name,
+				TransformerName: c.Name,
+			}))
+		return nil, totalWarnings, nil
+	}
+	driver, err := toolkit.NewDriver(tm, &t.Table)
+	if err != nil {
+		return nil, nil, fmt.Errorf("driver initialization for table %s.%s: %w", t.Schema, t.Name, err)
+	}
+	transformer, warnings, err := td.Instance(ctx, driver, c.Params)
+	if err != nil {
+		return nil, nil, fmt.Errorf("unable to init transformer: %w", err)
+	}
+	return transformer, warnings, nil
+}
+
+func initTransformer(table *toclib.Table, transformerConf *config.TransformerConfig, typeMap *pgtype.Map) (domains.Transformer, error) {
+
 	transformerMaker, ok := transformers.TransformerMap[transformerConf.Name]
 	if !ok {
 		return nil, domains.NewRuntimeError().
@@ -175,7 +211,7 @@ func initTransformer(table *data_section.Table, transformerConf *config.Transfor
 				AddMeta("TransformerName", transformerConf.Name).
 				SetErr(fmt.Errorf(`parameter "column" is required for attribute transformers`))
 		}
-		if !slices.ContainsFunc(table.Columns, func(column *data_section.Column) bool {
+		if !slices.ContainsFunc(table.Columns, func(column *toclib.Column) bool {
 			return column.Name == columnName
 		}) {
 			return nil, domains.NewRuntimeError().
@@ -203,8 +239,8 @@ func initTransformer(table *data_section.Table, transformerConf *config.Transfor
 	return transformer, nil
 }
 
-func getTableConstraints(ctx context.Context, tx pgx.Tx, table *data_section.Table) ([]*data_section.Constraint, error) {
-	var constraints []*data_section.Constraint
+func getTableConstraints(ctx context.Context, tx pgx.Tx, table *dump.Table) ([]toolkit.Constraint, error) {
+	var constraints []toolkit.Constraint
 
 	tableConstraintsQuery := `
 		SELECT pc.conname                                    AS "name",
@@ -238,7 +274,7 @@ func getTableConstraints(ctx context.Context, tx pgx.Tx, table *data_section.Tab
 	defer rows.Close()
 
 	for rows.Next() {
-		var c data_section.Constraint
+		var c toclib.Constraint
 		err = rows.Scan(
 			&c.Name, &c.Schema, &c.ConstraintType,
 			&c.Domain, &c.RootPtConstraint, &c.FkTable,
@@ -256,7 +292,7 @@ func getTableConstraints(ctx context.Context, tx pgx.Tx, table *data_section.Tab
 	return constraints, nil
 }
 
-func GetObjects(ctx context.Context, tx pgx.Tx, pgDumpOptions *pgdump.Options, tablesConfig map[data_section.Oid]*data_section.Table, dumpIdSeq *data_section.DumpId) ([]*data_section.Table, []*data_section.Sequence, error) {
+func GetObjects(ctx context.Context, tx pgx.Tx, pgDumpOptions *pgdump.Options, tablesConfig map[toclib.Oid]*toclib.Table, dumpIdSeq *toclib.DumpId) ([]*toclib.Table, []*toclib.Sequence, error) {
 
 	// Building relation search query using regexp adaptation rules and pre-defined query templates
 	// TODO: Refactor it to gotemplate
@@ -273,11 +309,11 @@ func GetObjects(ctx context.Context, tx pgx.Tx, pgDumpOptions *pgdump.Options, t
 	}
 
 	// Generate table objects
-	sequences := make([]*data_section.Sequence, 0)
-	tables := make([]*data_section.Table, 0)
+	sequences := make([]*toclib.Sequence, 0)
+	tables := make([]*toclib.Table, 0)
 	defer rows.Close()
 	for rows.Next() {
-		var oid data_section.Oid
+		var oid toclib.Oid
 		var lastVal int64
 		var schemaName, name, owner, rootPtName, rootPtSchema string
 		var relKind rune
@@ -289,14 +325,14 @@ func GetObjects(ctx context.Context, tx pgx.Tx, pgDumpOptions *pgdump.Options, t
 		); err != nil {
 			return nil, nil, fmt.Errorf("unnable scan data: %w", err)
 		}
-		var table *data_section.Table
+		var table *toclib.Table
 
 		switch relKind {
 		case 'S':
-			sequences = append(sequences, &data_section.Sequence{
+			sequences = append(sequences, &toclib.Sequence{
 				Name:        name,
 				Schema:      schemaName,
-				Oid:         data_section.Oid(oid),
+				Oid:         toclib.Oid(oid),
 				Owner:       owner,
 				DumpId:      dumpIdSeq.GetDumpId(),
 				LastValue:   lastVal,
@@ -316,7 +352,7 @@ func GetObjects(ctx context.Context, tx pgx.Tx, pgDumpOptions *pgdump.Options, t
 				table.LoadViaPartitionRoot = pgDumpOptions.LoadViaPartitionRoot
 			} else {
 				// If not - create new table object
-				table = &data_section.Table{
+				table = &toclib.Table{
 					Name:                 name,
 					Schema:               schemaName,
 					Oid:                  oid,
@@ -346,7 +382,7 @@ func GetObjects(ctx context.Context, tx pgx.Tx, pgDumpOptions *pgdump.Options, t
 	return tables, sequences, nil
 }
 
-func setTableColumns(ctx context.Context, tx pgx.Tx, table *data_section.Table) error {
+func setTableColumns(ctx context.Context, tx pgx.Tx, table *toclib.Table) error {
 	tableColumnsQuery := `
 		SELECT 
 		    a.attname,
@@ -357,7 +393,7 @@ func setTableColumns(ctx context.Context, tx pgx.Tx, table *data_section.Table) 
 		ORDER BY a.attnum
 	`
 
-	cfg := make(map[string]*data_section.Column, 0)
+	cfg := make(map[string]*toclib.Column, 0)
 	for _, c := range table.Columns {
 		cfg[c.Name] = c
 	}
@@ -366,9 +402,9 @@ func setTableColumns(ctx context.Context, tx pgx.Tx, table *data_section.Table) 
 	if err != nil {
 		return fmt.Errorf("perform query: %w", err)
 	}
-	columns := make([]*data_section.Column, 0)
+	columns := make([]*toclib.Column, 0)
 	for rows.Next() {
-		column := data_section.Column{}
+		column := toclib.Column{}
 		if err = rows.Scan(&column.Name, &column.TypeOid, &column.TypeName); err != nil {
 			return fmt.Errorf("cannot scan column: %w", err)
 		}

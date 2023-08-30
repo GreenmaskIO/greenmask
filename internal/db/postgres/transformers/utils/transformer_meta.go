@@ -5,7 +5,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgtype"
 
-	"github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/domains/data_section"
+	"github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/domains/toclib"
 	"github.com/wwoytenko/greenfuscator/internal/domains"
 )
 
@@ -22,7 +22,7 @@ type TransformerMeta struct {
 }
 
 func (tm *TransformerMeta) InstanceTransformer(
-	table *data_section.Table,
+	table *toclib.Table,
 	typeMap *pgtype.Map,
 	params map[string]interface{},
 ) (domains.Transformer, error) {

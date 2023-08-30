@@ -6,16 +6,16 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/stretchr/testify/require"
 
-	"github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/domains/data_section"
+	"github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/domains/toclib"
 )
 
 func TestReplaceTransformer_Transform(t *testing.T) {
 	typeMap, err := getTypeMap()
 	require.NoError(t, err)
 
-	table := &data_section.Table{
+	table := &toclib.Table{
 		Oid: 123,
-		Columns: []*data_section.Column{
+		Columns: []*toclib.Column{
 			{
 				Name:    "test",
 				TypeOid: pgtype.TextOID,
@@ -46,9 +46,9 @@ func TestReplaceTransformer_Transform(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, res, "new_val")
 
-	table = &data_section.Table{
+	table = &toclib.Table{
 		Oid: 123,
-		Columns: []*data_section.Column{
+		Columns: []*toclib.Column{
 			{
 				Name:    "test",
 				TypeOid: pgtype.DateOID,
@@ -80,9 +80,9 @@ func TestReplaceTransformer_Transform(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, res, "2023-18-05")
 
-	table = &data_section.Table{
+	table = &toclib.Table{
 		Oid: 123,
-		Columns: []*data_section.Column{
+		Columns: []*toclib.Column{
 			{
 				Name:    "test",
 				TypeOid: pgtype.UUIDOID,

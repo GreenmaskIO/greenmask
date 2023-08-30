@@ -3,18 +3,18 @@ package utils
 import (
 	"fmt"
 
-	"github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/domains/data_section"
+	"github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/domains/toclib"
 )
 
 type Tuple map[string]any
 
 type Record struct {
-	table   *data_section.Table
+	table   *toclib.Table
 	rawData []string
 	tuple   Tuple
 }
 
-func NewRecord(table *data_section.Table, rawData []string) *Record {
+func NewRecord(table *toclib.Table, rawData []string) *Record {
 	return &Record{
 		table:   table,
 		tuple:   make(Tuple),
