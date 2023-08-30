@@ -55,6 +55,11 @@ func (cp *ColumnProperties) SetMaxLength(v int64) *ColumnProperties {
 	return cp
 }
 
+func (cp *ColumnProperties) SetAllowedColumnTypes(v ...string) *ColumnProperties {
+	cp.AllowedColumnTypes = v
+	return cp
+}
+
 func (cp *ColumnProperties) SetAffected(v bool) *ColumnProperties {
 	cp.Affected = v
 	return cp
@@ -157,7 +162,7 @@ func NewParameter(name string, description string, expectedType any, defaultValu
 }
 
 // Parse - parse received params from the config using table definition. dest parameter must be pointer
-func (p *Parameter) Parse(driver *Driver, params map[string][]byte, columnParams []*Parameter) (ValidationWarnings, error) {
+func (p *Parameter) Parse(driver *Driver, params map[string][]byte, columnParams map[string]*Parameter) (ValidationWarnings, error) {
 	// Check allowed pgTypes exists
 	for _, at := range p.AllowedDbTypes {
 		_, ok := driver.TypeMap.TypeForName(at)
@@ -181,13 +186,10 @@ func (p *Parameter) Parse(driver *Driver, params map[string][]byte, columnParams
 	}
 
 	if p.LinkParameter != "" {
-		idx := slices.IndexFunc(columnParams, func(parameter *Parameter) bool {
-			return parameter.Name == p.LinkParameter
-		})
-		if idx == -1 {
+		cp, ok := columnParams[p.LinkParameter]
+		if !ok {
 			return nil, fmt.Errorf("link parameter %s does not exist", p.LinkParameter)
 		}
-		cp := columnParams[idx]
 		if !cp.IsColumn {
 			return nil, fmt.Errorf("cannot link with non column parameter")
 		}

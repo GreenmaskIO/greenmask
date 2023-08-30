@@ -45,9 +45,28 @@ func (d *Definition) parseParameters(driver *Driver, rawParams map[string][]byte
 	for _, p := range d.Parameters {
 		params[p.Name] = &(*p)
 	}
+	var columnParameters = make(map[string]*Parameter)
+	var commonParameters = make(map[string]*Parameter)
+	for _, p := range d.Parameters {
+		if p.IsColumn {
+			columnParameters[p.Name] = p
+		} else {
+			commonParameters[p.Name] = p
+		}
+	}
+
 	var totalWarnings ValidationWarnings
-	for _, p := range params {
+	// Column parameters parsing
+	for _, p := range columnParameters {
 		warnings, err := p.Parse(driver, rawParams, nil)
+		if err != nil {
+			return nil, nil, fmt.Errorf("parameter %s parsing error: %w", p.Name, err)
+		}
+		totalWarnings = append(totalWarnings, warnings...)
+	}
+	// Common parameters parsing
+	for _, p := range commonParameters {
+		warnings, err := p.Parse(driver, rawParams, columnParameters)
 		if err != nil {
 			return nil, nil, fmt.Errorf("parameter %s parsing error: %w", p.Name, err)
 		}

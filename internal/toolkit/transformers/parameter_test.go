@@ -125,10 +125,7 @@ func TestParameter_Parse_with_linked_parameter(t *testing.T) {
 		nil,
 	).SelAllowedDbTypes([]string{"timestamp"}).
 		SetRequired(true).
-		SetIsColumn(&ColumnProperties{
-			Nullable: false,
-			Affected: true,
-		})
+		SetIsColumn(NewColumnProperties())
 
 	warnings, err := columnParam.Parse(driver, rawParams, nil)
 	require.NoError(t, err)
@@ -143,7 +140,7 @@ func TestParameter_Parse_with_linked_parameter(t *testing.T) {
 		SetRequired(true).
 		SetLinkParameter("column")
 
-	warnings, err = linkedParam.Parse(driver, rawParams, []*Parameter{columnParam})
+	warnings, err = linkedParam.Parse(driver, rawParams, map[string]*Parameter{"column": columnParam})
 	require.NoError(t, err)
 	assert.Empty(t, warnings)
 	res := time.Time{}
