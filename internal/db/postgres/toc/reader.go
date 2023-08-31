@@ -7,14 +7,21 @@ import (
 	"strconv"
 
 	"github.com/rs/zerolog/log"
+	"golang.org/x/exp/slices"
 )
 
 type Reader struct {
 	r        io.Reader
 	buf      []byte
-	intSize  int
+	intSize  uint32
 	version  int
 	position int
+}
+
+func NewReader(r io.Reader) *Reader {
+	return &Reader{
+		r: r,
+	}
 }
 
 func (r *Reader) prune() {
@@ -35,6 +42,7 @@ func (r *Reader) Read() (*Toc, error) {
 	if err != nil {
 		return nil, fmt.Errorf("error reading entries: %w", err)
 	}
+	header.TocCount = int32(len(entries))
 	return &Toc{
 		Header:  header,
 		Entries: entries,
@@ -42,7 +50,7 @@ func (r *Reader) Read() (*Toc, error) {
 }
 
 func (r *Reader) readStr() (*string, error) {
-	l, err := ah.readInt()
+	l, err := r.readInt()
 	if err != nil {
 		return nil, err
 	}
@@ -52,9 +60,11 @@ func (r *Reader) readStr() (*string, error) {
 
 	buf := make([]byte, l)
 
-	if _, err := r.r.Read(buf); err != nil {
+	n, err := r.r.Read(buf)
+	if err != nil {
 		return nil, err
 	}
+	r.position += n
 	strVal := string(buf)
 	return &strVal, nil
 }
@@ -80,9 +90,11 @@ func (r *Reader) readInt() (int32, error) {
 	}
 
 	intBytes := make([]byte, r.intSize)
-	if _, err := r.r.Read(intBytes); err != nil {
+	n, err := r.r.Read(intBytes)
+	if err != nil {
 		return 0, err
 	}
+	r.position += n
 
 	for _, b := range intBytes {
 		bv := b & 0xFF
@@ -106,10 +118,10 @@ func (r *Reader) readByte() (byte, error) {
 func (r *Reader) readBytes(length int) ([]byte, error) {
 	bytes := make([]byte, length)
 	n, err := r.r.Read(bytes)
-	r.position += n
 	if err != nil {
 		return nil, err
 	}
+	r.position += n
 	return bytes, nil
 }
 
@@ -139,93 +151,95 @@ func (r *Reader) scanInt(byteVars ...*int32) error {
 }
 
 func (r *Reader) readHeader() (*Header, error) {
-	magicString, err := ah.readBytes(5)
+	header := &Header{}
+	magicString, err := r.readBytes(5)
 	if err != nil {
 		log.Err(err)
 	}
 	if string(magicString) != "PGDMP" {
-		return errors.New("did not find magic string in srcFile handler")
+		return nil, errors.New("did not find magic string in srcFile handler")
 	}
-	if err = ah.scanBytes(&ah.VersionMajor, &ah.VersionMinor); err != nil {
-		return fmt.Errorf("unable to scan major and minor version data: %w", err)
+	if err = r.scanBytes(&header.VersionMajor, &header.VersionMinor); err != nil {
+		return nil, fmt.Errorf("unable to scan major and minor version data: %w", err)
 	}
 
-	if ah.VersionMajor > 1 || (ah.VersionMajor == 1 && ah.VersionMinor > 0) {
-		if err = ah.scanBytes(&ah.VersionRev); err != nil {
-			return fmt.Errorf("unable to scan rev version data: %w", err)
+	if header.VersionMajor > 1 || (header.VersionMajor == 1 && header.VersionMinor > 0) {
+		if err = r.scanBytes(&header.VersionRev); err != nil {
+			return nil, fmt.Errorf("unable to scan rev version data: %w", err)
 		}
 	}
 
-	ah.Version = MakeArchiveVersion(ah.VersionMajor, ah.VersionMinor, ah.VersionRev)
+	header.Version = MakeArchiveVersion(header.VersionMajor, header.VersionMinor, header.VersionRev)
+	r.version = header.Version
 
-	if ah.Version < BackupVersions["1.0"] || ah.Version > BackupVersions[MaxVersion] {
-		return fmt.Errorf("unsupported archive version %d.%d", ah.VersionMajor, ah.VersionMinor)
+	if header.Version < BackupVersions["1.0"] || header.Version > BackupVersions[MaxVersion] {
+		return nil, fmt.Errorf("unsupported archive version %d.%d", header.VersionMajor, header.VersionMinor)
 	}
 
 	// TODO: You should perform int value check if it is not suitable for current int size
 	// 	you have to write warnings
-	intSize, err := ah.readByte()
+	intSize, err := r.readByte()
 	if err != nil {
-		return fmt.Errorf("cannot read intSize value: %w", err)
+		return nil, fmt.Errorf("cannot read intSize value: %w", err)
 	}
-	ah.IntSize = uint32(intSize)
+	header.IntSize = uint32(intSize)
 	if intSize > 32 {
-		return fmt.Errorf("sanity check on integer size %d failed", ah.IntSize)
+		return nil, fmt.Errorf("sanity check on integer size %d failed", header.IntSize)
 	}
+	r.intSize = header.IntSize
 
-	if ah.Version >= BackupVersions["1.7"] {
-		offSize, err := ah.readByte()
+	if header.Version >= BackupVersions["1.7"] {
+		offSize, err := r.readByte()
 		if err != nil {
-			return fmt.Errorf("cannot read intSize value: %w", err)
+			return nil, fmt.Errorf("cannot read intSize value: %w", err)
 		}
-		ah.OffSize = uint32(offSize)
+		header.OffSize = uint32(offSize)
 	} else {
-		ah.OffSize = ah.IntSize
+		header.OffSize = header.IntSize
 	}
 
-	if err := ah.scanBytes(&ah.Format); err != nil {
-		return fmt.Errorf("unable to scan bytes from TOC srcFile: %w", err)
+	if err := r.scanBytes(&header.Format); err != nil {
+		return nil, fmt.Errorf("unable to scan bytes from TOC srcFile: %w", err)
 	}
 	// I don't know why, but when pg_dump creates dump as -Fc it has Tar format assigned
-	if ArchTar != ah.Format {
-		return fmt.Errorf("unsupported format \"%s\" suports only directory", BackupFormats[ah.Format])
+	if ArchTar != header.Format {
+		return nil, fmt.Errorf("unsupported format \"%s\": suports only directory", BackupFormats[header.Format])
 	}
 
 	// TODO: Warning this part is distinguish from the 15 pg version. Take a look on it once pg16 will be released
-	if ah.Version >= BackupVersions["1.15"] {
-		algorithm, err := ah.readByte()
+	if header.Version >= BackupVersions["1.15"] {
+		algorithm, err := r.readByte()
 		if err != nil {
-			return fmt.Errorf("unable to scan CompressionSpec.Algorithm: %w", err)
+			return nil, fmt.Errorf("unable to scan CompressionSpec.Algorithm: %w", err)
 		}
-		ah.CompressionSpec.Algorithm = int32(algorithm)
-	} else if ah.Version >= BackupVersions["1.2"] {
-		if ah.Version < BackupVersions["1.4"] {
-			level, err := ah.readByte()
+		header.CompressionSpec.Algorithm = int32(algorithm)
+	} else if header.Version >= BackupVersions["1.2"] {
+		if header.Version < BackupVersions["1.4"] {
+			level, err := r.readByte()
 			if err != nil {
-				return fmt.Errorf("unable to scan CompressionSpec.Level: %w", err)
+				return nil, fmt.Errorf("unable to scan CompressionSpec.Level: %w", err)
 			}
-			ah.CompressionSpec.Level = int32(level)
+			header.CompressionSpec.Level = int32(level)
 		} else {
-			if err = ah.scanInt(&ah.CompressionSpec.Level); err != nil {
-				return fmt.Errorf("unable to scan CompressionSpec.Level: %w", err)
+			if err = r.scanInt(&header.CompressionSpec.Level); err != nil {
+				return nil, fmt.Errorf("unable to scan CompressionSpec.Level: %w", err)
 			}
 		}
-		if ah.CompressionSpec.Level != 0 {
-			ah.CompressionSpec.Algorithm = PgCompressionGzip
+		if header.CompressionSpec.Level != 0 {
+			header.CompressionSpec.Algorithm = PgCompressionGzip
 		}
 	} else {
-		ah.CompressionSpec.Level = PgCompressionGzip
-
+		header.CompressionSpec.Level = PgCompressionGzip
 	}
 
 	// TODO: Ensure we support compression specification
 
-	if ah.Version >= BackupVersions["1.4"] {
+	if header.Version >= BackupVersions["1.4"] {
 		var tmSec, tmMin, tmHour, tmDay, tmMon, tmYear, tmIsDst int32
-		if err = ah.scanInt(&tmSec, &tmMin, &tmHour, &tmDay, &tmMon, &tmYear, &tmIsDst); err != nil {
-			return fmt.Errorf("cannot scan backup date: %w", err)
+		if err = r.scanInt(&tmSec, &tmMin, &tmHour, &tmDay, &tmMon, &tmYear, &tmIsDst); err != nil {
+			return nil, fmt.Errorf("cannot scan backup date: %w", err)
 		}
-		ah.CrtmDateTime = Crtm{
+		header.CrtmDateTime = Crtm{
 			TmSec:   tmSec,
 			TmMin:   tmMin,
 			TmHour:  tmHour,
@@ -236,177 +250,178 @@ func (r *Reader) readHeader() (*Header, error) {
 		}
 	}
 
-	if ah.Version >= BackupVersions["1.4"] {
-		archDbName, err := ah.readStr()
+	if header.Version >= BackupVersions["1.4"] {
+		archDbName, err := r.readStr()
 		if err != nil {
-			return fmt.Errorf("cannot read archdbname: %w", err)
+			return nil, fmt.Errorf("cannot read archdbname: %w", err)
 		}
-		ah.ArchDbName = archDbName
+		header.ArchDbName = archDbName
 	}
 
-	if ah.Version >= BackupVersions["1.10"] {
-		archiveRemoteVersion, err := ah.readStr()
+	if header.Version >= BackupVersions["1.10"] {
+		archiveRemoteVersion, err := r.readStr()
 		if err != nil {
-			return fmt.Errorf("cannot rad archiveRemoteVersion: %w", err)
+			return nil, fmt.Errorf("cannot rad archiveRemoteVersion: %w", err)
 		}
-		ah.ArchiveRemoteVersion = archiveRemoteVersion
+		header.ArchiveRemoteVersion = archiveRemoteVersion
 
-		archiveDumpVersion, err := ah.readStr()
+		archiveDumpVersion, err := r.readStr()
 		if err != nil {
-			return fmt.Errorf("cannot read archiveDumpVersion: %w", err)
+			return nil, fmt.Errorf("cannot read archiveDumpVersion: %w", err)
 		}
-		ah.ArchiveDumpVersion = archiveDumpVersion
+		header.ArchiveDumpVersion = archiveDumpVersion
 	}
 
-	return nil
+	return header, nil
 }
 
 func (r *Reader) readEntries() ([]*Entry, error) {
-
-	if err := ah.scanInt(&ah.TocCount); err != nil {
-		return fmt.Errorf("cannot scan tocCount: %w", err)
+	var tocCount int32
+	if err := r.scanInt(&tocCount); err != nil {
+		return nil, fmt.Errorf("cannot scan tocCount: %w", err)
 	}
-	ah.MaxDumpId = 0
 
-	tocList := make([]*Entry, 0)
+	var maxDumpId int32
 
-	for i := int32(0); i < ah.TocCount; i++ {
-		te := Entry{}
-		if err := ah.scanInt(&te.DumpId); err != nil {
-			return fmt.Errorf("cannot scan tocCount: %w", err)
+	entries := make([]*Entry, 0, tocCount)
+
+	for i := int32(0); i < tocCount; i++ {
+		entry := Entry{}
+		if err := r.scanInt(&entry.DumpId); err != nil {
+			return nil, fmt.Errorf("cannot scan tocCount: %w", err)
 		}
 
-		if ah.MaxDumpId < te.DumpId {
-			ah.MaxDumpId = te.DumpId
+		if maxDumpId < entry.DumpId {
+			maxDumpId = entry.DumpId
 		}
 
-		if te.DumpId <= 0 {
-			return fmt.Errorf("entry ID %d out of range perhaps a corrupt TOC", te.DumpId)
+		if entry.DumpId <= 0 {
+			return nil, fmt.Errorf("entry ID %d out of range perhaps a corrupt TOC", entry.DumpId)
 		}
 
-		if err := ah.scanInt(&te.HadDumper); err != nil {
-			return fmt.Errorf("cannot scan hadDumer data: %w", err)
+		if err := r.scanInt(&entry.HadDumper); err != nil {
+			return nil, fmt.Errorf("cannot scan hadDumer data: %w", err)
 		}
 
-		if ah.Version >= BackupVersions["1.8"] {
-			tmp, err := ah.readStr()
+		if r.version >= BackupVersions["1.8"] {
+			tmp, err := r.readStr()
 			if err != nil {
-				return fmt.Errorf("cannot read CatalogId: %w", err)
+				return nil, fmt.Errorf("cannot read CatalogId: %w", err)
 			}
 			if tmp == nil {
-				return errors.New("unexpected nil pointer")
+				return nil, errors.New("unexpected nil pointer")
 			}
 			tableOid, err := strconv.ParseUint(*tmp, 10, 32)
 			if err != nil {
-				return fmt.Errorf("cannot cast str to uint32: %w", err)
+				return nil, fmt.Errorf("cannot cast str to uint32: %w", err)
 			}
-			te.CatalogId.TableOid = Oid(tableOid)
+			entry.CatalogId.TableOid = Oid(tableOid)
 		} else {
-			te.CatalogId.TableOid = InvalidOid
+			entry.CatalogId.TableOid = InvalidOid
 		}
-		tmp, err := ah.readStr()
+		tmp, err := r.readStr()
 		if err != nil {
-			return fmt.Errorf("cannot read CatalogId: %w", err)
+			return nil, fmt.Errorf("cannot read CatalogId: %w", err)
 		}
 		if tmp == nil {
-			return errors.New("unexpected nil pointer")
+			return nil, errors.New("unexpected nil pointer")
 		}
 		oid, err := strconv.ParseUint(*tmp, 10, 32)
 		if err != nil {
-			return fmt.Errorf("cannot cast str to uint32: %w", err)
+			return nil, fmt.Errorf("cannot cast str to uint32: %w", err)
 		}
-		te.CatalogId.Oid = Oid(oid)
+		entry.CatalogId.Oid = Oid(oid)
 
-		tag, err := ah.readStr()
+		tag, err := r.readStr()
 		if err != nil {
-			return fmt.Errorf("cannot read Tag: %w", err)
+			return nil, fmt.Errorf("cannot read Tag: %w", err)
 		}
-		te.Tag = tag
+		entry.Tag = tag
 
-		desc, err := ah.readStr()
+		desc, err := r.readStr()
 		if err != nil {
-			return fmt.Errorf("cannot read Desc: %w", err)
+			return nil, fmt.Errorf("cannot read Desc: %w", err)
 		}
-		te.Desc = desc
+		entry.Desc = desc
 
-		if ah.Version >= BackupVersions["1.11"] {
-			if err = ah.scanInt(&te.Section); err != nil {
-				return fmt.Errorf("cannot Section: %w", err)
+		if r.version >= BackupVersions["1.11"] {
+			if err = r.scanInt(&entry.Section); err != nil {
+				return nil, fmt.Errorf("cannot Section: %w", err)
 			}
 		} else {
-			if slices.Contains([]string{"COMMENT", "ACL", "ACL LANGUAGE"}, *te.Desc) {
-				te.Section = SectionNone
-			} else if slices.Contains([]string{"TABLE DATA", "BLOBS", "BLOB COMMENTS"}, *te.Desc) {
-				te.Section = SectionData
+			if slices.Contains([]string{"COMMENT", "ACL", "ACL LANGUAGE"}, *entry.Desc) {
+				entry.Section = SectionNone
+			} else if slices.Contains([]string{"TABLE DATA", "BLOBS", "BLOB COMMENTS"}, *entry.Desc) {
+				entry.Section = SectionData
 			} else if slices.Contains([]string{
 				"CONSTRAINT", "CHECK CONSTRAINT", "FK CONSTRAINT", "INDEX", "RULE", "TRIGGER",
-			}, *te.Desc) {
-				te.Section = SectionPostData
+			}, *entry.Desc) {
+				entry.Section = SectionPostData
 			} else {
-				te.Section = SectionPreData
+				entry.Section = SectionPreData
 			}
 		}
 
-		defn, err := ah.readStr()
+		defn, err := r.readStr()
 		if err != nil {
-			return fmt.Errorf("cannot read Defn: %w", err)
+			return nil, fmt.Errorf("cannot read Defn: %w", err)
 		}
-		te.Defn = defn
+		entry.Defn = defn
 
-		dropStmt, err := ah.readStr()
+		dropStmt, err := r.readStr()
 		if err != nil {
-			return fmt.Errorf("cannot read DropStmt: %w", err)
+			return nil, fmt.Errorf("cannot read DropStmt: %w", err)
 		}
-		te.DropStmt = dropStmt
+		entry.DropStmt = dropStmt
 
-		if ah.Version >= BackupVersions["1.3"] {
-			copyStmt, err := ah.readStr()
+		if r.version >= BackupVersions["1.3"] {
+			copyStmt, err := r.readStr()
 			if err != nil {
-				return fmt.Errorf("cannot read Defn: %w", err)
+				return nil, fmt.Errorf("cannot read Defn: %w", err)
 			}
-			te.CopyStmt = copyStmt
+			entry.CopyStmt = copyStmt
 		}
 
-		if ah.Version >= BackupVersions["1.6"] {
-			namespace, err := ah.readStr()
+		if r.version >= BackupVersions["1.6"] {
+			namespace, err := r.readStr()
 			if err != nil {
-				return fmt.Errorf("cannot read Namespace: %w", err)
+				return nil, fmt.Errorf("cannot read Namespace: %w", err)
 			}
-			te.Namespace = namespace
+			entry.Namespace = namespace
 		}
 
-		if ah.Version >= BackupVersions["1.10"] {
-			tablespace, err := ah.readStr()
+		if r.version >= BackupVersions["1.10"] {
+			tablespace, err := r.readStr()
 			if err != nil {
-				return fmt.Errorf("cannot read Tablespace: %w", err)
+				return nil, fmt.Errorf("cannot read Tablespace: %w", err)
 			}
-			te.Tablespace = tablespace
+			entry.Tablespace = tablespace
 		}
 
-		if ah.Version >= BackupVersions["1.14"] {
-			tableam, err := ah.readStr()
+		if r.version >= BackupVersions["1.14"] {
+			tableam, err := r.readStr()
 			if err != nil {
-				return fmt.Errorf("cannot read Tableam: %w", err)
+				return nil, fmt.Errorf("cannot read Tableam: %w", err)
 			}
-			te.Tableam = tableam
+			entry.Tableam = tableam
 		}
 
-		owner, err := ah.readStr()
+		owner, err := r.readStr()
 		if err != nil {
-			return fmt.Errorf("cannot read Tablespace: %w", err)
+			return nil, fmt.Errorf("cannot read Tablespace: %w", err)
 		}
-		te.Owner = owner
+		entry.Owner = owner
 
 		isSupported := true
-		if ah.Version < BackupVersions["1.9"] {
+		if r.version < BackupVersions["1.9"] {
 			isSupported = false
 		} else {
-			tmp, err = ah.readStr()
+			tmp, err = r.readStr()
 			if err != nil {
-				return fmt.Errorf("cannot read CatalogId: %w", err)
+				return nil, fmt.Errorf("cannot read CatalogId: %w", err)
 			}
 			if tmp == nil {
-				return errors.New("unexpected nil pointer")
+				return nil, errors.New("unexpected nil pointer")
 			}
 			if *tmp == "true" {
 				isSupported = false
@@ -418,12 +433,11 @@ func (r *Reader) readEntries() ([]*Entry, error) {
 		}
 
 		/* Read TOC entry Dependencies */
-		if ah.Version >= BackupVersions["1.5"] {
-			te.Dependencies = make([]int32, 0, 10)
+		if r.version >= BackupVersions["1.5"] {
 			for {
-				tmp, err = ah.readStr()
+				tmp, err = r.readStr()
 				if err != nil {
-					return fmt.Errorf("cannot read CatalogId: %w", err)
+					return nil, fmt.Errorf("cannot read CatalogId: %w", err)
 				}
 				if tmp == nil {
 					break
@@ -431,29 +445,29 @@ func (r *Reader) readEntries() ([]*Entry, error) {
 
 				val, err := strconv.ParseInt(*tmp, 10, 32)
 				if err != nil {
-					return fmt.Errorf("unable to parse dependency int32 value: %w", err)
+					return nil, fmt.Errorf("unable to parse dependency int32 value: %w", err)
 				}
 
-				te.Dependencies = append(te.Dependencies, int32(val))
+				entry.Dependencies = append(entry.Dependencies, int32(val))
 			}
-			te.NDeps = int32(len(te.Dependencies))
+			entry.NDeps = int32(len(entry.Dependencies))
 
 		} else {
-			te.Dependencies = nil
-			te.NDeps = 0
+			entry.Dependencies = nil
+			entry.NDeps = 0
 		}
-		te.DataLength = 0
+		entry.DataLength = 0
 
 		// TODO: Here we are executing ReadExtraTocPtr - and it depends on the objects or even versiob
 		//		 it may rise an error later.
-		fileName, err := ah.readStr()
+		fileName, err := r.readStr()
 		if err != nil {
-			return fmt.Errorf("cannot read an additional FileName data: %w", err)
+			return nil, fmt.Errorf("cannot read an additional FileName data: %w", err)
 		}
-		te.FileName = fileName
-		tocList = append(tocList, &te)
+		entry.FileName = fileName
+		entries = append(entries, &entry)
 
 	}
-	ah.tocList = tocList
-	return nil
+
+	return entries, nil
 }

@@ -5,33 +5,35 @@ import (
 
 	"github.com/rs/zerolog/log"
 
-	toc2 "github.com/wwoytenko/greenfuscator/internal/db/postgres/toc"
+	toclib "github.com/wwoytenko/greenfuscator/internal/db/postgres/toc"
 )
 
 func main() {
-	f, err := os.Open("/home/vadim/tmp/pg_dump_test/vanil/toc.dat")
+	src, err := os.Open("/home/vadim/tmp/pg_dump_test/1692197069492/toc.dat")
 	if err != nil {
 		log.Fatal().Err(err).Msg("error")
 	}
-	res, err := os.Create("/home/vadim/tmp/pg_dump_test/vanil/new_toc.dat")
+	defer src.Close()
+	dest, err := os.Create("/home/vadim/tmp/pg_dump_test/1692197069492/new_toc.dat")
 	if err != nil {
 		log.Fatal().Err(err).Msg("error")
 	}
-	defer f.Close()
-	defer res.Close()
+	defer dest.Close()
 
-	ah, err := toc2.ReadFile(f)
+	reader := toclib.NewReader(src)
+	toc, err := reader.Read()
 	if err != nil {
 		log.Fatal().Err(err).Msgf("err")
 	}
 
-	for _, item := range ah.GetEntries() {
-		if item.Section == toc2.SectionData {
+	for _, item := range toc.Entries {
+		if item.Section == toclib.SectionData {
 			log.Printf("%+v\n", item)
 		}
 	}
 
-	if err := toc2.WriteFile(ah, res); err != nil {
+	writer := toclib.NewWriter(dest)
+	if err := writer.Write(toc); err != nil {
 		log.Fatal().Err(err).Msgf("err")
 	}
 }
