@@ -29,7 +29,7 @@ const (
 )
 
 func BuildTablesConfig(ctx context.Context, tx pgx.Tx, tableConfig []*config.Table) (map[toolkit.Oid]*dump.Table, toolkit.ValidationWarnings, error) {
-	transformersMap, err := BuildTransformersMap()
+	transformersMap, err := buildTransformersMap()
 	if err != nil {
 		return nil, nil, fmt.Errorf("cannot build transformer map: %w", err)
 	}
@@ -75,7 +75,7 @@ func BuildTablesConfig(ctx context.Context, tx pgx.Tx, tableConfig []*config.Tab
 		// InitTransformation transformers
 		if len(t.TransformersConfig) > 0 {
 			for _, tc := range t.TransformersConfig {
-				transformer, initWarnings, err := initTransformer2(ctx, table, tc, tx.Conn().TypeMap(), transformersMap)
+				transformer, initWarnings, err := initTransformer(ctx, table, tc, tx.Conn().TypeMap(), transformersMap)
 				if err != nil {
 					return nil, nil, err
 				}
@@ -110,7 +110,7 @@ func getColumnsConfig(ctx context.Context, tx pgx.Tx, table *dump.Table) ([]*too
 	return res, nil
 }
 
-func BuildTransformersMap() (map[string]*toolkit.Definition, error) {
+func buildTransformersMap() (map[string]*toolkit.Definition, error) {
 	tm := make(map[string]*toolkit.Definition)
 	for _, td := range defaultTransformers.DefaultTransformersList {
 		if _, ok := tm[td.Properties.Name]; ok {
@@ -121,7 +121,7 @@ func BuildTransformersMap() (map[string]*toolkit.Definition, error) {
 	return tm, nil
 }
 
-func initTransformer2(ctx context.Context, t *dump.Table, c *config.TransformerConfig, tm *pgtype.Map, dm map[string]*toolkit.Definition) (toolkit.Transformer, toolkit.ValidationWarnings, error) {
+func initTransformer(ctx context.Context, t *dump.Table, c *config.TransformerConfig, tm *pgtype.Map, dm map[string]*toolkit.Definition) (toolkit.Transformer, toolkit.ValidationWarnings, error) {
 	var totalWarnings toolkit.ValidationWarnings
 	td, ok := dm[c.Name]
 	if !ok {
@@ -156,15 +156,34 @@ func getTableConstraints(ctx context.Context, tx pgx.Tx, table *dump.Table) ([]t
 	defer rows.Close()
 
 	for rows.Next() {
-		var c toclib.Constraint
+		var c toolkit.Constraint
+
+		var name, schema, definition string
+		var constraintType rune
+		var rootPtConstraint toolkit.Oid
+		var fkTable toolkit.Oid
+		var constrainedColumns, referencesColumns []toolkit.AttNum
+
 		err = rows.Scan(
-			&c.Name, &c.Schema, &c.ConstraintType,
-			&c.Domain, &c.RootPtConstraint, &c.FkTable,
-			&c.ConstrainedColumns,
-			&c.ReferencesColumns,
-			&c.ReferencedTables,
-			&c.Definition,
+			name, schema, constraintType,
+			rootPtConstraint, fkTable, constrainedColumns,
+			referencesColumns, definition,
 		)
+		if err != nil {
+			return nil, fmt.Errorf("unable to build constraints list: %w", err)
+		}
+
+		switch constraintType {
+		case 'f':
+			c := &toolkit.ForeignKey{}
+		case 'c':
+		case 'p':
+		case 'u':
+		case 't':
+		case 'x':
+
+		}
+
 		if err != nil {
 			return nil, fmt.Errorf("cannot scan tableConstraintsQuery: %w", err)
 		}

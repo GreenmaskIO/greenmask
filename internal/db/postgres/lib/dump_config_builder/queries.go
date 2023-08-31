@@ -36,7 +36,6 @@ var (
 		SELECT pc.conname                                    AS "name",
 			   pn.nspname                                    AS "schema",
 			   pc.contype                                    AS "type",
-			   pc.contypid::TEXT::INT                        AS domain_oid,
 			   pc.conparentid::TEXT::INT                     AS root_pt_constraint_oid,
 			   pc.confrelid::TEXT::INT                       AS fk_ref_oid,
 			   pc.conkey                                     AS constrained_column_oids,
