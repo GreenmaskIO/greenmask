@@ -19,12 +19,12 @@ func GetObjects(ctx context.Context, tx pgx.Tx, pgDumpOptions *pgdump.Options, t
 		pgDumpOptions.ExcludeTableData, pgDumpOptions.IncludeForeignData, pgDumpOptions.Schema,
 		pgDumpOptions.ExcludeSchema)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
 	rows, err := tx.Query(ctx, query)
 	if err != nil {
-		return nil, nil, fmt.Errorf("perform query: %w", err)
+		return nil, fmt.Errorf("perform query: %w", err)
 	}
 
 	// Generate table objects
@@ -42,7 +42,7 @@ func GetObjects(ctx context.Context, tx pgx.Tx, pgDumpOptions *pgdump.Options, t
 		if err = rows.Scan(&oid, &schemaName, &name, &owner, &relKind,
 			&rootPtSchema, &rootPtName, &excludeData, &isCalled, &lastVal,
 		); err != nil {
-			return nil, nil, fmt.Errorf("unnable scan data: %w", err)
+			return nil, fmt.Errorf("unnable scan data: %w", err)
 		}
 		var table *toclib.Table
 
@@ -87,7 +87,7 @@ func GetObjects(ctx context.Context, tx pgx.Tx, pgDumpOptions *pgdump.Options, t
 
 			tables = append(tables, table)
 		default:
-			return nil, nil, fmt.Errorf("unknown relkind \"%s\"", relKind)
+			return nil, fmt.Errorf("unknown relkind \"%s\"", relKind)
 		}
 	}
 

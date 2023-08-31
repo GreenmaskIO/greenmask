@@ -5,121 +5,208 @@ import (
 )
 
 type Constraint interface {
-	IsAffected(table *Table, column *Column) bool
+	IsAffected(column *Column) bool
 }
 
 type DefaultConstraintDefinition struct {
-	ConstraintSchema   string   `json:"constraintSchema"`
-	ConstraintName     string   `json:"constraintName"`
-	ConstraintOid      Oid      `json:"constraintOid"`
-	ConstrainedColumns []AttNum `json:"constrainedColumns,omitempty"`
-	TableSchema        string   `json:"tableSchema,omitempty"`
-	TableName          string   `json:"tableName,omitempty"`
-	TableOid           Oid      `json:"tableOid,omitempty"`
-	Definition         string   `json:"definition,omitempty"`
-	//RootPtConstraint   transformers.Oid      `json:"rootPtConstraint,omitempty"`
-}
-
-func (dcd *DefaultConstraintDefinition) IsAffected(table *Table, column *Column) bool {
-	if table.Oid == dcd.TableOid {
-		return slices.Contains(dcd.ConstrainedColumns, column.Num)
-	}
-	return false
+	// Schema - constraint schema name
+	Schema string `json:"schema"`
+	// Name - constraint name
+	Name string `json:"name"`
+	// Oid - Constraint oid in pg_constraint
+	Oid Oid `json:"oid"`
+	// Columns - columns involved into constraint
+	Columns []AttNum `json:"columns,omitempty"`
+	// Definition - real textual constraint definition
+	Definition string `json:"definition,omitempty"`
 }
 
 type Check DefaultConstraintDefinition
 
-func (c *Check) IsAffected(table *Table, column *Column) bool {
-	if table.Oid == c.TableOid {
-		return slices.Contains(c.ConstrainedColumns, column.Num)
+func (c *Check) IsAffected(column *Column) bool {
+	return slices.Contains(c.Columns, column.Num)
+}
+
+func NewCheck(schema, name, definition string, oid Oid, columns []AttNum) *Check {
+	return &Check{
+		Schema:     schema,
+		Name:       name,
+		Oid:        oid,
+		Columns:    columns,
+		Definition: definition,
 	}
-	return false
 }
 
 type Exclusion DefaultConstraintDefinition
 
-func (e *Exclusion) IsAffected(table *Table, column *Column) bool {
-	if table.Oid == e.TableOid {
-		return slices.Contains(e.ConstrainedColumns, column.Num)
+func NewExclusion(schema, name, definition string, oid Oid, columns []AttNum) *Exclusion {
+	return &Exclusion{
+		Schema:     schema,
+		Name:       name,
+		Oid:        oid,
+		Columns:    columns,
+		Definition: definition,
 	}
-	return false
 }
 
-type ForeignKey DefaultConstraintDefinition
+func (e *Exclusion) IsAffected(column *Column) bool {
+	return slices.Contains(e.Columns, column.Num)
+}
 
-func (fk *ForeignKey) IsAffected(table *Table, column *Column) bool {
-	if table.Oid == fk.TableOid {
-		return slices.Contains(fk.ConstrainedColumns, column.Num)
+// LinkedTable - table that involved into constraint, required for ForeignKey and PrimaryKeyReferences
+type LinkedTable struct {
+	// Schema - table schema name
+	Schema string `json:"schema"`
+	// Name - table name
+	Name string `json:"name"`
+	// Oid - table oid
+	Oid Oid `json:"oid"`
+	// Constraint - linked table constraint
+	Constraint Constraint
+}
+
+type ForeignKey struct {
+	DefaultConstraintDefinition
+	// ReferencedTable - table that has primary key definition on that discovering table is referencing
+	ReferencedTable LinkedTable `json:"referencedTable,omitempty"`
+}
+
+func NewForeignKey(schema, name, definition string, oid Oid, columns []AttNum, referencedTable LinkedTable) *ForeignKey {
+	return &ForeignKey{
+		DefaultConstraintDefinition: DefaultConstraintDefinition{
+			Schema:     schema,
+			Name:       name,
+			Oid:        oid,
+			Columns:    columns,
+			Definition: definition,
+		},
+		ReferencedTable: referencedTable,
 	}
-	return false
+}
+
+func (fk *ForeignKey) IsAffected(column *Column) bool {
+	return slices.Contains(fk.Columns, column.Num)
 }
 
 type PrimaryKey DefaultConstraintDefinition
 
-func (pk *PrimaryKey) IsAffected(table *Table, column *Column) bool {
-	if table.Oid == pk.TableOid {
-		return slices.Contains(pk.ConstrainedColumns, column.Num)
+func NewPrimaryKey(schema, name, definition string, oid Oid, columns []AttNum) *PrimaryKey {
+	return &PrimaryKey{
+		Schema:     schema,
+		Name:       name,
+		Oid:        oid,
+		Columns:    columns,
+		Definition: definition,
 	}
-	return false
 }
 
-type PrimaryKeyReferences DefaultConstraintDefinition
+func (pk *PrimaryKey) IsAffected(column *Column) bool {
+	return slices.Contains(pk.Columns, column.Num)
+}
 
-func (pkr *PrimaryKeyReferences) IsAffected(table *Table, column *Column) bool {
-	if table.Oid == pkr.TableOid {
-		return slices.Contains(pkr.ConstrainedColumns, column.Num)
+type PrimaryKeyReferences struct {
+	DefaultConstraintDefinition
+	// OnTable - table that has foreign key reference on the discovering table primary key
+	OnTable LinkedTable `json:"onTable,omitempty"`
+}
+
+func NewPrimaryKeyReferences(schema, name, definition string, oid Oid, columns []AttNum, onTable LinkedTable) *PrimaryKeyReferences {
+	return &PrimaryKeyReferences{
+		DefaultConstraintDefinition: DefaultConstraintDefinition{
+			Schema:     schema,
+			Name:       name,
+			Oid:        oid,
+			Columns:    columns,
+			Definition: definition,
+		},
+		OnTable: onTable,
 	}
-	return false
+}
+
+func (pkr *PrimaryKeyReferences) IsAffected(column *Column) bool {
+	return slices.Contains(pkr.Columns, column.Num)
 }
 
 type Unique DefaultConstraintDefinition
 
-func (u *Unique) IsAffected(table *Table, column *Column) bool {
-	if table.Oid == u.TableOid {
-		return slices.Contains(u.ConstrainedColumns, column.Num)
+func NewUnique(schema, name, definition string, oid Oid, columns []AttNum) *Unique {
+	return &Unique{
+		Schema:     schema,
+		Name:       name,
+		Oid:        oid,
+		Columns:    columns,
+		Definition: definition,
 	}
-	return false
+}
+
+func (u *Unique) IsAffected(column *Column) bool {
+	return slices.Contains(u.Columns, column.Num)
 }
 
 type TriggerConstraint DefaultConstraintDefinition
 
-func (tc *TriggerConstraint) IsAffected(table *Table, column *Column) bool {
-	if table.Oid == tc.TableOid {
-		return slices.Contains(tc.ConstrainedColumns, column.Num)
+func NewTriggerConstraint(schema, name, definition string, oid Oid, columns []AttNum) *TriggerConstraint {
+	return &TriggerConstraint{
+		Schema:     schema,
+		Name:       name,
+		Oid:        oid,
+		Columns:    columns,
+		Definition: definition,
 	}
-	return false
 }
 
-type DomainConstrained struct {
-	TableSchema      string
-	TableName        string
-	TableOid         Oid
-	DomainOid        Oid
-	DomainSchema     string
-	DomainName       string
-	BaseTypeOid      Oid
-	BaseTypeName     string
-	ConstraintOid    Oid
-	ConstraintSchema string
-	ConstraintName   string
-	Definition       string
+func (tc *TriggerConstraint) IsAffected(column *Column) bool {
+	return slices.Contains(tc.Columns, column.Num)
 }
 
-func (dc *DomainConstrained) IsAffected(table *Table, column *Column) bool {
-	if table.Oid == dc.TableOid && column.TypeOid == dc.DomainOid {
-		return true
+// Domain - describes pg_type and contains domains that has Nullable = False or Check constraint defined
+type Domain struct {
+	// Oid - pg_type Oid
+	Oid Oid
+	// Schema - domain schema name
+	Schema string
+	// Name - domain name
+	Name string
+	// BaseType - reference (such as timestamp timezone, etc)
+	BaseType Oid
+	// BaseTypeName - base type name
+	BaseTypeName string
+	// Is this domain nullable
+	Nullable bool
+	// Constraint - definition of check constraint
+	Constraint Check
+}
+
+type ConstrainedDomain struct {
+	Columns []AttNum
+	Domain  Domain
+}
+
+func NewConstrainedDomain() *ConstrainedDomain {
+	return &ConstrainedDomain{
+		DefaultConstraintDefinition: DefaultConstraintDefinition{
+			Schema:     schema,
+			Name:       name,
+			Oid:        oid,
+			Columns:    columns,
+			Definition: definition,
+		},
+		Domain: domain,
 	}
-	return false
+}
+
+func (dc *ConstrainedDomain) IsAffected(column *Column) bool {
+	return column.TypeOid == dc.Domain.Oid
 }
 
 type DomainNotNullable struct {
-	TableSchema    string
-	TableName      string
-	TableOid       Oid
-	DomainOid      Oid
-	DomainSchema   string
-	DomainName     string
-	DomainNullable bool
-	BaseTypeOid    Oid
-	BaseTypeName   string
+	DomainOid    Oid
+	DomainSchema string
+	DomainName   string
+	BaseTypeOid  Oid
+	BaseTypeName string
+}
+
+func (dnn *DomainNotNullable) IsAffected(column *Column) bool {
+	return column.TypeOid == dnn.DomainOid
 }

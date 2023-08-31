@@ -155,9 +155,10 @@ func getTableConstraints(ctx context.Context, tx pgx.Tx, table *dump.Table) ([]t
 	}
 	defer rows.Close()
 
+	// Common constraints discovering
 	for rows.Next() {
 		var c toolkit.Constraint
-
+		var oid toolkit.Oid
 		var name, schema, definition string
 		var constraintType rune
 		var rootPtConstraint toolkit.Oid
@@ -165,9 +166,9 @@ func getTableConstraints(ctx context.Context, tx pgx.Tx, table *dump.Table) ([]t
 		var constrainedColumns, referencesColumns []toolkit.AttNum
 
 		err = rows.Scan(
-			name, schema, constraintType,
-			rootPtConstraint, fkTable, constrainedColumns,
-			referencesColumns, definition,
+			&oid, &name, &schema, &constraintType,
+			&rootPtConstraint, &fkTable, &constrainedColumns,
+			&referencesColumns, &definition,
 		)
 		if err != nil {
 			return nil, fmt.Errorf("unable to build constraints list: %w", err)
@@ -175,19 +176,90 @@ func getTableConstraints(ctx context.Context, tx pgx.Tx, table *dump.Table) ([]t
 
 		switch constraintType {
 		case 'f':
-			c := &toolkit.ForeignKey{}
+			c = &toolkit.ForeignKey{
+				DefaultConstraintDefinition: toolkit.DefaultConstraintDefinition{
+					ConstraintSchema:   schema,
+					ConstraintName:     name,
+					ConstraintOid:      oid,
+					ConstrainedColumns: constrainedColumns,
+					Definition:         definition,
+				},
+			}
 		case 'c':
+			c = &toolkit.Check{
+				ConstraintSchema:   schema,
+				ConstraintName:     name,
+				ConstraintOid:      oid,
+				ConstrainedColumns: constrainedColumns,
+				Definition:         definition,
+			}
 		case 'p':
+			c = &toolkit.PrimaryKey{
+				ConstraintSchema:   schema,
+				ConstraintName:     name,
+				ConstraintOid:      oid,
+				ConstrainedColumns: constrainedColumns,
+				Definition:         definition,
+			}
 		case 'u':
+			c = &toolkit.Unique{
+				ConstraintSchema:   schema,
+				ConstraintName:     name,
+				ConstraintOid:      oid,
+				ConstrainedColumns: constrainedColumns,
+				Definition:         definition,
+			}
 		case 't':
+			c = &toolkit.TriggerConstraint{
+				ConstraintSchema:   schema,
+				ConstraintName:     name,
+				ConstraintOid:      oid,
+				ConstrainedColumns: constrainedColumns,
+				Definition:         definition,
+			}
 		case 'x':
-
+			c = &toolkit.Exclusion{
+				ConstraintSchema:   schema,
+				ConstraintName:     name,
+				ConstraintOid:      oid,
+				ConstrainedColumns: constrainedColumns,
+				Definition:         definition,
+			}
+		default:
+			return nil, fmt.Errorf("unknown constraint type %c", constraintType)
 		}
 
 		if err != nil {
 			return nil, fmt.Errorf("cannot scan tableConstraintsQuery: %w", err)
 		}
-		constraints = append(constraints, &c)
+		constraints = append(constraints, c)
+	}
+
+	// Foreign key constraint discovering
+	rows, err = tx.Query(ctx, TablePrimaryKeyReferencesConstraintsQuery, table.Oid)
+	if err != nil {
+		return nil, fmt.Errorf("cannot execute tableConstraintsQuery: %w", err)
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var c toolkit.Constraint
+		var constraintOid, onTableOid toolkit.Oid
+		var name, schema, definition, onTableSchema, onTableName string
+		var constraintType rune
+		var rootPtConstraint toolkit.Oid
+		var fkTable toolkit.Oid
+		var constrainedColumns, referencesColumns []toolkit.AttNum
+
+		err = rows.Scan(
+			&oid, &name, &schema, &constraintType,
+			&rootPtConstraint, &fkTable, &constrainedColumns,
+			&referencesColumns, &definition,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("unable to build constraints list: %w", err)
+		}
+
 	}
 
 	return constraints, nil

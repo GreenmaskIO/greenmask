@@ -20,6 +20,7 @@ var (
           AND n.nspname  = $1  -- schema inclusion
           AND c.relname = $2 -- relname inclusion
 	`
+
 	TableColumnsQuery = `
 		SELECT 
 		    a.attname,
@@ -32,19 +33,27 @@ var (
 		WHERE a.attrelid = $1 AND a.attnum > 0 AND NOT a.attisdropped
 		ORDER BY a.attnum
 	`
+
+	// TableConstraintsCommonQuery - SQL query for searching the common constraints (pk, fk, trigger, check, exclude)
+	// Purpose - find all constraints assigned to the discovering table (excluding Domain constraints)
 	TableConstraintsCommonQuery = `
-		SELECT pc.conname                                    AS "name",
-			   pn.nspname                                    AS "schema",
-			   pc.contype                                    AS "type",
-			   pc.conparentid::TEXT::INT                     AS root_pt_constraint_oid,
-			   pc.confrelid::TEXT::INT                       AS fk_ref_oid,
-			   pc.conkey                                     AS constrained_column_oids,
-			   pc.confkey                                    AS constrained_column_fk_oids,
-			   pg_catalog.pg_get_constraintdef(pc.oid, true) AS def
+		SELECT pc.oid,                                                      -- constraint oid
+			   pc.conname                                    AS "name",     -- constraint name
+			   pn.nspname                                    AS "schema",   -- constraint schema name
+			   pc.contype                                    AS "type",     -- constraint type
+			   pc.conkey                                     AS columns,    -- constrained columns at the source table (from which search is performing)
+			   rt.oid::TEXT::INT                             AS rt_oid,     -- referenced table oid
+			   rtn.nspname                                   AS rt_table,   -- referenced table name
+			   rt.relname                                    AS rt_schema,  -- referenced table schema
+			   pc.confkey                                    AS rt_columns, -- referenced table involved columns into constraint
+			   pg_catalog.pg_get_constraintdef(pc.oid, true) AS def         -- textual constraint definition
 		FROM pg_constraint pc
 				 JOIN pg_namespace pn on pc.connamespace = pn.oid
-		WHERE pc.conrelid = $1
+				 LEFT JOIN pg_class rt ON pc.confrelid = rt.oid -- referenced table (rt)
+				 LEFT JOIN pg_namespace rtn ON rt.relnamespace = rtn.oid
+		WHERE conrelid = $1;
 	`
+
 	TableDomainConstraintsQuery = `
 		SELECT t.oid,
 			   n.nspname                                          as "schema",
@@ -68,18 +77,17 @@ var (
 		--   AND
 		ORDER BY 1, 2;
 	`
+
 	TablePrimaryKeyReferencesConstraintsQuery = `
 		SELECT conname                                      AS "name",
 			   pn.nspname                                   AS "schema",
 			   pc.contype                                   AS "type",
-			   NULL                                         AS domain_oid,
-			   pc.conparentid::TEXT::INT                    AS root_pt_constraint_oid,
-			   pc.confrelid::TEXT::INT                      AS fk_ref_oid,
 			   pc.conkey                                    AS constrained_column_oids,
 			   pc.confkey                                   AS constrained_column_fk_oids,
-		
-			   conrelid::pg_catalog.regclass                AS ontable,
-			   pg_catalog.pg_get_constraintdef(c.oid, true) AS condef
+			   c.oid                                        AS on_table_oid,
+			   cn.nspname                                   AS on_table_schema,
+			   c.relname                                    AS on_table_name,
+			   pg_catalog.pg_get_constraintdef(pc.oid, true) AS condef
 		FROM pg_catalog.pg_constraint pc
 				 JOIN pg_catalog.pg_namespace pn on pc.connamespace = pn.oid
 				 JOIN pg_catalog.pg_class c ON pc.conrelid = c.oid
