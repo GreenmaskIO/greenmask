@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/domains/toclib"
+	toclib2 "github.com/wwoytenko/greenfuscator/internal/db/postgres/domains/toclib"
 )
 
 func TestNoiseDateTransformer_Transform(t *testing.T) {
@@ -19,7 +19,7 @@ func TestNoiseDateTransformer_Transform(t *testing.T) {
 
 	tests := []struct {
 		name   string
-		table  *toclib.Table
+		table  *toclib2.Table
 		params map[string]interface{}
 		input  string
 		result struct {
@@ -29,9 +29,9 @@ func TestNoiseDateTransformer_Transform(t *testing.T) {
 	}{
 		{
 			name: "test date type",
-			table: &toclib.Table{
+			table: &toclib2.Table{
 				Oid: 123,
-				Columns: []*toclib.Column{
+				Columns: []*toclib2.Column{
 					{
 						Name:    "test",
 						TypeOid: pgtype.DateOID,
@@ -51,9 +51,9 @@ func TestNoiseDateTransformer_Transform(t *testing.T) {
 		},
 		{
 			name: "test timestamp without timezone type",
-			table: &toclib.Table{
+			table: &toclib2.Table{
 				Oid: 123,
-				Columns: []*toclib.Column{
+				Columns: []*toclib2.Column{
 					{
 						Name:    "test",
 						TypeOid: pgtype.TimestampOID,
@@ -73,9 +73,9 @@ func TestNoiseDateTransformer_Transform(t *testing.T) {
 		},
 		{
 			name: "test timestamp with timezone type",
-			table: &toclib.Table{
+			table: &toclib2.Table{
 				Oid: 123,
-				Columns: []*toclib.Column{
+				Columns: []*toclib2.Column{
 					{
 						Name:    "test",
 						TypeOid: pgtype.TimestamptzOID,
@@ -95,9 +95,9 @@ func TestNoiseDateTransformer_Transform(t *testing.T) {
 		},
 		{
 			name: "test timestamp type with Truncate till day",
-			table: &toclib.Table{
+			table: &toclib2.Table{
 				Oid: 123,
-				Columns: []*toclib.Column{
+				Columns: []*toclib2.Column{
 					{
 						Name:    "test",
 						TypeOid: pgtype.TimestampOID,

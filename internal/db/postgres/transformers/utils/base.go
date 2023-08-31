@@ -11,7 +11,7 @@ import (
 	"github.com/rs/zerolog/log"
 	"golang.org/x/exp/slices"
 
-	"github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/domains/toclib"
+	toclib2 "github.com/wwoytenko/greenfuscator/internal/db/postgres/domains/toclib"
 	"github.com/wwoytenko/greenfuscator/internal/domains"
 )
 
@@ -36,8 +36,8 @@ type TransformerBaseParams struct {
 
 type TransformerBase struct {
 	TransformerBaseParams
-	Table         *toclib.Table
-	Column        *toclib.Column
+	Table         *toclib2.Table
+	Column        *toclib2.Column
 	PgType        *pgtype.Type
 	EncodePlan    pgtype.EncodePlan
 	TypeMap       *pgtype.Map
@@ -49,7 +49,7 @@ type TransformerBase struct {
 
 // NewTransformerBase - initialise and check the transformer requirements depending on transformer type and it settings
 func NewTransformerBase(
-	table *toclib.Table,
+	table *toclib2.Table,
 	settings *TransformerSettings,
 	params map[string]interface{},
 	typeMap *pgtype.Map,
@@ -71,7 +71,7 @@ func NewTransformerBase(
 	var columnNum int
 	var t *pgtype.Type
 	var plan pgtype.EncodePlan
-	var column *toclib.Column
+	var column *toclib2.Column
 	if settings.TransformationType == domains.AttributeTransformation {
 		if tParams.Column == "" {
 			return nil, fmt.Errorf("column parameter must be set")
@@ -79,7 +79,7 @@ func NewTransformerBase(
 		if typeMap == nil {
 			return nil, fmt.Errorf("typeMap cannot be nil")
 		}
-		columnNum = slices.IndexFunc(table.Columns, func(column *toclib.Column) bool {
+		columnNum = slices.IndexFunc(table.Columns, func(column *toclib2.Column) bool {
 			return column.Name == tParams.Column
 		})
 		if columnNum == -1 {
@@ -92,7 +92,7 @@ func NewTransformerBase(
 			if !ok {
 				return nil, fmt.Errorf("cannot find type %s", tParams.UseType)
 			}
-			oid = toclib.Oid(t.OID)
+			oid = toclib2.Oid(t.OID)
 		}
 		if len(settings.SupportedOids) != 0 && !slices.Contains(settings.SupportedOids, int(oid)) {
 			return nil, fmt.Errorf("cannot use type: %s type is not supported", tParams.UseType)

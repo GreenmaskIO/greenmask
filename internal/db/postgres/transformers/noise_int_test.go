@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/domains/toclib"
+	toclib2 "github.com/wwoytenko/greenfuscator/internal/db/postgres/domains/toclib"
 )
 
 // TODO: Test the max/min value exceeded
@@ -22,7 +22,7 @@ func TestNoiseIntTransformer_Transform(t *testing.T) {
 		name   string
 		params map[string]interface{}
 		input  string
-		table  *toclib.Table
+		table  *toclib2.Table
 		result struct {
 			min, max int64
 		}
@@ -30,9 +30,9 @@ func TestNoiseIntTransformer_Transform(t *testing.T) {
 	}{
 		{
 			name: "int2",
-			table: &toclib.Table{
+			table: &toclib2.Table{
 				Oid: 123,
-				Columns: []*toclib.Column{
+				Columns: []*toclib2.Column{
 					{
 						Name:    "test",
 						TypeOid: pgtype.Int2OID,
@@ -49,9 +49,9 @@ func TestNoiseIntTransformer_Transform(t *testing.T) {
 		},
 		{
 			name: "int4",
-			table: &toclib.Table{
+			table: &toclib2.Table{
 				Oid: 123,
-				Columns: []*toclib.Column{
+				Columns: []*toclib2.Column{
 					{
 						Name:    "test",
 						TypeOid: pgtype.Int4OID,
@@ -68,9 +68,9 @@ func TestNoiseIntTransformer_Transform(t *testing.T) {
 		},
 		{
 			name: "int8",
-			table: &toclib.Table{
+			table: &toclib2.Table{
 				Oid: 123,
-				Columns: []*toclib.Column{
+				Columns: []*toclib2.Column{
 					{
 						Name:    "test",
 						TypeOid: pgtype.Int8OID,
@@ -87,9 +87,9 @@ func TestNoiseIntTransformer_Transform(t *testing.T) {
 		},
 		{
 			name: "text with int8",
-			table: &toclib.Table{
+			table: &toclib2.Table{
 				Oid: 123,
-				Columns: []*toclib.Column{
+				Columns: []*toclib2.Column{
 					{
 						Name:    "test",
 						TypeOid: pgtype.TextOID,

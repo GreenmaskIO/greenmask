@@ -3,7 +3,7 @@ package utils
 import (
 	"fmt"
 
-	"github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/domains/toclib"
+	"github.com/wwoytenko/greenfuscator/internal/db/postgres/domains/toclib"
 )
 
 type Tuple map[string]any

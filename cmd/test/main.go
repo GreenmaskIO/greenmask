@@ -5,7 +5,7 @@ import (
 
 	"github.com/rs/zerolog/log"
 
-	"github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/toc"
+	toc2 "github.com/wwoytenko/greenfuscator/internal/db/postgres/toc"
 )
 
 func main() {
@@ -20,18 +20,18 @@ func main() {
 	defer f.Close()
 	defer res.Close()
 
-	ah, err := toc.ReadFile(f)
+	ah, err := toc2.ReadFile(f)
 	if err != nil {
 		log.Fatal().Err(err).Msgf("err")
 	}
 
 	for _, item := range ah.GetEntries() {
-		if item.Section == toc.SectionData {
+		if item.Section == toc2.SectionData {
 			log.Printf("%+v\n", item)
 		}
 	}
 
-	if err := toc.WriteFile(ah, res); err != nil {
+	if err := toc2.WriteFile(ah, res); err != nil {
 		log.Fatal().Err(err).Msgf("err")
 	}
 }

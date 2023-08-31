@@ -13,8 +13,8 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/wwoytenko/greenfuscator/cmd/greenmask/cmd/dump"
-	"github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/domains/config"
-	pgDomains "github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/domains/storage"
+	"github.com/wwoytenko/greenfuscator/internal/db/postgres/domains/config"
+	pgDomains "github.com/wwoytenko/greenfuscator/internal/db/postgres/domains/storage"
 	"github.com/wwoytenko/greenfuscator/internal/storage"
 	"github.com/wwoytenko/greenfuscator/internal/storage/directory"
 	"github.com/wwoytenko/greenfuscator/internal/utils/logger"

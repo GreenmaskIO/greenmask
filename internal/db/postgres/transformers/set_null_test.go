@@ -7,16 +7,16 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/domains/toclib"
+	toclib2 "github.com/wwoytenko/greenfuscator/internal/db/postgres/domains/toclib"
 )
 
 func TestSetNullTransformer_Transform(t *testing.T) {
 	typeMap, err := getTypeMap()
 	require.NoError(t, err)
 
-	table := &toclib.Table{
+	table := &toclib2.Table{
 		Oid: 123,
-		Columns: []*toclib.Column{
+		Columns: []*toclib2.Column{
 			{
 				Name:    "test",
 				TypeOid: pgtype.UUIDOID,

@@ -10,7 +10,7 @@ import (
 
 	"gopkg.in/yaml.v3"
 
-	storage2 "github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/domains/storage"
+	storage2 "github.com/wwoytenko/greenfuscator/internal/db/postgres/domains/storage"
 	"github.com/wwoytenko/greenfuscator/internal/storage"
 )
 

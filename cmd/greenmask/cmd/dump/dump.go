@@ -11,7 +11,7 @@ import (
 	"github.com/spf13/viper"
 
 	"github.com/wwoytenko/greenfuscator/internal/db/postgres"
-	pgDomains "github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/domains/config"
+	pgDomains "github.com/wwoytenko/greenfuscator/internal/db/postgres/domains/config"
 	"github.com/wwoytenko/greenfuscator/internal/storage/directory"
 	"github.com/wwoytenko/greenfuscator/internal/utils/logger"
 )

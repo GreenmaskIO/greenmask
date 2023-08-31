@@ -1,0 +1,30 @@
+package dumpers
+
+import (
+	"context"
+	"fmt"
+
+	"github.com/jackc/pgx/v5"
+
+	"github.com/wwoytenko/greenfuscator/internal/db/postgres/domains/toclib"
+	"github.com/wwoytenko/greenfuscator/internal/db/postgres/toc"
+	"github.com/wwoytenko/greenfuscator/internal/storage"
+)
+
+type SequenceDumper struct {
+	sequence *toclib.Sequence
+}
+
+func NewSequenceDumper(sequence toclib.Sequence) *SequenceDumper {
+	return &SequenceDumper{
+		sequence: &sequence,
+	}
+}
+
+func (sd *SequenceDumper) Execute(ctx context.Context, tx pgx.Tx, st storage.Storager) (*toc.Entry, error) {
+	return sd.sequence.GetTocEntry()
+}
+
+func (sd *SequenceDumper) DebugInfo() string {
+	return fmt.Sprintf("sequence %s.%s", sd.sequence.Schema, sd.sequence.Name)
+}

@@ -17,11 +17,11 @@ import (
 	"golang.org/x/sync/errgroup"
 	"gopkg.in/yaml.v3"
 
-	storage2 "github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/domains/storage"
-	"github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/domains/toclib"
-	"github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/pgrestore"
-	"github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/restorers"
-	"github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/toc"
+	storage2 "github.com/wwoytenko/greenfuscator/internal/db/postgres/domains/storage"
+	toclib2 "github.com/wwoytenko/greenfuscator/internal/db/postgres/domains/toclib"
+	pgrestore2 "github.com/wwoytenko/greenfuscator/internal/db/postgres/pgrestore"
+	restorers2 "github.com/wwoytenko/greenfuscator/internal/db/postgres/restorers"
+	toc2 "github.com/wwoytenko/greenfuscator/internal/db/postgres/toc"
 	"github.com/wwoytenko/greenfuscator/internal/storage"
 	"github.com/wwoytenko/greenfuscator/internal/storage/directory"
 )
@@ -42,22 +42,22 @@ const (
 type Restore struct {
 	binPath    string
 	dsn        string
-	scripts    map[string][]pgrestore.Script
-	pgRestore  *pgrestore.PgRestore
-	restoreOpt *pgrestore.Options
+	scripts    map[string][]pgrestore2.Script
+	pgRestore  *pgrestore2.PgRestore
+	restoreOpt *pgrestore2.Options
 	st         storage.Storager
 	dumpIdList map[int32]bool
 	conn       *pgx.Conn
-	ah         *toc.ArchiveHandle
+	ah         *toc2.ArchiveHandle
 	dumpSt     storage.Storager
 }
 
-func NewRestore(binPath string, st storage.Storager, opt *pgrestore.Options, s map[string][]pgrestore.Script) *Restore {
+func NewRestore(binPath string, st storage.Storager, opt *pgrestore2.Options, s map[string][]pgrestore2.Script) *Restore {
 
 	return &Restore{
 		binPath:    binPath,
 		st:         st,
-		pgRestore:  pgrestore.NewPgRestore(binPath),
+		pgRestore:  pgrestore2.NewPgRestore(binPath),
 		restoreOpt: opt,
 		scripts:    s,
 	}
@@ -149,7 +149,7 @@ func (r *Restore) preFlightRestore(ctx context.Context, conn *pgx.Conn) error {
 		return fmt.Errorf("cannot open toc file: %w", err)
 	}
 	defer tocFile.Close()
-	ah, err := toc.ReadFile(tocFile)
+	ah, err := toc2.ReadFile(tocFile)
 	if err != nil {
 		return fmt.Errorf("unable to read toc file: %w", err)
 	}
@@ -203,7 +203,7 @@ func (r *Restore) dataRestore(ctx context.Context, conn *pgx.Conn) error {
 		return err
 	}
 
-	tasks := make(chan restorers.RestoreTask, r.restoreOpt.Jobs)
+	tasks := make(chan restorers2.RestoreTask, r.restoreOpt.Jobs)
 	eg, gtx := errgroup.WithContext(ctx)
 	for j := 0; j < r.restoreOpt.Jobs; j++ {
 		eg.Go(func(id int) func() error {
@@ -222,14 +222,14 @@ func (r *Restore) dataRestore(ctx context.Context, conn *pgx.Conn) error {
 			default:
 			}
 
-			if entry.Section == toc.SectionData {
+			if entry.Section == toc2.SectionData {
 
 				if r.restoreOpt.UseList != "" {
 					_, apply := r.dumpIdList[entry.DumpId]
 					if !apply {
 						log.Info().
 							Int32("dumpId", entry.DumpId).
-							Str("section", toc.SectionMap[entry.Section]).
+							Str("section", toc2.SectionMap[entry.Section]).
 							Str("type", *entry.Desc).
 							Str("name", *entry.Tag).
 							Str("schema", *entry.Namespace).
@@ -238,13 +238,13 @@ func (r *Restore) dataRestore(ctx context.Context, conn *pgx.Conn) error {
 					}
 				}
 
-				var task restorers.RestoreTask
+				var task restorers2.RestoreTask
 				switch *entry.Desc {
-				case toclib.TableDataDesc:
-					task = restorers.NewTableRestorer(entry, r.st)
-				case toclib.SequenceSetDesc:
-					task = restorers.NewSequenceRestorer(entry)
-				case toclib.LargeObjectDesc:
+				case toclib2.TableDataDesc:
+					task = restorers2.NewTableRestorer(entry, r.st)
+				case toclib2.SequenceSetDesc:
+					task = restorers2.NewSequenceRestorer(entry)
+				case toclib2.LargeObjectDesc:
 					log.Warn().Msgf("FIXME: Implement Large Object restoration")
 				}
 
@@ -342,7 +342,7 @@ func (r *Restore) RunRestore(ctx context.Context) error {
 	return nil
 }
 
-func (r *Restore) restoreWorker(ctx context.Context, tasks <-chan restorers.RestoreTask, id int) error {
+func (r *Restore) restoreWorker(ctx context.Context, tasks <-chan restorers2.RestoreTask, id int) error {
 	// TODO: You should execute TX for each COPY stmt
 	conn, err := pgx.Connect(ctx, r.dsn)
 	if err != nil {
@@ -355,7 +355,7 @@ func (r *Restore) restoreWorker(ctx context.Context, tasks <-chan restorers.Rest
 	}()
 
 	for {
-		var task restorers.RestoreTask
+		var task restorers2.RestoreTask
 		select {
 		case <-ctx.Done():
 			log.Debug().

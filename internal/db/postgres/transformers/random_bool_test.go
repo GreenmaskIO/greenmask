@@ -7,7 +7,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/stretchr/testify/require"
 
-	"github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/domains/toclib"
+	toclib2 "github.com/wwoytenko/greenfuscator/internal/db/postgres/domains/toclib"
 )
 
 func TestRandomBoolTransformer_Transform(t *testing.T) {
@@ -16,15 +16,15 @@ func TestRandomBoolTransformer_Transform(t *testing.T) {
 
 	tests := []struct {
 		name    string
-		table   *toclib.Table
+		table   *toclib2.Table
 		params  map[string]interface{}
 		pattern string
 	}{
 		{
 			name: "test bool type",
-			table: &toclib.Table{
+			table: &toclib2.Table{
 				Oid: 123,
-				Columns: []*toclib.Column{
+				Columns: []*toclib2.Column{
 					{
 						Name:    "test",
 						TypeOid: pgtype.BoolOID,

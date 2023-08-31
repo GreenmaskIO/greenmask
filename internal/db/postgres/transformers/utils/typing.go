@@ -9,7 +9,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 
-	"github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/domains/toclib"
+	"github.com/wwoytenko/greenfuscator/internal/db/postgres/domains/toclib"
 )
 
 func GetPgTypeAndEncodingPlan(typeMap *pgtype.Map, typeOid toclib.Oid, castVal any) (*pgtype.Type, pgtype.EncodePlan, error) {

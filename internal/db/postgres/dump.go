@@ -12,12 +12,12 @@ import (
 	"github.com/rs/zerolog/log"
 	"golang.org/x/sync/errgroup"
 
-	"github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/domains/config"
-	storage2 "github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/domains/storage"
-	"github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/domains/toclib"
-	"github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/dumpers"
-	"github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/pgdump"
-	"github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/toc"
+	"github.com/wwoytenko/greenfuscator/internal/db/postgres/domains/config"
+	storage2 "github.com/wwoytenko/greenfuscator/internal/db/postgres/domains/storage"
+	toclib2 "github.com/wwoytenko/greenfuscator/internal/db/postgres/domains/toclib"
+	dumpers2 "github.com/wwoytenko/greenfuscator/internal/db/postgres/dumpers"
+	"github.com/wwoytenko/greenfuscator/internal/db/postgres/pgdump"
+	toc2 "github.com/wwoytenko/greenfuscator/internal/db/postgres/toc"
 	commondomains "github.com/wwoytenko/greenfuscator/internal/domains"
 	"github.com/wwoytenko/greenfuscator/internal/storage"
 )
@@ -26,13 +26,13 @@ type Dump struct {
 	dsn            string
 	pgDumpOptions  *pgdump.Options
 	pgDump         *pgdump.PgDump
-	curDumpId      toclib.DumpId
+	curDumpId      toclib2.DumpId
 	st             storage.Storager
 	dumpTaskCount  int32
 	allTaskPushed  atomic.Bool
 	tablesConfig   []*config.Table
-	ah             *toc.ArchiveHandle
-	tocDataEntries []*toc.Entry
+	ah             *toc2.ArchiveHandle
+	tocDataEntries []*toc2.Entry
 }
 
 func NewDump(binPath string, opt *pgdump.Options, st storage.Storager, tableConfig []*config.Table) *Dump {
@@ -110,7 +110,7 @@ func logValidationWarnings(warnings commondomains.ValidationWarnings, schemaName
 	}
 }
 
-func (d *Dump) Validate(ctx context.Context, tx pgx.Tx) (map[toclib.Oid]*toclib.Table, error) {
+func (d *Dump) Validate(ctx context.Context, tx pgx.Tx) (map[toclib2.Oid]*toclib2.Table, error) {
 	var fatal = false
 
 	// Initialise transformers, check table, columns and transformer exists
@@ -177,26 +177,26 @@ func (d *Dump) schemaOnlyDump(ctx context.Context, tx pgx.Tx) error {
 			log.Warn().Err(err).Msgf("unable to delete temp file")
 		}
 	}()
-	schemaToc, err := toc.ReadFile(srcTocFile)
+	schemaToc, err := toc2.ReadFile(srcTocFile)
 	if err != nil {
 		return fmt.Errorf("error reading toc file: %w", err)
 	}
 	d.ah = schemaToc
-	d.curDumpId = toclib.DumpId(schemaToc.MaxDumpId + 1)
+	d.curDumpId = toclib2.DumpId(schemaToc.MaxDumpId + 1)
 
 	return nil
 }
 
-func (d *Dump) dataDump(ctx context.Context, tx pgx.Tx, tablesConfig map[toclib.Oid]*toclib.Table) error {
+func (d *Dump) dataDump(ctx context.Context, tx pgx.Tx, tablesConfig map[toclib2.Oid]*toclib2.Table) error {
 	// TODO: You should use pointer to dumpers.DumpTask instead
-	var largeObjectsList []*toclib.LargeObjects
+	var largeObjectsList []*toclib2.LargeObjects
 	tablesList, sequenceList, err := dump_config_builder.GetObjects(ctx, tx, d.pgDumpOptions, tablesConfig, &d.curDumpId)
 	if err != nil {
 		return fmt.Errorf("building data objects: %w", err)
 	}
 
-	tasks := make(chan dumpers.DumpTask, d.pgDumpOptions.Jobs)
-	result := make(chan *toc.Entry, d.pgDumpOptions.Jobs)
+	tasks := make(chan dumpers2.DumpTask, d.pgDumpOptions.Jobs)
+	result := make(chan *toc2.Entry, d.pgDumpOptions.Jobs)
 	defer close(result)
 
 	log.Debug().Msgf("planned %d workers", d.pgDumpOptions.Jobs)
@@ -222,7 +222,7 @@ func (d *Dump) dataDump(ctx context.Context, tx pgx.Tx, tablesConfig map[toclib.
 			select {
 			case <-gtx.Done():
 				return gtx.Err()
-			case tasks <- dumpers.NewTableDumper(*table):
+			case tasks <- dumpers2.NewTableDumper(*table):
 			}
 		}
 		for idx, sequence := range sequenceList {
@@ -240,29 +240,29 @@ func (d *Dump) dataDump(ctx context.Context, tx pgx.Tx, tablesConfig map[toclib.
 			select {
 			case <-gtx.Done():
 				return gtx.Err()
-			case tasks <- dumpers.NewSequenceDumper(*sequence):
+			case tasks <- dumpers2.NewSequenceDumper(*sequence):
 			}
 		}
 		return nil
 	})
 
 	var originalSize, compressedSize int64
-	d.tocDataEntries = make([]*toc.Entry, 0, len(tablesList)+len(sequenceList)+len(largeObjectsList))
+	d.tocDataEntries = make([]*toc2.Entry, 0, len(tablesList)+len(sequenceList)+len(largeObjectsList))
 	eg.Go(func() error {
-		tables := make([]*toc.Entry, 0, len(tablesList))
-		sequences := make([]*toc.Entry, 0, len(sequenceList))
-		largeObjects := make([]*toc.Entry, 0, 0)
+		tables := make([]*toc2.Entry, 0, len(tablesList))
+		sequences := make([]*toc2.Entry, 0, len(sequenceList))
+		largeObjects := make([]*toc2.Entry, 0, 0)
 		for i := int32(0); !d.allTaskPushed.Load() || i < atomic.LoadInt32(&d.dumpTaskCount); i++ {
 			select {
 			case <-gtx.Done():
 				return gtx.Err()
 			case tocEntry := <-result:
 				switch *tocEntry.Desc {
-				case toclib.TableDataDesc:
+				case toclib2.TableDataDesc:
 					tables = append(tables, tocEntry)
-				case toclib.SequenceSetDesc:
+				case toclib2.SequenceSetDesc:
 					sequences = append(sequences, tocEntry)
-				case toclib.LargeObjectDesc:
+				case toclib2.LargeObjectDesc:
 					largeObjects = append(largeObjects, tocEntry)
 				default:
 					return fmt.Errorf("unexpected toc entry %s", *tocEntry.Desc)
@@ -296,7 +296,7 @@ func (d *Dump) merge(ctx context.Context, tx pgx.Tx) error {
 	}
 	defer destTocFile.Close()
 	d.ah.SetEntries(mergedTocs)
-	if err = toc.WriteFile(d.ah, destTocFile); err != nil {
+	if err = toc2.WriteFile(d.ah, destTocFile); err != nil {
 		return fmt.Errorf("error writing toc file: %w", err)
 	}
 	return nil
@@ -378,19 +378,19 @@ func (d *Dump) RunDump(ctx context.Context) error {
 	return nil
 }
 
-func (d *Dump) MergeTocEntries(schema, data []*toc.Entry) ([]*toc.Entry, error) {
+func (d *Dump) MergeTocEntries(schema, data []*toc2.Entry) ([]*toc2.Entry, error) {
 	// TODO: Assign dependencies and sort entries in the same order
-	res := make([]*toc.Entry, 0, len(schema)+len(data))
+	res := make([]*toc2.Entry, 0, len(schema)+len(data))
 
 	preDataEnd := 0
 	postDataStart := 0
 
 	// Find predata last index and postdata first index
 	for idx, item := range schema {
-		if item.Section == toc.SectionPreData {
+		if item.Section == toc2.SectionPreData {
 			preDataEnd = idx
 		}
-		if item.Section == toc.SectionPostData {
+		if item.Section == toc2.SectionPostData {
 			postDataStart = idx
 			break
 		}
@@ -403,7 +403,7 @@ func (d *Dump) MergeTocEntries(schema, data []*toc.Entry) ([]*toc.Entry, error) 
 	return res, nil
 }
 
-func (d *Dump) dumpWorker(ctx context.Context, tasks <-chan dumpers.DumpTask, result chan<- *toc.Entry, id int) error {
+func (d *Dump) dumpWorker(ctx context.Context, tasks <-chan dumpers2.DumpTask, result chan<- *toc2.Entry, id int) error {
 	var isolationLevel = "REPEATABLE READ"
 	if d.pgDumpOptions.SerializableDeferrable {
 		isolationLevel = "SERIALIZABLE DEFERRABLE"
@@ -434,7 +434,7 @@ func (d *Dump) dumpWorker(ctx context.Context, tasks <-chan dumpers.DumpTask, re
 	}
 
 	for {
-		var task dumpers.DumpTask
+		var task dumpers2.DumpTask
 		select {
 		case <-ctx.Done():
 			log.Debug().

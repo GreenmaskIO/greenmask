@@ -20,7 +20,10 @@ const (
 
 type SchemaValidationFunc func(table *Table, properties *Properties, parameters []*Parameter) (ValidationWarnings, error)
 
-func DefaultSchemaValidator(table *Table, properties *Properties, parameters []*Parameter) (ValidationWarnings, error) {
+func DefaultSchemaValidator(
+	table *Table, properties *Properties,
+	parameters []*Parameter, types []*Type,
+) (ValidationWarnings, error) {
 	var warnings ValidationWarnings
 
 	for _, p := range parameters {
@@ -55,7 +58,7 @@ func DefaultSchemaValidator(table *Table, properties *Properties, parameters []*
 
 		// Performing checks constraint checks with the affected column
 		for _, c := range table.Constraints {
-			if c.IsAffected(table, p.Column) {
+			if c.IsAffected(p.Column) {
 				warnings = append(warnings, NewValidationWarning().
 					SetMsg("possible constraint violation").
 					SetLevel(domains.WarningValidationSeverity).
@@ -65,6 +68,9 @@ func DefaultSchemaValidator(table *Table, properties *Properties, parameters []*
 		}
 
 	}
+
+	return nil, fmt.Errorf("type validation is not implemented")
+
 	return warnings, nil
 }
 

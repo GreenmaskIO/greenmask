@@ -5,7 +5,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgtype"
 
-	"github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/domains/toclib"
+	"github.com/wwoytenko/greenfuscator/internal/db/postgres/domains/toclib"
 	"github.com/wwoytenko/greenfuscator/internal/domains"
 )
 
