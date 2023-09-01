@@ -45,7 +45,7 @@ func initTransformer(
 	if err != nil {
 		return nil, nil, fmt.Errorf("driver initialization for table %s.%s: %w", t.Schema, t.Name, err)
 	}
-	transformer, warnings, err := td.Instance(ctx, driver, c.Params, nil)
+	transformer, warnings, err := td.Instance(ctx, driver, nil, nil)
 	if err != nil {
 		return nil, nil, fmt.Errorf("unable to init transformer: %w", err)
 	}

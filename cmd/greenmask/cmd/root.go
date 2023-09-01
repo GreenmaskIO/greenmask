@@ -2,10 +2,11 @@ package cmd
 
 import (
 	"fmt"
-	"log"
 	"os"
 
+	"github.com/mitchellh/mapstructure"
 	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
@@ -37,7 +38,6 @@ func Execute() error {
 }
 
 func init() {
-	log.SetFlags(0)
 	cobra.OnInitialize(initConfig)
 	// Removing short help flag from default
 	rootCmd.PersistentFlags().BoolP("help", "", false, "help for greenmask")
@@ -59,22 +59,22 @@ func init() {
 	rootCmd.AddCommand(show_dump.Cmd)
 
 	if err := rootCmd.MarkPersistentFlagRequired("config"); err != nil {
-		log.Fatal(err)
+		log.Fatal().Err(err).Msg("")
 	}
 
 	if err := viper.BindPFlag("common.log-format", rootCmd.PersistentFlags().Lookup("log-format")); err != nil {
-		log.Fatal(err)
+		log.Fatal().Err(err).Msg("")
 	}
 
 	if err := viper.BindPFlag("common.log-level", rootCmd.PersistentFlags().Lookup("log-level")); err != nil {
-		log.Fatal(err)
+		log.Fatal().Err(err).Msg("")
 	}
 
 	if err := viper.BindEnv("common.log-level", "LOG_LEVEL"); err != nil {
-		log.Fatal(err)
+		log.Fatal().Err(err).Msg("")
 	}
 	if err := viper.BindEnv("common.log-format", "LOG_FORMAT"); err != nil {
-		log.Fatal(err)
+		log.Fatal().Err(err).Msg("")
 	}
 
 }
@@ -82,6 +82,14 @@ func init() {
 func initConfig() {
 	if cfgFile != "" {
 		viper.SetConfigFile(cfgFile)
+		//f, err := os.Open(cfgFile)
+		//if err != nil {
+		//	log.Fatal().Err(err).Msg("")
+		//}
+		//defer f.Close()
+		//if err := yaml.NewDecoder(f).Decode(&Config); err != nil {
+		//	log.Fatal().Err(err).Msg("")
+		//}
 	} else {
 		home, err := os.UserConfigDir()
 		cobra.CheckErr(err)
@@ -95,11 +103,20 @@ func initConfig() {
 	viper.AutomaticEnv()
 
 	if err := viper.ReadInConfig(); err != nil {
-		log.Fatalf("unable to read config file: %s", err.Error())
+		log.Fatal().Msgf("unable to read config file: %s", err.Error())
 	}
 
-	if err := viper.Unmarshal(&Config); err != nil {
-		log.Fatal(err)
+	test := func(cfg *mapstructure.DecoderConfig) {
+		cfg.DecodeHook = mapstructure.ComposeDecodeHookFunc(
+			pgDomains.ParamsToByteSliceHookFunc(),
+			mapstructure.StringToTimeDurationHookFunc(),
+			mapstructure.StringToSliceHookFunc(","),
+		)
+		log.Debug().Any("cfg", cfg).Msg("")
+	}
+
+	if err := viper.Unmarshal(&Config, test); err != nil {
+		log.Fatal().Err(err).Msg("")
 	}
 
 }
