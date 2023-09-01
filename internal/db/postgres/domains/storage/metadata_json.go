@@ -7,10 +7,11 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"github.com/wwoytenko/greenfuscator/internal/db/postgres/domains/config"
-	toc2 "github.com/wwoytenko/greenfuscator/internal/db/postgres/toc"
+	"github.com/wwoytenko/greenfuscator/internal/db/postgres/domains/dump"
+	"github.com/wwoytenko/greenfuscator/internal/db/postgres/toc"
 )
 
-type TocHeader struct {
+type Header struct {
 	CreationDate    time.Time `json:"creationDate" yaml:"creationDate"`
 	DbName          string    `json:"dbName" yaml:"dbName"`
 	TocEntriesCount int       `json:"tocEntriesCount" yaml:"tocEntriesCount"`
@@ -24,7 +25,7 @@ type TocHeader struct {
 	Compression     int32     `json:"compression" yaml:"compression"`
 }
 
-type TocEntry struct {
+type Entry struct {
 	DumpId         int32   `json:"dumpId" yaml:"dumpId"`
 	DatabaseOid    int32   `json:"databaseOid" yaml:"databaseOid"`
 	ObjectOid      int32   `json:"objectOid" yaml:"objectOid"`
@@ -45,82 +46,97 @@ type Metadata struct {
 	OriginalSize   int64           `json:"originalSize" json:"originalSize"`
 	CompressedSize int64           `json:"compressedSize" json:"compressedSize"`
 	Transformers   []*config.Table `yaml:"transformers" json:"transformers"`
-	Header         TocHeader       `json:"header" json:"header"`
-	Entries        []*TocEntry     `json:"entries" json:"entries"`
+	Header         Header          `json:"header" json:"header"`
+	Entries        []*Entry        `json:"entries" json:"entries"`
 }
 
-func NewMetadata(ahHeader toc2.Header, ahEntries []*toc2.Entry,
-	tocFileSize int64, startedAt, completedAt time.Time,
-	transformers []*config.Table,
+func NewMetadata(
+	header *toc.Header,
+	entryProducers []toc.EntryProducer,
+	tocFileSize int64, startedAt,
+	completedAt time.Time, transformers []*config.Table,
 ) (*Metadata, error) {
 
 	var format string
-	switch ahHeader.Format {
-	case toc2.ArchUnknown:
+	switch header.Format {
+	case toc.ArchUnknown:
 		format = "UNKNOWN"
-	case toc2.ArchCustom:
+	case toc.ArchCustom:
 		format = "CUSTOM"
-	case toc2.ArchTar:
+	case toc.ArchTar:
 		format = "TAR"
-	case toc2.ArchNull:
+	case toc.ArchNull:
 		format = "NULL"
-	case toc2.ArchDirectory:
+	case toc.ArchDirectory:
 		format = "DIRECTORY"
 	default:
-		return nil, fmt.Errorf("unknown archive type %d", ahHeader.Format)
+		return nil, fmt.Errorf("unknown archive type %d", header.Format)
 	}
 
 	var totalCompressedSize, totalOriginalSize int64
 
-	entries := make([]*TocEntry, 0)
-	for _, ahEntry := range ahEntries {
-		if ahEntry.Section == toc2.SectionPreData ||
-			ahEntry.Section == toc2.SectionData ||
-			ahEntry.Section == toc2.SectionPostData {
+	entriesDto := make([]*Entry, 0, len(entryProducers))
+	for _, ep := range entryProducers {
+		entry, err := ep.Entry()
+		if err != nil {
+			return nil, fmt.Errorf("error producing toc entry: %s", err)
+		}
+		if entry.Section == toc.SectionPreData ||
+			entry.Section == toc.SectionData ||
+			entry.Section == toc.SectionPostData {
 
 			var objectType, schema, name, owner, fileName string
 
-			if ahEntry.Desc != nil {
-				objectType = *ahEntry.Desc
+			if entry.Desc != nil {
+				objectType = *entry.Desc
 			}
 
-			if ahEntry.Namespace != nil {
-				schema = *ahEntry.Namespace
+			if entry.Namespace != nil {
+				schema = *entry.Namespace
 			}
 
-			if ahEntry.Tag != nil {
-				name = *ahEntry.Tag
+			if entry.Tag != nil {
+				name = *entry.Tag
 			}
 
-			if ahEntry.Owner != nil {
-				owner = *ahEntry.Owner
+			if entry.Owner != nil {
+				owner = *entry.Owner
 			}
 
-			if ahEntry.FileName != nil {
-				fileName = *ahEntry.FileName
+			if entry.FileName != nil {
+				fileName = *entry.FileName
 			}
 
-			totalCompressedSize += ahEntry.CompressedSize
-			totalOriginalSize += ahEntry.OriginalSize
+			var objCompressedSize, objOriginalSize int64
+			if entry.Section == toc.SectionData && *entry.Desc == toc.TableDataDesc {
+				table, ok := ep.(*dump.Table)
+				if !ok {
+					return nil, fmt.Errorf("unable to cast to dump.Table")
+				}
+				objCompressedSize = table.CompressedSize
+				objOriginalSize = table.OriginalSize
+				totalCompressedSize += table.CompressedSize
+				totalOriginalSize += table.OriginalSize
+			}
 
-			section, ok := toc2.SectionMap[ahEntry.Section]
+			section, ok := toc.SectionMap[entry.Section]
 			if !ok {
 				log.Warn().
-					Msgf("unknown section with number: %d", ahEntry.Section)
+					Msgf("unknown section with number: %d", entry.Section)
 			}
 
-			entries = append(entries, &TocEntry{
-				DumpId:         ahEntry.DumpId,
-				DatabaseOid:    int32(ahEntry.CatalogId.Oid),
-				ObjectOid:      int32(ahEntry.CatalogId.TableOid),
+			entriesDto = append(entriesDto, &Entry{
+				DumpId:         entry.DumpId,
+				DatabaseOid:    int32(entry.CatalogId.Oid),
+				ObjectOid:      int32(entry.CatalogId.TableOid),
 				ObjectType:     objectType,
 				Schema:         schema,
 				Name:           name,
 				Owner:          owner,
 				FileName:       fileName,
-				Dependencies:   ahEntry.Dependencies,
-				OriginalSize:   ahEntry.OriginalSize,
-				CompressedSize: ahEntry.CompressedSize,
+				Dependencies:   entry.Dependencies,
+				OriginalSize:   objOriginalSize,
+				CompressedSize: objCompressedSize,
 				Section:        section,
 			})
 
@@ -136,19 +152,19 @@ func NewMetadata(ahHeader toc2.Header, ahEntries []*toc2.Entry,
 		StartedAt:      startedAt,
 		CompletedAt:    completedAt,
 		Transformers:   transformers,
-		Header: TocHeader{
-			CreationDate:    ahHeader.CrtmDateTime.Time(),
-			DbName:          *ahHeader.ArchDbName,
-			TocEntriesCount: len(entries),
-			DumpVersion:     *ahHeader.ArchiveDumpVersion,
+		Header: Header{
+			CreationDate:    header.CrtmDateTime.Time(),
+			DbName:          *header.ArchDbName,
+			TocEntriesCount: len(entriesDto),
+			DumpVersion:     *header.ArchiveDumpVersion,
 			Format:          format,
-			Integer:         ahHeader.IntSize,
-			Offset:          ahHeader.OffSize,
-			DumpedFrom:      *ahHeader.ArchiveRemoteVersion,
-			DumpedBy:        *ahHeader.ArchiveDumpVersion,
+			Integer:         header.IntSize,
+			Offset:          header.OffSize,
+			DumpedFrom:      *header.ArchiveRemoteVersion,
+			DumpedBy:        *header.ArchiveDumpVersion,
 			TocFileSize:     tocFileSize,
-			Compression:     ahHeader.CompressionSpec.Level,
+			Compression:     header.CompressionSpec.Level,
 		},
-		Entries: entries,
+		Entries: entriesDto,
 	}, nil
 }

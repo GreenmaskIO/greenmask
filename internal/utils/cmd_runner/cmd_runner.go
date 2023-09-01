@@ -44,7 +44,7 @@ func Run(ctx context.Context, logger *zerolog.Logger, name string, args ...strin
 				}
 				return err
 			}
-			logger.Info().Msg(string(line))
+			logger.Info().Str("Executable", name).Str("Stderr", string(line)).Msg("stderr forwarding")
 		}
 	})
 
@@ -64,7 +64,7 @@ func Run(ctx context.Context, logger *zerolog.Logger, name string, args ...strin
 				}
 				return err
 			}
-			logger.Info().Msg(string(line))
+			logger.Info().Str("Executable", name).Str("Stdout", string(line)).Msg("stderr forwarding")
 		}
 	})
 

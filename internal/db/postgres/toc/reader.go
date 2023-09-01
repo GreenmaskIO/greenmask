@@ -11,11 +11,12 @@ import (
 )
 
 type Reader struct {
-	r        io.Reader
-	buf      []byte
-	intSize  uint32
-	version  int
-	position int
+	r         io.Reader
+	buf       []byte
+	intSize   uint32
+	version   int
+	position  int
+	maxDumpId int32
 }
 
 func NewReader(r io.Reader) *Reader {
@@ -29,6 +30,7 @@ func (r *Reader) prune() {
 	r.intSize = 0
 	r.version = 0
 	r.position = 0
+	r.maxDumpId = 0
 }
 
 func (r *Reader) Read() (*Toc, error) {
@@ -43,6 +45,7 @@ func (r *Reader) Read() (*Toc, error) {
 		return nil, fmt.Errorf("error reading entries: %w", err)
 	}
 	header.TocCount = int32(len(entries))
+	header.MaxDumpId = r.maxDumpId
 	return &Toc{
 		Header:  header,
 		Entries: entries,
@@ -281,7 +284,7 @@ func (r *Reader) readEntries() ([]*Entry, error) {
 		return nil, fmt.Errorf("cannot scan tocCount: %w", err)
 	}
 
-	var maxDumpId int32
+	//var maxDumpId int32
 
 	entries := make([]*Entry, 0, tocCount)
 
@@ -291,8 +294,8 @@ func (r *Reader) readEntries() ([]*Entry, error) {
 			return nil, fmt.Errorf("cannot scan tocCount: %w", err)
 		}
 
-		if maxDumpId < entry.DumpId {
-			maxDumpId = entry.DumpId
+		if r.maxDumpId < entry.DumpId {
+			r.maxDumpId = entry.DumpId
 		}
 
 		if entry.DumpId <= 0 {

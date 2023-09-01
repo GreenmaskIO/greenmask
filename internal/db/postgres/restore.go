@@ -426,7 +426,7 @@ func (r *Restore) parseTextList(f *os.File) (map[int32]bool, error) {
 	var lineBuf = make([]byte, 0, 1024)
 	buf := bytes.NewBuffer(lineBuf)
 	lr := bufio.NewReader(f)
-	pattern, err := regexp.Compile(`^\s*(?P<DumpId>\d+)\s*;.*$`)
+	pattern, err := regexp.Compile(`^\s*(?P<DumpIdSequence>\d+)\s*;.*$`)
 	if err != nil {
 		return nil, fmt.Errorf("cannot compile regexp: %s", err)
 	}

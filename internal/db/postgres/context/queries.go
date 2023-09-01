@@ -1,4 +1,4 @@
-package config_builder
+package context
 
 var (
 	// TableSearchQuery - SQL query for getting table by name and schema

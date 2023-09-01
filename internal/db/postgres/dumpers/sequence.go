@@ -6,23 +6,23 @@ import (
 
 	"github.com/jackc/pgx/v5"
 
-	"github.com/wwoytenko/greenfuscator/internal/db/postgres/domains/toclib"
+	"github.com/wwoytenko/greenfuscator/internal/db/postgres/domains/dump"
 	"github.com/wwoytenko/greenfuscator/internal/db/postgres/toc"
 	"github.com/wwoytenko/greenfuscator/internal/storage"
 )
 
 type SequenceDumper struct {
-	sequence *toclib.Sequence
+	sequence *dump.Sequence
 }
 
-func NewSequenceDumper(sequence toclib.Sequence) *SequenceDumper {
+func NewSequenceDumper(sequence *dump.Sequence) *SequenceDumper {
 	return &SequenceDumper{
-		sequence: &sequence,
+		sequence: sequence,
 	}
 }
 
-func (sd *SequenceDumper) Execute(ctx context.Context, tx pgx.Tx, st storage.Storager) (*toc.Entry, error) {
-	return sd.sequence.GetTocEntry()
+func (sd *SequenceDumper) Execute(ctx context.Context, tx pgx.Tx, st storage.Storager) (toc.EntryProducer, error) {
+	return sd.sequence, nil
 }
 
 func (sd *SequenceDumper) DebugInfo() string {

@@ -12,39 +12,54 @@ import (
 	"github.com/rs/zerolog/log"
 	"golang.org/x/sync/errgroup"
 
+	runtimeContext "github.com/wwoytenko/greenfuscator/internal/db/postgres/context"
 	"github.com/wwoytenko/greenfuscator/internal/db/postgres/domains/config"
-	storage2 "github.com/wwoytenko/greenfuscator/internal/db/postgres/domains/storage"
-	toclib2 "github.com/wwoytenko/greenfuscator/internal/db/postgres/domains/toclib"
-	dumpers2 "github.com/wwoytenko/greenfuscator/internal/db/postgres/dumpers"
+	"github.com/wwoytenko/greenfuscator/internal/db/postgres/domains/dump"
+	storageDto "github.com/wwoytenko/greenfuscator/internal/db/postgres/domains/storage"
+	"github.com/wwoytenko/greenfuscator/internal/db/postgres/dumpers"
 	"github.com/wwoytenko/greenfuscator/internal/db/postgres/pgdump"
-	toc2 "github.com/wwoytenko/greenfuscator/internal/db/postgres/toc"
-	commondomains "github.com/wwoytenko/greenfuscator/internal/domains"
+	"github.com/wwoytenko/greenfuscator/internal/db/postgres/toc"
 	"github.com/wwoytenko/greenfuscator/internal/storage"
+	toolkit "github.com/wwoytenko/greenfuscator/internal/toolkit/transformers"
 )
 
 type Dump struct {
-	dsn            string
-	pgDumpOptions  *pgdump.Options
-	pgDump         *pgdump.PgDump
-	curDumpId      toclib2.DumpId
-	st             storage.Storager
-	dumpTaskCount  int32
-	allTaskPushed  atomic.Bool
-	tablesConfig   []*config.Table
-	ah             *toc2.ArchiveHandle
-	tocDataEntries []*toc2.Entry
+	dsn                string
+	pgDumpOptions      *pgdump.Options
+	pgDump             *pgdump.PgDump
+	dumpIdSequence     *toc.DumpIdSequence
+	st                 storage.Storager
+	dumpTaskCount      int32
+	allTaskPushed      atomic.Bool
+	config             []*config.Table
+	dataEntryProducers []toc.EntryProducer
+	context            *runtimeContext.RuntimeContext
+	transformersMap    map[string]*toolkit.Definition
+	schemaToc          *toc.Toc
+	resultToc          *toc.Toc
 }
 
-func NewDump(binPath string, opt *pgdump.Options, st storage.Storager, tableConfig []*config.Table) *Dump {
+func NewDump(binPath string, opt *pgdump.Options, st storage.Storager, cfg []*config.Table) *Dump {
 	return &Dump{
 		pgDumpOptions: opt,
 		pgDump:        pgdump.NewPgDump(binPath),
 		st:            st,
-		tablesConfig:  tableConfig,
+		config:        cfg,
 	}
 }
 
-func (d *Dump) Connect(ctx context.Context, dsn string) (*pgx.Conn, error) {
+func (d *Dump) prune() {
+	d.schemaToc = nil
+	d.context = nil
+	d.schemaToc = nil
+	d.resultToc = nil
+	d.transformersMap = nil
+	d.dumpTaskCount = 0
+	d.allTaskPushed.Store(false)
+	d.dumpIdSequence = nil
+}
+
+func (d *Dump) connect(ctx context.Context, dsn string) (*pgx.Conn, error) {
 
 	conn, err := pgx.Connect(ctx, dsn)
 	if err != nil {
@@ -98,55 +113,21 @@ func (d *Dump) startMainTx(ctx context.Context, conn *pgx.Conn) (pgx.Tx, error) 
 	return tx, nil
 }
 
-// logValidationWarnings - logging received errors from Validate. We need inject some attributes to the log so that it will be clear
-// in the output
-func logValidationWarnings(warnings commondomains.ValidationWarnings, schemaName, tableName, transformerName string) {
-	for _, w := range warnings {
-		event := log.WithLevel(commondomains.ValidationWarningLogSeverities[w.Level]).
-			Str("SchemaName", schemaName).
-			Str("TableName", tableName).
-			Str("TransformerName", transformerName)
-		w.LogEvent(event)
-	}
-}
-
-func (d *Dump) Validate(ctx context.Context, tx pgx.Tx) (map[toclib2.Oid]*toclib2.Table, error) {
-	var fatal = false
-
-	// Initialise transformers, check table, columns and transformer exists
-	// validate type support and make a table config
-	tablesConfigMap, warnings, err := dump_config_builder.BuildTablesConfig(ctx, tx, d.tablesConfig)
-	// Log the errors occurred during initialisation
+func (d *Dump) buildContextAndValidate(ctx context.Context, tx pgx.Tx) (err error) {
+	d.context, err = runtimeContext.NewRuntimeContext(ctx, tx, d.config, d.transformersMap, d.pgDumpOptions)
 	if err != nil {
-		return nil, err
+		return fmt.Errorf("unable to build runtime context: %w", err)
 	}
-	for _, w := range warnings {
-		w.Log()
+	// TODO: Implement warnings hook, such as logging and HTTP sender
+	log.Warn().Msg("IMPLEMENT ME: warnings hook, such as logging and HTTP sender")
+	for _, w := range d.context.Warning {
+		log.Debug().Any("ValidationWarning", w).Msg("")
 	}
-	if warnings != nil && warnings.IsFatal() {
-		return nil, fmt.Errorf("fatal validation error")
+	if d.context.IsFatal() {
+		return fmt.Errorf("fatal validation error")
 	}
 
-	// Run .Validate method for each initialised transformer
-	for _, table := range tablesConfigMap {
-		for _, transformer := range table.Transformers {
-			warnings, err = transformer.Validate()
-			if err != nil {
-				return nil, fmt.Errorf("fatal validation error: %w", err)
-			}
-			if warnings.IsFatal() {
-				fatal = true
-			}
-			// Log validation errors
-			if len(warnings) != 0 {
-				logValidationWarnings(warnings, table.Schema, table.Name, transformer.GetName())
-			}
-		}
-	}
-	if fatal {
-		return nil, fmt.Errorf("fatal validation error")
-	}
-	return tablesConfigMap, nil
+	return nil
 }
 
 func (d *Dump) schemaOnlyDump(ctx context.Context, tx pgx.Tx) error {
@@ -177,26 +158,21 @@ func (d *Dump) schemaOnlyDump(ctx context.Context, tx pgx.Tx) error {
 			log.Warn().Err(err).Msgf("unable to delete temp file")
 		}
 	}()
-	schemaToc, err := toc2.ReadFile(srcTocFile)
+	rocReader := toc.NewReader(srcTocFile)
+	schemaToc, err := rocReader.Read()
 	if err != nil {
 		return fmt.Errorf("error reading toc file: %w", err)
 	}
-	d.ah = schemaToc
-	d.curDumpId = toclib2.DumpId(schemaToc.MaxDumpId + 1)
+	d.schemaToc = schemaToc
+	d.dumpIdSequence = toc.NewDumpSequence(schemaToc.Header.MaxDumpId + 1)
 
 	return nil
 }
 
-func (d *Dump) dataDump(ctx context.Context, tx pgx.Tx, tablesConfig map[toclib2.Oid]*toclib2.Table) error {
+func (d *Dump) dataDump(ctx context.Context, tx pgx.Tx) error {
 	// TODO: You should use pointer to dumpers.DumpTask instead
-	var largeObjectsList []*toclib2.LargeObjects
-	tablesList, sequenceList, err := dump_config_builder.GetObjects(ctx, tx, d.pgDumpOptions, tablesConfig, &d.curDumpId)
-	if err != nil {
-		return fmt.Errorf("building data objects: %w", err)
-	}
-
-	tasks := make(chan dumpers2.DumpTask, d.pgDumpOptions.Jobs)
-	result := make(chan *toc2.Entry, d.pgDumpOptions.Jobs)
+	tasks := make(chan dumpers.DumpTask, d.pgDumpOptions.Jobs)
+	result := make(chan toc.EntryProducer, d.pgDumpOptions.Jobs)
 	defer close(result)
 
 	log.Debug().Msgf("planned %d workers", d.pgDumpOptions.Jobs)
@@ -214,65 +190,53 @@ func (d *Dump) dataDump(ctx context.Context, tx pgx.Tx, tablesConfig map[toclib2
 
 	eg.Go(func() error {
 		defer close(tasks)
-		for _, table := range tablesList {
-			if table.ExcludeData {
-				continue
+
+		for _, dumpObj := range d.context.DataSectionObjects {
+			log.Warn().Msg("implement data exclusion")
+			var task dumpers.DumpTask
+			switch v := dumpObj.(type) {
+			case *dump.Table:
+				task = dumpers.NewTableDumper(v)
+			case *dump.Sequence:
+				task = dumpers.NewSequenceDumper(v)
+			case *dump.LargeObject:
+				return fmt.Errorf("is not implemented")
+			default:
+				return fmt.Errorf("unknow dumper type")
 			}
 			atomic.AddInt32(&d.dumpTaskCount, 1)
 			select {
 			case <-gtx.Done():
 				return gtx.Err()
-			case tasks <- dumpers2.NewTableDumper(*table):
+			case tasks <- task:
 			}
 		}
-		for idx, sequence := range sequenceList {
-			if sequence.ExcludeData {
-				continue
-			}
-
-			// Once all task has been pushed we assign true value for allTaskPushed before writing into
-			// the channel
-			atomic.AddInt32(&d.dumpTaskCount, 1)
-			if idx == len(sequenceList)-1 {
-				d.allTaskPushed.Store(true)
-			}
-
-			select {
-			case <-gtx.Done():
-				return gtx.Err()
-			case tasks <- dumpers2.NewSequenceDumper(*sequence):
-			}
-		}
+		d.allTaskPushed.Store(true)
 		return nil
 	})
 
-	var originalSize, compressedSize int64
-	d.tocDataEntries = make([]*toc2.Entry, 0, len(tablesList)+len(sequenceList)+len(largeObjectsList))
+	d.dataEntryProducers = make([]toc.EntryProducer, 0, len(d.context.DataSectionObjects))
 	eg.Go(func() error {
-		tables := make([]*toc2.Entry, 0, len(tablesList))
-		sequences := make([]*toc2.Entry, 0, len(sequenceList))
-		largeObjects := make([]*toc2.Entry, 0, 0)
+		var tables, sequences, largeObjects []toc.EntryProducer
 		for i := int32(0); !d.allTaskPushed.Load() || i < atomic.LoadInt32(&d.dumpTaskCount); i++ {
 			select {
 			case <-gtx.Done():
 				return gtx.Err()
-			case tocEntry := <-result:
-				switch *tocEntry.Desc {
-				case toclib2.TableDataDesc:
-					tables = append(tables, tocEntry)
-				case toclib2.SequenceSetDesc:
-					sequences = append(sequences, tocEntry)
-				case toclib2.LargeObjectDesc:
-					largeObjects = append(largeObjects, tocEntry)
+			case entry := <-result:
+				switch entry.(type) {
+				case *dump.Table:
+					tables = append(tables, entry)
+				case *dump.Sequence:
+					sequences = append(sequences, entry)
+				case *dump.LargeObject:
+					largeObjects = append(largeObjects, entry)
 				default:
-					return fmt.Errorf("unexpected toc entry %s", *tocEntry.Desc)
+					return fmt.Errorf("unexpected toc entry type")
 				}
-				originalSize += tocEntry.OriginalSize
-				compressedSize += tocEntry.CompressedSize
 			}
 		}
-		d.tocDataEntries = append(d.tocDataEntries, tables...)
-		d.tocDataEntries = append(d.tocDataEntries, sequences...)
+		d.dataEntryProducers = append(d.dataEntryProducers, tables...)
+		d.dataEntryProducers = append(d.dataEntryProducers, sequences...)
 		return nil
 	})
 
@@ -282,11 +246,11 @@ func (d *Dump) dataDump(ctx context.Context, tx pgx.Tx, tablesConfig map[toclib2
 	return nil
 }
 
-func (d *Dump) merge(ctx context.Context, tx pgx.Tx) error {
+func (d *Dump) mergeAndWriteToc(ctx context.Context, tx pgx.Tx) error {
 	log.Debug().Msg("merging toc entries")
-	mergedTocs, err := d.MergeTocEntries(d.ah.GetEntries(), d.tocDataEntries)
+	mergedEntries, err := d.MergeTocEntries(d.schemaToc.Entries, d.dataEntryProducers)
 	if err != nil {
-		return fmt.Errorf("unable to merge TOC files: %w", err)
+		return fmt.Errorf("unable to mergeAndWriteToc TOC files: %w", err)
 	}
 
 	log.Debug().Msg("writing built toc file")
@@ -295,18 +259,21 @@ func (d *Dump) merge(ctx context.Context, tx pgx.Tx) error {
 		return err
 	}
 	defer destTocFile.Close()
-	d.ah.SetEntries(mergedTocs)
-	if err = toc2.WriteFile(d.ah, destTocFile); err != nil {
+	mergedHeader := *d.schemaToc.Header
+	mergedHeader.TocCount = int32(len(mergedEntries))
+	mergedToc := &toc.Toc{
+		Header:  &mergedHeader,
+		Entries: mergedEntries,
+	}
+	tocWriter := toc.NewWriter(destTocFile)
+	if err = tocWriter.Write(mergedToc); err != nil {
 		return fmt.Errorf("error writing toc file: %w", err)
 	}
 	return nil
 }
 
 func (d *Dump) writeMetaData(ctx context.Context, startedAt, completedAt time.Time) error {
-	metadata, err := storage2.NewMetadata(d.ah.Header, d.ah.GetEntries(),
-		d.ah.WrittenBytes, startedAt, completedAt,
-		d.tablesConfig,
-	)
+	metadata, err := storageDto.NewMetadata(d.resultToc.Header, d.dataEntryProducers, 0, startedAt, completedAt, d.config)
 	if err != nil {
 		return fmt.Errorf("unable build metadata: %w", err)
 	}
@@ -321,16 +288,21 @@ func (d *Dump) writeMetaData(ctx context.Context, startedAt, completedAt time.Ti
 	return nil
 }
 
-func (d *Dump) RunDump(ctx context.Context) error {
-
+func (d *Dump) Run(ctx context.Context) (err error) {
+	defer d.prune()
 	startedAt := time.Now()
+
+	d.transformersMap, err = runtimeContext.BuildTransformersMap()
+	if err != nil {
+		return fmt.Errorf("error building transformers map: %w", err)
+	}
 
 	dsn, err := d.pgDumpOptions.GetPgDSN()
 	if err != nil {
 		return fmt.Errorf("cannot build connection string: %w", err)
 	}
 
-	conn, err := d.Connect(ctx, dsn)
+	conn, err := d.connect(ctx, dsn)
 	if err != nil {
 		return err
 	}
@@ -350,11 +322,10 @@ func (d *Dump) RunDump(ctx context.Context) error {
 		}
 	}()
 
-	tablesConfigMap, err := d.Validate(ctx, tx)
-	if err != nil {
-		return err
+	if err := d.buildContextAndValidate(ctx, tx); err != nil {
+		return fmt.Errorf("context error: %w", err)
 	}
-	// Exiting if we are only validation the settings
+
 	if d.pgDumpOptions.Validate {
 		return nil
 	}
@@ -363,12 +334,12 @@ func (d *Dump) RunDump(ctx context.Context) error {
 		return fmt.Errorf("schema only stage dumping error: %w", err)
 	}
 
-	if err = d.dataDump(ctx, tx, tablesConfigMap); err != nil {
+	if err = d.dataDump(ctx, tx); err != nil {
 		return fmt.Errorf("data stage dumping error: %w", err)
 	}
 
-	if err = d.merge(ctx, tx); err != nil {
-		return fmt.Errorf("merge stage dumping error: %w", err)
+	if err = d.mergeAndWriteToc(ctx, tx); err != nil {
+		return fmt.Errorf("mergeAndWriteToc stage dumping error: %w", err)
 	}
 
 	if err = d.writeMetaData(ctx, startedAt, time.Now()); err != nil {
@@ -378,32 +349,38 @@ func (d *Dump) RunDump(ctx context.Context) error {
 	return nil
 }
 
-func (d *Dump) MergeTocEntries(schema, data []*toc2.Entry) ([]*toc2.Entry, error) {
+func (d *Dump) MergeTocEntries(schemaEntries []*toc.Entry, dataEntryProducers []toc.EntryProducer) ([]*toc.Entry, error) {
 	// TODO: Assign dependencies and sort entries in the same order
-	res := make([]*toc2.Entry, 0, len(schema)+len(data))
+	res := make([]*toc.Entry, 0, len(schemaEntries)+len(dataEntryProducers))
 
 	preDataEnd := 0
 	postDataStart := 0
 
 	// Find predata last index and postdata first index
-	for idx, item := range schema {
-		if item.Section == toc2.SectionPreData {
+	for idx, item := range schemaEntries {
+		if item.Section == toc.SectionPreData {
 			preDataEnd = idx
 		}
-		if item.Section == toc2.SectionPostData {
+		if item.Section == toc.SectionPostData {
 			postDataStart = idx
 			break
 		}
 	}
 
-	res = append(res, schema[:preDataEnd+1]...)
-	res = append(res, data...)
-	res = append(res, schema[postDataStart:]...)
+	res = append(res, schemaEntries[:preDataEnd+1]...)
+	for _, ep := range dataEntryProducers {
+		entry, err := ep.Entry()
+		if err != nil {
+			return nil, fmt.Errorf("cannot produce entry: %w", err)
+		}
+		res = append(res, entry)
+	}
+	res = append(res, schemaEntries[postDataStart:]...)
 
 	return res, nil
 }
 
-func (d *Dump) dumpWorker(ctx context.Context, tasks <-chan dumpers2.DumpTask, result chan<- *toc2.Entry, id int) error {
+func (d *Dump) dumpWorker(ctx context.Context, tasks <-chan dumpers.DumpTask, result chan<- toc.EntryProducer, id int) error {
 	var isolationLevel = "REPEATABLE READ"
 	if d.pgDumpOptions.SerializableDeferrable {
 		isolationLevel = "SERIALIZABLE DEFERRABLE"
@@ -434,7 +411,7 @@ func (d *Dump) dumpWorker(ctx context.Context, tasks <-chan dumpers2.DumpTask, r
 	}
 
 	for {
-		var task dumpers2.DumpTask
+		var task dumpers.DumpTask
 		select {
 		case <-ctx.Done():
 			log.Debug().

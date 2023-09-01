@@ -1,4 +1,4 @@
-package config_builder
+package context
 
 import (
 	"context"
@@ -12,7 +12,7 @@ import (
 	toolkit "github.com/wwoytenko/greenfuscator/internal/toolkit/transformers"
 )
 
-func buildTransformersMap() (map[string]*toolkit.Definition, error) {
+func BuildTransformersMap() (map[string]*toolkit.Definition, error) {
 	tm := make(map[string]*toolkit.Definition)
 	for _, td := range defaultTransformers.DefaultTransformersList {
 		if _, ok := tm[td.Properties.Name]; ok {
@@ -41,11 +41,11 @@ func initTransformer(
 			}))
 		return nil, totalWarnings, nil
 	}
-	driver, err := toolkit.NewDriver(tm, &t.Table)
+	driver, err := toolkit.NewDriver(tm, t.Table)
 	if err != nil {
 		return nil, nil, fmt.Errorf("driver initialization for table %s.%s: %w", t.Schema, t.Name, err)
 	}
-	transformer, warnings, err := td.Instance(ctx, driver, c.Params)
+	transformer, warnings, err := td.Instance(ctx, driver, c.Params, nil)
 	if err != nil {
 		return nil, nil, fmt.Errorf("unable to init transformer: %w", err)
 	}

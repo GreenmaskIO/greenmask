@@ -1,4 +1,4 @@
-package pgdump
+package context
 
 import (
 	"fmt"

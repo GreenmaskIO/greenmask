@@ -166,7 +166,7 @@ func (w *Writer) writeEntries(entries []*Entry) error {
 
 		oidStr := strconv.FormatUint(uint64(entry.CatalogId.Oid), 10)
 		if err := w.writeStr(&oidStr); err != nil {
-			panic(fmt.Sprintf("unable to write Oid: %s", err))
+			panic(fmt.Sprintf("unable to write Name: %s", err))
 		}
 
 		if err := w.writeStr(entry.Tag); err != nil {

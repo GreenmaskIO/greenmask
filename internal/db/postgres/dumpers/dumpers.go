@@ -10,6 +10,6 @@ import (
 )
 
 type DumpTask interface {
-	Execute(ctx context.Context, tx pgx.Tx, st storage.Storager) (*toc.Entry, error)
+	Execute(ctx context.Context, tx pgx.Tx, st storage.Storager) (toc.EntryProducer, error)
 	DebugInfo() string
 }

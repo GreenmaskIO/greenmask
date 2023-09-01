@@ -38,7 +38,7 @@ var (
 			}
 			dump := postgres.NewDump(Config.Common.BinPath, &Config.Dump.PgDumpOptions, st, Config.Dump.Transformation)
 
-			if err := dump.RunDump(ctx); err != nil {
+			if err := dump.Run(ctx); err != nil {
 				log.Fatal().Err(err).Msg("cannot make a backup")
 			}
 

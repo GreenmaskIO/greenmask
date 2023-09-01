@@ -40,7 +40,9 @@ func (d *Definition) SetSchemaValidator(v SchemaValidationFunc) *Definition {
 	return d
 }
 
-func (d *Definition) parseParameters(driver *Driver, rawParams map[string][]byte) (ValidationWarnings, map[string]*Parameter, error) {
+func (d *Definition) parseParameters(
+	driver *Driver, rawParams map[string][]byte, types []*Type,
+) (ValidationWarnings, map[string]*Parameter, error) {
 	var params = make(map[string]*Parameter, len(d.Parameters))
 	for _, p := range d.Parameters {
 		params[p.Name] = &(*p)
@@ -75,15 +77,15 @@ func (d *Definition) parseParameters(driver *Driver, rawParams map[string][]byte
 	return totalWarnings, params, nil
 }
 
-func (d *Definition) Instance(ctx context.Context, driver *Driver, rawParams map[string][]byte) (Transformer, ValidationWarnings, error) {
+func (d *Definition) Instance(ctx context.Context, driver *Driver, rawParams map[string][]byte, types []*Type) (Transformer, ValidationWarnings, error) {
 	// Parse parameters and get the copy of parsed
-	parametersWarnings, params, err := d.parseParameters(driver, rawParams)
+	parametersWarnings, params, err := d.parseParameters(driver, rawParams, types)
 	if err != nil {
 		return nil, nil, err
 	}
 
 	// Validate schema
-	schemaWarnings, err := d.SchemaValidator(driver.Table, d.Properties, d.Parameters)
+	schemaWarnings, err := d.SchemaValidator(driver.Table, d.Properties, d.Parameters, nil)
 	if err != nil {
 		return nil, nil, fmt.Errorf("schema validation error: %w", err)
 	}

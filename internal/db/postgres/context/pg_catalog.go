@@ -1,4 +1,4 @@
-package pgdump
+package context
 
 import (
 	"context"
@@ -8,9 +8,10 @@ import (
 
 	"github.com/jackc/pgx/v5"
 
-	"github.com/wwoytenko/greenfuscator/internal/db/postgres/config_builder"
 	"github.com/wwoytenko/greenfuscator/internal/db/postgres/domains/dump"
-	"github.com/wwoytenko/greenfuscator/internal/db/postgres/domains/toclib"
+	"github.com/wwoytenko/greenfuscator/internal/db/postgres/pgdump"
+	"github.com/wwoytenko/greenfuscator/internal/db/postgres/toc"
+	toolkit "github.com/wwoytenko/greenfuscator/internal/toolkit/transformers"
 )
 
 const (
@@ -20,13 +21,13 @@ const (
 
 // TODO: Rewrite it using gotemplate
 
-func GetDumpObjects(ctx context.Context, tx pgx.Tx, pgDumpOptions *Options, tablesConfig map[toclib.Oid]*toclib.Table, dumpIdSeq *toclib.DumpId) ([]dump.TocDumper, error) {
+func getDumpObjects(ctx context.Context, tx pgx.Tx, options *pgdump.Options, config map[toolkit.Oid]*dump.Table) ([]dump.Entry, error) {
 
 	// Building relation search query using regexp adaptation rules and pre-defined query templates
 	// TODO: Refactor it to gotemplate
-	query, err := BuildTableSearchQuery(pgDumpOptions.Table, pgDumpOptions.ExcludeTable,
-		pgDumpOptions.ExcludeTableData, pgDumpOptions.IncludeForeignData, pgDumpOptions.Schema,
-		pgDumpOptions.ExcludeSchema)
+	query, err := BuildTableSearchQuery(options.Table, options.ExcludeTable,
+		options.ExcludeTableData, options.IncludeForeignData, options.Schema,
+		options.ExcludeSchema)
 	if err != nil {
 		return nil, err
 	}
@@ -37,11 +38,12 @@ func GetDumpObjects(ctx context.Context, tx pgx.Tx, pgDumpOptions *Options, tabl
 	}
 
 	// Generate table objects
-	sequences := make([]*toclib.Sequence, 0)
-	tables := make([]*toclib.Table, 0)
+	//sequences := make([]*dump.Sequence, 0)
+	//tables := make([]*dump.Table, 0)
+	var dataObjects []dump.Entry
 	defer rows.Close()
 	for rows.Next() {
-		var oid toclib.Oid
+		var oid toc.Oid
 		var lastVal int64
 		var schemaName, name, owner, rootPtName, rootPtSchema string
 		var relKind rune
@@ -53,16 +55,16 @@ func GetDumpObjects(ctx context.Context, tx pgx.Tx, pgDumpOptions *Options, tabl
 		); err != nil {
 			return nil, fmt.Errorf("unnable scan data: %w", err)
 		}
-		var table *toclib.Table
+		var table *dump.Table
 
 		switch relKind {
 		case 'S':
-			sequences = append(sequences, &toclib.Sequence{
+			// Building sequence objects
+			dataObjects = append(dataObjects, &dump.Sequence{
 				Name:        name,
 				Schema:      schemaName,
-				Oid:         toclib.Oid(oid),
+				Oid:         oid,
 				Owner:       owner,
-				DumpId:      dumpIdSeq.GetDumpId(),
 				LastValue:   lastVal,
 				IsCalled:    isCalled,
 				ExcludeData: excludeData,
@@ -72,42 +74,43 @@ func GetDumpObjects(ctx context.Context, tx pgx.Tx, pgDumpOptions *Options, tabl
 		case 'p':
 			fallthrough
 		case 'f':
-			table, ok = tablesConfig[oid]
+			// Building table objects
+			table, ok = config[toolkit.Oid(oid)]
 			if ok {
 				// If table was discovered during Transformer validation - use that object instead of a new
-				table.DumpId = dumpIdSeq.GetDumpId()
 				table.ExcludeData = excludeData
-				table.LoadViaPartitionRoot = pgDumpOptions.LoadViaPartitionRoot
+				table.LoadViaPartitionRoot = options.LoadViaPartitionRoot
 			} else {
-				// If not - create new table object
-				table = &toclib.Table{
-					Name:                 name,
-					Schema:               schemaName,
-					Oid:                  oid,
+				// If table is not found - create new table object and collect all the columns
+
+				columns, err := getColumnsConfig(ctx, tx, toolkit.Oid(oid))
+				if err != nil {
+					return nil, fmt.Errorf("unable to collect table columns: %w", err)
+				}
+
+				table = &dump.Table{
+					Table: &toolkit.Table{
+						Name:    name,
+						Schema:  schemaName,
+						Oid:     toolkit.Oid(oid),
+						Columns: columns,
+					},
 					Owner:                owner,
-					DumpId:               dumpIdSeq.GetDumpId(),
 					RelKind:              relKind,
 					RootPtSchema:         rootPtSchema,
 					RootPtName:           rootPtName,
 					ExcludeData:          excludeData,
-					LoadViaPartitionRoot: pgDumpOptions.LoadViaPartitionRoot,
+					LoadViaPartitionRoot: options.LoadViaPartitionRoot,
 				}
 			}
 
-			tables = append(tables, table)
+			dataObjects = append(dataObjects, table)
 		default:
 			return nil, fmt.Errorf("unknown relkind \"%s\"", relKind)
 		}
 	}
 
-	// Assign columns and transformers for table
-	for _, table := range tables {
-		if err := config_builder.SetTableColumns(ctx, tx, table); err != nil {
-			return nil, nil, err
-		}
-	}
-
-	return tables, sequences, nil
+	return dataObjects, nil
 }
 
 func renderRelationCond(ss []string, defaultCond string) (string, error) {
@@ -122,18 +125,18 @@ func renderRelationCond(ss []string, defaultCond string) (string, error) {
 			if len(regexpParts) > 2 {
 				return "", errors.New("dots must appear only once")
 			} else if len(regexpParts) == 2 {
-				s, err := AdaptRegexp(regexpParts[0])
+				s, err := pgdump.AdaptRegexp(regexpParts[0])
 				if err != nil {
 					return "", fmt.Errorf("cannot adapt schema pattern: %w", err)
 				}
 				schemaPattern = s
-				s, err = AdaptRegexp(regexpParts[1])
+				s, err = pgdump.AdaptRegexp(regexpParts[1])
 				if err != nil {
 					return "", fmt.Errorf("cannot adapt table pattern: %w", err)
 				}
 				tablePattern = s
 			} else {
-				s, err := AdaptRegexp(regexpParts[0])
+				s, err := pgdump.AdaptRegexp(regexpParts[0])
 				if err != nil {
 					return "", fmt.Errorf("cannot adapt table pattern: %w", err)
 				}
@@ -158,7 +161,7 @@ func renderNamespaceCond(ss []string, defaultCond string) (string, error) {
 				return "", errors.New("does not expect dots")
 			}
 
-			pattern, err := AdaptRegexp(item)
+			pattern, err := pgdump.AdaptRegexp(item)
 			if err != nil {
 				return "", fmt.Errorf("cannot adapt schema pattern: %w", err)
 			}
@@ -181,7 +184,7 @@ func renderForeignDataCond(ss []string, defaultCond string) (string, error) {
 				return "", errors.New("does not expect dots")
 			}
 
-			pattern, err := AdaptRegexp(item)
+			pattern, err := pgdump.AdaptRegexp(item)
 			if err != nil {
 				return "", fmt.Errorf("cannot adapt schema pattern: %w", err)
 			}

@@ -14,8 +14,6 @@ var SectionMap = map[int32]string{
 	SectionPostData: "PostData",
 }
 
-type Oid int
-
 type CatalogId struct {
 	TableOid Oid
 	Oid      Oid
@@ -47,6 +45,6 @@ type Entry struct {
 	// TODO: Pay attention, maybe you need to change this byte latter
 	DataLength uint32 /* item's data size; 0 if none or unknown */
 
-	OriginalSize   int64
-	CompressedSize int64
+	//OriginalSize   int64
+	//CompressedSize int64
 }

@@ -1,4 +1,4 @@
-package config_builder
+package context
 
 import (
 	"context"
@@ -7,11 +7,62 @@ import (
 
 	"github.com/jackc/pgx/v5"
 
+	"github.com/wwoytenko/greenfuscator/internal/db/postgres/domains/config"
 	"github.com/wwoytenko/greenfuscator/internal/db/postgres/domains/dump"
-	"github.com/wwoytenko/greenfuscator/internal/db/postgres/domains/toclib"
 	"github.com/wwoytenko/greenfuscator/internal/domains"
 	toolkit "github.com/wwoytenko/greenfuscator/internal/toolkit/transformers"
 )
+
+// ValidateAndBuildTableConfig - validates tables, transformers and their parameters. Builds config for tables and returns
+// ValidationWarnings that can be used for checking helpers in configuring and debugging transformation. Those
+// may contain the schema affection warnings that would be useful for considering consistency
+func validateAndBuildTablesConfig(
+	ctx context.Context, tx pgx.Tx, cfg []*config.Table, tm map[string]*toolkit.Definition,
+) (map[toolkit.Oid]*dump.Table, toolkit.ValidationWarnings, error) {
+	tables := make(map[toolkit.Oid]*dump.Table, len(cfg))
+	var warnings toolkit.ValidationWarnings
+
+	for _, t := range cfg {
+		table, tableWarnings, err := getTable(ctx, tx, t.Schema, t.Name)
+		if err != nil {
+			return nil, nil, fmt.Errorf("cannot build table from config: %w", err)
+		}
+		warnings = append(warnings, tableWarnings...)
+		if len(tableWarnings) > 0 {
+			continue
+		}
+
+		// Assign table constraints
+		constraints, err := getTableConstraints(ctx, tx, table.Oid)
+		if err != nil {
+			return nil, nil, err
+		}
+		table.Constraints = constraints
+
+		// Assign columns and transformersMap if were found
+		columns, err := getColumnsConfig(ctx, tx, table.Oid)
+		if err != nil {
+			return nil, nil, err
+		}
+		table.Columns = columns
+
+		// InitTransformation transformers
+		if len(t.Transformers) > 0 {
+			for _, tc := range t.Transformers {
+				transformer, initWarnings, err := initTransformer(ctx, table, tc, tx.Conn().TypeMap(), tm)
+				if err != nil {
+					return nil, nil, err
+				}
+				warnings = append(warnings, initWarnings...)
+				table.Transformers = append(table.Transformers, transformer)
+			}
+		}
+
+		tables[table.Oid] = table
+	}
+
+	return tables, warnings, nil
+}
 
 func getTable(ctx context.Context, tx pgx.Tx, schema, name string) (*dump.Table, toolkit.ValidationWarnings, error) {
 	table := &dump.Table{}
@@ -36,9 +87,9 @@ func getTable(ctx context.Context, tx pgx.Tx, schema, name string) (*dump.Table,
 	return table, warnings, nil
 }
 
-func getColumnsConfig(ctx context.Context, tx pgx.Tx, table *dump.Table) ([]*toolkit.Column, error) {
+func getColumnsConfig(ctx context.Context, tx pgx.Tx, oid toolkit.Oid) ([]*toolkit.Column, error) {
 	var res []*toolkit.Column
-	rows, err := tx.Query(ctx, TableColumnsQuery, table.Oid)
+	rows, err := tx.Query(ctx, TableColumnsQuery, oid)
 	if err != nil {
 		return nil, fmt.Errorf("unable execute tableColumnQuery: %w", err)
 	}
@@ -56,10 +107,10 @@ func getColumnsConfig(ctx context.Context, tx pgx.Tx, table *dump.Table) ([]*too
 	return res, nil
 }
 
-func getTableConstraints(ctx context.Context, tx pgx.Tx, table *dump.Table) ([]toolkit.Constraint, error) {
+func getTableConstraints(ctx context.Context, tx pgx.Tx, oid toolkit.Oid) ([]toolkit.Constraint, error) {
 	var constraints []toolkit.Constraint
 
-	rows, err := tx.Query(ctx, TableConstraintsCommonQuery, table.Oid)
+	rows, err := tx.Query(ctx, TableConstraintsCommonQuery, oid)
 	if err != nil {
 		return nil, fmt.Errorf("cannot execute tableConstraintsQuery: %w", err)
 	}
@@ -173,29 +224,4 @@ func getTableConstraints(ctx context.Context, tx pgx.Tx, table *dump.Table) ([]t
 	}
 
 	return constraints, nil
-}
-
-func SetTableColumns(ctx context.Context, tx pgx.Tx, table *toclib.Table) error {
-
-	cfg := make(map[string]*toclib.Column)
-	for _, c := range table.Columns {
-		cfg[c.Name] = c
-	}
-
-	rows, err := tx.Query(ctx, TableColumnsQuery, table.Oid)
-	if err != nil {
-		return fmt.Errorf("perform query: %w", err)
-	}
-	columns := make([]*toclib.Column, 0)
-	for rows.Next() {
-		column := toclib.Column{}
-		if err = rows.Scan(&column.Name, &column.TypeOid, &column.TypeName); err != nil {
-			return fmt.Errorf("cannot scan column: %w", err)
-		}
-
-		columns = append(columns, &column)
-	}
-
-	table.Columns = columns
-	return nil
 }

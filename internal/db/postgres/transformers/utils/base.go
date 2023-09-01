@@ -12,6 +12,7 @@ import (
 	"golang.org/x/exp/slices"
 
 	toclib2 "github.com/wwoytenko/greenfuscator/internal/db/postgres/domains/toclib"
+	"github.com/wwoytenko/greenfuscator/internal/db/postgres/toc"
 	"github.com/wwoytenko/greenfuscator/internal/domains"
 )
 
@@ -92,7 +93,7 @@ func NewTransformerBase(
 			if !ok {
 				return nil, fmt.Errorf("cannot find type %s", tParams.UseType)
 			}
-			oid = toclib2.Oid(t.OID)
+			oid = toc.Oid(t.OID)
 		}
 		if len(settings.SupportedOids) != 0 && !slices.Contains(settings.SupportedOids, int(oid)) {
 			return nil, fmt.Errorf("cannot use type: %s type is not supported", tParams.UseType)

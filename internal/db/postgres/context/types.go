@@ -1,7 +1,8 @@
-package config_builder
+package context
 
 import (
 	"context"
+	"errors"
 
 	"github.com/jackc/pgx/v5"
 
@@ -9,5 +10,5 @@ import (
 )
 
 func getCustomTypesUsedInTables(ctx context.Context, tx pgx.Tx) ([]*toolkit.Type, error) {
-
+	return nil, errors.New("is not implemented")
 }

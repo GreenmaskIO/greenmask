@@ -13,23 +13,23 @@ import (
 //		1. Fully backport PostgreSQL COPY TEXT format
 //		2. Implement COPY using CSV format. I suspect it may cause escaping problems, but it is easier
 
-type Csv struct {
+type StreamDriver struct {
 	r      *csv.Reader
 	w      *csv.Writer
 	driver *transformers.Driver
 }
 
-func NewCsv(r io.Reader, w io.Writer, driver *transformers.Driver) *Csv {
+func NewStreamDriver(r io.Reader, w io.Writer, driver *transformers.Driver) *StreamDriver {
 	cr := csv.NewReader(r)
 	cr.ReuseRecord = true
-	return &Csv{
+	return &StreamDriver{
 		r:      cr,
 		w:      csv.NewWriter(w),
 		driver: driver,
 	}
 }
 
-func (c *Csv) Read() (*transformers.Record, error) {
+func (c *StreamDriver) Read() (*transformers.Record, error) {
 	values, err := c.r.Read()
 	if err != nil {
 		return nil, fmt.Errorf("cannot read dump line: %w", err)
@@ -38,7 +38,7 @@ func (c *Csv) Read() (*transformers.Record, error) {
 	return transformers.NewRecord(c.driver, values), nil
 }
 
-func (c *Csv) Write(r *transformers.Record) error {
+func (c *StreamDriver) Write(r *transformers.Record) error {
 	res, err := r.Encode()
 	if err != nil {
 		return fmt.Errorf("cannot encode record: %w", err)

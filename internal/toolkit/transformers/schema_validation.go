@@ -18,11 +18,10 @@ const (
 	TriggerConstraintType      = "TriggerConstraint"
 )
 
-type SchemaValidationFunc func(table *Table, properties *Properties, parameters []*Parameter) (ValidationWarnings, error)
+type SchemaValidationFunc func(table *Table, properties *Properties, parameters []*Parameter, types *[]Type) (ValidationWarnings, error)
 
 func DefaultSchemaValidator(
-	table *Table, properties *Properties,
-	parameters []*Parameter, types []*Type,
+	table *Table, properties *Properties, parameters []*Parameter, types *[]Type,
 ) (ValidationWarnings, error) {
 	var warnings ValidationWarnings
 
