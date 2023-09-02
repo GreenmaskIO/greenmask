@@ -83,8 +83,6 @@ func DetermineConstraintType(v Constraint) string {
 		return FkConstraintType
 	case *PrimaryKey:
 		return PkConstraintType
-	case *PrimaryKeyReferences:
-		return PkConstraintReferencesType
 	case *Unique:
 		return UniqueConstraintType
 	case *TriggerConstraint:

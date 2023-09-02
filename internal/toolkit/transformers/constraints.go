@@ -88,15 +88,20 @@ func (fk *ForeignKey) IsAffected(column *Column) bool {
 	return slices.Contains(fk.Columns, column.Num)
 }
 
-type PrimaryKey DefaultConstraintDefinition
+type PrimaryKey struct {
+	DefaultConstraintDefinition
+	References []*LinkedTable
+}
 
 func NewPrimaryKey(schema, name, definition string, oid Oid, columns []AttNum) *PrimaryKey {
 	return &PrimaryKey{
-		Schema:     schema,
-		Name:       name,
-		Oid:        oid,
-		Columns:    columns,
-		Definition: definition,
+		DefaultConstraintDefinition: DefaultConstraintDefinition{
+			Schema:     schema,
+			Name:       name,
+			Oid:        oid,
+			Columns:    columns,
+			Definition: definition,
+		},
 	}
 }
 
@@ -108,23 +113,6 @@ type PrimaryKeyReferences struct {
 	DefaultConstraintDefinition
 	// OnTable - table that has foreign key reference on the discovering table primary key
 	OnTable LinkedTable `json:"onTable,omitempty"`
-}
-
-func NewPrimaryKeyReferences(schema, name, definition string, oid Oid, columns []AttNum, onTable LinkedTable) *PrimaryKeyReferences {
-	return &PrimaryKeyReferences{
-		DefaultConstraintDefinition: DefaultConstraintDefinition{
-			Schema:     schema,
-			Name:       name,
-			Oid:        oid,
-			Columns:    columns,
-			Definition: definition,
-		},
-		OnTable: onTable,
-	}
-}
-
-func (pkr *PrimaryKeyReferences) IsAffected(column *Column) bool {
-	return slices.Contains(pkr.Columns, column.Num)
 }
 
 type Unique DefaultConstraintDefinition

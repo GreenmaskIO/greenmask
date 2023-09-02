@@ -65,7 +65,9 @@ func validateAndBuildTablesConfig(
 }
 
 func getTable(ctx context.Context, tx pgx.Tx, schema, name string) (*dump.Table, toolkit.ValidationWarnings, error) {
-	table := &dump.Table{}
+	table := &dump.Table{
+		Table: &toolkit.Table{},
+	}
 	var warnings toolkit.ValidationWarnings
 
 	row := tx.QueryRow(ctx, TableSearchQuery, schema, name)
@@ -112,24 +114,23 @@ func getTableConstraints(ctx context.Context, tx pgx.Tx, tableOid toolkit.Oid) (
 
 	rows, err := tx.Query(ctx, TableConstraintsCommonQuery, tableOid)
 	if err != nil {
-		return nil, fmt.Errorf("cannot execute tableConstraintsQuery: %w", err)
+		return nil, fmt.Errorf("cannot execute TableConstraintsCommonQuery: %w", err)
 	}
 	defer rows.Close()
 
 	// Common constraints discovering
+	var pk *toolkit.PrimaryKey
 	for rows.Next() {
 		var c toolkit.Constraint
-		var oid toolkit.Oid
-		var name, schema, definition string
+		var constraintOid toolkit.Oid
+		var constraintName, constraintSchema, constraintDefinition, rtName, rtSchema string
 		var constraintType rune
-		var rootPtConstraint toolkit.Oid
-		var fkTable toolkit.Oid
-		var Columns, referencesColumns []toolkit.AttNum
+		var rtOid toolkit.Oid // rt - referenced table
+		var constraintColumns, rtColumns []toolkit.AttNum
 
 		err = rows.Scan(
-			&oid, &name, &schema, &constraintType,
-			&rootPtConstraint, &fkTable, &Columns,
-			&referencesColumns, &definition,
+			&constraintOid, &constraintName, &constraintSchema, &constraintType, &constraintColumns,
+			&rtOid, &rtName, &rtSchema, &rtColumns, &constraintDefinition,
 		)
 		if err != nil {
 			return nil, fmt.Errorf("unable to build constraints list: %w", err)
@@ -137,54 +138,50 @@ func getTableConstraints(ctx context.Context, tx pgx.Tx, tableOid toolkit.Oid) (
 
 		switch constraintType {
 		case 'f':
+			// TODO: Recheck it
 			c = &toolkit.ForeignKey{
 				DefaultConstraintDefinition: toolkit.DefaultConstraintDefinition{
-					Schema:     schema,
-					Name:       name,
-					Oid:        oid,
-					Columns:    Columns,
-					Definition: definition,
+					Schema:     constraintSchema,
+					Name:       constraintName,
+					Oid:        constraintOid,
+					Columns:    constraintColumns,
+					Definition: constraintDefinition,
 				},
 			}
 		case 'c':
 			c = &toolkit.Check{
-				Schema:     schema,
-				Name:       name,
-				Oid:        oid,
-				Columns:    Columns,
-				Definition: definition,
+				Schema:     constraintSchema,
+				Name:       constraintName,
+				Oid:        constraintOid,
+				Columns:    constraintColumns,
+				Definition: constraintDefinition,
 			}
 		case 'p':
-			c = &toolkit.PrimaryKey{
-				Schema:     schema,
-				Name:       name,
-				Oid:        oid,
-				Columns:    Columns,
-				Definition: definition,
-			}
+			pk = toolkit.NewPrimaryKey(constraintSchema, constraintName, constraintDefinition, constraintOid, constraintColumns)
+			c = pk
 		case 'u':
 			c = &toolkit.Unique{
-				Schema:     schema,
-				Name:       name,
-				Oid:        oid,
-				Columns:    Columns,
-				Definition: definition,
+				Schema:     constraintSchema,
+				Name:       constraintName,
+				Oid:        constraintOid,
+				Columns:    constraintColumns,
+				Definition: constraintDefinition,
 			}
 		case 't':
 			c = &toolkit.TriggerConstraint{
-				Schema:     schema,
-				Name:       name,
-				Oid:        oid,
-				Columns:    Columns,
-				Definition: definition,
+				Schema:     constraintSchema,
+				Name:       constraintName,
+				Oid:        constraintOid,
+				Columns:    constraintColumns,
+				Definition: constraintDefinition,
 			}
 		case 'x':
 			c = &toolkit.Exclusion{
-				Schema:     schema,
-				Name:       name,
-				Oid:        oid,
-				Columns:    Columns,
-				Definition: definition,
+				Schema:     constraintSchema,
+				Name:       constraintName,
+				Oid:        constraintOid,
+				Columns:    constraintColumns,
+				Definition: constraintDefinition,
 			}
 		default:
 			return nil, fmt.Errorf("unknown constraint type %c", constraintType)
@@ -196,44 +193,45 @@ func getTableConstraints(ctx context.Context, tx pgx.Tx, tableOid toolkit.Oid) (
 		constraints = append(constraints, c)
 	}
 
-	// Foreign key constraint discovering
-	rows, err = tx.Query(ctx, TablePrimaryKeyReferencesConstraintsQuery, tableOid)
+	// Add FK references to PK
+	fkRows, err := tx.Query(ctx, TablePrimaryKeyReferencesConstraintsQuery, tableOid)
 	if err != nil {
 		return nil, fmt.Errorf("cannot execute tableConstraintsQuery: %w", err)
 	}
-	defer rows.Close()
+	defer fkRows.Close()
 
-	for rows.Next() {
-		var oid, onTableOid toolkit.Oid
-		var name, schema, definition, onTableSchema, onTableName string
-		var constraintType rune
-		var rootPtConstraint toolkit.Oid
-		var fkTable toolkit.Oid
-		var Columns, referencesColumns []toolkit.AttNum
+	for fkRows.Next() {
+		var constraintOid, onTableOid toolkit.Oid
+		var constraintName, constraintSchema, constraintDefinition, onTableSchema, onTableName string
+		var constraintColumns []toolkit.AttNum
 
-		err = rows.Scan(
-			&oid, &name, &schema, &constraintType,
-			&rootPtConstraint, &fkTable, &Columns,
-			&referencesColumns, &definition,
+		err = fkRows.Scan(
+			&constraintOid, &constraintSchema, &constraintName, &onTableOid,
+			&onTableSchema, &onTableName, &constraintColumns, &constraintDefinition,
 		)
 		if err != nil {
 			return nil, fmt.Errorf("unable to build constraints list: %w", err)
 		}
-		pkr := &toolkit.PrimaryKeyReferences{
-			DefaultConstraintDefinition: toolkit.DefaultConstraintDefinition{
-				Schema:     schema,
-				Name:       name,
-				Oid:        oid,
-				Columns:    Columns,
-				Definition: definition,
+
+		pk.References = append(pk.References, &toolkit.LinkedTable{
+			Oid:    onTableOid,
+			Schema: onTableSchema,
+			Name:   onTableName,
+			Constraint: &toolkit.ForeignKey{
+				DefaultConstraintDefinition: toolkit.DefaultConstraintDefinition{
+					Schema:     constraintSchema,
+					Name:       constraintName,
+					Oid:        constraintOid,
+					Columns:    constraintColumns,
+					Definition: constraintDefinition,
+				},
+				ReferencedTable: toolkit.LinkedTable{
+					Schema: onTableSchema,
+					Name:   onTableName,
+					Oid:    onTableOid,
+				},
 			},
-			OnTable: toolkit.LinkedTable{
-				Oid:    onTableOid,
-				Schema: onTableSchema,
-				Name:   onTableName,
-			},
-		}
-		constraints = append(constraints, pkr)
+		})
 	}
 
 	return constraints, nil

@@ -20,10 +20,10 @@ type Type struct {
 	Schema string
 	// Name - (pg_type.typname) type name
 	Name string
-	// Len - (pg_type.typelen) for a fixed-size type, typlen is the number of bytes in the internal representation of the type.
+	// Length - (pg_type.typelen) for a fixed-size type, typlen is the number of bytes in the internal representation of the type.
 	// But for a variable-length type, typlen is negative. -1 indicates a “varlena” type (one that has a length
 	// word), -2 indicates a null-terminated C string.
-	Len int
+	Length int
 	// Kind - (pg_type.typtype) type of type
 	Kind rune
 	// ComposedRelation - (pg_type.typrelid) if composite type reference to the table that defines the structure
