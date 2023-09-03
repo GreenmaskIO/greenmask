@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/wwoytenko/greenfuscator/internal/db/postgres/domains/config"
 	"github.com/wwoytenko/greenfuscator/internal/db/postgres/domains/dump"
@@ -17,7 +18,8 @@ import (
 // ValidationWarnings that can be used for checking helpers in configuring and debugging transformation. Those
 // may contain the schema affection warnings that would be useful for considering consistency
 func validateAndBuildTablesConfig(
-	ctx context.Context, tx pgx.Tx, cfg []*config.Table, tm map[string]*toolkit.Definition,
+	ctx context.Context, tx pgx.Tx, typeMap *pgtype.Map,
+	cfg []*config.Table, tm map[string]*toolkit.Definition,
 ) (map[toolkit.Oid]*dump.Table, toolkit.ValidationWarnings, error) {
 	tables := make(map[toolkit.Oid]*dump.Table, len(cfg))
 	var warnings toolkit.ValidationWarnings
@@ -49,9 +51,9 @@ func validateAndBuildTablesConfig(
 		// InitTransformation transformers
 		if len(t.Transformers) > 0 {
 			for _, tc := range t.Transformers {
-				transformer, initWarnings, err := initTransformer(ctx, table, tc, tx.Conn().TypeMap(), tm)
+				transformer, initWarnings, err := initTransformer(ctx, table, tc, typeMap, tm)
 				if err != nil {
-					return nil, nil, err
+					return nil, warnings, err
 				}
 				warnings = append(warnings, initWarnings...)
 				table.Transformers = append(table.Transformers, transformer)

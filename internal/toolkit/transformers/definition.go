@@ -10,7 +10,6 @@ type TransformationType string
 const (
 	AttributeTransformation TransformationType = "attribute"
 	TupleTransformation     TransformationType = "tuple"
-	BlendTransformation     TransformationType = "blend"
 )
 
 // NewTransformerFunc - make new transformer. This function receives driver for making some steps for validation or
@@ -43,6 +42,14 @@ func (d *Definition) SetSchemaValidator(v SchemaValidationFunc) *Definition {
 func (d *Definition) parseParameters(
 	driver *Driver, rawParams map[string][]byte, types []*Type,
 ) (ValidationWarnings, map[string]*Parameter, error) {
+	if rawParams == nil && len(d.Parameters) > 0 {
+		return ValidationWarnings{
+			NewValidationWarning().
+				SetMsg("parameters are required: received empty").
+				SetLevel("error"),
+		}, nil, nil
+	}
+
 	var params = make(map[string]*Parameter, len(d.Parameters))
 	for _, p := range d.Parameters {
 		params[p.Name] = &(*p)
@@ -68,6 +75,13 @@ func (d *Definition) parseParameters(
 	}
 	// Common parameters parsing
 	for _, p := range commonParameters {
+		if p.LinkParameter != "" {
+			NewValidationWarning().
+				AddMeta("ParameterName", p.Name).
+				SetLevel(ErrorValidationSeverity).
+				SetMsg("parameter skip due to the error in the related parameter parsing")
+			continue
+		}
 		warnings, err := p.Parse(driver, rawParams, columnParameters)
 		if err != nil {
 			return nil, nil, fmt.Errorf("parameter %s parsing error: %w", p.Name, err)
@@ -84,8 +98,12 @@ func (d *Definition) Instance(ctx context.Context, driver *Driver, rawParams map
 		return nil, nil, err
 	}
 
+	if parametersWarnings.IsFatal() {
+		return nil, parametersWarnings, nil
+	}
+
 	// Validate schema
-	schemaWarnings, err := d.SchemaValidator(driver.Table, d.Properties, d.Parameters, nil)
+	schemaWarnings, err := d.SchemaValidator(ctx, driver.Table, d.Properties, d.Parameters, types)
 	if err != nil {
 		return nil, nil, fmt.Errorf("schema validation error: %w", err)
 	}
@@ -111,8 +129,7 @@ func (d *Definition) Instance(ctx context.Context, driver *Driver, rawParams map
 }
 
 func validateTransformation(transformationType TransformationType) error {
-	if transformationType != AttributeTransformation && transformationType != TupleTransformation &&
-		transformationType != BlendTransformation {
+	if transformationType != AttributeTransformation && transformationType != TupleTransformation {
 		return fmt.Errorf("unknown transformation type %s", transformationType)
 	}
 	return nil

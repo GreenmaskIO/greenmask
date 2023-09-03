@@ -1,5 +1,7 @@
 package transformers
 
+import "github.com/wwoytenko/greenfuscator/internal/domains"
+
 var (
 	KindOfType = map[rune]string{
 		'b': "Base",
@@ -38,4 +40,54 @@ type Type struct {
 	BaseType Oid
 	//Check - definition of check constraint
 	Check *Check
+}
+
+func (t *Type) IsAffected(p *Parameter) (w ValidationWarnings) {
+	if p.Column == nil {
+		panic("parameter Column must not be nil")
+	}
+	if p.Column == nil {
+		panic("parameter ColumnProperties must not be nil")
+	}
+	if !p.ColumnProperties.Affected {
+		return
+	}
+	if p.Column.TypeOid != t.Oid {
+		return
+	}
+	if p.ColumnProperties.Nullable && p.Column.NotNull {
+		w = append(w, NewValidationWarning().
+			SetLevel(WarningValidationSeverity).
+			AddMeta("ParameterName", p.Name).
+			AddMeta("ColumnName", p.Column.Name).
+			AddMeta("TypeName", p.Name).
+			SetMsg("transformer may produce NULL values but column type has NOT NULL constraint"),
+		)
+	}
+	if t.Check != nil {
+		w = append(w, NewValidationWarning().
+			SetLevel(WarningValidationSeverity).
+			AddMeta("ParameterName", p.Name).
+			AddMeta("ColumnName", p.Column.Name).
+			AddMeta("TypeSchema", t.Schema).
+			AddMeta("TypeName", t.Name).
+			AddMeta("TypeConstraintSchema", t.Check.Schema).
+			AddMeta("TypeConstraintName", t.Check.Schema).
+			AddMeta("TypeConstraintDef", t.Check.Definition).
+			SetMsg("possible check constraint violation: column has domain type with constraint"),
+		)
+	}
+	if t.Length != WithoutMaxLength && t.Length < p.ColumnProperties.MaxLength {
+		w = append(w, NewValidationWarning().
+			SetLevel(domains.WarningValidationSeverity).
+			SetMsg("transformer value might be out of length range: domain has length higher than column").
+			AddMeta("ParameterName", p.Name).
+			AddMeta("ColumnName", p.Column.Name).
+			AddMeta("TypeSchema", t.Schema).
+			AddMeta("TypeName", t.Name).
+			AddMeta("TypeLength", t.Length).
+			AddMeta("ColumnLength", p.Column.Length),
+		)
+	}
+	return
 }

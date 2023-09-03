@@ -37,6 +37,8 @@ var (
 	`
 
 	// CustomTypesUsedInTablesQuery - SQL query for listing of all custom types that involved into table definition
+	// TODO: This query must gather dependencies recursively due to the types "inheritance". Rwerite it later.
+	// 	     Otherwise thos query might not find a default Base Type
 	CustomTypesUsedInTablesQuery = `
 		WITH used_types AS (
 			-- Searching used types in schemas

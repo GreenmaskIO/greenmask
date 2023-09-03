@@ -13,7 +13,7 @@ import (
 type Unmarshaller func(parameter *Parameter, tableDriver *Driver, src []byte) (any, error)
 type ValueValidator func(v any) error
 
-const ColumnWithoutMaxLength = -1
+const WithoutMaxLength = -1
 
 // ColumnProperties - column-like parameter properties that would help to understand the affection on the consistency
 type ColumnProperties struct {
@@ -25,7 +25,7 @@ type ColumnProperties struct {
 	Unique bool `json:"unique,omitempty"`
 	// Unique - defines max length of the value. It only plays with Affected. Togather with Affected shows
 	// that values will not exceed the length of the column. It only plays with Affected
-	MaxLength int64 `json:"maxLength,omitempty"`
+	MaxLength int `json:"maxLength,omitempty"`
 	// Affected - shows assigned column name will be affected after the transformation
 	Affected bool `json:"affected,omitempty"`
 	// AllowedColumnTypes - defines all the allowed column types in textual format. If not assigned (nil) then any
@@ -36,7 +36,7 @@ type ColumnProperties struct {
 func NewColumnProperties() *ColumnProperties {
 	return &ColumnProperties{
 		Nullable:  true,
-		MaxLength: ColumnWithoutMaxLength,
+		MaxLength: WithoutMaxLength,
 	}
 }
 
@@ -50,7 +50,7 @@ func (cp *ColumnProperties) SetUnique(v bool) *ColumnProperties {
 	return cp
 }
 
-func (cp *ColumnProperties) SetMaxLength(v int64) *ColumnProperties {
+func (cp *ColumnProperties) SetMaxLength(v int) *ColumnProperties {
 	cp.MaxLength = v
 	return cp
 }
@@ -171,9 +171,6 @@ func (p *Parameter) Parse(driver *Driver, params map[string][]byte, columnParams
 		}
 	}
 
-	if params == nil {
-		return nil, fmt.Errorf("paramas cannot be nil")
-	}
 	raw, ok := params[p.Name]
 	if !ok {
 		if p.Required {
@@ -220,6 +217,11 @@ func (p *Parameter) Parse(driver *Driver, params map[string][]byte, columnParams
 		}
 	} else if p.LinkedColumnParameter != nil {
 
+		// Try to scan value using pgx driver and pgtype defined in the linked column
+		if p.LinkedColumnParameter.Column == nil {
+			return nil, fmt.Errorf("parameter is linked but column was not assigned")
+		}
+
 		switch p.value.(type) {
 		case *time.Time:
 			val, err := driver.DecodeByTypeOid(uint32(p.LinkedColumnParameter.Column.TypeOid), raw)
@@ -232,11 +234,6 @@ func (p *Parameter) Parse(driver *Driver, params map[string][]byte, columnParams
 			if err := driver.ScanByTypeOid(uint32(p.LinkedColumnParameter.Column.TypeOid), raw, p.value); err != nil {
 				return nil, fmt.Errorf("unable to scan parameter via Driver")
 			}
-		}
-
-		// Try to scan value using pgx driver and pgtype defined in the linked column
-		if p.LinkedColumnParameter.Column == nil {
-			return nil, fmt.Errorf("parameter is linked but column was not assigned")
 		}
 
 	} else if reflect.ValueOf(p.value).Kind() == reflect.String || (reflect.ValueOf(p.value).Kind() == reflect.Pointer &&
@@ -260,20 +257,22 @@ func (p *Parameter) Parse(driver *Driver, params map[string][]byte, columnParams
 		if !ok {
 			return ValidationWarnings{
 				NewValidationWarning().
+					SetLevel(ErrorValidationSeverity).
 					SetMsg("column does not exist").
-					AddMeta("columnName", *columnName).
-					AddMeta("parameterName", p.Name),
+					AddMeta("ColumnName", *columnName).
+					AddMeta("ParameterName", p.Name),
 			}, nil
 		}
 		pgType, _ := driver.TypeMap.TypeForOID(uint32(column.TypeOid))
 		if len(p.AllowedDbTypes) > 0 && !slices.Contains(p.AllowedDbTypes, pgType.Name) {
 			return ValidationWarnings{
 				NewValidationWarning().
+					SetLevel(ErrorValidationSeverity).
 					SetMsg("unsupported column type").
-					AddMeta("columnName", *columnName).
-					AddMeta("columnType", pgType.Name).
-					AddMeta("allowedDbTypes", p.AllowedDbTypes).
-					AddMeta("parameterName", p.Name),
+					AddMeta("ColumnName", *columnName).
+					AddMeta("ColumnType", pgType.Name).
+					AddMeta("AllowedDbTypes", p.AllowedDbTypes).
+					AddMeta("arameterName", p.Name),
 			}, nil
 		}
 		p.Column = column

@@ -8,13 +8,13 @@ import (
 )
 
 var TestTransformerDefinition = toolkit.NewDefinition(
-	toolkit.MustNewProperties("test", "simple description", toolkit.TupleTransformation),
+	toolkit.MustNewProperties("Test", "simple description", toolkit.TupleTransformation),
 	NewTestTransformerPlaceholder,
 	[]*toolkit.Parameter{
 		toolkit.MustNewParameter("column", "a column name", new(string), nil).
 			SetIsColumn(toolkit.NewColumnProperties().
 				SetAffected(true).
-				SetAllowedColumnTypes("timestamp"),
+				SetAllowedColumnTypes("timestamp", "timestamptz"),
 			),
 		toolkit.MustNewParameter("replace", "replacement value", &time.Time{}, nil).
 			SetLinkParameter("column"),
@@ -41,4 +41,8 @@ func (tt *TestTransformerPlaceholder) Validate(ctx context.Context) (toolkit.Val
 
 func (tt *TestTransformerPlaceholder) Transform(ctx context.Context, r *toolkit.Record) (*toolkit.Record, error) {
 	return r, nil
+}
+
+func init() {
+	DefaultTransformersList = append(DefaultTransformersList, TestTransformerDefinition)
 }

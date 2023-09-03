@@ -68,12 +68,16 @@ func ParamsToByteSliceHookFunc() mapstructure.DecodeHookFunc {
 			return data, nil
 		}
 
-		// Convert it by parsing
-		res, err := json.Marshal(data)
-		if err != nil {
-			return nil, fmt.Errorf("cannot convert map to yaml bytes: %w", err)
+		switch v := data.(type) {
+		case string:
+			return []byte(v), nil
+		default:
+			res, err := json.Marshal(data)
+			if err != nil {
+				return nil, fmt.Errorf("cannot convert map to yaml bytes: %w", err)
+			}
+			return res, nil
 		}
-		return res, nil
 	}
 }
 

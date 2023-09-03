@@ -6,5 +6,5 @@ type Column struct {
 	TypeOid  Oid    `json:"typeOid"`
 	Num      AttNum `json:"num"`
 	NotNull  bool   `json:"notNull"`
-	Length   int64  `json:"length"`
+	Length   int    `json:"length"`
 }
