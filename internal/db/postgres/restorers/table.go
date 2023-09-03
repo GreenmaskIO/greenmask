@@ -9,10 +9,13 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgproto3"
+	"github.com/rs/zerolog/log"
 
 	"github.com/wwoytenko/greenfuscator/internal/db/postgres/toc"
 	"github.com/wwoytenko/greenfuscator/internal/storage"
 )
+
+const DefaultBufferSize = 1024 * 10
 
 type TableRestorer struct {
 	Entry *toc.Entry
@@ -32,6 +35,10 @@ func (td *TableRestorer) Execute(ctx context.Context, tx pgx.Tx) error {
 		return fmt.Errorf("cannot get file name from toc Entry")
 	}
 
+	if *td.Entry.Tag == "\"flights\"" {
+		log.Debug().Msg("test")
+	}
+
 	reader, err := td.St.GetReader(ctx, *td.Entry.FileName)
 	if err != nil {
 		return fmt.Errorf("cannot open TSV file: %w", err)
@@ -41,6 +48,7 @@ func (td *TableRestorer) Execute(ctx context.Context, tx pgx.Tx) error {
 		return fmt.Errorf("cannot create gzip reader: %w", err)
 	}
 
+	log.Debug().Str("copyStmt", *td.Entry.CopyStmt).Msgf("performing copy statement")
 	frontend := tx.Conn().PgConn().Frontend()
 	frontend.Send(&pgproto3.Query{
 		String: *td.Entry.CopyStmt,
@@ -74,15 +82,17 @@ func (td *TableRestorer) Execute(ctx context.Context, tx pgx.Tx) error {
 	}
 
 	// Streaming copy data from table dump
-	buf := make([]byte, 1024)
+
 	for {
+		var n int
+		buf := make([]byte, DefaultBufferSize)
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
 		default:
 		}
 
-		n, err := gz.Read(buf)
+		n, err = gz.Read(buf)
 		if err != nil {
 			if errors.Is(err, io.EOF) {
 				frontend.Send(&pgproto3.CopyDone{})
@@ -90,6 +100,7 @@ func (td *TableRestorer) Execute(ctx context.Context, tx pgx.Tx) error {
 			}
 			return fmt.Errorf("error readimg from table dump: %w", err)
 		}
+		buf = buf[:n]
 
 		frontend.Send(&pgproto3.CopyData{
 			Data: buf[:n],

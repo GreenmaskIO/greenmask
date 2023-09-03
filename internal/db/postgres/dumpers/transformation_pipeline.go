@@ -23,7 +23,8 @@ type TransformationPipeline struct {
 	line         int64
 }
 
-func NewTransformationPipeline(ctx context.Context, buf *bytes.Buffer, table *dump.Table, w io.Writer) (*TransformationPipeline, error) {
+func NewTransformationPipeline(ctx context.Context, table *dump.Table, w io.Writer) (*TransformationPipeline, error) {
+	buf := bytes.NewBuffer(nil)
 	for _, t := range table.Transformers {
 		if err := t.Init(ctx); err != nil {
 			// TODO: Create new transformer error it would contain required context. Such as transformer name

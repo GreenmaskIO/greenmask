@@ -60,6 +60,12 @@ func validateAndBuildTablesConfig(
 			}
 		}
 
+		driver, err := toolkit.NewDriver(typeMap, table.Table)
+		if err != nil {
+			return nil, nil, fmt.Errorf("unnable to initialise driver: %w", err)
+		}
+		table.Driver = driver
+
 		tables[table.Oid] = table
 	}
 

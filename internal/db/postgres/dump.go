@@ -169,7 +169,7 @@ func (d *Dump) schemaOnlyDump(ctx context.Context, tx pgx.Tx) error {
 	return nil
 }
 
-func (d *Dump) dataDump(ctx context.Context, tx pgx.Tx) error {
+func (d *Dump) dataDump(ctx context.Context) error {
 	// TODO: You should use pointer to dumpers.DumpTask instead
 	tasks := make(chan dumpers.DumpTask, d.pgDumpOptions.Jobs)
 	result := make(chan toc.EntryProducer, d.pgDumpOptions.Jobs)
@@ -193,6 +193,7 @@ func (d *Dump) dataDump(ctx context.Context, tx pgx.Tx) error {
 
 		for _, dumpObj := range d.context.DataSectionObjects {
 			log.Warn().Msg("implement data exclusion")
+			dumpObj.SetDumpId(d.dumpIdSequence.Next())
 			var task dumpers.DumpTask
 			switch v := dumpObj.(type) {
 			case *dump.Table:
@@ -222,7 +223,10 @@ func (d *Dump) dataDump(ctx context.Context, tx pgx.Tx) error {
 			select {
 			case <-gtx.Done():
 				return gtx.Err()
-			case entry := <-result:
+			case entry, ok := <-result:
+				if entry == nil && ok {
+					panic("unexpected entry nil pointer")
+				}
 				switch entry.(type) {
 				case *dump.Table:
 					tables = append(tables, entry)
@@ -243,6 +247,7 @@ func (d *Dump) dataDump(ctx context.Context, tx pgx.Tx) error {
 	if err := eg.Wait(); err != nil {
 		return fmt.Errorf("at least one worker exited with error: %w", err)
 	}
+	log.Debug().Msg("all the data have been dumped")
 	return nil
 }
 
@@ -261,12 +266,12 @@ func (d *Dump) mergeAndWriteToc(ctx context.Context, tx pgx.Tx) error {
 	defer destTocFile.Close()
 	mergedHeader := *d.schemaToc.Header
 	mergedHeader.TocCount = int32(len(mergedEntries))
-	mergedToc := &toc.Toc{
+	d.resultToc = &toc.Toc{
 		Header:  &mergedHeader,
 		Entries: mergedEntries,
 	}
 	tocWriter := toc.NewWriter(destTocFile)
-	if err = tocWriter.Write(mergedToc); err != nil {
+	if err = tocWriter.Write(d.resultToc); err != nil {
 		return fmt.Errorf("error writing toc file: %w", err)
 	}
 	return nil
@@ -334,7 +339,7 @@ func (d *Dump) Run(ctx context.Context) (err error) {
 		return fmt.Errorf("schema only stage dumping error: %w", err)
 	}
 
-	if err = d.dataDump(ctx, tx); err != nil {
+	if err = d.dataDump(ctx); err != nil {
 		return fmt.Errorf("data stage dumping error: %w", err)
 	}
 
@@ -422,6 +427,10 @@ func (d *Dump) dumpWorker(ctx context.Context, tasks <-chan dumpers.DumpTask, re
 			return ctx.Err()
 		case task = <-tasks:
 			if task == nil {
+				log.Debug().
+					Err(ctx.Err()).
+					Int("workerID", id).
+					Msgf("exited normally")
 				return nil
 			}
 		}
@@ -433,6 +442,9 @@ func (d *Dump) dumpWorker(ctx context.Context, tasks <-chan dumpers.DumpTask, re
 		entry, err := task.Execute(ctx, tx, d.st)
 		if err != nil {
 			return err
+		}
+		if entry == nil {
+			panic("received nil entry")
 		}
 		result <- entry
 		log.Debug().

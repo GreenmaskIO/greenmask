@@ -1,7 +1,6 @@
 package dumpers
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 
@@ -41,9 +40,10 @@ func (td *TableDumper) Execute(ctx context.Context, tx pgx.Tx, st storage.Storag
 	var pipeline Pipeliner
 
 	if len(td.table.Transformers) > 0 {
-		buf := bytes.NewBuffer(make([]byte, DefaultBufSize))
-		pipeline, err = NewTransformationPipeline(ctx, buf, td.table, gz)
-		return nil, err
+		pipeline, err = NewTransformationPipeline(ctx, td.table, gz)
+		if err != nil {
+			return nil, fmt.Errorf("cannot initialize transformation pipeline: %w", err)
+		}
 	} else {
 		pipeline = NewPlainDumpPipeline(td.table, gz)
 	}

@@ -50,9 +50,10 @@ func getDumpObjects(ctx context.Context, tx pgx.Tx, options *pgdump.Options, con
 		var excludeData, isCalled bool
 		var ok bool
 
-		if err = rows.Scan(&oid, &schemaName, &name, &owner, &relKind,
+		err = rows.Scan(&oid, &schemaName, &name, &owner, &relKind,
 			&rootPtSchema, &rootPtName, &excludeData, &isCalled, &lastVal,
-		); err != nil {
+		)
+		if err != nil {
 			return nil, fmt.Errorf("unnable scan data: %w", err)
 		}
 		var table *dump.Table
@@ -83,17 +84,11 @@ func getDumpObjects(ctx context.Context, tx pgx.Tx, options *pgdump.Options, con
 			} else {
 				// If table is not found - create new table object and collect all the columns
 
-				columns, err := getColumnsConfig(ctx, tx, toolkit.Oid(oid))
-				if err != nil {
-					return nil, fmt.Errorf("unable to collect table columns: %w", err)
-				}
-
 				table = &dump.Table{
 					Table: &toolkit.Table{
-						Name:    name,
-						Schema:  schemaName,
-						Oid:     toolkit.Oid(oid),
-						Columns: columns,
+						Name:   name,
+						Schema: schemaName,
+						Oid:    toolkit.Oid(oid),
 					},
 					Owner:                owner,
 					RelKind:              relKind,
@@ -108,6 +103,19 @@ func getDumpObjects(ctx context.Context, tx pgx.Tx, options *pgdump.Options, con
 		default:
 			return nil, fmt.Errorf("unknown relkind \"%s\"", relKind)
 		}
+	}
+
+	// Assigning columns for each table
+	for _, obj := range dataObjects {
+		switch v := obj.(type) {
+		case *dump.Table:
+			columns, err := getColumnsConfig(ctx, tx, v.Oid)
+			if err != nil {
+				return nil, fmt.Errorf("unable to collect table columns: %w", err)
+			}
+			v.Columns = columns
+		}
+
 	}
 
 	return dataObjects, nil

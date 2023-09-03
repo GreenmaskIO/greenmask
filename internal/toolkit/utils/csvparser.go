@@ -20,6 +20,9 @@ type StreamDriver struct {
 }
 
 func NewStreamDriver(r io.Reader, w io.Writer, driver *transformers.Driver) *StreamDriver {
+	if driver == nil {
+		panic("received nil Driver pointer")
+	}
 	cr := csv.NewReader(r)
 	cr.ReuseRecord = true
 	return &StreamDriver{
