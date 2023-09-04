@@ -1,6 +1,6 @@
 package transformers
 
-type Properties struct {
+type TransformerProperties struct {
 	Name               string             `json:"name"`
 	Description        string             `json:"description"`
 	TransformationType TransformationType `json:"transformationType,omitempty"`
@@ -9,20 +9,20 @@ type Properties struct {
 	//IsCustom           bool               `json:"isCustom,omitempty"`
 }
 
-func MustNewProperties(name, description string, transformationType TransformationType) *Properties {
-	p, err := NewProperties(name, description, transformationType)
+func MustNewTransformerProperties(name, description string, transformationType TransformationType) *TransformerProperties {
+	p, err := NewTransformerProperties(name, description, transformationType)
 	if err != nil {
 		panic(err.Error())
 	}
 	return p
 }
 
-func NewProperties(name, description string, transformationType TransformationType) (*Properties, error) {
+func NewTransformerProperties(name, description string, transformationType TransformationType) (*TransformerProperties, error) {
 	if err := validateTransformation(transformationType); err != nil {
 		return nil, err
 	}
 
-	return &Properties{
+	return &TransformerProperties{
 		Name:               name,
 		Description:        description,
 		TransformationType: transformationType,
@@ -30,7 +30,7 @@ func NewProperties(name, description string, transformationType TransformationTy
 	}, nil
 }
 
-func (p *Properties) SetTransformationType(transformationType TransformationType) *Properties {
+func (p *TransformerProperties) SetTransformationType(transformationType TransformationType) *TransformerProperties {
 	if err := validateTransformation(transformationType); err != nil {
 		panic(err.Error())
 	}
@@ -38,7 +38,7 @@ func (p *Properties) SetTransformationType(transformationType TransformationType
 	return p
 }
 
-func (p *Properties) AddExtended(name string, data any) *Properties {
+func (p *TransformerProperties) AddExtended(name string, data any) *TransformerProperties {
 	p.Extended[name] = data
 	return nil
 }

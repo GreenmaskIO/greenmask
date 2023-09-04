@@ -7,7 +7,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/stretchr/testify/require"
 
-	toclib2 "github.com/wwoytenko/greenfuscator/internal/db/postgres/domains/toclib"
+	toclib2 "github.com/GreenmaskIO/greenmask/internal/db/postgres/domains/toclib"
 )
 
 func TestRandomBoolTransformer_Transform(t *testing.T) {

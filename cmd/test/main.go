@@ -5,7 +5,7 @@ import (
 
 	"github.com/rs/zerolog/log"
 
-	toclib "github.com/wwoytenko/greenfuscator/internal/db/postgres/toc"
+	toclib "github.com/GreenmaskIO/greenmask/internal/db/postgres/toc"
 )
 
 func main() {

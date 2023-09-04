@@ -8,8 +8,8 @@ import (
 
 	"github.com/mitchellh/mapstructure"
 
-	"github.com/wwoytenko/greenfuscator/internal/db/postgres/pgdump"
-	pgrestore2 "github.com/wwoytenko/greenfuscator/internal/db/postgres/pgrestore"
+	"github.com/GreenmaskIO/greenmask/internal/db/postgres/pgdump"
+	pgrestore2 "github.com/GreenmaskIO/greenmask/internal/db/postgres/pgrestore"
 )
 
 var (

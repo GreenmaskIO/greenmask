@@ -1,9 +1,9 @@
 package utils
 
 import (
-	"github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/pgcopy"
+	"github.com/GreenmaskIO/greenmask/internal/db/postgres/lib/pgcopy"
 
-	"github.com/wwoytenko/greenfuscator/internal/db/postgres/domains/toclib"
+	"github.com/GreenmaskIO/greenmask/internal/db/postgres/domains/toclib"
 )
 
 const (

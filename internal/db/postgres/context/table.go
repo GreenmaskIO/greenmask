@@ -5,13 +5,12 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 
-	"github.com/wwoytenko/greenfuscator/internal/db/postgres/domains/config"
-	"github.com/wwoytenko/greenfuscator/internal/db/postgres/domains/dump"
-	"github.com/wwoytenko/greenfuscator/internal/domains"
-	toolkit "github.com/wwoytenko/greenfuscator/internal/toolkit/transformers"
+	"github.com/GreenmaskIO/greenmask/internal/db/postgres/domains/config"
+	"github.com/GreenmaskIO/greenmask/internal/db/postgres/domains/dump"
+	"github.com/GreenmaskIO/greenmask/internal/domains"
+	toolkit "github.com/GreenmaskIO/greenmask/internal/toolkit/transformers"
 )
 
 // ValidateAndBuildTableConfig - validates tables, transformers and their parameters. Builds config for tables and returns

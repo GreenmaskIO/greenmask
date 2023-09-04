@@ -91,8 +91,10 @@ func (r *Record) GetAttribute(name string) (any, error) {
 }
 
 // SetAttribute - set transformed attribute to the tuple
-func (r *Record) SetAttribute(name string, v any) {
+func (r *Record) SetAttribute(name string, v any) error {
+	// TODO: You should check type validity
 	r.tuple[name] = v
+	return nil
 }
 
 // Encode - build CSV record

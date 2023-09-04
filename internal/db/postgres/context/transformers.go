@@ -6,15 +6,15 @@ import (
 
 	"github.com/jackc/pgx/v5/pgtype"
 
-	"github.com/wwoytenko/greenfuscator/internal/db/postgres/domains/config"
-	"github.com/wwoytenko/greenfuscator/internal/db/postgres/domains/dump"
-	defaultTransformers "github.com/wwoytenko/greenfuscator/internal/db/postgres/transformers2"
-	toolkit "github.com/wwoytenko/greenfuscator/internal/toolkit/transformers"
+	"github.com/GreenmaskIO/greenmask/internal/db/postgres/domains/config"
+	"github.com/GreenmaskIO/greenmask/internal/db/postgres/domains/dump"
+	defaultTransformers "github.com/GreenmaskIO/greenmask/internal/db/postgres/transformers2"
+	toolkit "github.com/GreenmaskIO/greenmask/internal/toolkit/transformers"
 )
 
 func BuildTransformersMap() (map[string]*toolkit.Definition, error) {
 	tm := make(map[string]*toolkit.Definition)
-	for _, td := range defaultTransformers.DefaultTransformersList {
+	for _, td := range defaultTransformers.TransformerRegistry {
 		if _, ok := tm[td.Properties.Name]; ok {
 			return nil, fmt.Errorf("transformer with name %s already exists", td.Properties.Name)
 		}

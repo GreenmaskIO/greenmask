@@ -11,9 +11,10 @@ import (
 	"github.com/rs/zerolog/log"
 	"golang.org/x/exp/slices"
 
-	toclib2 "github.com/wwoytenko/greenfuscator/internal/db/postgres/domains/toclib"
-	"github.com/wwoytenko/greenfuscator/internal/db/postgres/toc"
-	"github.com/wwoytenko/greenfuscator/internal/domains"
+	toclib2 "github.com/GreenmaskIO/greenmask/internal/db/postgres/domains/toclib"
+
+	"github.com/GreenmaskIO/greenmask/internal/db/postgres/toc"
+	"github.com/GreenmaskIO/greenmask/internal/domains"
 )
 
 const (

@@ -3,10 +3,8 @@ package dumpers
 import (
 	"context"
 
-	"github.com/jackc/pgx/v5"
-
-	"github.com/wwoytenko/greenfuscator/internal/db/postgres/toc"
-	"github.com/wwoytenko/greenfuscator/internal/storage"
+	"github.com/GreenmaskIO/greenmask/internal/db/postgres/toc"
+	"github.com/GreenmaskIO/greenmask/internal/storage"
 )
 
 type DumpTask interface {

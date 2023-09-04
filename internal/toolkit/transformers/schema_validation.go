@@ -6,13 +6,13 @@ import (
 
 	"golang.org/x/exp/slices"
 
-	"github.com/wwoytenko/greenfuscator/internal/domains"
+	"github.com/GreenmaskIO/greenmask/internal/domains"
 )
 
-type SchemaValidationFunc func(ctx context.Context, table *Table, properties *Properties, parameters []*Parameter, types []*Type) (ValidationWarnings, error)
+type SchemaValidationFunc func(ctx context.Context, table *Table, properties *TransformerProperties, parameters []*Parameter, types []*Type) (ValidationWarnings, error)
 
 func DefaultSchemaValidator(
-	ctx context.Context, table *Table, properties *Properties, parameters []*Parameter, types []*Type,
+	ctx context.Context, table *Table, properties *TransformerProperties, parameters []*Parameter, types []*Type,
 ) (ValidationWarnings, error) {
 	var warnings ValidationWarnings
 

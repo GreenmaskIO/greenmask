@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	toclib2 "github.com/wwoytenko/greenfuscator/internal/db/postgres/domains/toclib"
+	toclib2 "github.com/GreenmaskIO/greenmask/internal/db/postgres/domains/toclib"
 )
 
 func TestNoiseFloatTransformer_Transform(t *testing.T) {

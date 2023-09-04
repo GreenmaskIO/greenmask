@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/wwoytenko/greenfuscator/internal/db/postgres/toc"
-	toolkit "github.com/wwoytenko/greenfuscator/internal/toolkit/transformers"
+	"github.com/GreenmaskIO/greenmask/internal/db/postgres/toc"
+	toolkit "github.com/GreenmaskIO/greenmask/internal/toolkit/transformers"
 )
 
 type Table struct {

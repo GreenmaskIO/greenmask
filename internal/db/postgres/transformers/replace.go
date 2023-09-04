@@ -5,10 +5,8 @@ import (
 	"math/rand"
 	"time"
 
-	"github.com/jackc/pgx/v5"
-
-	"github.com/wwoytenko/greenfuscator/internal/db/postgres/transformers/utils"
-	"github.com/wwoytenko/greenfuscator/internal/domains"
+	"github.com/GreenmaskIO/greenmask/internal/db/postgres/transformers/utils"
+	"github.com/GreenmaskIO/greenmask/internal/domains"
 )
 
 const ReplaceTransformerName = "Replace"

@@ -4,9 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/jackc/pgx/v5"
-
-	"github.com/wwoytenko/greenfuscator/internal/db/postgres/toc"
+	"github.com/GreenmaskIO/greenmask/internal/db/postgres/toc"
 )
 
 type SequenceRestorer struct {

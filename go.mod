@@ -1,4 +1,4 @@
-module github.com/wwoytenko/greenfuscator
+module github.com/GreenmaskIO/greenmask
 
 go 1.21
 

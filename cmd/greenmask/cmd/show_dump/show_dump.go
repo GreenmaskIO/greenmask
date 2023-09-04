@@ -8,10 +8,10 @@ import (
 	"github.com/spf13/cobra"
 	"golang.org/x/exp/slices"
 
-	"github.com/wwoytenko/greenfuscator/internal/db/postgres"
-	pgDomains "github.com/wwoytenko/greenfuscator/internal/db/postgres/domains/config"
-	"github.com/wwoytenko/greenfuscator/internal/storage/directory"
-	"github.com/wwoytenko/greenfuscator/internal/utils/logger"
+	"github.com/GreenmaskIO/greenmask/internal/db/postgres"
+	pgDomains "github.com/GreenmaskIO/greenmask/internal/db/postgres/domains/config"
+	"github.com/GreenmaskIO/greenmask/internal/storage/directory"
+	"github.com/GreenmaskIO/greenmask/internal/utils/logger"
 )
 
 var (

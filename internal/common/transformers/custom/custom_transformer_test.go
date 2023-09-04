@@ -9,9 +9,10 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	domains2 "github.com/wwoytenko/greenfuscator/internal/db/postgres/lib/domains"
-	"github.com/wwoytenko/greenfuscator/internal/db/postgres/transformers/utils"
-	"github.com/wwoytenko/greenfuscator/internal/domains"
+	domains2 "github.com/GreenmaskIO/greenmask/internal/db/postgres/lib/domains"
+
+	"github.com/GreenmaskIO/greenmask/internal/db/postgres/transformers/utils"
+	"github.com/GreenmaskIO/greenmask/internal/domains"
 )
 
 func TestCustomTransformer_Transform(t *testing.T) {
@@ -73,7 +74,7 @@ func TestCustomTransformer_Validate(t *testing.T) {
 	base, err := utils.NewTransformerBase(table, setting, nil, nil, nil)
 	require.NoError(t, err)
 
-	customTransformer, _, := NewCustomTransformer(context.Background(), base, "/usr/bin/bash", "-c", "echo 1")
+	customTransformer, _ := NewCustomTransformer(context.Background(), base, "/usr/bin/bash", "-c", "echo 1")
 
 	ctx, ctxCancel := context.WithCancel(context.Background())
 	defer ctxCancel()

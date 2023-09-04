@@ -6,11 +6,10 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 
-	"github.com/wwoytenko/greenfuscator/internal/db/postgres/transformers/utils"
-	"github.com/wwoytenko/greenfuscator/internal/domains"
+	"github.com/GreenmaskIO/greenmask/internal/db/postgres/transformers/utils"
+	"github.com/GreenmaskIO/greenmask/internal/domains"
 )
 
 const RandomUuidTransformerName = "RandomUuid"

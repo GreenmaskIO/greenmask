@@ -3,7 +3,7 @@ package dump
 import (
 	"fmt"
 
-	"github.com/wwoytenko/greenfuscator/internal/db/postgres/toc"
+	"github.com/GreenmaskIO/greenmask/internal/db/postgres/toc"
 )
 
 type Sequence struct {

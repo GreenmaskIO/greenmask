@@ -1,6 +1,6 @@
 package utils
 
-import "github.com/wwoytenko/greenfuscator/internal/domains"
+import "github.com/GreenmaskIO/greenmask/internal/domains"
 
 type TransformerSettings struct {
 	Name               string                     `json:"name,omitempty"`

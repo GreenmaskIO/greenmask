@@ -4,7 +4,7 @@ import (
 	"context"
 	"io"
 
-	"github.com/wwoytenko/greenfuscator/internal/db/postgres/domains/dump"
+	"github.com/GreenmaskIO/greenmask/internal/db/postgres/domains/dump"
 )
 
 type PlainDumpPipeline struct {

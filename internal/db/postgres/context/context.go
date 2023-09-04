@@ -4,15 +4,14 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/rs/zerolog/log"
 	"golang.org/x/exp/slices"
 
-	"github.com/wwoytenko/greenfuscator/internal/db/postgres/domains/config"
-	"github.com/wwoytenko/greenfuscator/internal/db/postgres/domains/dump"
-	"github.com/wwoytenko/greenfuscator/internal/db/postgres/pgdump"
-	toolkit "github.com/wwoytenko/greenfuscator/internal/toolkit/transformers"
+	"github.com/GreenmaskIO/greenmask/internal/db/postgres/domains/config"
+	"github.com/GreenmaskIO/greenmask/internal/db/postgres/domains/dump"
+	"github.com/GreenmaskIO/greenmask/internal/db/postgres/pgdump"
+	toolkit "github.com/GreenmaskIO/greenmask/internal/toolkit/transformers"
 )
 
 // RuntimeContext - describes current runtime behaviour according to the config and schema objects

@@ -4,9 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/jackc/pgx/v5"
-
-	toolkit "github.com/wwoytenko/greenfuscator/internal/toolkit/transformers"
+	toolkit "github.com/GreenmaskIO/greenmask/internal/toolkit/transformers"
 )
 
 func getCustomTypesUsedInTables(ctx context.Context, tx pgx.Tx) ([]*toolkit.Type, error) {

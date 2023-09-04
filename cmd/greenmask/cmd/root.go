@@ -10,12 +10,12 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
-	"github.com/wwoytenko/greenfuscator/cmd/greenmask/cmd/delete_backup"
-	"github.com/wwoytenko/greenfuscator/cmd/greenmask/cmd/dump"
-	"github.com/wwoytenko/greenfuscator/cmd/greenmask/cmd/list_dump"
-	"github.com/wwoytenko/greenfuscator/cmd/greenmask/cmd/restore"
-	"github.com/wwoytenko/greenfuscator/cmd/greenmask/cmd/show_dump"
-	pgDomains "github.com/wwoytenko/greenfuscator/internal/db/postgres/domains/config"
+	"github.com/GreenmaskIO/greenmask/cmd/greenmask/cmd/delete_backup"
+	"github.com/GreenmaskIO/greenmask/cmd/greenmask/cmd/dump"
+	"github.com/GreenmaskIO/greenmask/cmd/greenmask/cmd/list_dump"
+	"github.com/GreenmaskIO/greenmask/cmd/greenmask/cmd/restore"
+	"github.com/GreenmaskIO/greenmask/cmd/greenmask/cmd/show_dump"
+	pgDomains "github.com/GreenmaskIO/greenmask/internal/db/postgres/domains/config"
 )
 
 var (

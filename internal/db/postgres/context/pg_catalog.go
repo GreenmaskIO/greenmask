@@ -6,12 +6,10 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/jackc/pgx/v5"
-
-	"github.com/wwoytenko/greenfuscator/internal/db/postgres/domains/dump"
-	"github.com/wwoytenko/greenfuscator/internal/db/postgres/pgdump"
-	"github.com/wwoytenko/greenfuscator/internal/db/postgres/toc"
-	toolkit "github.com/wwoytenko/greenfuscator/internal/toolkit/transformers"
+	"github.com/GreenmaskIO/greenmask/internal/db/postgres/domains/dump"
+	"github.com/GreenmaskIO/greenmask/internal/db/postgres/pgdump"
+	"github.com/GreenmaskIO/greenmask/internal/db/postgres/toc"
+	toolkit "github.com/GreenmaskIO/greenmask/internal/toolkit/transformers"
 )
 
 const (

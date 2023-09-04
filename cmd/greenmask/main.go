@@ -3,7 +3,7 @@ package main
 import (
 	"github.com/rs/zerolog/log"
 
-	"github.com/wwoytenko/greenfuscator/cmd/greenmask/cmd"
+	"github.com/GreenmaskIO/greenmask/cmd/greenmask/cmd"
 )
 
 func main() {

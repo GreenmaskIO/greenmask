@@ -5,8 +5,9 @@ import (
 
 	"github.com/jackc/pgx/v5/pgtype"
 
-	"github.com/wwoytenko/greenfuscator/internal/db/postgres/domains/toclib"
-	"github.com/wwoytenko/greenfuscator/internal/domains"
+	"github.com/GreenmaskIO/greenmask/internal/db/postgres/domains/toclib"
+
+	"github.com/GreenmaskIO/greenmask/internal/domains"
 )
 
 type TransformerFabricFunction func(

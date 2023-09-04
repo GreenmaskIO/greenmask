@@ -7,12 +7,11 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/rs/zerolog/log"
 
-	"github.com/wwoytenko/greenfuscator/internal/db/postgres/toc"
-	"github.com/wwoytenko/greenfuscator/internal/storage"
+	"github.com/GreenmaskIO/greenmask/internal/db/postgres/toc"
+	"github.com/GreenmaskIO/greenmask/internal/storage"
 )
 
 const DefaultBufferSize = 1024 * 10

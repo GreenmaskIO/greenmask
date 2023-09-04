@@ -8,10 +8,8 @@ import (
 	"os"
 	"path"
 
-	"gopkg.in/yaml.v3"
-
-	storage2 "github.com/wwoytenko/greenfuscator/internal/db/postgres/domains/storage"
-	"github.com/wwoytenko/greenfuscator/internal/storage"
+	storage2 "github.com/GreenmaskIO/greenmask/internal/db/postgres/domains/storage"
+	"github.com/GreenmaskIO/greenmask/internal/storage"
 )
 
 const templateName = "metadataList"

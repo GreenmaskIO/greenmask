@@ -4,21 +4,19 @@ import (
 	"context"
 	"time"
 
-	toolkit "github.com/wwoytenko/greenfuscator/internal/toolkit/transformers"
+	toolkit "github.com/GreenmaskIO/greenmask/internal/toolkit/transformers"
 )
 
 var TestTransformerDefinition = toolkit.NewDefinition(
-	toolkit.MustNewProperties("Test", "simple description", toolkit.TupleTransformation),
+	toolkit.MustNewTransformerProperties("Test", "simple description", toolkit.TupleTransformation),
 	NewTestTransformerPlaceholder,
-	[]*toolkit.Parameter{
-		toolkit.MustNewParameter("column", "a column name", new(string), nil).
-			SetIsColumn(toolkit.NewColumnProperties().
-				SetAffected(true).
-				SetAllowedColumnTypes("timestamp", "timestamptz"),
-			),
-		toolkit.MustNewParameter("replace", "replacement value", &time.Time{}, nil).
-			SetLinkParameter("column"),
-	},
+	toolkit.MustNewParameter("column", "a column name", new(string), nil).
+		SetIsColumn(toolkit.NewColumnProperties().
+			SetAffected(true).
+			SetAllowedColumnTypes("timestamp", "timestamptz"),
+		),
+	toolkit.MustNewParameter("replace", "replacement value", &time.Time{}, nil).
+		SetLinkParameter("column"),
 )
 
 type TestTransformerPlaceholder struct {
@@ -44,5 +42,5 @@ func (tt *TestTransformerPlaceholder) Transform(ctx context.Context, r *toolkit.
 }
 
 func init() {
-	DefaultTransformersList = append(DefaultTransformersList, TestTransformerDefinition)
+	DefaultTransformerRegistry.MustRegister(TestTransformerDefinition)
 }

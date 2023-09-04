@@ -35,17 +35,15 @@ func NewTestTransformer(ctx context.Context, driver *Driver, parameters map[stri
 func TestDefinition(t *testing.T) {
 
 	TestTransformerDefinition := NewDefinition(
-		MustNewProperties("test", "simple description", TupleTransformation),
+		MustNewTransformerProperties("test", "simple description", TupleTransformation),
 		NewTestTransformer,
-		[]*Parameter{
-			MustNewParameter("column", "a column name", new(string), nil).
-				SetIsColumn(NewColumnProperties().
-					SetAffected(true).
-					SetAllowedColumnTypes("timestamp"),
-				),
-			MustNewParameter("replace", "replacement value", &time.Time{}, nil).
-				SetLinkParameter("column"),
-		},
+		MustNewParameter("column", "a column name", new(string), nil).
+			SetIsColumn(NewColumnProperties().
+				SetAffected(true).
+				SetAllowedColumnTypes("timestamp"),
+			),
+		MustNewParameter("replace", "replacement value", &time.Time{}, nil).
+			SetLinkParameter("column"),
 	)
 
 	typeMap := pgtype.NewMap()

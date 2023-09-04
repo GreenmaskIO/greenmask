@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/wwoytenko/greenfuscator/internal/toolkit/transformers"
+	"github.com/GreenmaskIO/greenmask/internal/toolkit/transformers"
 )
 
 // TODO: It's not a production solution. Real copy parser must be backported.

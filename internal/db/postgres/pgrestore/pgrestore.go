@@ -9,7 +9,7 @@ import (
 
 	"github.com/rs/zerolog/log"
 
-	"github.com/wwoytenko/greenfuscator/internal/utils/cmd_runner"
+	"github.com/GreenmaskIO/greenmask/internal/utils/cmd_runner"
 )
 
 const pgRestoreExecutable = "pg_restore"

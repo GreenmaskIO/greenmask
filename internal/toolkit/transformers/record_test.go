@@ -19,13 +19,23 @@ func TestRecord_ScanAttribute(t *testing.T) {
 	assert.Equal(t, expected, res)
 }
 
-func TestRecord_GetAttribute(t *testing.T) {
-	rawData := []string{"1", "2023-08-27 00:00:00.000000"}
+func TestRecord_GetAttribute_date(t *testing.T) {
+	rawData := []string{"1", "2023-08-27 00:00:00.000000", "1234"}
 	driver := getDriver()
 	r := NewRecord(driver, rawData)
 	res, err := r.GetAttribute("created_at")
 	require.NoError(t, err)
 	expected := time.Date(2023, time.August, 27, 0, 0, 0, 0, time.UTC)
+	assert.Equal(t, expected, res)
+}
+
+func TestRecord_GetAttribute_text(t *testing.T) {
+	rawData := []string{"1", "2023-08-27 00:00:00.000000", "1234"}
+	driver := getDriver()
+	r := NewRecord(driver, rawData)
+	res, err := r.GetAttribute("title")
+	require.NoError(t, err)
+	expected := "1234"
 	assert.Equal(t, expected, res)
 }
 

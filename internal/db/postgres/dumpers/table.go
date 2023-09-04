@@ -4,14 +4,13 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/rs/zerolog/log"
 
-	"github.com/wwoytenko/greenfuscator/internal/db/postgres/domains/dump"
-	"github.com/wwoytenko/greenfuscator/internal/db/postgres/toc"
-	"github.com/wwoytenko/greenfuscator/internal/storage"
-	"github.com/wwoytenko/greenfuscator/internal/utils/count_writer"
+	"github.com/GreenmaskIO/greenmask/internal/db/postgres/domains/dump"
+	"github.com/GreenmaskIO/greenmask/internal/db/postgres/toc"
+	"github.com/GreenmaskIO/greenmask/internal/storage"
+	"github.com/GreenmaskIO/greenmask/internal/utils/count_writer"
 )
 
 const DefaultBufSize = 1024 * 10

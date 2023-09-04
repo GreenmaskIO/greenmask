@@ -6,10 +6,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 
-	"github.com/wwoytenko/greenfuscator/internal/db/postgres/toc"
+	"github.com/GreenmaskIO/greenmask/internal/db/postgres/toc"
 )
 
 func GetPgTypeAndEncodingPlan(typeMap *pgtype.Map, typeOid toc.Oid, castVal any) (*pgtype.Type, pgtype.EncodePlan, error) {
