@@ -30,7 +30,7 @@ func getDriver() *toolkit.Driver {
 				Name:     "created_at",
 				TypeName: "timestamp",
 				TypeOid:  pgtype.TimestampOID,
-				Num:      1,
+				Num:      2,
 				NotNull:  true,
 				Length:   -1,
 			},
@@ -38,7 +38,15 @@ func getDriver() *toolkit.Driver {
 				Name:     "title",
 				TypeName: "text",
 				TypeOid:  pgtype.TextOID,
-				Num:      1,
+				Num:      3,
+				NotNull:  true,
+				Length:   -1,
+			},
+			{
+				Name:     "doc",
+				TypeName: "jsonb",
+				TypeOid:  pgtype.JSONBOID,
+				Num:      4,
 				NotNull:  true,
 				Length:   -1,
 			},
@@ -53,7 +61,7 @@ func getDriver() *toolkit.Driver {
 	return driver
 }
 
-func TestHashTransformer_TransformA(t *testing.T) {
+func TestHashTransformer_Transform(t *testing.T) {
 	driver := getDriver()
 
 	transformer, warnings, err := HashTransformerDefinition.Instance(

@@ -42,7 +42,7 @@ func init() {
 	// Removing short help flag from default
 	rootCmd.PersistentFlags().BoolP("help", "", false, "help for greenmask")
 	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file ")
-	rootCmd.PersistentFlags().StringP("log-format", "", "text", "logging format [plain|text]")
+	rootCmd.PersistentFlags().StringP("log-format", "", "text", "logging format [text|json]")
 	rootCmd.PersistentFlags().StringP("log-level", "", zerolog.LevelInfoValue,
 		fmt.Sprintf(
 			"logging level %s|%s|%s",
@@ -106,16 +106,16 @@ func initConfig() {
 		log.Fatal().Msgf("unable to read config file: %s", err.Error())
 	}
 
-	test := func(cfg *mapstructure.DecoderConfig) {
+	decoderCfg := func(cfg *mapstructure.DecoderConfig) {
 		cfg.DecodeHook = mapstructure.ComposeDecodeHookFunc(
 			pgDomains.ParamsToByteSliceHookFunc(),
 			mapstructure.StringToTimeDurationHookFunc(),
 			mapstructure.StringToSliceHookFunc(","),
 		)
-		log.Debug().Any("cfg", cfg).Msg("")
+		log.Debug().Any("decoderCfg", cfg).Msg("")
 	}
 
-	if err := viper.Unmarshal(&Config, test); err != nil {
+	if err := viper.Unmarshal(&Config, decoderCfg); err != nil {
 		log.Fatal().Err(err).Msg("")
 	}
 
