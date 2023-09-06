@@ -31,7 +31,10 @@ func NewRecord(driver *Driver, rawData []string) *Record {
 func (r *Record) GetTuple() (Tuple, error) {
 	if len(r.tuple) == len(r.driver.Table.Columns) {
 		return r.tuple, nil
+	} else if len(r.RawData) != len(r.driver.Table.Columns) {
+		return nil, fmt.Errorf("wrong rawData length expected %d but got %d", len(r.driver.Table.Columns), len(r.RawData))
 	}
+
 	for attName, _ := range r.driver.ColumnMap {
 		_, ok := r.tuple[attName]
 		if !ok {

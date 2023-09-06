@@ -109,6 +109,9 @@ type Parameter struct {
 	ExpectedType any `json:"-"` // Must be pointer
 	// value - parsed value of the parameter. It must be pointer on the variable
 	value any
+	// dynamicParse - shows was the parameter value parsed unset expectedType and defaultValue. In this case Scan
+	// function is not available because returning value might be non Pointer
+	dynamicParse bool
 }
 
 func MustNewParameter(name string, description string, expectedType any, defaultValue any) *Parameter {
@@ -121,35 +124,37 @@ func MustNewParameter(name string, description string, expectedType any, default
 
 func NewParameter(name string, description string, expectedType any, defaultValue any) (*Parameter, error) {
 
-	if expectedType == nil {
-		return nil, fmt.Errorf("expected value cannot be nil")
-	}
-	// Check default type of ExpectedType and DefaultValue - they must be equal and assignable
-	eValue := reflect.ValueOf(expectedType)
-	if eValue.Kind() != reflect.Pointer {
-		return nil, fmt.Errorf("ExpectedType must be pointer")
-	}
-	eInd := reflect.Indirect(eValue)
-	if !eInd.CanSet() {
-		return nil, errors.New("ExpectedType is not settable")
-	}
-
-	value := expectedType
-
-	if defaultValue != nil {
-		dValue := reflect.ValueOf(defaultValue)
-		if dValue.Kind() != reflect.Pointer {
-			return nil, fmt.Errorf("DefaultValue must be pointer")
+	var value any
+	if expectedType != nil {
+		eValue := reflect.ValueOf(expectedType)
+		if eValue.Kind() != reflect.Pointer {
+			return nil, fmt.Errorf("ExpectedType must be pointer")
 		}
-		if eValue.Kind() == dValue.Kind() {
-			dInd := reflect.Indirect(dValue)
-			if eInd.Kind() != dInd.Kind() {
+		eInd := reflect.Indirect(eValue)
+		if !eInd.CanSet() {
+			return nil, errors.New("ExpectedType is not settable")
+		}
+
+		value = expectedType
+
+		// Check default type of ExpectedType and DefaultValue - they must be equal and assignable
+		if defaultValue != nil {
+			dValue := reflect.ValueOf(defaultValue)
+			if dValue.Kind() != reflect.Pointer {
+				return nil, fmt.Errorf("DefaultValue must be pointer")
+			}
+			if eValue.Kind() == dValue.Kind() {
+				dInd := reflect.Indirect(dValue)
+				if eInd.Kind() != dInd.Kind() {
+					return nil, errors.New("expectedValue and DefaultValue types are unequal")
+				}
+			} else {
 				return nil, errors.New("expectedValue and DefaultValue types are unequal")
 			}
-		} else {
-			return nil, errors.New("expectedValue and DefaultValue types are unequal")
+			value = expectedType
 		}
-		value = expectedType
+	} else if expectedType == nil && defaultValue != nil {
+		return nil, errors.New("default value must be set togather with expectedType")
 	}
 
 	return &Parameter{
@@ -193,59 +198,73 @@ func (p *Parameter) Parse(driver *Driver, params map[string][]byte, columnParams
 		p.LinkedColumnParameter = cp
 	}
 
-	if p.Unmarshaller != nil {
-		// Perform custom unmarshalling
-		value, err := p.Unmarshaller(p, driver, raw)
-		if err != nil {
-			return nil, fmt.Errorf("unable to perform custom unmarshaller: %w", err)
-		}
-		p.value = value
-	} else if p.CastDbType != "" {
-		// Perform decoding via pgx driver
-		switch p.value.(type) {
-		case *time.Time:
-			val, err := driver.DecodeByTypeName(p.CastDbType, raw)
+	if p.value != nil {
+		if p.Unmarshaller != nil {
+			// Perform custom unmarshalling
+			value, err := p.Unmarshaller(p, driver, raw)
 			if err != nil {
-				return nil, fmt.Errorf("unable to scan parameter via Driver")
+				return nil, fmt.Errorf("unable to perform custom unmarshaller: %w", err)
 			}
-			valTime := val.(time.Time)
-			p.value = &valTime
-		default:
-			if err := driver.ScanByTypeName(p.CastDbType, raw, p.value); err != nil {
-				return nil, fmt.Errorf("unable to scan parameter via Driver")
+			p.value = value
+		} else if p.CastDbType != "" {
+			// Perform decoding via pgx driver
+			switch p.value.(type) {
+			case *time.Time:
+				val, err := driver.DecodeByTypeName(p.CastDbType, raw)
+				if err != nil {
+					return nil, fmt.Errorf("unable to scan parameter via Driver")
+				}
+				valTime := val.(time.Time)
+				p.value = &valTime
+			default:
+				if err := driver.ScanByTypeName(p.CastDbType, raw, p.value); err != nil {
+					return nil, fmt.Errorf("unable to scan parameter via Driver")
+				}
+			}
+		} else if p.LinkedColumnParameter != nil {
+
+			// Try to scan value using pgx driver and pgtype defined in the linked column
+			if p.LinkedColumnParameter.Column == nil {
+				return nil, fmt.Errorf("parameter is linked but column was not assigned")
+			}
+
+			switch p.value.(type) {
+			case *time.Time:
+				val, err := driver.DecodeByTypeOid(uint32(p.LinkedColumnParameter.Column.TypeOid), raw)
+				if err != nil {
+					return nil, fmt.Errorf("unable to scan parameter via Driver")
+				}
+				valTime := val.(time.Time)
+				p.value = &valTime
+			default:
+				if err := driver.ScanByTypeOid(uint32(p.LinkedColumnParameter.Column.TypeOid), raw, p.value); err != nil {
+					return nil, fmt.Errorf("unable to scan parameter via Driver")
+				}
+			}
+
+		} else if reflect.ValueOf(p.value).Kind() == reflect.String || (reflect.ValueOf(p.value).Kind() == reflect.Pointer &&
+			reflect.Indirect(reflect.ValueOf(p.value)).Kind() == reflect.String) {
+			// This is temporal solution for parsing string. Otherwise, it may cause an error in json.Unmarshall
+			val := string(raw)
+			p.value = &val
+		} else {
+			// Unmarshal as usual using json Umnarshaler
+			if err := json.Unmarshal(raw, p.value); err != nil {
+				return nil, fmt.Errorf("unable to unmarshal value: %w", err)
 			}
 		}
 	} else if p.LinkedColumnParameter != nil {
-
-		// Try to scan value using pgx driver and pgtype defined in the linked column
-		if p.LinkedColumnParameter.Column == nil {
-			return nil, fmt.Errorf("parameter is linked but column was not assigned")
+		p.dynamicParse = true
+		// Parsing dynamically - default value and type are unknown
+		// TODO: Be careful - this may cause an error in Scan func if the the returning value is not a pointer
+		val, err := driver.DecodeByTypeOid(uint32(p.LinkedColumnParameter.Column.TypeOid), raw)
+		if err != nil {
+			return nil, fmt.Errorf("unable to scan parameter via Driver")
 		}
+		p.value = val
 
-		switch p.value.(type) {
-		case *time.Time:
-			val, err := driver.DecodeByTypeOid(uint32(p.LinkedColumnParameter.Column.TypeOid), raw)
-			if err != nil {
-				return nil, fmt.Errorf("unable to scan parameter via Driver")
-			}
-			valTime := val.(time.Time)
-			p.value = &valTime
-		default:
-			if err := driver.ScanByTypeOid(uint32(p.LinkedColumnParameter.Column.TypeOid), raw, p.value); err != nil {
-				return nil, fmt.Errorf("unable to scan parameter via Driver")
-			}
-		}
-
-	} else if reflect.ValueOf(p.value).Kind() == reflect.String || (reflect.ValueOf(p.value).Kind() == reflect.Pointer &&
-		reflect.Indirect(reflect.ValueOf(p.value)).Kind() == reflect.String) {
-		// This is temporal solution for parsing string. Otherwise, it may cause an error in json.Unmarshall
-		val := string(raw)
-		p.value = &val
 	} else {
-		// Unmarshal as usual using json Umnarshaler
-		if err := json.Unmarshal(raw, p.value); err != nil {
-			return nil, fmt.Errorf("unable to unmarshal value: %w", err)
-		}
+		return nil, errors.New("unknown case")
 	}
 
 	if p.IsColumn {
@@ -292,6 +311,9 @@ func (p *Parameter) Parse(driver *Driver, params map[string][]byte, columnParams
 
 // Scan - scan parsed value into received pointer. Param src must be pointer
 func (p *Parameter) Scan(dest any) error {
+	if p.dynamicParse {
+		return errors.New("dynamically parsed parameters are unscannable")
+	}
 	return scanPointer(p.value, dest)
 }
 

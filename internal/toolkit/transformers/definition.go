@@ -66,27 +66,33 @@ func (d *Definition) parseParameters(
 
 	var totalWarnings ValidationWarnings
 	// Column parameters parsing
+	var columnParmsToSkip = make(map[string]struct{})
 	for _, p := range columnParameters {
 		warnings, err := p.Parse(driver, rawParams, nil)
 		if err != nil {
 			return nil, nil, fmt.Errorf("parameter %s parsing error: %w", p.Name, err)
 		}
-		totalWarnings = append(totalWarnings, warnings...)
+		if len(warnings) > 0 {
+			totalWarnings = append(totalWarnings, warnings...)
+			columnParmsToSkip[p.Name] = struct{}{}
+		}
 	}
 	// Common parameters parsing
 	for _, p := range commonParameters {
-		if p.LinkParameter != "" {
-			NewValidationWarning().
+		if _, ok := columnParameters[p.LinkParameter]; p.LinkParameter != "" && !ok {
+			totalWarnings = append(totalWarnings, NewValidationWarning().
 				AddMeta("ParameterName", p.Name).
-				SetLevel(ErrorValidationSeverity).
-				SetMsg("parameter skip due to the error in the related parameter parsing")
+				SetLevel(WarningValidationSeverity).
+				SetMsg("parameter skipping due to the error in the related parameter parsing"))
 			continue
 		}
 		warnings, err := p.Parse(driver, rawParams, columnParameters)
 		if err != nil {
 			return nil, nil, fmt.Errorf("parameter %s parsing error: %w", p.Name, err)
 		}
-		totalWarnings = append(totalWarnings, warnings...)
+		if len(warnings) > 0 {
+			totalWarnings = append(totalWarnings, warnings...)
+		}
 	}
 	return totalWarnings, params, nil
 }
