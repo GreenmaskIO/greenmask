@@ -3,7 +3,11 @@ package transformers
 import (
 	"errors"
 	"fmt"
+
+	"github.com/jackc/pgx/v5/pgtype"
 )
+
+// TODO: Need refactoring you should port that implementation to [][]bytes once it COPY parser is implemented
 
 type Tuple map[string]any
 
@@ -102,15 +106,41 @@ func (r *Record) SetAttribute(name string, v any) error {
 
 // Encode - build CSV record
 func (r *Record) Encode() ([]string, error) {
+	var err error
 	for attrName, value := range r.tuple {
 		idx, ok := r.columnIdx[attrName]
 		if !ok {
 			return nil, fmt.Errorf("unknown column %s", attrName)
 		}
-		res, err := r.driver.EncodeAttr(attrName, value, nil)
-		if err != nil {
-			return nil, fmt.Errorf("encoding error: %w", err)
+		column := r.driver.Table.Columns[idx]
+		var res []byte
+
+		switch v := value.(type) {
+		case string:
+			// We need to encode-decode procedure value that are assigned as string
+			// value for non textual attributes
+			if v == DefaultNullSeq {
+				res = []byte(DefaultNullSeq)
+			} else if column.TypeOid != pgtype.VarcharOID && column.TypeOid != pgtype.TextOID {
+				decodedVal, err := r.driver.DecodeAttr(attrName, []byte(v))
+				if err != nil {
+					return nil, fmt.Errorf("unable to force decoding textual value of attribte %s for non textual %s type: %w", attrName, column.TypeName, err)
+				}
+				res, err = r.driver.EncodeAttr(attrName, decodedVal, nil)
+				if err != nil {
+					return nil, fmt.Errorf("encoding error: %w", err)
+				}
+			} else {
+				res = []byte(v)
+			}
+
+		default:
+			res, err = r.driver.EncodeAttr(attrName, value, nil)
+			if err != nil {
+				return nil, fmt.Errorf("encoding error: %w", err)
+			}
 		}
+
 		r.RawData[idx] = string(res)
 	}
 	return r.RawData, nil

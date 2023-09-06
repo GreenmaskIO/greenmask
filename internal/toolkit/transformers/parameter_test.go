@@ -89,8 +89,7 @@ func TestParameter_Parse_with_allowed_pg_types(t *testing.T) {
 		"Simple column parameter",
 		new(string),
 		nil,
-	).SelAllowedDbTypes([]string{"timestamp"}).
-		SetRequired(true).
+	).SetRequired(true).
 		SetIsColumn(&ColumnProperties{
 			Nullable: false,
 			Affected: true,
@@ -131,8 +130,7 @@ func TestParameter_Parse_with_linked_parameter(t *testing.T) {
 		"Simple column parameter",
 		new(string),
 		nil,
-	).SelAllowedDbTypes([]string{"timestamp"}).
-		SetRequired(true).
+	).SetRequired(true).
 		SetIsColumn(NewColumnProperties())
 
 	warnings, err := columnParam.Parse(driver, rawParams, nil)
@@ -144,8 +142,7 @@ func TestParameter_Parse_with_linked_parameter(t *testing.T) {
 		"Simple column parameter",
 		&time.Time{},
 		nil,
-	).SelAllowedDbTypes([]string{"timestamp"}).
-		SetRequired(true).
+	).SetRequired(true).
 		SetLinkParameter("column")
 
 	warnings, err = linkedParam.Parse(driver, rawParams, map[string]*Parameter{"column": columnParam})

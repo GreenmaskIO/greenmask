@@ -50,6 +50,14 @@ func getDriver() *toolkit.Driver {
 				NotNull:  true,
 				Length:   -1,
 			},
+			{
+				Name:     "uid",
+				TypeName: "uuid",
+				TypeOid:  pgtype.UUIDOID,
+				Num:      5,
+				NotNull:  true,
+				Length:   -1,
+			},
 		},
 		Constraints: []toolkit.Constraint{},
 	}

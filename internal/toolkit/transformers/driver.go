@@ -96,7 +96,7 @@ func (d *Driver) DecodeAttr(name string, src []byte) (any, error) {
 		return nil, fmt.Errorf("unknown column %s", name)
 	}
 	v, err := pgType.Codec.DecodeValue(d.TypeMap, pgType.OID, pgx.TextFormatCode, src)
-	if err == nil {
+	if err != nil {
 		return nil, fmt.Errorf("decoding error: %w", err)
 	}
 	return v, nil

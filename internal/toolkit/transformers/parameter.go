@@ -85,14 +85,11 @@ type Parameter struct {
 	// CastDbType - name of PostgreSQL type that would be used for Decoding raw value to the real go type. Is this
 	// type does not exist will cause an error
 	CastDbType string `json:"castDbType,omitempty"`
-	// AllowedDbTypes - list of allowed column types that must be matched. Plays only when IsColumn.
-	// Is empty or nil any type is allowed
-	AllowedDbTypes []string `json:"allowedDbTypes"`
 	// DefaultValue - default value of the parameter. Must be variable pointer and have the same type
 	// as in ExpectedType
 	DefaultValue any `json:"defaultValue,omitempty"`
 	// ColumnProperties - detail info about expected column properties that may help to diagnose the table schema
-	// and perform validation procedure
+	// and perform validation procedure Plays only with IsColumn
 	ColumnProperties *ColumnProperties `json:"columnProperties,omitempty"`
 	// Unmarshaller - unmarshal function for the parameter raw data []byte. Using by default json.Unmarshal function
 	Unmarshaller Unmarshaller `json:"-"`
@@ -169,10 +166,12 @@ func NewParameter(name string, description string, expectedType any, defaultValu
 // Parse - parse received params from the config using table definition. dest parameter must be pointer
 func (p *Parameter) Parse(driver *Driver, params map[string][]byte, columnParams map[string]*Parameter) (ValidationWarnings, error) {
 	// Check allowed pgTypes exists
-	for _, at := range p.AllowedDbTypes {
-		_, ok := driver.TypeMap.TypeForName(at)
-		if !ok {
-			return nil, fmt.Errorf("AllowedDbType with name %s is not found", at)
+	if p.ColumnProperties != nil {
+		for _, at := range p.ColumnProperties.AllowedColumnTypes {
+			_, ok := driver.TypeMap.TypeForName(at)
+			if !ok {
+				return nil, fmt.Errorf("AllowedDbType with name %s is not found", at)
+			}
 		}
 	}
 
@@ -283,15 +282,18 @@ func (p *Parameter) Parse(driver *Driver, params map[string][]byte, columnParams
 			}, nil
 		}
 		pgType, _ := driver.TypeMap.TypeForOID(uint32(column.TypeOid))
-		if len(p.AllowedDbTypes) > 0 && !slices.Contains(p.AllowedDbTypes, pgType.Name) {
+		// Check allowed types. If len(AllowedColumnTypes) == 0 then any type is allowed
+		if p.ColumnProperties != nil &&
+			len(p.ColumnProperties.AllowedColumnTypes) > 0 &&
+			!slices.Contains(p.ColumnProperties.AllowedColumnTypes, pgType.Name) {
 			return ValidationWarnings{
 				NewValidationWarning().
 					SetLevel(ErrorValidationSeverity).
 					SetMsg("unsupported column type").
 					AddMeta("ColumnName", *columnName).
 					AddMeta("ColumnType", pgType.Name).
-					AddMeta("AllowedDbTypes", p.AllowedDbTypes).
-					AddMeta("arameterName", p.Name),
+					AddMeta("AllowedDbTypes", p.ColumnProperties.AllowedColumnTypes).
+					AddMeta("parameterName", p.Name),
 			}, nil
 		}
 		p.Column = column
@@ -344,12 +346,6 @@ func (p *Parameter) SetValueValidator(validator ValueValidator) *Parameter {
 // Value - returns parsed value that later might be cast via type assertion or so on
 func (p *Parameter) Value() any {
 	return p.value
-}
-
-func (p *Parameter) SelAllowedDbTypes(dbTypes []string) *Parameter {
-	// Checking database types exists
-	p.AllowedDbTypes = dbTypes
-	return p
 }
 
 func (p *Parameter) SetRequired(v bool) *Parameter {

@@ -79,7 +79,7 @@ func (d *Definition) parseParameters(
 	}
 	// Common parameters parsing
 	for _, p := range commonParameters {
-		if _, ok := columnParameters[p.LinkParameter]; p.LinkParameter != "" && !ok {
+		if _, ok := columnParmsToSkip[p.LinkParameter]; p.LinkParameter != "" && ok {
 			totalWarnings = append(totalWarnings, NewValidationWarning().
 				AddMeta("ParameterName", p.Name).
 				SetLevel(WarningValidationSeverity).
