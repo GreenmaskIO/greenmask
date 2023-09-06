@@ -53,7 +53,7 @@ func TestMaskingTransformer_Transform(t *testing.T) {
 				nil,
 			)
 			require.NoError(t, err)
-			assert.Empty(t, warnings)
+			require.Empty(t, warnings)
 
 			r, err := transformer.Transform(
 				context.Background(),

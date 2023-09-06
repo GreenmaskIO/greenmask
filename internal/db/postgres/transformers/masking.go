@@ -132,7 +132,7 @@ func maskerTypeValidator(v any) (toolkit.ValidationWarnings, error) {
 		return nil, errors.New("expected string type")
 	}
 	types := []string{MPassword, MName, MAddress, MEmail, MMobile, MTelephone, MID, MCreditCard, MURL}
-	if !slices.Contains([]string{}, *typeStr) {
+	if !slices.Contains(types, *typeStr) {
 		return toolkit.ValidationWarnings{
 			toolkit.NewValidationWarning().
 				SetLevel(toolkit.ErrorValidationSeverity).

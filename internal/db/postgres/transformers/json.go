@@ -9,10 +9,6 @@ import (
 	toolkit "github.com/GreenmaskIO/greenmask/internal/toolkit/transformers"
 )
 
-const (
-	JsonTransformerName = "Json"
-)
-
 var JsonTransformerDefinition = toolkit.NewDefinition(
 
 	toolkit.MustNewTransformerProperties(
