@@ -11,7 +11,7 @@ import (
 )
 
 type Unmarshaller func(parameter *Parameter, tableDriver *Driver, src []byte) (any, error)
-type ValueValidator func(v any) error
+type ValueValidator func(v any) (ValidationWarnings, error)
 
 const WithoutMaxLength = -1
 
@@ -279,8 +279,12 @@ func (p *Parameter) Parse(driver *Driver, params map[string][]byte, columnParams
 	}
 
 	if p.ValueValidator != nil {
-		if err := p.ValueValidator(p.value); err != nil {
+		w, err := p.ValueValidator(p.value)
+		if err != nil {
 			return nil, fmt.Errorf("validation error: %w", err)
+		}
+		if len(w) > 0 {
+			return w, nil
 		}
 	}
 	return nil, nil
