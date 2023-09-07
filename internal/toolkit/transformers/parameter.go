@@ -30,6 +30,11 @@ type ColumnProperties struct {
 	Affected bool `json:"affected,omitempty"`
 	// AllowedColumnTypes - defines all the allowed column types in textual format. If not assigned (nil) then any
 	// of the types is valid
+	// TODO: AllowedColumnTypes cah a problem if we set int and our column is int2, then it cause an error though
+	//		 it is workable case. How to solve subtype or type "aliases" references should be considered ASAP.
+	//		 Also it has problem with custom type naming because it has schema name and type name. It might be better
+	//		 to describe types with {{ schemaName }}.{{ typeName }}, but then we have to implement types classes
+	//		 (such as textual, digits, etc.)
 	AllowedColumnTypes []string `json:"allowedColumnTypes,omitempty"`
 }
 
@@ -106,8 +111,8 @@ type Parameter struct {
 	ExpectedType any `json:"-"` // Must be pointer
 	// value - parsed value of the parameter. It must be pointer on the variable
 	value any
-	// dynamicParse - shows was the parameter value parsed unset expectedType and defaultValue. In this case Scan
-	// function is not available because returning value might be non Pointer
+	// dynamicParse - shows was the parameter value parsed with unset expectedType and defaultValue. In this case Scan
+	// function is not available because returning value might be non Pointer. It might be fixed in the future releases
 	dynamicParse bool
 }
 

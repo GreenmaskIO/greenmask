@@ -18,10 +18,10 @@ const (
 type NewTransformerFunc func(ctx context.Context, driver *Driver, parameters map[string]*Parameter) (Transformer, error)
 
 type Definition struct {
-	Properties      *TransformerProperties
-	New             NewTransformerFunc
-	Parameters      []*Parameter
-	SchemaValidator SchemaValidationFunc
+	Properties      *TransformerProperties `json:"properties"`
+	New             NewTransformerFunc     `json:"-"`
+	Parameters      []*Parameter           `json:"parameters"`
+	SchemaValidator SchemaValidationFunc   `json:"-"`
 }
 
 func NewDefinition(properties *TransformerProperties, newTransformerFunc NewTransformerFunc,
