@@ -26,25 +26,21 @@ type SetNullTransformer struct {
 	columnName string
 }
 
-func NewSetNullTransformer(ctx context.Context, driver *toolkit.Driver, parameters map[string]*toolkit.Parameter) (toolkit.Transformer, error) {
+func NewSetNullTransformer(ctx context.Context, driver *toolkit.Driver, parameters map[string]*toolkit.Parameter) (toolkit.Transformer, toolkit.ValidationWarnings, error) {
 	var columnName string
 
 	p := parameters["column"]
 	if err := p.Scan(&columnName); err != nil {
-		return nil, fmt.Errorf("unable to scan column param: %w", err)
+		return nil, nil, fmt.Errorf("unable to scan column param: %w", err)
 	}
 
 	return &SetNullTransformer{
 		columnName: columnName,
-	}, nil
+	}, nil, nil
 }
 
 func (sut *SetNullTransformer) Init(ctx context.Context) error {
 	return nil
-}
-
-func (sut *SetNullTransformer) Validate(ctx context.Context) (toolkit.ValidationWarnings, error) {
-	return nil, nil
 }
 
 func (sut *SetNullTransformer) Transform(ctx context.Context, r *toolkit.Record) (*toolkit.Record, error) {

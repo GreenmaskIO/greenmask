@@ -54,24 +54,24 @@ type JsonTransformer struct {
 	operations []Operation
 }
 
-func NewJsonTransformer(ctx context.Context, driver *toolkit.Driver, parameters map[string]*toolkit.Parameter) (toolkit.Transformer, error) {
+func NewJsonTransformer(ctx context.Context, driver *toolkit.Driver, parameters map[string]*toolkit.Parameter) (toolkit.Transformer, toolkit.ValidationWarnings, error) {
 	var ops []Operation
 	var columnName string
 
 	p := parameters["column"]
 	if err := p.Scan(&columnName); err != nil {
-		return nil, fmt.Errorf("unable to scan column param: %w", err)
+		return nil, nil, fmt.Errorf("unable to scan column param: %w", err)
 	}
 
 	p = parameters["operations"]
 	if err := p.Scan(&ops); err != nil {
-		return nil, fmt.Errorf("unable to parse operations param: %w", err)
+		return nil, nil, fmt.Errorf("unable to parse operations param: %w", err)
 	}
 
 	return &JsonTransformer{
 		columnName: columnName,
 		operations: ops,
-	}, nil
+	}, nil, nil
 }
 
 func (jt *JsonTransformer) Init(ctx context.Context) error {

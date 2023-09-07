@@ -32,14 +32,14 @@ type ReplaceTransformer struct {
 	value      any
 }
 
-func NewReplaceTransformer(ctx context.Context, driver *toolkit.Driver, parameters map[string]*toolkit.Parameter) (toolkit.Transformer, error) {
+func NewReplaceTransformer(ctx context.Context, driver *toolkit.Driver, parameters map[string]*toolkit.Parameter) (toolkit.Transformer, toolkit.ValidationWarnings, error) {
 
 	var columnName string
 	var value any
 
 	p := parameters["column"]
 	if err := p.Scan(&columnName); err != nil {
-		return nil, fmt.Errorf("unable to scan column param: %w", err)
+		return nil, nil, fmt.Errorf("unable to scan column param: %w", err)
 	}
 
 	value = parameters["value"].Value()
@@ -47,7 +47,7 @@ func NewReplaceTransformer(ctx context.Context, driver *toolkit.Driver, paramete
 	return &ReplaceTransformer{
 		columnName: columnName,
 		value:      value,
-	}, nil
+	}, nil, nil
 }
 
 func (rt *ReplaceTransformer) Init(ctx context.Context) error {

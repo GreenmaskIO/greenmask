@@ -15,7 +15,7 @@ const (
 // NewTransformerFunc - make new transformer. This function receives driver for making some steps for validation or
 // anything else. parameters - the map of the parsed parameters, for get an appropriate parameter find it
 // in the map by the name. All those parameters has been defined in the Definition object of the transformer
-type NewTransformerFunc func(ctx context.Context, driver *Driver, parameters map[string]*Parameter) (Transformer, error)
+type NewTransformerFunc func(ctx context.Context, driver *Driver, parameters map[string]*Parameter) (Transformer, ValidationWarnings, error)
 
 type Definition struct {
 	Properties      *TransformerProperties `json:"properties"`
@@ -114,16 +114,10 @@ func (d *Definition) Instance(ctx context.Context, driver *Driver, rawParams map
 		return nil, nil, fmt.Errorf("schema validation error: %w", err)
 	}
 
-	// Create new transformer
-	t, err := d.New(ctx, driver, params)
+	// Create new transformer and receive warnings
+	t, transformerWarnings, err := d.New(ctx, driver, params)
 	if err != nil {
 		return nil, nil, err
-	}
-
-	// Perform transformer validation
-	transformerWarnings, err := t.Validate(ctx)
-	if err != nil {
-		return nil, nil, fmt.Errorf("transformer validation error: %w", err)
 	}
 
 	res := make(ValidationWarnings, 0, len(parametersWarnings)+len(schemaWarnings)+len(transformerWarnings))

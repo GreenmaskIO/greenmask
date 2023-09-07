@@ -37,24 +37,24 @@ type HashTransformer struct {
 	columnName string
 }
 
-func NewHashTransformer(ctx context.Context, driver *toolkit.Driver, parameters map[string]*toolkit.Parameter) (toolkit.Transformer, error) {
+func NewHashTransformer(ctx context.Context, driver *toolkit.Driver, parameters map[string]*toolkit.Parameter) (toolkit.Transformer, toolkit.ValidationWarnings, error) {
 	p := parameters["column"]
 	var columnName string
 	if err := p.Scan(&columnName); err != nil {
-		return nil, fmt.Errorf("unable to parse column param: %w", err)
+		return nil, nil, fmt.Errorf("unable to parse column param: %w", err)
 	}
 
 	var saltStr string
 	var salt []byte
 	p = parameters["salt"]
 	if err := p.Scan(&saltStr); err != nil {
-		return nil, fmt.Errorf("unable to parse column param: %w", err)
+		return nil, nil, fmt.Errorf("unable to parse column param: %w", err)
 	}
 
 	if saltStr == "" {
 		b := make([]byte, saltLength)
 		if _, err := crand.Read(b); err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 		salt = b
 	} else {
@@ -64,7 +64,7 @@ func NewHashTransformer(ctx context.Context, driver *toolkit.Driver, parameters 
 	return &HashTransformer{
 		salt:       salt,
 		columnName: columnName,
-	}, nil
+	}, nil, nil
 }
 
 func (ht *HashTransformer) Init(ctx context.Context) error {

@@ -27,17 +27,17 @@ type RandomUuidTransformer struct {
 	columnName string
 }
 
-func NewRandomUuidTransformer(ctx context.Context, driver *toolkit.Driver, parameters map[string]*toolkit.Parameter) (toolkit.Transformer, error) {
+func NewRandomUuidTransformer(ctx context.Context, driver *toolkit.Driver, parameters map[string]*toolkit.Parameter) (toolkit.Transformer, toolkit.ValidationWarnings, error) {
 	var columnName string
 
 	p := parameters["column"]
 	if err := p.Scan(&columnName); err != nil {
-		return nil, fmt.Errorf("unable to scan column param: %w", err)
+		return nil, nil, fmt.Errorf("unable to scan column param: %w", err)
 	}
 
 	return &RandomUuidTransformer{
 		columnName: columnName,
-	}, nil
+	}, nil, nil
 }
 
 func (rut *RandomUuidTransformer) Init(ctx context.Context) error {

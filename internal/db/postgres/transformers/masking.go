@@ -53,7 +53,7 @@ type MaskingTransformer struct {
 	maskingFunction maskingFunction
 }
 
-func NewMaskingTransformer(ctx context.Context, driver *toolkit.Driver, parameters map[string]*toolkit.Parameter) (toolkit.Transformer, error) {
+func NewMaskingTransformer(ctx context.Context, driver *toolkit.Driver, parameters map[string]*toolkit.Parameter) (toolkit.Transformer, toolkit.ValidationWarnings, error) {
 
 	var columnName string
 	var dataType string
@@ -61,12 +61,12 @@ func NewMaskingTransformer(ctx context.Context, driver *toolkit.Driver, paramete
 
 	p := parameters["column"]
 	if err := p.Scan(&columnName); err != nil {
-		return nil, fmt.Errorf("unable to scan column param: %w", err)
+		return nil, nil, fmt.Errorf("unable to scan column param: %w", err)
 	}
 
 	p = parameters["type"]
 	if err := p.Scan(&dataType); err != nil {
-		return nil, fmt.Errorf("unable to scan type param: %w", err)
+		return nil, nil, fmt.Errorf("unable to scan type param: %w", err)
 	}
 
 	var m = &masker.Masker{}
@@ -91,14 +91,14 @@ func NewMaskingTransformer(ctx context.Context, driver *toolkit.Driver, paramete
 	case MURL:
 		mf = m.URL
 	default:
-		return nil, fmt.Errorf("wrong type: %s", dataType)
+		return nil, nil, fmt.Errorf("wrong type: %s", dataType)
 	}
 
 	return &MaskingTransformer{
 		columnName:      columnName,
 		masker:          m,
 		maskingFunction: mf,
-	}, nil
+	}, nil, nil
 }
 
 func (mt *MaskingTransformer) Init(ctx context.Context) error {

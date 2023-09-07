@@ -23,10 +23,10 @@ type TestTransformerPlaceholder struct {
 	p map[string]*toolkit.Parameter
 }
 
-func NewTestTransformerPlaceholder(ctx context.Context, driver *toolkit.Driver, parameters map[string]*toolkit.Parameter) (toolkit.Transformer, error) {
+func NewTestTransformerPlaceholder(ctx context.Context, driver *toolkit.Driver, parameters map[string]*toolkit.Parameter) (toolkit.Transformer, toolkit.ValidationWarnings, error) {
 	return &TestTransformerPlaceholder{
 		p: parameters,
-	}, nil
+	}, nil, nil
 }
 
 func (tt *TestTransformerPlaceholder) Init(ctx context.Context) error {
