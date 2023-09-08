@@ -12,6 +12,7 @@ import (
 	domains2 "github.com/greenmaskio/greenmask/internal/db/postgres/lib/domains"
 
 	"github.com/greenmaskio/greenmask/internal/db/postgres/transformers/utils"
+
 	"github.com/greenmaskio/greenmask/internal/domains"
 )
 

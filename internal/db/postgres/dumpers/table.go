@@ -4,12 +4,13 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/rs/zerolog/log"
 
 	"github.com/greenmaskio/greenmask/internal/db/postgres/domains/dump"
 	"github.com/greenmaskio/greenmask/internal/db/postgres/toc"
-	"github.com/greenmaskio/greenmask/internal/storage"
+	"github.com/greenmaskio/greenmask/internal/storages"
 	"github.com/greenmaskio/greenmask/internal/utils/count_writer"
 )
 
@@ -25,7 +26,7 @@ func NewTableDumper(table *dump.Table) *TableDumper {
 	}
 }
 
-func (td *TableDumper) Execute(ctx context.Context, tx pgx.Tx, st storage.Storager) (toc.EntryProducer, error) {
+func (td *TableDumper) Execute(ctx context.Context, tx pgx.Tx, st storages.Storager) (toc.EntryProducer, error) {
 	var err error
 
 	datFile, err := st.GetWriter(ctx, fmt.Sprintf("%d.dat.gz", td.table.DumpId))

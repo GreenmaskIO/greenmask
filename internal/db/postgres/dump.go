@@ -19,7 +19,7 @@ import (
 	"github.com/greenmaskio/greenmask/internal/db/postgres/dumpers"
 	"github.com/greenmaskio/greenmask/internal/db/postgres/pgdump"
 	"github.com/greenmaskio/greenmask/internal/db/postgres/toc"
-	"github.com/greenmaskio/greenmask/internal/storage"
+	"github.com/greenmaskio/greenmask/internal/storages"
 	toolkit "github.com/greenmaskio/greenmask/pkg/toolkit/transformers"
 )
 
@@ -28,7 +28,7 @@ type Dump struct {
 	pgDumpOptions      *pgdump.Options
 	pgDump             *pgdump.PgDump
 	dumpIdSequence     *toc.DumpIdSequence
-	st                 storage.Storager
+	st                 storages.Storager
 	dumpTaskCount      int32
 	allTaskPushed      atomic.Bool
 	config             []*config.Table
@@ -39,7 +39,7 @@ type Dump struct {
 	resultToc          *toc.Toc
 }
 
-func NewDump(binPath string, opt *pgdump.Options, st storage.Storager, cfg []*config.Table) *Dump {
+func NewDump(binPath string, opt *pgdump.Options, st storages.Storager, cfg []*config.Table) *Dump {
 	return &Dump{
 		pgDumpOptions: opt,
 		pgDump:        pgdump.NewPgDump(binPath),

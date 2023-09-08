@@ -6,23 +6,23 @@ import (
 
 	"github.com/tidwall/sjson"
 
-	"github.com/greenmaskio/greenmask/pkg/toolkit/transformers"
+	toolkit "github.com/greenmaskio/greenmask/pkg/toolkit/transformers"
 )
 
-var JsonTransformerDefinition = transformers.NewDefinition(
+var JsonTransformerDefinition = toolkit.NewDefinition(
 
-	transformers.MustNewTransformerProperties(
+	toolkit.MustNewTransformerProperties(
 		"Json",
 		"Update json document",
-		transformers.TupleTransformation,
+		toolkit.TupleTransformation,
 	),
 	NewJsonTransformer,
-	transformers.MustNewParameter("column", "column name", new(string), nil).
-		SetIsColumn(transformers.NewColumnProperties().
+	toolkit.MustNewParameter("column", "column name", new(string), nil).
+		SetIsColumn(toolkit.NewColumnProperties().
 			SetAffected(true).
 			SetAllowedColumnTypes("json", "jsonb"),
 		).SetRequired(true),
-	transformers.MustNewParameter("operations", "list of the operations", new([]Operation), nil).
+	toolkit.MustNewParameter("operations", "list of the operations", new([]Operation), nil).
 		SetRequired(true),
 )
 
@@ -54,7 +54,7 @@ type JsonTransformer struct {
 	operations []Operation
 }
 
-func NewJsonTransformer(ctx context.Context, driver *transformers.Driver, parameters map[string]*transformers.Parameter) (transformers.Transformer, transformers.ValidationWarnings, error) {
+func NewJsonTransformer(ctx context.Context, driver *toolkit.Driver, parameters map[string]*toolkit.Parameter) (toolkit.Transformer, toolkit.ValidationWarnings, error) {
 	var ops []Operation
 	var columnName string
 
@@ -78,18 +78,18 @@ func (jt *JsonTransformer) Init(ctx context.Context) error {
 	return nil
 }
 
-func (jt *JsonTransformer) Validate(ctx context.Context) (transformers.ValidationWarnings, error) {
+func (jt *JsonTransformer) Validate(ctx context.Context) (toolkit.ValidationWarnings, error) {
 	return nil, nil
 }
 
-func (jt *JsonTransformer) Transform(ctx context.Context, r *transformers.Record) (*transformers.Record, error) {
+func (jt *JsonTransformer) Transform(ctx context.Context, r *toolkit.Record) (*toolkit.Record, error) {
 	var err error
 	var jsonRawValue string
 	if err := r.ScanAttribute(jt.columnName, &jsonRawValue); err != nil {
 		return nil, fmt.Errorf("cannot scan column value: %w", err)
 	}
 
-	if jsonRawValue == transformers.DefaultNullSeq {
+	if jsonRawValue == toolkit.DefaultNullSeq {
 		return r, nil
 	}
 

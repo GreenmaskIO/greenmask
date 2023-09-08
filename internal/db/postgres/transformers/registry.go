@@ -9,17 +9,17 @@ import (
 var DefaultTransformerRegistry = NewTransformerRegistry()
 
 type TransformerRegistry struct {
-	m map[string]*toolkit.Definition
+	M map[string]*toolkit.Definition
 }
 
 func NewTransformerRegistry() *TransformerRegistry {
 	return &TransformerRegistry{
-		m: make(map[string]*toolkit.Definition),
+		M: make(map[string]*toolkit.Definition),
 	}
 }
 
 func (tm *TransformerRegistry) Register(definition *toolkit.Definition) error {
-	if _, ok := tm.m[definition.Properties.Name]; ok {
+	if _, ok := tm.M[definition.Properties.Name]; ok {
 		return fmt.Errorf("unable to register transformer: transformer with name %s already exists",
 			definition.Properties.Name)
 	}

@@ -12,21 +12,21 @@ import (
 	"github.com/greenmaskio/greenmask/internal/db/postgres/domains/config"
 	"github.com/greenmaskio/greenmask/internal/db/postgres/domains/dump"
 	"github.com/greenmaskio/greenmask/internal/db/postgres/pgdump"
-	"github.com/greenmaskio/greenmask/pkg/toolkit/transformers"
+	toolkit "github.com/greenmaskio/greenmask/pkg/toolkit/transformers"
 )
 
 // RuntimeContext - describes current runtime behaviour according to the config and schema objects
 type RuntimeContext struct {
-	// Tables - map of build tables with transformers that was wrapped into dump.Entry
-	Tables map[transformers.Oid]*dump.Table
+	// Tables - map of build tables with toolkit that was wrapped into dump.Entry
+	Tables map[toolkit.Oid]*dump.Table
 	// Types - list of custom types that are used in DB schema
-	Types []*transformers.Type
+	Types []*toolkit.Type
 	// DataSectionObjects - list of objects to dump in data-section. There are sequences, tables and large objects
 	DataSectionObjects []dump.Entry
 	// Warnings - list of occurred ValidationWarning during validation and config building
-	Warnings transformers.ValidationWarnings
+	Warnings toolkit.ValidationWarnings
 	// TransformerMap - map of available transformer definitions
-	TransformerMap map[string]*transformers.Definition
+	TransformerMap map[string]*toolkit.Definition
 	// TypeMap - map of registered types including custom types. It's common for the whole runtime
 	TypeMap *pgtype.Map
 }
@@ -36,7 +36,7 @@ type RuntimeContext struct {
 // TODO: Recheck it is working properly. In a few cases (stages such as parameters building, schema validation) if
 //
 //	warnings are fatal procedure must be terminated immediately due to lack of objects required on the next step
-func NewRuntimeContext(ctx context.Context, tx pgx.Tx, cfg []*config.Table, tm map[string]*transformers.Definition, opt *pgdump.Options) (*RuntimeContext, error) {
+func NewRuntimeContext(ctx context.Context, tx pgx.Tx, cfg []*config.Table, tm map[string]*toolkit.Definition, opt *pgdump.Options) (*RuntimeContext, error) {
 	typeMap := tx.Conn().TypeMap()
 	types, err := getCustomTypesUsedInTables(ctx, tx)
 	if err != nil {
@@ -71,8 +71,8 @@ func (rc *RuntimeContext) IsFatal() bool {
 // TODO: Refactor this function
 //  1. Rewrite CustomTypesUsedInTablesQuery - it might be recursive
 //  2. Add Implement RangeType registering
-func tryRegisterCustomTypes(typeMap *pgtype.Map, types []*transformers.Type) {
-	var unregisteredTypes = make([]*transformers.Type, len(types))
+func tryRegisterCustomTypes(typeMap *pgtype.Map, types []*toolkit.Type) {
+	var unregisteredTypes = make([]*toolkit.Type, len(types))
 	copiedCount := copy(unregisteredTypes, types)
 	if copiedCount != len(types) {
 		panic("copiedCount != types")
@@ -84,7 +84,7 @@ func tryRegisterCustomTypes(typeMap *pgtype.Map, types []*transformers.Type) {
 	// it until all types was registered or not anyone of resting types were registering during outer loop iteration.
 	// We would build a dependencies tree, but currently it's N*N
 	length := len(unregisteredTypes)
-	var registeredOids = make([]transformers.Oid, 0, len(unregisteredTypes))
+	var registeredOids = make([]toolkit.Oid, 0, len(unregisteredTypes))
 	for i := 0; i < length; i++ {
 		var registred bool
 		for _, t := range unregisteredTypes {
@@ -127,7 +127,7 @@ func tryRegisterCustomTypes(typeMap *pgtype.Map, types []*transformers.Type) {
 					// Trying to register ArrayType
 					// Searching for arrayType
 					expectedArrayTypeName := fmt.Sprintf("_%s", t.Name)
-					idx := slices.IndexFunc(unregisteredTypes, func(t *transformers.Type) bool {
+					idx := slices.IndexFunc(unregisteredTypes, func(t *toolkit.Type) bool {
 						return t.Name == expectedArrayTypeName
 					})
 					if idx != -1 {
@@ -152,7 +152,7 @@ func tryRegisterCustomTypes(typeMap *pgtype.Map, types []*transformers.Type) {
 		}
 		if registred {
 			for _, oid := range registeredOids {
-				idx := slices.IndexFunc(unregisteredTypes, func(t *transformers.Type) bool {
+				idx := slices.IndexFunc(unregisteredTypes, func(t *toolkit.Type) bool {
 					return t.Oid == oid
 				})
 				if idx == -1 {

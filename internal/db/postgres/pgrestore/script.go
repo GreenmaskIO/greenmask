@@ -8,6 +8,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/rs/zerolog/log"
 
 	"github.com/greenmaskio/greenmask/internal/utils/cmd_runner"

@@ -9,7 +9,7 @@ import (
 	"path/filepath"
 	"syscall"
 
-	"github.com/greenmaskio/greenmask/internal/storage"
+	"github.com/greenmaskio/greenmask/internal/storages"
 )
 
 type Directory struct {
@@ -42,7 +42,7 @@ func (d *Directory) Dirname() string {
 	return filepath.Base(d.cwd)
 }
 
-func (d *Directory) ListDir(ctx context.Context) (files []string, dirs []storage.Storager, err error) {
+func (d *Directory) ListDir(ctx context.Context) (files []string, dirs []storages.Storager, err error) {
 	entries, err := os.ReadDir(d.cwd)
 	if err != nil {
 		return nil, nil, err
@@ -104,7 +104,7 @@ func (d *Directory) Chdir(ctx context.Context, dirPath string) error {
 	return nil
 }
 
-func (d *Directory) CreateDir(ctx context.Context, dirName string) (storage.Storager, error) {
+func (d *Directory) CreateDir(ctx context.Context, dirName string) (storages.Storager, error) {
 	if err := os.Mkdir(path.Join(d.cwd, dirName), os.ModePerm); err != nil {
 		return nil, err
 	}

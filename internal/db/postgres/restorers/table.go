@@ -7,21 +7,22 @@ import (
 	"fmt"
 	"io"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/rs/zerolog/log"
 
 	"github.com/greenmaskio/greenmask/internal/db/postgres/toc"
-	"github.com/greenmaskio/greenmask/internal/storage"
+	"github.com/greenmaskio/greenmask/internal/storages"
 )
 
 const DefaultBufferSize = 1024 * 10
 
 type TableRestorer struct {
 	Entry *toc.Entry
-	St    storage.Storager
+	St    storages.Storager
 }
 
-func NewTableRestorer(entry *toc.Entry, st storage.Storager) *TableRestorer {
+func NewTableRestorer(entry *toc.Entry, st storages.Storager) *TableRestorer {
 	return &TableRestorer{
 		Entry: entry,
 		St:    st,

@@ -12,7 +12,7 @@ import (
 
 	"github.com/greenmaskio/greenmask/internal/db/postgres"
 	pgDomains "github.com/greenmaskio/greenmask/internal/db/postgres/domains/config"
-	"github.com/greenmaskio/greenmask/internal/storage/directory"
+	"github.com/greenmaskio/greenmask/internal/storages/directory"
 	"github.com/greenmaskio/greenmask/internal/utils/logger"
 )
 

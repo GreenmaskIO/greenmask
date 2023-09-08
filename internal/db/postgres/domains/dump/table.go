@@ -6,25 +6,25 @@ import (
 	"strings"
 
 	"github.com/greenmaskio/greenmask/internal/db/postgres/toc"
-	"github.com/greenmaskio/greenmask/pkg/toolkit/transformers"
+	toolkit "github.com/greenmaskio/greenmask/pkg/toolkit/transformers"
 )
 
 type Table struct {
-	*transformers.Table
+	*toolkit.Table
 	Query                string
 	Owner                string
 	RelKind              rune
 	RootPtSchema         string
 	RootPtName           string
 	LoadViaPartitionRoot bool
-	RootOid              transformers.Oid
-	Transformers         []transformers.Transformer
+	RootOid              toolkit.Oid
+	Transformers         []toolkit.Transformer
 	Dependencies         []int32
 	DumpId               int32
 	OriginalSize         int64
 	CompressedSize       int64
 	ExcludeData          bool
-	Driver               *transformers.Driver
+	Driver               *toolkit.Driver
 }
 
 func (t *Table) SetDumpId(dumpId int32) {

@@ -8,14 +8,14 @@ import (
 
 	"github.com/greenmaskio/greenmask/internal/db/postgres/domains/config"
 	"github.com/greenmaskio/greenmask/internal/db/postgres/domains/dump"
-	"github.com/greenmaskio/greenmask/pkg/toolkit/transformers"
+	toolkit "github.com/greenmaskio/greenmask/pkg/toolkit/transformers"
 
-	defaultTransformers "github.com/greenmaskio/greenmask/internal/db/postgres/transformers2"
+	defaultTransformers "github.com/greenmaskio/greenmask/internal/db/postgres/transformers"
 )
 
-func BuildTransformersMap() (map[string]*transformers.Definition, error) {
-	tm := make(map[string]*transformers.Definition)
-	for _, td := range defaultTransformers.TransformerRegistry {
+func BuildTransformersMap() (map[string]*toolkit.Definition, error) {
+	tm := make(map[string]*toolkit.Definition)
+	for _, td := range defaultTransformers.DefaultTransformerRegistry.M {
 		if _, ok := tm[td.Properties.Name]; ok {
 			return nil, fmt.Errorf("transformer with name %s already exists", td.Properties.Name)
 		}
@@ -27,22 +27,22 @@ func BuildTransformersMap() (map[string]*transformers.Definition, error) {
 func initTransformer(
 	ctx context.Context, t *dump.Table,
 	c *config.TransformerConfig, tm *pgtype.Map,
-	dm map[string]*transformers.Definition,
-) (transformers.Transformer, transformers.ValidationWarnings, error) {
-	var totalWarnings transformers.ValidationWarnings
+	dm map[string]*toolkit.Definition,
+) (toolkit.Transformer, toolkit.ValidationWarnings, error) {
+	var totalWarnings toolkit.ValidationWarnings
 	td, ok := dm[c.Name]
 	if !ok {
 		totalWarnings = append(totalWarnings,
-			transformers.NewValidationWarning().
+			toolkit.NewValidationWarning().
 				SetMsg("transformer not found").
-				SetLevel(transformers.ErrorValidationSeverity).SetTrace(&transformers.Trace{
+				SetLevel(toolkit.ErrorValidationSeverity).SetTrace(&toolkit.Trace{
 				SchemaName:      t.Schema,
 				TableName:       t.Name,
 				TransformerName: c.Name,
 			}))
 		return nil, totalWarnings, nil
 	}
-	driver, err := transformers.NewDriver(tm, t.Table)
+	driver, err := toolkit.NewDriver(tm, t.Table)
 	if err != nil {
 		return nil, nil, fmt.Errorf("driver initialization for table %s.%s: %w", t.Schema, t.Name, err)
 	}

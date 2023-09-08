@@ -12,11 +12,12 @@ import (
 	"github.com/olekukonko/tablewriter"
 	"github.com/spf13/cobra"
 
+	"github.com/greenmaskio/greenmask/internal/storages"
+	"github.com/greenmaskio/greenmask/internal/storages/directory"
+
 	"github.com/greenmaskio/greenmask/cmd/greenmask/cmd/dump"
 	"github.com/greenmaskio/greenmask/internal/db/postgres/domains/config"
 	pgDomains "github.com/greenmaskio/greenmask/internal/db/postgres/domains/storage"
-	"github.com/greenmaskio/greenmask/internal/storage"
-	"github.com/greenmaskio/greenmask/internal/storage/directory"
 	"github.com/greenmaskio/greenmask/internal/utils/logger"
 )
 
@@ -116,7 +117,7 @@ func listDumps() error {
 	return nil
 }
 
-func getMetadata(ctx context.Context, st storage.Storager) (*pgDomains.Metadata, error) {
+func getMetadata(ctx context.Context, st storages.Storager) (*pgDomains.Metadata, error) {
 	mf, err := st.GetReader(ctx, "metadata.json")
 	if err != nil {
 		log.Err(err).Msg("")

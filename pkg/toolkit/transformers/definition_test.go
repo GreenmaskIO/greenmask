@@ -26,10 +26,10 @@ func (tt *TestTransformer) Transform(ctx context.Context, r *Record) (*Record, e
 	return r, nil
 }
 
-func NewTestTransformer(ctx context.Context, driver *Driver, parameters map[string]*Parameter) (Transformer, error) {
+func NewTestTransformer(ctx context.Context, driver *Driver, parameters map[string]*Parameter) (Transformer, ValidationWarnings, error) {
 	return &TestTransformer{
 		p: parameters,
-	}, nil
+	}, nil, nil
 }
 
 func TestDefinition(t *testing.T) {

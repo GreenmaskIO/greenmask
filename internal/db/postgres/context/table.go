@@ -5,23 +5,24 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/greenmaskio/greenmask/internal/db/postgres/domains/config"
 	"github.com/greenmaskio/greenmask/internal/db/postgres/domains/dump"
 	"github.com/greenmaskio/greenmask/internal/domains"
-	"github.com/greenmaskio/greenmask/pkg/toolkit/transformers"
+	toolkit "github.com/greenmaskio/greenmask/pkg/toolkit/transformers"
 )
 
-// ValidateAndBuildTableConfig - validates tables, transformers and their parameters. Builds config for tables and returns
+// ValidateAndBuildTableConfig - validates tables, toolkit and their parameters. Builds config for tables and returns
 // ValidationWarnings that can be used for checking helpers in configuring and debugging transformation. Those
 // may contain the schema affection warnings that would be useful for considering consistency
 func validateAndBuildTablesConfig(
 	ctx context.Context, tx pgx.Tx, typeMap *pgtype.Map,
-	cfg []*config.Table, tm map[string]*transformers.Definition,
-) (map[transformers.Oid]*dump.Table, transformers.ValidationWarnings, error) {
-	tables := make(map[transformers.Oid]*dump.Table, len(cfg))
-	var warnings transformers.ValidationWarnings
+	cfg []*config.Table, tm map[string]*toolkit.Definition,
+) (map[toolkit.Oid]*dump.Table, toolkit.ValidationWarnings, error) {
+	tables := make(map[toolkit.Oid]*dump.Table, len(cfg))
+	var warnings toolkit.ValidationWarnings
 
 	for _, t := range cfg {
 		table, tableWarnings, err := getTable(ctx, tx, t.Schema, t.Name)
@@ -47,7 +48,7 @@ func validateAndBuildTablesConfig(
 		}
 		table.Columns = columns
 
-		// InitTransformation transformers
+		// InitTransformation toolkit
 		if len(t.Transformers) > 0 {
 			for _, tc := range t.Transformers {
 				transformer, initWarnings, err := initTransformer(ctx, table, tc, typeMap, tm)
@@ -59,7 +60,7 @@ func validateAndBuildTablesConfig(
 			}
 		}
 
-		driver, err := transformers.NewDriver(typeMap, table.Table)
+		driver, err := toolkit.NewDriver(typeMap, table.Table)
 		if err != nil {
 			return nil, nil, fmt.Errorf("unnable to initialise driver: %w", err)
 		}
@@ -71,11 +72,11 @@ func validateAndBuildTablesConfig(
 	return tables, warnings, nil
 }
 
-func getTable(ctx context.Context, tx pgx.Tx, schema, name string) (*dump.Table, transformers.ValidationWarnings, error) {
+func getTable(ctx context.Context, tx pgx.Tx, schema, name string) (*dump.Table, toolkit.ValidationWarnings, error) {
 	table := &dump.Table{
-		Table: &transformers.Table{},
+		Table: &toolkit.Table{},
 	}
-	var warnings transformers.ValidationWarnings
+	var warnings toolkit.ValidationWarnings
 
 	row := tx.QueryRow(ctx, TableSearchQuery, schema, name)
 	err := row.Scan(&table.Oid, &table.Schema, &table.Name, &table.Owner, &table.RelKind,
@@ -83,7 +84,7 @@ func getTable(ctx context.Context, tx pgx.Tx, schema, name string) (*dump.Table,
 	)
 
 	if err != nil && errors.Is(err, pgx.ErrNoRows) {
-		warnings = append(warnings, transformers.NewValidationWarning().
+		warnings = append(warnings, toolkit.NewValidationWarning().
 			SetMsgf("table %s.%s not found", table.Schema, table.Name).
 			SetLevel(domains.ErrorValidationSeverity).
 			//AddMeta("Level", TableValidationLevel).
@@ -96,8 +97,8 @@ func getTable(ctx context.Context, tx pgx.Tx, schema, name string) (*dump.Table,
 	return table, warnings, nil
 }
 
-func getColumnsConfig(ctx context.Context, tx pgx.Tx, oid transformers.Oid) ([]*transformers.Column, error) {
-	var res []*transformers.Column
+func getColumnsConfig(ctx context.Context, tx pgx.Tx, oid toolkit.Oid) ([]*toolkit.Column, error) {
+	var res []*toolkit.Column
 	rows, err := tx.Query(ctx, TableColumnsQuery, oid)
 	if err != nil {
 		return nil, fmt.Errorf("unable execute tableColumnQuery: %w", err)
@@ -105,7 +106,7 @@ func getColumnsConfig(ctx context.Context, tx pgx.Tx, oid transformers.Oid) ([]*
 	defer rows.Close()
 
 	for rows.Next() {
-		var column transformers.Column
+		var column toolkit.Column
 		if err = rows.Scan(&column.Name, &column.TypeOid, &column.TypeName,
 			&column.NotNull, &column.Length, &column.Num); err != nil {
 			return nil, fmt.Errorf("cannot scan tableColumnQuery: %w", err)
@@ -116,8 +117,8 @@ func getColumnsConfig(ctx context.Context, tx pgx.Tx, oid transformers.Oid) ([]*
 	return res, nil
 }
 
-func getTableConstraints(ctx context.Context, tx pgx.Tx, tableOid transformers.Oid) ([]transformers.Constraint, error) {
-	var constraints []transformers.Constraint
+func getTableConstraints(ctx context.Context, tx pgx.Tx, tableOid toolkit.Oid) ([]toolkit.Constraint, error) {
+	var constraints []toolkit.Constraint
 
 	rows, err := tx.Query(ctx, TableConstraintsCommonQuery, tableOid)
 	if err != nil {
@@ -126,14 +127,14 @@ func getTableConstraints(ctx context.Context, tx pgx.Tx, tableOid transformers.O
 	defer rows.Close()
 
 	// Common constraints discovering
-	var pk *transformers.PrimaryKey
+	var pk *toolkit.PrimaryKey
 	for rows.Next() {
-		var c transformers.Constraint
-		var constraintOid transformers.Oid
+		var c toolkit.Constraint
+		var constraintOid toolkit.Oid
 		var constraintName, constraintSchema, constraintDefinition, rtName, rtSchema string
 		var constraintType rune
-		var rtOid transformers.Oid // rt - referenced table
-		var constraintColumns, rtColumns []transformers.AttNum
+		var rtOid toolkit.Oid // rt - referenced table
+		var constraintColumns, rtColumns []toolkit.AttNum
 
 		err = rows.Scan(
 			&constraintOid, &constraintName, &constraintSchema, &constraintType, &constraintColumns,
@@ -146,8 +147,8 @@ func getTableConstraints(ctx context.Context, tx pgx.Tx, tableOid transformers.O
 		switch constraintType {
 		case 'f':
 			// TODO: Recheck it
-			c = &transformers.ForeignKey{
-				DefaultConstraintDefinition: transformers.DefaultConstraintDefinition{
+			c = &toolkit.ForeignKey{
+				DefaultConstraintDefinition: toolkit.DefaultConstraintDefinition{
 					Schema:     constraintSchema,
 					Name:       constraintName,
 					Oid:        constraintOid,
@@ -156,7 +157,7 @@ func getTableConstraints(ctx context.Context, tx pgx.Tx, tableOid transformers.O
 				},
 			}
 		case 'c':
-			c = &transformers.Check{
+			c = &toolkit.Check{
 				Schema:     constraintSchema,
 				Name:       constraintName,
 				Oid:        constraintOid,
@@ -164,10 +165,10 @@ func getTableConstraints(ctx context.Context, tx pgx.Tx, tableOid transformers.O
 				Definition: constraintDefinition,
 			}
 		case 'p':
-			pk = transformers.NewPrimaryKey(constraintSchema, constraintName, constraintDefinition, constraintOid, constraintColumns)
+			pk = toolkit.NewPrimaryKey(constraintSchema, constraintName, constraintDefinition, constraintOid, constraintColumns)
 			c = pk
 		case 'u':
-			c = &transformers.Unique{
+			c = &toolkit.Unique{
 				Schema:     constraintSchema,
 				Name:       constraintName,
 				Oid:        constraintOid,
@@ -175,7 +176,7 @@ func getTableConstraints(ctx context.Context, tx pgx.Tx, tableOid transformers.O
 				Definition: constraintDefinition,
 			}
 		case 't':
-			c = &transformers.TriggerConstraint{
+			c = &toolkit.TriggerConstraint{
 				Schema:     constraintSchema,
 				Name:       constraintName,
 				Oid:        constraintOid,
@@ -183,7 +184,7 @@ func getTableConstraints(ctx context.Context, tx pgx.Tx, tableOid transformers.O
 				Definition: constraintDefinition,
 			}
 		case 'x':
-			c = &transformers.Exclusion{
+			c = &toolkit.Exclusion{
 				Schema:     constraintSchema,
 				Name:       constraintName,
 				Oid:        constraintOid,
@@ -208,9 +209,9 @@ func getTableConstraints(ctx context.Context, tx pgx.Tx, tableOid transformers.O
 	defer fkRows.Close()
 
 	for fkRows.Next() {
-		var constraintOid, onTableOid transformers.Oid
+		var constraintOid, onTableOid toolkit.Oid
 		var constraintName, constraintSchema, constraintDefinition, onTableSchema, onTableName string
-		var constraintColumns []transformers.AttNum
+		var constraintColumns []toolkit.AttNum
 
 		err = fkRows.Scan(
 			&constraintOid, &constraintSchema, &constraintName, &onTableOid,
@@ -220,19 +221,19 @@ func getTableConstraints(ctx context.Context, tx pgx.Tx, tableOid transformers.O
 			return nil, fmt.Errorf("unable to build constraints list: %w", err)
 		}
 
-		pk.References = append(pk.References, &transformers.LinkedTable{
+		pk.References = append(pk.References, &toolkit.LinkedTable{
 			Oid:    onTableOid,
 			Schema: onTableSchema,
 			Name:   onTableName,
-			Constraint: &transformers.ForeignKey{
-				DefaultConstraintDefinition: transformers.DefaultConstraintDefinition{
+			Constraint: &toolkit.ForeignKey{
+				DefaultConstraintDefinition: toolkit.DefaultConstraintDefinition{
 					Schema:     constraintSchema,
 					Name:       constraintName,
 					Oid:        constraintOid,
 					Columns:    constraintColumns,
 					Definition: constraintDefinition,
 				},
-				ReferencedTable: transformers.LinkedTable{
+				ReferencedTable: toolkit.LinkedTable{
 					Schema: onTableSchema,
 					Name:   onTableName,
 					Oid:    onTableOid,

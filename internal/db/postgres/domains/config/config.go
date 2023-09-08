@@ -9,7 +9,7 @@ import (
 	"github.com/mitchellh/mapstructure"
 
 	"github.com/greenmaskio/greenmask/internal/db/postgres/pgdump"
-	pgrestore2 "github.com/greenmaskio/greenmask/internal/db/postgres/pgrestore"
+	"github.com/greenmaskio/greenmask/internal/db/postgres/pgrestore"
 )
 
 var (
@@ -53,8 +53,8 @@ type Dump struct {
 }
 
 type Restore struct {
-	PgRestoreOptions pgrestore2.Options             `mapstructure:"pg_restore_options" yaml:"pgRestoreOptions"`
-	Scripts          map[string][]pgrestore2.Script `mapstructure:"scripts" yaml:"scripts"`
+	PgRestoreOptions pgrestore.Options             `mapstructure:"pg_restore_options" yaml:"pgRestoreOptions"`
+	Scripts          map[string][]pgrestore.Script `mapstructure:"scripts" yaml:"scripts"`
 }
 
 //type ParameterValue []byte

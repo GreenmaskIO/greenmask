@@ -16,6 +16,7 @@ import (
 	"golang.org/x/sync/errgroup"
 
 	"github.com/greenmaskio/greenmask/internal/db/postgres/transformers/utils"
+
 	"github.com/greenmaskio/greenmask/internal/domains"
 )
 

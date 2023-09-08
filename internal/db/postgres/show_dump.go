@@ -8,8 +8,10 @@ import (
 	"os"
 	"path"
 
-	storage2 "github.com/greenmaskio/greenmask/internal/db/postgres/domains/storage"
-	"github.com/greenmaskio/greenmask/internal/storage"
+	"gopkg.in/yaml.v3"
+
+	storageDto "github.com/greenmaskio/greenmask/internal/db/postgres/domains/storage"
+	"github.com/greenmaskio/greenmask/internal/storages"
 )
 
 const templateName = "metadataList"
@@ -40,8 +42,8 @@ var templateString = `;
 {{- end }}
 `
 
-func ShowDump(ctx context.Context, st storage.Storager, dumpId string, format string) error {
-	meta := &storage2.Metadata{}
+func ShowDump(ctx context.Context, st storages.Storager, dumpId string, format string) error {
+	meta := &storageDto.Metadata{}
 	r, err := st.GetReader(ctx, path.Join(dumpId, "metadata.json"))
 	if err != nil {
 		return fmt.Errorf("cannot get metadata: %w", err)
@@ -63,21 +65,21 @@ func ShowDump(ctx context.Context, st storage.Storager, dumpId string, format st
 	return nil
 }
 
-func printJson(meta *storage2.Metadata) error {
+func printJson(meta *storageDto.Metadata) error {
 	if err := json.NewEncoder(os.Stdout).Encode(meta); err != nil {
 		return fmt.Errorf("json render error: %w", err)
 	}
 	return nil
 }
 
-func printYaml(meta *storage2.Metadata) error {
+func printYaml(meta *storageDto.Metadata) error {
 	if err := yaml.NewEncoder(os.Stdout).Encode(meta); err != nil {
 		return fmt.Errorf("yaml render error: %w", err)
 	}
 	return nil
 }
 
-func printText(meta *storage2.Metadata) error {
+func printText(meta *storageDto.Metadata) error {
 	t, err := template.New(templateName).Parse(templateString)
 	if err != nil {
 		return fmt.Errorf("cannot parser TOC report template: %w", err)

@@ -4,9 +4,11 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/jackc/pgx/v5"
+
 	"github.com/greenmaskio/greenmask/internal/db/postgres/domains/dump"
 	"github.com/greenmaskio/greenmask/internal/db/postgres/toc"
-	"github.com/greenmaskio/greenmask/internal/storage"
+	"github.com/greenmaskio/greenmask/internal/storages"
 )
 
 type SequenceDumper struct {
@@ -19,7 +21,7 @@ func NewSequenceDumper(sequence *dump.Sequence) *SequenceDumper {
 	}
 }
 
-func (sd *SequenceDumper) Execute(ctx context.Context, tx pgx.Tx, st storage.Storager) (toc.EntryProducer, error) {
+func (sd *SequenceDumper) Execute(ctx context.Context, tx pgx.Tx, st storages.Storager) (toc.EntryProducer, error) {
 	return sd.sequence, nil
 }
 

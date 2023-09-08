@@ -12,14 +12,17 @@ import (
 	"regexp"
 	"strconv"
 
+	"github.com/jackc/pgx/v5"
+	"github.com/rs/zerolog/log"
+	"golang.org/x/sync/errgroup"
+	"gopkg.in/yaml.v3"
+
 	"github.com/greenmaskio/greenmask/internal/db/postgres/domains/storage"
 	"github.com/greenmaskio/greenmask/internal/db/postgres/pgrestore"
 	"github.com/greenmaskio/greenmask/internal/db/postgres/restorers"
 	"github.com/greenmaskio/greenmask/internal/db/postgres/toc"
-	storageDto "github.com/greenmaskio/greenmask/internal/storage"
-	"github.com/greenmaskio/greenmask/internal/storage/directory"
-	"github.com/rs/zerolog/log"
-	"golang.org/x/sync/errgroup"
+	"github.com/greenmaskio/greenmask/internal/storages"
+	"github.com/greenmaskio/greenmask/internal/storages/directory"
 )
 
 const (
@@ -41,14 +44,14 @@ type Restore struct {
 	scripts    map[string][]pgrestore.Script
 	pgRestore  *pgrestore.PgRestore
 	restoreOpt *pgrestore.Options
-	st         storageDto.Storager
+	st         storages.Storager
 	dumpIdList map[int32]bool
 	conn       *pgx.Conn
-	dumpSt     storageDto.Storager
+	dumpSt     storages.Storager
 	tocObj     *toc.Toc
 }
 
-func NewRestore(binPath string, st storageDto.Storager, opt *pgrestore.Options, s map[string][]pgrestore.Script) *Restore {
+func NewRestore(binPath string, st storages.Storager, opt *pgrestore.Options, s map[string][]pgrestore.Script) *Restore {
 
 	return &Restore{
 		binPath:    binPath,

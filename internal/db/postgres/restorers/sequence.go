@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/jackc/pgx/v5"
+
 	"github.com/greenmaskio/greenmask/internal/db/postgres/toc"
 )
 
