@@ -174,6 +174,11 @@ func (p *Parameter) Parse(driver *Driver, params map[string][]byte, columnParams
 				return nil, fmt.Errorf("AllowedDbType with name %s is not found", at)
 			}
 		}
+	} else if p.CastDbType != "" {
+		_, ok := driver.TypeMap.TypeForName(p.CastDbType)
+		if !ok {
+			return nil, fmt.Errorf("CastDbType with name %s is not found", p.CastDbType)
+		}
 	}
 
 	raw, ok := params[p.Name]
@@ -263,7 +268,13 @@ func (p *Parameter) Parse(driver *Driver, params map[string][]byte, columnParams
 			return nil, fmt.Errorf("unable to scan parameter via Driver")
 		}
 		p.value = val
-
+	} else if p.CastDbType != "" {
+		val, err := driver.DecodeByTypeName(p.CastDbType, raw)
+		if err != nil {
+			return nil, fmt.Errorf("unable to scan parameter via Driver")
+		}
+		p.value = val
+		p.dynamicParse = true
 	} else {
 		panic("unknown parsing case")
 	}
@@ -356,6 +367,11 @@ func (p *Parameter) Value() any {
 func (p *Parameter) SetRequired(v bool) *Parameter {
 	// Checking database types exists
 	p.Required = v
+	return p
+}
+
+func (p *Parameter) SetCastDbType(v string) *Parameter {
+	p.CastDbType = v
 	return p
 }
 
