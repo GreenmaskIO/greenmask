@@ -8,8 +8,8 @@ import (
 
 	"github.com/rs/zerolog/log"
 
-	"github.com/GreenmaskIO/greenmask/internal/db/postgres/domains/dump"
-	toolkitUtils "github.com/GreenmaskIO/greenmask/pkg/toolkit/utils"
+	"github.com/greenmaskio/greenmask/internal/db/postgres/domains/dump"
+	toolkitUtils "github.com/greenmaskio/greenmask/pkg/toolkit/utils"
 )
 
 type Pipeliner interface {

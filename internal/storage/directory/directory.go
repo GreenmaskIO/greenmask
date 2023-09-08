@@ -9,7 +9,7 @@ import (
 	"path/filepath"
 	"syscall"
 
-	"github.com/GreenmaskIO/greenmask/internal/storage"
+	"github.com/greenmaskio/greenmask/internal/storage"
 )
 
 type Directory struct {

@@ -7,10 +7,10 @@ import (
 
 	"github.com/jackc/pgx/v5/pgtype"
 
-	"github.com/GreenmaskIO/greenmask/internal/db/postgres/domains/config"
-	"github.com/GreenmaskIO/greenmask/internal/db/postgres/domains/dump"
-	"github.com/GreenmaskIO/greenmask/internal/domains"
-	"github.com/GreenmaskIO/greenmask/pkg/toolkit/transformers"
+	"github.com/greenmaskio/greenmask/internal/db/postgres/domains/config"
+	"github.com/greenmaskio/greenmask/internal/db/postgres/domains/dump"
+	"github.com/greenmaskio/greenmask/internal/domains"
+	"github.com/greenmaskio/greenmask/pkg/toolkit/transformers"
 )
 
 // ValidateAndBuildTableConfig - validates tables, transformers and their parameters. Builds config for tables and returns

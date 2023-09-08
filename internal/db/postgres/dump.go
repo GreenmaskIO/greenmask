@@ -12,15 +12,15 @@ import (
 	"github.com/rs/zerolog/log"
 	"golang.org/x/sync/errgroup"
 
-	runtimeContext "github.com/GreenmaskIO/greenmask/internal/db/postgres/context"
-	"github.com/GreenmaskIO/greenmask/internal/db/postgres/domains/config"
-	"github.com/GreenmaskIO/greenmask/internal/db/postgres/domains/dump"
-	storageDto "github.com/GreenmaskIO/greenmask/internal/db/postgres/domains/storage"
-	"github.com/GreenmaskIO/greenmask/internal/db/postgres/dumpers"
-	"github.com/GreenmaskIO/greenmask/internal/db/postgres/pgdump"
-	"github.com/GreenmaskIO/greenmask/internal/db/postgres/toc"
-	"github.com/GreenmaskIO/greenmask/internal/storage"
-	toolkit "github.com/GreenmaskIO/greenmask/pkg/toolkit/transformers"
+	runtimeContext "github.com/greenmaskio/greenmask/internal/db/postgres/context"
+	"github.com/greenmaskio/greenmask/internal/db/postgres/domains/config"
+	"github.com/greenmaskio/greenmask/internal/db/postgres/domains/dump"
+	storageDto "github.com/greenmaskio/greenmask/internal/db/postgres/domains/storage"
+	"github.com/greenmaskio/greenmask/internal/db/postgres/dumpers"
+	"github.com/greenmaskio/greenmask/internal/db/postgres/pgdump"
+	"github.com/greenmaskio/greenmask/internal/db/postgres/toc"
+	"github.com/greenmaskio/greenmask/internal/storage"
+	toolkit "github.com/greenmaskio/greenmask/pkg/toolkit/transformers"
 )
 
 type Dump struct {

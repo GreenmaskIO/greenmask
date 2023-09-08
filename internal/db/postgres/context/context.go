@@ -9,10 +9,10 @@ import (
 	"github.com/rs/zerolog/log"
 	"golang.org/x/exp/slices"
 
-	"github.com/GreenmaskIO/greenmask/internal/db/postgres/domains/config"
-	"github.com/GreenmaskIO/greenmask/internal/db/postgres/domains/dump"
-	"github.com/GreenmaskIO/greenmask/internal/db/postgres/pgdump"
-	"github.com/GreenmaskIO/greenmask/pkg/toolkit/transformers"
+	"github.com/greenmaskio/greenmask/internal/db/postgres/domains/config"
+	"github.com/greenmaskio/greenmask/internal/db/postgres/domains/dump"
+	"github.com/greenmaskio/greenmask/internal/db/postgres/pgdump"
+	"github.com/greenmaskio/greenmask/pkg/toolkit/transformers"
 )
 
 // RuntimeContext - describes current runtime behaviour according to the config and schema objects

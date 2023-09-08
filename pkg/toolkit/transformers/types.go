@@ -1,6 +1,6 @@
 package transformers
 
-import "github.com/GreenmaskIO/greenmask/internal/domains"
+import "github.com/greenmaskio/greenmask/internal/domains"
 
 var (
 	KindOfType = map[rune]string{

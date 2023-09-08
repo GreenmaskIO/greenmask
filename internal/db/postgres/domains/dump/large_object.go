@@ -1,7 +1,7 @@
 package dump
 
 import (
-	"github.com/GreenmaskIO/greenmask/internal/db/postgres/toc"
+	"github.com/greenmaskio/greenmask/internal/db/postgres/toc"
 )
 
 type LargeObject struct {

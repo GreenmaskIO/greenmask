@@ -9,7 +9,7 @@ import (
 	masker "github.com/ggwhite/go-masker"
 	"golang.org/x/exp/slices"
 
-	"github.com/GreenmaskIO/greenmask/pkg/toolkit/transformers"
+	"github.com/greenmaskio/greenmask/pkg/toolkit/transformers"
 )
 
 const (

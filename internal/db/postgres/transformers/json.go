@@ -6,7 +6,7 @@ import (
 
 	"github.com/tidwall/sjson"
 
-	"github.com/GreenmaskIO/greenmask/pkg/toolkit/transformers"
+	"github.com/greenmaskio/greenmask/pkg/toolkit/transformers"
 )
 
 var JsonTransformerDefinition = transformers.NewDefinition(

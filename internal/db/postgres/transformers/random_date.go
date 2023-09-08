@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/GreenmaskIO/greenmask/pkg/toolkit/transformers"
+	"github.com/greenmaskio/greenmask/pkg/toolkit/transformers"
 )
 
 var truncateParts = []string{"year", "month", "day", "hour", "second", "millisecond", "microsecond", "nanosecond"}

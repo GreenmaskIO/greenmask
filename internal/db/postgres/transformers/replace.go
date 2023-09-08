@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/GreenmaskIO/greenmask/pkg/toolkit/transformers"
+	"github.com/greenmaskio/greenmask/pkg/toolkit/transformers"
 )
 
 var ReplaceTransformerDefinition = transformers.NewDefinition(

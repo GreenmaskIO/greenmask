@@ -12,12 +12,12 @@ import (
 	"regexp"
 	"strconv"
 
-	"github.com/GreenmaskIO/greenmask/internal/db/postgres/domains/storage"
-	"github.com/GreenmaskIO/greenmask/internal/db/postgres/pgrestore"
-	"github.com/GreenmaskIO/greenmask/internal/db/postgres/restorers"
-	"github.com/GreenmaskIO/greenmask/internal/db/postgres/toc"
-	storageDto "github.com/GreenmaskIO/greenmask/internal/storage"
-	"github.com/GreenmaskIO/greenmask/internal/storage/directory"
+	"github.com/greenmaskio/greenmask/internal/db/postgres/domains/storage"
+	"github.com/greenmaskio/greenmask/internal/db/postgres/pgrestore"
+	"github.com/greenmaskio/greenmask/internal/db/postgres/restorers"
+	"github.com/greenmaskio/greenmask/internal/db/postgres/toc"
+	storageDto "github.com/greenmaskio/greenmask/internal/storage"
+	"github.com/greenmaskio/greenmask/internal/storage/directory"
 	"github.com/rs/zerolog/log"
 	"golang.org/x/sync/errgroup"
 )

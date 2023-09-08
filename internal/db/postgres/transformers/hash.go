@@ -8,7 +8,7 @@ import (
 
 	"golang.org/x/crypto/scrypt"
 
-	"github.com/GreenmaskIO/greenmask/pkg/toolkit/transformers"
+	"github.com/greenmaskio/greenmask/pkg/toolkit/transformers"
 )
 
 // TODO: Make length truncation

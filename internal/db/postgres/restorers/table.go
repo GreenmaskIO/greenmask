@@ -10,8 +10,8 @@ import (
 	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/rs/zerolog/log"
 
-	"github.com/GreenmaskIO/greenmask/internal/db/postgres/toc"
-	"github.com/GreenmaskIO/greenmask/internal/storage"
+	"github.com/greenmaskio/greenmask/internal/db/postgres/toc"
+	"github.com/greenmaskio/greenmask/internal/storage"
 )
 
 const DefaultBufferSize = 1024 * 10

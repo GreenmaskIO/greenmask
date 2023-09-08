@@ -6,9 +6,9 @@ import (
 
 	"github.com/rs/zerolog/log"
 
-	"github.com/GreenmaskIO/greenmask/internal/db/postgres/domains/config"
-	"github.com/GreenmaskIO/greenmask/internal/db/postgres/domains/dump"
-	"github.com/GreenmaskIO/greenmask/internal/db/postgres/toc"
+	"github.com/greenmaskio/greenmask/internal/db/postgres/domains/config"
+	"github.com/greenmaskio/greenmask/internal/db/postgres/domains/dump"
+	"github.com/greenmaskio/greenmask/internal/db/postgres/toc"
 )
 
 type Header struct {

@@ -9,10 +9,10 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	domains2 "github.com/GreenmaskIO/greenmask/internal/db/postgres/lib/domains"
+	domains2 "github.com/greenmaskio/greenmask/internal/db/postgres/lib/domains"
 
-	"github.com/GreenmaskIO/greenmask/internal/db/postgres/transformers/utils"
-	"github.com/GreenmaskIO/greenmask/internal/domains"
+	"github.com/greenmaskio/greenmask/internal/db/postgres/transformers/utils"
+	"github.com/greenmaskio/greenmask/internal/domains"
 )
 
 func TestCustomTransformer_Transform(t *testing.T) {

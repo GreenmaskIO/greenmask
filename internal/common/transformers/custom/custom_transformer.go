@@ -15,8 +15,8 @@ import (
 	"github.com/rs/zerolog/log"
 	"golang.org/x/sync/errgroup"
 
-	"github.com/GreenmaskIO/greenmask/internal/db/postgres/transformers/utils"
-	"github.com/GreenmaskIO/greenmask/internal/domains"
+	"github.com/greenmaskio/greenmask/internal/db/postgres/transformers/utils"
+	"github.com/greenmaskio/greenmask/internal/domains"
 )
 
 type CancelFunction func() error

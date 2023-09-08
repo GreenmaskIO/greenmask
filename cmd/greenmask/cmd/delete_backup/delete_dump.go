@@ -7,10 +7,10 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/GreenmaskIO/greenmask/cmd/greenmask/cmd/dump"
-	pgDomains "github.com/GreenmaskIO/greenmask/internal/db/postgres/domains/config"
-	"github.com/GreenmaskIO/greenmask/internal/storage/directory"
-	"github.com/GreenmaskIO/greenmask/internal/utils/logger"
+	"github.com/greenmaskio/greenmask/cmd/greenmask/cmd/dump"
+	pgDomains "github.com/greenmaskio/greenmask/internal/db/postgres/domains/config"
+	"github.com/greenmaskio/greenmask/internal/storage/directory"
+	"github.com/greenmaskio/greenmask/internal/utils/logger"
 )
 
 var (

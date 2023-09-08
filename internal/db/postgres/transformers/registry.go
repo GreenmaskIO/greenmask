@@ -3,7 +3,7 @@ package transformers
 import (
 	"fmt"
 
-	toolkit "github.com/GreenmaskIO/greenmask/pkg/toolkit/transformers"
+	toolkit "github.com/greenmaskio/greenmask/pkg/toolkit/transformers"
 )
 
 var DefaultTransformerRegistry = NewTransformerRegistry()

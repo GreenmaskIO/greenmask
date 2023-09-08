@@ -3,7 +3,7 @@ package custom
 import (
 	"errors"
 
-	"github.com/GreenmaskIO/greenmask/internal/domains"
+	"github.com/greenmaskio/greenmask/internal/domains"
 )
 
 type ParametersDefinition map[string]ParameterMeta

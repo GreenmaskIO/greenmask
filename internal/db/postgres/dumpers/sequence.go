@@ -4,9 +4,9 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/GreenmaskIO/greenmask/internal/db/postgres/domains/dump"
-	"github.com/GreenmaskIO/greenmask/internal/db/postgres/toc"
-	"github.com/GreenmaskIO/greenmask/internal/storage"
+	"github.com/greenmaskio/greenmask/internal/db/postgres/domains/dump"
+	"github.com/greenmaskio/greenmask/internal/db/postgres/toc"
+	"github.com/greenmaskio/greenmask/internal/storage"
 )
 
 type SequenceDumper struct {

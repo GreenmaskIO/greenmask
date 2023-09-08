@@ -1,4 +1,4 @@
-module github.com/GreenmaskIO/greenmask
+module github.com/greenmaskio/greenmask
 
 go 1.21
 

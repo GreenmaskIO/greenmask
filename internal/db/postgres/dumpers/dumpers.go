@@ -3,8 +3,8 @@ package dumpers
 import (
 	"context"
 
-	"github.com/GreenmaskIO/greenmask/internal/db/postgres/toc"
-	"github.com/GreenmaskIO/greenmask/internal/storage"
+	"github.com/greenmaskio/greenmask/internal/db/postgres/toc"
+	"github.com/greenmaskio/greenmask/internal/storage"
 )
 
 type DumpTask interface {

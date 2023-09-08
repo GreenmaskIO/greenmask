@@ -6,11 +6,11 @@ import (
 
 	"github.com/jackc/pgx/v5/pgtype"
 
-	"github.com/GreenmaskIO/greenmask/internal/db/postgres/domains/config"
-	"github.com/GreenmaskIO/greenmask/internal/db/postgres/domains/dump"
-	"github.com/GreenmaskIO/greenmask/pkg/toolkit/transformers"
+	"github.com/greenmaskio/greenmask/internal/db/postgres/domains/config"
+	"github.com/greenmaskio/greenmask/internal/db/postgres/domains/dump"
+	"github.com/greenmaskio/greenmask/pkg/toolkit/transformers"
 
-	defaultTransformers "github.com/GreenmaskIO/greenmask/internal/db/postgres/transformers2"
+	defaultTransformers "github.com/greenmaskio/greenmask/internal/db/postgres/transformers2"
 )
 
 func BuildTransformersMap() (map[string]*transformers.Definition, error) {

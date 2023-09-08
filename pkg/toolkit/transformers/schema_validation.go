@@ -6,7 +6,7 @@ import (
 
 	"golang.org/x/exp/slices"
 
-	"github.com/GreenmaskIO/greenmask/internal/domains"
+	"github.com/greenmaskio/greenmask/internal/domains"
 )
 
 type SchemaValidationFunc func(ctx context.Context, table *Table, properties *TransformerProperties, parameters []*Parameter, types []*Type) (ValidationWarnings, error)

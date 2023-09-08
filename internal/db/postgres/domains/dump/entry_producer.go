@@ -1,6 +1,6 @@
 package dump
 
-import "github.com/GreenmaskIO/greenmask/internal/db/postgres/toc"
+import "github.com/greenmaskio/greenmask/internal/db/postgres/toc"
 
 type Entry interface {
 	toc.EntryProducer
