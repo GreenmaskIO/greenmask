@@ -5,8 +5,6 @@ import (
 	"fmt"
 
 	"golang.org/x/exp/slices"
-
-	"github.com/greenmaskio/greenmask/internal/domains"
 )
 
 type SchemaValidationFunc func(ctx context.Context, table *Table, properties *TransformerProperties, parameters []*Parameter, types []*Type) (ValidationWarnings, error)
@@ -27,7 +25,7 @@ func DefaultSchemaValidator(
 		if !p.ColumnProperties.Nullable && p.Column.NotNull {
 			warnings = append(warnings, NewValidationWarning().
 				SetMsg("transformer may produce NULL values but column has NOT NULL constraint").
-				SetLevel(domains.WarningValidationSeverity).
+				SetLevel(WarningValidationSeverity).
 				AddMeta("ConstraintType", NotNullConstraintType).
 				AddMeta("Parameter", p.Name).
 				AddMeta("Column", p.Column.Name),
@@ -39,7 +37,7 @@ func DefaultSchemaValidator(
 			p.Column.Length < p.ColumnProperties.MaxLength {
 			warnings = append(warnings, NewValidationWarning().
 				SetMsg("transformer value might be out of length range: column has a length").
-				SetLevel(domains.WarningValidationSeverity).
+				SetLevel(WarningValidationSeverity).
 				AddMeta("ConstraintType", LengthConstraintType).
 				AddMeta("Parameter", p.Name).
 				AddMeta("Column", p.Column.Name).

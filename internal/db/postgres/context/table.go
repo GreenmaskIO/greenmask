@@ -10,7 +10,6 @@ import (
 
 	"github.com/greenmaskio/greenmask/internal/db/postgres/domains/config"
 	"github.com/greenmaskio/greenmask/internal/db/postgres/domains/dump"
-	"github.com/greenmaskio/greenmask/internal/domains"
 	toolkit "github.com/greenmaskio/greenmask/pkg/toolkit/transformers"
 )
 
@@ -86,7 +85,7 @@ func getTable(ctx context.Context, tx pgx.Tx, schema, name string) (*dump.Table,
 	if err != nil && errors.Is(err, pgx.ErrNoRows) {
 		warnings = append(warnings, toolkit.NewValidationWarning().
 			SetMsgf("table %s.%s not found", table.Schema, table.Name).
-			SetLevel(domains.ErrorValidationSeverity).
+			SetLevel(toolkit.ErrorValidationSeverity).
 			//AddMeta("Level", TableValidationLevel).
 			AddMeta("SchemaName", table.Schema).
 			AddMeta("TableName", table.Name),

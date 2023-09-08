@@ -1,7 +1,5 @@
 package transformers
 
-import "github.com/greenmaskio/greenmask/internal/domains"
-
 var (
 	KindOfType = map[rune]string{
 		'b': "Base",
@@ -79,7 +77,7 @@ func (t *Type) IsAffected(p *Parameter) (w ValidationWarnings) {
 	}
 	if t.Length != WithoutMaxLength && t.Length < p.ColumnProperties.MaxLength {
 		w = append(w, NewValidationWarning().
-			SetLevel(domains.WarningValidationSeverity).
+			SetLevel(WarningValidationSeverity).
 			SetMsg("transformer value might be out of length range: domain has length higher than column").
 			AddMeta("ParameterName", p.Name).
 			AddMeta("ColumnName", p.Column.Name).
