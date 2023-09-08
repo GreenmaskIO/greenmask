@@ -93,3 +93,7 @@ func (rit *RandomIntTransformer) Transform(ctx context.Context, r *toolkit.Recor
 	}
 	return r, nil
 }
+
+func init() {
+	DefaultTransformerRegistry.MustRegister(RandomIntTransformerDefinition)
+}

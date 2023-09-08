@@ -52,7 +52,7 @@ func (d *Definition) parseParameters(
 
 	var params = make(map[string]*Parameter, len(d.Parameters))
 	for _, p := range d.Parameters {
-		params[p.Name] = &(*p)
+		params[p.Name] = p.Copy()
 	}
 	var columnParameters = make(map[string]*Parameter)
 	var commonParameters = make(map[string]*Parameter)

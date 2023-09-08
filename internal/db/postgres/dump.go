@@ -120,7 +120,7 @@ func (d *Dump) buildContextAndValidate(ctx context.Context, tx pgx.Tx) (err erro
 	}
 	// TODO: Implement warnings hook, such as logging and HTTP sender
 	log.Warn().Msg("IMPLEMENT ME: warnings hook, such as logging and HTTP sender")
-	for _, w := range d.context.Warning {
+	for _, w := range d.context.Warnings {
 		log.Debug().Any("ValidationWarning", w).Msg("")
 	}
 	if d.context.IsFatal() {

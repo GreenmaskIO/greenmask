@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/rs/zerolog/log"
 	"golang.org/x/exp/slices"
@@ -22,8 +23,8 @@ type RuntimeContext struct {
 	Types []*toolkit.Type
 	// DataSectionObjects - list of objects to dump in data-section. There are sequences, tables and large objects
 	DataSectionObjects []dump.Entry
-	// Warning - list of occurred ValidationWarning during validation and config building
-	Warning toolkit.ValidationWarnings
+	// Warnings - list of occurred ValidationWarning during validation and config building
+	Warnings toolkit.ValidationWarnings
 	// TransformerMap - map of available transformer definitions
 	TransformerMap map[string]*toolkit.Definition
 	// TypeMap - map of registered types including custom types. It's common for the whole runtime
@@ -58,13 +59,13 @@ func NewRuntimeContext(ctx context.Context, tx pgx.Tx, cfg []*config.Table, tm m
 		Tables:             tables,
 		Types:              types,
 		DataSectionObjects: dataSectionObjects,
-		Warning:            warnings,
+		Warnings:           warnings,
 		TransformerMap:     tm,
 	}, nil
 }
 
 func (rc *RuntimeContext) IsFatal() bool {
-	return rc.Warning.IsFatal()
+	return rc.Warnings.IsFatal()
 }
 
 // TODO: Refactor this function

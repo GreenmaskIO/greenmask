@@ -126,7 +126,6 @@ func MustNewParameter(name string, description string, expectedType any, default
 
 func NewParameter(name string, description string, expectedType any, defaultValue any) (*Parameter, error) {
 
-	var value any
 	if expectedType != nil {
 		eValue := reflect.ValueOf(expectedType)
 		if eValue.Kind() != reflect.Pointer {
@@ -136,8 +135,6 @@ func NewParameter(name string, description string, expectedType any, defaultValu
 		if !eInd.CanSet() {
 			return nil, errors.New("ExpectedType is not settable")
 		}
-
-		value = expectedType
 
 		// Check default type of ExpectedType and DefaultValue - they must be equal and assignable
 		if defaultValue != nil {
@@ -153,7 +150,6 @@ func NewParameter(name string, description string, expectedType any, defaultValu
 			} else {
 				return nil, errors.New("expectedValue and DefaultValue types are unequal")
 			}
-			value = expectedType
 		}
 	} else if expectedType == nil && defaultValue != nil {
 		return nil, errors.New("default value must be set togather with expectedType")
@@ -164,12 +160,12 @@ func NewParameter(name string, description string, expectedType any, defaultValu
 		Description:  description,
 		ExpectedType: expectedType,
 		DefaultValue: defaultValue,
-		value:        value,
 	}, nil
 }
 
 // Parse - parse received params from the config using table definition. dest parameter must be pointer
 func (p *Parameter) Parse(driver *Driver, params map[string][]byte, columnParams map[string]*Parameter) (ValidationWarnings, error) {
+	p.value = nil
 	// Check allowed pgTypes exists
 	if p.ColumnProperties != nil {
 		for _, at := range p.ColumnProperties.AllowedColumnTypes {
@@ -202,7 +198,8 @@ func (p *Parameter) Parse(driver *Driver, params map[string][]byte, columnParams
 		p.LinkedColumnParameter = cp
 	}
 
-	if p.value != nil {
+	if p.ExpectedType != nil {
+		p.value = p.ExpectedType
 		if p.Unmarshaller != nil {
 			// Perform custom unmarshalling
 			value, err := p.Unmarshaller(p, driver, raw)
@@ -268,7 +265,7 @@ func (p *Parameter) Parse(driver *Driver, params map[string][]byte, columnParams
 		p.value = val
 
 	} else {
-		return nil, errors.New("unknown case")
+		panic("unknown parsing case")
 	}
 
 	if p.IsColumn {
@@ -321,6 +318,9 @@ func (p *Parameter) Scan(dest any) error {
 	if p.dynamicParse {
 		return errors.New("dynamically parsed parameters are unscannable")
 	}
+	if p.value == nil {
+		return nil
+	}
 	return scanPointer(p.value, dest)
 }
 
@@ -357,4 +357,10 @@ func (p *Parameter) SetRequired(v bool) *Parameter {
 	// Checking database types exists
 	p.Required = v
 	return p
+}
+
+func (p *Parameter) Copy() *Parameter {
+	cp := &(*p)
+	cp.value = nil
+	return cp
 }

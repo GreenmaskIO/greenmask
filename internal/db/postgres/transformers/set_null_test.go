@@ -11,30 +11,29 @@ import (
 )
 
 func TestSetNullTransformer_Transform(t *testing.T) {
-	driver := getDriver()
+	var columnName = "id"
+	var originalValue = "1"
+	var expectedValue = toolkit.DefaultNullSeq
+
+	driver, record := getDriverAndRecord(columnName, originalValue)
 
 	transformer, warnings, err := SetNullTransformerDefinition.Instance(
 		context.Background(),
 		driver, map[string][]byte{
-			"column": []byte("id"),
+			"column": []byte(columnName),
 		},
 		nil,
 	)
 	require.NoError(t, err)
 	assert.Empty(t, warnings)
 
-	originRawRecord := []string{"1", toolkit.DefaultNullSeq, "old_value"}
-
 	r, err := transformer.Transform(
 		context.Background(),
-		toolkit.NewRecord(
-			driver,
-			originRawRecord,
-		),
+		record,
 	)
 	require.NoError(t, err)
-	transformedRawRecord, err := r.Encode()
+	res, err := r.EncodeAttr(columnName)
 	require.NoError(t, err)
 
-	require.Equal(t, transformedRawRecord[0], toolkit.DefaultNullSeq)
+	require.Equal(t, expectedValue, string(res))
 }

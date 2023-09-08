@@ -11,29 +11,24 @@ import (
 )
 
 func TestUuidTransformer_Transform_uuid_type(t *testing.T) {
-	driver := getDriver()
-
-	originalRecord := []string{"1", toolkit.DefaultNullSeq, toolkit.DefaultNullSeq, toolkit.DefaultNullSeq, toolkit.DefaultNullSeq}
-
 	tests := []struct {
 		name       string
 		columnName string
-		idx        int
 	}{
 		{
 			name:       "text",
-			columnName: "title",
-			idx:        2,
+			columnName: "data",
 		},
 		{
 			name:       "uuid",
 			columnName: "uid",
-			idx:        4,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			driver, record := getDriverAndRecord(tt.columnName, toolkit.DefaultNullSeq)
+
 			transformer, warnings, err := RandomUuidTransformerDefinition.Instance(
 				context.Background(),
 				driver, map[string][]byte{
@@ -46,17 +41,14 @@ func TestUuidTransformer_Transform_uuid_type(t *testing.T) {
 
 			r, err := transformer.Transform(
 				context.Background(),
-				toolkit.NewRecord(
-					driver,
-					originalRecord,
-				),
+				record,
 			)
 			require.NoError(t, err)
-			res, err := r.Encode()
+			res, err := r.EncodeAttr(tt.columnName)
 			require.NoError(t, err)
 
 			assert.NoError(t, err)
-			assert.Regexp(t, `^[\d\w]{8}-[\d\w]{4}-[\d\w]{4}-[\d\w]{4}-[\d\w]{12}$`, res[tt.idx])
+			assert.Regexp(t, `^[\d\w]{8}-[\d\w]{4}-[\d\w]{4}-[\d\w]{4}-[\d\w]{12}$`, string(res))
 		})
 	}
 }

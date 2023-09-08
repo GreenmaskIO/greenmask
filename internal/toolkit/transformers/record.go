@@ -13,7 +13,7 @@ type Tuple map[string]any
 
 type Record struct {
 	driver    *Driver
-	RawData   []string
+	RawData   [][]byte
 	tuple     Tuple
 	columnIdx map[string]int
 }
@@ -24,10 +24,17 @@ func NewRecord(driver *Driver, rawData []string) *Record {
 		columnIdx[c.Name] = idx
 	}
 
+	// Manually adapt immutable []string that requires stdlib CSV decoder to [][]byte
+	// TODO: Remove it once you implemented COPY Encode/Decoder
+	byteData := make([][]byte, len(rawData))
+	for idx := range byteData {
+		byteData[idx] = []byte(rawData[idx])
+	}
+
 	return &Record{
 		driver:    driver,
 		tuple:     make(Tuple, 24),
-		RawData:   rawData,
+		RawData:   byteData,
 		columnIdx: columnIdx,
 	}
 }
@@ -46,7 +53,7 @@ func (r *Record) GetTuple() (Tuple, error) {
 			if !ok {
 				return nil, fmt.Errorf("attribute %s is not found", attName)
 			}
-			v, err := r.driver.DecodeByTypeOid(uint32(c.TypeOid), []byte(r.RawData[idx]))
+			v, err := r.driver.DecodeByTypeOid(uint32(c.TypeOid), r.RawData[idx])
 			if err != nil {
 				return nil, fmt.Errorf("error decoding attribute %s: %w", attName, err)
 			}
@@ -71,7 +78,7 @@ func (r *Record) ScanAttribute(name string, v any) error {
 		if !ok {
 			return errors.New("unknown column name")
 		}
-		if err := r.driver.ScanByTypeOid(uint32(column.TypeOid), []byte(r.RawData[idx]), v); err != nil {
+		if err := r.driver.ScanByTypeOid(uint32(column.TypeOid), r.RawData[idx], v); err != nil {
 			return fmt.Errorf("cannot scan: %w", err)
 		}
 		r.tuple[name] = v
@@ -88,7 +95,7 @@ func (r *Record) GetAttribute(name string) (any, error) {
 		if !ok {
 			return nil, errors.New("unknown column name")
 		}
-		val, err = r.driver.DecodeByTypeOid(uint32(column.TypeOid), []byte(r.RawData[idx]))
+		val, err = r.driver.DecodeByTypeOid(uint32(column.TypeOid), r.RawData[idx])
 		if err != nil {
 			return nil, fmt.Errorf("decode attr: %w", err)
 		}
@@ -106,42 +113,71 @@ func (r *Record) SetAttribute(name string, v any) error {
 
 // Encode - build CSV record
 func (r *Record) Encode() ([]string, error) {
-	var err error
 	for attrName, value := range r.tuple {
 		idx, ok := r.columnIdx[attrName]
 		if !ok {
 			return nil, fmt.Errorf("unknown column %s", attrName)
 		}
 		column := r.driver.Table.Columns[idx]
-		var res []byte
+		res, err := r.encodeValue(column, value)
+		if err != nil {
+			return nil, fmt.Errorf("unable to encode of attribute %s: %w", attrName, err)
+		}
+		r.RawData[idx] = res
+	}
 
-		switch v := value.(type) {
-		case string:
-			// We need to encode-decode procedure value that are assigned as string
-			// value for non textual attributes
-			if v == DefaultNullSeq {
-				res = []byte(DefaultNullSeq)
-			} else if column.TypeOid != pgtype.VarcharOID && column.TypeOid != pgtype.TextOID {
-				decodedVal, err := r.driver.DecodeAttr(attrName, []byte(v))
-				if err != nil {
-					return nil, fmt.Errorf("unable to force decoding textual value of attribte %s for non textual %s type: %w", attrName, column.TypeName, err)
-				}
-				res, err = r.driver.EncodeAttr(attrName, decodedVal, nil)
-				if err != nil {
-					return nil, fmt.Errorf("encoding error: %w", err)
-				}
-			} else {
-				res = []byte(v)
+	// Manually adapt [][]byte to []string that requires stdlib CSV decoder
+	// TODO: Remove it once you implemented COPY Encode/Decoder
+	res := make([]string, len(r.RawData))
+	for idx := range res {
+		res[idx] = string(r.RawData[idx])
+	}
+
+	return res, nil
+}
+
+func (r *Record) EncodeAttr(name string) (res []byte, err error) {
+	idx, ok := r.columnIdx[name]
+	if !ok {
+		return nil, fmt.Errorf("unknown column %s", name)
+	}
+	column := r.driver.Table.Columns[idx]
+	if val, ok := r.tuple[name]; ok {
+		res, err = r.encodeValue(column, val)
+		if err != nil {
+			return nil, fmt.Errorf("unable to encode %s atribute value: %w", name, err)
+		}
+		return res, nil
+	}
+	return r.RawData[idx], nil
+}
+
+func (r *Record) encodeValue(c *Column, v any) (res []byte, err error) {
+
+	switch v := v.(type) {
+	case string:
+		// We need to encode-decode procedure v that are assigned as string
+		// v for non textual attributes
+		if v == DefaultNullSeq {
+			res = []byte(DefaultNullSeq)
+		} else if c.TypeOid != pgtype.VarcharOID && c.TypeOid != pgtype.TextOID {
+			decodedVal, err := r.driver.DecodeAttr(c.Name, []byte(v))
+			if err != nil {
+				return nil, fmt.Errorf("unable to force decoding textual v of attribte %s for non textual %s type: %w", c.Name, c.TypeName, err)
 			}
-
-		default:
-			res, err = r.driver.EncodeAttr(attrName, value, nil)
+			res, err = r.driver.EncodeAttr(c.Name, decodedVal, nil)
 			if err != nil {
 				return nil, fmt.Errorf("encoding error: %w", err)
 			}
+		} else {
+			res = []byte(v)
 		}
 
-		r.RawData[idx] = string(res)
+	default:
+		res, err = r.driver.EncodeAttr(c.Name, v, nil)
+		if err != nil {
+			return nil, fmt.Errorf("encoding error: %w", err)
+		}
 	}
-	return r.RawData, nil
+	return res, nil
 }

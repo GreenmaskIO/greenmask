@@ -5,8 +5,6 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-
-	toolkit "github.com/GreenmaskIO/greenmask/internal/toolkit/transformers"
 )
 
 //func TestReplaceTransformer_Transform(t *testing.T) {
@@ -106,15 +104,16 @@ import (
 //
 //}
 
-func TestReplaceTransformer_Transform2(t *testing.T) {
-	driver := getDriver()
+func TestReplaceTransformer_Transform(t *testing.T) {
+	var columnName = "id"
+	var originalValue = "1"
+	var expectedValue = "123"
+	driver, record := getDriverAndRecord(columnName, originalValue)
 
-	originalRecord := []string{"1", toolkit.DefaultNullSeq, "+35798665784"}
-	expectedRecord := []string{"123", toolkit.DefaultNullSeq, "+357***65784"}
 	transformer, warnings, err := ReplaceTransformerDefinition.Instance(
 		context.Background(),
 		driver, map[string][]byte{
-			"column": []byte("id"),
+			"column": []byte(columnName),
 			"value":  []byte("123"),
 		},
 		nil,
@@ -124,14 +123,11 @@ func TestReplaceTransformer_Transform2(t *testing.T) {
 
 	r, err := transformer.Transform(
 		context.Background(),
-		toolkit.NewRecord(
-			driver,
-			originalRecord,
-		),
+		record,
 	)
 	require.NoError(t, err)
-	res, err := r.Encode()
+	res, err := r.EncodeAttr(columnName)
 	require.NoError(t, err)
 
-	require.Equal(t, expectedRecord[0], res[0])
+	require.Equal(t, expectedValue, string(res))
 }

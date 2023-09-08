@@ -6,48 +6,48 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-
-	toolkit "github.com/GreenmaskIO/greenmask/internal/toolkit/transformers"
 )
 
 func TestMaskingTransformer_Transform(t *testing.T) {
-	driver := getDriver()
 
 	tests := []struct {
-		name           string
-		ttype          string
-		originalRecord []string
-		expectedRecord []string
-		idx            int
+		name          string
+		ttype         string
+		columnName    string
+		originalValue string
+		expectedValue string
 	}{
 		{
-			name:           "mobile",
-			ttype:          "mobile",
-			originalRecord: []string{toolkit.DefaultNullSeq, toolkit.DefaultNullSeq, "+35798665784"},
-			expectedRecord: []string{toolkit.DefaultNullSeq, toolkit.DefaultNullSeq, "+357***65784"},
-			idx:            2,
+			name:          "mobile",
+			ttype:         "mobile",
+			columnName:    "data",
+			originalValue: "+35798665784",
+			expectedValue: "+357***65784",
 		},
 		{
-			name:           "name",
-			ttype:          "name",
-			originalRecord: []string{toolkit.DefaultNullSeq, toolkit.DefaultNullSeq, "abcdef test"},
-			expectedRecord: []string{toolkit.DefaultNullSeq, toolkit.DefaultNullSeq, "a**def t**t"},
-			idx:            2,
+			name:          "name",
+			ttype:         "name",
+			columnName:    "data",
+			originalValue: "abcdef test",
+			expectedValue: "a**def t**t",
 		},
 		{
-			name:           "password",
-			ttype:          "password",
-			originalRecord: []string{toolkit.DefaultNullSeq, toolkit.DefaultNullSeq, "password_secure"},
-			expectedRecord: []string{toolkit.DefaultNullSeq, toolkit.DefaultNullSeq, "************"},
-			idx:            2,
+			name:          "password",
+			ttype:         "password",
+			columnName:    "data",
+			originalValue: "password_secure",
+			expectedValue: "************",
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+
+			driver, record := getDriverAndRecord(tt.columnName, tt.originalValue)
+
 			transformer, warnings, err := MaskingTransformerDefinition.Instance(
 				context.Background(),
 				driver, map[string][]byte{
-					"column": []byte("title"),
+					"column": []byte(tt.columnName),
 					"type":   []byte(tt.ttype),
 				},
 				nil,
@@ -57,27 +57,26 @@ func TestMaskingTransformer_Transform(t *testing.T) {
 
 			r, err := transformer.Transform(
 				context.Background(),
-				toolkit.NewRecord(
-					driver,
-					tt.originalRecord,
-				),
+				record,
 			)
 			require.NoError(t, err)
-			res, err := r.Encode()
+			res, err := r.EncodeAttr(tt.columnName)
 			require.NoError(t, err)
 
-			require.Equal(t, tt.expectedRecord[tt.idx], res[tt.idx])
+			require.Equal(t, tt.expectedValue, string(res))
 		})
 	}
 }
 
 func TestMaskingTransformer_type_validation(t *testing.T) {
-	driver := getDriver()
+	var columnName = "title"
+	var originalValue = "someval"
+	driver, _ := getDriverAndRecord(columnName, originalValue)
 
 	_, warnings, err := MaskingTransformerDefinition.Instance(
 		context.Background(),
 		driver, map[string][]byte{
-			"column": []byte("title"),
+			"column": []byte(columnName),
 			"type":   []byte("unknown"),
 		},
 		nil,

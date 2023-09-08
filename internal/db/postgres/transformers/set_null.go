@@ -7,8 +7,6 @@ import (
 	toolkit "github.com/GreenmaskIO/greenmask/internal/toolkit/transformers"
 )
 
-const SetNullTransformerName = "SetNull"
-
 var SetNullTransformerDefinition = toolkit.NewDefinition(
 	toolkit.MustNewTransformerProperties(
 		"SetNull",
