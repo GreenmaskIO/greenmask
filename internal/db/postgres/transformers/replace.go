@@ -4,21 +4,21 @@ import (
 	"context"
 	"fmt"
 
-	toolkit "github.com/GreenmaskIO/greenmask/internal/toolkit/transformers"
+	"github.com/GreenmaskIO/greenmask/pkg/toolkit/transformers"
 )
 
-var ReplaceTransformerDefinition = toolkit.NewDefinition(
-	toolkit.MustNewTransformerProperties(
+var ReplaceTransformerDefinition = transformers.NewDefinition(
+	transformers.MustNewTransformerProperties(
 		"Replace",
 		"Replace column value to the provided",
-		toolkit.TupleTransformation,
+		transformers.TupleTransformation,
 	),
 	NewReplaceTransformer,
-	toolkit.MustNewParameter("column", "column name", new(string), nil).
-		SetIsColumn(toolkit.NewColumnProperties().
+	transformers.MustNewParameter("column", "column name", new(string), nil).
+		SetIsColumn(transformers.NewColumnProperties().
 			SetAffected(true),
 		).SetRequired(true),
-	toolkit.MustNewParameter(
+	transformers.MustNewParameter(
 		"value",
 		"value to replace",
 		nil,
@@ -32,7 +32,7 @@ type ReplaceTransformer struct {
 	value      any
 }
 
-func NewReplaceTransformer(ctx context.Context, driver *toolkit.Driver, parameters map[string]*toolkit.Parameter) (toolkit.Transformer, toolkit.ValidationWarnings, error) {
+func NewReplaceTransformer(ctx context.Context, driver *transformers.Driver, parameters map[string]*transformers.Parameter) (transformers.Transformer, transformers.ValidationWarnings, error) {
 
 	var columnName string
 	var value any
@@ -54,11 +54,11 @@ func (rt *ReplaceTransformer) Init(ctx context.Context) error {
 	return nil
 }
 
-func (rt *ReplaceTransformer) Validate(ctx context.Context) (toolkit.ValidationWarnings, error) {
+func (rt *ReplaceTransformer) Validate(ctx context.Context) (transformers.ValidationWarnings, error) {
 	return nil, nil
 }
 
-func (rt *ReplaceTransformer) Transform(ctx context.Context, r *toolkit.Record) (*toolkit.Record, error) {
+func (rt *ReplaceTransformer) Transform(ctx context.Context, r *transformers.Record) (*transformers.Record, error) {
 	if err := r.SetAttribute(rt.columnName, rt.value); err != nil {
 		return nil, fmt.Errorf("unable to set new value: %w", err)
 	}

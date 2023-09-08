@@ -6,28 +6,28 @@ import (
 	"math/rand"
 	"time"
 
-	toolkit "github.com/GreenmaskIO/greenmask/internal/toolkit/transformers"
+	"github.com/GreenmaskIO/greenmask/pkg/toolkit/transformers"
 )
 
-var RandomIntTransformerDefinition = toolkit.NewDefinition(
-	toolkit.MustNewTransformerProperties(
+var RandomIntTransformerDefinition = transformers.NewDefinition(
+	transformers.MustNewTransformerProperties(
 		"RandomInt",
 		"Generate random int value from min to max",
-		toolkit.TupleTransformation,
+		transformers.TupleTransformation,
 	),
 	NewRandomIntTransformer,
-	toolkit.MustNewParameter("column", "column name", new(string), nil).
-		SetIsColumn(toolkit.NewColumnProperties().
+	transformers.MustNewParameter("column", "column name", new(string), nil).
+		SetIsColumn(transformers.NewColumnProperties().
 			SetAffected(true).
 			SetAllowedColumnTypes("int2", "int4", "int8"),
 		).SetRequired(true),
-	toolkit.MustNewParameter(
+	transformers.MustNewParameter(
 		"min",
 		"min int value threshold",
 		new(int64),
 		nil,
 	).SetRequired(true),
-	toolkit.MustNewParameter(
+	transformers.MustNewParameter(
 		"max",
 		"max int value threshold",
 		new(int64),
@@ -42,7 +42,7 @@ type RandomIntTransformer struct {
 	rand       *rand.Rand
 }
 
-func NewRandomIntTransformer(ctx context.Context, driver *toolkit.Driver, parameters map[string]*toolkit.Parameter) (toolkit.Transformer, toolkit.ValidationWarnings, error) {
+func NewRandomIntTransformer(ctx context.Context, driver *transformers.Driver, parameters map[string]*transformers.Parameter) (transformers.Transformer, transformers.ValidationWarnings, error) {
 	var columnName string
 	var minVal, maxVal int64
 	p := parameters["column"]
@@ -61,8 +61,8 @@ func NewRandomIntTransformer(ctx context.Context, driver *toolkit.Driver, parame
 	}
 
 	if minVal >= maxVal {
-		return nil, toolkit.ValidationWarnings{
-			toolkit.NewValidationWarning().
+		return nil, transformers.ValidationWarnings{
+			transformers.NewValidationWarning().
 				AddMeta("min", minVal).
 				AddMeta("max", maxVal).
 				SetMsg("max value must be greater that min value"),
@@ -81,11 +81,11 @@ func (rit *RandomIntTransformer) Init(ctx context.Context) error {
 	return nil
 }
 
-func (rit *RandomIntTransformer) Validate(ctx context.Context) (toolkit.ValidationWarnings, error) {
+func (rit *RandomIntTransformer) Validate(ctx context.Context) (transformers.ValidationWarnings, error) {
 	return nil, nil
 }
 
-func (rit *RandomIntTransformer) Transform(ctx context.Context, r *toolkit.Record) (*toolkit.Record, error) {
+func (rit *RandomIntTransformer) Transform(ctx context.Context, r *transformers.Record) (*transformers.Record, error) {
 	res := rit.rand.Int63n(rit.max-rit.min) + rit.min
 
 	if err := r.SetAttribute(rit.columnName, res); err != nil {

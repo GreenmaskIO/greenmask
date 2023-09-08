@@ -8,7 +8,7 @@ import (
 
 	"golang.org/x/crypto/scrypt"
 
-	toolkit "github.com/GreenmaskIO/greenmask/internal/toolkit/transformers"
+	"github.com/GreenmaskIO/greenmask/pkg/toolkit/transformers"
 )
 
 // TODO: Make length truncation
@@ -17,19 +17,19 @@ const (
 	saltLength = 32
 )
 
-var HashTransformerDefinition = toolkit.NewDefinition(
-	toolkit.MustNewTransformerProperties(
+var HashTransformerDefinition = transformers.NewDefinition(
+	transformers.MustNewTransformerProperties(
 		"Hash",
 		"Generate hash of column value",
-		toolkit.TupleTransformation,
+		transformers.TupleTransformation,
 	),
 	NewHashTransformer,
-	toolkit.MustNewParameter("column", "column name", new(string), nil).
-		SetIsColumn(toolkit.NewColumnProperties().
+	transformers.MustNewParameter("column", "column name", new(string), nil).
+		SetIsColumn(transformers.NewColumnProperties().
 			SetAffected(true).
 			SetAllowedColumnTypes("text", "varchar"),
 		).SetRequired(true),
-	toolkit.MustNewParameter("salt", "salt for hash", new(string), nil),
+	transformers.MustNewParameter("salt", "salt for hash", new(string), nil),
 )
 
 type HashTransformer struct {
@@ -37,7 +37,7 @@ type HashTransformer struct {
 	columnName string
 }
 
-func NewHashTransformer(ctx context.Context, driver *toolkit.Driver, parameters map[string]*toolkit.Parameter) (toolkit.Transformer, toolkit.ValidationWarnings, error) {
+func NewHashTransformer(ctx context.Context, driver *transformers.Driver, parameters map[string]*transformers.Parameter) (transformers.Transformer, transformers.ValidationWarnings, error) {
 	p := parameters["column"]
 	var columnName string
 	if err := p.Scan(&columnName); err != nil {
@@ -71,11 +71,11 @@ func (ht *HashTransformer) Init(ctx context.Context) error {
 	return nil
 }
 
-func (ht *HashTransformer) Validate(ctx context.Context) (toolkit.ValidationWarnings, error) {
+func (ht *HashTransformer) Validate(ctx context.Context) (transformers.ValidationWarnings, error) {
 	return nil, nil
 }
 
-func (ht *HashTransformer) Transform(ctx context.Context, r *toolkit.Record) (*toolkit.Record, error) {
+func (ht *HashTransformer) Transform(ctx context.Context, r *transformers.Record) (*transformers.Record, error) {
 	var originalValue string
 	if err := r.ScanAttribute(ht.columnName, &originalValue); err != nil {
 		return nil, fmt.Errorf("unable to scan attribute value: %w", err)

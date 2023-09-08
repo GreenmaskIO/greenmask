@@ -9,7 +9,7 @@ import (
 	"github.com/GreenmaskIO/greenmask/internal/db/postgres/domains/dump"
 	"github.com/GreenmaskIO/greenmask/internal/db/postgres/pgdump"
 	"github.com/GreenmaskIO/greenmask/internal/db/postgres/toc"
-	toolkit "github.com/GreenmaskIO/greenmask/internal/toolkit/transformers"
+	"github.com/GreenmaskIO/greenmask/pkg/toolkit/transformers"
 )
 
 const (
@@ -19,7 +19,7 @@ const (
 
 // TODO: Rewrite it using gotemplate
 
-func getDumpObjects(ctx context.Context, tx pgx.Tx, options *pgdump.Options, config map[toolkit.Oid]*dump.Table) ([]dump.Entry, error) {
+func getDumpObjects(ctx context.Context, tx pgx.Tx, options *pgdump.Options, config map[transformers.Oid]*dump.Table) ([]dump.Entry, error) {
 
 	// Building relation search query using regexp adaptation rules and pre-defined query templates
 	// TODO: Refactor it to gotemplate
@@ -74,7 +74,7 @@ func getDumpObjects(ctx context.Context, tx pgx.Tx, options *pgdump.Options, con
 			fallthrough
 		case 'f':
 			// Building table objects
-			table, ok = config[toolkit.Oid(oid)]
+			table, ok = config[transformers.Oid(oid)]
 			if ok {
 				// If table was discovered during Transformer validation - use that object instead of a new
 				table.ExcludeData = excludeData
@@ -83,10 +83,10 @@ func getDumpObjects(ctx context.Context, tx pgx.Tx, options *pgdump.Options, con
 				// If table is not found - create new table object and collect all the columns
 
 				table = &dump.Table{
-					Table: &toolkit.Table{
+					Table: &transformers.Table{
 						Name:   name,
 						Schema: schemaName,
-						Oid:    toolkit.Oid(oid),
+						Oid:    transformers.Oid(oid),
 					},
 					Owner:                owner,
 					RelKind:              relKind,

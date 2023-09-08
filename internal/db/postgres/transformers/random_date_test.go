@@ -6,7 +6,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	toolkit "github.com/GreenmaskIO/greenmask/internal/toolkit/transformers"
+	toolkit "github.com/GreenmaskIO/greenmask/pkg/toolkit/transformers"
 )
 
 func TestRandomDateTransformer_Transform(t *testing.T) {

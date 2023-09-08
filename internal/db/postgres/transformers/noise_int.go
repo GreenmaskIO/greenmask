@@ -6,7 +6,7 @@ import (
 	"math/rand"
 	"time"
 
-	toolkit "github.com/GreenmaskIO/greenmask/internal/toolkit/transformers"
+	"github.com/GreenmaskIO/greenmask/pkg/toolkit/transformers"
 )
 
 const NoiseIntTransformerName = "NoiseInt"
@@ -15,19 +15,19 @@ func New[T int64 | float64](v T) *T {
 	return &v
 }
 
-var NoiseIntTransformerDefinition = toolkit.NewDefinition(
-	toolkit.MustNewTransformerProperties(
+var NoiseIntTransformerDefinition = transformers.NewDefinition(
+	transformers.MustNewTransformerProperties(
 		"NoiseInt",
 		"Make noise value for int",
-		toolkit.TupleTransformation,
+		transformers.TupleTransformation,
 	),
 	NewNoiseIntTransformer,
-	toolkit.MustNewParameter("column", "column name", new(string), nil).
-		SetIsColumn(toolkit.NewColumnProperties().
+	transformers.MustNewParameter("column", "column name", new(string), nil).
+		SetIsColumn(transformers.NewColumnProperties().
 			SetAffected(true).
 			SetAllowedColumnTypes("int2", "int4", "int8"),
 		).SetRequired(true),
-	toolkit.MustNewParameter(
+	transformers.MustNewParameter(
 		"ratio",
 		"max random percentage for noise",
 		new(float64),
@@ -41,7 +41,7 @@ type NoiseIntTransformer struct {
 	rand       *rand.Rand
 }
 
-func NewNoiseIntTransformer(ctx context.Context, driver *toolkit.Driver, parameters map[string]*toolkit.Parameter) (toolkit.Transformer, toolkit.ValidationWarnings, error) {
+func NewNoiseIntTransformer(ctx context.Context, driver *transformers.Driver, parameters map[string]*transformers.Parameter) (transformers.Transformer, transformers.ValidationWarnings, error) {
 	var columnName string
 	var ratio float64
 
@@ -66,11 +66,11 @@ func (nit *NoiseIntTransformer) Init(ctx context.Context) error {
 	return nil
 }
 
-func (nit *NoiseIntTransformer) Validate(ctx context.Context) (toolkit.ValidationWarnings, error) {
+func (nit *NoiseIntTransformer) Validate(ctx context.Context) (transformers.ValidationWarnings, error) {
 	return nil, nil
 }
 
-func (nit *NoiseIntTransformer) Transform(ctx context.Context, r *toolkit.Record) (*toolkit.Record, error) {
+func (nit *NoiseIntTransformer) Transform(ctx context.Context, r *transformers.Record) (*transformers.Record, error) {
 	var val int64
 	if err := r.ScanAttribute(nit.columnName, &val); err != nil {
 		return nil, fmt.Errorf("unable to scan value: %w", err)

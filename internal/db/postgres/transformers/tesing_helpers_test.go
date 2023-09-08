@@ -5,10 +5,10 @@ import (
 
 	"github.com/jackc/pgx/v5/pgtype"
 
-	toolkit "github.com/GreenmaskIO/greenmask/internal/toolkit/transformers"
+	"github.com/GreenmaskIO/greenmask/pkg/toolkit/transformers"
 )
 
-var columnList = []*toolkit.Column{
+var columnList = []*transformers.Column{
 	{
 		Name:     "id",
 		TypeName: "int2",
@@ -101,10 +101,10 @@ var columnList = []*toolkit.Column{
 
 // getDriverAndRecord - return adhoc table for testing
 // TODO: You should generate table definition it dynamically using faker as well as table tuples
-func getDriverAndRecord(name string, value string) (*toolkit.Driver, *toolkit.Record) {
+func getDriverAndRecord(name string, value string) (*transformers.Driver, *transformers.Record) {
 	typeMap := pgtype.NewMap()
 
-	idx := slices.IndexFunc(columnList, func(column *toolkit.Column) bool {
+	idx := slices.IndexFunc(columnList, func(column *transformers.Column) bool {
 		return column.Name == name
 	})
 
@@ -112,19 +112,19 @@ func getDriverAndRecord(name string, value string) (*toolkit.Driver, *toolkit.Re
 		panic("cannot find column")
 	}
 
-	table := &toolkit.Table{
+	table := &transformers.Table{
 		Schema:      "public",
 		Name:        "test",
 		Oid:         1224,
 		Columns:     columnList[idx : idx+1],
-		Constraints: []toolkit.Constraint{},
+		Constraints: []transformers.Constraint{},
 	}
 
-	driver, err := toolkit.NewDriver(typeMap, table)
+	driver, err := transformers.NewDriver(typeMap, table)
 	if err != nil {
 		panic(err.Error())
 	}
-	return driver, toolkit.NewRecord(
+	return driver, transformers.NewRecord(
 		driver,
 		[]string{value},
 	)

@@ -20,7 +20,7 @@ import (
 	"github.com/GreenmaskIO/greenmask/internal/db/postgres/pgdump"
 	"github.com/GreenmaskIO/greenmask/internal/db/postgres/toc"
 	"github.com/GreenmaskIO/greenmask/internal/storage"
-	toolkit "github.com/GreenmaskIO/greenmask/internal/toolkit/transformers"
+	toolkit "github.com/GreenmaskIO/greenmask/pkg/toolkit/transformers"
 )
 
 type Dump struct {

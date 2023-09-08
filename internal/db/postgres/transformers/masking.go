@@ -9,7 +9,7 @@ import (
 	masker "github.com/ggwhite/go-masker"
 	"golang.org/x/exp/slices"
 
-	toolkit "github.com/GreenmaskIO/greenmask/internal/toolkit/transformers"
+	"github.com/GreenmaskIO/greenmask/pkg/toolkit/transformers"
 )
 
 const (
@@ -24,19 +24,19 @@ const (
 	MURL        string = "url"
 )
 
-var MaskingTransformerDefinition = toolkit.NewDefinition(
-	toolkit.MustNewTransformerProperties(
+var MaskingTransformerDefinition = transformers.NewDefinition(
+	transformers.MustNewTransformerProperties(
 		"Masking",
 		"Mask a value using one of masking type",
-		toolkit.TupleTransformation,
+		transformers.TupleTransformation,
 	),
 	NewMaskingTransformer,
-	toolkit.MustNewParameter("column", "column name", new(string), nil).
-		SetIsColumn(toolkit.NewColumnProperties().
+	transformers.MustNewParameter("column", "column name", new(string), nil).
+		SetIsColumn(transformers.NewColumnProperties().
 			SetAffected(true).
 			SetAllowedColumnTypes("text", "varchar"),
 		).SetRequired(true),
-	toolkit.MustNewParameter(
+	transformers.MustNewParameter(
 		"type",
 		"logical type of attribute (password name addr email mobile tel id credit url)",
 		new(string),
@@ -53,7 +53,7 @@ type MaskingTransformer struct {
 	maskingFunction maskingFunction
 }
 
-func NewMaskingTransformer(ctx context.Context, driver *toolkit.Driver, parameters map[string]*toolkit.Parameter) (toolkit.Transformer, toolkit.ValidationWarnings, error) {
+func NewMaskingTransformer(ctx context.Context, driver *transformers.Driver, parameters map[string]*transformers.Parameter) (transformers.Transformer, transformers.ValidationWarnings, error) {
 
 	var columnName string
 	var dataType string
@@ -105,17 +105,17 @@ func (mt *MaskingTransformer) Init(ctx context.Context) error {
 	return nil
 }
 
-func (mt *MaskingTransformer) Validate(ctx context.Context) (toolkit.ValidationWarnings, error) {
+func (mt *MaskingTransformer) Validate(ctx context.Context) (transformers.ValidationWarnings, error) {
 	return nil, nil
 }
 
-func (mt *MaskingTransformer) Transform(ctx context.Context, r *toolkit.Record) (*toolkit.Record, error) {
+func (mt *MaskingTransformer) Transform(ctx context.Context, r *transformers.Record) (*transformers.Record, error) {
 	var originalValue string
 	if err := r.ScanAttribute(mt.columnName, &originalValue); err != nil {
 		return nil, fmt.Errorf("unable to scan attribute value: %w", err)
 	}
 
-	if originalValue == toolkit.DefaultNullSeq {
+	if originalValue == transformers.DefaultNullSeq {
 		return r, nil
 	}
 
@@ -126,16 +126,16 @@ func (mt *MaskingTransformer) Transform(ctx context.Context, r *toolkit.Record) 
 	return r, nil
 }
 
-func maskerTypeValidator(v any) (toolkit.ValidationWarnings, error) {
+func maskerTypeValidator(v any) (transformers.ValidationWarnings, error) {
 	typeStr, ok := v.(*string)
 	if !ok {
 		return nil, errors.New("expected string type")
 	}
 	types := []string{MPassword, MName, MAddress, MEmail, MMobile, MTelephone, MID, MCreditCard, MURL}
 	if !slices.Contains(types, *typeStr) {
-		return toolkit.ValidationWarnings{
-			toolkit.NewValidationWarning().
-				SetLevel(toolkit.ErrorValidationSeverity).
+		return transformers.ValidationWarnings{
+			transformers.NewValidationWarning().
+				SetLevel(transformers.ErrorValidationSeverity).
 				SetMsgf("unknown type %s: must be one of %s", *typeStr, strings.Join(types, ", ")),
 		}, nil
 	}
