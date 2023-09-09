@@ -81,10 +81,6 @@ func (rit *RandomIntTransformer) Init(ctx context.Context) error {
 	return nil
 }
 
-func (rit *RandomIntTransformer) Validate(ctx context.Context) (toolkit.ValidationWarnings, error) {
-	return nil, nil
-}
-
 func (rit *RandomIntTransformer) Transform(ctx context.Context, r *toolkit.Record) (*toolkit.Record, error) {
 	res := rit.rand.Int63n(rit.max-rit.min) + rit.min
 

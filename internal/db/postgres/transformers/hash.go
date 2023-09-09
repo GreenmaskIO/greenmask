@@ -71,10 +71,6 @@ func (ht *HashTransformer) Init(ctx context.Context) error {
 	return nil
 }
 
-func (ht *HashTransformer) Validate(ctx context.Context) (toolkit.ValidationWarnings, error) {
-	return nil, nil
-}
-
 func (ht *HashTransformer) Transform(ctx context.Context, r *toolkit.Record) (*toolkit.Record, error) {
 	var originalValue string
 	if err := r.ScanAttribute(ht.columnName, &originalValue); err != nil {

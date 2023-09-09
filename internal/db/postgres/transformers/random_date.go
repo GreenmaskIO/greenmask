@@ -120,10 +120,6 @@ func (rdt *RandomDateTransformer) Init(ctx context.Context) error {
 	return nil
 }
 
-func (rdt *RandomDateTransformer) Validate(ctx context.Context) (toolkit.ValidationWarnings, error) {
-	return nil, nil
-}
-
 func (rdt *RandomDateTransformer) Transform(ctx context.Context, r *toolkit.Record) (*toolkit.Record, error) {
 	res := rdt.generate(rdt.rand, rdt.min, rdt.max, &rdt.truncate)
 	if err := r.SetAttribute(rdt.columnName, &res); err != nil {

@@ -78,10 +78,6 @@ func (jt *JsonTransformer) Init(ctx context.Context) error {
 	return nil
 }
 
-func (jt *JsonTransformer) Validate(ctx context.Context) (toolkit.ValidationWarnings, error) {
-	return nil, nil
-}
-
 func (jt *JsonTransformer) Transform(ctx context.Context, r *toolkit.Record) (*toolkit.Record, error) {
 	var err error
 	var jsonRawValue string

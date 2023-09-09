@@ -91,10 +91,6 @@ func (ndt *NoiseDateTransformer) Init(ctx context.Context) error {
 	return nil
 }
 
-func (ndt *NoiseDateTransformer) Validate(ctx context.Context) (toolkit.ValidationWarnings, error) {
-	return nil, nil
-}
-
 func (ndt *NoiseDateTransformer) Transform(ctx context.Context, r *toolkit.Record) (*toolkit.Record, error) {
 	val, err := r.GetAttribute(ndt.columnName)
 	if err != nil {

@@ -105,10 +105,6 @@ func (mt *MaskingTransformer) Init(ctx context.Context) error {
 	return nil
 }
 
-func (mt *MaskingTransformer) Validate(ctx context.Context) (toolkit.ValidationWarnings, error) {
-	return nil, nil
-}
-
 func (mt *MaskingTransformer) Transform(ctx context.Context, r *toolkit.Record) (*toolkit.Record, error) {
 	var originalValue string
 	if err := r.ScanAttribute(mt.columnName, &originalValue); err != nil {

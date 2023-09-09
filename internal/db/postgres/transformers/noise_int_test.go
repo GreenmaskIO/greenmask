@@ -24,7 +24,6 @@ func TestNoiseIntTransformer_Transform(t *testing.T) {
 		columnName    string
 		originalValue string
 		result        result
-		idx           int
 	}{
 		{
 			name:          "int2",
@@ -32,7 +31,6 @@ func TestNoiseIntTransformer_Transform(t *testing.T) {
 			ratio:         0.9,
 			result:        result{min: 10, max: 190, pattern: `^-*\d+$`},
 			originalValue: "123",
-			idx:           5,
 		},
 		{
 			name:          "int4",
@@ -40,7 +38,6 @@ func TestNoiseIntTransformer_Transform(t *testing.T) {
 			ratio:         0.9,
 			result:        result{min: 10, max: 190, pattern: `^-*\d+$`},
 			originalValue: "123",
-			idx:           6,
 		},
 		{
 			name:          "int8",
@@ -48,7 +45,6 @@ func TestNoiseIntTransformer_Transform(t *testing.T) {
 			ratio:         0.9,
 			result:        result{min: 10, max: 190, pattern: `^-*\d+$`},
 			originalValue: "123",
-			idx:           7,
 		},
 	}
 

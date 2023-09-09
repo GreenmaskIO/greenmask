@@ -44,10 +44,6 @@ func (rut *RandomUuidTransformer) Init(ctx context.Context) error {
 	return nil
 }
 
-func (rut *RandomUuidTransformer) Validate(ctx context.Context) (toolkit.ValidationWarnings, error) {
-	return nil, nil
-}
-
 func (rut *RandomUuidTransformer) Transform(ctx context.Context, r *toolkit.Record) (*toolkit.Record, error) {
 	if err := r.SetAttribute(rut.columnName, uuid.New()); err != nil {
 		return nil, fmt.Errorf("unable to set new value: %w", err)

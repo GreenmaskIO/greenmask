@@ -54,10 +54,6 @@ func (rt *ReplaceTransformer) Init(ctx context.Context) error {
 	return nil
 }
 
-func (rt *ReplaceTransformer) Validate(ctx context.Context) (toolkit.ValidationWarnings, error) {
-	return nil, nil
-}
-
 func (rt *ReplaceTransformer) Transform(ctx context.Context, r *toolkit.Record) (*toolkit.Record, error) {
 	if err := r.SetAttribute(rt.columnName, rt.value); err != nil {
 		return nil, fmt.Errorf("unable to set new value: %w", err)
