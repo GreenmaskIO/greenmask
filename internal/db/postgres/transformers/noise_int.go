@@ -6,6 +6,8 @@ import (
 	"math/rand"
 	"time"
 
+	"github.com/rs/zerolog/log"
+
 	toolkit "github.com/greenmaskio/greenmask/pkg/toolkit/transformers"
 )
 
@@ -65,6 +67,7 @@ func (nit *NoiseIntTransformer) Init(ctx context.Context) error {
 }
 
 func (nit *NoiseIntTransformer) Transform(ctx context.Context, r *toolkit.Record) (*toolkit.Record, error) {
+	log.Warn().Msg("value out of rage might be possible: double check this transformer implementation")
 	var val int64
 	if err := r.ScanAttribute(nit.columnName, &val); err != nil {
 		return nil, fmt.Errorf("unable to scan value: %w", err)

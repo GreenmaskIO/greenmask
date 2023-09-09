@@ -69,7 +69,7 @@ func TestMaskingTransformer_Transform(t *testing.T) {
 }
 
 func TestMaskingTransformer_type_validation(t *testing.T) {
-	var columnName = "title"
+	var columnName = "data"
 	var originalValue = "someval"
 	driver, _ := getDriverAndRecord(columnName, originalValue)
 

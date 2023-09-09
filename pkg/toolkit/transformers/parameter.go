@@ -187,6 +187,7 @@ func (p *Parameter) Parse(driver *Driver, params map[string][]byte, columnParams
 			return nil, fmt.Errorf("paramater %s is required", p.Name)
 		} else if p.DefaultValue != nil {
 			p.value = p.DefaultValue
+			return nil, nil
 		} else if !p.Required {
 			return nil, nil
 		}
@@ -254,9 +255,11 @@ func (p *Parameter) Parse(driver *Driver, params map[string][]byte, columnParams
 			val := string(raw)
 			p.value = &val
 		} else {
-			// Unmarshal as usual using json Umnarshaler
-			if err := json.Unmarshal(raw, p.value); err != nil {
-				return nil, fmt.Errorf("unable to unmarshal value: %w", err)
+			// Unmarshal as usual using json Unmarshaler
+			if !p.Required && len(raw) != 0 {
+				if err := json.Unmarshal(raw, p.value); err != nil {
+					return nil, fmt.Errorf("unable to unmarshal value: %w", err)
+				}
 			}
 		}
 	} else if p.LinkedColumnParameter != nil {

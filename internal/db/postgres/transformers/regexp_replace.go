@@ -98,3 +98,7 @@ func (rrt *RegexpReplaceTransformer) Transform(ctx context.Context, r *toolkit.R
 	}
 	return r, nil
 }
+
+func init() {
+	DefaultTransformerRegistry.MustRegister(RegexpReplaceTransformerDefinition)
+}

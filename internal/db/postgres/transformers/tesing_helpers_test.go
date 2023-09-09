@@ -97,6 +97,22 @@ var columnList = []*toolkit.Column{
 		NotNull:  true,
 		Length:   -1,
 	},
+	{
+		Name:     "col_float4",
+		TypeName: "float4",
+		TypeOid:  pgtype.Float4OID,
+		Num:      12,
+		NotNull:  true,
+		Length:   -1,
+	},
+	{
+		Name:     "col_float8",
+		TypeName: "float8",
+		TypeOid:  pgtype.Float8OID,
+		Num:      13,
+		NotNull:  true,
+		Length:   -1,
+	},
 }
 
 // getDriverAndRecord - return adhoc table for testing
