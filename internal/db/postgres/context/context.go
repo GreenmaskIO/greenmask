@@ -12,6 +12,7 @@ import (
 	"github.com/greenmaskio/greenmask/internal/db/postgres/domains/config"
 	"github.com/greenmaskio/greenmask/internal/db/postgres/domains/dump"
 	"github.com/greenmaskio/greenmask/internal/db/postgres/pgdump"
+	transformersUtils "github.com/greenmaskio/greenmask/internal/db/postgres/transformers/utils"
 	toolkit "github.com/greenmaskio/greenmask/pkg/toolkit/transformers"
 )
 
@@ -25,8 +26,8 @@ type RuntimeContext struct {
 	DataSectionObjects []dump.Entry
 	// Warnings - list of occurred ValidationWarning during validation and config building
 	Warnings toolkit.ValidationWarnings
-	// TransformerMap - map of available transformer definitions
-	TransformerMap map[string]*toolkit.Definition
+	// Registry - registry of all the registered transformers definition
+	Registry *transformersUtils.TransformerRegistry
 	// TypeMap - map of registered types including custom types. It's common for the whole runtime
 	TypeMap *pgtype.Map
 }
@@ -36,7 +37,7 @@ type RuntimeContext struct {
 // TODO: Recheck it is working properly. In a few cases (stages such as parameters building, schema validation) if
 //
 //	warnings are fatal procedure must be terminated immediately due to lack of objects required on the next step
-func NewRuntimeContext(ctx context.Context, tx pgx.Tx, cfg []*config.Table, tm map[string]*toolkit.Definition, opt *pgdump.Options) (*RuntimeContext, error) {
+func NewRuntimeContext(ctx context.Context, tx pgx.Tx, cfg []*config.Table, r *transformersUtils.TransformerRegistry, opt *pgdump.Options) (*RuntimeContext, error) {
 	typeMap := tx.Conn().TypeMap()
 	types, err := getCustomTypesUsedInTables(ctx, tx)
 	if err != nil {
@@ -46,7 +47,7 @@ func NewRuntimeContext(ctx context.Context, tx pgx.Tx, cfg []*config.Table, tm m
 		tryRegisterCustomTypes(typeMap, types)
 	}
 
-	tables, warnings, err := validateAndBuildTablesConfig(ctx, tx, typeMap, cfg, tm)
+	tables, warnings, err := validateAndBuildTablesConfig(ctx, tx, typeMap, cfg, r)
 	if err != nil {
 		return nil, fmt.Errorf("cannot validate and build table config: %w", err)
 	}
@@ -60,7 +61,7 @@ func NewRuntimeContext(ctx context.Context, tx pgx.Tx, cfg []*config.Table, tm m
 		Types:              types,
 		DataSectionObjects: dataSectionObjects,
 		Warnings:           warnings,
-		TransformerMap:     tm,
+		Registry:           r,
 	}, nil
 }
 

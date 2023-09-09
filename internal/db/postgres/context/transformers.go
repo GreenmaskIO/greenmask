@@ -8,29 +8,17 @@ import (
 
 	"github.com/greenmaskio/greenmask/internal/db/postgres/domains/config"
 	"github.com/greenmaskio/greenmask/internal/db/postgres/domains/dump"
+	transformersUtils "github.com/greenmaskio/greenmask/internal/db/postgres/transformers/utils"
 	toolkit "github.com/greenmaskio/greenmask/pkg/toolkit/transformers"
-
-	defaultTransformers "github.com/greenmaskio/greenmask/internal/db/postgres/transformers"
 )
-
-func BuildTransformersMap() (map[string]*toolkit.Definition, error) {
-	tm := make(map[string]*toolkit.Definition)
-	for _, td := range defaultTransformers.DefaultTransformerRegistry.M {
-		if _, ok := tm[td.Properties.Name]; ok {
-			return nil, fmt.Errorf("transformer with name %s already exists", td.Properties.Name)
-		}
-		tm[td.Properties.Name] = td
-	}
-	return tm, nil
-}
 
 func initTransformer(
 	ctx context.Context, t *dump.Table,
 	c *config.TransformerConfig, tm *pgtype.Map,
-	dm map[string]*toolkit.Definition,
+	r *transformersUtils.TransformerRegistry,
 ) (toolkit.Transformer, toolkit.ValidationWarnings, error) {
 	var totalWarnings toolkit.ValidationWarnings
-	td, ok := dm[c.Name]
+	td, ok := r.Get(c.Name)
 	if !ok {
 		totalWarnings = append(totalWarnings,
 			toolkit.NewValidationWarning().

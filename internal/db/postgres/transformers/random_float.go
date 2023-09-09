@@ -7,6 +7,7 @@ import (
 	"math/rand"
 	"time"
 
+	"github.com/greenmaskio/greenmask/internal/db/postgres/transformers/utils"
 	toolkit "github.com/greenmaskio/greenmask/pkg/toolkit/transformers"
 )
 
@@ -104,5 +105,5 @@ func (rft *RandomFloatTransformer) Transform(ctx context.Context, r *toolkit.Rec
 }
 
 func init() {
-	DefaultTransformerRegistry.MustRegister(RandomFloatTransformerDefinition)
+	utils.DefaultTransformerRegistry.MustRegister(RandomFloatTransformerDefinition)
 }

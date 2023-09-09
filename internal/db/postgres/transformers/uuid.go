@@ -6,6 +6,7 @@ import (
 
 	"github.com/google/uuid"
 
+	"github.com/greenmaskio/greenmask/internal/db/postgres/transformers/utils"
 	toolkit "github.com/greenmaskio/greenmask/pkg/toolkit/transformers"
 )
 
@@ -52,5 +53,5 @@ func (rut *RandomUuidTransformer) Transform(ctx context.Context, r *toolkit.Reco
 }
 
 func init() {
-	DefaultTransformerRegistry.MustRegister(RandomUuidTransformerDefinition)
+	utils.DefaultTransformerRegistry.MustRegister(RandomUuidTransformerDefinition)
 }

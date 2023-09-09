@@ -8,6 +8,7 @@ import (
 
 	"golang.org/x/crypto/scrypt"
 
+	"github.com/greenmaskio/greenmask/internal/db/postgres/transformers/utils"
 	toolkit "github.com/greenmaskio/greenmask/pkg/toolkit/transformers"
 )
 
@@ -91,5 +92,5 @@ func (ht *HashTransformer) Transform(ctx context.Context, r *toolkit.Record) (*t
 }
 
 func init() {
-	DefaultTransformerRegistry.MustRegister(HashTransformerDefinition)
+	utils.DefaultTransformerRegistry.MustRegister(HashTransformerDefinition)
 }

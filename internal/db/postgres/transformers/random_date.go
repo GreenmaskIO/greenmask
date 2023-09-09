@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/greenmaskio/greenmask/internal/db/postgres/transformers/utils"
 	toolkit "github.com/greenmaskio/greenmask/pkg/toolkit/transformers"
 )
 
@@ -174,5 +175,5 @@ func truncateDate(t *time.Time, part *string) time.Time {
 }
 
 func init() {
-	DefaultTransformerRegistry.MustRegister(RandomDateTransformerDefinition)
+	utils.DefaultTransformerRegistry.MustRegister(RandomDateTransformerDefinition)
 }

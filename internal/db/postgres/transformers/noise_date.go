@@ -10,6 +10,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgtype"
 
+	"github.com/greenmaskio/greenmask/internal/db/postgres/transformers/utils"
 	toolkit "github.com/greenmaskio/greenmask/pkg/toolkit/transformers"
 )
 
@@ -117,5 +118,5 @@ func generateNoisedTimeTruncate(r *rand.Rand, ratio time.Duration, val *time.Tim
 }
 
 func init() {
-	DefaultTransformerRegistry.MustRegister(NoiseDateTransformerDefinition)
+	utils.DefaultTransformerRegistry.MustRegister(NoiseDateTransformerDefinition)
 }

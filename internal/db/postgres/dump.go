@@ -19,8 +19,9 @@ import (
 	"github.com/greenmaskio/greenmask/internal/db/postgres/dumpers"
 	"github.com/greenmaskio/greenmask/internal/db/postgres/pgdump"
 	"github.com/greenmaskio/greenmask/internal/db/postgres/toc"
+	_ "github.com/greenmaskio/greenmask/internal/db/postgres/transformers"
+	toolkit "github.com/greenmaskio/greenmask/internal/db/postgres/transformers/utils"
 	"github.com/greenmaskio/greenmask/internal/storages"
-	toolkit "github.com/greenmaskio/greenmask/pkg/toolkit/transformers"
 )
 
 type Dump struct {
@@ -34,7 +35,7 @@ type Dump struct {
 	config             []*config.Table
 	dataEntryProducers []toc.EntryProducer
 	context            *runtimeContext.RuntimeContext
-	transformersMap    map[string]*toolkit.Definition
+	registry           *toolkit.TransformerRegistry
 	schemaToc          *toc.Toc
 	resultToc          *toc.Toc
 }
@@ -53,7 +54,7 @@ func (d *Dump) prune() {
 	d.context = nil
 	d.schemaToc = nil
 	d.resultToc = nil
-	d.transformersMap = nil
+	d.registry = nil
 	d.dumpTaskCount = 0
 	d.allTaskPushed.Store(false)
 	d.dumpIdSequence = nil
@@ -114,7 +115,7 @@ func (d *Dump) startMainTx(ctx context.Context, conn *pgx.Conn) (pgx.Tx, error) 
 }
 
 func (d *Dump) buildContextAndValidate(ctx context.Context, tx pgx.Tx) (err error) {
-	d.context, err = runtimeContext.NewRuntimeContext(ctx, tx, d.config, d.transformersMap, d.pgDumpOptions)
+	d.context, err = runtimeContext.NewRuntimeContext(ctx, tx, d.config, d.registry, d.pgDumpOptions)
 	if err != nil {
 		return fmt.Errorf("unable to build runtime context: %w", err)
 	}
@@ -297,9 +298,9 @@ func (d *Dump) Run(ctx context.Context) (err error) {
 	defer d.prune()
 	startedAt := time.Now()
 
-	d.transformersMap, err = runtimeContext.BuildTransformersMap()
+	d.registry = toolkit.DefaultTransformerRegistry
 	if err != nil {
-		return fmt.Errorf("error building transformers map: %w", err)
+		return fmt.Errorf("error building toolkit map: %w", err)
 	}
 
 	dsn, err := d.pgDumpOptions.GetPgDSN()

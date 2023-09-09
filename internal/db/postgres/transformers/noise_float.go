@@ -10,6 +10,7 @@ import (
 
 	"github.com/rs/zerolog/log"
 
+	"github.com/greenmaskio/greenmask/internal/db/postgres/transformers/utils"
 	toolkit "github.com/greenmaskio/greenmask/pkg/toolkit/transformers"
 )
 
@@ -119,5 +120,5 @@ func round(x, unit float64) float64 {
 }
 
 func init() {
-	DefaultTransformerRegistry.MustRegister(NoiseFloatTransformerDefinition)
+	utils.DefaultTransformerRegistry.MustRegister(NoiseFloatTransformerDefinition)
 }

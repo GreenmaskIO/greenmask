@@ -6,6 +6,7 @@ import (
 
 	"github.com/tidwall/sjson"
 
+	"github.com/greenmaskio/greenmask/internal/db/postgres/transformers/utils"
 	toolkit "github.com/greenmaskio/greenmask/pkg/toolkit/transformers"
 )
 
@@ -104,5 +105,5 @@ func (jt *JsonTransformer) Transform(ctx context.Context, r *toolkit.Record) (*t
 }
 
 func init() {
-	DefaultTransformerRegistry.MustRegister(JsonTransformerDefinition)
+	utils.DefaultTransformerRegistry.MustRegister(JsonTransformerDefinition)
 }

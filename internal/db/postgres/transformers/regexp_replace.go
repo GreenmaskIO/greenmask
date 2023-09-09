@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"regexp"
 
+	"github.com/greenmaskio/greenmask/internal/db/postgres/transformers/utils"
 	toolkit "github.com/greenmaskio/greenmask/pkg/toolkit/transformers"
 )
 
@@ -100,5 +101,5 @@ func (rrt *RegexpReplaceTransformer) Transform(ctx context.Context, r *toolkit.R
 }
 
 func init() {
-	DefaultTransformerRegistry.MustRegister(RegexpReplaceTransformerDefinition)
+	utils.DefaultTransformerRegistry.MustRegister(RegexpReplaceTransformerDefinition)
 }

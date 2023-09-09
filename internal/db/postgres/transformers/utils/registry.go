@@ -1,4 +1,4 @@
-package transformers
+package utils
 
 import (
 	"fmt"
@@ -9,20 +9,21 @@ import (
 var DefaultTransformerRegistry = NewTransformerRegistry()
 
 type TransformerRegistry struct {
-	M map[string]*toolkit.Definition
+	m map[string]*toolkit.Definition
 }
 
 func NewTransformerRegistry() *TransformerRegistry {
 	return &TransformerRegistry{
-		M: make(map[string]*toolkit.Definition),
+		m: make(map[string]*toolkit.Definition),
 	}
 }
 
 func (tm *TransformerRegistry) Register(definition *toolkit.Definition) error {
-	if _, ok := tm.M[definition.Properties.Name]; ok {
+	if _, ok := tm.m[definition.Properties.Name]; ok {
 		return fmt.Errorf("unable to register transformer: transformer with name %s already exists",
 			definition.Properties.Name)
 	}
+	tm.m[definition.Properties.Name] = definition
 	return nil
 }
 
@@ -30,4 +31,9 @@ func (tm *TransformerRegistry) MustRegister(definition *toolkit.Definition) {
 	if err := tm.Register(definition); err != nil {
 		panic(err.Error())
 	}
+}
+
+func (tm *TransformerRegistry) Get(name string) (*toolkit.Definition, bool) {
+	t, ok := tm.m[name]
+	return t, ok
 }

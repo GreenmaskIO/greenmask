@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/greenmaskio/greenmask/internal/db/postgres/transformers/utils"
 	toolkit "github.com/greenmaskio/greenmask/pkg/toolkit/transformers"
 )
 
@@ -62,5 +63,5 @@ func (rt *ReplaceTransformer) Transform(ctx context.Context, r *toolkit.Record) 
 }
 
 func init() {
-	DefaultTransformerRegistry.MustRegister(ReplaceTransformerDefinition)
+	utils.DefaultTransformerRegistry.MustRegister(ReplaceTransformerDefinition)
 }
