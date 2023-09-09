@@ -1,4 +1,4 @@
-package custom
+package greenmask_tmp
 
 import (
 	"errors"

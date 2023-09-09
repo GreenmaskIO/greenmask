@@ -11,7 +11,7 @@ import (
 	toolkit "github.com/greenmaskio/greenmask/pkg/toolkit/transformers"
 )
 
-func New[T int64 | float64](v T) *T {
+func New[T int64 | float64 | string](v T) *T {
 	return &v
 }
 
