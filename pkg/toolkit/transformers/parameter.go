@@ -256,7 +256,7 @@ func (p *Parameter) Parse(driver *Driver, params map[string][]byte, columnParams
 			p.value = &val
 		} else {
 			// Unmarshal as usual using json Unmarshaler
-			if !p.Required && len(raw) != 0 {
+			if len(raw) != 0 {
 				if err := json.Unmarshal(raw, p.value); err != nil {
 					return nil, fmt.Errorf("unable to unmarshal value: %w", err)
 				}
