@@ -220,12 +220,12 @@ func (r *Reader) readHeader() (*Header, error) {
 		if header.Version < BackupVersions["1.4"] {
 			level, err := r.readByte()
 			if err != nil {
-				return nil, fmt.Errorf("unable to scan CompressionSpec.Level: %w", err)
+				return nil, fmt.Errorf("unable to scan CompressionSpec.Severity: %w", err)
 			}
 			header.CompressionSpec.Level = int32(level)
 		} else {
 			if err = r.scanInt(&header.CompressionSpec.Level); err != nil {
-				return nil, fmt.Errorf("unable to scan CompressionSpec.Level: %w", err)
+				return nil, fmt.Errorf("unable to scan CompressionSpec.Severity: %w", err)
 			}
 		}
 		if header.CompressionSpec.Level != 0 {

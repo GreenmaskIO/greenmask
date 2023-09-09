@@ -25,7 +25,7 @@ func DefaultSchemaValidator(
 		if !p.ColumnProperties.Nullable && p.Column.NotNull {
 			warnings = append(warnings, NewValidationWarning().
 				SetMsg("transformer may produce NULL values but column has NOT NULL constraint").
-				SetLevel(WarningValidationSeverity).
+				SetSeverity(WarningValidationSeverity).
 				AddMeta("ConstraintType", NotNullConstraintType).
 				AddMeta("Parameter", p.Name).
 				AddMeta("Column", p.Column.Name),
@@ -37,7 +37,7 @@ func DefaultSchemaValidator(
 			p.Column.Length < p.ColumnProperties.MaxLength {
 			warnings = append(warnings, NewValidationWarning().
 				SetMsg("transformer value might be out of length range: column has a length").
-				SetLevel(WarningValidationSeverity).
+				SetSeverity(WarningValidationSeverity).
 				AddMeta("ConstraintType", LengthConstraintType).
 				AddMeta("Parameter", p.Name).
 				AddMeta("Column", p.Column.Name).

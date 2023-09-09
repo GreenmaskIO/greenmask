@@ -85,8 +85,8 @@ func getTable(ctx context.Context, tx pgx.Tx, schema, name string) (*dump.Table,
 	if err != nil && errors.Is(err, pgx.ErrNoRows) {
 		warnings = append(warnings, toolkit.NewValidationWarning().
 			SetMsgf("table %s.%s not found", table.Schema, table.Name).
-			SetLevel(toolkit.ErrorValidationSeverity).
-			//AddMeta("Level", TableValidationLevel).
+			SetSeverity(toolkit.ErrorValidationSeverity).
+			//AddMeta("Severity", TableValidationLevel).
 			AddMeta("SchemaName", table.Schema).
 			AddMeta("TableName", table.Name),
 		)

@@ -35,7 +35,7 @@ func initTransformer(
 		totalWarnings = append(totalWarnings,
 			toolkit.NewValidationWarning().
 				SetMsg("transformer not found").
-				SetLevel(toolkit.ErrorValidationSeverity).SetTrace(&toolkit.Trace{
+				SetSeverity(toolkit.ErrorValidationSeverity).SetTrace(&toolkit.Trace{
 				SchemaName:      t.Schema,
 				TableName:       t.Name,
 				TransformerName: c.Name,

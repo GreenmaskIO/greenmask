@@ -55,7 +55,7 @@ func (t *Type) IsAffected(p *Parameter) (w ValidationWarnings) {
 	}
 	if p.ColumnProperties.Nullable && p.Column.NotNull {
 		w = append(w, NewValidationWarning().
-			SetLevel(WarningValidationSeverity).
+			SetSeverity(WarningValidationSeverity).
 			AddMeta("ParameterName", p.Name).
 			AddMeta("ColumnName", p.Column.Name).
 			AddMeta("TypeName", p.Name).
@@ -64,7 +64,7 @@ func (t *Type) IsAffected(p *Parameter) (w ValidationWarnings) {
 	}
 	if t.Check != nil {
 		w = append(w, NewValidationWarning().
-			SetLevel(WarningValidationSeverity).
+			SetSeverity(WarningValidationSeverity).
 			AddMeta("ParameterName", p.Name).
 			AddMeta("ColumnName", p.Column.Name).
 			AddMeta("TypeSchema", t.Schema).
@@ -77,7 +77,7 @@ func (t *Type) IsAffected(p *Parameter) (w ValidationWarnings) {
 	}
 	if t.Length != WithoutMaxLength && t.Length < p.ColumnProperties.MaxLength {
 		w = append(w, NewValidationWarning().
-			SetLevel(WarningValidationSeverity).
+			SetSeverity(WarningValidationSeverity).
 			SetMsg("transformer value might be out of length range: domain has length higher than column").
 			AddMeta("ParameterName", p.Name).
 			AddMeta("ColumnName", p.Column.Name).

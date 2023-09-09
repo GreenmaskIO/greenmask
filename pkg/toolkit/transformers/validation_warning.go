@@ -25,21 +25,21 @@ type ValidationWarnings []*ValidationWarning
 
 func (re ValidationWarnings) IsFatal() bool {
 	return slices.ContainsFunc(re, func(warning *ValidationWarning) bool {
-		return warning.Level == ErrorValidationSeverity
+		return warning.Severity == ErrorValidationSeverity
 	})
 }
 
 type ValidationWarning struct {
-	Msg   string                 `json:"msg,omitempty"`
-	Level string                 `json:"level,omitempty"`
-	Trace *Trace                 `json:"trace,omitempty"`
-	Meta  map[string]interface{} `json:"meta,omitempty"`
+	Msg      string         `json:"msg,omitempty"`
+	Severity string         `json:"severity,omitempty"`
+	Trace    *Trace         `json:"trace,omitempty"`
+	Meta     map[string]any `json:"meta,omitempty"`
 }
 
 func NewValidationWarning() *ValidationWarning {
 	return &ValidationWarning{
-		Level: WarningValidationSeverity,
-		Meta:  make(map[string]interface{}),
+		Severity: WarningValidationSeverity,
+		Meta:     make(map[string]interface{}),
 	}
 }
 
@@ -53,12 +53,12 @@ func (re *ValidationWarning) SetMsgf(msg string, args ...any) *ValidationWarning
 	return re
 }
 
-func (re *ValidationWarning) SetLevel(level string) *ValidationWarning {
-	re.Level = level
+func (re *ValidationWarning) SetSeverity(severity string) *ValidationWarning {
+	re.Severity = severity
 	return re
 }
 
-func (re *ValidationWarning) AddMeta(key string, value interface{}) *ValidationWarning {
+func (re *ValidationWarning) AddMeta(key string, value any) *ValidationWarning {
 	re.Meta[key] = value
 	return re
 }

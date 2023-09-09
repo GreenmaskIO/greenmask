@@ -288,7 +288,7 @@ func (p *Parameter) Parse(driver *Driver, params map[string][]byte, columnParams
 		if !ok {
 			return ValidationWarnings{
 				NewValidationWarning().
-					SetLevel(ErrorValidationSeverity).
+					SetSeverity(ErrorValidationSeverity).
 					SetMsg("column does not exist").
 					AddMeta("ColumnName", *columnName).
 					AddMeta("ParameterName", p.Name),
@@ -301,7 +301,7 @@ func (p *Parameter) Parse(driver *Driver, params map[string][]byte, columnParams
 			!slices.Contains(p.ColumnProperties.AllowedColumnTypes, pgType.Name) {
 			return ValidationWarnings{
 				NewValidationWarning().
-					SetLevel(ErrorValidationSeverity).
+					SetSeverity(ErrorValidationSeverity).
 					SetMsg("unsupported column type").
 					AddMeta("ColumnName", *columnName).
 					AddMeta("ColumnType", pgType.Name).

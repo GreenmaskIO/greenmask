@@ -9,8 +9,6 @@ import (
 	toolkit "github.com/greenmaskio/greenmask/pkg/toolkit/transformers"
 )
 
-const NoiseIntTransformerName = "NoiseInt"
-
 func New[T int64 | float64](v T) *T {
 	return &v
 }
@@ -66,10 +64,6 @@ func (nit *NoiseIntTransformer) Init(ctx context.Context) error {
 	return nil
 }
 
-func (nit *NoiseIntTransformer) Validate(ctx context.Context) (toolkit.ValidationWarnings, error) {
-	return nil, nil
-}
-
 func (nit *NoiseIntTransformer) Transform(ctx context.Context, r *toolkit.Record) (*toolkit.Record, error) {
 	var val int64
 	if err := r.ScanAttribute(nit.columnName, &val); err != nil {
@@ -86,4 +80,8 @@ func (nit *NoiseIntTransformer) Transform(ctx context.Context, r *toolkit.Record
 		return nil, fmt.Errorf("unable to set new value: %w", err)
 	}
 	return r, nil
+}
+
+func init() {
+	DefaultTransformerRegistry.MustRegister(NoiseIntTransformerDefinition)
 }

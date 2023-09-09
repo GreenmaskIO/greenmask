@@ -135,7 +135,7 @@ func maskerTypeValidator(v any) (toolkit.ValidationWarnings, error) {
 	if !slices.Contains(types, *typeStr) {
 		return toolkit.ValidationWarnings{
 			toolkit.NewValidationWarning().
-				SetLevel(toolkit.ErrorValidationSeverity).
+				SetSeverity(toolkit.ErrorValidationSeverity).
 				SetMsgf("unknown type %s: must be one of %s", *typeStr, strings.Join(types, ", ")),
 		}, nil
 	}

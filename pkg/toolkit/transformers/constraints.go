@@ -48,7 +48,7 @@ func NewCheck(schema, name, definition string, oid Oid, columns []AttNum) *Check
 func (c *Check) IsAffected(p *Parameter) (w ValidationWarnings) {
 	if slices.Contains(c.Columns, p.Column.Num) {
 		w = append(w, NewValidationWarning().
-			SetLevel(WarningValidationSeverity).
+			SetSeverity(WarningValidationSeverity).
 			AddMeta("ParameterName", p.Name).
 			AddMeta("ColumnName", p.Column.Name).
 			AddMeta("ConstraintType", CheckConstraintType).
@@ -76,7 +76,7 @@ func NewExclusion(schema, name, definition string, oid Oid, columns []AttNum) *E
 func (e *Exclusion) IsAffected(p *Parameter) (w ValidationWarnings) {
 	if slices.Contains(e.Columns, p.Column.Num) {
 		w = append(w, NewValidationWarning().
-			SetLevel(WarningValidationSeverity).
+			SetSeverity(WarningValidationSeverity).
 			AddMeta("ParameterName", p.Name).
 			AddMeta("ColumnName", p.Column.Name).
 			AddMeta("ConstraintType", ExclusionConstraintType).
@@ -123,7 +123,7 @@ func NewForeignKey(schema, name, definition string, oid Oid, columns []AttNum, r
 func (fk *ForeignKey) IsAffected(p *Parameter) (w ValidationWarnings) {
 	if slices.Contains(fk.Columns, p.Column.Num) {
 		w = append(w, NewValidationWarning().
-			SetLevel(WarningValidationSeverity).
+			SetSeverity(WarningValidationSeverity).
 			AddMeta("ParameterName", p.Name).
 			AddMeta("ColumnName", p.Column.Name).
 			AddMeta("ConstraintType", FkConstraintType).
@@ -157,7 +157,7 @@ func (pk *PrimaryKey) IsAffected(p *Parameter) (w ValidationWarnings) {
 	if slices.Contains(pk.Columns, p.Column.Num) {
 		if !p.ColumnProperties.Unique {
 			w = append(w, NewValidationWarning().
-				SetLevel(WarningValidationSeverity).
+				SetSeverity(WarningValidationSeverity).
 				AddMeta("ParameterName", p.Name).
 				AddMeta("ColumnName", p.Column.Name).
 				AddMeta("ConstraintType", PkConstraintType).
@@ -170,7 +170,7 @@ func (pk *PrimaryKey) IsAffected(p *Parameter) (w ValidationWarnings) {
 
 		for _, ref := range pk.References {
 			w = append(w, NewValidationWarning().
-				SetLevel(WarningValidationSeverity).
+				SetSeverity(WarningValidationSeverity).
 				AddMeta("ParameterName", p.Name).
 				AddMeta("ColumnName", p.Column.Name).
 				AddMeta("ConstraintType", PkConstraintReferencesType).
@@ -201,7 +201,7 @@ func NewUnique(schema, name, definition string, oid Oid, columns []AttNum) *Uniq
 func (u *Unique) IsAffected(p *Parameter) (w ValidationWarnings) {
 	if slices.Contains(u.Columns, p.Column.Num) && !p.ColumnProperties.Unique {
 		w = append(w, NewValidationWarning().
-			SetLevel(WarningValidationSeverity).
+			SetSeverity(WarningValidationSeverity).
 			AddMeta("ParameterName", p.Name).
 			AddMeta("ColumnName", p.Column.Name).
 			AddMeta("ConstraintType", UniqueConstraintType).
@@ -229,7 +229,7 @@ func NewTriggerConstraint(schema, name, definition string, oid Oid, columns []At
 func (tc *TriggerConstraint) IsAffected(p *Parameter) (w ValidationWarnings) {
 	if slices.Contains(tc.Columns, p.Column.Num) {
 		w = append(w, NewValidationWarning().
-			SetLevel(WarningValidationSeverity).
+			SetSeverity(WarningValidationSeverity).
 			AddMeta("ParameterName", p.Name).
 			AddMeta("ColumnName", p.Column.Name).
 			AddMeta("ConstraintType", TriggerConstraintType).

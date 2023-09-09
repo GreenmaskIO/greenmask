@@ -46,7 +46,7 @@ func (d *Definition) parseParameters(
 		return ValidationWarnings{
 			NewValidationWarning().
 				SetMsg("parameters are required: received empty").
-				SetLevel("error"),
+				SetSeverity("error"),
 		}, nil, nil
 	}
 
@@ -82,7 +82,7 @@ func (d *Definition) parseParameters(
 		if _, ok := columnParmsToSkip[p.LinkParameter]; p.LinkParameter != "" && ok {
 			totalWarnings = append(totalWarnings, NewValidationWarning().
 				AddMeta("ParameterName", p.Name).
-				SetLevel(WarningValidationSeverity).
+				SetSeverity(WarningValidationSeverity).
 				SetMsg("parameter skipping due to the error in the related parameter parsing"))
 			continue
 		}
