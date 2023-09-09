@@ -102,3 +102,7 @@ func (rft *RandomFloatTransformer) Transform(ctx context.Context, r *toolkit.Rec
 	}
 	return r, nil
 }
+
+func init() {
+	DefaultTransformerRegistry.MustRegister(RandomFloatTransformerDefinition)
+}

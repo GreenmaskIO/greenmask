@@ -113,6 +113,14 @@ var columnList = []*toolkit.Column{
 		NotNull:  true,
 		Length:   -1,
 	},
+	{
+		Name:     "col_bool",
+		TypeName: "bool",
+		TypeOid:  pgtype.BoolOID,
+		Num:      15,
+		NotNull:  true,
+		Length:   -1,
+	},
 }
 
 // getDriverAndRecord - return adhoc table for testing
