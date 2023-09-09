@@ -1,7 +1,7 @@
 package transformers
 
 import (
-	"golang.org/x/exp/slices"
+	"slices"
 )
 
 const (

@@ -4,10 +4,10 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"slices"
 	"strconv"
 
 	"github.com/rs/zerolog/log"
-	"golang.org/x/exp/slices"
 )
 
 type Reader struct {

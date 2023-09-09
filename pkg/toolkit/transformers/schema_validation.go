@@ -3,8 +3,7 @@ package transformers
 import (
 	"context"
 	"fmt"
-
-	"golang.org/x/exp/slices"
+	"slices"
 )
 
 type SchemaValidationFunc func(ctx context.Context, table *Table, properties *TransformerProperties, parameters []*Parameter, types []*Type) (ValidationWarnings, error)

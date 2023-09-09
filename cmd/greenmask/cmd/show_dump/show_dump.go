@@ -4,9 +4,9 @@ import (
 	"context"
 	"log"
 	"path"
+	"slices"
 
 	"github.com/spf13/cobra"
-	"golang.org/x/exp/slices"
 
 	"github.com/greenmaskio/greenmask/internal/db/postgres"
 	pgDomains "github.com/greenmaskio/greenmask/internal/db/postgres/domains/config"
@@ -55,11 +55,11 @@ var (
 					}
 				}
 
-				slices.SortFunc(backupNames, func(a, b string) bool {
-					if a > b {
-						return true
+				slices.SortFunc(backupNames, func(a, b string) int {
+					if a < b {
+						return -1
 					}
-					return false
+					return 1
 				})
 				dumpId = backupNames[0]
 			} else {
