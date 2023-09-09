@@ -15,42 +15,53 @@ var RandomStringTransformerDefinition = toolkit.NewDefinition(
 		"Generate random string",
 		toolkit.TupleTransformation,
 	),
+
 	NewRandomStringTransformer,
-	toolkit.MustNewParameter("column", "column name", new(string), nil).
-		SetIsColumn(toolkit.NewColumnProperties().
-			SetAffected(true).
-			SetAllowedColumnTypes("text", "varchar"),
-		).SetRequired(true),
+
+	toolkit.MustNewParameter(
+		"column",
+		"column name",
+		new(string),
+		nil,
+	).SetIsColumn(toolkit.NewColumnProperties().
+		SetAffected(true).
+		SetAllowedColumnTypes("text", "varchar"),
+	).SetRequired(true),
+
 	toolkit.MustNewParameter(
 		"minLength",
 		"min length of string",
 		new(int64),
 		nil,
 	).SetRequired(true),
+
 	toolkit.MustNewParameter(
 		"maxLength",
 		"max length of string",
 		new(int64),
 		nil,
 	).SetRequired(true),
+
 	toolkit.MustNewParameter(
 		"symbols",
 		"the characters range for random string",
 		new(string),
 		New("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"),
 	),
+
+	toolkit.MustNewParameter(
+		"keepNull",
+		"do not replace NULL values to random value",
+		new(bool),
+		New(false),
+	),
 )
 
 type getRandStringFunc func(r *rand.Rand, buf []rune, minLength, maxLength int64, symbols []rune) string
 
-type RandomStringTransformerParams struct {
-	Symbols string `mapstructure:"symbols"`
-	Min     int64  `mapstructure:"min" validate:"required"`
-	Max     int64  `mapstructure:"max" validate:"required"`
-}
-
 type RandomStringTransformer struct {
 	columnName string
+	keepNull   bool
 	min        int64
 	max        int64
 	symbols    []rune
@@ -63,6 +74,7 @@ func NewRandomStringTransformer(ctx context.Context, driver *toolkit.Driver, par
 	var generator getRandStringFunc = generateFixedString
 	var columnName, symbols string
 	var minLength, maxLength int64
+	var keepNull bool
 
 	p := parameters["column"]
 	if err := p.Scan(&columnName); err != nil {
@@ -84,12 +96,18 @@ func NewRandomStringTransformer(ctx context.Context, driver *toolkit.Driver, par
 		return nil, nil, fmt.Errorf(`unable to scan "symbols" param: %w`, err)
 	}
 
+	p = parameters["keepNull"]
+	if err := p.Scan(&keepNull); err != nil {
+		return nil, nil, fmt.Errorf(`unable to scan "keepNull" param: %w`, err)
+	}
+
 	if minLength != maxLength {
 		generator = generateVariadicString
 	}
 
 	return &RandomStringTransformer{
 		columnName: columnName,
+		keepNull:   keepNull,
 		min:        minLength,
 		max:        maxLength,
 		symbols:    []rune(symbols),
@@ -104,6 +122,10 @@ func (rst *RandomStringTransformer) Init(ctx context.Context) error {
 }
 
 func (rst *RandomStringTransformer) Transform(ctx context.Context, r *toolkit.Record) (*toolkit.Record, error) {
+	if r.IsNull(rst.columnName) && rst.keepNull {
+		return r, nil
+	}
+
 	res := rst.generate(rst.rand, rst.buf, rst.min, rst.max, rst.symbols)
 	if err := r.SetAttribute(rst.columnName, &res); err != nil {
 		return nil, fmt.Errorf("unable to set new value: %w", err)

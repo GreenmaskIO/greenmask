@@ -2,17 +2,23 @@ package transformers
 
 import (
 	"context"
+	"fmt"
 	"log"
+	"strconv"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	toolkit "github.com/greenmaskio/greenmask/pkg/toolkit/transformers"
 )
 
 func TestRandomFloatTransformer_Transform(t *testing.T) {
 	type result struct {
-		min     int64
-		max     int64
-		pattern string
+		min        float64
+		max        float64
+		pattern    string
+		checkRange bool
 	}
 
 	tests := []struct {
@@ -23,57 +29,99 @@ func TestRandomFloatTransformer_Transform(t *testing.T) {
 		result        result
 	}{
 		{
-			name:       "float4",
-			columnName: "col_float4",
+			name:          "float4",
+			columnName:    "col_float4",
+			originalValue: "1000.0",
 			params: map[string][]byte{
 				"min": []byte("1"),
 				"max": []byte("10"),
 			},
 			result: result{
-				min:     1,
-				max:     10,
-				pattern: `-*\d+[.]*\d*$`,
+				min:        1,
+				max:        10,
+				pattern:    `-*\d+[.]*\d*$`,
+				checkRange: true,
 			},
 		},
 		{
-			name:       "float8",
-			columnName: "col_float8",
+			name:          "float8",
+			columnName:    "col_float8",
+			originalValue: "1000.0",
 			params: map[string][]byte{
 				"min": []byte("1"),
 				"max": []byte("10"),
 			},
 			result: result{
-				min:     1,
-				max:     10,
-				pattern: `-*\d+[.]*\d*$`,
+				min:        1,
+				max:        10,
+				pattern:    `-*\d+[.]*\d*$`,
+				checkRange: true,
 			},
 		},
 		{
-			name:       "float8 ranges 1",
-			columnName: "col_float8",
+			name:          "float8 ranges 1",
+			columnName:    "col_float8",
+			originalValue: "1000.0",
 			params: map[string][]byte{
 				"min":       []byte("-100000"),
 				"max":       []byte("100000"),
 				"precision": []byte("10"),
 			},
 			result: result{
-				min:     -100000,
-				max:     100000,
-				pattern: `^-*\d+[.]*\d{0,10}$`,
+				min:        -100000,
+				max:        100000,
+				pattern:    `^-*\d+[.]*\d{0,10}$`,
+				checkRange: true,
 			},
 		},
 		{
-			name:       "float8 ranges 1 with precision",
-			columnName: "col_float8",
+			name:          "float8 ranges 1 with precision",
+			columnName:    "col_float8",
+			originalValue: "1000.0",
 			params: map[string][]byte{
 				"min":       []byte("-100000"),
 				"max":       []byte("-1"),
 				"precision": []byte("0"),
 			},
 			result: result{
-				min:     -100000,
-				max:     -1,
-				pattern: `^-\d+$`,
+				min:        -100000,
+				max:        -1,
+				pattern:    `^-\d+$`,
+				checkRange: true,
+			},
+		},
+		{
+			name:          "keepNull false and NULL seq",
+			columnName:    "col_float8",
+			originalValue: toolkit.DefaultNullSeq,
+			params: map[string][]byte{
+				"min":       []byte("-100000"),
+				"max":       []byte("-1"),
+				"precision": []byte("0"),
+				"keepNull":  []byte("false"),
+			},
+			result: result{
+				min:        -100000,
+				max:        -1,
+				pattern:    `^-\d+$`,
+				checkRange: true,
+			},
+		},
+		{
+			name:          "keepNull true and NULL seq",
+			columnName:    "col_float8",
+			originalValue: toolkit.DefaultNullSeq,
+			params: map[string][]byte{
+				"min":       []byte("-100000"),
+				"max":       []byte("-1"),
+				"precision": []byte("0"),
+				"keepNull":  []byte("true"),
+			},
+			result: result{
+				min:        -100000,
+				max:        -1,
+				pattern:    fmt.Sprintf(`^(\%s)$`, toolkit.DefaultNullSeq),
+				checkRange: false,
 			},
 		},
 		//{
@@ -112,6 +160,12 @@ func TestRandomFloatTransformer_Transform(t *testing.T) {
 			require.NoError(t, err)
 			log.Println(res)
 			require.Regexp(t, tt.result.pattern, string(res))
+			if tt.result.checkRange {
+				resFloat, err := strconv.ParseFloat(string(res), 64)
+				require.NoError(t, err)
+				assert.GreaterOrEqual(t, resFloat, tt.result.min)
+				assert.LessOrEqual(t, resFloat, tt.result.max)
+			}
 		})
 	}
 }

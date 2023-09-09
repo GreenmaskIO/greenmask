@@ -22,34 +22,51 @@ var RandomFloatTransformerDefinition = toolkit.NewDefinition(
 		"Generate random float",
 		toolkit.TupleTransformation,
 	),
+
 	NewRandomFloatTransformer,
-	toolkit.MustNewParameter("column", "column name", new(string), nil).
-		SetIsColumn(toolkit.NewColumnProperties().
-			SetAffected(true).
-			SetAllowedColumnTypes("float4", "float8"),
-		).SetRequired(true),
+
+	toolkit.MustNewParameter(
+		"column",
+		"column name",
+		new(string),
+		nil,
+	).SetIsColumn(toolkit.NewColumnProperties().
+		SetAffected(true).
+		SetAllowedColumnTypes("float4", "float8"),
+	).SetRequired(true),
+
 	toolkit.MustNewParameter(
 		"min",
 		"min int value threshold",
 		new(float64),
 		nil,
 	).SetRequired(true),
+
 	toolkit.MustNewParameter(
 		"max",
 		"max int value threshold",
 		new(float64),
 		nil,
 	).SetRequired(true),
+
 	toolkit.MustNewParameter(
 		"precision",
 		"precision of noised value",
 		new(int64),
 		New[int64](4),
 	),
+
+	toolkit.MustNewParameter(
+		"keepNull",
+		"do not replace NULL values to random value",
+		new(bool),
+		New(true),
+	),
 )
 
 type RandomFloatTransformer struct {
 	columnName string
+	keepNull   bool
 	min        float64
 	max        float64
 	precision  float64
@@ -60,6 +77,7 @@ func NewRandomFloatTransformer(ctx context.Context, driver *toolkit.Driver, para
 	var columnName string
 	var minVal, maxVal float64
 	var precision int64
+	var keepNull bool
 	p := parameters["column"]
 	if err := p.Scan(&columnName); err != nil {
 		return nil, nil, fmt.Errorf(`unable to scan "column" param: %w`, err)
@@ -80,7 +98,13 @@ func NewRandomFloatTransformer(ctx context.Context, driver *toolkit.Driver, para
 		return nil, nil, fmt.Errorf(`unable to scan "precision" param: %w`, err)
 	}
 
+	p = parameters["keepNull"]
+	if err := p.Scan(&keepNull); err != nil {
+		return nil, nil, fmt.Errorf(`unable to scan "keepNull" param: %w`, err)
+	}
+
 	return &RandomFloatTransformer{
+		keepNull:   keepNull,
 		precision:  math.Pow(10, float64(precision)),
 		min:        minVal,
 		max:        maxVal,
@@ -95,6 +119,10 @@ func (rft *RandomFloatTransformer) Init(ctx context.Context) error {
 }
 
 func (rft *RandomFloatTransformer) Transform(ctx context.Context, r *toolkit.Record) (*toolkit.Record, error) {
+	if r.IsNull(rft.columnName) && rft.keepNull {
+		return r, nil
+	}
+
 	resFloat := rft.min + rft.rand.Float64()*(rft.max-rft.min)
 	resFloat = round(resFloat, rft.precision)
 

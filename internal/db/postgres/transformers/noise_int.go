@@ -12,7 +12,7 @@ import (
 	toolkit "github.com/greenmaskio/greenmask/pkg/toolkit/transformers"
 )
 
-func New[T int64 | float64 | string](v T) *T {
+func New[T int64 | float64 | string | bool](v T) *T {
 	return &v
 }
 
@@ -22,12 +22,15 @@ var NoiseIntTransformerDefinition = toolkit.NewDefinition(
 		"Make noise value for int",
 		toolkit.TupleTransformation,
 	),
+
 	NewNoiseIntTransformer,
+
 	toolkit.MustNewParameter("column", "column name", new(string), nil).
 		SetIsColumn(toolkit.NewColumnProperties().
 			SetAffected(true).
 			SetAllowedColumnTypes("int2", "int4", "int8"),
 		).SetRequired(true),
+
 	toolkit.MustNewParameter(
 		"ratio",
 		"max random percentage for noise",
@@ -69,6 +72,10 @@ func (nit *NoiseIntTransformer) Init(ctx context.Context) error {
 
 func (nit *NoiseIntTransformer) Transform(ctx context.Context, r *toolkit.Record) (*toolkit.Record, error) {
 	log.Warn().Msg("value out of rage might be possible: double check this transformer implementation")
+	if r.IsNull(nit.columnName) {
+		return r, nil
+	}
+
 	var val int64
 	if err := r.ScanAttribute(nit.columnName, &val); err != nil {
 		return nil, fmt.Errorf("unable to scan value: %w", err)

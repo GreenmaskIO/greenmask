@@ -16,28 +16,49 @@ var RandomUuidTransformerDefinition = toolkit.NewDefinition(
 		"Generate random uuid",
 		toolkit.TupleTransformation,
 	),
+
 	NewRandomUuidTransformer,
-	toolkit.MustNewParameter("column", "column name", new(string), nil).
-		SetIsColumn(toolkit.NewColumnProperties().
-			SetAffected(true).
-			SetAllowedColumnTypes("text", "varchar", "uuid"),
-		).SetRequired(true),
+
+	toolkit.MustNewParameter(
+		"column",
+		"column name",
+		new(string),
+		nil,
+	).SetIsColumn(toolkit.NewColumnProperties().
+		SetAffected(true).
+		SetAllowedColumnTypes("text", "varchar", "uuid"),
+	).SetRequired(true),
+
+	toolkit.MustNewParameter(
+		"keepNull",
+		"do not replace NULL values to random value",
+		new(bool),
+		New(false),
+	),
 )
 
 type RandomUuidTransformer struct {
 	columnName string
+	keepNull   bool
 }
 
 func NewRandomUuidTransformer(ctx context.Context, driver *toolkit.Driver, parameters map[string]*toolkit.Parameter) (toolkit.Transformer, toolkit.ValidationWarnings, error) {
 	var columnName string
+	var keepNull bool
 
 	p := parameters["column"]
 	if err := p.Scan(&columnName); err != nil {
 		return nil, nil, fmt.Errorf("unable to scan column param: %w", err)
 	}
 
+	p = parameters["keepNull"]
+	if err := p.Scan(&keepNull); err != nil {
+		return nil, nil, fmt.Errorf(`unable to scan "keepNull" param: %w`, err)
+	}
+
 	return &RandomUuidTransformer{
 		columnName: columnName,
+		keepNull:   keepNull,
 	}, nil, nil
 }
 
@@ -46,6 +67,10 @@ func (rut *RandomUuidTransformer) Init(ctx context.Context) error {
 }
 
 func (rut *RandomUuidTransformer) Transform(ctx context.Context, r *toolkit.Record) (*toolkit.Record, error) {
+	if r.IsNull(rut.columnName) && rut.keepNull {
+		return r, nil
+	}
+
 	if err := r.SetAttribute(rut.columnName, uuid.New()); err != nil {
 		return nil, fmt.Errorf("unable to set new value: %w", err)
 	}

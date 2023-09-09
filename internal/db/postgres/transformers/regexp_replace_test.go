@@ -7,32 +7,48 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestRegexpReplaceTransformer_Transform(t *testing.T) {
-	var columnName = "data"
-	var original = "Hello world!!!?"
-	var expected = "Hello Mr NoName !!!?"
-	var params = map[string][]byte{
-		"column":  []byte(columnName),
-		"regexp":  []byte(`(Hello)\s*world\s*(\!+\?)`),
-		"replace": []byte("$1 Mr NoName $2"),
+func TestRegexpReplaceTransformer_Transform2(t *testing.T) {
+	tests := []struct {
+		name       string
+		params     map[string][]byte
+		columnName string
+		original   string
+		expected   string
+	}{
+		{
+			name: "common",
+			params: map[string][]byte{
+				"regexp":  []byte(`(Hello)\s*world\s*(\!+\?)`),
+				"replace": []byte("$1 Mr NoName $2"),
+			},
+			columnName: "data",
+			original:   "Hello world!!!?",
+			expected:   "Hello Mr NoName !!!?",
+		},
 	}
-	driver, record := getDriverAndRecord(columnName, original)
 
-	transformer, warnings, err := RegexpReplaceTransformerDefinition.Instance(
-		context.Background(),
-		driver, params,
-		nil,
-	)
-	require.NoError(t, err)
-	require.Empty(t, warnings)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.params["column"] = []byte(tt.columnName)
+			driver, record := getDriverAndRecord(tt.columnName, tt.original)
+			transformer, warnings, err := RegexpReplaceTransformerDefinition.Instance(
+				context.Background(),
+				driver,
+				tt.params,
+				nil,
+			)
+			require.NoError(t, err)
+			require.Empty(t, warnings)
 
-	r, err := transformer.Transform(
-		context.Background(),
-		record,
-	)
-	require.NoError(t, err)
-	res, err := r.EncodeAttr(columnName)
-	require.NoError(t, err)
-	require.Equal(t, expected, string(res))
+			r, err := transformer.Transform(
+				context.Background(),
+				record,
+			)
+			require.NoError(t, err)
+			res, err := r.EncodeAttr(tt.columnName)
+			require.NoError(t, err)
+			require.Equal(t, tt.expected, string(res))
+		})
+	}
 
 }

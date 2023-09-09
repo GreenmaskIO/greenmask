@@ -71,6 +71,23 @@ func (r *Record) SetTuple(t Tuple) error {
 	return nil
 }
 
+func (r *Record) IsNull(name string) bool {
+	val, ok := r.tuple[name]
+	if ok {
+		switch v := val.(type) {
+		case string:
+			return v == DefaultNullSeq
+		default:
+			return false
+		}
+	}
+	idx, ok := r.columnIdx[name]
+	if !ok {
+		panic(fmt.Sprintf(`unknown column name "%s"`, name))
+	}
+	return string(r.RawData[idx]) == DefaultNullSeq
+}
+
 func (r *Record) ScanAttribute(name string, v any) error {
 	val, ok := r.tuple[name]
 	if !ok {

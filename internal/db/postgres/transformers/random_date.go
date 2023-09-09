@@ -20,12 +20,19 @@ var RandomDateTransformerDefinition = toolkit.NewDefinition(
 		"Generate random date in the provided interval",
 		toolkit.TupleTransformation,
 	),
+
 	NewRandomDateTransformer,
-	toolkit.MustNewParameter("column", "column name", new(string), nil).
-		SetIsColumn(toolkit.NewColumnProperties().
-			SetAffected(true).
-			SetAllowedColumnTypes("date", "timestamp", "timestamptz"),
-		).SetRequired(true),
+
+	toolkit.MustNewParameter(
+		"column",
+		"column name",
+		new(string),
+		nil,
+	).SetIsColumn(toolkit.NewColumnProperties().
+		SetAffected(true).
+		SetAllowedColumnTypes("date", "timestamp", "timestamptz"),
+	).SetRequired(true),
+
 	toolkit.MustNewParameter(
 		"min",
 		"min threshold value of random value",
@@ -33,6 +40,7 @@ var RandomDateTransformerDefinition = toolkit.NewDefinition(
 		nil,
 	).SetRequired(true).
 		SetLinkParameter("column"),
+
 	toolkit.MustNewParameter(
 		"max",
 		"max threshold value of random value",
@@ -40,11 +48,19 @@ var RandomDateTransformerDefinition = toolkit.NewDefinition(
 		nil,
 	).SetRequired(true).
 		SetLinkParameter("column"),
+
 	toolkit.MustNewParameter(
 		"truncate",
 		fmt.Sprintf("truncate date till the part (%s)", strings.Join(truncateParts, ", ")),
 		new(string),
 		nil,
+	),
+
+	toolkit.MustNewParameter(
+		"keepNull",
+		"do not replace NULL values to random value",
+		new(bool),
+		New(true),
 	),
 )
 
@@ -65,12 +81,14 @@ type RandomDateTransformer struct {
 	min        *time.Time
 	max        *time.Time
 	truncate   string
+	keepNull   bool
 }
 
 func NewRandomDateTransformer(ctx context.Context, driver *toolkit.Driver, parameters map[string]*toolkit.Parameter) (toolkit.Transformer, toolkit.ValidationWarnings, error) {
 	var columnName, truncate string
 	var minTime, maxTime time.Time
 	var generator dateGeneratorFunc = generateRandomTime
+	var keepNull bool
 
 	p := parameters["column"]
 	if err := p.Scan(&columnName); err != nil {
@@ -87,6 +105,11 @@ func NewRandomDateTransformer(ctx context.Context, driver *toolkit.Driver, param
 	maxTime, ok = p.Value().(time.Time)
 	if !ok {
 		return nil, nil, errors.New(`unexpected type for "max" parameter`)
+	}
+
+	p = parameters["keepNull"]
+	if err := p.Scan(&keepNull); err != nil {
+		return nil, nil, fmt.Errorf(`unable to scan "keepNull" param: %w`, err)
 	}
 
 	p = parameters["truncate"]
@@ -107,6 +130,7 @@ func NewRandomDateTransformer(ctx context.Context, driver *toolkit.Driver, param
 		}, nil
 	}
 	return &RandomDateTransformer{
+		keepNull:   keepNull,
 		truncate:   truncate,
 		columnName: columnName,
 		min:        &minTime,
@@ -122,6 +146,10 @@ func (rdt *RandomDateTransformer) Init(ctx context.Context) error {
 }
 
 func (rdt *RandomDateTransformer) Transform(ctx context.Context, r *toolkit.Record) (*toolkit.Record, error) {
+	if r.IsNull(rdt.columnName) && rdt.keepNull {
+		return r, nil
+	}
+
 	res := rdt.generate(rdt.rand, rdt.min, rdt.max, &rdt.truncate)
 	if err := r.SetAttribute(rdt.columnName, &res); err != nil {
 		return nil, fmt.Errorf("unable to set new value: %w", err)

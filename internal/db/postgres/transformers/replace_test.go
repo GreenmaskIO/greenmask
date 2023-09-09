@@ -5,6 +5,8 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
+
+	"github.com/greenmaskio/greenmask/pkg/toolkit/transformers"
 )
 
 //func TestReplaceTransformer_Transform(t *testing.T) {
@@ -105,29 +107,68 @@ import (
 //}
 
 func TestReplaceTransformer_Transform(t *testing.T) {
-	var columnName = "id"
-	var originalValue = "1"
-	var expectedValue = "123"
-	driver, record := getDriverAndRecord(columnName, originalValue)
 
-	transformer, warnings, err := ReplaceTransformerDefinition.Instance(
-		context.Background(),
-		driver, map[string][]byte{
-			"column": []byte(columnName),
-			"value":  []byte("123"),
+	tests := []struct {
+		name       string
+		params     map[string][]byte
+		columnName string
+		original   string
+		expected   string
+	}{
+		{
+			name:       "common",
+			original:   "1",
+			columnName: "id",
+			params: map[string][]byte{
+				"value": []byte("123"),
+			},
+			expected: "123",
 		},
-		nil,
-	)
-	require.NoError(t, err)
-	require.Empty(t, warnings)
+		{
+			name:       "keepNull false and NULL seq",
+			original:   transformers.DefaultNullSeq,
+			columnName: "id",
+			params: map[string][]byte{
+				"value":    []byte("123"),
+				"keepNull": []byte("false"),
+			},
+			expected: "123",
+		},
+		{
+			name:       "keepNull true and NULL seq",
+			original:   transformers.DefaultNullSeq,
+			columnName: "id",
+			params: map[string][]byte{
+				"value":    []byte("123"),
+				"keepNull": []byte("true"),
+			},
+			expected: transformers.DefaultNullSeq,
+		},
+	}
 
-	r, err := transformer.Transform(
-		context.Background(),
-		record,
-	)
-	require.NoError(t, err)
-	res, err := r.EncodeAttr(columnName)
-	require.NoError(t, err)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			driver, record := getDriverAndRecord(tt.columnName, tt.original)
+			tt.params["column"] = []byte(tt.columnName)
+			transformer, warnings, err := ReplaceTransformerDefinition.Instance(
+				context.Background(),
+				driver,
+				tt.params,
+				nil,
+			)
+			require.NoError(t, err)
+			require.Empty(t, warnings)
 
-	require.Equal(t, expectedValue, string(res))
+			r, err := transformer.Transform(
+				context.Background(),
+				record,
+			)
+			require.NoError(t, err)
+			res, err := r.EncodeAttr(tt.columnName)
+			require.NoError(t, err)
+
+			require.Equal(t, tt.expected, string(res))
+		})
+
+	}
 }

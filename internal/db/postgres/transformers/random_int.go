@@ -16,28 +16,44 @@ var RandomIntTransformerDefinition = toolkit.NewDefinition(
 		"Generate random int value from min to max",
 		toolkit.TupleTransformation,
 	),
+
 	NewRandomIntTransformer,
-	toolkit.MustNewParameter("column", "column name", new(string), nil).
-		SetIsColumn(toolkit.NewColumnProperties().
-			SetAffected(true).
-			SetAllowedColumnTypes("int2", "int4", "int8"),
-		).SetRequired(true),
+
+	toolkit.MustNewParameter(
+		"column",
+		"column name",
+		new(string),
+		nil,
+	).SetIsColumn(toolkit.NewColumnProperties().
+		SetAffected(true).
+		SetAllowedColumnTypes("int2", "int4", "int8"),
+	).SetRequired(true),
+
 	toolkit.MustNewParameter(
 		"min",
 		"min int value threshold",
 		new(int64),
 		nil,
 	).SetRequired(true),
+
 	toolkit.MustNewParameter(
 		"max",
 		"max int value threshold",
 		new(int64),
 		nil,
 	).SetRequired(true),
+
+	toolkit.MustNewParameter(
+		"keepNull",
+		"do not replace NULL values to random value",
+		new(bool),
+		New(true),
+	),
 )
 
 type RandomIntTransformer struct {
 	columnName string
+	keepNull   bool
 	min        int64
 	max        int64
 	rand       *rand.Rand
@@ -46,6 +62,7 @@ type RandomIntTransformer struct {
 func NewRandomIntTransformer(ctx context.Context, driver *toolkit.Driver, parameters map[string]*toolkit.Parameter) (toolkit.Transformer, toolkit.ValidationWarnings, error) {
 	var columnName string
 	var minVal, maxVal int64
+	var keepNull bool
 	p := parameters["column"]
 	if err := p.Scan(&columnName); err != nil {
 		return nil, nil, fmt.Errorf(`unable to scan "column" param: %w`, err)
@@ -70,8 +87,14 @@ func NewRandomIntTransformer(ctx context.Context, driver *toolkit.Driver, parame
 		}, nil
 	}
 
+	p = parameters["keepNull"]
+	if err := p.Scan(&keepNull); err != nil {
+		return nil, nil, fmt.Errorf(`unable to scan "keepNull" param: %w`, err)
+	}
+
 	return &RandomIntTransformer{
 		columnName: columnName,
+		keepNull:   keepNull,
 		min:        minVal,
 		max:        maxVal,
 		rand:       rand.New(rand.NewSource(time.Now().UnixMicro())),
@@ -83,6 +106,10 @@ func (rit *RandomIntTransformer) Init(ctx context.Context) error {
 }
 
 func (rit *RandomIntTransformer) Transform(ctx context.Context, r *toolkit.Record) (*toolkit.Record, error) {
+	if r.IsNull(rit.columnName) && rit.keepNull {
+		return r, nil
+	}
+
 	res := rit.rand.Int63n(rit.max-rit.min) + rit.min
 
 	if err := r.SetAttribute(rit.columnName, res); err != nil {

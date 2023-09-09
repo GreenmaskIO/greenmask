@@ -22,15 +22,27 @@ var NoiseDateTransformerDefinition = toolkit.NewDefinition(
 		"Apply random noise for date values",
 		toolkit.TupleTransformation,
 	),
+
 	NewNoiseDateTransformer,
-	toolkit.MustNewParameter("column", "column name", new(string), nil).
-		SetIsColumn(toolkit.NewColumnProperties().
-			SetAffected(true).
-			SetAllowedColumnTypes("date", "timestamp", "timestamptz"),
-		).SetRequired(true),
-	toolkit.MustNewParameter("ratio", "max random duration for noise", nil, nil).
-		SetRequired(true).
+
+	toolkit.MustNewParameter(
+		"column",
+		"column name",
+		new(string),
+		nil,
+	).SetIsColumn(toolkit.NewColumnProperties().
+		SetAffected(true).
+		SetAllowedColumnTypes("date", "timestamp", "timestamptz"),
+	).SetRequired(true),
+
+	toolkit.MustNewParameter(
+		"ratio",
+		"max random duration for noise",
+		nil,
+		nil,
+	).SetRequired(true).
 		SetCastDbType("interval"),
+
 	toolkit.MustNewParameter(
 		"truncate",
 		fmt.Sprintf("truncate date till the part (%s)", strings.Join(truncateParts, ", ")),
@@ -93,6 +105,10 @@ func (ndt *NoiseDateTransformer) Init(ctx context.Context) error {
 }
 
 func (ndt *NoiseDateTransformer) Transform(ctx context.Context, r *toolkit.Record) (*toolkit.Record, error) {
+	if r.IsNull(ndt.columnName) {
+		return r, nil
+	}
+
 	val, err := r.GetAttribute(ndt.columnName)
 	if err != nil {
 		return nil, fmt.Errorf("unable to scan attribute value: %w", err)

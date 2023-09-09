@@ -2,9 +2,12 @@ package transformers
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/require"
+
+	toolkit "github.com/greenmaskio/greenmask/pkg/toolkit/transformers"
 )
 
 // TODO: Cover error cases
@@ -12,11 +15,13 @@ func TestRandomStringTransformer_Transform(t *testing.T) {
 	tests := []struct {
 		name       string
 		columnName string
+		original   string
 		params     map[string][]byte
 		pattern    string
 	}{
 		{
 			name:       "default fixed string",
+			original:   "some",
 			columnName: "data",
 			params: map[string][]byte{
 				"minLength": []byte("10"),
@@ -26,6 +31,7 @@ func TestRandomStringTransformer_Transform(t *testing.T) {
 		},
 		{
 			name:       "default variadic string",
+			original:   "some",
 			columnName: "data",
 			params: map[string][]byte{
 				"minLength": []byte("2"),
@@ -35,6 +41,7 @@ func TestRandomStringTransformer_Transform(t *testing.T) {
 		},
 		{
 			name:       "custom variadic string",
+			original:   "some",
 			columnName: "data",
 			params: map[string][]byte{
 				"minLength": []byte("10"),
@@ -43,12 +50,24 @@ func TestRandomStringTransformer_Transform(t *testing.T) {
 			},
 			pattern: `^\d{10}$`,
 		},
+		{
+			name:       "keepNull",
+			original:   toolkit.DefaultNullSeq,
+			columnName: "data",
+			params: map[string][]byte{
+				"minLength": []byte("10"),
+				"maxLength": []byte("10"),
+				"symbols":   []byte("1234567890"),
+				"keepNull":  []byte("true"),
+			},
+			pattern: fmt.Sprintf(`^(\%s)$`, toolkit.DefaultNullSeq),
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			tt.params["column"] = []byte(tt.columnName)
-			driver, record := getDriverAndRecord(tt.columnName, "some")
+			driver, record := getDriverAndRecord(tt.columnName, tt.original)
 			transformer, warnings, err := RandomStringTransformerDefinition.Instance(
 				context.Background(),
 				driver,

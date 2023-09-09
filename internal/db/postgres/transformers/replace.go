@@ -14,11 +14,18 @@ var ReplaceTransformerDefinition = toolkit.NewDefinition(
 		"Replace column value to the provided",
 		toolkit.TupleTransformation,
 	),
+
 	NewReplaceTransformer,
-	toolkit.MustNewParameter("column", "column name", new(string), nil).
-		SetIsColumn(toolkit.NewColumnProperties().
-			SetAffected(true),
-		).SetRequired(true),
+
+	toolkit.MustNewParameter(
+		"column",
+		"column name",
+		new(string),
+		nil,
+	).SetIsColumn(toolkit.NewColumnProperties().
+		SetAffected(true),
+	).SetRequired(true),
+
 	toolkit.MustNewParameter(
 		"value",
 		"value to replace",
@@ -26,10 +33,18 @@ var ReplaceTransformerDefinition = toolkit.NewDefinition(
 		nil,
 	).SetRequired(true).
 		SetLinkParameter("column"),
+
+	toolkit.MustNewParameter(
+		"keepNull",
+		"do not replace NULL values to random value",
+		new(bool),
+		New(true),
+	),
 )
 
 type ReplaceTransformer struct {
 	columnName string
+	keepNull   bool
 	value      any
 }
 
@@ -37,6 +52,7 @@ func NewReplaceTransformer(ctx context.Context, driver *toolkit.Driver, paramete
 
 	var columnName string
 	var value any
+	var keepNull bool
 
 	p := parameters["column"]
 	if err := p.Scan(&columnName); err != nil {
@@ -45,8 +61,14 @@ func NewReplaceTransformer(ctx context.Context, driver *toolkit.Driver, paramete
 
 	value = parameters["value"].Value()
 
+	p = parameters["keepNull"]
+	if err := p.Scan(&keepNull); err != nil {
+		return nil, nil, fmt.Errorf(`unable to scan "keepNull" param: %w`, err)
+	}
+
 	return &ReplaceTransformer{
 		columnName: columnName,
+		keepNull:   keepNull,
 		value:      value,
 	}, nil, nil
 }
@@ -56,6 +78,10 @@ func (rt *ReplaceTransformer) Init(ctx context.Context) error {
 }
 
 func (rt *ReplaceTransformer) Transform(ctx context.Context, r *toolkit.Record) (*toolkit.Record, error) {
+	if r.IsNull(rt.columnName) && rt.keepNull {
+		return r, nil
+	}
+
 	if err := r.SetAttribute(rt.columnName, rt.value); err != nil {
 		return nil, fmt.Errorf("unable to set new value: %w", err)
 	}

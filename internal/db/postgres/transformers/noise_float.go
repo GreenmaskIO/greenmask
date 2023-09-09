@@ -21,17 +21,24 @@ var NoiseFloatTransformerDefinition = toolkit.NewDefinition(
 		toolkit.TupleTransformation,
 	),
 	NewNoiseFloatTransformer,
-	toolkit.MustNewParameter("column", "column name", new(string), nil).
-		SetIsColumn(toolkit.NewColumnProperties().
-			SetAffected(true).
-			SetAllowedColumnTypes("float4", "float8"),
-		).SetRequired(true),
+
+	toolkit.MustNewParameter(
+		"column",
+		"column name",
+		new(string),
+		nil,
+	).SetIsColumn(toolkit.NewColumnProperties().
+		SetAffected(true).
+		SetAllowedColumnTypes("float4", "float8"),
+	).SetRequired(true),
+
 	toolkit.MustNewParameter(
 		"ratio",
 		"max random percentage for noise",
 		new(float64),
 		New[float64](0.1),
 	),
+
 	toolkit.MustNewParameter(
 		"precision",
 		"precision of noised value",
@@ -88,6 +95,9 @@ func (nft *NoiseFloatTransformer) Init(ctx context.Context) error {
 }
 
 func (nft *NoiseFloatTransformer) Transform(ctx context.Context, r *toolkit.Record) (*toolkit.Record, error) {
+	if r.IsNull(nft.columnName) {
+		return r, nil
+	}
 
 	valAny, err := r.GetAttribute(nft.columnName)
 	if err != nil {

@@ -24,13 +24,25 @@ var HashTransformerDefinition = toolkit.NewDefinition(
 		"Generate hash of column value",
 		toolkit.TupleTransformation,
 	),
+
 	NewHashTransformer,
-	toolkit.MustNewParameter("column", "column name", new(string), nil).
-		SetIsColumn(toolkit.NewColumnProperties().
-			SetAffected(true).
-			SetAllowedColumnTypes("text", "varchar"),
-		).SetRequired(true),
-	toolkit.MustNewParameter("salt", "salt for hash", new(string), nil),
+
+	toolkit.MustNewParameter(
+		"column",
+		"column name",
+		new(string),
+		nil,
+	).SetIsColumn(toolkit.NewColumnProperties().
+		SetAffected(true).
+		SetAllowedColumnTypes("text", "varchar"),
+	).SetRequired(true),
+
+	toolkit.MustNewParameter(
+		"salt",
+		"salt for hash",
+		new(string),
+		nil,
+	),
 )
 
 type HashTransformer struct {
@@ -73,6 +85,10 @@ func (ht *HashTransformer) Init(ctx context.Context) error {
 }
 
 func (ht *HashTransformer) Transform(ctx context.Context, r *toolkit.Record) (*toolkit.Record, error) {
+	if r.IsNull(ht.columnName) {
+		return r, nil
+	}
+
 	var originalValue string
 	if err := r.ScanAttribute(ht.columnName, &originalValue); err != nil {
 		return nil, fmt.Errorf("unable to scan attribute value: %w", err)

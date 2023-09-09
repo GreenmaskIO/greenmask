@@ -15,10 +15,14 @@ var SetNullTransformerDefinition = toolkit.NewDefinition(
 		toolkit.TupleTransformation,
 	),
 	NewSetNullTransformer,
-	toolkit.MustNewParameter("column", "column name", new(string), nil).
-		SetIsColumn(toolkit.NewColumnProperties().
-			SetAffected(true),
-		).SetRequired(true),
+	toolkit.MustNewParameter(
+		"column",
+		"column name",
+		new(string),
+		nil,
+	).SetIsColumn(toolkit.NewColumnProperties().
+		SetAffected(true),
+	).SetRequired(true),
 )
 
 type SetNullTransformer struct {
@@ -43,6 +47,10 @@ func (sut *SetNullTransformer) Init(ctx context.Context) error {
 }
 
 func (sut *SetNullTransformer) Transform(ctx context.Context, r *toolkit.Record) (*toolkit.Record, error) {
+	if r.IsNull(sut.columnName) {
+		return r, nil
+	}
+
 	if err := r.SetAttribute(sut.columnName, toolkit.DefaultNullSeq); err != nil {
 		return nil, fmt.Errorf("unable to set new value: %w", err)
 	}

@@ -17,14 +17,25 @@ var JsonTransformerDefinition = toolkit.NewDefinition(
 		"Update json document",
 		toolkit.TupleTransformation,
 	),
+
 	NewJsonTransformer,
-	toolkit.MustNewParameter("column", "column name", new(string), nil).
-		SetIsColumn(toolkit.NewColumnProperties().
-			SetAffected(true).
-			SetAllowedColumnTypes("json", "jsonb"),
-		).SetRequired(true),
-	toolkit.MustNewParameter("operations", "list of the operations", new([]Operation), nil).
-		SetRequired(true),
+
+	toolkit.MustNewParameter(
+		"column",
+		"column name",
+		new(string),
+		nil,
+	).SetIsColumn(toolkit.NewColumnProperties().
+		SetAffected(true).
+		SetAllowedColumnTypes("json", "jsonb"),
+	).SetRequired(true),
+
+	toolkit.MustNewParameter(
+		"operations",
+		"list of the operations",
+		new([]Operation),
+		nil,
+	).SetRequired(true),
 )
 
 type Operation struct {
@@ -80,6 +91,11 @@ func (jt *JsonTransformer) Init(ctx context.Context) error {
 }
 
 func (jt *JsonTransformer) Transform(ctx context.Context, r *toolkit.Record) (*toolkit.Record, error) {
+	// TODO: Test whats happen if performed operation is not applied due to unknown path
+	if r.IsNull(jt.columnName) {
+		return r, nil
+	}
+
 	var err error
 	var jsonRawValue string
 	if err := r.ScanAttribute(jt.columnName, &jsonRawValue); err != nil {

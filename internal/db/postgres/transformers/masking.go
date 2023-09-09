@@ -31,12 +31,19 @@ var MaskingTransformerDefinition = toolkit.NewDefinition(
 		"Mask a value using one of masking type",
 		toolkit.TupleTransformation,
 	),
+
 	NewMaskingTransformer,
-	toolkit.MustNewParameter("column", "column name", new(string), nil).
-		SetIsColumn(toolkit.NewColumnProperties().
-			SetAffected(true).
-			SetAllowedColumnTypes("text", "varchar"),
-		).SetRequired(true),
+
+	toolkit.MustNewParameter(
+		"column",
+		"column name",
+		new(string),
+		nil,
+	).SetIsColumn(toolkit.NewColumnProperties().
+		SetAffected(true).
+		SetAllowedColumnTypes("text", "varchar"),
+	).SetRequired(true),
+
 	toolkit.MustNewParameter(
 		"type",
 		"logical type of attribute (password name addr email mobile tel id credit url)",
@@ -107,6 +114,10 @@ func (mt *MaskingTransformer) Init(ctx context.Context) error {
 }
 
 func (mt *MaskingTransformer) Transform(ctx context.Context, r *toolkit.Record) (*toolkit.Record, error) {
+	if r.IsNull(mt.columnName) {
+		return r, nil
+	}
+
 	var originalValue string
 	if err := r.ScanAttribute(mt.columnName, &originalValue); err != nil {
 		return nil, fmt.Errorf("unable to scan attribute value: %w", err)

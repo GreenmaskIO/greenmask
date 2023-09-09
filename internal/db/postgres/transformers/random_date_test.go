@@ -2,6 +2,7 @@ package transformers
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
@@ -16,12 +17,14 @@ func TestRandomDateTransformer_Transform(t *testing.T) {
 	tests := []struct {
 		name       string
 		columnName string
+		original   string
 		params     map[string][]byte
 		pattern    string
 	}{
 		{
 			name:       "test date type",
 			columnName: "date_date",
+			original:   "2007-09-14",
 			params: map[string][]byte{
 				"min": []byte("2017-09-14"),
 				"max": []byte("2023-09-14"),
@@ -31,6 +34,7 @@ func TestRandomDateTransformer_Transform(t *testing.T) {
 		{
 			name:       "test timestamp without timezone type",
 			columnName: "date_ts",
+			original:   "2008-12-15 23:34:17.946707",
 			params: map[string][]byte{
 				"min": []byte("2018-12-15 23:34:17.946707"),
 				"max": []byte("2023-09-14 00:00:17.946707"),
@@ -40,6 +44,7 @@ func TestRandomDateTransformer_Transform(t *testing.T) {
 		{
 			name:       "test timestamp with timezone type",
 			columnName: "date_tstz",
+			original:   "2008-12-15 23:34:17.946707+03",
 			params: map[string][]byte{
 				"min": []byte("2018-12-15 23:34:17.946707+03"),
 				"max": []byte("2023-09-14 00:00:17.946707+03"),
@@ -49,10 +54,35 @@ func TestRandomDateTransformer_Transform(t *testing.T) {
 		{
 			name:       "test timestamp type with Truncate till day",
 			columnName: "date_ts",
+			original:   "2008-12-15 23:34:17.946707",
 			params: map[string][]byte{
 				"min":      []byte("2018-12-15 23:34:17.946707"),
 				"max":      []byte("2023-09-14 00:00:17.946707"),
 				"truncate": []byte("month"),
+			},
+			pattern: `^\d{4}-\d{2}-01 0{2}:0{2}:0{2}$`,
+		},
+		{
+			name:       "keepNull false and NULL seq",
+			columnName: "date_ts",
+			original:   toolkit.DefaultNullSeq,
+			params: map[string][]byte{
+				"min":      []byte("2018-12-15 23:34:17.946707"),
+				"max":      []byte("2023-09-14 00:00:17.946707"),
+				"truncate": []byte("month"),
+				"keepNull": []byte("true"),
+			},
+			pattern: fmt.Sprintf(`^(\%s)$`, toolkit.DefaultNullSeq),
+		},
+		{
+			name:       "keepNull true and NULL seq",
+			columnName: "date_ts",
+			original:   toolkit.DefaultNullSeq,
+			params: map[string][]byte{
+				"min":      []byte("2018-12-15 23:34:17.946707"),
+				"max":      []byte("2023-09-14 00:00:17.946707"),
+				"truncate": []byte("month"),
+				"keepNull": []byte("false"),
 			},
 			pattern: `^\d{4}-\d{2}-01 0{2}:0{2}:0{2}$`,
 		},
@@ -61,7 +91,7 @@ func TestRandomDateTransformer_Transform(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			tt.params["column"] = []byte(tt.columnName)
-			driver, record := getDriverAndRecord(tt.columnName, toolkit.DefaultNullSeq)
+			driver, record := getDriverAndRecord(tt.columnName, tt.original)
 			transformer, warnings, err := RandomDateTransformerDefinition.Instance(
 				context.Background(),
 				driver, tt.params,

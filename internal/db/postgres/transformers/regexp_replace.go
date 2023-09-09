@@ -15,18 +15,26 @@ var RegexpReplaceTransformerDefinition = toolkit.NewDefinition(
 		"Replace string using regular expression",
 		toolkit.TupleTransformation,
 	),
+
 	NewRegexpReplaceTransformer,
-	toolkit.MustNewParameter("column", "column name", new(string), nil).
-		SetIsColumn(toolkit.NewColumnProperties().
-			SetAffected(true).
-			SetAllowedColumnTypes("varchar", "text"),
-		).SetRequired(true),
+
+	toolkit.MustNewParameter(
+		"column",
+		"column name",
+		new(string),
+		nil,
+	).SetIsColumn(toolkit.NewColumnProperties().
+		SetAffected(true).
+		SetAllowedColumnTypes("varchar", "text"),
+	).SetRequired(true),
+
 	toolkit.MustNewParameter(
 		"regexp",
 		"regular expression",
 		new(string),
 		nil,
 	).SetRequired(true),
+
 	toolkit.MustNewParameter(
 		"replace",
 		"replacement value",
@@ -34,13 +42,6 @@ var RegexpReplaceTransformerDefinition = toolkit.NewDefinition(
 		nil,
 	).SetRequired(true),
 )
-
-type RegexpReplaceTransformerParams struct {
-	Regexp   string  `mapstructure:"regexp" validate:"required"`
-	Replace  string  `mapstructure:"replace" validate:"required"`
-	Nullable bool    `mapstructure:"nullable"`
-	Fraction float32 `mapstructure:"fraction"`
-}
 
 type RegexpReplaceTransformer struct {
 	columnName string
@@ -64,8 +65,8 @@ func NewRegexpReplaceTransformer(ctx context.Context, driver *toolkit.Driver, pa
 	if err := p.Scan(&replace); err != nil {
 		return nil, nil, fmt.Errorf(`unable to scan "replace" param: %w`, err)
 	}
-
 	re, err := regexp.Compile(regexpStr)
+
 	if err != nil {
 		return nil, toolkit.ValidationWarnings{
 			toolkit.NewValidationWarning().
@@ -88,6 +89,10 @@ func (rrt *RegexpReplaceTransformer) Init(ctx context.Context) error {
 }
 
 func (rrt *RegexpReplaceTransformer) Transform(ctx context.Context, r *toolkit.Record) (*toolkit.Record, error) {
+	if r.IsNull(rrt.columnName) {
+		return r, nil
+	}
+
 	var original string
 	if err := r.ScanAttribute(rrt.columnName, &original); err != nil {
 		return nil, fmt.Errorf("unable to scan value: %w", err)

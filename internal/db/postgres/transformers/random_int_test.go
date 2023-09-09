@@ -2,6 +2,7 @@ package transformers
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -16,37 +17,70 @@ func TestRandomIntTransformer_Transform(t *testing.T) {
 		columnName     string
 		originalValue  string
 		expectedRegexp string
+		params         map[string][]byte
 	}{
 		{
 			name:           "int2",
 			columnName:     "id2",
-			originalValue:  toolkit.DefaultNullSeq,
+			originalValue:  "12345",
 			expectedRegexp: `^\d{1,3}$`,
+			params: map[string][]byte{
+				"min": []byte("1"),
+				"max": []byte("100"),
+			},
 		},
 		{
 			name:           "int4",
 			columnName:     "id4",
-			originalValue:  toolkit.DefaultNullSeq,
+			originalValue:  "12345",
 			expectedRegexp: `^\d{1,3}$`,
+			params: map[string][]byte{
+				"min": []byte("1"),
+				"max": []byte("100"),
+			},
 		},
 		{
 			name:           "int8",
 			columnName:     "id8",
+			originalValue:  "12345",
+			expectedRegexp: `^\d{1,3}$`,
+			params: map[string][]byte{
+				"min": []byte("1"),
+				"max": []byte("100"),
+			},
+		},
+		{
+			name:           "keepNull false and NULL seq",
+			columnName:     "id8",
 			originalValue:  toolkit.DefaultNullSeq,
 			expectedRegexp: `^\d{1,3}$`,
+			params: map[string][]byte{
+				"min":      []byte("1"),
+				"max":      []byte("100"),
+				"keepNull": []byte("false"),
+			},
+		},
+		{
+			name:           "keepNull true and NULL seq",
+			columnName:     "id8",
+			originalValue:  toolkit.DefaultNullSeq,
+			expectedRegexp: fmt.Sprintf(`^(\%s)$`, toolkit.DefaultNullSeq),
+			params: map[string][]byte{
+				"min":      []byte("1"),
+				"max":      []byte("100"),
+				"keepNull": []byte("true"),
+			},
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			tt.params["column"] = []byte(tt.columnName)
 			driver, record := getDriverAndRecord(tt.columnName, tt.originalValue)
 			transformer, warnings, err := RandomIntTransformerDefinition.Instance(
 				context.Background(),
-				driver, map[string][]byte{
-					"column": []byte(tt.columnName),
-					"min":    []byte("1"),
-					"max":    []byte("100"),
-				},
+				driver,
+				tt.params,
 				nil,
 			)
 			require.NoError(t, err)

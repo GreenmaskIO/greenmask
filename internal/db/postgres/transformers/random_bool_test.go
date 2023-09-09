@@ -2,33 +2,55 @@ package transformers
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"testing"
 
 	"github.com/stretchr/testify/require"
+
+	toolkit "github.com/greenmaskio/greenmask/pkg/toolkit/transformers"
 )
 
 func TestRandomBoolTransformer_Transform(t *testing.T) {
 
 	tests := []struct {
-		name          string
-		params        map[string][]byte
-		columnName    string
-		originalValue string
-		pattern       string
+		name       string
+		params     map[string][]byte
+		columnName string
+		original   string
+		pattern    string
 	}{
 		{
-			name:       "test bool type",
+			name:       "common",
+			original:   "t",
 			columnName: "col_bool",
 			params:     map[string][]byte{},
 			pattern:    `^(t|f)$`,
+		},
+		{
+			name:       "keepNull false and NULL seq",
+			original:   toolkit.DefaultNullSeq,
+			columnName: "col_bool",
+			params: map[string][]byte{
+				"keepNull": []byte("false"),
+			},
+			pattern: `^(t|f)$`,
+		},
+		{
+			name:       "keepNull true and NULL seq",
+			original:   toolkit.DefaultNullSeq,
+			columnName: "col_bool",
+			params: map[string][]byte{
+				"keepNull": []byte("true"),
+			},
+			pattern: fmt.Sprintf(`^(\%s)$`, toolkit.DefaultNullSeq),
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			tt.params["column"] = []byte(tt.columnName)
-			driver, record := getDriverAndRecord(tt.columnName, tt.originalValue)
+			driver, record := getDriverAndRecord(tt.columnName, tt.original)
 			transformer, warnings, err := RandomBoolTransformerDefinition.Instance(
 				context.Background(),
 				driver,
