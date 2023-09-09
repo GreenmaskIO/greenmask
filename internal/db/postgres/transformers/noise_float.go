@@ -35,7 +35,7 @@ var NoiseFloatTransformerDefinition = toolkit.NewDefinition(
 		"precision",
 		"precision of noised value",
 		new(int64),
-		New[int64](10),
+		New[int64](4),
 	),
 )
 
@@ -75,7 +75,7 @@ func NewNoiseFloatTransformer(ctx context.Context, driver *toolkit.Driver, param
 	}
 
 	return &NoiseFloatTransformer{
-		precision:  float64(precision),
+		precision:  math.Pow(10, float64(precision)),
 		ratio:      ratio,
 		columnName: columnName,
 		rand:       rand.New(rand.NewSource(time.Now().UnixMicro())),
