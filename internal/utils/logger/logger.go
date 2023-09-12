@@ -11,8 +11,8 @@ import (
 )
 
 const (
-	logFormatJsonValue = "json"
-	logFormatTextValue = "text"
+	LogFormatJsonValue = "json"
+	LogFormatTextValue = "text"
 )
 
 func SetLogLevel(logLevelStr string, logFormat string) error {
@@ -32,9 +32,9 @@ func SetLogLevel(logLevelStr string, logFormat string) error {
 
 	var formatWriter io.Writer
 	switch logFormat {
-	case logFormatJsonValue:
+	case LogFormatJsonValue:
 		formatWriter = os.Stderr
-	case logFormatTextValue:
+	case LogFormatTextValue:
 		formatWriter = zerolog.ConsoleWriter{Out: os.Stderr, TimeFormat: time.RFC3339}
 	}
 

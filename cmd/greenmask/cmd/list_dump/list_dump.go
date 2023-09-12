@@ -118,7 +118,7 @@ func listDumps() error {
 }
 
 func getMetadata(ctx context.Context, st storages.Storager) (*pgDomains.Metadata, error) {
-	mf, err := st.GetReader(ctx, "metadata.json")
+	mf, err := st.GetObject(ctx, "metadata.json")
 	if err != nil {
 		log.Err(err).Msg("")
 	}

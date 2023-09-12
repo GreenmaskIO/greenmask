@@ -39,7 +39,7 @@ func (td *TableRestorer) Execute(ctx context.Context, tx pgx.Tx) error {
 		log.Debug().Msg("test")
 	}
 
-	reader, err := td.St.GetReader(ctx, *td.Entry.FileName)
+	reader, err := td.St.GetObject(ctx, *td.Entry.FileName)
 	if err != nil {
 		return fmt.Errorf("cannot open TSV file: %w", err)
 	}

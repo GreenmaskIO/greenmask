@@ -143,7 +143,7 @@ func (r *Restore) preFlightRestore(ctx context.Context, conn *pgx.Conn) error {
 	if err := r.uploadTocFile(ctx); err != nil {
 		return err
 	}
-	tocFile, err := r.st.GetReader(ctx, "toc.dat")
+	tocFile, err := r.st.GetObject(ctx, "toc.dat")
 	if err != nil {
 		return fmt.Errorf("cannot open toc file: %w", err)
 	}
@@ -177,7 +177,7 @@ func (r *Restore) preDataRestore(ctx context.Context, conn *pgx.Conn) error {
 	// Execute pre-data section restore using pg_restore
 	options := *r.restoreOpt
 	options.Section = "pre-data"
-	options.DirPath = r.st.Getcwd()
+	options.DirPath = r.st.GetCwd()
 	if err := r.pgRestore.Run(ctx, &options); err != nil {
 		return fmt.Errorf("cannot restore pre-data section using pg_restore: %w", err)
 	}
@@ -286,7 +286,7 @@ func (r *Restore) postDataRestore(ctx context.Context, conn *pgx.Conn) error {
 
 	options := *r.restoreOpt
 	options.Section = "post-data"
-	options.DirPath = r.st.Getcwd()
+	options.DirPath = r.st.GetCwd()
 	if err := r.pgRestore.Run(ctx, &options); err != nil {
 		return fmt.Errorf("cannot restore post-data section using pg_restore: %w", err)
 	}

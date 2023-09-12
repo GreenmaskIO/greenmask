@@ -1,15 +1,12 @@
 package config
 
 import (
-	"encoding/json"
-	"fmt"
-	"reflect"
 	"sync"
-
-	"github.com/mitchellh/mapstructure"
 
 	"github.com/greenmaskio/greenmask/internal/db/postgres/pgdump"
 	"github.com/greenmaskio/greenmask/internal/db/postgres/pgrestore"
+	"github.com/greenmaskio/greenmask/internal/storages/directory"
+	"github.com/greenmaskio/greenmask/internal/storages/s3"
 )
 
 var (
@@ -25,12 +22,32 @@ func NewConfig() *Config {
 }
 
 type Config struct {
-	Common     Common  `mapstructure:"common" yaml:"common"`
-	Dump       Dump    `mapstructure:"dump" yaml:"dump"`
-	Restore    Restore `mapstructure:"restore" yaml:"restore"`
-	configPath string
+	CommonV2 CommonV2      `mapstructure:"commonV2" yaml:"commonV2"`
+	Log      LogConfig     `mapstructure:"log" yaml:"log"`
+	Storage  StorageConfig `mapstructure:"storage" yaml:"storage"`
+	Dump     Dump          `mapstructure:"dump" yaml:"dump"`
+	Restore  Restore       `mapstructure:"restore" yaml:"restore"`
+
+	// Common
+	// Deprecated
+	Common Common `mapstructure:"common" yaml:"common"`
 }
 
+type CommonV2 struct {
+	PgBinPath string `mapstructure:"pgBinPath" yaml:"pgBinPath,omitempty"`
+}
+
+type StorageConfig struct {
+	S3        s3.Config        `mapstructure:"s3"`
+	Directory directory.Config `mapstructure:"directory"`
+}
+
+type LogConfig struct {
+	Format string `mapstructure:"format" yaml:"format"`
+	Level  string `mapstructure:"level" yaml:"level"`
+}
+
+// Deprecated
 type Common struct {
 	LogFormat string  `mapstructure:"log-format" yaml:"logFormat"`
 	LogLevel  string  `mapstructure:"log-level" yaml:"logLevel"`
@@ -38,11 +55,13 @@ type Common struct {
 	Storage   Storage `mapstructure:"storage" yaml:"storage"`
 }
 
+// Deprecated
 type Storage struct {
 	Type      string    `mapstructure:"type" yaml:"type"`
 	Directory Directory `mapstructure:"directory" yaml:"directory"`
 }
 
+// Deprecated
 type Directory struct {
 	Path string `mapstructure:"path" yaml:"path"`
 }
@@ -55,30 +74,6 @@ type Dump struct {
 type Restore struct {
 	PgRestoreOptions pgrestore.Options             `mapstructure:"pg_restore_options" yaml:"pgRestoreOptions"`
 	Scripts          map[string][]pgrestore.Script `mapstructure:"scripts" yaml:"scripts"`
-}
-
-//type ParameterValue []byte
-
-func ParamsToByteSliceHookFunc() mapstructure.DecodeHookFunc {
-	return func(
-		f reflect.Type,
-		t reflect.Type,
-		data interface{}) (interface{}, error) {
-		if t != reflect.TypeOf([]byte{}) {
-			return data, nil
-		}
-
-		switch v := data.(type) {
-		case string:
-			return []byte(v), nil
-		default:
-			res, err := json.Marshal(data)
-			if err != nil {
-				return nil, fmt.Errorf("cannot convert map to yaml bytes: %w", err)
-			}
-			return res, nil
-		}
-	}
 }
 
 type TransformerConfig struct {

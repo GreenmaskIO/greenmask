@@ -61,7 +61,7 @@ func (d *Directory) ListDir(ctx context.Context) (files []string, dirs []storage
 	return
 }
 
-func (d *Directory) GetReader(ctx context.Context, filePath string) (reader io.ReadCloser, err error) {
+func (d *Directory) GetObject(ctx context.Context, filePath string) (reader io.ReadCloser, err error) {
 	reader, err = os.Open(path.Join(d.cwd, filePath))
 	return
 }
@@ -72,6 +72,9 @@ func (d *Directory) GetWriter(ctx context.Context, filePath string) (writer io.W
 		return
 	}
 	return f, nil
+}
+
+func (d *Directory) SubStorage(ctx context.Context, cwd string, relative bool) {
 }
 
 func (d *Directory) Delete(ctx context.Context, filePath string, recursive bool) error {

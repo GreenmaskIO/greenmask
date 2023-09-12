@@ -16,6 +16,7 @@ import (
 	"github.com/greenmaskio/greenmask/cmd/greenmask/cmd/restore"
 	"github.com/greenmaskio/greenmask/cmd/greenmask/cmd/show_dump"
 	pgDomains "github.com/greenmaskio/greenmask/internal/db/postgres/domains/config"
+	configUtils "github.com/greenmaskio/greenmask/internal/utils/config"
 )
 
 var (
@@ -25,7 +26,7 @@ var (
 		Short: "Greenmask is a stateless logical dump tool with features for obfuscaction",
 		Long: `A useful and flexible logical backup tool that works with pg_dump directory
 format and keep backward compatibility with pg_restore. It allows make an obfuscation 
-procedure with dumping tables on the fly. It provides declarative config for your 
+procedure with dumping tables on the fly. It provides declarative configUtils for your 
 backup and possibility to implement your own obfuscation features using custom 
 transformers. Supports a few storages (directoris and S3)`,
 	}
@@ -58,22 +59,22 @@ func init() {
 	rootCmd.AddCommand(delete_backup.Cmd)
 	rootCmd.AddCommand(show_dump.Cmd)
 
-	if err := rootCmd.MarkPersistentFlagRequired("config"); err != nil {
+	if err := rootCmd.MarkPersistentFlagRequired("configUtils"); err != nil {
 		log.Fatal().Err(err).Msg("")
 	}
 
-	if err := viper.BindPFlag("common.log-format", rootCmd.PersistentFlags().Lookup("log-format")); err != nil {
+	if err := viper.BindPFlag("log.format", rootCmd.PersistentFlags().Lookup("log-format")); err != nil {
 		log.Fatal().Err(err).Msg("")
 	}
 
-	if err := viper.BindPFlag("common.log-level", rootCmd.PersistentFlags().Lookup("log-level")); err != nil {
+	if err := viper.BindPFlag("log.level", rootCmd.PersistentFlags().Lookup("log-level")); err != nil {
 		log.Fatal().Err(err).Msg("")
 	}
 
-	if err := viper.BindEnv("common.log-level", "LOG_LEVEL"); err != nil {
+	if err := viper.BindEnv("log.level", "LOG_LEVEL"); err != nil {
 		log.Fatal().Err(err).Msg("")
 	}
-	if err := viper.BindEnv("common.log-format", "LOG_FORMAT"); err != nil {
+	if err := viper.BindEnv("log.format", "LOG_FORMAT"); err != nil {
 		log.Fatal().Err(err).Msg("")
 	}
 
@@ -82,17 +83,11 @@ func init() {
 func initConfig() {
 	if cfgFile != "" {
 		viper.SetConfigFile(cfgFile)
-		//f, err := os.Open(cfgFile)
-		//if err != nil {
-		//	log.Fatal().Err(err).Msg("")
-		//}
-		//defer f.Close()
-		//if err := yaml.NewDecoder(f).Decode(&Config); err != nil {
-		//	log.Fatal().Err(err).Msg("")
-		//}
 	} else {
 		home, err := os.UserConfigDir()
-		cobra.CheckErr(err)
+		if err != nil {
+			log.Fatal().Err(err).Msg("error getting user config dir")
+		}
 
 		viper.AddConfigPath(home)
 		viper.SetConfigType("yaml")
@@ -103,16 +98,15 @@ func initConfig() {
 	viper.AutomaticEnv()
 
 	if err := viper.ReadInConfig(); err != nil {
-		log.Fatal().Msgf("unable to read config file: %s", err.Error())
+		log.Fatal().Msgf("unable to read configUtils file: %s", err.Error())
 	}
 
 	decoderCfg := func(cfg *mapstructure.DecoderConfig) {
 		cfg.DecodeHook = mapstructure.ComposeDecodeHookFunc(
-			pgDomains.ParamsToByteSliceHookFunc(),
+			configUtils.ParamsToByteSliceHookFunc(),
 			mapstructure.StringToTimeDurationHookFunc(),
 			mapstructure.StringToSliceHookFunc(","),
 		)
-		log.Debug().Any("decoderCfg", cfg).Msg("")
 	}
 
 	if err := viper.Unmarshal(&Config, decoderCfg); err != nil {

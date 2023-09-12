@@ -137,7 +137,7 @@ func (d *Dump) schemaOnlyDump(ctx context.Context, tx pgx.Tx) error {
 	options.Format = "d"
 	options.SchemaOnly = true
 
-	dumpDir := d.st.Getcwd()
+	dumpDir := d.st.GetCwd()
 	options.FileName = dumpDir
 	if err := d.pgDump.Run(ctx, &options); err != nil {
 		return err
@@ -149,7 +149,7 @@ func (d *Dump) schemaOnlyDump(ctx context.Context, tx pgx.Tx) error {
 	}
 
 	log.Debug().Msg("reading schema section")
-	srcTocFile, err := d.st.GetReader(ctx, "~toc.dat")
+	srcTocFile, err := d.st.GetObject(ctx, "~toc.dat")
 	if err != nil {
 		return err
 	}
