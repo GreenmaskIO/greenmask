@@ -422,7 +422,7 @@ func (r *Restore) restoreWorker(ctx context.Context, tasks <-chan restorers.Rest
 		log.Debug().
 			Int("workerId", id).
 			Str("objectName", task.DebugInfo()).
-			Msgf("restoration completed")
+			Msgf("restoration complete")
 	}
 }
 
