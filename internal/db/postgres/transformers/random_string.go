@@ -29,14 +29,14 @@ var RandomStringTransformerDefinition = toolkit.NewDefinition(
 	).SetRequired(true),
 
 	toolkit.MustNewParameter(
-		"minLength",
+		"min_length",
 		"min length of string",
 		new(int64),
 		nil,
 	).SetRequired(true),
 
 	toolkit.MustNewParameter(
-		"maxLength",
+		"max_length",
 		"max length of string",
 		new(int64),
 		nil,
@@ -50,7 +50,7 @@ var RandomStringTransformerDefinition = toolkit.NewDefinition(
 	),
 
 	toolkit.MustNewParameter(
-		"keepNull",
+		"keep_null",
 		"do not replace NULL values to random value",
 		new(bool),
 		New(false),
@@ -81,14 +81,14 @@ func NewRandomStringTransformer(ctx context.Context, driver *toolkit.Driver, par
 		return nil, nil, fmt.Errorf(`unable to scan "column" param: %w`, err)
 	}
 
-	p = parameters["minLength"]
+	p = parameters["min_length"]
 	if err := p.Scan(&minLength); err != nil {
-		return nil, nil, fmt.Errorf(`unable to scan "minLength" param: %w`, err)
+		return nil, nil, fmt.Errorf(`unable to scan "min_length" param: %w`, err)
 	}
 
-	p = parameters["maxLength"]
+	p = parameters["max_length"]
 	if err := p.Scan(&maxLength); err != nil {
-		return nil, nil, fmt.Errorf(`unable to scan "maxLength" param: %w`, err)
+		return nil, nil, fmt.Errorf(`unable to scan "max_length" param: %w`, err)
 	}
 
 	p = parameters["symbols"]
@@ -96,9 +96,9 @@ func NewRandomStringTransformer(ctx context.Context, driver *toolkit.Driver, par
 		return nil, nil, fmt.Errorf(`unable to scan "symbols" param: %w`, err)
 	}
 
-	p = parameters["keepNull"]
+	p = parameters["keep_null"]
 	if err := p.Scan(&keepNull); err != nil {
-		return nil, nil, fmt.Errorf(`unable to scan "keepNull" param: %w`, err)
+		return nil, nil, fmt.Errorf(`unable to scan "keep_null" param: %w`, err)
 	}
 
 	if minLength != maxLength {

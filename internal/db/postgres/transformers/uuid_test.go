@@ -38,7 +38,7 @@ func TestUuidTransformer_Transform_uuid_type(t *testing.T) {
 			columnName: "uid",
 			original:   toolkit.DefaultNullSeq,
 			params: map[string][]byte{
-				"keepNull": []byte("false"),
+				"keep_null": []byte("false"),
 			},
 			regexp: `^[\d\w]{8}-[\d\w]{4}-[\d\w]{4}-[\d\w]{4}-[\d\w]{12}$`,
 		},
@@ -47,7 +47,7 @@ func TestUuidTransformer_Transform_uuid_type(t *testing.T) {
 			columnName: "uid",
 			original:   toolkit.DefaultNullSeq,
 			params: map[string][]byte{
-				"keepNull": []byte("true"),
+				"keep_null": []byte("true"),
 			},
 			regexp: fmt.Sprintf(`^(\%s)$`, toolkit.DefaultNullSeq),
 		},

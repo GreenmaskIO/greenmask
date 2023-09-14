@@ -35,7 +35,7 @@ var ReplaceTransformerDefinition = toolkit.NewDefinition(
 		SetLinkParameter("column"),
 
 	toolkit.MustNewParameter(
-		"keepNull",
+		"keep_null",
 		"do not replace NULL values to random value",
 		new(bool),
 		New(true),
@@ -61,9 +61,9 @@ func NewReplaceTransformer(ctx context.Context, driver *toolkit.Driver, paramete
 
 	value = parameters["value"].Value()
 
-	p = parameters["keepNull"]
+	p = parameters["keep_null"]
 	if err := p.Scan(&keepNull); err != nil {
-		return nil, nil, fmt.Errorf(`unable to scan "keepNull" param: %w`, err)
+		return nil, nil, fmt.Errorf(`unable to scan "keep_null" param: %w`, err)
 	}
 
 	return &ReplaceTransformer{

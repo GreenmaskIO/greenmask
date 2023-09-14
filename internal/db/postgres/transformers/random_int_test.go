@@ -50,25 +50,25 @@ func TestRandomIntTransformer_Transform(t *testing.T) {
 			},
 		},
 		{
-			name:           "keepNull false and NULL seq",
+			name:           "keep_null false and NULL seq",
 			columnName:     "id8",
 			originalValue:  toolkit.DefaultNullSeq,
 			expectedRegexp: `^\d{1,3}$`,
 			params: map[string][]byte{
-				"min":      []byte("1"),
-				"max":      []byte("100"),
-				"keepNull": []byte("false"),
+				"min":       []byte("1"),
+				"max":       []byte("100"),
+				"keep_null": []byte("false"),
 			},
 		},
 		{
-			name:           "keepNull true and NULL seq",
+			name:           "keep_null true and NULL seq",
 			columnName:     "id8",
 			originalValue:  toolkit.DefaultNullSeq,
 			expectedRegexp: fmt.Sprintf(`^(\%s)$`, toolkit.DefaultNullSeq),
 			params: map[string][]byte{
-				"min":      []byte("1"),
-				"max":      []byte("100"),
-				"keepNull": []byte("true"),
+				"min":       []byte("1"),
+				"max":       []byte("100"),
+				"keep_null": []byte("true"),
 			},
 		},
 	}

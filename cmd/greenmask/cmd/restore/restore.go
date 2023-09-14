@@ -75,12 +75,13 @@ var (
 
 			restore := postgres.NewRestore(
 				Config.Common.PgBinPath, st, &Config.Restore.PgRestoreOptions, Config.Restore.Scripts,
+				Config.Common.TempDirectory,
 			)
 
 			log.Info().
 				Str("dumpId", dumpId).
 				Msgf("restoring dump")
-			if err := restore.RunRestore(ctx); err != nil {
+			if err := restore.Run(ctx); err != nil {
 				log.Fatal().Err(err).Msg("fatal")
 			}
 		},

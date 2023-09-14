@@ -14,8 +14,8 @@ storage:
     endpoint: "http://localhost:9000"
     bucket: "testbucket"
     region: "us-east-1"
-    accessKeyId: "Q3AM3UQ867SPQQA43P2F"
-    secretAccessKey: "zuf+tfteSlswRu7BJ86wekitnifILbZam1KYY3TG"
+    access_key_id: "Q3AM3UQ867SPQQA43P2F"
+    secret_access_key: "zuf+tfteSlswRu7BJ86wekitnifILbZam1KYY3TG"
 
 restore:
   pg_restore_options:
@@ -64,21 +64,17 @@ dump:
     - schema: "bookings"
       name: "flights"
       transformers:
-        #        - name: "Test"
-        #          params:
-        #            column: "scheduled_departure"
-        #            replace: "2023-01-01 00:00:00.0+03"
         - name: "RandomDate"
           params:
             min: "2023-01-01 00:00:00.0+03"
             max: "2023-01-02 00:00:00.0+03"
             column: "scheduled_departure"
-#
-#        - name: "RandomDate"
-#          params:
-#            min: "2023-02-01 01:00:00.0+03"
-#            max: "2023-03-02 00:00:00.0+03"
-#            column: "scheduled_arrival"
+
+        - name: "RandomDate"
+          params:
+            min: "2023-02-01 01:00:00.0+03"
+            max: "2023-03-02 00:00:00.0+03"
+            column: "scheduled_arrival"
 #
 #        - name: "RegexpReplace"
 #          params:

@@ -129,8 +129,8 @@ func TestReplaceTransformer_Transform(t *testing.T) {
 			original:   transformers.DefaultNullSeq,
 			columnName: "id",
 			params: map[string][]byte{
-				"value":    []byte("123"),
-				"keepNull": []byte("false"),
+				"value":     []byte("123"),
+				"keep_null": []byte("false"),
 			},
 			expected: "123",
 		},
@@ -139,8 +139,8 @@ func TestReplaceTransformer_Transform(t *testing.T) {
 			original:   transformers.DefaultNullSeq,
 			columnName: "id",
 			params: map[string][]byte{
-				"value":    []byte("123"),
-				"keepNull": []byte("true"),
+				"value":     []byte("123"),
+				"keep_null": []byte("true"),
 			},
 			expected: transformers.DefaultNullSeq,
 		},

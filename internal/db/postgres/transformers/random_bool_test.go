@@ -28,20 +28,20 @@ func TestRandomBoolTransformer_Transform(t *testing.T) {
 			pattern:    `^(t|f)$`,
 		},
 		{
-			name:       "keepNull false and NULL seq",
+			name:       "keep_null false and NULL seq",
 			original:   toolkit.DefaultNullSeq,
 			columnName: "col_bool",
 			params: map[string][]byte{
-				"keepNull": []byte("false"),
+				"keep_null": []byte("false"),
 			},
 			pattern: `^(t|f)$`,
 		},
 		{
-			name:       "keepNull true and NULL seq",
+			name:       "keep_null true and NULL seq",
 			original:   toolkit.DefaultNullSeq,
 			columnName: "col_bool",
 			params: map[string][]byte{
-				"keepNull": []byte("true"),
+				"keep_null": []byte("true"),
 			},
 			pattern: fmt.Sprintf(`^(\%s)$`, toolkit.DefaultNullSeq),
 		},

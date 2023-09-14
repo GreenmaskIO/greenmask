@@ -68,7 +68,9 @@ func (d *Dump) prune() {
 	d.dumpTaskCount = 0
 	d.allTaskPushed.Store(false)
 	d.dumpIdSequence = nil
-	os.Remove(d.tmpDir)
+	if err := os.RemoveAll(d.tmpDir); err != nil {
+		log.Debug().Err(err).Msg("error deleting temp dir")
+	}
 	clear(d.dumpedObjectSizes)
 }
 

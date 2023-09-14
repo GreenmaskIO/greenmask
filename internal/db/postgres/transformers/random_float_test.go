@@ -91,14 +91,14 @@ func TestRandomFloatTransformer_Transform(t *testing.T) {
 			},
 		},
 		{
-			name:          "keepNull false and NULL seq",
+			name:          "keep_null false and NULL seq",
 			columnName:    "col_float8",
 			originalValue: toolkit.DefaultNullSeq,
 			params: map[string][]byte{
 				"min":       []byte("-100000"),
 				"max":       []byte("-1"),
 				"precision": []byte("0"),
-				"keepNull":  []byte("false"),
+				"keep_null": []byte("false"),
 			},
 			result: result{
 				min:        -100000,
@@ -108,14 +108,14 @@ func TestRandomFloatTransformer_Transform(t *testing.T) {
 			},
 		},
 		{
-			name:          "keepNull true and NULL seq",
+			name:          "keep_null true and NULL seq",
 			columnName:    "col_float8",
 			originalValue: toolkit.DefaultNullSeq,
 			params: map[string][]byte{
 				"min":       []byte("-100000"),
 				"max":       []byte("-1"),
 				"precision": []byte("0"),
-				"keepNull":  []byte("true"),
+				"keep_null": []byte("true"),
 			},
 			result: result{
 				min:        -100000,

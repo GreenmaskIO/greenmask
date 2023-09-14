@@ -10,8 +10,10 @@ import (
 	"github.com/greenmaskio/greenmask/internal/db/postgres/storage"
 	"io"
 	"os"
+	"path"
 	"regexp"
 	"strconv"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/rs/zerolog/log"
@@ -49,9 +51,12 @@ type Restore struct {
 	conn       *pgx.Conn
 	dumpSt     storages.Storager
 	tocObj     *toc.Toc
+	tmpDir     string
 }
 
-func NewRestore(binPath string, st storages.Storager, opt *pgrestore.Options, s map[string][]pgrestore.Script) *Restore {
+func NewRestore(
+	binPath string, st storages.Storager, opt *pgrestore.Options, s map[string][]pgrestore.Script, tmpDir string,
+) *Restore {
 
 	return &Restore{
 		binPath:    binPath,
@@ -59,6 +64,7 @@ func NewRestore(binPath string, st storages.Storager, opt *pgrestore.Options, s 
 		pgRestore:  pgrestore.NewPgRestore(binPath),
 		restoreOpt: opt,
 		scripts:    s,
+		tmpDir:     path.Join(tmpDir, fmt.Sprintf("%d", time.Now().UnixNano())),
 	}
 }
 
@@ -139,16 +145,30 @@ func (r *Restore) prepare() error {
 }
 
 func (r *Restore) preFlightRestore(ctx context.Context, conn *pgx.Conn) error {
-	// TODO: Upload file to temp dir if needed
-	if err := r.uploadTocFile(ctx); err != nil {
-		return err
+
+	if err := os.Mkdir(r.tmpDir, 0700); err != nil {
+		return fmt.Errorf("error creating temp dir: %w", err)
 	}
+
 	tocFile, err := r.st.GetObject(ctx, "toc.dat")
 	if err != nil {
 		return fmt.Errorf("cannot open toc file: %w", err)
 	}
 	defer tocFile.Close()
-	tocReader := toc.NewReader(tocFile)
+
+	tmpTocFile, err := os.Create(path.Join(r.tmpDir, "toc.dat"))
+	if err != nil {
+		return fmt.Errorf("error creating temp to file in tmpDir: %w", err)
+	}
+	defer tmpTocFile.Close()
+
+	if _, err = io.Copy(tmpTocFile, tocFile); err != nil {
+		return fmt.Errorf("error uploading toc file to tmpDir: %w", err)
+	}
+	if _, err = tmpTocFile.Seek(0, 0); err != nil {
+		return fmt.Errorf("unnable to move toc file offset to the head: %w", err)
+	}
+	tocReader := toc.NewReader(tmpTocFile)
 	r.tocObj, err = tocReader.Read()
 	if err != nil {
 		return fmt.Errorf("unable to read toc file: %w", err)
@@ -177,7 +197,7 @@ func (r *Restore) preDataRestore(ctx context.Context, conn *pgx.Conn) error {
 	// Execute pre-data section restore using pg_restore
 	options := *r.restoreOpt
 	options.Section = "pre-data"
-	options.DirPath = r.st.GetCwd()
+	options.DirPath = r.tmpDir
 	if err := r.pgRestore.Run(ctx, &options); err != nil {
 		return fmt.Errorf("cannot restore pre-data section using pg_restore: %w", err)
 	}
@@ -286,7 +306,7 @@ func (r *Restore) postDataRestore(ctx context.Context, conn *pgx.Conn) error {
 
 	options := *r.restoreOpt
 	options.Section = "post-data"
-	options.DirPath = r.st.GetCwd()
+	options.DirPath = r.tmpDir
 	if err := r.pgRestore.Run(ctx, &options); err != nil {
 		return fmt.Errorf("cannot restore post-data section using pg_restore: %w", err)
 	}
@@ -305,7 +325,15 @@ func (r *Restore) postFlightRestore(ctx context.Context, conn *pgx.Conn) error {
 	return nil
 }
 
-func (r *Restore) RunRestore(ctx context.Context) error {
+func (r *Restore) prune() {
+	if err := os.RemoveAll(r.tmpDir); err != nil {
+		log.Debug().Err(err).Msg("error deleting temp dir")
+	}
+}
+
+func (r *Restore) Run(ctx context.Context) error {
+
+	defer r.prune()
 
 	if err := r.prepare(); err != nil {
 		return fmt.Errorf("preparation error: %w", err)
