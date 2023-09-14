@@ -3,6 +3,8 @@ package restore
 import (
 	"context"
 	"fmt"
+	pgDomains "github.com/greenmaskio/greenmask/internal/domains"
+	"github.com/greenmaskio/greenmask/internal/storages/builder"
 	"path"
 	"slices"
 
@@ -11,8 +13,6 @@ import (
 	"github.com/spf13/viper"
 
 	"github.com/greenmaskio/greenmask/internal/db/postgres"
-	pgDomains "github.com/greenmaskio/greenmask/internal/db/postgres/domains/config"
-	"github.com/greenmaskio/greenmask/internal/storages/directory"
 	"github.com/greenmaskio/greenmask/internal/utils/logger"
 )
 
@@ -23,17 +23,16 @@ var (
 		Run: func(cmd *cobra.Command, args []string) {
 			var dumpId string
 
-			if err := logger.SetLogLevel(Config.Common.LogLevel, Config.Common.LogFormat); err != nil {
-				log.Fatal().Err(err).Msg("fatal")
-			}
-
-			st, err := directory.NewDirectory(Config.Common.Storage.Directory.Path, 0750, 0650)
-			if err != nil {
+			if err := logger.SetLogLevel(Config.Log.Level, Config.Log.Format); err != nil {
 				log.Fatal().Err(err).Msg("fatal")
 			}
 
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
+			st, err := builder.GetStorage(ctx, &Config.Storage, &Config.Log)
+			if err != nil {
+				log.Fatal().Err(err).Msg("fatal")
+			}
 
 			if args[0] == "latest" {
 				var backupNames []string
@@ -52,12 +51,14 @@ var (
 					}
 				}
 
-				slices.SortFunc(backupNames, func(a, b string) int {
-					if a < b {
-						return -1
-					}
-					return 1
-				})
+				slices.SortFunc(
+					backupNames, func(a, b string) int {
+						if a > b {
+							return -1
+						}
+						return 1
+					},
+				)
 				dumpId = backupNames[0]
 			} else {
 				dumpId = args[0]
@@ -70,11 +71,11 @@ var (
 				}
 			}
 
-			if err := st.Chdir(ctx, dumpId); err != nil {
-				log.Fatal().Err(err).Msg("fatal")
-			}
+			st = st.SubStorage(dumpId, true)
 
-			restore := postgres.NewRestore(Config.Common.BinPath, st, &Config.Restore.PgRestoreOptions, Config.Restore.Scripts)
+			restore := postgres.NewRestore(
+				Config.Common.PgBinPath, st, &Config.Restore.PgRestoreOptions, Config.Restore.Scripts,
+			)
 
 			log.Info().
 				Str("dumpId", dumpId).

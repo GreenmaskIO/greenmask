@@ -26,9 +26,3 @@ func (dis *DumpIdSequence) Next() int32 {
 	atomic.AddInt32(&dis.current, 1)
 	return dis.current
 }
-
-// EntryProducer - describes Entry producer
-type EntryProducer interface {
-	// Entry - returns TOC entry
-	Entry() (*Entry, error)
-}

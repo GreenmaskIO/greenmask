@@ -10,25 +10,24 @@ const (
 )
 
 type Config struct {
-	Endpoint         string `mapstructure:"endpoint"`
-	Bucket           string `mapstructure:"bucket"`
-	Prefix           string `mapstructure:"prefix"`
-	Region           string `mapstructure:"region"`
-	StorageClass     string `mapstructure:"storageClass"`
-	DisableSSL       bool   `mapstructure:"disableSsl"`
-	AccessKeyId      string `mapstructure:"accessKeyId"`
-	SecretAccessKey  string `mapstructure:"secretAccessKey"`
-	SessionToken     string `mapstructure:"sessionToken"`
-	RoleArn          string `mapstructure:"roleArn"`
-	SessionName      string `mapstructure:"sessionName"`
-	MaxRetries       int    `mapstructure:"maxRetries"`
-	ForcePathStyle   bool   `mapstructure:"forcePathStyle"`
-	CertFile         string `mapstructure:"certFile"`
-	MaxPartSize      int64  `mapstructure:"maxPartSize"`
-	Concurrency      int    `mapstructure:"concurrency"`
-	UseListObjectsV1 bool   `mapstructure:"useListObjectsV1"`
-	ForcePathStype   bool   `mapstructure:"forcePathStype"`
-	UseAccelerate    bool   `mapstructure:"useAccelerate"`
+	Endpoint         string `mapstructure:"endpoint,omitempty"`
+	Bucket           string `mapstructure:"bucket,omitempty"`
+	Prefix           string `mapstructure:"prefix,omitempty"`
+	Region           string `mapstructure:"region,omitempty"`
+	StorageClass     string `mapstructure:"storageClass,omitempty"`
+	DisableSSL       bool   `mapstructure:"disableSsl,omitempty"`
+	AccessKeyId      string `mapstructure:"accessKeyId,omitempty"`
+	SecretAccessKey  string `mapstructure:"secretAccessKey,omitempty"`
+	SessionToken     string `mapstructure:"sessionToken,omitempty"`
+	RoleArn          string `mapstructure:"roleArn,omitempty"`
+	SessionName      string `mapstructure:"sessionName,omitempty"`
+	MaxRetries       int    `mapstructure:"maxRetries,omitempty"`
+	CertFile         string `mapstructure:"certFile,omitempty"`
+	MaxPartSize      int64  `mapstructure:"maxPartSize,omitempty"`
+	Concurrency      int    `mapstructure:"concurrency,omitempty"`
+	UseListObjectsV1 bool   `mapstructure:"useListObjectsV1,omitempty"`
+	ForcePathStyle   bool   `mapstructure:"forcePathStyle,omitempty"`
+	UseAccelerate    bool   `mapstructure:"useAccelerate,omitempty"`
 }
 
 func NewConfig() *Config {

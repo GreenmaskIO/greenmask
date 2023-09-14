@@ -3,13 +3,12 @@ package delete_backup
 import (
 	"context"
 	"fmt"
-	"log"
+	pgDomains "github.com/greenmaskio/greenmask/internal/domains"
+	"github.com/greenmaskio/greenmask/internal/storages/builder"
+	"github.com/rs/zerolog/log"
 
 	"github.com/spf13/cobra"
 
-	"github.com/greenmaskio/greenmask/cmd/greenmask/cmd/dump"
-	pgDomains "github.com/greenmaskio/greenmask/internal/db/postgres/domains/config"
-	"github.com/greenmaskio/greenmask/internal/storages/directory"
 	"github.com/greenmaskio/greenmask/internal/utils/logger"
 )
 
@@ -18,12 +17,12 @@ var (
 		Use:  "delete",
 		Args: cobra.ExactArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
-			if err := logger.SetLogLevel(Config.Common.LogLevel, Config.Common.LogFormat); err != nil {
-				log.Fatal(err)
+			if err := logger.SetLogLevel(Config.Log.Level, Config.Log.Format); err != nil {
+				log.Fatal().Err(err).Msg("")
 			}
 
 			if err := deleteDump(args[0]); err != nil {
-				log.Fatal(err)
+				log.Fatal().Err(err).Msg("")
 			}
 		},
 	}
@@ -31,17 +30,17 @@ var (
 )
 
 func deleteDump(dumpId string) error {
-	st, err := directory.NewDirectory(dump.Config.Common.Storage.Directory.Path, 0750, 0650)
-	if err != nil {
-		log.Fatal(err)
-	}
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
+	st, err := builder.GetStorage(ctx, &Config.Storage, &Config.Log)
+	if err != nil {
+		log.Fatal().Err(err).Msg("")
+	}
 
 	_, dirs, err := st.ListDir(ctx)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal().Err(err).Msg("")
 	}
 
 	var found bool
@@ -54,7 +53,7 @@ func deleteDump(dumpId string) error {
 	if !found {
 		return fmt.Errorf("dump with id %s was not found", dumpId)
 	}
-	if err = st.Delete(ctx, dumpId, true); err != nil {
+	if err = st.Delete(ctx, dumpId); err != nil {
 		return fmt.Errorf("unable to deleteDump dump: %s", err)
 	}
 

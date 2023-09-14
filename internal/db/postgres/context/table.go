@@ -4,12 +4,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/greenmaskio/greenmask/internal/domains"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 
-	"github.com/greenmaskio/greenmask/internal/db/postgres/domains/config"
-	"github.com/greenmaskio/greenmask/internal/db/postgres/domains/dump"
+	"github.com/greenmaskio/greenmask/internal/db/postgres/dump"
 	transformersUtils "github.com/greenmaskio/greenmask/internal/db/postgres/transformers/utils"
 	toolkit "github.com/greenmaskio/greenmask/pkg/toolkit/transformers"
 )
@@ -19,7 +19,7 @@ import (
 // may contain the schema affection warnings that would be useful for considering consistency
 func validateAndBuildTablesConfig(
 	ctx context.Context, tx pgx.Tx, typeMap *pgtype.Map,
-	cfg []*config.Table, registry *transformersUtils.TransformerRegistry,
+	cfg []*domains.Table, registry *transformersUtils.TransformerRegistry,
 ) (map[toolkit.Oid]*dump.Table, toolkit.ValidationWarnings, error) {
 	tables := make(map[toolkit.Oid]*dump.Table, len(cfg))
 	var warnings toolkit.ValidationWarnings

@@ -3,57 +3,68 @@ package directory
 import (
 	"context"
 	"errors"
+	"fmt"
+	"golang.org/x/sys/unix"
 	"io"
 	"os"
 	"path"
 	"path/filepath"
+	"sync"
 	"syscall"
 
 	"github.com/greenmaskio/greenmask/internal/storages"
 )
 
-type Directory struct {
+const (
+	dirMode  os.FileMode = 0750
+	fileMode os.FileMode = 0650
+)
+
+type Storage struct {
 	dirMode  os.FileMode
 	fileMode os.FileMode
 	cwd      string
+	mx       sync.Mutex
 }
 
-func NewDirectory(cwd string, dirMode, fileMode os.FileMode) (*Directory, error) {
+func NewStorage(cfg *Config) (*Storage, error) {
 	// TODO: We would replace hardcoded file mask to Umask for unix system
-	fileInfo, err := os.Stat(cwd)
+	fileInfo, err := os.Stat(cfg.Path)
 	if err != nil {
 		return nil, err
 	}
 	if !fileInfo.IsDir() {
 		return nil, errors.New("received directory path is file")
 	}
-	return &Directory{
+	return &Storage{
 		dirMode:  dirMode,
 		fileMode: fileMode,
-		cwd:      cwd,
+		cwd:      cfg.Path,
 	}, nil
 }
 
-func (d *Directory) Getcwd() string {
+func (d *Storage) GetCwd() string {
 	return d.cwd
 }
 
-func (d *Directory) Dirname() string {
+func (d *Storage) Dirname() string {
 	return filepath.Base(d.cwd)
 }
 
-func (d *Directory) ListDir(ctx context.Context) (files []string, dirs []storages.Storager, err error) {
+func (d *Storage) ListDir(ctx context.Context) (files []string, dirs []storages.Storager, err error) {
 	entries, err := os.ReadDir(d.cwd)
 	if err != nil {
 		return nil, nil, err
 	}
 	for _, entry := range entries {
 		if entry.IsDir() {
-			dirs = append(dirs, &Directory{
-				cwd:      path.Join(d.cwd, entry.Name()),
-				dirMode:  d.dirMode,
-				fileMode: d.fileMode,
-			})
+			dirs = append(
+				dirs, &Storage{
+					cwd:      path.Join(d.cwd, entry.Name()),
+					dirMode:  d.dirMode,
+					fileMode: d.fileMode,
+				},
+			)
 		} else {
 			files = append(files, entry.Name())
 		}
@@ -61,66 +72,61 @@ func (d *Directory) ListDir(ctx context.Context) (files []string, dirs []storage
 	return
 }
 
-func (d *Directory) GetObject(ctx context.Context, filePath string) (reader io.ReadCloser, err error) {
+func (d *Storage) GetObject(ctx context.Context, filePath string) (reader io.ReadCloser, err error) {
 	reader, err = os.Open(path.Join(d.cwd, filePath))
 	return
 }
 
-func (d *Directory) GetWriter(ctx context.Context, filePath string) (writer io.WriteCloser, err error) {
+func (d *Storage) PutObject(ctx context.Context, filePath string, body io.Reader) error {
+	_, err := os.Stat(d.cwd)
+	var errNo syscall.Errno
+	if err != nil && errors.As(err, &errNo) && errNo == unix.ENOENT {
+		d.mx.Lock()
+		if err = os.MkdirAll(d.cwd, d.dirMode); err != nil {
+			d.mx.Unlock()
+			return fmt.Errorf("error creating directory: %w", err)
+		}
+		d.mx.Unlock()
+	} else if err != nil {
+		return fmt.Errorf("error getting file stat: %w", err)
+	}
 	f, err := os.Create(path.Join(d.cwd, filePath))
 	if err != nil {
-		return
+		return fmt.Errorf("unable to create file: %w", err)
 	}
-	return f, nil
-}
 
-func (d *Directory) SubStorage(ctx context.Context, cwd string, relative bool) {
-}
-
-func (d *Directory) Delete(ctx context.Context, filePath string, recursive bool) error {
-	fileInfo, err := os.Stat(path.Join(d.cwd, filePath))
+	_, err = io.Copy(f, body)
 	if err != nil {
-		return err
+		return fmt.Errorf(
+			""+
+				"error writing data: %w", err,
+		)
 	}
-	if fileInfo.IsDir() {
-		if !recursive {
-			return errors.New("attempt deleting directory in non recursive mode")
-		}
-		return os.RemoveAll(path.Join(d.cwd, filePath))
-	}
-	return os.Remove(path.Join(d.cwd, filePath))
-}
-
-func (d *Directory) Chdir(ctx context.Context, dirPath string) error {
-	newPath := dirPath
-	if dirPath[1] != '/' {
-		newPath = path.Join(d.cwd, dirPath)
-	}
-	fileInfo, err := os.Stat(newPath)
-	if err != nil {
-		return err
-	}
-	if !fileInfo.IsDir() {
-		return errors.New("received directory path is file")
-	}
-	d.cwd = newPath
 	return nil
 }
 
-func (d *Directory) CreateDir(ctx context.Context, dirName string) (storages.Storager, error) {
-	if err := os.Mkdir(path.Join(d.cwd, dirName), os.ModePerm); err != nil {
-		return nil, err
+func (d *Storage) Delete(ctx context.Context, filePaths ...string) error {
+	for _, fp := range filePaths {
+		fileInfo, err := os.Stat(path.Join(d.cwd, fp))
+		if err != nil {
+			return err
+		}
+		if fileInfo.IsDir() {
+			err = os.RemoveAll(path.Join(d.cwd, fp))
+			if err != nil {
+				return fmt.Errorf(`error deliting directory %s: %w`, fp, err)
+			}
+		} else {
+			err = os.Remove(path.Join(d.cwd, fp))
+			if err != nil {
+				return fmt.Errorf(`error deliting file %s: %w`, fp, err)
+			}
+		}
 	}
-	return &Directory{
-		cwd: path.Join(d.cwd, dirName),
-	}, nil
+	return nil
 }
 
-func (d *Directory) Rename(ctx context.Context, original, new string) error {
-	return os.Rename(path.Join(d.cwd, original), path.Join(d.cwd, new))
-}
-
-func (d *Directory) Exists(ctx context.Context, fileName string) (bool, error) {
+func (d *Storage) Exists(ctx context.Context, fileName string) (bool, error) {
 	_, err := os.Stat(path.Join(d.cwd, fileName))
 	if err != nil {
 		if errors.Is(err, syscall.ENOENT) {
@@ -129,4 +135,16 @@ func (d *Directory) Exists(ctx context.Context, fileName string) (bool, error) {
 		return false, err
 	}
 	return true, nil
+}
+
+func (d *Storage) SubStorage(dp string, relative bool) storages.Storager {
+	dirPath := dp
+	if relative {
+		dirPath = path.Join(d.cwd, dp)
+	}
+	return &Storage{
+		cwd:      dirPath,
+		dirMode:  d.dirMode,
+		fileMode: d.fileMode,
+	}
 }

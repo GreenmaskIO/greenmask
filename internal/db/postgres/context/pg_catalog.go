@@ -8,7 +8,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 
-	"github.com/greenmaskio/greenmask/internal/db/postgres/domains/dump"
+	"github.com/greenmaskio/greenmask/internal/db/postgres/dump"
 	"github.com/greenmaskio/greenmask/internal/db/postgres/pgdump"
 	"github.com/greenmaskio/greenmask/internal/db/postgres/toc"
 	tookit "github.com/greenmaskio/greenmask/pkg/toolkit/transformers"

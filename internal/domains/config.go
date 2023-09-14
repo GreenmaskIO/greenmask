@@ -1,4 +1,4 @@
-package config
+package domains
 
 import (
 	"sync"
@@ -15,31 +15,34 @@ var (
 )
 
 func NewConfig() *Config {
-	once.Do(func() {
-		Cfg = &Config{}
-	})
+	once.Do(
+		func() {
+			Cfg = &Config{
+				Storage: StorageConfig{
+					S3: s3.NewConfig(),
+				},
+			}
+		},
+	)
 	return Cfg
 }
 
 type Config struct {
-	CommonV2 CommonV2      `mapstructure:"commonV2" yaml:"commonV2"`
-	Log      LogConfig     `mapstructure:"log" yaml:"log"`
-	Storage  StorageConfig `mapstructure:"storage" yaml:"storage"`
-	Dump     Dump          `mapstructure:"dump" yaml:"dump"`
-	Restore  Restore       `mapstructure:"restore" yaml:"restore"`
-
-	// Common
-	// Deprecated
-	Common Common `mapstructure:"common" yaml:"common"`
+	Common  Common        `mapstructure:"common" yaml:"common"`
+	Log     LogConfig     `mapstructure:"log" yaml:"log"`
+	Storage StorageConfig `mapstructure:"storage" yaml:"storage"`
+	Dump    Dump          `mapstructure:"dump" yaml:"dump"`
+	Restore Restore       `mapstructure:"restore" yaml:"restore"`
 }
 
-type CommonV2 struct {
-	PgBinPath string `mapstructure:"pgBinPath" yaml:"pgBinPath,omitempty"`
+type Common struct {
+	PgBinPath     string `mapstructure:"pg_bin_path" yaml:"pg_bin_path,omitempty"`
+	TempDirectory string `mapstructure:"tmp_dir" yaml:"tmp_dir,omitempty"`
 }
 
 type StorageConfig struct {
-	S3        s3.Config        `mapstructure:"s3"`
-	Directory directory.Config `mapstructure:"directory"`
+	S3        *s3.Config        `mapstructure:"s3"`
+	Directory *directory.Config `mapstructure:"directory"`
 }
 
 type LogConfig struct {
@@ -47,27 +50,8 @@ type LogConfig struct {
 	Level  string `mapstructure:"level" yaml:"level"`
 }
 
-// Deprecated
-type Common struct {
-	LogFormat string  `mapstructure:"log-format" yaml:"logFormat"`
-	LogLevel  string  `mapstructure:"log-level" yaml:"logLevel"`
-	BinPath   string  `mapstructure:"bin_path" yaml:"bin_path,omitempty"`
-	Storage   Storage `mapstructure:"storage" yaml:"storage"`
-}
-
-// Deprecated
-type Storage struct {
-	Type      string    `mapstructure:"type" yaml:"type"`
-	Directory Directory `mapstructure:"directory" yaml:"directory"`
-}
-
-// Deprecated
-type Directory struct {
-	Path string `mapstructure:"path" yaml:"path"`
-}
-
 type Dump struct {
-	PgDumpOptions  pgdump.Options `mapstructure:"pg_dump_options" yaml:"pgDumpOptions"`
+	PgDumpOptions  pgdump.Options `mapstructure:"pg_dump_options" yaml:"pg_dump_options"`
 	Transformation []*Table       `mapstructure:"transformation" yaml:"transformation"`
 }
 
@@ -86,8 +70,4 @@ type Table struct {
 	Name         string               `mapstructure:"name" yaml:"name"`
 	Query        string               `mapstructure:"query" yaml:"query"`
 	Transformers []*TransformerConfig `mapstructure:"transformers" yaml:"transformers"`
-}
-
-func init() {
-	//mapstructure.Decoder{}
 }

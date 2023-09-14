@@ -4,13 +4,13 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	storageDto "github.com/greenmaskio/greenmask/internal/db/postgres/storage"
 	"html/template"
 	"os"
 	"path"
 
 	"gopkg.in/yaml.v3"
 
-	storageDto "github.com/greenmaskio/greenmask/internal/db/postgres/domains/storage"
 	"github.com/greenmaskio/greenmask/internal/storages"
 )
 

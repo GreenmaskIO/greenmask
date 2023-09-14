@@ -3,40 +3,41 @@ package dump
 import (
 	"context"
 	"fmt"
-	"strconv"
-	"time"
-
+	"github.com/greenmaskio/greenmask/internal/db/postgres"
+	pgDomains "github.com/greenmaskio/greenmask/internal/domains"
+	"github.com/greenmaskio/greenmask/internal/storages/builder"
+	"github.com/greenmaskio/greenmask/internal/utils/logger"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-
-	"github.com/greenmaskio/greenmask/internal/db/postgres"
-	pgDomains "github.com/greenmaskio/greenmask/internal/db/postgres/domains/config"
-	"github.com/greenmaskio/greenmask/internal/storages/directory"
-	"github.com/greenmaskio/greenmask/internal/utils/logger"
+	"strconv"
+	"time"
 )
 
 var (
 	DumpCmd = &cobra.Command{
 		Use: "dump",
 		Run: func(cmd *cobra.Command, args []string) {
-			if err := logger.SetLogLevel(Config.Common.LogLevel, Config.Common.LogFormat); err != nil {
-				log.Fatal().Err(err).Msg("")
-			}
-
-			rootSt, err := directory.NewDirectory(Config.Common.Storage.Directory.Path, 0750, 0650)
-			if err != nil {
+			if err := logger.SetLogLevel(Config.Log.Level, Config.Log.Format); err != nil {
 				log.Fatal().Err(err).Msg("")
 			}
 
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
-
-			st, err := rootSt.CreateDir(ctx, strconv.FormatInt(time.Now().UnixMilli(), 10))
+			st, err := builder.GetStorage(ctx, &Config.Storage, &Config.Log)
 			if err != nil {
-				log.Fatal().Err(err).Msg("cannot create directory in storage")
+				log.Fatal().Err(err).Msg("fatal")
 			}
-			dump := postgres.NewDump(Config.Common.BinPath, &Config.Dump.PgDumpOptions, st, Config.Dump.Transformation)
+			st = st.SubStorage(strconv.FormatInt(time.Now().UnixMilli(), 10), true)
+
+			if Config.Common.TempDirectory == "" {
+				log.Fatal().Msg("common.tmp_dir cannot be empty")
+			}
+
+			dump := postgres.NewDump(
+				Config.Common.PgBinPath, &Config.Dump.PgDumpOptions, st, Config.Dump.Transformation,
+				Config.Common.TempDirectory,
+			)
 
 			if err := dump.Run(ctx); err != nil {
 				log.Fatal().Err(err).Msg("cannot make a backup")
@@ -75,23 +76,42 @@ func init() {
 	DumpCmd.Flags().BoolP("no-blobs", "B", false, "exclude large objects in dump")
 	DumpCmd.Flags().BoolP("clean", "c", false, "clean (drop) database objects before recreating")
 	DumpCmd.Flags().BoolP("create", "C", false, "include commands to create database in dump")
-	DumpCmd.Flags().StringSliceVarP(&Config.Dump.PgDumpOptions.Extension, "extension", "e", []string{}, "dump the specified extension(s) only")
+	DumpCmd.Flags().StringSliceVarP(
+		&Config.Dump.PgDumpOptions.Extension, "extension", "e", []string{}, "dump the specified extension(s) only",
+	)
 	DumpCmd.Flags().StringP("encoding", "E", "", "dump the data in encoding ENCODING")
-	DumpCmd.Flags().StringSliceVarP(&Config.Dump.PgDumpOptions.Schema, "schema", "n", []string{}, "dump the specified schema(s) only")
-	DumpCmd.Flags().StringSliceVarP(&Config.Dump.PgDumpOptions.ExcludeSchema, "exclude-schema", "N", []string{}, "dump the specified schema(s) only")
+	DumpCmd.Flags().StringSliceVarP(
+		&Config.Dump.PgDumpOptions.Schema, "schema", "n", []string{}, "dump the specified schema(s) only",
+	)
+	DumpCmd.Flags().StringSliceVarP(
+		&Config.Dump.PgDumpOptions.ExcludeSchema, "exclude-schema", "N", []string{},
+		"dump the specified schema(s) only",
+	)
 	DumpCmd.Flags().StringP("no-owner", "O", "", "skip restoration of object ownership in plain-text format")
 	DumpCmd.Flags().StringP("schema-only", "s", "", "dump only the schema, no data")
 	DumpCmd.Flags().StringP("superuser", "S", "", "superuser user name to use in plain-text format")
-	DumpCmd.Flags().StringSliceVarP(&Config.Dump.PgDumpOptions.Table, "table", "t", []string{}, "dump the specified table(s) only")
-	DumpCmd.Flags().StringSliceVarP(&Config.Dump.PgDumpOptions.ExcludeTable, "exclude-table", "T", []string{}, "do NOT dump the specified table(s)")
+	DumpCmd.Flags().StringSliceVarP(
+		&Config.Dump.PgDumpOptions.Table, "table", "t", []string{}, "dump the specified table(s) only",
+	)
+	DumpCmd.Flags().StringSliceVarP(
+		&Config.Dump.PgDumpOptions.ExcludeTable, "exclude-table", "T", []string{}, "do NOT dump the specified table(s)",
+	)
 	DumpCmd.Flags().BoolP("no-privileges", "X", false, "do not dump privileges (grant/revoke)")
 	DumpCmd.Flags().BoolP("disable-dollar-quoting", "", false, "disable dollar quoting, use SQL standard quoting")
 	DumpCmd.Flags().BoolP("disable-triggers", "", false, "disable triggers during data-only restore")
-	DumpCmd.Flags().BoolP("enable-row-security", "", false, "enable row security (dump only content user has access to)")
-	DumpCmd.Flags().StringSliceVarP(&Config.Dump.PgDumpOptions.ExcludeTableData, "exclude-table-data", "", []string{}, "do NOT dump data for the specified table(s)")
+	DumpCmd.Flags().BoolP(
+		"enable-row-security", "", false, "enable row security (dump only content user has access to)",
+	)
+	DumpCmd.Flags().StringSliceVarP(
+		&Config.Dump.PgDumpOptions.ExcludeTableData, "exclude-table-data", "", []string{},
+		"do NOT dump data for the specified table(s)",
+	)
 	DumpCmd.Flags().StringP("extra-float-digits", "", "", "override default setting for extra_float_digits")
 	DumpCmd.Flags().BoolP("if-exists", "", false, "use IF EXISTS when dropping objects")
-	DumpCmd.Flags().StringSliceVarP(&Config.Dump.PgDumpOptions.IncludeForeignData, "include-foreign-data", "", []string{}, "use IF EXISTS when dropping objects")
+	DumpCmd.Flags().StringSliceVarP(
+		&Config.Dump.PgDumpOptions.IncludeForeignData, "include-foreign-data", "", []string{},
+		"use IF EXISTS when dropping objects",
+	)
 	DumpCmd.Flags().BoolP("load-via-partition-root", "", false, "load partitions via the root table")
 	DumpCmd.Flags().BoolP("no-comments", "", false, "do not dump comments")
 	DumpCmd.Flags().BoolP("no-publications", "", false, "do not dump publications")
@@ -106,8 +126,13 @@ func init() {
 	DumpCmd.Flags().StringP("section", "", "", "dump named section (pre-data, data, or post-data)")
 	DumpCmd.Flags().BoolP("serializable-deferrable", "", false, "wait until the dump can run without anomalies")
 	DumpCmd.Flags().StringP("snapshot", "", "", "use given snapshot for the dump")
-	DumpCmd.Flags().BoolP("strict-names", "", false, "require table and/or schema include patterns to match at least one entity each")
-	DumpCmd.Flags().BoolP("use-set-session-authorization", "", false, "use SET SESSION AUTHORIZATION commands instead of ALTER OWNER commands to set ownership")
+	DumpCmd.Flags().BoolP(
+		"strict-names", "", false, "require table and/or schema include patterns to match at least one entity each",
+	)
+	DumpCmd.Flags().BoolP(
+		"use-set-session-authorization", "", false,
+		"use SET SESSION AUTHORIZATION commands instead of ALTER OWNER commands to set ownership",
+	)
 
 	// Connection options:
 	DumpCmd.Flags().StringP("dbname", "d", "postgres", "database to dump")

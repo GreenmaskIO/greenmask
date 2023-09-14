@@ -8,7 +8,7 @@ import (
 
 	"github.com/rs/zerolog/log"
 
-	"github.com/greenmaskio/greenmask/internal/db/postgres/domains/dump"
+	"github.com/greenmaskio/greenmask/internal/db/postgres/dump"
 	toolkitUtils "github.com/greenmaskio/greenmask/pkg/toolkit/utils"
 )
 

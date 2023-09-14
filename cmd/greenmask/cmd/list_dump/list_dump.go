@@ -4,7 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	pgDomains "github.com/greenmaskio/greenmask/internal/db/postgres/storage"
+	"github.com/greenmaskio/greenmask/internal/domains"
+	"github.com/greenmaskio/greenmask/internal/storages/builder"
 	"os"
+	"slices"
 	"time"
 
 	"github.com/rs/zerolog/log"
@@ -13,11 +17,6 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/greenmaskio/greenmask/internal/storages"
-	"github.com/greenmaskio/greenmask/internal/storages/directory"
-
-	"github.com/greenmaskio/greenmask/cmd/greenmask/cmd/dump"
-	"github.com/greenmaskio/greenmask/internal/db/postgres/domains/config"
-	pgDomains "github.com/greenmaskio/greenmask/internal/db/postgres/domains/storage"
 	"github.com/greenmaskio/greenmask/internal/utils/logger"
 )
 
@@ -25,7 +24,7 @@ var (
 	Cmd = &cobra.Command{
 		Use: "list-dump",
 		Run: func(cmd *cobra.Command, args []string) {
-			if err := logger.SetLogLevel(Config.Common.LogLevel, Config.Common.LogFormat); err != nil {
+			if err := logger.SetLogLevel(Config.Log.Level, Config.Log.Format); err != nil {
 				log.Err(err).Msg("")
 			}
 
@@ -34,7 +33,7 @@ var (
 			}
 		},
 	}
-	Config = config.NewConfig()
+	Config = domains.NewConfig()
 )
 
 func SizePretty(b int64) string {
@@ -51,13 +50,12 @@ func SizePretty(b int64) string {
 }
 
 func listDumps() error {
-	st, err := directory.NewDirectory(dump.Config.Common.Storage.Directory.Path, 0750, 0650)
-	if err != nil {
-		log.Err(err).Msg("")
-	}
-
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
+	st, err := builder.GetStorage(ctx, &Config.Storage, &Config.Log)
+	if err != nil {
+		log.Fatal().Err(err).Msg("")
+	}
 
 	_, dirs, err := st.ListDir(ctx)
 	if err != nil {
@@ -109,6 +107,13 @@ func listDumps() error {
 			status,
 		})
 	}
+
+	slices.SortFunc(data, func(a, b []string) int {
+		if a[0] > b[0] {
+			return -1
+		}
+		return 1
+	})
 
 	table := tablewriter.NewWriter(os.Stdout)
 	table.SetHeader([]string{"id", "date", "database", "size", "compressed size", "duration", "transformed", "status"})

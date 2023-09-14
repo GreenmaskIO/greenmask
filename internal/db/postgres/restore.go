@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/greenmaskio/greenmask/internal/db/postgres/storage"
 	"io"
 	"os"
 	"regexp"
@@ -17,7 +18,6 @@ import (
 	"golang.org/x/sync/errgroup"
 	"gopkg.in/yaml.v3"
 
-	"github.com/greenmaskio/greenmask/internal/db/postgres/domains/storage"
 	"github.com/greenmaskio/greenmask/internal/db/postgres/pgrestore"
 	"github.com/greenmaskio/greenmask/internal/db/postgres/restorers"
 	"github.com/greenmaskio/greenmask/internal/db/postgres/toc"
@@ -111,7 +111,7 @@ func (r *Restore) RunScripts(ctx context.Context, conn *pgx.Conn, section, when 
 func (r *Restore) uploadTocFile(ctx context.Context) error {
 	var needUpload bool
 	switch r.st.(type) {
-	case *directory.Directory:
+	case *directory.Storage:
 	default:
 		needUpload = true
 	}

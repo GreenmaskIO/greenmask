@@ -2,14 +2,18 @@ package storage
 
 import (
 	"fmt"
+	"github.com/greenmaskio/greenmask/internal/domains"
 	"time"
 
 	"github.com/rs/zerolog/log"
 
-	"github.com/greenmaskio/greenmask/internal/db/postgres/domains/config"
-	"github.com/greenmaskio/greenmask/internal/db/postgres/domains/dump"
 	"github.com/greenmaskio/greenmask/internal/db/postgres/toc"
 )
+
+type ObjectSizeStat struct {
+	Original   int64
+	Compressed int64
+}
 
 type Header struct {
 	CreationDate    time.Time `json:"creationDate" yaml:"creationDate"`
@@ -41,24 +45,23 @@ type Entry struct {
 }
 
 type Metadata struct {
-	StartedAt      time.Time       `yaml:"startedAt" json:"startedAt"`
-	CompletedAt    time.Time       `yaml:"completedAt" json:"completedAt"`
-	OriginalSize   int64           `json:"originalSize" json:"originalSize"`
-	CompressedSize int64           `json:"compressedSize" json:"compressedSize"`
-	Transformers   []*config.Table `yaml:"transformers" json:"transformers"`
-	Header         Header          `json:"header" json:"header"`
-	Entries        []*Entry        `json:"entries" json:"entries"`
+	StartedAt      time.Time        `yaml:"startedAt" json:"startedAt"`
+	CompletedAt    time.Time        `yaml:"completedAt" json:"completedAt"`
+	OriginalSize   int64            `json:"originalSize" json:"originalSize"`
+	CompressedSize int64            `json:"compressedSize" json:"compressedSize"`
+	Transformers   []*domains.Table `yaml:"transformers" json:"transformers"`
+	Header         Header           `json:"header" json:"header"`
+	Entries        []*Entry         `json:"entries" json:"entries"`
 }
 
 func NewMetadata(
-	header *toc.Header,
-	entryProducers []toc.EntryProducer,
-	tocFileSize int64, startedAt,
-	completedAt time.Time, transformers []*config.Table,
+	tocObj *toc.Toc, tocFileSize int64, startedAt,
+	completedAt time.Time, transformers []*domains.Table,
+	stats map[int32]ObjectSizeStat,
 ) (*Metadata, error) {
 
 	var format string
-	switch header.Format {
+	switch tocObj.Header.Format {
 	case toc.ArchUnknown:
 		format = "UNKNOWN"
 	case toc.ArchCustom:
@@ -70,17 +73,13 @@ func NewMetadata(
 	case toc.ArchDirectory:
 		format = "DIRECTORY"
 	default:
-		return nil, fmt.Errorf("unknown archive type %d", header.Format)
+		return nil, fmt.Errorf("unknown archive type %d", tocObj.Header.Format)
 	}
 
 	var totalCompressedSize, totalOriginalSize int64
 
-	entriesDto := make([]*Entry, 0, len(entryProducers))
-	for _, ep := range entryProducers {
-		entry, err := ep.Entry()
-		if err != nil {
-			return nil, fmt.Errorf("error producing toc entry: %s", err)
-		}
+	entriesDto := make([]*Entry, 0, len(tocObj.Entries))
+	for _, entry := range tocObj.Entries {
 		if entry.Section == toc.SectionPreData ||
 			entry.Section == toc.SectionData ||
 			entry.Section == toc.SectionPostData {
@@ -109,14 +108,11 @@ func NewMetadata(
 
 			var objCompressedSize, objOriginalSize int64
 			if entry.Section == toc.SectionData && *entry.Desc == toc.TableDataDesc {
-				table, ok := ep.(*dump.Table)
-				if !ok {
-					return nil, fmt.Errorf("unable to cast to dump.Table")
-				}
-				objCompressedSize = table.CompressedSize
-				objOriginalSize = table.OriginalSize
-				totalCompressedSize += table.CompressedSize
-				totalOriginalSize += table.OriginalSize
+				s := stats[entry.DumpId]
+				objCompressedSize = s.Compressed
+				objOriginalSize = s.Original
+				totalCompressedSize += s.Compressed
+				totalOriginalSize += s.Original
 			}
 
 			section, ok := toc.SectionMap[entry.Section]
@@ -125,20 +121,22 @@ func NewMetadata(
 					Msgf("unknown section with number: %d", entry.Section)
 			}
 
-			entriesDto = append(entriesDto, &Entry{
-				DumpId:         entry.DumpId,
-				DatabaseOid:    int32(entry.CatalogId.Oid),
-				ObjectOid:      int32(entry.CatalogId.TableOid),
-				ObjectType:     objectType,
-				Schema:         schema,
-				Name:           name,
-				Owner:          owner,
-				FileName:       fileName,
-				Dependencies:   entry.Dependencies,
-				OriginalSize:   objOriginalSize,
-				CompressedSize: objCompressedSize,
-				Section:        section,
-			})
+			entriesDto = append(
+				entriesDto, &Entry{
+					DumpId:         entry.DumpId,
+					DatabaseOid:    int32(entry.CatalogId.Oid),
+					ObjectOid:      int32(entry.CatalogId.TableOid),
+					ObjectType:     objectType,
+					Schema:         schema,
+					Name:           name,
+					Owner:          owner,
+					FileName:       fileName,
+					Dependencies:   entry.Dependencies,
+					OriginalSize:   objOriginalSize,
+					CompressedSize: objCompressedSize,
+					Section:        section,
+				},
+			)
 
 		}
 	}
@@ -153,17 +151,17 @@ func NewMetadata(
 		CompletedAt:    completedAt,
 		Transformers:   transformers,
 		Header: Header{
-			CreationDate:    header.CrtmDateTime.Time(),
-			DbName:          *header.ArchDbName,
+			CreationDate:    tocObj.Header.CrtmDateTime.Time(),
+			DbName:          *tocObj.Header.ArchDbName,
 			TocEntriesCount: len(entriesDto),
-			DumpVersion:     *header.ArchiveDumpVersion,
+			DumpVersion:     *tocObj.Header.ArchiveDumpVersion,
 			Format:          format,
-			Integer:         header.IntSize,
-			Offset:          header.OffSize,
-			DumpedFrom:      *header.ArchiveRemoteVersion,
-			DumpedBy:        *header.ArchiveDumpVersion,
+			Integer:         tocObj.Header.IntSize,
+			Offset:          tocObj.Header.OffSize,
+			DumpedFrom:      *tocObj.Header.ArchiveRemoteVersion,
+			DumpedBy:        *tocObj.Header.ArchiveDumpVersion,
 			TocFileSize:     tocFileSize,
-			Compression:     header.CompressionSpec.Level,
+			Compression:     tocObj.Header.CompressionSpec.Level,
 		},
 		Entries: entriesDto,
 	}, nil

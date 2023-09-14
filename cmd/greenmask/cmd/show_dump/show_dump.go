@@ -2,15 +2,15 @@ package show_dump
 
 import (
 	"context"
-	"log"
+	pgDomains "github.com/greenmaskio/greenmask/internal/domains"
+	"github.com/greenmaskio/greenmask/internal/storages/builder"
+	"github.com/rs/zerolog/log"
 	"path"
 	"slices"
 
 	"github.com/spf13/cobra"
 
 	"github.com/greenmaskio/greenmask/internal/db/postgres"
-	pgDomains "github.com/greenmaskio/greenmask/internal/db/postgres/domains/config"
-	"github.com/greenmaskio/greenmask/internal/storages/directory"
 	"github.com/greenmaskio/greenmask/internal/utils/logger"
 )
 
@@ -27,28 +27,28 @@ var (
 		Run: func(cmd *cobra.Command, args []string) {
 			var dumpId string
 
-			if err := logger.SetLogLevel(Config.Common.LogLevel, Config.Common.LogFormat); err != nil {
-				log.Fatal(err)
+			if err := logger.SetLogLevel(Config.Log.Level, Config.Log.Format); err != nil {
+				log.Fatal().Err(err).Msg("error setting up logger")
 			}
 
-			st, err := directory.NewDirectory(Config.Common.Storage.Directory.Path, 0750, 0650)
-			if err != nil {
-				log.Fatal(err)
-			}
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
+			st, err := builder.GetStorage(ctx, &Config.Storage, &Config.Log)
+			if err != nil {
+				log.Fatal().Err(err).Msg("error building storage")
+			}
 
 			if args[0] == "latest" {
 				var backupNames []string
 
 				_, dirs, err := st.ListDir(ctx)
 				if err != nil {
-					log.Fatalf("cannot walk through directory: %s", err)
+					log.Fatal().Err(err).Msg("cannot walk through directory")
 				}
 				for _, dir := range dirs {
 					exists, err := dir.Exists(ctx, "metadata.json")
 					if err != nil {
-						log.Fatalf("cannot check file existence: %s", err)
+						log.Fatal().Err(err).Msg("cannot check file existence")
 					}
 					if exists {
 						backupNames = append(backupNames, dir.Dirname())
@@ -56,7 +56,7 @@ var (
 				}
 
 				slices.SortFunc(backupNames, func(a, b string) int {
-					if a < b {
+					if a > b {
 						return -1
 					}
 					return 1
@@ -66,15 +66,15 @@ var (
 				dumpId = args[0]
 				exists, err := st.Exists(ctx, path.Join(dumpId, "metadata.json"))
 				if err != nil {
-					log.Fatalf("cannot check file existence: %s", err)
+					log.Fatal().Err(err).Msg("cannot check file existence")
 				}
 				if !exists {
-					log.Fatalf("choose another dump %s is failed", dumpId)
+					log.Fatal().Msgf("choose another dump %s is failed", dumpId)
 				}
 			}
 
 			if err := postgres.ShowDump(ctx, st, dumpId, format); err != nil {
-				log.Fatal(err)
+				log.Fatal().Err(err).Msg("")
 			}
 		},
 	}

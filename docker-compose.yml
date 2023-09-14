@@ -2,9 +2,10 @@ version: '3'
 
 services:
   s3:
-    image: minio/minio:RELEASE.2023-06-29T05-12-28Z
+    image: minio/minio:latest
     ports:
       - ":9000:9000"
+      - ":9001:9001"
     environment:
       - "MINIO_ROOT_USER=Q3AM3UQ867SPQQA43P2F"
       - "MINIO_ROOT_PASSWORD=zuf+tfteSlswRu7BJ86wekitnifILbZam1KYY3TG"
@@ -12,5 +13,20 @@ services:
     command: >
       -c 'mkdir -p /export/testbucket
       && dd if=/dev/random count=10 > /export/testbucket/test.bin
-      && minio server /export'
-    network_mode: bridge
+      && minio server /export --console-address :9001'
+
+  db:
+    image: postgres:15
+    restart: always
+    volumes:
+      - "/Users/vadim/tmp/pg_dump_test/pgdata:/var/lib/postgresql/data"
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_PASSWORD: example
+
+  db-filler:
+    volumes:
+      - "/Users/vadim/tmp/pg_dump_test/schema:/tmp/schema"
+    build:
+      dockerfile: docker/Dockerfile_db-filler

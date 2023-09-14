@@ -1,15 +1,26 @@
 common:
-  log-level: "debug"
-  log-format: "text"
-  bin_path: "/usr/bin"
-  storage:
-    directory:
-      path: "/home/vadim/tmp/pg_dump_test"
+  #  bin_path: "/usr/bin"
+  pg_bin_path: "/usr/local/opt/libpq/bin/"
+  tmp_dir: "/tmp"
+
+log:
+  level: "debug"
+  format: "text"
+
+storage:
+#  directory:
+#    path: "/Users/vadim/tmp/pg_dump_test/storage"
+  s3:
+    endpoint: "http://localhost:9000"
+    bucket: "testbucket"
+    region: "us-east-1"
+    accessKeyId: "Q3AM3UQ867SPQQA43P2F"
+    secretAccessKey: "zuf+tfteSlswRu7BJ86wekitnifILbZam1KYY3TG"
 
 restore:
   pg_restore_options:
     jobs: 10
-    dbname: "user=postgres dbname=demo_restore"
+    dbname: "host=localhost user=postgres password=example dbname=demo_restore"
 
   scripts:
     pre-flight:
@@ -44,7 +55,7 @@ restore:
 
 dump:
   pg_dump_options:
-    dbname: "user=postgres dbname=demo"
+    dbname: "host=localhost user=postgres password=example dbname=demo"
     jobs: 10
     exclude-schema: "(\"teSt\"*|test*)"
     load-via-partition-root: true
@@ -53,10 +64,10 @@ dump:
     - schema: "bookings"
       name: "flights"
       transformers:
-#        - name: "Test"
-#          params:
-#            column: "scheduled_departure"
-#            replace: "2023-01-01 00:00:00.0+03"
+        #        - name: "Test"
+        #          params:
+        #            column: "scheduled_departure"
+        #            replace: "2023-01-01 00:00:00.0+03"
         - name: "RandomDate"
           params:
             min: "2023-01-01 00:00:00.0+03"

@@ -101,7 +101,7 @@ func NewStorage(ctx context.Context, cfg *Config, logLevel string) (*Storage, er
 	var lv aws.LogLevelType
 	switch logLevel {
 	case zerolog.LevelDebugValue:
-		lv = aws.LogDebugWithHTTPBody
+		lv = aws.LogDebug | aws.LogDebugWithRequestErrors | aws.LogDebugWithRequestRetries
 	default:
 		lv = aws.LogOff
 	}
@@ -126,10 +126,12 @@ func NewStorage(ctx context.Context, cfg *Config, logLevel string) (*Storage, er
 	}
 
 	service := s3.New(ses, awsCfg)
-	uploader := s3manager.NewUploaderWithClient(service, func(uploader *s3manager.Uploader) {
-		uploader.PartSize = defaultMaxPartSize
-		uploader.Concurrency = cfg.Concurrency
-	})
+	uploader := s3manager.NewUploaderWithClient(
+		service, func(uploader *s3manager.Uploader) {
+			uploader.PartSize = defaultMaxPartSize
+			uploader.Concurrency = cfg.Concurrency
+		},
+	)
 
 	return &Storage{
 		prefix:   cfg.Prefix,
@@ -153,13 +155,15 @@ func (s *Storage) ListDir(ctx context.Context) (files []string, dirs []storages.
 	listFunc := func(commonPrefixes []*s3.CommonPrefix, contents []*s3.Object) {
 		for _, prefix := range commonPrefixes {
 
-			dirs = append(dirs, &Storage{
-				config:   s.config,
-				session:  s.session,
-				service:  s.service,
-				uploader: s.uploader,
-				prefix:   *prefix.Prefix,
-			})
+			dirs = append(
+				dirs, &Storage{
+					config:   s.config,
+					session:  s.session,
+					service:  s.service,
+					uploader: s.uploader,
+					prefix:   *prefix.Prefix,
+				},
+			)
 		}
 		for _, object := range contents {
 			files = append(files, strings.TrimPrefix(*object.Key, s.prefix))
@@ -174,10 +178,12 @@ func (s *Storage) ListDir(ctx context.Context) (files []string, dirs []storages.
 			Bucket:    aws.String(s.config.Bucket),
 			Delimiter: delimiter,
 		}
-		err = s.service.ListObjectsPagesWithContext(ctx, page, func(page *s3.ListObjectsOutput, lastPage bool) bool {
-			listFunc(page.CommonPrefixes, page.Contents)
-			return true
-		})
+		err = s.service.ListObjectsPagesWithContext(
+			ctx, page, func(page *s3.ListObjectsOutput, lastPage bool) bool {
+				listFunc(page.CommonPrefixes, page.Contents)
+				return true
+			},
+		)
 		if err != nil {
 			return nil, nil, fmt.Errorf("error listing s3 objects v1: %w", err)
 		}
@@ -187,12 +193,14 @@ func (s *Storage) ListDir(ctx context.Context) (files []string, dirs []storages.
 			Bucket:    aws.String(s.config.Bucket),
 			Delimiter: delimiter,
 		}
-		err = s.service.ListObjectsV2PagesWithContext(ctx, page, func(
-			page *s3.ListObjectsV2Output, lastPage bool,
-		) bool {
-			listFunc(page.CommonPrefixes, page.Contents)
-			return true
-		})
+		err = s.service.ListObjectsV2PagesWithContext(
+			ctx, page, func(
+				page *s3.ListObjectsV2Output, lastPage bool,
+			) bool {
+				listFunc(page.CommonPrefixes, page.Contents)
+				return true
+			},
+		)
 		if err != nil {
 			return nil, nil, fmt.Errorf("error listing s3 objects v2: %w", err)
 		}
@@ -202,20 +210,22 @@ func (s *Storage) ListDir(ctx context.Context) (files []string, dirs []storages.
 }
 
 func (s *Storage) GetObject(ctx context.Context, filePath string) (writer io.ReadCloser, err error) {
-	obj, err := s.service.GetObjectWithContext(ctx, &s3.GetObjectInput{
-		Bucket: aws.String(s.config.Bucket),
-		Key:    aws.String(path.Join(s.prefix, filePath)),
-	})
+	obj, err := s.service.GetObjectWithContext(
+		ctx, &s3.GetObjectInput{
+			Bucket: aws.String(s.config.Bucket),
+			Key:    aws.String(path.Join(s.prefix, filePath)),
+		},
+	)
 	if err != nil {
 		return nil, fmt.Errorf("error getting object: %w", err)
 	}
 	return obj.Body, nil
 }
 
-func (s *Storage) PutObject(ctx context.Context, path string, body io.Reader) error {
+func (s *Storage) PutObject(ctx context.Context, filePath string, body io.Reader) error {
 	ui := &s3manager.UploadInput{
 		Bucket:       aws.String(s.config.Bucket),
-		Key:          aws.String(path),
+		Key:          aws.String(path.Join(s.prefix, filePath)),
 		Body:         body,
 		StorageClass: aws.String(s.config.StorageClass),
 	}
@@ -227,7 +237,7 @@ func (s *Storage) PutObject(ctx context.Context, path string, body io.Reader) er
 	return nil
 }
 
-func (s *Storage) DeleteV2(ctx context.Context, filePaths ...string) error {
+func (s *Storage) Delete(ctx context.Context, filePaths ...string) error {
 	objs := make([]*s3.ObjectIdentifier, len(filePaths))
 	for idx, fp := range filePaths {
 		objs[idx] = &s3.ObjectIdentifier{
@@ -251,7 +261,7 @@ func (s *Storage) DeleteV2(ctx context.Context, filePaths ...string) error {
 func (s *Storage) SubStorage(subPath string, relative bool) storages.Storager {
 	prefix := subPath
 	if relative {
-		prefix = path.Join(s.prefix, subPath)
+		prefix = path.Join(s.prefix, prefix)
 	}
 	return &Storage{
 		config:    s.config,
@@ -278,29 +288,4 @@ func (s *Storage) Exists(ctx context.Context, fileName string) (bool, error) {
 		return false, fmt.Errorf("error getting object info: %w", err)
 	}
 	return true, nil
-}
-
-// Deprecated
-func (s *Storage) Chdir(ctx context.Context, dirPath string) error {
-	return fmt.Errorf("is not implemented and deprecated")
-}
-
-// Deprecated
-func (s *Storage) Delete(ctx context.Context, filePath string, recursive bool) error {
-	return fmt.Errorf("is not implemented and deprecated")
-}
-
-// Deprecated
-func (s *Storage) GetWriter(ctx context.Context, filePath string) (writer io.WriteCloser, err error) {
-	return nil, fmt.Errorf("is not implemented and deprecated")
-}
-
-// Deprecated
-func (s *Storage) CreateDir(ctx context.Context, dirName string) (storages.Storager, error) {
-	return nil, fmt.Errorf("is not implemented and deprecated")
-}
-
-// Deprecated
-func (s *Storage) Rename(ctx context.Context, original, new string) error {
-	return fmt.Errorf("is not implemented and deprecated")
 }

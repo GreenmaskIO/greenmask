@@ -3,18 +3,17 @@ package dumpers
 import (
 	"context"
 	"fmt"
+	"golang.org/x/sync/errgroup"
+	"io"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/rs/zerolog/log"
 
-	"github.com/greenmaskio/greenmask/internal/db/postgres/domains/dump"
-	"github.com/greenmaskio/greenmask/internal/db/postgres/toc"
+	"github.com/greenmaskio/greenmask/internal/db/postgres/dump"
 	"github.com/greenmaskio/greenmask/internal/storages"
-	"github.com/greenmaskio/greenmask/internal/utils/count_writer"
+	"github.com/greenmaskio/greenmask/internal/utils/countwriter"
 )
-
-const DefaultBufSize = 1024 * 10
 
 type TableDumper struct {
 	table *dump.Table
@@ -26,26 +25,62 @@ func NewTableDumper(table *dump.Table) *TableDumper {
 	}
 }
 
-func (td *TableDumper) Execute(ctx context.Context, tx pgx.Tx, st storages.Storager) (toc.EntryProducer, error) {
-	var err error
+func (td *TableDumper) Execute(ctx context.Context, tx pgx.Tx, st storages.Storager) (dump.Entry, error) {
 
-	datFile, err := st.GetWriter(ctx, fmt.Sprintf("%d.dat.gz", td.table.DumpId))
-	if err != nil {
-		return nil, fmt.Errorf("cannot open data file: %w", err)
+	w, r := countwriter.NewGzipPipe()
+
+	eg, gtx := errgroup.WithContext(ctx)
+
+	// Writing goroutine
+	eg.Go(
+		func() error {
+			defer func() {
+				if err := r.Close(); err != nil {
+					log.Warn().Err(err).Msg("error closing TableDumper reader")
+				}
+			}()
+			err := st.PutObject(gtx, fmt.Sprintf("%d.dat.gz", td.table.DumpId), r)
+			if err != nil {
+				return fmt.Errorf("cannot write object: %w", err)
+			}
+			return nil
+		},
+	)
+
+	// Dumping and transformation goroutine
+	eg.Go(
+		func() error {
+			if err := td.process(gtx, tx, w); err != nil {
+				return fmt.Errorf("error processing table dump: %w", err)
+			}
+			return nil
+		},
+	)
+
+	if err := eg.Wait(); err != nil {
+		return nil, err
 	}
-	defer datFile.Close()
-	gz := count_writer.NewGzipWriter(datFile)
-	defer gz.Close()
 
+	td.table.OriginalSize = w.GetCount()
+	td.table.CompressedSize = r.GetCount()
+	return td.table, nil
+}
+
+func (td *TableDumper) process(ctx context.Context, tx pgx.Tx, w io.WriteCloser) (err error) {
+	defer func() {
+		if err := w.Close(); err != nil {
+			log.Warn().Err(err).Msg("error closing TableDumper writer")
+		}
+	}()
 	var pipeline Pipeliner
 
 	if len(td.table.Transformers) > 0 {
-		pipeline, err = NewTransformationPipeline(ctx, td.table, gz)
+		pipeline, err = NewTransformationPipeline(ctx, td.table, w)
 		if err != nil {
-			return nil, fmt.Errorf("cannot initialize transformation pipeline: %w", err)
+			return fmt.Errorf("cannot initialize transformation pipeline: %w", err)
 		}
 	} else {
-		pipeline = NewPlainDumpPipeline(td.table, gz)
+		pipeline = NewPlainDumpPipeline(td.table, w)
 	}
 
 	frontend := tx.Conn().PgConn().Frontend()
@@ -54,52 +89,48 @@ func (td *TableDumper) Execute(ctx context.Context, tx pgx.Tx, st storages.Stora
 		Str("query", query).
 		Msgf("dumping table %s.%s using copy query", td.table.Schema, td.table.Name)
 	if err != nil {
-		return nil, fmt.Errorf("cannot get COPY FROM statement: %w", err)
+		return fmt.Errorf("cannot get COPY FROM statement: %w", err)
 	}
 	frontend.Send(&pgproto3.Query{
 		String: query,
 	})
 
 	if err := frontend.Flush(); err != nil {
-		return nil, err
+		return fmt.Errorf("error flushing pg frontend: %w", err)
 	}
 
 	for {
 		select {
 		case <-ctx.Done():
-			return nil, ctx.Err()
+			return ctx.Err()
 		default:
 
 		}
 		msg, err := frontend.Receive()
 		if err != nil {
-			return nil, fmt.Errorf("unable to perform copy query: %w", err)
+			return fmt.Errorf("unable to perform copy query: %w", err)
 		}
 		switch v := msg.(type) {
 		case *pgproto3.CopyOutResponse:
-			// CopyOutResponse does not matter for us in TEXTUAL MODES
+			// CopyOutResponse does not matter for in TEXTUAL MODES
 			// https://www.postgresql.org/docs/current/sql-copy.html
 		case *pgproto3.CopyData:
 			if err = pipeline.Dump(ctx, v.Data); err != nil {
-				return nil, fmt.Errorf("dump error: %w", err)
+				return fmt.Errorf("dump error: %w", err)
 			}
 
 		case *pgproto3.CopyDone:
 		case *pgproto3.CommandComplete:
 		case *pgproto3.ReadyForQuery:
-			if err = gz.Flush(); err != nil {
-				return nil, fmt.Errorf("cannot flush writer: %w", err)
-			}
-			td.table.OriginalSize = gz.ReceivedBytes()
-			td.table.CompressedSize = gz.WrittenBytes()
-			return td.table, nil
+			return nil
 		case *pgproto3.ErrorResponse:
-			return nil, fmt.Errorf("error from postgres connection msg = %s code=%s", v.Message, v.Code)
+			return fmt.Errorf("error from postgres connection msg = %s code=%s", v.Message, v.Code)
 		default:
-			return nil, fmt.Errorf("unknown backup message %+v", v)
+			return fmt.Errorf("unknown backup message %+v", v)
 		}
 	}
 }
+
 func (td *TableDumper) DebugInfo() string {
 	return fmt.Sprintf("table %s.%s", td.table.Schema, td.table.Name)
 }

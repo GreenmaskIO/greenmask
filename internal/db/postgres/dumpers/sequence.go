@@ -6,8 +6,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 
-	"github.com/greenmaskio/greenmask/internal/db/postgres/domains/dump"
-	"github.com/greenmaskio/greenmask/internal/db/postgres/toc"
+	"github.com/greenmaskio/greenmask/internal/db/postgres/dump"
 	"github.com/greenmaskio/greenmask/internal/storages"
 )
 
@@ -21,7 +20,7 @@ func NewSequenceDumper(sequence *dump.Sequence) *SequenceDumper {
 	}
 }
 
-func (sd *SequenceDumper) Execute(ctx context.Context, tx pgx.Tx, st storages.Storager) (toc.EntryProducer, error) {
+func (sd *SequenceDumper) Execute(ctx context.Context, tx pgx.Tx, st storages.Storager) (dump.Entry, error) {
 	return sd.sequence, nil
 }
 

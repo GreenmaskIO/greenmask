@@ -89,7 +89,7 @@ func TestStorage_Delete(t *testing.T) {
 	require.NoError(t, err)
 	require.Contains(t, files, "test_to_del.txt")
 
-	err = st.DeleteV2(context.Background(), "/test_to_del.txt")
+	err = st.Delete(context.Background(), "/test_to_del.txt")
 	require.NoError(t, err)
 
 	files, _, err = st.ListDir(context.Background())

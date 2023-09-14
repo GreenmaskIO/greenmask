@@ -3,14 +3,14 @@ package context
 import (
 	"context"
 	"fmt"
+	"github.com/greenmaskio/greenmask/internal/domains"
 	"slices"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/rs/zerolog/log"
 
-	"github.com/greenmaskio/greenmask/internal/db/postgres/domains/config"
-	"github.com/greenmaskio/greenmask/internal/db/postgres/domains/dump"
+	"github.com/greenmaskio/greenmask/internal/db/postgres/dump"
 	"github.com/greenmaskio/greenmask/internal/db/postgres/pgdump"
 	transformersUtils "github.com/greenmaskio/greenmask/internal/db/postgres/transformers/utils"
 	toolkit "github.com/greenmaskio/greenmask/pkg/toolkit/transformers"
@@ -37,7 +37,7 @@ type RuntimeContext struct {
 // TODO: Recheck it is working properly. In a few cases (stages such as parameters building, schema validation) if
 //
 //	warnings are fatal procedure must be terminated immediately due to lack of objects required on the next step
-func NewRuntimeContext(ctx context.Context, tx pgx.Tx, cfg []*config.Table, r *transformersUtils.TransformerRegistry, opt *pgdump.Options) (*RuntimeContext, error) {
+func NewRuntimeContext(ctx context.Context, tx pgx.Tx, cfg []*domains.Table, r *transformersUtils.TransformerRegistry, opt *pgdump.Options) (*RuntimeContext, error) {
 	typeMap := tx.Conn().TypeMap()
 	types, err := getCustomTypesUsedInTables(ctx, tx)
 	if err != nil {

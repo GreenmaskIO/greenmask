@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	pgDomains "github.com/greenmaskio/greenmask/internal/domains"
 	"os"
 
 	"github.com/mitchellh/mapstructure"
@@ -15,20 +16,19 @@ import (
 	"github.com/greenmaskio/greenmask/cmd/greenmask/cmd/list_dump"
 	"github.com/greenmaskio/greenmask/cmd/greenmask/cmd/restore"
 	"github.com/greenmaskio/greenmask/cmd/greenmask/cmd/show_dump"
-	pgDomains "github.com/greenmaskio/greenmask/internal/db/postgres/domains/config"
 	configUtils "github.com/greenmaskio/greenmask/internal/utils/config"
 )
 
 var (
-	userLicence string
-	rootCmd     = &cobra.Command{
-		Use:   "greenmask",
-		Short: "Greenmask is a stateless logical dump tool with features for obfuscaction",
-		Long: `A useful and flexible logical backup tool that works with pg_dump directory
-format and keep backward compatibility with pg_restore. It allows make an obfuscation 
-procedure with dumping tables on the fly. It provides declarative configUtils for your 
-backup and possibility to implement your own obfuscation features using custom 
-transformers. Supports a few storages (directoris and S3)`,
+	rootCmd = &cobra.Command{
+		Use:     "greenmask",
+		Version: "dev",
+		Short:   "Greenmask is a stateless logical dump tool with features for obfuscaction",
+		Long: "A useful and flexible logical backup tool that works with pg_dump directory " +
+			"format and keep backward compatibility with pg_restore. It allows make an obfuscation " +
+			"procedure with dumping tables on the fly. It provides declarative config for your " +
+			"backup and possibility to implement your own obfuscation features using custom " +
+			"transformers. Supports a few storages (directory and S3)",
 	}
 	cfgFile string
 	Config  = pgDomains.NewConfig()
@@ -59,7 +59,7 @@ func init() {
 	rootCmd.AddCommand(delete_backup.Cmd)
 	rootCmd.AddCommand(show_dump.Cmd)
 
-	if err := rootCmd.MarkPersistentFlagRequired("configUtils"); err != nil {
+	if err := rootCmd.MarkPersistentFlagRequired("config"); err != nil {
 		log.Fatal().Err(err).Msg("")
 	}
 
