@@ -18,7 +18,7 @@ RUN printf "#!/bin/bash \
 \n    wget 'https://edu.postgrespro.com/demo-big-en.zip' \
 \nfi\
 \nif  psql -U postgres -h db -c 'CREATE DATABASE demo;'; then \
-\ngzip -dc demo-small-en.zip | psql -U postgres -d demo -h db \
+\ngzip -dc demo-big-en.zip | psql -U postgres -d demo -h db \
 \nfi\
 \npsql -U postgres -h db -c 'DROP DATABASE demo_restore;'\
 \npsql -U postgres -h db -c 'CREATE DATABASE demo_restore;'\
