@@ -2,6 +2,7 @@ package transformers
 
 import (
 	"context"
+	"github.com/greenmaskio/greenmask/internal/domains"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -19,8 +20,8 @@ func TestSetNullTransformer_Transform(t *testing.T) {
 
 	transformer, warnings, err := SetNullTransformerDefinition.Instance(
 		context.Background(),
-		driver, map[string][]byte{
-			"column": []byte(columnName),
+		driver, map[string]domains.ParamsValue{
+			"column": domains.ParamsValue(columnName),
 		},
 		nil,
 	)

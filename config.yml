@@ -1,6 +1,7 @@
 common:
-  #  bin_path: "/usr/bin"
-  pg_bin_path: "/usr/local/opt/libpq/bin/"
+#  pg_bin_path: "/usr/local/opt/libpq/bin"
+#  pg_bin_path: "/usr/local/opt/postgresql@15/bin"
+  pg_bin_path: "/usr/local/opt/postgresql@16/bin"
   tmp_dir: "/tmp"
 
 log:
@@ -8,54 +9,21 @@ log:
   format: "text"
 
 storage:
-#  directory:
-#    path: "/Users/vadim/tmp/pg_dump_test/storage"
-  s3:
-    endpoint: "http://localhost:9000"
-    bucket: "testbucket"
-    region: "us-east-1"
-    access_key_id: "Q3AM3UQ867SPQQA43P2F"
-    secret_access_key: "zuf+tfteSlswRu7BJ86wekitnifILbZam1KYY3TG"
+  directory:
+    path: "/Users/vadim/tmp/pg_dump_test/storage/16"
+#    path: "/Users/vadim/tmp/pg_dump_test/storage/15"
+#  s3:
+#    endpoint: "http://localhost:9000"
+#    bucket: "testbucket"
+#    region: "us-east-1"
+#    access_key_id: "Q3AM3UQ867SPQQA43P2F"
+#    secret_access_key: "zuf+tfteSlswRu7BJ86wekitnifILbZam1KYY3TG"
 
-restore:
-  pg_restore_options:
-    jobs: 10
-    dbname: "host=localhost user=postgres password=example dbname=demo_restore"
-
-  scripts:
-    pre-flight:
-      - name: "pre-flight test script [1]"
-        query: "create table script_test(stage text)"
-      - name: "pre-flight test script [1]"
-        query: "insert into script_test values('pre-flight')"
-    pre-data:
-      - name: "pre-data before test script [1]"
-        when: "before"
-        query: "insert into script_test values('pre-data before')"
-      - name: "pre-data after test script [1]"
-        when: "after"
-        query: "insert into script_test values('pre-data after')"
-    data:
-      - name: "data before test script [1]"
-        when: "before"
-        query: "insert into script_test values('data before')"
-      - name: "data after test script [1]"
-        when: "after"
-        query: "insert into script_test values('data after')"
-    post-data:
-      - name: "post-data before test script [1]"
-        when: "before"
-        query: "insert into script_test values('post-data before')"
-      - name: "post-data after test script [1]"
-        when: "after"
-        query: "insert into script_test values('post-data after')"
-    post-flight:
-      - name: "post-flight test script [1]"
-        query: "insert into script_test values('post-flight')"
 
 dump:
   pg_dump_options:
-    dbname: "host=localhost user=postgres password=example dbname=demo"
+    dbname: "host=localhost user=postgres password=example dbname=demo port=54316"
+#    dbname: "host=localhost user=postgres password=example dbname=demo port=54315"
     jobs: 10
     exclude-schema: "(\"teSt\"*|test*)"
     load-via-partition-root: true
@@ -72,8 +40,8 @@ dump:
 
         - name: "RandomDate"
           params:
-            min: "2023-02-01 01:00:00.0+03"
-            max: "2023-03-02 00:00:00.0+03"
+            min: "2023-02-02 01:00:00.0+03"
+            max: "2023-03-03 00:00:00.0+03"
             column: "scheduled_arrival"
 #
 #        - name: "RegexpReplace"
@@ -118,3 +86,41 @@ dump:
 #          params:
 #            ratio: 0.9
 #            column: "range"
+
+
+restore:
+  pg_restore_options:
+    jobs: 10
+    dbname: "host=localhost user=postgres password=example dbname=demo_restore port=54316"
+#    dbname: "host=localhost user=postgres password=example dbname=demo_restore port=54315"
+
+  scripts:
+    pre-flight:
+      - name: "pre-flight test script [1]"
+        query: "create table script_test(stage text)"
+      - name: "pre-flight test script [1]"
+        query: "insert into script_test values('pre-flight')"
+    pre-data:
+      - name: "pre-data before test script [1]"
+        when: "before"
+        query: "insert into script_test values('pre-data before')"
+      - name: "pre-data after test script [1]"
+        when: "after"
+        query: "insert into script_test values('pre-data after')"
+    data:
+      - name: "data before test script [1]"
+        when: "before"
+        query: "insert into script_test values('data before')"
+      - name: "data after test script [1]"
+        when: "after"
+        query: "insert into script_test values('data after')"
+    post-data:
+      - name: "post-data before test script [1]"
+        when: "before"
+        query: "insert into script_test values('post-data before')"
+      - name: "post-data after test script [1]"
+        when: "after"
+        query: "insert into script_test values('post-data after')"
+    post-flight:
+      - name: "post-flight test script [1]"
+        query: "insert into script_test values('post-flight')"

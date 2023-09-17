@@ -3,6 +3,7 @@ package transformers
 import (
 	"context"
 	"fmt"
+	"github.com/greenmaskio/greenmask/internal/domains"
 )
 
 type TransformationType string
@@ -40,7 +41,7 @@ func (d *Definition) SetSchemaValidator(v SchemaValidationFunc) *Definition {
 }
 
 func (d *Definition) parseParameters(
-	driver *Driver, rawParams map[string][]byte, types []*Type,
+	driver *Driver, rawParams map[string]domains.ParamsValue, types []*Type,
 ) (ValidationWarnings, map[string]*Parameter, error) {
 	if rawParams == nil && len(d.Parameters) > 0 {
 		return ValidationWarnings{
@@ -97,7 +98,7 @@ func (d *Definition) parseParameters(
 	return totalWarnings, params, nil
 }
 
-func (d *Definition) Instance(ctx context.Context, driver *Driver, rawParams map[string][]byte, types []*Type) (Transformer, ValidationWarnings, error) {
+func (d *Definition) Instance(ctx context.Context, driver *Driver, rawParams map[string]domains.ParamsValue, types []*Type) (Transformer, ValidationWarnings, error) {
 	// Parse parameters and get the copy of parsed
 	parametersWarnings, params, err := d.parseParameters(driver, rawParams, types)
 	if err != nil {

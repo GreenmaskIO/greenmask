@@ -76,7 +76,11 @@ func (w *Writer) writeHeader(header *Header) error {
 		}
 	}
 
-	// TODO: Fixme - I've changed hardcoded ArchTar to ah.Format - it may bring an error
+	/*
+	 * Write 'tar' in the format field of the toc.dat file. The directory
+	 * is compatible with 'tar', so there's no point having a different
+	 * format code for it.
+	 */
 	if err := w.writeByte(header.Format); err != nil {
 		return fmt.Errorf("cannot write format: %w", err)
 	}

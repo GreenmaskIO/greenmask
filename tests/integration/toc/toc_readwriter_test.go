@@ -1,0 +1,186 @@
+package toc
+
+import (
+	"errors"
+	"fmt"
+	toclib "github.com/greenmaskio/greenmask/internal/db/postgres/toc"
+	"github.com/rs/zerolog/log"
+	"github.com/stretchr/testify/suite"
+	"io"
+	"os"
+	"os/exec"
+	"path"
+	"slices"
+	"strings"
+)
+
+// Scenario
+// 1.
+
+type TocReadWriterSuite struct {
+	suite.Suite
+	tmpDir  string
+	dumpDir string
+}
+
+func (suite *TocReadWriterSuite) SetupSuite() {
+	suite.Require().NotEmpty(pgBinPath, "-pgBinPath non-empty flag required")
+	suite.Require().NotEmpty(tempDir, "-tempDir non-empty flag required")
+	suite.Require().NotEmpty(connCreds, "-connCreds non-empty flag required")
+
+	var err error
+	//suite.tmpDir = path.Join(tempDir, fmt.Sprintf("%d", time.Now().UnixMilli()))
+	suite.tmpDir, err = os.MkdirTemp(tempDir, "toc_read_writer_test_")
+	suite.Require().NoError(err, "error creating temp dir")
+	suite.dumpDir = path.Join(suite.tmpDir, "pg_dump")
+
+	// Prepare pg_dump for running
+	cmd := exec.Command(
+		path.Join(pgBinPath, "pg_dump"),
+		"-Fd", "--dbname", connCreds, "-f", suite.dumpDir,
+	)
+	stdout, err := cmd.StdoutPipe()
+	suite.Require().NoError(err, "unable to open stdout pipe")
+	defer stdout.Close()
+	stderr, err := cmd.StderrPipe()
+	suite.Require().NoError(err, "unable to open stderr pipe")
+	defer stderr.Close()
+
+	// Run pg_dump and check pipe data as well as return code
+	err = cmd.Start()
+	suite.Require().NoError(err, "error starting pg_dump process")
+	var stdoutOut []byte
+	buf := make([]byte, 1024)
+	for {
+		n, err := stdout.Read(buf)
+		stdoutOut = append(stdoutOut, buf[:n]...)
+		if err != nil {
+			suite.Require().Contains(err.Error(), "EOF", "error reading stdout pipe")
+			break
+		}
+	}
+
+	var stderrOut []byte
+	for {
+		n, err := stderr.Read(buf)
+		stderrOut = append(stderrOut, buf[:n]...)
+		if err != nil {
+			suite.Require().Contains(err.Error(), "EOF", "error reading stdout pipe")
+			break
+		}
+	}
+
+	suite.Require().NoError(err, "error reading from stderr pipe")
+	if len(stderrOut) > 0 {
+		log.Warn().Str("stderr", string(stderrOut)).Msg("pg_dump: received non empty stderr")
+	}
+
+	if len(stdoutOut) > 0 {
+		log.Warn().Str("stderr", string(stdoutOut)).Msg("pg_dump: stdout forwarding")
+	}
+
+	suite.Assert().NotContains(string(stderrOut), "warning", "received stderr contains warnings")
+	suite.Assert().NotContains(string(stderrOut), "error", "received stderr contains errors")
+	err = cmd.Wait()
+	suite.Require().NoError(err, "error running pg_dump")
+}
+
+func (suite *TocReadWriterSuite) TestReadWriteTocDat() {
+
+	suite.Run("reading and writing toc.dat", func() {
+		src, err := os.Open(path.Join(suite.dumpDir, "toc.dat"))
+		if err != nil {
+			suite.Require().NoError(err, "error opening original toc.dat file")
+		}
+		defer src.Close()
+		dest, err := os.Create(path.Join(suite.dumpDir, "new_toc.dat"))
+		if err != nil {
+			suite.Require().NoError(err, "error creating decoded new_toc.dat file")
+		}
+		defer dest.Close()
+
+		reader := toclib.NewReader(src)
+		toc, err := reader.Read()
+		if err != nil {
+			suite.Require().NoError(err, "error reading toc file using toc library")
+		}
+
+		writer := toclib.NewWriter(dest)
+		if err := writer.Write(toc); err != nil {
+			suite.Require().NoError(err, "error writing toc file using toc library")
+		}
+	})
+
+	suite.Run("hexdiff", func() {
+		originalTocFile, err := os.Open(path.Join(suite.dumpDir, "toc.dat"))
+		if err != nil {
+			suite.Require().NoError(err, "error opening original toc.dat file")
+		}
+		defer originalTocFile.Close()
+		newTocFile, err := os.Open(path.Join(suite.dumpDir, "new_toc.dat"))
+		if err != nil {
+			suite.Require().NoError(err, "error opening decoded new_toc.dat file")
+		}
+		defer newTocFile.Close()
+
+		originalTocBytes, err := io.ReadAll(originalTocFile)
+		suite.Require().NoError(err, "error reading original toc file")
+
+		newTocBytes, err := io.ReadAll(newTocFile)
+		suite.Require().NoError(err, "error reading decoded new_toc.dat file")
+
+		isEqual := suite.Assert().Equal(originalTocBytes, newTocBytes, "toc files are unequal")
+		if !isEqual {
+			log.Debug().Msg("performing pretty printed diff comparison")
+			cmd := exec.Command(
+				"bash", "-c",
+				fmt.Sprintf("diff -y <(xxd %s/toc.dat) <(xxd %s/new_toc.dat) ",
+					suite.dumpDir, suite.dumpDir,
+				),
+			)
+
+			out, err := cmd.Output()
+			if err != nil {
+				var exitErr *exec.ExitError
+				if !errors.As(err, &exitErr) || (errors.As(err, &exitErr) && exitErr.ExitCode() != 0 && exitErr.ExitCode() != 1) {
+					suite.Require().NoError(err, "error performing hex diff")
+				}
+			}
+			log.Info().Msg("printing pretty hex diff")
+			lineLength := slices.Index(out, '\n')
+			originalName := "ORIGINAL_TOC"
+			newName := "NEW_TOC"
+			col1 := fmt.Sprintf("%[1]*s", -lineLength/2, fmt.Sprintf("%[1]*s", (lineLength+len(originalName))/4, originalName))
+			col2 := fmt.Sprintf("%[1]*s", -lineLength/2, fmt.Sprintf("%[1]*s", (lineLength+len(newName))/4, newName))
+			fmt.Println(strings.Repeat("-", lineLength))
+			fmt.Printf("%s|%s\n", col1, col2)
+			fmt.Println(strings.Repeat("-", lineLength))
+			fmt.Println(string(out))
+		}
+
+	})
+
+	suite.Run("try run pg_restore", func() {
+		cmd := exec.Command(
+			path.Join(pgBinPath, "pg_restore"),
+			"-l", suite.dumpDir,
+		)
+
+		out, err := cmd.Output()
+		suite.Assert().NoError(err, "error running pg_restore")
+		suite.Assert().NotContains(string(out), "warning", "received stderr contains warnings")
+		suite.Assert().NotContains(string(out), "error", "received stderr contains errors")
+	})
+
+}
+
+func (suite *TocReadWriterSuite) TearDownSuite() {
+	if deleteArtifacts {
+		log.Debug().Msg("deleting tmp dir")
+		if err := os.RemoveAll(suite.tmpDir); err != nil {
+			log.Warn().Err(err).Msg("error deleting tmp dir")
+		}
+	} else {
+		log.Debug().Msg("keeping artifacts")
+	}
+}

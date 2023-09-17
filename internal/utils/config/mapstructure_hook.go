@@ -3,6 +3,7 @@ package config
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/greenmaskio/greenmask/internal/domains"
 	"reflect"
 
 	"github.com/mitchellh/mapstructure"
@@ -13,13 +14,13 @@ func ParamsToByteSliceHookFunc() mapstructure.DecodeHookFunc {
 		f reflect.Type,
 		t reflect.Type,
 		data interface{}) (interface{}, error) {
-		if t != reflect.TypeOf([]byte{}) {
+		if t != reflect.TypeOf(domains.ParamsValue{}) {
 			return data, nil
 		}
 
 		switch v := data.(type) {
 		case string:
-			return []byte(v), nil
+			return domains.ParamsValue(v), nil
 		default:
 			res, err := json.Marshal(data)
 			if err != nil {

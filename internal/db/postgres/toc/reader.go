@@ -204,7 +204,12 @@ func (r *Reader) readHeader() (*Header, error) {
 	if err := r.scanBytes(&header.Format); err != nil {
 		return nil, fmt.Errorf("unable to scan bytes from TOC srcFile: %w", err)
 	}
-	// I don't know why, but when pg_dump creates dump as -Fc it has Tar format assigned
+
+	/*
+	 * Write 'tar' in the format field of the toc.dat file. The directory
+	 * is compatible with 'tar', so there's no point having a different
+	 * format code for it.
+	 */
 	if ArchTar != header.Format {
 		return nil, fmt.Errorf("unsupported format \"%s\": suports only directory", BackupFormats[header.Format])
 	}

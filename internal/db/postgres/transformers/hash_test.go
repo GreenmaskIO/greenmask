@@ -2,6 +2,7 @@ package transformers
 
 import (
 	"context"
+	"github.com/greenmaskio/greenmask/internal/domains"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -16,9 +17,9 @@ func TestHashTransformer_Transform(t *testing.T) {
 
 	transformer, warnings, err := HashTransformerDefinition.Instance(
 		context.Background(),
-		driver, map[string][]byte{
-			"column": []byte(attrName),
-			"salt":   []byte("12345678"),
+		driver, map[string]domains.ParamsValue{
+			"column": domains.ParamsValue(attrName),
+			"salt":   domains.ParamsValue("12345678"),
 		},
 		nil,
 	)

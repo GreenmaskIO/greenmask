@@ -5,6 +5,7 @@ import (
 	crand "crypto/rand"
 	"encoding/base64"
 	"fmt"
+	"github.com/greenmaskio/greenmask/internal/domains"
 
 	"golang.org/x/crypto/scrypt"
 
@@ -46,7 +47,7 @@ var HashTransformerDefinition = toolkit.NewDefinition(
 )
 
 type HashTransformer struct {
-	salt       []byte
+	salt       domains.ParamsValue
 	columnName string
 }
 
@@ -58,20 +59,20 @@ func NewHashTransformer(ctx context.Context, driver *toolkit.Driver, parameters 
 	}
 
 	var saltStr string
-	var salt []byte
+	var salt domains.ParamsValue
 	p = parameters["salt"]
 	if err := p.Scan(&saltStr); err != nil {
 		return nil, nil, fmt.Errorf("unable to parse column param: %w", err)
 	}
 
 	if saltStr == "" {
-		b := make([]byte, saltLength)
+		b := make(domains.ParamsValue, saltLength)
 		if _, err := crand.Read(b); err != nil {
 			return nil, nil, err
 		}
 		salt = b
 	} else {
-		salt = []byte(saltStr)
+		salt = domains.ParamsValue(saltStr)
 	}
 
 	return &HashTransformer{
@@ -94,7 +95,7 @@ func (ht *HashTransformer) Transform(ctx context.Context, r *toolkit.Record) (*t
 		return nil, fmt.Errorf("unable to scan attribute value: %w", err)
 	}
 
-	dk, err := scrypt.Key([]byte(originalValue), ht.salt, 32768, 8, 1, 32)
+	dk, err := scrypt.Key(domains.ParamsValue(originalValue), ht.salt, 32768, 8, 1, 32)
 	if err != nil {
 		return nil, fmt.Errorf("cannot perform hash calculation: %w", err)
 	}

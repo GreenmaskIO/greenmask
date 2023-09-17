@@ -15,18 +15,62 @@ services:
       && dd if=/dev/random count=10 > /export/testbucket/test.bin
       && minio server /export --console-address :9001'
 
-  db:
-    image: postgres:15
+  db-16:
+    image: postgres:16
     restart: always
     volumes:
-      - "/Users/vadim/tmp/pg_dump_test/pgdata:/var/lib/postgresql/data"
+      - "/Users/vadim/tmp/pg_dump_test/pgdata/16:/var/lib/postgresql/data"
     ports:
-      - "5432:5432"
+      - "54316:5432"
     environment:
       POSTGRES_PASSWORD: example
 
-  db-filler:
+  db-15:
+    image: postgres:15
+    restart: always
+    volumes:
+      - "/Users/vadim/tmp/pg_dump_test/pgdata/15:/var/lib/postgresql/data"
+    ports:
+      - "54315:5432"
+    environment:
+      POSTGRES_PASSWORD: example
+
+  db-14:
+    image: postgres:14
+    restart: always
+    volumes:
+      - "/Users/vadim/tmp/pg_dump_test/pgdata/14:/var/lib/postgresql/data"
+    ports:
+      - "54314:5432"
+    environment:
+      POSTGRES_PASSWORD: example
+
+  db-13:
+    image: postgres:13
+    restart: always
+    volumes:
+      - "/Users/vadim/tmp/pg_dump_test/pgdata/13:/var/lib/postgresql/data"
+    ports:
+      - "54313:5432"
+    environment:
+      POSTGRES_PASSWORD: example
+
+  dbs-filler:
+    environment:
+      PGPASSWORD: "example"
+      FILE_DUMP: "demo-small-en.zip"
+      TMP_DIR: /tmp/schema
     volumes:
       - "/Users/vadim/tmp/pg_dump_test/schema:/tmp/schema"
     build:
-      dockerfile: docker/Dockerfile_db-filler
+      context: docker/filldb
+
+  toc-lib-15:
+    environment:
+      PGPASSWORD: "example"
+      FILE_DUMP: "demo-small-en.zip"
+      TMP_DIR: /tmp/schema
+    volumes:
+      - "/Users/vadim/tmp/pg_dump_test/schema:/tmp/schema"
+    build:
+      context: docker/toclib

@@ -2,6 +2,7 @@ package transformers
 
 import (
 	"context"
+	"github.com/greenmaskio/greenmask/internal/domains"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -15,9 +16,9 @@ func TestJsonTransformer_Transform(t *testing.T) {
 	driver, record := getDriverAndRecord(attrName, originalValue)
 	transformer, warnings, err := JsonTransformerDefinition.Instance(
 		context.Background(),
-		driver, map[string][]byte{
-			"column": []byte(attrName),
-			"operations": []byte(`[
+		driver, map[string]domains.ParamsValue{
+			"column": domains.ParamsValue(attrName),
+			"operations": domains.ParamsValue(`[
 				{"operation": "set", "path": "name.first", "value": "Sara"},
 				{"operation": "set", "path": "name.last", "value": "Test"},
 				{"operation": "set", "path": "name.age", "value": 10},

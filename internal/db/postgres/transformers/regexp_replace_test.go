@@ -2,6 +2,7 @@ package transformers
 
 import (
 	"context"
+	"github.com/greenmaskio/greenmask/internal/domains"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -10,16 +11,16 @@ import (
 func TestRegexpReplaceTransformer_Transform2(t *testing.T) {
 	tests := []struct {
 		name       string
-		params     map[string][]byte
+		params     map[string]domains.ParamsValue
 		columnName string
 		original   string
 		expected   string
 	}{
 		{
 			name: "common",
-			params: map[string][]byte{
-				"regexp":  []byte(`(Hello)\s*world\s*(\!+\?)`),
-				"replace": []byte("$1 Mr NoName $2"),
+			params: map[string]domains.ParamsValue{
+				"regexp":  domains.ParamsValue(`(Hello)\s*world\s*(\!+\?)`),
+				"replace": domains.ParamsValue("$1 Mr NoName $2"),
 			},
 			columnName: "data",
 			original:   "Hello world!!!?",
@@ -29,7 +30,7 @@ func TestRegexpReplaceTransformer_Transform2(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			tt.params["column"] = []byte(tt.columnName)
+			tt.params["column"] = domains.ParamsValue(tt.columnName)
 			driver, record := getDriverAndRecord(tt.columnName, tt.original)
 			transformer, warnings, err := RegexpReplaceTransformerDefinition.Instance(
 				context.Background(),

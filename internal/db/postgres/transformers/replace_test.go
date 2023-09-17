@@ -2,6 +2,7 @@ package transformers
 
 import (
 	"context"
+	"github.com/greenmaskio/greenmask/internal/domains"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -110,7 +111,7 @@ func TestReplaceTransformer_Transform(t *testing.T) {
 
 	tests := []struct {
 		name       string
-		params     map[string][]byte
+		params     map[string]domains.ParamsValue
 		columnName string
 		original   string
 		expected   string
@@ -119,8 +120,8 @@ func TestReplaceTransformer_Transform(t *testing.T) {
 			name:       "common",
 			original:   "1",
 			columnName: "id",
-			params: map[string][]byte{
-				"value": []byte("123"),
+			params: map[string]domains.ParamsValue{
+				"value": domains.ParamsValue("123"),
 			},
 			expected: "123",
 		},
@@ -128,9 +129,9 @@ func TestReplaceTransformer_Transform(t *testing.T) {
 			name:       "keepNull false and NULL seq",
 			original:   transformers.DefaultNullSeq,
 			columnName: "id",
-			params: map[string][]byte{
-				"value":     []byte("123"),
-				"keep_null": []byte("false"),
+			params: map[string]domains.ParamsValue{
+				"value":     domains.ParamsValue("123"),
+				"keep_null": domains.ParamsValue("false"),
 			},
 			expected: "123",
 		},
@@ -138,9 +139,9 @@ func TestReplaceTransformer_Transform(t *testing.T) {
 			name:       "keepNull true and NULL seq",
 			original:   transformers.DefaultNullSeq,
 			columnName: "id",
-			params: map[string][]byte{
-				"value":     []byte("123"),
-				"keep_null": []byte("true"),
+			params: map[string]domains.ParamsValue{
+				"value":     domains.ParamsValue("123"),
+				"keep_null": domains.ParamsValue("true"),
 			},
 			expected: transformers.DefaultNullSeq,
 		},
@@ -149,7 +150,7 @@ func TestReplaceTransformer_Transform(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			driver, record := getDriverAndRecord(tt.columnName, tt.original)
-			tt.params["column"] = []byte(tt.columnName)
+			tt.params["column"] = domains.ParamsValue(tt.columnName)
 			transformer, warnings, err := ReplaceTransformerDefinition.Instance(
 				context.Background(),
 				driver,

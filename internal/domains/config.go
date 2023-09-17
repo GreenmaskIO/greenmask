@@ -1,6 +1,7 @@
 package domains
 
 import (
+	"gopkg.in/yaml.v3"
 	"sync"
 
 	"github.com/greenmaskio/greenmask/internal/db/postgres/pgdump"
@@ -60,9 +61,22 @@ type Restore struct {
 	Scripts          map[string][]pgrestore.Script `mapstructure:"scripts" yaml:"scripts"`
 }
 
+type ParamsValue []byte
+
+func (pv ParamsValue) MarshalYAML() (interface{}, error) {
+	var res = map[string]interface{}{}
+	err := yaml.Unmarshal(pv, res)
+	if err != nil {
+		// fallback unmarshalling to string
+		return string(pv), nil
+	}
+
+	return res, nil
+}
+
 type TransformerConfig struct {
-	Name   string            `mapstructure:"name" yaml:"name"`
-	Params map[string][]byte `mapstructure:"params" yaml:"params"`
+	Name   string                 `mapstructure:"name" yaml:"name"`
+	Params map[string]ParamsValue `mapstructure:"params" yaml:"params"`
 }
 
 type Table struct {

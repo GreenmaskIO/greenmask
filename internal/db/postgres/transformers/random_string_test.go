@@ -3,6 +3,7 @@ package transformers
 import (
 	"context"
 	"fmt"
+	"github.com/greenmaskio/greenmask/internal/domains"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -16,16 +17,16 @@ func TestRandomStringTransformer_Transform(t *testing.T) {
 		name       string
 		columnName string
 		original   string
-		params     map[string][]byte
+		params     map[string]domains.ParamsValue
 		pattern    string
 	}{
 		{
 			name:       "default fixed string",
 			original:   "some",
 			columnName: "data",
-			params: map[string][]byte{
-				"min_length": []byte("10"),
-				"max_length": []byte("10"),
+			params: map[string]domains.ParamsValue{
+				"min_length": domains.ParamsValue("10"),
+				"max_length": domains.ParamsValue("10"),
 			},
 			pattern: `^\w{10}$`,
 		},
@@ -33,9 +34,9 @@ func TestRandomStringTransformer_Transform(t *testing.T) {
 			name:       "default variadic string",
 			original:   "some",
 			columnName: "data",
-			params: map[string][]byte{
-				"min_length": []byte("2"),
-				"max_length": []byte("30"),
+			params: map[string]domains.ParamsValue{
+				"min_length": domains.ParamsValue("2"),
+				"max_length": domains.ParamsValue("30"),
 			},
 			pattern: `^\w{2,30}$`,
 		},
@@ -43,10 +44,10 @@ func TestRandomStringTransformer_Transform(t *testing.T) {
 			name:       "custom variadic string",
 			original:   "some",
 			columnName: "data",
-			params: map[string][]byte{
-				"min_length": []byte("10"),
-				"max_length": []byte("10"),
-				"symbols":    []byte("1234567890"),
+			params: map[string]domains.ParamsValue{
+				"min_length": domains.ParamsValue("10"),
+				"max_length": domains.ParamsValue("10"),
+				"symbols":    domains.ParamsValue("1234567890"),
 			},
 			pattern: `^\d{10}$`,
 		},
@@ -54,11 +55,11 @@ func TestRandomStringTransformer_Transform(t *testing.T) {
 			name:       "keep_null",
 			original:   toolkit.DefaultNullSeq,
 			columnName: "data",
-			params: map[string][]byte{
-				"min_length": []byte("10"),
-				"max_length": []byte("10"),
-				"symbols":    []byte("1234567890"),
-				"keep_null":  []byte("true"),
+			params: map[string]domains.ParamsValue{
+				"min_length": domains.ParamsValue("10"),
+				"max_length": domains.ParamsValue("10"),
+				"symbols":    domains.ParamsValue("1234567890"),
+				"keep_null":  domains.ParamsValue("true"),
 			},
 			pattern: fmt.Sprintf(`^(\%s)$`, toolkit.DefaultNullSeq),
 		},
@@ -66,7 +67,7 @@ func TestRandomStringTransformer_Transform(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			tt.params["column"] = []byte(tt.columnName)
+			tt.params["column"] = domains.ParamsValue(tt.columnName)
 			driver, record := getDriverAndRecord(tt.columnName, tt.original)
 			transformer, warnings, err := RandomStringTransformerDefinition.Instance(
 				context.Background(),

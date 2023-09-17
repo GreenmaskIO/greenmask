@@ -2,6 +2,7 @@ package transformers
 
 import (
 	"context"
+	"github.com/greenmaskio/greenmask/internal/domains"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -46,9 +47,9 @@ func TestMaskingTransformer_Transform(t *testing.T) {
 
 			transformer, warnings, err := MaskingTransformerDefinition.Instance(
 				context.Background(),
-				driver, map[string][]byte{
-					"column": []byte(tt.columnName),
-					"type":   []byte(tt.ttype),
+				driver, map[string]domains.ParamsValue{
+					"column": domains.ParamsValue(tt.columnName),
+					"type":   domains.ParamsValue(tt.ttype),
 				},
 				nil,
 			)
@@ -75,9 +76,9 @@ func TestMaskingTransformer_type_validation(t *testing.T) {
 
 	_, warnings, err := MaskingTransformerDefinition.Instance(
 		context.Background(),
-		driver, map[string][]byte{
-			"column": []byte(columnName),
-			"type":   []byte("unknown"),
+		driver, map[string]domains.ParamsValue{
+			"column": domains.ParamsValue(columnName),
+			"type":   domains.ParamsValue("unknown"),
 		},
 		nil,
 	)

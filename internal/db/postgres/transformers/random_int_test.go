@@ -3,6 +3,7 @@ package transformers
 import (
 	"context"
 	"fmt"
+	"github.com/greenmaskio/greenmask/internal/domains"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -17,16 +18,16 @@ func TestRandomIntTransformer_Transform(t *testing.T) {
 		columnName     string
 		originalValue  string
 		expectedRegexp string
-		params         map[string][]byte
+		params         map[string]domains.ParamsValue
 	}{
 		{
 			name:           "int2",
 			columnName:     "id2",
 			originalValue:  "12345",
 			expectedRegexp: `^\d{1,3}$`,
-			params: map[string][]byte{
-				"min": []byte("1"),
-				"max": []byte("100"),
+			params: map[string]domains.ParamsValue{
+				"min": domains.ParamsValue("1"),
+				"max": domains.ParamsValue("100"),
 			},
 		},
 		{
@@ -34,9 +35,9 @@ func TestRandomIntTransformer_Transform(t *testing.T) {
 			columnName:     "id4",
 			originalValue:  "12345",
 			expectedRegexp: `^\d{1,3}$`,
-			params: map[string][]byte{
-				"min": []byte("1"),
-				"max": []byte("100"),
+			params: map[string]domains.ParamsValue{
+				"min": domains.ParamsValue("1"),
+				"max": domains.ParamsValue("100"),
 			},
 		},
 		{
@@ -44,9 +45,9 @@ func TestRandomIntTransformer_Transform(t *testing.T) {
 			columnName:     "id8",
 			originalValue:  "12345",
 			expectedRegexp: `^\d{1,3}$`,
-			params: map[string][]byte{
-				"min": []byte("1"),
-				"max": []byte("100"),
+			params: map[string]domains.ParamsValue{
+				"min": domains.ParamsValue("1"),
+				"max": domains.ParamsValue("100"),
 			},
 		},
 		{
@@ -54,10 +55,10 @@ func TestRandomIntTransformer_Transform(t *testing.T) {
 			columnName:     "id8",
 			originalValue:  toolkit.DefaultNullSeq,
 			expectedRegexp: `^\d{1,3}$`,
-			params: map[string][]byte{
-				"min":       []byte("1"),
-				"max":       []byte("100"),
-				"keep_null": []byte("false"),
+			params: map[string]domains.ParamsValue{
+				"min":       domains.ParamsValue("1"),
+				"max":       domains.ParamsValue("100"),
+				"keep_null": domains.ParamsValue("false"),
 			},
 		},
 		{
@@ -65,17 +66,17 @@ func TestRandomIntTransformer_Transform(t *testing.T) {
 			columnName:     "id8",
 			originalValue:  toolkit.DefaultNullSeq,
 			expectedRegexp: fmt.Sprintf(`^(\%s)$`, toolkit.DefaultNullSeq),
-			params: map[string][]byte{
-				"min":       []byte("1"),
-				"max":       []byte("100"),
-				"keep_null": []byte("true"),
+			params: map[string]domains.ParamsValue{
+				"min":       domains.ParamsValue("1"),
+				"max":       domains.ParamsValue("100"),
+				"keep_null": domains.ParamsValue("true"),
 			},
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			tt.params["column"] = []byte(tt.columnName)
+			tt.params["column"] = domains.ParamsValue(tt.columnName)
 			driver, record := getDriverAndRecord(tt.columnName, tt.originalValue)
 			transformer, warnings, err := RandomIntTransformerDefinition.Instance(
 				context.Background(),

@@ -3,6 +3,7 @@ package transformers
 import (
 	"context"
 	"fmt"
+	"github.com/greenmaskio/greenmask/internal/domains"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -15,14 +16,14 @@ func TestUuidTransformer_Transform_uuid_type(t *testing.T) {
 	tests := []struct {
 		name       string
 		columnName string
-		params     map[string][]byte
+		params     map[string]domains.ParamsValue
 		original   string
 		regexp     string
 	}{
 		{
 			name:       "text",
 			columnName: "data",
-			params:     map[string][]byte{},
+			params:     map[string]domains.ParamsValue{},
 			original:   "someval",
 			regexp:     `^[\d\w]{8}-[\d\w]{4}-[\d\w]{4}-[\d\w]{4}-[\d\w]{12}$`,
 		},
@@ -30,15 +31,15 @@ func TestUuidTransformer_Transform_uuid_type(t *testing.T) {
 			name:       "uuid",
 			columnName: "uid",
 			original:   "ddfb6f74-1771-45b0-b258-ae6fcd42f505",
-			params:     map[string][]byte{},
+			params:     map[string]domains.ParamsValue{},
 			regexp:     `^[\d\w]{8}-[\d\w]{4}-[\d\w]{4}-[\d\w]{4}-[\d\w]{12}$`,
 		},
 		{
 			name:       "keepNull false and NULL seq",
 			columnName: "uid",
 			original:   toolkit.DefaultNullSeq,
-			params: map[string][]byte{
-				"keep_null": []byte("false"),
+			params: map[string]domains.ParamsValue{
+				"keep_null": domains.ParamsValue("false"),
 			},
 			regexp: `^[\d\w]{8}-[\d\w]{4}-[\d\w]{4}-[\d\w]{4}-[\d\w]{12}$`,
 		},
@@ -46,8 +47,8 @@ func TestUuidTransformer_Transform_uuid_type(t *testing.T) {
 			name:       "keepNull true and NULL seq",
 			columnName: "uid",
 			original:   toolkit.DefaultNullSeq,
-			params: map[string][]byte{
-				"keep_null": []byte("true"),
+			params: map[string]domains.ParamsValue{
+				"keep_null": domains.ParamsValue("true"),
 			},
 			regexp: fmt.Sprintf(`^(\%s)$`, toolkit.DefaultNullSeq),
 		},
@@ -55,7 +56,7 @@ func TestUuidTransformer_Transform_uuid_type(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			tt.params["column"] = []byte(tt.columnName)
+			tt.params["column"] = domains.ParamsValue(tt.columnName)
 			driver, record := getDriverAndRecord(tt.columnName, toolkit.DefaultNullSeq)
 			transformer, warnings, err := RandomUuidTransformerDefinition.Instance(
 				context.Background(),

@@ -3,6 +3,7 @@ package transformers
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/greenmaskio/greenmask/internal/domains"
 	"reflect"
 	"slices"
 	"time"
@@ -164,7 +165,7 @@ func NewParameter(name string, description string, expectedType any, defaultValu
 }
 
 // Parse - parse received params from the config using table definition. dest parameter must be pointer
-func (p *Parameter) Parse(driver *Driver, params map[string][]byte, columnParams map[string]*Parameter) (ValidationWarnings, error) {
+func (p *Parameter) Parse(driver *Driver, params map[string]domains.ParamsValue, columnParams map[string]*Parameter) (ValidationWarnings, error) {
 	p.value = nil
 	// Check allowed pgTypes exists
 	if p.ColumnProperties != nil {

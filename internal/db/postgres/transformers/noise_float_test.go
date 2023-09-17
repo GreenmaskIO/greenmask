@@ -2,6 +2,7 @@ package transformers
 
 import (
 	"context"
+	"github.com/greenmaskio/greenmask/internal/domains"
 	"log"
 	"strconv"
 	"testing"
@@ -21,15 +22,15 @@ func TestNoiseFloatTransformer_Transform(t *testing.T) {
 	tests := []struct {
 		name       string
 		columnName string
-		params     map[string][]byte
+		params     map[string]domains.ParamsValue
 		input      string
 		result     result
 	}{
 		{
 			name:       "float4",
 			columnName: "col_float4",
-			params: map[string][]byte{
-				"ratio": []byte("0.9"),
+			params: map[string]domains.ParamsValue{
+				"ratio": domains.ParamsValue("0.9"),
 			},
 			input:  "100",
 			result: result{min: 10, max: 190, regexp: `-*\d+[.]*\d*$`},
@@ -37,8 +38,8 @@ func TestNoiseFloatTransformer_Transform(t *testing.T) {
 		{
 			name:       "float8",
 			columnName: "col_float8",
-			params: map[string][]byte{
-				"ratio": []byte("0.9"),
+			params: map[string]domains.ParamsValue{
+				"ratio": domains.ParamsValue("0.9"),
 			},
 			input:  "100",
 			result: result{min: 10, max: 190, regexp: `-*\d+[.]*\d*$`},
@@ -46,9 +47,9 @@ func TestNoiseFloatTransformer_Transform(t *testing.T) {
 		{
 			name:       "float8 ranges 1",
 			columnName: "col_float8",
-			params: map[string][]byte{
-				"ratio":     []byte("0.9"),
-				"precision": []byte("10"),
+			params: map[string]domains.ParamsValue{
+				"ratio":     domains.ParamsValue("0.9"),
+				"precision": domains.ParamsValue("10"),
 			},
 			input:  "100",
 			result: result{min: 10, max: 190, regexp: `^-*\d+[.]*\d{0,10}$`},
@@ -56,16 +57,16 @@ func TestNoiseFloatTransformer_Transform(t *testing.T) {
 		{
 			name:       "float8 ranges 1 with precision",
 			columnName: "col_float8",
-			params: map[string][]byte{
-				"ratio":     []byte("0.9"),
-				"precision": []byte("0"),
+			params: map[string]domains.ParamsValue{
+				"ratio":     domains.ParamsValue("0.9"),
+				"precision": domains.ParamsValue("0"),
 			},
 			input:  "100",
 			result: result{min: 10, max: 190, regexp: `^-*\d+$`},
 		},
 		//{
 		//	name: "text with default float8",
-		//	params: map[string][]byte{
+		//	params: map[string]domains.ParamsValue{
 		//		"ratio":     0.9,
 		//		"precision": 3,
 		//		"useType":   "float4",
@@ -79,7 +80,7 @@ func TestNoiseFloatTransformer_Transform(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			tt.params["column"] = []byte(tt.columnName)
+			tt.params["column"] = domains.ParamsValue(tt.columnName)
 			driver, record := getDriverAndRecord(tt.columnName, tt.input)
 			transformer, warnings, err := NoiseFloatTransformerDefinition.Instance(
 				context.Background(),
