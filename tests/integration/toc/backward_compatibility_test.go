@@ -92,6 +92,7 @@ func (suite *BackwardCompatibilitySuite) SetupSuite() {
 	config.Common.TempDirectory = suite.tmpDirname
 	config.Storage.Directory.Path = suite.storageDir
 	config.Dump.PgDumpOptions.DbName = connCreds
+	config.Common.PgBinPath = pgBinPath
 
 	suite.configFilePath = path.Join(suite.tmpDirname, "config.yml")
 	confFile, err := os.Create(suite.configFilePath)
