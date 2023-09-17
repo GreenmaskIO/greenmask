@@ -33,6 +33,7 @@ func (suite *TocReadWriterSuite) SetupSuite() {
 	suite.tmpDir, err = os.MkdirTemp(tempDir, "toc_read_writer_test_")
 	suite.Require().NoError(err, "error creating temp dir")
 	suite.dumpDir = path.Join(suite.tmpDir, "pg_dump")
+	log.Debug().Str("dir", suite.tmpDir).Msg("temp artifacts directory")
 
 	// Prepare pg_dump for running
 	cmd := exec.Command(
@@ -181,6 +182,6 @@ func (suite *TocReadWriterSuite) TearDownSuite() {
 			log.Warn().Err(err).Msg("error deleting tmp dir")
 		}
 	} else {
-		log.Debug().Msg("keeping artifacts")
+		log.Debug().Str("dir", suite.tmpDir).Msg("keeping artifacts")
 	}
 }

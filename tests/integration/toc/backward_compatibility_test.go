@@ -61,7 +61,7 @@ var config = &domains.Config{
 
 type BackwardCompatibilitySuite struct {
 	suite.Suite
-	tmpDirname     string
+	tmpDir         string
 	runtimeTmpDir  string
 	storageDir     string
 	configFilePath string
@@ -75,26 +75,26 @@ func (suite *BackwardCompatibilitySuite) SetupSuite() {
 
 	// Creating tmp dir
 	var err error
-	suite.tmpDirname, err = os.MkdirTemp(tempDir, "backward_compatibility_test_")
+	suite.tmpDir, err = os.MkdirTemp(tempDir, "backward_compatibility_test_")
 	suite.Require().NoError(err, "error creating temp directory")
-	log.Debug().Str("tempDir", tempDir).Msg("created temp directory")
+	log.Debug().Str("dir", suite.tmpDir).Msg("created temp directory")
 
 	// Creating directory for storage
-	suite.storageDir = path.Join(suite.tmpDirname, "storage")
+	suite.storageDir = path.Join(suite.tmpDir, "storage")
 	err = os.Mkdir(suite.storageDir, 0700)
 	suite.Require().NoError(err, "error creating storage dir")
 
 	// Creating directory for tmp
-	suite.runtimeTmpDir = path.Join(suite.tmpDirname, "tmp")
+	suite.runtimeTmpDir = path.Join(suite.tmpDir, "tmp")
 	err = os.Mkdir(suite.runtimeTmpDir, 0700)
 	suite.Require().NoError(err, "error creating tmp dir")
 
-	config.Common.TempDirectory = suite.tmpDirname
+	config.Common.TempDirectory = suite.tmpDir
 	config.Storage.Directory.Path = suite.storageDir
 	config.Dump.PgDumpOptions.DbName = connCreds
 	config.Common.PgBinPath = pgBinPath
 
-	suite.configFilePath = path.Join(suite.tmpDirname, "config.yml")
+	suite.configFilePath = path.Join(suite.tmpDir, "config.yml")
 	confFile, err := os.Create(suite.configFilePath)
 	suite.Require().NoError(err, "error creating config.yml file")
 	defer confFile.Close()
@@ -143,10 +143,10 @@ func (suite *BackwardCompatibilitySuite) TestGreenmaskCompatibility() {
 func (suite *BackwardCompatibilitySuite) TearDownSuite() {
 	if deleteArtifacts {
 		log.Debug().Msg("deleting tmp dir")
-		if err := os.RemoveAll(suite.tmpDirname); err != nil {
+		if err := os.RemoveAll(suite.tmpDir); err != nil {
 			log.Warn().Err(err).Msg("error deleting tmp dir")
 		}
 	} else {
-		log.Debug().Msg("keeping artifacts")
+		log.Debug().Str("dir", suite.tmpDir).Msg("keeping artifacts")
 	}
 }

@@ -85,10 +85,8 @@ func (w *Writer) writeHeader(header *Header) error {
 		return fmt.Errorf("cannot write format: %w", err)
 	}
 
-	// TODO: discover about compressionNotSet - how it is determining in the C code
-	var compressionNotSet int32 = -1
 	if header.Version >= BackupVersions["1.15"] {
-		if err := w.writeInt(compressionNotSet); err != nil {
+		if err := w.writeByte(byte(header.CompressionSpec.Algorithm)); err != nil {
 			return fmt.Errorf("cannot write CompressionSpec.Algorithm: %w", err)
 		}
 	} else if header.Version >= BackupVersions["1.2"] {
