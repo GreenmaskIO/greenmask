@@ -2,6 +2,7 @@ package toc
 
 import (
 	"errors"
+	"fmt"
 	"github.com/greenmaskio/greenmask/internal/db/postgres/pgdump"
 	"github.com/greenmaskio/greenmask/internal/domains"
 	"github.com/greenmaskio/greenmask/internal/storages/directory"
@@ -126,7 +127,8 @@ func (suite *BackwardCompatibilitySuite) TestGreenmaskCompatibility() {
 		)
 		out, err := cmd.Output()
 		if len(out) > 0 {
-			log.Info().Str("output", string(out)).Msg("pg_restore stout forwarding")
+			log.Info().Msg("pg_restore stout forwarding")
+			fmt.Println(string(out))
 		}
 		if err != nil {
 			var exitErr *exec.ExitError

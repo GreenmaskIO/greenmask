@@ -25,7 +25,8 @@ dump:
     dbname: "host=localhost user=postgres password=example dbname=demo port=54316"
 #    dbname: "host=localhost user=postgres password=example dbname=demo port=54315"
     jobs: 10
-    exclude-schema: "(\"teSt\"*|test*)"
+#    exclude-schema: "(\"teSt\"*|test*)"
+    table: "test"
     load-via-partition-root: true
 
   transformation:
