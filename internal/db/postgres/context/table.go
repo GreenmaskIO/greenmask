@@ -1,10 +1,12 @@
 package context
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
 	"github.com/greenmaskio/greenmask/internal/domains"
+	"github.com/rs/zerolog/log"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -20,6 +22,7 @@ import (
 func validateAndBuildTablesConfig(
 	ctx context.Context, tx pgx.Tx, typeMap *pgtype.Map,
 	cfg []*domains.Table, registry *transformersUtils.TransformerRegistry,
+	version int,
 ) (map[toolkit.Oid]*dump.Table, toolkit.ValidationWarnings, error) {
 	tables := make(map[toolkit.Oid]*dump.Table, len(cfg))
 	var warnings toolkit.ValidationWarnings
@@ -35,7 +38,7 @@ func validateAndBuildTablesConfig(
 		}
 
 		// Assign table constraints
-		constraints, err := getTableConstraints(ctx, tx, table.Oid)
+		constraints, err := getTableConstraints(ctx, tx, table.Oid, version)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -117,7 +120,9 @@ func getColumnsConfig(ctx context.Context, tx pgx.Tx, oid toolkit.Oid) ([]*toolk
 	return res, nil
 }
 
-func getTableConstraints(ctx context.Context, tx pgx.Tx, tableOid toolkit.Oid) ([]toolkit.Constraint, error) {
+func getTableConstraints(ctx context.Context, tx pgx.Tx, tableOid toolkit.Oid, version int) (
+	[]toolkit.Constraint, error,
+) {
 	var constraints []toolkit.Constraint
 
 	rows, err := tx.Query(ctx, TableConstraintsCommonQuery, tableOid)
@@ -202,7 +207,20 @@ func getTableConstraints(ctx context.Context, tx pgx.Tx, tableOid toolkit.Oid) (
 	}
 
 	// Add FK references to PK
-	fkRows, err := tx.Query(ctx, TablePrimaryKeyReferencesConstraintsQuery, tableOid)
+	buf := bytes.NewBuffer(nil)
+	err = TablePrimaryKeyReferencesConstraintsQuery.Execute(
+		buf,
+		struct {
+			Version int
+		}{
+			Version: version,
+		},
+	)
+	if err != nil {
+		return nil, fmt.Errorf("error templating TablePrimaryKeyReferencesConstraintsQuery: %w", err)
+	}
+	log.Debug().Str("query", buf.String()).Msg("TablePrimaryKeyReferencesConstraintsQuery templating result")
+	fkRows, err := tx.Query(ctx, buf.String(), tableOid)
 	if err != nil {
 		return nil, fmt.Errorf("cannot execute tableConstraintsQuery: %w", err)
 	}

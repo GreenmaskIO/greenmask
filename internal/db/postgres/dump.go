@@ -46,6 +46,7 @@ type Dump struct {
 	resultToc         *toc.Toc
 	dumpedObjectSizes map[int32]storageDto.ObjectSizeStat
 	tocFileSize       int64
+	version           int
 }
 
 func NewDump(binPath string, opt *pgdump.Options, st storages.Storager, cfg []*domains.Table, tmpDir string) *Dump {
@@ -72,6 +73,21 @@ func (d *Dump) prune() {
 		log.Debug().Err(err).Msg("error deleting temp dir")
 	}
 	clear(d.dumpedObjectSizes)
+}
+
+func (d *Dump) gatherPgFacts(ctx context.Context, tx pgx.Tx) error {
+	getVersionQuery := `
+		select 
+		    setting::INT 
+		from pg_settings 
+		where name = 'server_version_num'
+	`
+
+	row := tx.QueryRow(ctx, getVersionQuery)
+	if err := row.Scan(&d.version); err != nil {
+		return fmt.Errorf("error getting pg version: %w", err)
+	}
+	return nil
 }
 
 func (d *Dump) connect(ctx context.Context, dsn string) (*pgx.Conn, error) {
@@ -129,7 +145,7 @@ func (d *Dump) startMainTx(ctx context.Context, conn *pgx.Conn) (pgx.Tx, error) 
 }
 
 func (d *Dump) buildContextAndValidate(ctx context.Context, tx pgx.Tx) (err error) {
-	d.context, err = runtimeContext.NewRuntimeContext(ctx, tx, d.config, d.registry, d.pgDumpOptions)
+	d.context, err = runtimeContext.NewRuntimeContext(ctx, tx, d.config, d.registry, d.pgDumpOptions, d.version)
 	if err != nil {
 		return fmt.Errorf("unable to build runtime context: %w", err)
 	}
@@ -359,6 +375,10 @@ func (d *Dump) Run(ctx context.Context) (err error) {
 			log.Warn().Err(err)
 		}
 	}()
+
+	if err = d.gatherPgFacts(ctx, tx); err != nil {
+		return fmt.Errorf("error gathering facts: %w", err)
+	}
 
 	if err := d.buildContextAndValidate(ctx, tx); err != nil {
 		return fmt.Errorf("context error: %w", err)

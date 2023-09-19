@@ -1,5 +1,7 @@
 package context
 
+import "text/template"
+
 var (
 	// TableSearchQuery - SQL query for getting table by name and schema
 	TableSearchQuery = `	
@@ -100,7 +102,8 @@ var (
 	`
 
 	// TablePrimaryKeyReferencesConstraintsQuery - SQL query for collecting all the PK references
-	TablePrimaryKeyReferencesConstraintsQuery = `
+	TablePrimaryKeyReferencesConstraintsQuery = template.Must(
+		template.New("TablePrimaryKeyReferencesConstraintsQuery").Parse(`
 		SELECT pc.oid::TEXT::INT,
 			   pn.nspname                                    AS "schema",
 			   pc.conname                                    AS "name",
@@ -113,13 +116,17 @@ var (
 				 JOIN pg_catalog.pg_namespace pn on pc.connamespace = pn.oid
 				 JOIN pg_catalog.pg_class c ON pc.confrelid = c.oid
 				 JOIN pg_catalog.pg_namespace cn ON c.relnamespace = cn.oid
+	{{ if ge .Version 120000 }}
 		WHERE confrelid IN (SELECT pg_catalog.pg_partition_ancestors($1)
 							UNION ALL
 							VALUES ($1::regclass))
+	{{ else }}
+		WHERE confrelid = $1::regclass
+	{{ end }}
 		  AND contype = 'f'
 		  AND conparentid = 0
 		ORDER BY conname;
-	`
+	`))
 
 	// DomainConstraintsQuery - SQL query for getting domain check constraint
 	DomainConstraintsQuery = `

@@ -3,13 +3,11 @@ package dumpers
 import (
 	"context"
 	"fmt"
-	"golang.org/x/sync/errgroup"
-	"io"
-	"slices"
-
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/rs/zerolog/log"
+	"golang.org/x/sync/errgroup"
+	"io"
 
 	"github.com/greenmaskio/greenmask/internal/db/postgres/dump"
 	"github.com/greenmaskio/greenmask/internal/storages"
@@ -116,8 +114,6 @@ func (td *TableDumper) process(ctx context.Context, tx pgx.Tx, w io.WriteCloser)
 			// CopyOutResponse does not matter for in TEXTUAL MODES
 			// https://www.postgresql.org/docs/current/sql-copy.html
 		case *pgproto3.CopyData:
-			println(string(v.Data))
-			println(slices.Contains(v.Data[:len(v.Data)-1], '\n'))
 			if err = pipeline.Dump(ctx, v.Data); err != nil {
 				return fmt.Errorf("dump error: %w", err)
 			}

@@ -55,6 +55,26 @@ services:
     environment:
       POSTGRES_PASSWORD: example
 
+  db-12:
+    image: postgres:12
+    restart: always
+    volumes:
+      - "/Users/vadim/tmp/pg_dump_test/pgdata/12:/var/lib/postgresql/data"
+    ports:
+      - "54312:5432"
+    environment:
+      POSTGRES_PASSWORD: example
+
+  db-11:
+    image: postgres:11
+    restart: always
+    volumes:
+      - "/Users/vadim/tmp/pg_dump_test/pgdata/11:/var/lib/postgresql/data"
+    ports:
+      - "54311:5432"
+    environment:
+      POSTGRES_PASSWORD: example
+
   dbs-filler:
     environment:
       PGPASSWORD: "example"
@@ -65,12 +85,3 @@ services:
     build:
       context: docker/filldb
 
-  toc-lib-15:
-    environment:
-      PGPASSWORD: "example"
-      FILE_DUMP: "demo-small-en.zip"
-      TMP_DIR: /tmp/schema
-    volumes:
-      - "/Users/vadim/tmp/pg_dump_test/schema:/tmp/schema"
-    build:
-      context: docker/toclib
