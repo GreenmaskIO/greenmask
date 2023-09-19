@@ -3,25 +3,25 @@ package copy
 import "slices"
 
 type AttributeValue struct {
-	Raw    []byte
+	Data   []byte
 	IsNull bool
 }
 
-func NewAttributeValue(raw []byte, isNull bool) *AttributeValue {
+func NewAttributeValue(data []byte, isNull bool) *AttributeValue {
 	return &AttributeValue{
-		Raw:    raw,
+		Data:   data,
 		IsNull: isNull,
 	}
 }
 
-// EncodeAttr - encode from string in slice to transfer representation (escaped byte[])
+// EncodeAttr - encode from UTF-8 slice to transfer representation (escaped byte[])
 func EncodeAttr(v *AttributeValue) []byte {
 	// Check whether raw input matched null marker
 	if v.IsNull {
 		return defaultNullSeq
 	}
 
-	data := v.Raw
+	data := v.Data
 	var res = make([]byte, 0, len(data))
 
 	for i := 0; i < len(data); i++ {
@@ -62,10 +62,10 @@ func EncodeAttr(v *AttributeValue) []byte {
 					res = append(res, c)
 				}
 			}
-			res = append(res, '\\', '\\', c)
+			res = append(res, '\\', c)
 		} else if c == '\\' || c == defaultCopyDelimiter {
 			// Escaping backslash or copy delimiter
-			res = append(res, '\\', '\\', c)
+			res = append(res, '\\', c)
 		} else {
 			// Add plain rune
 			res = append(res, c)

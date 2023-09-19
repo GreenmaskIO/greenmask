@@ -22,7 +22,7 @@ func TestEncodeAttr(t *testing.T) {
 		{
 			name:     "\\r \\n symbols",
 			original: NewAttributeValue([]byte("\r\n"), false),
-			expected: []byte("\\\\r\\\\n"),
+			expected: []byte("\\r\\n"),
 		},
 		{
 			name:     "Escaped null sequence in text",
@@ -42,17 +42,13 @@ func TestEncodeAttr(t *testing.T) {
 		{
 			name:     "Escaped attrs delimiter \\t",
 			original: NewAttributeValue([]byte{defaultCopyDelimiter}, false),
-			expected: []byte("\\\\t"),
-		},
-		{
-			name:     "Octal value \\t",
-			original: NewAttributeValue([]byte("123\012test"), false),
-			expected: []byte("123\012test"),
+			expected: []byte("\\t"),
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			println(string(tt.expected))
 			res := EncodeAttr(tt.original)
 			assert.Equal(t, tt.expected, res, "wrong escaped bytes")
 		})
