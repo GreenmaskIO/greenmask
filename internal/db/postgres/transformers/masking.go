@@ -114,16 +114,12 @@ func (mt *MaskingTransformer) Init(ctx context.Context) error {
 }
 
 func (mt *MaskingTransformer) Transform(ctx context.Context, r *toolkit.Record) (*toolkit.Record, error) {
-	if r.IsNull(mt.columnName) {
-		return r, nil
-	}
-
 	var originalValue string
-	if err := r.ScanAttribute(mt.columnName, &originalValue); err != nil {
+	isNull, err := r.ScanAttribute(mt.columnName, &originalValue)
+	if err != nil {
 		return nil, fmt.Errorf("unable to scan attribute value: %w", err)
 	}
-
-	if originalValue == toolkit.DefaultNullSeq {
+	if isNull {
 		return r, nil
 	}
 

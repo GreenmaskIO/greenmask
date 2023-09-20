@@ -105,15 +105,15 @@ func (ndt *NoiseDateTransformer) Init(ctx context.Context) error {
 }
 
 func (ndt *NoiseDateTransformer) Transform(ctx context.Context, r *toolkit.Record) (*toolkit.Record, error) {
-	if r.IsNull(ndt.columnName) {
-		return r, nil
-	}
-
 	val, err := r.GetAttribute(ndt.columnName)
 	if err != nil {
 		return nil, fmt.Errorf("unable to scan attribute value: %w", err)
 	}
-	timeVal, ok := val.(time.Time)
+	if val.IsNull {
+		return r, nil
+	}
+
+	timeVal, ok := val.Value.(time.Time)
 	if !ok {
 		return nil, errors.New("cannot cast to time.Time")
 	}

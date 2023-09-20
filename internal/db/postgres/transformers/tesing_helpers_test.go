@@ -1,6 +1,7 @@
 package transformers
 
 import (
+	"github.com/greenmaskio/greenmask/internal/db/postgres/pgcopy"
 	"slices"
 
 	"github.com/jackc/pgx/v5/pgtype"
@@ -150,6 +151,6 @@ func getDriverAndRecord(name string, value string) (*toolkit.Driver, *toolkit.Re
 	}
 	return driver, toolkit.NewRecord(
 		driver,
-		[]string{value},
+		pgcopy.NewRow([]byte(value)),
 	)
 }

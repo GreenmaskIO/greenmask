@@ -4,12 +4,13 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"github.com/greenmaskio/greenmask/internal/db/postgres/pgcopy"
+	"github.com/greenmaskio/greenmask/pkg/toolkit/transformers"
 	"io"
 
 	"github.com/rs/zerolog/log"
 
 	"github.com/greenmaskio/greenmask/internal/db/postgres/dump"
-	toolkitUtils "github.com/greenmaskio/greenmask/pkg/toolkit/utils"
 )
 
 type Pipeliner interface {
@@ -17,10 +18,10 @@ type Pipeliner interface {
 }
 
 type TransformationPipeline struct {
-	table        *dump.Table
-	buf          *bytes.Buffer
-	streamDriver *toolkitUtils.StreamDriver
-	line         int64
+	table *dump.Table
+	buf   *bytes.Buffer
+	w     io.Writer
+	line  int64
 }
 
 func NewTransformationPipeline(ctx context.Context, table *dump.Table, w io.Writer) (*TransformationPipeline, error) {
@@ -34,9 +35,9 @@ func NewTransformationPipeline(ctx context.Context, table *dump.Table, w io.Writ
 		}
 	}
 	return &TransformationPipeline{
-		table:        table,
-		buf:          buf,
-		streamDriver: toolkitUtils.NewStreamDriver(buf, w, table.Driver),
+		table: table,
+		buf:   buf,
+		w:     w,
 	}, nil
 }
 
@@ -46,15 +47,25 @@ func (wt *TransformationPipeline) Dump(ctx context.Context, data []byte) (err er
 	if err != nil {
 		return NewDumpError(wt.table.Schema, wt.table.Name, wt.line, err)
 	}
-	record, err := wt.streamDriver.Read()
+	record := transformers.NewRecord(wt.table.Driver, pgcopy.NewRow(data[:len(data)-1]))
 	for _, t := range wt.table.Transformers {
 		record, err = t.Transform(ctx, record)
 		if err != nil {
 			return NewDumpError(wt.table.Schema, wt.table.Name, wt.line, err)
 		}
 	}
-	if err = wt.streamDriver.Write(record); err != nil {
-		return NewDumpError(wt.table.Schema, wt.table.Name, wt.line, err)
+	rowDriver, err := record.Encode()
+	if err != nil {
+		return NewDumpError(wt.table.Schema, wt.table.Name, wt.line, fmt.Errorf("error enocding to RowDriver: %w", err))
+	}
+	res, err := rowDriver.Encode()
+	if err != nil {
+		return NewDumpError(wt.table.Schema, wt.table.Name, wt.line, fmt.Errorf("error RowDriver to []byte: %w", err))
+	}
+	res = append(res, '\n')
+	_, err = wt.w.Write(res)
+	if err != nil {
+		return NewDumpError(wt.table.Schema, wt.table.Name, wt.line, fmt.Errorf("error writing dumped data: %w", err))
 	}
 	return nil
 }

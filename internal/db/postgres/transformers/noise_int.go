@@ -71,14 +71,16 @@ func (nit *NoiseIntTransformer) Init(ctx context.Context) error {
 }
 
 func (nit *NoiseIntTransformer) Transform(ctx context.Context, r *toolkit.Record) (*toolkit.Record, error) {
+	// TODO: value out of rage might be possible: double check this transformer implementation
 	log.Warn().Msg("value out of rage might be possible: double check this transformer implementation")
-	if r.IsNull(nit.columnName) {
-		return r, nil
-	}
 
 	var val int64
-	if err := r.ScanAttribute(nit.columnName, &val); err != nil {
+	isNull, err := r.ScanAttribute(nit.columnName, &val)
+	if err != nil {
 		return nil, fmt.Errorf("unable to scan value: %w", err)
+	}
+	if isNull {
+		return r, nil
 	}
 
 	ratio := nit.rand.Float64() * nit.ratio

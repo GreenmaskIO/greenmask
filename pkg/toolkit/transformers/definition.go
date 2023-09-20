@@ -99,7 +99,7 @@ func (d *Definition) parseParameters(
 }
 
 func (d *Definition) Instance(ctx context.Context, driver *Driver, rawParams map[string]domains.ParamsValue, types []*Type) (Transformer, ValidationWarnings, error) {
-	// Parse parameters and get the copy of parsed
+	// Parse parameters and get the pgcopy of parsed
 	parametersWarnings, params, err := d.parseParameters(driver, rawParams, types)
 	if err != nil {
 		return nil, nil, err

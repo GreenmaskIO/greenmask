@@ -3,8 +3,8 @@ package transformers
 import (
 	"context"
 	"github.com/greenmaskio/greenmask/internal/domains"
-	"log"
-	"strconv"
+	toolkit "github.com/greenmaskio/greenmask/pkg/toolkit/transformers"
+	"slices"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -95,13 +95,25 @@ func TestNoiseFloatTransformer_Transform(t *testing.T) {
 				record,
 			)
 			require.NoError(t, err)
-			res, err := r.EncodeAttr(tt.columnName)
-			log.Println(string(res))
-			require.Regexp(t, tt.result.regexp, string(res))
-			resFloat, err := strconv.ParseFloat(string(res), 64)
+			res, err := r.GetAttribute(tt.columnName)
 			require.NoError(t, err)
-			assert.GreaterOrEqual(t, resFloat, tt.result.min)
-			assert.LessOrEqual(t, resFloat, tt.result.max)
+			assert.False(t, res.IsNull)
+			if !res.IsNull {
+				resVal := res.Value.(*float64)
+				assert.GreaterOrEqual(t, *resVal, tt.result.min)
+				assert.LessOrEqual(t, *resVal, tt.result.max)
+				encodedValue, err := r.Encode()
+				require.NoError(t, err)
+				idx := slices.IndexFunc(driver.Table.Columns, func(column *toolkit.Column) bool {
+					return column.Name == tt.columnName
+				})
+				require.NotEqual(t, -1, idx)
+				rawValue, err := encodedValue.GetColumn(idx)
+				require.NoError(t, err)
+				require.False(t, rawValue.IsNull)
+				require.Regexp(t, tt.result.regexp, string(rawValue.Data))
+				require.NoError(t, err)
+			}
 		})
 	}
 }

@@ -69,7 +69,11 @@ func (rbt *RandomBoolTransformer) Init(ctx context.Context) error {
 }
 
 func (rbt *RandomBoolTransformer) Transform(ctx context.Context, r *toolkit.Record) (*toolkit.Record, error) {
-	if r.IsNull(rbt.columnName) && rbt.keepNull {
+	valAny, err := r.GetAttribute(rbt.columnName)
+	if err != nil {
+		return nil, fmt.Errorf("unable to scan value: %w", err)
+	}
+	if valAny.IsNull && rbt.keepNull {
 		return r, nil
 	}
 

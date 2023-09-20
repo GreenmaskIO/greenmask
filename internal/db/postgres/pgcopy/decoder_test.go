@@ -1,7 +1,8 @@
-package copy
+package pgcopy
 
 import (
 	"fmt"
+	"github.com/greenmaskio/greenmask/pkg/toolkit/transformers"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"testing"
@@ -14,47 +15,47 @@ func TestDecodeAttr(t *testing.T) {
 	tests := []struct {
 		name     string
 		original []byte
-		expected *AttributeValue
+		expected *transformers.RawValue
 	}{
 		{
 			name:     "simple",
 			original: []byte("123"),
-			expected: NewAttributeValue([]byte("123"), false),
+			expected: transformers.NewRawValue([]byte("123"), false),
 		},
 		{
 			name:     "back slash escaping",
 			original: []byte("\\\\"),
-			expected: NewAttributeValue([]byte("\\"), false),
+			expected: transformers.NewRawValue([]byte("\\"), false),
 		},
 		{
 			name:     "ASCII control chars escaping",
 			original: []byte("\\b\\f\\n\\n\\t\\v"),
-			expected: NewAttributeValue([]byte("\b\f\n\n\t\v"), false),
+			expected: transformers.NewRawValue([]byte("\b\f\n\n\t\v"), false),
 		},
 		{
-			name:     "copy termination symbol",
+			name:     "pgcopy termination symbol",
 			original: []byte("\\\\."),
-			expected: NewAttributeValue([]byte("\\."), false),
+			expected: transformers.NewRawValue([]byte("\\."), false),
 		},
 		{
 			name:     "delimiter escaping",
 			original: []byte("hello\\tnoname"),
-			expected: NewAttributeValue([]byte(fmt.Sprintf("hello%cnoname", defaultCopyDelimiter)), false),
+			expected: transformers.NewRawValue([]byte(fmt.Sprintf("hello%cnoname", defaultCopyDelimiter)), false),
 		},
 		{
 			name:     "Null value",
 			original: []byte("\\N"),
-			expected: NewAttributeValue(nil, true),
+			expected: transformers.NewRawValue(nil, true),
 		},
 		{
 			name:     "Null sequence in text value",
 			original: []byte("\\\\N"),
-			expected: NewAttributeValue([]byte("\\N"), false),
+			expected: transformers.NewRawValue([]byte("\\N"), false),
 		},
 		{
 			name:     "Cyrillic",
 			original: []byte("здравствуйте"),
-			expected: NewAttributeValue([]byte("здравствуйте"), false),
+			expected: transformers.NewRawValue([]byte("здравствуйте"), false),
 		},
 	}
 
@@ -79,17 +80,17 @@ func TestDecodeAttr_non_acii_symbols(t *testing.T) {
 	tests := []struct {
 		name     string
 		original []byte
-		expected *AttributeValue
+		expected *transformers.RawValue
 	}{
 		{
 			name:     "Cyrillic octal format",
 			original: []byte("\\320\\275\\320\\260"),
-			expected: NewAttributeValue([]byte("на"), false),
+			expected: transformers.NewRawValue([]byte("на"), false),
 		},
 		{
 			name:     "Cyrillic hex format",
 			original: []byte("\\xD0\\xBd\\xD0\\xB0"),
-			expected: NewAttributeValue([]byte("на"), false),
+			expected: transformers.NewRawValue([]byte("на"), false),
 		},
 	}
 

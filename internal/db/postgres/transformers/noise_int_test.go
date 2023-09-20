@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/greenmaskio/greenmask/internal/domains"
+	"github.com/stretchr/testify/assert"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -13,9 +14,9 @@ import (
 func TestNoiseIntTransformer_Transform(t *testing.T) {
 
 	type result struct {
-		min     int64
-		max     int64
-		pattern string
+		min    int64
+		max    int64
+		isNull bool
 	}
 
 	// Positive cases
@@ -30,21 +31,21 @@ func TestNoiseIntTransformer_Transform(t *testing.T) {
 			name:          "int2",
 			columnName:    "id2",
 			ratio:         0.9,
-			result:        result{min: 10, max: 190, pattern: `^-*\d+$`},
+			result:        result{min: 10, max: 190},
 			originalValue: "123",
 		},
 		{
 			name:          "int4",
 			columnName:    "id4",
 			ratio:         0.9,
-			result:        result{min: 10, max: 190, pattern: `^-*\d+$`},
+			result:        result{min: 10, max: 190},
 			originalValue: "123",
 		},
 		{
 			name:          "int8",
 			columnName:    "id8",
 			ratio:         0.9,
-			result:        result{min: 10, max: 190, pattern: `^-*\d+$`},
+			result:        result{min: 10, max: 190},
 			originalValue: "123",
 		},
 	}
@@ -68,9 +69,15 @@ func TestNoiseIntTransformer_Transform(t *testing.T) {
 				record,
 			)
 			require.NoError(t, err)
-			res, err := r.EncodeAttr(tt.columnName)
+
+			val, err := r.GetAttribute(tt.columnName)
 			require.NoError(t, err)
-			require.Regexp(t, tt.result.pattern, string(res))
+			require.Equal(t, tt.result.isNull, val.IsNull)
+			if !tt.result.isNull {
+				intValue := val.Value.(*int64)
+				assert.GreaterOrEqual(t, *intValue, tt.result.min)
+				assert.LessOrEqual(t, *intValue, tt.result.max)
+			}
 		})
 	}
 }

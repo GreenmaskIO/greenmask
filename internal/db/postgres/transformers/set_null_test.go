@@ -7,14 +7,12 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-
-	toolkit "github.com/greenmaskio/greenmask/pkg/toolkit/transformers"
 )
 
 func TestSetNullTransformer_Transform(t *testing.T) {
 	var columnName = "id"
 	var originalValue = "1"
-	var expectedValue = toolkit.DefaultNullSeq
+	var expectedValue = "\\N"
 
 	driver, record := getDriverAndRecord(columnName, originalValue)
 
@@ -33,8 +31,9 @@ func TestSetNullTransformer_Transform(t *testing.T) {
 		record,
 	)
 	require.NoError(t, err)
-	res, err := r.EncodeAttr(columnName)
+	encoded, err := r.Encode()
 	require.NoError(t, err)
-
-	require.Equal(t, expectedValue, string(res))
+	res, err := encoded.Encode()
+	require.NoError(t, err)
+	assert.Equal(t, expectedValue, string(res))
 }

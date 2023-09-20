@@ -92,17 +92,12 @@ func (jt *JsonTransformer) Init(ctx context.Context) error {
 
 func (jt *JsonTransformer) Transform(ctx context.Context, r *toolkit.Record) (*toolkit.Record, error) {
 	// TODO: Test whats happen if performed operation is not applied due to unknown path
-	if r.IsNull(jt.columnName) {
-		return r, nil
-	}
-
-	var err error
 	var jsonRawValue string
-	if err := r.ScanAttribute(jt.columnName, &jsonRawValue); err != nil {
+	isNull, err := r.ScanAttribute(jt.columnName, &jsonRawValue)
+	if err != nil {
 		return nil, fmt.Errorf("cannot scan column value: %w", err)
 	}
-
-	if jsonRawValue == toolkit.DefaultNullSeq {
+	if isNull {
 		return r, nil
 	}
 

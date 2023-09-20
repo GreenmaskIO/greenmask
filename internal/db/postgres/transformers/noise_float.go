@@ -95,16 +95,16 @@ func (nft *NoiseFloatTransformer) Init(ctx context.Context) error {
 }
 
 func (nft *NoiseFloatTransformer) Transform(ctx context.Context, r *toolkit.Record) (*toolkit.Record, error) {
-	if r.IsNull(nft.columnName) {
-		return r, nil
-	}
-
 	valAny, err := r.GetAttribute(nft.columnName)
 	if err != nil {
 		return nil, fmt.Errorf("unable to scan value: %w", err)
 	}
+	if valAny.IsNull {
+		return r, nil
+	}
+
 	var val float64
-	switch v := valAny.(type) {
+	switch v := valAny.Value.(type) {
 	case float64:
 		val = v
 	case float32:

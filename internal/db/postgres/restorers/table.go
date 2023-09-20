@@ -48,7 +48,7 @@ func (td *TableRestorer) Execute(ctx context.Context, tx pgx.Tx) error {
 		return fmt.Errorf("cannot create gzip reader: %w", err)
 	}
 
-	log.Debug().Str("copyStmt", *td.Entry.CopyStmt).Msgf("performing copy statement")
+	log.Debug().Str("copyStmt", *td.Entry.CopyStmt).Msgf("performing pgcopy statement")
 	frontend := tx.Conn().PgConn().Frontend()
 	frontend.Send(&pgproto3.Query{
 		String: *td.Entry.CopyStmt,
@@ -58,7 +58,7 @@ func (td *TableRestorer) Execute(ctx context.Context, tx pgx.Tx) error {
 		return err
 	}
 
-	// Prepare for streaming the copy data
+	// Prepare for streaming the pgcopy data
 	process := true
 	for process {
 		select {
@@ -69,7 +69,7 @@ func (td *TableRestorer) Execute(ctx context.Context, tx pgx.Tx) error {
 
 		msg, err := frontend.Receive()
 		if err != nil {
-			return fmt.Errorf("unable to perform copy query: %w", err)
+			return fmt.Errorf("unable to perform pgcopy query: %w", err)
 		}
 		switch v := msg.(type) {
 		case *pgproto3.CopyInResponse:
@@ -81,7 +81,7 @@ func (td *TableRestorer) Execute(ctx context.Context, tx pgx.Tx) error {
 		}
 	}
 
-	// Streaming copy data from table dump
+	// Streaming pgcopy data from table dump
 
 	for {
 		var n int
@@ -121,7 +121,7 @@ func (td *TableRestorer) Execute(ctx context.Context, tx pgx.Tx) error {
 		}
 		msg, err := frontend.Receive()
 		if err != nil {
-			return fmt.Errorf("unable to perform copy query: %w", err)
+			return fmt.Errorf("unable to perform pgcopy query: %w", err)
 		}
 		switch v := msg.(type) {
 		case *pgproto3.CommandComplete:

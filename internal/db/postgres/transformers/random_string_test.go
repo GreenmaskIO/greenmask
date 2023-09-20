@@ -7,8 +7,6 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-
-	toolkit "github.com/greenmaskio/greenmask/pkg/toolkit/transformers"
 )
 
 // TODO: Cover error cases
@@ -53,7 +51,7 @@ func TestRandomStringTransformer_Transform(t *testing.T) {
 		},
 		{
 			name:       "keep_null",
-			original:   toolkit.DefaultNullSeq,
+			original:   "\\N",
 			columnName: "data",
 			params: map[string]domains.ParamsValue{
 				"min_length": domains.ParamsValue("10"),
@@ -61,7 +59,7 @@ func TestRandomStringTransformer_Transform(t *testing.T) {
 				"symbols":    domains.ParamsValue("1234567890"),
 				"keep_null":  domains.ParamsValue("true"),
 			},
-			pattern: fmt.Sprintf(`^(\%s)$`, toolkit.DefaultNullSeq),
+			pattern: fmt.Sprintf(`^(\%s)$`, "\\N"),
 		},
 	}
 
@@ -83,7 +81,10 @@ func TestRandomStringTransformer_Transform(t *testing.T) {
 				record,
 			)
 			require.NoError(t, err)
-			res, err := r.EncodeAttr(tt.columnName)
+			require.NoError(t, err)
+			encoded, err := r.Encode()
+			require.NoError(t, err)
+			res, err := encoded.Encode()
 			require.NoError(t, err)
 			require.Regexp(t, tt.pattern, string(res))
 		})

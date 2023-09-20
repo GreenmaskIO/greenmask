@@ -119,7 +119,11 @@ func (rft *RandomFloatTransformer) Init(ctx context.Context) error {
 }
 
 func (rft *RandomFloatTransformer) Transform(ctx context.Context, r *toolkit.Record) (*toolkit.Record, error) {
-	if r.IsNull(rft.columnName) && rft.keepNull {
+	valAny, err := r.GetAttribute(rft.columnName)
+	if err != nil {
+		return nil, fmt.Errorf("unable to scan value: %w", err)
+	}
+	if valAny.IsNull && rft.keepNull {
 		return r, nil
 	}
 

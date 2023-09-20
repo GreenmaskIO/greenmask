@@ -8,8 +8,6 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-
-	toolkit "github.com/greenmaskio/greenmask/pkg/toolkit/transformers"
 )
 
 func TestUuidTransformer_Transform_uuid_type(t *testing.T) {
@@ -37,7 +35,7 @@ func TestUuidTransformer_Transform_uuid_type(t *testing.T) {
 		{
 			name:       "keepNull false and NULL seq",
 			columnName: "uid",
-			original:   toolkit.DefaultNullSeq,
+			original:   "\\N",
 			params: map[string]domains.ParamsValue{
 				"keep_null": domains.ParamsValue("false"),
 			},
@@ -46,18 +44,18 @@ func TestUuidTransformer_Transform_uuid_type(t *testing.T) {
 		{
 			name:       "keepNull true and NULL seq",
 			columnName: "uid",
-			original:   toolkit.DefaultNullSeq,
+			original:   "\\N",
 			params: map[string]domains.ParamsValue{
 				"keep_null": domains.ParamsValue("true"),
 			},
-			regexp: fmt.Sprintf(`^(\%s)$`, toolkit.DefaultNullSeq),
+			regexp: fmt.Sprintf(`^(\%s)$`, "\\N"),
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			tt.params["column"] = domains.ParamsValue(tt.columnName)
-			driver, record := getDriverAndRecord(tt.columnName, toolkit.DefaultNullSeq)
+			driver, record := getDriverAndRecord(tt.columnName, "\\N")
 			transformer, warnings, err := RandomUuidTransformerDefinition.Instance(
 				context.Background(),
 				driver,
@@ -72,10 +70,10 @@ func TestUuidTransformer_Transform_uuid_type(t *testing.T) {
 				record,
 			)
 			require.NoError(t, err)
-			res, err := r.EncodeAttr(tt.columnName)
+			encoded, err := r.Encode()
 			require.NoError(t, err)
-
-			assert.NoError(t, err)
+			res, err := encoded.Encode()
+			require.NoError(t, err)
 			assert.Regexp(t, tt.regexp, string(res))
 		})
 	}

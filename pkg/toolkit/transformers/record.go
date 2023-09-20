@@ -1,7 +1,6 @@
 package transformers
 
 import (
-	"errors"
 	"fmt"
 
 	"github.com/jackc/pgx/v5/pgtype"
@@ -9,55 +8,36 @@ import (
 
 // TODO: Need refactoring you should port that implementation to [][]bytes once it COPY parser is implemented
 
-type Tuple map[string]any
+type Tuple map[string]*Value
 
 type Record struct {
-	driver    *Driver
-	RawData   [][]byte
-	tuple     Tuple
-	columnIdx map[string]int
+	driver *Driver
+	Row    RowDriver
+	tuple  Tuple
 }
 
-func NewRecord(driver *Driver, rawData []string) *Record {
-	columnIdx := make(map[string]int, len(driver.Table.Columns))
-	for idx, c := range driver.Table.Columns {
-		columnIdx[c.Name] = idx
-	}
-
-	// Manually adapt immutable []string that requires stdlib CSV decoder to [][]byte
-	// TODO: Remove it once you implemented COPY Encode/Decoder
-	byteData := make([][]byte, len(rawData))
-	for idx := range byteData {
-		byteData[idx] = []byte(rawData[idx])
-	}
+func NewRecord(driver *Driver, row RowDriver) *Record {
 
 	return &Record{
-		driver:    driver,
-		tuple:     make(Tuple, 24),
-		RawData:   byteData,
-		columnIdx: columnIdx,
+		driver: driver,
+		tuple:  make(Tuple, 24),
+		Row:    row,
 	}
 }
 
 func (r *Record) GetTuple() (Tuple, error) {
 	if len(r.tuple) == len(r.driver.Table.Columns) {
 		return r.tuple, nil
-	} else if len(r.RawData) != len(r.driver.Table.Columns) {
-		return nil, fmt.Errorf("wrong rawData length expected %d but got %d", len(r.driver.Table.Columns), len(r.RawData))
 	}
+	//if len(r.RawData) != len(r.driver.Table.Columns) {
+	//	return nil, fmt.Errorf("wrong rawData length expected %d but got %d", len(r.driver.Table.Columns), len(r.RawData))
+	//}
 
-	for attName, _ := range r.driver.ColumnMap {
-		_, ok := r.tuple[attName]
-		if !ok {
-			idx, c, ok := r.driver.GetColumnByName(attName)
-			if !ok {
-				return nil, fmt.Errorf("attribute %s is not found", attName)
+	for _, c := range r.driver.Table.Columns {
+		if _, ok := r.tuple[c.Name]; !ok {
+			if _, err := r.GetAttribute(c.Name); err != nil {
+				return nil, fmt.Errorf("error getting attribute: %w", err)
 			}
-			v, err := r.driver.DecodeByTypeOid(uint32(c.TypeOid), r.RawData[idx])
-			if err != nil {
-				return nil, fmt.Errorf("error decoding attribute %s: %w", attName, err)
-			}
-			r.tuple[attName] = v
 		}
 	}
 	return r.tuple, nil
@@ -71,50 +51,62 @@ func (r *Record) SetTuple(t Tuple) error {
 	return nil
 }
 
-func (r *Record) IsNull(name string) bool {
+// ScanAttribute - scan data from column with name into v and return isNull property and error
+func (r *Record) ScanAttribute(name string, v any) (bool, error) {
 	val, ok := r.tuple[name]
 	if ok {
-		switch v := val.(type) {
-		case string:
-			return v == DefaultNullSeq
-		default:
-			return false
+		if val.IsNull {
+			return true, nil
 		}
+		return false, scanPointer(val, val.Value)
 	}
-	idx, ok := r.columnIdx[name]
+
+	idx, c, ok := r.driver.GetColumnByName(name)
 	if !ok {
-		panic(fmt.Sprintf(`unknown column name "%s"`, name))
+		return false, fmt.Errorf(`unknown column name "%s"`, name)
 	}
-	return string(r.RawData[idx]) == DefaultNullSeq
+	rawData, err := r.Row.GetColumn(idx)
+	if err != nil {
+		return false, fmt.Errorf(
+			"error getting column %s.%s.%s value: %w",
+			r.driver.Table.Schema, r.driver.Table.Name, c.Name,
+			err,
+		)
+	}
+	if rawData.IsNull {
+		r.tuple[name] = NewValue(v, true)
+	} else {
+		if err := r.driver.ScanByTypeOid(uint32(c.TypeOid), rawData.Data, v); err != nil {
+			return false, fmt.Errorf("cannot scan: %w", err)
+		}
+		r.tuple[name] = NewValue(v, false)
+	}
+	return false, nil
 }
 
-func (r *Record) ScanAttribute(name string, v any) error {
+func (r *Record) GetAttribute(name string) (*Value, error) {
 	val, ok := r.tuple[name]
 	if !ok {
-		idx, column, ok := r.driver.GetColumnByName(name)
+		idx, c, ok := r.driver.GetColumnByName(name)
 		if !ok {
-			return errors.New("unknown column name")
+			return nil, fmt.Errorf(`unknown column name "%s"`, name)
 		}
-		if err := r.driver.ScanByTypeOid(uint32(column.TypeOid), r.RawData[idx], v); err != nil {
-			return fmt.Errorf("cannot scan: %w", err)
-		}
-		r.tuple[name] = v
-		return nil
-	}
-	return scanPointer(val, v)
-}
-
-func (r *Record) GetAttribute(name string) (any, error) {
-	var err error
-	val, ok := r.tuple[name]
-	if !ok {
-		idx, column, ok := r.driver.GetColumnByName(name)
-		if !ok {
-			return nil, errors.New("unknown column name")
-		}
-		val, err = r.driver.DecodeByTypeOid(uint32(column.TypeOid), r.RawData[idx])
+		rawData, err := r.Row.GetColumn(idx)
 		if err != nil {
-			return nil, fmt.Errorf("decode attr: %w", err)
+			return nil, fmt.Errorf(
+				"error getting column %s.%s.%s value: %w",
+				r.driver.Table.Schema, r.driver.Table.Name, c.Name,
+				err,
+			)
+		}
+		if rawData.IsNull {
+			val = NewValue(nil, true)
+		} else {
+			decodedValue, err := r.driver.DecodeByTypeOid(uint32(c.TypeOid), rawData.Data)
+			if err != nil {
+				return nil, fmt.Errorf("error decoding arribute: %w", err)
+			}
+			val = NewValue(decodedValue, false)
 		}
 		r.tuple[name] = val
 	}
@@ -123,62 +115,49 @@ func (r *Record) GetAttribute(name string) (any, error) {
 
 // SetAttribute - set transformed attribute to the tuple
 func (r *Record) SetAttribute(name string, v any) error {
-	// TODO: You should check type validity
-	r.tuple[name] = v
+	if v == nil {
+		return fmt.Errorf("value cannot be nil pointer")
+	}
+	switch vv := v.(type) {
+	case *Value:
+		r.tuple[name] = vv
+	default:
+		r.tuple[name] = NewValue(v, false)
+	}
 	return nil
 }
 
-// Encode - build CSV record
-func (r *Record) Encode() ([]string, error) {
-	for attrName, value := range r.tuple {
-		idx, ok := r.columnIdx[attrName]
+func (r *Record) Encode() (RowDriver, error) {
+	for name, v := range r.tuple {
+		idx, ok := r.driver.AttrIdxMap[name]
 		if !ok {
-			return nil, fmt.Errorf("unknown column %s", attrName)
+			return nil, fmt.Errorf("unable to find column by name")
 		}
-		column := r.driver.Table.Columns[idx]
-		res, err := r.encodeValue(column, value)
-		if err != nil {
-			return nil, fmt.Errorf("unable to encode of attribute %s: %w", attrName, err)
+		if v.IsNull {
+			if err := r.Row.SetColumn(idx, NewRawValue(nil, true)); err != nil {
+				return nil, fmt.Errorf("error setting column value in RowDriver: %w", err)
+			}
+		} else {
+			encodedValue, err := r.encodeValue(r.driver.Table.Columns[idx], v.Value)
+			if err != nil {
+				return nil, fmt.Errorf("unable to encode attr value: %w", err)
+			}
+			if err = r.Row.SetColumn(idx, NewRawValue(encodedValue, false)); err != nil {
+				return nil, fmt.Errorf("error setting column value in RowDriver: %w", err)
+			}
 		}
-		r.RawData[idx] = res
 	}
-
-	// Manually adapt [][]byte to []string that requires stdlib CSV decoder
-	// TODO: Remove it once you implemented COPY Encode/Decoder
-	res := make([]string, len(r.RawData))
-	for idx := range res {
-		res[idx] = string(r.RawData[idx])
-	}
-
-	return res, nil
-}
-
-func (r *Record) EncodeAttr(name string) (res []byte, err error) {
-	idx, ok := r.columnIdx[name]
-	if !ok {
-		return nil, fmt.Errorf("unknown column %s", name)
-	}
-	column := r.driver.Table.Columns[idx]
-	if val, ok := r.tuple[name]; ok {
-		res, err = r.encodeValue(column, val)
-		if err != nil {
-			return nil, fmt.Errorf("unable to encode %s atribute value: %w", name, err)
-		}
-		return res, nil
-	}
-	return r.RawData[idx], nil
+	return r.Row, nil
 }
 
 func (r *Record) encodeValue(c *Column, v any) (res []byte, err error) {
 
-	switch v := v.(type) {
+	switch vv := v.(type) {
 	case string:
 		// We need to encode-decode procedure v that are assigned as string
 		// v for non textual attributes
-		if v == DefaultNullSeq {
-			res = []byte(DefaultNullSeq)
-		} else if c.TypeOid != pgtype.VarcharOID && c.TypeOid != pgtype.TextOID {
-			decodedVal, err := r.driver.DecodeAttr(c.Name, []byte(v))
+		if c.TypeOid != pgtype.VarcharOID && c.TypeOid != pgtype.TextOID {
+			decodedVal, err := r.driver.DecodeAttr(c.Name, []byte(vv))
 			if err != nil {
 				return nil, fmt.Errorf("unable to force decoding textual v of attribte %s for non textual %s type: %w", c.Name, c.TypeName, err)
 			}
@@ -187,11 +166,11 @@ func (r *Record) encodeValue(c *Column, v any) (res []byte, err error) {
 				return nil, fmt.Errorf("encoding error: %w", err)
 			}
 		} else {
-			res = []byte(v)
+			res = []byte(vv)
 		}
 
 	default:
-		res, err = r.driver.EncodeAttr(c.Name, v, nil)
+		res, err = r.driver.EncodeAttr(c.Name, vv, nil)
 		if err != nil {
 			return nil, fmt.Errorf("encoding error: %w", err)
 		}

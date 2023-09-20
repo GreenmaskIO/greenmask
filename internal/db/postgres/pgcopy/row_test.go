@@ -1,6 +1,7 @@
-package copy
+package pgcopy
 
 import (
+	"github.com/greenmaskio/greenmask/pkg/toolkit/transformers"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"testing"
@@ -80,31 +81,31 @@ func TestRow_GetColumn(t *testing.T) {
 	tests := []struct {
 		name     string
 		original []byte
-		result   *AttributeValue
+		result   *transformers.RawValue
 		idx      int
 	}{
 		{
 			name:     "simple column",
 			original: []byte("27\they\\tmyname is\\nnoname\t\\N\t\\N"),
-			result:   NewAttributeValue([]byte("27"), false),
+			result:   transformers.NewRawValue([]byte("27"), false),
 			idx:      0,
 		},
 		{
 			name:     "column with escaped symbols",
 			original: []byte("27\they\\tmyname is\\nnoname\t\\N\t\\N"),
-			result:   NewAttributeValue([]byte("hey\tmyname is\nnoname"), false),
+			result:   transformers.NewRawValue([]byte("hey\tmyname is\nnoname"), false),
 			idx:      1,
 		},
 		{
 			name:     "null value",
 			original: []byte("27\they\\tmyname is\\nnoname\t\\N\t\\N"),
-			result:   NewAttributeValue(nil, true),
+			result:   transformers.NewRawValue(nil, true),
 			idx:      2,
 		},
 		{
 			name:     "last null value in line",
 			original: []byte("27\they\\tmyname is\\nnoname\t\\N\t\\N"),
-			result:   NewAttributeValue(nil, true),
+			result:   transformers.NewRawValue(nil, true),
 			idx:      3,
 		},
 	}
@@ -124,7 +125,7 @@ func TestRow_SetColumn_Encoding(t *testing.T) {
 
 	type params struct {
 		idx   int
-		value *AttributeValue
+		value *transformers.RawValue
 	}
 
 	tests := []struct {
@@ -138,7 +139,7 @@ func TestRow_SetColumn_Encoding(t *testing.T) {
 			original: []byte("27\they\\tmyname is\\nnoname\t\\N\t\\N"),
 			params: params{
 				idx:   1,
-				value: NewAttributeValue([]byte("\tnew_value\n"), false),
+				value: transformers.NewRawValue([]byte("\tnew_value\n"), false),
 			},
 			expected: []byte("27\t\\tnew_value\\n\t\\N\t\\N"),
 		},
@@ -147,7 +148,7 @@ func TestRow_SetColumn_Encoding(t *testing.T) {
 			original: []byte("27\they\\tmyname is\\nnoname\t\\N\t\\N"),
 			params: params{
 				idx:   0,
-				value: NewAttributeValue(nil, true),
+				value: transformers.NewRawValue(nil, true),
 			},
 			expected: []byte("\\N\they\\tmyname is\\nnoname\t\\N\t\\N"),
 		},
@@ -170,20 +171,20 @@ func TestRow_Decode(t *testing.T) {
 	tests := []struct {
 		name      string
 		original  []byte
-		expected  []*AttributeValue
-		newVal    *AttributeValue
+		expected  []*transformers.RawValue
+		newVal    *transformers.RawValue
 		newValIdx int
 	}{
 		{
 			name:      "common",
 			original:  []byte("27\they\\tmyname is\\nnoname\t\\N\t\\N"),
-			newVal:    NewAttributeValue([]byte("1\n2"), false),
+			newVal:    transformers.NewRawValue([]byte("1\n2"), false),
 			newValIdx: 3,
-			expected: []*AttributeValue{
-				NewAttributeValue([]byte("27"), false),
-				NewAttributeValue([]byte("hey\tmyname is\nnoname"), false),
-				NewAttributeValue(nil, true),
-				NewAttributeValue([]byte("1\n2"), false),
+			expected: []*transformers.RawValue{
+				transformers.NewRawValue([]byte("27"), false),
+				transformers.NewRawValue([]byte("hey\tmyname is\nnoname"), false),
+				transformers.NewRawValue(nil, true),
+				transformers.NewRawValue([]byte("1\n2"), false),
 			},
 		},
 	}

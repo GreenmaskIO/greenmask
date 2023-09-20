@@ -4,13 +4,13 @@ import (
 	"context"
 	"fmt"
 	"github.com/greenmaskio/greenmask/internal/domains"
+	toolkit "github.com/greenmaskio/greenmask/pkg/toolkit/transformers"
+	"slices"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-
-	toolkit "github.com/greenmaskio/greenmask/pkg/toolkit/transformers"
 )
 
 func TestRandomDateTransformer_Transform(t *testing.T) {
@@ -21,6 +21,7 @@ func TestRandomDateTransformer_Transform(t *testing.T) {
 		original   string
 		params     map[string]domains.ParamsValue
 		pattern    string
+		isNull     bool
 	}{
 		{
 			name:       "test date type",
@@ -47,7 +48,7 @@ func TestRandomDateTransformer_Transform(t *testing.T) {
 			columnName: "date_tstz",
 			original:   "2008-12-15 23:34:17.946707+03",
 			params: map[string]domains.ParamsValue{
-				"min": domains.ParamsValue("2018-12-15 23:34:17.946707+03"),
+				"min": domains.ParamsValue("2018-12-15 00:00:00.946707+03"),
 				"max": domains.ParamsValue("2023-09-14 00:00:17.946707+03"),
 			},
 			pattern: `^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}.\d{1,6}Z$`,
@@ -66,19 +67,20 @@ func TestRandomDateTransformer_Transform(t *testing.T) {
 		{
 			name:       "keep_null false and NULL seq",
 			columnName: "date_ts",
-			original:   toolkit.DefaultNullSeq,
+			original:   "\\N",
 			params: map[string]domains.ParamsValue{
 				"min":       domains.ParamsValue("2018-12-15 23:34:17.946707"),
 				"max":       domains.ParamsValue("2023-09-14 00:00:17.946707"),
 				"truncate":  domains.ParamsValue("month"),
 				"keep_null": domains.ParamsValue("true"),
 			},
-			pattern: fmt.Sprintf(`^(\%s)$`, toolkit.DefaultNullSeq),
+			pattern: fmt.Sprintf(`^(\%s)$`, "\\N"),
+			isNull:  true,
 		},
 		{
 			name:       "keep_null true and NULL seq",
 			columnName: "date_ts",
-			original:   toolkit.DefaultNullSeq,
+			original:   "\\N",
 			params: map[string]domains.ParamsValue{
 				"min":       domains.ParamsValue("2018-12-15 23:34:17.946707"),
 				"max":       domains.ParamsValue("2023-09-14 00:00:17.946707"),
@@ -106,9 +108,19 @@ func TestRandomDateTransformer_Transform(t *testing.T) {
 				record,
 			)
 			require.NoError(t, err)
-			res, err := r.EncodeAttr(tt.columnName)
+
+			rowDriver, err := r.Encode()
 			require.NoError(t, err)
-			require.Regexp(t, tt.pattern, string(res))
+			idx := slices.IndexFunc(driver.Table.Columns, func(column *toolkit.Column) bool {
+				return column.Name == tt.columnName
+			})
+			require.NotEqual(t, idx, -1)
+			rawValue, err := rowDriver.GetColumn(idx)
+			require.NoError(t, err)
+			require.Equal(t, tt.isNull, rawValue.IsNull)
+			if !rawValue.IsNull {
+				require.Regexp(t, tt.pattern, string(rawValue.Data))
+			}
 		})
 	}
 }

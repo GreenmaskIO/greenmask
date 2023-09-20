@@ -407,7 +407,7 @@ parseField:
 						break parseField
 					}
 				} else if len(line) > 0 {
-					// Hit end of line (copy all data so far).
+					// Hit end of line (pgcopy all data so far).
 					r.recordBuffer = append(r.recordBuffer, line...)
 					if errRead != nil {
 						break parseField

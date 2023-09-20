@@ -26,7 +26,7 @@ dump:
 #    dbname: "host=localhost user=postgres password=example dbname=demo port=54315"
     jobs: 10
 #    exclude-schema: "(\"teSt\"*|test*)"
-    table: "test"
+#    table: "test"
     load-via-partition-root: true
 
   transformation:
@@ -44,49 +44,49 @@ dump:
             min: "2023-02-02 01:00:00.0+03"
             max: "2023-03-03 00:00:00.0+03"
             column: "scheduled_arrival"
-#
-#        - name: "RegexpReplace"
-#          params:
-#            column: "departure_airport"
-#            regexp: "DME"
-#            replace: "SVO"
-#
-#        - name: "RegexpReplace"
-#          params:
-#            column: "status"
-#            regexp: "On Time"
-#            replace: "Delayed"
-#
-#        - name: "RandomDate"
-#          params:
-#            column: "actual_departure"
-#            min: "2023-01-03 01:00:00.0+03"
-#            max: "2023-01-04 00:00:00.0+03"
-#
-#        - name: "RandomDate"
-#          params:
-#            column: "actual_arrival"
-#            min: "2023-01-04 01:00:00.0+03"
-#            max: "2023-01-05 00:00:00.0+03"
 
-#    - schema: "bookings"
-#      name: "aircrafts_data"
-#      transformers:
-#        - name: "Json"
-#          params:
-#            column: "model"
-#            operations:
-#              - operation: "set"
-#                path: "en"
-#                value: "Boeing 777-300-2023"
-#              - operation: "set"
-#                path: "crewSize"
-#                value: 10
-#
-#        - name: "NoiseInt"
-#          params:
-#            ratio: 0.9
-#            column: "range"
+        - name: "RegexpReplace"
+          params:
+            column: "departure_airport"
+            regexp: "DME"
+            replace: "SVO"
+
+        - name: "RegexpReplace"
+          params:
+            column: "status"
+            regexp: "On Time"
+            replace: "Delayed"
+
+        - name: "RandomDate"
+          params:
+            column: "actual_departure"
+            min: "2023-01-03 01:00:00.0+03"
+            max: "2023-01-04 00:00:00.0+03"
+
+        - name: "RandomDate"
+          params:
+            column: "actual_arrival"
+            min: "2023-01-04 01:00:00.0+03"
+            max: "2023-01-05 00:00:00.0+03"
+
+    - schema: "bookings"
+      name: "aircrafts_data"
+      transformers:
+        - name: "Json"
+          params:
+            column: "model"
+            operations:
+              - operation: "set"
+                path: "en"
+                value: "Boeing 777-300-2023"
+              - operation: "set"
+                path: "crewSize"
+                value: 10
+
+        - name: "NoiseInt"
+          params:
+            ratio: 0.9
+            column: "range"
 
 
 restore:

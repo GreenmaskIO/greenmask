@@ -3,6 +3,7 @@ package transformers
 import (
 	"context"
 	"github.com/greenmaskio/greenmask/internal/domains"
+	"github.com/greenmaskio/greenmask/pkg/toolkit/transformers"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -16,28 +17,28 @@ func TestMaskingTransformer_Transform(t *testing.T) {
 		ttype         string
 		columnName    string
 		originalValue string
-		expectedValue string
+		expectedValue *transformers.Value
 	}{
 		{
 			name:          "mobile",
 			ttype:         "mobile",
 			columnName:    "data",
 			originalValue: "+35798665784",
-			expectedValue: "+357***65784",
+			expectedValue: transformers.NewValue("+357***65784", false),
 		},
 		{
 			name:          "name",
 			ttype:         "name",
 			columnName:    "data",
 			originalValue: "abcdef test",
-			expectedValue: "a**def t**t",
+			expectedValue: transformers.NewValue("a**def t**t", false),
 		},
 		{
 			name:          "password",
 			ttype:         "password",
 			columnName:    "data",
 			originalValue: "password_secure",
-			expectedValue: "************",
+			expectedValue: transformers.NewValue("************", false),
 		},
 	}
 	for _, tt := range tests {
@@ -61,10 +62,11 @@ func TestMaskingTransformer_Transform(t *testing.T) {
 				record,
 			)
 			require.NoError(t, err)
-			res, err := r.EncodeAttr(tt.columnName)
+			res, err := r.GetAttribute(tt.columnName)
 			require.NoError(t, err)
 
-			require.Equal(t, tt.expectedValue, string(res))
+			require.Equal(t, tt.expectedValue.IsNull, res.IsNull)
+			require.Equal(t, tt.expectedValue.Value, res.Value)
 		})
 	}
 }

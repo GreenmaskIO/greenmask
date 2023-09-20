@@ -47,11 +47,7 @@ func (sut *SetNullTransformer) Init(ctx context.Context) error {
 }
 
 func (sut *SetNullTransformer) Transform(ctx context.Context, r *toolkit.Record) (*toolkit.Record, error) {
-	if r.IsNull(sut.columnName) {
-		return r, nil
-	}
-
-	if err := r.SetAttribute(sut.columnName, toolkit.DefaultNullSeq); err != nil {
+	if err := r.SetAttribute(sut.columnName, toolkit.NewValue(nil, true)); err != nil {
 		return nil, fmt.Errorf("unable to set new value: %w", err)
 	}
 	return r, nil

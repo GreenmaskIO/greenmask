@@ -86,7 +86,7 @@ func (td *TableDumper) process(ctx context.Context, tx pgx.Tx, w io.WriteCloser)
 	query, err := td.table.GetCopyFromStatement()
 	log.Debug().
 		Str("query", query).
-		Msgf("dumping table %s.%s using copy query", td.table.Schema, td.table.Name)
+		Msgf("dumping table %s.%s using pgcopy query", td.table.Schema, td.table.Name)
 	if err != nil {
 		return fmt.Errorf("cannot get COPY FROM statement: %w", err)
 	}
@@ -107,7 +107,7 @@ func (td *TableDumper) process(ctx context.Context, tx pgx.Tx, w io.WriteCloser)
 		}
 		msg, err := frontend.Receive()
 		if err != nil {
-			return fmt.Errorf("unable to perform copy query: %w", err)
+			return fmt.Errorf("unable to perform pgcopy query: %w", err)
 		}
 		switch v := msg.(type) {
 		case *pgproto3.CopyOutResponse:

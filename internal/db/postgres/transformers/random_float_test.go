@@ -2,24 +2,18 @@ package transformers
 
 import (
 	"context"
-	"fmt"
 	"github.com/greenmaskio/greenmask/internal/domains"
-	"log"
-	"strconv"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-
-	toolkit "github.com/greenmaskio/greenmask/pkg/toolkit/transformers"
 )
 
 func TestRandomFloatTransformer_Transform(t *testing.T) {
 	type result struct {
-		min        float64
-		max        float64
-		pattern    string
-		checkRange bool
+		min    float64
+		max    float64
+		isNull bool
 	}
 
 	tests := []struct {
@@ -38,10 +32,8 @@ func TestRandomFloatTransformer_Transform(t *testing.T) {
 				"max": domains.ParamsValue("10"),
 			},
 			result: result{
-				min:        1,
-				max:        10,
-				pattern:    `-*\d+[.]*\d*$`,
-				checkRange: true,
+				min: 1,
+				max: 10,
 			},
 		},
 		{
@@ -53,10 +45,8 @@ func TestRandomFloatTransformer_Transform(t *testing.T) {
 				"max": domains.ParamsValue("10"),
 			},
 			result: result{
-				min:        1,
-				max:        10,
-				pattern:    `-*\d+[.]*\d*$`,
-				checkRange: true,
+				min: 1,
+				max: 10,
 			},
 		},
 		{
@@ -69,10 +59,8 @@ func TestRandomFloatTransformer_Transform(t *testing.T) {
 				"precision": domains.ParamsValue("10"),
 			},
 			result: result{
-				min:        -100000,
-				max:        100000,
-				pattern:    `^-*\d+[.]*\d{0,10}$`,
-				checkRange: true,
+				min: -100000,
+				max: 100000,
 			},
 		},
 		{
@@ -85,16 +73,14 @@ func TestRandomFloatTransformer_Transform(t *testing.T) {
 				"precision": domains.ParamsValue("0"),
 			},
 			result: result{
-				min:        -100000,
-				max:        -1,
-				pattern:    `^-\d+$`,
-				checkRange: true,
+				min: -100000,
+				max: -1,
 			},
 		},
 		{
 			name:          "keep_null false and NULL seq",
 			columnName:    "col_float8",
-			originalValue: toolkit.DefaultNullSeq,
+			originalValue: "\\N",
 			params: map[string]domains.ParamsValue{
 				"min":       domains.ParamsValue("-100000"),
 				"max":       domains.ParamsValue("-1"),
@@ -102,16 +88,14 @@ func TestRandomFloatTransformer_Transform(t *testing.T) {
 				"keep_null": domains.ParamsValue("false"),
 			},
 			result: result{
-				min:        -100000,
-				max:        -1,
-				pattern:    `^-\d+$`,
-				checkRange: true,
+				min: -100000,
+				max: -1,
 			},
 		},
 		{
 			name:          "keep_null true and NULL seq",
 			columnName:    "col_float8",
-			originalValue: toolkit.DefaultNullSeq,
+			originalValue: "\\N",
 			params: map[string]domains.ParamsValue{
 				"min":       domains.ParamsValue("-100000"),
 				"max":       domains.ParamsValue("-1"),
@@ -119,10 +103,7 @@ func TestRandomFloatTransformer_Transform(t *testing.T) {
 				"keep_null": domains.ParamsValue("true"),
 			},
 			result: result{
-				min:        -100000,
-				max:        -1,
-				pattern:    fmt.Sprintf(`^(\%s)$`, toolkit.DefaultNullSeq),
-				checkRange: false,
+				isNull: true,
 			},
 		},
 		//{
@@ -157,15 +138,14 @@ func TestRandomFloatTransformer_Transform(t *testing.T) {
 				record,
 			)
 			require.NoError(t, err)
-			res, err := r.EncodeAttr(tt.columnName)
+
+			val, err := r.GetAttribute(tt.columnName)
 			require.NoError(t, err)
-			log.Println(res)
-			require.Regexp(t, tt.result.pattern, string(res))
-			if tt.result.checkRange {
-				resFloat, err := strconv.ParseFloat(string(res), 64)
-				require.NoError(t, err)
-				assert.GreaterOrEqual(t, resFloat, tt.result.min)
-				assert.LessOrEqual(t, resFloat, tt.result.max)
+			require.Equal(t, tt.result.isNull, val.IsNull)
+			if !tt.result.isNull {
+				resValue := val.Value.(*float64)
+				assert.GreaterOrEqual(t, *resValue, tt.result.min)
+				assert.LessOrEqual(t, *resValue, tt.result.max)
 			}
 		})
 	}

@@ -1,6 +1,7 @@
-package copy
+package pgcopy
 
 import (
+	"github.com/greenmaskio/greenmask/pkg/toolkit/transformers"
 	"slices"
 	"unicode"
 	"unicode/utf8"
@@ -35,9 +36,9 @@ func getDecimalFromHex(c byte) byte {
 	return byte(unicode.ToLower(rune(c))) - 'a' + 10
 }
 
-func DecodeAttr(raw []byte) *AttributeValue {
+func DecodeAttr(raw []byte) *transformers.RawValue {
 	if slices.Equal(raw, defaultNullSeq) {
-		return &AttributeValue{
+		return &transformers.RawValue{
 			IsNull: true,
 		}
 	}
@@ -132,7 +133,7 @@ func DecodeAttr(raw []byte) *AttributeValue {
 		panic("error checking UTF-8 string after non ASCII symbols decoding")
 	}
 
-	return &AttributeValue{
+	return &transformers.RawValue{
 		Data: res,
 	}
 }

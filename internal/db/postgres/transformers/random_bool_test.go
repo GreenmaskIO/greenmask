@@ -2,14 +2,11 @@ package transformers
 
 import (
 	"context"
-	"fmt"
 	"github.com/greenmaskio/greenmask/internal/domains"
-	"log"
+	"github.com/stretchr/testify/assert"
 	"testing"
 
 	"github.com/stretchr/testify/require"
-
-	toolkit "github.com/greenmaskio/greenmask/pkg/toolkit/transformers"
 )
 
 func TestRandomBoolTransformer_Transform(t *testing.T) {
@@ -19,32 +16,30 @@ func TestRandomBoolTransformer_Transform(t *testing.T) {
 		params     map[string]domains.ParamsValue
 		columnName string
 		original   string
-		pattern    string
+		isNull     bool
 	}{
 		{
 			name:       "common",
 			original:   "t",
 			columnName: "col_bool",
 			params:     map[string]domains.ParamsValue{},
-			pattern:    `^(t|f)$`,
 		},
 		{
 			name:       "keep_null false and NULL seq",
-			original:   toolkit.DefaultNullSeq,
+			original:   "\\N",
 			columnName: "col_bool",
 			params: map[string]domains.ParamsValue{
 				"keep_null": domains.ParamsValue("false"),
 			},
-			pattern: `^(t|f)$`,
 		},
 		{
 			name:       "keep_null true and NULL seq",
-			original:   toolkit.DefaultNullSeq,
+			original:   "\\N",
 			columnName: "col_bool",
 			params: map[string]domains.ParamsValue{
 				"keep_null": domains.ParamsValue("true"),
 			},
-			pattern: fmt.Sprintf(`^(\%s)$`, toolkit.DefaultNullSeq),
+			isNull: true,
 		},
 	}
 
@@ -66,10 +61,13 @@ func TestRandomBoolTransformer_Transform(t *testing.T) {
 				record,
 			)
 			require.NoError(t, err)
-			res, err := r.EncodeAttr(tt.columnName)
+
+			val, err := r.GetAttribute(tt.columnName)
 			require.NoError(t, err)
-			log.Println(res)
-			require.Regexp(t, tt.pattern, string(res))
+			require.Equal(t, tt.isNull, val.IsNull)
+			if !tt.isNull {
+				assert.IsType(t, val.Value, true)
+			}
 		})
 	}
 }

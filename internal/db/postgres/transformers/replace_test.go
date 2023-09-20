@@ -6,8 +6,6 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-
-	"github.com/greenmaskio/greenmask/pkg/toolkit/transformers"
 )
 
 //func TestReplaceTransformer_Transform(t *testing.T) {
@@ -109,12 +107,17 @@ import (
 
 func TestReplaceTransformer_Transform(t *testing.T) {
 
+	type result struct {
+		isNull bool
+		value  any
+	}
+
 	tests := []struct {
 		name       string
 		params     map[string]domains.ParamsValue
 		columnName string
 		original   string
-		expected   string
+		result     result
 	}{
 		{
 			name:       "common",
@@ -123,27 +126,36 @@ func TestReplaceTransformer_Transform(t *testing.T) {
 			params: map[string]domains.ParamsValue{
 				"value": domains.ParamsValue("123"),
 			},
-			expected: "123",
+			result: result{
+				isNull: false,
+				value:  "123",
+			},
 		},
 		{
-			name:       "keepNull false and NULL seq",
-			original:   transformers.DefaultNullSeq,
+			name:       "keep_null false and NULL seq",
+			original:   "\\N",
 			columnName: "id",
 			params: map[string]domains.ParamsValue{
 				"value":     domains.ParamsValue("123"),
 				"keep_null": domains.ParamsValue("false"),
 			},
-			expected: "123",
+			result: result{
+				isNull: false,
+				value:  "123",
+			},
 		},
 		{
-			name:       "keepNull true and NULL seq",
-			original:   transformers.DefaultNullSeq,
+			name:       "keep_null true and NULL seq",
+			original:   "\\N",
 			columnName: "id",
 			params: map[string]domains.ParamsValue{
 				"value":     domains.ParamsValue("123"),
 				"keep_null": domains.ParamsValue("true"),
 			},
-			expected: transformers.DefaultNullSeq,
+			result: result{
+				isNull: true,
+				value:  "\\N",
+			},
 		},
 	}
 
@@ -165,10 +177,15 @@ func TestReplaceTransformer_Transform(t *testing.T) {
 				record,
 			)
 			require.NoError(t, err)
-			res, err := r.EncodeAttr(tt.columnName)
-			require.NoError(t, err)
 
-			require.Equal(t, tt.expected, string(res))
+			attVal, err := r.GetAttribute(tt.columnName)
+			require.Equal(t, tt.result.isNull, attVal.IsNull)
+			require.NoError(t, err)
+			encoded, err := r.Encode()
+			require.NoError(t, err)
+			res, err := encoded.Encode()
+			require.NoError(t, err)
+			require.Equal(t, tt.result.value, string(res))
 		})
 
 	}

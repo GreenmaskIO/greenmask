@@ -3,6 +3,8 @@ package transformers
 import (
 	"context"
 	"github.com/greenmaskio/greenmask/internal/domains"
+	toolkit "github.com/greenmaskio/greenmask/pkg/toolkit/transformers"
+	"slices"
 	"testing"
 	"time"
 
@@ -14,6 +16,7 @@ func TestNoiseDateTransformer_Transform(t *testing.T) {
 	loc := time.Now().Location()
 
 	type result struct {
+		pattern  string
 		min, max time.Time
 	}
 
@@ -22,7 +25,6 @@ func TestNoiseDateTransformer_Transform(t *testing.T) {
 		params   map[string]domains.ParamsValue
 		original string
 		result   result
-		pattern  string
 	}{
 		{
 			name: "test date type",
@@ -32,10 +34,10 @@ func TestNoiseDateTransformer_Transform(t *testing.T) {
 			},
 			original: "2023-06-25",
 			result: result{
-				min: time.Date(2023, 5, 25, 0, 0, 0, 0, loc),
-				max: time.Date(2024, 6, 26, 1, 1, 1, 1000, loc),
+				pattern: `^\d{4}-\d{2}-\d{2}$`,
+				min:     time.Date(2023, 5, 25, 0, 0, 0, 0, loc),
+				max:     time.Date(2024, 6, 26, 1, 1, 1, 1000, loc),
 			},
-			pattern: `^\d{4}-\d{2}-\d{2}$`,
 		},
 		{
 			name: "test timestamp without timezone type",
@@ -45,10 +47,10 @@ func TestNoiseDateTransformer_Transform(t *testing.T) {
 			},
 			original: "2023-06-25 00:00:00",
 			result: result{
-				min: time.Date(2023, 5, 25, 0, 0, 0, 0, loc),
-				max: time.Date(2024, 6, 26, 1, 1, 1, 1000, loc),
+				pattern: `^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}.\d{1,6}$`,
+				min:     time.Date(2023, 5, 25, 0, 0, 0, 0, loc),
+				max:     time.Date(2024, 6, 26, 1, 1, 1, 1000, loc),
 			},
-			pattern: `^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}.\d{1,6}$`,
 		},
 		{
 			name: "test timestamp with timezone type",
@@ -58,10 +60,10 @@ func TestNoiseDateTransformer_Transform(t *testing.T) {
 			},
 			original: "2023-06-25 00:00:00.0+03",
 			result: result{
-				min: time.Date(2023, 5, 25, 0, 0, 0, 0, loc),
-				max: time.Date(2024, 6, 26, 1, 1, 1, 1000, loc),
+				pattern: `^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}.\d{1,6}Z$`,
+				min:     time.Date(2023, 5, 25, 0, 0, 0, 0, loc),
+				max:     time.Date(2024, 6, 26, 1, 1, 1, 1000, loc),
 			},
-			pattern: `^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}.\d{1,6}Z$`,
 		},
 		{
 			name: "test timestamp type with Truncate till day",
@@ -72,10 +74,10 @@ func TestNoiseDateTransformer_Transform(t *testing.T) {
 			},
 			original: "2023-06-25 00:00:00",
 			result: result{
-				min: time.Date(2023, 5, 25, 0, 0, 0, 0, loc),
-				max: time.Date(2024, 6, 26, 1, 1, 1, 1000, loc),
+				pattern: `^\d{4}-\d{2}-01 0{2}:0{2}:0{2}$`,
+				min:     time.Date(2023, 5, 25, 0, 0, 0, 0, loc),
+				max:     time.Date(2024, 6, 26, 1, 1, 1, 1000, loc),
 			},
-			pattern: `^\d{4}-\d{2}-01 0{2}:0{2}:0{2}$`,
 		},
 	}
 
@@ -94,15 +96,27 @@ func TestNoiseDateTransformer_Transform(t *testing.T) {
 				record,
 			)
 			require.NoError(t, err)
-			res, err := r.EncodeAttr(string(tt.params["column"]))
-			require.NoError(t, err)
-			require.Regexp(t, tt.pattern, string(res))
 
-			resAny, err := r.GetAttribute(string(tt.params["column"]))
+			res, err := r.GetAttribute(string(tt.params["column"]))
 			require.NoError(t, err)
-			resTime, ok := resAny.(time.Time)
+			// Checking typed value
+			assert.False(t, res.IsNull)
+			resTime, ok := res.Value.(time.Time)
 			require.True(t, ok)
 			assert.WithinRangef(t, resTime, tt.result.min, tt.result.max, "result is not in range")
+
+			// Checking raw value
+			rowDriver, err := r.Encode()
+			require.NoError(t, err)
+			idx := slices.IndexFunc(driver.Table.Columns, func(column *toolkit.Column) bool {
+				return column.Name == string(tt.params["column"])
+			})
+			require.NotEqual(t, idx, -1)
+			rawValue, err := rowDriver.GetColumn(idx)
+			require.NoError(t, err)
+			require.False(t, rawValue.IsNull)
+			require.Regexp(t, tt.result.pattern, string(rawValue.Data))
+
 		})
 	}
 }

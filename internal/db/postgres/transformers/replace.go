@@ -78,7 +78,11 @@ func (rt *ReplaceTransformer) Init(ctx context.Context) error {
 }
 
 func (rt *ReplaceTransformer) Transform(ctx context.Context, r *toolkit.Record) (*toolkit.Record, error) {
-	if r.IsNull(rt.columnName) && rt.keepNull {
+	valAny, err := r.GetAttribute(rt.columnName)
+	if err != nil {
+		return nil, fmt.Errorf("unable to scan value: %w", err)
+	}
+	if valAny.IsNull && rt.keepNull {
 		return r, nil
 	}
 

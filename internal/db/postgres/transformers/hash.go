@@ -86,13 +86,13 @@ func (ht *HashTransformer) Init(ctx context.Context) error {
 }
 
 func (ht *HashTransformer) Transform(ctx context.Context, r *toolkit.Record) (*toolkit.Record, error) {
-	if r.IsNull(ht.columnName) {
-		return r, nil
-	}
-
 	var originalValue string
-	if err := r.ScanAttribute(ht.columnName, &originalValue); err != nil {
+	isNull, err := r.ScanAttribute(ht.columnName, &originalValue)
+	if err != nil {
 		return nil, fmt.Errorf("unable to scan attribute value: %w", err)
+	}
+	if isNull {
+		return r, nil
 	}
 
 	dk, err := scrypt.Key(domains.ParamsValue(originalValue), ht.salt, 32768, 8, 1, 32)

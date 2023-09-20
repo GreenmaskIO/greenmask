@@ -146,7 +146,11 @@ func (rdt *RandomDateTransformer) Init(ctx context.Context) error {
 }
 
 func (rdt *RandomDateTransformer) Transform(ctx context.Context, r *toolkit.Record) (*toolkit.Record, error) {
-	if r.IsNull(rdt.columnName) && rdt.keepNull {
+	valAny, err := r.GetAttribute(rdt.columnName)
+	if err != nil {
+		return nil, fmt.Errorf("unable to scan value: %w", err)
+	}
+	if valAny.IsNull && rdt.keepNull {
 		return r, nil
 	}
 

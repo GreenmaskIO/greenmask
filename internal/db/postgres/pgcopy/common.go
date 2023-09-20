@@ -1,4 +1,4 @@
-package copy
+package pgcopy
 
 const defaultCopyDelimiter = '\t'
 

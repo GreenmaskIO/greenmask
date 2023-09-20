@@ -7,8 +7,6 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-
-	toolkit "github.com/greenmaskio/greenmask/pkg/toolkit/transformers"
 )
 
 func TestRandomIntTransformer_Transform(t *testing.T) {
@@ -53,7 +51,7 @@ func TestRandomIntTransformer_Transform(t *testing.T) {
 		{
 			name:           "keep_null false and NULL seq",
 			columnName:     "id8",
-			originalValue:  toolkit.DefaultNullSeq,
+			originalValue:  "\\N",
 			expectedRegexp: `^\d{1,3}$`,
 			params: map[string]domains.ParamsValue{
 				"min":       domains.ParamsValue("1"),
@@ -64,8 +62,8 @@ func TestRandomIntTransformer_Transform(t *testing.T) {
 		{
 			name:           "keep_null true and NULL seq",
 			columnName:     "id8",
-			originalValue:  toolkit.DefaultNullSeq,
-			expectedRegexp: fmt.Sprintf(`^(\%s)$`, toolkit.DefaultNullSeq),
+			originalValue:  "\\N",
+			expectedRegexp: fmt.Sprintf(`^(\%s)$`, "\\N"),
 			params: map[string]domains.ParamsValue{
 				"min":       domains.ParamsValue("1"),
 				"max":       domains.ParamsValue("100"),
@@ -92,7 +90,10 @@ func TestRandomIntTransformer_Transform(t *testing.T) {
 				record,
 			)
 			require.NoError(t, err)
-			res, err := r.EncodeAttr(tt.columnName)
+
+			encoded, err := r.Encode()
+			require.NoError(t, err)
+			res, err := encoded.Encode()
 			require.NoError(t, err)
 			require.Regexp(t, tt.expectedRegexp, string(res))
 		})

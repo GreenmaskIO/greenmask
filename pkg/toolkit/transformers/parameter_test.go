@@ -1,6 +1,7 @@
 package transformers
 
 import (
+	"github.com/greenmaskio/greenmask/internal/domains"
 	"slices"
 	"testing"
 	"time"
@@ -62,7 +63,7 @@ func TestParameter_Parse_simple(t *testing.T) {
 		nil,
 	)
 
-	rawParams := map[string][]byte{
+	rawParams := map[string]domains.ParamsValue{
 		"simple_param": []byte("1"),
 	}
 
@@ -80,7 +81,7 @@ func TestParameter_Parse_with_allowed_pg_types(t *testing.T) {
 
 	// Check simple column parameter definition positive case
 
-	rawParams := map[string][]byte{
+	rawParams := map[string]domains.ParamsValue{
 		"column": []byte("created_at"),
 	}
 
@@ -91,8 +92,9 @@ func TestParameter_Parse_with_allowed_pg_types(t *testing.T) {
 		nil,
 	).SetRequired(true).
 		SetIsColumn(&ColumnProperties{
-			Nullable: false,
-			Affected: true,
+			Nullable:           false,
+			Affected:           true,
+			AllowedColumnTypes: []string{"date", "timestamp", "timestamptz"},
 		})
 
 	warnings, err := p1.Parse(driver, rawParams, nil)
@@ -103,7 +105,7 @@ func TestParameter_Parse_with_allowed_pg_types(t *testing.T) {
 	assert.Equal(t, &expected, res)
 
 	// Check simple column parameter definition negative case
-	rawParams = map[string][]byte{
+	rawParams = map[string]domains.ParamsValue{
 		"column": []byte("id"),
 	}
 
@@ -119,7 +121,7 @@ func TestParameter_Parse_with_linked_parameter(t *testing.T) {
 
 	driver := getDriver()
 
-	rawParams := map[string][]byte{
+	rawParams := map[string]domains.ParamsValue{
 		"column":  []byte("created_at"),
 		"replace": []byte("2023-08-27 00:00:00.000000"),
 	}

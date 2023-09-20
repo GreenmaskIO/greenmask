@@ -67,11 +67,15 @@ func (rut *RandomUuidTransformer) Init(ctx context.Context) error {
 }
 
 func (rut *RandomUuidTransformer) Transform(ctx context.Context, r *toolkit.Record) (*toolkit.Record, error) {
-	if r.IsNull(rut.columnName) && rut.keepNull {
+	valAny, err := r.GetAttribute(rut.columnName)
+	if err != nil {
+		return nil, fmt.Errorf("unable to scan value: %w", err)
+	}
+	if valAny.IsNull && rut.keepNull {
 		return r, nil
 	}
 
-	if err := r.SetAttribute(rut.columnName, uuid.New()); err != nil {
+	if err = r.SetAttribute(rut.columnName, uuid.New()); err != nil {
 		return nil, fmt.Errorf("unable to set new value: %w", err)
 	}
 	return r, nil

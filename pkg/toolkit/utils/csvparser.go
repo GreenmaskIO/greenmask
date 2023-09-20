@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"io"
 
-	transformers2 "github.com/greenmaskio/greenmask/pkg/toolkit/transformers"
+	"github.com/greenmaskio/greenmask/pkg/toolkit/transformers"
 )
 
-// TODO: It's not a production solution. Real copy parser must be backported.
+// TODO: It's not a production solution. Real pgcopy parser must be backported.
 // 	We have only two to solve it:
 //		1. Fully backport PostgreSQL COPY TEXT format
 //		2. Implement COPY using CSV format. I suspect it may cause escaping problems, but it is easier
@@ -16,10 +16,10 @@ import (
 type StreamDriver struct {
 	r      *csv.Reader
 	w      *csv.Writer
-	driver *transformers2.Driver
+	driver *transformers.Driver
 }
 
-func NewStreamDriver(r io.Reader, w io.Writer, driver *transformers2.Driver) *StreamDriver {
+func NewStreamDriver(r io.Reader, w io.Writer, driver *transformers.Driver) *StreamDriver {
 	if driver == nil {
 		panic("received nil Driver pointer")
 	}
@@ -32,16 +32,16 @@ func NewStreamDriver(r io.Reader, w io.Writer, driver *transformers2.Driver) *St
 	}
 }
 
-func (c *StreamDriver) Read() (*transformers2.Record, error) {
+func (c *StreamDriver) Read() (*transformers.Record, error) {
 	values, err := c.r.Read()
 	if err != nil {
 		return nil, fmt.Errorf("cannot read dump line: %w", err)
 	}
 	// TODO: You should not create always a new object instead you must re-use old buffer
-	return transformers2.NewRecord(c.driver, values), nil
+	return transformers.NewRecord(c.driver, values), nil
 }
 
-func (c *StreamDriver) Write(r *transformers2.Record) error {
+func (c *StreamDriver) Write(r *transformers.Record) error {
 	res, err := r.Encode()
 	if err != nil {
 		return fmt.Errorf("cannot encode record: %w", err)

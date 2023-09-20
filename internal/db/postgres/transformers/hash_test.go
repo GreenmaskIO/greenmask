@@ -3,6 +3,7 @@ package transformers
 import (
 	"context"
 	"github.com/greenmaskio/greenmask/internal/domains"
+	"github.com/greenmaskio/greenmask/pkg/toolkit/transformers"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -12,7 +13,7 @@ import (
 func TestHashTransformer_Transform(t *testing.T) {
 	var attrName = "data"
 	var originalValue = "old_value"
-	var expectedValue = "9n+v7qGp0ua+DgXtC9ClyjPHjWvWin6fKAmX5bZjcX4="
+	var expectedValue = transformers.NewValue("9n+v7qGp0ua+DgXtC9ClyjPHjWvWin6fKAmX5bZjcX4=", false)
 	driver, record := getDriverAndRecord(attrName, originalValue)
 
 	transformer, warnings, err := HashTransformerDefinition.Instance(
@@ -31,9 +32,9 @@ func TestHashTransformer_Transform(t *testing.T) {
 		record,
 	)
 	require.NoError(t, err)
-	res, err := r.EncodeAttr(attrName)
+	res, err := r.GetAttribute(attrName)
 	require.NoError(t, err)
 
-	require.Equal(t, expectedValue, string(res))
-
+	require.Equal(t, expectedValue.IsNull, res.IsNull)
+	require.Equal(t, expectedValue.Value, res.Value)
 }

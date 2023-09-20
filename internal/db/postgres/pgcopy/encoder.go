@@ -1,21 +1,12 @@
-package copy
+package pgcopy
 
-import "slices"
-
-type AttributeValue struct {
-	Data   []byte
-	IsNull bool
-}
-
-func NewAttributeValue(data []byte, isNull bool) *AttributeValue {
-	return &AttributeValue{
-		Data:   data,
-		IsNull: isNull,
-	}
-}
+import (
+	"github.com/greenmaskio/greenmask/pkg/toolkit/transformers"
+	"slices"
+)
 
 // EncodeAttr - encode from UTF-8 slice to transfer representation (escaped byte[])
-func EncodeAttr(v *AttributeValue) []byte {
+func EncodeAttr(v *transformers.RawValue) []byte {
 	// Check whether raw input matched null marker
 	if v.IsNull {
 		return defaultNullSeq
@@ -32,7 +23,7 @@ func EncodeAttr(v *AttributeValue) []byte {
 			i = i + len(defaultNullSeq)
 			continue
 		} else if len(data[i:]) >= len(defaultCopyTerminationSeq) && slices.Equal(data[i:i+len(defaultCopyTerminationSeq)], defaultCopyTerminationSeq) {
-			// Escaping copy termination string
+			// Escaping pgcopy termination string
 			res = append(res, '\\')
 			res = append(res, defaultCopyTerminationSeq...)
 			i = i + len(defaultCopyTerminationSeq)
@@ -64,7 +55,7 @@ func EncodeAttr(v *AttributeValue) []byte {
 			}
 			res = append(res, '\\', c)
 		} else if c == '\\' || c == defaultCopyDelimiter {
-			// Escaping backslash or copy delimiter
+			// Escaping backslash or pgcopy delimiter
 			res = append(res, '\\', c)
 		} else {
 			// Add plain rune

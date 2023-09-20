@@ -54,7 +54,8 @@ func (t *Table) Entry() (*toc.Entry, error) {
 		columns = append(columns, fmt.Sprintf(`"%s"`, column.Name))
 	}
 
-	var query = `COPY "%s"."%s" (%s) FROM stdin WITH (FORMAT CSV, NULL '\N');`
+	//var query = `COPY "%s"."%s" (%s) FROM stdin WITH (FORMAT CSV, NULL '\N');`
+	var query = `COPY "%s"."%s" (%s) FROM stdin`
 	var schemaName, tableName string
 	if t.LoadViaPartitionRoot && t.RootPtSchema != "" && t.RootPtName != "" {
 		schemaName = t.RootPtSchema
@@ -98,9 +99,9 @@ func (t *Table) Entry() (*toc.Entry, error) {
 }
 
 func (t *Table) GetCopyFromStatement() (string, error) {
-	query := fmt.Sprintf("COPY \"%s\".\"%s\" TO STDOUT WITH (FORMAT CSV, NULL '\\N')", t.Schema, t.Name)
+	query := fmt.Sprintf("COPY \"%s\".\"%s\" TO STDOUT", t.Schema, t.Name)
 	if t.Query != "" {
-		query = fmt.Sprintf("COPY (%s) TO STDOUT WITH (FORMAT CSV, NULL '\\N')", t.Query)
+		query = fmt.Sprintf("COPY (%s) TO STDOUT", t.Query)
 	}
 	return query, nil
 }

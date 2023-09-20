@@ -25,7 +25,7 @@ var RegexpReplaceTransformerDefinition = toolkit.NewDefinition(
 		nil,
 	).SetIsColumn(toolkit.NewColumnProperties().
 		SetAffected(true).
-		SetAllowedColumnTypes("varchar", "text"),
+		SetAllowedColumnTypes("varchar", "text", "bpchar"),
 	).SetRequired(true),
 
 	toolkit.MustNewParameter(
@@ -89,13 +89,13 @@ func (rrt *RegexpReplaceTransformer) Init(ctx context.Context) error {
 }
 
 func (rrt *RegexpReplaceTransformer) Transform(ctx context.Context, r *toolkit.Record) (*toolkit.Record, error) {
-	if r.IsNull(rrt.columnName) {
-		return r, nil
-	}
-
 	var original string
-	if err := r.ScanAttribute(rrt.columnName, &original); err != nil {
+	isNull, err := r.ScanAttribute(rrt.columnName, &original)
+	if err != nil {
 		return nil, fmt.Errorf("unable to scan value: %w", err)
+	}
+	if isNull {
+		return r, nil
 	}
 
 	result := rrt.regexp.ReplaceAllString(original, rrt.replace)

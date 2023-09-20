@@ -10,6 +10,7 @@ import (
 
 // Driver - allows you to perform decoding operations from []bytes to go types and go types to bytes
 // encoding operation
+// TODO: Rename it to table driver
 type Driver struct {
 	Table   *Table
 	TypeMap *pgtype.Map
