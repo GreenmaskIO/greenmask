@@ -2,6 +2,7 @@ package dumpers
 
 import (
 	"context"
+	"github.com/greenmaskio/greenmask/internal/db/postgres/pgcopy"
 	"io"
 
 	"github.com/greenmaskio/greenmask/internal/db/postgres/dump"
@@ -25,5 +26,12 @@ func (pdp *PlainDumpPipeline) Dump(ctx context.Context, data []byte) (err error)
 	if _, err := pdp.w.Write(data); err != nil {
 		return NewDumpError(pdp.table.Schema, pdp.table.Name, pdp.line, err)
 	}
+	return nil
+}
+
+func (pdp *PlainDumpPipeline) CompleteDump() (err error) {
+	res := make([]byte, 4)
+	res = append(res, pgcopy.DefaultCopyTerminationSeq...)
+	res = append(res, '\n', '\n')
 	return nil
 }

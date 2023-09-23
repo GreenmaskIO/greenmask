@@ -1,6 +1,6 @@
 package pgcopy
 
-const defaultCopyDelimiter = '\t'
+const DefaultCopyDelimiter = '\t'
 
-var defaultNullSeq = []byte("\\N")
-var defaultCopyTerminationSeq = []byte("\\.")
+var DefaultNullSeq = []byte("\\N")
+var DefaultCopyTerminationSeq = []byte("\\.")

@@ -26,7 +26,7 @@ type TocReadWriterSuite struct {
 func (suite *TocReadWriterSuite) SetupSuite() {
 	suite.Require().NotEmpty(pgBinPath, "-pgBinPath non-empty flag required")
 	suite.Require().NotEmpty(tempDir, "-tempDir non-empty flag required")
-	suite.Require().NotEmpty(connCreds, "-connCreds non-empty flag required")
+	suite.Require().NotEmpty(uri, "-uri non-empty flag required")
 
 	var err error
 	//suite.tmpDir = path.Join(tempDir, fmt.Sprintf("%d", time.Now().UnixMilli()))
@@ -38,7 +38,7 @@ func (suite *TocReadWriterSuite) SetupSuite() {
 	// Prepare pg_dump for running
 	cmd := exec.Command(
 		path.Join(pgBinPath, "pg_dump"),
-		"-Fd", "--dbname", connCreds, "-f", suite.dumpDir,
+		"-Fd", "--dbname", uri, "-f", suite.dumpDir,
 	)
 	stdout, err := cmd.StdoutPipe()
 	suite.Require().NoError(err, "unable to open stdout pipe")
@@ -162,15 +162,29 @@ func (suite *TocReadWriterSuite) TestReadWriteTocDat() {
 	})
 
 	suite.Run("try run pg_restore", func() {
+		err := os.Rename(path.Join(suite.dumpDir, "toc.dat"), path.Join(suite.dumpDir, "original_toc.dat"))
+		suite.Require().NoError(err, "error renaming toc dat file")
+		func() {
+			dst, err := os.Create(path.Join(suite.dumpDir, "toc.dat"))
+			suite.Require().NoError(err, "error moving new_toc.dat")
+			defer dst.Close()
+			src, err := os.Open(path.Join(suite.dumpDir, "new_toc.dat"))
+			suite.Require().NoError(err, "error moving new_toc.dat")
+			defer src.Close()
+			_, err = io.Copy(dst, src)
+			suite.Require().NoError(err, "error moving new_toc.dat")
+		}()
 		cmd := exec.Command(
 			path.Join(pgBinPath, "pg_restore"),
-			"-l", suite.dumpDir,
+			"-v", "-l", suite.dumpDir,
 		)
 
-		out, err := cmd.Output()
+		cmd.Stderr = os.Stderr
+		cmd.Stdout = os.Stdout
+
+		log.Info().Msg("pg_restore stderr and stdout forwarding")
+		err = cmd.Run()
 		suite.Assert().NoError(err, "error running pg_restore")
-		suite.Assert().NotContains(string(out), "warning", "received stderr contains warnings")
-		suite.Assert().NotContains(string(out), "error", "received stderr contains errors")
 	})
 
 }

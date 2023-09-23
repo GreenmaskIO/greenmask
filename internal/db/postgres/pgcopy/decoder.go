@@ -37,7 +37,7 @@ func getDecimalFromHex(c byte) byte {
 }
 
 func DecodeAttr(raw []byte) *transformers.RawValue {
-	if slices.Equal(raw, defaultNullSeq) {
+	if slices.Equal(raw, DefaultNullSeq) {
 		return &transformers.RawValue{
 			IsNull: true,
 		}

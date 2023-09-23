@@ -34,7 +34,7 @@ func NewRow(raw []byte) *Row {
 	for colStartPos < len(raw) {
 		colEndPos = len(raw)
 
-		colEndPos = slices.Index(raw[colStartPos:], defaultCopyDelimiter)
+		colEndPos = slices.Index(raw[colStartPos:], DefaultCopyDelimiter)
 		if colEndPos == -1 {
 			colEndPos = len(raw)
 		} else {
@@ -100,7 +100,7 @@ func (r *Row) Encode() ([]byte, error) {
 		}
 
 		if idx != len(r.columnPos)-1 {
-			res = append(res, defaultCopyDelimiter)
+			res = append(res, DefaultCopyDelimiter)
 		}
 	}
 	return res, nil

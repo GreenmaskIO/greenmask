@@ -16,72 +16,225 @@ services:
       && minio server /export --console-address :9001'
 
   db-16:
-    image: postgres:16
-    restart: always
     volumes:
-      - "/Users/vadim/tmp/pg_dump_test/pgdata/16:/var/lib/postgresql/data"
+      - "/var/lib/postgresql/data"
+    image: postgres:16
     ports:
       - "54316:5432"
+    restart: always
     environment:
       POSTGRES_PASSWORD: example
+    healthcheck:
+      test: [ "CMD", "psql", "-U", "postgres" ]
+      interval: 5s
+      timeout: 1s
+      retries: 3
 
   db-15:
-    image: postgres:15
-    restart: always
     volumes:
-      - "/Users/vadim/tmp/pg_dump_test/pgdata/15:/var/lib/postgresql/data"
+      - "/var/lib/postgresql/data"
+    image: postgres:15
     ports:
       - "54315:5432"
+    restart: always
     environment:
       POSTGRES_PASSWORD: example
+    healthcheck:
+      test: [ "CMD", "psql", "-U", "postgres" ]
+      interval: 5s
+      timeout: 1s
+      retries: 3
 
   db-14:
-    image: postgres:14
-    restart: always
     volumes:
-      - "/Users/vadim/tmp/pg_dump_test/pgdata/14:/var/lib/postgresql/data"
+      - "/var/lib/postgresql/data"
+    image: postgres:14
     ports:
       - "54314:5432"
+    restart: always
     environment:
       POSTGRES_PASSWORD: example
+    healthcheck:
+      test: [ "CMD", "psql", "-U", "postgres" ]
+      interval: 5s
+      timeout: 1s
+      retries: 3
 
   db-13:
-    image: postgres:13
-    restart: always
     volumes:
-      - "/Users/vadim/tmp/pg_dump_test/pgdata/13:/var/lib/postgresql/data"
+      - "/var/lib/postgresql/data"
+    image: postgres:13
     ports:
       - "54313:5432"
+    restart: always
     environment:
       POSTGRES_PASSWORD: example
+    healthcheck:
+      test: [ "CMD", "psql", "-U", "postgres" ]
+      interval: 5s
+      timeout: 1s
+      retries: 3
 
   db-12:
-    image: postgres:12
-    restart: always
     volumes:
-      - "/Users/vadim/tmp/pg_dump_test/pgdata/12:/var/lib/postgresql/data"
+      - "/var/lib/postgresql/data"
+    image: postgres:12
     ports:
       - "54312:5432"
+    restart: always
     environment:
       POSTGRES_PASSWORD: example
+    healthcheck:
+      test: [ "CMD", "psql", "-U", "postgres" ]
+      interval: 5s
+      timeout: 1s
+      retries: 3
 
   db-11:
-    image: postgres:11
-    restart: always
     volumes:
-      - "/Users/vadim/tmp/pg_dump_test/pgdata/11:/var/lib/postgresql/data"
+      - "/var/lib/postgresql/data"
+    image: postgres:11
     ports:
       - "54311:5432"
+    restart: always
     environment:
       POSTGRES_PASSWORD: example
+    healthcheck:
+      test: [ "CMD", "psql", "-U", "postgres" ]
+      interval: 5s
+      timeout: 1s
+      retries: 3
 
   dbs-filler:
     environment:
       PGPASSWORD: "example"
       FILE_DUMP: "demo-small-en.zip"
-      TMP_DIR: /tmp/schema
+      TMP_DIR: "/tmp/schema"
     volumes:
       - "/Users/vadim/tmp/pg_dump_test/schema:/tmp/schema"
     build:
       context: docker/filldb
+    depends_on:
+      db-11:
+        condition: service_healthy
+      db-12:
+        condition: service_healthy
+      db-13:
+        condition: service_healthy
+      db-14:
+        condition: service_healthy
+      db-15:
+        condition: service_healthy
+      db-16:
+        condition: service_healthy
 
+  greenmask-16:
+    volumes:
+      - "/tmp"
+    environment:
+      PG_BIN_PATH: "/usr/lib/postgresql/16/bin/"
+      TEMP_DIR: "/tmp"
+      URI: "host=db-16 user=postgres password=example dbname=demo port=5432"
+      GREENMASK_BIN_PATH: "/var/lib/greenmask/cmd/greenmask"
+    build:
+      dockerfile: docker/integration/Dockerfile
+      context: ./
+    depends_on:
+      dbs-filler:
+        condition: service_completed_successfully
+
+  greenmask-15:
+    volumes:
+      - "/tmp"
+    environment:
+      PG_BIN_PATH: "/usr/lib/postgresql/15/bin/"
+      TEMP_DIR: "/tmp"
+      URI: "host=db-15 user=postgres password=example dbname=demo port=5432"
+      GREENMASK_BIN_PATH: "/var/lib/greenmask/cmd/greenmask"
+    build:
+      dockerfile: docker/integration/Dockerfile
+      context: ./
+    depends_on:
+      dbs-filler:
+        condition: service_completed_successfully
+
+  greenmask-14:
+    volumes:
+      - "/tmp"
+    environment:
+      PG_BIN_PATH: "/usr/lib/postgresql/14/bin/"
+      TEMP_DIR: "/tmp"
+      URI: "host=db-14 user=postgres password=example dbname=demo port=5432"
+      GREENMASK_BIN_PATH: "/var/lib/greenmask/cmd/greenmask"
+    build:
+      dockerfile: docker/integration/Dockerfile
+      context: ./
+    depends_on:
+      dbs-filler:
+        condition: service_completed_successfully
+
+  greenmask-13:
+    volumes:
+      - "/tmp"
+    environment:
+      PG_BIN_PATH: "/usr/lib/postgresql/13/bin/"
+      TEMP_DIR: "/tmp"
+      URI: "host=db-13 user=postgres password=example dbname=demo port=5432"
+      GREENMASK_BIN_PATH: "/var/lib/greenmask/cmd/greenmask"
+    build:
+      dockerfile: docker/integration/Dockerfile
+      context: ./
+    depends_on:
+      dbs-filler:
+        condition: service_completed_successfully
+
+  greenmask-12:
+    volumes:
+      - "/tmp"
+    environment:
+      PG_BIN_PATH: "/usr/lib/postgresql/12/bin/"
+      TEMP_DIR: "/tmp"
+      URI: "host=db-12 user=postgres password=example dbname=demo port=5432"
+      GREENMASK_BIN_PATH: "/var/lib/greenmask/cmd/greenmask"
+    build:
+      dockerfile: docker/integration/Dockerfile
+      context: ./
+    depends_on:
+      dbs-filler:
+        condition: service_completed_successfully
+
+  greenmask-11:
+    volumes:
+      - "/tmp"
+    environment:
+      PG_BIN_PATH: "/usr/lib/postgresql/11/bin/"
+      TEMP_DIR: "/tmp"
+      URI: "host=db-11 user=postgres password=example dbname=demo port=5432"
+      GREENMASK_BIN_PATH: "/var/lib/greenmask/cmd/greenmask"
+    build:
+      dockerfile: docker/integration/Dockerfile
+      context: ./
+    depends_on:
+      dbs-filler:
+        condition: service_completed_successfully
+
+  finisher:
+    healthcheck:
+      test: exit 0
+      interval: 2s
+    container_name: wait-for-completion
+    image: alpine:latest
+    command: "echo 'exited' && date"
+    depends_on:
+      greenmask-11:
+        condition: service_completed_successfully
+      greenmask-12:
+        condition: service_completed_successfully
+      greenmask-13:
+        condition: service_completed_successfully
+      greenmask-14:
+        condition: service_completed_successfully
+      greenmask-15:
+        condition: service_completed_successfully
+      greenmask-16:
+        condition: service_completed_successfully

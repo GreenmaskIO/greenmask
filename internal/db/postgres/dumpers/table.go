@@ -121,7 +121,7 @@ func (td *TableDumper) process(ctx context.Context, tx pgx.Tx, w io.WriteCloser)
 		case *pgproto3.CopyDone:
 		case *pgproto3.CommandComplete:
 		case *pgproto3.ReadyForQuery:
-			return nil
+			return pipeline.CompleteDump()
 		case *pgproto3.ErrorResponse:
 			return fmt.Errorf("error from postgres connection msg = %s code=%s", v.Message, v.Code)
 		default:

@@ -42,7 +42,7 @@ func TestEncodeAttr(t *testing.T) {
 		},
 		{
 			name:     "Escaped attrs delimiter \\t",
-			original: transformers.NewRawValue([]byte{defaultCopyDelimiter}, false),
+			original: transformers.NewRawValue([]byte{DefaultCopyDelimiter}, false),
 			expected: []byte("\\t"),
 		},
 	}

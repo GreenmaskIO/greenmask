@@ -35,8 +35,8 @@ func TestEncodeDecode(t *testing.T) {
 		},
 		{
 			name:     "delimiter escaping",
-			original: transformers.NewRawValue([]byte(fmt.Sprintf("hello%cnoname", defaultCopyDelimiter)), false),
-			expected: transformers.NewRawValue([]byte(fmt.Sprintf("hello%cnoname", defaultCopyDelimiter)), false),
+			original: transformers.NewRawValue([]byte(fmt.Sprintf("hello%cnoname", DefaultCopyDelimiter)), false),
+			expected: transformers.NewRawValue([]byte(fmt.Sprintf("hello%cnoname", DefaultCopyDelimiter)), false),
 		},
 		{
 			name:     "Null value",
@@ -45,8 +45,8 @@ func TestEncodeDecode(t *testing.T) {
 		},
 		{
 			name:     "Null value in string",
-			original: transformers.NewRawValue(defaultNullSeq, false),
-			expected: transformers.NewRawValue(defaultNullSeq, false),
+			original: transformers.NewRawValue(DefaultNullSeq, false),
+			expected: transformers.NewRawValue(DefaultNullSeq, false),
 		},
 	}
 	for _, tt := range tests {

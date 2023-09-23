@@ -71,7 +71,7 @@ type BackwardCompatibilitySuite struct {
 func (suite *BackwardCompatibilitySuite) SetupSuite() {
 	suite.Require().NotEmpty(tempDir, "-tempDir non-empty flag required")
 	suite.Require().NotEmpty(pgBinPath, "-pgBinPath non-empty flag required")
-	suite.Require().NotEmpty(connCreds, "-connCreds non-empty flag required")
+	suite.Require().NotEmpty(uri, "-uri non-empty flag required")
 	suite.Require().NotEmpty(greenmaskBinPath, "-greenmaskBinPath non-empty flag required")
 
 	// Creating tmp dir
@@ -92,7 +92,7 @@ func (suite *BackwardCompatibilitySuite) SetupSuite() {
 
 	config.Common.TempDirectory = suite.tmpDir
 	config.Storage.Directory.Path = suite.storageDir
-	config.Dump.PgDumpOptions.DbName = connCreds
+	config.Dump.PgDumpOptions.DbName = uri
 	config.Common.PgBinPath = pgBinPath
 
 	suite.configFilePath = path.Join(suite.tmpDir, "config.yml")
@@ -115,7 +115,7 @@ func (suite *BackwardCompatibilitySuite) TestGreenmaskCompatibility() {
 		suite.Require().NoError(err, "error running greenmask")
 	})
 
-	suite.Run("dumping data using greenmask", func() {
+	suite.Run("testing pg_restore list", func() {
 		entry, err := os.ReadDir(suite.storageDir)
 		suite.Require().NoError(err, "error reading storage directory")
 		suite.Require().Len(entry, 1, "unexpected directories in storage")

@@ -40,7 +40,7 @@ func TestDecodeAttr(t *testing.T) {
 		{
 			name:     "delimiter escaping",
 			original: []byte("hello\\tnoname"),
-			expected: transformers.NewRawValue([]byte(fmt.Sprintf("hello%cnoname", defaultCopyDelimiter)), false),
+			expected: transformers.NewRawValue([]byte(fmt.Sprintf("hello%cnoname", DefaultCopyDelimiter)), false),
 		},
 		{
 			name:     "Null value",

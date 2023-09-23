@@ -9,24 +9,24 @@ import (
 func EncodeAttr(v *transformers.RawValue) []byte {
 	// Check whether raw input matched null marker
 	if v.IsNull {
-		return defaultNullSeq
+		return DefaultNullSeq
 	}
 
 	data := v.Data
 	var res = make([]byte, 0, len(data))
 
 	for i := 0; i < len(data); i++ {
-		if len(data[i:]) >= len(defaultNullSeq) && slices.Equal(data[i:i+len(defaultNullSeq)], defaultNullSeq) {
+		if len(data[i:]) >= len(DefaultNullSeq) && slices.Equal(data[i:i+len(DefaultNullSeq)], DefaultNullSeq) {
 			// Escaping NULL SEQUENCE
 			res = append(res, '\\')
-			res = append(res, defaultNullSeq...)
-			i = i + len(defaultNullSeq)
+			res = append(res, DefaultNullSeq...)
+			i = i + len(DefaultNullSeq)
 			continue
-		} else if len(data[i:]) >= len(defaultCopyTerminationSeq) && slices.Equal(data[i:i+len(defaultCopyTerminationSeq)], defaultCopyTerminationSeq) {
+		} else if len(data[i:]) >= len(DefaultCopyTerminationSeq) && slices.Equal(data[i:i+len(DefaultCopyTerminationSeq)], DefaultCopyTerminationSeq) {
 			// Escaping pgcopy termination string
 			res = append(res, '\\')
-			res = append(res, defaultCopyTerminationSeq...)
-			i = i + len(defaultCopyTerminationSeq)
+			res = append(res, DefaultCopyTerminationSeq...)
+			i = i + len(DefaultCopyTerminationSeq)
 			continue
 		}
 
@@ -49,12 +49,12 @@ func EncodeAttr(v *transformers.RawValue) []byte {
 			default:
 				// TODO: Recheck it
 				// As I understand if current ASCII control symb is not equal as the listed we are writing it directly
-				if c != defaultCopyDelimiter {
+				if c != DefaultCopyDelimiter {
 					res = append(res, c)
 				}
 			}
 			res = append(res, '\\', c)
-		} else if c == '\\' || c == defaultCopyDelimiter {
+		} else if c == '\\' || c == DefaultCopyDelimiter {
 			// Escaping backslash or pgcopy delimiter
 			res = append(res, '\\', c)
 		} else {
