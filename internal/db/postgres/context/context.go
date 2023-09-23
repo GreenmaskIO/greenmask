@@ -32,8 +32,7 @@ type RuntimeContext struct {
 	TypeMap *pgtype.Map
 }
 
-// NewRuntimeContext - creating new runtime context. Returning ValidationWarnings that must be checked they are
-// not fatal. Do not continue if context is failed
+// NewRuntimeContext - creating new runtime context.
 // TODO: Recheck it is working properly. In a few cases (stages such as parameters building, schema validation) if
 //
 //	warnings are fatal procedure must be terminated immediately due to lack of objects required on the next step

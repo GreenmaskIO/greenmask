@@ -1,17 +1,20 @@
 package toc
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"github.com/greenmaskio/greenmask/internal/db/postgres/pgdump"
 	"github.com/greenmaskio/greenmask/internal/domains"
 	"github.com/greenmaskio/greenmask/internal/storages/directory"
+	"github.com/jackc/pgx/v5"
 	"github.com/rs/zerolog/log"
 	"github.com/stretchr/testify/suite"
 	"gopkg.in/yaml.v3"
 	"os"
 	"os/exec"
 	"path"
+	"time"
 )
 
 var config = &domains.Config{
@@ -62,10 +65,12 @@ var config = &domains.Config{
 
 type BackwardCompatibilitySuite struct {
 	suite.Suite
-	tmpDir         string
-	runtimeTmpDir  string
-	storageDir     string
-	configFilePath string
+	tmpDir            string
+	runtimeTmpDir     string
+	storageDir        string
+	configFilePath    string
+	conn              *pgx.Conn
+	restorationDbName string
 }
 
 func (suite *BackwardCompatibilitySuite) SetupSuite() {
@@ -101,6 +106,15 @@ func (suite *BackwardCompatibilitySuite) SetupSuite() {
 	defer confFile.Close()
 	err = yaml.NewEncoder(confFile).Encode(config)
 	suite.Require().NoError(err, "error encoding config into yaml")
+
+	suite.conn, err = pgx.Connect(context.Background(), uri)
+	suite.Require().NoError(err, "error connecting to db")
+
+	// TODO: Delete db and create then
+	suite.restorationDbName = fmt.Sprintf("demo_restore_%d", time.Now().UnixMilli())
+	log.Info().Str("dbname", suite.restorationDbName).Msg("creating database")
+	_, err = suite.conn.Exec(context.Background(), fmt.Sprintf("create database %s", suite.restorationDbName))
+	suite.Require().NoError(err, "error creating database")
 }
 
 func (suite *BackwardCompatibilitySuite) TestGreenmaskCompatibility() {
@@ -140,6 +154,26 @@ func (suite *BackwardCompatibilitySuite) TestGreenmaskCompatibility() {
 			suite.Require().NoError(err, "error performing pg_restore")
 		}
 	})
+
+	suite.Run("testing pg_restore to the db", func() {
+
+		entry, err := os.ReadDir(suite.storageDir)
+		suite.Require().NoError(err, "error reading storage directory")
+		suite.Require().Len(entry, 1, "unexpected directories in storage")
+		lastDump := entry[0]
+		suite.Require().True(lastDump.IsDir(), "unable to find last dump dir")
+
+		cmd := exec.Command(path.Join(pgBinPath, "pg_restore"),
+			"-d", fmt.Sprintf("%s dbname=%s", uri, suite.restorationDbName),
+			"-v",
+			path.Join(suite.storageDir, lastDump.Name()),
+		)
+		cmd.Stderr = os.Stderr
+		cmd.Stdout = os.Stdout
+		log.Info().Str("cmd", cmd.String()).Msg("pg_restore stdout and stderr forwarding")
+		err = cmd.Run()
+		suite.Require().NoError(err, "error performing pg_restore")
+	})
 }
 
 func (suite *BackwardCompatibilitySuite) TearDownSuite() {
@@ -148,7 +182,17 @@ func (suite *BackwardCompatibilitySuite) TearDownSuite() {
 		if err := os.RemoveAll(suite.tmpDir); err != nil {
 			log.Warn().Err(err).Msg("error deleting tmp dir")
 		}
+		if suite.conn != nil && suite.restorationDbName != "" {
+			_, err := suite.conn.Exec(context.Background(), fmt.Sprintf("drop database %s", suite.restorationDbName))
+			if err != nil {
+				log.Warn().Err(err).Msg("error droping db")
+			}
+		}
 	} else {
 		log.Debug().Str("dir", suite.tmpDir).Msg("keeping artifacts")
 	}
+	if suite.conn != nil {
+		suite.conn.Close(context.Background())
+	}
+
 }

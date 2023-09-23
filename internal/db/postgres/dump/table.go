@@ -95,6 +95,8 @@ func (t *Table) Entry() (*toc.Entry, error) {
 		Dependencies: dependencies,
 		NDeps:        int32(len(dependencies)),
 		FileName:     &fileName,
+		Defn:         new(string),
+		DropStmt:     new(string),
 	}, nil
 }
 

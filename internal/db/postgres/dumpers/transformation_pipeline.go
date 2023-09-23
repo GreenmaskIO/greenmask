@@ -72,7 +72,7 @@ func (wt *TransformationPipeline) Dump(ctx context.Context, data []byte) (err er
 }
 
 func (wt *TransformationPipeline) CompleteDump() (err error) {
-	res := make([]byte, 4)
+	res := make([]byte, 0, 4)
 	res = append(res, pgcopy.DefaultCopyTerminationSeq...)
 	res = append(res, '\n', '\n')
 	_, err = wt.w.Write(res)

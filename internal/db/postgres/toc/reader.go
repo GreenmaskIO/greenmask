@@ -115,7 +115,10 @@ func (r *Reader) readInt() (int32, error) {
 
 func (r *Reader) readByte() (byte, error) {
 	res, err := r.readBytes(1)
-	return res[0], err
+	if err != nil {
+		return 0, err
+	}
+	return res[0], nil
 }
 
 func (r *Reader) readBytes(length int) ([]byte, error) {

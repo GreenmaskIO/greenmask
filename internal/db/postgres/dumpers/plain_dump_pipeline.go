@@ -2,6 +2,7 @@ package dumpers
 
 import (
 	"context"
+	"fmt"
 	"github.com/greenmaskio/greenmask/internal/db/postgres/pgcopy"
 	"io"
 
@@ -30,8 +31,12 @@ func (pdp *PlainDumpPipeline) Dump(ctx context.Context, data []byte) (err error)
 }
 
 func (pdp *PlainDumpPipeline) CompleteDump() (err error) {
-	res := make([]byte, 4)
+	res := make([]byte, 0, 4)
 	res = append(res, pgcopy.DefaultCopyTerminationSeq...)
 	res = append(res, '\n', '\n')
+	_, err = pdp.w.Write(res)
+	if err != nil {
+		return NewDumpError(pdp.table.Schema, pdp.table.Name, pdp.line, fmt.Errorf("error end of dump symbols: %w", err))
+	}
 	return nil
 }

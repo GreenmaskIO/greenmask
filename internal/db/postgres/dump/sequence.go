@@ -31,7 +31,6 @@ func (s *Sequence) Entry() (*toc.Entry, error) {
 		isCalled = "false"
 	}
 	statement := fmt.Sprintf(`SELECT pg_catalog.setval('"%s"."%s"', %d, %s)`, s.Schema, s.Name, s.LastValue, isCalled)
-	fileName := ""
 
 	name := fmt.Sprintf(`"%s"`, s.Name)
 	schema := fmt.Sprintf(`"%s"`, s.Schema)
@@ -53,6 +52,7 @@ func (s *Sequence) Entry() (*toc.Entry, error) {
 		Defn:         &statement,
 		Dependencies: s.Dependencies,
 		NDeps:        int32(len(s.Dependencies)),
-		FileName:     &fileName,
+		FileName:     new(string),
+		DropStmt:     new(string),
 	}, nil
 }
