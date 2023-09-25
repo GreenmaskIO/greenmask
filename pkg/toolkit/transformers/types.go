@@ -16,6 +16,8 @@ var (
 type Type struct {
 	// Oid - pg_type.oid
 	Oid Oid
+	// Chain - list of inherited types till the main base type
+	Chain []Oid
 	// Schema - type schema name
 	Schema string
 	// Name - (pg_type.typname) type name

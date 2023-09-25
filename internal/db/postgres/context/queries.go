@@ -38,6 +38,49 @@ var (
 		ORDER BY a.attnum
 	`
 
+	CustomTypesWithTypeChainQuery = `
+		with RECURSIVE custom_types AS (
+			-- Collecting all used custom types
+			select pt.oid,
+				   pt.typbasetype,
+				   1 as num
+			from pg_type pt
+					 JOIN pg_catalog.pg_namespace pn on pt.typnamespace = pn.oid
+			WHERE TRUE
+		--       AND pt.typtype in ('b', 'd', 'e', 'r')
+			  AND pn.nspname NOT IN ('pg_catalog', 'information_schema')
+			  AND exists(SELECT FROM pg_catalog.pg_attribute pa WHERE pa.atttypid = pt.oid)
+			UNION
+			-- trying to find the whole types inheritance chain
+			SELECT ct.oid,
+				   pt.typbasetype,
+				   num + 1 as num
+			FROM custom_types ct
+					 JOIN pg_type pt ON ct.typbasetype = pt.oid)
+		SELECT ct.oid,
+			   array_agg(ct.typbasetype ORDER BY num) FILTER ( WHERE ct.typbasetype != 0 ) AS type_chain
+		FROM custom_types ct
+		GROUP BY ct.oid;
+	`
+
+	CustomTypeDescribeQuery = `
+		SELECT pt.oid::TEXT::INT         AS oid,
+			   pn.nspname                AS schema,
+			   pt.typname                AS name,
+			   pt.typlen                 AS len,
+			   pt.typtype                AS "type",
+			   pt.typrelid::TEXT::INT    AS composed_relation_oid,
+			   pt.typelem::TEXT::INT     AS element_type_oid,
+			   pt.typarray::TEXT::INT    AS array_type_oid,
+			   pt.typnotnull             AS not_null,
+			   pt.typbasetype::TEXT::INT AS base_type_oid,
+			   pc.oid NOTNULL            AS has_domain_constraint
+		FROM pg_catalog.pg_type pt
+				 JOIN pg_catalog.pg_namespace pn on pt.typnamespace = pn.oid
+				 LEFT JOIN pg_catalog.pg_constraint pc ON pt.oid = pc.contypid
+		WHERE pt.oid = $1;
+	`
+
 	// CustomTypesUsedInTablesQuery - SQL query for listing of all custom types that involved into table definition
 	// TODO: This query must gather dependencies recursively due to the types "inheritance". Rwerite it later.
 	// 	     Otherwise thos query might not find a default Base Type
