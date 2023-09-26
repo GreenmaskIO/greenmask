@@ -11,7 +11,7 @@ import (
 
 func getCustomTypesUsedInTables(ctx context.Context, tx pgx.Tx) ([]*toolkit.Type, error) {
 	var res []*toolkit.Type
-	rows, err := tx.Query(ctx, CustomTypesUsedInTablesQuery)
+	rows, err := tx.Query(ctx, CustomTypesWithTypeChainQuery)
 	if err != nil {
 		return nil, fmt.Errorf("unable execute CustomTypesUsedInTablesQuery: %w", err)
 	}
@@ -22,16 +22,22 @@ func getCustomTypesUsedInTables(ctx context.Context, tx pgx.Tx) ([]*toolkit.Type
 	for rows.Next() {
 		t := &toolkit.Type{}
 		var hasDomainConstraint bool
-		if err = rows.Scan(&t.Oid, &t.Schema, &t.Name, &t.Length, &t.Kind,
+		err = rows.Scan(&t.Oid, &t.Chain, &t.Schema, &t.Name, &t.Length, &t.Kind,
 			&t.ComposedRelation, &t.ElementType, &t.ArrayType, &t.NotNull, &t.BaseType,
-			&hasDomainConstraint,
-		); err != nil {
+			&hasDomainConstraint)
+		if err != nil {
 			return nil, fmt.Errorf("cannot scan CustomTypesUsedInTablesQuery: %w", err)
 		}
 		if hasDomainConstraint {
 			domainsWithConstraint = append(domainsWithConstraint, t)
 		}
-		res = append(res, t)
+		if t.Kind == 'd' && len(t.Chain) > 0 {
+			t.UseType = t.Chain[len(t.Chain)-1]
+		}
+		_, exists := tx.Conn().TypeMap().TypeForOID(uint32(t.Oid))
+		if !exists {
+			res = append(res, t)
+		}
 	}
 
 	// Assign domain constraints

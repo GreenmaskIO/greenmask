@@ -40,6 +40,8 @@ type Type struct {
 	BaseType Oid
 	//Check - definition of check constraint
 	Check *Check
+	// UseTypes - defines base type decoder and encoder that might be used
+	UseType Oid
 }
 
 func (t *Type) IsAffected(p *Parameter) (w ValidationWarnings) {
