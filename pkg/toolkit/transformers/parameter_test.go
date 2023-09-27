@@ -1,10 +1,11 @@
 package transformers
 
 import (
-	"github.com/greenmaskio/greenmask/internal/domains"
 	"slices"
 	"testing"
 	"time"
+
+	"github.com/greenmaskio/greenmask/internal/domains"
 
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/stretchr/testify/assert"
@@ -67,7 +68,7 @@ func TestParameter_Parse_simple(t *testing.T) {
 		"simple_param": []byte("1"),
 	}
 
-	warnings, err := p1.Parse(driver, rawParams, nil)
+	warnings, err := p1.Parse(driver, rawParams, nil, nil)
 	require.NoError(t, err)
 	assert.Empty(t, warnings)
 	var expected = 1
@@ -97,7 +98,7 @@ func TestParameter_Parse_with_allowed_pg_types(t *testing.T) {
 			AllowedColumnTypes: []string{"date", "timestamp", "timestamptz"},
 		})
 
-	warnings, err := p1.Parse(driver, rawParams, nil)
+	warnings, err := p1.Parse(driver, rawParams, nil, nil)
 	require.NoError(t, err)
 	assert.Empty(t, warnings)
 	var expected = "created_at"
@@ -109,7 +110,7 @@ func TestParameter_Parse_with_allowed_pg_types(t *testing.T) {
 		"column": []byte("id"),
 	}
 
-	warnings, err = p1.Parse(driver, rawParams, nil)
+	warnings, err = p1.Parse(driver, rawParams, nil, nil)
 	require.NoError(t, err)
 	assert.NotEmpty(t, warnings)
 	assert.True(t, slices.ContainsFunc(warnings, func(warning *ValidationWarning) bool {
@@ -135,7 +136,7 @@ func TestParameter_Parse_with_linked_parameter(t *testing.T) {
 	).SetRequired(true).
 		SetIsColumn(NewColumnProperties())
 
-	warnings, err := columnParam.Parse(driver, rawParams, nil)
+	warnings, err := columnParam.Parse(driver, rawParams, nil, nil)
 	require.NoError(t, err)
 	assert.Empty(t, warnings)
 
@@ -147,7 +148,7 @@ func TestParameter_Parse_with_linked_parameter(t *testing.T) {
 	).SetRequired(true).
 		SetLinkParameter("column")
 
-	warnings, err = linkedParam.Parse(driver, rawParams, map[string]*Parameter{"column": columnParam})
+	warnings, err = linkedParam.Parse(driver, rawParams, map[string]*Parameter{"column": columnParam}, nil)
 	require.NoError(t, err)
 	assert.Empty(t, warnings)
 	res := time.Time{}

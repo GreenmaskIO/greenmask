@@ -7,13 +7,14 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/greenmaskio/greenmask/internal/db/postgres/storage"
 	"io"
 	"os"
 	"path"
 	"regexp"
 	"strconv"
 	"time"
+
+	"github.com/greenmaskio/greenmask/internal/db/postgres/storage"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/rs/zerolog/log"
@@ -457,7 +458,7 @@ func (r *Restore) parseTextList(f *os.File) (map[int32]bool, error) {
 	if err != nil {
 		return nil, fmt.Errorf("cannot compile regexp: %s", err)
 	}
-	res := make(map[int32]bool, 0)
+	res := make(map[int32]bool)
 	for {
 		line, isPrefix, err := lr.ReadLine()
 		if err != nil {
@@ -493,7 +494,7 @@ func (r *Restore) parseYamlList(f *os.File) (map[int32]bool, error) {
 	if err := yaml.NewDecoder(f).Decode(meta); err != nil {
 		return nil, fmt.Errorf("metadata parsing error: %w", err)
 	}
-	res := make(map[int32]bool, 0)
+	res := make(map[int32]bool)
 	for idx, entry := range meta.Entries {
 		if entry.DumpId == 0 {
 			return nil, fmt.Errorf("broken list file dumpId: must not be 0: entry number %d", idx)
@@ -508,7 +509,7 @@ func (r *Restore) parseJsonList(f *os.File) (map[int32]bool, error) {
 	if err := json.NewDecoder(f).Decode(meta); err != nil {
 		return nil, fmt.Errorf("metadata parsing error: %w", err)
 	}
-	res := make(map[int32]bool, 0)
+	res := make(map[int32]bool)
 	for idx, entry := range meta.Entries {
 		if entry.DumpId == 0 {
 			return nil, fmt.Errorf("broken list file dumpId: must not be 0: entry number %d", idx)
