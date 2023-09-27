@@ -3,7 +3,7 @@ package context
 import (
 	"context"
 	"fmt"
-	"github.com/greenmaskio/greenmask/internal/domains"
+
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/rs/zerolog/log"
@@ -11,6 +11,7 @@ import (
 	"github.com/greenmaskio/greenmask/internal/db/postgres/dump"
 	"github.com/greenmaskio/greenmask/internal/db/postgres/pgdump"
 	transformersUtils "github.com/greenmaskio/greenmask/internal/db/postgres/transformers/utils"
+	"github.com/greenmaskio/greenmask/internal/domains"
 	toolkit "github.com/greenmaskio/greenmask/pkg/toolkit/transformers"
 )
 
@@ -34,7 +35,10 @@ type RuntimeContext struct {
 // TODO: Recheck it is working properly. In a few cases (stages such as parameters building, schema validation) if
 //
 //	warnings are fatal procedure must be terminated immediately due to lack of objects required on the next step
-func NewRuntimeContext(ctx context.Context, tx pgx.Tx, cfg []*domains.Table, r *transformersUtils.TransformerRegistry, opt *pgdump.Options, version int) (*RuntimeContext, error) {
+func NewRuntimeContext(
+	ctx context.Context, tx pgx.Tx, cfg []*domains.Table, r *transformersUtils.TransformerRegistry, opt *pgdump.Options,
+	version int,
+) (*RuntimeContext, error) {
 	typeMap := tx.Conn().TypeMap()
 	types, err := getCustomTypesUsedInTables(ctx, tx)
 	if err != nil {
@@ -44,7 +48,7 @@ func NewRuntimeContext(ctx context.Context, tx pgx.Tx, cfg []*domains.Table, r *
 		tryRegisterCustomTypesV2(typeMap, types)
 	}
 
-	tables, warnings, err := validateAndBuildTablesConfig(ctx, tx, typeMap, cfg, r, version)
+	tables, warnings, err := validateAndBuildTablesConfig(ctx, tx, typeMap, cfg, r, version, types)
 	if err != nil {
 		return nil, fmt.Errorf("cannot validate and build table config: %w", err)
 	}

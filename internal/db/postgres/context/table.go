@@ -5,14 +5,14 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/greenmaskio/greenmask/internal/domains"
-	"github.com/rs/zerolog/log"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/rs/zerolog/log"
 
 	"github.com/greenmaskio/greenmask/internal/db/postgres/dump"
 	transformersUtils "github.com/greenmaskio/greenmask/internal/db/postgres/transformers/utils"
+	"github.com/greenmaskio/greenmask/internal/domains"
 	toolkit "github.com/greenmaskio/greenmask/pkg/toolkit/transformers"
 )
 
@@ -22,7 +22,7 @@ import (
 func validateAndBuildTablesConfig(
 	ctx context.Context, tx pgx.Tx, typeMap *pgtype.Map,
 	cfg []*domains.Table, registry *transformersUtils.TransformerRegistry,
-	version int,
+	version int, types []*toolkit.Type,
 ) (map[toolkit.Oid]*dump.Table, toolkit.ValidationWarnings, error) {
 	tables := make(map[toolkit.Oid]*dump.Table, len(cfg))
 	var warnings toolkit.ValidationWarnings
@@ -54,7 +54,15 @@ func validateAndBuildTablesConfig(
 		// InitTransformation toolkit
 		if len(t.Transformers) > 0 {
 			for _, tc := range t.Transformers {
-				transformer, initWarnings, err := initTransformer(ctx, table, tc, typeMap, registry)
+				transformer, initWarnings, err := initTransformer(ctx, table, tc, typeMap, registry, types)
+				if len(initWarnings) > 0 {
+					for _, w := range initWarnings {
+						// Enriching the table context into meta
+						w.AddMeta("TableSchema", table.Schema).
+							AddMeta("TableName", table.Name).
+							AddMeta("TransformerName", tc.Name)
+					}
+				}
 				if err != nil {
 					return nil, warnings, err
 				}
@@ -91,7 +99,7 @@ func getTable(ctx context.Context, tx pgx.Tx, schema, name string) (*dump.Table,
 			SetMsgf("table %s.%s not found", table.Schema, table.Name).
 			SetSeverity(toolkit.ErrorValidationSeverity).
 			//AddMeta("Severity", TableValidationLevel).
-			AddMeta("SchemaName", table.Schema).
+			AddMeta("Schema", table.Schema).
 			AddMeta("TableName", table.Name),
 		)
 	} else if err != nil {

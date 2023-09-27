@@ -32,7 +32,7 @@ func getCustomTypesUsedInTables(ctx context.Context, tx pgx.Tx) ([]*toolkit.Type
 			domainsWithConstraint = append(domainsWithConstraint, t)
 		}
 		if t.Kind == 'd' && len(t.Chain) > 0 {
-			t.UseType = t.Chain[len(t.Chain)-1]
+			t.RootBuiltInType = t.Chain[len(t.Chain)-1]
 		}
 		_, exists := tx.Conn().TypeMap().TypeForOID(uint32(t.Oid))
 		if !exists {

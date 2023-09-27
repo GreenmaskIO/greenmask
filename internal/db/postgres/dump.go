@@ -5,8 +5,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	storageDto "github.com/greenmaskio/greenmask/internal/db/postgres/storage"
-	"github.com/greenmaskio/greenmask/internal/domains"
 	"os"
 	"path"
 	"sync/atomic"
@@ -21,9 +19,11 @@ import (
 	"github.com/greenmaskio/greenmask/internal/db/postgres/dump"
 	"github.com/greenmaskio/greenmask/internal/db/postgres/dumpers"
 	"github.com/greenmaskio/greenmask/internal/db/postgres/pgdump"
+	storageDto "github.com/greenmaskio/greenmask/internal/db/postgres/storage"
 	"github.com/greenmaskio/greenmask/internal/db/postgres/toc"
 	_ "github.com/greenmaskio/greenmask/internal/db/postgres/transformers"
 	toolkit "github.com/greenmaskio/greenmask/internal/db/postgres/transformers/utils"
+	"github.com/greenmaskio/greenmask/internal/domains"
 	"github.com/greenmaskio/greenmask/internal/storages"
 )
 
@@ -150,9 +150,12 @@ func (d *Dump) buildContextAndValidate(ctx context.Context, tx pgx.Tx) (err erro
 		return fmt.Errorf("unable to build runtime context: %w", err)
 	}
 	// TODO: Implement warnings hook, such as logging and HTTP sender
-	log.Warn().Msg("IMPLEMENT ME: warnings hook, such as logging and HTTP sender")
 	for _, w := range d.context.Warnings {
-		log.Warn().Any("ValidationWarning", w).Msg("")
+		if w.Severity == "error" {
+			log.Error().Any("ValidationWarning", w).Msg("")
+		} else {
+			log.Warn().Any("ValidationWarning", w).Msg("")
+		}
 	}
 	if d.context.IsFatal() {
 		return fmt.Errorf("fatal validation error")

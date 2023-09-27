@@ -3,6 +3,7 @@ package transformers
 import (
 	"context"
 	"fmt"
+
 	"github.com/greenmaskio/greenmask/internal/domains"
 )
 
@@ -16,7 +17,9 @@ const (
 // NewTransformerFunc - make new transformer. This function receives driver for making some steps for validation or
 // anything else. parameters - the map of the parsed parameters, for get an appropriate parameter find it
 // in the map by the name. All those parameters has been defined in the Definition object of the transformer
-type NewTransformerFunc func(ctx context.Context, driver *Driver, parameters map[string]*Parameter) (Transformer, ValidationWarnings, error)
+type NewTransformerFunc func(ctx context.Context, driver *Driver, parameters map[string]*Parameter) (
+	Transformer, ValidationWarnings, error,
+)
 
 type Definition struct {
 	Properties      *TransformerProperties `json:"properties"`
@@ -25,8 +28,10 @@ type Definition struct {
 	SchemaValidator SchemaValidationFunc   `json:"-"`
 }
 
-func NewDefinition(properties *TransformerProperties, newTransformerFunc NewTransformerFunc,
-	parameters ...*Parameter) *Definition {
+func NewDefinition(
+	properties *TransformerProperties, newTransformerFunc NewTransformerFunc,
+	parameters ...*Parameter,
+) *Definition {
 	return &Definition{
 		Properties:      properties,
 		New:             newTransformerFunc,
@@ -67,27 +72,27 @@ func (d *Definition) parseParameters(
 
 	var totalWarnings ValidationWarnings
 	// Column parameters parsing
-	var columnParmsToSkip = make(map[string]struct{})
+	var columnParamsToSkip = make(map[string]struct{})
 	for _, p := range columnParameters {
-		warnings, err := p.Parse(driver, rawParams, nil)
+		warnings, err := p.Parse(driver, rawParams, nil, types)
 		if err != nil {
 			return nil, nil, fmt.Errorf("parameter %s parsing error: %w", p.Name, err)
 		}
 		if len(warnings) > 0 {
 			totalWarnings = append(totalWarnings, warnings...)
-			columnParmsToSkip[p.Name] = struct{}{}
+			columnParamsToSkip[p.Name] = struct{}{}
 		}
 	}
 	// Common parameters parsing
 	for _, p := range commonParameters {
-		if _, ok := columnParmsToSkip[p.LinkParameter]; p.LinkParameter != "" && ok {
+		if _, ok := columnParamsToSkip[p.LinkParameter]; p.LinkParameter != "" && ok {
 			totalWarnings = append(totalWarnings, NewValidationWarning().
 				AddMeta("ParameterName", p.Name).
 				SetSeverity(WarningValidationSeverity).
 				SetMsg("parameter skipping due to the error in the related parameter parsing"))
 			continue
 		}
-		warnings, err := p.Parse(driver, rawParams, columnParameters)
+		warnings, err := p.Parse(driver, rawParams, columnParameters, types)
 		if err != nil {
 			return nil, nil, fmt.Errorf("parameter %s parsing error: %w", p.Name, err)
 		}
@@ -98,7 +103,9 @@ func (d *Definition) parseParameters(
 	return totalWarnings, params, nil
 }
 
-func (d *Definition) Instance(ctx context.Context, driver *Driver, rawParams map[string]domains.ParamsValue, types []*Type) (Transformer, ValidationWarnings, error) {
+func (d *Definition) Instance(
+	ctx context.Context, driver *Driver, rawParams map[string]domains.ParamsValue, types []*Type,
+) (Transformer, ValidationWarnings, error) {
 	// Parse parameters and get the pgcopy of parsed
 	parametersWarnings, params, err := d.parseParameters(driver, rawParams, types)
 	if err != nil {

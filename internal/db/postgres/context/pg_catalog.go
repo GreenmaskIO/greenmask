@@ -21,7 +21,9 @@ const (
 
 // TODO: Rewrite it using gotemplate
 
-func getDumpObjects(ctx context.Context, tx pgx.Tx, options *pgdump.Options, config map[tookit.Oid]*dump.Table) ([]dump.Entry, error) {
+func getDumpObjects(
+	ctx context.Context, tx pgx.Tx, options *pgdump.Options, config map[tookit.Oid]*dump.Table,
+) ([]dump.Entry, error) {
 
 	// Building relation search query using regexp adaptation rules and pre-defined query templates
 	// TODO: Refactor it to gotemplate
@@ -101,7 +103,7 @@ func getDumpObjects(ctx context.Context, tx pgx.Tx, options *pgdump.Options, con
 
 			dataObjects = append(dataObjects, table)
 		default:
-			return nil, fmt.Errorf("unknown relkind \"%s\"", relKind)
+			return nil, fmt.Errorf("unknown relkind \"%c\"", relKind)
 		}
 	}
 
@@ -205,8 +207,10 @@ func renderForeignDataCond(ss []string, defaultCond string) (string, error) {
 	return defaultCond, nil
 }
 
-func BuildTableSearchQuery(includeTable, excludeTable, excludeTableData,
-	includeForeignData, includeSchema, excludeSchema []string) (string, error) {
+func BuildTableSearchQuery(
+	includeTable, excludeTable, excludeTableData,
+	includeForeignData, includeSchema, excludeSchema []string,
+) (string, error) {
 
 	tableInclusionCond, err := renderRelationCond(includeTable, trueCond)
 	if err != nil {

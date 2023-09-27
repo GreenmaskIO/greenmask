@@ -26,3 +26,27 @@ create table typetest.test_int
 INSERT INTO typetest.test_int
 SELECT
 FROM generate_series(1, 100000);
+
+
+CREATE DOMAIN us_postal_code AS TEXT
+    CHECK (
+        VALUE ~ '^\d{5}$'
+    OR VALUE ~ '^\d{5}-\d{4}$'
+    );
+CREATE DOMAIN us_postal_code_v2 AS us_postal_code;
+
+
+ALTER TABLE bookings.flights ADD COLUMN post_code us_postal_code_v2 DEFAULT '12345' NOT NULL ;
+
+CREATE DOMAIN int_dom AS INT
+    CHECK ( VALUE > 10 AND VALUE < 100);
+
+CREATE DOMAIN int_dom_v2 AS int_dom;
+
+ALTER TABLE bookings.flights ADD COLUMN test_dom int_dom_v2 DEFAULT 11 NOT NULL ;
+
+select * from bookings.flights;
+
+
+DROP DATABASE demo_restore;
+CREATE DATABASE demo_restore;

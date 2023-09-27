@@ -3,12 +3,14 @@ package transformers
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/greenmaskio/greenmask/internal/domains"
 	"reflect"
 	"slices"
 	"time"
 
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/pkg/errors"
+
+	"github.com/greenmaskio/greenmask/internal/domains"
 )
 
 type Unmarshaller func(parameter *Parameter, tableDriver *Driver, src []byte) (any, error)
@@ -165,7 +167,10 @@ func NewParameter(name string, description string, expectedType any, defaultValu
 }
 
 // Parse - parse received params from the config using table definition. dest parameter must be pointer
-func (p *Parameter) Parse(driver *Driver, params map[string]domains.ParamsValue, columnParams map[string]*Parameter) (ValidationWarnings, error) {
+func (p *Parameter) Parse(
+	driver *Driver, params map[string]domains.ParamsValue, columnParams map[string]*Parameter,
+	types []*Type,
+) (ValidationWarnings, error) {
 	p.value = nil
 	// Check allowed pgTypes exists
 	if p.ColumnProperties != nil {
@@ -298,20 +303,45 @@ func (p *Parameter) Parse(driver *Driver, params map[string]domains.ParamsValue,
 					AddMeta("ParameterName", p.Name),
 			}, nil
 		}
-		pgType, _ := driver.TypeMap.TypeForOID(uint32(column.TypeOid))
-		// Check allowed types. If len(AllowedColumnTypes) == 0 then any type is allowed
-		if p.ColumnProperties != nil &&
-			len(p.ColumnProperties.AllowedColumnTypes) > 0 &&
-			!slices.Contains(p.ColumnProperties.AllowedColumnTypes, pgType.Name) {
+
+		pgType, ok := driver.TypeMap.TypeForOID(uint32(column.TypeOid))
+		if !ok {
 			return ValidationWarnings{
 				NewValidationWarning().
 					SetSeverity(ErrorValidationSeverity).
-					SetMsg("unsupported column type").
+					SetMsg("unsupported column type: type is not found").
 					AddMeta("ColumnName", *columnName).
-					AddMeta("ColumnType", pgType.Name).
+					AddMeta("TypeName", pgType.Name).
 					AddMeta("AllowedDbTypes", p.ColumnProperties.AllowedColumnTypes).
 					AddMeta("parameterName", p.Name),
 			}, nil
+		}
+
+		idx := slices.IndexFunc(types, func(t *Type) bool {
+			return t.Oid == column.TypeOid
+		})
+		var t *Type
+		var pgRootType *pgtype.Type
+		if idx != -1 {
+			t = types[idx]
+			pgRootType, _ = driver.TypeMap.TypeForOID(uint32(t.RootBuiltInType))
+		}
+
+		if p.ColumnProperties != nil && len(p.ColumnProperties.AllowedColumnTypes) > 0 {
+
+			if !slices.Contains(p.ColumnProperties.AllowedColumnTypes, pgType.Name) &&
+				!(pgRootType != nil && slices.Contains(p.ColumnProperties.AllowedColumnTypes, pgRootType.Name)) {
+				return ValidationWarnings{
+					NewValidationWarning().
+						SetSeverity(ErrorValidationSeverity).
+						SetMsg("unsupported column type").
+						AddMeta("ColumnName", *columnName).
+						AddMeta("ColumnType", pgType.Name).
+						AddMeta("AllowedDbTypes", p.ColumnProperties.AllowedColumnTypes).
+						AddMeta("parameterName", p.Name),
+				}, nil
+			}
+
 		}
 		p.Column = column
 	}
