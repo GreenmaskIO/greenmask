@@ -5,11 +5,11 @@ type TransformerProperties struct {
 	Description        string             `json:"description"`
 	TransformationType TransformationType `json:"transformationType,omitempty"`
 	Extended           map[string]any     `json:"extended,omitempty"`
-	//Validate           bool               `json:"validate,omitempty"`
-	//IsCustom           bool               `json:"isCustom,omitempty"`
 }
 
-func MustNewTransformerProperties(name, description string, transformationType TransformationType) *TransformerProperties {
+func MustNewTransformerProperties(
+	name, description string, transformationType TransformationType,
+) *TransformerProperties {
 	p, err := NewTransformerProperties(name, description, transformationType)
 	if err != nil {
 		panic(err.Error())
@@ -17,7 +17,9 @@ func MustNewTransformerProperties(name, description string, transformationType T
 	return p
 }
 
-func NewTransformerProperties(name, description string, transformationType TransformationType) (*TransformerProperties, error) {
+func NewTransformerProperties(name, description string, transformationType TransformationType) (
+	*TransformerProperties, error,
+) {
 	if err := validateTransformation(transformationType); err != nil {
 		return nil, err
 	}

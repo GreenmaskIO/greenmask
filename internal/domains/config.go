@@ -1,8 +1,9 @@
 package domains
 
 import (
-	"gopkg.in/yaml.v3"
 	"sync"
+
+	"gopkg.in/yaml.v3"
 
 	"github.com/greenmaskio/greenmask/internal/db/postgres/pgdump"
 	"github.com/greenmaskio/greenmask/internal/db/postgres/pgrestore"
@@ -74,9 +75,16 @@ func (pv ParamsValue) MarshalYAML() (interface{}, error) {
 	return res, nil
 }
 
+type TransformerSettings struct {
+	ColumnsTypeOverride        map[string]string `mapstructure:"columns_type_override" yaml:"columns_type_override"`
+	NoValidateSchema           bool              `mapstructure:"no_validate_schema" yaml:"no_validate_schema"`
+	ResolvedValidationWarnings []string          `mapstructure:"resolved_validation_warnings" yaml:"resolved_validation_warnings"`
+}
+
 type TransformerConfig struct {
-	Name   string                 `mapstructure:"name" yaml:"name"`
-	Params map[string]ParamsValue `mapstructure:"params" yaml:"params"`
+	Name     string                 `mapstructure:"name" yaml:"name"`
+	Settings TransformerSettings    `mapstructure:"settings" yaml:"settings"`
+	Params   map[string]ParamsValue `mapstructure:"params" yaml:"params"`
 }
 
 type Table struct {

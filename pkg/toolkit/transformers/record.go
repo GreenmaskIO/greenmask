@@ -6,8 +6,6 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-// TODO: Need refactoring you should port that implementation to [][]bytes once it COPY parser is implemented
-
 type Tuple map[string]*Value
 
 type Record struct {
@@ -29,9 +27,6 @@ func (r *Record) GetTuple() (Tuple, error) {
 	if len(r.tuple) == len(r.driver.Table.Columns) {
 		return r.tuple, nil
 	}
-	//if len(r.RawData) != len(r.driver.Table.Columns) {
-	//	return nil, fmt.Errorf("wrong rawData length expected %d but got %d", len(r.driver.Table.Columns), len(r.RawData))
-	//}
 
 	for _, c := range r.driver.Table.Columns {
 		if _, ok := r.tuple[c.Name]; !ok {

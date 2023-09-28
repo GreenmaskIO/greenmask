@@ -91,6 +91,7 @@ func (d *Driver) ScanAttr(name string, src []byte, dest any) error {
 	}
 	return nil
 }
+
 func (d *Driver) DecodeAttr(name string, src []byte) (any, error) {
 	pgType, ok := d.columnTypes[name]
 	if !ok {

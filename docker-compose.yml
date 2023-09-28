@@ -111,7 +111,7 @@ services:
       FILE_DUMP: "demo-small-en.zip"
       TMP_DIR: "/tmp/schema"
     volumes:
-      - "/Users/vadim/tmp/pg_dump_test/schema:/tmp/schema"
+      - "/tmp/greenmask_tests:/tmp/schema"
     build:
       context: docker/filldb
     depends_on:
