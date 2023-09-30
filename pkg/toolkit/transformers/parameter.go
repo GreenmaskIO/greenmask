@@ -314,7 +314,7 @@ func (p *Parameter) Parse(
 					AddMeta("ColumnName", *columnName).
 					AddMeta("TypeName", pgType.Name).
 					AddMeta("AllowedDbTypes", p.ColumnProperties.AllowedTypes).
-					AddMeta("parameterName", p.Name),
+					AddMeta("ParameterName", p.Name),
 			}, nil
 		}
 
@@ -325,13 +325,35 @@ func (p *Parameter) Parse(
 		var pgRootType *pgtype.Type
 		if idx != -1 {
 			t = types[idx]
-			pgRootType, _ = driver.TypeMap.TypeForOID(uint32(t.RootBuiltInType))
+			pgRootType, ok = driver.TypeMap.TypeForOID(uint32(t.RootBuiltInType))
+			if !ok {
+				return nil, fmt.Errorf("unknown root type %d", t.RootBuiltInType)
+			}
 		}
 
 		if p.ColumnProperties != nil && len(p.ColumnProperties.AllowedTypes) > 0 {
 
+			// Get overriden type if exists
+			var overriddenPgType *pgtype.Type
+			name, ok := driver.columnTypeOverrides[column.Name]
+			if ok {
+				overriddenPgType, ok = driver.TypeMap.TypeForName(name)
+				if !ok {
+					return ValidationWarnings{
+						NewValidationWarning().
+							SetSeverity(ErrorValidationSeverity).
+							SetMsg("unknown overridden type").
+							AddMeta("ColumnName", *columnName).
+							AddMeta("OverriddenTypeName", name).
+							AddMeta("ParameterName", p.Name),
+					}, nil
+				}
+			}
+
+			// Check that one of original column type or root base type or overridden type is suitable for allowed types
 			if !slices.Contains(p.ColumnProperties.AllowedTypes, pgType.Name) &&
-				!(pgRootType != nil && slices.Contains(p.ColumnProperties.AllowedTypes, pgRootType.Name)) {
+				!(pgRootType != nil && slices.Contains(p.ColumnProperties.AllowedTypes, pgRootType.Name)) &&
+				!(overriddenPgType != nil && slices.Contains(p.ColumnProperties.AllowedTypes, overriddenPgType.Name)) {
 				return ValidationWarnings{
 					NewValidationWarning().
 						SetSeverity(ErrorValidationSeverity).
@@ -339,7 +361,7 @@ func (p *Parameter) Parse(
 						AddMeta("ColumnName", *columnName).
 						AddMeta("ColumnType", pgType.Name).
 						AddMeta("AllowedDbTypes", p.ColumnProperties.AllowedTypes).
-						AddMeta("parameterName", p.Name),
+						AddMeta("ParameterName", p.Name),
 				}, nil
 			}
 

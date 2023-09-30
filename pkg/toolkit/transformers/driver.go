@@ -24,9 +24,12 @@ type Driver struct {
 	columnEncodePlans map[string]pgtype.EncodePlan
 	// columnScanPlan - cached scan plans for table
 	columnScanPlan map[string]pgtype.ScanPlan
+	// columnTypeOverrides - map of column type replacements. For instance replace original type
+	// INT2 to TEXT for column "data" than in map will be {"data": "text"}
+	columnTypeOverrides map[string]string
 }
 
-func NewDriver(typeMap *pgtype.Map, table *Table) (*Driver, error) {
+func NewDriver(typeMap *pgtype.Map, table *Table, columnTypeOverrides map[string]string) (*Driver, error) {
 	columnTypes := make(map[string]*pgtype.Type, len(table.Columns))
 	columnMap := make(map[string]*Column, len(table.Columns))
 	attrIdxMap := make(map[string]int, len(table.Columns))
@@ -34,19 +37,31 @@ func NewDriver(typeMap *pgtype.Map, table *Table) (*Driver, error) {
 		columnMap[c.Name] = c
 		attrIdxMap[c.Name] = idx
 		pgType, ok := typeMap.TypeForOID(uint32(c.TypeOid))
+		if overriddenType, ok := columnTypeOverrides[c.Name]; ok {
+			pgType, ok = typeMap.TypeForName(overriddenType)
+			if !ok {
+				return nil, fmt.Errorf("overriden type %s does not exist", overriddenType)
+			}
+		}
+
 		if !ok {
 			return nil, fmt.Errorf("cannot match pgtype for column %s with type %d", c.Name, c.TypeOid)
 		}
 		columnTypes[c.Name] = pgType
 	}
 
+	if columnTypeOverrides == nil {
+		columnTypeOverrides = make(map[string]string)
+	}
+
 	pc := &Driver{
-		TypeMap:           typeMap,
-		Table:             table,
-		columnTypes:       columnTypes,
-		ColumnMap:         columnMap,
-		AttrIdxMap:        attrIdxMap,
-		columnEncodePlans: make(map[string]pgtype.EncodePlan, len(table.Columns)),
+		TypeMap:             typeMap,
+		Table:               table,
+		columnTypes:         columnTypes,
+		ColumnMap:           columnMap,
+		AttrIdxMap:          attrIdxMap,
+		columnEncodePlans:   make(map[string]pgtype.EncodePlan, len(table.Columns)),
+		columnTypeOverrides: columnTypeOverrides,
 	}
 	return pc, nil
 }
@@ -58,6 +73,7 @@ func (d *Driver) EncodeAttr(name string, src any, buf []byte) ([]byte, error) {
 		if !ok {
 			return nil, fmt.Errorf("unoknown column %s", name)
 		}
+
 		encodePlan = d.TypeMap.PlanEncode(pgType.OID, pgx.TextFormatCode, src)
 		if encodePlan == nil {
 			return nil, errors.New("cannot find encode plan")
@@ -76,10 +92,19 @@ func (d *Driver) ScanAttr(name string, src []byte, dest any) error {
 	var planScan pgtype.ScanPlan
 	planScan, ok := d.columnScanPlan[name]
 	if !ok {
-		pgType, ok := d.columnTypes[name]
-		if !ok {
-			return fmt.Errorf("unknown column %s", name)
+		var pgType *pgtype.Type
+		if overriddenType, ok := d.columnTypeOverrides[name]; ok {
+			pgType, ok = d.columnTypes[overriddenType]
+			if !ok {
+				return fmt.Errorf("overriden type %s does not exist", overriddenType)
+			}
+		} else {
+			pgType, ok = d.columnTypes[name]
+			if !ok {
+				return fmt.Errorf("unoknown column %s", name)
+			}
 		}
+
 		planScan = pgType.Codec.PlanScan(d.TypeMap, pgType.OID, pgx.TextFormatCode, dest)
 		if planScan == nil {
 			return fmt.Errorf("cannot find scanner for the type")

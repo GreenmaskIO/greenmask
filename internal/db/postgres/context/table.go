@@ -51,10 +51,16 @@ func validateAndBuildTablesConfig(
 		}
 		table.Columns = columns
 
+		driver, err := toolkit.NewDriver(typeMap, table.Table, t.ColumnsTypeOverride)
+		if err != nil {
+			return nil, nil, fmt.Errorf("unnable to initialise driver: %w", err)
+		}
+		table.Driver = driver
+
 		// InitTransformation toolkit
 		if len(t.Transformers) > 0 {
 			for _, tc := range t.Transformers {
-				transformer, initWarnings, err := initTransformer(ctx, table, tc, typeMap, registry, types)
+				transformer, initWarnings, err := initTransformer(ctx, driver, tc, typeMap, registry, types)
 				if len(initWarnings) > 0 {
 					for _, w := range initWarnings {
 						// Enriching the table context into meta
@@ -70,12 +76,6 @@ func validateAndBuildTablesConfig(
 				table.Transformers = append(table.Transformers, transformer)
 			}
 		}
-
-		driver, err := toolkit.NewDriver(typeMap, table.Table)
-		if err != nil {
-			return nil, nil, fmt.Errorf("unnable to initialise driver: %w", err)
-		}
-		table.Driver = driver
 
 		tables[table.Oid] = table
 	}

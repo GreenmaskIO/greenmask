@@ -63,9 +63,8 @@ type Restore struct {
 }
 
 type TransformerSettings struct {
-	ColumnsTypeOverride        map[string]string `mapstructure:"columns_type_override" yaml:"columns_type_override"`
-	NoValidateSchema           bool              `mapstructure:"no_validate_schema" yaml:"no_validate_schema"`
-	ResolvedValidationWarnings []string          `mapstructure:"resolved_validation_warnings" yaml:"resolved_validation_warnings"`
+	NoValidateSchema           bool     `mapstructure:"no_validate_schema" yaml:"no_validate_schema"`
+	ResolvedValidationWarnings []string `mapstructure:"resolved_validation_warnings" yaml:"resolved_validation_warnings"`
 }
 
 type TransformerConfig struct {
@@ -75,8 +74,9 @@ type TransformerConfig struct {
 }
 
 type Table struct {
-	Schema       string               `mapstructure:"schema" yaml:"schema"`
-	Name         string               `mapstructure:"name" yaml:"name"`
-	Query        string               `mapstructure:"query" yaml:"query"`
-	Transformers []*TransformerConfig `mapstructure:"transformers" yaml:"transformers"`
+	Schema              string               `mapstructure:"schema" yaml:"schema"`
+	Name                string               `mapstructure:"name" yaml:"name"`
+	Query               string               `mapstructure:"query" yaml:"query"`
+	Transformers        []*TransformerConfig `mapstructure:"transformers" yaml:"transformers"`
+	ColumnsTypeOverride map[string]string    `mapstructure:"columns_type_override" yaml:"columns_type_override"`
 }

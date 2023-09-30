@@ -1,7 +1,7 @@
 common:
   pg_bin_path: "/usr/bin/"
-  #  pg_bin_path: "/usr/local/opt/postgresql@15/bin"
-  #  pg_bin_path: "/usr/local/opt/postgresql@16/bin"
+#  pg_bin_path: "/usr/local/opt/postgresql@15/bin"
+#  pg_bin_path: "/usr/local/opt/postgresql@16/bin"
   tmp_dir: "/tmp"
 
 log:
@@ -23,16 +23,18 @@ storage:
 dump:
   pg_dump_options:
     dbname: "host=/run/postgresql user=postgres dbname=demo"
-    #    dbname: "host=localhost user=postgres password=example dbname=demo port=54316"
-    #    dbname: "host=localhost user=postgres password=example dbname=demo port=54315"
+#    dbname: "host=localhost user=postgres password=example dbname=demo port=54316"
+#    dbname: "host=localhost user=postgres password=example dbname=demo port=54315"
     jobs: 10
-    #    exclude-schema: "(\"teSt\"*|test*)"
-    #    table: "test"
+#    exclude-schema: "(\"teSt\"*|test*)"
+#    table: "test"
     load-via-partition-root: true
 
   transformation:
     - schema: "bookings"
       name: "flights"
+      columns_type_override:
+        post_code: "int4"
       transformers:
         - name: "RandomDate"
           params:
@@ -109,8 +111,8 @@ restore:
   pg_restore_options:
     jobs: 10
     dbname: "host=/run/postgresql user=postgres dbname=demo_restore"
-  #    dbname: "host=localhost user=postgres password=example dbname=demo_restore port=54316"
-  #    dbname: "host=localhost user=postgres password=example dbname=demo_restore port=54315"
+#    dbname: "host=localhost user=postgres password=example dbname=demo_restore port=54316"
+#    dbname: "host=localhost user=postgres password=example dbname=demo_restore port=54315"
 
   scripts:
     pre-flight:
