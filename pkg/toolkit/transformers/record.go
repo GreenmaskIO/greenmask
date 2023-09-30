@@ -2,7 +2,6 @@ package transformers
 
 import (
 	"fmt"
-
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
@@ -171,4 +170,66 @@ func (r *Record) encodeValue(c *Column, v any) (res []byte, err error) {
 		}
 	}
 	return res, nil
+}
+
+func (r *Record) GetRawAttributeValue(name string) (*RawValue, error) {
+	var res *RawValue
+	v, ok := r.tuple[name]
+	if ok {
+		idx, ok := r.driver.AttrIdxMap[name]
+		if !ok {
+			return nil, fmt.Errorf("unable to find column by name")
+		}
+		if v.IsNull {
+			res = NewRawValue(nil, true)
+		} else {
+			encodedValue, err := r.encodeValue(r.driver.Table.Columns[idx], v.Value)
+			if err != nil {
+				return nil, fmt.Errorf("unable to encode attr value: %w", err)
+			}
+			res = NewRawValue(encodedValue, false)
+		}
+
+		err := r.Row.SetColumn(idx, res)
+		if err != nil {
+			return nil, fmt.Errorf("error setting column value in RowDriver: %w", err)
+		}
+		delete(r.tuple, name)
+	}
+	return res, nil
+}
+
+func (r *Record) GetRawRecordDto(attributes ...string) (RawRecordDto, error) {
+	res := make(RawRecordDto, len(attributes))
+	if len(attributes) > 0 {
+		for _, name := range attributes {
+			v, err := r.GetRawAttributeValue(name)
+			if err != nil {
+				return nil, fmt.Errorf("error getting raw atribute value: %w", err)
+			}
+			res[name] = NewRawValueDto(string(v.Data), v.IsNull)
+		}
+	} else {
+		for _, c := range r.driver.Table.Columns {
+			v, err := r.GetRawAttributeValue(c.Name)
+			if err != nil {
+				return nil, fmt.Errorf("error getting raw atribute value: %w", err)
+			}
+			res[c.Name] = NewRawValueDto(string(v.Data), v.IsNull)
+		}
+	}
+	return res, nil
+}
+
+func (r *Record) SetRawRecordDto(rrd RawRecordDto) error {
+	for name, value := range rrd {
+		idx, ok := r.driver.AttrIdxMap[name]
+		if !ok {
+			return fmt.Errorf("unable to find column by name")
+		}
+		if err := r.Row.SetColumn(idx, NewRawValue([]byte(value.Data), value.IsNull)); err != nil {
+			return fmt.Errorf("error setting raw atribute value: %w", err)
+		}
+	}
+	return nil
 }

@@ -350,17 +350,30 @@ func (d *Dump) writeMetaData(ctx context.Context, startedAt, completedAt time.Ti
 	return nil
 }
 
-func (d *Dump) BootstrapCustomTransformers(ctx context.Context) error {
+func (d *Dump) BootstrapCustomTransformers(ctx context.Context) (err error) {
 	for _, ctd := range d.config.CustomTransformers {
-		td := &toolkit.Definition{
+		var td *toolkit.Definition
+		if ctd.Name != "" {
+			// Get custom transformer definition from stdout and override received data with config ctd
+			ctdd, err := custom.GetDynamicTransformerDefinition(ctd.Executable, ctd.Args)
+			if err != nil {
+				return fmt.Errorf("error getting dynamic transformer definition: %w", err)
+			}
+			ctd.Name = ctdd.Name
+			ctd.Description = ctdd.Description
+			ctd.Parameters = ctdd.Parameters
+		}
+
+		td = &toolkit.Definition{
 			Properties: &toolkit.TransformerProperties{
 				Name:        ctd.Name,
 				Description: ctd.Description,
 				IsCustom:    true,
 			},
-			New:        custom.ProduceNewCmdTransformerFunction(ctd.Args),
+			New:        custom.ProduceNewCmdTransformerFunction(ctd.Name, ctd.Executable, ctd.Args),
 			Parameters: ctd.Parameters,
 		}
+
 		d.registry.MustRegister(td)
 	}
 	return nil

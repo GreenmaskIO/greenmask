@@ -23,3 +23,15 @@ func NewValue(v any, isNull bool) *Value {
 		IsNull: isNull,
 	}
 }
+
+type RawValueDto struct {
+	Data   string
+	IsNull bool
+}
+
+func NewRawValueDto(data string, isNull bool) *RawValueDto {
+	return &RawValueDto{
+		Data:   data,
+		IsNull: isNull,
+	}
+}

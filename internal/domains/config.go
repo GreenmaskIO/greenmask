@@ -29,12 +29,12 @@ func NewConfig() *Config {
 }
 
 type Config struct {
-	Common             Common                                     `mapstructure:"common" yaml:"common"`
-	Log                LogConfig                                  `mapstructure:"log" yaml:"log"`
-	Storage            StorageConfig                              `mapstructure:"storage" yaml:"storage"`
-	Dump               Dump                                       `mapstructure:"dump" yaml:"dump"`
-	Restore            Restore                                    `mapstructure:"restore" yaml:"restore"`
-	CustomTransformers []transformers.CustomTransformerDefinition `mapstructure:"custom_transformers" yaml:"custom_transformers"`
+	Common             Common                                      `mapstructure:"common" yaml:"common"`
+	Log                LogConfig                                   `mapstructure:"log" yaml:"log"`
+	Storage            StorageConfig                               `mapstructure:"storage" yaml:"storage"`
+	Dump               Dump                                        `mapstructure:"dump" yaml:"dump"`
+	Restore            Restore                                     `mapstructure:"restore" yaml:"restore"`
+	CustomTransformers []*transformers.CustomTransformerDefinition `mapstructure:"custom_transformers" yaml:"custom_transformers"`
 }
 
 type Common struct {

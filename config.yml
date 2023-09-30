@@ -146,9 +146,9 @@ restore:
 custom_transformers:
   - name: "TwoDatesGen"
     description: "Generate diff between two dates"
-    executable: "/usr/bin/true"
+    executable: "echo"
     args:
-      - "arg1"
+      - '{"custom_transformers":[{"name":"TwoDatesGen","description":"Generate diff between two dates","executable":"/usr/bin/true","args":["arg1"],"parameters":[{"name":"column_a","description":"test1","required":true,"is_column":true,"column_properties":{"affected":true,"allowed_types":["date","timestamp","timestamptz"]}},{"name":"column_b","description":"test2","required":true,"is_column":true,"column_properties":{"affected":true,"allowed_types":["date","timestamp","timestamptz"]}}]}]}'
     parameters:
       - name: "column_a"
         description: "test1"
