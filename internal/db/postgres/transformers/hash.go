@@ -5,7 +5,6 @@ import (
 	crand "crypto/rand"
 	"encoding/base64"
 	"fmt"
-	"github.com/greenmaskio/greenmask/internal/domains"
 
 	"golang.org/x/crypto/scrypt"
 
@@ -47,11 +46,13 @@ var HashTransformerDefinition = toolkit.NewDefinition(
 )
 
 type HashTransformer struct {
-	salt       domains.ParamsValue
+	salt       toolkit.ParamsValue
 	columnName string
 }
 
-func NewHashTransformer(ctx context.Context, driver *toolkit.Driver, parameters map[string]*toolkit.Parameter) (toolkit.Transformer, toolkit.ValidationWarnings, error) {
+func NewHashTransformer(
+	ctx context.Context, driver *toolkit.Driver, parameters map[string]*toolkit.Parameter,
+) (toolkit.Transformer, toolkit.ValidationWarnings, error) {
 	p := parameters["column"]
 	var columnName string
 	if err := p.Scan(&columnName); err != nil {
@@ -59,20 +60,20 @@ func NewHashTransformer(ctx context.Context, driver *toolkit.Driver, parameters 
 	}
 
 	var saltStr string
-	var salt domains.ParamsValue
+	var salt toolkit.ParamsValue
 	p = parameters["salt"]
 	if err := p.Scan(&saltStr); err != nil {
 		return nil, nil, fmt.Errorf("unable to parse column param: %w", err)
 	}
 
 	if saltStr == "" {
-		b := make(domains.ParamsValue, saltLength)
+		b := make(toolkit.ParamsValue, saltLength)
 		if _, err := crand.Read(b); err != nil {
 			return nil, nil, err
 		}
 		salt = b
 	} else {
-		salt = domains.ParamsValue(saltStr)
+		salt = toolkit.ParamsValue(saltStr)
 	}
 
 	return &HashTransformer{
@@ -95,7 +96,7 @@ func (ht *HashTransformer) Transform(ctx context.Context, r *toolkit.Record) (*t
 		return r, nil
 	}
 
-	dk, err := scrypt.Key(domains.ParamsValue(originalValue), ht.salt, 32768, 8, 1, 32)
+	dk, err := scrypt.Key(toolkit.ParamsValue(originalValue), ht.salt, 32768, 8, 1, 32)
 	if err != nil {
 		return nil, fmt.Errorf("cannot perform hash calculation: %w", err)
 	}

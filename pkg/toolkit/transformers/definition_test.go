@@ -2,7 +2,6 @@ package transformers
 
 import (
 	"context"
-	"github.com/greenmaskio/greenmask/internal/domains"
 	"testing"
 	"time"
 
@@ -27,7 +26,9 @@ func (tt *TestTransformer) Transform(ctx context.Context, r *Record) (*Record, e
 	return r, nil
 }
 
-func NewTestTransformer(ctx context.Context, driver *Driver, parameters map[string]*Parameter) (Transformer, ValidationWarnings, error) {
+func NewTestTransformer(ctx context.Context, driver *Driver, parameters map[string]*Parameter) (
+	Transformer, ValidationWarnings, error,
+) {
 	return &TestTransformer{
 		p: parameters,
 	}, nil, nil
@@ -76,7 +77,7 @@ func TestDefinition(t *testing.T) {
 	driver, err := NewDriver(typeMap, table)
 	require.NoError(t, err)
 
-	rawParams := map[string]domains.ParamsValue{
+	rawParams := map[string]ParamsValue{
 		"column":  []byte("created_at"),
 		"replace": []byte("2023-08-27 12:08:11.304895"),
 	}

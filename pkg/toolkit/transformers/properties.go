@@ -3,6 +3,7 @@ package transformers
 type TransformerProperties struct {
 	Name               string             `json:"name"`
 	Description        string             `json:"description"`
+	IsCustom           bool               `json:"isCustom"`
 	TransformationType TransformationType `json:"transformationType,omitempty"`
 	Extended           map[string]any     `json:"extended,omitempty"`
 }
@@ -12,7 +13,7 @@ func MustNewTransformerProperties(
 ) *TransformerProperties {
 	p, err := NewTransformerProperties(name, description, transformationType)
 	if err != nil {
-		panic(err.Error())
+		panic(err)
 	}
 	return p
 }

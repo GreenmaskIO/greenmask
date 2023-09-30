@@ -22,9 +22,11 @@ import (
 	storageDto "github.com/greenmaskio/greenmask/internal/db/postgres/storage"
 	"github.com/greenmaskio/greenmask/internal/db/postgres/toc"
 	_ "github.com/greenmaskio/greenmask/internal/db/postgres/transformers"
-	toolkit "github.com/greenmaskio/greenmask/internal/db/postgres/transformers/utils"
+	"github.com/greenmaskio/greenmask/internal/db/postgres/transformers/custom"
+	"github.com/greenmaskio/greenmask/internal/db/postgres/transformers/utils"
 	"github.com/greenmaskio/greenmask/internal/domains"
 	"github.com/greenmaskio/greenmask/internal/storages"
+	toolkit "github.com/greenmaskio/greenmask/pkg/toolkit/transformers"
 )
 
 const MetadataJsonFileName = "metadata.json"
@@ -38,10 +40,10 @@ type Dump struct {
 	tmpDir            string
 	dumpTaskCount     int32
 	allTaskPushed     atomic.Bool
-	config            []*domains.Table
+	config            *domains.Config
 	dataEntries       []*toc.Entry
 	context           *runtimeContext.RuntimeContext
-	registry          *toolkit.TransformerRegistry
+	registry          *utils.TransformerRegistry
 	schemaToc         *toc.Toc
 	resultToc         *toc.Toc
 	dumpedObjectSizes map[int32]storageDto.ObjectSizeStat
@@ -49,14 +51,16 @@ type Dump struct {
 	version           int
 }
 
-func NewDump(binPath string, opt *pgdump.Options, st storages.Storager, cfg []*domains.Table, tmpDir string) *Dump {
+func NewDump(cfg *domains.Config, st storages.Storager, registry *utils.TransformerRegistry) *Dump {
+
 	return &Dump{
-		pgDumpOptions:     opt,
-		pgDump:            pgdump.NewPgDump(binPath),
+		pgDumpOptions:     &cfg.Dump.PgDumpOptions,
+		pgDump:            pgdump.NewPgDump(cfg.Common.PgBinPath),
 		st:                st,
 		config:            cfg,
-		tmpDir:            path.Join(tmpDir, fmt.Sprintf("%d", time.Now().UnixNano())),
+		tmpDir:            path.Join(cfg.Common.TempDirectory, fmt.Sprintf("%d", time.Now().UnixNano())),
 		dumpedObjectSizes: map[int32]storageDto.ObjectSizeStat{},
+		registry:          registry,
 	}
 }
 
@@ -145,7 +149,8 @@ func (d *Dump) startMainTx(ctx context.Context, conn *pgx.Conn) (pgx.Tx, error) 
 }
 
 func (d *Dump) buildContextAndValidate(ctx context.Context, tx pgx.Tx) (err error) {
-	d.context, err = runtimeContext.NewRuntimeContext(ctx, tx, d.config, d.registry, d.pgDumpOptions, d.version)
+	d.context, err = runtimeContext.NewRuntimeContext(ctx, tx, d.config.Dump.Transformation, d.registry,
+		d.pgDumpOptions, d.version)
 	if err != nil {
 		return fmt.Errorf("unable to build runtime context: %w", err)
 	}
@@ -328,7 +333,7 @@ func (d *Dump) mergeAndWriteToc(ctx context.Context, tx pgx.Tx) error {
 
 func (d *Dump) writeMetaData(ctx context.Context, startedAt, completedAt time.Time) error {
 	metadata, err := storageDto.NewMetadata(
-		d.resultToc, d.tocFileSize, startedAt, completedAt, d.config, d.dumpedObjectSizes,
+		d.resultToc, d.tocFileSize, startedAt, completedAt, d.config.Dump.Transformation, d.dumpedObjectSizes,
 	)
 	if err != nil {
 		return fmt.Errorf("unable build metadata: %w", err)
@@ -345,13 +350,32 @@ func (d *Dump) writeMetaData(ctx context.Context, startedAt, completedAt time.Ti
 	return nil
 }
 
+func (d *Dump) BootstrapCustomTransformers(ctx context.Context) error {
+	for _, ctd := range d.config.CustomTransformers {
+		td := &toolkit.Definition{
+			Properties: &toolkit.TransformerProperties{
+				Name:        ctd.Name,
+				Description: ctd.Description,
+				IsCustom:    true,
+			},
+			New:        custom.ProduceNewCmdTransformerFunction(ctd.Args),
+			Parameters: ctd.Parameters,
+		}
+		d.registry.MustRegister(td)
+	}
+	return nil
+}
+
 func (d *Dump) Run(ctx context.Context) (err error) {
 	defer d.prune()
 	startedAt := time.Now()
 
-	d.registry = toolkit.DefaultTransformerRegistry
+	if err := d.BootstrapCustomTransformers(ctx); err != nil {
+		return fmt.Errorf("error bootstraping custom transformers: %w", err)
+	}
+
 	if err != nil {
-		return fmt.Errorf("error building toolkit map: %w", err)
+		return fmt.Errorf("error building utils map: %w", err)
 	}
 
 	dsn, err := d.pgDumpOptions.GetPgDSN()

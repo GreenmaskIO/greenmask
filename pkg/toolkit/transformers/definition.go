@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/greenmaskio/greenmask/internal/domains"
+	"gopkg.in/yaml.v3"
 )
 
 type TransformationType string
@@ -13,6 +13,19 @@ const (
 	AttributeTransformation TransformationType = "attribute"
 	TupleTransformation     TransformationType = "tuple"
 )
+
+type ParamsValue []byte
+
+func (pv ParamsValue) MarshalYAML() (interface{}, error) {
+	var res = map[string]interface{}{}
+	err := yaml.Unmarshal(pv, res)
+	if err != nil {
+		// fallback unmarshalling to string
+		return string(pv), nil
+	}
+
+	return res, nil
+}
 
 // NewTransformerFunc - make new transformer. This function receives driver for making some steps for validation or
 // anything else. parameters - the map of the parsed parameters, for get an appropriate parameter find it
@@ -46,7 +59,7 @@ func (d *Definition) SetSchemaValidator(v SchemaValidationFunc) *Definition {
 }
 
 func (d *Definition) parseParameters(
-	driver *Driver, rawParams map[string]domains.ParamsValue, types []*Type,
+	driver *Driver, rawParams map[string]ParamsValue, types []*Type,
 ) (ValidationWarnings, map[string]*Parameter, error) {
 	if rawParams == nil && len(d.Parameters) > 0 {
 		return ValidationWarnings{
@@ -104,7 +117,7 @@ func (d *Definition) parseParameters(
 }
 
 func (d *Definition) Instance(
-	ctx context.Context, driver *Driver, rawParams map[string]domains.ParamsValue, types []*Type,
+	ctx context.Context, driver *Driver, rawParams map[string]ParamsValue, types []*Type,
 ) (Transformer, ValidationWarnings, error) {
 	// Parse parameters and get the pgcopy of parsed
 	parametersWarnings, params, err := d.parseParameters(driver, rawParams, types)

@@ -9,8 +9,6 @@ import (
 
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/pkg/errors"
-
-	"github.com/greenmaskio/greenmask/internal/domains"
 )
 
 type Unmarshaller func(parameter *Parameter, tableDriver *Driver, src []byte) (any, error)
@@ -22,23 +20,23 @@ const WithoutMaxLength = -1
 type ColumnProperties struct {
 	// Nullable - shows that transformer can produce NULL value for the column. Togather with Affected shows that
 	// this parameter may generate null values and write it in this column. It only plays with Affected
-	Nullable bool `json:"nullable,omitempty"`
+	Nullable bool `mapstructure:"nullable" json:"nullable,omitempty"`
 	// Unique - shows that transformer guarantee that every transformer call the value will be unique. It only plays
 	// with Affected
-	Unique bool `json:"unique,omitempty"`
+	Unique bool `mapstructure:"unique" json:"unique,omitempty"`
 	// Unique - defines max length of the value. It only plays with Affected. Togather with Affected shows
 	// that values will not exceed the length of the column. It only plays with Affected
-	MaxLength int `json:"maxLength,omitempty"`
+	MaxLength int `mapstructure:"max_length" json:"max_length,omitempty"`
 	// Affected - shows assigned column name will be affected after the transformation
-	Affected bool `json:"affected,omitempty"`
-	// AllowedColumnTypes - defines all the allowed column types in textual format. If not assigned (nil) then any
+	Affected bool `mapstructure:"affected" json:"affected,omitempty"`
+	// AllowedTypes - defines all the allowed column types in textual format. If not assigned (nil) then any
 	// of the types is valid
-	// TODO: AllowedColumnTypes cah a problem if we set int and our column is int2, then it cause an error though
-	//		 it is workable case. How to solve subtype or type "aliases" references should be considered ASAP.
+	// TODO: AllowedTypes has a problem if we set int and our column is int2, then it cause an error though
+	//		 it is workable case. Decide how to define subtype or type "aliases" references.
 	//		 Also it has problem with custom type naming because it has schema name and type name. It might be better
 	//		 to describe types with {{ schemaName }}.{{ typeName }}, but then we have to implement types classes
 	//		 (such as textual, digits, etc.)
-	AllowedColumnTypes []string `json:"allowedColumnTypes,omitempty"`
+	AllowedTypes []string `mapstructure:"allowed_types" json:"allowed_types,omitempty"`
 }
 
 func NewColumnProperties() *ColumnProperties {
@@ -64,7 +62,7 @@ func (cp *ColumnProperties) SetMaxLength(v int) *ColumnProperties {
 }
 
 func (cp *ColumnProperties) SetAllowedColumnTypes(v ...string) *ColumnProperties {
-	cp.AllowedColumnTypes = v
+	cp.AllowedTypes = v
 	return cp
 }
 
@@ -78,27 +76,27 @@ func (cp *ColumnProperties) SetAffected(v bool) *ColumnProperties {
 // if transformer has any parameters
 type Parameter struct {
 	// Name - name of the parameter. Must be unique in the whole Transformer parameters slice
-	Name string `json:"name,omitempty"`
+	Name string `mapstructure:"name" json:"name,omitempty"`
 	// Description - description of the parameter. Should contain the brief info about parameter
-	Description string `json:"description,omitempty"`
+	Description string `mapstructure:"description" json:"description,omitempty"`
 	// Required - shows that parameter is required, and we expect we have to receive this value from config.
 	// Event when DefaultValue is defined it will case error
-	Required bool `json:"required,omitempty"`
+	Required bool `mapstructure:"required" json:"required,omitempty"`
 	// IsColumn - shows is this parameter column related. If so ColumnProperties must be defined and assigned
 	// otherwise it may cause an unhandled behaviour
-	IsColumn bool `json:"isColumn,omitempty"`
+	IsColumn bool `mapstructure:"is_column" json:"is_column,omitempty"`
 	// LinkParameter - link with parameter with provided name. This is required if performing raw value encoding
 	// depends on the provided column type and/or relies on the database Driver
-	LinkParameter string `json:"linkParameter,omitempty"`
+	LinkParameter string `mapstructure:"link_parameter" json:"link_parameter,omitempty"`
 	// CastDbType - name of PostgreSQL type that would be used for Decoding raw value to the real go type. Is this
 	// type does not exist will cause an error
-	CastDbType string `json:"castDbType,omitempty"`
+	CastDbType string `mapstructure:"cast_db_type" json:"cast_db_type,omitempty"`
 	// DefaultValue - default value of the parameter. Must be variable pointer and have the same type
 	// as in ExpectedType
-	DefaultValue any `json:"defaultValue,omitempty"`
+	DefaultValue any `mapstructure:"default_value" json:"default_value,omitempty"`
 	// ColumnProperties - detail info about expected column properties that may help to diagnose the table schema
 	// and perform validation procedure Plays only with IsColumn
-	ColumnProperties *ColumnProperties `json:"columnProperties,omitempty"`
+	ColumnProperties *ColumnProperties `mapstructure:"column_properties" json:"column_properties,omitempty"`
 	// Unmarshaller - unmarshal function for the parameter raw data []byte. Using by default json.Unmarshal function
 	Unmarshaller Unmarshaller `json:"-"`
 	// ValueValidator - value validator function that performs assertion and cause an error if it has violations
@@ -168,13 +166,13 @@ func NewParameter(name string, description string, expectedType any, defaultValu
 
 // Parse - parse received params from the config using table definition. dest parameter must be pointer
 func (p *Parameter) Parse(
-	driver *Driver, params map[string]domains.ParamsValue, columnParams map[string]*Parameter,
+	driver *Driver, params map[string]ParamsValue, columnParams map[string]*Parameter,
 	types []*Type,
 ) (ValidationWarnings, error) {
 	p.value = nil
 	// Check allowed pgTypes exists
 	if p.ColumnProperties != nil {
-		for _, at := range p.ColumnProperties.AllowedColumnTypes {
+		for _, at := range p.ColumnProperties.AllowedTypes {
 			_, ok := driver.TypeMap.TypeForName(at)
 			if !ok {
 				return nil, fmt.Errorf("AllowedDbType with name %s is not found", at)
@@ -284,6 +282,9 @@ func (p *Parameter) Parse(
 		}
 		p.value = val
 		p.dynamicParse = true
+	} else if p.IsColumn {
+		res := string(raw)
+		p.value = &res
 	} else {
 		panic("unknown parsing case")
 	}
@@ -312,7 +313,7 @@ func (p *Parameter) Parse(
 					SetMsg("unsupported column type: type is not found").
 					AddMeta("ColumnName", *columnName).
 					AddMeta("TypeName", pgType.Name).
-					AddMeta("AllowedDbTypes", p.ColumnProperties.AllowedColumnTypes).
+					AddMeta("AllowedDbTypes", p.ColumnProperties.AllowedTypes).
 					AddMeta("parameterName", p.Name),
 			}, nil
 		}
@@ -327,17 +328,17 @@ func (p *Parameter) Parse(
 			pgRootType, _ = driver.TypeMap.TypeForOID(uint32(t.RootBuiltInType))
 		}
 
-		if p.ColumnProperties != nil && len(p.ColumnProperties.AllowedColumnTypes) > 0 {
+		if p.ColumnProperties != nil && len(p.ColumnProperties.AllowedTypes) > 0 {
 
-			if !slices.Contains(p.ColumnProperties.AllowedColumnTypes, pgType.Name) &&
-				!(pgRootType != nil && slices.Contains(p.ColumnProperties.AllowedColumnTypes, pgRootType.Name)) {
+			if !slices.Contains(p.ColumnProperties.AllowedTypes, pgType.Name) &&
+				!(pgRootType != nil && slices.Contains(p.ColumnProperties.AllowedTypes, pgRootType.Name)) {
 				return ValidationWarnings{
 					NewValidationWarning().
 						SetSeverity(ErrorValidationSeverity).
 						SetMsg("unsupported column type").
 						AddMeta("ColumnName", *columnName).
 						AddMeta("ColumnType", pgType.Name).
-						AddMeta("AllowedDbTypes", p.ColumnProperties.AllowedColumnTypes).
+						AddMeta("AllowedDbTypes", p.ColumnProperties.AllowedTypes).
 						AddMeta("parameterName", p.Name),
 				}, nil
 			}

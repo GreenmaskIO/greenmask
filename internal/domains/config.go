@@ -3,12 +3,11 @@ package domains
 import (
 	"sync"
 
-	"gopkg.in/yaml.v3"
-
 	"github.com/greenmaskio/greenmask/internal/db/postgres/pgdump"
 	"github.com/greenmaskio/greenmask/internal/db/postgres/pgrestore"
 	"github.com/greenmaskio/greenmask/internal/storages/directory"
 	"github.com/greenmaskio/greenmask/internal/storages/s3"
+	"github.com/greenmaskio/greenmask/pkg/toolkit/transformers"
 )
 
 var (
@@ -30,11 +29,12 @@ func NewConfig() *Config {
 }
 
 type Config struct {
-	Common  Common        `mapstructure:"common" yaml:"common"`
-	Log     LogConfig     `mapstructure:"log" yaml:"log"`
-	Storage StorageConfig `mapstructure:"storage" yaml:"storage"`
-	Dump    Dump          `mapstructure:"dump" yaml:"dump"`
-	Restore Restore       `mapstructure:"restore" yaml:"restore"`
+	Common             Common                                     `mapstructure:"common" yaml:"common"`
+	Log                LogConfig                                  `mapstructure:"log" yaml:"log"`
+	Storage            StorageConfig                              `mapstructure:"storage" yaml:"storage"`
+	Dump               Dump                                       `mapstructure:"dump" yaml:"dump"`
+	Restore            Restore                                    `mapstructure:"restore" yaml:"restore"`
+	CustomTransformers []transformers.CustomTransformerDefinition `mapstructure:"custom_transformers" yaml:"custom_transformers"`
 }
 
 type Common struct {
@@ -62,19 +62,6 @@ type Restore struct {
 	Scripts          map[string][]pgrestore.Script `mapstructure:"scripts" yaml:"scripts"`
 }
 
-type ParamsValue []byte
-
-func (pv ParamsValue) MarshalYAML() (interface{}, error) {
-	var res = map[string]interface{}{}
-	err := yaml.Unmarshal(pv, res)
-	if err != nil {
-		// fallback unmarshalling to string
-		return string(pv), nil
-	}
-
-	return res, nil
-}
-
 type TransformerSettings struct {
 	ColumnsTypeOverride        map[string]string `mapstructure:"columns_type_override" yaml:"columns_type_override"`
 	NoValidateSchema           bool              `mapstructure:"no_validate_schema" yaml:"no_validate_schema"`
@@ -82,9 +69,9 @@ type TransformerSettings struct {
 }
 
 type TransformerConfig struct {
-	Name     string                 `mapstructure:"name" yaml:"name"`
-	Settings TransformerSettings    `mapstructure:"settings" yaml:"settings"`
-	Params   map[string]ParamsValue `mapstructure:"params" yaml:"params"`
+	Name     string                              `mapstructure:"name" yaml:"name"`
+	Settings TransformerSettings                 `mapstructure:"settings" yaml:"settings"`
+	Params   map[string]transformers.ParamsValue `mapstructure:"params" yaml:"params"`
 }
 
 type Table struct {

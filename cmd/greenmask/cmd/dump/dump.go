@@ -3,15 +3,18 @@ package dump
 import (
 	"context"
 	"fmt"
+	"github.com/greenmaskio/greenmask/internal/db/postgres/transformers/utils"
+	"strconv"
+	"time"
+
+	"github.com/rs/zerolog/log"
+	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
+
 	"github.com/greenmaskio/greenmask/internal/db/postgres"
 	pgDomains "github.com/greenmaskio/greenmask/internal/domains"
 	"github.com/greenmaskio/greenmask/internal/storages/builder"
 	"github.com/greenmaskio/greenmask/internal/utils/logger"
-	"github.com/rs/zerolog/log"
-	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
-	"strconv"
-	"time"
 )
 
 var (
@@ -34,10 +37,7 @@ var (
 				log.Fatal().Msg("common.tmp_dir cannot be empty")
 			}
 
-			dump := postgres.NewDump(
-				Config.Common.PgBinPath, &Config.Dump.PgDumpOptions, st, Config.Dump.Transformation,
-				Config.Common.TempDirectory,
-			)
+			dump := postgres.NewDump(Config, st, utils.DefaultTransformerRegistry)
 
 			if err := dump.Run(ctx); err != nil {
 				log.Fatal().Err(err).Msg("cannot make a backup")
