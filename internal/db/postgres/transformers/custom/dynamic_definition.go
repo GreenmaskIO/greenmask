@@ -11,7 +11,7 @@ import (
 )
 
 func GetDynamicTransformerDefinition(executable string, args []string) (*transformers.CustomTransformerDefinition, error) {
-	a := make([]string, 0, len(args))
+	a := make([]string, len(args))
 	copy(a, args)
 	//a = append(a, PrintConfigArgName)
 	cmd := exec.Command(executable, a...)
