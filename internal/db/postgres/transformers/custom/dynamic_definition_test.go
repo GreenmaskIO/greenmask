@@ -1,6 +1,7 @@
 package custom
 
 import (
+	"context"
 	"github.com/greenmaskio/greenmask/pkg/toolkit/transformers"
 	"github.com/stretchr/testify/require"
 	"testing"
@@ -34,7 +35,7 @@ func TestGetDynamicTransformerDefinition(t *testing.T) {
 		},
 	}
 	defStr := `{"name":"TwoDatesGen","description":"Generate diff between two dates","parameters":[{"name":"column_a","description":"test1","required":true,"is_column":true,"column_properties":{"affected":true,"allowed_types":["date","timestamp","timestamptz"]}},{"name":"column_b","description":"test2","required":true,"is_column":true,"column_properties":{"affected":true,"allowed_types":["date","timestamp","timestamptz"]}}]}`
-	res, err := GetDynamicTransformerDefinition("/bin/echo", defStr)
+	res, err := GetDynamicTransformerDefinition(context.Background(), "/bin/echo", defStr)
 	require.NoError(t, err)
 	require.Equal(t, expected.Name, res.Name)
 	require.Equal(t, expected.Description, res.Description)

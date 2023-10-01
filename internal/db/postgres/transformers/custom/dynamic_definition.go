@@ -1,16 +1,18 @@
 package custom
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"github.com/greenmaskio/greenmask/pkg/toolkit/transformers"
 	"github.com/rs/zerolog/log"
+	"golang.org/x/sync/errgroup"
 	"io"
 	"os/exec"
 	"strings"
 )
 
-func GetDynamicTransformerDefinition(executable string, args ...string) (*transformers.CustomTransformerDefinition, error) {
+func GetDynamicTransformerDefinition(ctx context.Context, executable string, args ...string) (*transformers.CustomTransformerDefinition, error) {
 	cmd := exec.Command(executable, args...)
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
@@ -33,11 +35,45 @@ func GetDynamicTransformerDefinition(executable string, args ...string) (*transf
 	if err = cmd.Start(); err != nil {
 		return nil, fmt.Errorf("error running custom transformer: %w", err)
 	}
-	stdoutData, err := io.ReadAll(stdout)
-	stderrData, err := io.ReadAll(stderr)
 
-	if err = cmd.Wait(); err != nil {
-		return nil, fmt.Errorf("error running custom transformer: %w", err)
+	ctx, cancel := context.WithTimeout(ctx, AutoDiscoveryTimeout)
+	defer cancel()
+
+	doneChan := make(chan struct{})
+	var stdoutData, stderrData []byte
+	eg := &errgroup.Group{}
+	eg.Go(func() error {
+		defer close(doneChan)
+		var err error
+		stdoutData, err = io.ReadAll(stdout)
+		if err != nil {
+			return fmt.Errorf("error reading stdout pipe: %w", err)
+		}
+		stderrData, err = io.ReadAll(stderr)
+		if err != nil {
+			return fmt.Errorf("error reading stderr pipe: %w", err)
+		}
+		if err = cmd.Wait(); err != nil {
+			return fmt.Errorf("error running custom transformer: %w", err)
+		}
+		return nil
+	})
+
+	select {
+	case <-doneChan:
+		log.Debug().Msg("transformer auto discovery: exited normally")
+	case <-ctx.Done():
+		if ctx.Err() != nil {
+			log.Warn().Err(err).Msg("error performing autodiscovery")
+		}
+		err = cmd.Process.Kill()
+		if err != nil {
+			log.Warn().Err(err).Msg("error killing atotransformer")
+		}
+	}
+
+	if err = eg.Wait(); err != nil {
+		return nil, fmt.Errorf("error auto discover transformer: %w", err)
 	}
 
 	if len(stderrData) != 0 {

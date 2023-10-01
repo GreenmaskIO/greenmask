@@ -25,8 +25,8 @@ func NewValue(v any, isNull bool) *Value {
 }
 
 type RawValueDto struct {
-	Data   string
-	IsNull bool
+	Data   string `json:"d"`
+	IsNull bool   `json:"n"`
 }
 
 func NewRawValueDto(data string, isNull bool) *RawValueDto {

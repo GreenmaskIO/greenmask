@@ -365,7 +365,7 @@ func (d *Dump) BootstrapCustomTransformers(ctx context.Context) (err error) {
 			args := make([]string, len(ctd.Args))
 			copy(args, ctd.Args)
 			args = append(args, custom.PrintConfigArgName)
-			ctdd, err := custom.GetDynamicTransformerDefinition(ctd.Executable, args...)
+			ctdd, err := custom.GetDynamicTransformerDefinition(ctx, ctd.Executable, args...)
 			if err != nil {
 				return fmt.Errorf("error getting dynamic transformer definition: %w", err)
 			}
@@ -380,7 +380,7 @@ func (d *Dump) BootstrapCustomTransformers(ctx context.Context) (err error) {
 				Description: ctd.Description,
 				IsCustom:    true,
 			},
-			custom.ProduceNewCmdTransformerFunction(ctd.Name, ctd.Executable, ctd.Args),
+			custom.ProduceNewCmdTransformerFunction(ctd),
 			ctd.Parameters...,
 		)
 
@@ -523,7 +523,6 @@ func (d *Dump) dumpWorker(
 			log.Debug().
 				Err(ctx.Err()).
 				Int("workerID", id).
-				Str("objectName", task.DebugInfo()).
 				Msgf("existed due to cancelled context")
 			return ctx.Err()
 		case task = <-tasks:

@@ -1,7 +1,7 @@
 common:
-#  pg_bin_path: "/usr/bin/"
+  pg_bin_path: "/usr/bin/"
 #  pg_bin_path: "/usr/local/opt/postgresql@15/bin"
-  pg_bin_path: "/usr/local/opt/postgresql@16/bin"
+#  pg_bin_path: "/usr/local/opt/postgresql@16/bin"
   tmp_dir: "/tmp"
 
 log:
@@ -10,8 +10,8 @@ log:
 
 storage:
   directory:
-#    path: "/home/vadim/tmp/pg_dump_test/storage"
-    path: "/Users/vadim/tmp/pg_dump_test/storage/16"
+    path: "/home/vadim/tmp/pg_dump_test/storage"
+#    path: "/Users/vadim/tmp/pg_dump_test/storage/16"
 #    path: "/Users/vadim/tmp/pg_dump_test/storage/15"
 #  s3:
 #    endpoint: "http://localhost:9000"
@@ -22,8 +22,8 @@ storage:
 
 dump:
   pg_dump_options:
-#    dbname: "host=/run/postgresql user=postgres dbname=demo"
-    dbname: "host=localhost user=postgres password=example dbname=demo port=54316"
+    dbname: "host=/run/postgresql user=postgres dbname=demo"
+#    dbname: "host=localhost user=postgres password=example dbname=demo port=54316"
 #    dbname: "host=localhost user=postgres password=example dbname=demo port=54315"
     jobs: 10
 #    exclude-schema: "(\"teSt\"*|test*)"
@@ -78,15 +78,15 @@ dump:
             min: "11"
             max: "99"
 
-        - name: "TwoDatesGen"
-          params:
-            column_a: "post_code"
-            column_b: "post_code"
-
         - name: "Replace"
           params:
             column: "post_code"
             value: "54321"
+
+        - name: "TwoDatesGen"
+          params:
+            column_a: "scheduled_departure"
+            column_b: "scheduled_arrival"
 
     - schema: "bookings"
       name: "aircrafts_data"
@@ -110,8 +110,8 @@ dump:
 restore:
   pg_restore_options:
     jobs: 10
-#    dbname: "host=/run/postgresql user=postgres dbname=demo_restore"
-    dbname: "host=localhost user=postgres password=example dbname=demo_restore port=54316"
+    dbname: "host=/run/postgresql user=postgres dbname=demo_restore"
+#    dbname: "host=localhost user=postgres password=example dbname=demo_restore port=54316"
 #    dbname: "host=localhost user=postgres password=example dbname=demo_restore port=54315"
 
   scripts:
@@ -148,9 +148,9 @@ restore:
 custom_transformers:
   - name: "TwoDatesGen"
     description: "Generate diff between two dates"
-    executable: "echo"
-    args:
-      - '{"name":"TwoDatesGen","description":"Generate diff between two dates","executable":"/usr/bin/true","args":["arg1"],"parameters":[{"name":"column_a","description":"test1","required":true,"is_column":true,"column_properties":{"affected":true,"allowed_types":["date","timestamp","timestamptz"]}},{"name":"column_b","description":"test2","required":true,"is_column":true,"column_properties":{"affected":true,"allowed_types":["date","timestamp","timestamptz"]}}]}'
+    executable: "cat"
+#    args:
+#      - '{"name":"TwoDatesGen","description":"Generate diff between two dates","executable":"/usr/bin/true","args":["arg1"],"parameters":[{"name":"column_a","description":"test1","required":true,"is_column":true,"column_properties":{"affected":true,"allowed_types":["date","timestamp","timestamptz"]}},{"name":"column_b","description":"test2","required":true,"is_column":true,"column_properties":{"affected":true,"allowed_types":["date","timestamp","timestamptz"]}}]}'
     parameters:
       - name: "column_a"
         description: "test1"

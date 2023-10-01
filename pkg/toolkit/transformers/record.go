@@ -173,13 +173,13 @@ func (r *Record) encodeValue(c *Column, v any) (res []byte, err error) {
 }
 
 func (r *Record) GetRawAttributeValue(name string) (*RawValue, error) {
-	var res *RawValue
-	v, ok := r.tuple[name]
-	if ok {
-		idx, ok := r.driver.AttrIdxMap[name]
-		if !ok {
-			return nil, fmt.Errorf("unable to find column by name")
-		}
+	idx, ok := r.driver.AttrIdxMap[name]
+	if !ok {
+		return nil, fmt.Errorf("unable to find column by name")
+	}
+	if v, ok := r.tuple[name]; ok {
+		var res *RawValue
+
 		if v.IsNull {
 			res = NewRawValue(nil, true)
 		} else {
@@ -195,8 +195,9 @@ func (r *Record) GetRawAttributeValue(name string) (*RawValue, error) {
 			return nil, fmt.Errorf("error setting column value in RowDriver: %w", err)
 		}
 		delete(r.tuple, name)
+		return res, nil
 	}
-	return res, nil
+	return r.Row.GetColumn(idx)
 }
 
 func (r *Record) GetRawRecordDto(attributes ...string) (RawRecordDto, error) {

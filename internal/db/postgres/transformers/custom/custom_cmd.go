@@ -2,7 +2,6 @@ package custom
 
 import (
 	"context"
-	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -10,31 +9,34 @@ import (
 	"golang.org/x/sync/errgroup"
 	"io"
 	"os/exec"
+	"strings"
 	"time"
 
 	toolkit "github.com/greenmaskio/greenmask/pkg/toolkit/transformers"
 )
 
 const (
-	ValidateArgName    = "--validate"
-	PrintConfigArgName = "--print-config"
-	MetaArgName        = "--meta"
-	ValidationTimeout  = 20 * time.Second
+	ValidateArgName      = "--validate"
+	PrintConfigArgName   = "--print-config"
+	MetaArgName          = "--meta"
+	ValidationTimeout    = 20 * time.Second
+	RowTransformTimeout  = 2 * time.Second
+	AutoDiscoveryTimeout = 10 * time.Second
 )
 
 type CancelFunction func() error
 type ReaderFunction func(ctx context.Context, r io.Reader) error
 type WriterFunction func(ctx context.Context, r io.Writer) error
 
-func ProduceNewCmdTransformerFunction(name string, executable string, cmd []string) toolkit.NewTransformerFunc {
+func ProduceNewCmdTransformerFunction(ctd *toolkit.CustomTransformerDefinition) toolkit.NewTransformerFunc {
 	return func(
 		ctx context.Context, driver *toolkit.Driver, parameters map[string]*toolkit.Parameter,
 	) (toolkit.Transformer, toolkit.ValidationWarnings, error) {
-		return NewCmdTransformer(ctx, driver, parameters, name, executable, cmd)
+		return NewCmdTransformer(ctx, driver, parameters, ctd)
 	}
 }
 
-type CmdTransformer struct {
+type CustomCmdTransformer struct {
 	name            string
 	executable      string
 	args            []string
@@ -42,19 +44,19 @@ type CmdTransformer struct {
 	inChan          chan []byte
 	outChan         chan []byte
 	errChan         chan *toolkit.ValidationWarning
-	settingsChan    chan *toolkit.CustomTransformerDefinition
 	eg              *errgroup.Group
 	gtx             context.Context
 	cancel          CancelFunction
 	driver          *toolkit.Driver
 	parameters      map[string]*toolkit.Parameter
 	affectedColumns []string
+	ctd             *toolkit.CustomTransformerDefinition
 }
 
 func NewCmdTransformer(
 	ctx context.Context, driver *toolkit.Driver, parameters map[string]*toolkit.Parameter,
-	name string, executable string, args []string,
-) (*CmdTransformer, toolkit.ValidationWarnings, error) {
+	ctd *toolkit.CustomTransformerDefinition,
+) (*CustomCmdTransformer, toolkit.ValidationWarnings, error) {
 	var affectedColumns []string
 	for _, p := range parameters {
 		if p.IsColumn {
@@ -67,26 +69,36 @@ func NewCmdTransformer(
 		}
 	}
 
-	ct := &CmdTransformer{
-		executable:      executable,
-		args:            args,
+	ct := &CustomCmdTransformer{
+		executable:      ctd.Executable,
+		args:            ctd.Args,
 		driver:          driver,
 		parameters:      parameters,
 		affectedColumns: affectedColumns,
-		name:            name,
+		name:            ctd.Name,
+		ctd:             ctd,
 	}
 
-	warnings, err := ct.Validate(ctx)
-	if err != nil {
-		return nil, nil, fmt.Errorf("error validating transformer: %w", err)
+	var warnings toolkit.ValidationWarnings
+	var err error
+	if ctd.Validate {
+		warnings, err = ct.Validate(ctx)
+		if err != nil {
+			return nil, nil, fmt.Errorf("error validating transformer: %w", err)
+		}
 	}
 
-	return ct, warnings, fmt.Errorf("is not implemented")
+	return ct, warnings, nil
 }
 
-func (ct *CmdTransformer) init(ctx context.Context, args []string,
+func (ct *CustomCmdTransformer) init(ctx context.Context, args []string,
 	stdinWriterFunc WriterFunction, stdoutReaderFunc ReaderFunction, stderrReaderFunc ReaderFunction,
 ) (CancelFunction, error) {
+	log.Debug().
+		Str("executable", ct.executable).
+		Str("args", strings.Join(ct.args, " ")).
+		Msg("running custom transformer")
+
 	if stderrReaderFunc == nil || stdoutReaderFunc == nil {
 		return nil, errors.New("stderrReaderFunc and stdoutReaderFunc cannot be nil")
 	}
@@ -152,28 +164,29 @@ func (ct *CmdTransformer) init(ctx context.Context, args []string,
 	return cancelFunction, nil
 }
 
-func (ct *CmdTransformer) getMetadata() (string, error) {
-	var src []byte
-	if err := json.Unmarshal(src, ct.driver.Table); err != nil {
-		return "", fmt.Errorf("cannot unmarshal metadata: %w", err)
+func (ct *CustomCmdTransformer) getMetadata() (string, error) {
+	res, err := json.Marshal(&ct.driver.Table)
+	if err != nil {
+		return "", fmt.Errorf("cannot marshal metadata: %w", err)
 	}
-	dst := make([]byte, 0, len(src))
-	base64.StdEncoding.Encode(src, dst)
-	return string(dst), nil
+	return string(res), nil
 }
 
-func (ct *CmdTransformer) Init(ctx context.Context) (err error) {
+func (ct *CustomCmdTransformer) Init(ctx context.Context) (err error) {
 	// TODO: Generate table meta and pass it through the parameter encoded by base64
 	meta, err := ct.getMetadata()
-	overridenArgs := append(ct.args[0:], MetaArgName, meta)
+	args := make([]string, len(ct.args))
+	if ct.ctd.ProvideMeta {
+		args = append(args, MetaArgName, meta)
+	}
 	if err != nil {
 		return fmt.Errorf("cannot get metatda: %w", err)
 	}
-	ct.cancel, err = ct.init(ctx, overridenArgs, ct.lineStdinWriter, ct.transformationStdoutReader, ct.transformationStderrReader)
+	ct.cancel, err = ct.init(ctx, args, ct.lineStdinWriter, ct.transformationStdoutReader, ct.transformationStderrReader)
 	return err
 }
 
-func (ct *CmdTransformer) Done(ctx context.Context) (err error) {
+func (ct *CustomCmdTransformer) Done(ctx context.Context) (err error) {
 	log.Debug().
 		Str("TableSchema", ct.driver.Table.Schema).
 		Str("TableName", ct.driver.Table.Name).
@@ -182,7 +195,7 @@ func (ct *CmdTransformer) Done(ctx context.Context) (err error) {
 	return ct.cancel()
 }
 
-func (ct *CmdTransformer) lineStdinWriter(ctx context.Context, stdin io.Writer) error {
+func (ct *CustomCmdTransformer) lineStdinWriter(ctx context.Context, stdin io.Writer) error {
 	for {
 		select {
 		case data := <-ct.inChan:
@@ -196,7 +209,7 @@ func (ct *CmdTransformer) lineStdinWriter(ctx context.Context, stdin io.Writer) 
 	}
 }
 
-func (ct *CmdTransformer) transformationStderrReader(ctx context.Context, stdout io.Reader) error {
+func (ct *CustomCmdTransformer) transformationStderrReader(ctx context.Context, stdout io.Reader) error {
 	return lineReader(ctx, stdout, func(line []byte) error {
 		log.Warn().
 			Str("TableSchema", ct.driver.Table.Schema).
@@ -208,30 +221,20 @@ func (ct *CmdTransformer) transformationStderrReader(ctx context.Context, stdout
 	})
 }
 
-func (ct *CmdTransformer) transformationStdoutReader(ctx context.Context, stdout io.Reader) error {
-	ct.settingsChan = make(chan *toolkit.CustomTransformerDefinition)
-	defer close(ct.settingsChan)
+func (ct *CustomCmdTransformer) transformationStdoutReader(ctx context.Context, stdout io.Reader) error {
+	ct.outChan = make(chan []byte)
+	defer close(ct.outChan)
 	return lineReader(ctx, stdout, func(line []byte) error {
-		var ts = &toolkit.CustomTransformerDefinition{}
-		if err := json.Unmarshal(line, ts); err != nil {
-			log.Warn().
-				Str("TableSchema", ct.driver.Table.Schema).
-				Str("TableName", ct.driver.Table.Name).
-				Str("TransformerName", ct.name).
-				Str("Data", string(line)).
-				Msg("stdout forwarding")
-			return nil
-		}
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
-		case ct.settingsChan <- ts:
+		case ct.outChan <- line:
 			return nil
 		}
 	})
 }
 
-func (ct *CmdTransformer) validationStderrReader(ctx context.Context, stdout io.Reader) error {
+func (ct *CustomCmdTransformer) validationStderrReader(ctx context.Context, stdout io.Reader) error {
 	return lineReader(ctx, stdout, func(line []byte) error {
 		log.Warn().
 			Str("TableSchema", ct.driver.Table.Schema).
@@ -243,7 +246,7 @@ func (ct *CmdTransformer) validationStderrReader(ctx context.Context, stdout io.
 	})
 }
 
-func (ct *CmdTransformer) validationStdoutReader(ctx context.Context, stdout io.Reader) error {
+func (ct *CustomCmdTransformer) validationStdoutReader(ctx context.Context, stdout io.Reader) error {
 	ct.errChan = make(chan *toolkit.ValidationWarning, 10)
 	defer close(ct.errChan)
 	return lineReader(ctx, stdout, func(line []byte) error {
@@ -266,9 +269,9 @@ func (ct *CmdTransformer) validationStdoutReader(ctx context.Context, stdout io.
 	})
 }
 
-func (ct *CmdTransformer) validate(ctx context.Context) (toolkit.ValidationWarnings, error) {
+func (ct *CustomCmdTransformer) validate(ctx context.Context) (toolkit.ValidationWarnings, error) {
 	var res toolkit.ValidationWarnings
-	ctx, cancel := context.WithTimeout(ctx, 60*time.Second)
+	ctx, cancel := context.WithTimeout(ctx, ValidationTimeout)
 	defer cancel()
 	eg, gtx := errgroup.WithContext(ctx)
 
@@ -320,9 +323,11 @@ func (ct *CmdTransformer) validate(ctx context.Context) (toolkit.ValidationWarni
 	return res, nil
 }
 
-func (ct *CmdTransformer) sendOriginalTuple(data []byte) error {
+func (ct *CustomCmdTransformer) sendOriginalTuple(ctx context.Context, data []byte) error {
 	select {
 	case ct.inChan <- data:
+	case <-ctx.Done():
+		return ctx.Err()
 	case <-ct.gtx.Done():
 		return ct.gtx.Err()
 	}
@@ -330,29 +335,30 @@ func (ct *CmdTransformer) sendOriginalTuple(data []byte) error {
 	return nil
 }
 
-func (ct *CmdTransformer) receiveTransformedTuple() ([]byte, error) {
-	for {
-		// TODO: I don't know why but this code locks even when we send message to outChan
-		//		 though it must receive the message and continue execution. That's why I added
-		//		 loop there. But it mustn't be here
-		select {
-		case <-ct.gtx.Done():
-			return nil, ct.gtx.Err()
-		case data := <-ct.outChan:
-			if len(data) == 0 {
-				return nil, fmt.Errorf("received empty tupple after trasnformation")
-			}
-			return data, nil
-		default:
+func (ct *CustomCmdTransformer) receiveTransformedTuple(ctx context.Context) ([]byte, error) {
+	select {
+	case <-ct.gtx.Done():
+		return nil, ct.gtx.Err()
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	case data := <-ct.outChan:
+		if len(data) == 0 {
+			return nil, fmt.Errorf("received empty tupple after trasnformation")
 		}
+		return data, nil
 	}
 }
 
-func (ct *CmdTransformer) Validate(ctx context.Context) (toolkit.ValidationWarnings, error) {
+func (ct *CustomCmdTransformer) Validate(ctx context.Context) (toolkit.ValidationWarnings, error) {
 	// TODO: Depending on transformer setting we can either validate or not. Ensure this logic has been implemented
 	meta, err := ct.getMetadata()
-	overridenArgs := append(ct.args[0:], ValidateArgName, MetaArgName, meta)
-	cancelFunction, err := ct.init(ctx, overridenArgs, ct.lineStdinWriter, ct.validationStdoutReader, ct.validationStderrReader)
+	args := make([]string, len(ct.args))
+	copy(args, ct.args)
+	args = append(args, ValidateArgName)
+	if ct.ctd.ProvideMeta {
+		args = append(args, MetaArgName, meta)
+	}
+	cancelFunction, err := ct.init(ctx, args, ct.lineStdinWriter, ct.validationStdoutReader, ct.validationStderrReader)
 	if err != nil {
 		return nil, fmt.Errorf("transformer initialisation error: %w", err)
 	}
@@ -364,27 +370,30 @@ func (ct *CmdTransformer) Validate(ctx context.Context) (toolkit.ValidationWarni
 	return warnings, nil
 }
 
-func (ct *CmdTransformer) Transform(ctx context.Context, r *toolkit.Record) (*toolkit.Record, error) {
+func (ct *CustomCmdTransformer) Transform(ctx context.Context, r *toolkit.Record) (*toolkit.Record, error) {
+	ctx, cancel := context.WithTimeout(ctx, RowTransformTimeout)
+	defer cancel()
 	rrd, err := r.GetRawRecordDto(ct.affectedColumns...)
 	if err != nil {
 		return nil, fmt.Errorf("error gettings RawRecordDto: %w", err)
 	}
-	data, err := json.Marshal(rrd)
+	originalData, err := json.Marshal(rrd)
 	if err != nil {
 		return nil, fmt.Errorf("error marshaling RawRecordDto: %w", err)
 	}
+	originalData = append(originalData, '\n')
 
-	if err = ct.sendOriginalTuple(data); err != nil {
+	if err = ct.sendOriginalTuple(ctx, originalData); err != nil {
 		return nil, fmt.Errorf("cannot send tuple to transformer: %w", err)
 	}
 
-	data, err = ct.receiveTransformedTuple()
+	transformedData, err := ct.receiveTransformedTuple(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("cannot receive transformerd tuple from transformer: %w", err)
 	}
 
 	trrd := make(toolkit.RawRecordDto)
-	if err = json.Unmarshal(data, &trrd); err != nil {
+	if err = json.Unmarshal(transformedData, &trrd); err != nil {
 		return nil, fmt.Errorf("error unmarshalling RawRecordDto")
 	}
 
