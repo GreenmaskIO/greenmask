@@ -11,10 +11,9 @@ import (
 )
 
 var RandomIntTransformerDefinition = toolkit.NewDefinition(
-	toolkit.MustNewTransformerProperties(
+	toolkit.NewTransformerProperties(
 		"RandomInt",
 		"Generate random int value from min to max",
-		toolkit.TupleTransformation,
 	),
 
 	NewRandomIntTransformer,

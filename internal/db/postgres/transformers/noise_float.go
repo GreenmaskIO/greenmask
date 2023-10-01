@@ -15,10 +15,9 @@ import (
 )
 
 var NoiseFloatTransformerDefinition = toolkit.NewDefinition(
-	toolkit.MustNewTransformerProperties(
+	toolkit.NewTransformerProperties(
 		"NoiseFloat",
 		"Make noise float for int",
-		toolkit.TupleTransformation,
 	),
 	NewNoiseFloatTransformer,
 

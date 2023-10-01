@@ -11,10 +11,9 @@ import (
 )
 
 var RandomUuidTransformerDefinition = toolkit.NewDefinition(
-	toolkit.MustNewTransformerProperties(
+	toolkit.NewTransformerProperties(
 		"RandomUuid",
 		"Generate random uuid",
-		toolkit.TupleTransformation,
 	),
 
 	NewRandomUuidTransformer,

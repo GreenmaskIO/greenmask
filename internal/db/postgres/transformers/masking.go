@@ -26,10 +26,9 @@ const (
 )
 
 var MaskingTransformerDefinition = toolkit.NewDefinition(
-	toolkit.MustNewTransformerProperties(
+	toolkit.NewTransformerProperties(
 		"Masking",
 		"Mask a value using one of masking type",
-		toolkit.TupleTransformation,
 	),
 
 	NewMaskingTransformer,

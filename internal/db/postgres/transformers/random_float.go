@@ -17,10 +17,9 @@ const (
 )
 
 var RandomFloatTransformerDefinition = toolkit.NewDefinition(
-	toolkit.MustNewTransformerProperties(
+	toolkit.NewTransformerProperties(
 		"RandomFloat",
 		"Generate random float",
-		toolkit.TupleTransformation,
 	),
 
 	NewRandomFloatTransformer,

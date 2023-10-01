@@ -9,10 +9,9 @@ import (
 )
 
 var SetNullTransformerDefinition = toolkit.NewDefinition(
-	toolkit.MustNewTransformerProperties(
+	toolkit.NewTransformerProperties(
 		"SetNull",
 		"Set NULL value",
-		toolkit.TupleTransformation,
 	),
 	NewSetNullTransformer,
 	toolkit.MustNewParameter(

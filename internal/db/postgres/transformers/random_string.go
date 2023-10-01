@@ -10,10 +10,9 @@ import (
 )
 
 var RandomStringTransformerDefinition = toolkit.NewDefinition(
-	toolkit.MustNewTransformerProperties(
+	toolkit.NewTransformerProperties(
 		"RandomString",
 		"Generate random string",
-		toolkit.TupleTransformation,
 	),
 
 	NewRandomStringTransformer,

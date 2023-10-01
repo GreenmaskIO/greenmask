@@ -10,11 +10,8 @@ import (
 	"strings"
 )
 
-func GetDynamicTransformerDefinition(executable string, args []string) (*transformers.CustomTransformerDefinition, error) {
-	a := make([]string, len(args))
-	copy(a, args)
-	//a = append(a, PrintConfigArgName)
-	cmd := exec.Command(executable, a...)
+func GetDynamicTransformerDefinition(executable string, args ...string) (*transformers.CustomTransformerDefinition, error) {
+	cmd := exec.Command(executable, args...)
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
 		return nil, fmt.Errorf("error openning stdout pipe: %w", err)

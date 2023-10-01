@@ -12,10 +12,9 @@ import (
 
 var JsonTransformerDefinition = toolkit.NewDefinition(
 
-	toolkit.MustNewTransformerProperties(
+	toolkit.NewTransformerProperties(
 		"Json",
 		"Update json document",
-		toolkit.TupleTransformation,
 	),
 
 	NewJsonTransformer,

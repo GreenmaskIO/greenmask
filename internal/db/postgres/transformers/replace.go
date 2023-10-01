@@ -9,10 +9,9 @@ import (
 )
 
 var ReplaceTransformerDefinition = toolkit.NewDefinition(
-	toolkit.MustNewTransformerProperties(
+	toolkit.NewTransformerProperties(
 		"Replace",
 		"Replace column value to the provided",
-		toolkit.TupleTransformation,
 	),
 
 	NewReplaceTransformer,

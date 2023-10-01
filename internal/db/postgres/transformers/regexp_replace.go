@@ -10,10 +10,9 @@ import (
 )
 
 var RegexpReplaceTransformerDefinition = toolkit.NewDefinition(
-	toolkit.MustNewTransformerProperties(
+	toolkit.NewTransformerProperties(
 		"RegexpReplace",
 		"Replace string using regular expression",
-		toolkit.TupleTransformation,
 	),
 
 	NewRegexpReplaceTransformer,

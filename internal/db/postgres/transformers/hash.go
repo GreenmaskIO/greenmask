@@ -19,10 +19,9 @@ const (
 )
 
 var HashTransformerDefinition = toolkit.NewDefinition(
-	toolkit.MustNewTransformerProperties(
+	toolkit.NewTransformerProperties(
 		"Hash",
 		"Generate hash of column value",
-		toolkit.TupleTransformation,
 	),
 
 	NewHashTransformer,

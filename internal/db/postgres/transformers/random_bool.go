@@ -12,10 +12,9 @@ import (
 
 var RandomBoolTransformerDefinition = toolkit.NewDefinition(
 
-	toolkit.MustNewTransformerProperties(
+	toolkit.NewTransformerProperties(
 		"RandomBool",
 		"Generate random bool",
-		toolkit.TupleTransformation,
 	),
 
 	NewRandomBoolTransformer,

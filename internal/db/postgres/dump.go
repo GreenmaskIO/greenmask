@@ -353,9 +353,19 @@ func (d *Dump) writeMetaData(ctx context.Context, startedAt, completedAt time.Ti
 func (d *Dump) BootstrapCustomTransformers(ctx context.Context) (err error) {
 	for _, ctd := range d.config.CustomTransformers {
 		var td *toolkit.Definition
-		if ctd.Name != "" {
+		if ctd.Name == "" && !ctd.AutoDiscover {
+			return fmt.Errorf("custom transformer without auto discovery must be defined staticly in the config")
+		}
+		if ctd.Executable == "" {
+			return fmt.Errorf(`custom transformer "executable" parameter is required`)
+		}
+
+		if ctd.AutoDiscover {
 			// Get custom transformer definition from stdout and override received data with config ctd
-			ctdd, err := custom.GetDynamicTransformerDefinition(ctd.Executable, ctd.Args)
+			args := make([]string, len(ctd.Args))
+			copy(args, ctd.Args)
+			args = append(args, custom.PrintConfigArgName)
+			ctdd, err := custom.GetDynamicTransformerDefinition(ctd.Executable, args...)
 			if err != nil {
 				return fmt.Errorf("error getting dynamic transformer definition: %w", err)
 			}
@@ -364,15 +374,15 @@ func (d *Dump) BootstrapCustomTransformers(ctx context.Context) (err error) {
 			ctd.Parameters = ctdd.Parameters
 		}
 
-		td = &toolkit.Definition{
-			Properties: &toolkit.TransformerProperties{
+		td = toolkit.NewDefinition(
+			&toolkit.TransformerProperties{
 				Name:        ctd.Name,
 				Description: ctd.Description,
 				IsCustom:    true,
 			},
-			New:        custom.ProduceNewCmdTransformerFunction(ctd.Name, ctd.Executable, ctd.Args),
-			Parameters: ctd.Parameters,
-		}
+			custom.ProduceNewCmdTransformerFunction(ctd.Name, ctd.Executable, ctd.Args),
+			ctd.Parameters...,
+		)
 
 		d.registry.MustRegister(td)
 	}

@@ -37,7 +37,7 @@ func NewTestTransformer(ctx context.Context, driver *Driver, parameters map[stri
 func TestDefinition(t *testing.T) {
 
 	TestTransformerDefinition := NewDefinition(
-		MustNewTransformerProperties("test", "simple description", TupleTransformation),
+		NewTransformerProperties("test", "simple description", TupleTransformation),
 		NewTestTransformer,
 		MustNewParameter("column", "a column name", new(string), nil).
 			SetIsColumn(NewColumnProperties().

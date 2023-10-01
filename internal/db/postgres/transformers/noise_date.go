@@ -17,10 +17,9 @@ import (
 // TODO: Ensure pqinterval.Duration returns duration in int64 for date and time
 
 var NoiseDateTransformerDefinition = toolkit.NewDefinition(
-	toolkit.MustNewTransformerProperties(
+	toolkit.NewTransformerProperties(
 		"NoiseDate",
 		"Apply random noise for date values",
-		toolkit.TupleTransformation,
 	),
 
 	NewNoiseDateTransformer,

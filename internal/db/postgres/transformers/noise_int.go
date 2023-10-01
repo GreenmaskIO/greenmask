@@ -17,10 +17,9 @@ func New[T int64 | float64 | string | bool](v T) *T {
 }
 
 var NoiseIntTransformerDefinition = toolkit.NewDefinition(
-	toolkit.MustNewTransformerProperties(
+	toolkit.NewTransformerProperties(
 		"NoiseInt",
 		"Make noise value for int",
-		toolkit.TupleTransformation,
 	),
 
 	NewNoiseIntTransformer,

@@ -15,10 +15,9 @@ import (
 var truncateParts = []string{"year", "month", "day", "hour", "second", "millisecond", "microsecond", "nanosecond"}
 
 var RandomDateTransformerDefinition = toolkit.NewDefinition(
-	toolkit.MustNewTransformerProperties(
+	toolkit.NewTransformerProperties(
 		"RandomDate",
 		"Generate random date in the provided interval",
-		toolkit.TupleTransformation,
 	),
 
 	NewRandomDateTransformer,
