@@ -104,6 +104,10 @@ func (rit *RandomIntTransformer) Init(ctx context.Context) error {
 	return nil
 }
 
+func (rit *RandomIntTransformer) Done(ctx context.Context) error {
+	return nil
+}
+
 func (rit *RandomIntTransformer) Transform(ctx context.Context, r *toolkit.Record) (*toolkit.Record, error) {
 	valAny, err := r.GetAttribute(rit.columnName)
 	if err != nil {

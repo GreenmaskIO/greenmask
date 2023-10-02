@@ -67,6 +67,10 @@ func (rbt *RandomBoolTransformer) Init(ctx context.Context) error {
 	return nil
 }
 
+func (rbt *RandomBoolTransformer) Done(ctx context.Context) error {
+	return nil
+}
+
 func (rbt *RandomBoolTransformer) Transform(ctx context.Context, r *toolkit.Record) (*toolkit.Record, error) {
 	valAny, err := r.GetAttribute(rbt.columnName)
 	if err != nil {

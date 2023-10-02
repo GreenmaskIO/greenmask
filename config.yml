@@ -85,8 +85,8 @@ dump:
 
         - name: "TwoDatesGen"
           params:
-            column_a: "scheduled_departure"
-            column_b: "scheduled_arrival"
+            column_a: "actual_departure"
+            column_b: "actual_arrival"
 
     - schema: "bookings"
       name: "aircrafts_data"
@@ -148,7 +148,9 @@ restore:
 custom_transformers:
   - name: "TwoDatesGen"
     description: "Generate diff between two dates"
-    executable: "cat"
+    executable: "/home/vadim/gits/greenmaskio/greenmask/internal/db/postgres/transformers/custom/test/example_transformer.sh"
+    validate: true
+    auto_discover: true
 #    args:
 #      - '{"name":"TwoDatesGen","description":"Generate diff between two dates","executable":"/usr/bin/true","args":["arg1"],"parameters":[{"name":"column_a","description":"test1","required":true,"is_column":true,"column_properties":{"affected":true,"allowed_types":["date","timestamp","timestamptz"]}},{"name":"column_b","description":"test2","required":true,"is_column":true,"column_properties":{"affected":true,"allowed_types":["date","timestamp","timestamptz"]}}]}'
     parameters:

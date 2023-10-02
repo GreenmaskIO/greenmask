@@ -89,6 +89,10 @@ func (jt *JsonTransformer) Init(ctx context.Context) error {
 	return nil
 }
 
+func (jt *JsonTransformer) Done(ctx context.Context) error {
+	return nil
+}
+
 func (jt *JsonTransformer) Transform(ctx context.Context, r *toolkit.Record) (*toolkit.Record, error) {
 	// TODO: Test whats happen if performed operation is not applied due to unknown path
 	var jsonRawValue string

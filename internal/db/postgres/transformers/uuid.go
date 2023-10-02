@@ -65,6 +65,10 @@ func (rut *RandomUuidTransformer) Init(ctx context.Context) error {
 	return nil
 }
 
+func (rut *RandomUuidTransformer) Done(ctx context.Context) error {
+	return nil
+}
+
 func (rut *RandomUuidTransformer) Transform(ctx context.Context, r *toolkit.Record) (*toolkit.Record, error) {
 	valAny, err := r.GetAttribute(rut.columnName)
 	if err != nil {

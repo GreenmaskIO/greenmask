@@ -144,6 +144,10 @@ func (rdt *RandomDateTransformer) Init(ctx context.Context) error {
 	return nil
 }
 
+func (rdt *RandomDateTransformer) Done(ctx context.Context) error {
+	return nil
+}
+
 func (rdt *RandomDateTransformer) Transform(ctx context.Context, r *toolkit.Record) (*toolkit.Record, error) {
 	valAny, err := r.GetAttribute(rdt.columnName)
 	if err != nil {

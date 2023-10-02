@@ -4,27 +4,17 @@ import (
 	"bufio"
 	"context"
 	"errors"
+	"github.com/rs/zerolog/log"
 	"io"
 	"os"
 )
 
 func lineReader(ctx context.Context, r io.Reader, lineHook func(line []byte) error) error {
 	lineScanner := bufio.NewReader(r)
-	defer func() {
-		for {
-			line, _, err := lineScanner.ReadLine()
-			if err != nil {
-				return
-			}
-			if err := lineHook(line); err != nil {
-				return
-			}
-		}
-	}()
-
 	for {
 		line, _, err := lineScanner.ReadLine()
 		if err != nil {
+			log.Debug().Err(err).Msg("line reader error")
 			if errors.Is(err, io.EOF) || errors.Is(err, os.ErrClosed) {
 				return nil
 			}

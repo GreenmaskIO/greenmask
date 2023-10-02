@@ -64,9 +64,12 @@ func validateAndBuildTablesConfig(
 				if len(initWarnings) > 0 {
 					for _, w := range initWarnings {
 						// Enriching the table context into meta
-						w.AddMeta("TableSchema", table.Schema).
-							AddMeta("TableName", table.Name).
-							AddMeta("TransformerName", tc.Name)
+						if w.Trace == nil {
+							w.Trace = &toolkit.Trace{}
+						}
+						w.Trace.SchemaName = table.Schema
+						w.Trace.TableName = table.Name
+						w.Trace.TransformerName = tc.Name
 					}
 				}
 				if err != nil {

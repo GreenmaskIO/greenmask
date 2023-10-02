@@ -103,6 +103,10 @@ func (ndt *NoiseDateTransformer) Init(ctx context.Context) error {
 	return nil
 }
 
+func (ndt *NoiseDateTransformer) Done(ctx context.Context) error {
+	return nil
+}
+
 func (ndt *NoiseDateTransformer) Transform(ctx context.Context, r *toolkit.Record) (*toolkit.Record, error) {
 	val, err := r.GetAttribute(ndt.columnName)
 	if err != nil {

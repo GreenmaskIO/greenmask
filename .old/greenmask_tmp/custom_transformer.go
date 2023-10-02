@@ -338,21 +338,17 @@ func (ct *CustomTransformer) sendOriginalTuple(data []byte) error {
 }
 
 func (ct *CustomTransformer) receiveTransformedTuple() ([]byte, error) {
-	for {
-		// TODO: I don't know why but this code locks even when we send message to outChan
-		//		 though it must receive the message and continue execution. That's why I added
-		//		 loop there. But it mustn't be here
-		select {
-		case <-ct.gtx.Done():
-			return nil, ct.gtx.Err()
-		case data := <-ct.outChan:
-			if len(data) == 0 {
-				return nil, fmt.Errorf("received empty tupple after trasnformation")
-			}
-			return data, nil
-		default:
+	select {
+	case <-ct.gtx.Done():
+		return nil, ct.gtx.Err()
+	case data := <-ct.outChan:
+		if len(data) == 0 {
+			return nil, fmt.Errorf("received empty tupple after trasnformation")
 		}
+		return data, nil
+	default:
 	}
+
 }
 
 func lineReader(ctx context.Context, r io.Reader, lineHook func(line []byte) error) error {

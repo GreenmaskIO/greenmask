@@ -112,6 +112,10 @@ func (mt *MaskingTransformer) Init(ctx context.Context) error {
 	return nil
 }
 
+func (mt *MaskingTransformer) Done(ctx context.Context) error {
+	return nil
+}
+
 func (mt *MaskingTransformer) Transform(ctx context.Context, r *toolkit.Record) (*toolkit.Record, error) {
 	var originalValue string
 	isNull, err := r.ScanAttribute(mt.columnName, &originalValue)

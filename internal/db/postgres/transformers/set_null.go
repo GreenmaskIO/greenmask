@@ -45,6 +45,10 @@ func (sut *SetNullTransformer) Init(ctx context.Context) error {
 	return nil
 }
 
+func (sut *SetNullTransformer) Done(ctx context.Context) error {
+	return nil
+}
+
 func (sut *SetNullTransformer) Transform(ctx context.Context, r *toolkit.Record) (*toolkit.Record, error) {
 	if err := r.SetAttribute(sut.columnName, toolkit.NewValue(nil, true)); err != nil {
 		return nil, fmt.Errorf("unable to set new value: %w", err)

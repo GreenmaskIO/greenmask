@@ -117,6 +117,10 @@ func (rft *RandomFloatTransformer) Init(ctx context.Context) error {
 	return nil
 }
 
+func (rft *RandomFloatTransformer) Done(ctx context.Context) error {
+	return nil
+}
+
 func (rft *RandomFloatTransformer) Transform(ctx context.Context, r *toolkit.Record) (*toolkit.Record, error) {
 	valAny, err := r.GetAttribute(rft.columnName)
 	if err != nil {

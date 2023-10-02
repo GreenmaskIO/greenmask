@@ -120,6 +120,10 @@ func (rst *RandomStringTransformer) Init(ctx context.Context) error {
 	return nil
 }
 
+func (rst *RandomStringTransformer) Done(ctx context.Context) error {
+	return nil
+}
+
 func (rst *RandomStringTransformer) Transform(ctx context.Context, r *toolkit.Record) (*toolkit.Record, error) {
 	valAny, err := r.GetAttribute(rst.columnName)
 	if err != nil {

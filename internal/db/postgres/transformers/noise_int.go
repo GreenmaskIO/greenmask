@@ -69,6 +69,10 @@ func (nit *NoiseIntTransformer) Init(ctx context.Context) error {
 	return nil
 }
 
+func (nit *NoiseIntTransformer) Done(ctx context.Context) error {
+	return nil
+}
+
 func (nit *NoiseIntTransformer) Transform(ctx context.Context, r *toolkit.Record) (*toolkit.Record, error) {
 	// TODO: value out of rage might be possible: double check this transformer implementation
 	log.Warn().Msg("value out of rage might be possible: double check this transformer implementation")

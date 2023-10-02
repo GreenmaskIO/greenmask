@@ -93,6 +93,10 @@ func (nft *NoiseFloatTransformer) Init(ctx context.Context) error {
 	return nil
 }
 
+func (nft *NoiseFloatTransformer) Done(ctx context.Context) error {
+	return nil
+}
+
 func (nft *NoiseFloatTransformer) Transform(ctx context.Context, r *toolkit.Record) (*toolkit.Record, error) {
 	valAny, err := r.GetAttribute(nft.columnName)
 	if err != nil {

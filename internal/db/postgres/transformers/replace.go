@@ -76,6 +76,10 @@ func (rt *ReplaceTransformer) Init(ctx context.Context) error {
 	return nil
 }
 
+func (rt *ReplaceTransformer) Done(ctx context.Context) error {
+	return nil
+}
+
 func (rt *ReplaceTransformer) Transform(ctx context.Context, r *toolkit.Record) (*toolkit.Record, error) {
 	valAny, err := r.GetAttribute(rt.columnName)
 	if err != nil {

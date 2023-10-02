@@ -87,6 +87,10 @@ func (rrt *RegexpReplaceTransformer) Init(ctx context.Context) error {
 	return nil
 }
 
+func (rrt *RegexpReplaceTransformer) Done(ctx context.Context) error {
+	return nil
+}
+
 func (rrt *RegexpReplaceTransformer) Transform(ctx context.Context, r *toolkit.Record) (*toolkit.Record, error) {
 	var original string
 	isNull, err := r.ScanAttribute(rrt.columnName, &original)

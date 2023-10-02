@@ -85,6 +85,10 @@ func (ht *HashTransformer) Init(ctx context.Context) error {
 	return nil
 }
 
+func (ht *HashTransformer) Done(ctx context.Context) error {
+	return nil
+}
+
 func (ht *HashTransformer) Transform(ctx context.Context, r *toolkit.Record) (*toolkit.Record, error) {
 	var originalValue string
 	isNull, err := r.ScanAttribute(ht.columnName, &originalValue)
