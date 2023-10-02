@@ -5,24 +5,19 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	toolkit "github.com/greenmaskio/greenmask/pkg/toolkit/transformers"
 	"github.com/rs/zerolog/log"
 	"golang.org/x/sync/errgroup"
 	"io"
 	"os/exec"
 	"strings"
 	"syscall"
-	"time"
-
-	toolkit "github.com/greenmaskio/greenmask/pkg/toolkit/transformers"
 )
 
 const (
-	ValidateArgName      = "--validate"
-	PrintConfigArgName   = "--print-config"
-	MetaArgName          = "--meta"
-	ValidationTimeout    = 20 * time.Second
-	RowTransformTimeout  = 2 * time.Second
-	AutoDiscoveryTimeout = 10 * time.Second
+	ValidateArgName    = "--validate"
+	PrintConfigArgName = "--print-config"
+	MetaArgName        = "--meta"
 )
 
 type CancelFunction func() error
@@ -115,11 +110,11 @@ func (ct *CustomCmdTransformer) init(ctx context.Context, args []string,
 
 	stdin, err := ct.cmd.StdinPipe()
 	if err != nil {
+		cancel()
 		stdoutWriter.Close()
 		stderrWriter.Close()
 		stdoutReader.Close()
 		stderrReader.Close()
-		cancel()
 		return nil, fmt.Errorf("unable to open stdout pipe")
 	}
 
@@ -128,6 +123,7 @@ func (ct *CustomCmdTransformer) init(ctx context.Context, args []string,
 	ct.eg, ct.gtx = errgroup.WithContext(ctx)
 
 	cancelFunction := func() error {
+		defer cancel()
 		log.Debug().Msg("running closing function")
 		if err := stdoutWriter.Close(); err != nil {
 			log.Debug().Err(err).Msg("error closing stdoutWriter")
@@ -135,7 +131,6 @@ func (ct *CustomCmdTransformer) init(ctx context.Context, args []string,
 		if err := stderrWriter.Close(); err != nil {
 			log.Debug().Err(err).Msg("error closing stdoutWriter")
 		}
-		cancel()
 
 		close(ct.inChan)
 		if ct.cmd.ProcessState != nil && !ct.cmd.ProcessState.Exited() {
@@ -147,14 +142,14 @@ func (ct *CustomCmdTransformer) init(ctx context.Context, args []string,
 					Str("TransformerName", ct.name).
 					Int("TransformerPid", ct.cmd.Process.Pid).
 					Msg("error sending SIGTERM to custom transformer process")
-				log.Warn().
-					Str("TableSchema", ct.driver.Table.Schema).
-					Str("TableName", ct.driver.Table.Name).
-					Str("TransformerName", ct.name).
-					Int("TransformerPid", ct.cmd.Process.Pid).
-					Msg("killing process")
 
 				if ct.cmd.ProcessState != nil && !ct.cmd.ProcessState.Exited() {
+					log.Warn().
+						Str("TableSchema", ct.driver.Table.Schema).
+						Str("TableName", ct.driver.Table.Name).
+						Str("TransformerName", ct.name).
+						Int("TransformerPid", ct.cmd.Process.Pid).
+						Msg("killing process")
 					if err = ct.cmd.Process.Kill(); err != nil {
 						log.Warn().
 							Err(err).
@@ -164,31 +159,34 @@ func (ct *CustomCmdTransformer) init(ctx context.Context, args []string,
 				}
 			}
 		}
+		log.Debug().Msg("closing function completed successfully")
 		return nil
 	}
 
 	if err := ct.cmd.Start(); err != nil {
 		cancelFunction()
-		log.Warn().
+		event := log.Warn().
 			Err(err).
 			Str("TableSchema", ct.driver.Table.Schema).
 			Str("TableName", ct.driver.Table.Name).
-			Str("TransformerName", ct.name).
-			Int("TransformerPid", ct.cmd.Process.Pid).
-			Msg("custom transformer exited with error")
+			Str("TransformerName", ct.name)
+		if ct.cmd.Process != nil {
+			event.Int("TransformerPid", ct.cmd.Process.Pid)
+		}
+		event.Msg("custom transformer exited with error")
 		return nil, fmt.Errorf("external command runtime error: %w", err)
 	}
 
 	ct.eg.Go(func() error {
-		return stderrReaderFunc(ctx, stderrReader)
+		return stderrReaderFunc(ct.gtx, stderrReader)
 	})
 
 	ct.eg.Go(func() error {
-		return stdoutReaderFunc(ctx, stdoutReader)
+		return stdoutReaderFunc(ct.gtx, stdoutReader)
 	})
 
 	ct.eg.Go(func() error {
-		return stdinWriterFunc(ctx, stdin)
+		return stdinWriterFunc(ct.gtx, stdin)
 	})
 
 	return cancelFunction, nil
@@ -224,14 +222,18 @@ func (ct *CustomCmdTransformer) Done(ctx context.Context) (err error) {
 }
 
 func (ct *CustomCmdTransformer) lineStdinWriter(ctx context.Context, stdin io.WriteCloser) error {
-	defer func() {
-		if err := stdin.Close(); err != nil {
-			log.Debug().Err(err).Msg("error closing stdin")
-		}
-	}()
 	for {
 		select {
-		case data := <-ct.inChan:
+		case data, ok := <-ct.inChan:
+			if !ok {
+				log.Debug().
+					Str("TransformerName", ct.ctd.Name).
+					Int("TransformerPid", ct.cmd.Process.Pid).
+					Str("TableSchema", ct.driver.Table.Schema).
+					Str("TableName", ct.driver.Table.Name).
+					Msg("lineStdinWriter exited because channel was closed")
+				return nil
+			}
 			_, err := stdin.Write(data)
 			if err != nil {
 				log.Warn().
@@ -244,8 +246,7 @@ func (ct *CustomCmdTransformer) lineStdinWriter(ctx context.Context, stdin io.Wr
 				return fmt.Errorf("error sending data to stdin: %w", err)
 			}
 		case <-ctx.Done():
-			return ctx.Err()
-		case <-ct.gtx.Done():
+			log.Debug().Msg("closed")
 			return ct.gtx.Err()
 		}
 	}
@@ -279,10 +280,9 @@ func (ct *CustomCmdTransformer) transformationStdoutReader(ctx context.Context, 
 	defer close(ct.outChan)
 	return lineReader(ctx, stdout, func(line []byte) error {
 		select {
-		case <-ct.gtx.Done():
-			return ct.gtx.Err()
 		case <-ctx.Done():
-			return ctx.Err()
+			log.Debug().Msg("closed")
+			return nil
 		case ct.outChan <- line:
 			return nil
 		}
@@ -329,10 +329,9 @@ func (ct *CustomCmdTransformer) validationStdoutReader(ctx context.Context, stdo
 			return fmt.Errorf("error unmarshalling ValidationWarning: %w", err)
 		}
 		select {
-		case <-ct.gtx.Done():
-			return nil
 		case <-ctx.Done():
-			return ctx.Err()
+			log.Debug().Msg("closed")
+			return nil
 		case ct.errChan <- vw:
 		}
 		return nil
@@ -341,15 +340,17 @@ func (ct *CustomCmdTransformer) validationStdoutReader(ctx context.Context, stdo
 
 func (ct *CustomCmdTransformer) validate(ctx context.Context) (toolkit.ValidationWarnings, error) {
 	var res toolkit.ValidationWarnings
-	ctx, cancel := context.WithTimeout(ctx, ValidationTimeout)
+	ctx, cancel := context.WithTimeout(ctx, ct.ctd.ValidationTimeout)
 	defer cancel()
 
 	ct.eg.Go(func() error {
 		for {
 			select {
 			case <-ct.gtx.Done():
+				log.Debug().Msg("closed")
 				return nil
 			case <-ctx.Done():
+				log.Debug().Msg("closed")
 				return ctx.Err()
 			case re, ok := <-ct.errChan:
 				if !ok {
@@ -364,8 +365,10 @@ func (ct *CustomCmdTransformer) validate(ctx context.Context) (toolkit.Validatio
 		for {
 			select {
 			case <-ct.gtx.Done():
+				log.Debug().Msg("closed")
 				return nil
 			case <-ctx.Done():
+				log.Debug().Msg("closed")
 				return ctx.Err()
 			case data, ok := <-ct.outChan:
 				if !ok {
@@ -404,8 +407,10 @@ func (ct *CustomCmdTransformer) sendOriginalTuple(ctx context.Context, data []by
 func (ct *CustomCmdTransformer) receiveTransformedTuple(ctx context.Context) ([]byte, error) {
 	select {
 	case <-ct.gtx.Done():
+		log.Debug().Msg("closed")
 		return nil, ct.gtx.Err()
 	case <-ctx.Done():
+		log.Debug().Msg("closed")
 		return nil, ctx.Err()
 	case data := <-ct.outChan:
 		if len(data) == 0 {
@@ -424,8 +429,6 @@ func (ct *CustomCmdTransformer) receiveTransformedTuple(ctx context.Context) ([]
 
 func (ct *CustomCmdTransformer) Validate(ctx context.Context) (toolkit.ValidationWarnings, error) {
 	// TODO: Depending on transformer setting we can either validate or not. Ensure this logic has been implemented
-	ctx, cancel := context.WithTimeout(ctx, ValidationTimeout)
-	defer cancel()
 	meta, err := ct.getMetadata()
 	args := make([]string, len(ct.args))
 	copy(args, ct.args)
@@ -456,6 +459,9 @@ func (ct *CustomCmdTransformer) Validate(ctx context.Context) (toolkit.Validatio
 		return nil
 	})
 
+	ctx, cancel := context.WithTimeout(ctx, ct.ctd.ValidationTimeout)
+	defer cancel()
+
 	warnings, err := ct.validate(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("cannot perform transformer validation: %w", err)
@@ -464,7 +470,7 @@ func (ct *CustomCmdTransformer) Validate(ctx context.Context) (toolkit.Validatio
 }
 
 func (ct *CustomCmdTransformer) Transform(ctx context.Context, r *toolkit.Record) (*toolkit.Record, error) {
-	ctx, cancel := context.WithTimeout(ctx, RowTransformTimeout)
+	ctx, cancel := context.WithTimeout(ctx, ct.ctd.RowTransformationTimeout)
 	defer cancel()
 	rrd, err := r.GetRawRecordDto(ct.affectedColumns...)
 	if err != nil {

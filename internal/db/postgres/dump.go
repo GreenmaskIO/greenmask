@@ -31,6 +31,12 @@ import (
 
 const MetadataJsonFileName = "metadata.json"
 
+const (
+	DefaultValidationTimeout        = 20 * time.Second
+	DefaultRowTransformationTimeout = 2 * time.Second
+	DefaultAutoDiscoveryTimeout     = 10 * time.Second
+)
+
 type Dump struct {
 	dsn               string
 	pgDumpOptions     *pgdump.Options
@@ -360,18 +366,36 @@ func (d *Dump) BootstrapCustomTransformers(ctx context.Context) (err error) {
 			return fmt.Errorf(`custom transformer "executable" parameter is required`)
 		}
 
+		if ctd.AutoDiscoveryTimeout == 0 {
+			ctd.AutoDiscoveryTimeout = DefaultAutoDiscoveryTimeout
+		}
+		if ctd.ValidationTimeout == 0 {
+			ctd.ValidationTimeout = DefaultValidationTimeout
+		}
+		if ctd.RowTransformationTimeout == 0 {
+			ctd.RowTransformationTimeout = DefaultRowTransformationTimeout
+		}
+
 		if ctd.AutoDiscover {
 			// Get custom transformer definition from stdout and override received data with config ctd
-			args := make([]string, len(ctd.Args))
-			copy(args, ctd.Args)
-			args = append(args, custom.PrintConfigArgName)
-			ctdd, err := custom.GetDynamicTransformerDefinition(ctx, ctd.Executable, args...)
+			err = func() error {
+				args := make([]string, len(ctd.Args))
+				copy(args, ctd.Args)
+				args = append(args, custom.PrintConfigArgName)
+				ctx, cancel := context.WithTimeout(ctx, ctd.AutoDiscoveryTimeout)
+				defer cancel()
+				ctdd, err := custom.GetDynamicTransformerDefinition(ctx, ctd.Executable, args...)
+				if err != nil {
+					return fmt.Errorf("error getting dynamic transformer definition: %w", err)
+				}
+				ctd.Name = ctdd.Name
+				ctd.Description = ctdd.Description
+				ctd.Parameters = ctdd.Parameters
+				return nil
+			}()
 			if err != nil {
-				return fmt.Errorf("error getting dynamic transformer definition: %w", err)
+				return err
 			}
-			ctd.Name = ctdd.Name
-			ctd.Description = ctdd.Description
-			ctd.Parameters = ctdd.Parameters
 		}
 
 		td = toolkit.NewDefinition(

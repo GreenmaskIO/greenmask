@@ -10,9 +10,15 @@ import (
 	"io"
 	"os/exec"
 	"strings"
+	"syscall"
 )
 
 func GetDynamicTransformerDefinition(ctx context.Context, executable string, args ...string) (*transformers.CustomTransformerDefinition, error) {
+	log.Debug().
+		Str("Executable", executable).
+		Str("Args", strings.Join(args, " ")).
+		Msg("performing autodiscovery")
+
 	cmd := exec.Command(executable, args...)
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
@@ -35,9 +41,6 @@ func GetDynamicTransformerDefinition(ctx context.Context, executable string, arg
 	if err = cmd.Start(); err != nil {
 		return nil, fmt.Errorf("error running custom transformer: %w", err)
 	}
-
-	ctx, cancel := context.WithTimeout(ctx, AutoDiscoveryTimeout)
-	defer cancel()
 
 	doneChan := make(chan struct{})
 	var stdoutData, stderrData []byte
@@ -66,10 +69,28 @@ func GetDynamicTransformerDefinition(ctx context.Context, executable string, arg
 		if ctx.Err() != nil {
 			log.Warn().Err(err).Msg("error performing autodiscovery")
 		}
-		err = cmd.Process.Kill()
-		if err != nil {
-			log.Warn().Err(err).Msg("error killing atotransformer")
+
+		if cmd.ProcessState != nil && !cmd.ProcessState.Exited() {
+			if err := cmd.Process.Signal(syscall.SIGTERM); err != nil {
+				log.Warn().
+					Err(err).
+					Int("TransformerPid", cmd.Process.Pid).
+					Msg("error sending SIGTERM to custom transformer process")
+
+				if cmd.ProcessState != nil && !cmd.ProcessState.Exited() {
+					log.Warn().
+						Int("TransformerPid", cmd.Process.Pid).
+						Msg("killing process")
+					if err = cmd.Process.Kill(); err != nil {
+						log.Warn().
+							Err(err).
+							Int("TransformerPid", cmd.Process.Pid).
+							Msg("error terminating custom transformer process")
+					}
+				}
+			}
 		}
+		return nil, ctx.Err()
 	}
 
 	if err = eg.Wait(); err != nil {
