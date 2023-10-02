@@ -123,7 +123,7 @@ func (ct *CustomCmdTransformer) init(ctx context.Context, args []string,
 		return nil, fmt.Errorf("unable to open stdout pipe")
 	}
 
-	ct.inChan = make(chan []byte, 1)
+	ct.inChan = make(chan []byte)
 
 	ct.eg, ct.gtx = errgroup.WithContext(ctx)
 
@@ -313,10 +313,10 @@ func (ct *CustomCmdTransformer) validationStdoutReader(ctx context.Context, stdo
 			log.Debug().Err(err).Msg("error closing stdout")
 		}
 	}()
-	ct.errChan = make(chan *toolkit.ValidationWarning, 10)
+	ct.errChan = make(chan *toolkit.ValidationWarning)
 	defer close(ct.errChan)
 	return lineReader(ctx, stdout, func(line []byte) error {
-		var vw toolkit.ValidationWarning
+		vw := toolkit.NewValidationWarning()
 		if err := json.Unmarshal(line, &vw); err != nil {
 			log.Warn().
 				Err(err).
@@ -330,10 +330,10 @@ func (ct *CustomCmdTransformer) validationStdoutReader(ctx context.Context, stdo
 		}
 		select {
 		case <-ct.gtx.Done():
-			return ct.gtx.Err()
+			return nil
 		case <-ctx.Done():
 			return ctx.Err()
-		case ct.errChan <- &vw:
+		case ct.errChan <- vw:
 		}
 		return nil
 	})
@@ -348,7 +348,7 @@ func (ct *CustomCmdTransformer) validate(ctx context.Context) (toolkit.Validatio
 		for {
 			select {
 			case <-ct.gtx.Done():
-				return ct.gtx.Err()
+				return nil
 			case <-ctx.Done():
 				return ctx.Err()
 			case re, ok := <-ct.errChan:
@@ -364,7 +364,7 @@ func (ct *CustomCmdTransformer) validate(ctx context.Context) (toolkit.Validatio
 		for {
 			select {
 			case <-ct.gtx.Done():
-				return ct.gtx.Err()
+				return nil
 			case <-ctx.Done():
 				return ctx.Err()
 			case data, ok := <-ct.outChan:
