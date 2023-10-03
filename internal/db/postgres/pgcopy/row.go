@@ -13,6 +13,7 @@ type columnPos struct {
 	end   int
 }
 
+// Row - the row driver that works with vanilla COPY format
 type Row struct {
 	// raw - the state that received from PG
 	raw []byte
@@ -106,16 +107,16 @@ func (r *Row) Encode() ([]byte, error) {
 	return res, nil
 }
 
-func (r *Row) Decode() ([]*transformers.RawValue, error) {
-	var res []*transformers.RawValue
+func (r *Row) Decode() (map[int]*transformers.RawValue, error) {
+	res := make(map[int]*transformers.RawValue, len(r.columnPos))
 
 	for idx, pos := range r.columnPos {
 		if av, ok := r.newValues[idx]; ok {
 			// If value was set then return it
-			res = append(res, av)
+			res[idx] = av
 		} else {
-			av := DecodeAttr(r.raw[pos.start:pos.end])
-			res = append(res, av)
+			av = DecodeAttr(r.raw[pos.start:pos.end])
+			res[idx] = av
 		}
 	}
 	return res, nil

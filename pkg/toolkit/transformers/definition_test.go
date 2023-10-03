@@ -18,8 +18,8 @@ func (tt *TestTransformer) Init(ctx context.Context) error {
 	return nil
 }
 
-func (tt *TestTransformer) Validate(ctx context.Context) (ValidationWarnings, error) {
-	return nil, nil
+func (tt *TestTransformer) Done(ctx context.Context) error {
+	return nil
 }
 
 func (tt *TestTransformer) Transform(ctx context.Context, r *Record) (*Record, error) {
@@ -37,7 +37,7 @@ func NewTestTransformer(ctx context.Context, driver *Driver, parameters map[stri
 func TestDefinition(t *testing.T) {
 
 	TestTransformerDefinition := NewDefinition(
-		NewTransformerProperties("test", "simple description", TupleTransformation),
+		NewTransformerProperties("test", "simple description"),
 		NewTestTransformer,
 		MustNewParameter("column", "a column name", new(string), nil).
 			SetIsColumn(NewColumnProperties().
@@ -74,7 +74,7 @@ func TestDefinition(t *testing.T) {
 		Constraints: []Constraint{},
 	}
 
-	driver, err := NewDriver(typeMap, table)
+	driver, err := NewDriver(typeMap, table, nil)
 	require.NoError(t, err)
 
 	rawParams := map[string]ParamsValue{

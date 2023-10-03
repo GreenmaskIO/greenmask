@@ -28,7 +28,7 @@ func validateAndBuildTablesConfig(
 	var warnings toolkit.ValidationWarnings
 
 	for _, t := range cfg {
-		table, tableWarnings, err := getTable(ctx, tx, t.Schema, t.Name)
+		table, tableWarnings, err := getTable(ctx, tx, t)
 		if err != nil {
 			return nil, nil, fmt.Errorf("cannot build table from config: %w", err)
 		}
@@ -84,13 +84,13 @@ func validateAndBuildTablesConfig(
 	return tables, warnings, nil
 }
 
-func getTable(ctx context.Context, tx pgx.Tx, schema, name string) (*dump.Table, toolkit.ValidationWarnings, error) {
+func getTable(ctx context.Context, tx pgx.Tx, t *domains.Table) (*dump.Table, toolkit.ValidationWarnings, error) {
 	table := &dump.Table{
 		Table: &toolkit.Table{},
 	}
 	var warnings toolkit.ValidationWarnings
 
-	row := tx.QueryRow(ctx, TableSearchQuery, schema, name)
+	row := tx.QueryRow(ctx, TableSearchQuery, t.Schema, t.Name)
 	err := row.Scan(&table.Oid, &table.Schema, &table.Name, &table.Owner, &table.RelKind,
 		&table.RootPtSchema, &table.RootPtName, &table.RootOid,
 	)
@@ -106,6 +106,7 @@ func getTable(ctx context.Context, tx pgx.Tx, schema, name string) (*dump.Table,
 	} else if err != nil {
 		return nil, nil, fmt.Errorf("cannot scan table: %w", err)
 	}
+	table.Query = t.Query
 	return table, warnings, nil
 }
 

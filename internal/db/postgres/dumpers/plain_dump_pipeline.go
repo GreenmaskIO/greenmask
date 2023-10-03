@@ -30,7 +30,7 @@ func (pdp *PlainDumpPipeline) Dump(ctx context.Context, data []byte) (err error)
 	return nil
 }
 
-func (pdp *PlainDumpPipeline) CompleteDump() (err error) {
+func (pdp *PlainDumpPipeline) CompleteDump(ctx context.Context) (err error) {
 	res := make([]byte, 0, 4)
 	res = append(res, pgcopy.DefaultCopyTerminationSeq...)
 	res = append(res, '\n', '\n')

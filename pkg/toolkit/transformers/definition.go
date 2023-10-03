@@ -27,7 +27,7 @@ func (pv ParamsValue) MarshalYAML() (interface{}, error) {
 	return res, nil
 }
 
-// NewTransformerFunc - make new transformer. This function receives driver for making some steps for validation or
+// NewTransformerFunc - make new transformer. This function receives Driver for making some steps for validation or
 // anything else. parameters - the map of the parsed parameters, for get an appropriate parameter find it
 // in the map by the name. All those parameters has been defined in the Definition object of the transformer
 type NewTransformerFunc func(ctx context.Context, driver *Driver, parameters map[string]*Parameter) (

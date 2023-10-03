@@ -41,13 +41,13 @@ func (trd *TestRowDriver) Encode() ([]byte, error) {
 	return res, nil
 }
 
-func (trd *TestRowDriver) Decode() ([]*RawValue, error) {
-	var res []*RawValue
-	for _, v := range trd.row {
+func (trd *TestRowDriver) Decode() (map[int]*RawValue, error) {
+	res := make(map[int]*RawValue)
+	for idx, v := range trd.row {
 		if v == testNullSeq {
-			res = append(res, NewRawValue(nil, true))
+			res[idx] = NewRawValue(nil, true)
 		} else {
-			res = append(res, NewRawValue([]byte(v), false))
+			res[idx] = NewRawValue([]byte(v), false)
 		}
 	}
 	return res, nil

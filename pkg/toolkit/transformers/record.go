@@ -8,7 +8,7 @@ import (
 type Tuple map[string]*Value
 
 type Record struct {
-	driver *Driver
+	Driver *Driver
 	Row    RowDriver
 	tuple  Tuple
 }
@@ -16,18 +16,18 @@ type Record struct {
 func NewRecord(driver *Driver, row RowDriver) *Record {
 
 	return &Record{
-		driver: driver,
-		tuple:  make(Tuple, 24),
+		Driver: driver,
+		tuple:  make(Tuple, len(driver.Table.Columns)),
 		Row:    row,
 	}
 }
 
 func (r *Record) GetTuple() (Tuple, error) {
-	if len(r.tuple) == len(r.driver.Table.Columns) {
+	if len(r.tuple) == len(r.Driver.Table.Columns) {
 		return r.tuple, nil
 	}
 
-	for _, c := range r.driver.Table.Columns {
+	for _, c := range r.Driver.Table.Columns {
 		if _, ok := r.tuple[c.Name]; !ok {
 			if _, err := r.GetAttribute(c.Name); err != nil {
 				return nil, fmt.Errorf("error getting attribute: %w", err)
@@ -55,7 +55,7 @@ func (r *Record) ScanAttribute(name string, v any) (bool, error) {
 		return false, scanPointer(val, val.Value)
 	}
 
-	idx, c, ok := r.driver.GetColumnByName(name)
+	idx, c, ok := r.Driver.GetColumnByName(name)
 	if !ok {
 		return false, fmt.Errorf(`unknown column name "%s"`, name)
 	}
@@ -63,14 +63,14 @@ func (r *Record) ScanAttribute(name string, v any) (bool, error) {
 	if err != nil {
 		return false, fmt.Errorf(
 			"error getting column %s.%s.%s value: %w",
-			r.driver.Table.Schema, r.driver.Table.Name, c.Name,
+			r.Driver.Table.Schema, r.Driver.Table.Name, c.Name,
 			err,
 		)
 	}
 	if rawData.IsNull {
 		r.tuple[name] = NewValue(v, true)
 	} else {
-		if err := r.driver.ScanByTypeOid(uint32(c.TypeOid), rawData.Data, v); err != nil {
+		if err := r.Driver.ScanByTypeOid(uint32(c.TypeOid), rawData.Data, v); err != nil {
 			return false, fmt.Errorf("cannot scan: %w", err)
 		}
 		r.tuple[name] = NewValue(v, false)
@@ -81,7 +81,7 @@ func (r *Record) ScanAttribute(name string, v any) (bool, error) {
 func (r *Record) GetAttribute(name string) (*Value, error) {
 	val, ok := r.tuple[name]
 	if !ok {
-		idx, c, ok := r.driver.GetColumnByName(name)
+		idx, c, ok := r.Driver.GetColumnByName(name)
 		if !ok {
 			return nil, fmt.Errorf(`unknown column name "%s"`, name)
 		}
@@ -89,14 +89,14 @@ func (r *Record) GetAttribute(name string) (*Value, error) {
 		if err != nil {
 			return nil, fmt.Errorf(
 				"error getting column %s.%s.%s value: %w",
-				r.driver.Table.Schema, r.driver.Table.Name, c.Name,
+				r.Driver.Table.Schema, r.Driver.Table.Name, c.Name,
 				err,
 			)
 		}
 		if rawData.IsNull {
 			val = NewValue(nil, true)
 		} else {
-			decodedValue, err := r.driver.DecodeByTypeOid(uint32(c.TypeOid), rawData.Data)
+			decodedValue, err := r.Driver.DecodeByTypeOid(uint32(c.TypeOid), rawData.Data)
 			if err != nil {
 				return nil, fmt.Errorf("error decoding arribute: %w", err)
 			}
@@ -123,7 +123,7 @@ func (r *Record) SetAttribute(name string, v any) error {
 
 func (r *Record) Encode() (RowDriver, error) {
 	for name, v := range r.tuple {
-		idx, ok := r.driver.AttrIdxMap[name]
+		idx, ok := r.Driver.AttrIdxMap[name]
 		if !ok {
 			return nil, fmt.Errorf("unable to find column by name")
 		}
@@ -132,7 +132,7 @@ func (r *Record) Encode() (RowDriver, error) {
 				return nil, fmt.Errorf("error setting column value in RowDriver: %w", err)
 			}
 		} else {
-			encodedValue, err := r.encodeValue(r.driver.Table.Columns[idx], v.Value)
+			encodedValue, err := r.encodeValue(r.Driver.Table.Columns[idx], v.Value)
 			if err != nil {
 				return nil, fmt.Errorf("unable to encode attr value: %w", err)
 			}
@@ -151,11 +151,11 @@ func (r *Record) encodeValue(c *Column, v any) (res []byte, err error) {
 		// We need to encode-decode procedure v that are assigned as string
 		// v for non textual attributes
 		if c.TypeOid != pgtype.VarcharOID && c.TypeOid != pgtype.TextOID {
-			decodedVal, err := r.driver.DecodeAttr(c.Name, []byte(vv))
+			decodedVal, err := r.Driver.DecodeAttr(c.Name, []byte(vv))
 			if err != nil {
 				return nil, fmt.Errorf("unable to force decoding textual v of attribte %s for non textual %s type: %w", c.Name, c.TypeName, err)
 			}
-			res, err = r.driver.EncodeAttr(c.Name, decodedVal, nil)
+			res, err = r.Driver.EncodeAttr(c.Name, decodedVal, nil)
 			if err != nil {
 				return nil, fmt.Errorf("encoding error: %w", err)
 			}
@@ -164,7 +164,7 @@ func (r *Record) encodeValue(c *Column, v any) (res []byte, err error) {
 		}
 
 	default:
-		res, err = r.driver.EncodeAttr(c.Name, vv, nil)
+		res, err = r.Driver.EncodeAttr(c.Name, vv, nil)
 		if err != nil {
 			return nil, fmt.Errorf("encoding error: %w", err)
 		}
@@ -173,7 +173,7 @@ func (r *Record) encodeValue(c *Column, v any) (res []byte, err error) {
 }
 
 func (r *Record) GetRawAttributeValue(name string) (*RawValue, error) {
-	idx, ok := r.driver.AttrIdxMap[name]
+	idx, ok := r.Driver.AttrIdxMap[name]
 	if !ok {
 		return nil, fmt.Errorf("unable to find column by name")
 	}
@@ -183,7 +183,7 @@ func (r *Record) GetRawAttributeValue(name string) (*RawValue, error) {
 		if v.IsNull {
 			res = NewRawValue(nil, true)
 		} else {
-			encodedValue, err := r.encodeValue(r.driver.Table.Columns[idx], v.Value)
+			encodedValue, err := r.encodeValue(r.Driver.Table.Columns[idx], v.Value)
 			if err != nil {
 				return nil, fmt.Errorf("unable to encode attr value: %w", err)
 			}
@@ -200,37 +200,20 @@ func (r *Record) GetRawAttributeValue(name string) (*RawValue, error) {
 	return r.Row.GetColumn(idx)
 }
 
-func (r *Record) GetRawRecordDto(attributes ...string) (RawRecordDto, error) {
-	res := make(RawRecordDto, len(attributes))
-	if len(attributes) > 0 {
-		for _, name := range attributes {
-			v, err := r.GetRawAttributeValue(name)
-			if err != nil {
-				return nil, fmt.Errorf("error getting raw atribute value: %w", err)
-			}
-			res[name] = NewRawValueDto(string(v.Data), v.IsNull)
-		}
-	} else {
-		for _, c := range r.driver.Table.Columns {
-			v, err := r.GetRawAttributeValue(c.Name)
-			if err != nil {
-				return nil, fmt.Errorf("error getting raw atribute value: %w", err)
-			}
-			res[c.Name] = NewRawValueDto(string(v.Data), v.IsNull)
-		}
+func (r *Record) SetRawAttributeValueByName(name string, value *RawValue) error {
+	idx, ok := r.Driver.AttrIdxMap[name]
+	if !ok {
+		return fmt.Errorf("unable to find column by name")
 	}
-	return res, nil
+	if err := r.Row.SetColumn(idx, value); err != nil {
+		return fmt.Errorf("error setting raw atribute value: %w", err)
+	}
+	return nil
 }
 
-func (r *Record) SetRawRecordDto(rrd RawRecordDto) error {
-	for name, value := range rrd {
-		idx, ok := r.driver.AttrIdxMap[name]
-		if !ok {
-			return fmt.Errorf("unable to find column by name")
-		}
-		if err := r.Row.SetColumn(idx, NewRawValue([]byte(value.Data), value.IsNull)); err != nil {
-			return fmt.Errorf("error setting raw atribute value: %w", err)
-		}
+func (r *Record) SetRawAttributeValueByIdx(idx int, value *RawValue) error {
+	if err := r.Row.SetColumn(idx, value); err != nil {
+		return fmt.Errorf("error setting raw atribute value: %w", err)
 	}
 	return nil
 }

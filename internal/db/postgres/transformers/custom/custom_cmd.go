@@ -10,6 +10,7 @@ import (
 	"golang.org/x/sync/errgroup"
 	"io"
 	"os/exec"
+	"slices"
 	"strings"
 	"syscall"
 )
@@ -45,7 +46,7 @@ type CustomCmdTransformer struct {
 	cancel          CancelFunction
 	driver          *toolkit.Driver
 	parameters      map[string]*toolkit.Parameter
-	affectedColumns []string
+	affectedColumns map[int]string
 	ctd             *toolkit.CustomTransformerDefinition
 }
 
@@ -53,7 +54,7 @@ func NewCmdTransformer(
 	ctx context.Context, driver *toolkit.Driver, parameters map[string]*toolkit.Parameter,
 	ctd *toolkit.CustomTransformerDefinition,
 ) (*CustomCmdTransformer, toolkit.ValidationWarnings, error) {
-	var affectedColumns []string
+	affectedColumns := make(map[int]string)
 	for _, p := range parameters {
 		if p.IsColumn {
 			v := p.Value()
@@ -61,7 +62,13 @@ func NewCmdTransformer(
 			if !ok {
 				return nil, nil, fmt.Errorf("unable to perform cast of column parameter value from any to *string")
 			}
-			affectedColumns = append(affectedColumns, *columnName)
+			idx := slices.IndexFunc(driver.Table.Columns, func(column *toolkit.Column) bool {
+				return column.Name == *columnName
+			})
+			if idx == -1 {
+				return nil, nil, fmt.Errorf("column with name %s is not found", *columnName)
+			}
+			affectedColumns[idx] = *columnName
 		}
 	}
 
@@ -87,6 +94,126 @@ func NewCmdTransformer(
 	return ct, warnings, nil
 }
 
+func (ct *CustomCmdTransformer) Init(ctx context.Context) (err error) {
+	// TODO: Generate table meta and pass it through the parameter encoded by base64
+	meta, err := ct.getMetadata()
+	args := make([]string, len(ct.args))
+	args = append(args, MetaArgName, meta)
+	if err != nil {
+		return fmt.Errorf("cannot get metatda: %w", err)
+	}
+	ct.cancel, err = ct.init(ctx, args, ct.lineStdinWriter, ct.transformationStdoutReader, ct.transformationStderrReader)
+
+	if err != nil {
+		return err
+	}
+
+	ct.eg.Go(func() error {
+		if err := ct.cmd.Wait(); err != nil {
+			log.Error().
+				Err(err).
+				Str("TableSchema", ct.driver.Table.Schema).
+				Str("TableName", ct.driver.Table.Name).
+				Str("TransformerName", ct.name).
+				Int("TransformerPid", ct.cmd.Process.Pid).
+				Msg("custom transformer exited with error")
+			return fmt.Errorf("transformer exited with error: %w", err)
+		}
+		if ct.cmd.ProcessState != nil && ct.cmd.ProcessState.ExitCode() != ct.ctd.ExpectedExitCode {
+			log.Warn().
+				Str("TableSchema", ct.driver.Table.Schema).
+				Str("TableName", ct.driver.Table.Name).
+				Str("TransformerName", ct.name).
+				Str("TransformerName", ct.name).
+				Int("TransformerExitCode", ct.cmd.ProcessState.ExitCode()).
+				Msg("unexpected exit code")
+		}
+
+		log.Debug().
+			Str("TableSchema", ct.driver.Table.Schema).
+			Str("TableName", ct.driver.Table.Name).
+			Str("TransformerName", ct.name).
+			Int("TransformerPid", ct.cmd.Process.Pid).
+			Msg("transformer exited normally")
+		return nil
+	})
+
+	return nil
+}
+
+func (ct *CustomCmdTransformer) Done(ctx context.Context) (err error) {
+	log.Debug().
+		Str("TableSchema", ct.driver.Table.Schema).
+		Str("TableName", ct.driver.Table.Name).
+		Str("TransformerName", ct.name).
+		Msg("terminating custom transformer")
+
+	if err := ct.cancel(); err != nil {
+		log.Debug().
+			Err(err).
+			Str("TableSchema", ct.driver.Table.Schema).
+			Str("TableName", ct.driver.Table.Name).
+			Str("TransformerName", ct.name).
+			Msg("error in termination function")
+		return fmt.Errorf("error terminating custom transformer: %w", err)
+	}
+
+	if err := ct.eg.Wait(); err != nil {
+		log.Warn().
+			Err(err).
+			Str("TableSchema", ct.driver.Table.Schema).
+			Str("TableName", ct.driver.Table.Name).
+			Str("TransformerName", ct.name).
+			Str("TransformerName", ct.name).
+			Msg("one of custom transformer goroutine exited with error")
+		return fmt.Errorf("one of custom transformer goroutine exited with error: %w", err)
+	}
+	return nil
+}
+
+func (ct *CustomCmdTransformer) Validate(ctx context.Context) (toolkit.ValidationWarnings, error) {
+	// TODO: Depending on transformer setting we can either validate or not. Ensure this logic has been implemented
+	meta, err := ct.getMetadata()
+	args := make([]string, len(ct.args))
+	copy(args, ct.args)
+	args = append(args, ValidateArgName, MetaArgName, meta)
+	cancelFunction, err := ct.init(ctx, args, nil, ct.validationStdoutReader, ct.validationStderrReader)
+	if err != nil {
+		return nil, fmt.Errorf("transformer initialisation error: %w", err)
+	}
+
+	ct.eg.Go(func() error {
+		defer cancelFunction()
+		if err := ct.cmd.Wait(); err != nil {
+			log.Error().
+				Err(err).
+				Str("TableSchema", ct.driver.Table.Schema).
+				Str("TableName", ct.driver.Table.Name).
+				Str("TransformerName", ct.name).
+				Int("TransformerPid", ct.cmd.Process.Pid).
+				Msg("custom transformer exited with error")
+			return fmt.Errorf("transformer exited with error: %w", err)
+		}
+		log.Debug().
+			Str("TableSchema", ct.driver.Table.Schema).
+			Str("TableName", ct.driver.Table.Name).
+			Str("TransformerName", ct.name).
+			Int("TransformerPid", ct.cmd.Process.Pid).
+			Msg("transformer exited normally")
+		return nil
+	})
+
+	ctx, cancel := context.WithTimeout(ctx, ct.ctd.ValidationTimeout)
+	defer cancel()
+
+	warnings, err := ct.validate(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("cannot perform transformer validation: %w", err)
+	}
+
+	return warnings, nil
+}
+
 func (ct *CustomCmdTransformer) init(ctx context.Context, args []string,
 	stdinWriterFunc WriterFunction, stdoutReaderFunc ReaderFunction, stderrReaderFunc ReaderFunction,
 ) (CancelFunction, error) {
@@ -100,42 +227,51 @@ func (ct *CustomCmdTransformer) init(ctx context.Context, args []string,
 	}
 
 	ctx, cancel := context.WithCancel(ctx)
-	ct.cmd = exec.CommandContext(ctx, ct.executable, args...)
+	ct.cmd = exec.Command(ct.executable, args...)
 
-	stdoutReader, stdoutWriter := io.Pipe()
-	ct.cmd.Stdout = stdoutWriter
-
-	stderrReader, stderrWriter := io.Pipe()
-	ct.cmd.Stderr = stderrWriter
+	stderr, err := ct.cmd.StderrPipe()
+	if err != nil {
+		cancel()
+	}
+	stdout, err := ct.cmd.StdoutPipe()
+	if err != nil {
+		stdout.Close()
+		cancel()
+	}
 
 	stdin, err := ct.cmd.StdinPipe()
 	if err != nil {
 		cancel()
-		stdoutWriter.Close()
-		stderrWriter.Close()
-		stdoutReader.Close()
-		stderrReader.Close()
-		return nil, fmt.Errorf("unable to open stdout pipe")
+		stderr.Close()
+		stdout.Close()
 	}
+
+	log.Debug().Msgf("stdin = %v", stdin)
+	log.Debug().Msgf("stdout = %v", stdout)
+	log.Debug().Msgf("stderr = %v", stderr)
 
 	ct.inChan = make(chan []byte)
 
 	ct.eg, ct.gtx = errgroup.WithContext(ctx)
 
 	cancelFunction := func() error {
-		defer cancel()
-		log.Debug().Msg("running closing function")
-		if err := stdoutWriter.Close(); err != nil {
-			log.Debug().Err(err).Msg("error closing stdoutWriter")
-		}
-		if err := stderrWriter.Close(); err != nil {
-			log.Debug().Err(err).Msg("error closing stdoutWriter")
-		}
+		log.Debug().
+			Str("TableSchema", ct.driver.Table.Schema).
+			Str("TableName", ct.driver.Table.Name).
+			Str("TransformerName", ct.name).
+			Msg("running closing function")
 
 		close(ct.inChan)
-		if ct.cmd.ProcessState != nil && !ct.cmd.ProcessState.Exited() {
+		if ct.cmd.Process != nil {
+			log.Debug().
+				Str("TableSchema", ct.driver.Table.Schema).
+				Str("TableName", ct.driver.Table.Name).
+				Str("TransformerName", ct.name).
+				Str("TransformerName", ct.name).
+				Int("TransformerPid", ct.cmd.Process.Pid).
+				Msg("sending SIGTERM to custom transformer process")
 			if err := ct.cmd.Process.Signal(syscall.SIGTERM); err != nil {
-				log.Warn().
+				log.Debug().
 					Err(err).
 					Str("TableSchema", ct.driver.Table.Schema).
 					Str("TableName", ct.driver.Table.Name).
@@ -159,7 +295,19 @@ func (ct *CustomCmdTransformer) init(ctx context.Context, args []string,
 				}
 			}
 		}
-		log.Debug().Msg("closing function completed successfully")
+		cancel()
+
+		event := log.Debug().
+			Str("TableSchema", ct.driver.Table.Schema).
+			Str("TableName", ct.driver.Table.Name).
+			Str("TransformerName", ct.name).
+			Str("TransformerName", ct.name)
+		if ct.cmd.ProcessState != nil {
+			event.Int("TransformerExitCode", ct.cmd.ProcessState.ExitCode())
+
+		}
+		event.Msg("closing function completed successfully")
+
 		return nil
 	}
 
@@ -178,164 +326,32 @@ func (ct *CustomCmdTransformer) init(ctx context.Context, args []string,
 	}
 
 	ct.eg.Go(func() error {
-		return stderrReaderFunc(ct.gtx, stderrReader)
+		return stderrReaderFunc(ct.gtx, stderr)
 	})
 
 	ct.eg.Go(func() error {
-		return stdoutReaderFunc(ct.gtx, stdoutReader)
+		return stdoutReaderFunc(ct.gtx, stdout)
 	})
 
-	ct.eg.Go(func() error {
-		return stdinWriterFunc(ct.gtx, stdin)
-	})
+	if stdinWriterFunc != nil {
+		ct.eg.Go(func() error {
+			defer func() {
+				log.Debug().Msg("closing stdinWriter")
+				if err := stdin.Close(); err != nil {
+					log.Debug().
+						Str("TableSchema", ct.driver.Table.Schema).
+						Str("TableName", ct.driver.Table.Name).
+						Str("TransformerName", ct.name).
+						Str("TransformerName", ct.name).
+						Err(err).
+						Msg("error closing stdin")
+				}
+			}()
+			return stdinWriterFunc(ct.gtx, stdin)
+		})
+	}
 
 	return cancelFunction, nil
-}
-
-func (ct *CustomCmdTransformer) getMetadata() (string, error) {
-	res, err := json.Marshal(&ct.driver.Table)
-	if err != nil {
-		return "", fmt.Errorf("cannot marshal metadata: %w", err)
-	}
-	return string(res), nil
-}
-
-func (ct *CustomCmdTransformer) Init(ctx context.Context) (err error) {
-	// TODO: Generate table meta and pass it through the parameter encoded by base64
-	meta, err := ct.getMetadata()
-	args := make([]string, len(ct.args))
-	args = append(args, MetaArgName, meta)
-	if err != nil {
-		return fmt.Errorf("cannot get metatda: %w", err)
-	}
-	ct.cancel, err = ct.init(ctx, args, ct.lineStdinWriter, ct.transformationStdoutReader, ct.transformationStderrReader)
-	return err
-}
-
-func (ct *CustomCmdTransformer) Done(ctx context.Context) (err error) {
-	log.Debug().
-		Str("TableSchema", ct.driver.Table.Schema).
-		Str("TableName", ct.driver.Table.Name).
-		Str("TransformerName", ct.name).
-		Msg("terminating custom transformer")
-	return ct.cancel()
-}
-
-func (ct *CustomCmdTransformer) lineStdinWriter(ctx context.Context, stdin io.WriteCloser) error {
-	for {
-		select {
-		case data, ok := <-ct.inChan:
-			if !ok {
-				log.Debug().
-					Str("TransformerName", ct.ctd.Name).
-					Int("TransformerPid", ct.cmd.Process.Pid).
-					Str("TableSchema", ct.driver.Table.Schema).
-					Str("TableName", ct.driver.Table.Name).
-					Msg("lineStdinWriter exited because channel was closed")
-				return nil
-			}
-			_, err := stdin.Write(data)
-			if err != nil {
-				log.Warn().
-					Err(err).
-					Str("TransformerName", ct.ctd.Name).
-					Int("TransformerPid", ct.cmd.Process.Pid).
-					Str("TableSchema", ct.driver.Table.Schema).
-					Str("TableName", ct.driver.Table.Name).
-					Msg("cannot send data to stdin of transformer")
-				return fmt.Errorf("error sending data to stdin: %w", err)
-			}
-		case <-ctx.Done():
-			log.Debug().Msg("closed")
-			return ct.gtx.Err()
-		}
-	}
-}
-
-func (ct *CustomCmdTransformer) transformationStderrReader(ctx context.Context, stderr io.ReadCloser) error {
-	defer func() {
-		if err := stderr.Close(); err != nil {
-			log.Debug().Err(err).Msg("error closing stderr")
-		}
-	}()
-	return lineReader(ctx, stderr, func(line []byte) error {
-		log.Warn().
-			Str("TableSchema", ct.driver.Table.Schema).
-			Str("TableName", ct.driver.Table.Name).
-			Str("TransformerName", ct.name).
-			Int("TransformerPid", ct.cmd.Process.Pid).
-			Str("Data", string(line)).
-			Msg("stderr forwarding")
-		return nil
-	})
-}
-
-func (ct *CustomCmdTransformer) transformationStdoutReader(ctx context.Context, stdout io.ReadCloser) error {
-	defer func() {
-		if err := stdout.Close(); err != nil {
-			log.Debug().Err(err).Msg("error closing stdout")
-		}
-	}()
-	ct.outChan = make(chan []byte)
-	defer close(ct.outChan)
-	return lineReader(ctx, stdout, func(line []byte) error {
-		select {
-		case <-ctx.Done():
-			log.Debug().Msg("closed")
-			return nil
-		case ct.outChan <- line:
-			return nil
-		}
-	})
-}
-
-func (ct *CustomCmdTransformer) validationStderrReader(ctx context.Context, stderr io.ReadCloser) error {
-	defer func() {
-		if err := stderr.Close(); err != nil {
-			log.Debug().Err(err).Msg("error closing stderr")
-		}
-	}()
-	return lineReader(ctx, stderr, func(line []byte) error {
-		log.Warn().
-			Str("TableSchema", ct.driver.Table.Schema).
-			Str("TableName", ct.driver.Table.Name).
-			Str("TransformerName", ct.name).
-			Int("TransformerPid", ct.cmd.Process.Pid).
-			Str("Data", string(line)).
-			Msg("stderr forwarding")
-		return nil
-	})
-}
-
-func (ct *CustomCmdTransformer) validationStdoutReader(ctx context.Context, stdout io.ReadCloser) error {
-	defer func() {
-		if err := stdout.Close(); err != nil {
-			log.Debug().Err(err).Msg("error closing stdout")
-		}
-	}()
-	ct.errChan = make(chan *toolkit.ValidationWarning)
-	defer close(ct.errChan)
-	return lineReader(ctx, stdout, func(line []byte) error {
-		vw := toolkit.NewValidationWarning()
-		if err := json.Unmarshal(line, &vw); err != nil {
-			log.Warn().
-				Err(err).
-				Str("TableSchema", ct.driver.Table.Schema).
-				Str("TableName", ct.driver.Table.Name).
-				Str("TransformerName", ct.name).
-				Int("TransformerPid", ct.cmd.Process.Pid).
-				Str("Data", string(line)).
-				Msg("error unmarshalling ValidationWarning")
-			return fmt.Errorf("error unmarshalling ValidationWarning: %w", err)
-		}
-		select {
-		case <-ctx.Done():
-			log.Debug().Msg("closed")
-			return nil
-		case ct.errChan <- vw:
-		}
-		return nil
-	})
 }
 
 func (ct *CustomCmdTransformer) validate(ctx context.Context) (toolkit.ValidationWarnings, error) {
@@ -346,17 +362,17 @@ func (ct *CustomCmdTransformer) validate(ctx context.Context) (toolkit.Validatio
 	ct.eg.Go(func() error {
 		for {
 			select {
+			case re, ok := <-ct.errChan:
+				if !ok {
+					return nil
+				}
+				res = append(res, re)
 			case <-ct.gtx.Done():
 				log.Debug().Msg("closed")
 				return nil
 			case <-ctx.Done():
 				log.Debug().Msg("closed")
 				return ctx.Err()
-			case re, ok := <-ct.errChan:
-				if !ok {
-					return nil
-				}
-				res = append(res, re)
 			}
 		}
 	})
@@ -393,6 +409,112 @@ func (ct *CustomCmdTransformer) validate(ctx context.Context) (toolkit.Validatio
 	return res, nil
 }
 
+func (ct *CustomCmdTransformer) getMetadata() (string, error) {
+	res, err := json.Marshal(&ct.driver.Table)
+	if err != nil {
+		return "", fmt.Errorf("cannot marshal metadata: %w", err)
+	}
+	return string(res), nil
+}
+
+func (ct *CustomCmdTransformer) lineStdinWriter(ctx context.Context, stdin io.WriteCloser) error {
+
+	for {
+		select {
+		case data, ok := <-ct.inChan:
+			if !ok {
+				log.Debug().
+					Str("TransformerName", ct.ctd.Name).
+					Int("TransformerPid", ct.cmd.Process.Pid).
+					Str("TableSchema", ct.driver.Table.Schema).
+					Str("TableName", ct.driver.Table.Name).
+					Msg("lineStdinWriter exited because channel was closed")
+				return nil
+			}
+			_, err := stdin.Write(data)
+			if err != nil {
+				log.Warn().
+					Err(err).
+					Str("TransformerName", ct.ctd.Name).
+					Int("TransformerPid", ct.cmd.Process.Pid).
+					Str("TableSchema", ct.driver.Table.Schema).
+					Str("TableName", ct.driver.Table.Name).
+					Msg("cannot send data to stdin of transformer")
+				return fmt.Errorf("error sending data to stdin: %w", err)
+			}
+		case <-ctx.Done():
+			log.Debug().Msg("closed")
+			return ct.gtx.Err()
+		}
+	}
+}
+
+func (ct *CustomCmdTransformer) transformationStderrReader(ctx context.Context, stderr io.ReadCloser) error {
+	return lineReader(ctx, stderr, func(line []byte) error {
+		log.Warn().
+			Str("TableSchema", ct.driver.Table.Schema).
+			Str("TableName", ct.driver.Table.Name).
+			Str("TransformerName", ct.name).
+			Int("TransformerPid", ct.cmd.Process.Pid).
+			Str("Data", string(line)).
+			Msg("stderr forwarding")
+		return nil
+	})
+}
+
+func (ct *CustomCmdTransformer) transformationStdoutReader(ctx context.Context, stdout io.ReadCloser) error {
+	ct.outChan = make(chan []byte, 1)
+	defer close(ct.outChan)
+	return lineReader(ctx, stdout, func(line []byte) error {
+		select {
+		case ct.outChan <- line:
+			return nil
+		case <-ctx.Done():
+			log.Debug().Msg("closed")
+			return nil
+		}
+	})
+}
+
+func (ct *CustomCmdTransformer) validationStderrReader(ctx context.Context, stderr io.ReadCloser) error {
+	return lineReader(ctx, stderr, func(line []byte) error {
+		log.Warn().
+			Str("TableSchema", ct.driver.Table.Schema).
+			Str("TableName", ct.driver.Table.Name).
+			Str("TransformerName", ct.name).
+			Int("TransformerPid", ct.cmd.Process.Pid).
+			Str("Data", string(line)).
+			Msg("stderr forwarding")
+		return nil
+	})
+}
+
+func (ct *CustomCmdTransformer) validationStdoutReader(ctx context.Context, stdout io.ReadCloser) error {
+	ct.errChan = make(chan *toolkit.ValidationWarning, 1)
+	defer close(ct.errChan)
+	return lineReader(ctx, stdout, func(line []byte) error {
+		vw := toolkit.NewValidationWarning()
+		if err := json.Unmarshal(line, &vw); err != nil {
+			log.Warn().
+				Err(err).
+				Str("TableSchema", ct.driver.Table.Schema).
+				Str("TableName", ct.driver.Table.Name).
+				Str("TransformerName", ct.name).
+				Int("TransformerPid", ct.cmd.Process.Pid).
+				Str("Data", string(line)).
+				Msg("error unmarshalling ValidationWarning")
+			return fmt.Errorf("error unmarshalling ValidationWarning: %w", err)
+		}
+		select {
+		case ct.errChan <- vw:
+		case <-ctx.Done():
+			log.Debug().Msg("closed")
+			return nil
+		}
+		return nil
+	})
+}
+
 func (ct *CustomCmdTransformer) sendOriginalTuple(ctx context.Context, data []byte) error {
 	select {
 	case ct.inChan <- data:
@@ -406,13 +528,16 @@ func (ct *CustomCmdTransformer) sendOriginalTuple(ctx context.Context, data []by
 
 func (ct *CustomCmdTransformer) receiveTransformedTuple(ctx context.Context) ([]byte, error) {
 	select {
-	case <-ct.gtx.Done():
-		log.Debug().Msg("closed")
-		return nil, ct.gtx.Err()
-	case <-ctx.Done():
-		log.Debug().Msg("closed")
-		return nil, ctx.Err()
-	case data := <-ct.outChan:
+	case data, ok := <-ct.outChan:
+		if !ok {
+			log.Warn().
+				Str("TableSchema", ct.driver.Table.Schema).
+				Str("TableName", ct.driver.Table.Name).
+				Str("TransformerName", ct.name).
+				Int("TransformerPid", ct.cmd.Process.Pid).
+				Msg("channel unexpectedly closed")
+			return nil, fmt.Errorf("channel unexpectedly closed")
+		}
 		if len(data) == 0 {
 			log.Warn().
 				Str("TableSchema", ct.driver.Table.Schema).
@@ -424,55 +549,19 @@ func (ct *CustomCmdTransformer) receiveTransformedTuple(ctx context.Context) ([]
 			return nil, fmt.Errorf("received empty tuple after transformation")
 		}
 		return data, nil
+	case <-ct.gtx.Done():
+		log.Debug().Msg("closed")
+		return nil, ct.gtx.Err()
+	case <-ctx.Done():
+		log.Debug().Msg("closed")
+		return nil, ctx.Err()
 	}
-}
-
-func (ct *CustomCmdTransformer) Validate(ctx context.Context) (toolkit.ValidationWarnings, error) {
-	// TODO: Depending on transformer setting we can either validate or not. Ensure this logic has been implemented
-	meta, err := ct.getMetadata()
-	args := make([]string, len(ct.args))
-	copy(args, ct.args)
-	args = append(args, ValidateArgName, MetaArgName, meta)
-	cancelFunction, err := ct.init(ctx, args, ct.lineStdinWriter, ct.validationStdoutReader, ct.validationStderrReader)
-	if err != nil {
-		return nil, fmt.Errorf("transformer initialisation error: %w", err)
-	}
-
-	ct.eg.Go(func() error {
-		defer cancelFunction()
-		if err := ct.cmd.Wait(); err != nil {
-			log.Error().
-				Err(err).
-				Str("TableSchema", ct.driver.Table.Schema).
-				Str("TableName", ct.driver.Table.Name).
-				Str("TransformerName", ct.name).
-				Int("TransformerPid", ct.cmd.Process.Pid).
-				Msg("custom transformer exited with error")
-			return fmt.Errorf("transformer exited with error: %w", err)
-		}
-		log.Debug().
-			Str("TableSchema", ct.driver.Table.Schema).
-			Str("TableName", ct.driver.Table.Name).
-			Str("TransformerName", ct.name).
-			Int("TransformerPid", ct.cmd.Process.Pid).
-			Msg("transformer exited normally")
-		return nil
-	})
-
-	ctx, cancel := context.WithTimeout(ctx, ct.ctd.ValidationTimeout)
-	defer cancel()
-
-	warnings, err := ct.validate(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("cannot perform transformer validation: %w", err)
-	}
-	return warnings, nil
 }
 
 func (ct *CustomCmdTransformer) Transform(ctx context.Context, r *toolkit.Record) (*toolkit.Record, error) {
 	ctx, cancel := context.WithTimeout(ctx, ct.ctd.RowTransformationTimeout)
 	defer cancel()
-	rrd, err := r.GetRawRecordDto(ct.affectedColumns...)
+	rrd, err := GetRawRecordDto(r, ct.affectedColumns)
 	if err != nil {
 		return nil, fmt.Errorf("error gettings RawRecordDto: %w", err)
 	}
@@ -496,7 +585,7 @@ func (ct *CustomCmdTransformer) Transform(ctx context.Context, r *toolkit.Record
 		return nil, fmt.Errorf("error unmarshalling RawRecordDto")
 	}
 
-	if err = r.SetRawRecordDto(trrd); err != nil {
+	if err = SetRawRecordDto(r, trrd); err != nil {
 		return nil, fmt.Errorf("error setting RawRecordDto")
 	}
 

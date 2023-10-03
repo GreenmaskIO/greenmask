@@ -218,7 +218,7 @@ func (p *Parameter) Parse(
 			}
 			p.value = value
 		} else if p.CastDbType != "" {
-			// Perform decoding via pgx driver
+			// Perform decoding via pgx Driver
 			switch p.value.(type) {
 			case *time.Time:
 				val, err := driver.DecodeByTypeName(p.CastDbType, raw)
@@ -234,7 +234,7 @@ func (p *Parameter) Parse(
 			}
 		} else if p.LinkedColumnParameter != nil {
 
-			// Try to scan value using pgx driver and pgtype defined in the linked column
+			// Try to scan value using pgx Driver and pgtype defined in the linked column
 			if p.LinkedColumnParameter.Column == nil {
 				return nil, fmt.Errorf("parameter is linked but column was not assigned")
 			}

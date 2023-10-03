@@ -13,5 +13,5 @@ type RowDriver interface {
 	// line or JSON object, etc.
 	Encode() ([]byte, error)
 	// Decode - decode current row state into slice of row values ([]*RawValue)
-	Decode() ([]*RawValue, error)
+	Decode() (map[int]*RawValue, error)
 }

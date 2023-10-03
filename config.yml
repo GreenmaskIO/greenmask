@@ -26,13 +26,14 @@ dump:
 #    dbname: "host=localhost user=postgres password=example dbname=demo port=54316"
 #    dbname: "host=localhost user=postgres password=example dbname=demo port=54315"
     jobs: 10
-#    exclude-schema: "(\"teSt\"*|test*)"
-#    table: "test"
+    exclude-schema: "(\"teSt\"*|test*)"
+#    table: "bookings.flights"
     load-via-partition-root: true
 
   transformation:
     - schema: "bookings"
       name: "flights"
+#      query: "select * from bookings.flights limit 1"
       columns_type_override:
         post_code: "int4"
       transformers:

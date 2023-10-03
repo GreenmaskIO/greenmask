@@ -15,7 +15,7 @@ import (
 
 type Pipeliner interface {
 	Dump(ctx context.Context, data []byte) error
-	CompleteDump() (err error)
+	CompleteDump(ctx context.Context) (err error)
 }
 
 type TransformationPipeline struct {
@@ -71,13 +71,19 @@ func (wt *TransformationPipeline) Dump(ctx context.Context, data []byte) (err er
 	return nil
 }
 
-func (wt *TransformationPipeline) CompleteDump() (err error) {
+func (wt *TransformationPipeline) CompleteDump(ctx context.Context) (err error) {
 	res := make([]byte, 0, 4)
 	res = append(res, pgcopy.DefaultCopyTerminationSeq...)
 	res = append(res, '\n', '\n')
 	_, err = wt.w.Write(res)
 	if err != nil {
 		return NewDumpError(wt.table.Schema, wt.table.Name, wt.line, fmt.Errorf("error end of dump symbols: %w", err))
+	}
+
+	for _, t := range wt.table.Transformers {
+		if err = t.Done(ctx); err != nil {
+			return err
+		}
 	}
 	return nil
 }

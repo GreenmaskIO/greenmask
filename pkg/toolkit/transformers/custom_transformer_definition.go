@@ -13,4 +13,5 @@ type CustomTransformerDefinition struct {
 	ValidationTimeout        time.Duration `mapstructure:"validation_timeout" yaml:"validation_timeout" json:"validation_timeout"`
 	AutoDiscoveryTimeout     time.Duration `mapstructure:"auto_discovery_timeout" yaml:"auto_discovery_timeout" json:"auto_discovery_timeout"`
 	RowTransformationTimeout time.Duration `mapstructure:"row_transformation_timeout" yaml:"row_transformation_timeout" json:"row_transformation_timeout"`
+	ExpectedExitCode         int           `mapstructure:"expected_exit_code" yaml:"expected_exit_code" json:"expected_exit_code"`
 }
