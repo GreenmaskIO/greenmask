@@ -29,8 +29,6 @@ const (
 )
 
 type CancelFunction func() error
-type ReaderFunction func(ctx context.Context, r io.ReadCloser) error
-type WriterFunction func(ctx context.Context, r io.WriteCloser) error
 
 func ProduceNewCmdTransformerFunction(ctd *toolkit.CustomTransformerDefinition) toolkit.NewTransformerFunc {
 	return func(
