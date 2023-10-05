@@ -40,7 +40,7 @@ type CustomCmdTransformer struct {
 	cmd             *exec.Cmd
 	inChan          chan []byte
 	outChan         chan []byte
-	errChan         chan *toolkit.ValidationWarning
+	warnings        []*toolkit.ValidationWarning
 	eg              *errgroup.Group
 	gtx             context.Context
 	cancel          CancelFunction
@@ -364,31 +364,13 @@ func (ct *CustomCmdTransformer) init(ctx context.Context, args []string,
 }
 
 func (ct *CustomCmdTransformer) validate(ctx context.Context) (toolkit.ValidationWarnings, error) {
-	var res toolkit.ValidationWarnings
 	ctx, cancel := context.WithTimeout(ctx, ct.ctd.ValidationTimeout)
 	defer cancel()
-
-	ct.eg.Go(func() error {
-		for {
-			select {
-			//case <-ctx.Done():
-			//	return ctx.Err()
-			case re, ok := <-ct.errChan:
-				log.Debug().Msg("received warming")
-				if !ok {
-					return nil
-				}
-				res = append(res, re)
-				//default:
-				// TODO: again this problem when without loop after closing errChan the goroutine is still locking
-			}
-		}
-	})
 
 	if err := ct.eg.Wait(); err != nil {
 		return nil, err
 	}
-	return res, nil
+	return ct.warnings, nil
 }
 
 func (ct *CustomCmdTransformer) getMetadata() (string, error) {
@@ -472,11 +454,6 @@ func (ct *CustomCmdTransformer) validationStderrReader(ctx context.Context, stde
 }
 
 func (ct *CustomCmdTransformer) validationStdoutReader(ctx context.Context, stdout io.ReadCloser) error {
-	ct.errChan = make(chan *toolkit.ValidationWarning)
-	defer func() {
-		close(ct.errChan)
-		log.Debug().Msg("channel closed")
-	}()
 
 	return lineReader(ctx, stdout, func(line []byte) error {
 		vw := toolkit.NewValidationWarning()
@@ -491,13 +468,7 @@ func (ct *CustomCmdTransformer) validationStdoutReader(ctx context.Context, stdo
 				Msg("error unmarshalling ValidationWarning")
 			return fmt.Errorf("error unmarshalling ValidationWarning: %w", err)
 		}
-		select {
-		case ct.errChan <- vw:
-			log.Debug().Msg("warning sent")
-		case <-ctx.Done():
-			log.Debug().Msg("closed")
-			return nil
-		}
+		ct.warnings = append(ct.warnings, vw)
 		return nil
 	})
 }
