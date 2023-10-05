@@ -1,50 +1,9 @@
 package custom
 
 import (
-	"bufio"
-	"context"
-	"errors"
 	"fmt"
 	"github.com/greenmaskio/greenmask/pkg/toolkit/transformers"
-	"github.com/rs/zerolog/log"
-	"io"
-	"os"
 )
-
-func lineReader(ctx context.Context, r io.Reader, lineHook func(line []byte) error) error {
-	lineScanner := bufio.NewReader(r)
-	defer func() {
-		for {
-			line, _, err := lineScanner.ReadLine()
-			if err != nil {
-				return
-			}
-			if err := lineHook(line); err != nil {
-				return
-			}
-		}
-	}()
-	for {
-		line, _, err := lineScanner.ReadLine()
-		if err != nil {
-			if errors.Is(err, io.EOF) || errors.Is(err, os.ErrClosed) {
-				return nil
-			}
-			log.Debug().Err(err).Msg("line reader error")
-			return err
-		}
-
-		if err := lineHook(line); err != nil {
-			return err
-		}
-
-		select {
-		case <-ctx.Done():
-			return nil
-		default:
-		}
-	}
-}
 
 // GetRawRecordDto - create record data transfer object for custom transformer for provided attributes or for the whole
 // record if attributes are empty. This is using for transfer original data to CustomCmd transformer
