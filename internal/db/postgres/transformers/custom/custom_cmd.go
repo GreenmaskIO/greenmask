@@ -289,12 +289,6 @@ func (ct *CustomCmdTransformer) Validate(ctx context.Context) (toolkit.Validatio
 			return nil, fmt.Errorf("error unmarshalling ValidationWarning: %w", err)
 		}
 		warnings = append(warnings, vw)
-
-		select {
-		case <-ctx.Done():
-			return nil, ctx.Err()
-		default:
-		}
 	}
 
 	if err = ct.eg.Wait(); err != nil {
