@@ -82,7 +82,6 @@ func (d *Dump) prune() {
 	if err := os.RemoveAll(d.tmpDir); err != nil {
 		log.Debug().Err(err).Msg("error deleting temp dir")
 	}
-	clear(d.dumpedObjectSizes)
 }
 
 func (d *Dump) gatherPgFacts(ctx context.Context, tx pgx.Tx) error {
@@ -236,7 +235,6 @@ func (d *Dump) dataDump(ctx context.Context) error {
 			defer close(tasks)
 
 			for _, dumpObj := range d.context.DataSectionObjects {
-				log.Warn().Msg("implement data exclusion")
 				dumpObj.SetDumpId(d.dumpIdSequence.Next())
 				var task dumpers.DumpTask
 				switch v := dumpObj.(type) {

@@ -6,8 +6,6 @@ import (
 	"math/rand"
 	"time"
 
-	"github.com/rs/zerolog/log"
-
 	"github.com/greenmaskio/greenmask/internal/db/postgres/transformers/utils"
 	toolkit "github.com/greenmaskio/greenmask/pkg/toolkit/transformers"
 )
@@ -75,7 +73,6 @@ func (nit *NoiseIntTransformer) Done(ctx context.Context) error {
 
 func (nit *NoiseIntTransformer) Transform(ctx context.Context, r *toolkit.Record) (*toolkit.Record, error) {
 	// TODO: value out of rage might be possible: double check this transformer implementation
-	log.Warn().Msg("value out of rage might be possible: double check this transformer implementation")
 
 	var val int64
 	isNull, err := r.ScanAttribute(nit.columnName, &val)

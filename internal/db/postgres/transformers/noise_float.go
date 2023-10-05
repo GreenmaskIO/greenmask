@@ -8,8 +8,6 @@ import (
 	"math/rand"
 	"time"
 
-	"github.com/rs/zerolog/log"
-
 	"github.com/greenmaskio/greenmask/internal/db/postgres/transformers/utils"
 	toolkit "github.com/greenmaskio/greenmask/pkg/toolkit/transformers"
 )
@@ -61,7 +59,8 @@ type NoiseFloatTransformer struct {
 }
 
 func NewNoiseFloatTransformer(ctx context.Context, driver *toolkit.Driver, parameters map[string]*toolkit.Parameter) (toolkit.Transformer, toolkit.ValidationWarnings, error) {
-	log.Warn().Msg("value out of rage might be possible: double check this transformer implementation")
+	// TODO: value out of rage might be possible: double check this transformer implementation
+
 	var columnName string
 	var ratio float64
 	var precision int64

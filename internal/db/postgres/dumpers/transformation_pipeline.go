@@ -15,7 +15,9 @@ import (
 
 type Pipeliner interface {
 	Dump(ctx context.Context, data []byte) error
-	CompleteDump(ctx context.Context) (err error)
+	Init(ctx context.Context) error
+	Done(ctx context.Context) error
+	CompleteDump() error
 }
 
 type TransformationPipeline struct {
@@ -27,19 +29,38 @@ type TransformationPipeline struct {
 
 func NewTransformationPipeline(ctx context.Context, table *dump.Table, w io.Writer) (*TransformationPipeline, error) {
 	buf := bytes.NewBuffer(nil)
-	for _, t := range table.Transformers {
-		if err := t.Init(ctx); err != nil {
-			// TODO: Create new transformer error it would contain required context. Such as transformer name
-			// 		 table name and so on
-			log.Warn().Msg("IMPLEMENT ME: transformer error so it would contain required context. Such as transformer name table name and so on")
-			return nil, fmt.Errorf("unable to initialize transformer")
-		}
-	}
+
 	return &TransformationPipeline{
 		table: table,
 		buf:   buf,
 		w:     w,
 	}, nil
+}
+
+func (wt *TransformationPipeline) Init(ctx context.Context) error {
+	var lastInitErr error
+	var idx int
+	var t transformers.Transformer
+	for idx, t = range wt.table.Transformers {
+		if err := t.Init(ctx); err != nil {
+			lastInitErr = err
+			log.Warn().Err(err).Msg("error initializing transformer")
+		}
+	}
+
+	if lastInitErr != nil {
+		lastInitialized := idx
+		for _, t = range wt.table.Transformers[:lastInitialized] {
+			if err := t.Done(ctx); err != nil {
+				log.Warn().Err(err).Msg("error terminating previously initialized transformer")
+			}
+		}
+	}
+	if lastInitErr != nil {
+		return fmt.Errorf("unable to initialize transformer: %w", lastInitErr)
+	}
+
+	return nil
 }
 
 func (wt *TransformationPipeline) Dump(ctx context.Context, data []byte) (err error) {
@@ -71,7 +92,7 @@ func (wt *TransformationPipeline) Dump(ctx context.Context, data []byte) (err er
 	return nil
 }
 
-func (wt *TransformationPipeline) CompleteDump(ctx context.Context) (err error) {
+func (wt *TransformationPipeline) CompleteDump() (err error) {
 	res := make([]byte, 0, 4)
 	res = append(res, pgcopy.DefaultCopyTerminationSeq...)
 	res = append(res, '\n', '\n')
@@ -79,11 +100,19 @@ func (wt *TransformationPipeline) CompleteDump(ctx context.Context) (err error) 
 	if err != nil {
 		return NewDumpError(wt.table.Schema, wt.table.Name, wt.line, fmt.Errorf("error end of dump symbols: %w", err))
 	}
+	return nil
+}
 
+func (wt *TransformationPipeline) Done(ctx context.Context) error {
+	var lastErr error
 	for _, t := range wt.table.Transformers {
-		if err = t.Done(ctx); err != nil {
-			return err
+		if err := t.Done(ctx); err != nil {
+			lastErr = err
+			log.Warn().Err(err).Msg("error terminating initialized transformer")
 		}
+	}
+	if lastErr != nil {
+		return fmt.Errorf("error terminating initialized transformer: %w", lastErr)
 	}
 	return nil
 }

@@ -110,23 +110,30 @@ func (ct *CustomCmdTransformer) Init(ctx context.Context) (err error) {
 
 	ct.eg.Go(func() error {
 		if err := ct.cmd.Wait(); err != nil {
-			log.Error().
-				Err(err).
-				Str("TableSchema", ct.driver.Table.Schema).
-				Str("TableName", ct.driver.Table.Name).
-				Str("TransformerName", ct.name).
-				Int("TransformerPid", ct.cmd.Process.Pid).
-				Msg("custom transformer exited with error")
-			return fmt.Errorf("transformer exited with error: %w", err)
-		}
-		if ct.cmd.ProcessState != nil && ct.cmd.ProcessState.ExitCode() != ct.ctd.ExpectedExitCode {
-			log.Warn().
-				Str("TableSchema", ct.driver.Table.Schema).
-				Str("TableName", ct.driver.Table.Name).
-				Str("TransformerName", ct.name).
-				Str("TransformerName", ct.name).
-				Int("TransformerExitCode", ct.cmd.ProcessState.ExitCode()).
-				Msg("unexpected exit code")
+			var exitErr *exec.ExitError
+			if errors.As(err, &exitErr) {
+				if exitErr.ExitCode() != ct.ctd.ExpectedExitCode {
+					log.Warn().
+						Str("TableSchema", ct.driver.Table.Schema).
+						Str("TableName", ct.driver.Table.Name).
+						Str("TransformerName", ct.name).
+						Str("TransformerName", ct.name).
+						Int("TransformerExitCode", ct.cmd.ProcessState.ExitCode()).
+						Msg("unexpected exit code")
+					return fmt.Errorf("unexpeted transformer exit code: exepected %d received %d",
+						ct.ctd.ExpectedExitCode, ct.cmd.ProcessState.ExitCode())
+				}
+				return err
+			} else {
+				log.Error().
+					Err(err).
+					Str("TableSchema", ct.driver.Table.Schema).
+					Str("TableName", ct.driver.Table.Name).
+					Str("TransformerName", ct.name).
+					Int("TransformerPid", ct.cmd.Process.Pid).
+					Msg("custom transformer exited with error")
+				return fmt.Errorf("transformer exited with error: %w", err)
+			}
 		}
 
 		log.Debug().
@@ -164,10 +171,14 @@ func (ct *CustomCmdTransformer) Done(ctx context.Context) (err error) {
 			Str("TableSchema", ct.driver.Table.Schema).
 			Str("TableName", ct.driver.Table.Name).
 			Str("TransformerName", ct.name).
-			Str("TransformerName", ct.name).
 			Msg("one of custom transformer goroutine exited with error")
 		return fmt.Errorf("one of custom transformer goroutine exited with error: %w", err)
 	}
+	log.Debug().
+		Str("TableSchema", ct.driver.Table.Schema).
+		Str("TableName", ct.driver.Table.Name).
+		Str("TransformerName", ct.name).
+		Msg("terminated successfully")
 	return nil
 }
 
@@ -261,8 +272,10 @@ func (ct *CustomCmdTransformer) init(ctx context.Context, args []string,
 			Str("TransformerName", ct.name).
 			Msg("running closing function")
 
-		close(ct.inChan)
-		if ct.cmd.Process != nil {
+		cancel()
+
+		if ct.cmd.Process != nil && ct.cmd.ProcessState == nil ||
+			ct.cmd.Process != nil && ct.cmd.ProcessState != nil && !ct.cmd.ProcessState.Exited() {
 			log.Debug().
 				Str("TableSchema", ct.driver.Table.Schema).
 				Str("TableName", ct.driver.Table.Name).
@@ -295,18 +308,14 @@ func (ct *CustomCmdTransformer) init(ctx context.Context, args []string,
 				}
 			}
 		}
-		cancel()
+		close(ct.inChan)
 
-		event := log.Debug().
+		log.Debug().
 			Str("TableSchema", ct.driver.Table.Schema).
 			Str("TableName", ct.driver.Table.Name).
 			Str("TransformerName", ct.name).
-			Str("TransformerName", ct.name)
-		if ct.cmd.ProcessState != nil {
-			event.Int("TransformerExitCode", ct.cmd.ProcessState.ExitCode())
-
-		}
-		event.Msg("closing function completed successfully")
+			Str("TransformerName", ct.name).
+			Msg("closing function completed successfully")
 
 		return nil
 	}
@@ -362,48 +371,21 @@ func (ct *CustomCmdTransformer) validate(ctx context.Context) (toolkit.Validatio
 	ct.eg.Go(func() error {
 		for {
 			select {
+			//case <-ctx.Done():
+			//	return ctx.Err()
 			case re, ok := <-ct.errChan:
+				log.Debug().Msg("received warming")
 				if !ok {
 					return nil
 				}
 				res = append(res, re)
-			case <-ct.gtx.Done():
-				log.Debug().Msg("closed")
-				return nil
-			case <-ctx.Done():
-				log.Debug().Msg("closed")
-				return ctx.Err()
+				//default:
+				// TODO: again this problem when without loop after closing errChan the goroutine is still locking
 			}
 		}
 	})
 
-	ct.eg.Go(func() error {
-		for {
-			select {
-			case <-ct.gtx.Done():
-				log.Debug().Msg("closed")
-				return nil
-			case <-ctx.Done():
-				log.Debug().Msg("closed")
-				return ctx.Err()
-			case data, ok := <-ct.outChan:
-				if !ok {
-					return nil
-				}
-				if len(data) > 0 {
-					log.Warn().
-						Str("TableSchema", ct.driver.Table.Schema).
-						Str("TableName", ct.driver.Table.Name).
-						Str("TransformerName", ct.name).
-						Int("TransformerPid", ct.cmd.Process.Pid).
-						Str("Data", string(data)).
-						Msg("stdout forwarding")
-				}
-			}
-		}
-	})
-
-	if err := ct.eg.Wait(); err != nil && len(res) == 0 {
+	if err := ct.eg.Wait(); err != nil {
 		return nil, err
 	}
 	return res, nil
@@ -444,7 +426,7 @@ func (ct *CustomCmdTransformer) lineStdinWriter(ctx context.Context, stdin io.Wr
 			}
 		case <-ctx.Done():
 			log.Debug().Msg("closed")
-			return ct.gtx.Err()
+			return nil
 		}
 	}
 }
@@ -463,7 +445,7 @@ func (ct *CustomCmdTransformer) transformationStderrReader(ctx context.Context, 
 }
 
 func (ct *CustomCmdTransformer) transformationStdoutReader(ctx context.Context, stdout io.ReadCloser) error {
-	ct.outChan = make(chan []byte, 1)
+	ct.outChan = make(chan []byte)
 	defer close(ct.outChan)
 	return lineReader(ctx, stdout, func(line []byte) error {
 		select {
@@ -490,8 +472,12 @@ func (ct *CustomCmdTransformer) validationStderrReader(ctx context.Context, stde
 }
 
 func (ct *CustomCmdTransformer) validationStdoutReader(ctx context.Context, stdout io.ReadCloser) error {
-	ct.errChan = make(chan *toolkit.ValidationWarning, 1)
-	defer close(ct.errChan)
+	ct.errChan = make(chan *toolkit.ValidationWarning)
+	defer func() {
+		close(ct.errChan)
+		log.Debug().Msg("channel closed")
+	}()
+
 	return lineReader(ctx, stdout, func(line []byte) error {
 		vw := toolkit.NewValidationWarning()
 		if err := json.Unmarshal(line, &vw); err != nil {
@@ -507,6 +493,7 @@ func (ct *CustomCmdTransformer) validationStdoutReader(ctx context.Context, stdo
 		}
 		select {
 		case ct.errChan <- vw:
+			log.Debug().Msg("warning sent")
 		case <-ctx.Done():
 			log.Debug().Msg("closed")
 			return nil
@@ -577,7 +564,7 @@ func (ct *CustomCmdTransformer) Transform(ctx context.Context, r *toolkit.Record
 
 	transformedData, err := ct.receiveTransformedTuple(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("cannot receive transformerd tuple from transformer: %w", err)
+		return nil, fmt.Errorf("cannot receive transformed tuple from transformer: %w", err)
 	}
 
 	trrd := make(toolkit.RawRecordDto)

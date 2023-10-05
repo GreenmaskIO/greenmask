@@ -22,6 +22,10 @@ func NewPlainDumpPipeline(table *dump.Table, w io.Writer) *PlainDumpPipeline {
 	}
 }
 
+func (pdp *PlainDumpPipeline) Init(ctx context.Context) error {
+	return nil
+}
+
 func (pdp *PlainDumpPipeline) Dump(ctx context.Context, data []byte) (err error) {
 	pdp.line++
 	if _, err := pdp.w.Write(data); err != nil {
@@ -30,7 +34,11 @@ func (pdp *PlainDumpPipeline) Dump(ctx context.Context, data []byte) (err error)
 	return nil
 }
 
-func (pdp *PlainDumpPipeline) CompleteDump(ctx context.Context) (err error) {
+func (pdp *PlainDumpPipeline) Done(ctx context.Context) error {
+	return nil
+}
+
+func (pdp *PlainDumpPipeline) CompleteDump() (err error) {
 	res := make([]byte, 0, 4)
 	res = append(res, pgcopy.DefaultCopyTerminationSeq...)
 	res = append(res, '\n', '\n')

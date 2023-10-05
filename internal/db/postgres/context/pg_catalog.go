@@ -101,6 +101,11 @@ func getDumpObjects(
 				}
 			}
 
+			if table.ExcludeData {
+				// TODO: Ensure data exclusion works properly
+				continue
+			}
+
 			dataObjects = append(dataObjects, table)
 		default:
 			return nil, fmt.Errorf("unknown relkind \"%c\"", relKind)

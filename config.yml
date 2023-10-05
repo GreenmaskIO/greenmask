@@ -27,13 +27,13 @@ dump:
 #    dbname: "host=localhost user=postgres password=example dbname=demo port=54315"
     jobs: 10
     exclude-schema: "(\"teSt\"*|test*)"
-#    table: "bookings.flights"
+    table: "bookings.flights"
     load-via-partition-root: true
 
   transformation:
     - schema: "bookings"
       name: "flights"
-#      query: "select * from bookings.flights limit 1"
+      query: "select * from bookings.flights limit 1"
       columns_type_override:
         post_code: "int4"
       transformers:
@@ -152,6 +152,7 @@ custom_transformers:
     executable: "/home/vadim/gits/greenmaskio/greenmask/internal/db/postgres/transformers/custom/test/example_transformer.sh"
     validate: true
     auto_discover: true
+    validation_timeout: "60m"
 #    row_transformation_timeout: "1ns"
 #    args:
 #      - '{"name":"TwoDatesGen","description":"Generate diff between two dates","executable":"/usr/bin/true","args":["arg1"],"parameters":[{"name":"column_a","description":"test1","required":true,"is_column":true,"column_properties":{"affected":true,"allowed_types":["date","timestamp","timestamptz"]}},{"name":"column_b","description":"test2","required":true,"is_column":true,"column_properties":{"affected":true,"allowed_types":["date","timestamp","timestamptz"]}}]}'

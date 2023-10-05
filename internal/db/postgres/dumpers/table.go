@@ -49,10 +49,27 @@ func (td *TableDumper) Execute(ctx context.Context, tx pgx.Tx, st storages.Stora
 	// Dumping and transformation goroutine
 	eg.Go(
 		func() error {
-			if err := td.process(gtx, tx, w); err != nil {
+			var pipeline Pipeliner
+			var err error
+			if len(td.table.Transformers) > 0 {
+				pipeline, err = NewTransformationPipeline(ctx, td.table, w)
+				if err != nil {
+					return fmt.Errorf("cannot initialize transformation pipeline: %w", err)
+				}
+			} else {
+				pipeline = NewPlainDumpPipeline(td.table, w)
+			}
+			if err := pipeline.Init(ctx); err != nil {
+				return fmt.Errorf("error initializing transformation pipeline: %w", err)
+			}
+			if err := td.process(gtx, tx, w, pipeline); err != nil {
+				doneErr := pipeline.Done(ctx)
+				if doneErr != nil {
+					log.Warn().Err(err).Msg("error terminating transformation pipeline")
+				}
 				return fmt.Errorf("error processing table dump: %w", err)
 			}
-			return nil
+			return pipeline.Done(ctx)
 		},
 	)
 
@@ -65,22 +82,12 @@ func (td *TableDumper) Execute(ctx context.Context, tx pgx.Tx, st storages.Stora
 	return td.table, nil
 }
 
-func (td *TableDumper) process(ctx context.Context, tx pgx.Tx, w io.WriteCloser) (err error) {
+func (td *TableDumper) process(ctx context.Context, tx pgx.Tx, w io.WriteCloser, pipeline Pipeliner) (err error) {
 	defer func() {
 		if err := w.Close(); err != nil {
 			log.Warn().Err(err).Msg("error closing TableDumper writer")
 		}
 	}()
-	var pipeline Pipeliner
-
-	if len(td.table.Transformers) > 0 {
-		pipeline, err = NewTransformationPipeline(ctx, td.table, w)
-		if err != nil {
-			return fmt.Errorf("cannot initialize transformation pipeline: %w", err)
-		}
-	} else {
-		pipeline = NewPlainDumpPipeline(td.table, w)
-	}
 
 	frontend := tx.Conn().PgConn().Frontend()
 	query, err := td.table.GetCopyFromStatement()
@@ -121,7 +128,7 @@ func (td *TableDumper) process(ctx context.Context, tx pgx.Tx, w io.WriteCloser)
 		case *pgproto3.CopyDone:
 		case *pgproto3.CommandComplete:
 		case *pgproto3.ReadyForQuery:
-			return pipeline.CompleteDump(ctx)
+			return pipeline.CompleteDump()
 		case *pgproto3.ErrorResponse:
 			return fmt.Errorf("error from postgres connection msg = %s code=%s", v.Message, v.Code)
 		default:
