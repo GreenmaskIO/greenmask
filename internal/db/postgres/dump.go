@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"os"
 	"path"
-	"sync/atomic"
 	"time"
 
 	pgxdecimal "github.com/jackc/pgx-shopspring-decimal"
@@ -44,8 +43,6 @@ type Dump struct {
 	dumpIdSequence    *toc.DumpIdSequence
 	st                storages.Storager
 	tmpDir            string
-	dumpTaskCount     int32
-	allTaskPushed     atomic.Bool
 	config            *domains.Config
 	dataEntries       []*toc.Entry
 	context           *runtimeContext.RuntimeContext
@@ -76,8 +73,6 @@ func (d *Dump) prune() {
 	d.schemaToc = nil
 	d.resultToc = nil
 	d.registry = nil
-	d.dumpTaskCount = 0
-	d.allTaskPushed.Store(false)
 	d.dumpIdSequence = nil
 	if err := os.RemoveAll(d.tmpDir); err != nil {
 		log.Debug().Err(err).Msg("error deleting temp dir")
@@ -213,19 +208,26 @@ func (d *Dump) dataDump(ctx context.Context) error {
 	// TODO: You should use pointer to dumpers.DumpTask instead
 	tasks := make(chan dumpers.DumpTask, d.pgDumpOptions.Jobs)
 	result := make(chan dump.Entry, d.pgDumpOptions.Jobs)
-	defer close(result)
 
 	log.Debug().Msgf("planned %d workers", d.pgDumpOptions.Jobs)
 	eg, gtx := errgroup.WithContext(ctx)
-	for j := 0; j < d.pgDumpOptions.Jobs; j++ {
-		eg.Go(
-			func(id int) func() error {
-				return func() error {
-					return d.dumpWorker(gtx, tasks, result, id+1)
-				}
-			}(j),
-		)
-	}
+	eg.Go(func() error {
+		workerEg := &errgroup.Group{}
+		defer close(result)
+		for j := 0; j < d.pgDumpOptions.Jobs; j++ {
+			workerEg.Go(
+				func(id int) func() error {
+					return func() error {
+						return d.dumpWorker(gtx, tasks, result, id+1)
+					}
+				}(j),
+			)
+		}
+		if err := workerEg.Wait(); err != nil {
+			return err
+		}
+		return nil
+	})
 
 	// TODO: Implement LO dumping
 	log.Warn().Msg("FIXME: implement Large Objects dumper")
@@ -247,14 +249,12 @@ func (d *Dump) dataDump(ctx context.Context) error {
 				default:
 					return fmt.Errorf("unknow dumper type")
 				}
-				atomic.AddInt32(&d.dumpTaskCount, 1)
 				select {
 				case <-gtx.Done():
 					return gtx.Err()
 				case tasks <- task:
 				}
 			}
-			d.allTaskPushed.Store(true)
 			return nil
 		},
 	)
@@ -262,34 +262,41 @@ func (d *Dump) dataDump(ctx context.Context) error {
 	eg.Go(
 		func() error {
 			var tables, sequences, largeObjects []*toc.Entry
-			for i := int32(0); !d.allTaskPushed.Load() || i < atomic.LoadInt32(&d.dumpTaskCount); i++ {
+			for {
+				var entry dump.Entry
+				var ok bool
 				select {
 				case <-gtx.Done():
 					return gtx.Err()
-				case entry, ok := <-result:
-					if entry == nil && ok {
-						panic("unexpected entry nil pointer")
+				case entry, ok = <-result:
+				}
+				if !ok {
+					break
+				}
+
+				if entry == nil {
+					panic("unexpected entry nil pointer")
+				}
+				e, err := entry.Entry()
+				if err != nil {
+					return fmt.Errorf("error producing toc entry: %w", err)
+				}
+				switch v := entry.(type) {
+				case *dump.Table:
+					d.dumpedObjectSizes[e.DumpId] = storageDto.ObjectSizeStat{
+						Original:   v.OriginalSize,
+						Compressed: v.CompressedSize,
 					}
-					e, err := entry.Entry()
-					if err != nil {
-						return fmt.Errorf("error producing toc entry: %w", err)
-					}
-					switch v := entry.(type) {
-					case *dump.Table:
-						d.dumpedObjectSizes[e.DumpId] = storageDto.ObjectSizeStat{
-							Original:   v.OriginalSize,
-							Compressed: v.CompressedSize,
-						}
-						tables = append(tables, e)
-					case *dump.Sequence:
-						tables = append(tables, e)
-					case *dump.LargeObject:
-						tables = append(tables, e)
-					default:
-						return fmt.Errorf("unexpected toc entry type")
-					}
+					tables = append(tables, e)
+				case *dump.Sequence:
+					tables = append(tables, e)
+				case *dump.LargeObject:
+					tables = append(tables, e)
+				default:
+					return fmt.Errorf("unexpected toc entry type")
 				}
 			}
+
 			d.dataEntries = append(d.dataEntries, tables...)
 			d.dataEntries = append(d.dataEntries, sequences...)
 			d.dataEntries = append(d.dataEntries, largeObjects...)
@@ -539,7 +546,9 @@ func (d *Dump) dumpWorker(
 	}
 
 	for {
+
 		var task dumpers.DumpTask
+		var ok bool
 		select {
 		case <-ctx.Done():
 			log.Debug().
@@ -547,8 +556,8 @@ func (d *Dump) dumpWorker(
 				Int("workerID", id).
 				Msgf("existed due to cancelled context")
 			return ctx.Err()
-		case task = <-tasks:
-			if task == nil {
+		case task, ok = <-tasks:
+			if !ok {
 				log.Debug().
 					Err(ctx.Err()).
 					Int("workerID", id).
@@ -568,7 +577,12 @@ func (d *Dump) dumpWorker(
 		if entry == nil {
 			panic("received nil entry")
 		}
-		result <- entry
+
+		select {
+		case <-ctx.Done():
+		case result <- entry:
+		}
+
 		log.Debug().
 			Int("workerID", id).
 			Str("objectName", task.DebugInfo()).
