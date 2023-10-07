@@ -6,49 +6,50 @@ import (
 	"math/rand"
 	"time"
 
-	toolkit "github.com/greenmaskio/greenmask/pkg/toolkit/transformers"
+	"github.com/greenmaskio/greenmask/internal/db/postgres/transformers/utils"
+	toolkit2 "github.com/greenmaskio/greenmask/pkg/toolkit"
 )
 
-var RandomStringTransformerDefinition = toolkit.NewDefinition(
-	toolkit.NewTransformerProperties(
+var RandomStringTransformerDefinition = utils.NewDefinition(
+	utils.NewTransformerProperties(
 		"RandomString",
 		"Generate random string",
 	),
 
 	NewRandomStringTransformer,
 
-	toolkit.MustNewParameter(
+	toolkit2.MustNewParameter(
 		"column",
 		"column name",
 		new(string),
 		nil,
-	).SetIsColumn(toolkit.NewColumnProperties().
+	).SetIsColumn(toolkit2.NewColumnProperties().
 		SetAffected(true).
 		SetAllowedColumnTypes("text", "varchar"),
 	).SetRequired(true),
 
-	toolkit.MustNewParameter(
+	toolkit2.MustNewParameter(
 		"min_length",
 		"min length of string",
 		new(int64),
 		nil,
 	).SetRequired(true),
 
-	toolkit.MustNewParameter(
+	toolkit2.MustNewParameter(
 		"max_length",
 		"max length of string",
 		new(int64),
 		nil,
 	).SetRequired(true),
 
-	toolkit.MustNewParameter(
+	toolkit2.MustNewParameter(
 		"symbols",
 		"the characters range for random string",
 		new(string),
 		New("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"),
 	),
 
-	toolkit.MustNewParameter(
+	toolkit2.MustNewParameter(
 		"keep_null",
 		"do not replace NULL values to random value",
 		new(bool),
@@ -69,7 +70,7 @@ type RandomStringTransformer struct {
 	generate   getRandStringFunc
 }
 
-func NewRandomStringTransformer(ctx context.Context, driver *toolkit.Driver, parameters map[string]*toolkit.Parameter) (toolkit.Transformer, toolkit.ValidationWarnings, error) {
+func NewRandomStringTransformer(ctx context.Context, driver *toolkit2.Driver, parameters map[string]*toolkit2.Parameter) (utils.Transformer, toolkit2.ValidationWarnings, error) {
 	var generator getRandStringFunc = generateFixedString
 	var columnName, symbols string
 	var minLength, maxLength int64
@@ -124,7 +125,7 @@ func (rst *RandomStringTransformer) Done(ctx context.Context) error {
 	return nil
 }
 
-func (rst *RandomStringTransformer) Transform(ctx context.Context, r *toolkit.Record) (*toolkit.Record, error) {
+func (rst *RandomStringTransformer) Transform(ctx context.Context, r *toolkit2.Record) (*toolkit2.Record, error) {
 	valAny, err := r.GetAttribute(rst.columnName)
 	if err != nil {
 		return nil, fmt.Errorf("unable to scan value: %w", err)

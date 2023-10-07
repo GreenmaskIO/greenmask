@@ -1,15 +1,16 @@
-package transformers
+package toolkit
 
 import (
 	"encoding/json"
-	"github.com/stretchr/testify/require"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
 
 func TestRawRecordDto(t *testing.T) {
 	rawData := []byte(`{"8":{"d":"","n":true},"9":{"d":"","n":true}}`)
 	expected := []byte(`{"8":{"d":"test","n":false},"9":{"d":"","n":true}}`)
-	rrd := &RawRecordDto{}
+	rrd := &RawRecord{}
 	err := json.Unmarshal(rawData, rrd)
 	require.NoError(t, err)
 

@@ -6,22 +6,28 @@ function exit0() {
 
 trap 'exit0' 15
 
-transform=true
+transform=false
+validate=false
 print_config=false
 
 while [[ $# -gt 0 ]]; do
   case $1 in
     --meta)
       metadata="$2"
+      echo $metadata >&2
       shift # past argument
       shift # past value
       ;;
-    --print-config)
+    --print-definition)
       print_config=true
       shift # past argument
       ;;
     --validate)
-      transform=false
+      validate=true
+      shift # past argument
+      ;;
+    --transform)
+      transform=true
       shift # past argument
       ;;
     -*|--*)
@@ -36,6 +42,8 @@ if [ $print_config = "true" ]; then
   exit 0
 elif [ $transform = "true" ]; then
     cat
-else
+elif [ $validate = "true" ]; then
   printf '{"msg": "test validation warning", "severity": "warning"}\n'
+else
+  exit 1
 fi

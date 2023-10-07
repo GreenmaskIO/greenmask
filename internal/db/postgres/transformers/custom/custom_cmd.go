@@ -6,15 +6,17 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	toolkit "github.com/greenmaskio/greenmask/pkg/toolkit/transformers"
-	"github.com/rs/zerolog/log"
-	"golang.org/x/sync/errgroup"
 	"io"
 	"os"
 	"os/exec"
 	"slices"
 	"strings"
 	"syscall"
+
+	"github.com/greenmaskio/greenmask/internal/db/postgres/transformers/utils"
+	toolkit "github.com/greenmaskio/greenmask/pkg/toolkit"
+	"github.com/rs/zerolog/log"
+	"golang.org/x/sync/errgroup"
 )
 
 var (
@@ -23,17 +25,18 @@ var (
 )
 
 const (
-	ValidateArgName    = "--validate"
-	PrintConfigArgName = "--print-config"
-	MetaArgName        = "--meta"
+	ValidateArgName        = "--validate"
+	PrintDefinitionArgName = "--print-definition"
+	MetaArgName            = "--meta"
+	TransformArgName       = "--transform"
 )
 
 type CancelFunction func() error
 
-func ProduceNewCmdTransformerFunction(ctd *toolkit.CustomTransformerDefinition) toolkit.NewTransformerFunc {
+func ProduceNewCmdTransformerFunction(ctd *utils.CustomTransformerDefinition) utils.NewTransformerFunc {
 	return func(
 		ctx context.Context, driver *toolkit.Driver, parameters map[string]*toolkit.Parameter,
-	) (toolkit.Transformer, toolkit.ValidationWarnings, error) {
+	) (utils.Transformer, toolkit.ValidationWarnings, error) {
 		return NewCustomCmdTransformer(ctx, driver, parameters, ctd)
 	}
 }
@@ -53,14 +56,14 @@ type CustomCmdTransformer struct {
 	driver          *toolkit.Driver
 	parameters      map[string]*toolkit.Parameter
 	affectedColumns map[int]string
-	ctd             *toolkit.CustomTransformerDefinition
+	ctd             *utils.CustomTransformerDefinition
 	sendChan        chan struct{}
 	receiveChan     chan struct{}
 }
 
 func NewCustomCmdTransformer(
 	ctx context.Context, driver *toolkit.Driver, parameters map[string]*toolkit.Parameter,
-	ctd *toolkit.CustomTransformerDefinition,
+	ctd *utils.CustomTransformerDefinition,
 ) (*CustomCmdTransformer, toolkit.ValidationWarnings, error) {
 	affectedColumns := make(map[int]string)
 	for _, p := range parameters {
@@ -107,11 +110,11 @@ func (ct *CustomCmdTransformer) Transform(ctx context.Context, r *toolkit.Record
 	defer cancel()
 	rrd, err := GetRawRecordDto(r, ct.affectedColumns)
 	if err != nil {
-		return nil, fmt.Errorf("error gettings RawRecordDto: %w", err)
+		return nil, fmt.Errorf("error gettings RawRecord: %w", err)
 	}
 	originalData, err := json.Marshal(rrd)
 	if err != nil {
-		return nil, fmt.Errorf("error marshaling RawRecordDto: %w", err)
+		return nil, fmt.Errorf("error marshaling RawRecord: %w", err)
 	}
 	originalData = append(originalData, '\n')
 
@@ -127,16 +130,16 @@ func (ct *CustomCmdTransformer) Transform(ctx context.Context, r *toolkit.Record
 		return nil, fmt.Errorf("cannot receive transformed tuple from transformer: %w", err)
 	}
 
-	trrd := make(toolkit.RawRecordDto)
+	trrd := make(toolkit.RawRecord)
 	if err = json.Unmarshal(transformedData, &trrd); err != nil {
 		if errors.Is(err, context.DeadlineExceeded) {
 			return nil, ErrRowTransformationTimeout
 		}
-		return nil, fmt.Errorf("error unmarshalling RawRecordDto")
+		return nil, fmt.Errorf("error unmarshalling RawRecord")
 	}
 
 	if err = SetRawRecordDto(r, trrd); err != nil {
-		return nil, fmt.Errorf("error setting RawRecordDto")
+		return nil, fmt.Errorf("error setting RawRecord")
 	}
 
 	return r, nil
@@ -146,7 +149,7 @@ func (ct *CustomCmdTransformer) Init(ctx context.Context) (err error) {
 	// TODO: Generate table meta and pass it through the parameter encoded by base64
 	meta, err := ct.getMetadata()
 	args := make([]string, len(ct.args))
-	args = append(args, MetaArgName, meta)
+	args = append(args, MetaArgName, meta, TransformArgName)
 	if err != nil {
 		return fmt.Errorf("cannot get metatda: %w", err)
 	}
@@ -406,7 +409,7 @@ func (ct *CustomCmdTransformer) init(ctx context.Context, args []string) (Cancel
 
 	ct.eg = &errgroup.Group{}
 	ct.eg.Go(func() error {
-		return ct.stderrForwarder(ct.gtx, ct.stderrReader)
+		return ct.stderrForwarder(ctx, ct.stderrReader)
 	})
 
 	if err := ct.cmd.Start(); err != nil {
@@ -424,7 +427,15 @@ func (ct *CustomCmdTransformer) init(ctx context.Context, args []string) (Cancel
 }
 
 func (ct *CustomCmdTransformer) getMetadata() (string, error) {
-	res, err := json.Marshal(&ct.driver.Table)
+	params := make(map[string]toolkit.ParamsValue)
+	for name, p := range ct.parameters {
+		params[name] = p.RawValue()
+	}
+	meta := &toolkit.Meta{
+		Table:      ct.driver.Table,
+		Parameters: params,
+	}
+	res, err := json.Marshal(&meta)
 	if err != nil {
 		return "", fmt.Errorf("cannot marshal metadata: %w", err)
 	}

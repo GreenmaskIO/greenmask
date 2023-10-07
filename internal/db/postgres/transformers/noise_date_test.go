@@ -2,11 +2,12 @@ package transformers
 
 import (
 	"context"
-	"github.com/greenmaskio/greenmask/internal/domains"
-	toolkit "github.com/greenmaskio/greenmask/pkg/toolkit/transformers"
 	"slices"
 	"testing"
 	"time"
+
+	"github.com/greenmaskio/greenmask/internal/domains"
+	"github.com/greenmaskio/greenmask/pkg/toolkit"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

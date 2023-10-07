@@ -7,28 +7,28 @@ import (
 	"time"
 
 	"github.com/greenmaskio/greenmask/internal/db/postgres/transformers/utils"
-	toolkit "github.com/greenmaskio/greenmask/pkg/toolkit/transformers"
+	toolkit2 "github.com/greenmaskio/greenmask/pkg/toolkit"
 )
 
 func New[T int64 | float64 | string | bool](v T) *T {
 	return &v
 }
 
-var NoiseIntTransformerDefinition = toolkit.NewDefinition(
-	toolkit.NewTransformerProperties(
+var NoiseIntTransformerDefinition = utils.NewDefinition(
+	utils.NewTransformerProperties(
 		"NoiseInt",
 		"Make noise value for int",
 	),
 
 	NewNoiseIntTransformer,
 
-	toolkit.MustNewParameter("column", "column name", new(string), nil).
-		SetIsColumn(toolkit.NewColumnProperties().
+	toolkit2.MustNewParameter("column", "column name", new(string), nil).
+		SetIsColumn(toolkit2.NewColumnProperties().
 			SetAffected(true).
 			SetAllowedColumnTypes("int2", "int4", "int8"),
 		).SetRequired(true),
 
-	toolkit.MustNewParameter(
+	toolkit2.MustNewParameter(
 		"ratio",
 		"max random percentage for noise",
 		new(float64),
@@ -42,7 +42,7 @@ type NoiseIntTransformer struct {
 	rand       *rand.Rand
 }
 
-func NewNoiseIntTransformer(ctx context.Context, driver *toolkit.Driver, parameters map[string]*toolkit.Parameter) (toolkit.Transformer, toolkit.ValidationWarnings, error) {
+func NewNoiseIntTransformer(ctx context.Context, driver *toolkit2.Driver, parameters map[string]*toolkit2.Parameter) (utils.Transformer, toolkit2.ValidationWarnings, error) {
 	var columnName string
 	var ratio float64
 
@@ -71,7 +71,7 @@ func (nit *NoiseIntTransformer) Done(ctx context.Context) error {
 	return nil
 }
 
-func (nit *NoiseIntTransformer) Transform(ctx context.Context, r *toolkit.Record) (*toolkit.Record, error) {
+func (nit *NoiseIntTransformer) Transform(ctx context.Context, r *toolkit2.Record) (*toolkit2.Record, error) {
 	// TODO: value out of rage might be possible: double check this transformer implementation
 
 	var val int64

@@ -6,12 +6,12 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/greenmaskio/greenmask/pkg/toolkit"
 	"github.com/jackc/pgx/v5"
 
 	"github.com/greenmaskio/greenmask/internal/db/postgres/dump"
 	"github.com/greenmaskio/greenmask/internal/db/postgres/pgdump"
 	"github.com/greenmaskio/greenmask/internal/db/postgres/toc"
-	tookit "github.com/greenmaskio/greenmask/pkg/toolkit/transformers"
 )
 
 const (
@@ -22,7 +22,7 @@ const (
 // TODO: Rewrite it using gotemplate
 
 func getDumpObjects(
-	ctx context.Context, tx pgx.Tx, options *pgdump.Options, config map[tookit.Oid]*dump.Table,
+	ctx context.Context, tx pgx.Tx, options *pgdump.Options, config map[toolkit.Oid]*dump.Table,
 ) ([]dump.Entry, error) {
 
 	// Building relation search query using regexp adaptation rules and pre-defined query templates
@@ -78,7 +78,7 @@ func getDumpObjects(
 			fallthrough
 		case 'f':
 			// Building table objects
-			table, ok = config[tookit.Oid(oid)]
+			table, ok = config[toolkit.Oid(oid)]
 			if ok {
 				// If table was discovered during Transformer validation - use that object instead of a new
 				table.ExcludeData = excludeData
@@ -87,10 +87,10 @@ func getDumpObjects(
 				// If table is not found - create new table object and collect all the columns
 
 				table = &dump.Table{
-					Table: &tookit.Table{
+					Table: &toolkit.Table{
 						Name:   name,
 						Schema: schemaName,
-						Oid:    tookit.Oid(oid),
+						Oid:    toolkit.Oid(oid),
 					},
 					Owner:                owner,
 					RelKind:              relKind,

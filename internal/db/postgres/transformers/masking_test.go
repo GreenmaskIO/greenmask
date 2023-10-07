@@ -2,9 +2,10 @@ package transformers
 
 import (
 	"context"
-	"github.com/greenmaskio/greenmask/internal/domains"
-	"github.com/greenmaskio/greenmask/pkg/toolkit/transformers"
 	"testing"
+
+	"github.com/greenmaskio/greenmask/internal/domains"
+	"github.com/greenmaskio/greenmask/pkg/toolkit"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -17,28 +18,28 @@ func TestMaskingTransformer_Transform(t *testing.T) {
 		ttype         string
 		columnName    string
 		originalValue string
-		expectedValue *transformers.Value
+		expectedValue *toolkit.Value
 	}{
 		{
 			name:          "mobile",
 			ttype:         "mobile",
 			columnName:    "data",
 			originalValue: "+35798665784",
-			expectedValue: transformers.NewValue("+357***65784", false),
+			expectedValue: toolkit.NewValue("+357***65784", false),
 		},
 		{
 			name:          "name",
 			ttype:         "name",
 			columnName:    "data",
 			originalValue: "abcdef test",
-			expectedValue: transformers.NewValue("a**def t**t", false),
+			expectedValue: toolkit.NewValue("a**def t**t", false),
 		},
 		{
 			name:          "password",
 			ttype:         "password",
 			columnName:    "data",
 			originalValue: "password_secure",
-			expectedValue: transformers.NewValue("************", false),
+			expectedValue: toolkit.NewValue("************", false),
 		},
 	}
 	for _, tt := range tests {

@@ -8,33 +8,33 @@ import (
 	"strings"
 	"time"
 
+	toolkit2 "github.com/greenmaskio/greenmask/pkg/toolkit"
 	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/greenmaskio/greenmask/internal/db/postgres/transformers/utils"
-	toolkit "github.com/greenmaskio/greenmask/pkg/toolkit/transformers"
 )
 
 // TODO: Ensure pqinterval.Duration returns duration in int64 for date and time
 
-var NoiseDateTransformerDefinition = toolkit.NewDefinition(
-	toolkit.NewTransformerProperties(
+var NoiseDateTransformerDefinition = utils.NewDefinition(
+	utils.NewTransformerProperties(
 		"NoiseDate",
 		"Apply random noise for date values",
 	),
 
 	NewNoiseDateTransformer,
 
-	toolkit.MustNewParameter(
+	toolkit2.MustNewParameter(
 		"column",
 		"column name",
 		new(string),
 		nil,
-	).SetIsColumn(toolkit.NewColumnProperties().
+	).SetIsColumn(toolkit2.NewColumnProperties().
 		SetAffected(true).
 		SetAllowedColumnTypes("date", "timestamp", "timestamptz"),
 	).SetRequired(true),
 
-	toolkit.MustNewParameter(
+	toolkit2.MustNewParameter(
 		"ratio",
 		"max random duration for noise",
 		nil,
@@ -42,7 +42,7 @@ var NoiseDateTransformerDefinition = toolkit.NewDefinition(
 	).SetRequired(true).
 		SetCastDbType("interval"),
 
-	toolkit.MustNewParameter(
+	toolkit2.MustNewParameter(
 		"truncate",
 		fmt.Sprintf("truncate date till the part (%s)", strings.Join(truncateParts, ", ")),
 		new(string),
@@ -61,7 +61,7 @@ type NoiseDateTransformer struct {
 	generate   dateNoiseFunc
 }
 
-func NewNoiseDateTransformer(ctx context.Context, driver *toolkit.Driver, parameters map[string]*toolkit.Parameter) (toolkit.Transformer, toolkit.ValidationWarnings, error) {
+func NewNoiseDateTransformer(ctx context.Context, driver *toolkit2.Driver, parameters map[string]*toolkit2.Parameter) (utils.Transformer, toolkit2.ValidationWarnings, error) {
 	var columnName, truncate string
 	var ratio time.Duration
 	var generator dateNoiseFunc = generateNoisedTime
@@ -107,7 +107,7 @@ func (ndt *NoiseDateTransformer) Done(ctx context.Context) error {
 	return nil
 }
 
-func (ndt *NoiseDateTransformer) Transform(ctx context.Context, r *toolkit.Record) (*toolkit.Record, error) {
+func (ndt *NoiseDateTransformer) Transform(ctx context.Context, r *toolkit2.Record) (*toolkit2.Record, error) {
 	val, err := r.GetAttribute(ndt.columnName)
 	if err != nil {
 		return nil, fmt.Errorf("unable to scan attribute value: %w", err)

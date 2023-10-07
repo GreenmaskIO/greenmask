@@ -1,4 +1,4 @@
-package transformers
+package toolkit
 
 import (
 	"encoding/json"
@@ -115,6 +115,7 @@ type Parameter struct {
 	// dynamicParse - shows was the parameter value parsed with unset expectedType and defaultValue. In this case Scan
 	// function is not available because returning value might be non Pointer. It might be fixed in the future releases
 	dynamicParse bool
+	rawValue     ParamsValue
 }
 
 func MustNewParameter(name string, description string, expectedType any, defaultValue any) *Parameter {
@@ -164,9 +165,13 @@ func NewParameter(name string, description string, expectedType any, defaultValu
 	}, nil
 }
 
+func (p *Parameter) RawValue() ParamsValue {
+	return p.rawValue
+}
+
 // Parse - parse received params from the config using table definition. dest parameter must be pointer
 func (p *Parameter) Parse(
-	driver *Driver, params map[string]ParamsValue, columnParams map[string]*Parameter,
+	driver *Driver, rawParams map[string]ParamsValue, columnParams map[string]*Parameter,
 	types []*Type,
 ) (ValidationWarnings, error) {
 	p.value = nil
@@ -185,7 +190,7 @@ func (p *Parameter) Parse(
 		}
 	}
 
-	raw, ok := params[p.Name]
+	raw, ok := rawParams[p.Name]
 	if !ok {
 		if p.Required {
 			return nil, fmt.Errorf("paramater %s is required", p.Name)
@@ -195,7 +200,9 @@ func (p *Parameter) Parse(
 		} else if !p.Required {
 			return nil, nil
 		}
+		p.rawValue = []byte{}
 	}
+	p.rawValue = raw
 
 	if p.LinkParameter != "" {
 		cp, ok := columnParams[p.LinkParameter]
@@ -436,4 +443,62 @@ func (p *Parameter) Copy() *Parameter {
 	cp := &(*p)
 	cp.value = nil
 	return cp
+}
+
+func ParseParameters(
+	driver *Driver, rawParams map[string]ParamsValue, paramDef []*Parameter, types []*Type,
+) (map[string]*Parameter, ValidationWarnings, error) {
+	if rawParams == nil && len(paramDef) > 0 {
+		return nil, ValidationWarnings{
+			NewValidationWarning().
+				SetMsg("parameters are required: received empty").
+				SetSeverity("error"),
+		}, nil
+	}
+
+	var params = make(map[string]*Parameter, len(paramDef))
+	for _, p := range paramDef {
+		params[p.Name] = p.Copy()
+	}
+	var columnParameters = make(map[string]*Parameter)
+	var commonParameters = make(map[string]*Parameter)
+	for _, p := range paramDef {
+		if p.IsColumn {
+			columnParameters[p.Name] = p
+		} else {
+			commonParameters[p.Name] = p
+		}
+	}
+
+	var totalWarnings ValidationWarnings
+	// Column parameters parsing
+	var columnParamsToSkip = make(map[string]struct{})
+	for _, p := range columnParameters {
+		warnings, err := p.Parse(driver, rawParams, nil, types)
+		if err != nil {
+			return nil, nil, fmt.Errorf("parameter %s parsing error: %w", p.Name, err)
+		}
+		if len(warnings) > 0 {
+			totalWarnings = append(totalWarnings, warnings...)
+			columnParamsToSkip[p.Name] = struct{}{}
+		}
+	}
+	// Common parameters parsing
+	for _, p := range commonParameters {
+		if _, ok := columnParamsToSkip[p.LinkParameter]; p.LinkParameter != "" && ok {
+			totalWarnings = append(totalWarnings, NewValidationWarning().
+				AddMeta("ParameterName", p.Name).
+				SetSeverity(WarningValidationSeverity).
+				SetMsg("parameter skipping due to the error in the related parameter parsing"))
+			continue
+		}
+		warnings, err := p.Parse(driver, rawParams, columnParameters, types)
+		if err != nil {
+			return nil, nil, fmt.Errorf("parameter %s parsing error: %w", p.Name, err)
+		}
+		if len(warnings) > 0 {
+			totalWarnings = append(totalWarnings, warnings...)
+		}
+	}
+	return params, totalWarnings, nil
 }

@@ -5,21 +5,21 @@ import (
 	"fmt"
 
 	"github.com/greenmaskio/greenmask/internal/db/postgres/transformers/utils"
-	toolkit "github.com/greenmaskio/greenmask/pkg/toolkit/transformers"
+	toolkit2 "github.com/greenmaskio/greenmask/pkg/toolkit"
 )
 
-var SetNullTransformerDefinition = toolkit.NewDefinition(
-	toolkit.NewTransformerProperties(
+var SetNullTransformerDefinition = utils.NewDefinition(
+	utils.NewTransformerProperties(
 		"SetNull",
 		"Set NULL value",
 	),
 	NewSetNullTransformer,
-	toolkit.MustNewParameter(
+	toolkit2.MustNewParameter(
 		"column",
 		"column name",
 		new(string),
 		nil,
-	).SetIsColumn(toolkit.NewColumnProperties().
+	).SetIsColumn(toolkit2.NewColumnProperties().
 		SetAffected(true),
 	).SetRequired(true),
 )
@@ -28,7 +28,7 @@ type SetNullTransformer struct {
 	columnName string
 }
 
-func NewSetNullTransformer(ctx context.Context, driver *toolkit.Driver, parameters map[string]*toolkit.Parameter) (toolkit.Transformer, toolkit.ValidationWarnings, error) {
+func NewSetNullTransformer(ctx context.Context, driver *toolkit2.Driver, parameters map[string]*toolkit2.Parameter) (utils.Transformer, toolkit2.ValidationWarnings, error) {
 	var columnName string
 
 	p := parameters["column"]
@@ -49,8 +49,8 @@ func (sut *SetNullTransformer) Done(ctx context.Context) error {
 	return nil
 }
 
-func (sut *SetNullTransformer) Transform(ctx context.Context, r *toolkit.Record) (*toolkit.Record, error) {
-	if err := r.SetAttribute(sut.columnName, toolkit.NewValue(nil, true)); err != nil {
+func (sut *SetNullTransformer) Transform(ctx context.Context, r *toolkit2.Record) (*toolkit2.Record, error) {
+	if err := r.SetAttribute(sut.columnName, toolkit2.NewValue(nil, true)); err != nil {
 		return nil, fmt.Errorf("unable to set new value: %w", err)
 	}
 	return r, nil

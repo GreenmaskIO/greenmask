@@ -1,12 +1,13 @@
 package pgcopy
 
 import (
-	"github.com/greenmaskio/greenmask/pkg/toolkit/transformers"
 	"slices"
+
+	"github.com/greenmaskio/greenmask/pkg/toolkit"
 )
 
 // EncodeAttr - encode from UTF-8 slice to transfer representation (escaped byte[])
-func EncodeAttr(v *transformers.RawValue) []byte {
+func EncodeAttr(v *toolkit.RawValue) []byte {
 	// Check whether raw input matched null marker
 	if v.IsNull {
 		return DefaultNullSeq

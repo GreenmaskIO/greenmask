@@ -6,35 +6,35 @@ import (
 	"regexp"
 
 	"github.com/greenmaskio/greenmask/internal/db/postgres/transformers/utils"
-	toolkit "github.com/greenmaskio/greenmask/pkg/toolkit/transformers"
+	toolkit2 "github.com/greenmaskio/greenmask/pkg/toolkit"
 )
 
-var RegexpReplaceTransformerDefinition = toolkit.NewDefinition(
-	toolkit.NewTransformerProperties(
+var RegexpReplaceTransformerDefinition = utils.NewDefinition(
+	utils.NewTransformerProperties(
 		"RegexpReplace",
 		"Replace string using regular expression",
 	),
 
 	NewRegexpReplaceTransformer,
 
-	toolkit.MustNewParameter(
+	toolkit2.MustNewParameter(
 		"column",
 		"column name",
 		new(string),
 		nil,
-	).SetIsColumn(toolkit.NewColumnProperties().
+	).SetIsColumn(toolkit2.NewColumnProperties().
 		SetAffected(true).
 		SetAllowedColumnTypes("varchar", "text", "bpchar"),
 	).SetRequired(true),
 
-	toolkit.MustNewParameter(
+	toolkit2.MustNewParameter(
 		"regexp",
 		"regular expression",
 		new(string),
 		nil,
 	).SetRequired(true),
 
-	toolkit.MustNewParameter(
+	toolkit2.MustNewParameter(
 		"replace",
 		"replacement value",
 		new(string),
@@ -48,7 +48,7 @@ type RegexpReplaceTransformer struct {
 	replace    string
 }
 
-func NewRegexpReplaceTransformer(ctx context.Context, driver *toolkit.Driver, parameters map[string]*toolkit.Parameter) (toolkit.Transformer, toolkit.ValidationWarnings, error) {
+func NewRegexpReplaceTransformer(ctx context.Context, driver *toolkit2.Driver, parameters map[string]*toolkit2.Parameter) (utils.Transformer, toolkit2.ValidationWarnings, error) {
 	var columnName, regexpStr, replace string
 	p := parameters["column"]
 	if err := p.Scan(&columnName); err != nil {
@@ -67,9 +67,9 @@ func NewRegexpReplaceTransformer(ctx context.Context, driver *toolkit.Driver, pa
 	re, err := regexp.Compile(regexpStr)
 
 	if err != nil {
-		return nil, toolkit.ValidationWarnings{
-			toolkit.NewValidationWarning().
-				SetSeverity(toolkit.ErrorValidationSeverity).
+		return nil, toolkit2.ValidationWarnings{
+			toolkit2.NewValidationWarning().
+				SetSeverity(toolkit2.ErrorValidationSeverity).
 				AddMeta("parameterName", "regexp").
 				SetMsg("cannot compile regular expression"),
 		}, fmt.Errorf("cannot compile regular expression: %w", err)
@@ -91,7 +91,7 @@ func (rrt *RegexpReplaceTransformer) Done(ctx context.Context) error {
 	return nil
 }
 
-func (rrt *RegexpReplaceTransformer) Transform(ctx context.Context, r *toolkit.Record) (*toolkit.Record, error) {
+func (rrt *RegexpReplaceTransformer) Transform(ctx context.Context, r *toolkit2.Record) (*toolkit2.Record, error) {
 	var original string
 	isNull, err := r.ScanAttribute(rrt.columnName, &original)
 	if err != nil {

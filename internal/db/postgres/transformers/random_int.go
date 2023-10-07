@@ -7,42 +7,42 @@ import (
 	"time"
 
 	"github.com/greenmaskio/greenmask/internal/db/postgres/transformers/utils"
-	toolkit "github.com/greenmaskio/greenmask/pkg/toolkit/transformers"
+	toolkit2 "github.com/greenmaskio/greenmask/pkg/toolkit"
 )
 
-var RandomIntTransformerDefinition = toolkit.NewDefinition(
-	toolkit.NewTransformerProperties(
+var RandomIntTransformerDefinition = utils.NewDefinition(
+	utils.NewTransformerProperties(
 		"RandomInt",
 		"Generate random int value from min to max",
 	),
 
 	NewRandomIntTransformer,
 
-	toolkit.MustNewParameter(
+	toolkit2.MustNewParameter(
 		"column",
 		"column name",
 		new(string),
 		nil,
-	).SetIsColumn(toolkit.NewColumnProperties().
+	).SetIsColumn(toolkit2.NewColumnProperties().
 		SetAffected(true).
 		SetAllowedColumnTypes("int2", "int4", "int8"),
 	).SetRequired(true),
 
-	toolkit.MustNewParameter(
+	toolkit2.MustNewParameter(
 		"min",
 		"min int value threshold",
 		new(int64),
 		nil,
 	).SetRequired(true),
 
-	toolkit.MustNewParameter(
+	toolkit2.MustNewParameter(
 		"max",
 		"max int value threshold",
 		new(int64),
 		nil,
 	).SetRequired(true),
 
-	toolkit.MustNewParameter(
+	toolkit2.MustNewParameter(
 		"keep_null",
 		"do not replace NULL values to random value",
 		new(bool),
@@ -58,7 +58,7 @@ type RandomIntTransformer struct {
 	rand       *rand.Rand
 }
 
-func NewRandomIntTransformer(ctx context.Context, driver *toolkit.Driver, parameters map[string]*toolkit.Parameter) (toolkit.Transformer, toolkit.ValidationWarnings, error) {
+func NewRandomIntTransformer(ctx context.Context, driver *toolkit2.Driver, parameters map[string]*toolkit2.Parameter) (utils.Transformer, toolkit2.ValidationWarnings, error) {
 	var columnName string
 	var minVal, maxVal int64
 	var keepNull bool
@@ -78,8 +78,8 @@ func NewRandomIntTransformer(ctx context.Context, driver *toolkit.Driver, parame
 	}
 
 	if minVal >= maxVal {
-		return nil, toolkit.ValidationWarnings{
-			toolkit.NewValidationWarning().
+		return nil, toolkit2.ValidationWarnings{
+			toolkit2.NewValidationWarning().
 				AddMeta("min", minVal).
 				AddMeta("max", maxVal).
 				SetMsg("max value must be greater that min value"),
@@ -108,7 +108,7 @@ func (rit *RandomIntTransformer) Done(ctx context.Context) error {
 	return nil
 }
 
-func (rit *RandomIntTransformer) Transform(ctx context.Context, r *toolkit.Record) (*toolkit.Record, error) {
+func (rit *RandomIntTransformer) Transform(ctx context.Context, r *toolkit2.Record) (*toolkit2.Record, error) {
 	valAny, err := r.GetAttribute(rit.columnName)
 	if err != nil {
 		return nil, fmt.Errorf("unable to scan value: %w", err)

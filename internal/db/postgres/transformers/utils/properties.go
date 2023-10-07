@@ -1,4 +1,4 @@
-package transformers
+package utils
 
 type TransformerProperties struct {
 	Name        string

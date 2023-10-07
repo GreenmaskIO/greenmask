@@ -2,8 +2,9 @@ package pgcopy
 
 import (
 	"errors"
-	"github.com/greenmaskio/greenmask/pkg/toolkit/transformers"
 	"slices"
+
+	"github.com/greenmaskio/greenmask/pkg/toolkit"
 )
 
 var ErrIndexOutOfRage = errors.New("wrong column idx: index out of range")
@@ -21,7 +22,7 @@ type Row struct {
 	decoded []byte
 	// newValues - raw data that has been assigned in runtime after transformation
 	//	those data is after Driver encoding from real type to []byte representation
-	newValues map[int]*transformers.RawValue
+	newValues map[int]*toolkit.RawValue
 	// columnPos - list of the column pos within the raw data
 	columnPos []*columnPos
 }
@@ -53,12 +54,12 @@ func NewRow(raw []byte) *Row {
 	return &Row{
 		raw:       raw,
 		columnPos: pos,
-		newValues: map[int]*transformers.RawValue{},
+		newValues: map[int]*toolkit.RawValue{},
 	}
 }
 
 // GetColumn - find raw data and encode it using DecodeAttr
-func (r *Row) GetColumn(idx int) (*transformers.RawValue, error) {
+func (r *Row) GetColumn(idx int) (*toolkit.RawValue, error) {
 
 	if len(r.columnPos) <= idx {
 		return nil, ErrIndexOutOfRage
@@ -74,7 +75,7 @@ func (r *Row) GetColumn(idx int) (*transformers.RawValue, error) {
 }
 
 // SetColumn - set column (replace original) value and decode it later
-func (r *Row) SetColumn(idx int, v *transformers.RawValue) error {
+func (r *Row) SetColumn(idx int, v *toolkit.RawValue) error {
 	if idx > len(r.raw)-1 {
 		return ErrIndexOutOfRage
 	}
@@ -107,8 +108,8 @@ func (r *Row) Encode() ([]byte, error) {
 	return res, nil
 }
 
-func (r *Row) Decode() (map[int]*transformers.RawValue, error) {
-	res := make(map[int]*transformers.RawValue, len(r.columnPos))
+func (r *Row) Decode() (map[int]*toolkit.RawValue, error) {
+	res := make(map[int]*toolkit.RawValue, len(r.columnPos))
 
 	for idx, pos := range r.columnPos {
 		if av, ok := r.newValues[idx]; ok {

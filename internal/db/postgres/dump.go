@@ -25,7 +25,6 @@ import (
 	"github.com/greenmaskio/greenmask/internal/db/postgres/transformers/utils"
 	"github.com/greenmaskio/greenmask/internal/domains"
 	"github.com/greenmaskio/greenmask/internal/storages"
-	toolkit "github.com/greenmaskio/greenmask/pkg/toolkit/transformers"
 )
 
 const MetadataJsonFileName = "metadata.json"
@@ -363,7 +362,7 @@ func (d *Dump) writeMetaData(ctx context.Context, startedAt, completedAt time.Ti
 
 func (d *Dump) BootstrapCustomTransformers(ctx context.Context) (err error) {
 	for _, ctd := range d.config.CustomTransformers {
-		var td *toolkit.Definition
+		var td *utils.Definition
 		if ctd.Name == "" && !ctd.AutoDiscover {
 			return fmt.Errorf("custom transformer without auto discovery must be defined staticly in the config")
 		}
@@ -386,7 +385,7 @@ func (d *Dump) BootstrapCustomTransformers(ctx context.Context) (err error) {
 			err = func() error {
 				args := make([]string, len(ctd.Args))
 				copy(args, ctd.Args)
-				args = append(args, custom.PrintConfigArgName)
+				args = append(args, custom.PrintDefinitionArgName)
 				ctx, cancel := context.WithTimeout(ctx, ctd.AutoDiscoveryTimeout)
 				defer cancel()
 				ctdd, err := custom.GetDynamicTransformerDefinition(ctx, ctd.Executable, args...)
@@ -403,8 +402,8 @@ func (d *Dump) BootstrapCustomTransformers(ctx context.Context) (err error) {
 			}
 		}
 
-		td = toolkit.NewDefinition(
-			&toolkit.TransformerProperties{
+		td = utils.NewDefinition(
+			&utils.TransformerProperties{
 				Name:        ctd.Name,
 				Description: ctd.Description,
 				IsCustom:    true,

@@ -1,9 +1,10 @@
 package pgcopy
 
 import (
-	"github.com/greenmaskio/greenmask/pkg/toolkit/transformers"
-	"github.com/stretchr/testify/assert"
 	"testing"
+
+	"github.com/greenmaskio/greenmask/pkg/toolkit"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestEncodeAttr(t *testing.T) {
@@ -12,37 +13,37 @@ func TestEncodeAttr(t *testing.T) {
 
 	tests := []struct {
 		name     string
-		original *transformers.RawValue
+		original *toolkit.RawValue
 		expected []byte
 	}{
 		{
 			name:     "simple",
-			original: transformers.NewRawValue([]byte("123"), false),
+			original: toolkit.NewRawValue([]byte("123"), false),
 			expected: []byte("123"),
 		},
 		{
 			name:     "\\r \\n symbols",
-			original: transformers.NewRawValue([]byte("\r\n"), false),
+			original: toolkit.NewRawValue([]byte("\r\n"), false),
 			expected: []byte("\\r\\n"),
 		},
 		{
 			name:     "Escaped null sequence in text",
-			original: transformers.NewRawValue([]byte("\\N"), false),
+			original: toolkit.NewRawValue([]byte("\\N"), false),
 			expected: []byte("\\\\N"),
 		},
 		{
 			name:     "Null sequence \\N",
-			original: transformers.NewRawValue(nil, true),
+			original: toolkit.NewRawValue(nil, true),
 			expected: []byte("\\N"),
 		},
 		{
 			name:     "Escaped end of pgcopy marker \\.",
-			original: transformers.NewRawValue([]byte("\\."), false),
+			original: toolkit.NewRawValue([]byte("\\."), false),
 			expected: []byte("\\\\."),
 		},
 		{
 			name:     "Escaped attrs delimiter \\t",
-			original: transformers.NewRawValue([]byte{DefaultCopyDelimiter}, false),
+			original: toolkit.NewRawValue([]byte{DefaultCopyDelimiter}, false),
 			expected: []byte("\\t"),
 		},
 	}

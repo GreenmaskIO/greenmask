@@ -2,9 +2,10 @@ package transformers
 
 import (
 	"context"
-	"github.com/greenmaskio/greenmask/internal/domains"
-	"github.com/greenmaskio/greenmask/pkg/toolkit/transformers"
 	"testing"
+
+	"github.com/greenmaskio/greenmask/internal/domains"
+	"github.com/greenmaskio/greenmask/pkg/toolkit"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -13,7 +14,7 @@ import (
 func TestJsonTransformer_Transform(t *testing.T) {
 	var attrName = "doc"
 	var originalValue = `{"name":{"last":"Anderson", "age": 5, "todelete": true}}`
-	var expectedValue = transformers.NewValue(`{"name":{"last":"Test","first":"Sara", "age": 10}}`, false)
+	var expectedValue = toolkit.NewValue(`{"name":{"last":"Test","first":"Sara", "age": 10}}`, false)
 	driver, record := getDriverAndRecord(attrName, originalValue)
 	transformer, warnings, err := JsonTransformerDefinition.Instance(
 		context.Background(),

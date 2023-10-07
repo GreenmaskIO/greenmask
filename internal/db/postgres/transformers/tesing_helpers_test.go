@@ -1,15 +1,15 @@
 package transformers
 
 import (
-	"github.com/greenmaskio/greenmask/internal/db/postgres/pgcopy"
 	"slices"
 
-	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/greenmaskio/greenmask/internal/db/postgres/pgcopy"
+	toolkit2 "github.com/greenmaskio/greenmask/pkg/toolkit"
 
-	toolkit "github.com/greenmaskio/greenmask/pkg/toolkit/transformers"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
-var columnList = []*toolkit.Column{
+var columnList = []*toolkit2.Column{
 	{
 		Name:     "id",
 		TypeName: "int2",
@@ -126,10 +126,10 @@ var columnList = []*toolkit.Column{
 
 // getDriverAndRecord - return adhoc table for testing
 // TODO: You should generate table definition it dynamically using faker as well as table tuples
-func getDriverAndRecord(name string, value string) (*toolkit.Driver, *toolkit.Record) {
+func getDriverAndRecord(name string, value string) (*toolkit2.Driver, *toolkit2.Record) {
 	typeMap := pgtype.NewMap()
 
-	idx := slices.IndexFunc(columnList, func(column *toolkit.Column) bool {
+	idx := slices.IndexFunc(columnList, func(column *toolkit2.Column) bool {
 		return column.Name == name
 	})
 
@@ -137,19 +137,19 @@ func getDriverAndRecord(name string, value string) (*toolkit.Driver, *toolkit.Re
 		panic("cannot find column")
 	}
 
-	table := &toolkit.Table{
+	table := &toolkit2.Table{
 		Schema:      "public",
 		Name:        "test",
 		Oid:         1224,
 		Columns:     columnList[idx : idx+1],
-		Constraints: []toolkit.Constraint{},
+		Constraints: []toolkit2.Constraint{},
 	}
 
-	driver, err := toolkit.NewDriver(typeMap, table)
+	driver, err := toolkit2.NewDriver(typeMap, table)
 	if err != nil {
 		panic(err.Error())
 	}
-	return driver, toolkit.NewRecord(
+	return driver, toolkit2.NewRecord(
 		driver,
 		pgcopy.NewRow([]byte(value)),
 	)

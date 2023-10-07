@@ -4,9 +4,9 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/greenmaskio/greenmask/pkg/toolkit/transformers"
-
 	"reflect"
+
+	"github.com/greenmaskio/greenmask/pkg/toolkit"
 
 	"github.com/mitchellh/mapstructure"
 )
@@ -17,13 +17,13 @@ func ParamsToByteSliceHookFunc() mapstructure.DecodeHookFunc {
 		t reflect.Type,
 		data interface{},
 	) (interface{}, error) {
-		if t != reflect.TypeOf(transformers.ParamsValue{}) {
+		if t != reflect.TypeOf(toolkit.ParamsValue{}) {
 			return data, nil
 		}
 
 		switch v := data.(type) {
 		case string:
-			return transformers.ParamsValue(v), nil
+			return toolkit.ParamsValue(v), nil
 		default:
 			res, err := json.Marshal(data)
 			if err != nil {

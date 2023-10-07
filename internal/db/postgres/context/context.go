@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	toolkit2 "github.com/greenmaskio/greenmask/pkg/toolkit"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/rs/zerolog/log"
@@ -12,19 +13,18 @@ import (
 	"github.com/greenmaskio/greenmask/internal/db/postgres/pgdump"
 	transformersUtils "github.com/greenmaskio/greenmask/internal/db/postgres/transformers/utils"
 	"github.com/greenmaskio/greenmask/internal/domains"
-	toolkit "github.com/greenmaskio/greenmask/pkg/toolkit/transformers"
 )
 
 // RuntimeContext - describes current runtime behaviour according to the config and schema objects
 type RuntimeContext struct {
 	// Tables - map of build tables with toolkit that was wrapped into dump.Entry
-	Tables map[toolkit.Oid]*dump.Table
+	Tables map[toolkit2.Oid]*dump.Table
 	// Types - list of custom types that are used in DB schema
-	Types []*toolkit.Type
+	Types []*toolkit2.Type
 	// DataSectionObjects - list of objects to dump in data-section. There are sequences, tables and large objects
 	DataSectionObjects []dump.Entry
 	// Warnings - list of occurred ValidationWarning during validation and config building
-	Warnings toolkit.ValidationWarnings
+	Warnings toolkit2.ValidationWarnings
 	// Registry - registry of all the registered transformers definition
 	Registry *transformersUtils.TransformerRegistry
 	// TypeMap - map of registered types including custom types. It's common for the whole runtime
@@ -70,7 +70,7 @@ func (rc *RuntimeContext) IsFatal() bool {
 	return rc.Warnings.IsFatal()
 }
 
-func tryRegisterCustomTypesV2(typeMap *pgtype.Map, types []*toolkit.Type) {
+func tryRegisterCustomTypesV2(typeMap *pgtype.Map, types []*toolkit2.Type) {
 	for _, t := range types {
 		// Test is this type already registered
 		_, ok := typeMap.TypeForOID(uint32(t.Oid))

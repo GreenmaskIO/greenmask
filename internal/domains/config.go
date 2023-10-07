@@ -5,9 +5,10 @@ import (
 
 	"github.com/greenmaskio/greenmask/internal/db/postgres/pgdump"
 	"github.com/greenmaskio/greenmask/internal/db/postgres/pgrestore"
+	"github.com/greenmaskio/greenmask/internal/db/postgres/transformers/utils"
 	"github.com/greenmaskio/greenmask/internal/storages/directory"
 	"github.com/greenmaskio/greenmask/internal/storages/s3"
-	"github.com/greenmaskio/greenmask/pkg/toolkit/transformers"
+	"github.com/greenmaskio/greenmask/pkg/toolkit"
 )
 
 var (
@@ -29,12 +30,12 @@ func NewConfig() *Config {
 }
 
 type Config struct {
-	Common             Common                                      `mapstructure:"common" yaml:"common"`
-	Log                LogConfig                                   `mapstructure:"log" yaml:"log"`
-	Storage            StorageConfig                               `mapstructure:"storage" yaml:"storage"`
-	Dump               Dump                                        `mapstructure:"dump" yaml:"dump"`
-	Restore            Restore                                     `mapstructure:"restore" yaml:"restore"`
-	CustomTransformers []*transformers.CustomTransformerDefinition `mapstructure:"custom_transformers" yaml:"custom_transformers"`
+	Common             Common                               `mapstructure:"common" yaml:"common"`
+	Log                LogConfig                            `mapstructure:"log" yaml:"log"`
+	Storage            StorageConfig                        `mapstructure:"storage" yaml:"storage"`
+	Dump               Dump                                 `mapstructure:"dump" yaml:"dump"`
+	Restore            Restore                              `mapstructure:"restore" yaml:"restore"`
+	CustomTransformers []*utils.CustomTransformerDefinition `mapstructure:"custom_transformers" yaml:"custom_transformers"`
 }
 
 type Common struct {
@@ -68,9 +69,9 @@ type TransformerSettings struct {
 }
 
 type TransformerConfig struct {
-	Name     string                              `mapstructure:"name" yaml:"name"`
-	Settings TransformerSettings                 `mapstructure:"settings" yaml:"settings"`
-	Params   map[string]transformers.ParamsValue `mapstructure:"params" yaml:"params"`
+	Name     string                         `mapstructure:"name" yaml:"name"`
+	Settings TransformerSettings            `mapstructure:"settings" yaml:"settings"`
+	Params   map[string]toolkit.ParamsValue `mapstructure:"params" yaml:"params"`
 }
 
 type Table struct {

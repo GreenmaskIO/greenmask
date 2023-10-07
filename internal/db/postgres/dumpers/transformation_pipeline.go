@@ -4,10 +4,11 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"github.com/greenmaskio/greenmask/internal/db/postgres/pgcopy"
-	"github.com/greenmaskio/greenmask/pkg/toolkit/transformers"
 	"io"
 
+	"github.com/greenmaskio/greenmask/internal/db/postgres/pgcopy"
+	"github.com/greenmaskio/greenmask/internal/db/postgres/transformers/utils"
+	"github.com/greenmaskio/greenmask/pkg/toolkit"
 	"github.com/rs/zerolog/log"
 
 	"github.com/greenmaskio/greenmask/internal/db/postgres/dump"
@@ -40,7 +41,7 @@ func NewTransformationPipeline(ctx context.Context, table *dump.Table, w io.Writ
 func (wt *TransformationPipeline) Init(ctx context.Context) error {
 	var lastInitErr error
 	var idx int
-	var t transformers.Transformer
+	var t utils.Transformer
 	for idx, t = range wt.table.Transformers {
 		if err := t.Init(ctx); err != nil {
 			lastInitErr = err
@@ -69,7 +70,7 @@ func (wt *TransformationPipeline) Dump(ctx context.Context, data []byte) (err er
 	if err != nil {
 		return NewDumpError(wt.table.Schema, wt.table.Name, wt.line, err)
 	}
-	record := transformers.NewRecord(wt.table.Driver, pgcopy.NewRow(data[:len(data)-1]))
+	record := toolkit.NewRecord(wt.table.Driver, pgcopy.NewRow(data[:len(data)-1]))
 	for _, t := range wt.table.Transformers {
 		record, err = t.Transform(ctx, record)
 		if err != nil {

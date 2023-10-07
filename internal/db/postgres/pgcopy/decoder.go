@@ -1,10 +1,11 @@
 package pgcopy
 
 import (
-	"github.com/greenmaskio/greenmask/pkg/toolkit/transformers"
 	"slices"
 	"unicode"
 	"unicode/utf8"
+
+	"github.com/greenmaskio/greenmask/pkg/toolkit"
 )
 
 const highBit byte = 0x80
@@ -36,9 +37,9 @@ func getDecimalFromHex(c byte) byte {
 	return byte(unicode.ToLower(rune(c))) - 'a' + 10
 }
 
-func DecodeAttr(raw []byte) *transformers.RawValue {
+func DecodeAttr(raw []byte) *toolkit.RawValue {
 	if slices.Equal(raw, DefaultNullSeq) {
-		return &transformers.RawValue{
+		return &toolkit.RawValue{
 			IsNull: true,
 		}
 	}
@@ -133,7 +134,7 @@ func DecodeAttr(raw []byte) *transformers.RawValue {
 		panic("error checking UTF-8 string after non ASCII symbols decoding")
 	}
 
-	return &transformers.RawValue{
+	return &toolkit.RawValue{
 		Data: res,
 	}
 }

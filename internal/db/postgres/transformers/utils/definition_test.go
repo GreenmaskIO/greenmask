@@ -1,17 +1,18 @@
-package transformers
+package utils
 
 import (
 	"context"
 	"testing"
 	"time"
 
+	"github.com/greenmaskio/greenmask/pkg/toolkit"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 type TestTransformer struct {
-	p map[string]*Parameter
+	p map[string]*toolkit.Parameter
 }
 
 func (tt *TestTransformer) Init(ctx context.Context) error {
@@ -22,12 +23,12 @@ func (tt *TestTransformer) Done(ctx context.Context) error {
 	return nil
 }
 
-func (tt *TestTransformer) Transform(ctx context.Context, r *Record) (*Record, error) {
+func (tt *TestTransformer) Transform(ctx context.Context, r *toolkit.Record) (*toolkit.Record, error) {
 	return r, nil
 }
 
-func NewTestTransformer(ctx context.Context, driver *Driver, parameters map[string]*Parameter) (
-	Transformer, ValidationWarnings, error,
+func NewTestTransformer(ctx context.Context, driver *toolkit.Driver, parameters map[string]*toolkit.Parameter) (
+	Transformer, toolkit.ValidationWarnings, error,
 ) {
 	return &TestTransformer{
 		p: parameters,
@@ -39,21 +40,21 @@ func TestDefinition(t *testing.T) {
 	TestTransformerDefinition := NewDefinition(
 		NewTransformerProperties("test", "simple description"),
 		NewTestTransformer,
-		MustNewParameter("column", "a column name", new(string), nil).
-			SetIsColumn(NewColumnProperties().
+		toolkit.MustNewParameter("column", "a column name", new(string), nil).
+			SetIsColumn(toolkit.NewColumnProperties().
 				SetAffected(true).
 				SetAllowedColumnTypes("timestamp"),
 			),
-		MustNewParameter("replace", "replacement value", &time.Time{}, nil).
+		toolkit.MustNewParameter("replace", "replacement value", &time.Time{}, nil).
 			SetLinkParameter("column"),
 	)
 
 	typeMap := pgtype.NewMap()
-	table := &Table{
+	table := &toolkit.Table{
 		Schema: "public",
 		Name:   "test",
 		Oid:    1224,
-		Columns: []*Column{
+		Columns: []*toolkit.Column{
 			{
 				Name:     "id",
 				TypeName: "int2",
@@ -71,21 +72,18 @@ func TestDefinition(t *testing.T) {
 				Length:   -1,
 			},
 		},
-		Constraints: []Constraint{},
+		Constraints: []toolkit.Constraint{},
 	}
 
-	driver, err := NewDriver(typeMap, table, nil)
+	driver, err := toolkit.NewDriver(typeMap, table, nil)
 	require.NoError(t, err)
 
-	rawParams := map[string]ParamsValue{
+	rawParams := map[string]toolkit.ParamsValue{
 		"column":  []byte("created_at"),
 		"replace": []byte("2023-08-27 12:08:11.304895"),
 	}
 
-	transformer, warnings, err := TestTransformerDefinition.Instance(context.Background(), driver, rawParams, nil)
+	_, warnings, err := TestTransformerDefinition.Instance(context.Background(), driver, rawParams, nil)
 	require.NoError(t, err)
 	assert.Empty(t, warnings)
-	rec, err := transformer.Transform(context.Background(), NewRecord(driver, NewTestRowDriver([]string{"test"})))
-	require.NoError(t, err)
-	assert.Equal(t, rec, NewRecord(driver, NewTestRowDriver([]string{"test"})))
 }

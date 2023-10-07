@@ -9,34 +9,34 @@ import (
 	"time"
 
 	"github.com/greenmaskio/greenmask/internal/db/postgres/transformers/utils"
-	toolkit "github.com/greenmaskio/greenmask/pkg/toolkit/transformers"
+	toolkit2 "github.com/greenmaskio/greenmask/pkg/toolkit"
 )
 
-var NoiseFloatTransformerDefinition = toolkit.NewDefinition(
-	toolkit.NewTransformerProperties(
+var NoiseFloatTransformerDefinition = utils.NewDefinition(
+	utils.NewTransformerProperties(
 		"NoiseFloat",
 		"Make noise float for int",
 	),
 	NewNoiseFloatTransformer,
 
-	toolkit.MustNewParameter(
+	toolkit2.MustNewParameter(
 		"column",
 		"column name",
 		new(string),
 		nil,
-	).SetIsColumn(toolkit.NewColumnProperties().
+	).SetIsColumn(toolkit2.NewColumnProperties().
 		SetAffected(true).
 		SetAllowedColumnTypes("float4", "float8"),
 	).SetRequired(true),
 
-	toolkit.MustNewParameter(
+	toolkit2.MustNewParameter(
 		"ratio",
 		"max random percentage for noise",
 		new(float64),
 		New[float64](0.1),
 	),
 
-	toolkit.MustNewParameter(
+	toolkit2.MustNewParameter(
 		"precision",
 		"precision of noised value",
 		new(int64),
@@ -58,7 +58,7 @@ type NoiseFloatTransformer struct {
 	rand       *rand.Rand
 }
 
-func NewNoiseFloatTransformer(ctx context.Context, driver *toolkit.Driver, parameters map[string]*toolkit.Parameter) (toolkit.Transformer, toolkit.ValidationWarnings, error) {
+func NewNoiseFloatTransformer(ctx context.Context, driver *toolkit2.Driver, parameters map[string]*toolkit2.Parameter) (utils.Transformer, toolkit2.ValidationWarnings, error) {
 	// TODO: value out of rage might be possible: double check this transformer implementation
 
 	var columnName string
@@ -96,7 +96,7 @@ func (nft *NoiseFloatTransformer) Done(ctx context.Context) error {
 	return nil
 }
 
-func (nft *NoiseFloatTransformer) Transform(ctx context.Context, r *toolkit.Record) (*toolkit.Record, error) {
+func (nft *NoiseFloatTransformer) Transform(ctx context.Context, r *toolkit2.Record) (*toolkit2.Record, error) {
 	valAny, err := r.GetAttribute(nft.columnName)
 	if err != nil {
 		return nil, fmt.Errorf("unable to scan value: %w", err)

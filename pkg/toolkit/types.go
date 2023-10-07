@@ -1,4 +1,4 @@
-package transformers
+package toolkit
 
 var (
 	KindOfType = map[rune]string{
@@ -15,33 +15,33 @@ var (
 // Type - describes pg_catalog.pg_type
 type Type struct {
 	// Oid - pg_type.oid
-	Oid Oid
+	Oid Oid `json:"oid,omitempty"`
 	// Chain - list of inherited types till the main base type
-	Chain []Oid
+	Chain []Oid `json:"chain,omitempty"`
 	// Schema - type schema name
-	Schema string
+	Schema string `json:"schema,omitempty"`
 	// Name - (pg_type.typname) type name
-	Name string
+	Name string `json:"name,omitempty"`
 	// Length - (pg_type.typelen) for a fixed-size type, typlen is the number of bytes in the internal representation of the type.
 	// But for a variable-length type, typlen is negative. -1 indicates a “varlena” type (one that has a length
 	// word), -2 indicates a null-terminated C string.
-	Length int
+	Length int `json:"length,omitempty"`
 	// Kind - (pg_type.typtype) type of type
-	Kind rune
+	Kind rune `json:"kind,omitempty"`
 	// ComposedRelation - (pg_type.typrelid) if composite type reference to the table that defines the structure
-	ComposedRelation Oid
+	ComposedRelation Oid `json:"composed_relation,omitempty"`
 	// ElementType - (pg_type.typelem) references to the item of the array type
-	ElementType Oid
+	ElementType Oid `json:"element_type,omitempty"`
 	// ArrayType - (pg_type.typarray) references to the array type
-	ArrayType Oid
+	ArrayType Oid `json:"array_type,omitempty"`
 	// NotNull - (pg_type.typnotnull) shows is this type nullable. For domains only
-	NotNull bool
+	NotNull bool `json:"not_null,omitempty"`
 	// BaseType - (pg_type.typbasetype) references to the base type
-	BaseType Oid
+	BaseType Oid `json:"base_type,omitempty"`
 	//Check - definition of check constraint
-	Check *Check
+	Check *Check `json:"check,omitempty"`
 	// RootBuiltInType - defines builtin type oid that might be used for decoding and encoding
-	RootBuiltInType Oid
+	RootBuiltInType Oid `json:"root_built_in_type,omitempty"`
 }
 
 func (t *Type) IsAffected(p *Parameter) (w ValidationWarnings) {

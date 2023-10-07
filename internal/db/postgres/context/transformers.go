@@ -4,26 +4,26 @@ import (
 	"context"
 	"fmt"
 
+	toolkit2 "github.com/greenmaskio/greenmask/pkg/toolkit"
 	"github.com/jackc/pgx/v5/pgtype"
 
 	transformersUtils "github.com/greenmaskio/greenmask/internal/db/postgres/transformers/utils"
 	"github.com/greenmaskio/greenmask/internal/domains"
-	toolkit "github.com/greenmaskio/greenmask/pkg/toolkit/transformers"
 )
 
 func initTransformer(
-	ctx context.Context, d *toolkit.Driver,
+	ctx context.Context, d *toolkit2.Driver,
 	c *domains.TransformerConfig, tm *pgtype.Map,
 	r *transformersUtils.TransformerRegistry,
-	types []*toolkit.Type,
-) (toolkit.Transformer, toolkit.ValidationWarnings, error) {
-	var totalWarnings toolkit.ValidationWarnings
+	types []*toolkit2.Type,
+) (transformersUtils.Transformer, toolkit2.ValidationWarnings, error) {
+	var totalWarnings toolkit2.ValidationWarnings
 	td, ok := r.Get(c.Name)
 	if !ok {
 		totalWarnings = append(totalWarnings,
-			toolkit.NewValidationWarning().
+			toolkit2.NewValidationWarning().
 				SetMsg("transformer not found").
-				SetSeverity(toolkit.ErrorValidationSeverity).SetTrace(&toolkit.Trace{
+				SetSeverity(toolkit2.ErrorValidationSeverity).SetTrace(&toolkit2.Trace{
 				SchemaName:      d.Table.Schema,
 				TableName:       d.Table.Name,
 				TransformerName: c.Name,

@@ -1,17 +1,18 @@
-package transformers
+package utils
 
 import (
 	"context"
-	"fmt"
 	"slices"
+
+	"github.com/greenmaskio/greenmask/pkg/toolkit"
 )
 
-type SchemaValidationFunc func(ctx context.Context, table *Table, properties *TransformerProperties, parameters []*Parameter, types []*Type) (ValidationWarnings, error)
+type SchemaValidationFunc func(ctx context.Context, table *toolkit.Table, properties *TransformerProperties, parameters []*toolkit.Parameter, types []*toolkit.Type) (toolkit.ValidationWarnings, error)
 
 func DefaultSchemaValidator(
-	ctx context.Context, table *Table, properties *TransformerProperties, parameters []*Parameter, types []*Type,
-) (ValidationWarnings, error) {
-	var warnings ValidationWarnings
+	ctx context.Context, table *toolkit.Table, properties *TransformerProperties, parameters []*toolkit.Parameter, types []*toolkit.Type,
+) (toolkit.ValidationWarnings, error) {
+	var warnings toolkit.ValidationWarnings
 
 	for _, p := range parameters {
 		if !p.IsColumn || p.IsColumn && !p.ColumnProperties.Affected {
@@ -22,22 +23,22 @@ func DefaultSchemaValidator(
 
 		// Checking is transformer can produce NULL value
 		if !p.ColumnProperties.Nullable && p.Column.NotNull {
-			warnings = append(warnings, NewValidationWarning().
+			warnings = append(warnings, toolkit.NewValidationWarning().
 				SetMsg("transformer may produce NULL values but column has NOT NULL constraint").
-				SetSeverity(WarningValidationSeverity).
-				AddMeta("ConstraintType", NotNullConstraintType).
+				SetSeverity(toolkit.WarningValidationSeverity).
+				AddMeta("ConstraintType", toolkit.NotNullConstraintType).
 				AddMeta("Parameter", p.Name).
 				AddMeta("Column", p.Column.Name),
 			)
 		}
 
 		// Checking transformed value will not exceed the column length
-		if p.ColumnProperties.MaxLength != WithoutMaxLength &&
+		if p.ColumnProperties.MaxLength != toolkit.WithoutMaxLength &&
 			p.Column.Length < p.ColumnProperties.MaxLength {
-			warnings = append(warnings, NewValidationWarning().
+			warnings = append(warnings, toolkit.NewValidationWarning().
 				SetMsg("transformer value might be out of length range: column has a length").
-				SetSeverity(WarningValidationSeverity).
-				AddMeta("ConstraintType", LengthConstraintType).
+				SetSeverity(toolkit.WarningValidationSeverity).
+				AddMeta("ConstraintType", toolkit.LengthConstraintType).
 				AddMeta("Parameter", p.Name).
 				AddMeta("Column", p.Column.Name).
 				AddMeta("ColumnMaxLength", p.Column.Length).
@@ -53,7 +54,7 @@ func DefaultSchemaValidator(
 		}
 
 		// Performing type validation
-		idx := slices.IndexFunc(types, func(t *Type) bool {
+		idx := slices.IndexFunc(types, func(t *toolkit.Type) bool {
 			return t.Oid == p.Column.TypeOid
 		})
 		if idx != -1 {
@@ -65,23 +66,4 @@ func DefaultSchemaValidator(
 	}
 
 	return warnings, nil
-}
-
-func DetermineConstraintType(v Constraint) string {
-	switch v.(type) {
-	case *Check:
-		return CheckConstraintType
-	case *Exclusion:
-		return ExclusionConstraintType
-	case *ForeignKey:
-		return FkConstraintType
-	case *PrimaryKey:
-		return PkConstraintType
-	case *Unique:
-		return UniqueConstraintType
-	case *TriggerConstraint:
-		return TriggerConstraintType
-	default:
-		panic(fmt.Sprintf("unknown constraint type %v", v))
-	}
 }

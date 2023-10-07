@@ -4,16 +4,17 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/greenmaskio/greenmask/pkg/toolkit/transformers"
-	"github.com/rs/zerolog/log"
-	"golang.org/x/sync/errgroup"
 	"io"
 	"os/exec"
 	"strings"
 	"syscall"
+
+	"github.com/greenmaskio/greenmask/internal/db/postgres/transformers/utils"
+	"github.com/rs/zerolog/log"
+	"golang.org/x/sync/errgroup"
 )
 
-func GetDynamicTransformerDefinition(ctx context.Context, executable string, args ...string) (*transformers.CustomTransformerDefinition, error) {
+func GetDynamicTransformerDefinition(ctx context.Context, executable string, args ...string) (*utils.CustomTransformerDefinition, error) {
 	log.Debug().
 		Str("Executable", executable).
 		Str("Args", strings.Join(args, " ")).
@@ -110,7 +111,7 @@ func GetDynamicTransformerDefinition(ctx context.Context, executable string, arg
 		return nil, fmt.Errorf("received empty transformer definition: might be transfromer but or config mistake")
 	}
 
-	res := &transformers.CustomTransformerDefinition{}
+	res := &utils.CustomTransformerDefinition{}
 	if err = json.Unmarshal(stdoutData, res); err != nil {
 		log.Debug().
 			Err(err).

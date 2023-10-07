@@ -1,4 +1,4 @@
-package transformers
+package toolkit
 
 var testNullSeq = "\\N"
 var testDelim byte = '\t'

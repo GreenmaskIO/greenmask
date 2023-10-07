@@ -1,14 +1,14 @@
-package transformers
+package toolkit
 
 import (
 	"encoding/json"
 	"fmt"
 )
 
-// RawRecordDto - record data transfer object for interaction with custom transformer via PIPE
-type RawRecordDto map[int]*RawValueDto
+// RawRecord - record data transfer object for interaction with custom transformer via PIPE
+type RawRecord map[int]*RawValueDto
 
-func (rrd RawRecordDto) GetColumn(idx int) (*RawValue, error) {
+func (rrd RawRecord) GetColumn(idx int) (*RawValue, error) {
 	res, ok := rrd[idx]
 	if !ok {
 		return nil, fmt.Errorf("attribute with idx=%d is not found", idx)
@@ -16,7 +16,7 @@ func (rrd RawRecordDto) GetColumn(idx int) (*RawValue, error) {
 	return NewRawValue([]byte(res.Data), res.IsNull), nil
 }
 
-func (rrd RawRecordDto) SetColumn(idx int, v *RawValue) error {
+func (rrd RawRecord) SetColumn(idx int, v *RawValue) error {
 	_, ok := rrd[idx]
 	if !ok {
 		return fmt.Errorf("attribute with idx=%d is not found", idx)
@@ -25,7 +25,7 @@ func (rrd RawRecordDto) SetColumn(idx int, v *RawValue) error {
 	return nil
 }
 
-func (rrd RawRecordDto) Encode() ([]byte, error) {
+func (rrd RawRecord) Encode() ([]byte, error) {
 	res, err := json.Marshal(rrd)
 	if err != nil {
 		return nil, fmt.Errorf("error encoding: %w", err)
@@ -33,7 +33,7 @@ func (rrd RawRecordDto) Encode() ([]byte, error) {
 	return res, nil
 }
 
-func (rrd RawRecordDto) Decode() (map[int]*RawValue, error) {
+func (rrd RawRecord) Decode() (map[int]*RawValue, error) {
 	res := make(map[int]*RawValue, len(rrd))
 	for idx, v := range rrd {
 		res[idx] = NewRawValue([]byte(v.Data), v.IsNull)

@@ -2,22 +2,24 @@ package custom
 
 import (
 	"context"
-	"github.com/greenmaskio/greenmask/pkg/toolkit/transformers"
-	"github.com/stretchr/testify/require"
 	"testing"
+
+	"github.com/greenmaskio/greenmask/internal/db/postgres/transformers/utils"
+	"github.com/greenmaskio/greenmask/pkg/toolkit"
+	"github.com/stretchr/testify/require"
 )
 
 func TestGetDynamicTransformerDefinition(t *testing.T) {
-	expected := transformers.CustomTransformerDefinition{
+	expected := utils.CustomTransformerDefinition{
 		Name:        "TwoDatesGen",
 		Description: "Generate diff between two dates",
-		Parameters: []*transformers.Parameter{
+		Parameters: []*toolkit.Parameter{
 			{
 				Name:        "column_a",
 				Description: "test1",
 				Required:    true,
 				IsColumn:    true,
-				ColumnProperties: &transformers.ColumnProperties{
+				ColumnProperties: &toolkit.ColumnProperties{
 					Affected:     true,
 					AllowedTypes: []string{"date", "timestamp", "timestamptz"},
 				},
@@ -27,7 +29,7 @@ func TestGetDynamicTransformerDefinition(t *testing.T) {
 				Description: "test2",
 				Required:    true,
 				IsColumn:    true,
-				ColumnProperties: &transformers.ColumnProperties{
+				ColumnProperties: &toolkit.ColumnProperties{
 					Affected:     true,
 					AllowedTypes: []string{"date", "timestamp", "timestamptz"},
 				},

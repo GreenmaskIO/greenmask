@@ -5,27 +5,27 @@ import (
 	"fmt"
 
 	"github.com/greenmaskio/greenmask/internal/db/postgres/transformers/utils"
-	toolkit "github.com/greenmaskio/greenmask/pkg/toolkit/transformers"
+	toolkit2 "github.com/greenmaskio/greenmask/pkg/toolkit"
 )
 
-var ReplaceTransformerDefinition = toolkit.NewDefinition(
-	toolkit.NewTransformerProperties(
+var ReplaceTransformerDefinition = utils.NewDefinition(
+	utils.NewTransformerProperties(
 		"Replace",
 		"Replace column value to the provided",
 	),
 
 	NewReplaceTransformer,
 
-	toolkit.MustNewParameter(
+	toolkit2.MustNewParameter(
 		"column",
 		"column name",
 		new(string),
 		nil,
-	).SetIsColumn(toolkit.NewColumnProperties().
+	).SetIsColumn(toolkit2.NewColumnProperties().
 		SetAffected(true),
 	).SetRequired(true),
 
-	toolkit.MustNewParameter(
+	toolkit2.MustNewParameter(
 		"value",
 		"value to replace",
 		nil,
@@ -33,7 +33,7 @@ var ReplaceTransformerDefinition = toolkit.NewDefinition(
 	).SetRequired(true).
 		SetLinkParameter("column"),
 
-	toolkit.MustNewParameter(
+	toolkit2.MustNewParameter(
 		"keep_null",
 		"do not replace NULL values to random value",
 		new(bool),
@@ -47,7 +47,7 @@ type ReplaceTransformer struct {
 	value      any
 }
 
-func NewReplaceTransformer(ctx context.Context, driver *toolkit.Driver, parameters map[string]*toolkit.Parameter) (toolkit.Transformer, toolkit.ValidationWarnings, error) {
+func NewReplaceTransformer(ctx context.Context, driver *toolkit2.Driver, parameters map[string]*toolkit2.Parameter) (utils.Transformer, toolkit2.ValidationWarnings, error) {
 
 	var columnName string
 	var value any
@@ -80,7 +80,7 @@ func (rt *ReplaceTransformer) Done(ctx context.Context) error {
 	return nil
 }
 
-func (rt *ReplaceTransformer) Transform(ctx context.Context, r *toolkit.Record) (*toolkit.Record, error) {
+func (rt *ReplaceTransformer) Transform(ctx context.Context, r *toolkit2.Record) (*toolkit2.Record, error) {
 	valAny, err := r.GetAttribute(rt.columnName)
 	if err != nil {
 		return nil, fmt.Errorf("unable to scan value: %w", err)
