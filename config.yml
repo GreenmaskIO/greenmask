@@ -111,8 +111,8 @@ dump:
 restore:
   pg_restore_options:
     jobs: 10
-#    dbname: "host=/run/postgresql user=postgres dbname=demo_restore"
-    dbname: "host=localhost user=postgres password=example dbname=demo_restore port=54316"
+    dbname: "host=/run/postgresql user=postgres dbname=demo_restore"
+#    dbname: "host=localhost user=postgres password=example dbname=demo_restore port=54316"
 #    dbname: "host=localhost user=postgres password=example dbname=demo_restore port=54315"
 
   scripts:

@@ -20,8 +20,6 @@ var RegexpReplaceTransformerDefinition = utils.NewDefinition(
 	toolkit2.MustNewParameter(
 		"column",
 		"column name",
-		new(string),
-		nil,
 	).SetIsColumn(toolkit2.NewColumnProperties().
 		SetAffected(true).
 		SetAllowedColumnTypes("varchar", "text", "bpchar"),
@@ -30,15 +28,11 @@ var RegexpReplaceTransformerDefinition = utils.NewDefinition(
 	toolkit2.MustNewParameter(
 		"regexp",
 		"regular expression",
-		new(string),
-		nil,
 	).SetRequired(true),
 
 	toolkit2.MustNewParameter(
 		"replace",
 		"replacement value",
-		new(string),
-		nil,
 	).SetRequired(true),
 )
 

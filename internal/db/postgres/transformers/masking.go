@@ -2,7 +2,6 @@ package transformers
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"slices"
 	"strings"
@@ -36,8 +35,6 @@ var MaskingTransformerDefinition = utils.NewDefinition(
 	toolkit2.MustNewParameter(
 		"column",
 		"column name",
-		new(string),
-		nil,
 	).SetIsColumn(toolkit2.NewColumnProperties().
 		SetAffected(true).
 		SetAllowedColumnTypes("text", "varchar"),
@@ -46,10 +43,8 @@ var MaskingTransformerDefinition = utils.NewDefinition(
 	toolkit2.MustNewParameter(
 		"type",
 		"logical type of attribute (password name addr email mobile tel id credit url)",
-		new(string),
-		nil,
 	).SetRequired(true).
-		SetValueValidator(maskerTypeValidator),
+		SetRawValueValidator(maskerTypeValidator),
 )
 
 type maskingFunction func(val string) string
@@ -133,17 +128,15 @@ func (mt *MaskingTransformer) Transform(ctx context.Context, r *toolkit2.Record)
 	return r, nil
 }
 
-func maskerTypeValidator(v any) (toolkit2.ValidationWarnings, error) {
-	typeStr, ok := v.(*string)
-	if !ok {
-		return nil, errors.New("expected string type")
-	}
+func maskerTypeValidator(p *toolkit2.Parameter, v toolkit2.ParamsValue) (toolkit2.ValidationWarnings, error) {
+	typeName := string(v)
+
 	types := []string{MPassword, MName, MAddress, MEmail, MMobile, MTelephone, MID, MCreditCard, MURL}
-	if !slices.Contains(types, *typeStr) {
+	if !slices.Contains(types, typeName) {
 		return toolkit2.ValidationWarnings{
 			toolkit2.NewValidationWarning().
 				SetSeverity(toolkit2.ErrorValidationSeverity).
-				SetMsgf("unknown type %s: must be one of %s", *typeStr, strings.Join(types, ", ")),
+				SetMsgf("unknown type %s: must be one of %s", typeName, strings.Join(types, ", ")),
 		}, nil
 	}
 	return nil, nil

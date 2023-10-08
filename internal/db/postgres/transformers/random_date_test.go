@@ -7,7 +7,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/greenmaskio/greenmask/internal/domains"
 	"github.com/greenmaskio/greenmask/pkg/toolkit"
 
 	"github.com/stretchr/testify/assert"
@@ -20,7 +19,7 @@ func TestRandomDateTransformer_Transform(t *testing.T) {
 		name       string
 		columnName string
 		original   string
-		params     map[string]domains.ParamsValue
+		params     map[string]toolkit.ParamsValue
 		pattern    string
 		isNull     bool
 	}{
@@ -28,9 +27,9 @@ func TestRandomDateTransformer_Transform(t *testing.T) {
 			name:       "test date type",
 			columnName: "date_date",
 			original:   "2007-09-14",
-			params: map[string]domains.ParamsValue{
-				"min": domains.ParamsValue("2017-09-14"),
-				"max": domains.ParamsValue("2023-09-14"),
+			params: map[string]toolkit.ParamsValue{
+				"min": toolkit.ParamsValue("2017-09-14"),
+				"max": toolkit.ParamsValue("2023-09-14"),
 			},
 			pattern: `^\d{4}-\d{2}-\d{2}$`,
 		},
@@ -38,9 +37,9 @@ func TestRandomDateTransformer_Transform(t *testing.T) {
 			name:       "test timestamp without timezone type",
 			columnName: "date_ts",
 			original:   "2008-12-15 23:34:17.946707",
-			params: map[string]domains.ParamsValue{
-				"min": domains.ParamsValue("2018-12-15 23:34:17.946707"),
-				"max": domains.ParamsValue("2023-09-14 00:00:17.946707"),
+			params: map[string]toolkit.ParamsValue{
+				"min": toolkit.ParamsValue("2018-12-15 23:34:17.946707"),
+				"max": toolkit.ParamsValue("2023-09-14 00:00:17.946707"),
 			},
 			pattern: `^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}.\d{1,6}$`,
 		},
@@ -48,9 +47,9 @@ func TestRandomDateTransformer_Transform(t *testing.T) {
 			name:       "test timestamp with timezone type",
 			columnName: "date_tstz",
 			original:   "2008-12-15 23:34:17.946707+03",
-			params: map[string]domains.ParamsValue{
-				"min": domains.ParamsValue("2018-12-15 00:00:00.946707+03"),
-				"max": domains.ParamsValue("2023-09-14 00:00:17.946707+03"),
+			params: map[string]toolkit.ParamsValue{
+				"min": toolkit.ParamsValue("2018-12-15 00:00:00.946707+03"),
+				"max": toolkit.ParamsValue("2023-09-14 00:00:17.946707+03"),
 			},
 			pattern: `^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}.\d{1,6}Z$`,
 		},
@@ -58,10 +57,10 @@ func TestRandomDateTransformer_Transform(t *testing.T) {
 			name:       "test timestamp type with Truncate till day",
 			columnName: "date_ts",
 			original:   "2008-12-15 23:34:17.946707",
-			params: map[string]domains.ParamsValue{
-				"min":      domains.ParamsValue("2018-12-15 23:34:17.946707"),
-				"max":      domains.ParamsValue("2023-09-14 00:00:17.946707"),
-				"truncate": domains.ParamsValue("month"),
+			params: map[string]toolkit.ParamsValue{
+				"min":      toolkit.ParamsValue("2018-12-15 23:34:17.946707"),
+				"max":      toolkit.ParamsValue("2023-09-14 00:00:17.946707"),
+				"truncate": toolkit.ParamsValue("month"),
 			},
 			pattern: `^\d{4}-\d{2}-01 0{2}:0{2}:0{2}$`,
 		},
@@ -69,11 +68,11 @@ func TestRandomDateTransformer_Transform(t *testing.T) {
 			name:       "keep_null false and NULL seq",
 			columnName: "date_ts",
 			original:   "\\N",
-			params: map[string]domains.ParamsValue{
-				"min":       domains.ParamsValue("2018-12-15 23:34:17.946707"),
-				"max":       domains.ParamsValue("2023-09-14 00:00:17.946707"),
-				"truncate":  domains.ParamsValue("month"),
-				"keep_null": domains.ParamsValue("true"),
+			params: map[string]toolkit.ParamsValue{
+				"min":       toolkit.ParamsValue("2018-12-15 23:34:17.946707"),
+				"max":       toolkit.ParamsValue("2023-09-14 00:00:17.946707"),
+				"truncate":  toolkit.ParamsValue("month"),
+				"keep_null": toolkit.ParamsValue("true"),
 			},
 			pattern: fmt.Sprintf(`^(\%s)$`, "\\N"),
 			isNull:  true,
@@ -82,11 +81,11 @@ func TestRandomDateTransformer_Transform(t *testing.T) {
 			name:       "keep_null true and NULL seq",
 			columnName: "date_ts",
 			original:   "\\N",
-			params: map[string]domains.ParamsValue{
-				"min":       domains.ParamsValue("2018-12-15 23:34:17.946707"),
-				"max":       domains.ParamsValue("2023-09-14 00:00:17.946707"),
-				"truncate":  domains.ParamsValue("month"),
-				"keep_null": domains.ParamsValue("false"),
+			params: map[string]toolkit.ParamsValue{
+				"min":       toolkit.ParamsValue("2018-12-15 23:34:17.946707"),
+				"max":       toolkit.ParamsValue("2023-09-14 00:00:17.946707"),
+				"truncate":  toolkit.ParamsValue("month"),
+				"keep_null": toolkit.ParamsValue("false"),
 			},
 			pattern: `^\d{4}-\d{2}-01 0{2}:0{2}:0{2}$`,
 		},
@@ -94,7 +93,7 @@ func TestRandomDateTransformer_Transform(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			tt.params["column"] = domains.ParamsValue(tt.columnName)
+			tt.params["column"] = toolkit.ParamsValue(tt.columnName)
 			driver, record := getDriverAndRecord(tt.columnName, tt.original)
 			transformer, warnings, err := RandomDateTransformerDefinition.Instance(
 				context.Background(),

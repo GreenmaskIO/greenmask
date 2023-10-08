@@ -6,6 +6,11 @@ import (
 	"github.com/greenmaskio/greenmask/pkg/toolkit"
 )
 
+var testTransformerDefinition = toolkit.NewDefinition(
+	"TestTransformer",
+	NewTestTransformer,
+).SetValidate(true).AddParameter(toolkit.NewParameter(""))
+
 type TestTransformer struct {
 	driver     *toolkit.Driver
 	parameters map[string]*toolkit.Parameter
@@ -26,5 +31,5 @@ func (tt *TestTransformer) Transform(ctx context.Context, r *toolkit.Record) (*t
 }
 
 func main() {
-
+	toolkit.NewCmd()
 }

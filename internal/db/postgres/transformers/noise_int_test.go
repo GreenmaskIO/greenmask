@@ -3,9 +3,10 @@ package transformers
 import (
 	"context"
 	"fmt"
-	"github.com/greenmaskio/greenmask/internal/domains"
-	"github.com/stretchr/testify/assert"
 	"testing"
+
+	"github.com/greenmaskio/greenmask/pkg/toolkit"
+	"github.com/stretchr/testify/assert"
 
 	"github.com/stretchr/testify/require"
 )
@@ -55,9 +56,9 @@ func TestNoiseIntTransformer_Transform(t *testing.T) {
 			driver, record := getDriverAndRecord(tt.columnName, tt.originalValue)
 			transformer, warnings, err := NoiseIntTransformerDefinition.Instance(
 				context.Background(),
-				driver, map[string]domains.ParamsValue{
-					"column": domains.ParamsValue(tt.columnName),
-					"ratio":  domains.ParamsValue(fmt.Sprintf("%f", tt.ratio)),
+				driver, map[string]toolkit.ParamsValue{
+					"column": toolkit.ParamsValue(tt.columnName),
+					"ratio":  toolkit.ParamsValue(fmt.Sprintf("%f", tt.ratio)),
 				},
 				nil,
 			)

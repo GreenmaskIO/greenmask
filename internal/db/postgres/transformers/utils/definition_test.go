@@ -3,7 +3,6 @@ package utils
 import (
 	"context"
 	"testing"
-	"time"
 
 	"github.com/greenmaskio/greenmask/pkg/toolkit"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -40,12 +39,12 @@ func TestDefinition(t *testing.T) {
 	TestTransformerDefinition := NewDefinition(
 		NewTransformerProperties("test", "simple description"),
 		NewTestTransformer,
-		toolkit.MustNewParameter("column", "a column name", new(string), nil).
+		toolkit.MustNewParameter("column", "a column name").
 			SetIsColumn(toolkit.NewColumnProperties().
 				SetAffected(true).
 				SetAllowedColumnTypes("timestamp"),
 			),
-		toolkit.MustNewParameter("replace", "replacement value", &time.Time{}, nil).
+		toolkit.MustNewParameter("replace", "replacement value").
 			SetLinkParameter("column"),
 	)
 

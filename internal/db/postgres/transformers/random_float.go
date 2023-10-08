@@ -27,8 +27,6 @@ var RandomFloatTransformerDefinition = utils.NewDefinition(
 	toolkit2.MustNewParameter(
 		"column",
 		"column name",
-		new(string),
-		nil,
 	).SetIsColumn(toolkit2.NewColumnProperties().
 		SetAffected(true).
 		SetAllowedColumnTypes("float4", "float8"),
@@ -37,30 +35,22 @@ var RandomFloatTransformerDefinition = utils.NewDefinition(
 	toolkit2.MustNewParameter(
 		"min",
 		"min int value threshold",
-		new(float64),
-		nil,
 	).SetRequired(true),
 
 	toolkit2.MustNewParameter(
 		"max",
 		"max int value threshold",
-		new(float64),
-		nil,
 	).SetRequired(true),
 
 	toolkit2.MustNewParameter(
 		"precision",
 		"precision of noised value",
-		new(int64),
-		New[int64](4),
-	),
+	).SetDefaultValue(toolkit2.ParamsValue("4")),
 
 	toolkit2.MustNewParameter(
 		"keep_null",
 		"do not replace NULL values to random value",
-		new(bool),
-		New(true),
-	),
+	).SetDefaultValue(toolkit2.ParamsValue("true")),
 )
 
 type RandomFloatTransformer struct {

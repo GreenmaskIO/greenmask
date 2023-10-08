@@ -21,8 +21,6 @@ var RandomUuidTransformerDefinition = utils.NewDefinition(
 	toolkit2.MustNewParameter(
 		"column",
 		"column name",
-		new(string),
-		nil,
 	).SetIsColumn(toolkit2.NewColumnProperties().
 		SetAffected(true).
 		SetAllowedColumnTypes("text", "varchar", "uuid"),
@@ -31,9 +29,7 @@ var RandomUuidTransformerDefinition = utils.NewDefinition(
 	toolkit2.MustNewParameter(
 		"keep_null",
 		"do not replace NULL values to random value",
-		new(bool),
-		New(false),
-	),
+	).SetDefaultValue(toolkit2.ParamsValue("true")),
 )
 
 type RandomUuidTransformer struct {

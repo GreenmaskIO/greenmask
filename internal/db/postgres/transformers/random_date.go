@@ -25,8 +25,6 @@ var RandomDateTransformerDefinition = utils.NewDefinition(
 	toolkit2.MustNewParameter(
 		"column",
 		"column name",
-		new(string),
-		nil,
 	).SetIsColumn(toolkit2.NewColumnProperties().
 		SetAffected(true).
 		SetAllowedColumnTypes("date", "timestamp", "timestamptz"),
@@ -35,32 +33,24 @@ var RandomDateTransformerDefinition = utils.NewDefinition(
 	toolkit2.MustNewParameter(
 		"min",
 		"min threshold value of random value",
-		nil,
-		nil,
 	).SetRequired(true).
 		SetLinkParameter("column"),
 
 	toolkit2.MustNewParameter(
 		"max",
 		"max threshold value of random value",
-		nil,
-		nil,
 	).SetRequired(true).
 		SetLinkParameter("column"),
 
 	toolkit2.MustNewParameter(
 		"truncate",
 		fmt.Sprintf("truncate date till the part (%s)", strings.Join(truncateParts, ", ")),
-		new(string),
-		nil,
 	),
 
 	toolkit2.MustNewParameter(
 		"keep_null",
 		"do not replace NULL values to random value",
-		new(bool),
-		New(true),
-	),
+	).SetDefaultValue(toolkit2.ParamsValue("true")),
 )
 
 type dateGeneratorFunc func(r *rand.Rand, startDate *time.Time, endDate *time.Time, truncate *string) time.Time
@@ -95,13 +85,22 @@ func NewRandomDateTransformer(ctx context.Context, driver *toolkit2.Driver, para
 	}
 
 	p = parameters["min"]
-	minTime, ok := p.Value().(time.Time)
+	v, err := p.Value()
+	if err != nil {
+		return nil, nil, fmt.Errorf(`error parsing "min" parameter`)
+	}
+	minTime, ok := v.(time.Time)
 	if !ok {
 		return nil, nil, errors.New(`unexpected type for "min" parameter`)
 	}
 
 	p = parameters["max"]
-	maxTime, ok = p.Value().(time.Time)
+	v, err = p.Value()
+	if err != nil {
+		return nil, nil, fmt.Errorf(`error parsing "max" parameter`)
+	}
+
+	maxTime, ok = v.(time.Time)
 	if !ok {
 		return nil, nil, errors.New(`unexpected type for "max" parameter`)
 	}

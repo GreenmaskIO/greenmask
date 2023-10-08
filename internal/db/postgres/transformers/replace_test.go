@@ -2,9 +2,9 @@ package transformers
 
 import (
 	"context"
-	"github.com/greenmaskio/greenmask/internal/domains"
 	"testing"
 
+	"github.com/greenmaskio/greenmask/pkg/toolkit"
 	"github.com/stretchr/testify/require"
 )
 
@@ -114,7 +114,7 @@ func TestReplaceTransformer_Transform(t *testing.T) {
 
 	tests := []struct {
 		name       string
-		params     map[string]domains.ParamsValue
+		params     map[string]toolkit.ParamsValue
 		columnName string
 		original   string
 		result     result
@@ -123,8 +123,8 @@ func TestReplaceTransformer_Transform(t *testing.T) {
 			name:       "common",
 			original:   "1",
 			columnName: "id",
-			params: map[string]domains.ParamsValue{
-				"value": domains.ParamsValue("123"),
+			params: map[string]toolkit.ParamsValue{
+				"value": toolkit.ParamsValue("123"),
 			},
 			result: result{
 				isNull: false,
@@ -135,9 +135,9 @@ func TestReplaceTransformer_Transform(t *testing.T) {
 			name:       "keep_null false and NULL seq",
 			original:   "\\N",
 			columnName: "id",
-			params: map[string]domains.ParamsValue{
-				"value":     domains.ParamsValue("123"),
-				"keep_null": domains.ParamsValue("false"),
+			params: map[string]toolkit.ParamsValue{
+				"value":     toolkit.ParamsValue("123"),
+				"keep_null": toolkit.ParamsValue("false"),
 			},
 			result: result{
 				isNull: false,
@@ -148,9 +148,9 @@ func TestReplaceTransformer_Transform(t *testing.T) {
 			name:       "keep_null true and NULL seq",
 			original:   "\\N",
 			columnName: "id",
-			params: map[string]domains.ParamsValue{
-				"value":     domains.ParamsValue("123"),
-				"keep_null": domains.ParamsValue("true"),
+			params: map[string]toolkit.ParamsValue{
+				"value":     toolkit.ParamsValue("123"),
+				"keep_null": toolkit.ParamsValue("true"),
 			},
 			result: result{
 				isNull: true,
@@ -162,7 +162,7 @@ func TestReplaceTransformer_Transform(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			driver, record := getDriverAndRecord(tt.columnName, tt.original)
-			tt.params["column"] = domains.ParamsValue(tt.columnName)
+			tt.params["column"] = toolkit.ParamsValue(tt.columnName)
 			transformer, warnings, err := ReplaceTransformerDefinition.Instance(
 				context.Background(),
 				driver,

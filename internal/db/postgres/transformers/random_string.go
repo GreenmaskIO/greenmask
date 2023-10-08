@@ -21,8 +21,6 @@ var RandomStringTransformerDefinition = utils.NewDefinition(
 	toolkit2.MustNewParameter(
 		"column",
 		"column name",
-		new(string),
-		nil,
 	).SetIsColumn(toolkit2.NewColumnProperties().
 		SetAffected(true).
 		SetAllowedColumnTypes("text", "varchar"),
@@ -31,30 +29,22 @@ var RandomStringTransformerDefinition = utils.NewDefinition(
 	toolkit2.MustNewParameter(
 		"min_length",
 		"min length of string",
-		new(int64),
-		nil,
 	).SetRequired(true),
 
 	toolkit2.MustNewParameter(
 		"max_length",
 		"max length of string",
-		new(int64),
-		nil,
 	).SetRequired(true),
 
 	toolkit2.MustNewParameter(
 		"symbols",
 		"the characters range for random string",
-		new(string),
-		New("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"),
-	),
+	).SetDefaultValue(toolkit2.ParamsValue("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")),
 
 	toolkit2.MustNewParameter(
 		"keep_null",
 		"do not replace NULL values to random value",
-		new(bool),
-		New(false),
-	),
+	).SetDefaultValue(toolkit2.ParamsValue("true")),
 )
 
 type getRandStringFunc func(r *rand.Rand, buf []rune, minLength, maxLength int64, symbols []rune) string

@@ -4,7 +4,6 @@ import (
 	"context"
 	"testing"
 
-	"github.com/greenmaskio/greenmask/internal/domains"
 	"github.com/greenmaskio/greenmask/pkg/toolkit"
 
 	"github.com/stretchr/testify/assert"
@@ -19,9 +18,9 @@ func TestHashTransformer_Transform(t *testing.T) {
 
 	transformer, warnings, err := HashTransformerDefinition.Instance(
 		context.Background(),
-		driver, map[string]domains.ParamsValue{
-			"column": domains.ParamsValue(attrName),
-			"salt":   domains.ParamsValue("12345678"),
+		driver, map[string]toolkit.ParamsValue{
+			"column": toolkit.ParamsValue(attrName),
+			"salt":   toolkit.ParamsValue("12345678"),
 		},
 		nil,
 	)

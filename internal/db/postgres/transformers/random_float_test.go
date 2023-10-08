@@ -2,9 +2,9 @@ package transformers
 
 import (
 	"context"
-	"github.com/greenmaskio/greenmask/internal/domains"
 	"testing"
 
+	"github.com/greenmaskio/greenmask/pkg/toolkit"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -18,7 +18,7 @@ func TestRandomFloatTransformer_Transform(t *testing.T) {
 
 	tests := []struct {
 		name          string
-		params        map[string]domains.ParamsValue
+		params        map[string]toolkit.ParamsValue
 		columnName    string
 		originalValue string
 		result        result
@@ -27,9 +27,9 @@ func TestRandomFloatTransformer_Transform(t *testing.T) {
 			name:          "float4",
 			columnName:    "col_float4",
 			originalValue: "1000.0",
-			params: map[string]domains.ParamsValue{
-				"min": domains.ParamsValue("1"),
-				"max": domains.ParamsValue("10"),
+			params: map[string]toolkit.ParamsValue{
+				"min": toolkit.ParamsValue("1"),
+				"max": toolkit.ParamsValue("10"),
 			},
 			result: result{
 				min: 1,
@@ -40,9 +40,9 @@ func TestRandomFloatTransformer_Transform(t *testing.T) {
 			name:          "float8",
 			columnName:    "col_float8",
 			originalValue: "1000.0",
-			params: map[string]domains.ParamsValue{
-				"min": domains.ParamsValue("1"),
-				"max": domains.ParamsValue("10"),
+			params: map[string]toolkit.ParamsValue{
+				"min": toolkit.ParamsValue("1"),
+				"max": toolkit.ParamsValue("10"),
 			},
 			result: result{
 				min: 1,
@@ -53,10 +53,10 @@ func TestRandomFloatTransformer_Transform(t *testing.T) {
 			name:          "float8 ranges 1",
 			columnName:    "col_float8",
 			originalValue: "1000.0",
-			params: map[string]domains.ParamsValue{
-				"min":       domains.ParamsValue("-100000"),
-				"max":       domains.ParamsValue("100000"),
-				"precision": domains.ParamsValue("10"),
+			params: map[string]toolkit.ParamsValue{
+				"min":       toolkit.ParamsValue("-100000"),
+				"max":       toolkit.ParamsValue("100000"),
+				"precision": toolkit.ParamsValue("10"),
 			},
 			result: result{
 				min: -100000,
@@ -67,10 +67,10 @@ func TestRandomFloatTransformer_Transform(t *testing.T) {
 			name:          "float8 ranges 1 with precision",
 			columnName:    "col_float8",
 			originalValue: "1000.0",
-			params: map[string]domains.ParamsValue{
-				"min":       domains.ParamsValue("-100000"),
-				"max":       domains.ParamsValue("-1"),
-				"precision": domains.ParamsValue("0"),
+			params: map[string]toolkit.ParamsValue{
+				"min":       toolkit.ParamsValue("-100000"),
+				"max":       toolkit.ParamsValue("-1"),
+				"precision": toolkit.ParamsValue("0"),
 			},
 			result: result{
 				min: -100000,
@@ -81,11 +81,11 @@ func TestRandomFloatTransformer_Transform(t *testing.T) {
 			name:          "keep_null false and NULL seq",
 			columnName:    "col_float8",
 			originalValue: "\\N",
-			params: map[string]domains.ParamsValue{
-				"min":       domains.ParamsValue("-100000"),
-				"max":       domains.ParamsValue("-1"),
-				"precision": domains.ParamsValue("0"),
-				"keep_null": domains.ParamsValue("false"),
+			params: map[string]toolkit.ParamsValue{
+				"min":       toolkit.ParamsValue("-100000"),
+				"max":       toolkit.ParamsValue("-1"),
+				"precision": toolkit.ParamsValue("0"),
+				"keep_null": toolkit.ParamsValue("false"),
 			},
 			result: result{
 				min: -100000,
@@ -96,11 +96,11 @@ func TestRandomFloatTransformer_Transform(t *testing.T) {
 			name:          "keep_null true and NULL seq",
 			columnName:    "col_float8",
 			originalValue: "\\N",
-			params: map[string]domains.ParamsValue{
-				"min":       domains.ParamsValue("-100000"),
-				"max":       domains.ParamsValue("-1"),
-				"precision": domains.ParamsValue("0"),
-				"keep_null": domains.ParamsValue("true"),
+			params: map[string]toolkit.ParamsValue{
+				"min":       toolkit.ParamsValue("-100000"),
+				"max":       toolkit.ParamsValue("-1"),
+				"precision": toolkit.ParamsValue("0"),
+				"keep_null": toolkit.ParamsValue("true"),
 			},
 			result: result{
 				isNull: true,
@@ -108,11 +108,11 @@ func TestRandomFloatTransformer_Transform(t *testing.T) {
 		},
 		//{
 		//	name: "text with default float8",
-		//	params: map[string]domains.ParamsValue{
-		//		"min":       domains.ParamsValue("-100000"),
-		//		"max":       domains.ParamsValue("10.1241"),
-		//		"precision": domains.ParamsValue("3"),
-		//		"useType":   domains.ParamsValue("float4"),
+		//	params: map[string]toolkit.ParamsValue{
+		//		"min":       toolkit.ParamsValue("-100000"),
+		//		"max":       toolkit.ParamsValue("10.1241"),
+		//		"precision": toolkit.ParamsValue("3"),
+		//		"useType":   toolkit.ParamsValue("float4"),
 		//	},
 		//	result: result{
 		//		pattern: `^-*\d+[.]*\d{0,3}$`,
@@ -122,7 +122,7 @@ func TestRandomFloatTransformer_Transform(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			tt.params["column"] = domains.ParamsValue(tt.columnName)
+			tt.params["column"] = toolkit.ParamsValue(tt.columnName)
 			driver, record := getDriverAndRecord(tt.columnName, tt.originalValue)
 			transformer, warnings, err := RandomFloatTransformerDefinition.Instance(
 				context.Background(),

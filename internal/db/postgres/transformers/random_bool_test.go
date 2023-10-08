@@ -2,9 +2,10 @@ package transformers
 
 import (
 	"context"
-	"github.com/greenmaskio/greenmask/internal/domains"
-	"github.com/stretchr/testify/assert"
 	"testing"
+
+	"github.com/greenmaskio/greenmask/pkg/toolkit"
+	"github.com/stretchr/testify/assert"
 
 	"github.com/stretchr/testify/require"
 )
@@ -13,7 +14,7 @@ func TestRandomBoolTransformer_Transform(t *testing.T) {
 
 	tests := []struct {
 		name       string
-		params     map[string]domains.ParamsValue
+		params     map[string]toolkit.ParamsValue
 		columnName string
 		original   string
 		isNull     bool
@@ -22,22 +23,22 @@ func TestRandomBoolTransformer_Transform(t *testing.T) {
 			name:       "common",
 			original:   "t",
 			columnName: "col_bool",
-			params:     map[string]domains.ParamsValue{},
+			params:     map[string]toolkit.ParamsValue{},
 		},
 		{
 			name:       "keep_null false and NULL seq",
 			original:   "\\N",
 			columnName: "col_bool",
-			params: map[string]domains.ParamsValue{
-				"keep_null": domains.ParamsValue("false"),
+			params: map[string]toolkit.ParamsValue{
+				"keep_null": toolkit.ParamsValue("false"),
 			},
 		},
 		{
 			name:       "keep_null true and NULL seq",
 			original:   "\\N",
 			columnName: "col_bool",
-			params: map[string]domains.ParamsValue{
-				"keep_null": domains.ParamsValue("true"),
+			params: map[string]toolkit.ParamsValue{
+				"keep_null": toolkit.ParamsValue("true"),
 			},
 			isNull: true,
 		},
@@ -45,7 +46,7 @@ func TestRandomBoolTransformer_Transform(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			tt.params["column"] = domains.ParamsValue(tt.columnName)
+			tt.params["column"] = toolkit.ParamsValue(tt.columnName)
 			driver, record := getDriverAndRecord(tt.columnName, tt.original)
 			transformer, warnings, err := RandomBoolTransformerDefinition.Instance(
 				context.Background(),

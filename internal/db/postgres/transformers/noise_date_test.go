@@ -6,7 +6,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/greenmaskio/greenmask/internal/domains"
 	"github.com/greenmaskio/greenmask/pkg/toolkit"
 
 	"github.com/stretchr/testify/assert"
@@ -23,15 +22,15 @@ func TestNoiseDateTransformer_Transform(t *testing.T) {
 
 	tests := []struct {
 		name     string
-		params   map[string]domains.ParamsValue
+		params   map[string]toolkit.ParamsValue
 		original string
 		result   result
 	}{
 		{
 			name: "test date type",
-			params: map[string]domains.ParamsValue{
-				"ratio":  domains.ParamsValue("1 year 1 mons 1 day 01:01:01.01"),
-				"column": domains.ParamsValue("date_date"),
+			params: map[string]toolkit.ParamsValue{
+				"ratio":  toolkit.ParamsValue("1 year 1 mons 1 day 01:01:01.01"),
+				"column": toolkit.ParamsValue("date_date"),
 			},
 			original: "2023-06-25",
 			result: result{
@@ -42,9 +41,9 @@ func TestNoiseDateTransformer_Transform(t *testing.T) {
 		},
 		{
 			name: "test timestamp without timezone type",
-			params: map[string]domains.ParamsValue{
-				"ratio":  domains.ParamsValue("1 year 1 mons 1 day 01:01:01.01"),
-				"column": domains.ParamsValue("date_ts"),
+			params: map[string]toolkit.ParamsValue{
+				"ratio":  toolkit.ParamsValue("1 year 1 mons 1 day 01:01:01.01"),
+				"column": toolkit.ParamsValue("date_ts"),
 			},
 			original: "2023-06-25 00:00:00",
 			result: result{
@@ -55,9 +54,9 @@ func TestNoiseDateTransformer_Transform(t *testing.T) {
 		},
 		{
 			name: "test timestamp with timezone type",
-			params: map[string]domains.ParamsValue{
-				"ratio":  domains.ParamsValue("1 year 1 mons 1 day 01:01:01.01"),
-				"column": domains.ParamsValue("date_tstz"),
+			params: map[string]toolkit.ParamsValue{
+				"ratio":  toolkit.ParamsValue("1 year 1 mons 1 day 01:01:01.01"),
+				"column": toolkit.ParamsValue("date_tstz"),
 			},
 			original: "2023-06-25 00:00:00.0+03",
 			result: result{
@@ -68,10 +67,10 @@ func TestNoiseDateTransformer_Transform(t *testing.T) {
 		},
 		{
 			name: "test timestamp type with Truncate till day",
-			params: map[string]domains.ParamsValue{
-				"ratio":    domains.ParamsValue("1 year 1 mons 1 day 01:01:01.01"),
-				"truncate": domains.ParamsValue("month"),
-				"column":   domains.ParamsValue("date_ts"),
+			params: map[string]toolkit.ParamsValue{
+				"ratio":    toolkit.ParamsValue("1 year 1 mons 1 day 01:01:01.01"),
+				"truncate": toolkit.ParamsValue("month"),
+				"column":   toolkit.ParamsValue("date_ts"),
 			},
 			original: "2023-06-25 00:00:00",
 			result: result{

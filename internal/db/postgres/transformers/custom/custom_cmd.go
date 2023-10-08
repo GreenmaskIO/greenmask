@@ -68,18 +68,21 @@ func NewCustomCmdTransformer(
 	affectedColumns := make(map[int]string)
 	for _, p := range parameters {
 		if p.IsColumn {
-			v := p.Value()
-			columnName, ok := v.(*string)
+			v, err := p.Value()
+			if err != nil {
+				return nil, nil, fmt.Errorf("error getting parameter value: %w", err)
+			}
+			columnName, ok := v.(string)
 			if !ok {
 				return nil, nil, fmt.Errorf("unable to perform cast of column parameter value from any to *string")
 			}
 			idx := slices.IndexFunc(driver.Table.Columns, func(column *toolkit.Column) bool {
-				return column.Name == *columnName
+				return column.Name == columnName
 			})
 			if idx == -1 {
-				return nil, nil, fmt.Errorf("column with name %s is not found", *columnName)
+				return nil, nil, fmt.Errorf("column with name %s is not found", columnName)
 			}
-			affectedColumns[idx] = *columnName
+			affectedColumns[idx] = columnName
 		}
 	}
 

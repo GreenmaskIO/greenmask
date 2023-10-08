@@ -22,8 +22,6 @@ var JsonTransformerDefinition = utils.NewDefinition(
 	toolkit2.MustNewParameter(
 		"column",
 		"column name",
-		new(string),
-		nil,
 	).SetIsColumn(toolkit2.NewColumnProperties().
 		SetAffected(true).
 		SetAllowedColumnTypes("json", "jsonb"),
@@ -32,8 +30,6 @@ var JsonTransformerDefinition = utils.NewDefinition(
 	toolkit2.MustNewParameter(
 		"operations",
 		"list of the operations",
-		new([]Operation),
-		nil,
 	).SetRequired(true),
 )
 

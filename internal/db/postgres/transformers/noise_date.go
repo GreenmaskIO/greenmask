@@ -27,8 +27,6 @@ var NoiseDateTransformerDefinition = utils.NewDefinition(
 	toolkit2.MustNewParameter(
 		"column",
 		"column name",
-		new(string),
-		nil,
 	).SetIsColumn(toolkit2.NewColumnProperties().
 		SetAffected(true).
 		SetAllowedColumnTypes("date", "timestamp", "timestamptz"),
@@ -37,16 +35,12 @@ var NoiseDateTransformerDefinition = utils.NewDefinition(
 	toolkit2.MustNewParameter(
 		"ratio",
 		"max random duration for noise",
-		nil,
-		nil,
 	).SetRequired(true).
 		SetCastDbType("interval"),
 
 	toolkit2.MustNewParameter(
 		"truncate",
 		fmt.Sprintf("truncate date till the part (%s)", strings.Join(truncateParts, ", ")),
-		new(string),
-		nil,
 	),
 )
 
@@ -72,7 +66,11 @@ func NewNoiseDateTransformer(ctx context.Context, driver *toolkit2.Driver, param
 	}
 
 	p = parameters["ratio"]
-	intervalValue, ok := p.Value().(pgtype.Interval)
+	v, err := p.Value()
+	if err != nil {
+		return nil, nil, fmt.Errorf(`error parsing "ratio" parameter`)
+	}
+	intervalValue, ok := v.(pgtype.Interval)
 	if !ok {
 		return nil, nil, fmt.Errorf(`cannot cast "ratio" param to interval value`)
 	}

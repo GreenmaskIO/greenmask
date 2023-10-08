@@ -29,8 +29,6 @@ var HashTransformerDefinition = utils.NewDefinition(
 	toolkit2.MustNewParameter(
 		"column",
 		"column name",
-		new(string),
-		nil,
 	).SetIsColumn(toolkit2.NewColumnProperties().
 		SetAffected(true).
 		SetAllowedColumnTypes("text", "varchar"),
@@ -39,8 +37,6 @@ var HashTransformerDefinition = utils.NewDefinition(
 	toolkit2.MustNewParameter(
 		"salt",
 		"salt for hash",
-		new(string),
-		nil,
 	),
 )
 

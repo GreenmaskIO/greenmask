@@ -22,8 +22,6 @@ var NoiseFloatTransformerDefinition = utils.NewDefinition(
 	toolkit2.MustNewParameter(
 		"column",
 		"column name",
-		new(string),
-		nil,
 	).SetIsColumn(toolkit2.NewColumnProperties().
 		SetAffected(true).
 		SetAllowedColumnTypes("float4", "float8"),
@@ -32,16 +30,12 @@ var NoiseFloatTransformerDefinition = utils.NewDefinition(
 	toolkit2.MustNewParameter(
 		"ratio",
 		"max random percentage for noise",
-		new(float64),
-		New[float64](0.1),
-	),
+	).SetDefaultValue(toolkit2.ParamsValue("0.1")),
 
 	toolkit2.MustNewParameter(
 		"precision",
 		"precision of noised value",
-		new(int64),
-		New[int64](4),
-	),
+	).SetDefaultValue(toolkit2.ParamsValue("4")),
 )
 
 type NoiseFloatTransformerParams struct {

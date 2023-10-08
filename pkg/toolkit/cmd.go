@@ -12,7 +12,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-type TransformerCmd struct {
+type Cmd struct {
 	*cobra.Command
 	definition      *Definition
 	rawMeta         string
@@ -22,7 +22,7 @@ type TransformerCmd struct {
 	transform       bool
 }
 
-func NewTransformer(definition *Definition) *TransformerCmd {
+func NewCmd(definition *Definition) *Cmd {
 	if definition == nil {
 		panic("definition cannot be nil")
 	}
@@ -35,7 +35,7 @@ func NewTransformer(definition *Definition) *TransformerCmd {
 		panic("definition New cannot be nil")
 	}
 
-	tc := &TransformerCmd{
+	tc := &Cmd{
 		definition: definition,
 	}
 
@@ -50,47 +50,47 @@ func NewTransformer(definition *Definition) *TransformerCmd {
 	return tc
 }
 
-func (tc *TransformerCmd) setupDefaultCmd() {
+func (c *Cmd) setupDefaultCmd() {
 
-	tc.PersistentFlags().BoolVar(&tc.transform, "transform", false, "run transformation")
-	tc.PersistentFlags().BoolVar(&tc.validate, "validate", false, "validate using provided meta")
-	tc.PersistentFlags().BoolVar(&tc.printDefinition, "print-definition", false, "print transformer definition")
-	tc.PersistentFlags().StringVar(&tc.rawMeta, "meta", "", "runtime metadata")
-	tc.MarkFlagsMutuallyExclusive("transform", "validate", "print-definition")
+	c.PersistentFlags().BoolVar(&c.transform, "transform", false, "run transformation")
+	c.PersistentFlags().BoolVar(&c.validate, "validate", false, "validate using provided meta")
+	c.PersistentFlags().BoolVar(&c.printDefinition, "print-definition", false, "print transformer definition")
+	c.PersistentFlags().StringVar(&c.rawMeta, "meta", "", "runtime metadata")
+	c.MarkFlagsMutuallyExclusive("transform", "validate", "print-definition")
 }
 
-func (tc *TransformerCmd) run(cmd *cobra.Command, args []string) {
-	if tc.printDefinition {
-		if err := json.NewEncoder(os.Stdout).Encode(tc.definition); err != nil {
+func (c *Cmd) run(cmd *cobra.Command, args []string) {
+	if c.printDefinition {
+		if err := json.NewEncoder(os.Stdout).Encode(c.definition); err != nil {
 			log.Fatalf("error encoding transformer definition: %s", err)
 		}
 		return
 	}
 
-	if !tc.validate && !tc.transform {
+	if !c.validate && !c.transform {
 		log.Fatalf(`behaviour paramter was not proveded: expected one of validate transform or print-definition`)
 	}
 
-	if tc.rawMeta == "" {
+	if c.rawMeta == "" {
 		log.Fatalf(`parameter "meta" is required with "validate" or "transform"`)
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	if tc.validate {
-		if err := tc.performValidate(ctx); err != nil {
+	if c.validate {
+		if err := c.performValidate(ctx); err != nil {
 			log.Fatal(err)
 		}
-	} else if tc.transform {
-		if err := tc.performTransform(ctx); err != nil {
+	} else if c.transform {
+		if err := c.performTransform(ctx); err != nil {
 			log.Fatal(err)
 		}
 	}
 }
 
-func (tc *TransformerCmd) performValidate(ctx context.Context) error {
-	transformer, _, warnings, err := tc.init(ctx)
+func (c *Cmd) performValidate(ctx context.Context) error {
+	transformer, _, warnings, err := c.init(ctx)
 	if err != nil {
 		return fmt.Errorf("initialization error: %w", err)
 	}
@@ -124,8 +124,8 @@ func (tc *TransformerCmd) performValidate(ctx context.Context) error {
 	return nil
 }
 
-func (tc *TransformerCmd) performTransform(ctx context.Context) error {
-	transformer, driver, warnings, err := tc.init(ctx)
+func (c *Cmd) performTransform(ctx context.Context) error {
+	transformer, driver, warnings, err := c.init(ctx)
 	if err != nil {
 		return fmt.Errorf("initialization error: %w", err)
 	}
@@ -174,9 +174,9 @@ func (tc *TransformerCmd) performTransform(ctx context.Context) error {
 	}
 }
 
-func (tc *TransformerCmd) init(ctx context.Context) (Transformer, *Driver, ValidationWarnings, error) {
+func (c *Cmd) init(ctx context.Context) (Transformer, *Driver, ValidationWarnings, error) {
 	meta := &Meta{}
-	if err := json.Unmarshal([]byte(tc.rawMeta), meta); err != nil {
+	if err := json.Unmarshal([]byte(c.rawMeta), meta); err != nil {
 		return nil, nil, nil, fmt.Errorf("error umarshalling meta: %w", err)
 	}
 	if meta.Table == nil {
@@ -189,10 +189,10 @@ func (tc *TransformerCmd) init(ctx context.Context) (Transformer, *Driver, Valid
 	typeMap := pgtype.NewMap()
 	driver, err := NewDriver(typeMap, meta.Table, meta.ColumnTypeOverrides)
 	if err != nil {
-		return nil, nil, nil, fmt.Errorf("error initilizing driver: %w", err)
+		return nil, nil, nil, fmt.Errorf("error initilizing Driver: %w", err)
 	}
 
-	params, pw, err := ParseParameters(driver, meta.Parameters, tc.definition.Parameters, meta.Types)
+	params, pw, err := InitParameters(driver, meta.Parameters, c.definition.Parameters, meta.Types)
 	if err != nil {
 		return nil, nil, nil, fmt.Errorf("error parsing parameters: %w", err)
 	}
@@ -200,7 +200,7 @@ func (tc *TransformerCmd) init(ctx context.Context) (Transformer, *Driver, Valid
 		return nil, nil, pw, nil
 	}
 
-	t, iw, err := tc.definition.New(ctx, driver, params)
+	t, iw, err := c.definition.New(ctx, driver, params)
 	if err != nil {
 		return nil, nil, nil, fmt.Errorf("error initializing transformer: %w", err)
 	}

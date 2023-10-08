@@ -22,8 +22,6 @@ var RandomBoolTransformerDefinition = utils.NewDefinition(
 	toolkit2.MustNewParameter(
 		"column",
 		"column name",
-		new(string),
-		nil,
 	).SetIsColumn(toolkit2.NewColumnProperties().
 		SetAffected(true).
 		SetAllowedColumnTypes("bool"),
@@ -32,9 +30,7 @@ var RandomBoolTransformerDefinition = utils.NewDefinition(
 	toolkit2.MustNewParameter(
 		"keep_null",
 		"do not replace NULL values to random value",
-		new(bool),
-		New(true),
-	),
+	).SetDefaultValue(toolkit2.ParamsValue("true")),
 )
 
 type RandomBoolTransformer struct {

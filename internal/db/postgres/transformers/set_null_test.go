@@ -2,9 +2,9 @@ package transformers
 
 import (
 	"context"
-	"github.com/greenmaskio/greenmask/internal/domains"
 	"testing"
 
+	"github.com/greenmaskio/greenmask/pkg/toolkit"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -18,8 +18,8 @@ func TestSetNullTransformer_Transform(t *testing.T) {
 
 	transformer, warnings, err := SetNullTransformerDefinition.Instance(
 		context.Background(),
-		driver, map[string]domains.ParamsValue{
-			"column": domains.ParamsValue(columnName),
+		driver, map[string]toolkit.ParamsValue{
+			"column": toolkit.ParamsValue(columnName),
 		},
 		nil,
 	)

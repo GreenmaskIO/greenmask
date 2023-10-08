@@ -2,17 +2,17 @@ package toolkit
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"reflect"
 	"slices"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgtype"
-	"github.com/pkg/errors"
 )
 
 type Unmarshaller func(parameter *Parameter, tableDriver *Driver, src []byte) (any, error)
-type ValueValidator func(v any) (ValidationWarnings, error)
+type RawValueValidator func(p *Parameter, v ParamsValue) (ValidationWarnings, error)
 
 const WithoutMaxLength = -1
 
@@ -93,14 +93,15 @@ type Parameter struct {
 	CastDbType string `mapstructure:"cast_db_type" json:"cast_db_type,omitempty"`
 	// DefaultValue - default value of the parameter. Must be variable pointer and have the same type
 	// as in ExpectedType
-	DefaultValue any `mapstructure:"default_value" json:"default_value,omitempty"`
+	DefaultValue ParamsValue `mapstructure:"default_value" json:"default_value,omitempty"`
 	// ColumnProperties - detail info about expected column properties that may help to diagnose the table schema
 	// and perform validation procedure Plays only with IsColumn
 	ColumnProperties *ColumnProperties `mapstructure:"column_properties" json:"column_properties,omitempty"`
 	// Unmarshaller - unmarshal function for the parameter raw data []byte. Using by default json.Unmarshal function
 	Unmarshaller Unmarshaller `json:"-"`
-	// ValueValidator - value validator function that performs assertion and cause an error if it has violations
-	ValueValidator ValueValidator `json:"-"`
+	// RawValueValidator - raw value validator function that performs assertion and cause ValidationWarnings if it
+	// has violations
+	RawValueValidator RawValueValidator `json:"-"`
 	// LinkedParameter - column-like parameter that has been linked during parsing procedure. Warning, do not
 	// assign it manually, if you don't know the consequences
 	LinkedColumnParameter *Parameter `json:"-"`
@@ -109,59 +110,25 @@ type Parameter struct {
 	Column *Column `json:"-"`
 	// ExpectedType - expected type of the provided variable during scanning procedure. It must be pointer on the
 	// variable
-	ExpectedType any `json:"-"` // Must be pointer
-	// value - parsed value of the parameter. It must be pointer on the variable
+	Driver *Driver `mapstructure:"-" json:"-"`
+	// value - cached parsed value after Scan or Value
 	value any
-	// dynamicParse - shows was the parameter value parsed with unset expectedType and defaultValue. In this case Scan
-	// function is not available because returning value might be non Pointer. It might be fixed in the future releases
-	dynamicParse bool
-	rawValue     ParamsValue
+	// rawValue - original raw value received from config
+	rawValue ParamsValue
 }
 
-func MustNewParameter(name string, description string, expectedType any, defaultValue any) *Parameter {
-	p, err := NewParameter(name, description, expectedType, defaultValue)
+func MustNewParameter(name string, description string) *Parameter {
+	p, err := NewParameter(name, description)
 	if err != nil {
 		panic(err)
 	}
 	return p
 }
 
-func NewParameter(name string, description string, expectedType any, defaultValue any) (*Parameter, error) {
-
-	if expectedType != nil {
-		eValue := reflect.ValueOf(expectedType)
-		if eValue.Kind() != reflect.Pointer {
-			return nil, fmt.Errorf("ExpectedType must be pointer")
-		}
-		eInd := reflect.Indirect(eValue)
-		if !eInd.CanSet() {
-			return nil, errors.New("ExpectedType is not settable")
-		}
-
-		// Check default type of ExpectedType and DefaultValue - they must be equal and assignable
-		if defaultValue != nil {
-			dValue := reflect.ValueOf(defaultValue)
-			if dValue.Kind() != reflect.Pointer {
-				return nil, fmt.Errorf("DefaultValue must be pointer")
-			}
-			if eValue.Kind() == dValue.Kind() {
-				dInd := reflect.Indirect(dValue)
-				if eInd.Kind() != dInd.Kind() {
-					return nil, errors.New("expectedValue and DefaultValue types are unequal")
-				}
-			} else {
-				return nil, errors.New("expectedValue and DefaultValue types are unequal")
-			}
-		}
-	} else if expectedType == nil && defaultValue != nil {
-		return nil, errors.New("default value must be set togather with expectedType")
-	}
-
+func NewParameter(name string, description string) (*Parameter, error) {
 	return &Parameter{
-		Name:         name,
-		Description:  description,
-		ExpectedType: expectedType,
-		DefaultValue: defaultValue,
+		Name:        name,
+		Description: description,
 	}, nil
 }
 
@@ -169,230 +136,102 @@ func (p *Parameter) RawValue() ParamsValue {
 	return p.rawValue
 }
 
-// Parse - parse received params from the config using table definition. dest parameter must be pointer
-func (p *Parameter) Parse(
-	driver *Driver, rawParams map[string]ParamsValue, columnParams map[string]*Parameter,
-	types []*Type,
-) (ValidationWarnings, error) {
-	p.value = nil
-	// Check allowed pgTypes exists
-	if p.ColumnProperties != nil {
-		for _, at := range p.ColumnProperties.AllowedTypes {
-			_, ok := driver.TypeMap.TypeForName(at)
-			if !ok {
-				return nil, fmt.Errorf("AllowedDbType with name %s is not found", at)
-			}
-		}
-	} else if p.CastDbType != "" {
-		_, ok := driver.TypeMap.TypeForName(p.CastDbType)
-		if !ok {
-			return nil, fmt.Errorf("CastDbType with name %s is not found", p.CastDbType)
-		}
+// Value - returns parsed value that later might be cast via type assertion or so on
+func (p *Parameter) Value() (any, error) {
+	if p.rawValue == nil {
+		return nil, nil
 	}
 
-	raw, ok := rawParams[p.Name]
-	if !ok {
-		if p.Required {
-			return nil, fmt.Errorf("paramater %s is required", p.Name)
-		} else if p.DefaultValue != nil {
-			p.value = p.DefaultValue
-			return nil, nil
-		} else if !p.Required {
-			return nil, nil
-		}
-		p.rawValue = []byte{}
-	}
-	p.rawValue = raw
-
-	if p.LinkParameter != "" {
-		cp, ok := columnParams[p.LinkParameter]
-		if !ok {
-			return nil, fmt.Errorf("link parameter %s does not exist", p.LinkParameter)
-		}
-		if !cp.IsColumn {
-			return nil, fmt.Errorf("cannot link with non column parameter")
-		}
-		p.LinkedColumnParameter = cp
-	}
-
-	if p.ExpectedType != nil {
-		p.value = p.ExpectedType
-		if p.Unmarshaller != nil {
-			// Perform custom unmarshalling
-			value, err := p.Unmarshaller(p, driver, raw)
-			if err != nil {
-				return nil, fmt.Errorf("unable to perform custom unmarshaller: %w", err)
-			}
-			p.value = value
-		} else if p.CastDbType != "" {
-			// Perform decoding via pgx Driver
-			switch p.value.(type) {
-			case *time.Time:
-				val, err := driver.DecodeByTypeName(p.CastDbType, raw)
-				if err != nil {
-					return nil, fmt.Errorf("unable to scan parameter via Driver")
-				}
-				valTime := val.(time.Time)
-				p.value = &valTime
-			default:
-				if err := driver.ScanByTypeName(p.CastDbType, raw, p.value); err != nil {
-					return nil, fmt.Errorf("unable to scan parameter via Driver")
-				}
-			}
-		} else if p.LinkedColumnParameter != nil {
-
-			// Try to scan value using pgx Driver and pgtype defined in the linked column
-			if p.LinkedColumnParameter.Column == nil {
-				return nil, fmt.Errorf("parameter is linked but column was not assigned")
-			}
-
-			switch p.value.(type) {
-			case *time.Time:
-				val, err := driver.DecodeByTypeOid(uint32(p.LinkedColumnParameter.Column.TypeOid), raw)
-				if err != nil {
-					return nil, fmt.Errorf("unable to scan parameter via Driver")
-				}
-				valTime := val.(time.Time)
-				p.value = &valTime
-			default:
-				if err := driver.ScanByTypeOid(uint32(p.LinkedColumnParameter.Column.TypeOid), raw, p.value); err != nil {
-					return nil, fmt.Errorf("unable to scan parameter via Driver")
-				}
-			}
-
-		} else if reflect.ValueOf(p.value).Kind() == reflect.String || (reflect.ValueOf(p.value).Kind() == reflect.Pointer &&
-			reflect.Indirect(reflect.ValueOf(p.value)).Kind() == reflect.String) {
-			// This is temporal solution for parsing string. Otherwise, it may cause an error in json.Unmarshall
-			val := string(raw)
-			p.value = &val
-		} else {
-			// Unmarshal as usual using json Unmarshaler
-			if len(raw) != 0 {
-				if err := json.Unmarshal(raw, p.value); err != nil {
-					return nil, fmt.Errorf("unable to unmarshal value: %w", err)
-				}
-			}
-		}
-	} else if p.LinkedColumnParameter != nil {
-		p.dynamicParse = true
+	if p.LinkedColumnParameter != nil {
 		// Parsing dynamically - default value and type are unknown
 		// TODO: Be careful - this may cause an error in Scan func if the the returning value is not a pointer
-		val, err := driver.DecodeByTypeOid(uint32(p.LinkedColumnParameter.Column.TypeOid), raw)
+		val, err := p.Driver.DecodeByTypeOid(uint32(p.LinkedColumnParameter.Column.TypeOid), p.rawValue)
 		if err != nil {
 			return nil, fmt.Errorf("unable to scan parameter via Driver")
 		}
 		p.value = val
 	} else if p.CastDbType != "" {
-		val, err := driver.DecodeByTypeName(p.CastDbType, raw)
+		val, err := p.Driver.DecodeByTypeName(p.CastDbType, p.rawValue)
 		if err != nil {
 			return nil, fmt.Errorf("unable to scan parameter via Driver")
 		}
 		p.value = val
-		p.dynamicParse = true
 	} else if p.IsColumn {
-		res := string(raw)
-		p.value = &res
+		p.value = string(p.rawValue)
 	} else {
-		panic("unknown parsing case")
+		return nil, errors.New("unknown parsing case")
 	}
 
-	if p.IsColumn {
-		columnName, ok := p.value.(*string)
-		if !ok {
-			return nil, fmt.Errorf("unable to perform type assertion")
-		}
-		_, column, ok := driver.GetColumnByName(*columnName)
-		if !ok {
-			return ValidationWarnings{
-				NewValidationWarning().
-					SetSeverity(ErrorValidationSeverity).
-					SetMsg("column does not exist").
-					AddMeta("ColumnName", *columnName).
-					AddMeta("ParameterName", p.Name),
-			}, nil
-		}
-
-		pgType, ok := driver.TypeMap.TypeForOID(uint32(column.TypeOid))
-		if !ok {
-			return ValidationWarnings{
-				NewValidationWarning().
-					SetSeverity(ErrorValidationSeverity).
-					SetMsg("unsupported column type: type is not found").
-					AddMeta("ColumnName", *columnName).
-					AddMeta("TypeName", pgType.Name).
-					AddMeta("AllowedDbTypes", p.ColumnProperties.AllowedTypes).
-					AddMeta("ParameterName", p.Name),
-			}, nil
-		}
-
-		idx := slices.IndexFunc(types, func(t *Type) bool {
-			return t.Oid == column.TypeOid
-		})
-		var t *Type
-		var pgRootType *pgtype.Type
-		if idx != -1 {
-			t = types[idx]
-			pgRootType, ok = driver.TypeMap.TypeForOID(uint32(t.RootBuiltInType))
-			if !ok {
-				return nil, fmt.Errorf("unknown root type %d", t.RootBuiltInType)
-			}
-		}
-
-		if p.ColumnProperties != nil && len(p.ColumnProperties.AllowedTypes) > 0 {
-
-			// Get overriden type if exists
-			var overriddenPgType *pgtype.Type
-			name, ok := driver.columnTypeOverrides[column.Name]
-			if ok {
-				overriddenPgType, ok = driver.TypeMap.TypeForName(name)
-				if !ok {
-					return ValidationWarnings{
-						NewValidationWarning().
-							SetSeverity(ErrorValidationSeverity).
-							SetMsg("unknown overridden type").
-							AddMeta("ColumnName", *columnName).
-							AddMeta("OverriddenTypeName", name).
-							AddMeta("ParameterName", p.Name),
-					}, nil
-				}
-			}
-
-			// Check that one of original column type or root base type or overridden type is suitable for allowed types
-			if !slices.Contains(p.ColumnProperties.AllowedTypes, pgType.Name) &&
-				!(pgRootType != nil && slices.Contains(p.ColumnProperties.AllowedTypes, pgRootType.Name)) &&
-				!(overriddenPgType != nil && slices.Contains(p.ColumnProperties.AllowedTypes, overriddenPgType.Name)) {
-				return ValidationWarnings{
-					NewValidationWarning().
-						SetSeverity(ErrorValidationSeverity).
-						SetMsg("unsupported column type").
-						AddMeta("ColumnName", *columnName).
-						AddMeta("ColumnType", pgType.Name).
-						AddMeta("AllowedDbTypes", p.ColumnProperties.AllowedTypes).
-						AddMeta("ParameterName", p.Name),
-				}, nil
-			}
-
-		}
-		p.Column = column
-	}
-
-	if p.ValueValidator != nil {
-		w, err := p.ValueValidator(p.value)
-		if err != nil {
-			return nil, fmt.Errorf("validation error: %w", err)
-		}
-		if len(w) > 0 {
-			return w, nil
-		}
-	}
-	return nil, nil
+	return p.value, nil
 }
 
 // Scan - scan parsed value into received pointer. Param src must be pointer
 func (p *Parameter) Scan(dest any) error {
-	if p.dynamicParse {
-		return errors.New("dynamically parsed parameters are unscannable")
+	p.value = nil
+	if dest == nil {
+		return fmt.Errorf("dest cannot be nil")
 	}
+
+	if p.rawValue == nil {
+		return nil
+	}
+
+	p.value = dest
+	if p.Unmarshaller != nil {
+		// Perform custom unmarshalling
+		value, err := p.Unmarshaller(p, p.Driver, p.rawValue)
+		if err != nil {
+			return fmt.Errorf("unable to perform custom unmarshaller: %w", err)
+		}
+		p.value = value
+	} else if p.CastDbType != "" {
+		// Perform decoding via pgx Driver
+		switch p.value.(type) {
+		case *time.Time:
+			val, err := p.Driver.DecodeByTypeName(p.CastDbType, p.rawValue)
+			if err != nil {
+				return fmt.Errorf("unable to scan parameter via Driver")
+			}
+			valTime := val.(time.Time)
+			p.value = &valTime
+		default:
+			if err := p.Driver.ScanByTypeName(p.CastDbType, p.rawValue, p.value); err != nil {
+				return fmt.Errorf("unable to scan parameter via Driver")
+			}
+		}
+	} else if p.LinkedColumnParameter != nil {
+
+		// Try to scan value using pgx Driver and pgtype defined in the linked column
+		if p.LinkedColumnParameter.Column == nil {
+			return fmt.Errorf("parameter is linked but column was not assigned")
+		}
+
+		switch p.value.(type) {
+		case *time.Time:
+			val, err := p.Driver.DecodeByTypeOid(uint32(p.LinkedColumnParameter.Column.TypeOid), p.rawValue)
+			if err != nil {
+				return fmt.Errorf("unable to scan parameter via Driver")
+			}
+			valTime := val.(time.Time)
+			p.value = &valTime
+		default:
+			if err := p.Driver.ScanByTypeOid(uint32(p.LinkedColumnParameter.Column.TypeOid), p.rawValue, p.value); err != nil {
+				return fmt.Errorf("unable to scan parameter via Driver")
+			}
+		}
+
+	} else if reflect.ValueOf(p.value).Kind() == reflect.String || (reflect.ValueOf(p.value).Kind() == reflect.Pointer &&
+		reflect.Indirect(reflect.ValueOf(p.value)).Kind() == reflect.String) {
+		// This is temporal solution for parsing string. Otherwise, it may cause an error in json.Unmarshall
+		val := string(p.rawValue)
+		p.value = &val
+	} else {
+		// Unmarshal as usual using json Unmarshaler
+		if err := json.Unmarshal(p.rawValue, p.value); err != nil {
+			return fmt.Errorf("unable to unmarshal value: %w", err)
+		}
+	}
+
 	if p.value == nil {
 		return nil
 	}
@@ -418,14 +257,9 @@ func (p *Parameter) SetUnmarshaller(unmarshaller Unmarshaller) *Parameter {
 	return p
 }
 
-func (p *Parameter) SetValueValidator(validator ValueValidator) *Parameter {
-	p.ValueValidator = validator
+func (p *Parameter) SetRawValueValidator(validator RawValueValidator) *Parameter {
+	p.RawValueValidator = validator
 	return p
-}
-
-// Value - returns parsed value that later might be cast via type assertion or so on
-func (p *Parameter) Value() any {
-	return p.value
 }
 
 func (p *Parameter) SetRequired(v bool) *Parameter {
@@ -439,13 +273,170 @@ func (p *Parameter) SetCastDbType(v string) *Parameter {
 	return p
 }
 
+func (p *Parameter) SetDefaultValue(v ParamsValue) *Parameter {
+	p.DefaultValue = v
+	return p
+}
+
 func (p *Parameter) Copy() *Parameter {
 	cp := &(*p)
 	cp.value = nil
 	return cp
 }
 
-func ParseParameters(
+func (p *Parameter) Init(driver *Driver, types []*Type, params []*Parameter, rawValue ParamsValue) (ValidationWarnings, error) {
+	var warnings ValidationWarnings
+	p.Driver = driver
+	p.rawValue = rawValue
+
+	if rawValue == nil {
+		if p.Required {
+			return ValidationWarnings{
+					NewValidationWarning().
+						SetSeverity(ErrorValidationSeverity).
+						SetMsg("parameter is required").
+						AddMeta("ParameterName", p.Name),
+				},
+				nil
+		} else if p.DefaultValue != nil {
+			p.rawValue = p.DefaultValue
+		}
+	}
+
+	if p.RawValueValidator != nil {
+		w, err := p.RawValueValidator(p, p.rawValue)
+		if err != nil {
+			return nil, fmt.Errorf("error performing parameter raw value validation: %w", err)
+		}
+		warnings = append(warnings, w...)
+		if w.IsFatal() {
+			return warnings, nil
+		}
+	}
+
+	if p.LinkParameter != "" {
+		idx := slices.IndexFunc(params, func(parameter *Parameter) bool {
+			return parameter.Name == p.LinkParameter
+		})
+		if idx == -1 {
+			panic(fmt.Sprintf(`parameter with name "%s" is not found`, p.LinkParameter))
+		}
+		p.LinkedColumnParameter = params[idx]
+	}
+
+	if p.IsColumn {
+		columnName := string(rawValue)
+		p.value = columnName
+		_, column, ok := driver.GetColumnByName(columnName)
+		if !ok {
+			return ValidationWarnings{
+					NewValidationWarning().
+						SetSeverity(ErrorValidationSeverity).
+						SetMsg("column does not exist").
+						AddMeta("ColumnName", columnName).
+						AddMeta("ParameterName", p.Name),
+				},
+				nil
+		}
+		pgType, ok := driver.TypeMap.TypeForOID(uint32(column.TypeOid))
+		if !ok {
+			return ValidationWarnings{
+					NewValidationWarning().
+						SetSeverity(ErrorValidationSeverity).
+						SetMsg("unsupported column type: type is not found").
+						AddMeta("ColumnName", columnName).
+						AddMeta("TypeName", column.TypeName).
+						AddMeta("AllowedDbTypes", p.ColumnProperties.AllowedTypes).
+						AddMeta("ParameterName", p.Name),
+				},
+				nil
+
+		}
+
+		idx := slices.IndexFunc(types, func(t *Type) bool {
+			return t.Oid == column.TypeOid
+		})
+		var t *Type
+		var pgRootType *pgtype.Type
+		if idx != -1 {
+			t = types[idx]
+			pgRootType, ok = driver.TypeMap.TypeForOID(uint32(t.RootBuiltInType))
+			if !ok {
+				return nil, fmt.Errorf("unknown root type %d", t.RootBuiltInType)
+			}
+		}
+
+		if p.ColumnProperties != nil && len(p.ColumnProperties.AllowedTypes) > 0 {
+
+			// Get overriden type if exists
+			var overriddenPgType *pgtype.Type
+			name, ok := driver.columnTypeOverrides[column.Name]
+			if ok {
+				overriddenPgType, ok = driver.TypeMap.TypeForName(name)
+				if !ok {
+					return ValidationWarnings{
+							NewValidationWarning().
+								SetSeverity(ErrorValidationSeverity).
+								SetMsg("unknown overridden type").
+								AddMeta("ColumnName", columnName).
+								AddMeta("OverriddenTypeName", name).
+								AddMeta("ParameterName", p.Name),
+						},
+						nil
+				}
+			}
+
+			// Check that one of original column type or root base type or overridden type is suitable for allowed types
+			if !slices.Contains(p.ColumnProperties.AllowedTypes, pgType.Name) &&
+				!(pgRootType != nil && slices.Contains(p.ColumnProperties.AllowedTypes, pgRootType.Name)) &&
+				!(overriddenPgType != nil && slices.Contains(p.ColumnProperties.AllowedTypes, overriddenPgType.Name)) {
+				return ValidationWarnings{
+						NewValidationWarning().
+							SetSeverity(ErrorValidationSeverity).
+							SetMsg("unsupported column type").
+							AddMeta("ColumnName", columnName).
+							AddMeta("ColumnType", pgType.Name).
+							AddMeta("AllowedDbTypes", p.ColumnProperties.AllowedTypes).
+							AddMeta("ParameterName", p.Name),
+					},
+					nil
+			}
+		}
+		p.Column = column
+	}
+
+	if p.ColumnProperties != nil {
+		for _, at := range p.ColumnProperties.AllowedTypes {
+			_, ok := driver.TypeMap.TypeForName(at)
+			if !ok {
+				warnings = append(warnings, NewValidationWarning().
+					SetSeverity(WarningValidationSeverity).
+					AddMeta("ParameterName", p.Name).
+					AddMeta("ItemTypeName", at).
+					AddMeta("TransformerAllowedTypes", p.ColumnProperties.AllowedTypes).
+					SetMsgf(`allowed type with name %s is not found`, at))
+			}
+		}
+	}
+	if p.CastDbType != "" {
+		_, ok := driver.TypeMap.TypeForName(p.CastDbType)
+		if !ok {
+			return ValidationWarnings{
+					NewValidationWarning().
+						SetSeverity(ErrorValidationSeverity).
+						AddMeta("ParameterName", p.Name).
+						AddMeta("CastDbType", p.CastDbType).
+						AddMeta("TransformerAllowedTypes", p.ColumnProperties.AllowedTypes).
+						SetMsg(`cannot perform parameter parsing: unknown type cast type: check transformer implementation or ensure your DB has this type`),
+				},
+				nil
+		}
+	}
+
+	return warnings, nil
+}
+
+func InitParameters(
 	driver *Driver, rawParams map[string]ParamsValue, paramDef []*Parameter, types []*Type,
 ) (map[string]*Parameter, ValidationWarnings, error) {
 	if rawParams == nil && len(paramDef) > 0 {
@@ -460,44 +451,18 @@ func ParseParameters(
 	for _, p := range paramDef {
 		params[p.Name] = p.Copy()
 	}
-	var columnParameters = make(map[string]*Parameter)
-	var commonParameters = make(map[string]*Parameter)
-	for _, p := range paramDef {
-		if p.IsColumn {
-			columnParameters[p.Name] = p
-		} else {
-			commonParameters[p.Name] = p
-		}
-	}
 
 	var totalWarnings ValidationWarnings
-	// Column parameters parsing
-	var columnParamsToSkip = make(map[string]struct{})
-	for _, p := range columnParameters {
-		warnings, err := p.Parse(driver, rawParams, nil, types)
+	for _, p := range params {
+		warnings, err := p.Init(driver, types, paramDef, rawParams[p.Name])
 		if err != nil {
 			return nil, nil, fmt.Errorf("parameter %s parsing error: %w", p.Name, err)
 		}
 		if len(warnings) > 0 {
 			totalWarnings = append(totalWarnings, warnings...)
-			columnParamsToSkip[p.Name] = struct{}{}
-		}
-	}
-	// Common parameters parsing
-	for _, p := range commonParameters {
-		if _, ok := columnParamsToSkip[p.LinkParameter]; p.LinkParameter != "" && ok {
-			totalWarnings = append(totalWarnings, NewValidationWarning().
-				AddMeta("ParameterName", p.Name).
-				SetSeverity(WarningValidationSeverity).
-				SetMsg("parameter skipping due to the error in the related parameter parsing"))
-			continue
-		}
-		warnings, err := p.Parse(driver, rawParams, columnParameters, types)
-		if err != nil {
-			return nil, nil, fmt.Errorf("parameter %s parsing error: %w", p.Name, err)
-		}
-		if len(warnings) > 0 {
-			totalWarnings = append(totalWarnings, warnings...)
+			if totalWarnings.IsFatal() {
+				return nil, totalWarnings, nil
+			}
 		}
 	}
 	return params, totalWarnings, nil

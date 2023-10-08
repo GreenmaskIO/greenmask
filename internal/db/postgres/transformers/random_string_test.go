@@ -3,9 +3,9 @@ package transformers
 import (
 	"context"
 	"fmt"
-	"github.com/greenmaskio/greenmask/internal/domains"
 	"testing"
 
+	"github.com/greenmaskio/greenmask/pkg/toolkit"
 	"github.com/stretchr/testify/require"
 )
 
@@ -15,16 +15,16 @@ func TestRandomStringTransformer_Transform(t *testing.T) {
 		name       string
 		columnName string
 		original   string
-		params     map[string]domains.ParamsValue
+		params     map[string]toolkit.ParamsValue
 		pattern    string
 	}{
 		{
 			name:       "default fixed string",
 			original:   "some",
 			columnName: "data",
-			params: map[string]domains.ParamsValue{
-				"min_length": domains.ParamsValue("10"),
-				"max_length": domains.ParamsValue("10"),
+			params: map[string]toolkit.ParamsValue{
+				"min_length": toolkit.ParamsValue("10"),
+				"max_length": toolkit.ParamsValue("10"),
 			},
 			pattern: `^\w{10}$`,
 		},
@@ -32,9 +32,9 @@ func TestRandomStringTransformer_Transform(t *testing.T) {
 			name:       "default variadic string",
 			original:   "some",
 			columnName: "data",
-			params: map[string]domains.ParamsValue{
-				"min_length": domains.ParamsValue("2"),
-				"max_length": domains.ParamsValue("30"),
+			params: map[string]toolkit.ParamsValue{
+				"min_length": toolkit.ParamsValue("2"),
+				"max_length": toolkit.ParamsValue("30"),
 			},
 			pattern: `^\w{2,30}$`,
 		},
@@ -42,10 +42,10 @@ func TestRandomStringTransformer_Transform(t *testing.T) {
 			name:       "custom variadic string",
 			original:   "some",
 			columnName: "data",
-			params: map[string]domains.ParamsValue{
-				"min_length": domains.ParamsValue("10"),
-				"max_length": domains.ParamsValue("10"),
-				"symbols":    domains.ParamsValue("1234567890"),
+			params: map[string]toolkit.ParamsValue{
+				"min_length": toolkit.ParamsValue("10"),
+				"max_length": toolkit.ParamsValue("10"),
+				"symbols":    toolkit.ParamsValue("1234567890"),
 			},
 			pattern: `^\d{10}$`,
 		},
@@ -53,11 +53,11 @@ func TestRandomStringTransformer_Transform(t *testing.T) {
 			name:       "keep_null",
 			original:   "\\N",
 			columnName: "data",
-			params: map[string]domains.ParamsValue{
-				"min_length": domains.ParamsValue("10"),
-				"max_length": domains.ParamsValue("10"),
-				"symbols":    domains.ParamsValue("1234567890"),
-				"keep_null":  domains.ParamsValue("true"),
+			params: map[string]toolkit.ParamsValue{
+				"min_length": toolkit.ParamsValue("10"),
+				"max_length": toolkit.ParamsValue("10"),
+				"symbols":    toolkit.ParamsValue("1234567890"),
+				"keep_null":  toolkit.ParamsValue("true"),
 			},
 			pattern: fmt.Sprintf(`^(\%s)$`, "\\N"),
 		},
@@ -65,7 +65,7 @@ func TestRandomStringTransformer_Transform(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			tt.params["column"] = domains.ParamsValue(tt.columnName)
+			tt.params["column"] = toolkit.ParamsValue(tt.columnName)
 			driver, record := getDriverAndRecord(tt.columnName, tt.original)
 			transformer, warnings, err := RandomStringTransformerDefinition.Instance(
 				context.Background(),

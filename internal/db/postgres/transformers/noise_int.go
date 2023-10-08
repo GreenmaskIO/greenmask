@@ -22,18 +22,19 @@ var NoiseIntTransformerDefinition = utils.NewDefinition(
 
 	NewNoiseIntTransformer,
 
-	toolkit2.MustNewParameter("column", "column name", new(string), nil).
-		SetIsColumn(toolkit2.NewColumnProperties().
-			SetAffected(true).
-			SetAllowedColumnTypes("int2", "int4", "int8"),
-		).SetRequired(true),
+	toolkit2.MustNewParameter(
+		"column",
+		"column name",
+	).SetIsColumn(toolkit2.NewColumnProperties().
+		SetAffected(true).
+		SetAllowedColumnTypes("int2", "int4", "int8"),
+	).SetRequired(true),
 
 	toolkit2.MustNewParameter(
 		"ratio",
 		"max random percentage for noise",
-		new(float64),
-		New(0.1),
-	).SetRequired(true),
+	).SetRequired(true).
+		SetDefaultValue(toolkit2.ParamsValue("0.1")),
 )
 
 type NoiseIntTransformer struct {

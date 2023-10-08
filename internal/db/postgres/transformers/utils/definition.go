@@ -100,7 +100,7 @@ func (d *Definition) Instance(
 	ctx context.Context, driver *toolkit.Driver, rawParams map[string]toolkit.ParamsValue, types []*toolkit.Type,
 ) (Transformer, toolkit.ValidationWarnings, error) {
 	// Parse parameters and get the pgcopy of parsed
-	params, parametersWarnings, err := toolkit.ParseParameters(driver, rawParams, d.Parameters, types)
+	params, parametersWarnings, err := toolkit.InitParameters(driver, rawParams, d.Parameters, types)
 	if err != nil {
 		return nil, nil, err
 	}
