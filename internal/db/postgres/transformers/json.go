@@ -57,8 +57,9 @@ func (o *Operation) Apply(inp string) (string, error) {
 }
 
 type JsonTransformer struct {
-	columnName string
-	operations []Operation
+	columnName      string
+	operations      []Operation
+	affectedColumns map[int]string
 }
 
 func NewJsonTransformer(ctx context.Context, driver *toolkit2.Driver, parameters map[string]*toolkit2.Parameter) (utils.Transformer, toolkit2.ValidationWarnings, error) {
@@ -70,15 +71,27 @@ func NewJsonTransformer(ctx context.Context, driver *toolkit2.Driver, parameters
 		return nil, nil, fmt.Errorf("unable to scan column param: %w", err)
 	}
 
+	idx, _, ok := driver.GetColumnByName(columnName)
+	if !ok {
+		return nil, nil, fmt.Errorf("column with name %s is not found", columnName)
+	}
+	affectedColumns := make(map[int]string)
+	affectedColumns[idx] = columnName
+
 	p = parameters["operations"]
 	if err := p.Scan(&ops); err != nil {
 		return nil, nil, fmt.Errorf("unable to parse operations param: %w", err)
 	}
 
 	return &JsonTransformer{
-		columnName: columnName,
-		operations: ops,
+		columnName:      columnName,
+		operations:      ops,
+		affectedColumns: affectedColumns,
 	}, nil, nil
+}
+
+func (jt *JsonTransformer) GetAffectedColumns() map[int]string {
+	return jt.affectedColumns
 }
 
 func (jt *JsonTransformer) Init(ctx context.Context) error {

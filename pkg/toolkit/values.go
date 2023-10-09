@@ -1,8 +1,8 @@
 package toolkit
 
 type RawValue struct {
-	Data   []byte
-	IsNull bool
+	Data   []byte `json:"d"`
+	IsNull bool   `json:"n"`
 }
 
 func NewRawValue(data []byte, isNull bool) *RawValue {

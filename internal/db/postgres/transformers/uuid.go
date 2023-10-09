@@ -33,8 +33,9 @@ var RandomUuidTransformerDefinition = utils.NewDefinition(
 )
 
 type RandomUuidTransformer struct {
-	columnName string
-	keepNull   bool
+	columnName      string
+	keepNull        bool
+	affectedColumns map[int]string
 }
 
 func NewRandomUuidTransformer(ctx context.Context, driver *toolkit2.Driver, parameters map[string]*toolkit2.Parameter) (utils.Transformer, toolkit2.ValidationWarnings, error) {
@@ -46,15 +47,27 @@ func NewRandomUuidTransformer(ctx context.Context, driver *toolkit2.Driver, para
 		return nil, nil, fmt.Errorf("unable to scan column param: %w", err)
 	}
 
+	idx, _, ok := driver.GetColumnByName(columnName)
+	if !ok {
+		return nil, nil, fmt.Errorf("column with name %s is not found", columnName)
+	}
+	affectedColumns := make(map[int]string)
+	affectedColumns[idx] = columnName
+
 	p = parameters["keep_null"]
 	if err := p.Scan(&keepNull); err != nil {
 		return nil, nil, fmt.Errorf(`unable to scan "keep_null" param: %w`, err)
 	}
 
 	return &RandomUuidTransformer{
-		columnName: columnName,
-		keepNull:   keepNull,
+		columnName:      columnName,
+		keepNull:        keepNull,
+		affectedColumns: affectedColumns,
 	}, nil, nil
+}
+
+func (rut *RandomUuidTransformer) GetAffectedColumns() map[int]string {
+	return rut.affectedColumns
 }
 
 func (rut *RandomUuidTransformer) Init(ctx context.Context) error {

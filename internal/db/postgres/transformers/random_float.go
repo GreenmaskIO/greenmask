@@ -54,12 +54,13 @@ var RandomFloatTransformerDefinition = utils.NewDefinition(
 )
 
 type RandomFloatTransformer struct {
-	columnName string
-	keepNull   bool
-	min        float64
-	max        float64
-	precision  float64
-	rand       *rand.Rand
+	columnName      string
+	keepNull        bool
+	min             float64
+	max             float64
+	precision       float64
+	rand            *rand.Rand
+	affectedColumns map[int]string
 }
 
 func NewRandomFloatTransformer(ctx context.Context, driver *toolkit2.Driver, parameters map[string]*toolkit2.Parameter) (utils.Transformer, toolkit2.ValidationWarnings, error) {
@@ -71,6 +72,13 @@ func NewRandomFloatTransformer(ctx context.Context, driver *toolkit2.Driver, par
 	if err := p.Scan(&columnName); err != nil {
 		return nil, nil, fmt.Errorf(`unable to scan "column" param: %w`, err)
 	}
+
+	idx, _, ok := driver.GetColumnByName(columnName)
+	if !ok {
+		return nil, nil, fmt.Errorf("column with name %s is not found", columnName)
+	}
+	affectedColumns := make(map[int]string)
+	affectedColumns[idx] = columnName
 
 	p = parameters["min"]
 	if err := p.Scan(&minVal); err != nil {
@@ -93,14 +101,19 @@ func NewRandomFloatTransformer(ctx context.Context, driver *toolkit2.Driver, par
 	}
 
 	return &RandomFloatTransformer{
-		keepNull:   keepNull,
-		precision:  math.Pow(10, float64(precision)),
-		min:        minVal,
-		max:        maxVal,
-		columnName: columnName,
-		rand:       rand.New(rand.NewSource(time.Now().UnixMicro())),
+		keepNull:        keepNull,
+		precision:       math.Pow(10, float64(precision)),
+		min:             minVal,
+		max:             maxVal,
+		columnName:      columnName,
+		rand:            rand.New(rand.NewSource(time.Now().UnixMicro())),
+		affectedColumns: affectedColumns,
 	}, nil, nil
 
+}
+
+func (rft *RandomFloatTransformer) GetAffectedColumns() map[int]string {
+	return rft.affectedColumns
 }
 
 func (rft *RandomFloatTransformer) Init(ctx context.Context) error {

@@ -1,12 +1,11 @@
 package toolkit
 
 import (
-	"encoding/json"
 	"fmt"
 )
 
 // RawRecord - record data transfer object for interaction with custom transformer via PIPE
-type RawRecord map[int]*RawValueDto
+type RawRecord map[int]*RawValue
 
 func (rrd RawRecord) GetColumn(idx int) (*RawValue, error) {
 	res, ok := rrd[idx]
@@ -21,7 +20,7 @@ func (rrd RawRecord) SetColumn(idx int, v *RawValue) error {
 	if !ok {
 		return fmt.Errorf("attribute with idx=%d is not found", idx)
 	}
-	rrd[idx] = NewRawValueDto(string(v.Data), v.IsNull)
+	rrd[idx] = NewRawValue(v.Data, v.IsNull)
 	return nil
 }
 

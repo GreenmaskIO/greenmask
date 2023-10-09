@@ -1,7 +1,6 @@
 package toolkit
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"reflect"
@@ -159,7 +158,7 @@ func (p *Parameter) Value() (any, error) {
 	} else if p.IsColumn {
 		p.value = string(p.rawValue)
 	} else {
-		return nil, errors.New("unknown parsing case")
+		return nil, errors.New("unknown parsing case: use Scan method instead")
 	}
 
 	return p.value, nil

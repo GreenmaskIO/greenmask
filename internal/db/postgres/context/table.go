@@ -51,7 +51,7 @@ func validateAndBuildTablesConfig(
 		}
 		table.Columns = columns
 
-		driver, err := toolkit2.NewDriver(typeMap, table.Table, t.ColumnsTypeOverride)
+		driver, err := toolkit2.NewDriver(typeMap, table.Table, types, t.ColumnsTypeOverride)
 		if err != nil {
 			return nil, nil, fmt.Errorf("unnable to initialise driver: %w", err)
 		}

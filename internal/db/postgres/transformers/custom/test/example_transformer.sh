@@ -14,7 +14,6 @@ while [[ $# -gt 0 ]]; do
   case $1 in
     --meta)
       metadata="$2"
-      echo $metadata >&2
       shift # past argument
       shift # past value
       ;;

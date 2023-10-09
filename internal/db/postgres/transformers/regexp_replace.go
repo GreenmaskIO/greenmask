@@ -37,9 +37,10 @@ var RegexpReplaceTransformerDefinition = utils.NewDefinition(
 )
 
 type RegexpReplaceTransformer struct {
-	columnName string
-	regexp     *regexp.Regexp
-	replace    string
+	columnName      string
+	regexp          *regexp.Regexp
+	replace         string
+	affectedColumns map[int]string
 }
 
 func NewRegexpReplaceTransformer(ctx context.Context, driver *toolkit2.Driver, parameters map[string]*toolkit2.Parameter) (utils.Transformer, toolkit2.ValidationWarnings, error) {
@@ -48,6 +49,13 @@ func NewRegexpReplaceTransformer(ctx context.Context, driver *toolkit2.Driver, p
 	if err := p.Scan(&columnName); err != nil {
 		return nil, nil, fmt.Errorf(`unable to scan "column" param: %w`, err)
 	}
+
+	idx, _, ok := driver.GetColumnByName(columnName)
+	if !ok {
+		return nil, nil, fmt.Errorf("column with name %s is not found", columnName)
+	}
+	affectedColumns := make(map[int]string)
+	affectedColumns[idx] = columnName
 
 	p = parameters["regexp"]
 	if err := p.Scan(&regexpStr); err != nil {
@@ -70,11 +78,16 @@ func NewRegexpReplaceTransformer(ctx context.Context, driver *toolkit2.Driver, p
 	}
 
 	return &RegexpReplaceTransformer{
-		columnName: columnName,
-		regexp:     re,
-		replace:    replace,
+		columnName:      columnName,
+		regexp:          re,
+		replace:         replace,
+		affectedColumns: affectedColumns,
 	}, nil, nil
 
+}
+
+func (rrt *RegexpReplaceTransformer) GetAffectedColumns() map[int]string {
+	return rrt.affectedColumns
 }
 
 func (rrt *RegexpReplaceTransformer) Init(ctx context.Context) error {

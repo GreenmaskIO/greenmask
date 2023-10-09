@@ -2,6 +2,7 @@ package toolkit
 
 import (
 	"fmt"
+	"sync"
 
 	"github.com/jackc/pgx/v5/pgtype"
 )
@@ -9,9 +10,10 @@ import (
 type Tuple map[string]*Value
 
 type Record struct {
-	Driver *Driver
-	Row    RowDriver
-	tuple  Tuple
+	Driver    *Driver
+	Row       RowDriver
+	tuple     Tuple
+	tupleSync sync.Map
 }
 
 func NewRecord(driver *Driver, row RowDriver) *Record {

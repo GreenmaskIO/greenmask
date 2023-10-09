@@ -4,15 +4,13 @@ import (
 	"context"
 	"fmt"
 
-	toolkit2 "github.com/greenmaskio/greenmask/pkg/toolkit"
-	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgtype"
-	"github.com/rs/zerolog/log"
-
 	"github.com/greenmaskio/greenmask/internal/db/postgres/dump"
 	"github.com/greenmaskio/greenmask/internal/db/postgres/pgdump"
 	transformersUtils "github.com/greenmaskio/greenmask/internal/db/postgres/transformers/utils"
 	"github.com/greenmaskio/greenmask/internal/domains"
+	toolkit2 "github.com/greenmaskio/greenmask/pkg/toolkit"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 // RuntimeContext - describes current runtime behaviour according to the config and schema objects
@@ -45,7 +43,7 @@ func NewRuntimeContext(
 		return nil, fmt.Errorf("cannot discover types: %w", err)
 	}
 	if len(types) > 0 {
-		tryRegisterCustomTypesV2(typeMap, types)
+		toolkit2.TryRegisterCustomTypesV2(typeMap, types)
 	}
 
 	tables, warnings, err := validateAndBuildTablesConfig(ctx, tx, typeMap, cfg, r, version, types)
@@ -68,58 +66,4 @@ func NewRuntimeContext(
 
 func (rc *RuntimeContext) IsFatal() bool {
 	return rc.Warnings.IsFatal()
-}
-
-func tryRegisterCustomTypesV2(typeMap *pgtype.Map, types []*toolkit2.Type) {
-	for _, t := range types {
-		// Test is this type already registered
-		_, ok := typeMap.TypeForOID(uint32(t.Oid))
-		if ok {
-			continue
-		}
-		if t.Kind == 'd' {
-			if t.BaseType != 0 {
-				baseType, ok := typeMap.TypeForOID(uint32(t.BaseType))
-				if !ok {
-					log.Warn().
-						Str("Context", "CustomTypeRegistering").
-						Str("Schema", t.Schema).
-						Str("Name", t.Name).
-						Int("Oid", int(t.Oid)).
-						Str("Kind", fmt.Sprintf("%c", t.Kind)).
-						Msg("unable to register domain type")
-					continue
-				}
-				typeMap.RegisterType(&pgtype.Type{
-					Name:  t.Name,
-					OID:   uint32(t.Oid),
-					Codec: baseType.Codec,
-				})
-				arrayType, ok := typeMap.TypeForName(fmt.Sprintf("_%s", baseType.Name))
-				if !ok {
-					log.Warn().
-						Str("Context", "CustomTypeRegistering").
-						Str("Schema", t.Schema).
-						Str("Name", t.Name).
-						Int("Oid", int(t.Oid)).
-						Msg("cannot register array type for custom type")
-					continue
-				}
-				arrayTypeName := fmt.Sprintf("_%s", t.Name)
-				typeMap.RegisterType(&pgtype.Type{
-					Name:  arrayTypeName,
-					OID:   uint32(t.ArrayType),
-					Codec: arrayType.Codec,
-				})
-			}
-		} else {
-			log.Debug().
-				Str("Context", "CustomTypeRegistering").
-				Str("Schema", t.Schema).
-				Str("Name", t.Name).
-				Int("Oid", int(t.Oid)).
-				Str("Kind", fmt.Sprintf("%c", t.Kind)).
-				Msg("Only domain types can be automatically registered: skipping")
-		}
-	}
 }

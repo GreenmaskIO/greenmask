@@ -34,9 +34,10 @@ var RandomBoolTransformerDefinition = utils.NewDefinition(
 )
 
 type RandomBoolTransformer struct {
-	columnName string
-	keepNull   bool
-	rand       *rand.Rand
+	columnName      string
+	keepNull        bool
+	rand            *rand.Rand
+	affectedColumns map[int]string
 }
 
 func NewRandomBoolTransformer(ctx context.Context, driver *toolkit2.Driver, parameters map[string]*toolkit2.Parameter) (utils.Transformer, toolkit2.ValidationWarnings, error) {
@@ -47,16 +48,28 @@ func NewRandomBoolTransformer(ctx context.Context, driver *toolkit2.Driver, para
 		return nil, nil, fmt.Errorf(`unable to scan "column" param: %w`, err)
 	}
 
+	idx, _, ok := driver.GetColumnByName(columnName)
+	if !ok {
+		return nil, nil, fmt.Errorf("column with name %s is not found", columnName)
+	}
+	affectedColumns := make(map[int]string)
+	affectedColumns[idx] = columnName
+
 	p = parameters["keep_null"]
 	if err := p.Scan(&keepNull); err != nil {
 		return nil, nil, fmt.Errorf(`unable to scan "keep_null" param: %w`, err)
 	}
 
 	return &RandomBoolTransformer{
-		columnName: columnName,
-		keepNull:   keepNull,
-		rand:       rand.New(rand.NewSource(time.Now().UnixMicro())),
+		columnName:      columnName,
+		keepNull:        keepNull,
+		rand:            rand.New(rand.NewSource(time.Now().UnixMicro())),
+		affectedColumns: affectedColumns,
 	}, nil, nil
+}
+
+func (rbt *RandomBoolTransformer) GetAffectedColumns() map[int]string {
+	return rbt.affectedColumns
 }
 
 func (rbt *RandomBoolTransformer) Init(ctx context.Context) error {

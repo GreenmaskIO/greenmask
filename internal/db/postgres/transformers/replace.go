@@ -36,9 +36,10 @@ var ReplaceTransformerDefinition = utils.NewDefinition(
 )
 
 type ReplaceTransformer struct {
-	columnName string
-	keepNull   bool
-	value      any
+	columnName      string
+	keepNull        bool
+	value           any
+	affectedColumns map[int]string
 }
 
 func NewReplaceTransformer(ctx context.Context, driver *toolkit2.Driver, parameters map[string]*toolkit2.Parameter) (utils.Transformer, toolkit2.ValidationWarnings, error) {
@@ -52,6 +53,13 @@ func NewReplaceTransformer(ctx context.Context, driver *toolkit2.Driver, paramet
 		return nil, nil, fmt.Errorf("unable to scan column param: %w", err)
 	}
 
+	idx, _, ok := driver.GetColumnByName(columnName)
+	if !ok {
+		return nil, nil, fmt.Errorf("column with name %s is not found", columnName)
+	}
+	affectedColumns := make(map[int]string)
+	affectedColumns[idx] = columnName
+
 	value, err := parameters["value"].Value()
 	if err != nil {
 		return nil, nil, fmt.Errorf(`error getting "value" parameter`)
@@ -63,10 +71,15 @@ func NewReplaceTransformer(ctx context.Context, driver *toolkit2.Driver, paramet
 	}
 
 	return &ReplaceTransformer{
-		columnName: columnName,
-		keepNull:   keepNull,
-		value:      value,
+		columnName:      columnName,
+		keepNull:        keepNull,
+		value:           value,
+		affectedColumns: affectedColumns,
 	}, nil, nil
+}
+
+func (rt *ReplaceTransformer) GetAffectedColumns() map[int]string {
+	return rt.affectedColumns
 }
 
 func (rt *ReplaceTransformer) Init(ctx context.Context) error {

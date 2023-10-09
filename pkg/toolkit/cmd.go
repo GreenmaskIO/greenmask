@@ -3,14 +3,24 @@ package toolkit
 import (
 	"bufio"
 	"context"
-	"encoding/json"
+	"errors"
 	"fmt"
-	"log"
+	"io"
 	"os"
+	"os/signal"
+	"syscall"
+	"time"
+
+	jsoniter "github.com/json-iterator/go"
+	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
+	"golang.org/x/sync/errgroup"
 
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/spf13/cobra"
 )
+
+var json = jsoniter.ConfigCompatibleWithStandardLibrary
 
 type Cmd struct {
 	*cobra.Command
@@ -23,6 +33,7 @@ type Cmd struct {
 }
 
 func NewCmd(definition *Definition) *Cmd {
+
 	if definition == nil {
 		panic("definition cannot be nil")
 	}
@@ -60,33 +71,70 @@ func (c *Cmd) setupDefaultCmd() {
 }
 
 func (c *Cmd) run(cmd *cobra.Command, args []string) {
+	log.Logger = zerolog.New(zerolog.ConsoleWriter{Out: os.Stderr, TimeFormat: time.RFC3339}).
+		Level(zerolog.DebugLevel).
+		With().
+		Timestamp().
+		Caller().
+		Int("pid", os.Getpid()).Logger()
+
 	if c.printDefinition {
-		if err := json.NewEncoder(os.Stdout).Encode(c.definition); err != nil {
-			log.Fatalf("error encoding transformer definition: %s", err)
+		if err := c.performPrintDefinition(); err != nil {
+			log.Fatal().Err(err).Msgf("error printing definition")
 		}
 		return
 	}
 
 	if !c.validate && !c.transform {
-		log.Fatalf(`behaviour paramter was not proveded: expected one of validate transform or print-definition`)
+		log.Fatal().Msgf("behaviour parameter was not provided: expected one of validate transform or print-definition")
 	}
 
 	if c.rawMeta == "" {
-		log.Fatalf(`parameter "meta" is required with "validate" or "transform"`)
+		log.Fatal().Msgf(`parameter "meta" is required with "validate" or "transform"`)
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	if c.validate {
-		if err := c.performValidate(ctx); err != nil {
-			log.Fatal(err)
+	done := make(chan struct{})
+	eg := &errgroup.Group{}
+	eg.Go(func() error {
+		c := make(chan os.Signal, 1) // we need to reserve to buffer size 1, so the notifier are not blocked
+		signal.Notify(c, os.Interrupt, syscall.SIGTERM)
+		select {
+		case <-c:
+		case <-ctx.Done():
+			log.Debug().Msg("context error")
+			return ctx.Err()
 		}
-	} else if c.transform {
-		if err := c.performTransform(ctx); err != nil {
-			log.Fatal(err)
+		log.Debug().Msg("received sigterm")
+		close(done)
+		cancel()
+		return nil
+	})
+
+	eg.Go(func() (err error) {
+		if c.validate {
+			err = c.performValidate(ctx)
+		} else if c.transform {
+			err = c.performTransform(ctx)
 		}
+		<-done
+		log.Debug().Msg("exiting normally")
+		return nil
+	})
+
+	if err := eg.Wait(); err != nil {
+		log.Fatal().Err(err).Msgf("")
 	}
+
+}
+
+func (c *Cmd) performPrintDefinition() error {
+	if err := json.NewEncoder(os.Stdout).Encode(c.definition); err != nil {
+		log.Fatal().Err(err).Msgf("error encoding transformer definition")
+	}
+	return nil
 }
 
 func (c *Cmd) performValidate(ctx context.Context) error {
@@ -150,6 +198,9 @@ func (c *Cmd) performTransform(ctx context.Context) error {
 		}
 
 		if err != nil {
+			if errors.Is(err, io.EOF) {
+				return nil
+			}
 			return fmt.Errorf("error reading line from stdout: %w", err)
 		}
 
@@ -163,12 +214,16 @@ func (c *Cmd) performTransform(ctx context.Context) error {
 		if err != nil {
 			return fmt.Errorf("transformation error: %w", err)
 		}
-		rr = record.Row.(RawRecord)
-
-		if err = json.NewEncoder(os.Stdout).Encode(rr); err != nil {
-			return fmt.Errorf("error encoding raw record: %w", err)
+		rawDriver, err := record.Encode()
+		if err != nil {
+			return fmt.Errorf("error encoding record: %w", err)
 		}
-		if _, err = os.Stdout.Write([]byte{'\n'}); err != nil {
+		data, err := rawDriver.Encode()
+		if err != nil {
+			return fmt.Errorf("error encoding raw driver")
+		}
+		data = append(data, '\n')
+		if _, err := os.Stdout.Write(data); err != nil {
 			return fmt.Errorf("error writing to stdout: %w", err)
 		}
 	}
@@ -180,14 +235,16 @@ func (c *Cmd) init(ctx context.Context) (Transformer, *Driver, ValidationWarning
 		return nil, nil, nil, fmt.Errorf("error umarshalling meta: %w", err)
 	}
 	if meta.Table == nil {
-		log.Fatalf("error umarshalling meta: empty Table")
+		return nil, nil, nil, fmt.Errorf("error umarshalling meta: empty Table")
 	}
 	if err := meta.Table.Validate(); err != nil {
 		return nil, nil, nil, fmt.Errorf("metadata validation error: %w", err)
 	}
 
 	typeMap := pgtype.NewMap()
-	driver, err := NewDriver(typeMap, meta.Table, meta.ColumnTypeOverrides)
+	TryRegisterCustomTypesV2(typeMap, meta.Types)
+
+	driver, err := NewDriver(typeMap, meta.Table, meta.Types, meta.ColumnTypeOverrides)
 	if err != nil {
 		return nil, nil, nil, fmt.Errorf("error initilizing Driver: %w", err)
 	}

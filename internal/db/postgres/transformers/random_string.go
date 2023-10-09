@@ -50,14 +50,15 @@ var RandomStringTransformerDefinition = utils.NewDefinition(
 type getRandStringFunc func(r *rand.Rand, buf []rune, minLength, maxLength int64, symbols []rune) string
 
 type RandomStringTransformer struct {
-	columnName string
-	keepNull   bool
-	min        int64
-	max        int64
-	symbols    []rune
-	buf        []rune
-	rand       *rand.Rand
-	generate   getRandStringFunc
+	columnName      string
+	keepNull        bool
+	min             int64
+	max             int64
+	symbols         []rune
+	buf             []rune
+	rand            *rand.Rand
+	generate        getRandStringFunc
+	affectedColumns map[int]string
 }
 
 func NewRandomStringTransformer(ctx context.Context, driver *toolkit2.Driver, parameters map[string]*toolkit2.Parameter) (utils.Transformer, toolkit2.ValidationWarnings, error) {
@@ -70,6 +71,13 @@ func NewRandomStringTransformer(ctx context.Context, driver *toolkit2.Driver, pa
 	if err := p.Scan(&columnName); err != nil {
 		return nil, nil, fmt.Errorf(`unable to scan "column" param: %w`, err)
 	}
+
+	idx, _, ok := driver.GetColumnByName(columnName)
+	if !ok {
+		return nil, nil, fmt.Errorf("column with name %s is not found", columnName)
+	}
+	affectedColumns := make(map[int]string)
+	affectedColumns[idx] = columnName
 
 	p = parameters["min_length"]
 	if err := p.Scan(&minLength); err != nil {
@@ -96,15 +104,20 @@ func NewRandomStringTransformer(ctx context.Context, driver *toolkit2.Driver, pa
 	}
 
 	return &RandomStringTransformer{
-		columnName: columnName,
-		keepNull:   keepNull,
-		min:        minLength,
-		max:        maxLength,
-		symbols:    []rune(symbols),
-		rand:       rand.New(rand.NewSource(time.Now().UnixMicro())),
-		buf:        make([]rune, maxLength),
-		generate:   generator,
+		columnName:      columnName,
+		keepNull:        keepNull,
+		min:             minLength,
+		max:             maxLength,
+		symbols:         []rune(symbols),
+		rand:            rand.New(rand.NewSource(time.Now().UnixMicro())),
+		buf:             make([]rune, maxLength),
+		generate:        generator,
+		affectedColumns: affectedColumns,
 	}, nil, nil
+}
+
+func (rst *RandomStringTransformer) GetAffectedColumns() map[int]string {
+	return rst.affectedColumns
 }
 
 func (rst *RandomStringTransformer) Init(ctx context.Context) error {

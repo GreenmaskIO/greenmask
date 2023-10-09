@@ -23,7 +23,8 @@ var SetNullTransformerDefinition = utils.NewDefinition(
 )
 
 type SetNullTransformer struct {
-	columnName string
+	columnName      string
+	affectedColumns map[int]string
 }
 
 func NewSetNullTransformer(ctx context.Context, driver *toolkit2.Driver, parameters map[string]*toolkit2.Parameter) (utils.Transformer, toolkit2.ValidationWarnings, error) {
@@ -34,9 +35,21 @@ func NewSetNullTransformer(ctx context.Context, driver *toolkit2.Driver, paramet
 		return nil, nil, fmt.Errorf("unable to scan column param: %w", err)
 	}
 
+	idx, _, ok := driver.GetColumnByName(columnName)
+	if !ok {
+		return nil, nil, fmt.Errorf("column with name %s is not found", columnName)
+	}
+	affectedColumns := make(map[int]string)
+	affectedColumns[idx] = columnName
+
 	return &SetNullTransformer{
-		columnName: columnName,
+		columnName:      columnName,
+		affectedColumns: affectedColumns,
 	}, nil, nil
+}
+
+func (sut *SetNullTransformer) GetAffectedColumns() map[int]string {
+	return sut.affectedColumns
 }
 
 func (sut *SetNullTransformer) Init(ctx context.Context) error {

@@ -44,7 +44,7 @@ func getDriver() *Driver {
 		},
 		Constraints: []Constraint{},
 	}
-	driver, err := NewDriver(typeMap, table, nil)
+	driver, err := NewDriver(typeMap, table, nil, nil)
 	if err != nil {
 		panic(err.Error())
 	}
@@ -58,20 +58,16 @@ func TestParameter_Parse_simple(t *testing.T) {
 	p1 := MustNewParameter(
 		"simple_param",
 		"Simple description",
-		new(int),
-		nil,
 	)
 
-	rawParams := map[string]ParamsValue{
-		"simple_param": []byte("1"),
-	}
-
-	warnings, err := p1.Parse(driver, rawParams, nil, nil)
+	warnings, err := p1.Init(driver, nil, []*Parameter{p1}, []byte("1"))
 	require.NoError(t, err)
 	assert.Empty(t, warnings)
 	var expected = 1
-	res := p1.Value()
-	assert.Equal(t, &expected, res)
+	var res int
+	err = p1.Scan(&res)
+	require.NoError(t, err)
+	assert.Equal(t, expected, res)
 }
 
 func TestParameter_Parse_with_allowed_pg_types(t *testing.T) {
@@ -79,16 +75,9 @@ func TestParameter_Parse_with_allowed_pg_types(t *testing.T) {
 	driver := getDriver()
 
 	// Check simple column parameter definition positive case
-
-	rawParams := map[string]ParamsValue{
-		"column": []byte("created_at"),
-	}
-
 	p1 := MustNewParameter(
 		"column",
 		"Simple column parameter",
-		new(string),
-		nil,
 	).SetRequired(true).
 		SetIsColumn(&ColumnProperties{
 			Nullable:     false,
@@ -96,19 +85,16 @@ func TestParameter_Parse_with_allowed_pg_types(t *testing.T) {
 			AllowedTypes: []string{"date", "timestamp", "timestamptz"},
 		})
 
-	warnings, err := p1.Parse(driver, rawParams, nil, nil)
+	//warnings, err := p1.Parse(driver, rawParams, nil, nil)
+	warnings, err := p1.Init(driver, nil, []*Parameter{p1}, []byte("created_at"))
 	require.NoError(t, err)
 	assert.Empty(t, warnings)
 	var expected = "created_at"
-	res := p1.Value()
-	assert.Equal(t, &expected, res)
+	res, err := p1.Value()
+	assert.Equal(t, expected, res)
 
 	// Check simple column parameter definition negative case
-	rawParams = map[string]ParamsValue{
-		"column": []byte("id"),
-	}
-
-	warnings, err = p1.Parse(driver, rawParams, nil, nil)
+	warnings, err = p1.Init(driver, nil, []*Parameter{p1}, []byte("id"))
 	require.NoError(t, err)
 	assert.NotEmpty(t, warnings)
 	assert.True(t, slices.ContainsFunc(warnings, func(warning *ValidationWarning) bool {
@@ -120,35 +106,29 @@ func TestParameter_Parse_with_linked_parameter(t *testing.T) {
 
 	driver := getDriver()
 
-	rawParams := map[string]ParamsValue{
-		"column":  []byte("created_at"),
-		"replace": []byte("2023-08-27 00:00:00.000000"),
-	}
-
 	// Check simple linked parameter definition positive case
 	columnParam := MustNewParameter(
 		"column",
 		"Simple column parameter",
-		new(string),
-		nil,
 	).SetRequired(true).
 		SetIsColumn(NewColumnProperties())
-
-	warnings, err := columnParam.Parse(driver, rawParams, nil, nil)
-	require.NoError(t, err)
-	assert.Empty(t, warnings)
 
 	linkedParam := MustNewParameter(
 		"replace",
 		"Simple column parameter",
-		&time.Time{},
-		nil,
 	).SetRequired(true).
 		SetLinkParameter("column")
 
-	warnings, err = linkedParam.Parse(driver, rawParams, map[string]*Parameter{"column": columnParam}, nil)
+	params := []*Parameter{columnParam, linkedParam}
+
+	warnings, err := columnParam.Init(driver, nil, params, []byte("created_at"))
 	require.NoError(t, err)
 	assert.Empty(t, warnings)
+
+	warnings, err = linkedParam.Init(driver, nil, params, []byte("2023-08-27 00:00:00.000000"))
+	require.NoError(t, err)
+	assert.Empty(t, warnings)
+
 	res := time.Time{}
 	expected := time.Date(2023, time.August, 27, 0, 0, 0, 0, time.UTC)
 	err = linkedParam.Scan(&res)

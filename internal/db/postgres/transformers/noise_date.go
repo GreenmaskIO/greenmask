@@ -47,12 +47,13 @@ var NoiseDateTransformerDefinition = utils.NewDefinition(
 type dateNoiseFunc func(r *rand.Rand, ration time.Duration, original *time.Time, truncate *string) time.Time
 
 type NoiseDateTransformer struct {
-	columnName string
-	ratio      time.Duration
-	ratioVal   any
-	truncate   string
-	rand       *rand.Rand
-	generate   dateNoiseFunc
+	columnName      string
+	ratio           time.Duration
+	ratioVal        any
+	truncate        string
+	rand            *rand.Rand
+	generate        dateNoiseFunc
+	affectedColumns map[int]string
 }
 
 func NewNoiseDateTransformer(ctx context.Context, driver *toolkit2.Driver, parameters map[string]*toolkit2.Parameter) (utils.Transformer, toolkit2.ValidationWarnings, error) {
@@ -64,6 +65,13 @@ func NewNoiseDateTransformer(ctx context.Context, driver *toolkit2.Driver, param
 	if err := p.Scan(&columnName); err != nil {
 		return nil, nil, fmt.Errorf(`unable to scan "column" param: %w`, err)
 	}
+
+	idx, _, ok := driver.GetColumnByName(columnName)
+	if !ok {
+		return nil, nil, fmt.Errorf("column with name %s is not found", columnName)
+	}
+	affectedColumns := make(map[int]string)
+	affectedColumns[idx] = columnName
 
 	p = parameters["ratio"]
 	v, err := p.Value()
@@ -88,13 +96,18 @@ func NewNoiseDateTransformer(ctx context.Context, driver *toolkit2.Driver, param
 	}
 
 	return &NoiseDateTransformer{
-		columnName: columnName,
-		ratio:      ratio / time.Microsecond,
-		ratioVal:   intervalValue,
-		truncate:   truncate,
-		rand:       rand.New(rand.NewSource(time.Now().UnixMicro())),
-		generate:   generator,
+		columnName:      columnName,
+		ratio:           ratio / time.Microsecond,
+		ratioVal:        intervalValue,
+		truncate:        truncate,
+		rand:            rand.New(rand.NewSource(time.Now().UnixMicro())),
+		generate:        generator,
+		affectedColumns: affectedColumns,
 	}, nil, nil
+}
+
+func (ndt *NoiseDateTransformer) GetAffectedColumns() map[int]string {
+	return ndt.affectedColumns
 }
 
 func (ndt *NoiseDateTransformer) Init(ctx context.Context) error {

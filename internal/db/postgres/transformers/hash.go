@@ -41,8 +41,9 @@ var HashTransformerDefinition = utils.NewDefinition(
 )
 
 type HashTransformer struct {
-	salt       toolkit2.ParamsValue
-	columnName string
+	salt            toolkit2.ParamsValue
+	columnName      string
+	affectedColumns map[int]string
 }
 
 func NewHashTransformer(
@@ -53,6 +54,13 @@ func NewHashTransformer(
 	if err := p.Scan(&columnName); err != nil {
 		return nil, nil, fmt.Errorf("unable to parse column param: %w", err)
 	}
+
+	idx, _, ok := driver.GetColumnByName(columnName)
+	if !ok {
+		return nil, nil, fmt.Errorf("column with name %s is not found", columnName)
+	}
+	affectedColumns := make(map[int]string)
+	affectedColumns[idx] = columnName
 
 	var saltStr string
 	var salt toolkit2.ParamsValue
@@ -72,9 +80,14 @@ func NewHashTransformer(
 	}
 
 	return &HashTransformer{
-		salt:       salt,
-		columnName: columnName,
+		salt:            salt,
+		columnName:      columnName,
+		affectedColumns: affectedColumns,
 	}, nil, nil
+}
+
+func (ht *HashTransformer) GetAffectedColumns() map[int]string {
+	return ht.affectedColumns
 }
 
 func (ht *HashTransformer) Init(ctx context.Context) error {

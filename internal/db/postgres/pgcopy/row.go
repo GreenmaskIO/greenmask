@@ -27,12 +27,24 @@ type Row struct {
 	columnPos []*columnPos
 }
 
-func NewRow(raw []byte) *Row {
-	var pos []*columnPos
+func NewRow(tupleSize int) *Row {
+	pos := make([]*columnPos, tupleSize+1)
 
+	// Building column position slice
+	for idx, _ := range pos {
+		pos[idx] = &columnPos{}
+	}
+	return &Row{
+		columnPos: pos,
+		newValues: make(map[int]*toolkit.RawValue, tupleSize+1),
+	}
+}
+
+func (r *Row) Parse(raw []byte) {
 	var colStartPos, colEndPos int
 
 	// Building column position slice
+	idx := 0
 	for colStartPos < len(raw) {
 		colEndPos = len(raw)
 
@@ -43,19 +55,14 @@ func NewRow(raw []byte) *Row {
 			colEndPos = colStartPos + colEndPos
 		}
 
-		//colVal := DecodeAttr(curPos[colStartPos:colEndPos])
-		pos = append(pos, &columnPos{
-			start: colStartPos,
-			end:   colEndPos,
-		})
+		p := r.columnPos[idx]
+		p.start = colStartPos
+		p.end = colEndPos
 
 		colStartPos = colEndPos + 1
+		idx++
 	}
-	return &Row{
-		raw:       raw,
-		columnPos: pos,
-		newValues: map[int]*toolkit.RawValue{},
-	}
+	r.raw = raw
 }
 
 // GetColumn - find raw data and encode it using DecodeAttr
@@ -65,7 +72,7 @@ func (r *Row) GetColumn(idx int) (*toolkit.RawValue, error) {
 		return nil, ErrIndexOutOfRage
 	}
 
-	if res, ok := r.newValues[idx]; ok {
+	if res, ok := r.newValues[idx]; ok && res != nil {
 		return res, nil
 	}
 
@@ -92,10 +99,11 @@ func (r *Row) Encode() ([]byte, error) {
 
 	res := make([]byte, 0, len(r.raw))
 	for idx, pos := range r.columnPos {
-		if av, ok := r.newValues[idx]; ok {
+		if av, ok := r.newValues[idx]; ok && av != nil {
 			// If value was set then encode it and add to result
 			v := EncodeAttr(av)
 			res = append(res, v...)
+			r.newValues[idx] = nil
 		} else {
 			// Otherwise insert an original value
 			res = append(res, r.raw[pos.start:pos.end]...)

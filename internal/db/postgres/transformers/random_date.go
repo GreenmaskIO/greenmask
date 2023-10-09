@@ -64,13 +64,14 @@ type RandomDateTransformerParams struct {
 }
 
 type RandomDateTransformer struct {
-	columnName string
-	rand       *rand.Rand
-	generate   dateGeneratorFunc
-	min        *time.Time
-	max        *time.Time
-	truncate   string
-	keepNull   bool
+	columnName      string
+	rand            *rand.Rand
+	generate        dateGeneratorFunc
+	min             *time.Time
+	max             *time.Time
+	truncate        string
+	keepNull        bool
+	affectedColumns map[int]string
 }
 
 func NewRandomDateTransformer(ctx context.Context, driver *toolkit2.Driver, parameters map[string]*toolkit2.Parameter) (utils.Transformer, toolkit2.ValidationWarnings, error) {
@@ -84,12 +85,19 @@ func NewRandomDateTransformer(ctx context.Context, driver *toolkit2.Driver, para
 		return nil, nil, fmt.Errorf(`unable to scan "column" param: %w`, err)
 	}
 
+	idx, _, ok := driver.GetColumnByName(columnName)
+	if !ok {
+		return nil, nil, fmt.Errorf("column with name %s is not found", columnName)
+	}
+	affectedColumns := make(map[int]string)
+	affectedColumns[idx] = columnName
+
 	p = parameters["min"]
 	v, err := p.Value()
 	if err != nil {
 		return nil, nil, fmt.Errorf(`error parsing "min" parameter`)
 	}
-	minTime, ok := v.(time.Time)
+	minTime, ok = v.(time.Time)
 	if !ok {
 		return nil, nil, errors.New(`unexpected type for "min" parameter`)
 	}
@@ -128,15 +136,20 @@ func NewRandomDateTransformer(ctx context.Context, driver *toolkit2.Driver, para
 		}, nil
 	}
 	return &RandomDateTransformer{
-		keepNull:   keepNull,
-		truncate:   truncate,
-		columnName: columnName,
-		min:        &minTime,
-		max:        &maxTime,
-		generate:   generator,
-		rand:       rand.New(rand.NewSource(time.Now().UnixMicro())),
+		keepNull:        keepNull,
+		truncate:        truncate,
+		columnName:      columnName,
+		min:             &minTime,
+		max:             &maxTime,
+		generate:        generator,
+		rand:            rand.New(rand.NewSource(time.Now().UnixMicro())),
+		affectedColumns: affectedColumns,
 	}, nil, nil
 
+}
+
+func (rdt *RandomDateTransformer) GetAffectedColumns() map[int]string {
+	return rdt.affectedColumns
 }
 
 func (rdt *RandomDateTransformer) Init(ctx context.Context) error {

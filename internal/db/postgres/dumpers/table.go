@@ -3,11 +3,12 @@ package dumpers
 import (
 	"context"
 	"fmt"
+	"io"
+
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/rs/zerolog/log"
 	"golang.org/x/sync/errgroup"
-	"io"
 
 	"github.com/greenmaskio/greenmask/internal/db/postgres/dump"
 	"github.com/greenmaskio/greenmask/internal/storages"
@@ -52,9 +53,16 @@ func (td *TableDumper) Execute(ctx context.Context, tx pgx.Tx, st storages.Stora
 			var pipeline Pipeliner
 			var err error
 			if len(td.table.Transformers) > 0 {
-				pipeline, err = NewTransformationPipeline(ctx, td.table, w)
-				if err != nil {
-					return fmt.Errorf("cannot initialize transformation pipeline: %w", err)
+				if len(td.table.Transformers) == 1 {
+					pipeline, err = NewTransformationPipeline(ctx, td.table, w)
+					if err != nil {
+						return fmt.Errorf("cannot initialize transformation pipeline: %w", err)
+					}
+				} else {
+					pipeline, err = NewTransformationPipelineAsync(ctx, td.table, w)
+					if err != nil {
+						return fmt.Errorf("cannot initialize transformation pipeline: %w", err)
+					}
 				}
 			} else {
 				pipeline = NewPlainDumpPipeline(td.table, w)
@@ -69,6 +77,7 @@ func (td *TableDumper) Execute(ctx context.Context, tx pgx.Tx, st storages.Stora
 				}
 				return fmt.Errorf("error processing table dump: %w", err)
 			}
+			log.Debug().Msg("transformation pipeline executed successfully")
 			return pipeline.Done(ctx)
 		},
 	)

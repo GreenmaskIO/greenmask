@@ -26,15 +26,15 @@ type TransformationPipeline struct {
 	buf   *bytes.Buffer
 	w     io.Writer
 	line  int64
+	row   *pgcopy.Row
 }
 
 func NewTransformationPipeline(ctx context.Context, table *dump.Table, w io.Writer) (*TransformationPipeline, error) {
-	buf := bytes.NewBuffer(nil)
-
 	return &TransformationPipeline{
 		table: table,
-		buf:   buf,
+		buf:   bytes.NewBuffer(nil),
 		w:     w,
+		row:   pgcopy.NewRow(len(table.Columns)),
 	}, nil
 }
 
@@ -70,7 +70,8 @@ func (wt *TransformationPipeline) Dump(ctx context.Context, data []byte) (err er
 	if err != nil {
 		return NewDumpError(wt.table.Schema, wt.table.Name, wt.line, err)
 	}
-	record := toolkit.NewRecord(wt.table.Driver, pgcopy.NewRow(data[:len(data)-1]))
+	wt.row.Parse(data[:len(data)-1])
+	record := toolkit.NewRecord(wt.table.Driver, wt.row)
 	for _, t := range wt.table.Transformers {
 		record, err = t.Transform(ctx, record)
 		if err != nil {

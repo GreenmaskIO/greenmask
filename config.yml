@@ -25,15 +25,15 @@ dump:
     dbname: "host=/run/postgresql user=postgres dbname=demo"
 #    dbname: "host=localhost user=postgres password=example dbname=demo port=54316"
 #    dbname: "host=localhost user=postgres password=example dbname=demo port=54315"
-    jobs: 10
+    jobs: 1
     exclude-schema: "(\"teSt\"*|test*)"
-#    table: "bookings.flights"
+    table: "bookings.flights"
     load-via-partition-root: true
 
   transformation:
     - schema: "bookings"
       name: "flights"
-#      query: "select * from bookings.flights limit 1"
+#      query: "select * from bookings.flights limit 1000"
       columns_type_override:
         post_code: "int4"
       transformers:
@@ -79,15 +79,19 @@ dump:
             min: "11"
             max: "99"
 
-        - name: "Replace"
-          params:
-            column: "post_code"
-            value: "54321"
+#        - name: "Replace"
+#          params:
+#            column: "post_code"
+#            value: "54321"
 
-        - name: "TwoDatesGen"
+#        - name: "TwoDatesGen"
+#          params:
+#            column_a: "scheduled_arrival"
+#            column_b: "actual_arrival"
+
+        - name: "TestTransformer"
           params:
-            column_a: "actual_departure"
-            column_b: "actual_arrival"
+            column: "actual_departure"
 
     - schema: "bookings"
       name: "aircrafts_data"
@@ -147,6 +151,9 @@ restore:
         query: "insert into script_test values('post-flight')"
 
 custom_transformers:
+  - name: "TestTransformer"
+    executable: "/home/vadim/gits/greenmaskio/greenmask/pkg/toolkit/test/test"
+    auto_discover: true
   - name: "TwoDatesGen"
     description: "Generate diff between two dates"
     executable: "/home/vadim/gits/greenmaskio/greenmask/internal/db/postgres/transformers/custom/test/example_transformer.sh"

@@ -53,6 +53,7 @@ type MaskingTransformer struct {
 	columnName      string
 	masker          *masker.Masker
 	maskingFunction maskingFunction
+	affectedColumns map[int]string
 }
 
 func NewMaskingTransformer(ctx context.Context, driver *toolkit2.Driver, parameters map[string]*toolkit2.Parameter) (utils.Transformer, toolkit2.ValidationWarnings, error) {
@@ -65,6 +66,13 @@ func NewMaskingTransformer(ctx context.Context, driver *toolkit2.Driver, paramet
 	if err := p.Scan(&columnName); err != nil {
 		return nil, nil, fmt.Errorf("unable to scan column param: %w", err)
 	}
+
+	idx, _, ok := driver.GetColumnByName(columnName)
+	if !ok {
+		return nil, nil, fmt.Errorf("column with name %s is not found", columnName)
+	}
+	affectedColumns := make(map[int]string)
+	affectedColumns[idx] = columnName
 
 	p = parameters["type"]
 	if err := p.Scan(&dataType); err != nil {
@@ -100,7 +108,12 @@ func NewMaskingTransformer(ctx context.Context, driver *toolkit2.Driver, paramet
 		columnName:      columnName,
 		masker:          m,
 		maskingFunction: mf,
+		affectedColumns: affectedColumns,
 	}, nil, nil
+}
+
+func (mt *MaskingTransformer) GetAffectedColumns() map[int]string {
+	return mt.affectedColumns
 }
 
 func (mt *MaskingTransformer) Init(ctx context.Context) error {

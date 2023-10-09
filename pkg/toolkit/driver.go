@@ -6,6 +6,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/rs/zerolog/log"
 )
 
 // Driver - allows you to perform decoding operations from []bytes to go types and go types to bytes
@@ -18,6 +19,8 @@ type Driver struct {
 	ColumnMap map[string]*Column
 	// AttrIdxMap - the number of attribute in tuple
 	AttrIdxMap map[string]int
+	// CustomTypes - list of custom types used in tables
+	CustomTypes []*Type
 	// columnTypes - column name to the pgx type
 	columnTypes map[string]*pgtype.Type
 	// columnEncodePlans - cached encode plans for table
@@ -27,12 +30,15 @@ type Driver struct {
 	// columnTypeOverrides - map of column type replacements. For instance replace original type
 	// INT2 to TEXT for column "data" than in map will be {"data": "text"}
 	columnTypeOverrides map[string]string
+	// unsupportedColumns - map with unsupported column types that cannot perform encode-decode operations
+	unsupportedColumns map[string]string
 }
 
-func NewDriver(typeMap *pgtype.Map, table *Table, columnTypeOverrides map[string]string) (*Driver, error) {
+func NewDriver(typeMap *pgtype.Map, table *Table, customTypes []*Type, columnTypeOverrides map[string]string) (*Driver, error) {
 	columnTypes := make(map[string]*pgtype.Type, len(table.Columns))
 	columnMap := make(map[string]*Column, len(table.Columns))
 	attrIdxMap := make(map[string]int, len(table.Columns))
+	unsupportedColumns := make(map[string]string)
 	for idx, c := range table.Columns {
 		columnMap[c.Name] = c
 		attrIdxMap[c.Name] = idx
@@ -45,7 +51,14 @@ func NewDriver(typeMap *pgtype.Map, table *Table, columnTypeOverrides map[string
 		}
 
 		if !ok {
-			return nil, fmt.Errorf("cannot match pgtype for column %s with type %d", c.Name, c.TypeOid)
+			log.Warn().
+				Str("TableSchema", table.Schema).
+				Str("TableName", table.Name).
+				Str("ColumnName", c.Name).
+				Str("TypeName", c.TypeName).
+				Int("TypeOid", int(c.TypeOid)).
+				Msg("cannot match encoder/decoder for type: encode and decode operations is not supported")
+			unsupportedColumns[c.Name] = c.TypeName
 		}
 		columnTypes[c.Name] = pgType
 	}
@@ -62,11 +75,15 @@ func NewDriver(typeMap *pgtype.Map, table *Table, columnTypeOverrides map[string
 		AttrIdxMap:          attrIdxMap,
 		columnEncodePlans:   make(map[string]pgtype.EncodePlan, len(table.Columns)),
 		columnTypeOverrides: columnTypeOverrides,
+		CustomTypes:         customTypes,
 	}
 	return pc, nil
 }
 
 func (d *Driver) EncodeAttr(name string, src any, buf []byte) ([]byte, error) {
+	if typeName, ok := d.unsupportedColumns[name]; ok {
+		return nil, fmt.Errorf("encode-decode operation is not supported for column %s with type %s", name, typeName)
+	}
 	encodePlan, ok := d.columnEncodePlans[name]
 	if !ok {
 		pgType, ok := d.columnTypes[name]
@@ -89,6 +106,10 @@ func (d *Driver) EncodeAttr(name string, src any, buf []byte) ([]byte, error) {
 }
 
 func (d *Driver) ScanAttr(name string, src []byte, dest any) error {
+	if typeName, ok := d.unsupportedColumns[name]; ok {
+		return fmt.Errorf("encode-decode operation is not supported for column %s with type %s", name, typeName)
+	}
+
 	var planScan pgtype.ScanPlan
 	planScan, ok := d.columnScanPlan[name]
 	if !ok {
@@ -107,7 +128,7 @@ func (d *Driver) ScanAttr(name string, src []byte, dest any) error {
 
 		planScan = pgType.Codec.PlanScan(d.TypeMap, pgType.OID, pgx.TextFormatCode, dest)
 		if planScan == nil {
-			return fmt.Errorf("cannot find scanner for the type")
+			return fmt.Errorf("cannot find scanner for the type %d", pgType.OID)
 		}
 		d.columnScanPlan[name] = planScan
 	}
@@ -118,6 +139,10 @@ func (d *Driver) ScanAttr(name string, src []byte, dest any) error {
 }
 
 func (d *Driver) DecodeAttr(name string, src []byte) (any, error) {
+	if typeName, ok := d.unsupportedColumns[name]; ok {
+		return nil, fmt.Errorf("encode-decode operation is not supported for column %s with type %s", name, typeName)
+	}
+
 	pgType, ok := d.columnTypes[name]
 	if !ok {
 		return nil, fmt.Errorf("unknown column %s", name)
@@ -180,7 +205,7 @@ func (d *Driver) ScanByTypeOid(oid uint32, src []byte, dest any) error {
 	}
 	planScan := pgType.Codec.PlanScan(d.TypeMap, oid, pgx.TextFormatCode, dest)
 	if planScan == nil {
-		return fmt.Errorf("cannot find scanner for the type")
+		return fmt.Errorf("cannot find scanner for the type %d", pgType.OID)
 	}
 	if err := planScan.Scan(src, dest); err != nil {
 		return fmt.Errorf("unnable to scan: %w", err)
@@ -195,7 +220,7 @@ func (d *Driver) ScanByTypeName(name string, src []byte, dest any) error {
 	}
 	planScan := pgType.Codec.PlanScan(d.TypeMap, pgType.OID, pgx.TextFormatCode, dest)
 	if planScan == nil {
-		return fmt.Errorf("cannot find scanner for the type")
+		return fmt.Errorf("cannot find scanner for the type %d", pgType.OID)
 	}
 	if err := planScan.Scan(src, dest); err != nil {
 		return fmt.Errorf("unnable to scan: %w", err)

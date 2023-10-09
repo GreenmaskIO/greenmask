@@ -46,10 +46,11 @@ type NoiseFloatTransformerParams struct {
 }
 
 type NoiseFloatTransformer struct {
-	columnName string
-	ratio      float64
-	precision  float64
-	rand       *rand.Rand
+	columnName      string
+	ratio           float64
+	precision       float64
+	rand            *rand.Rand
+	affectedColumns map[int]string
 }
 
 func NewNoiseFloatTransformer(ctx context.Context, driver *toolkit2.Driver, parameters map[string]*toolkit2.Parameter) (utils.Transformer, toolkit2.ValidationWarnings, error) {
@@ -64,6 +65,13 @@ func NewNoiseFloatTransformer(ctx context.Context, driver *toolkit2.Driver, para
 		return nil, nil, fmt.Errorf(`unable to scan "column" param: %w`, err)
 	}
 
+	idx, _, ok := driver.GetColumnByName(columnName)
+	if !ok {
+		return nil, nil, fmt.Errorf("column with name %s is not found", columnName)
+	}
+	affectedColumns := make(map[int]string)
+	affectedColumns[idx] = columnName
+
 	p = parameters["ratio"]
 	if err := p.Scan(&ratio); err != nil {
 		return nil, nil, fmt.Errorf(`unable to scan "ratio" param: %w`, err)
@@ -75,11 +83,16 @@ func NewNoiseFloatTransformer(ctx context.Context, driver *toolkit2.Driver, para
 	}
 
 	return &NoiseFloatTransformer{
-		precision:  math.Pow(10, float64(precision)),
-		ratio:      ratio,
-		columnName: columnName,
-		rand:       rand.New(rand.NewSource(time.Now().UnixMicro())),
+		precision:       math.Pow(10, float64(precision)),
+		ratio:           ratio,
+		columnName:      columnName,
+		rand:            rand.New(rand.NewSource(time.Now().UnixMicro())),
+		affectedColumns: affectedColumns,
 	}, nil, nil
+}
+
+func (nft *NoiseFloatTransformer) GetAffectedColumns() map[int]string {
+	return nft.affectedColumns
 }
 
 func (nft *NoiseFloatTransformer) Init(ctx context.Context) error {

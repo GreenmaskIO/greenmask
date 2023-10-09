@@ -43,11 +43,12 @@ var RandomIntTransformerDefinition = utils.NewDefinition(
 )
 
 type RandomIntTransformer struct {
-	columnName string
-	keepNull   bool
-	min        int64
-	max        int64
-	rand       *rand.Rand
+	columnName      string
+	keepNull        bool
+	min             int64
+	max             int64
+	rand            *rand.Rand
+	affectedColumns map[int]string
 }
 
 func NewRandomIntTransformer(ctx context.Context, driver *toolkit2.Driver, parameters map[string]*toolkit2.Parameter) (utils.Transformer, toolkit2.ValidationWarnings, error) {
@@ -58,6 +59,13 @@ func NewRandomIntTransformer(ctx context.Context, driver *toolkit2.Driver, param
 	if err := p.Scan(&columnName); err != nil {
 		return nil, nil, fmt.Errorf(`unable to scan "column" param: %w`, err)
 	}
+
+	idx, _, ok := driver.GetColumnByName(columnName)
+	if !ok {
+		return nil, nil, fmt.Errorf("column with name %s is not found", columnName)
+	}
+	affectedColumns := make(map[int]string)
+	affectedColumns[idx] = columnName
 
 	p = parameters["min"]
 	if err := p.Scan(&minVal); err != nil {
@@ -84,12 +92,17 @@ func NewRandomIntTransformer(ctx context.Context, driver *toolkit2.Driver, param
 	}
 
 	return &RandomIntTransformer{
-		columnName: columnName,
-		keepNull:   keepNull,
-		min:        minVal,
-		max:        maxVal,
-		rand:       rand.New(rand.NewSource(time.Now().UnixMicro())),
+		columnName:      columnName,
+		keepNull:        keepNull,
+		min:             minVal,
+		max:             maxVal,
+		rand:            rand.New(rand.NewSource(time.Now().UnixMicro())),
+		affectedColumns: affectedColumns,
 	}, nil, nil
+}
+
+func (rit *RandomIntTransformer) GetAffectedColumns() map[int]string {
+	return rit.affectedColumns
 }
 
 func (rit *RandomIntTransformer) Init(ctx context.Context) error {

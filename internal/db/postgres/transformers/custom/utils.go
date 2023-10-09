@@ -16,7 +16,7 @@ func GetRawRecordDto(r *toolkit.Record, attributes map[int]string) (toolkit.RawR
 			if err != nil {
 				return nil, fmt.Errorf("error getting raw atribute value: %w", err)
 			}
-			res[idx] = toolkit.NewRawValueDto(string(v.Data), v.IsNull)
+			res[idx] = toolkit.NewRawValue(v.Data, v.IsNull)
 		}
 	} else {
 		for idx, c := range r.Driver.Table.Columns {
@@ -24,7 +24,7 @@ func GetRawRecordDto(r *toolkit.Record, attributes map[int]string) (toolkit.RawR
 			if err != nil {
 				return nil, fmt.Errorf("error getting raw atribute value: %w", err)
 			}
-			res[idx] = toolkit.NewRawValueDto(string(v.Data), v.IsNull)
+			res[idx] = toolkit.NewRawValue(v.Data, v.IsNull)
 		}
 	}
 	return res, nil

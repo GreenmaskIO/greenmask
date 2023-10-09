@@ -2,8 +2,8 @@ package custom
 
 import (
 	"bufio"
+	"bytes"
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -12,11 +12,14 @@ import (
 	"slices"
 	"strings"
 	"syscall"
+	"time"
+
+	jsoniter "github.com/json-iterator/go"
+	"github.com/rs/zerolog/log"
+	"golang.org/x/sync/errgroup"
 
 	"github.com/greenmaskio/greenmask/internal/db/postgres/transformers/utils"
 	toolkit "github.com/greenmaskio/greenmask/pkg/toolkit"
-	"github.com/rs/zerolog/log"
-	"golang.org/x/sync/errgroup"
 )
 
 var (
@@ -30,6 +33,8 @@ const (
 	MetaArgName            = "--meta"
 	TransformArgName       = "--transform"
 )
+
+var json = jsoniter.ConfigCompatibleWithStandardLibrary
 
 type CancelFunction func() error
 
@@ -59,6 +64,7 @@ type CustomCmdTransformer struct {
 	ctd             *utils.CustomTransformerDefinition
 	sendChan        chan struct{}
 	receiveChan     chan struct{}
+	buf             *bytes.Buffer
 }
 
 func NewCustomCmdTransformer(
@@ -108,9 +114,13 @@ func NewCustomCmdTransformer(
 	return ct, warnings, nil
 }
 
+func (ct *CustomCmdTransformer) GetAffectedColumns() map[int]string {
+	return ct.affectedColumns
+}
+
 func (ct *CustomCmdTransformer) Transform(ctx context.Context, r *toolkit.Record) (*toolkit.Record, error) {
-	ctx, cancel := context.WithTimeout(ctx, ct.ctd.RowTransformationTimeout)
-	defer cancel()
+	//ctx, cancel := context.WithTimeout(ctx, ct.ctd.RowTransformationTimeout)
+	//defer cancel()
 	rrd, err := GetRawRecordDto(r, ct.affectedColumns)
 	if err != nil {
 		return nil, fmt.Errorf("error gettings RawRecord: %w", err)
@@ -135,10 +145,7 @@ func (ct *CustomCmdTransformer) Transform(ctx context.Context, r *toolkit.Record
 
 	trrd := make(toolkit.RawRecord)
 	if err = json.Unmarshal(transformedData, &trrd); err != nil {
-		if errors.Is(err, context.DeadlineExceeded) {
-			return nil, ErrRowTransformationTimeout
-		}
-		return nil, fmt.Errorf("error unmarshalling RawRecord")
+		return nil, fmt.Errorf("error unmarshalling RawRecord: unexpected record format: %w", err)
 	}
 
 	if err = SetRawRecordDto(r, trrd); err != nil {
@@ -437,6 +444,7 @@ func (ct *CustomCmdTransformer) getMetadata() (string, error) {
 	meta := &toolkit.Meta{
 		Table:      ct.driver.Table,
 		Parameters: params,
+		Types:      ct.driver.CustomTypes,
 	}
 	res, err := json.Marshal(&meta)
 	if err != nil {
@@ -463,8 +471,8 @@ func (ct *CustomCmdTransformer) stderrForwarder(ctx context.Context, stderr io.R
 			Str("TableName", ct.driver.Table.Name).
 			Str("TransformerName", ct.name).
 			Int("TransformerPid", ct.cmd.Process.Pid).
-			Str("Data", string(line)).
 			Msg("stderr forwarding")
+		fmt.Printf("\tDATA: %s\n", string(line))
 
 		select {
 		case <-ctx.Done():
@@ -482,6 +490,8 @@ func (ct *CustomCmdTransformer) sendOriginalTuple(ctx context.Context, data []by
 	select {
 	case <-ctx.Done():
 		return ctx.Err()
+	case <-time.After(ct.ctd.RowTransformationTimeout / 2):
+		return fmt.Errorf("transformation timeout")
 	case <-ct.sendChan:
 		return nil
 	}
@@ -495,6 +505,8 @@ func (ct *CustomCmdTransformer) receiveTransformedTuple(ctx context.Context) (li
 	select {
 	case <-ctx.Done():
 		return nil, ctx.Err()
+	case <-time.After(ct.ctd.RowTransformationTimeout / 2):
+		return nil, fmt.Errorf("transformation timeout")
 	case <-ct.receiveChan:
 	}
 

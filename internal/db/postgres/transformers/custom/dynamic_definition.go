@@ -2,7 +2,6 @@ package custom
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"io"
 	"os/exec"
@@ -103,8 +102,8 @@ func GetDynamicTransformerDefinition(ctx context.Context, executable string, arg
 			Err(err).
 			Str("Executable", executable).
 			Str("Args", strings.Join(args, " ")).
-			Str("Stderr", string(stderrData)).
 			Msg("custom transformer stderr forwarding")
+		fmt.Printf("\tDATA: %s\n", string(stderrData))
 	}
 
 	if len(stdoutData) == 0 {

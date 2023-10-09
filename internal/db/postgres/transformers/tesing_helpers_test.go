@@ -145,12 +145,14 @@ func getDriverAndRecord(name string, value string) (*toolkit2.Driver, *toolkit2.
 		Constraints: []toolkit2.Constraint{},
 	}
 
-	driver, err := toolkit2.NewDriver(typeMap, table, nil)
+	driver, err := toolkit2.NewDriver(typeMap, table, nil, nil)
 	if err != nil {
 		panic(err.Error())
 	}
+	row := pgcopy.NewRow(1)
+	row.Parse([]byte(value))
 	return driver, toolkit2.NewRecord(
 		driver,
-		pgcopy.NewRow([]byte(value)),
+		row,
 	)
 }
