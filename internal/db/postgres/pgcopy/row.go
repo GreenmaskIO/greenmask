@@ -22,13 +22,14 @@ type Row struct {
 	decoded []byte
 	// newValues - raw data that has been assigned in runtime after transformation
 	//	those data is after Driver encoding from real type to []byte representation
-	newValues map[int]*toolkit.RawValue
+	//newValues map[int]*toolkit.RawValue
+	newValues []*toolkit.RawValue
 	// columnPos - list of the column pos within the raw data
 	columnPos []*columnPos
 }
 
 func NewRow(tupleSize int) *Row {
-	pos := make([]*columnPos, tupleSize+1)
+	pos := make([]*columnPos, tupleSize)
 
 	// Building column position slice
 	for idx, _ := range pos {
@@ -36,7 +37,7 @@ func NewRow(tupleSize int) *Row {
 	}
 	return &Row{
 		columnPos: pos,
-		newValues: make(map[int]*toolkit.RawValue, tupleSize+1),
+		newValues: make([]*toolkit.RawValue, tupleSize),
 	}
 }
 
@@ -72,12 +73,12 @@ func (r *Row) GetColumn(idx int) (*toolkit.RawValue, error) {
 		return nil, ErrIndexOutOfRage
 	}
 
-	if res, ok := r.newValues[idx]; ok && res != nil {
+	res := r.newValues[idx]
+	if res != nil {
 		return res, nil
 	}
-
 	pos := r.columnPos[idx]
-	res := DecodeAttr(r.raw[pos.start:pos.end])
+	res = DecodeAttr(r.raw[pos.start:pos.end])
 	return res, nil
 }
 
@@ -99,7 +100,7 @@ func (r *Row) Encode() ([]byte, error) {
 
 	res := make([]byte, 0, len(r.raw))
 	for idx, pos := range r.columnPos {
-		if av, ok := r.newValues[idx]; ok && av != nil {
+		if av := r.newValues[idx]; av != nil {
 			// If value was set then encode it and add to result
 			v := EncodeAttr(av)
 			res = append(res, v...)
@@ -120,7 +121,7 @@ func (r *Row) Decode() (map[int]*toolkit.RawValue, error) {
 	res := make(map[int]*toolkit.RawValue, len(r.columnPos))
 
 	for idx, pos := range r.columnPos {
-		if av, ok := r.newValues[idx]; ok {
+		if av := r.newValues[idx]; av != nil {
 			// If value was set then return it
 			res[idx] = av
 		} else {

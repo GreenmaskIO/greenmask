@@ -59,7 +59,7 @@ func (td *TableDumper) Execute(ctx context.Context, tx pgx.Tx, st storages.Stora
 						return fmt.Errorf("cannot initialize transformation pipeline: %w", err)
 					}
 				} else {
-					pipeline, err = NewTransformationPipelineAsync(ctx, td.table, w)
+					pipeline, err = NewTransformationPipeline(ctx, td.table, w)
 					if err != nil {
 						return fmt.Errorf("cannot initialize transformation pipeline: %w", err)
 					}

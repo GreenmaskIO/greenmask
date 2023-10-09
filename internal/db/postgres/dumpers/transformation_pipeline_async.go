@@ -51,6 +51,7 @@ func (tw *TransformationWindow) TryAdd(t utils.Transformer) bool {
 }
 
 func (tw *TransformationWindow) Transform(ctx context.Context, r *toolkit.Record) (*toolkit.Record, error) {
+	//startedAt := time.Now()
 	for _, t := range tw.transformers {
 		tw.eg.Go(func(t utils.Transformer) func() error {
 			return func() error {
@@ -65,6 +66,8 @@ func (tw *TransformationWindow) Transform(ctx context.Context, r *toolkit.Record
 	if err := tw.eg.Wait(); err != nil {
 		return nil, fmt.Errorf("one of transformer exited with error: %w", err)
 	}
+	//completedAt := time.Now()
+	//log.Debug().Dur("iter", completedAt.Sub(startedAt)).Msgf("iteration")
 	return r, nil
 }
 
@@ -135,7 +138,7 @@ func (wt *TransformationPipelineAsync) Dump(ctx context.Context, data []byte) (e
 	wt.row.Parse(data[:len(data)-1])
 	record := toolkit.NewRecord(wt.table.Driver, wt.row)
 	for _, w := range wt.transformationWindows {
-		record, err = w.Transform(ctx, record)
+		_, err = w.Transform(ctx, record)
 		if err != nil {
 			return NewDumpError(wt.table.Schema, wt.table.Name, wt.line, err)
 		}

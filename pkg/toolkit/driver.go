@@ -3,6 +3,7 @@ package toolkit
 import (
 	"errors"
 	"fmt"
+	"sync"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -32,6 +33,7 @@ type Driver struct {
 	columnTypeOverrides map[string]string
 	// unsupportedColumns - map with unsupported column types that cannot perform encode-decode operations
 	unsupportedColumns map[string]string
+	mx                 sync.Mutex
 }
 
 func NewDriver(typeMap *pgtype.Map, table *Table, customTypes []*Type, columnTypeOverrides map[string]string) (*Driver, error) {
@@ -90,8 +92,9 @@ func (d *Driver) EncodeAttr(name string, src any, buf []byte) ([]byte, error) {
 		if !ok {
 			return nil, fmt.Errorf("unoknown column %s", name)
 		}
-
+		d.mx.Lock()
 		encodePlan = d.TypeMap.PlanEncode(pgType.OID, pgx.TextFormatCode, src)
+		d.mx.Unlock()
 		if encodePlan == nil {
 			return nil, errors.New("cannot find encode plan")
 		}
@@ -155,7 +158,9 @@ func (d *Driver) DecodeAttr(name string, src []byte) (any, error) {
 }
 
 func (d *Driver) EncodeByTypeOid(oid uint32, src any, buf []byte) ([]byte, error) {
+	d.mx.Lock()
 	plan := d.TypeMap.PlanEncode(oid, pgx.TextFormatCode, src)
+	d.mx.Unlock()
 	if plan == nil {
 		return nil, fmt.Errorf("cannot find encoding plan")
 	}
