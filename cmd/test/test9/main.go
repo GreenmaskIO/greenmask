@@ -8,7 +8,7 @@ import (
 )
 
 func main() {
-	res := make(toolkit.RawRecord)
+	res := make(toolkit.RawRecordDto)
 	res["test"] = &toolkit.RawValueDto{
 		Data:   "1234",
 		IsNull: false,
@@ -17,7 +17,7 @@ func main() {
 	if err != nil {
 		log.Fatal().Err(err).Msg("")
 	}
-	eres := make(toolkit.RawRecord)
+	eres := make(toolkit.RawRecordDto)
 	err = json.Unmarshal(data, &eres)
 	if err != nil {
 		log.Fatal().Err(err).Msg("")

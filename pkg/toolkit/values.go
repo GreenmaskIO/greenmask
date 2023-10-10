@@ -25,13 +25,14 @@ func NewValue(v any, isNull bool) *Value {
 }
 
 type RawValueDto struct {
-	Data   string `json:"d"`
-	IsNull bool   `json:"n"`
+	Data   *string `json:"d"`
+	IsNull bool    `json:"n"`
 }
 
-func NewRawValueDto(data string, isNull bool) *RawValueDto {
+func NewRawValueDto(data []byte, isNull bool) *RawValueDto {
+	res := string(data)
 	return &RawValueDto{
-		Data:   data,
+		Data:   &res,
 		IsNull: isNull,
 	}
 }

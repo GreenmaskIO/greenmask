@@ -19,7 +19,7 @@ import (
 	"golang.org/x/sync/errgroup"
 
 	"github.com/greenmaskio/greenmask/internal/db/postgres/transformers/utils"
-	toolkit "github.com/greenmaskio/greenmask/pkg/toolkit"
+	"github.com/greenmaskio/greenmask/pkg/toolkit"
 )
 
 var (
@@ -123,15 +123,10 @@ func (ct *CustomCmdTransformer) Transform(ctx context.Context, r *toolkit.Record
 	//defer cancel()
 	rrd, err := GetRawRecordDto(r, ct.affectedColumns)
 	if err != nil {
-		return nil, fmt.Errorf("error gettings RawRecord: %w", err)
+		return nil, fmt.Errorf("error gettings RawRecordDto: %w", err)
 	}
-	originalData, err := json.Marshal(rrd)
-	if err != nil {
-		return nil, fmt.Errorf("error marshaling RawRecord: %w", err)
-	}
-	originalData = append(originalData, '\n')
 
-	if err = ct.sendOriginalTuple(ctx, originalData); err != nil {
+	if err = ct.sendOriginalTuple(ctx, rrd); err != nil {
 		if errors.Is(err, context.DeadlineExceeded) {
 			return nil, ErrRowTransformationTimeout
 		}
@@ -143,13 +138,13 @@ func (ct *CustomCmdTransformer) Transform(ctx context.Context, r *toolkit.Record
 		return nil, fmt.Errorf("cannot receive transformed tuple from transformer: %w", err)
 	}
 
-	trrd := make(toolkit.RawRecord)
+	trrd := make(toolkit.RawRecord, len(ct.driver.Table.Columns))
 	if err = json.Unmarshal(transformedData, &trrd); err != nil {
-		return nil, fmt.Errorf("error unmarshalling RawRecord: unexpected record format: %w", err)
+		return nil, fmt.Errorf("error unmarshalling RawRecordDto: unexpected record format: %w", err)
 	}
 
 	if err = SetRawRecordDto(r, trrd); err != nil {
-		return nil, fmt.Errorf("error setting RawRecord")
+		return nil, fmt.Errorf("error setting RawRecordDto")
 	}
 
 	return r, nil
@@ -482,9 +477,9 @@ func (ct *CustomCmdTransformer) stderrForwarder(ctx context.Context, stderr io.R
 	}
 }
 
-func (ct *CustomCmdTransformer) sendOriginalTuple(ctx context.Context, data []byte) (err error) {
+func (ct *CustomCmdTransformer) sendOriginalTuple(ctx context.Context, rawRecord toolkit.RawRecord) (err error) {
 	go func() {
-		_, err = ct.stdinWriter.Write(data)
+		err = json.NewEncoder(ct.stdinWriter).Encode(rawRecord)
 		ct.sendChan <- struct{}{}
 	}()
 	select {
@@ -493,8 +488,11 @@ func (ct *CustomCmdTransformer) sendOriginalTuple(ctx context.Context, data []by
 	case <-time.After(ct.ctd.RowTransformationTimeout / 2):
 		return fmt.Errorf("transformation timeout")
 	case <-ct.sendChan:
-		return nil
 	}
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func (ct *CustomCmdTransformer) receiveTransformedTuple(ctx context.Context) (line []byte, err error) {

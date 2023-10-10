@@ -16,7 +16,7 @@ func GetRawRecordDto(r *toolkit.Record, attributes map[int]string) (toolkit.RawR
 			if err != nil {
 				return nil, fmt.Errorf("error getting raw atribute value: %w", err)
 			}
-			res[idx] = toolkit.NewRawValue(v.Data, v.IsNull)
+			res[idx] = v
 		}
 	} else {
 		for idx, c := range r.Driver.Table.Columns {
@@ -24,17 +24,17 @@ func GetRawRecordDto(r *toolkit.Record, attributes map[int]string) (toolkit.RawR
 			if err != nil {
 				return nil, fmt.Errorf("error getting raw atribute value: %w", err)
 			}
-			res[idx] = toolkit.NewRawValue(v.Data, v.IsNull)
+			res[idx] = v
 		}
 	}
 	return res, nil
 }
 
-// SetRawRecordDto - set values of attributes in RawRecord to provided Record. This is using after receiving
+// SetRawRecordDto - set values of attributes in RawRecordDto to provided Record. This is using after receiving
 // transformed data from CustomCmd transformer
 func SetRawRecordDto(r *toolkit.Record, rrd toolkit.RawRecord) error {
 	for idx, v := range rrd {
-		if err := r.SetRawAttributeValueByIdx(idx, toolkit.NewRawValue([]byte(v.Data), v.IsNull)); err != nil {
+		if err := r.SetRawAttributeValueByIdx(idx, v); err != nil {
 			return fmt.Errorf("error setting raw atribute value: %w", err)
 		}
 	}

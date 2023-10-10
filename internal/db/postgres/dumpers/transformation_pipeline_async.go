@@ -5,26 +5,27 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"sync"
 
+	"github.com/greenmaskio/greenmask/internal/db/postgres/dump"
 	"github.com/greenmaskio/greenmask/internal/db/postgres/pgcopy"
 	"github.com/greenmaskio/greenmask/internal/db/postgres/transformers/utils"
 	"github.com/greenmaskio/greenmask/pkg/toolkit"
 	"github.com/rs/zerolog/log"
-	"golang.org/x/sync/errgroup"
-
-	"github.com/greenmaskio/greenmask/internal/db/postgres/dump"
 )
 
 type TransformationWindow struct {
 	affectedColumns map[string]struct{}
 	transformers    []utils.Transformer
-	eg              *errgroup.Group
+	done            chan struct{}
+	wg              *sync.WaitGroup
 }
 
 func NewTransformationWindow() *TransformationWindow {
 	return &TransformationWindow{
 		affectedColumns: map[string]struct{}{},
-		eg:              &errgroup.Group{},
+		done:            make(chan struct{}, 1),
+		wg:              &sync.WaitGroup{},
 	}
 }
 
@@ -51,23 +52,25 @@ func (tw *TransformationWindow) TryAdd(t utils.Transformer) bool {
 }
 
 func (tw *TransformationWindow) Transform(ctx context.Context, r *toolkit.Record) (*toolkit.Record, error) {
-	//startedAt := time.Now()
+	var errGlobal error
 	for _, t := range tw.transformers {
-		tw.eg.Go(func(t utils.Transformer) func() error {
-			return func() error {
+		tw.wg.Add(1)
+		func(t utils.Transformer) {
+			go func() {
 				_, err := t.Transform(ctx, r)
 				if err != nil {
-					return err
+					errGlobal = err
 				}
-				return nil
-			}
-		}(t))
+				tw.wg.Done()
+			}()
+		}(t)
 	}
-	if err := tw.eg.Wait(); err != nil {
-		return nil, fmt.Errorf("one of transformer exited with error: %w", err)
+
+	tw.wg.Wait()
+	if errGlobal != nil {
+		return nil, errGlobal
 	}
-	//completedAt := time.Now()
-	//log.Debug().Dur("iter", completedAt.Sub(startedAt)).Msgf("iteration")
+
 	return r, nil
 }
 
@@ -178,6 +181,10 @@ func (wt *TransformationPipelineAsync) Done(ctx context.Context) error {
 			log.Warn().Err(err).Msg("error terminating initialized transformer")
 		}
 	}
+	for _, w := range wt.transformationWindows {
+		close(w.done)
+	}
+
 	if lastErr != nil {
 		return fmt.Errorf("error terminating initialized transformer: %w", lastErr)
 	}

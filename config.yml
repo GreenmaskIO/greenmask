@@ -27,15 +27,15 @@ dump:
 #    dbname: "host=localhost user=postgres password=example dbname=demo port=54315"
     jobs: 10
     exclude-schema: "(\"teSt\"*|test*)"
-#    table: "bookings.flights"
+    table: "bookings.flights"
     load-via-partition-root: true
 
   transformation:
     - schema: "bookings"
       name: "flights"
 #      query: "select * from bookings.flights limit 1000"
-      columns_type_override:
-        post_code: "int4"
+#      columns_type_override:
+#        post_code: "int4"
       transformers:
         - name: "RandomDate"
           params:
@@ -72,12 +72,12 @@ dump:
 #            column: "actual_arrival"
 #            min: "2023-01-04 01:00:00.0+03"
 #            max: "2023-01-05 00:00:00.0+03"
-
-        - name: "RandomInt"
-          params:
-            column: "post_code"
-            min: "11"
-            max: "99"
+#
+#        - name: "RandomInt"
+#          params:
+#            column: "post_code"
+#            min: "11"
+#            max: "99"
 
         - name: "Replace"
           params:

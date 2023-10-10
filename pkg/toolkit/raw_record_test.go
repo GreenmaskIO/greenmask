@@ -9,7 +9,7 @@ import (
 func TestRawRecordDto(t *testing.T) {
 	rawData := []byte(`{"8":{"d":"","n":true},"9":{"d":"","n":true}}`)
 	expected := []byte(`{"8":{"d":"test","n":false},"9":{"d":"","n":true}}`)
-	rrd := &RawRecord{}
+	rrd := &RawRecordDto{}
 	err := json.Unmarshal(rawData, rrd)
 	require.NoError(t, err)
 

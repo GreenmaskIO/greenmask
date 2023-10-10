@@ -183,6 +183,7 @@ func (c *Cmd) performTransform(ctx context.Context) error {
 	readCh := make(chan struct{}, 1)
 	defer close(readCh)
 	r := bufio.NewReader(os.Stdin)
+	rr := make(RawRecord, 10)
 	for {
 		var line []byte
 		var err error
@@ -204,7 +205,6 @@ func (c *Cmd) performTransform(ctx context.Context) error {
 			return fmt.Errorf("error reading line from stdout: %w", err)
 		}
 
-		rr := make(RawRecord)
 		if err = json.Unmarshal(line, &rr); err != nil {
 			return fmt.Errorf("error umnarshaling raw record: %w", err)
 		}
