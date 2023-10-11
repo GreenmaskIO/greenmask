@@ -16,7 +16,7 @@ import (
 
 type TransformationFunc func(ctx context.Context, r *toolkit.Record) (*toolkit.Record, error)
 
-type TransformationPipelineAsync struct {
+type TransformationPipeline struct {
 	table                 *dump.Table
 	buf                   *bytes.Buffer
 	w                     io.Writer
@@ -27,7 +27,7 @@ type TransformationPipelineAsync struct {
 	isAsync               bool
 }
 
-func NewTransformationPipelineAsync(ctx context.Context, eg *errgroup.Group, table *dump.Table, w io.Writer) (*TransformationPipelineAsync, error) {
+func NewTransformationPipeline(ctx context.Context, eg *errgroup.Group, table *dump.Table, w io.Writer) (*TransformationPipeline, error) {
 
 	var tws []*TransformationWindow
 	var isAsync bool
@@ -46,7 +46,7 @@ func NewTransformationPipelineAsync(ctx context.Context, eg *errgroup.Group, tab
 		}
 	}
 
-	tp := &TransformationPipelineAsync{
+	tp := &TransformationPipeline{
 		table:                 table,
 		buf:                   bytes.NewBuffer(nil),
 		w:                     w,
@@ -64,7 +64,7 @@ func NewTransformationPipelineAsync(ctx context.Context, eg *errgroup.Group, tab
 	return tp, nil
 }
 
-func (tp *TransformationPipelineAsync) Init(ctx context.Context) error {
+func (tp *TransformationPipeline) Init(ctx context.Context) error {
 	var lastInitErr error
 	var idx int
 	var t utils.Transformer
@@ -95,7 +95,7 @@ func (tp *TransformationPipelineAsync) Init(ctx context.Context) error {
 	return nil
 }
 
-func (tp *TransformationPipelineAsync) TransformSync(ctx context.Context, r *toolkit.Record) (*toolkit.Record, error) {
+func (tp *TransformationPipeline) TransformSync(ctx context.Context, r *toolkit.Record) (*toolkit.Record, error) {
 	var err error
 	for _, t := range tp.table.Transformers {
 		_, err = t.Transform(ctx, r)
@@ -106,7 +106,7 @@ func (tp *TransformationPipelineAsync) TransformSync(ctx context.Context, r *too
 	return r, nil
 }
 
-func (tp *TransformationPipelineAsync) TransformAsync(ctx context.Context, r *toolkit.Record) (*toolkit.Record, error) {
+func (tp *TransformationPipeline) TransformAsync(ctx context.Context, r *toolkit.Record) (*toolkit.Record, error) {
 	var err error
 	for _, w := range tp.transformationWindows {
 		_, err = w.Transform(ctx, r)
@@ -117,7 +117,7 @@ func (tp *TransformationPipelineAsync) TransformAsync(ctx context.Context, r *to
 	return r, nil
 }
 
-func (tp *TransformationPipelineAsync) Dump(ctx context.Context, data []byte) (err error) {
+func (tp *TransformationPipeline) Dump(ctx context.Context, data []byte) (err error) {
 	tp.line++
 	_, err = tp.buf.Write(data)
 	if err != nil {
@@ -146,7 +146,7 @@ func (tp *TransformationPipelineAsync) Dump(ctx context.Context, data []byte) (e
 	return nil
 }
 
-func (tp *TransformationPipelineAsync) CompleteDump() (err error) {
+func (tp *TransformationPipeline) CompleteDump() (err error) {
 	res := make([]byte, 0, 4)
 	res = append(res, pgcopy.DefaultCopyTerminationSeq...)
 	res = append(res, '\n', '\n')
@@ -157,7 +157,7 @@ func (tp *TransformationPipelineAsync) CompleteDump() (err error) {
 	return nil
 }
 
-func (tp *TransformationPipelineAsync) Done(ctx context.Context) error {
+func (tp *TransformationPipeline) Done(ctx context.Context) error {
 	var lastErr error
 	for _, t := range tp.table.Transformers {
 		if err := t.Done(ctx); err != nil {

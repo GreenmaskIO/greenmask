@@ -53,7 +53,7 @@ func (td *TableDumper) Execute(ctx context.Context, tx pgx.Tx, st storages.Stora
 			var pipeline Pipeliner
 			var err error
 			if len(td.table.Transformers) > 0 {
-				pipeline, err = NewTransformationPipelineAsync(gtx, eg, td.table, w)
+				pipeline, err = NewTransformationPipeline(gtx, eg, td.table, w)
 				if err != nil {
 					return fmt.Errorf("cannot initialize transformation pipeline: %w", err)
 				}
