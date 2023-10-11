@@ -3,9 +3,11 @@ package dump
 import (
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 
 	"github.com/greenmaskio/greenmask/internal/db/postgres/toc"
+	"github.com/greenmaskio/greenmask/internal/db/postgres/transformers/custom"
 	"github.com/greenmaskio/greenmask/internal/db/postgres/transformers/utils"
 	toolkit2 "github.com/greenmaskio/greenmask/pkg/toolkit"
 )
@@ -26,6 +28,13 @@ type Table struct {
 	CompressedSize       int64
 	ExcludeData          bool
 	Driver               *toolkit2.Driver
+}
+
+func (t *Table) HasCustomTransformer() bool {
+	return slices.ContainsFunc(t.Transformers, func(transformer utils.Transformer) bool {
+		_, ok := transformer.(*custom.CustomCmdTransformer)
+		return ok
+	})
 }
 
 func (t *Table) SetDumpId(dumpId int32) {

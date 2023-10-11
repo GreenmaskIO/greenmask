@@ -36,6 +36,8 @@ type ColumnProperties struct {
 	//		 to describe types with {{ schemaName }}.{{ typeName }}, but then we have to implement types classes
 	//		 (such as textual, digits, etc.)
 	AllowedTypes []string `mapstructure:"allowed_types" json:"allowed_types,omitempty"`
+	// SkipOriginalData - Is transformer require original data or not
+	SkipOriginalData bool `mapstructure:"skip_original_data" json:"skip_original_data,omitempty"`
 }
 
 func NewColumnProperties() *ColumnProperties {
@@ -67,6 +69,11 @@ func (cp *ColumnProperties) SetAllowedColumnTypes(v ...string) *ColumnProperties
 
 func (cp *ColumnProperties) SetAffected(v bool) *ColumnProperties {
 	cp.Affected = v
+	return cp
+}
+
+func (cp *ColumnProperties) SetSkipOriginalData(v bool) *ColumnProperties {
+	cp.SkipOriginalData = v
 	return cp
 }
 
@@ -278,15 +285,17 @@ func (p *Parameter) SetDefaultValue(v ParamsValue) *Parameter {
 }
 
 func (p *Parameter) Copy() *Parameter {
-	cp := &(*p)
+	cp := *p
 	cp.value = nil
-	return cp
+	cp.rawValue = []byte{}
+	return &cp
 }
 
 func (p *Parameter) Init(driver *Driver, types []*Type, params []*Parameter, rawValue ParamsValue) (ValidationWarnings, error) {
 	var warnings ValidationWarnings
 	p.Driver = driver
-	p.rawValue = rawValue
+	p.rawValue = make(ParamsValue, len(rawValue))
+	copy(p.rawValue, rawValue)
 
 	if rawValue == nil {
 		if p.Required {
@@ -324,7 +333,7 @@ func (p *Parameter) Init(driver *Driver, types []*Type, params []*Parameter, raw
 	}
 
 	if p.IsColumn {
-		columnName := string(rawValue)
+		columnName := string(p.rawValue)
 		p.value = columnName
 		_, column, ok := driver.GetColumnByName(columnName)
 		if !ok {
@@ -446,14 +455,17 @@ func InitParameters(
 		}, nil
 	}
 
+	var pd []*Parameter
 	var params = make(map[string]*Parameter, len(paramDef))
 	for _, p := range paramDef {
-		params[p.Name] = p.Copy()
+		cp := p.Copy()
+		params[p.Name] = cp
+		pd = append(pd, cp)
 	}
 
 	var totalWarnings ValidationWarnings
 	for _, p := range params {
-		warnings, err := p.Init(driver, types, paramDef, rawParams[p.Name])
+		warnings, err := p.Init(driver, types, pd, rawParams[p.Name])
 		if err != nil {
 			return nil, nil, fmt.Errorf("parameter %s parsing error: %w", p.Name, err)
 		}

@@ -104,7 +104,6 @@ func (c *Cmd) run(cmd *cobra.Command, args []string) {
 		select {
 		case <-c:
 		case <-ctx.Done():
-			log.Debug().Msg("context error")
 			return ctx.Err()
 		}
 		log.Debug().Msg("received sigterm")
@@ -118,6 +117,11 @@ func (c *Cmd) run(cmd *cobra.Command, args []string) {
 			err = c.performValidate(ctx)
 		} else if c.transform {
 			err = c.performTransform(ctx)
+		}
+		if err != nil {
+			log.Warn().Err(err).Msgf("exited with error")
+			cancel()
+			return err
 		}
 		<-done
 		log.Debug().Msg("exiting normally")
@@ -205,8 +209,10 @@ func (c *Cmd) performTransform(ctx context.Context) error {
 			return fmt.Errorf("error reading line from stdout: %w", err)
 		}
 
-		if err = json.Unmarshal(line, &rr); err != nil {
-			return fmt.Errorf("error umnarshaling raw record: %w", err)
+		if len(line) > 0 {
+			if err = json.Unmarshal(line, &rr); err != nil {
+				return fmt.Errorf("error umnarshaling raw record: %w", err)
+			}
 		}
 		record := NewRecord(driver, rr)
 

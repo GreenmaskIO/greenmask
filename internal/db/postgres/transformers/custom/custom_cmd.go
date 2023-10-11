@@ -47,30 +47,32 @@ func ProduceNewCmdTransformerFunction(ctd *utils.CustomTransformerDefinition) ut
 }
 
 type CustomCmdTransformer struct {
-	name            string
-	executable      string
-	args            []string
-	cmd             *exec.Cmd
-	stdoutReader    *bufio.Reader
-	stderrReader    *bufio.Reader
-	stdinWriter     io.Writer
-	warnings        []*toolkit.ValidationWarning
-	eg              *errgroup.Group
-	gtx             context.Context
-	cancel          CancelFunction
-	driver          *toolkit.Driver
-	parameters      map[string]*toolkit.Parameter
-	affectedColumns map[int]string
-	ctd             *utils.CustomTransformerDefinition
-	sendChan        chan struct{}
-	receiveChan     chan struct{}
-	buf             *bytes.Buffer
+	name             string
+	executable       string
+	args             []string
+	cmd              *exec.Cmd
+	stdoutReader     *bufio.Reader
+	stderrReader     *bufio.Reader
+	stdinWriter      io.Writer
+	warnings         []*toolkit.ValidationWarning
+	eg               *errgroup.Group
+	gtx              context.Context
+	cancel           CancelFunction
+	driver           *toolkit.Driver
+	parameters       map[string]*toolkit.Parameter
+	affectedColumns  map[int]string
+	ctd              *utils.CustomTransformerDefinition
+	sendChan         chan struct{}
+	receiveChan      chan struct{}
+	buf              *bytes.Buffer
+	skipOriginalData bool
 }
 
 func NewCustomCmdTransformer(
 	ctx context.Context, driver *toolkit.Driver, parameters map[string]*toolkit.Parameter,
 	ctd *utils.CustomTransformerDefinition,
 ) (*CustomCmdTransformer, toolkit.ValidationWarnings, error) {
+	var skipOriginalData bool
 	affectedColumns := make(map[int]string)
 	for _, p := range parameters {
 		if p.IsColumn {
@@ -89,17 +91,21 @@ func NewCustomCmdTransformer(
 				return nil, nil, fmt.Errorf("column with name %s is not found", columnName)
 			}
 			affectedColumns[idx] = columnName
+			if p.ColumnProperties != nil && p.ColumnProperties.SkipOriginalData {
+				skipOriginalData = true
+			}
 		}
 	}
 
 	ct := &CustomCmdTransformer{
-		executable:      ctd.Executable,
-		args:            ctd.Args,
-		driver:          driver,
-		parameters:      parameters,
-		affectedColumns: affectedColumns,
-		name:            ctd.Name,
-		ctd:             ctd,
+		executable:       ctd.Executable,
+		args:             ctd.Args,
+		driver:           driver,
+		parameters:       parameters,
+		affectedColumns:  affectedColumns,
+		name:             ctd.Name,
+		ctd:              ctd,
+		skipOriginalData: skipOriginalData,
 	}
 
 	var warnings toolkit.ValidationWarnings
@@ -121,15 +127,16 @@ func (ct *CustomCmdTransformer) GetAffectedColumns() map[int]string {
 func (ct *CustomCmdTransformer) Transform(ctx context.Context, r *toolkit.Record) (*toolkit.Record, error) {
 	//ctx, cancel := context.WithTimeout(ctx, ct.ctd.RowTransformationTimeout)
 	//defer cancel()
-	rrd, err := GetRawRecordDto(r, ct.affectedColumns)
-	if err != nil {
-		return nil, fmt.Errorf("error gettings RawRecordDto: %w", err)
+	var rrd toolkit.RawRecord
+	var err error
+	if !ct.skipOriginalData {
+		rrd, err = GetRawRecordDto(r, ct.affectedColumns)
+		if err != nil {
+			return nil, fmt.Errorf("error gettings RawRecordDto: %w", err)
+		}
 	}
 
 	if err = ct.sendOriginalTuple(ctx, rrd); err != nil {
-		if errors.Is(err, context.DeadlineExceeded) {
-			return nil, ErrRowTransformationTimeout
-		}
 		return nil, fmt.Errorf("cannot send tuple to transformer: %w", err)
 	}
 
@@ -324,8 +331,8 @@ func (ct *CustomCmdTransformer) init(ctx context.Context, args []string) (Cancel
 		Msg("running custom transformer")
 
 	ct.cmd = exec.CommandContext(ctx, ct.executable, args...)
-	ct.sendChan = make(chan struct{})
-	ct.receiveChan = make(chan struct{})
+	ct.sendChan = make(chan struct{}, 1)
+	ct.receiveChan = make(chan struct{}, 1)
 
 	var err error
 	stderr, err := ct.cmd.StderrPipe()
@@ -479,14 +486,19 @@ func (ct *CustomCmdTransformer) stderrForwarder(ctx context.Context, stderr io.R
 
 func (ct *CustomCmdTransformer) sendOriginalTuple(ctx context.Context, rawRecord toolkit.RawRecord) (err error) {
 	go func() {
-		err = json.NewEncoder(ct.stdinWriter).Encode(rawRecord)
+		if rawRecord == nil {
+			_, err = ct.stdinWriter.Write([]byte{'\n'})
+		} else {
+			err = json.NewEncoder(ct.stdinWriter).Encode(rawRecord)
+		}
+
 		ct.sendChan <- struct{}{}
 	}()
 	select {
 	case <-ctx.Done():
 		return ctx.Err()
 	case <-time.After(ct.ctd.RowTransformationTimeout / 2):
-		return fmt.Errorf("transformation timeout")
+		return ErrRowTransformationTimeout
 	case <-ct.sendChan:
 	}
 	if err != nil {
@@ -504,7 +516,7 @@ func (ct *CustomCmdTransformer) receiveTransformedTuple(ctx context.Context) (li
 	case <-ctx.Done():
 		return nil, ctx.Err()
 	case <-time.After(ct.ctd.RowTransformationTimeout / 2):
-		return nil, fmt.Errorf("transformation timeout")
+		return nil, ErrRowTransformationTimeout
 	case <-ct.receiveChan:
 	}
 

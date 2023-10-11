@@ -110,7 +110,7 @@ func (d *Definition) Instance(
 	}
 
 	// Validate schema
-	schemaWarnings, err := d.SchemaValidator(ctx, driver.Table, d.Properties, d.Parameters, types)
+	schemaWarnings, err := d.SchemaValidator(ctx, driver.Table, d.Properties, params, types)
 	if err != nil {
 		return nil, nil, fmt.Errorf("schema validation error: %w", err)
 	}

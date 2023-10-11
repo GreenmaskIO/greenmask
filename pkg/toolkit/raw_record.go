@@ -15,10 +15,6 @@ func (rr RawRecord) GetColumn(idx int) (*RawValue, error) {
 }
 
 func (rr RawRecord) SetColumn(idx int, v *RawValue) error {
-	_, ok := rr[idx]
-	if !ok {
-		return fmt.Errorf("attribute with idx=%d is not found", idx)
-	}
 	rr[idx] = v
 	return nil
 }

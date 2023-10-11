@@ -53,32 +53,25 @@ func (td *TableDumper) Execute(ctx context.Context, tx pgx.Tx, st storages.Stora
 			var pipeline Pipeliner
 			var err error
 			if len(td.table.Transformers) > 0 {
-				if len(td.table.Transformers) == 1 {
-					pipeline, err = NewTransformationPipeline(ctx, td.table, w)
-					if err != nil {
-						return fmt.Errorf("cannot initialize transformation pipeline: %w", err)
-					}
-				} else {
-					pipeline, err = NewTransformationPipelineAsync(ctx, td.table, w)
-					if err != nil {
-						return fmt.Errorf("cannot initialize transformation pipeline: %w", err)
-					}
+				pipeline, err = NewTransformationPipelineAsync(gtx, eg, td.table, w)
+				if err != nil {
+					return fmt.Errorf("cannot initialize transformation pipeline: %w", err)
 				}
 			} else {
 				pipeline = NewPlainDumpPipeline(td.table, w)
 			}
-			if err := pipeline.Init(ctx); err != nil {
+			if err := pipeline.Init(gtx); err != nil {
 				return fmt.Errorf("error initializing transformation pipeline: %w", err)
 			}
 			if err := td.process(gtx, tx, w, pipeline); err != nil {
-				doneErr := pipeline.Done(ctx)
+				doneErr := pipeline.Done(gtx)
 				if doneErr != nil {
 					log.Warn().Err(err).Msg("error terminating transformation pipeline")
 				}
 				return fmt.Errorf("error processing table dump: %w", err)
 			}
 			log.Debug().Msg("transformation pipeline executed successfully")
-			return pipeline.Done(ctx)
+			return pipeline.Done(gtx)
 		},
 	)
 

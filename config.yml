@@ -27,7 +27,7 @@ dump:
 #    dbname: "host=localhost user=postgres password=example dbname=demo port=54315"
     jobs: 10
     exclude-schema: "(\"teSt\"*|test*)"
-    table: "bookings.flights"
+#    table: "bookings.flights"
     load-via-partition-root: true
 
   transformation:
@@ -43,11 +43,11 @@ dump:
             max: "2023-01-02 00:00:00.0+03"
             column: "scheduled_departure"
 
-#        - name: "RandomDate"
-#          params:
-#            min: "2023-02-02 01:00:00.0+03"
-#            max: "2023-03-03 00:00:00.0+03"
-#            column: "scheduled_arrival"
+        - name: "RandomDate"
+          params:
+            min: "2023-02-02 01:00:00.0+03"
+            max: "2023-03-03 00:00:00.0+03"
+            column: "scheduled_arrival"
 
         - name: "RegexpReplace"
           params:
@@ -84,10 +84,14 @@ dump:
             column: "post_code"
             value: "54321"
 
-        - name: "TwoDatesGen"
+#        - name: "TwoDatesGen"
+#          params:
+#            column_a: "scheduled_arrival"
+#            column_b: "actual_arrival"
+
+        - name: "TestTransformer"
           params:
-            column_a: "scheduled_arrival"
-            column_b: "actual_arrival"
+            column: "actual_arrival"
 
         - name: "TestTransformer"
           params:
