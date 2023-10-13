@@ -2,7 +2,6 @@ package custom
 
 import (
 	"bufio"
-	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -64,7 +63,6 @@ type CustomCmdTransformer struct {
 	ctd                *utils.CustomTransformerDefinition
 	sendChan           chan struct{}
 	receiveChan        chan struct{}
-	buf                *bytes.Buffer
 	t                  *time.Ticker
 	skipOriginalData   bool
 	skipTransformation bool
@@ -181,7 +179,6 @@ func (ct *CustomCmdTransformer) Init(ctx context.Context) (err error) {
 					log.Warn().
 						Str("TableSchema", ct.driver.Table.Schema).
 						Str("TableName", ct.driver.Table.Name).
-						Str("TransformerName", ct.name).
 						Str("TransformerName", ct.name).
 						Int("TransformerExitCode", ct.cmd.ProcessState.ExitCode()).
 						Msg("unexpected exit code")
@@ -370,7 +367,6 @@ func (ct *CustomCmdTransformer) init(ctx context.Context, args []string) (Cancel
 				Str("TableSchema", ct.driver.Table.Schema).
 				Str("TableName", ct.driver.Table.Name).
 				Str("TransformerName", ct.name).
-				Str("TransformerName", ct.name).
 				Int("TransformerPid", ct.cmd.Process.Pid).
 				Msg("sending SIGTERM to custom transformer process")
 			if err := ct.cmd.Process.Signal(syscall.SIGTERM); err != nil {
@@ -404,7 +400,6 @@ func (ct *CustomCmdTransformer) init(ctx context.Context, args []string) (Cancel
 				Str("TableSchema", ct.driver.Table.Schema).
 				Str("TableName", ct.driver.Table.Name).
 				Str("TransformerName", ct.name).
-				Str("TransformerName", ct.name).
 				Err(err).
 				Msg("error closing stdin")
 		}
@@ -412,7 +407,6 @@ func (ct *CustomCmdTransformer) init(ctx context.Context, args []string) (Cancel
 		log.Debug().
 			Str("TableSchema", ct.driver.Table.Schema).
 			Str("TableName", ct.driver.Table.Name).
-			Str("TransformerName", ct.name).
 			Str("TransformerName", ct.name).
 			Msg("closing function completed successfully")
 
