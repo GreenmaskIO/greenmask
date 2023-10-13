@@ -81,11 +81,11 @@ func (rbt *RandomBoolTransformer) Done(ctx context.Context) error {
 }
 
 func (rbt *RandomBoolTransformer) Transform(ctx context.Context, r *toolkit2.Record) (*toolkit2.Record, error) {
-	valAny, err := r.GetAttribute(rbt.columnName)
+	val, err := r.GetRawAttributeValue(rbt.columnName)
 	if err != nil {
 		return nil, fmt.Errorf("unable to scan value: %w", err)
 	}
-	if valAny.IsNull && rbt.keepNull {
+	if val.IsNull && rbt.keepNull {
 		return r, nil
 	}
 

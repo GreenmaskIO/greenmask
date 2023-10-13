@@ -211,7 +211,8 @@ func (d *Dump) dataDump(ctx context.Context) error {
 	log.Debug().Msgf("planned %d workers", d.pgDumpOptions.Jobs)
 	eg, gtx := errgroup.WithContext(ctx)
 	eg.Go(func() error {
-		workerEg := &errgroup.Group{}
+		workerEg, gtx := errgroup.WithContext(gtx)
+
 		defer close(result)
 		for j := 0; j < d.pgDumpOptions.Jobs; j++ {
 			workerEg.Go(

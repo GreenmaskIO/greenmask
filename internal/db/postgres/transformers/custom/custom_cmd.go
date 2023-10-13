@@ -65,6 +65,7 @@ type CustomCmdTransformer struct {
 	sendChan         chan struct{}
 	receiveChan      chan struct{}
 	buf              *bytes.Buffer
+	t                *time.Ticker
 	skipOriginalData bool
 }
 
@@ -106,6 +107,7 @@ func NewCustomCmdTransformer(
 		name:             ctd.Name,
 		ctd:              ctd,
 		skipOriginalData: skipOriginalData,
+		t:                time.NewTicker(ctd.RowTransformationTimeout),
 	}
 
 	var warnings toolkit.ValidationWarnings
@@ -127,6 +129,7 @@ func (ct *CustomCmdTransformer) GetAffectedColumns() map[int]string {
 func (ct *CustomCmdTransformer) Transform(ctx context.Context, r *toolkit.Record) (*toolkit.Record, error) {
 	//ctx, cancel := context.WithTimeout(ctx, ct.ctd.RowTransformationTimeout)
 	//defer cancel()
+	ct.t.Reset(ct.ctd.RowTransformationTimeout)
 	var rrd toolkit.RawRecord
 	var err error
 	if !ct.skipOriginalData {
@@ -497,7 +500,7 @@ func (ct *CustomCmdTransformer) sendOriginalTuple(ctx context.Context, rawRecord
 	select {
 	case <-ctx.Done():
 		return ctx.Err()
-	case <-time.After(ct.ctd.RowTransformationTimeout / 2):
+	case <-ct.t.C:
 		return ErrRowTransformationTimeout
 	case <-ct.sendChan:
 	}
@@ -515,7 +518,7 @@ func (ct *CustomCmdTransformer) receiveTransformedTuple(ctx context.Context) (li
 	select {
 	case <-ctx.Done():
 		return nil, ctx.Err()
-	case <-time.After(ct.ctd.RowTransformationTimeout / 2):
+	case <-ct.t.C:
 		return nil, ErrRowTransformationTimeout
 	case <-ct.receiveChan:
 	}

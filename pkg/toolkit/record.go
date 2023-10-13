@@ -2,8 +2,6 @@ package toolkit
 
 import (
 	"fmt"
-
-	"github.com/jackc/pgx/v5/pgtype"
 )
 
 type Tuple map[string]*Value
@@ -11,13 +9,18 @@ type Tuple map[string]*Value
 type Record struct {
 	Driver *Driver
 	Row    RowDriver
+	bufs   [][]byte
 }
 
 func NewRecord(driver *Driver, row RowDriver) *Record {
-
+	bufs := make([][]byte, len(driver.Table.Columns))
+	for idx, _ := range bufs {
+		bufs[idx] = make([]byte, 0, 128)
+	}
 	return &Record{
 		Driver: driver,
 		Row:    row,
+		bufs:   bufs,
 	}
 }
 
@@ -61,7 +64,7 @@ func (r *Record) ScanAttribute(name string, v any) (bool, error) {
 	if rawData.IsNull {
 		return true, nil
 	} else {
-		if err := r.Driver.ScanByTypeOid(uint32(c.TypeOid), rawData.Data, v); err != nil {
+		if err := r.Driver.ScanAttrByIdx(idx, rawData.Data, v); err != nil {
 			return false, fmt.Errorf("cannot scan: %w", err)
 		}
 	}
@@ -69,7 +72,7 @@ func (r *Record) ScanAttribute(name string, v any) (bool, error) {
 }
 
 func (r *Record) GetAttribute(name string) (*Value, error) {
-	idx, c, ok := r.Driver.GetColumnByName(name)
+	idx, ok := r.Driver.AttrIdxMap[name]
 	if !ok {
 		return nil, fmt.Errorf(`unknown column name "%s"`, name)
 	}
@@ -77,14 +80,14 @@ func (r *Record) GetAttribute(name string) (*Value, error) {
 	if err != nil {
 		return nil, fmt.Errorf(
 			"error getting column %s.%s.%s value: %w",
-			r.Driver.Table.Schema, r.Driver.Table.Name, c.Name,
+			r.Driver.Table.Schema, r.Driver.Table.Name, name,
 			err,
 		)
 	}
 	if rawData.IsNull {
 		return NewValue(nil, true), nil
 	}
-	decodedValue, err := r.Driver.DecodeByTypeOid(uint32(c.TypeOid), rawData.Data)
+	decodedValue, err := r.Driver.DecodeAttrByIdx(idx, rawData.Data)
 	if err != nil {
 		return nil, fmt.Errorf("error decoding arribute: %w", err)
 	}
@@ -112,7 +115,7 @@ func (r *Record) SetAttribute(name string, v any) error {
 			return fmt.Errorf("error setting column value in RowDriver: %w", err)
 		}
 	} else {
-		encodedValue, err := r.encodeValue(r.Driver.Table.Columns[idx], value.Value)
+		encodedValue, err := r.encodeValue(idx, value.Value)
 		if err != nil {
 			return fmt.Errorf("unable to encode attr value: %w", err)
 		}
@@ -128,38 +131,14 @@ func (r *Record) Encode() (RowDriver, error) {
 	return r.Row, nil
 }
 
-func (r *Record) encodeValue(c *Column, v any) (res []byte, err error) {
+func (r *Record) encodeValue(idx int, v any) (res []byte, err error) {
 
 	switch vv := v.(type) {
 	case string:
-		// We need to encode-decode procedure v that are assigned as string
-		// v for non textual attributes
-		// TODO: Check condition
-		if c.TypeOid != pgtype.VarcharOID && c.TypeOid != pgtype.TextOID && c.TypeOid != pgtype.JSONOID &&
-			c.TypeOid != pgtype.JSONBOID {
-			decodedVal, err := r.Driver.DecodeAttr(c.Name, []byte(vv))
-			if err != nil {
-				return nil, fmt.Errorf("unable to force decoding textual v of attribte %s for non textual %s type: %w", c.Name, c.TypeName, err)
-			}
-
-			if tn, ok := r.Driver.columnTypeOverrides[c.Name]; ok {
-				res, err = r.Driver.EncodeByTypeName(tn, decodedVal, nil)
-				if err != nil {
-					return nil, fmt.Errorf("encoding error: %w", err)
-				}
-			} else {
-				res, err = r.Driver.EncodeByTypeOid(uint32(c.TypeOid), decodedVal, nil)
-				if err != nil {
-					return nil, fmt.Errorf("encoding error: %w", err)
-				}
-			}
-
-		} else {
-			res = []byte(vv)
-		}
-
+		res = []byte(vv)
 	default:
-		res, err = r.Driver.EncodeAttr(c.Name, vv, nil)
+		res = r.bufs[idx]
+		res, err = r.Driver.EncodeAttrByIdx(idx, vv, res[:0])
 		if err != nil {
 			return nil, fmt.Errorf("encoding error: %w", err)
 		}

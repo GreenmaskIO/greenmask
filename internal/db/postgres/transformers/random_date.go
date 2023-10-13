@@ -53,7 +53,7 @@ var RandomDateTransformerDefinition = utils.NewDefinition(
 	).SetDefaultValue(toolkit2.ParamsValue("true")),
 )
 
-type dateGeneratorFunc func(r *rand.Rand, startDate *time.Time, endDate *time.Time, truncate *string) time.Time
+type dateGeneratorFunc func(r *rand.Rand, startDate *time.Time, delta *int64, truncate *string) *time.Time
 
 type RandomDateTransformerParams struct {
 	Min      string  `mapstructure:"min" validate:"required"`
@@ -71,6 +71,7 @@ type RandomDateTransformer struct {
 	max             *time.Time
 	truncate        string
 	keepNull        bool
+	delta           *int64
 	affectedColumns map[int]string
 }
 
@@ -95,7 +96,7 @@ func NewRandomDateTransformer(ctx context.Context, driver *toolkit2.Driver, para
 	p = parameters["min"]
 	v, err := p.Value()
 	if err != nil {
-		return nil, nil, fmt.Errorf(`error parsing "min" parameter`)
+		return nil, nil, fmt.Errorf(`error parsing "min" parameter: %w`, err)
 	}
 	minTime, ok = v.(time.Time)
 	if !ok {
@@ -105,7 +106,7 @@ func NewRandomDateTransformer(ctx context.Context, driver *toolkit2.Driver, para
 	p = parameters["max"]
 	v, err = p.Value()
 	if err != nil {
-		return nil, nil, fmt.Errorf(`error parsing "max" parameter`)
+		return nil, nil, fmt.Errorf(`error parsing "max" parameter: %w`, err)
 	}
 
 	maxTime, ok = v.(time.Time)
@@ -135,6 +136,7 @@ func NewRandomDateTransformer(ctx context.Context, driver *toolkit2.Driver, para
 				SetMsg("max value must be greater than min"),
 		}, nil
 	}
+	delta := int64(maxTime.Sub(minTime))
 	return &RandomDateTransformer{
 		keepNull:        keepNull,
 		truncate:        truncate,
@@ -144,6 +146,7 @@ func NewRandomDateTransformer(ctx context.Context, driver *toolkit2.Driver, para
 		generate:        generator,
 		rand:            rand.New(rand.NewSource(time.Now().UnixMicro())),
 		affectedColumns: affectedColumns,
+		delta:           &delta,
 	}, nil, nil
 
 }
@@ -161,7 +164,7 @@ func (rdt *RandomDateTransformer) Done(ctx context.Context) error {
 }
 
 func (rdt *RandomDateTransformer) Transform(ctx context.Context, r *toolkit2.Record) (*toolkit2.Record, error) {
-	valAny, err := r.GetAttribute(rdt.columnName)
+	valAny, err := r.GetRawAttributeValue(rdt.columnName)
 	if err != nil {
 		return nil, fmt.Errorf("unable to scan value: %w", err)
 	}
@@ -169,26 +172,24 @@ func (rdt *RandomDateTransformer) Transform(ctx context.Context, r *toolkit2.Rec
 		return r, nil
 	}
 
-	res := rdt.generate(rdt.rand, rdt.min, rdt.max, &rdt.truncate)
-	if err := r.SetAttribute(rdt.columnName, &res); err != nil {
+	res := rdt.generate(rdt.rand, rdt.min, rdt.delta, &rdt.truncate)
+	if err := r.SetAttribute(rdt.columnName, res); err != nil {
 		return nil, fmt.Errorf("unable to set new value: %w", err)
 	}
 	return r, nil
 }
 
-func generateRandomTime(r *rand.Rand, startDate *time.Time, endDate *time.Time, truncate *string) time.Time {
-	delta := endDate.UnixMicro() - startDate.UnixMicro()
-	return time.UnixMicro(r.Int63n(delta) + startDate.UnixMicro())
+func generateRandomTime(r *rand.Rand, startDate *time.Time, delta *int64, truncate *string) *time.Time {
+	res := startDate.Add(time.Duration(r.Int63n(*delta)))
+	return &res
 }
 
-func generateRandomTimeTruncate(r *rand.Rand, startDate *time.Time, endDate *time.Time, truncate *string) time.Time {
-	delta := endDate.UnixMicro() - startDate.UnixMicro()
-	randVal := time.UnixMicro(r.Int63n(delta) + startDate.UnixMicro())
-	return truncateDate(&randVal, truncate)
+func generateRandomTimeTruncate(r *rand.Rand, startDate *time.Time, delta *int64, truncate *string) *time.Time {
+	return truncateDate(generateRandomTime(r, startDate, delta, truncate), truncate)
 }
 
 // TruncateDate - truncate date till the provided part of date
-func truncateDate(t *time.Time, part *string) time.Time {
+func truncateDate(t *time.Time, part *string) *time.Time {
 	var month time.Month = 1
 	var day = 1
 	var year, hour, minute, second, nano int
@@ -216,9 +217,10 @@ func truncateDate(t *time.Time, part *string) time.Time {
 	default:
 		panic(fmt.Sprintf(`wrong Truncate value "%s"`, *part))
 	}
-	return time.Date(year, month, day, hour, minute, second, nano,
+	res := time.Date(year, month, day, hour, minute, second, nano,
 		t.Location(),
 	)
+	return &res
 }
 
 func init() {

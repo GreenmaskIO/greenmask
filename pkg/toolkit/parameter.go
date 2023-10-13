@@ -153,13 +153,13 @@ func (p *Parameter) Value() (any, error) {
 		// TODO: Be careful - this may cause an error in Scan func if the the returning value is not a pointer
 		val, err := p.Driver.DecodeByTypeOid(uint32(p.LinkedColumnParameter.Column.TypeOid), p.rawValue)
 		if err != nil {
-			return nil, fmt.Errorf("unable to scan parameter via Driver")
+			return nil, fmt.Errorf("unable to scan parameter via Driver: %w", err)
 		}
 		p.value = val
 	} else if p.CastDbType != "" {
 		val, err := p.Driver.DecodeByTypeName(p.CastDbType, p.rawValue)
 		if err != nil {
-			return nil, fmt.Errorf("unable to scan parameter via Driver")
+			return nil, fmt.Errorf("unable to scan parameter via Driver: %w", err)
 		}
 		p.value = val
 	} else if p.IsColumn {
@@ -196,13 +196,13 @@ func (p *Parameter) Scan(dest any) error {
 		case *time.Time:
 			val, err := p.Driver.DecodeByTypeName(p.CastDbType, p.rawValue)
 			if err != nil {
-				return fmt.Errorf("unable to scan parameter via Driver")
+				return fmt.Errorf("unable to scan parameter via Driver: %w", err)
 			}
 			valTime := val.(time.Time)
 			p.value = &valTime
 		default:
 			if err := p.Driver.ScanByTypeName(p.CastDbType, p.rawValue, p.value); err != nil {
-				return fmt.Errorf("unable to scan parameter via Driver")
+				return fmt.Errorf("unable to scan parameter via Driver: %w", err)
 			}
 		}
 	} else if p.LinkedColumnParameter != nil {
@@ -216,13 +216,13 @@ func (p *Parameter) Scan(dest any) error {
 		case *time.Time:
 			val, err := p.Driver.DecodeByTypeOid(uint32(p.LinkedColumnParameter.Column.TypeOid), p.rawValue)
 			if err != nil {
-				return fmt.Errorf("unable to scan parameter via Driver")
+				return fmt.Errorf("unable to scan parameter via Driver: %w", err)
 			}
 			valTime := val.(time.Time)
 			p.value = &valTime
 		default:
 			if err := p.Driver.ScanByTypeOid(uint32(p.LinkedColumnParameter.Column.TypeOid), p.rawValue, p.value); err != nil {
-				return fmt.Errorf("unable to scan parameter via Driver")
+				return fmt.Errorf("unable to scan parameter via Driver: %w", err)
 			}
 		}
 
@@ -346,7 +346,7 @@ func (p *Parameter) Init(driver *Driver, types []*Type, params []*Parameter, raw
 				},
 				nil
 		}
-		pgType, ok := driver.TypeMap.TypeForOID(uint32(column.TypeOid))
+		pgType, ok := driver.SharedTypeMap.TypeForOID(uint32(column.TypeOid))
 		if !ok {
 			return ValidationWarnings{
 					NewValidationWarning().
@@ -368,7 +368,7 @@ func (p *Parameter) Init(driver *Driver, types []*Type, params []*Parameter, raw
 		var pgRootType *pgtype.Type
 		if idx != -1 {
 			t = types[idx]
-			pgRootType, ok = driver.TypeMap.TypeForOID(uint32(t.RootBuiltInType))
+			pgRootType, ok = driver.SharedTypeMap.TypeForOID(uint32(t.RootBuiltInType))
 			if !ok {
 				return nil, fmt.Errorf("unknown root type %d", t.RootBuiltInType)
 			}
@@ -380,7 +380,7 @@ func (p *Parameter) Init(driver *Driver, types []*Type, params []*Parameter, raw
 			var overriddenPgType *pgtype.Type
 			name, ok := driver.columnTypeOverrides[column.Name]
 			if ok {
-				overriddenPgType, ok = driver.TypeMap.TypeForName(name)
+				overriddenPgType, ok = driver.SharedTypeMap.TypeForName(name)
 				if !ok {
 					return ValidationWarnings{
 							NewValidationWarning().
@@ -415,7 +415,7 @@ func (p *Parameter) Init(driver *Driver, types []*Type, params []*Parameter, raw
 
 	if p.ColumnProperties != nil {
 		for _, at := range p.ColumnProperties.AllowedTypes {
-			_, ok := driver.TypeMap.TypeForName(at)
+			_, ok := driver.SharedTypeMap.TypeForName(at)
 			if !ok {
 				warnings = append(warnings, NewValidationWarning().
 					SetSeverity(WarningValidationSeverity).
@@ -427,7 +427,7 @@ func (p *Parameter) Init(driver *Driver, types []*Type, params []*Parameter, raw
 		}
 	}
 	if p.CastDbType != "" {
-		_, ok := driver.TypeMap.TypeForName(p.CastDbType)
+		_, ok := driver.SharedTypeMap.TypeForName(p.CastDbType)
 		if !ok {
 			return ValidationWarnings{
 					NewValidationWarning().

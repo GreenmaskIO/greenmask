@@ -43,7 +43,7 @@ func NewRuntimeContext(
 		return nil, fmt.Errorf("cannot discover types: %w", err)
 	}
 	if len(types) > 0 {
-		toolkit2.TryRegisterCustomTypesV2(typeMap, types)
+		toolkit2.TryRegisterCustomTypesV2(typeMap, types, false)
 	}
 
 	tables, warnings, err := validateAndBuildTablesConfig(ctx, tx, typeMap, cfg, r, version, types)
@@ -55,6 +55,7 @@ func NewRuntimeContext(
 	if err != nil {
 		return nil, fmt.Errorf("cannot build dump object list: %w", err)
 	}
+
 	return &RuntimeContext{
 		Tables:             tables,
 		Types:              types,

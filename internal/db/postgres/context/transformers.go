@@ -4,16 +4,14 @@ import (
 	"context"
 	"fmt"
 
-	toolkit2 "github.com/greenmaskio/greenmask/pkg/toolkit"
-	"github.com/jackc/pgx/v5/pgtype"
-
 	transformersUtils "github.com/greenmaskio/greenmask/internal/db/postgres/transformers/utils"
 	"github.com/greenmaskio/greenmask/internal/domains"
+	toolkit2 "github.com/greenmaskio/greenmask/pkg/toolkit"
 )
 
 func initTransformer(
 	ctx context.Context, d *toolkit2.Driver,
-	c *domains.TransformerConfig, tm *pgtype.Map,
+	c *domains.TransformerConfig,
 	r *transformersUtils.TransformerRegistry,
 	types []*toolkit2.Type,
 ) (transformersUtils.Transformer, toolkit2.ValidationWarnings, error) {

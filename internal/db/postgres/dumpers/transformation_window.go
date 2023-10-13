@@ -97,9 +97,7 @@ func (tw *TransformationWindow) Transform(ctx context.Context, r *toolkit.Record
 		case <-ctx.Done():
 			return nil, ctx.Err()
 		case <-tw.ctx.Done():
-			if err := tw.eg.Wait(); err != nil {
-				return nil, err
-			}
+			return nil, tw.ctx.Err()
 		case ch <- struct{}{}:
 
 		}

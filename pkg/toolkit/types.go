@@ -101,7 +101,7 @@ func (t *Type) IsAffected(p *Parameter) (w ValidationWarnings) {
 	return
 }
 
-func TryRegisterCustomTypesV2(typeMap *pgtype.Map, types []*Type) {
+func TryRegisterCustomTypesV2(typeMap *pgtype.Map, types []*Type, silent bool) {
 	for _, t := range types {
 		// Test is this type already registered
 		_, ok := typeMap.TypeForOID(uint32(t.Oid))
@@ -111,7 +111,7 @@ func TryRegisterCustomTypesV2(typeMap *pgtype.Map, types []*Type) {
 		if t.Kind == 'd' {
 			if t.BaseType != 0 {
 				baseType, ok := typeMap.TypeForOID(uint32(t.BaseType))
-				if !ok {
+				if !ok && !silent {
 					log.Warn().
 						Str("Context", "CustomTypeRegistering").
 						Str("Schema", t.Schema).
@@ -127,7 +127,7 @@ func TryRegisterCustomTypesV2(typeMap *pgtype.Map, types []*Type) {
 					Codec: baseType.Codec,
 				})
 				arrayType, ok := typeMap.TypeForName(fmt.Sprintf("_%s", baseType.Name))
-				if !ok {
+				if !ok && !silent {
 					log.Warn().
 						Str("Context", "CustomTypeRegistering").
 						Str("Schema", t.Schema).
@@ -144,13 +144,15 @@ func TryRegisterCustomTypesV2(typeMap *pgtype.Map, types []*Type) {
 				})
 			}
 		} else {
-			log.Debug().
-				Str("Context", "CustomTypeRegistering").
-				Str("Schema", t.Schema).
-				Str("Name", t.Name).
-				Int("Oid", int(t.Oid)).
-				Str("Kind", fmt.Sprintf("%c", t.Kind)).
-				Msg("Only domain types can be automatically registered: skipping")
+			if !silent {
+				log.Debug().
+					Str("Context", "CustomTypeRegistering").
+					Str("Schema", t.Schema).
+					Str("Name", t.Name).
+					Int("Oid", int(t.Oid)).
+					Str("Kind", fmt.Sprintf("%c", t.Kind)).
+					Msg("Only domain types can be automatically registered: skipping")
+			}
 		}
 	}
 }

@@ -47,14 +47,8 @@ func (tt *TestTransformer) Validate(ctx context.Context) (toolkit.ValidationWarn
 }
 
 func (tt *TestTransformer) Transform(ctx context.Context, r *toolkit.Record) (*toolkit.Record, error) {
-
-	var err error
-	//_, err = r.GetAttribute(tt.columnName)
-	//if err != nil {
-	//	return nil, fmt.Errorf("error scanning attrbite: %w", err)
-	//}
 	now := time.Now()
-	if err = r.SetAttribute(tt.columnName, &now); err != nil {
+	if err := r.SetAttribute(tt.columnName, &now); err != nil {
 		return nil, fmt.Errorf("error setting attrbite: %w", err)
 	}
 

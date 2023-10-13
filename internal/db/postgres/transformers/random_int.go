@@ -114,11 +114,11 @@ func (rit *RandomIntTransformer) Done(ctx context.Context) error {
 }
 
 func (rit *RandomIntTransformer) Transform(ctx context.Context, r *toolkit2.Record) (*toolkit2.Record, error) {
-	valAny, err := r.GetAttribute(rit.columnName)
+	val, err := r.GetAttribute(rit.columnName)
 	if err != nil {
 		return nil, fmt.Errorf("unable to scan value: %w", err)
 	}
-	if valAny.IsNull && rit.keepNull {
+	if val.IsNull && rit.keepNull {
 		return r, nil
 	}
 

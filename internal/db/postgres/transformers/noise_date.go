@@ -2,7 +2,6 @@ package transformers
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"math/rand"
 	"strings"
@@ -44,7 +43,7 @@ var NoiseDateTransformerDefinition = utils.NewDefinition(
 	),
 )
 
-type dateNoiseFunc func(r *rand.Rand, ration time.Duration, original *time.Time, truncate *string) time.Time
+type dateNoiseFunc func(r *rand.Rand, ration time.Duration, original *time.Time, truncate *string) *time.Time
 
 type NoiseDateTransformer struct {
 	columnName      string
@@ -54,6 +53,7 @@ type NoiseDateTransformer struct {
 	rand            *rand.Rand
 	generate        dateNoiseFunc
 	affectedColumns map[int]string
+	res             *time.Time
 }
 
 func NewNoiseDateTransformer(ctx context.Context, driver *toolkit2.Driver, parameters map[string]*toolkit2.Parameter) (utils.Transformer, toolkit2.ValidationWarnings, error) {
@@ -76,7 +76,7 @@ func NewNoiseDateTransformer(ctx context.Context, driver *toolkit2.Driver, param
 	p = parameters["ratio"]
 	v, err := p.Value()
 	if err != nil {
-		return nil, nil, fmt.Errorf(`error parsing "ratio" parameter`)
+		return nil, nil, fmt.Errorf(`error parsing "ratio" parameter: %w`, err)
 	}
 	intervalValue, ok := v.(pgtype.Interval)
 	if !ok {
@@ -103,6 +103,7 @@ func NewNoiseDateTransformer(ctx context.Context, driver *toolkit2.Driver, param
 		rand:            rand.New(rand.NewSource(time.Now().UnixMicro())),
 		generate:        generator,
 		affectedColumns: affectedColumns,
+		res:             new(time.Time),
 	}, nil, nil
 }
 
@@ -119,32 +120,30 @@ func (ndt *NoiseDateTransformer) Done(ctx context.Context) error {
 }
 
 func (ndt *NoiseDateTransformer) Transform(ctx context.Context, r *toolkit2.Record) (*toolkit2.Record, error) {
-	val, err := r.GetAttribute(ndt.columnName)
+
+	isNull, err := r.ScanAttribute(ndt.columnName, ndt.res)
 	if err != nil {
 		return nil, fmt.Errorf("unable to scan attribute value: %w", err)
 	}
-	if val.IsNull {
+	if isNull {
 		return r, nil
 	}
 
-	timeVal, ok := val.Value.(time.Time)
-	if !ok {
-		return nil, errors.New("cannot cast to time.Time")
-	}
-	resTime := ndt.generate(ndt.rand, ndt.ratio, &timeVal, &ndt.truncate)
+	resTime := ndt.generate(ndt.rand, ndt.ratio, ndt.res, &ndt.truncate)
 	if err := r.SetAttribute(ndt.columnName, resTime); err != nil {
 		return nil, fmt.Errorf("unable to set new value: %w", err)
 	}
 	return r, nil
 }
 
-func generateNoisedTime(r *rand.Rand, ratio time.Duration, val *time.Time, truncate *string) time.Time {
-	return time.UnixMicro(val.UnixMicro() + r.Int63n(int64(ratio)))
+func generateNoisedTime(r *rand.Rand, ratio time.Duration, val *time.Time, truncate *string) *time.Time {
+	res := val.Add(ratio)
+	return &res
 }
 
-func generateNoisedTimeTruncate(r *rand.Rand, ratio time.Duration, val *time.Time, truncate *string) time.Time {
-	randVal := time.UnixMicro(val.UnixMicro() + r.Int63n(int64(ratio)))
-	return truncateDate(&randVal, truncate)
+func generateNoisedTimeTruncate(r *rand.Rand, ratio time.Duration, val *time.Time, truncate *string) *time.Time {
+	res := val.Add(ratio)
+	return truncateDate(&res, truncate)
 }
 
 func init() {

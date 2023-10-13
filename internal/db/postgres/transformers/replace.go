@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"github.com/greenmaskio/greenmask/internal/db/postgres/transformers/utils"
-	toolkit2 "github.com/greenmaskio/greenmask/pkg/toolkit"
+	"github.com/greenmaskio/greenmask/pkg/toolkit"
 )
 
 var ReplaceTransformerDefinition = utils.NewDefinition(
@@ -16,33 +16,34 @@ var ReplaceTransformerDefinition = utils.NewDefinition(
 
 	NewReplaceTransformer,
 
-	toolkit2.MustNewParameter(
+	toolkit.MustNewParameter(
 		"column",
 		"column name",
-	).SetIsColumn(toolkit2.NewColumnProperties().
+	).SetIsColumn(toolkit.NewColumnProperties().
 		SetAffected(true),
 	).SetRequired(true),
 
-	toolkit2.MustNewParameter(
+	toolkit.MustNewParameter(
 		"value",
 		"value to replace",
 	).SetRequired(true).
 		SetLinkParameter("column"),
 
-	toolkit2.MustNewParameter(
+	toolkit.MustNewParameter(
 		"keep_null",
 		"do not replace NULL values to random value",
-	).SetDefaultValue(toolkit2.ParamsValue("true")),
+	).SetDefaultValue(toolkit.ParamsValue("true")),
 )
 
 type ReplaceTransformer struct {
 	columnName      string
 	keepNull        bool
 	value           any
+	rawValue        *toolkit.RawValue
 	affectedColumns map[int]string
 }
 
-func NewReplaceTransformer(ctx context.Context, driver *toolkit2.Driver, parameters map[string]*toolkit2.Parameter) (utils.Transformer, toolkit2.ValidationWarnings, error) {
+func NewReplaceTransformer(ctx context.Context, driver *toolkit.Driver, parameters map[string]*toolkit.Parameter) (utils.Transformer, toolkit.ValidationWarnings, error) {
 
 	var columnName string
 	var value any
@@ -64,6 +65,11 @@ func NewReplaceTransformer(ctx context.Context, driver *toolkit2.Driver, paramet
 	if err != nil {
 		return nil, nil, fmt.Errorf(`error getting "value" parameter`)
 	}
+	buf := make([]byte, 0, 1000)
+	buf, err = driver.EncodeAttrName(columnName, value, buf)
+	if err != nil {
+		return nil, nil, fmt.Errorf(`error encoding "value" to RawValue: %w`, err)
+	}
 
 	p = parameters["keep_null"]
 	if err := p.Scan(&keepNull); err != nil {
@@ -75,6 +81,7 @@ func NewReplaceTransformer(ctx context.Context, driver *toolkit2.Driver, paramet
 		keepNull:        keepNull,
 		value:           value,
 		affectedColumns: affectedColumns,
+		rawValue:        toolkit.NewRawValue(buf, false),
 	}, nil, nil
 }
 
@@ -90,16 +97,16 @@ func (rt *ReplaceTransformer) Done(ctx context.Context) error {
 	return nil
 }
 
-func (rt *ReplaceTransformer) Transform(ctx context.Context, r *toolkit2.Record) (*toolkit2.Record, error) {
-	valAny, err := r.GetAttribute(rt.columnName)
+func (rt *ReplaceTransformer) Transform(ctx context.Context, r *toolkit.Record) (*toolkit.Record, error) {
+	val, err := r.GetRawAttributeValue(rt.columnName)
 	if err != nil {
 		return nil, fmt.Errorf("unable to scan value: %w", err)
 	}
-	if valAny.IsNull && rt.keepNull {
+	if val.IsNull && rt.keepNull {
 		return r, nil
 	}
 
-	if err := r.SetAttribute(rt.columnName, rt.value); err != nil {
+	if err := r.SetRawAttributeValueByName(rt.columnName, rt.rawValue); err != nil {
 		return nil, fmt.Errorf("unable to set new value: %w", err)
 	}
 	return r, nil

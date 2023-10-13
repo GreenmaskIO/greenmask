@@ -27,12 +27,12 @@ dump:
 #    dbname: "host=localhost user=postgres password=example dbname=demo port=54315"
     jobs: 10
     exclude-schema: "(\"teSt\"*|test*)"
-#    table: "bookings.flights"
+    table: "bookings.flights3"
     load-via-partition-root: true
 
   transformation:
     - schema: "bookings"
-      name: "flights"
+      name: "flights3"
 #      query: "select * from bookings.flights limit 1000"
 #      columns_type_override:
 #        post_code: "int4"
@@ -43,10 +43,9 @@ dump:
             max: "2023-01-02 00:00:00.0+03"
             column: "scheduled_departure"
 
-        - name: "RandomDate"
+        - name: "NoiseDate"
           params:
-            min: "2023-02-02 01:00:00.0+03"
-            max: "2023-03-03 00:00:00.0+03"
+            ratio: "01:00:00"
             column: "scheduled_arrival"
 
         - name: "RegexpReplace"
@@ -61,18 +60,18 @@ dump:
             regexp: "On Time"
             replace: "Delayed"
 
-#        - name: "RandomDate"
-#          params:
-#            column: "actual_departure"
-#            min: "2023-01-03 01:00:00.0+03"
-#            max: "2023-01-04 00:00:00.0+03"
-#
-#        - name: "RandomDate"
-#          params:
-#            column: "actual_arrival"
-#            min: "2023-01-04 01:00:00.0+03"
-#            max: "2023-01-05 00:00:00.0+03"
-#
+        - name: "RandomDate"
+          params:
+            column: "actual_departure"
+            min: "2023-01-03 01:00:00.0+03"
+            max: "2023-01-04 00:00:00.0+03"
+
+        - name: "RandomDate"
+          params:
+            column: "actual_arrival"
+            min: "2023-01-04 01:00:00.0+03"
+            max: "2023-01-05 00:00:00.0+03"
+
 #        - name: "RandomInt"
 #          params:
 #            column: "post_code"
@@ -89,13 +88,13 @@ dump:
 #            column_a: "scheduled_arrival"
 #            column_b: "actual_arrival"
 
-        - name: "TestTransformer"
-          params:
-            column: "actual_arrival"
-
-        - name: "TestTransformer"
-          params:
-            column: "actual_departure"
+#        - name: "TestTransformer"
+#          params:
+#            column: "actual_arrival"
+#
+#        - name: "TestTransformer"
+#          params:
+#            column: "actual_departure"
 
     - schema: "bookings"
       name: "aircrafts_data"
