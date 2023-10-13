@@ -5,6 +5,7 @@ import (
 	"io"
 )
 
+// DtoApi - API for interaction with cmd transformer
 type DtoApi interface {
 	// Skip - decide should be this record skipped or not. Useful for decreasing IO time and useless interaction
 	Skip(r *toolkit.Record) bool

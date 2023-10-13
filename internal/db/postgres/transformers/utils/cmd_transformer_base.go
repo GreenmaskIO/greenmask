@@ -250,6 +250,28 @@ func (ctb *CmdTransformerBase) ReceiveStderrLine(ctx context.Context) (line []by
 	return line, nil
 }
 
+func (ctb *CmdTransformerBase) ReceiveStdoutLine(ctx context.Context) (line []byte, err error) {
+	go func() {
+		line, _, err = ctb.stdoutReader.ReadLine()
+		ctb.receiveChan <- struct{}{}
+	}()
+	select {
+	case <-ctx.Done():
+		return nil, nil
+	case <-ctb.receiveChan:
+	}
+
+	if err != nil {
+		if errors.Is(err, io.EOF) || errors.Is(err, os.ErrClosed) {
+			return nil, nil
+		}
+		log.Debug().Err(err).Msg("line reader error")
+		return nil, err
+	}
+
+	return line, nil
+}
+
 func (ctb *CmdTransformerBase) SendOriginalTuple(ctx context.Context, rawRecord toolkit.RowDriver) (err error) {
 
 	go func() {
