@@ -82,9 +82,9 @@ func main() {
 		fmt.Printf("main: waited\n")
 	}
 	cancel()
+	time.Sleep(1 * time.Second)
 	c.L.Lock()
 	c.Broadcast()
 	c.L.Unlock()
-	wg.Wait()
 	eg.Wait()
 }

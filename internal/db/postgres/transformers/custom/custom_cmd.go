@@ -47,26 +47,27 @@ func ProduceNewCmdTransformerFunction(ctd *utils.CustomTransformerDefinition) ut
 }
 
 type CustomCmdTransformer struct {
-	name             string
-	executable       string
-	args             []string
-	cmd              *exec.Cmd
-	stdoutReader     *bufio.Reader
-	stderrReader     *bufio.Reader
-	stdinWriter      io.Writer
-	warnings         []*toolkit.ValidationWarning
-	eg               *errgroup.Group
-	gtx              context.Context
-	cancel           CancelFunction
-	driver           *toolkit.Driver
-	parameters       map[string]*toolkit.Parameter
-	affectedColumns  map[int]string
-	ctd              *utils.CustomTransformerDefinition
-	sendChan         chan struct{}
-	receiveChan      chan struct{}
-	buf              *bytes.Buffer
-	t                *time.Ticker
-	skipOriginalData bool
+	name               string
+	executable         string
+	args               []string
+	cmd                *exec.Cmd
+	stdoutReader       *bufio.Reader
+	stderrReader       *bufio.Reader
+	stdinWriter        io.Writer
+	warnings           []*toolkit.ValidationWarning
+	eg                 *errgroup.Group
+	gtx                context.Context
+	cancel             CancelFunction
+	driver             *toolkit.Driver
+	parameters         map[string]*toolkit.Parameter
+	affectedColumns    map[int]string
+	ctd                *utils.CustomTransformerDefinition
+	sendChan           chan struct{}
+	receiveChan        chan struct{}
+	buf                *bytes.Buffer
+	t                  *time.Ticker
+	skipOriginalData   bool
+	skipTransformation bool
 }
 
 func NewCustomCmdTransformer(
@@ -127,8 +128,6 @@ func (ct *CustomCmdTransformer) GetAffectedColumns() map[int]string {
 }
 
 func (ct *CustomCmdTransformer) Transform(ctx context.Context, r *toolkit.Record) (*toolkit.Record, error) {
-	//ctx, cancel := context.WithTimeout(ctx, ct.ctd.RowTransformationTimeout)
-	//defer cancel()
 	ct.t.Reset(ct.ctd.RowTransformationTimeout)
 	var rrd toolkit.RawRecord
 	var err error

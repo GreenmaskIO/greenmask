@@ -9,18 +9,12 @@ type Tuple map[string]*Value
 type Record struct {
 	Driver *Driver
 	Row    RowDriver
-	bufs   [][]byte
 }
 
 func NewRecord(driver *Driver, row RowDriver) *Record {
-	bufs := make([][]byte, len(driver.Table.Columns))
-	for idx, _ := range bufs {
-		bufs[idx] = make([]byte, 0, 128)
-	}
 	return &Record{
 		Driver: driver,
 		Row:    row,
-		bufs:   bufs,
 	}
 }
 
@@ -137,8 +131,7 @@ func (r *Record) encodeValue(idx int, v any) (res []byte, err error) {
 	case string:
 		res = []byte(vv)
 	default:
-		res = r.bufs[idx]
-		res, err = r.Driver.EncodeAttrByIdx(idx, vv, res[:0])
+		res, err = r.Driver.EncodeAttrByIdx(idx, vv, nil)
 		if err != nil {
 			return nil, fmt.Errorf("encoding error: %w", err)
 		}

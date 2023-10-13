@@ -38,6 +38,9 @@ type ColumnProperties struct {
 	AllowedTypes []string `mapstructure:"allowed_types" json:"allowed_types,omitempty"`
 	// SkipOriginalData - Is transformer require original data or not
 	SkipOriginalData bool `mapstructure:"skip_original_data" json:"skip_original_data,omitempty"`
+	// TODO: Implement SkipOnNull
+	// SkipOnNull - transformation for column with NULL is not expected
+	SkipOnNull bool `mapstructure:"skip_on_null" json:"skip_on_null"`
 }
 
 func NewColumnProperties() *ColumnProperties {
