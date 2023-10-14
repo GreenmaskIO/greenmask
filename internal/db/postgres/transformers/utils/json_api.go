@@ -2,13 +2,16 @@ package utils
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
-	"github.com/greenmaskio/greenmask/pkg/toolkit"
-	"github.com/rs/zerolog/log"
 	"io"
 	"time"
+
+	"github.com/greenmaskio/greenmask/pkg/toolkit"
+	jsoniter "github.com/json-iterator/go"
+	"github.com/rs/zerolog/log"
 )
+
+var json = jsoniter.ConfigCompatibleWithStandardLibrary
 
 type SkipTransformationFunc func(r *toolkit.Record) bool
 type SkipAttrFunc func(idx int) bool
@@ -19,8 +22,8 @@ type JsonApi struct {
 	tupleLength        int
 	readCh             chan struct{}
 	writeCh            chan struct{}
-	encoder            *json.Encoder
-	decoder            *json.Decoder
+	encoder            *jsoniter.Encoder
+	decoder            *jsoniter.Decoder
 	skipTransformation SkipTransformationFunc
 	timeout            time.Duration
 	t                  *time.Ticker
