@@ -39,7 +39,7 @@ func TestDefinition(t *testing.T) {
 	TestTransformerDefinition := NewDefinition(
 		NewTransformerProperties("test", "simple description"),
 		NewTestTransformer,
-		toolkit.MustNewParameter("column", "a column name").
+		toolkit.MustNewParameter("column", "a column Name").
 			SetIsColumn(toolkit.NewColumnProperties().
 				SetAffected(true).
 				SetAllowedColumnTypes("timestamp"),

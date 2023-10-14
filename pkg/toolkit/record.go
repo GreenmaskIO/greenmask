@@ -139,11 +139,15 @@ func (r *Record) encodeValue(idx int, v any) (res []byte, err error) {
 	return res, nil
 }
 
-func (r *Record) GetRawAttributeValue(name string) (*RawValue, error) {
+func (r *Record) GetRawAttributeValueByName(name string) (*RawValue, error) {
 	idx, ok := r.Driver.AttrIdxMap[name]
 	if !ok {
 		return nil, fmt.Errorf("unable to find column by name")
 	}
+	return r.Row.GetColumn(idx)
+}
+
+func (r *Record) GetRawAttributeValueByIdx(idx int) (*RawValue, error) {
 	return r.Row.GetColumn(idx)
 }
 

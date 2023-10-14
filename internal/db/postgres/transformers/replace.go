@@ -98,7 +98,7 @@ func (rt *ReplaceTransformer) Done(ctx context.Context) error {
 }
 
 func (rt *ReplaceTransformer) Transform(ctx context.Context, r *toolkit.Record) (*toolkit.Record, error) {
-	val, err := r.GetRawAttributeValue(rt.columnName)
+	val, err := r.GetRawAttributeValueByName(rt.columnName)
 	if err != nil {
 		return nil, fmt.Errorf("unable to scan value: %w", err)
 	}

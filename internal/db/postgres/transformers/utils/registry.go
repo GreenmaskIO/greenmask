@@ -18,7 +18,7 @@ func NewTransformerRegistry() *TransformerRegistry {
 
 func (tm *TransformerRegistry) Register(definition *Definition) error {
 	if _, ok := tm.m[definition.Properties.Name]; ok {
-		return fmt.Errorf("unable to register transformer: transformer with name %s already exists",
+		return fmt.Errorf("unable to register transformer: transformer with Name %s already exists",
 			definition.Properties.Name)
 	}
 	tm.m[definition.Properties.Name] = definition

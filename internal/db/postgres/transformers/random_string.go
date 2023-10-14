@@ -129,7 +129,7 @@ func (rst *RandomStringTransformer) Done(ctx context.Context) error {
 }
 
 func (rst *RandomStringTransformer) Transform(ctx context.Context, r *toolkit2.Record) (*toolkit2.Record, error) {
-	val, err := r.GetRawAttributeValue(rst.columnName)
+	val, err := r.GetRawAttributeValueByName(rst.columnName)
 	if err != nil {
 		return nil, fmt.Errorf("unable to scan value: %w", err)
 	}

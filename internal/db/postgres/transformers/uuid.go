@@ -79,7 +79,7 @@ func (rut *RandomUuidTransformer) Done(ctx context.Context) error {
 }
 
 func (rut *RandomUuidTransformer) Transform(ctx context.Context, r *toolkit2.Record) (*toolkit2.Record, error) {
-	val, err := r.GetRawAttributeValue(rut.columnName)
+	val, err := r.GetRawAttributeValueByName(rut.columnName)
 	if err != nil {
 		return nil, fmt.Errorf("unable to scan value: %w", err)
 	}

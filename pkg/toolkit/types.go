@@ -143,16 +143,6 @@ func TryRegisterCustomTypesV2(typeMap *pgtype.Map, types []*Type, silent bool) {
 					Codec: arrayType.Codec,
 				})
 			}
-		} else {
-			if !silent {
-				log.Debug().
-					Str("Context", "CustomTypeRegistering").
-					Str("Schema", t.Schema).
-					Str("Name", t.Name).
-					Int("Oid", int(t.Oid)).
-					Str("Kind", fmt.Sprintf("%c", t.Kind)).
-					Msg("Only domain types can be automatically registered: skipping")
-			}
 		}
 	}
 }

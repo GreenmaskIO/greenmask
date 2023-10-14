@@ -3,95 +3,80 @@ package utils
 import (
 	"bufio"
 	"context"
-	"errors"
 	"fmt"
+	"github.com/greenmaskio/greenmask/pkg/toolkit"
 	"github.com/rs/zerolog/log"
 	"io"
-	"os"
 	"os/exec"
-	"strings"
 	"syscall"
-	"time"
-
-	"github.com/greenmaskio/greenmask/pkg/toolkit"
 )
-
-var ErrRowTransformationTimeout = errors.New("row transformation timeout")
 
 type CancelFunction func() error
 
 type CmdTransformerBase struct {
-	name                  string
-	executable            string
-	args                  []string
-	cmd                   *exec.Cmd
-	expectedExitCode      int
-	transformationTimeout time.Duration
-	driver                *toolkit.Driver
-	Api                   DtoApi
+	Name             string
+	Cmd              *exec.Cmd
+	ExpectedExitCode int
+	Driver           *toolkit.Driver
+	Api              DtoApi
 
-	stdoutReader *bufio.Reader
-	stderrReader *bufio.Reader
-	stdinWriter  io.Writer
-	cancel       CancelFunction
-	sendChan     chan struct{}
-	receiveChan  chan struct{}
-	t            *time.Ticker
+	StdoutReader *bufio.Reader
+	StderrReader *bufio.Reader
+	StdinWriter  io.Writer
+	Cancel       CancelFunction
+
+	sendChan    chan struct{}
+	receiveChan chan struct{}
 }
 
 func NewCmdTransformerBase(
 	name string,
-	executable string, args []string, expectedExitCode int,
-	transformationTimeout time.Duration, driver *toolkit.Driver,
+	expectedExitCode int,
+	driver *toolkit.Driver,
 	api DtoApi,
-) (*CmdTransformerBase, error) {
+) *CmdTransformerBase {
 	if api == nil {
 		panic("api is nil")
 	}
 
 	return &CmdTransformerBase{
-		name:                  name,
-		executable:            executable,
-		args:                  args,
-		expectedExitCode:      expectedExitCode,
-		transformationTimeout: transformationTimeout,
-		driver:                driver,
-		t:                     time.NewTicker(transformationTimeout),
-		Api:                   api,
-	}, nil
+		Name:             name,
+		ExpectedExitCode: expectedExitCode,
+		Driver:           driver,
+		Api:              api,
+	}
 }
 
-func (ctb *CmdTransformerBase) Done() error {
+func (ctb *CmdTransformerBase) BaseDone() error {
 	log.Debug().
-		Str("TableSchema", ctb.driver.Table.Schema).
-		Str("TableName", ctb.driver.Table.Name).
-		Str("TransformerName", ctb.name).
+		Str("TableSchema", ctb.Driver.Table.Schema).
+		Str("TableName", ctb.Driver.Table.Name).
+		Str("TransformerName", ctb.Name).
 		Msg("terminating custom transformer")
 
-	if err := ctb.cancel(); err != nil {
+	if err := ctb.Cancel(); err != nil {
 		log.Debug().
 			Err(err).
-			Str("TableSchema", ctb.driver.Table.Schema).
-			Str("TableName", ctb.driver.Table.Name).
-			Str("TransformerName", ctb.name).
+			Str("TableSchema", ctb.Driver.Table.Schema).
+			Str("TableName", ctb.Driver.Table.Name).
+			Str("TransformerName", ctb.Name).
 			Msg("error in termination function")
 		return fmt.Errorf("error terminating custom transformer: %w", err)
 	}
 
 	log.Debug().
-		Str("TableSchema", ctb.driver.Table.Schema).
-		Str("TableName", ctb.driver.Table.Name).
-		Str("TransformerName", ctb.name).
+		Str("TableSchema", ctb.Driver.Table.Schema).
+		Str("TableName", ctb.Driver.Table.Name).
+		Str("TransformerName", ctb.Name).
 		Msg("terminated successfully")
 	return nil
 }
 
 func (ctb *CmdTransformerBase) Transform(ctx context.Context, r *toolkit.Record) (*toolkit.Record, error) {
-	if ctb.Api.Skip(r) {
+	if ctb.Api.SkipTransformation(r) {
 		return r, nil
 	}
 
-	ctb.t.Reset(ctb.transformationTimeout)
 	var err error
 	var rd toolkit.RowDriver
 
@@ -100,21 +85,17 @@ func (ctb *CmdTransformerBase) Transform(ctx context.Context, r *toolkit.Record)
 		return nil, fmt.Errorf("dto api error: error getting dto: %w", err)
 	}
 
-	if err = ctb.SendOriginalTuple(ctx, rd); err != nil {
-		return nil, fmt.Errorf("cannot send tuple to transformer: %w", err)
-	}
-
-	transformedData, err := ctb.ReceiveTransformedTuple(ctx)
+	err = ctb.Api.Encode(ctx, rd)
 	if err != nil {
-		return nil, fmt.Errorf("cannot receive transformed tuple from transformer: %w", err)
+		return nil, fmt.Errorf("dto api error: cannot send tuple to transformer: %w", err)
 	}
 
-	rd, err = ctb.Api.Unmarshal(transformedData)
+	res, err := ctb.Api.Decode(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("dto api error: unmarshalling error: %w", err)
+		return nil, fmt.Errorf("dto api error: cannot receive transformed tuple from transformer: %w", err)
 	}
 
-	err = ctb.Api.SetRowDriverToRecord(rd, r)
+	err = ctb.Api.SetRowDriverToRecord(res, r)
 	if err != nil {
 		return nil, fmt.Errorf("dto api error: error setting transfomed data to Record: %w", err)
 	}
@@ -122,72 +103,107 @@ func (ctb *CmdTransformerBase) Transform(ctx context.Context, r *toolkit.Record)
 	return r, nil
 }
 
-func (ctb *CmdTransformerBase) BaseInit(ctx context.Context, args []string) (CancelFunction, error) {
-	log.Debug().
-		Str("executable", ctb.executable).
-		Str("args", strings.Join(args, " ")).
-		Msg("running custom transformer")
+func (ctb *CmdTransformerBase) BaseInitWithContext(ctx context.Context, executable string, args []string) error {
+	ctb.Cmd = exec.CommandContext(ctx, executable, args...)
+	if err := ctb.init(); err != nil {
+		return err
+	}
+	ctb.Cmd.Cancel = ctb.Cancel
+	if err := ctb.Cmd.Start(); err != nil {
+		log.Warn().
+			Err(err).
+			Str("TableSchema", ctb.Driver.Table.Schema).
+			Str("TableName", ctb.Driver.Table.Name).
+			Str("TransformerName", ctb.Name).
+			Msg("custom transformer exited with error")
 
-	ctb.cmd = exec.CommandContext(ctx, ctb.executable, args...)
+		return fmt.Errorf("external command runtime error: %w", err)
+	}
+	return nil
+}
+
+func (ctb *CmdTransformerBase) BaseInit(executable string, args []string) error {
+	ctb.Cmd = exec.Command(executable, args...)
+	if err := ctb.init(); err != nil {
+		return err
+	}
+	if err := ctb.Cmd.Start(); err != nil {
+		log.Warn().
+			Err(err).
+			Str("TableSchema", ctb.Driver.Table.Schema).
+			Str("TableName", ctb.Driver.Table.Name).
+			Str("TransformerName", ctb.Name).
+			Msg("custom transformer exited with error")
+
+		return fmt.Errorf("external command runtime error: %w", err)
+	}
+	return nil
+}
+
+func (ctb *CmdTransformerBase) init() error {
+
 	ctb.sendChan = make(chan struct{}, 1)
 	ctb.receiveChan = make(chan struct{}, 1)
 
 	var err error
-	stderr, err := ctb.cmd.StderrPipe()
+	stderr, err := ctb.Cmd.StderrPipe()
 	if err != nil {
-		return nil, err
+		return err
 	}
-	stdout, err := ctb.cmd.StdoutPipe()
+	stdout, err := ctb.Cmd.StdoutPipe()
 	if err != nil {
 		stdout.Close()
-		return nil, err
+		return err
 	}
 
-	stdin, err := ctb.cmd.StdinPipe()
+	stdin, err := ctb.Cmd.StdinPipe()
 	if err != nil {
 		stderr.Close()
 		stdout.Close()
-		return nil, err
+		return err
 	}
-	ctb.stderrReader = bufio.NewReader(stderr)
-	ctb.stdoutReader = bufio.NewReader(stdout)
-	ctb.stdinWriter = stdin
+	ctb.StderrReader = bufio.NewReader(stderr)
+	ctb.StdoutReader = bufio.NewReader(stdout)
+	ctb.StdinWriter = stdin
+
+	ctb.Api.SetReader(ctb.StdoutReader)
+	ctb.Api.SetWriter(ctb.StdinWriter)
 
 	cancelFunction := func() error {
 		log.Debug().
-			Str("TableSchema", ctb.driver.Table.Schema).
-			Str("TableName", ctb.driver.Table.Name).
-			Str("TransformerName", ctb.name).
+			Str("TableSchema", ctb.Driver.Table.Schema).
+			Str("TableName", ctb.Driver.Table.Name).
+			Str("TransformerName", ctb.Name).
 			Msg("running closing function")
 
-		if ctb.cmd.Process != nil && ctb.cmd.ProcessState == nil ||
-			ctb.cmd.Process != nil && ctb.cmd.ProcessState != nil && !ctb.cmd.ProcessState.Exited() {
+		if ctb.Cmd.Process != nil && ctb.Cmd.ProcessState == nil ||
+			ctb.Cmd.Process != nil && ctb.Cmd.ProcessState != nil && !ctb.Cmd.ProcessState.Exited() {
 			log.Debug().
-				Str("TableSchema", ctb.driver.Table.Schema).
-				Str("TableName", ctb.driver.Table.Name).
-				Str("TransformerName", ctb.name).
-				Int("TransformerPid", ctb.cmd.Process.Pid).
+				Str("TableSchema", ctb.Driver.Table.Schema).
+				Str("TableName", ctb.Driver.Table.Name).
+				Str("TransformerName", ctb.Name).
+				Int("TransformerPid", ctb.Cmd.Process.Pid).
 				Msg("sending SIGTERM to custom transformer process")
-			if err := ctb.cmd.Process.Signal(syscall.SIGTERM); err != nil {
+			if err := ctb.Cmd.Process.Signal(syscall.SIGTERM); err != nil {
 				log.Debug().
 					Err(err).
-					Str("TableSchema", ctb.driver.Table.Schema).
-					Str("TableName", ctb.driver.Table.Name).
-					Str("TransformerName", ctb.name).
-					Int("TransformerPid", ctb.cmd.Process.Pid).
+					Str("TableSchema", ctb.Driver.Table.Schema).
+					Str("TableName", ctb.Driver.Table.Name).
+					Str("TransformerName", ctb.Name).
+					Int("TransformerPid", ctb.Cmd.Process.Pid).
 					Msg("error sending SIGTERM to custom transformer process")
 
-				if ctb.cmd.ProcessState != nil && !ctb.cmd.ProcessState.Exited() {
+				if ctb.Cmd.ProcessState != nil && !ctb.Cmd.ProcessState.Exited() {
 					log.Warn().
-						Str("TableSchema", ctb.driver.Table.Schema).
-						Str("TableName", ctb.driver.Table.Name).
-						Str("TransformerName", ctb.name).
-						Int("TransformerPid", ctb.cmd.Process.Pid).
+						Str("TableSchema", ctb.Driver.Table.Schema).
+						Str("TableName", ctb.Driver.Table.Name).
+						Str("TransformerName", ctb.Name).
+						Int("TransformerPid", ctb.Cmd.Process.Pid).
 						Msg("killing process")
-					if err = ctb.cmd.Process.Kill(); err != nil {
+					if err = ctb.Cmd.Process.Kill(); err != nil {
 						log.Warn().
 							Err(err).
-							Int("pid", ctb.cmd.Process.Pid).
+							Int("pid", ctb.Cmd.Process.Pid).
 							Msg("error terminating custom transformer process")
 					}
 				}
@@ -196,41 +212,30 @@ func (ctb *CmdTransformerBase) BaseInit(ctx context.Context, args []string) (Can
 
 		if err := stdin.Close(); err != nil {
 			log.Debug().
-				Str("TableSchema", ctb.driver.Table.Schema).
-				Str("TableName", ctb.driver.Table.Name).
-				Str("TransformerName", ctb.name).
+				Str("TableSchema", ctb.Driver.Table.Schema).
+				Str("TableName", ctb.Driver.Table.Name).
+				Str("TransformerName", ctb.Name).
 				Err(err).
 				Msg("error closing stdin")
 		}
 
 		log.Debug().
-			Str("TableSchema", ctb.driver.Table.Schema).
-			Str("TableName", ctb.driver.Table.Name).
-			Str("TransformerName", ctb.name).
+			Str("TableSchema", ctb.Driver.Table.Schema).
+			Str("TableName", ctb.Driver.Table.Name).
+			Str("TransformerName", ctb.Name).
 			Msg("closing function completed successfully")
 
 		return nil
 	}
 
-	ctb.cmd.Cancel = cancelFunction
+	ctb.Cancel = cancelFunction
 
-	if err := ctb.cmd.Start(); err != nil {
-		log.Warn().
-			Err(err).
-			Str("TableSchema", ctb.driver.Table.Schema).
-			Str("TableName", ctb.driver.Table.Name).
-			Str("TransformerName", ctb.name).
-			Msg("custom transformer exited with error")
-
-		return nil, fmt.Errorf("external command runtime error: %w", err)
-	}
-
-	return cancelFunction, nil
+	return nil
 }
 
 func (ctb *CmdTransformerBase) ReceiveStderrLine(ctx context.Context) (line []byte, err error) {
 	go func() {
-		line, _, err = ctb.stderrReader.ReadLine()
+		line, _, err = ctb.StderrReader.ReadLine()
 		ctb.receiveChan <- struct{}{}
 	}()
 	select {
@@ -240,10 +245,6 @@ func (ctb *CmdTransformerBase) ReceiveStderrLine(ctx context.Context) (line []by
 	}
 
 	if err != nil {
-		if errors.Is(err, io.EOF) || errors.Is(err, os.ErrClosed) {
-			return nil, nil
-		}
-		log.Debug().Err(err).Msg("line reader error")
 		return nil, err
 	}
 
@@ -252,7 +253,7 @@ func (ctb *CmdTransformerBase) ReceiveStderrLine(ctx context.Context) (line []by
 
 func (ctb *CmdTransformerBase) ReceiveStdoutLine(ctx context.Context) (line []byte, err error) {
 	go func() {
-		line, _, err = ctb.stdoutReader.ReadLine()
+		line, _, err = ctb.StdoutReader.ReadLine()
 		ctb.receiveChan <- struct{}{}
 	}()
 	select {
@@ -262,51 +263,8 @@ func (ctb *CmdTransformerBase) ReceiveStdoutLine(ctx context.Context) (line []by
 	}
 
 	if err != nil {
-		if errors.Is(err, io.EOF) || errors.Is(err, os.ErrClosed) {
-			return nil, nil
-		}
-		log.Debug().Err(err).Msg("line reader error")
 		return nil, err
 	}
 
-	return line, nil
-}
-
-func (ctb *CmdTransformerBase) SendOriginalTuple(ctx context.Context, rawRecord toolkit.RowDriver) (err error) {
-
-	go func() {
-		err = ctb.Api.Encode(rawRecord, ctb.stdinWriter)
-		ctb.sendChan <- struct{}{}
-	}()
-	select {
-	case <-ctx.Done():
-		return ctx.Err()
-	case <-ctb.t.C:
-		return ErrRowTransformationTimeout
-	case <-ctb.sendChan:
-
-	}
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-func (ctb *CmdTransformerBase) ReceiveTransformedTuple(ctx context.Context) (line []byte, err error) {
-	go func() {
-		line, _, err = ctb.stdoutReader.ReadLine()
-		ctb.receiveChan <- struct{}{}
-	}()
-	select {
-	case <-ctx.Done():
-		return nil, ctx.Err()
-	case <-ctb.t.C:
-		return nil, ErrRowTransformationTimeout
-	case <-ctb.receiveChan:
-	}
-
-	if err != nil {
-		return nil, fmt.Errorf("error receiving data from transformer: %w", err)
-	}
 	return line, nil
 }

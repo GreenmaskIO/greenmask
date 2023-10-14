@@ -9,7 +9,7 @@ import (
 
 // NewTransformerFunc - make new transformer. This function receives Driver for making some steps for validation or
 // anything else. parameters - the map of the parsed parameters, for get an appropriate parameter find it
-// in the map by the name. All those parameters has been defined in the Definition object of the transformer
+// in the map by the Name. All those parameters has been defined in the Definition object of the transformer
 type NewTransformerFunc func(ctx context.Context, driver *toolkit.Driver, parameters map[string]*toolkit.Parameter) (
 	Transformer, toolkit.ValidationWarnings, error,
 )
@@ -39,7 +39,7 @@ func (d *Definition) SetSchemaValidator(v SchemaValidationFunc) *Definition {
 }
 
 //func (d *Definition) parseParameters(
-//	driver *toolkit.Driver, rawParams map[string]toolkit.ParamsValue, types []*toolkit.Type,
+//	Driver *toolkit.Driver, rawParams map[string]toolkit.ParamsValue, types []*toolkit.Type,
 //) (toolkit.ValidationWarnings, map[string]*toolkit.Parameter, error) {
 //	if rawParams == nil && len(d.Parameters) > 0 {
 //		return toolkit.ValidationWarnings{
@@ -67,7 +67,7 @@ func (d *Definition) SetSchemaValidator(v SchemaValidationFunc) *Definition {
 //	// Column parameters parsing
 //	var columnParamsToSkip = make(map[string]struct{})
 //	for _, p := range columnParameters {
-//		warnings, err := p.Parse(driver, rawParams, nil, types)
+//		warnings, err := p.Parse(Driver, rawParams, nil, types)
 //		if err != nil {
 //			return nil, nil, fmt.Errorf("parameter %s parsing error: %w", p.Name, err)
 //		}
@@ -85,7 +85,7 @@ func (d *Definition) SetSchemaValidator(v SchemaValidationFunc) *Definition {
 //				SetMsg("parameter skipping due to the error in the related parameter parsing"))
 //			continue
 //		}
-//		warnings, err := p.Parse(driver, rawParams, columnParameters, types)
+//		warnings, err := p.Parse(Driver, rawParams, columnParameters, types)
 //		if err != nil {
 //			return nil, nil, fmt.Errorf("parameter %s parsing error: %w", p.Name, err)
 //		}
