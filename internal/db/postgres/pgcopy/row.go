@@ -131,3 +131,7 @@ func (r *Row) Decode() (map[int]*toolkit.RawValue, error) {
 	}
 	return res, nil
 }
+
+func (r *Row) Length() int {
+	return len(r.columnPos)
+}

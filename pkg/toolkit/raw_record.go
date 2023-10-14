@@ -35,6 +35,10 @@ func (rr RawRecord) Decode() (map[int]*RawValue, error) {
 	return res, nil
 }
 
+func (rr RawRecord) Length() int {
+	return len(rr)
+}
+
 // RawRecordDto - record data transfer object for interaction with custom transformer via PIPE
 type RawRecordDto map[int]*RawValueDto
 
@@ -77,4 +81,8 @@ func (rrd RawRecordDto) Decode() (map[int]*RawValue, error) {
 		res[idx] = NewRawValue(data, v.IsNull)
 	}
 	return res, nil
+}
+
+func (rrd RawRecordDto) Length() int {
+	return len(rrd)
 }

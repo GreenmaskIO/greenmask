@@ -29,7 +29,7 @@ const (
 	TransformArgName       = "--transform"
 )
 
-var json = jsoniter.ConfigCompatibleWithStandardLibrary
+var json = jsoniter.ConfigFastest
 
 func ProduceNewCmdTransformerFunction(ctd *utils.CustomTransformerDefinition) utils.NewTransformerFunc {
 	return func(
@@ -53,7 +53,6 @@ type CustomCmdTransformer struct {
 	ctd             *utils.CustomTransformerDefinition
 
 	t                  *time.Ticker
-	skipOriginalData   bool
 	skipTransformation bool
 }
 
@@ -61,8 +60,8 @@ func NewCustomCmdTransformer(
 	ctx context.Context, driver *toolkit.Driver, parameters map[string]*toolkit.Parameter,
 	ctd *utils.CustomTransformerDefinition,
 ) (*CustomCmdTransformer, toolkit.ValidationWarnings, error) {
-	var skipOriginalData bool
 	affectedColumns := make(map[int]string)
+	skipOriginalData := make(map[int]struct{})
 	var affectedColumnsList []string
 	for _, p := range parameters {
 		if p.IsColumn {
@@ -81,15 +80,20 @@ func NewCustomCmdTransformer(
 			}
 			affectedColumns[idx] = columnName
 			if p.ColumnProperties != nil && p.ColumnProperties.SkipOriginalData {
-				skipOriginalData = true
+				skipOriginalData[idx] = struct{}{}
 			}
 			affectedColumnsList = append(affectedColumnsList, columnName)
 		}
 	}
 
+	skipF := func(idx int) bool {
+		_, ok := skipOriginalData[idx]
+		return ok
+	}
+
 	api, err := utils.NewJsonInteractionApi(
 		ctd.RowTransformationTimeout, driver,
-		utils.DefaultSkipTransformation, utils.DefaultSkipAttributeFromDto,
+		utils.DefaultSkipTransformation, skipF,
 		affectedColumnsList...,
 	)
 	if err != nil {
@@ -107,7 +111,6 @@ func NewCustomCmdTransformer(
 		affectedColumns:    affectedColumns,
 		name:               ctd.Name,
 		ctd:                ctd,
-		skipOriginalData:   skipOriginalData,
 		t:                  time.NewTicker(ctd.RowTransformationTimeout),
 	}
 

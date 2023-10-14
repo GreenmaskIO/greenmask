@@ -2,10 +2,11 @@ package utils
 
 import (
 	"fmt"
+
 	"github.com/greenmaskio/greenmask/pkg/toolkit"
 )
 
-func GetAffectedAttributes(driver *toolkit.Driver, skipAttr SkipAttrFunc, attributes ...string) ([]int, map[int]string, error) {
+func GetAffectedAttributes(driver *toolkit.Driver, attributes ...string) ([]int, map[int]string, error) {
 	var attributeIdxs []int
 	var attributeNames map[int]string
 	if len(attributes) > 0 {

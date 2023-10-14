@@ -14,4 +14,5 @@ type RowDriver interface {
 	Encode() ([]byte, error)
 	// Decode - decode current row state into slice of row values ([]*RawValue)
 	Decode() (map[int]*RawValue, error)
+	Length() int
 }

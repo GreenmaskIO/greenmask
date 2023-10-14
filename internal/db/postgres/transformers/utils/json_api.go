@@ -11,7 +11,7 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-var json = jsoniter.ConfigCompatibleWithStandardLibrary
+var json = jsoniter.ConfigFastest
 
 type SkipTransformationFunc func(r *toolkit.Record) bool
 type SkipAttrFunc func(idx int) bool
@@ -22,18 +22,21 @@ type JsonApi struct {
 	tupleLength        int
 	readCh             chan struct{}
 	writeCh            chan struct{}
+	w                  io.Writer
+	r                  io.Reader
 	encoder            *jsoniter.Encoder
 	decoder            *jsoniter.Decoder
 	skipTransformation SkipTransformationFunc
+	skipOriginalData   SkipAttrFunc
 	timeout            time.Duration
 	t                  *time.Ticker
 }
 
 func NewJsonInteractionApi(
 	timeout time.Duration, driver *toolkit.Driver,
-	skipTransformation SkipTransformationFunc, skipAttr SkipAttrFunc,
+	skipTransformation SkipTransformationFunc, skipOriginalData SkipAttrFunc,
 	attributes ...string) (*JsonApi, error) {
-	attributeIdxs, attributeNames, err := GetAffectedAttributes(driver, skipAttr, attributes...)
+	attributeIdxs, attributeNames, err := GetAffectedAttributes(driver, attributes...)
 	if err != nil {
 		return nil, err
 	}
@@ -50,14 +53,17 @@ func NewJsonInteractionApi(
 		skipTransformation: skipTransformation,
 		timeout:            timeout,
 		t:                  time.NewTicker(timeout),
+		skipOriginalData:   skipOriginalData,
 	}, nil
 }
 
 func (j *JsonApi) SetWriter(w io.Writer) {
+	j.w = w
 	j.encoder = json.NewEncoder(w)
 }
 
 func (j *JsonApi) SetReader(r io.Reader) {
+	j.r = r
 	j.decoder = json.NewDecoder(r)
 }
 
@@ -68,11 +74,13 @@ func (j *JsonApi) SkipTransformation(r *toolkit.Record) bool {
 func (j *JsonApi) GetRowDriverFromRecord(r *toolkit.Record) (toolkit.RowDriver, error) {
 	res := make(toolkit.RawRecord, j.tupleLength)
 	for _, columnIdx := range j.attributeIdxs {
-		v, err := r.GetRawAttributeValueByIdx(columnIdx)
-		if err != nil {
-			return nil, fmt.Errorf("error getting raw atribute value: %w", err)
+		if !j.skipOriginalData(columnIdx) {
+			v, err := r.GetRawAttributeValueByIdx(columnIdx)
+			if err != nil {
+				return nil, fmt.Errorf("error getting raw atribute value: %w", err)
+			}
+			res[columnIdx] = v
 		}
-		res[columnIdx] = v
 	}
 	return res, nil
 }
@@ -94,7 +102,11 @@ func (j *JsonApi) SetRowDriverToRecord(rd toolkit.RowDriver, r *toolkit.Record) 
 func (j *JsonApi) Encode(ctx context.Context, row toolkit.RowDriver) (err error) {
 	j.t.Reset(j.timeout)
 	go func() {
-		err = j.encoder.Encode(row)
+		if row.Length() == 0 {
+			_, err = j.w.Write([]byte{'\n'})
+		} else {
+			err = j.encoder.Encode(row)
+		}
 		j.writeCh <- struct{}{}
 	}()
 
@@ -118,6 +130,7 @@ func (j *JsonApi) Decode(ctx context.Context) (toolkit.RowDriver, error) {
 	row := make(toolkit.RawRecord, j.tupleLength)
 	go func() {
 		err = j.decoder.Decode(&row)
+
 		j.writeCh <- struct{}{}
 	}()
 	j.t.Reset(j.timeout)
