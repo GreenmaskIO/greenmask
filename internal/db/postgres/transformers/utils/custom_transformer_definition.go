@@ -7,7 +7,7 @@ import (
 )
 
 type CustomTransformerDefinition struct {
-	Name                     string               `mapstructure:"name" yaml:"name" json:"name"`
+	Name                     string               `mapstructure:"Name" yaml:"Name" json:"Name"`
 	Description              string               `mapstructure:"description" yaml:"description" json:"description"`
 	Executable               string               `mapstructure:"executable" yaml:"executable" json:"executable"`
 	Args                     []string             `mapstructure:"args" yaml:"args" json:"args"`

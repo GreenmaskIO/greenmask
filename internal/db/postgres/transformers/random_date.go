@@ -164,7 +164,7 @@ func (rdt *RandomDateTransformer) Done(ctx context.Context) error {
 }
 
 func (rdt *RandomDateTransformer) Transform(ctx context.Context, r *toolkit2.Record) (*toolkit2.Record, error) {
-	valAny, err := r.GetRawAttributeValue(rdt.columnName)
+	valAny, err := r.GetRawAttributeValueByName(rdt.columnName)
 	if err != nil {
 		return nil, fmt.Errorf("unable to scan value: %w", err)
 	}

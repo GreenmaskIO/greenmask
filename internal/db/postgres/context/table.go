@@ -97,11 +97,11 @@ func getTable(ctx context.Context, tx pgx.Tx, t *domains.Table) (*dump.Table, to
 
 	if err != nil && errors.Is(err, pgx.ErrNoRows) {
 		warnings = append(warnings, toolkit.NewValidationWarning().
-			SetMsgf("table %s.%s not found", table.Schema, table.Name).
+			SetMsgf("table is not found").
 			SetSeverity(toolkit.ErrorValidationSeverity).
 			//AddMeta("Severity", TableValidationLevel).
-			AddMeta("Schema", table.Schema).
-			AddMeta("TableName", table.Name),
+			AddMeta("Schema", t.Schema).
+			AddMeta("TableName", t.Name),
 		)
 	} else if err != nil {
 		return nil, nil, fmt.Errorf("cannot scan table: %w", err)

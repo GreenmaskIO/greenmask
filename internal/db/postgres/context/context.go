@@ -43,7 +43,7 @@ func NewRuntimeContext(
 		return nil, fmt.Errorf("cannot discover types: %w", err)
 	}
 	if len(types) > 0 {
-		toolkit2.TryRegisterCustomTypesV2(typeMap, types, false)
+		toolkit2.TryRegisterCustomTypesV2(typeMap, types, true)
 	}
 
 	tables, warnings, err := validateAndBuildTablesConfig(ctx, tx, typeMap, cfg, r, version, types)
