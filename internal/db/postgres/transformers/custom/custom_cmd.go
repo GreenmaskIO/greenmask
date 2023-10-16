@@ -105,8 +105,7 @@ func NewCustomCmdTransformer(
 		}
 	case TextModeName:
 		api, err = utils.NewTextApi(
-			ctd.RowTransformationTimeout, driver,
-			skipF, affectedColumnsList...,
+			driver, skipF, affectedColumnsList...,
 		)
 	default:
 		return nil, nil, fmt.Errorf("unknown interaction API: %s", ctd.Mode)

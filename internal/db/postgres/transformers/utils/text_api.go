@@ -25,7 +25,7 @@ type TextApi struct {
 }
 
 func NewTextApi(
-	timeout time.Duration, driver *toolkit.Driver,
+	driver *toolkit.Driver,
 	skipOriginalData SkipAttrFunc, attributes ...string) (*TextApi, error) {
 	attributeIdxs, attributeNames, err := GetAffectedAttributes(driver, attributes...)
 	if err != nil {
@@ -40,8 +40,6 @@ func NewTextApi(
 		attributeIdx:     attributeIdxs[0],
 		readCh:           make(chan struct{}, 1),
 		writeCh:          make(chan struct{}, 1),
-		timeout:          timeout,
-		t:                time.NewTicker(timeout),
 		skipOriginalData: skipOriginalData,
 	}, nil
 }
@@ -86,28 +84,12 @@ func (j *TextApi) SetRowDriverToRecord(rd toolkit.RowDriver, r *toolkit.Record) 
 }
 
 func (j *TextApi) Encode(ctx context.Context, row toolkit.RowDriver) (err error) {
-	j.t.Reset(j.timeout)
 	data, err := row.Encode()
 	if err != nil {
 		return fmt.Errorf("error encodig row data via text interaction API: %w", err)
 	}
-	go func() {
-		if row.Length() == 0 {
-			_, err = j.w.Write([]byte{'\n'})
-		} else {
-			data = append(data, '\n')
-			_, err = j.w.Write(data)
-		}
-		j.writeCh <- struct{}{}
-	}()
-
-	select {
-	case <-ctx.Done():
-		return ctx.Err()
-	case <-j.t.C:
-		return ErrInteractionTimeout
-	case <-j.writeCh:
-	}
+	data = append(data, '\n')
+	_, err = j.w.Write(data)
 
 	if err != nil {
 		return err
@@ -117,22 +99,7 @@ func (j *TextApi) Encode(ctx context.Context, row toolkit.RowDriver) (err error)
 }
 
 func (j *TextApi) Decode(ctx context.Context) (toolkit.RowDriver, error) {
-	j.t.Reset(j.timeout)
-	var err error
-	var line []byte
-	go func() {
-		line, _, err = j.lineReader.ReadLine()
-		j.writeCh <- struct{}{}
-	}()
-
-	select {
-	case <-ctx.Done():
-		return nil, ctx.Err()
-	case <-j.t.C:
-		return nil, ErrInteractionTimeout
-	case <-j.writeCh:
-	}
-
+	line, _, err := j.lineReader.ReadLine()
 	if err != nil {
 		return nil, err
 	}
