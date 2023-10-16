@@ -52,8 +52,10 @@ func DefaultSchemaValidator(
 
 		// Performing checks constraint checks with the affected column
 		for _, c := range table.Constraints {
-			if w := c.IsAffected(p); len(w) > 0 {
-				warnings = append(warnings, w...)
+			if p.IsColumn && (p.ColumnProperties == nil || p.ColumnProperties != nil && p.ColumnProperties.Affected) {
+				if w := c.IsAffected(p); len(w) > 0 {
+					warnings = append(warnings, w...)
+				}
 			}
 		}
 

@@ -4,13 +4,12 @@ import (
 	"context"
 	"testing"
 
-	"github.com/greenmaskio/greenmask/internal/db/postgres/transformers/utils"
 	"github.com/greenmaskio/greenmask/pkg/toolkit"
 	"github.com/stretchr/testify/require"
 )
 
 func TestGetDynamicTransformerDefinition(t *testing.T) {
-	expected := utils.CustomTransformerDefinition{
+	expected := CustomTransformerDefinition{
 		Name:        "TwoDatesGen",
 		Description: "Generate diff between two dates",
 		Parameters: []*toolkit.Parameter{

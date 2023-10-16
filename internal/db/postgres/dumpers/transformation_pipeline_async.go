@@ -123,7 +123,9 @@ func (tp *TransformationPipeline) Dump(ctx context.Context, data []byte) (err er
 	if err != nil {
 		return NewDumpError(tp.table.Schema, tp.table.Name, tp.line, err)
 	}
-	tp.row.Parse(data[:len(data)-1])
+	if err = tp.row.Decode(data[:len(data)-1]); err != nil {
+		return fmt.Errorf("error decoding copy line: %w", err)
+	}
 	record := toolkit.NewRecord(tp.table.Driver, tp.row)
 
 	_, err = tp.Transform(ctx, record)

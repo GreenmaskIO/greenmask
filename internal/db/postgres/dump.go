@@ -396,6 +396,9 @@ func (d *Dump) BootstrapCustomTransformers(ctx context.Context) (err error) {
 				ctd.Name = ctdd.Name
 				ctd.Description = ctdd.Description
 				ctd.Parameters = ctdd.Parameters
+				ctd.Mode = ctdd.Mode
+				ctd.ExpectedExitCode = ctdd.ExpectedExitCode
+				ctd.Validate = ctdd.Validate
 				return nil
 			}()
 			if err != nil {

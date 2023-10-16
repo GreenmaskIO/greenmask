@@ -31,7 +31,7 @@ const (
 
 var json = jsoniter.ConfigFastest
 
-func ProduceNewCmdTransformerFunction(ctd *utils.CustomTransformerDefinition) utils.NewTransformerFunc {
+func ProduceNewCmdTransformerFunction(ctd *CustomTransformerDefinition) utils.NewTransformerFunc {
 	return func(
 		ctx context.Context, driver *toolkit.Driver, parameters map[string]*toolkit.Parameter,
 	) (utils.Transformer, toolkit.ValidationWarnings, error) {
@@ -50,7 +50,7 @@ type CustomCmdTransformer struct {
 	driver          *toolkit.Driver
 	parameters      map[string]*toolkit.Parameter
 	affectedColumns map[int]string
-	ctd             *utils.CustomTransformerDefinition
+	ctd             *CustomTransformerDefinition
 
 	t                  *time.Ticker
 	skipTransformation bool
@@ -58,7 +58,7 @@ type CustomCmdTransformer struct {
 
 func NewCustomCmdTransformer(
 	ctx context.Context, driver *toolkit.Driver, parameters map[string]*toolkit.Parameter,
-	ctd *utils.CustomTransformerDefinition,
+	ctd *CustomTransformerDefinition,
 ) (*CustomCmdTransformer, toolkit.ValidationWarnings, error) {
 	affectedColumns := make(map[int]string)
 	skipOriginalData := make(map[int]struct{})
@@ -91,12 +91,25 @@ func NewCustomCmdTransformer(
 		return ok
 	}
 
-	api, err := utils.NewJsonInteractionApi(
-		ctd.RowTransformationTimeout, driver,
-		skipF, affectedColumnsList...,
-	)
-	if err != nil {
-		return nil, nil, fmt.Errorf("error initializing json api: %w", err)
+	var err error
+	var api utils.InteractionApi
+
+	switch ctd.Mode {
+	case JsonModeName:
+		api, err = utils.NewJsonApi(
+			ctd.RowTransformationTimeout, driver,
+			skipF, affectedColumnsList...,
+		)
+		if err != nil {
+			return nil, nil, fmt.Errorf("error initializing json api: %w", err)
+		}
+	case TextModeName:
+		api, err = utils.NewTextApi(
+			ctd.RowTransformationTimeout, driver,
+			skipF, affectedColumnsList...,
+		)
+	default:
+		return nil, nil, fmt.Errorf("unknown interaction API: %s", ctd.Mode)
 	}
 
 	cct := utils.NewCmdTransformerBase(ctd.Name, ctd.ExpectedExitCode, driver, api)
@@ -247,7 +260,10 @@ func (ct *CustomCmdTransformer) Validate(ctx context.Context) (toolkit.Validatio
 				Int("TransformerPid", ct.Cmd.Process.Pid).
 				Str("Data", string(line)).
 				Msg("error unmarshalling ValidationWarning")
-			return nil, fmt.Errorf("error unmarshalling ValidationWarning: %w", err)
+			vw = toolkit.NewValidationWarning().
+				AddMeta("Payload", string(line)).
+				SetSeverity(toolkit.ErrorValidationSeverity).
+				SetMsg("error unmarshalling validation warning")
 		}
 		warnings = append(warnings, vw)
 	}

@@ -85,7 +85,7 @@ func TestParameter_Parse_with_allowed_pg_types(t *testing.T) {
 			AllowedTypes: []string{"date", "timestamp", "timestamptz"},
 		})
 
-	//warnings, err := p1.Parse(driver, rawParams, nil, nil)
+	//warnings, err := p1.Decode(driver, rawParams, nil, nil)
 	warnings, err := p1.Init(driver, nil, []*Parameter{p1}, []byte("created_at"))
 	require.NoError(t, err)
 	assert.Empty(t, warnings)

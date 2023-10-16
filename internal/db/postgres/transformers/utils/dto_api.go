@@ -10,9 +10,9 @@ import (
 
 var ErrInteractionTimeout = errors.New("interaction timeout")
 
-// DtoApi - API for interaction with Cmd transformer. It must implement context cancellation, RW timeouts,
+// InteractionApi - API for interaction with Cmd transformer. It must implement context cancellation, RW timeouts,
 // encode-decode operations, extracting DTO and assigning received DTO to the toolkit.Record
-type DtoApi interface {
+type InteractionApi interface {
 	// SetWriter - assign writer
 	SetWriter(w io.Writer)
 	// SetReader - assign reader

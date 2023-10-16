@@ -8,12 +8,11 @@ import (
 	"strings"
 	"syscall"
 
-	"github.com/greenmaskio/greenmask/internal/db/postgres/transformers/utils"
 	"github.com/rs/zerolog/log"
 	"golang.org/x/sync/errgroup"
 )
 
-func GetDynamicTransformerDefinition(ctx context.Context, executable string, args ...string) (*utils.CustomTransformerDefinition, error) {
+func GetDynamicTransformerDefinition(ctx context.Context, executable string, args ...string) (*CustomTransformerDefinition, error) {
 	log.Debug().
 		Str("Executable", executable).
 		Str("Args", strings.Join(args, " ")).
@@ -63,8 +62,6 @@ func GetDynamicTransformerDefinition(ctx context.Context, executable string, arg
 	})
 
 	select {
-	case <-doneChan:
-		log.Debug().Msg("transformer auto discovery: exited normally")
 	case <-ctx.Done():
 		if ctx.Err() != nil {
 			log.Warn().Err(err).Msg("error performing autodiscovery")
@@ -91,6 +88,8 @@ func GetDynamicTransformerDefinition(ctx context.Context, executable string, arg
 			}
 		}
 		return nil, ctx.Err()
+	case <-doneChan:
+		log.Debug().Msg("transformer auto discovery: exited normally")
 	}
 
 	if err = eg.Wait(); err != nil {
@@ -110,7 +109,7 @@ func GetDynamicTransformerDefinition(ctx context.Context, executable string, arg
 		return nil, fmt.Errorf("received empty transformer definition: might be transfromer but or config mistake")
 	}
 
-	res := &utils.CustomTransformerDefinition{}
+	res := &CustomTransformerDefinition{}
 	if err = json.Unmarshal(stdoutData, res); err != nil {
 		log.Debug().
 			Err(err).
@@ -119,6 +118,12 @@ func GetDynamicTransformerDefinition(ctx context.Context, executable string, arg
 			Str("Output", string(stdoutData)).
 			Msg("error unmarshalling custom transformer output")
 		return nil, fmt.Errorf("error unmarshalling custom transformer output: %w", err)
+	}
+	if res.Mode != "" && res.Mode != JsonModeName && res.Mode != CsvModeName && res.Mode != TextModeName {
+		return nil, fmt.Errorf(`error parsing transformer difinition: unknown mode name %s`, res.Mode)
+	}
+	if res.Mode == "" {
+		res.Mode = JsonModeName
 	}
 	return res, nil
 }

@@ -41,7 +41,7 @@ func NewRow(tupleSize int) *Row {
 	}
 }
 
-func (r *Row) Parse(raw []byte) {
+func (r *Row) Decode(raw []byte) error {
 	var colStartPos, colEndPos int
 
 	// Building column position slice
@@ -64,6 +64,7 @@ func (r *Row) Parse(raw []byte) {
 		idx++
 	}
 	r.raw = raw
+	return nil
 }
 
 // GetColumn - find raw data and encode it using DecodeAttr
@@ -112,21 +113,6 @@ func (r *Row) Encode() ([]byte, error) {
 
 		if idx != len(r.columnPos)-1 {
 			res = append(res, DefaultCopyDelimiter)
-		}
-	}
-	return res, nil
-}
-
-func (r *Row) Decode() (map[int]*toolkit.RawValue, error) {
-	res := make(map[int]*toolkit.RawValue, len(r.columnPos))
-
-	for idx, pos := range r.columnPos {
-		if av := r.newValues[idx]; av != nil {
-			// If value was set then return it
-			res[idx] = av
-		} else {
-			av = DecodeAttr(r.raw[pos.start:pos.end])
-			res[idx] = av
 		}
 	}
 	return res, nil

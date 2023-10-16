@@ -67,7 +67,7 @@ func (d *Definition) SetSchemaValidator(v SchemaValidationFunc) *Definition {
 //	// Column parameters parsing
 //	var columnParamsToSkip = make(map[string]struct{})
 //	for _, p := range columnParameters {
-//		warnings, err := p.Parse(Driver, rawParams, nil, types)
+//		warnings, err := p.Decode(Driver, rawParams, nil, types)
 //		if err != nil {
 //			return nil, nil, fmt.Errorf("parameter %s parsing error: %w", p.Name, err)
 //		}
@@ -85,7 +85,7 @@ func (d *Definition) SetSchemaValidator(v SchemaValidationFunc) *Definition {
 //				SetMsg("parameter skipping due to the error in the related parameter parsing"))
 //			continue
 //		}
-//		warnings, err := p.Parse(Driver, rawParams, columnParameters, types)
+//		warnings, err := p.Decode(Driver, rawParams, columnParameters, types)
 //		if err != nil {
 //			return nil, nil, fmt.Errorf("parameter %s parsing error: %w", p.Name, err)
 //		}
@@ -99,7 +99,7 @@ func (d *Definition) SetSchemaValidator(v SchemaValidationFunc) *Definition {
 func (d *Definition) Instance(
 	ctx context.Context, driver *toolkit.Driver, rawParams map[string]toolkit.ParamsValue, types []*toolkit.Type,
 ) (Transformer, toolkit.ValidationWarnings, error) {
-	// Parse parameters and get the pgcopy of parsed
+	// Decode parameters and get the pgcopy of parsed
 	params, parametersWarnings, err := toolkit.InitParameters(driver, rawParams, d.Parameters, types)
 	if err != nil {
 		return nil, nil, err

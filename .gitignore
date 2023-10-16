@@ -25,3 +25,4 @@ scratch
 *.out
 cmd/greenmask/greenmask
 config.yml
+pkg/toolkit/test/test

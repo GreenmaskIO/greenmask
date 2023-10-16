@@ -5,7 +5,7 @@ import (
 
 	"github.com/greenmaskio/greenmask/internal/db/postgres/pgdump"
 	"github.com/greenmaskio/greenmask/internal/db/postgres/pgrestore"
-	"github.com/greenmaskio/greenmask/internal/db/postgres/transformers/utils"
+	"github.com/greenmaskio/greenmask/internal/db/postgres/transformers/custom"
 	"github.com/greenmaskio/greenmask/internal/storages/directory"
 	"github.com/greenmaskio/greenmask/internal/storages/s3"
 	"github.com/greenmaskio/greenmask/pkg/toolkit"
@@ -30,12 +30,12 @@ func NewConfig() *Config {
 }
 
 type Config struct {
-	Common             Common                               `mapstructure:"common" yaml:"common"`
-	Log                LogConfig                            `mapstructure:"log" yaml:"log"`
-	Storage            StorageConfig                        `mapstructure:"storage" yaml:"storage"`
-	Dump               Dump                                 `mapstructure:"dump" yaml:"dump"`
-	Restore            Restore                              `mapstructure:"restore" yaml:"restore"`
-	CustomTransformers []*utils.CustomTransformerDefinition `mapstructure:"custom_transformers" yaml:"custom_transformers"`
+	Common             Common                                `mapstructure:"common" yaml:"common"`
+	Log                LogConfig                             `mapstructure:"log" yaml:"log"`
+	Storage            StorageConfig                         `mapstructure:"storage" yaml:"storage"`
+	Dump               Dump                                  `mapstructure:"dump" yaml:"dump"`
+	Restore            Restore                               `mapstructure:"restore" yaml:"restore"`
+	CustomTransformers []*custom.CustomTransformerDefinition `mapstructure:"custom_transformers" yaml:"custom_transformers"`
 }
 
 type Common struct {

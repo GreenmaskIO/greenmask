@@ -150,7 +150,7 @@ func getDriverAndRecord(name string, value string) (*toolkit2.Driver, *toolkit2.
 		panic(err.Error())
 	}
 	row := pgcopy.NewRow(1)
-	row.Parse([]byte(value))
+	row.Decode([]byte(value))
 	return driver, toolkit2.NewRecord(
 		driver,
 		row,

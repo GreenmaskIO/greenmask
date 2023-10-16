@@ -19,7 +19,7 @@ type CmdTransformerBase struct {
 	Cmd              *exec.Cmd
 	ExpectedExitCode int
 	Driver           *toolkit.Driver
-	Api              DtoApi
+	Api              InteractionApi
 
 	StdoutReader *bufio.Reader
 	StderrReader *bufio.Reader
@@ -34,7 +34,7 @@ func NewCmdTransformerBase(
 	name string,
 	expectedExitCode int,
 	driver *toolkit.Driver,
-	api DtoApi,
+	api InteractionApi,
 ) *CmdTransformerBase {
 	if api == nil {
 		panic("api is nil")

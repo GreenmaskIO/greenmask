@@ -34,11 +34,3 @@ func GetAffectedAttributes(driver *toolkit.Driver, attributes ...string) ([]int,
 	}
 	return attributeIdxs, attributeNames, nil
 }
-
-func DefaultSkipTransformation(r *toolkit.Record) bool {
-	return false
-}
-
-func DefaultSkipAttributeFromDto(idx int) bool {
-	return false
-}

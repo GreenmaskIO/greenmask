@@ -21,7 +21,8 @@ var testTransformerDefinition = toolkit.NewDefinition(
 				SetSkipOriginalData(true),
 			).
 			SetRequired(true),
-	)
+	).
+	SetMode(toolkit.TextModeName)
 
 type TestTransformer struct {
 	columnName string
@@ -44,6 +45,7 @@ func NewTestTransformer(ctx context.Context, driver *toolkit.Driver, parameters 
 
 func (tt *TestTransformer) Validate(ctx context.Context) (toolkit.ValidationWarnings, error) {
 	return nil, nil
+	//return toolkit.ValidationWarnings{toolkit.NewValidationWarning().SetMsg("test validation")}, nil
 }
 
 func (tt *TestTransformer) Transform(ctx context.Context, r *toolkit.Record) (*toolkit.Record, error) {

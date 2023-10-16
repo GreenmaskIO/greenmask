@@ -8,7 +8,6 @@ import (
 
 	"github.com/greenmaskio/greenmask/pkg/toolkit"
 	jsoniter "github.com/json-iterator/go"
-	"github.com/rs/zerolog/log"
 )
 
 var json = jsoniter.ConfigDefault
@@ -31,7 +30,7 @@ type JsonApi struct {
 	t                *time.Ticker
 }
 
-func NewJsonInteractionApi(
+func NewJsonApi(
 	timeout time.Duration, driver *toolkit.Driver,
 	skipOriginalData SkipAttrFunc, attributes ...string) (*JsonApi, error) {
 	attributeIdxs, attributeNames, err := GetAffectedAttributes(driver, attributes...)
@@ -72,7 +71,7 @@ func (j *JsonApi) GetRowDriverFromRecord(r *toolkit.Record) (toolkit.RowDriver, 
 			res[columnIdx] = v
 		}
 	}
-	return res, nil
+	return &res, nil
 }
 
 func (j *JsonApi) SetRowDriverToRecord(rd toolkit.RowDriver, r *toolkit.Record) error {
@@ -134,11 +133,8 @@ func (j *JsonApi) Decode(ctx context.Context) (toolkit.RowDriver, error) {
 	}
 
 	if err != nil {
-		buf := j.decoder.Buffered()
-		res, _ := io.ReadAll(buf)
-		log.Debug().Msg(string(res))
 		return nil, err
 	}
 
-	return row, nil
+	return &row, nil
 }

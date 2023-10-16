@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestNewRow(t *testing.T) {
+func TestDecode(t *testing.T) {
 
 	type result struct {
 		pos    []*columnPos
@@ -19,10 +19,12 @@ func TestNewRow(t *testing.T) {
 		name     string
 		original []byte
 		result   result
+		length   int
 	}{
 		{
 			name:     "multi row",
 			original: []byte("27\they\\tmyname is\\nnoname\t\\N"),
+			length:   3,
 			result: result{
 				pos: []*columnPos{
 					{
@@ -47,6 +49,7 @@ func TestNewRow(t *testing.T) {
 		}, {
 			name:     "one row",
 			original: []byte("27"),
+			length:   1,
 			result: result{
 				pos: []*columnPos{
 					{
@@ -63,7 +66,9 @@ func TestNewRow(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			row := NewRow(tt.original)
+			row := NewRow(tt.length)
+			err := row.Decode(tt.original)
+			require.NoError(t, err)
 			for idx := range row.columnPos {
 				assert.Equalf(t, tt.result.pos[idx].start, row.columnPos[idx].start, "column %d: start position are unequal", idx)
 				assert.Equalf(t, tt.result.pos[idx].end, row.columnPos[idx].end, "column %d: end position are unequal", idx)
@@ -84,36 +89,43 @@ func TestRow_GetColumn(t *testing.T) {
 		original []byte
 		result   *toolkit.RawValue
 		idx      int
+		length   int
 	}{
 		{
 			name:     "simple column",
 			original: []byte("27\they\\tmyname is\\nnoname\t\\N\t\\N"),
 			result:   toolkit.NewRawValue([]byte("27"), false),
 			idx:      0,
+			length:   4,
 		},
 		{
 			name:     "column with escaped symbols",
 			original: []byte("27\they\\tmyname is\\nnoname\t\\N\t\\N"),
 			result:   toolkit.NewRawValue([]byte("hey\tmyname is\nnoname"), false),
 			idx:      1,
+			length:   4,
 		},
 		{
 			name:     "null value",
 			original: []byte("27\they\\tmyname is\\nnoname\t\\N\t\\N"),
 			result:   toolkit.NewRawValue(nil, true),
 			idx:      2,
+			length:   4,
 		},
 		{
 			name:     "last null value in line",
 			original: []byte("27\they\\tmyname is\\nnoname\t\\N\t\\N"),
 			result:   toolkit.NewRawValue(nil, true),
 			idx:      3,
+			length:   4,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			row := NewRow(tt.original)
+			row := NewRow(tt.length)
+			err := row.Decode(tt.original)
+			require.NoError(t, err)
 			av, err := row.GetColumn(tt.idx)
 			require.NoError(t, err)
 			assert.Equal(t, av.IsNull, tt.result.IsNull)
@@ -134,6 +146,7 @@ func TestRow_SetColumn_Encoding(t *testing.T) {
 		original []byte
 		params   params
 		expected []byte
+		length   int
 	}{
 		{
 			name:     "set literal",
@@ -143,6 +156,7 @@ func TestRow_SetColumn_Encoding(t *testing.T) {
 				value: toolkit.NewRawValue([]byte("\tnew_value\n"), false),
 			},
 			expected: []byte("27\t\\tnew_value\\n\t\\N\t\\N"),
+			length:   4,
 		},
 		{
 			name:     "set null value",
@@ -152,56 +166,20 @@ func TestRow_SetColumn_Encoding(t *testing.T) {
 				value: toolkit.NewRawValue(nil, true),
 			},
 			expected: []byte("\\N\they\\tmyname is\\nnoname\t\\N\t\\N"),
+			length:   4,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			row := NewRow(tt.original)
-			err := row.SetColumn(tt.params.idx, tt.params.value)
+			row := NewRow(tt.length)
+			err := row.Decode(tt.original)
+			require.NoError(t, err)
+			err = row.SetColumn(tt.params.idx, tt.params.value)
 			require.NoError(t, err)
 			res, err := row.Encode()
 			require.NoError(t, err)
 			assert.Equal(t, tt.expected, res)
-		})
-	}
-}
-
-func TestRow_Decode(t *testing.T) {
-
-	tests := []struct {
-		name      string
-		original  []byte
-		expected  []*toolkit.RawValue
-		newVal    *toolkit.RawValue
-		newValIdx int
-	}{
-		{
-			name:      "common",
-			original:  []byte("27\they\\tmyname is\\nnoname\t\\N\t\\N"),
-			newVal:    toolkit.NewRawValue([]byte("1\n2"), false),
-			newValIdx: 3,
-			expected: []*toolkit.RawValue{
-				toolkit.NewRawValue([]byte("27"), false),
-				toolkit.NewRawValue([]byte("hey\tmyname is\nnoname"), false),
-				toolkit.NewRawValue(nil, true),
-				toolkit.NewRawValue([]byte("1\n2"), false),
-			},
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			row := NewRow(tt.original)
-			err := row.SetColumn(tt.newValIdx, tt.newVal)
-			require.NoError(t, err)
-			res, err := row.Decode()
-			require.NoError(t, err)
-			for idx := range res {
-				assert.Equal(t, tt.expected[idx].IsNull, res[idx].IsNull)
-				assert.Equal(t, tt.expected[idx].Data, res[idx].Data)
-			}
-
 		})
 	}
 }

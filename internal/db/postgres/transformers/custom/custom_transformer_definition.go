@@ -1,9 +1,15 @@
-package utils
+package custom
 
 import (
 	"time"
 
 	"github.com/greenmaskio/greenmask/pkg/toolkit"
+)
+
+const (
+	JsonModeName = "json"
+	CsvModeName  = "csv"
+	TextModeName = "text"
 )
 
 type CustomTransformerDefinition struct {
@@ -18,4 +24,5 @@ type CustomTransformerDefinition struct {
 	AutoDiscoveryTimeout     time.Duration        `mapstructure:"auto_discovery_timeout" yaml:"auto_discovery_timeout" json:"auto_discovery_timeout"`
 	RowTransformationTimeout time.Duration        `mapstructure:"row_transformation_timeout" yaml:"row_transformation_timeout" json:"row_transformation_timeout"`
 	ExpectedExitCode         int                  `mapstructure:"expected_exit_code" yaml:"expected_exit_code" json:"expected_exit_code"`
+	Mode                     string               `mapstructure:"mode" yaml:"mode" json:"mode"`
 }

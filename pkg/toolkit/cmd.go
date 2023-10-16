@@ -22,6 +22,8 @@ import (
 
 var json = jsoniter.ConfigDefault
 
+type NewRowDriverFunc func() RowDriver
+
 type Cmd struct {
 	*cobra.Command
 	definition      *Definition
@@ -30,6 +32,8 @@ type Cmd struct {
 	printDefinition bool
 	validate        bool
 	transform       bool
+	expectedLength  int
+	newRow          NewRowDriverFunc
 }
 
 func NewCmd(definition *Definition) *Cmd {
@@ -103,11 +107,11 @@ func (c *Cmd) run(cmd *cobra.Command, args []string) {
 		signal.Notify(c, os.Interrupt, syscall.SIGTERM)
 		select {
 		case <-c:
+			log.Debug().Msg("received sigterm")
 		case <-ctx.Done():
 			return ctx.Err()
+		case <-done:
 		}
-		log.Debug().Msg("received sigterm")
-		close(done)
 		cancel()
 		return nil
 	})
@@ -115,6 +119,7 @@ func (c *Cmd) run(cmd *cobra.Command, args []string) {
 	eg.Go(func() (err error) {
 		if c.validate {
 			err = c.performValidate(ctx)
+			log.Debug().Msg("done")
 		} else if c.transform {
 			err = c.performTransform(ctx)
 		}
@@ -123,7 +128,7 @@ func (c *Cmd) run(cmd *cobra.Command, args []string) {
 			cancel()
 			return err
 		}
-		<-done
+		close(done)
 		log.Debug().Msg("exiting normally")
 		return nil
 	})
@@ -151,13 +156,10 @@ func (c *Cmd) performValidate(ctx context.Context) error {
 		if err = json.NewEncoder(os.Stdout).Encode(w); err != nil {
 			return fmt.Errorf("error encoding validation warning: %w", err)
 		}
-		if _, err = os.Stdout.Write([]byte{'\n'}); err != nil {
-			return fmt.Errorf("error writing to stdout: %w", err)
-		}
 	}
 
 	if warnings.IsFatal() {
-		return nil
+		return fmt.Errorf("fatal validation warning")
 	}
 
 	warnings, err = transformer.Validate(ctx)
@@ -168,9 +170,10 @@ func (c *Cmd) performValidate(ctx context.Context) error {
 		if err = json.NewEncoder(os.Stdout).Encode(w); err != nil {
 			return fmt.Errorf("error encoding validation warning: %w", err)
 		}
-		if _, err = os.Stdout.Write([]byte{'\n'}); err != nil {
-			return fmt.Errorf("error writing to stdout: %w", err)
-		}
+	}
+
+	if warnings.IsFatal() {
+		return fmt.Errorf("fatal validation warning")
 	}
 
 	return nil
@@ -187,7 +190,23 @@ func (c *Cmd) performTransform(ctx context.Context) error {
 	readCh := make(chan struct{}, 1)
 	defer close(readCh)
 	r := bufio.NewReader(os.Stdin)
-	rr := make(RawRecord, 10)
+
+	for _, p := range c.definition.Parameters {
+		if p.IsColumn {
+			c.expectedLength++
+		}
+	}
+	switch c.definition.Mode {
+	case JsonModeName:
+		c.newRow = NewJsonRow(c.expectedLength)
+	case TextModeName:
+		if c.expectedLength > 1 {
+			return fmt.Errorf("text interaction mode supports only 1 attribute got %d", c.expectedLength)
+		}
+		c.newRow = NewTextRow
+	default:
+		return fmt.Errorf("unknown interaction API: %s", c.definition.Mode)
+	}
 	for {
 		var line []byte
 		var err error
@@ -209,9 +228,11 @@ func (c *Cmd) performTransform(ctx context.Context) error {
 			return fmt.Errorf("error reading line from stdout: %w", err)
 		}
 
+		rr := c.newRow()
+
 		if len(line) > 0 {
-			if err = json.Unmarshal(line, &rr); err != nil {
-				return fmt.Errorf("error umnarshaling raw record: %w", err)
+			if err := rr.Decode(line); err != nil {
+				return fmt.Errorf("error decoding received row: %w", err)
 			}
 		}
 		record := NewRecord(driver, rr)
@@ -269,4 +290,15 @@ func (c *Cmd) init(ctx context.Context) (Transformer, *Driver, ValidationWarning
 	}
 
 	return t, driver, iw, nil
+}
+
+func NewJsonRow(length int) func() RowDriver {
+	return func() RowDriver {
+		rr := make(RawRecord, length)
+		return &rr
+	}
+}
+
+func NewTextRow() RowDriver {
+	return NewRawRecordText()
 }
