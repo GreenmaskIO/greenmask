@@ -93,8 +93,7 @@ func NewCustomCmdTransformer(
 
 	api, err := utils.NewJsonInteractionApi(
 		ctd.RowTransformationTimeout, driver,
-		utils.DefaultSkipTransformation, skipF,
-		affectedColumnsList...,
+		skipF, affectedColumnsList...,
 	)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error initializing json api: %w", err)

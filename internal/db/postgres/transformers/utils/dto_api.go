@@ -3,8 +3,9 @@ package utils
 import (
 	"context"
 	"errors"
-	"github.com/greenmaskio/greenmask/pkg/toolkit"
 	"io"
+
+	"github.com/greenmaskio/greenmask/pkg/toolkit"
 )
 
 var ErrInteractionTimeout = errors.New("interaction timeout")
@@ -16,9 +17,6 @@ type DtoApi interface {
 	SetWriter(w io.Writer)
 	// SetReader - assign reader
 	SetReader(r io.Reader)
-	// SkipTransformation - decide should be this record skipped for transformation. Useful for decreasing IO time and
-	// avoiding useless interaction
-	SkipTransformation(r *toolkit.Record) bool
 	// GetRowDriverFromRecord - get from toolkit.Record all the required attributes as a toolkit.RowDriver instance
 	GetRowDriverFromRecord(r *toolkit.Record) (toolkit.RowDriver, error)
 	// SetRowDriverToRecord - set transformed toolkit.RowDriver to the toolkit.Record

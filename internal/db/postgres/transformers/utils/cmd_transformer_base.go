@@ -4,11 +4,12 @@ import (
 	"bufio"
 	"context"
 	"fmt"
-	"github.com/greenmaskio/greenmask/pkg/toolkit"
-	"github.com/rs/zerolog/log"
 	"io"
 	"os/exec"
 	"syscall"
+
+	"github.com/greenmaskio/greenmask/pkg/toolkit"
+	"github.com/rs/zerolog/log"
 )
 
 type CancelFunction func() error
@@ -73,9 +74,6 @@ func (ctb *CmdTransformerBase) BaseDone() error {
 }
 
 func (ctb *CmdTransformerBase) Transform(ctx context.Context, r *toolkit.Record) (*toolkit.Record, error) {
-	if ctb.Api.SkipTransformation(r) {
-		return r, nil
-	}
 
 	var err error
 	var rd toolkit.RowDriver

@@ -137,12 +137,12 @@ func (ndt *NoiseDateTransformer) Transform(ctx context.Context, r *toolkit2.Reco
 }
 
 func generateNoisedTime(r *rand.Rand, ratio time.Duration, val *time.Time, truncate *string) *time.Time {
-	res := val.Add(ratio)
+	res := val.Add(time.Duration(r.Int63n(int64(ratio))))
 	return &res
 }
 
 func generateNoisedTimeTruncate(r *rand.Rand, ratio time.Duration, val *time.Time, truncate *string) *time.Time {
-	res := val.Add(ratio)
+	res := val.Add(time.Duration(r.Int63n(int64(ratio))))
 	return truncateDate(&res, truncate)
 }
 

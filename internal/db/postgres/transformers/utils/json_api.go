@@ -11,49 +11,43 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-var json = jsoniter.ConfigFastest
+var json = jsoniter.ConfigDefault
 
 type SkipTransformationFunc func(r *toolkit.Record) bool
 type SkipAttrFunc func(idx int) bool
 
 type JsonApi struct {
-	attributeNames     map[int]string
-	attributeIdxs      []int
-	tupleLength        int
-	readCh             chan struct{}
-	writeCh            chan struct{}
-	w                  io.Writer
-	r                  io.Reader
-	encoder            *jsoniter.Encoder
-	decoder            *jsoniter.Decoder
-	skipTransformation SkipTransformationFunc
-	skipOriginalData   SkipAttrFunc
-	timeout            time.Duration
-	t                  *time.Ticker
+	attributeNames   map[int]string
+	attributeIdxs    []int
+	tupleLength      int
+	readCh           chan struct{}
+	writeCh          chan struct{}
+	w                io.Writer
+	r                io.Reader
+	encoder          *jsoniter.Encoder
+	decoder          *jsoniter.Decoder
+	skipOriginalData SkipAttrFunc
+	timeout          time.Duration
+	t                *time.Ticker
 }
 
 func NewJsonInteractionApi(
 	timeout time.Duration, driver *toolkit.Driver,
-	skipTransformation SkipTransformationFunc, skipOriginalData SkipAttrFunc,
-	attributes ...string) (*JsonApi, error) {
+	skipOriginalData SkipAttrFunc, attributes ...string) (*JsonApi, error) {
 	attributeIdxs, attributeNames, err := GetAffectedAttributes(driver, attributes...)
 	if err != nil {
 		return nil, err
 	}
-	if skipTransformation == nil {
-		panic("skipTransformation is nil")
-	}
 
 	return &JsonApi{
-		attributeNames:     attributeNames,
-		attributeIdxs:      attributeIdxs,
-		tupleLength:        len(attributeIdxs),
-		readCh:             make(chan struct{}, 1),
-		writeCh:            make(chan struct{}, 1),
-		skipTransformation: skipTransformation,
-		timeout:            timeout,
-		t:                  time.NewTicker(timeout),
-		skipOriginalData:   skipOriginalData,
+		attributeNames:   attributeNames,
+		attributeIdxs:    attributeIdxs,
+		tupleLength:      len(attributeIdxs),
+		readCh:           make(chan struct{}, 1),
+		writeCh:          make(chan struct{}, 1),
+		timeout:          timeout,
+		t:                time.NewTicker(timeout),
+		skipOriginalData: skipOriginalData,
 	}, nil
 }
 
@@ -65,10 +59,6 @@ func (j *JsonApi) SetWriter(w io.Writer) {
 func (j *JsonApi) SetReader(r io.Reader) {
 	j.r = r
 	j.decoder = json.NewDecoder(r)
-}
-
-func (j *JsonApi) SkipTransformation(r *toolkit.Record) bool {
-	return j.skipTransformation(r)
 }
 
 func (j *JsonApi) GetRowDriverFromRecord(r *toolkit.Record) (toolkit.RowDriver, error) {

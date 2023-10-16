@@ -20,7 +20,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var json = jsoniter.ConfigCompatibleWithStandardLibrary
+var json = jsoniter.ConfigDefault
 
 type Cmd struct {
 	*cobra.Command
