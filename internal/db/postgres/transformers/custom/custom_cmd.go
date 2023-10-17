@@ -42,16 +42,15 @@ func ProduceNewCmdTransformerFunction(ctd *CustomTransformerDefinition) utils.Ne
 type CustomCmdTransformer struct {
 	*utils.CmdTransformerBase
 
-	name            string
-	executable      string
-	args            []string
-	warnings        []*toolkit.ValidationWarning
-	eg              *errgroup.Group
-	driver          *toolkit.Driver
-	parameters      map[string]*toolkit.Parameter
-	affectedColumns map[int]string
-	ctd             *CustomTransformerDefinition
-
+	name               string
+	executable         string
+	args               []string
+	warnings           []*toolkit.ValidationWarning
+	eg                 *errgroup.Group
+	driver             *toolkit.Driver
+	parameters         map[string]*toolkit.Parameter
+	affectedColumns    map[int]string
+	ctd                *CustomTransformerDefinition
 	t                  *time.Ticker
 	skipTransformation bool
 }
@@ -140,6 +139,37 @@ func (ct *CustomCmdTransformer) GetAffectedColumns() map[int]string {
 	return ct.affectedColumns
 }
 
+func (ct *CustomCmdTransformer) watchForTimeout(ctx context.Context) error {
+	for {
+		if ct.ProcessedLines > -1 {
+			break
+		}
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-ct.DoneCh:
+			return nil
+		default:
+		}
+		time.Sleep(1 * time.Second)
+	}
+	ct.t.Reset(ct.ctd.RowTransformationTimeout)
+	for {
+		lastValue := ct.ProcessedLines
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-ct.DoneCh:
+			return nil
+		case <-ct.t.C:
+			if lastValue == ct.ProcessedLines {
+				ct.Cancel()
+				return ErrRowTransformationTimeout
+			}
+		}
+	}
+}
+
 func (ct *CustomCmdTransformer) Init(ctx context.Context) (err error) {
 	// TODO: Generate table meta and pass it through the parameter encoded by base64
 	meta, err := ct.getMetadata()
@@ -157,6 +187,10 @@ func (ct *CustomCmdTransformer) Init(ctx context.Context) (err error) {
 	ct.eg = &errgroup.Group{}
 	ct.eg.Go(func() error {
 		return ct.stderrForwarder(ctx)
+	})
+
+	ct.eg.Go(func() error {
+		return ct.watchForTimeout(ctx)
 	})
 
 	ct.eg.Go(func() error {

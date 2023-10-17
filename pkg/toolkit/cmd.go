@@ -103,7 +103,10 @@ func (c *Cmd) run(cmd *cobra.Command, args []string) {
 	done := make(chan struct{})
 	eg := &errgroup.Group{}
 	eg.Go(func() error {
-		c := make(chan os.Signal, 1) // we need to reserve to buffer size 1, so the notifier are not blocked
+		defer func() {
+			cancel()
+		}()
+		c := make(chan os.Signal, 1)
 		signal.Notify(c, os.Interrupt, syscall.SIGTERM)
 		select {
 		case <-c:
@@ -112,7 +115,6 @@ func (c *Cmd) run(cmd *cobra.Command, args []string) {
 			return ctx.Err()
 		case <-done:
 		}
-		cancel()
 		return nil
 	})
 
@@ -188,7 +190,6 @@ func (c *Cmd) performTransform(ctx context.Context) error {
 		return fmt.Errorf("fatal validation error")
 	}
 	readCh := make(chan struct{}, 1)
-	defer close(readCh)
 	r := bufio.NewReader(os.Stdin)
 
 	for _, p := range c.definition.Parameters {

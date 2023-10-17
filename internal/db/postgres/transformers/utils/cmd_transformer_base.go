@@ -3,9 +3,12 @@ package utils
 import (
 	"bufio"
 	"context"
+	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"os/exec"
+	"sync"
 	"syscall"
 
 	"github.com/greenmaskio/greenmask/pkg/toolkit"
@@ -20,6 +23,7 @@ type CmdTransformerBase struct {
 	ExpectedExitCode int
 	Driver           *toolkit.Driver
 	Api              InteractionApi
+	ProcessedLines   int
 
 	StdoutReader *bufio.Reader
 	StderrReader *bufio.Reader
@@ -28,6 +32,8 @@ type CmdTransformerBase struct {
 
 	sendChan    chan struct{}
 	receiveChan chan struct{}
+	DoneCh      chan struct{}
+	terminated  bool
 }
 
 func NewCmdTransformerBase(
@@ -45,6 +51,8 @@ func NewCmdTransformerBase(
 		ExpectedExitCode: expectedExitCode,
 		Driver:           driver,
 		Api:              api,
+		ProcessedLines:   -1,
+		DoneCh:           make(chan struct{}, 1),
 	}
 }
 
@@ -74,7 +82,7 @@ func (ctb *CmdTransformerBase) BaseDone() error {
 }
 
 func (ctb *CmdTransformerBase) Transform(ctx context.Context, r *toolkit.Record) (*toolkit.Record, error) {
-
+	ctb.ProcessedLines++
 	var err error
 	var rd toolkit.RowDriver
 
@@ -85,6 +93,10 @@ func (ctb *CmdTransformerBase) Transform(ctx context.Context, r *toolkit.Record)
 
 	err = ctb.Api.Encode(ctx, rd)
 	if err != nil {
+		pe := &fs.PathError{}
+		if errors.Is(err, pe) && pe.Err.Error() == "file already closed" {
+			return nil, nil
+		}
 		return nil, fmt.Errorf("dto api error: cannot send tuple to transformer: %w", err)
 	}
 
@@ -168,6 +180,14 @@ func (ctb *CmdTransformerBase) init() error {
 	ctb.Api.SetWriter(ctb.StdinWriter)
 
 	cancelFunction := func() error {
+		mx := &sync.Mutex{}
+		mx.Lock()
+		defer mx.Unlock()
+		if ctb.terminated {
+			return nil
+		}
+		defer close(ctb.DoneCh)
+		ctb.terminated = true
 		log.Debug().
 			Str("TableSchema", ctb.Driver.Table.Schema).
 			Str("TableName", ctb.Driver.Table.Name).
