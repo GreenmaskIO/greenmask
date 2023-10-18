@@ -60,8 +60,8 @@ func NewCustomCmdTransformer(
 	ctd *CustomTransformerDefinition,
 ) (*CustomCmdTransformer, toolkit.ValidationWarnings, error) {
 	affectedColumns := make(map[int]string)
-	skipOriginalData := make(map[int]struct{})
-	var affectedColumnsList []string
+	var affectedColumnsIdx []int
+	var transferringColumnsIdx []int
 	for _, p := range parameters {
 		if p.IsColumn {
 			v, err := p.Value()
@@ -77,37 +77,30 @@ func NewCustomCmdTransformer(
 			if !ok {
 				return nil, nil, fmt.Errorf("column with name %s is not found", columnName)
 			}
-			affectedColumns[idx] = columnName
-			if p.ColumnProperties != nil && p.ColumnProperties.SkipOriginalData {
-				skipOriginalData[idx] = struct{}{}
+			if p.ColumnProperties != nil {
+				if p.ColumnProperties.Affected {
+					affectedColumns[idx] = columnName
+					affectedColumnsIdx = append(affectedColumnsIdx, idx)
+				}
+			} else {
+				affectedColumns[idx] = columnName
+				affectedColumnsIdx = append(affectedColumnsIdx, idx)
+
 			}
-			affectedColumnsList = append(affectedColumnsList, columnName)
+
+			if p.ColumnProperties != nil {
+				if !p.ColumnProperties.SkipOriginalData {
+					transferringColumnsIdx = append(transferringColumnsIdx, idx)
+				}
+			} else {
+				transferringColumnsIdx = append(transferringColumnsIdx, idx)
+			}
 		}
 	}
 
-	skipF := func(idx int) bool {
-		_, ok := skipOriginalData[idx]
-		return ok
-	}
-
-	var err error
-	var api utils.InteractionApi
-
-	switch ctd.Mode {
-	case JsonModeName:
-		api, err = utils.NewJsonApi(
-			ctd.RowTransformationTimeout, driver,
-			skipF, affectedColumnsList...,
-		)
-		if err != nil {
-			return nil, nil, fmt.Errorf("error initializing json api: %w", err)
-		}
-	case TextModeName:
-		api, err = utils.NewTextApi(
-			driver, skipF, affectedColumnsList...,
-		)
-	default:
-		return nil, nil, fmt.Errorf("unknown interaction API: %s", ctd.Mode)
+	api, err := utils.NewApi(ctd.Mode, transferringColumnsIdx, affectedColumnsIdx)
+	if err != nil {
+		return nil, nil, fmt.Errorf("error creating InteractionApi: %w", err)
 	}
 
 	cct := utils.NewCmdTransformerBase(ctd.Name, ctd.ExpectedExitCode, driver, api)

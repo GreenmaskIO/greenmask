@@ -52,7 +52,7 @@ func TestEncodeDecode(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			res := DecodeAttr(EncodeAttr(tt.original))
+			res := DecodeAttr(EncodeAttr(tt.original, nil), nil)
 			assert.Equal(t, tt.expected.IsNull, res.IsNull, "wrong NULL interpretation found")
 			assert.Equal(t, tt.expected.Data, res.Data, "bytes are unequal")
 		})

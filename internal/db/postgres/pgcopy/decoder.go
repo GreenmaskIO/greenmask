@@ -37,7 +37,7 @@ func getDecimalFromHex(c byte) byte {
 	return byte(unicode.ToLower(rune(c))) - 'a' + 10
 }
 
-func DecodeAttr(raw []byte) *toolkit.RawValue {
+func DecodeAttr(raw []byte, buf []byte) *toolkit.RawValue {
 	if slices.Equal(raw, DefaultNullSeq) {
 		return &toolkit.RawValue{
 			IsNull: true,
@@ -45,7 +45,6 @@ func DecodeAttr(raw []byte) *toolkit.RawValue {
 	}
 
 	var sawNonAscii = false
-	res := make([]byte, 0, len(raw))
 	for i := 0; i < len(raw); {
 		c := raw[i]
 		if c == '\\' {
@@ -127,14 +126,14 @@ func DecodeAttr(raw []byte) *toolkit.RawValue {
 				 */
 			}
 		}
-		res = append(res, c)
+		buf = append(buf, c)
 		i++
 	}
-	if sawNonAscii && !utf8.Valid(res) {
+	if sawNonAscii && !utf8.Valid(buf) {
 		panic("error checking UTF-8 string after non ASCII symbols decoding")
 	}
 
 	return &toolkit.RawValue{
-		Data: res,
+		Data: buf,
 	}
 }

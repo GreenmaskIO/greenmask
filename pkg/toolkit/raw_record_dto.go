@@ -49,3 +49,9 @@ func (rrd RawRecordDto) Decode(data []byte) error {
 func (rrd RawRecordDto) Length() int {
 	return len(rrd)
 }
+
+func (rrd *RawRecordDto) Clean() {
+	for key, _ := range *rrd {
+		delete(*rrd, key)
+	}
+}

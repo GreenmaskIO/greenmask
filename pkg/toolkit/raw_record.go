@@ -6,6 +6,10 @@ import (
 
 type RawRecord map[int]*RawValue
 
+func NewRawRecord(size int) RawRecord {
+	return make(RawRecord, size)
+}
+
 func (rr *RawRecord) GetColumn(idx int) (*RawValue, error) {
 	res, ok := (*rr)[idx]
 	if !ok {
@@ -34,4 +38,10 @@ func (rr *RawRecord) Decode(data []byte) error {
 
 func (rr *RawRecord) Length() int {
 	return len(*rr)
+}
+
+func (rr *RawRecord) Clean() {
+	for key, _ := range *rr {
+		delete(*rr, key)
+	}
 }

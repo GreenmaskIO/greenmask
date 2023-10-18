@@ -3,10 +3,8 @@ package utils
 import (
 	"bufio"
 	"context"
-	"errors"
 	"fmt"
 	"io"
-	"io/fs"
 	"os/exec"
 	"sync"
 	"syscall"
@@ -93,10 +91,6 @@ func (ctb *CmdTransformerBase) Transform(ctx context.Context, r *toolkit.Record)
 
 	err = ctb.Api.Encode(ctx, rd)
 	if err != nil {
-		pe := &fs.PathError{}
-		if errors.Is(err, pe) && pe.Err.Error() == "file already closed" {
-			return nil, nil
-		}
 		return nil, fmt.Errorf("dto api error: cannot send tuple to transformer: %w", err)
 	}
 

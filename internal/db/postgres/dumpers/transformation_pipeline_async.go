@@ -32,7 +32,7 @@ func NewTransformationPipeline(ctx context.Context, eg *errgroup.Group, table *d
 	var tws []*TransformationWindow
 	var isAsync bool
 
-	if table.HasCustomTransformer() && len(table.Transformers) > 1 {
+	if len(table.Transformers) > 1 {
 		isAsync = true
 		tw := NewTransformationWindow(ctx, eg)
 		tws = append(tws, tw)
@@ -42,7 +42,6 @@ func NewTransformationPipeline(ctx context.Context, eg *errgroup.Group, table *d
 				tws = append(tws, tw)
 				tw.TryAdd(t)
 			}
-
 		}
 	}
 

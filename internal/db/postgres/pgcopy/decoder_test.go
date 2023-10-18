@@ -62,7 +62,7 @@ func TestDecodeAttr(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			res := DecodeAttr(tt.original)
+			res := DecodeAttr(tt.original, nil)
 			assert.Equal(t, tt.expected.IsNull, res.IsNull)
 			if !res.IsNull {
 				assert.Equal(t, tt.expected.Data, res.Data, "wrong escaped bytes")
@@ -73,7 +73,7 @@ func TestDecodeAttr(t *testing.T) {
 
 func TestDecodeAttr_backslash_panic(t *testing.T) {
 	require.PanicsWithValue(t, "backslash cannot be alone", func() {
-		DecodeAttr([]byte("\\"))
+		DecodeAttr([]byte("\\"), nil)
 	})
 }
 
@@ -97,7 +97,7 @@ func TestDecodeAttr_non_acii_symbols(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			res := DecodeAttr(tt.original)
+			res := DecodeAttr(tt.original, nil)
 			assert.Equal(t, tt.expected.IsNull, res.IsNull)
 			if !res.IsNull {
 				assert.Equal(t, tt.expected.Data, res.Data, "wrong escaped bytes")

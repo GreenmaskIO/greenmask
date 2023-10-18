@@ -14,12 +14,19 @@ type columnPos struct {
 	end   int
 }
 
+const defaultBufferPoolSize = 128
+const defaultDecodedBuf = 1024
+
 // Row - the row driver that works with vanilla COPY format
 type Row struct {
 	// raw - the state that received from PG
 	raw []byte
-	// decoded - bytes that has been decoded using DecodeAttr
-	decoded []byte
+	// encoded - bytes that has been encoded using EncodeAttr
+	encoded []byte
+	// decodeBufferPool
+	decodeBufferPool [][]byte
+	// encodeBufferPool
+	encodeBufferPool [][]byte
 	// newValues - raw data that has been assigned in runtime after transformation
 	//	those data is after Driver encoding from real type to []byte representation
 	//newValues map[int]*toolkit.RawValue
@@ -30,14 +37,21 @@ type Row struct {
 
 func NewRow(tupleSize int) *Row {
 	pos := make([]*columnPos, tupleSize)
+	decodeBufferPool := make([][]byte, tupleSize)
+	encodeBufferPool := make([][]byte, tupleSize)
 
 	// Building column position slice
 	for idx, _ := range pos {
 		pos[idx] = &columnPos{}
+		decodeBufferPool[idx] = make([]byte, defaultBufferPoolSize)
+		encodeBufferPool[idx] = make([]byte, defaultBufferPoolSize)
 	}
 	return &Row{
-		columnPos: pos,
-		newValues: make([]*toolkit.RawValue, tupleSize),
+		columnPos:        pos,
+		newValues:        make([]*toolkit.RawValue, tupleSize),
+		decodeBufferPool: decodeBufferPool,
+		encodeBufferPool: encodeBufferPool,
+		encoded:          make([]byte, 0, defaultDecodedBuf),
 	}
 }
 
@@ -79,7 +93,7 @@ func (r *Row) GetColumn(idx int) (*toolkit.RawValue, error) {
 		return res, nil
 	}
 	pos := r.columnPos[idx]
-	res = DecodeAttr(r.raw[pos.start:pos.end])
+	res = DecodeAttr(r.raw[pos.start:pos.end], r.decodeBufferPool[idx][:0])
 	return res, nil
 }
 
@@ -99,11 +113,11 @@ func (r *Row) Encode() ([]byte, error) {
 		return r.raw, nil
 	}
 
-	res := make([]byte, 0, len(r.raw))
+	res := r.encoded[:0]
 	for idx, pos := range r.columnPos {
 		if av := r.newValues[idx]; av != nil {
 			// If value was set then encode it and add to result
-			v := EncodeAttr(av)
+			v := EncodeAttr(av, r.encodeBufferPool[idx][:0])
 			res = append(res, v...)
 			r.newValues[idx] = nil
 		} else {
@@ -120,4 +134,8 @@ func (r *Row) Encode() ([]byte, error) {
 
 func (r *Row) Length() int {
 	return len(r.columnPos)
+}
+
+func (r *Row) Clean() {
+	panic("clean method is not supported")
 }

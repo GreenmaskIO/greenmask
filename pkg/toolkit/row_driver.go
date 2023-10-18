@@ -16,4 +16,6 @@ type RowDriver interface {
 	Decode([]byte) error
 	// Length - count of attributes in the row
 	Length() int
+	// Clean - clean the state
+	Clean()
 }

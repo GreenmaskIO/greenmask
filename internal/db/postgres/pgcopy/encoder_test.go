@@ -51,7 +51,7 @@ func TestEncodeAttr(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			println(string(tt.expected))
-			res := EncodeAttr(tt.original)
+			res := EncodeAttr(tt.original, nil)
 			assert.Equal(t, tt.expected, res, "wrong escaped bytes")
 		})
 	}

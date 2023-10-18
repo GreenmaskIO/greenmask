@@ -34,3 +34,38 @@ func GetAffectedAttributes(driver *toolkit.Driver, attributes ...string) ([]int,
 	}
 	return attributeIdxs, attributeNames, nil
 }
+
+func NewApi(mode string, transferringColumns []int, affectedColumns []int) (InteractionApi, error) {
+	var err error
+	var api InteractionApi
+
+	if len(affectedColumns) == 0 {
+		return nil, fmt.Errorf("affected columns cannot be empty")
+	}
+
+	switch mode {
+	case toolkit.JsonModeName:
+		api, err = NewJsonApi(transferringColumns, affectedColumns)
+		if err != nil {
+			return nil, fmt.Errorf("error initializing json api: %w", err)
+		}
+	case toolkit.TextModeName:
+		if len(affectedColumns) > 1 || len(transferringColumns) > 1 {
+			return nil,
+				fmt.Errorf(
+					"use another interaction format (json or csv): text intearaction formats supports only 1 "+
+						"attribute peer nullRecord: got transferring %d affected %d",
+					len(transferringColumns), len(affectedColumns),
+				)
+		}
+
+		var needSkip bool
+		if len(transferringColumns) == 0 {
+			needSkip = true
+		}
+		api, err = NewTextApi(affectedColumns[0], needSkip)
+	default:
+		return nil, fmt.Errorf("unknown interaction API: %s", mode)
+	}
+	return api, nil
+}

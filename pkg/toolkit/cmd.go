@@ -208,6 +208,7 @@ func (c *Cmd) performTransform(ctx context.Context) error {
 	default:
 		return fmt.Errorf("unknown interaction API: %s", c.definition.Mode)
 	}
+
 	for {
 		var line []byte
 		var err error
@@ -215,6 +216,7 @@ func (c *Cmd) performTransform(ctx context.Context) error {
 			line, _, err = r.ReadLine()
 			readCh <- struct{}{}
 		}()
+		rr := c.newRow()
 
 		select {
 		case <-ctx.Done():
@@ -228,8 +230,6 @@ func (c *Cmd) performTransform(ctx context.Context) error {
 			}
 			return fmt.Errorf("error reading line from stdout: %w", err)
 		}
-
-		rr := c.newRow()
 
 		if len(line) > 0 {
 			if err := rr.Decode(line); err != nil {

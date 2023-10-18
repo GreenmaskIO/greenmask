@@ -7,26 +7,25 @@ import (
 )
 
 // EncodeAttr - encode from UTF-8 slice to transfer representation (escaped byte[])
-func EncodeAttr(v *toolkit.RawValue) []byte {
+func EncodeAttr(v *toolkit.RawValue, buf []byte) []byte {
 	// Check whether raw input matched null marker
 	if v.IsNull {
 		return DefaultNullSeq
 	}
 
 	data := v.Data
-	var res = make([]byte, 0, len(data))
 
 	for i := 0; i < len(data); i++ {
 		if len(data[i:]) >= len(DefaultNullSeq) && slices.Equal(data[i:i+len(DefaultNullSeq)], DefaultNullSeq) {
 			// Escaping NULL SEQUENCE
-			res = append(res, '\\')
-			res = append(res, DefaultNullSeq...)
+			buf = append(buf, '\\')
+			buf = append(buf, DefaultNullSeq...)
 			i = i + len(DefaultNullSeq)
 			continue
 		} else if len(data[i:]) >= len(DefaultCopyTerminationSeq) && slices.Equal(data[i:i+len(DefaultCopyTerminationSeq)], DefaultCopyTerminationSeq) {
 			// Escaping pgcopy termination string
-			res = append(res, '\\')
-			res = append(res, DefaultCopyTerminationSeq...)
+			buf = append(buf, '\\')
+			buf = append(buf, DefaultCopyTerminationSeq...)
 			i = i + len(DefaultCopyTerminationSeq)
 			continue
 		}
@@ -51,18 +50,18 @@ func EncodeAttr(v *toolkit.RawValue) []byte {
 				// TODO: Recheck it
 				// As I understand if current ASCII control symb is not equal as the listed we are writing it directly
 				if c != DefaultCopyDelimiter {
-					res = append(res, c)
+					buf = append(buf, c)
 				}
 			}
-			res = append(res, '\\', c)
+			buf = append(buf, '\\', c)
 		} else if c == '\\' || c == DefaultCopyDelimiter {
 			// Escaping backslash or pgcopy delimiter
-			res = append(res, '\\', c)
+			buf = append(buf, '\\', c)
 		} else {
 			// Add plain rune
-			res = append(res, c)
+			buf = append(buf, c)
 		}
 	}
 
-	return res
+	return buf
 }

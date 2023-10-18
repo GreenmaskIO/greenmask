@@ -14,15 +14,17 @@ var testTransformerDefinition = toolkit.NewDefinition(
 	"TestTransformer",
 	NewTestTransformer,
 ).SetValidate(true).
+	SetMode(toolkit.TextModeName).
 	AddParameter(
 		toolkit.MustNewParameter("column", "test desc").
-			SetIsColumn(toolkit.NewColumnProperties().
-				SetAllowedColumnTypes("date", "timestamp", "timestamptz").
-				SetSkipOriginalData(true),
+			SetIsColumn(
+				toolkit.NewColumnProperties().
+					SetAllowedColumnTypes("date", "timestamp", "timestamptz").
+					SetSkipOriginalData(true).
+					SetAffected(true),
 			).
 			SetRequired(true),
-	).
-	SetMode(toolkit.TextModeName)
+	)
 
 type TestTransformer struct {
 	columnName string
