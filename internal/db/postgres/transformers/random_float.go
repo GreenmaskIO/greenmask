@@ -136,7 +136,7 @@ func (rft *RandomFloatTransformer) Transform(ctx context.Context, r *toolkit2.Re
 	resFloat := rft.min + rft.rand.Float64()*(rft.max-rft.min)
 	resFloat = round(resFloat, rft.precision)
 
-	if err := r.SetAttribute(rft.columnName, &resFloat); err != nil {
+	if err := r.SetAttributeByName(rft.columnName, &resFloat); err != nil {
 		return nil, fmt.Errorf("unable to set new value: %w", err)
 	}
 	return r, nil

@@ -89,7 +89,7 @@ func (nit *NoiseIntTransformer) Transform(ctx context.Context, r *toolkit2.Recor
 	// TODO: value out of rage might be possible: double check this transformer implementation
 
 	var val int64
-	isNull, err := r.ScanAttribute(nit.columnName, &val)
+	isNull, err := r.ScanAttributeByName(nit.columnName, &val)
 	if err != nil {
 		return nil, fmt.Errorf("unable to scan value: %w", err)
 	}
@@ -103,7 +103,7 @@ func (nit *NoiseIntTransformer) Transform(ctx context.Context, r *toolkit2.Recor
 		ratio = ratio * -1
 	}
 	res := val + int64(float64(val)*ratio)
-	if err := r.SetAttribute(nit.columnName, &res); err != nil {
+	if err := r.SetAttributeByName(nit.columnName, &res); err != nil {
 		return nil, fmt.Errorf("unable to set new value: %w", err)
 	}
 	return r, nil

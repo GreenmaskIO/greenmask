@@ -100,7 +100,7 @@ func (ht *HashTransformer) Done(ctx context.Context) error {
 
 func (ht *HashTransformer) Transform(ctx context.Context, r *toolkit2.Record) (*toolkit2.Record, error) {
 	var originalValue string
-	isNull, err := r.ScanAttribute(ht.columnName, &originalValue)
+	isNull, err := r.ScanAttributeByName(ht.columnName, &originalValue)
 	if err != nil {
 		return nil, fmt.Errorf("unable to scan attribute value: %w", err)
 	}
@@ -114,7 +114,7 @@ func (ht *HashTransformer) Transform(ctx context.Context, r *toolkit2.Record) (*
 	}
 
 	res := base64.StdEncoding.EncodeToString(dk)
-	if err := r.SetAttribute(ht.columnName, res); err != nil {
+	if err := r.SetAttributeByName(ht.columnName, res); err != nil {
 		return nil, fmt.Errorf("unable to set new value: %w", err)
 	}
 

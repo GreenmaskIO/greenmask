@@ -114,7 +114,7 @@ func (rit *RandomIntTransformer) Done(ctx context.Context) error {
 }
 
 func (rit *RandomIntTransformer) Transform(ctx context.Context, r *toolkit2.Record) (*toolkit2.Record, error) {
-	val, err := r.GetAttribute(rit.columnName)
+	val, err := r.GetAttributeByName(rit.columnName)
 	if err != nil {
 		return nil, fmt.Errorf("unable to scan value: %w", err)
 	}
@@ -124,7 +124,7 @@ func (rit *RandomIntTransformer) Transform(ctx context.Context, r *toolkit2.Reco
 
 	res := rit.rand.Int63n(rit.max-rit.min) + rit.min
 
-	if err := r.SetAttribute(rit.columnName, res); err != nil {
+	if err := r.SetAttributeByName(rit.columnName, res); err != nil {
 		return nil, fmt.Errorf("unable to set new value: %w", err)
 	}
 	return r, nil

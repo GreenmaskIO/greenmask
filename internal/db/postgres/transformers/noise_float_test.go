@@ -95,7 +95,7 @@ func TestNoiseFloatTransformer_Transform(t *testing.T) {
 				record,
 			)
 			require.NoError(t, err)
-			res, err := r.GetAttribute(tt.columnName)
+			res, err := r.GetAttributeByName(tt.columnName)
 			require.NoError(t, err)
 			assert.False(t, res.IsNull)
 			if !res.IsNull {

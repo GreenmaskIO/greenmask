@@ -87,7 +87,7 @@ func (rut *RandomUuidTransformer) Transform(ctx context.Context, r *toolkit2.Rec
 		return r, nil
 	}
 
-	if err = r.SetAttribute(rut.columnName, uuid.New()); err != nil {
+	if err = r.SetAttributeByName(rut.columnName, uuid.New()); err != nil {
 		return nil, fmt.Errorf("unable to set new value: %w", err)
 	}
 	return r, nil

@@ -127,8 +127,6 @@ var columnList = []*toolkit2.Column{
 // getDriverAndRecord - return adhoc table for testing
 // TODO: You should generate table definition it dynamically using faker as well as table tuples
 func getDriverAndRecord(name string, value string) (*toolkit2.Driver, *toolkit2.Record) {
-	typeMap := pgtype.NewMap()
-
 	idx := slices.IndexFunc(columnList, func(column *toolkit2.Column) bool {
 		return column.Name == name
 	})
@@ -145,14 +143,15 @@ func getDriverAndRecord(name string, value string) (*toolkit2.Driver, *toolkit2.
 		Constraints: []toolkit2.Constraint{},
 	}
 
-	driver, err := toolkit2.NewDriver(typeMap, table, nil, nil)
+	driver, err := toolkit2.NewDriver(table, nil, nil)
 	if err != nil {
 		panic(err.Error())
 	}
 	row := pgcopy.NewRow(1)
 	row.Decode([]byte(value))
-	return driver, toolkit2.NewRecord(
+	r := toolkit2.NewRecord(
 		driver,
-		row,
 	)
+	r.SetRow(row)
+	return driver, r
 }

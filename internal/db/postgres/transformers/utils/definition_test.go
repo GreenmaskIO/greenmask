@@ -74,7 +74,7 @@ func TestDefinition(t *testing.T) {
 		Constraints: []toolkit.Constraint{},
 	}
 
-	driver, err := toolkit.NewDriver(typeMap, table, nil, nil)
+	driver, err := toolkit.NewDriver(table, nil, nil)
 	require.NoError(t, err)
 
 	rawParams := map[string]toolkit.ParamsValue{

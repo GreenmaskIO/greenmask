@@ -25,6 +25,7 @@ type TransformationPipeline struct {
 	transformationWindows []*TransformationWindow
 	Transform             TransformationFunc
 	isAsync               bool
+	record                *toolkit.Record
 }
 
 func NewTransformationPipeline(ctx context.Context, eg *errgroup.Group, table *dump.Table, w io.Writer) (*TransformationPipeline, error) {
@@ -32,7 +33,7 @@ func NewTransformationPipeline(ctx context.Context, eg *errgroup.Group, table *d
 	var tws []*TransformationWindow
 	var isAsync bool
 
-	if len(table.Transformers) > 1 {
+	if table.HasCustomTransformer() && len(table.Transformers) > 1 {
 		isAsync = true
 		tw := NewTransformationWindow(ctx, eg)
 		tws = append(tws, tw)
@@ -52,6 +53,7 @@ func NewTransformationPipeline(ctx context.Context, eg *errgroup.Group, table *d
 		row:                   pgcopy.NewRow(len(table.Columns)),
 		transformationWindows: tws,
 		isAsync:               true,
+		record:                toolkit.NewRecord(table.Driver),
 	}
 
 	var tf TransformationFunc = tp.TransformSync
@@ -125,13 +127,13 @@ func (tp *TransformationPipeline) Dump(ctx context.Context, data []byte) (err er
 	if err = tp.row.Decode(data[:len(data)-1]); err != nil {
 		return fmt.Errorf("error decoding copy line: %w", err)
 	}
-	record := toolkit.NewRecord(tp.table.Driver, tp.row)
+	tp.record.SetRow(tp.row)
 
-	_, err = tp.Transform(ctx, record)
+	_, err = tp.Transform(ctx, tp.record)
 	if err != nil {
 		return NewDumpError(tp.table.Schema, tp.table.Name, tp.line, err)
 	}
-	rowDriver, err := record.Encode()
+	rowDriver, err := tp.record.Encode()
 	if err != nil {
 		return NewDumpError(tp.table.Schema, tp.table.Name, tp.line, fmt.Errorf("error enocding to RowDriver: %w", err))
 	}

@@ -32,7 +32,7 @@ func TestHashTransformer_Transform(t *testing.T) {
 		record,
 	)
 	require.NoError(t, err)
-	res, err := r.GetAttribute(attrName)
+	res, err := r.GetAttributeByName(attrName)
 	require.NoError(t, err)
 
 	require.Equal(t, expectedValue.IsNull, res.IsNull)

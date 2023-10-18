@@ -11,7 +11,6 @@ import (
 )
 
 func getDriver() *Driver {
-	typeMap := pgtype.NewMap()
 	table := &Table{
 		Schema: "public",
 		Name:   "test",
@@ -44,7 +43,7 @@ func getDriver() *Driver {
 		},
 		Constraints: []Constraint{},
 	}
-	driver, err := NewDriver(typeMap, table, nil, nil)
+	driver, err := NewDriver(table, nil, nil)
 	if err != nil {
 		panic(err.Error())
 	}

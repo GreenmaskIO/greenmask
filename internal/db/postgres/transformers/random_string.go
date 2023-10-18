@@ -138,7 +138,7 @@ func (rst *RandomStringTransformer) Transform(ctx context.Context, r *toolkit2.R
 	}
 
 	res := rst.generate(rst.rand, rst.buf, rst.min, rst.max, rst.symbols)
-	if err := r.SetAttribute(rst.columnName, &res); err != nil {
+	if err := r.SetAttributeByName(rst.columnName, &res); err != nil {
 		return nil, fmt.Errorf("unable to set new value: %w", err)
 	}
 	return r, nil

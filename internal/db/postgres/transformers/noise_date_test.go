@@ -97,7 +97,7 @@ func TestNoiseDateTransformer_Transform(t *testing.T) {
 			)
 			require.NoError(t, err)
 
-			res, err := r.GetAttribute(string(tt.params["column"]))
+			res, err := r.GetAttributeByName(string(tt.params["column"]))
 			require.NoError(t, err)
 			// Checking typed value
 			assert.False(t, res.IsNull)

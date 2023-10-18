@@ -62,7 +62,7 @@ func TestMaskingTransformer_Transform(t *testing.T) {
 				record,
 			)
 			require.NoError(t, err)
-			res, err := r.GetAttribute(tt.columnName)
+			res, err := r.GetAttributeByName(tt.columnName)
 			require.NoError(t, err)
 
 			require.Equal(t, tt.expectedValue.IsNull, res.IsNull)

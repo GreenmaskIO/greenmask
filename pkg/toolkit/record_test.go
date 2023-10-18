@@ -13,10 +13,11 @@ func TestRecord_ScanAttribute(t *testing.T) {
 		row: []string{"1", "2023-08-27 00:00:00.000000"},
 	}
 	driver := getDriver()
-	r := NewRecord(driver, row)
+	r := NewRecord(driver)
+	r.SetRow(row)
 	var res int
 	var expected = 1
-	_, err := r.ScanAttribute("id", &res)
+	_, err := r.ScanAttributeByName("id", &res)
 	require.NoError(t, err)
 	assert.Equal(t, expected, res)
 }
@@ -26,8 +27,9 @@ func TestRecord_GetAttribute_date(t *testing.T) {
 		row: []string{"1", "2023-08-27 00:00:00.000000", "1234"},
 	}
 	driver := getDriver()
-	r := NewRecord(driver, row)
-	res, err := r.GetAttribute("created_at")
+	r := NewRecord(driver)
+	r.SetRow(row)
+	res, err := r.GetAttributeByName("created_at")
 	require.NoError(t, err)
 	expected := NewValue(time.Date(2023, time.August, 27, 0, 0, 0, 0, time.UTC), false)
 	assert.Equal(t, expected.IsNull, res.IsNull)
@@ -39,8 +41,9 @@ func TestRecord_GetAttribute_text(t *testing.T) {
 		row: []string{"1", "2023-08-27 00:00:00.000000", "1234"},
 	}
 	driver := getDriver()
-	r := NewRecord(driver, row)
-	res, err := r.GetAttribute("title")
+	r := NewRecord(driver)
+	r.SetRow(row)
+	res, err := r.GetAttributeByName("title")
 	require.NoError(t, err)
 	expected := NewValue("1234", false)
 	assert.Equal(t, expected.IsNull, res.IsNull)
@@ -57,7 +60,8 @@ func TestRecord_GetTuple(t *testing.T) {
 		row: []string{"1", "2023-08-27 00:00:00.000000", testNullSeq},
 	}
 	driver := getDriver()
-	r := NewRecord(driver, row)
+	r := NewRecord(driver)
+	r.SetRow(row)
 	res, err := r.GetTuple()
 	require.NoError(t, err)
 	for name := range expected {
@@ -73,12 +77,13 @@ func TestRecord_Encode(t *testing.T) {
 	}
 	expected := []byte("2\t2023-08-29 00:00:00.000002\t\\N")
 	driver := getDriver()
-	r := NewRecord(driver, row)
-	err := r.SetAttribute("id", NewValue(int16(2), false))
+	r := NewRecord(driver)
+	r.SetRow(row)
+	err := r.SetAttributeByName("id", NewValue(int16(2), false))
 	require.NoError(t, err)
-	err = r.SetAttribute("created_at", NewValue(time.Date(2023, time.August, 29, 0, 0, 0, 2000, time.UTC), false))
+	err = r.SetAttributeByName("created_at", NewValue(time.Date(2023, time.August, 29, 0, 0, 0, 2000, time.UTC), false))
 	require.NoError(t, err)
-	err = r.SetAttribute("title", NewValue(nil, true))
+	err = r.SetAttributeByName("title", NewValue(nil, true))
 	require.NoError(t, err)
 	rowDriver, err := r.Encode()
 	require.NoError(t, err)

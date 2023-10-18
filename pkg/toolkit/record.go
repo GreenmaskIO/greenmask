@@ -7,21 +7,30 @@ import (
 type Tuple map[string]*Value
 
 type Record struct {
-	Driver *Driver
-	Row    RowDriver
+	Driver         *Driver
+	Row            RowDriver
+	rawValuesCache []*RawValue
 }
 
-func NewRecord(driver *Driver, row RowDriver) *Record {
-	return &Record{
-		Driver: driver,
-		Row:    row,
+func NewRecord(driver *Driver) *Record {
+	rawValuesCache := make([]*RawValue, len(driver.Table.Columns))
+	for idx, _ := range rawValuesCache {
+		rawValuesCache[idx] = NewRawValue(nil, false)
 	}
+	return &Record{
+		Driver:         driver,
+		rawValuesCache: rawValuesCache,
+	}
+}
+
+func (r *Record) SetRow(row RowDriver) {
+	r.Row = row
 }
 
 func (r *Record) GetTuple() (Tuple, error) {
 	tuple := make(Tuple, len(r.Driver.Table.Columns))
 	for _, c := range r.Driver.Table.Columns {
-		v, err := r.GetAttribute(c.Name)
+		v, err := r.GetAttributeByName(c.Name)
 		if err != nil {
 			return nil, fmt.Errorf("error getting attribute: %w", err)
 		}
@@ -30,29 +39,11 @@ func (r *Record) GetTuple() (Tuple, error) {
 	return tuple, nil
 }
 
-//func (r *Record) SetTuple(t Tuple) error {
-//	r.mx.Lock()
-//	defer r.mx.Unlock()
-//	if len(t) != len(r.tuple) {
-//		return fmt.Errorf("recieved wrong tuple length")
-//	}
-//	r.tuple = t
-//	return nil
-//}
-
-// ScanAttribute - scan data from column with name into v and return isNull property and error
-func (r *Record) ScanAttribute(name string, v any) (bool, error) {
-	idx, c, ok := r.Driver.GetColumnByName(name)
-	if !ok {
-		return false, fmt.Errorf(`unknown column name "%s"`, name)
-	}
+// ScanAttributeByIdx - scan data from column with name into v and return isNull property and error
+func (r *Record) ScanAttributeByIdx(idx int, v any) (bool, error) {
 	rawData, err := r.Row.GetColumn(idx)
 	if err != nil {
-		return false, fmt.Errorf(
-			"error getting column %s.%s.%s value: %w",
-			r.Driver.Table.Schema, r.Driver.Table.Name, c.Name,
-			err,
-		)
+		return false, err
 	}
 
 	if rawData.IsNull {
@@ -65,18 +56,26 @@ func (r *Record) ScanAttribute(name string, v any) (bool, error) {
 	return false, nil
 }
 
-func (r *Record) GetAttribute(name string) (*Value, error) {
-	idx, ok := r.Driver.AttrIdxMap[name]
+func (r *Record) ScanAttributeByName(name string, v any) (bool, error) {
+	idx, c, ok := r.Driver.GetColumnByName(name)
 	if !ok {
-		return nil, fmt.Errorf(`unknown column name "%s"`, name)
+		return false, fmt.Errorf(`unknown column name "%s"`, name)
 	}
-	rawData, err := r.Row.GetColumn(idx)
+	ok, err := r.ScanAttributeByIdx(idx, v)
 	if err != nil {
-		return nil, fmt.Errorf(
+		return false, fmt.Errorf(
 			"error getting column %s.%s.%s value: %w",
-			r.Driver.Table.Schema, r.Driver.Table.Name, name,
+			r.Driver.Table.Schema, r.Driver.Table.Name, c.Name,
 			err,
 		)
+	}
+	return false, nil
+}
+
+func (r *Record) GetAttributeByIdx(idx int) (*Value, error) {
+	rawData, err := r.Row.GetColumn(idx)
+	if err != nil {
+		return nil, err
 	}
 	if rawData.IsNull {
 		return NewValue(nil, true), nil
@@ -88,8 +87,54 @@ func (r *Record) GetAttribute(name string) (*Value, error) {
 	return NewValue(decodedValue, false), nil
 }
 
-// SetAttribute - set transformed attribute to the tuple
-func (r *Record) SetAttribute(name string, v any) error {
+func (r *Record) GetAttributeByName(name string) (*Value, error) {
+	idx, ok := r.Driver.AttrIdxMap[name]
+	if !ok {
+		return nil, fmt.Errorf(`unknown column name "%s"`, name)
+	}
+	v, err := r.GetAttributeByIdx(idx)
+	if err != nil {
+		return nil, fmt.Errorf(
+			"error getting column %s.%s.%s value: %w",
+			r.Driver.Table.Schema, r.Driver.Table.Name, name,
+			err,
+		)
+	}
+	return v, nil
+}
+
+func (r *Record) SetAttributeByIdx(idx int, v any) error {
+	var value *Value
+	switch v.(type) {
+	case *Value:
+	default:
+		value = NewValue(v, false)
+	}
+	if value.IsNull {
+		rv := r.rawValuesCache[idx]
+		rv.IsNull = true
+		rv.Data = nil
+		if err := r.Row.SetColumn(idx, rv); err != nil {
+			return fmt.Errorf("error setting column value in RowDriver: %w", err)
+		}
+	} else {
+		encodedValue, err := r.encodeValue(idx, value.Value)
+		if err != nil {
+			return fmt.Errorf("unable to encode attr value: %w", err)
+		}
+		rv := r.rawValuesCache[idx]
+		rv.IsNull = false
+		rv.Data = encodedValue
+		if err = r.Row.SetColumn(idx, rv); err != nil {
+			return fmt.Errorf("error setting column value in RowDriver: %w", err)
+		}
+	}
+
+	return nil
+}
+
+// SetAttributeByName - set transformed attribute to the tuple
+func (r *Record) SetAttributeByName(name string, v any) error {
 	if v == nil {
 		return fmt.Errorf("value cannot be nil pointer")
 	}
@@ -98,27 +143,7 @@ func (r *Record) SetAttribute(name string, v any) error {
 		return fmt.Errorf("unable to find column by name")
 	}
 
-	var value *Value
-	switch v.(type) {
-	case *Value:
-	default:
-		value = NewValue(v, false)
-	}
-	if value.IsNull {
-		if err := r.Row.SetColumn(idx, NewRawValue(nil, true)); err != nil {
-			return fmt.Errorf("error setting column value in RowDriver: %w", err)
-		}
-	} else {
-		encodedValue, err := r.encodeValue(idx, value.Value)
-		if err != nil {
-			return fmt.Errorf("unable to encode attr value: %w", err)
-		}
-		if err = r.Row.SetColumn(idx, NewRawValue(encodedValue, false)); err != nil {
-			return fmt.Errorf("error setting column value in RowDriver: %w", err)
-		}
-	}
-
-	return nil
+	return r.SetAttributeByIdx(idx, v)
 }
 
 func (r *Record) Encode() (RowDriver, error) {

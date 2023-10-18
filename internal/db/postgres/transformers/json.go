@@ -105,7 +105,7 @@ func (jt *JsonTransformer) Done(ctx context.Context) error {
 func (jt *JsonTransformer) Transform(ctx context.Context, r *toolkit2.Record) (*toolkit2.Record, error) {
 	// TODO: Test whats happen if performed operation is not applied due to unknown path
 	var jsonRawValue string
-	isNull, err := r.ScanAttribute(jt.columnName, &jsonRawValue)
+	isNull, err := r.ScanAttributeByName(jt.columnName, &jsonRawValue)
 	if err != nil {
 		return nil, fmt.Errorf("cannot scan column value: %w", err)
 	}
@@ -120,7 +120,7 @@ func (jt *JsonTransformer) Transform(ctx context.Context, r *toolkit2.Record) (*
 		}
 	}
 
-	if err = r.SetAttribute(jt.columnName, jsonRawValue); err != nil {
+	if err = r.SetAttributeByName(jt.columnName, jsonRawValue); err != nil {
 		return nil, fmt.Errorf("unable to set new value: %w", err)
 	}
 

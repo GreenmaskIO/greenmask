@@ -65,6 +65,7 @@ type RandomDateTransformerParams struct {
 
 type RandomDateTransformer struct {
 	columnName      string
+	columnIdx       int
 	rand            *rand.Rand
 	generate        dateGeneratorFunc
 	min             *time.Time
@@ -141,6 +142,7 @@ func NewRandomDateTransformer(ctx context.Context, driver *toolkit2.Driver, para
 		keepNull:        keepNull,
 		truncate:        truncate,
 		columnName:      columnName,
+		columnIdx:       idx,
 		min:             &minTime,
 		max:             &maxTime,
 		generate:        generator,
@@ -164,7 +166,7 @@ func (rdt *RandomDateTransformer) Done(ctx context.Context) error {
 }
 
 func (rdt *RandomDateTransformer) Transform(ctx context.Context, r *toolkit2.Record) (*toolkit2.Record, error) {
-	valAny, err := r.GetRawAttributeValueByName(rdt.columnName)
+	valAny, err := r.GetRawAttributeValueByIdx(rdt.columnIdx)
 	if err != nil {
 		return nil, fmt.Errorf("unable to scan value: %w", err)
 	}
@@ -173,7 +175,7 @@ func (rdt *RandomDateTransformer) Transform(ctx context.Context, r *toolkit2.Rec
 	}
 
 	res := rdt.generate(rdt.rand, rdt.min, rdt.delta, &rdt.truncate)
-	if err := r.SetAttribute(rdt.columnName, res); err != nil {
+	if err := r.SetAttributeByIdx(rdt.columnIdx, res); err != nil {
 		return nil, fmt.Errorf("unable to set new value: %w", err)
 	}
 	return r, nil

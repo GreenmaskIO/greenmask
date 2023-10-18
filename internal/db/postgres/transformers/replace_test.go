@@ -178,7 +178,7 @@ func TestReplaceTransformer_Transform(t *testing.T) {
 			)
 			require.NoError(t, err)
 
-			attVal, err := r.GetAttribute(tt.columnName)
+			attVal, err := r.GetAttributeByName(tt.columnName)
 			require.Equal(t, tt.result.isNull, attVal.IsNull)
 			require.NoError(t, err)
 			encoded, err := r.Encode()

@@ -47,6 +47,7 @@ type dateNoiseFunc func(r *rand.Rand, ration time.Duration, original *time.Time,
 
 type NoiseDateTransformer struct {
 	columnName      string
+	columnIdx       int
 	ratio           time.Duration
 	ratioVal        any
 	truncate        string
@@ -104,6 +105,7 @@ func NewNoiseDateTransformer(ctx context.Context, driver *toolkit2.Driver, param
 		generate:        generator,
 		affectedColumns: affectedColumns,
 		res:             new(time.Time),
+		columnIdx:       idx,
 	}, nil, nil
 }
 
@@ -121,7 +123,7 @@ func (ndt *NoiseDateTransformer) Done(ctx context.Context) error {
 
 func (ndt *NoiseDateTransformer) Transform(ctx context.Context, r *toolkit2.Record) (*toolkit2.Record, error) {
 
-	isNull, err := r.ScanAttribute(ndt.columnName, ndt.res)
+	isNull, err := r.ScanAttributeByIdx(ndt.columnIdx, ndt.res)
 	if err != nil {
 		return nil, fmt.Errorf("unable to scan attribute value: %w", err)
 	}
@@ -130,7 +132,7 @@ func (ndt *NoiseDateTransformer) Transform(ctx context.Context, r *toolkit2.Reco
 	}
 
 	resTime := ndt.generate(ndt.rand, ndt.ratio, ndt.res, &ndt.truncate)
-	if err := r.SetAttribute(ndt.columnName, resTime); err != nil {
+	if err := r.SetAttributeByIdx(ndt.columnIdx, resTime); err != nil {
 		return nil, fmt.Errorf("unable to set new value: %w", err)
 	}
 	return r, nil

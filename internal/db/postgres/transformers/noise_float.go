@@ -104,7 +104,7 @@ func (nft *NoiseFloatTransformer) Done(ctx context.Context) error {
 }
 
 func (nft *NoiseFloatTransformer) Transform(ctx context.Context, r *toolkit2.Record) (*toolkit2.Record, error) {
-	valAny, err := r.GetAttribute(nft.columnName)
+	valAny, err := r.GetAttributeByName(nft.columnName)
 	if err != nil {
 		return nil, fmt.Errorf("unable to scan value: %w", err)
 	}
@@ -128,7 +128,7 @@ func (nft *NoiseFloatTransformer) Transform(ctx context.Context, r *toolkit2.Rec
 		ratio = ratio * -1
 	}
 	res := round(val+val*ratio, nft.precision)
-	if err := r.SetAttribute(nft.columnName, &res); err != nil {
+	if err := r.SetAttributeByName(nft.columnName, &res); err != nil {
 		return nil, fmt.Errorf("unable to set new value: %w", err)
 	}
 	return r, nil

@@ -37,6 +37,7 @@ var ReplaceTransformerDefinition = utils.NewDefinition(
 
 type ReplaceTransformer struct {
 	columnName      string
+	columnIdx       int
 	keepNull        bool
 	value           any
 	rawValue        *toolkit.RawValue
@@ -82,6 +83,7 @@ func NewReplaceTransformer(ctx context.Context, driver *toolkit.Driver, paramete
 		value:           value,
 		affectedColumns: affectedColumns,
 		rawValue:        toolkit.NewRawValue(buf, false),
+		columnIdx:       idx,
 	}, nil, nil
 }
 
@@ -98,7 +100,7 @@ func (rt *ReplaceTransformer) Done(ctx context.Context) error {
 }
 
 func (rt *ReplaceTransformer) Transform(ctx context.Context, r *toolkit.Record) (*toolkit.Record, error) {
-	val, err := r.GetRawAttributeValueByName(rt.columnName)
+	val, err := r.GetRawAttributeValueByIdx(rt.columnIdx)
 	if err != nil {
 		return nil, fmt.Errorf("unable to scan value: %w", err)
 	}
@@ -106,7 +108,7 @@ func (rt *ReplaceTransformer) Transform(ctx context.Context, r *toolkit.Record) 
 		return r, nil
 	}
 
-	if err := r.SetRawAttributeValueByName(rt.columnName, rt.rawValue); err != nil {
+	if err := r.SetRawAttributeValueByIdx(rt.columnIdx, rt.rawValue); err != nil {
 		return nil, fmt.Errorf("unable to set new value: %w", err)
 	}
 	return r, nil

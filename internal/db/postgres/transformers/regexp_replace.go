@@ -38,6 +38,7 @@ var RegexpReplaceTransformerDefinition = utils.NewDefinition(
 
 type RegexpReplaceTransformer struct {
 	columnName      string
+	columnIdx       int
 	regexp          *regexp.Regexp
 	replace         string
 	affectedColumns map[int]string
@@ -82,6 +83,7 @@ func NewRegexpReplaceTransformer(ctx context.Context, driver *toolkit2.Driver, p
 		regexp:          re,
 		replace:         replace,
 		affectedColumns: affectedColumns,
+		columnIdx:       idx,
 	}, nil, nil
 
 }
@@ -100,7 +102,7 @@ func (rrt *RegexpReplaceTransformer) Done(ctx context.Context) error {
 
 func (rrt *RegexpReplaceTransformer) Transform(ctx context.Context, r *toolkit2.Record) (*toolkit2.Record, error) {
 	var original string
-	isNull, err := r.ScanAttribute(rrt.columnName, &original)
+	isNull, err := r.ScanAttributeByIdx(rrt.columnIdx, &original)
 	if err != nil {
 		return nil, fmt.Errorf("unable to scan value: %w", err)
 	}
@@ -109,7 +111,7 @@ func (rrt *RegexpReplaceTransformer) Transform(ctx context.Context, r *toolkit2.
 	}
 
 	result := rrt.regexp.ReplaceAllString(original, rrt.replace)
-	if err := r.SetAttribute(rrt.columnName, &result); err != nil {
+	if err := r.SetAttributeByIdx(rrt.columnIdx, &result); err != nil {
 		return nil, fmt.Errorf("unable to set new value: %w", err)
 	}
 	return r, nil

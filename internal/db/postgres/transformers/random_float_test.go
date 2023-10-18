@@ -139,7 +139,7 @@ func TestRandomFloatTransformer_Transform(t *testing.T) {
 			)
 			require.NoError(t, err)
 
-			val, err := r.GetAttribute(tt.columnName)
+			val, err := r.GetAttributeByName(tt.columnName)
 			require.NoError(t, err)
 			require.Equal(t, tt.result.isNull, val.IsNull)
 			if !tt.result.isNull {

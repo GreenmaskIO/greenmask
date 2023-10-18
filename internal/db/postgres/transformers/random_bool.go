@@ -89,7 +89,7 @@ func (rbt *RandomBoolTransformer) Transform(ctx context.Context, r *toolkit2.Rec
 		return r, nil
 	}
 
-	if err := r.SetAttribute(rbt.columnName, rbt.rand.Int63n(2) == 1); err != nil {
+	if err := r.SetAttributeByName(rbt.columnName, rbt.rand.Int63n(2) == 1); err != nil {
 		return nil, fmt.Errorf("unable to set new value: %w", err)
 	}
 	return r, nil

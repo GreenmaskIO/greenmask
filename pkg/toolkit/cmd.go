@@ -209,6 +209,7 @@ func (c *Cmd) performTransform(ctx context.Context) error {
 		return fmt.Errorf("unknown interaction API: %s", c.definition.Mode)
 	}
 
+	record := NewRecord(driver)
 	for {
 		var line []byte
 		var err error
@@ -236,7 +237,7 @@ func (c *Cmd) performTransform(ctx context.Context) error {
 				return fmt.Errorf("error decoding received row: %w", err)
 			}
 		}
-		record := NewRecord(driver, rr)
+		record.SetRow(rr)
 
 		record, err = transformer.Transform(ctx, record)
 		if err != nil {
