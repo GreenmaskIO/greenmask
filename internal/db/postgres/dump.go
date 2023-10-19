@@ -29,12 +29,6 @@ import (
 
 const MetadataJsonFileName = "metadata.json"
 
-const (
-	DefaultValidationTimeout        = 20 * time.Second
-	DefaultRowTransformationTimeout = 2 * time.Second
-	DefaultAutoDiscoveryTimeout     = 10 * time.Second
-)
-
 type Dump struct {
 	dsn               string
 	pgDumpOptions     *pgdump.Options
@@ -361,71 +355,11 @@ func (d *Dump) writeMetaData(ctx context.Context, startedAt, completedAt time.Ti
 	return nil
 }
 
-func (d *Dump) BootstrapCustomTransformers(ctx context.Context) (err error) {
-	for _, ctd := range d.config.CustomTransformers {
-		var td *utils.Definition
-		if ctd.Name == "" && !ctd.AutoDiscover {
-			return fmt.Errorf("custom transformer without auto discovery must be defined staticly in the config")
-		}
-		if ctd.Executable == "" {
-			return fmt.Errorf(`custom transformer "executable" parameter is required`)
-		}
-
-		if ctd.AutoDiscoveryTimeout == 0 {
-			ctd.AutoDiscoveryTimeout = DefaultAutoDiscoveryTimeout
-		}
-		if ctd.ValidationTimeout == 0 {
-			ctd.ValidationTimeout = DefaultValidationTimeout
-		}
-		if ctd.RowTransformationTimeout == 0 {
-			ctd.RowTransformationTimeout = DefaultRowTransformationTimeout
-		}
-
-		if ctd.AutoDiscover {
-			// Get custom transformer definition from stdout and override received data with config ctd
-			err = func() error {
-				args := make([]string, len(ctd.Args))
-				copy(args, ctd.Args)
-				args = append(args, custom.PrintDefinitionArgName)
-				ctx, cancel := context.WithTimeout(ctx, ctd.AutoDiscoveryTimeout)
-				defer cancel()
-				ctdd, err := custom.GetDynamicTransformerDefinition(ctx, ctd.Executable, args...)
-				if err != nil {
-					return fmt.Errorf("error getting dynamic transformer definition: %w", err)
-				}
-				ctd.Name = ctdd.Name
-				ctd.Description = ctdd.Description
-				ctd.Parameters = ctdd.Parameters
-				ctd.Mode = ctdd.Mode
-				ctd.ExpectedExitCode = ctdd.ExpectedExitCode
-				ctd.Validate = ctdd.Validate
-				return nil
-			}()
-			if err != nil {
-				return err
-			}
-		}
-
-		td = utils.NewDefinition(
-			&utils.TransformerProperties{
-				Name:        ctd.Name,
-				Description: ctd.Description,
-				IsCustom:    true,
-			},
-			custom.ProduceNewCmdTransformerFunction(ctd),
-			ctd.Parameters...,
-		)
-
-		d.registry.MustRegister(td)
-	}
-	return nil
-}
-
 func (d *Dump) Run(ctx context.Context) (err error) {
 	defer d.prune()
 	startedAt := time.Now()
 
-	if err := d.BootstrapCustomTransformers(ctx); err != nil {
+	if err := custom.BootstrapCustomTransformers(ctx, d.registry, d.config.CustomTransformers); err != nil {
 		return fmt.Errorf("error bootstraping custom transformers: %w", err)
 	}
 

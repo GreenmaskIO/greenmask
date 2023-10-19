@@ -27,7 +27,8 @@ var NoiseIntTransformerDefinition = utils.NewDefinition(
 		"column name",
 	).SetIsColumn(toolkit2.NewColumnProperties().
 		SetAffected(true).
-		SetAllowedColumnTypes("int2", "int4", "int8"),
+		SetAllowedColumnTypes("int2", "int4", "int8").
+		SetSkipOnNull(true),
 	).SetRequired(true),
 
 	toolkit2.MustNewParameter(

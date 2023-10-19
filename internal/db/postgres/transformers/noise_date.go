@@ -28,7 +28,8 @@ var NoiseDateTransformerDefinition = utils.NewDefinition(
 		"column name",
 	).SetIsColumn(toolkit2.NewColumnProperties().
 		SetAffected(true).
-		SetAllowedColumnTypes("date", "timestamp", "timestamptz"),
+		SetAllowedColumnTypes("date", "timestamp", "timestamptz").
+		SetSkipOnNull(true),
 	).SetRequired(true),
 
 	toolkit2.MustNewParameter(

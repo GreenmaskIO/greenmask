@@ -24,7 +24,8 @@ var NoiseFloatTransformerDefinition = utils.NewDefinition(
 		"column name",
 	).SetIsColumn(toolkit2.NewColumnProperties().
 		SetAffected(true).
-		SetAllowedColumnTypes("float4", "float8"),
+		SetAllowedColumnTypes("float4", "float8").
+		SetSkipOnNull(true),
 	).SetRequired(true),
 
 	toolkit2.MustNewParameter(

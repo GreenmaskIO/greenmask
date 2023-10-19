@@ -80,6 +80,11 @@ func (cp *ColumnProperties) SetSkipOriginalData(v bool) *ColumnProperties {
 	return cp
 }
 
+func (cp *ColumnProperties) SetSkipOnNull(v bool) *ColumnProperties {
+	cp.SkipOnNull = v
+	return cp
+}
+
 // Parameter - wide parameter entity definition that contains properties that allows to check schema, find affection,
 // cast variable using some features and so on. It may be defined and assigned ot the Definition of the transformer
 // if transformer has any parameters

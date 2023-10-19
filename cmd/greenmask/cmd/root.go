@@ -2,8 +2,9 @@ package cmd
 
 import (
 	"fmt"
-	pgDomains "github.com/greenmaskio/greenmask/internal/domains"
 	"os"
+
+	pgDomains "github.com/greenmaskio/greenmask/internal/domains"
 
 	"github.com/mitchellh/mapstructure"
 	"github.com/rs/zerolog"
@@ -14,6 +15,7 @@ import (
 	"github.com/greenmaskio/greenmask/cmd/greenmask/cmd/delete_backup"
 	"github.com/greenmaskio/greenmask/cmd/greenmask/cmd/dump"
 	"github.com/greenmaskio/greenmask/cmd/greenmask/cmd/list_dump"
+	"github.com/greenmaskio/greenmask/cmd/greenmask/cmd/list_transformers"
 	"github.com/greenmaskio/greenmask/cmd/greenmask/cmd/restore"
 	"github.com/greenmaskio/greenmask/cmd/greenmask/cmd/show_dump"
 	configUtils "github.com/greenmaskio/greenmask/internal/utils/config"
@@ -58,6 +60,8 @@ func init() {
 	rootCmd.AddCommand(restore.Cmd)
 	rootCmd.AddCommand(delete_backup.Cmd)
 	rootCmd.AddCommand(show_dump.Cmd)
+	rootCmd.AddCommand(show_dump.Cmd)
+	rootCmd.AddCommand(list_transformers.Cmd)
 
 	if err := rootCmd.MarkPersistentFlagRequired("config"); err != nil {
 		log.Fatal().Err(err).Msg("")
