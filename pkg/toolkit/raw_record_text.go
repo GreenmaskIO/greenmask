@@ -19,24 +19,18 @@ func (r *RawRecordText) GetColumn(idx int) (*RawValue, error) {
 func (r *RawRecordText) SetColumn(idx int, v *RawValue) error {
 	if v.IsNull {
 		*r = DefaultNullSeq
+		return nil
 	}
 	*r = v.Data
 	return nil
 }
 
 func (r *RawRecordText) Encode() ([]byte, error) {
-	if len(*r) == 2 && (*r)[0] == '\\' && (*r)[2] == 'N' {
-		return DefaultEscapedNullSeq, nil
-	}
 	return *r, nil
 }
 
 func (r *RawRecordText) Decode(data []byte) error {
-	if len(data) == 3 && data[0] == '\\' && data[1] == '\\' && data[2] == 'N' {
-		*r = DefaultNullSeq
-	} else {
-		*r = data
-	}
+	*r = data
 	return nil
 }
 

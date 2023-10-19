@@ -49,7 +49,7 @@ func (j *TextApi) GetRowDriverFromRecord(r *toolkit.Record) (toolkit.RowDriver, 
 	if err != nil {
 		return nil, fmt.Errorf("error getting raw attribute: %w", err)
 	}
-	_ = j.record.Decode(v.Data)
+	_ = j.record.SetColumn(j.columnIdx, v)
 	return j.record, nil
 }
 

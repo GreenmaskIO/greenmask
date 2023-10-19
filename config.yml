@@ -27,71 +27,82 @@ dump:
 #    dbname: "host=localhost user=postgres password=example dbname=demo port=54315"
     jobs: 10
     exclude-schema: "(\"teSt\"*|test*)"
-    table: "bookings.flights3"
+    table: "bookings.flights"
     load-via-partition-root: true
 
   transformation:
     - schema: "bookings"
-      name: "flights3"
-#      query: "select * from bookings.flights limit 1000"
+      name: "flights"
+#      query: "select * from bookings.flights3 limit 1000000"
 #      columns_type_override:
 #        post_code: "int4"
       transformers:
-        - name: "RandomDate"
-          params:
-            min: "2023-01-01 00:00:00.0+03"
-            max: "2023-01-02 00:00:00.0+03"
-            column: "scheduled_departure"
+#        - name: "RandomDate"
+#          params:
+#            min: "2023-01-01 00:00:00.0+03"
+#            max: "2023-01-02 00:00:00.0+03"
+#            column: "scheduled_departure"
+#
+#        - name: "NoiseDate"
+#          params:
+#            ratio: "01:00:00"
+#            column: "scheduled_arrival"
+#
+#        - name: "RegexpReplace"
+#          params:
+#            column: "departure_airport"
+#            regexp: "DME"
+#            replace: "SVO"
+#
+#        - name: "RegexpReplace"
+#          params:
+#            column: "status"
+#            regexp: "On Time"
+#            replace: "Delayed"
 
-        - name: "NoiseDate"
-          params:
-            ratio: "01:00:00"
-            column: "scheduled_arrival"
-
-        - name: "RegexpReplace"
-          params:
-            column: "departure_airport"
-            regexp: "DME"
-            replace: "SVO"
-
-        - name: "RegexpReplace"
-          params:
-            column: "status"
-            regexp: "On Time"
-            replace: "Delayed"
-
-        - name: "RandomDate"
-          params:
-            column: "actual_departure"
-            min: "2023-01-03 01:00:00.0+03"
-            max: "2023-01-04 00:00:00.0+03"
-
-        - name: "RandomDate"
-          params:
-            column: "actual_arrival"
-            min: "2023-01-04 01:00:00.0+03"
-            max: "2023-01-05 00:00:00.0+03"
-
+#        - name: "RandomDate"
+#          params:
+#            column: "actual_departure"
+#            min: "2023-01-03 01:00:00.0+03"
+#            max: "2023-01-04 00:00:00.0+03"
+#
+#        - name: "RandomDate"
+#          params:
+#            column: "actual_arrival"
+#            min: "2023-01-04 01:00:00.0+03"
+#            max: "2023-01-05 00:00:00.0+03"
+#
 #        - name: "RandomInt"
 #          params:
 #            column: "post_code"
 #            min: "11"
 #            max: "99"
-
-        - name: "Replace"
-          params:
-            column: "post_code"
-            value: "54321"
+#
+#        - name: "Replace"
+#          params:
+#            column: "post_code"
+#            value: "54321"
 
 #        - name: "TwoDatesGen"
 #          params:
 #            column_a: "scheduled_arrival"
 #            column_b: "actual_arrival"
-
+#
 #        - name: "TestTransformer"
 #          params:
 #            column: "actual_arrival"
-#
+
+        - name: "Cmd"
+          params:
+            executable: "/home/vadim/gits/greenmaskio/greenmask/internal/db/postgres/transformers/test/cmd_test.sh"
+            mode: "text"
+            timeout: "60s"
+            validate_output: true
+            expected_exit_code: -1
+            columns:
+              - name: "actual_arrival"
+                skip_original_data: true
+
 #        - name: "TestTransformer"
 #          params:
 #            column: "actual_departure"
@@ -157,6 +168,7 @@ custom_transformers:
   - name: "TestTransformer"
     executable: "/home/vadim/gits/greenmaskio/greenmask/pkg/toolkit/test/test"
     auto_discover: true
+#    row_transformation_timeout: "1ns"
   - name: "TwoDatesGen"
     description: "Generate diff between two dates"
     executable: "/home/vadim/gits/greenmaskio/greenmask/internal/db/postgres/transformers/custom/test/example_transformer.sh"

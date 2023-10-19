@@ -234,6 +234,13 @@ func (p *Parameter) Scan(dest any) error {
 		// This is temporal solution for parsing string. Otherwise, it may cause an error in json.Unmarshall
 		val := string(p.rawValue)
 		p.value = &val
+	} else if reflect.ValueOf(p.value).Kind() == reflect.ValueOf(time.Duration(1)).Kind() || (reflect.ValueOf(p.value).Kind() == reflect.Pointer &&
+		reflect.Indirect(reflect.ValueOf(p.value)).Kind() == reflect.ValueOf(time.Duration(1)).Kind()) {
+		res, err := time.ParseDuration(string(p.rawValue))
+		if err != nil {
+			return fmt.Errorf("error parsing int64 value: %w", err)
+		}
+		p.value = &res
 	} else {
 		// Unmarshal as usual using json Unmarshaler
 		if err := json.Unmarshal(p.rawValue, p.value); err != nil {

@@ -34,6 +34,7 @@ func NewJsonApi(
 		transferringColumns: transferringColumns,
 		affectedColumns:     affectedColumns,
 		tupleLength:         len(transferringColumns),
+		record:              make(toolkit.RawRecord, len(transferringColumns)),
 	}, nil
 }
 
