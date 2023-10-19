@@ -95,12 +95,16 @@ dump:
         - name: "Cmd"
           params:
             executable: "/home/vadim/gits/greenmaskio/greenmask/internal/db/postgres/transformers/test/cmd_test.sh"
-            mode: "text"
+            mode: "json"
             timeout: "60s"
             validate_output: true
             expected_exit_code: -1
+            skip_on_behaviour: "any"
             columns:
               - name: "actual_arrival"
+                skip_original_data: true
+                skip_on_null_input: true
+              - name: "scheduled_arrival"
                 skip_original_data: true
 
 #        - name: "TestTransformer"
