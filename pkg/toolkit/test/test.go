@@ -14,6 +14,7 @@ var testTransformerDefinition = toolkit.NewDefinition(
 	"TestTransformer",
 	NewTestTransformer,
 ).SetValidate(true).
+	SetDescription("Simple test transformer").
 	SetMode(toolkit.TextModeName).
 	AddParameter(
 		toolkit.MustNewParameter("column", "test desc").
