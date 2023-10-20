@@ -54,7 +54,7 @@ func deleteDump(dumpId string) error {
 		return fmt.Errorf("dump with id %s was not found", dumpId)
 	}
 	if err = st.Delete(ctx, dumpId); err != nil {
-		return fmt.Errorf("unable to deleteDump dump: %s", err)
+		return fmt.Errorf("storage error: %s", err)
 	}
 
 	return nil

@@ -2,13 +2,10 @@ package utils
 
 import (
 	"context"
-	"errors"
 	"io"
 
 	"github.com/greenmaskio/greenmask/pkg/toolkit"
 )
-
-var ErrInteractionTimeout = errors.New("interaction timeout")
 
 // InteractionApi - API for interaction with Cmd transformer. It must implement context cancellation, RW timeouts,
 // encode-decode operations, extracting DTO and assigning received DTO to the toolkit.Record
