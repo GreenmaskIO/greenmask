@@ -26,6 +26,10 @@ func (tt *TestTransformer) Transform(ctx context.Context, r *toolkit.Record) (*t
 	return r, nil
 }
 
+func (tt *TestTransformer) GetAffectedColumns() map[int]string {
+	return nil
+}
+
 func NewTestTransformer(ctx context.Context, driver *toolkit.Driver, parameters map[string]*toolkit.Parameter) (
 	Transformer, toolkit.ValidationWarnings, error,
 ) {
@@ -48,7 +52,6 @@ func TestDefinition(t *testing.T) {
 			SetLinkParameter("column"),
 	)
 
-	typeMap := pgtype.NewMap()
 	table := &toolkit.Table{
 		Schema: "public",
 		Name:   "test",

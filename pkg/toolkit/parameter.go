@@ -90,27 +90,27 @@ func (cp *ColumnProperties) SetSkipOnNull(v bool) *ColumnProperties {
 // if transformer has any parameters
 type Parameter struct {
 	// Name - name of the parameter. Must be unique in the whole Transformer parameters slice
-	Name string `mapstructure:"name" json:"name,omitempty"`
+	Name string `mapstructure:"name" json:"name"`
 	// Description - description of the parameter. Should contain the brief info about parameter
-	Description string `mapstructure:"description" json:"description,omitempty"`
+	Description string `mapstructure:"description" json:"description"`
 	// Required - shows that parameter is required, and we expect we have to receive this value from config.
 	// Event when DefaultValue is defined it will case error
-	Required bool `mapstructure:"required" json:"required,omitempty"`
+	Required bool `mapstructure:"required" json:"required"`
 	// IsColumn - shows is this parameter column related. If so ColumnProperties must be defined and assigned
 	// otherwise it may cause an unhandled behaviour
-	IsColumn bool `mapstructure:"is_column" json:"is_column,omitempty"`
+	IsColumn bool `mapstructure:"is_column" json:"is_column"`
 	// LinkParameter - link with parameter with provided name. This is required if performing raw value encoding
 	// depends on the provided column type and/or relies on the database Driver
-	LinkParameter string `mapstructure:"link_parameter" json:"link_parameter,omitempty"`
+	LinkParameter string `mapstructure:"link_parameter" json:"link_parameter"`
 	// CastDbType - name of PostgreSQL type that would be used for Decoding raw value to the real go type. Is this
 	// type does not exist will cause an error
-	CastDbType string `mapstructure:"cast_db_type" json:"cast_db_type,omitempty"`
+	CastDbType string `mapstructure:"cast_db_type" json:"cast_db_type"`
 	// DefaultValue - default value of the parameter. Must be variable pointer and have the same type
 	// as in ExpectedType
-	DefaultValue ParamsValue `mapstructure:"default_value" json:"default_value,omitempty"`
+	DefaultValue ParamsValue `mapstructure:"default_value" json:"default_value"`
 	// ColumnProperties - detail info about expected column properties that may help to diagnose the table schema
 	// and perform validation procedure Plays only with IsColumn
-	ColumnProperties *ColumnProperties `mapstructure:"column_properties" json:"column_properties,omitempty"`
+	ColumnProperties *ColumnProperties `mapstructure:"column_properties" json:"column_properties"`
 	// Unmarshaller - unmarshal function for the parameter raw data []byte. Using by default json.Unmarshal function
 	Unmarshaller Unmarshaller `json:"-"`
 	// RawValueValidator - raw value validator function that performs assertion and cause ValidationWarnings if it

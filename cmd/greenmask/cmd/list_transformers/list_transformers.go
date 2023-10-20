@@ -2,6 +2,7 @@ package list_transformers
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
 	"strconv"
@@ -24,15 +25,21 @@ var (
 				log.Err(err).Msg("")
 			}
 
-			if err := listTransformers(); err != nil {
+			if err := run(); err != nil {
 				log.Err(err).Msg("")
 			}
 		},
 	}
 	Config = domains.NewConfig()
+	format string
 )
 
-func listTransformers() error {
+const (
+	JsonFormatName = "json"
+	TextFormatName = "text"
+)
+
+func run() error {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	err := custom.BootstrapCustomTransformers(ctx, utils.DefaultTransformerRegistry, Config.CustomTransformers)
@@ -40,10 +47,38 @@ func listTransformers() error {
 		return fmt.Errorf("error registering custom transformer: %w", err)
 	}
 
+	switch format {
+	case JsonFormatName:
+		err = listTransformersJson(utils.DefaultTransformerRegistry)
+	case TextFormatName:
+		err = listTransformersText(utils.DefaultTransformerRegistry)
+	default:
+		return fmt.Errorf(`unknown format %s`, format)
+	}
+	if err != nil {
+		return fmt.Errorf("error listing transformers: %w", err)
+	}
+
+	return nil
+}
+
+func listTransformersJson(registry *utils.TransformerRegistry) error {
+	var transformers []*utils.Definition
+	for _, def := range registry.M {
+		transformers = append(transformers, def)
+	}
+	if err := json.NewEncoder(os.Stdout).Encode(transformers); err != nil {
+		return err
+	}
+	return nil
+}
+
+func listTransformersText(registry *utils.TransformerRegistry) error {
+
 	var data [][]string
 	table := tablewriter.NewWriter(os.Stdout)
 
-	for _, def := range utils.DefaultTransformerRegistry.M {
+	for _, def := range registry.M {
 		data = append(data, []string{def.Properties.Name, "description", def.Properties.Description, "", "", ""})
 		for _, p := range def.Parameters {
 			data = append(data, []string{def.Properties.Name, "parameters", p.Name, "description", p.Description, ""})
@@ -78,9 +113,9 @@ func listTransformers() error {
 	table.SetAutoMergeCellsByColumnIndex([]int{0, 1, 2, 3})
 	table.Render()
 
-	//table := tablewriter.NewWriter(os.Stdout)
-	////table.SetHeader([]string{"name", "description", "database", "size", "compressed size", "duration", "transformed", "status"})
-	//table.AppendBulk(data)
-	//table.Render()
 	return nil
+}
+
+func init() {
+	Cmd.Flags().StringVarP(&format, "format", "f", TextFormatName, "output format [text|json]")
 }

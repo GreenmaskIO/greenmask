@@ -1,9 +1,9 @@
 package utils
 
 type TransformerProperties struct {
-	Name        string
-	Description string
-	IsCustom    bool
+	Name        string `json:"name"`
+	Description string `json:"description"`
+	IsCustom    bool   `json:"is_custom"`
 }
 
 func NewTransformerProperties(
