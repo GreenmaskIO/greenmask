@@ -22,7 +22,11 @@ vendor/
 .idea
 .vscode
 scratch
+
+# Project exclusion
+venv
 *.out
 cmd/greenmask/greenmask
 config.yml
 pkg/toolkit/test/test
+.cache

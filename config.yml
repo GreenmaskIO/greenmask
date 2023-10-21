@@ -170,13 +170,14 @@ restore:
 
 custom_transformers:
   - name: "TestTransformer"
-    executable: "/home/vadim/gits/greenmaskio/greenmask/pkg/toolkit/test/test"
+#    executable: "/home/vadim/gits/greenmaskio/greenmask/pkg/toolkit/test/test"
+    executable: "/Users/vadim/gits/greenmaskio/greenmask/pkg/toolkit/test/test"
     auto_discover: true
 #    row_transformation_timeout: "1ns"
   - name: "TwoDatesGen"
     description: "Generate diff between two dates"
-    executable: "/home/vadim/gits/greenmaskio/greenmask/internal/db/postgres/transformers/custom/test/example_transformer.sh"
-#    executable: "/Users/vadim/gits/greenmaskio/greenmask/internal/db/postgres/transformers/custom/test/example_transformer.sh"
+#    executable: "/home/vadim/gits/greenmaskio/greenmask/internal/db/postgres/transformers/custom/test/example_transformer.sh"
+    executable: "/Users/vadim/gits/greenmaskio/greenmask/internal/db/postgres/transformers/custom/test/example_transformer.sh"
     validate: true
     auto_discover: true
 #    validation_timeout: "1ms"
