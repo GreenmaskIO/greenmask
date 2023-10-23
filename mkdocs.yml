@@ -3,7 +3,7 @@ site_name: Greenmask
 # Theme
 theme:
   name: material
-  custom_dir: docs/overrides
+#  custom_dir: docs/overrides
   logo: assets/logo.png
   favicon: assets/logo.png
   features:
@@ -42,7 +42,9 @@ markdown_extensions:
 
 nav:
   - Home: index.md
-  - Getting started:
+  - Documentation:
+      - Introduction: introduction.md
+      - Architecture: architecture.md
       - Installation: getting-started.md
 
 repo_url: https://github.com/GreenmaskIO/greenmask
@@ -58,3 +60,4 @@ site_url: https://greenmask.io
 
 plugins:
   - social
+  - search
