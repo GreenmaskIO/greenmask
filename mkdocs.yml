@@ -3,15 +3,34 @@ site_name: Greenmask
 # Theme
 theme:
   name: material
+  custom_dir: docs/overrides
   logo: assets/logo.png
+  favicon: assets/logo.png
   features:
     - navigation.sections
+    - announce.dismiss
+    - content.code.annotate
+    - content.code.copy
+    - content.tooltips
+#    - navigation.footer
+    - navigation.indexes
+    - navigation.sections
+    - navigation.tabs
+    - navigation.top
+    - navigation.tracking
+    - search.highlight
+    - search.share
+    - search.suggest
+    - toc.follow
   palette:
     scheme: default
     primary: teal
     accent: indigo
     toggle:
       icon: material/brightness-7
+
+
+
 
 # Markdown extensions
 markdown_extensions:
@@ -21,20 +40,21 @@ markdown_extensions:
   - pymdownx.highlight
   - pymdownx.superfences
 
+nav:
+  - Home: index.md
+  - Getting started:
+      - Installation: getting-started.md
+
 repo_url: https://github.com/GreenmaskIO/greenmask
 repo_name: GreenmaskIO/greenmask
+site_url: https://greenmask.io
 
-extra:
-#  version:
-#    provider: mike
-  social:
-    - icon: fontawesome/brands/github
-      link: https://github.com/GreenmaskIO
+#extra:
+  #  version:
+  #    provider: mike
+#  social:
+#    - icon: fontawesome/brands/github
+#      link: github.com/GreenmaskIO
 
 plugins:
-  - git-committers:
-      enabled: true
-      repository: squidfunk/mkdocs-material
-      branch: main
-  - git-revision-date-localized:
-      enable_creation_date: true
+  - social
