@@ -3,7 +3,6 @@ package toolkit
 import (
 	"errors"
 	"fmt"
-	"reflect"
 	"slices"
 	"time"
 
@@ -234,23 +233,33 @@ func (p *Parameter) Scan(dest any) error {
 			}
 		}
 
-	} else if reflect.ValueOf(p.value).Kind() == reflect.String || (reflect.ValueOf(p.value).Kind() == reflect.Pointer &&
-		reflect.Indirect(reflect.ValueOf(p.value)).Kind() == reflect.String) {
-		// This is temporal solution for parsing string. Otherwise, it may cause an error in json.Unmarshall
-		val := string(p.rawValue)
-		p.value = &val
-	} else if reflect.ValueOf(p.value).Kind() == reflect.ValueOf(time.Duration(1)).Kind() || (reflect.ValueOf(p.value).Kind() == reflect.Pointer &&
-		reflect.Indirect(reflect.ValueOf(p.value)).Kind() == reflect.ValueOf(time.Duration(1)).Kind()) {
-		res, err := time.ParseDuration(string(p.rawValue))
-		if err != nil {
-			return fmt.Errorf("error parsing int64 value: %w", err)
-		}
-		p.value = &res
 	} else {
-		// Unmarshal as usual using json Unmarshaler
-		if err := json.Unmarshal(p.rawValue, p.value); err != nil {
-			return fmt.Errorf("unable to unmarshal value: %w", err)
+
+		switch p.value.(type) {
+		case string:
+			val := string(p.rawValue)
+			p.value = &val
+		case *string:
+			val := string(p.rawValue)
+			p.value = &val
+		case time.Duration:
+			res, err := time.ParseDuration(string(p.rawValue))
+			if err != nil {
+				return fmt.Errorf("error parsing int64 value: %w", err)
+			}
+			p.value = &res
+		case *time.Duration:
+			res, err := time.ParseDuration(string(p.rawValue))
+			if err != nil {
+				return fmt.Errorf("error parsing int64 value: %w", err)
+			}
+			p.value = &res
+		default:
+			if err := json.Unmarshal(p.rawValue, p.value); err != nil {
+				return fmt.Errorf("unable to unmarshal value: %w", err)
+			}
 		}
+
 	}
 
 	if p.value == nil {

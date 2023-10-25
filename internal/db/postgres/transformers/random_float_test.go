@@ -139,13 +139,13 @@ func TestRandomFloatTransformer_Transform(t *testing.T) {
 			)
 			require.NoError(t, err)
 
-			val, err := r.GetAttributeByName(tt.columnName)
+			var res float64
+			isNull, err := r.ScanAttributeByName(tt.columnName, &res)
 			require.NoError(t, err)
-			require.Equal(t, tt.result.isNull, val.IsNull)
+			require.Equal(t, tt.result.isNull, isNull)
 			if !tt.result.isNull {
-				resValue := val.Value.(*float64)
-				assert.GreaterOrEqual(t, *resValue, tt.result.min)
-				assert.LessOrEqual(t, *resValue, tt.result.max)
+				assert.GreaterOrEqual(t, res, tt.result.min)
+				assert.LessOrEqual(t, res, tt.result.max)
 			}
 		})
 	}

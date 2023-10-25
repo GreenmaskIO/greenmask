@@ -6,22 +6,22 @@ import (
 
 	transformersUtils "github.com/greenmaskio/greenmask/internal/db/postgres/transformers/utils"
 	"github.com/greenmaskio/greenmask/internal/domains"
-	toolkit2 "github.com/greenmaskio/greenmask/pkg/toolkit"
+	toolkit "github.com/greenmaskio/greenmask/pkg/toolkit"
 )
 
 func initTransformer(
-	ctx context.Context, d *toolkit2.Driver,
+	ctx context.Context, d *toolkit.Driver,
 	c *domains.TransformerConfig,
 	r *transformersUtils.TransformerRegistry,
-	types []*toolkit2.Type,
-) (transformersUtils.Transformer, toolkit2.ValidationWarnings, error) {
-	var totalWarnings toolkit2.ValidationWarnings
+	types []*toolkit.Type,
+) (transformersUtils.Transformer, toolkit.ValidationWarnings, error) {
+	var totalWarnings toolkit.ValidationWarnings
 	td, ok := r.Get(c.Name)
 	if !ok {
 		totalWarnings = append(totalWarnings,
-			toolkit2.NewValidationWarning().
+			toolkit.NewValidationWarning().
 				SetMsg("transformer not found").
-				SetSeverity(toolkit2.ErrorValidationSeverity).SetTrace(&toolkit2.Trace{
+				SetSeverity(toolkit.ErrorValidationSeverity).SetTrace(&toolkit.Trace{
 				SchemaName:      d.Table.Schema,
 				TableName:       d.Table.Name,
 				TransformerName: c.Name,

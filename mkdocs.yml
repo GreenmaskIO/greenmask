@@ -43,9 +43,8 @@ markdown_extensions:
 nav:
   - Home: index.md
   - Documentation:
-      - Introduction: introduction.md
       - Architecture: architecture.md
-      - Installation: getting-started.md
+      - Installation: installation.md
 
 repo_url: https://github.com/GreenmaskIO/greenmask
 repo_name: GreenmaskIO/greenmask

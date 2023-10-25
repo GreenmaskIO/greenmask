@@ -180,7 +180,7 @@ func TestRandomDateTruncateDate(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			res := truncateDate(&tt.original, &tt.part)
-			assert.Equal(t, tt.expected, res)
+			assert.Equal(t, tt.expected, *res)
 		})
 	}
 }

@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/greenmaskio/greenmask/internal/db/postgres/transformers/utils"
-	toolkit2 "github.com/greenmaskio/greenmask/pkg/toolkit"
+	toolkit "github.com/greenmaskio/greenmask/pkg/toolkit"
 )
 
 var NoiseFloatTransformerDefinition = utils.NewDefinition(
@@ -19,24 +19,24 @@ var NoiseFloatTransformerDefinition = utils.NewDefinition(
 	),
 	NewNoiseFloatTransformer,
 
-	toolkit2.MustNewParameter(
+	toolkit.MustNewParameter(
 		"column",
 		"column name",
-	).SetIsColumn(toolkit2.NewColumnProperties().
+	).SetIsColumn(toolkit.NewColumnProperties().
 		SetAffected(true).
 		SetAllowedColumnTypes("float4", "float8").
 		SetSkipOnNull(true),
 	).SetRequired(true),
 
-	toolkit2.MustNewParameter(
+	toolkit.MustNewParameter(
 		"ratio",
 		"max random percentage for noise",
-	).SetDefaultValue(toolkit2.ParamsValue("0.1")),
+	).SetDefaultValue(toolkit.ParamsValue("0.1")),
 
-	toolkit2.MustNewParameter(
+	toolkit.MustNewParameter(
 		"precision",
 		"precision of noised value",
-	).SetDefaultValue(toolkit2.ParamsValue("4")),
+	).SetDefaultValue(toolkit.ParamsValue("4")),
 )
 
 type NoiseFloatTransformerParams struct {
@@ -54,7 +54,7 @@ type NoiseFloatTransformer struct {
 	affectedColumns map[int]string
 }
 
-func NewNoiseFloatTransformer(ctx context.Context, driver *toolkit2.Driver, parameters map[string]*toolkit2.Parameter) (utils.Transformer, toolkit2.ValidationWarnings, error) {
+func NewNoiseFloatTransformer(ctx context.Context, driver *toolkit.Driver, parameters map[string]*toolkit.Parameter) (utils.Transformer, toolkit.ValidationWarnings, error) {
 	// TODO: value out of rage might be possible: double check this transformer implementation
 
 	var columnName string
@@ -104,7 +104,7 @@ func (nft *NoiseFloatTransformer) Done(ctx context.Context) error {
 	return nil
 }
 
-func (nft *NoiseFloatTransformer) Transform(ctx context.Context, r *toolkit2.Record) (*toolkit2.Record, error) {
+func (nft *NoiseFloatTransformer) Transform(ctx context.Context, r *toolkit.Record) (*toolkit.Record, error) {
 	valAny, err := r.GetAttributeByName(nft.columnName)
 	if err != nil {
 		return nil, fmt.Errorf("unable to scan value: %w", err)

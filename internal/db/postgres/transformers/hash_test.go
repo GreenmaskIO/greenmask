@@ -6,7 +6,6 @@ import (
 
 	"github.com/greenmaskio/greenmask/pkg/toolkit"
 
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -16,7 +15,7 @@ func TestHashTransformer_Transform(t *testing.T) {
 	var expectedValue = toolkit.NewValue("9n+v7qGp0ua+DgXtC9ClyjPHjWvWin6fKAmX5bZjcX4=", false)
 	driver, record := getDriverAndRecord(attrName, originalValue)
 
-	transformer, warnings, err := CmdTransformerDefinition.Instance(
+	transformer, warnings, err := HashTransformerDefinition.Instance(
 		context.Background(),
 		driver, map[string]toolkit.ParamsValue{
 			"column": toolkit.ParamsValue(attrName),
@@ -25,7 +24,7 @@ func TestHashTransformer_Transform(t *testing.T) {
 		nil,
 	)
 	require.NoError(t, err)
-	assert.Empty(t, warnings)
+	require.Empty(t, warnings)
 
 	r, err := transformer.Transform(
 		context.Background(),

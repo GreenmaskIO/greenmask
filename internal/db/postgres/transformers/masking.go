@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	masker "github.com/ggwhite/go-masker"
-	toolkit2 "github.com/greenmaskio/greenmask/pkg/toolkit"
+	toolkit "github.com/greenmaskio/greenmask/pkg/toolkit"
 
 	"github.com/greenmaskio/greenmask/internal/db/postgres/transformers/utils"
 )
@@ -32,15 +32,15 @@ var MaskingTransformerDefinition = utils.NewDefinition(
 
 	NewMaskingTransformer,
 
-	toolkit2.MustNewParameter(
+	toolkit.MustNewParameter(
 		"column",
 		"column name",
-	).SetIsColumn(toolkit2.NewColumnProperties().
+	).SetIsColumn(toolkit.NewColumnProperties().
 		SetAffected(true).
 		SetAllowedColumnTypes("text", "varchar"),
 	).SetRequired(true),
 
-	toolkit2.MustNewParameter(
+	toolkit.MustNewParameter(
 		"type",
 		"logical type of attribute (password name addr email mobile tel id credit url)",
 	).SetRequired(true).
@@ -56,7 +56,7 @@ type MaskingTransformer struct {
 	affectedColumns map[int]string
 }
 
-func NewMaskingTransformer(ctx context.Context, driver *toolkit2.Driver, parameters map[string]*toolkit2.Parameter) (utils.Transformer, toolkit2.ValidationWarnings, error) {
+func NewMaskingTransformer(ctx context.Context, driver *toolkit.Driver, parameters map[string]*toolkit.Parameter) (utils.Transformer, toolkit.ValidationWarnings, error) {
 
 	var columnName string
 	var dataType string
@@ -124,7 +124,7 @@ func (mt *MaskingTransformer) Done(ctx context.Context) error {
 	return nil
 }
 
-func (mt *MaskingTransformer) Transform(ctx context.Context, r *toolkit2.Record) (*toolkit2.Record, error) {
+func (mt *MaskingTransformer) Transform(ctx context.Context, r *toolkit.Record) (*toolkit.Record, error) {
 	var originalValue string
 	isNull, err := r.ScanAttributeByName(mt.columnName, &originalValue)
 	if err != nil {
@@ -141,14 +141,14 @@ func (mt *MaskingTransformer) Transform(ctx context.Context, r *toolkit2.Record)
 	return r, nil
 }
 
-func maskerTypeValidator(p *toolkit2.Parameter, v toolkit2.ParamsValue) (toolkit2.ValidationWarnings, error) {
+func maskerTypeValidator(p *toolkit.Parameter, v toolkit.ParamsValue) (toolkit.ValidationWarnings, error) {
 	typeName := string(v)
 
 	types := []string{MPassword, MName, MAddress, MEmail, MMobile, MTelephone, MID, MCreditCard, MURL}
 	if !slices.Contains(types, typeName) {
-		return toolkit2.ValidationWarnings{
-			toolkit2.NewValidationWarning().
-				SetSeverity(toolkit2.ErrorValidationSeverity).
+		return toolkit.ValidationWarnings{
+			toolkit.NewValidationWarning().
+				SetSeverity(toolkit.ErrorValidationSeverity).
 				SetMsgf("unknown type %s: must be one of %s", typeName, strings.Join(types, ", ")),
 		}, nil
 	}

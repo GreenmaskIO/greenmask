@@ -4,12 +4,12 @@ import (
 	"slices"
 
 	"github.com/greenmaskio/greenmask/internal/db/postgres/pgcopy"
-	toolkit2 "github.com/greenmaskio/greenmask/pkg/toolkit"
+	toolkit "github.com/greenmaskio/greenmask/pkg/toolkit"
 
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-var columnList = []*toolkit2.Column{
+var columnList = []*toolkit.Column{
 	{
 		Name:     "id",
 		TypeName: "int2",
@@ -126,8 +126,8 @@ var columnList = []*toolkit2.Column{
 
 // getDriverAndRecord - return adhoc table for testing
 // TODO: You should generate table definition it dynamically using faker as well as table tuples
-func getDriverAndRecord(name string, value string) (*toolkit2.Driver, *toolkit2.Record) {
-	idx := slices.IndexFunc(columnList, func(column *toolkit2.Column) bool {
+func getDriverAndRecord(name string, value string) (*toolkit.Driver, *toolkit.Record) {
+	idx := slices.IndexFunc(columnList, func(column *toolkit.Column) bool {
 		return column.Name == name
 	})
 
@@ -135,21 +135,21 @@ func getDriverAndRecord(name string, value string) (*toolkit2.Driver, *toolkit2.
 		panic("cannot find column")
 	}
 
-	table := &toolkit2.Table{
+	table := &toolkit.Table{
 		Schema:      "public",
 		Name:        "test",
 		Oid:         1224,
 		Columns:     columnList[idx : idx+1],
-		Constraints: []toolkit2.Constraint{},
+		Constraints: []toolkit.Constraint{},
 	}
 
-	driver, err := toolkit2.NewDriver(table, nil, nil)
+	driver, err := toolkit.NewDriver(table, nil, nil)
 	if err != nil {
 		panic(err.Error())
 	}
 	row := pgcopy.NewRow(1)
 	row.Decode([]byte(value))
-	r := toolkit2.NewRecord(
+	r := toolkit.NewRecord(
 		driver,
 	)
 	r.SetRow(row)

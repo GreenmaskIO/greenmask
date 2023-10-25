@@ -2,7 +2,10 @@ package toc
 
 import (
 	"flag"
+
 	"github.com/greenmaskio/greenmask/internal/utils/logger"
+	"github.com/rs/zerolog"
+
 	"os"
 	"strconv"
 )
@@ -58,7 +61,7 @@ func init() {
 }
 
 func init() {
-	if err := logger.SetLogLevel("debug", "text"); err != nil {
+	if err := logger.SetLogLevel(zerolog.LevelDebugValue, logger.LogFormatTextValue); err != nil {
 		panic(err)
 	}
 }

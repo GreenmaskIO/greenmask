@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	toolkit2 "github.com/greenmaskio/greenmask/pkg/toolkit"
+	toolkit "github.com/greenmaskio/greenmask/pkg/toolkit"
 	"github.com/tidwall/sjson"
 
 	"github.com/greenmaskio/greenmask/internal/db/postgres/transformers/utils"
@@ -19,15 +19,15 @@ var JsonTransformerDefinition = utils.NewDefinition(
 
 	NewJsonTransformer,
 
-	toolkit2.MustNewParameter(
+	toolkit.MustNewParameter(
 		"column",
 		"column name",
-	).SetIsColumn(toolkit2.NewColumnProperties().
+	).SetIsColumn(toolkit.NewColumnProperties().
 		SetAffected(true).
 		SetAllowedColumnTypes("json", "jsonb"),
 	).SetRequired(true),
 
-	toolkit2.MustNewParameter(
+	toolkit.MustNewParameter(
 		"operations",
 		"list of the operations",
 	).SetRequired(true),
@@ -62,7 +62,7 @@ type JsonTransformer struct {
 	affectedColumns map[int]string
 }
 
-func NewJsonTransformer(ctx context.Context, driver *toolkit2.Driver, parameters map[string]*toolkit2.Parameter) (utils.Transformer, toolkit2.ValidationWarnings, error) {
+func NewJsonTransformer(ctx context.Context, driver *toolkit.Driver, parameters map[string]*toolkit.Parameter) (utils.Transformer, toolkit.ValidationWarnings, error) {
 	var ops []Operation
 	var columnName string
 
@@ -102,7 +102,7 @@ func (jt *JsonTransformer) Done(ctx context.Context) error {
 	return nil
 }
 
-func (jt *JsonTransformer) Transform(ctx context.Context, r *toolkit2.Record) (*toolkit2.Record, error) {
+func (jt *JsonTransformer) Transform(ctx context.Context, r *toolkit.Record) (*toolkit.Record, error) {
 	// TODO: Test whats happen if performed operation is not applied due to unknown path
 	var jsonRawValue string
 	isNull, err := r.ScanAttributeByName(jt.columnName, &jsonRawValue)

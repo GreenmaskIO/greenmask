@@ -1,7 +1,7 @@
 version: '3'
 
 services:
-  s3:
+  storage:
     image: minio/minio:latest
     ports:
       - ":9000:9000"
@@ -136,6 +136,13 @@ services:
       TEMP_DIR: "/tmp"
       URI: "host=db-16 user=postgres password=example dbname=demo port=5432"
       GREENMASK_BIN_PATH: "/var/lib/greenmask/cmd/greenmask"
+
+      STORAGE_S3_ENDPOINT: "http://storage:9000"
+      STORAGE_S3_BUCKET: "testbucket"
+      STORAGE_S3_REGION: "us-east-1"
+      STORAGE_S3_ACCESS_KEY_ID: "Q3AM3UQ867SPQQA43P2F"
+      STORAGE_S3_SECRET_KEY: "zuf+tfteSlswRu7BJ86wekitnifILbZam1KYY3TG"
+
     build:
       dockerfile: docker/integration/Dockerfile
       context: ./
@@ -151,6 +158,12 @@ services:
       TEMP_DIR: "/tmp"
       URI: "host=db-15 user=postgres password=example dbname=demo port=5432"
       GREENMASK_BIN_PATH: "/var/lib/greenmask/cmd/greenmask"
+
+      STORAGE_S3_ENDPOINT: "http://storage:9000"
+      STORAGE_S3_BUCKET: "testbucket"
+      STORAGE_S3_REGION: "us-east-1"
+      STORAGE_S3_ACCESS_KEY_ID: "Q3AM3UQ867SPQQA43P2F"
+      STORAGE_S3_SECRET_KEY: "zuf+tfteSlswRu7BJ86wekitnifILbZam1KYY3TG"
     build:
       dockerfile: docker/integration/Dockerfile
       context: ./
@@ -166,6 +179,12 @@ services:
       TEMP_DIR: "/tmp"
       URI: "host=db-14 user=postgres password=example dbname=demo port=5432"
       GREENMASK_BIN_PATH: "/var/lib/greenmask/cmd/greenmask"
+
+      STORAGE_S3_ENDPOINT: "http://storage:9000"
+      STORAGE_S3_BUCKET: "testbucket"
+      STORAGE_S3_REGION: "us-east-1"
+      STORAGE_S3_ACCESS_KEY_ID: "Q3AM3UQ867SPQQA43P2F"
+      STORAGE_S3_SECRET_KEY: "zuf+tfteSlswRu7BJ86wekitnifILbZam1KYY3TG"
     build:
       dockerfile: docker/integration/Dockerfile
       context: ./
@@ -181,6 +200,12 @@ services:
       TEMP_DIR: "/tmp"
       URI: "host=db-13 user=postgres password=example dbname=demo port=5432"
       GREENMASK_BIN_PATH: "/var/lib/greenmask/cmd/greenmask"
+
+      STORAGE_S3_ENDPOINT: "http://storage:9000"
+      STORAGE_S3_BUCKET: "testbucket"
+      STORAGE_S3_REGION: "us-east-1"
+      STORAGE_S3_ACCESS_KEY_ID: "Q3AM3UQ867SPQQA43P2F"
+      STORAGE_S3_SECRET_KEY: "zuf+tfteSlswRu7BJ86wekitnifILbZam1KYY3TG"
     build:
       dockerfile: docker/integration/Dockerfile
       context: ./
@@ -196,6 +221,12 @@ services:
       TEMP_DIR: "/tmp"
       URI: "host=db-12 user=postgres password=example dbname=demo port=5432"
       GREENMASK_BIN_PATH: "/var/lib/greenmask/cmd/greenmask"
+
+      STORAGE_S3_ENDPOINT: "http://storage:9000"
+      STORAGE_S3_BUCKET: "testbucket"
+      STORAGE_S3_REGION: "us-east-1"
+      STORAGE_S3_ACCESS_KEY_ID: "Q3AM3UQ867SPQQA43P2F"
+      STORAGE_S3_SECRET_KEY: "zuf+tfteSlswRu7BJ86wekitnifILbZam1KYY3TG"
     build:
       dockerfile: docker/integration/Dockerfile
       context: ./
@@ -211,6 +242,12 @@ services:
       TEMP_DIR: "/tmp"
       URI: "host=db-11 user=postgres password=example dbname=demo port=5432"
       GREENMASK_BIN_PATH: "/var/lib/greenmask/cmd/greenmask"
+
+      STORAGE_S3_ENDPOINT: "http://storage:9000"
+      STORAGE_S3_BUCKET: "testbucket"
+      STORAGE_S3_REGION: "us-east-1"
+      STORAGE_S3_ACCESS_KEY_ID: "Q3AM3UQ867SPQQA43P2F"
+      STORAGE_S3_SECRET_KEY: "zuf+tfteSlswRu7BJ86wekitnifILbZam1KYY3TG"
     build:
       dockerfile: docker/integration/Dockerfile
       context: ./

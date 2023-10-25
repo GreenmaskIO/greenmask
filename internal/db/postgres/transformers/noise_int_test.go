@@ -32,21 +32,21 @@ func TestNoiseIntTransformer_Transform(t *testing.T) {
 			name:          "int2",
 			columnName:    "id2",
 			ratio:         0.9,
-			result:        result{min: 10, max: 190},
+			result:        result{min: 12, max: 234},
 			originalValue: "123",
 		},
 		{
 			name:          "int4",
 			columnName:    "id4",
 			ratio:         0.9,
-			result:        result{min: 10, max: 190},
+			result:        result{min: 12, max: 234},
 			originalValue: "123",
 		},
 		{
 			name:          "int8",
 			columnName:    "id8",
 			ratio:         0.9,
-			result:        result{min: 10, max: 190},
+			result:        result{min: 12, max: 234},
 			originalValue: "123",
 		},
 	}
@@ -71,13 +71,13 @@ func TestNoiseIntTransformer_Transform(t *testing.T) {
 			)
 			require.NoError(t, err)
 
-			val, err := r.GetAttributeByName(tt.columnName)
+			var res int64
+			isNull, err := r.ScanAttributeByName(tt.columnName, &res)
 			require.NoError(t, err)
-			require.Equal(t, tt.result.isNull, val.IsNull)
-			if !tt.result.isNull {
-				intValue := val.Value.(*int64)
-				assert.GreaterOrEqual(t, *intValue, tt.result.min)
-				assert.LessOrEqual(t, *intValue, tt.result.max)
+			require.Equal(t, tt.result.isNull, isNull)
+			if !isNull {
+				assert.GreaterOrEqual(t, res, tt.result.min)
+				assert.LessOrEqual(t, res, tt.result.max)
 			}
 		})
 	}

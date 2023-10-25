@@ -6,7 +6,7 @@ import (
 	"encoding/base64"
 	"fmt"
 
-	toolkit2 "github.com/greenmaskio/greenmask/pkg/toolkit"
+	toolkit "github.com/greenmaskio/greenmask/pkg/toolkit"
 	"golang.org/x/crypto/scrypt"
 
 	"github.com/greenmaskio/greenmask/internal/db/postgres/transformers/utils"
@@ -26,29 +26,29 @@ var HashTransformerDefinition = utils.NewDefinition(
 
 	NewHashTransformer,
 
-	toolkit2.MustNewParameter(
+	toolkit.MustNewParameter(
 		"column",
 		"column name",
-	).SetIsColumn(toolkit2.NewColumnProperties().
+	).SetIsColumn(toolkit.NewColumnProperties().
 		SetAffected(true).
 		SetAllowedColumnTypes("text", "varchar"),
 	).SetRequired(true),
 
-	toolkit2.MustNewParameter(
+	toolkit.MustNewParameter(
 		"salt",
 		"salt for hash",
 	),
 )
 
 type HashTransformer struct {
-	salt            toolkit2.ParamsValue
+	salt            toolkit.ParamsValue
 	columnName      string
 	affectedColumns map[int]string
 }
 
 func NewHashTransformer(
-	ctx context.Context, driver *toolkit2.Driver, parameters map[string]*toolkit2.Parameter,
-) (utils.Transformer, toolkit2.ValidationWarnings, error) {
+	ctx context.Context, driver *toolkit.Driver, parameters map[string]*toolkit.Parameter,
+) (utils.Transformer, toolkit.ValidationWarnings, error) {
 	p := parameters["column"]
 	var columnName string
 	if err := p.Scan(&columnName); err != nil {
@@ -63,20 +63,20 @@ func NewHashTransformer(
 	affectedColumns[idx] = columnName
 
 	var saltStr string
-	var salt toolkit2.ParamsValue
+	var salt toolkit.ParamsValue
 	p = parameters["salt"]
 	if err := p.Scan(&saltStr); err != nil {
 		return nil, nil, fmt.Errorf("unable to parse column param: %w", err)
 	}
 
 	if saltStr == "" {
-		b := make(toolkit2.ParamsValue, saltLength)
+		b := make(toolkit.ParamsValue, saltLength)
 		if _, err := crand.Read(b); err != nil {
 			return nil, nil, err
 		}
 		salt = b
 	} else {
-		salt = toolkit2.ParamsValue(saltStr)
+		salt = toolkit.ParamsValue(saltStr)
 	}
 
 	return &HashTransformer{
@@ -98,7 +98,7 @@ func (ht *HashTransformer) Done(ctx context.Context) error {
 	return nil
 }
 
-func (ht *HashTransformer) Transform(ctx context.Context, r *toolkit2.Record) (*toolkit2.Record, error) {
+func (ht *HashTransformer) Transform(ctx context.Context, r *toolkit.Record) (*toolkit.Record, error) {
 	var originalValue string
 	isNull, err := r.ScanAttributeByName(ht.columnName, &originalValue)
 	if err != nil {
@@ -108,7 +108,7 @@ func (ht *HashTransformer) Transform(ctx context.Context, r *toolkit2.Record) (*
 		return r, nil
 	}
 
-	dk, err := scrypt.Key(toolkit2.ParamsValue(originalValue), ht.salt, 32768, 8, 1, 32)
+	dk, err := scrypt.Key(toolkit.ParamsValue(originalValue), ht.salt, 32768, 8, 1, 32)
 	if err != nil {
 		return nil, fmt.Errorf("cannot perform hash calculation: %w", err)
 	}

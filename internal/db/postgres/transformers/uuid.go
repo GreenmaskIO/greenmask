@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"github.com/google/uuid"
-	toolkit2 "github.com/greenmaskio/greenmask/pkg/toolkit"
+	toolkit "github.com/greenmaskio/greenmask/pkg/toolkit"
 
 	"github.com/greenmaskio/greenmask/internal/db/postgres/transformers/utils"
 )
@@ -18,18 +18,18 @@ var RandomUuidTransformerDefinition = utils.NewDefinition(
 
 	NewRandomUuidTransformer,
 
-	toolkit2.MustNewParameter(
+	toolkit.MustNewParameter(
 		"column",
 		"column name",
-	).SetIsColumn(toolkit2.NewColumnProperties().
+	).SetIsColumn(toolkit.NewColumnProperties().
 		SetAffected(true).
 		SetAllowedColumnTypes("text", "varchar", "uuid"),
 	).SetRequired(true),
 
-	toolkit2.MustNewParameter(
+	toolkit.MustNewParameter(
 		"keep_null",
 		"do not replace NULL values to random value",
-	).SetDefaultValue(toolkit2.ParamsValue("true")),
+	).SetDefaultValue(toolkit.ParamsValue("true")),
 )
 
 type RandomUuidTransformer struct {
@@ -38,7 +38,7 @@ type RandomUuidTransformer struct {
 	affectedColumns map[int]string
 }
 
-func NewRandomUuidTransformer(ctx context.Context, driver *toolkit2.Driver, parameters map[string]*toolkit2.Parameter) (utils.Transformer, toolkit2.ValidationWarnings, error) {
+func NewRandomUuidTransformer(ctx context.Context, driver *toolkit.Driver, parameters map[string]*toolkit.Parameter) (utils.Transformer, toolkit.ValidationWarnings, error) {
 	var columnName string
 	var keepNull bool
 
@@ -78,7 +78,7 @@ func (rut *RandomUuidTransformer) Done(ctx context.Context) error {
 	return nil
 }
 
-func (rut *RandomUuidTransformer) Transform(ctx context.Context, r *toolkit2.Record) (*toolkit2.Record, error) {
+func (rut *RandomUuidTransformer) Transform(ctx context.Context, r *toolkit.Record) (*toolkit.Record, error) {
 	val, err := r.GetRawAttributeValueByName(rut.columnName)
 	if err != nil {
 		return nil, fmt.Errorf("unable to scan value: %w", err)

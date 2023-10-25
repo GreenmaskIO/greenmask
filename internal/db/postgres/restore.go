@@ -122,7 +122,6 @@ func (r *Restore) uploadTocFile(ctx context.Context) error {
 	default:
 		needUpload = true
 	}
-	log.Debug().Msgf("needUpload = %s", needUpload)
 	if needUpload {
 		return fmt.Errorf("toc file uploading does not implemented")
 	}

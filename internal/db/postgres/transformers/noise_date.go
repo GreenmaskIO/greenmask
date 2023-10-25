@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	toolkit2 "github.com/greenmaskio/greenmask/pkg/toolkit"
+	toolkit "github.com/greenmaskio/greenmask/pkg/toolkit"
 	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/greenmaskio/greenmask/internal/db/postgres/transformers/utils"
@@ -23,22 +23,22 @@ var NoiseDateTransformerDefinition = utils.NewDefinition(
 
 	NewNoiseDateTransformer,
 
-	toolkit2.MustNewParameter(
+	toolkit.MustNewParameter(
 		"column",
 		"column name",
-	).SetIsColumn(toolkit2.NewColumnProperties().
+	).SetIsColumn(toolkit.NewColumnProperties().
 		SetAffected(true).
 		SetAllowedColumnTypes("date", "timestamp", "timestamptz").
 		SetSkipOnNull(true),
 	).SetRequired(true),
 
-	toolkit2.MustNewParameter(
+	toolkit.MustNewParameter(
 		"ratio",
 		"max random duration for noise",
 	).SetRequired(true).
 		SetCastDbType("interval"),
 
-	toolkit2.MustNewParameter(
+	toolkit.MustNewParameter(
 		"truncate",
 		fmt.Sprintf("truncate date till the part (%s)", strings.Join(truncateParts, ", ")),
 	),
@@ -58,7 +58,7 @@ type NoiseDateTransformer struct {
 	res             *time.Time
 }
 
-func NewNoiseDateTransformer(ctx context.Context, driver *toolkit2.Driver, parameters map[string]*toolkit2.Parameter) (utils.Transformer, toolkit2.ValidationWarnings, error) {
+func NewNoiseDateTransformer(ctx context.Context, driver *toolkit.Driver, parameters map[string]*toolkit.Parameter) (utils.Transformer, toolkit.ValidationWarnings, error) {
 	var columnName, truncate string
 	var ratio time.Duration
 	var generator dateNoiseFunc = generateNoisedTime
@@ -122,7 +122,7 @@ func (ndt *NoiseDateTransformer) Done(ctx context.Context) error {
 	return nil
 }
 
-func (ndt *NoiseDateTransformer) Transform(ctx context.Context, r *toolkit2.Record) (*toolkit2.Record, error) {
+func (ndt *NoiseDateTransformer) Transform(ctx context.Context, r *toolkit.Record) (*toolkit.Record, error) {
 
 	isNull, err := r.ScanAttributeByIdx(ndt.columnIdx, ndt.res)
 	if err != nil {

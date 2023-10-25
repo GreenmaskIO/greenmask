@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/greenmaskio/greenmask/internal/db/postgres/transformers/utils"
-	toolkit2 "github.com/greenmaskio/greenmask/pkg/toolkit"
+	toolkit "github.com/greenmaskio/greenmask/pkg/toolkit"
 )
 
 var RandomBoolTransformerDefinition = utils.NewDefinition(
@@ -19,18 +19,18 @@ var RandomBoolTransformerDefinition = utils.NewDefinition(
 
 	NewRandomBoolTransformer,
 
-	toolkit2.MustNewParameter(
+	toolkit.MustNewParameter(
 		"column",
 		"column name",
-	).SetIsColumn(toolkit2.NewColumnProperties().
+	).SetIsColumn(toolkit.NewColumnProperties().
 		SetAffected(true).
 		SetAllowedColumnTypes("bool"),
 	).SetRequired(true),
 
-	toolkit2.MustNewParameter(
+	toolkit.MustNewParameter(
 		"keep_null",
 		"do not replace NULL values to random value",
-	).SetDefaultValue(toolkit2.ParamsValue("true")),
+	).SetDefaultValue(toolkit.ParamsValue("true")),
 )
 
 type RandomBoolTransformer struct {
@@ -40,7 +40,7 @@ type RandomBoolTransformer struct {
 	affectedColumns map[int]string
 }
 
-func NewRandomBoolTransformer(ctx context.Context, driver *toolkit2.Driver, parameters map[string]*toolkit2.Parameter) (utils.Transformer, toolkit2.ValidationWarnings, error) {
+func NewRandomBoolTransformer(ctx context.Context, driver *toolkit.Driver, parameters map[string]*toolkit.Parameter) (utils.Transformer, toolkit.ValidationWarnings, error) {
 	var columnName string
 	var keepNull bool
 	p := parameters["column"]
@@ -80,7 +80,7 @@ func (rbt *RandomBoolTransformer) Done(ctx context.Context) error {
 	return nil
 }
 
-func (rbt *RandomBoolTransformer) Transform(ctx context.Context, r *toolkit2.Record) (*toolkit2.Record, error) {
+func (rbt *RandomBoolTransformer) Transform(ctx context.Context, r *toolkit.Record) (*toolkit.Record, error) {
 	val, err := r.GetRawAttributeValueByName(rbt.columnName)
 	if err != nil {
 		return nil, fmt.Errorf("unable to scan value: %w", err)

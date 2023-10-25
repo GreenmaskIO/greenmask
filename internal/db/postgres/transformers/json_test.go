@@ -35,11 +35,11 @@ func TestJsonTransformer_Transform(t *testing.T) {
 		record,
 	)
 	require.NoError(t, err)
-	res, err := r.GetAttributeByName(attrName)
+	res, err := r.GetRawAttributeValueByName(attrName)
 	require.NoError(t, err)
 
 	require.Equal(t, expectedValue.IsNull, res.IsNull)
 	expected := expectedValue.Value.(string)
-	resValue := res.Value.(string)
+	resValue := string(res.Data)
 	require.JSONEq(t, expected, resValue)
 }

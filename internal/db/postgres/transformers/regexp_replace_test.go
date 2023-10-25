@@ -46,11 +46,11 @@ func TestRegexpReplaceTransformer_Transform2(t *testing.T) {
 				record,
 			)
 			require.NoError(t, err)
-			res, err := r.GetAttributeByName(tt.columnName)
+			var res string
+			isNull, err := r.ScanAttributeByName(tt.columnName, &res)
 			require.NoError(t, err)
-			require.False(t, res.IsNull)
-			resValue := res.Value.(*string)
-			require.Equal(t, tt.expected, *resValue)
+			require.False(t, isNull)
+			require.Equal(t, tt.expected, res)
 		})
 	}
 

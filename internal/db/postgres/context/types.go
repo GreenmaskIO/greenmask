@@ -4,12 +4,12 @@ import (
 	"context"
 	"fmt"
 
-	toolkit2 "github.com/greenmaskio/greenmask/pkg/toolkit"
+	"github.com/greenmaskio/greenmask/pkg/toolkit"
 	"github.com/jackc/pgx/v5"
 )
 
-func getCustomTypesUsedInTables(ctx context.Context, tx pgx.Tx) ([]*toolkit2.Type, error) {
-	var res []*toolkit2.Type
+func getCustomTypesUsedInTables(ctx context.Context, tx pgx.Tx) ([]*toolkit.Type, error) {
+	var res []*toolkit.Type
 	rows, err := tx.Query(ctx, CustomTypesWithTypeChainQuery)
 	if err != nil {
 		return nil, fmt.Errorf("unable execute CustomTypesUsedInTablesQuery: %w", err)
@@ -17,9 +17,9 @@ func getCustomTypesUsedInTables(ctx context.Context, tx pgx.Tx) ([]*toolkit2.Typ
 	defer rows.Close()
 
 	// Collect all types and find domains with constraint
-	var domainsWithConstraint []*toolkit2.Type
+	var domainsWithConstraint []*toolkit.Type
 	for rows.Next() {
-		t := &toolkit2.Type{}
+		t := &toolkit.Type{}
 		var hasDomainConstraint bool
 		err = rows.Scan(&t.Oid, &t.Chain, &t.Schema, &t.Name, &t.Length, &t.Kind,
 			&t.ComposedRelation, &t.ElementType, &t.ArrayType, &t.NotNull, &t.BaseType,
@@ -41,7 +41,7 @@ func getCustomTypesUsedInTables(ctx context.Context, tx pgx.Tx) ([]*toolkit2.Typ
 
 	// Assign domain constraints
 	for _, t := range domainsWithConstraint {
-		c := &toolkit2.Check{}
+		c := &toolkit.Check{}
 
 		row := tx.QueryRow(ctx, DomainConstraintsQuery, t.Oid)
 		err = row.Scan(&c.Oid, &c.Schema, &c.Name, &c.Definition)

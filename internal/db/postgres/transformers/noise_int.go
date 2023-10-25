@@ -7,7 +7,8 @@ import (
 	"time"
 
 	"github.com/greenmaskio/greenmask/internal/db/postgres/transformers/utils"
-	toolkit2 "github.com/greenmaskio/greenmask/pkg/toolkit"
+	toolkit "github.com/greenmaskio/greenmask/pkg/toolkit"
+	"github.com/rs/zerolog/log"
 )
 
 func New[T int64 | float64 | string | bool](v T) *T {
@@ -22,20 +23,20 @@ var NoiseIntTransformerDefinition = utils.NewDefinition(
 
 	NewNoiseIntTransformer,
 
-	toolkit2.MustNewParameter(
+	toolkit.MustNewParameter(
 		"column",
 		"column name",
-	).SetIsColumn(toolkit2.NewColumnProperties().
+	).SetIsColumn(toolkit.NewColumnProperties().
 		SetAffected(true).
 		SetAllowedColumnTypes("int2", "int4", "int8").
 		SetSkipOnNull(true),
 	).SetRequired(true),
 
-	toolkit2.MustNewParameter(
+	toolkit.MustNewParameter(
 		"ratio",
 		"max random percentage for noise",
 	).SetRequired(true).
-		SetDefaultValue(toolkit2.ParamsValue("0.1")),
+		SetDefaultValue(toolkit.ParamsValue("0.1")),
 )
 
 type NoiseIntTransformer struct {
@@ -45,7 +46,7 @@ type NoiseIntTransformer struct {
 	affectedColumns map[int]string
 }
 
-func NewNoiseIntTransformer(ctx context.Context, driver *toolkit2.Driver, parameters map[string]*toolkit2.Parameter) (utils.Transformer, toolkit2.ValidationWarnings, error) {
+func NewNoiseIntTransformer(ctx context.Context, driver *toolkit.Driver, parameters map[string]*toolkit.Parameter) (utils.Transformer, toolkit.ValidationWarnings, error) {
 	var columnName string
 	var ratio float64
 
@@ -86,7 +87,7 @@ func (nit *NoiseIntTransformer) Done(ctx context.Context) error {
 	return nil
 }
 
-func (nit *NoiseIntTransformer) Transform(ctx context.Context, r *toolkit2.Record) (*toolkit2.Record, error) {
+func (nit *NoiseIntTransformer) Transform(ctx context.Context, r *toolkit.Record) (*toolkit.Record, error) {
 	// TODO: value out of rage might be possible: double check this transformer implementation
 
 	var val int64
@@ -104,6 +105,9 @@ func (nit *NoiseIntTransformer) Transform(ctx context.Context, r *toolkit2.Recor
 		ratio = ratio * -1
 	}
 	res := val + int64(float64(val)*ratio)
+	if res > 190 {
+		log.Debug().Msgf("")
+	}
 	if err := r.SetAttributeByName(nit.columnName, &res); err != nil {
 		return nil, fmt.Errorf("unable to set new value: %w", err)
 	}

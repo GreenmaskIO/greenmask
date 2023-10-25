@@ -6,7 +6,7 @@ import (
 	"regexp"
 
 	"github.com/greenmaskio/greenmask/internal/db/postgres/transformers/utils"
-	toolkit2 "github.com/greenmaskio/greenmask/pkg/toolkit"
+	toolkit "github.com/greenmaskio/greenmask/pkg/toolkit"
 )
 
 var RegexpReplaceTransformerDefinition = utils.NewDefinition(
@@ -17,20 +17,20 @@ var RegexpReplaceTransformerDefinition = utils.NewDefinition(
 
 	NewRegexpReplaceTransformer,
 
-	toolkit2.MustNewParameter(
+	toolkit.MustNewParameter(
 		"column",
 		"column name",
-	).SetIsColumn(toolkit2.NewColumnProperties().
+	).SetIsColumn(toolkit.NewColumnProperties().
 		SetAffected(true).
 		SetAllowedColumnTypes("varchar", "text", "bpchar"),
 	).SetRequired(true),
 
-	toolkit2.MustNewParameter(
+	toolkit.MustNewParameter(
 		"regexp",
 		"regular expression",
 	).SetRequired(true),
 
-	toolkit2.MustNewParameter(
+	toolkit.MustNewParameter(
 		"replace",
 		"replacement value",
 	).SetRequired(true),
@@ -44,7 +44,7 @@ type RegexpReplaceTransformer struct {
 	affectedColumns map[int]string
 }
 
-func NewRegexpReplaceTransformer(ctx context.Context, driver *toolkit2.Driver, parameters map[string]*toolkit2.Parameter) (utils.Transformer, toolkit2.ValidationWarnings, error) {
+func NewRegexpReplaceTransformer(ctx context.Context, driver *toolkit.Driver, parameters map[string]*toolkit.Parameter) (utils.Transformer, toolkit.ValidationWarnings, error) {
 	var columnName, regexpStr, replace string
 	p := parameters["column"]
 	if err := p.Scan(&columnName); err != nil {
@@ -70,9 +70,9 @@ func NewRegexpReplaceTransformer(ctx context.Context, driver *toolkit2.Driver, p
 	re, err := regexp.Compile(regexpStr)
 
 	if err != nil {
-		return nil, toolkit2.ValidationWarnings{
-			toolkit2.NewValidationWarning().
-				SetSeverity(toolkit2.ErrorValidationSeverity).
+		return nil, toolkit.ValidationWarnings{
+			toolkit.NewValidationWarning().
+				SetSeverity(toolkit.ErrorValidationSeverity).
 				AddMeta("parameterName", "regexp").
 				SetMsg("cannot compile regular expression"),
 		}, fmt.Errorf("cannot compile regular expression: %w", err)
@@ -100,7 +100,7 @@ func (rrt *RegexpReplaceTransformer) Done(ctx context.Context) error {
 	return nil
 }
 
-func (rrt *RegexpReplaceTransformer) Transform(ctx context.Context, r *toolkit2.Record) (*toolkit2.Record, error) {
+func (rrt *RegexpReplaceTransformer) Transform(ctx context.Context, r *toolkit.Record) (*toolkit.Record, error) {
 	var original string
 	isNull, err := r.ScanAttributeByIdx(rrt.columnIdx, &original)
 	if err != nil {

@@ -61,7 +61,7 @@ func (r *Record) ScanAttributeByName(name string, v any) (bool, error) {
 	if !ok {
 		return false, fmt.Errorf(`unknown column name "%s"`, name)
 	}
-	ok, err := r.ScanAttributeByIdx(idx, v)
+	isNull, err := r.ScanAttributeByIdx(idx, v)
 	if err != nil {
 		return false, fmt.Errorf(
 			"error getting column %s.%s.%s value: %w",
@@ -69,7 +69,7 @@ func (r *Record) ScanAttributeByName(name string, v any) (bool, error) {
 			err,
 		)
 	}
-	return false, nil
+	return isNull, nil
 }
 
 func (r *Record) GetAttributeByIdx(idx int) (*Value, error) {
@@ -105,8 +105,9 @@ func (r *Record) GetAttributeByName(name string) (*Value, error) {
 
 func (r *Record) SetAttributeByIdx(idx int, v any) error {
 	var value *Value
-	switch v.(type) {
+	switch vv := v.(type) {
 	case *Value:
+		value = vv
 	default:
 		value = NewValue(v, false)
 	}

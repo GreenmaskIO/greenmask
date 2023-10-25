@@ -22,7 +22,7 @@ import (
 )
 
 var (
-	rootCmd = &cobra.Command{
+	RootCmd = &cobra.Command{
 		Use:     "greenmask",
 		Version: "dev",
 		Short:   "Greenmask is a stateless logical dump tool with features for obfuscaction",
@@ -37,16 +37,16 @@ var (
 )
 
 func Execute() error {
-	return rootCmd.Execute()
+	return RootCmd.Execute()
 }
 
 func init() {
 	cobra.OnInitialize(initConfig)
 	// Removing short help flag from default
-	rootCmd.PersistentFlags().BoolP("help", "", false, "help for greenmask")
-	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file ")
-	rootCmd.PersistentFlags().StringP("log-format", "", "text", "logging format [text|json]")
-	rootCmd.PersistentFlags().StringP("log-level", "", zerolog.LevelInfoValue,
+	RootCmd.PersistentFlags().BoolP("help", "", false, "help for greenmask")
+	RootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file ")
+	RootCmd.PersistentFlags().StringP("log-format", "", "text", "logging format [text|json]")
+	RootCmd.PersistentFlags().StringP("log-level", "", zerolog.LevelInfoValue,
 		fmt.Sprintf(
 			"logging level %s|%s|%s",
 			zerolog.LevelDebugValue,
@@ -55,23 +55,23 @@ func init() {
 		),
 	)
 
-	rootCmd.AddCommand(dump.DumpCmd)
-	rootCmd.AddCommand(list_dump.Cmd)
-	rootCmd.AddCommand(restore.Cmd)
-	rootCmd.AddCommand(delete_backup.Cmd)
-	rootCmd.AddCommand(show_dump.Cmd)
-	rootCmd.AddCommand(show_dump.Cmd)
-	rootCmd.AddCommand(list_transformers.Cmd)
+	RootCmd.AddCommand(dump.DumpCmd)
+	RootCmd.AddCommand(list_dump.Cmd)
+	RootCmd.AddCommand(restore.Cmd)
+	RootCmd.AddCommand(delete_backup.Cmd)
+	RootCmd.AddCommand(show_dump.Cmd)
+	RootCmd.AddCommand(show_dump.Cmd)
+	RootCmd.AddCommand(list_transformers.Cmd)
 
-	if err := rootCmd.MarkPersistentFlagRequired("config"); err != nil {
+	if err := RootCmd.MarkPersistentFlagRequired("config"); err != nil {
 		log.Fatal().Err(err).Msg("")
 	}
 
-	if err := viper.BindPFlag("log.format", rootCmd.PersistentFlags().Lookup("log-format")); err != nil {
+	if err := viper.BindPFlag("log.format", RootCmd.PersistentFlags().Lookup("log-format")); err != nil {
 		log.Fatal().Err(err).Msg("")
 	}
 
-	if err := viper.BindPFlag("log.level", rootCmd.PersistentFlags().Lookup("log-level")); err != nil {
+	if err := viper.BindPFlag("log.level", RootCmd.PersistentFlags().Lookup("log-level")); err != nil {
 		log.Fatal().Err(err).Msg("")
 	}
 

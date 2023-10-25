@@ -41,14 +41,14 @@ func (trd *TestRowDriver) Encode() ([]byte, error) {
 	return res, nil
 }
 
-func (trd *TestRowDriver) Decode() (map[int]*RawValue, error) {
-	res := make(map[int]*RawValue)
-	for idx, v := range trd.row {
-		if v == testNullSeq {
-			res[idx] = NewRawValue(nil, true)
-		} else {
-			res[idx] = NewRawValue([]byte(v), false)
-		}
-	}
-	return res, nil
+func (trd *TestRowDriver) Decode([]byte) error {
+	panic("is not implemented")
+}
+
+func (trd *TestRowDriver) Length() int {
+	return len(trd.row)
+}
+
+func (trd *TestRowDriver) Clean() {
+
 }

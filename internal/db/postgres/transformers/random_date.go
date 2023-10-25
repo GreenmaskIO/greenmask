@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/greenmaskio/greenmask/internal/db/postgres/transformers/utils"
-	toolkit2 "github.com/greenmaskio/greenmask/pkg/toolkit"
+	toolkit "github.com/greenmaskio/greenmask/pkg/toolkit"
 )
 
 var truncateParts = []string{"year", "month", "day", "hour", "second", "millisecond", "microsecond", "nanosecond"}
@@ -22,35 +22,35 @@ var RandomDateTransformerDefinition = utils.NewDefinition(
 
 	NewRandomDateTransformer,
 
-	toolkit2.MustNewParameter(
+	toolkit.MustNewParameter(
 		"column",
 		"column name",
-	).SetIsColumn(toolkit2.NewColumnProperties().
+	).SetIsColumn(toolkit.NewColumnProperties().
 		SetAffected(true).
 		SetAllowedColumnTypes("date", "timestamp", "timestamptz"),
 	).SetRequired(true),
 
-	toolkit2.MustNewParameter(
+	toolkit.MustNewParameter(
 		"min",
 		"min threshold value of random value",
 	).SetRequired(true).
 		SetLinkParameter("column"),
 
-	toolkit2.MustNewParameter(
+	toolkit.MustNewParameter(
 		"max",
 		"max threshold value of random value",
 	).SetRequired(true).
 		SetLinkParameter("column"),
 
-	toolkit2.MustNewParameter(
+	toolkit.MustNewParameter(
 		"truncate",
 		fmt.Sprintf("truncate date till the part (%s)", strings.Join(truncateParts, ", ")),
 	),
 
-	toolkit2.MustNewParameter(
+	toolkit.MustNewParameter(
 		"keep_null",
 		"do not replace NULL values to random value",
-	).SetDefaultValue(toolkit2.ParamsValue("true")),
+	).SetDefaultValue(toolkit.ParamsValue("true")),
 )
 
 type dateGeneratorFunc func(r *rand.Rand, startDate *time.Time, delta *int64, truncate *string) *time.Time
@@ -76,7 +76,7 @@ type RandomDateTransformer struct {
 	affectedColumns map[int]string
 }
 
-func NewRandomDateTransformer(ctx context.Context, driver *toolkit2.Driver, parameters map[string]*toolkit2.Parameter) (utils.Transformer, toolkit2.ValidationWarnings, error) {
+func NewRandomDateTransformer(ctx context.Context, driver *toolkit.Driver, parameters map[string]*toolkit.Parameter) (utils.Transformer, toolkit.ValidationWarnings, error) {
 	var columnName, truncate string
 	var minTime, maxTime time.Time
 	var generator dateGeneratorFunc = generateRandomTime
@@ -130,8 +130,8 @@ func NewRandomDateTransformer(ctx context.Context, driver *toolkit2.Driver, para
 	}
 
 	if minTime.After(maxTime) {
-		return nil, toolkit2.ValidationWarnings{
-			toolkit2.NewValidationWarning().
+		return nil, toolkit.ValidationWarnings{
+			toolkit.NewValidationWarning().
 				AddMeta("max", maxTime).
 				AddMeta("min", minTime).
 				SetMsg("max value must be greater than min"),
@@ -165,7 +165,7 @@ func (rdt *RandomDateTransformer) Done(ctx context.Context) error {
 	return nil
 }
 
-func (rdt *RandomDateTransformer) Transform(ctx context.Context, r *toolkit2.Record) (*toolkit2.Record, error) {
+func (rdt *RandomDateTransformer) Transform(ctx context.Context, r *toolkit.Record) (*toolkit.Record, error) {
 	valAny, err := r.GetRawAttributeValueByIdx(rdt.columnIdx)
 	if err != nil {
 		return nil, fmt.Errorf("unable to scan value: %w", err)

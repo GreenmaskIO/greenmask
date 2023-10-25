@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/greenmaskio/greenmask/internal/db/postgres/transformers/utils"
-	toolkit2 "github.com/greenmaskio/greenmask/pkg/toolkit"
+	toolkit "github.com/greenmaskio/greenmask/pkg/toolkit"
 )
 
 const (
@@ -24,33 +24,33 @@ var RandomFloatTransformerDefinition = utils.NewDefinition(
 
 	NewRandomFloatTransformer,
 
-	toolkit2.MustNewParameter(
+	toolkit.MustNewParameter(
 		"column",
 		"column name",
-	).SetIsColumn(toolkit2.NewColumnProperties().
+	).SetIsColumn(toolkit.NewColumnProperties().
 		SetAffected(true).
 		SetAllowedColumnTypes("float4", "float8"),
 	).SetRequired(true),
 
-	toolkit2.MustNewParameter(
+	toolkit.MustNewParameter(
 		"min",
 		"min int value threshold",
 	).SetRequired(true),
 
-	toolkit2.MustNewParameter(
+	toolkit.MustNewParameter(
 		"max",
 		"max int value threshold",
 	).SetRequired(true),
 
-	toolkit2.MustNewParameter(
+	toolkit.MustNewParameter(
 		"precision",
 		"precision of noised value",
-	).SetDefaultValue(toolkit2.ParamsValue("4")),
+	).SetDefaultValue(toolkit.ParamsValue("4")),
 
-	toolkit2.MustNewParameter(
+	toolkit.MustNewParameter(
 		"keep_null",
 		"do not replace NULL values to random value",
-	).SetDefaultValue(toolkit2.ParamsValue("true")),
+	).SetDefaultValue(toolkit.ParamsValue("true")),
 )
 
 type RandomFloatTransformer struct {
@@ -63,7 +63,7 @@ type RandomFloatTransformer struct {
 	affectedColumns map[int]string
 }
 
-func NewRandomFloatTransformer(ctx context.Context, driver *toolkit2.Driver, parameters map[string]*toolkit2.Parameter) (utils.Transformer, toolkit2.ValidationWarnings, error) {
+func NewRandomFloatTransformer(ctx context.Context, driver *toolkit.Driver, parameters map[string]*toolkit.Parameter) (utils.Transformer, toolkit.ValidationWarnings, error) {
 	var columnName string
 	var minVal, maxVal float64
 	var precision int64
@@ -124,7 +124,7 @@ func (rft *RandomFloatTransformer) Done(ctx context.Context) error {
 	return nil
 }
 
-func (rft *RandomFloatTransformer) Transform(ctx context.Context, r *toolkit2.Record) (*toolkit2.Record, error) {
+func (rft *RandomFloatTransformer) Transform(ctx context.Context, r *toolkit.Record) (*toolkit.Record, error) {
 	valAny, err := r.GetRawAttributeValueByName(rft.columnName)
 	if err != nil {
 		return nil, fmt.Errorf("unable to scan value: %w", err)

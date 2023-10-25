@@ -9,25 +9,25 @@ import (
 	"github.com/greenmaskio/greenmask/internal/db/postgres/toc"
 	"github.com/greenmaskio/greenmask/internal/db/postgres/transformers/custom"
 	"github.com/greenmaskio/greenmask/internal/db/postgres/transformers/utils"
-	toolkit2 "github.com/greenmaskio/greenmask/pkg/toolkit"
+	toolkit "github.com/greenmaskio/greenmask/pkg/toolkit"
 )
 
 type Table struct {
-	*toolkit2.Table
+	*toolkit.Table
 	Query                string
 	Owner                string
 	RelKind              rune
 	RootPtSchema         string
 	RootPtName           string
 	LoadViaPartitionRoot bool
-	RootOid              toolkit2.Oid
+	RootOid              toolkit.Oid
 	Transformers         []utils.Transformer
 	Dependencies         []int32
 	DumpId               int32
 	OriginalSize         int64
 	CompressedSize       int64
 	ExcludeData          bool
-	Driver               *toolkit2.Driver
+	Driver               *toolkit.Driver
 }
 
 func (t *Table) HasCustomTransformer() bool {

@@ -133,8 +133,8 @@ func (d *Dump) startMainTx(ctx context.Context, conn *pgx.Conn) (pgx.Tx, error) 
 		var setSnapshotQuery = fmt.Sprintf("SET TRANSACTION SNAPSHOT '%s'", d.pgDumpOptions.Snapshot)
 		log.Debug().Msgf("performing %s snapshot import", d.pgDumpOptions.Snapshot)
 		if _, err := tx.Exec(ctx, setSnapshotQuery); err != nil {
-			return nil, fmt.Errorf("cannot import snapshot: %w", err)
 			tx.Rollback(ctx)
+			return nil, fmt.Errorf("cannot import snapshot: %w", err)
 		}
 	}
 

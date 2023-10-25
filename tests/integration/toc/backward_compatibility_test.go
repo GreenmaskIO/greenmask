@@ -4,17 +4,19 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/greenmaskio/greenmask/internal/db/postgres/pgdump"
-	"github.com/greenmaskio/greenmask/internal/domains"
-	"github.com/greenmaskio/greenmask/internal/storages/directory"
-	"github.com/jackc/pgx/v5"
-	"github.com/rs/zerolog/log"
-	"github.com/stretchr/testify/suite"
-	"gopkg.in/yaml.v3"
 	"os"
 	"os/exec"
 	"path"
 	"time"
+
+	"github.com/greenmaskio/greenmask/internal/db/postgres/pgdump"
+	"github.com/greenmaskio/greenmask/internal/domains"
+	"github.com/greenmaskio/greenmask/internal/storages/directory"
+	"github.com/greenmaskio/greenmask/pkg/toolkit"
+	"github.com/jackc/pgx/v5"
+	"github.com/rs/zerolog/log"
+	"github.com/stretchr/testify/suite"
+	"gopkg.in/yaml.v3"
 )
 
 var config = &domains.Config{
@@ -43,18 +45,18 @@ var config = &domains.Config{
 				Transformers: []*domains.TransformerConfig{
 					{
 						Name: "RandomDate",
-						Params: map[string]domains.ParamsValue{
-							"min":    domains.ParamsValue("2023-01-01 00:00:00.0+03"),
-							"max":    domains.ParamsValue("2023-01-02 00:00:00.0+03"),
-							"column": domains.ParamsValue("scheduled_departure"),
+						Params: map[string]toolkit.ParamsValue{
+							"min":    toolkit.ParamsValue("2023-01-01 00:00:00.0+03"),
+							"max":    toolkit.ParamsValue("2023-01-02 00:00:00.0+03"),
+							"column": toolkit.ParamsValue("scheduled_departure"),
 						},
 					},
 					{
 						Name: "RandomDate",
-						Params: map[string]domains.ParamsValue{
-							"min":    domains.ParamsValue("2023-02-02 01:00:00.0+03"),
-							"max":    domains.ParamsValue("2023-03-03 00:00:00.0+03"),
-							"column": domains.ParamsValue("scheduled_arrival"),
+						Params: map[string]toolkit.ParamsValue{
+							"min":    toolkit.ParamsValue("2023-02-02 01:00:00.0+03"),
+							"max":    toolkit.ParamsValue("2023-03-03 00:00:00.0+03"),
+							"column": toolkit.ParamsValue("scheduled_arrival"),
 						},
 					},
 				},

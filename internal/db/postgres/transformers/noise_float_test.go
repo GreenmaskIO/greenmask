@@ -95,13 +95,13 @@ func TestNoiseFloatTransformer_Transform(t *testing.T) {
 				record,
 			)
 			require.NoError(t, err)
-			res, err := r.GetAttributeByName(tt.columnName)
+			var res float64
+			isNull, err := r.ScanAttributeByName(tt.columnName, &res)
 			require.NoError(t, err)
-			assert.False(t, res.IsNull)
-			if !res.IsNull {
-				resVal := res.Value.(*float64)
-				assert.GreaterOrEqual(t, *resVal, tt.result.min)
-				assert.LessOrEqual(t, *resVal, tt.result.max)
+			assert.False(t, isNull)
+			if !isNull {
+				assert.GreaterOrEqual(t, res, tt.result.min)
+				assert.LessOrEqual(t, res, tt.result.max)
 				encodedValue, err := r.Encode()
 				require.NoError(t, err)
 				idx := slices.IndexFunc(driver.Table.Columns, func(column *toolkit.Column) bool {
