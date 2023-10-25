@@ -14,7 +14,7 @@
 # Binaries
 cmd/greenfuscator/greenfuscator
 cmd/greenfuscator/main
-./greenmask
+greenmask
 
 # Dependency directories (remove the comment below to include it)
 vendor/
