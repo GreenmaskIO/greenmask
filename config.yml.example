@@ -1,0 +1,189 @@
+common:
+  pg_bin_path: "/usr/bin/"
+  tmp_dir: "/tmp"
+
+log:
+  level: "info"
+  format: "text"
+
+storage:
+  directory:
+        path: "/tmp/pg_dump_test"
+#  s3:
+#    endpoint: "http://localhost:9000"
+#    bucket: "testbucket"
+#    region: "us-east-1"
+#    access_key_id: "Q3AM3UQ867SPQQA43P2F"
+#    secret_access_key: "zuf+tfteSlswRu7BJ86wekitnifILbZam1KYY3TG"
+
+dump:
+  pg_dump_options:
+    dbname: "host=/run/postgresql user=postgres dbname=demo"
+    jobs: 10
+    exclude-schema: "(\"teSt\"*|test*)"
+    table: "bookings.flights"
+    load-via-partition-root: true
+
+  transformation:
+    - schema: "bookings"
+      name: "flights"
+      query: "select * from bookings.flights limit 100"
+      columns_type_override:
+        post_code: "int4"
+      transformers:
+        - name: "RandomDate"
+          params:
+            min: "2023-01-01 00:00:00.0+03"
+            max: "2023-01-02 00:00:00.0+03"
+            column: "scheduled_departure"
+
+        - name: "NoiseDate"
+          params:
+            ratio: "1 day"
+            column: "scheduled_arrival"
+
+        - name: "RegexpReplace"
+          params:
+            column: "departure_airport"
+            regexp: "DME"
+            replace: "SVO"
+
+        - name: "RegexpReplace"
+          params:
+            column: "status"
+            regexp: "On Time"
+            replace: "Delayed"
+
+        - name: "RandomDate"
+          params:
+            column: "actual_departure"
+            min: "2023-01-03 01:00:00.0+03"
+            max: "2023-01-04 00:00:00.0+03"
+
+        - name: "RandomDate"
+          params:
+            column: "actual_arrival"
+            min: "2023-01-04 01:00:00.0+03"
+            max: "2023-01-05 00:00:00.0+03"
+
+        - name: "RandomInt"
+          params:
+            column: "post_code"
+            min: "11"
+            max: "99"
+
+        - name: "Replace"
+          params:
+            column: "post_code"
+            value: "54321"
+
+        - name: "TwoDatesGen"
+          params:
+            column_a: "scheduled_arrival"
+            column_b: "actual_arrival"
+
+        - name: "TestTransformer"
+          params:
+            column: "actual_arrival"
+
+        - name: "Cmd"
+          params:
+            executable: "cmd_test.sh"
+            driver:
+              name: "json"
+              params:
+                format: "bytes"
+            timeout: "60s"
+            validate_output: true
+            expected_exit_code: -1
+            skip_on_behaviour: "any"
+            columns:
+              - name: "actual_arrival"
+                skip_original_data: true
+                skip_on_null_input: true
+              - name: "scheduled_arrival"
+                skip_original_data: true
+#
+        - name: "TestTransformer"
+          params:
+            column: "scheduled_arrival"
+
+    - schema: "bookings"
+      name: "measurement"
+      apply_for_inherited: True
+      transformers:
+        - name: "RandomDate"
+          params:
+            column: "logdate"
+            min: "2023-01-03"
+            max: "2023-01-30"
+
+        - name: "TemplateRecord"
+          params:
+            validate: false
+            columns:
+              - "scheduled_departure"
+            template: >
+              {{- $val := .GetValue "scheduled_departure" -}}
+              {{- if isNull $val -}}
+              {{ now | dateModify "24h" | .SetValue "scheduled_departure" }}
+              {{ else }}
+              {{ now | dateModify "48h" | .SetValue "scheduled_departure" }}
+              {{ end }}
+
+
+    - schema: "bookings"
+      name: "aircrafts_data"
+      transformers:
+        - name: "Json"
+          params:
+            column: "model"
+            operations:
+              - operation: "set"
+                path: "en"
+                value: "Boeing 777-300-2023"
+              - operation: "set"
+                path: "crewSize"
+                value: 10
+
+        - name: "NoiseInt"
+          params:
+            ratio: 0.9
+            column: "range"
+
+        - name: "NoiseFloat"
+          params:
+            ratio: 0.1
+            column: "test_float"
+            precision: 2
+
+restore:
+  pg_restore_options:
+    jobs: 10
+    dbname: "host=/run/postgresql user=postgres dbname=demo_restore"
+
+  scripts:
+    pre-data:
+      - name: "pre-flight test script [1]"
+        when: "before"
+        query: "create table script_test(stage text)"
+      - name: "pre-data before test script [1]"
+        when: "before"
+        query: "insert into script_test values('pre-data before')"
+      - name: "pre-data after test script [1]"
+        when: "after"
+        query: "insert into script_test values('pre-data after')"
+    data:
+      - name: "data before test script [1]"
+        when: "before"
+        query: "insert into script_test values('data before')"
+      - name: "data after test script [1]"
+        when: "after"
+        query: "insert into script_test values('data after')"
+    post-data:
+      - name: "post-data before test script [1]"
+        when: "before"
+        query: "insert into script_test values('post-data before')"
+      - name: "post-data after test script [1]"
+        when: "after"
+        query: "insert into script_test values('post-data after')"
