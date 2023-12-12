@@ -80,6 +80,7 @@ func FuncMap() template.FuncMap {
 	Functions := template.FuncMap{
 		"null":        getNullValue,
 		"isNull":      valueIsNull,
+		"isNotNull":   valueIsNotNull,
 		"sqlCoalesce": sqlCoalesce,
 
 		"jsonExists":       jsonExists,
@@ -203,6 +204,10 @@ func sqlCoalesce(vv ...any) any {
 
 func getNullValue() NullType {
 	return NullValue
+}
+
+func valueIsNotNull(v any) bool {
+	return !valueIsNull(v)
 }
 
 func valueIsNull(v any) bool {

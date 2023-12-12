@@ -14,8 +14,8 @@
 
 // TODO: Template transformer. Functionality
 // TemplateContext:
-//	* GetRawValue - toolkit.RawValue
-//	* GetValue - toolkit.Value
+//	* GetRawColumnValue - toolkit.RawValue
+//	* GetColumnValue - toolkit.Value
 //	* GetTValue - special value wrappers for templates that implements OPs with types
 //
 //
@@ -64,13 +64,13 @@ import (
 func TestTemplateTransformer_Transform_int(t *testing.T) {
 	var columnName = "id"
 	var template = `
-		{{- $val := .GetValue -}}
+		{{- $val := .GetColumnValue -}}
 		{{- if isNull $val -}}
 			{{- null -}}
 		{{- else if eq $val 1 }}
 			{{- 123 -}}
 		{{- else -}}
-			{{- add $val 10 | .EncodeValue -}}
+			{{- add $val 10 | .EncodeValueByColumn -}}
 		{{- end -}}
 	`
 	var originalValue = "3"
@@ -104,11 +104,11 @@ func TestTemplateTransformer_Transform_int(t *testing.T) {
 func TestTemplateTransformer_Transform_timestamp(t *testing.T) {
 	var columnName = "date_ts"
 	var template = `
-		{{- $val := .GetValue -}}
+		{{- $val := .GetColumnValue -}}
 		{{- if isNull $val -}}
-			{{- now | .EncodeValue -}}
+			{{- now | .EncodeValueByColumn -}}
 		{{- else -}}
-			{{- $val | .EncodeValue -}}			
+			{{- $val | .EncodeValueByColumn -}}			
 		{{- end -}}
 	`
 	var originalValue = "\\N"

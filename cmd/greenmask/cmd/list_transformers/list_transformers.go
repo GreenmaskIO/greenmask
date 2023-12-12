@@ -42,7 +42,7 @@ var (
 				log.Err(err).Msg("")
 			}
 
-			if err := run(); err != nil {
+			if err := run(args); err != nil {
 				log.Err(err).Msg("")
 			}
 		},
@@ -56,7 +56,7 @@ const (
 	TextFormatName = "text"
 )
 
-func run() error {
+func run(transformerNames []string) error {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	err := custom.BootstrapCustomTransformers(ctx, utils.DefaultTransformerRegistry, Config.CustomTransformers)
@@ -66,9 +66,9 @@ func run() error {
 
 	switch format {
 	case JsonFormatName:
-		err = listTransformersJson(utils.DefaultTransformerRegistry)
+		err = listTransformersJson(utils.DefaultTransformerRegistry, transformerNames)
 	case TextFormatName:
-		err = listTransformersText(utils.DefaultTransformerRegistry)
+		err = listTransformersText(utils.DefaultTransformerRegistry, transformerNames)
 	default:
 		return fmt.Errorf(`unknown format %s`, format)
 	}
@@ -79,26 +79,53 @@ func run() error {
 	return nil
 }
 
-func listTransformersJson(registry *utils.TransformerRegistry) error {
+func listTransformersJson(registry *utils.TransformerRegistry, transformerNames []string) error {
 	var transformers []*utils.Definition
-	for _, def := range registry.M {
-		transformers = append(transformers, def)
+
+	if len(transformerNames) > 0 {
+
+		for _, name := range transformerNames {
+			def, ok := registry.M[name]
+			if ok {
+				transformers = append(transformers, def)
+			} else {
+				return fmt.Errorf("unknown transformer name \"%s\"", name)
+			}
+		}
+
+	} else {
+		for _, def := range registry.M {
+			transformers = append(transformers, def)
+		}
 	}
+
 	if err := json.NewEncoder(os.Stdout).Encode(transformers); err != nil {
 		return err
 	}
 	return nil
 }
 
-func listTransformersText(registry *utils.TransformerRegistry) error {
+func listTransformersText(registry *utils.TransformerRegistry, transformerNames []string) error {
 
 	var data [][]string
 	table := tablewriter.NewWriter(os.Stdout)
 	var names []string
-	for name := range registry.M {
-		names = append(names, name)
+	if len(transformerNames) > 0 {
+		for _, name := range transformerNames {
+			_, ok := registry.M[name]
+			if ok {
+				names = append(names, name)
+			} else {
+				return fmt.Errorf("unknown transformer name \"%s\"", name)
+			}
+		}
+
+	} else {
+		for name := range registry.M {
+			names = append(names, name)
+		}
+		slices.Sort(names)
 	}
-	slices.Sort(names)
 
 	for _, name := range names {
 		def := registry.M[name]

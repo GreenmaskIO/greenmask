@@ -14,18 +14,19 @@ import (
 	"strings"
 	"time"
 
-	"github.com/greenmaskio/greenmask/internal/db/postgres/dump"
-	"github.com/greenmaskio/greenmask/internal/db/postgres/pgcopy"
-	"github.com/greenmaskio/greenmask/internal/db/postgres/toc"
-	"github.com/greenmaskio/greenmask/internal/storages"
-	"github.com/greenmaskio/greenmask/internal/storages/directory"
 	"github.com/olekukonko/tablewriter"
 	"github.com/rs/zerolog/log"
 
 	runtimeContext "github.com/greenmaskio/greenmask/internal/db/postgres/context"
+	"github.com/greenmaskio/greenmask/internal/db/postgres/dump"
+	"github.com/greenmaskio/greenmask/internal/db/postgres/pgcopy"
+	"github.com/greenmaskio/greenmask/internal/db/postgres/toc"
 	"github.com/greenmaskio/greenmask/internal/db/postgres/transformers/custom"
 	"github.com/greenmaskio/greenmask/internal/db/postgres/transformers/utils"
 	"github.com/greenmaskio/greenmask/internal/domains"
+	"github.com/greenmaskio/greenmask/internal/storages"
+	"github.com/greenmaskio/greenmask/internal/storages/directory"
+	stringsUtils "github.com/greenmaskio/greenmask/internal/utils/strings"
 	"github.com/greenmaskio/greenmask/pkg/toolkit"
 )
 
@@ -34,6 +35,8 @@ const nullStringValue = "NULL"
 const (
 	horizontalFormatName = "horizontal"
 	verticalFormatName   = "vertical"
+
+	maxWrapLength = 64
 )
 
 var endOfFileSeq = []byte(`\.`)
@@ -335,12 +338,12 @@ func (v *Validate) printHorizontally(ctx context.Context, t *dump.Table) error {
 		for idx, c := range t.Columns {
 			value, err := row.GetColumn(idx)
 			if err != nil {
-				return fmt.Errorf("unable to get colyumn \"%s\" value: %w", c.Name, err)
+				return fmt.Errorf("unable to get column \"%s\" value: %w", c.Name, err)
 			}
 			if value.IsNull {
 				record[idx] = nullStringValue
 			} else {
-				record[idx] = string(value.Data)
+				record[idx] = stringsUtils.WrapString(string(value.Data), maxWrapLength)
 			}
 		}
 
@@ -452,7 +455,7 @@ func (v *Validate) printHorizontallyWithDiff(ctx context.Context, t *dump.Table)
 			if originalValue.IsNull {
 				originalRecord[idx] = nullStringValue
 			} else {
-				originalRecord[idx] = string(originalValue.Data)
+				originalRecord[idx] = stringsUtils.WrapString(string(originalValue.Data), maxWrapLength)
 			}
 
 			transformedValue, err = transformedRow.GetColumn(idx)
@@ -462,7 +465,7 @@ func (v *Validate) printHorizontallyWithDiff(ctx context.Context, t *dump.Table)
 			if transformedValue.IsNull {
 				transformedRecord[idx] = nullStringValue
 			} else {
-				transformedRecord[idx] = string(transformedValue.Data)
+				transformedRecord[idx] = stringsUtils.WrapString(string(transformedValue.Data), maxWrapLength)
 			}
 
 			if idx == 2 {
@@ -630,7 +633,7 @@ func (v *Validate) printVertically(ctx context.Context, t *dump.Table) error {
 				if originalValue.IsNull {
 					record[2] = nullStringValue
 				} else {
-					record[2] = string(originalValue.Data)
+					record[2] = stringsUtils.WrapString(string(originalValue.Data), maxWrapLength)
 				}
 
 				transformedValue, err = transformedRow.GetColumn(idx)
@@ -640,7 +643,7 @@ func (v *Validate) printVertically(ctx context.Context, t *dump.Table) error {
 				if transformedValue.IsNull {
 					record[3] = nullStringValue
 				} else {
-					record[3] = string(transformedValue.Data)
+					record[3] = stringsUtils.WrapString(string(transformedValue.Data), maxWrapLength)
 				}
 			} else {
 				transformedValue, err = transformedRow.GetColumn(idx)
@@ -650,7 +653,7 @@ func (v *Validate) printVertically(ctx context.Context, t *dump.Table) error {
 				if transformedValue.IsNull {
 					record[2] = nullStringValue
 				} else {
-					record[2] = string(transformedValue.Data)
+					record[2] = stringsUtils.WrapString(string(transformedValue.Data), maxWrapLength)
 				}
 			}
 

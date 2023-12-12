@@ -73,7 +73,7 @@ func listDumps() error {
 
 	_, dirs, err := st.ListDir(ctx)
 	if err != nil {
-		log.Err(err).Msg("")
+		return err
 	}
 
 	var data [][]string

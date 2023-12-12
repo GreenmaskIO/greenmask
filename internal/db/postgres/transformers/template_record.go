@@ -46,7 +46,7 @@ var TemplateRecordTransformerDefinition = utils.NewDefinition(
 
 	toolkit.MustNewParameter(
 		"columns",
-		"Columns that supposed to be affected by the template. The list of columns will be checked for constraint violation",
+		"columns that supposed to be affected by the template. The list of columns will be checked for constraint violation",
 	).SetRequired(false).
 		SetDefaultValue(toolkit.ParamsValue("[]")),
 )
@@ -63,6 +63,7 @@ type TemplateRecordTransformer struct {
 func NewTemplateRecordTransformer(ctx context.Context, driver *toolkit.Driver, parameters map[string]*toolkit.Parameter) (utils.Transformer, toolkit.ValidationWarnings, error) {
 	var templateStr string
 	var columns []string
+	affectedColumns := make(map[int]string)
 	p := parameters["template"]
 	if _, err := p.Scan(&templateStr); err != nil {
 		return nil, nil, fmt.Errorf("unable to scan \"template\" param: %w", err)
@@ -81,7 +82,7 @@ func NewTemplateRecordTransformer(ctx context.Context, driver *toolkit.Driver, p
 
 	var warnings toolkit.ValidationWarnings
 	for num, columnName := range columns {
-		_, column, ok := driver.GetColumnByName(columnName)
+		idx, column, ok := driver.GetColumnByName(columnName)
 		if !ok {
 			warnings = append(warnings, toolkit.NewValidationWarning().
 				AddMeta("ElementNum", num).
@@ -94,11 +95,12 @@ func NewTemplateRecordTransformer(ctx context.Context, driver *toolkit.Driver, p
 		warns := utils.ValidateSchema(driver.Table, column, nil)
 		warnings = append(warnings, warns...)
 
+		affectedColumns[idx] = columnName
 	}
 
 	return &TemplateRecordTransformer{
 		template:        templateStr,
-		affectedColumns: make(map[int]string),
+		affectedColumns: affectedColumns,
 		tmpl:            tmpl,
 		buf:             bytes.NewBuffer(nil),
 		tctx:            templateToolkit.NewRecordContext(),

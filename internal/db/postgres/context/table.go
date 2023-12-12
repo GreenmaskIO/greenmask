@@ -143,6 +143,7 @@ func getTable(ctx context.Context, tx pgx.Tx, t *domains.Table) ([]*dump.Table, 
 		if err != nil {
 			return nil, nil, fmt.Errorf("error executing TableGetChildPatsQuery: %w", err)
 		}
+		defer rows.Close()
 
 		for rows.Next() {
 			pt := &dump.Table{
