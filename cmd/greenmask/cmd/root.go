@@ -16,7 +16,6 @@ package cmd
 
 import (
 	"fmt"
-	"os"
 
 	"github.com/mitchellh/mapstructure"
 	"github.com/rs/zerolog"
@@ -44,6 +43,7 @@ var (
 			"procedure with dumping tables on the fly. It provides declarative config for your " +
 			"backup and possibility to implement your own obfuscation features using custom " +
 			"transformers. Supports a few storages (directory and S3)",
+		DisableFlagParsing: true,
 	}
 	cfgFile string
 	Config  = pgDomains.NewConfig()
@@ -95,21 +95,24 @@ func init() {
 		log.Fatal().Err(err).Msg("")
 	}
 
+	RootCmd.InitDefaultCompletionCmd()
+
+	for _, c := range RootCmd.Commands() {
+		if c.Name() == "completion" {
+			c.DisableFlagParsing = true
+			for _, subc := range c.Commands() {
+				subc.DisableFlagParsing = true
+			}
+		}
+	}
+
 }
 
 func initConfig() {
 	if cfgFile != "" {
 		viper.SetConfigFile(cfgFile)
 	} else {
-		home, err := os.UserConfigDir()
-		if err != nil {
-			log.Fatal().Err(err).Msg("error getting user config dir")
-		}
-
-		viper.AddConfigPath(home)
-		viper.SetConfigType("yaml")
-		viper.SetConfigType("yml")
-		viper.SetConfigName(".greenmask")
+		return
 	}
 
 	viper.AutomaticEnv()

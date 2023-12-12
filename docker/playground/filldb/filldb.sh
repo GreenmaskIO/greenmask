@@ -13,8 +13,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-cd $TMP_DIR
+cd $TMP_DIR/postgresDBSamples/$ORIGINAL_DB_NAME
 
-psql -c "CREATE DATABASE $ORIGINAL_DB_NAME;"
-psql -c "CREATE DATABASE $TRANSFORMED_DB_NAME;"
-psql -d $ORIGINAL_DB_NAME < install.sql
+psql -p 5432 -h db -U postgres -c "CREATE DATABASE $ORIGINAL_DB_NAME;"
+psql -p 5432 -h db -U postgres -c "CREATE DATABASE $TRANSFORMED_DB_NAME;"
+psql -p 5432 -h db -U postgres -d $ORIGINAL_DB_NAME < install.sql
