@@ -13,8 +13,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-cd $TMP_DIR/postgresDBSamples/$ORIGINAL_DB_NAME
+cd $TMP_DIR/postgresDBSamples/adventureworks
 
-psql -p 5432 -h db -U postgres -c "CREATE DATABASE $ORIGINAL_DB_NAME;"
-psql -p 5432 -h db -U postgres -c "CREATE DATABASE $TRANSFORMED_DB_NAME;"
-psql -p 5432 -h db -U postgres -d $ORIGINAL_DB_NAME < install.sql
+if ! psql -lqt -p 5432 -h db -U postgres | cut -d \| -f 1 | grep -qw $ORIGINAL_DB_NAME; then
+  psql -p 5432 -h db -U postgres -c "CREATE DATABASE $ORIGINAL_DB_NAME;"
+  psql -p 5432 -h db -U postgres -d $ORIGINAL_DB_NAME < install.sql
+else
+  echo "database \"$ORIGINAL_DB_NAME\" has been already created: skipping"
+fi
+
+if ! psql -lqt -p 5432 -h db -U postgres | cut -d \| -f 1 | grep -qw $TRANSFORMED_DB_NAME; then
+  psql -p 5432 -h db -U postgres -c "CREATE DATABASE $TRANSFORMED_DB_NAME;"
+else
+  echo "database \"$TRANSFORMED_DB_NAME\" has been already created: skipping"
+fi

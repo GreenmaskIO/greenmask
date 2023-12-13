@@ -2,123 +2,151 @@
 
 ## Preface
 
-**Greenmask** is an open-source util written on go that provides features for logical backup dumping, obfuscation and
-restoration. Brings wide functionality for backing up, anonymization and masking. It is written fully in pure go
-with ported required PostgreSQL library.
-It is stateless util (is not required any database schema changes), has a variety of storages and provide comprehensive
-obfuscation features. Was designed as easy customizable and backward compatible with PostgreSQL utils.
+**Greenmask** is a powerful open-source utility that is designed for logical database backup dumping,
+obfuscation, and restoration. It offers extensive functionality for backup, anonymization, and data masking. Greenmask
+is written entirely in pure Go and includes ported PostgreSQL libraries, making it platform-independent. This tool is
+stateless and does not require any changes to your database schema. It is designed to be highly customizable and
+backward-compatible with existing PostgreSQL utilities.
 
 # Features
 
-* **Cross-platform** - may be built and run on any platform because fully written on go without platform dependencies.
-* **Database type safe**: Greenmask validated data and uses the driver for encode-decoding operation from byte
-  representation
-  into real Golang type. Can work strictly with real types thereby guaranteeing the data format.
-* **Transformation validation and easy maintainable**: Greenmask allows you check the transformation result during
-  obfuscation development providing validation warnings and transformation diff. That allows you to keep the
-  transformation
-  fresh in the whole software lifecycle
-* **Partitioned tables transformation inheritance**: Define the transformation config once and inherit it for all
-  partitions in partitioned tables
-* **Stateless**: it will not affect existing schema, it is just a logical dump
-* **Backward compatible** - support the same features and protocols as existing vanilla PostgreSQL utils. The dump made
-  by the Greenmask might be successfully restored by `pg_restore` util
-* **Extensible** - bring users the possibility to implement their own domain-based transformation in any language or use
-  templates
-* **Declarative** - define config in a structured easily parsed and recognizable format
-* **Integrable** - integrable with your CI/CD system
-* **Parallel execution** - perform parallel dumping and restoration that may significantly decrease the time to delivery
-* **Provide variety of storages** - provide storages for local and remote data storing such as Directory or S3-like
+* **Cross-platform** - Can be easily built and executed on any platform, thanks to its Go-based architecture,
+  which eliminates platform dependencies.
+* **Database type safe** - Ensures data integrity by validating data and utilizing the database driver for
+  encoding and decoding operations. This approach guarantees the preservation of data formats.
+* **Transformation validation and easy maintainable** - During obfuscation development, Greenmask provides validation
+  warnings and a transformation diff feature, allowing you to monitor and maintain transformations effectively
+  throughout the software lifecycle.
+* **Partitioned tables transformation inheritance** - Define transformation configurations once and apply them to all
+  partitions within partitioned tables, simplifying the obfuscation process.
+* **Stateless** - Greenmask operates as a logical dump and does not impact your existing database schema.
+* **Backward compatible** - It fully supports the same features and protocols as existing vanilla PostgreSQL utilities.
+  Dumps created by Greenmask can be successfully restored using the pg_restore utility.
+* **Extensible** - Users have the flexibility to implement domain-based transformations in any programming language or
+  use predefined templates.
+* **Declarative** - Greenmask allows you to define configurations in a structured, easily parsed, and recognizable
+  format.
+* **Integrable** - Integrate Greenmask seamlessly into your CI/CD system for automated database obfuscation and
+  restoration.
+* **Parallel execution** - Take advantage of parallel dumping and restoration, significantly reducing the time required
+  to deliver results.
+* **Provide variety of storages** - Greenmask offers a variety of storage options for local and remote data storage,
+  including directories and S3-like storage solutions.
 
-## When to use?
+## Use Cases
 
-* Daily routines with dumping and restoring a logical backup. Such as table restoration after truncation. It works in
-  the
-  same way as pg_dump or pg_restore, and it might be used in the same ways without struggling
-* Anonymization/transformation/masking backup for staging environment and analytics purposes. It might be useful
-  for deploying a pre-production environment that contains consistent anonymized data. It allows for decreased
-  time to market in the development life-cycle.
+Greenmask is ideal for various scenarios, including:
+
+* **Backup and Restoration**. Use Greenmask for your daily routines involving logical backup dumping and restoration. It
+  seamlessly handles tasks like table restoration after truncation. Its functionality closely mirrors that of pg_dump
+  and pg_restore, making it a straightforward replacement.
+* **Anonymization, Transformation, and Data Masking**. Employ Greenmask for anonymizing, transforming, and masking
+  backups, especially when setting up a staging environment or for analytical purposes. It simplifies the deployment of
+  a pre-production environment with consistently anonymized data, facilitating faster time-to-market in the development
+  lifecycle.
 
 ## Our purpose
 
-Greenmask util is going to be a core system within the Greenmask environment. We are trying to develop a comprehensive
-**UI-based** solution for managing obfuscation procedures. We understand that it is difficult to maintain an obfuscation
-state during the software lifecycle and Greenmask is trying to provide useful tools and features for keeping
-the obfuscation procedure fresh, predictable, and clear.
+The Greenmask utility plays a central role in the Greenmask ecosystem. Our goal is to develop a comprehensive, UI-based
+solution for managing obfuscation procedures. We recognize the challenges of maintaining obfuscation consistency
+throughout the software lifecycle. Greenmask is dedicated to providing valuable tools and features that ensure the
+obfuscation process remains fresh, predictable, and transparent.
 
 ## [Getting started](./getting_started.md)
 
-## Architecture
 
-### Common information
+### General Information
 
-It is quite clear that the right way to perform logical backup dumping and restoration is using the core PostgreSQL
-utils such as pg_dump and pg_restore. **Greenmask** was designed as compatible with PostgreSQL vanilla
-utils, it performs only data dumping features by itself and delegates schema dumping and restoration to pg_dump and
-pg_restore.
+It is evident that the most appropriate approach for executing logical backup dumping and restoration is by leveraging
+the core PostgreSQL utilities, specifically pg_dump and pg_restore. **Greenmask** has been purposefully designed to
+align with PostgreSQL's native utilities, ensuring compatibility. Greenmask primarily handles data dumping
+operations independently and delegates the responsibilities of schema dumping and restoration to pg_dump and pg_restore,
+maintaining seamless integration with PostgreSQL's standard tools.
 
-### Backing up
+### Backup Process
 
-PostgreSQL backup is separated into three sections:
+The process of backing up PostgreSQL databases is divided into three distinct sections:
 
-* **pre-data** - raw tables schema itself excluding PK, FK
-* **data** - contains actual table data in COPY format, sequences current value setting up, and Large Objects data
-* **post-data** - contains the definition of indexes, triggers, rules, constraints (such as PK, FK)
+* **Pre-data** - This section encompasses the raw schema of tables, excluding primary keys (PK) and foreign keys (FK).
+* **Data** - The data section contains the actual table data in COPY format, including information about sequence
+  current
+  values and Large Objects data.
+* **Post-data** - In this section, you'll find the definitions of indexes, triggers, rules, and constraints (such as PK
+  and
+  FK).
 
-**Greenmask** operates in runtime only with _data_ section and delegates _pre-data_ and _post-data_ to pg_dump and
-pg_restore.
+Greenmask focuses exclusively on the data section during runtime. It delegates the handling of the _pre-data_ and
+_post-data_ sections to the core PostgreSQL utilities, _pg_dump_ and _pg_restore_.
 
-**Greenmask** uses **directory** format of pg_dump/pg_restore.
+Greenmask employs the **directory format** of _pg_dump_ and _pg_restore_. This format is particularly suitable for
+parallel execution and partial restoration, and it includes clear metadata files that aid in determining the backup and
+restoration steps. Greenmask has been optimized to work seamlessly with remote storage systems and obfuscation
+procedures.
 
-_Directory_ format is more suitable for parallel execution, and partial restoration, and it contains clear meta-data
-file that would be used for determining the backup and restoration steps. Greenmask significantly adapts them for
-working with remote storages and obfuscation procedures.
+When performing data dumping, Greenmask utilizes the COPY command in TEXT format, maintaining reliability and
+compatibility with the vanilla PostgreSQL utilities.
 
-_Greenmask_ performs the table data dumping using _COPY_ command in _TEXT_ format as well as _pg_dump_. It brings
-reliability and compatibility with vanilla utils.
+Additionally, Greenmask supports parallel execution, significantly reducing the time required for the dumping process.
 
-Greenmask supports parallel execution that significantly may decrease dumping time.
+## Storage Options
 
-## Storages
+The core PostgreSQL utilities, _pg_dump_ and _pg_restore_, traditionally operate with files in a directory format,
+offering no alternative methods. To meet **modern backup requirements** and provide flexible approaches,
+Greenmask introduces the concept of **Storages**.
 
-PostgreSQL vanilla utils _pg_dump_ and _pg_restore_ operate with files in the directory without any alternatives.
-Understanding modern backup requirements and delivering approaches **Greenmask** introducing _Storages_:
+* **s3** - This option supports any S3-like storage system, including AWS S3, making it versatile and adaptable to
+  various cloud-based storage solutions.
+* **directory** - This is the standard choice, representing the ordinary filesystem directory for local storage.
 
-* **s3** - might be any S3-like storage, such as AWS S3
-* **directory** - ordinary filesystem directory
+!!! note
+If you have suggestions for additional storage options that would be valuable to implement, please feel free to
+share your ideas. Greenmask aims to accommodate a wide range of storage preferences to suit diverse backup needs.
 
-Suggest any other storage that would be fine to implement.
+## Restoration Process
 
-## Restoration
+In the restoration process, Greenmask combines the capabilities of different tools:
 
-Greenmask restores schema using pg_restore but applies COPY data by itself using COPY protocol. Due to supporting
-a variety of storages and awareness of the restoration metadata, **Greenmask** may download only required data. It might
-be useful in case of partial restoration, for instance restoring only one table from the whole backup.
+* **Schema Restoration** - Greenmask utilizes _pg_restore_ to restore the database schema. This ensures that the schema
+  is accurately reconstructed.
+* **Data Restoration** - For data restoration, Greenmask independently applies the data using the COPY protocol.
+  This allows Greenmask to handle the data efficiently, especially when working with various storage solutions.
+  Greenmask is aware of the restoration metadata, which enables it to download only the necessary data. This feature
+  is particularly useful for partial restoration scenarios, such as restoring a single table from a complete backup.
 
-Greenmask supports parallel restoration that significantly may decrease restoration time.
+Greenmask also **supports parallel restoration**, which can significantly reduce the time required to complete the
+restoration process. This parallel execution enhances the efficiency of restoring large datasets.
 
-## Obfuscation and Validation
+## Data Obfuscation and Validation
 
-**Greenmask** operates with COPY lines, gathers schema metadata for the Golang driver, and uses this driver for
-transformation in the encode-decoding procedure. The validate command allows you to check the schema affection (
-validation
-warnings) and data affection (performing transformation and showing diff)
+Greenmask works with **COPY lines**, collects schema metadata using the Golang driver, and employs this driver in the
+encoding and decoding process. The **validate command** offers a way to assess the impact on both schema
+(**validation warnings**) and data (**transformation and displaying differences**). This command allows you to validate
+the schema and data transformations, ensuring the desired outcomes during the obfuscation process.
 
 ## Customization
 
-If your table schema has functional dependencies between columns it is possible to overcome this issue using
-`TeamplteRecord` transformer. It allows to define transformation logic for the whole table with type-safe operations
-when assigning new values.
+If your table schema relies on functional dependencies between columns, you can address this challenge using the
+**TemplateRecord** transformer. This transformer enables you to define transformation logic for entire tables,
+offering type-safe operations when assigning new values.
 
-**Greenmask** implements a framework for defining your custom transformers that might be reused later. It integrates
-easily without recompiling - just PIPE (stdin/stdout) interaction.
+Greenmask provides a framework for creating your custom transformers, which can be reused efficiently. These
+transformers can be seamlessly integrated without requiring recompilation, thanks to the PIPE (stdin/stdout)
+interaction.
 
-Since Greenmask was implemented fundamentally as an extensible solution it is possible to introduce other
-interaction protocols (HTTP, Socket, etc.) for performing obfuscation procedures.
+!!! note
+Furthermore, Greenmask's architecture is designed to be highly extensible, making it possible to introduce other
+interaction protocols, such as HTTP or Socket, for conducting obfuscation procedures.
 
-## PostgreSQL version compatibility
+## PostgreSQL Version Compatibility
 
-**11 and higher**
+**Greenmask** is compatible with PostgreSQL versions **11 and higher**.
+
+## References
+
+* Utilized the  [Demo database](https://postgrespro.com/community/demodb), provided by PostgresPro, for integration
+  testing purposes.
+* Employed the [adventureworks database](https://github.com/morenoh149/postgresDBSamples) created
+  by `morenoh149/postgresDBSamples`, in the Docker Compose playground.
 
 ## Links
 

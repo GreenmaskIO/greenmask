@@ -105,15 +105,15 @@ services:
       timeout: 1s
       retries: 3
 
-  dbs-filler:
+  test-dbs-filler:
     environment:
       PGPASSWORD: "example"
       FILE_DUMP: "demo-small-en.zip"
       TMP_DIR: "/tmp/schema"
-    volumes:
-      - "/tmp/greenmask_tests:/tmp/schema"
+#    volumes:
+#      - "/tmp/greenmask_tests:/tmp/schema"
     build:
-      context: docker/filldb_integration
+      context: docker/integration/filldb
     depends_on:
       db-11:
         condition: service_healthy
@@ -148,7 +148,7 @@ services:
       dockerfile: docker/integration/tests/Dockerfile
       context: ./
     depends_on:
-      dbs-filler:
+      test-dbs-filler:
         condition: service_completed_successfully
 
   greenmask-15:
@@ -170,7 +170,7 @@ services:
       dockerfile: docker/integration/tests/Dockerfile
       context: ./
     depends_on:
-      dbs-filler:
+      test-dbs-filler:
         condition: service_completed_successfully
 
   greenmask-14:
@@ -192,7 +192,7 @@ services:
       dockerfile: docker/integration/tests/Dockerfile
       context: ./
     depends_on:
-      dbs-filler:
+      test-dbs-filler:
         condition: service_completed_successfully
 
   greenmask-13:
@@ -214,7 +214,7 @@ services:
       dockerfile: docker/integration/tests/Dockerfile
       context: ./
     depends_on:
-      dbs-filler:
+      test-dbs-filler:
         condition: service_completed_successfully
 
   greenmask-12:
@@ -236,7 +236,7 @@ services:
       dockerfile: docker/integration/tests/Dockerfile
       context: ./
     depends_on:
-      dbs-filler:
+      test-dbs-filler:
         condition: service_completed_successfully
 
   greenmask-11:
@@ -258,7 +258,7 @@ services:
       dockerfile: docker/integration/tests/Dockerfile
       context: ./
     depends_on:
-      dbs-filler:
+      test-dbs-filler:
         condition: service_completed_successfully
 
   finisher:

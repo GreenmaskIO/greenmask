@@ -23,7 +23,7 @@ import (
 var version string
 
 func main() {
-	cmd.RootCmd.Version = version
+	cmd.Version = version
 	if err := cmd.Execute(); err != nil {
 		log.Fatal().Err(err).Msg("")
 	}

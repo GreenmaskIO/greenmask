@@ -1,0 +1,6 @@
+docker
+docs
+config.*
+docker-compose-*
+*.md
+.idea

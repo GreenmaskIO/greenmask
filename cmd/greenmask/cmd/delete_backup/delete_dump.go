@@ -18,6 +18,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/greenmaskio/greenmask/internal/storages"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 
@@ -59,17 +60,23 @@ func deleteDump(dumpId string) error {
 	}
 
 	var found bool
+	var backupDirStorage storages.Storager
 	for _, b := range dirs {
 		if dumpId == b.Dirname() {
 			found = true
+			backupDirStorage = b
 		}
 	}
 
 	if !found {
 		return fmt.Errorf("dump with id %s was not found", dumpId)
 	}
-	if err = st.Delete(ctx, dumpId); err != nil {
-		return fmt.Errorf("storage error: %s", err)
+	files, _, err := backupDirStorage.ListDir(ctx)
+
+	for _, f := range files {
+		if err = backupDirStorage.Delete(ctx, f); err != nil {
+			return fmt.Errorf("storage error: %s", err)
+		}
 	}
 
 	return nil

@@ -36,8 +36,12 @@ services:
   dbs-filler:
     environment:
       PGPASSWORD: "example"
-      FILE_DUMP: "demo-small-en.zip"
       TMP_DIR: "/tmp/schema"
+      ORIGINAL_DB_NAME: "original"
+      TRANSFORMED_DB_NAME: "transformed"
+      DBHOST: "db"
+      DBUSER: "postgres"
+      DBPASSWORD: "example"
     build:
       context: docker/playground/filldb
     depends_on:
@@ -47,13 +51,39 @@ services:
         condition: service_healthy
 
   greenmask:
+    environment:
+      PGPASSWORD: "example"
+      ORIGINAL_DB_NAME: "original"
+      TRANSFORMED_DB_NAME: "transformed"
     volumes:
-      - ./tests/playground:/var/run/playground
-    build:
-      dockerfile: docker/playground/greenmask/Dockerfile
-      context: ./
+      - ./playground:/var/lib/playground
+    image: "greenmask/greenmask:0.1.0rc"
+    working_dir: /var/lib/playground
     depends_on:
       dbs-filler:
         condition: service_completed_successfully
       storage:
         condition: service_healthy
+    entrypoint: "/var/lib/playground/run.sh"
+
+  greenmask-from-source:
+    environment:
+      PGPASSWORD: "example"
+      ORIGINAL_DB_NAME: "original"
+      TRANSFORMED_DB_NAME: "transformed"
+    working_dir: /var/lib/playground
+    volumes:
+      - ./playground:/var/lib/playground
+    build:
+      dockerfile: docker/greenmask/Dockerfile
+      context: ./
+      args:
+        GOOS: linux
+        GOARCH: amd64
+        INSTALL_GO_VERSION: "1.21.5"
+    depends_on:
+      dbs-filler:
+        condition: service_completed_successfully
+      storage:
+        condition: service_healthy
+    entrypoint: "/var/lib/playground/run.sh"

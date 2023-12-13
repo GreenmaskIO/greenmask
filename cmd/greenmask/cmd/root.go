@@ -16,6 +16,7 @@ package cmd
 
 import (
 	"fmt"
+	"runtime/debug"
 
 	"github.com/mitchellh/mapstructure"
 	"github.com/rs/zerolog"
@@ -35,6 +36,10 @@ import (
 )
 
 var (
+	Version    string
+	Commit     string
+	CommitDate string
+
 	RootCmd = &cobra.Command{
 		Use:   "greenmask",
 		Short: "Greenmask is a stateless logical dump tool with features for obfuscaction",
@@ -43,7 +48,7 @@ var (
 			"procedure with dumping tables on the fly. It provides declarative config for your " +
 			"backup and possibility to implement your own obfuscation features using custom " +
 			"transformers. Supports a few storages (directory and S3)",
-		DisableFlagParsing: true,
+		//DisableFlagParsing: true,
 	}
 	cfgFile string
 	Config  = pgDomains.NewConfig()
@@ -54,6 +59,22 @@ func Execute() error {
 }
 
 func init() {
+	if info, ok := debug.ReadBuildInfo(); ok {
+		for _, setting := range info.Settings {
+			if setting.Key == "vcs.revision" {
+				Commit = setting.Value
+			}
+			if setting.Key == "vcs.time" {
+				CommitDate = setting.Value
+			}
+		}
+	}
+	if Version != "" {
+		RootCmd.Version = fmt.Sprintf("%s %s %s", Version, Commit, CommitDate)
+	} else {
+		RootCmd.Version = fmt.Sprintf("%s %s", Commit, CommitDate)
+	}
+
 	cobra.OnInitialize(initConfig)
 	// Removing short help flag from default
 	RootCmd.PersistentFlags().BoolP("help", "", false, "help for greenmask")
@@ -96,9 +117,11 @@ func init() {
 	}
 
 	RootCmd.InitDefaultCompletionCmd()
+	RootCmd.InitDefaultHelpCmd()
+	RootCmd.InitDefaultVersionFlag()
 
 	for _, c := range RootCmd.Commands() {
-		if c.Name() == "completion" {
+		if c.Name() == "completion" || c.Name() == "help" {
 			c.DisableFlagParsing = true
 			for _, subc := range c.Commands() {
 				subc.DisableFlagParsing = true
@@ -129,7 +152,7 @@ func initConfig() {
 		)
 	}
 
-	if err := viper.Unmarshal(&Config, decoderCfg); err != nil {
+	if err := viper.Unmarshal(Config, decoderCfg); err != nil {
 		log.Fatal().Err(err).Msg("")
 	}
 

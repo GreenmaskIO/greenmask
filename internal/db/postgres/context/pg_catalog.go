@@ -48,17 +48,18 @@ func getDumpObjects(
 		return nil, err
 	}
 
-	rows, err := tx.Query(ctx, query)
+	tableSearchRows, err := tx.Query(ctx, query)
 	if err != nil {
 		return nil, fmt.Errorf("perform query: %w", err)
 	}
+	defer tableSearchRows.Close()
 
 	// Generate table objects
 	//sequences := make([]*dump.Sequence, 0)
 	//tables := make([]*dump.Table, 0)
 	var dataObjects []dump.Entry
-	defer rows.Close()
-	for rows.Next() {
+	defer tableSearchRows.Close()
+	for tableSearchRows.Next() {
 		var oid toc.Oid
 		var lastVal int64
 		var schemaName, name, owner, rootPtName, rootPtSchema string
@@ -66,7 +67,7 @@ func getDumpObjects(
 		var excludeData, isCalled bool
 		var ok bool
 
-		err = rows.Scan(&oid, &schemaName, &name, &owner, &relKind,
+		err = tableSearchRows.Scan(&oid, &schemaName, &name, &owner, &relKind,
 			&rootPtSchema, &rootPtName, &excludeData, &isCalled, &lastVal,
 		)
 		if err != nil {
@@ -150,13 +151,14 @@ func getDumpObjects(
 
 	// Getting list of the all large objects
 	var largeObjects []*dump.LargeObject
-	rows, err = tx.Query(ctx, LargeObjectsListQuery)
+	loListRows, err := tx.Query(ctx, LargeObjectsListQuery)
 	if err != nil {
 		return nil, fmt.Errorf("error executing LargeObjectsListQuery: %w", err)
 	}
-	for rows.Next() {
+	defer loListRows.Close()
+	for loListRows.Next() {
 		lo := &dump.LargeObject{TableOid: tableOid}
-		if err = rows.Scan(&lo.Oid, &lo.Owner, &lo.Comment); err != nil {
+		if err = loListRows.Scan(&lo.Oid, &lo.Owner, &lo.Comment); err != nil {
 			return nil, fmt.Errorf("error scanning LargeObjectsListQuery: %w", err)
 		}
 		largeObjects = append(largeObjects, lo)
@@ -173,29 +175,31 @@ func getDumpObjects(
 		}
 		// Getting default ACL items
 		var defaultACLItems []*dump.ACLItem
-		rows, err = tx.Query(ctx, LargeObjectDescribeAclItemQuery, defaultACL.Value)
+		loDescribeDefaultAclRows, err := tx.Query(ctx, LargeObjectDescribeAclItemQuery, defaultACL.Value)
 		if err != nil {
 			return nil, fmt.Errorf("error quering LargeObjectDescribeAclItemQuery: %w", err)
 		}
-		for rows.Next() {
+		defer loDescribeDefaultAclRows.Close()
+		for loDescribeDefaultAclRows.Next() {
 			item := &dump.ACLItem{}
-			if err = rows.Scan(&item.Grantor, &item.Grantee, &item.PrivilegeType, &item.Grantable); err != nil {
+			if err = loDescribeDefaultAclRows.Scan(&item.Grantor, &item.Grantee, &item.PrivilegeType, &item.Grantable); err != nil {
 				return nil, fmt.Errorf("error scanning LargeObjectDescribeAclItemQuery: %w", err)
 			}
 			defaultACLItems = append(defaultACLItems, item)
 		}
-
+		defaultACL.Items = defaultACLItems
 		lo.DefaultACL = defaultACL
 
 		// Getting ACL
 		var acls []*dump.ACL
-		rows, err = tx.Query(ctx, LargeObjectGetAclQuery, lo.Oid)
+		loAclRows, err := tx.Query(ctx, LargeObjectGetAclQuery, lo.Oid)
 		if err != nil {
 			return nil, fmt.Errorf("error quering LargeObjectGetAclQuery: %w", err)
 		}
-		for rows.Next() {
+		defer loAclRows.Close()
+		for loAclRows.Next() {
 			a := &dump.ACL{}
-			if err = rows.Scan(&a.Value); err != nil {
+			if err = loAclRows.Scan(&a.Value); err != nil {
 				return nil, fmt.Errorf("error scanning LargeObjectGetAclQuery: %w", err)
 			}
 			acls = append(acls, a)
@@ -204,13 +208,14 @@ func getDumpObjects(
 		// Getting ACL items
 		for _, a := range acls {
 			var aclItems []*dump.ACLItem
-			rows, err = tx.Query(ctx, LargeObjectDescribeAclItemQuery, a.Value)
+			loDescribeAclRows, err := tx.Query(ctx, LargeObjectDescribeAclItemQuery, a.Value)
 			if err != nil {
 				return nil, fmt.Errorf("error quering LargeObjectDescribeAclItemQuery: %w", err)
 			}
-			for rows.Next() {
+			defer loDescribeAclRows.Close()
+			for loDescribeAclRows.Next() {
 				item := &dump.ACLItem{}
-				if err = rows.Scan(&item.Grantor, &item.Grantee, &item.PrivilegeType, &item.Grantable); err != nil {
+				if err = loDescribeAclRows.Scan(&item.Grantor, &item.Grantee, &item.PrivilegeType, &item.Grantable); err != nil {
 					return nil, fmt.Errorf("error scanning LargeObjectDescribeAclItemQuery: %w", err)
 				}
 				aclItems = append(aclItems, item)
