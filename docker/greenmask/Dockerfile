@@ -1,6 +1,7 @@
 ARG GO_VERSION=1.21.5
+ARG DEBIAN_RELEASE=bookworm
 
-FROM --platform=$BUILDPLATFORM golang:${GO_VERSION}-bookworm AS build
+FROM --platform=$BUILDPLATFORM golang:${GO_VERSION}-${DEBIAN_RELEASE} AS build
 
 ARG TARGETOS
 ARG TARGETARCH
@@ -12,7 +13,7 @@ COPY . .
 
 RUN GOOS=${TARGETOS} GOARCH=${TARGETARCH} GOARM=$(echo ${TARGETVARIANT} | cut -d 'v' -f 2) make build
 
-FROM debian:bookworm-slim
+FROM debian:${DEBIAN_RELEASE}-slim
 
 ENV DEBIAN_FRONTEND=noninteractive
 
@@ -28,12 +29,13 @@ RUN apt-get update && \
         postgresql-client-13 \
         postgresql-client-12 \
         postgresql-client-11 && \
-    rm -rf /var/lib/apt/lists/* && \
-    mkdir ~/.bash_completions && \
+    rm -rf /var/lib/apt/lists/*
+
+COPY --from=build /var/lib/greenmask/greenmask /usr/bin
+
+RUN mkdir ~/.bash_completions && \
     greenmask completion bash > /root/.bash_completions/greenmask.bash && \
     echo 'source /etc/bash_completion' >> /root/.bashrc && \
     echo 'source /root/.bash_completions/greenmask.bash' >> /root/.bashrc
-
-COPY --from=build /var/lib/greenmask/greenmask /usr/bin
 
 ENTRYPOINT ["/bin/bash"]

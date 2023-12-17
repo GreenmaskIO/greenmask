@@ -5,6 +5,7 @@ on:
   push:
     branches:
       - 'main'
+      - 'v*'
     tags:
       - 'v*'
   pull_request:
@@ -20,11 +21,30 @@ env:
   docker-registry: greenmask/greenmask-private
 
 jobs:
+  tests:
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: ${{ env.go-version }}
+      
+      - name: Echo Go version
+        run: go version
+      
+      - name: Run tests
+        run: make tests
+
   binaries:
     runs-on: ubuntu-22.04
+    needs:
+      - tests
     strategy:
       matrix:
-        platforms: [ 'darwin/amd64', 'darwin/arm64', 'linux/amd64', 'linux/arm64', 'linux/arm/v6', 'linux/arm/v7', 'linux/ppc64le', 'linux/riscv64', 'linux/s390x', 'windows/amd64', 'windows/arm64' ]
+        platforms: [ 'darwin/amd64', 'darwin/arm64', 'linux/amd64', 'linux/arm64', 'linux/arm/v6', 'linux/arm/v7', 'linux/ppc64le', 'linux/riscv64', 'linux/s390x' ]
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -91,6 +111,8 @@ jobs:
 
   build-docker-images-and-push:
     runs-on: ubuntu-22.04
+    needs:
+      - release
     if: startsWith(github.ref, 'refs/tags/v')
     steps:
       - name: Checkout repository
