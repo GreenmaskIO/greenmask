@@ -1,0 +1,122 @@
+name: ci
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - 'main'
+    tags:
+      - 'v*'
+  pull_request:
+    paths-ignore:
+      - 'README.md'
+      - 'docs/**'
+      - 'LICENSE'
+      - 'getting_started.md'
+
+env:
+  go-version: '1.21.5'
+  cmd-name: 'greenmask'
+  docker-registry: greenmask/greenmask-private
+
+jobs:
+  binaries:
+    runs-on: ubuntu-22.04
+    strategy:
+      matrix:
+        platforms: [ 'darwin/amd64', 'darwin/arm64', 'linux/amd64', 'linux/arm64', 'linux/arm/v6', 'linux/arm/v7', 'linux/ppc64le', 'linux/riscv64', 'linux/s390x', 'windows/amd64', 'windows/arm64' ]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: ${{ env.go-version }}
+
+      - name: Echo Go version
+        run: go version
+      
+      - name: Build with different arch
+        run: |
+          export GOOS=$(echo ${{ matrix.platforms }} | cut -d '/' -f 1)
+          export GOARCH=$(echo ${{ matrix.platforms }} | cut -d '/' -f 2)
+          export GOARM=$(echo ${{ matrix.platforms }} | cut -d '/' -f 3 | cut -d 'v' -f 2)
+          if [[ "x$GOOS" == "xwindows" ]]; then
+            make build CMD_NAME="builds/${{ env.cmd-name }}_${GOOS}_${GOARCH}.exe"
+          elif [[ "x$GOARM" != "x" ]]; then
+            make build CMD_NAME="builds/${{ env.cmd-name }}_${GOOS}_${GOARCH}v${GOARM}"
+          else
+            make build CMD_NAME="builds/${{ env.cmd-name }}_${GOOS}_${GOARCH}"
+          fi
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: greenmask
+          path: builds/*
+
+  release:
+    runs-on: ubuntu-22.04
+    needs:
+      - binaries
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download binaries
+        uses: actions/download-artifact@v3
+        with:
+          name: greenmask
+          path: builds
+
+      - name: Create checksums
+        working-directory: builds
+        run: |
+          find . -type f -print0 | sort -z | xargs -r0 shasum -a 256 -b | sed 's# \*\./# *#' > checksums.txt
+          shasum -a 256 -U -c checksums.txt
+          cat checksums.txt | while read sum file; do echo "$sum $file" > ${file#\*}.sha256; done
+
+      - name: List artifacts
+        run: tree -nh builds
+
+      - name: GitHub Release
+        uses: softprops/action-gh-release@v1
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          draft: true
+          files: builds/*
+
+  build-docker-images-and-push:
+    runs-on: ubuntu-22.04
+    if: startsWith(github.ref, 'refs/tags/v')
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+      
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Get Git tag
+        id: git_tag
+        run: echo "TAG=$(git tag --points-at HEAD)" >> $GITHUB_ENV
+
+      - name: Build and push
+        uses: docker/build-push-action@v5
+        with:
+          file: docker/greenmask/Dockerfile
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ env.docker-registry }}:${{ env.TAG }},${{ env.docker-registry }}:latest
