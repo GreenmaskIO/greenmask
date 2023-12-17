@@ -27,11 +27,11 @@ import (
 func TestTemplateRecordTransformer_Transform_date(t *testing.T) {
 	var columnName = "date_ts"
 	var template = `
-	  {{ $val := .GetValue "date_ts" }}
+	  {{ $val := .GetColumnValue "date_ts" }}
 	  {{ if isNull $val }}
-		{{ "2023-11-20 01:00:00" | .DecodeValue "date_ts" | dateModify "24h" | .SetValue "date_ts" }}
+		{{ "2023-11-20 01:00:00" | .DecodeValueByColumn "date_ts" | dateModify "24h" | .SetColumnValue "date_ts" }}
 	  {{ else }}
-		 {{ "2023-11-20 01:00:00" | .DecodeValue "date_ts" | dateModify "48h" | .SetValue "date_ts" }}
+		 {{ "2023-11-20 01:00:00" | .DecodeValueByColumn "date_ts" | dateModify "48h" | .SetColumnValue "date_ts" }}
 	  {{ end }}
 	`
 
@@ -86,8 +86,8 @@ func TestTemplateRecordTransformer_Transform_date(t *testing.T) {
 func TestTemplateRecordTransformer_Transform_json(t *testing.T) {
 	var columnName = "doc"
 	var template = `
-	  {{ $val := .GetRawValue "doc" }}
-	  {{ mustJsonSet "name" "hello" $val | mustJsonValidate | .SetValue "doc" }}
+	  {{ $val := .GetRawColumnValue "doc" }}
+	  {{ mustJsonSet "name" "hello" $val | mustJsonValidate | .SetColumnValue "doc" }}
 	`
 
 	tests := []struct {

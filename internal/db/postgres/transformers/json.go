@@ -60,7 +60,7 @@ var JsonTransformerDefinition = utils.NewDefinition(
 
 	toolkit.MustNewParameter(
 		"operations",
-		"list of operations that contains editing operation",
+		`list of operations that contains editing operation [{"operation": "set|delete", "path": "path to the part of the document", "value": "value in any type - string, int, float, list, object, null", "value_template": "go template", "error_not_exist", "raise error if not exists - boolean"}]`,
 	).SetRequired(true),
 
 	toolkit.MustNewParameter(

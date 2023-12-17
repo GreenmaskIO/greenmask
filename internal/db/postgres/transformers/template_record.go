@@ -46,7 +46,7 @@ var TemplateRecordTransformerDefinition = utils.NewDefinition(
 
 	toolkit.MustNewParameter(
 		"columns",
-		"Columns that supposed to be affected by the template. The list of columns will be checked for constraint violation",
+		"columns that supposed to be affected by the template. The list of columns will be checked for constraint violation",
 	).SetRequired(false).
 		SetDefaultValue(toolkit.ParamsValue("[]")),
 )
