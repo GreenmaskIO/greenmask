@@ -46,35 +46,35 @@ func (cc *ColumnContext) GetColumnType() string {
 }
 
 func (cc *ColumnContext) GetValue() (any, error) {
-	return cc.rc.GetValue(cc.columnName)
+	return cc.rc.GetColumnValue(cc.columnName)
 }
 
 func (cc *ColumnContext) GetRawValue() (any, error) {
-	return cc.rc.GetRawValue(cc.columnName)
+	return cc.rc.GetRawColumnValue(cc.columnName)
 }
 
 func (cc *ColumnContext) GetColumnValue(name string) (any, error) {
-	return cc.rc.GetValue(name)
+	return cc.rc.GetColumnValue(name)
 }
 
 func (cc *ColumnContext) GetColumnRawValue(name string) (any, error) {
-	return cc.rc.GetRawValue(name)
+	return cc.rc.GetRawColumnValue(name)
 }
 
 func (cc *ColumnContext) EncodeValue(v any) (any, error) {
-	return cc.rc.EncodeValue(cc.columnName, v)
+	return cc.rc.EncodeValueByColumn(cc.columnName, v)
 }
 
 func (cc *ColumnContext) DecodeValue(v any) (any, error) {
-	return cc.rc.DecodeValue(cc.columnType, v)
+	return cc.rc.DecodeValueByColumn(cc.columnType, v)
 }
 
 func (cc *ColumnContext) EncodeValueByColumn(name string, v any) (any, error) {
-	return cc.rc.EncodeValue(name, v)
+	return cc.rc.EncodeValueByColumn(name, v)
 }
 
 func (cc *ColumnContext) DecodeValueByColumn(name string, v any) (any, error) {
-	return cc.rc.DecodeValue(name, v)
+	return cc.rc.DecodeValueByColumn(name, v)
 }
 
 func (cc *ColumnContext) EncodeValueByType(name string, v any) (any, error) {

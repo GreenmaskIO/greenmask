@@ -44,19 +44,19 @@ func (jc *JsonContext) OriginalValueExists() bool {
 }
 
 func (jc *JsonContext) GetColumnValue(name string) (any, error) {
-	return jc.rc.GetValue(name)
+	return jc.rc.GetColumnValue(name)
 }
 
 func (jc *JsonContext) GetColumnRawValue(name string) (any, error) {
-	return jc.rc.GetRawValue(name)
+	return jc.rc.GetRawColumnValue(name)
 }
 
 func (jc *JsonContext) EncodeValueByColumn(name string, v any) (any, error) {
-	return jc.rc.EncodeValue(name, v)
+	return jc.rc.EncodeValueByColumn(name, v)
 }
 
 func (jc *JsonContext) DecodeValueByColumn(name string, v any) (any, error) {
-	return jc.rc.DecodeValue(name, v)
+	return jc.rc.DecodeValueByColumn(name, v)
 }
 
 func (jc *JsonContext) EncodeValueByType(name string, v any) (any, error) {

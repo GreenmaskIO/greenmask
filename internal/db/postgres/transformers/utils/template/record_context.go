@@ -52,7 +52,7 @@ func (rc *RecordContext) GetColumnType(name string) (string, error) {
 	return c.TypeName, nil
 }
 
-func (rc *RecordContext) GetValue(name string) (any, error) {
+func (rc *RecordContext) GetColumnValue(name string) (any, error) {
 	v, err := rc.record.GetAttributeValueByName(name)
 	if err != nil {
 		return nil, err
@@ -63,7 +63,7 @@ func (rc *RecordContext) GetValue(name string) (any, error) {
 	return v.Value, nil
 }
 
-func (rc *RecordContext) GetRawValue(name string) (any, error) {
+func (rc *RecordContext) GetRawColumnValue(name string) (any, error) {
 	v, err := rc.record.GetRawAttributeValueByName(name)
 	if err != nil {
 		return nil, err
@@ -74,7 +74,7 @@ func (rc *RecordContext) GetRawValue(name string) (any, error) {
 	return string(v.Data), nil
 }
 
-func (rc *RecordContext) SetValue(name string, v any) (bool, error) {
+func (rc *RecordContext) SetColumnValue(name string, v any) (bool, error) {
 	var val *toolkit.Value
 	switch v.(type) {
 	case NullType:
@@ -89,7 +89,7 @@ func (rc *RecordContext) SetValue(name string, v any) (bool, error) {
 	return true, nil
 }
 
-func (rc *RecordContext) SetRawValue(name string, v any) (bool, error) {
+func (rc *RecordContext) SetRawColumnValue(name string, v any) (bool, error) {
 	var val *toolkit.RawValue
 	switch vv := v.(type) {
 	case NullType:
@@ -106,8 +106,8 @@ func (rc *RecordContext) SetRawValue(name string, v any) (bool, error) {
 	return true, nil
 }
 
-// EncodeValue - encode value from real type to the string or NullValue using column type
-func (rc *RecordContext) EncodeValue(name string, v any) (any, error) {
+// EncodeValueByColumn - encode value from real type to the string or NullValue using column type
+func (rc *RecordContext) EncodeValueByColumn(name string, v any) (any, error) {
 	if _, ok := v.(NullType); ok {
 		return NullValue, nil
 	}
@@ -119,8 +119,8 @@ func (rc *RecordContext) EncodeValue(name string, v any) (any, error) {
 	return string(res), nil
 }
 
-// DecodeValue - decode value from string or NullValue to the real type using column type
-func (rc *RecordContext) DecodeValue(name string, v any) (any, error) {
+// DecodeValueByColumn - decode value from string or NullValue to the real type using column type
+func (rc *RecordContext) DecodeValueByColumn(name string, v any) (any, error) {
 	switch vv := v.(type) {
 	case NullType:
 		return NullValue, nil
