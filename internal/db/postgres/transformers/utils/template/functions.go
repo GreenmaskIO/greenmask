@@ -83,17 +83,17 @@ func FuncMap() template.FuncMap {
 		"isNotNull":   valueIsNotNull,
 		"sqlCoalesce": sqlCoalesce,
 
-		"jsonExists":       jsonExists,
-		"mustJsonGet":      mustJsonGet,
-		"mustJsonGetRaw":   mustJsonGetRaw,
-		"jsonGet":          jsonGet,
-		"jsonGetRaw":       jsonGetRaw,
-		"mustJsonSet":      mustJsonSet,      // TODO: Tests
-		"mustJsonDelete":   mustJsonDelete,   // TODO: Tests
-		"mustJsonSetRaw":   mustJsonSetRaw,   // TODO: Tests
-		"mustJsonValidate": mustJsonValidate, // TODO: Tests
-		"jsonIsValid":      jsonIsValid,      // TODO: Tests
-		"toJsonRawValue":   toJsonRawValue,
+		"jsonExists":     jsonExists,
+		"mustJsonGet":    mustJsonGet,
+		"mustJsonGetRaw": mustJsonGetRaw,
+		"jsonGet":        jsonGet,
+		"jsonGetRaw":     jsonGetRaw,
+		"jsonSet":        mustJsonSet,      // TODO: Tests
+		"jsonDelete":     mustJsonDelete,   // TODO: Tests
+		"jsonSetRaw":     mustJsonSetRaw,   // TODO: Tests
+		"jsonValidate":   mustJsonValidate, // TODO: Tests
+		"jsonIsValid":    jsonIsValid,      // TODO: Tests
+		"toJsonRawValue": toJsonRawValue,
 
 		"isInt":    isInt,
 		"isFloat":  isFloat,
@@ -371,18 +371,21 @@ func truncateDate(part string, t time.Time) (time.Time, error) {
 	return *res, nil
 }
 
-func noiseDatePgInterval(typeMap *pgtype.Map, randGen *rand.Rand, intervalStr string, val time.Time) (time.Time, error) {
+func noiseDatePgInterval(typeMap *pgtype.Map, randGen *rand.Rand, interval string, val time.Time) (time.Time, error) {
 	t, _ := typeMap.TypeForName("interval")
-	res, err := t.Codec.DecodeValue(typeMap, t.OID, pgx.TextFormatCode, []byte(intervalStr))
+	ratioInterval, err := t.Codec.DecodeValue(typeMap, t.OID, pgx.TextFormatCode, []byte(interval))
 	if err != nil {
-		return time.Time{}, fmt.Errorf("error parsing \"interval\" value \"%s\": %w", intervalStr, err)
+		return time.Time{}, fmt.Errorf("error parsing \"interval\" value \"%s\": %w", interval, err)
 	}
-	intervalValue, ok := res.(pgtype.Interval)
+	intervalValue, ok := ratioInterval.(pgtype.Interval)
 	if !ok {
 		return time.Time{}, fmt.Errorf(`cannot cast "ratio" param to interval value`)
 	}
+	ratio := (time.Duration(intervalValue.Days) * time.Hour * 24) +
+		(time.Duration(intervalValue.Months) * 30 * time.Hour * 24) +
+		(time.Duration(intervalValue.Microseconds) * time.Millisecond)
 
-	return *(utils.NoiseDatePgInterval(randGen, &intervalValue, &val)), nil
+	return *(utils.NoiseDateV2(randGen, ratio, &val)), nil
 }
 
 func noiseFloat(randGen *rand.Rand, precision int, ratio any, value any) (float64, error) {

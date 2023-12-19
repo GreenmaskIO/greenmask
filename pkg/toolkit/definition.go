@@ -32,8 +32,8 @@ var DefaultRowDriverParams = &RowDriverParams{
 }
 
 type RowDriverParams struct {
-	Name   string
-	Params map[string]interface{}
+	Name   string                 `json:"name,omitempty"`
+	Params map[string]interface{} `json:"params,omitempty"`
 }
 
 type Definition struct {

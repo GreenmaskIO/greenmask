@@ -49,8 +49,8 @@ func TestNoiseDateTransformer_Transform(t *testing.T) {
 			original: "2023-06-25",
 			result: result{
 				pattern: `^\d{4}-\d{2}-\d{2}$`,
-				min:     time.Date(2022, 5, 25, 0, 0, 0, 0, loc),
-				max:     time.Date(2024, 6, 26, 1, 1, 1, 1000, loc),
+				min:     time.Date(2022, 3, 1, 22, 00, 0, 0, loc),
+				max:     time.Date(2024, 8, 29, 1, 1, 1, 1000, loc),
 			},
 		},
 		{
@@ -62,8 +62,8 @@ func TestNoiseDateTransformer_Transform(t *testing.T) {
 			original: "2023-06-25 00:00:00",
 			result: result{
 				pattern: `^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}.\d{1,6}$`,
-				min:     time.Date(2022, 5, 25, 0, 0, 0, 0, loc),
-				max:     time.Date(2024, 6, 26, 1, 1, 1, 1000, loc),
+				min:     time.Date(2022, 3, 1, 22, 00, 0, 0, loc),
+				max:     time.Date(2024, 8, 29, 1, 1, 1, 1000, loc),
 			},
 		},
 		{
@@ -75,8 +75,8 @@ func TestNoiseDateTransformer_Transform(t *testing.T) {
 			original: "2023-06-25 00:00:00.0+03",
 			result: result{
 				pattern: `^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}.\d{1,6}Z$`,
-				min:     time.Date(2022, 5, 25, 0, 0, 0, 0, loc),
-				max:     time.Date(2024, 6, 26, 1, 1, 1, 1000, loc),
+				min:     time.Date(2022, 3, 1, 22, 00, 0, 0, loc),
+				max:     time.Date(2024, 8, 29, 1, 1, 1, 1000, loc),
 			},
 		},
 		{
@@ -89,8 +89,8 @@ func TestNoiseDateTransformer_Transform(t *testing.T) {
 			original: "2023-06-25 00:00:00",
 			result: result{
 				pattern: `^\d{4}-\d{2}-01 0{2}:0{2}:0{2}$`,
-				min:     time.Date(2022, 5, 25, 0, 0, 0, 0, loc),
-				max:     time.Date(2024, 7, 26, 1, 1, 1, 1000, loc),
+				min:     time.Date(2022, 3, 1, 22, 00, 0, 0, loc),
+				max:     time.Date(2024, 8, 29, 1, 1, 1, 1000, loc),
 			},
 		},
 	}
@@ -111,7 +111,7 @@ func TestNoiseDateTransformer_Transform(t *testing.T) {
 			)
 			require.NoError(t, err)
 
-			res, err := r.GetAttributeValueByName(string(tt.params["column"]))
+			res, err := r.GetColumnValueByName(string(tt.params["column"]))
 			require.NoError(t, err)
 			// Checking typed value
 			assert.False(t, res.IsNull)

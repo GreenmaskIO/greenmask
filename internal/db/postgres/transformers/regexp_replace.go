@@ -87,9 +87,11 @@ func NewRegexpReplaceTransformer(ctx context.Context, driver *toolkit.Driver, pa
 		return nil, toolkit.ValidationWarnings{
 			toolkit.NewValidationWarning().
 				SetSeverity(toolkit.ErrorValidationSeverity).
-				AddMeta("parameterName", "regexp").
+				AddMeta("ParameterName", "regexp").
+				AddMeta("ParameterValue", regexpStr).
+				AddMeta("Error", err.Error()).
 				SetMsg("cannot compile regular expression"),
-		}, fmt.Errorf("cannot compile regular expression: %w", err)
+		}, nil
 	}
 
 	return &RegexpReplaceTransformer{
@@ -116,7 +118,7 @@ func (rrt *RegexpReplaceTransformer) Done(ctx context.Context) error {
 
 func (rrt *RegexpReplaceTransformer) Transform(ctx context.Context, r *toolkit.Record) (*toolkit.Record, error) {
 
-	v, err := r.GetRawAttributeValueByIdx(rrt.columnIdx)
+	v, err := r.GetRawColumnValueByIdx(rrt.columnIdx)
 	if err != nil {
 		return nil, fmt.Errorf("unable to scan value: %w", err)
 	}
@@ -125,7 +127,7 @@ func (rrt *RegexpReplaceTransformer) Transform(ctx context.Context, r *toolkit.R
 	}
 
 	v.Data = rrt.regexp.ReplaceAll(v.Data, rrt.replace)
-	if err := r.SetRawAttributeValueByIdx(rrt.columnIdx, v); err != nil {
+	if err := r.SetRawColumnValueByIdx(rrt.columnIdx, v); err != nil {
 		return nil, fmt.Errorf("unable to set new value: %w", err)
 	}
 	return r, nil

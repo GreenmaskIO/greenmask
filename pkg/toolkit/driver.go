@@ -108,7 +108,7 @@ func NewDriver(table *Table, customTypes []*Type, columnTypeOverrides map[string
 	return pc, nil
 }
 
-func (d *Driver) EncodeAttrByIdx(idx int, src any, buf []byte) ([]byte, error) {
+func (d *Driver) EncodeValueByColumnIdx(idx int, src any, buf []byte) ([]byte, error) {
 	if idx < 0 || idx > d.maxIdx {
 		return nil, fmt.Errorf("index out ouf range: must be between 0 and %d received %d", d.maxIdx, idx)
 	}
@@ -123,7 +123,7 @@ func (d *Driver) EncodeAttrByIdx(idx int, src any, buf []byte) ([]byte, error) {
 	return res, nil
 }
 
-func (d *Driver) EncodeAttrName(name string, src any, buf []byte) ([]byte, error) {
+func (d *Driver) EncodeValueByColumnName(name string, src any, buf []byte) ([]byte, error) {
 	if typeName, ok := d.unsupportedColumns[name]; ok {
 		return nil, fmt.Errorf("encode-decode operation is not supported for column %s with type %s", name, typeName)
 	}
@@ -132,10 +132,10 @@ func (d *Driver) EncodeAttrName(name string, src any, buf []byte) ([]byte, error
 	if !ok {
 		return nil, fmt.Errorf("unoknown column %s", name)
 	}
-	return d.EncodeAttrByIdx(idx, src, buf)
+	return d.EncodeValueByColumnIdx(idx, src, buf)
 }
 
-func (d *Driver) ScanAttrByIdx(idx int, src []byte, dest any) error {
+func (d *Driver) ScanValueByColumnIdx(idx int, src []byte, dest any) error {
 	if idx < 0 || idx > d.maxIdx {
 		return fmt.Errorf("index out ouf range: must be between 0 and %d received %d", d.maxIdx, idx)
 	}
@@ -150,7 +150,7 @@ func (d *Driver) ScanAttrByIdx(idx int, src []byte, dest any) error {
 	return nil
 }
 
-func (d *Driver) ScanAttrByName(name string, src []byte, dest any) error {
+func (d *Driver) ScanValueByColumnName(name string, src []byte, dest any) error {
 	if typeName, ok := d.unsupportedColumns[name]; ok {
 		return fmt.Errorf("encode-decode operation is not supported for column %s with type %s", name, typeName)
 	}
@@ -158,10 +158,10 @@ func (d *Driver) ScanAttrByName(name string, src []byte, dest any) error {
 	if !ok {
 		return fmt.Errorf("unoknown column %s", name)
 	}
-	return d.ScanAttrByIdx(idx, src, dest)
+	return d.ScanValueByColumnIdx(idx, src, dest)
 }
 
-func (d *Driver) DecodeAttrByIdx(idx int, src []byte) (any, error) {
+func (d *Driver) DecodeValueByColumnIdx(idx int, src []byte) (any, error) {
 	if idx < 0 || idx > d.maxIdx {
 		return nil, fmt.Errorf("index out ouf range: must be between 0 and %d received %d", d.maxIdx, idx)
 	}
@@ -180,15 +180,15 @@ func (d *Driver) DecodeAttrByIdx(idx int, src []byte) (any, error) {
 	return v, nil
 }
 
-func (d *Driver) DecodeAttrByName(name string, src []byte) (any, error) {
+func (d *Driver) DecodeValueByColumnName(name string, src []byte) (any, error) {
 	idx, ok := d.AttrIdxMap[name]
 	if !ok {
 		return nil, fmt.Errorf("unoknown column %s", name)
 	}
-	return d.DecodeAttrByIdx(idx, src)
+	return d.DecodeValueByColumnIdx(idx, src)
 }
 
-func (d *Driver) EncodeByTypeOid(oid uint32, src any, buf []byte) ([]byte, error) {
+func (d *Driver) EncodeValueByTypeOid(oid uint32, src any, buf []byte) ([]byte, error) {
 	d.mx.Lock()
 	res, err := d.SharedTypeMap.Encode(oid, pgx.TextFormatCode, src, buf)
 	d.mx.Unlock()
@@ -198,15 +198,15 @@ func (d *Driver) EncodeByTypeOid(oid uint32, src any, buf []byte) ([]byte, error
 	return res, nil
 }
 
-func (d *Driver) EncodeByTypeName(name string, src any, buf []byte) ([]byte, error) {
+func (d *Driver) EncodeValueByTypeName(name string, src any, buf []byte) ([]byte, error) {
 	pgType, ok := d.SharedTypeMap.TypeForName(name)
 	if !ok {
 		return nil, fmt.Errorf("cannot find type by oid")
 	}
-	return d.EncodeByTypeOid(pgType.OID, src, buf)
+	return d.EncodeValueByTypeOid(pgType.OID, src, buf)
 }
 
-func (d *Driver) DecodeByTypeOid(oid uint32, src []byte) (any, error) {
+func (d *Driver) DecodeValueByTypeOid(oid uint32, src []byte) (any, error) {
 	pgType, ok := d.SharedTypeMap.TypeForOID(oid)
 	if !ok {
 		return nil, fmt.Errorf("cannot find type by oid")
@@ -220,7 +220,7 @@ func (d *Driver) DecodeByTypeOid(oid uint32, src []byte) (any, error) {
 	return res, nil
 }
 
-func (d *Driver) DecodeByTypeName(name string, src []byte) (any, error) {
+func (d *Driver) DecodeValueByTypeName(name string, src []byte) (any, error) {
 	pgType, ok := d.SharedTypeMap.TypeForName(name)
 	if !ok {
 		return nil, fmt.Errorf("cannot find type by oid")
@@ -234,7 +234,7 @@ func (d *Driver) DecodeByTypeName(name string, src []byte) (any, error) {
 	return res, nil
 }
 
-func (d *Driver) ScanByTypeOid(oid uint32, src []byte, dest any) error {
+func (d *Driver) ScanValueByTypeOid(oid uint32, src []byte, dest any) error {
 	d.mx.Lock()
 	err := d.SharedTypeMap.Scan(oid, pgx.TextFormatCode, src, dest)
 	d.mx.Unlock()
@@ -244,7 +244,7 @@ func (d *Driver) ScanByTypeOid(oid uint32, src []byte, dest any) error {
 	return nil
 }
 
-func (d *Driver) ScanByTypeName(name string, src []byte, dest any) error {
+func (d *Driver) ScanValueByTypeName(name string, src []byte, dest any) error {
 	pgType, ok := d.SharedTypeMap.TypeForName(name)
 	if !ok {
 		return fmt.Errorf("cannot find type by oid")

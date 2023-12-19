@@ -42,7 +42,7 @@ var RandomUuidTransformerDefinition = utils.NewDefinition(
 
 	toolkit.MustNewParameter(
 		"keep_null",
-		"do not replace NULL values to random value",
+		"indicates that NULL values must not be replaced with transformed values",
 	).SetDefaultValue(toolkit.ParamsValue("true")),
 )
 
@@ -95,7 +95,7 @@ func (rut *RandomUuidTransformer) Done(ctx context.Context) error {
 }
 
 func (rut *RandomUuidTransformer) Transform(ctx context.Context, r *toolkit.Record) (*toolkit.Record, error) {
-	val, err := r.GetRawAttributeValueByIdx(rut.columnIdx)
+	val, err := r.GetRawColumnValueByIdx(rut.columnIdx)
 	if err != nil {
 		return nil, fmt.Errorf("unable to scan value: %w", err)
 	}
@@ -107,7 +107,7 @@ func (rut *RandomUuidTransformer) Transform(ctx context.Context, r *toolkit.Reco
 	if err != nil {
 		return nil, fmt.Errorf("error umarshalling uuid: %w", err)
 	}
-	if err = r.SetRawAttributeValueByIdx(rut.columnIdx, toolkit.NewRawValue(data, false)); err != nil {
+	if err = r.SetRawColumnValueByIdx(rut.columnIdx, toolkit.NewRawValue(data, false)); err != nil {
 		return nil, fmt.Errorf("unable to set new value: %w", err)
 	}
 	return r, nil

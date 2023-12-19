@@ -481,7 +481,7 @@ func TestFuncMap_truncateDate(t *testing.T) {
 		name        string
 		params      params
 		expectedErr string
-		expected    string
+		expected    time.Time
 	}{
 		{
 			name: "ok",
@@ -489,7 +489,7 @@ func TestFuncMap_truncateDate(t *testing.T) {
 				Date: time.Date(2023, 11, 23, 1, 2, 3, 4, time.Now().Location()),
 				Part: "month",
 			},
-			expected: "2023-11-01 00:00:00 +0200 EET",
+			expected: time.Date(2023, 11, 1, 0, 0, 0, 0, time.Now().Location()),
 		},
 		{
 
@@ -508,7 +508,7 @@ func TestFuncMap_truncateDate(t *testing.T) {
 			if tt.expectedErr == "" {
 				require.NoError(t, err)
 				res := buf.String()
-				require.Equal(t, tt.expected, res)
+				require.Equal(t, tt.expected.String(), res)
 			} else {
 				require.Error(t, err)
 				require.ErrorContains(t, err, tt.expectedErr)

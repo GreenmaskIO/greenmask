@@ -52,7 +52,7 @@ func DefaultSchemaValidator(
 		}
 
 		// Checking is transformer can produce NULL value
-		if !p.ColumnProperties.Nullable && p.Column.NotNull {
+		if p.ColumnProperties.Nullable && p.Column.NotNull {
 			warnings = append(warnings, toolkit.NewValidationWarning().
 				SetMsg("transformer may produce NULL values but column has NOT NULL constraint").
 				SetSeverity(toolkit.WarningValidationSeverity).

@@ -48,8 +48,6 @@ const (
 
 var cmdTransformerName = "Cmd"
 
-var ErrRowTransformationTimeout = errors.New("row transformation timeout")
-
 var CmdTransformerDefinition = utils.NewDefinition(
 	utils.NewTransformerProperties(
 		cmdTransformerName,
@@ -263,7 +261,7 @@ func NewCmd(
 		return nil, nil, fmt.Errorf("error creating InteractionApi: %w", err)
 	}
 
-	cct := utils.NewCmdTransformerBase(name, expectedExitCode, driver, api)
+	cct := utils.NewCmdTransformerBase(name, expectedExitCode, timeout, driver, api)
 
 	ct := &Cmd{
 		CmdTransformerBase:     cct,
@@ -282,7 +280,6 @@ func NewCmd(
 		allColumnsIdx:          allColumnsIdx,
 		skipOnBehaviour:        skipOnBehaviour,
 		checkSkip:              checkSkip,
-		t:                      time.NewTicker(timeout),
 	}
 
 	return ct, warnings, nil
@@ -292,39 +289,6 @@ func (c *Cmd) GetAffectedColumns() map[int]string {
 	return c.affectedColumns
 }
 
-func (c *Cmd) watchForTimeout(ctx context.Context) error {
-	for {
-		if c.ProcessedLines > -1 {
-			break
-		}
-		select {
-		case <-ctx.Done():
-			return ctx.Err()
-		case <-c.DoneCh:
-			return nil
-		default:
-		}
-		time.Sleep(1 * time.Second)
-	}
-	c.t.Reset(c.timeout)
-	for {
-		lastValue := c.ProcessedLines
-		select {
-		case <-ctx.Done():
-			return ctx.Err()
-		case <-c.DoneCh:
-			return nil
-		case <-c.t.C:
-			if lastValue == c.ProcessedLines {
-				if err := c.Cancel(); err != nil {
-					log.Warn().Err(err).Msg("error terminating transformer")
-				}
-				return ErrRowTransformationTimeout
-			}
-		}
-	}
-}
-
 func (c *Cmd) Init(ctx context.Context) error {
 	if err := c.BaseInit(c.executable, c.args); err != nil {
 		return err
@@ -332,10 +296,6 @@ func (c *Cmd) Init(ctx context.Context) error {
 	c.eg = &errgroup.Group{}
 	c.eg.Go(func() error {
 		return c.stderrForwarder(ctx)
-	})
-
-	c.eg.Go(func() error {
-		return c.watchForTimeout(ctx)
 	})
 
 	c.eg.Go(func() error {
@@ -395,7 +355,7 @@ func (c *Cmd) Done(ctx context.Context) error {
 
 func (c *Cmd) stderrForwarder(ctx context.Context) error {
 	for {
-		line, _, err := c.StderrReader.ReadLine()
+		line, err := c.ReceiveStderrLine(ctx)
 		if err != nil {
 			if errors.Is(err, io.EOF) || errors.Is(err, os.ErrClosed) {
 				return nil
@@ -423,7 +383,7 @@ func (c *Cmd) stderrForwarder(ctx context.Context) error {
 func (c *Cmd) needSkip(r *toolkit.Record) (bool, error) {
 	var score int
 	for _, idx := range c.allColumnsIdx {
-		v, err := r.GetRawAttributeValueByIdx(idx)
+		v, err := r.GetRawColumnValueByIdx(idx)
 		if err != nil {
 			return false, fmt.Errorf("error getting raw attribute value: %w", err)
 		}
@@ -441,7 +401,7 @@ func (c *Cmd) needSkip(r *toolkit.Record) (bool, error) {
 
 func (c *Cmd) validate(r *toolkit.Record) error {
 	for _, idx := range c.affectedColumnsIdx {
-		_, err := r.GetAttributeValueByIdx(idx)
+		_, err := r.GetColumnValueByIdx(idx)
 		if err != nil {
 			return fmt.Errorf("error validating received attribute \"%s\" value from cmd: %w", r.Driver.Table.Columns[idx].Name, err)
 		}

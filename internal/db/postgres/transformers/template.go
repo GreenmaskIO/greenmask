@@ -125,13 +125,13 @@ func (sut *TemplateTransformer) Transform(ctx context.Context, r *toolkit.Record
 		res = toolkit.NewRawValue(nil, true)
 	} else {
 		if sut.validate {
-			if _, err := r.Driver.DecodeAttrByIdx(sut.columnIdx, res.Data); err != nil {
+			if _, err := r.Driver.DecodeValueByColumnIdx(sut.columnIdx, res.Data); err != nil {
 				return nil, fmt.Errorf("error validating template output via driver: %w", err)
 			}
 		}
 		res = toolkit.NewRawValue(data, false)
 	}
-	if err := r.SetRawAttributeValueByIdx(sut.columnIdx, res); err != nil {
+	if err := r.SetRawColumnValueByIdx(sut.columnIdx, res); err != nil {
 		return nil, fmt.Errorf("error setting raw value: %w", err)
 	}
 

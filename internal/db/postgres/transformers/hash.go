@@ -52,7 +52,7 @@ var HashTransformerDefinition = utils.NewDefinition(
 
 	toolkit.MustNewParameter(
 		"salt",
-		"salt for hash",
+		"salt for hash function base64 encoded",
 	),
 )
 
@@ -80,21 +80,20 @@ func NewHashTransformer(
 	affectedColumns := make(map[int]string)
 	affectedColumns[idx] = columnName
 
-	var saltStr string
 	var salt toolkit.ParamsValue
 	p = parameters["salt"]
-	if _, err := p.Scan(&saltStr); err != nil {
-		return nil, nil, fmt.Errorf("unable to parse column param: %w", err)
-	}
-
-	if saltStr == "" {
+	var err error
+	if len(p.RawValue()) > 0 {
+		salt, err = base64.StdEncoding.DecodeString(string(p.RawValue()))
+		if err != nil {
+			return nil, nil, fmt.Errorf("error decoding \"salt\" value from base64: %w", err)
+		}
+	} else {
 		b := make(toolkit.ParamsValue, saltLength)
 		if _, err := crand.Read(b); err != nil {
 			return nil, nil, err
 		}
 		salt = b
-	} else {
-		salt = toolkit.ParamsValue(saltStr)
 	}
 
 	return &HashTransformer{
@@ -119,7 +118,7 @@ func (ht *HashTransformer) Done(ctx context.Context) error {
 }
 
 func (ht *HashTransformer) Transform(ctx context.Context, r *toolkit.Record) (*toolkit.Record, error) {
-	val, err := r.GetRawAttributeValueByIdx(ht.columnIdx)
+	val, err := r.GetRawColumnValueByIdx(ht.columnIdx)
 	if err != nil {
 		return nil, fmt.Errorf("unable to scan attribute value: %w", err)
 	}
@@ -140,7 +139,7 @@ func (ht *HashTransformer) Transform(ctx context.Context, r *toolkit.Record) (*t
 
 	//base64.StdEncoding.EncodeToString(ht.res)
 	base64.StdEncoding.Encode(ht.res, dk)
-	if err := r.SetRawAttributeValueByIdx(ht.columnIdx, toolkit.NewRawValue(ht.res, false)); err != nil {
+	if err := r.SetRawColumnValueByIdx(ht.columnIdx, toolkit.NewRawValue(ht.res, false)); err != nil {
 		return nil, fmt.Errorf("unable to set new value: %w", err)
 	}
 

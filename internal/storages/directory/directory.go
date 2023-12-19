@@ -25,8 +25,6 @@ import (
 	"sync"
 	"syscall"
 
-	"golang.org/x/sys/unix"
-
 	"github.com/greenmaskio/greenmask/internal/storages"
 )
 
@@ -93,11 +91,11 @@ func (d *Storage) GetObject(ctx context.Context, filePath string) (reader io.Rea
 }
 
 func (d *Storage) PutObject(ctx context.Context, filePath string, body io.Reader) error {
-	_, err := os.Stat(d.cwd)
+	_, err := os.Stat(path.Join(d.cwd, path.Dir(filePath)))
 	var errNo syscall.Errno
-	if err != nil && errors.As(err, &errNo) && errNo == unix.ENOENT {
+	if err != nil && errors.As(err, &errNo) && errNo == 0x2 {
 		d.mx.Lock()
-		if err = os.MkdirAll(d.cwd, d.dirMode); err != nil {
+		if err = os.MkdirAll(path.Join(d.cwd, path.Dir(filePath)), d.dirMode); err != nil {
 			d.mx.Unlock()
 			return fmt.Errorf("error creating directory: %w", err)
 		}

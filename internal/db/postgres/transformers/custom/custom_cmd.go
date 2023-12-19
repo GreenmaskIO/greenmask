@@ -16,6 +16,7 @@ package custom
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -23,7 +24,6 @@ import (
 	"os/exec"
 	"time"
 
-	jsoniter "github.com/json-iterator/go"
 	"github.com/rs/zerolog/log"
 	"golang.org/x/sync/errgroup"
 
@@ -32,18 +32,14 @@ import (
 )
 
 var (
-	ErrValidationTimeout        = errors.New("validation timeout")
-	ErrRowTransformationTimeout = errors.New("row transformation timeout")
+	ErrValidationTimeout = errors.New("validation timeout")
 )
 
 const (
 	ValidateArgName        = "--validate"
 	PrintDefinitionArgName = "--print-definition"
-	MetaArgName            = "--meta"
 	TransformArgName       = "--transform"
 )
-
-var json = jsoniter.ConfigFastest
 
 func ProduceNewCmdTransformerFunction(ctd *TransformerDefinition) utils.NewTransformerFunc {
 	return func(
@@ -64,7 +60,6 @@ type CmdTransformer struct {
 	parameters      map[string]*toolkit.Parameter
 	affectedColumns map[int]string
 	ctd             *TransformerDefinition
-	t               *time.Ticker
 }
 
 func NewCustomCmdTransformer(
@@ -85,7 +80,7 @@ func NewCustomCmdTransformer(
 		return nil, nil, fmt.Errorf("error creating InteractionApi: %w", err)
 	}
 
-	cct := utils.NewCmdTransformerBase(ctd.Name, ctd.ExpectedExitCode, driver, api)
+	cct := utils.NewCmdTransformerBase(ctd.Name, ctd.ExpectedExitCode, ctd.RowTransformationTimeout, driver, api)
 
 	ct := &CmdTransformer{
 		CmdTransformerBase: cct,
@@ -96,7 +91,6 @@ func NewCustomCmdTransformer(
 		affectedColumns:    affectedColumns,
 		name:               ctd.Name,
 		ctd:                ctd,
-		t:                  time.NewTicker(ctd.RowTransformationTimeout),
 	}
 
 	var warnings toolkit.ValidationWarnings
@@ -114,71 +108,26 @@ func (ct *CmdTransformer) GetAffectedColumns() map[int]string {
 	return ct.affectedColumns
 }
 
-func (ct *CmdTransformer) watchForTimeout(ctx context.Context) error {
-	for {
-		if ct.ProcessedLines > -1 {
-			break
-		}
-		select {
-		case <-ctx.Done():
-			return ctx.Err()
-		case <-ct.DoneCh:
-			return nil
-		default:
-		}
-		time.Sleep(1 * time.Second)
-	}
-	ct.t.Reset(ct.ctd.RowTransformationTimeout)
-	for {
-		lastValue := ct.ProcessedLines
-		select {
-		case <-ctx.Done():
-			return ctx.Err()
-		case <-ct.DoneCh:
-			return nil
-		case <-ct.t.C:
-			if lastValue == ct.ProcessedLines {
-				if err := ct.Cancel(); err != nil {
-					log.Warn().Err(err).Msg("error closing transformer")
-				}
-				return ErrRowTransformationTimeout
-			}
-		}
-	}
-}
-
 func (ct *CmdTransformer) Init(ctx context.Context) (err error) {
-	// TODO: Generate table meta and pass it through the parameter encoded by base64
-	meta, err := ct.getMetadata()
-	if err != nil {
-		return fmt.Errorf("error getting metadata: %w", err)
-	}
-	log.Debug().
-		RawJSON("Meta", []byte(meta)).
-		Str("TableSchema", ct.driver.Table.Schema).
-		Str("TableName", ct.driver.Table.Name).
-		Str("TransformerName", ct.name).
-		Msg("running transformer with metadata")
 
 	args := make([]string, len(ct.args))
 	copy(args, ct.args)
-	args = append(args, MetaArgName, meta, TransformArgName)
+	args = append(args, TransformArgName)
 	if err != nil {
 		return fmt.Errorf("cannot get metatda: %w", err)
 	}
 	err = ct.BaseInit(ct.executable, args)
-
 	if err != nil {
 		return err
+	}
+
+	if err = ct.sendMetadata(); err != nil {
+		return fmt.Errorf("error sending metadata: %w", err)
 	}
 
 	ct.eg = &errgroup.Group{}
 	ct.eg.Go(func() error {
 		return ct.stderrForwarder(ctx)
-	})
-
-	ct.eg.Go(func() error {
-		return ct.watchForTimeout(ctx)
 	})
 
 	ct.eg.Go(func() error {
@@ -221,28 +170,21 @@ func (ct *CmdTransformer) Init(ctx context.Context) (err error) {
 }
 
 func (ct *CmdTransformer) Validate(ctx context.Context) (toolkit.ValidationWarnings, error) {
-	// TODO: Depending on transformer setting we can either validate or not. Ensure this logic has been implemented
-	meta, err := ct.getMetadata()
-	if err != nil {
-		return nil, fmt.Errorf("error getting metadata: %w", err)
-	}
 
-	log.Debug().
-		RawJSON("Meta", []byte(meta)).
-		Str("TableSchema", ct.driver.Table.Schema).
-		Str("TableName", ct.driver.Table.Name).
-		Str("TransformerName", ct.name).
-		Msg("running transformer with metadata")
 	args := make([]string, len(ct.args))
 	copy(args, ct.args)
-	args = append(args, ValidateArgName, MetaArgName, meta)
+	args = append(args, ValidateArgName)
 
 	ct.eg = &errgroup.Group{}
 	ctx, cancel := context.WithTimeout(ctx, ct.ctd.ValidationTimeout)
 	defer cancel()
-	err = ct.BaseInitWithContext(ctx, ct.executable, args)
+	err := ct.BaseInitWithContext(ctx, ct.executable, args)
 	if err != nil {
 		return nil, fmt.Errorf("transformer initialisation error: %w", err)
+	}
+
+	if err = ct.sendMetadata(); err != nil {
+		return nil, fmt.Errorf("error sending metadata: %w", err)
 	}
 
 	ct.eg.Go(func() error {
@@ -333,8 +275,8 @@ func (ct *CmdTransformer) Done(ctx context.Context) error {
 	return nil
 }
 
-func (ct *CmdTransformer) getMetadata() (string, error) {
-	params := make(map[string]toolkit.ParamsValue)
+func (ct *CmdTransformer) getMetadata() ([]byte, error) {
+	params := make(toolkit.Params)
 	for name, p := range ct.parameters {
 		params[name] = p.RawValue()
 	}
@@ -345,13 +287,18 @@ func (ct *CmdTransformer) getMetadata() (string, error) {
 	}
 	res, err := json.Marshal(&meta)
 	if err != nil {
-		return "", fmt.Errorf("cannot marshal metadata: %w", err)
+		return nil, fmt.Errorf("cannot marshal metadata: %w", err)
 	}
-	return string(res), nil
-	//`{"9":{"d":null,"n":true}}\n`
+	return res, nil
 }
 
 func (ct *CmdTransformer) stderrForwarder(ctx context.Context) error {
+	t := time.NewTicker(500 * time.Millisecond)
+	lineNum := 0
+	// This is required for convenient verbosity of output.
+	// Write "stderr forwarding" log message each 500ms otherwise just print received stderr data
+	// If it does not use this logic each line would be covered with "stderr forwarding" message and it will be
+	// complicated to recognize the traceback or multiline message
 	for {
 		line, _, err := ct.StderrReader.ReadLine()
 		if err != nil {
@@ -362,18 +309,43 @@ func (ct *CmdTransformer) stderrForwarder(ctx context.Context) error {
 			return err
 		}
 
-		log.Warn().
-			Str("TableSchema", ct.driver.Table.Schema).
-			Str("TableName", ct.driver.Table.Name).
-			Str("TransformerName", ct.name).
-			Int("TransformerPid", ct.Cmd.Process.Pid).
-			Msg("stderr forwarding")
+		if lineNum == 0 {
+			log.Warn().
+				Str("TableSchema", ct.driver.Table.Schema).
+				Str("TableName", ct.driver.Table.Name).
+				Str("TransformerName", ct.name).
+				Int("TransformerPid", ct.Cmd.Process.Pid).
+				Msg("stderr forwarding")
+		}
 		fmt.Printf("\tDATA: %s\n", string(line))
 
 		select {
 		case <-ctx.Done():
 			return nil
+		case <-t.C:
+			lineNum = 0
 		default:
 		}
+		lineNum++
 	}
+}
+
+func (ct *CmdTransformer) sendMetadata() error {
+	meta, err := ct.getMetadata()
+	if err != nil {
+		return err
+	}
+	log.Debug().
+		RawJSON("Meta", meta).
+		Str("TableSchema", ct.driver.Table.Schema).
+		Str("TableName", ct.driver.Table.Name).
+		Str("TransformerName", ct.name).
+		Msg("running transformer with metadata")
+
+	meta = append(meta, '\n')
+	_, err = ct.StdinWriter.Write(meta)
+	if err != nil {
+		return fmt.Errorf("error writing metatda to stdin: %w", err)
+	}
+	return nil
 }

@@ -14,6 +14,11 @@ services:
       -c 'mkdir -p /export/testbucket
       && dd if=/dev/random count=10 > /export/testbucket/test.bin
       && minio server /export --console-address :9001'
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:9000/minio/health/live" ]
+      interval: 5s
+      timeout: 1s
+      retries: 3
 
   db-16:
     volumes:
@@ -150,6 +155,8 @@ services:
     depends_on:
       test-dbs-filler:
         condition: service_completed_successfully
+      storage:
+        condition: service_healthy
 
   greenmask-15:
     volumes:
@@ -172,6 +179,8 @@ services:
     depends_on:
       test-dbs-filler:
         condition: service_completed_successfully
+      storage:
+        condition: service_healthy
 
   greenmask-14:
     volumes:
@@ -194,6 +203,8 @@ services:
     depends_on:
       test-dbs-filler:
         condition: service_completed_successfully
+      storage:
+        condition: service_healthy
 
   greenmask-13:
     volumes:
@@ -216,6 +227,8 @@ services:
     depends_on:
       test-dbs-filler:
         condition: service_completed_successfully
+      storage:
+        condition: service_healthy
 
   greenmask-12:
     volumes:
@@ -238,6 +251,8 @@ services:
     depends_on:
       test-dbs-filler:
         condition: service_completed_successfully
+      storage:
+        condition: service_healthy
 
   greenmask-11:
     volumes:
@@ -260,6 +275,8 @@ services:
     depends_on:
       test-dbs-filler:
         condition: service_completed_successfully
+      storage:
+        condition: service_healthy
 
   finisher:
     healthcheck:

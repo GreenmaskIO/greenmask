@@ -29,7 +29,7 @@ var columnList = []*toolkit.Column{
 		TypeName: "int2",
 		TypeOid:  pgtype.Int2OID,
 		Num:      1,
-		NotNull:  true,
+		NotNull:  false,
 		Length:   -1,
 	},
 	{
@@ -37,7 +37,7 @@ var columnList = []*toolkit.Column{
 		TypeName: "timestamp",
 		TypeOid:  pgtype.TimestampOID,
 		Num:      2,
-		NotNull:  true,
+		NotNull:  false,
 		Length:   -1,
 	},
 	{
@@ -45,7 +45,7 @@ var columnList = []*toolkit.Column{
 		TypeName: "text",
 		TypeOid:  pgtype.TextOID,
 		Num:      3,
-		NotNull:  true,
+		NotNull:  false,
 		Length:   -1,
 	},
 	{
@@ -53,7 +53,7 @@ var columnList = []*toolkit.Column{
 		TypeName: "jsonb",
 		TypeOid:  pgtype.JSONBOID,
 		Num:      4,
-		NotNull:  true,
+		NotNull:  false,
 		Length:   -1,
 	},
 	{
@@ -61,7 +61,7 @@ var columnList = []*toolkit.Column{
 		TypeName: "uuid",
 		TypeOid:  pgtype.UUIDOID,
 		Num:      5,
-		NotNull:  true,
+		NotNull:  false,
 		Length:   -1,
 	},
 	{
@@ -69,7 +69,7 @@ var columnList = []*toolkit.Column{
 		TypeName: "int2",
 		TypeOid:  pgtype.Int2OID,
 		Num:      6,
-		NotNull:  true,
+		NotNull:  false,
 		Length:   -1,
 	},
 	{
@@ -77,7 +77,7 @@ var columnList = []*toolkit.Column{
 		TypeName: "int4",
 		TypeOid:  pgtype.Int4OID,
 		Num:      7,
-		NotNull:  true,
+		NotNull:  false,
 		Length:   -1,
 	},
 	{
@@ -85,7 +85,7 @@ var columnList = []*toolkit.Column{
 		TypeName: "int8",
 		TypeOid:  pgtype.Int8OID,
 		Num:      8,
-		NotNull:  true,
+		NotNull:  false,
 		Length:   -1,
 	},
 	{
@@ -93,7 +93,7 @@ var columnList = []*toolkit.Column{
 		TypeName: "date",
 		TypeOid:  pgtype.DateOID,
 		Num:      9,
-		NotNull:  true,
+		NotNull:  false,
 		Length:   -1,
 	},
 	{
@@ -101,7 +101,7 @@ var columnList = []*toolkit.Column{
 		TypeName: "timestamp",
 		TypeOid:  pgtype.TimestampOID,
 		Num:      10,
-		NotNull:  true,
+		NotNull:  false,
 		Length:   -1,
 	},
 	{
@@ -109,7 +109,7 @@ var columnList = []*toolkit.Column{
 		TypeName: "timestamptz",
 		TypeOid:  pgtype.TimestamptzOID,
 		Num:      11,
-		NotNull:  true,
+		NotNull:  false,
 		Length:   -1,
 	},
 	{
@@ -117,7 +117,7 @@ var columnList = []*toolkit.Column{
 		TypeName: "float4",
 		TypeOid:  pgtype.Float4OID,
 		Num:      12,
-		NotNull:  true,
+		NotNull:  false,
 		Length:   -1,
 	},
 	{
@@ -125,7 +125,7 @@ var columnList = []*toolkit.Column{
 		TypeName: "float8",
 		TypeOid:  pgtype.Float8OID,
 		Num:      13,
-		NotNull:  true,
+		NotNull:  false,
 		Length:   -1,
 	},
 	{
@@ -133,7 +133,7 @@ var columnList = []*toolkit.Column{
 		TypeName: "bool",
 		TypeOid:  pgtype.BoolOID,
 		Num:      15,
-		NotNull:  true,
+		NotNull:  false,
 		Length:   -1,
 	},
 }

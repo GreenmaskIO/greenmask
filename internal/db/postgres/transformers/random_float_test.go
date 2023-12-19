@@ -155,7 +155,7 @@ func TestRandomFloatTransformer_Transform(t *testing.T) {
 			require.NoError(t, err)
 
 			var res float64
-			isNull, err := r.ScanAttributeValueByName(tt.columnName, &res)
+			isNull, err := r.ScanColumnValueByName(tt.columnName, &res)
 			require.NoError(t, err)
 			require.Equal(t, tt.result.isNull, isNull)
 			if !tt.result.isNull {

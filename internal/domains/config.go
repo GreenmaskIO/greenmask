@@ -44,65 +44,65 @@ func NewConfig() *Config {
 }
 
 type Config struct {
-	Common             Common                          `mapstructure:"common" yaml:"common"`
-	Log                LogConfig                       `mapstructure:"log" yaml:"log"`
-	Storage            StorageConfig                   `mapstructure:"storage" yaml:"storage"`
-	Dump               Dump                            `mapstructure:"dump" yaml:"dump"`
-	Validate           Validate                        `mapstructure:"validate" yaml:"validate"`
-	Restore            Restore                         `mapstructure:"restore" yaml:"restore"`
-	CustomTransformers []*custom.TransformerDefinition `mapstructure:"custom_transformers" yaml:"custom_transformers"`
+	Common             Common                          `mapstructure:"common" yaml:"common" json:"common"`
+	Log                LogConfig                       `mapstructure:"log" yaml:"log" json:"log"`
+	Storage            StorageConfig                   `mapstructure:"storage" yaml:"storage" json:"storage"`
+	Dump               Dump                            `mapstructure:"dump" yaml:"dump" json:"dump"`
+	Validate           Validate                        `mapstructure:"validate" yaml:"validate" json:"validate"`
+	Restore            Restore                         `mapstructure:"restore" yaml:"restore" json:"restore"`
+	CustomTransformers []*custom.TransformerDefinition `mapstructure:"custom_transformers" yaml:"custom_transformers" json:"custom_transformers,omitempty"`
 }
 
 type Validate struct {
-	Tables           []string `mapstructure:"tables" yaml:"tables"`
-	Data             bool     `mapstructure:"data" yaml:"data"`
-	Diff             bool     `mapstructure:"diff" yaml:"diff"`
-	RowsLimit        uint64   `mapstructure:"rows_limit" yaml:"rows_limit"`
-	ResolvedWarnings []string `mapstructure:"resolved_warnings" yaml:"resolved_warnings"`
-	Format           string   `mapstructure:"format" yaml:"format"`
+	Tables           []string `mapstructure:"tables" yaml:"tables" json:"tables,omitempty"`
+	Data             bool     `mapstructure:"data" yaml:"data" json:"data,omitempty"`
+	Diff             bool     `mapstructure:"diff" yaml:"diff" json:"diff,omitempty"`
+	RowsLimit        uint64   `mapstructure:"rows_limit" yaml:"rows_limit" json:"rows_limit,omitempty"`
+	ResolvedWarnings []string `mapstructure:"resolved_warnings" yaml:"resolved_warnings" json:"resolved_warnings,omitempty"`
+	Format           string   `mapstructure:"format" yaml:"format" json:"format,omitempty"`
 }
 
 type Common struct {
-	PgBinPath     string `mapstructure:"pg_bin_path" yaml:"pg_bin_path,omitempty"`
-	TempDirectory string `mapstructure:"tmp_dir" yaml:"tmp_dir,omitempty"`
+	PgBinPath     string `mapstructure:"pg_bin_path" yaml:"pg_bin_path,omitempty" json:"pg_bin_path,omitempty"`
+	TempDirectory string `mapstructure:"tmp_dir" yaml:"tmp_dir,omitempty" json:"tmp_dir,omitempty"`
 }
 
 type StorageConfig struct {
-	S3        *s3.Config        `mapstructure:"s3"`
-	Directory *directory.Config `mapstructure:"directory"`
+	S3        *s3.Config        `mapstructure:"s3"  json:"s3,omitempty" yaml:"s3"`
+	Directory *directory.Config `mapstructure:"directory" json:"directory,omitempty" yaml:"directory"`
 }
 
 type LogConfig struct {
-	Format string `mapstructure:"format" yaml:"format"`
-	Level  string `mapstructure:"level" yaml:"level"`
+	Format string `mapstructure:"format" yaml:"format" json:"format,omitempty"`
+	Level  string `mapstructure:"level" yaml:"level" json:"level,omitempty"`
 }
 
 type Dump struct {
-	PgDumpOptions  pgdump.Options `mapstructure:"pg_dump_options" yaml:"pg_dump_options"`
-	Transformation []*Table       `mapstructure:"transformation" yaml:"transformation"`
+	PgDumpOptions  pgdump.Options `mapstructure:"pg_dump_options" yaml:"pg_dump_options" json:"pg_dump_options"`
+	Transformation []*Table       `mapstructure:"transformation" yaml:"transformation" json:"transformation,omitempty"`
 }
 
 type Restore struct {
-	PgRestoreOptions pgrestore.Options             `mapstructure:"pg_restore_options" yaml:"pgRestoreOptions"`
-	Scripts          map[string][]pgrestore.Script `mapstructure:"scripts" yaml:"scripts"`
+	PgRestoreOptions pgrestore.Options             `mapstructure:"pg_restore_options" yaml:"pg_restore_options" json:"pg_restore_options"`
+	Scripts          map[string][]pgrestore.Script `mapstructure:"scripts" yaml:"scripts" json:"scripts,omitempty"`
 }
 
 type TransformerSettings struct {
-	NoValidateSchema           bool     `mapstructure:"no_validate_schema" yaml:"no_validate_schema"`
-	ResolvedValidationWarnings []string `mapstructure:"resolved_validation_warnings" yaml:"resolved_validation_warnings"`
+	NoValidateSchema           bool     `mapstructure:"no_validate_schema" yaml:"no_validate_schema" json:"no_validate_schema,omitempty"`
+	ResolvedValidationWarnings []string `mapstructure:"resolved_validation_warnings" yaml:"resolved_validation_warnings" json:"resolved_validation_warnings,omitempty"`
 }
 
 type TransformerConfig struct {
-	Name     string                         `mapstructure:"name" yaml:"name"`
-	Settings TransformerSettings            `mapstructure:"settings" yaml:"settings"`
-	Params   map[string]toolkit.ParamsValue `mapstructure:"params" yaml:"params"`
+	Name     string               `mapstructure:"name" yaml:"name" json:"name,omitempty"`
+	Settings *TransformerSettings `mapstructure:"settings,omitempty" yaml:"settings,omitempty" json:"settings,omitempty"`
+	Params   toolkit.Params       `mapstructure:"params" yaml:"params" json:"params,omitempty"`
 }
 
 type Table struct {
-	Schema              string               `mapstructure:"schema" yaml:"schema"`
-	Name                string               `mapstructure:"name" yaml:"name"`
-	Query               string               `mapstructure:"query" yaml:"query"`
-	ApplyForInherited   bool                 `mapstructure:"apply_for_inherited" yaml:"apply_for_inherited"`
-	Transformers        []*TransformerConfig `mapstructure:"transformers" yaml:"transformers"`
-	ColumnsTypeOverride map[string]string    `mapstructure:"columns_type_override" yaml:"columns_type_override"`
+	Schema              string               `mapstructure:"schema" yaml:"schema" json:"schema,omitempty"`
+	Name                string               `mapstructure:"name" yaml:"name" json:"name,omitempty"`
+	Query               string               `mapstructure:"query" yaml:"query" json:"query,omitempty"`
+	ApplyForInherited   bool                 `mapstructure:"apply_for_inherited" yaml:"apply_for_inherited" json:"apply_for_inherited,omitempty"`
+	Transformers        []*TransformerConfig `mapstructure:"transformers" yaml:"transformers" json:"transformers,omitempty"`
+	ColumnsTypeOverride map[string]string    `mapstructure:"columns_type_override" yaml:"columns_type_override" json:"columns_type_override,omitempty"`
 }

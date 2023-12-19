@@ -27,7 +27,7 @@ const (
 )
 
 type TransformerDefinition struct {
-	Name                     string                   `mapstructure:"Name" yaml:"Name" json:"Name"`
+	Name                     string                   `mapstructure:"name" yaml:"name" json:"name"`
 	Description              string                   `mapstructure:"description" yaml:"description" json:"description"`
 	Executable               string                   `mapstructure:"executable" yaml:"executable" json:"executable"`
 	Args                     []string                 `mapstructure:"args" yaml:"args" json:"args"`
@@ -38,5 +38,5 @@ type TransformerDefinition struct {
 	AutoDiscoveryTimeout     time.Duration            `mapstructure:"auto_discovery_timeout" yaml:"auto_discovery_timeout" json:"auto_discovery_timeout"`
 	RowTransformationTimeout time.Duration            `mapstructure:"row_transformation_timeout" yaml:"row_transformation_timeout" json:"row_transformation_timeout"`
 	ExpectedExitCode         int                      `mapstructure:"expected_exit_code" yaml:"expected_exit_code" json:"expected_exit_code"`
-	Driver                   *toolkit.RowDriverParams `mapstructure:"drvier" yaml:"driver" json:"driver"`
+	Driver                   *toolkit.RowDriverParams `mapstructure:"driver" yaml:"driver" json:"driver"`
 }

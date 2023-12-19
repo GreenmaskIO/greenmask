@@ -15,6 +15,7 @@
 package toolkit
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"slices"
@@ -23,7 +24,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-type Unmarshaller func(parameter *Parameter, tableDriver *Driver, src []byte) (any, error)
+type Unmarshaller func(parameter *Parameter, driver *Driver, src ParamsValue) (any, error)
 type RawValueValidator func(p *Parameter, v ParamsValue) (ValidationWarnings, error)
 
 const WithoutMaxLength = -1
@@ -58,7 +59,7 @@ type ColumnProperties struct {
 
 func NewColumnProperties() *ColumnProperties {
 	return &ColumnProperties{
-		Nullable:  true,
+		Nullable:  false,
 		MaxLength: WithoutMaxLength,
 	}
 }
@@ -172,13 +173,13 @@ func (p *Parameter) Value() (any, error) {
 	if p.LinkedColumnParameter != nil {
 		// Parsing dynamically - default value and type are unknown
 		// TODO: Be careful - this may cause an error in Scan func if the the returning value is not a pointer
-		val, err := p.Driver.DecodeByTypeOid(uint32(p.LinkedColumnParameter.Column.TypeOid), p.rawValue)
+		val, err := p.Driver.DecodeValueByTypeOid(uint32(p.LinkedColumnParameter.Column.TypeOid), p.rawValue)
 		if err != nil {
 			return nil, fmt.Errorf("unable to scan parameter via Driver: %w", err)
 		}
 		p.value = val
 	} else if p.CastDbType != "" {
-		val, err := p.Driver.DecodeByTypeName(p.CastDbType, p.rawValue)
+		val, err := p.Driver.DecodeValueByTypeName(p.CastDbType, p.rawValue)
 		if err != nil {
 			return nil, fmt.Errorf("unable to scan parameter via Driver: %w", err)
 		}
@@ -215,14 +216,14 @@ func (p *Parameter) Scan(dest any) (empty bool, err error) {
 		// Perform decoding via pgx Driver
 		switch p.value.(type) {
 		case *time.Time:
-			val, err := p.Driver.DecodeByTypeName(p.CastDbType, p.rawValue)
+			val, err := p.Driver.DecodeValueByTypeName(p.CastDbType, p.rawValue)
 			if err != nil {
 				return false, fmt.Errorf("unable to scan parameter via Driver: %w", err)
 			}
 			valTime := val.(time.Time)
 			p.value = &valTime
 		default:
-			if err := p.Driver.ScanByTypeName(p.CastDbType, p.rawValue, p.value); err != nil {
+			if err := p.Driver.ScanValueByTypeName(p.CastDbType, p.rawValue, p.value); err != nil {
 				return false, fmt.Errorf("unable to scan parameter via Driver: %w", err)
 			}
 		}
@@ -235,14 +236,14 @@ func (p *Parameter) Scan(dest any) (empty bool, err error) {
 
 		switch p.value.(type) {
 		case *time.Time:
-			val, err := p.Driver.DecodeByTypeOid(uint32(p.LinkedColumnParameter.Column.TypeOid), p.rawValue)
+			val, err := p.Driver.DecodeValueByTypeOid(uint32(p.LinkedColumnParameter.Column.TypeOid), p.rawValue)
 			if err != nil {
 				return false, fmt.Errorf("unable to scan parameter via Driver: %w", err)
 			}
 			valTime := val.(time.Time)
 			p.value = &valTime
 		default:
-			if err := p.Driver.ScanByTypeOid(uint32(p.LinkedColumnParameter.Column.TypeOid), p.rawValue, p.value); err != nil {
+			if err := p.Driver.ScanValueByTypeOid(uint32(p.LinkedColumnParameter.Column.TypeOid), p.rawValue, p.value); err != nil {
 				return false, fmt.Errorf("unable to scan parameter via Driver: %w", err)
 			}
 		}
@@ -353,6 +354,9 @@ func (p *Parameter) Init(driver *Driver, types []*Type, params []*Parameter, raw
 		w, err := p.RawValueValidator(p, p.rawValue)
 		if err != nil {
 			return nil, fmt.Errorf("error performing parameter raw value validation: %w", err)
+		}
+		for _, w := range warnings {
+			w.AddMeta("ParameterName", p.Name)
 		}
 		warnings = append(warnings, w...)
 		if w.IsFatal() {

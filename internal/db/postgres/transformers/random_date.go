@@ -59,11 +59,11 @@ var RandomDateTransformerDefinition = utils.NewDefinition(
 	toolkit.MustNewParameter(
 		"truncate",
 		fmt.Sprintf("truncate date till the part (%s)", strings.Join(truncateParts, ", ")),
-	),
+	).SetRawValueValidator(ValidateDateTruncationParameterValue),
 
 	toolkit.MustNewParameter(
 		"keep_null",
-		"do not replace NULL values to random value",
+		"indicates that NULL values must not be replaced with transformed values",
 	).SetDefaultValue(toolkit.ParamsValue("true")),
 )
 
@@ -180,7 +180,7 @@ func (rdt *RandomDateTransformer) Done(ctx context.Context) error {
 }
 
 func (rdt *RandomDateTransformer) Transform(ctx context.Context, r *toolkit.Record) (*toolkit.Record, error) {
-	valAny, err := r.GetRawAttributeValueByIdx(rdt.columnIdx)
+	valAny, err := r.GetRawColumnValueByIdx(rdt.columnIdx)
 	if err != nil {
 		return nil, fmt.Errorf("unable to scan value: %w", err)
 	}
@@ -189,7 +189,7 @@ func (rdt *RandomDateTransformer) Transform(ctx context.Context, r *toolkit.Reco
 	}
 
 	res := rdt.generate(rdt.rand, rdt.min, rdt.delta, &rdt.truncate)
-	if err := r.SetAttributeValueByIdx(rdt.columnIdx, res); err != nil {
+	if err := r.SetColumnValueByIdx(rdt.columnIdx, res); err != nil {
 		return nil, fmt.Errorf("unable to set new value: %w", err)
 	}
 	return r, nil

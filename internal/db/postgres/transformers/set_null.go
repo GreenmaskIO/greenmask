@@ -32,7 +32,8 @@ var SetNullTransformerDefinition = utils.NewDefinition(
 		"column",
 		"column name",
 	).SetIsColumn(toolkit.NewColumnProperties().
-		SetAffected(true),
+		SetAffected(true).
+		SetNullable(true),
 	).SetRequired(true),
 )
 
@@ -77,7 +78,7 @@ func (sut *SetNullTransformer) Done(ctx context.Context) error {
 }
 
 func (sut *SetNullTransformer) Transform(ctx context.Context, r *toolkit.Record) (*toolkit.Record, error) {
-	if err := r.SetAttributeValueByIdx(sut.columnIdx, toolkit.NewValue(nil, true)); err != nil {
+	if err := r.SetColumnValueByIdx(sut.columnIdx, toolkit.NewValue(nil, true)); err != nil {
 		return nil, fmt.Errorf("unable to set new value: %w", err)
 	}
 	return r, nil

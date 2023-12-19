@@ -24,6 +24,8 @@ import (
 
 	"github.com/rs/zerolog"
 	"golang.org/x/sync/errgroup"
+
+	"github.com/greenmaskio/greenmask/internal/utils/reader"
 )
 
 func Run(ctx context.Context, logger *zerolog.Logger, name string, args ...string) error {
@@ -51,7 +53,7 @@ func Run(ctx context.Context, logger *zerolog.Logger, name string, args ...strin
 				return gtx.Err()
 			default:
 			}
-			line, _, err := lineScanner.ReadLine()
+			line, err := reader.ReadLine(lineScanner)
 			if err != nil {
 				if errors.Is(err, io.EOF) {
 					return nil
@@ -71,7 +73,7 @@ func Run(ctx context.Context, logger *zerolog.Logger, name string, args ...strin
 				return gtx.Err()
 			default:
 			}
-			line, _, err := lineScanner.ReadLine()
+			line, err := reader.ReadLine(lineScanner)
 			if err != nil {
 				if errors.Is(err, io.EOF) {
 					return nil

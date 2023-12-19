@@ -87,7 +87,7 @@ func TestTemplateRecordTransformer_Transform_json(t *testing.T) {
 	var columnName = "doc"
 	var template = `
 	  {{ $val := .GetRawColumnValue "doc" }}
-	  {{ mustJsonSet "name" "hello" $val | mustJsonValidate | .SetColumnValue "doc" }}
+	  {{ jsonSet "name" "hello" $val | jsonValidate | .SetColumnValue "doc" }}
 	`
 
 	tests := []struct {

@@ -1,0 +1,34 @@
+common:
+  pg_bin_path: "/usr/lib/postgresql/16/bin"
+  tmp_dir: "/tmp"
+
+storage:
+  s3:
+    endpoint: "http://playground-storage:9000"
+    bucket: "adventureworks"
+    region: "us-east-1"
+    access_key_id: "Q3AM3UQ867SPQQA43P2F"
+    secret_access_key: "zuf+tfteSlswRu7BJ86wekitnifILbZam1KYY3TG"
+
+validate:
+#  resolved_warnings:
+#    - "aa808fb574a1359c6606e464833feceb"
+
+dump:
+  pg_dump_options: # pg_dump option that will be provided
+    dbname: "host=playground-db user=postgres password=example dbname=original"
+    jobs: 10
+
+  transformation: # List of tables to transform
+    - schema: "humanresources" # Table schema
+      name: "employee"  # Table name
+      transformers: # List of transformers to apply
+        - name: "NoiseDate" # name of transformers
+          params: # Transformer parameters
+            ratio: "10 year 9 mon 1 day"
+            column: "birthdate" # Column parameter - this transformer affects scheduled_departure column
+
+restore:
+  pg_restore_options: # pg_restore option (you can use the same options as pg_restore has)
+    jobs: 10
+    dbname: "host=db user=postgres password=example dbname=transformed"

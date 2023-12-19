@@ -154,4 +154,4 @@ interaction protocols, such as HTTP or Socket, for conducting obfuscation proced
 * Email: **support@greenmask.io**
 * [Twitter](https://twitter.com/GreenmaskIO)
 * [Telegram](https://t.me/greenmask_community)
-* [Discord](https://discord.gg/97AKHdGD)
+* [Discord](https://discord.com/invite/rKBKvDECfd)

@@ -14,7 +14,10 @@
 
 package toolkit
 
-import "fmt"
+import (
+	"encoding/json"
+	"fmt"
+)
 
 // RawRecordStr - record data transfer object for interaction with custom transformer via PIPE
 type RawRecordStr map[int]*RawValueStr

@@ -26,6 +26,7 @@ import (
 	"github.com/greenmaskio/greenmask/internal/domains"
 	"github.com/greenmaskio/greenmask/internal/storages"
 	"github.com/greenmaskio/greenmask/internal/storages/directory"
+	"github.com/greenmaskio/greenmask/internal/utils/reader"
 	stringsUtils "github.com/greenmaskio/greenmask/internal/utils/strings"
 	"github.com/greenmaskio/greenmask/pkg/toolkit"
 )
@@ -317,7 +318,7 @@ func (v *Validate) printHorizontally(ctx context.Context, t *dump.Table) error {
 		diffValues[idx] = make([]*toolkit.RawValue, 2)
 	}
 	for {
-		line, _, err := r.ReadLine()
+		line, err := reader.ReadLine(r)
 		if err != nil {
 			if errors.Is(err, io.EOF) {
 				break
@@ -403,7 +404,7 @@ func (v *Validate) printHorizontallyWithDiff(ctx context.Context, t *dump.Table)
 		var originalValue, transformedValue *toolkit.RawValue
 
 		if v.config.Validate.Diff {
-			originalLine, _, err = r.ReadLine()
+			originalLine, err = reader.ReadLine(r)
 			if err != nil {
 				if errors.Is(err, io.EOF) {
 					break
@@ -415,7 +416,7 @@ func (v *Validate) printHorizontallyWithDiff(ctx context.Context, t *dump.Table)
 				break
 			}
 
-			transformedLine, _, err = r.ReadLine()
+			transformedLine, err = reader.ReadLine(r)
 			if err != nil {
 				return fmt.Errorf("unable to read line: %w", err)
 			}
@@ -427,7 +428,7 @@ func (v *Validate) printHorizontallyWithDiff(ctx context.Context, t *dump.Table)
 				return fmt.Errorf("error decoding copy line: %w", err)
 			}
 		} else {
-			transformedLine, _, err = r.ReadLine()
+			transformedLine, err = reader.ReadLine(r)
 			if err != nil {
 				if errors.Is(err, io.EOF) {
 					break
@@ -579,7 +580,7 @@ func (v *Validate) printVertically(ctx context.Context, t *dump.Table) error {
 		var originalValue, transformedValue *toolkit.RawValue
 
 		if v.config.Validate.Diff {
-			originalLine, _, err = r.ReadLine()
+			originalLine, err = reader.ReadLine(r)
 			if err != nil {
 				if errors.Is(err, io.EOF) {
 					break
@@ -591,7 +592,7 @@ func (v *Validate) printVertically(ctx context.Context, t *dump.Table) error {
 				break
 			}
 
-			transformedLine, _, err = r.ReadLine()
+			transformedLine, err = reader.ReadLine(r)
 			if err != nil {
 				return fmt.Errorf("unable to read line: %w", err)
 			}
@@ -603,7 +604,7 @@ func (v *Validate) printVertically(ctx context.Context, t *dump.Table) error {
 				return fmt.Errorf("error decoding copy line: %w", err)
 			}
 		} else {
-			transformedLine, _, err = r.ReadLine()
+			transformedLine, err = reader.ReadLine(r)
 			if err != nil {
 				if errors.Is(err, io.EOF) {
 					break

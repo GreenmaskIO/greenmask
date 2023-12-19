@@ -110,7 +110,7 @@ func TestNoiseFloatTransformer_Transform(t *testing.T) {
 			)
 			require.NoError(t, err)
 			var res float64
-			isNull, err := r.ScanAttributeValueByName(tt.columnName, &res)
+			isNull, err := r.ScanColumnValueByName(tt.columnName, &res)
 			require.NoError(t, err)
 			assert.False(t, isNull)
 			if !isNull {

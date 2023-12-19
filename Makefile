@@ -11,8 +11,7 @@ LDFLAGS ?= -X main.version=$(VERSION)
 tests: unittest
 
 unittest:
-	go list ./... | xargs go vet
-	go test $(TEST_FILES)
+	go list ./... | grep -E 'internal|pkg' | xargs go test -v
 
 coverage:
 	go list ./... | grep -E 'internal|pkg' | xargs go test -v -coverprofile=$(COVERAGE_FILE) | grep -v 'no test files'

@@ -57,7 +57,7 @@ func (ta *TextApi) GetRowDriverFromRecord(r *Record) (RowDriver, error) {
 		return ta.emptyRecord, nil
 	}
 
-	v, err := r.GetRawAttributeValueByIdx(ta.columnIdx)
+	v, err := r.GetRawColumnValueByIdx(ta.columnIdx)
 	if err != nil {
 		return nil, fmt.Errorf("error getting raw attribute: %w", err)
 	}
@@ -70,7 +70,7 @@ func (ta *TextApi) SetRowDriverToRecord(rd RowDriver, r *Record) error {
 	if err != nil {
 		return fmt.Errorf(`error getting column "%s" value: %w`, ta.attributeName, err)
 	}
-	err = r.SetRawAttributeValueByIdx(ta.columnIdx, v)
+	err = r.SetRawColumnValueByIdx(ta.columnIdx, v)
 	if err != nil {
 		return fmt.Errorf(`error setting column "%s" value to record: %w`, ta.attributeName, err)
 	}

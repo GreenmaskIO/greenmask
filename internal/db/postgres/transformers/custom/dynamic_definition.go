@@ -15,13 +15,17 @@
 package custom
 
 import (
+	"bufio"
+	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"os/exec"
 	"strings"
 	"syscall"
 
+	"github.com/greenmaskio/greenmask/internal/utils/reader"
 	"github.com/rs/zerolog/log"
 	"golang.org/x/sync/errgroup"
 
@@ -72,6 +76,39 @@ func GetDynamicTransformerDefinition(ctx context.Context, executable string, arg
 			return fmt.Errorf("error reading stderr pipe: %w", err)
 		}
 		if err = cmd.Wait(); err != nil {
+			if len(stdoutData) > 0 {
+				log.Info().
+					Err(err).
+					Str("Executable", executable).
+					Str("Args", strings.Join(args, " ")).
+					Msg("custom transformer stdout forwarding")
+
+				buf := bufio.NewReader(bytes.NewBuffer(stdoutData))
+				for {
+					line, err := reader.ReadLine(buf)
+					if err != nil {
+						break
+					}
+					fmt.Printf("\tDATA: %s\n", string(line))
+				}
+
+			}
+			if len(stderrData) > 0 {
+				log.Info().
+					Err(err).
+					Str("Executable", executable).
+					Str("Args", strings.Join(args, " ")).
+					Msg("custom transformer stderr forwarding")
+
+				buf := bufio.NewReader(bytes.NewBuffer(stderrData))
+				for {
+					line, err := reader.ReadLine(buf)
+					if err != nil {
+						break
+					}
+					fmt.Printf("\tDATA: %s\n", string(line))
+				}
+			}
 			return fmt.Errorf("error running custom transformer: %w", err)
 		}
 		return nil
@@ -131,7 +168,7 @@ func GetDynamicTransformerDefinition(ctx context.Context, executable string, arg
 			Err(err).
 			Str("Executable", executable).
 			Str("Args", strings.Join(args, " ")).
-			Str("Output", string(stdoutData)).
+			RawJSON("Output", stdoutData).
 			Msg("error unmarshalling custom transformer output")
 		return nil, fmt.Errorf("error unmarshalling custom transformer output: %w", err)
 	}

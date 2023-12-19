@@ -198,7 +198,7 @@ func (jt *JsonTransformer) Done(ctx context.Context) error {
 }
 
 func (jt *JsonTransformer) Transform(ctx context.Context, r *toolkit.Record) (*toolkit.Record, error) {
-	v, err := r.GetRawAttributeValueByIdx(jt.columnIdx)
+	v, err := r.GetRawColumnValueByIdx(jt.columnIdx)
 	if err != nil {
 		return nil, fmt.Errorf("cannot scan column value: %w", err)
 	}
@@ -216,7 +216,7 @@ func (jt *JsonTransformer) Transform(ctx context.Context, r *toolkit.Record) (*t
 		}
 	}
 
-	if err = r.SetRawAttributeValueByIdx(jt.columnIdx, toolkit.NewRawValue(res, false)); err != nil {
+	if err = r.SetRawColumnValueByIdx(jt.columnIdx, toolkit.NewRawValue(res, false)); err != nil {
 		return nil, fmt.Errorf("unable to set new value: %w", err)
 	}
 

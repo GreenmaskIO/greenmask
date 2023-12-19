@@ -18,107 +18,11 @@ import (
 	"context"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/greenmaskio/greenmask/pkg/toolkit"
 )
-
-//func TestReplaceTransformer_Transform(t *testing.T) {
-//	typeMap, err := getTypeMap()
-//	require.NoError(t, err)
-//
-//	table := &toclib2.Table{
-//		Oid: 123,
-//		Columns: []*toclib2.Column{
-//			{
-//				Name:    "test",
-//				TypeOid: pgtype.TextOID,
-//			},
-//		},
-//	}
-//
-//	transformer, err := ReplaceTransformerMeta.InstanceTransformer(
-//		table,
-//		typeMap,
-//		map[string]interface{}{
-//			"column": "test",
-//		},
-//	)
-//	require.ErrorContains(t, err, "validation error")
-//
-//	transformer, err = ReplaceTransformerMeta.InstanceTransformer(
-//		table,
-//		typeMap,
-//		map[string]interface{}{
-//			"value":  "new_val",
-//			"column": "test",
-//		},
-//	)
-//	require.NoError(t, err)
-//	tr := transformer.(*ReplaceTransformer)
-//	res, err := tr.TransformAttr("old_value")
-//	require.NoError(t, err)
-//	require.Equal(t, res, "new_val")
-//
-//	table = &toclib2.Table{
-//		Oid: 123,
-//		Columns: []*toclib2.Column{
-//			{
-//				Name:    "test",
-//				TypeOid: pgtype.DateOID,
-//			},
-//		},
-//	}
-//
-//	transformer, err = ReplaceTransformerMeta.InstanceTransformer(
-//		table,
-//		typeMap,
-//		map[string]interface{}{
-//			"value":  "new_val",
-//			"column": "test",
-//		},
-//	)
-//	require.ErrorContains(t, err, "invalid date format")
-//
-//	transformer, err = ReplaceTransformerMeta.InstanceTransformer(
-//		table,
-//		typeMap,
-//		map[string]interface{}{
-//			"value":  "2023-18-05",
-//			"column": "test",
-//		},
-//	)
-//	require.NoError(t, err)
-//	tr = transformer.(*ReplaceTransformer)
-//	res, err = tr.TransformAttr("old_value")
-//	require.NoError(t, err)
-//	require.Equal(t, res, "2023-18-05")
-//
-//	table = &toclib2.Table{
-//		Oid: 123,
-//		Columns: []*toclib2.Column{
-//			{
-//				Name:    "test",
-//				TypeOid: pgtype.UUIDOID,
-//			},
-//		},
-//	}
-//
-//	transformer, err = ReplaceTransformerMeta.InstanceTransformer(
-//		table,
-//		typeMap,
-//		map[string]interface{}{
-//			"value":  "dd88a355-5dfa-4556-aaff-fe18302b285c",
-//			"column": "test",
-//		},
-//	)
-//	require.NoError(t, err)
-//	tr = transformer.(*ReplaceTransformer)
-//	res, err = tr.TransformAttr("3df11ba0-d408-42e1-9306-cd468e0669cb")
-//	require.NoError(t, err)
-//	require.Equal(t, res, "dd88a355-5dfa-4556-aaff-fe18302b285c")
-//
-//}
 
 func TestReplaceTransformer_Transform(t *testing.T) {
 
@@ -193,7 +97,7 @@ func TestReplaceTransformer_Transform(t *testing.T) {
 			)
 			require.NoError(t, err)
 
-			attVal, err := r.GetAttributeValueByName(tt.columnName)
+			attVal, err := r.GetColumnValueByName(tt.columnName)
 			require.Equal(t, tt.result.isNull, attVal.IsNull)
 			require.NoError(t, err)
 			encoded, err := r.Encode()
@@ -204,4 +108,85 @@ func TestReplaceTransformer_Transform(t *testing.T) {
 		})
 
 	}
+}
+
+func TestReplaceTransformer_Transform_with_raw_value(t *testing.T) {
+	type result struct {
+		isNull bool
+		value  string
+	}
+
+	tests := []struct {
+		name       string
+		params     map[string]toolkit.ParamsValue
+		columnName string
+		original   string
+		result     result
+	}{
+		{
+			name:       "common",
+			original:   `{}`,
+			columnName: "doc",
+			params: map[string]toolkit.ParamsValue{
+				"value": toolkit.ParamsValue(`{"test": 1234}`),
+			},
+			result: result{
+				isNull: false,
+				value:  `{"test": 1234}`,
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			driver, record := getDriverAndRecord(tt.columnName, tt.original)
+			tt.params["column"] = toolkit.ParamsValue(tt.columnName)
+			transformer, warnings, err := ReplaceTransformerDefinition.Instance(
+				context.Background(),
+				driver,
+				tt.params,
+				nil,
+			)
+			require.NoError(t, err)
+			require.Empty(t, warnings)
+
+			r, err := transformer.Transform(
+				context.Background(),
+				record,
+			)
+			require.NoError(t, err)
+
+			attVal, err := r.GetColumnValueByName(tt.columnName)
+			require.Equal(t, tt.result.isNull, attVal.IsNull)
+			require.NoError(t, err)
+			encoded, err := r.Encode()
+			require.NoError(t, err)
+			res, err := encoded.Encode()
+			require.NoError(t, err)
+			require.JSONEq(t, tt.result.value, string(res))
+		})
+
+	}
+}
+
+func TestReplaceTransformer_Transform_with_validation_error(t *testing.T) {
+
+	original := "doc"
+	columnName := "doc"
+	params := map[string]toolkit.ParamsValue{
+		"column":   toolkit.ParamsValue(columnName),
+		"value":    toolkit.ParamsValue(`{"test": 1a234}`),
+		"validate": toolkit.ParamsValue("true"),
+	}
+	driver, _ := getDriverAndRecord(columnName, original)
+
+	_, warnings, err := ReplaceTransformerDefinition.Instance(
+		context.Background(),
+		driver,
+		params,
+		nil,
+	)
+	require.NoError(t, err)
+	assert.NotEmpty(t, warnings)
+	assert.Equal(t, warnings[0].Severity, toolkit.ErrorValidationSeverity)
 }

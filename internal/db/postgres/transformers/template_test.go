@@ -12,43 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// TODO: Template transformer. Functionality
-// TemplateContext:
-//	* GetRawColumnValue - toolkit.RawValue
-//	* GetColumnValue - toolkit.Value
-//	* GetTValue - special value wrappers for templates that implements OPs with types
-//
-//
-// Provide functions:
-//  Obfuscation functions:
-//  	* NoiseInt
-//  	* NoiseFloat
-//  	* NoiseDate
-//  	* NoiseTimestamp
-//  	* NoiseTimestampTz
-//		* IntervalNoise
-//  	* RandomInt
-//  	* RandomFloat
-//  	* RandomDate
-//  	* RandomTimestamp
-//  	* RandomTimestampTz
-//  	* JsonSet
-//  	* JsonDelete
-//  	* JsonGet
-//  Cast function:
-//   	* ToInt
-//   	* ToFloat
-//   	* ToString
-//   	* ToInterval
-//      * ToJson
-//	Array ops:
-//		* ArrayFind
-//		* ArraySlice
-//		* ArrayAppend
-//		* ArrayPrepend
-//		* ArrayConcatenate
-//
-
 package transformers
 
 import (
@@ -64,13 +27,13 @@ import (
 func TestTemplateTransformer_Transform_int(t *testing.T) {
 	var columnName = "id"
 	var template = `
-		{{- $val := .GetColumnValue -}}
+		{{- $val := .GetValue -}}
 		{{- if isNull $val -}}
 			{{- null -}}
 		{{- else if eq $val 1 }}
 			{{- 123 -}}
 		{{- else -}}
-			{{- add $val 10 | .EncodeValueByColumn -}}
+			{{- add $val 10 | .EncodeValue -}}
 		{{- end -}}
 	`
 	var originalValue = "3"
@@ -104,11 +67,11 @@ func TestTemplateTransformer_Transform_int(t *testing.T) {
 func TestTemplateTransformer_Transform_timestamp(t *testing.T) {
 	var columnName = "date_ts"
 	var template = `
-		{{- $val := .GetColumnValue -}}
+		{{- $val := .GetValue -}}
 		{{- if isNull $val -}}
-			{{- now | .EncodeValueByColumn -}}
+			{{- now | .EncodeValue -}}
 		{{- else -}}
-			{{- $val | .EncodeValueByColumn -}}			
+			{{- $val | .EncodeValue -}}			
 		{{- end -}}
 	`
 	var originalValue = "\\N"

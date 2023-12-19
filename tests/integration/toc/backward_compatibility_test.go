@@ -16,6 +16,7 @@ package toc
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -23,15 +24,13 @@ import (
 	"path"
 	"time"
 
-	"github.com/jackc/pgx/v5"
-	"github.com/rs/zerolog/log"
-	"github.com/stretchr/testify/suite"
-	"gopkg.in/yaml.v3"
-
 	"github.com/greenmaskio/greenmask/internal/db/postgres/pgdump"
 	"github.com/greenmaskio/greenmask/internal/domains"
 	"github.com/greenmaskio/greenmask/internal/storages/directory"
 	"github.com/greenmaskio/greenmask/pkg/toolkit"
+	"github.com/jackc/pgx/v5"
+	"github.com/rs/zerolog/log"
+	"github.com/stretchr/testify/suite"
 )
 
 var config = &domains.Config{
@@ -117,11 +116,11 @@ func (suite *BackwardCompatibilitySuite) SetupSuite() {
 	config.Dump.PgDumpOptions.DbName = uri
 	config.Common.PgBinPath = pgBinPath
 
-	suite.configFilePath = path.Join(suite.tmpDir, "config.yml")
+	suite.configFilePath = path.Join(suite.tmpDir, "config.json")
 	confFile, err := os.Create(suite.configFilePath)
 	suite.Require().NoError(err, "error creating config.yml file")
 	defer confFile.Close()
-	err = yaml.NewEncoder(confFile).Encode(config)
+	err = json.NewEncoder(confFile).Encode(config)
 	suite.Require().NoError(err, "error encoding config into yaml")
 
 	suite.conn, err = pgx.Connect(context.Background(), uri)

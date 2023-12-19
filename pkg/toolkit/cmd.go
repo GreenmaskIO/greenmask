@@ -16,12 +16,14 @@ package toolkit
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/rs/zerolog"
@@ -37,7 +39,6 @@ type NewRowDriverFunc func() RowDriver
 type Cmd struct {
 	*cobra.Command
 	definition      *Definition
-	rawMeta         string
 	logLevel        string
 	logFormat       string
 	meta            *Meta
@@ -81,7 +82,6 @@ func (c *Cmd) setupDefaultCmd() {
 	c.PersistentFlags().BoolVar(&c.transform, "transform", false, "run transformation")
 	c.PersistentFlags().BoolVar(&c.validate, "validate", false, "validate using provided meta")
 	c.PersistentFlags().BoolVar(&c.printDefinition, "print-definition", false, "print transformer definition")
-	c.PersistentFlags().StringVar(&c.rawMeta, "meta", "", "runtime metadata")
 	c.MarkFlagsMutuallyExclusive("transform", "validate", "print-definition")
 	c.PersistentFlags().StringVar(&c.logFormat, "log-format", "text", "logging format [text|json]")
 	c.PersistentFlags().StringVar(&c.logLevel, "log-level", zerolog.LevelInfoValue,
@@ -109,10 +109,6 @@ func (c *Cmd) run(cmd *cobra.Command, args []string) {
 
 	if !c.validate && !c.transform {
 		log.Fatal().Msgf("behaviour parameter was not provided: expected one of validate transform or print-definition")
-	}
-
-	if c.rawMeta == "" {
-		log.Fatal().Msgf(`parameter "meta" is required with "validate" or "transform"`)
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -179,7 +175,8 @@ func (c *Cmd) performValidate(ctx context.Context) error {
 	}
 
 	if warnings.IsFatal() {
-		return fmt.Errorf("fatal validation warning")
+		log.Debug().Msg("got fatal validation warning")
+		return nil
 	}
 
 	warnings, err = transformer.Validate(ctx)
@@ -225,6 +222,7 @@ func (c *Cmd) performTransform(ctx context.Context) error {
 
 	record := NewRecord(driver)
 	for {
+
 		var row RowDriver
 		go func() {
 			row, err = api.Decode(ctx)
@@ -265,15 +263,45 @@ func (c *Cmd) performTransform(ctx context.Context) error {
 			return ctx.Err()
 		case <-rwChan:
 		}
-		api.Clean()
 	}
 }
 
 func (c *Cmd) init(ctx context.Context) (Transformer, *Driver, ValidationWarnings, error) {
+
+	// Read the first line from the stdin
+	readLineCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+	done := make(chan struct{})
+
+	var data []byte
+	var err error
+	go func() {
+		buf := make([]byte, 1)
+		for {
+			_, err := os.Stdin.Read(buf)
+			if err != nil {
+				log.Error().Err(err).Msg("")
+			}
+			if buf[0] == '\n' {
+				break
+			}
+			data = append(data, buf[0])
+		}
+		close(done)
+	}()
+
+	select {
+	case <-readLineCtx.Done():
+		return nil, nil, nil, fmt.Errorf("error reading metadata line: %w", readLineCtx.Err())
+	case <-done:
+	}
+	log.Debug().RawJSON("Meta", data).Msg("received meta")
+
 	meta := &Meta{}
-	if err := json.Unmarshal([]byte(c.rawMeta), meta); err != nil {
+	if err := json.Unmarshal(data, meta); err != nil {
 		return nil, nil, nil, fmt.Errorf("error umarshalling meta: %w", err)
 	}
+
 	c.meta = meta
 	if meta.Table == nil {
 		return nil, nil, nil, fmt.Errorf("error umarshalling meta: empty Table")
@@ -281,6 +309,7 @@ func (c *Cmd) init(ctx context.Context) (Transformer, *Driver, ValidationWarning
 	if err := meta.Table.Validate(); err != nil {
 		return nil, nil, nil, fmt.Errorf("metadata validation error: %w", err)
 	}
+	log.Debug().Msg("validation completed")
 
 	typeMap := pgtype.NewMap()
 	TryRegisterCustomTypes(typeMap, meta.Types, false)

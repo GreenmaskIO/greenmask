@@ -19,8 +19,6 @@ import (
 	"math"
 	"math/rand"
 	"time"
-
-	"github.com/jackc/pgx/v5/pgtype"
 )
 
 // TruncateDate - truncate date till the provided part of date
@@ -75,54 +73,15 @@ func daysInMonth(t time.Time) []int {
 	return days
 }
 
-func NoiseDatePgInterval(r *rand.Rand, interval *pgtype.Interval, t *time.Time) *time.Time {
-	var multiplayer int64 = 1
+func NoiseDateV2(r *rand.Rand, ratio time.Duration, t *time.Time) *time.Time {
+	var multiplayer time.Duration = 1
 	if r.Int31n(2) == 1 {
 		multiplayer = -1
 	}
 
-	// determining days count till the max value
-	currDateUnix := t.UnixNano()
+	dur := r.Int63n(int64(ratio))
 
-	var maxDelta int64
-	// Since each month depending on subtraction or addition may have different amount of days determine
-	// delta manually for both cases
-	if multiplayer == 1 {
-		maxDateUnix := t.AddDate(
-			0,
-			int(interval.Months),
-			int(interval.Days),
-		).Add(
-			time.Duration(interval.Microseconds) * time.Microsecond,
-		).UnixNano()
-
-		maxDelta = maxDateUnix - currDateUnix
-	} else {
-		minDateUnix := t.AddDate(
-			0,
-			int(-interval.Months),
-			int(-interval.Days),
-		).Add(
-			time.Duration(-interval.Microseconds) * time.Microsecond,
-		).UnixNano()
-
-		maxDelta = currDateUnix - minDateUnix
-	}
-
-	delta := r.Int63n(maxDelta)
-	res := time.UnixMilli((currDateUnix + (multiplayer * delta)) / int64(time.Millisecond))
-	return &res
-}
-
-func NoiseDate(r *rand.Rand, ms int64, t *time.Time) *time.Time {
-	// TODO: Implement it in the same way as NoiseDatePgInterval but with year month days, etc. with int values
-	var multiplayer int64 = 1
-	if r.Int31n(2) == 1 {
-		multiplayer = -1
-	}
-
-	delta := r.Int63n(ms)
-	res := time.UnixMicro(t.UnixMicro() + (multiplayer * delta))
+	res := t.Add(time.Duration(dur) * multiplayer)
 	return &res
 }
 

@@ -144,7 +144,7 @@ func (mt *MaskingTransformer) Done(ctx context.Context) error {
 }
 
 func (mt *MaskingTransformer) Transform(ctx context.Context, r *toolkit.Record) (*toolkit.Record, error) {
-	val, err := r.GetRawAttributeValueByIdx(mt.columnIdx)
+	val, err := r.GetRawColumnValueByIdx(mt.columnIdx)
 	if err != nil {
 		return nil, fmt.Errorf("unable to scan attribute value: %w", err)
 	}
@@ -153,7 +153,7 @@ func (mt *MaskingTransformer) Transform(ctx context.Context, r *toolkit.Record) 
 	}
 
 	maskedValue := mt.maskingFunction(string(val.Data))
-	err = r.SetRawAttributeValueByIdx(mt.columnIdx, toolkit.NewRawValue([]byte(maskedValue), false))
+	err = r.SetRawColumnValueByIdx(mt.columnIdx, toolkit.NewRawValue([]byte(maskedValue), false))
 	if err != nil {
 		return nil, fmt.Errorf("unable to set new value: %w", err)
 	}

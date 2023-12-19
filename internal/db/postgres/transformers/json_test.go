@@ -52,7 +52,7 @@ func TestJsonTransformer_Transform(t *testing.T) {
 		record,
 	)
 	require.NoError(t, err)
-	res, err := r.GetRawAttributeValueByName(attrName)
+	res, err := r.GetRawColumnValueByName(attrName)
 	require.NoError(t, err)
 
 	require.Equal(t, expectedValue.IsNull, res.IsNull)
@@ -94,12 +94,12 @@ func TestJsonTransformer_Transform_with_template(t *testing.T) {
 		record,
 	)
 	require.NoError(t, err)
-	res, err := r.GetRawAttributeValueByName(attrName)
+	res, err := r.GetRawColumnValueByName(attrName)
 	require.NoError(t, err)
 
 	require.False(t, res.IsNull)
 	resStr := gjson.GetBytes(res.Data, "name.ts").Str
-	resAny, err := driver.DecodeByTypeName("timestamptz", []byte(resStr))
+	resAny, err := driver.DecodeValueByTypeName("timestamptz", []byte(resStr))
 	require.NoError(t, err)
 	resTime := resAny.(time.Time)
 	assert.WithinRange(t, resTime, minValue, maxValue)
@@ -138,7 +138,7 @@ func TestJsonTransformer_Transform_null(t *testing.T) {
 		record,
 	)
 	require.NoError(t, err)
-	res, err := r.GetRawAttributeValueByName(attrName)
+	res, err := r.GetRawColumnValueByName(attrName)
 	require.NoError(t, err)
 	require.Equal(t, expectedValue.IsNull, res.IsNull)
 	expected := expectedValue.Value.(string)

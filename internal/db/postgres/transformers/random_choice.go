@@ -20,6 +20,8 @@ import (
 	"math/rand"
 	"time"
 
+	"github.com/tidwall/gjson"
+
 	"github.com/greenmaskio/greenmask/internal/db/postgres/transformers/utils"
 	"github.com/greenmaskio/greenmask/pkg/toolkit"
 )
@@ -41,18 +43,19 @@ var RandomChoiceTransformerDefinition = utils.NewDefinition(
 
 	toolkit.MustNewParameter(
 		"values",
-		`list of value to randomly in string format. The string with value "\N" supposed to be NULL value`,
-	).SetRequired(true),
+		`list of values in any format. The string with value "\N" supposed to be NULL value`,
+	).SetRequired(true).
+		SetUnmarshaller(randomChoiceValuesUnmarshaller),
 
 	toolkit.MustNewParameter(
 		"validate",
-		`perform encode-decode procedure using column type, ensuring that value has correct type`,
+		`perform decode procedure via PostgreSQL driver using column type, ensuring that value has correct type`,
 	).SetRequired(false).
 		SetDefaultValue(toolkit.ParamsValue("true")),
 
 	toolkit.MustNewParameter(
 		"keep_null",
-		"do not replace NULL values to random value",
+		"indicates that NULL values must not be replaced with transformed values",
 	).SetDefaultValue(toolkit.ParamsValue("true")),
 )
 
@@ -70,18 +73,19 @@ type RandomChoiceTransformer struct {
 func NewRandomChoiceTransformer(
 	ctx context.Context, driver *toolkit.Driver, parameters map[string]*toolkit.Parameter,
 ) (utils.Transformer, toolkit.ValidationWarnings, error) {
+	var warnings toolkit.ValidationWarnings
 	p := parameters["column"]
 	var columnName string
 	if _, err := p.Scan(&columnName); err != nil {
 		return nil, nil, fmt.Errorf(`unable to parse "column" param: %w`, err)
 	}
 
-	idx, _, ok := driver.GetColumnByName(columnName)
+	columnIdx, _, ok := driver.GetColumnByName(columnName)
 	if !ok {
 		return nil, nil, fmt.Errorf("column with name %s is not found", columnName)
 	}
 	affectedColumns := make(map[int]string)
-	affectedColumns[idx] = columnName
+	affectedColumns[columnIdx] = columnName
 
 	p = parameters["validate"]
 	var validate bool
@@ -96,33 +100,41 @@ func NewRandomChoiceTransformer(
 	}
 
 	p = parameters["values"]
-	var values []string
+	var values []toolkit.ParamsValue
 	if _, err := p.Scan(&values); err != nil {
 		return nil, nil, fmt.Errorf(`unable to scan "values" param: %w`, err)
 	}
-	rawValue := make([]*toolkit.RawValue, len(values))
+	rawValue := make([]*toolkit.RawValue, 0, len(values))
 	addedValues := make(map[string]struct{})
-	for _, v := range values {
-		if idx, ok := addedValues[v]; ok && validate {
-			return nil,
-				toolkit.ValidationWarnings{
-					toolkit.NewValidationWarning().
-						AddMeta("ParameterName", "values").
-						AddMeta(fmt.Sprintf("ParameterItemValue[%d]", idx), v).
-						SetMsg("value already exist in the list"),
-				},
-				nil
+	for idx, v := range values {
+
+		if _, ok := addedValues[string(v)]; ok && validate {
+			warnings = append(warnings,
+				toolkit.NewValidationWarning().
+					SetSeverity(toolkit.ErrorValidationSeverity).
+					AddMeta("ParameterName", "values").
+					AddMeta(fmt.Sprintf("ParameterItemValue[%d]", idx), v).
+					SetMsg("value already exist in the list"),
+			)
 		}
 
 		if validate {
-			if v != defaultNullSeq {
-				if err := validateValue([]byte(v), driver, idx); err != nil {
-					return nil, nil, fmt.Errorf(`error validating value "%s": %w`, v, err)
+			if string(v) != defaultNullSeq {
+				if err := validateValue(v, driver, columnIdx); err != nil {
+					warnings = append(warnings,
+						toolkit.NewValidationWarning().
+							SetSeverity(toolkit.ErrorValidationSeverity).
+							AddMeta("ParameterName", "values").
+							AddMeta(fmt.Sprintf("ParameterItemValue[%d]", idx), string(v)).
+							AddMeta("Error", err.Error()).
+							SetMsg("error validating value: driver decoding error"),
+					)
+					continue
 				}
 			}
 		}
 
-		if v == defaultNullSeq {
+		if string(v) == defaultNullSeq {
 			rawValue = append(rawValue, toolkit.NewRawValue(nil, true))
 		} else {
 			rawValue = append(rawValue, toolkit.NewRawValue([]byte(v), false))
@@ -131,30 +143,30 @@ func NewRandomChoiceTransformer(
 
 	return &RandomChoiceTransformer{
 		columnName:      columnName,
-		columnIdx:       idx,
+		columnIdx:       columnIdx,
 		values:          rawValue,
 		validate:        validate,
 		affectedColumns: affectedColumns,
 		rand:            rand.New(rand.NewSource(time.Now().UnixMicro())),
 		keepNull:        keepNull,
 		length:          len(rawValue),
-	}, nil, nil
+	}, warnings, nil
 }
 
-func (ht *RandomChoiceTransformer) GetAffectedColumns() map[int]string {
-	return ht.affectedColumns
+func (rct *RandomChoiceTransformer) GetAffectedColumns() map[int]string {
+	return rct.affectedColumns
 }
 
-func (ht *RandomChoiceTransformer) Init(ctx context.Context) error {
+func (rct *RandomChoiceTransformer) Init(ctx context.Context) error {
 	return nil
 }
 
-func (ht *RandomChoiceTransformer) Done(ctx context.Context) error {
+func (rct *RandomChoiceTransformer) Done(ctx context.Context) error {
 	return nil
 }
 
 func (rct *RandomChoiceTransformer) Transform(ctx context.Context, r *toolkit.Record) (*toolkit.Record, error) {
-	val, err := r.GetRawAttributeValueByIdx(rct.columnIdx)
+	val, err := r.GetRawColumnValueByIdx(rct.columnIdx)
 	if err != nil {
 		return nil, fmt.Errorf("unable to scan value: %w", err)
 	}
@@ -162,11 +174,42 @@ func (rct *RandomChoiceTransformer) Transform(ctx context.Context, r *toolkit.Re
 		return r, nil
 	}
 
-	if err = r.SetRawAttributeValueByIdx(rct.columnIdx, rct.values[rct.rand.Intn(rct.length)]); err != nil {
+	if err = r.SetRawColumnValueByIdx(rct.columnIdx, rct.values[rct.rand.Intn(rct.length)]); err != nil {
 		return nil, fmt.Errorf("unable to set new value: %w", err)
 	}
 
 	return r, nil
+}
+
+func getRawValue(data toolkit.ParamsValue) toolkit.ParamsValue {
+	resResponse := gjson.GetBytes(data, "@this")
+	switch v := resResponse.Value().(type) {
+	case string:
+		return toolkit.ParamsValue(v)
+	default:
+		return data
+	}
+}
+
+func randomChoiceValuesUnmarshaller(parameter *toolkit.Parameter, driver *toolkit.Driver, src toolkit.ParamsValue) (any, error) {
+	var res []toolkit.ParamsValue
+	getResult := gjson.GetBytes(src, "@this")
+	if !getResult.Exists() {
+		return nil, fmt.Errorf("error parsing raw value: value is empty or has wrong format")
+	}
+	if !getResult.IsArray() {
+		return nil, fmt.Errorf("error parsing raw value: value is not an array")
+	}
+
+	for _, i := range getResult.Array() {
+		switch v := i.Value().(type) {
+		case string:
+			res = append(res, toolkit.ParamsValue(v))
+		default:
+			res = append(res, toolkit.ParamsValue(i.Raw))
+		}
+	}
+	return &res, nil
 }
 
 func init() {

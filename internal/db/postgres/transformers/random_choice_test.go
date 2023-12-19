@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/rs/zerolog/log"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -34,7 +35,7 @@ func TestRandomChoiceTransformer_Transform_with_fail(t *testing.T) {
 	)
 	require.NoError(t, err)
 
-	res, err := r.GetRawAttributeValueByName(string(params["column"]))
+	res, err := r.GetRawColumnValueByName(string(params["column"]))
 	require.NoError(t, err)
 	assert.False(t, res.IsNull)
 	val := string(res.Data)
@@ -57,7 +58,39 @@ func TestRandomChoiceTransformer_Transform_validation_error(t *testing.T) {
 		driver, params,
 		nil,
 	)
-	require.Error(t, err)
-	require.ErrorContains(t, err, "error validating value")
+	require.NoError(t, err)
+	require.NotEmpty(t, warnings)
+	require.True(t, warnings.IsFatal())
+}
+
+func TestRandomChoiceTransformer_Transform_json(t *testing.T) {
+
+	original := `{"f": 4}`
+
+	params := map[string]toolkit.ParamsValue{
+		"column":   toolkit.ParamsValue("doc"),
+		"values":   toolkit.ParamsValue(`[{"a": 1}, {"b": 2}, {"c": 3}]`),
+		"validate": toolkit.ParamsValue(`true`),
+	}
+
+	driver, record := getDriverAndRecord(string(params["column"]), original)
+	transformer, warnings, err := RandomChoiceTransformerDefinition.Instance(
+		context.Background(),
+		driver, params,
+		nil,
+	)
+	require.NoError(t, err)
 	require.Empty(t, warnings)
+	r, err := transformer.Transform(
+		context.Background(),
+		record,
+	)
+	require.NoError(t, err)
+
+	res, err := r.GetRawColumnValueByName(string(params["column"]))
+	require.NoError(t, err)
+	assert.False(t, res.IsNull)
+	val := string(res.Data)
+	log.Debug().Msg(val)
+	require.True(t, val == `{"a": 1}` || val == `{"b": 2}` || val == `{"c": 3}`)
 }

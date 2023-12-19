@@ -26,14 +26,14 @@ import (
 func TestHashTransformer_Transform(t *testing.T) {
 	var attrName = "data"
 	var originalValue = "old_value"
-	var expectedValue = toolkit.NewValue("9n+v7qGp0ua+DgXtC9ClyjPHjWvWin6fKAmX5bZjcX4=", false)
+	var expectedValue = toolkit.NewValue("jzTVGK2UHz3ERhrYiZDoDzcKeMxSsgxHHgWlL9OrkZ4=", false)
 	driver, record := getDriverAndRecord(attrName, originalValue)
 
 	transformer, warnings, err := HashTransformerDefinition.Instance(
 		context.Background(),
 		driver, map[string]toolkit.ParamsValue{
 			"column": toolkit.ParamsValue(attrName),
-			"salt":   toolkit.ParamsValue("12345678"),
+			"salt":   toolkit.ParamsValue("MTIzNDU2Nw=="),
 		},
 		nil,
 	)
@@ -45,21 +45,21 @@ func TestHashTransformer_Transform(t *testing.T) {
 		record,
 	)
 	require.NoError(t, err)
-	res, err := r.GetAttributeValueByName(attrName)
+	res, err := r.GetColumnValueByName(attrName)
 	require.NoError(t, err)
 
 	require.Equal(t, expectedValue.IsNull, res.IsNull)
 	require.Equal(t, expectedValue.Value, res.Value)
 
 	originalValue = "123asdasdasdaasdlmaklsdmklamsdlkmalksdmlkamsdlkmalkdmlkasds"
-	expectedValue = toolkit.NewValue("/nxN6Mxi8y5Ec33HUQhZPTq/nVJYNGx3uwNB61M/9SQ=", false)
+	expectedValue = toolkit.NewValue("kZsJbWbVoBGMqniHTCzU6fJrxQdlfeqhYIUxOo3JniA=", false)
 	_, record = getDriverAndRecord(attrName, originalValue)
 	r, err = transformer.Transform(
 		context.Background(),
 		record,
 	)
 	require.NoError(t, err)
-	res, err = r.GetAttributeValueByName(attrName)
+	res, err = r.GetColumnValueByName(attrName)
 	require.NoError(t, err)
 
 	require.Equal(t, expectedValue.IsNull, res.IsNull)

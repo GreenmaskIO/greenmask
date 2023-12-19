@@ -37,7 +37,7 @@ var RandomFloatTransformerDefinition = utils.NewDefinition(
 		"column name",
 	).SetIsColumn(toolkit.NewColumnProperties().
 		SetAffected(true).
-		SetAllowedColumnTypes("float4", "float8"),
+		SetAllowedColumnTypes("float4", "float8", "numeric"),
 	).SetRequired(true),
 
 	toolkit.MustNewParameter(
@@ -57,7 +57,7 @@ var RandomFloatTransformerDefinition = utils.NewDefinition(
 
 	toolkit.MustNewParameter(
 		"keep_null",
-		"do not replace NULL values to random value",
+		"indicates that NULL values must not be replaced with transformed values",
 	).SetDefaultValue(toolkit.ParamsValue("true")),
 )
 
@@ -135,7 +135,7 @@ func (rft *RandomFloatTransformer) Done(ctx context.Context) error {
 }
 
 func (rft *RandomFloatTransformer) Transform(ctx context.Context, r *toolkit.Record) (*toolkit.Record, error) {
-	valAny, err := r.GetRawAttributeValueByIdx(rft.columnIdx)
+	valAny, err := r.GetRawColumnValueByIdx(rft.columnIdx)
 	if err != nil {
 		return nil, fmt.Errorf("unable to scan value: %w", err)
 	}
@@ -143,7 +143,7 @@ func (rft *RandomFloatTransformer) Transform(ctx context.Context, r *toolkit.Rec
 		return r, nil
 	}
 
-	err = r.SetAttributeValueByIdx(rft.columnIdx, utils.RandomFloat(rft.rand, rft.min, rft.max, rft.precision))
+	err = r.SetColumnValueByIdx(rft.columnIdx, utils.RandomFloat(rft.rand, rft.min, rft.max, rft.precision))
 	if err != nil {
 		return nil, fmt.Errorf("unable to set new value: %w", err)
 	}

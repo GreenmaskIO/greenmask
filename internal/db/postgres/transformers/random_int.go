@@ -37,7 +37,7 @@ var RandomIntTransformerDefinition = utils.NewDefinition(
 		"column name",
 	).SetIsColumn(toolkit.NewColumnProperties().
 		SetAffected(true).
-		SetAllowedColumnTypes("int2", "int4", "int8"),
+		SetAllowedColumnTypes("int2", "int4", "int8", "numeric"),
 	).SetRequired(true),
 
 	toolkit.MustNewParameter(
@@ -52,7 +52,7 @@ var RandomIntTransformerDefinition = utils.NewDefinition(
 
 	toolkit.MustNewParameter(
 		"keep_null",
-		"do not replace NULL values to random value",
+		"indicates that NULL values must not be replaced with transformed values",
 	).SetDefaultValue(toolkit.ParamsValue("true")),
 )
 
@@ -130,7 +130,7 @@ func (rit *RandomIntTransformer) Done(ctx context.Context) error {
 }
 
 func (rit *RandomIntTransformer) Transform(ctx context.Context, r *toolkit.Record) (*toolkit.Record, error) {
-	val, err := r.GetRawAttributeValueByIdx(rit.columnIdx)
+	val, err := r.GetRawColumnValueByIdx(rit.columnIdx)
 	if err != nil {
 		return nil, fmt.Errorf("unable to scan value: %w", err)
 	}
@@ -138,7 +138,7 @@ func (rit *RandomIntTransformer) Transform(ctx context.Context, r *toolkit.Recor
 		return r, nil
 	}
 
-	if err := r.SetAttributeValueByIdx(rit.columnIdx, utils.RandomInt(rit.rand, rit.min, rit.max)); err != nil {
+	if err := r.SetColumnValueByIdx(rit.columnIdx, utils.RandomInt(rit.rand, rit.min, rit.max)); err != nil {
 		return nil, fmt.Errorf("unable to set new value: %w", err)
 	}
 	return r, nil

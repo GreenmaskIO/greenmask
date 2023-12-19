@@ -70,7 +70,7 @@ func (tt *TestTransformer) Validate(ctx context.Context) (toolkit.ValidationWarn
 
 func (tt *TestTransformer) Transform(ctx context.Context, r *toolkit.Record) error {
 	now := time.Now()
-	if err := r.SetAttributeValueByName(tt.columnName, &now); err != nil {
+	if err := r.SetColumnValueByName(tt.columnName, &now); err != nil {
 		return fmt.Errorf("error setting attrbite: %w", err)
 	}
 

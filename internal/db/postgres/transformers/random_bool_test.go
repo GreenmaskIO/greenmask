@@ -77,7 +77,7 @@ func TestRandomBoolTransformer_Transform(t *testing.T) {
 			)
 			require.NoError(t, err)
 
-			val, err := r.GetAttributeValueByName(tt.columnName)
+			val, err := r.GetColumnValueByName(tt.columnName)
 			require.NoError(t, err)
 			require.Equal(t, tt.isNull, val.IsNull)
 			if !tt.isNull {

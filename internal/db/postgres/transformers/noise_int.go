@@ -102,7 +102,7 @@ func (nit *NoiseIntTransformer) Transform(ctx context.Context, r *toolkit.Record
 	// TODO: value out of rage might be possible: double check this transformer implementation
 
 	var val int64
-	isNull, err := r.ScanAttributeValueByIdx(nit.columnIdx, &val)
+	isNull, err := r.ScanColumnValueByIdx(nit.columnIdx, &val)
 	if err != nil {
 		return nil, fmt.Errorf("unable to scan value: %w", err)
 	}
@@ -110,7 +110,7 @@ func (nit *NoiseIntTransformer) Transform(ctx context.Context, r *toolkit.Record
 		return r, nil
 	}
 
-	if err := r.SetAttributeValueByIdx(nit.columnIdx, utils.NoiseInt(nit.rand, nit.ratio, val)); err != nil {
+	if err := r.SetColumnValueByIdx(nit.columnIdx, utils.NoiseInt(nit.rand, nit.ratio, val)); err != nil {
 		return nil, fmt.Errorf("unable to set new value: %w", err)
 	}
 	return r, nil

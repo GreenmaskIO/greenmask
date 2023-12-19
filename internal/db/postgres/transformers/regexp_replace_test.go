@@ -62,7 +62,7 @@ func TestRegexpReplaceTransformer_Transform2(t *testing.T) {
 			)
 			require.NoError(t, err)
 			var res string
-			isNull, err := r.ScanAttributeValueByName(tt.columnName, &res)
+			isNull, err := r.ScanColumnValueByName(tt.columnName, &res)
 			require.NoError(t, err)
 			require.False(t, isNull)
 			require.Equal(t, tt.expected, res)

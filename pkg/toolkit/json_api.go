@@ -17,10 +17,9 @@ package toolkit
 import (
 	"bufio"
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
-
-	jsoniter "github.com/json-iterator/go"
 )
 
 const (
@@ -28,7 +27,6 @@ const (
 	JsonTextFormatName  = "text"
 )
 
-var json = jsoniter.ConfigDefault
 var emptyJson = []byte("{}\n")
 
 type JsonApi struct {
@@ -37,7 +35,8 @@ type JsonApi struct {
 	tupleLength         int
 	w                   io.Writer
 	r                   io.Reader
-	encoder             *jsoniter.Encoder
+	encoder             *json.Encoder
+	decoder             *json.Decoder
 	record              RowDriver
 	reader              *bufio.Reader
 }
@@ -74,13 +73,14 @@ func (j *JsonApi) SetWriter(w io.Writer) {
 
 func (j *JsonApi) SetReader(r io.Reader) {
 	j.r = r
+	j.decoder = json.NewDecoder(r)
 	j.reader = bufio.NewReader(r)
 }
 
 func (j *JsonApi) GetRowDriverFromRecord(r *Record) (RowDriver, error) {
 	for _, columnIdx := range j.transferringColumns {
 
-		v, err := r.GetRawAttributeValueByIdx(columnIdx)
+		v, err := r.GetRawColumnValueByIdx(columnIdx)
 		if err != nil {
 			return nil, fmt.Errorf("error getting raw atribute value: %w", err)
 		}
@@ -97,7 +97,7 @@ func (j *JsonApi) SetRowDriverToRecord(rd RowDriver, r *Record) error {
 		if err != nil {
 			return fmt.Errorf(`error getting column %d value: %w`, columnIdx, err)
 		}
-		err = r.SetRawAttributeValueByIdx(columnIdx, v)
+		err = r.SetRawColumnValueByIdx(columnIdx, v)
 		if err != nil {
 			return fmt.Errorf(`error setting column %d value to record: %w`, columnIdx, err)
 		}
@@ -113,7 +113,7 @@ func (j *JsonApi) Encode(ctx context.Context, row RowDriver) (err error) {
 		}
 	} else {
 		if err = j.encoder.Encode(row); err != nil {
-			return err
+			return fmt.Errorf("error marshaling row driver: %w", err)
 		}
 	}
 
@@ -121,19 +121,11 @@ func (j *JsonApi) Encode(ctx context.Context, row RowDriver) (err error) {
 }
 
 func (j *JsonApi) Decode(ctx context.Context) (RowDriver, error) {
-	// TODO:  Review those changes later.
-	//        This may cause an error if replace Unmarshal with why json.Decode. I don't know the reason but it
-	//        unexpectedly failure on custom transformer side. I suspect it is "github.com/json-iterator/go" issue - it might be internal buffer or smth else.
-	//        I can significantly increase the interaction, but works
 
-	data, _, err := j.reader.ReadLine()
-	if err != nil {
-		return nil, fmt.Errorf("error reading line: %w", err)
-	}
-	if err = json.Unmarshal(data, &j.record); err != nil {
+	j.record.Clean()
+	if err := j.decoder.Decode(j.record); err != nil {
 		return nil, fmt.Errorf("error unmarshalling json: %w", err)
 	}
-
 	return j.record, nil
 }
 

@@ -17,27 +17,33 @@ package utils
 import (
 	"bufio"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"os/exec"
 	"strings"
 	"sync"
 	"syscall"
+	"time"
 
+	"github.com/greenmaskio/greenmask/internal/utils/reader"
 	"github.com/rs/zerolog/log"
 
 	"github.com/greenmaskio/greenmask/pkg/toolkit"
 )
 
+var ErrRowTransformationTimeout = errors.New("row transformation timeout")
+
 type CancelFunction func() error
 
 type CmdTransformerBase struct {
-	Name             string
-	Cmd              *exec.Cmd
-	ExpectedExitCode int
-	Driver           *toolkit.Driver
-	Api              toolkit.InteractionApi
-	ProcessedLines   int
+	Name                     string
+	Cmd                      *exec.Cmd
+	ExpectedExitCode         int
+	Driver                   *toolkit.Driver
+	Api                      toolkit.InteractionApi
+	ProcessedLines           int
+	RowTransformationTimeout time.Duration
 
 	StdoutReader *bufio.Reader
 	StderrReader *bufio.Reader
@@ -46,13 +52,14 @@ type CmdTransformerBase struct {
 
 	sendChan    chan struct{}
 	receiveChan chan struct{}
-	DoneCh      chan struct{}
+	opIsDone    chan struct{}
 	terminated  bool
 }
 
 func NewCmdTransformerBase(
 	name string,
 	expectedExitCode int,
+	rowTransformationTimeout time.Duration,
 	driver *toolkit.Driver,
 	api toolkit.InteractionApi,
 ) *CmdTransformerBase {
@@ -61,12 +68,13 @@ func NewCmdTransformerBase(
 	}
 
 	return &CmdTransformerBase{
-		Name:             name,
-		ExpectedExitCode: expectedExitCode,
-		Driver:           driver,
-		Api:              api,
-		ProcessedLines:   -1,
-		DoneCh:           make(chan struct{}, 1),
+		Name:                     name,
+		ExpectedExitCode:         expectedExitCode,
+		Driver:                   driver,
+		Api:                      api,
+		ProcessedLines:           -1,
+		RowTransformationTimeout: rowTransformationTimeout,
+		opIsDone:                 make(chan struct{}),
 	}
 }
 
@@ -99,25 +107,53 @@ func (ctb *CmdTransformerBase) Transform(ctx context.Context, r *toolkit.Record)
 	ctb.ProcessedLines++
 	var err error
 	var rd toolkit.RowDriver
+	ctx, cancel := context.WithTimeout(ctx, ctb.RowTransformationTimeout)
+	defer cancel()
 
 	rd, err = ctb.Api.GetRowDriverFromRecord(r)
 	if err != nil {
 		return nil, fmt.Errorf("dto api error: error getting dto: %w", err)
 	}
 
-	err = ctb.Api.Encode(ctx, rd)
-	if err != nil {
-		return nil, fmt.Errorf("dto api error: cannot send tuple to transformer: %w", err)
+	go func() {
+		err = ctb.Api.Encode(ctx, rd)
+		ctb.opIsDone <- struct{}{}
+	}()
+
+	select {
+	case <-ctx.Done():
+		if errors.Is(ctx.Err(), context.DeadlineExceeded) {
+			return nil, ErrRowTransformationTimeout
+		}
+		return nil, ctx.Err()
+	case <-ctb.opIsDone:
 	}
 
-	res, err := ctb.Api.Decode(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("dto api error: cannot receive transformed tuple from transformer: %w", err)
+		return nil, fmt.Errorf("interaction api error: cannot send tuple to transformer: %w", err)
 	}
 
-	err = ctb.Api.SetRowDriverToRecord(res, r)
+	go func() {
+		rd, err = ctb.Api.Decode(ctx)
+		ctb.opIsDone <- struct{}{}
+	}()
+
+	select {
+	case <-ctx.Done():
+		if errors.Is(ctx.Err(), context.DeadlineExceeded) {
+			return nil, ErrRowTransformationTimeout
+		}
+		return nil, ctx.Err()
+	case <-ctb.opIsDone:
+	}
+
 	if err != nil {
-		return nil, fmt.Errorf("dto api error: error setting transfomed data to record: %w", err)
+		return nil, fmt.Errorf("interaction api error: cannot receive transformed tuple from transformer: %w", err)
+	}
+
+	err = ctb.Api.SetRowDriverToRecord(rd, r)
+	if err != nil {
+		return nil, fmt.Errorf("interaction api error: error setting transfomed data to record: %w", err)
 	}
 
 	ctb.Api.Clean()
@@ -203,8 +239,8 @@ func (ctb *CmdTransformerBase) init() error {
 	ctb.StdoutReader = bufio.NewReader(stdout)
 	ctb.StdinWriter = stdin
 
-	ctb.Api.SetReader(ctb.StdoutReader)
-	ctb.Api.SetWriter(ctb.StdinWriter)
+	ctb.Api.SetReader(stdout)
+	ctb.Api.SetWriter(stdin)
 
 	cancelFunction := func() error {
 		mx := &sync.Mutex{}
@@ -213,7 +249,6 @@ func (ctb *CmdTransformerBase) init() error {
 		if ctb.terminated {
 			return nil
 		}
-		defer close(ctb.DoneCh)
 		ctb.terminated = true
 		log.Debug().
 			Str("TableSchema", ctb.Driver.Table.Schema).
@@ -280,7 +315,7 @@ func (ctb *CmdTransformerBase) init() error {
 
 func (ctb *CmdTransformerBase) ReceiveStderrLine(ctx context.Context) (line []byte, err error) {
 	go func() {
-		line, _, err = ctb.StderrReader.ReadLine()
+		line, err = reader.ReadLine(ctb.StderrReader)
 		ctb.receiveChan <- struct{}{}
 	}()
 	select {
@@ -298,7 +333,7 @@ func (ctb *CmdTransformerBase) ReceiveStderrLine(ctx context.Context) (line []by
 
 func (ctb *CmdTransformerBase) ReceiveStdoutLine(ctx context.Context) (line []byte, err error) {
 	go func() {
-		line, _, err = ctb.StdoutReader.ReadLine()
+		line, err = reader.ReadLine(ctb.StdoutReader)
 		ctb.receiveChan <- struct{}{}
 	}()
 	select {

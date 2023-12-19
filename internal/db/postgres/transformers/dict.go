@@ -53,7 +53,7 @@ var DictTransformerDefinition = utils.NewDefinition(
 		"fail_not_matched",
 		`fail if value is not matched with dict otherwise keep value`,
 	).SetRequired(false).
-		SetDefaultValue(toolkit.ParamsValue("false")),
+		SetDefaultValue(toolkit.ParamsValue("true")),
 	toolkit.MustNewParameter(
 		"validate",
 		`perform encode-decode procedure using column type, ensuring that value has correct type`,
@@ -99,25 +99,40 @@ func NewDictTransformer(
 		return nil, nil, fmt.Errorf(`unable to scan "values" param: %w`, err)
 	}
 	dict := make(map[string]*toolkit.RawValue, len(values))
+	var warnings toolkit.ValidationWarnings
 	for key, value := range values {
 		if validate {
 			// Validate key
 			if key != defaultNullSeq {
 				if err := validateValue([]byte(key), driver, idx); err != nil {
-					return nil, nil, fmt.Errorf(`error validating key "%s": %w`, key, err)
+					warnings = append(warnings,
+						toolkit.NewValidationWarning().
+							SetSeverity(toolkit.ErrorValidationSeverity).
+							AddMeta("KeyValue", key).
+							AddMeta("Error", err.Error()).
+							AddMeta("ParameterName", "values").
+							SetMsg("error validating values: error encoding key"),
+					)
 				}
 			}
 
 			// Validate value
-			if value != defaultNullSeq {
+			if string(value) != defaultNullSeq {
 				if err := validateValue([]byte(value), driver, idx); err != nil {
-					return nil, nil, fmt.Errorf(`error validating value "%s": %w`, value, err)
+					warnings = append(warnings,
+						toolkit.NewValidationWarning().
+							SetSeverity(toolkit.ErrorValidationSeverity).
+							AddMeta("ValueValue", value).
+							AddMeta("ParameterName", "values").
+							AddMeta("Error", err.Error()).
+							SetMsg("error validating values: error encoding value"),
+					)
 				}
 			}
 
 		}
 
-		if value == defaultNullSeq {
+		if string(value) == defaultNullSeq {
 			dict[key] = toolkit.NewRawValue(nil, true)
 		} else {
 			dict[key] = toolkit.NewRawValue([]byte(value), false)
@@ -136,7 +151,14 @@ func NewDictTransformer(
 			// Validate defaultValueStr
 			if defaultValueStr != defaultNullSeq {
 				if err := validateValue([]byte(defaultValueStr), driver, idx); err != nil {
-					return nil, nil, fmt.Errorf(`error validating "default_value" "%s": %w`, defaultValueStr, err)
+					warnings = append(warnings,
+						toolkit.NewValidationWarning().
+							SetSeverity(toolkit.ErrorValidationSeverity).
+							AddMeta("ParameterValue", defaultValueStr).
+							AddMeta("ParameterName", "default_value").
+							AddMeta("Error", err.Error()).
+							SetMsg("error validating \"default_value\""),
+					)
 				}
 			}
 		}
@@ -161,7 +183,7 @@ func NewDictTransformer(
 		columnName:      columnName,
 		columnIdx:       idx,
 		affectedColumns: affectedColumns,
-	}, nil, nil
+	}, warnings, nil
 }
 
 func (ht *DictTransformer) GetAffectedColumns() map[int]string {
@@ -179,7 +201,7 @@ func (ht *DictTransformer) Done(ctx context.Context) error {
 func (ht *DictTransformer) Transform(ctx context.Context, r *toolkit.Record) (*toolkit.Record, error) {
 	var val *toolkit.RawValue
 	var err error
-	val, err = r.GetRawAttributeValueByIdx(ht.columnIdx)
+	val, err = r.GetRawColumnValueByIdx(ht.columnIdx)
 	if err != nil {
 		return nil, fmt.Errorf("unable to scan attribute value: %w", err)
 	}
@@ -200,7 +222,7 @@ func (ht *DictTransformer) Transform(ctx context.Context, r *toolkit.Record) (*t
 		}
 	}
 
-	if err = r.SetRawAttributeValueByIdx(ht.columnIdx, newVal); err != nil {
+	if err = r.SetRawColumnValueByIdx(ht.columnIdx, newVal); err != nil {
 		return nil, fmt.Errorf("unable to set new value: %w", err)
 	}
 
@@ -208,7 +230,7 @@ func (ht *DictTransformer) Transform(ctx context.Context, r *toolkit.Record) (*t
 }
 
 func validateValue(data []byte, driver *toolkit.Driver, columnIdx int) error {
-	_, err := driver.DecodeAttrByIdx(columnIdx, data)
+	_, err := driver.DecodeValueByColumnIdx(columnIdx, data)
 	if err != nil {
 		return fmt.Errorf(`"unable to decode value: %w"`, err)
 	}

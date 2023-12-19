@@ -48,7 +48,7 @@ func (ca *CsvApi) SetReader(r io.Reader) {
 func (ca *CsvApi) GetRowDriverFromRecord(r *Record) (RowDriver, error) {
 	for _, columnIdx := range ca.transferringColumns {
 
-		v, err := r.GetRawAttributeValueByIdx(columnIdx)
+		v, err := r.GetRawColumnValueByIdx(columnIdx)
 		if err != nil {
 			return nil, fmt.Errorf("error getting raw atribute value: %w", err)
 		}
@@ -65,7 +65,7 @@ func (ca *CsvApi) SetRowDriverToRecord(rd RowDriver, r *Record) error {
 		if err != nil {
 			return fmt.Errorf(`error getting column %d value: %w`, columnIdx, err)
 		}
-		err = r.SetRawAttributeValueByIdx(columnIdx, v)
+		err = r.SetRawColumnValueByIdx(columnIdx, v)
 		if err != nil {
 			return fmt.Errorf(`error setting column %d value to record: %w`, columnIdx, err)
 		}

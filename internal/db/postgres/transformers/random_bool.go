@@ -43,7 +43,7 @@ var RandomBoolTransformerDefinition = utils.NewDefinition(
 
 	toolkit.MustNewParameter(
 		"keep_null",
-		"do not replace NULL values to random value",
+		"indicates that NULL values must not be replaced with transformed values",
 	).SetDefaultValue(toolkit.ParamsValue("true")),
 )
 
@@ -97,7 +97,7 @@ func (rbt *RandomBoolTransformer) Done(ctx context.Context) error {
 }
 
 func (rbt *RandomBoolTransformer) Transform(ctx context.Context, r *toolkit.Record) (*toolkit.Record, error) {
-	val, err := r.GetRawAttributeValueByIdx(rbt.columnIdx)
+	val, err := r.GetRawColumnValueByIdx(rbt.columnIdx)
 	if err != nil {
 		return nil, fmt.Errorf("unable to scan value: %w", err)
 	}
@@ -105,7 +105,7 @@ func (rbt *RandomBoolTransformer) Transform(ctx context.Context, r *toolkit.Reco
 		return r, nil
 	}
 
-	if err := r.SetAttributeValueByIdx(rbt.columnIdx, utils.RandomBool(rbt.rand)); err != nil {
+	if err := r.SetColumnValueByIdx(rbt.columnIdx, utils.RandomBool(rbt.rand)); err != nil {
 		return nil, fmt.Errorf("unable to set new value: %w", err)
 	}
 	return r, nil

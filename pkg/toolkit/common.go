@@ -14,20 +14,49 @@
 
 package toolkit
 
-import "gopkg.in/yaml.v3"
+import (
+	"encoding/json"
+	"fmt"
+)
 
 type Oid int
 type AttNum uint32
 
 type ParamsValue []byte
 
-func (pv ParamsValue) MarshalYAML() (interface{}, error) {
-	var res = map[string]interface{}{}
-	err := yaml.Unmarshal(pv, res)
+func (pv *ParamsValue) UnmarshalJSON(data []byte) error {
+	var val any
+	err := json.Unmarshal(data, &val)
 	if err != nil {
-		// fallback unmarshalling to string
-		return string(pv), nil
+		return fmt.Errorf("error unmarshallinbg ParamsValue: %w", err)
+	}
+	switch v := val.(type) {
+	case string:
+		*pv = []byte(v)
+	default:
+		*pv = data
+	}
+	return nil
+}
+
+type Params map[string]ParamsValue
+
+func (p *Params) MarshalJSON() ([]byte, error) {
+	castedMap := make(map[string]any)
+
+	for k, v := range *p {
+		var val any
+		err := json.Unmarshal(v, &val)
+		if err == nil {
+			castedMap[k] = val
+		} else {
+			castedMap[k] = string(v)
+		}
 	}
 
+	res, err := json.Marshal(castedMap)
+	if err != nil {
+		return nil, err
+	}
 	return res, nil
 }

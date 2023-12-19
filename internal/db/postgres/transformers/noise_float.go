@@ -36,7 +36,7 @@ var NoiseFloatTransformerDefinition = utils.NewDefinition(
 		"column name",
 	).SetIsColumn(toolkit.NewColumnProperties().
 		SetAffected(true).
-		SetAllowedColumnTypes("float4", "float8").
+		SetAllowedColumnTypes("float4", "float8", "numeric").
 		SetSkipOnNull(true),
 	).SetRequired(true),
 
@@ -121,14 +121,14 @@ func (nft *NoiseFloatTransformer) Done(ctx context.Context) error {
 func (nft *NoiseFloatTransformer) Transform(ctx context.Context, r *toolkit.Record) (*toolkit.Record, error) {
 
 	var val float64
-	isNull, err := r.ScanAttributeValueByIdx(nft.columnIdx, &val)
+	isNull, err := r.ScanColumnValueByIdx(nft.columnIdx, &val)
 	if err != nil {
 		return nil, fmt.Errorf("unable to scan value: %w", err)
 	}
 	if isNull {
 		return r, nil
 	}
-	err = r.SetAttributeValueByIdx(nft.columnIdx, utils.NoiseFloat(nft.rand, nft.ratio, val, nft.precision))
+	err = r.SetColumnValueByIdx(nft.columnIdx, utils.NoiseFloat(nft.rand, nft.ratio, val, nft.precision))
 	if err != nil {
 		return nil, fmt.Errorf("unable to set new value: %w", err)
 	}

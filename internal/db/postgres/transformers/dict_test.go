@@ -50,7 +50,7 @@ func TestDictTransformer_Transform_with_fail(t *testing.T) {
 	)
 	require.NoError(t, err)
 
-	res, err := r.GetRawAttributeValueByName(string(params["column"]))
+	res, err := r.GetRawColumnValueByName(string(params["column"]))
 	require.NoError(t, err)
 	assert.False(t, res.IsNull)
 	require.Equal(t, expected, string(res.Data))
@@ -63,7 +63,7 @@ func TestDictTransformer_Transform_with_fail(t *testing.T) {
 		record,
 	)
 	require.NoError(t, err)
-	res, err = r.GetRawAttributeValueByName(string(params["column"]))
+	res, err = r.GetRawColumnValueByName(string(params["column"]))
 	require.NoError(t, err)
 	assert.False(t, res.IsNull)
 	require.Equal(t, expected, string(res.Data))
@@ -86,9 +86,8 @@ func TestDictTransformer_Transform_validation_error(t *testing.T) {
 		driver, params,
 		nil,
 	)
-	require.Error(t, err)
-	require.ErrorContains(t, err, "error validating value")
-	require.Empty(t, warnings)
+	require.NoError(t, err)
+	require.NotEmpty(t, warnings)
 
 	params = map[string]toolkit.ParamsValue{
 		"column":   toolkit.ParamsValue("date_date"),
@@ -103,9 +102,8 @@ func TestDictTransformer_Transform_validation_error(t *testing.T) {
 		driver, params,
 		nil,
 	)
-	require.Error(t, err)
-	require.ErrorContains(t, err, `error validating "default_value"`)
-	require.Empty(t, warnings)
+	require.NoError(t, err)
+	require.NotEmpty(t, warnings)
 }
 
 func TestDictTransformer_Transform_error_not_matched(t *testing.T) {
@@ -159,8 +157,41 @@ func TestDictTransformer_Transform_use_default(t *testing.T) {
 		record,
 	)
 	require.NoError(t, err)
-	res, err := r.GetRawAttributeValueByName(string(params["column"]))
+	res, err := r.GetRawColumnValueByName(string(params["column"]))
 	require.NoError(t, err)
 	assert.False(t, res.IsNull)
 	require.Equal(t, expected, string(res.Data))
+}
+
+func TestDictTransformer_Transform_with_int_values(t *testing.T) {
+
+	original := "1"
+	expected := "2"
+
+	params := map[string]toolkit.ParamsValue{
+		"column":           toolkit.ParamsValue("id"),
+		"values":           toolkit.ParamsValue(`{"1": "2", "3": "4"}`),
+		"fail_not_matched": toolkit.ParamsValue(`true`),
+		"validate":         toolkit.ParamsValue(`true`),
+	}
+
+	driver, record := getDriverAndRecord(string(params["column"]), original)
+	transformer, warnings, err := DictTransformerDefinition.Instance(
+		context.Background(),
+		driver, params,
+		nil,
+	)
+	require.NoError(t, err)
+	require.Empty(t, warnings)
+	r, err := transformer.Transform(
+		context.Background(),
+		record,
+	)
+	require.NoError(t, err)
+
+	res, err := r.GetRawColumnValueByName(string(params["column"]))
+	require.NoError(t, err)
+	assert.False(t, res.IsNull)
+	require.Equal(t, expected, string(res.Data))
+
 }

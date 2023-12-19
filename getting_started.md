@@ -141,7 +141,7 @@ common:
 
 storage:
   s3:
-    endpoint: "http://storage:9000"
+    endpoint: "http://playground-storage:9000"
     bucket: "adventureworks"
     region: "us-east-1"
     access_key_id: "Q3AM3UQ867SPQQA43P2F"
@@ -153,7 +153,7 @@ validate:
 
 dump:
   pg_dump_options: # pg_dump option that will be provided
-    dbname: "host=db user=postgres password=example dbname=original"
+    dbname: "host=playground-db user=postgres password=example dbname=original"
     jobs: 10
 
   transformation: # List of tables to transform
@@ -168,7 +168,7 @@ dump:
 restore:
   pg_restore_options: # pg_restore option (you can use the same options as pg_restore has)
     jobs: 10
-    dbname: "host=db user=postgres password=example dbname=transformed"
+    dbname: "host=playground-db user=postgres password=example dbname=transformed"
 ```
 
 This example demonstrates the essential components of a Greenmask configuration file in YAML format. Please ensure that

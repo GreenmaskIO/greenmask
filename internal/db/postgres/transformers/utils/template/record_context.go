@@ -53,7 +53,7 @@ func (rc *RecordContext) GetColumnType(name string) (string, error) {
 }
 
 func (rc *RecordContext) GetColumnValue(name string) (any, error) {
-	v, err := rc.record.GetAttributeValueByName(name)
+	v, err := rc.record.GetColumnValueByName(name)
 	if err != nil {
 		return nil, err
 	}
@@ -64,7 +64,7 @@ func (rc *RecordContext) GetColumnValue(name string) (any, error) {
 }
 
 func (rc *RecordContext) GetRawColumnValue(name string) (any, error) {
-	v, err := rc.record.GetRawAttributeValueByName(name)
+	v, err := rc.record.GetRawColumnValueByName(name)
 	if err != nil {
 		return nil, err
 	}
@@ -82,7 +82,7 @@ func (rc *RecordContext) SetColumnValue(name string, v any) (bool, error) {
 	default:
 		val = toolkit.NewValue(v, false)
 	}
-	err := rc.record.SetAttributeValueByName(name, val)
+	err := rc.record.SetColumnValueByName(name, val)
 	if err != nil {
 		return false, err
 	}
@@ -99,7 +99,7 @@ func (rc *RecordContext) SetRawColumnValue(name string, v any) (bool, error) {
 	default:
 		return false, fmt.Errorf("the raw value must be NullValue or string received %+v", vv)
 	}
-	err := rc.record.SetRawAttributeValueByName(name, val)
+	err := rc.record.SetRawColumnValueByName(name, val)
 	if err != nil {
 		return false, err
 	}
@@ -112,7 +112,7 @@ func (rc *RecordContext) EncodeValueByColumn(name string, v any) (any, error) {
 		return NullValue, nil
 	}
 
-	res, err := rc.record.Driver.EncodeAttrName(name, v, nil)
+	res, err := rc.record.Driver.EncodeValueByColumnName(name, v, nil)
 	if err != nil {
 		return "", err
 	}
@@ -125,7 +125,7 @@ func (rc *RecordContext) DecodeValueByColumn(name string, v any) (any, error) {
 	case NullType:
 		return NullValue, nil
 	case string:
-		res, err := rc.record.Driver.DecodeAttrByName(name, []byte(vv))
+		res, err := rc.record.Driver.DecodeValueByColumnName(name, []byte(vv))
 		if err != nil {
 			return nil, err
 		}
@@ -146,7 +146,7 @@ func (rc *RecordContext) EncodeValueByType(name string, v any) (any, error) {
 		return NullValue, nil
 	}
 
-	res, err := rc.record.Driver.EncodeByTypeName(name, v, nil)
+	res, err := rc.record.Driver.EncodeValueByTypeName(name, v, nil)
 	if err != nil {
 		return "", err
 	}
@@ -164,7 +164,7 @@ func (rc *RecordContext) DecodeValueByType(name string, v any) (any, error) {
 	case NullType:
 		return NullValue, nil
 	case string:
-		res, err := rc.record.Driver.DecodeByTypeName(name, []byte(vv))
+		res, err := rc.record.Driver.DecodeValueByTypeName(name, []byte(vv))
 		if err != nil {
 			return nil, err
 		}

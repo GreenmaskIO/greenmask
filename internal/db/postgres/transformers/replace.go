@@ -45,7 +45,12 @@ var ReplaceTransformerDefinition = utils.NewDefinition(
 
 	toolkit.MustNewParameter(
 		"keep_null",
-		"do not replace NULL values to random value",
+		"indicates that NULL values must not be replaced with transformed values",
+	).SetDefaultValue(toolkit.ParamsValue("true")),
+
+	toolkit.MustNewParameter(
+		"validate",
+		"validate the value via driver decoding procedure",
 	).SetDefaultValue(toolkit.ParamsValue("true")),
 )
 
@@ -61,29 +66,39 @@ type ReplaceTransformer struct {
 func NewReplaceTransformer(ctx context.Context, driver *toolkit.Driver, parameters map[string]*toolkit.Parameter) (utils.Transformer, toolkit.ValidationWarnings, error) {
 
 	var columnName string
-	var value any
-	var keepNull bool
+	var keepNull, validate bool
 
 	p := parameters["column"]
 	if _, err := p.Scan(&columnName); err != nil {
-		return nil, nil, fmt.Errorf("unable to scan column param: %w", err)
+		return nil, nil, fmt.Errorf(`unable to scan "column" param: %w`, err)
 	}
 
-	idx, _, ok := driver.GetColumnByName(columnName)
+	idx, c, ok := driver.GetColumnByName(columnName)
 	if !ok {
-		return nil, nil, fmt.Errorf("column with name %s is not found", columnName)
+		return nil, nil, fmt.Errorf(`column with name "%s" is not found`, columnName)
 	}
 	affectedColumns := make(map[int]string)
 	affectedColumns[idx] = columnName
 
-	value, err := parameters["value"].Value()
-	if err != nil {
-		return nil, nil, fmt.Errorf(`error getting "value" parameter`)
+	p = parameters["validate"]
+	if _, err := p.Scan(&validate); err != nil {
+		return nil, nil, fmt.Errorf(`unable to scan "validate" param: %w`, err)
 	}
-	buf := make([]byte, 0, 1000)
-	buf, err = driver.EncodeAttrName(columnName, value, buf)
-	if err != nil {
-		return nil, nil, fmt.Errorf(`error encoding "value" to RawValue: %w`, err)
+
+	value := parameters["value"].RawValue()
+	if validate {
+		_, err := driver.DecodeValueByTypeOid(uint32(c.TypeOid), value)
+		if err != nil {
+			return nil, toolkit.ValidationWarnings{
+				toolkit.NewValidationWarning().
+					SetSeverity(toolkit.ErrorValidationSeverity).
+					SetMsg("error decoding \"value\" parameter from raw string to type").
+					AddMeta("TypeName", c.TypeName).
+					AddMeta("ParameterName", "value").
+					AddMeta("ParameterValue", string(value)).
+					AddMeta("Error", err.Error()),
+			}, nil
+		}
 	}
 
 	p = parameters["keep_null"]
@@ -96,7 +111,7 @@ func NewReplaceTransformer(ctx context.Context, driver *toolkit.Driver, paramete
 		keepNull:        keepNull,
 		value:           value,
 		affectedColumns: affectedColumns,
-		rawValue:        toolkit.NewRawValue(buf, false),
+		rawValue:        toolkit.NewRawValue(value, false),
 		columnIdx:       idx,
 	}, nil, nil
 }
@@ -114,7 +129,7 @@ func (rt *ReplaceTransformer) Done(ctx context.Context) error {
 }
 
 func (rt *ReplaceTransformer) Transform(ctx context.Context, r *toolkit.Record) (*toolkit.Record, error) {
-	val, err := r.GetRawAttributeValueByIdx(rt.columnIdx)
+	val, err := r.GetRawColumnValueByIdx(rt.columnIdx)
 	if err != nil {
 		return nil, fmt.Errorf("unable to scan value: %w", err)
 	}
@@ -122,7 +137,7 @@ func (rt *ReplaceTransformer) Transform(ctx context.Context, r *toolkit.Record) 
 		return r, nil
 	}
 
-	if err := r.SetRawAttributeValueByIdx(rt.columnIdx, rt.rawValue); err != nil {
+	if err := r.SetRawColumnValueByIdx(rt.columnIdx, rt.rawValue); err != nil {
 		return nil, fmt.Errorf("unable to set new value: %w", err)
 	}
 	return r, nil

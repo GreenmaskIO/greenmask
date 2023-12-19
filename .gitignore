@@ -19,9 +19,11 @@ vendor/
 .vscode
 scratch
 
+config.yml
+!playground/config.yml
+
 # Project exclusion
 venv
-config.yml
 .cache
 # Binaries
 cmd/greenmask/greenmask

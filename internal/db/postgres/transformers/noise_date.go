@@ -55,10 +55,10 @@ var NoiseDateTransformerDefinition = utils.NewDefinition(
 	toolkit.MustNewParameter(
 		"truncate",
 		fmt.Sprintf("truncate date till the part (%s)", strings.Join(truncateParts, ", ")),
-	),
+	).SetRawValueValidator(ValidateDateTruncationParameterValue),
 )
 
-type dateNoiseFunc func(r *rand.Rand, interval *pgtype.Interval, original *time.Time, truncate *string) *time.Time
+type dateNoiseFunc func(r *rand.Rand, ratio time.Duration, original *time.Time, truncate *string) *time.Time
 
 type NoiseDateTransformer struct {
 	columnName      string
@@ -70,6 +70,7 @@ type NoiseDateTransformer struct {
 	affectedColumns map[int]string
 	res             *time.Time
 	interval        *pgtype.Interval
+	ratio           time.Duration
 }
 
 func NewNoiseDateTransformer(ctx context.Context, driver *toolkit.Driver, parameters map[string]*toolkit.Parameter) (utils.Transformer, toolkit.ValidationWarnings, error) {
@@ -118,6 +119,10 @@ func NewNoiseDateTransformer(ctx context.Context, driver *toolkit.Driver, parame
 		generator = generateNoisedTimeTruncate
 	}
 
+	ratio := (time.Duration(intervalValue.Days) * time.Hour * 24) +
+		(time.Duration(intervalValue.Months) * 30 * time.Hour * 24) +
+		(time.Duration(intervalValue.Microseconds) * time.Millisecond)
+
 	return &NoiseDateTransformer{
 		columnName:      columnName,
 		ratioVal:        intervalValue,
@@ -128,6 +133,7 @@ func NewNoiseDateTransformer(ctx context.Context, driver *toolkit.Driver, parame
 		res:             new(time.Time),
 		columnIdx:       idx,
 		interval:        &intervalValue,
+		ratio:           ratio,
 	}, nil, nil
 }
 
@@ -145,7 +151,7 @@ func (ndt *NoiseDateTransformer) Done(ctx context.Context) error {
 
 func (ndt *NoiseDateTransformer) Transform(ctx context.Context, r *toolkit.Record) (*toolkit.Record, error) {
 
-	isNull, err := r.ScanAttributeValueByIdx(ndt.columnIdx, ndt.res)
+	isNull, err := r.ScanColumnValueByIdx(ndt.columnIdx, ndt.res)
 	if err != nil {
 		return nil, fmt.Errorf("unable to scan attribute value: %w", err)
 	}
@@ -153,20 +159,35 @@ func (ndt *NoiseDateTransformer) Transform(ctx context.Context, r *toolkit.Recor
 		return r, nil
 	}
 
-	resTime := ndt.generate(ndt.rand, ndt.interval, ndt.res, ndt.truncate)
-	if err := r.SetAttributeValueByIdx(ndt.columnIdx, resTime); err != nil {
+	resTime := ndt.generate(ndt.rand, ndt.ratio, ndt.res, ndt.truncate)
+	if err := r.SetColumnValueByIdx(ndt.columnIdx, resTime); err != nil {
 		return nil, fmt.Errorf("unable to set new value: %w", err)
 	}
 	return r, nil
 }
 
-func generateNoisedTime(r *rand.Rand, interval *pgtype.Interval, val *time.Time, truncate *string) *time.Time {
-	return utils.NoiseDatePgInterval(r, interval, val)
+func generateNoisedTime(r *rand.Rand, ratio time.Duration, val *time.Time, truncate *string) *time.Time {
+	return utils.NoiseDateV2(r, ratio, val)
 }
 
-func generateNoisedTimeTruncate(r *rand.Rand, interval *pgtype.Interval, val *time.Time, truncate *string) *time.Time {
-	res, _ := utils.TruncateDate(truncate, utils.NoiseDatePgInterval(r, interval, val))
+func generateNoisedTimeTruncate(r *rand.Rand, ratio time.Duration, val *time.Time, truncate *string) *time.Time {
+	res, _ := utils.TruncateDate(truncate, utils.NoiseDateV2(r, ratio, val))
 	return res
+}
+
+func ValidateDateTruncationParameterValue(p *toolkit.Parameter, v toolkit.ParamsValue) (toolkit.ValidationWarnings, error) {
+	part := string(v)
+	switch part {
+	case "nano", "second", "minute", "hour", "day", "month", "year", "":
+		return nil, nil
+	default:
+		return toolkit.ValidationWarnings{
+			toolkit.NewValidationWarning().
+				SetSeverity(toolkit.ErrorValidationSeverity).
+				AddMeta("ParameterValue", part).
+				SetMsg("wrong truncation part value: must be one of nano, second, minute, hour, day, month, year"),
+		}, nil
+	}
 }
 
 func init() {

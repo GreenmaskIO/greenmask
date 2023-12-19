@@ -57,7 +57,7 @@ var RandomStringTransformerDefinition = utils.NewDefinition(
 
 	toolkit.MustNewParameter(
 		"keep_null",
-		"do not replace NULL values to random value",
+		"indicates that NULL values must not be replaced with transformed values",
 	).SetDefaultValue(toolkit.ParamsValue("true")),
 )
 
@@ -137,7 +137,7 @@ func (rst *RandomStringTransformer) Done(ctx context.Context) error {
 }
 
 func (rst *RandomStringTransformer) Transform(ctx context.Context, r *toolkit.Record) (*toolkit.Record, error) {
-	val, err := r.GetRawAttributeValueByIdx(rst.columnIdx)
+	val, err := r.GetRawColumnValueByIdx(rst.columnIdx)
 	if err != nil {
 		return nil, fmt.Errorf("unable to scan value: %w", err)
 	}
@@ -146,8 +146,12 @@ func (rst *RandomStringTransformer) Transform(ctx context.Context, r *toolkit.Re
 	}
 
 	res := utils.RandomString(rst.rand, rst.min, rst.max, rst.symbols, rst.buf)
-	if err := r.SetAttributeValueByIdx(rst.columnIdx, &res); err != nil {
+	if err := r.SetColumnValueByIdx(rst.columnIdx, &res); err != nil {
 		return nil, fmt.Errorf("unable to set new value: %w", err)
 	}
 	return r, nil
+}
+
+func init() {
+	utils.DefaultTransformerRegistry.MustRegister(RandomStringTransformerDefinition)
 }
