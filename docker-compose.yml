@@ -4,8 +4,8 @@ services:
   playground-storage:
     image: minio/minio:latest
     ports:
-      - ":9000:9000"
-      - ":9001:9001"
+      - "9000:9000"
+      - "9001:9001"
     environment:
       - "MINIO_ROOT_USER=Q3AM3UQ867SPQQA43P2F"
       - "MINIO_ROOT_PASSWORD=zuf+tfteSlswRu7BJ86wekitnifILbZam1KYY3TG"
@@ -13,10 +13,11 @@ services:
     command: >
       -c 'mkdir -p /export/adventureworks && minio server /export --console-address :9001'
     healthcheck:
-      test: [ "CMD", "curl", "-f", "http://localhost:9000/minio/health/live" ]
-      interval: 5s
-      timeout: 1s
-      retries: 3
+      test: timeout 5s bash -c ':> /dev/tcp/127.0.0.1/9000' || exit 1
+      start_period: 5s
+      interval: 10s
+      timeout: 5s
+      retries: 2
 
   playground-db:
     volumes:
@@ -47,14 +48,8 @@ services:
     depends_on:
       playground-db:
         condition: service_healthy
-      playground-storage:
-        condition: service_healthy
 
   greenmask:
-    environment:
-      PGPASSWORD: "example"
-      ORIGINAL_DB_NAME: "original"
-      TRANSFORMED_DB_NAME: "transformed"
     volumes:
       - ./playground:/var/lib/playground
     image: "greenmask/greenmask:0.1.0rc"
@@ -67,20 +62,12 @@ services:
     entrypoint: "/var/lib/playground/run.sh"
 
   greenmask-from-source:
-    environment:
-      PGPASSWORD: "example"
-      ORIGINAL_DB_NAME: "original"
-      TRANSFORMED_DB_NAME: "transformed"
     working_dir: /var/lib/playground
     volumes:
       - ./playground:/var/lib/playground
     build:
       dockerfile: docker/greenmask/Dockerfile
       context: ./
-      args:
-        GOOS: linux
-        GOARCH: amd64
-        INSTALL_GO_VERSION: "1.21.5"
     depends_on:
       playground-dbs-filler:
         condition: service_completed_successfully

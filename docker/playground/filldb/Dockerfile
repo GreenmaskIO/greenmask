@@ -1,4 +1,4 @@
-FROM ubuntu:latest
+FROM postgres:latest
 
 ARG DEBIAN_FRONTEND=noninteractive
 
@@ -12,11 +12,6 @@ ENV DBUSER="postgres"
 ENV DBPASSWORD="example"
 
 RUN apt-get update && apt-get install -y wget git && mkdir /tmp/schema
-
-RUN apt-get install --yes --no-install-recommends --no-install-suggests  \
-    postgresql \
-    postgresql-contrib
-
 
 RUN cd $TMP_DIR && git clone $DEMODB_URL && cd $TMP_DIR/postgresDBSamples/adventureworks
 
