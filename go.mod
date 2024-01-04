@@ -4,7 +4,7 @@ go 1.21
 
 require (
 	github.com/Masterminds/sprig/v3 v3.2.3
-	github.com/aws/aws-sdk-go v1.49.9
+	github.com/aws/aws-sdk-go v1.49.14
 	github.com/ggwhite/go-masker v1.1.0
 	github.com/go-faker/faker/v4 v4.2.0
 	github.com/google/uuid v1.5.0
@@ -23,7 +23,6 @@ require (
 	github.com/tidwall/sjson v1.2.5
 	golang.org/x/crypto v0.17.0
 	golang.org/x/sync v0.5.0
-	golang.org/x/sys v0.15.0
 	gopkg.in/yaml.v3 v3.0.1
 )
 
@@ -59,6 +58,7 @@ require (
 	go.uber.org/atomic v1.9.0 // indirect
 	go.uber.org/multierr v1.9.0 // indirect
 	golang.org/x/exp v0.0.0-20230905200255-921286631fa9 // indirect
+	golang.org/x/sys v0.15.0 // indirect
 	golang.org/x/text v0.14.0 // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect
 )

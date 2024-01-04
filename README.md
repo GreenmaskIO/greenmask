@@ -133,7 +133,6 @@ Greenmask provides a framework for creating your custom transformers, which can 
 transformers can be seamlessly integrated without requiring recompilation, thanks to the PIPE (stdin/stdout)
 interaction.
 
-!!! note
 Furthermore, Greenmask's architecture is designed to be highly extensible, making it possible to introduce other
 interaction protocols, such as HTTP or Socket, for conducting obfuscation procedures.
 
