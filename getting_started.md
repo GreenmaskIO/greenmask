@@ -406,7 +406,7 @@ This is a straightforward example of using Greenmask. If you wish to explore mor
 delve deeper into the documentation.
 
 Additionally, if you have any questions or require further assistance, don't hesitate to reach out via
-[Discord](https://discord.gg/97AKHdGD), [Telegram](https://t.me/greenmask_community), or by
+[Discord](https://discord.gg/tAJegUKSTB), [Telegram](https://t.me/greenmask_community), or by
 emailing us at [support@greenmask.io](mailto:support@greenmask.io). Our team is here to help and
 provide guidance as needed.
 
