@@ -144,6 +144,7 @@ func FuncMap() template.FuncMap {
 		"fakerTimestamp":  faker.Timestamp,
 		"fakerCentury":    faker.Century,
 		"fakerTimezone":   faker.Timezone,
+		"fakerTimeperiod": faker.Timeperiod,
 
 		// Faker Internet
 		"fakerEmail":      faker.Email,
@@ -181,8 +182,8 @@ func FuncMap() template.FuncMap {
 		"fakerE164PhoneNumber":     faker.E164PhoneNumber,
 
 		// Faker UUID
-		"fakerUUIDHyphenated": faker.UUIDHyphenated,
-		"fakerUUIDDigit":      faker.UUIDDigit,
+		"fakerUUID":      faker.UUIDHyphenated,
+		"fakerUUIDDigit": faker.UUIDDigit,
 	}
 
 	tm := make(template.FuncMap)
