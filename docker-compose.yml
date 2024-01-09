@@ -52,7 +52,7 @@ services:
   greenmask:
     volumes:
       - ./playground:/var/lib/playground
-    image: "greenmask/greenmask:0.1.0rc"
+    image: "greenmask/greenmask:latest"
     working_dir: /var/lib/playground
     depends_on:
       playground-dbs-filler:
