@@ -31,4 +31,4 @@ dump:
 restore:
   pg_restore_options: # pg_restore option (you can use the same options as pg_restore has)
     jobs: 10
-    dbname: "host=db user=postgres password=example dbname=transformed"
+    dbname: "host=playground-db user=postgres password=example dbname=transformed"
