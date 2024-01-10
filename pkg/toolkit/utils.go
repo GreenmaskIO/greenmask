@@ -19,7 +19,7 @@ import (
 	"reflect"
 )
 
-func scanPointer(src, dest any) error {
+func ScanPointer(src, dest any) error {
 	srcValue := reflect.ValueOf(src)
 	destValue := reflect.ValueOf(dest)
 	if srcValue.Kind() == destValue.Kind() {

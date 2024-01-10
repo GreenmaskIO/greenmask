@@ -136,8 +136,8 @@ func listTransformersText(registry *utils.TransformerRegistry, transformerNames 
 			if p.DefaultValue != nil {
 				data = append(data, []string{def.Properties.Name, "parameters", p.Name, "default", string(p.DefaultValue), ""})
 			}
-			if p.LinkParameter != "" {
-				data = append(data, []string{def.Properties.Name, "parameters", p.Name, "linked_parameter", p.LinkParameter, ""})
+			if p.LinkColumnParameter != "" {
+				data = append(data, []string{def.Properties.Name, "parameters", p.Name, "linked_parameter", p.LinkColumnParameter, ""})
 			}
 			if p.CastDbType != "" {
 				data = append(data, []string{def.Properties.Name, "parameters", p.Name, "cast_to_db_type", p.CastDbType, ""})

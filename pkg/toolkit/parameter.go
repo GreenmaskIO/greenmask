@@ -102,6 +102,7 @@ func (cp *ColumnProperties) SetSkipOnNull(v bool) *ColumnProperties {
 // Parameter - wide parameter entity definition that contains properties that allows to check schema, find affection,
 // cast variable using some features and so on. It may be defined and assigned ot the Definition of the transformer
 // if transformer has any parameters
+// TODO: Rename it to ParameterDefinition
 type Parameter struct {
 	// Name - name of the parameter. Must be unique in the whole Transformer parameters slice
 	Name string `mapstructure:"name" json:"name"`
@@ -113,14 +114,15 @@ type Parameter struct {
 	// IsColumn - shows is this parameter column related. If so ColumnProperties must be defined and assigned
 	// otherwise it may cause an unhandled behaviour
 	IsColumn bool `mapstructure:"is_column" json:"is_column"`
-	// LinkParameter - link with parameter with provided name. This is required if performing raw value encoding
+	// LinkColumnParameter - link with parameter with provided name. This is required if performing raw value encoding
 	// depends on the provided column type and/or relies on the database Driver
-	LinkParameter string `mapstructure:"link_parameter" json:"link_parameter,omitempty"`
+	LinkColumnParameter string `mapstructure:"link_column_parameter" json:"link_column_parameter,omitempty"`
 	// CastDbType - name of PostgreSQL type that would be used for Decoding raw value to the real go type. Is this
 	// type does not exist will cause an error
 	CastDbType string `mapstructure:"cast_db_type" json:"cast_db_type,omitempty"`
-	// DefaultValue - default value of the parameter. Must be variable pointer and have the same type
-	// as in ExpectedType
+	// DynamicModeSupport - shows that parameter value can be gathered from column value of the current record
+	DynamicModeSupport bool `mapstructure:"dynamic_mode_support" json:"dynamic_mode_support,omitempty"`
+	// DefaultValue - default value of the parameter
 	DefaultValue ParamsValue `mapstructure:"default_value" json:"default_value,omitempty"`
 	// ColumnProperties - detail info about expected column properties that may help to diagnose the table schema
 	// and perform validation procedure Plays only with IsColumn
@@ -136,8 +138,7 @@ type Parameter struct {
 	// Column - column of the table that was assigned in the parsing procedure according to provided column name in
 	// parameter value. In this case value has textual column name
 	Column *Column `json:"-"`
-	// ExpectedType - expected type of the provided variable during scanning procedure. It must be pointer on the
-	// variable
+	// Driver - initialized used for decoding raw value to database type mentioned in CastDbType
 	Driver *Driver `mapstructure:"-" json:"-"`
 	// value - cached parsed value after Scan or Value
 	value any
@@ -155,8 +156,9 @@ func MustNewParameter(name string, description string) *Parameter {
 
 func NewParameter(name string, description string) (*Parameter, error) {
 	return &Parameter{
-		Name:        name,
-		Description: description,
+		Name:               name,
+		Description:        description,
+		DynamicModeSupport: false,
 	}, nil
 }
 
@@ -280,14 +282,14 @@ func (p *Parameter) Scan(dest any) (empty bool, err error) {
 	if p.value == nil {
 		return false, nil
 	}
-	return false, scanPointer(p.value, dest)
+	return false, ScanPointer(p.value, dest)
 }
 
 func (p *Parameter) SetLinkParameter(name string) *Parameter {
 	if p.IsColumn {
 		panic("cannot link column parameter with column parameter")
 	}
-	p.LinkParameter = name
+	p.LinkColumnParameter = name
 	return p
 }
 
@@ -364,12 +366,12 @@ func (p *Parameter) Init(driver *Driver, types []*Type, params []*Parameter, raw
 		}
 	}
 
-	if p.LinkParameter != "" {
+	if p.LinkColumnParameter != "" {
 		idx := slices.IndexFunc(params, func(parameter *Parameter) bool {
-			return parameter.Name == p.LinkParameter
+			return parameter.Name == p.LinkColumnParameter
 		})
 		if idx == -1 {
-			panic(fmt.Sprintf(`parameter with name "%s" is not found`, p.LinkParameter))
+			panic(fmt.Sprintf(`parameter with name "%s" is not found`, p.LinkColumnParameter))
 		}
 		p.LinkedColumnParameter = params[idx]
 	}
@@ -420,7 +422,7 @@ func (p *Parameter) Init(driver *Driver, types []*Type, params []*Parameter, raw
 
 			// Get overriden type if exists
 			var overriddenPgType *pgtype.Type
-			name, ok := driver.columnTypeOverrides[column.Name]
+			name, ok := driver.ColumnTypeOverrides[column.Name]
 			if ok {
 				overriddenPgType, ok = driver.SharedTypeMap.TypeForName(name)
 				if !ok {

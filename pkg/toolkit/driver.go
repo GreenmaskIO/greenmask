@@ -39,7 +39,7 @@ type Driver struct {
 	// columnTypeOverrideOids - map of column type replacements. For instance replace original type
 	// INT2 to TEXT for column "data" than in map will be {"data": "text"}
 	columnTypeOverrideOids []uint32
-	columnTypeOverrides    map[string]string
+	ColumnTypeOverrides    map[string]string
 	// unsupportedColumns - map with unsupported column types that cannot perform encode-decode operations
 	unsupportedColumns map[string]string
 	mx                 *sync.Mutex
@@ -103,7 +103,7 @@ func NewDriver(table *Table, customTypes []*Type, columnTypeOverrides map[string
 		CustomTypes:            customTypes,
 		mx:                     &sync.Mutex{},
 		maxIdx:                 len(table.Columns) - 1,
-		columnTypeOverrides:    columnTypeOverrides,
+		ColumnTypeOverrides:    columnTypeOverrides,
 	}
 	return pc, nil
 }

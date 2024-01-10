@@ -92,7 +92,7 @@ func (d *Definition) SetSchemaValidator(v SchemaValidationFunc) *Definition {
 //	}
 //	// Common parameters parsing
 //	for _, p := range commonParameters {
-//		if _, ok := columnParamsToSkip[p.LinkParameter]; p.LinkParameter != "" && ok {
+//		if _, ok := columnParamsToSkip[p.LinkColumnParameter]; p.LinkColumnParameter != "" && ok {
 //			totalWarnings = append(totalWarnings, toolkit.NewValidationWarning().
 //				AddMeta("ParameterName", p.Name).
 //				SetSeverity(toolkit.WarningValidationSeverity).

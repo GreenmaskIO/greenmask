@@ -22,6 +22,16 @@ import (
 type Oid int
 type AttNum uint32
 
+type DynamicParams map[string]*DynamicParamValue
+
+type DynamicParamValue struct {
+	Column                string      `mapstructure:"column" json:"column,omitempty"`
+	CastTemplate          string      `mapstructure:"cast_template" json:"cast_template,omitempty"`
+	FailOnNull            bool        `mapstructure:"fail_on_null" json:"fail_on_null,omitempty"`
+	UseDefaultOnNullInput bool        `mapstructure:"use_default_on_null_input" json:"use_default_on_null_input,omitempty"`
+	DefaultValue          ParamsValue `mapstructure:"default_value" json:"default_value,omitempty"`
+}
+
 type ParamsValue []byte
 
 func (pv *ParamsValue) UnmarshalJSON(data []byte) error {
