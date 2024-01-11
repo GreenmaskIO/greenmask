@@ -58,7 +58,7 @@ func getDriver() *Driver {
 		},
 		Constraints: []Constraint{},
 	}
-	driver, err := NewDriver(table, nil, nil)
+	driver, _, err := NewDriver(table, nil, nil)
 	if err != nil {
 		panic(err.Error())
 	}
@@ -74,7 +74,7 @@ func TestParameter_Parse_simple(t *testing.T) {
 		"Simple description",
 	)
 
-	warnings, err := p1.Init(driver, nil, []*Parameter{p1}, []byte("1"), nil)
+	warnings, err := p1.Init(driver, nil, []*Parameter{p1}, []byte("1"))
 	require.NoError(t, err)
 	assert.Empty(t, warnings)
 	var expected = 1
@@ -100,7 +100,7 @@ func TestParameter_Parse_with_allowed_pg_types(t *testing.T) {
 		})
 
 	//warnings, err := p1.Decode(driver, rawParams, nil, nil)
-	warnings, err := p1.Init(driver, nil, []*Parameter{p1}, []byte("created_at"), nil)
+	warnings, err := p1.Init(driver, nil, []*Parameter{p1}, []byte("created_at"))
 	require.NoError(t, err)
 	assert.Empty(t, warnings)
 	var expected = "created_at"
@@ -109,7 +109,7 @@ func TestParameter_Parse_with_allowed_pg_types(t *testing.T) {
 	assert.Equal(t, expected, res)
 
 	// Check simple column parameter definition negative case
-	warnings, err = p1.Init(driver, nil, []*Parameter{p1}, []byte("id"), nil)
+	warnings, err = p1.Init(driver, nil, []*Parameter{p1}, []byte("id"))
 	require.NoError(t, err)
 	assert.NotEmpty(t, warnings)
 	assert.True(t, slices.ContainsFunc(warnings, func(warning *ValidationWarning) bool {
@@ -136,11 +136,11 @@ func TestParameter_Parse_with_linked_parameter(t *testing.T) {
 
 	params := []*Parameter{columnParam, linkedParam}
 
-	warnings, err := columnParam.Init(driver, nil, params, []byte("created_at"), nil)
+	warnings, err := columnParam.Init(driver, nil, params, []byte("created_at"))
 	require.NoError(t, err)
 	assert.Empty(t, warnings)
 
-	warnings, err = linkedParam.Init(driver, nil, params, []byte("2023-08-27 00:00:00.000000"), nil)
+	warnings, err = linkedParam.Init(driver, nil, params, []byte("2023-08-27 00:00:00.000000"))
 	require.NoError(t, err)
 	assert.Empty(t, warnings)
 
@@ -160,7 +160,7 @@ func TestParameter_scan_empty(t *testing.T) {
 		"Simple description",
 	)
 
-	warnings, err := p1.Init(driver, nil, []*Parameter{p1}, nil, nil)
+	warnings, err := p1.Init(driver, nil, []*Parameter{p1}, nil)
 	require.NoError(t, err)
 	assert.Empty(t, warnings)
 	var res int
@@ -192,7 +192,7 @@ func TestParameter_structured_value_validation(t *testing.T) {
 		return nil, nil
 	})
 
-	warnings, err := p1.Init(driver, nil, []*Parameter{p1}, []byte(`{"a": "test"}`), nil)
+	warnings, err := p1.Init(driver, nil, []*Parameter{p1}, []byte(`{"a": "test"}`))
 	require.NoError(t, err)
 	assert.Empty(t, warnings)
 	assert.Equal(t, expected.A, res.A)

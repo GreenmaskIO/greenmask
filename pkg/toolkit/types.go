@@ -16,6 +16,7 @@ package toolkit
 
 import (
 	"fmt"
+	"slices"
 
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/rs/zerolog/log"
@@ -37,8 +38,10 @@ var (
 type Type struct {
 	// Oid - pg_type.oid
 	Oid Oid `json:"oid,omitempty"`
-	// Chain - list of inherited types till the main base type
-	Chain []Oid `json:"chain,omitempty"`
+	// ChainOids - list of inherited types (oid) till the main base type
+	ChainOids []Oid `json:"chain_oids,omitempty"`
+	// ChainNames - list of inherited types (name) till the main base type
+	ChainNames []string `json:"chain_names,omitempty"`
 	// Schema - type schema name
 	Schema string `json:"schema,omitempty"`
 	// Name - (pg_type.typname) type name
@@ -61,8 +64,10 @@ type Type struct {
 	BaseType Oid `json:"base_type,omitempty"`
 	//Check - definition of check constraint
 	Check *Check `json:"check,omitempty"`
-	// RootBuiltInType - defines builtin type oid that might be used for decoding and encoding
-	RootBuiltInType Oid `json:"root_built_in_type,omitempty"`
+	// RootBuiltInTypeOid - defines builtin type oid that might be used for decoding and encoding
+	RootBuiltInTypeOid Oid `json:"root_built_in_type_oid,omitempty"`
+	// RootBuiltInTypeOid - defines builtin type name that might be used for decoding and encoding
+	RootBuiltInTypeName string `json:"root_built_in_type_name,omitempty"`
 }
 
 func (t *Type) IsAffected(p *Parameter) (w ValidationWarnings) {
@@ -159,4 +164,76 @@ func TryRegisterCustomTypes(typeMap *pgtype.Map, types []*Type, silent bool) {
 			}
 		}
 	}
+}
+
+func IsTypeAllowed(
+	allowedTypes []string, customTypes []*Type, typeName string, checkInherited bool,
+) bool {
+
+	if slices.Contains(allowedTypes, typeName) {
+		return true
+	}
+
+	if !checkInherited {
+		return false
+	}
+
+	// If custom type is found check that the root type is allowed
+	pgCustomRootType := GetCustomType(customTypes, typeName)
+	if pgCustomRootType == nil {
+		return false
+	}
+
+	for _, t := range pgCustomRootType.ChainNames {
+		if slices.Contains(allowedTypes, t) {
+			return true
+		}
+	}
+
+	return false
+}
+
+func IsTypeCustom(customTypes []*Type, typeOid Oid) bool {
+	return slices.ContainsFunc(customTypes, func(t *Type) bool {
+		return t.Oid == typeOid
+	})
+}
+
+func GetCustomType(customTypes []*Type, typeName string) *Type {
+	idx := slices.IndexFunc(customTypes, func(t *Type) bool {
+		return t.Name == typeName
+	})
+	if idx == -1 {
+		return nil
+	}
+
+	return customTypes[idx]
+}
+
+func AreTypesHaveEqualOrHaveEqualBaseTypes(driver *Driver, customTypes []*Type, a string, b string) bool {
+	// check type a and b are custom
+	if a == b {
+		return true
+	}
+
+	pgCustomRootTypeA := GetCustomType(customTypes, a)
+	if pgCustomRootTypeA == nil {
+		return false
+	}
+
+	pgCustomRootTypeB := GetCustomType(customTypes, b)
+	if pgCustomRootTypeB == nil {
+		return false
+	}
+
+	// Check chain
+	for _, chainItemA := range pgCustomRootTypeA.ChainNames {
+		for _, chainItemB := range pgCustomRootTypeB.ChainNames {
+			if chainItemA == chainItemB {
+				return true
+			}
+		}
+	}
+
+	return false
 }

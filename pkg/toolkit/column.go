@@ -21,4 +21,7 @@ type Column struct {
 	Num      AttNum `json:"num"`
 	NotNull  bool   `json:"not_null"`
 	Length   int    `json:"length"`
+	// OverriddenTypeName - replacement of  original type. For instance override TEXT to INT2
+	OverriddenTypeName string `json:"overridden_type_name"`
+	OverriddenTypeOid  Oid    `json:"overridden_type_oid"`
 }

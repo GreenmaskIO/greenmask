@@ -7,8 +7,6 @@ import (
 	"slices"
 	"time"
 
-	"github.com/jackc/pgx/v5/pgtype"
-
 	"github.com/greenmaskio/greenmask/pkg/toolkit"
 )
 
@@ -28,7 +26,9 @@ func NewStaticParameter(def *toolkit.Parameter, driver *toolkit.Driver) *StaticP
 	}
 }
 
-func (p *StaticParameter) Init(defs []*toolkit.Parameter, rawValue toolkit.ParamsValue) (toolkit.ValidationWarnings, error) {
+func (p *StaticParameter) Init(defs []*toolkit.Parameter, rawValue toolkit.ParamsValue, external bool) (toolkit.ValidationWarnings, error) {
+	// external - means that initialized parameter from custom (external) transformer
+
 	var warnings toolkit.ValidationWarnings
 
 	p.rawValue = slices.Clone(rawValue)
@@ -69,6 +69,9 @@ func (p *StaticParameter) Init(defs []*toolkit.Parameter, rawValue toolkit.Param
 			panic(fmt.Sprintf(`parameter with name "%s" is not found`, p.definition.LinkColumnParameter))
 		}
 		p.linkedColumnParameter = defs[idx]
+		if !p.linkedColumnParameter.IsColumn {
+			return nil, fmt.Errorf("linked parameter must be column: check transformer implementation")
+		}
 	}
 
 	if p.definition.IsColumn {
@@ -86,92 +89,30 @@ func (p *StaticParameter) Init(defs []*toolkit.Parameter, rawValue toolkit.Param
 			)
 			return warnings, nil
 		}
-		pgType, ok := p.driver.SharedTypeMap.TypeForOID(uint32(column.TypeOid))
-		if !ok {
-			warnings = append(
-				warnings,
-				toolkit.NewValidationWarning().
-					SetSeverity(toolkit.ErrorValidationSeverity).
-					SetMsg("unsupported column type: type is not found").
-					AddMeta("ColumnName", columnName).
-					AddMeta("TypeName", column.TypeName).
-					AddMeta("AllowedDbTypes", p.definition.ColumnProperties.AllowedTypes).
-					AddMeta("ParameterName", p.definition.Name),
-			)
+		p.column = column
 
-			return warnings, nil
-
+		columnTypeName := p.column.TypeName
+		if p.column.OverriddenTypeName != "" {
+			columnTypeName = p.column.OverriddenTypeName
 		}
 
-		idx := slices.IndexFunc(p.driver.CustomTypes, func(t *toolkit.Type) bool {
-			return t.Oid == column.TypeOid
-		})
-		var t *toolkit.Type
-		var pgRootType *pgtype.Type
-		if idx != -1 {
-			t = p.driver.CustomTypes[idx]
-			pgRootType, ok = p.driver.SharedTypeMap.TypeForOID(uint32(t.RootBuiltInType))
-			if !ok {
-				return nil, fmt.Errorf("unknown root type %d", t.RootBuiltInType)
-			}
-		}
+		if p.definition.ColumnProperties != nil {
 
-		if p.definition.ColumnProperties != nil && len(p.definition.ColumnProperties.AllowedTypes) > 0 {
+			if len(p.definition.ColumnProperties.AllowedTypes) > 0 {
 
-			// Get overriden type if exists
-			var overriddenPgType *pgtype.Type
-			name, ok := p.driver.ColumnTypeOverrides[column.Name]
-			if ok {
-				overriddenPgType, ok = p.driver.SharedTypeMap.TypeForName(name)
-				if !ok {
-
-					warnings = append(
-						warnings,
-						toolkit.NewValidationWarning().
-							SetSeverity(toolkit.ErrorValidationSeverity).
-							SetMsg("unknown overridden type").
-							AddMeta("ColumnName", columnName).
-							AddMeta("OverriddenTypeName", name).
-							AddMeta("ParameterName", p.definition.Name),
+				if !toolkit.IsTypeAllowed(p.definition.ColumnProperties.AllowedTypes, p.driver.CustomTypes, columnTypeName, true) {
+					warnings = append(warnings, toolkit.NewValidationWarning().
+						SetSeverity(toolkit.ErrorValidationSeverity).
+						SetMsg("unsupported column type").
+						AddMeta("ColumnName", columnName).
+						AddMeta("TypeName", columnTypeName).
+						AddMeta("AllowedTypes", p.definition.ColumnProperties.AllowedTypes),
 					)
 
 					return warnings, nil
 				}
 			}
 
-			// Check that one of original column type or root base type or overridden type is suitable for allowed types
-			if !slices.Contains(p.definition.ColumnProperties.AllowedTypes, pgType.Name) &&
-				!(pgRootType != nil && slices.Contains(p.definition.ColumnProperties.AllowedTypes, pgRootType.Name)) &&
-				!(overriddenPgType != nil && slices.Contains(p.definition.ColumnProperties.AllowedTypes, overriddenPgType.Name)) {
-
-				warnings = append(
-					warnings,
-					toolkit.NewValidationWarning().
-						SetSeverity(toolkit.ErrorValidationSeverity).
-						SetMsg("unsupported column type").
-						AddMeta("ColumnName", columnName).
-						AddMeta("ColumnType", pgType.Name).
-						AddMeta("AllowedDbTypes", p.definition.ColumnProperties.AllowedTypes).
-						AddMeta("ParameterName", p.definition.Name),
-				)
-
-				return warnings, nil
-			}
-		}
-		p.column = column
-	}
-
-	if p.definition.ColumnProperties != nil {
-		for _, at := range p.definition.ColumnProperties.AllowedTypes {
-			_, ok := p.driver.SharedTypeMap.TypeForName(at)
-			if !ok {
-				warnings = append(warnings, toolkit.NewValidationWarning().
-					SetSeverity(toolkit.WarningValidationSeverity).
-					AddMeta("ParameterName", p.definition.Name).
-					AddMeta("ItemTypeName", at).
-					AddMeta("TransformerAllowedTypes", p.definition.ColumnProperties.AllowedTypes).
-					SetMsgf(`allowed type with name %s is not found`, at))
-			}
 		}
 	}
 

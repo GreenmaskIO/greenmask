@@ -113,7 +113,8 @@ var (
 			   GROUP BY ct.oid
 			)
 			SELECT pt.oid::TEXT::INT         AS oid,
-				   twc.chain::INT[]          AS chain,
+				   twc.chain::INT[]          AS chain_oids,
+                   (select array_agg(t.typname)::TEXT[] FROM pg_type t WHERE t.oid = ANY (twc.chain)) AS chain_names,
 				   pn.nspname                AS schema,
 				   pt.typname                AS name,
 				   pt.typlen                 AS len,

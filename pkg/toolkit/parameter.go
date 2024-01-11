@@ -59,8 +59,9 @@ type ColumnProperties struct {
 
 func NewColumnProperties() *ColumnProperties {
 	return &ColumnProperties{
-		Nullable:  false,
-		MaxLength: WithoutMaxLength,
+		Nullable:      false,
+		MaxLength:     WithoutMaxLength,
+		RequireDriver: false,
 	}
 }
 
@@ -172,7 +173,14 @@ func (p *Parameter) Value() (any, error) {
 		return nil, nil
 	}
 
-	if p.LinkedColumnParameter != nil {
+	if p.Unmarshaller != nil {
+		// Perform custom unmarshalling
+		val, err := p.Unmarshaller(p, p.Driver, p.rawValue)
+		if err != nil {
+			return false, fmt.Errorf("unable to perform custom unmarshaller: %w", err)
+		}
+		p.value = val
+	} else if p.LinkedColumnParameter != nil {
 		// Parsing dynamically - default value and type are unknown
 		// TODO: Be careful - this may cause an error in Scan func if the the returning value is not a pointer
 		val, err := p.Driver.DecodeValueByTypeOid(uint32(p.LinkedColumnParameter.Column.TypeOid), p.rawValue)
@@ -412,9 +420,9 @@ func (p *Parameter) Init(driver *Driver, types []*Type, params []*Parameter, raw
 		var pgRootType *pgtype.Type
 		if idx != -1 {
 			t = types[idx]
-			pgRootType, ok = driver.SharedTypeMap.TypeForOID(uint32(t.RootBuiltInType))
+			pgRootType, ok = driver.SharedTypeMap.TypeForOID(uint32(t.RootBuiltInTypeOid))
 			if !ok {
-				return nil, fmt.Errorf("unknown root type %d", t.RootBuiltInType)
+				return nil, fmt.Errorf("unknown root type %d", t.RootBuiltInTypeOid)
 			}
 		}
 
@@ -424,6 +432,7 @@ func (p *Parameter) Init(driver *Driver, types []*Type, params []*Parameter, raw
 			var overriddenPgType *pgtype.Type
 			name, ok := driver.ColumnTypeOverrides[column.Name]
 			if ok {
+				// TODO: move type overriding check at the Driver initialization
 				overriddenPgType, ok = driver.SharedTypeMap.TypeForName(name)
 				if !ok {
 					return ValidationWarnings{

@@ -157,7 +157,7 @@ func getDriverAndRecord(name string, value string) (*toolkit.Driver, *toolkit.Re
 		Constraints: []toolkit.Constraint{},
 	}
 
-	driver, err := toolkit.NewDriver(table, nil, nil)
+	driver, _, err := toolkit.NewDriver(table, nil, nil)
 	if err != nil {
 		panic(err.Error())
 	}

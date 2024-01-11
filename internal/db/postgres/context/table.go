@@ -58,6 +58,16 @@ func validateAndBuildTablesConfig(
 			}
 			table.Constraints = constraints
 
+			// Assigning overridden column types for driver initialization
+			if tableCfg.ColumnsTypeOverride != nil {
+				for _, c := range table.Columns {
+					overridingType, ok := tableCfg.ColumnsTypeOverride[c.Name]
+					if ok {
+						c.OverriddenTypeName = overridingType
+					}
+				}
+			}
+
 			// Assign columns and transformersMap if were found
 			columns, err := getColumnsConfig(ctx, tx, table.Oid)
 			if err != nil {
@@ -65,11 +75,19 @@ func validateAndBuildTablesConfig(
 			}
 			table.Columns = columns
 
-			driver, err := toolkit.NewDriver(table.Table, types, tableCfg.ColumnsTypeOverride)
+			driver, driverWarnings, err := toolkit.NewDriver(table.Table, types)
 			if err != nil {
 				return nil, nil, fmt.Errorf("unnable to initialise driver: %w", err)
 			}
 			table.Driver = driver
+
+			if len(driverWarnings) > 0 {
+				for _, w := range driverWarnings {
+					w.AddMeta("SchemaName", table.Schema).
+						AddMeta("TableName", table.Name)
+				}
+				warnings = append(warnings, driverWarnings...)
+			}
 
 			// InitTransformation toolkit
 			if len(tableCfg.Transformers) > 0 {
@@ -84,6 +102,8 @@ func validateAndBuildTablesConfig(
 
 						}
 					}
+					// Not only errors might be in driver initialization but also a warnings that's why we have to add
+					// append medata to validation warnings and the check error and return error with warnings
 					if err != nil {
 						return nil, warnings, err
 					}

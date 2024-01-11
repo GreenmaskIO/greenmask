@@ -36,7 +36,7 @@ func getCustomTypesUsedInTables(ctx context.Context, tx pgx.Tx) ([]*toolkit.Type
 	for rows.Next() {
 		t := &toolkit.Type{}
 		var hasDomainConstraint bool
-		err = rows.Scan(&t.Oid, &t.Chain, &t.Schema, &t.Name, &t.Length, &t.Kind,
+		err = rows.Scan(&t.Oid, &t.ChainOids, &t.ChainNames, &t.Schema, &t.Name, &t.Length, &t.Kind,
 			&t.ComposedRelation, &t.ElementType, &t.ArrayType, &t.NotNull, &t.BaseType,
 			&hasDomainConstraint)
 		if err != nil {
@@ -45,8 +45,9 @@ func getCustomTypesUsedInTables(ctx context.Context, tx pgx.Tx) ([]*toolkit.Type
 		if hasDomainConstraint {
 			domainsWithConstraint = append(domainsWithConstraint, t)
 		}
-		if t.Kind == 'd' && len(t.Chain) > 0 {
-			t.RootBuiltInType = t.Chain[len(t.Chain)-1]
+		if t.Kind == 'd' && len(t.ChainOids) > 0 {
+			t.RootBuiltInTypeOid = t.ChainOids[len(t.ChainOids)-1]
+			t.RootBuiltInTypeName = t.ChainNames[len(t.ChainNames)-1]
 		}
 		_, exists := tx.Conn().TypeMap().TypeForOID(uint32(t.Oid))
 		if !exists {

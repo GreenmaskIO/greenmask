@@ -267,6 +267,7 @@ func (c *Cmd) performTransform(ctx context.Context) error {
 }
 
 func (c *Cmd) init(ctx context.Context) (Transformer, *Driver, ValidationWarnings, error) {
+	var warnings ValidationWarnings
 
 	// Read the first line from the stdin
 	readLineCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
@@ -314,10 +315,11 @@ func (c *Cmd) init(ctx context.Context) (Transformer, *Driver, ValidationWarning
 	typeMap := pgtype.NewMap()
 	TryRegisterCustomTypes(typeMap, meta.Types, false)
 
-	driver, err := NewDriver(meta.Table, meta.Types, meta.ColumnTypeOverrides)
+	driver, driverWarnings, err := NewDriver(meta.Table, meta.Types, meta.ColumnTypeOverrides)
 	if err != nil {
 		return nil, nil, nil, fmt.Errorf("error initilizing Driver: %w", err)
 	}
+	warnings = append(warnings, driverWarnings...)
 
 	params, pw, err := InitParameters(driver, meta.Parameters, c.definition.Parameters, meta.Types)
 	if err != nil {
@@ -327,11 +329,13 @@ func (c *Cmd) init(ctx context.Context) (Transformer, *Driver, ValidationWarning
 		return nil, nil, pw, nil
 	}
 
-	t, iw, err := c.definition.New(ctx, driver, params)
+	t, initWarnings, err := c.definition.New(ctx, driver, params)
 	if err != nil {
 		return nil, nil, nil, fmt.Errorf("error initializing transformer: %w", err)
 	}
 	c.params = params
 
-	return t, driver, iw, nil
+	warnings = append(warnings, initWarnings...)
+
+	return t, driver, warnings, nil
 }
