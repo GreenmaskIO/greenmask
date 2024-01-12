@@ -58,7 +58,7 @@ func getDriver() *Driver {
 		},
 		Constraints: []Constraint{},
 	}
-	driver, _, err := NewDriver(table, nil, nil)
+	driver, _, err := NewDriver(table, nil)
 	if err != nil {
 		panic(err.Error())
 	}
