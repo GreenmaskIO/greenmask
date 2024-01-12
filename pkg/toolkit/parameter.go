@@ -59,9 +59,8 @@ type ColumnProperties struct {
 
 func NewColumnProperties() *ColumnProperties {
 	return &ColumnProperties{
-		Nullable:      false,
-		MaxLength:     WithoutMaxLength,
-		RequireDriver: false,
+		Nullable:  false,
+		MaxLength: WithoutMaxLength,
 	}
 }
 
@@ -428,29 +427,9 @@ func (p *Parameter) Init(driver *Driver, types []*Type, params []*Parameter, raw
 
 		if p.ColumnProperties != nil && len(p.ColumnProperties.AllowedTypes) > 0 {
 
-			// Get overriden type if exists
-			var overriddenPgType *pgtype.Type
-			name, ok := driver.ColumnTypeOverrides[column.Name]
-			if ok {
-				// TODO: move type overriding check at the Driver initialization
-				overriddenPgType, ok = driver.SharedTypeMap.TypeForName(name)
-				if !ok {
-					return ValidationWarnings{
-							NewValidationWarning().
-								SetSeverity(ErrorValidationSeverity).
-								SetMsg("unknown overridden type").
-								AddMeta("ColumnName", columnName).
-								AddMeta("OverriddenTypeName", name).
-								AddMeta("ParameterName", p.Name),
-						},
-						nil
-				}
-			}
-
 			// Check that one of original column type or root base type or overridden type is suitable for allowed types
 			if !slices.Contains(p.ColumnProperties.AllowedTypes, pgType.Name) &&
-				!(pgRootType != nil && slices.Contains(p.ColumnProperties.AllowedTypes, pgRootType.Name)) &&
-				!(overriddenPgType != nil && slices.Contains(p.ColumnProperties.AllowedTypes, overriddenPgType.Name)) {
+				!(pgRootType != nil && slices.Contains(p.ColumnProperties.AllowedTypes, pgRootType.Name)) {
 				return ValidationWarnings{
 						NewValidationWarning().
 							SetSeverity(ErrorValidationSeverity).

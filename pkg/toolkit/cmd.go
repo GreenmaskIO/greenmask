@@ -315,7 +315,7 @@ func (c *Cmd) init(ctx context.Context) (Transformer, *Driver, ValidationWarning
 	typeMap := pgtype.NewMap()
 	TryRegisterCustomTypes(typeMap, meta.Types, false)
 
-	driver, driverWarnings, err := NewDriver(meta.Table, meta.Types, meta.ColumnTypeOverrides)
+	driver, driverWarnings, err := NewDriver(meta.Table, meta.Types)
 	if err != nil {
 		return nil, nil, nil, fmt.Errorf("error initilizing Driver: %w", err)
 	}

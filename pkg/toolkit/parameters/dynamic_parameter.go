@@ -18,7 +18,7 @@ type DynamicParameter struct {
 	record                *toolkit.Record
 	tmpl                  *template.Template
 	dynamicValue          *toolkit.DynamicParamValue
-	linkedColumnParameter *toolkit.Parameter
+	linkedColumnParameter *StaticParameter
 	columnIdx             int
 }
 
@@ -29,11 +29,15 @@ func NewDynamicParameter(def *toolkit.Parameter, driver *toolkit.Driver) *Dynami
 	}
 }
 
+func (p *DynamicParameter) GetDefinition() *toolkit.Parameter {
+	return p.definition
+}
+
 func (p *DynamicParameter) SetRecord(r *toolkit.Record) {
 	p.record = r
 }
 
-func (p *DynamicParameter) Init(defs []*toolkit.Parameter, dynamicSettings *toolkit.DynamicParamValue) (warnings toolkit.ValidationWarnings, err error) {
+func (p *DynamicParameter) Init(columnParameters []*StaticParameter, dynamicSettings *toolkit.DynamicParamValue) (warnings toolkit.ValidationWarnings, err error) {
 
 	// Algorithm
 	// 1. If it has CastDbType check that type is the same as in CastDbType iof not - raise warning
@@ -93,14 +97,14 @@ func (p *DynamicParameter) Init(defs []*toolkit.Parameter, dynamicSettings *tool
 	p.columnIdx = columnIdx
 
 	if p.definition.LinkColumnParameter != "" {
-		paramIdx := slices.IndexFunc(defs, func(def *toolkit.Parameter) bool {
-			return def.Name == p.definition.LinkColumnParameter
+		paramIdx := slices.IndexFunc(columnParameters, func(def *StaticParameter) bool {
+			return def.definition.Name == p.definition.LinkColumnParameter
 		})
 		if paramIdx == -1 {
 			panic(fmt.Sprintf(`parameter with name "%s" is not found`, p.definition.LinkColumnParameter))
 		}
-		p.linkedColumnParameter = defs[paramIdx]
-		if !p.linkedColumnParameter.IsColumn {
+		p.linkedColumnParameter = columnParameters[paramIdx]
+		if !p.linkedColumnParameter.definition.IsColumn {
 			return nil, fmt.Errorf("linked parameter must be column: check transformer implementation")
 		}
 
@@ -111,12 +115,12 @@ func (p *DynamicParameter) Init(defs []*toolkit.Parameter, dynamicSettings *tool
 		if err != nil {
 			return nil, fmt.Errorf("error scanning linked parameter value: %w", err)
 		}
-		_, linkedColumn, ok := p.driver.GetColumnByName(dynamicSettings.Column)
+		_, linkedColumn, ok := p.driver.GetColumnByName(linkedColumnName)
 		if !ok {
 			panic(fmt.Sprintf("column with name \"%s\" is not found", linkedColumnName))
 		}
 
-		// TODO: Recheck this cond since some of types implicitly literally equal
+		// TODO: Recheck this cond since some of types implicitly literally equal for instance TIMESTAMP and TIMESTAMPTZ
 		// TODO: There is bug with column overriding type since OverriddenTypeOid is not checking
 		if linkedColumn.TypeOid != column.TypeOid && p.tmpl == nil {
 			warnings = append(warnings, toolkit.NewValidationWarning().

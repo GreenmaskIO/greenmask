@@ -12,10 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package transformers
+package parameters
 
 import (
+	"fmt"
 	"slices"
+	"strings"
 
 	"github.com/jackc/pgx/v5/pgtype"
 
@@ -140,20 +142,32 @@ var columnList = []*toolkit.Column{
 
 // getDriverAndRecord - return adhoc table for testing
 // TODO: You should generate table definition dynamically using faker as well as table tuples
-func getDriverAndRecord(name string, value string) (*toolkit.Driver, *toolkit.Record) {
-	idx := slices.IndexFunc(columnList, func(column *toolkit.Column) bool {
-		return column.Name == name
-	})
+func getDriverAndRecord(columnValues map[string]*toolkit.RawValue) (*toolkit.Driver, *toolkit.Record) {
 
-	if idx == -1 {
-		panic("cannot find column")
+	if columnValues == nil || len(columnValues) == 0 {
+		panic("received empty columnValues")
 	}
+
+	var columns []*toolkit.Column
+	var values []string
+	for columnName, columnValue := range columnValues {
+		idx := slices.IndexFunc(columnList, func(column *toolkit.Column) bool {
+			return column.Name == columnName
+		})
+		if idx == -1 {
+			panic(fmt.Sprintf("column with name \"%s\" is not found", columnName))
+		}
+		columns = append(columns, columnList[idx])
+		encodedValue := pgcopy.EncodeAttr(columnValue, nil)
+		values = append(values, string(encodedValue))
+	}
+	rawCopyLine := strings.Join(values, "\t")
 
 	table := &toolkit.Table{
 		Schema:      "public",
 		Name:        "test",
 		Oid:         1224,
-		Columns:     columnList[idx : idx+1],
+		Columns:     columns,
 		Constraints: []toolkit.Constraint{},
 	}
 
@@ -161,11 +175,15 @@ func getDriverAndRecord(name string, value string) (*toolkit.Driver, *toolkit.Re
 	if err != nil {
 		panic(err.Error())
 	}
-	row := pgcopy.NewRow(1)
-	_ = row.Decode([]byte(value))
+	row := pgcopy.NewRow(len(columns))
+	_ = row.Decode([]byte(rawCopyLine))
 	r := toolkit.NewRecord(
 		driver,
 	)
 	r.SetRow(row)
 	return driver, r
+}
+
+func getDriverAndRecordByTableDef() {
+
 }

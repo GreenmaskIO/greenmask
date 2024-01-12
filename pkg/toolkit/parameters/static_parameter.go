@@ -13,7 +13,7 @@ import (
 type StaticParameter struct {
 	definition            *toolkit.Parameter
 	driver                *toolkit.Driver
-	linkedColumnParameter *toolkit.Parameter
+	linkedColumnParameter *StaticParameter
 	rawValue              toolkit.ParamsValue
 	column                *toolkit.Column
 	value                 any
@@ -26,8 +26,11 @@ func NewStaticParameter(def *toolkit.Parameter, driver *toolkit.Driver) *StaticP
 	}
 }
 
-func (p *StaticParameter) Init(defs []*toolkit.Parameter, rawValue toolkit.ParamsValue, external bool) (toolkit.ValidationWarnings, error) {
-	// external - means that initialized parameter from custom (external) transformer
+func (p *StaticParameter) GetDefinition() *toolkit.Parameter {
+	return p.definition
+}
+
+func (p *StaticParameter) Init(columnParams []*StaticParameter, rawValue toolkit.ParamsValue) (toolkit.ValidationWarnings, error) {
 
 	var warnings toolkit.ValidationWarnings
 
@@ -62,14 +65,14 @@ func (p *StaticParameter) Init(defs []*toolkit.Parameter, rawValue toolkit.Param
 	}
 
 	if p.definition.LinkColumnParameter != "" {
-		idx := slices.IndexFunc(defs, func(definition *toolkit.Parameter) bool {
-			return definition.Name == p.definition.LinkColumnParameter
+		idx := slices.IndexFunc(columnParams, func(param *StaticParameter) bool {
+			return param.definition.Name == p.definition.LinkColumnParameter
 		})
 		if idx == -1 {
 			panic(fmt.Sprintf(`parameter with name "%s" is not found`, p.definition.LinkColumnParameter))
 		}
-		p.linkedColumnParameter = defs[idx]
-		if !p.linkedColumnParameter.IsColumn {
+		p.linkedColumnParameter = columnParams[idx]
+		if !p.linkedColumnParameter.definition.IsColumn {
 			return nil, fmt.Errorf("linked parameter must be column: check transformer implementation")
 		}
 	}
@@ -150,7 +153,7 @@ func (p *StaticParameter) Value() (any, error) {
 	} else if p.definition.LinkedColumnParameter != nil {
 		// Parsing dynamically - default value and type are unknown
 		// TODO: Be careful - this may cause an error in Scan func if the the returning value is not a pointer
-		val, err := p.driver.DecodeValueByTypeOid(uint32(p.linkedColumnParameter.Column.TypeOid), p.rawValue)
+		val, err := p.driver.DecodeValueByTypeOid(uint32(p.linkedColumnParameter.column.TypeOid), p.rawValue)
 		if err != nil {
 			return nil, fmt.Errorf("unable to scan parameter via Driver: %w", err)
 		}
@@ -210,20 +213,20 @@ func (p *StaticParameter) Scan(dest any) (bool, error) {
 	} else if p.linkedColumnParameter != nil {
 
 		// Try to scan value using pgx Driver and pgtype defined in the linked column
-		if p.linkedColumnParameter.Column == nil {
+		if p.linkedColumnParameter.column == nil {
 			return false, fmt.Errorf("parameter is linked but column was not assigned")
 		}
 
 		switch p.value.(type) {
 		case *time.Time:
-			val, err := p.driver.DecodeValueByTypeOid(uint32(p.linkedColumnParameter.Column.TypeOid), p.rawValue)
+			val, err := p.driver.DecodeValueByTypeOid(uint32(p.linkedColumnParameter.column.TypeOid), p.rawValue)
 			if err != nil {
 				return false, fmt.Errorf("unable to scan parameter via Driver: %w", err)
 			}
 			valTime := val.(time.Time)
 			p.value = &valTime
 		default:
-			if err := p.driver.ScanValueByTypeOid(uint32(p.linkedColumnParameter.Column.TypeOid), p.rawValue, p.value); err != nil {
+			if err := p.driver.ScanValueByTypeOid(uint32(p.linkedColumnParameter.column.TypeOid), p.rawValue, p.value); err != nil {
 				return false, fmt.Errorf("unable to scan parameter via Driver: %w", err)
 			}
 		}
