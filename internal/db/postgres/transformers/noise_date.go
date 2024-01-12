@@ -29,7 +29,7 @@ import (
 
 // TODO: Ensure pqinterval.Duration returns duration in int64 for date and time
 
-var NoiseDateTransformerDefinition = utils.NewDefinition(
+var NoiseDateTransformerDefinition = utils.NewTransformerDefinition(
 	utils.NewTransformerProperties(
 		"NoiseDate",
 		"Add some random value (shift value) in the provided interval",
@@ -37,7 +37,7 @@ var NoiseDateTransformerDefinition = utils.NewDefinition(
 
 	NewNoiseDateTransformer,
 
-	toolkit.MustNewParameter(
+	toolkit.MustNewParameterDefinition(
 		"column",
 		"column name",
 	).SetIsColumn(toolkit.NewColumnProperties().
@@ -46,13 +46,13 @@ var NoiseDateTransformerDefinition = utils.NewDefinition(
 		SetSkipOnNull(true),
 	).SetRequired(true),
 
-	toolkit.MustNewParameter(
+	toolkit.MustNewParameterDefinition(
 		"ratio",
 		"max random duration for noise",
 	).SetRequired(true).
 		SetCastDbType("interval"),
 
-	toolkit.MustNewParameter(
+	toolkit.MustNewParameterDefinition(
 		"truncate",
 		fmt.Sprintf("truncate date till the part (%s)", strings.Join(truncateParts, ", ")),
 	).SetRawValueValidator(ValidateDateTruncationParameterValue),
@@ -73,7 +73,7 @@ type NoiseDateTransformer struct {
 	ratio           time.Duration
 }
 
-func NewNoiseDateTransformer(ctx context.Context, driver *toolkit.Driver, parameters map[string]*toolkit.Parameter) (utils.Transformer, toolkit.ValidationWarnings, error) {
+func NewNoiseDateTransformer(ctx context.Context, driver *toolkit.Driver, parameters map[string]*toolkit.ParameterDefinition) (utils.Transformer, toolkit.ValidationWarnings, error) {
 	var columnName, truncate string
 	var generator dateNoiseFunc = generateNoisedTime
 
@@ -175,7 +175,7 @@ func generateNoisedTimeTruncate(r *rand.Rand, ratio time.Duration, val *time.Tim
 	return res
 }
 
-func ValidateDateTruncationParameterValue(p *toolkit.Parameter, v toolkit.ParamsValue) (toolkit.ValidationWarnings, error) {
+func ValidateDateTruncationParameterValue(p *toolkit.ParameterDefinition, v toolkit.ParamsValue) (toolkit.ValidationWarnings, error) {
 	part := string(v)
 	switch part {
 	case "nano", "second", "minute", "hour", "day", "month", "year", "":

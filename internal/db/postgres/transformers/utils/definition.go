@@ -23,23 +23,23 @@ import (
 
 // NewTransformerFunc - make new transformer. This function receives Driver for making some steps for validation or
 // anything else. parameters - the map of the parsed parameters, for get an appropriate parameter find it
-// in the map by the Name. All those parameters has been defined in the Definition object of the transformer
-type NewTransformerFunc func(ctx context.Context, driver *toolkit.Driver, parameters map[string]*toolkit.Parameter) (
+// in the map by the Name. All those parameters has been defined in the TransformerDefinition object of the transformer
+type NewTransformerFunc func(ctx context.Context, driver *toolkit.Driver, parameters map[string]*toolkit.ParameterDefinition) (
 	Transformer, toolkit.ValidationWarnings, error,
 )
 
-type Definition struct {
-	Properties      *TransformerProperties `json:"properties"`
-	New             NewTransformerFunc     `json:"-"`
-	Parameters      []*toolkit.Parameter   `json:"parameters"`
-	SchemaValidator SchemaValidationFunc   `json:"-"`
+type TransformerDefinition struct {
+	Properties      *TransformerProperties         `json:"properties"`
+	New             NewTransformerFunc             `json:"-"`
+	Parameters      []*toolkit.ParameterDefinition `json:"parameters"`
+	SchemaValidator SchemaValidationFunc           `json:"-"`
 }
 
-func NewDefinition(
+func NewTransformerDefinition(
 	properties *TransformerProperties, newTransformerFunc NewTransformerFunc,
-	parameters ...*toolkit.Parameter,
-) *Definition {
-	return &Definition{
+	parameters ...*toolkit.ParameterDefinition,
+) *TransformerDefinition {
+	return &TransformerDefinition{
 		Properties:      properties,
 		New:             newTransformerFunc,
 		Parameters:      parameters,
@@ -47,14 +47,14 @@ func NewDefinition(
 	}
 }
 
-func (d *Definition) SetSchemaValidator(v SchemaValidationFunc) *Definition {
+func (d *TransformerDefinition) SetSchemaValidator(v SchemaValidationFunc) *TransformerDefinition {
 	d.SchemaValidator = v
 	return d
 }
 
-//func (d *Definition) parseParameters(
+//func (d *TransformerDefinition) parseParameters(
 //	Driver *toolkit.Driver, rawParams map[string]toolkit.ParamsValue, types []*toolkit.Type,
-//) (toolkit.ValidationWarnings, map[string]*toolkit.Parameter, error) {
+//) (toolkit.ValidationWarnings, map[string]*toolkit.ParameterDefinition, error) {
 //	if rawParams == nil && len(d.Parameters) > 0 {
 //		return toolkit.ValidationWarnings{
 //			toolkit.NewValidationWarning().
@@ -63,12 +63,12 @@ func (d *Definition) SetSchemaValidator(v SchemaValidationFunc) *Definition {
 //		}, nil, nil
 //	}
 //
-//	var params = make(map[string]*toolkit.Parameter, len(d.Parameters))
+//	var params = make(map[string]*toolkit.ParameterDefinition, len(d.Parameters))
 //	for _, p := range d.Parameters {
 //		params[p.Name] = p.Copy()
 //	}
-//	var columnParameters = make(map[string]*toolkit.Parameter)
-//	var commonParameters = make(map[string]*toolkit.Parameter)
+//	var columnParameters = make(map[string]*toolkit.ParameterDefinition)
+//	var commonParameters = make(map[string]*toolkit.ParameterDefinition)
 //	for _, p := range d.Parameters {
 //		if p.IsColumn {
 //			columnParameters[p.Name] = p
@@ -110,7 +110,7 @@ func (d *Definition) SetSchemaValidator(v SchemaValidationFunc) *Definition {
 //	return totalWarnings, params, nil
 //}
 
-func (d *Definition) Instance(
+func (d *TransformerDefinition) Instance(
 	ctx context.Context, driver *toolkit.Driver, rawParams map[string]toolkit.ParamsValue, types []*toolkit.Type,
 ) (Transformer, toolkit.ValidationWarnings, error) {
 	// Decode parameters and get the pgcopy of parsed

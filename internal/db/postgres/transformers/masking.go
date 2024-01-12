@@ -39,7 +39,7 @@ const (
 	MDefault    string = "default"
 )
 
-var MaskingTransformerDefinition = utils.NewDefinition(
+var MaskingTransformerDefinition = utils.NewTransformerDefinition(
 	utils.NewTransformerProperties(
 		"Masking",
 		"Mask a value using one of masking type",
@@ -47,7 +47,7 @@ var MaskingTransformerDefinition = utils.NewDefinition(
 
 	NewMaskingTransformer,
 
-	toolkit.MustNewParameter(
+	toolkit.MustNewParameterDefinition(
 		"column",
 		"column name",
 	).SetIsColumn(toolkit.NewColumnProperties().
@@ -55,7 +55,7 @@ var MaskingTransformerDefinition = utils.NewDefinition(
 		SetAllowedColumnTypes("text", "varchar"),
 	).SetRequired(true),
 
-	toolkit.MustNewParameter(
+	toolkit.MustNewParameterDefinition(
 		"type",
 		"logical type of attribute (default, password, name, addr, email, mobile, tel, id, credit, url)",
 	).SetRawValueValidator(maskerTypeValidator).
@@ -72,7 +72,7 @@ type MaskingTransformer struct {
 	affectedColumns map[int]string
 }
 
-func NewMaskingTransformer(ctx context.Context, driver *toolkit.Driver, parameters map[string]*toolkit.Parameter) (utils.Transformer, toolkit.ValidationWarnings, error) {
+func NewMaskingTransformer(ctx context.Context, driver *toolkit.Driver, parameters map[string]*toolkit.ParameterDefinition) (utils.Transformer, toolkit.ValidationWarnings, error) {
 
 	var columnName string
 	var dataType string
@@ -164,7 +164,7 @@ func defaultMasker(v string) string {
 	return strings.Repeat("*", len(v))
 }
 
-func maskerTypeValidator(p *toolkit.Parameter, v toolkit.ParamsValue) (toolkit.ValidationWarnings, error) {
+func maskerTypeValidator(p *toolkit.ParameterDefinition, v toolkit.ParamsValue) (toolkit.ValidationWarnings, error) {
 	typeName := string(v)
 
 	types := []string{MDefault, MPassword, MName, MAddress, MEmail, MMobile, MTelephone, MID, MCreditCard, MURL}

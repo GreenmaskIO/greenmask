@@ -41,7 +41,7 @@ const (
 	JsonSetOpName    = "set"
 )
 
-var JsonTransformerDefinition = utils.NewDefinition(
+var JsonTransformerDefinition = utils.NewTransformerDefinition(
 
 	utils.NewTransformerProperties(
 		"Json",
@@ -50,7 +50,7 @@ var JsonTransformerDefinition = utils.NewDefinition(
 
 	NewJsonTransformer,
 
-	toolkit.MustNewParameter(
+	toolkit.MustNewParameterDefinition(
 		"column",
 		"column name",
 	).SetIsColumn(toolkit.NewColumnProperties().
@@ -58,12 +58,12 @@ var JsonTransformerDefinition = utils.NewDefinition(
 		SetAllowedColumnTypes("json", "jsonb"),
 	).SetRequired(true),
 
-	toolkit.MustNewParameter(
+	toolkit.MustNewParameterDefinition(
 		"operations",
 		`list of operations that contains editing operation [{"operation": "set|delete", "path": "path to the part of the document", "value": "value in any type - string, int, float, list, object, null", "value_template": "go template", "error_not_exist", "raise error if not exists - boolean"}]`,
 	).SetRequired(true),
 
-	toolkit.MustNewParameter(
+	toolkit.MustNewParameterDefinition(
 		"keep_null",
 		"apply changes in value is null",
 	).SetDefaultValue(toolkit.ParamsValue("true")),
@@ -135,7 +135,7 @@ type JsonTransformer struct {
 	keepNull        bool
 }
 
-func NewJsonTransformer(ctx context.Context, driver *toolkit.Driver, parameters map[string]*toolkit.Parameter) (utils.Transformer, toolkit.ValidationWarnings, error) {
+func NewJsonTransformer(ctx context.Context, driver *toolkit.Driver, parameters map[string]*toolkit.ParameterDefinition) (utils.Transformer, toolkit.ValidationWarnings, error) {
 	var ops []*Operation
 	var columnName string
 	var keepNull bool

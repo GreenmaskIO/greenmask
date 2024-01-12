@@ -13,7 +13,7 @@ import (
 //  2. You might need to move default value decoding to common functions
 
 type DynamicParameter struct {
-	definition            *toolkit.Parameter
+	definition            *toolkit.ParameterDefinition
 	driver                *toolkit.Driver
 	record                *toolkit.Record
 	tmpl                  *template.Template
@@ -22,14 +22,14 @@ type DynamicParameter struct {
 	columnIdx             int
 }
 
-func NewDynamicParameter(def *toolkit.Parameter, driver *toolkit.Driver) *DynamicParameter {
+func NewDynamicParameter(def *toolkit.ParameterDefinition, driver *toolkit.Driver) *DynamicParameter {
 	return &DynamicParameter{
 		definition: def,
 		driver:     driver,
 	}
 }
 
-func (p *DynamicParameter) GetDefinition() *toolkit.Parameter {
+func (p *DynamicParameter) GetDefinition() *toolkit.ParameterDefinition {
 	return p.definition
 }
 

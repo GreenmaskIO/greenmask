@@ -37,13 +37,13 @@ type RowDriverParams struct {
 }
 
 type Definition struct {
-	Name             string             `json:"name"`
-	Description      string             `json:"description"`
-	Parameters       []*Parameter       `json:"parameters"`
-	Validate         bool               `json:"validate"`
-	ExpectedExitCode int                `json:"expected_exit_code"`
-	Driver           *RowDriverParams   `json:"driver"`
-	New              NewTransformerFunc `json:"-"`
+	Name             string                 `json:"name"`
+	Description      string                 `json:"description"`
+	Parameters       []*ParameterDefinition `json:"parameters"`
+	Validate         bool                   `json:"validate"`
+	ExpectedExitCode int                    `json:"expected_exit_code"`
+	Driver           *RowDriverParams       `json:"driver"`
+	New              NewTransformerFunc     `json:"-"`
 }
 
 func NewDefinition(name string, makeFunc NewTransformerFunc) *Definition {
@@ -59,7 +59,7 @@ func (d *Definition) SetDescription(v string) *Definition {
 	return d
 }
 
-func (d *Definition) AddParameter(v *Parameter) *Definition {
+func (d *Definition) AddParameter(v *ParameterDefinition) *Definition {
 	if v == nil {
 		panic("parameter is nil")
 	}

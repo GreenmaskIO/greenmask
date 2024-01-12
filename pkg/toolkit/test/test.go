@@ -36,7 +36,7 @@ var testTransformerDefinition = toolkit.NewDefinition(
 		},
 	}).
 	AddParameter(
-		toolkit.MustNewParameter("column", "test desc").
+		toolkit.MustNewParameterDefinition("column", "test desc").
 			SetIsColumn(
 				toolkit.NewColumnProperties().
 					SetAllowedColumnTypes("date", "timestamp", "timestamptz").
@@ -50,7 +50,7 @@ type TestTransformer struct {
 	columnName string
 }
 
-func NewTestTransformer(ctx context.Context, driver *toolkit.Driver, parameters map[string]*toolkit.Parameter) (
+func NewTestTransformer(ctx context.Context, driver *toolkit.Driver, parameters map[string]*toolkit.ParameterDefinition) (
 	toolkit.Transformer, toolkit.ValidationWarnings, error) {
 	c := parameters["column"]
 	var columnName string

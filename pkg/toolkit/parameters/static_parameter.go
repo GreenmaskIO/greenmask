@@ -11,7 +11,7 @@ import (
 )
 
 type StaticParameter struct {
-	definition            *toolkit.Parameter
+	definition            *toolkit.ParameterDefinition
 	driver                *toolkit.Driver
 	linkedColumnParameter *StaticParameter
 	rawValue              toolkit.ParamsValue
@@ -19,14 +19,14 @@ type StaticParameter struct {
 	value                 any
 }
 
-func NewStaticParameter(def *toolkit.Parameter, driver *toolkit.Driver) *StaticParameter {
+func NewStaticParameter(def *toolkit.ParameterDefinition, driver *toolkit.Driver) *StaticParameter {
 	return &StaticParameter{
 		definition: def,
 		driver:     driver,
 	}
 }
 
-func (p *StaticParameter) GetDefinition() *toolkit.Parameter {
+func (p *StaticParameter) GetDefinition() *toolkit.ParameterDefinition {
 	return p.definition
 }
 

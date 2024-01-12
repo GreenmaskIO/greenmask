@@ -24,7 +24,7 @@ import (
 	"github.com/greenmaskio/greenmask/pkg/toolkit"
 )
 
-var RandomBoolTransformerDefinition = utils.NewDefinition(
+var RandomBoolTransformerDefinition = utils.NewTransformerDefinition(
 
 	utils.NewTransformerProperties(
 		"RandomBool",
@@ -33,7 +33,7 @@ var RandomBoolTransformerDefinition = utils.NewDefinition(
 
 	NewRandomBoolTransformer,
 
-	toolkit.MustNewParameter(
+	toolkit.MustNewParameterDefinition(
 		"column",
 		"column name",
 	).SetIsColumn(toolkit.NewColumnProperties().
@@ -41,7 +41,7 @@ var RandomBoolTransformerDefinition = utils.NewDefinition(
 		SetAllowedColumnTypes("bool"),
 	).SetRequired(true),
 
-	toolkit.MustNewParameter(
+	toolkit.MustNewParameterDefinition(
 		"keep_null",
 		"indicates that NULL values must not be replaced with transformed values",
 	).SetDefaultValue(toolkit.ParamsValue("true")),
@@ -55,7 +55,7 @@ type RandomBoolTransformer struct {
 	columnIdx       int
 }
 
-func NewRandomBoolTransformer(ctx context.Context, driver *toolkit.Driver, parameters map[string]*toolkit.Parameter) (utils.Transformer, toolkit.ValidationWarnings, error) {
+func NewRandomBoolTransformer(ctx context.Context, driver *toolkit.Driver, parameters map[string]*toolkit.ParameterDefinition) (utils.Transformer, toolkit.ValidationWarnings, error) {
 	var columnName string
 	var keepNull bool
 	p := parameters["column"]

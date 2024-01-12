@@ -70,7 +70,7 @@ type Type struct {
 	RootBuiltInTypeName string `json:"root_built_in_type_name,omitempty"`
 }
 
-func (t *Type) IsAffected(p *Parameter) (w ValidationWarnings) {
+func (t *Type) IsAffected(p *ParameterDefinition) (w ValidationWarnings) {
 	if p.Column == nil {
 		panic("parameter Column must not be nil")
 	}

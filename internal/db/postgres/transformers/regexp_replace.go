@@ -23,7 +23,7 @@ import (
 	"github.com/greenmaskio/greenmask/pkg/toolkit"
 )
 
-var RegexpReplaceTransformerDefinition = utils.NewDefinition(
+var RegexpReplaceTransformerDefinition = utils.NewTransformerDefinition(
 	utils.NewTransformerProperties(
 		"RegexpReplace",
 		"Replace string using regular expression",
@@ -31,7 +31,7 @@ var RegexpReplaceTransformerDefinition = utils.NewDefinition(
 
 	NewRegexpReplaceTransformer,
 
-	toolkit.MustNewParameter(
+	toolkit.MustNewParameterDefinition(
 		"column",
 		"column name",
 	).SetIsColumn(toolkit.NewColumnProperties().
@@ -39,12 +39,12 @@ var RegexpReplaceTransformerDefinition = utils.NewDefinition(
 		SetAllowedColumnTypes("varchar", "text", "bpchar"),
 	).SetRequired(true),
 
-	toolkit.MustNewParameter(
+	toolkit.MustNewParameterDefinition(
 		"regexp",
 		"regular expression",
 	).SetRequired(true),
 
-	toolkit.MustNewParameter(
+	toolkit.MustNewParameterDefinition(
 		"replace",
 		"replacement value",
 	).SetRequired(true),
@@ -58,7 +58,7 @@ type RegexpReplaceTransformer struct {
 	affectedColumns map[int]string
 }
 
-func NewRegexpReplaceTransformer(ctx context.Context, driver *toolkit.Driver, parameters map[string]*toolkit.Parameter) (utils.Transformer, toolkit.ValidationWarnings, error) {
+func NewRegexpReplaceTransformer(ctx context.Context, driver *toolkit.Driver, parameters map[string]*toolkit.ParameterDefinition) (utils.Transformer, toolkit.ValidationWarnings, error) {
 	var columnName, regexpStr, replace string
 	p := parameters["column"]
 	if _, err := p.Scan(&columnName); err != nil {

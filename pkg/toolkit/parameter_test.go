@@ -69,12 +69,12 @@ func TestParameter_Parse_simple(t *testing.T) {
 
 	driver := getDriver()
 
-	p1 := MustNewParameter(
+	p1 := MustNewParameterDefinition(
 		"simple_param",
 		"Simple description",
 	)
 
-	warnings, err := p1.Init(driver, nil, []*Parameter{p1}, []byte("1"))
+	warnings, err := p1.Init(driver, nil, []*ParameterDefinition{p1}, []byte("1"))
 	require.NoError(t, err)
 	assert.Empty(t, warnings)
 	var expected = 1
@@ -89,7 +89,7 @@ func TestParameter_Parse_with_allowed_pg_types(t *testing.T) {
 	driver := getDriver()
 
 	// Check simple column parameter definition positive case
-	p1 := MustNewParameter(
+	p1 := MustNewParameterDefinition(
 		"column",
 		"Simple column parameter",
 	).SetRequired(true).
@@ -100,7 +100,7 @@ func TestParameter_Parse_with_allowed_pg_types(t *testing.T) {
 		})
 
 	//warnings, err := p1.Decode(driver, rawParams, nil, nil)
-	warnings, err := p1.Init(driver, nil, []*Parameter{p1}, []byte("created_at"))
+	warnings, err := p1.Init(driver, nil, []*ParameterDefinition{p1}, []byte("created_at"))
 	require.NoError(t, err)
 	assert.Empty(t, warnings)
 	var expected = "created_at"
@@ -109,7 +109,7 @@ func TestParameter_Parse_with_allowed_pg_types(t *testing.T) {
 	assert.Equal(t, expected, res)
 
 	// Check simple column parameter definition negative case
-	warnings, err = p1.Init(driver, nil, []*Parameter{p1}, []byte("id"))
+	warnings, err = p1.Init(driver, nil, []*ParameterDefinition{p1}, []byte("id"))
 	require.NoError(t, err)
 	assert.NotEmpty(t, warnings)
 	assert.True(t, slices.ContainsFunc(warnings, func(warning *ValidationWarning) bool {
@@ -122,19 +122,19 @@ func TestParameter_Parse_with_linked_parameter(t *testing.T) {
 	driver := getDriver()
 
 	// Check simple linked parameter definition positive case
-	columnParam := MustNewParameter(
+	columnParam := MustNewParameterDefinition(
 		"column",
 		"Simple column parameter",
 	).SetRequired(true).
 		SetIsColumn(NewColumnProperties())
 
-	linkedParam := MustNewParameter(
+	linkedParam := MustNewParameterDefinition(
 		"replace",
 		"Simple column parameter",
 	).SetRequired(true).
 		SetLinkParameter("column")
 
-	params := []*Parameter{columnParam, linkedParam}
+	params := []*ParameterDefinition{columnParam, linkedParam}
 
 	warnings, err := columnParam.Init(driver, nil, params, []byte("created_at"))
 	require.NoError(t, err)
@@ -155,12 +155,12 @@ func TestParameter_scan_empty(t *testing.T) {
 
 	driver := getDriver()
 
-	p1 := MustNewParameter(
+	p1 := MustNewParameterDefinition(
 		"simple_param",
 		"Simple description",
 	)
 
-	warnings, err := p1.Init(driver, nil, []*Parameter{p1}, nil)
+	warnings, err := p1.Init(driver, nil, []*ParameterDefinition{p1}, nil)
 	require.NoError(t, err)
 	assert.Empty(t, warnings)
 	var res int
@@ -181,10 +181,10 @@ func TestParameter_structured_value_validation(t *testing.T) {
 		A: "test",
 	}
 
-	p1 := MustNewParameter(
+	p1 := MustNewParameterDefinition(
 		"simple_param",
 		"Simple description",
-	).SetRawValueValidator(func(p *Parameter, v ParamsValue) (ValidationWarnings, error) {
+	).SetRawValueValidator(func(p *ParameterDefinition, v ParamsValue) (ValidationWarnings, error) {
 		err := json.Unmarshal(v, res)
 		if err != nil {
 			return nil, err
@@ -192,7 +192,7 @@ func TestParameter_structured_value_validation(t *testing.T) {
 		return nil, nil
 	})
 
-	warnings, err := p1.Init(driver, nil, []*Parameter{p1}, []byte(`{"a": "test"}`))
+	warnings, err := p1.Init(driver, nil, []*ParameterDefinition{p1}, []byte(`{"a": "test"}`))
 	require.NoError(t, err)
 	assert.Empty(t, warnings)
 	assert.Equal(t, expected.A, res.A)

@@ -24,8 +24,8 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-type Unmarshaller func(parameter *Parameter, driver *Driver, src ParamsValue) (any, error)
-type RawValueValidator func(p *Parameter, v ParamsValue) (ValidationWarnings, error)
+type Unmarshaller func(parameter *ParameterDefinition, driver *Driver, src ParamsValue) (any, error)
+type RawValueValidator func(p *ParameterDefinition, v ParamsValue) (ValidationWarnings, error)
 
 const WithoutMaxLength = -1
 
@@ -99,11 +99,10 @@ func (cp *ColumnProperties) SetSkipOnNull(v bool) *ColumnProperties {
 	return cp
 }
 
-// Parameter - wide parameter entity definition that contains properties that allows to check schema, find affection,
+// ParameterDefinition - wide parameter entity definition that contains properties that allows to check schema, find affection,
 // cast variable using some features and so on. It may be defined and assigned ot the Definition of the transformer
 // if transformer has any parameters
-// TODO: Rename it to ParameterDefinition
-type Parameter struct {
+type ParameterDefinition struct {
 	// Name - name of the parameter. Must be unique in the whole Transformer parameters slice
 	Name string `mapstructure:"name" json:"name"`
 	// Description - description of the parameter. Should contain the brief info about parameter
@@ -134,7 +133,7 @@ type Parameter struct {
 	RawValueValidator RawValueValidator `json:"-"`
 	// LinkedParameter - column-like parameter that has been linked during parsing procedure. Warning, do not
 	// assign it manually, if you don't know the consequences
-	LinkedColumnParameter *Parameter `json:"-"`
+	LinkedColumnParameter *ParameterDefinition `json:"-"`
 	// Column - column of the table that was assigned in the parsing procedure according to provided column name in
 	// parameter value. In this case value has textual column name
 	Column *Column `json:"-"`
@@ -146,28 +145,28 @@ type Parameter struct {
 	rawValue ParamsValue
 }
 
-func MustNewParameter(name string, description string) *Parameter {
-	p, err := NewParameter(name, description)
+func MustNewParameterDefinition(name string, description string) *ParameterDefinition {
+	p, err := NewParameterDefinition(name, description)
 	if err != nil {
 		panic(err)
 	}
 	return p
 }
 
-func NewParameter(name string, description string) (*Parameter, error) {
-	return &Parameter{
+func NewParameterDefinition(name string, description string) (*ParameterDefinition, error) {
+	return &ParameterDefinition{
 		Name:               name,
 		Description:        description,
 		DynamicModeSupport: false,
 	}, nil
 }
 
-func (p *Parameter) RawValue() ParamsValue {
+func (p *ParameterDefinition) RawValue() ParamsValue {
 	return p.rawValue
 }
 
 // Value - returns parsed value that later might be cast via type assertion or so on
-func (p *Parameter) Value() (any, error) {
+func (p *ParameterDefinition) Value() (any, error) {
 	if p.rawValue == nil {
 		return nil, nil
 	}
@@ -203,7 +202,7 @@ func (p *Parameter) Value() (any, error) {
 }
 
 // Scan - scan parsed value into received pointer. Param src must be pointer
-func (p *Parameter) Scan(dest any) (empty bool, err error) {
+func (p *ParameterDefinition) Scan(dest any) (empty bool, err error) {
 	p.value = nil
 	if dest == nil {
 		return false, fmt.Errorf("dest cannot be nil")
@@ -292,7 +291,7 @@ func (p *Parameter) Scan(dest any) (empty bool, err error) {
 	return false, ScanPointer(p.value, dest)
 }
 
-func (p *Parameter) SetLinkParameter(name string) *Parameter {
+func (p *ParameterDefinition) SetLinkParameter(name string) *ParameterDefinition {
 	if p.IsColumn {
 		panic("cannot link column parameter with column parameter")
 	}
@@ -300,46 +299,46 @@ func (p *Parameter) SetLinkParameter(name string) *Parameter {
 	return p
 }
 
-func (p *Parameter) SetIsColumn(columnProperties *ColumnProperties) *Parameter {
+func (p *ParameterDefinition) SetIsColumn(columnProperties *ColumnProperties) *ParameterDefinition {
 	p.IsColumn = true
 	p.ColumnProperties = columnProperties
 	return p
 }
 
-func (p *Parameter) SetUnmarshaller(unmarshaller Unmarshaller) *Parameter {
+func (p *ParameterDefinition) SetUnmarshaller(unmarshaller Unmarshaller) *ParameterDefinition {
 	p.Unmarshaller = unmarshaller
 	return p
 }
 
-func (p *Parameter) SetRawValueValidator(validator RawValueValidator) *Parameter {
+func (p *ParameterDefinition) SetRawValueValidator(validator RawValueValidator) *ParameterDefinition {
 	p.RawValueValidator = validator
 	return p
 }
 
-func (p *Parameter) SetRequired(v bool) *Parameter {
+func (p *ParameterDefinition) SetRequired(v bool) *ParameterDefinition {
 	// Checking database types exists
 	p.Required = v
 	return p
 }
 
-func (p *Parameter) SetCastDbType(v string) *Parameter {
+func (p *ParameterDefinition) SetCastDbType(v string) *ParameterDefinition {
 	p.CastDbType = v
 	return p
 }
 
-func (p *Parameter) SetDefaultValue(v ParamsValue) *Parameter {
+func (p *ParameterDefinition) SetDefaultValue(v ParamsValue) *ParameterDefinition {
 	p.DefaultValue = v
 	return p
 }
 
-func (p *Parameter) Copy() *Parameter {
+func (p *ParameterDefinition) Copy() *ParameterDefinition {
 	cp := *p
 	cp.value = nil
 	cp.rawValue = []byte{}
 	return &cp
 }
 
-func (p *Parameter) Init(driver *Driver, types []*Type, params []*Parameter, rawValue ParamsValue) (ValidationWarnings, error) {
+func (p *ParameterDefinition) Init(driver *Driver, types []*Type, params []*ParameterDefinition, rawValue ParamsValue) (ValidationWarnings, error) {
 	var warnings ValidationWarnings
 	p.Driver = driver
 	p.rawValue = nil
@@ -374,7 +373,7 @@ func (p *Parameter) Init(driver *Driver, types []*Type, params []*Parameter, raw
 	}
 
 	if p.LinkColumnParameter != "" {
-		idx := slices.IndexFunc(params, func(parameter *Parameter) bool {
+		idx := slices.IndexFunc(params, func(parameter *ParameterDefinition) bool {
 			return parameter.Name == p.LinkColumnParameter
 		})
 		if idx == -1 {
@@ -477,8 +476,8 @@ func (p *Parameter) Init(driver *Driver, types []*Type, params []*Parameter, raw
 }
 
 func InitParameters(
-	driver *Driver, rawParams map[string]ParamsValue, paramDef []*Parameter, types []*Type,
-) (map[string]*Parameter, ValidationWarnings, error) {
+	driver *Driver, rawParams map[string]ParamsValue, paramDef []*ParameterDefinition, types []*Type,
+) (map[string]*ParameterDefinition, ValidationWarnings, error) {
 	if rawParams == nil && len(paramDef) > 0 {
 		return nil, ValidationWarnings{
 			NewValidationWarning().
@@ -487,8 +486,8 @@ func InitParameters(
 		}, nil
 	}
 
-	var pd []*Parameter
-	var params = make(map[string]*Parameter, len(paramDef))
+	var pd []*ParameterDefinition
+	var params = make(map[string]*ParameterDefinition, len(paramDef))
 	for _, p := range paramDef {
 		cp := p.Copy()
 		params[p.Name] = cp

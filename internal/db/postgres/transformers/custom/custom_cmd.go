@@ -43,7 +43,7 @@ const (
 
 func ProduceNewCmdTransformerFunction(ctd *TransformerDefinition) utils.NewTransformerFunc {
 	return func(
-		ctx context.Context, driver *toolkit.Driver, parameters map[string]*toolkit.Parameter,
+		ctx context.Context, driver *toolkit.Driver, parameters map[string]*toolkit.ParameterDefinition,
 	) (utils.Transformer, toolkit.ValidationWarnings, error) {
 		return NewCustomCmdTransformer(ctx, driver, parameters, ctd)
 	}
@@ -57,13 +57,13 @@ type CmdTransformer struct {
 	args            []string
 	eg              *errgroup.Group
 	driver          *toolkit.Driver
-	parameters      map[string]*toolkit.Parameter
+	parameters      map[string]*toolkit.ParameterDefinition
 	affectedColumns map[int]string
 	ctd             *TransformerDefinition
 }
 
 func NewCustomCmdTransformer(
-	ctx context.Context, driver *toolkit.Driver, parameters map[string]*toolkit.Parameter,
+	ctx context.Context, driver *toolkit.Driver, parameters map[string]*toolkit.ParameterDefinition,
 	ctd *TransformerDefinition,
 ) (*CmdTransformer, toolkit.ValidationWarnings, error) {
 	affectedColumns := make(map[int]string)

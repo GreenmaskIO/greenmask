@@ -24,7 +24,7 @@ import (
 	"github.com/greenmaskio/greenmask/pkg/toolkit"
 )
 
-var RandomStringTransformerDefinition = utils.NewDefinition(
+var RandomStringTransformerDefinition = utils.NewTransformerDefinition(
 	utils.NewTransformerProperties(
 		"RandomString",
 		"Generate random string",
@@ -32,7 +32,7 @@ var RandomStringTransformerDefinition = utils.NewDefinition(
 
 	NewRandomStringTransformer,
 
-	toolkit.MustNewParameter(
+	toolkit.MustNewParameterDefinition(
 		"column",
 		"column name",
 	).SetIsColumn(toolkit.NewColumnProperties().
@@ -40,22 +40,22 @@ var RandomStringTransformerDefinition = utils.NewDefinition(
 		SetAllowedColumnTypes("text", "varchar"),
 	).SetRequired(true),
 
-	toolkit.MustNewParameter(
+	toolkit.MustNewParameterDefinition(
 		"min_length",
 		"min length of string",
 	).SetRequired(true),
 
-	toolkit.MustNewParameter(
+	toolkit.MustNewParameterDefinition(
 		"max_length",
 		"max length of string",
 	).SetRequired(true),
 
-	toolkit.MustNewParameter(
+	toolkit.MustNewParameterDefinition(
 		"symbols",
 		"the characters range for random string",
 	).SetDefaultValue(toolkit.ParamsValue("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890")),
 
-	toolkit.MustNewParameter(
+	toolkit.MustNewParameterDefinition(
 		"keep_null",
 		"indicates that NULL values must not be replaced with transformed values",
 	).SetDefaultValue(toolkit.ParamsValue("true")),
@@ -73,7 +73,7 @@ type RandomStringTransformer struct {
 	columnIdx       int
 }
 
-func NewRandomStringTransformer(ctx context.Context, driver *toolkit.Driver, parameters map[string]*toolkit.Parameter) (utils.Transformer, toolkit.ValidationWarnings, error) {
+func NewRandomStringTransformer(ctx context.Context, driver *toolkit.Driver, parameters map[string]*toolkit.ParameterDefinition) (utils.Transformer, toolkit.ValidationWarnings, error) {
 
 	var columnName, symbols string
 	var minLength, maxLength int64

@@ -24,7 +24,7 @@ import (
 	"github.com/greenmaskio/greenmask/pkg/toolkit"
 )
 
-var RandomUuidTransformerDefinition = utils.NewDefinition(
+var RandomUuidTransformerDefinition = utils.NewTransformerDefinition(
 	utils.NewTransformerProperties(
 		"RandomUuid",
 		"Generate random uuid",
@@ -32,7 +32,7 @@ var RandomUuidTransformerDefinition = utils.NewDefinition(
 
 	NewRandomUuidTransformer,
 
-	toolkit.MustNewParameter(
+	toolkit.MustNewParameterDefinition(
 		"column",
 		"column name",
 	).SetIsColumn(toolkit.NewColumnProperties().
@@ -40,7 +40,7 @@ var RandomUuidTransformerDefinition = utils.NewDefinition(
 		SetAllowedColumnTypes("text", "varchar", "uuid"),
 	).SetRequired(true),
 
-	toolkit.MustNewParameter(
+	toolkit.MustNewParameterDefinition(
 		"keep_null",
 		"indicates that NULL values must not be replaced with transformed values",
 	).SetDefaultValue(toolkit.ParamsValue("true")),
@@ -53,7 +53,7 @@ type RandomUuidTransformer struct {
 	affectedColumns map[int]string
 }
 
-func NewRandomUuidTransformer(ctx context.Context, driver *toolkit.Driver, parameters map[string]*toolkit.Parameter) (utils.Transformer, toolkit.ValidationWarnings, error) {
+func NewRandomUuidTransformer(ctx context.Context, driver *toolkit.Driver, parameters map[string]*toolkit.ParameterDefinition) (utils.Transformer, toolkit.ValidationWarnings, error) {
 	var columnName string
 	var keepNull bool
 

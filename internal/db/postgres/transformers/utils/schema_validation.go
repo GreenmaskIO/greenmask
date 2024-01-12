@@ -21,7 +21,7 @@ import (
 	"github.com/greenmaskio/greenmask/pkg/toolkit"
 )
 
-type SchemaValidationFunc func(ctx context.Context, table *toolkit.Table, properties *TransformerProperties, parameters map[string]*toolkit.Parameter, types []*toolkit.Type) (toolkit.ValidationWarnings, error)
+type SchemaValidationFunc func(ctx context.Context, table *toolkit.Table, properties *TransformerProperties, parameters map[string]*toolkit.ParameterDefinition, types []*toolkit.Type) (toolkit.ValidationWarnings, error)
 
 func ValidateSchema(
 	table *toolkit.Table, column *toolkit.Column, columnProperties *toolkit.ColumnProperties,
@@ -36,7 +36,7 @@ func ValidateSchema(
 }
 
 func DefaultSchemaValidator(
-	ctx context.Context, table *toolkit.Table, properties *TransformerProperties, parameters map[string]*toolkit.Parameter, types []*toolkit.Type,
+	ctx context.Context, table *toolkit.Table, properties *TransformerProperties, parameters map[string]*toolkit.ParameterDefinition, types []*toolkit.Type,
 ) (toolkit.ValidationWarnings, error) {
 	var warnings toolkit.ValidationWarnings
 

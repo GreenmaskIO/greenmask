@@ -24,14 +24,14 @@ import (
 	"github.com/greenmaskio/greenmask/pkg/toolkit"
 )
 
-var NoiseFloatTransformerDefinition = utils.NewDefinition(
+var NoiseFloatTransformerDefinition = utils.NewTransformerDefinition(
 	utils.NewTransformerProperties(
 		"NoiseFloat",
 		"Make noise float for int",
 	),
 	NewNoiseFloatTransformer,
 
-	toolkit.MustNewParameter(
+	toolkit.MustNewParameterDefinition(
 		"column",
 		"column name",
 	).SetIsColumn(toolkit.NewColumnProperties().
@@ -40,12 +40,12 @@ var NoiseFloatTransformerDefinition = utils.NewDefinition(
 		SetSkipOnNull(true),
 	).SetRequired(true),
 
-	toolkit.MustNewParameter(
+	toolkit.MustNewParameterDefinition(
 		"ratio",
 		"max random percentage for noise",
 	).SetDefaultValue(toolkit.ParamsValue("0.1")),
 
-	toolkit.MustNewParameter(
+	toolkit.MustNewParameterDefinition(
 		"precision",
 		"precision of noised float value (number of digits after coma)",
 	).SetDefaultValue(toolkit.ParamsValue("4")),
@@ -67,7 +67,7 @@ type NoiseFloatTransformer struct {
 	affectedColumns map[int]string
 }
 
-func NewNoiseFloatTransformer(ctx context.Context, driver *toolkit.Driver, parameters map[string]*toolkit.Parameter) (utils.Transformer, toolkit.ValidationWarnings, error) {
+func NewNoiseFloatTransformer(ctx context.Context, driver *toolkit.Driver, parameters map[string]*toolkit.ParameterDefinition) (utils.Transformer, toolkit.ValidationWarnings, error) {
 	// TODO: value out of rage might be possible: double check this transformer implementation
 
 	var columnName string

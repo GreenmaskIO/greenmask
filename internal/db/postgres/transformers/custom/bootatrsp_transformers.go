@@ -36,7 +36,7 @@ var defaultRowDriver = &toolkit.RowDriverParams{
 
 func BootstrapCustomTransformers(ctx context.Context, registry *utils.TransformerRegistry, customTransformers []*TransformerDefinition) (err error) {
 	for _, ctd := range customTransformers {
-		var td *utils.Definition
+		var td *utils.TransformerDefinition
 		if ctd.Name == "" && !ctd.AutoDiscover {
 			return fmt.Errorf("custom transformer without auto discovery must be defined staticly in the config")
 		}
@@ -92,7 +92,7 @@ func BootstrapCustomTransformers(ctx context.Context, registry *utils.Transforme
 			}
 		}
 
-		td = utils.NewDefinition(
+		td = utils.NewTransformerDefinition(
 			&utils.TransformerProperties{
 				Name:        ctd.Name,
 				Description: ctd.Description,

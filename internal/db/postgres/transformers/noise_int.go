@@ -24,7 +24,7 @@ import (
 	"github.com/greenmaskio/greenmask/pkg/toolkit"
 )
 
-var NoiseIntTransformerDefinition = utils.NewDefinition(
+var NoiseIntTransformerDefinition = utils.NewTransformerDefinition(
 	utils.NewTransformerProperties(
 		"NoiseInt",
 		"Make noise value for int",
@@ -32,7 +32,7 @@ var NoiseIntTransformerDefinition = utils.NewDefinition(
 
 	NewNoiseIntTransformer,
 
-	toolkit.MustNewParameter(
+	toolkit.MustNewParameterDefinition(
 		"column",
 		"column name",
 	).SetIsColumn(toolkit.NewColumnProperties().
@@ -41,7 +41,7 @@ var NoiseIntTransformerDefinition = utils.NewDefinition(
 		SetSkipOnNull(true),
 	).SetRequired(true),
 
-	toolkit.MustNewParameter(
+	toolkit.MustNewParameterDefinition(
 		"ratio",
 		"max random percentage for noise",
 	).SetRequired(true).
@@ -56,7 +56,7 @@ type NoiseIntTransformer struct {
 	affectedColumns map[int]string
 }
 
-func NewNoiseIntTransformer(ctx context.Context, driver *toolkit.Driver, parameters map[string]*toolkit.Parameter) (utils.Transformer, toolkit.ValidationWarnings, error) {
+func NewNoiseIntTransformer(ctx context.Context, driver *toolkit.Driver, parameters map[string]*toolkit.ParameterDefinition) (utils.Transformer, toolkit.ValidationWarnings, error) {
 	var columnName string
 	var ratio float64
 

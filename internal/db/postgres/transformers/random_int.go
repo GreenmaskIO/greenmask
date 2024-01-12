@@ -24,7 +24,7 @@ import (
 	"github.com/greenmaskio/greenmask/pkg/toolkit"
 )
 
-var RandomIntTransformerDefinition = utils.NewDefinition(
+var RandomIntTransformerDefinition = utils.NewTransformerDefinition(
 	utils.NewTransformerProperties(
 		"RandomInt",
 		"Generate random int value from min to max",
@@ -32,7 +32,7 @@ var RandomIntTransformerDefinition = utils.NewDefinition(
 
 	NewRandomIntTransformer,
 
-	toolkit.MustNewParameter(
+	toolkit.MustNewParameterDefinition(
 		"column",
 		"column name",
 	).SetIsColumn(toolkit.NewColumnProperties().
@@ -40,17 +40,17 @@ var RandomIntTransformerDefinition = utils.NewDefinition(
 		SetAllowedColumnTypes("int2", "int4", "int8", "numeric"),
 	).SetRequired(true),
 
-	toolkit.MustNewParameter(
+	toolkit.MustNewParameterDefinition(
 		"min",
 		"min int value threshold",
 	).SetRequired(true),
 
-	toolkit.MustNewParameter(
+	toolkit.MustNewParameterDefinition(
 		"max",
 		"max int value threshold",
 	).SetRequired(true),
 
-	toolkit.MustNewParameter(
+	toolkit.MustNewParameterDefinition(
 		"keep_null",
 		"indicates that NULL values must not be replaced with transformed values",
 	).SetDefaultValue(toolkit.ParamsValue("true")),
@@ -66,7 +66,7 @@ type RandomIntTransformer struct {
 	columnIdx       int
 }
 
-func NewRandomIntTransformer(ctx context.Context, driver *toolkit.Driver, parameters map[string]*toolkit.Parameter) (utils.Transformer, toolkit.ValidationWarnings, error) {
+func NewRandomIntTransformer(ctx context.Context, driver *toolkit.Driver, parameters map[string]*toolkit.ParameterDefinition) (utils.Transformer, toolkit.ValidationWarnings, error) {
 	var columnName string
 	var minVal, maxVal int64
 	var keepNull bool

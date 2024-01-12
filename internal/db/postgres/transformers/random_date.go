@@ -28,7 +28,7 @@ import (
 
 var truncateParts = []string{"year", "month", "day", "hour", "second", "millisecond", "microsecond", "nanosecond"}
 
-var RandomDateTransformerDefinition = utils.NewDefinition(
+var RandomDateTransformerDefinition = utils.NewTransformerDefinition(
 	utils.NewTransformerProperties(
 		"RandomDate",
 		"Generate random date in the provided interval",
@@ -36,7 +36,7 @@ var RandomDateTransformerDefinition = utils.NewDefinition(
 
 	NewRandomDateTransformer,
 
-	toolkit.MustNewParameter(
+	toolkit.MustNewParameterDefinition(
 		"column",
 		"column name",
 	).SetIsColumn(toolkit.NewColumnProperties().
@@ -44,24 +44,24 @@ var RandomDateTransformerDefinition = utils.NewDefinition(
 		SetAllowedColumnTypes("date", "timestamp", "timestamptz"),
 	).SetRequired(true),
 
-	toolkit.MustNewParameter(
+	toolkit.MustNewParameterDefinition(
 		"min",
 		"min threshold date (and/or time) of random value",
 	).SetRequired(true).
 		SetLinkParameter("column"),
 
-	toolkit.MustNewParameter(
+	toolkit.MustNewParameterDefinition(
 		"max",
 		"max threshold date  (and/or time) of random value",
 	).SetRequired(true).
 		SetLinkParameter("column"),
 
-	toolkit.MustNewParameter(
+	toolkit.MustNewParameterDefinition(
 		"truncate",
 		fmt.Sprintf("truncate date till the part (%s)", strings.Join(truncateParts, ", ")),
 	).SetRawValueValidator(ValidateDateTruncationParameterValue),
 
-	toolkit.MustNewParameter(
+	toolkit.MustNewParameterDefinition(
 		"keep_null",
 		"indicates that NULL values must not be replaced with transformed values",
 	).SetDefaultValue(toolkit.ParamsValue("true")),
@@ -90,7 +90,7 @@ type RandomDateTransformer struct {
 	affectedColumns map[int]string
 }
 
-func NewRandomDateTransformer(ctx context.Context, driver *toolkit.Driver, parameters map[string]*toolkit.Parameter) (utils.Transformer, toolkit.ValidationWarnings, error) {
+func NewRandomDateTransformer(ctx context.Context, driver *toolkit.Driver, parameters map[string]*toolkit.ParameterDefinition) (utils.Transformer, toolkit.ValidationWarnings, error) {
 	var columnName, truncate string
 	var minTime, maxTime time.Time
 	var generator dateGeneratorFunc = generateRandomTime

@@ -26,25 +26,25 @@ import (
 	"github.com/greenmaskio/greenmask/pkg/toolkit"
 )
 
-var TemplateRecordTransformerDefinition = utils.NewDefinition(
+var TemplateRecordTransformerDefinition = utils.NewTransformerDefinition(
 	utils.NewTransformerProperties(
 		"TemplateRecord",
 		"Modify the record using gotemplate",
 	),
 	NewTemplateRecordTransformer,
 
-	toolkit.MustNewParameter(
+	toolkit.MustNewParameterDefinition(
 		"template",
 		"gotemplate string",
 	).SetRequired(true),
 
-	toolkit.MustNewParameter(
+	toolkit.MustNewParameterDefinition(
 		"validate",
 		"validate template result via PostgreSQL driver decoding",
 	).SetRequired(false).
 		SetDefaultValue(toolkit.ParamsValue("false")),
 
-	toolkit.MustNewParameter(
+	toolkit.MustNewParameterDefinition(
 		"columns",
 		"columns that supposed to be affected by the template. The list of columns will be checked for constraint violation",
 	).SetRequired(false).
@@ -60,7 +60,7 @@ type TemplateRecordTransformer struct {
 	columns         []string
 }
 
-func NewTemplateRecordTransformer(ctx context.Context, driver *toolkit.Driver, parameters map[string]*toolkit.Parameter) (utils.Transformer, toolkit.ValidationWarnings, error) {
+func NewTemplateRecordTransformer(ctx context.Context, driver *toolkit.Driver, parameters map[string]*toolkit.ParameterDefinition) (utils.Transformer, toolkit.ValidationWarnings, error) {
 	var templateStr string
 	var columns []string
 	affectedColumns := make(map[int]string)

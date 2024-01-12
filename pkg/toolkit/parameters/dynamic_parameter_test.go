@@ -9,7 +9,7 @@ import (
 
 func TestDynamicParameter_Init_column_parameter(t *testing.T) {
 
-	columnDef := toolkit.MustNewParameter("column", "some desc").
+	columnDef := toolkit.MustNewParameterDefinition("column", "some desc").
 		SetIsColumn(
 			toolkit.NewColumnProperties().
 				SetAllowedColumnTypes("text"),
@@ -42,7 +42,7 @@ func TestDynamicParameter_Init_linked_column_parameter_unsupported_types(t *test
 		},
 	)
 
-	columnDef := toolkit.MustNewParameter("column", "some desc").
+	columnDef := toolkit.MustNewParameterDefinition("column", "some desc").
 		SetIsColumn(
 			toolkit.NewColumnProperties().
 				SetAllowedColumnTypes("int2", "int4", "int8"),
@@ -53,7 +53,7 @@ func TestDynamicParameter_Init_linked_column_parameter_unsupported_types(t *test
 	require.NoError(t, err)
 	require.Empty(t, warns)
 
-	timestampDef := toolkit.MustNewParameter("ts_val", "some desc").SetLinkParameter("column")
+	timestampDef := toolkit.MustNewParameterDefinition("ts_val", "some desc").SetLinkParameter("column")
 
 	timestampParam := NewDynamicParameter(timestampDef, driver)
 
@@ -83,7 +83,7 @@ func TestDynamicParameter_Init_simple(t *testing.T) {
 		},
 	)
 
-	timestampDef := toolkit.MustNewParameter("ts_val", "some desc")
+	timestampDef := toolkit.MustNewParameterDefinition("ts_val", "some desc")
 
 	timestampParam := NewDynamicParameter(timestampDef, driver)
 

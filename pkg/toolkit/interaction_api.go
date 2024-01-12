@@ -104,7 +104,7 @@ func NewApi(rowDriverParams *RowDriverParams, transferringColumns []int, affecte
 	return api, nil
 }
 
-func GetAffectedAndTransferringColumns(parameters map[string]*Parameter, driver *Driver) (
+func GetAffectedAndTransferringColumns(parameters map[string]*ParameterDefinition, driver *Driver) (
 	affectedColumnsIdx []int, transferringColumnsIdx []int, err error,
 ) {
 	for _, p := range parameters {

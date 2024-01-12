@@ -80,7 +80,7 @@ func run(transformerNames []string) error {
 }
 
 func listTransformersJson(registry *utils.TransformerRegistry, transformerNames []string) error {
-	var transformers []*utils.Definition
+	var transformers []*utils.TransformerDefinition
 
 	if len(transformerNames) > 0 {
 

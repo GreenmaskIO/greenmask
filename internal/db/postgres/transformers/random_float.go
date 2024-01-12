@@ -24,7 +24,7 @@ import (
 	"github.com/greenmaskio/greenmask/pkg/toolkit"
 )
 
-var RandomFloatTransformerDefinition = utils.NewDefinition(
+var RandomFloatTransformerDefinition = utils.NewTransformerDefinition(
 	utils.NewTransformerProperties(
 		"RandomFloat",
 		"Generate random float",
@@ -32,7 +32,7 @@ var RandomFloatTransformerDefinition = utils.NewDefinition(
 
 	NewRandomFloatTransformer,
 
-	toolkit.MustNewParameter(
+	toolkit.MustNewParameterDefinition(
 		"column",
 		"column name",
 	).SetIsColumn(toolkit.NewColumnProperties().
@@ -40,22 +40,22 @@ var RandomFloatTransformerDefinition = utils.NewDefinition(
 		SetAllowedColumnTypes("float4", "float8", "numeric"),
 	).SetRequired(true),
 
-	toolkit.MustNewParameter(
+	toolkit.MustNewParameterDefinition(
 		"min",
 		"min float threshold of random value. The value range depends on column type",
 	).SetRequired(true),
 
-	toolkit.MustNewParameter(
+	toolkit.MustNewParameterDefinition(
 		"max",
 		"min float threshold of random value. The value range depends on column type",
 	).SetRequired(true),
 
-	toolkit.MustNewParameter(
+	toolkit.MustNewParameterDefinition(
 		"precision",
 		"precision of random float value (number of digits after coma)",
 	).SetDefaultValue(toolkit.ParamsValue("4")),
 
-	toolkit.MustNewParameter(
+	toolkit.MustNewParameterDefinition(
 		"keep_null",
 		"indicates that NULL values must not be replaced with transformed values",
 	).SetDefaultValue(toolkit.ParamsValue("true")),
@@ -72,7 +72,7 @@ type RandomFloatTransformer struct {
 	columnIdx       int
 }
 
-func NewRandomFloatTransformer(ctx context.Context, driver *toolkit.Driver, parameters map[string]*toolkit.Parameter) (utils.Transformer, toolkit.ValidationWarnings, error) {
+func NewRandomFloatTransformer(ctx context.Context, driver *toolkit.Driver, parameters map[string]*toolkit.ParameterDefinition) (utils.Transformer, toolkit.ValidationWarnings, error) {
 	var columnName string
 	var minVal, maxVal float64
 	var precision int

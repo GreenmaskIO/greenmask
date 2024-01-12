@@ -45,7 +45,7 @@ type Cmd struct {
 	printDefinition bool
 	validate        bool
 	transform       bool
-	params          map[string]*Parameter
+	params          map[string]*ParameterDefinition
 }
 
 func NewCmd(definition *Definition) *Cmd {

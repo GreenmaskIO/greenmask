@@ -34,7 +34,7 @@ const (
 	bufLength  = 1024
 )
 
-var HashTransformerDefinition = utils.NewDefinition(
+var HashTransformerDefinition = utils.NewTransformerDefinition(
 	utils.NewTransformerProperties(
 		"Hash",
 		"Generate hash of the text value using Scrypt hash function under the hood",
@@ -42,7 +42,7 @@ var HashTransformerDefinition = utils.NewDefinition(
 
 	NewHashTransformer,
 
-	toolkit.MustNewParameter(
+	toolkit.MustNewParameterDefinition(
 		"column",
 		"column name",
 	).SetIsColumn(toolkit.NewColumnProperties().
@@ -50,7 +50,7 @@ var HashTransformerDefinition = utils.NewDefinition(
 		SetAllowedColumnTypes("text", "varchar"),
 	).SetRequired(true),
 
-	toolkit.MustNewParameter(
+	toolkit.MustNewParameterDefinition(
 		"salt",
 		"salt for hash function base64 encoded",
 	),
@@ -65,7 +65,7 @@ type HashTransformer struct {
 }
 
 func NewHashTransformer(
-	ctx context.Context, driver *toolkit.Driver, parameters map[string]*toolkit.Parameter,
+	ctx context.Context, driver *toolkit.Driver, parameters map[string]*toolkit.ParameterDefinition,
 ) (utils.Transformer, toolkit.ValidationWarnings, error) {
 	p := parameters["column"]
 	var columnName string

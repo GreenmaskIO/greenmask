@@ -27,7 +27,7 @@ func TestGetDynamicTransformerDefinition(t *testing.T) {
 	expected := TransformerDefinition{
 		Name:        "TwoDatesGen",
 		Description: "Generate diff between two dates",
-		Parameters: []*toolkit.Parameter{
+		Parameters: []*toolkit.ParameterDefinition{
 			{
 				Name:        "column_a",
 				Description: "test1",

@@ -24,7 +24,7 @@ import (
 
 const defaultNullSeq = `\N`
 
-var DictTransformerDefinition = utils.NewDefinition(
+var DictTransformerDefinition = utils.NewTransformerDefinition(
 	utils.NewTransformerProperties(
 		"Dict",
 		"Replace values matched by dictionary keys",
@@ -32,29 +32,29 @@ var DictTransformerDefinition = utils.NewDefinition(
 
 	NewDictTransformer,
 
-	toolkit.MustNewParameter(
+	toolkit.MustNewParameterDefinition(
 		"column",
 		"column name",
 	).SetIsColumn(toolkit.NewColumnProperties().
 		SetAffected(true),
 	).SetRequired(true),
 
-	toolkit.MustNewParameter(
+	toolkit.MustNewParameterDefinition(
 		"values",
 		`map of value to replace in format: {"string": "string"}". The string with value "\N" supposed to be NULL value`,
 	).SetRequired(true),
 
-	toolkit.MustNewParameter(
+	toolkit.MustNewParameterDefinition(
 		"default",
 		`default value if not any value has been matched with dict. The string with value "\N" supposed to be NULL value. Default is empty`,
 	).SetRequired(false),
 
-	toolkit.MustNewParameter(
+	toolkit.MustNewParameterDefinition(
 		"fail_not_matched",
 		`fail if value is not matched with dict otherwise keep value`,
 	).SetRequired(false).
 		SetDefaultValue(toolkit.ParamsValue("true")),
-	toolkit.MustNewParameter(
+	toolkit.MustNewParameterDefinition(
 		"validate",
 		`perform encode-decode procedure using column type, ensuring that value has correct type`,
 	).SetRequired(false).
@@ -72,7 +72,7 @@ type DictTransformer struct {
 }
 
 func NewDictTransformer(
-	ctx context.Context, driver *toolkit.Driver, parameters map[string]*toolkit.Parameter,
+	ctx context.Context, driver *toolkit.Driver, parameters map[string]*toolkit.ParameterDefinition,
 ) (utils.Transformer, toolkit.ValidationWarnings, error) {
 	p := parameters["column"]
 	var columnName string

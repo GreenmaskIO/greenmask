@@ -26,7 +26,7 @@ import (
 	"github.com/greenmaskio/greenmask/pkg/toolkit"
 )
 
-var RandomChoiceTransformerDefinition = utils.NewDefinition(
+var RandomChoiceTransformerDefinition = utils.NewTransformerDefinition(
 	utils.NewTransformerProperties(
 		"RandomChoice",
 		"Replace values chosen randomly from list",
@@ -34,26 +34,26 @@ var RandomChoiceTransformerDefinition = utils.NewDefinition(
 
 	NewRandomChoiceTransformer,
 
-	toolkit.MustNewParameter(
+	toolkit.MustNewParameterDefinition(
 		"column",
 		"column name",
 	).SetIsColumn(toolkit.NewColumnProperties().
 		SetAffected(true),
 	).SetRequired(true),
 
-	toolkit.MustNewParameter(
+	toolkit.MustNewParameterDefinition(
 		"values",
 		`list of values in any format. The string with value "\N" supposed to be NULL value`,
 	).SetRequired(true).
 		SetUnmarshaller(randomChoiceValuesUnmarshaller),
 
-	toolkit.MustNewParameter(
+	toolkit.MustNewParameterDefinition(
 		"validate",
 		`perform decode procedure via PostgreSQL driver using column type, ensuring that value has correct type`,
 	).SetRequired(false).
 		SetDefaultValue(toolkit.ParamsValue("true")),
 
-	toolkit.MustNewParameter(
+	toolkit.MustNewParameterDefinition(
 		"keep_null",
 		"indicates that NULL values must not be replaced with transformed values",
 	).SetDefaultValue(toolkit.ParamsValue("true")),
@@ -71,7 +71,7 @@ type RandomChoiceTransformer struct {
 }
 
 func NewRandomChoiceTransformer(
-	ctx context.Context, driver *toolkit.Driver, parameters map[string]*toolkit.Parameter,
+	ctx context.Context, driver *toolkit.Driver, parameters map[string]*toolkit.ParameterDefinition,
 ) (utils.Transformer, toolkit.ValidationWarnings, error) {
 	var warnings toolkit.ValidationWarnings
 	p := parameters["column"]
@@ -191,7 +191,7 @@ func getRawValue(data toolkit.ParamsValue) toolkit.ParamsValue {
 	}
 }
 
-func randomChoiceValuesUnmarshaller(parameter *toolkit.Parameter, driver *toolkit.Driver, src toolkit.ParamsValue) (any, error) {
+func randomChoiceValuesUnmarshaller(parameter *toolkit.ParameterDefinition, driver *toolkit.Driver, src toolkit.ParamsValue) (any, error) {
 	var res []toolkit.ParamsValue
 	getResult := gjson.GetBytes(src, "@this")
 	if !getResult.Exists() {

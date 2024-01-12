@@ -22,7 +22,7 @@ import (
 	"github.com/greenmaskio/greenmask/pkg/toolkit"
 )
 
-var ReplaceTransformerDefinition = utils.NewDefinition(
+var ReplaceTransformerDefinition = utils.NewTransformerDefinition(
 	utils.NewTransformerProperties(
 		"Replace",
 		"Replace column value to the provided",
@@ -30,25 +30,25 @@ var ReplaceTransformerDefinition = utils.NewDefinition(
 
 	NewReplaceTransformer,
 
-	toolkit.MustNewParameter(
+	toolkit.MustNewParameterDefinition(
 		"column",
 		"column name",
 	).SetIsColumn(toolkit.NewColumnProperties().
 		SetAffected(true),
 	).SetRequired(true),
 
-	toolkit.MustNewParameter(
+	toolkit.MustNewParameterDefinition(
 		"value",
 		"value to replace",
 	).SetRequired(true).
 		SetLinkParameter("column"),
 
-	toolkit.MustNewParameter(
+	toolkit.MustNewParameterDefinition(
 		"keep_null",
 		"indicates that NULL values must not be replaced with transformed values",
 	).SetDefaultValue(toolkit.ParamsValue("true")),
 
-	toolkit.MustNewParameter(
+	toolkit.MustNewParameterDefinition(
 		"validate",
 		"validate the value via driver decoding procedure",
 	).SetDefaultValue(toolkit.ParamsValue("true")),
@@ -63,7 +63,7 @@ type ReplaceTransformer struct {
 	affectedColumns map[int]string
 }
 
-func NewReplaceTransformer(ctx context.Context, driver *toolkit.Driver, parameters map[string]*toolkit.Parameter) (utils.Transformer, toolkit.ValidationWarnings, error) {
+func NewReplaceTransformer(ctx context.Context, driver *toolkit.Driver, parameters map[string]*toolkit.ParameterDefinition) (utils.Transformer, toolkit.ValidationWarnings, error) {
 
 	var columnName string
 	var keepNull, validate bool
