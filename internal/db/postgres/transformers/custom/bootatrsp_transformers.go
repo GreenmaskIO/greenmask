@@ -85,8 +85,7 @@ func BootstrapCustomTransformers(ctx context.Context, registry *utils.Transforme
 
 		for _, p := range ctd.Parameters {
 			if p.IsColumn && p.ColumnProperties == nil {
-				p.SetIsColumn(toolkit.
-					NewColumnProperties().
+				p.SetIsColumn(toolkit.NewColumnProperties().
 					SetAffected(true),
 				)
 			}
@@ -102,6 +101,7 @@ func BootstrapCustomTransformers(ctx context.Context, registry *utils.Transforme
 			ctd.Parameters...,
 		)
 
+		// TODO: Probably you should change MustRegister to Register
 		registry.MustRegister(td)
 	}
 	return nil

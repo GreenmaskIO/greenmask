@@ -36,7 +36,7 @@ type RowDriverParams struct {
 	Params map[string]interface{} `json:"params,omitempty"`
 }
 
-type Definition struct {
+type TransformerDefinition struct {
 	Name             string                 `json:"name"`
 	Description      string                 `json:"description"`
 	Parameters       []*ParameterDefinition `json:"parameters"`
@@ -46,20 +46,20 @@ type Definition struct {
 	New              NewTransformerFunc     `json:"-"`
 }
 
-func NewDefinition(name string, makeFunc NewTransformerFunc) *Definition {
-	return &Definition{
+func NewTransformerDefinition(name string, makeFunc NewTransformerFunc) *TransformerDefinition {
+	return &TransformerDefinition{
 		Name:   name,
 		New:    makeFunc,
 		Driver: DefaultRowDriverParams,
 	}
 }
 
-func (d *Definition) SetDescription(v string) *Definition {
+func (d *TransformerDefinition) SetDescription(v string) *TransformerDefinition {
 	d.Description = v
 	return d
 }
 
-func (d *Definition) AddParameter(v *ParameterDefinition) *Definition {
+func (d *TransformerDefinition) AddParameter(v *ParameterDefinition) *TransformerDefinition {
 	if v == nil {
 		panic("parameter is nil")
 	}
@@ -67,17 +67,17 @@ func (d *Definition) AddParameter(v *ParameterDefinition) *Definition {
 	return d
 }
 
-func (d *Definition) SetValidate(v bool) *Definition {
+func (d *TransformerDefinition) SetValidate(v bool) *TransformerDefinition {
 	d.Validate = v
 	return d
 }
 
-func (d *Definition) SetExpectedExitCode(v int) *Definition {
+func (d *TransformerDefinition) SetExpectedExitCode(v int) *TransformerDefinition {
 	d.ExpectedExitCode = v
 	return d
 }
 
-func (d *Definition) SetMode(v *RowDriverParams) *Definition {
+func (d *TransformerDefinition) SetMode(v *RowDriverParams) *TransformerDefinition {
 	if v == nil {
 		panic("value is nil")
 	}

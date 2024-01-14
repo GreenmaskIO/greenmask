@@ -100,7 +100,7 @@ func (cp *ColumnProperties) SetSkipOnNull(v bool) *ColumnProperties {
 }
 
 // ParameterDefinition - wide parameter entity definition that contains properties that allows to check schema, find affection,
-// cast variable using some features and so on. It may be defined and assigned ot the Definition of the transformer
+// cast variable using some features and so on. It may be defined and assigned ot the TransformerDefinition of the transformer
 // if transformer has any parameters
 type ParameterDefinition struct {
 	// Name - name of the parameter. Must be unique in the whole Transformer parameters slice
@@ -161,11 +161,13 @@ func NewParameterDefinition(name string, description string) (*ParameterDefiniti
 	}, nil
 }
 
+// Deprecated
 func (p *ParameterDefinition) RawValue() ParamsValue {
 	return p.rawValue
 }
 
 // Value - returns parsed value that later might be cast via type assertion or so on
+// Deprecated
 func (p *ParameterDefinition) Value() (any, error) {
 	if p.rawValue == nil {
 		return nil, nil
@@ -202,6 +204,7 @@ func (p *ParameterDefinition) Value() (any, error) {
 }
 
 // Scan - scan parsed value into received pointer. Param src must be pointer
+// Deprecated
 func (p *ParameterDefinition) Scan(dest any) (empty bool, err error) {
 	p.value = nil
 	if dest == nil {
@@ -331,6 +334,7 @@ func (p *ParameterDefinition) SetDefaultValue(v ParamsValue) *ParameterDefinitio
 	return p
 }
 
+// Deprecated
 func (p *ParameterDefinition) Copy() *ParameterDefinition {
 	cp := *p
 	cp.value = nil
@@ -338,6 +342,7 @@ func (p *ParameterDefinition) Copy() *ParameterDefinition {
 	return &cp
 }
 
+// Deprecated
 func (p *ParameterDefinition) Init(driver *Driver, types []*Type, params []*ParameterDefinition, rawValue ParamsValue) (ValidationWarnings, error) {
 	var warnings ValidationWarnings
 	p.Driver = driver
@@ -487,7 +492,7 @@ func InitParameters(
 	}
 
 	var pd []*ParameterDefinition
-	var params = make(map[string]*ParameterDefinition, len(paramDef))
+	params := make(map[string]*ParameterDefinition, len(paramDef))
 	for _, p := range paramDef {
 		cp := p.Copy()
 		params[p.Name] = cp
@@ -508,4 +513,166 @@ func InitParameters(
 		}
 	}
 	return params, totalWarnings, nil
+}
+
+func InitParametersV2(
+	driver *Driver, paramDef []*ParameterDefinition, staticValues map[string]ParamsValue,
+	dynamicValues map[string]*DynamicParamValue,
+) (map[string]Parameterizer, ValidationWarnings, error) {
+
+	var requiredParametersCount int
+
+	for _, pd := range paramDef {
+		if pd.Required {
+			requiredParametersCount++
+		}
+	}
+
+	if len(staticValues)+len(dynamicValues) == 0 && requiredParametersCount > 0 {
+		return nil, ValidationWarnings{
+			NewValidationWarning().
+				SetMsg("parameters are required: received empty").
+				AddMeta("RequiredParametersCount", requiredParametersCount).
+				SetSeverity(ErrorValidationSeverity),
+		}, nil
+	}
+
+	// Check is there unknown parameters name received in static or dynamic values
+	var warnings ValidationWarnings
+	for name := range staticValues {
+		if !slices.ContainsFunc(paramDef, func(definition *ParameterDefinition) bool {
+			return definition.Name == name
+		}) {
+			warnings = append(
+				warnings,
+				NewValidationWarning().
+					SetSeverity(ErrorValidationSeverity).
+					SetMsg("received unknown parameter").
+					AddMeta("ParameterName", name),
+			)
+		}
+
+		// Check that value is static and dynamic value did not receive together
+		if _, ok := dynamicValues[name]; ok {
+			warnings = append(
+				warnings,
+				NewValidationWarning().
+					SetSeverity(ErrorValidationSeverity).
+					SetMsg("parameter value must be only static or dynamic at the same time").
+					AddMeta("ParameterName", name),
+			)
+		}
+	}
+
+	for name := range dynamicValues {
+		if !slices.ContainsFunc(paramDef, func(definition *ParameterDefinition) bool {
+			return definition.Name == name
+		}) {
+			warnings = append(
+				warnings,
+				NewValidationWarning().
+					SetSeverity(ErrorValidationSeverity).
+					SetMsg("received unknown parameter").
+					AddMeta("ParameterName", name),
+			)
+		}
+		if _, ok := staticValues[name]; ok {
+			warnings = append(
+				warnings,
+				NewValidationWarning().
+					SetSeverity(ErrorValidationSeverity).
+					SetMsg("parameter value must be only static or dynamic at the same time").
+					AddMeta("ParameterName", name),
+			)
+		}
+	}
+
+	if warnings.IsFatal() {
+		return nil, warnings, nil
+	}
+
+	// Algorithm
+	// 0. Find and divide column parameters from the others
+	// 1. Initialized static parameters - first column, then the others
+	// 2. Initialize dynamic parameters
+
+	var columnParamsDef []*ParameterDefinition
+	var otherParamsDef []*ParameterDefinition
+	for _, pd := range paramDef {
+		if pd.IsColumn {
+			columnParamsDef = append(columnParamsDef, pd)
+		} else {
+			otherParamsDef = append(otherParamsDef, pd)
+		}
+	}
+
+	// Initialize column parameters
+	params := make(map[string]Parameterizer, len(paramDef))
+	columnParams := make(map[string]*StaticParameter)
+	for _, pd := range columnParamsDef {
+		// try to get the static value
+		value, ok := staticValues[pd.Name]
+		if ok {
+			// TODO: Enrich parameters with ParameterName in Meta
+			sp := NewStaticParameter(pd, driver)
+			initWarns, err := sp.Init(nil, value)
+			if err != nil {
+				return nil, warnings, fmt.Errorf("error initializing \"%s\" parameter: %w", pd.Name, err)
+			}
+			for _, w := range initWarns {
+				w.AddMeta("ParameterName", pd.Name)
+			}
+			warnings = append(warnings, initWarns...)
+			params[pd.Name] = sp
+			columnParams[pd.Name] = sp
+		} else {
+			_, ok = dynamicValues[pd.Name]
+			if ok {
+				warnings = append(
+					warnings,
+					NewValidationWarning().
+						SetSeverity(ErrorValidationSeverity).
+						SetMsg("column parameter cannot work in dynamic mode"),
+				)
+			}
+		}
+	}
+
+	if warnings.IsFatal() {
+		return nil, warnings, nil
+	}
+
+	for _, pd := range otherParamsDef {
+		staticValue, ok := staticValues[pd.Name]
+		var p Parameterizer
+		if ok {
+			sp := NewStaticParameter(pd, driver)
+			initWarns, err := sp.Init(columnParams, staticValue)
+			for _, w := range initWarns {
+				w.AddMeta("ParameterName", pd.Name)
+			}
+			warnings = append(warnings, initWarns...)
+			if err != nil {
+				return nil, warnings, fmt.Errorf("error initializing static parameter \"%s\": %w", pd.Name, err)
+			}
+			p = sp
+		}
+		dynamicValue, ok := dynamicValues[pd.Name]
+		if ok {
+			dp := NewDynamicParameter(pd, driver)
+			initWarns, err := dp.Init(columnParams, dynamicValue)
+			for _, w := range initWarns {
+				w.AddMeta("ParameterName", pd.Name)
+			}
+			warnings = append(warnings, initWarns...)
+			if err != nil {
+				return nil, warnings, fmt.Errorf("error initializing static parameter \"%s\": %w", pd.Name, err)
+			}
+			p = dp
+		}
+		params[pd.Name] = p
+	}
+
+	return params, warnings, nil
+
 }

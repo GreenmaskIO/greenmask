@@ -12,20 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package parameters
+package toolkit
 
 import (
 	"fmt"
 	"slices"
-	"strings"
 
 	"github.com/jackc/pgx/v5/pgtype"
-
-	"github.com/greenmaskio/greenmask/internal/db/postgres/pgcopy"
-	"github.com/greenmaskio/greenmask/pkg/toolkit"
 )
 
-var columnList = []*toolkit.Column{
+var columnList = []*Column{
 	{
 		Name:     "id",
 		TypeName: "int2",
@@ -140,50 +136,44 @@ var columnList = []*toolkit.Column{
 	},
 }
 
-// getDriverAndRecord - return adhoc table for testing
+// GetDriverAndRecord - return adhoc table for testing
 // TODO: You should generate table definition dynamically using faker as well as table tuples
-func getDriverAndRecord(columnValues map[string]*toolkit.RawValue) (*toolkit.Driver, *toolkit.Record) {
+func GetDriverAndRecord(columnValues map[string]*RawValue) (*Driver, *Record) {
 
 	if columnValues == nil || len(columnValues) == 0 {
 		panic("received empty columnValues")
 	}
 
-	var columns []*toolkit.Column
-	var values []string
+	var columns []*Column
+	rawRecord := make(RawRecord)
+	var colNum int
 	for columnName, columnValue := range columnValues {
-		idx := slices.IndexFunc(columnList, func(column *toolkit.Column) bool {
+		idx := slices.IndexFunc(columnList, func(column *Column) bool {
 			return column.Name == columnName
 		})
 		if idx == -1 {
 			panic(fmt.Sprintf("column with name \"%s\" is not found", columnName))
 		}
 		columns = append(columns, columnList[idx])
-		encodedValue := pgcopy.EncodeAttr(columnValue, nil)
-		values = append(values, string(encodedValue))
+		rawRecord[colNum] = columnValue
+		colNum++
 	}
-	rawCopyLine := strings.Join(values, "\t")
 
-	table := &toolkit.Table{
+	table := &Table{
 		Schema:      "public",
 		Name:        "test",
 		Oid:         1224,
 		Columns:     columns,
-		Constraints: []toolkit.Constraint{},
+		Constraints: []Constraint{},
 	}
 
-	driver, _, err := toolkit.NewDriver(table, nil)
+	driver, _, err := NewDriver(table, nil)
 	if err != nil {
 		panic(err.Error())
 	}
-	row := pgcopy.NewRow(len(columns))
-	_ = row.Decode([]byte(rawCopyLine))
-	r := toolkit.NewRecord(
+	r := NewRecord(
 		driver,
 	)
-	r.SetRow(row)
+	r.SetRow(&rawRecord)
 	return driver, r
-}
-
-func getDriverAndRecordByTableDef() {
-
 }

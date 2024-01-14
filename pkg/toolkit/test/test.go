@@ -24,7 +24,7 @@ import (
 	"github.com/greenmaskio/greenmask/pkg/toolkit"
 )
 
-var testTransformerDefinition = toolkit.NewDefinition(
+var testTransformerDefinition = toolkit.NewTransformerDefinition(
 	"TestTransformer",
 	NewTestTransformer,
 ).SetValidate(true).

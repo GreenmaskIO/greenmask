@@ -18,9 +18,8 @@ import (
 	"context"
 	"testing"
 
-	"github.com/stretchr/testify/require"
-
 	"github.com/greenmaskio/greenmask/pkg/toolkit"
+	"github.com/stretchr/testify/require"
 )
 
 func TestGetDynamicTransformerDefinition(t *testing.T) {

@@ -63,7 +63,7 @@ func DefaultSchemaValidator(
 		}
 
 		// Checking transformed value will not exceed the column length
-		if p.ColumnProperties.MaxLength != toolkit.WithoutMaxLength &&
+		if p.ColumnProperties.MaxLength != parameters.WithoutMaxLength &&
 			p.Column.Length < p.ColumnProperties.MaxLength {
 			warnings = append(warnings, toolkit.NewValidationWarning().
 				SetMsg("transformer value might be out of length range: column has a length").

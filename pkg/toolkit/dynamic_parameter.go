@@ -1,11 +1,8 @@
-package parameters
+package toolkit
 
 import (
 	"fmt"
-	"slices"
 	"text/template"
-
-	"github.com/greenmaskio/greenmask/pkg/toolkit"
 )
 
 // TODO:
@@ -13,58 +10,59 @@ import (
 //  2. You might need to move default value decoding to common functions
 
 type DynamicParameter struct {
-	definition            *toolkit.ParameterDefinition
-	driver                *toolkit.Driver
-	record                *toolkit.Record
+	definition            *ParameterDefinition
+	driver                *Driver
+	record                *Record
 	tmpl                  *template.Template
-	dynamicValue          *toolkit.DynamicParamValue
+	dynamicValue          *DynamicParamValue
 	linkedColumnParameter *StaticParameter
 	columnIdx             int
 }
 
-func NewDynamicParameter(def *toolkit.ParameterDefinition, driver *toolkit.Driver) *DynamicParameter {
+func NewDynamicParameter(def *ParameterDefinition, driver *Driver) *DynamicParameter {
 	return &DynamicParameter{
 		definition: def,
 		driver:     driver,
 	}
 }
 
-func (p *DynamicParameter) GetDefinition() *toolkit.ParameterDefinition {
-	return p.definition
+func (dp *DynamicParameter) GetDefinition() *ParameterDefinition {
+	return dp.definition
 }
 
-func (p *DynamicParameter) SetRecord(r *toolkit.Record) {
-	p.record = r
+func (dp *DynamicParameter) SetRecord(r *Record) {
+	dp.record = r
 }
 
-func (p *DynamicParameter) Init(columnParameters []*StaticParameter, dynamicSettings *toolkit.DynamicParamValue) (warnings toolkit.ValidationWarnings, err error) {
+func (dp *DynamicParameter) Init(columnParameters map[string]*StaticParameter, dynamicValue *DynamicParamValue) (warnings ValidationWarnings, err error) {
 
 	// Algorithm
 	// 1. If it has CastDbType check that type is the same as in CastDbType iof not - raise warning
 	// 2. If it has linked parameter check that it has the same types otherwise raise validation error
 
-	if dynamicSettings == nil {
-		panic("dynamicSettings is nil")
+	if dynamicValue == nil {
+		panic("dynamicValue is nil")
 	}
+	dp.dynamicValue = dynamicValue
 
-	if dynamicSettings.Column == "" {
+	if dynamicValue.Column == "" {
 		warnings = append(
 			warnings,
-			toolkit.NewValidationWarning().
-				SetSeverity(toolkit.ErrorValidationSeverity).
+			NewValidationWarning().
+				SetSeverity(ErrorValidationSeverity).
 				SetMsg("received empty \"column\" parameter").
 				AddMeta("DynamicParameterSetting", "column"),
 		)
 		return warnings, nil
 	}
 
-	if dynamicSettings.CastTemplate != "" {
-		p.tmpl, err = template.New("").Parse(dynamicSettings.CastTemplate)
+	if dp.dynamicValue.CastTemplate != "" {
+		dp.tmpl, err = template.New("").Parse(dp.dynamicValue.CastTemplate)
 		if err != nil {
 			warnings = append(
 				warnings,
-				toolkit.NewValidationWarning().
-					SetSeverity(toolkit.ErrorValidationSeverity).
+				NewValidationWarning().
+					SetSeverity(ErrorValidationSeverity).
 					SetMsg("unable to render cast template").
 					AddMeta("Error", err.Error()).
 					AddMeta("DynamicParameterSetting", "cast_template"),
@@ -73,62 +71,60 @@ func (p *DynamicParameter) Init(columnParameters []*StaticParameter, dynamicSett
 		}
 	}
 
-	if p.definition.IsColumn {
+	if dp.definition.IsColumn {
 		warnings = append(
 			warnings,
-			toolkit.NewValidationWarning().
-				SetSeverity(toolkit.ErrorValidationSeverity).
+			NewValidationWarning().
+				SetSeverity(ErrorValidationSeverity).
 				SetMsg("column parameter cannot work in dynamic mode"),
 		)
 		return warnings, nil
 	}
 
-	columnIdx, column, ok := p.driver.GetColumnByName(dynamicSettings.Column)
+	columnIdx, column, ok := dp.driver.GetColumnByName(dp.dynamicValue.Column)
 	if !ok {
-		return toolkit.ValidationWarnings{
-				toolkit.NewValidationWarning().
-					SetSeverity(toolkit.ErrorValidationSeverity).
+		return ValidationWarnings{
+				NewValidationWarning().
+					SetSeverity(ErrorValidationSeverity).
 					SetMsg("column does not exist").
 					AddMeta("DynamicParameterSetting", "column").
-					AddMeta("ColumnName", p.definition.Name),
+					AddMeta("ColumnName", dp.definition.Name),
 			},
 			nil
 	}
-	p.columnIdx = columnIdx
+	dp.columnIdx = columnIdx
 
-	if p.definition.LinkColumnParameter != "" {
-		paramIdx := slices.IndexFunc(columnParameters, func(def *StaticParameter) bool {
-			return def.definition.Name == p.definition.LinkColumnParameter
-		})
-		if paramIdx == -1 {
-			panic(fmt.Sprintf(`parameter with name "%s" is not found`, p.definition.LinkColumnParameter))
+	if dp.definition.LinkColumnParameter != "" {
+		param, ok := columnParameters[dp.definition.LinkColumnParameter]
+		if !ok {
+			panic(fmt.Sprintf(`parameter with name "%s" is not found`, dp.definition.LinkColumnParameter))
 		}
-		p.linkedColumnParameter = columnParameters[paramIdx]
-		if !p.linkedColumnParameter.definition.IsColumn {
+		dp.linkedColumnParameter = param
+		if !dp.linkedColumnParameter.definition.IsColumn {
 			return nil, fmt.Errorf("linked parameter must be column: check transformer implementation")
 		}
 
 		var linkedColumnName string
 		// TODO: You have to replace defs it to parameter value instead of defs since you have to get the column
 		// 	value from static parameter
-		_, err := p.linkedColumnParameter.Scan(&linkedColumnName)
+		_, err := dp.linkedColumnParameter.Scan(&linkedColumnName)
 		if err != nil {
 			return nil, fmt.Errorf("error scanning linked parameter value: %w", err)
 		}
-		_, linkedColumn, ok := p.driver.GetColumnByName(linkedColumnName)
+		_, linkedColumn, ok := dp.driver.GetColumnByName(linkedColumnName)
 		if !ok {
 			panic(fmt.Sprintf("column with name \"%s\" is not found", linkedColumnName))
 		}
 
 		// TODO: Recheck this cond since some of types implicitly literally equal for instance TIMESTAMP and TIMESTAMPTZ
 		// TODO: There is bug with column overriding type since OverriddenTypeOid is not checking
-		if linkedColumn.TypeOid != column.TypeOid && p.tmpl == nil {
-			warnings = append(warnings, toolkit.NewValidationWarning().
-				SetSeverity(toolkit.ErrorValidationSeverity).
+		if linkedColumn.TypeOid != column.TypeOid && dp.tmpl == nil {
+			warnings = append(warnings, NewValidationWarning().
+				SetSeverity(ErrorValidationSeverity).
 				AddMeta("DynamicParameterSetting", "column").
 				AddMeta("DynamicParameterColumnType", column.TypeName).
 				AddMeta("DynamicParameterColumnName", column.Name).
-				AddMeta("LinkedParameterName", p.definition.LinkColumnParameter).
+				AddMeta("LinkedParameterName", dp.definition.LinkColumnParameter).
 				AddMeta("LinkedColumnName", linkedColumnName).
 				AddMeta("LinkedColumnType", linkedColumn.TypeName).
 				AddMeta("Hint", "you can use \"cast_template\" for casting value to supported type").
@@ -137,20 +133,20 @@ func (p *DynamicParameter) Init(columnParameters []*StaticParameter, dynamicSett
 		}
 	}
 
-	if p.definition.CastDbType != "" &&
-		!toolkit.IsTypeAllowed(
-			[]string{p.definition.CastDbType},
-			p.driver.CustomTypes,
+	if dp.definition.CastDbType != "" &&
+		!IsTypeAllowed(
+			[]string{dp.definition.CastDbType},
+			dp.driver.CustomTypes,
 			column.Name,
 			true,
 		) {
-		warnings = append(warnings, toolkit.NewValidationWarning().
-			SetSeverity(toolkit.ErrorValidationSeverity).
+		warnings = append(warnings, NewValidationWarning().
+			SetSeverity(ErrorValidationSeverity).
 			SetMsg("unsupported column type: unsupported type according cast_db_type").
 			AddMeta("DynamicParameterSetting", "column").
 			AddMeta("DynamicParameterColumnType", column.TypeName).
 			AddMeta("DynamicParameterColumnName", column.Name).
-			AddMeta("CastDbType", p.definition.CastDbType),
+			AddMeta("CastDbType", dp.definition.CastDbType),
 		)
 
 		return warnings, nil
@@ -159,27 +155,27 @@ func (p *DynamicParameter) Init(columnParameters []*StaticParameter, dynamicSett
 	return
 }
 
-func (p *DynamicParameter) Value() (value any, err error) {
+func (dp *DynamicParameter) Value() (value any, err error) {
 	// TODO: Add logic for using cst template and null behaviour
-	v, err := p.record.GetColumnValueByIdx(p.columnIdx)
+	v, err := dp.record.GetColumnValueByIdx(dp.columnIdx)
 	if err != nil {
 		return nil, err
 	}
 	return v.Value, nil
 }
 
-func (p *DynamicParameter) RawValue() (rawValue toolkit.ParamsValue, err error) {
+func (dp *DynamicParameter) RawValue() (rawValue ParamsValue, err error) {
 	// TODO: Add logic for using cst template and null behaviour
-	v, err := p.record.GetRawColumnValueByIdx(p.columnIdx)
+	v, err := dp.record.GetRawColumnValueByIdx(dp.columnIdx)
 	if err != nil {
 		return nil, err
 	}
 	return v.Data, nil
 }
 
-func (p *DynamicParameter) Scan(dest any) (bool, error) {
+func (dp *DynamicParameter) Scan(dest any) (bool, error) {
 	// TODO: Add logic for using cst template and null behaviour
-	empty, err := p.record.ScanColumnValueByIdx(p.columnIdx, dest)
+	empty, err := dp.record.ScanColumnValueByIdx(dp.columnIdx, dest)
 	if err != nil {
 		return true, err
 	}

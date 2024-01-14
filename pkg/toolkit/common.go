@@ -24,6 +24,10 @@ type AttNum uint32
 
 type DynamicParams map[string]*DynamicParamValue
 
+type ParameterValuer interface {
+	Value()
+}
+
 type DynamicParamValue struct {
 	Column                string      `mapstructure:"column" json:"column,omitempty"`
 	CastTemplate          string      `mapstructure:"cast_template" json:"cast_template,omitempty"`
@@ -32,7 +36,11 @@ type DynamicParamValue struct {
 	DefaultValue          ParamsValue `mapstructure:"default_value" json:"default_value,omitempty"`
 }
 
+func (dpv *DynamicParamValue) ParameterValuer() {}
+
 type ParamsValue []byte
+
+func (pv *ParamsValue) ParameterValuer() {}
 
 func (pv *ParamsValue) UnmarshalJSON(data []byte) error {
 	var val any

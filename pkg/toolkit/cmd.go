@@ -38,7 +38,7 @@ type NewRowDriverFunc func() RowDriver
 
 type Cmd struct {
 	*cobra.Command
-	definition      *Definition
+	definition      *TransformerDefinition
 	logLevel        string
 	logFormat       string
 	meta            *Meta
@@ -48,7 +48,7 @@ type Cmd struct {
 	params          map[string]*ParameterDefinition
 }
 
-func NewCmd(definition *Definition) *Cmd {
+func NewCmd(definition *TransformerDefinition) *Cmd {
 
 	if definition == nil {
 		panic("definition cannot be nil")

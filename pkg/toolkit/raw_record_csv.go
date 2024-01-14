@@ -55,7 +55,7 @@ func (rr *RawRecordCsv) GetColumn(idx int) (*RawValue, error) {
 		}
 	}
 	if idx > len(rr.Data) || idx < 0 {
-		return nil, fmt.Errorf("attribute with idx=%d is not found", idx)
+		return nil, fmt.Errorf("column with idx=%d is not found", idx)
 	}
 	val := rr.Data[idx]
 	if val == nullSeqStr {
@@ -66,7 +66,7 @@ func (rr *RawRecordCsv) GetColumn(idx int) (*RawValue, error) {
 
 func (rr *RawRecordCsv) SetColumn(idx int, v *RawValue) error {
 	if idx > len(rr.Data) || idx < 0 {
-		return fmt.Errorf("attribute with idx=%d is not found", idx)
+		return fmt.Errorf("column with idx=%d is not found", idx)
 	}
 	if v.IsNull {
 		rr.Data[idx] = nullSeqStr

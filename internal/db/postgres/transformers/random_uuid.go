@@ -19,7 +19,6 @@ import (
 	"fmt"
 
 	"github.com/google/uuid"
-
 	"github.com/greenmaskio/greenmask/internal/db/postgres/transformers/utils"
 	"github.com/greenmaskio/greenmask/pkg/toolkit"
 )

@@ -21,7 +21,6 @@ import (
 	"strings"
 
 	"github.com/ggwhite/go-masker"
-
 	"github.com/greenmaskio/greenmask/internal/db/postgres/transformers/utils"
 	"github.com/greenmaskio/greenmask/pkg/toolkit"
 )
