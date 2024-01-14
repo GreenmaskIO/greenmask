@@ -67,7 +67,7 @@ type NoiseFloatTransformer struct {
 	affectedColumns map[int]string
 }
 
-func NewNoiseFloatTransformer(ctx context.Context, driver *toolkit.Driver, parameters map[string]*toolkit.ParameterDefinition) (utils.Transformer, toolkit.ValidationWarnings, error) {
+func NewNoiseFloatTransformer(ctx context.Context, driver *toolkit.Driver, parameters map[string]toolkit.Parameterizer) (utils.Transformer, toolkit.ValidationWarnings, error) {
 	// TODO: value out of rage might be possible: double check this transformer implementation
 
 	var columnName string

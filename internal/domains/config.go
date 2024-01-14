@@ -93,10 +93,10 @@ type TransformerSettings struct {
 }
 
 type TransformerConfig struct {
-	Name          string                `mapstructure:"name" yaml:"name" json:"name,omitempty"`
-	Settings      *TransformerSettings  `mapstructure:"settings,omitempty" yaml:"settings,omitempty" json:"settings,omitempty"`
-	Params        toolkit.Params        `mapstructure:"params" yaml:"params" json:"params,omitempty"`
-	DynamicParams toolkit.DynamicParams `mapstructure:"dynamic_params" yaml:"dynamic_params" json:"dynamic_params,omitempty"`
+	Name          string                    `mapstructure:"name" yaml:"name" json:"name,omitempty"`
+	Settings      *TransformerSettings      `mapstructure:"settings,omitempty" yaml:"settings,omitempty" json:"settings,omitempty"`
+	Params        toolkit.StaticParameters  `mapstructure:"params" yaml:"params" json:"params,omitempty"`
+	DynamicParams toolkit.DynamicParameters `mapstructure:"dynamic_params" yaml:"dynamic_params" json:"dynamic_params,omitempty"`
 }
 
 type Table struct {

@@ -16,7 +16,12 @@ package toolkit
 
 type Meta struct {
 	Table               *Table            `json:"table"`
-	Parameters          Params            `json:"parameters"`
+	Parameters          *Parameters       `json:"parameters"`
 	Types               []*Type           `json:"types"`
 	ColumnTypeOverrides map[string]string `json:"column_type_overrides"`
+}
+
+type Parameters struct {
+	Static  StaticParameters  `json:"static,omitempty"`
+	Dynamic DynamicParameters `json:"dynamic,omitempty"`
 }

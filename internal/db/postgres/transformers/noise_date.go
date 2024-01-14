@@ -73,7 +73,7 @@ type NoiseDateTransformer struct {
 	ratio           time.Duration
 }
 
-func NewNoiseDateTransformer(ctx context.Context, driver *toolkit.Driver, parameters map[string]*toolkit.ParameterDefinition) (utils.Transformer, toolkit.ValidationWarnings, error) {
+func NewNoiseDateTransformer(ctx context.Context, driver *toolkit.Driver, parameters map[string]toolkit.Parameterizer) (utils.Transformer, toolkit.ValidationWarnings, error) {
 	var columnName, truncate string
 	var generator dateNoiseFunc = generateNoisedTime
 

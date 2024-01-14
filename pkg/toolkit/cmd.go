@@ -45,7 +45,7 @@ type Cmd struct {
 	printDefinition bool
 	validate        bool
 	transform       bool
-	params          map[string]*ParameterDefinition
+	params          map[string]Parameterizer
 }
 
 func NewCmd(definition *TransformerDefinition) *Cmd {
@@ -321,7 +321,7 @@ func (c *Cmd) init(ctx context.Context) (Transformer, *Driver, ValidationWarning
 	}
 	warnings = append(warnings, driverWarnings...)
 
-	params, pw, err := InitParameters(driver, meta.Parameters, c.definition.Parameters, meta.Types)
+	params, pw, err := InitParametersV2(driver, c.definition.Parameters, meta.Parameters.Static, meta.Parameters.Dynamic)
 	if err != nil {
 		return nil, nil, nil, fmt.Errorf("error parsing parameters: %w", err)
 	}

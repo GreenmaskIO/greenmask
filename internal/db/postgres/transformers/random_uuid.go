@@ -52,7 +52,7 @@ type RandomUuidTransformer struct {
 	affectedColumns map[int]string
 }
 
-func NewRandomUuidTransformer(ctx context.Context, driver *toolkit.Driver, parameters map[string]*toolkit.ParameterDefinition) (utils.Transformer, toolkit.ValidationWarnings, error) {
+func NewRandomUuidTransformer(ctx context.Context, driver *toolkit.Driver, parameters map[string]toolkit.Parameterizer) (utils.Transformer, toolkit.ValidationWarnings, error) {
 	var columnName string
 	var keepNull bool
 

@@ -60,7 +60,7 @@ type TemplateRecordTransformer struct {
 	columns         []string
 }
 
-func NewTemplateRecordTransformer(ctx context.Context, driver *toolkit.Driver, parameters map[string]*toolkit.ParameterDefinition) (utils.Transformer, toolkit.ValidationWarnings, error) {
+func NewTemplateRecordTransformer(ctx context.Context, driver *toolkit.Driver, parameters map[string]toolkit.Parameterizer) (utils.Transformer, toolkit.ValidationWarnings, error) {
 	var templateStr string
 	var columns []string
 	affectedColumns := make(map[int]string)

@@ -56,7 +56,7 @@ type NoiseIntTransformer struct {
 	affectedColumns map[int]string
 }
 
-func NewNoiseIntTransformer(ctx context.Context, driver *toolkit.Driver, parameters map[string]*toolkit.ParameterDefinition) (utils.Transformer, toolkit.ValidationWarnings, error) {
+func NewNoiseIntTransformer(ctx context.Context, driver *toolkit.Driver, parameters map[string]toolkit.Parameterizer) (utils.Transformer, toolkit.ValidationWarnings, error) {
 	var columnName string
 	var ratio float64
 

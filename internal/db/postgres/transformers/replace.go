@@ -63,7 +63,7 @@ type ReplaceTransformer struct {
 	affectedColumns map[int]string
 }
 
-func NewReplaceTransformer(ctx context.Context, driver *toolkit.Driver, parameters map[string]*toolkit.ParameterDefinition) (utils.Transformer, toolkit.ValidationWarnings, error) {
+func NewReplaceTransformer(ctx context.Context, driver *toolkit.Driver, parameters map[string]toolkit.Parameterizer) (utils.Transformer, toolkit.ValidationWarnings, error) {
 
 	var columnName string
 	var keepNull, validate bool
@@ -85,7 +85,11 @@ func NewReplaceTransformer(ctx context.Context, driver *toolkit.Driver, paramete
 		return nil, nil, fmt.Errorf(`unable to scan "validate" param: %w`, err)
 	}
 
-	value := parameters["value"].RawValue()
+	p = parameters["value"]
+	value, err := p.RawValue()
+	if err != nil {
+		return nil, nil, fmt.Errorf("error getting raw value from parameter \"%s\": %w", p.GetDefinition().Name, err)
+	}
 	if validate {
 		_, err := driver.DecodeValueByTypeOid(uint32(c.TypeOid), value)
 		if err != nil {

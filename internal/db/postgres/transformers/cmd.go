@@ -141,7 +141,7 @@ type Cmd struct {
 }
 
 func NewCmd(
-	ctx context.Context, driver *toolkit.Driver, parameters map[string]*toolkit.ParameterDefinition,
+	ctx context.Context, driver *toolkit.Driver, parameters map[string]toolkit.Parameterizer,
 ) (utils.Transformer, toolkit.ValidationWarnings, error) {
 
 	name := cmdTransformerName

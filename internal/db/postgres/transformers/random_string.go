@@ -73,7 +73,7 @@ type RandomStringTransformer struct {
 	columnIdx       int
 }
 
-func NewRandomStringTransformer(ctx context.Context, driver *toolkit.Driver, parameters map[string]*toolkit.ParameterDefinition) (utils.Transformer, toolkit.ValidationWarnings, error) {
+func NewRandomStringTransformer(ctx context.Context, driver *toolkit.Driver, parameters map[string]toolkit.Parameterizer) (utils.Transformer, toolkit.ValidationWarnings, error) {
 
 	var columnName, symbols string
 	var minLength, maxLength int64

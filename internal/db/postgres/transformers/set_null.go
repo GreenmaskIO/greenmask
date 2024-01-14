@@ -43,7 +43,7 @@ type SetNullTransformer struct {
 	affectedColumns map[int]string
 }
 
-func NewSetNullTransformer(ctx context.Context, driver *toolkit.Driver, parameters map[string]*toolkit.ParameterDefinition) (utils.Transformer, toolkit.ValidationWarnings, error) {
+func NewSetNullTransformer(ctx context.Context, driver *toolkit.Driver, parameters map[string]toolkit.Parameterizer) (utils.Transformer, toolkit.ValidationWarnings, error) {
 	var columnName string
 
 	p := parameters["column"]

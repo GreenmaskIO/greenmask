@@ -18,7 +18,7 @@ import (
 	"context"
 )
 
-type NewTransformerFunc func(ctx context.Context, driver *Driver, parameters map[string]*ParameterDefinition) (
+type NewTransformerFunc func(ctx context.Context, driver *Driver, parameters map[string]Parameterizer) (
 	Transformer, ValidationWarnings, error,
 )
 

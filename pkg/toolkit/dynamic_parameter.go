@@ -10,11 +10,11 @@ import (
 //  2. You might need to move default value decoding to common functions
 
 type DynamicParameter struct {
+	DynamicValue          *DynamicParamValue
 	definition            *ParameterDefinition
 	driver                *Driver
 	record                *Record
 	tmpl                  *template.Template
-	dynamicValue          *DynamicParamValue
 	linkedColumnParameter *StaticParameter
 	columnIdx             int
 }
@@ -41,9 +41,9 @@ func (dp *DynamicParameter) Init(columnParameters map[string]*StaticParameter, d
 	// 2. If it has linked parameter check that it has the same types otherwise raise validation error
 
 	if dynamicValue == nil {
-		panic("dynamicValue is nil")
+		panic("DynamicValue is nil")
 	}
-	dp.dynamicValue = dynamicValue
+	dp.DynamicValue = dynamicValue
 
 	if dynamicValue.Column == "" {
 		warnings = append(
@@ -56,8 +56,8 @@ func (dp *DynamicParameter) Init(columnParameters map[string]*StaticParameter, d
 		return warnings, nil
 	}
 
-	if dp.dynamicValue.CastTemplate != "" {
-		dp.tmpl, err = template.New("").Parse(dp.dynamicValue.CastTemplate)
+	if dp.DynamicValue.CastTemplate != "" {
+		dp.tmpl, err = template.New("").Parse(dp.DynamicValue.CastTemplate)
 		if err != nil {
 			warnings = append(
 				warnings,
@@ -81,7 +81,7 @@ func (dp *DynamicParameter) Init(columnParameters map[string]*StaticParameter, d
 		return warnings, nil
 	}
 
-	columnIdx, column, ok := dp.driver.GetColumnByName(dp.dynamicValue.Column)
+	columnIdx, column, ok := dp.driver.GetColumnByName(dp.DynamicValue.Column)
 	if !ok {
 		return ValidationWarnings{
 				NewValidationWarning().

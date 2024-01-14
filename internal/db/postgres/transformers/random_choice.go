@@ -71,7 +71,7 @@ type RandomChoiceTransformer struct {
 }
 
 func NewRandomChoiceTransformer(
-	ctx context.Context, driver *toolkit.Driver, parameters map[string]*toolkit.ParameterDefinition,
+	ctx context.Context, driver *toolkit.Driver, parameters map[string]toolkit.Parameterizer,
 ) (utils.Transformer, toolkit.ValidationWarnings, error) {
 	var warnings toolkit.ValidationWarnings
 	p := parameters["column"]

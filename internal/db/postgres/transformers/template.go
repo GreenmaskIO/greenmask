@@ -62,7 +62,7 @@ type TemplateTransformer struct {
 	tctx            *ColumnContext
 }
 
-func NewTemplateTransformer(ctx context.Context, driver *toolkit.Driver, parameters map[string]*toolkit.ParameterDefinition) (utils.Transformer, toolkit.ValidationWarnings, error) {
+func NewTemplateTransformer(ctx context.Context, driver *toolkit.Driver, parameters map[string]toolkit.Parameterizer) (utils.Transformer, toolkit.ValidationWarnings, error) {
 	var columnName, templateStr string
 
 	p := parameters["column"]

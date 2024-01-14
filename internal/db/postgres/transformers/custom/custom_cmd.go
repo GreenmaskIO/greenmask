@@ -43,7 +43,7 @@ const (
 
 func ProduceNewCmdTransformerFunction(ctd *TransformerDefinition) utils.NewTransformerFunc {
 	return func(
-		ctx context.Context, driver *toolkit.Driver, parameters map[string]*toolkit.ParameterDefinition,
+		ctx context.Context, driver *toolkit.Driver, parameters map[string]toolkit.Parameterizer,
 	) (utils.Transformer, toolkit.ValidationWarnings, error) {
 		return NewCustomCmdTransformer(ctx, driver, parameters, ctd)
 	}
@@ -57,13 +57,13 @@ type CmdTransformer struct {
 	args            []string
 	eg              *errgroup.Group
 	driver          *toolkit.Driver
-	parameters      map[string]*toolkit.ParameterDefinition
+	parameters      map[string]toolkit.Parameterizer
 	affectedColumns map[int]string
 	ctd             *TransformerDefinition
 }
 
 func NewCustomCmdTransformer(
-	ctx context.Context, driver *toolkit.Driver, parameters map[string]*toolkit.ParameterDefinition,
+	ctx context.Context, driver *toolkit.Driver, parameters map[string]toolkit.Parameterizer,
 	ctd *TransformerDefinition,
 ) (*CmdTransformer, toolkit.ValidationWarnings, error) {
 	affectedColumns := make(map[int]string)
@@ -276,14 +276,27 @@ func (ct *CmdTransformer) Done(ctx context.Context) error {
 }
 
 func (ct *CmdTransformer) getMetadata() ([]byte, error) {
-	params := make(toolkit.Params)
+	staticParamValues := make(toolkit.StaticParameters)
+	dynamicParamValues := make(map[string]*toolkit.DynamicParamValue)
 	for name, p := range ct.parameters {
-		params[name] = p.RawValue()
+		switch v := p.(type) {
+		case *toolkit.StaticParameter:
+			rawValue, err := p.RawValue()
+			if err != nil {
+				return nil, fmt.Errorf("error getting raw value from parameter \"%s\": %w", p.GetDefinition().Name)
+			}
+			staticParamValues[name] = rawValue
+		case *toolkit.DynamicParameter:
+			dynamicParamValues[p.GetDefinition().Name] = v.DynamicValue
+		}
 	}
 	meta := &toolkit.Meta{
-		Table:      ct.driver.Table,
-		Parameters: params,
-		Types:      ct.driver.CustomTypes,
+		Table: ct.driver.Table,
+		Parameters: &toolkit.Parameters{
+			Static:  staticParamValues,
+			Dynamic: dynamicParamValues,
+		},
+		Types: ct.driver.CustomTypes,
 	}
 	res, err := json.Marshal(&meta)
 	if err != nil {

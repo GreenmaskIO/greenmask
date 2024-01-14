@@ -21,7 +21,7 @@ import (
 	"github.com/greenmaskio/greenmask/pkg/toolkit"
 )
 
-type SchemaValidationFunc func(ctx context.Context, table *toolkit.Table, properties *TransformerProperties, parameters map[string]*toolkit.ParameterDefinition, types []*toolkit.Type) (toolkit.ValidationWarnings, error)
+type SchemaValidationFunc func(ctx context.Context, table *toolkit.Driver, properties *TransformerProperties, parameters map[string]*toolkit.ParameterDefinition) (toolkit.ValidationWarnings, error)
 
 func ValidateSchema(
 	table *toolkit.Table, column *toolkit.Column, columnProperties *toolkit.ColumnProperties,
@@ -36,8 +36,8 @@ func ValidateSchema(
 }
 
 func DefaultSchemaValidator(
-	ctx context.Context, table *toolkit.Table, properties *TransformerProperties, parameters map[string]*toolkit.ParameterDefinition, types []*toolkit.Type,
-) (toolkit.ValidationWarnings, error) {
+	ctx context.Context, driver *toolkit.Driver, properties *TransformerProperties,
+	parameters map[string]*toolkit.ParameterDefinition) (toolkit.ValidationWarnings, error) {
 	var warnings toolkit.ValidationWarnings
 
 	if parameters == nil {
@@ -63,7 +63,7 @@ func DefaultSchemaValidator(
 		}
 
 		// Checking transformed value will not exceed the column length
-		if p.ColumnProperties.MaxLength != parameters.WithoutMaxLength &&
+		if p.ColumnProperties.MaxLength != toolkit.WithoutMaxLength &&
 			p.Column.Length < p.ColumnProperties.MaxLength {
 			warnings = append(warnings, toolkit.NewValidationWarning().
 				SetMsg("transformer value might be out of length range: column has a length").
@@ -77,7 +77,7 @@ func DefaultSchemaValidator(
 		}
 
 		// Performing checks constraint checks with the affected column
-		for _, c := range table.Constraints {
+		for _, c := range driver.Table.Constraints {
 			if p.IsColumn && (p.ColumnProperties == nil || p.ColumnProperties != nil && p.ColumnProperties.Affected) {
 				if warns := c.IsAffected(p.Column, p.ColumnProperties); len(warns) > 0 {
 					for _, w := range warns {
@@ -89,11 +89,11 @@ func DefaultSchemaValidator(
 		}
 
 		// Performing type validation
-		idx := slices.IndexFunc(types, func(t *toolkit.Type) bool {
+		idx := slices.IndexFunc(driver.CustomTypes, func(t *toolkit.Type) bool {
 			return t.Oid == p.Column.TypeOid
 		})
 		if idx != -1 {
-			columnType := types[idx]
+			columnType := driver.CustomTypes[idx]
 			w := columnType.IsAffected(p)
 			warnings = append(warnings, w...)
 		}

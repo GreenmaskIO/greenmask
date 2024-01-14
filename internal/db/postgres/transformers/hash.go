@@ -65,7 +65,7 @@ type HashTransformer struct {
 }
 
 func NewHashTransformer(
-	ctx context.Context, driver *toolkit.Driver, parameters map[string]*toolkit.ParameterDefinition,
+	ctx context.Context, driver *toolkit.Driver, parameters map[string]toolkit.Parameterizer,
 ) (utils.Transformer, toolkit.ValidationWarnings, error) {
 	p := parameters["column"]
 	var columnName string
@@ -83,8 +83,12 @@ func NewHashTransformer(
 	var salt toolkit.ParamsValue
 	p = parameters["salt"]
 	var err error
-	if len(p.RawValue()) > 0 {
-		salt, err = base64.StdEncoding.DecodeString(string(p.RawValue()))
+	rawValue, err := p.RawValue()
+	if err != nil {
+		return nil, nil, fmt.Errorf("error getting raw value for parameter \"%s\": %w", p.GetDefinition().Name, err)
+	}
+	if len(rawValue) > 0 {
+		salt, err = base64.StdEncoding.DecodeString(string(rawValue))
 		if err != nil {
 			return nil, nil, fmt.Errorf("error decoding \"salt\" value from base64: %w", err)
 		}

@@ -135,7 +135,7 @@ type JsonTransformer struct {
 	keepNull        bool
 }
 
-func NewJsonTransformer(ctx context.Context, driver *toolkit.Driver, parameters map[string]*toolkit.ParameterDefinition) (utils.Transformer, toolkit.ValidationWarnings, error) {
+func NewJsonTransformer(ctx context.Context, driver *toolkit.Driver, parameters map[string]toolkit.Parameterizer) (utils.Transformer, toolkit.ValidationWarnings, error) {
 	var ops []*Operation
 	var columnName string
 	var keepNull bool

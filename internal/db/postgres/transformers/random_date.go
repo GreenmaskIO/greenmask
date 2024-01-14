@@ -90,7 +90,7 @@ type RandomDateTransformer struct {
 	affectedColumns map[int]string
 }
 
-func NewRandomDateTransformer(ctx context.Context, driver *toolkit.Driver, parameters map[string]*toolkit.ParameterDefinition) (utils.Transformer, toolkit.ValidationWarnings, error) {
+func NewRandomDateTransformer(ctx context.Context, driver *toolkit.Driver, parameters map[string]toolkit.Parameterizer) (utils.Transformer, toolkit.ValidationWarnings, error) {
 	var columnName, truncate string
 	var minTime, maxTime time.Time
 	var generator dateGeneratorFunc = generateRandomTime
