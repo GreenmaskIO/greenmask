@@ -133,15 +133,20 @@ type ParameterDefinition struct {
 	RawValueValidator RawValueValidator `json:"-"`
 	// LinkedParameter - column-like parameter that has been linked during parsing procedure. Warning, do not
 	// assign it manually, if you don't know the consequences
+	// Deprecated
 	LinkedColumnParameter *ParameterDefinition `json:"-"`
-	// Column - column of the table that was assigned in the parsing procedure according to provided column name in
+	// Column - column of the table that was assigned in the parsing procedure according to provided Column name in
 	// parameter value. In this case value has textual column name
+	// Deprecated
 	Column *Column `json:"-"`
 	// Driver - initialized used for decoding raw value to database type mentioned in CastDbType
+	// Deprecated
 	Driver *Driver `mapstructure:"-" json:"-"`
 	// value - cached parsed value after Scan or Value
+	// Deprecated
 	value any
 	// rawValue - original raw value received from config
+	// Deprecated
 	rawValue ParamsValue
 }
 
@@ -331,6 +336,11 @@ func (p *ParameterDefinition) SetCastDbType(v string) *ParameterDefinition {
 
 func (p *ParameterDefinition) SetDefaultValue(v ParamsValue) *ParameterDefinition {
 	p.DefaultValue = v
+	return p
+}
+
+func (p *ParameterDefinition) SetDynamicModeSupport(v bool) *ParameterDefinition {
+	p.DynamicModeSupport = v
 	return p
 }
 
@@ -643,20 +653,6 @@ func InitParametersV2(
 	}
 
 	for _, pd := range otherParamsDef {
-		staticValue, ok := staticValues[pd.Name]
-		var p Parameterizer
-		if ok {
-			sp := NewStaticParameter(pd, driver)
-			initWarns, err := sp.Init(columnParams, staticValue)
-			for _, w := range initWarns {
-				w.AddMeta("ParameterName", pd.Name)
-			}
-			warnings = append(warnings, initWarns...)
-			if err != nil {
-				return nil, warnings, fmt.Errorf("error initializing static parameter \"%s\": %w", pd.Name, err)
-			}
-			p = sp
-		}
 		dynamicValue, ok := dynamicValues[pd.Name]
 		if ok {
 			dp := NewDynamicParameter(pd, driver)
@@ -668,9 +664,21 @@ func InitParametersV2(
 			if err != nil {
 				return nil, warnings, fmt.Errorf("error initializing static parameter \"%s\": %w", pd.Name, err)
 			}
-			p = dp
+			params[pd.Name] = dp
+			continue
 		}
-		params[pd.Name] = p
+
+		staticValue := staticValues[pd.Name]
+		sp := NewStaticParameter(pd, driver)
+		initWarns, err := sp.Init(columnParams, staticValue)
+		for _, w := range initWarns {
+			w.AddMeta("ParameterName", pd.Name)
+		}
+		warnings = append(warnings, initWarns...)
+		if err != nil {
+			return nil, warnings, fmt.Errorf("error initializing static parameter \"%s\": %w", pd.Name, err)
+		}
+		params[pd.Name] = sp
 	}
 
 	return params, warnings, nil

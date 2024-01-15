@@ -184,7 +184,7 @@ func (v *Validate) Run(ctx context.Context) error {
 	var tablesWithTransformers []dump.Entry
 	for _, item := range v.context.DataSectionObjects {
 
-		if t, ok := item.(*dump.Table); ok && len(t.Transformers) > 0 {
+		if t, ok := item.(*dump.Table); ok && len(t.TransformersContext) > 0 {
 			t.ValidateLimitedRecords = v.config.Validate.RowsLimit
 			tablesWithTransformers = append(tablesWithTransformers, t)
 		}
@@ -249,8 +249,8 @@ func (v *Validate) getVerticalRowColors(affectedColumns map[int]struct{}, column
 
 func (v *Validate) getAffectedColumns(t *dump.Table) map[int]struct{} {
 	affectedColumns := make(map[int]struct{})
-	for _, tr := range t.Transformers {
-		ac := tr.GetAffectedColumns()
+	for _, tr := range t.TransformersContext {
+		ac := tr.Transformer.GetAffectedColumns()
 		for idx := range ac {
 			affectedColumns[idx] = struct{}{}
 		}

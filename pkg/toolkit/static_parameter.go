@@ -13,7 +13,7 @@ type StaticParameter struct {
 	driver                *Driver
 	linkedColumnParameter *StaticParameter
 	rawValue              ParamsValue
-	column                *Column
+	Column                *Column
 	value                 any
 }
 
@@ -88,18 +88,26 @@ func (p *StaticParameter) Init(columnParams map[string]*StaticParameter, rawValu
 			)
 			return warnings, nil
 		}
-		p.column = column
+		p.Column = column
 
-		columnTypeName := p.column.TypeName
-		if p.column.OverriddenTypeName != "" {
-			columnTypeName = p.column.OverriddenTypeName
+		columnTypeName := p.Column.TypeName
+		columnTypeOid := p.Column.TypeOid
+		if p.Column.OverriddenTypeName != "" {
+			columnTypeName = p.Column.OverriddenTypeName
+			columnTypeOid = 0
 		}
 
 		if p.definition.ColumnProperties != nil {
 
 			if len(p.definition.ColumnProperties.AllowedTypes) > 0 {
 
-				if !IsTypeAllowed(p.definition.ColumnProperties.AllowedTypes, p.driver.CustomTypes, columnTypeName, true) {
+				if !IsTypeAllowedWithTypeMap(
+					p.driver,
+					p.definition.ColumnProperties.AllowedTypes,
+					columnTypeName,
+					columnTypeOid,
+					true,
+				) {
 					warnings = append(warnings, NewValidationWarning().
 						SetSeverity(ErrorValidationSeverity).
 						SetMsg("unsupported column type").
@@ -149,7 +157,7 @@ func (p *StaticParameter) Value() (any, error) {
 	} else if p.definition.LinkedColumnParameter != nil {
 		// Parsing dynamically - default value and type are unknown
 		// TODO: Be careful - this may cause an error in Scan func if the the returning value is not a pointer
-		val, err := p.driver.DecodeValueByTypeOid(uint32(p.linkedColumnParameter.column.TypeOid), p.rawValue)
+		val, err := p.driver.DecodeValueByTypeOid(uint32(p.linkedColumnParameter.Column.TypeOid), p.rawValue)
 		if err != nil {
 			return nil, fmt.Errorf("unable to scan parameter via Driver: %w", err)
 		}
@@ -209,20 +217,20 @@ func (p *StaticParameter) Scan(dest any) (bool, error) {
 	} else if p.linkedColumnParameter != nil {
 
 		// Try to scan value using pgx Driver and pgtype defined in the linked column
-		if p.linkedColumnParameter.column == nil {
-			return false, fmt.Errorf("parameter is linked but column was not assigned")
+		if p.linkedColumnParameter.Column == nil {
+			return false, fmt.Errorf("parameter is linked but Column was not assigned")
 		}
 
 		switch p.value.(type) {
 		case *time.Time:
-			val, err := p.driver.DecodeValueByTypeOid(uint32(p.linkedColumnParameter.column.TypeOid), p.rawValue)
+			val, err := p.driver.DecodeValueByTypeOid(uint32(p.linkedColumnParameter.Column.TypeOid), p.rawValue)
 			if err != nil {
 				return false, fmt.Errorf("unable to scan parameter via Driver: %w", err)
 			}
 			valTime := val.(time.Time)
 			p.value = &valTime
 		default:
-			if err := p.driver.ScanValueByTypeOid(uint32(p.linkedColumnParameter.column.TypeOid), p.rawValue, p.value); err != nil {
+			if err := p.driver.ScanValueByTypeOid(uint32(p.linkedColumnParameter.Column.TypeOid), p.rawValue, p.value); err != nil {
 				return false, fmt.Errorf("unable to scan parameter via Driver: %w", err)
 			}
 		}

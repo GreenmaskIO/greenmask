@@ -40,6 +40,16 @@ func (dp *DynamicParameter) Init(columnParameters map[string]*StaticParameter, d
 	// 1. If it has CastDbType check that type is the same as in CastDbType iof not - raise warning
 	// 2. If it has linked parameter check that it has the same types otherwise raise validation error
 
+	if !dp.definition.DynamicModeSupport {
+		warnings = append(
+			warnings,
+			NewValidationWarning().
+				SetSeverity(ErrorValidationSeverity).
+				SetMsg("parameter does not support dynamic mode"),
+		)
+		return warnings, nil
+	}
+
 	if dynamicValue == nil {
 		panic("DynamicValue is nil")
 	}
@@ -134,10 +144,11 @@ func (dp *DynamicParameter) Init(columnParameters map[string]*StaticParameter, d
 	}
 
 	if dp.definition.CastDbType != "" &&
-		!IsTypeAllowed(
+		!IsTypeAllowedWithTypeMap(
+			dp.driver,
 			[]string{dp.definition.CastDbType},
-			dp.driver.CustomTypes,
-			column.Name,
+			column.TypeName,
+			column.TypeOid,
 			true,
 		) {
 		warnings = append(warnings, NewValidationWarning().
@@ -156,6 +167,9 @@ func (dp *DynamicParameter) Init(columnParameters map[string]*StaticParameter, d
 }
 
 func (dp *DynamicParameter) Value() (value any, err error) {
+	if dp.record == nil {
+		return nil, fmt.Errorf("check transformer implementation: dynamic parameter usage during initialization stage is prohibited")
+	}
 	// TODO: Add logic for using cst template and null behaviour
 	v, err := dp.record.GetColumnValueByIdx(dp.columnIdx)
 	if err != nil {
@@ -165,6 +179,9 @@ func (dp *DynamicParameter) Value() (value any, err error) {
 }
 
 func (dp *DynamicParameter) RawValue() (rawValue ParamsValue, err error) {
+	if dp.record == nil {
+		return nil, fmt.Errorf("check transformer implementation: dynamic parameter usage during initialization stage is prohibited")
+	}
 	// TODO: Add logic for using cst template and null behaviour
 	v, err := dp.record.GetRawColumnValueByIdx(dp.columnIdx)
 	if err != nil {
@@ -174,6 +191,9 @@ func (dp *DynamicParameter) RawValue() (rawValue ParamsValue, err error) {
 }
 
 func (dp *DynamicParameter) Scan(dest any) (bool, error) {
+	if dp.record == nil {
+		return false, fmt.Errorf("check transformer implementation: dynamic parameter usage during initialization stage is prohibited")
+	}
 	// TODO: Add logic for using cst template and null behaviour
 	empty, err := dp.record.ScanColumnValueByIdx(dp.columnIdx, dest)
 	if err != nil {

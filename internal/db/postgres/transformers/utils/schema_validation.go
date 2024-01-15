@@ -21,7 +21,7 @@ import (
 	"github.com/greenmaskio/greenmask/pkg/toolkit"
 )
 
-type SchemaValidationFunc func(ctx context.Context, table *toolkit.Driver, properties *TransformerProperties, parameters map[string]*toolkit.ParameterDefinition) (toolkit.ValidationWarnings, error)
+type SchemaValidationFunc func(ctx context.Context, table *toolkit.Driver, properties *TransformerProperties, parameters map[string]*toolkit.StaticParameter) (toolkit.ValidationWarnings, error)
 
 func ValidateSchema(
 	table *toolkit.Table, column *toolkit.Column, columnProperties *toolkit.ColumnProperties,
@@ -37,7 +37,7 @@ func ValidateSchema(
 
 func DefaultSchemaValidator(
 	ctx context.Context, driver *toolkit.Driver, properties *TransformerProperties,
-	parameters map[string]*toolkit.ParameterDefinition) (toolkit.ValidationWarnings, error) {
+	parameters map[string]*toolkit.StaticParameter) (toolkit.ValidationWarnings, error) {
 	var warnings toolkit.ValidationWarnings
 
 	if parameters == nil {
@@ -45,43 +45,44 @@ func DefaultSchemaValidator(
 	}
 
 	for _, p := range parameters {
-		if !p.IsColumn || p.IsColumn && !p.ColumnProperties.Affected {
+		if !p.GetDefinition().IsColumn || p.GetDefinition().IsColumn && !p.GetDefinition().ColumnProperties.Affected {
 			// We assume that if parameter is not a column or is a column but not affected - it should not
 			// violate constraints
 			continue
 		}
 
 		// Checking is transformer can produce NULL value
-		if p.ColumnProperties.Nullable && p.Column.NotNull {
+		if p.GetDefinition().ColumnProperties.Nullable && p.Column.NotNull {
 			warnings = append(warnings, toolkit.NewValidationWarning().
 				SetMsg("transformer may produce NULL values but column has NOT NULL constraint").
 				SetSeverity(toolkit.WarningValidationSeverity).
 				AddMeta("ConstraintType", toolkit.NotNullConstraintType).
-				AddMeta("ParameterName", p.Name).
-				AddMeta("ColumnName", p.Column.Name),
+				AddMeta("ParameterName", p.GetDefinition().Name).
+				AddMeta("ColumnName", p.GetDefinition().Column.Name),
 			)
 		}
 
 		// Checking transformed value will not exceed the column length
-		if p.ColumnProperties.MaxLength != toolkit.WithoutMaxLength &&
-			p.Column.Length < p.ColumnProperties.MaxLength {
+		if p.GetDefinition().ColumnProperties.MaxLength != toolkit.WithoutMaxLength &&
+			p.GetDefinition().Column.Length < p.GetDefinition().ColumnProperties.MaxLength {
 			warnings = append(warnings, toolkit.NewValidationWarning().
 				SetMsg("transformer value might be out of length range: column has a length").
 				SetSeverity(toolkit.WarningValidationSeverity).
 				AddMeta("ConstraintType", toolkit.LengthConstraintType).
-				AddMeta("ParameterName", p.Name).
+				AddMeta("ParameterName", p.GetDefinition().Name).
 				AddMeta("ColumnName", p.Column.Name).
 				AddMeta("ColumnMaxLength", p.Column.Length).
-				AddMeta("TransformerMaxLength", p.ColumnProperties.MaxLength),
+				AddMeta("TransformerMaxLength", p.GetDefinition().ColumnProperties.MaxLength),
 			)
 		}
 
 		// Performing checks constraint checks with the affected column
 		for _, c := range driver.Table.Constraints {
-			if p.IsColumn && (p.ColumnProperties == nil || p.ColumnProperties != nil && p.ColumnProperties.Affected) {
-				if warns := c.IsAffected(p.Column, p.ColumnProperties); len(warns) > 0 {
+			if p.GetDefinition().IsColumn && (p.GetDefinition().ColumnProperties == nil ||
+				p.GetDefinition().ColumnProperties != nil && p.GetDefinition().ColumnProperties.Affected) {
+				if warns := c.IsAffected(p.Column, p.GetDefinition().ColumnProperties); len(warns) > 0 {
 					for _, w := range warns {
-						w.AddMeta("ParameterName", p.Name)
+						w.AddMeta("ParameterName", p.GetDefinition().Name)
 					}
 					warnings = append(warnings, warns...)
 				}

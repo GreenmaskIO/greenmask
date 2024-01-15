@@ -28,7 +28,7 @@ func initTransformer(
 	c *domains.TransformerConfig,
 	r *transformersUtils.TransformerRegistry,
 	types []*toolkit.Type,
-) (transformersUtils.Transformer, toolkit.ValidationWarnings, error) {
+) (*transformersUtils.TransformerContext, toolkit.ValidationWarnings, error) {
 	var totalWarnings toolkit.ValidationWarnings
 	td, ok := r.Get(c.Name)
 	if !ok {

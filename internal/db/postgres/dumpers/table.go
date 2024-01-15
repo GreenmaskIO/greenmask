@@ -71,7 +71,7 @@ func (td *TableDumper) Execute(ctx context.Context, tx pgx.Tx, st storages.Stora
 		func() error {
 			var pipeline Pipeliner
 			var err error
-			if len(td.table.Transformers) > 0 {
+			if len(td.table.TransformersContext) > 0 {
 				if td.validate {
 					pipeline, err = NewValidationPipeline(gtx, eg, td.table, w, td.validateWithOriginal)
 					if err != nil {

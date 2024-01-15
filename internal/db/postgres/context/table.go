@@ -108,7 +108,7 @@ func validateAndBuildTablesConfig(
 						return nil, warnings, err
 					}
 					warnings = append(warnings, initWarnings...)
-					table.Transformers = append(table.Transformers, transformer)
+					table.TransformersContext = append(table.TransformersContext, transformer)
 				}
 			}
 

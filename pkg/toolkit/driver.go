@@ -117,6 +117,10 @@ func NewDriver(table *Table, customTypes []*Type) (*Driver, ValidationWarnings, 
 	return d, warnings, nil
 }
 
+func (d *Driver) GetTypeMap() *pgtype.Map {
+	return d.SharedTypeMap
+}
+
 func (d *Driver) EncodeValueByColumnIdx(idx int, src any, buf []byte) ([]byte, error) {
 	if typeName, ok := d.unsupportedColumnIdxs[idx]; ok {
 		return nil, fmt.Errorf("encode-decode operation is not supported for column %d with type %s", idx, typeName)

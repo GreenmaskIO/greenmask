@@ -110,9 +110,15 @@ func (d *TransformerDefinition) SetSchemaValidator(v SchemaValidationFunc) *Tran
 //	return totalWarnings, params, nil
 //}
 
+type TransformerContext struct {
+	Transformer       Transformer
+	StaticParameters  map[string]*toolkit.StaticParameter
+	DynamicParameters map[string]*toolkit.DynamicParameter
+}
+
 func (d *TransformerDefinition) Instance(
 	ctx context.Context, driver *toolkit.Driver, rawParams map[string]toolkit.ParamsValue, dynamicParameters map[string]*toolkit.DynamicParamValue,
-) (Transformer, toolkit.ValidationWarnings, error) {
+) (*TransformerContext, toolkit.ValidationWarnings, error) {
 	// Decode parameters and get the pgcopy of parsed
 	params, parametersWarnings, err := toolkit.InitParametersV2(driver, d.Parameters, rawParams, dynamicParameters)
 	if err != nil {
@@ -123,12 +129,23 @@ func (d *TransformerDefinition) Instance(
 		return nil, parametersWarnings, nil
 	}
 
+	dynamicParams := make(map[string]*toolkit.DynamicParameter)
+	staticParams := make(map[string]*toolkit.StaticParameter)
+	for name, p := range params {
+		switch v := p.(type) {
+		case *toolkit.StaticParameter:
+			staticParams[name] = v
+		case *toolkit.DynamicParameter:
+			dynamicParams[name] = v
+		}
+	}
+
 	paramDefs := make(map[string]*toolkit.ParameterDefinition, len(d.Parameters))
 	for _, pd := range d.Parameters {
 		paramDefs[pd.Name] = pd
 	}
 	// Validate schema
-	schemaWarnings, err := d.SchemaValidator(ctx, driver, d.Properties, paramDefs)
+	schemaWarnings, err := d.SchemaValidator(ctx, driver, d.Properties, staticParams)
 	if err != nil {
 		return nil, nil, fmt.Errorf("schema validation error: %w", err)
 	}
@@ -144,5 +161,9 @@ func (d *TransformerDefinition) Instance(
 	res = append(res, schemaWarnings...)
 	res = append(res, transformerWarnings...)
 
-	return t, res, nil
+	return &TransformerContext{
+		Transformer:       t,
+		StaticParameters:  staticParams,
+		DynamicParameters: dynamicParams,
+	}, res, nil
 }

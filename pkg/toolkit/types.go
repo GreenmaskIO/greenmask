@@ -70,32 +70,32 @@ type Type struct {
 	RootBuiltInTypeName string `json:"root_built_in_type_name,omitempty"`
 }
 
-func (t *Type) IsAffected(p *ParameterDefinition) (w ValidationWarnings) {
+func (t *Type) IsAffected(p *StaticParameter) (w ValidationWarnings) {
 	if p.Column == nil {
 		panic("parameter Column must not be nil")
 	}
-	if p.Column == nil {
+	if p.GetDefinition().ColumnProperties == nil {
 		panic("parameter ColumnProperties must not be nil")
 	}
-	if !p.ColumnProperties.Affected {
+	if !p.GetDefinition().ColumnProperties.Affected {
 		return
 	}
 	if p.Column.TypeOid != t.Oid {
 		return
 	}
-	if p.ColumnProperties.Nullable && p.Column.NotNull {
+	if p.GetDefinition().ColumnProperties.Nullable && p.GetDefinition().Column.NotNull {
 		w = append(w, NewValidationWarning().
 			SetSeverity(WarningValidationSeverity).
-			AddMeta("ParameterName", p.Name).
+			AddMeta("ParameterName", p.GetDefinition().Name).
 			AddMeta("ColumnName", p.Column.Name).
-			AddMeta("TypeName", p.Name).
+			AddMeta("TypeName", p.GetDefinition().Name).
 			SetMsg("transformer may produce NULL values but column type has NOT NULL constraint"),
 		)
 	}
 	if t.Check != nil {
 		w = append(w, NewValidationWarning().
 			SetSeverity(WarningValidationSeverity).
-			AddMeta("ParameterName", p.Name).
+			AddMeta("ParameterName", p.GetDefinition().Name).
 			AddMeta("ColumnName", p.Column.Name).
 			AddMeta("TypeSchema", t.Schema).
 			AddMeta("TypeName", t.Name).
@@ -105,11 +105,11 @@ func (t *Type) IsAffected(p *ParameterDefinition) (w ValidationWarnings) {
 			SetMsg("possible check constraint violation: column has domain type with constraint"),
 		)
 	}
-	if t.Length != WithoutMaxLength && t.Length < p.ColumnProperties.MaxLength {
+	if t.Length != WithoutMaxLength && t.Length < p.GetDefinition().ColumnProperties.MaxLength {
 		w = append(w, NewValidationWarning().
 			SetSeverity(WarningValidationSeverity).
 			SetMsg("transformer value might be out of length range: domain has length higher than column").
-			AddMeta("ParameterName", p.Name).
+			AddMeta("ParameterName", p.GetDefinition().Name).
 			AddMeta("ColumnName", p.Column.Name).
 			AddMeta("TypeSchema", t.Schema).
 			AddMeta("TypeName", t.Name).
@@ -166,8 +166,19 @@ func TryRegisterCustomTypes(typeMap *pgtype.Map, types []*Type, silent bool) {
 	}
 }
 
+func IsTypeAllowedWithTypeMap(
+	driver *Driver, allowedTypes []string, typeName string, typeOid Oid, checkInherited bool,
+) bool {
+	// Get canonical type name by type Oid if exists otherwise use provided name
+	pgType, ok := driver.GetTypeMap().TypeForOID(uint32(typeOid))
+	if ok {
+		typeName = pgType.Name
+	}
+	return IsTypeAllowed(driver, allowedTypes, typeName, checkInherited)
+}
+
 func IsTypeAllowed(
-	allowedTypes []string, customTypes []*Type, typeName string, checkInherited bool,
+	driver *Driver, allowedTypes []string, typeName string, checkInherited bool,
 ) bool {
 
 	if slices.Contains(allowedTypes, typeName) {
@@ -179,7 +190,7 @@ func IsTypeAllowed(
 	}
 
 	// If custom type is found check that the root type is allowed
-	pgCustomRootType := GetCustomType(customTypes, typeName)
+	pgCustomRootType := GetCustomType(driver.CustomTypes, typeName)
 	if pgCustomRootType == nil {
 		return false
 	}
