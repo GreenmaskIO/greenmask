@@ -40,7 +40,7 @@ func TestHashTransformer_Transform(t *testing.T) {
 	require.NoError(t, err)
 	require.Empty(t, warnings)
 
-	r, err := transformer.Transform(
+	r, err := transformer.Transformer.Transform(
 		context.Background(),
 		record,
 	)
@@ -54,7 +54,7 @@ func TestHashTransformer_Transform(t *testing.T) {
 	originalValue = "123asdasdasdaasdlmaklsdmklamsdlkmalksdmlkamsdlkmalkdmlkasds"
 	expectedValue = toolkit.NewValue("kZsJbWbVoBGMqniHTCzU6fJrxQdlfeqhYIUxOo3JniA=", false)
 	_, record = getDriverAndRecord(attrName, originalValue)
-	r, err = transformer.Transform(
+	r, err = transformer.Transformer.Transform(
 		context.Background(),
 		record,
 	)

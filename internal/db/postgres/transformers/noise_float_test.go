@@ -96,7 +96,7 @@ func TestNoiseFloatTransformer_Transform(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			tt.params["column"] = toolkit.ParamsValue(tt.columnName)
 			driver, record := getDriverAndRecord(tt.columnName, tt.input)
-			transformer, warnings, err := NoiseFloatTransformerDefinition.Instance(
+			transformerCtx, warnings, err := NoiseFloatTransformerDefinition.Instance(
 				context.Background(),
 				driver,
 				tt.params,
@@ -104,7 +104,7 @@ func TestNoiseFloatTransformer_Transform(t *testing.T) {
 			)
 			require.NoError(t, err)
 			require.Empty(t, warnings)
-			r, err := transformer.Transform(
+			r, err := transformerCtx.Transformer.Transform(
 				context.Background(),
 				record,
 			)

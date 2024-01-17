@@ -29,7 +29,7 @@ func TestDynamicParameter_Init_column_parameter(t *testing.T) {
 	require.Len(t, warns, 1)
 	warn := warns[0]
 	require.Equal(t, ErrorValidationSeverity, warn.Severity)
-	require.Equal(t, "column parameter cannot work in dynamic mode", warn.Msg)
+	require.Equal(t, "parameter does not support dynamic mode", warn.Msg)
 }
 
 func TestDynamicParameter_Init_linked_column_parameter_unsupported_types(t *testing.T) {
@@ -52,7 +52,9 @@ func TestDynamicParameter_Init_linked_column_parameter_unsupported_types(t *test
 	require.NoError(t, err)
 	require.Empty(t, warns)
 
-	timestampDef := MustNewParameterDefinition("ts_val", "some desc").SetLinkParameter("column")
+	timestampDef := MustNewParameterDefinition("ts_val", "some desc").
+		SetLinkParameter("column").
+		SetDynamicModeSupport(true)
 
 	timestampParam := NewDynamicParameter(timestampDef, driver)
 
@@ -82,7 +84,8 @@ func TestDynamicParameter_Value_simple(t *testing.T) {
 		},
 	)
 
-	timestampDef := MustNewParameterDefinition("ts_val", "some desc")
+	timestampDef := MustNewParameterDefinition("ts_val", "some desc").
+		SetDynamicModeSupport(true)
 
 	timestampParam := NewDynamicParameter(timestampDef, driver)
 

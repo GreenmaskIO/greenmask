@@ -50,7 +50,7 @@ type TestTransformer struct {
 	columnName string
 }
 
-func NewTestTransformer(ctx context.Context, driver *toolkit.Driver, parameters map[string]*toolkit.ParameterDefinition) (
+func NewTestTransformer(ctx context.Context, driver *toolkit.Driver, parameters map[string]toolkit.Parameterizer) (
 	toolkit.Transformer, toolkit.ValidationWarnings, error) {
 	c := parameters["column"]
 	var columnName string

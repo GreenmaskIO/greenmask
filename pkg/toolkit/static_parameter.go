@@ -44,7 +44,7 @@ func (p *StaticParameter) Init(columnParams map[string]*StaticParameter, rawValu
 				},
 				nil
 		} else if p.definition.DefaultValue != nil {
-			rawValue = p.definition.DefaultValue
+			p.rawValue = p.definition.DefaultValue
 		}
 	}
 

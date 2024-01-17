@@ -98,14 +98,14 @@ func TestNoiseDateTransformer_Transform(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			driver, record := getDriverAndRecord(string(tt.params["column"]), tt.original)
-			transformer, warnings, err := NoiseDateTransformerDefinition.Instance(
+			transformerCtx, warnings, err := NoiseDateTransformerDefinition.Instance(
 				context.Background(),
 				driver, tt.params,
 				nil,
 			)
 			require.NoError(t, err)
 			require.Empty(t, warnings)
-			r, err := transformer.Transform(
+			r, err := transformerCtx.Transformer.Transform(
 				context.Background(),
 				record,
 			)

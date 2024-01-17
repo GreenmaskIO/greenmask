@@ -283,7 +283,7 @@ func (ct *CmdTransformer) getMetadata() ([]byte, error) {
 		case *toolkit.StaticParameter:
 			rawValue, err := p.RawValue()
 			if err != nil {
-				return nil, fmt.Errorf("error getting raw value from parameter \"%s\": %w", p.GetDefinition().Name)
+				return nil, fmt.Errorf("error getting raw value from parameter \"%s\": %w", p.GetDefinition().Name, err)
 			}
 			staticParamValues[name] = rawValue
 		case *toolkit.DynamicParameter:

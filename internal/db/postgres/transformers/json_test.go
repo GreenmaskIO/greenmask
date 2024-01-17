@@ -32,7 +32,7 @@ func TestJsonTransformer_Transform(t *testing.T) {
 	var originalValue = `{"name":{"last":"Anderson", "age": 5, "todelete": true}}`
 	var expectedValue = toolkit.NewValue(`{"name":{"last":"Test","first":"Sara", "age": 10}}`, false)
 	driver, record := getDriverAndRecord(attrName, originalValue)
-	transformer, warnings, err := JsonTransformerDefinition.Instance(
+	transformerCtx, warnings, err := JsonTransformerDefinition.Instance(
 		context.Background(),
 		driver, map[string]toolkit.ParamsValue{
 			"column": toolkit.ParamsValue(attrName),
@@ -47,7 +47,7 @@ func TestJsonTransformer_Transform(t *testing.T) {
 	)
 	require.NoError(t, err)
 	assert.Empty(t, warnings)
-	r, err := transformer.Transform(
+	r, err := transformerCtx.Transformer.Transform(
 		context.Background(),
 		record,
 	)
@@ -79,7 +79,7 @@ func TestJsonTransformer_Transform_with_template(t *testing.T) {
 	var originalValue = `{"name":{"last":"Anderson", "age": 5, "todelete": true, "ts": "2023-11-23 19:54:49.277332+00"}}`
 	driver, record := getDriverAndRecord(attrName, originalValue)
 
-	transformer, warnings, err := JsonTransformerDefinition.Instance(
+	transformerCtx, warnings, err := JsonTransformerDefinition.Instance(
 		context.Background(),
 		driver, map[string]toolkit.ParamsValue{
 			"column":     toolkit.ParamsValue(attrName),
@@ -89,7 +89,7 @@ func TestJsonTransformer_Transform_with_template(t *testing.T) {
 	)
 	require.NoError(t, err)
 	assert.Empty(t, warnings)
-	r, err := transformer.Transform(
+	r, err := transformerCtx.Transformer.Transform(
 		context.Background(),
 		record,
 	)
@@ -122,7 +122,7 @@ func TestJsonTransformer_Transform_null(t *testing.T) {
 	var originalValue = `\N`
 	driver, record := getDriverAndRecord(attrName, originalValue)
 
-	transformer, warnings, err := JsonTransformerDefinition.Instance(
+	transformerCtx, warnings, err := JsonTransformerDefinition.Instance(
 		context.Background(),
 		driver, map[string]toolkit.ParamsValue{
 			"column":     toolkit.ParamsValue(attrName),
@@ -133,7 +133,7 @@ func TestJsonTransformer_Transform_null(t *testing.T) {
 	)
 	require.NoError(t, err)
 	assert.Empty(t, warnings)
-	r, err := transformer.Transform(
+	r, err := transformerCtx.Transformer.Transform(
 		context.Background(),
 		record,
 	)

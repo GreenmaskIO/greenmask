@@ -210,10 +210,12 @@ func TestInitParametersV2(t *testing.T) {
 		SetIsColumn(NewColumnProperties().SetAllowedColumnTypes("date", "timestamp", "timestamptz"))
 
 	minDate := MustNewParameterDefinition("min_date", "min date").
-		SetLinkParameter("column")
+		SetLinkParameter("column").
+		SetDynamicModeSupport(true)
 
 	maxDate := MustNewParameterDefinition("max_date", "max date").
-		SetLinkParameter("column")
+		SetLinkParameter("column").
+		SetDynamicModeSupport(true)
 
 	params, warns, err := InitParametersV2(
 		driver,

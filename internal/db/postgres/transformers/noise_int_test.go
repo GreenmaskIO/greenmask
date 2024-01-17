@@ -68,7 +68,7 @@ func TestNoiseIntTransformer_Transform(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			driver, record := getDriverAndRecord(tt.columnName, tt.originalValue)
-			transformer, warnings, err := NoiseIntTransformerDefinition.Instance(
+			transformerCtx, warnings, err := NoiseIntTransformerDefinition.Instance(
 				context.Background(),
 				driver, map[string]toolkit.ParamsValue{
 					"column": toolkit.ParamsValue(tt.columnName),
@@ -79,7 +79,7 @@ func TestNoiseIntTransformer_Transform(t *testing.T) {
 			require.NoError(t, err)
 			require.Empty(t, warnings)
 
-			r, err := transformer.Transform(
+			r, err := transformerCtx.Transformer.Transform(
 				context.Background(),
 				record,
 			)

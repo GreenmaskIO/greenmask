@@ -54,21 +54,20 @@ func TestTemplateRecordTransformer_Transform_date(t *testing.T) {
 
 	driver, record := getDriverAndRecord(columnName, "\\N")
 
-	transformer, warnings, err := TemplateRecordTransformerDefinition.Instance(
+	transformerCtx, warnings, err := TemplateRecordTransformerDefinition.Instance(
 		context.Background(),
 		driver, map[string]toolkit.ParamsValue{
-			"column":   toolkit.ParamsValue(columnName),
 			"template": toolkit.ParamsValue(template),
 		},
 		nil,
 	)
 	require.NoError(t, err)
-	assert.Empty(t, warnings)
+	require.Empty(t, warnings)
 
 	for _, tt := range tests {
 		_, record = getDriverAndRecord(columnName, tt.original)
 		t.Run(tt.name, func(t *testing.T) {
-			r, err := transformer.Transform(
+			r, err := transformerCtx.Transformer.Transform(
 				context.Background(),
 				record,
 			)
@@ -104,21 +103,20 @@ func TestTemplateRecordTransformer_Transform_json(t *testing.T) {
 
 	driver, record := getDriverAndRecord(columnName, "\\N")
 
-	transformer, warnings, err := TemplateRecordTransformerDefinition.Instance(
+	transformerCtx, warnings, err := TemplateRecordTransformerDefinition.Instance(
 		context.Background(),
 		driver, map[string]toolkit.ParamsValue{
-			"column":   toolkit.ParamsValue(columnName),
 			"template": toolkit.ParamsValue(template),
 		},
 		nil,
 	)
 	require.NoError(t, err)
-	assert.Empty(t, warnings)
+	require.Empty(t, warnings)
 
 	for _, tt := range tests {
 		_, record = getDriverAndRecord(columnName, tt.original)
 		t.Run(tt.name, func(t *testing.T) {
-			r, err := transformer.Transform(
+			r, err := transformerCtx.Transformer.Transform(
 				context.Background(),
 				record,
 			)

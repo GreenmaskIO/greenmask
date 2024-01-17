@@ -107,7 +107,7 @@ func TestRandomDateTransformer_Transform(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			tt.params["column"] = toolkit.ParamsValue(tt.columnName)
 			driver, record := getDriverAndRecord(tt.columnName, tt.original)
-			transformer, warnings, err := RandomDateTransformerDefinition.Instance(
+			transformerCtx, warnings, err := RandomDateTransformerDefinition.Instance(
 				context.Background(),
 				driver, tt.params,
 				nil,
@@ -115,7 +115,7 @@ func TestRandomDateTransformer_Transform(t *testing.T) {
 			require.NoError(t, err)
 			require.Empty(t, warnings)
 
-			r, err := transformer.Transform(
+			r, err := transformerCtx.Transformer.Transform(
 				context.Background(),
 				record,
 			)

@@ -26,7 +26,7 @@ import (
 )
 
 type TestTransformer struct {
-	p map[string]*toolkit.ParameterDefinition
+	p map[string]toolkit.Parameterizer
 }
 
 func (tt *TestTransformer) Init(ctx context.Context) error {
@@ -45,7 +45,7 @@ func (tt *TestTransformer) GetAffectedColumns() map[int]string {
 	return nil
 }
 
-func NewTestTransformer(ctx context.Context, driver *toolkit.Driver, parameters map[string]*toolkit.ParameterDefinition) (
+func NewTestTransformer(ctx context.Context, driver *toolkit.Driver, parameters map[string]toolkit.Parameterizer) (
 	Transformer, toolkit.ValidationWarnings, error,
 ) {
 	return &TestTransformer{

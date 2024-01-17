@@ -37,14 +37,14 @@ func TestDictTransformer_Transform_with_fail(t *testing.T) {
 	}
 
 	driver, record := getDriverAndRecord(string(params["column"]), original)
-	transformer, warnings, err := DictTransformerDefinition.Instance(
+	transformerCtx, warnings, err := DictTransformerDefinition.Instance(
 		context.Background(),
 		driver, params,
 		nil,
 	)
 	require.NoError(t, err)
 	require.Empty(t, warnings)
-	r, err := transformer.Transform(
+	r, err := transformerCtx.Transformer.Transform(
 		context.Background(),
 		record,
 	)
@@ -58,7 +58,7 @@ func TestDictTransformer_Transform_with_fail(t *testing.T) {
 	original = "2023-11-11"
 	expected = "2023-01-02"
 	_, record = getDriverAndRecord(string(params["column"]), original)
-	r, err = transformer.Transform(
+	r, err = transformerCtx.Transformer.Transform(
 		context.Background(),
 		record,
 	)
@@ -124,7 +124,7 @@ func TestDictTransformer_Transform_error_not_matched(t *testing.T) {
 	)
 	require.NoError(t, err)
 	require.Empty(t, warnings)
-	_, err = transformer.Transform(
+	_, err = transformer.Transformer.Transform(
 		context.Background(),
 		record,
 	)
@@ -152,7 +152,7 @@ func TestDictTransformer_Transform_use_default(t *testing.T) {
 	)
 	require.NoError(t, err)
 	require.Empty(t, warnings)
-	r, err := transformer.Transform(
+	r, err := transformer.Transformer.Transform(
 		context.Background(),
 		record,
 	)
@@ -183,7 +183,7 @@ func TestDictTransformer_Transform_with_int_values(t *testing.T) {
 	)
 	require.NoError(t, err)
 	require.Empty(t, warnings)
-	r, err := transformer.Transform(
+	r, err := transformer.Transformer.Transform(
 		context.Background(),
 		record,
 	)

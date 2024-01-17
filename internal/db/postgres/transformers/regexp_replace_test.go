@@ -47,7 +47,7 @@ func TestRegexpReplaceTransformer_Transform2(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			tt.params["column"] = toolkit.ParamsValue(tt.columnName)
 			driver, record := getDriverAndRecord(tt.columnName, tt.original)
-			transformer, warnings, err := RegexpReplaceTransformerDefinition.Instance(
+			transformerCtx, warnings, err := RegexpReplaceTransformerDefinition.Instance(
 				context.Background(),
 				driver,
 				tt.params,
@@ -56,7 +56,7 @@ func TestRegexpReplaceTransformer_Transform2(t *testing.T) {
 			require.NoError(t, err)
 			require.Empty(t, warnings)
 
-			r, err := transformer.Transform(
+			r, err := transformerCtx.Transformer.Transform(
 				context.Background(),
 				record,
 			)
