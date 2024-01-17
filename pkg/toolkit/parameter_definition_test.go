@@ -217,7 +217,7 @@ func TestInitParametersV2(t *testing.T) {
 		SetLinkParameter("column").
 		SetDynamicModeSupport(true)
 
-	params, warns, err := InitParametersV2(
+	params, warns, err := InitParameters(
 		driver,
 		[]*ParameterDefinition{column, minDate, maxDate},
 		map[string]ParamsValue{"column": []byte("date_tstz"), "max_date": []byte("2024-01-14 00:00:00.0+00")},

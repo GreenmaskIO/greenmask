@@ -491,41 +491,6 @@ func (p *ParameterDefinition) Init(driver *Driver, types []*Type, params []*Para
 }
 
 func InitParameters(
-	driver *Driver, rawParams map[string]ParamsValue, paramDef []*ParameterDefinition, types []*Type,
-) (map[string]*ParameterDefinition, ValidationWarnings, error) {
-	if rawParams == nil && len(paramDef) > 0 {
-		return nil, ValidationWarnings{
-			NewValidationWarning().
-				SetMsg("parameters are required: received empty").
-				SetSeverity("error"),
-		}, nil
-	}
-
-	var pd []*ParameterDefinition
-	params := make(map[string]*ParameterDefinition, len(paramDef))
-	for _, p := range paramDef {
-		cp := p.Copy()
-		params[p.Name] = cp
-		pd = append(pd, cp)
-	}
-
-	var totalWarnings ValidationWarnings
-	for _, p := range params {
-		warnings, err := p.Init(driver, types, pd, rawParams[p.Name])
-		if err != nil {
-			return nil, nil, fmt.Errorf("parameter %s parsing error: %w", p.Name, err)
-		}
-		if len(warnings) > 0 {
-			totalWarnings = append(totalWarnings, warnings...)
-			if totalWarnings.IsFatal() {
-				return nil, totalWarnings, nil
-			}
-		}
-	}
-	return params, totalWarnings, nil
-}
-
-func InitParametersV2(
 	driver *Driver, paramDef []*ParameterDefinition, staticValues map[string]ParamsValue,
 	dynamicValues map[string]*DynamicParamValue,
 ) (map[string]Parameterizer, ValidationWarnings, error) {
