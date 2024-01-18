@@ -9,12 +9,20 @@ import (
 )
 
 type StaticParameter struct {
-	definition            *ParameterDefinition
-	driver                *Driver
+	// definition - the parameter definition
+	definition *ParameterDefinition
+	// Driver - table driver
+	driver *Driver
+	// linkedColumnParameter - column-like parameter that has been linked during parsing procedure. Warning, do not
+	// assign it manually, if you don't know the consequences
 	linkedColumnParameter *StaticParameter
-	rawValue              ParamsValue
-	Column                *Column
-	value                 any
+	// Column - column of the table that was assigned in the parsing procedure according to provided Column name in
+	// parameter value. In this case value has textual column name
+	Column *Column
+	// value - cached parsed value after Scan or Value
+	value any
+	// rawValue - original raw value received from config
+	rawValue ParamsValue
 }
 
 func NewStaticParameter(def *ParameterDefinition, driver *Driver) *StaticParameter {
@@ -154,7 +162,7 @@ func (p *StaticParameter) Value() (any, error) {
 			return false, fmt.Errorf("unable to perform custom unmarshaller: %w", err)
 		}
 		p.value = val
-	} else if p.definition.LinkedColumnParameter != nil {
+	} else if p.linkedColumnParameter != nil {
 		// Parsing dynamically - default value and type are unknown
 		// TODO: Be careful - this may cause an error in Scan func if the the returning value is not a pointer
 		val, err := p.driver.DecodeValueByTypeOid(uint32(p.linkedColumnParameter.Column.TypeOid), p.rawValue)

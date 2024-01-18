@@ -83,7 +83,7 @@ func (t *Type) IsAffected(p *StaticParameter) (w ValidationWarnings) {
 	if p.Column.TypeOid != t.Oid {
 		return
 	}
-	if p.GetDefinition().ColumnProperties.Nullable && p.GetDefinition().Column.NotNull {
+	if p.GetDefinition().ColumnProperties.Nullable && p.Column.NotNull {
 		w = append(w, NewValidationWarning().
 			SetSeverity(WarningValidationSeverity).
 			AddMeta("ParameterName", p.GetDefinition().Name).

@@ -58,13 +58,13 @@ func DefaultSchemaValidator(
 				SetSeverity(toolkit.WarningValidationSeverity).
 				AddMeta("ConstraintType", toolkit.NotNullConstraintType).
 				AddMeta("ParameterName", p.GetDefinition().Name).
-				AddMeta("ColumnName", p.GetDefinition().Column.Name),
+				AddMeta("ColumnName", p.Column.Name),
 			)
 		}
 
 		// Checking transformed value will not exceed the column length
 		if p.GetDefinition().ColumnProperties.MaxLength != toolkit.WithoutMaxLength &&
-			p.GetDefinition().Column.Length < p.GetDefinition().ColumnProperties.MaxLength {
+			p.Column.Length < p.GetDefinition().ColumnProperties.MaxLength {
 			warnings = append(warnings, toolkit.NewValidationWarning().
 				SetMsg("transformer value might be out of length range: column has a length").
 				SetSeverity(toolkit.WarningValidationSeverity).

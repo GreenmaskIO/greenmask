@@ -10,13 +10,21 @@ import (
 //  2. You might need to move default value decoding to common functions
 
 type DynamicParameter struct {
-	DynamicValue          *DynamicParamValue
-	definition            *ParameterDefinition
-	driver                *Driver
-	record                *Record
-	tmpl                  *template.Template
+	// DynamicValue - The dynamic value settings that received from config
+	DynamicValue *DynamicParamValue
+	// definition - the parameter definition
+	definition *ParameterDefinition
+	// Driver - table driver
+	driver *Driver
+	// record - Record object for getting the value from record dynamically
+	record *Record
+	// tmpl - parsed and compiled template for casting the value from original to expected
+	tmpl *template.Template
+	// linkedColumnParameter - column-like parameter that has been linked during parsing procedure. Warning, do not
+	// assign it manually, if you don't know the consequences
 	linkedColumnParameter *StaticParameter
-	columnIdx             int
+	// columnIdx - column number in the tuple
+	columnIdx int
 }
 
 func NewDynamicParameter(def *ParameterDefinition, driver *Driver) *DynamicParameter {
