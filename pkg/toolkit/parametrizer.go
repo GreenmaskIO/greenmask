@@ -5,4 +5,5 @@ type Parameterizer interface {
 	RawValue() (rawValue ParamsValue, err error)
 	Scan(dest any) (empty bool, err error)
 	GetDefinition() *ParameterDefinition
+	IsDynamic() bool
 }

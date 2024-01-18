@@ -43,12 +43,16 @@ var RandomIntTransformerDefinition = utils.NewTransformerDefinition(
 	toolkit.MustNewParameterDefinition(
 		"min",
 		"min int value threshold",
-	).SetRequired(true),
+	).SetRequired(true).
+		SetLinkParameter("column").
+		SetDynamicModeSupport(true),
 
 	toolkit.MustNewParameterDefinition(
 		"max",
 		"max int value threshold",
-	).SetRequired(true),
+	).SetRequired(true).
+		SetLinkParameter("column").
+		SetDynamicModeSupport(true),
 
 	toolkit.MustNewParameterDefinition(
 		"keep_null",
@@ -59,19 +63,28 @@ var RandomIntTransformerDefinition = utils.NewTransformerDefinition(
 type RandomIntTransformer struct {
 	columnName      string
 	keepNull        bool
-	min             int64
-	max             int64
 	rand            *rand.Rand
 	affectedColumns map[int]string
 	columnIdx       int
+
+	columnParam   toolkit.Parameterizer
+	maxParam      toolkit.Parameterizer
+	minParam      toolkit.Parameterizer
+	keepNullParam toolkit.Parameterizer
 }
 
 func NewRandomIntTransformer(ctx context.Context, driver *toolkit.Driver, parameters map[string]toolkit.Parameterizer) (utils.Transformer, toolkit.ValidationWarnings, error) {
+
+	columnParam := parameters["column"]
+	minParam := parameters["min"]
+	maxParam := parameters["max"]
+	keepNullParam := parameters["keep_null"]
+
 	var columnName string
-	var minVal, maxVal int64
+	//var minVal, maxVal int64
 	var keepNull bool
-	p := parameters["column"]
-	if _, err := p.Scan(&columnName); err != nil {
+
+	if _, err := columnParam.Scan(&columnName); err != nil {
 		return nil, nil, fmt.Errorf(`unable to scan "column" param: %w`, err)
 	}
 
@@ -82,38 +95,30 @@ func NewRandomIntTransformer(ctx context.Context, driver *toolkit.Driver, parame
 	affectedColumns := make(map[int]string)
 	affectedColumns[idx] = columnName
 
-	p = parameters["min"]
-	if _, err := p.Scan(&minVal); err != nil {
-		return nil, nil, fmt.Errorf(`unable to scan "min" param: %w`, err)
-	}
+	//if minVal >= maxVal {
+	//	return nil, toolkit.ValidationWarnings{
+	//		toolkit.NewValidationWarning().
+	//			AddMeta("min", minVal).
+	//			AddMeta("max", maxVal).
+	//			SetMsg("max value must be greater that min value"),
+	//	}, nil
+	//}
 
-	p = parameters["max"]
-	if _, err := p.Scan(&maxVal); err != nil {
-		return nil, nil, fmt.Errorf(`unable to scan "max" param: %w`, err)
-	}
-
-	if minVal >= maxVal {
-		return nil, toolkit.ValidationWarnings{
-			toolkit.NewValidationWarning().
-				AddMeta("min", minVal).
-				AddMeta("max", maxVal).
-				SetMsg("max value must be greater that min value"),
-		}, nil
-	}
-
-	p = parameters["keep_null"]
-	if _, err := p.Scan(&keepNull); err != nil {
+	if _, err := keepNullParam.Scan(&keepNull); err != nil {
 		return nil, nil, fmt.Errorf(`unable to scan "keep_null" param: %w`, err)
 	}
 
 	return &RandomIntTransformer{
 		columnName:      columnName,
 		keepNull:        keepNull,
-		min:             minVal,
-		max:             maxVal,
 		rand:            rand.New(rand.NewSource(time.Now().UnixMicro())),
 		affectedColumns: affectedColumns,
 		columnIdx:       idx,
+
+		columnParam:   columnParam,
+		minParam:      minParam,
+		maxParam:      maxParam,
+		keepNullParam: keepNullParam,
 	}, nil, nil
 }
 
@@ -130,6 +135,27 @@ func (rit *RandomIntTransformer) Done(ctx context.Context) error {
 }
 
 func (rit *RandomIntTransformer) Transform(ctx context.Context, r *toolkit.Record) (*toolkit.Record, error) {
+	var minVal, maxVal int64
+	empty, err := rit.minParam.Scan(&minVal)
+	if err != nil {
+		return nil, fmt.Errorf(`unable to scan "min" param: %w`, err)
+	}
+	if empty {
+		return nil, fmt.Errorf("parameter \"min\" cannot be empty")
+	}
+
+	empty, err = rit.maxParam.Scan(&maxVal)
+	if err != nil {
+		return nil, fmt.Errorf(`unable to scan "max" param: %w`, err)
+	}
+	if empty {
+		return nil, fmt.Errorf("parameter \"min\" cannot be empty")
+	}
+
+	if minVal >= maxVal {
+		return nil, fmt.Errorf("max value must be greater than min: got min = %d max = %d", minVal, maxVal)
+	}
+
 	val, err := r.GetRawColumnValueByIdx(rit.columnIdx)
 	if err != nil {
 		return nil, fmt.Errorf("unable to scan value: %w", err)
@@ -138,7 +164,7 @@ func (rit *RandomIntTransformer) Transform(ctx context.Context, r *toolkit.Recor
 		return r, nil
 	}
 
-	if err := r.SetColumnValueByIdx(rit.columnIdx, utils.RandomInt(rit.rand, rit.min, rit.max)); err != nil {
+	if err := r.SetColumnValueByIdx(rit.columnIdx, utils.RandomInt(rit.rand, minVal, maxVal)); err != nil {
 		return nil, fmt.Errorf("unable to set new value: %w", err)
 	}
 	return r, nil

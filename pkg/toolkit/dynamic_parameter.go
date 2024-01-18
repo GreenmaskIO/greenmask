@@ -34,6 +34,10 @@ func NewDynamicParameter(def *ParameterDefinition, driver *Driver) *DynamicParam
 	}
 }
 
+func (dp *DynamicParameter) IsDynamic() bool {
+	return true
+}
+
 func (dp *DynamicParameter) GetDefinition() *ParameterDefinition {
 	return dp.definition
 }

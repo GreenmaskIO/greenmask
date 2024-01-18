@@ -117,27 +117,6 @@ func NewRandomDateTransformer(ctx context.Context, driver *toolkit.Driver, param
 	affectedColumns := make(map[int]string)
 	affectedColumns[idx] = columnName
 
-	//p = parameters["min"]
-	//v, err := p.Value()
-	//if err != nil {
-	//	return nil, nil, fmt.Errorf(`error parsing "min" parameter: %w`, err)
-	//}
-	//minTime, ok = v.(time.Time)
-	//if !ok {
-	//	return nil, nil, errors.New(`unexpected type for "min" parameter`)
-	//}
-	//
-	//p = parameters["max"]
-	//v, err = p.Value()
-	//if err != nil {
-	//	return nil, nil, fmt.Errorf(`error parsing "max" parameter: %w`, err)
-	//}
-	//
-	//maxTime, ok = v.(time.Time)
-	//if !ok {
-	//	return nil, nil, errors.New(`unexpected type for "max" parameter`)
-	//}
-
 	if _, err := keepNullParam.Scan(&keepNull); err != nil {
 		return nil, nil, fmt.Errorf(`unable to scan "keep_null" param: %w`, err)
 	}

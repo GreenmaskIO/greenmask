@@ -43,12 +43,16 @@ var RandomFloatTransformerDefinition = utils.NewTransformerDefinition(
 	toolkit.MustNewParameterDefinition(
 		"min",
 		"min float threshold of random value. The value range depends on column type",
-	).SetRequired(true),
+	).SetRequired(true).
+		SetLinkParameter("column").
+		SetDynamicModeSupport(true),
 
 	toolkit.MustNewParameterDefinition(
 		"max",
 		"min float threshold of random value. The value range depends on column type",
-	).SetRequired(true),
+	).SetRequired(true).
+		SetLinkParameter("column").
+		SetDynamicModeSupport(true),
 
 	toolkit.MustNewParameterDefinition(
 		"precision",
@@ -64,21 +68,32 @@ var RandomFloatTransformerDefinition = utils.NewTransformerDefinition(
 type RandomFloatTransformer struct {
 	columnName      string
 	keepNull        bool
-	min             float64
-	max             float64
 	precision       int
 	rand            *rand.Rand
 	affectedColumns map[int]string
 	columnIdx       int
+	minVal          float64
+	maxVal          float64
+
+	columnParam    toolkit.Parameterizer
+	maxParam       toolkit.Parameterizer
+	minParam       toolkit.Parameterizer
+	precisionParam toolkit.Parameterizer
+	keepNullParam  toolkit.Parameterizer
 }
 
 func NewRandomFloatTransformer(ctx context.Context, driver *toolkit.Driver, parameters map[string]toolkit.Parameterizer) (utils.Transformer, toolkit.ValidationWarnings, error) {
+	columnParam := parameters["column"]
+	minParam := parameters["min"]
+	maxParam := parameters["max"]
+	precisionParam := parameters["precision"]
+	keepNullParam := parameters["keep_null"]
+
 	var columnName string
-	var minVal, maxVal float64
 	var precision int
 	var keepNull bool
-	p := parameters["column"]
-	if _, err := p.Scan(&columnName); err != nil {
+
+	if _, err := columnParam.Scan(&columnName); err != nil {
 		return nil, nil, fmt.Errorf(`unable to scan "column" param: %w`, err)
 	}
 
@@ -89,35 +104,27 @@ func NewRandomFloatTransformer(ctx context.Context, driver *toolkit.Driver, para
 	affectedColumns := make(map[int]string)
 	affectedColumns[idx] = columnName
 
-	p = parameters["min"]
-	if _, err := p.Scan(&minVal); err != nil {
-		return nil, nil, fmt.Errorf(`unable to scan "min" param: %w`, err)
-	}
-
-	p = parameters["max"]
-	if _, err := p.Scan(&maxVal); err != nil {
-		return nil, nil, fmt.Errorf(`unable to scan "max" param: %w`, err)
-	}
-
-	p = parameters["precision"]
-	if _, err := p.Scan(&precision); err != nil {
+	if _, err := precisionParam.Scan(&precision); err != nil {
 		return nil, nil, fmt.Errorf(`unable to scan "precision" param: %w`, err)
 	}
 
-	p = parameters["keep_null"]
-	if _, err := p.Scan(&keepNull); err != nil {
+	if _, err := keepNullParam.Scan(&keepNull); err != nil {
 		return nil, nil, fmt.Errorf(`unable to scan "keep_null" param: %w`, err)
 	}
 
 	return &RandomFloatTransformer{
 		keepNull:        keepNull,
 		precision:       precision,
-		min:             minVal,
-		max:             maxVal,
 		columnName:      columnName,
 		rand:            rand.New(rand.NewSource(time.Now().UnixMicro())),
 		affectedColumns: affectedColumns,
 		columnIdx:       idx,
+
+		columnParam:    columnParam,
+		minParam:       minParam,
+		maxParam:       maxParam,
+		precisionParam: precisionParam,
+		keepNullParam:  keepNullParam,
 	}, nil, nil
 
 }
@@ -135,6 +142,27 @@ func (rft *RandomFloatTransformer) Done(ctx context.Context) error {
 }
 
 func (rft *RandomFloatTransformer) Transform(ctx context.Context, r *toolkit.Record) (*toolkit.Record, error) {
+	var minVal, maxVal float64
+	empty, err := rft.minParam.Scan(&minVal)
+	if err != nil {
+		return nil, fmt.Errorf(`error getting "min" parameter value: %w`, err)
+	}
+	if empty {
+		return nil, fmt.Errorf("parameter \"min\" cannot be empty")
+	}
+
+	empty, err = rft.maxParam.Scan(&maxVal)
+	if err != nil {
+		return nil, fmt.Errorf(`error getting "max" parameter value: %w`, err)
+	}
+	if empty {
+		return nil, fmt.Errorf("parameter \"max\" cannot be empty")
+	}
+
+	if minVal >= maxVal {
+		return nil, fmt.Errorf("max value must be greater than min: got min = %f max = %f", minVal, maxVal)
+	}
+
 	valAny, err := r.GetRawColumnValueByIdx(rft.columnIdx)
 	if err != nil {
 		return nil, fmt.Errorf("unable to scan value: %w", err)
@@ -143,7 +171,7 @@ func (rft *RandomFloatTransformer) Transform(ctx context.Context, r *toolkit.Rec
 		return r, nil
 	}
 
-	err = r.SetColumnValueByIdx(rft.columnIdx, utils.RandomFloat(rft.rand, rft.min, rft.max, rft.precision))
+	err = r.SetColumnValueByIdx(rft.columnIdx, utils.RandomFloat(rft.rand, minVal, maxVal, rft.precision))
 	if err != nil {
 		return nil, fmt.Errorf("unable to set new value: %w", err)
 	}

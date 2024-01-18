@@ -32,37 +32,41 @@ func NewStaticParameter(def *ParameterDefinition, driver *Driver) *StaticParamet
 	}
 }
 
-func (p *StaticParameter) GetDefinition() *ParameterDefinition {
-	return p.definition
+func (sp *StaticParameter) IsDynamic() bool {
+	return true
 }
 
-func (p *StaticParameter) Init(columnParams map[string]*StaticParameter, rawValue ParamsValue) (ValidationWarnings, error) {
+func (sp *StaticParameter) GetDefinition() *ParameterDefinition {
+	return sp.definition
+}
+
+func (sp *StaticParameter) Init(columnParams map[string]*StaticParameter, rawValue ParamsValue) (ValidationWarnings, error) {
 
 	var warnings ValidationWarnings
 
-	p.rawValue = slices.Clone(rawValue)
+	sp.rawValue = slices.Clone(rawValue)
 
 	if rawValue == nil {
-		if p.definition.Required {
+		if sp.definition.Required {
 			return ValidationWarnings{
 					NewValidationWarning().
 						SetSeverity(ErrorValidationSeverity).
 						SetMsg("parameter is required").
-						AddMeta("ParameterName", p.definition.Name),
+						AddMeta("ParameterName", sp.definition.Name),
 				},
 				nil
-		} else if p.definition.DefaultValue != nil {
-			p.rawValue = p.definition.DefaultValue
+		} else if sp.definition.DefaultValue != nil {
+			sp.rawValue = sp.definition.DefaultValue
 		}
 	}
 
-	if p.definition.RawValueValidator != nil {
-		warns, err := p.definition.RawValueValidator(p.definition, rawValue)
+	if sp.definition.RawValueValidator != nil {
+		warns, err := sp.definition.RawValueValidator(sp.definition, rawValue)
 		if err != nil {
 			return nil, fmt.Errorf("error performing parameter raw value validation: %w", err)
 		}
 		for _, w := range warns {
-			w.AddMeta("ParameterName", p.definition.Name)
+			w.AddMeta("ParameterName", sp.definition.Name)
 		}
 		warnings = append(warnings, warns...)
 		if warnings.IsFatal() {
@@ -70,21 +74,21 @@ func (p *StaticParameter) Init(columnParams map[string]*StaticParameter, rawValu
 		}
 	}
 
-	if p.definition.LinkColumnParameter != "" {
-		param, ok := columnParams[p.definition.LinkColumnParameter]
+	if sp.definition.LinkColumnParameter != "" {
+		param, ok := columnParams[sp.definition.LinkColumnParameter]
 		if !ok {
-			panic(fmt.Sprintf(`parameter with name "%s" is not found`, p.definition.LinkColumnParameter))
+			panic(fmt.Sprintf(`parameter with name "%s" is not found`, sp.definition.LinkColumnParameter))
 		}
-		p.linkedColumnParameter = param
-		if !p.linkedColumnParameter.definition.IsColumn {
+		sp.linkedColumnParameter = param
+		if !sp.linkedColumnParameter.definition.IsColumn {
 			return nil, fmt.Errorf("linked parameter must be column: check transformer implementation")
 		}
 	}
 
-	if p.definition.IsColumn {
+	if sp.definition.IsColumn {
 		columnName := string(rawValue)
-		p.value = columnName
-		_, column, ok := p.driver.GetColumnByName(columnName)
+		sp.value = columnName
+		_, column, ok := sp.driver.GetColumnByName(columnName)
 		if !ok {
 			warnings = append(
 				warnings,
@@ -92,26 +96,26 @@ func (p *StaticParameter) Init(columnParams map[string]*StaticParameter, rawValu
 					SetSeverity(ErrorValidationSeverity).
 					SetMsg("column does not exist").
 					AddMeta("ColumnName", columnName).
-					AddMeta("ParameterName", p.definition.Name),
+					AddMeta("ParameterName", sp.definition.Name),
 			)
 			return warnings, nil
 		}
-		p.Column = column
+		sp.Column = column
 
-		columnTypeName := p.Column.TypeName
-		columnTypeOid := p.Column.TypeOid
-		if p.Column.OverriddenTypeName != "" {
-			columnTypeName = p.Column.OverriddenTypeName
+		columnTypeName := sp.Column.TypeName
+		columnTypeOid := sp.Column.TypeOid
+		if sp.Column.OverriddenTypeName != "" {
+			columnTypeName = sp.Column.OverriddenTypeName
 			columnTypeOid = 0
 		}
 
-		if p.definition.ColumnProperties != nil {
+		if sp.definition.ColumnProperties != nil {
 
-			if len(p.definition.ColumnProperties.AllowedTypes) > 0 {
+			if len(sp.definition.ColumnProperties.AllowedTypes) > 0 {
 
 				if !IsTypeAllowedWithTypeMap(
-					p.driver,
-					p.definition.ColumnProperties.AllowedTypes,
+					sp.driver,
+					sp.definition.ColumnProperties.AllowedTypes,
 					columnTypeName,
 					columnTypeOid,
 					true,
@@ -121,7 +125,7 @@ func (p *StaticParameter) Init(columnParams map[string]*StaticParameter, rawValu
 						SetMsg("unsupported column type").
 						AddMeta("ColumnName", columnName).
 						AddMeta("TypeName", columnTypeName).
-						AddMeta("AllowedTypes", p.definition.ColumnProperties.AllowedTypes),
+						AddMeta("AllowedTypes", sp.definition.ColumnProperties.AllowedTypes),
 					)
 
 					return warnings, nil
@@ -131,16 +135,16 @@ func (p *StaticParameter) Init(columnParams map[string]*StaticParameter, rawValu
 		}
 	}
 
-	if p.definition.CastDbType != "" {
-		_, ok := p.driver.SharedTypeMap.TypeForName(p.definition.CastDbType)
+	if sp.definition.CastDbType != "" {
+		_, ok := sp.driver.SharedTypeMap.TypeForName(sp.definition.CastDbType)
 		if !ok {
 			warnings = append(
 				warnings,
 				NewValidationWarning().
 					SetSeverity(ErrorValidationSeverity).
-					AddMeta("ParameterName", p.definition.Name).
-					AddMeta("CastDbType", p.definition.CastDbType).
-					AddMeta("TransformerAllowedTypes", p.definition.ColumnProperties.AllowedTypes).
+					AddMeta("ParameterName", sp.definition.Name).
+					AddMeta("CastDbType", sp.definition.CastDbType).
+					AddMeta("TransformerAllowedTypes", sp.definition.ColumnProperties.AllowedTypes).
 					SetMsg(`cannot perform parameter parsing: unknown type cast type: check transformer implementation or ensure your DB has this type`),
 			)
 
@@ -150,130 +154,130 @@ func (p *StaticParameter) Init(columnParams map[string]*StaticParameter, rawValu
 	return warnings, nil
 }
 
-func (p *StaticParameter) Value() (any, error) {
-	if p.rawValue == nil {
+func (sp *StaticParameter) Value() (any, error) {
+	if sp.rawValue == nil {
 		return nil, nil
 	}
 
-	if p.definition.Unmarshaller != nil {
+	if sp.definition.Unmarshaller != nil {
 		// Perform custom unmarshalling
-		val, err := p.definition.Unmarshaller(p.definition, p.driver, p.rawValue)
+		val, err := sp.definition.Unmarshaller(sp.definition, sp.driver, sp.rawValue)
 		if err != nil {
 			return false, fmt.Errorf("unable to perform custom unmarshaller: %w", err)
 		}
-		p.value = val
-	} else if p.linkedColumnParameter != nil {
+		sp.value = val
+	} else if sp.linkedColumnParameter != nil {
 		// Parsing dynamically - default value and type are unknown
 		// TODO: Be careful - this may cause an error in Scan func if the the returning value is not a pointer
-		val, err := p.driver.DecodeValueByTypeOid(uint32(p.linkedColumnParameter.Column.TypeOid), p.rawValue)
+		val, err := sp.driver.DecodeValueByTypeOid(uint32(sp.linkedColumnParameter.Column.TypeOid), sp.rawValue)
 		if err != nil {
 			return nil, fmt.Errorf("unable to scan parameter via Driver: %w", err)
 		}
-		p.value = val
-	} else if p.definition.CastDbType != "" {
-		val, err := p.driver.DecodeValueByTypeName(p.definition.CastDbType, p.rawValue)
+		sp.value = val
+	} else if sp.definition.CastDbType != "" {
+		val, err := sp.driver.DecodeValueByTypeName(sp.definition.CastDbType, sp.rawValue)
 		if err != nil {
 			return nil, fmt.Errorf("unable to scan parameter via Driver: %w", err)
 		}
-		p.value = val
-	} else if p.definition.IsColumn {
-		p.value = string(p.rawValue)
+		sp.value = val
+	} else if sp.definition.IsColumn {
+		sp.value = string(sp.rawValue)
 	} else {
 		return nil, errors.New("unknown parsing case: use Scan method instead")
 	}
 
-	return p.value, nil
+	return sp.value, nil
 }
 
-func (p *StaticParameter) RawValue() (ParamsValue, error) {
-	return p.rawValue, nil
+func (sp *StaticParameter) RawValue() (ParamsValue, error) {
+	return sp.rawValue, nil
 }
 
-func (p *StaticParameter) Scan(dest any) (bool, error) {
-	p.value = nil
+func (sp *StaticParameter) Scan(dest any) (bool, error) {
+	sp.value = nil
 	if dest == nil {
 		return false, fmt.Errorf("dest cannot be nil")
 	}
 
-	if p.rawValue == nil {
+	if sp.rawValue == nil {
 		return true, nil
 	}
 
-	p.value = dest
-	if p.definition.Unmarshaller != nil {
+	sp.value = dest
+	if sp.definition.Unmarshaller != nil {
 		// Perform custom unmarshalling
-		value, err := p.definition.Unmarshaller(p.definition, p.driver, p.rawValue)
+		value, err := sp.definition.Unmarshaller(sp.definition, sp.driver, sp.rawValue)
 		if err != nil {
 			return false, fmt.Errorf("unable to perform custom unmarshaller: %w", err)
 		}
-		p.value = value
-	} else if p.definition.CastDbType != "" {
+		sp.value = value
+	} else if sp.definition.CastDbType != "" {
 		// Perform decoding via pgx Driver
-		switch p.value.(type) {
+		switch sp.value.(type) {
 		case *time.Time:
-			val, err := p.driver.DecodeValueByTypeName(p.definition.CastDbType, p.rawValue)
+			val, err := sp.driver.DecodeValueByTypeName(sp.definition.CastDbType, sp.rawValue)
 			if err != nil {
 				return false, fmt.Errorf("unable to scan parameter via Driver: %w", err)
 			}
 			valTime := val.(time.Time)
-			p.value = &valTime
+			sp.value = &valTime
 		default:
-			if err := p.driver.ScanValueByTypeName(p.definition.CastDbType, p.rawValue, p.value); err != nil {
+			if err := sp.driver.ScanValueByTypeName(sp.definition.CastDbType, sp.rawValue, sp.value); err != nil {
 				return false, fmt.Errorf("unable to scan parameter via Driver: %w", err)
 			}
 		}
-	} else if p.linkedColumnParameter != nil {
+	} else if sp.linkedColumnParameter != nil {
 
 		// Try to scan value using pgx Driver and pgtype defined in the linked column
-		if p.linkedColumnParameter.Column == nil {
+		if sp.linkedColumnParameter.Column == nil {
 			return false, fmt.Errorf("parameter is linked but Column was not assigned")
 		}
 
-		switch p.value.(type) {
+		switch sp.value.(type) {
 		case *time.Time:
-			val, err := p.driver.DecodeValueByTypeOid(uint32(p.linkedColumnParameter.Column.TypeOid), p.rawValue)
+			val, err := sp.driver.DecodeValueByTypeOid(uint32(sp.linkedColumnParameter.Column.TypeOid), sp.rawValue)
 			if err != nil {
 				return false, fmt.Errorf("unable to scan parameter via Driver: %w", err)
 			}
 			valTime := val.(time.Time)
-			p.value = &valTime
+			sp.value = &valTime
 		default:
-			if err := p.driver.ScanValueByTypeOid(uint32(p.linkedColumnParameter.Column.TypeOid), p.rawValue, p.value); err != nil {
+			if err := sp.driver.ScanValueByTypeOid(uint32(sp.linkedColumnParameter.Column.TypeOid), sp.rawValue, sp.value); err != nil {
 				return false, fmt.Errorf("unable to scan parameter via Driver: %w", err)
 			}
 		}
 
 	} else {
 
-		switch p.value.(type) {
+		switch sp.value.(type) {
 		case string:
-			val := string(p.rawValue)
-			p.value = &val
+			val := string(sp.rawValue)
+			sp.value = &val
 		case *string:
-			val := string(p.rawValue)
-			p.value = &val
+			val := string(sp.rawValue)
+			sp.value = &val
 		case time.Duration:
-			res, err := time.ParseDuration(string(p.rawValue))
+			res, err := time.ParseDuration(string(sp.rawValue))
 			if err != nil {
 				return false, fmt.Errorf("error parsing int64 value: %w", err)
 			}
-			p.value = &res
+			sp.value = &res
 		case *time.Duration:
-			res, err := time.ParseDuration(string(p.rawValue))
+			res, err := time.ParseDuration(string(sp.rawValue))
 			if err != nil {
 				return false, fmt.Errorf("error parsing int64 value: %w", err)
 			}
-			p.value = &res
+			sp.value = &res
 		default:
-			if err := json.Unmarshal(p.rawValue, p.value); err != nil {
+			if err := json.Unmarshal(sp.rawValue, sp.value); err != nil {
 				return false, fmt.Errorf("unable to unmarshal value: %w", err)
 			}
 		}
 
 	}
 
-	if p.value == nil {
+	if sp.value == nil {
 		return false, nil
 	}
-	return false, ScanPointer(p.value, dest)
+	return false, ScanPointer(sp.value, dest)
 }
