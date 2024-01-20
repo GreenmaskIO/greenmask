@@ -45,20 +45,14 @@ var RandomIntTransformerDefinition = utils.NewTransformerDefinition(
 		"min int value threshold",
 	).SetRequired(true).
 		SetLinkParameter("column").
-		SetDynamicModeSupport(
-			toolkit.NewDynamicModeProperties().
-				SetCompatibleTypes("int2", "int4", "int8", "numeric"),
-		),
+		SetDynamicModeSupport(true),
 
 	toolkit.MustNewParameterDefinition(
 		"max",
 		"max int value threshold",
 	).SetRequired(true).
 		SetLinkParameter("column").
-		SetDynamicModeSupport(
-			toolkit.NewDynamicModeProperties().
-				SetCompatibleTypes("int2", "int4", "int8", "numeric"),
-		),
+		SetDynamicModeSupport(true),
 
 	toolkit.MustNewParameterDefinition(
 		"keep_null",

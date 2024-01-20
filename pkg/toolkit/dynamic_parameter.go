@@ -1,8 +1,11 @@
 package toolkit
 
 import (
+	"bytes"
 	"fmt"
 	"text/template"
+
+	"github.com/rs/zerolog/log"
 )
 
 // TODO:
@@ -24,13 +27,17 @@ type DynamicParameter struct {
 	// assign it manually, if you don't know the consequences
 	linkedColumnParameter *StaticParameter
 	// columnIdx - column number in the tuple
-	columnIdx int
+	columnIdx                         int
+	buf                               *bytes.Buffer
+	defaultValueFromDynamicParamValue any
+	defaultValueFromDefinition        any
 }
 
 func NewDynamicParameter(def *ParameterDefinition, driver *Driver) *DynamicParameter {
 	return &DynamicParameter{
 		definition: def,
 		driver:     driver,
+		buf:        bytes.NewBuffer(nil),
 	}
 }
 
@@ -126,54 +133,51 @@ func (dp *DynamicParameter) Init(columnParameters map[string]*StaticParameter, d
 			return nil, fmt.Errorf("linked parameter must be column: check transformer implementation")
 		}
 
-		var linkedColumnName string
-		_, err := dp.linkedColumnParameter.Scan(&linkedColumnName)
-		if err != nil {
-			return nil, fmt.Errorf("error scanning linked parameter value: %w", err)
-		}
-		_, linkedColumn, ok := dp.driver.GetColumnByName(linkedColumnName)
-		if !ok {
-			panic(fmt.Sprintf("column with name \"%s\" is not found", linkedColumnName))
-		}
-
-		// TODO: Recheck this cond since some of types implicitly literally equal for instance TIMESTAMP and TIMESTAMPTZ
 		// TODO: There is bug with column overriding type since OverriddenTypeOid is not checking
-
 		// TODO: Add CompatibleTypes checking there. Consider IsTypeAllowedWithTypeMap usage
+		if dp.tmpl == nil {
+			// Check that column parameter has the same type with dynamic parameter value or at least dynamic parameter
+			// column is compatible with type in the list. This logic is controversial since it might be unexpected
+			// when dynamic param column has different though compatible types. Consider it
+			if dp.linkedColumnParameter.Column.TypeOid != column.TypeOid && !(dp.definition.ColumnProperties != nil &&
+				IsTypeAllowedWithTypeMap(
+					dp.driver,
+					dp.definition.ColumnProperties.AllowedTypes,
+					column.TypeName,
+					column.TypeOid,
+					true,
+				)) {
+				warnings = append(warnings, NewValidationWarning().
+					SetSeverity(ErrorValidationSeverity).
+					AddMeta("DynamicParameterSetting", "column").
+					AddMeta("DynamicParameterColumnType", column.TypeName).
+					AddMeta("DynamicParameterColumnName", column.Name).
+					AddMeta("LinkedParameterName", dp.definition.LinkColumnParameter).
+					AddMeta("LinkedColumnName", dp.linkedColumnParameter.Column.Name).
+					AddMeta("LinkedColumnType", dp.linkedColumnParameter.Column.TypeName).
+					AddMeta("Hint", "you can use \"cast_template\" for casting value to supported type").
+					SetMsg("linked parameter and dynamic parameter column name has different types"),
+				)
+			}
 
-		if linkedColumn.TypeOid != column.TypeOid && dp.tmpl == nil {
-			warnings = append(warnings, NewValidationWarning().
-				SetSeverity(ErrorValidationSeverity).
-				AddMeta("DynamicParameterSetting", "column").
-				AddMeta("DynamicParameterColumnType", column.TypeName).
-				AddMeta("DynamicParameterColumnName", column.Name).
-				AddMeta("LinkedParameterName", dp.definition.LinkColumnParameter).
-				AddMeta("LinkedColumnName", linkedColumnName).
-				AddMeta("LinkedColumnType", linkedColumn.TypeName).
-				AddMeta("Hint", "you can use \"cast_template\" for casting value to supported type").
-				SetMsg("linked parameter and dynamic parameter column name has different types"),
-			)
+			if dp.definition.CastDbType != "" &&
+				!IsTypeAllowedWithTypeMap(
+					dp.driver,
+					[]string{dp.definition.CastDbType},
+					column.TypeName,
+					column.TypeOid,
+					true,
+				) {
+				warnings = append(warnings, NewValidationWarning().
+					SetSeverity(ErrorValidationSeverity).
+					SetMsg("unsupported column type: unsupported type according cast_db_type").
+					AddMeta("DynamicParameterSetting", "column").
+					AddMeta("DynamicParameterColumnType", column.TypeName).
+					AddMeta("DynamicParameterColumnName", column.Name).
+					AddMeta("CastDbType", dp.definition.CastDbType),
+				)
+			}
 		}
-	}
-
-	if dp.definition.CastDbType != "" &&
-		!IsTypeAllowedWithTypeMap(
-			dp.driver,
-			[]string{dp.definition.CastDbType},
-			column.TypeName,
-			column.TypeOid,
-			true,
-		) {
-		warnings = append(warnings, NewValidationWarning().
-			SetSeverity(ErrorValidationSeverity).
-			SetMsg("unsupported column type: unsupported type according cast_db_type").
-			AddMeta("DynamicParameterSetting", "column").
-			AddMeta("DynamicParameterColumnType", column.TypeName).
-			AddMeta("DynamicParameterColumnName", column.Name).
-			AddMeta("CastDbType", dp.definition.CastDbType),
-		)
-
-		return warnings, nil
 	}
 
 	return
@@ -183,34 +187,135 @@ func (dp *DynamicParameter) Value() (value any, err error) {
 	if dp.record == nil {
 		return nil, fmt.Errorf("check transformer implementation: dynamic parameter usage during initialization stage is prohibited")
 	}
-	// TODO: Add logic for using cst template and null behaviour
-	v, err := dp.record.GetColumnValueByIdx(dp.columnIdx)
+
+	rawValue, err := dp.record.GetRawColumnValueByIdx(dp.columnIdx)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("erro getting raw column value: %w", err)
 	}
-	return v.Value, nil
+
+	if rawValue.IsNull {
+		if dp.defaultValueFromDynamicParamValue != nil {
+			return dp.defaultValueFromDynamicParamValue, nil
+		} else if dp.defaultValueFromDefinition != nil {
+			return dp.defaultValueFromDefinition, nil
+		}
+		return nil, fmt.Errorf("received NULL value from dynamic parameter")
+	}
+
+	if dp.tmpl != nil {
+		if err = dp.tmpl.Execute(dp.buf, nil); err != nil {
+			log.Debug().
+				Err(err).
+				Str("ParameterName", dp.definition.Name).
+				Str("RawValue", string(rawValue.Data)).
+				Str("TableSchema", dp.driver.Table.Schema).
+				Str("TableName", dp.driver.Table.Name).
+				Msg("error executing cast template")
+
+			return nil, fmt.Errorf("error executing cast template: %w", err)
+		}
+		castedValue := dp.buf.Bytes()
+		res, err := dp.driver.DecodeValueByColumnIdx(dp.columnIdx, castedValue)
+		if err != nil {
+			log.Debug().
+				Err(err).
+				Str("ParameterName", dp.definition.Name).
+				Str("RawValue", string(rawValue.Data)).
+				Str("CastedValue", string(castedValue)).
+				Str("TableSchema", dp.driver.Table.Schema).
+				Str("TableName", dp.driver.Table.Name).
+				Msg("error decoding casted value")
+
+			return nil, fmt.Errorf("error scanning casted value: %w", err)
+		}
+		return res, nil
+	}
+
+	res, err := dp.record.GetColumnValueByIdx(dp.columnIdx)
+	if err != nil {
+		return nil, fmt.Errorf("error scanning value: %w", err)
+	}
+	return res.Value, nil
+
 }
 
-func (dp *DynamicParameter) RawValue() (rawValue ParamsValue, err error) {
+func (dp *DynamicParameter) RawValue() (ParamsValue, error) {
 	if dp.record == nil {
 		return nil, fmt.Errorf("check transformer implementation: dynamic parameter usage during initialization stage is prohibited")
 	}
-	// TODO: Add logic for using cst template and null behaviour
-	v, err := dp.record.GetRawColumnValueByIdx(dp.columnIdx)
+
+	rawValue, err := dp.record.GetRawColumnValueByIdx(dp.columnIdx)
 	if err != nil {
 		return nil, err
 	}
-	return v.Data, nil
+	if rawValue.IsNull {
+		if dp.defaultValueFromDynamicParamValue != nil {
+			return dp.DynamicValue.DefaultValue, nil
+		} else if dp.defaultValueFromDefinition != nil {
+			return dp.definition.DefaultValue, nil
+		}
+		return nil, fmt.Errorf("received NULL value from dynamic parameter")
+	}
+	return rawValue.Data, nil
 }
 
-func (dp *DynamicParameter) Scan(dest any) (bool, error) {
+func (dp *DynamicParameter) Scan(dest any) error {
 	if dp.record == nil {
-		return false, fmt.Errorf("check transformer implementation: dynamic parameter usage during initialization stage is prohibited")
+		return fmt.Errorf("check transformer implementation: dynamic parameter usage during initialization stage is prohibited")
 	}
-	// TODO: Add logic for using cst template and null behaviour
-	empty, err := dp.record.ScanColumnValueByIdx(dp.columnIdx, dest)
+
+	v, err := dp.record.GetRawColumnValueByIdx(dp.columnIdx)
 	if err != nil {
-		return true, err
+		return fmt.Errorf("erro getting raw column value: %w", err)
 	}
-	return empty, nil
+
+	if v.IsNull {
+		var value any
+		if dp.defaultValueFromDynamicParamValue != nil {
+			value = dp.defaultValueFromDynamicParamValue
+		} else if dp.defaultValueFromDefinition != nil {
+			value = dp.defaultValueFromDefinition
+		} else {
+			return fmt.Errorf("received NULL value from dynamic parameter")
+		}
+		if err = ScanPointer(dest, value); err != nil {
+			return fmt.Errorf("error scanning default value: %w", err)
+		}
+		return nil
+	}
+
+	if dp.tmpl != nil {
+		if err = dp.tmpl.Execute(dp.buf, nil); err != nil {
+			log.Debug().
+				Err(err).
+				Str("ParameterName", dp.definition.Name).
+				Str("RawValue", string(v.Data)).
+				Str("TableSchema", dp.driver.Table.Schema).
+				Str("TableName", dp.driver.Table.Name).
+				Msg("error executing cast template")
+
+			return fmt.Errorf("error executing cast template: %w", err)
+		}
+		castedValue := dp.buf.Bytes()
+		err := dp.driver.ScanValueByColumnIdx(dp.columnIdx, castedValue, dest)
+		if err != nil {
+			log.Debug().
+				Err(err).
+				Str("ParameterName", dp.definition.Name).
+				Str("RawValue", string(v.Data)).
+				Str("CastedValue", string(castedValue)).
+				Str("TableSchema", dp.driver.Table.Schema).
+				Str("TableName", dp.driver.Table.Name).
+				Msg("error decoding casted value")
+
+			return fmt.Errorf("error scanning casted value: %w", err)
+		}
+		return nil
+	}
+
+	_, err = dp.record.ScanColumnValueByIdx(dp.columnIdx, dest)
+	if err != nil {
+		return fmt.Errorf("error scanning value: %w", err)
+	}
+	return nil
 }

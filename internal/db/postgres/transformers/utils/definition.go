@@ -52,64 +52,6 @@ func (d *TransformerDefinition) SetSchemaValidator(v SchemaValidationFunc) *Tran
 	return d
 }
 
-//func (d *TransformerDefinition) parseParameters(
-//	Driver *toolkit.Driver, rawParams map[string]toolkit.ParamsValue, types []*toolkit.Type,
-//) (toolkit.ValidationWarnings, map[string]*toolkit.ParameterDefinition, error) {
-//	if rawParams == nil && len(d.Parameters) > 0 {
-//		return toolkit.ValidationWarnings{
-//			toolkit.NewValidationWarning().
-//				SetMsg("parameters are required: received empty").
-//				SetSeverity("error"),
-//		}, nil, nil
-//	}
-//
-//	var params = make(map[string]*toolkit.ParameterDefinition, len(d.Parameters))
-//	for _, p := range d.Parameters {
-//		params[p.Name] = p.Copy()
-//	}
-//	var columnParameters = make(map[string]*toolkit.ParameterDefinition)
-//	var commonParameters = make(map[string]*toolkit.ParameterDefinition)
-//	for _, p := range d.Parameters {
-//		if p.IsColumn {
-//			columnParameters[p.Name] = p
-//		} else {
-//			commonParameters[p.Name] = p
-//		}
-//	}
-//
-//	var totalWarnings toolkit.ValidationWarnings
-//	// Column parameters parsing
-//	var columnParamsToSkip = make(map[string]struct{})
-//	for _, p := range columnParameters {
-//		warnings, err := p.Decode(Driver, rawParams, nil, types)
-//		if err != nil {
-//			return nil, nil, fmt.Errorf("parameter %s parsing error: %w", p.Name, err)
-//		}
-//		if len(warnings) > 0 {
-//			totalWarnings = append(totalWarnings, warnings...)
-//			columnParamsToSkip[p.Name] = struct{}{}
-//		}
-//	}
-//	// Common parameters parsing
-//	for _, p := range commonParameters {
-//		if _, ok := columnParamsToSkip[p.LinkColumnParameter]; p.LinkColumnParameter != "" && ok {
-//			totalWarnings = append(totalWarnings, toolkit.NewValidationWarning().
-//				AddMeta("ParameterName", p.Name).
-//				SetSeverity(toolkit.WarningValidationSeverity).
-//				SetMsg("parameter skipping due to the error in the related parameter parsing"))
-//			continue
-//		}
-//		warnings, err := p.Decode(Driver, rawParams, columnParameters, types)
-//		if err != nil {
-//			return nil, nil, fmt.Errorf("parameter %s parsing error: %w", p.Name, err)
-//		}
-//		if len(warnings) > 0 {
-//			totalWarnings = append(totalWarnings, warnings...)
-//		}
-//	}
-//	return totalWarnings, params, nil
-//}
-
 type TransformerContext struct {
 	Transformer       Transformer
 	StaticParameters  map[string]*toolkit.StaticParameter

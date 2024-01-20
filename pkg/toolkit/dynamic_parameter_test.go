@@ -54,7 +54,7 @@ func TestDynamicParameter_Init_linked_column_parameter_unsupported_types(t *test
 
 	timestampDef := MustNewParameterDefinition("ts_val", "some desc").
 		SetLinkParameter("column").
-		SetDynamicModeSupport(nil)
+		SetDynamicModeSupport(true)
 
 	timestampParam := NewDynamicParameter(timestampDef, driver)
 
@@ -85,7 +85,7 @@ func TestDynamicParameter_Value_simple(t *testing.T) {
 	)
 
 	timestampDef := MustNewParameterDefinition("ts_val", "some desc").
-		SetDynamicModeSupport(nil)
+		SetDynamicModeSupport(true)
 
 	timestampParam := NewDynamicParameter(timestampDef, driver)
 

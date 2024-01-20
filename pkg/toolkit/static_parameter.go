@@ -193,14 +193,14 @@ func (sp *StaticParameter) RawValue() (ParamsValue, error) {
 	return sp.rawValue, nil
 }
 
-func (sp *StaticParameter) Scan(dest any) (bool, error) {
+func (sp *StaticParameter) Scan(dest any) error {
 	sp.value = nil
 	if dest == nil {
-		return false, fmt.Errorf("dest cannot be nil")
+		return fmt.Errorf("dest cannot be nil")
 	}
 
 	if sp.rawValue == nil {
-		return true, nil
+		return nil
 	}
 
 	sp.value = dest
@@ -208,7 +208,7 @@ func (sp *StaticParameter) Scan(dest any) (bool, error) {
 		// Perform custom unmarshalling
 		value, err := sp.definition.Unmarshaller(sp.definition, sp.driver, sp.rawValue)
 		if err != nil {
-			return false, fmt.Errorf("unable to perform custom unmarshaller: %w", err)
+			return fmt.Errorf("unable to perform custom unmarshaller: %w", err)
 		}
 		sp.value = value
 	} else if sp.definition.CastDbType != "" {
@@ -217,33 +217,33 @@ func (sp *StaticParameter) Scan(dest any) (bool, error) {
 		case *time.Time:
 			val, err := sp.driver.DecodeValueByTypeName(sp.definition.CastDbType, sp.rawValue)
 			if err != nil {
-				return false, fmt.Errorf("unable to scan parameter via Driver: %w", err)
+				return fmt.Errorf("unable to scan parameter via Driver: %w", err)
 			}
 			valTime := val.(time.Time)
 			sp.value = &valTime
 		default:
 			if err := sp.driver.ScanValueByTypeName(sp.definition.CastDbType, sp.rawValue, sp.value); err != nil {
-				return false, fmt.Errorf("unable to scan parameter via Driver: %w", err)
+				return fmt.Errorf("unable to scan parameter via Driver: %w", err)
 			}
 		}
 	} else if sp.linkedColumnParameter != nil {
 
 		// Try to scan value using pgx Driver and pgtype defined in the linked column
 		if sp.linkedColumnParameter.Column == nil {
-			return false, fmt.Errorf("parameter is linked but Column was not assigned")
+			return fmt.Errorf("parameter is linked but Column was not assigned")
 		}
 
 		switch sp.value.(type) {
 		case *time.Time:
 			val, err := sp.driver.DecodeValueByTypeOid(uint32(sp.linkedColumnParameter.Column.TypeOid), sp.rawValue)
 			if err != nil {
-				return false, fmt.Errorf("unable to scan parameter via Driver: %w", err)
+				return fmt.Errorf("unable to scan parameter via Driver: %w", err)
 			}
 			valTime := val.(time.Time)
 			sp.value = &valTime
 		default:
 			if err := sp.driver.ScanValueByTypeOid(uint32(sp.linkedColumnParameter.Column.TypeOid), sp.rawValue, sp.value); err != nil {
-				return false, fmt.Errorf("unable to scan parameter via Driver: %w", err)
+				return fmt.Errorf("unable to scan parameter via Driver: %w", err)
 			}
 		}
 
@@ -259,25 +259,26 @@ func (sp *StaticParameter) Scan(dest any) (bool, error) {
 		case time.Duration:
 			res, err := time.ParseDuration(string(sp.rawValue))
 			if err != nil {
-				return false, fmt.Errorf("error parsing int64 value: %w", err)
+				return fmt.Errorf("error parsing int64 value: %w", err)
 			}
 			sp.value = &res
 		case *time.Duration:
 			res, err := time.ParseDuration(string(sp.rawValue))
 			if err != nil {
-				return false, fmt.Errorf("error parsing int64 value: %w", err)
+				return fmt.Errorf("error parsing int64 value: %w", err)
 			}
 			sp.value = &res
 		default:
 			if err := json.Unmarshal(sp.rawValue, sp.value); err != nil {
-				return false, fmt.Errorf("unable to unmarshal value: %w", err)
+				return fmt.Errorf("unable to unmarshal value: %w", err)
 			}
 		}
 
 	}
 
 	if sp.value == nil {
-		return false, nil
+		// TODO: This is controversial logic - double check it
+		return nil
 	}
-	return false, ScanPointer(sp.value, dest)
+	return ScanPointer(sp.value, dest)
 }
