@@ -94,6 +94,19 @@ func (cp *ColumnProperties) SetSkipOnNull(v bool) *ColumnProperties {
 	return cp
 }
 
+type DynamicModeProperties struct {
+	CompatibleTypes []string
+}
+
+func NewDynamicModeProperties() *DynamicModeProperties {
+	return &DynamicModeProperties{}
+}
+
+func (dmp *DynamicModeProperties) SetCompatibleTypes(compatibleTypes ...string) *DynamicModeProperties {
+	dmp.CompatibleTypes = compatibleTypes
+	return dmp
+}
+
 // ParameterDefinition - wide parameter entity definition that contains properties that allows to check schema, find affection,
 // cast variable using some features and so on. It may be defined and assigned ot the TransformerDefinition of the transformer
 // if transformer has any parameters
@@ -116,6 +129,8 @@ type ParameterDefinition struct {
 	CastDbType string `mapstructure:"cast_db_type" json:"cast_db_type,omitempty"`
 	// DynamicModeSupport - shows that parameter value can be gathered from column value of the current record
 	DynamicModeSupport bool `mapstructure:"dynamic_mode_support" json:"dynamic_mode_support,omitempty"`
+	// DynamicModeProperties - properties for dynamic mode encoding-decoding procedures
+	DynamicModeProperties *DynamicModeProperties `mapstructure:"dynamic_mode_properties" json:"dynamic_mode_properties,omitempty"`
 	// DefaultValue - default value of the parameter
 	DefaultValue ParamsValue `mapstructure:"default_value" json:"default_value,omitempty"`
 	// ColumnProperties - detail info about expected column properties that may help to diagnose the table schema
@@ -184,8 +199,9 @@ func (p *ParameterDefinition) SetDefaultValue(v ParamsValue) *ParameterDefinitio
 	return p
 }
 
-func (p *ParameterDefinition) SetDynamicModeSupport(v bool) *ParameterDefinition {
-	p.DynamicModeSupport = v
+func (p *ParameterDefinition) SetDynamicModeSupport(properties *DynamicModeProperties) *ParameterDefinition {
+	p.DynamicModeSupport = true
+	p.DynamicModeProperties = properties
 	return p
 }
 

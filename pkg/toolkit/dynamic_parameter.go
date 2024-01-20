@@ -127,8 +127,6 @@ func (dp *DynamicParameter) Init(columnParameters map[string]*StaticParameter, d
 		}
 
 		var linkedColumnName string
-		// TODO: You have to replace defs it to parameter value instead of defs since you have to get the column
-		// 	value from static parameter
 		_, err := dp.linkedColumnParameter.Scan(&linkedColumnName)
 		if err != nil {
 			return nil, fmt.Errorf("error scanning linked parameter value: %w", err)
@@ -140,6 +138,9 @@ func (dp *DynamicParameter) Init(columnParameters map[string]*StaticParameter, d
 
 		// TODO: Recheck this cond since some of types implicitly literally equal for instance TIMESTAMP and TIMESTAMPTZ
 		// TODO: There is bug with column overriding type since OverriddenTypeOid is not checking
+
+		// TODO: Add CompatibleTypes checking there. Consider IsTypeAllowedWithTypeMap usage
+
 		if linkedColumn.TypeOid != column.TypeOid && dp.tmpl == nil {
 			warnings = append(warnings, NewValidationWarning().
 				SetSeverity(ErrorValidationSeverity).

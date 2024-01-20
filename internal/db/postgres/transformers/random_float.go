@@ -45,14 +45,20 @@ var RandomFloatTransformerDefinition = utils.NewTransformerDefinition(
 		"min float threshold of random value. The value range depends on column type",
 	).SetRequired(true).
 		SetLinkParameter("column").
-		SetDynamicModeSupport(true),
+		SetDynamicModeSupport(
+			toolkit.NewDynamicModeProperties().
+				SetCompatibleTypes("float4", "float8", "numeric"),
+		),
 
 	toolkit.MustNewParameterDefinition(
 		"max",
 		"min float threshold of random value. The value range depends on column type",
 	).SetRequired(true).
 		SetLinkParameter("column").
-		SetDynamicModeSupport(true),
+		SetDynamicModeSupport(
+			toolkit.NewDynamicModeProperties().
+				SetCompatibleTypes("float4", "float8", "numeric"),
+		),
 
 	toolkit.MustNewParameterDefinition(
 		"precision",

@@ -35,11 +35,11 @@ func TestInitParametersV2(t *testing.T) {
 
 	minDate := MustNewParameterDefinition("min_date", "min date").
 		SetLinkParameter("column").
-		SetDynamicModeSupport(true)
+		SetDynamicModeSupport(nil)
 
 	maxDate := MustNewParameterDefinition("max_date", "max date").
 		SetLinkParameter("column").
-		SetDynamicModeSupport(true)
+		SetDynamicModeSupport(nil)
 
 	params, warns, err := InitParameters(
 		driver,
