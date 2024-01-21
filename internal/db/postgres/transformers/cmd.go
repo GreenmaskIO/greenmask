@@ -157,42 +157,42 @@ func NewCmd(
 	rowDriverParams := &toolkit.RowDriverParams{}
 
 	p := parameters["columns"]
-	if _, err := p.Scan(&columns); err != nil {
+	if err := p.Scan(&columns); err != nil {
 		return nil, nil, fmt.Errorf(`unable to scan "columns" param: %w`, err)
 	}
 
 	p = parameters["executable"]
-	if _, err := p.Scan(&executable); err != nil {
+	if err := p.Scan(&executable); err != nil {
 		return nil, nil, fmt.Errorf(`unable to scan "executable" param: %w`, err)
 	}
 
 	p = parameters["args"]
-	if _, err := p.Scan(&args); err != nil {
+	if err := p.Scan(&args); err != nil {
 		return nil, nil, fmt.Errorf(`unable to scan "args" param: %w`, err)
 	}
 
 	p = parameters["driver"]
-	if _, err := p.Scan(rowDriverParams); err != nil {
+	if err := p.Scan(rowDriverParams); err != nil {
 		return nil, nil, fmt.Errorf(`unable to scan "mode" param: %w`, err)
 	}
 
 	p = parameters["validate"]
-	if _, err := p.Scan(&validate); err != nil {
+	if err := p.Scan(&validate); err != nil {
 		return nil, nil, fmt.Errorf(`unable to scan "validate" param: %w`, err)
 	}
 
 	p = parameters["timeout"]
-	if _, err := p.Scan(&timeout); err != nil {
+	if err := p.Scan(&timeout); err != nil {
 		return nil, nil, fmt.Errorf(`unable to scan "timeout" param: %w`, err)
 	}
 
 	p = parameters["expected_exit_code"]
-	if _, err := p.Scan(&expectedExitCode); err != nil {
+	if err := p.Scan(&expectedExitCode); err != nil {
 		return nil, nil, fmt.Errorf(`unable to scan "expected_exit_code" param: %w`, err)
 	}
 
 	p = parameters["skip_on_behaviour"]
-	if _, err := p.Scan(&skipOnBehaviourName); err != nil {
+	if err := p.Scan(&skipOnBehaviourName); err != nil {
 		return nil, nil, fmt.Errorf(`unable to scan "skip_on_behaviour" param: %w`, err)
 	}
 	if skipOnBehaviourName == skipOnAnyName {

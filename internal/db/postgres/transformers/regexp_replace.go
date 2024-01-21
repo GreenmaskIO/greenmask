@@ -61,7 +61,7 @@ type RegexpReplaceTransformer struct {
 func NewRegexpReplaceTransformer(ctx context.Context, driver *toolkit.Driver, parameters map[string]toolkit.Parameterizer) (utils.Transformer, toolkit.ValidationWarnings, error) {
 	var columnName, regexpStr, replace string
 	p := parameters["column"]
-	if _, err := p.Scan(&columnName); err != nil {
+	if err := p.Scan(&columnName); err != nil {
 		return nil, nil, fmt.Errorf(`unable to scan "column" param: %w`, err)
 	}
 
@@ -73,12 +73,12 @@ func NewRegexpReplaceTransformer(ctx context.Context, driver *toolkit.Driver, pa
 	affectedColumns[idx] = columnName
 
 	p = parameters["regexp"]
-	if _, err := p.Scan(&regexpStr); err != nil {
+	if err := p.Scan(&regexpStr); err != nil {
 		return nil, nil, fmt.Errorf(`unable to scan "regexp" param: %w`, err)
 	}
 
 	p = parameters["replace"]
-	if _, err := p.Scan(&replace); err != nil {
+	if err := p.Scan(&replace); err != nil {
 		return nil, nil, fmt.Errorf(`unable to scan "replace" param: %w`, err)
 	}
 	re, err := regexp.Compile(regexpStr)

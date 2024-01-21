@@ -61,7 +61,7 @@ func NewNoiseIntTransformer(ctx context.Context, driver *toolkit.Driver, paramet
 	var ratio float64
 
 	p := parameters["column"]
-	if _, err := p.Scan(&columnName); err != nil {
+	if err := p.Scan(&columnName); err != nil {
 		return nil, nil, fmt.Errorf("unable to scan column param: %w", err)
 	}
 
@@ -73,7 +73,7 @@ func NewNoiseIntTransformer(ctx context.Context, driver *toolkit.Driver, paramet
 	affectedColumns[idx] = columnName
 
 	p = parameters["ratio"]
-	if _, err := p.Scan(&ratio); err != nil {
+	if err := p.Scan(&ratio); err != nil {
 		return nil, nil, fmt.Errorf("unable to scan type param: %w", err)
 	}
 

@@ -3,6 +3,7 @@ package toolkit
 import (
 	"bytes"
 	"fmt"
+	"slices"
 	"text/template"
 
 	"github.com/rs/zerolog/log"
@@ -27,10 +28,14 @@ type DynamicParameter struct {
 	// assign it manually, if you don't know the consequences
 	linkedColumnParameter *StaticParameter
 	// columnIdx - column number in the tuple
-	columnIdx                         int
-	buf                               *bytes.Buffer
-	defaultValueFromDynamicParamValue any
-	defaultValueFromDefinition        any
+	columnIdx int
+	buf       *bytes.Buffer
+	//defaultValueFromDynamicParamValue any
+	//defaultValueFromDefinition        any
+
+	hasDefaultValue bool
+	defaultValue    any
+	rawDefaultValue ParamsValue
 }
 
 func NewDynamicParameter(def *ParameterDefinition, driver *Driver) *DynamicParameter {
@@ -39,6 +44,23 @@ func NewDynamicParameter(def *ParameterDefinition, driver *Driver) *DynamicParam
 		driver:     driver,
 		buf:        bytes.NewBuffer(nil),
 	}
+}
+
+func (dp *DynamicParameter) IsEmpty() (bool, error) {
+	if dp.record == nil {
+		return false, fmt.Errorf("check transformer implementation: dynamic parameter usage during initialization stage is prohibited")
+	}
+
+	rawValue, err := dp.record.GetRawColumnValueByIdx(dp.columnIdx)
+	if err != nil {
+		return false, fmt.Errorf("erro getting raw column value: %w", err)
+	}
+
+	if !rawValue.IsNull {
+		return false, nil
+	}
+
+	return !dp.hasDefaultValue, nil
 }
 
 func (dp *DynamicParameter) IsDynamic() bool {
@@ -83,6 +105,14 @@ func (dp *DynamicParameter) Init(columnParameters map[string]*StaticParameter, d
 				AddMeta("DynamicParameterSetting", "column"),
 		)
 		return warnings, nil
+	}
+
+	if dp.DynamicValue.DefaultValue != nil {
+		dp.rawDefaultValue = slices.Clone(dp.DynamicValue.DefaultValue)
+		dp.hasDefaultValue = true
+	} else if dp.definition.DefaultValue != nil {
+		dp.rawDefaultValue = slices.Clone(dp.definition.DefaultValue)
+		dp.hasDefaultValue = true
 	}
 
 	if dp.DynamicValue.CastTemplate != "" {
@@ -139,8 +169,8 @@ func (dp *DynamicParameter) Init(columnParameters map[string]*StaticParameter, d
 			// Check that column parameter has the same type with dynamic parameter value or at least dynamic parameter
 			// column is compatible with type in the list. This logic is controversial since it might be unexpected
 			// when dynamic param column has different though compatible types. Consider it
-			if dp.linkedColumnParameter.Column.TypeOid != column.TypeOid && !(dp.definition.ColumnProperties != nil &&
-				IsTypeAllowedWithTypeMap(
+			if dp.linkedColumnParameter.Column.TypeOid != column.TypeOid && (dp.definition.ColumnProperties != nil &&
+				!IsTypeAllowedWithTypeMap(
 					dp.driver,
 					dp.definition.ColumnProperties.AllowedTypes,
 					column.TypeName,
@@ -194,10 +224,8 @@ func (dp *DynamicParameter) Value() (value any, err error) {
 	}
 
 	if rawValue.IsNull {
-		if dp.defaultValueFromDynamicParamValue != nil {
-			return dp.defaultValueFromDynamicParamValue, nil
-		} else if dp.defaultValueFromDefinition != nil {
-			return dp.defaultValueFromDefinition, nil
+		if dp.hasDefaultValue {
+			return nil, fmt.Errorf("IMPLEMENT ME")
 		}
 		return nil, fmt.Errorf("received NULL value from dynamic parameter")
 	}
@@ -249,10 +277,8 @@ func (dp *DynamicParameter) RawValue() (ParamsValue, error) {
 		return nil, err
 	}
 	if rawValue.IsNull {
-		if dp.defaultValueFromDynamicParamValue != nil {
-			return dp.DynamicValue.DefaultValue, nil
-		} else if dp.defaultValueFromDefinition != nil {
-			return dp.definition.DefaultValue, nil
+		if dp.hasDefaultValue {
+			return nil, fmt.Errorf("IMPLEMENT ME")
 		}
 		return nil, fmt.Errorf("received NULL value from dynamic parameter")
 	}
@@ -271,10 +297,8 @@ func (dp *DynamicParameter) Scan(dest any) error {
 
 	if v.IsNull {
 		var value any
-		if dp.defaultValueFromDynamicParamValue != nil {
-			value = dp.defaultValueFromDynamicParamValue
-		} else if dp.defaultValueFromDefinition != nil {
-			value = dp.defaultValueFromDefinition
+		if dp.hasDefaultValue {
+			return fmt.Errorf("IMPLEMENT ME")
 		} else {
 			return fmt.Errorf("received NULL value from dynamic parameter")
 		}

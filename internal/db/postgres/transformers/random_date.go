@@ -106,7 +106,7 @@ func NewRandomDateTransformer(ctx context.Context, driver *toolkit.Driver, param
 	var generator dateGeneratorFunc = generateRandomTime
 	var keepNull bool
 
-	if _, err := columnParam.Scan(&columnName); err != nil {
+	if err := columnParam.Scan(&columnName); err != nil {
 		return nil, nil, fmt.Errorf(`unable to scan "column" param: %w`, err)
 	}
 
@@ -117,11 +117,11 @@ func NewRandomDateTransformer(ctx context.Context, driver *toolkit.Driver, param
 	affectedColumns := make(map[int]string)
 	affectedColumns[idx] = columnName
 
-	if _, err := keepNullParam.Scan(&keepNull); err != nil {
+	if err := keepNullParam.Scan(&keepNull); err != nil {
 		return nil, nil, fmt.Errorf(`unable to scan "keep_null" param: %w`, err)
 	}
 
-	if _, err := truncateParam.Scan(&truncate); err != nil {
+	if err := truncateParam.Scan(&truncate); err != nil {
 		return nil, nil, fmt.Errorf(`unable to scan "truncate" param: %w`, err)
 	}
 
@@ -162,21 +162,15 @@ func (rdt *RandomDateTransformer) Done(ctx context.Context) error {
 func (rdt *RandomDateTransformer) Transform(ctx context.Context, r *toolkit.Record) (*toolkit.Record, error) {
 
 	minTime := &time.Time{}
-	empty, err := rdt.minParam.Scan(minTime)
+	err := rdt.minParam.Scan(minTime)
 	if err != nil {
 		return nil, fmt.Errorf(`error getting "min" parameter value: %w`, err)
 	}
-	if empty {
-		return nil, fmt.Errorf("parameter \"min\" cannot be empty")
-	}
 
 	maxTime := &time.Time{}
-	empty, err = rdt.maxParam.Scan(maxTime)
+	err = rdt.maxParam.Scan(maxTime)
 	if err != nil {
 		return nil, fmt.Errorf(`error getting "max" parameter value: %w`, err)
-	}
-	if empty {
-		return nil, fmt.Errorf("parameter \"max\" cannot be empty")
 	}
 
 	if minTime.After(*maxTime) {

@@ -78,7 +78,7 @@ func NewNoiseDateTransformer(ctx context.Context, driver *toolkit.Driver, parame
 	var generator dateNoiseFunc = generateNoisedTime
 
 	p := parameters["column"]
-	if _, err := p.Scan(&columnName); err != nil {
+	if err := p.Scan(&columnName); err != nil {
 		return nil, nil, fmt.Errorf(`unable to scan "column" param: %w`, err)
 	}
 
@@ -111,7 +111,7 @@ func NewNoiseDateTransformer(ctx context.Context, driver *toolkit.Driver, parame
 	}
 
 	p = parameters["truncate"]
-	if _, err := p.Scan(&truncate); err != nil {
+	if err := p.Scan(&truncate); err != nil {
 		return nil, nil, fmt.Errorf(`unable to scan "truncate" param: %w`, err)
 	}
 

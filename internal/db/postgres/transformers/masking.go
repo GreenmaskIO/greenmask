@@ -78,7 +78,7 @@ func NewMaskingTransformer(ctx context.Context, driver *toolkit.Driver, paramete
 	var mf maskingFunction
 
 	p := parameters["column"]
-	if _, err := p.Scan(&columnName); err != nil {
+	if err := p.Scan(&columnName); err != nil {
 		return nil, nil, fmt.Errorf("unable to scan column param: %w", err)
 	}
 
@@ -90,7 +90,7 @@ func NewMaskingTransformer(ctx context.Context, driver *toolkit.Driver, paramete
 	affectedColumns[idx] = columnName
 
 	p = parameters["type"]
-	if _, err := p.Scan(&dataType); err != nil {
+	if err := p.Scan(&dataType); err != nil {
 		return nil, nil, fmt.Errorf("unable to scan type param: %w", err)
 	}
 

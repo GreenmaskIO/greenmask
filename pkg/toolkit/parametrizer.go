@@ -6,4 +6,5 @@ type Parameterizer interface {
 	Scan(dest any) (err error)
 	GetDefinition() *ParameterDefinition
 	IsDynamic() bool
+	IsEmpty() (bool, error)
 }

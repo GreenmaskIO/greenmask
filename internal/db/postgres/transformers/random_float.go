@@ -93,7 +93,7 @@ func NewRandomFloatTransformer(ctx context.Context, driver *toolkit.Driver, para
 	var precision int
 	var keepNull bool
 
-	if _, err := columnParam.Scan(&columnName); err != nil {
+	if err := columnParam.Scan(&columnName); err != nil {
 		return nil, nil, fmt.Errorf(`unable to scan "column" param: %w`, err)
 	}
 
@@ -104,11 +104,11 @@ func NewRandomFloatTransformer(ctx context.Context, driver *toolkit.Driver, para
 	affectedColumns := make(map[int]string)
 	affectedColumns[idx] = columnName
 
-	if _, err := precisionParam.Scan(&precision); err != nil {
+	if err := precisionParam.Scan(&precision); err != nil {
 		return nil, nil, fmt.Errorf(`unable to scan "precision" param: %w`, err)
 	}
 
-	if _, err := keepNullParam.Scan(&keepNull); err != nil {
+	if err := keepNullParam.Scan(&keepNull); err != nil {
 		return nil, nil, fmt.Errorf(`unable to scan "keep_null" param: %w`, err)
 	}
 
@@ -143,20 +143,14 @@ func (rft *RandomFloatTransformer) Done(ctx context.Context) error {
 
 func (rft *RandomFloatTransformer) Transform(ctx context.Context, r *toolkit.Record) (*toolkit.Record, error) {
 	var minVal, maxVal float64
-	empty, err := rft.minParam.Scan(&minVal)
+	err := rft.minParam.Scan(&minVal)
 	if err != nil {
 		return nil, fmt.Errorf(`error getting "min" parameter value: %w`, err)
 	}
-	if empty {
-		return nil, fmt.Errorf("parameter \"min\" cannot be empty")
-	}
 
-	empty, err = rft.maxParam.Scan(&maxVal)
+	err = rft.maxParam.Scan(&maxVal)
 	if err != nil {
 		return nil, fmt.Errorf(`error getting "max" parameter value: %w`, err)
-	}
-	if empty {
-		return nil, fmt.Errorf("parameter \"max\" cannot be empty")
 	}
 
 	if minVal >= maxVal {

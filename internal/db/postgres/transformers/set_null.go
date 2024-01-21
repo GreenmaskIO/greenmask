@@ -47,7 +47,7 @@ func NewSetNullTransformer(ctx context.Context, driver *toolkit.Driver, paramete
 	var columnName string
 
 	p := parameters["column"]
-	if _, err := p.Scan(&columnName); err != nil {
+	if err := p.Scan(&columnName); err != nil {
 		return nil, nil, fmt.Errorf("unable to scan column param: %w", err)
 	}
 

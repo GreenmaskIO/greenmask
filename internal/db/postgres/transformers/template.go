@@ -66,7 +66,7 @@ func NewTemplateTransformer(ctx context.Context, driver *toolkit.Driver, paramet
 	var columnName, templateStr string
 
 	p := parameters["column"]
-	if _, err := p.Scan(&columnName); err != nil {
+	if err := p.Scan(&columnName); err != nil {
 		return nil, nil, fmt.Errorf("unable to scan \"column\" param: %w", err)
 	}
 
@@ -78,7 +78,7 @@ func NewTemplateTransformer(ctx context.Context, driver *toolkit.Driver, paramet
 	affectedColumns[idx] = columnName
 
 	p = parameters["template"]
-	if _, err := p.Scan(&templateStr); err != nil {
+	if err := p.Scan(&templateStr); err != nil {
 		return nil, nil, fmt.Errorf("unable to scan \"templateStr\" param: %w", err)
 	}
 

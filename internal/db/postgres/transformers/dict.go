@@ -76,7 +76,7 @@ func NewDictTransformer(
 ) (utils.Transformer, toolkit.ValidationWarnings, error) {
 	p := parameters["column"]
 	var columnName string
-	if _, err := p.Scan(&columnName); err != nil {
+	if err := p.Scan(&columnName); err != nil {
 		return nil, nil, fmt.Errorf(`unable to parse "column" param: %w`, err)
 	}
 
@@ -89,13 +89,13 @@ func NewDictTransformer(
 
 	p = parameters["validate"]
 	var validate bool
-	if _, err := p.Scan(&validate); err != nil {
+	if err := p.Scan(&validate); err != nil {
 		return nil, nil, fmt.Errorf(`unable to parse "validate" param: %w`, err)
 	}
 
 	p = parameters["values"]
 	values := make(map[string]string)
-	if _, err := p.Scan(&values); err != nil {
+	if err := p.Scan(&values); err != nil {
 		return nil, nil, fmt.Errorf(`unable to scan "values" param: %w`, err)
 	}
 	dict := make(map[string]*toolkit.RawValue, len(values))
@@ -141,37 +141,45 @@ func NewDictTransformer(
 
 	var defaultValue *toolkit.RawValue
 	p = parameters["default"]
-	var defaultValueStr string
-	empty, err := p.Scan(&defaultValueStr)
+
+	isEmpty, err := p.IsEmpty()
 	if err != nil {
-		return nil, nil, fmt.Errorf(`unable to scan "default" param: %w`, err)
+		return nil, nil, fmt.Errorf("error checking is parameter \"default\" empty: %w", err)
 	}
-	if !empty {
+
+	if !isEmpty {
+		rawDefaultValue, err := p.RawValue()
+		if err != nil {
+			return nil, nil, fmt.Errorf(`unable to scan "default" param: %w`, err)
+		}
+
+		if string(rawDefaultValue) == defaultNullSeq {
+			defaultValue = toolkit.NewRawValue(nil, true)
+		} else {
+			defaultValue = toolkit.NewRawValue(rawDefaultValue, false)
+		}
+
 		if validate {
 			// Validate defaultValueStr
-			if defaultValueStr != defaultNullSeq {
-				if err := validateValue([]byte(defaultValueStr), driver, idx); err != nil {
+			if !defaultValue.IsNull {
+				if err := validateValue(defaultValue.Data, driver, idx); err != nil {
 					warnings = append(warnings,
 						toolkit.NewValidationWarning().
 							SetSeverity(toolkit.ErrorValidationSeverity).
-							AddMeta("ParameterValue", defaultValueStr).
-							AddMeta("ParameterName", "default_value").
+							AddMeta("ParameterValue", string(defaultValue.Data)).
+							AddMeta("ParameterName", "default").
 							AddMeta("Error", err.Error()).
-							SetMsg("error validating \"default_value\""),
+							SetMsg("error validating \"default\""),
 					)
 				}
 			}
 		}
-		if defaultValueStr == defaultNullSeq {
-			defaultValue = toolkit.NewRawValue(nil, true)
-		} else {
-			defaultValue = toolkit.NewRawValue([]byte(defaultValueStr), false)
-		}
+
 	}
 
 	p = parameters["fail_not_matched"]
 	var failNotMatched bool
-	if _, err := p.Scan(&failNotMatched); err != nil {
+	if err := p.Scan(&failNotMatched); err != nil {
 		return nil, nil, fmt.Errorf(`unable to parse "fail_not_matched" param: %w`, err)
 	}
 

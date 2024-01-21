@@ -69,7 +69,7 @@ func NewReplaceTransformer(ctx context.Context, driver *toolkit.Driver, paramete
 	var keepNull, validate bool
 
 	p := parameters["column"]
-	if _, err := p.Scan(&columnName); err != nil {
+	if err := p.Scan(&columnName); err != nil {
 		return nil, nil, fmt.Errorf(`unable to scan "column" param: %w`, err)
 	}
 
@@ -81,7 +81,7 @@ func NewReplaceTransformer(ctx context.Context, driver *toolkit.Driver, paramete
 	affectedColumns[idx] = columnName
 
 	p = parameters["validate"]
-	if _, err := p.Scan(&validate); err != nil {
+	if err := p.Scan(&validate); err != nil {
 		return nil, nil, fmt.Errorf(`unable to scan "validate" param: %w`, err)
 	}
 
@@ -106,7 +106,7 @@ func NewReplaceTransformer(ctx context.Context, driver *toolkit.Driver, paramete
 	}
 
 	p = parameters["keep_null"]
-	if _, err := p.Scan(&keepNull); err != nil {
+	if err := p.Scan(&keepNull); err != nil {
 		return nil, nil, fmt.Errorf(`unable to scan "keep_null" param: %w`, err)
 	}
 

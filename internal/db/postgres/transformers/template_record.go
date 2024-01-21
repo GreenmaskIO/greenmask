@@ -65,7 +65,7 @@ func NewTemplateRecordTransformer(ctx context.Context, driver *toolkit.Driver, p
 	var columns []string
 	affectedColumns := make(map[int]string)
 	p := parameters["template"]
-	if _, err := p.Scan(&templateStr); err != nil {
+	if err := p.Scan(&templateStr); err != nil {
 		return nil, nil, fmt.Errorf("unable to scan \"template\" param: %w", err)
 	}
 
@@ -76,7 +76,7 @@ func NewTemplateRecordTransformer(ctx context.Context, driver *toolkit.Driver, p
 	}
 
 	p = parameters["columns"]
-	if _, err := p.Scan(&columns); err != nil {
+	if err := p.Scan(&columns); err != nil {
 		return nil, nil, fmt.Errorf("unable to scan \"columns\" param: %w", err)
 	}
 

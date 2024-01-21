@@ -161,6 +161,9 @@ func (p *ParameterDefinition) SetLinkParameter(name string) *ParameterDefinition
 	if p.IsColumn {
 		panic("cannot link column parameter with column parameter")
 	}
+	if p.CastDbType != "" && p.LinkColumnParameter != "" {
+		panic("parameter cannot be with two properties cast_db_type and link_column_parameter enabled")
+	}
 	p.LinkColumnParameter = name
 	return p
 }
@@ -188,6 +191,9 @@ func (p *ParameterDefinition) SetRequired(v bool) *ParameterDefinition {
 }
 
 func (p *ParameterDefinition) SetCastDbType(v string) *ParameterDefinition {
+	if p.CastDbType != "" && p.LinkColumnParameter != "" {
+		panic("parameter cannot be with two properties cast_db_type and link_column_parameter enabled")
+	}
 	p.CastDbType = v
 	return p
 }

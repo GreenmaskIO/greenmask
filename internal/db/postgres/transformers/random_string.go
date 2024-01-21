@@ -80,7 +80,7 @@ func NewRandomStringTransformer(ctx context.Context, driver *toolkit.Driver, par
 	var keepNull bool
 
 	p := parameters["column"]
-	if _, err := p.Scan(&columnName); err != nil {
+	if err := p.Scan(&columnName); err != nil {
 		return nil, nil, fmt.Errorf(`unable to scan "column" param: %w`, err)
 	}
 
@@ -92,22 +92,22 @@ func NewRandomStringTransformer(ctx context.Context, driver *toolkit.Driver, par
 	affectedColumns[idx] = columnName
 
 	p = parameters["min_length"]
-	if _, err := p.Scan(&minLength); err != nil {
+	if err := p.Scan(&minLength); err != nil {
 		return nil, nil, fmt.Errorf(`unable to scan "min_length" param: %w`, err)
 	}
 
 	p = parameters["max_length"]
-	if _, err := p.Scan(&maxLength); err != nil {
+	if err := p.Scan(&maxLength); err != nil {
 		return nil, nil, fmt.Errorf(`unable to scan "max_length" param: %w`, err)
 	}
 
 	p = parameters["symbols"]
-	if _, err := p.Scan(&symbols); err != nil {
+	if err := p.Scan(&symbols); err != nil {
 		return nil, nil, fmt.Errorf(`unable to scan "symbols" param: %w`, err)
 	}
 
 	p = parameters["keep_null"]
-	if _, err := p.Scan(&keepNull); err != nil {
+	if err := p.Scan(&keepNull); err != nil {
 		return nil, nil, fmt.Errorf(`unable to scan "keep_null" param: %w`, err)
 	}
 

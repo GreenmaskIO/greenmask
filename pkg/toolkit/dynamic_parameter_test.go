@@ -73,6 +73,39 @@ func TestDynamicParameter_Init_linked_column_parameter_unsupported_types(t *test
 }
 
 func TestDynamicParameter_Init_linked_column_parameter_supported_types(t *testing.T) {
+	driver, _ := GetDriverAndRecord(
+		map[string]*RawValue{
+			"id":        NewRawValue([]byte("123"), false),
+			"date_tstz": NewRawValue([]byte("2024-01-12 15:12:32.232749+00"), false),
+			"date_date": NewRawValue([]byte("2024-01-12"), false),
+		},
+	)
+
+	columnDef := MustNewParameterDefinition("column", "some desc").
+		SetIsColumn(
+			NewColumnProperties().
+				SetAllowedColumnTypes("date", "timestamp", "timestamptz"),
+		)
+
+	columnParam := NewStaticParameter(columnDef, driver)
+	warns, err := columnParam.Init(nil, ParamsValue("date_date"))
+	require.NoError(t, err)
+	require.Empty(t, warns)
+
+	timestampDef := MustNewParameterDefinition("ts_val", "some desc").
+		SetLinkParameter("column").
+		SetDynamicModeSupport(true)
+
+	timestampParam := NewDynamicParameter(timestampDef, driver)
+
+	warns, err = timestampParam.Init(
+		map[string]*StaticParameter{columnDef.Name: columnParam},
+		&DynamicParamValue{
+			Column: "date_tstz",
+		},
+	)
+	require.NoError(t, err)
+	require.Empty(t, warns)
 
 }
 

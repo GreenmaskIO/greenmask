@@ -84,7 +84,7 @@ func NewRandomIntTransformer(ctx context.Context, driver *toolkit.Driver, parame
 	//var minVal, maxVal int64
 	var keepNull bool
 
-	if _, err := columnParam.Scan(&columnName); err != nil {
+	if err := columnParam.Scan(&columnName); err != nil {
 		return nil, nil, fmt.Errorf(`unable to scan "column" param: %w`, err)
 	}
 
@@ -104,7 +104,7 @@ func NewRandomIntTransformer(ctx context.Context, driver *toolkit.Driver, parame
 	//	}, nil
 	//}
 
-	if _, err := keepNullParam.Scan(&keepNull); err != nil {
+	if err := keepNullParam.Scan(&keepNull); err != nil {
 		return nil, nil, fmt.Errorf(`unable to scan "keep_null" param: %w`, err)
 	}
 
@@ -136,20 +136,14 @@ func (rit *RandomIntTransformer) Done(ctx context.Context) error {
 
 func (rit *RandomIntTransformer) Transform(ctx context.Context, r *toolkit.Record) (*toolkit.Record, error) {
 	var minVal, maxVal int64
-	empty, err := rit.minParam.Scan(&minVal)
+	err := rit.minParam.Scan(&minVal)
 	if err != nil {
 		return nil, fmt.Errorf(`unable to scan "min" param: %w`, err)
 	}
-	if empty {
-		return nil, fmt.Errorf("parameter \"min\" cannot be empty")
-	}
 
-	empty, err = rit.maxParam.Scan(&maxVal)
+	err = rit.maxParam.Scan(&maxVal)
 	if err != nil {
 		return nil, fmt.Errorf(`unable to scan "max" param: %w`, err)
-	}
-	if empty {
-		return nil, fmt.Errorf("parameter \"min\" cannot be empty")
 	}
 
 	if minVal >= maxVal {

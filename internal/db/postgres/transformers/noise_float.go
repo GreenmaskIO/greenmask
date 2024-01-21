@@ -75,7 +75,7 @@ func NewNoiseFloatTransformer(ctx context.Context, driver *toolkit.Driver, param
 	var precision int
 
 	p := parameters["column"]
-	if _, err := p.Scan(&columnName); err != nil {
+	if err := p.Scan(&columnName); err != nil {
 		return nil, nil, fmt.Errorf(`unable to scan "column" param: %w`, err)
 	}
 
@@ -87,12 +87,12 @@ func NewNoiseFloatTransformer(ctx context.Context, driver *toolkit.Driver, param
 	affectedColumns[idx] = columnName
 
 	p = parameters["ratio"]
-	if _, err := p.Scan(&ratio); err != nil {
+	if err := p.Scan(&ratio); err != nil {
 		return nil, nil, fmt.Errorf(`unable to scan "ratio" param: %w`, err)
 	}
 
 	p = parameters["precision"]
-	if _, err := p.Scan(&precision); err != nil {
+	if err := p.Scan(&precision); err != nil {
 		return nil, nil, fmt.Errorf(`unable to scan "precision" param: %w`, err)
 	}
 

@@ -76,7 +76,7 @@ func NewRandomChoiceTransformer(
 	var warnings toolkit.ValidationWarnings
 	p := parameters["column"]
 	var columnName string
-	if _, err := p.Scan(&columnName); err != nil {
+	if err := p.Scan(&columnName); err != nil {
 		return nil, nil, fmt.Errorf(`unable to parse "column" param: %w`, err)
 	}
 
@@ -89,19 +89,19 @@ func NewRandomChoiceTransformer(
 
 	p = parameters["validate"]
 	var validate bool
-	if _, err := p.Scan(&validate); err != nil {
+	if err := p.Scan(&validate); err != nil {
 		return nil, nil, fmt.Errorf(`unable to parse "validate" param and values uniquness: %w`, err)
 	}
 
 	var keepNull bool
 	p = parameters["keep_null"]
-	if _, err := p.Scan(&keepNull); err != nil {
+	if err := p.Scan(&keepNull); err != nil {
 		return nil, nil, fmt.Errorf(`unable to scan "keep_null" param: %w`, err)
 	}
 
 	p = parameters["values"]
 	var values []toolkit.ParamsValue
-	if _, err := p.Scan(&values); err != nil {
+	if err := p.Scan(&values); err != nil {
 		return nil, nil, fmt.Errorf(`unable to scan "values" param: %w`, err)
 	}
 	rawValue := make([]*toolkit.RawValue, 0, len(values))

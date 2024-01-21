@@ -69,7 +69,7 @@ func TestInitParametersV2(t *testing.T) {
 	expected, err := time.Parse(pgTimestampFormat, "2024-01-12 00:00:00.0+00")
 	require.NoError(t, err)
 	res = time.Time{}
-	empty, err = minDateValue.Scan(&res)
+	err = minDateValue.Scan(&res)
 	require.NoError(t, err)
 	assert.Equal(t, expected, res)
 
@@ -78,7 +78,7 @@ func TestInitParametersV2(t *testing.T) {
 	expected, err = time.Parse(pgTimestampFormat, "2024-01-14 00:00:00.0+00")
 	require.NoError(t, err)
 	res = time.Time{}
-	empty, err = maxDateValue.Scan(&res)
+	err = maxDateValue.Scan(&res)
 	require.NoError(t, err)
 	assert.False(t, empty)
 	assert.Equal(t, expected, res)
