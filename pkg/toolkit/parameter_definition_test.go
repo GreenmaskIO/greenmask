@@ -57,14 +57,14 @@ func TestInitParametersV2(t *testing.T) {
 		}
 	}
 
-	columnValue, empty := params["column"]
-	require.True(t, empty)
+	columnValue, ok := params["column"]
+	require.True(t, ok)
 	res, err := columnValue.Value()
 	require.NoError(t, err)
 	assert.Equal(t, "date_tstz", res)
 
-	minDateValue, empty := params["min_date"]
-	require.True(t, empty)
+	minDateValue, ok := params["min_date"]
+	require.True(t, ok)
 	pgTimestampFormat := "2006-01-02 15:04:05.999999999Z07"
 	expected, err := time.Parse(pgTimestampFormat, "2024-01-12 00:00:00.0+00")
 	require.NoError(t, err)
@@ -73,13 +73,12 @@ func TestInitParametersV2(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, expected, res)
 
-	maxDateValue, empty := params["max_date"]
-	require.True(t, empty)
+	maxDateValue, ok := params["max_date"]
+	require.True(t, ok)
 	expected, err = time.Parse(pgTimestampFormat, "2024-01-14 00:00:00.0+00")
 	require.NoError(t, err)
 	res = time.Time{}
 	err = maxDateValue.Scan(&res)
 	require.NoError(t, err)
-	assert.False(t, empty)
 	assert.Equal(t, expected, res)
 }

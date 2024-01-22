@@ -10,8 +10,18 @@ import (
 )
 
 // TODO:
-// 	1. Decide On NULL behaviour - like raise error or use default
-//  2. You might need to move default value decoding to common functions
+//		Add tests for:
+// 			1. Custom Unmarshaller function execution for Value and Scan
+//  		2. Test cast template and cast functions for it
+//			3. Test defaultValue caching after decoding - defaultValueScanned and defaultValueGot
+//			4. Test default values behaviour when dynamic value IsNull
+//		Implement:
+//			1. Smart scanning - it must be possible scan compatible types values like int32 into int64. Add feature that
+//			   allows to scan not pointer value into pointer receiver
+
+type DynamicParameterContext struct {
+	rawValue RawValue
+}
 
 type DynamicParameter struct {
 	// DynamicValue - The dynamic value settings that received from config
@@ -33,9 +43,11 @@ type DynamicParameter struct {
 	//defaultValueFromDynamicParamValue any
 	//defaultValueFromDefinition        any
 
-	hasDefaultValue bool
-	defaultValue    any
-	rawDefaultValue ParamsValue
+	hasDefaultValue     bool
+	defaultValueScanned any
+	defaultValueGot     any
+	rawDefaultValue     ParamsValue
+	tmplCtx             *DynamicParameterContext
 }
 
 func NewDynamicParameter(def *ParameterDefinition, driver *Driver) *DynamicParameter {
@@ -76,10 +88,6 @@ func (dp *DynamicParameter) SetRecord(r *Record) {
 }
 
 func (dp *DynamicParameter) Init(columnParameters map[string]*StaticParameter, dynamicValue *DynamicParamValue) (warnings ValidationWarnings, err error) {
-
-	// Algorithm
-	// 1. If it has CastDbType check that type is the same as in CastDbType iof not - raise warning
-	// 2. If it has linked parameter check that it has the same types otherwise raise validation error
 
 	if !dp.definition.DynamicModeSupport {
 		warnings = append(
@@ -169,14 +177,16 @@ func (dp *DynamicParameter) Init(columnParameters map[string]*StaticParameter, d
 			// Check that column parameter has the same type with dynamic parameter value or at least dynamic parameter
 			// column is compatible with type in the list. This logic is controversial since it might be unexpected
 			// when dynamic param column has different though compatible types. Consider it
-			if dp.linkedColumnParameter.Column.TypeOid != column.TypeOid && (dp.definition.ColumnProperties != nil &&
+			if dp.linkedColumnParameter.Column.TypeOid != column.TypeOid &&
+				dp.linkedColumnParameter.definition.ColumnProperties != nil &&
+				len(dp.linkedColumnParameter.definition.ColumnProperties.AllowedTypes) > 0 &&
 				!IsTypeAllowedWithTypeMap(
 					dp.driver,
-					dp.definition.ColumnProperties.AllowedTypes,
+					dp.linkedColumnParameter.definition.ColumnProperties.AllowedTypes,
 					column.TypeName,
 					column.TypeOid,
 					true,
-				)) {
+				) {
 				warnings = append(warnings, NewValidationWarning().
 					SetSeverity(ErrorValidationSeverity).
 					AddMeta("DynamicParameterSetting", "column").
@@ -218,52 +228,65 @@ func (dp *DynamicParameter) Value() (value any, err error) {
 		return nil, fmt.Errorf("check transformer implementation: dynamic parameter usage during initialization stage is prohibited")
 	}
 
-	rawValue, err := dp.record.GetRawColumnValueByIdx(dp.columnIdx)
+	v, err := dp.record.GetRawColumnValueByIdx(dp.columnIdx)
 	if err != nil {
 		return nil, fmt.Errorf("erro getting raw column value: %w", err)
 	}
 
-	if rawValue.IsNull {
-		if dp.hasDefaultValue {
-			return nil, fmt.Errorf("IMPLEMENT ME")
+	if v.IsNull {
+		if !dp.hasDefaultValue {
+			return nil, fmt.Errorf("received NULL value from dynamic parameter")
 		}
-		return nil, fmt.Errorf("received NULL value from dynamic parameter")
+
+		if dp.defaultValueGot == nil {
+			res, err := getValue(dp.driver, dp.definition, dp.rawDefaultValue, dp.linkedColumnParameter)
+			if err != nil {
+				return nil, err
+			}
+			dp.defaultValueGot = res
+		}
+		return dp.defaultValueGot, nil
 	}
 
+	rawValue := v.Data
+
 	if dp.tmpl != nil {
-		if err = dp.tmpl.Execute(dp.buf, nil); err != nil {
+		if err = dp.tmpl.Execute(dp.buf, dp.tmplCtx); err != nil {
 			log.Debug().
 				Err(err).
 				Str("ParameterName", dp.definition.Name).
-				Str("RawValue", string(rawValue.Data)).
+				Str("RawValue", string(v.Data)).
 				Str("TableSchema", dp.driver.Table.Schema).
 				Str("TableName", dp.driver.Table.Name).
 				Msg("error executing cast template")
 
 			return nil, fmt.Errorf("error executing cast template: %w", err)
 		}
-		castedValue := dp.buf.Bytes()
-		res, err := dp.driver.DecodeValueByColumnIdx(dp.columnIdx, castedValue)
-		if err != nil {
-			log.Debug().
-				Err(err).
-				Str("ParameterName", dp.definition.Name).
-				Str("RawValue", string(rawValue.Data)).
-				Str("CastedValue", string(castedValue)).
-				Str("TableSchema", dp.driver.Table.Schema).
-				Str("TableName", dp.driver.Table.Name).
-				Msg("error decoding casted value")
+		rawValue = dp.buf.Bytes()
+	}
 
-			return nil, fmt.Errorf("error scanning casted value: %w", err)
+	if dp.definition.Unmarshaller != nil {
+		res, err := dp.definition.Unmarshaller(dp.definition, dp.driver, rawValue)
+		if err != nil {
+			return nil, fmt.Errorf("unable to perform custom unmarshaller: %w", err)
 		}
 		return res, nil
 	}
 
-	res, err := dp.record.GetColumnValueByIdx(dp.columnIdx)
+	res, err := dp.driver.DecodeValueByColumnIdx(dp.columnIdx, rawValue)
 	if err != nil {
-		return nil, fmt.Errorf("error scanning value: %w", err)
+		log.Debug().
+			Err(err).
+			Str("ParameterName", dp.definition.Name).
+			Str("RawValue", string(v.Data)).
+			Str("CastedValue", string(rawValue)).
+			Str("TableSchema", dp.driver.Table.Schema).
+			Str("TableName", dp.driver.Table.Name).
+			Msg("error decoding casted value")
+
+		return nil, fmt.Errorf("error scanning casted value: %w", err)
 	}
-	return res.Value, nil
+	return res, nil
 
 }
 
@@ -278,7 +301,7 @@ func (dp *DynamicParameter) RawValue() (ParamsValue, error) {
 	}
 	if rawValue.IsNull {
 		if dp.hasDefaultValue {
-			return nil, fmt.Errorf("IMPLEMENT ME")
+			return dp.rawDefaultValue, nil
 		}
 		return nil, fmt.Errorf("received NULL value from dynamic parameter")
 	}
@@ -296,20 +319,28 @@ func (dp *DynamicParameter) Scan(dest any) error {
 	}
 
 	if v.IsNull {
-		var value any
-		if dp.hasDefaultValue {
-			return fmt.Errorf("IMPLEMENT ME")
-		} else {
+		if !dp.hasDefaultValue {
 			return fmt.Errorf("received NULL value from dynamic parameter")
 		}
-		if err = ScanPointer(dest, value); err != nil {
-			return fmt.Errorf("error scanning default value: %w", err)
+
+		if dp.defaultValueScanned == nil {
+			err = scanValue(dp.driver, dp.definition, dp.rawDefaultValue, dp.linkedColumnParameter, dest)
+			if err != nil {
+				return err
+			}
+			// TODO: You must copy scanned value since the dest is the pointer receiver otherwise it will cause
+			// 	unexpected behaviour
+			dp.defaultValueScanned = dest
+			return nil
 		}
-		return nil
+
+		return ScanPointer(dp.defaultValueScanned, dest)
 	}
 
+	rawValue := v.Data
+
 	if dp.tmpl != nil {
-		if err = dp.tmpl.Execute(dp.buf, nil); err != nil {
+		if err = dp.tmpl.Execute(dp.buf, dp.tmplCtx); err != nil {
 			log.Debug().
 				Err(err).
 				Str("ParameterName", dp.definition.Name).
@@ -320,26 +351,29 @@ func (dp *DynamicParameter) Scan(dest any) error {
 
 			return fmt.Errorf("error executing cast template: %w", err)
 		}
-		castedValue := dp.buf.Bytes()
-		err := dp.driver.ScanValueByColumnIdx(dp.columnIdx, castedValue, dest)
-		if err != nil {
-			log.Debug().
-				Err(err).
-				Str("ParameterName", dp.definition.Name).
-				Str("RawValue", string(v.Data)).
-				Str("CastedValue", string(castedValue)).
-				Str("TableSchema", dp.driver.Table.Schema).
-				Str("TableName", dp.driver.Table.Name).
-				Msg("error decoding casted value")
-
-			return fmt.Errorf("error scanning casted value: %w", err)
-		}
-		return nil
+		rawValue = dp.buf.Bytes()
 	}
 
-	_, err = dp.record.ScanColumnValueByIdx(dp.columnIdx, dest)
+	if dp.definition.Unmarshaller != nil {
+		value, err := dp.definition.Unmarshaller(dp.definition, dp.driver, rawValue)
+		if err != nil {
+			return fmt.Errorf("unable to perform custom unmarshaller: %w", err)
+		}
+		return ScanPointer(value, dest)
+	}
+
+	err = dp.driver.ScanValueByColumnIdx(dp.columnIdx, rawValue, dest)
 	if err != nil {
-		return fmt.Errorf("error scanning value: %w", err)
+		log.Debug().
+			Err(err).
+			Str("ParameterName", dp.definition.Name).
+			Str("RawValue", string(v.Data)).
+			Str("CastedValue", string(rawValue)).
+			Str("TableSchema", dp.driver.Table.Schema).
+			Str("TableName", dp.driver.Table.Name).
+			Msg("error decoding casted value")
+
+		return fmt.Errorf("error scanning casted value: %w", err)
 	}
 	return nil
 }

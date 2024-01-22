@@ -54,7 +54,7 @@ func NewTestTransformer(ctx context.Context, driver *toolkit.Driver, parameters 
 	toolkit.Transformer, toolkit.ValidationWarnings, error) {
 	c := parameters["column"]
 	var columnName string
-	if _, err := c.Scan(&columnName); err != nil {
+	if err := c.Scan(&columnName); err != nil {
 		return nil, nil, fmt.Errorf("error scanning column name")
 	}
 
