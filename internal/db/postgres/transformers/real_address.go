@@ -22,11 +22,12 @@ import (
 	"text/template"
 
 	"github.com/go-faker/faker/v4"
+
 	"github.com/greenmaskio/greenmask/internal/db/postgres/transformers/utils"
 	"github.com/greenmaskio/greenmask/pkg/toolkit"
 )
 
-var RealAddressTransformerDefinition = utils.NewDefinition(
+var RealAddressTransformerDefinition = utils.NewTransformerDefinition(
 	utils.NewTransformerProperties(
 		"RealAddress",
 		"Generate a real address",
@@ -34,7 +35,7 @@ var RealAddressTransformerDefinition = utils.NewDefinition(
 
 	NewRealAddressTransformer,
 
-	toolkit.MustNewParameter(
+	toolkit.MustNewParameterDefinition(
 		"columns",
 		"affected column names."+
 			"The structure:"+
@@ -69,12 +70,12 @@ type RealAddressValue struct {
 	Longitude  float64 `json:"lng"`
 }
 
-func NewRealAddressTransformer(ctx context.Context, driver *toolkit.Driver, parameters map[string]*toolkit.Parameter) (utils.Transformer, toolkit.ValidationWarnings, error) {
+func NewRealAddressTransformer(ctx context.Context, driver *toolkit.Driver, parameters map[string]toolkit.Parameterizer) (utils.Transformer, toolkit.ValidationWarnings, error) {
 	var warnings toolkit.ValidationWarnings
 	var columns []*RealAddressColumn
 
 	p := parameters["columns"]
-	if _, err := p.Scan(&columns); err != nil {
+	if err := p.Scan(&columns); err != nil {
 		return nil, nil, err
 	}
 

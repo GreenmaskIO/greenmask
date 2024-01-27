@@ -20,7 +20,83 @@ import (
 //			   allows to scan not pointer value into pointer receiver
 
 type DynamicParameterContext struct {
-	rawValue RawValue
+	//columnType string
+	column       *Column
+	linkedColumn *Column
+	rc           *RecordContext
+}
+
+func NewDynamicParameterContext(column *Column) *DynamicParameterContext {
+	if column == nil {
+		panic("column cannot be nil")
+	}
+
+	return &DynamicParameterContext{
+		column: column,
+		rc:     &RecordContext{},
+	}
+}
+
+func (dpc *DynamicParameterContext) setLinkedColumn(linkedColumn *Column) {
+	dpc.linkedColumn = linkedColumn
+}
+
+func (dpc *DynamicParameterContext) clean() {
+	dpc.rc.Clean()
+}
+
+func (dpc *DynamicParameterContext) setRecord(r *Record) {
+	dpc.rc.SetRecord(r)
+}
+
+func (dpc *DynamicParameterContext) GetColumnType() string {
+	return dpc.column.TypeName
+}
+
+func (dpc *DynamicParameterContext) GetValue() (any, error) {
+	return dpc.rc.GetColumnValue(dpc.column.Name)
+}
+
+func (dpc *DynamicParameterContext) GetRawValue() (any, error) {
+	return dpc.rc.GetRawColumnValue(dpc.column.Name)
+}
+
+func (dpc *DynamicParameterContext) GetColumnValue(name string) (any, error) {
+	return dpc.rc.GetColumnValue(name)
+}
+
+func (dpc *DynamicParameterContext) GetColumnRawValue(name string) (any, error) {
+	return dpc.rc.GetRawColumnValue(name)
+}
+
+func (dpc *DynamicParameterContext) EncodeValue(v any) (any, error) {
+	if dpc.linkedColumn == nil {
+		return nil, fmt.Errorf("unable to encode not linked prameter use .EncodeValueByColumn or EncodeValueByType intead")
+	}
+	return dpc.rc.EncodeValueByColumn(dpc.linkedColumn.Name, v)
+}
+
+func (dpc *DynamicParameterContext) DecodeValue(v any) (any, error) {
+	if dpc.linkedColumn == nil {
+		return nil, fmt.Errorf("unable to decode not linked prameter use .DecodeValueByColumn or DecodeValueByType intead")
+	}
+	return dpc.rc.DecodeValueByColumn(dpc.linkedColumn.TypeName, v)
+}
+
+func (dpc *DynamicParameterContext) EncodeValueByColumn(name string, v any) (any, error) {
+	return dpc.rc.EncodeValueByColumn(name, v)
+}
+
+func (dpc *DynamicParameterContext) DecodeValueByColumn(name string, v any) (any, error) {
+	return dpc.rc.DecodeValueByColumn(name, v)
+}
+
+func (dpc *DynamicParameterContext) EncodeValueByType(name string, v any) (any, error) {
+	return dpc.rc.EncodeValueByType(name, v)
+}
+
+func (dpc *DynamicParameterContext) DecodeValueByType(name string, v any) (any, error) {
+	return dpc.rc.DecodeValueByType(name, v)
 }
 
 type DynamicParameter struct {
@@ -85,6 +161,7 @@ func (dp *DynamicParameter) GetDefinition() *ParameterDefinition {
 
 func (dp *DynamicParameter) SetRecord(r *Record) {
 	dp.record = r
+	dp.tmplCtx.setRecord(r)
 }
 
 func (dp *DynamicParameter) Init(columnParameters map[string]*StaticParameter, dynamicValue *DynamicParamValue) (warnings ValidationWarnings, err error) {
@@ -124,7 +201,9 @@ func (dp *DynamicParameter) Init(columnParameters map[string]*StaticParameter, d
 	}
 
 	if dp.DynamicValue.CastTemplate != "" {
-		dp.tmpl, err = template.New("").Parse(dp.DynamicValue.CastTemplate)
+		dp.tmpl, err = template.New("").
+			Funcs(FuncMap()).
+			Parse(dp.DynamicValue.CastTemplate)
 		if err != nil {
 			warnings = append(
 				warnings,
@@ -160,6 +239,7 @@ func (dp *DynamicParameter) Init(columnParameters map[string]*StaticParameter, d
 			nil
 	}
 	dp.columnIdx = columnIdx
+	dp.tmplCtx = NewDynamicParameterContext(column)
 
 	if dp.definition.LinkColumnParameter != "" {
 		param, ok := columnParameters[dp.definition.LinkColumnParameter]
@@ -170,6 +250,7 @@ func (dp *DynamicParameter) Init(columnParameters map[string]*StaticParameter, d
 		if !dp.linkedColumnParameter.definition.IsColumn {
 			return nil, fmt.Errorf("linked parameter must be column: check transformer implementation")
 		}
+		dp.tmplCtx.setLinkedColumn(dp.linkedColumnParameter.Column)
 
 		// TODO: There is bug with column overriding type since OverriddenTypeOid is not checking
 		// TODO: Add CompatibleTypes checking there. Consider IsTypeAllowedWithTypeMap usage
@@ -224,6 +305,7 @@ func (dp *DynamicParameter) Init(columnParameters map[string]*StaticParameter, d
 }
 
 func (dp *DynamicParameter) Value() (value any, err error) {
+	dp.buf.Reset()
 	if dp.record == nil {
 		return nil, fmt.Errorf("check transformer implementation: dynamic parameter usage during initialization stage is prohibited")
 	}
@@ -309,6 +391,7 @@ func (dp *DynamicParameter) RawValue() (ParamsValue, error) {
 }
 
 func (dp *DynamicParameter) Scan(dest any) error {
+	dp.buf.Reset()
 	if dp.record == nil {
 		return fmt.Errorf("check transformer implementation: dynamic parameter usage during initialization stage is prohibited")
 	}
@@ -362,7 +445,12 @@ func (dp *DynamicParameter) Scan(dest any) error {
 		return ScanPointer(value, dest)
 	}
 
-	err = dp.driver.ScanValueByColumnIdx(dp.columnIdx, rawValue, dest)
+	err = scanValue(dp.driver, dp.definition, rawValue, dp.linkedColumnParameter, dest)
+	if err != nil {
+		return err
+	}
+
+	//err = dp.driver.ScanValueByColumnIdx(dp.columnIdx, rawValue, dest)
 	if err != nil {
 		log.Debug().
 			Err(err).

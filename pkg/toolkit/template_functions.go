@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package template
+package toolkit
 
 import (
 	"fmt"
@@ -31,8 +31,6 @@ import (
 	"github.com/spf13/cast"
 	"github.com/tidwall/gjson"
 	"github.com/tidwall/sjson"
-
-	"github.com/greenmaskio/greenmask/internal/db/postgres/transformers/utils"
 )
 
 var NullValue NullType = "\\N"
@@ -116,7 +114,7 @@ func FuncMap() template.FuncMap {
 		},
 		"noiseInt": func(ratio any, value any) (int64, error) { return noiseInt(randGen, ratio, value) },
 
-		"randomBool": func() bool { return utils.RandomBool(randGen) },
+		"randomBool": func() bool { return RandomBool(randGen) },
 		"randomDate": func(min, max time.Time) (time.Time, error) { return randomDate(randGen, min, max) },
 		"randomFloat": func(min, max any, precision ...any) (float64, error) {
 			return randomFloat(randGen, min, max, precision...)
@@ -184,6 +182,10 @@ func FuncMap() template.FuncMap {
 		// Faker UUID
 		"fakerUUID":      faker.UUIDHyphenated,
 		"fakerUUIDDigit": faker.UUIDDigit,
+
+		// Cast functions
+		"timeToUnix": timeToUnix,
+		"unixToTime": unixToTime,
 	}
 
 	tm := make(template.FuncMap)
@@ -191,6 +193,64 @@ func FuncMap() template.FuncMap {
 	maps.Copy(tm, springFuncMap)
 	maps.Copy(tm, Functions)
 	return tm
+}
+
+const (
+	secUnixUnixName   = "sec"
+	milliUnixUnixName = "milli"
+	microUnixUnixName = "micro"
+	nanoUnixUnixName  = "nano"
+)
+
+func validateUnixTimeUnit(unit string) error {
+	switch unit {
+	case secUnixUnixName, milliUnixUnixName, microUnixUnixName, nanoUnixUnixName:
+		return nil
+	default:
+		return fmt.Errorf("unknown unix time unit \"%s\"", unit)
+	}
+}
+
+func timeToUnix(unit string, date time.Time) (int64, error) {
+	if err := validateUnixTimeUnit(unit); err != nil {
+		return 0, err
+	}
+	switch unit {
+	case secUnixUnixName:
+		return date.Unix(), nil
+	case milliUnixUnixName:
+		return date.UnixMilli(), nil
+	case microUnixUnixName:
+		return date.UnixMicro(), nil
+	case nanoUnixUnixName:
+		return date.UnixNano(), nil
+	}
+	return 0, nil
+}
+
+func unixToTime(unit string, value any) (time.Time, error) {
+	if err := validateUnixTimeUnit(unit); err != nil {
+		return time.Time{}, err
+	}
+
+	unixTime, err := cast.ToInt64E(value)
+	if err != nil {
+		return time.Time{}, fmt.Errorf("error casting %+v to int64: %w", unixTime, err)
+	}
+
+	switch unit {
+	case secUnixUnixName:
+		return time.Unix(unixTime, 0), nil
+	case milliUnixUnixName:
+		return time.UnixMilli(unixTime), nil
+	case microUnixUnixName:
+		return time.UnixMicro(unixTime), nil
+	case nanoUnixUnixName:
+		seconds := unixTime / int64(time.Second)
+		nano := unixTime - seconds
+		return time.Unix(seconds, nano), nil
+	}
+	return time.Time{}, nil
 }
 
 func sqlCoalesce(vv ...any) any {
@@ -365,7 +425,7 @@ func masking(m *masker.Masker, dataType string, v string) (string, error) {
 
 // TruncateDate - truncate date till the provided part of date
 func truncateDate(part string, t time.Time) (time.Time, error) {
-	res, err := utils.TruncateDate(&part, &t)
+	res, err := TruncateDate(&part, &t)
 	if err != nil {
 		return time.Time{}, err
 	}
@@ -386,7 +446,7 @@ func noiseDatePgInterval(typeMap *pgtype.Map, randGen *rand.Rand, interval strin
 		(time.Duration(intervalValue.Months) * 30 * time.Hour * 24) +
 		(time.Duration(intervalValue.Microseconds) * time.Millisecond)
 
-	return *(utils.NoiseDateV2(randGen, ratio, &val)), nil
+	return *(NoiseDateV2(randGen, ratio, &val)), nil
 }
 
 func noiseFloat(randGen *rand.Rand, precision int, ratio any, value any) (float64, error) {
@@ -408,7 +468,7 @@ func noiseFloat(randGen *rand.Rand, precision int, ratio any, value any) (float6
 		return 0, fmt.Errorf("ratio must be in interval (0, 1] got %f", ratio)
 	}
 
-	return utils.NoiseFloat(randGen, r, v, precision), nil
+	return NoiseFloat(randGen, r, v, precision), nil
 }
 
 func noiseInt(randGen *rand.Rand, ratio any, value any) (int64, error) {
@@ -426,7 +486,7 @@ func noiseInt(randGen *rand.Rand, ratio any, value any) (int64, error) {
 		return 0, fmt.Errorf("ratio must be in interval (0, 1] got %f", ratio)
 	}
 
-	return utils.NoiseInt(randGen, r, v), nil
+	return NoiseInt(randGen, r, v), nil
 }
 
 // randomDate - generate date randomly in the interval [min, max]
@@ -434,7 +494,7 @@ func randomDate(randGen *rand.Rand, min, max time.Time) (time.Time, error) {
 	if min.After(max) {
 		return time.Time{}, fmt.Errorf("min date (%s) must before the max date (%s)", min.String(), max.String())
 	}
-	return *(utils.RandomDate(randGen, &min, &max)), nil
+	return *(RandomDate(randGen, &min, &max)), nil
 }
 
 // randomFloat - generate float randomly in the interval [min, max] with precision. By default precision is 4 digits
@@ -462,7 +522,7 @@ func randomFloat(randGen *rand.Rand, min, max any, precision ...any) (float64, e
 	if minFloat > maxFloat {
 		return 0, fmt.Errorf("min value (%f) must be less than the max (%f)", minFloat, maxFloat)
 	}
-	return utils.RandomFloat(randGen, minFloat, maxFloat, p), nil
+	return RandomFloat(randGen, minFloat, maxFloat, p), nil
 }
 
 func randomInt(randGen *rand.Rand, min, max any) (int64, error) {
@@ -478,7 +538,7 @@ func randomInt(randGen *rand.Rand, min, max any) (int64, error) {
 	if minInt > maxInt {
 		return 0, fmt.Errorf("min value (%d) must be less than the max (%d)", minInt, maxInt)
 	}
-	return utils.RandomInt(randGen, minInt, maxInt), nil
+	return RandomInt(randGen, minInt, maxInt), nil
 }
 
 // randomString - generate random string in the provided min and max length using provided symbols. By default symbols
@@ -508,7 +568,7 @@ func randomString(randGen *rand.Rand, minLength, maxLength any, symbols ...strin
 		return "", fmt.Errorf("minLength (%d) must be less or equal maxLengthInt (%d)", minLengthInt, maxLengthInt)
 	}
 	buf := make([]rune, maxLengthInt)
-	return utils.RandomString(randGen, minLengthInt, maxLengthInt, s, buf), nil
+	return RandomString(randGen, minLengthInt, maxLengthInt, s, buf), nil
 }
 
 func roundFloat(precision any, value any) (float64, error) {
@@ -524,5 +584,21 @@ func roundFloat(precision any, value any) (float64, error) {
 	if err != nil {
 		return 0, fmt.Errorf("error casting value (%+v) to float64: %w", v, err)
 	}
-	return utils.Round(p, v), nil
+	return Round(p, v), nil
 }
+
+// UnixToDate ("type" - > milli, nano, micro)
+// DateToUnix ("type" - > milli, nano, micro)
+// .UnixSecToDate
+// .UnixMsToDate
+
+// TODO: List of requored function for data type casting:
+// 	1. timestampToUnixTime
+//	2. timestampToUnixTime
+
+// When casting value you have to use raw value or real value?
+// It is likely it should be Raw Value
+
+// int -> time/date
+// time/date -> int
+// round

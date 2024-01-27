@@ -32,7 +32,6 @@ import (
 	"github.com/tidwall/sjson"
 
 	"github.com/greenmaskio/greenmask/internal/db/postgres/transformers/utils"
-	templateToolkit "github.com/greenmaskio/greenmask/internal/db/postgres/transformers/utils/template"
 	"github.com/greenmaskio/greenmask/pkg/toolkit"
 )
 
@@ -165,7 +164,7 @@ func NewJsonTransformer(ctx context.Context, driver *toolkit.Driver, parameters 
 	for idx, o := range ops {
 		if o.ValueTemplate != "" {
 			tmpl, err := template.New(fmt.Sprintf("op[%d] %s %s", idx, o.Operation, o.Path)).
-				Funcs(templateToolkit.FuncMap()).
+				Funcs(toolkit.FuncMap()).
 				Parse(o.ValueTemplate)
 			if err != nil {
 				return nil, nil, fmt.Errorf("error parsing template op[%d] with path \"%s\": %w", idx, o.Path, err)

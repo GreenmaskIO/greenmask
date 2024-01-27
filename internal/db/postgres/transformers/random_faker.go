@@ -20,6 +20,7 @@ import (
 
 	"github.com/go-faker/faker/v4"
 	"github.com/go-faker/faker/v4/pkg/options"
+
 	"github.com/greenmaskio/greenmask/internal/db/postgres/transformers/utils"
 	"github.com/greenmaskio/greenmask/pkg/toolkit"
 )
@@ -228,20 +229,20 @@ func generateFakerTransformers(registry *utils.TransformerRegistry) {
 
 	for name, def := range FakerTransformersDes {
 
-		td := utils.NewDefinition(
+		td := utils.NewTransformerDefinition(
 			utils.NewTransformerProperties(
 				name,
 				def.Description,
 			),
 			MakeNewFakeTransformerFunction(def.Generator),
-			toolkit.MustNewParameter(
+			toolkit.MustNewParameterDefinition(
 				"column",
 				"column name",
 			).SetIsColumn(toolkit.NewColumnProperties().
 				SetAffected(true).
 				SetAllowedColumnTypes(def.SupportedTypes...),
 			).SetRequired(true),
-			toolkit.MustNewParameter(
+			toolkit.MustNewParameterDefinition(
 				"keep_null",
 				"indicates that NULL values must not be replaced with transformed values",
 			).SetDefaultValue(
@@ -263,18 +264,18 @@ type FakeTransformer struct {
 }
 
 func MakeNewFakeTransformerFunction(generator FakerFunc) utils.NewTransformerFunc {
-	return func(ctx context.Context, driver *toolkit.Driver, parameters map[string]*toolkit.Parameter) (utils.Transformer, toolkit.ValidationWarnings, error) {
+	return func(ctx context.Context, driver *toolkit.Driver, parameters map[string]toolkit.Parameterizer) (utils.Transformer, toolkit.ValidationWarnings, error) {
 		return NewFakeTransformer(ctx, driver, parameters, generator)
 	}
 }
 
 func NewFakeTransformer(
-	ctx context.Context, driver *toolkit.Driver, parameters map[string]*toolkit.Parameter, generator FakerFunc,
+	ctx context.Context, driver *toolkit.Driver, parameters map[string]toolkit.Parameterizer, generator FakerFunc,
 ) (utils.Transformer, toolkit.ValidationWarnings, error) {
 	p := parameters["column"]
 	var columnName string
 	var keepNull bool
-	if _, err := p.Scan(&columnName); err != nil {
+	if err := p.Scan(&columnName); err != nil {
 		return nil, nil, fmt.Errorf("unable to parse column param: %w", err)
 	}
 
@@ -284,7 +285,7 @@ func NewFakeTransformer(
 	}
 
 	p = parameters["keep_null"]
-	if _, err := p.Scan(&keepNull); err != nil {
+	if err := p.Scan(&keepNull); err != nil {
 		return nil, nil, fmt.Errorf(`unable to scan "keep_null" param: %w`, err)
 	}
 

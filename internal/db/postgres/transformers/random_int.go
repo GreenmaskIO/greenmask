@@ -158,7 +158,7 @@ func (rit *RandomIntTransformer) Transform(ctx context.Context, r *toolkit.Recor
 		return r, nil
 	}
 
-	if err := r.SetColumnValueByIdx(rit.columnIdx, utils.RandomInt(rit.rand, minVal, maxVal)); err != nil {
+	if err := r.SetColumnValueByIdx(rit.columnIdx, toolkit.RandomInt(rit.rand, minVal, maxVal)); err != nil {
 		return nil, fmt.Errorf("unable to set new value: %w", err)
 	}
 	return r, nil

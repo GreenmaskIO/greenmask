@@ -200,7 +200,7 @@ func generateRandomTime(r *rand.Rand, startDate *time.Time, delta *int64, trunca
 }
 
 func generateRandomTimeTruncate(r *rand.Rand, startDate *time.Time, delta *int64, truncate *string) *time.Time {
-	res, _ := utils.TruncateDate(truncate, generateRandomTime(r, startDate, delta, truncate))
+	res, _ := toolkit.TruncateDate(truncate, generateRandomTime(r, startDate, delta, truncate))
 	return res
 }
 

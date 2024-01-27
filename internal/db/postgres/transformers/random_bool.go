@@ -105,7 +105,7 @@ func (rbt *RandomBoolTransformer) Transform(ctx context.Context, r *toolkit.Reco
 		return r, nil
 	}
 
-	if err := r.SetColumnValueByIdx(rbt.columnIdx, utils.RandomBool(rbt.rand)); err != nil {
+	if err := r.SetColumnValueByIdx(rbt.columnIdx, toolkit.RandomBool(rbt.rand)); err != nil {
 		return nil, fmt.Errorf("unable to set new value: %w", err)
 	}
 	return r, nil

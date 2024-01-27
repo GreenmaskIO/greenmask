@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package template
+package toolkit
 
 import (
 	"bytes"
@@ -967,6 +967,38 @@ func TestFuncMap_roundFloat(t *testing.T) {
 	tmpl, err := template.New("test").Funcs(FuncMap()).Parse(tmplStr)
 	require.NoError(t, err)
 	err = tmpl.Execute(buf, nil)
+	require.NoError(t, err)
+	res := buf.String()
+	require.Equal(t, expected, res)
+}
+
+func TestFuncMap_timeToUnix(t *testing.T) {
+	expected := "1706373033"
+	buf := bytes.NewBuffer(nil)
+	tmplStr := `
+		{{- . | timeToUnix "sec" -}}
+	`
+	obj := time.Unix(1706373033, 0)
+
+	tmpl, err := template.New("test").Funcs(FuncMap()).Parse(tmplStr)
+	require.NoError(t, err)
+	err = tmpl.Execute(buf, obj)
+	require.NoError(t, err)
+	res := buf.String()
+	require.Equal(t, expected, res)
+}
+
+func TestFuncMap_unixToTime(t *testing.T) {
+	expected := "2024-01-27 18:30:33 +0200 EET"
+	buf := bytes.NewBuffer(nil)
+	tmplStr := `
+		{{- . | unixToTime "sec" -}}
+	`
+	obj := 1706373033
+
+	tmpl, err := template.New("test").Funcs(FuncMap()).Parse(tmplStr)
+	require.NoError(t, err)
+	err = tmpl.Execute(buf, obj)
 	require.NoError(t, err)
 	res := buf.String()
 	require.Equal(t, expected, res)

@@ -128,7 +128,7 @@ func (nft *NoiseFloatTransformer) Transform(ctx context.Context, r *toolkit.Reco
 	if isNull {
 		return r, nil
 	}
-	err = r.SetColumnValueByIdx(nft.columnIdx, utils.NoiseFloat(nft.rand, nft.ratio, val, nft.precision))
+	err = r.SetColumnValueByIdx(nft.columnIdx, toolkit.NoiseFloat(nft.rand, nft.ratio, val, nft.precision))
 	if err != nil {
 		return nil, fmt.Errorf("unable to set new value: %w", err)
 	}

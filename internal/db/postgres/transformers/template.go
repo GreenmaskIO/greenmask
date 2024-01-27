@@ -22,7 +22,6 @@ import (
 	"text/template"
 
 	"github.com/greenmaskio/greenmask/internal/db/postgres/transformers/utils"
-	templateToolkit "github.com/greenmaskio/greenmask/internal/db/postgres/transformers/utils/template"
 	"github.com/greenmaskio/greenmask/pkg/toolkit"
 )
 
@@ -82,7 +81,7 @@ func NewTemplateTransformer(ctx context.Context, driver *toolkit.Driver, paramet
 		return nil, nil, fmt.Errorf("unable to scan \"templateStr\" param: %w", err)
 	}
 
-	t := template.New("tmpl").Funcs(templateToolkit.FuncMap())
+	t := template.New("tmpl").Funcs(toolkit.FuncMap())
 	tmpl, err := t.Parse(templateStr)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error parsing template: %w", err)

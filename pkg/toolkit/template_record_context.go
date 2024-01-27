@@ -12,16 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package template
+package toolkit
 
 import (
 	"fmt"
-
-	"github.com/greenmaskio/greenmask/pkg/toolkit"
 )
 
 type RecordContext struct {
-	record         *toolkit.Record
+	record         *Record
 	changedColumns map[string]struct{}
 }
 
@@ -40,7 +38,7 @@ func (rc *RecordContext) Clean() {
 	}
 }
 
-func (rc *RecordContext) SetRecord(r *toolkit.Record) {
+func (rc *RecordContext) SetRecord(r *Record) {
 	rc.record = r
 }
 
@@ -75,12 +73,12 @@ func (rc *RecordContext) GetRawColumnValue(name string) (any, error) {
 }
 
 func (rc *RecordContext) SetColumnValue(name string, v any) (bool, error) {
-	var val *toolkit.Value
+	var val *Value
 	switch v.(type) {
 	case NullType:
-		val = toolkit.NewValue(nil, true)
+		val = NewValue(nil, true)
 	default:
-		val = toolkit.NewValue(v, false)
+		val = NewValue(v, false)
 	}
 	err := rc.record.SetColumnValueByName(name, val)
 	if err != nil {
@@ -90,12 +88,12 @@ func (rc *RecordContext) SetColumnValue(name string, v any) (bool, error) {
 }
 
 func (rc *RecordContext) SetRawColumnValue(name string, v any) (bool, error) {
-	var val *toolkit.RawValue
+	var val *RawValue
 	switch vv := v.(type) {
 	case NullType:
-		val = toolkit.NewRawValue(nil, true)
+		val = NewRawValue(nil, true)
 	case string:
-		val = toolkit.NewRawValue([]byte(vv), false)
+		val = NewRawValue([]byte(vv), false)
 	default:
 		return false, fmt.Errorf("the raw value must be NullValue or string received %+v", vv)
 	}

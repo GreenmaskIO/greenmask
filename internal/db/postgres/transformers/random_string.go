@@ -145,7 +145,7 @@ func (rst *RandomStringTransformer) Transform(ctx context.Context, r *toolkit.Re
 		return r, nil
 	}
 
-	res := utils.RandomString(rst.rand, rst.min, rst.max, rst.symbols, rst.buf)
+	res := toolkit.RandomString(rst.rand, rst.min, rst.max, rst.symbols, rst.buf)
 	if err := r.SetColumnValueByIdx(rst.columnIdx, &res); err != nil {
 		return nil, fmt.Errorf("unable to set new value: %w", err)
 	}

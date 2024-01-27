@@ -3,7 +3,6 @@ package transformers
 import (
 	"github.com/tidwall/gjson"
 
-	"github.com/greenmaskio/greenmask/internal/db/postgres/transformers/utils/template"
 	"github.com/greenmaskio/greenmask/pkg/toolkit"
 )
 
@@ -11,12 +10,12 @@ type JsonContext struct {
 	exists        bool
 	originalValue any
 	path          string
-	rc            *template.RecordContext
+	rc            *toolkit.RecordContext
 }
 
 func NewJsonContext() *JsonContext {
 	return &JsonContext{
-		rc: &template.RecordContext{},
+		rc: &toolkit.RecordContext{},
 	}
 }
 

@@ -165,7 +165,7 @@ func (rft *RandomFloatTransformer) Transform(ctx context.Context, r *toolkit.Rec
 		return r, nil
 	}
 
-	err = r.SetColumnValueByIdx(rft.columnIdx, utils.RandomFloat(rft.rand, minVal, maxVal, rft.precision))
+	err = r.SetColumnValueByIdx(rft.columnIdx, toolkit.RandomFloat(rft.rand, minVal, maxVal, rft.precision))
 	if err != nil {
 		return nil, fmt.Errorf("unable to set new value: %w", err)
 	}

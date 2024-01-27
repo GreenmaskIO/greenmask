@@ -22,7 +22,6 @@ import (
 	"text/template"
 
 	"github.com/greenmaskio/greenmask/internal/db/postgres/transformers/utils"
-	templateToolkit "github.com/greenmaskio/greenmask/internal/db/postgres/transformers/utils/template"
 	"github.com/greenmaskio/greenmask/pkg/toolkit"
 )
 
@@ -56,7 +55,7 @@ type TemplateRecordTransformer struct {
 	affectedColumns map[int]string
 	tmpl            *template.Template
 	buf             *bytes.Buffer
-	tctx            *templateToolkit.RecordContext
+	tctx            *toolkit.RecordContext
 	columns         []string
 }
 
@@ -69,7 +68,7 @@ func NewTemplateRecordTransformer(ctx context.Context, driver *toolkit.Driver, p
 		return nil, nil, fmt.Errorf("unable to scan \"template\" param: %w", err)
 	}
 
-	t := template.New("tmpl").Funcs(templateToolkit.FuncMap())
+	t := template.New("tmpl").Funcs(toolkit.FuncMap())
 	tmpl, err := t.Parse(templateStr)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error parsing template: %w", err)
@@ -103,7 +102,7 @@ func NewTemplateRecordTransformer(ctx context.Context, driver *toolkit.Driver, p
 		affectedColumns: affectedColumns,
 		tmpl:            tmpl,
 		buf:             bytes.NewBuffer(nil),
-		tctx:            templateToolkit.NewRecordContext(),
+		tctx:            toolkit.NewRecordContext(),
 		columns:         columns,
 	}, warnings, nil
 }

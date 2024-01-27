@@ -110,7 +110,7 @@ func (nit *NoiseIntTransformer) Transform(ctx context.Context, r *toolkit.Record
 		return r, nil
 	}
 
-	if err := r.SetColumnValueByIdx(nit.columnIdx, utils.NoiseInt(nit.rand, nit.ratio, val)); err != nil {
+	if err := r.SetColumnValueByIdx(nit.columnIdx, toolkit.NoiseInt(nit.rand, nit.ratio, val)); err != nil {
 		return nil, fmt.Errorf("unable to set new value: %w", err)
 	}
 	return r, nil
