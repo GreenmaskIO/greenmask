@@ -4,7 +4,7 @@ CMD_FILES = $(wildcard *.go)
 TEST_FILES = $(wildcard *.go)
 COVERAGE_FILE := coverage.out
 VERSION ?= $(shell git tag --points-at HEAD)
-LDFLAGS ?= -X main.version=$(VERSION)
+LDFLAGS ?= -X github.com/greenmaskio/greenmask/cmd/greenmask/cmd.Version=$(VERSION)
 
 .PHONY: build
 
