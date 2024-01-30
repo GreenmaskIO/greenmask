@@ -73,7 +73,7 @@ func (r *Row) Decode(raw []byte) error {
 
 	// Building column position slice
 	idx := 0
-	for colStartPos < len(raw) {
+	for colStartPos <= len(raw) {
 
 		colEndPos = slices.Index(raw[colStartPos:], DefaultCopyDelimiter)
 		if colEndPos == -1 {

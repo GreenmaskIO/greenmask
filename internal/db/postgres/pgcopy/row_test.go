@@ -23,6 +23,80 @@ import (
 	"github.com/greenmaskio/greenmask/pkg/toolkit"
 )
 
+func TestDecode_positions_panic_error_regression(t *testing.T) {
+	// This case was found in https://github.com/GreenmaskIO/greenmask/issues/2
+	// Fixed bug:
+	// 	The position array Row.columnPos contained wrong values for the last column if the value is empty string
+	// 	This caused panic or corrupt dump due to the wrong positions that were not overridden after previous COPY line
+	//	parsing
+
+	type params struct {
+		record []byte
+	}
+
+	type expected struct {
+		positions []*columnPos
+		values    []string
+	}
+
+	type test struct {
+		name     string
+		params   params
+		expected expected
+	}
+
+	length := 4
+
+	tests := []test{
+		{
+			name: "not empty",
+			params: params{
+				record: []byte("27\t1213\t\tasda"),
+			},
+			expected: expected{
+				positions: []*columnPos{
+					{0, 2}, {3, 7}, {8, 8}, {9, 13},
+				},
+				values: []string{"27", "1213", "", "asda"},
+			},
+		},
+		{
+			name: "empty last two col",
+			params: params{
+				record: []byte("27\t12\t\t"),
+			},
+			expected: expected{
+				positions: []*columnPos{
+					{0, 2}, {3, 5}, {6, 6}, {7, 7},
+				},
+				values: []string{"27", "12", "", ""},
+			},
+		},
+	}
+
+	row := NewRow(length)
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := row.Decode(tt.params.record)
+			require.NoError(t, err)
+			require.Equal(t, len(tt.expected.positions), len(row.columnPos))
+
+			for idx, _ := range row.columnPos {
+				assert.Equalf(t, tt.expected.positions[idx].start, row.columnPos[idx].start, "wrong start value for idx %d", idx)
+				assert.Equalf(t, tt.expected.positions[idx].end, row.columnPos[idx].end, "wrong end value for idx %d", idx)
+			}
+
+			for idx, _ := range tt.expected.values {
+				v, err := row.GetColumn(idx)
+				require.NoErrorf(t, err, "unexpected error for idx %d", idx)
+				require.Falsef(t, v.IsNull, "unexpected NULL value for idx %d", idx)
+				require.Equalf(t, tt.expected.values[idx], string(v.Data), "unexpected value for idx %d", idx)
+			}
+		})
+	}
+}
+
 func TestDecode(t *testing.T) {
 
 	type result struct {
