@@ -184,8 +184,8 @@ func FuncMap() template.FuncMap {
 		"fakerUUIDDigit": faker.UUIDDigit,
 
 		// Cast functions
-		"timeToUnix": timeToUnix,
-		"unixToTime": unixToTime,
+		//"timeToUnix": timeToUnix,
+		//"unixToTime": unixToTime,
 	}
 
 	tm := make(template.FuncMap)
@@ -193,64 +193,6 @@ func FuncMap() template.FuncMap {
 	maps.Copy(tm, springFuncMap)
 	maps.Copy(tm, Functions)
 	return tm
-}
-
-const (
-	secUnixUnixName   = "sec"
-	milliUnixUnixName = "milli"
-	microUnixUnixName = "micro"
-	nanoUnixUnixName  = "nano"
-)
-
-func validateUnixTimeUnit(unit string) error {
-	switch unit {
-	case secUnixUnixName, milliUnixUnixName, microUnixUnixName, nanoUnixUnixName:
-		return nil
-	default:
-		return fmt.Errorf("unknown unix time unit \"%s\"", unit)
-	}
-}
-
-func timeToUnix(unit string, date time.Time) (int64, error) {
-	if err := validateUnixTimeUnit(unit); err != nil {
-		return 0, err
-	}
-	switch unit {
-	case secUnixUnixName:
-		return date.Unix(), nil
-	case milliUnixUnixName:
-		return date.UnixMilli(), nil
-	case microUnixUnixName:
-		return date.UnixMicro(), nil
-	case nanoUnixUnixName:
-		return date.UnixNano(), nil
-	}
-	return 0, nil
-}
-
-func unixToTime(unit string, value any) (time.Time, error) {
-	if err := validateUnixTimeUnit(unit); err != nil {
-		return time.Time{}, err
-	}
-
-	unixTime, err := cast.ToInt64E(value)
-	if err != nil {
-		return time.Time{}, fmt.Errorf("error casting %+v to int64: %w", unixTime, err)
-	}
-
-	switch unit {
-	case secUnixUnixName:
-		return time.Unix(unixTime, 0), nil
-	case milliUnixUnixName:
-		return time.UnixMilli(unixTime), nil
-	case microUnixUnixName:
-		return time.UnixMicro(unixTime), nil
-	case nanoUnixUnixName:
-		seconds := unixTime / int64(time.Second)
-		nano := unixTime - seconds
-		return time.Unix(seconds, nano), nil
-	}
-	return time.Time{}, nil
 }
 
 func sqlCoalesce(vv ...any) any {
