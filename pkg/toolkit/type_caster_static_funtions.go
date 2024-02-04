@@ -169,7 +169,7 @@ var CastFunctionsMap = map[string]*TypeCastDefinition{
 	},
 
 	"FloatToInt": {
-		Cast:        CastIntToFloat,
+		Cast:        CastFloatToInt,
 		InputTypes:  []string{"numeric", "float4", "float8"},
 		OutputTypes: []string{"int2", "int4", "int8", "numeric"},
 	},
