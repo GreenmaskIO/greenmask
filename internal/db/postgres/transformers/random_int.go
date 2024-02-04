@@ -135,8 +135,17 @@ func (rit *RandomIntTransformer) Done(ctx context.Context) error {
 }
 
 func (rit *RandomIntTransformer) Transform(ctx context.Context, r *toolkit.Record) (*toolkit.Record, error) {
+
+	val, err := r.GetRawColumnValueByIdx(rit.columnIdx)
+	if err != nil {
+		return nil, fmt.Errorf("unable to scan value: %w", err)
+	}
+	if val.IsNull && rit.keepNull {
+		return r, nil
+	}
+
 	var minVal, maxVal int64
-	err := rit.minParam.Scan(&minVal)
+	err = rit.minParam.Scan(&minVal)
 	if err != nil {
 		return nil, fmt.Errorf(`unable to scan "min" param: %w`, err)
 	}
@@ -148,14 +157,6 @@ func (rit *RandomIntTransformer) Transform(ctx context.Context, r *toolkit.Recor
 
 	if minVal >= maxVal {
 		return nil, fmt.Errorf("max value must be greater than min: got min = %d max = %d", minVal, maxVal)
-	}
-
-	val, err := r.GetRawColumnValueByIdx(rit.columnIdx)
-	if err != nil {
-		return nil, fmt.Errorf("unable to scan value: %w", err)
-	}
-	if val.IsNull && rit.keepNull {
-		return r, nil
 	}
 
 	if err := r.SetColumnValueByIdx(rit.columnIdx, toolkit.RandomInt(rit.rand, minVal, maxVal)); err != nil {

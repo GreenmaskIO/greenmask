@@ -168,6 +168,16 @@ var CastFunctionsMap = map[string]*TypeCastDefinition{
 		OutputTypes: []string{"int2", "int4", "int8", "numeric", "float4", "float8"},
 	},
 
+	"FloatToInt": {
+		Cast:        CastIntToFloat,
+		InputTypes:  []string{"numeric", "float4", "float8"},
+		OutputTypes: []string{"int2", "int4", "int8", "numeric"},
+	},
+	"IntToFloat": {
+		Cast:        CastIntToFloat,
+		InputTypes:  []string{"int2", "int4", "int8", "numeric"},
+		OutputTypes: []string{"numeric", "float4", "float8"},
+	},
 	"IntToBool": {
 		Cast:        IntToBool,
 		InputTypes:  []string{"int2", "int4", "int8", "numeric", "float4", "float8"},
@@ -190,6 +200,7 @@ type TypeCastDefinition struct {
 }
 
 func (tcd *TypeCastDefinition) ValidateTypes(inputType, outputType string) bool {
+	// TODO: Check root base domain type
 	return slices.Contains(tcd.InputTypes, inputType) && slices.Contains(tcd.OutputTypes, outputType)
 }
 
@@ -296,7 +307,7 @@ func unixLikeToTimeLikeFuncMaker(inputType, unixTimeUnit string) TypeCastFunc {
 	}
 
 	return func(driver *Driver, input []byte) (output []byte, err error) {
-		unixTime, err := cast.ToInt64E(input)
+		unixTime, err := cast.ToInt64E(string(input))
 		if err != nil {
 			return nil, fmt.Errorf("error casting %+v to int64: %w", unixTime, err)
 		}
@@ -304,8 +315,6 @@ func unixLikeToTimeLikeFuncMaker(inputType, unixTimeUnit string) TypeCastFunc {
 		return driver.EncodeValueByTypeName(inputType, generate(unixTime), output)
 	}
 }
-
-var ()
 
 // Date-like -> Unix types cast
 func timeLikeToUnixLikeFuncMaker(inputType, unixTimeUnit string) TypeCastFunc {

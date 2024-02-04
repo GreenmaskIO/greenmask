@@ -166,14 +166,19 @@ func TryRegisterCustomTypes(typeMap *pgtype.Map, types []*Type, silent bool) {
 	}
 }
 
+func GetCanonicalTypeName(driver *Driver, typeName string, typeOid uint32) string {
+	pgType, ok := driver.GetTypeMap().TypeForOID(typeOid)
+	if ok {
+		typeName = pgType.Name
+	}
+	return typeName
+}
+
 func IsTypeAllowedWithTypeMap(
 	driver *Driver, allowedTypes []string, typeName string, typeOid Oid, checkInherited bool,
 ) bool {
 	// Get canonical type name by type Oid if exists otherwise use provided name
-	pgType, ok := driver.GetTypeMap().TypeForOID(uint32(typeOid))
-	if ok {
-		typeName = pgType.Name
-	}
+	typeName = GetCanonicalTypeName(driver, typeName, uint32(typeOid))
 	return IsTypeAllowed(driver, allowedTypes, typeName, checkInherited)
 }
 

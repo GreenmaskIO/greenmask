@@ -142,8 +142,17 @@ func (rft *RandomFloatTransformer) Done(ctx context.Context) error {
 }
 
 func (rft *RandomFloatTransformer) Transform(ctx context.Context, r *toolkit.Record) (*toolkit.Record, error) {
+
+	valAny, err := r.GetRawColumnValueByIdx(rft.columnIdx)
+	if err != nil {
+		return nil, fmt.Errorf("unable to scan value: %w", err)
+	}
+	if valAny.IsNull && rft.keepNull {
+		return r, nil
+	}
+
 	var minVal, maxVal float64
-	err := rft.minParam.Scan(&minVal)
+	err = rft.minParam.Scan(&minVal)
 	if err != nil {
 		return nil, fmt.Errorf(`error getting "min" parameter value: %w`, err)
 	}
@@ -155,14 +164,6 @@ func (rft *RandomFloatTransformer) Transform(ctx context.Context, r *toolkit.Rec
 
 	if minVal >= maxVal {
 		return nil, fmt.Errorf("max value must be greater than min: got min = %f max = %f", minVal, maxVal)
-	}
-
-	valAny, err := r.GetRawColumnValueByIdx(rft.columnIdx)
-	if err != nil {
-		return nil, fmt.Errorf("unable to scan value: %w", err)
-	}
-	if valAny.IsNull && rft.keepNull {
-		return r, nil
 	}
 
 	err = r.SetColumnValueByIdx(rft.columnIdx, toolkit.RandomFloat(rft.rand, minVal, maxVal, rft.precision))

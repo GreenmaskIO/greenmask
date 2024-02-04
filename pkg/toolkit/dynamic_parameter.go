@@ -124,6 +124,7 @@ type DynamicParameter struct {
 	defaultValueGot     any
 	rawDefaultValue     ParamsValue
 	tmplCtx             *DynamicParameterContext
+	castToFunc          TypeCastFunc
 }
 
 func NewDynamicParameter(def *ParameterDefinition, driver *Driver) *DynamicParameter {
@@ -181,7 +182,7 @@ func (dp *DynamicParameter) Init(columnParameters map[string]*StaticParameter, d
 	}
 	dp.DynamicValue = dynamicValue
 
-	if dynamicValue.Column == "" {
+	if dp.DynamicValue.Column == "" {
 		warnings = append(
 			warnings,
 			NewValidationWarning().
@@ -241,6 +242,35 @@ func (dp *DynamicParameter) Init(columnParameters map[string]*StaticParameter, d
 	dp.columnIdx = columnIdx
 	dp.tmplCtx = NewDynamicParameterContext(column)
 
+	var castFuncDef *TypeCastDefinition
+	if dp.DynamicValue.CastTo != "" {
+		if dp.definition.LinkColumnParameter == "" {
+			warnings = append(
+				warnings,
+				NewValidationWarning().
+					SetSeverity(ErrorValidationSeverity).
+					SetMsg("cast_to parameter is not supported for Non Linked transformer parameters").
+					AddMeta("CastToFuncName", dp.DynamicValue.CastTo).
+					AddMeta("DynamicParameterSetting", "cast_to"),
+			)
+			return warnings, nil
+		}
+
+		castFuncDef, ok = CastFunctionsMap[dp.DynamicValue.CastTo]
+		if !ok {
+			warnings = append(
+				warnings,
+				NewValidationWarning().
+					SetSeverity(ErrorValidationSeverity).
+					SetMsg("unable to find cast_to function").
+					AddMeta("CastToFuncName", dp.DynamicValue.CastTo).
+					AddMeta("DynamicParameterSetting", "cast_to"),
+			)
+			return warnings, nil
+		}
+		dp.castToFunc = castFuncDef.Cast
+	}
+
 	if dp.definition.LinkColumnParameter != "" {
 		param, ok := columnParameters[dp.definition.LinkColumnParameter]
 		if !ok {
@@ -252,9 +282,28 @@ func (dp *DynamicParameter) Init(columnParameters map[string]*StaticParameter, d
 		}
 		dp.tmplCtx.setLinkedColumn(dp.linkedColumnParameter.Column)
 
+		inputType := GetCanonicalTypeName(dp.driver, column.TypeName, uint32(column.TypeOid))
+		outputType := GetCanonicalTypeName(dp.driver, dp.linkedColumnParameter.Column.TypeName, uint32(dp.linkedColumnParameter.Column.TypeOid))
+
+		if !castFuncDef.ValidateTypes(inputType, outputType) {
+			warnings = append(
+				warnings,
+				NewValidationWarning().
+					SetSeverity(ErrorValidationSeverity).
+					SetMsg("type cast function has unsupported input or output types").
+					AddMeta("AllowedInputTypes", castFuncDef.InputTypes).
+					AddMeta("AllowedOutputTypes", castFuncDef.OutputTypes).
+					AddMeta("RequestedInputType", inputType).
+					AddMeta("RequestedOutputType", outputType).
+					AddMeta("CastToFuncName", dp.DynamicValue.CastTo).
+					AddMeta("DynamicParameterSetting", "cast_to"),
+			)
+			return warnings, nil
+		}
+
 		// TODO: There is bug with column overriding type since OverriddenTypeOid is not checking
 		// TODO: Add CompatibleTypes checking there. Consider IsTypeAllowedWithTypeMap usage
-		if dp.tmpl == nil {
+		if dp.tmpl == nil && dp.castToFunc == nil {
 			// Check that column parameter has the same type with dynamic parameter value or at least dynamic parameter
 			// column is compatible with type in the list. This logic is controversial since it might be unexpected
 			// when dynamic param column has different though compatible types. Consider it
@@ -315,11 +364,13 @@ func (dp *DynamicParameter) Value() (value any, err error) {
 		return nil, fmt.Errorf("erro getting raw column value: %w", err)
 	}
 
+	var usedDefaultValue bool
+
 	if v.IsNull {
 		if !dp.hasDefaultValue {
 			return nil, fmt.Errorf("received NULL value from dynamic parameter")
 		}
-
+		usedDefaultValue = true
 		if dp.defaultValueGot == nil {
 			res, err := getValue(dp.driver, dp.definition, dp.rawDefaultValue, dp.linkedColumnParameter)
 			if err != nil {
@@ -332,7 +383,7 @@ func (dp *DynamicParameter) Value() (value any, err error) {
 
 	rawValue := v.Data
 
-	if dp.tmpl != nil {
+	if dp.tmpl != nil && !usedDefaultValue {
 		if err = dp.tmpl.Execute(dp.buf, dp.tmplCtx); err != nil {
 			log.Debug().
 				Err(err).
@@ -340,11 +391,26 @@ func (dp *DynamicParameter) Value() (value any, err error) {
 				Str("RawValue", string(v.Data)).
 				Str("TableSchema", dp.driver.Table.Schema).
 				Str("TableName", dp.driver.Table.Name).
+				Str("Error", err.Error()).
 				Msg("error executing cast template")
 
 			return nil, fmt.Errorf("error executing cast template: %w", err)
 		}
 		rawValue = dp.buf.Bytes()
+	} else if dp.castToFunc != nil && !usedDefaultValue {
+		rawValue, err = dp.castToFunc(dp.driver, rawValue)
+		if err != nil {
+			log.Debug().
+				Err(err).
+				Str("ParameterName", dp.definition.Name).
+				Str("RawValue", string(v.Data)).
+				Str("TableSchema", dp.driver.Table.Schema).
+				Str("TableName", dp.driver.Table.Name).
+				Str("Error", err.Error()).
+				Msg("error executing cast_to function")
+
+			return nil, fmt.Errorf("error executing cast_to function: %w", err)
+		}
 	}
 
 	if dp.definition.Unmarshaller != nil {
@@ -422,7 +488,8 @@ func (dp *DynamicParameter) Scan(dest any) error {
 
 	rawValue := v.Data
 
-	if dp.tmpl != nil {
+	var usedDefaultValue bool
+	if dp.tmpl != nil && !usedDefaultValue {
 		if err = dp.tmpl.Execute(dp.buf, dp.tmplCtx); err != nil {
 			log.Debug().
 				Err(err).
@@ -430,11 +497,26 @@ func (dp *DynamicParameter) Scan(dest any) error {
 				Str("RawValue", string(v.Data)).
 				Str("TableSchema", dp.driver.Table.Schema).
 				Str("TableName", dp.driver.Table.Name).
+				Str("Error", err.Error()).
 				Msg("error executing cast template")
 
 			return fmt.Errorf("error executing cast template: %w", err)
 		}
 		rawValue = dp.buf.Bytes()
+	} else if dp.castToFunc != nil && !usedDefaultValue {
+		rawValue, err = dp.castToFunc(dp.driver, rawValue)
+		if err != nil {
+			log.Debug().
+				Err(err).
+				Str("ParameterName", dp.definition.Name).
+				Str("RawValue", string(v.Data)).
+				Str("TableSchema", dp.driver.Table.Schema).
+				Str("TableName", dp.driver.Table.Name).
+				Str("Error", err.Error()).
+				Msg("error executing cast_to function")
+
+			return fmt.Errorf("error executing cast_to function: %w", err)
+		}
 	}
 
 	if dp.definition.Unmarshaller != nil {

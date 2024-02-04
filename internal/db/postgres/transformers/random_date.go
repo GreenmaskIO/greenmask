@@ -161,8 +161,16 @@ func (rdt *RandomDateTransformer) Done(ctx context.Context) error {
 
 func (rdt *RandomDateTransformer) Transform(ctx context.Context, r *toolkit.Record) (*toolkit.Record, error) {
 
+	valAny, err := r.GetRawColumnValueByIdx(rdt.columnIdx)
+	if err != nil {
+		return nil, fmt.Errorf("unable to scan value: %w", err)
+	}
+	if valAny.IsNull && rdt.keepNull {
+		return r, nil
+	}
+
 	minTime := &time.Time{}
-	err := rdt.minParam.Scan(minTime)
+	err = rdt.minParam.Scan(minTime)
 	if err != nil {
 		return nil, fmt.Errorf(`error getting "min" parameter value: %w`, err)
 	}
@@ -175,14 +183,6 @@ func (rdt *RandomDateTransformer) Transform(ctx context.Context, r *toolkit.Reco
 
 	if minTime.After(*maxTime) {
 		return nil, fmt.Errorf("max value must be greater than min: got min = %s max = %s", minTime.String(), maxTime.String())
-	}
-
-	valAny, err := r.GetRawColumnValueByIdx(rdt.columnIdx)
-	if err != nil {
-		return nil, fmt.Errorf("unable to scan value: %w", err)
-	}
-	if valAny.IsNull && rdt.keepNull {
-		return r, nil
 	}
 
 	delta := int64(maxTime.Sub(*minTime))
