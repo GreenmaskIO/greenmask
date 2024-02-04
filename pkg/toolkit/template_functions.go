@@ -184,8 +184,8 @@ func FuncMap() template.FuncMap {
 		"fakerUUIDDigit": faker.UUIDDigit,
 
 		// Cast functions
-		//"timeToUnix": timeToUnix,
-		//"unixToTime": unixToTime,
+		"timeToUnix": timeToUnix,
+		"unixToTime": unixToTime,
 	}
 
 	tm := make(template.FuncMap)
