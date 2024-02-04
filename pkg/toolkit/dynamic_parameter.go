@@ -285,7 +285,7 @@ func (dp *DynamicParameter) Init(columnParameters map[string]*StaticParameter, d
 		inputType := GetCanonicalTypeName(dp.driver, column.TypeName, uint32(column.TypeOid))
 		outputType := GetCanonicalTypeName(dp.driver, dp.linkedColumnParameter.Column.TypeName, uint32(dp.linkedColumnParameter.Column.TypeOid))
 
-		if !castFuncDef.ValidateTypes(inputType, outputType) {
+		if castFuncDef != nil && !castFuncDef.ValidateTypes(inputType, outputType) {
 			warnings = append(
 				warnings,
 				NewValidationWarning().

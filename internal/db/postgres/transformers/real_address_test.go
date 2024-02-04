@@ -19,8 +19,9 @@ import (
 	"encoding/json"
 	"testing"
 
-	"github.com/greenmaskio/greenmask/pkg/toolkit"
 	"github.com/stretchr/testify/require"
+
+	"github.com/greenmaskio/greenmask/pkg/toolkit"
 )
 
 func TestRealAddressTransformer_Transform(t *testing.T) {
@@ -48,7 +49,7 @@ func TestRealAddressTransformer_Transform(t *testing.T) {
 	require.NoError(t, err)
 	require.Empty(t, warnings)
 
-	_, err = transformer.Transform(context.Background(), record)
+	_, err = transformer.Transformer.Transform(context.Background(), record)
 	require.NoError(t, err)
 	rawValue, err := record.GetRawColumnValueByName("data")
 	require.NoError(t, err)

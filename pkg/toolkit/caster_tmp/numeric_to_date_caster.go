@@ -12,8 +12,8 @@ import (
 
 var NumericToDateCasterDefinition = &TypeCasterDefinitionV2{
 	New:             NewNumericToDateCaster,
-	InputTypeClass:  toolkit.NumericClass,
-	OutputTypeClass: toolkit.DateClass,
+	InputTypeClass:  NumericClass,
+	OutputTypeClass: DateClass,
 }
 
 type NumericToDateCaster struct {
@@ -46,7 +46,7 @@ func NewNumericToDateCaster(driver *toolkit.Driver, inputType, outputType string
 		return nil, fmt.Errorf("unsupported input type \"%s\"", inputType)
 	}
 
-	if !toolkit.isTypeCompatible(nil, toolkit.DateClass, outputType) {
+	if !toolkit.isTypeCompatible(nil, DateClass, outputType) {
 		return nil, fmt.Errorf("unsupported output type \"%s\"", inputType)
 	}
 

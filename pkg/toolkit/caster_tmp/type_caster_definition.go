@@ -17,8 +17,8 @@ type TypeCasterDefinitionV2 struct {
 	New             TypeCasterNewFuncV2
 	InputTypes      []string
 	OutputTypes     []string
-	InputTypeClass  *toolkit.TypeClass
-	OutputTypeClass *toolkit.TypeClass
+	InputTypeClass  *TypeClass
+	OutputTypeClass *TypeClass
 }
 
 func (tcd *TypeCasterDefinitionV2) NewTypeCasterV2(driver *toolkit.Driver, inputType, outputType string) (TypeCasterV2, error) {
