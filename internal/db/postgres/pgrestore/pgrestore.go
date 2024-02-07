@@ -98,11 +98,24 @@ type Options struct {
 }
 
 func (o *Options) GetPgDSN() (string, error) {
-	//return "host=localhost port=5432 user=postgres dbname=postgres", nil
-	if strings.Contains(o.DbName, "=") {
+	if strings.HasPrefix(o.DbName, "postgresql://") || strings.Contains(o.DbName, "=") {
 		return o.DbName, nil
 	}
-	return fmt.Sprintf("host=%s port=%d user=%s dbname=%s", o.Host, o.Port, o.UserName, o.DbName), nil
+
+	var parts []string
+	if o.Host != "" {
+		parts = append(parts, fmt.Sprintf("host=%s", o.Host))
+	}
+	if o.Port != 5432 {
+		parts = append(parts, fmt.Sprintf("port=%d", o.Port))
+	}
+	if o.UserName != "" {
+		parts = append(parts, fmt.Sprintf("port=%d", o.Port))
+	}
+	if o.DbName != "" {
+		parts = append(parts, fmt.Sprintf("dbname=%d", o.Port))
+	}
+	return strings.Join(parts, " "), nil
 }
 
 func (o *Options) GetParams() []string {
