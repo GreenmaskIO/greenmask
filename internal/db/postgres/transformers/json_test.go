@@ -145,3 +145,38 @@ func TestJsonTransformer_Transform_null(t *testing.T) {
 	resValue := string(res.Data)
 	require.JSONEq(t, expected, resValue)
 }
+
+func TestJsonTransformer_structure_tags_encoding_regression(t *testing.T) {
+	// The unexpected behavior described in issue https://github.com/GreenmaskIO/greenmask/issues/4
+	// The problem was that the Operation object did not have an appropriate json tag on the fields
+	rawData := []byte(`
+		[
+			{
+				"operation": "set", 
+				"path": "name", 
+				"value_template": "template_tes", 
+				"value": "value_test", 
+				"error_not_exist": true
+			}
+		]
+	`)
+
+	expected := &Operation{
+		Operation:     "set",
+		Path:          "name",
+		ValueTemplate: "template_tes",
+		Value:         "value_test",
+		ErrorNotExist: true,
+	}
+
+	var ops []*Operation
+	err := json.Unmarshal(rawData, &ops)
+	require.NoError(t, err)
+	require.Len(t, ops, 1)
+	op := ops[0]
+	assert.Equal(t, expected.Operation, op.Operation)
+	assert.Equal(t, expected.Path, op.Path)
+	assert.Equal(t, expected.ValueTemplate, op.ValueTemplate)
+	assert.Equal(t, expected.Value, op.Value)
+	assert.Equal(t, expected.ErrorNotExist, op.ErrorNotExist)
+}
