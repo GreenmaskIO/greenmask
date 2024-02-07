@@ -28,6 +28,8 @@ import (
 
 const pgRestoreExecutable = "pg_restore"
 
+const pgDefaultPort = 5432
+
 type PgRestore struct {
 	BinPath string
 }
@@ -106,14 +108,14 @@ func (o *Options) GetPgDSN() (string, error) {
 	if o.Host != "" {
 		parts = append(parts, fmt.Sprintf("host=%s", o.Host))
 	}
-	if o.Port != 5432 {
+	if o.Port != pgDefaultPort {
 		parts = append(parts, fmt.Sprintf("port=%d", o.Port))
 	}
 	if o.UserName != "" {
-		parts = append(parts, fmt.Sprintf("port=%d", o.Port))
+		parts = append(parts, fmt.Sprintf("user=%s", o.UserName))
 	}
 	if o.DbName != "" {
-		parts = append(parts, fmt.Sprintf("dbname=%d", o.Port))
+		parts = append(parts, fmt.Sprintf("dbname=%s", o.DbName))
 	}
 	return strings.Join(parts, " "), nil
 }
@@ -253,7 +255,7 @@ func (o *Options) GetParams() []string {
 	if o.Host != "" && o.Host != "/var/run/postgres" {
 		args = append(args, "--host", o.Host)
 	}
-	if o.Port != 5432 {
+	if o.Port != pgDefaultPort {
 		args = append(args, "--port", strconv.FormatInt(int64(o.Port), 10))
 	}
 	if o.UserName != "" {
