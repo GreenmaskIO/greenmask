@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package list_dump
+package list_dumps
 
 import (
 	"context"
@@ -43,7 +43,7 @@ var (
 			}
 
 			if err := listDumps(); err != nil {
-				log.Err(err).Msg("")
+				log.Fatal().Err(err).Msg("")
 			}
 		},
 	}
