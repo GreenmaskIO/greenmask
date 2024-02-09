@@ -116,7 +116,7 @@ func getDumpId(ctx context.Context, st storages.Storager, dumpId string) (string
 	return dumpId, nil
 }
 
-// TODO: Option that currently does not implemented:
+// TODO: Options currently are not implemented:
 //		* data-only
 //  	* exit-on-error
 //		* use-list
