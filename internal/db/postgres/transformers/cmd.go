@@ -455,7 +455,7 @@ func cmdValidateSkipBehaviour(p *toolkit.Parameter, v toolkit.ParamsValue) (tool
 	if value != skipOnAnyName && value != skipOnAllName {
 		return toolkit.ValidationWarnings{
 			toolkit.NewValidationWarning().
-				AddMeta("ParameterName", p.Name).
+				SetSeverity(toolkit.ErrorValidationSeverity).
 				AddMeta("ParameterValue", value).
 				SetMsg(`unsupported skip_on type: must be one of "all" or "any"`),
 		}, nil

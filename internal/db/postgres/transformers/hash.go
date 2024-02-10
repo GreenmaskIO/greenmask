@@ -16,22 +16,17 @@ package transformers
 
 import (
 	"context"
-	crand "crypto/rand"
-	"encoding/base64"
+	"crypto/md5"
+	"crypto/sha1"
+	"crypto/sha256"
+	"crypto/sha512"
+	"encoding/hex"
 	"fmt"
-	"slices"
-
-	"golang.org/x/crypto/scrypt"
+	"hash"
+	"strconv"
 
 	"github.com/greenmaskio/greenmask/internal/db/postgres/transformers/utils"
 	"github.com/greenmaskio/greenmask/pkg/toolkit"
-)
-
-// TODO: Make length truncation
-
-const (
-	saltLength = 32
-	bufLength  = 1024
 )
 
 var HashTransformerDefinition = utils.NewDefinition(
@@ -51,17 +46,27 @@ var HashTransformerDefinition = utils.NewDefinition(
 	).SetRequired(true),
 
 	toolkit.MustNewParameter(
-		"salt",
-		"salt for hash function base64 encoded",
-	),
+		"function",
+		"hash function name. Possible values sha1, sha256, sha512, md5",
+	).SetDefaultValue([]byte("sha1")).
+		SetRawValueValidator(validateHashFunctionsParameter),
+
+	toolkit.MustNewParameter(
+		"max_length",
+		"limit length of hash function result",
+	).SetDefaultValue([]byte("0")).
+		SetRawValueValidator(validateMaxLengthParameter),
 )
 
 type HashTransformer struct {
-	salt            toolkit.ParamsValue
-	columnName      string
-	affectedColumns map[int]string
-	columnIdx       int
-	res             []byte
+	columnName          string
+	affectedColumns     map[int]string
+	columnIdx           int
+	h                   hash.Hash
+	maxLength           int
+	encodedOutputLength int
+	hashBuf             []byte
+	resultBuf           []byte
 }
 
 func NewHashTransformer(
@@ -80,28 +85,46 @@ func NewHashTransformer(
 	affectedColumns := make(map[int]string)
 	affectedColumns[idx] = columnName
 
-	var salt toolkit.ParamsValue
-	p = parameters["salt"]
-	var err error
-	if len(p.RawValue()) > 0 {
-		salt, err = base64.StdEncoding.DecodeString(string(p.RawValue()))
-		if err != nil {
-			return nil, nil, fmt.Errorf("error decoding \"salt\" value from base64: %w", err)
-		}
-	} else {
-		b := make(toolkit.ParamsValue, saltLength)
-		if _, err := crand.Read(b); err != nil {
-			return nil, nil, err
-		}
-		salt = b
+	p = parameters["function"]
+	var hashFunctionName string
+	if _, err := p.Scan(&hashFunctionName); err != nil {
+		return nil, nil, fmt.Errorf("unable to scan \"function\" parameter: %w", err)
+	}
+
+	p = parameters["max_length"]
+	var maxLength int
+	if _, err := p.Scan(&maxLength); err != nil {
+		return nil, nil, fmt.Errorf("unable to scan \"max_length\" parameter: %w", err)
+	}
+
+	var h hash.Hash
+	var hashFunctionLength int
+	switch hashFunctionName {
+	case "md5":
+		h = md5.New()
+		hashFunctionLength = 16
+	case "sha1":
+		h = sha1.New()
+		hashFunctionLength = 20
+	case "sha256":
+		h = sha256.New()
+		hashFunctionLength = 32
+	case "sha512":
+		h = sha512.New()
+		hashFunctionLength = 64
+	default:
+		return nil, nil, fmt.Errorf("unknown hash function \"%s\"", hashFunctionName)
 	}
 
 	return &HashTransformer{
-		salt:            salt,
-		columnName:      columnName,
-		affectedColumns: affectedColumns,
-		columnIdx:       idx,
-		res:             make([]byte, 0, bufLength),
+		columnName:          columnName,
+		affectedColumns:     affectedColumns,
+		columnIdx:           idx,
+		maxLength:           maxLength,
+		hashBuf:             make([]byte, 0, hashFunctionLength),
+		resultBuf:           make([]byte, hex.EncodedLen(hashFunctionLength)),
+		encodedOutputLength: hex.EncodedLen(hashFunctionLength),
+		h:                   h,
 	}, nil, nil
 }
 
@@ -126,24 +149,54 @@ func (ht *HashTransformer) Transform(ctx context.Context, r *toolkit.Record) (*t
 		return r, nil
 	}
 
-	dk, err := scrypt.Key(val.Data, ht.salt, 32768, 8, 1, 32)
+	defer ht.h.Reset()
+	_, err = ht.h.Write(val.Data)
 	if err != nil {
-		return nil, fmt.Errorf("cannot perform hash calculation: %w", err)
+		return nil, fmt.Errorf("unable to write raw data into writer: %w", err)
+	}
+	ht.hashBuf = ht.hashBuf[:0]
+	ht.hashBuf = ht.h.Sum(ht.hashBuf)
+
+	hex.Encode(ht.resultBuf, ht.hashBuf)
+
+	maxLength := ht.encodedOutputLength
+	if ht.maxLength > 0 && ht.encodedOutputLength > ht.maxLength {
+		maxLength = ht.maxLength
 	}
 
-	length := base64.StdEncoding.EncodedLen(len(dk))
-	if len(ht.res) < length {
-		slices.Grow(ht.res, length)
-	}
-	ht.res = ht.res[0:length]
-
-	//base64.StdEncoding.EncodeToString(ht.res)
-	base64.StdEncoding.Encode(ht.res, dk)
-	if err := r.SetRawColumnValueByIdx(ht.columnIdx, toolkit.NewRawValue(ht.res, false)); err != nil {
+	if err := r.SetRawColumnValueByIdx(ht.columnIdx, toolkit.NewRawValue(ht.resultBuf[:maxLength], false)); err != nil {
 		return nil, fmt.Errorf("unable to set new value: %w", err)
 	}
 
 	return r, nil
+}
+
+func validateHashFunctionsParameter(p *toolkit.Parameter, v toolkit.ParamsValue) (toolkit.ValidationWarnings, error) {
+	functionName := string(v)
+	switch functionName {
+	case "md5", "sha1", "sha256", "sha512":
+		return nil, nil
+	}
+	return toolkit.ValidationWarnings{
+		toolkit.NewValidationWarning().
+			SetSeverity(toolkit.ErrorValidationSeverity).
+			AddMeta("ParameterValue", functionName).
+			SetMsg(`unknown hash function name`)}, nil
+}
+
+func validateMaxLengthParameter(p *toolkit.Parameter, v toolkit.ParamsValue) (toolkit.ValidationWarnings, error) {
+	max_length, err := strconv.ParseInt(string(v), 10, 32)
+	if err != nil {
+		return nil, fmt.Errorf("error parsing \"max_length\" as integer: %w", err)
+	}
+	if max_length >= 0 {
+		return nil, nil
+	}
+	return toolkit.ValidationWarnings{
+		toolkit.NewValidationWarning().
+			SetSeverity(toolkit.ErrorValidationSeverity).
+			AddMeta("ParameterValue", string(v)).
+			SetMsg(`max_length parameter cannot be less than zero`)}, nil
 }
 
 func init() {

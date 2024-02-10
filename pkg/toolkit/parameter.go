@@ -351,15 +351,15 @@ func (p *Parameter) Init(driver *Driver, types []*Type, params []*Parameter, raw
 	}
 
 	if p.RawValueValidator != nil {
-		w, err := p.RawValueValidator(p, p.rawValue)
+		rawValueValidatorWarns, err := p.RawValueValidator(p, p.rawValue)
 		if err != nil {
 			return nil, fmt.Errorf("error performing parameter raw value validation: %w", err)
 		}
-		for _, w := range warnings {
+		for _, w := range rawValueValidatorWarns {
 			w.AddMeta("ParameterName", p.Name)
 		}
-		warnings = append(warnings, w...)
-		if w.IsFatal() {
+		warnings = append(warnings, rawValueValidatorWarns...)
+		if rawValueValidatorWarns.IsFatal() {
 			return warnings, nil
 		}
 	}
