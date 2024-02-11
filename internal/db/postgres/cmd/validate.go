@@ -1,4 +1,4 @@
-package postgres
+package cmd
 
 import (
 	"bufio"
@@ -14,11 +14,12 @@ import (
 	"strings"
 	"time"
 
+	"github.com/greenmaskio/greenmask/internal/db/postgres/cmd/validate_utils"
 	"github.com/olekukonko/tablewriter"
 	"github.com/rs/zerolog/log"
 
 	runtimeContext "github.com/greenmaskio/greenmask/internal/db/postgres/context"
-	"github.com/greenmaskio/greenmask/internal/db/postgres/dump"
+	"github.com/greenmaskio/greenmask/internal/db/postgres/dump_objects"
 	"github.com/greenmaskio/greenmask/internal/db/postgres/pgcopy"
 	"github.com/greenmaskio/greenmask/internal/db/postgres/toc"
 	"github.com/greenmaskio/greenmask/internal/db/postgres/transformers/custom"
@@ -34,15 +35,16 @@ import (
 const nullStringValue = "NULL"
 
 const (
-	horizontalFormatName = "horizontal"
-	verticalFormatName   = "vertical"
+	horizontalTableFormatName = "horizontal"
+	verticalTableFormatName   = "vertical"
 
 	maxWrapLength = 64
+
+	jsonFormat string = "json"
+	textFormat string = "json"
 )
 
-var endOfFileSeq = []byte(`\.`)
-
-type PrintSettings struct {
+type printSettings struct {
 	OriginalColors    []tablewriter.Colors
 	TransformedColors []tablewriter.Colors
 	HeaderColors      []tablewriter.Colors
@@ -181,10 +183,10 @@ func (v *Validate) Run(ctx context.Context) error {
 		return nil
 	}
 
-	var tablesWithTransformers []dump.Entry
+	var tablesWithTransformers []dump_objects.Entry
 	for _, item := range v.context.DataSectionObjects {
 
-		if t, ok := item.(*dump.Table); ok && len(t.Transformers) > 0 {
+		if t, ok := item.(*dump_objects.Table); ok && len(t.Transformers) > 0 {
 			t.ValidateLimitedRecords = v.config.Validate.RowsLimit
 			tablesWithTransformers = append(tablesWithTransformers, t)
 		}
@@ -196,14 +198,14 @@ func (v *Validate) Run(ctx context.Context) error {
 	}
 
 	for _, e := range v.dataEntries {
-		idx := slices.IndexFunc(v.context.DataSectionObjects, func(entry dump.Entry) bool {
-			t := entry.(*dump.Table)
+		idx := slices.IndexFunc(v.context.DataSectionObjects, func(entry dump_objects.Entry) bool {
+			t := entry.(*dump_objects.Table)
 			return t.DumpId == e.DumpId
 		})
 
-		t := v.context.DataSectionObjects[idx].(*dump.Table)
+		t := v.context.DataSectionObjects[idx].(*dump_objects.Table)
 
-		if err = v.prettyPrintTable(ctx, t); err != nil {
+		if err = v.printText(ctx, t); err != nil {
 			return fmt.Errorf("error pretty printing table \"%s\".\"%s\": %w", t.Table.Schema, t.Table.Name, err)
 		}
 	}
@@ -215,7 +217,7 @@ func (v *Validate) getVerticalRowColors(affectedColumns map[int]struct{}, column
 	var colors []tablewriter.Colors
 	var isEqual bool
 	if v.config.Validate.Diff {
-		isEqual = valuesEqual(original, transformed)
+		isEqual = validate_utils.ValuesEqual(original, transformed)
 		colors = make([]tablewriter.Colors, 4)
 	} else {
 		colors = make([]tablewriter.Colors, 3)
@@ -247,7 +249,7 @@ func (v *Validate) getVerticalRowColors(affectedColumns map[int]struct{}, column
 	return colors, isEqual
 }
 
-func (v *Validate) getAffectedColumns(t *dump.Table) map[int]struct{} {
+func (v *Validate) getAffectedColumns(t *dump_objects.Table) map[int]struct{} {
 	affectedColumns := make(map[int]struct{})
 	for _, tr := range t.Transformers {
 		ac := tr.GetAffectedColumns()
@@ -258,7 +260,7 @@ func (v *Validate) getAffectedColumns(t *dump.Table) map[int]struct{} {
 	return affectedColumns
 }
 
-func (v *Validate) getHorizontalSettings(t *dump.Table) *PrintSettings {
+func (v *Validate) getHorizontalSettings(t *dump_objects.Table) *printSettings {
 	affectedColumns := v.getAffectedColumns(t)
 
 	originalColumnsColors := make([]tablewriter.Colors, len(t.Columns))
@@ -283,7 +285,7 @@ func (v *Validate) getHorizontalSettings(t *dump.Table) *PrintSettings {
 	transformedColumnsColors = slices.Insert(transformedColumnsColors, 0, tablewriter.Colors{})
 	columnsAlignments = slices.Insert(columnsAlignments, 0, tablewriter.ALIGN_LEFT)
 
-	return &PrintSettings{
+	return &printSettings{
 		OriginalColors:    originalColumnsColors,
 		TransformedColors: transformedColumnsColors,
 		HeaderColors:      headerColors,
@@ -292,7 +294,7 @@ func (v *Validate) getHorizontalSettings(t *dump.Table) *PrintSettings {
 
 }
 
-func (v *Validate) printHorizontally(ctx context.Context, t *dump.Table) error {
+func (v *Validate) printHorizontally(ctx context.Context, t *dump_objects.Table) error {
 	settings := v.getHorizontalSettings(t)
 
 	prettyWriter := tablewriter.NewWriter(os.Stdout)
@@ -326,8 +328,8 @@ func (v *Validate) printHorizontally(ctx context.Context, t *dump.Table) error {
 			return fmt.Errorf("unable to read line: %w", err)
 		}
 
-		// Handle end of dump file seq
-		if lineIsEndOfData(line) {
+		// Handle end of dump_objects file seq
+		if validate_utils.LineIsEndOfData(line) {
 			break
 		}
 
@@ -374,7 +376,7 @@ func (v *Validate) printHorizontally(ctx context.Context, t *dump.Table) error {
 	return nil
 }
 
-func (v *Validate) printHorizontallyWithDiff(ctx context.Context, t *dump.Table) error {
+func (v *Validate) printHorizontallyWithDiff(ctx context.Context, t *dump_objects.Table) error {
 	settings := v.getHorizontalSettings(t)
 
 	prettyWriter := tablewriter.NewWriter(os.Stdout)
@@ -411,8 +413,8 @@ func (v *Validate) printHorizontallyWithDiff(ctx context.Context, t *dump.Table)
 				}
 				return fmt.Errorf("unable to read line: %w", err)
 			}
-			// Handle end of dump file seq
-			if lineIsEndOfData(originalLine) {
+			// Handle end of dump_objects file seq
+			if validate_utils.LineIsEndOfData(originalLine) {
 				break
 			}
 
@@ -435,8 +437,8 @@ func (v *Validate) printHorizontallyWithDiff(ctx context.Context, t *dump.Table)
 				}
 				return fmt.Errorf("unable to read line: %w", err)
 			}
-			// Handle end of dump file seq
-			if lineIsEndOfData(transformedLine) {
+			// Handle end of dump_objects file seq
+			if validate_utils.LineIsEndOfData(transformedLine) {
 				break
 			}
 			if err = transformedRow.Decode(transformedLine); err != nil {
@@ -472,7 +474,7 @@ func (v *Validate) printHorizontallyWithDiff(ctx context.Context, t *dump.Table)
 			if idx == 2 {
 				log.Debug().Msg("")
 			}
-			if !valuesEqual(originalValue, transformedValue) {
+			if !validate_utils.ValuesEqual(originalValue, transformedValue) {
 				originalRecordColors[idx] = tablewriter.Colors{tablewriter.FgHiGreenColor}
 				transformedRecordColors[idx] = tablewriter.Colors{tablewriter.FgHiRedColor}
 				realAffectedColumns[idx] = struct{}{}
@@ -518,7 +520,7 @@ func (v *Validate) printHorizontallyWithDiff(ctx context.Context, t *dump.Table)
 	return nil
 }
 
-func (v *Validate) getVerticalHeaderColors(t *dump.Table, affectedColumns map[int]struct{}) []tablewriter.Colors {
+func (v *Validate) getVerticalHeaderColors(t *dump_objects.Table, affectedColumns map[int]struct{}) []tablewriter.Colors {
 	headerColors := make([]tablewriter.Colors, len(t.Columns))
 	for idx := range t.Columns {
 		if _, ok := affectedColumns[idx]; ok {
@@ -532,7 +534,7 @@ func (v *Validate) getVerticalHeaderColors(t *dump.Table, affectedColumns map[in
 	return headerColors
 }
 
-func (v *Validate) printVertically(ctx context.Context, t *dump.Table) error {
+func (v *Validate) printVertically(ctx context.Context, t *dump_objects.Table) error {
 
 	var recordSize = 3
 	if v.config.Validate.Diff {
@@ -587,8 +589,8 @@ func (v *Validate) printVertically(ctx context.Context, t *dump.Table) error {
 				}
 				return fmt.Errorf("unable to read line: %w", err)
 			}
-			// Handle end of dump file seq
-			if lineIsEndOfData(originalLine) {
+			// Handle end of dump_objects file seq
+			if validate_utils.LineIsEndOfData(originalLine) {
 				break
 			}
 
@@ -611,8 +613,8 @@ func (v *Validate) printVertically(ctx context.Context, t *dump.Table) error {
 				}
 				return fmt.Errorf("unable to read line: %w", err)
 			}
-			// Handle end of dump file seq
-			if lineIsEndOfData(transformedLine) {
+			// Handle end of dump_objects file seq
+			if validate_utils.LineIsEndOfData(transformedLine) {
 				break
 			}
 			if err = transformedRow.Decode(transformedLine); err != nil {
@@ -673,26 +675,79 @@ func (v *Validate) printVertically(ctx context.Context, t *dump.Table) error {
 	return nil
 }
 
-func (v *Validate) prettyPrintTable(ctx context.Context, t *dump.Table) error {
-	switch v.config.Validate.Format {
-	case horizontalFormatName:
+func (v *Validate) print(ctx context.Context, t *dump_objects.Table, format string, withDiff bool) error {
+	row := *pgcopy.NewRow(len(t.Columns))
+	tableData, err := v.st.GetObject(ctx, fmt.Sprintf("%d.dat.gz", t.DumpId))
+	if err != nil {
+		log.Err(err).Msg("")
+	}
+	defer tableData.Close()
+	gz, err := gzip.NewReader(tableData)
+	if err != nil {
+		return fmt.Errorf("cannot create gzip reader: %w", err)
+	}
+	defer gz.Close()
+	r := bufio.NewReader(gz)
+
+	var lineNum = 1
+	realAffectedColumns := v.getAffectedColumns(t)
+	diffValues := make([][]*toolkit.RawValue, len(t.Columns))
+	for idx := range t.Columns {
+		diffValues[idx] = make([]*toolkit.RawValue, 2)
+	}
+	for {
+		line, err := reader.ReadLine(r)
+		if err != nil {
+			if errors.Is(err, io.EOF) {
+				break
+			}
+			return fmt.Errorf("unable to read line: %w", err)
+		}
+
+		// Handle end of dump_objects file seq
+		if validate_utils.LineIsEndOfData(line) {
+			break
+		}
+
+		if err = row.Decode(line); err != nil {
+			return fmt.Errorf("error decoding copy line: %w", err)
+		}
+		record := make([]string, len(t.Columns))
+		for idx, c := range t.Columns {
+			value, err := row.GetColumn(idx)
+			if err != nil {
+				return fmt.Errorf("unable to get column \"%s\" value: %w", c.Name, err)
+			}
+			if value.IsNull {
+				record[idx] = nullStringValue
+			} else {
+				record[idx] = stringsUtils.WrapString(string(value.Data), maxWrapLength)
+			}
+		}
+
+		record = slices.Insert(record, 0, fmt.Sprintf("%d", lineNum))
+
+		lineNum++
+	}
+
+	header := make([]string, len(t.Columns))
+	for idx, c := range t.Columns {
+		header[idx] = c.Name
+	}
+	return nil
+}
+
+func (v *Validate) printText(ctx context.Context, t *dump_objects.Table) error {
+	switch v.config.Validate.TableFormat {
+	case horizontalTableFormatName:
 		if v.config.Validate.Diff {
 			return v.printHorizontallyWithDiff(ctx, t)
 		} else {
 			return v.printHorizontally(ctx, t)
 		}
-	case verticalFormatName:
+	case verticalTableFormatName:
 		return v.printVertically(ctx, t)
 	default:
-		return fmt.Errorf("unknwon data format \"%s\"", v.config.Validate.Format)
+		return fmt.Errorf("unknwon data format \"%s\"", v.config.Validate.TableFormat)
 	}
-
-}
-
-func lineIsEndOfData(line []byte) bool {
-	return len(endOfFileSeq) == len(line) && line[0] == '\\' && line[1] == '.'
-}
-
-func valuesEqual(a *toolkit.RawValue, b *toolkit.RawValue) bool {
-	return a.IsNull == b.IsNull && slices.Equal(a.Data, b.Data)
 }
