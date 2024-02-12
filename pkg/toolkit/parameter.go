@@ -113,6 +113,8 @@ type Parameter struct {
 	// IsColumn - shows is this parameter column related. If so ColumnProperties must be defined and assigned
 	// otherwise it may cause an unhandled behaviour
 	IsColumn bool `mapstructure:"is_column" json:"is_column"`
+	// IsColumnContainer - describe is parameter container map or list with multiple columns inside. It allows us to
+	IsColumnContainer bool `mapstructure:"is_column_container" json:"is_column_container"`
 	// LinkParameter - link with parameter with provided name. This is required if performing raw value encoding
 	// depends on the provided column type and/or relies on the database Driver
 	LinkParameter string `mapstructure:"link_parameter" json:"link_parameter,omitempty"`
@@ -294,6 +296,11 @@ func (p *Parameter) SetLinkParameter(name string) *Parameter {
 func (p *Parameter) SetIsColumn(columnProperties *ColumnProperties) *Parameter {
 	p.IsColumn = true
 	p.ColumnProperties = columnProperties
+	return p
+}
+
+func (p *Parameter) SetIsColumnContainer(v bool) *Parameter {
+	p.IsColumnContainer = v
 	return p
 }
 

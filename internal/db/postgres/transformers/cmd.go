@@ -66,7 +66,8 @@ var CmdTransformerDefinition = utils.NewDefinition(
 			`"skip_original_data":  "type:bool, required:false, description: is original data required for transformer",`+
 			`"skip_on_null_input":  "type:bool, required:false, description: skip transformation on null input"`+
 			`}`,
-	).SetDefaultValue([]byte("[]")),
+	).SetDefaultValue([]byte("[]")).
+		SetIsColumnContainer(true),
 
 	toolkit.MustNewParameter(
 		"executable",
