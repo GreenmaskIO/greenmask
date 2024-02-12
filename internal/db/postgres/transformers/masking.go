@@ -34,7 +34,7 @@ const (
 	MMobile     string = "mobile"
 	MTelephone  string = "tel"
 	MID         string = "id"
-	MCreditCard string = "credit_cart"
+	MCreditCard string = "credit_card"
 	MURL        string = "url"
 	MDefault    string = "default"
 )
@@ -50,9 +50,10 @@ var MaskingTransformerDefinition = utils.NewDefinition(
 	toolkit.MustNewParameter(
 		"column",
 		"column name",
-	).SetIsColumn(toolkit.NewColumnProperties().
-		SetAffected(true).
-		SetAllowedColumnTypes("text", "varchar"),
+	).SetIsColumn(
+		toolkit.NewColumnProperties().
+			SetAffected(true).
+			SetAllowedColumnTypes("text", "varchar"),
 	).SetRequired(true),
 
 	toolkit.MustNewParameter(
