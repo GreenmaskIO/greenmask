@@ -58,7 +58,7 @@ var MaskingTransformerDefinition = utils.NewDefinition(
 
 	toolkit.MustNewParameter(
 		"type",
-		"logical type of attribute (default, password, name, addr, email, mobile, tel, id, credit, url)",
+		"logical type of attribute (default, password, name, addr, email, mobile, tel, id, credit_card, url)",
 	).SetRawValueValidator(maskerTypeValidator).
 		SetDefaultValue(toolkit.ParamsValue(MDefault)),
 )
