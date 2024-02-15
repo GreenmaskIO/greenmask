@@ -38,12 +38,12 @@ const (
 )
 
 var templateString = `;
-; Archive created at {{ .Header.CreationDate.Format "2006-01-02 15:04:05 UTC" }}
+; Archive created at {{ .Header.CreationDate.TableFormat "2006-01-02 15:04:05 UTC" }}
 ;     dbname: {{ .Header.DbName }}
 ;     TOC Entries: {{ .Header.TocEntriesCount }}
 ;     Compression: {{ .Header.Compression }}
 ;     Dump Version: {{ .Header.DumpVersion }}
-;     Format: DIRECTORY
+;     TableFormat: DIRECTORY
 ;     Integer: {{ .Header.Integer }} bytes
 ;     Offset: {{ .Header.Offset }} bytes
 ;     Dumped from database version: {{ .Header.DumpedFrom }}

@@ -11,12 +11,12 @@ var endOfFileSeq = []byte(`\.`)
 
 const nullStringValue = "NULL"
 
-func getAffectedColumns(t *dump_objects.Table) map[int]struct{} {
-	affectedColumns := make(map[int]struct{})
+func getAffectedColumns(t *dump_objects.Table) map[string]struct{} {
+	affectedColumns := make(map[string]struct{})
 	for _, tr := range t.Transformers {
 		ac := tr.GetAffectedColumns()
-		for idx := range ac {
-			affectedColumns[idx] = struct{}{}
+		for _, name := range ac {
+			affectedColumns[name] = struct{}{}
 		}
 	}
 	return affectedColumns

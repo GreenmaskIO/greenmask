@@ -6,7 +6,7 @@ import (
 )
 
 type Printer interface {
-	PrintDocument(w io.Writer, d Documenter) error
+	Print(w io.Writer, d Documenter) error
 	Complete(w io.Writer) error
 }
 
@@ -18,7 +18,7 @@ func NewJsonPrinter() *JsonPrinter {
 	return &JsonPrinter{}
 }
 
-func (jp *JsonPrinter) PrintDocument(w io.Writer, d Documenter) error {
+func (jp *JsonPrinter) Print(w io.Writer, d Documenter) error {
 	if !jp.firstLinePrinted {
 		_, err := w.Write([]byte("["))
 		if err != nil {
