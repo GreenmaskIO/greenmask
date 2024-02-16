@@ -43,7 +43,8 @@ var RealAddressTransformerDefinition = utils.NewDefinition(
 			`"template": "type:string, required:true, description: gotemplate with real address attributes injections",`+
 			`"keep_null": "type:bool, required:false, description: keep null values",`+
 			`}`,
-	).SetRequired(true),
+	).SetRequired(true).
+		SetIsColumnContainer(true),
 )
 
 type RealAddressTransformer struct {

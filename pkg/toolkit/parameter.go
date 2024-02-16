@@ -113,6 +113,8 @@ type Parameter struct {
 	// IsColumn - shows is this parameter column related. If so ColumnProperties must be defined and assigned
 	// otherwise it may cause an unhandled behaviour
 	IsColumn bool `mapstructure:"is_column" json:"is_column"`
+	// IsColumnContainer - describe is parameter container map or list with multiple columns inside. It allows us to
+	IsColumnContainer bool `mapstructure:"is_column_container" json:"is_column_container"`
 	// LinkParameter - link with parameter with provided name. This is required if performing raw value encoding
 	// depends on the provided column type and/or relies on the database Driver
 	LinkParameter string `mapstructure:"link_parameter" json:"link_parameter,omitempty"`
@@ -297,6 +299,11 @@ func (p *Parameter) SetIsColumn(columnProperties *ColumnProperties) *Parameter {
 	return p
 }
 
+func (p *Parameter) SetIsColumnContainer(v bool) *Parameter {
+	p.IsColumnContainer = v
+	return p
+}
+
 func (p *Parameter) SetUnmarshaller(unmarshaller Unmarshaller) *Parameter {
 	p.Unmarshaller = unmarshaller
 	return p
@@ -351,15 +358,15 @@ func (p *Parameter) Init(driver *Driver, types []*Type, params []*Parameter, raw
 	}
 
 	if p.RawValueValidator != nil {
-		w, err := p.RawValueValidator(p, p.rawValue)
+		rawValueValidatorWarns, err := p.RawValueValidator(p, p.rawValue)
 		if err != nil {
 			return nil, fmt.Errorf("error performing parameter raw value validation: %w", err)
 		}
-		for _, w := range warnings {
+		for _, w := range rawValueValidatorWarns {
 			w.AddMeta("ParameterName", p.Name)
 		}
-		warnings = append(warnings, w...)
-		if w.IsFatal() {
+		warnings = append(warnings, rawValueValidatorWarns...)
+		if rawValueValidatorWarns.IsFatal() {
 			return warnings, nil
 		}
 	}
