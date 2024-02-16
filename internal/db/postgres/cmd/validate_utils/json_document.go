@@ -14,8 +14,8 @@ type values struct {
 	ColNum      int    `json:"-"`
 	Original    string `json:"original,omitempty"`
 	Transformed string `json:"transformed,omitempty"`
-	Changed     bool   `json:"changed,omitempty"`
-	Implicit    bool   `json:"implicit,omitempty"`
+	Equal       bool   `json:"equal,omitempty"`
+	Expected    bool   `json:"implicit,omitempty"`
 }
 
 type JsonDocumentResult struct {
@@ -71,26 +71,30 @@ func (jc *JsonDocument) Append(original, transformed *pgcopy.Row) error {
 			return fmt.Errorf("error getting column from transformed record: %w", err)
 		}
 
-		changed := ValuesEqual(originalRawValue, transformedRawValue)
-		var implicit bool
-		if _, ok := jc.expectedAffectedColumns[c.Name]; changed && !ok {
-			implicit = false
+		equal := ValuesEqual(originalRawValue, transformedRawValue)
+		expected := true
+		if _, ok := jc.expectedAffectedColumns[c.Name]; !equal && !ok {
+			expected = false
 			jc.unexpectedAffectedColumns[c.Name] = struct{}{}
 		}
 
 		r[c.Name] = &values{
 			Original:    getStringFromRawValue(originalRawValue),
 			Transformed: getStringFromRawValue(transformedRawValue),
-			Changed:     changed,
-			Implicit:    implicit,
+			Equal:       equal,
+			Expected:    expected,
 			ColNum:      idx,
 		}
-		jc.result.Records = append(jc.result.Records)
 	}
+	jc.result.Records = append(jc.result.Records, r)
 	return nil
 }
 
-func (jc *JsonDocument) GetAffectedColumns() map[string]struct{} {
+func (jc *JsonDocument) GetImplicitlyChangedColumns() map[string]struct{} {
+	return jc.unexpectedAffectedColumns
+}
+
+func (jc *JsonDocument) GetColumnsToPrint() map[string]struct{} {
 	if jc.onlyTransformed {
 		columnsToPrint := maps.Clone(jc.expectedAffectedColumns)
 		maps.Copy(columnsToPrint, jc.unexpectedAffectedColumns)
@@ -107,7 +111,7 @@ func (jc *JsonDocument) GetAffectedColumns() map[string]struct{} {
 	return columnsToPrint
 }
 
-func (jc *JsonDocument) GetRecords() *JsonDocumentResult {
+func (jc *JsonDocument) Get() *JsonDocumentResult {
 	if jc.onlyTransformed {
 		jc.filterColumns()
 	}
@@ -128,7 +132,7 @@ func (jc *JsonDocument) Marshal() ([]byte, error) {
 
 func (jc *JsonDocument) filterColumns() {
 	// Determine list of the affected columns
-	columnsToPrint := jc.GetAffectedColumns()
+	columnsToPrint := jc.GetColumnsToPrint()
 	columnsToDelete := make(map[string]struct{})
 	for _, c := range jc.table.Columns {
 		if _, ok := columnsToPrint[c.Name]; !ok {
