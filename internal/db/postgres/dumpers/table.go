@@ -24,7 +24,7 @@ import (
 	"github.com/rs/zerolog/log"
 	"golang.org/x/sync/errgroup"
 
-	"github.com/greenmaskio/greenmask/internal/db/postgres/dump"
+	dump "github.com/greenmaskio/greenmask/internal/db/postgres/dump_objects"
 	"github.com/greenmaskio/greenmask/internal/storages"
 	"github.com/greenmaskio/greenmask/internal/utils/countwriter"
 )

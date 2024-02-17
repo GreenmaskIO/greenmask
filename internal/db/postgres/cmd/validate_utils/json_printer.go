@@ -1,6 +1,6 @@
 package validate_utils
 
-//type Printer interface {
+//type Documenter interface {
 //	Print(w io.Writer, d Documenter) error
 //	Complete(w io.Writer) error
 //}

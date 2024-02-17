@@ -24,7 +24,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
-	"github.com/greenmaskio/greenmask/internal/db/postgres"
+	cmdInternals "github.com/greenmaskio/greenmask/internal/db/postgres/cmd"
 	pgDomains "github.com/greenmaskio/greenmask/internal/domains"
 	"github.com/greenmaskio/greenmask/internal/storages/builder"
 	"github.com/greenmaskio/greenmask/internal/utils/logger"
@@ -88,7 +88,7 @@ var (
 
 			st = st.SubStorage(dumpId, true)
 
-			restore := postgres.NewRestore(
+			restore := cmdInternals.NewRestore(
 				Config.Common.PgBinPath, st, &Config.Restore.PgRestoreOptions, Config.Restore.Scripts,
 				Config.Common.TempDirectory,
 			)

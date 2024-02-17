@@ -23,7 +23,7 @@ import (
 	"github.com/rs/zerolog/log"
 	"golang.org/x/sync/errgroup"
 
-	"github.com/greenmaskio/greenmask/internal/db/postgres/dump"
+	dump "github.com/greenmaskio/greenmask/internal/db/postgres/dump_objects"
 	"github.com/greenmaskio/greenmask/internal/db/postgres/pgcopy"
 	"github.com/greenmaskio/greenmask/internal/db/postgres/transformers"
 	"github.com/greenmaskio/greenmask/internal/db/postgres/transformers/utils"

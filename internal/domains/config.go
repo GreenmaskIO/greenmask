@@ -61,6 +61,7 @@ type Validate struct {
 	ResolvedWarnings []string `mapstructure:"resolved_warnings" yaml:"resolved_warnings" json:"resolved_warnings,omitempty"`
 	TableFormat      string   `mapstructure:"table_format" yaml:"table_format" json:"table_format,omitempty"`
 	Format           string   `mapstructure:"format" yaml:"format" json:"format,omitempty"`
+	OnlyTransformed  bool     `mapstructure:"only_transformed" yaml:"only_transformed" json:"only_transformed,omitempty"`
 }
 
 type Common struct {

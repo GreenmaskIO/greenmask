@@ -21,6 +21,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
+	cmd2 "github.com/greenmaskio/greenmask/internal/db/postgres/cmd"
 	"github.com/greenmaskio/greenmask/internal/db/postgres/transformers/utils"
 	"github.com/greenmaskio/greenmask/internal/domains"
 	"github.com/greenmaskio/greenmask/internal/utils/logger"
@@ -46,7 +47,7 @@ var (
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
 
-			validate, err := postgres.NewValidate(Config, utils.DefaultTransformerRegistry)
+			validate, err := cmd2.NewValidateV2(Config, utils.DefaultTransformerRegistry)
 			if err != nil {
 				log.Fatal().Err(err).Msg("")
 			}

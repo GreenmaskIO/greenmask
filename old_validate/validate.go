@@ -1,4 +1,4 @@
-package cmd
+package old_validate
 
 import (
 	"bufio"
@@ -14,10 +14,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/greenmaskio/greenmask/internal/db/postgres/cmd/validate_utils"
 	"github.com/olekukonko/tablewriter"
 	"github.com/rs/zerolog/log"
 
+	"github.com/greenmaskio/greenmask/internal/db/postgres/cmd"
+	"github.com/greenmaskio/greenmask/internal/db/postgres/cmd/validate_utils"
 	runtimeContext "github.com/greenmaskio/greenmask/internal/db/postgres/context"
 	"github.com/greenmaskio/greenmask/internal/db/postgres/dump_objects"
 	"github.com/greenmaskio/greenmask/internal/db/postgres/pgcopy"
@@ -52,7 +53,7 @@ type printSettings struct {
 }
 
 type Validate struct {
-	*Dump
+	*cmd.Dump
 	tmpDir string
 }
 
@@ -65,7 +66,7 @@ func NewValidate(cfg *domains.Config, registry *utils.TransformerRegistry) (*Val
 	tmpDir := strconv.FormatInt(time.Now().UnixMilli(), 10)
 	st = st.SubStorage(tmpDir, true)
 
-	d := NewDump(cfg, st, registry)
+	d := cmd.NewDump(cfg, st, registry)
 	d.dumpIdSequence = toc.NewDumpSequence(0)
 	d.validate = true
 	return &Validate{

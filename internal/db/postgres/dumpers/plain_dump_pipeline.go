@@ -19,7 +19,7 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/greenmaskio/greenmask/internal/db/postgres/dump"
+	dump "github.com/greenmaskio/greenmask/internal/db/postgres/dump_objects"
 	"github.com/greenmaskio/greenmask/internal/db/postgres/pgcopy"
 )
 

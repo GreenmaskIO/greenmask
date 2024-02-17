@@ -20,7 +20,7 @@ import (
 
 	"golang.org/x/sync/errgroup"
 
-	"github.com/greenmaskio/greenmask/internal/db/postgres/dump"
+	dump "github.com/greenmaskio/greenmask/internal/db/postgres/dump_objects"
 	"github.com/greenmaskio/greenmask/internal/db/postgres/transformers/utils"
 	"github.com/greenmaskio/greenmask/pkg/toolkit"
 )

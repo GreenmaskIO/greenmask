@@ -5,8 +5,9 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/greenmaskio/greenmask/internal/db/postgres/dump"
 	"golang.org/x/sync/errgroup"
+
+	dump "github.com/greenmaskio/greenmask/internal/db/postgres/dump_objects"
 )
 
 type ValidationPipeline struct {

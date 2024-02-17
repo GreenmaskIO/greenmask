@@ -20,21 +20,21 @@ import (
 
 	"github.com/jackc/pgx/v5"
 
-	"github.com/greenmaskio/greenmask/internal/db/postgres/dump"
+	"github.com/greenmaskio/greenmask/internal/db/postgres/dump_objects"
 	"github.com/greenmaskio/greenmask/internal/storages"
 )
 
 type SequenceDumper struct {
-	sequence *dump.Sequence
+	sequence *dump_objects.Sequence
 }
 
-func NewSequenceDumper(sequence *dump.Sequence) *SequenceDumper {
+func NewSequenceDumper(sequence *dump_objects.Sequence) *SequenceDumper {
 	return &SequenceDumper{
 		sequence: sequence,
 	}
 }
 
-func (sd *SequenceDumper) Execute(ctx context.Context, tx pgx.Tx, st storages.Storager) (dump.Entry, error) {
+func (sd *SequenceDumper) Execute(ctx context.Context, tx pgx.Tx, st storages.Storager) (dump_objects.Entry, error) {
 	return sd.sequence, nil
 }
 

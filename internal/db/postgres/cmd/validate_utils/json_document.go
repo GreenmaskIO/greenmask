@@ -3,12 +3,18 @@ package validate_utils
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"maps"
 
 	"github.com/greenmaskio/greenmask/internal/db/postgres/dump_objects"
 	"github.com/greenmaskio/greenmask/internal/db/postgres/pgcopy"
 	"github.com/greenmaskio/greenmask/pkg/toolkit"
 )
+
+type Documenter interface {
+	Print(w io.Writer) error
+	Append(original, transformed *pgcopy.Row) error
+}
 
 type values struct {
 	ColNum      int    `json:"-"`
@@ -22,6 +28,8 @@ type JsonDocumentResult struct {
 	Schema            string       `json:"schema"`
 	Name              string       `json:"name"`
 	PrimaryKeyColumns []string     `json:"primary_key_columns,omitempty"`
+	WithDiff          bool         `json:"with_diff,omitempty"`
+	OnlyTransformed   bool         `json:"only_changed,omitempty"`
 	Records           []jsonRecord `json:"records,omitempty"`
 }
 
@@ -48,6 +56,8 @@ func NewJsonDocument(table *dump_objects.Table, withDiff bool, onlyTransformed b
 	return &JsonDocument{
 		result: &JsonDocumentResult{
 			PrimaryKeyColumns: pkColumnsList,
+			WithDiff:          withDiff,
+			OnlyTransformed:   onlyTransformed,
 			Records:           make([]jsonRecord, 0),
 		},
 		withDiff:                  withDiff,
@@ -87,6 +97,14 @@ func (jc *JsonDocument) Append(original, transformed *pgcopy.Row) error {
 		}
 	}
 	jc.result.Records = append(jc.result.Records, r)
+	return nil
+}
+
+func (jc *JsonDocument) Print(w io.Writer) error {
+	res := jc.Get()
+	if err := json.NewEncoder(w).Encode(res); err != nil {
+		return err
+	}
 	return nil
 }
 
