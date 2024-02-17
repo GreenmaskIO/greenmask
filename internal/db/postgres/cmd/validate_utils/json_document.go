@@ -16,24 +16,42 @@ type Documenter interface {
 	Append(original, transformed *pgcopy.Row) error
 }
 
-type values struct {
+type valueWithDiff struct {
 	ColNum      int    `json:"-"`
-	Original    string `json:"original,omitempty"`
-	Transformed string `json:"transformed,omitempty"`
-	Equal       bool   `json:"equal,omitempty"`
-	Expected    bool   `json:"implicit,omitempty"`
+	Original    string `json:"original"`
+	Transformed string `json:"transformed"`
+	Equal       bool   `json:"equal"`
+	Expected    bool   `json:"implicit"`
 }
 
 type JsonDocumentResult struct {
-	Schema            string       `json:"schema"`
-	Name              string       `json:"name"`
-	PrimaryKeyColumns []string     `json:"primary_key_columns,omitempty"`
-	WithDiff          bool         `json:"with_diff,omitempty"`
-	OnlyTransformed   bool         `json:"only_changed,omitempty"`
-	Records           []jsonRecord `json:"records,omitempty"`
+	Schema            string
+	Name              string
+	PrimaryKeyColumns []string
+	WithDiff          bool
+	OnlyTransformed   bool
+	RecordsWithDiff   []jsonRecordWithDiff
+	RecordsPlain      []jsonRecordPlain
 }
 
-type jsonRecord map[string]*values
+type jsonDocumentResponseWithDiff struct {
+	Schema            string               `json:"schema"`
+	Name              string               `json:"name"`
+	PrimaryKeyColumns []string             `json:"primary_key_columns"`
+	WithDiff          bool                 `json:"with_diff"`
+	OnlyTransformed   bool                 `json:"only_transformed"`
+	Records           []jsonRecordWithDiff `json:"records"`
+}
+
+type jsonDocumentResponsePlain struct {
+	Schema  string            `json:"schema"`
+	Name    string            `json:"name"`
+	Records []jsonRecordPlain `json:"records"`
+}
+
+type jsonRecordWithDiff map[string]*valueWithDiff
+
+type jsonRecordPlain map[string]string
 
 type JsonDocument struct {
 	result                    *JsonDocumentResult
@@ -55,10 +73,12 @@ func NewJsonDocument(table *dump_objects.Table, withDiff bool, onlyTransformed b
 
 	return &JsonDocument{
 		result: &JsonDocumentResult{
+			Schema:            table.Schema,
+			Name:              table.Name,
 			PrimaryKeyColumns: pkColumnsList,
 			WithDiff:          withDiff,
 			OnlyTransformed:   onlyTransformed,
-			Records:           make([]jsonRecord, 0),
+			RecordsWithDiff:   make([]jsonRecordWithDiff, 0),
 		},
 		withDiff:                  withDiff,
 		table:                     table,
@@ -69,40 +89,95 @@ func NewJsonDocument(table *dump_objects.Table, withDiff bool, onlyTransformed b
 	}
 }
 
-func (jc *JsonDocument) Append(original, transformed *pgcopy.Row) error {
-	r := make(jsonRecord)
+func (jc *JsonDocument) appendWithDiff(original, transformed *pgcopy.Row) error {
+	r := make(jsonRecordWithDiff)
 	for idx, c := range jc.table.Columns {
 		originalRawValue, err := original.GetColumn(idx)
 		if err != nil {
 			return fmt.Errorf("error getting column from original record: %w", err)
 		}
+
+		var originalValue, transformedValue string
+
+		originalValue = getStringFromRawValue(originalRawValue)
+
+		equal := true
+		expected := true
+
 		transformedRawValue, err := transformed.GetColumn(idx)
 		if err != nil {
 			return fmt.Errorf("error getting column from transformed record: %w", err)
 		}
-
-		equal := ValuesEqual(originalRawValue, transformedRawValue)
-		expected := true
+		transformedValue = getStringFromRawValue(transformedRawValue)
+		equal = ValuesEqual(originalRawValue, transformedRawValue)
 		if _, ok := jc.expectedAffectedColumns[c.Name]; !equal && !ok {
 			expected = false
 			jc.unexpectedAffectedColumns[c.Name] = struct{}{}
 		}
 
-		r[c.Name] = &values{
-			Original:    getStringFromRawValue(originalRawValue),
-			Transformed: getStringFromRawValue(transformedRawValue),
+		r[c.Name] = &valueWithDiff{
+			Original:    originalValue,
+			Transformed: transformedValue,
 			Equal:       equal,
 			Expected:    expected,
 			ColNum:      idx,
 		}
 	}
-	jc.result.Records = append(jc.result.Records, r)
+	jc.result.RecordsWithDiff = append(jc.result.RecordsWithDiff, r)
+	return nil
+}
+
+func (jc *JsonDocument) appendPlain(original *pgcopy.Row) error {
+	r := make(jsonRecordPlain)
+	for idx, c := range jc.table.Columns {
+		originalRawValue, err := original.GetColumn(idx)
+		if err != nil {
+			return fmt.Errorf("error getting column from original record: %w", err)
+		}
+
+		r[c.Name] = getStringFromRawValue(originalRawValue)
+	}
+	jc.result.RecordsPlain = append(jc.result.RecordsPlain, r)
+	return nil
+}
+
+func (jc *JsonDocument) Append(original, transformed *pgcopy.Row) error {
+	if jc.withDiff {
+		if err := jc.appendWithDiff(original, transformed); err != nil {
+			return fmt.Errorf("error appending data with diff: %w", err)
+		}
+	} else {
+		if err := jc.appendPlain(original); err != nil {
+			return fmt.Errorf("error appending data without diff: %w", err)
+		}
+	}
 	return nil
 }
 
 func (jc *JsonDocument) Print(w io.Writer) error {
-	res := jc.Get()
-	if err := json.NewEncoder(w).Encode(res); err != nil {
+	result := jc.Get()
+
+	if result.WithDiff {
+		response := &jsonDocumentResponseWithDiff{
+			Schema:            result.Schema,
+			Name:              result.Name,
+			PrimaryKeyColumns: result.PrimaryKeyColumns,
+			WithDiff:          result.WithDiff,
+			OnlyTransformed:   result.OnlyTransformed,
+			Records:           result.RecordsWithDiff,
+		}
+		if err := json.NewEncoder(w).Encode(response); err != nil {
+			return err
+		}
+		return nil
+	}
+
+	response := &jsonDocumentResponsePlain{
+		Schema:  result.Schema,
+		Name:    result.Name,
+		Records: result.RecordsPlain,
+	}
+	if err := json.NewEncoder(w).Encode(response); err != nil {
 		return err
 	}
 	return nil
@@ -158,7 +233,7 @@ func (jc *JsonDocument) filterColumns() {
 		}
 	}
 
-	for _, r := range jc.result.Records {
+	for _, r := range jc.result.RecordsWithDiff {
 		for name := range columnsToDelete {
 			delete(r, name)
 		}

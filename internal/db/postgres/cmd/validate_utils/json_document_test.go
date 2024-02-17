@@ -71,7 +71,7 @@ func TestJsonDocument_GetRecords(t *testing.T) {
 	assert.Equal(t, columnsImplicitlyChanged, map[string]struct{}{"modifieddate": {}})
 
 	result := jd.Get()
-	require.Len(t, result.Records, 6)
+	require.Len(t, result.RecordsWithDiff, 6)
 
 	//log.Warn().Any("a", records)
 
