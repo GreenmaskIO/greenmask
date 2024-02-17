@@ -14,7 +14,6 @@ services:
       -c 'mkdir -p /export/adventureworks && minio server /export --console-address :9001'
     healthcheck:
       test: timeout 5s bash -c ':> /dev/tcp/127.0.0.1/9000' || exit 1
-      start_period: 5s
       interval: 10s
       timeout: 5s
       retries: 2
@@ -54,6 +53,11 @@ services:
       - ./playground:/var/lib/playground
     image: "greenmask/greenmask:latest"
     working_dir: /var/lib/playground
+    environment:
+      PGPASSWORD: example
+      ORIGINAL_DB_NAME: "original"
+      TRANSFORMED_DB_NAME: "transformed"
+      DATABASE_HOST: "playground-db"
     depends_on:
       playground-dbs-filler:
         condition: service_completed_successfully
@@ -68,6 +72,11 @@ services:
     build:
       dockerfile: docker/greenmask/Dockerfile
       context: ./
+    environment:
+      PGPASSWORD: example
+      ORIGINAL_DB_NAME: "original"
+      TRANSFORMED_DB_NAME: "transformed"
+      DATABASE_HOST: "playground-db"
     depends_on:
       playground-dbs-filler:
         condition: service_completed_successfully

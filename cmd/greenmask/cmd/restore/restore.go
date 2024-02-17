@@ -20,6 +20,7 @@ import (
 	"path"
 	"slices"
 
+	"github.com/greenmaskio/greenmask/internal/storages"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -36,7 +37,6 @@ var (
 		Args:  cobra.ExactArgs(1),
 		Short: "restore dump with ID or the latest to the target database",
 		Run: func(cmd *cobra.Command, args []string) {
-			var dumpId string
 
 			if err := logger.SetLogLevel(Config.Log.Level, Config.Log.Format); err != nil {
 				log.Fatal().Err(err).Msg("fatal")
@@ -49,41 +49,9 @@ var (
 				log.Fatal().Err(err).Msg("fatal")
 			}
 
-			if args[0] == "latest" {
-				var backupNames []string
-
-				_, dirs, err := st.ListDir(ctx)
-				if err != nil {
-					log.Fatal().Err(err).Msg("cannot walk through directory")
-				}
-				for _, dir := range dirs {
-					exists, err := dir.Exists(ctx, "metadata.json")
-					if err != nil {
-						log.Fatal().Err(err).Msg("cannot check file existence")
-					}
-					if exists {
-						backupNames = append(backupNames, dir.Dirname())
-					}
-				}
-
-				slices.SortFunc(
-					backupNames, func(a, b string) int {
-						if a > b {
-							return -1
-						}
-						return 1
-					},
-				)
-				dumpId = backupNames[0]
-			} else {
-				dumpId = args[0]
-				exists, err := st.Exists(ctx, path.Join(dumpId, "metadata.json"))
-				if err != nil {
-					log.Fatal().Err(err).Msg("cannot check file existence")
-				}
-				if !exists {
-					log.Fatal().Err(err).Msg("choose another dump is failed")
-				}
+			dumpId, err := getDumpId(ctx, st, args[0])
+			if err != nil {
+				log.Fatal().Err(err).Msg("")
 			}
 
 			st = st.SubStorage(dumpId, true)
@@ -104,7 +72,51 @@ var (
 	Config = pgDomains.NewConfig()
 )
 
-// TODO: Option that currently does not implemented:
+func getDumpId(ctx context.Context, st storages.Storager, dumpId string) (string, error) {
+	if dumpId == "latest" {
+		var backupNames []string
+
+		_, dirs, err := st.ListDir(ctx)
+		if err != nil {
+			log.Fatal().Err(err).Msg("cannot walk through directory")
+		}
+		for _, dir := range dirs {
+			exists, err := dir.Exists(ctx, "metadata.json")
+			if err != nil {
+				log.Fatal().Err(err).Msg("cannot check file existence")
+			}
+			if exists {
+				backupNames = append(backupNames, dir.Dirname())
+			}
+		}
+
+		slices.SortFunc(
+			backupNames, func(a, b string) int {
+				if a > b {
+					return -1
+				}
+				return 1
+			},
+		)
+		dumpId = backupNames[0]
+	} else {
+		exists, err := st.Exists(ctx, path.Join(dumpId, "metadata.json"))
+		if err != nil {
+			log.Fatal().
+				Err(err).
+				Msg("cannot check file existence")
+		}
+		if !exists {
+			log.Fatal().
+				Err(err).
+				Str("DumpId", dumpId).
+				Msg("dump with provided id is not found")
+		}
+	}
+	return dumpId, nil
+}
+
+// TODO: Options currently are not implemented:
 //		* data-only
 //  	* exit-on-error
 //		* use-list

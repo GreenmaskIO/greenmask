@@ -24,13 +24,14 @@ import (
 	"path"
 	"time"
 
+	"github.com/jackc/pgx/v5"
+	"github.com/rs/zerolog/log"
+	"github.com/stretchr/testify/suite"
+
 	"github.com/greenmaskio/greenmask/internal/db/postgres/pgdump"
 	"github.com/greenmaskio/greenmask/internal/domains"
 	"github.com/greenmaskio/greenmask/internal/storages/directory"
 	"github.com/greenmaskio/greenmask/pkg/toolkit"
-	"github.com/jackc/pgx/v5"
-	"github.com/rs/zerolog/log"
-	"github.com/stretchr/testify/suite"
 )
 
 var config = &domains.Config{

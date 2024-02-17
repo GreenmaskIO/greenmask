@@ -27,7 +27,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Setup Go
-        uses: actions/setup-go@v4
+        uses: actions/setup-go@v5
         with:
           go-version: ${{ env.go-version }}
       
@@ -81,35 +81,42 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Setup Go
-        uses: actions/setup-go@v4
+        uses: actions/setup-go@v5
         with:
           go-version: ${{ env.go-version }}
-
-      - name: Echo Go version
-        run: go version
       
       - name: Build with different arch
         run: |
           export GOOS=$(echo ${{ matrix.platforms }} | cut -d '/' -f 1)
           export GOARCH=$(echo ${{ matrix.platforms }} | cut -d '/' -f 2)
           export GOARM=$(echo ${{ matrix.platforms }} | cut -d '/' -f 3 | cut -d 'v' -f 2)
-          if [[ "x$GOOS" == "xwindows" ]]; then
-            make build CMD_NAME="builds/${{ env.cmd-name }}_${GOOS}_${GOARCH}.exe"
-          elif [[ "x$GOARM" != "x" ]]; then
-            make build CMD_NAME="builds/${{ env.cmd-name }}_${GOOS}_${GOARCH}v${GOARM}"
+          if [[ "$GOOS" == "windows" ]]; then
+            make build CMD_NAME="builds/${{ env.cmd-name }}.exe"
           else
-            make build CMD_NAME="builds/${{ env.cmd-name }}_${GOOS}_${GOARCH}"
+            make build CMD_NAME="builds/${{ env.cmd-name }}"
           fi
 
-      - name: Create checksums
+      - name: Create checksum
         if: startsWith(github.ref, 'refs/tags/v')
         working-directory: builds
         run: |
           find . -type f -exec shasum -a 256 -b {} + | sed 's# \*\./# *#' | while read sum file; do echo "$sum $file" > "${file#\*}".sha256; done
 
-      - name: List artifacts
+      - name: Create archive
         if: startsWith(github.ref, 'refs/tags/v')
-        run: tree -nh builds
+        run: |
+          export GOOS=$(echo ${{ matrix.platforms }} | cut -d '/' -f 1)
+          export GOARCH=$(echo ${{ matrix.platforms }} | cut -d '/' -f 2)
+          export GOARM=$(echo ${{ matrix.platforms }} | cut -d '/' -f 3 | cut -d 'v' -f 2)
+          export ARCHIVE_NAME=$(echo "${{ env.cmd-name }}-${GOOS}-${GOARCH}$(if [ -n "${GOARM}" ]; then echo v${GOARM}; fi).$(if [ "${GOOS}" = "windows" ]; then echo "zip"; else echo "tar.gz"; fi)")
+          cp LICENSE builds/
+          cd builds
+          if [[ "$GOOS" == "windows" ]]; then
+            zip "${ARCHIVE_NAME}" *
+          else
+            tar -czvf "${ARCHIVE_NAME}" *
+          fi
+          find . -maxdepth 1 -type f ! -name ${ARCHIVE_NAME} -exec rm -f {} +
 
       - name: GitHub Release
         if: startsWith(github.ref, 'refs/tags/v')

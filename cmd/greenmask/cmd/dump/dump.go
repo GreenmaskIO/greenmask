@@ -64,7 +64,7 @@ var (
 )
 
 // TODO: Check how does work mixed options - use-list + tables, etc.
-// TODO: Option that currently does not implemented:
+// TODO: Options currently are not implemented:
 //   - encoding
 //   - disable-triggers
 //   - lock-wait-timeout
