@@ -67,7 +67,7 @@ func TestJsonDocument_GetRecords(t *testing.T) {
 	columnsToPrint := jd.GetColumnsToPrint()
 	assert.Equal(t, columnsToPrint, map[string]struct{}{"departmentid": {}, "name": {}, "modifieddate": {}})
 
-	columnsImplicitlyChanged := jd.GetImplicitlyChangedColumns()
+	columnsImplicitlyChanged := jd.GetUnexpectedlyChangedColumns()
 	assert.Equal(t, columnsImplicitlyChanged, map[string]struct{}{"modifieddate": {}})
 
 	result := jd.Get()

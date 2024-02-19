@@ -183,14 +183,19 @@ func (jc *JsonDocument) Print(w io.Writer) error {
 	return nil
 }
 
-func (jc *JsonDocument) GetImplicitlyChangedColumns() map[string]struct{} {
+func (jc *JsonDocument) GetUnexpectedlyChangedColumns() map[string]struct{} {
 	return jc.unexpectedAffectedColumns
+}
+
+func (jc *JsonDocument) GetAffectedColumns() map[string]struct{} {
+	affectedColumns := maps.Clone(jc.expectedAffectedColumns)
+	maps.Copy(affectedColumns, jc.unexpectedAffectedColumns)
+	return affectedColumns
 }
 
 func (jc *JsonDocument) GetColumnsToPrint() map[string]struct{} {
 	if jc.onlyTransformed {
-		columnsToPrint := maps.Clone(jc.expectedAffectedColumns)
-		maps.Copy(columnsToPrint, jc.unexpectedAffectedColumns)
+		columnsToPrint := jc.GetAffectedColumns()
 		for _, colName := range jc.result.PrimaryKeyColumns {
 			columnsToPrint[colName] = struct{}{}
 		}
