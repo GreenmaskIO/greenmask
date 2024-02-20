@@ -98,27 +98,27 @@ func init() {
 		log.Fatal().Err(err).Msg("fatal")
 	}
 
-	tableFormatFlagName := "table-format"
-	Cmd.Flags().String(
-		tableFormatFlagName, "horizontal", "format of table output. possible values [horizontal|vertical]",
-	)
-	flag = Cmd.Flags().Lookup(tableFormatFlagName)
-	if err := viper.BindPFlag("validate.table_format", flag); err != nil {
-		log.Fatal().Err(err).Msg("fatal")
-	}
-
 	formatFlagName := "format"
 	Cmd.Flags().String(
-		formatFlagName, "json", "format of output. possible values [text|json]",
+		formatFlagName, "text", "format of output. possible values [text|json]",
 	)
 	flag = Cmd.Flags().Lookup(formatFlagName)
 	if err := viper.BindPFlag("validate.format", flag); err != nil {
 		log.Fatal().Err(err).Msg("fatal")
 	}
 
+	tableFormatFlagName := "table-format"
+	Cmd.Flags().String(
+		tableFormatFlagName, "vertical", "format of table output. possible values [vertical|horizontal]",
+	)
+	flag = Cmd.Flags().Lookup(tableFormatFlagName)
+	if err := viper.BindPFlag("validate.table_format", flag); err != nil {
+		log.Fatal().Err(err).Msg("fatal")
+	}
+
 	onlyTransformedFlagName := "only-transformed"
 	Cmd.Flags().Bool(
-		onlyTransformedFlagName, false, "include into diff result only transformed columns and primary key value",
+		onlyTransformedFlagName, false, "print only transformed column and primary key",
 	)
 	flag = Cmd.Flags().Lookup(onlyTransformedFlagName)
 	if err := viper.BindPFlag("validate.only_transformed", flag); err != nil {

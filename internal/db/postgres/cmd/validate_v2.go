@@ -155,11 +155,16 @@ func (v *ValidateV2) print(ctx context.Context) error {
 }
 
 func (v *ValidateV2) getDocument(table *dump_objects.Table) validate_utils.Documenter {
-	if v.config.Validate.Format == jsonFormat {
+	switch v.config.Validate.Format {
+	case jsonFormat:
 		return validate_utils.NewJsonDocument(table, v.config.Validate.Diff, v.config.Validate.OnlyTransformed)
+	case textFormat:
+		return validate_utils.NewTextDocument(
+			table, v.config.Validate.Diff, v.config.Validate.OnlyTransformed, v.config.Validate.TableFormat,
+		)
+	default:
+		panic(fmt.Sprintf("unknown format %s", v.config.Validate.Format))
 	}
-	panic("IMPLEMENT TEXT PRINTER")
-	return nil
 }
 
 func (v *ValidateV2) getReader(ctx context.Context, table *dump_objects.Table) (closeFunc, *bufio.Reader, error) {

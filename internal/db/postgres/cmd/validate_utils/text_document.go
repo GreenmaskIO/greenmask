@@ -29,10 +29,34 @@ type printSettings struct {
 
 type TextDocument struct {
 	*JsonDocument
+	tableFormat string
+}
+
+func NewTextDocument(table *dump_objects.Table, withDiff bool, onlyTransformed bool, tableFormat string) *TextDocument {
+	jd := NewJsonDocument(table, withDiff, onlyTransformed)
+	if tableFormat != horizontalTableFormatName && tableFormat != verticalTableFormatName {
+		panic(fmt.Sprintf("unknown table format %s", tableFormat))
+	}
+	return &TextDocument{
+		JsonDocument: jd,
+		tableFormat:  tableFormat,
+	}
 }
 
 func (td *TextDocument) Print(w io.Writer) error {
-	panic("implement me")
+	switch td.tableFormat {
+	case verticalTableFormatName:
+		if td.withDiff {
+			return td.printWithDiffVertical(w)
+		}
+		return td.printPlainVertical(w)
+	case horizontalTableFormatName:
+		if td.withDiff {
+			return td.printWithDiffHorizontal(w)
+		}
+		return td.printPlainHorizontal(w)
+	}
+	return nil
 }
 
 func (td *TextDocument) printWithDiffVertical(w io.Writer) error {
@@ -55,6 +79,21 @@ func (td *TextDocument) getColumnsIdxsUnexpected() []int {
 	return res
 }
 
+func (td *TextDocument) getAffectedColumns() map[int]struct{} {
+	res := make(map[int]struct{})
+	colToPrint := td.GetAffectedColumns()
+	for colName := range colToPrint {
+		idx := slices.IndexFunc(td.table.Columns, func(column *toolkit.Column) bool {
+			return column.Name == colName
+		})
+		if idx == -1 {
+			panic("expected column to be found in the table column list")
+		}
+		res[idx] = struct{}{}
+	}
+	return res
+}
+
 func (td *TextDocument) getColumnsIdxsToPrint() []int {
 	var res []int
 	colToPrint := td.GetColumnsToPrint()
@@ -62,7 +101,7 @@ func (td *TextDocument) getColumnsIdxsToPrint() []int {
 		idx := slices.IndexFunc(td.table.Columns, func(column *toolkit.Column) bool {
 			return column.Name == colName
 		})
-		if idx != -1 {
+		if idx == -1 {
 			panic("expected column to be found in the table column list")
 		}
 		res = append(res, idx)
@@ -71,13 +110,16 @@ func (td *TextDocument) getColumnsIdxsToPrint() []int {
 	return res
 }
 
-func (td *TextDocument) getVerticalHorizontalColors(t *dump_objects.Table, affectedColumns map[int]struct{}) []tablewriter.Colors {
-	headerColors := make([]tablewriter.Colors, len(t.Columns))
-	for idx := range t.Columns {
-		if _, ok := affectedColumns[idx]; ok {
-			headerColors[idx] = []int{tablewriter.BgRedColor}
+func (td *TextDocument) getVerticalHorizontalColors() []tablewriter.Colors {
+	columnsToPrint := td.getColumnsIdxsToPrint()
+	affectedColumns := td.getAffectedColumns()
+
+	headerColors := make([]tablewriter.Colors, len(columnsToPrint))
+	for tableColIdx, colIdx := range columnsToPrint {
+		if _, ok := affectedColumns[colIdx]; ok {
+			headerColors[tableColIdx] = []int{tablewriter.BgRedColor}
 		} else {
-			headerColors[idx] = []int{}
+			headerColors[tableColIdx] = []int{}
 		}
 	}
 	// Adding formatting setting for LineNum
@@ -94,47 +136,47 @@ func (td *TextDocument) printWithDiffHorizontal(w io.Writer) error {
 	colIdxsToPrint := td.getColumnsIdxsToPrint()
 
 	for lineIdx, res := range result.RecordsWithDiff {
-		originalRecord := make([]string, len(td.table.Columns))
-		transformedRecord := make([]string, len(td.table.Columns))
-		originalRecordColors := make([]tablewriter.Colors, len(td.table.Columns))
-		transformedRecordColors := make([]tablewriter.Colors, len(td.table.Columns))
-		for _, colIdx := range colIdxsToPrint {
+		originalRecord := make([]string, len(colIdxsToPrint))
+		transformedRecord := make([]string, len(colIdxsToPrint))
+		originalRecordColors := make([]tablewriter.Colors, len(colIdxsToPrint))
+		transformedRecordColors := make([]tablewriter.Colors, len(colIdxsToPrint))
+		for tableColIdx, colIdx := range colIdxsToPrint {
 			colName := td.table.Columns[colIdx].Name
 			colValue := res[colName]
-			originalRecord[colIdx] = stringsUtils.WrapString(colValue.Original, maxWrapLength)
-			transformedRecord[colIdx] = stringsUtils.WrapString(colValue.Transformed, maxWrapLength)
+			originalRecord[tableColIdx] = stringsUtils.WrapString(colValue.Original, maxWrapLength)
+			transformedRecord[tableColIdx] = stringsUtils.WrapString(colValue.Transformed, maxWrapLength)
 
+			originalRecordColors[tableColIdx] = []int{}
+			transformedRecordColors[tableColIdx] = []int{}
 			if !colValue.Equal {
-				originalRecordColors[colIdx] = tablewriter.Colors{tablewriter.FgHiGreenColor}
-				transformedRecordColors[colIdx] = tablewriter.Colors{tablewriter.FgHiRedColor}
-			} else {
-				originalRecordColors[colIdx] = []int{}
-				transformedRecordColors[colIdx] = []int{}
+				originalRecordColors[tableColIdx] = tablewriter.Colors{tablewriter.FgHiGreenColor}
+				transformedRecordColors[tableColIdx] = tablewriter.Colors{tablewriter.FgHiRedColor}
 			}
-
-			originalRecordColors = slices.Insert(originalRecordColors, 0, tablewriter.Colors{})
-			transformedRecordColors = slices.Insert(transformedRecordColors, 0, tablewriter.Colors{})
-			originalRecord = slices.Insert(originalRecord, 0, fmt.Sprintf("%d", lineIdx))
-			transformedRecord = slices.Insert(transformedRecord, 0, fmt.Sprintf("%d", lineIdx))
-			prettyWriter.Rich(originalRecord, originalRecordColors)
-			prettyWriter.Rich(transformedRecord, transformedRecordColors)
 		}
+
+		// Adding Line number columns
+		originalRecordColors = slices.Insert(originalRecordColors, 0, tablewriter.Colors{})
+		transformedRecordColors = slices.Insert(transformedRecordColors, 0, tablewriter.Colors{})
+		originalRecord = slices.Insert(originalRecord, 0, fmt.Sprintf("%d", lineIdx))
+		transformedRecord = slices.Insert(transformedRecord, 0, fmt.Sprintf("%d", lineIdx))
+
+		prettyWriter.Rich(originalRecord, originalRecordColors)
+		prettyWriter.Rich(transformedRecord, transformedRecordColors)
 	}
 
 	unexpectedlyChanged := td.GetUnexpectedlyChangedColumns()
 	header := make([]string, len(colIdxsToPrint))
 	for tableColIdx, colIdx := range colIdxsToPrint {
 		c := td.table.Columns[colIdx]
+		header[tableColIdx] = c.Name
 		if _, ok := unexpectedlyChanged[c.Name]; ok {
 			header[tableColIdx] = fmt.Sprintf("%s (!!!)", c.Name)
-		} else {
-			header[tableColIdx] = c.Name
 		}
 	}
 	header = slices.Insert(header, 0, "%LineNum%")
-	headerColors := td.getVerticalHorizontalColors(t, realAffectedColumns)
+	headerColors := td.getVerticalHorizontalColors()
 
-	os.Stdout.Write([]byte(fmt.Sprintf("\n\n\t\"%s\".\"%s\"\n", t.Schema, t.Name)))
+	os.Stdout.Write([]byte(fmt.Sprintf("\n\n\t\"%s\".\"%s\"\n", td.table.Schema, td.table.Name)))
 	prettyWriter.SetHeader(header)
 	prettyWriter.SetRowLine(true)
 	prettyWriter.SetAutoMergeCellsByColumnIndex([]int{0})
@@ -155,23 +197,24 @@ func (td *TextDocument) printPlainVertical(w io.Writer) error {
 }
 
 func (td *TextDocument) getHorizontalSettings() *printSettings {
-	affectedColumns := td.JsonDocument.GetColumnsToPrint()
+	columnsToPrint := td.getColumnsIdxsToPrint()
+	affectedColumns := td.getAffectedColumns()
 
-	originalColumnsColors := make([]tablewriter.Colors, len(td.JsonDocument.table.Columns))
-	transformedColumnsColors := make([]tablewriter.Colors, len(td.JsonDocument.table.Columns))
-	headerColors := make([]tablewriter.Colors, len(td.JsonDocument.table.Columns))
-	columnsAlignments := make([]int, len(td.JsonDocument.table.Columns))
-	for idx, c := range td.JsonDocument.table.Columns {
-		if _, ok := affectedColumns[c.Name]; ok {
-			originalColumnsColors[idx] = []int{tablewriter.FgHiGreenColor}
-			transformedColumnsColors[idx] = []int{tablewriter.FgHiRedColor}
-			headerColors[idx] = []int{tablewriter.BgRedColor}
+	originalColumnsColors := make([]tablewriter.Colors, len(columnsToPrint))
+	transformedColumnsColors := make([]tablewriter.Colors, len(columnsToPrint))
+	headerColors := make([]tablewriter.Colors, len(columnsToPrint))
+	columnsAlignments := make([]int, len(columnsToPrint))
+	for tableColIdx, colIdx := range columnsToPrint {
+		if _, ok := affectedColumns[colIdx]; ok {
+			originalColumnsColors[tableColIdx] = []int{tablewriter.FgHiGreenColor}
+			transformedColumnsColors[tableColIdx] = []int{tablewriter.FgHiRedColor}
+			headerColors[tableColIdx] = []int{tablewriter.BgRedColor}
 		} else {
-			originalColumnsColors[idx] = []int{}
-			headerColors[idx] = []int{}
-			transformedColumnsColors[idx] = []int{}
+			originalColumnsColors[tableColIdx] = []int{}
+			transformedColumnsColors[tableColIdx] = []int{}
+			headerColors[tableColIdx] = []int{}
 		}
-		columnsAlignments[idx] = tablewriter.ALIGN_LEFT
+		columnsAlignments[tableColIdx] = tablewriter.ALIGN_LEFT
 	}
 	// Adding formatting setting for LineNum
 	originalColumnsColors = slices.Insert(originalColumnsColors, 0, tablewriter.Colors{})
