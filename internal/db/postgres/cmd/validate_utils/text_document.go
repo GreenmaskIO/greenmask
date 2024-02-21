@@ -46,10 +46,7 @@ func NewTextDocument(table *dump_objects.Table, withDiff bool, onlyTransformed b
 func (td *TextDocument) Print(w io.Writer) error {
 	switch td.tableFormat {
 	case verticalTableFormatName:
-		if td.withDiff {
-			return td.printWithDiffVertical(w)
-		}
-		return td.printPlainVertical(w)
+		return td.printVertical(w)
 	case horizontalTableFormatName:
 		if td.withDiff {
 			return td.printWithDiffHorizontal(w)
@@ -59,8 +56,97 @@ func (td *TextDocument) Print(w io.Writer) error {
 	return nil
 }
 
-func (td *TextDocument) printWithDiffVertical(w io.Writer) error {
-	panic("implement me")
+func (td *TextDocument) getVerticalRowColors(affectedColumns map[int]struct{}, value *valueWithDiff) []tablewriter.Colors {
+	var colors []tablewriter.Colors
+
+	colors = make([]tablewriter.Colors, 4)
+	if !td.withDiff {
+		colors = make([]tablewriter.Colors, 3)
+	}
+	colors[0] = tablewriter.Colors{}
+
+	colors[1] = tablewriter.Colors{}
+	if !value.Equal {
+		colors[1] = tablewriter.Colors{tablewriter.BgRedColor}
+	}
+
+	if td.withDiff {
+		colors[2] = tablewriter.Colors{}
+		colors[3] = tablewriter.Colors{}
+		if !value.Equal {
+			colors[2] = tablewriter.Colors{tablewriter.FgHiGreenColor}
+			colors[3] = tablewriter.Colors{tablewriter.FgHiRedColor}
+		}
+	} else {
+		colors[2] = tablewriter.Colors{}
+		if !value.Equal {
+			colors[2] = tablewriter.Colors{tablewriter.FgHiRedColor}
+		}
+	}
+	return colors
+}
+
+func (td *TextDocument) printVertical(w io.Writer) error {
+
+	recordSize := 3
+	if td.withDiff {
+		recordSize = 4
+	}
+
+	headerColorSetting := []int{tablewriter.Bold}
+	alignmentSettings := tablewriter.ALIGN_LEFT
+	headerColors := make([]tablewriter.Colors, recordSize)
+	columnAlignments := make([]int, recordSize)
+	for idx := range headerColors {
+		headerColors[idx] = headerColorSetting
+		columnAlignments[idx] = alignmentSettings
+	}
+
+	prettyWriter := tablewriter.NewWriter(os.Stdout)
+	prettyWriter.SetAutoMergeCellsByColumnIndex([]int{0})
+	prettyWriter.SetColumnAlignment(columnAlignments)
+	prettyWriter.SetAutoWrapText(true)
+	prettyWriter.SetHeaderLine(true)
+	prettyWriter.SetRowLine(true)
+
+	header := []string{"%LineNum%", "Column", "Value"}
+	if td.withDiff {
+		header = []string{"%LineNum%", "Column", "OriginalValue", "TransformedValue"}
+	}
+	prettyWriter.Rich(header, headerColors)
+	affectedColumns := td.getAffectedColumns()
+
+	result := td.JsonDocument.Get()
+	colIdxsToPrint := td.getColumnsIdxsToPrint()
+
+	for lineIdx, res := range result.RecordsWithDiff {
+		for _, colIdx := range colIdxsToPrint {
+			record := make([]string, recordSize)
+			record[0] = fmt.Sprintf("%d", lineIdx)
+			colName := td.table.Columns[colIdx].Name
+			colValue := res[colName]
+			record[1] = colName
+			if td.withDiff {
+				record[2] = colValue.Original
+				record[3] = colValue.Transformed
+			} else {
+				record[2] = colValue.Transformed
+			}
+
+			colors := td.getVerticalRowColors(affectedColumns, colValue)
+			if !colValue.Expected {
+				record[1] = fmt.Sprintf("%s (!!!)", colName)
+			}
+			prettyWriter.Rich(record, colors)
+		}
+	}
+
+	if err := td.writeTableTitle(w); err != nil {
+		return err
+	}
+	prettyWriter.Render()
+
+	return nil
 }
 
 func (td *TextDocument) getColumnsIdxsUnexpected() []int {
@@ -176,7 +262,9 @@ func (td *TextDocument) printWithDiffHorizontal(w io.Writer) error {
 	header = slices.Insert(header, 0, "%LineNum%")
 	headerColors := td.getVerticalHorizontalColors()
 
-	os.Stdout.Write([]byte(fmt.Sprintf("\n\n\t\"%s\".\"%s\"\n", td.table.Schema, td.table.Name)))
+	if err := td.writeTableTitle(w); err != nil {
+		return err
+	}
 	prettyWriter.SetHeader(header)
 	prettyWriter.SetRowLine(true)
 	prettyWriter.SetAutoMergeCellsByColumnIndex([]int{0})
@@ -188,8 +276,67 @@ func (td *TextDocument) printWithDiffHorizontal(w io.Writer) error {
 	return nil
 }
 
+func (td *TextDocument) writeTableTitle(w io.Writer) error {
+	_, err := w.Write([]byte(fmt.Sprintf("\n\n\t\"%s\".\"%s\"\n", td.table.Schema, td.table.Name)))
+	if err != nil {
+		return fmt.Errorf("error writing title: %w", err)
+	}
+	return nil
+}
+
 func (td *TextDocument) printPlainHorizontal(w io.Writer) error {
-	panic("implement me")
+	settings := td.getHorizontalSettings()
+	prettyWriter := tablewriter.NewWriter(w)
+	prettyWriter.SetColumnAlignment(settings.ColumnsAlignments)
+
+	result := td.JsonDocument.Get()
+	colIdxsToPrint := td.getColumnsIdxsToPrint()
+
+	for lineIdx, res := range result.RecordsWithDiff {
+		transformedRecord := make([]string, len(colIdxsToPrint))
+		transformedRecordColors := make([]tablewriter.Colors, len(colIdxsToPrint))
+		for tableColIdx, colIdx := range colIdxsToPrint {
+			colName := td.table.Columns[colIdx].Name
+			colValue := res[colName]
+			transformedRecord[tableColIdx] = stringsUtils.WrapString(colValue.Transformed, maxWrapLength)
+
+			transformedRecordColors[tableColIdx] = []int{}
+			if !colValue.Equal {
+				transformedRecordColors[tableColIdx] = tablewriter.Colors{tablewriter.FgHiRedColor}
+			}
+		}
+
+		// Adding Line number columns
+		transformedRecordColors = slices.Insert(transformedRecordColors, 0, tablewriter.Colors{})
+		transformedRecord = slices.Insert(transformedRecord, 0, fmt.Sprintf("%d", lineIdx))
+
+		prettyWriter.Rich(transformedRecord, transformedRecordColors)
+	}
+
+	unexpectedlyChanged := td.GetUnexpectedlyChangedColumns()
+	header := make([]string, len(colIdxsToPrint))
+	for tableColIdx, colIdx := range colIdxsToPrint {
+		c := td.table.Columns[colIdx]
+		header[tableColIdx] = c.Name
+		if _, ok := unexpectedlyChanged[c.Name]; ok {
+			header[tableColIdx] = fmt.Sprintf("%s (!!!)", c.Name)
+		}
+	}
+	header = slices.Insert(header, 0, "%LineNum%")
+	headerColors := td.getVerticalHorizontalColors()
+
+	if err := td.writeTableTitle(w); err != nil {
+		return err
+	}
+	prettyWriter.SetHeader(header)
+	prettyWriter.SetRowLine(true)
+	prettyWriter.SetAutoMergeCellsByColumnIndex([]int{0})
+	prettyWriter.SetAutoWrapText(true)
+	prettyWriter.SetHeaderLine(true)
+	prettyWriter.SetHeaderColor(headerColors...)
+
+	prettyWriter.Render()
+	return nil
 }
 
 func (td *TextDocument) printPlainVertical(w io.Writer) error {

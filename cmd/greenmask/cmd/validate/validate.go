@@ -21,7 +21,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
-	cmd2 "github.com/greenmaskio/greenmask/internal/db/postgres/cmd"
+	cmdInternals "github.com/greenmaskio/greenmask/internal/db/postgres/cmd"
 	"github.com/greenmaskio/greenmask/internal/db/postgres/transformers/utils"
 	"github.com/greenmaskio/greenmask/internal/domains"
 	"github.com/greenmaskio/greenmask/internal/utils/logger"
@@ -31,40 +31,56 @@ var (
 	Cmd = &cobra.Command{
 		Use:   "validate",
 		Short: "perform validation procedure and data diff of transformation",
-		Run: func(cmd *cobra.Command, args []string) {
-			if err := logger.SetLogLevel(Config.Log.Level, Config.Log.Format); err != nil {
-				log.Err(err).Msg("")
-			}
-
-			if Config.Common.TempDirectory == "" {
-				log.Fatal().Msg("common.tmp_dir cannot be empty")
-			}
-
-			if Config.Validate.RowsLimit == 0 {
-				log.Fatal().Msgf("--rows-limit must be greater than 0 got %d", Config.Validate.RowsLimit)
-			}
-
-			ctx, cancel := context.WithCancel(context.Background())
-			defer cancel()
-
-			validate, err := cmd2.NewValidateV2(Config, utils.DefaultTransformerRegistry)
-			if err != nil {
-				log.Fatal().Err(err).Msg("")
-			}
-
-			if err := validate.Run(ctx); err != nil {
-				log.Fatal().Err(err).Msg("")
-			}
-
-		},
+		Run:   run,
 	}
 	Config = domains.NewConfig()
 )
 
+func run(cmd *cobra.Command, args []string) {
+	if err := logger.SetLogLevel(Config.Log.Level, Config.Log.Format); err != nil {
+		log.Err(err).Msg("")
+	}
+
+	if Config.Common.TempDirectory == "" {
+		log.Fatal().Msg("common.tmp_dir cannot be empty")
+	}
+
+	if Config.Validate.RowsLimit <= 0 {
+		log.Fatal().
+			Msgf("--rows-limit must be greater than 0 got %d", Config.Validate.RowsLimit)
+	}
+
+	if Config.Validate.Format != cmdInternals.JsonFormat &&
+		Config.Validate.Format != cmdInternals.TextFormat {
+		log.Fatal().
+			Str("RequestedFormat", Config.Validate.Format).
+			Msg("unknown --format value")
+	}
+
+	if Config.Validate.TableFormat != cmdInternals.VerticalTableFormat &&
+		Config.Validate.TableFormat != cmdInternals.HorizontalTableFormat {
+		log.Fatal().
+			Str("RequestedTableFormat", Config.Validate.TableFormat).
+			Msg("unknown --table-format value")
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	validate, err := cmdInternals.NewValidate(Config, utils.DefaultTransformerRegistry)
+	if err != nil {
+		log.Fatal().Err(err).Msg("")
+	}
+
+	if err := validate.Run(ctx); err != nil {
+		log.Fatal().Err(err).Msg("")
+	}
+}
+
 func init() {
 	tableFlagName := "table"
 	Cmd.Flags().StringSlice(
-		tableFlagName, nil, "check tables dump only for specific tables",
+		tableFlagName, nil, "Check tables dump only for specific tables",
 	)
 	flag := Cmd.Flags().Lookup(tableFlagName)
 	if err := viper.BindPFlag("validate.tables", flag); err != nil {
@@ -73,7 +89,7 @@ func init() {
 
 	dataFlagName := "data"
 	Cmd.Flags().Bool(
-		dataFlagName, false, "perform test dump for --rows-limit rows and print it pretty",
+		dataFlagName, false, "Perform test dump for --rows-limit rows and print it pretty",
 	)
 	flag = Cmd.Flags().Lookup(dataFlagName)
 	if err := viper.BindPFlag("validate.data", flag); err != nil {
@@ -82,7 +98,7 @@ func init() {
 
 	rowsLimitFlagName := "rows-limit"
 	Cmd.Flags().Uint64(
-		rowsLimitFlagName, 10, "check tables dump only for specific tables",
+		rowsLimitFlagName, 10, "Check tables dump only for specific tables",
 	)
 	flag = Cmd.Flags().Lookup(rowsLimitFlagName)
 	if err := viper.BindPFlag("validate.rows_limit", flag); err != nil {
@@ -91,7 +107,7 @@ func init() {
 
 	diffFlagName := "diff"
 	Cmd.Flags().Bool(
-		diffFlagName, false, "find difference between original and transformed data",
+		diffFlagName, false, "Find difference between original and transformed data",
 	)
 	flag = Cmd.Flags().Lookup(diffFlagName)
 	if err := viper.BindPFlag("validate.diff", flag); err != nil {
@@ -100,7 +116,7 @@ func init() {
 
 	formatFlagName := "format"
 	Cmd.Flags().String(
-		formatFlagName, "text", "format of output. possible values [text|json]",
+		formatFlagName, "text", "Format of output. possible values [text|json]",
 	)
 	flag = Cmd.Flags().Lookup(formatFlagName)
 	if err := viper.BindPFlag("validate.format", flag); err != nil {
@@ -109,19 +125,28 @@ func init() {
 
 	tableFormatFlagName := "table-format"
 	Cmd.Flags().String(
-		tableFormatFlagName, "vertical", "format of table output. possible values [vertical|horizontal]",
+		tableFormatFlagName, cmdInternals.VerticalTableFormat, "Format of table output (only for --format=text). Possible values [vertical|horizontal]",
 	)
 	flag = Cmd.Flags().Lookup(tableFormatFlagName)
 	if err := viper.BindPFlag("validate.table_format", flag); err != nil {
 		log.Fatal().Err(err).Msg("fatal")
 	}
 
-	onlyTransformedFlagName := "only-transformed"
+	onlyTransformedFlagName := "transformed-only"
 	Cmd.Flags().Bool(
-		onlyTransformedFlagName, false, "print only transformed column and primary key",
+		onlyTransformedFlagName, false, "Print only transformed column and primary key",
 	)
 	flag = Cmd.Flags().Lookup(onlyTransformedFlagName)
-	if err := viper.BindPFlag("validate.only_transformed", flag); err != nil {
+	if err := viper.BindPFlag("validate.transformed_only", flag); err != nil {
+		log.Fatal().Err(err).Msg("fatal")
+	}
+
+	warningsFlagName := "warnings"
+	Cmd.Flags().Bool(
+		warningsFlagName, false, "Print warnings",
+	)
+	flag = Cmd.Flags().Lookup(warningsFlagName)
+	if err := viper.BindPFlag("validate.warnings", flag); err != nil {
 		log.Fatal().Err(err).Msg("fatal")
 	}
 

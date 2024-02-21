@@ -257,7 +257,7 @@ func (d *Dump) dataDump(ctx context.Context) error {
 				var task dumpers.DumpTask
 				switch v := dumpObj.(type) {
 				case *dump_objects.Table:
-					task = dumpers.NewTableDumper(v, d.validate, d.config.Validate.Diff)
+					task = dumpers.NewTableDumper(v, d.validate)
 				case *dump_objects.Sequence:
 					task = dumpers.NewSequenceDumper(v)
 				case *dump_objects.Blobs:

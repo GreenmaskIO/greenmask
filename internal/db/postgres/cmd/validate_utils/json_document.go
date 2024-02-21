@@ -39,14 +39,17 @@ type jsonDocumentResponseWithDiff struct {
 	Name              string               `json:"name"`
 	PrimaryKeyColumns []string             `json:"primary_key_columns"`
 	WithDiff          bool                 `json:"with_diff"`
-	OnlyTransformed   bool                 `json:"only_transformed"`
+	TransformedOnly   bool                 `json:"transformed_only"`
 	Records           []jsonRecordWithDiff `json:"records"`
 }
 
 type jsonDocumentResponsePlain struct {
-	Schema  string            `json:"schema"`
-	Name    string            `json:"name"`
-	Records []jsonRecordPlain `json:"records"`
+	Schema            string            `json:"schema"`
+	Name              string            `json:"name"`
+	PrimaryKeyColumns []string          `json:"primary_key_columns"`
+	WithDiff          bool              `json:"with_diff"`
+	TransformedOnly   bool              `json:"transformed_only"`
+	Records           []jsonRecordPlain `json:"records"`
 }
 
 type jsonRecordWithDiff map[string]*valueWithDiff
@@ -89,7 +92,7 @@ func NewJsonDocument(table *dump_objects.Table, withDiff bool, onlyTransformed b
 	}
 }
 
-func (jc *JsonDocument) appendWithDiff(original, transformed *pgcopy.Row) error {
+func (jc *JsonDocument) Append(original, transformed *pgcopy.Row) error {
 	r := make(jsonRecordWithDiff)
 	for idx, c := range jc.table.Columns {
 		originalRawValue, err := original.GetColumn(idx)
@@ -127,33 +130,6 @@ func (jc *JsonDocument) appendWithDiff(original, transformed *pgcopy.Row) error 
 	return nil
 }
 
-func (jc *JsonDocument) appendPlain(original *pgcopy.Row) error {
-	r := make(jsonRecordPlain)
-	for idx, c := range jc.table.Columns {
-		originalRawValue, err := original.GetColumn(idx)
-		if err != nil {
-			return fmt.Errorf("error getting column from original record: %w", err)
-		}
-
-		r[c.Name] = getStringFromRawValue(originalRawValue)
-	}
-	jc.result.RecordsPlain = append(jc.result.RecordsPlain, r)
-	return nil
-}
-
-func (jc *JsonDocument) Append(original, transformed *pgcopy.Row) error {
-	if jc.withDiff {
-		if err := jc.appendWithDiff(original, transformed); err != nil {
-			return fmt.Errorf("error appending data with diff: %w", err)
-		}
-	} else {
-		if err := jc.appendPlain(original); err != nil {
-			return fmt.Errorf("error appending data without diff: %w", err)
-		}
-	}
-	return nil
-}
-
 func (jc *JsonDocument) Print(w io.Writer) error {
 	result := jc.Get()
 
@@ -163,7 +139,7 @@ func (jc *JsonDocument) Print(w io.Writer) error {
 			Name:              result.Name,
 			PrimaryKeyColumns: result.PrimaryKeyColumns,
 			WithDiff:          result.WithDiff,
-			OnlyTransformed:   result.OnlyTransformed,
+			TransformedOnly:   result.OnlyTransformed,
 			Records:           result.RecordsWithDiff,
 		}
 		if err := json.NewEncoder(w).Encode(response); err != nil {
@@ -172,10 +148,23 @@ func (jc *JsonDocument) Print(w io.Writer) error {
 		return nil
 	}
 
+	records := make([]jsonRecordPlain, len(result.RecordsWithDiff))
+
+	for idx := range records {
+		record := make(map[string]string, len(result.RecordsWithDiff[idx]))
+		for name, value := range result.RecordsWithDiff[idx] {
+			record[name] = value.Transformed
+		}
+		records = append(records, record)
+	}
+
 	response := &jsonDocumentResponsePlain{
-		Schema:  result.Schema,
-		Name:    result.Name,
-		Records: result.RecordsPlain,
+		Schema:            result.Schema,
+		Name:              result.Name,
+		PrimaryKeyColumns: result.PrimaryKeyColumns,
+		WithDiff:          result.WithDiff,
+		TransformedOnly:   result.OnlyTransformed,
+		Records:           records,
 	}
 	if err := json.NewEncoder(w).Encode(response); err != nil {
 		return err
@@ -214,18 +203,6 @@ func (jc *JsonDocument) Get() *JsonDocumentResult {
 		jc.filterColumns()
 	}
 	return jc.result
-}
-
-func (jc *JsonDocument) Marshal() ([]byte, error) {
-	// TODO:
-	//	 1. Return all columns if requested
-	//   2. Return only transformed data.
-	//  	2.1 Analyze affected columns + unexpectedly affected
-	// 		2.2 Return all affected columns with data + primary key
-	if jc.onlyTransformed {
-		jc.filterColumns()
-	}
-	return json.Marshal(jc.result)
 }
 
 func (jc *JsonDocument) filterColumns() {

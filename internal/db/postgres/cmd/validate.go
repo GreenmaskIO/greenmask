@@ -27,23 +27,27 @@ import (
 	"github.com/greenmaskio/greenmask/internal/storages"
 	"github.com/greenmaskio/greenmask/internal/storages/directory"
 	"github.com/greenmaskio/greenmask/internal/utils/reader"
-	//"github.com/greenmaskio/greenmask/old_validate"
 	"github.com/greenmaskio/greenmask/pkg/toolkit"
 )
 
 const (
-	jsonFormat string = "json"
-	textFormat string = "text"
+	JsonFormat string = "json"
+	TextFormat string = "text"
+)
+
+const (
+	VerticalTableFormat   = "vertical"
+	HorizontalTableFormat = "horizontal"
 )
 
 type closeFunc func()
 
-type ValidateV2 struct {
+type Validate struct {
 	*Dump
 	tmpDir string
 }
 
-func NewValidateV2(cfg *domains.Config, registry *utils.TransformerRegistry) (*ValidateV2, error) {
+func NewValidate(cfg *domains.Config, registry *utils.TransformerRegistry) (*Validate, error) {
 	var st storages.Storager
 	st, err := directory.NewStorage(&directory.Config{Path: cfg.Common.TempDirectory})
 	if err != nil {
@@ -55,13 +59,13 @@ func NewValidateV2(cfg *domains.Config, registry *utils.TransformerRegistry) (*V
 	d := NewDump(cfg, st, registry)
 	d.dumpIdSequence = toc.NewDumpSequence(0)
 	d.validate = true
-	return &ValidateV2{
+	return &Validate{
 		Dump:   d,
 		tmpDir: path.Join(cfg.Common.TempDirectory, tmpDir),
 	}, nil
 }
 
-func (v *ValidateV2) Run(ctx context.Context) error {
+func (v *Validate) Run(ctx context.Context) error {
 
 	defer func() {
 		// Deleting temp dir after closing it
@@ -134,7 +138,7 @@ func (v *ValidateV2) Run(ctx context.Context) error {
 	return nil
 }
 
-func (v *ValidateV2) print(ctx context.Context) error {
+func (v *Validate) print(ctx context.Context) error {
 	for _, e := range v.dataEntries {
 		idx := slices.IndexFunc(v.context.DataSectionObjects, func(entry dump_objects.Entry) bool {
 			t := entry.(*dump_objects.Table)
@@ -154,11 +158,11 @@ func (v *ValidateV2) print(ctx context.Context) error {
 	return nil
 }
 
-func (v *ValidateV2) getDocument(table *dump_objects.Table) validate_utils.Documenter {
+func (v *Validate) getDocument(table *dump_objects.Table) validate_utils.Documenter {
 	switch v.config.Validate.Format {
-	case jsonFormat:
+	case JsonFormat:
 		return validate_utils.NewJsonDocument(table, v.config.Validate.Diff, v.config.Validate.OnlyTransformed)
-	case textFormat:
+	case TextFormat:
 		return validate_utils.NewTextDocument(
 			table, v.config.Validate.Diff, v.config.Validate.OnlyTransformed, v.config.Validate.TableFormat,
 		)
@@ -167,7 +171,7 @@ func (v *ValidateV2) getDocument(table *dump_objects.Table) validate_utils.Docum
 	}
 }
 
-func (v *ValidateV2) getReader(ctx context.Context, table *dump_objects.Table) (closeFunc, *bufio.Reader, error) {
+func (v *Validate) getReader(ctx context.Context, table *dump_objects.Table) (closeFunc, *bufio.Reader, error) {
 	tableData, err := v.st.GetObject(ctx, fmt.Sprintf("%d.dat.gz", table.DumpId))
 	if err != nil {
 		return nil, nil, fmt.Errorf("unable to get object from storage: %w", err)
@@ -191,61 +195,40 @@ func (v *ValidateV2) getReader(ctx context.Context, table *dump_objects.Table) (
 	return f, bufio.NewReader(gz), nil
 }
 
-func (v *ValidateV2) readRecords(r *bufio.Reader, t *dump_objects.Table) (original, transformed *pgcopy.Row, err error) {
+func (v *Validate) readRecords(r *bufio.Reader, t *dump_objects.Table) (original, transformed *pgcopy.Row, err error) {
 	var originalLine, transformedLine []byte
 	var originalRow, transformedRow *pgcopy.Row
 
-	if v.config.Validate.Diff {
+	originalRow = pgcopy.NewRow(len(t.Columns))
+	transformedRow = pgcopy.NewRow(len(t.Columns))
 
-		originalRow = pgcopy.NewRow(len(t.Columns))
-		transformedRow = pgcopy.NewRow(len(t.Columns))
+	originalLine, err = reader.ReadLine(r)
+	if err != nil {
+		if errors.Is(err, io.EOF) {
+			return nil, nil, err
+		}
+		return nil, nil, fmt.Errorf("unable to read line: %w", err)
+	}
+	// Handle end of dump_objects file seq
+	if validate_utils.LineIsEndOfData(originalLine) {
+		return nil, nil, io.EOF
+	}
 
-		originalLine, err = reader.ReadLine(r)
-		if err != nil {
-			if errors.Is(err, io.EOF) {
-				return nil, nil, err
-			}
-			return nil, nil, fmt.Errorf("unable to read line: %w", err)
-		}
-		// Handle end of dump_objects file seq
-		if validate_utils.LineIsEndOfData(originalLine) {
-			return nil, nil, io.EOF
-		}
+	transformedLine, err = reader.ReadLine(r)
+	if err != nil {
+		return nil, nil, fmt.Errorf("unable to read line: %w", err)
+	}
 
-		transformedLine, err = reader.ReadLine(r)
-		if err != nil {
-			return nil, nil, fmt.Errorf("unable to read line: %w", err)
-		}
-
-		if err = originalRow.Decode(originalLine); err != nil {
-			return nil, nil, fmt.Errorf("error decoding copy line: %w", err)
-		}
-		if err = transformedRow.Decode(transformedLine); err != nil {
-			return nil, nil, fmt.Errorf("error decoding copy line: %w", err)
-		}
-	} else {
-		originalRow = pgcopy.NewRow(len(t.Columns))
-
-		originalLine, err = reader.ReadLine(r)
-		if err != nil {
-			if errors.Is(err, io.EOF) {
-				return nil, nil, err
-			}
-			return nil, nil, fmt.Errorf("unable to read line: %w", err)
-		}
-		// Handle end of dump_objects file seq
-		if validate_utils.LineIsEndOfData(originalLine) {
-			return nil, nil, io.EOF
-		}
-
-		if err = originalRow.Decode(originalLine); err != nil {
-			return nil, nil, fmt.Errorf("error decoding copy line: %w", err)
-		}
+	if err = originalRow.Decode(originalLine); err != nil {
+		return nil, nil, fmt.Errorf("error decoding copy line: %w", err)
+	}
+	if err = transformedRow.Decode(transformedLine); err != nil {
+		return nil, nil, fmt.Errorf("error decoding copy line: %w", err)
 	}
 	return originalRow, transformedRow, nil
 }
 
-func (v *ValidateV2) createDocument(ctx context.Context, t *dump_objects.Table) (validate_utils.Documenter, error) {
+func (v *Validate) createDocument(ctx context.Context, t *dump_objects.Table) (validate_utils.Documenter, error) {
 	doc := v.getDocument(t)
 
 	closeReader, r, err := v.getReader(ctx, t)
@@ -274,7 +257,7 @@ func (v *ValidateV2) createDocument(ctx context.Context, t *dump_objects.Table) 
 	return doc, nil
 }
 
-func (v *ValidateV2) dumpTables(ctx context.Context) error {
+func (v *Validate) dumpTables(ctx context.Context) error {
 	var tablesWithTransformers []dump_objects.Entry
 	for _, item := range v.context.DataSectionObjects {
 
@@ -291,7 +274,7 @@ func (v *ValidateV2) dumpTables(ctx context.Context) error {
 	return nil
 }
 
-func (v *ValidateV2) printValidationWarnings() error {
+func (v *Validate) printValidationWarnings() error {
 	// TODO: Implement warnings hook, such as logging and HTTP sender
 	for _, w := range v.context.Warnings {
 		w.MakeHash()
@@ -304,9 +287,13 @@ func (v *ValidateV2) printValidationWarnings() error {
 		}
 
 		if w.Severity == toolkit.ErrorValidationSeverity {
+			// The warnings with error severity must be printed anyway
 			log.Error().Any("ValidationWarning", w).Msg("")
 		} else {
-			log.Warn().Any("ValidationWarning", w).Msg("")
+			// Print warnings with severity level lower than ErrorValidationSeverity only if requested
+			if v.config.Validate.Warnings {
+				log.Warn().Any("ValidationWarning", w).Msg("")
+			}
 		}
 	}
 	if v.context.IsFatal() {
@@ -315,7 +302,7 @@ func (v *ValidateV2) printValidationWarnings() error {
 	return nil
 }
 
-func (v *ValidateV2) getTablesToValidate() ([]*domains.Table, error) {
+func (v *Validate) getTablesToValidate() ([]*domains.Table, error) {
 	var tablesToValidate []*domains.Table
 	for _, tv := range v.config.Validate.Tables {
 
