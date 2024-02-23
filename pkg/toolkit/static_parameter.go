@@ -71,7 +71,7 @@ func (sp *StaticParameter) Init(columnParams map[string]*StaticParameter, rawVal
 	}
 
 	if sp.definition.RawValueValidator != nil {
-		warns, err := sp.definition.RawValueValidator(sp.definition, rawValue)
+		warns, err := sp.definition.RawValueValidator(sp.definition, sp.rawValue)
 		if err != nil {
 			return nil, fmt.Errorf("error performing parameter raw value validation: %w", err)
 		}

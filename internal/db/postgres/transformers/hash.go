@@ -29,7 +29,7 @@ import (
 	"github.com/greenmaskio/greenmask/pkg/toolkit"
 )
 
-var HashTransformerDefinition = utils.NewDefinition(
+var HashTransformerDefinition = utils.NewTransformerDefinition(
 	utils.NewTransformerProperties(
 		"Hash",
 		"Generate hash of the text value using Scrypt hash function under the hood",
@@ -37,7 +37,7 @@ var HashTransformerDefinition = utils.NewDefinition(
 
 	NewHashTransformer,
 
-	toolkit.MustNewParameter(
+	toolkit.MustNewParameterDefinition(
 		"column",
 		"column name",
 	).SetIsColumn(toolkit.NewColumnProperties().
@@ -45,13 +45,13 @@ var HashTransformerDefinition = utils.NewDefinition(
 		SetAllowedColumnTypes("text", "varchar"),
 	).SetRequired(true),
 
-	toolkit.MustNewParameter(
+	toolkit.MustNewParameterDefinition(
 		"function",
 		"hash function name. Possible values sha1, sha256, sha512, md5",
 	).SetDefaultValue([]byte("sha1")).
 		SetRawValueValidator(validateHashFunctionsParameter),
 
-	toolkit.MustNewParameter(
+	toolkit.MustNewParameterDefinition(
 		"max_length",
 		"limit length of hash function result",
 	).SetDefaultValue([]byte("0")).
@@ -69,12 +69,10 @@ type HashTransformer struct {
 	resultBuf           []byte
 }
 
-func NewHashTransformer(
-	ctx context.Context, driver *toolkit.Driver, parameters map[string]*toolkit.Parameter,
-) (utils.Transformer, toolkit.ValidationWarnings, error) {
+func NewHashTransformer(ctx context.Context, driver *toolkit.Driver, parameters map[string]toolkit.Parameterizer) (utils.Transformer, toolkit.ValidationWarnings, error) {
 	p := parameters["column"]
 	var columnName string
-	if _, err := p.Scan(&columnName); err != nil {
+	if err := p.Scan(&columnName); err != nil {
 		return nil, nil, fmt.Errorf("unable to parse column param: %w", err)
 	}
 
@@ -87,13 +85,13 @@ func NewHashTransformer(
 
 	p = parameters["function"]
 	var hashFunctionName string
-	if _, err := p.Scan(&hashFunctionName); err != nil {
+	if err := p.Scan(&hashFunctionName); err != nil {
 		return nil, nil, fmt.Errorf("unable to scan \"function\" parameter: %w", err)
 	}
 
 	p = parameters["max_length"]
 	var maxLength int
-	if _, err := p.Scan(&maxLength); err != nil {
+	if err := p.Scan(&maxLength); err != nil {
 		return nil, nil, fmt.Errorf("unable to scan \"max_length\" parameter: %w", err)
 	}
 
@@ -126,6 +124,7 @@ func NewHashTransformer(
 		encodedOutputLength: hex.EncodedLen(hashFunctionLength),
 		h:                   h,
 	}, nil, nil
+
 }
 
 func (ht *HashTransformer) GetAffectedColumns() map[int]string {
@@ -171,7 +170,7 @@ func (ht *HashTransformer) Transform(ctx context.Context, r *toolkit.Record) (*t
 	return r, nil
 }
 
-func validateHashFunctionsParameter(p *toolkit.Parameter, v toolkit.ParamsValue) (toolkit.ValidationWarnings, error) {
+func validateHashFunctionsParameter(p *toolkit.ParameterDefinition, v toolkit.ParamsValue) (toolkit.ValidationWarnings, error) {
 	functionName := string(v)
 	switch functionName {
 	case "md5", "sha1", "sha256", "sha512":
@@ -184,7 +183,7 @@ func validateHashFunctionsParameter(p *toolkit.Parameter, v toolkit.ParamsValue)
 			SetMsg(`unknown hash function name`)}, nil
 }
 
-func validateMaxLengthParameter(p *toolkit.Parameter, v toolkit.ParamsValue) (toolkit.ValidationWarnings, error) {
+func validateMaxLengthParameter(p *toolkit.ParameterDefinition, v toolkit.ParamsValue) (toolkit.ValidationWarnings, error) {
 	max_length, err := strconv.ParseInt(string(v), 10, 32)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing \"max_length\" as integer: %w", err)
