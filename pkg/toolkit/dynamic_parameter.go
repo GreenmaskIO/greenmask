@@ -116,6 +116,7 @@ type DynamicParameter struct {
 	// columnIdx - column number in the tuple
 	columnIdx int
 	buf       *bytes.Buffer
+	column    *Column
 	//defaultValueFromDynamicParamValue any
 	//defaultValueFromDefinition        any
 
@@ -239,6 +240,7 @@ func (dp *DynamicParameter) Init(columnParameters map[string]*StaticParameter, d
 			},
 			nil
 	}
+	dp.column = column
 	dp.columnIdx = columnIdx
 	dp.tmplCtx = NewDynamicParameterContext(column)
 
@@ -413,8 +415,8 @@ func (dp *DynamicParameter) Value() (value any, err error) {
 		}
 	}
 
-	if dp.definition.Unmarshaller != nil {
-		res, err := dp.definition.Unmarshaller(dp.definition, dp.driver, rawValue)
+	if dp.definition.DynamicUnmarshaler != nil {
+		res, err := dp.definition.DynamicUnmarshaler(dp.driver, dp.column, rawValue)
 		if err != nil {
 			return nil, fmt.Errorf("unable to perform custom unmarshaller: %w", err)
 		}
@@ -519,8 +521,8 @@ func (dp *DynamicParameter) Scan(dest any) error {
 		}
 	}
 
-	if dp.definition.Unmarshaller != nil {
-		value, err := dp.definition.Unmarshaller(dp.definition, dp.driver, rawValue)
+	if dp.definition.DynamicUnmarshaler != nil {
+		value, err := dp.definition.DynamicUnmarshaler(dp.driver, dp.column, rawValue)
 		if err != nil {
 			return fmt.Errorf("unable to perform custom unmarshaller: %w", err)
 		}

@@ -20,6 +20,7 @@ import (
 )
 
 type Unmarshaller func(parameter *ParameterDefinition, driver *Driver, src ParamsValue) (any, error)
+type DynamicUnmarshaller func(driver *Driver, column *Column, v ParamsValue) (any, error)
 type RawValueValidator func(p *ParameterDefinition, v ParamsValue) (ValidationWarnings, error)
 
 const WithoutMaxLength = -1
@@ -141,6 +142,8 @@ type ParameterDefinition struct {
 	// RawValueValidator - raw value validator function that performs assertion and cause ValidationWarnings if it
 	// has violations
 	RawValueValidator RawValueValidator `json:"-"`
+	// DynamicUnmarshaler - the custom unmarshalled for dynamic parameter value
+	DynamicUnmarshaler DynamicUnmarshaller `json:"-"`
 }
 
 func MustNewParameterDefinition(name string, description string) *ParameterDefinition {
@@ -181,8 +184,13 @@ func (p *ParameterDefinition) SetIsColumnContainer(v bool) *ParameterDefinition 
 	return p
 }
 
-func (p *ParameterDefinition) SetUnmarshaller(unmarshaller Unmarshaller) *ParameterDefinition {
-	p.Unmarshaller = unmarshaller
+func (p *ParameterDefinition) SetUnmarshaler(unmarshaler Unmarshaller) *ParameterDefinition {
+	p.Unmarshaller = unmarshaler
+	return p
+}
+
+func (p *ParameterDefinition) SetDynamicUnmarshaler(unmarshaler DynamicUnmarshaller) *ParameterDefinition {
+	p.DynamicUnmarshaler = unmarshaler
 	return p
 }
 

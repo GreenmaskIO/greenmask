@@ -45,7 +45,7 @@ var RandomChoiceTransformerDefinition = utils.NewTransformerDefinition(
 		"values",
 		`list of values in any format. The string with value "\N" supposed to be NULL value`,
 	).SetRequired(true).
-		SetUnmarshaller(randomChoiceValuesUnmarshaller),
+		SetUnmarshaler(randomChoiceValuesUnmarshaller),
 
 	toolkit.MustNewParameterDefinition(
 		"validate",
