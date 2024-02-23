@@ -66,7 +66,8 @@ var CmdTransformerDefinition = utils.NewTransformerDefinition(
 			`"skip_original_data":  "type:bool, required:false, description: is original data required for transformer",`+
 			`"skip_on_null_input":  "type:bool, required:false, description: skip transformation on null input"`+
 			`}`,
-	).SetDefaultValue([]byte("[]")),
+	).SetDefaultValue([]byte("[]")).
+		SetIsColumnContainer(true),
 
 	toolkit.MustNewParameterDefinition(
 		"executable",
@@ -455,7 +456,7 @@ func cmdValidateSkipBehaviour(p *toolkit.ParameterDefinition, v toolkit.ParamsVa
 	if value != skipOnAnyName && value != skipOnAllName {
 		return toolkit.ValidationWarnings{
 			toolkit.NewValidationWarning().
-				AddMeta("ParameterName", p.Name).
+				SetSeverity(toolkit.ErrorValidationSeverity).
 				AddMeta("ParameterValue", value).
 				SetMsg(`unsupported skip_on type: must be one of "all" or "any"`),
 		}, nil

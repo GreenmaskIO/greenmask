@@ -45,7 +45,7 @@ const (
 	MMobile     string = "mobile"
 	MTelephone  string = "tel"
 	MID         string = "id"
-	MCreditCard string = "credit_cart"
+	MCreditCard string = "credit_card"
 	MURL        string = "url"
 	MDefault    string = "default"
 )

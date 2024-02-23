@@ -28,6 +28,8 @@ import (
 
 const pgRestoreExecutable = "pg_restore"
 
+const pgDefaultPort = 5432
+
 type PgRestore struct {
 	BinPath string
 }
@@ -98,11 +100,24 @@ type Options struct {
 }
 
 func (o *Options) GetPgDSN() (string, error) {
-	//return "host=localhost port=5432 user=postgres dbname=postgres", nil
-	if strings.Contains(o.DbName, "=") {
+	if strings.HasPrefix(o.DbName, "postgresql://") || strings.Contains(o.DbName, "=") {
 		return o.DbName, nil
 	}
-	return fmt.Sprintf("host=%s port=%d user=%s dbname=%s", o.Host, o.Port, o.UserName, o.DbName), nil
+
+	var parts []string
+	if o.Host != "" {
+		parts = append(parts, fmt.Sprintf("host=%s", o.Host))
+	}
+	if o.Port != pgDefaultPort {
+		parts = append(parts, fmt.Sprintf("port=%d", o.Port))
+	}
+	if o.UserName != "" {
+		parts = append(parts, fmt.Sprintf("user=%s", o.UserName))
+	}
+	if o.DbName != "" {
+		parts = append(parts, fmt.Sprintf("dbname=%s", o.DbName))
+	}
+	return strings.Join(parts, " "), nil
 }
 
 func (o *Options) GetParams() []string {
@@ -240,7 +255,7 @@ func (o *Options) GetParams() []string {
 	if o.Host != "" && o.Host != "/var/run/postgres" {
 		args = append(args, "--host", o.Host)
 	}
-	if o.Port != 5432 {
+	if o.Port != pgDefaultPort {
 		args = append(args, "--port", strconv.FormatInt(int64(o.Port), 10))
 	}
 	if o.UserName != "" {

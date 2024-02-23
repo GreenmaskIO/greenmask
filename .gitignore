@@ -18,11 +18,11 @@ vendor/
 .idea
 .vscode
 scratch
-
 config.yml
 !playground/config.yml
 
 # Project exclusion
+site
 venv
 .cache
 # Binaries
