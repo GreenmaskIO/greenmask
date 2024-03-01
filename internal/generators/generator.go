@@ -1,11 +1,13 @@
 package generators
 
-type Settings struct {
-	Type       string
-	ByteLength int
-}
+// Dependencies:
+//  1. Int generator
+//	   * Hash function -> has an input
+//     * Random gen
+//
 
+// We don't know the byte length in the output, min value, max value
 type Generator interface {
-	Settings() *Settings
-	Generate([]byte) []byte
+	Generate([]byte) ([]byte, error)
+	Size() int
 }
