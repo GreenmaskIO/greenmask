@@ -1,14 +1,13 @@
 package generators
 
 type IntegerGenerator struct {
-	minValue int64
-	maxValue int64
+	g Generator
 }
 
 func NewIntegerTransformer() *IntegerGenerator {
 	return &IntegerGenerator{}
 }
 
-func (ig *IntegerGenerator) ()  {
-	
+func (ig *IntegerGenerator) Transform(original []byte) ([]byte, error) {
+
 }

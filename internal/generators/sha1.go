@@ -1,4 +1,4 @@
-package hash
+package generators
 
 import (
 	"crypto/sha1"
