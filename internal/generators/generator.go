@@ -1,7 +1,7 @@
 package generators
 
 // Dependencies:
-//  1. Int generator
+//  1. Int64Random generator
 //	   * Hash function -> has an input
 //     * Random gen
 //
