@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestRandomIntTransformer_Transform(t *testing.T) {
+func TestRandomIntTransformer_Transform_random_static(t *testing.T) {
 
 	tests := []struct {
 		name           string
@@ -89,7 +89,7 @@ func TestRandomIntTransformer_Transform(t *testing.T) {
 			require.NoError(t, err)
 			require.Empty(t, warnings)
 
-			r, err := transformer.Transform(
+			r, err := transformer.Transformer.Transform(
 				context.Background(),
 				record,
 			)
@@ -103,4 +103,153 @@ func TestRandomIntTransformer_Transform(t *testing.T) {
 		})
 	}
 
+}
+
+func TestRandomIntTransformer_Transform_random_dynamic(t *testing.T) {
+
+	type expected struct {
+		min int64
+		max int64
+	}
+
+	tests := []struct {
+		name          string
+		columnName    string
+		params        map[string]toolkit.ParamsValue
+		dynamicParams map[string]*toolkit.DynamicParamValue
+		record        map[string]*toolkit.RawValue
+		expected      expected
+	}{
+		{
+			name:       "int2",
+			columnName: "id",
+			record: map[string]*toolkit.RawValue{
+				"id":       toolkit.NewRawValue([]byte("123"), false),
+				"int_val2": toolkit.NewRawValue([]byte("10"), false),
+			},
+			params: map[string]toolkit.ParamsValue{
+				"max": toolkit.ParamsValue("10000000"),
+			},
+			dynamicParams: map[string]*toolkit.DynamicParamValue{
+				"min": {
+					Column: "int_val2",
+				},
+			},
+			expected: expected{
+				min: 123,
+				max: 10000000,
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+
+			driver, record := toolkit.GetDriverAndRecord(tt.record)
+
+			tt.params["column"] = toolkit.ParamsValue(tt.columnName)
+			def, ok := utils.DefaultTransformerRegistry.Get("random.Integer")
+			require.True(t, ok)
+
+			transformer, warnings, err := def.Instance(
+				context.Background(),
+				driver,
+				tt.params,
+				tt.dynamicParams,
+			)
+			require.NoError(t, err)
+			require.Empty(t, warnings)
+
+			for _, dp := range transformer.DynamicParameters {
+				dp.SetRecord(record)
+			}
+
+			r, err := transformer.Transformer.Transform(
+				context.Background(),
+				record,
+			)
+			require.NoError(t, err)
+
+			var res int64
+			empty, err := r.ScanColumnValueByName("id", &res)
+			require.False(t, empty)
+			require.NoError(t, err)
+			require.True(t, res >= tt.expected.min && res <= tt.expected.max)
+		})
+	}
+}
+
+func TestRandomIntTransformer_Transform_random_deterministic(t *testing.T) {
+	type expected struct {
+		min int64
+		max int64
+	}
+
+	tests := []struct {
+		name          string
+		columnName    string
+		params        map[string]toolkit.ParamsValue
+		dynamicParams map[string]*toolkit.DynamicParamValue
+		record        map[string]*toolkit.RawValue
+		expected      expected
+	}{
+		{
+			name:       "int2",
+			columnName: "id",
+			record: map[string]*toolkit.RawValue{
+				"id":       toolkit.NewRawValue([]byte("123"), false),
+				"int_val2": toolkit.NewRawValue([]byte("10"), false),
+			},
+			params: map[string]toolkit.ParamsValue{
+				"max":           toolkit.ParamsValue("10000000"),
+				"salt":          toolkit.ParamsValue("12345abcd"),
+				"hash_function": toolkit.ParamsValue("sha1"),
+			},
+			dynamicParams: map[string]*toolkit.DynamicParamValue{
+				"min": {
+					Column: "int_val2",
+				},
+			},
+			expected: expected{
+				min: 123,
+				max: 10000000,
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+
+			driver, record := toolkit.GetDriverAndRecord(tt.record)
+
+			tt.params["column"] = toolkit.ParamsValue(tt.columnName)
+			def, ok := utils.DefaultTransformerRegistry.Get("deterministic.Integer")
+			require.True(t, ok)
+
+			transformer, warnings, err := def.Instance(
+				context.Background(),
+				driver,
+				tt.params,
+				tt.dynamicParams,
+			)
+			require.NoError(t, err)
+			require.Empty(t, warnings)
+
+			for _, dp := range transformer.DynamicParameters {
+				dp.SetRecord(record)
+			}
+
+			r, err := transformer.Transformer.Transform(
+				context.Background(),
+				record,
+			)
+			require.NoError(t, err)
+
+			var res int64
+			empty, err := r.ScanColumnValueByName("id", &res)
+			require.False(t, empty)
+			require.NoError(t, err)
+			require.True(t, res >= tt.expected.min && res <= tt.expected.max)
+		})
+	}
 }

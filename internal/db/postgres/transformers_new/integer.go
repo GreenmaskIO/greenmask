@@ -16,7 +16,6 @@ package transformers_new
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"math"
 
@@ -39,8 +38,8 @@ const (
 
 const integerTransformerGenByteLength = 8
 
-var integerTransformerParams = []*toolkit.Parameter{
-	toolkit.MustNewParameter(
+var integerTransformerParams = []*toolkit.ParameterDefinition{
+	toolkit.MustNewParameterDefinition(
 		"column",
 		"column name",
 	).SetIsColumn(toolkit.NewColumnProperties().
@@ -48,17 +47,21 @@ var integerTransformerParams = []*toolkit.Parameter{
 		SetAllowedColumnTypes("int2", "int4", "int8", "numeric"),
 	).SetRequired(true),
 
-	toolkit.MustNewParameter(
+	toolkit.MustNewParameterDefinition(
 		"min",
-		"min int value threshold. By default the minimum possible value for the type",
-	).SetRequired(false),
+		"min int value threshold",
+	).SetRequired(true).
+		SetLinkParameter("column").
+		SetDynamicModeSupport(true),
 
-	toolkit.MustNewParameter(
+	toolkit.MustNewParameterDefinition(
 		"max",
-		"max int value threshold. By default the maximum possible value for the type",
-	).SetRequired(false),
+		"max int value threshold",
+	).SetRequired(true).
+		SetLinkParameter("column").
+		SetDynamicModeSupport(true),
 
-	toolkit.MustNewParameter(
+	toolkit.MustNewParameterDefinition(
 		"keep_null",
 		"indicates that NULL values must not be replaced with transformed values",
 	).SetDefaultValue(toolkit.ParamsValue("true")),
@@ -70,15 +73,32 @@ type RandomIntTransformer struct {
 	affectedColumns map[int]string
 	columnIdx       int
 	t               *transformers.Int64Transformer
+	dynamicMode     bool
+	intSize         int
+
+	columnParam   toolkit.Parameterizer
+	maxParam      toolkit.Parameterizer
+	minParam      toolkit.Parameterizer
+	keepNullParam toolkit.Parameterizer
 }
 
-func NewIntTransformer(ctx context.Context, driver *toolkit.Driver, parameters map[string]*toolkit.Parameter, g generators.Generator) (utils.Transformer, toolkit.ValidationWarnings, error) {
+func NewIntTransformer(ctx context.Context, driver *toolkit.Driver, parameters map[string]toolkit.Parameterizer, g generators.Generator) (utils.Transformer, toolkit.ValidationWarnings, error) {
+
 	var columnName string
 	var minVal, maxVal int64
-	var keepNull bool
+	var keepNull, dynamicMode bool
+	var intSize = 8
 
-	p := parameters["column"]
-	if _, err := p.Scan(&columnName); err != nil {
+	columnParam := parameters["column"]
+	minParam := parameters["min"]
+	maxParam := parameters["max"]
+	keepNullParam := parameters["keep_null"]
+
+	if minParam.IsDynamic() || maxParam.IsDynamic() {
+		dynamicMode = true
+	}
+
+	if err := columnParam.Scan(&columnName); err != nil {
 		return nil, nil, fmt.Errorf(`unable to scan "column" param: %w`, err)
 	}
 
@@ -88,27 +108,24 @@ func NewIntTransformer(ctx context.Context, driver *toolkit.Driver, parameters m
 	}
 	affectedColumns := make(map[int]string)
 	affectedColumns[idx] = columnName
-
-	p = parameters["min"]
-	if _, err := p.Scan(&minVal); err != nil {
-		return nil, nil, fmt.Errorf(`unable to scan "min" param: %w`, err)
+	if c.Length != -1 {
+		intSize = c.Length
 	}
 
-	p = parameters["max"]
-	if _, err := p.Scan(&maxVal); err != nil {
-		return nil, nil, fmt.Errorf(`unable to scan "max" param: %w`, err)
+	if err := keepNullParam.Scan(&keepNull); err != nil {
+		return nil, nil, fmt.Errorf(`unable to scan "keep_null" param: %w`, err)
 	}
 
-	if minVal >= maxVal {
-		return nil, toolkit.ValidationWarnings{
-			toolkit.NewValidationWarning().
-				AddMeta("min", minVal).
-				AddMeta("max", maxVal).
-				SetMsg("max value must be greater that min value"),
-		}, nil
+	if !dynamicMode {
+		if err := minParam.Scan(&minVal); err != nil {
+			return nil, nil, fmt.Errorf("error scanning \"min\" parameter: %w", err)
+		}
+		if err := maxParam.Scan(&maxVal); err != nil {
+			return nil, nil, fmt.Errorf("error scanning \"max\" parameter: %w", err)
+		}
 	}
 
-	limiter, limitsWarnings, err := validateIntTypeAndSetLimit(c, minVal, maxVal)
+	limiter, limitsWarnings, err := validateIntTypeAndSetLimit(intSize, minVal, maxVal)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -121,17 +138,20 @@ func NewIntTransformer(ctx context.Context, driver *toolkit.Driver, parameters m
 		return nil, nil, fmt.Errorf("error initializing common int transformer: %w", err)
 	}
 
-	p = parameters["keep_null"]
-	if _, err := p.Scan(&keepNull); err != nil {
-		return nil, nil, fmt.Errorf(`unable to scan "keep_null" param: %w`, err)
-	}
-
 	return &RandomIntTransformer{
 		columnName:      columnName,
 		keepNull:        keepNull,
-		t:               t,
 		affectedColumns: affectedColumns,
 		columnIdx:       idx,
+
+		columnParam:   columnParam,
+		minParam:      minParam,
+		maxParam:      maxParam,
+		keepNullParam: keepNullParam,
+		t:             t,
+
+		dynamicMode: dynamicMode,
+		intSize:     intSize,
 	}, nil, nil
 }
 
@@ -147,7 +167,43 @@ func (rit *RandomIntTransformer) Done(ctx context.Context) error {
 	return nil
 }
 
-func (rit *RandomIntTransformer) Transform(ctx context.Context, r *toolkit.Record) (*toolkit.Record, error) {
+func (rit *RandomIntTransformer) dynamicTransform(ctx context.Context, r *toolkit.Record) (*toolkit.Record, error) {
+	val, err := r.GetRawColumnValueByIdx(rit.columnIdx)
+	if err != nil {
+		return nil, fmt.Errorf("unable to scan value: %w", err)
+	}
+	if val.IsNull && rit.keepNull {
+		return r, nil
+	}
+
+	var minVal, maxVal int64
+	err = rit.minParam.Scan(&minVal)
+	if err != nil {
+		return nil, fmt.Errorf(`unable to scan "min" param: %w`, err)
+	}
+
+	err = rit.maxParam.Scan(&maxVal)
+	if err != nil {
+		return nil, fmt.Errorf(`unable to scan "max" param: %w`, err)
+	}
+
+	limiter, err := getLimiterForDynamicParameter(rit.intSize, minVal, maxVal)
+	if err != nil {
+		return nil, fmt.Errorf("error creating limiter in dynamic mode: %w", err)
+	}
+	ctx = context.WithValue(ctx, "limiter", limiter)
+	res, err := rit.t.Transform(ctx, val.Data)
+	if err != nil {
+		return nil, fmt.Errorf("error generating int value: %w", err)
+	}
+
+	if err := r.SetRawColumnValueByIdx(rit.columnIdx, toolkit.NewRawValue(res, false)); err != nil {
+		return nil, fmt.Errorf("unable to set new value: %w", err)
+	}
+	return r, nil
+}
+
+func (rit *RandomIntTransformer) staticTransform(ctx context.Context, r *toolkit.Record) (*toolkit.Record, error) {
 	val, err := r.GetRawColumnValueByIdx(rit.columnIdx)
 	if err != nil {
 		return nil, fmt.Errorf("unable to scan value: %w", err)
@@ -166,94 +222,96 @@ func (rit *RandomIntTransformer) Transform(ctx context.Context, r *toolkit.Recor
 	return r, nil
 }
 
+func (rit *RandomIntTransformer) Transform(ctx context.Context, r *toolkit.Record) (*toolkit.Record, error) {
+	if rit.dynamicMode {
+		return rit.dynamicTransform(ctx, r)
+	}
+	return rit.staticTransform(ctx, r)
+}
+
+func getIntThresholds(size int) (int64, int64, error) {
+	switch size {
+	case Int2Length:
+		return math.MinInt16, math.MaxInt16, nil
+	case Int4Length:
+		return math.MinInt32, math.MaxInt32, nil
+	case Int8Length:
+		return math.MinInt16, math.MaxInt16, nil
+	}
+
+	return 0, 0, fmt.Errorf("unsupported int size %d", size)
+}
+
+func getLimiterForDynamicParameter(size int, requestedMinValue, requestedMaxValue int64) (*transformers.Int64Limiter, error) {
+	minValue, maxValue, err := getIntThresholds(size)
+	if err != nil {
+		return nil, err
+	}
+
+	if !limitIsValid(requestedMinValue, minValue, maxValue) {
+		return nil, fmt.Errorf("requested dynamic parameter min value is out of range of int%d size", size)
+	}
+
+	if !limitIsValid(requestedMaxValue, minValue, maxValue) {
+		return nil, fmt.Errorf("requested dynamic parameter max value is out of range of int%d size", size)
+	}
+
+	limiter, err := transformers.NewInt64Limiter(math.MinInt64, math.MaxInt64)
+	if err != nil {
+		return nil, err
+	}
+
+	if requestedMinValue != 0 || requestedMaxValue != 0 {
+		limiter, err = transformers.NewInt64Limiter(requestedMinValue, requestedMaxValue)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return limiter, nil
+}
+
+func limitIsValid(requestedThreshold, minValue, maxValue int64) bool {
+	return requestedThreshold >= minValue || requestedThreshold <= maxValue
+}
+
 func validateIntTypeAndSetLimit(
-	c *toolkit.Column, requestedMinValue, requestedMaxValue int64,
+	size int, requestedMinValue, requestedMaxValue int64,
 ) (limiter *transformers.Int64Limiter, warns toolkit.ValidationWarnings, err error) {
 
-	switch c.Length {
-	case Int2Length:
-		if requestedMinValue < math.MinInt16 || requestedMinValue > math.MaxInt16 {
-			warns = append(warns, toolkit.NewValidationWarning().
-				SetMsg("requested min value is out of int16 range").
-				SetSeverity(toolkit.ErrorValidationSeverity).
-				AddMeta("AllowedMinValue", math.MinInt16).
-				AddMeta("AllowedMaxValue", math.MaxInt16).
-				AddMeta("ParameterName", "min").
-				AddMeta("ParameterValue", requestedMinValue),
-			)
-		}
-		if requestedMaxValue < math.MinInt16 || requestedMaxValue > math.MaxInt16 {
-			warns = append(warns, toolkit.NewValidationWarning().
-				SetMsg("requested max value is out of int16 range").
-				SetSeverity(toolkit.ErrorValidationSeverity).
-				AddMeta("AllowedMinValue", math.MinInt16).
-				AddMeta("AllowedMaxValue", math.MaxInt16).
-				AddMeta("ParameterName", "max").
-				AddMeta("ParameterValue", requestedMinValue),
-			)
-		}
+	minValue, maxValue, err := getIntThresholds(size)
+	if err != nil {
+		return nil, nil, err
+	}
 
-		limiter, err = transformers.NewInt64Limiter(math.MinInt16, math.MaxInt16)
-		if err != nil {
-			return nil, nil, err
-		}
-	case Int4Length:
-		if requestedMinValue < math.MinInt32 || requestedMinValue > math.MaxInt32 {
-			warns = append(warns, toolkit.NewValidationWarning().
-				SetMsg("requested min value is out of int32 range").
-				SetSeverity(toolkit.ErrorValidationSeverity).
-				AddMeta("AllowedMinValue", math.MinInt32).
-				AddMeta("AllowedMaxValue", math.MaxInt32).
-				AddMeta("ParameterName", "min").
-				AddMeta("ParameterValue", requestedMinValue),
-			)
-		}
-		if requestedMaxValue < math.MinInt32 || requestedMaxValue > math.MaxInt32 {
-			warns = append(warns, toolkit.NewValidationWarning().
-				SetMsg("requested max value is out of int32 range").
-				SetSeverity(toolkit.ErrorValidationSeverity).
-				AddMeta("AllowedMinValue", math.MinInt32).
-				AddMeta("AllowedMaxValue", math.MaxInt32).
-				AddMeta("ParameterName", "max").
-				AddMeta("ParameterValue", requestedMinValue),
-			)
-		}
-		limiter, err = transformers.NewInt64Limiter(math.MinInt32, math.MaxInt32)
-		if err != nil {
-			return nil, nil, err
-		}
-	case Int8Length:
-		if requestedMinValue < math.MinInt64 || requestedMinValue > math.MaxInt64 {
-			warns = append(warns, toolkit.NewValidationWarning().
-				SetMsg("requested min value is out of int64 range").
-				SetSeverity(toolkit.ErrorValidationSeverity).
-				AddMeta("AllowedMinValue", math.MinInt64).
-				AddMeta("AllowedMaxValue", math.MaxInt64).
-				AddMeta("ParameterName", "min").
-				AddMeta("ParameterValue", requestedMinValue),
-			)
-		}
-		if requestedMaxValue < math.MinInt64 || requestedMaxValue > math.MaxInt64 {
-			warns = append(warns, toolkit.NewValidationWarning().
-				SetMsg("requested max value is out of int64 range").
-				SetSeverity(toolkit.ErrorValidationSeverity).
-				AddMeta("AllowedMinValue", math.MinInt64).
-				AddMeta("AllowedMaxValue", math.MaxInt64).
-				AddMeta("ParameterName", "max").
-				AddMeta("ParameterValue", requestedMinValue),
-			)
-		}
+	if !limitIsValid(requestedMinValue, minValue, maxValue) {
+		warns = append(warns, toolkit.NewValidationWarning().
+			SetMsgf("requested min value is out of int%d range", size).
+			SetSeverity(toolkit.ErrorValidationSeverity).
+			AddMeta("AllowedMinValue", minValue).
+			AddMeta("AllowedMaxValue", maxValue).
+			AddMeta("ParameterName", "min").
+			AddMeta("ParameterValue", requestedMinValue),
+		)
+	}
 
-		limiter, err = transformers.NewInt64Limiter(math.MinInt64, math.MaxInt64)
-		if err != nil {
-			return nil, nil, err
-		}
-	default:
-		return nil, nil, errors.New("FIXME: seems that type length was gathered incorrectly")
+	if !limitIsValid(requestedMaxValue, minValue, maxValue) {
+		warns = append(warns, toolkit.NewValidationWarning().
+			SetMsgf("requested max value is out of int%d range", size).
+			SetSeverity(toolkit.ErrorValidationSeverity).
+			AddMeta("AllowedMinValue", minValue).
+			AddMeta("AllowedMaxValue", maxValue).
+			AddMeta("ParameterName", "min").
+			AddMeta("ParameterValue", requestedMinValue),
+		)
 	}
 
 	if warns.IsFatal() {
 		return nil, warns, nil
+	}
+
+	limiter, err = transformers.NewInt64Limiter(math.MinInt64, math.MaxInt64)
+	if err != nil {
+		return nil, nil, err
 	}
 
 	if requestedMinValue != 0 || requestedMaxValue != 0 {

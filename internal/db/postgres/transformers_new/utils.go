@@ -16,35 +16,35 @@ const (
 	Sha1HashFunction = "sha1"
 )
 
-var deterministicTransformerParameters = []*toolkit.Parameter{
-	toolkit.MustNewParameter(
+var deterministicTransformerParameters = []*toolkit.ParameterDefinition{
+	toolkit.MustNewParameterDefinition(
 		"salt",
 		"Secret salt for hash function hex encoded",
-	).SetRequired(true).
-		SetFromGlobal("salt"),
+	).SetRequired(true),
 
-	toolkit.MustNewParameter(
+	toolkit.MustNewParameterDefinition(
 		"hash_function",
 		"Hash function name",
-	).SetRequired(true).
-		SetFromGlobal("hash_function"),
+	).SetRequired(true),
 }
 
-type newTransformerFunctionBase func(ctx context.Context, driver *toolkit.Driver, parameters map[string]*toolkit.Parameter, g generators.Generator) (utils.Transformer, toolkit.ValidationWarnings, error)
+type newTransformerFunctionBase func(ctx context.Context, driver *toolkit.Driver, parameters map[string]toolkit.Parameterizer, g generators.Generator) (utils.Transformer, toolkit.ValidationWarnings, error)
 
 func deterministicTransformerProducer(newTransformer newTransformerFunctionBase, outputLength int) utils.NewTransformerFunc {
 
-	return func(ctx context.Context, driver *toolkit.Driver, parameters map[string]*toolkit.Parameter) (utils.Transformer, toolkit.ValidationWarnings, error) {
+	return func(ctx context.Context, driver *toolkit.Driver, parameters map[string]toolkit.Parameterizer) (utils.Transformer, toolkit.ValidationWarnings, error) {
 		var saltHex, hashFunction string
-		p := parameters["salt"]
-		if _, err := p.Scan(&saltHex); err != nil {
+
+		saltParam := parameters["max"]
+		hashFunctionParam := parameters["hash_function"]
+
+		if err := saltParam.Scan(&saltHex); err != nil {
 			return nil, nil, fmt.Errorf(`unable to scan "salt" param: %w`, err)
 		}
 		salt := make([]byte, hex.EncodedLen(len(saltHex)))
 		hex.Encode(salt, []byte(saltHex))
 
-		p = parameters["hash_function"]
-		if _, err := p.Scan(&hashFunction); err != nil {
+		if err := hashFunctionParam.Scan(&hashFunction); err != nil {
 			return nil, nil, fmt.Errorf(`unable to scan "hash_function" param: %w`, err)
 		}
 
@@ -58,7 +58,7 @@ func deterministicTransformerProducer(newTransformer newTransformerFunctionBase,
 }
 
 func randomTransformerProducer(newTransformer newTransformerFunctionBase) utils.NewTransformerFunc {
-	return func(ctx context.Context, driver *toolkit.Driver, parameters map[string]*toolkit.Parameter) (utils.Transformer, toolkit.ValidationWarnings, error) {
+	return func(ctx context.Context, driver *toolkit.Driver, parameters map[string]toolkit.Parameterizer) (utils.Transformer, toolkit.ValidationWarnings, error) {
 		seed := time.Now().UnixNano()
 		gen, err := generators.NewInt64Random(seed)
 		if err != nil {
@@ -68,7 +68,7 @@ func randomTransformerProducer(newTransformer newTransformerFunctionBase) utils.
 	}
 }
 
-func mergeParameters(commonParams, deterministicParams []*toolkit.Parameter) []*toolkit.Parameter {
+func mergeParameters(commonParams, deterministicParams []*toolkit.ParameterDefinition) []*toolkit.ParameterDefinition {
 	res := slices.Clone(commonParams)
 	res = append(res, deterministicParams...)
 	return res
@@ -98,10 +98,10 @@ func composeGeneratorWithProjectedOutput(hashFunction string, salt []byte, outpu
 
 func registerRandomAndDeterministicTransformer(
 	tr *utils.TransformerRegistry, transformerName, transformerDescription string,
-	baseNewFunc newTransformerFunctionBase, params []*toolkit.Parameter,
+	baseNewFunc newTransformerFunctionBase, params []*toolkit.ParameterDefinition,
 	outputLength int,
 ) {
-	random := utils.NewDefinition(
+	random := utils.NewTransformerDefinition(
 		utils.NewTransformerProperties(
 			fmt.Sprintf("random.%s", transformerName),
 			transformerDescription,
@@ -113,7 +113,7 @@ func registerRandomAndDeterministicTransformer(
 	)
 	tr.MustRegister(random)
 
-	deterministic := utils.NewDefinition(
+	deterministic := utils.NewTransformerDefinition(
 		utils.NewTransformerProperties(
 			fmt.Sprintf("deterministic.%s", transformerName),
 			transformerDescription,

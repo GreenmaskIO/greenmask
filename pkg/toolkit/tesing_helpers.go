@@ -31,6 +31,14 @@ var columnList = []*Column{
 		Length:   -1,
 	},
 	{
+		Name:     "int_val2",
+		TypeName: "int2",
+		TypeOid:  pgtype.Int2OID,
+		Num:      1,
+		NotNull:  false,
+		Length:   -1,
+	},
+	{
 		Name:     "created_at",
 		TypeName: "timestamp",
 		TypeOid:  pgtype.TimestampOID,

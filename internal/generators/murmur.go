@@ -15,6 +15,7 @@ const (
 
 type MurmurHash struct {
 	hash.Hash
+	size int
 }
 
 func NewMurmurHash(seed uint32, size int) *MurmurHash {
@@ -31,7 +32,12 @@ func NewMurmurHash(seed uint32, size int) *MurmurHash {
 	}
 	return &MurmurHash{
 		Hash: h,
+		size: size,
 	}
+}
+
+func (mh *MurmurHash) Size() int {
+	return mh.size
 }
 
 func (mh *MurmurHash) Generate(data []byte) ([]byte, error) {

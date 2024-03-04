@@ -43,7 +43,7 @@ func (sp *StaticParameter) IsEmpty() (bool, error) {
 }
 
 func (sp *StaticParameter) IsDynamic() bool {
-	return true
+	return false
 }
 
 func (sp *StaticParameter) GetDefinition() *ParameterDefinition {
