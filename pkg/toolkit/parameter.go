@@ -127,6 +127,8 @@ type Parameter struct {
 	// ColumnProperties - detail info about expected column properties that may help to diagnose the table schema
 	// and perform validation procedure Plays only with IsColumn
 	ColumnProperties *ColumnProperties `mapstructure:"column_properties" json:"column_properties,omitempty"`
+	// FromGlobalVariable - name of global variable used for getting this value if the provided value is empty
+	FromGlobalVariable string
 	// Unmarshaller - unmarshal function for the parameter raw data []byte. Using by default json.Unmarshal function
 	Unmarshaller Unmarshaller `json:"-"`
 	// RawValueValidator - raw value validator function that performs assertion and cause ValidationWarnings if it
@@ -317,6 +319,12 @@ func (p *Parameter) SetRawValueValidator(validator RawValueValidator) *Parameter
 func (p *Parameter) SetRequired(v bool) *Parameter {
 	// Checking database types exists
 	p.Required = v
+	return p
+}
+
+func (p *Parameter) SetFromGlobal(globalVariableName string) *Parameter {
+	// Checking database types exists
+	p.FromGlobalVariable = globalVariableName
 	return p
 }
 

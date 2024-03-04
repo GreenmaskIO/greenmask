@@ -64,10 +64,11 @@ func NewInt64Transformer(generator generators.Generator, limiter *Int64Limiter) 
 
 func (ig *Int64Transformer) Transform(ctx context.Context, original []byte) ([]byte, error) {
 	var res int64
+	var limiter = ig.limiter
+	limiterAny := ctx.Value("limiter")
 
-	limiter := ctx.Value("limiter").(*Int64Limiter)
-	if limiter == nil && ig.limiter != nil {
-		limiter = ig.limiter
+	if limiterAny != nil {
+		limiter = limiterAny.(*Int64Limiter)
 	}
 
 	resBytes, err := ig.generator.Generate(original)

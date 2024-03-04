@@ -19,8 +19,6 @@ import (
 	"errors"
 	"fmt"
 	"math"
-	"math/rand"
-	"time"
 
 	"github.com/greenmaskio/greenmask/internal/db/postgres/transformers/utils"
 	"github.com/greenmaskio/greenmask/internal/generators"
@@ -34,7 +32,14 @@ const (
 	Int8Length = 8
 )
 
-var commonIntegerTransformerParams = []*toolkit.Parameter{
+const (
+	randomIntTransformerName        = "Integer"
+	randomIntTransformerDescription = "Generate integer value in min and max thresholds"
+)
+
+const integerTransformerGenByteLength = 8
+
+var integerTransformerParams = []*toolkit.Parameter{
 	toolkit.MustNewParameter(
 		"column",
 		"column name",
@@ -59,38 +64,12 @@ var commonIntegerTransformerParams = []*toolkit.Parameter{
 	).SetDefaultValue(toolkit.ParamsValue("true")),
 }
 
-var RandomIntegerTransformerDefinition = utils.NewDefinition(
-	utils.NewTransformerProperties(
-		"random.Integer",
-		"Generate integer value in min and max thresholds",
-	),
-
-	NewRandomIntTransformer,
-
-	commonIntegerTransformerParams...,
-)
-
 type RandomIntTransformer struct {
 	columnName      string
 	keepNull        bool
-	min             int64
-	max             int64
-	rand            *rand.Rand
 	affectedColumns map[int]string
 	columnIdx       int
-}
-
-func NewDeterministicIntTransformer(ctx context.Context, driver *toolkit.Driver, parameters map[string]*toolkit.Parameter) (utils.Transformer, toolkit.ValidationWarnings, error) {
-	gen, err := getGeneratorWithProjectedOutput(Sha1HashFunction, 8)
-	if err != nil {
-		return nil, nil, err
-	}
-	return NewIntTransformer(ctx, driver, parameters, gen)
-}
-
-func NewRandomIntTransformer(ctx context.Context, driver *toolkit.Driver, parameters map[string]*toolkit.Parameter) (utils.Transformer, toolkit.ValidationWarnings, error) {
-	seed := time.Now().UnixNano()
-	return NewIntTransformer(ctx, driver, parameters, generators.NewInt64Random(seed))
+	t               *transformers.Int64Transformer
 }
 
 func NewIntTransformer(ctx context.Context, driver *toolkit.Driver, parameters map[string]*toolkit.Parameter, g generators.Generator) (utils.Transformer, toolkit.ValidationWarnings, error) {
@@ -137,6 +116,11 @@ func NewIntTransformer(ctx context.Context, driver *toolkit.Driver, parameters m
 		return nil, limitsWarnings, nil
 	}
 
+	t, err := transformers.NewInt64Transformer(g, limiter)
+	if err != nil {
+		return nil, nil, fmt.Errorf("error initializing common int transformer: %w", err)
+	}
+
 	p = parameters["keep_null"]
 	if _, err := p.Scan(&keepNull); err != nil {
 		return nil, nil, fmt.Errorf(`unable to scan "keep_null" param: %w`, err)
@@ -145,9 +129,7 @@ func NewIntTransformer(ctx context.Context, driver *toolkit.Driver, parameters m
 	return &RandomIntTransformer{
 		columnName:      columnName,
 		keepNull:        keepNull,
-		min:             minVal,
-		max:             maxVal,
-		rand:            rand.New(rand.NewSource(time.Now().UnixMicro())),
+		t:               t,
 		affectedColumns: affectedColumns,
 		columnIdx:       idx,
 	}, nil, nil
@@ -173,8 +155,12 @@ func (rit *RandomIntTransformer) Transform(ctx context.Context, r *toolkit.Recor
 	if val.IsNull && rit.keepNull {
 		return r, nil
 	}
+	res, err := rit.t.Transform(ctx, val.Data)
+	if err != nil {
+		return nil, fmt.Errorf("error generating int value: %w", err)
+	}
 
-	if err := r.SetColumnValueByIdx(rit.columnIdx, utils.RandomInt(rit.rand, rit.min, rit.max)); err != nil {
+	if err := r.SetRawColumnValueByIdx(rit.columnIdx, toolkit.NewRawValue(res, false)); err != nil {
 		return nil, fmt.Errorf("unable to set new value: %w", err)
 	}
 	return r, nil
@@ -186,7 +172,7 @@ func validateIntTypeAndSetLimit(
 
 	switch c.Length {
 	case Int2Length:
-		if requestedMinValue < math.MinInt16 || requestedMinValue > math.MinInt16 {
+		if requestedMinValue < math.MinInt16 || requestedMinValue > math.MaxInt16 {
 			warns = append(warns, toolkit.NewValidationWarning().
 				SetMsg("requested min value is out of int16 range").
 				SetSeverity(toolkit.ErrorValidationSeverity).
@@ -196,7 +182,7 @@ func validateIntTypeAndSetLimit(
 				AddMeta("ParameterValue", requestedMinValue),
 			)
 		}
-		if requestedMaxValue < math.MinInt16 || requestedMaxValue > math.MinInt16 {
+		if requestedMaxValue < math.MinInt16 || requestedMaxValue > math.MaxInt16 {
 			warns = append(warns, toolkit.NewValidationWarning().
 				SetMsg("requested max value is out of int16 range").
 				SetSeverity(toolkit.ErrorValidationSeverity).
@@ -212,7 +198,7 @@ func validateIntTypeAndSetLimit(
 			return nil, nil, err
 		}
 	case Int4Length:
-		if requestedMinValue < math.MinInt32 || requestedMinValue > math.MinInt32 {
+		if requestedMinValue < math.MinInt32 || requestedMinValue > math.MaxInt32 {
 			warns = append(warns, toolkit.NewValidationWarning().
 				SetMsg("requested min value is out of int32 range").
 				SetSeverity(toolkit.ErrorValidationSeverity).
@@ -222,7 +208,7 @@ func validateIntTypeAndSetLimit(
 				AddMeta("ParameterValue", requestedMinValue),
 			)
 		}
-		if requestedMaxValue < math.MinInt32 || requestedMaxValue > math.MinInt32 {
+		if requestedMaxValue < math.MinInt32 || requestedMaxValue > math.MaxInt32 {
 			warns = append(warns, toolkit.NewValidationWarning().
 				SetMsg("requested max value is out of int32 range").
 				SetSeverity(toolkit.ErrorValidationSeverity).
@@ -237,7 +223,7 @@ func validateIntTypeAndSetLimit(
 			return nil, nil, err
 		}
 	case Int8Length:
-		if requestedMinValue < math.MinInt64 || requestedMinValue > math.MinInt64 {
+		if requestedMinValue < math.MinInt64 || requestedMinValue > math.MaxInt64 {
 			warns = append(warns, toolkit.NewValidationWarning().
 				SetMsg("requested min value is out of int64 range").
 				SetSeverity(toolkit.ErrorValidationSeverity).
@@ -247,7 +233,7 @@ func validateIntTypeAndSetLimit(
 				AddMeta("ParameterValue", requestedMinValue),
 			)
 		}
-		if requestedMaxValue < math.MinInt64 || requestedMaxValue > math.MinInt64 {
+		if requestedMaxValue < math.MinInt64 || requestedMaxValue > math.MaxInt64 {
 			warns = append(warns, toolkit.NewValidationWarning().
 				SetMsg("requested max value is out of int64 range").
 				SetSeverity(toolkit.ErrorValidationSeverity).
@@ -281,5 +267,13 @@ func validateIntTypeAndSetLimit(
 }
 
 func init() {
-	utils.DefaultTransformerRegistry.MustRegister(RandomIntegerTransformerDefinition)
+
+	registerRandomAndDeterministicTransformer(
+		utils.DefaultTransformerRegistry,
+		randomIntTransformerName,
+		randomIntTransformerDescription,
+		NewIntTransformer,
+		integerTransformerParams,
+		integerTransformerGenByteLength,
+	)
 }

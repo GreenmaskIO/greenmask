@@ -1,22 +1,127 @@
 package transformers_new
 
 import (
+	"context"
+	"encoding/hex"
 	"fmt"
+	"slices"
+	"time"
 
+	"github.com/greenmaskio/greenmask/internal/db/postgres/transformers/utils"
 	"github.com/greenmaskio/greenmask/internal/generators"
+	"github.com/greenmaskio/greenmask/pkg/toolkit"
 )
 
 const (
 	Sha1HashFunction = "sha1"
 )
 
-func getGeneratorWithProjectedOutput(hashFunction string, outputLength int) (generators.Generator, error) {
+var deterministicTransformerParameters = []*toolkit.Parameter{
+	toolkit.MustNewParameter(
+		"salt",
+		"Secret salt for hash function hex encoded",
+	).SetRequired(true).
+		SetFromGlobal("salt"),
+
+	toolkit.MustNewParameter(
+		"hash_function",
+		"Hash function name",
+	).SetRequired(true).
+		SetFromGlobal("hash_function"),
+}
+
+type newTransformerFunctionBase func(ctx context.Context, driver *toolkit.Driver, parameters map[string]*toolkit.Parameter, g generators.Generator) (utils.Transformer, toolkit.ValidationWarnings, error)
+
+func deterministicTransformerProducer(newTransformer newTransformerFunctionBase, outputLength int) utils.NewTransformerFunc {
+
+	return func(ctx context.Context, driver *toolkit.Driver, parameters map[string]*toolkit.Parameter) (utils.Transformer, toolkit.ValidationWarnings, error) {
+		var saltHex, hashFunction string
+		p := parameters["salt"]
+		if _, err := p.Scan(&saltHex); err != nil {
+			return nil, nil, fmt.Errorf(`unable to scan "salt" param: %w`, err)
+		}
+		salt := make([]byte, hex.EncodedLen(len(saltHex)))
+		hex.Encode(salt, []byte(saltHex))
+
+		p = parameters["hash_function"]
+		if _, err := p.Scan(&hashFunction); err != nil {
+			return nil, nil, fmt.Errorf(`unable to scan "hash_function" param: %w`, err)
+		}
+
+		gen, err := composeGeneratorWithProjectedOutput(Sha1HashFunction, salt, outputLength)
+		if err != nil {
+			return nil, nil, err
+		}
+		return newTransformer(ctx, driver, parameters, gen)
+	}
+
+}
+
+func randomTransformerProducer(newTransformer newTransformerFunctionBase) utils.NewTransformerFunc {
+	return func(ctx context.Context, driver *toolkit.Driver, parameters map[string]*toolkit.Parameter) (utils.Transformer, toolkit.ValidationWarnings, error) {
+		seed := time.Now().UnixNano()
+		gen, err := generators.NewInt64Random(seed)
+		if err != nil {
+			return nil, nil, err
+		}
+		return newTransformer(ctx, driver, parameters, gen)
+	}
+}
+
+func mergeParameters(commonParams, deterministicParams []*toolkit.Parameter) []*toolkit.Parameter {
+	res := slices.Clone(commonParams)
+	res = append(res, deterministicParams...)
+	return res
+}
+
+func composeGeneratorWithProjectedOutput(hashFunction string, salt []byte, outputLength int) (generators.Generator, error) {
 	switch hashFunction {
 	case Sha1HashFunction:
-		sha1Gen := generators.NewSha1([]byte("1234567"))
-		murmurGen := generators.NewMurmurHash(0, generators.MurMurHash64Size)
+		sha1Gen := generators.NewSha1(salt)
+		var hashSize int
+		switch outputLength {
+		case 16:
+			hashSize = generators.MurMurHash128Size
+		case 8:
+			hashSize = generators.MurMurHash64Size
+		case 4:
+			hashSize = generators.MurMurHash32Size
+		default:
+			return nil, fmt.Errorf("unexpeted outputLength %d", outputLength)
+		}
+		murmurGen := generators.NewMurmurHash(0, hashSize)
 		return generators.NewProjector(sha1Gen, murmurGen), nil
 	default:
 		return nil, fmt.Errorf("unknown hash function %s", hashFunction)
 	}
+}
+
+func registerRandomAndDeterministicTransformer(
+	tr *utils.TransformerRegistry, transformerName, transformerDescription string,
+	baseNewFunc newTransformerFunctionBase, params []*toolkit.Parameter,
+	outputLength int,
+) {
+	random := utils.NewDefinition(
+		utils.NewTransformerProperties(
+			fmt.Sprintf("random.%s", transformerName),
+			transformerDescription,
+		),
+
+		randomTransformerProducer(baseNewFunc),
+
+		params...,
+	)
+	tr.MustRegister(random)
+
+	deterministic := utils.NewDefinition(
+		utils.NewTransformerProperties(
+			fmt.Sprintf("deterministic.%s", transformerName),
+			transformerDescription,
+		),
+
+		deterministicTransformerProducer(baseNewFunc, outputLength),
+
+		mergeParameters(params, deterministicTransformerParameters)...,
+	)
+	tr.MustRegister(deterministic)
 }
