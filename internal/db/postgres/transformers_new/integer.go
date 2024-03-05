@@ -50,15 +50,13 @@ var integerTransformerParams = []*toolkit.ParameterDefinition{
 	toolkit.MustNewParameterDefinition(
 		"min",
 		"min int value threshold",
-	).SetRequired(true).
-		SetLinkParameter("column").
+	).SetLinkParameter("column").
 		SetDynamicModeSupport(true),
 
 	toolkit.MustNewParameterDefinition(
 		"max",
 		"max int value threshold",
-	).SetRequired(true).
-		SetLinkParameter("column").
+	).SetLinkParameter("column").
 		SetDynamicModeSupport(true),
 
 	toolkit.MustNewParameterDefinition(

@@ -35,7 +35,7 @@ func deterministicTransformerProducer(newTransformer newTransformerFunctionBase,
 	return func(ctx context.Context, driver *toolkit.Driver, parameters map[string]toolkit.Parameterizer) (utils.Transformer, toolkit.ValidationWarnings, error) {
 		var saltHex, hashFunction string
 
-		saltParam := parameters["max"]
+		saltParam := parameters["salt"]
 		hashFunctionParam := parameters["hash_function"]
 
 		if err := saltParam.Scan(&saltHex); err != nil {

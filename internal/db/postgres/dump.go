@@ -37,6 +37,7 @@ import (
 	_ "github.com/greenmaskio/greenmask/internal/db/postgres/transformers"
 	"github.com/greenmaskio/greenmask/internal/db/postgres/transformers/custom"
 	"github.com/greenmaskio/greenmask/internal/db/postgres/transformers/utils"
+	_ "github.com/greenmaskio/greenmask/internal/db/postgres/transformers_new"
 	"github.com/greenmaskio/greenmask/internal/domains"
 	"github.com/greenmaskio/greenmask/internal/storages"
 )
