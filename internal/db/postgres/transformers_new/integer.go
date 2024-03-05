@@ -70,7 +70,7 @@ type RandomIntTransformer struct {
 	keepNull        bool
 	affectedColumns map[int]string
 	columnIdx       int
-	t               *transformers.Int64Transformer
+	t               transformers.Transformer
 	dynamicMode     bool
 	intSize         int
 
