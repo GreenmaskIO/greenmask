@@ -183,17 +183,17 @@ jobs:
       - name: Build docs
         run: mkdocs build
 
-      - name: Create directory
-        run: sudo mkdir -p /var/www/greenmask.io
+      - name: Create docs directory
+        run: sudo mkdir -p ${{ secrets.DOCS_DEPLOY_DIR }}
 
-      - name: Move docs to greenmask.io directory
-        run: sudo mv site /var/www/greenmask.io/html-${{ github.ref_name}}
+      - name: Move html files to docs directory
+        run: sudo mv site ${{ secrets.DOCS_DEPLOY_DIR }}/html-${{ github.ref_name}}
 
       - name: Remove old symlink
-        run: sudo unlink /var/www/greenmask.io/html
+        run: sudo unlink ${{ secrets.DOCS_DEPLOY_DIR }}/html
 
       - name: Create new symlink
-        run: sudo ln -s /var/www/greenmask.io/html-${{ github.ref_name}}  /var/www/greenmask.io/html
+        run: sudo ln -s ${{ secrets.DOCS_DEPLOY_DIR }}/html-${{ github.ref_name}}  ${{ secrets.DOCS_DEPLOY_DIR }}/html
 
       - name: Restart web service
         run: sudo systemctl restart nginx
