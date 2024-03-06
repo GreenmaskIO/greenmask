@@ -20,10 +20,14 @@ import (
 )
 
 type Unmarshaller func(parameter *ParameterDefinition, driver *Driver, src ParamsValue) (any, error)
-type DynamicUnmarshaller func(driver *Driver, column *Column, v ParamsValue) (any, error)
+type DatabaseTypeUnmarshaler func(driver *Driver, typeName string, v ParamsValue) (any, error)
 type RawValueValidator func(p *ParameterDefinition, v ParamsValue) (ValidationWarnings, error)
 
 const WithoutMaxLength = -1
+
+func DefaultDatabaseTypeUnmarshaler(driver *Driver, typeName string, v ParamsValue) (any, error) {
+	return driver.DecodeValueByTypeName(typeName, v)
+}
 
 // ColumnProperties - column-like parameter properties that would help to understand the affection on the consistency
 type ColumnProperties struct {
@@ -96,15 +100,23 @@ func (cp *ColumnProperties) SetSkipOnNull(v bool) *ColumnProperties {
 }
 
 type DynamicModeProperties struct {
-	CompatibleTypes []string
+	SupportedTypes []string
+	Unmarshal      DatabaseTypeUnmarshaler `json:"-"`
 }
 
 func NewDynamicModeProperties() *DynamicModeProperties {
-	return &DynamicModeProperties{}
+	return &DynamicModeProperties{
+		//Unmarshal: DefaultDatabaseTypeUnmarshaler,
+	}
 }
 
 func (dmp *DynamicModeProperties) SetCompatibleTypes(compatibleTypes ...string) *DynamicModeProperties {
-	dmp.CompatibleTypes = compatibleTypes
+	dmp.SupportedTypes = compatibleTypes
+	return dmp
+}
+
+func (dmp *DynamicModeProperties) SetUnmarshaler(unmarshaler DatabaseTypeUnmarshaler) *DynamicModeProperties {
+	dmp.Unmarshal = unmarshaler
 	return dmp
 }
 
@@ -130,8 +142,8 @@ type ParameterDefinition struct {
 	// CastDbType - name of PostgreSQL type that would be used for Decoding raw value to the real go type. Is this
 	// type does not exist will cause an error
 	CastDbType string `mapstructure:"cast_db_type" json:"cast_db_type,omitempty"`
-	// DynamicModeSupport - shows that parameter value can be gathered from column value of the current record
-	DynamicModeSupport bool `mapstructure:"dynamic_mode_support" json:"dynamic_mode_support,omitempty"`
+	// DynamicModeProperties - shows that parameter support dynamic mode and contains allowed types and unmarshaler
+	DynamicModeProperties *DynamicModeProperties
 	// DefaultValue - default value of the parameter
 	DefaultValue ParamsValue `mapstructure:"default_value" json:"default_value,omitempty"`
 	// ColumnProperties - detail info about expected column properties that may help to diagnose the table schema
@@ -142,8 +154,6 @@ type ParameterDefinition struct {
 	// RawValueValidator - raw value validator function that performs assertion and cause ValidationWarnings if it
 	// has violations
 	RawValueValidator RawValueValidator `json:"-"`
-	// DynamicUnmarshaler - the custom unmarshalled for dynamic parameter value
-	DynamicUnmarshaler DynamicUnmarshaller `json:"-"`
 }
 
 func MustNewParameterDefinition(name string, description string) *ParameterDefinition {
@@ -156,9 +166,8 @@ func MustNewParameterDefinition(name string, description string) *ParameterDefin
 
 func NewParameterDefinition(name string, description string) (*ParameterDefinition, error) {
 	return &ParameterDefinition{
-		Name:               name,
-		Description:        description,
-		DynamicModeSupport: false,
+		Name:        name,
+		Description: description,
 	}, nil
 }
 
@@ -189,11 +198,6 @@ func (p *ParameterDefinition) SetUnmarshaler(unmarshaler Unmarshaller) *Paramete
 	return p
 }
 
-func (p *ParameterDefinition) SetDynamicUnmarshaler(unmarshaler DynamicUnmarshaller) *ParameterDefinition {
-	p.DynamicUnmarshaler = unmarshaler
-	return p
-}
-
 func (p *ParameterDefinition) SetRawValueValidator(validator RawValueValidator) *ParameterDefinition {
 	p.RawValueValidator = validator
 	return p
@@ -218,8 +222,8 @@ func (p *ParameterDefinition) SetDefaultValue(v ParamsValue) *ParameterDefinitio
 	return p
 }
 
-func (p *ParameterDefinition) SetDynamicModeSupport(v bool) *ParameterDefinition {
-	p.DynamicModeSupport = v
+func (p *ParameterDefinition) SetDynamicMode(v *DynamicModeProperties) *ParameterDefinition {
+	p.DynamicModeProperties = v
 	return p
 }
 

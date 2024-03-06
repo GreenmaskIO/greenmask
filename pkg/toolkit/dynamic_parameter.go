@@ -168,7 +168,7 @@ func (dp *DynamicParameter) SetRecord(r *Record) {
 
 func (dp *DynamicParameter) Init(columnParameters map[string]*StaticParameter, dynamicValue *DynamicParamValue) (warnings ValidationWarnings, err error) {
 
-	if !dp.definition.DynamicModeSupport {
+	if dp.definition.DynamicModeProperties == nil {
 		warnings = append(
 			warnings,
 			NewValidationWarning().
@@ -304,7 +304,7 @@ func (dp *DynamicParameter) Init(columnParameters map[string]*StaticParameter, d
 		}
 
 		// TODO: There is bug with column overriding type since OverriddenTypeOid is not checking
-		// TODO: Add CompatibleTypes checking there. Consider IsTypeAllowedWithTypeMap usage
+		// TODO: Add SupportedTypes checking there. Consider IsTypeAllowedWithTypeMap usage
 		if dp.tmpl == nil && dp.castToFunc == nil {
 			// Check that column parameter has the same type with dynamic parameter value or at least dynamic parameter
 			// column is compatible with type in the list. This logic is controversial since it might be unexpected
@@ -415,8 +415,8 @@ func (dp *DynamicParameter) Value() (value any, err error) {
 		}
 	}
 
-	if dp.definition.DynamicUnmarshaler != nil {
-		res, err := dp.definition.DynamicUnmarshaler(dp.driver, dp.column, rawValue)
+	if dp.definition.DynamicModeProperties.Unmarshal != nil {
+		res, err := dp.definition.DynamicModeProperties.Unmarshal(dp.driver, dp.column.CanonicalTypeName, rawValue)
 		if err != nil {
 			return nil, fmt.Errorf("unable to perform custom unmarshaller: %w", err)
 		}
@@ -521,8 +521,8 @@ func (dp *DynamicParameter) Scan(dest any) error {
 		}
 	}
 
-	if dp.definition.DynamicUnmarshaler != nil {
-		value, err := dp.definition.DynamicUnmarshaler(dp.driver, dp.column, rawValue)
+	if dp.definition.DynamicModeProperties.Unmarshal != nil {
+		value, err := dp.definition.DynamicModeProperties.Unmarshal(dp.driver, dp.column.CanonicalTypeName, rawValue)
 		if err != nil {
 			return fmt.Errorf("unable to perform custom unmarshaller: %w", err)
 		}

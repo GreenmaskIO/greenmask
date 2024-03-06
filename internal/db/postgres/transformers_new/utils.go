@@ -48,22 +48,23 @@ func deterministicTransformerProducer(newTransformer newTransformerFunctionBase,
 			return nil, nil, fmt.Errorf(`unable to scan "hash_function" param: %w`, err)
 		}
 
-		gen, err := composeGeneratorWithProjectedOutput(Sha1HashFunction, salt, outputLength)
-		if err != nil {
-			return nil, nil, err
+		var gen generators.Generator
+
+		gen = generators.NewSha1(salt)
+
+		if outputLength < gen.Size() {
+			gen = generators.NewHashReducer(gen, outputLength)
 		}
+
 		return newTransformer(ctx, driver, parameters, gen)
 	}
 
 }
 
-func randomTransformerProducer(newTransformer newTransformerFunctionBase) utils.NewTransformerFunc {
+func randomTransformerProducer(newTransformer newTransformerFunctionBase, outputLength int) utils.NewTransformerFunc {
 	return func(ctx context.Context, driver *toolkit.Driver, parameters map[string]toolkit.Parameterizer) (utils.Transformer, toolkit.ValidationWarnings, error) {
 		seed := time.Now().UnixNano()
-		gen, err := generators.NewInt64Random(seed)
-		if err != nil {
-			return nil, nil, err
-		}
+		gen := generators.NewBytesRandom(seed, outputLength)
 		return newTransformer(ctx, driver, parameters, gen)
 	}
 }
@@ -107,7 +108,7 @@ func registerRandomAndDeterministicTransformer(
 			transformerDescription,
 		),
 
-		randomTransformerProducer(baseNewFunc),
+		randomTransformerProducer(baseNewFunc, outputLength),
 
 		params...,
 	)

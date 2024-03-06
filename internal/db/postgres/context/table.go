@@ -198,6 +198,7 @@ func getTable(ctx context.Context, tx pgx.Tx, t *domains.Table) ([]*dump.Table, 
 }
 
 func getColumnsConfig(ctx context.Context, tx pgx.Tx, oid toolkit.Oid) ([]*toolkit.Column, error) {
+	defaultTypeMap := pgtype.NewMap()
 	var res []*toolkit.Column
 	rows, err := tx.Query(ctx, TableColumnsQuery, oid)
 	if err != nil {
@@ -210,6 +211,13 @@ func getColumnsConfig(ctx context.Context, tx pgx.Tx, oid toolkit.Oid) ([]*toolk
 		if err = rows.Scan(&column.Name, &column.TypeOid, &column.TypeName,
 			&column.NotNull, &column.Length, &column.Num); err != nil {
 			return nil, fmt.Errorf("cannot scan tableColumnQuery: %w", err)
+		}
+		column.CanonicalTypeName = column.TypeName
+		// Getting canonical type name if exists. For instance - PostgreSQL type Integer is alias for int4
+		// (int4 - canonical type name)
+		canonicalType, ok := defaultTypeMap.TypeForOID(uint32(column.TypeOid))
+		if ok {
+			column.CanonicalTypeName = canonicalType.Name
 		}
 		res = append(res, &column)
 	}

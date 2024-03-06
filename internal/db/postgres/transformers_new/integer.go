@@ -32,8 +32,8 @@ const (
 )
 
 const (
-	randomIntTransformerName        = "Integer"
-	randomIntTransformerDescription = "Generate integer value in min and max thresholds"
+	intTransformerName        = "Integer"
+	intTransformerDescription = "Generate integer value in min and max thresholds"
 )
 
 const integerTransformerGenByteLength = 8
@@ -42,22 +42,29 @@ var integerTransformerParams = []*toolkit.ParameterDefinition{
 	toolkit.MustNewParameterDefinition(
 		"column",
 		"column name",
-	).SetIsColumn(toolkit.NewColumnProperties().
-		SetAffected(true).
-		SetAllowedColumnTypes("int2", "int4", "int8", "numeric"),
+	).SetIsColumn(
+		toolkit.NewColumnProperties().
+			SetAffected(true).
+			SetAllowedColumnTypes("int2", "int4", "int8"),
 	).SetRequired(true),
 
 	toolkit.MustNewParameterDefinition(
 		"min",
 		"min int value threshold",
 	).SetLinkParameter("column").
-		SetDynamicModeSupport(true),
+		SetDynamicMode(
+			toolkit.NewDynamicModeProperties().
+				SetCompatibleTypes("int2", "int4", "int8"),
+		),
 
 	toolkit.MustNewParameterDefinition(
 		"max",
 		"max int value threshold",
 	).SetLinkParameter("column").
-		SetDynamicModeSupport(true),
+		SetDynamicMode(
+			toolkit.NewDynamicModeProperties().
+				SetCompatibleTypes("int2", "int4", "int8"),
+		),
 
 	toolkit.MustNewParameterDefinition(
 		"keep_null",
@@ -65,7 +72,7 @@ var integerTransformerParams = []*toolkit.ParameterDefinition{
 	).SetDefaultValue(toolkit.ParamsValue("true")),
 }
 
-type RandomIntTransformer struct {
+type IntegerTransformer struct {
 	columnName      string
 	keepNull        bool
 	affectedColumns map[int]string
@@ -80,7 +87,7 @@ type RandomIntTransformer struct {
 	keepNullParam toolkit.Parameterizer
 }
 
-func NewIntTransformer(ctx context.Context, driver *toolkit.Driver, parameters map[string]toolkit.Parameterizer, g generators.Generator) (utils.Transformer, toolkit.ValidationWarnings, error) {
+func NewIntegerTransformer(ctx context.Context, driver *toolkit.Driver, parameters map[string]toolkit.Parameterizer, g generators.Generator) (utils.Transformer, toolkit.ValidationWarnings, error) {
 
 	var columnName string
 	var minVal, maxVal int64
@@ -136,7 +143,7 @@ func NewIntTransformer(ctx context.Context, driver *toolkit.Driver, parameters m
 		return nil, nil, fmt.Errorf("error initializing common int transformer: %w", err)
 	}
 
-	return &RandomIntTransformer{
+	return &IntegerTransformer{
 		columnName:      columnName,
 		keepNull:        keepNull,
 		affectedColumns: affectedColumns,
@@ -153,19 +160,19 @@ func NewIntTransformer(ctx context.Context, driver *toolkit.Driver, parameters m
 	}, nil, nil
 }
 
-func (rit *RandomIntTransformer) GetAffectedColumns() map[int]string {
+func (rit *IntegerTransformer) GetAffectedColumns() map[int]string {
 	return rit.affectedColumns
 }
 
-func (rit *RandomIntTransformer) Init(ctx context.Context) error {
+func (rit *IntegerTransformer) Init(ctx context.Context) error {
 	return nil
 }
 
-func (rit *RandomIntTransformer) Done(ctx context.Context) error {
+func (rit *IntegerTransformer) Done(ctx context.Context) error {
 	return nil
 }
 
-func (rit *RandomIntTransformer) dynamicTransform(ctx context.Context, r *toolkit.Record) (*toolkit.Record, error) {
+func (rit *IntegerTransformer) dynamicTransform(ctx context.Context, r *toolkit.Record) (*toolkit.Record, error) {
 	val, err := r.GetRawColumnValueByIdx(rit.columnIdx)
 	if err != nil {
 		return nil, fmt.Errorf("unable to scan value: %w", err)
@@ -201,7 +208,7 @@ func (rit *RandomIntTransformer) dynamicTransform(ctx context.Context, r *toolki
 	return r, nil
 }
 
-func (rit *RandomIntTransformer) staticTransform(ctx context.Context, r *toolkit.Record) (*toolkit.Record, error) {
+func (rit *IntegerTransformer) staticTransform(ctx context.Context, r *toolkit.Record) (*toolkit.Record, error) {
 	val, err := r.GetRawColumnValueByIdx(rit.columnIdx)
 	if err != nil {
 		return nil, fmt.Errorf("unable to scan value: %w", err)
@@ -220,7 +227,7 @@ func (rit *RandomIntTransformer) staticTransform(ctx context.Context, r *toolkit
 	return r, nil
 }
 
-func (rit *RandomIntTransformer) Transform(ctx context.Context, r *toolkit.Record) (*toolkit.Record, error) {
+func (rit *IntegerTransformer) Transform(ctx context.Context, r *toolkit.Record) (*toolkit.Record, error) {
 	if rit.dynamicMode {
 		return rit.dynamicTransform(ctx, r)
 	}
@@ -326,9 +333,9 @@ func init() {
 
 	registerRandomAndDeterministicTransformer(
 		utils.DefaultTransformerRegistry,
-		randomIntTransformerName,
-		randomIntTransformerDescription,
-		NewIntTransformer,
+		intTransformerName,
+		intTransformerDescription,
+		NewIntegerTransformer,
 		integerTransformerParams,
 		integerTransformerGenByteLength,
 	)

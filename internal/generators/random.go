@@ -46,7 +46,7 @@ func NewBytesRandom(seed int64, size int) *BytesRandom {
 }
 
 func (br *BytesRandom) Generate(data []byte) ([]byte, error) {
-	res := make([]byte, 0, br.iters)
+	res := make([]byte, 0, br.size)
 	buf := make([]byte, 8)
 	for i := 0; i < br.iters; i++ {
 		binary.LittleEndian.PutUint64(buf, br.r.Uint64())

@@ -48,14 +48,20 @@ var RandomDateTransformerDefinition = utils.NewTransformerDefinition(
 		"min threshold date (and/or time) of random value",
 	).SetRequired(true).
 		SetLinkParameter("column").
-		SetDynamicModeSupport(true),
+		SetDynamicMode(
+			toolkit.NewDynamicModeProperties().
+				SetCompatibleTypes("date", "timestamp", "timestamptz"),
+		),
 
 	toolkit.MustNewParameterDefinition(
 		"max",
 		"max threshold date  (and/or time) of random value",
 	).SetRequired(true).
 		SetLinkParameter("column").
-		SetDynamicModeSupport(true),
+		SetDynamicMode(
+			toolkit.NewDynamicModeProperties().
+				SetCompatibleTypes("date", "timestamp", "timestamptz"),
+		),
 
 	toolkit.MustNewParameterDefinition(
 		"truncate",
