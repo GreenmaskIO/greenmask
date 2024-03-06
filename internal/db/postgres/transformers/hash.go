@@ -57,11 +57,11 @@ var HashTransformerDefinition = utils.NewDefinition(
 		"function",
 		fmt.Sprintf("hash function name. Possible values: %s",
 			strings.Join(
-				[]string{Sha1Name, sha256Name, sha512Name, Sha3224Name, Sha3256Name, Sha384Name, Sha5124Name, Md5Name},
+				[]string{sha1Name, sha256Name, sha512Name, sha3224Name, sha3256Name, sha384Name, sha5124Name, md5Name},
 				", ",
 			),
 		),
-	).SetDefaultValue([]byte(Sha3256Name)).
+	).SetDefaultValue([]byte(sha3256Name)).
 		SetRawValueValidator(validateHashFunctionsParameter),
 
 	toolkit.MustNewParameter(
@@ -72,14 +72,14 @@ var HashTransformerDefinition = utils.NewDefinition(
 )
 
 const (
-	Sha1Name    = "sha1"
+	sha1Name    = "sha1"
 	sha256Name  = "sha256"
 	sha512Name  = "sha512"
-	Sha3224Name = "sha3-224"
-	Sha3256Name = "sha3-254"
-	Sha384Name  = "sha3-384"
-	Sha5124Name = "sha3-512"
-	Md5Name     = "md5"
+	sha3224Name = "sha3-224"
+	sha3256Name = "sha3-254"
+	sha384Name  = "sha3-384"
+	sha5124Name = "sha3-512"
+	md5Name     = "md5"
 )
 
 type HashTransformer struct {
@@ -125,10 +125,10 @@ func NewHashTransformer(
 	var h hash.Hash
 	var hashFunctionLength int
 	switch hashFunctionName {
-	case Md5Name:
+	case md5Name:
 		h = md5.New()
 		hashFunctionLength = 16
-	case Sha1Name:
+	case sha1Name:
 		h = sha1.New()
 		hashFunctionLength = 20
 	case sha256Name:
@@ -137,16 +137,16 @@ func NewHashTransformer(
 	case sha512Name:
 		h = sha512.New()
 		hashFunctionLength = 64
-	case Sha3224Name:
+	case sha3224Name:
 		h = sha3.New224()
 		hashFunctionLength = 28
-	case Sha3256Name:
+	case sha3256Name:
 		h = sha3.New256()
 		hashFunctionLength = 32
-	case Sha384Name:
+	case sha384Name:
 		h = sha3.New384()
 		hashFunctionLength = 48
-	case Sha5124Name:
+	case sha5124Name:
 		h = sha3.New512()
 		hashFunctionLength = 64
 	default:
@@ -222,7 +222,7 @@ func (ht *HashTransformer) Transform(ctx context.Context, r *toolkit.Record) (*t
 func validateHashFunctionsParameter(p *toolkit.Parameter, v toolkit.ParamsValue) (toolkit.ValidationWarnings, error) {
 	functionName := string(v)
 	switch functionName {
-	case Sha1Name, sha256Name, sha512Name, Sha3224Name, Sha3256Name, Sha384Name, Sha5124Name, Md5Name:
+	case sha1Name, sha256Name, sha512Name, sha3224Name, sha3256Name, sha384Name, sha5124Name, md5Name:
 		return nil, nil
 	}
 	return toolkit.ValidationWarnings{
