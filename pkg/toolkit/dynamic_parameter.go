@@ -314,7 +314,7 @@ func (dp *DynamicParameter) Init(columnParameters map[string]*StaticParameter, d
 				len(dp.linkedColumnParameter.definition.ColumnProperties.AllowedTypes) > 0 &&
 				!IsTypeAllowedWithTypeMap(
 					dp.driver,
-					dp.linkedColumnParameter.definition.ColumnProperties.AllowedTypes,
+					dp.definition.DynamicModeProperties.SupportedTypes,
 					column.TypeName,
 					column.TypeOid,
 					true,

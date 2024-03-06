@@ -43,7 +43,7 @@ var bigIntegerTransformerParams = []*toolkit.ParameterDefinition{
 		SetRequired(true).
 		SetDynamicMode(
 			toolkit.NewDynamicModeProperties().
-				SetCompatibleTypes("numeric", "decimal").
+				SetCompatibleTypes("numeric", "decimal", "int2", "int4", "int8").
 				SetUnmarshaler(bigIntTypeUnmarshaler),
 		),
 
@@ -54,7 +54,7 @@ var bigIntegerTransformerParams = []*toolkit.ParameterDefinition{
 		SetRequired(true).
 		SetDynamicMode(
 			toolkit.NewDynamicModeProperties().
-				SetCompatibleTypes("numeric", "decimal").
+				SetCompatibleTypes("numeric", "decimal", "int2", "int4", "int8").
 				SetUnmarshaler(bigIntTypeUnmarshaler),
 		),
 
