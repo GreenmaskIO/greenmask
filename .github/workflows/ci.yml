@@ -16,6 +16,7 @@ on:
 
 env:
   go-version: '1.21.5'
+  python-version: '3.12'
   cmd-name: 'greenmask'
   docker-registry: greenmask/greenmask
 
@@ -30,10 +31,10 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version: ${{ env.go-version }}
-      
+
       - name: Echo Go version
         run: go version
-      
+
       - name: Run tests
         run: make tests
 
@@ -47,17 +48,17 @@ jobs:
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
-      
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
-      
+
       - name: Run integration tests
         run: |
           docker-compose -f docker-compose-integration.yml -p greenmask up \
           --renew-anon-volumes --force-recreate --build --exit-code-from greenmask \
           --abort-on-container-exit greenmask
 
-  binaries:
+  build-binaries:
     runs-on: ubuntu-22.04
     needs:
       - unit-tests
@@ -84,7 +85,7 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version: ${{ env.go-version }}
-      
+
       - name: Build with different arch
         run: |
           export GOOS=$(echo ${{ matrix.platforms }} | cut -d '/' -f 1)
@@ -130,7 +131,7 @@ jobs:
   build-docker-images-and-push:
     runs-on: ubuntu-22.04
     needs:
-      - binaries
+      - build-binaries
     if: startsWith(github.ref, 'refs/tags/v')
     steps:
       - name: Checkout repository
@@ -160,3 +161,39 @@ jobs:
           platforms: linux/amd64,linux/arm64
           push: true
           tags: ${{ env.docker-registry }}:${{ env.TAG }},${{ env.docker-registry }}:latest
+
+  deploy-docs:
+    runs-on: self-hosted
+    needs:
+      - build-binaries
+      - build-docker-images-and-push
+    if: startsWith(github.ref, 'refs/tags/v')
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.python-version }}
+
+      - name: Install dependicies
+        run: pip install -r requirements.txt
+
+      - name: Build docs
+        run: mkdocs build
+
+      - name: Create docs directory
+        run: sudo mkdir -p ${{ secrets.DOCS_DEPLOY_DIR }}
+
+      - name: Move html files to docs directory
+        run: sudo mv site ${{ secrets.DOCS_DEPLOY_DIR }}/html-${{ github.ref_name}}
+
+      - name: Remove old symlink
+        run: sudo unlink ${{ secrets.DOCS_DEPLOY_DIR }}/html
+
+      - name: Create new symlink
+        run: sudo ln -s ${{ secrets.DOCS_DEPLOY_DIR }}/html-${{ github.ref_name}}  ${{ secrets.DOCS_DEPLOY_DIR }}/html
+
+      - name: Restart web service
+        run: sudo systemctl restart nginx
