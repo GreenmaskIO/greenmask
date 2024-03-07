@@ -23,7 +23,7 @@ import (
 	"github.com/rs/zerolog/log"
 	"golang.org/x/sync/errgroup"
 
-	dump "github.com/greenmaskio/greenmask/internal/db/postgres/dump_objects"
+	"github.com/greenmaskio/greenmask/internal/db/postgres/entries"
 	"github.com/greenmaskio/greenmask/internal/db/postgres/pgcopy"
 	"github.com/greenmaskio/greenmask/internal/db/postgres/transformers"
 	"github.com/greenmaskio/greenmask/internal/db/postgres/transformers/utils"
@@ -35,7 +35,7 @@ var endOfLineSeq = []byte("\n")
 type TransformationFunc func(ctx context.Context, r *toolkit.Record) (*toolkit.Record, error)
 
 type TransformationPipeline struct {
-	table *dump.Table
+	table *entries.Table
 	//buf                   *bytes.Buffer
 	w                     io.Writer
 	line                  uint64
@@ -46,7 +46,7 @@ type TransformationPipeline struct {
 	record                *toolkit.Record
 }
 
-func NewTransformationPipeline(ctx context.Context, eg *errgroup.Group, table *dump.Table, w io.Writer) (*TransformationPipeline, error) {
+func NewTransformationPipeline(ctx context.Context, eg *errgroup.Group, table *entries.Table, w io.Writer) (*TransformationPipeline, error) {
 
 	var tws []*TransformationWindow
 	var isAsync bool

@@ -7,14 +7,14 @@ import (
 
 	"golang.org/x/sync/errgroup"
 
-	dump "github.com/greenmaskio/greenmask/internal/db/postgres/dump_objects"
+	"github.com/greenmaskio/greenmask/internal/db/postgres/entries"
 )
 
 type ValidationPipeline struct {
 	*TransformationPipeline
 }
 
-func NewValidationPipeline(ctx context.Context, eg *errgroup.Group, table *dump.Table, w io.Writer) (*ValidationPipeline, error) {
+func NewValidationPipeline(ctx context.Context, eg *errgroup.Group, table *entries.Table, w io.Writer) (*ValidationPipeline, error) {
 	tpp, err := NewTransformationPipeline(ctx, eg, table, w)
 	if err != nil {
 		return nil, err

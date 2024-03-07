@@ -8,7 +8,7 @@ import (
 
 	"github.com/olekukonko/tablewriter"
 
-	"github.com/greenmaskio/greenmask/internal/db/postgres/dump_objects"
+	"github.com/greenmaskio/greenmask/internal/db/postgres/entries"
 	stringsUtils "github.com/greenmaskio/greenmask/internal/utils/strings"
 	"github.com/greenmaskio/greenmask/pkg/toolkit"
 )
@@ -32,7 +32,7 @@ type TextDocument struct {
 	tableFormat string
 }
 
-func NewTextDocument(table *dump_objects.Table, withDiff bool, onlyTransformed bool, tableFormat string) *TextDocument {
+func NewTextDocument(table *entries.Table, withDiff bool, onlyTransformed bool, tableFormat string) *TextDocument {
 	jd := NewJsonDocument(table, withDiff, onlyTransformed)
 	if tableFormat != horizontalTableFormatName && tableFormat != verticalTableFormatName {
 		panic(fmt.Sprintf("unknown table format %s", tableFormat))

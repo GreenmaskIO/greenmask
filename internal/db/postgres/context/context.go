@@ -21,7 +21,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 
-	"github.com/greenmaskio/greenmask/internal/db/postgres/dump_objects"
+	"github.com/greenmaskio/greenmask/internal/db/postgres/entries"
 	"github.com/greenmaskio/greenmask/internal/db/postgres/pgdump"
 	transformersUtils "github.com/greenmaskio/greenmask/internal/db/postgres/transformers/utils"
 	"github.com/greenmaskio/greenmask/internal/domains"
@@ -31,11 +31,11 @@ import (
 // RuntimeContext - describes current runtime behaviour according to the config and schema objects
 type RuntimeContext struct {
 	// Tables - map of build tables with toolkit that was wrapped into dump.Entry
-	Tables map[toolkit.Oid]*dump_objects.Table
+	Tables map[toolkit.Oid]*entries.Table
 	// Types - list of custom types that are used in DB schema
 	Types []*toolkit.Type
 	// DataSectionObjects - list of objects to dump in data-section. There are sequences, tables and large objects
-	DataSectionObjects []dump_objects.Entry
+	DataSectionObjects []entries.Entry
 	// Warnings - list of occurred ValidationWarning during validation and config building
 	Warnings toolkit.ValidationWarnings
 	// Registry - registry of all the registered transformers definition
