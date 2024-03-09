@@ -4,11 +4,11 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/shopspring/decimal"
+
 	"github.com/greenmaskio/greenmask/internal/db/postgres/transformers/utils"
-	"github.com/greenmaskio/greenmask/internal/generators"
 	"github.com/greenmaskio/greenmask/internal/generators/transformers"
 	"github.com/greenmaskio/greenmask/pkg/toolkit"
-	"github.com/shopspring/decimal"
 )
 
 const (
@@ -17,14 +17,6 @@ const (
 )
 
 const bigIntegerTransformerGenByteLength = 20
-
-func bigIntTypeUnmarshaler(driver *toolkit.Driver, typeName string, v toolkit.ParamsValue) (any, error) {
-	res, err := decimal.NewFromString(string(v))
-	if err != nil {
-		return nil, err
-	}
-	return &res, nil
-}
 
 var bigIntegerTransformerParams = []*toolkit.ParameterDefinition{
 	toolkit.MustNewParameterDefinition(
@@ -65,11 +57,11 @@ var bigIntegerTransformerParams = []*toolkit.ParameterDefinition{
 }
 
 type BigIntegerTransformer struct {
+	*transformers.BigIntTransformer
 	columnName      string
 	keepNull        bool
 	affectedColumns map[int]string
 	columnIdx       int
-	t               transformers.Transformer
 	dynamicMode     bool
 	numericSize     int
 
@@ -80,9 +72,10 @@ type BigIntegerTransformer struct {
 	maxParam      toolkit.Parameterizer
 	minParam      toolkit.Parameterizer
 	keepNullParam toolkit.Parameterizer
+	transform     func(context.Context, []byte) (decimal.Decimal, error)
 }
 
-func NewBigIntegerTransformer(ctx context.Context, driver *toolkit.Driver, parameters map[string]toolkit.Parameterizer, g generators.Generator) (utils.Transformer, toolkit.ValidationWarnings, error) {
+func NewBigIntegerTransformer(ctx context.Context, driver *toolkit.Driver, parameters map[string]toolkit.Parameterizer) (UnifiedTransformer, toolkit.ValidationWarnings, error) {
 
 	var columnName string
 	var minVal, maxVal decimal.Decimal
@@ -129,25 +122,26 @@ func NewBigIntegerTransformer(ctx context.Context, driver *toolkit.Driver, param
 		return nil, limitsWarnings, nil
 	}
 
-	t, err := transformers.NewBigIntTransformer(g, limiter)
+	t, err := transformers.NewBigIntTransformer(limiter)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error initializing common int transformer: %w", err)
 	}
 
 	return &BigIntegerTransformer{
-		columnName:      columnName,
-		keepNull:        keepNull,
-		affectedColumns: affectedColumns,
-		columnIdx:       idx,
-		minAllowedValue: limiter.MinValue,
-		maxAllowedValue: limiter.MaxValue,
+		BigIntTransformer: t,
+		columnName:        columnName,
+		keepNull:          keepNull,
+		affectedColumns:   affectedColumns,
+		columnIdx:         idx,
+		minAllowedValue:   limiter.MinValue,
+		maxAllowedValue:   limiter.MaxValue,
 
 		columnParam:   columnParam,
 		minParam:      minParam,
 		maxParam:      maxParam,
 		keepNullParam: keepNullParam,
-		t:             t,
 		numericSize:   c.Length,
+		transform:     t.Transform,
 
 		dynamicMode: dynamicMode,
 	}, nil, nil
@@ -158,6 +152,9 @@ func (bit *BigIntegerTransformer) GetAffectedColumns() map[int]string {
 }
 
 func (bit *BigIntegerTransformer) Init(ctx context.Context) error {
+	if bit.dynamicMode {
+		bit.transform = bit.dynamicTransform
+	}
 	return nil
 }
 
@@ -165,43 +162,27 @@ func (bit *BigIntegerTransformer) Done(ctx context.Context) error {
 	return nil
 }
 
-func (bit *BigIntegerTransformer) dynamicTransform(ctx context.Context, r *toolkit.Record) (*toolkit.Record, error) {
-	val, err := r.GetRawColumnValueByIdx(bit.columnIdx)
-	if err != nil {
-		return nil, fmt.Errorf("unable to scan value: %w", err)
-	}
-	if val.IsNull && bit.keepNull {
-		return r, nil
-	}
-
+func (bit *BigIntegerTransformer) dynamicTransform(ctx context.Context, v []byte) (decimal.Decimal, error) {
 	var minVal, maxVal decimal.Decimal
-	err = bit.minParam.Scan(&minVal)
+	err := bit.minParam.Scan(&minVal)
 	if err != nil {
-		return nil, fmt.Errorf(`unable to scan "min" param: %w`, err)
+		return decimal.Decimal{}, fmt.Errorf(`unable to scan "min" param: %w`, err)
 	}
 
 	err = bit.maxParam.Scan(&maxVal)
 	if err != nil {
-		return nil, fmt.Errorf(`unable to scan "max" param: %w`, err)
+		return decimal.Decimal{}, fmt.Errorf(`unable to scan "max" param: %w`, err)
 	}
 
 	limiter, err := getBigIntLimiterForDynamicParameter(bit.numericSize, minVal, maxVal, bit.minAllowedValue, bit.maxAllowedValue)
 	if err != nil {
-		return nil, fmt.Errorf("error creating limiter in dynamic mode: %w", err)
+		return decimal.Decimal{}, fmt.Errorf("error creating limiter in dynamic mode: %w", err)
 	}
 	ctx = context.WithValue(ctx, "limiter", limiter)
-	res, err := bit.t.Transform(ctx, val.Data)
-	if err != nil {
-		return nil, fmt.Errorf("error generating int value: %w", err)
-	}
-
-	if err := r.SetRawColumnValueByIdx(bit.columnIdx, toolkit.NewRawValue(res, false)); err != nil {
-		return nil, fmt.Errorf("unable to set new value: %w", err)
-	}
-	return r, nil
+	return bit.BigIntTransformer.Transform(ctx, v)
 }
 
-func (bit *BigIntegerTransformer) staticTransform(ctx context.Context, r *toolkit.Record) (*toolkit.Record, error) {
+func (bit *BigIntegerTransformer) Transform(ctx context.Context, r *toolkit.Record) (*toolkit.Record, error) {
 	val, err := r.GetRawColumnValueByIdx(bit.columnIdx)
 	if err != nil {
 		return nil, fmt.Errorf("unable to scan value: %w", err)
@@ -209,22 +190,16 @@ func (bit *BigIntegerTransformer) staticTransform(ctx context.Context, r *toolki
 	if val.IsNull && bit.keepNull {
 		return r, nil
 	}
-	res, err := bit.t.Transform(ctx, val.Data)
+
+	newValue, err := bit.transform(ctx, val.Data)
 	if err != nil {
-		return nil, fmt.Errorf("error generating int value: %w", err)
+		return nil, err
 	}
 
-	if err := r.SetRawColumnValueByIdx(bit.columnIdx, toolkit.NewRawValue(res, false)); err != nil {
+	if err = r.SetColumnValueByIdx(bit.columnIdx, newValue); err != nil {
 		return nil, fmt.Errorf("unable to set new value: %w", err)
 	}
 	return r, nil
-}
-
-func (bit *BigIntegerTransformer) Transform(ctx context.Context, r *toolkit.Record) (*toolkit.Record, error) {
-	if bit.dynamicMode {
-		return bit.dynamicTransform(ctx, r)
-	}
-	return bit.staticTransform(ctx, r)
 }
 
 func validateBigIntTypeAndSetLimit(
@@ -301,6 +276,14 @@ func getBigIntLimiterForDynamicParameter(
 		}
 	}
 	return limiter, nil
+}
+
+func bigIntTypeUnmarshaler(driver *toolkit.Driver, typeName string, v toolkit.ParamsValue) (any, error) {
+	res, err := decimal.NewFromString(string(v))
+	if err != nil {
+		return nil, err
+	}
+	return &res, nil
 }
 
 func init() {

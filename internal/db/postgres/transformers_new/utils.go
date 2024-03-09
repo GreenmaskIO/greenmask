@@ -2,10 +2,11 @@ package transformers_new
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/binary"
 	"encoding/hex"
 	"fmt"
 	"slices"
-	"time"
 
 	"github.com/greenmaskio/greenmask/internal/db/postgres/transformers/utils"
 	"github.com/greenmaskio/greenmask/internal/generators"
@@ -16,56 +17,84 @@ const (
 	Sha1HashFunction = "sha1"
 )
 
+type UnifiedTransformer interface {
+	Init(ctx context.Context) error
+	Done(ctx context.Context) error
+	Transform(ctx context.Context, r *toolkit.Record) (*toolkit.Record, error)
+	GetAffectedColumns() map[int]string
+	SetGenerator(g generators.Generator) error
+	GetRequiredGeneratorByteLength() int
+}
+
 var deterministicTransformerParameters = []*toolkit.ParameterDefinition{
 	toolkit.MustNewParameterDefinition(
 		"salt",
 		"Secret salt for hash function hex encoded",
-	).SetRequired(true),
-
-	toolkit.MustNewParameterDefinition(
-		"hash_function",
-		"Hash function name",
-	).SetRequired(true),
+	),
 }
 
-type newTransformerFunctionBase func(ctx context.Context, driver *toolkit.Driver, parameters map[string]toolkit.Parameterizer, g generators.Generator) (utils.Transformer, toolkit.ValidationWarnings, error)
+type newTransformerFunctionBase func(ctx context.Context, driver *toolkit.Driver, parameters map[string]toolkit.Parameterizer) (UnifiedTransformer, toolkit.ValidationWarnings, error)
 
 func deterministicTransformerProducer(newTransformer newTransformerFunctionBase, outputLength int) utils.NewTransformerFunc {
 
 	return func(ctx context.Context, driver *toolkit.Driver, parameters map[string]toolkit.Parameterizer) (utils.Transformer, toolkit.ValidationWarnings, error) {
-		var saltHex, hashFunction string
-
-		saltParam := parameters["salt"]
-		hashFunctionParam := parameters["hash_function"]
-
-		if err := saltParam.Scan(&saltHex); err != nil {
-			return nil, nil, fmt.Errorf(`unable to scan "salt" param: %w`, err)
+		t, warns, err := newTransformer(ctx, driver, parameters)
+		if err != nil || warns.IsFatal() {
+			return nil, warns, err
 		}
-		salt := make([]byte, hex.EncodedLen(len(saltHex)))
-		hex.Encode(salt, []byte(saltHex))
 
-		if err := hashFunctionParam.Scan(&hashFunction); err != nil {
-			return nil, nil, fmt.Errorf(`unable to scan "hash_function" param: %w`, err)
+		salt := getSaltFromCtx(ctx)
+
+		hashFunctionName, err := getHashFunctionNameBySize(t.GetRequiredGeneratorByteLength())
+		if err != nil {
+			return nil, warns, fmt.Errorf("unable to determine hash function for deterministic transformer: %w", err)
 		}
 
 		var gen generators.Generator
 
-		gen = generators.NewSha1(salt)
-
-		if outputLength < gen.Size() {
-			gen = generators.NewHashReducer(gen, outputLength)
+		gen, err = generators.NewHash(salt, hashFunctionName)
+		if err != nil {
+			return nil, warns, fmt.Errorf("cannot create hash function backend: %w", err)
 		}
 
-		return newTransformer(ctx, driver, parameters, gen)
+		if err = t.SetGenerator(gen); err != nil {
+			return nil, warns, fmt.Errorf("cannot set hash function generator to transformer: %w", err)
+		}
+
+		return t, warns, nil
 	}
 
 }
 
+func getSaltFromCtx(ctx context.Context) []byte {
+	saltAny := ctx.Value("salt")
+	var salt []byte
+	if saltAny != nil {
+		saltHex := saltAny.([]byte)
+		salt = make([]byte, hex.EncodedLen(len(saltHex)))
+		hex.Encode(salt, saltHex)
+	}
+	return salt
+}
+
 func randomTransformerProducer(newTransformer newTransformerFunctionBase, outputLength int) utils.NewTransformerFunc {
 	return func(ctx context.Context, driver *toolkit.Driver, parameters map[string]toolkit.Parameterizer) (utils.Transformer, toolkit.ValidationWarnings, error) {
-		seed := time.Now().UnixNano()
+		t, warns, err := newTransformer(ctx, driver, parameters)
+		if err != nil || warns.IsFatal() {
+			return nil, warns, err
+		}
+
+		buf := make([]byte, 8)
+		_, err = rand.Read(buf)
+		if err != nil {
+			return nil, warns, fmt.Errorf("error generating random bytes sequence: %w", err)
+		}
+		seed := int64(binary.LittleEndian.Uint64(buf))
 		gen := generators.NewBytesRandom(seed, outputLength)
-		return newTransformer(ctx, driver, parameters, gen)
+		if err = t.SetGenerator(gen); err != nil {
+			return nil, warns, err
+		}
+		return t, warns, nil
 	}
 }
 
@@ -75,10 +104,26 @@ func mergeParameters(commonParams, deterministicParams []*toolkit.ParameterDefin
 	return res
 }
 
+func getHashFunctionNameBySize(size int) (string, error) {
+	if size <= 28 {
+		return generators.Sha3224, nil
+	} else if size <= 32 {
+		return generators.Sha3256, nil
+	} else if size <= 48 {
+		return generators.Sha3384, nil
+	} else if size <= 64 {
+		return generators.Sha3512, nil
+	}
+	return "", fmt.Errorf("unable to find suitable hash function for requested %d size", size)
+}
+
 func composeGeneratorWithProjectedOutput(hashFunction string, salt []byte, outputLength int) (generators.Generator, error) {
 	switch hashFunction {
 	case Sha1HashFunction:
-		sha1Gen := generators.NewSha1(salt)
+		gen, err := generators.NewHash(salt, hashFunction)
+		if err != nil {
+			return nil, err
+		}
 		var hashSize int
 		switch outputLength {
 		case 16:
@@ -91,7 +136,7 @@ func composeGeneratorWithProjectedOutput(hashFunction string, salt []byte, outpu
 			return nil, fmt.Errorf("unexpeted outputLength %d", outputLength)
 		}
 		murmurGen := generators.NewMurmurHash(0, hashSize)
-		return generators.NewProjector(sha1Gen, murmurGen), nil
+		return generators.NewProjector(gen, murmurGen), nil
 	default:
 		return nil, fmt.Errorf("unknown hash function %s", hashFunction)
 	}

@@ -20,7 +20,6 @@ import (
 	"math"
 
 	"github.com/greenmaskio/greenmask/internal/db/postgres/transformers/utils"
-	"github.com/greenmaskio/greenmask/internal/generators"
 	"github.com/greenmaskio/greenmask/internal/generators/transformers"
 	"github.com/greenmaskio/greenmask/pkg/toolkit"
 )
@@ -73,11 +72,11 @@ var integerTransformerParams = []*toolkit.ParameterDefinition{
 }
 
 type IntegerTransformer struct {
+	*transformers.Int64Transformer
 	columnName      string
 	keepNull        bool
 	affectedColumns map[int]string
 	columnIdx       int
-	t               transformers.Transformer
 	dynamicMode     bool
 	intSize         int
 
@@ -85,9 +84,11 @@ type IntegerTransformer struct {
 	maxParam      toolkit.Parameterizer
 	minParam      toolkit.Parameterizer
 	keepNullParam toolkit.Parameterizer
+
+	transform func(context.Context, []byte) (int64, error)
 }
 
-func NewIntegerTransformer(ctx context.Context, driver *toolkit.Driver, parameters map[string]toolkit.Parameterizer, g generators.Generator) (utils.Transformer, toolkit.ValidationWarnings, error) {
+func NewIntegerTransformer(ctx context.Context, driver *toolkit.Driver, parameters map[string]toolkit.Parameterizer) (UnifiedTransformer, toolkit.ValidationWarnings, error) {
 
 	var columnName string
 	var minVal, maxVal int64
@@ -138,25 +139,27 @@ func NewIntegerTransformer(ctx context.Context, driver *toolkit.Driver, paramete
 		return nil, limitsWarnings, nil
 	}
 
-	t, err := transformers.NewInt64Transformer(g, limiter)
+	t, err := transformers.NewInt64Transformer(limiter)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error initializing common int transformer: %w", err)
 	}
 
 	return &IntegerTransformer{
-		columnName:      columnName,
-		keepNull:        keepNull,
-		affectedColumns: affectedColumns,
-		columnIdx:       idx,
+		Int64Transformer: t,
+		columnName:       columnName,
+		keepNull:         keepNull,
+		affectedColumns:  affectedColumns,
+		columnIdx:        idx,
 
 		columnParam:   columnParam,
 		minParam:      minParam,
 		maxParam:      maxParam,
 		keepNullParam: keepNullParam,
-		t:             t,
 
 		dynamicMode: dynamicMode,
 		intSize:     intSize,
+
+		transform: t.Transform,
 	}, nil, nil
 }
 
@@ -165,6 +168,9 @@ func (rit *IntegerTransformer) GetAffectedColumns() map[int]string {
 }
 
 func (rit *IntegerTransformer) Init(ctx context.Context) error {
+	if rit.dynamicMode {
+		rit.transform = rit.dynamicTransform
+	}
 	return nil
 }
 
@@ -172,43 +178,32 @@ func (rit *IntegerTransformer) Done(ctx context.Context) error {
 	return nil
 }
 
-func (rit *IntegerTransformer) dynamicTransform(ctx context.Context, r *toolkit.Record) (*toolkit.Record, error) {
-	val, err := r.GetRawColumnValueByIdx(rit.columnIdx)
-	if err != nil {
-		return nil, fmt.Errorf("unable to scan value: %w", err)
-	}
-	if val.IsNull && rit.keepNull {
-		return r, nil
-	}
+func (rit *IntegerTransformer) dynamicTransform(ctx context.Context, v []byte) (int64, error) {
 
 	var minVal, maxVal int64
-	err = rit.minParam.Scan(&minVal)
+	err := rit.minParam.Scan(&minVal)
 	if err != nil {
-		return nil, fmt.Errorf(`unable to scan "min" param: %w`, err)
+		return 0, fmt.Errorf(`unable to scan "min" param: %w`, err)
 	}
 
 	err = rit.maxParam.Scan(&maxVal)
 	if err != nil {
-		return nil, fmt.Errorf(`unable to scan "max" param: %w`, err)
+		return 0, fmt.Errorf(`unable to scan "max" param: %w`, err)
 	}
 
 	limiter, err := getLimiterForDynamicParameter(rit.intSize, minVal, maxVal)
 	if err != nil {
-		return nil, fmt.Errorf("error creating limiter in dynamic mode: %w", err)
+		return 0, fmt.Errorf("error creating limiter in dynamic mode: %w", err)
 	}
 	ctx = context.WithValue(ctx, "limiter", limiter)
-	res, err := rit.t.Transform(ctx, val.Data)
+	res, err := rit.Int64Transformer.Transform(ctx, v)
 	if err != nil {
-		return nil, fmt.Errorf("error generating int value: %w", err)
+		return 0, fmt.Errorf("error generating int value: %w", err)
 	}
-
-	if err := r.SetRawColumnValueByIdx(rit.columnIdx, toolkit.NewRawValue(res, false)); err != nil {
-		return nil, fmt.Errorf("unable to set new value: %w", err)
-	}
-	return r, nil
+	return res, nil
 }
 
-func (rit *IntegerTransformer) staticTransform(ctx context.Context, r *toolkit.Record) (*toolkit.Record, error) {
+func (rit *IntegerTransformer) Transform(ctx context.Context, r *toolkit.Record) (*toolkit.Record, error) {
 	val, err := r.GetRawColumnValueByIdx(rit.columnIdx)
 	if err != nil {
 		return nil, fmt.Errorf("unable to scan value: %w", err)
@@ -216,22 +211,16 @@ func (rit *IntegerTransformer) staticTransform(ctx context.Context, r *toolkit.R
 	if val.IsNull && rit.keepNull {
 		return r, nil
 	}
-	res, err := rit.t.Transform(ctx, val.Data)
+
+	newVal, err := rit.transform(ctx, val.Data)
 	if err != nil {
-		return nil, fmt.Errorf("error generating int value: %w", err)
+		return nil, err
 	}
 
-	if err := r.SetRawColumnValueByIdx(rit.columnIdx, toolkit.NewRawValue(res, false)); err != nil {
+	if err = r.SetColumnValueByIdx(rit.columnIdx, newVal); err != nil {
 		return nil, fmt.Errorf("unable to set new value: %w", err)
 	}
 	return r, nil
-}
-
-func (rit *IntegerTransformer) Transform(ctx context.Context, r *toolkit.Record) (*toolkit.Record, error) {
-	if rit.dynamicMode {
-		return rit.dynamicTransform(ctx, r)
-	}
-	return rit.staticTransform(ctx, r)
 }
 
 func getIntThresholds(size int) (int64, int64, error) {

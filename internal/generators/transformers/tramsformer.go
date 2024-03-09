@@ -1,7 +1,10 @@
 package transformers
 
-import "context"
+import (
+	"github.com/greenmaskio/greenmask/internal/generators"
+)
 
 type Transformer interface {
-	Transform(ctx context.Context, data []byte) (res []byte, err error)
+	GetRequiredGeneratorByteLength() int
+	SetGenerator(g generators.Generator) error
 }

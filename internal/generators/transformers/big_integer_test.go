@@ -4,23 +4,25 @@ import (
 	"context"
 	"testing"
 
-	"github.com/greenmaskio/greenmask/internal/generators"
 	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/require"
+
+	"github.com/greenmaskio/greenmask/internal/generators"
 )
 
 func TestBigIntTransformer_Transform(t *testing.T) {
-	sha1 := generators.NewSha1([]byte{1, 2, 3, 4})
+	sha1, err := generators.NewHash([]byte{1, 2, 3, 4}, "sha1")
+	require.NoError(t, err)
 	minValue, err := decimal.NewFromString("-999999999999999999999999999999999999999")
 	maxValue, err := decimal.NewFromString("999999999999999999999999999999999999999")
 	require.NoError(t, err)
 	limiter, err := NewBigIntLimiter(minValue, maxValue)
 	require.NoError(t, err)
-	tr, err := NewBigIntTransformer(sha1, limiter)
+	tr, err := NewBigIntTransformer(limiter)
 	require.NoError(t, err)
-	resBytes, err := tr.Transform(context.Background(), []byte("199999999999999999999999999999999999999"))
+	err = tr.SetGenerator(sha1)
 	require.NoError(t, err)
-	res, err := decimal.NewFromString(string(resBytes))
+	res, err := tr.Transform(context.Background(), []byte("199999999999999999999999999999999999999"))
 	require.NoError(t, err)
 	require.True(t, res.LessThanOrEqual(maxValue) && res.GreaterThanOrEqual(minValue))
 }

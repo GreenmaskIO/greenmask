@@ -6,8 +6,9 @@ import (
 	"math/big"
 	"strings"
 
-	"github.com/greenmaskio/greenmask/internal/generators"
 	"github.com/shopspring/decimal"
+
+	"github.com/greenmaskio/greenmask/internal/generators"
 )
 
 type BigIntLimiter struct {
@@ -67,7 +68,6 @@ func (l *BigIntLimiter) ByteLength() int {
 
 func (l *BigIntLimiter) Limit(v decimal.Decimal) decimal.Decimal {
 	return v.Mod(l.maxValueFromZero).Add(l.offset)
-	//return int64(v%l.maxValueFromZero) + l.offset
 }
 
 type BigIntTransformer struct {
@@ -76,24 +76,32 @@ type BigIntTransformer struct {
 	byteLength int
 }
 
-func NewBigIntTransformer(generator generators.Generator, limiter *BigIntLimiter) (*BigIntTransformer, error) {
+func NewBigIntTransformer(limiter *BigIntLimiter) (*BigIntTransformer, error) {
 	if limiter == nil {
 		return nil, fmt.Errorf("limiter for BigInt values cannot be nil")
 	}
 
 	maxBytesLength := max(getByteByDecimal(limiter.MinValue), getByteByDecimal(limiter.MaxValue))
-	if generator.Size() < maxBytesLength {
-		return nil, fmt.Errorf("requested byte length (%d) higher that generator can produce (%d)", maxBytesLength, generator.Size())
-	}
 
 	return &BigIntTransformer{
-		generator:  generator,
 		limiter:    limiter,
 		byteLength: maxBytesLength,
 	}, nil
 }
 
-func (ig *BigIntTransformer) Transform(ctx context.Context, original []byte) ([]byte, error) {
+func (ig *BigIntTransformer) GetRequiredGeneratorByteLength() int {
+	return ig.byteLength
+}
+
+func (ig *BigIntTransformer) SetGenerator(g generators.Generator) error {
+	if g.Size() < ig.byteLength {
+		return fmt.Errorf("requested byte length (%d) higher than generator can produce (%d)", ig.byteLength, g.Size())
+	}
+	ig.generator = g
+	return nil
+}
+
+func (ig *BigIntTransformer) Transform(ctx context.Context, original []byte) (decimal.Decimal, error) {
 	var res decimal.Decimal
 	var limiter = ig.limiter
 	limiterAny := ctx.Value("limiter")
@@ -104,13 +112,13 @@ func (ig *BigIntTransformer) Transform(ctx context.Context, original []byte) ([]
 
 	resBytes, err := ig.generator.Generate(original)
 	if err != nil {
-		return nil, err
+		return decimal.Decimal{}, err
 	}
 
 	res = newDecimalFromBytes(resBytes[:ig.byteLength])
 	res = limiter.Limit(res)
 
-	return []byte(res.String()), nil
+	return res, nil
 }
 
 func getByteByDecimal(v decimal.Decimal) int {

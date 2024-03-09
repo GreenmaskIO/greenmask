@@ -9,8 +9,7 @@ import (
 )
 
 var (
-	ErrUnsupportedGeneratorLength = errors.New("unsupported generator byte length")
-	ErrWrongLimits                = errors.New("wrong limits")
+	ErrWrongLimits = errors.New("wrong limits")
 )
 
 type Int64Limiter struct {
@@ -48,21 +47,18 @@ func (l *Int64Limiter) Limit(v uint64) int64 {
 }
 
 type Int64Transformer struct {
-	generator generators.Generator
-	limiter   *Int64Limiter
+	generator  generators.Generator
+	limiter    *Int64Limiter
+	byteLength int
 }
 
-func NewInt64Transformer(generator generators.Generator, limiter *Int64Limiter) (*Int64Transformer, error) {
-	if generator.Size() != 8 {
-		return nil, fmt.Errorf("expected 8 length but got %d: %w", generator.Size(), ErrUnsupportedGeneratorLength)
-	}
+func NewInt64Transformer(limiter *Int64Limiter) (*Int64Transformer, error) {
 	return &Int64Transformer{
-		generator: generator,
-		limiter:   limiter,
+		limiter: limiter,
 	}, nil
 }
 
-func (ig *Int64Transformer) Transform(ctx context.Context, original []byte) ([]byte, error) {
+func (ig *Int64Transformer) Transform(ctx context.Context, original []byte) (int64, error) {
 	var res int64
 	var limiter = ig.limiter
 	limiterAny := ctx.Value("limiter")
@@ -73,7 +69,7 @@ func (ig *Int64Transformer) Transform(ctx context.Context, original []byte) ([]b
 
 	resBytes, err := ig.generator.Generate(original)
 	if err != nil {
-		return nil, err
+		return 0, err
 	}
 
 	if limiter != nil {
@@ -82,5 +78,17 @@ func (ig *Int64Transformer) Transform(ctx context.Context, original []byte) ([]b
 		res = generators.BuildInt64FromBytes(resBytes)
 	}
 
-	return []byte(fmt.Sprintf("%d", res)), nil
+	return res, nil
+}
+
+func (ig *Int64Transformer) GetRequiredGeneratorByteLength() int {
+	return ig.byteLength
+}
+
+func (ig *Int64Transformer) SetGenerator(g generators.Generator) error {
+	if g.Size() < ig.byteLength {
+		return fmt.Errorf("requested byte length (%d) higher than generator can produce (%d)", ig.byteLength, g.Size())
+	}
+	ig.generator = g
+	return nil
 }

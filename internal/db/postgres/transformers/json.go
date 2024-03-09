@@ -73,12 +73,12 @@ var jsonSetOpt = &sjson.Options{
 }
 
 type Operation struct {
-	Operation     string             `mapstructure:"operation" json:"operation"`
-	Value         interface{}        `mapstructure:"value,omitempty" json:"value"`
-	ValueTemplate string             `mapstructure:"value_template,omitempty" json:"value_template"`
-	Path          string             `mapstructure:"path" json:"path"`
-	ErrorNotExist bool               `mapstructure:"error_not_exist" json:"error_not_exist"`
-	tmpl          *template.Template `json:"tmpl,omitempty"`
+	Operation     string      `mapstructure:"operation" json:"operation"`
+	Value         interface{} `mapstructure:"value,omitempty" json:"value"`
+	ValueTemplate string      `mapstructure:"value_template,omitempty" json:"value_template"`
+	Path          string      `mapstructure:"path" json:"path"`
+	ErrorNotExist bool        `mapstructure:"error_not_exist" json:"error_not_exist"`
+	tmpl          *template.Template
 }
 
 func (o *Operation) Apply(inp []byte, tctx *JsonContext, buf *bytes.Buffer) ([]byte, error) {
