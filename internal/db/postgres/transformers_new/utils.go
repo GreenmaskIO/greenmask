@@ -90,7 +90,7 @@ func randomTransformerProducer(newTransformer newTransformerFunctionBase, output
 			return nil, warns, fmt.Errorf("error generating random bytes sequence: %w", err)
 		}
 		seed := int64(binary.LittleEndian.Uint64(buf))
-		gen := generators.NewBytesRandom(seed, outputLength)
+		gen := generators.NewRandomBytes(seed, outputLength)
 		if err = t.SetGenerator(gen); err != nil {
 			return nil, warns, err
 		}

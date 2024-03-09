@@ -113,28 +113,72 @@ func getTruncatePartValueByName(truncateName string) (truncate int, err error) {
 	return
 }
 
-type DateLimiter struct {
-	minDate time.Time
-	maxDate time.Time
+type timestampThreshold struct {
+	sec  int64
+	nano int64
 }
 
-func NewDateLimiter(minDate, maxDate time.Time) *DateLimiter {
-	minDate.Unix()
-	return &DateLimiter{}
+type TimestampLimiter struct {
+	minDate          *timestampThreshold
+	maxDate          *timestampThreshold
+	maxValueFromZero uint64
+	offset           int64
 }
 
-func (dl *DateLimiter) Limit(sec, nano int64) time.Time {
-	return time.Unix(sec, nano)
+func NewTimestampLimiter(minDate, maxDate time.Time) (*TimestampLimiter, error) {
+
+	if minDate.After(maxDate) {
+		return nil, ErrWrongLimits
+	}
+
+	minDateThreshold := &timestampThreshold{
+		sec:  minDate.Unix(),
+		nano: int64(minDate.Nanosecond()) + 1,
+	}
+	maxDateThreshold := &timestampThreshold{
+		sec:  maxDate.Unix(),
+		nano: int64(maxDate.Nanosecond()) + 1,
+	}
+
+	maxValueFromZero := uint64(maxDateThreshold.sec)
+	offset := minDateThreshold.sec
+
+	if minDateThreshold.sec < 0 {
+		if maxDateThreshold.sec < 0 {
+			maxValueFromZero = uint64(-minDateThreshold.sec) - uint64(-maxDateThreshold.sec)
+		} else {
+			maxValueFromZero = uint64(maxDateThreshold.sec) + uint64(-minDateThreshold.sec)
+		}
+	} else if minDateThreshold.sec > 0 {
+		maxValueFromZero = uint64(maxDateThreshold.sec - minDateThreshold.sec)
+	}
+
+	return &TimestampLimiter{
+		minDate:          minDateThreshold,
+		maxDate:          maxDateThreshold,
+		maxValueFromZero: maxValueFromZero + 1,
+		offset:           offset,
+	}, nil
+}
+
+func (dl *TimestampLimiter) Limit(sec, nano int64) (int64, int64) {
+	sec = (sec % int64(dl.maxValueFromZero)) + dl.offset
+	if sec == dl.minDate.sec {
+		nano = nano % dl.minDate.nano
+	} else if sec == dl.maxDate.sec {
+		nano = nano % dl.minDate.nano
+	}
+	return sec, nano
 }
 
 type Timestamp struct {
 	truncater  *DateTruncater
 	generator  generators.Generator
 	byteLength int
-	limiter    *DateLimiter
+	limiter    *TimestampLimiter
 }
 
-func NewTimestamp(truncatePart string, limiter *DateLimiter) (*Timestamp, error) {
+func NewTimestamp(truncatePart string, limiter *TimestampLimiter) (*Timestamp, error) {
 	// var month time.Month = 1
 	//	var day = 1
 	//	var year, month, day, hour, minute, second, nano int
@@ -161,18 +205,28 @@ func NewTimestamp(truncatePart string, limiter *DateLimiter) (*Timestamp, error)
 }
 
 func (d *Timestamp) Transform(ctx context.Context, data []byte) (time.Time, error) {
+	limiter := d.limiter
+	limiterAny := ctx.Value("limiter")
+
+	if limiterAny != nil {
+		limiter = limiterAny.(*TimestampLimiter)
+	}
+
 	genBytes, err := d.generator.Generate(data)
 	if err != nil {
 		return time.Time{}, err
 	}
 
-	sec := binary.LittleEndian.Uint64(genBytes[:8])
-	nano := binary.LittleEndian.Uint64(genBytes[9:]) % 1000000000
+	sec := int64(binary.LittleEndian.Uint64(genBytes[:8]))
+	nano := int64(binary.LittleEndian.Uint64(genBytes[8:]) % 1000000000)
 
-	res := time.Unix(int64(sec), int64(nano))
+	var res time.Time
 
-	if d.limiter != nil {
-		d.limiter
+	if limiter != nil {
+		sec, nano = limiter.Limit(sec, nano)
+		res = time.Unix(sec, nano)
+	} else {
+		res = time.Unix(sec, nano)
 	}
 
 	if d.truncater != nil {

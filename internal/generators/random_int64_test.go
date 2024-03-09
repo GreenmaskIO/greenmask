@@ -7,7 +7,7 @@ import (
 )
 
 func TestBytesRandom_Generate(t *testing.T) {
-	r := NewBytesRandom(0, 3)
+	r := NewRandomBytes(0, 3)
 	res, err := r.Generate(nil)
 	require.NoError(t, err)
 	require.Len(t, res, 3)
