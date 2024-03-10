@@ -42,6 +42,8 @@ type RuntimeContext struct {
 	Registry *transformersUtils.TransformerRegistry
 	// TypeMap - map of registered types including custom types. It's common for the whole runtime
 	TypeMap *pgtype.Map
+	// DatabaseSchema - list of tables with columns - required for schema diff checking
+	DatabaseSchema toolkit.DatabaseSchema
 }
 
 // NewRuntimeContext - creating new runtime context.
@@ -71,12 +73,18 @@ func NewRuntimeContext(
 		return nil, fmt.Errorf("cannot build dump object list: %w", err)
 	}
 
+	schema, err := getDatabaseSchema(ctx, tx, opt)
+	if err != nil {
+		return nil, fmt.Errorf("cannot get database schema: %w", err)
+	}
+
 	return &RuntimeContext{
 		Tables:             tables,
 		Types:              types,
 		DataSectionObjects: dataSectionObjects,
 		Warnings:           warnings,
 		Registry:           r,
+		DatabaseSchema:     schema,
 	}, nil
 }
 
