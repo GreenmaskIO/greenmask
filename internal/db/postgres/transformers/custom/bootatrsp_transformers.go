@@ -29,11 +29,6 @@ const (
 	DefaultAutoDiscoveryTimeout     = 10 * time.Second
 )
 
-var defaultRowDriver = &toolkit.RowDriverParams{
-	Name:   CsvModeName,
-	Params: make(map[string]interface{}),
-}
-
 func BootstrapCustomTransformers(ctx context.Context, registry *utils.TransformerRegistry, customTransformers []*TransformerDefinition) (err error) {
 	for _, ctd := range customTransformers {
 		var td *utils.Definition
@@ -55,7 +50,7 @@ func BootstrapCustomTransformers(ctx context.Context, registry *utils.Transforme
 		}
 
 		if ctd.Driver == nil {
-			ctd.Driver = defaultRowDriver
+			ctd.Driver = &(*toolkit.DefaultRowDriverParams)
 		}
 
 		if ctd.AutoDiscover {

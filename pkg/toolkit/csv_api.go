@@ -19,21 +19,47 @@ import (
 	"encoding/csv"
 	"fmt"
 	"io"
+	"slices"
+)
+
+const (
+	CsvAttributesDirectNumeratingFormatName = "direct"
+	CsvAttributesConfigNumeratingFormatName = "config"
 )
 
 type CsvApi struct {
-	transferringColumns []int
-	affectedColumns     []int
+	transferringColumns []*Column
+	affectedColumns     []*Column
 	w                   *csv.Writer
 	r                   *csv.Reader
 	record              *RawRecordCsv
 }
 
-func NewCsvApi(transferringColumns []int, affectedColumns []int, size int) *CsvApi {
+func NewCsvApi(transferringColumns []*Column, affectedColumns []*Column, driver *Driver, params *DriverParams) *CsvApi {
+	var record *RawRecordCsv
+
+	switch params.CsvAttributesFormat {
+	case CsvAttributesDirectNumeratingFormatName:
+		record = NewRawRecordCsv(len(driver.Table.Columns), nil)
+	case CsvAttributesConfigNumeratingFormatName:
+		allColumns := make([]*Column, len(transferringColumns))
+		copy(allColumns, transferringColumns)
+
+		for _, c := range affectedColumns {
+			if slices.IndexFunc(allColumns, func(col *Column) bool {
+				return col.Name == c.Name
+			}) == -1 {
+				allColumns = append(allColumns, c)
+			}
+		}
+
+		record = NewRawRecordCsv(len(driver.Table.Columns), allColumns)
+	}
+
 	return &CsvApi{
 		transferringColumns: transferringColumns,
 		affectedColumns:     affectedColumns,
-		record:              NewRawRecordCsv(size),
+		record:              record,
 	}
 }
 
@@ -46,13 +72,13 @@ func (ca *CsvApi) SetReader(r io.Reader) {
 }
 
 func (ca *CsvApi) GetRowDriverFromRecord(r *Record) (RowDriver, error) {
-	for _, columnIdx := range ca.transferringColumns {
+	for _, c := range ca.transferringColumns {
 
-		v, err := r.GetRawColumnValueByIdx(columnIdx)
+		v, err := r.GetRawColumnValueByIdx(c.Idx)
 		if err != nil {
 			return nil, fmt.Errorf("error getting raw atribute value: %w", err)
 		}
-		if err = ca.record.SetColumn(columnIdx, v); err != nil {
+		if err = ca.record.SetColumn(c.Idx, v); err != nil {
 			return nil, fmt.Errorf("unable to set new value: %w", err)
 		}
 	}
@@ -60,14 +86,14 @@ func (ca *CsvApi) GetRowDriverFromRecord(r *Record) (RowDriver, error) {
 }
 
 func (ca *CsvApi) SetRowDriverToRecord(rd RowDriver, r *Record) error {
-	for _, columnIdx := range ca.affectedColumns {
-		v, err := rd.GetColumn(columnIdx)
+	for _, c := range ca.affectedColumns {
+		v, err := rd.GetColumn(c.Idx)
 		if err != nil {
-			return fmt.Errorf(`error getting column %d value: %w`, columnIdx, err)
+			return fmt.Errorf(`error getting column %d value: %w`, c.Idx, err)
 		}
-		err = r.SetRawColumnValueByIdx(columnIdx, v)
+		err = r.SetRawColumnValueByIdx(c.Idx, v)
 		if err != nil {
-			return fmt.Errorf(`error setting column %d value to record: %w`, columnIdx, err)
+			return fmt.Errorf(`error setting column %d value to record: %w`, c.Idx, err)
 		}
 	}
 	return nil

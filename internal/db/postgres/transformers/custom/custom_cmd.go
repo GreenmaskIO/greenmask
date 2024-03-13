@@ -71,8 +71,8 @@ func NewCustomCmdTransformer(
 	if err != nil {
 		return nil, nil, fmt.Errorf("error getting affeected and transferring columns: %w", err)
 	}
-	for _, idx := range affectedColumnsIdx {
-		affectedColumns[idx] = driver.Table.Columns[idx].Name
+	for _, c := range affectedColumnsIdx {
+		affectedColumns[c.Idx] = c.Name
 	}
 
 	api, err := toolkit.NewApi(ctd.Driver, transferringColumnsIdx, affectedColumnsIdx, driver)
