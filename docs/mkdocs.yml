@@ -3,7 +3,7 @@ site_name: Greenmask — PostgreSQL masking and obfuscation tool
 # Theme
 theme:
   name: material
-  custom_dir: overrides
+  custom_dir: docs/overrides
   logo: assets/logo.png
   favicon: assets/logo.png
   features:
@@ -113,10 +113,12 @@ nav:
               - Template: built_in_transformers/advanced_transformers/template.md
               - TemplateRecord: built_in_transformers/advanced_transformers/template_record.md
               - Custom functions:
-                - built_in_transformers/advanced_transformers/custom_functions/index.md
-                - Core custom functions: built_in_transformers/advanced_transformers/custom_functions/core_functions.md
-                - Faker function: built_in_transformers/advanced_transformers/custom_functions/faker_function.md
+                  - built_in_transformers/advanced_transformers/custom_functions/index.md
+                  - Core custom functions: built_in_transformers/advanced_transformers/custom_functions/core_functions.md
+                  - Faker function: built_in_transformers/advanced_transformers/custom_functions/faker_function.md
   - Release notes:
+      - Greenmask 0.1.7: release_notes/greenmask_0_1_7.md
+      - Greenmask 0.1.6: release_notes/greenmask_0_1_6.md
       - Greenmask 0.1.5: release_notes/greenmask_0_1_5.md
       - Greenmask 0.1.4: release_notes/greenmask_0_1_4.md
       - Greenmask 0.1.3: release_notes/greenmask_0_1_3.md
