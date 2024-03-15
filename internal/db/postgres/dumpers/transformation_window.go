@@ -20,7 +20,7 @@ import (
 
 	"golang.org/x/sync/errgroup"
 
-	"github.com/greenmaskio/greenmask/internal/db/postgres/dump"
+	"github.com/greenmaskio/greenmask/internal/db/postgres/entries"
 	"github.com/greenmaskio/greenmask/internal/db/postgres/transformers/utils"
 	"github.com/greenmaskio/greenmask/pkg/toolkit"
 )
@@ -47,7 +47,7 @@ func NewTransformationWindow(ctx context.Context, eg *errgroup.Group) *Transform
 	}
 }
 
-func (tw *TransformationWindow) TryAdd(table *dump.Table, t utils.Transformer) bool {
+func (tw *TransformationWindow) TryAdd(table *entries.Table, t utils.Transformer) bool {
 
 	affectedColumn := t.GetAffectedColumns()
 	if len(affectedColumn) == 0 {

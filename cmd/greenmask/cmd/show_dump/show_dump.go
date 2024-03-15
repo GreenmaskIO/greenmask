@@ -22,7 +22,7 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 
-	"github.com/greenmaskio/greenmask/internal/db/postgres"
+	cmdInternals "github.com/greenmaskio/greenmask/internal/db/postgres/cmd"
 	pgDomains "github.com/greenmaskio/greenmask/internal/domains"
 	"github.com/greenmaskio/greenmask/internal/storages/builder"
 	"github.com/greenmaskio/greenmask/internal/utils/logger"
@@ -87,7 +87,7 @@ var (
 				}
 			}
 
-			if err := postgres.ShowDump(ctx, st, dumpId, format); err != nil {
+			if err := cmdInternals.ShowDump(ctx, st, dumpId, format); err != nil {
 				log.Fatal().Err(err).Msg("")
 			}
 		},

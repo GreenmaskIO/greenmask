@@ -32,6 +32,7 @@ const (
 
 type Constraint interface {
 	IsAffected(column *Column, columnProperties *ColumnProperties) (w ValidationWarnings)
+	Type() string
 }
 
 type DefaultConstraintDefinition struct {
@@ -74,6 +75,10 @@ func (c *Check) IsAffected(column *Column, columnProperties *ColumnProperties) (
 	return
 }
 
+func (c *Check) Type() string {
+	return CheckConstraintType
+}
+
 type Exclusion DefaultConstraintDefinition
 
 func NewExclusion(schema, name, definition string, oid Oid, columns []AttNum) *Exclusion {
@@ -99,6 +104,10 @@ func (e *Exclusion) IsAffected(column *Column, columnProperties *ColumnPropertie
 		)
 	}
 	return w
+}
+
+func (e *Exclusion) Type() string {
+	return ExclusionConstraintType
 }
 
 // LinkedTable - table that involved into constraint, required for ForeignKey and PrimaryKeyReferences
@@ -145,6 +154,10 @@ func (fk *ForeignKey) IsAffected(column *Column, columnProperties *ColumnPropert
 		)
 	}
 	return w
+}
+
+func (fk *ForeignKey) Type() string {
+	return FkConstraintType
 }
 
 type PrimaryKey struct {
@@ -195,6 +208,10 @@ func (pk *PrimaryKey) IsAffected(column *Column, columnProperties *ColumnPropert
 	return w
 }
 
+func (pk *PrimaryKey) Type() string {
+	return PkConstraintType
+}
+
 type Unique DefaultConstraintDefinition
 
 func NewUnique(schema, name, definition string, oid Oid, columns []AttNum) *Unique {
@@ -222,6 +239,10 @@ func (u *Unique) IsAffected(column *Column, columnProperties *ColumnProperties) 
 	return w
 }
 
+func (u *Unique) Type() string {
+	return UniqueConstraintType
+}
+
 type TriggerConstraint DefaultConstraintDefinition
 
 func NewTriggerConstraint(schema, name, definition string, oid Oid, columns []AttNum) *TriggerConstraint {
@@ -247,4 +268,8 @@ func (tc *TriggerConstraint) IsAffected(column *Column, columnProperties *Column
 		)
 	}
 	return w
+}
+
+func (tc *TriggerConstraint) Type() string {
+	return TriggerConstraintType
 }
