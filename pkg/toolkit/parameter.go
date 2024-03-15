@@ -18,6 +18,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"os"
 	"slices"
 	"time"
 
@@ -127,6 +128,8 @@ type Parameter struct {
 	// ColumnProperties - detail info about expected column properties that may help to diagnose the table schema
 	// and perform validation procedure Plays only with IsColumn
 	ColumnProperties *ColumnProperties `mapstructure:"column_properties" json:"column_properties,omitempty"`
+	// GlobalEnvVariable - the nane of the global environment variable that can be used on empty input
+	GetFromGlobalEnvVariable string `mapstructure:"get_from_global_env_variable" json:"get_from_global_env_variable,omitempty"`
 	// Unmarshaller - unmarshal function for the parameter raw data []byte. Using by default json.Unmarshal function
 	Unmarshaller Unmarshaller `json:"-"`
 	// RawValueValidator - raw value validator function that performs assertion and cause ValidationWarnings if it
@@ -330,6 +333,11 @@ func (p *Parameter) SetDefaultValue(v ParamsValue) *Parameter {
 	return p
 }
 
+func (p *Parameter) SetGetFromGlobalEnvVariable(v string) *Parameter {
+	p.GetFromGlobalEnvVariable = v
+	return p
+}
+
 func (p *Parameter) Copy() *Parameter {
 	cp := *p
 	cp.value = nil
@@ -341,7 +349,12 @@ func (p *Parameter) Init(driver *Driver, types []*Type, params []*Parameter, raw
 	var warnings ValidationWarnings
 	p.Driver = driver
 	p.rawValue = nil
-	p.rawValue = slices.Clone(rawValue)
+	if p.GetFromGlobalEnvVariable != "" {
+		p.rawValue = []byte(os.Getenv(p.GetFromGlobalEnvVariable))
+	}
+	if rawValue != nil {
+		p.rawValue = slices.Clone(rawValue)
+	}
 
 	if rawValue == nil {
 		if p.Required {
