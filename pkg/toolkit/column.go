@@ -21,4 +21,5 @@ type Column struct {
 	Num      AttNum `json:"num"`
 	NotNull  bool   `json:"not_null"`
 	Length   int    `json:"length"`
+	Idx      int    `json:"idx"`
 }
