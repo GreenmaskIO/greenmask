@@ -18,69 +18,90 @@ You can use the following commands within Greenmask:
 * `list-transformers` — displays a list of available transformers along with their documentation
 * `show-transformer` — displays information about the specified transformer
 * `restore` — restores data to the target database either by specifying a `dumpId` or using the latest available dump
-* `show-dump` — provides metadata information about a particular dump, offering insights into its structure and attributes
+* `show-dump` — provides metadata information about a particular dump, offering insights into its structure and
+  attributes
 
 For any of the commands mentioned above, you can include the following common flags:
 
-* `--log-format` — specifies the desired format for log output, which can be either `json` or `text`. This parameter is optional, with the default format set to `text`.
-* `--log-level` — sets the desired level for log output, which can be one of `debug`, `info`, or `error`. This parameter is optional, with the default log level being `info`.
-* `--config` — requires the specification of a configuration file in YAML format. This configuration file is mandatory for Greenmask to operate correctly.
-* `--help` — displays comprehensive help information for Greenmask, providing guidance on its usage and available commands.
+* `--log-format` — specifies the desired format for log output, which can be either `json` or `text`. This parameter is
+  optional, with the default format set to `text`.
+* `--log-level` — sets the desired level for log output, which can be one of `debug`, `info`, or `error`. This parameter
+  is optional, with the default log level being `info`.
+* `--config` — requires the specification of a configuration file in YAML format. This configuration file is mandatory
+  for Greenmask to operate correctly.
+* `--help` — displays comprehensive help information for Greenmask, providing guidance on its usage and available
+  commands.
 
 ## validate
 
 The `validate` command allows you to perform a validation procedure and compare data transformations.
+
 Below is a list of all supported flags for the `validate` command:
 
-```text
+```text title="Supported flags"
 Usage:
   greenmask validate [flags]
 
 Flags:
-      --data              perform test dump for --rows-limit rows and print it pretty
-      --diff              find difference between original and transformed data
-      --format string     format of table output. possible values [horizontal|vertical] (default "horizontal")
-      --rows-limit uint   check tables dump only for specific tables (default 10)
-      --table strings     check tables dump only for specific tables
+      --data                  Perform test dump for --rows-limit rows and print it pretty
+      --diff                  Find difference between original and transformed data
+      --format string         Format of output. possible values [text|json] (default "text")
+      --rows-limit uint       Check tables dump only for specific tables (default 10)
+      --schema                Make a schema diff between previous dump and the current state
+      --table strings         Check tables dump only for specific tables
+      --table-format string   Format of table output (only for --format=text). Possible values [vertical|horizontal] (default "vertical")
+      --transformed-only      Print only transformed column and primary key
+      --warnings              Print warnings
 ```
 
-You can use the `--table` flag multiple times to specify the tables you want to check. Tables can be written with or without schema names (e. g., `public.table_name` or `table_name`). If you specify multiple tables from different schemas, an error will be thrown.
+Validate command can exit with non-zero code when:
+
+* Any error occurred
+* Validate was called with `--warings` flag and there are warnings
+* Validate was called with `--schema` flag and there are schema differences
+
+All of those cases may be used for CI/CD pipelines to stop the process when something went wrong. This is especially
+useful when `--schema` flag is used - this allows to avoid data leakage when schema changed.
+
+You can use the `--table` flag multiple times to specify the tables you want to check. Tables can be written with
+or without schema names (e. g., `public.table_name` or `table_name`). If you specify multiple tables from different
+schemas, an error will be thrown.
 
 To start validation, use the following command:
 
 ```shell
-greenmask --config=config.yml dump --validate
+greenmask --config=config.yml validate \
+  --warnings \
+  --data \
+  --diff \
+  --schema \
+  --format=text \
+  --table-format=vertical \
+  --transformed-only \
+  --rows-limit=1
 ```
 
 ```text title="Validation output example"
-2023-10-30T11:19:28+02:00 WRN ValidationWarning={"meta":{"ColumnName":"scheduled_departure","ConstraintDef":"CHECK (scheduled_arrival \u003e scheduled_departure)","ConstraintName":"bookings","ConstraintSchema":"bookings","ConstraintType":"Check","ParameterName":"column","SchemaName":"bookings","TableName":"flights","TransformerName":"RandomDate"},"msg":"possible constraint violation: column has Check constraint","severity":"warning"}
-2023-10-30T11:19:28+02:00 WRN ValidationWarning={"meta":{"ColumnName":"scheduled_departure","ConstraintDef":"UNIQUE (flight_no, scheduled_departure)","ConstraintName":"bookings","ConstraintSchema":"bookings","ConstraintType":"Unique","ParameterName":"column","SchemaName":"bookings","TableName":"flights","TransformerName":"RandomDate"},"msg":"possible constraint violation: column is involved into Unique constraint","severity":"warning"}
-2023-10-30T11:19:28+02:00 WRN ValidationWarning={"meta":{"ColumnName":"scheduled_arrival","ConstraintDef":"CHECK (scheduled_arrival \u003e scheduled_departure)","ConstraintName":"bookings","ConstraintSchema":"bookings","ConstraintType":"Check","ParameterName":"column","SchemaName":"bookings","TableName":"flights","TransformerName":"NoiseDate"},"msg":"possible constraint violation: column has Check constraint","severity":"warning"}
-2023-10-30T11:19:28+02:00 WRN ValidationWarning={"meta":{"ColumnName":"departure_airport","ConstraintDef":"FOREIGN KEY (departure_airport) REFERENCES airports_data(airport_code)","ConstraintName":"bookings","ConstraintSchema":"bookings","ConstraintType":"ForeignKey","ParameterName":"column","SchemaName":"bookings","TableName":"flights","TransformerName":"RegexpReplace"},"msg":"possible constraint violation: column is involved into ForeignKey constraint","severity":"warning"}
-2023-10-30T11:19:28+02:00 WRN ValidationWarning={"meta":{"ColumnName":"status","ConstraintDef":"CHECK (status::text = ANY (ARRAY['On Time'::character varying::text, 'Delayed'::character varying::text, 'Departed'::character varying::text, 'Arrived'::character varying::text, 'Scheduled'::character varying::text, 'Cancelled'::character varying::text]))","ConstraintName":"bookings","ConstraintSchema":"bookings","ConstraintType":"Check","ParameterName":"column","SchemaName":"bookings","TableName":"flights","TransformerName":"RegexpReplace"},"msg":"possible constraint violation: column has Check constraint","severity":"warning"}
-2023-10-30T11:19:28+02:00 WRN ValidationWarning={"meta":{"ColumnName":"post_code","ParameterName":"column","SchemaName":"bookings","TableName":"flights","TransformerName":"Replace","TypeName":"column"},"msg":"transformer may produce NULL values but column type has NOT NULL constraint","severity":"warning"}
-2023-10-30T11:19:28+02:00 WRN ValidationWarning={"meta":{"Column":"actual_arrival","ColumnMaxLength":-1,"ConstraintType":"Length","Parameter":"column_b","SchemaName":"bookings","TableName":"flights","TransformerMaxLength":0,"TransformerName":"TwoDatesGen"},"msg":"transformer value might be out of length range: column has a length","severity":"warning"}
-2023-10-30T11:19:28+02:00 WRN ValidationWarning={"meta":{"ColumnName":"actual_arrival","ConstraintDef":"CHECK (actual_arrival IS NULL OR actual_departure IS NOT NULL AND actual_arrival IS NOT NULL AND actual_arrival \u003e actual_departure)","ConstraintName":"bookings","ConstraintSchema":"bookings","ConstraintType":"Check","ParameterName":"column_b","SchemaName":"bookings","TableName":"flights","TransformerName":"TwoDatesGen"},"msg":"possible constraint violation: column has Check constraint","severity":"warning"}
-2023-10-30T11:19:28+02:00 WRN ValidationWarning={"meta":{"Column":"scheduled_arrival","ConstraintType":"NotNull","Parameter":"column_a","SchemaName":"bookings","TableName":"flights","TransformerName":"TwoDatesGen"},"msg":"transformer may produce NULL values but column has NOT NULL constraint","severity":"warning"}
-2023-10-30T11:19:28+02:00 WRN ValidationWarning={"meta":{"Column":"scheduled_arrival","ColumnMaxLength":-1,"ConstraintType":"Length","Parameter":"column_a","SchemaName":"bookings","TableName":"flights","TransformerMaxLength":0,"TransformerName":"TwoDatesGen"},"msg":"transformer value might be out of length range: column has a length","severity":"warning"}
-2023-10-30T11:19:28+02:00 WRN ValidationWarning={"meta":{"ColumnName":"scheduled_arrival","ConstraintDef":"CHECK (scheduled_arrival \u003e scheduled_departure)","ConstraintName":"bookings","ConstraintSchema":"bookings","ConstraintType":"Check","ParameterName":"column_a","SchemaName":"bookings","TableName":"flights","TransformerName":"TwoDatesGen"},"msg":"possible constraint violation: column has Check constraint","severity":"warning"}
-2023-10-30T11:19:28+02:00 WRN ValidationWarning={"meta":{"ColumnName":"range","ConstraintDef":"CHECK (range \u003e 0)","ConstraintName":"bookings","ConstraintSchema":"bookings","ConstraintType":"Check","ParameterName":"column","SchemaName":"bookings","TableName":"aircrafts_data","TransformerName":"NoiseInt"},"msg":"possible constraint violation: column has Check constraint","severity":"warning"}
+2024-03-15T19:46:12+02:00 WRN ValidationWarning={"hash":"aa808fb574a1359c6606e464833feceb","meta":{"ColumnName":"birthdate","ConstraintDef":"CHECK (birthdate \u003e= '1930-01-01'::date AND birthdate \u003c= (now() - '18 years'::interval))","ConstraintName":"humanresources","ConstraintSchema":"humanresources","ConstraintType":"Check","ParameterName":"column","SchemaName":"humanresources","TableName":"employee","TransformerName":"NoiseDate"},"msg":"possible constraint violation: column has Check constraint","severity":"warning"}
 ```
 
-The validation output will provide detailed information about potential constraint violations and schema issues. Each line contains nested JSON data under the `ValidationWarning` key, offering insights into the affected part of the configuration and potential constraint violations.
+The validation output will provide detailed information about potential constraint violations and schema issues. Each
+line contains nested JSON data under the `ValidationWarning` key, offering insights into the affected part of the
+configuration and potential constraint violations.
 
 ```json title="Pretty formatted validation warning"
-{
+{ 
+  "hash": "aa808fb574a1359c6606e464833feceb", // (13)
   "meta": { // (1)
-    "ColumnName": "status", // (2)
-    "ConstraintDef": "CHECK (status::text = ANY (ARRAY['On Time'::character varying::text, 'Delayed'::character varying::text, 'Departed'::character varying::text, 'Arrived'::character varying::text, 'Scheduled'::character varying::text, 'Cancelled'::character varying::text]))", // (3)
-    "ConstraintName": "bookings", // (4)
-    "ConstraintSchema": "bookings", // (5)
+    "ColumnName": "birthdate", // (2)
+    "ConstraintDef": "CHECK (birthdate >= '1930-01-01'::date AND birthdate <= (now() - '18 years'::interval))", // (3)
+    "ConstraintName": "humanresources", // (4)
+    "ConstraintSchema": "humanresources", // (5)
     "ConstraintType": "Check", // (6)
-    "SchemaName": "bookings", // (7)
-    "TableName": "flights", // (8)
-    "TransformerName": "RegexpReplace", // (9)
-    "ParameterName": "column" // (10)
+    "ParameterName": "column", // (7)
+    "SchemaName": "humanresources", // (8)
+    "TableName": "employee", // (9)
+    "TransformerName": "NoiseDate" // (10)
   },
   "msg": "possible constraint violation: column has Check constraint", // (11)
   "severity": "warning" // (12)
@@ -108,39 +129,168 @@ The validation output will provide detailed information about potential constrai
 7. **Table schema name** specifies the schema name of the affected table.
 8. **Table name** identifies the name of the table where the problem occurs.
 9. **Transformer name** indicates the name of the transformer responsible for the transformation.
-10. **Name of affected parameter** typically, this is the name of the column parameter that is relevant to the validation warning.
-11. **Validation warning description** provides a detailed description of the validation warning and the reason behind it.
-12. **Severity of validation warning** indicates the severity level of the validation warning and can be one of the following:
+10. **Name of affected parameter** typically, this is the name of the column parameter that is relevant to the
+    validation warning.
+11. **Validation warning description** provides a detailed description of the validation warning and the reason behind
+    it.
+12. **Severity of validation warning** indicates the severity level of the validation warning and can be one of the
+    following:
     ```
     * error
   	* warning
   	* info
   	* debug
     ```
+13. **Hash** is a unique identifier of the validation warning. It is used to resolve the warning in the config file
 
 !!! note
 
     A validation warning with a severity level of `"error"` is considered critical and must be addressed before the dump operation can proceed. Failure to resolve such warnings will prevent the dump operation from being executed.
 
-Example of validation diff in vertical format (`--format=vertical`):
+```text title="Schema diff changed output example"
+2024-03-15T19:46:12+02:00 WRN Database schema has been changed Hint="Check schema changes before making new dump" PreviousDumpId=1710520855501
+2024-03-15T19:46:12+02:00 WRN Column renamed Event=ColumnRenamed Signature={"CurrentColumnName":"id1","PreviousColumnName":"id","TableName":"test","TableSchema":"public"}
+2024-03-15T19:46:12+02:00 WRN Column type changed Event=ColumnTypeChanged Signature={"ColumnName":"id","CurrentColumnType":"bigint","CurrentColumnTypeOid":"20","PreviousColumnType":"integer","PreviousColumnTypeOid":"23","TableName":"test","TableSchema":"public"}
+2024-03-15T19:46:12+02:00 WRN Column created Event=ColumnCreated Signature={"ColumnName":"name","ColumnType":"text","TableName":"test","TableSchema":"public"}
+2024-03-15T19:46:12+02:00 WRN Table created Event=TableCreated Signature={"SchemaName":"public","TableName":"test1","TableOid":"20563"}
+```
 
-![img.png](assets/validate_vertical_diff.png)
+Example of validation diff:
+
+![img.png](assets/validate_horizontal_diff.png)
 
 The validation diff is presented in a neatly formatted table. In this table:
 
 * Columns that are affected by the transformation are highlighted with a red background.
 * The pre-transformation values are displayed in green.
 * The post-transformation values are shown in red.
+* The result in `--format=text` can be displayed in either horizontal (`--table-format=horizontal`) or 
+  vertical (`--table-format=vertical`) format, making it easy to visualize and understand the 
+  differences between the original and transformed data.
 
-The result can be displayed in either **horizontal** or **vertical** format, making it easy to visualize and understand the differences between the original and transformed data.
+The whole validate command may be run in json format including logging making easy to parse the structure. 
 
-Example of validation diff in horizontal format (`--format=horizontal`):
+```shell
+greenmask --config=config.yml validate \
+  --warnings \
+  --data \
+  --diff \
+  --schema \
+  --format=json \
+  --table-format=vertical \
+  --transformed-only \
+  --rows-limit=1 \
+  --log-format=json
+```
 
-![img.png](assets/validate_horizontal_diff.png)
+The json object result
 
-In horizontal format, the validation diff is displayed with two lines for each entry: **line 1** represents
-the **original data**, and **line 2** represents the **transformed data**. The color highlighting behavior
-remains consistent with the vertical format, where affected columns are highlighted in red, and original and transformed values are displayed in green and red, respectively. This format allows for a side-by-side comparison of the original and transformed data, making it easy to spot differences.
+=== "The validation warning"
+
+    ```json
+    {
+      "level": "warn",
+      "ValidationWarning": {
+        "msg": "possible constraint violation: column has Check constraint",
+        "severity": "warning",
+        "meta": {
+          "ColumnName": "birthdate",
+          "ConstraintDef": "CHECK (birthdate >= '1930-01-01'::date AND birthdate <= (now() - '18 years'::interval))",
+          "ConstraintName": "humanresources",
+          "ConstraintSchema": "humanresources",
+          "ConstraintType": "Check",
+          "ParameterName": "column",
+          "SchemaName": "humanresources",
+          "TableName": "employee",
+          "TransformerName": "NoiseDate"
+        },
+        "hash": "aa808fb574a1359c6606e464833feceb"
+      },
+      "time": "2024-03-15T20:01:51+02:00"
+    }
+    ```
+
+=== "Schema diff events"
+
+    ```json
+    {
+      "level": "warn",
+      "PreviousDumpId": "1710520855501",
+      "Diff": [
+        {
+          "event": "ColumnRenamed",
+          "signature": {
+            "CurrentColumnName": "id1",
+            "PreviousColumnName": "id",
+            "TableName": "test",
+            "TableSchema": "public"
+          }
+        },
+        {
+          "event": "ColumnTypeChanged",
+          "signature": {
+            "ColumnName": "id",
+            "CurrentColumnType": "bigint",
+            "CurrentColumnTypeOid": "20",
+            "PreviousColumnType": "integer",
+            "PreviousColumnTypeOid": "23",
+            "TableName": "test",
+            "TableSchema": "public"
+          }
+        },
+        {
+          "event": "ColumnCreated",
+          "signature": {
+            "ColumnName": "name",
+            "ColumnType": "text",
+            "TableName": "test",
+            "TableSchema": "public"
+          }
+        },
+        {
+          "event": "TableCreated",
+          "signature": {
+            "SchemaName": "public",
+            "TableName": "test1",
+            "TableOid": "20563"
+          }
+        }
+      ],
+      "Hint": "Check schema changes before making new dump",
+      "time": "2024-03-15T20:01:51+02:00",
+      "message": "Database schema has been changed"
+    }
+    ```
+
+=== "Transformation diff line"
+
+    ```json
+    {
+      "schema": "humanresources",
+      "name": "employee",
+      "primary_key_columns": [
+        "businessentityid"
+      ],
+      "with_diff": true,
+      "transformed_only": true,
+      "records": [
+        {
+          "birthdate": {
+            "original": "1969-01-29",
+            "transformed": "1964-10-20",
+            "equal": false,
+            "implicit": true
+          },
+          "businessentityid": {
+            "original": "1",
+            "transformed": "1",
+            "equal": true,
+            "implicit": true
+          }
+        }
+      ]
+    }
+    ```
 
 ## dump
 
@@ -227,7 +377,8 @@ Example of `list-dumps` output:
 
 ## list-transformers
 
-The `list-transformers` command provides a list of all the allowed transformers, including both standard and advanced transformers. This list can be helpful for searching for an appropriate transformer for your data transformation needs.
+The `list-transformers` command provides a list of all the allowed transformers, including both standard and advanced
+transformers. This list can be helpful for searching for an appropriate transformer for your data transformation needs.
 
 To show a list of available transformers, use the following command:
 
@@ -244,7 +395,8 @@ Example of `list-transformers` output:
 
 ![list_transformers_screen.png](assets/list_transformers_screen_2.png)
 
-When using the `list-transformers` command, you receive a list of available transformers with essential information about each of them. Below are the key parameters for each transformer:
+When using the `list-transformers` command, you receive a list of available transformers with essential information
+about each of them. Below are the key parameters for each transformer:
 
 * `NAME` — the name of the transformer
 * `DESCRIPTION` — a brief description of what the transformer does
@@ -255,36 +407,37 @@ The JSON call `greenmask --config=config.yml list-transformers --format=json` ha
 
 ```json title="JSON format output"
 [
-    {
-        "name": "Cmd",
-        "description": "Transform data via external program using stdin and stdout interaction",
-        "parameters": [
-            {
-                "name": "columns",
-                "supported_types": [
-                    "any"
-                ]
-            }
+  {
+    "name": "Cmd",
+    "description": "Transform data via external program using stdin and stdout interaction",
+    "parameters": [
+      {
+        "name": "columns",
+        "supported_types": [
+          "any"
         ]
-    },
-    {
-        "name": "Dict",
-        "description": "Replace values matched by dictionary keys",
-        "parameters": [
-            {
-                "name": "column",
-                "supported_types": [
-                    "any"
-                ]
-            }
+      }
+    ]
+  },
+  {
+    "name": "Dict",
+    "description": "Replace values matched by dictionary keys",
+    "parameters": [
+      {
+        "name": "column",
+        "supported_types": [
+          "any"
         ]
-    }
+      }
+    ]
+  }
 ]
 ```
 
 ## show-transformer
 
-This command prints out detailed information about a transformer by a provided name, including specific attributes to help you understand and configure the transformer effectively.
+This command prints out detailed information about a transformer by a provided name, including specific attributes to
+help you understand and configure the transformer effectively.
 
 To show detailed information about a transformer, use the following command:
 
@@ -301,7 +454,8 @@ Example of `show-transformer` output:
 
 ![show_transformer.png](assets/show_transformer.png)
 
-When using the `show-transformer` command, you receive detailed information about the transformer and its parameters and their possible attributes. Below are the key parameters for each transformer:
+When using the `show-transformer` command, you receive detailed information about the transformer and its parameters and
+their possible attributes. Below are the key parameters for each transformer:
 
 * `Name` — the name of the transformer
 * `Description` — a brief description of what the transformer does
@@ -309,16 +463,25 @@ When using the `show-transformer` command, you receive detailed information abou
 
     * `description` — a brief description of the parameter's purpose
     * `required` — a flag indicating whether the parameter is required when configuring the transformer
-    * `link_parameter` — specifies whether the value of the parameter will be encoded using a specific parameter type encoder. For example, if a parameter named `column` is linked to another parameter `start`, the `start` parameter's value will be encoded according to the `column` type when the transformer is initialized.
-    * `cast_db_type` — indicates that the value should be encoded according to the database type. For example, when dealing with the INTERVAL data type, you must provide the interval value in PostgreSQL format.
+    * `link_parameter` — specifies whether the value of the parameter will be encoded using a specific parameter type
+      encoder. For example, if a parameter named `column` is linked to another parameter `start`, the `start`
+      parameter's value will be encoded according to the `column` type when the transformer is initialized.
+    * `cast_db_type` — indicates that the value should be encoded according to the database type. For example, when
+      dealing with the INTERVAL data type, you must provide the interval value in PostgreSQL format.
     * `default_value` — the default value assigned to the parameter if it's not provided during configuration.
-    * `column_properties` — if a parameter represents the name of a column, it may contain additional properties, including:
-        * `nullable` — indicates whether the transformer may produce NULL values, potentially violating the NOT NULL constraint
-        * `unique` — specifies whether the transformer guarantees unique values for each call. If set to `true`, it means that the transformer cannot produce duplicate values, ensuring compliance with the UNIQUE constraint.
-        * `affected` — indicates whether the column is affected during the transformation process. If not affected, the column's value might still be required for transforming another column.
+    * `column_properties` — if a parameter represents the name of a column, it may contain additional properties,
+      including:
+        * `nullable` — indicates whether the transformer may produce NULL values, potentially violating the NOT NULL
+          constraint
+        * `unique` — specifies whether the transformer guarantees unique values for each call. If set to `true`, it
+          means that the transformer cannot produce duplicate values, ensuring compliance with the UNIQUE constraint.
+        * `affected` — indicates whether the column is affected during the transformation process. If not affected, the
+          column's value might still be required for transforming another column.
         * `allowed_types` — a list of data types that are compatible with this parameter
-        * `skip_original_data` — specifies whether the original value of the column, before transformation, is relevant for the transformation process
-        * `skip_on_null` — indicates whether the transformer should skip the transformation when the input column value is NULL. If the column value is NULL, interaction with the transformer is unnecessary.
+        * `skip_original_data` — specifies whether the original value of the column, before transformation, is relevant
+          for the transformation process
+        * `skip_on_null` — indicates whether the transformer should skip the transformation when the input column value
+          is NULL. If the column value is NULL, interaction with the transformer is unnecessary.
 
 !!! warning
 
@@ -326,48 +489,48 @@ When using the `show-transformer` command, you receive detailed information abou
 
 ```json title="JSON output example"
 [
-    {
-        "properties": {
-            "name": "NoiseFloat",
-            "description": "Make noise float for int",
-            "is_custom": false
-        },
-        "parameters": [
-            {
-                "name": "column",
-                "description": "column name",
-                "required": true,
-                "is_column": true,
-                "is_column_container": false,
-                "column_properties": {
-                    "max_length": -1,
-                    "affected": true,
-                    "allowed_types": [
-                        "float4",
-                        "float8",
-                        "numeric"
-                    ],
-                    "skip_on_null": true
-                }
-            },
-            {
-                "name": "ratio",
-                "description": "max random percentage for noise",
-                "required": false,
-                "is_column": false,
-                "is_column_container": false,
-                "default_value": "MC4x"
-            },
-            {
-                "name": "precision",
-                "description": "precision of noised float value (number of digits after coma)",
-                "required": false,
-                "is_column": false,
-                "is_column_container": false,
-                "default_value": "NA=="
-            }
-        ]
-    }
+  {
+    "properties": {
+      "name": "NoiseFloat",
+      "description": "Make noise float for int",
+      "is_custom": false
+    },
+    "parameters": [
+      {
+        "name": "column",
+        "description": "column name",
+        "required": true,
+        "is_column": true,
+        "is_column_container": false,
+        "column_properties": {
+          "max_length": -1,
+          "affected": true,
+          "allowed_types": [
+            "float4",
+            "float8",
+            "numeric"
+          ],
+          "skip_on_null": true
+        }
+      },
+      {
+        "name": "ratio",
+        "description": "max random percentage for noise",
+        "required": false,
+        "is_column": false,
+        "is_column_container": false,
+        "default_value": "MC4x"
+      },
+      {
+        "name": "precision",
+        "description": "precision of noised float value (number of digits after coma)",
+        "required": false,
+        "is_column": false,
+        "is_column_container": false,
+        "default_value": "NA=="
+      }
+    ]
+  }
 ]
 ```
 
@@ -432,7 +595,8 @@ Flags:
 
 ## show-dump
 
-This command provides details about all objects and data that can be restored, similar to the `pg_restore -l` command in PostgreSQL. It helps you inspect the contents of the dump before performing the actual restoration.
+This command provides details about all objects and data that can be restored, similar to the `pg_restore -l` command in
+PostgreSQL. It helps you inspect the contents of the dump before performing the actual restoration.
 
 Parameters:
 
@@ -444,42 +608,41 @@ To display metadata information about a dump, use the following command:
 greenmask --config=config.yml show-dump dumpID
 ```
 
-
 === "Text output example"
-    ```text
-    ;
-    ; Archive created at 2023-10-30 12:52:38 UTC
-    ;     dbname: demo
-    ;     TOC Entries: 17
-    ;     Compression: -1
-    ;     Dump Version: 15.4
-    ;     Format: DIRECTORY
-    ;     Integer: 4 bytes
-    ;     Offset: 8 bytes
-    ;     Dumped from database version: 15.4
-    ;     Dumped by pg_dump version: 15.4
-    ;
-    ;
-    ; Selected TOC Entries:
-    ;
-    3444; 0 0 ENCODING - ENCODING
-    3445; 0 0 STDSTRINGS - STDSTRINGS
-    3446; 0 0 SEARCHPATH - SEARCHPATH
-    3447; 1262 24970 DATABASE - demo postgres
-    3448; 0 0 DATABASE PROPERTIES - demo postgres
-    222; 1259 24999 TABLE bookings flights postgres
-    223; 1259 25005 SEQUENCE bookings flights_flight_id_seq postgres
-    3460; 0 0 SEQUENCE OWNED BY bookings flights_flight_id_seq postgres
-    3281; 2604 25030 DEFAULT bookings flights flight_id postgres
-    3462; 0 24999 TABLE DATA bookings flights postgres
-    3289; 2606 25044 CONSTRAINT bookings flights flights_flight_no_scheduled_departure_key postgres
-    3291; 2606 25046 CONSTRAINT bookings flights flights_pkey postgres
-    3287; 1259 42848 INDEX bookings flights_aircraft_code_status_idx postgres
-    3292; 1259 42847 INDEX bookings flights_status_aircraft_code_idx postgres
-    3293; 2606 25058 FK CONSTRAINT bookings flights flights_aircraft_code_fkey postgres
-    3294; 2606 25063 FK CONSTRAINT bookings flights flights_arrival_airport_fkey postgres
-    3295; 2606 25068 FK CONSTRAINT bookings flights flights_departure_airport_fkey postgres
-    ```
+```text
+;
+; Archive created at 2023-10-30 12:52:38 UTC
+; dbname: demo
+; TOC Entries: 17
+; Compression: -1
+; Dump Version: 15.4
+; Format: DIRECTORY
+; Integer: 4 bytes
+; Offset: 8 bytes
+; Dumped from database version: 15.4
+; Dumped by pg_dump version: 15.4
+;
+;
+; Selected TOC Entries:
+;
+3444; 0 0 ENCODING - ENCODING
+3445; 0 0 STDSTRINGS - STDSTRINGS
+3446; 0 0 SEARCHPATH - SEARCHPATH
+3447; 1262 24970 DATABASE - demo postgres
+3448; 0 0 DATABASE PROPERTIES - demo postgres
+222; 1259 24999 TABLE bookings flights postgres
+223; 1259 25005 SEQUENCE bookings flights_flight_id_seq postgres
+3460; 0 0 SEQUENCE OWNED BY bookings flights_flight_id_seq postgres
+3281; 2604 25030 DEFAULT bookings flights flight_id postgres
+3462; 0 24999 TABLE DATA bookings flights postgres
+3289; 2606 25044 CONSTRAINT bookings flights flights_flight_no_scheduled_departure_key postgres
+3291; 2606 25046 CONSTRAINT bookings flights flights_pkey postgres
+3287; 1259 42848 INDEX bookings flights_aircraft_code_status_idx postgres
+3292; 1259 42847 INDEX bookings flights_status_aircraft_code_idx postgres
+3293; 2606 25058 FK CONSTRAINT bookings flights flights_aircraft_code_fkey postgres
+3294; 2606 25063 FK CONSTRAINT bookings flights flights_arrival_airport_fkey postgres
+3295; 2606 25068 FK CONSTRAINT bookings flights flights_departure_airport_fkey postgres
+```
 === "JSON output example"
 
     ```json linenums="1"

@@ -207,7 +207,11 @@ validate:
   rows_limit: 10 # (4)
   resolved_warnings: # (5)
     - "8d436fae67b2b82b36bd3afeb0c93f30"
-  format: "horizontal" # (6)
+  table_format: "horizontal" # (7)
+  format: "text" # (6)
+  schema: true # (8)
+  transformed_only: true # (9)
+  warnings: true # (10)
 ```
 { .annotate }
 
@@ -217,6 +221,10 @@ validate:
 4. Limits the number of rows to be transformed during validation. The default limit is `10` rows, but you can change it by modifying this parameter.
 5. A hash list of resolved warnings. These warnings have been addressed and resolved in a previous validation run.
 6. Specifies the format of the transformation output. Possible values are `[horizontal|vertical]`. The default format is `horizontal`. You can choose the format that suits your needs. See more details in the [validate command documentation](commands.md/#validate).
+7. The output format (json or text)
+8. Specifies whether to validate the schema current schema with the previous and print the differences if any.
+9. If set to `true`, transformation output will be only with the transformed columns and primary keys
+10. If set to then all the warnings be printed
 
 ## `restore` section
 
