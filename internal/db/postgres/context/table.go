@@ -185,13 +185,15 @@ func getColumnsConfig(ctx context.Context, tx pgx.Tx, oid toolkit.Oid) ([]*toolk
 	}
 	defer rows.Close()
 
+	idx := 0
 	for rows.Next() {
-		var column toolkit.Column
+		column := toolkit.Column{Idx: idx}
 		if err = rows.Scan(&column.Name, &column.TypeOid, &column.TypeName,
 			&column.NotNull, &column.Length, &column.Num); err != nil {
 			return nil, fmt.Errorf("cannot scan tableColumnQuery: %w", err)
 		}
 		res = append(res, &column)
+		idx++
 	}
 
 	return res, nil

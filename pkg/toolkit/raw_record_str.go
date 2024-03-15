@@ -19,7 +19,7 @@ import (
 	"fmt"
 )
 
-// RawRecordStr - record data transfer object for interaction with custom transformer via PIPE
+// RawRecordStr - Record data transfer object for interaction with custom transformer via PIPE
 type RawRecordStr map[int]*RawValueStr
 
 func (rrs *RawRecordStr) GetColumn(idx int) (*RawValue, error) {
