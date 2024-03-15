@@ -117,19 +117,13 @@ func getDumpId(ctx context.Context, st storages.Storager, dumpId string) (string
 }
 
 // TODO: Options currently are not implemented:
-//		* data-only
 //  	* exit-on-error
-//		* use-list
-// 		* schema
-// 		* exclude-schema
-//		* schema-only
-//		* table
 // 		* single-transaction
 //		* disable-triggers
 //		* enable-row-security
 //		* no-data-for-failed-tables
-//		* section
 //		* strict-names
+//		* use-set-session-authorization
 
 func init() {
 	// General options:
