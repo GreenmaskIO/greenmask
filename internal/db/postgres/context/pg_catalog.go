@@ -22,7 +22,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 
-	"github.com/greenmaskio/greenmask/internal/db/postgres/dump"
+	"github.com/greenmaskio/greenmask/internal/db/postgres/entries"
 	"github.com/greenmaskio/greenmask/internal/db/postgres/pgdump"
 	"github.com/greenmaskio/greenmask/internal/db/postgres/toc"
 	"github.com/greenmaskio/greenmask/pkg/toolkit"
@@ -36,8 +36,8 @@ const (
 // TODO: Rewrite it using gotemplate
 
 func getDumpObjects(
-	ctx context.Context, tx pgx.Tx, options *pgdump.Options, config map[toolkit.Oid]*dump.Table,
-) ([]dump.Entry, error) {
+	ctx context.Context, tx pgx.Tx, options *pgdump.Options, config map[toolkit.Oid]*entries.Table,
+) ([]entries.Entry, error) {
 
 	// Building relation search query using regexp adaptation rules and pre-defined query templates
 	// TODO: Refactor it to gotemplate
@@ -55,9 +55,9 @@ func getDumpObjects(
 	defer tableSearchRows.Close()
 
 	// Generate table objects
-	//sequences := make([]*dump.Sequence, 0)
-	//tables := make([]*dump.Table, 0)
-	var dataObjects []dump.Entry
+	//sequences := make([]*dump_objects.Sequence, 0)
+	//tables := make([]*dump_objects.Table, 0)
+	var dataObjects []entries.Entry
 	defer tableSearchRows.Close()
 	for tableSearchRows.Next() {
 		var oid toc.Oid
@@ -73,12 +73,12 @@ func getDumpObjects(
 		if err != nil {
 			return nil, fmt.Errorf("unnable scan data: %w", err)
 		}
-		var table *dump.Table
+		var table *entries.Table
 
 		switch relKind {
 		case 'S':
 			// Building sequence objects
-			dataObjects = append(dataObjects, &dump.Sequence{
+			dataObjects = append(dataObjects, &entries.Sequence{
 				Name:        name,
 				Schema:      schemaName,
 				Oid:         oid,
@@ -101,7 +101,7 @@ func getDumpObjects(
 			} else {
 				// If table is not found - create new table object and collect all the columns
 
-				table = &dump.Table{
+				table = &entries.Table{
 					Table: &toolkit.Table{
 						Name:   name,
 						Schema: schemaName,
@@ -130,7 +130,7 @@ func getDumpObjects(
 	// Assigning columns for each table
 	for _, obj := range dataObjects {
 		switch v := obj.(type) {
-		case *dump.Table:
+		case *entries.Table:
 			columns, err := getColumnsConfig(ctx, tx, v.Oid)
 			if err != nil {
 				return nil, fmt.Errorf("unable to collect table columns: %w", err)
@@ -150,14 +150,14 @@ func getDumpObjects(
 	}
 
 	// Getting list of the all large objects
-	var largeObjects []*dump.LargeObject
+	var largeObjects []*entries.LargeObject
 	loListRows, err := tx.Query(ctx, LargeObjectsListQuery)
 	if err != nil {
 		return nil, fmt.Errorf("error executing LargeObjectsListQuery: %w", err)
 	}
 	defer loListRows.Close()
 	for loListRows.Next() {
-		lo := &dump.LargeObject{TableOid: tableOid}
+		lo := &entries.LargeObject{TableOid: tableOid}
 		if err = loListRows.Scan(&lo.Oid, &lo.Owner, &lo.Comment); err != nil {
 			return nil, fmt.Errorf("error scanning LargeObjectsListQuery: %w", err)
 		}
@@ -168,20 +168,20 @@ func getDumpObjects(
 	for _, lo := range largeObjects {
 
 		// Getting default ACL
-		defaultACL := &dump.ACL{}
+		defaultACL := &entries.ACL{}
 		row = tx.QueryRow(ctx, LargeObjectGetDefaultAclQuery, lo.Oid)
 		if err = row.Scan(&defaultACL.Value); err != nil {
 			return nil, fmt.Errorf("error scanning LargeObjectGetDefaultAclQuery: %w", err)
 		}
 		// Getting default ACL items
-		var defaultACLItems []*dump.ACLItem
+		var defaultACLItems []*entries.ACLItem
 		loDescribeDefaultAclRows, err := tx.Query(ctx, LargeObjectDescribeAclItemQuery, defaultACL.Value)
 		if err != nil {
 			return nil, fmt.Errorf("error quering LargeObjectDescribeAclItemQuery: %w", err)
 		}
 		defer loDescribeDefaultAclRows.Close()
 		for loDescribeDefaultAclRows.Next() {
-			item := &dump.ACLItem{}
+			item := &entries.ACLItem{}
 			if err = loDescribeDefaultAclRows.Scan(&item.Grantor, &item.Grantee, &item.PrivilegeType, &item.Grantable); err != nil {
 				return nil, fmt.Errorf("error scanning LargeObjectDescribeAclItemQuery: %w", err)
 			}
@@ -191,14 +191,14 @@ func getDumpObjects(
 		lo.DefaultACL = defaultACL
 
 		// Getting ACL
-		var acls []*dump.ACL
+		var acls []*entries.ACL
 		loAclRows, err := tx.Query(ctx, LargeObjectGetAclQuery, lo.Oid)
 		if err != nil {
 			return nil, fmt.Errorf("error quering LargeObjectGetAclQuery: %w", err)
 		}
 		defer loAclRows.Close()
 		for loAclRows.Next() {
-			a := &dump.ACL{}
+			a := &entries.ACL{}
 			if err = loAclRows.Scan(&a.Value); err != nil {
 				return nil, fmt.Errorf("error scanning LargeObjectGetAclQuery: %w", err)
 			}
@@ -207,14 +207,14 @@ func getDumpObjects(
 
 		// Getting ACL items
 		for _, a := range acls {
-			var aclItems []*dump.ACLItem
+			var aclItems []*entries.ACLItem
 			loDescribeAclRows, err := tx.Query(ctx, LargeObjectDescribeAclItemQuery, a.Value)
 			if err != nil {
 				return nil, fmt.Errorf("error quering LargeObjectDescribeAclItemQuery: %w", err)
 			}
 			defer loDescribeAclRows.Close()
 			for loDescribeAclRows.Next() {
-				item := &dump.ACLItem{}
+				item := &entries.ACLItem{}
 				if err = loDescribeAclRows.Scan(&item.Grantor, &item.Grantee, &item.PrivilegeType, &item.Grantable); err != nil {
 					return nil, fmt.Errorf("error scanning LargeObjectDescribeAclItemQuery: %w", err)
 				}
@@ -227,7 +227,7 @@ func getDumpObjects(
 	}
 
 	if len(largeObjects) > 0 {
-		dataObjects = append(dataObjects, &dump.Blobs{
+		dataObjects = append(dataObjects, &entries.Blobs{
 			LargeObjects: largeObjects,
 		})
 	}
