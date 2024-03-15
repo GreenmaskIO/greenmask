@@ -3,8 +3,6 @@ package toolkit
 import (
 	"fmt"
 	"slices"
-
-	"github.com/rs/zerolog/log"
 )
 
 const (
@@ -44,10 +42,6 @@ func (ds DatabaseSchema) Diff(current DatabaseSchema) (res []*DiffNode) {
 			// if the table was not found by oid it was likely re-created
 			// Consider: Should we notify about table re-creation?
 			previousState, ok = ds.getTableByName(currentState.Schema, currentState.Name)
-		}
-
-		if currentState.Name == "test" {
-			log.Debug()
 		}
 
 		if !ok {
