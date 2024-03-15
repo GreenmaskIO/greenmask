@@ -20,18 +20,21 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"slices"
 )
 
 const (
-	JsonBytesFormatName = "bytes"
-	JsonTextFormatName  = "text"
+	JsonAttributesIndexesFormatName = "indexes"
+	JsonAttributesNamesFormatName   = "names"
+	JsonBytesDataFormatName         = "bytes"
+	JsonTextDataFormatName          = "text"
 )
 
 var emptyJson = []byte("{}\n")
 
 type JsonApi struct {
-	transferringColumns []int
-	affectedColumns     []int
+	transferringColumns []*Column
+	affectedColumns     []*Column
 	tupleLength         int
 	w                   io.Writer
 	r                   io.Reader
@@ -42,20 +45,47 @@ type JsonApi struct {
 }
 
 func NewJsonApi(
-	transferringColumns []int, affectedColumns []int, format string,
+	transferringColumns []*Column, affectedColumns []*Column, params *DriverParams,
 ) (*JsonApi, error) {
 
 	var record RowDriver
 
-	switch format {
-	case JsonBytesFormatName:
-		r := make(RawRecord, len(transferringColumns))
-		record = &r
-	case JsonTextFormatName:
-		r := make(RawRecordStr, len(transferringColumns))
-		record = &r
-	default:
-		return nil, fmt.Errorf(`unknown format "%s"`, format)
+	if err := params.Validate(); err != nil {
+		return nil, fmt.Errorf("error validating driver params: %w", err)
+	}
+
+	switch params.JsonAttributesFormat {
+	case JsonAttributesIndexesFormatName:
+		switch params.JsonDataFormat {
+		case JsonBytesDataFormatName:
+			r := make(RawRecord, len(transferringColumns))
+			record = &r
+		case JsonTextDataFormatName:
+			r := make(RawRecordStr, len(transferringColumns))
+			record = &r
+		}
+	case JsonAttributesNamesFormatName:
+		allColumns := make([]*Column, len(transferringColumns))
+		copy(allColumns, transferringColumns)
+
+		for _, c := range affectedColumns {
+			if slices.IndexFunc(allColumns, func(col *Column) bool {
+				return col.Name == c.Name
+			}) == -1 {
+				allColumns = append(allColumns, c)
+			}
+		}
+
+		switch params.JsonDataFormat {
+		case JsonBytesDataFormatName:
+			record = NewJsonRecordWithAttrNamesBinary(allColumns)
+		case JsonTextDataFormatName:
+			record = NewJsonRecordWithAttrNamesText(allColumns)
+		}
+	}
+
+	if record == nil {
+		panic("bug: record is nil")
 	}
 
 	return &JsonApi{
@@ -78,13 +108,13 @@ func (j *JsonApi) SetReader(r io.Reader) {
 }
 
 func (j *JsonApi) GetRowDriverFromRecord(r *Record) (RowDriver, error) {
-	for _, columnIdx := range j.transferringColumns {
+	for _, c := range j.transferringColumns {
 
-		v, err := r.GetRawColumnValueByIdx(columnIdx)
+		v, err := r.GetRawColumnValueByIdx(c.Idx)
 		if err != nil {
 			return nil, fmt.Errorf("error getting raw atribute value: %w", err)
 		}
-		if err = j.record.SetColumn(columnIdx, v); err != nil {
+		if err = j.record.SetColumn(c.Idx, v); err != nil {
 			return nil, fmt.Errorf("unable to set new value: %w", err)
 		}
 	}
@@ -92,14 +122,14 @@ func (j *JsonApi) GetRowDriverFromRecord(r *Record) (RowDriver, error) {
 }
 
 func (j *JsonApi) SetRowDriverToRecord(rd RowDriver, r *Record) error {
-	for _, columnIdx := range j.affectedColumns {
-		v, err := rd.GetColumn(columnIdx)
+	for _, c := range j.affectedColumns {
+		v, err := rd.GetColumn(c.Idx)
 		if err != nil {
-			return fmt.Errorf(`error getting column %d value: %w`, columnIdx, err)
+			return fmt.Errorf(`error getting column %d value: %w`, c.Idx, err)
 		}
-		err = r.SetRawColumnValueByIdx(columnIdx, v)
+		err = r.SetRawColumnValueByIdx(c.Idx, v)
 		if err != nil {
-			return fmt.Errorf(`error setting column %d value to record: %w`, columnIdx, err)
+			return fmt.Errorf(`error setting column %d value to record: %w`, c.Idx, err)
 		}
 	}
 	return nil

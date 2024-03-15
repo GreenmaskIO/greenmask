@@ -24,6 +24,9 @@ import (
 	"fmt"
 	"hash"
 	"strconv"
+	"strings"
+
+	"golang.org/x/crypto/sha3"
 
 	"github.com/greenmaskio/greenmask/internal/db/postgres/transformers/utils"
 	"github.com/greenmaskio/greenmask/pkg/toolkit"
@@ -46,9 +49,19 @@ var HashTransformerDefinition = utils.NewDefinition(
 	).SetRequired(true),
 
 	toolkit.MustNewParameter(
+		"salt",
+		"hex encoded salt string. This value may be provided via environment variable GREENMASK_GLOBAL_SALT",
+	).SetGetFromGlobalEnvVariable("GREENMASK_GLOBAL_SALT"),
+
+	toolkit.MustNewParameter(
 		"function",
-		"hash function name. Possible values sha1, sha256, sha512, md5",
-	).SetDefaultValue([]byte("sha1")).
+		fmt.Sprintf("hash function name. Possible values: %s",
+			strings.Join(
+				[]string{sha1Name, sha256Name, sha512Name, sha3224Name, sha3256Name, sha384Name, sha5124Name, md5Name},
+				", ",
+			),
+		),
+	).SetDefaultValue([]byte(sha3256Name)).
 		SetRawValueValidator(validateHashFunctionsParameter),
 
 	toolkit.MustNewParameter(
@@ -56,6 +69,17 @@ var HashTransformerDefinition = utils.NewDefinition(
 		"limit length of hash function result",
 	).SetDefaultValue([]byte("0")).
 		SetRawValueValidator(validateMaxLengthParameter),
+)
+
+const (
+	sha1Name    = "sha1"
+	sha256Name  = "sha256"
+	sha512Name  = "sha512"
+	sha3224Name = "sha3-224"
+	sha3256Name = "sha3-254"
+	sha384Name  = "sha3-384"
+	sha5124Name = "sha3-512"
+	md5Name     = "md5"
 )
 
 type HashTransformer struct {
@@ -67,6 +91,7 @@ type HashTransformer struct {
 	encodedOutputLength int
 	hashBuf             []byte
 	resultBuf           []byte
+	salt                []byte
 }
 
 func NewHashTransformer(
@@ -100,20 +125,38 @@ func NewHashTransformer(
 	var h hash.Hash
 	var hashFunctionLength int
 	switch hashFunctionName {
-	case "md5":
+	case md5Name:
 		h = md5.New()
 		hashFunctionLength = 16
-	case "sha1":
+	case sha1Name:
 		h = sha1.New()
 		hashFunctionLength = 20
-	case "sha256":
+	case sha256Name:
 		h = sha256.New()
 		hashFunctionLength = 32
-	case "sha512":
+	case sha512Name:
 		h = sha512.New()
+		hashFunctionLength = 64
+	case sha3224Name:
+		h = sha3.New224()
+		hashFunctionLength = 28
+	case sha3256Name:
+		h = sha3.New256()
+		hashFunctionLength = 32
+	case sha384Name:
+		h = sha3.New384()
+		hashFunctionLength = 48
+	case sha5124Name:
+		h = sha3.New512()
 		hashFunctionLength = 64
 	default:
 		return nil, nil, fmt.Errorf("unknown hash function \"%s\"", hashFunctionName)
+	}
+
+	p = parameters["salt"]
+	var salt string
+	if _, err := p.Scan(&salt); err != nil {
+		return nil, nil, fmt.Errorf("unable to scan \"salt\" parameter: %w", err)
 	}
 
 	return &HashTransformer{
@@ -123,6 +166,7 @@ func NewHashTransformer(
 		maxLength:           maxLength,
 		hashBuf:             make([]byte, 0, hashFunctionLength),
 		resultBuf:           make([]byte, hex.EncodedLen(hashFunctionLength)),
+		salt:                []byte(salt),
 		encodedOutputLength: hex.EncodedLen(hashFunctionLength),
 		h:                   h,
 	}, nil, nil
@@ -150,6 +194,10 @@ func (ht *HashTransformer) Transform(ctx context.Context, r *toolkit.Record) (*t
 	}
 
 	defer ht.h.Reset()
+	_, err = ht.h.Write(ht.salt)
+	if err != nil {
+		return nil, fmt.Errorf("unable to write salt into writer: %w", err)
+	}
 	_, err = ht.h.Write(val.Data)
 	if err != nil {
 		return nil, fmt.Errorf("unable to write raw data into writer: %w", err)
@@ -174,7 +222,7 @@ func (ht *HashTransformer) Transform(ctx context.Context, r *toolkit.Record) (*t
 func validateHashFunctionsParameter(p *toolkit.Parameter, v toolkit.ParamsValue) (toolkit.ValidationWarnings, error) {
 	functionName := string(v)
 	switch functionName {
-	case "md5", "sha1", "sha256", "sha512":
+	case sha1Name, sha256Name, sha512Name, sha3224Name, sha3256Name, sha384Name, sha5124Name, md5Name:
 		return nil, nil
 	}
 	return toolkit.ValidationWarnings{
@@ -185,11 +233,11 @@ func validateHashFunctionsParameter(p *toolkit.Parameter, v toolkit.ParamsValue)
 }
 
 func validateMaxLengthParameter(p *toolkit.Parameter, v toolkit.ParamsValue) (toolkit.ValidationWarnings, error) {
-	max_length, err := strconv.ParseInt(string(v), 10, 32)
+	maxLength, err := strconv.ParseInt(string(v), 10, 32)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing \"max_length\" as integer: %w", err)
 	}
-	if max_length >= 0 {
+	if maxLength >= 0 {
 		return nil, nil
 	}
 	return toolkit.ValidationWarnings{

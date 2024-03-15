@@ -46,6 +46,13 @@ const (
 	skipOnAllName = "all"
 )
 
+var defaultRowDriverParams = &toolkit.DriverParams{
+	Name:                 toolkit.JsonModeName,
+	JsonDataFormat:       toolkit.JsonTextDataFormatName,
+	JsonAttributesFormat: toolkit.JsonAttributesNamesFormatName,
+	CsvAttributesFormat:  toolkit.CsvAttributesConfigNumeratingFormatName,
+}
+
 var cmdTransformerName = "Cmd"
 
 var CmdTransformerDefinition = utils.NewDefinition(
@@ -129,12 +136,12 @@ type Cmd struct {
 	timeout                time.Duration
 	expectedExitCode       int
 	affectedColumns        map[int]string
-	affectedColumnsIdx     []int
-	transferringColumnsIdx []int
+	affectedColumnsIdx     []*toolkit.Column
+	transferringColumnsIdx []*toolkit.Column
 	allColumnsIdx          []int
 	skipOnBehaviour        int
 	checkSkip              bool
-	rowDriverParams        *toolkit.RowDriverParams
+	rowDriverParams        *toolkit.DriverParams
 
 	driver *toolkit.Driver
 	t      *time.Ticker
@@ -155,7 +162,7 @@ func NewCmd(
 	var skipOnBehaviourName string
 	var skipOnBehaviour = skipOnAll
 	var checkSkip bool
-	rowDriverParams := &toolkit.RowDriverParams{}
+	rowDriverParams := &(*defaultRowDriverParams)
 
 	p := parameters["columns"]
 	if _, err := p.Scan(&columns); err != nil {
@@ -175,6 +182,9 @@ func NewCmd(
 	p = parameters["driver"]
 	if _, err := p.Scan(rowDriverParams); err != nil {
 		return nil, nil, fmt.Errorf(`unable to scan "mode" param: %w`, err)
+	}
+	if err := rowDriverParams.Validate(); err != nil {
+		return nil, nil, fmt.Errorf("error validating driver params: %w", err)
 	}
 
 	p = parameters["validate"]
@@ -202,8 +212,8 @@ func NewCmd(
 
 	affectedColumns := make(map[int]string)
 	var warnings toolkit.ValidationWarnings
-	var affectedColumnsIdx []int
-	var transferringColumnsIdx []int
+	var affectedColumnsIdx []*toolkit.Column
+	var transferringColumnsIdx []*toolkit.Column
 	var allColumnsIdx []int
 
 	if len(columns) > 0 {
@@ -227,14 +237,14 @@ func NewCmd(
 			if !c.NotAffected {
 				added = true
 				affectedColumns[idx] = c.Name
-				affectedColumnsIdx = append(affectedColumnsIdx, idx)
+				affectedColumnsIdx = append(affectedColumnsIdx, column)
 				warns := utils.ValidateSchema(driver.Table, column, nil)
 				warnings = append(warnings, warns...)
 
 			}
 			if !c.SkipOriginalData {
 				added = true
-				transferringColumnsIdx = append(transferringColumnsIdx, idx)
+				transferringColumnsIdx = append(transferringColumnsIdx, column)
 			}
 
 			if !added {
@@ -247,9 +257,9 @@ func NewCmd(
 			}
 		}
 	} else {
-		for idx := range driver.Table.Columns {
-			transferringColumnsIdx = append(transferringColumnsIdx, idx)
-			affectedColumnsIdx = append(affectedColumnsIdx, idx)
+		for _, c := range driver.Table.Columns {
+			transferringColumnsIdx = append(transferringColumnsIdx, c)
+			affectedColumnsIdx = append(affectedColumnsIdx, c)
 		}
 	}
 
@@ -401,10 +411,10 @@ func (c *Cmd) needSkip(r *toolkit.Record) (bool, error) {
 }
 
 func (c *Cmd) validate(r *toolkit.Record) error {
-	for _, idx := range c.affectedColumnsIdx {
-		_, err := r.GetColumnValueByIdx(idx)
+	for _, col := range c.affectedColumnsIdx {
+		_, err := r.GetColumnValueByIdx(col.Idx)
 		if err != nil {
-			return fmt.Errorf("error validating received attribute \"%s\" value from cmd: %w", r.Driver.Table.Columns[idx].Name, err)
+			return fmt.Errorf("error validating received attribute \"%s\" value from cmd: %w", r.Driver.Table.Columns[col.Idx].Name, err)
 		}
 	}
 	return nil

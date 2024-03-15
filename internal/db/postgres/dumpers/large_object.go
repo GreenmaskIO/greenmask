@@ -26,7 +26,7 @@ import (
 	"github.com/rs/zerolog/log"
 	"golang.org/x/sync/errgroup"
 
-	"github.com/greenmaskio/greenmask/internal/db/postgres/dump"
+	"github.com/greenmaskio/greenmask/internal/db/postgres/entries"
 	"github.com/greenmaskio/greenmask/internal/storages"
 	"github.com/greenmaskio/greenmask/internal/utils/countwriter"
 )
@@ -34,18 +34,18 @@ import (
 const loBufSize = 1024 * 1024
 
 type BlobsDumper struct {
-	Blobs          *dump.Blobs
+	Blobs          *entries.Blobs
 	OriginalSize   int64
 	CompressedSize int64
 }
 
-func NewLargeObjectDumper(blobs *dump.Blobs) *BlobsDumper {
+func NewLargeObjectDumper(blobs *entries.Blobs) *BlobsDumper {
 	return &BlobsDumper{
 		Blobs: blobs,
 	}
 }
 
-func (lod *BlobsDumper) Execute(ctx context.Context, tx pgx.Tx, st storages.Storager) (dump.Entry, error) {
+func (lod *BlobsDumper) Execute(ctx context.Context, tx pgx.Tx, st storages.Storager) (entries.Entry, error) {
 
 	for _, lo := range lod.Blobs.LargeObjects {
 		eg, gtx := errgroup.WithContext(ctx)

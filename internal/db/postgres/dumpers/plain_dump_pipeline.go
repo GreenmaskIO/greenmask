@@ -19,17 +19,17 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/greenmaskio/greenmask/internal/db/postgres/dump"
+	"github.com/greenmaskio/greenmask/internal/db/postgres/entries"
 	"github.com/greenmaskio/greenmask/internal/db/postgres/pgcopy"
 )
 
 type PlainDumpPipeline struct {
 	w     io.Writer
 	line  uint64
-	table *dump.Table
+	table *entries.Table
 }
 
-func NewPlainDumpPipeline(table *dump.Table, w io.Writer) *PlainDumpPipeline {
+func NewPlainDumpPipeline(table *entries.Table, w io.Writer) *PlainDumpPipeline {
 	return &PlainDumpPipeline{
 		table: table,
 		w:     w,
