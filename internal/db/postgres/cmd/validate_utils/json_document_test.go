@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/greenmaskio/greenmask/internal/db/postgres/dump_objects"
+	"github.com/greenmaskio/greenmask/internal/db/postgres/entries"
 	"github.com/greenmaskio/greenmask/internal/db/postgres/pgcopy"
 	"github.com/greenmaskio/greenmask/internal/db/postgres/transformers/utils"
 	"github.com/greenmaskio/greenmask/pkg/toolkit"
@@ -87,7 +87,7 @@ func TestJsonDocument_GetRecords(t *testing.T) {
 	//r.SetRow(row)
 }
 
-func getTableAndRows() (table *dump_objects.Table, original, transformed [][]byte) {
+func getTableAndRows() (table *entries.Table, original, transformed [][]byte) {
 
 	tableDef := `
 		{
@@ -175,7 +175,7 @@ func getTableAndRows() (table *dump_objects.Table, original, transformed [][]byt
 		panic(err)
 	}
 
-	table = &dump_objects.Table{
+	table = &entries.Table{
 		Table:        t,
 		Transformers: []utils.Transformer{&testTransformer{}},
 	}

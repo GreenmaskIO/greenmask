@@ -24,25 +24,25 @@ import (
 	"github.com/rs/zerolog/log"
 	"golang.org/x/sync/errgroup"
 
-	dump "github.com/greenmaskio/greenmask/internal/db/postgres/dump_objects"
+	"github.com/greenmaskio/greenmask/internal/db/postgres/entries"
 	"github.com/greenmaskio/greenmask/internal/storages"
 	"github.com/greenmaskio/greenmask/internal/utils/countwriter"
 )
 
 type TableDumper struct {
-	table     *dump.Table
+	table     *entries.Table
 	recordNum uint64
 	validate  bool
 }
 
-func NewTableDumper(table *dump.Table, validate bool) *TableDumper {
+func NewTableDumper(table *entries.Table, validate bool) *TableDumper {
 	return &TableDumper{
 		table:    table,
 		validate: validate,
 	}
 }
 
-func (td *TableDumper) Execute(ctx context.Context, tx pgx.Tx, st storages.Storager) (dump.Entry, error) {
+func (td *TableDumper) Execute(ctx context.Context, tx pgx.Tx, st storages.Storager) (entries.Entry, error) {
 
 	w, r := countwriter.NewGzipPipe()
 

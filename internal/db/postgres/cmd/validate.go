@@ -18,7 +18,7 @@ import (
 
 	"github.com/greenmaskio/greenmask/internal/db/postgres/cmd/validate_utils"
 	runtimeContext "github.com/greenmaskio/greenmask/internal/db/postgres/context"
-	"github.com/greenmaskio/greenmask/internal/db/postgres/dump_objects"
+	"github.com/greenmaskio/greenmask/internal/db/postgres/entries"
 	"github.com/greenmaskio/greenmask/internal/db/postgres/pgcopy"
 	storageDto "github.com/greenmaskio/greenmask/internal/db/postgres/storage"
 	"github.com/greenmaskio/greenmask/internal/db/postgres/toc"
@@ -152,12 +152,12 @@ func (v *Validate) Run(ctx context.Context) (int, error) {
 
 func (v *Validate) print(ctx context.Context) error {
 	for _, e := range v.dataEntries {
-		idx := slices.IndexFunc(v.context.DataSectionObjects, func(entry dump_objects.Entry) bool {
-			t := entry.(*dump_objects.Table)
+		idx := slices.IndexFunc(v.context.DataSectionObjects, func(entry entries.Entry) bool {
+			t := entry.(*entries.Table)
 			return t.DumpId == e.DumpId
 		})
 
-		t := v.context.DataSectionObjects[idx].(*dump_objects.Table)
+		t := v.context.DataSectionObjects[idx].(*entries.Table)
 		doc, err := v.createDocument(ctx, t)
 		if err != nil {
 			return fmt.Errorf("unable to create validation document: %w", err)
@@ -170,7 +170,7 @@ func (v *Validate) print(ctx context.Context) error {
 	return nil
 }
 
-func (v *Validate) getDocument(table *dump_objects.Table) validate_utils.Documenter {
+func (v *Validate) getDocument(table *entries.Table) validate_utils.Documenter {
 	switch v.config.Validate.Format {
 	case JsonFormat:
 		return validate_utils.NewJsonDocument(table, v.config.Validate.Diff, v.config.Validate.OnlyTransformed)
@@ -183,7 +183,7 @@ func (v *Validate) getDocument(table *dump_objects.Table) validate_utils.Documen
 	}
 }
 
-func (v *Validate) getReader(ctx context.Context, table *dump_objects.Table) (closeFunc, *bufio.Reader, error) {
+func (v *Validate) getReader(ctx context.Context, table *entries.Table) (closeFunc, *bufio.Reader, error) {
 	tableData, err := v.st.GetObject(ctx, fmt.Sprintf("%d.dat.gz", table.DumpId))
 	if err != nil {
 		return nil, nil, fmt.Errorf("unable to get object from storage: %w", err)
@@ -207,7 +207,7 @@ func (v *Validate) getReader(ctx context.Context, table *dump_objects.Table) (cl
 	return f, bufio.NewReader(gz), nil
 }
 
-func (v *Validate) readRecords(r *bufio.Reader, t *dump_objects.Table) (original, transformed *pgcopy.Row, err error) {
+func (v *Validate) readRecords(r *bufio.Reader, t *entries.Table) (original, transformed *pgcopy.Row, err error) {
 	var originalLine, transformedLine []byte
 	var originalRow, transformedRow *pgcopy.Row
 
@@ -240,7 +240,7 @@ func (v *Validate) readRecords(r *bufio.Reader, t *dump_objects.Table) (original
 	return originalRow, transformedRow, nil
 }
 
-func (v *Validate) createDocument(ctx context.Context, t *dump_objects.Table) (validate_utils.Documenter, error) {
+func (v *Validate) createDocument(ctx context.Context, t *entries.Table) (validate_utils.Documenter, error) {
 	doc := v.getDocument(t)
 
 	closeReader, r, err := v.getReader(ctx, t)
@@ -270,10 +270,10 @@ func (v *Validate) createDocument(ctx context.Context, t *dump_objects.Table) (v
 }
 
 func (v *Validate) dumpTables(ctx context.Context) error {
-	var tablesWithTransformers []dump_objects.Entry
+	var tablesWithTransformers []entries.Entry
 	for _, item := range v.context.DataSectionObjects {
 
-		if t, ok := item.(*dump_objects.Table); ok && len(t.Transformers) > 0 {
+		if t, ok := item.(*entries.Table); ok && len(t.Transformers) > 0 {
 			t.ValidateLimitedRecords = v.config.Validate.RowsLimit
 			tablesWithTransformers = append(tablesWithTransformers, t)
 		}

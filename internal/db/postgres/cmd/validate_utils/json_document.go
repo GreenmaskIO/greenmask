@@ -6,7 +6,7 @@ import (
 	"io"
 	"maps"
 
-	"github.com/greenmaskio/greenmask/internal/db/postgres/dump_objects"
+	"github.com/greenmaskio/greenmask/internal/db/postgres/entries"
 	"github.com/greenmaskio/greenmask/internal/db/postgres/pgcopy"
 	"github.com/greenmaskio/greenmask/pkg/toolkit"
 )
@@ -58,7 +58,7 @@ type jsonRecordPlain map[string]string
 
 type JsonDocument struct {
 	result                    *JsonDocumentResult
-	table                     *dump_objects.Table
+	table                     *entries.Table
 	withDiff                  bool
 	expectedAffectedColumns   map[string]struct{}
 	unexpectedAffectedColumns map[string]struct{}
@@ -66,7 +66,7 @@ type JsonDocument struct {
 	onlyTransformed           bool
 }
 
-func NewJsonDocument(table *dump_objects.Table, withDiff bool, onlyTransformed bool) *JsonDocument {
+func NewJsonDocument(table *entries.Table, withDiff bool, onlyTransformed bool) *JsonDocument {
 	pkColumns := getPrimaryKeyConstraintColumns(table)
 	expectedAffectedColumns := getAffectedColumns(table)
 	var pkColumnsList []string

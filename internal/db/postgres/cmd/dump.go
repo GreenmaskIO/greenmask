@@ -29,8 +29,8 @@ import (
 	"golang.org/x/sync/errgroup"
 
 	runtimeContext "github.com/greenmaskio/greenmask/internal/db/postgres/context"
-	"github.com/greenmaskio/greenmask/internal/db/postgres/dump_objects"
 	"github.com/greenmaskio/greenmask/internal/db/postgres/dumpers"
+	"github.com/greenmaskio/greenmask/internal/db/postgres/entries"
 	"github.com/greenmaskio/greenmask/internal/db/postgres/pgdump"
 	storageDto "github.com/greenmaskio/greenmask/internal/db/postgres/storage"
 	"github.com/greenmaskio/greenmask/internal/db/postgres/toc"
@@ -59,7 +59,7 @@ type Dump struct {
 	dumpedObjectSizes map[int32]storageDto.ObjectSizeStat
 	tocFileSize       int64
 	version           int
-	blobs             *dump_objects.Blobs
+	blobs             *entries.Blobs
 	// validate shows that dump worker must be in validation mode
 	validate bool
 }
@@ -221,7 +221,7 @@ func (d *Dump) schemaOnlyDump(ctx context.Context, tx pgx.Tx) error {
 func (d *Dump) dataDump(ctx context.Context) error {
 	// TODO: You should use pointer to dumpers.DumpTask instead
 	tasks := make(chan dumpers.DumpTask, d.pgDumpOptions.Jobs)
-	result := make(chan dump_objects.Entry, d.pgDumpOptions.Jobs)
+	result := make(chan entries.Entry, d.pgDumpOptions.Jobs)
 
 	log.Debug().Msgf("planned %d workers", d.pgDumpOptions.Jobs)
 	eg, gtx := errgroup.WithContext(ctx)
@@ -256,11 +256,11 @@ func (d *Dump) dataDump(ctx context.Context) error {
 				dumpObj.SetDumpId(d.dumpIdSequence)
 				var task dumpers.DumpTask
 				switch v := dumpObj.(type) {
-				case *dump_objects.Table:
+				case *entries.Table:
 					task = dumpers.NewTableDumper(v, d.validate)
-				case *dump_objects.Sequence:
+				case *entries.Sequence:
 					task = dumpers.NewSequenceDumper(v)
-				case *dump_objects.Blobs:
+				case *entries.Blobs:
 					d.blobs = v
 					task = dumpers.NewLargeObjectDumper(v)
 				default:
@@ -280,7 +280,7 @@ func (d *Dump) dataDump(ctx context.Context) error {
 		func() error {
 			var tables, sequences, largeObjects []*toc.Entry
 			for {
-				var entry dump_objects.Entry
+				var entry entries.Entry
 				var ok bool
 				select {
 				case <-gtx.Done():
@@ -299,15 +299,15 @@ func (d *Dump) dataDump(ctx context.Context) error {
 					return fmt.Errorf("error producing toc entry: %w", err)
 				}
 				switch v := entry.(type) {
-				case *dump_objects.Table:
+				case *entries.Table:
 					d.dumpedObjectSizes[e.DumpId] = storageDto.ObjectSizeStat{
 						Original:   v.OriginalSize,
 						Compressed: v.CompressedSize,
 					}
 					tables = append(tables, e)
-				case *dump_objects.Sequence:
+				case *entries.Sequence:
 					sequences = append(sequences, e)
-				case *dump_objects.Blobs:
+				case *entries.Blobs:
 					d.dumpedObjectSizes[e.DumpId] = storageDto.ObjectSizeStat{
 						Original:   v.OriginalSize,
 						Compressed: v.CompressedSize,
@@ -507,7 +507,7 @@ func (d *Dump) getWorkerTransaction(ctx context.Context) (*pgx.Conn, pgx.Tx, err
 }
 
 func (d *Dump) dumpWorker(
-	ctx context.Context, tasks <-chan dumpers.DumpTask, result chan<- dump_objects.Entry, id int,
+	ctx context.Context, tasks <-chan dumpers.DumpTask, result chan<- entries.Entry, id int,
 ) error {
 
 	conn, tx, err := d.getWorkerTransaction(ctx)
@@ -575,7 +575,7 @@ func (d *Dump) dumpWorker(
 }
 
 func (d *Dump) validateDumpWorker(
-	ctx context.Context, tasks <-chan dumpers.DumpTask, result chan<- dump_objects.Entry, id int,
+	ctx context.Context, tasks <-chan dumpers.DumpTask, result chan<- entries.Entry, id int,
 ) error {
 	for {
 
@@ -602,7 +602,7 @@ func (d *Dump) validateDumpWorker(
 			Str("ObjectName", task.DebugInfo()).
 			Msgf("dumping started")
 
-		entry, err := func() (dump_objects.Entry, error) {
+		entry, err := func() (entries.Entry, error) {
 			conn, tx, err := d.getWorkerTransaction(ctx)
 
 			if err != nil {
