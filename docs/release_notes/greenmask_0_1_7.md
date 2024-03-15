@@ -6,11 +6,15 @@ This release introduces a new Greenmask command, improvements, bug fixes, and do
 
 * Added restoration filtering by `--table`, `--schema` and `--exclude-schema` parameters
 * Validate parameters without parameters validates only configuration file
+* Added the `--schema` parameter, which allows to make a schema diff between the previous dump and the current. This 
+  is useful when you want to check if the schema has changed after the migration. By controlling it we can exclude 
+  data leakage after migration
 * Validate command divided by many stages that can be controlled using parameters
     * Configuration validation
     * Transformer validation
     * Constraint violation check
     * Data difference check
+
 
 ## Improvements
 
@@ -34,6 +38,7 @@ This release introduces a new Greenmask command, improvements, bug fixes, and do
 * Fixed `--use-list` option - now it applies toc entries according to the order in list file
 * Fixed `--use-list` option behaviour together with `--list-format` option (`json` or `text`). Now it
   generates temporal list file in text format for providing it to the pg_restore call
+* Updated documentation according to the latest changes
 
 
 
