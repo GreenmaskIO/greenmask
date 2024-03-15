@@ -366,6 +366,7 @@ func (d *Dump) mergeAndWriteToc(ctx context.Context, tx pgx.Tx) error {
 func (d *Dump) writeMetaData(ctx context.Context, startedAt, completedAt time.Time) error {
 	metadata, err := storageDto.NewMetadata(
 		d.resultToc, d.tocFileSize, startedAt, completedAt, d.config.Dump.Transformation, d.dumpedObjectSizes,
+		d.context.DatabaseSchema,
 	)
 	if err != nil {
 		return fmt.Errorf("unable build metadata: %w", err)

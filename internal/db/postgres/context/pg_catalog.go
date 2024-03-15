@@ -394,3 +394,81 @@ func BuildTableSearchQuery(
 	return fmt.Sprintf(totalQuery, tableDataExclusionCond, tableInclusionCond, tableExclusionCond,
 		schemaInclusionCond, schemaExclusionCond, foreignDataInclusionCond), nil
 }
+
+func BuildSchemaIntrospectionQuery(includeTable, excludeTable, includeForeignData,
+	includeSchema, excludeSchema []string,
+) (string, error) {
+
+	tableInclusionCond, err := renderRelationCond(includeTable, trueCond)
+	if err != nil {
+		return "", err
+	}
+	tableExclusionCond, err := renderRelationCond(excludeTable, falseCond)
+	if err != nil {
+		return "", err
+	}
+	schemaInclusionCond, err := renderNamespaceCond(includeSchema, trueCond)
+	if err != nil {
+		return "", err
+	}
+	schemaExclusionCond, err := renderNamespaceCond(excludeSchema, falseCond)
+	if err != nil {
+		return "", err
+	}
+
+	foreignDataInclusionCond, err := renderForeignDataCond(includeForeignData, falseCond)
+	if err != nil {
+		return "", err
+	}
+
+	totalQuery := `
+		SELECT c.oid::TEXT::INT,
+			   n.nspname                              as "Schema",
+			   c.relname                              as "Name",
+			   c.relkind::TEXT                        as "RelKind",
+			   (coalesce(pc.oid::INT, 0))             as "RootPtOid",
+			   (WITH RECURSIVE part_tables AS (SELECT pg_inherits.inhrelid AS parent_oid,
+													  nmsp_child.nspname   AS child_schema,
+													  child.oid            AS child_oid,
+													  child.relname        AS child,
+													  child.relkind        as kind
+											   FROM pg_inherits
+												   JOIN pg_class child ON pg_inherits.inhrelid = child.oid
+												   JOIN pg_namespace nmsp_child ON nmsp_child.oid = child.relnamespace
+											   WHERE pg_inherits.inhparent = c.oid
+											   UNION
+											   SELECT pt.parent_oid,
+													  nmsp_child.nspname AS child_schema,
+													  child.oid          AS child_oid,
+													  child.relname      AS child,
+													  child.relkind      as kind
+											   FROM part_tables pt
+												   JOIN pg_inherits inh ON pt.child_oid = inh.inhparent
+												   JOIN pg_class child ON inh.inhrelid = child.oid
+												   JOIN pg_namespace nmsp_child ON nmsp_child.oid = child.relnamespace
+											   WHERE pt.kind = 'p')
+				SELECT array_agg(child_oid::INT) AS oid
+				FROM part_tables
+				WHERE kind != 'p')                    as "ChildrenPtOids"
+		FROM pg_catalog.pg_class c
+			JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
+			LEFT JOIN pg_catalog.pg_inherits i ON i.inhrelid = c.oid
+			LEFT JOIN pg_catalog.pg_class pc ON i.inhparent = pc.oid AND pc.relkind = 'p'
+			LEFT JOIN pg_catalog.pg_namespace pn ON pc.relnamespace = pn.oid
+			LEFT JOIN pg_catalog.pg_foreign_table ft ON c.oid = ft.ftrelid
+			LEFT JOIN pg_catalog.pg_foreign_server s ON s.oid = ft.ftserver
+		WHERE c.relkind IN ('r', 'f', 'p')
+          AND %s     -- relname inclusion
+          AND NOT %s -- relname exclusion
+          AND %s -- schema inclusion
+          AND NOT %s -- schema exclusion
+          AND (s.srvname ISNULL OR %s) -- include foreign data
+		  AND n.nspname <> 'pg_catalog'
+		  AND n.nspname !~ '^pg_toast'
+		  AND n.nspname <> 'information_schema'
+	`
+
+	return fmt.Sprintf(totalQuery, tableInclusionCond, tableExclusionCond,
+		schemaInclusionCond, schemaExclusionCond, foreignDataInclusionCond), nil
+
+}

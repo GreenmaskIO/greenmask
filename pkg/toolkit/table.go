@@ -21,6 +21,9 @@ type Table struct {
 	Name        string       `json:"name"`
 	Oid         Oid          `json:"oid"`
 	Columns     []*Column    `json:"columns"`
+	Kind        string       `json:"kind"`
+	Parent      Oid          `json:"parent"`
+	Children    []Oid        `json:"children"`
 	Constraints []Constraint `json:"-"`
 }
 

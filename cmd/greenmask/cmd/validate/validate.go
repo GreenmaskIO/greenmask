@@ -16,6 +16,7 @@ package validate
 
 import (
 	"context"
+	"os"
 
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
@@ -24,6 +25,7 @@ import (
 	cmdInternals "github.com/greenmaskio/greenmask/internal/db/postgres/cmd"
 	"github.com/greenmaskio/greenmask/internal/db/postgres/transformers/utils"
 	"github.com/greenmaskio/greenmask/internal/domains"
+	"github.com/greenmaskio/greenmask/internal/storages/builder"
 	"github.com/greenmaskio/greenmask/internal/utils/logger"
 )
 
@@ -66,14 +68,22 @@ func run(cmd *cobra.Command, args []string) {
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
+	st, err := builder.GetStorage(ctx, &Config.Storage, &Config.Log)
+	if err != nil {
+		log.Fatal().Err(err).Msg("fatal")
+	}
 
-	validate, err := cmdInternals.NewValidate(Config, utils.DefaultTransformerRegistry)
+	validate, err := cmdInternals.NewValidate(Config, utils.DefaultTransformerRegistry, st)
 	if err != nil {
 		log.Fatal().Err(err).Msg("")
 	}
 
-	if err := validate.Run(ctx); err != nil {
+	exitCode, err := validate.Run(ctx)
+	if err != nil {
 		log.Fatal().Err(err).Msg("")
+	}
+	if exitCode != 0 {
+		os.Exit(exitCode)
 	}
 }
 
@@ -147,6 +157,15 @@ func init() {
 	)
 	flag = Cmd.Flags().Lookup(warningsFlagName)
 	if err := viper.BindPFlag("validate.warnings", flag); err != nil {
+		log.Fatal().Err(err).Msg("fatal")
+	}
+
+	schemaFlagName := "schema"
+	Cmd.Flags().Bool(
+		schemaFlagName, false, "Make a schema diff between previous dump and the current state",
+	)
+	flag = Cmd.Flags().Lookup(schemaFlagName)
+	if err := viper.BindPFlag("validate.schema", flag); err != nil {
 		log.Fatal().Err(err).Msg("fatal")
 	}
 
