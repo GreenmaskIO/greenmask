@@ -389,8 +389,12 @@ func (v *Validate) printSchemaDiff(diff []*toolkit.DiffNode, previousDumpId stri
 		Str("PreviousDumpId", previousDumpId).
 		Str("Hint", "Check schema changes before making new dump").
 		Msg("Database schema has been changed")
+
 	for _, node := range diff {
-		log.Warn().Str("Event", node.Event).Any("Signature", node.Signature).Msg("")
+		log.Warn().
+			Str("Event", node.Event).
+			Any("Signature", node.Signature).
+			Msg(toolkit.DiffEventMsgs[node.Event])
 	}
 
 	return nil

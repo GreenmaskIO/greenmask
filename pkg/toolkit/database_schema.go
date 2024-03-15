@@ -8,7 +8,6 @@ import (
 )
 
 const (
-	TableRemovedDiffEvent              = "TableRemoved"
 	TableMovedToAnotherSchemaDiffEvent = "TableMovedToAnotherSchema"
 	TableRenamedDiffEvent              = "TableRenamed"
 	TableCreatedDiffEvent              = "TableCreated"
@@ -16,6 +15,15 @@ const (
 	ColumnRenamedDiffEvent             = "ColumnRenamed"
 	ColumnTypeChangedDiffEvent         = "ColumnTypeChanged"
 )
+
+var DiffEventMsgs = map[string]string{
+	TableMovedToAnotherSchemaDiffEvent: "Table moved to another schema",
+	TableRenamedDiffEvent:              "Table renamed",
+	TableCreatedDiffEvent:              "Table created",
+	ColumnCreatedDiffEvent:             "Column created",
+	ColumnRenamedDiffEvent:             "Column renamed",
+	ColumnTypeChangedDiffEvent:         "Column type changed",
+}
 
 type DiffNode struct {
 	Event     string            `json:"event,omitempty"`
