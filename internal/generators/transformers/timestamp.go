@@ -33,6 +33,8 @@ const (
 	NanosecondTruncateValue
 )
 
+const TimestampTransformerByteLength = 16
+
 type DateTruncater struct {
 	part int
 }
@@ -219,6 +221,13 @@ func (d *Timestamp) Transform(ctx context.Context, data []byte) (time.Time, erro
 
 	sec := int64(binary.LittleEndian.Uint64(genBytes[:8]))
 	nano := int64(binary.LittleEndian.Uint64(genBytes[8:]) % 1000000000)
+
+	if sec < 0 {
+		sec = -sec
+	}
+	if nano < 0 {
+		nano = -nano
+	}
 
 	var res time.Time
 

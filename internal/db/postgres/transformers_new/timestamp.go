@@ -17,7 +17,6 @@ package transformers_new
 import (
 	"context"
 	"fmt"
-	"math/rand"
 	"strings"
 	"time"
 
@@ -28,14 +27,12 @@ import (
 
 var truncateParts = []string{"year", "month", "day", "hour", "second", "millisecond", "microsecond", "nanosecond"}
 
-var RandomDateTransformerDefinition = utils.NewTransformerDefinition(
-	utils.NewTransformerProperties(
-		"Timestamp",
-		"Generate random date in the provided interval",
-	),
+const (
+	timestampTransformerName        = "Timestamp"
+	timestampTransformerDescription = "Generate date in the provided interval"
+)
 
-	NewRandomDateTransformer,
-
+var timestampTransformerParams = []*toolkit.ParameterDefinition{
 	toolkit.MustNewParameterDefinition(
 		"column",
 		"column name",
@@ -73,25 +70,12 @@ var RandomDateTransformerDefinition = utils.NewTransformerDefinition(
 		"keep_null",
 		"indicates that NULL values must not be replaced with transformed values",
 	).SetDefaultValue(toolkit.ParamsValue("true")),
-)
-
-type dateGeneratorFunc func(r *rand.Rand, startDate *time.Time, delta *int64, truncate *string) *time.Time
-
-type RandomDateTransformerParams struct {
-	Min      string  `mapstructure:"min" validate:"required"`
-	Max      string  `mapstructure:"max" validate:"required"`
-	Truncate string  `mapstructure:"truncate" validate:"omitempty,oneof=year month day hour second nano"`
-	Nullable bool    `mapstructure:"nullable"`
-	Fraction float32 `mapstructure:"fraction"`
 }
 
-type RandomDateTransformer struct {
+type TimestampTransformer struct {
 	*transformers.Timestamp
 	columnName      string
 	columnIdx       int
-	rand            *rand.Rand
-	generate        dateGeneratorFunc
-	truncate        string
 	keepNull        bool
 	affectedColumns map[int]string
 
@@ -105,7 +89,7 @@ type RandomDateTransformer struct {
 	transform func(context.Context, []byte) (time.Time, error)
 }
 
-func NewRandomDateTransformer(ctx context.Context, driver *toolkit.Driver, parameters map[string]toolkit.Parameterizer) (utils.Transformer, toolkit.ValidationWarnings, error) {
+func NewTimestampTransformer(ctx context.Context, driver *toolkit.Driver, parameters map[string]toolkit.Parameterizer) (UnifiedTransformer, toolkit.ValidationWarnings, error) {
 
 	var dynamicMode bool
 
@@ -115,8 +99,11 @@ func NewRandomDateTransformer(ctx context.Context, driver *toolkit.Driver, param
 	truncateParam := parameters["truncate"]
 	keepNullParam := parameters["keep_null"]
 
+	if minParam.IsDynamic() || maxParam.IsDynamic() {
+		dynamicMode = true
+	}
+
 	var columnName, truncate string
-	var generator dateGeneratorFunc = generateRandomTime
 	var keepNull bool
 
 	if err := columnParam.Scan(&columnName); err != nil {
@@ -138,19 +125,32 @@ func NewRandomDateTransformer(ctx context.Context, driver *toolkit.Driver, param
 		return nil, nil, fmt.Errorf(`unable to scan "truncate" param: %w`, err)
 	}
 
-	t, err := transformers.NewTimestamp(truncate, nil)
+	var minVal, maxVal time.Time
+	var limiter *transformers.TimestampLimiter
+	var err error
+	if !dynamicMode {
+		if err := minParam.Scan(&minVal); err != nil {
+			return nil, nil, fmt.Errorf("error scanning \"min\" parameter: %w", err)
+		}
+		if err := maxParam.Scan(&maxVal); err != nil {
+			return nil, nil, fmt.Errorf("error scanning \"max\" parameter: %w", err)
+		}
+		limiter, err = transformers.NewTimestampLimiter(minVal, maxVal)
+		if err != nil {
+			return nil, nil, fmt.Errorf("unable to create timestamp limiter: %w", err)
+		}
+	}
+
+	t, err := transformers.NewTimestamp(truncate, limiter)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	return &RandomDateTransformer{
+	return &TimestampTransformer{
 		Timestamp:       t,
 		keepNull:        keepNull,
-		truncate:        truncate,
 		columnName:      columnName,
 		columnIdx:       idx,
-		generate:        generator,
-		rand:            rand.New(rand.NewSource(time.Now().UnixMicro())),
 		affectedColumns: affectedColumns,
 
 		columnParam:   columnParam,
@@ -164,26 +164,46 @@ func NewRandomDateTransformer(ctx context.Context, driver *toolkit.Driver, param
 
 }
 
-func (rdt *RandomDateTransformer) GetAffectedColumns() map[int]string {
+func (rdt *TimestampTransformer) GetAffectedColumns() map[int]string {
 	return rdt.affectedColumns
 }
 
-func (rdt *RandomDateTransformer) Init(ctx context.Context) error {
+func (rdt *TimestampTransformer) Init(ctx context.Context) error {
 	if rdt.dynamicMode {
 		rdt.transform = rdt.dynamicTransform
 	}
 	return nil
 }
 
-func (rdt *RandomDateTransformer) Done(ctx context.Context) error {
+func (rdt *TimestampTransformer) Done(ctx context.Context) error {
 	return nil
 }
 
-func (rdt *RandomDateTransformer) dynamicTransform(ctx context.Context, v []byte) (time.Time, error) {
-	return time.Time{}, nil
+func (rdt *TimestampTransformer) dynamicTransform(ctx context.Context, v []byte) (time.Time, error) {
+	var minVal, maxVal time.Time
+	err := rdt.minParam.Scan(&minVal)
+	if err != nil {
+		return time.Time{}, fmt.Errorf(`unable to scan "min" param: %w`, err)
+	}
+
+	err = rdt.maxParam.Scan(&maxVal)
+	if err != nil {
+		return time.Time{}, fmt.Errorf(`unable to scan "max" param: %w`, err)
+	}
+
+	limiter, err := transformers.NewTimestampLimiter(minVal, maxVal)
+	if err != nil {
+		return time.Time{}, fmt.Errorf("error creating limiter in dynamic mode: %w", err)
+	}
+	ctx = context.WithValue(ctx, "limiter", limiter)
+	res, err := rdt.Timestamp.Transform(ctx, v)
+	if err != nil {
+		return time.Time{}, fmt.Errorf("error generating timestamp value: %w", err)
+	}
+	return res, nil
 }
 
-func (rdt *RandomDateTransformer) Transform(ctx context.Context, r *toolkit.Record) (*toolkit.Record, error) {
+func (rdt *TimestampTransformer) Transform(ctx context.Context, r *toolkit.Record) (*toolkit.Record, error) {
 	valAny, err := r.GetRawColumnValueByIdx(rdt.columnIdx)
 	if err != nil {
 		return nil, fmt.Errorf("unable to scan value: %w", err)
@@ -199,51 +219,6 @@ func (rdt *RandomDateTransformer) Transform(ctx context.Context, r *toolkit.Reco
 		return nil, fmt.Errorf("unable to set new value: %w", err)
 	}
 	return r, nil
-}
-
-func (rdt *RandomDateTransformer) oldTransform(ctx context.Context, r *toolkit.Record) (*toolkit.Record, error) {
-
-	valAny, err := r.GetRawColumnValueByIdx(rdt.columnIdx)
-	if err != nil {
-		return nil, fmt.Errorf("unable to scan value: %w", err)
-	}
-	if valAny.IsNull && rdt.keepNull {
-		return r, nil
-	}
-
-	minTime := &time.Time{}
-	err = rdt.minParam.Scan(minTime)
-	if err != nil {
-		return nil, fmt.Errorf(`error getting "min" parameter value: %w`, err)
-	}
-
-	maxTime := &time.Time{}
-	err = rdt.maxParam.Scan(maxTime)
-	if err != nil {
-		return nil, fmt.Errorf(`error getting "max" parameter value: %w`, err)
-	}
-
-	if minTime.After(*maxTime) {
-		return nil, fmt.Errorf("max value must be greater than min: got min = %s max = %s", minTime.String(), maxTime.String())
-	}
-
-	delta := int64(maxTime.Sub(*minTime))
-
-	res := rdt.generate(rdt.rand, minTime, &delta, &rdt.truncate)
-	if err := r.SetColumnValueByIdx(rdt.columnIdx, res); err != nil {
-		return nil, fmt.Errorf("unable to set new value: %w", err)
-	}
-	return r, nil
-}
-
-func generateRandomTime(r *rand.Rand, startDate *time.Time, delta *int64, truncate *string) *time.Time {
-	res := startDate.Add(time.Duration(r.Int63n(*delta)))
-	return &res
-}
-
-func generateRandomTimeTruncate(r *rand.Rand, startDate *time.Time, delta *int64, truncate *string) *time.Time {
-	res, _ := toolkit.TruncateDate(truncate, generateRandomTime(r, startDate, delta, truncate))
-	return res
 }
 
 func ValidateDateTruncationParameterValue(p *toolkit.ParameterDefinition, v toolkit.ParamsValue) (toolkit.ValidationWarnings, error) {
@@ -262,5 +237,13 @@ func ValidateDateTruncationParameterValue(p *toolkit.ParameterDefinition, v tool
 }
 
 func init() {
-	utils.DefaultTransformerRegistry.MustRegister(RandomDateTransformerDefinition)
+
+	registerRandomAndDeterministicTransformer(
+		utils.DefaultTransformerRegistry,
+		timestampTransformerName,
+		timestampTransformerDescription,
+		NewTimestampTransformer,
+		timestampTransformerParams,
+		transformers.TimestampTransformerByteLength,
+	)
 }
