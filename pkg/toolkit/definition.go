@@ -24,16 +24,36 @@ const (
 	TextModeName = "text"
 )
 
-var DefaultRowDriverParams = &RowDriverParams{
-	Name: CsvModeName,
-	Params: map[string]interface{}{
-		"format": CsvModeName,
-	},
+var DefaultRowDriverParams = &DriverParams{
+	Name:                 JsonModeName,
+	JsonDataFormat:       JsonBytesDataFormatName,
+	JsonAttributesFormat: JsonAttributesIndexesFormatName,
+	CsvAttributesFormat:  CsvAttributesDirectNumeratingFormatName,
 }
 
-type RowDriverParams struct {
-	Name   string                 `json:"name,omitempty"`
-	Params map[string]interface{} `json:"params,omitempty"`
+type DriverParams struct {
+	Name                 string `json:"name"`
+	JsonDataFormat       string `json:"json_data_format,omitempty"`
+	JsonAttributesFormat string `json:"json_attributes_format,omitempty"`
+	CsvAttributesFormat  string `json:"csv_attributes_format,omitempty"`
+}
+
+func (dp *DriverParams) Validate() error {
+	if dp.Name != JsonModeName && dp.Name != CsvModeName && dp.Name != TextModeName {
+		return fmt.Errorf(`unexpected driver name "%s"`, dp.Name)
+	}
+
+	if dp.JsonDataFormat != JsonBytesDataFormatName && dp.JsonDataFormat != JsonTextDataFormatName {
+		return fmt.Errorf(`unexpected format "%s"`, dp.JsonDataFormat)
+	}
+	if dp.JsonAttributesFormat != JsonAttributesNamesFormatName && dp.JsonAttributesFormat != JsonAttributesIndexesFormatName {
+		return fmt.Errorf(`unexpected json_attributes_format "%s"`, dp.JsonAttributesFormat)
+	}
+	if dp.CsvAttributesFormat != CsvAttributesDirectNumeratingFormatName && dp.CsvAttributesFormat != CsvAttributesConfigNumeratingFormatName {
+		return fmt.Errorf(`unexpected csv_attributes_format "%s"`, dp.CsvAttributesFormat)
+	}
+
+	return nil
 }
 
 type TransformerDefinition struct {
@@ -42,7 +62,7 @@ type TransformerDefinition struct {
 	Parameters       []*ParameterDefinition `json:"parameters"`
 	Validate         bool                   `json:"validate"`
 	ExpectedExitCode int                    `json:"expected_exit_code"`
-	Driver           *RowDriverParams       `json:"driver"`
+	Driver           *DriverParams          `json:"driver"`
 	New              NewTransformerFunc     `json:"-"`
 }
 
@@ -77,7 +97,7 @@ func (d *TransformerDefinition) SetExpectedExitCode(v int) *TransformerDefinitio
 	return d
 }
 
-func (d *TransformerDefinition) SetMode(v *RowDriverParams) *TransformerDefinition {
+func (d *TransformerDefinition) SetMode(v *DriverParams) *TransformerDefinition {
 	if v == nil {
 		panic("value is nil")
 	}

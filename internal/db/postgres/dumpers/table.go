@@ -24,27 +24,25 @@ import (
 	"github.com/rs/zerolog/log"
 	"golang.org/x/sync/errgroup"
 
-	"github.com/greenmaskio/greenmask/internal/db/postgres/dump"
+	"github.com/greenmaskio/greenmask/internal/db/postgres/entries"
 	"github.com/greenmaskio/greenmask/internal/storages"
 	"github.com/greenmaskio/greenmask/internal/utils/countwriter"
 )
 
 type TableDumper struct {
-	table                *dump.Table
-	recordNum            uint64
-	validate             bool
-	validateWithOriginal bool
+	table     *entries.Table
+	recordNum uint64
+	validate  bool
 }
 
-func NewTableDumper(table *dump.Table, validate bool, validateWithOriginal bool) *TableDumper {
+func NewTableDumper(table *entries.Table, validate bool) *TableDumper {
 	return &TableDumper{
-		table:                table,
-		validate:             validate,
-		validateWithOriginal: validateWithOriginal,
+		table:    table,
+		validate: validate,
 	}
 }
 
-func (td *TableDumper) Execute(ctx context.Context, tx pgx.Tx, st storages.Storager) (dump.Entry, error) {
+func (td *TableDumper) Execute(ctx context.Context, tx pgx.Tx, st storages.Storager) (entries.Entry, error) {
 
 	w, r := countwriter.NewGzipPipe()
 
@@ -73,7 +71,7 @@ func (td *TableDumper) Execute(ctx context.Context, tx pgx.Tx, st storages.Stora
 			var err error
 			if len(td.table.TransformersContext) > 0 {
 				if td.validate {
-					pipeline, err = NewValidationPipeline(gtx, eg, td.table, w, td.validateWithOriginal)
+					pipeline, err = NewValidationPipeline(gtx, eg, td.table, w)
 					if err != nil {
 						return fmt.Errorf("cannot initialize validation pipeline: %w", err)
 					}

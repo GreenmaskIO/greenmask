@@ -29,12 +29,7 @@ var testTransformerDefinition = toolkit.NewTransformerDefinition(
 	NewTestTransformer,
 ).SetValidate(true).
 	SetDescription("Simple test transformer").
-	SetMode(&toolkit.RowDriverParams{
-		Name: toolkit.JsonModeName,
-		Params: map[string]interface{}{
-			"format": toolkit.JsonBytesFormatName,
-		},
-	}).
+	SetMode(&(*toolkit.DefaultRowDriverParams)).
 	AddParameter(
 		toolkit.MustNewParameterDefinition("column", "test desc").
 			SetIsColumn(

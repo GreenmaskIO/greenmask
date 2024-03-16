@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"os"
 	"slices"
 	"time"
 )
@@ -55,6 +56,13 @@ func (sp *StaticParameter) Init(columnParams map[string]*StaticParameter, rawVal
 	var warnings ValidationWarnings
 
 	sp.rawValue = slices.Clone(rawValue)
+
+	if sp.definition.GetFromGlobalEnvVariable != "" {
+		sp.rawValue = []byte(os.Getenv(sp.definition.GetFromGlobalEnvVariable))
+	}
+	if rawValue != nil {
+		sp.rawValue = slices.Clone(rawValue)
+	}
 
 	if rawValue == nil {
 		if sp.definition.Required {

@@ -25,24 +25,39 @@ import (
 const nullSeqStr = "\\N"
 
 type RawRecordCsv struct {
-	buf  *bytes.Buffer
-	r    *csv.Reader
-	w    *csv.Writer
-	Data []string
-	size int
+	buf                  *bytes.Buffer
+	r                    *csv.Reader
+	w                    *csv.Writer
+	Data                 []string
+	size                 int
+	columnRemap          []*Column
+	originalIdxToOrdered map[int]int
 }
 
-func NewRawRecordCsv(size int) *RawRecordCsv {
+func NewRawRecordCsv(size int, columnRemap []*Column) *RawRecordCsv {
 	buf := bytes.NewBuffer(nil)
 	r := csv.NewReader(buf)
 	r.ReuseRecord = true
 	w := csv.NewWriter(buf)
+	var data []string
+	originalIdxToOrdered := make(map[int]int)
+	if len(columnRemap) > 0 {
+		data = make([]string, len(columnRemap))
+		for idx, c := range columnRemap {
+			originalIdxToOrdered[c.Idx] = idx
+		}
+	} else {
+		data = make([]string, size)
+	}
+
 	return &RawRecordCsv{
-		buf:  buf,
-		r:    r,
-		w:    w,
-		size: size,
-		Data: make([]string, size),
+		buf:                  buf,
+		r:                    r,
+		w:                    w,
+		size:                 size,
+		Data:                 data,
+		columnRemap:          columnRemap,
+		originalIdxToOrdered: originalIdxToOrdered,
 	}
 }
 
@@ -54,10 +69,19 @@ func (rr *RawRecordCsv) GetColumn(idx int) (*RawValue, error) {
 			return nil, fmt.Errorf("error parsing csv record: %w", err)
 		}
 	}
-	if idx > len(rr.Data) || idx < 0 {
-		return nil, fmt.Errorf("column with idx=%d is not found", idx)
+	if idx > rr.size || idx < 0 {
+		return nil, fmt.Errorf("attribute with idx=%d is not found", idx)
 	}
+	var ok bool
+	if len(rr.originalIdxToOrdered) > 0 {
+		idx, ok = rr.originalIdxToOrdered[idx]
+		if !ok {
+			return nil, fmt.Errorf("attribute with idx=%d is not found", idx)
+		}
+	}
+
 	val := rr.Data[idx]
+
 	if val == nullSeqStr {
 		return NewRawValue(nil, true), nil
 	}
@@ -65,9 +89,17 @@ func (rr *RawRecordCsv) GetColumn(idx int) (*RawValue, error) {
 }
 
 func (rr *RawRecordCsv) SetColumn(idx int, v *RawValue) error {
-	if idx > len(rr.Data) || idx < 0 {
-		return fmt.Errorf("column with idx=%d is not found", idx)
+	if idx > rr.size || idx < 0 {
+		return fmt.Errorf("attribute with idx=%d is not found", idx)
 	}
+	var ok bool
+	if len(rr.originalIdxToOrdered) > 0 {
+		idx, ok = rr.originalIdxToOrdered[idx]
+		if !ok {
+			return fmt.Errorf("attribute with idx=%d is not found", idx)
+		}
+	}
+
 	if v.IsNull {
 		rr.Data[idx] = nullSeqStr
 	}
@@ -102,5 +134,6 @@ func (rr *RawRecordCsv) Length() int {
 }
 
 func (rr *RawRecordCsv) Clean() {
-	rr.Data = rr.Data[:0]
+	//rr.Data = rr.Data[:0]
+	clear(rr.Data)
 }

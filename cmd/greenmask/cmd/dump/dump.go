@@ -24,7 +24,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
-	"github.com/greenmaskio/greenmask/internal/db/postgres"
+	cmdInternals "github.com/greenmaskio/greenmask/internal/db/postgres/cmd"
 	"github.com/greenmaskio/greenmask/internal/db/postgres/transformers/utils"
 	pgDomains "github.com/greenmaskio/greenmask/internal/domains"
 	"github.com/greenmaskio/greenmask/internal/storages/builder"
@@ -52,7 +52,7 @@ var (
 				log.Fatal().Msg("common.tmp_dir cannot be empty")
 			}
 
-			dump := postgres.NewDump(Config, st, utils.DefaultTransformerRegistry)
+			dump := cmdInternals.NewDump(Config, st, utils.DefaultTransformerRegistry)
 
 			if err := dump.Run(ctx); err != nil {
 				log.Fatal().Err(err).Msg("cannot make a backup")

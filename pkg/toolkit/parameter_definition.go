@@ -142,6 +142,8 @@ type ParameterDefinition struct {
 	// CastDbType - name of PostgreSQL type that would be used for Decoding raw value to the real go type. Is this
 	// type does not exist will cause an error
 	CastDbType string `mapstructure:"cast_db_type" json:"cast_db_type,omitempty"`
+	// GlobalEnvVariable - the nane of the global environment variable that can be used on empty input
+	GetFromGlobalEnvVariable string `mapstructure:"get_from_global_env_variable" json:"get_from_global_env_variable,omitempty"`
 	// DynamicModeProperties - shows that parameter support dynamic mode and contains allowed types and unmarshaler
 	DynamicModeProperties *DynamicModeProperties
 	// DefaultValue - default value of the parameter
@@ -179,6 +181,11 @@ func (p *ParameterDefinition) SetLinkParameter(name string) *ParameterDefinition
 		panic("parameter cannot be with two properties cast_db_type and link_column_parameter enabled")
 	}
 	p.LinkColumnParameter = name
+	return p
+}
+
+func (p *ParameterDefinition) SetGetFromGlobalEnvVariable(v string) *ParameterDefinition {
+	p.GetFromGlobalEnvVariable = v
 	return p
 }
 

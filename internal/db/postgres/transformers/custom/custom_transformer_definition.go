@@ -38,5 +38,5 @@ type TransformerDefinition struct {
 	AutoDiscoveryTimeout     time.Duration                  `mapstructure:"auto_discovery_timeout" yaml:"auto_discovery_timeout" json:"auto_discovery_timeout"`
 	RowTransformationTimeout time.Duration                  `mapstructure:"row_transformation_timeout" yaml:"row_transformation_timeout" json:"row_transformation_timeout"`
 	ExpectedExitCode         int                            `mapstructure:"expected_exit_code" yaml:"expected_exit_code" json:"expected_exit_code"`
-	Driver                   *toolkit.RowDriverParams       `mapstructure:"driver" yaml:"driver" json:"driver"`
+	Driver                   *toolkit.DriverParams          `mapstructure:"driver" yaml:"driver" json:"driver"`
 }

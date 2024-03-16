@@ -18,18 +18,9 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"slices"
 
 	"github.com/rs/zerolog/log"
 )
-
-const (
-	RowDriverFormatParameterName = "format"
-)
-
-var knownRowDriverParameters = []string{
-	RowDriverFormatParameterName,
-}
 
 // InteractionApi - API for interaction with Cmd transformer. It must implement context cancellation, RW timeouts,
 // encode-decode operations, extracting DTO and assigning received DTO to the toolkit.Record
@@ -46,21 +37,13 @@ type InteractionApi interface {
 	Encode(ctx context.Context, row RowDriver) error
 	// Decode - read data with new line from io.Reader and encode to toolkit.RowDriver
 	Decode(ctx context.Context) (RowDriver, error)
-	// Clean - clean cached record
+	// Clean - clean cached Record
 	Clean()
 }
 
-func NewApi(rowDriverParams *RowDriverParams, transferringColumns []int, affectedColumns []int, driver *Driver) (InteractionApi, error) {
+func NewApi(rowDriverParams *DriverParams, transferringColumns []*Column, affectedColumns []*Column, driver *Driver) (InteractionApi, error) {
 	var err error
 	var api InteractionApi
-
-	if rowDriverParams.Params != nil {
-		for key := range rowDriverParams.Params {
-			if !slices.Contains(knownRowDriverParameters, key) {
-				return nil, fmt.Errorf(`uknown row driver parameter "%s"`, err)
-			}
-		}
-	}
 
 	if len(affectedColumns) == 0 {
 		return nil, fmt.Errorf("affected columns cannot be empty")
@@ -68,12 +51,7 @@ func NewApi(rowDriverParams *RowDriverParams, transferringColumns []int, affecte
 
 	switch rowDriverParams.Name {
 	case JsonModeName:
-		var format = JsonBytesFormatName
-		val, ok := rowDriverParams.Params[RowDriverFormatParameterName]
-		if ok {
-			format = val.(string)
-		}
-		api, err = NewJsonApi(transferringColumns, affectedColumns, format)
+		api, err = NewJsonApi(transferringColumns, affectedColumns, rowDriverParams)
 		if err != nil {
 			return nil, fmt.Errorf("error initializing json api: %w", err)
 		}
@@ -81,8 +59,8 @@ func NewApi(rowDriverParams *RowDriverParams, transferringColumns []int, affecte
 		if len(affectedColumns) > 1 || len(transferringColumns) > 1 {
 			return nil,
 				fmt.Errorf(
-					"use another interaction format (json or csv): text intearaction formats supports only 1 "+
-						"attribute peer nullRecord: got transferring %d affected %d",
+					"use another interaction api (json or csv): text intearaction api supports only 1 "+
+						"attribute in the payload: got transferring %d affected %d",
 					len(transferringColumns), len(affectedColumns),
 				)
 		}
@@ -91,12 +69,12 @@ func NewApi(rowDriverParams *RowDriverParams, transferringColumns []int, affecte
 		if len(transferringColumns) == 0 {
 			needSkip = true
 		}
-		api, err = NewTextApi(affectedColumns[0], needSkip)
+		api, err = NewTextApi(affectedColumns[0].Idx, needSkip)
 		if err != nil {
 			return nil, fmt.Errorf("error initializing text api: %w", err)
 		}
 	case CsvModeName:
-		api = NewCsvApi(transferringColumns, affectedColumns, len(driver.Table.Columns))
+		api = NewCsvApi(transferringColumns, affectedColumns, driver, rowDriverParams)
 	default:
 		return nil, fmt.Errorf("unknown interaction API: %s", rowDriverParams.Name)
 	}
@@ -105,7 +83,7 @@ func NewApi(rowDriverParams *RowDriverParams, transferringColumns []int, affecte
 }
 
 func GetAffectedAndTransferringColumns(parameters map[string]Parameterizer, driver *Driver) (
-	affectedColumnsIdx []int, transferringColumnsIdx []int, err error,
+	affectedColumnsIdx []*Column, transferringColumnsIdx []*Column, err error,
 ) {
 	for _, p := range parameters {
 		if p.GetDefinition().IsColumn {
@@ -118,25 +96,25 @@ func GetAffectedAndTransferringColumns(parameters map[string]Parameterizer, driv
 				return nil, nil, fmt.Errorf("unable to perform cast of column parameter value from any to *string")
 			}
 
-			idx, _, ok := driver.GetColumnByName(columnName)
+			_, c, ok := driver.GetColumnByName(columnName)
 			if !ok {
 				return nil, nil, fmt.Errorf("column with name %s is not found", columnName)
 			}
 			if p.GetDefinition().ColumnProperties != nil {
 				if p.GetDefinition().ColumnProperties.Affected {
-					affectedColumnsIdx = append(affectedColumnsIdx, idx)
+					affectedColumnsIdx = append(affectedColumnsIdx, c)
 				}
 			} else {
-				affectedColumnsIdx = append(affectedColumnsIdx, idx)
+				affectedColumnsIdx = append(affectedColumnsIdx, c)
 
 			}
 
 			if p.GetDefinition().ColumnProperties != nil {
 				if !p.GetDefinition().ColumnProperties.SkipOriginalData {
-					transferringColumnsIdx = append(transferringColumnsIdx, idx)
+					transferringColumnsIdx = append(transferringColumnsIdx, c)
 				}
 			} else {
-				transferringColumnsIdx = append(transferringColumnsIdx, idx)
+				transferringColumnsIdx = append(transferringColumnsIdx, c)
 			}
 		}
 	}

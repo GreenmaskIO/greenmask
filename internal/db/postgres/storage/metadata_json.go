@@ -20,6 +20,8 @@ import (
 
 	"github.com/rs/zerolog/log"
 
+	"github.com/greenmaskio/greenmask/pkg/toolkit"
+
 	"github.com/greenmaskio/greenmask/internal/db/postgres/toc"
 	"github.com/greenmaskio/greenmask/internal/domains"
 )
@@ -59,19 +61,20 @@ type Entry struct {
 }
 
 type Metadata struct {
-	StartedAt      time.Time        `yaml:"startedAt" json:"startedAt"`
-	CompletedAt    time.Time        `yaml:"completedAt" json:"completedAt"`
-	OriginalSize   int64            `yaml:"originalSize" json:"originalSize"`
-	CompressedSize int64            `yaml:"compressedSize" json:"compressedSize"`
-	Transformers   []*domains.Table `yaml:"transformers" json:"transformers"`
-	Header         Header           `yaml:"header" json:"header"`
-	Entries        []*Entry         `yaml:"entries" json:"entries"`
+	StartedAt      time.Time              `yaml:"startedAt" json:"startedAt"`
+	CompletedAt    time.Time              `yaml:"completedAt" json:"completedAt"`
+	OriginalSize   int64                  `yaml:"originalSize" json:"originalSize"`
+	CompressedSize int64                  `yaml:"compressedSize" json:"compressedSize"`
+	Transformers   []*domains.Table       `yaml:"transformers" json:"transformers"`
+	DatabaseSchema toolkit.DatabaseSchema `yaml:"database_schema" json:"database_schema"`
+	Header         Header                 `yaml:"header" json:"header"`
+	Entries        []*Entry               `yaml:"entries" json:"entries"`
 }
 
 func NewMetadata(
 	tocObj *toc.Toc, tocFileSize int64, startedAt,
 	completedAt time.Time, transformers []*domains.Table,
-	stats map[int32]ObjectSizeStat,
+	stats map[int32]ObjectSizeStat, databaseSchema []*toolkit.Table,
 ) (*Metadata, error) {
 
 	var format string
@@ -159,6 +162,7 @@ func NewMetadata(
 		StartedAt:      startedAt,
 		CompletedAt:    completedAt,
 		Transformers:   transformers,
+		DatabaseSchema: databaseSchema,
 		Header: Header{
 			CreationDate:    tocObj.Header.CrtmDateTime.Time(),
 			DbName:          *tocObj.Header.ArchDbName,

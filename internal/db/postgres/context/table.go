@@ -24,7 +24,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/rs/zerolog/log"
 
-	"github.com/greenmaskio/greenmask/internal/db/postgres/dump"
+	"github.com/greenmaskio/greenmask/internal/db/postgres/entries"
 	transformersUtils "github.com/greenmaskio/greenmask/internal/db/postgres/transformers/utils"
 	"github.com/greenmaskio/greenmask/internal/domains"
 	"github.com/greenmaskio/greenmask/pkg/toolkit"
@@ -37,8 +37,8 @@ func validateAndBuildTablesConfig(
 	ctx context.Context, tx pgx.Tx, typeMap *pgtype.Map,
 	cfg []*domains.Table, registry *transformersUtils.TransformerRegistry,
 	version int, types []*toolkit.Type,
-) (map[toolkit.Oid]*dump.Table, toolkit.ValidationWarnings, error) {
-	result := make(map[toolkit.Oid]*dump.Table, len(cfg))
+) (map[toolkit.Oid]*entries.Table, toolkit.ValidationWarnings, error) {
+	result := make(map[toolkit.Oid]*entries.Table, len(cfg))
 	var warnings toolkit.ValidationWarnings
 
 	for _, tableCfg := range cfg {
@@ -120,12 +120,12 @@ func validateAndBuildTablesConfig(
 	return result, warnings, nil
 }
 
-func getTable(ctx context.Context, tx pgx.Tx, t *domains.Table) ([]*dump.Table, toolkit.ValidationWarnings, error) {
-	table := &dump.Table{
+func getTable(ctx context.Context, tx pgx.Tx, t *domains.Table) ([]*entries.Table, toolkit.ValidationWarnings, error) {
+	table := &entries.Table{
 		Table: &toolkit.Table{},
 	}
 	var warnings toolkit.ValidationWarnings
-	var tables []*dump.Table
+	var tables []*entries.Table
 
 	row := tx.QueryRow(ctx, TableSearchQuery, t.Schema, t.Name)
 	err := row.Scan(&table.Oid, &table.Schema, &table.Name, &table.Owner, &table.RelKind,
@@ -157,7 +157,7 @@ func getTable(ctx context.Context, tx pgx.Tx, t *domains.Table) ([]*dump.Table, 
 			Str("TableName", table.Name).
 			Msg("table is partitioned: gathering all partitions and creating dumping tasks")
 		// Get list of inherited tables
-		var parts []*dump.Table
+		var parts []*entries.Table
 
 		rows, err := tx.Query(ctx, TableGetChildPatsQuery, table.Oid)
 		if err != nil {
@@ -166,7 +166,7 @@ func getTable(ctx context.Context, tx pgx.Tx, t *domains.Table) ([]*dump.Table, 
 		defer rows.Close()
 
 		for rows.Next() {
-			pt := &dump.Table{
+			pt := &entries.Table{
 				Table:        &toolkit.Table{},
 				RootPtSchema: table.Schema,
 				RootPtName:   table.Name,
@@ -206,8 +206,9 @@ func getColumnsConfig(ctx context.Context, tx pgx.Tx, oid toolkit.Oid) ([]*toolk
 	}
 	defer rows.Close()
 
+	idx := 0
 	for rows.Next() {
-		var column toolkit.Column
+		column := toolkit.Column{Idx: idx}
 		if err = rows.Scan(&column.Name, &column.TypeOid, &column.TypeName,
 			&column.NotNull, &column.Length, &column.Num); err != nil {
 			return nil, fmt.Errorf("cannot scan tableColumnQuery: %w", err)
@@ -220,6 +221,7 @@ func getColumnsConfig(ctx context.Context, tx pgx.Tx, oid toolkit.Oid) ([]*toolk
 			column.CanonicalTypeName = canonicalType.Name
 		}
 		res = append(res, &column)
+		idx++
 	}
 
 	return res, nil

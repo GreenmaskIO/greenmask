@@ -30,7 +30,7 @@ var truncateParts = []string{"year", "month", "day", "hour", "second", "millisec
 
 var RandomDateTransformerDefinition = utils.NewTransformerDefinition(
 	utils.NewTransformerProperties(
-		"RandomDate",
+		"Timestamp",
 		"Generate random date in the provided interval",
 	),
 
@@ -180,7 +180,7 @@ func (rdt *RandomDateTransformer) Done(ctx context.Context) error {
 }
 
 func (rdt *RandomDateTransformer) dynamicTransform(ctx context.Context, v []byte) (time.Time, error) {
-
+	return time.Time{}, nil
 }
 
 func (rdt *RandomDateTransformer) Transform(ctx context.Context, r *toolkit.Record) (*toolkit.Record, error) {
@@ -244,6 +244,21 @@ func generateRandomTime(r *rand.Rand, startDate *time.Time, delta *int64, trunca
 func generateRandomTimeTruncate(r *rand.Rand, startDate *time.Time, delta *int64, truncate *string) *time.Time {
 	res, _ := toolkit.TruncateDate(truncate, generateRandomTime(r, startDate, delta, truncate))
 	return res
+}
+
+func ValidateDateTruncationParameterValue(p *toolkit.ParameterDefinition, v toolkit.ParamsValue) (toolkit.ValidationWarnings, error) {
+	part := string(v)
+	switch part {
+	case "nano", "second", "minute", "hour", "day", "month", "year", "":
+		return nil, nil
+	default:
+		return toolkit.ValidationWarnings{
+			toolkit.NewValidationWarning().
+				SetSeverity(toolkit.ErrorValidationSeverity).
+				AddMeta("ParameterValue", part).
+				SetMsg("wrong truncation part value: must be one of nano, second, minute, hour, day, month, year"),
+		}, nil
+	}
 }
 
 func init() {
