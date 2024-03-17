@@ -151,7 +151,7 @@ func NewIntegerTransformer(ctx context.Context, driver *toolkit.Driver, paramete
 		return nil, limitsWarnings, nil
 	}
 
-	t, err := transformers.NewInt64Transformer(limiter)
+	t, err := transformers.NewInt64Transformer(limiter, intSize)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error initializing common int transformer: %w", err)
 	}

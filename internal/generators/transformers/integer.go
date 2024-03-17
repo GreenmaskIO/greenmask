@@ -52,9 +52,10 @@ type Int64Transformer struct {
 	byteLength int
 }
 
-func NewInt64Transformer(limiter *Int64Limiter) (*Int64Transformer, error) {
+func NewInt64Transformer(limiter *Int64Limiter, size int) (*Int64Transformer, error) {
 	return &Int64Transformer{
-		limiter: limiter,
+		limiter:    limiter,
+		byteLength: size,
 	}, nil
 }
 
