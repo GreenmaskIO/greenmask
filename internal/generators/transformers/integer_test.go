@@ -12,6 +12,6 @@ func TestLimiter_Limit(t *testing.T) {
 	maxValue := int64(math.MaxInt64)
 	l, err := NewInt64Limiter(minValue, maxValue)
 	require.NoError(t, err)
-	res := l.Limit(uint64(math.MaxInt64))
-	require.True(t, res == math.MinInt64)
+	res := l.Limit(uint64(math.MaxUint64 - 1))
+	require.True(t, res == math.MaxInt64-1)
 }

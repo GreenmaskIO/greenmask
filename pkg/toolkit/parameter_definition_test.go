@@ -25,7 +25,7 @@ import (
 func TestInitParametersV2(t *testing.T) {
 	driver, record := GetDriverAndRecord(
 		map[string]*RawValue{
-			"id":        NewRawValue([]byte("123"), false),
+			"id2":       NewRawValue([]byte("123"), false),
 			"date_tstz": NewRawValue([]byte("2024-01-12 00:00:00.0+00"), false),
 		},
 	)
@@ -35,11 +35,17 @@ func TestInitParametersV2(t *testing.T) {
 
 	minDate := MustNewParameterDefinition("min_date", "min date").
 		SetLinkParameter("column").
-		SetDynamicModeSupport(true)
+		SetDynamicMode(
+			NewDynamicModeProperties().
+				SetCompatibleTypes("date", "timestamp", "timestamptz"),
+		)
 
 	maxDate := MustNewParameterDefinition("max_date", "max date").
 		SetLinkParameter("column").
-		SetDynamicModeSupport(true)
+		SetDynamicMode(
+			NewDynamicModeProperties().
+				SetCompatibleTypes("date", "timestamp", "timestamptz"),
+		)
 
 	params, warns, err := InitParameters(
 		driver,

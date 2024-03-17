@@ -37,7 +37,7 @@ func NewInt64Limiter(minValue, maxValue int64) (*Int64Limiter, error) {
 	return &Int64Limiter{
 		MinValue:         minValue,
 		MaxValue:         maxValue,
-		maxValueFromZero: maxValueFromZero + 1,
+		maxValueFromZero: maxValueFromZero,
 		offset:           offset,
 	}, nil
 }

@@ -72,7 +72,7 @@ func TestBigIntTransformer_Transform_random_static(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			tt.params["column"] = toolkit.ParamsValue(tt.columnName)
 			driver, record := getDriverAndRecord(tt.columnName, tt.originalValue)
-			def, ok := utils.DefaultTransformerRegistry.Get("random.BigInteger")
+			def, ok := utils.DefaultTransformerRegistry.Get("BigInteger")
 			require.True(t, ok)
 
 			transformer, warnings, err := def.Instance(
@@ -147,7 +147,7 @@ func TestBigIntTransformer_Transform_random_dynamic(t *testing.T) {
 			driver, record := toolkit.GetDriverAndRecord(tt.record)
 
 			tt.params["column"] = toolkit.ParamsValue(tt.columnName)
-			def, ok := utils.DefaultTransformerRegistry.Get("random.BigInteger")
+			def, ok := utils.DefaultTransformerRegistry.Get("BigInteger")
 			require.True(t, ok)
 
 			transformer, warnings, err := def.Instance(
@@ -203,8 +203,8 @@ func TestBigIntTransformer_Transform_deterministic_dynamic(t *testing.T) {
 				"val_numeric": toolkit.NewRawValue([]byte("10"), false),
 			},
 			params: map[string]toolkit.ParamsValue{
-				"max":  toolkit.ParamsValue("10000000"),
-				"salt": toolkit.ParamsValue("12345abcd"),
+				"max":    toolkit.ParamsValue("10000000"),
+				"engine": toolkit.ParamsValue("hash"),
 			},
 			dynamicParams: map[string]*toolkit.DynamicParamValue{
 				"min": {
@@ -218,17 +218,19 @@ func TestBigIntTransformer_Transform_deterministic_dynamic(t *testing.T) {
 		},
 	}
 
+	ctx := context.WithValue(context.Background(), "salt", []byte("12345abcd"))
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 
 			driver, record := toolkit.GetDriverAndRecord(tt.record)
 
 			tt.params["column"] = toolkit.ParamsValue(tt.columnName)
-			def, ok := utils.DefaultTransformerRegistry.Get("deterministic.BigInteger")
+			def, ok := utils.DefaultTransformerRegistry.Get("BigInteger")
 			require.True(t, ok)
 
 			transformer, warnings, err := def.Instance(
-				context.Background(),
+				ctx,
 				driver,
 				tt.params,
 				tt.dynamicParams,
@@ -236,7 +238,7 @@ func TestBigIntTransformer_Transform_deterministic_dynamic(t *testing.T) {
 			require.NoError(t, err)
 			require.Empty(t, warnings)
 
-			err = transformer.Transformer.Init(context.Background())
+			err = transformer.Transformer.Init(ctx)
 			require.NoError(t, err)
 
 			for _, dp := range transformer.DynamicParameters {
@@ -244,7 +246,7 @@ func TestBigIntTransformer_Transform_deterministic_dynamic(t *testing.T) {
 			}
 
 			r, err := transformer.Transformer.Transform(
-				context.Background(),
+				ctx,
 				record,
 			)
 			require.NoError(t, err)

@@ -176,8 +176,10 @@ func getTableAndRows() (table *entries.Table, original, transformed [][]byte) {
 	}
 
 	table = &entries.Table{
-		Table:        t,
-		Transformers: []utils.Transformer{&testTransformer{}},
+		Table: t,
+		TransformersContext: []*utils.TransformerContext{
+			{Transformer: &testTransformer{}},
+		},
 	}
 
 	return table, original, transformed
