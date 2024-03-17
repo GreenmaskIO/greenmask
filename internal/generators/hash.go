@@ -26,7 +26,7 @@ type Hash struct {
 	buf  []byte
 }
 
-func NewHash(salt []byte, funcName string) (*Hash, error) {
+func NewHash(salt []byte, funcName string) (Generator, error) {
 
 	var h hash.Hash
 

@@ -27,12 +27,14 @@ import (
 
 var truncateParts = []string{"year", "month", "day", "hour", "second", "millisecond", "microsecond", "nanosecond"}
 
-const (
-	timestampTransformerName        = "Timestamp"
-	timestampTransformerDescription = "Generate date in the provided interval"
-)
+var timestampTransformerDefinition = utils.NewTransformerDefinition(
+	utils.NewTransformerProperties(
+		"Timestamp",
+		"Generate date in the provided interval",
+	),
 
-var timestampTransformerParams = []*toolkit.ParameterDefinition{
+	NewTimestampTransformer,
+
 	toolkit.MustNewParameterDefinition(
 		"column",
 		"column name",
@@ -66,11 +68,10 @@ var timestampTransformerParams = []*toolkit.ParameterDefinition{
 		fmt.Sprintf("truncate date till the part (%s)", strings.Join(truncateParts, ", ")),
 	).SetRawValueValidator(ValidateDateTruncationParameterValue),
 
-	toolkit.MustNewParameterDefinition(
-		"keep_null",
-		"indicates that NULL values must not be replaced with transformed values",
-	).SetDefaultValue(toolkit.ParamsValue("true")),
-}
+	keepNullParameterDefinition,
+
+	engineParameterDefinition,
+)
 
 type TimestampTransformer struct {
 	*transformers.Timestamp
@@ -84,12 +85,13 @@ type TimestampTransformer struct {
 	minParam      toolkit.Parameterizer
 	truncateParam toolkit.Parameterizer
 	keepNullParam toolkit.Parameterizer
+	engineParam   toolkit.Parameterizer
 	dynamicMode   bool
 
 	transform func(context.Context, []byte) (time.Time, error)
 }
 
-func NewTimestampTransformer(ctx context.Context, driver *toolkit.Driver, parameters map[string]toolkit.Parameterizer) (UnifiedTransformer, toolkit.ValidationWarnings, error) {
+func NewTimestampTransformer(ctx context.Context, driver *toolkit.Driver, parameters map[string]toolkit.Parameterizer) (utils.Transformer, toolkit.ValidationWarnings, error) {
 
 	var dynamicMode bool
 
@@ -98,13 +100,18 @@ func NewTimestampTransformer(ctx context.Context, driver *toolkit.Driver, parame
 	minParam := parameters["min"]
 	truncateParam := parameters["truncate"]
 	keepNullParam := parameters["keep_null"]
+	engineParam := parameters["engine"]
+
+	var columnName, truncate, engine string
+	var keepNull bool
+
+	if err := engineParam.Scan(&engine); err != nil {
+		return nil, nil, fmt.Errorf(`unable to scan "engine" param: %w`, err)
+	}
 
 	if minParam.IsDynamic() || maxParam.IsDynamic() {
 		dynamicMode = true
 	}
-
-	var columnName, truncate string
-	var keepNull bool
 
 	if err := columnParam.Scan(&columnName); err != nil {
 		return nil, nil, fmt.Errorf(`unable to scan "column" param: %w`, err)
@@ -129,10 +136,10 @@ func NewTimestampTransformer(ctx context.Context, driver *toolkit.Driver, parame
 	var limiter *transformers.TimestampLimiter
 	var err error
 	if !dynamicMode {
-		if err := minParam.Scan(&minVal); err != nil {
+		if err = minParam.Scan(&minVal); err != nil {
 			return nil, nil, fmt.Errorf("error scanning \"min\" parameter: %w", err)
 		}
-		if err := maxParam.Scan(&maxVal); err != nil {
+		if err = maxParam.Scan(&maxVal); err != nil {
 			return nil, nil, fmt.Errorf("error scanning \"max\" parameter: %w", err)
 		}
 		limiter, err = transformers.NewTimestampLimiter(minVal, maxVal)
@@ -144,6 +151,15 @@ func NewTimestampTransformer(ctx context.Context, driver *toolkit.Driver, parame
 	t, err := transformers.NewTimestamp(truncate, limiter)
 	if err != nil {
 		return nil, nil, err
+	}
+
+	g, err := getGenerateEngine(ctx, engine, t.GetRequiredGeneratorByteLength())
+	if err != nil {
+		return nil, nil, fmt.Errorf("unable to get generator: %w", err)
+	}
+
+	if err = t.SetGenerator(g); err != nil {
+		return nil, nil, fmt.Errorf("unable to set generator: %w", err)
 	}
 
 	return &TimestampTransformer{
@@ -158,6 +174,7 @@ func NewTimestampTransformer(ctx context.Context, driver *toolkit.Driver, parame
 		maxParam:      maxParam,
 		truncateParam: truncateParam,
 		keepNullParam: keepNullParam,
+		engineParam:   engineParam,
 		dynamicMode:   dynamicMode,
 		transform:     t.Transform,
 	}, nil, nil
@@ -237,13 +254,5 @@ func ValidateDateTruncationParameterValue(p *toolkit.ParameterDefinition, v tool
 }
 
 func init() {
-
-	registerRandomAndDeterministicTransformer(
-		utils.DefaultTransformerRegistry,
-		timestampTransformerName,
-		timestampTransformerDescription,
-		NewTimestampTransformer,
-		timestampTransformerParams,
-		transformers.TimestampTransformerByteLength,
-	)
+	utils.DefaultTransformerRegistry.MustRegister(timestampTransformerDefinition)
 }

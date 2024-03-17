@@ -201,8 +201,9 @@ func NewTimestamp(truncatePart string, limiter *TimestampLimiter) (*Timestamp, e
 	}
 
 	return &Timestamp{
-		truncater: dt,
-		limiter:   limiter,
+		truncater:  dt,
+		limiter:    limiter,
+		byteLength: TimestampTransformerByteLength,
 	}, nil
 }
 

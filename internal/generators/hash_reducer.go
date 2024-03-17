@@ -5,7 +5,7 @@ type HashReducer struct {
 	size int
 }
 
-func NewHashReducer(g Generator, size int) *HashReducer {
+func NewHashReducer(g Generator, size int) Generator {
 	return &HashReducer{
 		g:    g,
 		size: size,

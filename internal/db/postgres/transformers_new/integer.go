@@ -37,7 +37,14 @@ const (
 
 const integerTransformerGenByteLength = 8
 
-var integerTransformerParams = []*toolkit.ParameterDefinition{
+var integerTransformerDefinition = utils.NewTransformerDefinition(
+	utils.NewTransformerProperties(
+		"Integer",
+		"Generate integer value in min and max thresholds",
+	),
+
+	NewIntegerTransformer,
+
 	toolkit.MustNewParameterDefinition(
 		"column",
 		"column name",
@@ -65,11 +72,10 @@ var integerTransformerParams = []*toolkit.ParameterDefinition{
 				SetCompatibleTypes("int2", "int4", "int8"),
 		),
 
-	toolkit.MustNewParameterDefinition(
-		"keep_null",
-		"indicates that NULL values must not be replaced with transformed values",
-	).SetDefaultValue(toolkit.ParamsValue("true")),
-}
+	keepNullParameterDefinition,
+
+	engineParameterDefinition,
+)
 
 type IntegerTransformer struct {
 	*transformers.Int64Transformer
@@ -84,13 +90,14 @@ type IntegerTransformer struct {
 	maxParam      toolkit.Parameterizer
 	minParam      toolkit.Parameterizer
 	keepNullParam toolkit.Parameterizer
+	engineParam   toolkit.Parameterizer
 
 	transform func(context.Context, []byte) (int64, error)
 }
 
-func NewIntegerTransformer(ctx context.Context, driver *toolkit.Driver, parameters map[string]toolkit.Parameterizer) (UnifiedTransformer, toolkit.ValidationWarnings, error) {
+func NewIntegerTransformer(ctx context.Context, driver *toolkit.Driver, parameters map[string]toolkit.Parameterizer) (utils.Transformer, toolkit.ValidationWarnings, error) {
 
-	var columnName string
+	var columnName, engine string
 	var minVal, maxVal int64
 	var keepNull, dynamicMode bool
 	var intSize = 8
@@ -99,6 +106,11 @@ func NewIntegerTransformer(ctx context.Context, driver *toolkit.Driver, paramete
 	minParam := parameters["min"]
 	maxParam := parameters["max"]
 	keepNullParam := parameters["keep_null"]
+	engineParam := parameters["engine"]
+
+	if err := engineParam.Scan(&engine); err != nil {
+		return nil, nil, fmt.Errorf(`unable to scan "engine" param: %w`, err)
+	}
 
 	if minParam.IsDynamic() || maxParam.IsDynamic() {
 		dynamicMode = true
@@ -142,6 +154,14 @@ func NewIntegerTransformer(ctx context.Context, driver *toolkit.Driver, paramete
 	t, err := transformers.NewInt64Transformer(limiter)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error initializing common int transformer: %w", err)
+	}
+
+	g, err := getGenerateEngine(ctx, engine, t.GetRequiredGeneratorByteLength())
+	if err != nil {
+		return nil, nil, fmt.Errorf("unable to get generator: %w", err)
+	}
+	if err = t.SetGenerator(g); err != nil {
+		return nil, nil, fmt.Errorf("unable to set generator: %w", err)
 	}
 
 	return &IntegerTransformer{
@@ -319,13 +339,5 @@ func validateIntTypeAndSetLimit(
 }
 
 func init() {
-
-	registerRandomAndDeterministicTransformer(
-		utils.DefaultTransformerRegistry,
-		intTransformerName,
-		intTransformerDescription,
-		NewIntegerTransformer,
-		integerTransformerParams,
-		integerTransformerGenByteLength,
-	)
+	utils.DefaultTransformerRegistry.MustRegister(integerTransformerDefinition)
 }

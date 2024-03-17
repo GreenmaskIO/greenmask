@@ -11,14 +11,16 @@ import (
 	"github.com/greenmaskio/greenmask/pkg/toolkit"
 )
 
-const (
-	bigIntTransformerName        = "BigInteger"
-	bigIntTransformerDescription = "Generate big integer value in min and max thresholds"
-)
-
 const bigIntegerTransformerGenByteLength = 20
 
-var bigIntegerTransformerParams = []*toolkit.ParameterDefinition{
+var bigIntegerTransformerDefinition = utils.NewTransformerDefinition(
+	utils.NewTransformerProperties(
+		"BigInteger",
+		"Generate big integer value in min and max thresholds",
+	),
+
+	NewBigIntegerTransformer,
+
 	toolkit.MustNewParameterDefinition(
 		"column",
 		"column name",
@@ -50,11 +52,10 @@ var bigIntegerTransformerParams = []*toolkit.ParameterDefinition{
 				SetUnmarshaler(bigIntTypeUnmarshaler),
 		),
 
-	toolkit.MustNewParameterDefinition(
-		"keep_null",
-		"indicates that NULL values must not be replaced with transformed values",
-	).SetDefaultValue(toolkit.ParamsValue("true")),
-}
+	keepNullParameterDefinition,
+
+	engineParameterDefinition,
+)
 
 type BigIntegerTransformer struct {
 	*transformers.BigIntTransformer
@@ -72,12 +73,13 @@ type BigIntegerTransformer struct {
 	maxParam      toolkit.Parameterizer
 	minParam      toolkit.Parameterizer
 	keepNullParam toolkit.Parameterizer
+	engineParam   toolkit.Parameterizer
 	transform     func(context.Context, []byte) (decimal.Decimal, error)
 }
 
-func NewBigIntegerTransformer(ctx context.Context, driver *toolkit.Driver, parameters map[string]toolkit.Parameterizer) (UnifiedTransformer, toolkit.ValidationWarnings, error) {
+func NewBigIntegerTransformer(ctx context.Context, driver *toolkit.Driver, parameters map[string]toolkit.Parameterizer) (utils.Transformer, toolkit.ValidationWarnings, error) {
 
-	var columnName string
+	var columnName, engine string
 	var minVal, maxVal decimal.Decimal
 	var keepNull, dynamicMode bool
 
@@ -85,6 +87,11 @@ func NewBigIntegerTransformer(ctx context.Context, driver *toolkit.Driver, param
 	minParam := parameters["min"]
 	maxParam := parameters["max"]
 	keepNullParam := parameters["keep_null"]
+	engineParam := parameters["engine"]
+
+	if err := engineParam.Scan(&engine); err != nil {
+		return nil, nil, fmt.Errorf(`unable to scan "engine" param: %w`, err)
+	}
 
 	if minParam.IsDynamic() || maxParam.IsDynamic() {
 		dynamicMode = true
@@ -127,6 +134,14 @@ func NewBigIntegerTransformer(ctx context.Context, driver *toolkit.Driver, param
 		return nil, nil, fmt.Errorf("error initializing common int transformer: %w", err)
 	}
 
+	g, err := getGenerateEngine(ctx, engine, t.GetRequiredGeneratorByteLength())
+	if err != nil {
+		return nil, nil, fmt.Errorf("unable to get generator: %w", err)
+	}
+	if err = t.SetGenerator(g); err != nil {
+		return nil, nil, fmt.Errorf("unable to set generator: %w", err)
+	}
+
 	return &BigIntegerTransformer{
 		BigIntTransformer: t,
 		columnName:        columnName,
@@ -140,6 +155,7 @@ func NewBigIntegerTransformer(ctx context.Context, driver *toolkit.Driver, param
 		minParam:      minParam,
 		maxParam:      maxParam,
 		keepNullParam: keepNullParam,
+		engineParam:   engineParam,
 		numericSize:   c.Length,
 		transform:     t.Transform,
 
@@ -287,13 +303,5 @@ func bigIntTypeUnmarshaler(driver *toolkit.Driver, typeName string, v toolkit.Pa
 }
 
 func init() {
-
-	registerRandomAndDeterministicTransformer(
-		utils.DefaultTransformerRegistry,
-		bigIntTransformerName,
-		bigIntTransformerDescription,
-		NewBigIntegerTransformer,
-		bigIntegerTransformerParams,
-		bigIntegerTransformerGenByteLength,
-	)
+	utils.DefaultTransformerRegistry.MustRegister(bigIntegerTransformerDefinition)
 }
