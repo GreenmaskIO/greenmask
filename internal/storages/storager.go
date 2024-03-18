@@ -32,6 +32,8 @@ type Storager interface {
 	PutObject(ctx context.Context, filePath string, body io.Reader) error
 	// Delete - delete list of objects by the provided paths
 	Delete(ctx context.Context, filePaths ...string) error
+	// DeleteAll - delete all objects by the provided path prefix
+	DeleteAll(ctx context.Context, pathPrefix string) error
 	// Exists - check object existence
 	Exists(ctx context.Context, fileName string) (bool, error)
 	// SubStorage - get new Storage instance with the samo config but change current cwd via subPath
