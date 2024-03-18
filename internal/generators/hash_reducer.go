@@ -13,7 +13,7 @@ func NewHashReducer(g Generator, size int) Generator {
 }
 
 func (hr *HashReducer) Generate(data []byte) (res []byte, err error) {
-	res, err = hr.g.Generate(res)
+	res, err = hr.g.Generate(data)
 	if err != nil {
 		return nil, err
 	}

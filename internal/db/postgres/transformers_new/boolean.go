@@ -14,93 +14,120 @@
 
 package transformers_new
 
-//var RandomBoolTransformerDefinition = utils.NewTransformerDefinition(
-//
-//	utils.NewTransformerProperties(
-//		"RandomBool",
-//		"Generate random bool",
-//	),
-//
-//	NewRandomBoolTransformer,
-//
-//	toolkit.MustNewParameterDefinition(
-//		"column",
-//		"column name",
-//	).SetIsColumn(toolkit.NewColumnProperties().
-//		SetAffected(true).
-//		SetAllowedColumnTypes("bool"),
-//	).SetRequired(true),
-//
-//	toolkit.MustNewParameterDefinition(
-//		"keep_null",
-//		"indicates that NULL values must not be replaced with transformed values",
-//	).SetDefaultValue(toolkit.ParamsValue("true")),
-//)
-//
-//type RandomBoolTransformer struct {
-//	columnName      string
-//	keepNull        bool
-//	rand            *rand.Rand
-//	affectedColumns map[int]string
-//	columnIdx       int
-//}
-//
-//func NewRandomBoolTransformer(ctx context.Context, driver *toolkit.Driver, parameters map[string]toolkit.Parameterizer) (UnifiedTransformer, toolkit.ValidationWarnings, error) {
-//	var columnName string
-//	var keepNull bool
-//	p := parameters["column"]
-//	if err := p.Scan(&columnName); err != nil {
-//		return nil, nil, fmt.Errorf(`unable to scan "column" param: %w`, err)
-//	}
-//
-//	idx, _, ok := driver.GetColumnByName(columnName)
-//	if !ok {
-//		return nil, nil, fmt.Errorf("column with name %s is not found", columnName)
-//	}
-//	affectedColumns := make(map[int]string)
-//	affectedColumns[idx] = columnName
-//
-//	p = parameters["keep_null"]
-//	if err := p.Scan(&keepNull); err != nil {
-//		return nil, nil, fmt.Errorf(`unable to scan "keep_null" param: %w`, err)
-//	}
-//
-//	return &RandomBoolTransformer{
-//		columnName:      columnName,
-//		keepNull:        keepNull,
-//		rand:            rand.New(rand.NewSource(time.Now().UnixMicro())),
-//		affectedColumns: affectedColumns,
-//		columnIdx:       idx,
-//	}, nil, nil
-//}
-//
-//func (rbt *RandomBoolTransformer) GetAffectedColumns() map[int]string {
-//	return rbt.affectedColumns
-//}
-//
-//func (rbt *RandomBoolTransformer) Init(ctx context.Context) error {
-//	return nil
-//}
-//
-//func (rbt *RandomBoolTransformer) Done(ctx context.Context) error {
-//	return nil
-//}
-//
-//func (rbt *RandomBoolTransformer) Transform(ctx context.Context, r *toolkit.Record) (*toolkit.Record, error) {
-//	val, err := r.GetRawColumnValueByIdx(rbt.columnIdx)
-//	if err != nil {
-//		return nil, fmt.Errorf("unable to scan value: %w", err)
-//	}
-//	if val.IsNull && rbt.keepNull {
-//		return r, nil
-//	}
-//
-//	if err := r.SetColumnValueByIdx(rbt.columnIdx, toolkit.RandomBool(rbt.rand)); err != nil {
-//		return nil, fmt.Errorf("unable to set new value: %w", err)
-//	}
-//	return r, nil
-//}
-//
-//func init() {
-//	utils.DefaultTransformerRegistry.MustRegister(RandomBoolTransformerDefinition)
-//}
+import (
+	"context"
+	"fmt"
+
+	"github.com/greenmaskio/greenmask/internal/db/postgres/transformers/utils"
+	"github.com/greenmaskio/greenmask/internal/generators/transformers"
+	"github.com/greenmaskio/greenmask/pkg/toolkit"
+)
+
+var boolTransformerDefinition = utils.NewTransformerDefinition(
+
+	utils.NewTransformerProperties(
+		"Boolean",
+		"Generate random bool",
+	),
+
+	NewBooleanTransformer,
+
+	toolkit.MustNewParameterDefinition(
+		"column",
+		"column name",
+	).SetIsColumn(toolkit.NewColumnProperties().
+		SetAffected(true).
+		SetAllowedColumnTypes("bool"),
+	).SetRequired(true),
+
+	keepNullParameterDefinition,
+
+	engineParameterDefinition,
+)
+
+type BooleanTransformer struct {
+	columnName      string
+	keepNull        bool
+	affectedColumns map[int]string
+	columnIdx       int
+	t               *transformers.Boolean
+}
+
+func NewBooleanTransformer(ctx context.Context, driver *toolkit.Driver, parameters map[string]toolkit.Parameterizer) (utils.Transformer, toolkit.ValidationWarnings, error) {
+	var columnName, engine string
+	var keepNull bool
+	p := parameters["column"]
+	if err := p.Scan(&columnName); err != nil {
+		return nil, nil, fmt.Errorf(`unable to scan "column" param: %w`, err)
+	}
+
+	idx, _, ok := driver.GetColumnByName(columnName)
+	if !ok {
+		return nil, nil, fmt.Errorf("column with name %s is not found", columnName)
+	}
+	affectedColumns := make(map[int]string)
+	affectedColumns[idx] = columnName
+
+	p = parameters["keep_null"]
+	if err := p.Scan(&keepNull); err != nil {
+		return nil, nil, fmt.Errorf(`unable to scan "keep_null" param: %w`, err)
+	}
+
+	p = parameters["engine"]
+	if err := p.Scan(&engine); err != nil {
+		return nil, nil, fmt.Errorf(`unable to scan "engine" param: %w`, err)
+	}
+
+	t := transformers.NewBoolean()
+	g, err := getGenerateEngine(ctx, engine, t.GetRequiredGeneratorByteLength())
+	if err != nil {
+		return nil, nil, fmt.Errorf("unable to get generator: %w", err)
+	}
+	if err = t.SetGenerator(g); err != nil {
+		return nil, nil, fmt.Errorf("unable to set generator: %w", err)
+	}
+
+	return &BooleanTransformer{
+		columnName:      columnName,
+		keepNull:        keepNull,
+		affectedColumns: affectedColumns,
+		columnIdx:       idx,
+		t:               t,
+	}, nil, nil
+}
+
+func (rbt *BooleanTransformer) GetAffectedColumns() map[int]string {
+	return rbt.affectedColumns
+}
+
+func (rbt *BooleanTransformer) Init(ctx context.Context) error {
+	return nil
+}
+
+func (rbt *BooleanTransformer) Done(ctx context.Context) error {
+	return nil
+}
+
+func (rbt *BooleanTransformer) Transform(ctx context.Context, r *toolkit.Record) (*toolkit.Record, error) {
+	val, err := r.GetRawColumnValueByIdx(rbt.columnIdx)
+	if err != nil {
+		return nil, fmt.Errorf("unable to scan value: %w", err)
+	}
+	if val.IsNull && rbt.keepNull {
+		return r, nil
+	}
+
+	boolVal, err := rbt.t.Transform(val.Data)
+	if err != nil {
+		return nil, fmt.Errorf("unable to transform value: %w", err)
+	}
+
+	if err = r.SetColumnValueByIdx(rbt.columnIdx, boolVal); err != nil {
+		return nil, fmt.Errorf("unable to set new value: %w", err)
+	}
+	return r, nil
+}
+
+func init() {
+	utils.DefaultTransformerRegistry.MustRegister(boolTransformerDefinition)
+}

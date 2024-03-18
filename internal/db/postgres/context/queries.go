@@ -74,8 +74,10 @@ var (
 		  	pg_catalog.format_type(a.atttypid, a.atttypmod) as typename,
 		  	a.attnotnull 									as notnull,
 		  	a.atttypmod 									as mod,
-		  	a.attnum 										as num
+		  	a.attnum 										as num,
+		  	t.typlen 										as len
 		FROM pg_catalog.pg_attribute a
+			JOIN pg_catalog.pg_type t ON a.atttypid = t.oid
 		WHERE a.attrelid = $1 AND a.attnum > 0 AND NOT a.attisdropped
 		ORDER BY a.attnum
 	`

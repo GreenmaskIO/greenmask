@@ -45,7 +45,7 @@ var timestampTransformerDefinition = utils.NewTransformerDefinition(
 
 	toolkit.MustNewParameterDefinition(
 		"min",
-		"min threshold date (and/or time) of random value",
+		"min threshold date (and/or time) of value",
 	).SetRequired(true).
 		SetLinkParameter("column").
 		SetDynamicMode(
@@ -55,7 +55,7 @@ var timestampTransformerDefinition = utils.NewTransformerDefinition(
 
 	toolkit.MustNewParameterDefinition(
 		"max",
-		"max threshold date  (and/or time) of random value",
+		"max threshold date (and/or time) of value",
 	).SetRequired(true).
 		SetLinkParameter("column").
 		SetDynamicMode(

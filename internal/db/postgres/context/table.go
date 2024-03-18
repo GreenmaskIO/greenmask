@@ -210,7 +210,7 @@ func getColumnsConfig(ctx context.Context, tx pgx.Tx, oid toolkit.Oid) ([]*toolk
 	for rows.Next() {
 		column := toolkit.Column{Idx: idx}
 		if err = rows.Scan(&column.Name, &column.TypeOid, &column.TypeName,
-			&column.NotNull, &column.Length, &column.Num); err != nil {
+			&column.NotNull, &column.Length, &column.Num, &column.Length); err != nil {
 			return nil, fmt.Errorf("cannot scan tableColumnQuery: %w", err)
 		}
 		column.CanonicalTypeName = column.TypeName
