@@ -23,6 +23,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"os/exec"
 	"path"
 	"regexp"
 	"slices"
@@ -74,6 +75,9 @@ type Restore struct {
 	dumpIdList []int32
 	tocObj     *toc.Toc
 	tmpDir     string
+
+	preDataClenUpToc  string
+	postDataClenUpToc string
 }
 
 func NewRestore(
@@ -222,9 +226,19 @@ func (r *Restore) sortAndFilterEntriesByRestoreList() error {
 }
 
 func (r *Restore) preDataRestore(ctx context.Context, conn *pgx.Conn) error {
-	// Do not restore this section if implicitly provided
+	// pg_dump has a limitation:
+	//	If we want to use --cleanup command then this command must be performed for whole schema (--schema-only)
+	//  without --section parameter. For avoiding cascade dropping we need to run pg_restore with --schema-only --clean
+	//  and then remove all post-data objects manually. If we call pg_restore with --section=pre-data --clean then it
+	//  causes errors because we need to drop post-data dependencies before dropping pre-data
+	//
+	//	In current implementation Greenmask modifies toc.dat file by removing create statement in post-data section
+	//  and applies this toc.dat in the pre-data section restoration. The post-data restoration uses original
+	//  (non modified) toc.dat file.
+
+	// Do not restore this section if implicitly provided another section
 	if r.restoreOpt.DataOnly ||
-		r.restoreOpt.Section != "" && r.restoreOpt.Section != preDataSection {
+		(r.restoreOpt.Section != "" && r.restoreOpt.Section != preDataSection) {
 		return nil
 	}
 
@@ -233,12 +247,30 @@ func (r *Restore) preDataRestore(ctx context.Context, conn *pgx.Conn) error {
 		return err
 	}
 
-	// Execute pre-data section restore using pg_restore
 	options := *r.restoreOpt
-	options.Section = "pre-data"
-	options.DirPath = r.tmpDir
+
+	if r.restoreOpt.Clean && r.restoreOpt.Section == "" {
+		// Handling parameters for --clean
+		options.SchemaOnly = true
+
+		// Build clean up toc for dropping dependant objects in post-data stage without restoration them
+		// right now
+		var err error
+		r.preDataClenUpToc, r.postDataClenUpToc, err = r.prepareCleanupToc()
+		if err != nil {
+			return fmt.Errorf("cannot prepare clean up toc: %w", err)
+		}
+		options.DirPath = r.preDataClenUpToc
+	} else {
+		options.DirPath = r.tmpDir
+		options.Section = "pre-data"
+	}
+
 	if err := r.pgRestore.Run(ctx, &options); err != nil {
-		return fmt.Errorf("cannot restore pre-data section using pg_restore: %w", err)
+		var exitErr *exec.ExitError
+		if r.restoreOpt.ExitOnError || (errors.As(err, &exitErr) && exitErr.ExitCode() != 1) {
+			return fmt.Errorf("cannot restore pre-data section using pg_restore: %w", err)
+		}
 	}
 
 	// Execute PreData After scripts
@@ -247,6 +279,63 @@ func (r *Restore) preDataRestore(ctx context.Context, conn *pgx.Conn) error {
 	}
 
 	return nil
+}
+
+// prepareCleanupToc - replaces create statements in post-data section with SELECT 1 and stores in tmp directory
+func (r *Restore) prepareCleanupToc() (string, string, error) {
+	preDataCleanUpToc := r.tocObj.Copy()
+	postDataCleanUpToc := r.tocObj.Copy()
+
+	statementReplacements := ";"
+
+	for idx := range preDataCleanUpToc.Entries {
+		log.Debug().Int("a", idx)
+		preEntry := preDataCleanUpToc.Entries[idx]
+		if preEntry.Section == toc.SectionPostData && preEntry.Defn != nil {
+			preEntry.Defn = &statementReplacements
+		}
+
+		postEntry := postDataCleanUpToc.Entries[idx]
+		if postEntry.Section == toc.SectionPostData && postEntry.DropStmt != nil {
+			postEntry.DropStmt = &statementReplacements
+		}
+	}
+
+	preDatadirName := path.Join(r.tmpDir, "pre_data_clean_up_toc")
+	postDatadirName := path.Join(r.tmpDir, "post_data_clean_up_toc")
+
+	// Pre-data section
+
+	if err := os.Mkdir(preDatadirName, 0700); err != nil {
+		return "", "", fmt.Errorf("cannot create pre-data clean up toc directory: %w", err)
+	}
+
+	f1, err := os.Create(path.Join(preDatadirName, "toc.dat"))
+	if err != nil {
+		return "", "", fmt.Errorf("cannot create clean up toc file: %w", err)
+	}
+	defer f1.Close()
+
+	if err = toc.NewWriter(f1).Write(preDataCleanUpToc); err != nil {
+		return "", "", fmt.Errorf("cannot write clean up toc: %w", err)
+	}
+
+	// post-data section
+	if err = os.Mkdir(postDatadirName, 0700); err != nil {
+		return "", "", fmt.Errorf("cannot create post-data clean up toc directory: %w", err)
+	}
+
+	f2, err := os.Create(path.Join(postDatadirName, "toc.dat"))
+	if err != nil {
+		return "", "", fmt.Errorf("cannot create clean up toc file: %w", err)
+	}
+	defer f2.Close()
+
+	if err = toc.NewWriter(f2).Write(postDataCleanUpToc); err != nil {
+		return "", "", fmt.Errorf("cannot write clean up toc: %w", err)
+	}
+
+	return preDatadirName, postDatadirName, nil
 }
 
 func (r *Restore) dataRestore(ctx context.Context, conn *pgx.Conn) error {
@@ -366,6 +455,11 @@ func (r *Restore) postDataRestore(ctx context.Context, conn *pgx.Conn) error {
 	options := *r.restoreOpt
 	options.Section = "post-data"
 	options.DirPath = r.tmpDir
+
+	if r.postDataClenUpToc != "" {
+		options.DirPath = r.postDataClenUpToc
+	}
+
 	if err := r.pgRestore.Run(ctx, &options); err != nil {
 		return fmt.Errorf("cannot restore post-data section using pg_restore: %w", err)
 	}

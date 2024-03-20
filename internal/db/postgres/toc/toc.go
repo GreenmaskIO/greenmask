@@ -18,3 +18,17 @@ type Toc struct {
 	Header  *Header
 	Entries []*Entry
 }
+
+func (t *Toc) Copy() *Toc {
+
+	entries := make([]*Entry, len(t.Entries))
+
+	for i, entry := range t.Entries {
+		entries[i] = entry.Copy()
+	}
+
+	return &Toc{
+		Header:  t.Header.Copy(),
+		Entries: entries,
+	}
+}
