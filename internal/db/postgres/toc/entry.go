@@ -61,3 +61,42 @@ type Entry struct {
 	//OriginalSize   int64
 	//CompressedSize int64
 }
+
+func (e *Entry) Copy() *Entry {
+	res := NewObj(*e)
+	if e.Tag != nil {
+		res.Tag = NewObj(*e.Tag)
+	}
+	if e.Namespace != nil {
+		res.Namespace = NewObj(*e.Namespace)
+	}
+	if e.Tablespace != nil {
+		res.Tablespace = NewObj(*e.Tablespace)
+	}
+	if e.Tableam != nil {
+		res.Tableam = NewObj(*e.Tableam)
+	}
+	if e.Owner != nil {
+		res.Owner = NewObj(*e.Owner)
+	}
+	if e.Desc != nil {
+		res.Desc = NewObj(*e.Desc)
+	}
+	if e.Defn != nil {
+		res.Defn = NewObj(*e.Defn)
+	}
+	if e.DropStmt != nil {
+		res.DropStmt = NewObj(*e.DropStmt)
+	}
+	if e.CopyStmt != nil {
+		res.CopyStmt = NewObj(*e.CopyStmt)
+	}
+	if e.FileName != nil {
+		res.FileName = NewObj(*e.FileName)
+	}
+	return res
+}
+
+func NewObj[T string | Toc | Header | Entry](v T) *T {
+	return &v
+}

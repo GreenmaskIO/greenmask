@@ -88,7 +88,7 @@ func Run(ctx context.Context, logger *zerolog.Logger, name string, args ...strin
 		defer outWriter.Close()
 		defer errWriter.Close()
 		if err := cmd.Wait(); err != nil {
-			return fmt.Errorf("external command runtime error: %w", err)
+			return err
 		}
 		return nil
 	})
