@@ -11,15 +11,17 @@ import (
 	"github.com/greenmaskio/greenmask/internal/generators"
 )
 
-type BigIntLimiter struct {
+type DecimalLimiter struct {
 	MinValue         decimal.Decimal
 	MaxValue         decimal.Decimal
 	maxValueFromZero decimal.Decimal
 	// offset - the offset from zero
-	offset decimal.Decimal
+	offset        decimal.Decimal
+	precision     int32
+	withPrecision bool
 }
 
-func NewBigIntLimiter(minValue, maxValue decimal.Decimal) (*BigIntLimiter, error) {
+func NewDecimalLimiter(minValue, maxValue decimal.Decimal) (*DecimalLimiter, error) {
 
 	if minValue.GreaterThanOrEqual(maxValue) {
 		return nil, ErrWrongLimits
@@ -35,7 +37,7 @@ func NewBigIntLimiter(minValue, maxValue decimal.Decimal) (*BigIntLimiter, error
 		maxValueFromZero = maxValue.Add(minValue)
 	}
 
-	return &BigIntLimiter{
+	return &DecimalLimiter{
 		MinValue:         minValue,
 		MaxValue:         maxValue,
 		maxValueFromZero: maxValueFromZero,
@@ -43,7 +45,7 @@ func NewBigIntLimiter(minValue, maxValue decimal.Decimal) (*BigIntLimiter, error
 	}, nil
 }
 
-func NewBigIntLimiterFromSize(digitsBeforeDecimal int) (*BigIntLimiter, error) {
+func NewDecimalLimiterFromSize(digitsBeforeDecimal int) (*DecimalLimiter, error) {
 	minDecimalStr := fmt.Sprintf("-%s", strings.Repeat("9", digitsBeforeDecimal))
 	maxDecimalStr := fmt.Sprintf("%s", strings.Repeat("9", digitsBeforeDecimal))
 	minDecimal, err := decimal.NewFromString(minDecimalStr)
@@ -54,10 +56,16 @@ func NewBigIntLimiterFromSize(digitsBeforeDecimal int) (*BigIntLimiter, error) {
 	if err != nil {
 		return nil, fmt.Errorf("error creating big decimal max threshold")
 	}
-	return NewBigIntLimiter(minDecimal, maxDecimal)
+	return NewDecimalLimiter(minDecimal, maxDecimal)
 }
 
-func (l *BigIntLimiter) ByteLength() int {
+func (l *DecimalLimiter) SetPrecision(v int32) *DecimalLimiter {
+	l.precision = v
+	l.withPrecision = true
+	return l
+}
+
+func (l *DecimalLimiter) ByteLength() int {
 	minValueBitLength := l.MinValue.BigInt().BitLen()
 	maxValueBitLength := l.MaxValue.BigInt().BitLen()
 	if minValueBitLength > maxValueBitLength {
@@ -66,34 +74,40 @@ func (l *BigIntLimiter) ByteLength() int {
 	return maxValueBitLength
 }
 
-func (l *BigIntLimiter) Limit(v decimal.Decimal) decimal.Decimal {
-	return v.Mod(l.maxValueFromZero).Add(l.offset)
+func (l *DecimalLimiter) Limit(v decimal.Decimal) decimal.Decimal {
+	res := v.Mod(l.maxValueFromZero).Add(l.offset)
+	if l.withPrecision {
+		res = res.Round(l.precision)
+	}
+	return res
 }
 
-type BigIntTransformer struct {
+type DecimalTransformer struct {
 	generator  generators.Generator
-	limiter    *BigIntLimiter
+	limiter    *DecimalLimiter
 	byteLength int
+	precision  int32
 }
 
-func NewBigIntTransformer(limiter *BigIntLimiter) (*BigIntTransformer, error) {
+func NewDecimalTransformer(limiter *DecimalLimiter, precision int32) (*DecimalTransformer, error) {
 	if limiter == nil {
 		return nil, fmt.Errorf("limiter for BigInt values cannot be nil")
 	}
 
 	maxBytesLength := max(getByteByDecimal(limiter.MinValue), getByteByDecimal(limiter.MaxValue))
 
-	return &BigIntTransformer{
+	return &DecimalTransformer{
 		limiter:    limiter,
 		byteLength: maxBytesLength,
+		precision:  -precision,
 	}, nil
 }
 
-func (ig *BigIntTransformer) GetRequiredGeneratorByteLength() int {
+func (ig *DecimalTransformer) GetRequiredGeneratorByteLength() int {
 	return ig.byteLength
 }
 
-func (ig *BigIntTransformer) SetGenerator(g generators.Generator) error {
+func (ig *DecimalTransformer) SetGenerator(g generators.Generator) error {
 	if g.Size() < ig.byteLength {
 		return fmt.Errorf("requested byte length (%d) higher than generator can produce (%d)", ig.byteLength, g.Size())
 	}
@@ -101,13 +115,13 @@ func (ig *BigIntTransformer) SetGenerator(g generators.Generator) error {
 	return nil
 }
 
-func (ig *BigIntTransformer) Transform(ctx context.Context, original []byte) (decimal.Decimal, error) {
+func (ig *DecimalTransformer) Transform(ctx context.Context, original []byte) (decimal.Decimal, error) {
 	var res decimal.Decimal
 	var limiter = ig.limiter
 	limiterAny := ctx.Value("limiter")
 
 	if limiterAny != nil {
-		limiter = limiterAny.(*BigIntLimiter)
+		limiter = limiterAny.(*DecimalLimiter)
 	}
 
 	resBytes, err := ig.generator.Generate(original)
@@ -115,7 +129,7 @@ func (ig *BigIntTransformer) Transform(ctx context.Context, original []byte) (de
 		return decimal.Decimal{}, err
 	}
 
-	res = newDecimalFromBytes(resBytes[:ig.byteLength])
+	res = newDecimalFromBytes(resBytes[:ig.byteLength], ig.precision)
 	res = limiter.Limit(res)
 
 	return res, nil
@@ -129,7 +143,7 @@ func getByteByDecimal(v decimal.Decimal) int {
 	return bitLen / 8
 }
 
-func newDecimalFromBytes(data []byte) decimal.Decimal {
+func newDecimalFromBytes(data []byte, exp int32) decimal.Decimal {
 	v := new(big.Int).SetBytes(data)
-	return decimal.NewFromBigInt(v, 0)
+	return decimal.NewFromBigInt(v, exp)
 }

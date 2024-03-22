@@ -13,13 +13,13 @@ import (
 
 const bigIntegerTransformerGenByteLength = 20
 
-var bigIntegerTransformerDefinition = utils.NewTransformerDefinition(
+var numericTransformerDefinition = utils.NewTransformerDefinition(
 	utils.NewTransformerProperties(
-		"BigInteger",
-		"Generate big integer value in min and max thresholds",
+		"Numeric",
+		"Generate numeric value in min and max thresholds",
 	),
 
-	NewBigIntegerTransformer,
+	NewNumericTransformer,
 
 	toolkit.MustNewParameterDefinition(
 		"column",
@@ -37,8 +37,8 @@ var bigIntegerTransformerDefinition = utils.NewTransformerDefinition(
 		SetRequired(true).
 		SetDynamicMode(
 			toolkit.NewDynamicModeProperties().
-				SetCompatibleTypes("numeric", "decimal", "int2", "int4", "int8").
-				SetUnmarshaler(bigIntTypeUnmarshaler),
+				SetCompatibleTypes("numeric", "decimal", "int2", "int4", "int8", "float4", "float8").
+				SetUnmarshaler(numericTypeUnmarshaler),
 		),
 
 	toolkit.MustNewParameterDefinition(
@@ -48,8 +48,8 @@ var bigIntegerTransformerDefinition = utils.NewTransformerDefinition(
 		SetRequired(true).
 		SetDynamicMode(
 			toolkit.NewDynamicModeProperties().
-				SetCompatibleTypes("numeric", "decimal", "int2", "int4", "int8").
-				SetUnmarshaler(bigIntTypeUnmarshaler),
+				SetCompatibleTypes("numeric", "decimal", "int2", "int4", "int8", "float4", "float8").
+				SetUnmarshaler(numericTypeUnmarshaler),
 		),
 
 	keepNullParameterDefinition,
@@ -57,8 +57,8 @@ var bigIntegerTransformerDefinition = utils.NewTransformerDefinition(
 	engineParameterDefinition,
 )
 
-type BigIntegerTransformer struct {
-	*transformers.BigIntTransformer
+type NumericTransformer struct {
+	*transformers.DecimalTransformer
 	columnName      string
 	keepNull        bool
 	affectedColumns map[int]string
@@ -77,7 +77,7 @@ type BigIntegerTransformer struct {
 	transform     func(context.Context, []byte) (decimal.Decimal, error)
 }
 
-func NewBigIntegerTransformer(ctx context.Context, driver *toolkit.Driver, parameters map[string]toolkit.Parameterizer) (utils.Transformer, toolkit.ValidationWarnings, error) {
+func NewNumericTransformer(ctx context.Context, driver *toolkit.Driver, parameters map[string]toolkit.Parameterizer) (utils.Transformer, toolkit.ValidationWarnings, error) {
 
 	var columnName, engine string
 	var minVal, maxVal decimal.Decimal
@@ -129,7 +129,7 @@ func NewBigIntegerTransformer(ctx context.Context, driver *toolkit.Driver, param
 		return nil, limitsWarnings, nil
 	}
 
-	t, err := transformers.NewBigIntTransformer(limiter)
+	t, err := transformers.NewDecimalTransformer(limiter, 0)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error initializing common int transformer: %w", err)
 	}
@@ -142,14 +142,14 @@ func NewBigIntegerTransformer(ctx context.Context, driver *toolkit.Driver, param
 		return nil, nil, fmt.Errorf("unable to set generator: %w", err)
 	}
 
-	return &BigIntegerTransformer{
-		BigIntTransformer: t,
-		columnName:        columnName,
-		keepNull:          keepNull,
-		affectedColumns:   affectedColumns,
-		columnIdx:         idx,
-		minAllowedValue:   limiter.MinValue,
-		maxAllowedValue:   limiter.MaxValue,
+	return &NumericTransformer{
+		DecimalTransformer: t,
+		columnName:         columnName,
+		keepNull:           keepNull,
+		affectedColumns:    affectedColumns,
+		columnIdx:          idx,
+		minAllowedValue:    limiter.MinValue,
+		maxAllowedValue:    limiter.MaxValue,
 
 		columnParam:   columnParam,
 		minParam:      minParam,
@@ -163,22 +163,22 @@ func NewBigIntegerTransformer(ctx context.Context, driver *toolkit.Driver, param
 	}, nil, nil
 }
 
-func (bit *BigIntegerTransformer) GetAffectedColumns() map[int]string {
+func (bit *NumericTransformer) GetAffectedColumns() map[int]string {
 	return bit.affectedColumns
 }
 
-func (bit *BigIntegerTransformer) Init(ctx context.Context) error {
+func (bit *NumericTransformer) Init(ctx context.Context) error {
 	if bit.dynamicMode {
 		bit.transform = bit.dynamicTransform
 	}
 	return nil
 }
 
-func (bit *BigIntegerTransformer) Done(ctx context.Context) error {
+func (bit *NumericTransformer) Done(ctx context.Context) error {
 	return nil
 }
 
-func (bit *BigIntegerTransformer) dynamicTransform(ctx context.Context, v []byte) (decimal.Decimal, error) {
+func (bit *NumericTransformer) dynamicTransform(ctx context.Context, v []byte) (decimal.Decimal, error) {
 	var minVal, maxVal decimal.Decimal
 	err := bit.minParam.Scan(&minVal)
 	if err != nil {
@@ -190,15 +190,15 @@ func (bit *BigIntegerTransformer) dynamicTransform(ctx context.Context, v []byte
 		return decimal.Decimal{}, fmt.Errorf(`unable to scan "max" param: %w`, err)
 	}
 
-	limiter, err := getBigIntLimiterForDynamicParameter(bit.numericSize, minVal, maxVal, bit.minAllowedValue, bit.maxAllowedValue)
+	limiter, err := getNumericLimiterForDynamicParameter(bit.numericSize, minVal, maxVal, bit.minAllowedValue, bit.maxAllowedValue)
 	if err != nil {
 		return decimal.Decimal{}, fmt.Errorf("error creating limiter in dynamic mode: %w", err)
 	}
 	ctx = context.WithValue(ctx, "limiter", limiter)
-	return bit.BigIntTransformer.Transform(ctx, v)
+	return bit.DecimalTransformer.Transform(ctx, v)
 }
 
-func (bit *BigIntegerTransformer) Transform(ctx context.Context, r *toolkit.Record) (*toolkit.Record, error) {
+func (bit *NumericTransformer) Transform(ctx context.Context, r *toolkit.Record) (*toolkit.Record, error) {
 	val, err := r.GetRawColumnValueByIdx(bit.columnIdx)
 	if err != nil {
 		return nil, fmt.Errorf("unable to scan value: %w", err)
@@ -220,14 +220,14 @@ func (bit *BigIntegerTransformer) Transform(ctx context.Context, r *toolkit.Reco
 
 func validateBigIntTypeAndSetLimit(
 	size int, requestedMinValue, requestedMaxValue decimal.Decimal,
-) (limiter *transformers.BigIntLimiter, warns toolkit.ValidationWarnings, err error) {
+) (limiter *transformers.DecimalLimiter, warns toolkit.ValidationWarnings, err error) {
 
-	limiter, err = transformers.NewBigIntLimiterFromSize(size)
+	limiter, err = transformers.NewDecimalLimiterFromSize(size)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error creating limiter by size: %w", err)
 	}
 
-	if !bigIntLimitIsValid(requestedMinValue, limiter.MinValue, limiter.MaxValue) {
+	if !bigNumericLimitIsValid(requestedMinValue, limiter.MinValue, limiter.MaxValue) {
 		warns = append(warns, toolkit.NewValidationWarning().
 			SetMsgf("requested min value is out of numeric(%d) range", size).
 			SetSeverity(toolkit.ErrorValidationSeverity).
@@ -238,7 +238,7 @@ func validateBigIntTypeAndSetLimit(
 		)
 	}
 
-	if !bigIntLimitIsValid(requestedMaxValue, limiter.MinValue, limiter.MaxValue) {
+	if !bigNumericLimitIsValid(requestedMaxValue, limiter.MinValue, limiter.MaxValue) {
 		warns = append(warns, toolkit.NewValidationWarning().
 			SetMsgf("requested max value is out of NEMERIC(%d) range", size).
 			SetSeverity(toolkit.ErrorValidationSeverity).
@@ -254,7 +254,7 @@ func validateBigIntTypeAndSetLimit(
 	}
 
 	if !requestedMinValue.Equal(decimal.NewFromInt(0)) || !requestedMinValue.Equal(decimal.NewFromInt(0)) {
-		limiter, err = transformers.NewBigIntLimiter(requestedMinValue, requestedMaxValue)
+		limiter, err = transformers.NewDecimalLimiter(requestedMinValue, requestedMaxValue)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -263,30 +263,30 @@ func validateBigIntTypeAndSetLimit(
 	return limiter, nil, nil
 }
 
-func bigIntLimitIsValid(requestedThreshold, minValue, maxValue decimal.Decimal) bool {
+func bigNumericLimitIsValid(requestedThreshold, minValue, maxValue decimal.Decimal) bool {
 	return requestedThreshold.GreaterThanOrEqual(minValue) || requestedThreshold.LessThanOrEqual(maxValue)
 }
 
-func getBigIntLimiterForDynamicParameter(
+func getNumericLimiterForDynamicParameter(
 	numericSize int, requestedMinValue, requestedMaxValue,
 	minAllowedValue, maxAllowedValue decimal.Decimal,
-) (*transformers.BigIntLimiter, error) {
+) (*transformers.DecimalLimiter, error) {
 
-	if !bigIntLimitIsValid(requestedMinValue, minAllowedValue, maxAllowedValue) {
+	if !bigNumericLimitIsValid(requestedMinValue, minAllowedValue, maxAllowedValue) {
 		return nil, fmt.Errorf("requested dynamic parameter min value is out of range of NUMERIC(%d) size", numericSize)
 	}
 
-	if !bigIntLimitIsValid(requestedMaxValue, minAllowedValue, maxAllowedValue) {
+	if !bigNumericLimitIsValid(requestedMaxValue, minAllowedValue, maxAllowedValue) {
 		return nil, fmt.Errorf("requested dynamic parameter max value is out of range of NUMERIC(%d) size", numericSize)
 	}
 
-	limiter, err := transformers.NewBigIntLimiter(minAllowedValue, maxAllowedValue)
+	limiter, err := transformers.NewDecimalLimiter(minAllowedValue, maxAllowedValue)
 	if err != nil {
 		return nil, err
 	}
 
 	if !requestedMinValue.Equal(decimal.NewFromInt(0)) || !requestedMinValue.Equal(decimal.NewFromInt(0)) {
-		limiter, err = transformers.NewBigIntLimiter(requestedMinValue, requestedMaxValue)
+		limiter, err = transformers.NewDecimalLimiter(requestedMinValue, requestedMaxValue)
 		if err != nil {
 			return nil, err
 		}
@@ -294,7 +294,7 @@ func getBigIntLimiterForDynamicParameter(
 	return limiter, nil
 }
 
-func bigIntTypeUnmarshaler(driver *toolkit.Driver, typeName string, v toolkit.ParamsValue) (any, error) {
+func numericTypeUnmarshaler(driver *toolkit.Driver, typeName string, v toolkit.ParamsValue) (any, error) {
 	res, err := decimal.NewFromString(string(v))
 	if err != nil {
 		return nil, err
@@ -303,5 +303,5 @@ func bigIntTypeUnmarshaler(driver *toolkit.Driver, typeName string, v toolkit.Pa
 }
 
 func init() {
-	utils.DefaultTransformerRegistry.MustRegister(bigIntegerTransformerDefinition)
+	utils.DefaultTransformerRegistry.MustRegister(numericTransformerDefinition)
 }

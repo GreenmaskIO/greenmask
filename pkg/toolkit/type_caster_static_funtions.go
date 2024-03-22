@@ -9,38 +9,38 @@ import (
 )
 
 const (
-	secUnixUnixName   = "sec"
-	milliUnixUnixName = "milli"
-	microUnixUnixName = "micro"
-	nanoUnixUnixName  = "nano"
+	SecUnixUnixName   = "sec"
+	MilliUnixUnixName = "milli"
+	MicroUnixUnixName = "micro"
+	NanoUnixUnixName  = "nano"
 )
 
 var (
-	UnixNanoToDate         = unixLikeToTimeLikeFuncMaker("date", nanoUnixUnixName)
-	UnixMicroToDate        = unixLikeToTimeLikeFuncMaker("date", microUnixUnixName)
-	UnixMilliToDate        = unixLikeToTimeLikeFuncMaker("date", milliUnixUnixName)
-	UnixSecToDate          = unixLikeToTimeLikeFuncMaker("date", secUnixUnixName)
-	UnixNanoToTimestamp    = unixLikeToTimeLikeFuncMaker("timestamp", nanoUnixUnixName)
-	UnixMicroToTimestamp   = unixLikeToTimeLikeFuncMaker("timestamp", microUnixUnixName)
-	UnixMilliToTimestamp   = unixLikeToTimeLikeFuncMaker("timestamp", milliUnixUnixName)
-	UnixSecToTimestamp     = unixLikeToTimeLikeFuncMaker("timestamp", secUnixUnixName)
-	UnixNanoToTimestampTz  = unixLikeToTimeLikeFuncMaker("timestamptz", nanoUnixUnixName)
-	UnixMicroToTimestampTz = unixLikeToTimeLikeFuncMaker("timestamptz", microUnixUnixName)
-	UnixMilliToTimestampTz = unixLikeToTimeLikeFuncMaker("timestamptz", milliUnixUnixName)
-	UnixSecToTimestampTz   = unixLikeToTimeLikeFuncMaker("timestamptz", secUnixUnixName)
+	UnixNanoToDate         = unixLikeToTimeLikeFuncMaker("date", NanoUnixUnixName)
+	UnixMicroToDate        = unixLikeToTimeLikeFuncMaker("date", MicroUnixUnixName)
+	UnixMilliToDate        = unixLikeToTimeLikeFuncMaker("date", MilliUnixUnixName)
+	UnixSecToDate          = unixLikeToTimeLikeFuncMaker("date", SecUnixUnixName)
+	UnixNanoToTimestamp    = unixLikeToTimeLikeFuncMaker("timestamp", NanoUnixUnixName)
+	UnixMicroToTimestamp   = unixLikeToTimeLikeFuncMaker("timestamp", MicroUnixUnixName)
+	UnixMilliToTimestamp   = unixLikeToTimeLikeFuncMaker("timestamp", MilliUnixUnixName)
+	UnixSecToTimestamp     = unixLikeToTimeLikeFuncMaker("timestamp", SecUnixUnixName)
+	UnixNanoToTimestampTz  = unixLikeToTimeLikeFuncMaker("timestamptz", NanoUnixUnixName)
+	UnixMicroToTimestampTz = unixLikeToTimeLikeFuncMaker("timestamptz", MicroUnixUnixName)
+	UnixMilliToTimestampTz = unixLikeToTimeLikeFuncMaker("timestamptz", MilliUnixUnixName)
+	UnixSecToTimestampTz   = unixLikeToTimeLikeFuncMaker("timestamptz", SecUnixUnixName)
 
-	DateToUnixNano         = timeLikeToUnixLikeFuncMaker("date", nanoUnixUnixName)
-	DateToUnixMicro        = timeLikeToUnixLikeFuncMaker("date", microUnixUnixName)
-	DateToUnixMilli        = timeLikeToUnixLikeFuncMaker("date", milliUnixUnixName)
-	DateToUnixSec          = timeLikeToUnixLikeFuncMaker("date", secUnixUnixName)
-	TimestampToUnixNano    = timeLikeToUnixLikeFuncMaker("timestamp", nanoUnixUnixName)
-	TimestampToUnixMicro   = timeLikeToUnixLikeFuncMaker("timestamp", microUnixUnixName)
-	TimestampToUnixMilli   = timeLikeToUnixLikeFuncMaker("timestamp", milliUnixUnixName)
-	TimestampToUnixSec     = timeLikeToUnixLikeFuncMaker("timestamp", secUnixUnixName)
-	TimestampTzToUnixNano  = timeLikeToUnixLikeFuncMaker("timestamptz", nanoUnixUnixName)
-	TimestampTzToUnixMicro = timeLikeToUnixLikeFuncMaker("timestamptz", microUnixUnixName)
-	TimestampTzToUnixMilli = timeLikeToUnixLikeFuncMaker("timestamptz", milliUnixUnixName)
-	TimestampTzToUnixSec   = timeLikeToUnixLikeFuncMaker("timestamptz", secUnixUnixName)
+	DateToUnixNano         = timeLikeToUnixLikeFuncMaker("date", NanoUnixUnixName)
+	DateToUnixMicro        = timeLikeToUnixLikeFuncMaker("date", MicroUnixUnixName)
+	DateToUnixMilli        = timeLikeToUnixLikeFuncMaker("date", MilliUnixUnixName)
+	DateToUnixSec          = timeLikeToUnixLikeFuncMaker("date", SecUnixUnixName)
+	TimestampToUnixNano    = timeLikeToUnixLikeFuncMaker("timestamp", NanoUnixUnixName)
+	TimestampToUnixMicro   = timeLikeToUnixLikeFuncMaker("timestamp", MicroUnixUnixName)
+	TimestampToUnixMilli   = timeLikeToUnixLikeFuncMaker("timestamp", MilliUnixUnixName)
+	TimestampToUnixSec     = timeLikeToUnixLikeFuncMaker("timestamp", SecUnixUnixName)
+	TimestampTzToUnixNano  = timeLikeToUnixLikeFuncMaker("timestamptz", NanoUnixUnixName)
+	TimestampTzToUnixMicro = timeLikeToUnixLikeFuncMaker("timestamptz", MicroUnixUnixName)
+	TimestampTzToUnixMilli = timeLikeToUnixLikeFuncMaker("timestamptz", MilliUnixUnixName)
+	TimestampTzToUnixSec   = timeLikeToUnixLikeFuncMaker("timestamptz", SecUnixUnixName)
 )
 
 var CastFunctionsMap = map[string]*TypeCastDefinition{
@@ -222,7 +222,7 @@ func CastFloatToInt(driver *Driver, input []byte) (output []byte, err error) {
 
 func validateUnixTimeUnit(unit string) error {
 	switch unit {
-	case secUnixUnixName, milliUnixUnixName, microUnixUnixName, nanoUnixUnixName:
+	case SecUnixUnixName, MilliUnixUnixName, MicroUnixUnixName, NanoUnixUnixName:
 		return nil
 	default:
 		return fmt.Errorf("unknown unix time unit \"%s\"", unit)
@@ -234,13 +234,13 @@ func timeToUnix(unit string, date time.Time) (int64, error) {
 		return 0, err
 	}
 	switch unit {
-	case secUnixUnixName:
+	case SecUnixUnixName:
 		return date.Unix(), nil
-	case milliUnixUnixName:
+	case MilliUnixUnixName:
 		return date.UnixMilli(), nil
-	case microUnixUnixName:
+	case MicroUnixUnixName:
 		return date.UnixMicro(), nil
-	case nanoUnixUnixName:
+	case NanoUnixUnixName:
 		return date.UnixNano(), nil
 	}
 	return 0, nil
@@ -257,13 +257,13 @@ func unixToTime(unit string, value any) (time.Time, error) {
 	}
 
 	switch unit {
-	case secUnixUnixName:
+	case SecUnixUnixName:
 		return time.Unix(unixTime, 0), nil
-	case milliUnixUnixName:
+	case MilliUnixUnixName:
 		return time.UnixMilli(unixTime), nil
-	case microUnixUnixName:
+	case MicroUnixUnixName:
 		return time.UnixMicro(unixTime), nil
-	case nanoUnixUnixName:
+	case NanoUnixUnixName:
 		seconds := unixTime / int64(time.Second)
 		nano := unixTime - seconds
 		return time.Unix(seconds, nano), nil
@@ -286,19 +286,19 @@ func unixLikeToTimeLikeFuncMaker(inputType, unixTimeUnit string) TypeCastFunc {
 	var generate unixTimeGenerator
 
 	switch unixTimeUnit {
-	case secUnixUnixName:
+	case SecUnixUnixName:
 		generate = func(v int64) time.Time {
 			return time.Unix(v, 0)
 		}
-	case milliUnixUnixName:
+	case MilliUnixUnixName:
 		generate = func(v int64) time.Time {
 			return time.UnixMilli(v)
 		}
-	case microUnixUnixName:
+	case MicroUnixUnixName:
 		generate = func(v int64) time.Time {
 			return time.UnixMicro(v)
 		}
-	case nanoUnixUnixName:
+	case NanoUnixUnixName:
 		generate = func(v int64) time.Time {
 			seconds := v / int64(time.Second)
 			nano := v - seconds
@@ -330,19 +330,19 @@ func timeLikeToUnixLikeFuncMaker(inputType, unixTimeUnit string) TypeCastFunc {
 	var generate unixTimeGenerator
 
 	switch unixTimeUnit {
-	case secUnixUnixName:
+	case SecUnixUnixName:
 		generate = func(v time.Time) int64 {
 			return v.Unix()
 		}
-	case milliUnixUnixName:
+	case MilliUnixUnixName:
 		generate = func(v time.Time) int64 {
 			return v.UnixMilli()
 		}
-	case microUnixUnixName:
+	case MicroUnixUnixName:
 		generate = func(v time.Time) int64 {
 			return v.UnixMicro()
 		}
-	case nanoUnixUnixName:
+	case NanoUnixUnixName:
 		generate = func(v time.Time) int64 {
 			return v.UnixNano()
 		}

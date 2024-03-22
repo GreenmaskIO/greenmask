@@ -30,13 +30,6 @@ const (
 	Int8Length = 8
 )
 
-const (
-	intTransformerName        = "Integer"
-	intTransformerDescription = "Generate integer value in min and max thresholds"
-)
-
-const integerTransformerGenByteLength = 8
-
 var integerTransformerDefinition = utils.NewTransformerDefinition(
 	utils.NewTransformerProperties(
 		"Integer",

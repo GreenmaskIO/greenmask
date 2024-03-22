@@ -21,7 +21,7 @@ func getGenerateEngine(ctx context.Context, engineName string, size int) (genera
 	case randomEngineName:
 		return getRandomBytesGen(size)
 	case hashEngineName:
-		return getHashBytesGen(getSaltFromCtx(ctx), size)
+		return generators.GetHashBytesGen(getSaltFromCtx(ctx), size)
 	}
 	return nil, fmt.Errorf("unknown engine %s", engineName)
 }
@@ -47,40 +47,10 @@ func getRandomBytesGen(size int) (generators.Generator, error) {
 	return generators.NewRandomBytes(seed, size), nil
 }
 
-func getHashBytesGen(salt []byte, size int) (generators.Generator, error) {
-	hashFunctionName, hashSize, err := getHashFunctionNameBySize(size)
-	if err != nil {
-		return nil, fmt.Errorf("unable to determine hash function for deterministic transformer: %w", err)
-	}
-	g, err := generators.NewHash(salt, hashFunctionName)
-	if err != nil {
-		return nil, fmt.Errorf("cannot create hash function backend: %w", err)
-	}
-	if size < hashSize {
-		g = generators.NewHashReducer(g, size)
-	}
-
-	return g, nil
-
-}
-
 func mergeParameters(commonParams, deterministicParams []*toolkit.ParameterDefinition) []*toolkit.ParameterDefinition {
 	res := slices.Clone(commonParams)
 	res = append(res, deterministicParams...)
 	return res
-}
-
-func getHashFunctionNameBySize(size int) (string, int, error) {
-	if size <= 28 {
-		return generators.Sha3224, 28, nil
-	} else if size <= 32 {
-		return generators.Sha3256, 32, nil
-	} else if size <= 48 {
-		return generators.Sha3384, 48, nil
-	} else if size <= 64 {
-		return generators.Sha3512, 64, nil
-	}
-	return "", 0, fmt.Errorf("unable to find suitable hash function for requested %d size", size)
 }
 
 func composeGeneratorWithProjectedOutput(hashFunction string, salt []byte, outputLength int) (generators.Generator, error) {

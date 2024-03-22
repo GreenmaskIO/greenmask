@@ -168,7 +168,7 @@ func (dl *TimestampLimiter) Limit(sec, nano int64) (int64, int64) {
 	if sec == dl.minDate.sec {
 		nano = nano % dl.minDate.nano
 	} else if sec == dl.maxDate.sec {
-		nano = nano % dl.minDate.nano
+		nano = nano % dl.maxDate.nano
 	}
 	return sec, nano
 }

@@ -17,6 +17,7 @@ package transformers_new
 import (
 	"context"
 	"fmt"
+	"slices"
 	"strings"
 	"time"
 
@@ -25,7 +26,11 @@ import (
 	"github.com/greenmaskio/greenmask/pkg/toolkit"
 )
 
-var truncateParts = []string{"year", "month", "day", "hour", "second", "millisecond", "microsecond", "nanosecond"}
+var truncateParts = []string{
+	transformers.YearTruncateName, transformers.MonthTruncateName, transformers.DayTruncateName,
+	transformers.HourTruncateName, transformers.SecondTruncateName, transformers.MillisecondTruncateName,
+	transformers.MicrosecondTruncateName, transformers.NanosecondTruncateName,
+}
 
 var timestampTransformerDefinition = utils.NewTransformerDefinition(
 	utils.NewTransformerProperties(
@@ -66,7 +71,7 @@ var timestampTransformerDefinition = utils.NewTransformerDefinition(
 	toolkit.MustNewParameterDefinition(
 		"truncate",
 		fmt.Sprintf("truncate date till the part (%s)", strings.Join(truncateParts, ", ")),
-	).SetRawValueValidator(ValidateDateTruncationParameterValue),
+	).SetRawValueValidator(validateDateTruncationParameterValue),
 
 	keepNullParameterDefinition,
 
@@ -91,8 +96,9 @@ type TimestampTransformer struct {
 	transform func(context.Context, []byte) (time.Time, error)
 }
 
-func NewTimestampTransformer(ctx context.Context, driver *toolkit.Driver, parameters map[string]toolkit.Parameterizer) (utils.Transformer, toolkit.ValidationWarnings, error) {
+type timestampMinMaxEncoder func(toolkit.Parameterizer, toolkit.Parameterizer) (time.Time, time.Time, error)
 
+func NewTimestampTransformerBase(ctx context.Context, driver *toolkit.Driver, parameters map[string]toolkit.Parameterizer, encoder timestampMinMaxEncoder) (utils.Transformer, toolkit.ValidationWarnings, error) {
 	var dynamicMode bool
 
 	columnParam := parameters["column"]
@@ -136,11 +142,10 @@ func NewTimestampTransformer(ctx context.Context, driver *toolkit.Driver, parame
 	var limiter *transformers.TimestampLimiter
 	var err error
 	if !dynamicMode {
-		if err = minParam.Scan(&minVal); err != nil {
-			return nil, nil, fmt.Errorf("error scanning \"min\" parameter: %w", err)
-		}
-		if err = maxParam.Scan(&maxVal); err != nil {
-			return nil, nil, fmt.Errorf("error scanning \"max\" parameter: %w", err)
+		minVal, maxVal, err = encoder(minParam, maxParam)
+
+		if err != nil {
+			return nil, nil, fmt.Errorf("error getting min and max values: %w", err)
 		}
 		limiter, err = transformers.NewTimestampLimiter(minVal, maxVal)
 		if err != nil {
@@ -178,7 +183,10 @@ func NewTimestampTransformer(ctx context.Context, driver *toolkit.Driver, parame
 		dynamicMode:   dynamicMode,
 		transform:     t.Transform,
 	}, nil, nil
+}
 
+func NewTimestampTransformer(ctx context.Context, driver *toolkit.Driver, parameters map[string]toolkit.Parameterizer) (utils.Transformer, toolkit.ValidationWarnings, error) {
+	return NewTimestampTransformerBase(ctx, driver, parameters, getTimestampMinAndMaxThresholds)
 }
 
 func (rdt *TimestampTransformer) GetAffectedColumns() map[int]string {
@@ -238,19 +246,28 @@ func (rdt *TimestampTransformer) Transform(ctx context.Context, r *toolkit.Recor
 	return r, nil
 }
 
-func ValidateDateTruncationParameterValue(p *toolkit.ParameterDefinition, v toolkit.ParamsValue) (toolkit.ValidationWarnings, error) {
-	part := string(v)
-	switch part {
-	case "nano", "second", "minute", "hour", "day", "month", "year", "":
-		return nil, nil
-	default:
+func validateDateTruncationParameterValue(p *toolkit.ParameterDefinition, v toolkit.ParamsValue) (toolkit.ValidationWarnings, error) {
+
+	if !slices.Contains(truncateParts, string(v)) && string(v) != "" {
 		return toolkit.ValidationWarnings{
 			toolkit.NewValidationWarning().
 				SetSeverity(toolkit.ErrorValidationSeverity).
-				AddMeta("ParameterValue", part).
+				AddMeta("ParameterValue", string(v)).
 				SetMsg("wrong truncation part value: must be one of nano, second, minute, hour, day, month, year"),
 		}, nil
 	}
+	return nil, nil
+}
+
+func getTimestampMinAndMaxThresholds(minParameter, maxParameter toolkit.Parameterizer) (time.Time, time.Time, error) {
+	var minVal, maxVal time.Time
+	if err := minParameter.Scan(&minVal); err != nil {
+		return time.Time{}, time.Time{}, fmt.Errorf("error scanning \"min\" parameter: %w", err)
+	}
+	if err := maxParameter.Scan(&maxVal); err != nil {
+		return time.Time{}, time.Time{}, fmt.Errorf("error scanning \"max\" parameter: %w", err)
+	}
+	return minVal, maxVal, nil
 }
 
 func init() {

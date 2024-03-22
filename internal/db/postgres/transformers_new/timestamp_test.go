@@ -27,7 +27,7 @@ import (
 	"github.com/greenmaskio/greenmask/pkg/toolkit"
 )
 
-func TestRandomDateTransformer_Transform(t *testing.T) {
+func TestTimestampTransformer_Transform(t *testing.T) {
 
 	tests := []struct {
 		name       string

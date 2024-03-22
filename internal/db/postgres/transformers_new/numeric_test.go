@@ -72,7 +72,7 @@ func TestBigIntTransformer_Transform_random_static(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			tt.params["column"] = toolkit.ParamsValue(tt.columnName)
 			driver, record := getDriverAndRecord(tt.columnName, tt.originalValue)
-			def, ok := utils.DefaultTransformerRegistry.Get("BigInteger")
+			def, ok := utils.DefaultTransformerRegistry.Get("Numeric")
 			require.True(t, ok)
 
 			transformer, warnings, err := def.Instance(
@@ -147,7 +147,7 @@ func TestBigIntTransformer_Transform_random_dynamic(t *testing.T) {
 			driver, record := toolkit.GetDriverAndRecord(tt.record)
 
 			tt.params["column"] = toolkit.ParamsValue(tt.columnName)
-			def, ok := utils.DefaultTransformerRegistry.Get("BigInteger")
+			def, ok := utils.DefaultTransformerRegistry.Get("Numeric")
 			require.True(t, ok)
 
 			transformer, warnings, err := def.Instance(
@@ -226,7 +226,7 @@ func TestBigIntTransformer_Transform_deterministic_dynamic(t *testing.T) {
 			driver, record := toolkit.GetDriverAndRecord(tt.record)
 
 			tt.params["column"] = toolkit.ParamsValue(tt.columnName)
-			def, ok := utils.DefaultTransformerRegistry.Get("BigInteger")
+			def, ok := utils.DefaultTransformerRegistry.Get("Numeric")
 			require.True(t, ok)
 
 			transformer, warnings, err := def.Instance(
