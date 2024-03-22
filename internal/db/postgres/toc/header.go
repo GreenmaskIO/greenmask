@@ -54,3 +54,17 @@ type Header struct {
 	TocCount             int32
 	MaxDumpId            int32
 }
+
+func (h *Header) Copy() *Header {
+	res := NewObj(*h)
+	if h.ArchDbName != nil {
+		res.ArchDbName = NewObj(*h.ArchDbName)
+	}
+	if h.ArchiveRemoteVersion != nil {
+		res.ArchiveRemoteVersion = NewObj(*h.ArchiveRemoteVersion)
+	}
+	if h.ArchiveDumpVersion != nil {
+		res.ArchiveDumpVersion = NewObj(*h.ArchiveDumpVersion)
+	}
+	return res
+}

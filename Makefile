@@ -21,4 +21,4 @@ install:
 	mv $(MAIN_PATH)/$(CMD_NAME) $(GOBIN)/$(CMD_NAME)
 
 build: $(CMD_FILES)
-	go build -ldflags="$(LDFLAGS)" -v -o $(CMD_NAME) $(MAIN_PATH)
+	CGO_ENABLED=0 go build -ldflags="$(LDFLAGS)" -v -o $(CMD_NAME) $(MAIN_PATH)

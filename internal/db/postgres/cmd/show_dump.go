@@ -38,7 +38,7 @@ const (
 )
 
 var templateString = `;
-; Archive created at {{ .Header.CreationDate.TableFormat "2006-01-02 15:04:05 UTC" }}
+; Archive created at {{ .Header.CreationDate.Format "2006-01-02 15:04:05 UTC" }}
 ;     dbname: {{ .Header.DbName }}
 ;     TOC Entries: {{ .Header.TocEntriesCount }}
 ;     Compression: {{ .Header.Compression }}

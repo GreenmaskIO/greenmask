@@ -148,7 +148,7 @@ func NewStorage(ctx context.Context, cfg *Config, logLevel string) (*Storage, er
 	)
 
 	return &Storage{
-		prefix:   path.Join(cfg.Bucket, cfg.Prefix) + "/",
+		prefix:   fixPrefix(path.Join(cfg.Bucket, cfg.Prefix)),
 		session:  ses,
 		config:   cfg,
 		service:  service,
@@ -175,7 +175,7 @@ func (s *Storage) ListDir(ctx context.Context) (files []string, dirs []storages.
 					session:  s.session,
 					service:  s.service,
 					uploader: s.uploader,
-					prefix:   *prefix.Prefix,
+					prefix:   fixPrefix(*prefix.Prefix),
 				},
 			)
 		}
@@ -272,10 +272,24 @@ func (s *Storage) Delete(ctx context.Context, filePaths ...string) error {
 	return nil
 }
 
+func (s *Storage) DeleteAll(ctx context.Context, pathPrefix string) error {
+	pathPrefix = fixPrefix(pathPrefix)
+	ss := s.SubStorage(pathPrefix, true)
+	filesList, err := storages.Walk(ctx, ss, "")
+	if err != nil {
+		return fmt.Errorf("error walking through storage: %w", err)
+	}
+
+	if err = ss.Delete(ctx, filesList...); err != nil {
+		return fmt.Errorf("error deleting files: %w", err)
+	}
+	return nil
+}
+
 func (s *Storage) SubStorage(subPath string, relative bool) storages.Storager {
 	prefix := subPath
 	if relative {
-		prefix = path.Join(s.prefix, prefix)
+		prefix = fixPrefix(path.Join(s.prefix, prefix))
 	}
 	return &Storage{
 		config:    s.config,
@@ -302,4 +316,11 @@ func (s *Storage) Exists(ctx context.Context, fileName string) (bool, error) {
 		return false, fmt.Errorf("error getting object info: %w", err)
 	}
 	return true, nil
+}
+
+func fixPrefix(prefix string) string {
+	if prefix != "" && prefix[len(prefix)-1] != '/' {
+		prefix = prefix + "/"
+	}
+	return prefix
 }
