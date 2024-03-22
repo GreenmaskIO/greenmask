@@ -147,6 +147,25 @@ func (d *Storage) Delete(ctx context.Context, filePaths ...string) error {
 	return nil
 }
 
+func (d *Storage) DeleteAll(ctx context.Context, pathPrefix string) error {
+	fileInfo, err := os.Stat(path.Join(d.cwd, pathPrefix))
+	if err != nil {
+		return err
+	}
+	if fileInfo.IsDir() {
+		err = os.RemoveAll(path.Join(d.cwd, pathPrefix))
+		if err != nil {
+			return fmt.Errorf(`error deliting directory %s: %w`, pathPrefix, err)
+		}
+	} else {
+		err = os.Remove(path.Join(d.cwd, pathPrefix))
+		if err != nil {
+			return fmt.Errorf(`error deliting file %s: %w`, pathPrefix, err)
+		}
+	}
+	return nil
+}
+
 func (d *Storage) Exists(ctx context.Context, fileName string) (bool, error) {
 	_, err := os.Stat(path.Join(d.cwd, fileName))
 	if err != nil {

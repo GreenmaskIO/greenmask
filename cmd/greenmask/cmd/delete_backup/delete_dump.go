@@ -17,6 +17,7 @@ package delete_backup
 import (
 	"context"
 	"fmt"
+	"slices"
 
 	"github.com/greenmaskio/greenmask/internal/storages"
 	"github.com/rs/zerolog/log"
@@ -59,24 +60,14 @@ func deleteDump(dumpId string) error {
 		log.Fatal().Err(err).Msg("")
 	}
 
-	var found bool
-	var backupDirStorage storages.Storager
-	for _, b := range dirs {
-		if dumpId == b.Dirname() {
-			found = true
-			backupDirStorage = b
-		}
-	}
-
-	if !found {
+	if !slices.ContainsFunc(dirs, func(sst storages.Storager) bool {
+		return dumpId == sst.Dirname()
+	}) {
 		return fmt.Errorf("dump with id %s was not found", dumpId)
 	}
-	files, _, err := backupDirStorage.ListDir(ctx)
 
-	for _, f := range files {
-		if err = backupDirStorage.Delete(ctx, f); err != nil {
-			return fmt.Errorf("storage error: %s", err)
-		}
+	if err = st.DeleteAll(ctx, dumpId); err != nil {
+		return fmt.Errorf("storage error: %s", err)
 	}
 
 	return nil

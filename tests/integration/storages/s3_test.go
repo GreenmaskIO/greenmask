@@ -19,7 +19,9 @@ import (
 	"context"
 	"io"
 	"path"
+	"slices"
 
+	"github.com/greenmaskio/greenmask/internal/storages"
 	"github.com/rs/zerolog"
 	"github.com/stretchr/testify/suite"
 
@@ -113,6 +115,50 @@ func (suite *S3StorageSuite) TestS3Ops() {
 		files, _, err = suite.st.ListDir(context.Background())
 		suite.Require().NoError(err)
 		suite.Require().NotContains(files, "test_to_del.txt")
+	})
+
+	suite.Run("delete_all", func() {
+		buf := bytes.NewBuffer([]byte("1234567890"))
+		err := suite.st.PutObject(context.Background(), "/test_to_del.txt", buf)
+		suite.Require().NoError(err)
+
+		buf = bytes.NewBuffer([]byte("1234567890"))
+		err = suite.st.PutObject(context.Background(), "/dir1/test_to_del2.txt", buf)
+		suite.Require().NoError(err)
+
+		buf = bytes.NewBuffer([]byte("1234567890"))
+		err = suite.st.PutObject(context.Background(), "/dir1/subdir2/test_to_del3.txt", buf)
+		suite.Require().NoError(err)
+
+		files, dirs, err := suite.st.ListDir(context.Background())
+		suite.Require().NoError(err)
+		suite.Require().Contains(files, "test_to_del.txt")
+		idx := slices.IndexFunc(dirs, func(s storages.Storager) bool {
+			return s.Dirname() == "dir1"
+		})
+		suite.Require().True(idx != -1)
+
+		files, dirs, err = dirs[idx].ListDir(context.Background())
+		suite.Require().NoError(err)
+		suite.Require().Contains(files, "test_to_del2.txt")
+		suite.Require().Len(dirs, 1)
+		idx = slices.IndexFunc(dirs, func(s storages.Storager) bool {
+			return s.Dirname() == "subdir2"
+		})
+		suite.Require().True(idx != -1)
+
+		files, dirs, err = dirs[idx].ListDir(context.Background())
+		suite.Require().NoError(err)
+		suite.Require().Contains(files, "test_to_del3.txt")
+		suite.Require().Empty(dirs)
+
+		err = suite.st.DeleteAll(context.Background(), "/")
+		suite.Require().NoError(err)
+
+		files, dirs, err = suite.st.ListDir(context.Background())
+		suite.Require().NoError(err)
+		suite.Require().NotContains(files, "test_to_del.txt")
+		suite.Require().Empty(dirs)
 	})
 
 }
