@@ -16,9 +16,11 @@ package s3
 
 import (
 	"context"
+	"crypto/tls"
 	"errors"
 	"fmt"
 	"io"
+	"net/http"
 	"os"
 	"path"
 	"path/filepath"
@@ -121,6 +123,13 @@ func NewStorage(ctx context.Context, cfg *Config, logLevel string) (*Storage, er
 	}
 	awsCfg.WithLogger(LogWrapper{logger: &log.Logger})
 	awsCfg.WithLogLevel(lv)
+
+	if cfg.NoVerifySsl {
+		tr := &http.Transport{
+			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+		}
+		awsCfg.WithHTTPClient(&http.Client{Transport: tr})
+	}
 
 	if cfg.Endpoint != "" {
 		awsCfg.WithEndpoint(cfg.Endpoint)
