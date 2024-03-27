@@ -42,7 +42,6 @@ type Config struct {
 	UseListObjectsV1 bool   `mapstructure:"use_list_objects_v1,omitempty"`
 	ForcePathStyle   bool   `mapstructure:"force_path_style,omitempty"`
 	UseAccelerate    bool   `mapstructure:"use_accelerate,omitempty"`
-	NoVerifySsl      bool   `mapstructure:"no_verify_ssl,omitempty"`
 }
 
 func NewConfig() *Config {

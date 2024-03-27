@@ -124,7 +124,7 @@ func NewStorage(ctx context.Context, cfg *Config, logLevel string) (*Storage, er
 	awsCfg.WithLogger(LogWrapper{logger: &log.Logger})
 	awsCfg.WithLogLevel(lv)
 
-	if cfg.NoVerifySsl {
+	if cfg.DisableSSL {
 		tr := &http.Transport{
 			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
 		}
