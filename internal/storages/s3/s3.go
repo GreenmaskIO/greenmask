@@ -150,6 +150,11 @@ func NewStorage(ctx context.Context, cfg *Config, logLevel string) (*Storage, er
 		},
 	)
 
+	log.Debug().
+		Str("region", *service.Config.Region).
+		Str("bucket", cfg.Bucket).
+		Msg("s3 storage bucket")
+
 	return &Storage{
 		prefix:   fixPrefix(path.Join(cfg.Bucket, cfg.Prefix)),
 		session:  ses,
