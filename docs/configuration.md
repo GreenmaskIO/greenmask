@@ -40,7 +40,8 @@ two storage options are supported: `directory` and `s3`.
     Parameters include `path` which specifies the path to the directory in the filesystem where the dumps will be stored.
 
     ``` yaml title="directory storage config example"
-    directory:
+    storage:
+      directory:
         path: "/home/user_name/storage_dir" # (1)
     ```
 
@@ -69,12 +70,13 @@ two storage options are supported: `directory` and `s3`.
     * `use_accelerate` — enable S3 Accelerate feature
 
     ```yaml title="s3 storage config example for Minio running in Docker"
-    s3:
-      endpoint: "http://localhost:9000"
-      bucket: "testbucket"
-      region: "us-east-1"
-      access_key_id: "Q3AM3UQ867SPQQA43P2F"
-      secret_access_key: "zuf+tfteSlswRu7BJ86wekitnifILbZam1KYY3TG"
+    storage:  
+      s3:
+        endpoint: "http://localhost:9000"
+        bucket: "testbucket"
+        region: "us-east-1"
+        access_key_id: "Q3AM3UQ867SPQQA43P2F"
+        secret_access_key: "zuf+tfteSlswRu7BJ86wekitnifILbZam1KYY3TG"
     ```
 
 ## `dump` section
