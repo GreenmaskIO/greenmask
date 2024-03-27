@@ -125,7 +125,10 @@ func NewStorage(ctx context.Context, cfg *Config, logLevel string) (*Storage, er
 	if cfg.Endpoint != "" {
 		awsCfg.WithEndpoint(cfg.Endpoint)
 	}
-	awsCfg.WithRegion(cfg.Region)
+
+	if cfg.Region != "" {
+		awsCfg.WithRegion(cfg.Region)
+	}
 
 	if cfg.CertFile != "" {
 		file, err := os.Open(cfg.CertFile)
