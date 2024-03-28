@@ -51,9 +51,9 @@ func NewConfig() *Config {
 		ForcePathStyle: true,
 		MaxRetries:     defaultMaxRetries,
 		MaxPartSize:    defaultMaxPartSize,
-		Bucket:   		os.Getenv("BUCKET_NAME"),
-		Region: 		os.Getenv("BUCKET_REGION"),
-		Prefix:			os.Getenv("BUCKET_PREFIX"),
+		Bucket:   		os.Getenv("STORAGE_S3_BUCKET_NAME"),
+		Region: 		os.Getenv("STORAGE_S3_BUCKET_REGION"),
+		Prefix:			os.Getenv("STORAGE_S3_BUCKET_PREFIX"),
 	}
 }
 
