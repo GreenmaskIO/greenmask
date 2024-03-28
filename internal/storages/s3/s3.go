@@ -16,9 +16,11 @@ package s3
 
 import (
 	"context"
+	"crypto/tls"
 	"errors"
 	"fmt"
 	"io"
+	"net/http"
 	"os"
 	"path"
 	"path/filepath"
@@ -122,10 +124,20 @@ func NewStorage(ctx context.Context, cfg *Config, logLevel string) (*Storage, er
 	awsCfg.WithLogger(LogWrapper{logger: &log.Logger})
 	awsCfg.WithLogLevel(lv)
 
+	if cfg.NoVerifySsl {
+		tr := &http.Transport{
+			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+		}
+		awsCfg.WithHTTPClient(&http.Client{Transport: tr})
+	}
+
 	if cfg.Endpoint != "" {
 		awsCfg.WithEndpoint(cfg.Endpoint)
 	}
-	awsCfg.WithRegion(cfg.Region)
+
+	if cfg.Region != "" {
+		awsCfg.WithRegion(cfg.Region)
+	}
 
 	if cfg.CertFile != "" {
 		file, err := os.Open(cfg.CertFile)
@@ -146,6 +158,11 @@ func NewStorage(ctx context.Context, cfg *Config, logLevel string) (*Storage, er
 			uploader.Concurrency = cfg.Concurrency
 		},
 	)
+
+	log.Debug().
+		Str("region", *service.Config.Region).
+		Str("bucket", cfg.Bucket).
+		Msg("s3 storage bucket")
 
 	return &Storage{
 		prefix:   fixPrefix(path.Join(cfg.Bucket, cfg.Prefix)),
