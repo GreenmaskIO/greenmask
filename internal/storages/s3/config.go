@@ -16,6 +16,7 @@ package s3
 
 import (
 	"errors"
+	"os"
 )
 
 const (
@@ -50,6 +51,9 @@ func NewConfig() *Config {
 		ForcePathStyle: true,
 		MaxRetries:     defaultMaxRetries,
 		MaxPartSize:    defaultMaxPartSize,
+		Bucket:   		os.Getenv("BUCKET_NAME"),
+		Region: 		os.Getenv("BUCKET_REGION"),
+		Prefix:			os.Getenv("BUCKET_PREFIX"),
 	}
 }
 
