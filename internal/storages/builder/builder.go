@@ -17,6 +17,7 @@ package builder
 import (
 	"context"
 	"errors"
+	"os"
 
 	"github.com/greenmaskio/greenmask/internal/domains"
 	"github.com/greenmaskio/greenmask/internal/storages"
@@ -27,9 +28,10 @@ import (
 func GetStorage(ctx context.Context, stCfg *domains.StorageConfig, logCgf *domains.LogConfig) (
 	storages.Storager, error,
 ) {
-	if stCfg.Directory != nil {
+	envCfg := os.Getenv("STORAGE_TYPE")
+	if stCfg.Directory != nil || envCfg == "directory" {
 		return directory.NewStorage(stCfg.Directory)
-	} else if stCfg.S3 != nil {
+	} else if (stCfg.S3 != nil || envCfg == "s3" {
 		return s3.NewStorage(ctx, stCfg.S3, logCgf.Level)
 	}
 	return nil, errors.New("no one storage was provided")
