@@ -31,7 +31,7 @@ func GetStorage(ctx context.Context, stCfg *domains.StorageConfig, logCgf *domai
 	envCfg := os.Getenv("STORAGE_TYPE")
 	if stCfg.Directory != nil || envCfg == "directory" {
 		return directory.NewStorage(stCfg.Directory)
-	} else if (stCfg.S3 != nil || envCfg == "s3" {
+	} else if stCfg.S3 != nil || envCfg == "s3" {
 		return s3.NewStorage(ctx, stCfg.S3, logCgf.Level)
 	}
 	return nil, errors.New("no one storage was provided")
