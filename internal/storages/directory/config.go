@@ -14,6 +14,24 @@
 
 package directory
 
+import (
+	"errors"
+	"os"
+)
+
 type Config struct {
 	Path string `mapstructure:"path"`
+}
+
+func NewConfig() *Config {
+	return &Config{
+		Path:   os.Getenv("STORAGE_DIRECTORY_PATH"),
+	}
+}
+
+func (c *Config) Validate() error {
+	if c.Path == "" {
+		return errors.New("path cannot be empty when using directory storage")
+	}
+	return nil
 }
