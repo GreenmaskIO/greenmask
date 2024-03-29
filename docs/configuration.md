@@ -295,3 +295,24 @@ scripts:
 2. **List of data stage scripts**. This section contains scripts that are executed before or after the restoration of the data section. The scripts include shell commands with parameters and SQL query files.
 3. **List of post-data stage scripts**. This section contains scripts that are executed before or after the restoration of the post-data section. The scripts include SQL queries and query files.
 4. **Command in the first argument and the parameters in the rest of the list**. When specifying a command to be executed in the scripts section, you provide the command name as the first item in a list, followed by any parameters or arguments for that command. The command and its parameters are provided as a list within the script configuration.
+
+## Environment variable configuration
+
+It's also possible to configure Greenmask through environment variables.
+
+### Postgres connection variables
+
+Variables used in the `dump` and `restore` commands to configure connection with Postgres database
+
+* `PGHOST` - host used to connect to the postgres database
+* `PGPORT` - port where postgres is exposed
+* `PGDATABASE` - name of the database to dump/restore
+* `PGUSER` - username used to connect to the postgres database
+* `PGPASSWORD` - password used to authenticate to the postgres database
+
+### Log configuration variables
+
+Configures Greenmask logging, possible values are described above in the `log` section of this docummentation
+
+* `LOG_FORMAT` - configures log format
+* `LOG_LEVEL` - configures log level
