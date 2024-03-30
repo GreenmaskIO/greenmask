@@ -17,6 +17,7 @@ package cmd
 import (
 	"fmt"
 	"runtime/debug"
+	"strings"
 
 	"github.com/mitchellh/mapstructure"
 	"github.com/rs/zerolog"
@@ -140,6 +141,7 @@ func initConfig() {
 		return
 	}
 
+	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 	viper.AutomaticEnv()
 
 	if err := viper.ReadInConfig(); err != nil {
