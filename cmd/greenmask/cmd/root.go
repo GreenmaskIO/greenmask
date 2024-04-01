@@ -109,13 +109,6 @@ func init() {
 		log.Fatal().Err(err).Msg("")
 	}
 
-	if err := viper.BindEnv("log.level", "LOG_LEVEL"); err != nil {
-		log.Fatal().Err(err).Msg("")
-	}
-	if err := viper.BindEnv("log.format", "LOG_FORMAT"); err != nil {
-		log.Fatal().Err(err).Msg("")
-	}
-
 	RootCmd.InitDefaultCompletionCmd()
 	RootCmd.InitDefaultHelpCmd()
 	RootCmd.InitDefaultVersionFlag()
