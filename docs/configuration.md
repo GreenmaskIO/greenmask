@@ -298,21 +298,21 @@ scripts:
 
 ## Environment variable configuration
 
-It's also possible to configure Greenmask through environment variables.
+It's also possible to configure Greenmask through environment variables. 
+
+Greenmask will automatically parse any environment variable that matches the configuration in the config file by substituting the dot (`.`) separator for an underscore (`_`) and uppercasing it. As an example, the config file below would apply the same configuration as defining the `LOG_LEVEL=debug` environment variable
+
+```yaml title="config.yaml"
+log:
+  level: debug
+```
 
 ### Postgres connection variables
 
-Variables used in the `dump` and `restore` commands to configure connection with Postgres database
+Additionaly, there are some environment variables exposed by the `dump` and `restore` commands to facilitate the connection configuration with a Postgres database
 
 * `PGHOST` - host used to connect to the postgres database
 * `PGPORT` - port where postgres is exposed
 * `PGDATABASE` - name of the database to dump/restore
 * `PGUSER` - username used to connect to the postgres database
 * `PGPASSWORD` - password used to authenticate to the postgres database
-
-### Log configuration variables
-
-Configures Greenmask logging, possible values are described above in the `log` section of this docummentation
-
-* `LOG_FORMAT` - configures log format
-* `LOG_LEVEL` - configures log level
