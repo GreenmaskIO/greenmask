@@ -100,9 +100,6 @@ func init() {
 	RootCmd.AddCommand(validate.Cmd)
 	RootCmd.AddCommand(show_transformer.Cmd)
 
-	if err := RootCmd.MarkPersistentFlagRequired("config"); err != nil {
-		log.Fatal().Err(err).Msg("")
-	}
 
 	if err := viper.BindPFlag("log.format", RootCmd.PersistentFlags().Lookup("log-format")); err != nil {
 		log.Fatal().Err(err).Msg("")
@@ -137,15 +134,15 @@ func init() {
 func initConfig() {
 	if cfgFile != "" {
 		viper.SetConfigFile(cfgFile)
-	} else {
-		return
 	}
 
 	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 	viper.AutomaticEnv()
 
 	if err := viper.ReadInConfig(); err != nil {
-		log.Fatal().Msgf("unable to read configUtils file: %s", err.Error())
+		if _, ok := err.(viper.ConfigFileNotFoundError); !ok {
+			log.Fatal().Msgf("error parsing config file: %s", err.Error())
+		}
 	}
 
 	decoderCfg := func(cfg *mapstructure.DecoderConfig) {
