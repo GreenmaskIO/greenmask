@@ -15,7 +15,7 @@ The configuration is organized into six sections:
 In the `common` section of the configuration, you can specify the following settings:
 
 * `pg_bin_path` — path to the PostgreSQL binaries. Note that the PostgreSQL server version must match the provided binaries.
-* `tmp_dir` — temporary directory for storing the table of contents files
+* `tmp_dir` — temporary directory for storing the table of contents files. Default value is `/tmp`
 
 !!! note
 
