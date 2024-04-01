@@ -41,4 +41,4 @@ RUN mkdir ~/.bash_completions \
 RUN groupadd -r greenmask && useradd -r -g greenmask greenmask
 USER greenmask
 
-ENTRYPOINT ["/bin/bash"]
+ENTRYPOINT ["greenmask"]
