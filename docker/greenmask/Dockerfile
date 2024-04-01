@@ -38,4 +38,7 @@ RUN mkdir ~/.bash_completions \
     && echo 'source /etc/bash_completion' >> /root/.bashrc \
     && echo 'source /root/.bash_completions/greenmask.bash' >> /root/.bashrc
 
+RUN groupadd -r greenmask && useradd -r -g greenmask greenmask
+USER greenmask
+
 ENTRYPOINT ["/bin/bash"]
