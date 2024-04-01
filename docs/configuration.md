@@ -55,7 +55,7 @@ two storage options are supported: `directory` and `s3`.
     * `prefix` — a prefix for objects in the bucket, specified in path format
     * `region` — the S3 service region
     * `storage_class` — the storage class for performing object requests
-    * `disable_ssl` — disable SSL for interactions (default is `false`)
+    * `no_verify_ssl` — disable SSL certificate verification
     * `access_key_id` — access key for authentication
     * `secret_access_key` — secret access key for authentication
     * `session_token` — session token for authentication
