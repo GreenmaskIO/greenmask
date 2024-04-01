@@ -34,6 +34,9 @@ func NewConfig() *Config {
 	once.Do(
 		func() {
 			Cfg = &Config{
+				Common: Common{
+					TempDirectory: "/tmp",
+				},
 				Storage: StorageConfig{
 					S3: s3.NewConfig(),
 				},
