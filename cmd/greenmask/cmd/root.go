@@ -14,8 +14,6 @@
 
 package cmd
 
-const defaultTempDir = "/tmp"
-
 import (
 	"fmt"
 	"runtime/debug"
@@ -38,6 +36,8 @@ import (
 	pgDomains "github.com/greenmaskio/greenmask/internal/domains"
 	configUtils "github.com/greenmaskio/greenmask/internal/utils/config"
 )
+
+const defaultTempDir = "/tmp"
 
 var (
 	Version    string
