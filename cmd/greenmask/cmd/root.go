@@ -127,16 +127,13 @@ func init() {
 func initConfig() {
 	if cfgFile != "" {
 		viper.SetConfigFile(cfgFile)
+		if err := viper.ReadInConfig(); err != nil {
+			log.Fatal().Err(err).Msg("error reading from config file")
+		}
 	}
 
 	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 	viper.AutomaticEnv()
-
-	if err := viper.ReadInConfig(); err != nil {
-		if _, ok := err.(viper.ConfigFileNotFoundError); !ok {
-			log.Fatal().Msgf("error parsing config file: %s", err.Error())
-		}
-	}
 
 	decoderCfg := func(cfg *mapstructure.DecoderConfig) {
 		cfg.DecodeHook = mapstructure.ComposeDecodeHookFunc(
