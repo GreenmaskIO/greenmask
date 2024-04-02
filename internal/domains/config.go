@@ -30,15 +30,11 @@ var (
 	once sync.Once
 )
 
-const defaultDirectoryStoragePath = "/tmp"
 
 func NewConfig() *Config {
 	once.Do(
 		func() {
 			Cfg = &Config{
-				Common: Common{
-					TempDirectory: defaultDirectoryStoragePath,
-				},
 				Storage: StorageConfig{
 					S3: s3.NewConfig(),
 				},
