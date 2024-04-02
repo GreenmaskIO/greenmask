@@ -14,6 +14,8 @@
 
 package cmd
 
+const defaultTempDir = "/tmp"
+
 import (
 	"fmt"
 	"runtime/debug"
@@ -135,6 +137,7 @@ func init() {
 }
 
 func initConfig() {
+	viper.SetDefault("common.tmp_dir", defaultTempDir)
 	if cfgFile != "" {
 		viper.SetConfigFile(cfgFile)
 	} else {
