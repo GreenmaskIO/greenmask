@@ -1,4 +1,4 @@
-# Configuration
+    # Configuration
 
 The configuration is organized into six sections:
 
@@ -31,7 +31,7 @@ In the `log` section of the configuration, you can specify the following setting
 ## `storage` section
 
 In the `storage` section, you can configure the storage driver for storing the dumped data. Currently,
-two storage options are supported: `directory` and `s3`.
+two storage `type` options are supported: `directory` and `s3`.
 
 === "`directory` option"
 
@@ -41,6 +41,7 @@ two storage options are supported: `directory` and `s3`.
 
     ``` yaml title="directory storage config example"
     storage:
+      type: "directory"
       directory:
         path: "/home/user_name/storage_dir" # (1)
     ```
@@ -71,6 +72,7 @@ two storage options are supported: `directory` and `s3`.
 
     ```yaml title="s3 storage config example for Minio running in Docker"
     storage:  
+      type: "s3"
       s3:
         endpoint: "http://localhost:9000"
         bucket: "testbucket"

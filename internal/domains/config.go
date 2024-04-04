@@ -30,7 +30,10 @@ var (
 	once sync.Once
 )
 
-const defaultDirectoryStoragePath = "/tmp"
+const (
+	defaultDirectoryStoragePath = "/tmp"
+	defaultStorageType          = "directory"
+)
 
 func NewConfig() *Config {
 	once.Do(
@@ -40,7 +43,9 @@ func NewConfig() *Config {
 					TempDirectory: defaultDirectoryStoragePath,
 				},
 				Storage: StorageConfig{
-					S3: s3.NewConfig(),
+					Type:      defaultStorageType,
+					S3:        s3.NewConfig(),
+					Directory: directory.NewConfig(),
 				},
 			}
 		},
@@ -77,6 +82,7 @@ type Common struct {
 }
 
 type StorageConfig struct {
+	Type      string            `mapstructure:"type" yaml:"type" json:"type,omitempty"`
 	S3        *s3.Config        `mapstructure:"s3"  json:"s3,omitempty" yaml:"s3"`
 	Directory *directory.Config `mapstructure:"directory" json:"directory,omitempty" yaml:"directory"`
 }
