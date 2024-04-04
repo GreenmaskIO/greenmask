@@ -3,6 +3,7 @@ common:
   tmp_dir: "/tmp"
 
 storage:
+  type: "s3"
   s3:
     endpoint: "http://playground-storage:9000"
     bucket: "adventureworks"

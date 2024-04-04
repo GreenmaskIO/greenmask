@@ -40,9 +40,6 @@ func GetStorage(ctx context.Context, stCfg *domains.StorageConfig, logCgf *domai
 		}
 		return directory.NewStorage(stCfg.Directory)
 	case S3StorageType:
-		if err := stCfg.S3.Validate(); err != nil {
-			return nil, fmt.Errorf("s3 storage config validation failed: %w", err)
-		}
 		return s3.NewStorage(ctx, stCfg.S3, logCgf.Level)
 	}
 	return nil, fmt.Errorf("unknown storage type: %s", stCfg.Type)

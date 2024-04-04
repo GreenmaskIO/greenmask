@@ -14,10 +14,6 @@
 
 package s3
 
-import (
-	"errors"
-)
-
 const (
 	defaultMaxRetries  = 3
 	defaultMaxPartSize = 50 * 1024 * 1024
@@ -52,11 +48,4 @@ func NewConfig() *Config {
 		MaxRetries:     defaultMaxRetries,
 		MaxPartSize:    defaultMaxPartSize,
 	}
-}
-
-func (c *Config) Validate() error {
-	if c.Region != "" {
-		return errors.New("region cannot be empty")
-	}
-	return nil
 }
