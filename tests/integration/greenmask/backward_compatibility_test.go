@@ -30,6 +30,7 @@ import (
 
 	"github.com/greenmaskio/greenmask/internal/db/postgres/pgdump"
 	"github.com/greenmaskio/greenmask/internal/domains"
+	"github.com/greenmaskio/greenmask/internal/storages/builder"
 	"github.com/greenmaskio/greenmask/internal/storages/directory"
 	"github.com/greenmaskio/greenmask/pkg/toolkit"
 )
@@ -44,6 +45,7 @@ var config = &domains.Config{
 		Format: "text",
 	},
 	Storage: domains.StorageConfig{
+		Type: builder.DirectoryStorageType,
 		Directory: &directory.Config{
 			Path: "/tmp",
 		},
