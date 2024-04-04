@@ -21,6 +21,7 @@ import (
 	"strings"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/rs/zerolog/log"
 
 	"github.com/greenmaskio/greenmask/internal/db/postgres/entries"
 	"github.com/greenmaskio/greenmask/internal/db/postgres/pgdump"
@@ -61,13 +62,13 @@ func getDumpObjects(
 	defer tableSearchRows.Close()
 	for tableSearchRows.Next() {
 		var oid toc.Oid
-		var lastVal int64
+		var lastVal, relSize int64
 		var schemaName, name, owner, rootPtName, rootPtSchema string
 		var relKind rune
 		var excludeData, isCalled bool
 		var ok bool
 
-		err = tableSearchRows.Scan(&oid, &schemaName, &name, &owner, &relKind,
+		err = tableSearchRows.Scan(&oid, &schemaName, &name, &owner, &relSize, &relKind,
 			&rootPtSchema, &rootPtName, &excludeData, &isCalled, &lastVal,
 		)
 		if err != nil {
@@ -106,6 +107,7 @@ func getDumpObjects(
 						Name:   name,
 						Schema: schemaName,
 						Oid:    toolkit.Oid(oid),
+						Size:   relSize,
 					},
 					Owner:                owner,
 					RelKind:              relKind,
@@ -118,6 +120,10 @@ func getDumpObjects(
 
 			if table.ExcludeData {
 				// TODO: Ensure data exclusion works properly
+				log.Debug().
+					Str("TableSchema", table.Schema).
+					Str("TableName", table.Name).
+					Msg("object data excluded")
 				continue
 			}
 
@@ -179,14 +185,15 @@ func getDumpObjects(
 		if err != nil {
 			return nil, fmt.Errorf("error quering LargeObjectDescribeAclItemQuery: %w", err)
 		}
-		defer loDescribeDefaultAclRows.Close()
 		for loDescribeDefaultAclRows.Next() {
 			item := &entries.ACLItem{}
 			if err = loDescribeDefaultAclRows.Scan(&item.Grantor, &item.Grantee, &item.PrivilegeType, &item.Grantable); err != nil {
+				loDescribeDefaultAclRows.Close()
 				return nil, fmt.Errorf("error scanning LargeObjectDescribeAclItemQuery: %w", err)
 			}
 			defaultACLItems = append(defaultACLItems, item)
 		}
+		loDescribeDefaultAclRows.Close()
 		defaultACL.Items = defaultACLItems
 		lo.DefaultACL = defaultACL
 
@@ -196,14 +203,16 @@ func getDumpObjects(
 		if err != nil {
 			return nil, fmt.Errorf("error quering LargeObjectGetAclQuery: %w", err)
 		}
-		defer loAclRows.Close()
+		loAclRows.Close()
 		for loAclRows.Next() {
 			a := &entries.ACL{}
 			if err = loAclRows.Scan(&a.Value); err != nil {
+				loAclRows.Close()
 				return nil, fmt.Errorf("error scanning LargeObjectGetAclQuery: %w", err)
 			}
 			acls = append(acls, a)
 		}
+		loAclRows.Close()
 
 		// Getting ACL items
 		for _, a := range acls {
@@ -212,14 +221,15 @@ func getDumpObjects(
 			if err != nil {
 				return nil, fmt.Errorf("error quering LargeObjectDescribeAclItemQuery: %w", err)
 			}
-			defer loDescribeAclRows.Close()
 			for loDescribeAclRows.Next() {
 				item := &entries.ACLItem{}
 				if err = loDescribeAclRows.Scan(&item.Grantor, &item.Grantee, &item.PrivilegeType, &item.Grantable); err != nil {
+					loDescribeAclRows.Close()
 					return nil, fmt.Errorf("error scanning LargeObjectDescribeAclItemQuery: %w", err)
 				}
 				aclItems = append(aclItems, item)
 			}
+			loDescribeAclRows.Close()
 			a.Items = aclItems
 		}
 
@@ -351,6 +361,7 @@ func BuildTableSearchQuery(
 		   n.nspname                              as "Schema",
 		   c.relname                              as "Name",
 		   pg_catalog.pg_get_userbyid(c.relowner) as "Owner",
+		   pg_catalog.pg_relation_size(c.oid)     as "Size",
 		   c.relkind 							  as "RelKind",
 		   (coalesce(pn.nspname, '')) 			  as "rootPtSchema",
 		   (coalesce(pc.relname, '')) 			  as "rootPtName",
@@ -389,6 +400,7 @@ func BuildTableSearchQuery(
 		  AND n.nspname <> 'pg_catalog'
 		  AND n.nspname !~ '^pg_toast'
 		  AND n.nspname <> 'information_schema'
+		ORDER BY 5 DESC
 	`
 
 	return fmt.Sprintf(totalQuery, tableDataExclusionCond, tableInclusionCond, tableExclusionCond,
