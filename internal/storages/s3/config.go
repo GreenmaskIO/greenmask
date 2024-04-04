@@ -15,8 +15,10 @@
 package s3
 
 const (
-	defaultMaxRetries  = 3
-	defaultMaxPartSize = 50 * 1024 * 1024
+	defaultMaxRetries   = 3
+	defaultMaxPartSize  = 50 * 1024 * 1024
+	defaultStorageClass = "STANDARD"
+	defaultForcePath    = true
 )
 
 type Config struct {
@@ -43,8 +45,8 @@ type Config struct {
 
 func NewConfig() *Config {
 	return &Config{
-		StorageClass:   "STANDARD",
-		ForcePathStyle: true,
+		StorageClass:   defaultStorageClass,
+		ForcePathStyle: defaultForcePath,
 		MaxRetries:     defaultMaxRetries,
 		MaxPartSize:    defaultMaxPartSize,
 	}
