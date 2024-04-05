@@ -20,5 +20,6 @@ coverage:
 install:
 	mv $(MAIN_PATH)/$(CMD_NAME) $(GOBIN)/$(CMD_NAME)
 
-build: $(CMD_FILES)
+# The build flag -tags=viper_bind_struct has been added to avoid the need to bind each of the environment variables
+build: $(CMD_FILES)	
 	CGO_ENABLED=0 go build -tags=viper_bind_struct -ldflags="$(LDFLAGS)" -v -o $(CMD_NAME) $(MAIN_PATH)
