@@ -25,8 +25,8 @@ type Config struct {
 	Path string `mapstructure:"path"`
 }
 
-func NewConfig() *Config {
-	return &Config{}
+func NewConfig() Config {
+	return Config{}
 }
 
 func (d *Config) Validate() error {

@@ -43,8 +43,8 @@ type Config struct {
 	NoVerifySsl      bool   `mapstructure:"no_verify_ssl,omitempty"`
 }
 
-func NewConfig() *Config {
-	return &Config{
+func NewConfig() Config {
+	return Config{
 		StorageClass:   defaultStorageClass,
 		ForcePathStyle: defaultForcePath,
 		MaxRetries:     defaultMaxRetries,
