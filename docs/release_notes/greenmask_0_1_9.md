@@ -4,9 +4,9 @@ This release introduces improvements and bug fixes
 
 ## Improvements
 
-* Implemented tables scoring according to the type and transformation costs. This correctly spread the tables dumping
-  between the requested workers pool and reduces the execution time. Now greenmask introspects the table size, adds
-  the transformation scoring using the formula
+* Implemented tables scoring according to the table size and transformation costs. This correctly spread the tables
+  dumping between the requested workers pool and reduces the execution time. Now greenmask introspects the table size,
+  adds the transformation scoring using the formula
   `score = tableSizeInBytes + (tableSizeInBytes * 0.03 * tableTransformationsCount)`, and uses the strategy "Largest
   First". The problem is described [here](https://github.com/GreenmaskIO/greenmask/discussions/50)
 * Introduced `no_verify_ssl` parameter for S3 storage
