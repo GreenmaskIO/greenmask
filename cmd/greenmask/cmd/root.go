@@ -132,6 +132,7 @@ func registerEnvVars() error {
 		"storage.type":           "STORAGE_TYPE",
 		"storage.directory.path": "STORAGE_DIRECTORY_PATH",
 		"common.pg_bin_path":     "COMMON_PG_BIN_PATH",
+		"common.tmp_dir":         "COMMON_TMP_DIR",
 	}
 
 	for configPath, envVarName := range varMap {
