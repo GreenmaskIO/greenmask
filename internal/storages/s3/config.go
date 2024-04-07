@@ -22,25 +22,25 @@ const (
 )
 
 type Config struct {
-	Endpoint         string `mapstructure:"endpoint,omitempty"`
-	Bucket           string `mapstructure:"bucket,omitempty"`
-	Prefix           string `mapstructure:"prefix,omitempty"`
-	Region           string `mapstructure:"region,omitempty"`
-	StorageClass     string `mapstructure:"storage_class,omitempty"`
-	DisableSSL       bool   `mapstructure:"disable_ssl,omitempty"`
-	AccessKeyId      string `mapstructure:"access_key_id,omitempty"`
-	SecretAccessKey  string `mapstructure:"secret_access_key,omitempty"`
-	SessionToken     string `mapstructure:"session_token,omitempty"`
-	RoleArn          string `mapstructure:"role_arn,omitempty"`
-	SessionName      string `mapstructure:"session_name,omitempty"`
-	MaxRetries       int    `mapstructure:"max_retries,omitempty"`
-	CertFile         string `mapstructure:"cert_file,omitempty"`
-	MaxPartSize      int64  `mapstructure:"max_part_size,omitempty"`
-	Concurrency      int    `mapstructure:"concurrency,omitempty"`
-	UseListObjectsV1 bool   `mapstructure:"use_list_objects_v1,omitempty"`
-	ForcePathStyle   bool   `mapstructure:"force_path_style,omitempty"`
-	UseAccelerate    bool   `mapstructure:"use_accelerate,omitempty"`
-	NoVerifySsl      bool   `mapstructure:"no_verify_ssl,omitempty"`
+	Endpoint         string `mapstructure:"endpoint"`
+	Bucket           string `mapstructure:"bucket"`
+	Prefix           string `mapstructure:"prefix"`
+	Region           string `mapstructure:"region"`
+	StorageClass     string `mapstructure:"storage_class"`
+	DisableSSL       bool   `mapstructure:"disable_ssl"`
+	AccessKeyId      string `mapstructure:"access_key_id"`
+	SecretAccessKey  string `mapstructure:"secret_access_key"`
+	SessionToken     string `mapstructure:"session_token"`
+	RoleArn          string `mapstructure:"role_arn"`
+	SessionName      string `mapstructure:"session_name"`
+	MaxRetries       int    `mapstructure:"max_retries"`
+	CertFile         string `mapstructure:"cert_file"`
+	MaxPartSize      int64  `mapstructure:"max_part_size"`
+	Concurrency      int    `mapstructure:"concurrency"`
+	UseListObjectsV1 bool   `mapstructure:"use_list_objects_v1"`
+	ForcePathStyle   bool   `mapstructure:"force_path_style"`
+	UseAccelerate    bool   `mapstructure:"use_accelerate"`
+	NoVerifySsl      bool   `mapstructure:"no_verify_ssl"`
 }
 
 func NewConfig() *Config {
