@@ -137,6 +137,8 @@ func initConfig() {
 	decoderCfg := func(cfg *mapstructure.DecoderConfig) {
 		cfg.DecodeHook = mapstructure.ComposeDecodeHookFunc(
 			configUtils.ParamsToByteSliceHookFunc(),
+			configUtils.StringToStructHookFunc(),
+			configUtils.StringToSliceWithBracketHookFunc(),
 			mapstructure.StringToTimeDurationHookFunc(),
 			mapstructure.StringToSliceHookFunc(","),
 		)
