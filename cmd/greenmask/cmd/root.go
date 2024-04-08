@@ -91,10 +91,6 @@ func init() {
 		),
 	)
 
-	if err := registerEnvVars(); err != nil {
-		log.Fatal().Err(err).Msg("unable to register env vars")
-	}
-
 	RootCmd.AddCommand(dump.Cmd)
 	RootCmd.AddCommand(list_dumps.Cmd)
 	RootCmd.AddCommand(restore.Cmd)
@@ -127,21 +123,6 @@ func init() {
 
 }
 
-func registerEnvVars() error {
-	varMap := map[string]string{
-		"storage.type":           "STORAGE_TYPE",
-		"storage.directory.path": "STORAGE_DIRECTORY_PATH",
-		"common.pg_bin_path":     "COMMON_PG_BIN_PATH",
-	}
-
-	for configPath, envVarName := range varMap {
-		if err := viper.BindEnv(configPath, envVarName); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
 func initConfig() {
 	if cfgFile != "" {
 		viper.SetConfigFile(cfgFile)
@@ -164,5 +145,4 @@ func initConfig() {
 	if err := viper.Unmarshal(Config, decoderCfg); err != nil {
 		log.Fatal().Err(err).Msg("")
 	}
-
 }
