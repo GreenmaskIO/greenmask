@@ -10,7 +10,7 @@ import (
 const stringTransformerMaxHashLength = 64
 const stringLengthByteSize = 4
 
-type StringTransformer struct {
+type RandomStringTransformer struct {
 	byteLength                 int
 	generator                  generators.Generator
 	characters                 []rune
@@ -21,7 +21,7 @@ type StringTransformer struct {
 	buf                        []rune
 }
 
-func NewStringTransformer(chars []rune, minLength, maxLength int) (*StringTransformer, error) {
+func NewRandomStringTransformer(chars []rune, minLength, maxLength int) (*RandomStringTransformer, error) {
 
 	if minLength > maxLength {
 		return nil, fmt.Errorf("minLength (%d) is greater than maxLength (%d)", minLength, maxLength)
@@ -42,7 +42,7 @@ func NewStringTransformer(chars []rune, minLength, maxLength int) (*StringTransf
 		return nil, err
 	}
 
-	return &StringTransformer{
+	return &RandomStringTransformer{
 		characters:                 chars,
 		minLength:                  minLength,
 		maxLength:                  maxLength,
@@ -53,7 +53,7 @@ func NewStringTransformer(chars []rune, minLength, maxLength int) (*StringTransf
 	}, nil
 }
 
-func (st *StringTransformer) Transform(data []byte) []rune {
+func (st *RandomStringTransformer) Transform(data []byte) []rune {
 	clear(st.buf)
 	resBytes, _ := st.generator.Generate(data)
 
@@ -86,11 +86,11 @@ func (st *StringTransformer) Transform(data []byte) []rune {
 	return st.buf[:stringLength]
 }
 
-func (st *StringTransformer) GetRequiredGeneratorByteLength() int {
+func (st *RandomStringTransformer) GetRequiredGeneratorByteLength() int {
 	return st.byteLength
 }
 
-func (st *StringTransformer) SetGenerator(g generators.Generator) error {
+func (st *RandomStringTransformer) SetGenerator(g generators.Generator) error {
 	if g.Size() < st.byteLength {
 		return fmt.Errorf("requested byte length (%d) higher than generator can produce (%d)", st.byteLength, g.Size())
 	}

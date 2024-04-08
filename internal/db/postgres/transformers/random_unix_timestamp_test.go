@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package transformers_new
+package transformers
 
 import (
 	"context"
@@ -118,7 +118,7 @@ func TestUnixTimestampTransformer_Transform__positive_cases__static(t *testing.T
 		t.Run(tt.name, func(t *testing.T) {
 			tt.params["column"] = toolkit.ParamsValue(tt.columnName)
 			driver, record := getDriverAndRecord(tt.columnName, tt.original)
-			def, ok := utils.DefaultTransformerRegistry.Get("UnixTimestamp")
+			def, ok := utils.DefaultTransformerRegistry.Get("RandomUnixTimestamp")
 			require.True(t, ok)
 
 			transformerCtx, warnings, err := def.Instance(
@@ -193,7 +193,7 @@ func TestUnixTimestampTransformer_Transform_null_cases(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			tt.params["column"] = toolkit.ParamsValue(tt.columnName)
 			driver, record := getDriverAndRecord(tt.columnName, tt.original)
-			def, ok := utils.DefaultTransformerRegistry.Get("UnixTimestamp")
+			def, ok := utils.DefaultTransformerRegistry.Get("RandomUnixTimestamp")
 			require.True(t, ok)
 
 			transformerCtx, warnings, err := def.Instance(
@@ -268,7 +268,7 @@ func TestUnixTimestampTransformer_Transform_dynamic(t *testing.T) {
 			driver, record := toolkit.GetDriverAndRecord(tt.record)
 
 			tt.params["column"] = toolkit.ParamsValue(tt.columnName)
-			def, ok := utils.DefaultTransformerRegistry.Get("UnixTimestamp")
+			def, ok := utils.DefaultTransformerRegistry.Get("RandomUnixTimestamp")
 			require.True(t, ok)
 
 			transformer, warnings, err := def.Instance(

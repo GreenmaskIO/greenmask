@@ -1,10 +1,9 @@
-package transformers_new
+package transformers
 
 import (
 	"context"
 	"crypto/rand"
 	"encoding/binary"
-	"encoding/hex"
 	"fmt"
 	"slices"
 
@@ -21,20 +20,21 @@ func getGenerateEngine(ctx context.Context, engineName string, size int) (genera
 	case randomEngineName:
 		return getRandomBytesGen(size)
 	case hashEngineName:
-		return generators.GetHashBytesGen(getSaltFromCtx(ctx), size)
+		salt, err := getSaltFromCtx(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("error getting salt from context: %w", err)
+		}
+		return generators.GetHashBytesGen(salt, size)
 	}
 	return nil, fmt.Errorf("unknown engine %s", engineName)
 }
 
-func getSaltFromCtx(ctx context.Context) []byte {
+func getSaltFromCtx(ctx context.Context) (salt []byte, err error) {
 	saltAny := ctx.Value("salt")
-	var salt []byte
 	if saltAny != nil {
-		saltHex := saltAny.([]byte)
-		salt = make([]byte, hex.EncodedLen(len(saltHex)))
-		hex.Encode(salt, saltHex)
+		salt = saltAny.([]byte)
 	}
-	return salt
+	return salt, nil
 }
 
 func getRandomBytesGen(size int) (generators.Generator, error) {

@@ -17,16 +17,15 @@ package transformers
 import (
 	"context"
 	"fmt"
-	"math/rand"
-	"time"
 
+	"github.com/greenmaskio/greenmask/internal/generators/transformers"
 	"github.com/tidwall/gjson"
 
 	"github.com/greenmaskio/greenmask/internal/db/postgres/transformers/utils"
 	"github.com/greenmaskio/greenmask/pkg/toolkit"
 )
 
-var RandomChoiceTransformerDefinition = utils.NewTransformerDefinition(
+var ChoiceTransformerDefinition = utils.NewTransformerDefinition(
 	utils.NewTransformerProperties(
 		"RandomChoice",
 		"Replace values chosen randomly from list",
@@ -53,21 +52,18 @@ var RandomChoiceTransformerDefinition = utils.NewTransformerDefinition(
 	).SetRequired(false).
 		SetDefaultValue(toolkit.ParamsValue("true")),
 
-	toolkit.MustNewParameterDefinition(
-		"keep_null",
-		"indicates that NULL values must not be replaced with transformed values",
-	).SetDefaultValue(toolkit.ParamsValue("true")),
+	keepNullParameterDefinition,
+
+	engineParameterDefinition,
 )
 
-type RandomChoiceTransformer struct {
+type ChoiceTransformer struct {
+	t               *transformers.RandomChoiceTransformer
 	columnName      string
 	columnIdx       int
-	values          []*toolkit.RawValue
 	validate        bool
 	affectedColumns map[int]string
-	rand            *rand.Rand
 	keepNull        bool
-	length          int
 }
 
 func NewRandomChoiceTransformer(
@@ -75,7 +71,7 @@ func NewRandomChoiceTransformer(
 ) (utils.Transformer, toolkit.ValidationWarnings, error) {
 	var warnings toolkit.ValidationWarnings
 	p := parameters["column"]
-	var columnName string
+	var columnName, engine string
 	if err := p.Scan(&columnName); err != nil {
 		return nil, nil, fmt.Errorf(`unable to parse "column" param: %w`, err)
 	}
@@ -104,7 +100,7 @@ func NewRandomChoiceTransformer(
 	if err := p.Scan(&values); err != nil {
 		return nil, nil, fmt.Errorf(`unable to scan "values" param: %w`, err)
 	}
-	rawValue := make([]*toolkit.RawValue, 0, len(values))
+	rawValues := make([]*toolkit.RawValue, 0, len(values))
 	addedValues := make(map[string]struct{})
 	for idx, v := range values {
 
@@ -120,7 +116,7 @@ func NewRandomChoiceTransformer(
 
 		if validate {
 			if string(v) != defaultNullSeq {
-				if err := validateValue(v, driver, columnIdx); err != nil {
+				if err := choiceValidateValue(v, driver, columnIdx); err != nil {
 					warnings = append(warnings,
 						toolkit.NewValidationWarning().
 							SetSeverity(toolkit.ErrorValidationSeverity).
@@ -135,37 +131,50 @@ func NewRandomChoiceTransformer(
 		}
 
 		if string(v) == defaultNullSeq {
-			rawValue = append(rawValue, toolkit.NewRawValue(nil, true))
+			rawValues = append(rawValues, toolkit.NewRawValue(nil, true))
 		} else {
-			rawValue = append(rawValue, toolkit.NewRawValue([]byte(v), false))
+			rawValues = append(rawValues, toolkit.NewRawValue(v, false))
 		}
 	}
 
-	return &RandomChoiceTransformer{
+	p = parameters["engine"]
+	if err := p.Scan(&engine); err != nil {
+		return nil, nil, fmt.Errorf(`unable to scan "engine" param: %w`, err)
+	}
+
+	t := transformers.NewRandomChoiceTransformer(rawValues)
+
+	g, err := getGenerateEngine(ctx, engine, t.GetRequiredGeneratorByteLength())
+	if err != nil {
+		return nil, nil, fmt.Errorf("unable to get generator: %w", err)
+	}
+	if err = t.SetGenerator(g); err != nil {
+		return nil, nil, fmt.Errorf("unable to set generator: %w", err)
+	}
+
+	return &ChoiceTransformer{
+		t:               t,
 		columnName:      columnName,
 		columnIdx:       columnIdx,
-		values:          rawValue,
 		validate:        validate,
 		affectedColumns: affectedColumns,
-		rand:            rand.New(rand.NewSource(time.Now().UnixMicro())),
 		keepNull:        keepNull,
-		length:          len(rawValue),
 	}, warnings, nil
 }
 
-func (rct *RandomChoiceTransformer) GetAffectedColumns() map[int]string {
+func (rct *ChoiceTransformer) GetAffectedColumns() map[int]string {
 	return rct.affectedColumns
 }
 
-func (rct *RandomChoiceTransformer) Init(ctx context.Context) error {
+func (rct *ChoiceTransformer) Init(ctx context.Context) error {
 	return nil
 }
 
-func (rct *RandomChoiceTransformer) Done(ctx context.Context) error {
+func (rct *ChoiceTransformer) Done(ctx context.Context) error {
 	return nil
 }
 
-func (rct *RandomChoiceTransformer) Transform(ctx context.Context, r *toolkit.Record) (*toolkit.Record, error) {
+func (rct *ChoiceTransformer) Transform(ctx context.Context, r *toolkit.Record) (*toolkit.Record, error) {
 	val, err := r.GetRawColumnValueByIdx(rct.columnIdx)
 	if err != nil {
 		return nil, fmt.Errorf("unable to scan value: %w", err)
@@ -174,21 +183,16 @@ func (rct *RandomChoiceTransformer) Transform(ctx context.Context, r *toolkit.Re
 		return r, nil
 	}
 
-	if err = r.SetRawColumnValueByIdx(rct.columnIdx, rct.values[rct.rand.Intn(rct.length)]); err != nil {
+	val, err = rct.t.Transform(val.Data)
+	if err != nil {
+		return nil, fmt.Errorf("unable to transform value: %w", err)
+	}
+
+	if err = r.SetRawColumnValueByIdx(rct.columnIdx, val); err != nil {
 		return nil, fmt.Errorf("unable to set new value: %w", err)
 	}
 
 	return r, nil
-}
-
-func getRawValue(data toolkit.ParamsValue) toolkit.ParamsValue {
-	resResponse := gjson.GetBytes(data, "@this")
-	switch v := resResponse.Value().(type) {
-	case string:
-		return toolkit.ParamsValue(v)
-	default:
-		return data
-	}
 }
 
 func randomChoiceValuesUnmarshaller(parameter *toolkit.ParameterDefinition, driver *toolkit.Driver, src toolkit.ParamsValue) (any, error) {
@@ -212,6 +216,14 @@ func randomChoiceValuesUnmarshaller(parameter *toolkit.ParameterDefinition, driv
 	return &res, nil
 }
 
+func choiceValidateValue(data []byte, driver *toolkit.Driver, columnIdx int) error {
+	_, err := driver.DecodeValueByColumnIdx(columnIdx, data)
+	if err != nil {
+		return fmt.Errorf(`"unable to decode value: %w"`, err)
+	}
+	return nil
+}
+
 func init() {
-	utils.DefaultTransformerRegistry.MustRegister(RandomChoiceTransformerDefinition)
+	utils.DefaultTransformerRegistry.MustRegister(ChoiceTransformerDefinition)
 }

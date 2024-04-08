@@ -180,7 +180,7 @@ type Timestamp struct {
 	limiter    *TimestampLimiter
 }
 
-func NewTimestamp(truncatePart string, limiter *TimestampLimiter) (*Timestamp, error) {
+func NewRandomTimestamp(truncatePart string, limiter *TimestampLimiter) (*Timestamp, error) {
 	// var month time.Month = 1
 	//	var day = 1
 	//	var year, month, day, hour, minute, second, nano int

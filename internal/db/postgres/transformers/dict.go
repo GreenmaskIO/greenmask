@@ -104,7 +104,7 @@ func NewDictTransformer(
 		if validate {
 			// Validate key
 			if key != defaultNullSeq {
-				if err := validateValue([]byte(key), driver, idx); err != nil {
+				if err := dictValidateValue([]byte(key), driver, idx); err != nil {
 					warnings = append(warnings,
 						toolkit.NewValidationWarning().
 							SetSeverity(toolkit.ErrorValidationSeverity).
@@ -118,7 +118,7 @@ func NewDictTransformer(
 
 			// Validate value
 			if string(value) != defaultNullSeq {
-				if err := validateValue([]byte(value), driver, idx); err != nil {
+				if err := dictValidateValue([]byte(value), driver, idx); err != nil {
 					warnings = append(warnings,
 						toolkit.NewValidationWarning().
 							SetSeverity(toolkit.ErrorValidationSeverity).
@@ -162,7 +162,7 @@ func NewDictTransformer(
 		if validate {
 			// Validate defaultValueStr
 			if !defaultValue.IsNull {
-				if err := validateValue(defaultValue.Data, driver, idx); err != nil {
+				if err := dictValidateValue(defaultValue.Data, driver, idx); err != nil {
 					warnings = append(warnings,
 						toolkit.NewValidationWarning().
 							SetSeverity(toolkit.ErrorValidationSeverity).
@@ -237,7 +237,7 @@ func (ht *DictTransformer) Transform(ctx context.Context, r *toolkit.Record) (*t
 	return r, nil
 }
 
-func validateValue(data []byte, driver *toolkit.Driver, columnIdx int) error {
+func dictValidateValue(data []byte, driver *toolkit.Driver, columnIdx int) error {
 	_, err := driver.DecodeValueByColumnIdx(columnIdx, data)
 	if err != nil {
 		return fmt.Errorf(`"unable to decode value: %w"`, err)

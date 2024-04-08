@@ -12,7 +12,7 @@ import (
 func TestNewFloat64Transformer(t *testing.T) {
 	limiter, err := NewFloat64Limiter(-1, 1, 2)
 	require.NoError(t, err)
-	tr := NewFloat64Transformer(limiter)
+	tr := NewRandomFloat64Transformer(limiter)
 	g, err := generators.NewHash([]byte{}, "sha1")
 	require.NoError(t, err)
 	g = generators.NewHashReducer(g, tr.GetRequiredGeneratorByteLength())

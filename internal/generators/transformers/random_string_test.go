@@ -9,7 +9,7 @@ import (
 )
 
 func TestStringTransformer_Transform_hash(t *testing.T) {
-	st, err := NewStringTransformer([]rune("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789._\\-~"), 10, 100)
+	st, err := NewRandomStringTransformer([]rune("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789._\\-~"), 10, 100)
 	require.NoError(t, err)
 
 	hashFuncName, _, err := generators.GetHashFunctionNameBySize(st.GetRequiredGeneratorByteLength())
@@ -25,7 +25,7 @@ func TestStringTransformer_Transform_hash(t *testing.T) {
 }
 
 func TestStringTransformer_Transform_random(t *testing.T) {
-	st, err := NewStringTransformer([]rune("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789._\\-~"), 10, 100)
+	st, err := NewRandomStringTransformer([]rune("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789._\\-~"), 10, 100)
 	require.NoError(t, err)
 
 	g := generators.NewRandomBytes(0, st.GetRequiredGeneratorByteLength())

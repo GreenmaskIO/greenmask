@@ -17,21 +17,20 @@ package transformers
 import (
 	"context"
 	"fmt"
-	"math/rand"
-	"time"
 
 	"github.com/greenmaskio/greenmask/internal/db/postgres/transformers/utils"
+	"github.com/greenmaskio/greenmask/internal/generators/transformers"
 	"github.com/greenmaskio/greenmask/pkg/toolkit"
 )
 
-var RandomBoolTransformerDefinition = utils.NewTransformerDefinition(
+var boolTransformerDefinition = utils.NewTransformerDefinition(
 
 	utils.NewTransformerProperties(
 		"RandomBool",
 		"Generate random bool",
 	),
 
-	NewRandomBoolTransformer,
+	NewBooleanTransformer,
 
 	toolkit.MustNewParameterDefinition(
 		"column",
@@ -41,22 +40,21 @@ var RandomBoolTransformerDefinition = utils.NewTransformerDefinition(
 		SetAllowedColumnTypes("bool"),
 	).SetRequired(true),
 
-	toolkit.MustNewParameterDefinition(
-		"keep_null",
-		"indicates that NULL values must not be replaced with transformed values",
-	).SetDefaultValue(toolkit.ParamsValue("true")),
+	keepNullParameterDefinition,
+
+	engineParameterDefinition,
 )
 
-type RandomBoolTransformer struct {
+type BooleanTransformer struct {
 	columnName      string
 	keepNull        bool
-	rand            *rand.Rand
 	affectedColumns map[int]string
 	columnIdx       int
+	t               *transformers.RandomBoolean
 }
 
-func NewRandomBoolTransformer(ctx context.Context, driver *toolkit.Driver, parameters map[string]toolkit.Parameterizer) (utils.Transformer, toolkit.ValidationWarnings, error) {
-	var columnName string
+func NewBooleanTransformer(ctx context.Context, driver *toolkit.Driver, parameters map[string]toolkit.Parameterizer) (utils.Transformer, toolkit.ValidationWarnings, error) {
+	var columnName, engine string
 	var keepNull bool
 	p := parameters["column"]
 	if err := p.Scan(&columnName); err != nil {
@@ -75,28 +73,42 @@ func NewRandomBoolTransformer(ctx context.Context, driver *toolkit.Driver, param
 		return nil, nil, fmt.Errorf(`unable to scan "keep_null" param: %w`, err)
 	}
 
-	return &RandomBoolTransformer{
+	p = parameters["engine"]
+	if err := p.Scan(&engine); err != nil {
+		return nil, nil, fmt.Errorf(`unable to scan "engine" param: %w`, err)
+	}
+
+	t := transformers.NewRandomBoolean()
+	g, err := getGenerateEngine(ctx, engine, t.GetRequiredGeneratorByteLength())
+	if err != nil {
+		return nil, nil, fmt.Errorf("unable to get generator: %w", err)
+	}
+	if err = t.SetGenerator(g); err != nil {
+		return nil, nil, fmt.Errorf("unable to set generator: %w", err)
+	}
+
+	return &BooleanTransformer{
 		columnName:      columnName,
 		keepNull:        keepNull,
-		rand:            rand.New(rand.NewSource(time.Now().UnixMicro())),
 		affectedColumns: affectedColumns,
 		columnIdx:       idx,
+		t:               t,
 	}, nil, nil
 }
 
-func (rbt *RandomBoolTransformer) GetAffectedColumns() map[int]string {
+func (rbt *BooleanTransformer) GetAffectedColumns() map[int]string {
 	return rbt.affectedColumns
 }
 
-func (rbt *RandomBoolTransformer) Init(ctx context.Context) error {
+func (rbt *BooleanTransformer) Init(ctx context.Context) error {
 	return nil
 }
 
-func (rbt *RandomBoolTransformer) Done(ctx context.Context) error {
+func (rbt *BooleanTransformer) Done(ctx context.Context) error {
 	return nil
 }
 
-func (rbt *RandomBoolTransformer) Transform(ctx context.Context, r *toolkit.Record) (*toolkit.Record, error) {
+func (rbt *BooleanTransformer) Transform(ctx context.Context, r *toolkit.Record) (*toolkit.Record, error) {
 	val, err := r.GetRawColumnValueByIdx(rbt.columnIdx)
 	if err != nil {
 		return nil, fmt.Errorf("unable to scan value: %w", err)
@@ -105,12 +117,17 @@ func (rbt *RandomBoolTransformer) Transform(ctx context.Context, r *toolkit.Reco
 		return r, nil
 	}
 
-	if err := r.SetColumnValueByIdx(rbt.columnIdx, toolkit.RandomBool(rbt.rand)); err != nil {
+	boolVal, err := rbt.t.Transform(val.Data)
+	if err != nil {
+		return nil, fmt.Errorf("unable to transform value: %w", err)
+	}
+
+	if err = r.SetColumnValueByIdx(rbt.columnIdx, boolVal); err != nil {
 		return nil, fmt.Errorf("unable to set new value: %w", err)
 	}
 	return r, nil
 }
 
 func init() {
-	utils.DefaultTransformerRegistry.MustRegister(RandomBoolTransformerDefinition)
+	utils.DefaultTransformerRegistry.MustRegister(boolTransformerDefinition)
 }

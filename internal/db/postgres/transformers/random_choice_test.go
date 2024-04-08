@@ -22,7 +22,7 @@ func TestRandomChoiceTransformer_Transform_with_fail(t *testing.T) {
 	}
 
 	driver, record := getDriverAndRecord(string(params["column"]), original)
-	transformerCtx, warnings, err := RandomChoiceTransformerDefinition.Instance(
+	transformerCtx, warnings, err := ChoiceTransformerDefinition.Instance(
 		context.Background(),
 		driver, params,
 		nil,
@@ -53,7 +53,7 @@ func TestRandomChoiceTransformer_Transform_validation_error(t *testing.T) {
 	}
 
 	driver, _ := getDriverAndRecord(string(params["column"]), original)
-	_, warnings, err := RandomChoiceTransformerDefinition.Instance(
+	_, warnings, err := ChoiceTransformerDefinition.Instance(
 		context.Background(),
 		driver, params,
 		nil,
@@ -74,7 +74,7 @@ func TestRandomChoiceTransformer_Transform_json(t *testing.T) {
 	}
 
 	driver, record := getDriverAndRecord(string(params["column"]), original)
-	transformerCtx, warnings, err := RandomChoiceTransformerDefinition.Instance(
+	transformerCtx, warnings, err := ChoiceTransformerDefinition.Instance(
 		context.Background(),
 		driver, params,
 		nil,

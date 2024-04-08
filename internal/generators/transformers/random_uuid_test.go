@@ -11,7 +11,7 @@ import (
 func TestUuidTransformer_Transform_hash(t *testing.T) {
 	regexp := `^[\d\w]{8}-[\d\w]{4}-[\d\w]{4}-[\d\w]{4}-[\d\w]{12}$`
 
-	ut := NewUuidTransformer()
+	ut := NewRandomUuidTransformer()
 	hashFuncName, _, err := generators.GetHashFunctionNameBySize(ut.GetRequiredGeneratorByteLength())
 	require.NoError(t, err)
 	g, err := generators.NewHash([]byte{}, hashFuncName)

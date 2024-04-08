@@ -21,6 +21,7 @@ import (
 	"time"
 
 	"github.com/greenmaskio/greenmask/internal/db/postgres/transformers/utils"
+	"github.com/greenmaskio/greenmask/internal/generators/transformers"
 	"github.com/greenmaskio/greenmask/pkg/toolkit"
 )
 
@@ -59,6 +60,7 @@ type NoiseFloatTransformerParams struct {
 }
 
 type NoiseFloatTransformer struct {
+	t               *transformers.NoiseInt64Transformer
 	columnName      string
 	columnIdx       int
 	ratio           float64

@@ -17,17 +17,16 @@ package transformers
 import (
 	"context"
 	"fmt"
-	"math/rand"
-	"time"
 
 	"github.com/greenmaskio/greenmask/internal/db/postgres/transformers/utils"
+	"github.com/greenmaskio/greenmask/internal/generators/transformers"
 	"github.com/greenmaskio/greenmask/pkg/toolkit"
 )
 
-var RandomStringTransformerDefinition = utils.NewTransformerDefinition(
+var stringTransformerDefinition = utils.NewTransformerDefinition(
 	utils.NewTransformerProperties(
 		"RandomString",
-		"Generate random string",
+		"Generate a string withing the specified length with provided char set",
 	),
 
 	NewRandomStringTransformer,
@@ -59,24 +58,24 @@ var RandomStringTransformerDefinition = utils.NewTransformerDefinition(
 		"keep_null",
 		"indicates that NULL values must not be replaced with transformed values",
 	).SetDefaultValue(toolkit.ParamsValue("true")),
+
+	keepNullParameterDefinition,
+
+	engineParameterDefinition,
 )
 
 type RandomStringTransformer struct {
+	t               *transformers.RandomStringTransformer
 	columnName      string
 	keepNull        bool
-	min             int64
-	max             int64
-	symbols         []rune
-	buf             []rune
-	rand            *rand.Rand
 	affectedColumns map[int]string
 	columnIdx       int
 }
 
 func NewRandomStringTransformer(ctx context.Context, driver *toolkit.Driver, parameters map[string]toolkit.Parameterizer) (utils.Transformer, toolkit.ValidationWarnings, error) {
 
-	var columnName, symbols string
-	var minLength, maxLength int64
+	var columnName, symbols, engine string
+	var minLength, maxLength int
 	var keepNull bool
 
 	p := parameters["column"]
@@ -111,14 +110,28 @@ func NewRandomStringTransformer(ctx context.Context, driver *toolkit.Driver, par
 		return nil, nil, fmt.Errorf(`unable to scan "keep_null" param: %w`, err)
 	}
 
+	t, err := transformers.NewRandomStringTransformer([]rune(symbols), minLength, maxLength)
+	if err != nil {
+		return nil, nil, fmt.Errorf("unable to create transformer: %w", err)
+	}
+
+	p = parameters["engine"]
+	if err := p.Scan(&engine); err != nil {
+		return nil, nil, fmt.Errorf(`unable to scan "engine" param: %w`, err)
+	}
+
+	g, err := getGenerateEngine(ctx, engine, t.GetRequiredGeneratorByteLength())
+	if err != nil {
+		return nil, nil, fmt.Errorf("unable to get generator: %w", err)
+	}
+	if err = t.SetGenerator(g); err != nil {
+		return nil, nil, fmt.Errorf("unable to set generator: %w", err)
+	}
+
 	return &RandomStringTransformer{
+		t:               t,
 		columnName:      columnName,
 		keepNull:        keepNull,
-		min:             minLength,
-		max:             maxLength,
-		symbols:         []rune(symbols),
-		rand:            rand.New(rand.NewSource(time.Now().UnixMicro())),
-		buf:             make([]rune, maxLength),
 		affectedColumns: affectedColumns,
 		columnIdx:       idx,
 	}, nil, nil
@@ -145,13 +158,18 @@ func (rst *RandomStringTransformer) Transform(ctx context.Context, r *toolkit.Re
 		return r, nil
 	}
 
-	res := toolkit.RandomString(rst.rand, rst.min, rst.max, rst.symbols, rst.buf)
-	if err := r.SetColumnValueByIdx(rst.columnIdx, &res); err != nil {
+	res := toolkit.NewRawValue(
+		[]byte(string(rst.t.Transform(val.Data))),
+		false,
+	)
+
+	if err = r.SetRawColumnValueByIdx(rst.columnIdx, res); err != nil {
 		return nil, fmt.Errorf("unable to set new value: %w", err)
 	}
+
 	return r, nil
 }
 
 func init() {
-	utils.DefaultTransformerRegistry.MustRegister(RandomStringTransformerDefinition)
+	utils.DefaultTransformerRegistry.MustRegister(stringTransformerDefinition)
 }

@@ -1,4 +1,4 @@
-package transformers_new
+package transformers
 
 import (
 	"github.com/greenmaskio/greenmask/pkg/toolkit"

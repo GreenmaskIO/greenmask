@@ -62,7 +62,7 @@ func TestRandomBoolTransformer_Transform(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			tt.params["column"] = toolkit.ParamsValue(tt.columnName)
 			driver, record := getDriverAndRecord(tt.columnName, tt.original)
-			transformerCtx, warnings, err := RandomBoolTransformerDefinition.Instance(
+			transformerCtx, warnings, err := boolTransformerDefinition.Instance(
 				context.Background(),
 				driver,
 				tt.params,

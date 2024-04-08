@@ -22,10 +22,12 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/greenmaskio/greenmask/internal/db/postgres/transformers/utils"
+
 	"github.com/greenmaskio/greenmask/pkg/toolkit"
 )
 
-func TestRandomDateTransformer_Transform(t *testing.T) {
+func TestTimestampTransformer_Transform(t *testing.T) {
 
 	tests := []struct {
 		name       string
@@ -107,7 +109,10 @@ func TestRandomDateTransformer_Transform(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			tt.params["column"] = toolkit.ParamsValue(tt.columnName)
 			driver, record := getDriverAndRecord(tt.columnName, tt.original)
-			transformerCtx, warnings, err := RandomDateTransformerDefinition.Instance(
+			def, ok := utils.DefaultTransformerRegistry.Get("RandomDate")
+			require.True(t, ok)
+
+			transformerCtx, warnings, err := def.Instance(
 				context.Background(),
 				driver, tt.params,
 				nil,

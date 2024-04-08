@@ -1,76 +1,70 @@
-package transformers_new
+package transformers
 
 import (
 	"context"
-	"fmt"
 	"testing"
 
+	"github.com/rs/zerolog/log"
+	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/require"
 
 	"github.com/greenmaskio/greenmask/internal/db/postgres/transformers/utils"
 	"github.com/greenmaskio/greenmask/pkg/toolkit"
 )
 
-func TestRandomIntTransformer_Transform_random_static(t *testing.T) {
+func TestBigIntTransformer_Transform_random_static(t *testing.T) {
+
+	type expected struct {
+		min    decimal.Decimal
+		max    decimal.Decimal
+		isNull bool
+	}
 
 	tests := []struct {
-		name           string
-		columnName     string
-		originalValue  string
-		expectedRegexp string
-		params         map[string]toolkit.ParamsValue
+		name          string
+		columnName    string
+		originalValue string
+		params        map[string]toolkit.ParamsValue
+		expected      expected
 	}{
 		{
-			name:           "int2",
-			columnName:     "id2",
-			originalValue:  "12345",
-			expectedRegexp: `^\d{1,3}$`,
+			name:          "numeric",
+			columnName:    "id_numeric",
+			originalValue: "12345",
 			params: map[string]toolkit.ParamsValue{
-				"min": toolkit.ParamsValue("1"),
-				"max": toolkit.ParamsValue("100"),
+				"min": toolkit.ParamsValue("10000000000000000000"),
+				"max": toolkit.ParamsValue("100000000000000000000"),
+			},
+			expected: expected{
+				min: decimal.RequireFromString("10000000000000000000"),
+				max: decimal.RequireFromString("100000000000000000000"),
 			},
 		},
 		{
-			name:           "int4",
-			columnName:     "id4",
-			originalValue:  "12345",
-			expectedRegexp: `^\d{1,3}$`,
+			name:          "keep_null false and NULL seq",
+			columnName:    "id_numeric",
+			originalValue: "\\N",
 			params: map[string]toolkit.ParamsValue{
-				"min": toolkit.ParamsValue("1"),
-				"max": toolkit.ParamsValue("100"),
-			},
-		},
-		{
-			name:           "int8",
-			columnName:     "id8",
-			originalValue:  "12345",
-			expectedRegexp: `^\d{1,3}$`,
-			params: map[string]toolkit.ParamsValue{
-				"min": toolkit.ParamsValue("1"),
-				"max": toolkit.ParamsValue("100"),
-			},
-		},
-		{
-			name:           "keep_null false and NULL seq",
-			columnName:     "id8",
-			originalValue:  "\\N",
-			expectedRegexp: `^\d{1,3}$`,
-			params: map[string]toolkit.ParamsValue{
-				"min":       toolkit.ParamsValue("1"),
-				"max":       toolkit.ParamsValue("100"),
+				"min":       toolkit.ParamsValue("-100000000000000000000"),
+				"max":       toolkit.ParamsValue("100000000000000000000"),
 				"keep_null": toolkit.ParamsValue("false"),
 			},
+			expected: expected{
+				min: decimal.RequireFromString("-100000000000000000000"),
+				max: decimal.RequireFromString("100000000000000000000"),
+			},
 		},
 		{
-			name:           "keep_null true and NULL seq",
-			columnName:     "id8",
-			originalValue:  "\\N",
-			expectedRegexp: fmt.Sprintf(`^(\%s)$`, "\\N"),
+			name:          "keep_null true and NULL seq",
+			columnName:    "id_numeric",
+			originalValue: "\\N",
 			params: map[string]toolkit.ParamsValue{
-				"min":       toolkit.ParamsValue("1"),
-				"max":       toolkit.ParamsValue("100"),
+				"min":       toolkit.ParamsValue("10000000000000000000"),
+				"max":       toolkit.ParamsValue("100000000000000000000"),
 				"keep_null": toolkit.ParamsValue("true"),
-				"engine":    toolkit.ParamsValue("random"),
+			},
+			expected: expected{
+				isNull: true,
 			},
 		},
 	}
@@ -79,7 +73,7 @@ func TestRandomIntTransformer_Transform_random_static(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			tt.params["column"] = toolkit.ParamsValue(tt.columnName)
 			driver, record := getDriverAndRecord(tt.columnName, tt.originalValue)
-			def, ok := utils.DefaultTransformerRegistry.Get("Integer")
+			def, ok := utils.DefaultTransformerRegistry.Get("RandomNumeric")
 			require.True(t, ok)
 
 			transformer, warnings, err := def.Instance(
@@ -97,17 +91,26 @@ func TestRandomIntTransformer_Transform_random_static(t *testing.T) {
 			)
 			require.NoError(t, err)
 
-			encoded, err := r.Encode()
+			var res decimal.Decimal
+			empty, err := r.ScanColumnValueByName(tt.columnName, &res)
 			require.NoError(t, err)
-			res, err := encoded.Encode()
-			require.NoError(t, err)
-			require.Regexp(t, tt.expectedRegexp, string(res))
+			log.Debug().
+				Str("min", tt.expected.min.String()).
+				Str("max", tt.expected.max.String()).
+				Str("res", res.String()).
+				Msg("")
+
+			if tt.expected.isNull {
+				require.True(t, empty)
+			} else {
+				require.True(t, res.GreaterThanOrEqual(tt.expected.min) && res.LessThanOrEqual(tt.expected.max))
+			}
 		})
 	}
 
 }
 
-func TestRandomIntTransformer_Transform_random_dynamic(t *testing.T) {
+func TestBigIntTransformer_Transform_random_dynamic(t *testing.T) {
 
 	type expected struct {
 		min int64
@@ -123,19 +126,18 @@ func TestRandomIntTransformer_Transform_random_dynamic(t *testing.T) {
 		expected      expected
 	}{
 		{
-			name:       "int4",
-			columnName: "id4",
+			name:       "id_numeric",
+			columnName: "id_numeric",
 			record: map[string]*toolkit.RawValue{
-				"id4":      toolkit.NewRawValue([]byte("123"), false),
-				"int4_val": toolkit.NewRawValue([]byte("10"), false),
+				"id_numeric":  toolkit.NewRawValue([]byte("-1000020102102"), false),
+				"val_numeric": toolkit.NewRawValue([]byte("10"), false),
 			},
 			params: map[string]toolkit.ParamsValue{
-				"max":    toolkit.ParamsValue("10000000"),
-				"engine": toolkit.ParamsValue("random"),
+				"max": toolkit.ParamsValue("10000000"),
 			},
 			dynamicParams: map[string]*toolkit.DynamicParamValue{
 				"min": {
-					Column: "int4_val",
+					Column: "val_numeric",
 				},
 			},
 			expected: expected{
@@ -151,7 +153,7 @@ func TestRandomIntTransformer_Transform_random_dynamic(t *testing.T) {
 			driver, record := toolkit.GetDriverAndRecord(tt.record)
 
 			tt.params["column"] = toolkit.ParamsValue(tt.columnName)
-			def, ok := utils.DefaultTransformerRegistry.Get("Integer")
+			def, ok := utils.DefaultTransformerRegistry.Get("RandomNumeric")
 			require.True(t, ok)
 
 			transformer, warnings, err := def.Instance(
@@ -185,7 +187,7 @@ func TestRandomIntTransformer_Transform_random_dynamic(t *testing.T) {
 	}
 }
 
-func TestRandomIntTransformer_Transform_deterministic_dynamic(t *testing.T) {
+func TestBigIntTransformer_Transform_deterministic_dynamic(t *testing.T) {
 	type expected struct {
 		min int64
 		max int64
@@ -200,11 +202,11 @@ func TestRandomIntTransformer_Transform_deterministic_dynamic(t *testing.T) {
 		expected      expected
 	}{
 		{
-			name:       "int4",
-			columnName: "id4",
+			name:       "numeric",
+			columnName: "id_numeric",
 			record: map[string]*toolkit.RawValue{
-				"id4":      toolkit.NewRawValue([]byte("123"), false),
-				"int4_val": toolkit.NewRawValue([]byte("10"), false),
+				"id_numeric":  toolkit.NewRawValue([]byte("-1000020102102"), false),
+				"val_numeric": toolkit.NewRawValue([]byte("10"), false),
 			},
 			params: map[string]toolkit.ParamsValue{
 				"max":    toolkit.ParamsValue("10000000"),
@@ -212,7 +214,7 @@ func TestRandomIntTransformer_Transform_deterministic_dynamic(t *testing.T) {
 			},
 			dynamicParams: map[string]*toolkit.DynamicParamValue{
 				"min": {
-					Column: "int4_val",
+					Column: "val_numeric",
 				},
 			},
 			expected: expected{
@@ -222,7 +224,7 @@ func TestRandomIntTransformer_Transform_deterministic_dynamic(t *testing.T) {
 		},
 	}
 
-	ctx := context.WithValue(context.Background(), "salt", []byte("12345abcd"))
+	ctx := context.WithValue(context.Background(), "salt", []byte("ffaacc"))
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -230,7 +232,7 @@ func TestRandomIntTransformer_Transform_deterministic_dynamic(t *testing.T) {
 			driver, record := toolkit.GetDriverAndRecord(tt.record)
 
 			tt.params["column"] = toolkit.ParamsValue(tt.columnName)
-			def, ok := utils.DefaultTransformerRegistry.Get("Integer")
+			def, ok := utils.DefaultTransformerRegistry.Get("RandomNumeric")
 			require.True(t, ok)
 
 			transformer, warnings, err := def.Instance(

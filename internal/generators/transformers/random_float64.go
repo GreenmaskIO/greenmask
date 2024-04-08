@@ -26,28 +26,28 @@ func NewFloat64Limiter(minValue, maxValue float64, precision int) (*Float64Limit
 }
 
 func (fl *Float64Limiter) Limit(v float64) float64 {
-	res := fl.minValue + v*(fl.maxValue) - v*(fl.minValue)
+	res := fl.minValue + v*(fl.maxValue-fl.minValue)
 	return Round(fl.precision, res)
 }
 
-type Float64Transformer struct {
+type RandomFloat64Transformer struct {
 	byteLength int
 	generator  generators.Generator
 	limiter    *Float64Limiter
 }
 
-func NewFloat64Transformer(limiter *Float64Limiter) *Float64Transformer {
-	return &Float64Transformer{
+func NewRandomFloat64Transformer(limiter *Float64Limiter) *RandomFloat64Transformer {
+	return &RandomFloat64Transformer{
 		byteLength: 8,
 		limiter:    limiter,
 	}
 }
 
-func (f *Float64Transformer) GetRequiredGeneratorByteLength() int {
+func (f *RandomFloat64Transformer) GetRequiredGeneratorByteLength() int {
 	return f.byteLength
 }
 
-func (f *Float64Transformer) SetGenerator(g generators.Generator) error {
+func (f *RandomFloat64Transformer) SetGenerator(g generators.Generator) error {
 	if g.Size() < f.byteLength {
 		return fmt.Errorf("requested byte length (%d) higher than generator can produce (%d)", f.byteLength, g.Size())
 	}
@@ -55,7 +55,7 @@ func (f *Float64Transformer) SetGenerator(g generators.Generator) error {
 	return nil
 }
 
-func (f *Float64Transformer) Transform(ctx context.Context, original []byte) (float64, error) {
+func (f *RandomFloat64Transformer) Transform(ctx context.Context, original []byte) (float64, error) {
 
 	limiter := f.limiter
 	limiterAny := ctx.Value("limiter")

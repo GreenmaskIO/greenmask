@@ -9,18 +9,18 @@ import (
 
 const uuidTransformerRequiredLength = 16
 
-type UuidTransformer struct {
+type RandomUuidTransformer struct {
 	byteLength int
 	generator  generators.Generator
 }
 
-func NewUuidTransformer() *UuidTransformer {
-	return &UuidTransformer{
+func NewRandomUuidTransformer() *RandomUuidTransformer {
+	return &RandomUuidTransformer{
 		byteLength: uuidTransformerRequiredLength,
 	}
 }
 
-func (ut *UuidTransformer) Transform(data []byte) (uuid.UUID, error) {
+func (ut *RandomUuidTransformer) Transform(data []byte) (uuid.UUID, error) {
 	resBytes, err := ut.generator.Generate(data)
 	if err != nil {
 		return uuid.UUID{}, fmt.Errorf("failed to generate random bytes: %w", err)
@@ -28,11 +28,11 @@ func (ut *UuidTransformer) Transform(data []byte) (uuid.UUID, error) {
 	return uuid.FromBytes(resBytes)
 }
 
-func (ut *UuidTransformer) GetRequiredGeneratorByteLength() int {
+func (ut *RandomUuidTransformer) GetRequiredGeneratorByteLength() int {
 	return ut.byteLength
 }
 
-func (ut *UuidTransformer) SetGenerator(g generators.Generator) error {
+func (ut *RandomUuidTransformer) SetGenerator(g generators.Generator) error {
 	if g.Size() < ut.byteLength {
 		return fmt.Errorf("requested byte length (%d) higher than generator can produce (%d)", ut.byteLength, g.Size())
 	}

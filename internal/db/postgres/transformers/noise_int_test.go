@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/rs/zerolog/log"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -71,8 +72,8 @@ func TestNoiseIntTransformer_Transform(t *testing.T) {
 			transformerCtx, warnings, err := NoiseIntTransformerDefinition.Instance(
 				context.Background(),
 				driver, map[string]toolkit.ParamsValue{
-					"column": toolkit.ParamsValue(tt.columnName),
-					"ratio":  toolkit.ParamsValue(fmt.Sprintf("%f", tt.ratio)),
+					"column":    toolkit.ParamsValue(tt.columnName),
+					"min_ratio": toolkit.ParamsValue(fmt.Sprintf("%f", tt.ratio)),
 				},
 				nil,
 			)
@@ -90,6 +91,9 @@ func TestNoiseIntTransformer_Transform(t *testing.T) {
 			require.NoError(t, err)
 			require.Equal(t, tt.result.isNull, isNull)
 			if !isNull {
+				log.Debug().
+					Str("original", tt.originalValue).
+					Int64("transformed", res).Msg("")
 				assert.GreaterOrEqual(t, res, tt.result.min)
 				assert.LessOrEqual(t, res, tt.result.max)
 			}

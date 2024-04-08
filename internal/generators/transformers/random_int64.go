@@ -13,11 +13,9 @@ var (
 )
 
 type Int64Limiter struct {
-	MinValue         int64
-	MaxValue         int64
-	maxValueFromZero uint64
-	// offset - the offset from zero
-	offset int64
+	MinValue int64
+	MaxValue int64
+	distance uint64
 }
 
 func NewInt64Limiter(minValue, maxValue int64) (*Int64Limiter, error) {
@@ -25,41 +23,35 @@ func NewInt64Limiter(minValue, maxValue int64) (*Int64Limiter, error) {
 		return nil, ErrWrongLimits
 	}
 
-	maxValueFromZero := uint64(maxValue)
-	offset := minValue
-
-	if minValue < 0 {
-		maxValueFromZero = uint64(maxValue) + uint64(-minValue)
-	} else if minValue > 0 {
-		maxValueFromZero = uint64(maxValue - minValue)
-	}
-
 	return &Int64Limiter{
-		MinValue:         minValue,
-		MaxValue:         maxValue,
-		maxValueFromZero: maxValueFromZero,
-		offset:           offset,
+		MinValue: minValue,
+		MaxValue: maxValue,
+		distance: uint64(maxValue - minValue),
 	}, nil
 }
 
 func (l *Int64Limiter) Limit(v uint64) int64 {
-	return int64(v%l.maxValueFromZero) + l.offset
+	res := l.MinValue + int64(v%l.distance)
+	if res < 0 {
+		return res % l.MinValue
+	}
+	return res % l.MaxValue
 }
 
-type Int64Transformer struct {
+type RandomInt64Transformer struct {
 	generator  generators.Generator
 	limiter    *Int64Limiter
 	byteLength int
 }
 
-func NewInt64Transformer(limiter *Int64Limiter, size int) (*Int64Transformer, error) {
-	return &Int64Transformer{
+func NewRandomInt64Transformer(limiter *Int64Limiter, size int) (*RandomInt64Transformer, error) {
+	return &RandomInt64Transformer{
 		limiter:    limiter,
 		byteLength: size,
 	}, nil
 }
 
-func (ig *Int64Transformer) Transform(ctx context.Context, original []byte) (int64, error) {
+func (ig *RandomInt64Transformer) Transform(ctx context.Context, original []byte) (int64, error) {
 	var res int64
 	var limiter = ig.limiter
 	limiterAny := ctx.Value("limiter")
@@ -82,11 +74,11 @@ func (ig *Int64Transformer) Transform(ctx context.Context, original []byte) (int
 	return res, nil
 }
 
-func (ig *Int64Transformer) GetRequiredGeneratorByteLength() int {
+func (ig *RandomInt64Transformer) GetRequiredGeneratorByteLength() int {
 	return ig.byteLength
 }
 
-func (ig *Int64Transformer) SetGenerator(g generators.Generator) error {
+func (ig *RandomInt64Transformer) SetGenerator(g generators.Generator) error {
 	if g.Size() < ig.byteLength {
 		return fmt.Errorf("requested byte length (%d) higher than generator can produce (%d)", ig.byteLength, g.Size())
 	}

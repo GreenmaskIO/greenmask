@@ -44,7 +44,7 @@ func TestTimestamp_Transform(t *testing.T) {
 	l, err := NewTimestampLimiter(minDate, maxDate)
 	require.NoError(t, err)
 	gen := generators.NewRandomBytes(0, 16)
-	tr, err := NewTimestamp("", l)
+	tr, err := NewRandomTimestamp("", l)
 	require.NoError(t, err)
 	err = tr.SetGenerator(gen)
 	require.NoError(t, err)

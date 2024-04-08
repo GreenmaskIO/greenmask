@@ -1,4 +1,4 @@
-package transformers_new
+package transformers
 
 import (
 	"context"
@@ -15,7 +15,7 @@ const bigIntegerTransformerGenByteLength = 20
 
 var numericTransformerDefinition = utils.NewTransformerDefinition(
 	utils.NewTransformerProperties(
-		"Numeric",
+		"RandomNumeric",
 		"Generate numeric value in min and max thresholds",
 	),
 
@@ -29,6 +29,11 @@ var numericTransformerDefinition = utils.NewTransformerDefinition(
 			SetAffected(true).
 			SetAllowedColumnTypes("numeric", "decimal"),
 	).SetRequired(true),
+
+	toolkit.MustNewParameterDefinition(
+		"precision",
+		"the value precision",
+	).SetDefaultValue([]byte("0")),
 
 	toolkit.MustNewParameterDefinition(
 		"min",
@@ -58,7 +63,7 @@ var numericTransformerDefinition = utils.NewTransformerDefinition(
 )
 
 type NumericTransformer struct {
-	*transformers.DecimalTransformer
+	*transformers.RandomDecimalTransformer
 	columnName      string
 	keepNull        bool
 	affectedColumns map[int]string
@@ -69,12 +74,13 @@ type NumericTransformer struct {
 	minAllowedValue decimal.Decimal
 	maxAllowedValue decimal.Decimal
 
-	columnParam   toolkit.Parameterizer
-	maxParam      toolkit.Parameterizer
-	minParam      toolkit.Parameterizer
-	keepNullParam toolkit.Parameterizer
-	engineParam   toolkit.Parameterizer
-	transform     func(context.Context, []byte) (decimal.Decimal, error)
+	columnParam    toolkit.Parameterizer
+	maxParam       toolkit.Parameterizer
+	minParam       toolkit.Parameterizer
+	keepNullParam  toolkit.Parameterizer
+	engineParam    toolkit.Parameterizer
+	precisionParam toolkit.Parameterizer
+	transform      func(context.Context, []byte) (decimal.Decimal, error)
 }
 
 func NewNumericTransformer(ctx context.Context, driver *toolkit.Driver, parameters map[string]toolkit.Parameterizer) (utils.Transformer, toolkit.ValidationWarnings, error) {
@@ -82,17 +88,22 @@ func NewNumericTransformer(ctx context.Context, driver *toolkit.Driver, paramete
 	var columnName, engine string
 	var minVal, maxVal decimal.Decimal
 	var keepNull, dynamicMode bool
+	var precision int32
 
 	columnParam := parameters["column"]
 	minParam := parameters["min"]
 	maxParam := parameters["max"]
 	keepNullParam := parameters["keep_null"]
 	engineParam := parameters["engine"]
+	precisionParam := parameters["precision"]
 
 	if err := engineParam.Scan(&engine); err != nil {
 		return nil, nil, fmt.Errorf(`unable to scan "engine" param: %w`, err)
 	}
 
+	if err := precisionParam.Scan(&precision); err != nil {
+		return nil, nil, fmt.Errorf(`unable to scan "precision" param: %w`, err)
+	}
 	if minParam.IsDynamic() || maxParam.IsDynamic() {
 		dynamicMode = true
 	}
@@ -129,7 +140,7 @@ func NewNumericTransformer(ctx context.Context, driver *toolkit.Driver, paramete
 		return nil, limitsWarnings, nil
 	}
 
-	t, err := transformers.NewDecimalTransformer(limiter, 0)
+	t, err := transformers.NewRandomDecimalTransformer(limiter, precision)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error initializing common int transformer: %w", err)
 	}
@@ -143,21 +154,22 @@ func NewNumericTransformer(ctx context.Context, driver *toolkit.Driver, paramete
 	}
 
 	return &NumericTransformer{
-		DecimalTransformer: t,
-		columnName:         columnName,
-		keepNull:           keepNull,
-		affectedColumns:    affectedColumns,
-		columnIdx:          idx,
-		minAllowedValue:    limiter.MinValue,
-		maxAllowedValue:    limiter.MaxValue,
+		RandomDecimalTransformer: t,
+		columnName:               columnName,
+		keepNull:                 keepNull,
+		affectedColumns:          affectedColumns,
+		columnIdx:                idx,
+		minAllowedValue:          limiter.MinValue,
+		maxAllowedValue:          limiter.MaxValue,
 
-		columnParam:   columnParam,
-		minParam:      minParam,
-		maxParam:      maxParam,
-		keepNullParam: keepNullParam,
-		engineParam:   engineParam,
-		numericSize:   c.Length,
-		transform:     t.Transform,
+		columnParam:    columnParam,
+		minParam:       minParam,
+		maxParam:       maxParam,
+		keepNullParam:  keepNullParam,
+		engineParam:    engineParam,
+		precisionParam: precisionParam,
+		numericSize:    c.Length,
+		transform:      t.Transform,
 
 		dynamicMode: dynamicMode,
 	}, nil, nil
@@ -195,7 +207,7 @@ func (bit *NumericTransformer) dynamicTransform(ctx context.Context, v []byte) (
 		return decimal.Decimal{}, fmt.Errorf("error creating limiter in dynamic mode: %w", err)
 	}
 	ctx = context.WithValue(ctx, "limiter", limiter)
-	return bit.DecimalTransformer.Transform(ctx, v)
+	return bit.RandomDecimalTransformer.Transform(ctx, v)
 }
 
 func (bit *NumericTransformer) Transform(ctx context.Context, r *toolkit.Record) (*toolkit.Record, error) {

@@ -12,11 +12,9 @@ import (
 )
 
 type DecimalLimiter struct {
-	MinValue         decimal.Decimal
-	MaxValue         decimal.Decimal
-	maxValueFromZero decimal.Decimal
-	// offset - the offset from zero
-	offset        decimal.Decimal
+	MinValue      decimal.Decimal
+	MaxValue      decimal.Decimal
+	distance      decimal.Decimal
 	precision     int32
 	withPrecision bool
 }
@@ -27,21 +25,10 @@ func NewDecimalLimiter(minValue, maxValue decimal.Decimal) (*DecimalLimiter, err
 		return nil, ErrWrongLimits
 	}
 
-	maxValueFromZero := maxValue
-	offset := minValue
-
-	if minValue.LessThan(decimal.NewFromInt(0)) {
-		maxValueFromZero = maxValue.Add(decimal.NewFromInt(-1).Mul(minValue)) //uint64(maxValue) + uint64(-minValue)
-	} else if minValue.GreaterThan(decimal.NewFromInt(0)) /* minValue > 0*/ {
-		//maxValueFromZero = uint64(maxValue - minValue)
-		maxValueFromZero = maxValue.Add(minValue)
-	}
-
 	return &DecimalLimiter{
-		MinValue:         minValue,
-		MaxValue:         maxValue,
-		maxValueFromZero: maxValueFromZero,
-		offset:           offset,
+		MinValue: minValue,
+		MaxValue: maxValue,
+		distance: maxValue.Sub(minValue),
 	}, nil
 }
 
@@ -75,39 +62,44 @@ func (l *DecimalLimiter) ByteLength() int {
 }
 
 func (l *DecimalLimiter) Limit(v decimal.Decimal) decimal.Decimal {
-	res := v.Mod(l.maxValueFromZero).Add(l.offset)
+	res := l.MinValue.Add(v.Mod(l.distance))
+	if res.GreaterThan(l.MaxValue) {
+		res = res.Mod(l.MaxValue)
+	} else if res.LessThan(l.MinValue) {
+		res = res.Mod(l.MinValue)
+	}
 	if l.withPrecision {
 		res = res.Round(l.precision)
 	}
 	return res
 }
 
-type DecimalTransformer struct {
+type RandomDecimalTransformer struct {
 	generator  generators.Generator
 	limiter    *DecimalLimiter
 	byteLength int
 	precision  int32
 }
 
-func NewDecimalTransformer(limiter *DecimalLimiter, precision int32) (*DecimalTransformer, error) {
+func NewRandomDecimalTransformer(limiter *DecimalLimiter, precision int32) (*RandomDecimalTransformer, error) {
 	if limiter == nil {
 		return nil, fmt.Errorf("limiter for BigInt values cannot be nil")
 	}
 
 	maxBytesLength := max(getByteByDecimal(limiter.MinValue), getByteByDecimal(limiter.MaxValue))
 
-	return &DecimalTransformer{
+	return &RandomDecimalTransformer{
 		limiter:    limiter,
 		byteLength: maxBytesLength,
 		precision:  -precision,
 	}, nil
 }
 
-func (ig *DecimalTransformer) GetRequiredGeneratorByteLength() int {
+func (ig *RandomDecimalTransformer) GetRequiredGeneratorByteLength() int {
 	return ig.byteLength
 }
 
-func (ig *DecimalTransformer) SetGenerator(g generators.Generator) error {
+func (ig *RandomDecimalTransformer) SetGenerator(g generators.Generator) error {
 	if g.Size() < ig.byteLength {
 		return fmt.Errorf("requested byte length (%d) higher than generator can produce (%d)", ig.byteLength, g.Size())
 	}
@@ -115,7 +107,7 @@ func (ig *DecimalTransformer) SetGenerator(g generators.Generator) error {
 	return nil
 }
 
-func (ig *DecimalTransformer) Transform(ctx context.Context, original []byte) (decimal.Decimal, error) {
+func (ig *RandomDecimalTransformer) Transform(ctx context.Context, original []byte) (decimal.Decimal, error) {
 	var res decimal.Decimal
 	var limiter = ig.limiter
 	limiterAny := ctx.Value("limiter")
@@ -130,6 +122,9 @@ func (ig *DecimalTransformer) Transform(ctx context.Context, original []byte) (d
 	}
 
 	res = newDecimalFromBytes(resBytes[:ig.byteLength], ig.precision)
+	if res.LessThan(decimal.NewFromInt(0)) {
+		res = res.Mul(decimal.NewFromInt(-1))
+	}
 	res = limiter.Limit(res)
 
 	return res, nil

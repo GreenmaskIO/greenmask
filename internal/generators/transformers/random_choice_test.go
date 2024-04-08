@@ -13,7 +13,7 @@ func TestChoiceTransformer_Transform(t *testing.T) {
 		{Data: []byte("a")},
 		{Data: []byte("b")},
 	}
-	tr := NewChoiceTransformer(data)
+	tr := NewRandomChoiceTransformer(data)
 	g, err := generators.NewHash([]byte{}, "sha1")
 	require.NoError(t, err)
 	g = generators.NewHashReducer(g, tr.GetRequiredGeneratorByteLength())

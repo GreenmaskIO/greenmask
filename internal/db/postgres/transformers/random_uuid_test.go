@@ -71,7 +71,7 @@ func TestUuidTransformer_Transform_uuid_type(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			tt.params["column"] = toolkit.ParamsValue(tt.columnName)
 			driver, record := getDriverAndRecord(tt.columnName, tt.original)
-			transformerCtx, warnings, err := RandomUuidTransformerDefinition.Instance(
+			transformerCtx, warnings, err := uuidTransformerDefinition.Instance(
 				context.Background(),
 				driver,
 				tt.params,

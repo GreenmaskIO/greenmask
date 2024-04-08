@@ -1,4 +1,4 @@
-package transformers_new
+package transformers
 
 import (
 	"context"
@@ -21,7 +21,7 @@ const (
 
 var unixTimestampTransformerDefinition = utils.NewTransformerDefinition(
 	utils.NewTransformerProperties(
-		"UnixTimestamp",
+		"RandomUnixTimestamp",
 		"Generate UnixTimestamp in the provided interval with unit",
 	),
 
