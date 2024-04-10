@@ -15,6 +15,7 @@
 package utils
 
 import (
+	"math/rand"
 	"testing"
 	"time"
 
@@ -79,6 +80,46 @@ func TestRandomDateTruncateDate(t *testing.T) {
 			res, err := TruncateDate(&tt.part, &tt.original)
 			require.NoError(t, err)
 			assert.Equal(t, tt.expected, *res)
+		})
+	}
+}
+
+func TestRandomString(t *testing.T) {
+	r := rand.New(rand.NewSource(time.Now().UnixMicro()))
+	tests := []struct {
+		name    string
+		min     int64
+		max     int64
+		symbols []rune
+	}{
+		{
+			name:    "result is shorter than sequence",
+			min:     10,
+			max:     20,
+			symbols: []rune("0123456789"),
+		},
+		{
+			name:    "long sequence and variadic length",
+			min:     10,
+			max:     20,
+			symbols: []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890"),
+		},
+		{
+			name:    "static length and and short sequence",
+			min:     20,
+			max:     20,
+			symbols: []rune("0123456789"),
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			buf := make([]rune, tt.max)
+			res := RandomString(r, tt.min, tt.max, tt.symbols, buf)
+			require.True(t, len(res) >= int(tt.min))
+			for idx, ch := range res {
+				assert.Containsf(t, tt.symbols, ch, "unexpected symbol [%d]=%c", idx, ch)
+			}
 		})
 	}
 }
