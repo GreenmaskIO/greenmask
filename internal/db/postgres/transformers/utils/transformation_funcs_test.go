@@ -93,19 +93,19 @@ func TestRandomString(t *testing.T) {
 		symbols []rune
 	}{
 		{
-			name:    "min length",
+			name:    "result is shorter than sequence",
 			min:     10,
 			max:     20,
 			symbols: []rune("0123456789"),
 		},
 		{
-			name:    "max length",
+			name:    "long sequence and variadic length",
 			min:     10,
 			max:     20,
-			symbols: []rune("abcdefg12345678990,al-"),
+			symbols: []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890"),
 		},
 		{
-			name:    "empty symbols",
+			name:    "static length and and short sequence",
 			min:     20,
 			max:     20,
 			symbols: []rune("0123456789"),
