@@ -139,7 +139,7 @@ func RandomString(randGen *rand.Rand, minLength, maxLength int64, symbols []rune
 	}
 
 	for i := int64(0); i < length; i++ {
-		buf[i] = symbols[rand.Int63n(maxLength)]
+		buf[i] = symbols[rand.Int63n(maxLength)%int64(len(symbols))]
 	}
 	return string(buf[:length])
 }
