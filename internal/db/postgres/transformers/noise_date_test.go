@@ -43,8 +43,8 @@ func TestNoiseDateTransformer_Transform(t *testing.T) {
 		{
 			name: "test date type",
 			params: map[string]toolkit.ParamsValue{
-				"ratio":  toolkit.ParamsValue("1 year 1 mons 1 day 01:01:01.01"),
-				"column": toolkit.ParamsValue("date_date"),
+				"max_ratio": toolkit.ParamsValue("1 year 1 mons 1 day 01:01:01.01"),
+				"column":    toolkit.ParamsValue("date_date"),
 			},
 			original: "2023-06-25",
 			result: result{
@@ -56,8 +56,8 @@ func TestNoiseDateTransformer_Transform(t *testing.T) {
 		{
 			name: "test timestamp without timezone type",
 			params: map[string]toolkit.ParamsValue{
-				"ratio":  toolkit.ParamsValue("1 year 1 mons 1 day 01:01:01.01"),
-				"column": toolkit.ParamsValue("date_ts"),
+				"max_ratio": toolkit.ParamsValue("1 year 1 mons 1 day 01:01:01.01"),
+				"column":    toolkit.ParamsValue("date_ts"),
 			},
 			original: "2023-06-25 00:00:00",
 			result: result{
@@ -69,8 +69,8 @@ func TestNoiseDateTransformer_Transform(t *testing.T) {
 		{
 			name: "test timestamp with timezone type",
 			params: map[string]toolkit.ParamsValue{
-				"ratio":  toolkit.ParamsValue("1 year 1 mons 1 day 01:01:01.01"),
-				"column": toolkit.ParamsValue("date_tstz"),
+				"max_ratio": toolkit.ParamsValue("1 year 1 mons 1 day 01:01:01.01"),
+				"column":    toolkit.ParamsValue("date_tstz"),
 			},
 			original: "2023-06-25 00:00:00.0+03",
 			result: result{
@@ -82,9 +82,9 @@ func TestNoiseDateTransformer_Transform(t *testing.T) {
 		{
 			name: "test timestamp type with Truncate till day",
 			params: map[string]toolkit.ParamsValue{
-				"ratio":    toolkit.ParamsValue("1 year 1 mons 1 day 01:01:01.01"),
-				"truncate": toolkit.ParamsValue("month"),
-				"column":   toolkit.ParamsValue("date_ts"),
+				"max_ratio": toolkit.ParamsValue("1 year 1 mons 1 day 01:01:01.01"),
+				"truncate":  toolkit.ParamsValue("month"),
+				"column":    toolkit.ParamsValue("date_ts"),
 			},
 			original: "2023-06-25 00:00:00",
 			result: result{

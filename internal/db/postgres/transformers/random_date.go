@@ -18,7 +18,6 @@ import (
 	"context"
 	"fmt"
 	"slices"
-	"strings"
 	"time"
 
 	"github.com/greenmaskio/greenmask/internal/db/postgres/transformers/utils"
@@ -68,10 +67,7 @@ var timestampTransformerDefinition = utils.NewTransformerDefinition(
 				SetCompatibleTypes("date", "timestamp", "timestamptz"),
 		),
 
-	toolkit.MustNewParameterDefinition(
-		"truncate",
-		fmt.Sprintf("truncate date till the part (%s)", strings.Join(truncateParts, ", ")),
-	).SetRawValueValidator(validateDateTruncationParameterValue),
+	truncateDateParameterDefinition,
 
 	keepNullParameterDefinition,
 

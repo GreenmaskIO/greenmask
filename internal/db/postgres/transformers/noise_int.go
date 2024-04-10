@@ -41,16 +41,6 @@ var NoiseIntTransformerDefinition = utils.NewTransformerDefinition(
 	).SetRequired(true),
 
 	toolkit.MustNewParameterDefinition(
-		"min_ratio",
-		"max random percentage for noise",
-	).SetDefaultValue(toolkit.ParamsValue("0.2")),
-
-	toolkit.MustNewParameterDefinition(
-		"max_ratio",
-		"max random percentage for noise",
-	).SetDefaultValue(toolkit.ParamsValue("0.05")),
-
-	toolkit.MustNewParameterDefinition(
 		"min",
 		"min value threshold limiter",
 	).SetDynamicMode(
@@ -65,6 +55,10 @@ var NoiseIntTransformerDefinition = utils.NewTransformerDefinition(
 		toolkit.NewDynamicModeProperties().
 			SetCompatibleTypes("int2", "int4", "int8"),
 	),
+
+	minRationParameterDefinition,
+
+	maxRationParameterDefinition,
 
 	engineParameterDefinition,
 )
@@ -95,10 +89,10 @@ func NewNoiseIntTransformer(ctx context.Context, driver *toolkit.Driver, paramet
 	var dynamicMode bool
 
 	columnParam := parameters["column"]
-	maxRatioParam := parameters["min_ratio"]
-	minRatioParam := parameters["max_ratio"]
-	maxParam := parameters["min"]
-	minParam := parameters["max"]
+	maxRatioParam := parameters["max_ratio"]
+	minRatioParam := parameters["min_ratio"]
+	maxParam := parameters["max"]
+	minParam := parameters["min"]
 	engineParam := parameters["engine"]
 
 	if err := engineParam.Scan(&engine); err != nil {
@@ -118,6 +112,10 @@ func NewNoiseIntTransformer(ctx context.Context, driver *toolkit.Driver, paramet
 
 	if c.Length != -1 {
 		intSize = c.Length
+	}
+
+	if minParam.IsDynamic() || maxParam.IsDynamic() {
+		dynamicMode = true
 	}
 
 	if !dynamicMode {
