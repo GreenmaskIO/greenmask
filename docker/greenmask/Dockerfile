@@ -45,4 +45,6 @@ RUN mkdir ~/.bash_completions \
     && echo 'source /etc/bash_completion' >> ~/.bashrc \
     && echo 'source ~/.bash_completions/greenmask.bash' >> ~/.bashrc
 
+WORKDIR /home/greenmask
+
 ENTRYPOINT ["greenmask"]
