@@ -46,6 +46,7 @@ var (
 			if err != nil {
 				log.Fatal().Err(err).Msg("fatal")
 			}
+			st = st.SubStorage(Config.Dump.PgDumpOptions.DbName,true)
 			st = st.SubStorage(strconv.FormatInt(time.Now().UnixMilli(), 10), true)
 
 			if Config.Common.TempDirectory == "" {
