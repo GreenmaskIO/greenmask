@@ -60,7 +60,7 @@ type Storage struct {
 	delimiter string
 }
 
-func NewStorage(ctx context.Context, cfg *Config, logLevel string) (*Storage, error) {
+func NewStorage(ctx context.Context, cfg *Config, prefix string, logLevel string) (*Storage, error) {
 
 	ses, err := session.NewSession()
 	if err != nil {
@@ -165,7 +165,7 @@ func NewStorage(ctx context.Context, cfg *Config, logLevel string) (*Storage, er
 		Msg("s3 storage bucket")
 
 	return &Storage{
-		prefix:   fixPrefix(cfg.Prefix),
+		prefix:   fixPrefix(prefix),
 		session:  ses,
 		config:   cfg,
 		service:  service,

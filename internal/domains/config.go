@@ -83,6 +83,7 @@ type Common struct {
 
 type StorageConfig struct {
 	Type      string            `mapstructure:"type" yaml:"type" json:"type,omitempty"`
+	Prefix    string            `mapstructure:"prefix" yaml:"prefix" json:"prefix,omitempty"`
 	S3        *s3.Config        `mapstructure:"s3"  json:"s3,omitempty" yaml:"s3"`
 	Directory *directory.Config `mapstructure:"directory" json:"directory,omitempty" yaml:"directory"`
 }

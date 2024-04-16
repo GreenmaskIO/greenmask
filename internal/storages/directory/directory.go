@@ -40,7 +40,7 @@ type Storage struct {
 	mx       sync.Mutex
 }
 
-func NewStorage(cfg *Config) (*Storage, error) {
+func NewStorage(cfg *Config, prefix string) (*Storage, error) {
 	// TODO: We would replace hardcoded file mask to Umask for unix system
 	fileInfo, err := os.Stat(cfg.Path)
 	if err != nil {
@@ -52,7 +52,7 @@ func NewStorage(cfg *Config) (*Storage, error) {
 	return &Storage{
 		dirMode:  dirMode,
 		fileMode: fileMode,
-		cwd:      cfg.Path,
+		cwd:      fmt.Sprintf("%s/%s", prefix, cfg.Path),
 	}, nil
 }
 
