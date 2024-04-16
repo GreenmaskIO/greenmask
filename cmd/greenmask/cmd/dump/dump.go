@@ -46,8 +46,7 @@ var (
 			if err != nil {
 				log.Fatal().Err(err).Msg("fatal")
 			}
-			st = st.SubStorage(Config.Dump.PgDumpOptions.DbName,true)
-			st = st.SubStorage(strconv.FormatInt(time.Now().UnixMilli(), 10), true)
+			st = st.SubStorage(fmt.Sprintf("%s/%s", Config.Dump.PgDumpOptions.DbName, strconv.FormatInt(time.Now().UnixMilli(), 10)), true)
 
 			if Config.Common.TempDirectory == "" {
 				log.Fatal().Msg("common.tmp_dir cannot be empty")
