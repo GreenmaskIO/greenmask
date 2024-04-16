@@ -52,7 +52,7 @@ func NewStorage(cfg *Config, prefix string) (*Storage, error) {
 	return &Storage{
 		dirMode:  dirMode,
 		fileMode: fileMode,
-		cwd:      fmt.Sprintf("%s/%s", prefix, cfg.Path),
+		cwd:      path.Join(fixPrefix(prefix), cfg.Path),
 	}, nil
 }
 
@@ -187,4 +187,11 @@ func (d *Storage) SubStorage(dp string, relative bool) storages.Storager {
 		dirMode:  d.dirMode,
 		fileMode: d.fileMode,
 	}
+}
+
+func fixPrefix(prefix string) string {
+	if prefix != "" && prefix[len(prefix)-1] != '/' {
+		prefix = prefix + "/"
+	}
+	return prefix
 }
