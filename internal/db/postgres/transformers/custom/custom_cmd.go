@@ -113,9 +113,6 @@ func (ct *CmdTransformer) Init(ctx context.Context) (err error) {
 	args := make([]string, len(ct.args))
 	copy(args, ct.args)
 	args = append(args, TransformArgName)
-	if err != nil {
-		return fmt.Errorf("cannot get metatda: %w", err)
-	}
 	err = ct.BaseInit(ct.executable, args)
 	if err != nil {
 		return err
