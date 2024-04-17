@@ -361,7 +361,13 @@ func BuildTableSearchQuery(
 		   n.nspname                              as "Schema",
 		   c.relname                              as "Name",
 		   pg_catalog.pg_get_userbyid(c.relowner) as "Owner",
-		   pg_catalog.pg_relation_size(c.oid)     as "Size",
+		   pg_catalog.pg_relation_size(c.oid) + 
+		   		coalesce(
+		   			pg_catalog.pg_relation_size(
+		   				c.reltoastrelid
+		   			), 
+		   			0
+		   		) 							      as "Size",
 		   c.relkind 							  as "RelKind",
 		   (coalesce(pn.nspname, '')) 			  as "rootPtSchema",
 		   (coalesce(pc.relname, '')) 			  as "rootPtName",
