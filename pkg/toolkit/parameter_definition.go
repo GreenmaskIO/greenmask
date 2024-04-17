@@ -151,6 +151,8 @@ type ParameterDefinition struct {
 	// ColumnProperties - detail info about expected column properties that may help to diagnose the table schema
 	// and perform validation procedure Plays only with IsColumn
 	ColumnProperties *ColumnProperties `mapstructure:"column_properties" json:"column_properties,omitempty"`
+	// SupportTemplate - shows that parameter supports golang template and might be calculated dynamically
+	SupportTemplate bool `mapstructure:"support_template" json:"support_template,omitempty"`
 	// Unmarshaller - unmarshal function for the parameter raw data []byte. Using by default json.Unmarshal function
 	Unmarshaller Unmarshaller `json:"-"`
 	// RawValueValidator - raw value validator function that performs assertion and cause ValidationWarnings if it
@@ -213,6 +215,11 @@ func (p *ParameterDefinition) SetRawValueValidator(validator RawValueValidator) 
 func (p *ParameterDefinition) SetRequired(v bool) *ParameterDefinition {
 	// Checking database types exists
 	p.Required = v
+	return p
+}
+
+func (p *ParameterDefinition) SetSupportTemplate(v bool) *ParameterDefinition {
+	p.SupportTemplate = v
 	return p
 }
 

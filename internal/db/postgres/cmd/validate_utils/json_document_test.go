@@ -80,7 +80,7 @@ func TestJsonDocument_GetRecords(t *testing.T) {
 	//	panic(err.Error())
 	//}
 	//row := pgcopy.NewRow(1)
-	//_ = row.Decode([]byte(value))
+	//_ = row.DecodeValue([]byte(value))
 	//r := toolkit.NewRecord(
 	//	driver,
 	//)

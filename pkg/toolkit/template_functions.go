@@ -103,6 +103,9 @@ func FuncMap() template.FuncMap {
 
 		"masking":      func(dataType string, v string) (string, error) { return masking(m, dataType, v) },
 		"truncateDate": truncateDate,
+		"tsModify": func(interval string, val time.Time) (time.Time, error) {
+			return tsModify(typeMap, interval, val)
+		},
 		"noiseDatePgInterval": func(interval string, val time.Time) (time.Time, error) { // TODO: Implement interval validation, do not rely on driver
 			return noiseDatePgInterval(typeMap, randGen, interval, val)
 		},
@@ -372,6 +375,23 @@ func truncateDate(part string, t time.Time) (time.Time, error) {
 		return time.Time{}, err
 	}
 	return *res, nil
+}
+
+func tsModify(typeMap *pgtype.Map, interval string, val time.Time) (time.Time, error) {
+	t, _ := typeMap.TypeForName("interval")
+	ratioInterval, err := t.Codec.DecodeValue(typeMap, t.OID, pgx.TextFormatCode, []byte(interval))
+	if err != nil {
+		return time.Time{}, fmt.Errorf("error parsing \"interval\" value \"%s\": %w", interval, err)
+	}
+	intervalValue, ok := ratioInterval.(pgtype.Interval)
+	if !ok {
+		return time.Time{}, fmt.Errorf(`cannot cast "ratio" param to interval value`)
+	}
+	dur := (time.Duration(intervalValue.Days) * time.Hour * 24) +
+		(time.Duration(intervalValue.Months) * 30 * time.Hour * 24) +
+		(time.Duration(intervalValue.Microseconds) * time.Millisecond)
+
+	return val.Add(dur), nil
 }
 
 func noiseDatePgInterval(typeMap *pgtype.Map, randGen *rand.Rand, interval string, val time.Time) (time.Time, error) {

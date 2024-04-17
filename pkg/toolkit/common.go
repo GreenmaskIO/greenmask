@@ -31,7 +31,7 @@ type ParameterValuer interface {
 type DynamicParamValue struct {
 	Column       string      `mapstructure:"column" json:"column,omitempty"`
 	CastTo       string      `mapstructure:"cast_to" json:"cast_to,omitempty"`
-	CastTemplate string      `mapstructure:"cast_template" json:"cast_template,omitempty"`
+	Template     string      `mapstructure:"template" json:"template,omitempty"`
 	DefaultValue ParamsValue `mapstructure:"default_value" json:"default_value,omitempty"`
 }
 

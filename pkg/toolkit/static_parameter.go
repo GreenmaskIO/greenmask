@@ -1,11 +1,13 @@
 package toolkit
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
 	"slices"
+	"text/template"
 	"time"
 )
 
@@ -64,6 +66,40 @@ func (sp *StaticParameter) Init(columnParams map[string]*StaticParameter, rawVal
 		sp.rawValue = slices.Clone(rawValue)
 	}
 
+	if sp.definition.LinkColumnParameter != "" {
+		param, ok := columnParams[sp.definition.LinkColumnParameter]
+		if !ok {
+			panic(fmt.Sprintf(`parameter with name "%s" is not found`, sp.definition.LinkColumnParameter))
+		}
+		sp.linkedColumnParameter = param
+		if !sp.linkedColumnParameter.definition.IsColumn {
+			return nil, fmt.Errorf("linked parameter must be column: check transformer implementation")
+		}
+	}
+
+	if len(sp.rawValue) > 0 && sp.definition.SupportTemplate {
+		tmpl, err := template.New("paramTemplate").
+			Funcs(FuncMap()).
+			Parse(string(sp.rawValue))
+
+		if err != nil {
+			return ValidationWarnings{
+					NewValidationWarning().
+						SetSeverity(ErrorValidationSeverity).
+						SetMsg("error parsing template in the parameter").
+						AddMeta("Error", err.Error()).
+						AddMeta("ParameterName", sp.definition.Name),
+				},
+				nil
+		}
+		buf := bytes.NewBuffer(nil)
+		spc := NewStaticParameterContext(sp.driver, sp.linkedColumnParameter.Column.Name)
+		if err = tmpl.Execute(buf, spc); err != nil {
+			return nil, fmt.Errorf("error executing template: %w", err)
+		}
+		sp.rawValue = buf.Bytes()
+	}
+
 	if rawValue == nil {
 		if sp.definition.Required {
 			return ValidationWarnings{
@@ -89,17 +125,6 @@ func (sp *StaticParameter) Init(columnParams map[string]*StaticParameter, rawVal
 		warnings = append(warnings, warns...)
 		if warnings.IsFatal() {
 			return warnings, nil
-		}
-	}
-
-	if sp.definition.LinkColumnParameter != "" {
-		param, ok := columnParams[sp.definition.LinkColumnParameter]
-		if !ok {
-			panic(fmt.Sprintf(`parameter with name "%s" is not found`, sp.definition.LinkColumnParameter))
-		}
-		sp.linkedColumnParameter = param
-		if !sp.linkedColumnParameter.definition.IsColumn {
-			return nil, fmt.Errorf("linked parameter must be column: check transformer implementation")
 		}
 	}
 
