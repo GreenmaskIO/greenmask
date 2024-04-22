@@ -56,9 +56,9 @@ var NoiseIntTransformerDefinition = utils.NewTransformerDefinition(
 			SetCompatibleTypes("int2", "int4", "int8"),
 	),
 
-	minRationParameterDefinition,
+	minRatioParameterDefinition,
 
-	maxRationParameterDefinition,
+	maxRatioParameterDefinition,
 
 	engineParameterDefinition,
 )
@@ -178,13 +178,13 @@ func (nit *NoiseIntTransformer) GetAffectedColumns() map[int]string {
 }
 
 func (nit *NoiseIntTransformer) Init(ctx context.Context) error {
+	if nit.dynamicMode {
+		nit.transform = nit.dynamicTransform
+	}
 	return nil
 }
 
 func (nit *NoiseIntTransformer) Done(ctx context.Context) error {
-	if nit.dynamicMode {
-		nit.transform = nit.dynamicTransform
-	}
 	return nil
 }
 

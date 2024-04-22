@@ -17,26 +17,26 @@ package transformers
 import (
 	"context"
 	"fmt"
-	"math"
 
 	"github.com/greenmaskio/greenmask/internal/db/postgres/transformers/utils"
 	"github.com/greenmaskio/greenmask/internal/generators/transformers"
 	"github.com/greenmaskio/greenmask/pkg/toolkit"
+	"github.com/shopspring/decimal"
 )
 
-var NoiseFloatTransformerDefinition = utils.NewTransformerDefinition(
+var NoiseNumericTransformerDefinition = utils.NewTransformerDefinition(
 	utils.NewTransformerProperties(
-		"NoiseFloat",
-		"Add noise to float value in min and max thresholds",
+		"NoiseNumeric",
+		"Add noise to numeric value in min and max thresholds",
 	),
-	NewNoiseFloatTransformer,
+	NewNumericFloatTransformer,
 
 	toolkit.MustNewParameterDefinition(
 		"column",
 		"column name",
 	).SetIsColumn(toolkit.NewColumnProperties().
 		SetAffected(true).
-		SetAllowedColumnTypes("float4", "float8").
+		SetAllowedColumnTypes("numeric", "decimal").
 		SetSkipOnNull(true),
 	).SetRequired(true),
 
@@ -51,7 +51,15 @@ var NoiseFloatTransformerDefinition = utils.NewTransformerDefinition(
 	).SetLinkParameter("column").
 		SetDynamicMode(
 			toolkit.NewDynamicModeProperties().
-				SetCompatibleTypes("float4", "float8", "int2", "int4", "int8"),
+				SetCompatibleTypes(
+					"float4",
+					"float8",
+					"numeric",
+					"decimal",
+					"int2",
+					"int4",
+					"int8",
+				).SetUnmarshaler(numericTypeUnmarshaler),
 		),
 
 	toolkit.MustNewParameterDefinition(
@@ -60,7 +68,15 @@ var NoiseFloatTransformerDefinition = utils.NewTransformerDefinition(
 	).SetLinkParameter("column").
 		SetDynamicMode(
 			toolkit.NewDynamicModeProperties().
-				SetCompatibleTypes("float4", "float8", "int2", "int4", "int8"),
+				SetCompatibleTypes(
+					"float4",
+					"float8",
+					"numeric",
+					"decimal",
+					"int2",
+					"int4",
+					"int8",
+				).SetUnmarshaler(numericTypeUnmarshaler),
 		),
 
 	minRatioParameterDefinition,
@@ -70,14 +86,18 @@ var NoiseFloatTransformerDefinition = utils.NewTransformerDefinition(
 	engineParameterDefinition,
 )
 
-type NoiseFloatTransformer struct {
-	t               *transformers.NoiseFloat64Transformer
+// TODO: Add numeric introspection (getting the Numering settings)
+type NoiseNumericTransformer struct {
+	t               *transformers.NoiseNumericTransformer
 	columnName      string
 	columnIdx       int
-	precision       int
+	precision       int32
 	affectedColumns map[int]string
 	dynamicMode     bool
-	floatSize       int
+
+	minAllowedValue decimal.Decimal
+	maxAllowedValue decimal.Decimal
+	numericSize     int
 
 	columnParam    toolkit.Parameterizer
 	maxParam       toolkit.Parameterizer
@@ -87,16 +107,16 @@ type NoiseFloatTransformer struct {
 	maxRatioParam  toolkit.Parameterizer
 	minRatioParam  toolkit.Parameterizer
 
-	transform func(context.Context, float64) (float64, error)
+	transform func(context.Context, decimal.Decimal) (decimal.Decimal, error)
 }
 
-func NewNoiseFloatTransformer(ctx context.Context, driver *toolkit.Driver, parameters map[string]toolkit.Parameterizer) (utils.Transformer, toolkit.ValidationWarnings, error) {
+func NewNumericFloatTransformer(ctx context.Context, driver *toolkit.Driver, parameters map[string]toolkit.Parameterizer) (utils.Transformer, toolkit.ValidationWarnings, error) {
 
 	var columnName, engine string
 	var dynamicMode bool
-	var minValueThreshold, maxValueThreshold, minRatio, maxRatio float64
-	var precision int
-	floatSize := 8
+	var minRatio, maxRatio float64
+	var minValueThreshold, maxValueThreshold decimal.Decimal
+	var precision int32
 
 	columnParam := parameters["column"]
 	minParam := parameters["min"]
@@ -124,9 +144,6 @@ func NewNoiseFloatTransformer(ctx context.Context, driver *toolkit.Driver, param
 	}
 	affectedColumns := make(map[int]string)
 	affectedColumns[idx] = columnName
-	if c.Length != -1 {
-		floatSize = c.Length
-	}
 
 	if !dynamicMode {
 		if err := minParam.Scan(&minValueThreshold); err != nil {
@@ -149,15 +166,16 @@ func NewNoiseFloatTransformer(ctx context.Context, driver *toolkit.Driver, param
 		return nil, nil, fmt.Errorf("unable to scan \"max_ratio\" param: %w", err)
 	}
 
-	limiter, limitsWarnings, err := validateNoiseFloatTypeAndSetLimit(floatSize, minValueThreshold, maxValueThreshold, precision)
+	limiter, limitsWarnings, err := validateNoiseNumericTypeAndSetLimit(bigIntegerTransformerGenByteLength, minValueThreshold, maxValueThreshold)
 	if err != nil {
 		return nil, nil, err
 	}
 	if limitsWarnings.IsFatal() {
 		return nil, limitsWarnings, nil
 	}
+	limiter.SetPrecision(precision)
 
-	t := transformers.NewNoiseFloat64Transformer(limiter, minRatio, maxRatio)
+	t := transformers.NewNoiseNumericTransformer(limiter, minRatio, maxRatio)
 
 	g, err := getGenerateEngine(ctx, engine, t.GetRequiredGeneratorByteLength())
 	if err != nil {
@@ -167,7 +185,7 @@ func NewNoiseFloatTransformer(ctx context.Context, driver *toolkit.Driver, param
 		return nil, nil, fmt.Errorf("unable to set generator: %w", err)
 	}
 
-	return &NoiseFloatTransformer{
+	return &NoiseNumericTransformer{
 		t:               t,
 		columnName:      columnName,
 		affectedColumns: affectedColumns,
@@ -180,8 +198,10 @@ func NewNoiseFloatTransformer(ctx context.Context, driver *toolkit.Driver, param
 		engineParam:    engineParam,
 		precisionParam: precisionParam,
 
-		dynamicMode: dynamicMode,
-		floatSize:   floatSize,
+		minAllowedValue: limiter.MinValue,
+		maxAllowedValue: limiter.MaxValue,
+		numericSize:     c.Length,
+		dynamicMode:     dynamicMode,
 
 		transform:     t.Transform,
 		maxRatioParam: maxRatioParam,
@@ -189,41 +209,43 @@ func NewNoiseFloatTransformer(ctx context.Context, driver *toolkit.Driver, param
 	}, nil, nil
 }
 
-func (nft *NoiseFloatTransformer) GetAffectedColumns() map[int]string {
+func (nft *NoiseNumericTransformer) GetAffectedColumns() map[int]string {
 	return nft.affectedColumns
 }
 
-func (nft *NoiseFloatTransformer) Init(ctx context.Context) error {
+func (nft *NoiseNumericTransformer) Init(ctx context.Context) error {
 	if nft.dynamicMode {
 		nft.transform = nft.dynamicTransform
 	}
 	return nil
 }
 
-func (nft *NoiseFloatTransformer) Done(ctx context.Context) error {
+func (nft *NoiseNumericTransformer) Done(ctx context.Context) error {
 	return nil
 }
 
-func (nft *NoiseFloatTransformer) dynamicTransform(ctx context.Context, v float64) (float64, error) {
-	minVal, maxVal, err := getMinAndMaxFloatDynamicValueNoiseIntTrans(nft.floatSize, nft.minParam, nft.maxParam)
+func (nft *NoiseNumericTransformer) dynamicTransform(ctx context.Context, original decimal.Decimal) (decimal.Decimal, error) {
+	var minVal, maxVal decimal.Decimal
+	err := nft.minParam.Scan(&minVal)
 	if err != nil {
-		return 0, fmt.Errorf("unable to get min and max values: %w", err)
+		return decimal.Decimal{}, fmt.Errorf(`unable to scan "min" param: %w`, err)
 	}
 
-	limiter, err := transformers.NewNoiseFloat64Limiter(minVal, maxVal, nft.precision)
+	err = nft.maxParam.Scan(&maxVal)
 	if err != nil {
-		return 0, fmt.Errorf("error creating limiter in dynamic mode: %w", err)
+		return decimal.Decimal{}, fmt.Errorf(`unable to scan "max" param: %w`, err)
+	}
+
+	limiter, err := getNumericLimiterForDynamicParameter(nft.numericSize, minVal, maxVal, nft.minAllowedValue, nft.maxAllowedValue)
+	if err != nil {
+		return decimal.Decimal{}, fmt.Errorf("error creating limiter in dynamic mode: %w", err)
 	}
 	ctx = context.WithValue(ctx, "limiter", limiter)
-	res, err := nft.t.Transform(ctx, v)
-	if err != nil {
-		return 0, fmt.Errorf("error generating int value: %w", err)
-	}
-	return res, nil
+	return nft.t.Transform(ctx, original)
 }
 
-func (nft *NoiseFloatTransformer) Transform(ctx context.Context, r *toolkit.Record) (*toolkit.Record, error) {
-	var val float64
+func (nft *NoiseNumericTransformer) Transform(ctx context.Context, r *toolkit.Record) (*toolkit.Record, error) {
+	var val decimal.Decimal
 	isNull, err := r.ScanColumnValueByIdx(nft.columnIdx, &val)
 	if err != nil {
 		return nil, fmt.Errorf("unable to scan value: %w", err)
@@ -243,97 +265,26 @@ func (nft *NoiseFloatTransformer) Transform(ctx context.Context, r *toolkit.Reco
 	return r, nil
 }
 
-func validateNoiseFloatTypeAndSetLimit(
-	size int, requestedMinValue, requestedMaxValue float64, precision int,
-) (limiter *transformers.NoiseFloat64Limiter, warns toolkit.ValidationWarnings, err error) {
+func validateNoiseNumericTypeAndSetLimit(
+	size int, requestedMinValue, requestedMaxValue decimal.Decimal,
+) (limiter *transformers.NoiseNumericLimiter, warns toolkit.ValidationWarnings, err error) {
 
-	minValue, maxValue, err := getFloatThresholds(size)
+	minVal, maxVal, warns, err := getNumericThresholds(size, requestedMinValue, requestedMaxValue)
 	if err != nil {
 		return nil, nil, err
 	}
-
-	if !limitIsValid(requestedMinValue, minValue, maxValue) {
-		warns = append(warns, toolkit.NewValidationWarning().
-			SetMsgf("requested min value is out of float%d range", size).
-			SetSeverity(toolkit.ErrorValidationSeverity).
-			AddMeta("AllowedMinValue", minValue).
-			AddMeta("AllowedMaxValue", maxValue).
-			AddMeta("ParameterName", "min").
-			AddMeta("ParameterValue", requestedMinValue),
-		)
-	}
-
-	if !limitIsValid(requestedMaxValue, minValue, maxValue) {
-		warns = append(warns, toolkit.NewValidationWarning().
-			SetMsgf("requested max value is out of float%d range", size).
-			SetSeverity(toolkit.ErrorValidationSeverity).
-			AddMeta("AllowedMinValue", minValue).
-			AddMeta("AllowedMaxValue", maxValue).
-			AddMeta("ParameterName", "min").
-			AddMeta("ParameterValue", requestedMinValue),
-		)
-	}
-
 	if warns.IsFatal() {
 		return nil, warns, nil
 	}
 
-	limiter, err = transformers.NewNoiseFloat64Limiter(-math.MaxFloat64, math.MaxFloat64, precision)
+	limiter, err = transformers.NewNoiseNumericLimiter(minVal, maxVal)
 	if err != nil {
-		return nil, nil, err
-	}
-
-	if requestedMinValue != 0 || requestedMaxValue != 0 {
-		limiter, err = transformers.NewNoiseFloat64Limiter(requestedMinValue, requestedMaxValue, precision)
-		if err != nil {
-			return nil, nil, err
-		}
+		return nil, nil, fmt.Errorf("error creating limiter by size: %w", err)
 	}
 
 	return limiter, nil, nil
 }
 
-func getMinAndMaxFloatDynamicValueNoiseIntTrans(floatSize int, minParam, maxParam toolkit.Parameterizer) (float64, float64, error) {
-
-	var requestedMinValue, requestedMaxValue float64
-	var minRequested, maxRequested bool
-	minValue, maxValue, err := getFloatThresholds(floatSize)
-	if err != nil {
-		return 0, 0, err
-	}
-
-	if minParam.IsDynamic() {
-		minRequested = true
-		err = minParam.Scan(&requestedMinValue)
-		if err != nil {
-			return 0, 0, fmt.Errorf(`unable to scan "min" dynamic  param: %w`, err)
-		}
-		if !limitIsValid(requestedMinValue, minValue, maxValue) {
-			return 0, 0, fmt.Errorf("requested dynamic parameter min value is out of range of float%d size", floatSize)
-		}
-	}
-
-	if maxParam.IsDynamic() {
-		maxRequested = true
-		err = minParam.Scan(&maxValue)
-		if err != nil {
-			return 0, 0, fmt.Errorf(`unable to scan "max" dynamic param: %w`, err)
-		}
-		if !limitIsValid(requestedMaxValue, minValue, maxValue) {
-			return 0, 0, fmt.Errorf("requested dynamic parameter max value is out of range of float%d size", floatSize)
-		}
-	}
-
-	if minRequested {
-		minValue = requestedMinValue
-	}
-	if maxRequested {
-		maxValue = requestedMaxValue
-	}
-
-	return minValue, maxValue, nil
-}
-
 func init() {
-	utils.DefaultTransformerRegistry.MustRegister(NoiseFloatTransformerDefinition)
+	utils.DefaultTransformerRegistry.MustRegister(NoiseNumericTransformerDefinition)
 }

@@ -25,7 +25,7 @@ import (
 	"github.com/greenmaskio/greenmask/pkg/toolkit"
 )
 
-func TestNoiseFloatTransformer_Transform(t *testing.T) {
+func TestNoiseNumericTransformer_Transform(t *testing.T) {
 
 	type result struct {
 		min    float64
@@ -41,8 +41,8 @@ func TestNoiseFloatTransformer_Transform(t *testing.T) {
 		result     result
 	}{
 		{
-			name:       "float4",
-			columnName: "col_float4",
+			name:       "numeric",
+			columnName: "id_numeric",
 			params: map[string]toolkit.ParamsValue{
 				"min_ratio": toolkit.ParamsValue("0.2"),
 				"max_ratio": toolkit.ParamsValue("0.9"),
@@ -51,18 +51,8 @@ func TestNoiseFloatTransformer_Transform(t *testing.T) {
 			result: result{min: 10, max: 190, regexp: `-*\d+[.]*\d*$`},
 		},
 		{
-			name:       "float8",
-			columnName: "col_float8",
-			params: map[string]toolkit.ParamsValue{
-				"min_ratio": toolkit.ParamsValue("0.2"),
-				"max_ratio": toolkit.ParamsValue("0.9"),
-			},
-			input:  "100",
-			result: result{min: 10, max: 190, regexp: `-*\d+[.]*\d*$`},
-		},
-		{
-			name:       "float8 ranges 1",
-			columnName: "col_float8",
+			name:       "numeric ranges 1",
+			columnName: "id_numeric",
 			params: map[string]toolkit.ParamsValue{
 				"min_ratio": toolkit.ParamsValue("0.2"),
 				"max_ratio": toolkit.ParamsValue("0.9"),
@@ -72,8 +62,8 @@ func TestNoiseFloatTransformer_Transform(t *testing.T) {
 			result: result{min: 10, max: 190, regexp: `^-*\d+[.]*\d{0,10}$`},
 		},
 		{
-			name:       "float8 ranges 1 with precision",
-			columnName: "col_float8",
+			name:       "numeric ranges 1 with precision",
+			columnName: "id_numeric",
 			params: map[string]toolkit.ParamsValue{
 				"min_ratio": toolkit.ParamsValue("0.2"),
 				"max_ratio": toolkit.ParamsValue("0.9"),
@@ -83,26 +73,26 @@ func TestNoiseFloatTransformer_Transform(t *testing.T) {
 			result: result{min: 10, max: 190, regexp: `^-*\d+$`},
 		},
 		{
-			name:       "float8 ranges 1 with precision and hash engine",
-			columnName: "col_float8",
+			name:       "numeric ranges 1 with precision and hash engine",
+			columnName: "id_numeric",
 			params: map[string]toolkit.ParamsValue{
 				"min_ratio": toolkit.ParamsValue("0.2"),
 				"max_ratio": toolkit.ParamsValue("0.9"),
 				"precision": toolkit.ParamsValue("0"),
 				"engine":    toolkit.ParamsValue("hash"),
 			},
-			input:  "100",
+			input:  "100.111",
 			result: result{min: 10, max: 190, regexp: `^-*\d+$`},
 		},
 		{
-			name:       "with thresholds",
-			columnName: "col_float8",
+			name:       "numeric with thresholds",
+			columnName: "id_numeric",
 			params: map[string]toolkit.ParamsValue{
 				"min_ratio": toolkit.ParamsValue("0.2"),
 				"max_ratio": toolkit.ParamsValue("0.9"),
 				"min":       toolkit.ParamsValue("90"),
 				"max":       toolkit.ParamsValue("110"),
-				"precision": toolkit.ParamsValue("0"),
+				"precision": toolkit.ParamsValue("4"),
 			},
 			input:  "100",
 			result: result{min: 90, max: 110, regexp: `^-*\d+$`},
@@ -113,7 +103,7 @@ func TestNoiseFloatTransformer_Transform(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			tt.params["column"] = toolkit.ParamsValue(tt.columnName)
 			driver, record := getDriverAndRecord(tt.columnName, tt.input)
-			transformerCtx, warnings, err := NoiseFloatTransformerDefinition.Instance(
+			transformerCtx, warnings, err := NoiseNumericTransformerDefinition.Instance(
 				context.Background(),
 				driver,
 				tt.params,

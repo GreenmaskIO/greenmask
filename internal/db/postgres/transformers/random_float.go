@@ -159,9 +159,6 @@ func NewFloatTransformer(ctx context.Context, driver *toolkit.Driver, parameters
 	}
 
 	t := transformers.NewRandomFloat64Transformer(limiter)
-	if err != nil {
-		return nil, nil, fmt.Errorf("error initializing common int transformer: %w", err)
-	}
 
 	g, err := getGenerateEngine(ctx, engine, t.GetRequiredGeneratorByteLength())
 	if err != nil {

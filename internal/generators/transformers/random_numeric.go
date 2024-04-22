@@ -11,7 +11,7 @@ import (
 	"github.com/greenmaskio/greenmask/internal/generators"
 )
 
-type DecimalLimiter struct {
+type RandomNumericLimiter struct {
 	MinValue      decimal.Decimal
 	MaxValue      decimal.Decimal
 	distance      decimal.Decimal
@@ -19,40 +19,47 @@ type DecimalLimiter struct {
 	withPrecision bool
 }
 
-func NewDecimalLimiter(minValue, maxValue decimal.Decimal) (*DecimalLimiter, error) {
+func NewRandomNumericLimiter(minValue, maxValue decimal.Decimal) (*RandomNumericLimiter, error) {
 
 	if minValue.GreaterThanOrEqual(maxValue) {
 		return nil, ErrWrongLimits
 	}
 
-	return &DecimalLimiter{
+	return &RandomNumericLimiter{
 		MinValue: minValue,
 		MaxValue: maxValue,
 		distance: maxValue.Sub(minValue),
 	}, nil
 }
 
-func NewDecimalLimiterFromSize(digitsBeforeDecimal int) (*DecimalLimiter, error) {
+func GetMinAndMaxNumericValueBySetting(digitsBeforeDecimal int) (decimal.Decimal, decimal.Decimal, error) {
 	minDecimalStr := fmt.Sprintf("-%s", strings.Repeat("9", digitsBeforeDecimal))
 	maxDecimalStr := fmt.Sprintf("%s", strings.Repeat("9", digitsBeforeDecimal))
 	minDecimal, err := decimal.NewFromString(minDecimalStr)
 	if err != nil {
-		return nil, fmt.Errorf("error creating big decimal min threshold")
+		return decimal.Decimal{}, decimal.Decimal{}, fmt.Errorf("error creating big decimal min threshold")
 	}
 	maxDecimal, err := decimal.NewFromString(maxDecimalStr)
 	if err != nil {
-		return nil, fmt.Errorf("error creating big decimal max threshold")
+		return decimal.Decimal{}, decimal.Decimal{}, fmt.Errorf("error creating big decimal max threshold")
 	}
-	return NewDecimalLimiter(minDecimal, maxDecimal)
+	return minDecimal, maxDecimal, nil
 }
 
-func (l *DecimalLimiter) SetPrecision(v int32) *DecimalLimiter {
+func NewRandomNumericLimiterFromSize(digitsBeforeDecimal int) (*RandomNumericLimiter, error) {
+	minDecimal, maxDecimal, err := GetMinAndMaxNumericValueBySetting(digitsBeforeDecimal)
+	if err != nil {
+		return nil, err
+	}
+	return NewRandomNumericLimiter(minDecimal, maxDecimal)
+}
+
+func (l *RandomNumericLimiter) SetPrecision(v int32) {
 	l.precision = v
 	l.withPrecision = true
-	return l
 }
 
-func (l *DecimalLimiter) ByteLength() int {
+func (l *RandomNumericLimiter) ByteLength() int {
 	minValueBitLength := l.MinValue.BigInt().BitLen()
 	maxValueBitLength := l.MaxValue.BigInt().BitLen()
 	if minValueBitLength > maxValueBitLength {
@@ -61,7 +68,7 @@ func (l *DecimalLimiter) ByteLength() int {
 	return maxValueBitLength
 }
 
-func (l *DecimalLimiter) Limit(v decimal.Decimal) decimal.Decimal {
+func (l *RandomNumericLimiter) Limit(v decimal.Decimal) decimal.Decimal {
 	res := l.MinValue.Add(v.Mod(l.distance))
 	if res.GreaterThan(l.MaxValue) {
 		res = res.Mod(l.MaxValue)
@@ -74,32 +81,32 @@ func (l *DecimalLimiter) Limit(v decimal.Decimal) decimal.Decimal {
 	return res
 }
 
-type RandomDecimalTransformer struct {
+type RandomNumericTransformer struct {
 	generator  generators.Generator
-	limiter    *DecimalLimiter
+	limiter    *RandomNumericLimiter
 	byteLength int
 	precision  int32
 }
 
-func NewRandomDecimalTransformer(limiter *DecimalLimiter, precision int32) (*RandomDecimalTransformer, error) {
+func NewRandomNumericTransformer(limiter *RandomNumericLimiter, precision int32) (*RandomNumericTransformer, error) {
 	if limiter == nil {
 		return nil, fmt.Errorf("limiter for BigInt values cannot be nil")
 	}
 
 	maxBytesLength := max(getByteByDecimal(limiter.MinValue), getByteByDecimal(limiter.MaxValue))
 
-	return &RandomDecimalTransformer{
+	return &RandomNumericTransformer{
 		limiter:    limiter,
 		byteLength: maxBytesLength,
 		precision:  -precision,
 	}, nil
 }
 
-func (ig *RandomDecimalTransformer) GetRequiredGeneratorByteLength() int {
+func (ig *RandomNumericTransformer) GetRequiredGeneratorByteLength() int {
 	return ig.byteLength
 }
 
-func (ig *RandomDecimalTransformer) SetGenerator(g generators.Generator) error {
+func (ig *RandomNumericTransformer) SetGenerator(g generators.Generator) error {
 	if g.Size() < ig.byteLength {
 		return fmt.Errorf("requested byte length (%d) higher than generator can produce (%d)", ig.byteLength, g.Size())
 	}
@@ -107,13 +114,13 @@ func (ig *RandomDecimalTransformer) SetGenerator(g generators.Generator) error {
 	return nil
 }
 
-func (ig *RandomDecimalTransformer) Transform(ctx context.Context, original []byte) (decimal.Decimal, error) {
+func (ig *RandomNumericTransformer) Transform(ctx context.Context, original []byte) (decimal.Decimal, error) {
 	var res decimal.Decimal
 	var limiter = ig.limiter
 	limiterAny := ctx.Value("limiter")
 
 	if limiterAny != nil {
-		limiter = limiterAny.(*DecimalLimiter)
+		limiter = limiterAny.(*RandomNumericLimiter)
 	}
 
 	resBytes, err := ig.generator.Generate(original)

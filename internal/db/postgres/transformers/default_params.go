@@ -24,12 +24,12 @@ var (
 		"indicates that NULL values must not be replaced with transformed values",
 	).SetDefaultValue(toolkit.ParamsValue("true"))
 
-	minRationParameterDefinition = toolkit.MustNewParameterDefinition(
+	minRatioParameterDefinition = toolkit.MustNewParameterDefinition(
 		"min_ratio",
 		"min random percentage for noise",
 	).SetDefaultValue(toolkit.ParamsValue("0.05"))
 
-	maxRationParameterDefinition = toolkit.MustNewParameterDefinition(
+	maxRatioParameterDefinition = toolkit.MustNewParameterDefinition(
 		"max_ratio",
 		"max random percentage for noise",
 	).SetDefaultValue(toolkit.ParamsValue("0.2"))
