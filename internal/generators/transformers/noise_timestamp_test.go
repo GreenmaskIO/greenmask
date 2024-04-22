@@ -19,7 +19,7 @@ func TestNoiseTimestamp_Transform(t *testing.T) {
 	expectedMinValue := original.Add(-80 * (time.Hour * 24)) // now - 10 days
 	expectedMaxValue := original.Add(+80 * (time.Hour * 24)) // now + 10 days
 
-	l, err := NewNoiseTimestampLimiter(expectedMinValue, expectedMaxValue)
+	l, err := NewNoiseTimestampLimiter(&expectedMinValue, &expectedMaxValue)
 	require.NoError(t, err)
 
 	tr, err := NewNoiseTimestamp(minRatio, maxRatio, "", l)
