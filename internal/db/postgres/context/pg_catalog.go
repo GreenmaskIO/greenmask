@@ -37,7 +37,7 @@ const (
 // TODO: Rewrite it using gotemplate
 
 func getDumpObjects(
-	ctx context.Context, tx pgx.Tx, options *pgdump.Options, config map[toolkit.Oid]*entries.Table,
+	ctx context.Context, version int, tx pgx.Tx, options *pgdump.Options, config map[toolkit.Oid]*entries.Table,
 ) ([]entries.Entry, error) {
 
 	// Building relation search query using regexp adaptation rules and pre-defined query templates
@@ -137,7 +137,7 @@ func getDumpObjects(
 	for _, obj := range dataObjects {
 		switch v := obj.(type) {
 		case *entries.Table:
-			columns, err := getColumnsConfig(ctx, tx, v.Oid)
+			columns, err := getColumnsConfig(ctx, tx, v.Oid, version)
 			if err != nil {
 				return nil, fmt.Errorf("unable to collect table columns: %w", err)
 			}
