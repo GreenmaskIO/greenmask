@@ -67,7 +67,7 @@ var (
     `
 
 	// TableColumnsQuery - SQL query for getting all columns of table
-	TableColumnsQuery = `
+	TableColumnsQuery = template.Must(template.New("TableColumnsQuery").Parse(`
 		SELECT 
 		    a.attname 										as name,
 		    a.atttypid::TEXT::INT                          	as typeoid,
@@ -75,10 +75,13 @@ var (
 		  	a.attnotnull 									as notnull,
 		  	a.atttypmod 									as mod,
 		  	a.attnum 										as num
+			{{ if ge .Version 120000 }}
+		  	,a.attgenerated != ''	    				    as attgenerated
+			{{ end }}
 		FROM pg_catalog.pg_attribute a
 		WHERE a.attrelid = $1 AND a.attnum > 0 AND NOT a.attisdropped
 		ORDER BY a.attnum
-	`
+	`))
 
 	CustomTypesWithTypeChainQuery = `
 		with RECURSIVE
