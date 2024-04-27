@@ -110,7 +110,15 @@ type TransformerSettings struct {
 type TransformerConfig struct {
 	Name     string               `mapstructure:"name" yaml:"name" json:"name,omitempty"`
 	Settings *TransformerSettings `mapstructure:"settings,omitempty" yaml:"settings,omitempty" json:"settings,omitempty"`
-	Params   toolkit.Params       `mapstructure:"params" yaml:"params" json:"params,omitempty"`
+	// Params - transformation parameters. It might be any type. If structure should be stored as raw json
+	// This cannot be parsed with mapstructure due to uncontrollable lowercasing
+	// https://github.com/spf13/viper/issues/373
+	// Instead we have to use workaround and parse it manually
+	Params toolkit.Params `mapstructure:"-" yaml:"-" json:"-"` // yaml:"params" json:"params,omitempty"`
+	// TempParams - the https://github.com/spf13/viper/issues/373 workaround
+	// we decode the values into TempParams and then Unmarshal it manually and set to Params
+	// The related code is in internal/utils/config/viper_workaround.go
+	TempParams map[string]any `mapstructure:"-" yaml:"params,omitempty" json:"params,omitempty"`
 }
 
 type Table struct {
