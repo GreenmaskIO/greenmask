@@ -99,6 +99,7 @@ func getDumpObjects(
 				// If table was discovered during Transformer validation - use that object instead of a new
 				table.ExcludeData = excludeData
 				table.LoadViaPartitionRoot = options.LoadViaPartitionRoot
+				table.Size = relSize
 			} else {
 				// If table is not found - create new table object and collect all the columns
 
