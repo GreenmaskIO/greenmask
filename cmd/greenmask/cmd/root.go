@@ -146,9 +146,11 @@ func initConfig() {
 		log.Fatal().Err(err).Msg("")
 	}
 
-	// This solves problem with map structure described -> https://github.com/spf13/viper/issues/373
-	// that caused issue in Greenmask https://github.com/GreenmaskIO/greenmask/issues/76
-	if err := configUtils.ParseTransformerParamsManually(cfgFile, Config); err != nil {
-		log.Fatal().Err(err).Msg("error parsing transformer parameters")
+	if cfgFile != "" {
+		// This solves problem with map structure described -> https://github.com/spf13/viper/issues/373
+		// that caused issue in Greenmask https://github.com/GreenmaskIO/greenmask/issues/76
+		if err := configUtils.ParseTransformerParamsManually(cfgFile, Config); err != nil {
+			log.Fatal().Err(err).Msg("error parsing transformer parameters")
+		}
 	}
 }
