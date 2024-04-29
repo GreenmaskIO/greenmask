@@ -129,3 +129,16 @@ type Table struct {
 	Transformers        []*TransformerConfig `mapstructure:"transformers" yaml:"transformers" json:"transformers,omitempty"`
 	ColumnsTypeOverride map[string]string    `mapstructure:"columns_type_override" yaml:"columns_type_override" json:"columns_type_override,omitempty"`
 }
+
+// DummyConfig - This is a dummy config to the viper workaround
+// It is used to parse the transformation parameters manually only avoiding parsing other pars of the config
+// The reason why is there https://github.com/GreenmaskIO/greenmask/discussions/85
+type DummyConfig struct {
+	Dump struct {
+		Transformation []struct {
+			Transformers []struct {
+				Params map[string]interface{} `yaml:"params" json:"params"`
+			} `yaml:"transformers" json:"transformers"`
+		} `yaml:"transformation" json:"transformation"`
+	} `yaml:"dump" json:"dump"`
+}
