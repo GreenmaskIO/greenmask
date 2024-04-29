@@ -21,10 +21,10 @@ import (
 	"path"
 	"slices"
 
-	"github.com/greenmaskio/greenmask/internal/storages"
 	"github.com/rs/zerolog"
 	"github.com/stretchr/testify/suite"
 
+	"github.com/greenmaskio/greenmask/internal/storages"
 	"github.com/greenmaskio/greenmask/internal/storages/s3"
 )
 
@@ -90,7 +90,7 @@ func (suite *S3StorageSuite) TestS3Ops() {
 		suite.Require().Len(dirs, 1)
 		suite.Require().Equal("test.txt", files[0])
 		s3Dir := dirs[0].(*s3.Storage)
-		suite.Require().Equal(path.Join(suite.cfg.Bucket, suite.cfg.Prefix, "testdb")+"/", s3Dir.GetCwd())
+		suite.Require().Equal(path.Join(suite.cfg.Prefix, "testdb")+"/", s3Dir.GetCwd())
 
 		nextDir := dirs[0]
 		files, dirs, err = nextDir.ListDir(context.Background())
