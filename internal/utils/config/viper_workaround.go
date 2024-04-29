@@ -54,7 +54,7 @@ func ParseTransformerParamsManually(cfgFilePath string, cfg *domains.Config) err
 	return setTransformerParams(tmpCfg, cfg)
 }
 
-// setTransformerParams - get the value from domains.TransformerConfig.TempParams, marshall this value and store into
+// setTransformerParams - get the value from domains.TransformerConfig.MetadataParams, marshall this value and store into
 // domains.TransformerConfig.Params
 func setTransformerParams(tmpCfg *domains.DummyConfig, cfg *domains.Config) (err error) {
 	for tableIdx, tableObj := range tmpCfg.Dump.Transformation {
@@ -76,6 +76,7 @@ func setTransformerParams(tmpCfg *domains.DummyConfig, cfg *domains.Config) (err
 				paramsMap[paramName] = encodedVal
 			}
 			transformer.Params = paramsMap
+			transformer.MetadataParams = tmpTransformer.Params
 		}
 	}
 	return nil

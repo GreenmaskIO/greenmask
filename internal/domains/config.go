@@ -115,10 +115,11 @@ type TransformerConfig struct {
 	// https://github.com/spf13/viper/issues/373
 	// Instead we have to use workaround and parse it manually
 	Params toolkit.Params `mapstructure:"-" yaml:"-" json:"-"` // yaml:"params" json:"params,omitempty"`
-	// TempParams - the https://github.com/spf13/viper/issues/373 workaround
-	// we decode the values into TempParams and then Unmarshal it manually and set to Params
-	// The related code is in internal/utils/config/viper_workaround.go
-	TempParams map[string]any `mapstructure:"-" yaml:"params,omitempty" json:"params,omitempty"`
+	// MetadataParams - encoded transformer parameters - uses only for storing into storage
+	// TODO: You need to get rid of it by creating a separate structure for storing metadata in
+	//   internal/db/postgres/storage/metadata_json.go
+	// this is used only due to https://github.com/spf13/viper/issues/373
+	MetadataParams map[string]any `mapstructure:"-" yaml:"params,omitempty" json:"params,omitempty"`
 }
 
 type Table struct {
