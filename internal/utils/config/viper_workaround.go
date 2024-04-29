@@ -32,8 +32,7 @@ import (
 // To overcome this problem we need use default yaml and json parsers avoiding vaiper or mapstructure usage.
 func ParseTransformerParamsManually(cfgFilePath string, cfg *domains.Config) error {
 	ext := path.Ext(cfgFilePath)
-	//cfgMap := make(map[string]any)
-	tmpCfg := domains.NewConfig()
+	tmpCfg := &domains.DummyConfig{}
 	f, err := os.Open(cfgFilePath)
 	if err != nil {
 		return err
@@ -55,14 +54,15 @@ func ParseTransformerParamsManually(cfgFilePath string, cfg *domains.Config) err
 	return setTransformerParams(tmpCfg, cfg)
 }
 
-// setTransformerParams - get the value from domains.TransformerConfig.TempParams, marshall this value and store into
+// setTransformerParams - get the value from domains.TransformerConfig.MetadataParams, marshall this value and store into
 // domains.TransformerConfig.Params
-func setTransformerParams(tmpCfg, cfg *domains.Config) (err error) {
+func setTransformerParams(tmpCfg *domains.DummyConfig, cfg *domains.Config) (err error) {
 	for tableIdx, tableObj := range tmpCfg.Dump.Transformation {
 		for transformationIdx, transformationObj := range tableObj.Transformers {
 			transformer := cfg.Dump.Transformation[tableIdx].Transformers[transformationIdx]
+			tmpTransformer := tmpCfg.Dump.Transformation[tableIdx].Transformers[transformationIdx]
 			paramsMap := make(map[string]toolkit.ParamsValue, len(transformationObj.Params))
-			for paramName, decodedValue := range transformer.TempParams {
+			for paramName, decodedValue := range tmpTransformer.Params {
 				var encodedVal toolkit.ParamsValue
 				switch v := decodedValue.(type) {
 				case string:
@@ -76,6 +76,7 @@ func setTransformerParams(tmpCfg, cfg *domains.Config) (err error) {
 				paramsMap[paramName] = encodedVal
 			}
 			transformer.Params = paramsMap
+			transformer.MetadataParams = tmpTransformer.Params
 		}
 	}
 	return nil
