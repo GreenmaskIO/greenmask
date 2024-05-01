@@ -246,21 +246,26 @@ func InitParameters(
 	dynamicValues map[string]*DynamicParamValue,
 ) (map[string]Parameterizer, ValidationWarnings, error) {
 
-	var requiredParametersCount int
-
+	var requiredParamsWarns ValidationWarnings
+	// Check is there any parameters
 	for _, pd := range paramDef {
 		if pd.Required {
-			requiredParametersCount++
+			if _, ok := staticValues[pd.Name]; !ok {
+				if _, ok := dynamicValues[pd.Name]; !ok {
+					requiredParamsWarns = append(
+						requiredParamsWarns,
+						NewValidationWarning().
+							SetMsg("parameter is required").
+							AddMeta("ParameterName", pd.Name).
+							SetSeverity(ErrorValidationSeverity),
+					)
+				}
+			}
 		}
 	}
 
-	if len(staticValues)+len(dynamicValues) == 0 && requiredParametersCount > 0 {
-		return nil, ValidationWarnings{
-			NewValidationWarning().
-				SetMsg("parameters are required: received empty").
-				AddMeta("RequiredParametersCount", requiredParametersCount).
-				SetSeverity(ErrorValidationSeverity),
-		}, nil
+	if requiredParamsWarns.IsFatal() {
+		return nil, requiredParamsWarns, nil
 	}
 
 	// Check is there unknown parameters name received in static or dynamic values
