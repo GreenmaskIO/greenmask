@@ -16,71 +16,57 @@ package greenmask
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
 	"os/exec"
 	"path"
+	"text/template"
 	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/rs/zerolog/log"
 	"github.com/stretchr/testify/suite"
-
-	"github.com/greenmaskio/greenmask/internal/db/postgres/pgdump"
-	"github.com/greenmaskio/greenmask/internal/domains"
-	"github.com/greenmaskio/greenmask/internal/storages/builder"
-	"github.com/greenmaskio/greenmask/internal/storages/directory"
-	"github.com/greenmaskio/greenmask/pkg/toolkit"
 )
 
-var config = &domains.Config{
-	Common: domains.Common{
-		PgBinPath:     "/usr/local/opt/postgresql@16/bin",
-		TempDirectory: "/tmp",
-	},
-	Log: domains.LogConfig{
-		Level:  "debug",
-		Format: "text",
-	},
-	Storage: domains.StorageConfig{
-		Type: builder.DirectoryStorageType,
-		Directory: &directory.Config{
-			Path: "/tmp",
-		},
-	},
-	Dump: domains.Dump{
-		PgDumpOptions: pgdump.Options{
-			DbName: "host=localhost user=postgres password=example dbname=demo port=54316",
-			Jobs:   10,
-		},
-		Transformation: []*domains.Table{
-			{
-				Schema: "bookings",
-				Name:   "flights",
-				Transformers: []*domains.TransformerConfig{
-					{
-						Name: "RandomDate",
-						Params: map[string]toolkit.ParamsValue{
-							"min":    toolkit.ParamsValue("2023-01-01 00:00:00.0+03"),
-							"max":    toolkit.ParamsValue("2023-01-02 00:00:00.0+03"),
-							"column": toolkit.ParamsValue("scheduled_departure"),
-						},
-					},
-					{
-						Name: "RandomDate",
-						Params: map[string]toolkit.ParamsValue{
-							"min":    toolkit.ParamsValue("2023-02-02 01:00:00.0+03"),
-							"max":    toolkit.ParamsValue("2023-03-03 00:00:00.0+03"),
-							"column": toolkit.ParamsValue("scheduled_arrival"),
-						},
-					},
-				},
-			},
-		},
-	},
-}
+var configStr = template.Must(template.New("config").Parse(`
+common:
+  pg_bin_path: "{{ .pgBinPath }}"
+  tmp_dir: "{{ .tmpDir }}"
+
+log:
+  level: debug
+  format: json
+
+storage:
+  type: "directory"
+  directory:
+    path: "{{ .storageDir }}"
+
+dump:
+  pg_dump_options:
+    dbname: "{{ .uri }}"
+    jobs: 10
+    load-via-partition-root: true
+    schema: public
+  
+  transformation:
+    - schema: "bookings"
+      name: "flights"
+      transformers:
+        
+        - name: "RandomDate"
+          params:
+            "min": "2023-01-01 00:00:00.0+03"
+            "max": "2023-01-02 00:00:00.0+03"
+            "column": "scheduled_departure"
+        
+        - name: "RandomDate"
+          params:
+            "min": "2023-02-02 01:00:00.0+03"
+            "max": "2023-03-03 00:00:00.0+03"
+            "column": "scheduled_arrival"
+`))
 
 type BackwardCompatibilitySuite struct {
 	suite.Suite
@@ -114,16 +100,18 @@ func (suite *BackwardCompatibilitySuite) SetupSuite() {
 	err = os.Mkdir(suite.runtimeTmpDir, 0700)
 	suite.Require().NoError(err, "error creating tmp dir")
 
-	config.Common.TempDirectory = suite.tmpDir
-	config.Storage.Directory.Path = suite.storageDir
-	config.Dump.PgDumpOptions.DbName = uri
-	config.Common.PgBinPath = pgBinPath
-
-	suite.configFilePath = path.Join(suite.tmpDir, "config.json")
+	suite.configFilePath = path.Join(suite.tmpDir, "config.yaml")
 	confFile, err := os.Create(suite.configFilePath)
-	suite.Require().NoError(err, "error creating config.yml file")
+	suite.Require().NoError(err, "error creating config.yaml file")
 	defer confFile.Close()
-	err = json.NewEncoder(confFile).Encode(config)
+	err = configStr.Execute(
+		confFile,
+		map[string]string{
+			"pgBinPath":  pgBinPath,
+			"tmpDir":     suite.tmpDir,
+			"uri":        uri,
+			"storageDir": suite.storageDir,
+		})
 	suite.Require().NoError(err, "error encoding config into yaml")
 
 	suite.conn, err = pgx.Connect(context.Background(), uri)
@@ -134,6 +122,12 @@ func (suite *BackwardCompatibilitySuite) SetupSuite() {
 	log.Info().Str("dbname", suite.restorationDbName).Msg("creating database")
 	_, err = suite.conn.Exec(context.Background(), fmt.Sprintf("create database %s", suite.restorationDbName))
 	suite.Require().NoError(err, "error creating database")
+
+	restoreDbConn, err := pgx.Connect(context.Background(), fmt.Sprintf("%s dbname=%s", uri, suite.restorationDbName))
+	suite.Require().NoError(err, "error connecting to restore db")
+	defer restoreDbConn.Close(context.Background())
+	_, err = restoreDbConn.Exec(context.Background(), "drop schema public;")
+	suite.Require().NoError(err, "error creating database")
 }
 
 func (suite *BackwardCompatibilitySuite) TestGreenmaskCompatibility() {
@@ -141,8 +135,10 @@ func (suite *BackwardCompatibilitySuite) TestGreenmaskCompatibility() {
 		cmd := exec.Command(path.Join(greenmaskBinPath, "greenmask"),
 			"--config", suite.configFilePath, "dump",
 		)
+		log.Debug().Str("cmd", cmd.String()).Msg("running greenmask")
 		cmd.Stderr = os.Stderr
 		cmd.Stdout = os.Stdout
+		log.Info().Str("cmd", cmd.String()).Msg("greenmask stdout and stderr forwarding")
 
 		err := cmd.Run()
 		suite.Require().NoError(err, "error running greenmask")
@@ -158,6 +154,7 @@ func (suite *BackwardCompatibilitySuite) TestGreenmaskCompatibility() {
 		cmd := exec.Command(path.Join(pgBinPath, "pg_restore"),
 			"-l", path.Join(suite.storageDir, lastDump.Name()),
 		)
+		log.Info().Str("cmd", cmd.String()).Msg("running pg_restore list")
 		out, err := cmd.Output()
 		if len(out) > 0 {
 			log.Info().Msg("pg_restore stout forwarding")
@@ -187,6 +184,7 @@ func (suite *BackwardCompatibilitySuite) TestGreenmaskCompatibility() {
 			"-v",
 			path.Join(suite.storageDir, lastDump.Name()),
 		)
+		log.Info().Str("cmd", cmd.String()).Msg("running pg_restore")
 		cmd.Stderr = os.Stderr
 		cmd.Stdout = os.Stdout
 		log.Info().Str("cmd", cmd.String()).Msg("pg_restore stdout and stderr forwarding")

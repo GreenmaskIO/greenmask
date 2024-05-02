@@ -156,7 +156,7 @@ func (r *Restore) prepare() error {
 	return nil
 }
 
-func (r *Restore) preFlightRestore(ctx context.Context, conn *pgx.Conn) error {
+func (r *Restore) preFlightRestore(ctx context.Context) error {
 
 	tocFile, err := r.st.GetObject(ctx, "toc.dat")
 	if err != nil {
@@ -225,7 +225,7 @@ func (r *Restore) sortAndFilterEntriesByRestoreList() error {
 	return nil
 }
 
-func (r *Restore) preDataRestore(ctx context.Context, conn *pgx.Conn) error {
+func (r *Restore) preDataRestore(ctx context.Context) error {
 	// pg_dump has a limitation:
 	//	If we want to use --cleanup command then this command must be performed for whole schema (--schema-only)
 	//  without --section parameter. For avoiding cascade dropping we need to run pg_restore with --schema-only --clean
@@ -241,6 +241,12 @@ func (r *Restore) preDataRestore(ctx context.Context, conn *pgx.Conn) error {
 		(r.restoreOpt.Section != "" && r.restoreOpt.Section != preDataSection) {
 		return nil
 	}
+
+	conn, err := pgx.Connect(ctx, r.dsn)
+	if err != nil {
+		return fmt.Errorf("cannot establish connection to db: %w", err)
+	}
+	defer conn.Close(ctx)
 
 	// Execute PreData Before scripts
 	if err := r.RunScripts(ctx, conn, scriptPreDataSection, scriptExecuteBefore); err != nil {
@@ -338,7 +344,7 @@ func (r *Restore) prepareCleanupToc() (string, string, error) {
 	return preDatadirName, postDatadirName, nil
 }
 
-func (r *Restore) dataRestore(ctx context.Context, conn *pgx.Conn) error {
+func (r *Restore) dataRestore(ctx context.Context) error {
 	// Execute Data Before scripts
 
 	// Do not restore this section if implicitly provided
@@ -346,6 +352,12 @@ func (r *Restore) dataRestore(ctx context.Context, conn *pgx.Conn) error {
 		(r.restoreOpt.Section != "" && r.restoreOpt.Section != dataSection) {
 		return nil
 	}
+
+	conn, err := pgx.Connect(ctx, r.dsn)
+	if err != nil {
+		return fmt.Errorf("cannot establish connection to db: %w", err)
+	}
+	defer conn.Close(ctx)
 
 	if err := r.RunScripts(ctx, conn, scriptDataSection, scriptExecuteBefore); err != nil {
 		return err
@@ -439,7 +451,7 @@ func (r *Restore) isNeedRestore(e *toc.Entry) bool {
 	return true
 }
 
-func (r *Restore) postDataRestore(ctx context.Context, conn *pgx.Conn) error {
+func (r *Restore) postDataRestore(ctx context.Context) error {
 	// Execute Post Data Before scripts
 
 	// Do not restore this section if implicitly provided
@@ -447,6 +459,12 @@ func (r *Restore) postDataRestore(ctx context.Context, conn *pgx.Conn) error {
 		(r.restoreOpt.Section != "" && r.restoreOpt.Section != postDataSection) {
 		return nil
 	}
+
+	conn, err := pgx.Connect(ctx, r.dsn)
+	if err != nil {
+		return fmt.Errorf("cannot establish connection to db: %w", err)
+	}
+	defer conn.Close(ctx)
 
 	if err := r.RunScripts(ctx, conn, scriptPostDataSection, scriptExecuteBefore); err != nil {
 		return err
@@ -485,26 +503,19 @@ func (r *Restore) Run(ctx context.Context) error {
 		return fmt.Errorf("preparation error: %w", err)
 	}
 
-	// Establish connection for scripts
-	conn, err := pgx.Connect(ctx, r.dsn)
-	if err != nil {
-		return fmt.Errorf("cannot establish connection to db: %w", err)
-	}
-	defer conn.Close(ctx)
-
-	if err = r.preFlightRestore(ctx, conn); err != nil {
+	if err := r.preFlightRestore(ctx); err != nil {
 		return fmt.Errorf("pre-flight stage restoration error: %w", err)
 	}
 
-	if err = r.preDataRestore(ctx, conn); err != nil {
+	if err := r.preDataRestore(ctx); err != nil {
 		return fmt.Errorf("pre-data stage restoration error: %w", err)
 	}
 
-	if err = r.dataRestore(ctx, conn); err != nil {
+	if err := r.dataRestore(ctx); err != nil {
 		return fmt.Errorf("data stage restoration error: %w", err)
 	}
 
-	if err = r.postDataRestore(ctx, conn); err != nil {
+	if err := r.postDataRestore(ctx); err != nil {
 		return fmt.Errorf("post-data stage restoration error: %w", err)
 	}
 

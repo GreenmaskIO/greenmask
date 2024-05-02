@@ -16,7 +16,7 @@ on:
 
 env:
   go-version: '1.21.5'
-  python-version: '3.12'
+  python-version: 'pypy3.10'
   cmd-name: 'greenmask'
   docker-registry: greenmask/greenmask
 

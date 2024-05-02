@@ -446,6 +446,11 @@ func (d *Dump) Run(ctx context.Context) (err error) {
 func (d *Dump) MergeTocEntries(schemaEntries []*toc.Entry, dataEntries []*toc.Entry) (
 	[]*toc.Entry, error,
 ) {
+	if len(dataEntries) == 0 {
+		// No data entries, just return schema entries
+		return schemaEntries, nil
+	}
+
 	// TODO: Assign dependencies and sort entries in the same order
 	res := make([]*toc.Entry, 0, len(schemaEntries)+len(dataEntries))
 

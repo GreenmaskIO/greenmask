@@ -69,7 +69,7 @@ func validateAndBuildTablesConfig(
 			}
 
 			// Assign columns and transformersMap if were found
-			columns, err := getColumnsConfig(ctx, tx, table.Oid)
+			columns, err := getColumnsConfig(ctx, tx, table.Oid, version)
 			if err != nil {
 				return nil, nil, err
 			}
@@ -197,10 +197,18 @@ func getTable(ctx context.Context, tx pgx.Tx, t *domains.Table) ([]*entries.Tabl
 	return tables, warnings, nil
 }
 
-func getColumnsConfig(ctx context.Context, tx pgx.Tx, oid toolkit.Oid) ([]*toolkit.Column, error) {
+func getColumnsConfig(ctx context.Context, tx pgx.Tx, oid toolkit.Oid, version int) ([]*toolkit.Column, error) {
 	defaultTypeMap := pgtype.NewMap()
 	var res []*toolkit.Column
-	rows, err := tx.Query(ctx, TableColumnsQuery, oid)
+	buf := bytes.NewBuffer(nil)
+	err := TableColumnsQuery.Execute(
+		buf,
+		map[string]int{"Version": version},
+	)
+	if err != nil {
+		return nil, fmt.Errorf("error templating TableColumnsQuery: %w", err)
+	}
+	rows, err := tx.Query(ctx, buf.String(), oid)
 	if err != nil {
 		return nil, fmt.Errorf("unable execute tableColumnQuery: %w", err)
 	}
@@ -209,8 +217,14 @@ func getColumnsConfig(ctx context.Context, tx pgx.Tx, oid toolkit.Oid) ([]*toolk
 	idx := 0
 	for rows.Next() {
 		column := toolkit.Column{Idx: idx}
-		if err = rows.Scan(&column.Name, &column.TypeOid, &column.TypeName,
-			&column.NotNull, &column.Length, &column.Num, &column.Length); err != nil {
+		if version >= 120000 {
+			err = rows.Scan(&column.Name, &column.TypeOid, &column.TypeName,
+				&column.NotNull, &column.Length, &column.Num, &column.TypeLength, &column.IsGenerated)
+		} else {
+			err = rows.Scan(&column.Name, &column.TypeOid, &column.TypeName,
+				&column.NotNull, &column.Length, &column.Num)
+		}
+		if err != nil {
 			return nil, fmt.Errorf("cannot scan tableColumnQuery: %w", err)
 		}
 		column.CanonicalTypeName = column.TypeName
@@ -317,11 +331,7 @@ func getTableConstraints(ctx context.Context, tx pgx.Tx, tableOid toolkit.Oid, v
 	buf := bytes.NewBuffer(nil)
 	err = TablePrimaryKeyReferencesConstraintsQuery.Execute(
 		buf,
-		struct {
-			Version int
-		}{
-			Version: version,
-		},
+		map[string]int{"Version": version},
 	)
 	if err != nil {
 		return nil, fmt.Errorf("error templating TablePrimaryKeyReferencesConstraintsQuery: %w", err)

@@ -10,7 +10,7 @@ import (
 )
 
 func getDatabaseSchema(
-	ctx context.Context, tx pgx.Tx, options *pgdump.Options,
+	ctx context.Context, tx pgx.Tx, options *pgdump.Options, version int,
 ) ([]*toolkit.Table, error) {
 	var res []*toolkit.Table
 	query, err := BuildSchemaIntrospectionQuery(
@@ -41,7 +41,7 @@ func getDatabaseSchema(
 
 	// fill columns
 	for _, table := range res {
-		columns, err := getColumnsConfig(ctx, tx, table.Oid)
+		columns, err := getColumnsConfig(ctx, tx, table.Oid, version)
 		if err != nil {
 			return nil, err
 		}

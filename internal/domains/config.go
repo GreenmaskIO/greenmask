@@ -108,10 +108,19 @@ type TransformerSettings struct {
 }
 
 type TransformerConfig struct {
-	Name          string                    `mapstructure:"name" yaml:"name" json:"name,omitempty"`
-	Settings      *TransformerSettings      `mapstructure:"settings,omitempty" yaml:"settings,omitempty" json:"settings,omitempty"`
-	Params        toolkit.StaticParameters  `mapstructure:"params" yaml:"params" json:"params,omitempty"`
-	DynamicParams toolkit.DynamicParameters `mapstructure:"dynamic_params" yaml:"dynamic_params" json:"dynamic_params,omitempty"`
+	Name     string               `mapstructure:"name" yaml:"name" json:"name,omitempty"`
+	Settings *TransformerSettings `mapstructure:"settings,omitempty" yaml:"settings,omitempty" json:"settings,omitempty"`
+	// Params - transformation parameters. It might be any type. If structure should be stored as raw json
+	// This cannot be parsed with mapstructure due to uncontrollable lowercasing
+	// https://github.com/spf13/viper/issues/373
+	// Instead we have to use workaround and parse it manually
+	Params toolkit.StaticParameters `mapstructure:"-" yaml:"-" json:"-"` // yaml:"params" json:"params,omitempty"`
+	// MetadataParams - encoded transformer parameters - uses only for storing into storage
+	// TODO: You need to get rid of it by creating a separate structure for storing metadata in
+	//   internal/db/postgres/storage/metadata_json.go
+	// this is used only due to https://github.com/spf13/viper/issues/373
+	MetadataParams map[string]any            `mapstructure:"-" yaml:"params,omitempty" json:"params,omitempty"`
+	DynamicParams  toolkit.DynamicParameters `mapstructure:"dynamic_params" yaml:"dynamic_params" json:"dynamic_params,omitempty"`
 }
 
 type Table struct {
@@ -121,4 +130,17 @@ type Table struct {
 	ApplyForInherited   bool                 `mapstructure:"apply_for_inherited" yaml:"apply_for_inherited" json:"apply_for_inherited,omitempty"`
 	Transformers        []*TransformerConfig `mapstructure:"transformers" yaml:"transformers" json:"transformers,omitempty"`
 	ColumnsTypeOverride map[string]string    `mapstructure:"columns_type_override" yaml:"columns_type_override" json:"columns_type_override,omitempty"`
+}
+
+// DummyConfig - This is a dummy config to the viper workaround
+// It is used to parse the transformation parameters manually only avoiding parsing other pars of the config
+// The reason why is there https://github.com/GreenmaskIO/greenmask/discussions/85
+type DummyConfig struct {
+	Dump struct {
+		Transformation []struct {
+			Transformers []struct {
+				Params map[string]interface{} `yaml:"params" json:"params"`
+			} `yaml:"transformers" json:"transformers"`
+		} `yaml:"transformation" json:"transformation"`
+	} `yaml:"dump" json:"dump"`
 }

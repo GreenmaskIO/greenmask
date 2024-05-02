@@ -84,14 +84,14 @@ func NewRuntimeContext(
 		return nil, fmt.Errorf("cannot validate and build table config: %w", err)
 	}
 
-	dataSectionObjects, err := getDumpObjects(ctx, tx, opt, tables)
+	dataSectionObjects, err := getDumpObjects(ctx, version, tx, opt, tables)
 	if err != nil {
 		return nil, fmt.Errorf("cannot build dump object list: %w", err)
 	}
 
 	scoreTablesEntriesAndSort(dataSectionObjects, cfg)
 
-	schema, err := getDatabaseSchema(ctx, tx, opt)
+	schema, err := getDatabaseSchema(ctx, tx, opt, version)
 	if err != nil {
 		return nil, fmt.Errorf("cannot get database schema: %w", err)
 	}
