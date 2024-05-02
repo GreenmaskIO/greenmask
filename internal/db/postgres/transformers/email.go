@@ -19,6 +19,7 @@ import (
 const emailTransformerGeneratorSize = 64
 
 var emailTransformerRegexp = regexp.MustCompile(`^([a-zA-Z0-9_.+-]+)@([a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+)$`)
+
 var emailTransformerAllowedChars = []rune("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!#$%&'*+-/=?^_`{|}~.")
 
 var EmailTransformerDefinition = utils.NewTransformerDefinition(
@@ -55,11 +56,6 @@ var EmailTransformerDefinition = utils.NewTransformerDefinition(
 	),
 
 	toolkit.MustNewParameterDefinition(
-		"template_columns",
-		`columns that uses in template`,
-	),
-
-	toolkit.MustNewParameterDefinition(
 		"domains",
 		`List of domains to use for random email generation`,
 	),
@@ -72,12 +68,7 @@ var EmailTransformerDefinition = utils.NewTransformerDefinition(
 	toolkit.MustNewParameterDefinition(
 		"max_random_length",
 		`max length of randomly generated part of the email`,
-	).SetDefaultValue(toolkit.ParamsValue("10")),
-
-	//toolkit.MustNewParameterDefinition(
-	//	"unique",
-	//	`generate email unique in the column`,
-	//).SetDefaultValue(toolkit.ParamsValue("false")),
+	).SetDefaultValue(toolkit.ParamsValue("32")),
 
 	keepNullParameterDefinition,
 
@@ -85,31 +76,31 @@ var EmailTransformerDefinition = utils.NewTransformerDefinition(
 )
 
 type EmailTransformer struct {
-	g                  generators.Generator
-	columnName         string
-	columnIdx          int
-	validate           bool
-	affectedColumns    map[int]string
-	keepNull           bool
-	keepOriginalDomain bool
-	//unique             bool
-	domains                     []string
-	localPartTemplate           *template.Template
-	domainTemplate              *template.Template
-	templetCtx                  map[string]any
-	templateColumns             []string
-	buf                         *bytes.Buffer
-	originalDomain              []byte
-	randomBytesBuf              []byte
-	hasHexEncodedRandomBytesBuf []byte
+	g                        generators.Generator
+	columnName               string
+	columnIdx                int
+	validate                 bool
+	affectedColumns          map[int]string
+	keepNull                 bool
+	keepOriginalDomain       bool
+	domains                  []string
+	localPartTemplate        *template.Template
+	domainTemplate           *template.Template
+	templetCtx               map[string]any
+	buf                      *bytes.Buffer
+	originalDomain           []byte
+	randomBytesBuf           []byte
+	hexEncodedRandomBytesBuf []byte
+	rrctx                    *RoRecordContext
 }
 
 func NewEmailTransformer(ctx context.Context, driver *toolkit.Driver, parameters map[string]toolkit.Parameterizer) (utils.Transformer, toolkit.ValidationWarnings, error) {
 
 	var columnName, engine, localPartTemplate, domainTemplate string
 	var keepNull, keepOriginalDomain /*unique,*/, validate bool
-	var templateColumns, domains []string
+	var domains []string
 	var err error
+	var domainTmpl, localTmpl *template.Template
 
 	var maxLength int
 
@@ -117,8 +108,6 @@ func NewEmailTransformer(ctx context.Context, driver *toolkit.Driver, parameters
 	keepOriginalDomainParam := parameters["keep_original_domain"]
 	localPartTemplateParam := parameters["local_part_template"]
 	domainPartTemplateParam := parameters["domain_part_template"]
-	templateColumnsParam := parameters["template_columns"]
-	//uniqueParam := parameters["unique"]
 	domainsParam := parameters["domains"]
 	validateParam := parameters["validate"]
 	keepNullParam := parameters["keep_null"]
@@ -147,24 +136,35 @@ func NewEmailTransformer(ctx context.Context, driver *toolkit.Driver, parameters
 	if err = localPartTemplateParam.Scan(&localPartTemplate); err != nil {
 		return nil, nil, fmt.Errorf(`unable to scan "local_part_template" param: %w`, err)
 	}
-	var localTmpl *template.Template
+
+	if err := domainPartTemplateParam.Scan(&domainTemplate); err != nil {
+		return nil, nil, fmt.Errorf(`unable to scan "domain_part_template" param: %w`, err)
+	}
+
+	rrctx := NewRoRecordContext()
+	funcMap := toolkit.FuncMap()
+	if localPartTemplate != "" || domainTemplate != "" {
+		for _, c := range driver.Table.Columns {
+			funcMap[c.Name] = func(name string) func() (any, error) {
+				return func() (any, error) {
+					return rrctx.GetColumnRawValue(name)
+				}
+			}(c.Name)
+		}
+	}
+
 	if localPartTemplate != "" {
 		localTmpl, err = template.New("local").
-			Funcs(toolkit.FuncMap()).
+			Funcs(funcMap).
 			Parse(localPartTemplate)
 		if err != nil {
 			return nil, nil, fmt.Errorf("error parsing \"local_part_template\": %w", err)
 		}
 	}
 
-	if err := domainPartTemplateParam.Scan(&domainTemplate); err != nil {
-		return nil, nil, fmt.Errorf(`unable to scan "domain_part_template" param: %w`, err)
-	}
-
-	var domainTmpl *template.Template
 	if domainTemplate != "" {
 		domainTmpl, err = template.New("domain").
-			Funcs(toolkit.FuncMap()).
+			Funcs(funcMap).
 			Parse(domainTemplate)
 		if err != nil {
 			return nil, nil, fmt.Errorf("error parsing \"domain_part_template\": %w", err)
@@ -174,15 +174,6 @@ func NewEmailTransformer(ctx context.Context, driver *toolkit.Driver, parameters
 	if err := keepNullParam.Scan(&keepNull); err != nil {
 		return nil, nil, fmt.Errorf(`unable to scan "keep_null" param: %w`, err)
 	}
-
-	if err := templateColumnsParam.Scan(&templateColumns); err != nil {
-		return nil, nil, fmt.Errorf(`unable to scan "template_columns" param: %w`, err)
-	}
-
-	//if err := uniqueParam.Scan(&unique); err != nil {
-	//	return nil, nil, fmt.Errorf(`unable to scan "unique" param: %w`, err)
-	//}
-
 	if err := domainsParam.Scan(&domains); err != nil {
 		return nil, nil, fmt.Errorf(`unable to scan "domains" param: %w`, err)
 	}
@@ -203,27 +194,21 @@ func NewEmailTransformer(ctx context.Context, driver *toolkit.Driver, parameters
 		return nil, nil, fmt.Errorf("unable to get generator: %w", err)
 	}
 
-	//if unique && localTmpl != nil {
-	//	// TODO: Replace to ValidationWarnings
-	//	return nil, nil, errors.New("unique email generation cannot be guaranteed with template use unique=false")
-	//}
-
 	return &EmailTransformer{
-		g:                  g,
-		columnName:         columnName,
-		keepNull:           keepNull,
-		affectedColumns:    affectedColumns,
-		columnIdx:          idx,
-		templetCtx:         make(map[string]any, 10),
-		keepOriginalDomain: keepOriginalDomain,
-		domains:            domains,
-		localPartTemplate:  localTmpl,
-		domainTemplate:     domainTmpl,
-		//unique:             unique,
-		templateColumns:             templateColumns,
-		validate:                    validate,
-		buf:                         bytes.NewBuffer(nil),
-		hasHexEncodedRandomBytesBuf: make([]byte, hex.EncodedLen(emailTransformerGeneratorSize)),
+		g:                        g,
+		columnName:               columnName,
+		keepNull:                 keepNull,
+		affectedColumns:          affectedColumns,
+		columnIdx:                idx,
+		templetCtx:               make(map[string]any, 10),
+		keepOriginalDomain:       keepOriginalDomain,
+		domains:                  domains,
+		localPartTemplate:        localTmpl,
+		domainTemplate:           domainTmpl,
+		validate:                 validate,
+		buf:                      bytes.NewBuffer(nil),
+		hexEncodedRandomBytesBuf: make([]byte, hex.EncodedLen(emailTransformerGeneratorSize)),
+		rrctx:                    rrctx,
 	}, nil, nil
 }
 
@@ -257,7 +242,7 @@ func (rit *EmailTransformer) Transform(ctx context.Context, r *toolkit.Record) (
 		return nil, fmt.Errorf("unable to generate bytes: %w", err)
 	}
 
-	hex.Encode(rit.hasHexEncodedRandomBytesBuf, data)
+	hex.Encode(rit.hexEncodedRandomBytesBuf, data)
 
 	if err := rit.setupTemplateContext(val.Data, r); err != nil {
 		return nil, fmt.Errorf("unable to setup template context: %w", err)
@@ -275,9 +260,10 @@ func (rit *EmailTransformer) Transform(ctx context.Context, r *toolkit.Record) (
 }
 
 func (rit *EmailTransformer) setupTemplateContext(originalEmail []byte, r *toolkit.Record) error {
-	if rit.localPartTemplate != nil && rit.domainTemplate != nil && rit.keepOriginalDomain {
+	if rit.localPartTemplate != nil && rit.domainTemplate != nil && !rit.keepOriginalDomain {
 		return nil
 	}
+	rit.rrctx.setRecord(r)
 
 	originalLocalPart, originalDomain, err := EmailParse(originalEmail)
 	if err != nil {
@@ -289,21 +275,7 @@ func (rit *EmailTransformer) setupTemplateContext(originalEmail []byte, r *toolk
 
 	rit.templetCtx["original_local_part"] = string(originalLocalPart)
 	rit.templetCtx["original_domain"] = string(originalDomain)
-	rit.templetCtx["random_string"] = string(rit.hasHexEncodedRandomBytesBuf)
-
-	if len(rit.templateColumns) > 0 {
-		for _, colName := range rit.templateColumns {
-			val, err := r.GetRawColumnValueByName(colName)
-			if err != nil {
-				return fmt.Errorf("unable to get column \"%s\" value: %w", colName, err)
-			}
-			if val.IsNull {
-				rit.templetCtx[colName] = toolkit.NullValue
-			} else {
-				rit.templetCtx[colName] = string(val.Data)
-			}
-		}
-	}
+	rit.templetCtx["random_string"] = string(rit.hexEncodedRandomBytesBuf)
 
 	return nil
 }
@@ -319,7 +291,7 @@ func (rit *EmailTransformer) generateEmail(data []byte) ([]byte, error) {
 		localPart = slices.Clone(rit.buf.Bytes())
 		rit.buf.Reset()
 	} else {
-		localPart = rit.hasHexEncodedRandomBytesBuf
+		localPart = rit.hexEncodedRandomBytesBuf
 	}
 
 	if rit.domainTemplate != nil {
