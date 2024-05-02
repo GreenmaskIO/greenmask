@@ -14,6 +14,27 @@
 
 package directory
 
+import (
+	"errors"
+	"os"
+)
+
+var ErrPathIsRequired = errors.New("path is required")
+
 type Config struct {
 	Path string `mapstructure:"path"`
+}
+
+func NewConfig() *Config {
+	return &Config{}
+}
+
+func (d *Config) Validate() error {
+	if d.Path == "" {
+		return ErrPathIsRequired
+	}
+	if _, err := os.Stat(d.Path); err != nil {
+		return err
+	}
+	return nil
 }

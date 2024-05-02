@@ -19,6 +19,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"os"
+	"slices"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -29,6 +30,8 @@ import (
 	"github.com/greenmaskio/greenmask/internal/domains"
 	"github.com/greenmaskio/greenmask/pkg/toolkit"
 )
+
+const defaultTransformerCostMultiplier = 0.03
 
 // RuntimeContext - describes current runtime behaviour according to the config and schema objects
 type RuntimeContext struct {
@@ -86,6 +89,8 @@ func NewRuntimeContext(
 		return nil, fmt.Errorf("cannot build dump object list: %w", err)
 	}
 
+	scoreTablesEntriesAndSort(dataSectionObjects, cfg)
+
 	schema, err := getDatabaseSchema(ctx, tx, opt)
 	if err != nil {
 		return nil, fmt.Errorf("cannot get database schema: %w", err)
@@ -103,4 +108,43 @@ func NewRuntimeContext(
 
 func (rc *RuntimeContext) IsFatal() bool {
 	return rc.Warnings.IsFatal()
+}
+
+func scoreTablesEntriesAndSort(dataSectionObjects []entries.Entry, cfg []*domains.Table) {
+	for _, entry := range dataSectionObjects {
+		t, ok := entry.(*entries.Table)
+		if ok {
+			var transformersCount float64
+			idx := slices.IndexFunc(cfg, func(table *domains.Table) bool {
+				return table.Name == t.Name && table.Schema == t.Schema
+			})
+			if idx != -1 {
+				transformersCount = float64(len(cfg[idx].Transformers))
+			}
+
+			// scores = relSize + (realSize * 0.03 * transformersCount)
+			t.Scores = t.Size + int64(float64(t.Size)*defaultTransformerCostMultiplier*transformersCount)
+		}
+
+	}
+
+	slices.SortFunc(dataSectionObjects, func(a, b entries.Entry) int {
+		var scoresA, scoresB int64
+		t, ok := a.(*entries.Table)
+		if ok {
+			scoresA = t.Scores
+		}
+		t, ok = b.(*entries.Table)
+		if ok {
+			scoresB = t.Scores
+		}
+
+		if scoresA > scoresB {
+			return -1
+		} else if scoresA < scoresB {
+			return 1
+		}
+		return 0
+	})
+
 }

@@ -44,6 +44,7 @@ type Table struct {
 	Driver               *toolkit.Driver
 	// ValidateLimitedRecords - perform dumping and transformation only for N records and exit
 	ValidateLimitedRecords uint64
+	Scores                 int64
 }
 
 func (t *Table) HasCustomTransformer() bool {
