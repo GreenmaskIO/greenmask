@@ -989,7 +989,10 @@ func TestFuncMap_timeToUnix(t *testing.T) {
 }
 
 func TestFuncMap_unixToTime(t *testing.T) {
-	expected := "2024-01-27 18:30:33 +0200 EET"
+	//expected :=
+	fmt := "2006-01-02 15:04:05.999999999 -0700 MST"
+	expected, err := time.Parse(fmt, "2024-01-27 18:30:33 +0200 EET")
+	require.NoError(t, err)
 	buf := bytes.NewBuffer(nil)
 	tmplStr := `
 		{{- . | unixToTime "sec" -}}
@@ -1000,6 +1003,7 @@ func TestFuncMap_unixToTime(t *testing.T) {
 	require.NoError(t, err)
 	err = tmpl.Execute(buf, obj)
 	require.NoError(t, err)
-	res := buf.String()
+	res, err := time.Parse(fmt, buf.String())
+	require.NoError(t, err)
 	require.Equal(t, expected, res)
 }
