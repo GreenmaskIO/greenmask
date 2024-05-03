@@ -170,43 +170,6 @@ var FakerTransformersDes = map[string]*FakerTransformerDef{
 		Description:    "Generates a random monetary amount with currency.",
 	},
 
-	// Faker Person
-	"RandomTitleMale": {
-		Generator:      faker.TitleMale,
-		SupportedTypes: []string{"text", "varchar"},
-		Description:    "Generates a random title for males.",
-	},
-	"RandomTitleFemale": {
-		Generator:      faker.TitleFemale,
-		SupportedTypes: []string{"text", "varchar"},
-		Description:    "Generates a random title for females.",
-	},
-	"RandomFirstName": {
-		Generator:      faker.FirstName,
-		SupportedTypes: []string{"text", "varchar"},
-		Description:    "Generates a random first name.",
-	},
-	"RandomFirstNameMale": {
-		Generator:      faker.FirstNameMale,
-		SupportedTypes: []string{"text", "varchar"},
-		Description:    "Generates a random male first name.",
-	},
-	"RandomFirstNameFemale": {
-		Generator:      faker.FirstNameFemale,
-		SupportedTypes: []string{"text", "varchar"},
-		Description:    "Generates a random female first name.",
-	},
-	"RandomLastName": {
-		Generator:      faker.LastName,
-		SupportedTypes: []string{"text", "varchar"},
-		Description:    "Generates a random last name.",
-	},
-	"RandomName": {
-		Generator:      faker.Name,
-		SupportedTypes: []string{"text", "varchar"},
-		Description:    "Generates a full random name.",
-	},
-
 	// Faker Phone
 	"RandomPhoneNumber": {
 		Generator:      faker.Phonenumber,
