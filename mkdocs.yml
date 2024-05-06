@@ -134,13 +134,13 @@ nav:
 
 repo_url: https://github.com/GreenmaskIO/greenmask
 repo_name: GreenmaskIO/greenmask
-site_url: https://greenmask.io
+site_url: https://greenmask.io/
 copyright: Copyright &copy; 2024 Greenmask
 
 
 extra:
-  #    version:
-  #    provider: mike
+  version:
+    provider: mike
   social:
     - icon: fontawesome/brands/x-twitter
       link: https://twitter.com/GreenmaskIO
@@ -152,3 +152,4 @@ extra:
 plugins:
   - social
   - search
+  - mike
