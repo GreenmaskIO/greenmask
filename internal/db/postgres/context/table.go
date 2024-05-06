@@ -222,7 +222,7 @@ func getColumnsConfig(ctx context.Context, tx pgx.Tx, oid toolkit.Oid, version i
 				&column.NotNull, &column.Length, &column.Num, &column.TypeLength, &column.IsGenerated)
 		} else {
 			err = rows.Scan(&column.Name, &column.TypeOid, &column.TypeName,
-				&column.NotNull, &column.Length, &column.Num)
+				&column.NotNull, &column.Length, &column.Num, &column.TypeLength)
 		}
 		if err != nil {
 			return nil, fmt.Errorf("cannot scan tableColumnQuery: %w", err)
