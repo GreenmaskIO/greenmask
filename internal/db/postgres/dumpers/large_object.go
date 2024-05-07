@@ -56,67 +56,10 @@ func (lod *BlobsDumper) Execute(ctx context.Context, tx pgx.Tx, st storages.Stor
 		w, r := countwriter.NewGzipPipe()
 
 		// Writing goroutine
-		eg.Go(
-			func() error {
-				defer func() {
-					log.Debug().
-						Uint32("oid", uint32(lo.Oid)).
-						Msg("closing reader")
-					if err := r.Close(); err != nil {
-						log.Warn().
-							Err(err).
-							Uint32("oid", uint32(lo.Oid)).
-							Msg("error closing LargeObject reader")
-					}
-				}()
-				err := st.PutObject(gtx, fmt.Sprintf("blob_%d.dat.gz", lo.Oid), r)
-				if err != nil {
-					return fmt.Errorf("cannot write large object %d object: %w", lo.Oid, err)
-				}
-				return nil
-			},
-		)
+		eg.Go(largeObjectWriter(gtx, st, lo, r))
 
 		// Dumping goroutine
-		eg.Go(
-			func() error {
-				defer func() {
-					log.Debug().
-						Uint32("oid", uint32(lo.Oid)).
-						Msg("closing writer")
-					if err := w.Close(); err != nil {
-						log.Warn().Err(err).Msg("error closing Blobs writer")
-					}
-				}()
-				buf := make([]byte, loBufSize)
-				los := tx.LargeObjects()
-				lo, err := los.Open(ctx, uint32(lo.Oid), pgx.LargeObjectModeRead)
-				defer func() {
-					if err := lo.Close(); err != nil {
-						log.Warn().Err(err).Msg("error closing large object")
-					}
-				}()
-				if err != nil {
-					return fmt.Errorf("error dumping large object %d: %w", lo, err)
-				}
-				var done bool
-				for !done {
-					size, err := lo.Read(buf)
-					if err != nil {
-						if errors.Is(err, io.EOF) {
-							buf = buf[:size]
-							done = true
-						} else {
-							return fmt.Errorf("error reading large object %d: %w", lo, err)
-						}
-					}
-					if _, err = w.Write(buf); err != nil {
-						return fmt.Errorf("error writing large object %d into storage: %w", lo, err)
-					}
-				}
-				return nil
-			},
-		)
+		eg.Go(largeObjectDumper(gtx, lo, w, tx))
 
 		if err := eg.Wait(); err != nil {
 			return nil, err
@@ -143,6 +86,70 @@ func (lod *BlobsDumper) Execute(ctx context.Context, tx pgx.Tx, st storages.Stor
 	}
 
 	return lod.Blobs, nil
+}
+
+func largeObjectWriter(ctx context.Context, st storages.Storager, lo *entries.LargeObject, r countwriter.CountReadCloser) func() error {
+	return func() error {
+		defer func() {
+			log.Debug().
+				Uint32("oid", uint32(lo.Oid)).
+				Msg("closing reader")
+			if err := r.Close(); err != nil {
+				log.Warn().
+					Err(err).
+					Uint32("oid", uint32(lo.Oid)).
+					Msg("error closing LargeObject reader")
+			}
+		}()
+		err := st.PutObject(ctx, fmt.Sprintf("blob_%d.dat.gz", lo.Oid), r)
+		if err != nil {
+			return fmt.Errorf("cannot write large object %d object: %w", lo.Oid, err)
+		}
+		return nil
+	}
+}
+
+func largeObjectDumper(ctx context.Context, lo *entries.LargeObject, w countwriter.CountWriteCloser, tx pgx.Tx) func() error {
+	return func() error {
+		defer func() {
+			log.Debug().
+				Uint32("oid", uint32(lo.Oid)).
+				Msg("closing writer")
+			if err := w.Close(); err != nil {
+				log.Warn().Err(err).Msg("error closing Blobs writer")
+			}
+		}()
+		buf := make([]byte, loBufSize)
+		los := tx.LargeObjects()
+		loObj, err := los.Open(ctx, uint32(lo.Oid), pgx.LargeObjectModeRead)
+		if err != nil {
+			return fmt.Errorf("error opening large object %d: %w", lo.Oid, err)
+		}
+		defer func() {
+			if err := loObj.Close(); err != nil {
+				log.Warn().Err(err).Msg("error closing large object")
+			}
+		}()
+		if err != nil {
+			return fmt.Errorf("error dumping large object %d: %w", lo.Oid, err)
+		}
+		var done bool
+		for !done {
+			size, err := loObj.Read(buf)
+			if err != nil {
+				if errors.Is(err, io.EOF) {
+					buf = buf[:size]
+					done = true
+				} else {
+					return fmt.Errorf("error reading large object %d: %w", lo.Oid, err)
+				}
+			}
+			if _, err = w.Write(buf); err != nil {
+				return fmt.Errorf("error writing large object %d into storage: %w", lo.Oid, err)
+			}
+		}
+		return nil
+	}
 }
 
 func (lod *BlobsDumper) DebugInfo() string {
