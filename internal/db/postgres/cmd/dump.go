@@ -184,6 +184,13 @@ func (d *Dump) buildContextAndValidate(ctx context.Context, tx pgx.Tx) (err erro
 }
 
 func (d *Dump) schemaOnlyDump(ctx context.Context, tx pgx.Tx) error {
+	if d.pgDumpOptions.DataOnly ||
+		(d.pgDumpOptions.Section != "" &&
+			d.pgDumpOptions.Section != preDataSection &&
+			d.pgDumpOptions.Section != postDataSection) {
+		return nil
+	}
+
 	// Dump schema
 	options := *d.pgDumpOptions
 	options.Format = "d"
@@ -219,6 +226,17 @@ func (d *Dump) schemaOnlyDump(ctx context.Context, tx pgx.Tx) error {
 }
 
 func (d *Dump) dataDump(ctx context.Context) error {
+	if d.pgDumpOptions.SchemaOnly ||
+		(d.pgDumpOptions.Section != "" && d.pgDumpOptions.Section != dataSection) {
+		return nil
+	}
+
+	// Since dumpIdSequence initialized in schemaOnlyDump, we need to check if it is nil
+	// if nil, we need to initialize it with 1
+	if d.dumpIdSequence == nil {
+		d.dumpIdSequence = toc.NewDumpSequence(1)
+	}
+
 	// TODO: You should use pointer to dumpers.DumpTask instead
 	tasks := make(chan dumpers.DumpTask, d.pgDumpOptions.Jobs)
 	result := make(chan entries.Entry, d.pgDumpOptions.Jobs)
