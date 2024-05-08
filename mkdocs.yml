@@ -83,6 +83,7 @@ nav:
               - RandomPassword: built_in_transformers/standard_transformers/random_password.md
               - RandomMacAddress: built_in_transformers/standard_transformers/random_mac_address.md
               - RandomDomainName: built_in_transformers/standard_transformers/random_domain_name.md
+              - RandomPerson: built_in_transformers/standard_transformers/random_person.md
               - RandomURL: built_in_transformers/standard_transformers/random_url.md
               - RandomIPv4: built_in_transformers/standard_transformers/random_ipv4.md
               - RandomIPv6: built_in_transformers/standard_transformers/random_ipv6.md
@@ -93,13 +94,6 @@ nav:
               - RandomCCNumber: built_in_transformers/standard_transformers/random_cc_number.md
               - RandomCurrency: built_in_transformers/standard_transformers/random_currency.md
               - RandomAmountWithCurrency: built_in_transformers/standard_transformers/random_amount_with_currency.md
-              - RandomName: built_in_transformers/standard_transformers/random_name.md
-              - RandomLastName: built_in_transformers/standard_transformers/random_last_name.md
-              - RandomFirstName: built_in_transformers/standard_transformers/random_first_name.md
-              - RandomFirstNameMale: built_in_transformers/standard_transformers/random_first_name_male.md
-              - RandomFirstNameFemale: built_in_transformers/standard_transformers/random_first_name_female.md
-              - RandomTitleMale: built_in_transformers/standard_transformers/random_title_male.md
-              - RandomTitleFemale: built_in_transformers/standard_transformers/random_title_female.md
               - RandomPhoneNumber: built_in_transformers/standard_transformers/random_phone_number.md
               - RandomTollFreePhoneNumber: built_in_transformers/standard_transformers/random_toll_free_phone_number.md
               - RandomE164PhoneNumber: built_in_transformers/standard_transformers/random_e164_phone_number.md
@@ -113,9 +107,9 @@ nav:
               - Template: built_in_transformers/advanced_transformers/template.md
               - TemplateRecord: built_in_transformers/advanced_transformers/template_record.md
               - Custom functions:
-                - built_in_transformers/advanced_transformers/custom_functions/index.md
-                - Core custom functions: built_in_transformers/advanced_transformers/custom_functions/core_functions.md
-                - Faker function: built_in_transformers/advanced_transformers/custom_functions/faker_function.md
+                  - built_in_transformers/advanced_transformers/custom_functions/index.md
+                  - Core custom functions: built_in_transformers/advanced_transformers/custom_functions/core_functions.md
+                  - Faker function: built_in_transformers/advanced_transformers/custom_functions/faker_function.md
   - Release notes:
       - Greenmask 0.1.13: release_notes/greenmask_0_1_13.md
       - Greenmask 0.1.12: release_notes/greenmask_0_1_12.md

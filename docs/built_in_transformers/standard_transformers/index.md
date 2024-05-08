@@ -40,13 +40,7 @@ Standard transformers are ready-to-use methods that require no customization and
 1. [RandomCCNumber](random_cc_number.md) — generates a random credit card number.
 1. [RandomCurrency](random_currency.md) — generates a random currency code.
 1. [RandomAmountWithCurrency](random_amount_with_currency.md) — generates a random monetary amount with currency.
-1. [RandomName](random_name.md) — generates a full random name.
-1. [RandomLastName](random_last_name.md) — generates a random last name.
-1. [RandomFirstName](random_first_name.md) — generates a random first name.
-1. [RandomFirstNameMale](random_first_name_male.md) — generates a random male first name.
-1. [RandomFirstNameFemale](random_first_name_female.md) — generates a random female first name.
-1. [RandomTitleMale](random_title_male.md) — generates a random male title.
-1. [RandomTitleFemale](random_title_female.md) — generates a random female title.
+1. [RandomPerson](random_person.md) — generates a random person data (first name, last name, etc.)
 1. [RandomPhoneNumber](random_phone_number.md) — generates a random phone number.
 1. [RandomTollFreePhoneNumber](random_toll_free_phone_number.md) — generates a random toll-free phone number.
 1. [RandomE164PhoneNumber](random_e164_phone_number.md) — generates a random phone number in E.164 format.
