@@ -74,6 +74,16 @@ func (lod *BlobsDumper) Execute(ctx context.Context, tx pgx.Tx, st storages.Stor
 	}
 
 	// Writing blobs.toc
+	if err := lod.generateBlobsToc(ctx, st); err != nil {
+		return nil, fmt.Errorf("cannot write large object blobs.toc: %w", err)
+	}
+
+	return lod.Blobs, nil
+}
+
+func (lod *BlobsDumper) generateBlobsToc(ctx context.Context, st storages.Storager) error {
+	log.Debug().Msg("writing blobs.toc")
+	// Writing blobs.toc
 	blobsTocBuf := bytes.NewBuffer(nil)
 
 	for _, lo := range lod.Blobs.LargeObjects {
@@ -82,10 +92,9 @@ func (lod *BlobsDumper) Execute(ctx context.Context, tx pgx.Tx, st storages.Stor
 
 	err := st.PutObject(ctx, "blobs.toc", blobsTocBuf)
 	if err != nil {
-		return nil, fmt.Errorf("cannot write large object blobs.toc: %w", err)
+		return fmt.Errorf("cannot write large object blobs.toc: %w", err)
 	}
-
-	return lod.Blobs, nil
+	return nil
 }
 
 func largeObjectWriter(ctx context.Context, st storages.Storager, lo *entries.LargeObject, r countwriter.CountReadCloser) func() error {
