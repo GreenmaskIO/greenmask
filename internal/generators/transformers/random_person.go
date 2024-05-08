@@ -3,6 +3,7 @@ package transformers
 import (
 	"encoding/binary"
 	"fmt"
+	"slices"
 
 	"github.com/greenmaskio/greenmask/internal/generators"
 )
@@ -146,6 +147,8 @@ func NewPersonalDatabase(data Database) *PersonDatabase {
 	for attrName := range uniqueAttributes {
 		attributes = append(attributes, attrName)
 	}
+
+	slices.Sort(attributes)
 
 	return &PersonDatabase{
 		Db:              data,

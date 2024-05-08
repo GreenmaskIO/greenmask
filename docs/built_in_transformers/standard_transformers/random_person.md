@@ -95,9 +95,6 @@ INSERT INTO personal_data (name, surname, sex) VALUES
           - name: "surname"
             template: "{{ .LastName }}"
         engine: "hash"
-      dynamic_params:
-        gender:
-          column: sex
 ```
 
 ## Example: Populate random first name and last name for table user_profiles in dynamic mode
@@ -112,7 +109,6 @@ gender
   transformers:
     - name: "RandomPerson"
       params:
-        gender: "Any"
         columns:
           - name: "name"
             template: "{{ .FirstName }}"
