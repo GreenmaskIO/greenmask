@@ -38,7 +38,7 @@ var randomPersonTransformerDefinition = utils.NewTransformerDefinition(
 	).SetDynamicMode(
 		toolkit.NewDynamicModeProperties().
 			SetCompatibleTypes("text", "varchar", "char", "bpchar"),
-	),
+	).SetDefaultValue(toolkit.ParamsValue("Any")),
 
 	toolkit.MustNewParameterDefinition(
 		"gender_mapping",
@@ -47,12 +47,10 @@ var randomPersonTransformerDefinition = utils.NewTransformerDefinition(
 
 	toolkit.MustNewParameterDefinition(
 		"fallback_gender",
-		"Specify fallback gender if not mapped. By default any of name will be chosen",
+		"Specify fallback gender if not mapped when using dynamic mode in \"gender\" parameter",
 	).SetDefaultValue(toolkit.ParamsValue("Any")),
 
 	// TODO: Allow user to override the default names, surnames and genders with kind of dictionary
-
-	keepNullParameterDefinition,
 
 	engineParameterDefinition,
 )
@@ -251,6 +249,7 @@ func randomNameTransformerValidateGender(gender string, genders []string) toolki
 			toolkit.NewValidationWarning().
 				SetSeverity(toolkit.ErrorValidationSeverity).
 				AddMeta("ParameterValue", gender).
+				AddMeta("AllowedValues", append(append([]string{}, genders...), randomPersonAnyGender)).
 				SetMsg("wrong gender name"),
 		}
 	}
