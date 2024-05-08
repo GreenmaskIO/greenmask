@@ -180,20 +180,38 @@ jobs:
       - name: Install dependicies
         run: pip install -r requirements.txt
 
+      - name: Setup docs deploy
+        run: |
+          git config --global user.name "Docs Deployer"
+          git config --global user.email docs@greenmask.io
+          echo "TAGS=$(git log --tags --simplify-by-decoration --pretty='format:%d' --since=2024-04-30 | sed '/^$/d' | cut -d ':' -f 2 | cut -d ')' -f 1 | tac | tr '\n' ' ')" >> $GITHUB_ENV
+
       - name: Build docs
-        run: mkdocs build
+        run: |
+          for tag in ${{ env.TAGS }}; do
+            echo "### CHECKOUT TO ${tag} ###"
+            git checkout $tag
+            if [[ "$tag" == *"rc"* || "$tag" == *"dev"* || "$tag" == *"pre"* ]]; then
+              mike deploy $tag
+            else
+              mike deploy --update-aliases $tag latest
+            fi
+          done
+
+      - name: Set latest version as default
+        run: mike set-default latest
+
+      - name: Change branch to get html files
+        run: git checkout gh-pages
+
+      - name: Remove old folder
+        run: sudo rm -rf ${{ secrets.DOCS_DEPLOY_DIR }}/html
 
       - name: Create docs directory
-        run: sudo mkdir -p ${{ secrets.DOCS_DEPLOY_DIR }}
+        run: sudo mkdir -p ${{ secrets.DOCS_DEPLOY_DIR }}/html
 
       - name: Move html files to docs directory
-        run: sudo mv site ${{ secrets.DOCS_DEPLOY_DIR }}/html-${{ github.ref_name}}
-
-      - name: Remove old symlink
-        run: sudo unlink ${{ secrets.DOCS_DEPLOY_DIR }}/html
-
-      - name: Create new symlink
-        run: sudo ln -s ${{ secrets.DOCS_DEPLOY_DIR }}/html-${{ github.ref_name}}  ${{ secrets.DOCS_DEPLOY_DIR }}/html
+        run: sudo cp -r * ${{ secrets.DOCS_DEPLOY_DIR }}/html
 
       - name: Restart web service
         run: sudo systemctl restart nginx
