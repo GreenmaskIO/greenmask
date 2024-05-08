@@ -1,17 +1,16 @@
 package transformers
 
 import (
-	"context"
+	"encoding/binary"
 	"fmt"
-	"slices"
 
 	"github.com/greenmaskio/greenmask/internal/generators"
 )
 
 const (
-	MaleGenderName   = "male"
-	FemaleGenderName = "female"
-	AnyGenderName    = "any"
+	MaleGenderName   = "Male"
+	FemaleGenderName = "Female"
+	AnyGenderName    = "Any"
 )
 
 const (
@@ -102,163 +101,160 @@ var DefaultLastNames = []string{
 	"Yost", "Yundt", "Zboncak", "Zemlak", "Ziemann", "Zieme", "Zulauf",
 }
 
-var firstNameByGender = map[string][]string{
-	MaleGenderName:   DefaultFirstNamesMale,
-	FemaleGenderName: DefaultFirstNamesFemale,
+var DefaultTitlesMale = []string{
+	"Mr.", "Dr.", "Prof.", "Lord", "King", "Prince",
+}
+var DefaultTitlesFemale = []string{
+	"Mrs.", "Ms.", "Miss", "Dr.", "Prof.", "Lady", "Queen", "Princess",
 }
 
-var allowedGenderNames = []string{
-	MaleGenderName,
-	FemaleGenderName,
-	AnyGenderName,
+type Database map[string]map[string][]string
+
+type PersonDatabase struct {
+	Db              Database
+	Genders         []string
+	Attributes      []string
+	AttributesCount int
 }
 
-var genderNames = []string{
-	MaleGenderName,
-	FemaleGenderName,
+func (pd *PersonDatabase) GetRandomAttribute(gender, attr string, randomIdx uint32) string {
+	attrs := pd.Db[gender][attr]
+	return attrs[randomIdx%uint32(len(attrs))]
 }
+
+func (pd *PersonDatabase) GetRandomGender(randomIdx uint32) string {
+	return pd.Genders[randomIdx%uint32(len(pd.Genders))]
+}
+
+func NewPersonalDatabase(data Database) *PersonDatabase {
+	uniqueAttributes := make(map[string]struct{})
+	genders := make([]string, 0, len(data))
+
+	if data == nil {
+		panic("data is nil")
+	}
+	attrsCount := 0
+	for gender, attributes := range data {
+		genders = append(genders, gender)
+		attrsCount = max(len(attributes), attrsCount)
+		for attrName := range attributes {
+			uniqueAttributes[attrName] = struct{}{}
+		}
+	}
+
+	attributes := make([]string, 0, len(uniqueAttributes))
+	for attrName := range uniqueAttributes {
+		attributes = append(attributes, attrName)
+	}
+
+	return &PersonDatabase{
+		Db:              data,
+		Attributes:      attributes,
+		Genders:         genders,
+		AttributesCount: attrsCount,
+	}
+}
+
+var DefaultPersonMap = map[string]map[string][]string{
+	MaleGenderName: {
+		"Title":     DefaultTitlesMale,
+		"LastName":  DefaultLastNames,
+		"FirstName": DefaultFirstNamesMale,
+	},
+	FemaleGenderName: {
+		"Title":     DefaultTitlesFemale,
+		"LastName":  DefaultLastNames,
+		"FirstName": DefaultFirstNamesFemale,
+	},
+}
+
+var DefaultDb = NewPersonalDatabase(DefaultPersonMap)
 
 type NameAttrs struct {
 	FirstName string
 	LastName  string
 	Gender    string
+	Title     string
 }
 
-type RandomFullNameTransformer struct {
+type RandomPersonTransformer struct {
 	gender     string
 	byteLength int
 	generator  generators.Generator
+	// db - mapping gender to other personal attribute
+	// common structure
+	// gender -> person_attribute -> []possible values
+	db     *PersonDatabase
+	result map[string]string
 }
 
-func NewRandomNameTransformer(gender string, mode int) *RandomFullNameTransformer {
-	var byteLength int
-	switch mode {
-	case RandomFullNameTransformerFullNameMode:
-		byteLength = 24
-	case RandomFullNameTransformerFirstNameMode:
-		byteLength = 16
-	case RandomFullNameTransformerSurnameMode:
-		byteLength = 8
-	default:
-		panic("unknown mode")
+func NewRandomPersonTransformer(gender string, personDb Database) *RandomPersonTransformer {
+
+	if personDb == nil {
+		personDb = DefaultPersonMap
 	}
 
-	return &RandomFullNameTransformer{
-		gender:     gender,
-		byteLength: byteLength,
+	db := NewPersonalDatabase(personDb)
+
+	return &RandomPersonTransformer{
+		gender: gender,
+		// we assume 4 bytes peer attribute + 1 byte for gender
+		db:         db,
+		result:     make(map[string]string, db.AttributesCount),
+		byteLength: db.AttributesCount * 4,
 	}
 }
 
-func (rnt *RandomFullNameTransformer) GetFullName(ctx context.Context, original []byte) (*NameAttrs, error) {
+func (rpt *RandomPersonTransformer) GetDb() *PersonDatabase {
+	return rpt.db
+}
 
-	resBytes, err := rnt.generator.Generate(original)
+func (rpt *RandomPersonTransformer) GetFullName(gender string, original []byte) (map[string]string, error) {
+
+	resBytes, err := rpt.generator.Generate(original)
 	if err != nil {
 		return nil, err
 	}
 
-	gender, err := rnt.getGender(ctx, resBytes, 0, 8)
+	genderRandIdx := resBytes[0]
+	gender, err = rpt.getGender(gender, genderRandIdx)
 	if err != nil {
 		return nil, err
 	}
 
-	lastName := rnt.getLastName(resBytes, 8, 16)
-
-	firstName, err := rnt.getFirstName(gender, resBytes, 16, 24)
-	if err != nil {
-		return nil, err
+	startIdx := 1
+	for _, attr := range rpt.db.Attributes {
+		attrIdx := binary.LittleEndian.Uint32(resBytes[startIdx : startIdx+4])
+		rpt.result[attr] = rpt.db.GetRandomAttribute(gender, attr, attrIdx)
+		startIdx += 4
 	}
 
-	return &NameAttrs{
-		FirstName: firstName,
-		LastName:  lastName,
-		Gender:    gender,
-	}, nil
+	return rpt.result, nil
 }
 
-func (rnt *RandomFullNameTransformer) GetFirstName(ctx context.Context, original []byte) (string, error) {
-
-	resBytes, err := rnt.generator.Generate(original)
-	if err != nil {
-		return "", err
+func (rpt *RandomPersonTransformer) getGender(gender string, randomGenderIdx byte) (string, error) {
+	if gender == "" {
+		gender = rpt.gender
 	}
 
-	gender, err := rnt.getGender(ctx, resBytes, 0, 8)
-	if err != nil {
-		return "", err
-	}
-
-	firstName, err := rnt.getFirstName(gender, resBytes, 16, 24)
-	if err != nil {
-		return "", err
-	}
-	return firstName, nil
-}
-
-func (rnt *RandomFullNameTransformer) GetLastName(original []byte) (string, error) {
-
-	resBytes, err := rnt.generator.Generate(original)
-	if err != nil {
-		return "", err
-	}
-
-	return rnt.getLastName(resBytes, 0, 8), nil
-}
-
-func (rnt *RandomFullNameTransformer) getFirstName(gender string, randomBytes []byte, statIdx, endIdx int) (string, error) {
-	firstNames := firstNameByGender[gender]
-
-	nameIdx := int64(generators.BuildUint64FromBytes(randomBytes[statIdx:endIdx]))
-	if nameIdx < 0 {
-		nameIdx = -nameIdx
-	}
-
-	nameIdx = nameIdx % int64(len(firstNames))
-	if nameIdx < 0 {
-		nameIdx = -nameIdx
-	}
-	return firstNames[nameIdx], nil
-}
-
-func (rnt *RandomFullNameTransformer) getLastName(randomBytes []byte, statIdx, endIdx int) string {
-	lastNameIdx := int64(generators.BuildUint64FromBytes(randomBytes[statIdx:endIdx])) % int64(len(DefaultLastNames))
-	if lastNameIdx < 0 {
-		lastNameIdx = -lastNameIdx
-	}
-	return DefaultLastNames[lastNameIdx]
-}
-
-func (rnt *RandomFullNameTransformer) getGender(ctx context.Context, randomBytes []byte, startIdx, endIdx int) (string, error) {
-	gender := rnt.gender
-	genderAny := ctx.Value("gender")
-
-	if genderAny != nil {
-		gender = genderAny.(string)
-		if !slices.Contains(allowedGenderNames, gender) {
-			return "", fmt.Errorf("unable to match gender with name \"%s\"", gender)
-		}
-	}
 	switch gender {
 	case MaleGenderName, FemaleGenderName:
 	case AnyGenderName:
-		genderIdx := int64(generators.BuildUint64FromBytes(randomBytes[16:24])) % int64(len(genderNames))
-		if genderIdx < 0 {
-			genderIdx = -genderIdx
-		}
-		gender = genderNames[genderIdx]
+		gender = rpt.db.GetRandomGender(uint32(randomGenderIdx))
 	default:
 		return "", fmt.Errorf("unable to match gender \"%s\"", gender)
 	}
 	return gender, nil
 }
 
-func (rnt *RandomFullNameTransformer) GetRequiredGeneratorByteLength() int {
-	return rnt.byteLength
+func (rpt *RandomPersonTransformer) GetRequiredGeneratorByteLength() int {
+	return rpt.byteLength
 }
 
-func (rnt *RandomFullNameTransformer) SetGenerator(g generators.Generator) error {
-	if g.Size() < rnt.byteLength {
-		return fmt.Errorf("requested byte length (%d) higher than generator can produce (%d)", rnt.byteLength, g.Size())
+func (rpt *RandomPersonTransformer) SetGenerator(g generators.Generator) error {
+	if g.Size() < rpt.byteLength {
+		return fmt.Errorf("requested byte length (%d) higher than generator can produce (%d)", rpt.byteLength, g.Size())
 	}
-	rnt.generator = g
+	rpt.generator = g
 	return nil
 }

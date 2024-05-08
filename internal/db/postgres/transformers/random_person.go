@@ -5,7 +5,6 @@ import (
 	"context"
 	"fmt"
 	"slices"
-	"strings"
 	"text/template"
 
 	"github.com/greenmaskio/greenmask/internal/db/postgres/transformers/utils"
@@ -18,16 +17,12 @@ const (
 	hashEngineMode
 )
 
-const (
-	randomTransformerNamePart     = "first_name"
-	randomTransformerLastNamePart = "last_name"
-	randomTransformerFullNamePart = "full_name"
-)
+const randomPersonAnyGender = "Any"
 
-var randomFullNameTransformerDefinition = utils.NewTransformerDefinition(
+var randomPersonTransformerDefinition = utils.NewTransformerDefinition(
 	utils.NewTransformerProperties(
-		"RandomFullName",
-		"Generate random full name for person. Including name, surname and sex",
+		"RandomPerson",
+		"Generate random person data (Title, FirstName, LastName, Gender)",
 	),
 
 	NewRandomNameTransformer,
@@ -39,22 +34,21 @@ var randomFullNameTransformerDefinition = utils.NewTransformerDefinition(
 
 	toolkit.MustNewParameterDefinition(
 		"gender",
-		"set specific gender (possible values: male, female, any)",
+		"set specific gender (possible values: Male, Female, Any)",
 	).SetDynamicMode(
 		toolkit.NewDynamicModeProperties().
 			SetCompatibleTypes("text", "varchar", "char", "bpchar"),
-	).SetRawValueValidator(randomNameTransformerValidateGender),
+	),
 
 	toolkit.MustNewParameterDefinition(
 		"gender_mapping",
 		"Specify gender name to possible values when using dynamic mode in \"gender\" parameter",
-	).SetDefaultValue(toolkit.ParamsValue(`{"male": ["male", "Male", "M", "m", "man", "Man"], "female": ["female", "Female", "F", "f", "w", "woman", "Woman"]}`)),
+	).SetDefaultValue(toolkit.ParamsValue(`{"Male": ["male", "M", "m", "man", "Man"], "Female": ["female", "F", "f", "w", "woman", "Woman"]}`)),
 
 	toolkit.MustNewParameterDefinition(
 		"fallback_gender",
 		"Specify fallback gender if not mapped. By default any of name will be chosen",
-	).SetDefaultValue(toolkit.ParamsValue("any")).
-		SetRawValueValidator(randomNameTransformerValidateGender),
+	).SetDefaultValue(toolkit.ParamsValue("Any")),
 
 	// TODO: Allow user to override the default names, surnames and genders with kind of dictionary
 
@@ -63,19 +57,18 @@ var randomFullNameTransformerDefinition = utils.NewTransformerDefinition(
 	engineParameterDefinition,
 )
 
-var allowedNameParts = []string{randomTransformerNamePart, randomTransformerLastNamePart, randomTransformerFullNamePart}
+const randomPersonTransformerAllAttributes = "All"
 
 type randomNameColumns struct {
 	Name      string `json:"name"`
 	Template  string `json:"template"`
 	Hashing   bool   `json:"hashing"`
-	Part      string `json:"part"`
 	tmpl      *template.Template
 	columnIdx int
 }
 
 type RandomNameTransformer struct {
-	t               *transformers.RandomFullNameTransformer
+	t               *transformers.RandomPersonTransformer
 	columns         []*randomNameColumns
 	gender          string
 	fallbackGender  string
@@ -117,11 +110,24 @@ func NewRandomNameTransformer(ctx context.Context, driver *toolkit.Driver, param
 		engineMode = hashEngineMode
 	}
 
+	t := transformers.NewRandomPersonTransformer(gender, nil)
+
+	g, err := getGenerateEngine(ctx, engine, t.GetRequiredGeneratorByteLength())
+	if err != nil {
+		return nil, nil, fmt.Errorf("unable to get generator: %w", err)
+	}
+
+	if err = t.SetGenerator(g); err != nil {
+		return nil, nil, fmt.Errorf("unable to set generator: %w", err)
+	}
+
+	attributes := t.GetDb().Attributes
+
 	if err := columnsParam.Scan(&columns); err != nil {
 		return nil, nil, fmt.Errorf(`unable to scan "columns" param: %w`, err)
 	}
 
-	affectedColumns, warns := validateColumnsAndSetDefault(driver, columns, engineMode)
+	affectedColumns, warns := validateColumnsAndSetDefault(driver, columns, engineMode, attributes)
 	if warns.IsFatal() {
 		return nil, warns, nil
 	}
@@ -135,30 +141,31 @@ func NewRandomNameTransformer(ctx context.Context, driver *toolkit.Driver, param
 		}
 	}
 
+	if gender != "" {
+		warns = append(warns, randomNameTransformerValidateGender(gender, t.GetDb().Genders)...)
+	}
+	if warns.IsFatal() {
+		return nil, warns, nil
+	}
+
 	if err := genderMappingParam.Scan(&genderMapping); err != nil {
 		return nil, nil, fmt.Errorf(`unable to scan "gender_mapping" param: %w`, err)
 	}
 	// generate reverse mapping for faster access
 	for k, v := range genderMapping {
+		warns = append(warns, randomNameTransformerValidateGender(k, t.GetDb().Genders)...)
 		for _, val := range v {
 			reverseGenderMapping[val] = k
 		}
+	}
+	if warns.IsFatal() {
+		return nil, warns, nil
 	}
 
 	if err := fallbackGenderParam.Scan(&fallbackGender); err != nil {
 		return nil, nil, fmt.Errorf(`unable to scan "fallback_gender" param: %w`, err)
 	}
-
-	t := transformers.NewRandomNameTransformer(gender, transformers.RandomFullNameTransformerFullNameMode)
-
-	g, err := getGenerateEngine(ctx, engine, t.GetRequiredGeneratorByteLength())
-	if err != nil {
-		return nil, nil, fmt.Errorf("unable to get generator: %w", err)
-	}
-
-	if err = t.SetGenerator(g); err != nil {
-		return nil, nil, fmt.Errorf("unable to set generator: %w", err)
-	}
+	warns = append(warns, randomNameTransformerValidateGender(fallbackGender, t.GetDb().Genders)...)
 
 	return &RandomNameTransformer{
 		t:               t,
@@ -198,7 +205,6 @@ func (nft *RandomNameTransformer) Transform(ctx context.Context, r *toolkit.Reco
 		if !ok {
 			gender = nft.fallbackGender
 		}
-		ctx = context.WithValue(ctx, "gender", gender)
 	}
 
 	// if we are in hash engine mode, we need to clear buffer before filling it with new data
@@ -219,32 +225,19 @@ func (nft *RandomNameTransformer) Transform(ctx context.Context, r *toolkit.Reco
 		}
 	}
 
-	nameAttrs, err := nft.t.GetFullName(ctx, nft.originalData)
+	nameAttrs, err := nft.t.GetFullName(gender, nft.originalData)
 	if err != nil {
 		return nil, fmt.Errorf("error generating name: %w", err)
 	}
 
 	for _, c := range nft.columns {
 		newRawVal := toolkit.NewRawValue(nil, false)
-		if c.tmpl != nil {
-			nft.buf.Reset()
-			err = c.tmpl.Execute(nft.buf, nameAttrs)
-			if err != nil {
-				return nil, fmt.Errorf("error executing template for column %s: %w", c.Name, err)
-			}
-			newRawVal.Data = slices.Clone(nft.buf.Bytes())
-		} else {
-			switch c.Part {
-			case randomTransformerNamePart:
-				newRawVal.Data = []byte(nameAttrs.FirstName)
-			case randomTransformerLastNamePart:
-				newRawVal.Data = []byte(nameAttrs.LastName)
-			case randomTransformerFullNamePart:
-				newRawVal.Data = []byte(nameAttrs.FirstName + " " + nameAttrs.LastName)
-			default:
-				panic(fmt.Sprintf("bug in validation: unknown part %s", c.Part))
-			}
+		nft.buf.Reset()
+		err = c.tmpl.Execute(nft.buf, nameAttrs)
+		if err != nil {
+			return nil, fmt.Errorf("error executing template for column %s: %w", c.Name, err)
 		}
+		newRawVal.Data = slices.Clone(nft.buf.Bytes())
 		if err = r.SetRawColumnValueByIdx(c.columnIdx, newRawVal); err != nil {
 			return nil, fmt.Errorf("unable to set new value for column \"%s\": %w", c.Name, err)
 		}
@@ -252,20 +245,19 @@ func (nft *RandomNameTransformer) Transform(ctx context.Context, r *toolkit.Reco
 	return r, nil
 }
 
-func randomNameTransformerValidateGender(p *toolkit.ParameterDefinition, v toolkit.ParamsValue) (toolkit.ValidationWarnings, error) {
-	switch string(v) {
-	case transformers.MaleGenderName, transformers.FemaleGenderName, transformers.AnyGenderName:
-		return nil, nil
+func randomNameTransformerValidateGender(gender string, genders []string) toolkit.ValidationWarnings {
+	if !slices.Contains(genders, gender) && gender != randomPersonAnyGender {
+		return []*toolkit.ValidationWarning{
+			toolkit.NewValidationWarning().
+				SetSeverity(toolkit.ErrorValidationSeverity).
+				AddMeta("ParameterValue", gender).
+				SetMsg("wrong gender name"),
+		}
 	}
-	return []*toolkit.ValidationWarning{
-		toolkit.NewValidationWarning().
-			SetSeverity(toolkit.ErrorValidationSeverity).
-			AddMeta("ParameterValue", v).
-			SetMsg("wrong gender name"),
-	}, nil
+	return nil
 }
 
-func validateColumnsAndSetDefault(driver *toolkit.Driver, columns []*randomNameColumns, engineMode int) (map[int]string, toolkit.ValidationWarnings) {
+func validateColumnsAndSetDefault(driver *toolkit.Driver, columns []*randomNameColumns, engineMode int, attributes []string) (map[int]string, toolkit.ValidationWarnings) {
 	affectedColumns := make(map[int]string)
 	var warns toolkit.ValidationWarnings
 
@@ -296,23 +288,13 @@ func validateColumnsAndSetDefault(driver *toolkit.Driver, columns []*randomNameC
 		affectedColumns[idx] = c.Name
 		c.columnIdx = columnIdx
 
-		if c.Part == "" && c.Template == "" {
+		if c.Template == "" {
 			warns = append(warns,
 				toolkit.NewValidationWarning().
 					SetSeverity(toolkit.ErrorValidationSeverity).
 					AddMeta("ParameterName", "columns").
 					AddMeta("ListIdx", idx).
-					SetMsg("\"part\" or \"template\" parameters is required: received empty"),
-			)
-		}
-
-		if c.Part != "" && c.Template != "" {
-			warns = append(warns,
-				toolkit.NewValidationWarning().
-					SetSeverity(toolkit.ErrorValidationSeverity).
-					AddMeta("ParameterName", "columns").
-					AddMeta("ListIdx", idx).
-					SetMsg("part and template are mutually exclusive: received both"),
+					SetMsg("\"template\" parameters is required: received empty"),
 			)
 		}
 
@@ -333,17 +315,6 @@ func validateColumnsAndSetDefault(driver *toolkit.Driver, columns []*randomNameC
 			c.tmpl = tmpl
 		}
 
-		if c.Part != "" && !slices.Contains(allowedNameParts, c.Part) {
-			warns = append(warns,
-				toolkit.NewValidationWarning().
-					SetSeverity(toolkit.ErrorValidationSeverity).
-					AddMeta("ParameterName", "columns").
-					AddMeta("PartValue", c.Part).
-					AddMeta("ListIdx", idx).
-					SetMsgf("part must be one of %s", strings.Join(allowedNameParts, ", ")),
-			)
-		}
-
 		// Do we need to calculate hash for this column?
 		if c.Hashing {
 			hasHashingColumns = true
@@ -360,5 +331,5 @@ func validateColumnsAndSetDefault(driver *toolkit.Driver, columns []*randomNameC
 }
 
 func init() {
-	utils.DefaultTransformerRegistry.MustRegister(randomFullNameTransformerDefinition)
+	utils.DefaultTransformerRegistry.MustRegister(randomPersonTransformerDefinition)
 }
