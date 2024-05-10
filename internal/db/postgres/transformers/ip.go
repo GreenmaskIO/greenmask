@@ -17,13 +17,15 @@ package transformers
 import (
 	"context"
 	"fmt"
+	"net"
+
 	"github.com/greenmaskio/greenmask/internal/db/postgres/transformers/utils"
 	"github.com/greenmaskio/greenmask/internal/generators/transformers"
 	"github.com/greenmaskio/greenmask/pkg/toolkit"
 )
 
-var IpTransformerDefinition = utils.NewTransformerDefinition(
-	utils.NewTransformerProperties("IpTransformer", "Generate ip in the provided subnet"),
+var RandomIpDefinition = utils.NewTransformerDefinition(
+	utils.NewTransformerProperties("RandomIp", "Generate ip in the provided subnet"),
 
 	NewIpTransformer,
 
@@ -32,30 +34,42 @@ var IpTransformerDefinition = utils.NewTransformerDefinition(
 		"column name",
 	).SetIsColumn(toolkit.NewColumnProperties().
 		SetAffected(true).
-		SetAllowedColumnTypes("text", "inet"),
+		SetAllowedColumnTypes("text", "varchar", "inet"),
 	).SetRequired(true),
 
 	toolkit.MustNewParameterDefinition(
 		"subnet",
 		"cidr subnet",
-	).SetRequired(true),
+	).SetRequired(true).
+		SetCastDbType("cidr").
+		SetDynamicMode(
+			toolkit.NewDynamicModeProperties().
+				SetCompatibleTypes("cidr"),
+		),
 
 	keepNullParameterDefinition,
 
 	engineParameterDefinition,
 )
 
-type IpTransformer struct {
+type RandomIp struct {
 	columnName      string
 	keepNull        bool
 	affectedColumns map[int]string
 	columnIdx       int
+	dynamicMode     bool
 	t               *transformers.IpAddress
+	subnetParam     toolkit.Parameterizer
 }
 
 func NewIpTransformer(ctx context.Context, driver *toolkit.Driver, parameters map[string]toolkit.Parameterizer) (utils.Transformer, toolkit.ValidationWarnings, error) {
-	var columnName, engine, subnet string
+
+	subnetParam := parameters["subnet"]
+
+	var columnName, engine string
+	var subnet *net.IPNet
 	var keepNull bool
+	var dynamicMode bool
 	p := parameters["column"]
 	if err := p.Scan(&columnName); err != nil {
 		return nil, nil, fmt.Errorf(`unable to scan "column" param: %w`, err)
@@ -78,12 +92,19 @@ func NewIpTransformer(ctx context.Context, driver *toolkit.Driver, parameters ma
 		return nil, nil, fmt.Errorf(`unable to scan "engine" param: %w`, err)
 	}
 
-	p = parameters["subnet"]
-	if err := p.Scan(&subnet); err != nil {
-		return nil, nil, fmt.Errorf(`unable to scan "subnet" param: %w`, err)
+	if subnetParam.IsDynamic() {
+		dynamicMode = true
+	} else {
+		subnet = &net.IPNet{}
+		if err := subnetParam.Scan(subnet); err != nil {
+			return nil, nil, fmt.Errorf(`unable to scan "subnet" param: %w`, err)
+		}
 	}
 
-	t := transformers.NewIpAddress(subnet)
+	t, err := transformers.NewIpAddress(subnet)
+	if err != nil {
+		return nil, nil, fmt.Errorf("unable to create ip transformer: %w", err)
+	}
 	g, err := getGenerateEngine(ctx, engine, t.GetRequiredGeneratorByteLength())
 	if err != nil {
 		return nil, nil, fmt.Errorf("unable to get generator: %w", err)
@@ -92,28 +113,31 @@ func NewIpTransformer(ctx context.Context, driver *toolkit.Driver, parameters ma
 		return nil, nil, fmt.Errorf("unable to set generator: %w", err)
 	}
 
-	return &IpTransformer{
+	return &RandomIp{
 		columnName:      columnName,
 		keepNull:        keepNull,
 		affectedColumns: affectedColumns,
 		columnIdx:       idx,
 		t:               t,
+		subnetParam:     subnetParam,
+		dynamicMode:     dynamicMode,
 	}, nil, nil
 }
 
-func (rbt *IpTransformer) GetAffectedColumns() map[int]string {
+func (rbt *RandomIp) GetAffectedColumns() map[int]string {
 	return rbt.affectedColumns
 }
 
-func (rbt *IpTransformer) Init(ctx context.Context) error {
+func (rbt *RandomIp) Init(ctx context.Context) error {
 	return nil
 }
 
-func (rbt *IpTransformer) Done(ctx context.Context) error {
+func (rbt *RandomIp) Done(ctx context.Context) error {
 	return nil
 }
 
-func (rbt *IpTransformer) Transform(ctx context.Context, r *toolkit.Record) (*toolkit.Record, error) {
+func (rbt *RandomIp) Transform(ctx context.Context, r *toolkit.Record) (*toolkit.Record, error) {
+
 	val, err := r.GetRawColumnValueByIdx(rbt.columnIdx)
 	if err != nil {
 		return nil, fmt.Errorf("unable to scan value: %w", err)
@@ -122,7 +146,15 @@ func (rbt *IpTransformer) Transform(ctx context.Context, r *toolkit.Record) (*to
 		return r, nil
 	}
 
-	ipVal, err := rbt.t.Generate()
+	var subnet *net.IPNet
+	if rbt.dynamicMode {
+		subnet = &net.IPNet{}
+		if err = rbt.subnetParam.Scan(subnet); err != nil {
+			return nil, fmt.Errorf(`unable to scan "subnet" param: %w`, err)
+		}
+	}
+
+	ipVal, err := rbt.t.Generate(val.Data, subnet)
 	if err != nil {
 		return nil, fmt.Errorf("unable to transform value: %w", err)
 	}
@@ -134,5 +166,5 @@ func (rbt *IpTransformer) Transform(ctx context.Context, r *toolkit.Record) (*to
 }
 
 func init() {
-	utils.DefaultTransformerRegistry.MustRegister(IpTransformerDefinition)
+	utils.DefaultTransformerRegistry.MustRegister(RandomIpDefinition)
 }

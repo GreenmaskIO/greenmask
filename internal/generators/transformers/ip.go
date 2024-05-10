@@ -16,63 +16,58 @@ package transformers
 
 import (
 	"fmt"
-	"github.com/greenmaskio/greenmask/internal/generators"
-	"math/rand"
 	"net"
-	"time"
+
+	"github.com/greenmaskio/greenmask/internal/generators"
 )
 
 type IpAddress struct {
-	subnet     string
+	subnet     *net.IPNet
 	generator  generators.Generator
 	byteLength int
 }
 
-func NewIpAddress(subnet string) *IpAddress {
+func NewIpAddress(subnet *net.IPNet) (*IpAddress, error) {
 	return &IpAddress{
-		byteLength: 1,
+		byteLength: 16,
 		subnet:     subnet,
-	}
+	}, nil
 }
 
 func (b *IpAddress) GetRequiredGeneratorByteLength() int {
 	return b.byteLength
 }
 
-func (b *IpAddress) Generate() (string, error) {
-	randomIP, err := randomIPInSubnet(b.subnet)
-	if err != nil {
-		fmt.Println("Ошибка:", err)
-		return "", nil
+func (b *IpAddress) Generate(original []byte, runtimeSubnet *net.IPNet) (net.IP, error) {
+
+	subnet := b.subnet
+	if runtimeSubnet != nil {
+		subnet = runtimeSubnet
 	}
-	return randomIP.String(), err
+
+	randomBytes, err := b.generator.Generate(original)
+	if err != nil {
+		return nil, fmt.Errorf("error generating random bytes: %w", err)
+	}
+
+	randomIP, err := randomIPInSubnet(subnet, randomBytes)
+	if err != nil {
+		return nil, fmt.Errorf("error generating random IP: %w", err)
+	}
+	return randomIP, err
 }
 
-func randomIPInSubnet(cidr string) (net.IP, error) {
-	_, subnet, err := net.ParseCIDR(cidr)
-	if err != nil {
-		return nil, err
-	}
+func randomIPInSubnet(subnet *net.IPNet, randomBytes []byte) (net.IP, error) {
 
 	netIP := subnet.IP
 	mask := subnet.Mask
 	hostIP := make([]byte, len(netIP))
 
-	src := rand.NewSource(time.Now().UnixNano())
-	rng := rand.New(src)
-
 	for i := 0; i < len(hostIP); i++ {
-		val := byte(rng.Intn(256) & ^int(mask[i]))
 
-		if val == 1 {
-			val += 1
-		}
+		val := randomBytes[i] & ^mask[i]
 
-		if val == 255 {
-			val -= 1
-		}
-
-		hostIP[i] = byte(rng.Intn(256) & ^int(mask[i]))
+		hostIP[i] = val
 	}
 
 	for i := range netIP {
