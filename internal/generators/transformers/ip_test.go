@@ -89,6 +89,7 @@ func BenchmarkIpAddress_Generate(b *testing.B) {
 	_, subnet, err := net.ParseCIDR("192.168.1.0/30")
 	require.NoError(b, err)
 	tr, err := NewIpAddress(subnet)
+	require.NoError(b, err)
 	g := generators.NewRandomBytes(time.Now().UnixNano(), tr.GetRequiredGeneratorByteLength())
 
 	for i := 0; i < b.N; i++ {

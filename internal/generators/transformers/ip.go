@@ -16,6 +16,7 @@ package transformers
 
 import (
 	"fmt"
+	"math/big"
 	"net"
 
 	"github.com/greenmaskio/greenmask/internal/generators"
@@ -34,53 +35,57 @@ func NewIpAddress(subnet *net.IPNet) (*IpAddress, error) {
 	}, nil
 }
 
-func (b *IpAddress) GetRequiredGeneratorByteLength() int {
-	return b.byteLength
+func (ip *IpAddress) GetRequiredGeneratorByteLength() int {
+	return ip.byteLength
 }
 
-func (b *IpAddress) Generate(original []byte, runtimeSubnet *net.IPNet) (net.IP, error) {
-
-	subnet := b.subnet
+func (ip *IpAddress) Generate(original []byte, runtimeSubnet *net.IPNet) (net.IP, error) {
+	subnet := ip.subnet
 	if runtimeSubnet != nil {
 		subnet = runtimeSubnet
 	}
+	ones, bits := subnet.Mask.Size()
+	totalHosts := big.NewInt(1)
+	totalHosts.Lsh(totalHosts, uint(bits-ones))
 
-	randomBytes, err := b.generator.Generate(original)
+	if totalHosts.Cmp(big.NewInt(2)) <= 0 {
+		return nil, fmt.Errorf("subnet too small")
+	}
+
+	// Generate random host part within the range, avoiding special addresses
+	randomHostNum := big.NewInt(0)
+
+	hostBytes, err := ip.generator.Generate(original)
 	if err != nil {
 		return nil, fmt.Errorf("error generating random bytes: %w", err)
 	}
-
-	randomIP, err := randomIPInSubnet(subnet, randomBytes)
-	if err != nil {
-		return nil, fmt.Errorf("error generating random IP: %w", err)
+	if subnet.IP.To4() != nil {
+		hostBytes = hostBytes[:4] // Use only the first 4 bytes for IPv4
 	}
-	return randomIP, err
+	// IPv6, use all 16 bytes
+	randomHostNum.SetBytes(hostBytes)
+	randomHostNum.Mod(randomHostNum, new(big.Int).Sub(totalHosts, big.NewInt(2))) // [0, totalHosts-3]
+	randomHostNum.Add(randomHostNum, big.NewInt(1))                               // [1, totalHosts-2]
+
+	// Calculate the IP address
+	networkInt := big.NewInt(0)
+	networkInt.SetBytes(subnet.IP)
+	networkInt.Add(networkInt, randomHostNum)
+
+	ipAddrBytes := networkInt.Bytes()
+	if len(ipAddrBytes) < 16 && subnet.IP.To4() == nil {
+		// Pad the address to 16 bytes if it's an IPv6 address
+		paddedIP := make([]byte, 16)
+		copy(paddedIP[16-len(ipAddrBytes):], ipAddrBytes)
+		return paddedIP, nil
+	}
+	return ipAddrBytes, nil
 }
 
-func randomIPInSubnet(subnet *net.IPNet, randomBytes []byte) (net.IP, error) {
-
-	netIP := subnet.IP
-	mask := subnet.Mask
-	hostIP := make([]byte, len(netIP))
-
-	for i := 0; i < len(hostIP); i++ {
-
-		val := randomBytes[i] & ^mask[i]
-
-		hostIP[i] = val
+func (ip *IpAddress) SetGenerator(g generators.Generator) error {
+	if g.Size() < ip.byteLength {
+		return fmt.Errorf("requested byte length (%d) higher than generator can produce (%d)", ip.byteLength, g.Size())
 	}
-
-	for i := range netIP {
-		netIP[i] |= hostIP[i]
-	}
-
-	return netIP, nil
-}
-
-func (b *IpAddress) SetGenerator(g generators.Generator) error {
-	if g.Size() < b.byteLength {
-		return fmt.Errorf("requested byte length (%d) higher than generator can produce (%d)", b.byteLength, g.Size())
-	}
-	b.generator = g
+	ip.generator = g
 	return nil
 }
