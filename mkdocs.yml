@@ -111,6 +111,7 @@ nav:
                   - Core custom functions: built_in_transformers/advanced_transformers/custom_functions/core_functions.md
                   - Faker function: built_in_transformers/advanced_transformers/custom_functions/faker_function.md
   - Release notes:
+      - Greenmask 0.1.14: release_notes/greenmask_0_1_14.md
       - Greenmask 0.1.13: release_notes/greenmask_0_1_13.md
       - Greenmask 0.1.12: release_notes/greenmask_0_1_12.md
       - Greenmask 0.1.11: release_notes/greenmask_0_1_11.md
