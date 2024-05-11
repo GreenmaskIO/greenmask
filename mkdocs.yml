@@ -14,7 +14,7 @@ theme:
     - content.tooltips
     # - navigation.sections
     - navigation.tabs
-    #    - navigation.top
+    - navigation.top
     #    - navigation.tracking
     - search.highlight
     - search.share
@@ -53,6 +53,8 @@ nav:
       - Commands: commands.md
       - Transformers:
           - built_in_transformers/index.md
+          - Dynamic parameters: built_in_transformers/dynamic_parameters.md
+          - Transformation engines: built_in_transformers/transformation_engines.md
           - Standard transformers:
               - built_in_transformers/standard_transformers/index.md
               - Cmd: built_in_transformers/standard_transformers/cmd.md
