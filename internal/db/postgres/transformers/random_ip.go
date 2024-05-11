@@ -25,13 +25,13 @@ import (
 )
 
 var RandomIpDefinition = utils.NewTransformerDefinition(
-	utils.NewTransformerProperties("RandomIp", "Generate ip in the provided subnet"),
+	utils.NewTransformerProperties("RandomIp", "Generate V4 or V6 IP in the provided subnet"),
 
 	NewIpTransformer,
 
 	toolkit.MustNewParameterDefinition(
 		"column",
-		"column name",
+		"Column name",
 	).SetIsColumn(toolkit.NewColumnProperties().
 		SetAffected(true).
 		SetAllowedColumnTypes("text", "varchar", "inet"),
@@ -39,22 +39,19 @@ var RandomIpDefinition = utils.NewTransformerDefinition(
 
 	toolkit.MustNewParameterDefinition(
 		"subnet",
-		"cidr subnet",
+		"Subnet for generating random ip in V4 or V6 format",
 	).SetRequired(true).
 		SetCastDbType("cidr").
 		SetDynamicMode(
 			toolkit.NewDynamicModeProperties().
-				SetCompatibleTypes("cidr"),
+				SetCompatibleTypes("cidr", "text", "varchar"),
 		),
-
-	keepNullParameterDefinition,
 
 	engineParameterDefinition,
 )
 
 type RandomIp struct {
 	columnName      string
-	keepNull        bool
 	affectedColumns map[int]string
 	columnIdx       int
 	dynamicMode     bool
@@ -68,7 +65,6 @@ func NewIpTransformer(ctx context.Context, driver *toolkit.Driver, parameters ma
 
 	var columnName, engine string
 	var subnet *net.IPNet
-	var keepNull bool
 	var dynamicMode bool
 	p := parameters["column"]
 	if err := p.Scan(&columnName); err != nil {
@@ -81,11 +77,6 @@ func NewIpTransformer(ctx context.Context, driver *toolkit.Driver, parameters ma
 	}
 	affectedColumns := make(map[int]string)
 	affectedColumns[idx] = columnName
-
-	p = parameters["keep_null"]
-	if err := p.Scan(&keepNull); err != nil {
-		return nil, nil, fmt.Errorf(`unable to scan "keep_null" param: %w`, err)
-	}
 
 	p = parameters["engine"]
 	if err := p.Scan(&engine); err != nil {
@@ -115,7 +106,6 @@ func NewIpTransformer(ctx context.Context, driver *toolkit.Driver, parameters ma
 
 	return &RandomIp{
 		columnName:      columnName,
-		keepNull:        keepNull,
 		affectedColumns: affectedColumns,
 		columnIdx:       idx,
 		t:               t,
@@ -142,9 +132,6 @@ func (rbt *RandomIp) Transform(ctx context.Context, r *toolkit.Record) (*toolkit
 	if err != nil {
 		return nil, fmt.Errorf("unable to scan value: %w", err)
 	}
-	if val.IsNull && rbt.keepNull {
-		return r, nil
-	}
 
 	var subnet *net.IPNet
 	if rbt.dynamicMode {
@@ -159,7 +146,8 @@ func (rbt *RandomIp) Transform(ctx context.Context, r *toolkit.Record) (*toolkit
 		return nil, fmt.Errorf("unable to transform value: %w", err)
 	}
 
-	if err = r.SetColumnValueByIdx(rbt.columnIdx, ipVal); err != nil {
+	newRawValue := toolkit.NewRawValue([]byte(ipVal.String()), false)
+	if err = r.SetRawColumnValueByIdx(rbt.columnIdx, newRawValue); err != nil {
 		return nil, fmt.Errorf("unable to set new value: %w", err)
 	}
 	return r, nil

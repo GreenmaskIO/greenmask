@@ -91,11 +91,10 @@ func BenchmarkIpAddress_Generate(b *testing.B) {
 	tr, err := NewIpAddress(subnet)
 	require.NoError(b, err)
 	g := generators.NewRandomBytes(time.Now().UnixNano(), tr.GetRequiredGeneratorByteLength())
+	err = tr.SetGenerator(g)
+	require.NoError(b, err)
 
 	for i := 0; i < b.N; i++ {
-		require.NoError(b, err)
-		require.NoError(b, err)
-		err = tr.SetGenerator(g)
 		res, err := tr.Generate([]byte{}, nil)
 		require.NoError(b, err)
 		require.True(b, !res.Equal(broadcast) && !res.Equal(subnet.IP), "IP address is subnet or broadcast")
