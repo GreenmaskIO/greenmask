@@ -273,7 +273,7 @@ func (v *Validate) dumpTables(ctx context.Context) error {
 	var tablesWithTransformers []entries.Entry
 	for _, item := range v.context.DataSectionObjects {
 
-		if t, ok := item.(*entries.Table); ok && len(t.Transformers) > 0 {
+		if t, ok := item.(*entries.Table); ok && len(t.TransformersContext) > 0 {
 			t.ValidateLimitedRecords = v.config.Validate.RowsLimit
 			tablesWithTransformers = append(tablesWithTransformers, t)
 		}

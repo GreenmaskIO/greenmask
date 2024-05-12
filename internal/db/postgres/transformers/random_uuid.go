@@ -18,21 +18,20 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/google/uuid"
-
 	"github.com/greenmaskio/greenmask/internal/db/postgres/transformers/utils"
+	"github.com/greenmaskio/greenmask/internal/generators/transformers"
 	"github.com/greenmaskio/greenmask/pkg/toolkit"
 )
 
-var RandomUuidTransformerDefinition = utils.NewDefinition(
+var uuidTransformerDefinition = utils.NewTransformerDefinition(
 	utils.NewTransformerProperties(
 		"RandomUuid",
-		"Generate random uuid",
+		"Generate UUID",
 	),
 
 	NewRandomUuidTransformer,
 
-	toolkit.MustNewParameter(
+	toolkit.MustNewParameterDefinition(
 		"column",
 		"column name",
 	).SetIsColumn(toolkit.NewColumnProperties().
@@ -40,25 +39,25 @@ var RandomUuidTransformerDefinition = utils.NewDefinition(
 		SetAllowedColumnTypes("text", "varchar", "uuid"),
 	).SetRequired(true),
 
-	toolkit.MustNewParameter(
-		"keep_null",
-		"indicates that NULL values must not be replaced with transformed values",
-	).SetDefaultValue(toolkit.ParamsValue("true")),
+	keepNullParameterDefinition,
+
+	engineParameterDefinition,
 )
 
 type RandomUuidTransformer struct {
+	t               *transformers.RandomUuidTransformer
 	columnName      string
 	columnIdx       int
 	keepNull        bool
 	affectedColumns map[int]string
 }
 
-func NewRandomUuidTransformer(ctx context.Context, driver *toolkit.Driver, parameters map[string]*toolkit.Parameter) (utils.Transformer, toolkit.ValidationWarnings, error) {
-	var columnName string
+func NewRandomUuidTransformer(ctx context.Context, driver *toolkit.Driver, parameters map[string]toolkit.Parameterizer) (utils.Transformer, toolkit.ValidationWarnings, error) {
+	var columnName, engine string
 	var keepNull bool
 
 	p := parameters["column"]
-	if _, err := p.Scan(&columnName); err != nil {
+	if err := p.Scan(&columnName); err != nil {
 		return nil, nil, fmt.Errorf("unable to scan column param: %w", err)
 	}
 
@@ -70,11 +69,27 @@ func NewRandomUuidTransformer(ctx context.Context, driver *toolkit.Driver, param
 	affectedColumns[idx] = columnName
 
 	p = parameters["keep_null"]
-	if _, err := p.Scan(&keepNull); err != nil {
+	if err := p.Scan(&keepNull); err != nil {
 		return nil, nil, fmt.Errorf(`unable to scan "keep_null" param: %w`, err)
 	}
 
+	p = parameters["engine"]
+	if err := p.Scan(&engine); err != nil {
+		return nil, nil, fmt.Errorf(`unable to scan "engine" param: %w`, err)
+	}
+
+	t := transformers.NewRandomUuidTransformer()
+
+	g, err := getGenerateEngine(ctx, engine, t.GetRequiredGeneratorByteLength())
+	if err != nil {
+		return nil, nil, fmt.Errorf("unable to get generator: %w", err)
+	}
+	if err = t.SetGenerator(g); err != nil {
+		return nil, nil, fmt.Errorf("unable to set generator: %w", err)
+	}
+
 	return &RandomUuidTransformer{
+		t:               t,
 		columnName:      columnName,
 		keepNull:        keepNull,
 		affectedColumns: affectedColumns,
@@ -103,7 +118,12 @@ func (rut *RandomUuidTransformer) Transform(ctx context.Context, r *toolkit.Reco
 		return r, nil
 	}
 
-	data, err := uuid.New().MarshalText()
+	uuidVal, err := rut.t.Transform(val.Data)
+	if err != nil {
+		return nil, fmt.Errorf("error transforming value: %w", err)
+	}
+
+	data, err := uuidVal.MarshalText()
 	if err != nil {
 		return nil, fmt.Errorf("error umarshalling uuid: %w", err)
 	}
@@ -114,5 +134,5 @@ func (rut *RandomUuidTransformer) Transform(ctx context.Context, r *toolkit.Reco
 }
 
 func init() {
-	utils.DefaultTransformerRegistry.MustRegister(RandomUuidTransformerDefinition)
+	utils.DefaultTransformerRegistry.MustRegister(uuidTransformerDefinition)
 }

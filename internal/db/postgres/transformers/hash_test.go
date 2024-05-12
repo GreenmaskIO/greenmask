@@ -80,7 +80,7 @@ func TestHashTransformer_Transform_all_functions(t *testing.T) {
 			)
 			require.NoError(t, err)
 			require.Empty(t, warnings)
-			r, err := transformer.Transform(
+			r, err := transformer.Transformer.Transform(
 				context.Background(),
 				record,
 			)
@@ -157,7 +157,7 @@ func TestHashTransformer_Transform_length_truncation(t *testing.T) {
 	)
 	require.NoError(t, err)
 	require.Empty(t, warnings)
-	r, err := transformer.Transform(
+	r, err := transformer.Transformer.Transform(
 		context.Background(),
 		record,
 	)
@@ -217,7 +217,7 @@ func TestHashTransformer_Transform_multiple_iterations(t *testing.T) {
 			err = record.Row.Decode([]byte(tt.original))
 			require.NoError(t, err)
 
-			_, err = transformer.Transform(
+			_, err = transformer.Transformer.Transform(
 				context.Background(),
 				record,
 			)

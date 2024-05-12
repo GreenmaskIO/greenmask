@@ -58,6 +58,16 @@ func validateAndBuildTablesConfig(
 			}
 			table.Constraints = constraints
 
+			// Assigning overridden column types for driver initialization
+			if tableCfg.ColumnsTypeOverride != nil {
+				for _, c := range table.Columns {
+					overridingType, ok := tableCfg.ColumnsTypeOverride[c.Name]
+					if ok {
+						c.OverriddenTypeName = overridingType
+					}
+				}
+			}
+
 			// Assign columns and transformersMap if were found
 			columns, err := getColumnsConfig(ctx, tx, table.Oid, version)
 			if err != nil {
@@ -65,11 +75,19 @@ func validateAndBuildTablesConfig(
 			}
 			table.Columns = columns
 
-			driver, err := toolkit.NewDriver(table.Table, types, tableCfg.ColumnsTypeOverride)
+			driver, driverWarnings, err := toolkit.NewDriver(table.Table, types)
 			if err != nil {
 				return nil, nil, fmt.Errorf("unnable to initialise driver: %w", err)
 			}
 			table.Driver = driver
+
+			if len(driverWarnings) > 0 {
+				for _, w := range driverWarnings {
+					w.AddMeta("SchemaName", table.Schema).
+						AddMeta("TableName", table.Name)
+				}
+				warnings = append(warnings, driverWarnings...)
+			}
 
 			// InitTransformation toolkit
 			if len(tableCfg.Transformers) > 0 {
@@ -84,11 +102,13 @@ func validateAndBuildTablesConfig(
 
 						}
 					}
+					// Not only errors might be in driver initialization but also a warnings that's why we have to add
+					// append medata to validation warnings and the check error and return error with warnings
 					if err != nil {
 						return nil, warnings, err
 					}
 					warnings = append(warnings, initWarnings...)
-					table.Transformers = append(table.Transformers, transformer)
+					table.TransformersContext = append(table.TransformersContext, transformer)
 				}
 			}
 
@@ -178,6 +198,7 @@ func getTable(ctx context.Context, tx pgx.Tx, t *domains.Table) ([]*entries.Tabl
 }
 
 func getColumnsConfig(ctx context.Context, tx pgx.Tx, oid toolkit.Oid, version int) ([]*toolkit.Column, error) {
+	defaultTypeMap := pgtype.NewMap()
 	var res []*toolkit.Column
 	buf := bytes.NewBuffer(nil)
 	err := TableColumnsQuery.Execute(
@@ -198,13 +219,20 @@ func getColumnsConfig(ctx context.Context, tx pgx.Tx, oid toolkit.Oid, version i
 		column := toolkit.Column{Idx: idx}
 		if version >= 120000 {
 			err = rows.Scan(&column.Name, &column.TypeOid, &column.TypeName,
-				&column.NotNull, &column.Length, &column.Num, &column.IsGenerated)
+				&column.NotNull, &column.Length, &column.Num, &column.TypeLength, &column.IsGenerated)
 		} else {
 			err = rows.Scan(&column.Name, &column.TypeOid, &column.TypeName,
-				&column.NotNull, &column.Length, &column.Num)
+				&column.NotNull, &column.Length, &column.Num, &column.TypeLength)
 		}
 		if err != nil {
 			return nil, fmt.Errorf("cannot scan tableColumnQuery: %w", err)
+		}
+		column.CanonicalTypeName = column.TypeName
+		// Getting canonical type name if exists. For instance - PostgreSQL type Integer is alias for int4
+		// (int4 - canonical type name)
+		canonicalType, ok := defaultTypeMap.TypeForOID(uint32(column.TypeOid))
+		if ok {
+			column.CanonicalTypeName = canonicalType.Name
 		}
 		res = append(res, &column)
 		idx++

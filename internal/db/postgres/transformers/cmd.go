@@ -55,7 +55,7 @@ var defaultRowDriverParams = &toolkit.DriverParams{
 
 var cmdTransformerName = "Cmd"
 
-var CmdTransformerDefinition = utils.NewDefinition(
+var CmdTransformerDefinition = utils.NewTransformerDefinition(
 	utils.NewTransformerProperties(
 		cmdTransformerName,
 		"Transform data via external program using stdin and stdout interaction",
@@ -63,7 +63,7 @@ var CmdTransformerDefinition = utils.NewDefinition(
 
 	NewCmd,
 
-	toolkit.MustNewParameter(
+	toolkit.MustNewParameterDefinition(
 		"columns",
 		"affected column names. If empty use the whole tuple."+
 			"The structure:"+
@@ -76,39 +76,39 @@ var CmdTransformerDefinition = utils.NewDefinition(
 	).SetDefaultValue([]byte("[]")).
 		SetIsColumnContainer(true),
 
-	toolkit.MustNewParameter(
+	toolkit.MustNewParameterDefinition(
 		"executable",
 		"path to executable file",
 	).SetRequired(true),
 
-	toolkit.MustNewParameter(
+	toolkit.MustNewParameterDefinition(
 		"args",
 		"list of parameters for executable file",
 	).SetDefaultValue([]byte("[]")),
 
-	toolkit.MustNewParameter(
+	toolkit.MustNewParameterDefinition(
 		"driver",
 		"row driver with parameters that is used for interacting with cmd. The default is csv. "+
 			`The structure is:`+
 			`{"name": "text|csv|json", "params": { "format": "[text|bytes]"} }`,
 	).SetDefaultValue([]byte(`{"name": "csv"}`)),
 
-	toolkit.MustNewParameter(
+	toolkit.MustNewParameterDefinition(
 		"validate",
 		"try to encode-decode data received from cmd",
 	).SetDefaultValue([]byte("false")),
 
-	toolkit.MustNewParameter(
+	toolkit.MustNewParameterDefinition(
 		"timeout",
 		"timeout for sending and receiving data from cmd",
 	).SetDefaultValue([]byte("2s")),
 
-	toolkit.MustNewParameter(
+	toolkit.MustNewParameterDefinition(
 		"expected_exit_code",
 		"expected exit code",
 	).SetDefaultValue([]byte("0")),
 
-	toolkit.MustNewParameter(
+	toolkit.MustNewParameterDefinition(
 		"skip_on_behaviour",
 		"skip transformation call if one of the provided columns has null value (any) or each of the provided"+
 			" column has null values (all). This option works together with skip_on_null_input parameter on columns."+
@@ -149,7 +149,7 @@ type Cmd struct {
 }
 
 func NewCmd(
-	ctx context.Context, driver *toolkit.Driver, parameters map[string]*toolkit.Parameter,
+	ctx context.Context, driver *toolkit.Driver, parameters map[string]toolkit.Parameterizer,
 ) (utils.Transformer, toolkit.ValidationWarnings, error) {
 
 	name := cmdTransformerName
@@ -165,22 +165,22 @@ func NewCmd(
 	rowDriverParams := &(*defaultRowDriverParams)
 
 	p := parameters["columns"]
-	if _, err := p.Scan(&columns); err != nil {
+	if err := p.Scan(&columns); err != nil {
 		return nil, nil, fmt.Errorf(`unable to scan "columns" param: %w`, err)
 	}
 
 	p = parameters["executable"]
-	if _, err := p.Scan(&executable); err != nil {
+	if err := p.Scan(&executable); err != nil {
 		return nil, nil, fmt.Errorf(`unable to scan "executable" param: %w`, err)
 	}
 
 	p = parameters["args"]
-	if _, err := p.Scan(&args); err != nil {
+	if err := p.Scan(&args); err != nil {
 		return nil, nil, fmt.Errorf(`unable to scan "args" param: %w`, err)
 	}
 
 	p = parameters["driver"]
-	if _, err := p.Scan(rowDriverParams); err != nil {
+	if err := p.Scan(rowDriverParams); err != nil {
 		return nil, nil, fmt.Errorf(`unable to scan "mode" param: %w`, err)
 	}
 	if err := rowDriverParams.Validate(); err != nil {
@@ -188,22 +188,22 @@ func NewCmd(
 	}
 
 	p = parameters["validate"]
-	if _, err := p.Scan(&validate); err != nil {
+	if err := p.Scan(&validate); err != nil {
 		return nil, nil, fmt.Errorf(`unable to scan "validate" param: %w`, err)
 	}
 
 	p = parameters["timeout"]
-	if _, err := p.Scan(&timeout); err != nil {
+	if err := p.Scan(&timeout); err != nil {
 		return nil, nil, fmt.Errorf(`unable to scan "timeout" param: %w`, err)
 	}
 
 	p = parameters["expected_exit_code"]
-	if _, err := p.Scan(&expectedExitCode); err != nil {
+	if err := p.Scan(&expectedExitCode); err != nil {
 		return nil, nil, fmt.Errorf(`unable to scan "expected_exit_code" param: %w`, err)
 	}
 
 	p = parameters["skip_on_behaviour"]
-	if _, err := p.Scan(&skipOnBehaviourName); err != nil {
+	if err := p.Scan(&skipOnBehaviourName); err != nil {
 		return nil, nil, fmt.Errorf(`unable to scan "skip_on_behaviour" param: %w`, err)
 	}
 	if skipOnBehaviourName == skipOnAnyName {
@@ -446,7 +446,7 @@ func (c *Cmd) Transform(ctx context.Context, r *toolkit.Record) (*toolkit.Record
 	return r, nil
 }
 
-func cmdValidateFormat(p *toolkit.Parameter, v toolkit.ParamsValue) (toolkit.ValidationWarnings, error) {
+func cmdValidateFormat(p *toolkit.ParameterDefinition, v toolkit.ParamsValue) (toolkit.ValidationWarnings, error) {
 	value := string(v)
 	if value != cmdRowDriverCsvName && value != cmdRowDriverTextName &&
 		value != cmdRowDriverJsonName {
@@ -461,7 +461,7 @@ func cmdValidateFormat(p *toolkit.Parameter, v toolkit.ParamsValue) (toolkit.Val
 	return nil, nil
 }
 
-func cmdValidateSkipBehaviour(p *toolkit.Parameter, v toolkit.ParamsValue) (toolkit.ValidationWarnings, error) {
+func cmdValidateSkipBehaviour(p *toolkit.ParameterDefinition, v toolkit.ParamsValue) (toolkit.ValidationWarnings, error) {
 	value := string(v)
 	if value != skipOnAnyName && value != skipOnAllName {
 		return toolkit.ValidationWarnings{

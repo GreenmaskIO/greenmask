@@ -114,12 +114,13 @@ type TransformerConfig struct {
 	// This cannot be parsed with mapstructure due to uncontrollable lowercasing
 	// https://github.com/spf13/viper/issues/373
 	// Instead we have to use workaround and parse it manually
-	Params toolkit.Params `mapstructure:"-" yaml:"-" json:"-"` // yaml:"params" json:"params,omitempty"`
+	Params toolkit.StaticParameters `mapstructure:"-" yaml:"-" json:"-"` // yaml:"params" json:"params,omitempty"`
 	// MetadataParams - encoded transformer parameters - uses only for storing into storage
 	// TODO: You need to get rid of it by creating a separate structure for storing metadata in
 	//   internal/db/postgres/storage/metadata_json.go
 	// this is used only due to https://github.com/spf13/viper/issues/373
-	MetadataParams map[string]any `mapstructure:"-" yaml:"params,omitempty" json:"params,omitempty"`
+	MetadataParams map[string]any            `mapstructure:"-" yaml:"params,omitempty" json:"params,omitempty"`
+	DynamicParams  toolkit.DynamicParameters `mapstructure:"dynamic_params" yaml:"dynamic_params" json:"dynamic_params,omitempty"`
 }
 
 type Table struct {

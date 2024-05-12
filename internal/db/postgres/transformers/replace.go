@@ -22,7 +22,7 @@ import (
 	"github.com/greenmaskio/greenmask/pkg/toolkit"
 )
 
-var ReplaceTransformerDefinition = utils.NewDefinition(
+var ReplaceTransformerDefinition = utils.NewTransformerDefinition(
 	utils.NewTransformerProperties(
 		"Replace",
 		"Replace column value to the provided",
@@ -30,25 +30,25 @@ var ReplaceTransformerDefinition = utils.NewDefinition(
 
 	NewReplaceTransformer,
 
-	toolkit.MustNewParameter(
+	toolkit.MustNewParameterDefinition(
 		"column",
 		"column name",
 	).SetIsColumn(toolkit.NewColumnProperties().
 		SetAffected(true),
 	).SetRequired(true),
 
-	toolkit.MustNewParameter(
+	toolkit.MustNewParameterDefinition(
 		"value",
 		"value to replace",
 	).SetRequired(true).
 		SetLinkParameter("column"),
 
-	toolkit.MustNewParameter(
+	toolkit.MustNewParameterDefinition(
 		"keep_null",
 		"indicates that NULL values must not be replaced with transformed values",
 	).SetDefaultValue(toolkit.ParamsValue("true")),
 
-	toolkit.MustNewParameter(
+	toolkit.MustNewParameterDefinition(
 		"validate",
 		"validate the value via driver decoding procedure",
 	).SetDefaultValue(toolkit.ParamsValue("true")),
@@ -63,13 +63,13 @@ type ReplaceTransformer struct {
 	affectedColumns map[int]string
 }
 
-func NewReplaceTransformer(ctx context.Context, driver *toolkit.Driver, parameters map[string]*toolkit.Parameter) (utils.Transformer, toolkit.ValidationWarnings, error) {
+func NewReplaceTransformer(ctx context.Context, driver *toolkit.Driver, parameters map[string]toolkit.Parameterizer) (utils.Transformer, toolkit.ValidationWarnings, error) {
 
 	var columnName string
 	var keepNull, validate bool
 
 	p := parameters["column"]
-	if _, err := p.Scan(&columnName); err != nil {
+	if err := p.Scan(&columnName); err != nil {
 		return nil, nil, fmt.Errorf(`unable to scan "column" param: %w`, err)
 	}
 
@@ -81,11 +81,15 @@ func NewReplaceTransformer(ctx context.Context, driver *toolkit.Driver, paramete
 	affectedColumns[idx] = columnName
 
 	p = parameters["validate"]
-	if _, err := p.Scan(&validate); err != nil {
+	if err := p.Scan(&validate); err != nil {
 		return nil, nil, fmt.Errorf(`unable to scan "validate" param: %w`, err)
 	}
 
-	value := parameters["value"].RawValue()
+	p = parameters["value"]
+	value, err := p.RawValue()
+	if err != nil {
+		return nil, nil, fmt.Errorf("error getting raw value from parameter \"%s\": %w", p.GetDefinition().Name, err)
+	}
 	if validate {
 		_, err := driver.DecodeValueByTypeOid(uint32(c.TypeOid), value)
 		if err != nil {
@@ -102,7 +106,7 @@ func NewReplaceTransformer(ctx context.Context, driver *toolkit.Driver, paramete
 	}
 
 	p = parameters["keep_null"]
-	if _, err := p.Scan(&keepNull); err != nil {
+	if err := p.Scan(&keepNull); err != nil {
 		return nil, nil, fmt.Errorf(`unable to scan "keep_null" param: %w`, err)
 	}
 

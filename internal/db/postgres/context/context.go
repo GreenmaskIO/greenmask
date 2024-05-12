@@ -16,7 +16,9 @@ package context
 
 import (
 	"context"
+	"encoding/hex"
 	"fmt"
+	"os"
 	"slices"
 
 	"github.com/jackc/pgx/v5"
@@ -57,6 +59,17 @@ func NewRuntimeContext(
 	ctx context.Context, tx pgx.Tx, cfg []*domains.Table, r *transformersUtils.TransformerRegistry, opt *pgdump.Options,
 	version int,
 ) (*RuntimeContext, error) {
+	var salt []byte
+	saltHex := os.Getenv("GREENMASK_GLOBAL_SALT")
+	if saltHex != "" {
+		salt = make([]byte, hex.DecodedLen(len(saltHex)))
+		_, err := hex.Decode(salt, []byte(saltHex))
+		if err != nil {
+			return nil, fmt.Errorf("error decoding salt from hex: %w", err)
+		}
+	}
+	ctx = context.WithValue(ctx, "salt", salt)
+
 	typeMap := tx.Conn().TypeMap()
 	types, err := getCustomTypesUsedInTables(ctx, tx)
 	if err != nil {

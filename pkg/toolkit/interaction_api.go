@@ -82,11 +82,11 @@ func NewApi(rowDriverParams *DriverParams, transferringColumns []*Column, affect
 	return api, nil
 }
 
-func GetAffectedAndTransferringColumns(parameters map[string]*Parameter, driver *Driver) (
+func GetAffectedAndTransferringColumns(parameters map[string]Parameterizer, driver *Driver) (
 	affectedColumnsIdx []*Column, transferringColumnsIdx []*Column, err error,
 ) {
 	for _, p := range parameters {
-		if p.IsColumn {
+		if p.GetDefinition().IsColumn {
 			v, err := p.Value()
 			if err != nil {
 				return nil, nil, fmt.Errorf("error getting parameter value: %w", err)
@@ -100,8 +100,8 @@ func GetAffectedAndTransferringColumns(parameters map[string]*Parameter, driver 
 			if !ok {
 				return nil, nil, fmt.Errorf("column with name %s is not found", columnName)
 			}
-			if p.ColumnProperties != nil {
-				if p.ColumnProperties.Affected {
+			if p.GetDefinition().ColumnProperties != nil {
+				if p.GetDefinition().ColumnProperties.Affected {
 					affectedColumnsIdx = append(affectedColumnsIdx, c)
 				}
 			} else {
@@ -109,8 +109,8 @@ func GetAffectedAndTransferringColumns(parameters map[string]*Parameter, driver 
 
 			}
 
-			if p.ColumnProperties != nil {
-				if !p.ColumnProperties.SkipOriginalData {
+			if p.GetDefinition().ColumnProperties != nil {
+				if !p.GetDefinition().ColumnProperties.SkipOriginalData {
 					transferringColumnsIdx = append(transferringColumnsIdx, c)
 				}
 			} else {

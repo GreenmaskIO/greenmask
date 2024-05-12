@@ -75,7 +75,7 @@ func TestMaskingTransformer_Transform(t *testing.T) {
 			columnName := string(tt.params["column"])
 			driver, record := getDriverAndRecord(columnName, tt.originalValue)
 
-			transformer, warnings, err := MaskingTransformerDefinition.Instance(
+			transformerCtx, warnings, err := MaskingTransformerDefinition.Instance(
 				context.Background(),
 				driver, tt.params,
 				nil,
@@ -83,7 +83,7 @@ func TestMaskingTransformer_Transform(t *testing.T) {
 			require.NoError(t, err)
 			require.Empty(t, warnings)
 
-			r, err := transformer.Transform(
+			r, err := transformerCtx.Transformer.Transform(
 				context.Background(),
 				record,
 			)

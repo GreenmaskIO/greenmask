@@ -13,8 +13,8 @@ const nullStringValue = "NULL"
 
 func getAffectedColumns(t *entries.Table) map[string]struct{} {
 	affectedColumns := make(map[string]struct{})
-	for _, tr := range t.Transformers {
-		ac := tr.GetAffectedColumns()
+	for _, tr := range t.TransformersContext {
+		ac := tr.Transformer.GetAffectedColumns()
 		for _, name := range ac {
 			affectedColumns[name] = struct{}{}
 		}

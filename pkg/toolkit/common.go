@@ -22,7 +22,24 @@ import (
 type Oid int
 type AttNum uint32
 
+type DynamicParameters map[string]*DynamicParamValue
+
+type ParameterValuer interface {
+	Value()
+}
+
+type DynamicParamValue struct {
+	Column       string      `mapstructure:"column" json:"column,omitempty"`
+	CastTo       string      `mapstructure:"cast_to" json:"cast_to,omitempty"`
+	Template     string      `mapstructure:"template" json:"template,omitempty"`
+	DefaultValue ParamsValue `mapstructure:"default_value" json:"default_value,omitempty"`
+}
+
+func (dpv *DynamicParamValue) ParameterValuer() {}
+
 type ParamsValue []byte
+
+func (pv *ParamsValue) ParameterValuer() {}
 
 func (pv *ParamsValue) UnmarshalJSON(data []byte) error {
 	var val any
@@ -39,9 +56,9 @@ func (pv *ParamsValue) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-type Params map[string]ParamsValue
+type StaticParameters map[string]ParamsValue
 
-func (p *Params) MarshalJSON() ([]byte, error) {
+func (p *StaticParameters) MarshalJSON() ([]byte, error) {
 	castedMap := make(map[string]any)
 
 	for k, v := range *p {

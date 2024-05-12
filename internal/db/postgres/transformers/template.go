@@ -22,29 +22,28 @@ import (
 	"text/template"
 
 	"github.com/greenmaskio/greenmask/internal/db/postgres/transformers/utils"
-	templateToolkit "github.com/greenmaskio/greenmask/internal/db/postgres/transformers/utils/template"
 	"github.com/greenmaskio/greenmask/pkg/toolkit"
 )
 
-var TemplateTransformerDefinition = utils.NewDefinition(
+var TemplateTransformerDefinition = utils.NewTransformerDefinition(
 	utils.NewTransformerProperties(
 		"Template",
 		"Modify the value using gotemplate",
 	),
 	NewTemplateTransformer,
-	toolkit.MustNewParameter(
+	toolkit.MustNewParameterDefinition(
 		"column",
 		"column name",
 	).SetIsColumn(toolkit.NewColumnProperties().
 		SetAffected(true),
 	).SetRequired(true),
 
-	toolkit.MustNewParameter(
+	toolkit.MustNewParameterDefinition(
 		"template",
 		"gotemplate string",
 	).SetRequired(true),
 
-	toolkit.MustNewParameter(
+	toolkit.MustNewParameterDefinition(
 		"validate",
 		"validate template result via PostgreSQL driver decoding",
 	).SetRequired(false).
@@ -62,11 +61,11 @@ type TemplateTransformer struct {
 	tctx            *ColumnContext
 }
 
-func NewTemplateTransformer(ctx context.Context, driver *toolkit.Driver, parameters map[string]*toolkit.Parameter) (utils.Transformer, toolkit.ValidationWarnings, error) {
+func NewTemplateTransformer(ctx context.Context, driver *toolkit.Driver, parameters map[string]toolkit.Parameterizer) (utils.Transformer, toolkit.ValidationWarnings, error) {
 	var columnName, templateStr string
 
 	p := parameters["column"]
-	if _, err := p.Scan(&columnName); err != nil {
+	if err := p.Scan(&columnName); err != nil {
 		return nil, nil, fmt.Errorf("unable to scan \"column\" param: %w", err)
 	}
 
@@ -78,11 +77,11 @@ func NewTemplateTransformer(ctx context.Context, driver *toolkit.Driver, paramet
 	affectedColumns[idx] = columnName
 
 	p = parameters["template"]
-	if _, err := p.Scan(&templateStr); err != nil {
+	if err := p.Scan(&templateStr); err != nil {
 		return nil, nil, fmt.Errorf("unable to scan \"templateStr\" param: %w", err)
 	}
 
-	t := template.New("tmpl").Funcs(templateToolkit.FuncMap())
+	t := template.New("tmpl").Funcs(toolkit.FuncMap())
 	tmpl, err := t.Parse(templateStr)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error parsing template: %w", err)

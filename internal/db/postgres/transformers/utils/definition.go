@@ -23,23 +23,23 @@ import (
 
 // NewTransformerFunc - make new transformer. This function receives Driver for making some steps for validation or
 // anything else. parameters - the map of the parsed parameters, for get an appropriate parameter find it
-// in the map by the Name. All those parameters has been defined in the Definition object of the transformer
-type NewTransformerFunc func(ctx context.Context, driver *toolkit.Driver, parameters map[string]*toolkit.Parameter) (
+// in the map by the Name. All those parameters has been defined in the TransformerDefinition object of the transformer
+type NewTransformerFunc func(ctx context.Context, driver *toolkit.Driver, parameters map[string]toolkit.Parameterizer) (
 	Transformer, toolkit.ValidationWarnings, error,
 )
 
-type Definition struct {
-	Properties      *TransformerProperties `json:"properties"`
-	New             NewTransformerFunc     `json:"-"`
-	Parameters      []*toolkit.Parameter   `json:"parameters"`
-	SchemaValidator SchemaValidationFunc   `json:"-"`
+type TransformerDefinition struct {
+	Properties      *TransformerProperties         `json:"properties"`
+	New             NewTransformerFunc             `json:"-"`
+	Parameters      []*toolkit.ParameterDefinition `json:"parameters"`
+	SchemaValidator SchemaValidationFunc           `json:"-"`
 }
 
-func NewDefinition(
+func NewTransformerDefinition(
 	properties *TransformerProperties, newTransformerFunc NewTransformerFunc,
-	parameters ...*toolkit.Parameter,
-) *Definition {
-	return &Definition{
+	parameters ...*toolkit.ParameterDefinition,
+) *TransformerDefinition {
+	return &TransformerDefinition{
 		Properties:      properties,
 		New:             newTransformerFunc,
 		Parameters:      parameters,
@@ -47,74 +47,22 @@ func NewDefinition(
 	}
 }
 
-func (d *Definition) SetSchemaValidator(v SchemaValidationFunc) *Definition {
+func (d *TransformerDefinition) SetSchemaValidator(v SchemaValidationFunc) *TransformerDefinition {
 	d.SchemaValidator = v
 	return d
 }
 
-//func (d *Definition) parseParameters(
-//	Driver *toolkit.Driver, rawParams map[string]toolkit.ParamsValue, types []*toolkit.Type,
-//) (toolkit.ValidationWarnings, map[string]*toolkit.Parameter, error) {
-//	if rawParams == nil && len(d.Parameters) > 0 {
-//		return toolkit.ValidationWarnings{
-//			toolkit.NewValidationWarning().
-//				SetMsg("parameters are required: received empty").
-//				SetSeverity("error"),
-//		}, nil, nil
-//	}
-//
-//	var params = make(map[string]*toolkit.Parameter, len(d.Parameters))
-//	for _, p := range d.Parameters {
-//		params[p.Name] = p.Copy()
-//	}
-//	var columnParameters = make(map[string]*toolkit.Parameter)
-//	var commonParameters = make(map[string]*toolkit.Parameter)
-//	for _, p := range d.Parameters {
-//		if p.IsColumn {
-//			columnParameters[p.Name] = p
-//		} else {
-//			commonParameters[p.Name] = p
-//		}
-//	}
-//
-//	var totalWarnings toolkit.ValidationWarnings
-//	// Column parameters parsing
-//	var columnParamsToSkip = make(map[string]struct{})
-//	for _, p := range columnParameters {
-//		warnings, err := p.Decode(Driver, rawParams, nil, types)
-//		if err != nil {
-//			return nil, nil, fmt.Errorf("parameter %s parsing error: %w", p.Name, err)
-//		}
-//		if len(warnings) > 0 {
-//			totalWarnings = append(totalWarnings, warnings...)
-//			columnParamsToSkip[p.Name] = struct{}{}
-//		}
-//	}
-//	// Common parameters parsing
-//	for _, p := range commonParameters {
-//		if _, ok := columnParamsToSkip[p.LinkParameter]; p.LinkParameter != "" && ok {
-//			totalWarnings = append(totalWarnings, toolkit.NewValidationWarning().
-//				AddMeta("ParameterName", p.Name).
-//				SetSeverity(toolkit.WarningValidationSeverity).
-//				SetMsg("parameter skipping due to the error in the related parameter parsing"))
-//			continue
-//		}
-//		warnings, err := p.Decode(Driver, rawParams, columnParameters, types)
-//		if err != nil {
-//			return nil, nil, fmt.Errorf("parameter %s parsing error: %w", p.Name, err)
-//		}
-//		if len(warnings) > 0 {
-//			totalWarnings = append(totalWarnings, warnings...)
-//		}
-//	}
-//	return totalWarnings, params, nil
-//}
+type TransformerContext struct {
+	Transformer       Transformer
+	StaticParameters  map[string]*toolkit.StaticParameter
+	DynamicParameters map[string]*toolkit.DynamicParameter
+}
 
-func (d *Definition) Instance(
-	ctx context.Context, driver *toolkit.Driver, rawParams map[string]toolkit.ParamsValue, types []*toolkit.Type,
-) (Transformer, toolkit.ValidationWarnings, error) {
-	// Decode parameters and get the pgcopy of parsed
-	params, parametersWarnings, err := toolkit.InitParameters(driver, rawParams, d.Parameters, types)
+func (d *TransformerDefinition) Instance(
+	ctx context.Context, driver *toolkit.Driver, rawParams map[string]toolkit.ParamsValue, dynamicParameters map[string]*toolkit.DynamicParamValue,
+) (*TransformerContext, toolkit.ValidationWarnings, error) {
+	// DecodeValue parameters and get the pgcopy of parsed
+	params, parametersWarnings, err := toolkit.InitParameters(driver, d.Parameters, rawParams, dynamicParameters)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -123,8 +71,23 @@ func (d *Definition) Instance(
 		return nil, parametersWarnings, nil
 	}
 
+	dynamicParams := make(map[string]*toolkit.DynamicParameter)
+	staticParams := make(map[string]*toolkit.StaticParameter)
+	for name, p := range params {
+		switch v := p.(type) {
+		case *toolkit.StaticParameter:
+			staticParams[name] = v
+		case *toolkit.DynamicParameter:
+			dynamicParams[name] = v
+		}
+	}
+
+	paramDefs := make(map[string]*toolkit.ParameterDefinition, len(d.Parameters))
+	for _, pd := range d.Parameters {
+		paramDefs[pd.Name] = pd
+	}
 	// Validate schema
-	schemaWarnings, err := d.SchemaValidator(ctx, driver.Table, d.Properties, params, types)
+	schemaWarnings, err := d.SchemaValidator(ctx, driver, d.Properties, staticParams)
 	if err != nil {
 		return nil, nil, fmt.Errorf("schema validation error: %w", err)
 	}
@@ -140,5 +103,9 @@ func (d *Definition) Instance(
 	res = append(res, schemaWarnings...)
 	res = append(res, transformerWarnings...)
 
-	return t, res, nil
+	return &TransformerContext{
+		Transformer:       t,
+		StaticParameters:  staticParams,
+		DynamicParameters: dynamicParams,
+	}, res, nil
 }

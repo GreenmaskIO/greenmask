@@ -31,7 +31,7 @@ const (
 
 func BootstrapCustomTransformers(ctx context.Context, registry *utils.TransformerRegistry, customTransformers []*TransformerDefinition) (err error) {
 	for _, ctd := range customTransformers {
-		var td *utils.Definition
+		var td *utils.TransformerDefinition
 		if ctd.Name == "" && !ctd.AutoDiscover {
 			return fmt.Errorf("custom transformer without auto discovery must be defined staticly in the config")
 		}
@@ -80,14 +80,13 @@ func BootstrapCustomTransformers(ctx context.Context, registry *utils.Transforme
 
 		for _, p := range ctd.Parameters {
 			if p.IsColumn && p.ColumnProperties == nil {
-				p.SetIsColumn(toolkit.
-					NewColumnProperties().
+				p.SetIsColumn(toolkit.NewColumnProperties().
 					SetAffected(true),
 				)
 			}
 		}
 
-		td = utils.NewDefinition(
+		td = utils.NewTransformerDefinition(
 			&utils.TransformerProperties{
 				Name:        ctd.Name,
 				Description: ctd.Description,
@@ -97,6 +96,7 @@ func BootstrapCustomTransformers(ctx context.Context, registry *utils.Transforme
 			ctd.Parameters...,
 		)
 
+		// TODO: Probably you should change MustRegister to Register
 		registry.MustRegister(td)
 	}
 	return nil

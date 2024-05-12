@@ -35,7 +35,7 @@ type Table struct {
 	RootPtName           string
 	LoadViaPartitionRoot bool
 	RootOid              toolkit.Oid
-	Transformers         []utils.Transformer
+	TransformersContext  []*utils.TransformerContext
 	Dependencies         []int32
 	DumpId               int32
 	OriginalSize         int64
@@ -48,8 +48,8 @@ type Table struct {
 }
 
 func (t *Table) HasCustomTransformer() bool {
-	return slices.ContainsFunc(t.Transformers, func(transformer utils.Transformer) bool {
-		_, ok := transformer.(*custom.CmdTransformer)
+	return slices.ContainsFunc(t.TransformersContext, func(transformer *utils.TransformerContext) bool {
+		_, ok := transformer.Transformer.(*custom.CmdTransformer)
 		return ok
 	})
 }

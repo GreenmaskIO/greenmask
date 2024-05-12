@@ -53,32 +53,39 @@ func NewTransformationPipeline(ctx context.Context, eg *errgroup.Group, table *e
 
 	// TODO: Fix this hint. Async execution cannot be performed with template record because it is unsafe.
 	//       For overcoming it - implement sequence transformer wrapper - that wraps internal (non CMD) transformers
-	hasTemplateRecordTransformer := slices.ContainsFunc(table.Transformers, func(transformer utils.Transformer) bool {
-		_, ok := transformer.(*transformers.TemplateRecordTransformer)
+	hasTemplateRecordTransformer := slices.ContainsFunc(table.TransformersContext, func(transformer *utils.TransformerContext) bool {
+		_, ok := transformer.Transformer.(*transformers.TemplateRecordTransformer)
 		return ok
 	})
 
-	if !hasTemplateRecordTransformer && table.HasCustomTransformer() && len(table.Transformers) > 1 {
+	if !hasTemplateRecordTransformer && table.HasCustomTransformer() && len(table.TransformersContext) > 1 {
 		isAsync = true
 		tw := NewTransformationWindow(ctx, eg)
 		tws = append(tws, tw)
-		for _, t := range table.Transformers {
-			if !tw.TryAdd(table, t) {
+		for _, t := range table.TransformersContext {
+			if !tw.TryAdd(table, t.Transformer) {
 				tw = NewTransformationWindow(ctx, eg)
 				tws = append(tws, tw)
-				tw.TryAdd(table, t)
+				tw.TryAdd(table, t.Transformer)
 			}
 		}
 	}
 
+	record := toolkit.NewRecord(table.Driver)
+
+	for _, tc := range table.TransformersContext {
+		for _, dp := range tc.DynamicParameters {
+			dp.SetRecord(record)
+		}
+	}
+
 	tp := &TransformationPipeline{
-		table: table,
-		//buf:                   bytes.NewBuffer(nil),
+		table:                 table,
 		w:                     w,
 		row:                   pgcopy.NewRow(len(table.Columns)),
 		transformationWindows: tws,
 		isAsync:               true,
-		record:                toolkit.NewRecord(table.Driver),
+		record:                record,
 	}
 
 	var tf TransformationFunc = tp.TransformSync
@@ -93,9 +100,9 @@ func NewTransformationPipeline(ctx context.Context, eg *errgroup.Group, table *e
 func (tp *TransformationPipeline) Init(ctx context.Context) error {
 	var lastInitErr error
 	var idx int
-	var t utils.Transformer
-	for idx, t = range tp.table.Transformers {
-		if err := t.Init(ctx); err != nil {
+	var t *utils.TransformerContext
+	for idx, t = range tp.table.TransformersContext {
+		if err := t.Transformer.Init(ctx); err != nil {
 			lastInitErr = err
 			log.Warn().Err(err).Msg("error initializing transformer")
 		}
@@ -103,8 +110,8 @@ func (tp *TransformationPipeline) Init(ctx context.Context) error {
 
 	if lastInitErr != nil {
 		lastInitialized := idx
-		for _, t = range tp.table.Transformers[:lastInitialized] {
-			if err := t.Done(ctx); err != nil {
+		for _, t = range tp.table.TransformersContext[:lastInitialized] {
+			if err := t.Transformer.Done(ctx); err != nil {
 				log.Warn().Err(err).Msg("error terminating previously initialized transformer")
 			}
 		}
@@ -123,8 +130,8 @@ func (tp *TransformationPipeline) Init(ctx context.Context) error {
 
 func (tp *TransformationPipeline) TransformSync(ctx context.Context, r *toolkit.Record) (*toolkit.Record, error) {
 	var err error
-	for _, t := range tp.table.Transformers {
-		_, err = t.Transform(ctx, r)
+	for _, t := range tp.table.TransformersContext {
+		_, err = t.Transformer.Transform(ctx, r)
 		if err != nil {
 			return nil, NewDumpError(tp.table.Schema, tp.table.Name, tp.line, err)
 		}
@@ -187,8 +194,8 @@ func (tp *TransformationPipeline) CompleteDump() (err error) {
 
 func (tp *TransformationPipeline) Done(ctx context.Context) error {
 	var lastErr error
-	for _, t := range tp.table.Transformers {
-		if err := t.Done(ctx); err != nil {
+	for _, t := range tp.table.TransformersContext {
+		if err := t.Transformer.Done(ctx); err != nil {
 			lastErr = err
 			log.Warn().Err(err).Msg("error terminating initialized transformer")
 		}

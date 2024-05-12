@@ -83,30 +83,30 @@ func (dp *DriverParams) validateJson() error {
 	return nil
 }
 
-type Definition struct {
-	Name             string             `json:"name"`
-	Description      string             `json:"description"`
-	Parameters       []*Parameter       `json:"parameters"`
-	Validate         bool               `json:"validate"`
-	ExpectedExitCode int                `json:"expected_exit_code"`
-	Driver           *DriverParams      `json:"driver"`
-	New              NewTransformerFunc `json:"-"`
+type TransformerDefinition struct {
+	Name             string                 `json:"name"`
+	Description      string                 `json:"description"`
+	Parameters       []*ParameterDefinition `json:"parameters"`
+	Validate         bool                   `json:"validate"`
+	ExpectedExitCode int                    `json:"expected_exit_code"`
+	Driver           *DriverParams          `json:"driver"`
+	New              NewTransformerFunc     `json:"-"`
 }
 
-func NewDefinition(name string, makeFunc NewTransformerFunc) *Definition {
-	return &Definition{
+func NewTransformerDefinition(name string, makeFunc NewTransformerFunc) *TransformerDefinition {
+	return &TransformerDefinition{
 		Name:   name,
 		New:    makeFunc,
 		Driver: DefaultRowDriverParams,
 	}
 }
 
-func (d *Definition) SetDescription(v string) *Definition {
+func (d *TransformerDefinition) SetDescription(v string) *TransformerDefinition {
 	d.Description = v
 	return d
 }
 
-func (d *Definition) AddParameter(v *Parameter) *Definition {
+func (d *TransformerDefinition) AddParameter(v *ParameterDefinition) *TransformerDefinition {
 	if v == nil {
 		panic("parameter is nil")
 	}
@@ -114,17 +114,17 @@ func (d *Definition) AddParameter(v *Parameter) *Definition {
 	return d
 }
 
-func (d *Definition) SetValidate(v bool) *Definition {
+func (d *TransformerDefinition) SetValidate(v bool) *TransformerDefinition {
 	d.Validate = v
 	return d
 }
 
-func (d *Definition) SetExpectedExitCode(v int) *Definition {
+func (d *TransformerDefinition) SetExpectedExitCode(v int) *TransformerDefinition {
 	d.ExpectedExitCode = v
 	return d
 }
 
-func (d *Definition) SetMode(v *DriverParams) *Definition {
+func (d *TransformerDefinition) SetMode(v *DriverParams) *TransformerDefinition {
 	if err := v.Validate(); err != nil {
 		panic(err)
 	}

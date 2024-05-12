@@ -30,7 +30,7 @@ var columnList = []*toolkit.Column{
 		TypeOid:  pgtype.Int2OID,
 		Num:      1,
 		NotNull:  false,
-		Length:   -1,
+		Length:   2,
 	},
 	{
 		Name:     "created_at",
@@ -70,7 +70,7 @@ var columnList = []*toolkit.Column{
 		TypeOid:  pgtype.Int2OID,
 		Num:      6,
 		NotNull:  false,
-		Length:   -1,
+		Length:   2,
 	},
 	{
 		Name:     "id4",
@@ -78,7 +78,7 @@ var columnList = []*toolkit.Column{
 		TypeOid:  pgtype.Int4OID,
 		Num:      7,
 		NotNull:  false,
-		Length:   -1,
+		Length:   4,
 	},
 	{
 		Name:     "id8",
@@ -86,7 +86,7 @@ var columnList = []*toolkit.Column{
 		TypeOid:  pgtype.Int8OID,
 		Num:      8,
 		NotNull:  false,
-		Length:   -1,
+		Length:   8,
 	},
 	{
 		Name:     "date_date",
@@ -132,7 +132,23 @@ var columnList = []*toolkit.Column{
 		Name:     "col_bool",
 		TypeName: "bool",
 		TypeOid:  pgtype.BoolOID,
+		Num:      14,
+		NotNull:  false,
+		Length:   -1,
+	},
+	{
+		Name:     "id_numeric",
+		TypeName: "numeric",
+		TypeOid:  pgtype.NumericOID,
 		Num:      15,
+		NotNull:  false,
+		Length:   -1,
+	},
+	{
+		Name:     "val_numeric",
+		TypeName: "numeric",
+		TypeOid:  pgtype.NumericOID,
+		Num:      16,
 		NotNull:  false,
 		Length:   -1,
 	},
@@ -157,7 +173,10 @@ func getDriverAndRecord(name string, value string) (*toolkit.Driver, *toolkit.Re
 		Constraints: []toolkit.Constraint{},
 	}
 
-	driver, err := toolkit.NewDriver(table, nil, nil)
+	driver, warns, err := toolkit.NewDriver(table, nil)
+	if len(warns) > 0 {
+		panic("warn")
+	}
 	if err != nil {
 		panic(err.Error())
 	}

@@ -80,7 +80,7 @@ func TestJsonDocument_GetRecords(t *testing.T) {
 	//	panic(err.Error())
 	//}
 	//row := pgcopy.NewRow(1)
-	//_ = row.Decode([]byte(value))
+	//_ = row.DecodeValue([]byte(value))
 	//r := toolkit.NewRecord(
 	//	driver,
 	//)
@@ -176,8 +176,10 @@ func getTableAndRows() (table *entries.Table, original, transformed [][]byte) {
 	}
 
 	table = &entries.Table{
-		Table:        t,
-		Transformers: []utils.Transformer{&testTransformer{}},
+		Table: t,
+		TransformersContext: []*utils.TransformerContext{
+			{Transformer: &testTransformer{}},
+		},
 	}
 
 	return table, original, transformed

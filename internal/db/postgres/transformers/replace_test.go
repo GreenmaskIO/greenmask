@@ -82,7 +82,7 @@ func TestReplaceTransformer_Transform(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			driver, record := getDriverAndRecord(tt.columnName, tt.original)
 			tt.params["column"] = toolkit.ParamsValue(tt.columnName)
-			transformer, warnings, err := ReplaceTransformerDefinition.Instance(
+			transformerCtx, warnings, err := ReplaceTransformerDefinition.Instance(
 				context.Background(),
 				driver,
 				tt.params,
@@ -91,7 +91,7 @@ func TestReplaceTransformer_Transform(t *testing.T) {
 			require.NoError(t, err)
 			require.Empty(t, warnings)
 
-			r, err := transformer.Transform(
+			r, err := transformerCtx.Transformer.Transform(
 				context.Background(),
 				record,
 			)
@@ -141,7 +141,7 @@ func TestReplaceTransformer_Transform_with_raw_value(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			driver, record := getDriverAndRecord(tt.columnName, tt.original)
 			tt.params["column"] = toolkit.ParamsValue(tt.columnName)
-			transformer, warnings, err := ReplaceTransformerDefinition.Instance(
+			transformerCtx, warnings, err := ReplaceTransformerDefinition.Instance(
 				context.Background(),
 				driver,
 				tt.params,
@@ -150,7 +150,7 @@ func TestReplaceTransformer_Transform_with_raw_value(t *testing.T) {
 			require.NoError(t, err)
 			require.Empty(t, warnings)
 
-			r, err := transformer.Transform(
+			r, err := transformerCtx.Transformer.Transform(
 				context.Background(),
 				record,
 			)

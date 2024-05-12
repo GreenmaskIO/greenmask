@@ -16,27 +16,30 @@ package transformers
 
 import (
 	"context"
-	"errors"
 	"fmt"
-	"math/rand"
-	"strings"
+	"slices"
 	"time"
 
 	"github.com/greenmaskio/greenmask/internal/db/postgres/transformers/utils"
+	"github.com/greenmaskio/greenmask/internal/generators/transformers"
 	"github.com/greenmaskio/greenmask/pkg/toolkit"
 )
 
-var truncateParts = []string{"year", "month", "day", "hour", "second", "millisecond", "microsecond", "nanosecond"}
+var truncateParts = []string{
+	transformers.YearTruncateName, transformers.MonthTruncateName, transformers.DayTruncateName,
+	transformers.HourTruncateName, transformers.SecondTruncateName, transformers.MillisecondTruncateName,
+	transformers.MicrosecondTruncateName, transformers.NanosecondTruncateName,
+}
 
-var RandomDateTransformerDefinition = utils.NewDefinition(
+var timestampTransformerDefinition = utils.NewTransformerDefinition(
 	utils.NewTransformerProperties(
 		"RandomDate",
-		"Generate random date in the provided interval",
+		"Generate date in the provided interval",
 	),
 
-	NewRandomDateTransformer,
+	NewTimestampTransformer,
 
-	toolkit.MustNewParameter(
+	toolkit.MustNewParameterDefinition(
 		"column",
 		"column name",
 	).SetIsColumn(toolkit.NewColumnProperties().
@@ -44,60 +47,77 @@ var RandomDateTransformerDefinition = utils.NewDefinition(
 		SetAllowedColumnTypes("date", "timestamp", "timestamptz"),
 	).SetRequired(true),
 
-	toolkit.MustNewParameter(
+	toolkit.MustNewParameterDefinition(
 		"min",
-		"min threshold date (and/or time) of random value",
+		"min threshold date (and/or time) of value",
 	).SetRequired(true).
-		SetLinkParameter("column"),
+		SetLinkParameter("column").
+		SetSupportTemplate(true).
+		SetDynamicMode(
+			toolkit.NewDynamicModeProperties().
+				SetCompatibleTypes("date", "timestamp", "timestamptz"),
+		),
 
-	toolkit.MustNewParameter(
+	toolkit.MustNewParameterDefinition(
 		"max",
-		"max threshold date  (and/or time) of random value",
+		"max threshold date (and/or time) of value",
 	).SetRequired(true).
-		SetLinkParameter("column"),
+		SetLinkParameter("column").
+		SetSupportTemplate(true).
+		SetDynamicMode(
+			toolkit.NewDynamicModeProperties().
+				SetCompatibleTypes("date", "timestamp", "timestamptz"),
+		),
 
-	toolkit.MustNewParameter(
-		"truncate",
-		fmt.Sprintf("truncate date till the part (%s)", strings.Join(truncateParts, ", ")),
-	).SetRawValueValidator(ValidateDateTruncationParameterValue),
+	truncateDateParameterDefinition,
 
-	toolkit.MustNewParameter(
-		"keep_null",
-		"indicates that NULL values must not be replaced with transformed values",
-	).SetDefaultValue(toolkit.ParamsValue("true")),
+	keepNullParameterDefinition,
+
+	engineParameterDefinition,
 )
 
-type dateGeneratorFunc func(r *rand.Rand, startDate *time.Time, delta *int64, truncate *string) *time.Time
-
-type RandomDateTransformerParams struct {
-	Min      string  `mapstructure:"min" validate:"required"`
-	Max      string  `mapstructure:"max" validate:"required"`
-	Truncate string  `mapstructure:"truncate" validate:"omitempty,oneof=year month day hour second nano"`
-	Nullable bool    `mapstructure:"nullable"`
-	Fraction float32 `mapstructure:"fraction"`
-}
-
-type RandomDateTransformer struct {
+type TimestampTransformer struct {
+	*transformers.Timestamp
 	columnName      string
 	columnIdx       int
-	rand            *rand.Rand
-	generate        dateGeneratorFunc
-	min             *time.Time
-	max             *time.Time
-	truncate        string
 	keepNull        bool
-	delta           *int64
 	affectedColumns map[int]string
+
+	columnParam   toolkit.Parameterizer
+	maxParam      toolkit.Parameterizer
+	minParam      toolkit.Parameterizer
+	truncateParam toolkit.Parameterizer
+	keepNullParam toolkit.Parameterizer
+	engineParam   toolkit.Parameterizer
+	dynamicMode   bool
+
+	transform func(context.Context, []byte) (time.Time, error)
 }
 
-func NewRandomDateTransformer(ctx context.Context, driver *toolkit.Driver, parameters map[string]*toolkit.Parameter) (utils.Transformer, toolkit.ValidationWarnings, error) {
-	var columnName, truncate string
-	var minTime, maxTime time.Time
-	var generator dateGeneratorFunc = generateRandomTime
+type timestampMinMaxEncoder func(toolkit.Parameterizer, toolkit.Parameterizer) (time.Time, time.Time, error)
+
+func NewTimestampTransformerBase(ctx context.Context, driver *toolkit.Driver, parameters map[string]toolkit.Parameterizer, encoder timestampMinMaxEncoder) (utils.Transformer, toolkit.ValidationWarnings, error) {
+	var dynamicMode bool
+
+	columnParam := parameters["column"]
+	maxParam := parameters["max"]
+	minParam := parameters["min"]
+	truncateParam := parameters["truncate"]
+	keepNullParam := parameters["keep_null"]
+	engineParam := parameters["engine"]
+
+	var columnName, truncate, engine string
 	var keepNull bool
 
-	p := parameters["column"]
-	if _, err := p.Scan(&columnName); err != nil {
+	if err := engineParam.Scan(&engine); err != nil {
+		return nil, nil, fmt.Errorf(`unable to scan "engine" param: %w`, err)
+	}
+
+	if minParam.IsDynamic() || maxParam.IsDynamic() {
+		dynamicMode = true
+	}
+
+	if err := columnParam.Scan(&columnName); err != nil {
 		return nil, nil, fmt.Errorf(`unable to scan "column" param: %w`, err)
 	}
 
@@ -108,78 +128,105 @@ func NewRandomDateTransformer(ctx context.Context, driver *toolkit.Driver, param
 	affectedColumns := make(map[int]string)
 	affectedColumns[idx] = columnName
 
-	p = parameters["min"]
-	v, err := p.Value()
-	if err != nil {
-		return nil, nil, fmt.Errorf(`error parsing "min" parameter: %w`, err)
-	}
-	minTime, ok = v.(time.Time)
-	if !ok {
-		return nil, nil, errors.New(`unexpected type for "min" parameter`)
-	}
-
-	p = parameters["max"]
-	v, err = p.Value()
-	if err != nil {
-		return nil, nil, fmt.Errorf(`error parsing "max" parameter: %w`, err)
-	}
-
-	maxTime, ok = v.(time.Time)
-	if !ok {
-		return nil, nil, errors.New(`unexpected type for "max" parameter`)
-	}
-
-	p = parameters["keep_null"]
-	if _, err := p.Scan(&keepNull); err != nil {
+	if err := keepNullParam.Scan(&keepNull); err != nil {
 		return nil, nil, fmt.Errorf(`unable to scan "keep_null" param: %w`, err)
 	}
 
-	p = parameters["truncate"]
-	if _, err := p.Scan(&truncate); err != nil {
+	if err := truncateParam.Scan(&truncate); err != nil {
 		return nil, nil, fmt.Errorf(`unable to scan "truncate" param: %w`, err)
 	}
 
-	if truncate != "" {
-		generator = generateRandomTimeTruncate
+	var minVal, maxVal time.Time
+	var limiter *transformers.TimestampLimiter
+	var err error
+	if !dynamicMode {
+		minVal, maxVal, err = encoder(minParam, maxParam)
+
+		if err != nil {
+			return nil, nil, fmt.Errorf("error getting min and max values: %w", err)
+		}
+		limiter, err = transformers.NewTimestampLimiter(minVal, maxVal)
+		if err != nil {
+			return nil, nil, fmt.Errorf("unable to create timestamp limiter: %w", err)
+		}
 	}
 
-	if minTime.After(maxTime) {
-		return nil, toolkit.ValidationWarnings{
-			toolkit.NewValidationWarning().
-				AddMeta("max", maxTime).
-				AddMeta("min", minTime).
-				SetMsg("max value must be greater than min"),
-		}, nil
+	t, err := transformers.NewRandomTimestamp(truncate, limiter)
+	if err != nil {
+		return nil, nil, err
 	}
-	delta := int64(maxTime.Sub(minTime))
-	return &RandomDateTransformer{
+
+	g, err := getGenerateEngine(ctx, engine, t.GetRequiredGeneratorByteLength())
+	if err != nil {
+		return nil, nil, fmt.Errorf("unable to get generator: %w", err)
+	}
+
+	if err = t.SetGenerator(g); err != nil {
+		return nil, nil, fmt.Errorf("unable to set generator: %w", err)
+	}
+
+	return &TimestampTransformer{
+		Timestamp:       t,
 		keepNull:        keepNull,
-		truncate:        truncate,
 		columnName:      columnName,
 		columnIdx:       idx,
-		min:             &minTime,
-		max:             &maxTime,
-		generate:        generator,
-		rand:            rand.New(rand.NewSource(time.Now().UnixMicro())),
 		affectedColumns: affectedColumns,
-		delta:           &delta,
-	}, nil, nil
 
+		columnParam:   columnParam,
+		minParam:      minParam,
+		maxParam:      maxParam,
+		truncateParam: truncateParam,
+		keepNullParam: keepNullParam,
+		engineParam:   engineParam,
+		dynamicMode:   dynamicMode,
+		transform:     t.Transform,
+	}, nil, nil
 }
 
-func (rdt *RandomDateTransformer) GetAffectedColumns() map[int]string {
+func NewTimestampTransformer(ctx context.Context, driver *toolkit.Driver, parameters map[string]toolkit.Parameterizer) (utils.Transformer, toolkit.ValidationWarnings, error) {
+	return NewTimestampTransformerBase(ctx, driver, parameters, getTimestampMinAndMaxThresholds)
+}
+
+func (rdt *TimestampTransformer) GetAffectedColumns() map[int]string {
 	return rdt.affectedColumns
 }
 
-func (rdt *RandomDateTransformer) Init(ctx context.Context) error {
+func (rdt *TimestampTransformer) Init(ctx context.Context) error {
+	if rdt.dynamicMode {
+		rdt.transform = rdt.dynamicTransform
+	}
 	return nil
 }
 
-func (rdt *RandomDateTransformer) Done(ctx context.Context) error {
+func (rdt *TimestampTransformer) Done(ctx context.Context) error {
 	return nil
 }
 
-func (rdt *RandomDateTransformer) Transform(ctx context.Context, r *toolkit.Record) (*toolkit.Record, error) {
+func (rdt *TimestampTransformer) dynamicTransform(ctx context.Context, v []byte) (time.Time, error) {
+	var minVal, maxVal time.Time
+	err := rdt.minParam.Scan(&minVal)
+	if err != nil {
+		return time.Time{}, fmt.Errorf(`unable to scan "min" param: %w`, err)
+	}
+
+	err = rdt.maxParam.Scan(&maxVal)
+	if err != nil {
+		return time.Time{}, fmt.Errorf(`unable to scan "max" param: %w`, err)
+	}
+
+	limiter, err := transformers.NewTimestampLimiter(minVal, maxVal)
+	if err != nil {
+		return time.Time{}, fmt.Errorf("error creating limiter in dynamic mode: %w", err)
+	}
+	ctx = context.WithValue(ctx, "limiter", limiter)
+	res, err := rdt.Timestamp.Transform(ctx, v)
+	if err != nil {
+		return time.Time{}, fmt.Errorf("error generating timestamp value: %w", err)
+	}
+	return res, nil
+}
+
+func (rdt *TimestampTransformer) Transform(ctx context.Context, r *toolkit.Record) (*toolkit.Record, error) {
 	valAny, err := r.GetRawColumnValueByIdx(rdt.columnIdx)
 	if err != nil {
 		return nil, fmt.Errorf("unable to scan value: %w", err)
@@ -187,24 +234,40 @@ func (rdt *RandomDateTransformer) Transform(ctx context.Context, r *toolkit.Reco
 	if valAny.IsNull && rdt.keepNull {
 		return r, nil
 	}
-
-	res := rdt.generate(rdt.rand, rdt.min, rdt.delta, &rdt.truncate)
-	if err := r.SetColumnValueByIdx(rdt.columnIdx, res); err != nil {
+	res, err := rdt.transform(ctx, valAny.Data)
+	if err != nil {
+		return nil, err
+	}
+	if err = r.SetColumnValueByIdx(rdt.columnIdx, res); err != nil {
 		return nil, fmt.Errorf("unable to set new value: %w", err)
 	}
 	return r, nil
 }
 
-func generateRandomTime(r *rand.Rand, startDate *time.Time, delta *int64, truncate *string) *time.Time {
-	res := startDate.Add(time.Duration(r.Int63n(*delta)))
-	return &res
+func validateDateTruncationParameterValue(p *toolkit.ParameterDefinition, v toolkit.ParamsValue) (toolkit.ValidationWarnings, error) {
+
+	if !slices.Contains(truncateParts, string(v)) && string(v) != "" {
+		return toolkit.ValidationWarnings{
+			toolkit.NewValidationWarning().
+				SetSeverity(toolkit.ErrorValidationSeverity).
+				AddMeta("ParameterValue", string(v)).
+				SetMsg("wrong truncation part value: must be one of nano, second, minute, hour, day, month, year"),
+		}, nil
+	}
+	return nil, nil
 }
 
-func generateRandomTimeTruncate(r *rand.Rand, startDate *time.Time, delta *int64, truncate *string) *time.Time {
-	res, _ := utils.TruncateDate(truncate, generateRandomTime(r, startDate, delta, truncate))
-	return res
+func getTimestampMinAndMaxThresholds(minParameter, maxParameter toolkit.Parameterizer) (time.Time, time.Time, error) {
+	var minVal, maxVal time.Time
+	if err := minParameter.Scan(&minVal); err != nil {
+		return time.Time{}, time.Time{}, fmt.Errorf("error scanning \"min\" parameter: %w", err)
+	}
+	if err := maxParameter.Scan(&maxVal); err != nil {
+		return time.Time{}, time.Time{}, fmt.Errorf("error scanning \"max\" parameter: %w", err)
+	}
+	return minVal, maxVal, nil
 }
 
 func init() {
-	utils.DefaultTransformerRegistry.MustRegister(RandomDateTransformerDefinition)
+	utils.DefaultTransformerRegistry.MustRegister(timestampTransformerDefinition)
 }

@@ -15,12 +15,18 @@
 package toolkit
 
 type Column struct {
-	Name        string `json:"name"`
-	TypeName    string `json:"type_name"`
-	TypeOid     Oid    `json:"type_oid"`
-	Num         AttNum `json:"num"`
-	NotNull     bool   `json:"not_null"`
-	Length      int    `json:"length"`
-	Idx         int    `json:"idx"`
-	IsGenerated bool   `json:"is_generated"`
+	Idx               int    `json:"idx"`
+	Name              string `json:"name"`
+	TypeName          string `json:"type_name"`
+	CanonicalTypeName string `json:"canonical_type_name"`
+	TypeOid           Oid    `json:"type_oid"`
+	Num               AttNum `json:"num"`
+	NotNull           bool   `json:"not_null"`
+	// Length - length of the attribute
+	Length      int  `json:"length"`
+	TypeLength  int  `json:"type_length"`
+	IsGenerated bool `json:"is_generated"`
+	// OverriddenTypeName - replacement of  original type. For instance override TEXT to INT2
+	OverriddenTypeName string `json:"overridden_type_name"`
+	OverriddenTypeOid  Oid    `json:"overridden_type_oid"`
 }

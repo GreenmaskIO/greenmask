@@ -16,6 +16,7 @@ package toolkit
 
 import (
 	"fmt"
+	"slices"
 
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/rs/zerolog/log"
@@ -37,8 +38,10 @@ var (
 type Type struct {
 	// Oid - pg_type.oid
 	Oid Oid `json:"oid,omitempty"`
-	// Chain - list of inherited types till the main base type
-	Chain []Oid `json:"chain,omitempty"`
+	// ChainOids - list of inherited types (oid) till the main base type
+	ChainOids []Oid `json:"chain_oids,omitempty"`
+	// ChainNames - list of inherited types (name) till the main base type
+	ChainNames []string `json:"chain_names,omitempty"`
 	// Schema - type schema name
 	Schema string `json:"schema,omitempty"`
 	// Name - (pg_type.typname) type name
@@ -61,36 +64,38 @@ type Type struct {
 	BaseType Oid `json:"base_type,omitempty"`
 	//Check - definition of check constraint
 	Check *Check `json:"check,omitempty"`
-	// RootBuiltInType - defines builtin type oid that might be used for decoding and encoding
-	RootBuiltInType Oid `json:"root_built_in_type,omitempty"`
+	// RootBuiltInTypeOid - defines builtin type oid that might be used for decoding and encoding
+	RootBuiltInTypeOid Oid `json:"root_built_in_type_oid,omitempty"`
+	// RootBuiltInTypeOid - defines builtin type name that might be used for decoding and encoding
+	RootBuiltInTypeName string `json:"root_built_in_type_name,omitempty"`
 }
 
-func (t *Type) IsAffected(p *Parameter) (w ValidationWarnings) {
+func (t *Type) IsAffected(p *StaticParameter) (w ValidationWarnings) {
 	if p.Column == nil {
 		panic("parameter Column must not be nil")
 	}
-	if p.Column == nil {
+	if p.GetDefinition().ColumnProperties == nil {
 		panic("parameter ColumnProperties must not be nil")
 	}
-	if !p.ColumnProperties.Affected {
+	if !p.GetDefinition().ColumnProperties.Affected {
 		return
 	}
 	if p.Column.TypeOid != t.Oid {
 		return
 	}
-	if p.ColumnProperties.Nullable && p.Column.NotNull {
+	if p.GetDefinition().ColumnProperties.Nullable && p.Column.NotNull {
 		w = append(w, NewValidationWarning().
 			SetSeverity(WarningValidationSeverity).
-			AddMeta("ParameterName", p.Name).
+			AddMeta("ParameterName", p.GetDefinition().Name).
 			AddMeta("ColumnName", p.Column.Name).
-			AddMeta("TypeName", p.Name).
+			AddMeta("TypeName", p.GetDefinition().Name).
 			SetMsg("transformer may produce NULL values but column type has NOT NULL constraint"),
 		)
 	}
 	if t.Check != nil {
 		w = append(w, NewValidationWarning().
 			SetSeverity(WarningValidationSeverity).
-			AddMeta("ParameterName", p.Name).
+			AddMeta("ParameterName", p.GetDefinition().Name).
 			AddMeta("ColumnName", p.Column.Name).
 			AddMeta("TypeSchema", t.Schema).
 			AddMeta("TypeName", t.Name).
@@ -100,11 +105,11 @@ func (t *Type) IsAffected(p *Parameter) (w ValidationWarnings) {
 			SetMsg("possible check constraint violation: column has domain type with constraint"),
 		)
 	}
-	if t.Length != WithoutMaxLength && t.Length < p.ColumnProperties.MaxLength {
+	if t.Length != WithoutMaxLength && t.Length < p.GetDefinition().ColumnProperties.MaxLength {
 		w = append(w, NewValidationWarning().
 			SetSeverity(WarningValidationSeverity).
 			SetMsg("transformer value might be out of length range: domain has length higher than column").
-			AddMeta("ParameterName", p.Name).
+			AddMeta("ParameterName", p.GetDefinition().Name).
 			AddMeta("ColumnName", p.Column.Name).
 			AddMeta("TypeSchema", t.Schema).
 			AddMeta("TypeName", t.Name).
@@ -159,4 +164,92 @@ func TryRegisterCustomTypes(typeMap *pgtype.Map, types []*Type, silent bool) {
 			}
 		}
 	}
+}
+
+func GetCanonicalTypeName(driver *Driver, typeName string, typeOid uint32) string {
+	pgType, ok := driver.GetTypeMap().TypeForOID(typeOid)
+	if ok {
+		typeName = pgType.Name
+	}
+	return typeName
+}
+
+func IsTypeAllowedWithTypeMap(
+	driver *Driver, allowedTypes []string, typeName string, typeOid Oid, checkInherited bool,
+) bool {
+	// Get canonical type name by type Oid if exists otherwise use provided name
+	typeName = GetCanonicalTypeName(driver, typeName, uint32(typeOid))
+	return IsTypeAllowed(driver, allowedTypes, typeName, checkInherited)
+}
+
+func IsTypeAllowed(
+	driver *Driver, allowedTypes []string, typeName string, checkInherited bool,
+) bool {
+
+	if slices.Contains(allowedTypes, typeName) {
+		return true
+	}
+
+	if !checkInherited {
+		return false
+	}
+
+	// If custom type is found check that the root type is allowed
+	pgCustomRootType := GetCustomType(driver.CustomTypes, typeName)
+	if pgCustomRootType == nil {
+		return false
+	}
+
+	for _, t := range pgCustomRootType.ChainNames {
+		if slices.Contains(allowedTypes, t) {
+			return true
+		}
+	}
+
+	return false
+}
+
+func IsTypeCustom(customTypes []*Type, typeOid Oid) bool {
+	return slices.ContainsFunc(customTypes, func(t *Type) bool {
+		return t.Oid == typeOid
+	})
+}
+
+func GetCustomType(customTypes []*Type, typeName string) *Type {
+	idx := slices.IndexFunc(customTypes, func(t *Type) bool {
+		return t.Name == typeName
+	})
+	if idx == -1 {
+		return nil
+	}
+
+	return customTypes[idx]
+}
+
+func AreTypesHaveEqualOrHaveEqualBaseTypes(driver *Driver, customTypes []*Type, a string, b string) bool {
+	// check type a and b are custom
+	if a == b {
+		return true
+	}
+
+	pgCustomRootTypeA := GetCustomType(customTypes, a)
+	if pgCustomRootTypeA == nil {
+		return false
+	}
+
+	pgCustomRootTypeB := GetCustomType(customTypes, b)
+	if pgCustomRootTypeB == nil {
+		return false
+	}
+
+	// Check chain
+	for _, chainItemA := range pgCustomRootTypeA.ChainNames {
+		for _, chainItemB := range pgCustomRootTypeB.ChainNames {
+			if chainItemA == chainItemB {
+				return true
+			}
+		}
+	}
+
+	return false
 }

@@ -24,7 +24,7 @@ import (
 	"github.com/greenmaskio/greenmask/pkg/toolkit"
 )
 
-// TODO: Cover error cases
+// TODO: Cover error casesю
 func TestRandomStringTransformer_Transform(t *testing.T) {
 	tests := []struct {
 		name       string
@@ -40,6 +40,7 @@ func TestRandomStringTransformer_Transform(t *testing.T) {
 			params: map[string]toolkit.ParamsValue{
 				"min_length": toolkit.ParamsValue("10"),
 				"max_length": toolkit.ParamsValue("10"),
+				"engine":     toolkit.ParamsValue("random"),
 			},
 			pattern: `^\w{10}$`,
 		},
@@ -50,6 +51,7 @@ func TestRandomStringTransformer_Transform(t *testing.T) {
 			params: map[string]toolkit.ParamsValue{
 				"min_length": toolkit.ParamsValue("2"),
 				"max_length": toolkit.ParamsValue("30"),
+				"engine":     toolkit.ParamsValue("random"),
 			},
 			pattern: `^\w{2,30}$`,
 		},
@@ -61,6 +63,7 @@ func TestRandomStringTransformer_Transform(t *testing.T) {
 				"min_length": toolkit.ParamsValue("10"),
 				"max_length": toolkit.ParamsValue("10"),
 				"symbols":    toolkit.ParamsValue("1234567890"),
+				"engine":     toolkit.ParamsValue("random"),
 			},
 			pattern: `^\d{10}$`,
 		},
@@ -73,6 +76,7 @@ func TestRandomStringTransformer_Transform(t *testing.T) {
 				"max_length": toolkit.ParamsValue("10"),
 				"symbols":    toolkit.ParamsValue("1234567890"),
 				"keep_null":  toolkit.ParamsValue("true"),
+				"engine":     toolkit.ParamsValue("random"),
 			},
 			pattern: fmt.Sprintf(`^(\%s)$`, "\\N"),
 		},
@@ -82,7 +86,7 @@ func TestRandomStringTransformer_Transform(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			tt.params["column"] = toolkit.ParamsValue(tt.columnName)
 			driver, record := getDriverAndRecord(tt.columnName, tt.original)
-			transformer, warnings, err := RandomStringTransformerDefinition.Instance(
+			transformerCtx, warnings, err := stringTransformerDefinition.Instance(
 				context.Background(),
 				driver,
 				tt.params,
@@ -91,7 +95,7 @@ func TestRandomStringTransformer_Transform(t *testing.T) {
 			require.NoError(t, err)
 			require.Empty(t, warnings)
 
-			r, err := transformer.Transform(
+			r, err := transformerCtx.Transformer.Transform(
 				context.Background(),
 				record,
 			)

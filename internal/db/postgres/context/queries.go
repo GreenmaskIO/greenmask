@@ -73,12 +73,14 @@ var (
 		    a.atttypid::TEXT::INT                          	as typeoid,
 		  	pg_catalog.format_type(a.atttypid, a.atttypmod) as typename,
 		  	a.attnotnull 									as notnull,
-		  	a.atttypmod 									as mod,
-		  	a.attnum 										as num
+		  	a.atttypmod 									as att_len,
+		  	a.attnum 										as num,
+		  	t.typlen 										as type_len
 			{{ if ge .Version 120000 }}
 		  	,a.attgenerated != ''	    				    as attgenerated
 			{{ end }}
 		FROM pg_catalog.pg_attribute a
+			JOIN pg_catalog.pg_type t ON a.atttypid = t.oid
 		WHERE a.attrelid = $1 AND a.attnum > 0 AND NOT a.attisdropped
 		ORDER BY a.attnum
 	`))
@@ -116,7 +118,8 @@ var (
 			   GROUP BY ct.oid
 			)
 			SELECT pt.oid::TEXT::INT         AS oid,
-				   twc.chain::INT[]          AS chain,
+				   twc.chain::INT[]          AS chain_oids,
+                   (select array_agg(t.typname)::TEXT[] FROM pg_type t WHERE t.oid = ANY (twc.chain)) AS chain_names,
 				   pn.nspname                AS schema,
 				   pt.typname                AS name,
 				   pt.typlen                 AS len,

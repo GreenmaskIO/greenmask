@@ -31,7 +31,7 @@ func TestSetNullTransformer_Transform(t *testing.T) {
 
 	driver, record := getDriverAndRecord(columnName, originalValue)
 
-	transformer, warnings, err := SetNullTransformerDefinition.Instance(
+	transformerCtx, warnings, err := SetNullTransformerDefinition.Instance(
 		context.Background(),
 		driver, map[string]toolkit.ParamsValue{
 			"column": toolkit.ParamsValue(columnName),
@@ -41,7 +41,7 @@ func TestSetNullTransformer_Transform(t *testing.T) {
 	require.NoError(t, err)
 	assert.Empty(t, warnings)
 
-	r, err := transformer.Transform(
+	r, err := transformerCtx.Transformer.Transform(
 		context.Background(),
 		record,
 	)

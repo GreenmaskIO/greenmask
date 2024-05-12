@@ -24,7 +24,7 @@ type RawRecord map[int]*RawValue
 func (rr *RawRecord) GetColumn(idx int) (*RawValue, error) {
 	res, ok := (*rr)[idx]
 	if !ok {
-		return nil, fmt.Errorf("attribute with idx=%d is not found", idx)
+		return nil, fmt.Errorf("column with idx=%d is not found", idx)
 	}
 	return res, nil
 }

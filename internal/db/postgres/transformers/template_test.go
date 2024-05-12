@@ -41,7 +41,7 @@ func TestTemplateTransformer_Transform_int(t *testing.T) {
 
 	driver, record := getDriverAndRecord(columnName, originalValue)
 
-	transformer, warnings, err := TemplateTransformerDefinition.Instance(
+	transformerCtx, warnings, err := TemplateTransformerDefinition.Instance(
 		context.Background(),
 		driver, map[string]toolkit.ParamsValue{
 			"column":   toolkit.ParamsValue(columnName),
@@ -52,7 +52,7 @@ func TestTemplateTransformer_Transform_int(t *testing.T) {
 	require.NoError(t, err)
 	assert.Empty(t, warnings)
 
-	r, err := transformer.Transform(
+	r, err := transformerCtx.Transformer.Transform(
 		context.Background(),
 		record,
 	)
@@ -79,7 +79,7 @@ func TestTemplateTransformer_Transform_timestamp(t *testing.T) {
 
 	driver, record := getDriverAndRecord(columnName, originalValue)
 
-	transformer, warnings, err := TemplateTransformerDefinition.Instance(
+	transformerCtx, warnings, err := TemplateTransformerDefinition.Instance(
 		context.Background(),
 		driver, map[string]toolkit.ParamsValue{
 			"column":   toolkit.ParamsValue(columnName),
@@ -90,7 +90,7 @@ func TestTemplateTransformer_Transform_timestamp(t *testing.T) {
 	require.NoError(t, err)
 	assert.Empty(t, warnings)
 
-	r, err := transformer.Transform(
+	r, err := transformerCtx.Transformer.Transform(
 		context.Background(),
 		record,
 	)

@@ -24,7 +24,7 @@ import (
 
 const defaultNullSeq = `\N`
 
-var DictTransformerDefinition = utils.NewDefinition(
+var DictTransformerDefinition = utils.NewTransformerDefinition(
 	utils.NewTransformerProperties(
 		"Dict",
 		"Replace values matched by dictionary keys",
@@ -32,29 +32,29 @@ var DictTransformerDefinition = utils.NewDefinition(
 
 	NewDictTransformer,
 
-	toolkit.MustNewParameter(
+	toolkit.MustNewParameterDefinition(
 		"column",
 		"column name",
 	).SetIsColumn(toolkit.NewColumnProperties().
 		SetAffected(true),
 	).SetRequired(true),
 
-	toolkit.MustNewParameter(
+	toolkit.MustNewParameterDefinition(
 		"values",
 		`map of value to replace in format: {"string": "string"}". The string with value "\N" supposed to be NULL value`,
 	).SetRequired(true),
 
-	toolkit.MustNewParameter(
+	toolkit.MustNewParameterDefinition(
 		"default",
 		`default value if not any value has been matched with dict. The string with value "\N" supposed to be NULL value. Default is empty`,
 	).SetRequired(false),
 
-	toolkit.MustNewParameter(
+	toolkit.MustNewParameterDefinition(
 		"fail_not_matched",
 		`fail if value is not matched with dict otherwise keep value`,
 	).SetRequired(false).
 		SetDefaultValue(toolkit.ParamsValue("true")),
-	toolkit.MustNewParameter(
+	toolkit.MustNewParameterDefinition(
 		"validate",
 		`perform encode-decode procedure using column type, ensuring that value has correct type`,
 	).SetRequired(false).
@@ -72,11 +72,11 @@ type DictTransformer struct {
 }
 
 func NewDictTransformer(
-	ctx context.Context, driver *toolkit.Driver, parameters map[string]*toolkit.Parameter,
+	ctx context.Context, driver *toolkit.Driver, parameters map[string]toolkit.Parameterizer,
 ) (utils.Transformer, toolkit.ValidationWarnings, error) {
 	p := parameters["column"]
 	var columnName string
-	if _, err := p.Scan(&columnName); err != nil {
+	if err := p.Scan(&columnName); err != nil {
 		return nil, nil, fmt.Errorf(`unable to parse "column" param: %w`, err)
 	}
 
@@ -89,13 +89,13 @@ func NewDictTransformer(
 
 	p = parameters["validate"]
 	var validate bool
-	if _, err := p.Scan(&validate); err != nil {
+	if err := p.Scan(&validate); err != nil {
 		return nil, nil, fmt.Errorf(`unable to parse "validate" param: %w`, err)
 	}
 
 	p = parameters["values"]
 	values := make(map[string]string)
-	if _, err := p.Scan(&values); err != nil {
+	if err := p.Scan(&values); err != nil {
 		return nil, nil, fmt.Errorf(`unable to scan "values" param: %w`, err)
 	}
 	dict := make(map[string]*toolkit.RawValue, len(values))
@@ -104,7 +104,7 @@ func NewDictTransformer(
 		if validate {
 			// Validate key
 			if key != defaultNullSeq {
-				if err := validateValue([]byte(key), driver, idx); err != nil {
+				if err := dictValidateValue([]byte(key), driver, idx); err != nil {
 					warnings = append(warnings,
 						toolkit.NewValidationWarning().
 							SetSeverity(toolkit.ErrorValidationSeverity).
@@ -118,7 +118,7 @@ func NewDictTransformer(
 
 			// Validate value
 			if string(value) != defaultNullSeq {
-				if err := validateValue([]byte(value), driver, idx); err != nil {
+				if err := dictValidateValue([]byte(value), driver, idx); err != nil {
 					warnings = append(warnings,
 						toolkit.NewValidationWarning().
 							SetSeverity(toolkit.ErrorValidationSeverity).
@@ -141,37 +141,45 @@ func NewDictTransformer(
 
 	var defaultValue *toolkit.RawValue
 	p = parameters["default"]
-	var defaultValueStr string
-	empty, err := p.Scan(&defaultValueStr)
+
+	isEmpty, err := p.IsEmpty()
 	if err != nil {
-		return nil, nil, fmt.Errorf(`unable to scan "default" param: %w`, err)
+		return nil, nil, fmt.Errorf("error checking is parameter \"default\" empty: %w", err)
 	}
-	if !empty {
+
+	if !isEmpty {
+		rawDefaultValue, err := p.RawValue()
+		if err != nil {
+			return nil, nil, fmt.Errorf(`unable to scan "default" param: %w`, err)
+		}
+
+		if string(rawDefaultValue) == defaultNullSeq {
+			defaultValue = toolkit.NewRawValue(nil, true)
+		} else {
+			defaultValue = toolkit.NewRawValue(rawDefaultValue, false)
+		}
+
 		if validate {
 			// Validate defaultValueStr
-			if defaultValueStr != defaultNullSeq {
-				if err := validateValue([]byte(defaultValueStr), driver, idx); err != nil {
+			if !defaultValue.IsNull {
+				if err := dictValidateValue(defaultValue.Data, driver, idx); err != nil {
 					warnings = append(warnings,
 						toolkit.NewValidationWarning().
 							SetSeverity(toolkit.ErrorValidationSeverity).
-							AddMeta("ParameterValue", defaultValueStr).
-							AddMeta("ParameterName", "default_value").
+							AddMeta("ParameterValue", string(defaultValue.Data)).
+							AddMeta("ParameterName", "default").
 							AddMeta("Error", err.Error()).
-							SetMsg("error validating \"default_value\""),
+							SetMsg("error validating \"default\""),
 					)
 				}
 			}
 		}
-		if defaultValueStr == defaultNullSeq {
-			defaultValue = toolkit.NewRawValue(nil, true)
-		} else {
-			defaultValue = toolkit.NewRawValue([]byte(defaultValueStr), false)
-		}
+
 	}
 
 	p = parameters["fail_not_matched"]
 	var failNotMatched bool
-	if _, err := p.Scan(&failNotMatched); err != nil {
+	if err := p.Scan(&failNotMatched); err != nil {
 		return nil, nil, fmt.Errorf(`unable to parse "fail_not_matched" param: %w`, err)
 	}
 
@@ -229,7 +237,7 @@ func (ht *DictTransformer) Transform(ctx context.Context, r *toolkit.Record) (*t
 	return r, nil
 }
 
-func validateValue(data []byte, driver *toolkit.Driver, columnIdx int) error {
+func dictValidateValue(data []byte, driver *toolkit.Driver, columnIdx int) error {
 	_, err := driver.DecodeValueByColumnIdx(columnIdx, data)
 	if err != nil {
 		return fmt.Errorf(`"unable to decode value: %w"`, err)

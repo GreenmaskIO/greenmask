@@ -18,16 +18,15 @@ import (
 	"context"
 	"testing"
 
-	"github.com/stretchr/testify/require"
-
 	"github.com/greenmaskio/greenmask/pkg/toolkit"
+	"github.com/stretchr/testify/require"
 )
 
 func TestGetDynamicTransformerDefinition(t *testing.T) {
 	expected := TransformerDefinition{
 		Name:        "TwoDatesGen",
 		Description: "Generate diff between two dates",
-		Parameters: []*toolkit.Parameter{
+		Parameters: []*toolkit.ParameterDefinition{
 			{
 				Name:        "column_a",
 				Description: "test1",

@@ -26,7 +26,7 @@ import (
 )
 
 type TestTransformer struct {
-	p map[string]*toolkit.Parameter
+	p map[string]toolkit.Parameterizer
 }
 
 func (tt *TestTransformer) Init(ctx context.Context) error {
@@ -45,7 +45,7 @@ func (tt *TestTransformer) GetAffectedColumns() map[int]string {
 	return nil
 }
 
-func NewTestTransformer(ctx context.Context, driver *toolkit.Driver, parameters map[string]*toolkit.Parameter) (
+func NewTestTransformer(ctx context.Context, driver *toolkit.Driver, parameters map[string]toolkit.Parameterizer) (
 	Transformer, toolkit.ValidationWarnings, error,
 ) {
 	return &TestTransformer{
@@ -55,15 +55,15 @@ func NewTestTransformer(ctx context.Context, driver *toolkit.Driver, parameters 
 
 func TestDefinition(t *testing.T) {
 
-	TestTransformerDefinition := NewDefinition(
+	TestTransformerDefinition := NewTransformerDefinition(
 		NewTransformerProperties("test", "simple description"),
 		NewTestTransformer,
-		toolkit.MustNewParameter("column", "a column Name").
+		toolkit.MustNewParameterDefinition("column", "a column Name").
 			SetIsColumn(toolkit.NewColumnProperties().
 				SetAffected(true).
 				SetAllowedColumnTypes("timestamp"),
 			),
-		toolkit.MustNewParameter("replace", "replacement value").
+		toolkit.MustNewParameterDefinition("replace", "replacement value").
 			SetLinkParameter("column"),
 	)
 
@@ -92,7 +92,7 @@ func TestDefinition(t *testing.T) {
 		Constraints: []toolkit.Constraint{},
 	}
 
-	driver, err := toolkit.NewDriver(table, nil, nil)
+	driver, _, err := toolkit.NewDriver(table, nil)
 	require.NoError(t, err)
 
 	rawParams := map[string]toolkit.ParamsValue{

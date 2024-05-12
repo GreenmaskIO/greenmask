@@ -28,7 +28,7 @@ func initTransformer(
 	c *domains.TransformerConfig,
 	r *transformersUtils.TransformerRegistry,
 	types []*toolkit.Type,
-) (transformersUtils.Transformer, toolkit.ValidationWarnings, error) {
+) (*transformersUtils.TransformerContext, toolkit.ValidationWarnings, error) {
 	var totalWarnings toolkit.ValidationWarnings
 	td, ok := r.Get(c.Name)
 	if !ok {
@@ -42,7 +42,7 @@ func initTransformer(
 			}))
 		return nil, totalWarnings, nil
 	}
-	transformer, warnings, err := td.Instance(ctx, d, c.Params, types)
+	transformer, warnings, err := td.Instance(ctx, d, c.Params, c.DynamicParams)
 	if err != nil {
 		return nil, nil, fmt.Errorf("unable to init transformer: %w", err)
 	}

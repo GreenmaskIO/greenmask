@@ -22,13 +22,13 @@ import (
 	"github.com/greenmaskio/greenmask/pkg/toolkit"
 )
 
-var SetNullTransformerDefinition = utils.NewDefinition(
+var SetNullTransformerDefinition = utils.NewTransformerDefinition(
 	utils.NewTransformerProperties(
 		"SetNull",
 		"Set NULL value",
 	),
 	NewSetNullTransformer,
-	toolkit.MustNewParameter(
+	toolkit.MustNewParameterDefinition(
 		"column",
 		"column name",
 	).SetIsColumn(toolkit.NewColumnProperties().
@@ -43,11 +43,11 @@ type SetNullTransformer struct {
 	affectedColumns map[int]string
 }
 
-func NewSetNullTransformer(ctx context.Context, driver *toolkit.Driver, parameters map[string]*toolkit.Parameter) (utils.Transformer, toolkit.ValidationWarnings, error) {
+func NewSetNullTransformer(ctx context.Context, driver *toolkit.Driver, parameters map[string]toolkit.Parameterizer) (utils.Transformer, toolkit.ValidationWarnings, error) {
 	var columnName string
 
 	p := parameters["column"]
-	if _, err := p.Scan(&columnName); err != nil {
+	if err := p.Scan(&columnName); err != nil {
 		return nil, nil, fmt.Errorf("unable to scan column param: %w", err)
 	}
 

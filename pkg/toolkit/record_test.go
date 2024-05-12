@@ -18,9 +18,50 @@ import (
 	"testing"
 	"time"
 
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+func getDriver() *Driver {
+	table := &Table{
+		Schema: "public",
+		Name:   "test",
+		Oid:    1224,
+		Columns: []*Column{
+			{
+				Name:     "id",
+				TypeName: "int2",
+				TypeOid:  pgtype.Int2OID,
+				Num:      1,
+				NotNull:  true,
+				Length:   -1,
+			},
+			{
+				Name:     "created_at",
+				TypeName: "timestamp",
+				TypeOid:  pgtype.TimestampOID,
+				Num:      2,
+				NotNull:  true,
+				Length:   -1,
+			},
+			{
+				Name:     "title",
+				TypeName: "text",
+				TypeOid:  pgtype.TextOID,
+				Num:      3,
+				NotNull:  true,
+				Length:   -1,
+			},
+		},
+		Constraints: []Constraint{},
+	}
+	driver, _, err := NewDriver(table, nil)
+	if err != nil {
+		panic(err.Error())
+	}
+	return driver
+}
 
 func TestRecord_ScanAttribute(t *testing.T) {
 	row := &TestRowDriver{

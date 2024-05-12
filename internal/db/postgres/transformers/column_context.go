@@ -15,21 +15,20 @@
 package transformers
 
 import (
-	"github.com/greenmaskio/greenmask/internal/db/postgres/transformers/utils/template"
 	"github.com/greenmaskio/greenmask/pkg/toolkit"
 )
 
 type ColumnContext struct {
 	columnType string
 	columnName string
-	rc         *template.RecordContext
+	rc         *toolkit.RecordContext
 }
 
 func NewColumnContext(columnType string, columnName string) *ColumnContext {
 	return &ColumnContext{
 		columnType: columnType,
 		columnName: columnName,
-		rc:         &template.RecordContext{},
+		rc:         &toolkit.RecordContext{},
 	}
 }
 

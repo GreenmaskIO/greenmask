@@ -36,23 +36,22 @@ type Driver struct {
 	AttrIdxMap map[string]int
 	// CustomTypes - list of custom types used in tables
 	CustomTypes []*Type
-	// columnTypeOverrideOids - map of column type replacements. For instance replace original type
-	// INT2 to TEXT for column "data" than in map will be {"data": "text"}
-	columnTypeOverrideOids []uint32
-	columnTypeOverrides    map[string]string
-	// unsupportedColumns - map with unsupported column types that cannot perform encode-decode operations
-	unsupportedColumns map[string]string
-	mx                 *sync.Mutex
-	maxIdx             int
+	// unsupportedColumnNames - map with unsupported column types that cannot perform encode-decode operations
+	unsupportedColumnNames map[string]string
+	unsupportedColumnIdxs  map[int]string
+	mx                     *sync.Mutex
+	maxIdx                 int
 }
 
-func NewDriver(table *Table, customTypes []*Type, columnTypeOverrides map[string]string) (*Driver, error) {
+func NewDriver(table *Table, customTypes []*Type) (*Driver, ValidationWarnings, error) {
+	var warnings ValidationWarnings
+
 	columnMap := make(map[string]*Column, len(table.Columns))
 	attrIdxMap := make(map[string]int, len(table.Columns))
-	unsupportedColumns := make(map[string]string)
+	unsupportedColumnNames := make(map[string]string)
+	unsupportedColumnIdxs := make(map[int]string)
 
 	typeMapPool := make([]*pgtype.Map, len(table.Columns)+1)
-	typeOverrideOids := make([]uint32, len(table.Columns))
 
 	for idx := 0; idx < len(typeMapPool); idx++ {
 		tm := pgtype.NewMap()
@@ -63,58 +62,77 @@ func NewDriver(table *Table, customTypes []*Type, columnTypeOverrides map[string
 	}
 
 	if len(typeMapPool) != len(table.Columns)+1 {
-		return nil, fmt.Errorf("type map pool length is not equal to table columns count: expected %d got %d", len(table.Columns)+1, len(typeMapPool))
+		return nil, nil, fmt.Errorf("type map pool length is not equal to table columns count: expected %d got %d", len(table.Columns)+1, len(typeMapPool))
 	}
 	for idx, c := range table.Columns {
 		columnMap[c.Name] = c
 		attrIdxMap[c.Name] = idx
+		// Check column type is supported by driver
 		_, ok := typeMapPool[0].TypeForOID(uint32(c.TypeOid))
-		if overriddenType, ok := columnTypeOverrides[c.Name]; ok {
-			ot, ok := typeMapPool[0].TypeForName(overriddenType)
-			if !ok {
-				return nil, fmt.Errorf("overriden type %s does not exist", overriddenType)
-			}
-			typeOverrideOids[idx] = ot.OID
-		}
-
 		if !ok {
-			log.Warn().
+			log.Debug().
 				Str("TableSchema", table.Schema).
 				Str("TableName", table.Name).
 				Str("ColumnName", c.Name).
 				Str("TypeName", c.TypeName).
 				Int("TypeOid", int(c.TypeOid)).
 				Msg("cannot match encoder/decoder for type: encode and decode operations is not supported")
-			unsupportedColumns[c.Name] = c.TypeName
+			unsupportedColumnNames[c.Name] = c.TypeName
+			unsupportedColumnIdxs[idx] = c.TypeName
+		}
+
+		// Check overridden column type is supported by driver
+		if c.OverriddenTypeName != "" {
+			ot, ok := typeMapPool[0].TypeForName(c.OverriddenTypeName)
+			if !ok {
+				warnings = append(
+					warnings,
+					NewValidationWarning().
+						SetSeverity(WarningValidationSeverity).
+						SetMsg("unknown or unsupported overridden type name by PostgreSQL driver: encode and decode operations is not supported").
+						AddMeta("OverriddenColumnName", c.Name).
+						AddMeta("OverriddenTypeName", c.OverriddenTypeName),
+				)
+				unsupportedColumnNames[c.Name] = c.TypeName
+				unsupportedColumnIdxs[idx] = c.TypeName
+				continue
+			}
+			c.OverriddenTypeOid = Oid(ot.OID)
 		}
 	}
 
-	if columnTypeOverrides == nil {
-		columnTypeOverrides = make(map[string]string)
-	}
-
-	pc := &Driver{
+	d := &Driver{
 		TypeMapPool:            typeMapPool[1:],
 		SharedTypeMap:          typeMapPool[0],
 		Table:                  table,
 		ColumnMap:              columnMap,
 		AttrIdxMap:             attrIdxMap,
-		columnTypeOverrideOids: typeOverrideOids,
 		CustomTypes:            customTypes,
 		mx:                     &sync.Mutex{},
 		maxIdx:                 len(table.Columns) - 1,
-		columnTypeOverrides:    columnTypeOverrides,
+		unsupportedColumnNames: unsupportedColumnNames,
+		unsupportedColumnIdxs:  unsupportedColumnIdxs,
 	}
-	return pc, nil
+
+	return d, warnings, nil
+}
+
+func (d *Driver) GetTypeMap() *pgtype.Map {
+	return d.SharedTypeMap
 }
 
 func (d *Driver) EncodeValueByColumnIdx(idx int, src any, buf []byte) ([]byte, error) {
+	if typeName, ok := d.unsupportedColumnIdxs[idx]; ok {
+		return nil, fmt.Errorf("encode-decode operation is not supported for column %d with type %s", idx, typeName)
+	}
+
 	if idx < 0 || idx > d.maxIdx {
 		return nil, fmt.Errorf("index out ouf range: must be between 0 and %d received %d", d.maxIdx, idx)
 	}
-	oid := uint32(d.Table.Columns[idx].TypeOid)
-	if overriddenType := d.columnTypeOverrideOids[idx]; overriddenType != 0 {
-		oid = overriddenType
+	c := d.Table.Columns[idx]
+	oid := uint32(c.TypeOid)
+	if c.OverriddenTypeOid != 0 {
+		oid = uint32(c.OverriddenTypeOid)
 	}
 	res, err := d.TypeMapPool[idx].Encode(oid, pgx.TextFormatCode, src, buf)
 	if err != nil {
@@ -124,10 +142,6 @@ func (d *Driver) EncodeValueByColumnIdx(idx int, src any, buf []byte) ([]byte, e
 }
 
 func (d *Driver) EncodeValueByColumnName(name string, src any, buf []byte) ([]byte, error) {
-	if typeName, ok := d.unsupportedColumns[name]; ok {
-		return nil, fmt.Errorf("encode-decode operation is not supported for column %s with type %s", name, typeName)
-	}
-
 	idx, ok := d.AttrIdxMap[name]
 	if !ok {
 		return nil, fmt.Errorf("unoknown column %s", name)
@@ -136,12 +150,17 @@ func (d *Driver) EncodeValueByColumnName(name string, src any, buf []byte) ([]by
 }
 
 func (d *Driver) ScanValueByColumnIdx(idx int, src []byte, dest any) error {
+	if typeName, ok := d.unsupportedColumnIdxs[idx]; ok {
+		return fmt.Errorf("encode-decode operation is not supported for column %d with type %s", idx, typeName)
+	}
+
 	if idx < 0 || idx > d.maxIdx {
 		return fmt.Errorf("index out ouf range: must be between 0 and %d received %d", d.maxIdx, idx)
 	}
-	oid := uint32(d.Table.Columns[idx].TypeOid)
-	if overriddenType := d.columnTypeOverrideOids[idx]; overriddenType != 0 {
-		oid = overriddenType
+	c := d.Table.Columns[idx]
+	oid := uint32(c.TypeOid)
+	if c.OverriddenTypeOid != 0 {
+		oid = uint32(c.OverriddenTypeOid)
 	}
 	err := d.TypeMapPool[idx].Scan(oid, pgx.TextFormatCode, src, dest)
 	if err != nil {
@@ -151,7 +170,7 @@ func (d *Driver) ScanValueByColumnIdx(idx int, src []byte, dest any) error {
 }
 
 func (d *Driver) ScanValueByColumnName(name string, src []byte, dest any) error {
-	if typeName, ok := d.unsupportedColumns[name]; ok {
+	if typeName, ok := d.unsupportedColumnNames[name]; ok {
 		return fmt.Errorf("encode-decode operation is not supported for column %s with type %s", name, typeName)
 	}
 	idx, ok := d.AttrIdxMap[name]
@@ -162,12 +181,17 @@ func (d *Driver) ScanValueByColumnName(name string, src []byte, dest any) error 
 }
 
 func (d *Driver) DecodeValueByColumnIdx(idx int, src []byte) (any, error) {
+	if typeName, ok := d.unsupportedColumnIdxs[idx]; ok {
+		return nil, fmt.Errorf("encode-decode operation is not supported for column %d with type %s", idx, typeName)
+	}
+
 	if idx < 0 || idx > d.maxIdx {
 		return nil, fmt.Errorf("index out ouf range: must be between 0 and %d received %d", d.maxIdx, idx)
 	}
-	oid := uint32(d.Table.Columns[idx].TypeOid)
-	if overriddenType := d.columnTypeOverrideOids[idx]; overriddenType != 0 {
-		oid = overriddenType
+	c := d.Table.Columns[idx]
+	oid := uint32(c.TypeOid)
+	if c.OverriddenTypeOid != 0 {
+		oid = uint32(c.OverriddenTypeOid)
 	}
 	pgType, ok := d.TypeMapPool[0].TypeForOID(oid)
 	if !ok {

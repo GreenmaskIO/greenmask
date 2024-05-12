@@ -24,14 +24,14 @@ import (
 	"github.com/greenmaskio/greenmask/pkg/toolkit"
 )
 
-var testTransformerDefinition = toolkit.NewDefinition(
+var testTransformerDefinition = toolkit.NewTransformerDefinition(
 	"TestTransformer",
 	NewTestTransformer,
 ).SetValidate(true).
 	SetDescription("Simple test transformer").
 	SetMode(&(*toolkit.DefaultRowDriverParams)).
 	AddParameter(
-		toolkit.MustNewParameter("column", "test desc").
+		toolkit.MustNewParameterDefinition("column", "test desc").
 			SetIsColumn(
 				toolkit.NewColumnProperties().
 					SetAllowedColumnTypes("date", "timestamp", "timestamptz").
@@ -45,11 +45,11 @@ type TestTransformer struct {
 	columnName string
 }
 
-func NewTestTransformer(ctx context.Context, driver *toolkit.Driver, parameters map[string]*toolkit.Parameter) (
+func NewTestTransformer(ctx context.Context, driver *toolkit.Driver, parameters map[string]toolkit.Parameterizer) (
 	toolkit.Transformer, toolkit.ValidationWarnings, error) {
 	c := parameters["column"]
 	var columnName string
-	if _, err := c.Scan(&columnName); err != nil {
+	if err := c.Scan(&columnName); err != nil {
 		return nil, nil, fmt.Errorf("error scanning column name")
 	}
 

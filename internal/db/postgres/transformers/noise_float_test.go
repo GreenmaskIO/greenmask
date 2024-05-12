@@ -16,9 +16,9 @@ package transformers
 
 import (
 	"context"
-	"slices"
 	"testing"
 
+	"github.com/rs/zerolog/log"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -44,7 +44,8 @@ func TestNoiseFloatTransformer_Transform(t *testing.T) {
 			name:       "float4",
 			columnName: "col_float4",
 			params: map[string]toolkit.ParamsValue{
-				"ratio": toolkit.ParamsValue("0.9"),
+				"min_ratio": toolkit.ParamsValue("0.2"),
+				"max_ratio": toolkit.ParamsValue("0.9"),
 			},
 			input:  "100",
 			result: result{min: 10, max: 190, regexp: `-*\d+[.]*\d*$`},
@@ -53,7 +54,8 @@ func TestNoiseFloatTransformer_Transform(t *testing.T) {
 			name:       "float8",
 			columnName: "col_float8",
 			params: map[string]toolkit.ParamsValue{
-				"ratio": toolkit.ParamsValue("0.9"),
+				"min_ratio": toolkit.ParamsValue("0.2"),
+				"max_ratio": toolkit.ParamsValue("0.9"),
 			},
 			input:  "100",
 			result: result{min: 10, max: 190, regexp: `-*\d+[.]*\d*$`},
@@ -62,7 +64,8 @@ func TestNoiseFloatTransformer_Transform(t *testing.T) {
 			name:       "float8 ranges 1",
 			columnName: "col_float8",
 			params: map[string]toolkit.ParamsValue{
-				"ratio":     toolkit.ParamsValue("0.9"),
+				"min_ratio": toolkit.ParamsValue("0.2"),
+				"max_ratio": toolkit.ParamsValue("0.9"),
 				"precision": toolkit.ParamsValue("10"),
 			},
 			input:  "100",
@@ -72,31 +75,45 @@ func TestNoiseFloatTransformer_Transform(t *testing.T) {
 			name:       "float8 ranges 1 with precision",
 			columnName: "col_float8",
 			params: map[string]toolkit.ParamsValue{
-				"ratio":     toolkit.ParamsValue("0.9"),
+				"min_ratio": toolkit.ParamsValue("0.2"),
+				"max_ratio": toolkit.ParamsValue("0.9"),
 				"precision": toolkit.ParamsValue("0"),
 			},
 			input:  "100",
 			result: result{min: 10, max: 190, regexp: `^-*\d+$`},
 		},
-		//{
-		//	name: "text with default float8",
-		//	params: map[string]toolkit.ParamsValue{
-		//		"ratio":     0.9,
-		//		"precision": 3,
-		//		"useType":   "float4",
-		//		"column":    "test",
-		//	},
-		//	input:   "100",
-		//	result:  result{min: 10, max: 190},
-		//	regexp: `^-*\d+[.]*\d{0,3}$`,
-		//},
+		{
+			name:       "float8 ranges 1 with precision and hash engine",
+			columnName: "col_float8",
+			params: map[string]toolkit.ParamsValue{
+				"min_ratio": toolkit.ParamsValue("0.2"),
+				"max_ratio": toolkit.ParamsValue("0.9"),
+				"precision": toolkit.ParamsValue("0"),
+				"engine":    toolkit.ParamsValue("hash"),
+			},
+			input:  "100",
+			result: result{min: 10, max: 190, regexp: `^-*\d+$`},
+		},
+		{
+			name:       "with thresholds",
+			columnName: "col_float8",
+			params: map[string]toolkit.ParamsValue{
+				"min_ratio": toolkit.ParamsValue("0.2"),
+				"max_ratio": toolkit.ParamsValue("0.9"),
+				"min":       toolkit.ParamsValue("90"),
+				"max":       toolkit.ParamsValue("110"),
+				"precision": toolkit.ParamsValue("0"),
+			},
+			input:  "100",
+			result: result{min: 90, max: 110, regexp: `^-*\d+$`},
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			tt.params["column"] = toolkit.ParamsValue(tt.columnName)
 			driver, record := getDriverAndRecord(tt.columnName, tt.input)
-			transformer, warnings, err := NoiseFloatTransformerDefinition.Instance(
+			transformerCtx, warnings, err := NoiseFloatTransformerDefinition.Instance(
 				context.Background(),
 				driver,
 				tt.params,
@@ -104,7 +121,7 @@ func TestNoiseFloatTransformer_Transform(t *testing.T) {
 			)
 			require.NoError(t, err)
 			require.Empty(t, warnings)
-			r, err := transformer.Transform(
+			r, err := transformerCtx.Transformer.Transform(
 				context.Background(),
 				record,
 			)
@@ -113,16 +130,13 @@ func TestNoiseFloatTransformer_Transform(t *testing.T) {
 			isNull, err := r.ScanColumnValueByName(tt.columnName, &res)
 			require.NoError(t, err)
 			assert.False(t, isNull)
+
+			log.Debug().Str("Original", tt.input).Float64("Transformed", res).Msg("")
 			if !isNull {
 				assert.GreaterOrEqual(t, res, tt.result.min)
 				assert.LessOrEqual(t, res, tt.result.max)
-				encodedValue, err := r.Encode()
+				rawValue, err := r.GetRawColumnValueByName(tt.columnName)
 				require.NoError(t, err)
-				idx := slices.IndexFunc(driver.Table.Columns, func(column *toolkit.Column) bool {
-					return column.Name == tt.columnName
-				})
-				require.NotEqual(t, -1, idx)
-				rawValue, err := encodedValue.GetColumn(idx)
 				require.NoError(t, err)
 				require.False(t, rawValue.IsNull)
 				require.Regexp(t, tt.result.regexp, string(rawValue.Data))

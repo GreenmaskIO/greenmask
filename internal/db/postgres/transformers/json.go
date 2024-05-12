@@ -32,7 +32,6 @@ import (
 	"github.com/tidwall/sjson"
 
 	"github.com/greenmaskio/greenmask/internal/db/postgres/transformers/utils"
-	templateToolkit "github.com/greenmaskio/greenmask/internal/db/postgres/transformers/utils/template"
 	"github.com/greenmaskio/greenmask/pkg/toolkit"
 )
 
@@ -41,7 +40,7 @@ const (
 	JsonSetOpName    = "set"
 )
 
-var JsonTransformerDefinition = utils.NewDefinition(
+var JsonTransformerDefinition = utils.NewTransformerDefinition(
 
 	utils.NewTransformerProperties(
 		"Json",
@@ -50,7 +49,7 @@ var JsonTransformerDefinition = utils.NewDefinition(
 
 	NewJsonTransformer,
 
-	toolkit.MustNewParameter(
+	toolkit.MustNewParameterDefinition(
 		"column",
 		"column name",
 	).SetIsColumn(toolkit.NewColumnProperties().
@@ -58,12 +57,12 @@ var JsonTransformerDefinition = utils.NewDefinition(
 		SetAllowedColumnTypes("json", "jsonb"),
 	).SetRequired(true),
 
-	toolkit.MustNewParameter(
+	toolkit.MustNewParameterDefinition(
 		"operations",
 		`list of operations that contains editing operation [{"operation": "set|delete", "path": "path to the part of the document", "value": "value in any type - string, int, float, list, object, null", "value_template": "go template", "error_not_exist", "raise error if not exists - boolean"}]`,
 	).SetRequired(true),
 
-	toolkit.MustNewParameter(
+	toolkit.MustNewParameterDefinition(
 		"keep_null",
 		"apply changes in value is null",
 	).SetDefaultValue(toolkit.ParamsValue("true")),
@@ -74,12 +73,12 @@ var jsonSetOpt = &sjson.Options{
 }
 
 type Operation struct {
-	Operation     string             `mapstructure:"operation" json:"operation"`
-	Value         interface{}        `mapstructure:"value,omitempty" json:"value"`
-	ValueTemplate string             `mapstructure:"value_template,omitempty" json:"value_template"`
-	Path          string             `mapstructure:"path" json:"path"`
-	ErrorNotExist bool               `mapstructure:"error_not_exist" json:"error_not_exist"`
-	tmpl          *template.Template `json:"tmpl,omitempty"`
+	Operation     string      `mapstructure:"operation" json:"operation"`
+	Value         interface{} `mapstructure:"value,omitempty" json:"value"`
+	ValueTemplate string      `mapstructure:"value_template,omitempty" json:"value_template"`
+	Path          string      `mapstructure:"path" json:"path"`
+	ErrorNotExist bool        `mapstructure:"error_not_exist" json:"error_not_exist"`
+	tmpl          *template.Template
 }
 
 func (o *Operation) Apply(inp []byte, tctx *JsonContext, buf *bytes.Buffer) ([]byte, error) {
@@ -135,13 +134,13 @@ type JsonTransformer struct {
 	keepNull        bool
 }
 
-func NewJsonTransformer(ctx context.Context, driver *toolkit.Driver, parameters map[string]*toolkit.Parameter) (utils.Transformer, toolkit.ValidationWarnings, error) {
+func NewJsonTransformer(ctx context.Context, driver *toolkit.Driver, parameters map[string]toolkit.Parameterizer) (utils.Transformer, toolkit.ValidationWarnings, error) {
 	var ops []*Operation
 	var columnName string
 	var keepNull bool
 
 	p := parameters["column"]
-	if _, err := p.Scan(&columnName); err != nil {
+	if err := p.Scan(&columnName); err != nil {
 		return nil, nil, fmt.Errorf("unable to scan column param: %w", err)
 	}
 
@@ -153,19 +152,19 @@ func NewJsonTransformer(ctx context.Context, driver *toolkit.Driver, parameters 
 	affectedColumns[idx] = columnName
 
 	p = parameters["operations"]
-	if _, err := p.Scan(&ops); err != nil {
+	if err := p.Scan(&ops); err != nil {
 		return nil, nil, fmt.Errorf("unable to parse operations param: %w", err)
 	}
 
 	p = parameters["keep_null"]
-	if _, err := p.Scan(&keepNull); err != nil {
+	if err := p.Scan(&keepNull); err != nil {
 		return nil, nil, fmt.Errorf(`unable to scan "keep_null" param: %w`, err)
 	}
 
 	for idx, o := range ops {
 		if o.ValueTemplate != "" {
 			tmpl, err := template.New(fmt.Sprintf("op[%d] %s %s", idx, o.Operation, o.Path)).
-				Funcs(templateToolkit.FuncMap()).
+				Funcs(toolkit.FuncMap()).
 				Parse(o.ValueTemplate)
 			if err != nil {
 				return nil, nil, fmt.Errorf("error parsing template op[%d] with path \"%s\": %w", idx, o.Path, err)

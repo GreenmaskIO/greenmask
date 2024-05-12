@@ -155,7 +155,7 @@ func listTransformersText(registry *utils.TransformerRegistry) error {
 	return nil
 }
 
-func getColumnTypes(p *toolkit.Parameter) []string {
+func getColumnTypes(p *toolkit.ParameterDefinition) []string {
 	if p.ColumnProperties != nil && len(p.ColumnProperties.AllowedTypes) > 0 {
 		return p.ColumnProperties.AllowedTypes
 	}

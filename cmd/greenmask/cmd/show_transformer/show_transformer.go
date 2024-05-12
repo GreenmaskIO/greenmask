@@ -82,7 +82,7 @@ func run(name string) error {
 }
 
 func showTransformerJson(registry *utils.TransformerRegistry, transformerName string) error {
-	var transformers []*utils.Definition
+	var transformers []*utils.TransformerDefinition
 
 	def, ok := registry.M[transformerName]
 	if ok {
@@ -114,8 +114,8 @@ func showTransformerText(registry *utils.TransformerRegistry, name string) error
 		if p.DefaultValue != nil {
 			data = append(data, []string{def.Properties.Name, "parameters", p.Name, "default", string(p.DefaultValue), ""})
 		}
-		if p.LinkParameter != "" {
-			data = append(data, []string{def.Properties.Name, "parameters", p.Name, "linked_parameter", p.LinkParameter, ""})
+		if p.LinkColumnParameter != "" {
+			data = append(data, []string{def.Properties.Name, "parameters", p.Name, "linked_parameter", p.LinkColumnParameter, ""})
 		}
 		if p.CastDbType != "" {
 			data = append(data, []string{def.Properties.Name, "parameters", p.Name, "cast_to_db_type", p.CastDbType, ""})
@@ -146,7 +146,7 @@ func showTransformerText(registry *utils.TransformerRegistry, name string) error
 	return nil
 }
 
-func getTransformerDefinition(registry *utils.TransformerRegistry, name string) (*utils.Definition, error) {
+func getTransformerDefinition(registry *utils.TransformerRegistry, name string) (*utils.TransformerDefinition, error) {
 	def, ok := registry.M[name]
 	if ok {
 		return def, nil
