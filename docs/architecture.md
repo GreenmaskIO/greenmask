@@ -30,10 +30,6 @@ Greenmask introduces the concept of storages.
 * `s3` — this option supports any S3-like storage system, including AWS S3, which makes it versatile and adaptable to various cloud-based storage solutions.
 * `directory` — this is the standard choice, representing the ordinary filesystem directory for local storage.
 
-!!! note
-    If you have suggestions for additional storage options that would be valuable to implement, feel free to
-    share your ideas with us. Greenmask aims to accommodate a wide range of storage preferences to suit diverse backup needs.
-
 ## Restoration process
 
 In the restoration process, Greenmask combines the capabilities of different tools:

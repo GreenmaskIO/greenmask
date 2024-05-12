@@ -101,10 +101,6 @@ Greenmask introduces the concept of **Storages**.
   various cloud-based storage solutions.
 * **directory** - This is the standard choice, representing the ordinary filesystem directory for local storage.
 
-!!! note
-If you have suggestions for additional storage options that would be valuable to implement, please feel free to
-share your ideas. Greenmask aims to accommodate a wide range of storage preferences to suit diverse backup needs.
-
 ## Restoration Process
 
 In the restoration process, Greenmask combines the capabilities of different tools:
