@@ -309,6 +309,11 @@ log:
   level: debug
 ```
 
+### Global configuration variables
+
+* `GREENMASK_GLOBAL_SALT` - global salt value hex encoded with variadic length, used for the `hash` engine. For details
+  read [Transformation engines](built_in_transformers/transformation_engines.md) section.
+
 ### Postgres connection variables
 
 Additionaly, there are some environment variables exposed by the `dump` and `restore` commands to facilitate the connection configuration with a Postgres database
