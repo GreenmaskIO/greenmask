@@ -47,13 +47,14 @@ var NoiseDateTransformerDefinition = utils.NewTransformerDefinition(
 
 	toolkit.MustNewParameterDefinition(
 		"min_ratio",
-		"min random duration for noise",
+		"min random duration for noise. Dy default 5% of the max_ratio",
 	).SetCastDbType("interval"),
 
 	toolkit.MustNewParameterDefinition(
 		"max_ratio",
-		"max random duration for noise. Dy default 5% of the max_ratio",
-	).SetCastDbType("interval"),
+		"max random duration for noise",
+	).SetRequired(true).
+		SetCastDbType("interval"),
 
 	toolkit.MustNewParameterDefinition(
 		"min",
@@ -170,7 +171,7 @@ func NewNoiseDateTransformerBase(ctx context.Context, driver *toolkit.Driver, pa
 	}
 
 	warn := validateIntervalValue(maxRatio)
-	if warns != nil {
+	if warn != nil {
 		warn.AddMeta("ParameterName", "max_ratio")
 		warns = append(warns, warn)
 	}
@@ -187,7 +188,7 @@ func NewNoiseDateTransformerBase(ctx context.Context, driver *toolkit.Driver, pa
 			return nil, nil, fmt.Errorf("unable to scan \"max_ratio\" param: %w", err)
 		}
 		warn = validateIntervalValue(minRatio)
-		if warns != nil {
+		if warn != nil {
 			warn.AddMeta("ParameterName", "min_ratio")
 			warns = append(warns, warn)
 		}
