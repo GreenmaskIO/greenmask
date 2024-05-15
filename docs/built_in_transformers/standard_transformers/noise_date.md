@@ -22,8 +22,8 @@ Randomly add or subtract a duration within the provided `ratio` interval to the 
 ## Description
 
 The `NoiseDate` transformer randomly generates duration between `min_ratio` and `max_ratio` parameter and adds it to or
-subtracts it from the original date value. The `ratio` parameter must be written in
-the [PostgreSQL interval format](https://www.postgresql.org/docs/current/datatype-datetime.html#DATATYPE-INTERVAL-INPUT).
+subtracts it from the original date value. The `min_ratio` or `max_ratio` parameters must be written in the
+[PostgreSQL interval format](https://www.postgresql.org/docs/current/datatype-datetime.html#DATATYPE-INTERVAL-INPUT).
 You can also truncate the resulted date up to a specified part by setting the `truncate` parameter.
 
 In case you have constraints on the date range, you can set the `min` and `max` parameters to specify the threshold
@@ -59,7 +59,7 @@ to `1 year 2 months 3 days 4 hours 5 minutes 6 seconds and 7 milliseconds` with 
 
 In the following example, the original `timestamp` value of `hiredate` will be noised up
 to `1 year 2 months 3 days 4 hours 5 minutes 6 seconds and 7 milliseconds` with truncation up to the `month` part.
-The `max` threshold is set to `2020-01-01 00:00:00`, and the `min` threshold is set to the `birthdate` column.  If the
+The `max` threshold is set to `2020-01-01 00:00:00`, and the `min` threshold is set to the `birthdate` column. If the
 `birthdate` column is `NULL`, the default value `1990-01-01` will be used. The hash engine is used for deterministic
 generation - the same input will always produce the same output.
 
