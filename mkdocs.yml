@@ -63,6 +63,7 @@ nav:
               - Masking: built_in_transformers/standard_transformers/masking.md
               - NoiseDate: built_in_transformers/standard_transformers/noise_date.md
               - NoiseFloat: built_in_transformers/standard_transformers/noise_float.md
+              - NoiseNumeric: built_in_transformers/standard_transformers/noise_numeric.md
               - NoiseInt: built_in_transformers/standard_transformers/noise_int.md
               - RandomBool: built_in_transformers/standard_transformers/random_bool.md
               - RandomChoice: built_in_transformers/standard_transformers/random_choice.md

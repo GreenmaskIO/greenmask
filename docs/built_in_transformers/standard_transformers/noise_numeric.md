@@ -1,10 +1,10 @@
-Add or subtract a random fraction to the original float value.
+Add or subtract a random fraction to the original numeric value.
 
 ## Parameters
 
 | Name      | Description                                                                                       | Default  | Required | Supported DB types |
 |-----------|---------------------------------------------------------------------------------------------------|----------|----------|--------------------|
-| column    | The name of the column to be affected                                                             |          | Yes      | float4, float8     |
+| column    | The name of the column to be affected                                                             |          | Yes      | numeric, decimal   |
 | precision | The precision of the noised float value (number of digits after the decimal point)                | `4`      | No       | -                  |
 | min_ratio | The minimum random percentage for noise, from `0` to `1`, e. g. `0.1` means "add noise up to 10%" | `0.05`   | No       | -                  |
 | max_ratio | The maximum random percentage for noise, from `0` to `1`, e. g. `0.1` means "add noise up to 10%" |          | Yes      | -                  |
@@ -14,18 +14,18 @@ Add or subtract a random fraction to the original float value.
 
 ## Dynamic parameters
 
-| Parameter | Supported types                  |
-|-----------|----------------------------------|
-| min       | float4, float8, int2, int4, int8 |
-| max       | float4, float8, int2, int4, int8 |
+| Parameter | Supported types                                    |
+|-----------|----------------------------------------------------|
+| min       | numeric, decimal, float4, float8, int2, int4, int8 |
+| max       | numeric, decimal, float4, float8, int2, int4, int8 |
 
 ## Description
 
-The `NoiseFloat` transformer multiplies the original float value by randomly generated value that is not higher than
-the `max_ratio` parameter and not less that `max_ratio` parameter and adds it to or subtracts it from the original
-value. Additionally, you can specify the number of decimal digits by using the `precision` parameter.
+The `NoiseNumeric` transformer multiplies the original numeric (or decimal) value by randomly generated value that is
+not higher than the `max_ratio` parameter and not less that `max_ratio` parameter and adds it to or subtracts it from
+the original value. Additionally, you can specify the number of decimal digits by using the `precision` parameter.
 
-In case you have constraints on the float range, you can set the `min` and `max` parameters to specify the threshold
+In case you have constraints on the numeric range, you can set the `min` and `max` parameters to specify the threshold
 values. The values for `min` and `max` must have the same format as the `column` parameter. Parameters min and max
 support dynamic mode. Engine parameter allows you to choose between random and hash engines for generating values. Read
 more about the engines
@@ -38,18 +38,21 @@ more about the engines
 The `engine` parameter allows you to choose between random and hash engines for generating values. Read more about the
 engines in the [Transformation engines](../transformation_engines.md) section.
 
+!!! warning
+
+    Greenmask cannot parse the `numeric` type sitteng. For instance `NUMERIC(10, 2)`. You should set `min` and `max` treshholds
+    manually as well as allowed `precision`. This behaviour will be changed in the later versions. Grenmask will be able
+    to determine the precision and scale of the column and set the min and max treshholds automatically if were not set.
+
 ## Example: Adding noise to the purchase price
 
 In this example, the original value of `standardprice` will be noised up to `50%` and rounded up to `2` decimals.
 
-``` yaml title="NoiseFloat transformer example"
+``` yaml title="NoiseNumeric transformer example"
 - schema: "purchasing"
   name: "productvendor"
   transformers:
-    - name: "NoiseFloat"    
-      columns_type_override: # (1)
-        lastreceiptcost: "numeric"
-        standardprice: "numeric"
+    - name: "NoiseNumeric"
       params:
         column: "lastreceiptcost"
         max_ratio: 0.15
@@ -58,6 +61,3 @@ In this example, the original value of `standardprice` will be noised up to `50%
         min:
           column: "standardprice"
 ```
-
-1. The type overrides perfomed for example because the playground database does not contains any tables with float
-   columns.
