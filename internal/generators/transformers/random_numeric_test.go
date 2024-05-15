@@ -1,7 +1,6 @@
 package transformers
 
 import (
-	"context"
 	"testing"
 
 	"github.com/shopspring/decimal"
@@ -22,7 +21,7 @@ func TestBigIntTransformer_Transform(t *testing.T) {
 	require.NoError(t, err)
 	err = tr.SetGenerator(sha1)
 	require.NoError(t, err)
-	res, err := tr.Transform(context.Background(), []byte("199999999999999999999999999999999999999"))
+	res, err := tr.Transform([]byte("199999999999999999999999999999999999999"))
 	require.NoError(t, err)
 	require.True(t, res.LessThanOrEqual(maxValue) && res.GreaterThanOrEqual(minValue))
 }
@@ -40,7 +39,7 @@ func TestBigFloatTransformer_Transform(t *testing.T) {
 	require.NoError(t, err)
 	err = tr.SetGenerator(sha1)
 	require.NoError(t, err)
-	res, err := tr.Transform(context.Background(), []byte("1999999999999999999999999999999999999990"))
+	res, err := tr.Transform([]byte("1999999999999999999999999999999999999990"))
 	require.NoError(t, err)
 	require.True(t, res.LessThanOrEqual(maxValue) && res.GreaterThanOrEqual(minValue))
 }
