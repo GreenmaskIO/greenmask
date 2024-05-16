@@ -96,7 +96,6 @@ func NewNoiseFloatTransformer(ctx context.Context, driver *toolkit.Driver, param
 	var dynamicMode bool
 	var minValueThreshold, maxValueThreshold, minRatio, maxRatio float64
 	var decimal int
-	floatSize := 8
 
 	columnParam := parameters["column"]
 	minParam := parameters["min"]
@@ -124,9 +123,7 @@ func NewNoiseFloatTransformer(ctx context.Context, driver *toolkit.Driver, param
 	}
 	affectedColumns := make(map[int]string)
 	affectedColumns[idx] = columnName
-	if c.Length != -1 {
-		floatSize = c.Length
-	}
+	floatSize := c.GetColumnSize()
 
 	if !dynamicMode {
 		if err := minParam.Scan(&minValueThreshold); err != nil {

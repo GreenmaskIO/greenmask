@@ -102,7 +102,6 @@ func NewFloatTransformer(ctx context.Context, driver *toolkit.Driver, parameters
 	var minVal, maxVal float64
 	var keepNull, dynamicMode bool
 	var decimal int
-	floatSize := 8
 
 	columnParam := parameters["column"]
 	minParam := parameters["min"]
@@ -129,9 +128,7 @@ func NewFloatTransformer(ctx context.Context, driver *toolkit.Driver, parameters
 	}
 	affectedColumns := make(map[int]string)
 	affectedColumns[idx] = columnName
-	if c.Length != -1 {
-		floatSize = c.Length
-	}
+	floatSize := c.GetColumnSize()
 
 	if err := keepNullParam.Scan(&keepNull); err != nil {
 		return nil, nil, fmt.Errorf(`unable to scan "keep_null" param: %w`, err)
