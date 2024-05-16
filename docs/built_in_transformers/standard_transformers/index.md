@@ -33,6 +33,7 @@ Standard transformers are ready-to-use methods that require no customization and
 1. [RandomURL](random_url.md) — generates a random URL.
 1. [RandomIPv4](random_ipv4.md) — generates a random IPv4 address.
 1. [RandomIPv6](random_ipv6.md) — generates a random IPv6 address.
+1. [RandomMac](random_mac.md) — generates a random MAC addresses.
 1. [RandomWord](random_word.md) — generates a random word.
 1. [RandomSentence](random_sentence.md) — generates a random sentence.
 1. [RandomParagraph](random_paragraph.md) — generates a random paragraph.
