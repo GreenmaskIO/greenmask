@@ -2,12 +2,13 @@ package transformers
 
 import (
 	"fmt"
-	"github.com/greenmaskio/greenmask/internal/generators"
-	"github.com/rs/zerolog/log"
-	"github.com/stretchr/testify/require"
 	"net"
 	"testing"
 	"time"
+
+	"github.com/greenmaskio/greenmask/internal/generators"
+	"github.com/rs/zerolog/log"
+	"github.com/stretchr/testify/require"
 )
 
 func TestMacAddress_Generate(t *testing.T) {
@@ -90,7 +91,7 @@ func TestMacAddress_Generate(t *testing.T) {
 			_, err := net.ParseMAC(string(tt.original))
 			require.NoError(t, err)
 
-			parsedMacOriginal, err := ParseMacAddr(tt.original)
+			parsedMacOriginal, err := ExploreMacAddress(tt.original)
 			require.NoError(t, err)
 
 			tr, err := NewMacAddress()
@@ -105,14 +106,7 @@ func TestMacAddress_Generate(t *testing.T) {
 			res, err = tr.Generate(tt.original, tt.keepOriginalVendor, tt.castType, tt.managementType)
 			require.NoError(t, err)
 
-			resultStr, err := MacBytesToString(res)
-			require.NotEmpty(t, resultStr)
-			require.NoError(t, err)
-
-			_, err = net.ParseMAC(resultStr)
-			require.NoError(t, err)
-
-			parsedMacGenerated, err := ParseMacAddr(res)
+			parsedMacGenerated, err := ExploreMacAddress(res)
 			require.NoError(t, err)
 
 			if tt.keepOriginalVendor == true {
@@ -133,7 +127,7 @@ func TestMacAddress_Generate(t *testing.T) {
 
 			log.Debug().
 				Str("macAddrOriginal", string(tt.original)).
-				Str("macAddr", parsedMacGenerated.MacAddressStr).
+				Str("macAddr", parsedMacGenerated.MacAddress.String()).
 				Msg("result")
 		})
 	}

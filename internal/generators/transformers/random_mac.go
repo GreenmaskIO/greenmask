@@ -16,6 +16,8 @@ package transformers
 
 import (
 	"fmt"
+	"net"
+
 	"github.com/greenmaskio/greenmask/internal/generators"
 )
 
@@ -37,7 +39,7 @@ type MacAddress struct {
 }
 
 type MacAddressInfo struct {
-	MacAddressStr  string
+	MacAddress     net.HardwareAddr
 	ManagementType int
 	CastType       int
 }
@@ -52,13 +54,17 @@ func (macAddr *MacAddress) GetRequiredGeneratorByteLength() int {
 	return macAddr.byteLength
 }
 
-func (macAddr *MacAddress) Generate(original []byte, keepOriginalVendor bool, castType int, managementType int) ([]byte, error) {
-	hostBytes, err := macAddr.generator.Generate(original)
+func (macAddr *MacAddress) Generate(original net.HardwareAddr, keepOriginalVendor bool, castType int, managementType int) (net.HardwareAddr, error) {
+	randoBytes, err := macAddr.generator.Generate(original)
 	if err != nil {
 		return nil, fmt.Errorf("error generating random bytes: %w", err)
 	}
+	randomMac, err := RandomBytesToHardwareAddr(randoBytes)
+	if err != nil {
+		return nil, fmt.Errorf("error converting random bytes to hardware address: %w", err)
+	}
 
-	result, err := ModifyMacAddress(hostBytes, original, keepOriginalVendor, castType, managementType)
+	result, err := ModifyMacAddress(randomMac, original, keepOriginalVendor, castType, managementType)
 	if err != nil {
 		return nil, fmt.Errorf("can't modify mac address: %w", err)
 	}
@@ -66,27 +72,11 @@ func (macAddr *MacAddress) Generate(original []byte, keepOriginalVendor bool, ca
 	return result, nil
 }
 
-func ModifyMacAddress(newMac, original []byte, keepOriginalVendor bool, castType, managementType int) ([]byte, error) {
+func ModifyMacAddress(newMac, original net.HardwareAddr, keepOriginalVendor bool, castType, managementType int) ([]byte, error) {
 	if keepOriginalVendor {
-		originalMacAddrInfo, err := ParseMacAddr(original)
-		if err != nil {
-			return nil, fmt.Errorf("can't get original mac address info: %v", err)
-		}
-
-		// Logic with control U/L bits
-		if originalMacAddrInfo.ManagementType == ManagementTypeLocal {
-			newMac[0] |= 0x02
-		} else {
-			newMac[0] &^= 0x02
-		}
-
-		// Logic with control I/G bits
-		if originalMacAddrInfo.CastType == CastTypeGroup {
-			newMac[0] |= 0x01
-		} else {
-			newMac[0] &^= 0x01
-		}
-
+		newMac[0] = original[0]
+		newMac[1] = original[1]
+		newMac[2] = original[2]
 	} else {
 		if managementType == ManagementTypeUniversal || managementType == ManagementTypeLocal {
 			if managementType == ManagementTypeLocal {
@@ -108,7 +98,8 @@ func ModifyMacAddress(newMac, original []byte, keepOriginalVendor bool, castType
 	return newMac, nil
 }
 
-func ParseMacAddr(macAddress []byte) (*MacAddressInfo, error) {
+// ExploreMacAddress - explore mac address and return info about it
+func ExploreMacAddress(macAddress net.HardwareAddr) (*MacAddressInfo, error) {
 	firstByte := macAddress[0]
 	managementType := ManagementTypeUniversal
 	if firstByte&0x02 == 0x02 {
@@ -120,12 +111,7 @@ func ParseMacAddr(macAddress []byte) (*MacAddressInfo, error) {
 		castType = CastTypeGroup
 	}
 
-	macSrt, err := MacBytesToString(macAddress)
-	if err != nil {
-		return nil, fmt.Errorf("can't create mac address string: %v", err)
-	}
-
-	return &MacAddressInfo{ManagementType: managementType, CastType: castType, MacAddressStr: macSrt}, nil
+	return &MacAddressInfo{ManagementType: managementType, CastType: castType, MacAddress: macAddress}, nil
 }
 
 func (macAddr *MacAddress) SetGenerator(g generators.Generator) error {
@@ -136,10 +122,11 @@ func (macAddr *MacAddress) SetGenerator(g generators.Generator) error {
 	return nil
 }
 
-func MacBytesToString(originalBytes []byte) (macString string, err error) {
-	if len(originalBytes) < 6 {
-		return "", fmt.Errorf("incorrect size of MAC-address")
-	}
-
-	return fmt.Sprintf("%02x:%02x:%02x:%02x:%02x:%02x", originalBytes[0], originalBytes[1], originalBytes[2], originalBytes[3], originalBytes[4], originalBytes[5]), nil
+func RandomBytesToHardwareAddr(originalBytes []byte) (net.HardwareAddr, error) {
+	return net.ParseMAC(
+		fmt.Sprintf(
+			"%02x:%02x:%02x:%02x:%02x:%02x",
+			originalBytes[0], originalBytes[1], originalBytes[2], originalBytes[3], originalBytes[4], originalBytes[5],
+		),
+	)
 }
