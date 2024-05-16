@@ -1,7 +1,6 @@
 package transformers
 
 import (
-	"context"
 	"fmt"
 
 	"github.com/greenmaskio/greenmask/internal/generators"
@@ -30,6 +29,12 @@ func NewNoiseNumericLimiter(minVal, maxVal decimal.Decimal) (*NoiseNumericLimite
 	}, nil
 }
 
+func (ni *NoiseNumericLimiter) SetPrecision(v int32) *NoiseNumericLimiter {
+	ni.precision = v
+	ni.withPrecision = true
+	return ni
+}
+
 func (ni *NoiseNumericLimiter) Limit(v decimal.Decimal) decimal.Decimal {
 	if v.GreaterThan(ni.MaxValue) {
 		return ni.MaxValue
@@ -43,17 +48,13 @@ func (ni *NoiseNumericLimiter) Limit(v decimal.Decimal) decimal.Decimal {
 	return v
 }
 
-func (ni *NoiseNumericLimiter) SetPrecision(v int32) {
-	ni.precision = v
-	ni.withPrecision = true
-}
-
 type NoiseNumericTransformer struct {
-	generator  generators.Generator
-	limiter    *NoiseNumericLimiter
-	byteLength int
-	minRatio   float64
-	maxRatio   float64
+	generator      generators.Generator
+	limiter        *NoiseNumericLimiter
+	dynamicLimiter *NoiseNumericLimiter
+	byteLength     int
+	minRatio       float64
+	maxRatio       float64
 }
 
 func NewNoiseNumericTransformer(limiter *NoiseNumericLimiter, minRatio, maxRatio float64) *NoiseNumericTransformer {
@@ -65,12 +66,21 @@ func NewNoiseNumericTransformer(limiter *NoiseNumericLimiter, minRatio, maxRatio
 	}
 }
 
-func (nt *NoiseNumericTransformer) Transform(ctx context.Context, original decimal.Decimal) (decimal.Decimal, error) {
-	var limiter = nt.limiter
-	limiterAny := ctx.Value("limiter")
+// SetDynamicLimiter sets the limiter for the dynamic mode. dynamicLimiter will be used set as nil after the Transform
+// call.
+func (nt *NoiseNumericTransformer) SetDynamicLimiter(l *NoiseNumericLimiter) *NoiseNumericTransformer {
+	if l == nil {
+		panic("bug: limiter for NoiseNumericTransformer values cannot be nil")
+	}
+	nt.dynamicLimiter = l
+	return nt
+}
 
-	if limiterAny != nil {
-		limiter = limiterAny.(*NoiseNumericLimiter)
+func (nt *NoiseNumericTransformer) Transform(original decimal.Decimal) (decimal.Decimal, error) {
+
+	limiter := nt.limiter
+	if nt.dynamicLimiter != nil {
+		limiter = nt.dynamicLimiter
 	}
 
 	resBytes, err := nt.generator.Generate(original.BigInt().Bytes())
@@ -94,6 +104,10 @@ func (nt *NoiseNumericTransformer) Transform(ctx context.Context, original decim
 
 	if limiter != nil {
 		res = limiter.Limit(res)
+	}
+
+	if nt.dynamicLimiter != nil {
+		limiter = nil
 	}
 
 	return res, nil

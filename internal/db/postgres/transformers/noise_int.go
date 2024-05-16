@@ -85,7 +85,6 @@ func NewNoiseIntTransformer(ctx context.Context, driver *toolkit.Driver, paramet
 	var columnName, engine string
 	var minRatio, maxRatio float64
 	var maxValueThreshold, minValueThreshold int64
-	var intSize int
 	var dynamicMode bool
 
 	columnParam := parameters["column"]
@@ -110,9 +109,7 @@ func NewNoiseIntTransformer(ctx context.Context, driver *toolkit.Driver, paramet
 	affectedColumns := make(map[int]string)
 	affectedColumns[idx] = columnName
 
-	if c.Length != -1 {
-		intSize = c.Length
-	}
+	intSize := c.GetColumnSize()
 
 	if minParam.IsDynamic() || maxParam.IsDynamic() {
 		dynamicMode = true

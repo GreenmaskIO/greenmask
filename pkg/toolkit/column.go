@@ -30,3 +30,10 @@ type Column struct {
 	OverriddenTypeName string `json:"overridden_type_name"`
 	OverriddenTypeOid  Oid    `json:"overridden_type_oid"`
 }
+
+func (c *Column) GetColumnSize() int {
+	if c.Length != -1 {
+		return c.Length
+	}
+	return c.TypeLength
+}

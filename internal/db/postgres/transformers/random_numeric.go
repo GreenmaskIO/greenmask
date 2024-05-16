@@ -31,8 +31,8 @@ var numericTransformerDefinition = utils.NewTransformerDefinition(
 	).SetRequired(true),
 
 	toolkit.MustNewParameterDefinition(
-		"precision",
-		"the value precision",
+		"decimal",
+		"the value decimal",
 	).SetDefaultValue([]byte("0")),
 
 	toolkit.MustNewParameterDefinition(
@@ -97,7 +97,7 @@ type NumericTransformer struct {
 	keepNullParam  toolkit.Parameterizer
 	engineParam    toolkit.Parameterizer
 	precisionParam toolkit.Parameterizer
-	transform      func(context.Context, []byte) (decimal.Decimal, error)
+	transform      func([]byte) (decimal.Decimal, error)
 }
 
 func NewRandomNumericTransformer(ctx context.Context, driver *toolkit.Driver, parameters map[string]toolkit.Parameterizer) (utils.Transformer, toolkit.ValidationWarnings, error) {
@@ -112,14 +112,14 @@ func NewRandomNumericTransformer(ctx context.Context, driver *toolkit.Driver, pa
 	maxParam := parameters["max"]
 	keepNullParam := parameters["keep_null"]
 	engineParam := parameters["engine"]
-	precisionParam := parameters["precision"]
+	precisionParam := parameters["decimal"]
 
 	if err := engineParam.Scan(&engine); err != nil {
 		return nil, nil, fmt.Errorf(`unable to scan "engine" param: %w`, err)
 	}
 
 	if err := precisionParam.Scan(&precision); err != nil {
-		return nil, nil, fmt.Errorf(`unable to scan "precision" param: %w`, err)
+		return nil, nil, fmt.Errorf(`unable to scan "decimal" param: %w`, err)
 	}
 	if minParam.IsDynamic() || maxParam.IsDynamic() {
 		dynamicMode = true
@@ -208,7 +208,7 @@ func (bit *NumericTransformer) Done(ctx context.Context) error {
 	return nil
 }
 
-func (bit *NumericTransformer) dynamicTransform(ctx context.Context, v []byte) (decimal.Decimal, error) {
+func (bit *NumericTransformer) dynamicTransform(v []byte) (decimal.Decimal, error) {
 	var minVal, maxVal decimal.Decimal
 	err := bit.minParam.Scan(&minVal)
 	if err != nil {
@@ -220,12 +220,11 @@ func (bit *NumericTransformer) dynamicTransform(ctx context.Context, v []byte) (
 		return decimal.Decimal{}, fmt.Errorf(`unable to scan "max" param: %w`, err)
 	}
 
-	limiter, err := getNumericLimiterForDynamicParameter(bit.numericSize, minVal, maxVal, bit.minAllowedValue, bit.maxAllowedValue)
+	limiter, err := getRandomNumericLimiterForDynamicParameter(bit.numericSize, minVal, maxVal, bit.minAllowedValue, bit.maxAllowedValue)
 	if err != nil {
 		return decimal.Decimal{}, fmt.Errorf("error creating limiter in dynamic mode: %w", err)
 	}
-	ctx = context.WithValue(ctx, "limiter", limiter)
-	return bit.RandomNumericTransformer.Transform(ctx, v)
+	return bit.RandomNumericTransformer.SetDynamicLimiter(limiter).Transform(v)
 }
 
 func (bit *NumericTransformer) Transform(ctx context.Context, r *toolkit.Record) (*toolkit.Record, error) {
@@ -237,7 +236,7 @@ func (bit *NumericTransformer) Transform(ctx context.Context, r *toolkit.Record)
 		return r, nil
 	}
 
-	newValue, err := bit.transform(ctx, val.Data)
+	newValue, err := bit.transform(val.Data)
 	if err != nil {
 		return nil, err
 	}
@@ -311,7 +310,7 @@ func numericLimitIsValid(requestedThreshold, minValue, maxValue decimal.Decimal)
 	return requestedThreshold.GreaterThanOrEqual(minValue) || requestedThreshold.LessThanOrEqual(maxValue)
 }
 
-func getNumericLimiterForDynamicParameter(
+func getRandomNumericLimiterForDynamicParameter(
 	numericSize int, requestedMinValue, requestedMaxValue,
 	minAllowedValue, maxAllowedValue decimal.Decimal,
 ) (*transformers.RandomNumericLimiter, error) {

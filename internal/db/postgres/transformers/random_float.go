@@ -67,8 +67,8 @@ var floatTransformerDefinition = utils.NewTransformerDefinition(
 		),
 
 	toolkit.MustNewParameterDefinition(
-		"precision",
-		"precision of float value (number of digits after coma)",
+		"decimal",
+		"Numbers of decimal",
 	).SetDefaultValue(toolkit.ParamsValue("4")),
 
 	keepNullParameterDefinition,
@@ -84,14 +84,14 @@ type FloatTransformer struct {
 	columnIdx       int
 	dynamicMode     bool
 	floatSize       int
-	precision       int
+	decimal         int
 
-	columnParam    toolkit.Parameterizer
-	maxParam       toolkit.Parameterizer
-	minParam       toolkit.Parameterizer
-	keepNullParam  toolkit.Parameterizer
-	engineParam    toolkit.Parameterizer
-	precisionParam toolkit.Parameterizer
+	columnParam   toolkit.Parameterizer
+	maxParam      toolkit.Parameterizer
+	minParam      toolkit.Parameterizer
+	keepNullParam toolkit.Parameterizer
+	engineParam   toolkit.Parameterizer
+	decimalParam  toolkit.Parameterizer
 
 	transform func(context.Context, []byte) (float64, error)
 }
@@ -101,15 +101,14 @@ func NewFloatTransformer(ctx context.Context, driver *toolkit.Driver, parameters
 	var columnName, engine string
 	var minVal, maxVal float64
 	var keepNull, dynamicMode bool
-	var precision int
-	floatSize := 8
+	var decimal int
 
 	columnParam := parameters["column"]
 	minParam := parameters["min"]
 	maxParam := parameters["max"]
 	keepNullParam := parameters["keep_null"]
 	engineParam := parameters["engine"]
-	precisionParam := parameters["precision"]
+	decimalParam := parameters["decimal"]
 
 	if err := engineParam.Scan(&engine); err != nil {
 		return nil, nil, fmt.Errorf(`unable to scan "engine" param: %w`, err)
@@ -129,9 +128,7 @@ func NewFloatTransformer(ctx context.Context, driver *toolkit.Driver, parameters
 	}
 	affectedColumns := make(map[int]string)
 	affectedColumns[idx] = columnName
-	if c.Length != -1 {
-		floatSize = c.Length
-	}
+	floatSize := c.GetColumnSize()
 
 	if err := keepNullParam.Scan(&keepNull); err != nil {
 		return nil, nil, fmt.Errorf(`unable to scan "keep_null" param: %w`, err)
@@ -146,11 +143,11 @@ func NewFloatTransformer(ctx context.Context, driver *toolkit.Driver, parameters
 		}
 	}
 
-	if err := precisionParam.Scan(&precision); err != nil {
-		return nil, nil, fmt.Errorf(`unable to scan "precision" param: %w`, err)
+	if err := decimalParam.Scan(&decimal); err != nil {
+		return nil, nil, fmt.Errorf(`unable to scan "decimal" param: %w`, err)
 	}
 
-	limiter, limitsWarnings, err := validateFloatTypeAndSetLimit(floatSize, minVal, maxVal, precision)
+	limiter, limitsWarnings, err := validateFloatTypeAndSetLimit(floatSize, minVal, maxVal, decimal)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -174,14 +171,14 @@ func NewFloatTransformer(ctx context.Context, driver *toolkit.Driver, parameters
 		keepNull:        keepNull,
 		affectedColumns: affectedColumns,
 		columnIdx:       idx,
-		precision:       precision,
+		decimal:         decimal,
 
-		columnParam:    columnParam,
-		minParam:       minParam,
-		maxParam:       maxParam,
-		keepNullParam:  keepNullParam,
-		engineParam:    engineParam,
-		precisionParam: precisionParam,
+		columnParam:   columnParam,
+		minParam:      minParam,
+		maxParam:      maxParam,
+		keepNullParam: keepNullParam,
+		engineParam:   engineParam,
+		decimalParam:  decimalParam,
 
 		dynamicMode: dynamicMode,
 		floatSize:   floatSize,
@@ -218,7 +215,7 @@ func (rit *FloatTransformer) dynamicTransform(ctx context.Context, v []byte) (fl
 		return 0, fmt.Errorf(`unable to scan "max" param: %w`, err)
 	}
 
-	limiter, err := getFloat64LimiterForDynamicParameter(rit.floatSize, minVal, maxVal, rit.precision)
+	limiter, err := getFloat64LimiterForDynamicParameter(rit.floatSize, minVal, maxVal, rit.decimal)
 	if err != nil {
 		return 0, fmt.Errorf("error creating limiter in dynamic mode: %w", err)
 	}
@@ -261,7 +258,7 @@ func getFloatThresholds(size int) (float64, float64, error) {
 	return 0, 0, fmt.Errorf("unsupported float size %d", size)
 }
 
-func getFloat64LimiterForDynamicParameter(size int, requestedMinValue, requestedMaxValue float64, precision int) (*transformers.Float64Limiter, error) {
+func getFloat64LimiterForDynamicParameter(size int, requestedMinValue, requestedMaxValue float64, decimal int) (*transformers.Float64Limiter, error) {
 	minValue, maxValue, err := getFloatThresholds(size)
 	if err != nil {
 		return nil, err
@@ -275,13 +272,13 @@ func getFloat64LimiterForDynamicParameter(size int, requestedMinValue, requested
 		return nil, fmt.Errorf("requested dynamic parameter max value is out of range of float%d size", size)
 	}
 
-	limiter, err := transformers.NewFloat64Limiter(-math.MaxFloat64, math.MaxFloat64, precision)
+	limiter, err := transformers.NewFloat64Limiter(-math.MaxFloat64, math.MaxFloat64, decimal)
 	if err != nil {
 		return nil, err
 	}
 
 	if requestedMinValue != 0 || requestedMaxValue != 0 {
-		limiter, err = transformers.NewFloat64Limiter(requestedMinValue, requestedMaxValue, precision)
+		limiter, err = transformers.NewFloat64Limiter(requestedMinValue, requestedMaxValue, decimal)
 		if err != nil {
 			return nil, err
 		}
@@ -290,7 +287,7 @@ func getFloat64LimiterForDynamicParameter(size int, requestedMinValue, requested
 }
 
 func validateFloatTypeAndSetLimit(
-	size int, requestedMinValue, requestedMaxValue float64, precision int,
+	size int, requestedMinValue, requestedMaxValue float64, decimal int,
 ) (limiter *transformers.Float64Limiter, warns toolkit.ValidationWarnings, err error) {
 
 	minValue, maxValue, err := getFloatThresholds(size)
@@ -324,13 +321,13 @@ func validateFloatTypeAndSetLimit(
 		return nil, warns, nil
 	}
 
-	limiter, err = transformers.NewFloat64Limiter(-math.MaxFloat64, math.MaxFloat64, precision)
+	limiter, err = transformers.NewFloat64Limiter(-math.MaxFloat64, math.MaxFloat64, decimal)
 	if err != nil {
 		return nil, nil, err
 	}
 
 	if requestedMinValue != 0 || requestedMaxValue != 0 {
-		limiter, err = transformers.NewFloat64Limiter(requestedMinValue, requestedMaxValue, precision)
+		limiter, err = transformers.NewFloat64Limiter(requestedMinValue, requestedMaxValue, decimal)
 		if err != nil {
 			return nil, nil, err
 		}
