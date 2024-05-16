@@ -85,8 +85,7 @@ nav:
               - RandomDomainName: built_in_transformers/standard_transformers/random_domain_name.md
               - RandomPerson: built_in_transformers/standard_transformers/random_person.md
               - RandomURL: built_in_transformers/standard_transformers/random_url.md
-              - RandomIPv4: built_in_transformers/standard_transformers/random_ipv4.md
-              - RandomIPv6: built_in_transformers/standard_transformers/random_ipv6.md
+              - RandomIP: built_in_transformers/standard_transformers/random_ip.md
               - RandomWord: built_in_transformers/standard_transformers/random_word.md
               - RandomSentence: built_in_transformers/standard_transformers/random_sentence.md
               - RandomParagraph: built_in_transformers/standard_transformers/random_paragraph.md
