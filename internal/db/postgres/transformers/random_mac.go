@@ -17,6 +17,8 @@ package transformers
 import (
 	"context"
 	"fmt"
+	"net"
+
 	"github.com/greenmaskio/greenmask/internal/db/postgres/transformers/utils"
 	"github.com/greenmaskio/greenmask/internal/generators/transformers"
 	"github.com/greenmaskio/greenmask/pkg/toolkit"
@@ -44,7 +46,7 @@ var RandomMacAddressDefinition = utils.NewTransformerDefinition(
 		"Column name",
 	).SetIsColumn(toolkit.NewColumnProperties().
 		SetAffected(true).
-		SetAllowedColumnTypes("text", "varchar", "macaddr"),
+		SetAllowedColumnTypes("macaddr"),
 	).SetRequired(true),
 
 	toolkit.MustNewParameterDefinition(
@@ -89,6 +91,7 @@ type RandomMac struct {
 	managementType     int
 	t                  *transformers.MacAddress
 	settings           *RandomMacSettings
+	originalMac        net.HardwareAddr
 }
 
 func NewMacAddressTransformer(ctx context.Context, driver *toolkit.Driver, parameters map[string]toolkit.Parameterizer) (utils.Transformer, toolkit.ValidationWarnings, error) {
@@ -169,18 +172,17 @@ func (rbt *RandomMac) Done(ctx context.Context) error {
 
 func (rbt *RandomMac) Transform(ctx context.Context, r *toolkit.Record) (*toolkit.Record, error) {
 
-	val, err := r.GetRawColumnValueByIdx(rbt.columnIdx)
+	_, err := r.ScanColumnValueByIdx(rbt.columnIdx, &rbt.originalMac)
 	if err != nil {
 		return nil, fmt.Errorf("unable to scan value: %w", err)
 	}
 
-	macAddr, err := rbt.t.Generate(val.Data, rbt.keepOriginalVendor, rbt.castType, rbt.managementType)
+	macAddr, err := rbt.t.Generate(rbt.originalMac, rbt.keepOriginalVendor, rbt.castType, rbt.managementType)
 	if err != nil {
 		return nil, fmt.Errorf("unable to transform value: %w", err)
 	}
 
-	newRawValue := toolkit.NewRawValue(macAddr, false)
-	if err = r.SetRawColumnValueByIdx(rbt.columnIdx, newRawValue); err != nil {
+	if err = r.SetColumnValueByIdx(rbt.columnIdx, macAddr); err != nil {
 		return nil, fmt.Errorf("unable to set new value: %w", err)
 	}
 
