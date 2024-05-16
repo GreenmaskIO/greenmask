@@ -88,6 +88,7 @@ nav:
               - RandomDomainName: built_in_transformers/standard_transformers/random_domain_name.md
               - RandomPerson: built_in_transformers/standard_transformers/random_person.md
               - RandomURL: built_in_transformers/standard_transformers/random_url.md
+              - RandomMac: built_in_transformers/standard_transformers/random_mac.md
               - RandomIP: built_in_transformers/standard_transformers/random_ip.md
               - RandomWord: built_in_transformers/standard_transformers/random_word.md
               - RandomSentence: built_in_transformers/standard_transformers/random_sentence.md
