@@ -30,6 +30,30 @@ import (
 	"github.com/greenmaskio/greenmask/pkg/toolkit"
 )
 
+var typeSizes = map[string]int{
+	"int2":   2,
+	"int4":   4,
+	"int8":   8,
+	"float4": 4,
+	"float8": 8,
+}
+
+func getTypeSizeByeName(name string) int {
+	res, ok := typeSizes[name]
+	if !ok {
+		return -1
+	}
+	return res
+}
+
+func getTypeOidByName(name string, typeMap *pgtype.Map) toolkit.Oid {
+	t, ok := typeMap.TypeForName(name)
+	if !ok {
+		return toolkit.Oid(t.OID)
+	}
+	return 0
+}
+
 // ValidateAndBuildTableConfig - validates tables, toolkit and their parameters. Builds config for tables and returns
 // ValidationWarnings that can be used for checking helpers in configuring and debugging transformation. Those
 // may contain the schema affection warnings that would be useful for considering consistency
@@ -58,22 +82,24 @@ func validateAndBuildTablesConfig(
 			}
 			table.Constraints = constraints
 
-			// Assigning overridden column types for driver initialization
-			if tableCfg.ColumnsTypeOverride != nil {
-				for _, c := range table.Columns {
-					overridingType, ok := tableCfg.ColumnsTypeOverride[c.Name]
-					if ok {
-						c.OverriddenTypeName = overridingType
-					}
-				}
-			}
-
 			// Assign columns and transformersMap if were found
 			columns, err := getColumnsConfig(ctx, tx, table.Oid, version)
 			if err != nil {
 				return nil, nil, err
 			}
 			table.Columns = columns
+
+			// Assigning overridden column types for driver initialization
+			if tableCfg.ColumnsTypeOverride != nil {
+				for _, c := range table.Columns {
+					overridingType, ok := tableCfg.ColumnsTypeOverride[c.Name]
+					if ok {
+						c.OverriddenTypeName = overridingType
+						c.OverriddenTypeSize = getTypeSizeByeName(overridingType)
+						c.OverriddenTypeOid = getTypeOidByName(overridingType, typeMap)
+					}
+				}
+			}
 
 			driver, driverWarnings, err := toolkit.NewDriver(table.Table, types)
 			if err != nil {

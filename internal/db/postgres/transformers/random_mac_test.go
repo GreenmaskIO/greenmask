@@ -3,11 +3,13 @@ package transformers
 import (
 	"context"
 	"fmt"
+	"net"
+	"testing"
+
 	"github.com/greenmaskio/greenmask/internal/db/postgres/transformers/utils"
 	"github.com/greenmaskio/greenmask/internal/generators/transformers"
 	"github.com/greenmaskio/greenmask/pkg/toolkit"
 	"github.com/stretchr/testify/require"
-	"testing"
 )
 
 func TestRandomMacTransformer_Transform_random(t *testing.T) {
@@ -15,15 +17,15 @@ func TestRandomMacTransformer_Transform_random(t *testing.T) {
 	tests := []struct {
 		name           string
 		columnName     string
-		original       []byte
+		original       string
 		params         map[string]toolkit.ParamsValue
 		castType       string
 		managementType string
 	}{
 		{
 			name:       "Random mac addr with keepOriginalVendor with Universal and Individual",
-			columnName: "data",
-			original:   []byte("00:1a:2b:3c:4d:5e"),
+			columnName: "macaddress",
+			original:   "00:1a:2b:3c:4d:5e",
 			params: map[string]toolkit.ParamsValue{
 				"engine":               toolkit.ParamsValue("hash"),
 				"keep_original_vendor": toolkit.ParamsValue("true"),
@@ -33,8 +35,8 @@ func TestRandomMacTransformer_Transform_random(t *testing.T) {
 		},
 		{
 			name:       "Random mac addr with keepOriginalVendor with Universal and Group",
-			columnName: "data",
-			original:   []byte("01:1a:2b:3c:4d:5e"),
+			columnName: "macaddress",
+			original:   "01:1a:2b:3c:4d:5e",
 			params: map[string]toolkit.ParamsValue{
 				"engine":               toolkit.ParamsValue("hash"),
 				"keep_original_vendor": toolkit.ParamsValue("true"),
@@ -44,8 +46,8 @@ func TestRandomMacTransformer_Transform_random(t *testing.T) {
 		},
 		{
 			name:       "Random mac addr with keepOriginalVendor with Local and Group",
-			columnName: "data",
-			original:   []byte("03:1a:2b:3c:4d:5e"),
+			columnName: "macaddress",
+			original:   "03:1a:2b:3c:4d:5e",
 			params: map[string]toolkit.ParamsValue{
 				"engine":               toolkit.ParamsValue("hash"),
 				"keep_original_vendor": toolkit.ParamsValue("true"),
@@ -55,8 +57,8 @@ func TestRandomMacTransformer_Transform_random(t *testing.T) {
 		},
 		{
 			name:       "Random mac addr without keepOriginalVendor with Universal and Group",
-			columnName: "data",
-			original:   []byte("03:1a:2b:3c:4d:5e"),
+			columnName: "macaddress",
+			original:   "03:1a:2b:3c:4d:5e",
 			params: map[string]toolkit.ParamsValue{
 				"engine":               toolkit.ParamsValue("hash"),
 				"keep_original_vendor": toolkit.ParamsValue("false"),
@@ -66,8 +68,8 @@ func TestRandomMacTransformer_Transform_random(t *testing.T) {
 		},
 		{
 			name:       "Random mac addr without keepOriginalVendor with Universal and Individual",
-			columnName: "data",
-			original:   []byte("03:1a:2b:3c:4d:5e"),
+			columnName: "macaddress",
+			original:   "03:1a:2b:3c:4d:5e",
 			params: map[string]toolkit.ParamsValue{
 				"engine":               toolkit.ParamsValue("hash"),
 				"keep_original_vendor": toolkit.ParamsValue("false"),
@@ -77,8 +79,8 @@ func TestRandomMacTransformer_Transform_random(t *testing.T) {
 		},
 		{
 			name:       "Random mac addr without keepOriginalVendor with Local and Individual",
-			columnName: "data",
-			original:   []byte("03:1a:2b:3c:4d:5e"),
+			columnName: "macaddress",
+			original:   "03:1a:2b:3c:4d:5e",
 			params: map[string]toolkit.ParamsValue{
 				"engine":               toolkit.ParamsValue("hash"),
 				"keep_original_vendor": toolkit.ParamsValue("false"),
@@ -88,8 +90,8 @@ func TestRandomMacTransformer_Transform_random(t *testing.T) {
 		},
 		{
 			name:       "Random mac addr without keepOriginalVendor with Universal and Individual",
-			columnName: "data",
-			original:   []byte("03:1a:2b:3c:4d:5e"),
+			columnName: "macaddress",
+			original:   "03:1a:2b:3c:4d:5e",
 			params: map[string]toolkit.ParamsValue{
 				"engine":               toolkit.ParamsValue("hash"),
 				"keep_original_vendor": toolkit.ParamsValue("false"),
@@ -101,15 +103,15 @@ func TestRandomMacTransformer_Transform_random(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			parsedMacOriginal, err := transformers.ParseMacAddr(tt.original)
+			originalMacAddrInfo, err := transformers.ExploreMacAddress([]byte(tt.original))
 			require.NoError(t, err)
-			require.NotEmpty(t, parsedMacOriginal)
+			require.NotEmpty(t, originalMacAddrInfo)
 
 			tt.params["column"] = toolkit.ParamsValue(tt.columnName)
 			tt.params["cast_type"] = toolkit.ParamsValue(tt.castType)
 			tt.params["management_type"] = toolkit.ParamsValue(tt.managementType)
 
-			driver, record := getDriverAndRecord(tt.columnName, string(tt.original))
+			driver, record := getDriverAndRecord(tt.columnName, tt.original)
 			def, ok := utils.DefaultTransformerRegistry.Get("RandomMac")
 			require.True(t, ok)
 
@@ -127,27 +129,23 @@ func TestRandomMacTransformer_Transform_random(t *testing.T) {
 				record,
 			)
 			require.NoError(t, err)
-			var res []byte
+			var res net.HardwareAddr
 			isNull, err := r.ScanColumnValueByName(tt.columnName, &res)
 			require.NoError(t, err)
 			require.False(t, isNull)
 
-			parsedMacGenerated, err := transformers.ParseMacAddr(res)
+			newMacAddrInfo, err := transformers.ExploreMacAddress(res)
 			require.NoError(t, err)
 
 			if string(tt.params["keep_original_vendor"]) == "true" {
-				require.True(
-					t,
-					parsedMacOriginal.CastType == parsedMacGenerated.CastType && parsedMacOriginal.ManagementType == parsedMacGenerated.ManagementType,
-					fmt.Sprintf("Mac address info is't equals %+v != %+v", parsedMacOriginal, parsedMacGenerated),
-				)
+				require.Equal(t, tt.original[:8], res.String()[0:8])
 			}
 
 			if tt.castType != castTypeNameAny && tt.managementType != managementTypeNameAny {
 				require.True(
 					t,
-					castTypeNameToIndex(tt.castType) == parsedMacGenerated.CastType && managementTypeNameToIndex(tt.managementType) == parsedMacGenerated.ManagementType,
-					fmt.Sprintf("Mac address info is't equals %+v != %+v", parsedMacOriginal, parsedMacGenerated),
+					castTypeNameToIndex(tt.castType) == newMacAddrInfo.CastType && managementTypeNameToIndex(tt.managementType) == newMacAddrInfo.ManagementType,
+					fmt.Sprintf("Mac address info is't equals %+v != %+v", originalMacAddrInfo, newMacAddrInfo),
 				)
 			}
 		})

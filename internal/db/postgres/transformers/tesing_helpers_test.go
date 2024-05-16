@@ -164,6 +164,14 @@ var columnList = []*toolkit.Column{
 		NotNull:  false,
 		Length:   -1,
 	},
+	{
+		Name:     "macaddress",
+		TypeName: "numeric",
+		TypeOid:  pgtype.MacaddrOID,
+		Num:      17,
+		NotNull:  false,
+		Length:   -1,
+	},
 }
 
 // getDriverAndRecord - return adhoc table for testing
