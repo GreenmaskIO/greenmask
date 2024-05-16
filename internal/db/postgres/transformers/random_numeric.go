@@ -31,8 +31,8 @@ var numericTransformerDefinition = utils.NewTransformerDefinition(
 	).SetRequired(true),
 
 	toolkit.MustNewParameterDefinition(
-		"precision",
-		"the value precision",
+		"decimal",
+		"the value decimal",
 	).SetDefaultValue([]byte("0")),
 
 	toolkit.MustNewParameterDefinition(
@@ -112,14 +112,14 @@ func NewRandomNumericTransformer(ctx context.Context, driver *toolkit.Driver, pa
 	maxParam := parameters["max"]
 	keepNullParam := parameters["keep_null"]
 	engineParam := parameters["engine"]
-	precisionParam := parameters["precision"]
+	precisionParam := parameters["decimal"]
 
 	if err := engineParam.Scan(&engine); err != nil {
 		return nil, nil, fmt.Errorf(`unable to scan "engine" param: %w`, err)
 	}
 
 	if err := precisionParam.Scan(&precision); err != nil {
-		return nil, nil, fmt.Errorf(`unable to scan "precision" param: %w`, err)
+		return nil, nil, fmt.Errorf(`unable to scan "decimal" param: %w`, err)
 	}
 	if minParam.IsDynamic() || maxParam.IsDynamic() {
 		dynamicMode = true
