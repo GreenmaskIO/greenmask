@@ -824,7 +824,7 @@ func TestFuncMap_randomFloat(t *testing.T) {
 				Max:       9.1,
 				Precision: -4,
 			},
-			expectedErr: " precision must be 0 or higher got -4",
+			expectedErr: " decimal must be 0 or higher got -4",
 		},
 	}
 

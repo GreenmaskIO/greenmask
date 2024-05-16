@@ -41,8 +41,8 @@ var NoiseNumericTransformerDefinition = utils.NewTransformerDefinition(
 	).SetRequired(true),
 
 	toolkit.MustNewParameterDefinition(
-		"precision",
-		"precision of noised float value (number of digits after coma)",
+		"decimal",
+		"Numbers of decimal",
 	).SetDefaultValue(toolkit.ParamsValue("4")),
 
 	toolkit.MustNewParameterDefinition(
@@ -91,7 +91,7 @@ type NoiseNumericTransformer struct {
 	t               *transformers.NoiseNumericTransformer
 	columnName      string
 	columnIdx       int
-	precision       int32
+	decimal         int32
 	affectedColumns map[int]string
 	dynamicMode     bool
 
@@ -99,13 +99,13 @@ type NoiseNumericTransformer struct {
 	maxAllowedValue decimal.Decimal
 	numericSize     int
 
-	columnParam    toolkit.Parameterizer
-	maxParam       toolkit.Parameterizer
-	minParam       toolkit.Parameterizer
-	engineParam    toolkit.Parameterizer
-	precisionParam toolkit.Parameterizer
-	maxRatioParam  toolkit.Parameterizer
-	minRatioParam  toolkit.Parameterizer
+	columnParam   toolkit.Parameterizer
+	maxParam      toolkit.Parameterizer
+	minParam      toolkit.Parameterizer
+	engineParam   toolkit.Parameterizer
+	decimalParam  toolkit.Parameterizer
+	maxRatioParam toolkit.Parameterizer
+	minRatioParam toolkit.Parameterizer
 
 	transform func(decimal.Decimal) (decimal.Decimal, error)
 }
@@ -124,7 +124,7 @@ func NewNumericFloatTransformer(ctx context.Context, driver *toolkit.Driver, par
 	maxRatioParam := parameters["max_ratio"]
 	minRatioParam := parameters["min_ratio"]
 	engineParam := parameters["engine"]
-	precisionParam := parameters["precision"]
+	decimalParam := parameters["decimal"]
 
 	if err := engineParam.Scan(&engine); err != nil {
 		return nil, nil, fmt.Errorf(`unable to scan "engine" param: %w`, err)
@@ -154,8 +154,8 @@ func NewNumericFloatTransformer(ctx context.Context, driver *toolkit.Driver, par
 		}
 	}
 
-	if err := precisionParam.Scan(&precision); err != nil {
-		return nil, nil, fmt.Errorf(`unable to scan "precision" param: %w`, err)
+	if err := decimalParam.Scan(&precision); err != nil {
+		return nil, nil, fmt.Errorf(`unable to scan "decimal" param: %w`, err)
 	}
 
 	if err := minRatioParam.Scan(&minRatio); err != nil {
@@ -190,13 +190,13 @@ func NewNumericFloatTransformer(ctx context.Context, driver *toolkit.Driver, par
 		columnName:      columnName,
 		affectedColumns: affectedColumns,
 		columnIdx:       idx,
-		precision:       precision,
+		decimal:         precision,
 
-		columnParam:    columnParam,
-		minParam:       minParam,
-		maxParam:       maxParam,
-		engineParam:    engineParam,
-		precisionParam: precisionParam,
+		columnParam:  columnParam,
+		minParam:     minParam,
+		maxParam:     maxParam,
+		engineParam:  engineParam,
+		decimalParam: decimalParam,
 
 		minAllowedValue: limiter.MinValue,
 		maxAllowedValue: limiter.MaxValue,
@@ -240,7 +240,7 @@ func (nft *NoiseNumericTransformer) dynamicTransform(original decimal.Decimal) (
 	if err != nil {
 		return decimal.Decimal{}, fmt.Errorf("error creating limiter in dynamic mode: %w", err)
 	}
-	limiter.SetPrecision(nft.precision)
+	limiter.SetPrecision(nft.decimal)
 	return nft.t.SetDynamicLimiter(limiter).Transform(original)
 }
 
