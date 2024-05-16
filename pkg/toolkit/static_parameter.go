@@ -144,12 +144,7 @@ func (sp *StaticParameter) Init(columnParams map[string]*StaticParameter, rawVal
 		}
 		sp.Column = column
 
-		columnTypeName := sp.Column.TypeName
-		columnTypeOid := sp.Column.TypeOid
-		if sp.Column.OverriddenTypeName != "" {
-			columnTypeName = sp.Column.OverriddenTypeName
-			columnTypeOid = 0
-		}
+		columnTypeName, columnTypeOid := sp.Column.GetType()
 
 		if sp.definition.ColumnProperties != nil &&
 			len(sp.definition.ColumnProperties.AllowedTypes) > 0 &&

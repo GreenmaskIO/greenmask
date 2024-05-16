@@ -29,11 +29,21 @@ type Column struct {
 	// OverriddenTypeName - replacement of  original type. For instance override TEXT to INT2
 	OverriddenTypeName string `json:"overridden_type_name"`
 	OverriddenTypeOid  Oid    `json:"overridden_type_oid"`
+	OverriddenTypeSize int    `json:"overridden_type_size"`
 }
 
 func (c *Column) GetColumnSize() int {
-	if c.Length != -1 {
+	if c.OverriddenTypeSize != 0 {
+		return c.OverriddenTypeSize
+	} else if c.Length != -1 {
 		return c.Length
 	}
 	return c.TypeLength
+}
+
+func (c *Column) GetType() (string, Oid) {
+	if c.OverriddenTypeName != "" {
+		return c.OverriddenTypeName, c.OverriddenTypeOid
+	}
+	return c.TypeName, c.TypeOid
 }
