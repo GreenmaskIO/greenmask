@@ -41,8 +41,8 @@ var NoiseFloatTransformerDefinition = utils.NewTransformerDefinition(
 	).SetRequired(true),
 
 	toolkit.MustNewParameterDefinition(
-		"precision",
-		"precision of noised float value (number of digits after coma)",
+		"decimal",
+		"Numbers of decimal",
 	).SetDefaultValue(toolkit.ParamsValue("4")),
 
 	toolkit.MustNewParameterDefinition(
@@ -74,18 +74,18 @@ type NoiseFloatTransformer struct {
 	t               *transformers.NoiseFloat64Transformer
 	columnName      string
 	columnIdx       int
-	precision       int
+	decimal         int
 	affectedColumns map[int]string
 	dynamicMode     bool
 	floatSize       int
 
-	columnParam    toolkit.Parameterizer
-	maxParam       toolkit.Parameterizer
-	minParam       toolkit.Parameterizer
-	engineParam    toolkit.Parameterizer
-	precisionParam toolkit.Parameterizer
-	maxRatioParam  toolkit.Parameterizer
-	minRatioParam  toolkit.Parameterizer
+	columnParam   toolkit.Parameterizer
+	maxParam      toolkit.Parameterizer
+	minParam      toolkit.Parameterizer
+	engineParam   toolkit.Parameterizer
+	decimalParam  toolkit.Parameterizer
+	maxRatioParam toolkit.Parameterizer
+	minRatioParam toolkit.Parameterizer
 
 	transform func(context.Context, float64) (float64, error)
 }
@@ -95,7 +95,7 @@ func NewNoiseFloatTransformer(ctx context.Context, driver *toolkit.Driver, param
 	var columnName, engine string
 	var dynamicMode bool
 	var minValueThreshold, maxValueThreshold, minRatio, maxRatio float64
-	var precision int
+	var decimal int
 
 	columnParam := parameters["column"]
 	minParam := parameters["min"]
@@ -103,7 +103,7 @@ func NewNoiseFloatTransformer(ctx context.Context, driver *toolkit.Driver, param
 	maxRatioParam := parameters["max_ratio"]
 	minRatioParam := parameters["min_ratio"]
 	engineParam := parameters["engine"]
-	precisionParam := parameters["precision"]
+	decimalParam := parameters["decimal"]
 
 	if err := engineParam.Scan(&engine); err != nil {
 		return nil, nil, fmt.Errorf(`unable to scan "engine" param: %w`, err)
@@ -134,8 +134,8 @@ func NewNoiseFloatTransformer(ctx context.Context, driver *toolkit.Driver, param
 		}
 	}
 
-	if err := precisionParam.Scan(&precision); err != nil {
-		return nil, nil, fmt.Errorf(`unable to scan "precision" param: %w`, err)
+	if err := decimalParam.Scan(&decimal); err != nil {
+		return nil, nil, fmt.Errorf(`unable to scan "decimal" param: %w`, err)
 	}
 
 	if err := minRatioParam.Scan(&minRatio); err != nil {
@@ -146,7 +146,7 @@ func NewNoiseFloatTransformer(ctx context.Context, driver *toolkit.Driver, param
 		return nil, nil, fmt.Errorf("unable to scan \"max_ratio\" param: %w", err)
 	}
 
-	limiter, limitsWarnings, err := validateNoiseFloatTypeAndSetLimit(floatSize, minValueThreshold, maxValueThreshold, precision)
+	limiter, limitsWarnings, err := validateNoiseFloatTypeAndSetLimit(floatSize, minValueThreshold, maxValueThreshold, decimal)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -169,13 +169,13 @@ func NewNoiseFloatTransformer(ctx context.Context, driver *toolkit.Driver, param
 		columnName:      columnName,
 		affectedColumns: affectedColumns,
 		columnIdx:       idx,
-		precision:       precision,
+		decimal:         decimal,
 
-		columnParam:    columnParam,
-		minParam:       minParam,
-		maxParam:       maxParam,
-		engineParam:    engineParam,
-		precisionParam: precisionParam,
+		columnParam:  columnParam,
+		minParam:     minParam,
+		maxParam:     maxParam,
+		engineParam:  engineParam,
+		decimalParam: decimalParam,
 
 		dynamicMode: dynamicMode,
 		floatSize:   floatSize,
@@ -207,7 +207,7 @@ func (nft *NoiseFloatTransformer) dynamicTransform(ctx context.Context, v float6
 		return 0, fmt.Errorf("unable to get min and max values: %w", err)
 	}
 
-	limiter, err := transformers.NewNoiseFloat64Limiter(minVal, maxVal, nft.precision)
+	limiter, err := transformers.NewNoiseFloat64Limiter(minVal, maxVal, nft.decimal)
 	if err != nil {
 		return 0, fmt.Errorf("error creating limiter in dynamic mode: %w", err)
 	}
@@ -241,7 +241,7 @@ func (nft *NoiseFloatTransformer) Transform(ctx context.Context, r *toolkit.Reco
 }
 
 func validateNoiseFloatTypeAndSetLimit(
-	size int, requestedMinValue, requestedMaxValue float64, precision int,
+	size int, requestedMinValue, requestedMaxValue float64, decimal int,
 ) (limiter *transformers.NoiseFloat64Limiter, warns toolkit.ValidationWarnings, err error) {
 
 	minValue, maxValue, err := getFloatThresholds(size)
@@ -275,13 +275,13 @@ func validateNoiseFloatTypeAndSetLimit(
 		return nil, warns, nil
 	}
 
-	limiter, err = transformers.NewNoiseFloat64Limiter(-math.MaxFloat64, math.MaxFloat64, precision)
+	limiter, err = transformers.NewNoiseFloat64Limiter(-math.MaxFloat64, math.MaxFloat64, decimal)
 	if err != nil {
 		return nil, nil, err
 	}
 
 	if requestedMinValue != 0 || requestedMaxValue != 0 {
-		limiter, err = transformers.NewNoiseFloat64Limiter(requestedMinValue, requestedMaxValue, precision)
+		limiter, err = transformers.NewNoiseFloat64Limiter(requestedMinValue, requestedMaxValue, decimal)
 		if err != nil {
 			return nil, nil, err
 		}

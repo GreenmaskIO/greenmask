@@ -69,9 +69,9 @@ func TestRandomFloatTransformer_Transform(t *testing.T) {
 			columnName:    "col_float8",
 			originalValue: "1000.0",
 			params: map[string]toolkit.ParamsValue{
-				"min":       toolkit.ParamsValue("-100000"),
-				"max":       toolkit.ParamsValue("100000"),
-				"precision": toolkit.ParamsValue("10"),
+				"min":     toolkit.ParamsValue("-100000"),
+				"max":     toolkit.ParamsValue("100000"),
+				"decimal": toolkit.ParamsValue("10"),
 			},
 			result: result{
 				min: -100000,
@@ -79,13 +79,13 @@ func TestRandomFloatTransformer_Transform(t *testing.T) {
 			},
 		},
 		{
-			name:          "float8 ranges 1 with precision",
+			name:          "float8 ranges 1 with decimal",
 			columnName:    "col_float8",
 			originalValue: "1000.0",
 			params: map[string]toolkit.ParamsValue{
-				"min":       toolkit.ParamsValue("-100000"),
-				"max":       toolkit.ParamsValue("-1"),
-				"precision": toolkit.ParamsValue("0"),
+				"min":     toolkit.ParamsValue("-100000"),
+				"max":     toolkit.ParamsValue("-1"),
+				"decimal": toolkit.ParamsValue("0"),
 			},
 			result: result{
 				min: -100000,
@@ -99,7 +99,7 @@ func TestRandomFloatTransformer_Transform(t *testing.T) {
 			params: map[string]toolkit.ParamsValue{
 				"min":       toolkit.ParamsValue("-100000"),
 				"max":       toolkit.ParamsValue("-1"),
-				"precision": toolkit.ParamsValue("0"),
+				"decimal":   toolkit.ParamsValue("0"),
 				"keep_null": toolkit.ParamsValue("false"),
 			},
 			result: result{
@@ -114,7 +114,7 @@ func TestRandomFloatTransformer_Transform(t *testing.T) {
 			params: map[string]toolkit.ParamsValue{
 				"min":       toolkit.ParamsValue("-100000"),
 				"max":       toolkit.ParamsValue("-1"),
-				"precision": toolkit.ParamsValue("0"),
+				"decimal":   toolkit.ParamsValue("0"),
 				"keep_null": toolkit.ParamsValue("true"),
 			},
 			result: result{
@@ -126,7 +126,7 @@ func TestRandomFloatTransformer_Transform(t *testing.T) {
 		//	params: map[string]toolkit.ParamsValue{
 		//		"min":       toolkit.ParamsValue("-100000"),
 		//		"max":       toolkit.ParamsValue("10.1241"),
-		//		"precision": toolkit.ParamsValue("3"),
+		//		"decimal": toolkit.ParamsValue("3"),
 		//		"useType":   toolkit.ParamsValue("float4"),
 		//	},
 		//	result: result{
