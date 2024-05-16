@@ -522,8 +522,8 @@ their possible attributes. Below are the key parameters for each transformer:
         "default_value": "MC4x"
       },
       {
-        "name": "precision",
-        "description": "precision of noised float value (number of digits after coma)",
+        "name": "decimal",
+        "description": "decimal of noised float value (number of digits after coma)",
         "required": false,
         "is_column": false,
         "is_column_container": false,

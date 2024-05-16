@@ -7,7 +7,8 @@ Standard transformers are ready-to-use methods that require no customization and
 1. [Hash](dict.md) — generates a hash of the text value.
 1. [Masking](masking.md) — masks a value using one of the masking behaviors depending on your domain.
 1. [NoiseDate](noise_date.md) — randomly adds or subtracts a duration within the provided ratio interval to the original date value.
-1. [NoiseFloat](noise_float.md) — adds or subtracts a random fraction to the original float value.
+1. [NoiseFloat](noise_float.md) — adds or subtracts a random fraction to the original float value.terval to the original date value.
+1. [NoiseNumeric](noise_numeric.md) — adds or subtracts a random fraction to the original numeric value.
 1. [NoiseInt](noise_int.md) — adds or subtracts a random fraction to the original integer value.
 1. [RandomBool](random_bool.md) — generates random boolean values.
 1. [RandomChoice](random_choice.md) — replaces values randomly chosen from a provided list.

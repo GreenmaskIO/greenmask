@@ -155,7 +155,7 @@ dump:
           params:
             ratio: 0.1
             column: "test_float"
-            precision: 2
+            decimal: 2
 
 restore:
   pg_restore_options:
