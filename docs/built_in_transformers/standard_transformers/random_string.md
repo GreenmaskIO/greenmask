@@ -38,9 +38,13 @@ character set used for generation includes `1234567890ABCDEFGHIJKLMNOPQRSTUVWXYZ
         symbols: "1234567890ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 ```
 
-```bash title="Expected result"
+Result
 
-| column name   | original value | transformed |
-|---------------|----------------|-------------|
-| accountnumber | AUSTRALI0001   | 96B82A65548 |
-```
+<table>
+<tr>
+<th>Column</th><th>OriginalValue</th><th>TransformedValue</th>
+</tr>
+<tr>
+<td>accountnumber</td><td><span style="color:green">AUSTRALI0001</span></td><td><span style="color:red">4VUI6P2OZ</span></td>
+</tr>
+</table>

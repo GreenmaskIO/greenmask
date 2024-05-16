@@ -79,3 +79,15 @@ generation - the same input will always produce the same output.
           column: "birthdate"
           default: "1990-01-01"
 ```
+
+Result
+
+<table>
+<tr>
+<th>Column</th><th>OriginalValue</th><th>TransformedValue</th>
+</tr>
+<tr>
+<td>hiredate</td><td><span style="color:green">2009-01-14</span></td><td><span style="color:red">2010-08-01</span></td>
+</tr>
+</table>
+

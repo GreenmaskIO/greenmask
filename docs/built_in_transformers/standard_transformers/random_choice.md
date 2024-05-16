@@ -25,14 +25,27 @@ In this example, the provided values undergo validation through PostgreSQL drive
 chosen from the list.
 
 ```yaml title="RandomChoice transformer example"
-    - schema: "humanresources"
-      name: "jobcandidate"
-      transformers:
-        - name: "RandomChoice"
-          params:
-            column: "modifieddate"
-            validate: true
-            values:
-              - "2023-12-21 07:41:06.891"
-              - "2023-12-21 07:41:06.896"
+- schema: "humanresources"
+  name: "jobcandidate"
+  transformers:
+    - name: "RandomChoice"
+      params:
+        column: "modifieddate"
+        validate: true
+        engine: hash
+        values:
+          - "2023-12-21 07:41:06.891"
+          - "2023-12-21 07:41:06.896"
 ```
+
+Result
+
+<table>
+<tr>
+<th>Column</th><th>OriginalValue</th><th>TransformedValue</th>
+</tr>
+<tr>
+<td>modifieddate</td><td><span style="color:green">2007-06-23 00:00:00</span></td><td><span style="color:red">2023-12-21 07:41:06.891</span></td>
+</tr>
+</table>
+

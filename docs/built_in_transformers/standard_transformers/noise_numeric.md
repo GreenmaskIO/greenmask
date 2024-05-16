@@ -5,7 +5,7 @@ Add or subtract a random fraction to the original numeric value.
 | Name      | Description                                                                                       | Default  | Required | Supported DB types |
 |-----------|---------------------------------------------------------------------------------------------------|----------|----------|--------------------|
 | column    | The name of the column to be affected                                                             |          | Yes      | numeric, decimal   |
-| precision | The precision of the noised float value (number of digits after the decimal point)                | `4`      | No       | -                  |
+| decimal   | The decimal of the noised float value (number of digits after the decimal point)                  | `4`      | No       | -                  |
 | min_ratio | The minimum random percentage for noise, from `0` to `1`, e. g. `0.1` means "add noise up to 10%" | `0.05`   | No       | -                  |
 | max_ratio | The maximum random percentage for noise, from `0` to `1`, e. g. `0.1` means "add noise up to 10%" |          | Yes      | -                  |
 | min       | Min threshold of noised value                                                                     |          | No       | -                  |
@@ -23,7 +23,7 @@ Add or subtract a random fraction to the original numeric value.
 
 The `NoiseNumeric` transformer multiplies the original numeric (or decimal) value by randomly generated value that is
 not higher than the `max_ratio` parameter and not less that `max_ratio` parameter and adds it to or subtracts it from
-the original value. Additionally, you can specify the number of decimal digits by using the `precision` parameter.
+the original value. Additionally, you can specify the number of decimal digits by using the `decimal` parameter.
 
 In case you have constraints on the numeric range, you can set the `min` and `max` parameters to specify the threshold
 values. The values for `min` and `max` must have the same format as the `column` parameter. Parameters min and max
@@ -41,8 +41,8 @@ engines in the [Transformation engines](../transformation_engines.md) section.
 !!! warning
 
     Greenmask cannot parse the `numeric` type sitteng. For instance `NUMERIC(10, 2)`. You should set `min` and `max` treshholds
-    manually as well as allowed `precision`. This behaviour will be changed in the later versions. Grenmask will be able
-    to determine the precision and scale of the column and set the min and max treshholds automatically if were not set.
+    manually as well as allowed `decimal`. This behaviour will be changed in the later versions. Grenmask will be able
+    to determine the decimal and scale of the column and set the min and max treshholds automatically if were not set.
 
 ## Example: Adding noise to the purchase price
 
@@ -56,8 +56,20 @@ In this example, the original value of `standardprice` will be noised up to `50%
       params:
         column: "lastreceiptcost"
         max_ratio: 0.15
-        precision: 2
+        decimal: 2
+        max: 10000
       dynamic_params:
         min:
           column: "standardprice"
 ```
+
+Result
+
+<table>
+<tr>
+<th>Column</th><th>OriginalValue</th><th>TransformedValue</th>
+</tr>
+<tr>
+<td>lastreceiptcost</td><td><span style="color:green">50.2635</span></td><td><span style="color:red">57.33</span></td>
+</tr>
+</table>

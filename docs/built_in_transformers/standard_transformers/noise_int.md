@@ -52,3 +52,14 @@ value to `10` if the noised value is lower than `10` and to `1000` if the noised
         min: 10
         max: 1000
 ```
+
+Result
+
+<table>
+<tr>
+<th>Column</th><th>OriginalValue</th><th>TransformedValue</th>
+</tr>
+<tr>
+<td>vacationhours</td><td><span style="color:green">99</span></td><td><span style="color:red">69</span></td>
+</tr>
+</table>

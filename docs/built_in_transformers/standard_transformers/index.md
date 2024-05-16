@@ -29,7 +29,6 @@ Standard transformers are ready-to-use methods that require no customization and
 1. [RandomEmail](random_email.md) — generates a random email address.
 1. [RandomUsername](random_username.md) — generates a random username.
 1. [RandomPassword](random_password.md) — generates a random password.
-1. [RandomMacAddress](random_mac_address.md) — generates a random MAC address.
 1. [RandomDomainName](random_domain_name.md) — generates a random domain name.
 1. [RandomURL](random_url.md) — generates a random URL.
 1. [RandomMac](random_mac.md) — generates a random MAC addresses.

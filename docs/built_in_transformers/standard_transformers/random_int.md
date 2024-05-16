@@ -2,13 +2,13 @@ Generate a random integer within the provided interval.
 
 ## Parameters
 
-| Name      | Description                                                                                     | Default  | Required | Supported DB types                                  |
-|-----------|-------------------------------------------------------------------------------------------------|----------|----------|-----------------------------------------------------|
-| column    | The name of the column to be affected                                                           |          | Yes      | int2 (smallint), int4 (int), int8 (bigint), numeric |
-| min       | The minimum threshold for the random value. The value range depends on the column type.         |          | Yes      | -                                                   |
-| max       | The maximum threshold for the random value. The value range depends on the column type.         |          | Yes      | -                                                   |
-| keep_null | Indicates whether NULL values should be replaced with transformed values or not                 | `true`   | No       | -                                                   |
-| engine    | The engine used for generating the values [random, hash]. Use hash for deterministic generation | `random` | No       | -                                                   |
+| Name      | Description                                                                                     | Default  | Required | Supported DB types |
+|-----------|-------------------------------------------------------------------------------------------------|----------|----------|--------------------|
+| column    | The name of the column to be affected                                                           |          | Yes      | int2, int4, int8   |
+| min       | The minimum threshold for the random value                                                      |          | Yes      | -                  |
+| max       | The maximum threshold for the random value                                                      |          | Yes      | -                  |
+| keep_null | Indicates whether NULL values should be replaced with transformed values or not                 | `true`   | No       | -                  |
+| engine    | The engine used for generating the values [random, hash]. Use hash for deterministic generation | `random` | No       | -                  |
 
 ## Dynamic parameters
 
@@ -42,12 +42,17 @@ the `orderqty` column.
         max: 30
 ```
 
-```bash title="Expected result"
+Result
 
-| column name | original value | transformed |
-|-------------|----------------|-------------|
-| orderqty    | 1              | 8           |
-```
+<table>
+<tr>
+<th>Column</th><th>OriginalValue</th><th>TransformedValue</th>
+</tr>
+<tr>
+<td>orderqty</td><td><span style="color:green">1</span></td><td><span style="color:red">29</span></td>
+</tr>
+</table>
+
 
 ## Example: Generate random sick leave hours based on vacation hours
 
@@ -67,3 +72,15 @@ sick leave hours based on the number of vacation hours.
         min:
           column: "vacationhours"
 ```
+
+Result
+
+<table>
+<tr>
+<th>Column</th><th>OriginalValue</th><th>TransformedValue</th>
+</tr>
+<tr>
+<td>sickleavehours</td><td><span style="color:green">69</span></td><td><span style="color:red">99</span></td>
+</tr>
+</table>
+

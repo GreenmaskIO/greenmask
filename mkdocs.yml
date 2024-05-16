@@ -84,7 +84,6 @@ nav:
               - RandomEmail: built_in_transformers/standard_transformers/random_email.md
               - RandomUsername: built_in_transformers/standard_transformers/random_username.md
               - RandomPassword: built_in_transformers/standard_transformers/random_password.md
-              - RandomMacAddress: built_in_transformers/standard_transformers/random_mac_address.md
               - RandomDomainName: built_in_transformers/standard_transformers/random_domain_name.md
               - RandomPerson: built_in_transformers/standard_transformers/random_person.md
               - RandomURL: built_in_transformers/standard_transformers/random_url.md

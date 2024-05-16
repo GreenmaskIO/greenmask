@@ -45,11 +45,11 @@ In this example, the original value of `standardprice` will be noised up to `50%
 ``` yaml title="NoiseFloat transformer example"
 - schema: "purchasing"
   name: "productvendor"
+  columns_type_override: # (1)
+    lastreceiptcost: "float8"
+    standardprice: "float8"
   transformers:
-    - name: "NoiseFloat"    
-      columns_type_override: # (1)
-        lastreceiptcost: "numeric"
-        standardprice: "numeric"
+    - name: "NoiseFloat"
       params:
         column: "lastreceiptcost"
         max_ratio: 0.15
@@ -61,3 +61,15 @@ In this example, the original value of `standardprice` will be noised up to `50%
 
 1. The type overrides perfomed for example because the playground database does not contains any tables with float
    columns.
+
+Result
+
+<table>
+<tr>
+<th>Column</th><th>OriginalValue</th><th>TransformedValue</th>
+</tr>
+<tr>
+<td>lastreceiptcost</td><td><span style="color:green">50.2635</span></td><td><span style="color:red">47.87</span></td>
+</tr>
+</table>
+

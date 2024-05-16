@@ -27,3 +27,14 @@ In the following example, the `RandomBool` transformer generates a random boolea
       params:
         column: "salariedflag"
 ```
+
+Result
+
+<table>
+<tr>
+<th>Column</th><th>OriginalValue</th><th>TransformedValue</th>
+</tr>
+<tr>
+<td>salariedflag</td><td><span style="color:green">t</span></td><td><span style="color:red">f</span></td>
+</tr>
+</table>
