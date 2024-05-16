@@ -23,15 +23,15 @@ import (
 )
 
 const (
-	CastTypeNameIndividual = "individual"
-	CastTypeNameGroup      = "group"
-	CastTypeNameAny        = "any"
+	castTypeNameIndividual = "individual"
+	castTypeNameGroup      = "group"
+	castTypeNameAny        = "any"
 )
 
 const (
-	ManagementTypeNameUniversal = "universal"
-	ManagementTypeNameLocal     = "local"
-	ManagementTypeNameAny       = "any"
+	managementTypeNameUniversal = "universal"
+	managementTypeNameLocal     = "local"
+	managementTypeNameAny       = "any"
 )
 
 var RandomMacAddressDefinition = utils.NewTransformerDefinition(
@@ -54,21 +54,21 @@ var RandomMacAddressDefinition = utils.NewTransformerDefinition(
 
 	toolkit.MustNewParameterDefinition(
 		"cast_type",
-		"Cast type, supported types are: unicast, multicast, any.",
+		"Cast type, supported types are: individual, group, any.",
 	).SetRequired(false).SetAllowedValues(
-		toolkit.ParamsValue(CastTypeNameIndividual),
-		toolkit.ParamsValue(CastTypeNameGroup),
-		toolkit.ParamsValue(CastTypeNameAny),
-	).SetDefaultValue(toolkit.ParamsValue(CastTypeNameAny)).SetUnmarshaler(scanCastType),
+		toolkit.ParamsValue(castTypeNameIndividual),
+		toolkit.ParamsValue(castTypeNameGroup),
+		toolkit.ParamsValue(castTypeNameAny),
+	).SetDefaultValue(toolkit.ParamsValue(castTypeNameAny)).SetUnmarshaler(scanCastType),
 
 	toolkit.MustNewParameterDefinition(
 		"management_type",
-		"Management type, supported types are: globally_unique, locally_administrated, any.",
+		"Management type, supported types are: universal, local, any.",
 	).SetRequired(false).SetAllowedValues(
-		toolkit.ParamsValue(ManagementTypeNameUniversal),
-		toolkit.ParamsValue(ManagementTypeNameLocal),
-		toolkit.ParamsValue(ManagementTypeNameAny),
-	).SetDefaultValue(toolkit.ParamsValue(ManagementTypeNameAny)).SetUnmarshaler(scanManagementType),
+		toolkit.ParamsValue(managementTypeNameUniversal),
+		toolkit.ParamsValue(managementTypeNameLocal),
+		toolkit.ParamsValue(managementTypeNameAny),
+	).SetDefaultValue(toolkit.ParamsValue(managementTypeNameAny)).SetUnmarshaler(scanManagementType),
 
 	engineParameterDefinition,
 )
@@ -190,11 +190,11 @@ func (rbt *RandomMac) Transform(ctx context.Context, r *toolkit.Record) (*toolki
 func scanCastType(parameter *toolkit.ParameterDefinition, driver *toolkit.Driver, src toolkit.ParamsValue) (any, error) {
 	var res int
 	switch string(src) {
-	case CastTypeNameIndividual:
+	case castTypeNameIndividual:
 		res = transformers.CastTypeIndividual
-	case CastTypeNameGroup:
+	case castTypeNameGroup:
 		res = transformers.CastTypeGroup
-	case CastTypeNameAny:
+	case castTypeNameAny:
 		res = transformers.CastTypeAny
 	default:
 		return fmt.Errorf("unknow value %s", string(src)), nil
@@ -205,11 +205,11 @@ func scanCastType(parameter *toolkit.ParameterDefinition, driver *toolkit.Driver
 func scanManagementType(parameter *toolkit.ParameterDefinition, driver *toolkit.Driver, src toolkit.ParamsValue) (any, error) {
 	var res int
 	switch string(src) {
-	case ManagementTypeNameUniversal:
+	case managementTypeNameUniversal:
 		res = transformers.ManagementTypeUniversal
-	case ManagementTypeNameLocal:
+	case managementTypeNameLocal:
 		res = transformers.ManagementTypeLocal
-	case ManagementTypeNameAny:
+	case managementTypeNameAny:
 		res = transformers.ManagementTypeAny
 	default:
 		return fmt.Errorf("unknow value %s", string(src)), nil

@@ -28,8 +28,8 @@ func TestRandomMacTransformer_Transform_random(t *testing.T) {
 				"engine":               toolkit.ParamsValue("hash"),
 				"keep_original_vendor": toolkit.ParamsValue("true"),
 			},
-			managementType: ManagementTypeNameAny,
-			castType:       CastTypeNameAny,
+			managementType: managementTypeNameAny,
+			castType:       castTypeNameAny,
 		},
 		{
 			name:       "Random mac addr with keepOriginalVendor with Universal and Group",
@@ -39,8 +39,8 @@ func TestRandomMacTransformer_Transform_random(t *testing.T) {
 				"engine":               toolkit.ParamsValue("hash"),
 				"keep_original_vendor": toolkit.ParamsValue("true"),
 			},
-			managementType: ManagementTypeNameAny,
-			castType:       CastTypeNameAny,
+			managementType: managementTypeNameAny,
+			castType:       castTypeNameAny,
 		},
 		{
 			name:       "Random mac addr with keepOriginalVendor with Local and Group",
@@ -50,8 +50,8 @@ func TestRandomMacTransformer_Transform_random(t *testing.T) {
 				"engine":               toolkit.ParamsValue("hash"),
 				"keep_original_vendor": toolkit.ParamsValue("true"),
 			},
-			managementType: ManagementTypeNameAny,
-			castType:       CastTypeNameAny,
+			managementType: managementTypeNameAny,
+			castType:       castTypeNameAny,
 		},
 		{
 			name:       "Random mac addr without keepOriginalVendor with Universal and Group",
@@ -61,8 +61,8 @@ func TestRandomMacTransformer_Transform_random(t *testing.T) {
 				"engine":               toolkit.ParamsValue("hash"),
 				"keep_original_vendor": toolkit.ParamsValue("false"),
 			},
-			managementType: ManagementTypeNameUniversal,
-			castType:       CastTypeNameGroup,
+			managementType: managementTypeNameUniversal,
+			castType:       castTypeNameGroup,
 		},
 		{
 			name:       "Random mac addr without keepOriginalVendor with Universal and Individual",
@@ -72,8 +72,8 @@ func TestRandomMacTransformer_Transform_random(t *testing.T) {
 				"engine":               toolkit.ParamsValue("hash"),
 				"keep_original_vendor": toolkit.ParamsValue("false"),
 			},
-			managementType: ManagementTypeNameUniversal,
-			castType:       CastTypeNameIndividual,
+			managementType: managementTypeNameUniversal,
+			castType:       castTypeNameIndividual,
 		},
 		{
 			name:       "Random mac addr without keepOriginalVendor with Local and Individual",
@@ -83,8 +83,8 @@ func TestRandomMacTransformer_Transform_random(t *testing.T) {
 				"engine":               toolkit.ParamsValue("hash"),
 				"keep_original_vendor": toolkit.ParamsValue("false"),
 			},
-			managementType: ManagementTypeNameLocal,
-			castType:       CastTypeNameIndividual,
+			managementType: managementTypeNameLocal,
+			castType:       castTypeNameIndividual,
 		},
 		{
 			name:       "Random mac addr without keepOriginalVendor with Universal and Individual",
@@ -94,8 +94,8 @@ func TestRandomMacTransformer_Transform_random(t *testing.T) {
 				"engine":               toolkit.ParamsValue("hash"),
 				"keep_original_vendor": toolkit.ParamsValue("false"),
 			},
-			managementType: ManagementTypeNameLocal,
-			castType:       CastTypeNameGroup,
+			managementType: managementTypeNameLocal,
+			castType:       castTypeNameGroup,
 		},
 	}
 
@@ -143,7 +143,7 @@ func TestRandomMacTransformer_Transform_random(t *testing.T) {
 				)
 			}
 
-			if tt.castType != CastTypeNameAny && tt.managementType != ManagementTypeNameAny {
+			if tt.castType != castTypeNameAny && tt.managementType != managementTypeNameAny {
 				require.True(
 					t,
 					castTypeNameToIndex(tt.castType) == parsedMacGenerated.CastType && managementTypeNameToIndex(tt.managementType) == parsedMacGenerated.ManagementType,
@@ -156,11 +156,11 @@ func TestRandomMacTransformer_Transform_random(t *testing.T) {
 
 func castTypeNameToIndex(catTypeName string) (catTypeIndex int) {
 	switch catTypeName {
-	case CastTypeNameAny:
+	case castTypeNameAny:
 		return transformers.CastTypeAny
-	case CastTypeNameGroup:
+	case castTypeNameGroup:
 		return transformers.CastTypeGroup
-	case CastTypeNameIndividual:
+	case castTypeNameIndividual:
 		return transformers.CastTypeIndividual
 	default:
 		return transformers.CastTypeAny
@@ -169,11 +169,11 @@ func castTypeNameToIndex(catTypeName string) (catTypeIndex int) {
 
 func managementTypeNameToIndex(managementTypeName string) (catTypeIndex int) {
 	switch managementTypeName {
-	case ManagementTypeNameAny:
+	case managementTypeNameAny:
 		return transformers.ManagementTypeAny
-	case ManagementTypeNameLocal:
+	case managementTypeNameLocal:
 		return transformers.ManagementTypeLocal
-	case ManagementTypeNameUniversal:
+	case managementTypeNameUniversal:
 		return transformers.ManagementTypeUniversal
 	default:
 		return transformers.ManagementTypeAny
