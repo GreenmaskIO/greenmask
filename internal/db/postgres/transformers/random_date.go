@@ -251,7 +251,8 @@ func validateDateTruncationParameterValue(p *toolkit.ParameterDefinition, v tool
 			toolkit.NewValidationWarning().
 				SetSeverity(toolkit.ErrorValidationSeverity).
 				AddMeta("ParameterValue", string(v)).
-				SetMsg("wrong truncation part value: must be one of nano, second, minute, hour, day, month, year"),
+				AddMeta("AllowedValues", truncateParts).
+				SetMsg("wrong truncation part value"),
 		}, nil
 	}
 	return nil, nil

@@ -1,7 +1,6 @@
 package transformers
 
 import (
-	"context"
 	"fmt"
 	"math/big"
 	"strings"
@@ -82,10 +81,11 @@ func (l *RandomNumericLimiter) Limit(v decimal.Decimal) decimal.Decimal {
 }
 
 type RandomNumericTransformer struct {
-	generator  generators.Generator
-	limiter    *RandomNumericLimiter
-	byteLength int
-	precision  int32
+	generator      generators.Generator
+	limiter        *RandomNumericLimiter
+	dynamicLimiter *RandomNumericLimiter
+	byteLength     int
+	precision      int32
 }
 
 func NewRandomNumericTransformer(limiter *RandomNumericLimiter, precision int32) (*RandomNumericTransformer, error) {
@@ -114,13 +114,21 @@ func (ig *RandomNumericTransformer) SetGenerator(g generators.Generator) error {
 	return nil
 }
 
-func (ig *RandomNumericTransformer) Transform(ctx context.Context, original []byte) (decimal.Decimal, error) {
+// SetDynamicLimiter sets the limiter for the dynamic mode. dynamicLimiter will be used set as nil after the Transform
+// call.
+func (ig *RandomNumericTransformer) SetDynamicLimiter(l *RandomNumericLimiter) *RandomNumericTransformer {
+	if l == nil {
+		panic("bug: limiter for RandomNumericTransformer values cannot be nil")
+	}
+	ig.dynamicLimiter = l
+	return ig
+}
+
+func (ig *RandomNumericTransformer) Transform(original []byte) (decimal.Decimal, error) {
 	var res decimal.Decimal
 	var limiter = ig.limiter
-	limiterAny := ctx.Value("limiter")
-
-	if limiterAny != nil {
-		limiter = limiterAny.(*RandomNumericLimiter)
+	if ig.dynamicLimiter != nil {
+		limiter = ig.dynamicLimiter
 	}
 
 	resBytes, err := ig.generator.Generate(original)
@@ -133,6 +141,10 @@ func (ig *RandomNumericTransformer) Transform(ctx context.Context, original []by
 		res = res.Mul(decimal.NewFromInt(-1))
 	}
 	res = limiter.Limit(res)
+
+	if ig.dynamicLimiter != nil {
+		limiter = nil
+	}
 
 	return res, nil
 }
