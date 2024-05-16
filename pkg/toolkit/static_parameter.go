@@ -188,6 +188,20 @@ func (sp *StaticParameter) Init(columnParams map[string]*StaticParameter, rawVal
 			return warnings, nil
 		}
 	}
+
+	if sp.definition.AllowedValues != nil {
+		if !slices.ContainsFunc(sp.definition.AllowedValues, func(allowedItem ParamsValue) bool {
+			return slices.Compare(allowedItem, sp.rawValue) == 0
+		}) {
+			warnings = append(warnings, NewValidationWarning().
+				SetSeverity(ErrorValidationSeverity).
+				SetMsg("unknown parameter value").
+				AddMeta("param", string(sp.rawValue)).
+				AddMeta("AllowedValues", printParamValues(sp.definition.AllowedValues)),
+			)
+		}
+	}
+
 	return warnings, nil
 }
 
@@ -346,4 +360,13 @@ func scanValue(driver *Driver, definition *ParameterDefinition, rawValue ParamsV
 		res = &dest
 		return nil
 	}
+}
+
+func printParamValues(values []ParamsValue) []string {
+	var res []string
+	for _, val := range values {
+		res = append(res, string(val))
+	}
+
+	return res
 }

@@ -158,6 +158,8 @@ type ParameterDefinition struct {
 	// RawValueValidator - raw value validator function that performs assertion and cause ValidationWarnings if it
 	// has violations
 	RawValueValidator RawValueValidator `json:"-"`
+	// AllowedValues - slice of values which allowed to use
+	AllowedValues []ParamsValue `mapstructure:"allowed_values" json:"allowed_values,omitempty"`
 }
 
 func MustNewParameterDefinition(name string, description string) *ParameterDefinition {
@@ -188,6 +190,11 @@ func (p *ParameterDefinition) SetLinkParameter(name string) *ParameterDefinition
 
 func (p *ParameterDefinition) SetGetFromGlobalEnvVariable(v string) *ParameterDefinition {
 	p.GetFromGlobalEnvVariable = v
+	return p
+}
+
+func (p *ParameterDefinition) SetAllowedValues(v ...ParamsValue) *ParameterDefinition {
+	p.AllowedValues = v
 	return p
 }
 

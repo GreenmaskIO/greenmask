@@ -190,6 +190,14 @@ var columnList = []*Column{
 		NotNull:  false,
 		Length:   -1,
 	},
+	{
+		Name:     "data2",
+		TypeName: "text",
+		TypeOid:  pgtype.TextOID,
+		Num:      22,
+		NotNull:  false,
+		Length:   -1,
+	},
 }
 
 // GetDriverAndRecord - return adhoc table for testing
