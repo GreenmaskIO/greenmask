@@ -4,6 +4,13 @@ The greenmask provides two engines `random` and `hash`. Most of the transformers
 by default is set to `random`. Use `hash` engine when you need to generate deterministic data - the same input
 will always produce the same output.
 
+!!! info
+    
+    Greenmask employs the `SHA-3` algorithm to hash input values. While this function is cryptographically secure, it does
+    exhibit lower performance. We plan to introduce additional hash functions in the future to offer a balance between
+    security and performance. For example, `SipHash`, which provides a good trade-off between security and performance, is
+    currently in development and is expected to be included in the stable `v0.2` release of Greenmask.
+
 !!! warning
 
     The hash engine does not guarantee the uniqueness of generated values. Although transformers such as `Hash`, 

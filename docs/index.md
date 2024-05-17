@@ -59,6 +59,7 @@ Greenmask is ideal for various scenarios, including:
 
 ## Links
 
+* [Greenmask Roadmap](https://github.com/orgs/GreenmaskIO/projects/6)
 * [Email](mailto:support@greenmask.io)
 * [Twitter](https://twitter.com/GreenmaskIO)
 * [Telegram](https://t.me/greenmask_community)
