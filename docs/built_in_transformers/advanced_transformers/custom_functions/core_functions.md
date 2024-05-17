@@ -44,7 +44,8 @@ Below you can find custom core functions which are divided into categories based
 ### masking
 
 Replaces characters with asterisk `*` symbols depending on the provided masking rule. If the
-value is `NULL`, it is kept unchanged. This function is based on [ggwhite/go-masker](https://github.com/ggwhite/go-masker).
+value is `NULL`, it is kept unchanged. This function is based
+on [ggwhite/go-masker](https://github.com/ggwhite/go-masker).
 
 === "Masking rules"
 
@@ -113,16 +114,18 @@ Adds or subtracts a random duration in the provided `interval` to or from the or
 
 ### noiseFloat
 
-Adds or subtracts a random fraction to or from the original float value. Multiplies the original float value by a provided random value that is not higher than the `ratio` parameter and adds it to the original value with the option to specify the precision via the `precision` parameter.
+Adds or subtracts a random fraction to or from the original float value. Multiplies the original float value by a
+provided random value that is not higher than the `ratio` parameter and adds it to the original value with the option to
+specify the decimal via the `decimal` parameter.
 
 === "Signature"
 
-    `noiseFloat(ratio float, precision int, value float) (res float64, err error)`
+    `noiseFloat(ratio float, decimal int, value float) (res float64, err error)`
 
 === "Parameters"
 
     * `ratio` — the maximum multiplier value in the interval (0:1). The value will be randomly generated up to `ratio`, multiplied by the original value, and the result will be added to the original value.
-    * `precision` — the precision of the resulted value
+    * `decimal` — the decimal of the resulted value
     * `value` — the original value
 
 === "Return values"
@@ -132,7 +135,8 @@ Adds or subtracts a random fraction to or from the original float value. Multipl
 
 ### noiseInt
 
-Adds or subtracts a random fraction to or from the original integer value. Multiplies the original integer value by a provided random value that is not higher than the `ratio` parameter and adds it to the original value.
+Adds or subtracts a random fraction to or from the original integer value. Multiplies the original integer value by a
+provided random value that is not higher than the `ratio` parameter and adds it to the original value.
 
 === "Signature"
 
@@ -176,13 +180,13 @@ Generates a random float value within the provided interval.
 
 === "Signature"
 
-    `randomFloat(min any, max any, precision int) (res float, err error)`
+    `randomFloat(min any, max any, decimal int) (res float, err error)`
 
 === "Parameters"
 
     * `min` — the minimum random value threshold
     * `max` — the maximum random value threshold
-    * `precision` — the precision of the resulted value
+    * `decimal` — the decimal of the resulted value
 
 === "Return values"
 
@@ -229,18 +233,37 @@ Generates a random string using the provided characters within the specified len
 
 ### roundFloat
 
-Rounds a float value up to provided precision.
+Rounds a float value up to provided decimal.
 
 === "Signature"
 
-    `roundFloat(precision int, original float) (res float, err error)`
+    `roundFloat(decimal int, original float) (res float, err error)`
 
 === "Parameters"
 
-    * `precision` — the precision of the value
+    * `decimal` — the decimal of the value
     * `original` — the original float value
 
 === "Return values"
 
     * `res` — a rounded float value
+    * `err` — an error if there is an issue
+
+### tsModify
+
+Modify original time value by adding or subtracting the provided interval. The interval is a string in the format of
+the [PostgreSQL interval](https://www.postgresql.org/docs/current/datatype-datetime.html#DATATYPE-INTERVAL-INPUT).
+
+=== "Signature"
+
+    `tsModify(interval string, val time.Time) (time.Time, error)`
+
+=== "Parameters"
+
+    * `interval` — the maximum value of `ratio` that is added to the original value. The format is the same as in the [PostgreSQL interval format](https://www.postgresql.org/docs/current/datatype-datetime.html#DATATYPE-INTERVAL-INPUT).
+    * `original` — the original time value
+
+=== "Return values"
+
+    * `res` — a modified date
     * `err` — an error if there is an issue
