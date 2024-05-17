@@ -13,11 +13,15 @@ import (
 )
 
 const (
-	secondsUnit = "sec"
-	milliUnit   = "milli"
-	microUnit   = "micro"
-	nanoUnit    = "nano"
+	secondsUnit = "second"
+	milliUnit   = "millisecond"
+	microUnit   = "microsecond"
+	nanoUnit    = "nanosecond"
 )
+
+var timestampUnitValues = []string{
+	secondsUnit, milliUnit, microUnit, nanoUnit,
+}
 
 var unixTimestampTransformerDefinition = utils.NewTransformerDefinition(
 	utils.NewTransformerProperties(
@@ -219,12 +223,13 @@ func getUnixByUnit(v time.Time, unit string) int64 {
 
 func validateDateUnitParameterValue(p *toolkit.ParameterDefinition, v toolkit.ParamsValue) (toolkit.ValidationWarnings, error) {
 
-	if !slices.Contains([]string{secondsUnit, milliUnit, microUnit, nanoUnit}, string(v)) {
+	if !slices.Contains(timestampUnitValues, string(v)) {
 		return toolkit.ValidationWarnings{
 			toolkit.NewValidationWarning().
 				SetSeverity(toolkit.ErrorValidationSeverity).
 				AddMeta("ParameterValue", string(v)).
-				SetMsg("wrong truncation part value: must be one of nano, second, minute, hour, day, month, year"),
+				AddMeta("AllowedValues", truncateParts).
+				SetMsg("wrong timestamp unit value"),
 		}, nil
 	}
 	return nil, nil

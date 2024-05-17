@@ -50,14 +50,6 @@ var FakerTransformersDes = map[string]*FakerTransformerDef{
 		Description:    "Generates a random longitude value.",
 	},
 
-	// Faker Datetime
-	"RandomUnixTime": {
-		Generator: func(opts ...options.OptionFunc) string {
-			return fmt.Sprintf("%d", faker.UnixTime())
-		},
-		SupportedTypes: []string{"int4", "int8", "numeric"},
-		Description:    "Generates a random Unix timestamp.",
-	},
 	"RandomMonthName": {
 		Generator:      faker.MonthName,
 		SupportedTypes: []string{"text", "varchar"},

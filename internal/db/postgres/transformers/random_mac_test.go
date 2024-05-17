@@ -99,6 +99,17 @@ func TestRandomMacTransformer_Transform_random(t *testing.T) {
 			managementType: managementTypeNameLocal,
 			castType:       castTypeNameGroup,
 		},
+		{
+			name:       "Random mac addr in text without keepOriginalVendor with Universal and Individual",
+			columnName: "data",
+			original:   "03:1a:2b:3c:4d:5e",
+			params: map[string]toolkit.ParamsValue{
+				"engine":               toolkit.ParamsValue("hash"),
+				"keep_original_vendor": toolkit.ParamsValue("false"),
+			},
+			managementType: managementTypeNameLocal,
+			castType:       castTypeNameGroup,
+		},
 	}
 
 	for _, tt := range tests {
@@ -130,18 +141,19 @@ func TestRandomMacTransformer_Transform_random(t *testing.T) {
 			)
 			require.NoError(t, err)
 			var res net.HardwareAddr
-			isNull, err := r.ScanColumnValueByName(tt.columnName, &res)
+			rawVal, err := r.GetRawColumnValueByName(tt.columnName)
 			require.NoError(t, err)
-			require.False(t, isNull)
+			require.False(t, rawVal.IsNull)
+			require.NotEmpty(t, rawVal.Data)
+			err = r.Driver.ScanValueByTypeName("macaddr", rawVal.Data, &res)
+			require.NoError(t, err)
 
 			newMacAddrInfo, err := transformers.ExploreMacAddress(res)
 			require.NoError(t, err)
 
 			if string(tt.params["keep_original_vendor"]) == "true" {
-				require.Equal(t, tt.original[:8], res.String()[0:8])
-			}
-
-			if tt.castType != castTypeNameAny && tt.managementType != managementTypeNameAny {
+				require.Equal(t, tt.original[:8], res.String()[:8])
+			} else if tt.castType != castTypeNameAny && tt.managementType != managementTypeNameAny {
 				require.True(
 					t,
 					castTypeNameToIndex(tt.castType) == newMacAddrInfo.CastType && managementTypeNameToIndex(tt.managementType) == newMacAddrInfo.ManagementType,
