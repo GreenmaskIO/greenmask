@@ -53,16 +53,20 @@ var RandomMacAddressDefinition = utils.NewTransformerDefinition(
 	toolkit.MustNewParameterDefinition(
 		"keep_original_vendor",
 		"Keep original vendor. Default false",
-	).SetRequired(false).SetDefaultValue(toolkit.ParamsValue("false")),
+	).SetRequired(false).
+		SetDefaultValue(toolkit.ParamsValue("false")),
 
 	toolkit.MustNewParameterDefinition(
 		"cast_type",
 		"Cast type, supported types are: individual, group, any.",
-	).SetRequired(false).SetAllowedValues(
-		toolkit.ParamsValue(castTypeNameIndividual),
-		toolkit.ParamsValue(castTypeNameGroup),
-		toolkit.ParamsValue(castTypeNameAny),
-	).SetDefaultValue(toolkit.ParamsValue(castTypeNameAny)).SetUnmarshaler(scanCastType),
+	).SetRequired(false).
+		SetAllowedValues(
+			toolkit.ParamsValue(castTypeNameIndividual),
+			toolkit.ParamsValue(castTypeNameGroup),
+			toolkit.ParamsValue(castTypeNameAny),
+		).
+		SetDefaultValue(toolkit.ParamsValue(castTypeNameAny)).
+		SetUnmarshaler(scanCastType),
 
 	toolkit.MustNewParameterDefinition(
 		"management_type",
@@ -71,7 +75,8 @@ var RandomMacAddressDefinition = utils.NewTransformerDefinition(
 		toolkit.ParamsValue(managementTypeNameUniversal),
 		toolkit.ParamsValue(managementTypeNameLocal),
 		toolkit.ParamsValue(managementTypeNameAny),
-	).SetDefaultValue(toolkit.ParamsValue(managementTypeNameAny)).SetUnmarshaler(scanManagementType),
+	).SetDefaultValue(toolkit.ParamsValue(managementTypeNameAny)).
+		SetUnmarshaler(scanManagementType),
 
 	engineParameterDefinition,
 )

@@ -43,18 +43,20 @@ var NoiseIntTransformerDefinition = utils.NewTransformerDefinition(
 	toolkit.MustNewParameterDefinition(
 		"min",
 		"min value threshold limiter",
-	).SetDynamicMode(
-		toolkit.NewDynamicModeProperties().
-			SetCompatibleTypes("int2", "int4", "int8"),
-	),
+	).SetSupportTemplate(true).
+		SetDynamicMode(
+			toolkit.NewDynamicModeProperties().
+				SetCompatibleTypes("int2", "int4", "int8"),
+		),
 
 	toolkit.MustNewParameterDefinition(
 		"max",
 		"max value threshold limiter",
-	).SetDynamicMode(
-		toolkit.NewDynamicModeProperties().
-			SetCompatibleTypes("int2", "int4", "int8"),
-	),
+	).SetSupportTemplate(true).
+		SetDynamicMode(
+			toolkit.NewDynamicModeProperties().
+				SetCompatibleTypes("int2", "int4", "int8"),
+		),
 
 	minRatioParameterDefinition,
 

@@ -54,6 +54,7 @@ var DictTransformerDefinition = utils.NewTransformerDefinition(
 		`fail if value is not matched with dict otherwise keep value`,
 	).SetRequired(false).
 		SetDefaultValue(toolkit.ParamsValue("true")),
+
 	toolkit.MustNewParameterDefinition(
 		"validate",
 		`perform encode-decode procedure using column type, ensuring that value has correct type`,

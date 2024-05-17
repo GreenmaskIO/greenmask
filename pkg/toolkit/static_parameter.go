@@ -93,7 +93,11 @@ func (sp *StaticParameter) Init(columnParams map[string]*StaticParameter, rawVal
 				nil
 		}
 		buf := bytes.NewBuffer(nil)
-		spc := NewStaticParameterContext(sp.driver, sp.linkedColumnParameter.Column.Name)
+		var columnName string
+		if sp.linkedColumnParameter != nil {
+			columnName = sp.linkedColumnParameter.Column.Name
+		}
+		spc := NewStaticParameterContext(sp.driver, columnName)
 		if err = tmpl.Execute(buf, spc); err != nil {
 			return nil, fmt.Errorf("error executing template: %w", err)
 		}

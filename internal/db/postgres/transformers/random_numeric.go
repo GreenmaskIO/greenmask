@@ -33,12 +33,14 @@ var numericTransformerDefinition = utils.NewTransformerDefinition(
 	toolkit.MustNewParameterDefinition(
 		"decimal",
 		"the value decimal",
-	).SetDefaultValue([]byte("0")),
+	).SetSupportTemplate(true).
+		SetDefaultValue([]byte("0")),
 
 	toolkit.MustNewParameterDefinition(
 		"min",
 		"min int value threshold",
 	).SetLinkParameter("column").
+		SetSupportTemplate(true).
 		SetRequired(true).
 		SetDynamicMode(
 			toolkit.NewDynamicModeProperties().
@@ -58,6 +60,7 @@ var numericTransformerDefinition = utils.NewTransformerDefinition(
 		"max",
 		"max int value threshold",
 	).SetLinkParameter("column").
+		SetSupportTemplate(true).
 		SetRequired(true).
 		SetDynamicMode(
 			toolkit.NewDynamicModeProperties().

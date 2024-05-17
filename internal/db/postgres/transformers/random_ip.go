@@ -41,6 +41,7 @@ var RandomIpDefinition = utils.NewTransformerDefinition(
 		"subnet",
 		"Subnet for generating random ip in V4 or V6 format",
 	).SetRequired(true).
+		SetSupportTemplate(true).
 		SetCastDbType("cidr").
 		SetDynamicMode(
 			toolkit.NewDynamicModeProperties().

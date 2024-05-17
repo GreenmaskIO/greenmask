@@ -51,6 +51,7 @@ var integerTransformerDefinition = utils.NewTransformerDefinition(
 		"min",
 		"min int value threshold",
 	).SetLinkParameter("column").
+		SetSupportTemplate(true).
 		SetDynamicMode(
 			toolkit.NewDynamicModeProperties().
 				SetCompatibleTypes("int2", "int4", "int8"),
@@ -60,6 +61,7 @@ var integerTransformerDefinition = utils.NewTransformerDefinition(
 		"max",
 		"max int value threshold",
 	).SetLinkParameter("column").
+		SetSupportTemplate(true).
 		SetDynamicMode(
 			toolkit.NewDynamicModeProperties().
 				SetCompatibleTypes("int2", "int4", "int8"),
