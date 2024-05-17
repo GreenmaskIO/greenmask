@@ -43,12 +43,14 @@ var NoiseFloatTransformerDefinition = utils.NewTransformerDefinition(
 	toolkit.MustNewParameterDefinition(
 		"decimal",
 		"Numbers of decimal",
-	).SetDefaultValue(toolkit.ParamsValue("4")),
+	).SetSupportTemplate(true).
+		SetDefaultValue(toolkit.ParamsValue("4")),
 
 	toolkit.MustNewParameterDefinition(
 		"min",
 		"min float value threshold",
 	).SetLinkParameter("column").
+		SetSupportTemplate(true).
 		SetDynamicMode(
 			toolkit.NewDynamicModeProperties().
 				SetCompatibleTypes("float4", "float8", "int2", "int4", "int8"),
@@ -58,6 +60,7 @@ var NoiseFloatTransformerDefinition = utils.NewTransformerDefinition(
 		"max",
 		"max float value threshold",
 	).SetLinkParameter("column").
+		SetSupportTemplate(true).
 		SetDynamicMode(
 			toolkit.NewDynamicModeProperties().
 				SetCompatibleTypes("float4", "float8", "int2", "int4", "int8"),

@@ -42,12 +42,14 @@ var stringTransformerDefinition = utils.NewTransformerDefinition(
 	toolkit.MustNewParameterDefinition(
 		"min_length",
 		"min length of string",
-	).SetRequired(true),
+	).SetSupportTemplate(true).
+		SetRequired(true),
 
 	toolkit.MustNewParameterDefinition(
 		"max_length",
 		"max length of string",
-	).SetRequired(true),
+	).SetSupportTemplate(true).
+		SetRequired(true),
 
 	toolkit.MustNewParameterDefinition(
 		"symbols",

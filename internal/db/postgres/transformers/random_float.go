@@ -50,6 +50,7 @@ var floatTransformerDefinition = utils.NewTransformerDefinition(
 		"min",
 		"min float value threshold",
 	).SetRequired(true).
+		SetSupportTemplate(true).
 		SetLinkParameter("column").
 		SetDynamicMode(
 			toolkit.NewDynamicModeProperties().
@@ -60,6 +61,7 @@ var floatTransformerDefinition = utils.NewTransformerDefinition(
 		"max",
 		"max float value threshold",
 	).SetRequired(true).
+		SetSupportTemplate(true).
 		SetLinkParameter("column").
 		SetDynamicMode(
 			toolkit.NewDynamicModeProperties().
@@ -69,7 +71,8 @@ var floatTransformerDefinition = utils.NewTransformerDefinition(
 	toolkit.MustNewParameterDefinition(
 		"decimal",
 		"Numbers of decimal",
-	).SetDefaultValue(toolkit.ParamsValue("4")),
+	).SetSupportTemplate(true).
+		SetDefaultValue(toolkit.ParamsValue("4")),
 
 	keepNullParameterDefinition,
 

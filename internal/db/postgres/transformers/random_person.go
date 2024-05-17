@@ -48,7 +48,8 @@ var randomPersonTransformerDefinition = utils.NewTransformerDefinition(
 	toolkit.MustNewParameterDefinition(
 		"fallback_gender",
 		"Specify fallback gender if not mapped when using dynamic mode in \"gender\" parameter",
-	).SetDefaultValue(toolkit.ParamsValue("Any")),
+	).SetSupportTemplate(true).
+		SetDefaultValue(toolkit.ParamsValue("Any")),
 
 	// TODO: Allow user to override the default names, surnames and genders with kind of dictionary
 

@@ -48,18 +48,21 @@ var NoiseDateTransformerDefinition = utils.NewTransformerDefinition(
 	toolkit.MustNewParameterDefinition(
 		"min_ratio",
 		"min random duration for noise. Dy default 5% of the max_ratio",
-	).SetCastDbType("interval"),
+	).SetCastDbType("interval").
+		SetSupportTemplate(true),
 
 	toolkit.MustNewParameterDefinition(
 		"max_ratio",
 		"max random duration for noise",
 	).SetRequired(true).
-		SetCastDbType("interval"),
+		SetCastDbType("interval").
+		SetSupportTemplate(true),
 
 	toolkit.MustNewParameterDefinition(
 		"min",
 		"min threshold date (and/or time) of value",
-	).SetLinkParameter("column").
+	).SetSupportTemplate(true).
+		SetLinkParameter("column").
 		SetDynamicMode(
 			toolkit.NewDynamicModeProperties().
 				SetCompatibleTypes("date", "timestamp", "timestamptz"),
@@ -68,7 +71,8 @@ var NoiseDateTransformerDefinition = utils.NewTransformerDefinition(
 	toolkit.MustNewParameterDefinition(
 		"max",
 		"max threshold date (and/or time) of value",
-	).SetLinkParameter("column").
+	).SetSupportTemplate(true).
+		SetLinkParameter("column").
 		SetDynamicMode(
 			toolkit.NewDynamicModeProperties().
 				SetCompatibleTypes("date", "timestamp", "timestamptz"),

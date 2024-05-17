@@ -43,6 +43,7 @@ var unixTimestampTransformerDefinition = utils.NewTransformerDefinition(
 		"min",
 		"min threshold date (and/or time) of value",
 	).SetRequired(true).
+		SetSupportTemplate(true).
 		SetLinkParameter("column").
 		SetDynamicMode(
 			toolkit.NewDynamicModeProperties().
@@ -53,6 +54,7 @@ var unixTimestampTransformerDefinition = utils.NewTransformerDefinition(
 		"max",
 		"max threshold date (and/or time) of value",
 	).SetRequired(true).
+		SetSupportTemplate(true).
 		SetLinkParameter("column").
 		SetDynamicMode(
 			toolkit.NewDynamicModeProperties().
@@ -62,26 +64,30 @@ var unixTimestampTransformerDefinition = utils.NewTransformerDefinition(
 	toolkit.MustNewParameterDefinition(
 		"min_unit",
 		"min threshold date unit",
-	).SetLinkParameter("column").
+	).SetSupportTemplate(true).
+		SetLinkParameter("column").
 		SetDefaultValue([]byte(secondsUnit)).
 		SetRawValueValidator(validateDateUnitParameterValue),
 
 	toolkit.MustNewParameterDefinition(
 		"max_unit",
 		"max threshold date unit",
-	).SetLinkParameter("column").
+	).SetSupportTemplate(true).
+		SetLinkParameter("column").
 		SetDefaultValue([]byte(secondsUnit)).
 		SetRawValueValidator(validateDateUnitParameterValue),
 
 	toolkit.MustNewParameterDefinition(
 		"truncate",
 		fmt.Sprintf("truncate date till the part (%s)", strings.Join(truncateParts, ", ")),
-	).SetRawValueValidator(validateDateTruncationParameterValue),
+	).SetSupportTemplate(true).
+		SetRawValueValidator(validateDateTruncationParameterValue),
 
 	toolkit.MustNewParameterDefinition(
 		"unit",
 		fmt.Sprintf("truncate date till the part (%s)", strings.Join(truncateParts, ", ")),
-	).SetDefaultValue([]byte(secondsUnit)).
+	).SetSupportTemplate(true).
+		SetDefaultValue([]byte(secondsUnit)).
 		SetRawValueValidator(validateDateUnitParameterValue),
 
 	keepNullParameterDefinition,
