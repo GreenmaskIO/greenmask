@@ -24,7 +24,7 @@ var emailTransformerAllowedChars = []rune("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijk
 
 var EmailTransformerDefinition = utils.NewTransformerDefinition(
 	utils.NewTransformerProperties(
-		"Email",
+		"RandomEmail",
 		"Generate random email",
 	),
 

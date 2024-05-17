@@ -44,7 +44,7 @@ var RandomIpDefinition = utils.NewTransformerDefinition(
 		SetCastDbType("cidr").
 		SetDynamicMode(
 			toolkit.NewDynamicModeProperties().
-				SetCompatibleTypes("cidr", "text", "varchar"),
+				SetCompatibleTypes("text", "varchar", "cidr"),
 		),
 
 	engineParameterDefinition,
@@ -146,8 +146,8 @@ func (rbt *RandomIp) Transform(ctx context.Context, r *toolkit.Record) (*toolkit
 		return nil, fmt.Errorf("unable to transform value: %w", err)
 	}
 
-	newRawValue := toolkit.NewRawValue([]byte(ipVal.String()), false)
-	if err = r.SetRawColumnValueByIdx(rbt.columnIdx, newRawValue); err != nil {
+	newVal := toolkit.NewRawValue([]byte(ipVal.String()), false)
+	if err = r.SetRawColumnValueByIdx(rbt.columnIdx, newVal); err != nil {
 		return nil, fmt.Errorf("unable to set new value: %w", err)
 	}
 	return r, nil

@@ -2,10 +2,11 @@ package transformers
 
 import (
 	"context"
+	"testing"
+
 	"github.com/greenmaskio/greenmask/internal/db/postgres/transformers/utils"
 	"github.com/greenmaskio/greenmask/pkg/toolkit"
 	"github.com/stretchr/testify/require"
-	"testing"
 )
 
 func TestRandomIpTransformer_Transform_random_dynamic(t *testing.T) {
@@ -19,7 +20,24 @@ func TestRandomIpTransformer_Transform_random_dynamic(t *testing.T) {
 		expected      string
 	}{
 		{
-			name:       "IPv4 dynamic test",
+			name:       "IPv4 dynamic test with strict types",
+			columnName: "ip_address",
+			record: map[string]*toolkit.RawValue{
+				"ip_address": toolkit.NewRawValue([]byte("192.168.1.10"), false),
+				"net_mask":   toolkit.NewRawValue([]byte("192.168.1.0/30"), false),
+			},
+			params: map[string]toolkit.ParamsValue{
+				"engine": toolkit.ParamsValue("random"),
+			},
+			dynamicParams: map[string]*toolkit.DynamicParamValue{
+				"subnet": {
+					Column: "net_mask",
+				},
+			},
+			expected: "192.168.1.[1,2]",
+		},
+		{
+			name:       "IPv4 dynamic test with strings",
 			columnName: "data",
 			record: map[string]*toolkit.RawValue{
 				"data":  toolkit.NewRawValue([]byte("192.168.1.10"), false),

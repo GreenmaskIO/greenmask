@@ -198,6 +198,22 @@ var columnList = []*Column{
 		NotNull:  false,
 		Length:   -1,
 	},
+	{
+		Name:     "ip_address",
+		TypeName: "inet",
+		TypeOid:  pgtype.InetOID,
+		Num:      22,
+		NotNull:  false,
+		Length:   -1,
+	},
+	{
+		Name:     "net_mask",
+		TypeName: "cidr",
+		TypeOid:  pgtype.CIDROID,
+		Num:      23,
+		NotNull:  false,
+		Length:   -1,
+	},
 }
 
 // GetDriverAndRecord - return adhoc table for testing

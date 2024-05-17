@@ -22,6 +22,7 @@ import (
 	"github.com/greenmaskio/greenmask/internal/db/postgres/transformers/utils"
 	"github.com/greenmaskio/greenmask/internal/generators/transformers"
 	"github.com/greenmaskio/greenmask/pkg/toolkit"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const (
@@ -46,7 +47,7 @@ var RandomMacAddressDefinition = utils.NewTransformerDefinition(
 		"Column name",
 	).SetIsColumn(toolkit.NewColumnProperties().
 		SetAffected(true).
-		SetAllowedColumnTypes("macaddr"),
+		SetAllowedColumnTypes("macaddr", "varchar", "text"),
 	).SetRequired(true),
 
 	toolkit.MustNewParameterDefinition(
@@ -172,7 +173,11 @@ func (rbt *RandomMac) Done(ctx context.Context) error {
 
 func (rbt *RandomMac) Transform(ctx context.Context, r *toolkit.Record) (*toolkit.Record, error) {
 
-	_, err := r.ScanColumnValueByIdx(rbt.columnIdx, &rbt.originalMac)
+	rawVal, err := r.GetRawColumnValueByIdx(rbt.columnIdx)
+	if err != nil {
+		return nil, fmt.Errorf("unable to scan value: %w", err)
+	}
+	err = r.Driver.ScanValueByTypeOid(pgtype.MacaddrOID, rawVal.Data, &rbt.originalMac)
 	if err != nil {
 		return nil, fmt.Errorf("unable to scan value: %w", err)
 	}
@@ -182,7 +187,8 @@ func (rbt *RandomMac) Transform(ctx context.Context, r *toolkit.Record) (*toolki
 		return nil, fmt.Errorf("unable to transform value: %w", err)
 	}
 
-	if err = r.SetColumnValueByIdx(rbt.columnIdx, macAddr); err != nil {
+	newVal := toolkit.NewRawValue([]byte(macAddr.String()), false)
+	if err = r.SetRawColumnValueByIdx(rbt.columnIdx, newVal); err != nil {
 		return nil, fmt.Errorf("unable to set new value: %w", err)
 	}
 

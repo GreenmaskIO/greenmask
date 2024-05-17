@@ -50,14 +50,6 @@ var FakerTransformersDes = map[string]*FakerTransformerDef{
 		Description:    "Generates a random longitude value.",
 	},
 
-	// Faker Datetime
-	"RandomUnixTime": {
-		Generator: func(opts ...options.OptionFunc) string {
-			return fmt.Sprintf("%d", faker.UnixTime())
-		},
-		SupportedTypes: []string{"int4", "int8", "numeric"},
-		Description:    "Generates a random Unix timestamp.",
-	},
 	"RandomMonthName": {
 		Generator:      faker.MonthName,
 		SupportedTypes: []string{"text", "varchar"},
@@ -90,16 +82,6 @@ var FakerTransformersDes = map[string]*FakerTransformerDef{
 	},
 
 	// Faker Internet
-	"RandomEmail": {
-		Generator:      faker.Email,
-		SupportedTypes: []string{"text", "varchar"},
-		Description:    "Generates a random email address.",
-	},
-	"RandomMacAddress": {
-		Generator:      faker.MacAddress,
-		SupportedTypes: []string{"text", "varchar", "macaddr", "macaddr8"},
-		Description:    "Generates a random MAC address.",
-	},
 	"RandomDomainName": {
 		Generator:      faker.DomainName,
 		SupportedTypes: []string{"text", "varchar"},
@@ -114,16 +96,6 @@ var FakerTransformersDes = map[string]*FakerTransformerDef{
 		Generator:      faker.Username,
 		SupportedTypes: []string{"text", "varchar"},
 		Description:    "Generates a random username.",
-	},
-	"RandomIPv4": {
-		Generator:      faker.IPv4,
-		SupportedTypes: []string{"text", "varchar", "inet"},
-		Description:    "Generates a random IPv4 address.",
-	},
-	"RandomIPv6": {
-		Generator:      faker.IPv6,
-		SupportedTypes: []string{"text", "varchar", "inet"},
-		Description:    "Generates a random IPv6 address.",
 	},
 	"RandomPassword": {
 		Generator:      faker.Password,
