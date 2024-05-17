@@ -44,7 +44,8 @@ Below you can find custom core functions which are divided into categories based
 ### masking
 
 Replaces characters with asterisk `*` symbols depending on the provided masking rule. If the
-value is `NULL`, it is kept unchanged. This function is based on [ggwhite/go-masker](https://github.com/ggwhite/go-masker).
+value is `NULL`, it is kept unchanged. This function is based
+on [ggwhite/go-masker](https://github.com/ggwhite/go-masker).
 
 === "Masking rules"
 
@@ -113,7 +114,9 @@ Adds or subtracts a random duration in the provided `interval` to or from the or
 
 ### noiseFloat
 
-Adds or subtracts a random fraction to or from the original float value. Multiplies the original float value by a provided random value that is not higher than the `ratio` parameter and adds it to the original value with the option to specify the decimal via the `decimal` parameter.
+Adds or subtracts a random fraction to or from the original float value. Multiplies the original float value by a
+provided random value that is not higher than the `ratio` parameter and adds it to the original value with the option to
+specify the decimal via the `decimal` parameter.
 
 === "Signature"
 
@@ -132,7 +135,8 @@ Adds or subtracts a random fraction to or from the original float value. Multipl
 
 ### noiseInt
 
-Adds or subtracts a random fraction to or from the original integer value. Multiplies the original integer value by a provided random value that is not higher than the `ratio` parameter and adds it to the original value.
+Adds or subtracts a random fraction to or from the original integer value. Multiplies the original integer value by a
+provided random value that is not higher than the `ratio` parameter and adds it to the original value.
 
 === "Signature"
 
@@ -243,4 +247,23 @@ Rounds a float value up to provided decimal.
 === "Return values"
 
     * `res` — a rounded float value
+    * `err` — an error if there is an issue
+
+### tsModify
+
+Modify original time value by adding or subtracting the provided interval. The interval is a string in the format of
+the [PostgreSQL interval](https://www.postgresql.org/docs/current/datatype-datetime.html#DATATYPE-INTERVAL-INPUT).
+
+=== "Signature"
+
+    `tsModify(interval string, val time.Time) (time.Time, error)`
+
+=== "Parameters"
+
+    * `interval` — the maximum value of `ratio` that is added to the original value. The format is the same as in the [PostgreSQL interval format](https://www.postgresql.org/docs/current/datatype-datetime.html#DATATYPE-INTERVAL-INPUT).
+    * `original` — the original time value
+
+=== "Return values"
+
+    * `res` — a modified date
     * `err` — an error if there is an issue
