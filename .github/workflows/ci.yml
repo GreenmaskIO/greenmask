@@ -191,7 +191,7 @@ jobs:
           for tag in ${{ env.TAGS }}; do
             echo "### CHECKOUT TO ${tag} ###"
             git checkout $tag
-            if [[ "$tag" == *"rc"* || "$tag" == *"dev"* || "$tag" == *"pre"* ]]; then
+            if [[ "$tag" == *"rc"* || "$tag" == *"dev"* || "$tag" == *"pre"* || "$tag" == *"beta"* || "$tag" == *"b"* ]]; then
               mike deploy $tag
             else
               mike deploy --update-aliases $tag latest
