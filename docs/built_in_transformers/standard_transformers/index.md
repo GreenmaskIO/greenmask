@@ -19,7 +19,7 @@ Standard transformers are ready-to-use methods that require no customization and
 1. [RandomUuid](random_uuid.md) — generates a random unique user ID.
 1. [RandomLatitude](random_latitude.md) — generates a random latitude value.
 1. [RandomLongitude](random_longitude.md) — generates a random longitude value.
-1. [RandomUnixTime](random_unix_time.md) — generates a random Unix timestamp.
+1. [RandomUnixTimestamp](random_unix_timestamp.md) — generates a random Unix timestamp.
 1. [RandomDayOfWeek](random_day_of_week.md) — generates a random day of the week.
 1. [RandomDayOfMonth](random_day_of_month.md) — generates a random day of the month.
 1. [RandomMonthName](random_month_name.md) — generates the name of a random month.

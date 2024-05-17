@@ -2,15 +2,15 @@ Add or subtract a random fraction to the original numeric value.
 
 ## Parameters
 
-| Name      | Description                                                                                       | Default  | Required | Supported DB types |
-|-----------|---------------------------------------------------------------------------------------------------|----------|----------|--------------------|
-| column    | The name of the column to be affected                                                             |          | Yes      | numeric, decimal   |
-| decimal   | The decimal of the noised float value (number of digits after the decimal point)                  | `4`      | No       | -                  |
-| min_ratio | The minimum random percentage for noise, from `0` to `1`, e. g. `0.1` means "add noise up to 10%" | `0.05`   | No       | -                  |
-| max_ratio | The maximum random percentage for noise, from `0` to `1`, e. g. `0.1` means "add noise up to 10%" |          | Yes      | -                  |
-| min       | Min threshold of noised value                                                                     |          | No       | -                  |
-| max       | Max threshold of noised value                                                                     |          | No       | -                  |
-| engine    | The engine used for generating the values [random, hash]. Use hash for deterministic generation   | `random` | No       | -                  |
+| Name      | Description                                                                                         | Default  | Required | Supported DB types |
+|-----------|-----------------------------------------------------------------------------------------------------|----------|----------|--------------------|
+| column    | The name of the column to be affected                                                               |          | Yes      | numeric, decimal   |
+| decimal   | The decimal of the noised float value (number of digits after the decimal point)                    | `4`      | No       | -                  |
+| min_ratio | The minimum random percentage for noise, from `0` to `1`, e. g. `0.1` means "add noise up to 10%"   | `0.05`   | No       | -                  |
+| max_ratio | The maximum random percentage for noise, from `0` to `1`, e. g. `0.1` means "add noise up to 10%"   |          | Yes      | -                  |
+| min       | Min threshold of noised value                                                                       |          | No       | -                  |
+| max       | Max threshold of noised value                                                                       |          | No       | -                  |
+| engine    | The engine used for generating the values [`random`, `hash`]. Use hash for deterministic generation | `random` | No       | -                  |
 
 ## Dynamic parameters
 

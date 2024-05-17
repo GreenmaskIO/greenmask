@@ -8,7 +8,7 @@ Replace values randomly chosen from a provided list.
 | values    | A list of values in any format. The string with value `\N` is considered NULL.                                        |          | Yes      | -                  |
 | validate  | Performs a decoding procedure via the PostgreSQL driver using the column type to ensure that values have correct type | `true`   | No       |                    |
 | keep_null | Indicates whether NULL values should be replaced with transformed values or not                                       | `true`   | No       |                    |
-| engine    | The engine used for generating the values [random, hash]. Use hash for deterministic generation                       | `random` | No       | -                  |
+| engine    | The engine used for generating the values [`random`, `hash`]. Use hash for deterministic generation                   | `random` | No       | -                  |
 
 ## Description
 

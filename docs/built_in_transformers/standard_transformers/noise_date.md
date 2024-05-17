@@ -10,7 +10,7 @@ Randomly add or subtract a duration within the provided `ratio` interval to the 
 | min       | Min threshold date (and/or time) of value. The value has the same format as `column` parameter                                                                                              |                              | No       | -                            |
 | max       | Max threshold date (and/or time) of value. The value has the same format as `column` parameter                                                                                              |                              | No       | -                            |
 | truncate  | Truncate the date to the specified part (`nanosecond`, `microsecond`, `millisecond`, `second`, `minute`, `hour`, `day`, `month`, `year`). The truncate operation is not applied by default. |                              | No       | -                            |
-| engine    | The engine used for generating the values [random, hash]. Use hash for deterministic generation                                                                                             | `random`                     | No       | -                            |
+| engine    | The engine used for generating the values [`random`, `hash`]. Use hash for deterministic generation                                                                                         | `random`                     | No       | -                            |
 
 ## Dynamic parameters
 

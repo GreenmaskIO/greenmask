@@ -2,11 +2,11 @@ Generate random boolean values.
 
 ## Parameters
 
-| Name      | Description                                                                                     | Default  | Required | Supported DB types |
-|-----------|-------------------------------------------------------------------------------------------------|----------|----------|--------------------|
-| column    | The name of the column to be affected                                                           |          | Yes      | bool               |
-| keep_null | Indicates whether NULL values should be replaced with transformed values or not                 | `true`   | No       | -                  |
-| engine    | The engine used for generating the values [random, hash]. Use hash for deterministic generation | `random` | No       | -                  |
+| Name      | Description                                                                                         | Default  | Required | Supported DB types |
+|-----------|-----------------------------------------------------------------------------------------------------|----------|----------|--------------------|
+| column    | The name of the column to be affected                                                               |          | Yes      | bool               |
+| keep_null | Indicates whether NULL values should be replaced with transformed values or not                     | `true`   | No       | -                  |
+| engine    | The engine used for generating the values [`random`, `hash`]. Use hash for deterministic generation | `random` | No       | -                  |
 
 ## Description
 

@@ -69,12 +69,13 @@ nav:
               - RandomChoice: built_in_transformers/standard_transformers/random_choice.md
               - RandomDate: built_in_transformers/standard_transformers/random_date.md
               - RandomFloat: built_in_transformers/standard_transformers/random_float.md
+              - RandomNumeric: built_in_transformers/standard_transformers/random_numeric.md
               - RandomInt: built_in_transformers/standard_transformers/random_int.md
               - RandomString: built_in_transformers/standard_transformers/random_string.md
               - RandomUuid: built_in_transformers/standard_transformers/random_uuid.md
               - RandomLatitude: built_in_transformers/standard_transformers/random_latitude.md
               - RandomLongitude: built_in_transformers/standard_transformers/random_longitude.md
-              - RandomUnixTime: built_in_transformers/standard_transformers/random_unix_time.md
+              - RandomUnixTimestamp: built_in_transformers/standard_transformers/random_unix_timestamp.md
               - RandomDayOfWeek: built_in_transformers/standard_transformers/random_day_of_week.md
               - RandomDayOfMonth: built_in_transformers/standard_transformers/random_day_of_month.md
               - RandomMonthName: built_in_transformers/standard_transformers/random_month_name.md

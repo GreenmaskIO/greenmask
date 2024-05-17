@@ -4,11 +4,11 @@ addresses, or anonymizing real IP addresses in datasets.
 
 ## Parameters
 
-| Name   | Description                                                                                     | Default  | Required | Supported DB types  |
-|--------|-------------------------------------------------------------------------------------------------|----------|----------|---------------------|
-| column | The name of the column to be affected                                                           |          | Yes      | text, varchar, inet |
-| subnet | Subnet for generating random ip in V4 or V6 format                                              |          | Yes      | -                   |
-| engine | The engine used for generating the values [random, hash]. Use hash for deterministic generation | `random` | No       | -                   |
+| Name   | Description                                                                                         | Default  | Required | Supported DB types  |
+|--------|-----------------------------------------------------------------------------------------------------|----------|----------|---------------------|
+| column | The name of the column to be affected                                                               |          | Yes      | text, varchar, inet |
+| subnet | Subnet for generating random ip in V4 or V6 format                                                  |          | Yes      | -                   |
+| engine | The engine used for generating the values [`random`, `hash`]. Use hash for deterministic generation | `random` | No       | -                   |
 
 ## Dynamic parameters
 
@@ -65,7 +65,6 @@ Result:
 <td>ip_address</td><td><span style="color:green">192.168.1.10</span></td><td><span style="color:red">192.168.1.28</span></td>
 </tr>
 </table>
-
 
 ## Example: Generate a Random IP Based on the Dynamic Subnet Parameter
 

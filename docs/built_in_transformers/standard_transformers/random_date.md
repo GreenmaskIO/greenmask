@@ -9,7 +9,14 @@ Generate a random date in a specified interval.
 | max       | The maximum threshold date for the random value. The format depends on the column type.                                                                                                     |          | Yes      | -                            |
 | truncate  | Truncate the date to the specified part (`nanosecond`, `microsecond`, `millisecond`, `second`, `minute`, `hour`, `day`, `month`, `year`). The truncate operation is not applied by default. |          | No       | -                            |
 | keep_null | Indicates whether NULL values should be replaced with transformed values or not                                                                                                             | `true`   | No       | -                            |
-| engine    | The engine used for generating the values [random, hash]. Use hash for deterministic generation                                                                                             | `random` | No       | -                            |
+| engine    | The engine used for generating the values [`random`, `hash`]. Use hash for deterministic generation                                                                                         | `random` | No       | -                            |
+
+## Dynamic parameters
+
+| Parameter | Supported types              |
+|-----------|------------------------------|
+| min       | date, timestamp, timestamptz |
+| max       | date, timestamp, timestamptz |
 
 ## Description
 
