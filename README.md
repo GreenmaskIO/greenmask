@@ -10,6 +10,12 @@ backward-compatible with existing PostgreSQL utilities.
 
 # Features
 
+* **Deterministic transformers** — deterministic approach to data transformation based on the hash
+  functions. This ensures that the same input data will always produce the same output data. Almost each transformer
+  supports either `random` or `hash` engine making it universal for any use case.
+* **Dynamic parameters** — almost each transformer supports dynamic parameters, allowing to parametrize the
+  transformer dynamically from the table column value. This is helpful for resolving the functional dependencies 
+  between columns and satisfying the constraints.
 * **Cross-platform** - Can be easily built and executed on any platform, thanks to its Go-based architecture,
   which eliminates platform dependencies.
 * **Database type safe** - Ensures data integrity by validating data and utilizing the database driver for
@@ -51,9 +57,6 @@ The Greenmask utility plays a central role in the Greenmask ecosystem. Our goal 
 solution for managing obfuscation procedures. We recognize the challenges of maintaining obfuscation consistency
 throughout the software lifecycle. Greenmask is dedicated to providing valuable tools and features that ensure the
 obfuscation process remains fresh, predictable, and transparent.
-
-## [Getting started](./getting_started.md)
-
 
 ### General Information
 
@@ -97,10 +100,6 @@ Greenmask introduces the concept of **Storages**.
 * **s3** - This option supports any S3-like storage system, including AWS S3, making it versatile and adaptable to
   various cloud-based storage solutions.
 * **directory** - This is the standard choice, representing the ordinary filesystem directory for local storage.
-
-!!! note
-If you have suggestions for additional storage options that would be valuable to implement, please feel free to
-share your ideas. Greenmask aims to accommodate a wide range of storage preferences to suit diverse backup needs.
 
 ## Restoration Process
 

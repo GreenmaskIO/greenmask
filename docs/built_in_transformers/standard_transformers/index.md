@@ -7,7 +7,8 @@ Standard transformers are ready-to-use methods that require no customization and
 1. [Hash](dict.md) — generates a hash of the text value.
 1. [Masking](masking.md) — masks a value using one of the masking behaviors depending on your domain.
 1. [NoiseDate](noise_date.md) — randomly adds or subtracts a duration within the provided ratio interval to the original date value.
-1. [NoiseFloat](noise_float.md) — adds or subtracts a random fraction to the original float value.
+1. [NoiseFloat](noise_float.md) — adds or subtracts a random fraction to the original float value.terval to the original date value.
+1. [NoiseNumeric](noise_numeric.md) — adds or subtracts a random fraction to the original numeric value.
 1. [NoiseInt](noise_int.md) — adds or subtracts a random fraction to the original integer value.
 1. [RandomBool](random_bool.md) — generates random boolean values.
 1. [RandomChoice](random_choice.md) — replaces values randomly chosen from a provided list.
@@ -18,7 +19,7 @@ Standard transformers are ready-to-use methods that require no customization and
 1. [RandomUuid](random_uuid.md) — generates a random unique user ID.
 1. [RandomLatitude](random_latitude.md) — generates a random latitude value.
 1. [RandomLongitude](random_longitude.md) — generates a random longitude value.
-1. [RandomUnixTime](random_unix_time.md) — generates a random Unix timestamp.
+1. [RandomUnixTimestamp](random_unix_timestamp.md) — generates a random Unix timestamp.
 1. [RandomDayOfWeek](random_day_of_week.md) — generates a random day of the week.
 1. [RandomDayOfMonth](random_day_of_month.md) — generates a random day of the month.
 1. [RandomMonthName](random_month_name.md) — generates the name of a random month.
@@ -28,7 +29,6 @@ Standard transformers are ready-to-use methods that require no customization and
 1. [RandomEmail](random_email.md) — generates a random email address.
 1. [RandomUsername](random_username.md) — generates a random username.
 1. [RandomPassword](random_password.md) — generates a random password.
-1. [RandomMacAddress](random_mac_address.md) — generates a random MAC address.
 1. [RandomDomainName](random_domain_name.md) — generates a random domain name.
 1. [RandomURL](random_url.md) — generates a random URL.
 1. [RandomMac](random_mac.md) — generates a random MAC addresses.

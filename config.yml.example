@@ -25,137 +25,91 @@ dump:
     load-via-partition-root: true
 
   transformation:
-    - schema: "bookings"
-      name: "flights"
-      query: "select * from bookings.flights limit 100"
-      columns_type_override:
-        post_code: "int4"
+    - schema: "public"
+      name: "account"
       transformers:
+        - name: "RandomInt"
+          params:
+            column: "id"
+            engine: hash
+            min: 1
+            max: 2147483647
+
+        - name: "RandomChoice"
+          params:
+            column: "gender"
+            values:
+              - "M"
+              - "F"
+
+        - name: "RandomPerson"
+          params:
+            columns:
+              - name: "first_name"
+                template: "{{ .FirstName }}"
+              - name: "last_name"
+                template: "{{ .LastName }}"
+          dynamic_params:
+            gender:
+              column: gender
+
+        - name: "Email"
+          params:
+            column: "email"
+            engine: "hash"
+            keep_original_domain: true
+            keep_null: false
+            local_part_template: "{{ first_name | lower }}.{{ last_name | lower }}"
+
         - name: "RandomDate"
           params:
-            min: "2023-01-01 00:00:00.0+03"
-            max: "2023-01-02 00:00:00.0+03"
-            column: "scheduled_departure"
-
-        - name: "NoiseDate"
-          params:
-            ratio: "1 day"
-            column: "scheduled_arrival"
-
-        - name: "RegexpReplace"
-          params:
-            column: "departure_airport"
-            regexp: "DME"
-            replace: "SVO"
-
-        - name: "RegexpReplace"
-          params:
-            column: "status"
-            regexp: "On Time"
-            replace: "Delayed"
+            column: "birth_date"
+            min: '{{ now | tsModify "-30 years" | .EncodeValue }}' # 1994
+            max: '{{ now | tsModify "-18 years" | .EncodeValue }}' # 2006
 
         - name: "RandomDate"
           params:
-            column: "actual_departure"
-            min: "2023-01-03 01:00:00.0+03"
-            max: "2023-01-04 00:00:00.0+03"
+            column: "created_at"
+            max: "{{ now | .EncodeValue }}"
+            truncate: "day"
+          dynamic_params:
+            min:
+              column: "birth_date"
+              template: '{{ .GetValue | tsModify "18 years" | .EncodeValue }}'
 
-        - name: "RandomDate"
-          params:
-            column: "actual_arrival"
-            min: "2023-01-04 01:00:00.0+03"
-            max: "2023-01-05 00:00:00.0+03"
+    - schema: "public"
+      name: "orders"
+      transformers:
 
         - name: "RandomInt"
           params:
-            column: "post_code"
-            min: "11"
-            max: "99"
+            column: "account_id"
+            engine: hash
+            min: 1
+            max: 2147483647
 
-        - name: "Replace"
+        - name: "NoiseNumeric"
           params:
-            column: "post_code"
-            value: "54321"
+              column: "total_price"
+              decimal: 2
+              min_ratio: 0.1
+              max_ratio: 0.9
 
-        - name: "TwoDatesGen"
+        - name: "NoiseDate"
           params:
-            column_a: "scheduled_arrival"
-            column_b: "actual_arrival"
+            column: "created_at"
+            max_ratio: "6 day"
+            min_ratio: "1 day"
+            truncate: "day"
 
-        - name: "TestTransformer"
-          params:
-            column: "actual_arrival"
-
-        - name: "Cmd"
-          params:
-            executable: "cmd_test.sh"
-            driver:
-              name: "json"
-              params:
-                format: "bytes"
-            timeout: "60s"
-            validate_output: true
-            expected_exit_code: -1
-            skip_on_behaviour: "any"
-            columns:
-              - name: "actual_arrival"
-                skip_original_data: true
-                skip_on_null_input: true
-              - name: "scheduled_arrival"
-                skip_original_data: true
-#
-        - name: "TestTransformer"
-          params:
-            column: "scheduled_arrival"
-
-    - schema: "bookings"
-      name: "measurement"
-      apply_for_inherited: True
-      transformers:
         - name: "RandomDate"
           params:
-            column: "logdate"
-            min: "2023-01-03"
-            max: "2023-01-30"
-
-        - name: "TemplateRecord"
-          params:
-            validate: false
-            columns:
-              - "scheduled_departure"
-            template: >
-              {{- $val := .GetValue "scheduled_departure" -}}
-              {{- if isNull $val -}}
-              {{ now | dateModify "24h" | .SetValue "scheduled_departure" }}
-              {{ else }}
-              {{ now | dateModify "48h" | .SetValue "scheduled_departure" }}
-              {{ end }}
-
-
-    - schema: "bookings"
-      name: "aircrafts_data"
-      transformers:
-        - name: "Json"
-          params:
-            column: "model"
-            operations:
-              - operation: "set"
-                path: "en"
-                value: "Boeing 777-300-2023"
-              - operation: "set"
-                path: "crewSize"
-                value: 10
-
-        - name: "NoiseInt"
-          params:
-            ratio: 0.9
-            column: "range"
-
-        - name: "NoiseFloat"
-          params:
-            ratio: 0.1
-            column: "test_float"
-            precision: 2
+            column: "paid_at"
+            max: '{{ now | .EncodeValue }}'
+            truncate: "day"
+          dynamic_params:
+            min:
+              column: "created_at"
 
 restore:
   pg_restore_options:

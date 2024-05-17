@@ -14,7 +14,7 @@ theme:
     - content.tooltips
     # - navigation.sections
     - navigation.tabs
-    #    - navigation.top
+    - navigation.top
     #    - navigation.tracking
     - search.highlight
     - search.share
@@ -53,6 +53,8 @@ nav:
       - Commands: commands.md
       - Transformers:
           - built_in_transformers/index.md
+          - Dynamic parameters: built_in_transformers/dynamic_parameters.md
+          - Transformation engines: built_in_transformers/transformation_engines.md
           - Standard transformers:
               - built_in_transformers/standard_transformers/index.md
               - Cmd: built_in_transformers/standard_transformers/cmd.md
@@ -61,17 +63,19 @@ nav:
               - Masking: built_in_transformers/standard_transformers/masking.md
               - NoiseDate: built_in_transformers/standard_transformers/noise_date.md
               - NoiseFloat: built_in_transformers/standard_transformers/noise_float.md
+              - NoiseNumeric: built_in_transformers/standard_transformers/noise_numeric.md
               - NoiseInt: built_in_transformers/standard_transformers/noise_int.md
               - RandomBool: built_in_transformers/standard_transformers/random_bool.md
               - RandomChoice: built_in_transformers/standard_transformers/random_choice.md
               - RandomDate: built_in_transformers/standard_transformers/random_date.md
               - RandomFloat: built_in_transformers/standard_transformers/random_float.md
+              - RandomNumeric: built_in_transformers/standard_transformers/random_numeric.md
               - RandomInt: built_in_transformers/standard_transformers/random_int.md
               - RandomString: built_in_transformers/standard_transformers/random_string.md
               - RandomUuid: built_in_transformers/standard_transformers/random_uuid.md
               - RandomLatitude: built_in_transformers/standard_transformers/random_latitude.md
               - RandomLongitude: built_in_transformers/standard_transformers/random_longitude.md
-              - RandomUnixTime: built_in_transformers/standard_transformers/random_unix_time.md
+              - RandomUnixTimestamp: built_in_transformers/standard_transformers/random_unix_timestamp.md
               - RandomDayOfWeek: built_in_transformers/standard_transformers/random_day_of_week.md
               - RandomDayOfMonth: built_in_transformers/standard_transformers/random_day_of_month.md
               - RandomMonthName: built_in_transformers/standard_transformers/random_month_name.md
@@ -81,10 +85,10 @@ nav:
               - RandomEmail: built_in_transformers/standard_transformers/random_email.md
               - RandomUsername: built_in_transformers/standard_transformers/random_username.md
               - RandomPassword: built_in_transformers/standard_transformers/random_password.md
-              - RandomMacAddress: built_in_transformers/standard_transformers/random_mac_address.md
               - RandomDomainName: built_in_transformers/standard_transformers/random_domain_name.md
               - RandomPerson: built_in_transformers/standard_transformers/random_person.md
               - RandomURL: built_in_transformers/standard_transformers/random_url.md
+              - RandomMac: built_in_transformers/standard_transformers/random_mac.md
               - RandomIP: built_in_transformers/standard_transformers/random_ip.md
               - RandomWord: built_in_transformers/standard_transformers/random_word.md
               - RandomSentence: built_in_transformers/standard_transformers/random_sentence.md
