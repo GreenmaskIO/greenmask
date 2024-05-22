@@ -2,14 +2,10 @@ package transformers
 
 import (
 	"context"
-	"errors"
 	"fmt"
 
 	"github.com/greenmaskio/greenmask/internal/generators"
-)
-
-var (
-	ErrWrongLimits = errors.New("wrong limits")
+	int_utils "github.com/greenmaskio/greenmask/internal/generators/transformers/utils"
 )
 
 type Int64Limiter struct {
@@ -18,9 +14,25 @@ type Int64Limiter struct {
 	distance uint64
 }
 
-func NewInt64Limiter(minValue, maxValue int64) (*Int64Limiter, error) {
+// NewInt64Limiter - create limiter by int size. size is required for optional min and max.
+func NewInt64Limiter(minValue, maxValue int64, size int) (*Int64Limiter, error) {
+	if minValue == 0 || maxValue == 0 {
+		minThreshold, maxThreshold, err := int_utils.GetIntThresholds(size)
+		if err != nil {
+			return nil, err
+		}
+
+		if minValue == 0 {
+			minValue = minThreshold
+		}
+
+		if maxValue == 0 {
+			maxValue = maxThreshold
+		}
+	}
+
 	if minValue >= maxValue {
-		return nil, ErrWrongLimits
+		return nil, int_utils.ErrWrongLimits
 	}
 
 	return &Int64Limiter{

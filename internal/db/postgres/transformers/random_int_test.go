@@ -73,6 +73,22 @@ func TestRandomIntTransformer_Transform_random_static(t *testing.T) {
 				"engine":    toolkit.ParamsValue("random"),
 			},
 		},
+		{
+			name:           "int2 without max",
+			columnName:     "id2",
+			originalValue:  "12345",
+			expectedRegexp: `^\d{1,5}$`,
+			params: map[string]toolkit.ParamsValue{
+				"min": toolkit.ParamsValue("1"),
+			},
+		},
+		{
+			name:           "int4 without min and max",
+			columnName:     "id4",
+			originalValue:  "12345",
+			expectedRegexp: `^\d{1,11}$`,
+			params:         map[string]toolkit.ParamsValue{},
+		},
 	}
 
 	for _, tt := range tests {

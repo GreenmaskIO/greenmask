@@ -6,6 +6,7 @@ import (
 	"math"
 
 	"github.com/greenmaskio/greenmask/internal/generators"
+	int_utils "github.com/greenmaskio/greenmask/internal/generators/transformers/utils"
 )
 
 type Float64Limiter struct {
@@ -16,7 +17,7 @@ type Float64Limiter struct {
 
 func NewFloat64Limiter(minValue, maxValue float64, precision int) (*Float64Limiter, error) {
 	if minValue >= maxValue {
-		return nil, ErrWrongLimits
+		return nil, int_utils.ErrWrongLimits
 	}
 	return &Float64Limiter{
 		minValue:  minValue,

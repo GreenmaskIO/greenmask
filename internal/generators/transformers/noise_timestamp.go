@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/greenmaskio/greenmask/internal/generators"
+	int_utils "github.com/greenmaskio/greenmask/internal/generators/transformers/utils"
 )
 
 type NoiseTimestampLimiter struct {
@@ -17,7 +18,7 @@ type NoiseTimestampLimiter struct {
 func NewNoiseTimestampLimiter(minDate, maxDate *time.Time) (*NoiseTimestampLimiter, error) {
 
 	if minDate != nil && maxDate != nil && minDate.After(*maxDate) {
-		return nil, ErrWrongLimits
+		return nil, int_utils.ErrWrongLimits
 	}
 
 	return &NoiseTimestampLimiter{
@@ -49,7 +50,7 @@ type NoiseTimestamp struct {
 func NewNoiseTimestamp(minRatio, maxRatio time.Duration, truncatePart string, limiter *NoiseTimestampLimiter) (*NoiseTimestamp, error) {
 
 	if minRatio >= maxRatio {
-		return nil, ErrWrongLimits
+		return nil, int_utils.ErrWrongLimits
 	}
 
 	var dt *DateTruncater

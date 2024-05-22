@@ -17,17 +17,10 @@ package transformers
 import (
 	"context"
 	"fmt"
-	"math"
-
 	"github.com/greenmaskio/greenmask/internal/db/postgres/transformers/utils"
 	"github.com/greenmaskio/greenmask/internal/generators/transformers"
+	int_utils "github.com/greenmaskio/greenmask/internal/generators/transformers/utils"
 	"github.com/greenmaskio/greenmask/pkg/toolkit"
-)
-
-const (
-	Int2Length = 2
-	Int4Length = 4
-	Int8Length = 8
 )
 
 var integerTransformerDefinition = utils.NewTransformerDefinition(
@@ -235,21 +228,8 @@ func (rit *IntegerTransformer) Transform(ctx context.Context, r *toolkit.Record)
 	return r, nil
 }
 
-func getIntThresholds(size int) (int64, int64, error) {
-	switch size {
-	case Int2Length:
-		return math.MinInt16, math.MaxInt16, nil
-	case Int4Length:
-		return math.MinInt32, math.MaxInt32, nil
-	case Int8Length:
-		return math.MinInt16, math.MaxInt16, nil
-	}
-
-	return 0, 0, fmt.Errorf("unsupported int size %d", size)
-}
-
 func getRandomInt64LimiterForDynamicParameter(size int, requestedMinValue, requestedMaxValue int64) (*transformers.Int64Limiter, error) {
-	minValue, maxValue, err := getIntThresholds(size)
+	minValue, maxValue, err := int_utils.GetIntThresholds(size)
 	if err != nil {
 		return nil, err
 	}
@@ -262,13 +242,13 @@ func getRandomInt64LimiterForDynamicParameter(size int, requestedMinValue, reque
 		return nil, fmt.Errorf("requested dynamic parameter max value is out of range of int%d size", size)
 	}
 
-	limiter, err := transformers.NewInt64Limiter(minValue, maxValue)
+	limiter, err := transformers.NewInt64Limiter(minValue, maxValue, size)
 	if err != nil {
 		return nil, err
 	}
 
 	if requestedMinValue != 0 || requestedMaxValue != 0 {
-		limiter, err = transformers.NewInt64Limiter(requestedMinValue, requestedMaxValue)
+		limiter, err = transformers.NewInt64Limiter(requestedMinValue, requestedMaxValue, size)
 		if err != nil {
 			return nil, err
 		}
@@ -291,7 +271,7 @@ func validateIntTypeAndSetRandomInt64Limiter(
 	if warns.IsFatal() {
 		return nil, warns, nil
 	}
-	l, err := transformers.NewInt64Limiter(minValue, maxValue)
+	l, err := transformers.NewInt64Limiter(minValue, maxValue, size)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -302,7 +282,7 @@ func validateInt64AndGetLimits(
 	size int, requestedMinValue, requestedMaxValue int64,
 ) (int64, int64, toolkit.ValidationWarnings, error) {
 	var warns toolkit.ValidationWarnings
-	minValue, maxValue, err := getIntThresholds(size)
+	minValue, maxValue, err := int_utils.GetIntThresholds(size)
 	if err != nil {
 		return 0, 0, nil, err
 	}

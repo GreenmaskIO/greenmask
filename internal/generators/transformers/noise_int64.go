@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/greenmaskio/greenmask/internal/generators"
+	int_utils "github.com/greenmaskio/greenmask/internal/generators/transformers/utils"
 )
 
 const (
@@ -19,7 +20,7 @@ type NoiseInt64Limiter struct {
 
 func NewNoiseInt64Limiter(minVal, maxVal int64) (*NoiseInt64Limiter, error) {
 	if minVal >= maxVal {
-		return nil, ErrWrongLimits
+		return nil, int_utils.ErrWrongLimits
 	}
 	return &NoiseInt64Limiter{
 		MinValue: minVal,

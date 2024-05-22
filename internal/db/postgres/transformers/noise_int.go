@@ -20,6 +20,7 @@ import (
 
 	"github.com/greenmaskio/greenmask/internal/db/postgres/transformers/utils"
 	"github.com/greenmaskio/greenmask/internal/generators/transformers"
+	int_utils "github.com/greenmaskio/greenmask/internal/generators/transformers/utils"
 	"github.com/greenmaskio/greenmask/pkg/toolkit"
 )
 
@@ -248,7 +249,7 @@ func getMinAndMaxIntDynamicValueNoiseIntTrans(intSize int, minParam, maxParam to
 
 	var requestedMinValue, requestedMaxValue int64
 	var minRequested, maxRequested bool
-	minValue, maxValue, err := getIntThresholds(intSize)
+	minValue, maxValue, err := int_utils.GetIntThresholds(intSize)
 	if err != nil {
 		return 0, 0, err
 	}
