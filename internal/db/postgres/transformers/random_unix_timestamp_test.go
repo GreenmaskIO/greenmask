@@ -125,6 +125,7 @@ func TestUnixTimestampTransformer_Transform__positive_cases__static(t *testing.T
 				context.Background(),
 				driver, tt.params,
 				nil,
+				"",
 			)
 			require.NoError(t, err)
 			require.Empty(t, warnings)
@@ -200,6 +201,7 @@ func TestUnixTimestampTransformer_Transform_null_cases(t *testing.T) {
 				context.Background(),
 				driver, tt.params,
 				nil,
+				"",
 			)
 			require.NoError(t, err)
 			require.Empty(t, warnings)
@@ -276,6 +278,7 @@ func TestUnixTimestampTransformer_Transform_dynamic(t *testing.T) {
 				driver,
 				tt.params,
 				tt.dynamicParams,
+				"",
 			)
 			require.NoError(t, err)
 			require.Empty(t, warnings)

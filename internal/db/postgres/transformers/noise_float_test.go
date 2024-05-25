@@ -118,6 +118,7 @@ func TestNoiseFloatTransformer_Transform(t *testing.T) {
 				driver,
 				tt.params,
 				nil,
+				"",
 			)
 			require.NoError(t, err)
 			require.Empty(t, warnings)

@@ -118,7 +118,7 @@ func validateAndBuildTablesConfig(
 			// InitTransformation toolkit
 			if len(tableCfg.Transformers) > 0 {
 				for _, tc := range tableCfg.Transformers {
-					transformer, initWarnings, err := initTransformer(ctx, driver, tc, registry, types)
+					transformer, initWarnings, err := initTransformer(ctx, driver, tc, registry)
 					if len(initWarnings) > 0 {
 						for _, w := range initWarnings {
 							// Enriching the tables context into meta

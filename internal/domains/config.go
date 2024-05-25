@@ -121,6 +121,7 @@ type TransformerConfig struct {
 	// this is used only due to https://github.com/spf13/viper/issues/373
 	MetadataParams map[string]any            `mapstructure:"-" yaml:"params,omitempty" json:"params,omitempty"`
 	DynamicParams  toolkit.DynamicParameters `mapstructure:"dynamic_params" yaml:"dynamic_params" json:"dynamic_params,omitempty"`
+	When           string                    `mapstructure:"when" yaml:"when" json:"when,omitempty"`
 }
 
 type Table struct {
@@ -130,6 +131,7 @@ type Table struct {
 	ApplyForInherited   bool                 `mapstructure:"apply_for_inherited" yaml:"apply_for_inherited" json:"apply_for_inherited,omitempty"`
 	Transformers        []*TransformerConfig `mapstructure:"transformers" yaml:"transformers" json:"transformers,omitempty"`
 	ColumnsTypeOverride map[string]string    `mapstructure:"columns_type_override" yaml:"columns_type_override" json:"columns_type_override,omitempty"`
+	When                string               `mapstructure:"when" yaml:"when" json:"when,omitempty"`
 }
 
 // DummyConfig - This is a dummy config to the viper workaround

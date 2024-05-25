@@ -100,7 +100,7 @@ func TestDefinition(t *testing.T) {
 		"replace": []byte("2023-08-27 12:08:11.304895"),
 	}
 
-	_, warnings, err := TestTransformerDefinition.Instance(context.Background(), driver, rawParams, nil)
+	_, warnings, err := TestTransformerDefinition.Instance(context.Background(), driver, rawParams, nil, "")
 	require.NoError(t, err)
 	assert.Empty(t, warnings)
 }

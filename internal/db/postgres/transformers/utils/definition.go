@@ -18,6 +18,9 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/expr-lang/expr"
+	"github.com/expr-lang/expr/vm"
+
 	"github.com/greenmaskio/greenmask/pkg/toolkit"
 )
 
@@ -56,10 +59,36 @@ type TransformerContext struct {
 	Transformer       Transformer
 	StaticParameters  map[string]*toolkit.StaticParameter
 	DynamicParameters map[string]*toolkit.DynamicParameter
+	whenCond          *vm.Program
+	whenEnv           expr.Option
+	rc                *toolkit.RecordContext
+}
+
+func (tc *TransformerContext) SetRecord(r *toolkit.Record) {
+	tc.rc.SetRecord(r)
+}
+
+func (tc *TransformerContext) EvaluateWhen() (bool, error) {
+	if tc.whenCond == nil {
+		return true, nil
+	}
+
+	output, err := expr.Run(tc.whenCond, nil)
+	if err != nil {
+		return false, fmt.Errorf("unable to evaluate when condition: %w", err)
+	}
+
+	cond, ok := output.(bool)
+	if ok {
+		return cond, nil
+	}
+
+	return false, fmt.Errorf("when condition should return boolean, got (%T) and value %+v", cond, cond)
 }
 
 func (d *TransformerDefinition) Instance(
 	ctx context.Context, driver *toolkit.Driver, rawParams map[string]toolkit.ParamsValue, dynamicParameters map[string]*toolkit.DynamicParamValue,
+	whenCond string,
 ) (*TransformerContext, toolkit.ValidationWarnings, error) {
 	// DecodeValue parameters and get the pgcopy of parsed
 	params, parametersWarnings, err := toolkit.InitParameters(driver, d.Parameters, rawParams, dynamicParameters)
@@ -103,9 +132,51 @@ func (d *TransformerDefinition) Instance(
 	res = append(res, schemaWarnings...)
 	res = append(res, transformerWarnings...)
 
+	cond, rc, condWarns := compileCond(whenCond, driver)
+	res = append(res, condWarns...)
+
 	return &TransformerContext{
 		Transformer:       t,
 		StaticParameters:  staticParams,
 		DynamicParameters: dynamicParams,
+		whenCond:          cond,
+		rc:                rc,
 	}, res, nil
+}
+
+func compileCond(whenCond string, driver *toolkit.Driver) (*vm.Program, *toolkit.RecordContext, toolkit.ValidationWarnings) {
+	if whenCond == "" {
+		return nil, nil, nil
+	}
+	rc, funcs := newRecordContext(driver)
+
+	cond, err := expr.Compile(whenCond, funcs...)
+	if err != nil {
+		return nil, nil, toolkit.ValidationWarnings{
+			toolkit.NewValidationWarning().
+				SetSeverity(toolkit.ErrorValidationSeverity).
+				AddMeta("Error", err.Error()).
+				SetMsg("unable to compile when condition"),
+		}
+	}
+
+	return cond, rc, nil
+}
+
+func newRecordContext(driver *toolkit.Driver) (*toolkit.RecordContext, []expr.Option) {
+	var funcs []expr.Option
+	rctx := toolkit.NewRecordContext()
+	for _, c := range driver.Table.Columns {
+
+		f := expr.Function(
+			c.Name,
+			func(name string) func(params ...any) (any, error) {
+				return func(params ...any) (any, error) {
+					return rctx.GetColumnRawValue(name)
+				}
+			}(c.Name),
+		)
+		funcs = append(funcs, f)
+	}
+	return rctx, funcs
 }

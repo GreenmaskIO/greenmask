@@ -130,7 +130,15 @@ func (tp *TransformationPipeline) Init(ctx context.Context) error {
 
 func (tp *TransformationPipeline) TransformSync(ctx context.Context, r *toolkit.Record) (*toolkit.Record, error) {
 	var err error
+	var needTransform bool
 	for _, t := range tp.table.TransformersContext {
+		needTransform, err = t.EvaluateWhen()
+		if err != nil {
+			return nil, NewDumpError(tp.table.Schema, tp.table.Name, tp.line, fmt.Errorf("error evaluating when condition: %w", err))
+		}
+		if !needTransform {
+			continue
+		}
 		_, err = t.Transformer.Transform(ctx, r)
 		if err != nil {
 			return nil, NewDumpError(tp.table.Schema, tp.table.Name, tp.line, err)
