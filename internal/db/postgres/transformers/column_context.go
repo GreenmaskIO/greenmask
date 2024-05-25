@@ -49,7 +49,7 @@ func (cc *ColumnContext) GetValue() (any, error) {
 }
 
 func (cc *ColumnContext) GetRawValue() (any, error) {
-	return cc.rc.GetRawColumnValue(cc.columnName)
+	return cc.rc.GetColumnRawValue(cc.columnName)
 }
 
 func (cc *ColumnContext) GetColumnValue(name string) (any, error) {
@@ -57,7 +57,7 @@ func (cc *ColumnContext) GetColumnValue(name string) (any, error) {
 }
 
 func (cc *ColumnContext) GetColumnRawValue(name string) (any, error) {
-	return cc.rc.GetRawColumnValue(name)
+	return cc.rc.GetColumnRawValue(name)
 }
 
 func (cc *ColumnContext) EncodeValue(v any) (any, error) {

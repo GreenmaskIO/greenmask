@@ -131,6 +131,7 @@ func TestRandomMacTransformer_Transform_random(t *testing.T) {
 				driver,
 				tt.params,
 				nil,
+				"",
 			)
 			require.NoError(t, err)
 			require.Empty(t, warnings)

@@ -76,6 +76,7 @@ func TestNoiseIntTransformer_Transform(t *testing.T) {
 					"min_ratio": toolkit.ParamsValue(fmt.Sprintf("%f", tt.ratio)),
 				},
 				nil,
+				"",
 			)
 			require.NoError(t, err)
 			require.Empty(t, warnings)

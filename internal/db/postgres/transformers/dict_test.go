@@ -41,6 +41,7 @@ func TestDictTransformer_Transform_with_fail(t *testing.T) {
 		context.Background(),
 		driver, params,
 		nil,
+		"",
 	)
 	require.NoError(t, err)
 	require.Empty(t, warnings)
@@ -85,6 +86,7 @@ func TestDictTransformer_Transform_validation_error(t *testing.T) {
 		context.Background(),
 		driver, params,
 		nil,
+		"",
 	)
 	require.NoError(t, err)
 	require.NotEmpty(t, warnings)
@@ -101,6 +103,7 @@ func TestDictTransformer_Transform_validation_error(t *testing.T) {
 		context.Background(),
 		driver, params,
 		nil,
+		"",
 	)
 	require.NoError(t, err)
 	require.NotEmpty(t, warnings)
@@ -121,6 +124,7 @@ func TestDictTransformer_Transform_error_not_matched(t *testing.T) {
 		context.Background(),
 		driver, params,
 		nil,
+		"",
 	)
 	require.NoError(t, err)
 	require.Empty(t, warnings)
@@ -149,6 +153,7 @@ func TestDictTransformer_Transform_use_default(t *testing.T) {
 		context.Background(),
 		driver, params,
 		nil,
+		"",
 	)
 	require.NoError(t, err)
 	require.Empty(t, warnings)
@@ -180,6 +185,7 @@ func TestDictTransformer_Transform_with_int_values(t *testing.T) {
 		context.Background(),
 		driver, params,
 		nil,
+		"",
 	)
 	require.NoError(t, err)
 	require.Empty(t, warnings)

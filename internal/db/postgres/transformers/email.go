@@ -91,7 +91,7 @@ type EmailTransformer struct {
 	originalDomain           []byte
 	randomBytesBuf           []byte
 	hexEncodedRandomBytesBuf []byte
-	rrctx                    *RoRecordContext
+	rctx                     *toolkit.RecordContext
 }
 
 func NewEmailTransformer(ctx context.Context, driver *toolkit.Driver, parameters map[string]toolkit.Parameterizer) (utils.Transformer, toolkit.ValidationWarnings, error) {
@@ -141,7 +141,7 @@ func NewEmailTransformer(ctx context.Context, driver *toolkit.Driver, parameters
 		return nil, nil, fmt.Errorf(`unable to scan "domain_part_template" param: %w`, err)
 	}
 
-	rrctx := NewRoRecordContext()
+	rrctx := toolkit.NewRecordContext()
 	funcMap := toolkit.FuncMap()
 	if localPartTemplate != "" || domainTemplate != "" {
 		for _, c := range driver.Table.Columns {
@@ -208,7 +208,7 @@ func NewEmailTransformer(ctx context.Context, driver *toolkit.Driver, parameters
 		validate:                 validate,
 		buf:                      bytes.NewBuffer(nil),
 		hexEncodedRandomBytesBuf: make([]byte, hex.EncodedLen(emailTransformerGeneratorSize)),
-		rrctx:                    rrctx,
+		rctx:                     rrctx,
 	}, nil, nil
 }
 
@@ -263,7 +263,7 @@ func (rit *EmailTransformer) setupTemplateContext(originalEmail []byte, r *toolk
 	if rit.localPartTemplate != nil && rit.domainTemplate != nil && !rit.keepOriginalDomain {
 		return nil
 	}
-	rit.rrctx.setRecord(r)
+	rit.rctx.SetRecord(r)
 
 	originalLocalPart, originalDomain, err := EmailParse(originalEmail)
 	if err != nil {

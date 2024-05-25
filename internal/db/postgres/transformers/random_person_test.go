@@ -32,6 +32,7 @@ func TestRandomPersonTransformer_Transform_static_fullname(t *testing.T) {
 		driver,
 		params,
 		nil,
+		"",
 	)
 	require.NoError(t, err)
 	require.Empty(t, warnings)
@@ -69,6 +70,7 @@ func TestRandomPersonTransformer_Transform_static_firstname(t *testing.T) {
 		driver,
 		params,
 		nil,
+		"",
 	)
 	require.NoError(t, err)
 	require.Empty(t, warnings)
@@ -106,6 +108,7 @@ func TestRandomPersonTransformer_Transform_static_lastname(t *testing.T) {
 		driver,
 		params,
 		nil,
+		"",
 	)
 	require.NoError(t, err)
 	require.Empty(t, warnings)

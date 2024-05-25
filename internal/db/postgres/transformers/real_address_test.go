@@ -44,6 +44,7 @@ func TestRealAddressTransformer_Transform(t *testing.T) {
 			"columns": rawData,
 		},
 		nil,
+		"",
 	)
 
 	require.NoError(t, err)
@@ -77,6 +78,7 @@ func TestMakeNewFakeTransformerFunction_parsing_error(t *testing.T) {
 			"columns": rawData,
 		},
 		nil,
+		"",
 	)
 	require.Len(t, warnings, 1)
 	require.Equal(t, "error parsing template", warnings[0].Msg)
@@ -102,6 +104,7 @@ func TestMakeNewFakeTransformerFunction_validation_error(t *testing.T) {
 			"columns": rawData,
 		},
 		nil,
+		"",
 	)
 	require.Len(t, warnings, 1)
 	require.Equal(t, "error validating template", warnings[0].Msg)

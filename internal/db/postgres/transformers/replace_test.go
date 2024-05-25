@@ -87,6 +87,7 @@ func TestReplaceTransformer_Transform(t *testing.T) {
 				driver,
 				tt.params,
 				nil,
+				"",
 			)
 			require.NoError(t, err)
 			require.Empty(t, warnings)
@@ -146,6 +147,7 @@ func TestReplaceTransformer_Transform_with_raw_value(t *testing.T) {
 				driver,
 				tt.params,
 				nil,
+				"",
 			)
 			require.NoError(t, err)
 			require.Empty(t, warnings)
@@ -185,6 +187,7 @@ func TestReplaceTransformer_Transform_with_validation_error(t *testing.T) {
 		driver,
 		params,
 		nil,
+		"",
 	)
 	require.NoError(t, err)
 	assert.NotEmpty(t, warnings)

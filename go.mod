@@ -6,6 +6,7 @@ require (
 	github.com/Masterminds/sprig/v3 v3.2.3
 	github.com/aws/aws-sdk-go v1.51.14
 	github.com/dchest/siphash v1.2.3
+	github.com/expr-lang/expr v1.16.7
 	github.com/ggwhite/go-masker v1.1.0
 	github.com/go-faker/faker/v4 v4.4.0
 	github.com/google/uuid v1.6.0
