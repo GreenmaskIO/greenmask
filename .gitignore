@@ -27,4 +27,3 @@ venv
 .cache
 # Binaries
 cmd/greenmask/greenmask
-pkg/toolkit/test/test

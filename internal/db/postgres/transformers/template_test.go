@@ -48,6 +48,7 @@ func TestTemplateTransformer_Transform_int(t *testing.T) {
 			"template": toolkit.ParamsValue(template),
 		},
 		nil,
+		"",
 	)
 	require.NoError(t, err)
 	assert.Empty(t, warnings)
@@ -86,6 +87,7 @@ func TestTemplateTransformer_Transform_timestamp(t *testing.T) {
 			"template": toolkit.ParamsValue(template),
 		},
 		nil,
+		"",
 	)
 	require.NoError(t, err)
 	assert.Empty(t, warnings)

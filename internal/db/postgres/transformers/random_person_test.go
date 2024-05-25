@@ -6,11 +6,12 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/rs/zerolog/log"
+	"github.com/stretchr/testify/require"
+
 	"github.com/greenmaskio/greenmask/internal/db/postgres/transformers/utils"
 	"github.com/greenmaskio/greenmask/internal/generators/transformers"
 	"github.com/greenmaskio/greenmask/pkg/toolkit"
-	"github.com/rs/zerolog/log"
-	"github.com/stretchr/testify/require"
 )
 
 func TestRandomPersonTransformer_Transform_static_fullname(t *testing.T) {
@@ -32,6 +33,7 @@ func TestRandomPersonTransformer_Transform_static_fullname(t *testing.T) {
 		driver,
 		params,
 		nil,
+		"",
 	)
 	require.NoError(t, err)
 	require.Empty(t, warnings)
@@ -69,6 +71,7 @@ func TestRandomPersonTransformer_Transform_static_firstname(t *testing.T) {
 		driver,
 		params,
 		nil,
+		"",
 	)
 	require.NoError(t, err)
 	require.Empty(t, warnings)
@@ -106,6 +109,7 @@ func TestRandomPersonTransformer_Transform_static_lastname(t *testing.T) {
 		driver,
 		params,
 		nil,
+		"",
 	)
 	require.NoError(t, err)
 	require.Empty(t, warnings)
@@ -150,6 +154,7 @@ func TestRandomPersonTransformer_Transform_static_nullable(t *testing.T) {
 		driver,
 		params,
 		nil,
+		"",
 	)
 	require.NoError(t, err)
 	require.Empty(t, warnings)

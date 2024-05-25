@@ -27,7 +27,6 @@ func initTransformer(
 	ctx context.Context, d *toolkit.Driver,
 	c *domains.TransformerConfig,
 	r *transformersUtils.TransformerRegistry,
-	types []*toolkit.Type,
 ) (*transformersUtils.TransformerContext, toolkit.ValidationWarnings, error) {
 	var totalWarnings toolkit.ValidationWarnings
 	td, ok := r.Get(c.Name)
@@ -35,14 +34,14 @@ func initTransformer(
 		totalWarnings = append(totalWarnings,
 			toolkit.NewValidationWarning().
 				SetMsg("transformer not found").
-				SetSeverity(toolkit.ErrorValidationSeverity).SetTrace(&toolkit.Trace{
-				SchemaName:      d.Table.Schema,
-				TableName:       d.Table.Name,
-				TransformerName: c.Name,
-			}))
+				AddMeta("SchemaName", d.Table.Schema).
+				AddMeta("TableName", d.Table.Name).
+				AddMeta("TransformerName", c.Name).
+				SetSeverity(toolkit.ErrorValidationSeverity),
+		)
 		return nil, totalWarnings, nil
 	}
-	transformer, warnings, err := td.Instance(ctx, d, c.Params, c.DynamicParams)
+	transformer, warnings, err := td.Instance(ctx, d, c.Params, c.DynamicParams, c.When)
 	if err != nil {
 		return nil, nil, fmt.Errorf("unable to init transformer: %w", err)
 	}

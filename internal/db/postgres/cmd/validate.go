@@ -130,8 +130,14 @@ func (v *Validate) Run(ctx context.Context) (int, error) {
 		return nonZeroExitCode, fmt.Errorf("unable to build runtime context: %w", err)
 	}
 
-	if err = v.printValidationWarnings(); err != nil {
+	err = toolkit.PrintValidationWarnings(
+		v.context.Warnings, v.config.Validate.ResolvedWarnings, v.config.Validate.Warnings,
+	)
+	if err != nil {
 		return nonZeroExitCode, err
+	}
+	if v.context.IsFatal() {
+		return nonZeroExitCode, fmt.Errorf("fatal validation error")
 	}
 
 	if err = v.diffWithPreviousSchema(ctx); err != nil {
@@ -278,34 +284,6 @@ func (v *Validate) createDocument(ctx context.Context, t *entries.Table) (valida
 	}
 
 	return doc, nil
-}
-
-func (v *Validate) printValidationWarnings() error {
-	// TODO: Implement warnings hook, such as logging and HTTP sender
-	for _, w := range v.context.Warnings {
-		w.MakeHash()
-		if idx := slices.Index(v.config.Validate.ResolvedWarnings, w.Hash); idx != -1 {
-			log.Debug().Str("hash", w.Hash).Msg("resolved warning has been excluded")
-			if w.Severity == toolkit.ErrorValidationSeverity {
-				return fmt.Errorf("warning with hash %s cannot be excluded because it is an error", w.Hash)
-			}
-			continue
-		}
-
-		if w.Severity == toolkit.ErrorValidationSeverity {
-			// The warnings with error severity must be printed anyway
-			log.Error().Any("ValidationWarning", w).Msg("")
-		} else {
-			// Print warnings with severity level lower than ErrorValidationSeverity only if requested
-			if v.config.Validate.Warnings {
-				log.Warn().Any("ValidationWarning", w).Msg("")
-			}
-		}
-	}
-	if v.context.IsFatal() {
-		return fmt.Errorf("fatal validation error")
-	}
-	return nil
 }
 
 func (v *Validate) getTablesToValidate() ([]*domains.Table, error) {

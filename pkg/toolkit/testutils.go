@@ -21,6 +21,10 @@ type TestRowDriver struct {
 	row []string
 }
 
+func newTestRowDriver(row []string) *TestRowDriver {
+	return &TestRowDriver{row: row}
+}
+
 func (trd *TestRowDriver) GetColumn(idx int) (*RawValue, error) {
 	val := trd.row[idx]
 	if val == testNullSeq {

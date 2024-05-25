@@ -30,11 +30,9 @@ import (
 	"github.com/greenmaskio/greenmask/pkg/toolkit"
 )
 
-const tmpFilePath = "/tmp"
-
 var endOfLineSeq = []byte("\n")
 
-type TransformationFunc func(ctx context.Context, r *toolkit.Record) (*toolkit.Record, error)
+type transformationFunc func(ctx context.Context, r *toolkit.Record) (*toolkit.Record, error)
 
 type TransformationPipeline struct {
 	table *entries.Table
@@ -42,15 +40,17 @@ type TransformationPipeline struct {
 	w                     io.Writer
 	line                  uint64
 	row                   *pgcopy.Row
-	transformationWindows []*TransformationWindow
-	Transform             TransformationFunc
+	transformationWindows []*transformationWindow
+	Transform             transformationFunc
 	isAsync               bool
 	record                *toolkit.Record
+	// when - table level when condition
+	when *toolkit.WhenCond
 }
 
 func NewTransformationPipeline(ctx context.Context, eg *errgroup.Group, table *entries.Table, w io.Writer) (*TransformationPipeline, error) {
 
-	var tws []*TransformationWindow
+	var tws []*transformationWindow
 	var isAsync bool
 
 	// TODO: Fix this hint. Async execution cannot be performed with template record because it is unsafe.
@@ -62,13 +62,13 @@ func NewTransformationPipeline(ctx context.Context, eg *errgroup.Group, table *e
 
 	if !hasTemplateRecordTransformer && table.HasCustomTransformer() && len(table.TransformersContext) > 1 {
 		isAsync = true
-		tw := NewTransformationWindow(ctx, eg)
+		tw := newTransformationWindow(ctx, eg)
 		tws = append(tws, tw)
 		for _, t := range table.TransformersContext {
-			if !tw.TryAdd(table, t.Transformer) {
-				tw = NewTransformationWindow(ctx, eg)
+			if !tw.tryAdd(table, t) {
+				tw = newTransformationWindow(ctx, eg)
 				tws = append(tws, tw)
-				tw.TryAdd(table, t.Transformer)
+				tw.tryAdd(table, t)
 			}
 		}
 	}
@@ -90,11 +90,25 @@ func NewTransformationPipeline(ctx context.Context, eg *errgroup.Group, table *e
 		record:                record,
 	}
 
-	var tf TransformationFunc = tp.TransformSync
+	var tf transformationFunc = tp.TransformSync
 	if isAsync {
 		tf = tp.TransformAsync
 	}
 	tp.Transform = tf
+
+	mata := map[string]any{
+		"TableSchema": table.Schema,
+		"TableName":   table.Name,
+	}
+
+	whenCond, warnings := toolkit.NewWhenCond(table.When, table.Driver, mata)
+	if err := toolkit.PrintValidationWarnings(warnings, nil, true); err != nil {
+		return nil, err
+	}
+	if warnings.IsFatal() {
+		return nil, fmt.Errorf("unable to compile when condition: fatal error")
+	}
+	tp.when = whenCond
 
 	return tp, nil
 }
@@ -123,7 +137,7 @@ func (tp *TransformationPipeline) Init(ctx context.Context) error {
 	}
 	if tp.isAsync {
 		for _, w := range tp.transformationWindows {
-			w.Init()
+			w.init()
 		}
 	}
 
@@ -131,8 +145,14 @@ func (tp *TransformationPipeline) Init(ctx context.Context) error {
 }
 
 func (tp *TransformationPipeline) TransformSync(ctx context.Context, r *toolkit.Record) (*toolkit.Record, error) {
-	var err error
 	for _, t := range tp.table.TransformersContext {
+		needTransform, err := t.EvaluateWhen(r)
+		if err != nil {
+			return nil, NewDumpError(tp.table.Schema, tp.table.Name, tp.line, fmt.Errorf("error evaluating when condition: %w", err))
+		}
+		if !needTransform {
+			continue
+		}
 		_, err = t.Transformer.Transform(ctx, r)
 		if err != nil {
 			return nil, NewDumpError(tp.table.Schema, tp.table.Name, tp.line, err)
@@ -159,13 +179,21 @@ func (tp *TransformationPipeline) Dump(ctx context.Context, data []byte) (err er
 	}
 	tp.record.SetRow(tp.row)
 
-	_, err = tp.Transform(ctx, tp.record)
+	needTransform, err := tp.when.Evaluate(tp.record)
 	if err != nil {
-		return NewDumpError(tp.table.Schema, tp.table.Name, tp.line, err)
+		return NewDumpError(tp.table.Schema, tp.table.Name, tp.line, fmt.Errorf("error evaluating when condition: %w", err))
 	}
+
+	if needTransform {
+		_, err = tp.Transform(ctx, tp.record)
+		if err != nil {
+			return NewDumpError(tp.table.Schema, tp.table.Name, tp.line, err)
+		}
+	}
+
 	rowDriver, err := tp.record.Encode()
 	if err != nil {
-		return NewDumpError(tp.table.Schema, tp.table.Name, tp.line, fmt.Errorf("error enocding to RowDriver: %w", err))
+		return NewDumpError(tp.table.Schema, tp.table.Name, tp.line, fmt.Errorf("error enocding Record to RowDriver: %w", err))
 	}
 	res, err := rowDriver.Encode()
 	if err != nil {
@@ -204,7 +232,7 @@ func (tp *TransformationPipeline) Done(ctx context.Context) error {
 	}
 	if tp.isAsync {
 		for _, w := range tp.transformationWindows {
-			w.Done()
+			w.close()
 		}
 	}
 

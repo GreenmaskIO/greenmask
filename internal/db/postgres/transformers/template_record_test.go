@@ -60,6 +60,7 @@ func TestTemplateRecordTransformer_Transform_date(t *testing.T) {
 			"template": toolkit.ParamsValue(template),
 		},
 		nil,
+		"",
 	)
 	require.NoError(t, err)
 	require.Empty(t, warnings)
@@ -85,7 +86,7 @@ func TestTemplateRecordTransformer_Transform_date(t *testing.T) {
 func TestTemplateRecordTransformer_Transform_json(t *testing.T) {
 	var columnName = "doc"
 	var template = `
-	  {{ $val := .GetRawColumnValue "doc" }}
+	  {{ $val := .GetColumnRawValue "doc" }}
 	  {{ jsonSet "name" "hello" $val | jsonValidate | .SetColumnValue "doc" }}
 	`
 
@@ -109,6 +110,7 @@ func TestTemplateRecordTransformer_Transform_json(t *testing.T) {
 			"template": toolkit.ParamsValue(template),
 		},
 		nil,
+		"",
 	)
 	require.NoError(t, err)
 	require.Empty(t, warnings)

@@ -15,26 +15,6 @@ import (
 	"github.com/greenmaskio/greenmask/pkg/toolkit"
 )
 
-type testTransformer struct{}
-
-func (tt *testTransformer) Init(ctx context.Context) error {
-	return nil
-}
-
-func (tt *testTransformer) Done(ctx context.Context) error {
-	return nil
-}
-
-func (tt *testTransformer) Transform(ctx context.Context, r *toolkit.Record) (*toolkit.Record, error) {
-	return nil, nil
-}
-
-func (tt *testTransformer) GetAffectedColumns() map[int]string {
-	return map[int]string{
-		1: "name",
-	}
-}
-
 func TestJsonDocument_GetAffectedColumns(t *testing.T) {
 	tab, _, _ := getTableAndRows()
 	jd := NewJsonDocument(tab, true, true)
@@ -85,6 +65,26 @@ func TestJsonDocument_GetRecords(t *testing.T) {
 	//	driver,
 	//)
 	//r.SetRow(row)
+}
+
+type testTransformer struct{}
+
+func (tt *testTransformer) Init(ctx context.Context) error {
+	return nil
+}
+
+func (tt *testTransformer) Done(ctx context.Context) error {
+	return nil
+}
+
+func (tt *testTransformer) Transform(ctx context.Context, r *toolkit.Record) (*toolkit.Record, error) {
+	return nil, nil
+}
+
+func (tt *testTransformer) GetAffectedColumns() map[int]string {
+	return map[int]string{
+		1: "name",
+	}
 }
 
 func getTableAndRows() (table *entries.Table, original, transformed [][]byte) {

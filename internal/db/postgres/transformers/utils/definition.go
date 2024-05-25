@@ -52,14 +52,9 @@ func (d *TransformerDefinition) SetSchemaValidator(v SchemaValidationFunc) *Tran
 	return d
 }
 
-type TransformerContext struct {
-	Transformer       Transformer
-	StaticParameters  map[string]*toolkit.StaticParameter
-	DynamicParameters map[string]*toolkit.DynamicParameter
-}
-
 func (d *TransformerDefinition) Instance(
 	ctx context.Context, driver *toolkit.Driver, rawParams map[string]toolkit.ParamsValue, dynamicParameters map[string]*toolkit.DynamicParamValue,
+	whenCond string,
 ) (*TransformerContext, toolkit.ValidationWarnings, error) {
 	// DecodeValue parameters and get the pgcopy of parsed
 	params, parametersWarnings, err := toolkit.InitParameters(driver, d.Parameters, rawParams, dynamicParameters)
@@ -103,9 +98,30 @@ func (d *TransformerDefinition) Instance(
 	res = append(res, schemaWarnings...)
 	res = append(res, transformerWarnings...)
 
+	meta := map[string]interface{}{
+		"TableSchema": driver.Table.Schema,
+		"TableName":   driver.Table.Name,
+		"Transformer": d.Properties.Name,
+	}
+
+	when, condWarns := toolkit.NewWhenCond(whenCond, driver, meta)
+	res = append(res, condWarns...)
+
 	return &TransformerContext{
 		Transformer:       t,
 		StaticParameters:  staticParams,
 		DynamicParameters: dynamicParams,
+		When:              when,
 	}, res, nil
+}
+
+type TransformerContext struct {
+	Transformer       Transformer
+	StaticParameters  map[string]*toolkit.StaticParameter
+	DynamicParameters map[string]*toolkit.DynamicParameter
+	When              *toolkit.WhenCond
+}
+
+func (tc *TransformerContext) EvaluateWhen(r *toolkit.Record) (bool, error) {
+	return tc.When.Evaluate(r)
 }
