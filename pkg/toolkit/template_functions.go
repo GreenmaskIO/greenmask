@@ -103,14 +103,17 @@ func FuncMap() template.FuncMap {
 
 		"masking":      func(dataType string, v string) (string, error) { return masking(m, dataType, v) },
 		"truncateDate": truncateDate,
+		"tsModify": func(interval string, val time.Time) (time.Time, error) {
+			return tsModify(typeMap, interval, val)
+		},
 		"noiseDatePgInterval": func(interval string, val time.Time) (time.Time, error) { // TODO: Implement interval validation, do not rely on driver
 			return noiseDatePgInterval(typeMap, randGen, interval, val)
 		},
 		//"noiseDate": func(interval int64, val time.Time) time.Time { // TODO: tests
 		//	return *(utils.NoiseDate(randGen, interval, &val))
 		//},
-		"noiseFloat": func(ratio any, precision int, value any) (float64, error) {
-			return noiseFloat(randGen, precision, ratio, value)
+		"noiseFloat": func(ratio any, decimal int, value any) (float64, error) {
+			return noiseFloat(randGen, decimal, ratio, value)
 		},
 		"noiseInt": func(ratio any, value any) (int64, error) { return noiseInt(randGen, ratio, value) },
 
@@ -374,6 +377,23 @@ func truncateDate(part string, t time.Time) (time.Time, error) {
 	return *res, nil
 }
 
+func tsModify(typeMap *pgtype.Map, interval string, val time.Time) (time.Time, error) {
+	t, _ := typeMap.TypeForName("interval")
+	ratioInterval, err := t.Codec.DecodeValue(typeMap, t.OID, pgx.TextFormatCode, []byte(interval))
+	if err != nil {
+		return time.Time{}, fmt.Errorf("error parsing \"interval\" value \"%s\": %w", interval, err)
+	}
+	intervalValue, ok := ratioInterval.(pgtype.Interval)
+	if !ok {
+		return time.Time{}, fmt.Errorf(`cannot cast "ratio" param to interval value`)
+	}
+	dur := (time.Duration(intervalValue.Days) * time.Hour * 24) +
+		(time.Duration(intervalValue.Months) * 30 * time.Hour * 24) +
+		(time.Duration(intervalValue.Microseconds) * time.Millisecond)
+
+	return val.Add(dur), nil
+}
+
 func noiseDatePgInterval(typeMap *pgtype.Map, randGen *rand.Rand, interval string, val time.Time) (time.Time, error) {
 	t, _ := typeMap.TypeForName("interval")
 	ratioInterval, err := t.Codec.DecodeValue(typeMap, t.OID, pgx.TextFormatCode, []byte(interval))
@@ -391,9 +411,9 @@ func noiseDatePgInterval(typeMap *pgtype.Map, randGen *rand.Rand, interval strin
 	return *(NoiseDateV2(randGen, ratio, &val)), nil
 }
 
-func noiseFloat(randGen *rand.Rand, precision int, ratio any, value any) (float64, error) {
-	if precision < 0 {
-		return 0, fmt.Errorf("precision must be 0 or higher got %d", precision)
+func noiseFloat(randGen *rand.Rand, decimal int, ratio any, value any) (float64, error) {
+	if decimal < 0 {
+		return 0, fmt.Errorf("decimal must be 0 or higher got %d", decimal)
 	}
 
 	r, err := cast.ToFloat64E(ratio)
@@ -410,7 +430,7 @@ func noiseFloat(randGen *rand.Rand, precision int, ratio any, value any) (float6
 		return 0, fmt.Errorf("ratio must be in interval (0, 1] got %f", ratio)
 	}
 
-	return NoiseFloat(randGen, r, v, precision), nil
+	return NoiseFloat(randGen, r, v, decimal), nil
 }
 
 func noiseInt(randGen *rand.Rand, ratio any, value any) (int64, error) {
@@ -440,16 +460,16 @@ func randomDate(randGen *rand.Rand, min, max time.Time) (time.Time, error) {
 }
 
 // randomFloat - generate float randomly in the interval [min, max] with precision. By default precision is 4 digits
-func randomFloat(randGen *rand.Rand, min, max any, precision ...any) (float64, error) {
+func randomFloat(randGen *rand.Rand, min, max any, decimal ...any) (float64, error) {
 	var err error
 	var p = 4
-	if len(precision) > 0 {
-		p, err = cast.ToIntE(precision[0])
+	if len(decimal) > 0 {
+		p, err = cast.ToIntE(decimal[0])
 		if err != nil {
-			return 0, fmt.Errorf("error casting \"precision\" (%+v) to int: %w", precision[0], err)
+			return 0, fmt.Errorf("error casting \"decimal\" (%+v) to int: %w", decimal[0], err)
 		}
 		if p < 0 {
-			return 0, fmt.Errorf("precision must be 0 or higher got %d", p)
+			return 0, fmt.Errorf("decimal must be 0 or higher got %d", p)
 		}
 	}
 
@@ -513,10 +533,10 @@ func randomString(randGen *rand.Rand, minLength, maxLength any, symbols ...strin
 	return RandomString(randGen, minLengthInt, maxLengthInt, s, buf), nil
 }
 
-func roundFloat(precision any, value any) (float64, error) {
-	p, err := cast.ToIntE(precision)
+func roundFloat(decimal any, value any) (float64, error) {
+	p, err := cast.ToIntE(decimal)
 	if err != nil {
-		return 0, fmt.Errorf("error casting \"precision\" (%+v) to int: %w", precision, err)
+		return 0, fmt.Errorf("error casting \"precision\" (%+v) to int: %w", decimal, err)
 	}
 	if p < 0 {
 		return 0, fmt.Errorf("precision must be 0 or higher got %d", p)

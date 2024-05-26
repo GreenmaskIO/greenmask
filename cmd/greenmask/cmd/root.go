@@ -17,6 +17,7 @@ package cmd
 import (
 	"fmt"
 	"runtime/debug"
+	"strings"
 
 	"github.com/mitchellh/mapstructure"
 	"github.com/rs/zerolog"
@@ -99,22 +100,11 @@ func init() {
 	RootCmd.AddCommand(validate.Cmd)
 	RootCmd.AddCommand(show_transformer.Cmd)
 
-	if err := RootCmd.MarkPersistentFlagRequired("config"); err != nil {
-		log.Fatal().Err(err).Msg("")
-	}
-
 	if err := viper.BindPFlag("log.format", RootCmd.PersistentFlags().Lookup("log-format")); err != nil {
 		log.Fatal().Err(err).Msg("")
 	}
 
 	if err := viper.BindPFlag("log.level", RootCmd.PersistentFlags().Lookup("log-level")); err != nil {
-		log.Fatal().Err(err).Msg("")
-	}
-
-	if err := viper.BindEnv("log.level", "LOG_LEVEL"); err != nil {
-		log.Fatal().Err(err).Msg("")
-	}
-	if err := viper.BindEnv("log.format", "LOG_FORMAT"); err != nil {
 		log.Fatal().Err(err).Msg("")
 	}
 
@@ -136,15 +126,13 @@ func init() {
 func initConfig() {
 	if cfgFile != "" {
 		viper.SetConfigFile(cfgFile)
-	} else {
-		return
+		if err := viper.ReadInConfig(); err != nil {
+			log.Fatal().Err(err).Msg("error reading from config file")
+		}
 	}
 
+	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 	viper.AutomaticEnv()
-
-	if err := viper.ReadInConfig(); err != nil {
-		log.Fatal().Msgf("unable to read configUtils file: %s", err.Error())
-	}
 
 	decoderCfg := func(cfg *mapstructure.DecoderConfig) {
 		cfg.DecodeHook = mapstructure.ComposeDecodeHookFunc(
@@ -158,4 +146,11 @@ func initConfig() {
 		log.Fatal().Err(err).Msg("")
 	}
 
+	if cfgFile != "" {
+		// This solves problem with map structure described -> https://github.com/spf13/viper/issues/373
+		// that caused issue in Greenmask https://github.com/GreenmaskIO/greenmask/issues/76
+		if err := configUtils.ParseTransformerParamsManually(cfgFile, Config); err != nil {
+			log.Fatal().Err(err).Msg("error parsing transformer parameters")
+		}
+	}
 }

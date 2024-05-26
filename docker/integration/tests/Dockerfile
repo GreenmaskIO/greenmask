@@ -31,6 +31,8 @@ for pg_version in ${PG_VERSIONS_CHECK[@]}; do \n\
         echo "### SUCCESSFUL CHECK COMPATIBILITY WITH POSTGRESQL ${pg_version} ###" \n\
     else \n\
         echo "### FAIL CHECK COMPATIBILITY WITH POSTGRESQL ${pg_version} ###" \n\
+        echo "### EXIT SCRIPT ###" \n\
+        exit 2 \n\
     fi \n\
 done \n' > /docker-entrypoint.sh \
     && chmod +x /docker-entrypoint.sh

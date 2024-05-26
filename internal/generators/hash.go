@@ -49,9 +49,11 @@ func NewHash(salt []byte, funcName string) (Generator, error) {
 		return nil, fmt.Errorf("unknow hash function name \"%s\"", funcName)
 	}
 
+	size := h.Size()
+
 	return &Hash{
 		Hash: h,
-		buf:  make([]byte, sha1.Size),
+		buf:  make([]byte, size),
 		salt: salt,
 	}, nil
 }

@@ -10,7 +10,7 @@ Modify records using a Go template and apply changes by using the PostgreSQL dri
 
 ## Description
 
-`TemplateRecord` uses [Go templates](https://pkg.go.dev/text/template) to change data. However, while the [Template transformer](/template.md) operates with a single column and automatically applies results, the `TemplateRecord` transformer can make changes to a set of columns in the string, and using driver functions `.SetValue` or `.SetRawValue` is mandatory to do that.
+`TemplateRecord` uses [Go templates](https://pkg.go.dev/text/template) to change data. However, while the [Template transformer](./template.md) operates with a single column and automatically applies results, the `TemplateRecord` transformer can make changes to a set of columns in the string, and using driver functions `.SetValue` or `.SetRawValue` is mandatory to do that.
 
 With the `TemplateRecord` transformer, you can implement complicated transformation logic using basic or custom template functions. Below you can get familiar with the basic template functions for the `TemplateRecord` transformer. For more information about available custom template functions, see [Custom functions](custom_functions/index.md).
 

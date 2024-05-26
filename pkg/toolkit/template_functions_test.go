@@ -824,7 +824,7 @@ func TestFuncMap_randomFloat(t *testing.T) {
 				Max:       9.1,
 				Precision: -4,
 			},
-			expectedErr: " precision must be 0 or higher got -4",
+			expectedErr: " decimal must be 0 or higher got -4",
 		},
 	}
 
@@ -989,7 +989,11 @@ func TestFuncMap_timeToUnix(t *testing.T) {
 }
 
 func TestFuncMap_unixToTime(t *testing.T) {
-	expected := "2024-01-27 18:30:33 +0200 EET"
+	//expected :=
+	fmt := "2006-01-02 15:04:05.999999999 -0700 MST"
+	expected, err := time.Parse(fmt, "2024-01-27 18:30:33 +0200 EET")
+	expected = expected.In(time.UTC)
+	require.NoError(t, err)
 	buf := bytes.NewBuffer(nil)
 	tmplStr := `
 		{{- . | unixToTime "sec" -}}
@@ -1000,6 +1004,8 @@ func TestFuncMap_unixToTime(t *testing.T) {
 	require.NoError(t, err)
 	err = tmpl.Execute(buf, obj)
 	require.NoError(t, err)
-	res := buf.String()
+	res, err := time.Parse(fmt, buf.String())
+	res = res.In(time.UTC)
+	require.NoError(t, err)
 	require.Equal(t, expected, res)
 }

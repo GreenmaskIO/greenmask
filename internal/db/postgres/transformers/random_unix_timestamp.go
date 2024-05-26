@@ -13,11 +13,15 @@ import (
 )
 
 const (
-	secondsUnit = "sec"
-	milliUnit   = "milli"
-	microUnit   = "micro"
-	nanoUnit    = "nano"
+	secondsUnit = "second"
+	milliUnit   = "millisecond"
+	microUnit   = "microsecond"
+	nanoUnit    = "nanosecond"
 )
+
+var timestampUnitValues = []string{
+	secondsUnit, milliUnit, microUnit, nanoUnit,
+}
 
 var unixTimestampTransformerDefinition = utils.NewTransformerDefinition(
 	utils.NewTransformerProperties(
@@ -39,6 +43,7 @@ var unixTimestampTransformerDefinition = utils.NewTransformerDefinition(
 		"min",
 		"min threshold date (and/or time) of value",
 	).SetRequired(true).
+		SetSupportTemplate(true).
 		SetLinkParameter("column").
 		SetDynamicMode(
 			toolkit.NewDynamicModeProperties().
@@ -49,6 +54,7 @@ var unixTimestampTransformerDefinition = utils.NewTransformerDefinition(
 		"max",
 		"max threshold date (and/or time) of value",
 	).SetRequired(true).
+		SetSupportTemplate(true).
 		SetLinkParameter("column").
 		SetDynamicMode(
 			toolkit.NewDynamicModeProperties().
@@ -58,26 +64,30 @@ var unixTimestampTransformerDefinition = utils.NewTransformerDefinition(
 	toolkit.MustNewParameterDefinition(
 		"min_unit",
 		"min threshold date unit",
-	).SetLinkParameter("column").
+	).SetSupportTemplate(true).
+		SetLinkParameter("column").
 		SetDefaultValue([]byte(secondsUnit)).
 		SetRawValueValidator(validateDateUnitParameterValue),
 
 	toolkit.MustNewParameterDefinition(
 		"max_unit",
 		"max threshold date unit",
-	).SetLinkParameter("column").
+	).SetSupportTemplate(true).
+		SetLinkParameter("column").
 		SetDefaultValue([]byte(secondsUnit)).
 		SetRawValueValidator(validateDateUnitParameterValue),
 
 	toolkit.MustNewParameterDefinition(
 		"truncate",
 		fmt.Sprintf("truncate date till the part (%s)", strings.Join(truncateParts, ", ")),
-	).SetRawValueValidator(validateDateTruncationParameterValue),
+	).SetSupportTemplate(true).
+		SetRawValueValidator(validateDateTruncationParameterValue),
 
 	toolkit.MustNewParameterDefinition(
 		"unit",
 		fmt.Sprintf("truncate date till the part (%s)", strings.Join(truncateParts, ", ")),
-	).SetDefaultValue([]byte(secondsUnit)).
+	).SetSupportTemplate(true).
+		SetDefaultValue([]byte(secondsUnit)).
 		SetRawValueValidator(validateDateUnitParameterValue),
 
 	keepNullParameterDefinition,
@@ -219,12 +229,13 @@ func getUnixByUnit(v time.Time, unit string) int64 {
 
 func validateDateUnitParameterValue(p *toolkit.ParameterDefinition, v toolkit.ParamsValue) (toolkit.ValidationWarnings, error) {
 
-	if !slices.Contains([]string{secondsUnit, milliUnit, microUnit, nanoUnit}, string(v)) {
+	if !slices.Contains(timestampUnitValues, string(v)) {
 		return toolkit.ValidationWarnings{
 			toolkit.NewValidationWarning().
 				SetSeverity(toolkit.ErrorValidationSeverity).
 				AddMeta("ParameterValue", string(v)).
-				SetMsg("wrong truncation part value: must be one of nano, second, minute, hour, day, month, year"),
+				AddMeta("AllowedValues", truncateParts).
+				SetMsg("wrong timestamp unit value"),
 		}, nil
 	}
 	return nil, nil

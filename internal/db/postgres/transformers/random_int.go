@@ -51,6 +51,7 @@ var integerTransformerDefinition = utils.NewTransformerDefinition(
 		"min",
 		"min int value threshold",
 	).SetLinkParameter("column").
+		SetSupportTemplate(true).
 		SetDynamicMode(
 			toolkit.NewDynamicModeProperties().
 				SetCompatibleTypes("int2", "int4", "int8"),
@@ -60,6 +61,7 @@ var integerTransformerDefinition = utils.NewTransformerDefinition(
 		"max",
 		"max int value threshold",
 	).SetLinkParameter("column").
+		SetSupportTemplate(true).
 		SetDynamicMode(
 			toolkit.NewDynamicModeProperties().
 				SetCompatibleTypes("int2", "int4", "int8"),
@@ -93,7 +95,6 @@ func NewIntegerTransformer(ctx context.Context, driver *toolkit.Driver, paramete
 	var columnName, engine string
 	var minVal, maxVal int64
 	var keepNull, dynamicMode bool
-	var intSize = 8
 
 	columnParam := parameters["column"]
 	minParam := parameters["min"]
@@ -119,9 +120,7 @@ func NewIntegerTransformer(ctx context.Context, driver *toolkit.Driver, paramete
 	}
 	affectedColumns := make(map[int]string)
 	affectedColumns[idx] = columnName
-	if c.Length != -1 {
-		intSize = c.Length
-	}
+	intSize := c.GetColumnSize()
 
 	if err := keepNullParam.Scan(&keepNull); err != nil {
 		return nil, nil, fmt.Errorf(`unable to scan "keep_null" param: %w`, err)

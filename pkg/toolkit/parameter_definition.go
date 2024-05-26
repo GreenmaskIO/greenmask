@@ -151,11 +151,15 @@ type ParameterDefinition struct {
 	// ColumnProperties - detail info about expected column properties that may help to diagnose the table schema
 	// and perform validation procedure Plays only with IsColumn
 	ColumnProperties *ColumnProperties `mapstructure:"column_properties" json:"column_properties,omitempty"`
+	// SupportTemplate - shows that parameter supports golang template and might be calculated dynamically
+	SupportTemplate bool `mapstructure:"support_template" json:"support_template,omitempty"`
 	// Unmarshaller - unmarshal function for the parameter raw data []byte. Using by default json.Unmarshal function
 	Unmarshaller Unmarshaller `json:"-"`
 	// RawValueValidator - raw value validator function that performs assertion and cause ValidationWarnings if it
 	// has violations
 	RawValueValidator RawValueValidator `json:"-"`
+	// AllowedValues - slice of values which allowed to use
+	AllowedValues []ParamsValue `mapstructure:"allowed_values" json:"allowed_values,omitempty"`
 }
 
 func MustNewParameterDefinition(name string, description string) *ParameterDefinition {
@@ -189,6 +193,11 @@ func (p *ParameterDefinition) SetGetFromGlobalEnvVariable(v string) *ParameterDe
 	return p
 }
 
+func (p *ParameterDefinition) SetAllowedValues(v ...ParamsValue) *ParameterDefinition {
+	p.AllowedValues = v
+	return p
+}
+
 func (p *ParameterDefinition) SetIsColumn(columnProperties *ColumnProperties) *ParameterDefinition {
 	p.IsColumn = true
 	p.ColumnProperties = columnProperties
@@ -216,6 +225,11 @@ func (p *ParameterDefinition) SetRequired(v bool) *ParameterDefinition {
 	return p
 }
 
+func (p *ParameterDefinition) SetSupportTemplate(v bool) *ParameterDefinition {
+	p.SupportTemplate = v
+	return p
+}
+
 func (p *ParameterDefinition) SetCastDbType(v string) *ParameterDefinition {
 	if p.CastDbType != "" && p.LinkColumnParameter != "" {
 		panic("parameter cannot be with two properties cast_db_type and link_column_parameter enabled")
@@ -239,21 +253,26 @@ func InitParameters(
 	dynamicValues map[string]*DynamicParamValue,
 ) (map[string]Parameterizer, ValidationWarnings, error) {
 
-	var requiredParametersCount int
-
+	var requiredParamsWarns ValidationWarnings
+	// Check is there any parameters
 	for _, pd := range paramDef {
 		if pd.Required {
-			requiredParametersCount++
+			if _, ok := staticValues[pd.Name]; !ok {
+				if _, ok := dynamicValues[pd.Name]; !ok {
+					requiredParamsWarns = append(
+						requiredParamsWarns,
+						NewValidationWarning().
+							SetMsg("parameter is required").
+							AddMeta("ParameterName", pd.Name).
+							SetSeverity(ErrorValidationSeverity),
+					)
+				}
+			}
 		}
 	}
 
-	if len(staticValues)+len(dynamicValues) == 0 && requiredParametersCount > 0 {
-		return nil, ValidationWarnings{
-			NewValidationWarning().
-				SetMsg("parameters are required: received empty").
-				AddMeta("RequiredParametersCount", requiredParametersCount).
-				SetSeverity(ErrorValidationSeverity),
-		}, nil
+	if requiredParamsWarns.IsFatal() {
+		return nil, requiredParamsWarns, nil
 	}
 
 	// Check is there unknown parameters name received in static or dynamic values

@@ -24,6 +24,7 @@ type Table struct {
 	Kind        string       `json:"kind"`
 	Parent      Oid          `json:"parent"`
 	Children    []Oid        `json:"children"`
+	Size        int64        `json:"size"`
 	Constraints []Constraint `json:"-"`
 }
 

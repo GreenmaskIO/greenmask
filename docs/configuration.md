@@ -1,4 +1,4 @@
-# Configuration
+    # Configuration
 
 The configuration is organized into six sections:
 
@@ -15,7 +15,7 @@ The configuration is organized into six sections:
 In the `common` section of the configuration, you can specify the following settings:
 
 * `pg_bin_path` — path to the PostgreSQL binaries. Note that the PostgreSQL server version must match the provided binaries.
-* `tmp_dir` — temporary directory for storing the table of contents files
+* `tmp_dir` — temporary directory for storing the table of contents files. Default value is `/tmp`
 
 !!! note
 
@@ -31,7 +31,7 @@ In the `log` section of the configuration, you can specify the following setting
 ## `storage` section
 
 In the `storage` section, you can configure the storage driver for storing the dumped data. Currently,
-two storage options are supported: `directory` and `s3`.
+two storage `type` options are supported: `directory` and `s3`.
 
 === "`directory` option"
 
@@ -40,7 +40,9 @@ two storage options are supported: `directory` and `s3`.
     Parameters include `path` which specifies the path to the directory in the filesystem where the dumps will be stored.
 
     ``` yaml title="directory storage config example"
-    directory:
+    storage:
+      type: "directory"
+      directory:
         path: "/home/user_name/storage_dir" # (1)
     ```
 
@@ -54,7 +56,7 @@ two storage options are supported: `directory` and `s3`.
     * `prefix` — a prefix for objects in the bucket, specified in path format
     * `region` — the S3 service region
     * `storage_class` — the storage class for performing object requests
-    * `disable_ssl` — disable SSL for interactions (default is `false`)
+    * `no_verify_ssl` — disable SSL certificate verification
     * `access_key_id` — access key for authentication
     * `secret_access_key` — secret access key for authentication
     * `session_token` — session token for authentication
@@ -69,12 +71,14 @@ two storage options are supported: `directory` and `s3`.
     * `use_accelerate` — enable S3 Accelerate feature
 
     ```yaml title="s3 storage config example for Minio running in Docker"
-    s3:
-      endpoint: "http://localhost:9000"
-      bucket: "testbucket"
-      region: "us-east-1"
-      access_key_id: "Q3AM3UQ867SPQQA43P2F"
-      secret_access_key: "zuf+tfteSlswRu7BJ86wekitnifILbZam1KYY3TG"
+    storage:  
+      type: "s3"
+      s3:
+        endpoint: "http://localhost:9000"
+        bucket: "testbucket"
+        region: "us-east-1"
+        access_key_id: "Q3AM3UQ867SPQQA43P2F"
+        secret_access_key: "zuf+tfteSlswRu7BJ86wekitnifILbZam1KYY3TG"
     ```
 
 ## `dump` section
@@ -293,3 +297,29 @@ scripts:
 2. **List of data stage scripts**. This section contains scripts that are executed before or after the restoration of the data section. The scripts include shell commands with parameters and SQL query files.
 3. **List of post-data stage scripts**. This section contains scripts that are executed before or after the restoration of the post-data section. The scripts include SQL queries and query files.
 4. **Command in the first argument and the parameters in the rest of the list**. When specifying a command to be executed in the scripts section, you provide the command name as the first item in a list, followed by any parameters or arguments for that command. The command and its parameters are provided as a list within the script configuration.
+
+## Environment variable configuration
+
+It's also possible to configure Greenmask through environment variables. 
+
+Greenmask will automatically parse any environment variable that matches the configuration in the config file by substituting the dot (`.`) separator for an underscore (`_`) and uppercasing it. As an example, the config file below would apply the same configuration as defining the `LOG_LEVEL=debug` environment variable
+
+```yaml title="config.yaml"
+log:
+  level: debug
+```
+
+### Global configuration variables
+
+* `GREENMASK_GLOBAL_SALT` - global salt value hex encoded with variadic length, used for the `hash` engine. For details
+  read [Transformation engines](built_in_transformers/transformation_engines.md) section.
+
+### Postgres connection variables
+
+Additionaly, there are some environment variables exposed by the `dump` and `restore` commands to facilitate the connection configuration with a Postgres database
+
+* `PGHOST` - host used to connect to the postgres database
+* `PGPORT` - port where postgres is exposed
+* `PGDATABASE` - name of the database to dump/restore
+* `PGUSER` - username used to connect to the postgres database
+* `PGPASSWORD` - password used to authenticate to the postgres database

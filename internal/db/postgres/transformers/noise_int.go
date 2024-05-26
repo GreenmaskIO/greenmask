@@ -43,22 +43,24 @@ var NoiseIntTransformerDefinition = utils.NewTransformerDefinition(
 	toolkit.MustNewParameterDefinition(
 		"min",
 		"min value threshold limiter",
-	).SetDynamicMode(
-		toolkit.NewDynamicModeProperties().
-			SetCompatibleTypes("int2", "int4", "int8"),
-	),
+	).SetSupportTemplate(true).
+		SetDynamicMode(
+			toolkit.NewDynamicModeProperties().
+				SetCompatibleTypes("int2", "int4", "int8"),
+		),
 
 	toolkit.MustNewParameterDefinition(
 		"max",
 		"max value threshold limiter",
-	).SetDynamicMode(
-		toolkit.NewDynamicModeProperties().
-			SetCompatibleTypes("int2", "int4", "int8"),
-	),
+	).SetSupportTemplate(true).
+		SetDynamicMode(
+			toolkit.NewDynamicModeProperties().
+				SetCompatibleTypes("int2", "int4", "int8"),
+		),
 
-	minRationParameterDefinition,
+	minRatioParameterDefinition,
 
-	maxRationParameterDefinition,
+	maxRatioParameterDefinition,
 
 	engineParameterDefinition,
 )
@@ -85,7 +87,6 @@ func NewNoiseIntTransformer(ctx context.Context, driver *toolkit.Driver, paramet
 	var columnName, engine string
 	var minRatio, maxRatio float64
 	var maxValueThreshold, minValueThreshold int64
-	var intSize int
 	var dynamicMode bool
 
 	columnParam := parameters["column"]
@@ -110,9 +111,7 @@ func NewNoiseIntTransformer(ctx context.Context, driver *toolkit.Driver, paramet
 	affectedColumns := make(map[int]string)
 	affectedColumns[idx] = columnName
 
-	if c.Length != -1 {
-		intSize = c.Length
-	}
+	intSize := c.GetColumnSize()
 
 	if minParam.IsDynamic() || maxParam.IsDynamic() {
 		dynamicMode = true
@@ -178,13 +177,13 @@ func (nit *NoiseIntTransformer) GetAffectedColumns() map[int]string {
 }
 
 func (nit *NoiseIntTransformer) Init(ctx context.Context) error {
+	if nit.dynamicMode {
+		nit.transform = nit.dynamicTransform
+	}
 	return nil
 }
 
 func (nit *NoiseIntTransformer) Done(ctx context.Context) error {
-	if nit.dynamicMode {
-		nit.transform = nit.dynamicTransform
-	}
 	return nil
 }
 

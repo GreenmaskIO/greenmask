@@ -202,10 +202,10 @@ func (dp *DynamicParameter) Init(columnParameters map[string]*StaticParameter, d
 		dp.hasDefaultValue = true
 	}
 
-	if dp.DynamicValue.CastTemplate != "" {
+	if dp.DynamicValue.Template != "" {
 		dp.tmpl, err = template.New("").
 			Funcs(FuncMap()).
-			Parse(dp.DynamicValue.CastTemplate)
+			Parse(dp.DynamicValue.Template)
 		if err != nil {
 			warnings = append(
 				warnings,

@@ -1,11 +1,13 @@
 package toolkit
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
 	"slices"
+	"text/template"
 	"time"
 )
 
@@ -64,6 +66,44 @@ func (sp *StaticParameter) Init(columnParams map[string]*StaticParameter, rawVal
 		sp.rawValue = slices.Clone(rawValue)
 	}
 
+	if sp.definition.LinkColumnParameter != "" {
+		param, ok := columnParams[sp.definition.LinkColumnParameter]
+		if !ok {
+			panic(fmt.Sprintf(`parameter with name "%s" is not found`, sp.definition.LinkColumnParameter))
+		}
+		sp.linkedColumnParameter = param
+		if !sp.linkedColumnParameter.definition.IsColumn {
+			return nil, fmt.Errorf("linked parameter must be column: check transformer implementation")
+		}
+	}
+
+	if len(sp.rawValue) > 0 && sp.definition.SupportTemplate {
+		tmpl, err := template.New("paramTemplate").
+			Funcs(FuncMap()).
+			Parse(string(sp.rawValue))
+
+		if err != nil {
+			return ValidationWarnings{
+					NewValidationWarning().
+						SetSeverity(ErrorValidationSeverity).
+						SetMsg("error parsing template in the parameter").
+						AddMeta("Error", err.Error()).
+						AddMeta("ParameterName", sp.definition.Name),
+				},
+				nil
+		}
+		buf := bytes.NewBuffer(nil)
+		var columnName string
+		if sp.linkedColumnParameter != nil {
+			columnName = sp.linkedColumnParameter.Column.Name
+		}
+		spc := NewStaticParameterContext(sp.driver, columnName)
+		if err = tmpl.Execute(buf, spc); err != nil {
+			return nil, fmt.Errorf("error executing template: %w", err)
+		}
+		sp.rawValue = buf.Bytes()
+	}
+
 	if rawValue == nil {
 		if sp.definition.Required {
 			return ValidationWarnings{
@@ -92,17 +132,6 @@ func (sp *StaticParameter) Init(columnParams map[string]*StaticParameter, rawVal
 		}
 	}
 
-	if sp.definition.LinkColumnParameter != "" {
-		param, ok := columnParams[sp.definition.LinkColumnParameter]
-		if !ok {
-			panic(fmt.Sprintf(`parameter with name "%s" is not found`, sp.definition.LinkColumnParameter))
-		}
-		sp.linkedColumnParameter = param
-		if !sp.linkedColumnParameter.definition.IsColumn {
-			return nil, fmt.Errorf("linked parameter must be column: check transformer implementation")
-		}
-	}
-
 	if sp.definition.IsColumn {
 		columnName := string(rawValue)
 		_, column, ok := sp.driver.GetColumnByName(columnName)
@@ -119,12 +148,7 @@ func (sp *StaticParameter) Init(columnParams map[string]*StaticParameter, rawVal
 		}
 		sp.Column = column
 
-		columnTypeName := sp.Column.TypeName
-		columnTypeOid := sp.Column.TypeOid
-		if sp.Column.OverriddenTypeName != "" {
-			columnTypeName = sp.Column.OverriddenTypeName
-			columnTypeOid = 0
-		}
+		columnTypeName, columnTypeOid := sp.Column.GetType()
 
 		if sp.definition.ColumnProperties != nil &&
 			len(sp.definition.ColumnProperties.AllowedTypes) > 0 &&
@@ -163,6 +187,20 @@ func (sp *StaticParameter) Init(columnParams map[string]*StaticParameter, rawVal
 			return warnings, nil
 		}
 	}
+
+	if sp.definition.AllowedValues != nil {
+		if !slices.ContainsFunc(sp.definition.AllowedValues, func(allowedItem ParamsValue) bool {
+			return slices.Compare(allowedItem, sp.rawValue) == 0
+		}) {
+			warnings = append(warnings, NewValidationWarning().
+				SetSeverity(ErrorValidationSeverity).
+				SetMsg("unknown parameter value").
+				AddMeta("param", string(sp.rawValue)).
+				AddMeta("AllowedValues", printParamValues(sp.definition.AllowedValues)),
+			)
+		}
+	}
+
 	return warnings, nil
 }
 
@@ -321,4 +359,13 @@ func scanValue(driver *Driver, definition *ParameterDefinition, rawValue ParamsV
 		res = &dest
 		return nil
 	}
+}
+
+func printParamValues(values []ParamsValue) []string {
+	var res []string
+	for _, val := range values {
+		res = append(res, string(val))
+	}
+
+	return res
 }

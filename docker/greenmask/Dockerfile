@@ -33,9 +33,18 @@ RUN apt-get update \
 
 COPY --from=build /var/lib/greenmask/greenmask /usr/bin
 
-RUN mkdir ~/.bash_completions \
-    && greenmask completion bash > /root/.bash_completions/greenmask.bash \
-    && echo 'source /etc/bash_completion' >> /root/.bashrc \
-    && echo 'source /root/.bash_completions/greenmask.bash' >> /root/.bashrc
+RUN mkdir /home/greenmask \
+    && groupadd -g 10001 greenmask \
+    && useradd -u 10000 -g greenmask greenmask \
+    && chown -R greenmask:greenmask /home/greenmask
 
-ENTRYPOINT ["/bin/bash"]
+USER greenmask:greenmask
+
+RUN mkdir ~/.bash_completions \
+    && greenmask completion bash > ~/.bash_completions/greenmask.bash \
+    && echo 'source /etc/bash_completion' >> ~/.bashrc \
+    && echo 'source ~/.bash_completions/greenmask.bash' >> ~/.bashrc
+
+WORKDIR /home/greenmask
+
+ENTRYPOINT ["greenmask"]

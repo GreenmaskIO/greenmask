@@ -44,6 +44,7 @@ type Table struct {
 	Driver               *toolkit.Driver
 	// ValidateLimitedRecords - perform dumping and transformation only for N records and exit
 	ValidateLimitedRecords uint64
+	Scores                 int64
 }
 
 func (t *Table) HasCustomTransformer() bool {
@@ -77,10 +78,11 @@ func (t *Table) Entry() (*toc.Entry, error) {
 	columns := make([]string, 0, len(t.Columns))
 
 	for _, column := range t.Columns {
-		columns = append(columns, fmt.Sprintf(`"%s"`, column.Name))
+		if !column.IsGenerated {
+			columns = append(columns, fmt.Sprintf(`"%s"`, column.Name))
+		}
 	}
 
-	//var query = `COPY "%s"."%s" (%s) FROM stdin WITH (FORMAT CSV, NULL '\N');`
 	var query = `COPY "%s"."%s" (%s) FROM stdin`
 	var schemaName, tableName string
 	if t.LoadViaPartitionRoot && t.RootPtSchema != "" && t.RootPtName != "" {

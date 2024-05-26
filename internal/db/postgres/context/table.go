@@ -30,6 +30,30 @@ import (
 	"github.com/greenmaskio/greenmask/pkg/toolkit"
 )
 
+var typeSizes = map[string]int{
+	"int2":   2,
+	"int4":   4,
+	"int8":   8,
+	"float4": 4,
+	"float8": 8,
+}
+
+func getTypeSizeByeName(name string) int {
+	res, ok := typeSizes[name]
+	if !ok {
+		return -1
+	}
+	return res
+}
+
+func getTypeOidByName(name string, typeMap *pgtype.Map) toolkit.Oid {
+	t, ok := typeMap.TypeForName(name)
+	if !ok {
+		return toolkit.Oid(t.OID)
+	}
+	return 0
+}
+
 // ValidateAndBuildTableConfig - validates tables, toolkit and their parameters. Builds config for tables and returns
 // ValidationWarnings that can be used for checking helpers in configuring and debugging transformation. Those
 // may contain the schema affection warnings that would be useful for considering consistency
@@ -58,22 +82,24 @@ func validateAndBuildTablesConfig(
 			}
 			table.Constraints = constraints
 
+			// Assign columns and transformersMap if were found
+			columns, err := getColumnsConfig(ctx, tx, table.Oid, version)
+			if err != nil {
+				return nil, nil, err
+			}
+			table.Columns = columns
+
 			// Assigning overridden column types for driver initialization
 			if tableCfg.ColumnsTypeOverride != nil {
 				for _, c := range table.Columns {
 					overridingType, ok := tableCfg.ColumnsTypeOverride[c.Name]
 					if ok {
 						c.OverriddenTypeName = overridingType
+						c.OverriddenTypeSize = getTypeSizeByeName(overridingType)
+						c.OverriddenTypeOid = getTypeOidByName(overridingType, typeMap)
 					}
 				}
 			}
-
-			// Assign columns and transformersMap if were found
-			columns, err := getColumnsConfig(ctx, tx, table.Oid)
-			if err != nil {
-				return nil, nil, err
-			}
-			table.Columns = columns
 
 			driver, driverWarnings, err := toolkit.NewDriver(table.Table, types)
 			if err != nil {
@@ -197,10 +223,18 @@ func getTable(ctx context.Context, tx pgx.Tx, t *domains.Table) ([]*entries.Tabl
 	return tables, warnings, nil
 }
 
-func getColumnsConfig(ctx context.Context, tx pgx.Tx, oid toolkit.Oid) ([]*toolkit.Column, error) {
+func getColumnsConfig(ctx context.Context, tx pgx.Tx, oid toolkit.Oid, version int) ([]*toolkit.Column, error) {
 	defaultTypeMap := pgtype.NewMap()
 	var res []*toolkit.Column
-	rows, err := tx.Query(ctx, TableColumnsQuery, oid)
+	buf := bytes.NewBuffer(nil)
+	err := TableColumnsQuery.Execute(
+		buf,
+		map[string]int{"Version": version},
+	)
+	if err != nil {
+		return nil, fmt.Errorf("error templating TableColumnsQuery: %w", err)
+	}
+	rows, err := tx.Query(ctx, buf.String(), oid)
 	if err != nil {
 		return nil, fmt.Errorf("unable execute tableColumnQuery: %w", err)
 	}
@@ -209,8 +243,14 @@ func getColumnsConfig(ctx context.Context, tx pgx.Tx, oid toolkit.Oid) ([]*toolk
 	idx := 0
 	for rows.Next() {
 		column := toolkit.Column{Idx: idx}
-		if err = rows.Scan(&column.Name, &column.TypeOid, &column.TypeName,
-			&column.NotNull, &column.Length, &column.Num, &column.Length); err != nil {
+		if version >= 120000 {
+			err = rows.Scan(&column.Name, &column.TypeOid, &column.TypeName,
+				&column.NotNull, &column.Length, &column.Num, &column.TypeLength, &column.IsGenerated)
+		} else {
+			err = rows.Scan(&column.Name, &column.TypeOid, &column.TypeName,
+				&column.NotNull, &column.Length, &column.Num, &column.TypeLength)
+		}
+		if err != nil {
 			return nil, fmt.Errorf("cannot scan tableColumnQuery: %w", err)
 		}
 		column.CanonicalTypeName = column.TypeName
@@ -317,11 +357,7 @@ func getTableConstraints(ctx context.Context, tx pgx.Tx, tableOid toolkit.Oid, v
 	buf := bytes.NewBuffer(nil)
 	err = TablePrimaryKeyReferencesConstraintsQuery.Execute(
 		buf,
-		struct {
-			Version int
-		}{
-			Version: version,
-		},
+		map[string]int{"Version": version},
 	)
 	if err != nil {
 		return nil, fmt.Errorf("error templating TablePrimaryKeyReferencesConstraintsQuery: %w", err)

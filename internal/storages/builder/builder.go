@@ -16,7 +16,7 @@ package builder
 
 import (
 	"context"
-	"errors"
+	"fmt"
 
 	"github.com/greenmaskio/greenmask/internal/domains"
 	"github.com/greenmaskio/greenmask/internal/storages"
@@ -24,13 +24,23 @@ import (
 	"github.com/greenmaskio/greenmask/internal/storages/s3"
 )
 
+const (
+	DirectoryStorageType = "directory"
+	S3StorageType        = "s3"
+)
+
 func GetStorage(ctx context.Context, stCfg *domains.StorageConfig, logCgf *domains.LogConfig) (
 	storages.Storager, error,
 ) {
-	if stCfg.Directory != nil {
+
+	switch stCfg.Type {
+	case DirectoryStorageType:
+		if err := stCfg.Directory.Validate(); err != nil {
+			return nil, fmt.Errorf("directory storage config validation failed: %w", err)
+		}
 		return directory.NewStorage(stCfg.Directory)
-	} else if stCfg.S3 != nil {
+	case S3StorageType:
 		return s3.NewStorage(ctx, stCfg.S3, logCgf.Level)
 	}
-	return nil, errors.New("no one storage was provided")
+	return nil, fmt.Errorf("unknown storage type: %s", stCfg.Type)
 }

@@ -38,21 +38,48 @@ type DriverParams struct {
 	CsvAttributesFormat  string `json:"csv_attributes_format,omitempty"`
 }
 
+// Validate - validate driver params and set default values if needed
 func (dp *DriverParams) Validate() error {
 	if dp.Name != JsonModeName && dp.Name != CsvModeName && dp.Name != TextModeName {
 		return fmt.Errorf(`unexpected driver name "%s"`, dp.Name)
 	}
 
-	if dp.JsonDataFormat != JsonBytesDataFormatName && dp.JsonDataFormat != JsonTextDataFormatName {
-		return fmt.Errorf(`unexpected format "%s"`, dp.JsonDataFormat)
-	}
-	if dp.JsonAttributesFormat != JsonAttributesNamesFormatName && dp.JsonAttributesFormat != JsonAttributesIndexesFormatName {
-		return fmt.Errorf(`unexpected json_attributes_format "%s"`, dp.JsonAttributesFormat)
-	}
-	if dp.CsvAttributesFormat != CsvAttributesDirectNumeratingFormatName && dp.CsvAttributesFormat != CsvAttributesConfigNumeratingFormatName {
-		return fmt.Errorf(`unexpected csv_attributes_format "%s"`, dp.CsvAttributesFormat)
+	switch dp.Name {
+	case JsonModeName:
+		return dp.validateJson()
+	case CsvModeName:
+		return dp.validateCsv()
 	}
 
+	return nil
+}
+
+func (dp *DriverParams) validateCsv() error {
+	if dp.CsvAttributesFormat != CsvAttributesDirectNumeratingFormatName && dp.CsvAttributesFormat != CsvAttributesConfigNumeratingFormatName {
+		if dp.CsvAttributesFormat == "" {
+			dp.CsvAttributesFormat = CsvAttributesDirectNumeratingFormatName
+		} else {
+			return fmt.Errorf(`unexpected csv_attributes_format "%s"`, dp.CsvAttributesFormat)
+		}
+	}
+	return nil
+}
+
+func (dp *DriverParams) validateJson() error {
+	if dp.JsonDataFormat != JsonBytesDataFormatName && dp.JsonDataFormat != JsonTextDataFormatName {
+		if dp.JsonDataFormat == "" {
+			dp.JsonDataFormat = JsonBytesDataFormatName
+		} else {
+			return fmt.Errorf(`unexpected format "%s"`, dp.JsonDataFormat)
+		}
+	}
+	if dp.JsonAttributesFormat != JsonAttributesNamesFormatName && dp.JsonAttributesFormat != JsonAttributesIndexesFormatName {
+		if dp.JsonAttributesFormat == "" {
+			dp.JsonAttributesFormat = JsonAttributesIndexesFormatName
+		} else {
+			return fmt.Errorf(`unexpected json_attributes_format "%s"`, dp.JsonAttributesFormat)
+		}
+	}
 	return nil
 }
 
@@ -98,11 +125,8 @@ func (d *TransformerDefinition) SetExpectedExitCode(v int) *TransformerDefinitio
 }
 
 func (d *TransformerDefinition) SetMode(v *DriverParams) *TransformerDefinition {
-	if v == nil {
-		panic("value is nil")
-	}
-	if v.Name != JsonModeName && v.Name != CsvModeName && v.Name != TextModeName {
-		panic(fmt.Errorf(`unexpected mode "%s"`, v))
+	if err := v.Validate(); err != nil {
+		panic(err)
 	}
 	d.Driver = v
 	return d

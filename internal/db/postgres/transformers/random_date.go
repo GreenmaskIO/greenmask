@@ -51,7 +51,9 @@ var timestampTransformerDefinition = utils.NewTransformerDefinition(
 		"min",
 		"min threshold date (and/or time) of value",
 	).SetRequired(true).
+		SetSupportTemplate(true).
 		SetLinkParameter("column").
+		SetSupportTemplate(true).
 		SetDynamicMode(
 			toolkit.NewDynamicModeProperties().
 				SetCompatibleTypes("date", "timestamp", "timestamptz"),
@@ -61,7 +63,9 @@ var timestampTransformerDefinition = utils.NewTransformerDefinition(
 		"max",
 		"max threshold date (and/or time) of value",
 	).SetRequired(true).
+		SetSupportTemplate(true).
 		SetLinkParameter("column").
+		SetSupportTemplate(true).
 		SetDynamicMode(
 			toolkit.NewDynamicModeProperties().
 				SetCompatibleTypes("date", "timestamp", "timestamptz"),
@@ -249,7 +253,8 @@ func validateDateTruncationParameterValue(p *toolkit.ParameterDefinition, v tool
 			toolkit.NewValidationWarning().
 				SetSeverity(toolkit.ErrorValidationSeverity).
 				AddMeta("ParameterValue", string(v)).
-				SetMsg("wrong truncation part value: must be one of nano, second, minute, hour, day, month, year"),
+				AddMeta("AllowedValues", truncateParts).
+				SetMsg("wrong truncation part value"),
 		}, nil
 	}
 	return nil, nil
