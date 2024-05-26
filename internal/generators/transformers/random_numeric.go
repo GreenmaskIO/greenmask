@@ -8,7 +8,7 @@ import (
 	"github.com/shopspring/decimal"
 
 	"github.com/greenmaskio/greenmask/internal/generators"
-	int_utils "github.com/greenmaskio/greenmask/internal/generators/transformers/utils"
+	ut "github.com/greenmaskio/greenmask/internal/generators/transformers/utils"
 )
 
 type RandomNumericLimiter struct {
@@ -22,7 +22,7 @@ type RandomNumericLimiter struct {
 func NewRandomNumericLimiter(minValue, maxValue decimal.Decimal) (*RandomNumericLimiter, error) {
 
 	if minValue.GreaterThanOrEqual(maxValue) {
-		return nil, int_utils.ErrWrongLimits
+		return nil, ut.ErrWrongLimits
 	}
 
 	return &RandomNumericLimiter{

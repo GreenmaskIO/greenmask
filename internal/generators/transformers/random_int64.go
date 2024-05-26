@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"github.com/greenmaskio/greenmask/internal/generators"
-	int_utils "github.com/greenmaskio/greenmask/internal/generators/transformers/utils"
+	ut "github.com/greenmaskio/greenmask/internal/generators/transformers/utils"
 )
 
 type Int64Limiter struct {
@@ -17,7 +17,7 @@ type Int64Limiter struct {
 // NewInt64Limiter - create limiter by int size. size is required for optional min and max.
 func NewInt64Limiter(minValue, maxValue int64, size int) (*Int64Limiter, error) {
 	if minValue == 0 || maxValue == 0 {
-		minThreshold, maxThreshold, err := int_utils.GetIntThresholds(size)
+		minThreshold, maxThreshold, err := ut.GetIntThresholds(size)
 		if err != nil {
 			return nil, err
 		}
@@ -32,7 +32,7 @@ func NewInt64Limiter(minValue, maxValue int64, size int) (*Int64Limiter, error) 
 	}
 
 	if minValue >= maxValue {
-		return nil, int_utils.ErrWrongLimits
+		return nil, ut.ErrWrongLimits
 	}
 
 	return &Int64Limiter{

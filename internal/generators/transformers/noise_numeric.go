@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"github.com/greenmaskio/greenmask/internal/generators"
-	int_utils "github.com/greenmaskio/greenmask/internal/generators/transformers/utils"
+	ut "github.com/greenmaskio/greenmask/internal/generators/transformers/utils"
 	"github.com/shopspring/decimal"
 )
 
@@ -22,7 +22,7 @@ type NoiseNumericLimiter struct {
 
 func NewNoiseNumericLimiter(minVal, maxVal decimal.Decimal) (*NoiseNumericLimiter, error) {
 	if minVal.GreaterThanOrEqual(maxVal) {
-		return nil, int_utils.ErrWrongLimits
+		return nil, ut.ErrWrongLimits
 	}
 	return &NoiseNumericLimiter{
 		MinValue: minVal,

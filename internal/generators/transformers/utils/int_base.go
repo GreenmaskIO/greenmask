@@ -1,13 +1,8 @@
 package utils
 
 import (
-	"errors"
 	"fmt"
 	"math"
-)
-
-var (
-	ErrWrongLimits = errors.New("wrong limits")
 )
 
 const (

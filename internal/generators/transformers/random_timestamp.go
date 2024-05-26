@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/greenmaskio/greenmask/internal/generators"
-	int_utils "github.com/greenmaskio/greenmask/internal/generators/transformers/utils"
+	ut "github.com/greenmaskio/greenmask/internal/generators/transformers/utils"
 )
 
 const (
@@ -131,7 +131,7 @@ type TimestampLimiter struct {
 func NewTimestampLimiter(minDate, maxDate time.Time) (*TimestampLimiter, error) {
 
 	if minDate.After(maxDate) {
-		return nil, int_utils.ErrWrongLimits
+		return nil, ut.ErrWrongLimits
 	}
 
 	minDateThreshold := &timestampThreshold{
