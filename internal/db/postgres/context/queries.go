@@ -241,4 +241,11 @@ var (
 			 JOIN pg_catalog.pg_roles grantor_role ON grantor_role.oid = acl.grantor
 			 JOIN pg_catalog.pg_roles greantee_role ON greantee_role.oid = acl.grantee
 	`
+
+	PrimaryKeyColumnsQuery = `
+		select array_agg(DISTINCT a.attname) AS pk_columns
+		from pg_catalog.pg_constraint pcp
+			JOIN pg_catalog.pg_attribute a ON a.attrelid = pcp.conrelid AND a.attnum = ANY (pcp.conkey) AND pcp.contype = 'p'
+		WHERE pcp.conrelid = $1;
+	`
 )

@@ -16,6 +16,14 @@ package toolkit
 
 import "errors"
 
+type Reference struct {
+	Idx    int
+	Schema string
+	Name   string
+	// ReferencedKeys - list of foreign keys of current table
+	ReferencedKeys []string
+}
+
 type Table struct {
 	Schema      string       `json:"schema"`
 	Name        string       `json:"name"`
@@ -25,6 +33,7 @@ type Table struct {
 	Parent      Oid          `json:"parent"`
 	Children    []Oid        `json:"children"`
 	Size        int64        `json:"size"`
+	PrimaryKey  []string     `json:"primary_key"`
 	Constraints []Constraint `json:"-"`
 }
 

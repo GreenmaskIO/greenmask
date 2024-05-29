@@ -18,6 +18,8 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"os"
+	"path"
 	"slices"
 
 	"github.com/rs/zerolog/log"
@@ -29,6 +31,8 @@ import (
 	"github.com/greenmaskio/greenmask/internal/db/postgres/transformers/utils"
 	"github.com/greenmaskio/greenmask/pkg/toolkit"
 )
+
+const tmpFilePath = "/tmp"
 
 var endOfLineSeq = []byte("\n")
 
@@ -44,6 +48,7 @@ type TransformationPipeline struct {
 	Transform             TransformationFunc
 	isAsync               bool
 	record                *toolkit.Record
+	cycleResolutionFiles  []io.ReadWriteCloser
 }
 
 func NewTransformationPipeline(ctx context.Context, eg *errgroup.Group, table *entries.Table, w io.Writer) (*TransformationPipeline, error) {
@@ -125,6 +130,17 @@ func (tp *TransformationPipeline) Init(ctx context.Context) error {
 		}
 	}
 
+	// Initialize cycle resolution store files
+	tp.cycleResolutionFiles = make([]io.ReadWriteCloser, len(tp.table.CycleResolutionOps))
+	for cycleResOpIdx, op := range tp.table.CycleResolutionOps {
+		file, err := os.Create(path.Join(tmpFilePath, op.FileName))
+		if err != nil {
+			closeAllOpenFiles(tp.cycleResolutionFiles, tp.table.CycleResolutionOps[:cycleResOpIdx], true)
+			return fmt.Errorf("error creating cycle resolution store file: %w", err)
+		}
+		tp.cycleResolutionFiles[cycleResOpIdx] = file
+	}
+
 	return nil
 }
 
@@ -156,6 +172,9 @@ func (tp *TransformationPipeline) Dump(ctx context.Context, data []byte) (err er
 		return fmt.Errorf("error decoding copy line: %w", err)
 	}
 	tp.record.SetRow(tp.row)
+	if err = storeCycleResolutionOps(tp.record, tp.table.CycleResolutionOps, tp.cycleResolutionFiles); err != nil {
+		return NewDumpError(tp.table.Schema, tp.table.Name, tp.line, fmt.Errorf("error storing cycle resolution ops: %w", err))
+	}
 
 	_, err = tp.Transform(ctx, tp.record)
 	if err != nil {
@@ -205,6 +224,8 @@ func (tp *TransformationPipeline) Done(ctx context.Context) error {
 			w.Done()
 		}
 	}
+
+	closeAllOpenFiles(tp.cycleResolutionFiles, tp.table.CycleResolutionOps, false)
 
 	if lastErr != nil {
 		return fmt.Errorf("error terminating initialized transformer: %w", lastErr)

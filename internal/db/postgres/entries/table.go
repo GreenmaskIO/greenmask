@@ -26,9 +26,13 @@ import (
 	"github.com/greenmaskio/greenmask/pkg/toolkit"
 )
 
+// Table - godoc
+// TODO: Deduplicate SubsetQueries and SubsetInQueries by path
 type Table struct {
 	*toolkit.Table
-	Query                string
+	Query string
+	// CycleResolutionOps - list of columns and file to store that must be dumped for future cycles resolution
+	CycleResolutionOps   []*CycleResolutionOp
 	Owner                string
 	RelKind              rune
 	RootPtSchema         string
@@ -45,6 +49,7 @@ type Table struct {
 	// ValidateLimitedRecords - perform dumping and transformation only for N records and exit
 	ValidateLimitedRecords uint64
 	Scores                 int64
+	SubsetConds            []string
 }
 
 func (t *Table) HasCustomTransformer() bool {

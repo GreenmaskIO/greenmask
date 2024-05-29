@@ -173,6 +173,7 @@ func getTable(ctx context.Context, tx pgx.Tx, t *domains.Table) ([]*entries.Tabl
 		return nil, nil, fmt.Errorf("cannot aply custom query on partitioned table \"%s\".\"%s\": is not supported", table.Schema, table.Name)
 	}
 	table.Query = t.Query
+	table.SubsetConds = t.SubsetConds
 
 	if table.RelKind == 'p' {
 		if !t.ApplyForInherited {

@@ -130,6 +130,7 @@ type Table struct {
 	ApplyForInherited   bool                 `mapstructure:"apply_for_inherited" yaml:"apply_for_inherited" json:"apply_for_inherited,omitempty"`
 	Transformers        []*TransformerConfig `mapstructure:"transformers" yaml:"transformers" json:"transformers,omitempty"`
 	ColumnsTypeOverride map[string]string    `mapstructure:"columns_type_override" yaml:"columns_type_override" json:"columns_type_override,omitempty"`
+	SubsetConds         []string             `mapstructure:"subset_conds" yaml:"subset_conds" json:"subset_conds,omitempty"`
 }
 
 // DummyConfig - This is a dummy config to the viper workaround
