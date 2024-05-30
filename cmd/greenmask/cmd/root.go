@@ -80,7 +80,7 @@ func init() {
 	cobra.OnInitialize(initConfig)
 	// Removing short help flag from default
 	RootCmd.PersistentFlags().BoolP("help", "", false, "help for greenmask")
-	RootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file ")
+	RootCmd.PersistentFlags().StringVar(&cfgFile, "config", "greenmask.yml", "config file")
 	RootCmd.PersistentFlags().StringP("log-format", "", "text", "logging format [text|json]")
 	RootCmd.PersistentFlags().StringP("log-level", "", zerolog.LevelInfoValue,
 		fmt.Sprintf(
