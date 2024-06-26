@@ -540,7 +540,6 @@ func (r *Restore) restoreWorker(ctx context.Context, tasks <-chan restorers.Rest
 		case <-ctx.Done():
 			log.Debug().
 				Int("workerId", id).
-				Str("objectName", task.DebugInfo()).
 				Err(ctx.Err()).
 				Msg("existed due to cancelled context")
 			return ctx.Err()

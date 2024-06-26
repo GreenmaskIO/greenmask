@@ -111,7 +111,7 @@ func (r *Row) GetColumn(idx int) (*toolkit.RawValue, error) {
 
 // SetColumn - set column (replace original) value and decode it later
 func (r *Row) SetColumn(idx int, v *toolkit.RawValue) error {
-	if idx > len(r.raw)-1 {
+	if idx > len(r.columnPos)-1 {
 		return ErrIndexOutOfRage
 	}
 	r.newValues[idx] = v

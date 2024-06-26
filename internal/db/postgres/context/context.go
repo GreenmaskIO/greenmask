@@ -21,14 +21,14 @@ import (
 	"os"
 	"slices"
 
-	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgtype"
-
 	"github.com/greenmaskio/greenmask/internal/db/postgres/entries"
 	"github.com/greenmaskio/greenmask/internal/db/postgres/pgdump"
+	"github.com/greenmaskio/greenmask/internal/db/postgres/subset"
 	transformersUtils "github.com/greenmaskio/greenmask/internal/db/postgres/transformers/utils"
 	"github.com/greenmaskio/greenmask/internal/domains"
 	"github.com/greenmaskio/greenmask/pkg/toolkit"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const defaultTransformerCostMultiplier = 0.03
@@ -84,16 +84,37 @@ func NewRuntimeContext(
 		return nil, fmt.Errorf("cannot validate and build table config: %w", err)
 	}
 
-	dataSectionObjects, err := getDumpObjects(ctx, version, tx, opt, tables)
+	tablesEntries, sequenceEntries, blobEntries, err := getDumpObjects(ctx, version, tx, opt, tables)
 	if err != nil {
 		return nil, fmt.Errorf("cannot build dump object list: %w", err)
 	}
 
-	scoreTablesEntriesAndSort(dataSectionObjects, cfg)
-
 	schema, err := getDatabaseSchema(ctx, tx, opt, version)
 	if err != nil {
 		return nil, fmt.Errorf("cannot get database schema: %w", err)
+	}
+
+	if hasSubset(tablesEntries) {
+		// If table has subset the restoration must be in the topological order
+		// The tables must be dumped one by one
+		err = subset.GenerateSubsetQueriesForTable(ctx, tx, tablesEntries)
+		if err != nil {
+			return nil, fmt.Errorf("error during subset tables: %w", err)
+		}
+	} else {
+		// if there are no subset tables, we can sort them by size and transformation costs
+		scoreTablesEntriesAndSort(tablesEntries, cfg)
+	}
+
+	var dataSectionObjects []entries.Entry
+	for _, seq := range sequenceEntries {
+		dataSectionObjects = append(dataSectionObjects, seq)
+	}
+	for _, table := range tablesEntries {
+		dataSectionObjects = append(dataSectionObjects, table)
+	}
+	if blobEntries != nil {
+		dataSectionObjects = append(dataSectionObjects, blobEntries)
 	}
 
 	return &RuntimeContext{
@@ -106,42 +127,34 @@ func NewRuntimeContext(
 	}, nil
 }
 
+func hasSubset(tables []*entries.Table) bool {
+	return slices.ContainsFunc(tables, func(table *entries.Table) bool {
+		return len(table.SubsetConds) > 0
+	})
+}
+
 func (rc *RuntimeContext) IsFatal() bool {
 	return rc.Warnings.IsFatal()
 }
 
-func scoreTablesEntriesAndSort(dataSectionObjects []entries.Entry, cfg []*domains.Table) {
-	for _, entry := range dataSectionObjects {
-		t, ok := entry.(*entries.Table)
-		if ok {
-			var transformersCount float64
-			idx := slices.IndexFunc(cfg, func(table *domains.Table) bool {
-				return table.Name == t.Name && table.Schema == t.Schema
-			})
-			if idx != -1 {
-				transformersCount = float64(len(cfg[idx].Transformers))
-			}
-
-			// scores = relSize + (realSize * 0.03 * transformersCount)
-			t.Scores = t.Size + int64(float64(t.Size)*defaultTransformerCostMultiplier*transformersCount)
+func scoreTablesEntriesAndSort(tables []*entries.Table, cfg []*domains.Table) {
+	for _, t := range tables {
+		var transformersCount float64
+		idx := slices.IndexFunc(cfg, func(table *domains.Table) bool {
+			return table.Name == t.Name && table.Schema == t.Schema
+		})
+		if idx != -1 {
+			transformersCount = float64(len(cfg[idx].Transformers))
 		}
 
+		// scores = relSize + (realSize * 0.03 * transformersCount)
+		t.Scores = t.Size + int64(float64(t.Size)*defaultTransformerCostMultiplier*transformersCount)
 	}
 
-	slices.SortFunc(dataSectionObjects, func(a, b entries.Entry) int {
-		var scoresA, scoresB int64
-		t, ok := a.(*entries.Table)
-		if ok {
-			scoresA = t.Scores
-		}
-		t, ok = b.(*entries.Table)
-		if ok {
-			scoresB = t.Scores
-		}
-
-		if scoresA > scoresB {
+	slices.SortFunc(tables, func(a, b *entries.Table) int {
+		if a.Scores > b.Scores {
 			return -1
-		} else if scoresA < scoresB {
+		} else if a.Scores < b.Scores {
 			return 1
 		}
 		return 0

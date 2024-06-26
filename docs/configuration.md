@@ -90,8 +90,9 @@ In the `dump` section of the configuration, you configure the `greenmask dump` c
 
     * `schema` — the schema name of the table
     * `name` — the name of the table
+    * `subset_conds` - list of the conditions to filter the rows to be dumped. The conditions are combined with `AND` operator. For details read [Database subset](database_subset.md)
     * `query` — an optional parameter for specifying a custom query to be used in the COPY command. By default, the entire table is dumped, but you can use this parameter to set a custom query.
-
+        
         !!! warning
 
             Be cautious when using the `query` parameter, as it may lead to constraint violation errors during restoration, and Greenmask currently cannot handle query validation.
@@ -173,6 +174,8 @@ dump:
 
     - schema: "bookings"
       name: "aircrafts_data"
+      subset_conds: # (3)
+        - "bookings.aircrafts_data.model = 'Boeing 777-300-2023'"
       transformers:
         - name: "Json"
           params:
@@ -195,6 +198,7 @@ dump:
 1. Override the `post_code` column type to `int4` (INTEGER). This is necessary because the `post_code` column
    originally has a `TEXT` type, but it contains values that resemble integers. By explicitly overriding the type to `int4`, we ensure compatibility with transformers that work with integer types, such as `RandomInt`.
 2. After the type is overridden, we can apply a compatible transformer.
+3. Database subset condition applied to the `aircrafts_data` table. The subset condition filters the data based on the `model` column.
 
 ## `validate` section
 

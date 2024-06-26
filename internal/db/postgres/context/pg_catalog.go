@@ -38,27 +38,43 @@ const (
 
 func getDumpObjects(
 	ctx context.Context, version int, tx pgx.Tx, options *pgdump.Options, config map[toolkit.Oid]*entries.Table,
-) ([]entries.Entry, error) {
+) ([]*entries.Table, []*entries.Sequence, *entries.Blobs, error) {
 
+	tables, sequesnces, err := getTables(ctx, version, tx, options, config)
+	if err != nil {
+		return nil, nil, nil, fmt.Errorf("unable to collect tables: %w", err)
+	}
+
+	// Gather large objects
+	lo, err := getLargeObjectsEntries(ctx, tx)
+	if err != nil {
+		return nil, nil, nil, fmt.Errorf("unable to collect large objects: %w", err)
+	}
+
+	return tables, sequesnces, lo, nil
+}
+
+func getTables(ctx context.Context, version int, tx pgx.Tx, options *pgdump.Options, config map[toolkit.Oid]*entries.Table) ([]*entries.Table, []*entries.Sequence, error) {
 	// Building relation search query using regexp adaptation rules and pre-defined query templates
 	// TODO: Refactor it to gotemplate
 	query, err := BuildTableSearchQuery(options.Table, options.ExcludeTable,
 		options.ExcludeTableData, options.IncludeForeignData, options.Schema,
 		options.ExcludeSchema)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	tableSearchRows, err := tx.Query(ctx, query)
 	if err != nil {
-		return nil, fmt.Errorf("perform query: %w", err)
+		return nil, nil, fmt.Errorf("perform query: %w", err)
 	}
 	defer tableSearchRows.Close()
 
 	// Generate table objects
 	//sequences := make([]*dump_objects.Sequence, 0)
 	//tables := make([]*dump_objects.Table, 0)
-	var dataObjects []entries.Entry
+	var tables []*entries.Table
+	var sequences []*entries.Sequence
 	defer tableSearchRows.Close()
 	for tableSearchRows.Next() {
 		var oid toc.Oid
@@ -72,14 +88,14 @@ func getDumpObjects(
 			&rootPtSchema, &rootPtName, &excludeData, &isCalled, &lastVal,
 		)
 		if err != nil {
-			return nil, fmt.Errorf("unnable scan data: %w", err)
+			return nil, nil, fmt.Errorf("unnable scan data: %w", err)
 		}
 		var table *entries.Table
 
 		switch relKind {
 		case 'S':
 			// Building sequence objects
-			dataObjects = append(dataObjects, &entries.Sequence{
+			s := &entries.Sequence{
 				Name:        name,
 				Schema:      schemaName,
 				Oid:         oid,
@@ -87,7 +103,8 @@ func getDumpObjects(
 				LastValue:   lastVal,
 				IsCalled:    isCalled,
 				ExcludeData: excludeData,
-			})
+			}
+			sequences = append(sequences, s)
 		case 'r':
 			fallthrough
 		case 'p':
@@ -127,31 +144,46 @@ func getDumpObjects(
 					Msg("object data excluded")
 				continue
 			}
-
-			dataObjects = append(dataObjects, table)
+			tables = append(tables, table)
 		default:
-			return nil, fmt.Errorf("unknown relkind \"%c\"", relKind)
+			return nil, nil, fmt.Errorf("unknown relkind \"%c\"", relKind)
 		}
 	}
 
-	// Assigning columns for each table
-	for _, obj := range dataObjects {
-		switch v := obj.(type) {
-		case *entries.Table:
-			columns, err := getColumnsConfig(ctx, tx, v.Oid, version)
-			if err != nil {
-				return nil, fmt.Errorf("unable to collect table columns: %w", err)
-			}
-			v.Columns = columns
+	// Assigning columns, pk and fk for each table
+	for _, t := range tables {
+		columns, err := getColumnsConfig(ctx, tx, t.Oid, version)
+		if err != nil {
+			return nil, nil, fmt.Errorf("unable to collect table columns: %w", err)
 		}
+		t.Columns = columns
 
+		pkColumns, err := getPrimaryKeyColumns(ctx, tx, t.Oid)
+		if err != nil {
+			return nil, nil, fmt.Errorf("unable to collect primary key columns: %w", err)
+		}
+		t.PrimaryKey = pkColumns
 	}
 
+	return tables, sequences, nil
+}
+
+func getPrimaryKeyColumns(ctx context.Context, tx pgx.Tx, tableOid toolkit.Oid) ([]string, error) {
+	row := tx.QueryRow(ctx, PrimaryKeyColumnsQuery, tableOid)
+	var columns []string
+	if err := row.Scan(&columns); err != nil {
+		return nil, fmt.Errorf("error scanning PrimaryKeyColumnsQuery: %w", err)
+	}
+	return columns, nil
+}
+
+func getLargeObjectsEntries(ctx context.Context, tx pgx.Tx) (*entries.Blobs, error) {
 	// Collecting large objects metadata
 	// Getting large objects table oid
+
 	var tableOid toc.Oid
 	row := tx.QueryRow(ctx, LargeObjectsTableOidQuery)
-	err = row.Scan(&tableOid)
+	err := row.Scan(&tableOid)
 	if err != nil {
 		return nil, fmt.Errorf("error scanning LargeObjectsTableOidQuery: %w", err)
 	}
@@ -238,12 +270,11 @@ func getDumpObjects(
 	}
 
 	if len(largeObjects) > 0 {
-		dataObjects = append(dataObjects, &entries.Blobs{
+		return &entries.Blobs{
 			LargeObjects: largeObjects,
-		})
+		}, nil
 	}
-
-	return dataObjects, nil
+	return nil, nil
 }
 
 func renderRelationCond(ss []string, defaultCond string) (string, error) {
