@@ -180,17 +180,36 @@ jobs:
       - name: Install dependicies
         run: pip install -r requirements.txt
 
+      - name: Get all tags
+        uses: octokit/request-action@v2.3.1
+        id: get_tags
+        with:
+          route: GET /repos/${{ github.repository }}/git/matching-refs/tags
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Setup docs deploy
         run: |
           git config --global user.name "Docs Deployer"
           git config --global user.email docs@greenmask.io
-          echo "TAGS=$(git log --tags --simplify-by-decoration --pretty='format:%d' --since=2024-04-30 | sed '/^$/d' | cut -d ':' -f 2 | cut -d ')' -f 1 | tac | tr '\n' ' ')" >> $GITHUB_ENV
+          echo "Get tags from JSON output"
+          export TAGS=$(echo '${{ steps.get_tags.outputs.data }}' | jq ".[].ref")
+          echo "Remove substring from tag name"
+          export TAGS=($(echo "${TAGS[@]}" | sed 's/"//g' | cut -d '/' -f 3))
+          echo "Find index of start tag"
+          export TAG_INDEX=$(echo "${TAGS[@]/v0.1.13//}" | cut -d/ -f1 | wc -w | tr -d ' ')
+          echo "Get last index of array"
+          export LAST_INDEX=$((${#TAGS[@]} - 1))
+          echo "Export sorted tags to GITHUB_ENV variable"
+          echo "TAGS="${TAGS[@]:${TAG_INDEX}:${LAST_INDEX}}"" >> $GITHUB_ENV
 
       - name: Build docs
         run: |
+          export TAGS="${{ env.TAGS }}"
+          git fetch --prune --unshallow --tags --force
           for tag in ${{ env.TAGS }}; do
             echo "### CHECKOUT TO ${tag} ###"
-            git checkout $tag
+            git checkout ${tag}
             if [[ "$tag" == *"rc"* || "$tag" == *"dev"* || "$tag" == *"pre"* || "$tag" == *"beta"* || "$tag" == *"b"* ]]; then
               mike deploy $tag
             else
