@@ -51,6 +51,7 @@ nav:
       - Architecture: architecture.md
       - Playground: playground.md
       - Commands: commands.md
+      - Database subset: database_subset.md
       - Transformers:
           - built_in_transformers/index.md
           - Dynamic parameters: built_in_transformers/dynamic_parameters.md
