@@ -54,7 +54,7 @@ var (
 				log.Fatal().Err(err).Msg("")
 			}
 
-			st = st.SubStorage(dumpId, true)
+			st = st.SubStorage(fmt.Sprintf("%s/%s", Config.Restore.PgRestoreOptions.DbName, dumpId, true)
 
 			restore := cmdInternals.NewRestore(
 				Config.Common.PgBinPath, st, &Config.Restore.PgRestoreOptions, Config.Restore.Scripts,
