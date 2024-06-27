@@ -473,7 +473,7 @@ func findTableBySchemaAndName(Transformations []*domains.Table, schemaName, tabl
 	return foundTable, nil
 }
 
-func parseTableName(name string) (tableName string, schemaName string, err error) {
+func parseTableName(name string) (schemaName string, tableName string, err error) {
 	parts := strings.Split(name, ".")
 
 	if len(parts) > 2 {
