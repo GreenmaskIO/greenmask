@@ -24,7 +24,6 @@ const (
 type Config struct {
 	Endpoint         string `mapstructure:"endpoint"`
 	Bucket           string `mapstructure:"bucket"`
-	Prefix           string `mapstructure:"prefix"`
 	Region           string `mapstructure:"region"`
 	StorageClass     string `mapstructure:"storage_class"`
 	DisableSSL       bool   `mapstructure:"disable_ssl"`
