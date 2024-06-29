@@ -5,15 +5,11 @@ import (
 	"fmt"
 	"slices"
 
+	"github.com/greenmaskio/greenmask/pkg/toolkit"
 	"github.com/jackc/pgx/v5"
 	"github.com/rs/zerolog/log"
 
 	"github.com/greenmaskio/greenmask/internal/db/postgres/entries"
-	"github.com/greenmaskio/greenmask/pkg/toolkit"
-)
-
-var (
-	edgeSequence = 0
 )
 
 var (
@@ -32,54 +28,33 @@ var (
 	`
 )
 
-type TableLink struct {
-	Idx   int
-	Table *entries.Table
-	Keys  []string
+// Graph - the graph representation of the DB tables. Is responsible for finding the cycles in the graph
+// and searching subset Path for the tables
+type Graph struct {
+	// tables - the tables that are in the scope. They were previously fetched from the DB by RuntimeContext
+	tables []*entries.Table
+	// graph - the oriented graph representation of the DB tables
+	graph [][]*Edge
+	// cycledVertexes - it shows last vertex before cycled edge
+	cycledVertexes map[int][]*Edge
+	// cycles - the cycles in the graph with topological order
+	cycles [][]int
+	// Paths - the subset Paths for the tables. The key is the vertex index in the graph and the value is the path for
+	// creating the subset query
+	Paths map[int]*Path
+	edges []*Edge
 }
 
-func NewTableLink(idx int, t *entries.Table, keys []string) *TableLink {
-	return &TableLink{
-		Idx:   idx,
-		Table: t,
-		Keys:  keys,
-	}
-}
-
-type Edge struct {
-	Id  int
-	Idx int
-	A   *TableLink
-	B   *TableLink
-}
-
-func NewEdge(idx int, a *TableLink, b *TableLink) *Edge {
-	edgeSequence++
-	return &Edge{
-		Id:  edgeSequence,
-		Idx: idx,
-		A:   a,
-		B:   b,
-	}
-}
-
-func (e *Edge) GetLeftAndRightTable(idx int) (*TableLink, *TableLink) {
-	if e.A.Idx == idx {
-		return e.A, e.B
-	}
-	return e.B, e.A
-}
-
-func GenerateSubsetQueriesForTable(ctx context.Context, tx pgx.Tx, tables []*entries.Table) error {
-	// TODO: Add cycle validation
-
+// NewGraph creates a new graph based on the provided tables by finding the references in DB between them
+func NewGraph(ctx context.Context, tx pgx.Tx, tables []*entries.Table) (*Graph, error) {
 	orientedGraph := make([][]*Edge, len(tables))
-	nonOrientedGraph := make([][]*Edge, len(tables))
+	edges := make([]*Edge, 0)
 
+	var edgeIdSequence int
 	for idx, table := range tables {
 		refs, err := getReferences(ctx, tx, table.Oid)
 		if err != nil {
-			return fmt.Errorf("error getting references: %w", err)
+			return nil, fmt.Errorf("error getting references: %w", err)
 		}
 		for _, ref := range refs {
 			foreignTableIdx := slices.IndexFunc(tables, func(t *entries.Table) bool {
@@ -93,41 +68,136 @@ func GenerateSubsetQueriesForTable(ctx context.Context, tx pgx.Tx, tables []*ent
 					Msg("unable to find foreign table: it might be excluded from the dump")
 				continue
 			}
-
+			edge := NewEdge(
+				edgeIdSequence,
+				foreignTableIdx,
+				NewTableLink(idx, table, ref.ReferencedKeys),
+				NewTableLink(foreignTableIdx, tables[foreignTableIdx], tables[foreignTableIdx].PrimaryKey),
+			)
 			orientedGraph[idx] = append(
 				orientedGraph[idx],
-				NewEdge(
-					foreignTableIdx,
-					NewTableLink(idx, table, ref.ReferencedKeys),
-					NewTableLink(foreignTableIdx, tables[foreignTableIdx], tables[foreignTableIdx].PrimaryKey),
-				),
+				edge,
 			)
+			edges = append(edges, edge)
 
-			nonOrientedGraph[idx] = append(
-				nonOrientedGraph[idx],
-				NewEdge(
-					foreignTableIdx,
-					NewTableLink(idx, table, ref.ReferencedKeys),
-					NewTableLink(foreignTableIdx, tables[foreignTableIdx], tables[foreignTableIdx].PrimaryKey),
-				),
-			)
-			nonOrientedGraph[foreignTableIdx] = append(
-				nonOrientedGraph[foreignTableIdx],
-				NewEdge(
-					idx,
-					NewTableLink(foreignTableIdx, tables[foreignTableIdx], tables[foreignTableIdx].PrimaryKey),
-					NewTableLink(idx, table, ref.ReferencedKeys),
-				),
-			)
+			edgeIdSequence++
+		}
+	}
+	return &Graph{
+		tables:         tables,
+		graph:          orientedGraph,
+		cycledVertexes: make(map[int][]*Edge),
+		Paths:          make(map[int]*Path),
+		edges:          edges,
+	}, nil
+}
 
+// findCycles - finds all cycles in the graph
+func (g *Graph) findCycles() {
+	visited := make([]int, len(g.graph))
+	from := make([]int, len(g.graph))
+	for idx := range from {
+		from[idx] = emptyFromValue
+	}
+	for v := range g.graph {
+		if visited[v] == vertexIsNotVisited {
+			g.findAllCyclesDfs(v, visited, from)
+		}
+	}
+	g.debugCycles()
+}
+
+// debugCycles - debugs the cycles in the graph
+func (g *Graph) debugCycles() {
+	if len(g.cycles) == 0 {
+		return
+	}
+
+	for _, foundCycle := range g.cycles {
+		var cycle []string
+		for _, v := range foundCycle {
+			cycle = append(cycle, fmt.Sprintf("%s.%s", g.tables[v].Schema, g.tables[v].Name))
+		}
+		cycle = append(cycle, fmt.Sprintf("%s.%s", g.tables[foundCycle[0]].Schema, g.tables[foundCycle[0]].Name))
+		if slices.ContainsFunc(foundCycle, func(i int) bool {
+			return len(g.tables[i].SubsetConds) > 0
+		}) {
+			log.Warn().Strs("cycle", cycle).Msg("cycle detected")
+			panic("IMPLEMENT ME: cycle detected: implement cycles resolution")
 		}
 	}
 
-	subsetedVertexes := findSubsetVertexes(orientedGraph, tables)
-	for v, path := range subsetedVertexes {
-		setQueriesV2(path, v, orientedGraph, tables)
+}
+
+// findAllCyclesDfs - the basic DFS algorithm adapted to find all cycles in the graph and collect the cycle vertices
+func (g *Graph) findAllCyclesDfs(v int, visited []int, from []int) {
+	visited[v] = vertexIsVisitedAndPrecessing
+	for _, to := range g.graph[v] {
+		if visited[to.Idx] == vertexIsNotVisited {
+			from[to.Idx] = v
+			g.findAllCyclesDfs(to.Idx, visited, from)
+		} else if visited[to.Idx] == vertexIsVisitedAndPrecessing {
+			from[to.Idx] = v
+			g.cycles = append(g.cycles, g.getCycle(from, to.Idx))
+		}
 	}
-	return nil
+	visited[v] = vertexIsVisitedAndCompleted
+}
+
+// getCycle returns the cycle in the graph provided based on the "from" slice
+func (g *Graph) getCycle(from []int, lastVertex int) []int {
+	var cycle []int
+	for v := from[lastVertex]; v != lastVertex; v = from[v] {
+		cycle = append(cycle, v)
+	}
+	cycle = append(cycle, lastVertex)
+	slices.Reverse(cycle)
+	return cycle
+}
+
+// findSubsetVertexes - finds the subset vertexes in the graph
+func (g *Graph) findSubsetVertexes() {
+	for v := range g.graph {
+		path := NewPath(v)
+		visited := make([]int, len(g.graph))
+		var from, fullFrom []*Edge
+		if len(g.tables[v].SubsetConds) > 0 {
+			path.AddVertex(v)
+		}
+		g.subsetDfs(path, v, &fullFrom, &from, visited, rootScopeId)
+
+		if path.Len() > 0 {
+			g.Paths[v] = path
+		}
+	}
+}
+
+func (g *Graph) subsetDfs(path *Path, v int, fullFrom, from *[]*Edge, visited []int, scopeId int) {
+	visited[v] = vertexIsVisitedAndPrecessing
+	for _, to := range g.graph[v] {
+		*fullFrom = append(*fullFrom, to)
+		*from = append(*from, to)
+		currentScopeId := scopeId
+		if visited[to.Idx] == vertexIsNotVisited {
+			if len(g.tables[to.Idx].SubsetConds) > 0 {
+				for _, e := range *from {
+					currentScopeId = path.AddEdge(e, currentScopeId)
+				}
+				*from = (*from)[:0]
+			}
+			g.subsetDfs(path, to.Idx, fullFrom, from, visited, currentScopeId)
+		} else if visited[to.Idx] == vertexIsVisitedAndPrecessing {
+			// if the vertex is visited and processing, it means that we found a cycle, and we need to mark the edge
+			// as cycled and collect the cycle. This data will be used later for cycle resolution
+			log.Debug().Msg("cycle detected")
+			g.cycledVertexes[to.Id] = slices.Clone(*fullFrom)
+		}
+		*fullFrom = (*fullFrom)[:len(*fullFrom)-1]
+		if len(*from) > 0 {
+			*from = (*from)[:len(*from)-1]
+		}
+	}
+	visited[v] = vertexIsNotVisited
 }
 
 func getReferences(ctx context.Context, tx pgx.Tx, tableOid toolkit.Oid) ([]*toolkit.Reference, error) {

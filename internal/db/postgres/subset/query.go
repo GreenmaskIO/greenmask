@@ -6,73 +6,77 @@ import (
 	"strings"
 
 	"github.com/greenmaskio/greenmask/internal/db/postgres/entries"
+	"github.com/rs/zerolog/log"
 )
 
-func findSubsetVertexes(graph [][]*Edge, tables []*entries.Table) map[int][]int {
-	subsetVertexes := make(map[int][]int)
-	for v := range graph {
-		var path []int
-		if len(tables[v].SubsetConds) > 0 {
-			path = []int{v}
-		}
-		stack := []int{v}
-		subsetDfs(tables, graph, v, &path, &stack)
-		if len(path) > 0 {
-			subsetVertexes[v] = TopologicalSort(graph, path)
-		}
+func generateAndSetQuery(path *Path, tables []*entries.Table) {
+	// We start DFS from the root scope
+	table := tables[path.RootVertex]
+	if table.Name == "businessentity" {
+		log.Debug()
 	}
-	return subsetVertexes
+	query := generateQueriesDfs(path, tables, rootScopeId, false)
+	fmt.Printf("%s.%s\n", table.Schema, table.Name)
+	fmt.Println(query)
+	table.Query = query
 }
 
-func subsetDfs(tables []*entries.Table, graph [][]*Edge, v int, path *[]int, stack *[]int) {
+func generateQueriesDfs(path *Path, tables []*entries.Table, scopeId int, isSubQuery bool) string {
 
-	for _, to := range graph[v] {
-		*stack = append(*stack, to.Idx)
-		if len(tables[to.Idx].SubsetConds) > 0 {
-			for _, s := range *stack {
-				if !slices.Contains(*path, s) {
-					*path = append(*path, s)
-				}
-			}
-		}
-		subsetDfs(tables, graph, to.Idx, path, stack)
-		*stack = (*stack)[:len(*stack)-1]
+	if len(path.ScopeEdges[scopeId]) == 0 && isSubQuery {
+		return ""
 	}
+	currentScopeQuery := generateQuery(tables, path.RootVertex, path.ScopeEdges[scopeId], isSubQuery)
+	var subQueries []string
+	for _, nextScopeId := range path.ScopeGraph[scopeId] {
+		subQuery := generateQueriesDfs(path, tables, nextScopeId, true)
+		if subQuery != "" {
+			subQueries = append(subQueries, subQuery)
+		}
+	}
+
+	if len(subQueries) == 0 {
+		return currentScopeQuery
+	}
+
+	totalQuery := fmt.Sprintf(
+		"%s AND %s", currentScopeQuery,
+		strings.Join(subQueries, " AND "),
+	)
+	return totalQuery
 }
 
-func setQueriesV2(path []int, tableIdx int, graph [][]*Edge, tables []*entries.Table) {
-	rootIdx := path[0]
-	rootTable := tables[rootIdx]
+// TODO: Start always WHERE TRUE AND ...
+func generateQuery(tables []*entries.Table, rootTableIdx int, edges []*Edge, isSubQuery bool) string {
+
+	// Use root table as a root table from path
+	rootTable := tables[rootTableIdx]
+	var leftTableEdge *Edge
+	if isSubQuery {
+		// If it is not a root scope use the right table from the first edge as a root table
+		// And left table from the first edge as a left table for the subquery. It will be used for where in clause
+		leftTableEdge = edges[0]
+		rootTable = tables[edges[0].B.Idx]
+		edges = edges[1:]
+	}
+
 	subsetConds := slices.Clone(rootTable.SubsetConds)
-	var joinClauses []string
-	prevIdx := rootIdx
-
+	selectClause := fmt.Sprintf(`SELECT "%s"."%s".*`, rootTable.Schema, rootTable.Name)
+	if isSubQuery {
+		selectClause = generateSelectByPrimaryKey(rootTable)
+	}
 	fromClause := fmt.Sprintf(`FROM "%s"."%s" `, rootTable.Schema, rootTable.Name)
-	for _, v := range path[1:] {
-		table := tables[v]
-		if len(table.SubsetConds) > 0 {
-			subsetConds = append(subsetConds, table.SubsetConds...)
+
+	var joinClauses []string
+	for _, e := range edges {
+		rightTable := e.B
+		if len(rightTable.Table.SubsetConds) > 0 {
+			subsetConds = append(subsetConds, rightTable.Table.SubsetConds...)
 		}
-		var edges []*Edge
-		for _, e := range graph[v] {
-			l, r := e.GetLeftAndRightTable(prevIdx)
-			if slices.Contains(path, r.Idx) && slices.Contains(path, l.Idx) {
-				edges = append(edges, e)
-			}
-		}
-		joinClause := generateJoinClauseV3(edges, prevIdx)
+		joinClause := generateJoinClause(e)
 		joinClauses = append(joinClauses, joinClause)
-		prevIdx = v
 	}
 
-	table := tables[tableIdx]
-
-	var selectClause string
-	if len(table.PrimaryKey) > 0 {
-		selectClause = generateSelectDistinctByPrimaryKey(table)
-	} else {
-		selectClause = generateSelectDistinctWithCast(table)
-	}
 	query := fmt.Sprintf(
 		`%s %s %s %s`,
 		selectClause,
@@ -80,34 +84,43 @@ func setQueriesV2(path []int, tableIdx int, graph [][]*Edge, tables []*entries.T
 		strings.Join(joinClauses, " "),
 		generateWhereClause(subsetConds),
 	)
-	table.Query = query
-}
 
-func generateJoinClauseV3(edges []*Edge, previousTableIdx int) string {
-	var conds []string
-	for _, e := range edges {
-		leftTable, rightTable := e.A, e.B
-		for idx := 0; idx < len(leftTable.Keys); idx++ {
-
-			leftPart := fmt.Sprintf(
-				`"%s"."%s"."%s"`,
-				leftTable.Table.Schema,
-				leftTable.Table.Name,
-				leftTable.Keys[idx],
-			)
-
-			rightPart := fmt.Sprintf(
-				`"%s"."%s"."%s"`,
-				rightTable.Table.Schema,
-				rightTable.Table.Name,
-				rightTable.Keys[idx],
-			)
-
-			conds = append(conds, fmt.Sprintf(`%s = %s`, leftPart, rightPart))
+	if isSubQuery {
+		if leftTableEdge == nil {
+			panic("leftTableEdge is nil")
 		}
+		var leftTableConds []string
+		for _, k := range leftTableEdge.A.Keys {
+			leftTableConds = append(leftTableConds, fmt.Sprintf(`"%s"."%s"."%s"`, leftTableEdge.A.Table.Schema, leftTableEdge.A.Table.Name, k))
+		}
+		query = fmt.Sprintf("((%s) IN (%s))", strings.Join(leftTableConds, ", "), query)
 	}
 
-	_, rightTable := edges[0].GetLeftAndRightTable(previousTableIdx)
+	return query
+}
+
+func generateJoinClause(edge *Edge) string {
+	var conds []string
+	leftTable, rightTable := edge.A, edge.B
+	for idx := 0; idx < len(leftTable.Keys); idx++ {
+
+		leftPart := fmt.Sprintf(
+			`"%s"."%s"."%s"`,
+			leftTable.Table.Schema,
+			leftTable.Table.Name,
+			leftTable.Keys[idx],
+		)
+
+		rightPart := fmt.Sprintf(
+			`"%s"."%s"."%s"`,
+			rightTable.Table.Schema,
+			rightTable.Table.Name,
+			rightTable.Keys[idx],
+		)
+
+		conds = append(conds, fmt.Sprintf(`%s = %s`, leftPart, rightPart))
+	}
+
 	rightTableName := fmt.Sprintf(`"%s"."%s"`, rightTable.Table.Schema, rightTable.Table.Name)
 
 	joinClause := fmt.Sprintf(
@@ -116,6 +129,28 @@ func generateJoinClauseV3(edges []*Edge, previousTableIdx int) string {
 		strings.Join(conds, " AND "),
 	)
 	return joinClause
+}
+
+func generateWhereClause(subsetConds []string) string {
+	if len(subsetConds) == 0 {
+		return ""
+	}
+	escapedConds := make([]string, 0, len(subsetConds))
+	for _, cond := range subsetConds {
+		escapedConds = append(escapedConds, fmt.Sprintf(`( %s )`, cond))
+	}
+	return "WHERE " + strings.Join(escapedConds, " AND ")
+}
+
+func generateSelectByPrimaryKey(table *entries.Table) string {
+	var keys []string
+	for _, key := range table.PrimaryKey {
+		keys = append(keys, fmt.Sprintf(`"%s"."%s"."%s"`, table.Schema, table.Name, key))
+	}
+	return fmt.Sprintf(
+		`SELECT %s`,
+		strings.Join(keys, ", "),
+	)
 }
 
 func generateSelectDistinctByPrimaryKey(table *entries.Table) string {
@@ -137,15 +172,4 @@ func generateSelectDistinctWithCast(table *entries.Table) string {
 		columns = append(columns, fmt.Sprintf(`CAST("%s"."%s"."%s" AS text)`, table.Schema, table.Name, c.Name))
 	}
 	return fmt.Sprintf(`SELECT DISTINCT %s`, strings.Join(columns, ", "))
-}
-
-func generateWhereClause(subsetConds []string) string {
-	if len(subsetConds) == 0 {
-		return ""
-	}
-	escapedConds := make([]string, 0, len(subsetConds))
-	for _, cond := range subsetConds {
-		escapedConds = append(escapedConds, fmt.Sprintf(`( %s )`, cond))
-	}
-	return "WHERE " + strings.Join(escapedConds, " AND ")
 }
