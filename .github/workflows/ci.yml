@@ -153,14 +153,29 @@ jobs:
         id: git_tag
         run: echo "TAG=$(git tag --points-at HEAD)" >> $GITHUB_ENV
 
-      - name: Build and push
+      - name: Build docker image and push
         uses: docker/build-push-action@v5
         with:
           file: docker/greenmask/Dockerfile
           context: .
           platforms: linux/amd64,linux/arm64
           push: true
-          tags: ${{ env.docker-registry }}:${{ env.TAG }},${{ env.docker-registry }}:latest
+          tags: ${{ env.docker-registry }}:${{ env.TAG }}
+
+      - name: Build docker imaget with latest tag and push
+        uses: docker/build-push-action@v5
+        if: | 
+          ! contains(github.ref, 'rc') &&
+          ! contains(github.ref, 'dev') &&
+          ! contains(github.ref, 'pre') &&
+          ! contains(github.ref, 'beta') &&
+          ! contains(github.ref, 'b')
+        with:
+          file: docker/greenmask/Dockerfile
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ env.docker-registry }}:latest
 
   deploy-docs:
     runs-on: self-hosted
