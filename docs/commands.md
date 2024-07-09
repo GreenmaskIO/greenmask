@@ -57,7 +57,7 @@ Flags:
 Validate command can exit with non-zero code when:
 
 * Any error occurred
-* Validate was called with `--warings` flag and there are warnings
+* Validate was called with `--warnings` flag and there are warnings
 * Validate was called with `--schema` flag and there are schema differences
 
 All of those cases may be used for CI/CD pipelines to stop the process when something went wrong. This is especially
