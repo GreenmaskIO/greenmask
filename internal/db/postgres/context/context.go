@@ -97,10 +97,10 @@ func NewRuntimeContext(
 	if hasSubset(tablesEntries) {
 		// If table has subset the restoration must be in the topological order
 		// The tables must be dumped one by one
-		err = subset.GenerateSubsetQueriesForTable(ctx, tx, tablesEntries)
-		if err != nil {
-			return nil, fmt.Errorf("error during subset tables: %w", err)
+		if err = subset.SetSubsetQueries(ctx, tx, tablesEntries); err != nil {
+			return nil, fmt.Errorf("cannot set subset queries: %w", err)
 		}
+
 	} else {
 		// if there are no subset tables, we can sort them by size and transformation costs
 		scoreTablesEntriesAndSort(tablesEntries, cfg)
