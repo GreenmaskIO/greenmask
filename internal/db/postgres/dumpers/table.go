@@ -93,7 +93,7 @@ func (td *TableDumper) Execute(ctx context.Context, tx pgx.Tx, st storages.Stora
 				if doneErr != nil {
 					log.Warn().Err(err).Msg("error terminating transformation pipeline")
 				}
-				return fmt.Errorf("error processing table dump: %w", err)
+				return fmt.Errorf("error processing table dump %s.%s: %w", td.table.Schema, td.table.Name, err)
 			}
 			log.Debug().Msg("transformation pipeline executed successfully")
 			return pipeline.Done(gtx)
