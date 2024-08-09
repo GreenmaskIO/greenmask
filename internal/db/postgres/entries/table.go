@@ -30,9 +30,7 @@ import (
 // TODO: Deduplicate SubsetQueries and SubsetInQueries by path
 type Table struct {
 	*toolkit.Table
-	Query string
-	// CycleResolutionOps - list of columns and file to store that must be dumped for future cycles resolution
-	CycleResolutionOps   []*CycleResolutionOp
+	Query                string
 	Owner                string
 	RelKind              rune
 	RootPtSchema         string

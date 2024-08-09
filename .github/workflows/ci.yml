@@ -54,7 +54,7 @@ jobs:
 
       - name: Run integration tests
         run: |
-          docker-compose -f docker-compose-integration.yml -p greenmask up \
+          docker compose -f docker-compose-integration.yml -p greenmask up \
           --renew-anon-volumes --force-recreate --build --exit-code-from greenmask \
           --abort-on-container-exit greenmask
 
