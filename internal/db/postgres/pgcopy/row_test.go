@@ -171,6 +171,80 @@ func TestDecode(t *testing.T) {
 	}
 }
 
+func TestDecode_dynamicSize(t *testing.T) {
+
+	type result struct {
+		pos    []*columnPos
+		values [][]byte
+	}
+
+	tests := []struct {
+		name     string
+		original []byte
+		result   result
+		length   int
+	}{
+		{
+			name:     "multi row",
+			original: []byte("27\they\\tmyname is\\nnoname\t\\N"),
+			length:   UseDynamicSize,
+			result: result{
+				pos: []*columnPos{
+					{
+						start: 0,
+						end:   2,
+					},
+					{
+						start: 3,
+						end:   25,
+					},
+					{
+						start: 26,
+						end:   28,
+					},
+				},
+				values: [][]byte{
+					[]byte("27"),
+					[]byte("hey\\tmyname is\\nnoname"),
+					[]byte("\\N"),
+				},
+			},
+		}, {
+			name:     "one row",
+			original: []byte("27"),
+			length:   UseDynamicSize,
+			result: result{
+				pos: []*columnPos{
+					{
+						start: 0,
+						end:   2,
+					},
+				},
+				values: [][]byte{
+					[]byte("27"),
+				},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			row := NewRow(tt.length)
+			err := row.Decode(tt.original)
+			require.NoError(t, err)
+			for idx := range row.columnPos {
+				assert.Equalf(t, tt.result.pos[idx].start, row.columnPos[idx].start, "column %d: start position are unequal", idx)
+				assert.Equalf(t, tt.result.pos[idx].end, row.columnPos[idx].end, "column %d: end position are unequal", idx)
+			}
+			for idx := range row.columnPos {
+				start := row.columnPos[idx].start
+				end := row.columnPos[idx].end
+				assert.Equalf(t, tt.result.values[idx], row.raw[start:end], "column %d: unexpected value", idx)
+			}
+		})
+	}
+}
+
 func TestRow_GetColumn(t *testing.T) {
 
 	tests := []struct {

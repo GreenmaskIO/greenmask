@@ -87,14 +87,12 @@ type Options struct {
 	NoTableSpaces              bool     `mapstructure:"no-tablespaces"`
 	NoToastCompression         bool     `mapstructure:"no-toast-compression"`
 	NoUnloggedTableData        bool     `mapstructure:"no-unlogged-table-data"`
-	OnConflictDoNothing        bool     `mapstructure:"on-conflict-do-nothing"`
 	QuoteAllIdentifiers        bool     `mapstructure:"quote-all-identifiers"`
 	Section                    string   `mapstructure:"section"`
 	SerializableDeferrable     bool     `mapstructure:"serializable-deferrable"`
 	Snapshot                   string   `mapstructure:"snapshot"`
 	StrictNames                bool     `mapstructure:"strict-names"`
 	UseSetSessionAuthorization bool     `mapstructure:"use-set-session-authorization"`
-
 	// Connection options:
 	DbName     string `mapstructure:"dbname"`
 	Host       string `mapstructure:"host"`
@@ -216,6 +214,7 @@ func (o *Options) GetParams() []string {
 	}
 	if o.DisableTriggers {
 		args = append(args, "--disable-triggers")
+		panic("FIXME: --disable-triggers is not implemented")
 	}
 	if o.EnableRowSecurity {
 		// TODO: Seems that this options affects COPY
@@ -265,9 +264,6 @@ func (o *Options) GetParams() []string {
 	if o.NoUnloggedTableData {
 		args = append(args, "--no-unlogged-table-data")
 	}
-	if o.OnConflictDoNothing {
-		args = append(args, "--on-conflict-do-nothing")
-	}
 	if o.QuoteAllIdentifiers {
 		args = append(args, "--quote-all-identifiers")
 	}
@@ -282,8 +278,10 @@ func (o *Options) GetParams() []string {
 	}
 	if o.StrictNames {
 		args = append(args, "--strict-names")
+		panic("FIXME: --strict-names is not implemented")
 	}
 	if o.UseSetSessionAuthorization {
+		// TODO: Need to check does it correctly work for data section
 		args = append(args, "--use-set-session-authorization")
 	}
 

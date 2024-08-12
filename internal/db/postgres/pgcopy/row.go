@@ -30,6 +30,7 @@ type columnPos struct {
 
 const defaultBufferPoolSize = 128
 const defaultDecodedBuf = 1024
+const UseDynamicSize = -1
 
 // Row - the row driver that works with vanilla COPY format
 type Row struct {
@@ -46,9 +47,21 @@ type Row struct {
 	newValues []*toolkit.RawValue
 	// columnPos - list of the column pos within the raw data
 	columnPos []*columnPos
+	// columnPos - list of the column pos within the raw data
+	tupleSize int
+	// isDynamic - flag that indicates that row size will be determined in runtime
+	isDynamic bool
 }
 
 func NewRow(tupleSize int) *Row {
+	var isDynamic bool
+	if tupleSize == 0 {
+		panic("tuple size should be greater than 0")
+	}
+	if tupleSize == UseDynamicSize {
+		tupleSize = 0
+		isDynamic = true
+	}
 	pos := make([]*columnPos, tupleSize)
 	decodeBufferPool := make([][]byte, tupleSize)
 	encodeBufferPool := make([][]byte, tupleSize)
@@ -65,6 +78,8 @@ func NewRow(tupleSize int) *Row {
 		decodeBufferPool: decodeBufferPool,
 		encodeBufferPool: encodeBufferPool,
 		encoded:          make([]byte, 0, defaultDecodedBuf),
+		tupleSize:        tupleSize,
+		isDynamic:        isDynamic,
 	}
 }
 
@@ -80,6 +95,9 @@ func (r *Row) Decode(raw []byte) error {
 			colEndPos = len(raw)
 		} else {
 			colEndPos = colStartPos + colEndPos
+		}
+		if r.isDynamic && idx >= r.tupleSize {
+			r.appendNewEmptyBuffer()
 		}
 
 		p := r.columnPos[idx]
@@ -107,6 +125,14 @@ func (r *Row) GetColumn(idx int) (*toolkit.RawValue, error) {
 	pos := r.columnPos[idx]
 	res = DecodeAttr(r.raw[pos.start:pos.end], r.decodeBufferPool[idx][:0])
 	return res, nil
+}
+
+func (r *Row) GetColumnRaw(idx int) ([]byte, error) {
+	if len(r.columnPos) <= idx {
+		return nil, ErrIndexOutOfRage
+	}
+	pos := r.columnPos[idx]
+	return r.raw[pos.start:pos.end], nil
 }
 
 // SetColumn - set column (replace original) value and decode it later
@@ -142,6 +168,14 @@ func (r *Row) Encode() ([]byte, error) {
 		}
 	}
 	return res, nil
+}
+
+func (r *Row) appendNewEmptyBuffer() {
+	r.columnPos = append(r.columnPos, &columnPos{})
+	r.decodeBufferPool = append(r.decodeBufferPool, make([]byte, defaultBufferPoolSize))
+	r.encodeBufferPool = append(r.encodeBufferPool, make([]byte, defaultBufferPoolSize))
+	r.newValues = append(r.newValues, nil)
+	r.tupleSize++
 }
 
 func (r *Row) Length() int {

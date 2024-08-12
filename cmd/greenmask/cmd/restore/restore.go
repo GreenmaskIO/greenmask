@@ -57,7 +57,7 @@ var (
 			st = st.SubStorage(dumpId, true)
 
 			restore := cmdInternals.NewRestore(
-				Config.Common.PgBinPath, st, &Config.Restore.PgRestoreOptions, Config.Restore.Scripts,
+				Config.Common.PgBinPath, st, &Config.Restore, Config.Restore.Scripts,
 				Config.Common.TempDirectory,
 			)
 
@@ -144,7 +144,7 @@ func init() {
 	Cmd.Flags().StringSliceVarP(&Config.Restore.PgRestoreOptions.ExcludeSchema, "exclude-schema", "N", []string{}, "do not restore objects in this schema")
 	Cmd.Flags().StringP("no-owner", "O", "", "skip restoration of object ownership")
 	Cmd.Flags().StringSliceVarP(&Config.Restore.PgRestoreOptions.Function, "function", "P", []string{}, "restore named function")
-	Cmd.Flags().StringP("schema-only", "s", "", "restore only the schema, no data")
+	Cmd.Flags().BoolP("schema-only", "s", false, "restore only the schema, no data")
 	Cmd.Flags().StringP("superuser", "S", "", "superuser user name to use for disabling triggers")
 	Cmd.Flags().StringSliceVarP(&Config.Restore.PgRestoreOptions.Table, "table", "t", []string{}, "restore named relation (table, view, etc.)")
 	Cmd.Flags().StringSliceVarP(&Config.Restore.PgRestoreOptions.Trigger, "trigger", "T", []string{}, "restore named trigger")
@@ -163,6 +163,8 @@ func init() {
 	Cmd.Flags().StringP("section", "", "", "restore named section (pre-data, data, or post-data)")
 	Cmd.Flags().BoolP("strict-names", "", false, "restore named section (pre-data, data, or post-data) match at least one entity each")
 	Cmd.Flags().BoolP("use-set-session-authorization", "", false, "use SET SESSION AUTHORIZATION commands instead of ALTER OWNER commands to set ownership")
+	Cmd.Flags().BoolP("on-conflict-do-nothing", "", false, "add ON CONFLICT DO NOTHING to INSERT commands")
+	Cmd.Flags().BoolP("inserts", "", false, "restore data as INSERT commands, rather than COPY")
 
 	// Connection options:
 	Cmd.Flags().StringP("host", "h", "/var/run/postgres", "database server host or socket directory")
@@ -176,7 +178,7 @@ func init() {
 		"no-owner", "function", "schema-only", "superuser", "table", "trigger", "no-privileges", "single-transaction",
 		"disable-triggers", "enable-row-security", "if-exists", "no-comments", "no-data-for-failed-tables",
 		"no-security-labels", "no-subscriptions", "no-table-access-method", "no-tablespaces", "section",
-		"strict-names", "use-set-session-authorization",
+		"strict-names", "use-set-session-authorization", "inserts", "on-conflict-do-nothing",
 
 		"host", "port", "username",
 	} {

@@ -30,6 +30,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/greenmaskio/greenmask/internal/domains"
 	"github.com/jackc/pgx/v5"
 	"github.com/rs/zerolog/log"
 	"golang.org/x/sync/errgroup"
@@ -75,22 +76,24 @@ type Restore struct {
 	dumpIdList []int32
 	tocObj     *toc.Toc
 	tmpDir     string
+	cfg        *domains.Restore
 
 	preDataClenUpToc  string
 	postDataClenUpToc string
 }
 
 func NewRestore(
-	binPath string, st storages.Storager, opt *pgrestore.Options, s map[string][]pgrestore.Script, tmpDir string,
+	binPath string, st storages.Storager, cfg *domains.Restore, s map[string][]pgrestore.Script, tmpDir string,
 ) *Restore {
 
 	return &Restore{
 		binPath:    binPath,
 		st:         st,
 		pgRestore:  pgrestore.NewPgRestore(binPath),
-		restoreOpt: opt,
+		restoreOpt: &cfg.PgRestoreOptions,
 		scripts:    s,
 		tmpDir:     path.Join(tmpDir, fmt.Sprintf("%d", time.Now().UnixNano())),
+		cfg:        cfg,
 	}
 }
 
@@ -359,12 +362,13 @@ func (r *Restore) dataRestore(ctx context.Context) error {
 	}
 	defer conn.Close(ctx)
 
-	if err := r.RunScripts(ctx, conn, scriptDataSection, scriptExecuteBefore); err != nil {
+	if err = r.RunScripts(ctx, conn, scriptDataSection, scriptExecuteBefore); err != nil {
 		return err
 	}
 
 	tasks := make(chan restorers.RestoreTask, r.restoreOpt.Jobs)
 	eg, gtx := errgroup.WithContext(ctx)
+
 	for j := 0; j < r.restoreOpt.Jobs; j++ {
 		eg.Go(func(id int) func() error {
 			return func() error {
@@ -373,43 +377,7 @@ func (r *Restore) dataRestore(ctx context.Context) error {
 		}(j))
 	}
 
-	eg.Go(func() error {
-		defer close(tasks)
-		for _, entry := range r.tocObj.Entries {
-			select {
-			case <-gtx.Done():
-				return gtx.Err()
-			default:
-			}
-
-			if entry.Section == toc.SectionData {
-
-				if !r.isNeedRestore(entry) {
-					continue
-				}
-
-				var task restorers.RestoreTask
-				switch *entry.Desc {
-				case toc.TableDataDesc:
-					task = restorers.NewTableRestorer(entry, r.st)
-				case toc.SequenceSetDesc:
-					task = restorers.NewSequenceRestorer(entry)
-				case toc.BlobsDesc:
-					task = restorers.NewBlobsRestorer(entry, r.st)
-				}
-
-				if task != nil {
-					select {
-					case <-gtx.Done():
-						return gtx.Err()
-					case tasks <- task:
-					}
-				}
-			}
-
-		}
-		return nil
-	})
+	eg.Go(r.taskPusher(gtx, tasks))
 
 	if err := eg.Wait(); err != nil {
 		return fmt.Errorf("at least one worker exited with error: %w", err)
@@ -466,7 +434,7 @@ func (r *Restore) postDataRestore(ctx context.Context) error {
 	}
 	defer conn.Close(ctx)
 
-	if err := r.RunScripts(ctx, conn, scriptPostDataSection, scriptExecuteBefore); err != nil {
+	if err = r.RunScripts(ctx, conn, scriptPostDataSection, scriptExecuteBefore); err != nil {
 		return err
 	}
 
@@ -478,11 +446,14 @@ func (r *Restore) postDataRestore(ctx context.Context) error {
 		options.DirPath = r.postDataClenUpToc
 	}
 
-	if err := r.pgRestore.Run(ctx, &options); err != nil {
-		return fmt.Errorf("cannot restore post-data section using pg_restore: %w", err)
+	if err = r.pgRestore.Run(ctx, &options); err != nil {
+		var exitErr *exec.ExitError
+		if r.restoreOpt.ExitOnError || (errors.As(err, &exitErr) && exitErr.ExitCode() != 1) {
+			return fmt.Errorf("cannot restore post-data section using pg_restore: %w", err)
+		}
 	}
 
-	if err := r.RunScripts(ctx, conn, scriptPostDataSection, scriptExecuteAfter); err != nil {
+	if err = r.RunScripts(ctx, conn, scriptPostDataSection, scriptExecuteAfter); err != nil {
 		return err
 	}
 
@@ -522,6 +493,54 @@ func (r *Restore) Run(ctx context.Context) error {
 	return nil
 }
 
+func (r *Restore) taskPusher(ctx context.Context, tasks chan restorers.RestoreTask) func() error {
+	return func() error {
+		defer close(tasks)
+		for _, entry := range r.tocObj.Entries {
+			select {
+			case <-ctx.Done():
+				return ctx.Err()
+			default:
+			}
+
+			if entry.Section == toc.SectionData {
+
+				if !r.isNeedRestore(entry) {
+					continue
+				}
+
+				var task restorers.RestoreTask
+				switch *entry.Desc {
+				case toc.TableDataDesc:
+					if r.restoreOpt.Inserts || r.restoreOpt.OnConflictDoNothing {
+						task = restorers.NewTableRestorerInsertFormat(
+							entry, r.st, r.restoreOpt.ExitOnError, r.restoreOpt.OnConflictDoNothing,
+							r.cfg.ErrorExclusions,
+						)
+					} else {
+						task = restorers.NewTableRestorer(entry, r.st, r.restoreOpt.ExitOnError)
+					}
+
+				case toc.SequenceSetDesc:
+					task = restorers.NewSequenceRestorer(entry)
+				case toc.BlobsDesc:
+					task = restorers.NewBlobsRestorer(entry, r.st)
+				}
+
+				if task != nil {
+					select {
+					case <-ctx.Done():
+						return ctx.Err()
+					case tasks <- task:
+					}
+				}
+			}
+
+		}
+		return nil
+	}
+}
+
 func (r *Restore) restoreWorker(ctx context.Context, tasks <-chan restorers.RestoreTask, id int) error {
 	// TODO: You should execute TX for each COPY stmt
 	conn, err := pgx.Connect(ctx, r.dsn)
@@ -554,22 +573,8 @@ func (r *Restore) restoreWorker(ctx context.Context, tasks <-chan restorers.Rest
 			Msg("restoring")
 
 		// Open new transaction for each task
-		tx, err := conn.Begin(ctx)
-		if err != nil {
-			return fmt.Errorf("cannot start transaction (worker %d restoring %s): %w", id, task.DebugInfo(), err)
-		}
-		if err = task.Execute(ctx, tx); err != nil {
-			if txErr := tx.Rollback(ctx); txErr != nil {
-				log.Warn().
-					Err(txErr).
-					Int("workerId", id).
-					Str("objectName", task.DebugInfo()).
-					Msg("cannot rollback transaction")
-			}
+		if err = task.Execute(ctx, conn); err != nil {
 			return fmt.Errorf("unable to perform restoration task (worker %d restoring %s): %w", id, task.DebugInfo(), err)
-		}
-		if err = tx.Commit(ctx); err != nil {
-			return fmt.Errorf("cannot commit transaction (worker %d restoring %s): %w", id, task.DebugInfo(), err)
 		}
 		log.Debug().
 			Int("workerId", id).

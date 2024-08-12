@@ -21,6 +21,6 @@ import (
 )
 
 type RestoreTask interface {
-	Execute(ctx context.Context, tx pgx.Tx) error
+	Execute(ctx context.Context, conn *pgx.Conn) error
 	DebugInfo() string
 }

@@ -136,7 +136,6 @@ func init() {
 	Cmd.Flags().BoolP("no-tablespaces", "", false, "do not dump tablespace assignments")
 	Cmd.Flags().BoolP("no-toast-compression", "", false, "do not dump TOAST compression methods")
 	Cmd.Flags().BoolP("no-unlogged-table-data", "", false, "do not dump unlogged table data")
-	Cmd.Flags().BoolP("on-conflict-do-nothing", "", false, "add ON CONFLICT DO NOTHING to INSERT commands")
 	Cmd.Flags().BoolP("quote-all-identifiers", "", false, "quote all identifiers, even if not key words")
 	Cmd.Flags().StringP("section", "", "", "dump named section (pre-data, data, or post-data)")
 	Cmd.Flags().BoolP("serializable-deferrable", "", false, "wait until the dump can run without anomalies")
@@ -164,7 +163,7 @@ func init() {
 		"disable-triggers", "enable-row-security", "exclude-table-data", "extra-float-digits", "if-exists",
 		"include-foreign-data", "load-via-partition-root", "no-comments", "no-publications", "no-security-labels",
 		"no-subscriptions", "no-synchronized-snapshots", "no-tablespaces", "no-toast-compression",
-		"no-unlogged-table-data", "on-conflict-do-nothing", "quote-all-identifiers", "section",
+		"no-unlogged-table-data", "quote-all-identifiers", "section",
 		"serializable-deferrable", "snapshot", "strict-names", "use-set-session-authorization",
 
 		"dbname", "host", "port", "username",
