@@ -28,6 +28,7 @@ simulating a variety of first names without using real user data.
 * `hashing` - the bool value. Indicates whether the column value must be passed through the hashing function.
   The default value is `false`. If all column has `hashing` set to `false` (by default), then all columns will be
   hashed.
+* `keep_null` - the bool value. Indicates whether NULL values should be preserved. The default value is `true`
 
 ### *gender_mapping* object attributes
 

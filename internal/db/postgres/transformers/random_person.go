@@ -62,6 +62,7 @@ type randomNameColumns struct {
 	Name      string `json:"name"`
 	Template  string `json:"template"`
 	Hashing   bool   `json:"hashing"`
+	KeepNull  *bool  `json:"keep_null"`
 	tmpl      *template.Template
 	columnIdx int
 }
@@ -79,6 +80,7 @@ type RandomNameTransformer struct {
 	originalData []byte
 	engine       int
 	buf          *bytes.Buffer
+	nullableMap  map[int]bool
 }
 
 func NewRandomNameTransformer(ctx context.Context, driver *toolkit.Driver, parameters map[string]toolkit.Parameterizer) (utils.Transformer, toolkit.ValidationWarnings, error) {
@@ -178,6 +180,7 @@ func NewRandomNameTransformer(ctx context.Context, driver *toolkit.Driver, param
 		originalData:    make([]byte, 256),
 		engine:          engineMode,
 		buf:             bytes.NewBuffer(nil),
+		nullableMap:     make(map[int]bool, len(columns)),
 	}, nil, nil
 }
 
@@ -210,13 +213,14 @@ func (nft *RandomNameTransformer) Transform(ctx context.Context, r *toolkit.Reco
 	if nft.engine == hashEngineMode {
 		clear(nft.originalData)
 		for _, c := range nft.columns {
-			// we need to hash only columns that are marked for hashing
-			if !c.Hashing {
-				continue
-			}
 			rawVal, err := r.GetRawColumnValueByIdx(c.columnIdx)
 			if err != nil {
 				return nil, fmt.Errorf("unable to get raw value by idx %d: %w", c.columnIdx, err)
+			}
+			nft.nullableMap[c.columnIdx] = rawVal.IsNull
+			// we need to hash only columns that are marked for hashing
+			if !c.Hashing {
+				continue
 			}
 			if !rawVal.IsNull {
 				nft.originalData = append(nft.originalData, rawVal.Data...)
@@ -230,6 +234,9 @@ func (nft *RandomNameTransformer) Transform(ctx context.Context, r *toolkit.Reco
 	}
 
 	for _, c := range nft.columns {
+		if nft.nullableMap[c.columnIdx] && c.KeepNull != nil && *c.KeepNull {
+			continue
+		}
 		newRawVal := toolkit.NewRawValue(nil, false)
 		nft.buf.Reset()
 		err = c.tmpl.Execute(nft.buf, nameAttrs)
@@ -313,6 +320,11 @@ func validateColumnsAndSetDefault(driver *toolkit.Driver, columns []*randomNameC
 				continue
 			}
 			c.tmpl = tmpl
+		}
+
+		if c.KeepNull == nil {
+			defaultKeepNullValue := true
+			c.KeepNull = &defaultKeepNullValue
 		}
 
 		// Do we need to calculate hash for this column?
