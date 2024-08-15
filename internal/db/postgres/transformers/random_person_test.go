@@ -131,3 +131,36 @@ func testStringContainsOneOfItemFromList(val string, values []string) bool {
 	}
 	return false
 }
+
+func TestRandomPersonTransformer_Transform_static_nullable(t *testing.T) {
+	columnName := "data"
+	originalValue := "\\N"
+	params := map[string]toolkit.ParamsValue{
+		"columns": toolkit.ParamsValue(`[{"name": "data", "template": "{{ .Title }} {{ .FirstName }} {{ .LastName }}"}]`),
+		"engine":  toolkit.ParamsValue("hash"),
+		"gender":  toolkit.ParamsValue("Any"),
+	}
+
+	driver, record := getDriverAndRecord(columnName, originalValue)
+	def, ok := utils.DefaultTransformerRegistry.Get("RandomPerson")
+	require.True(t, ok)
+
+	transformer, warnings, err := def.Instance(
+		context.Background(),
+		driver,
+		params,
+		nil,
+	)
+	require.NoError(t, err)
+	require.Empty(t, warnings)
+
+	r, err := transformer.Transformer.Transform(
+		context.Background(),
+		record,
+	)
+	require.NoError(t, err)
+
+	rawVal, err := r.GetRawColumnValueByName(columnName)
+	require.NoError(t, err)
+	require.True(t, rawVal.IsNull)
+}
