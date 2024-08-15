@@ -608,6 +608,9 @@ func (d *Dump) validateDumpWorker(
 			Msgf("dumping started")
 
 		entry, err := func() (entries.Entry, error) {
+			// We do not need to manage transaction in case of validation - we just close the connection. According to the
+			// documentation, the COPY stream can be interrupted by the client via connection close.
+			// If you try to roll back the transaction we will face the deadlock.
 			conn, tx, err := d.getWorkerTransaction(ctx)
 
 			if err != nil {
@@ -617,12 +620,6 @@ func (d *Dump) validateDumpWorker(
 			defer func() {
 				if err := conn.Close(ctx); err != nil {
 					log.Debug().Err(err).Int("WorkerId", id).Msg("error closing connection")
-				}
-			}()
-
-			defer func() {
-				if err := tx.Rollback(ctx); err != nil {
-					log.Debug().Err(err).Int("WorkerId", id).Msg("unable to rollback transaction")
 				}
 			}()
 
