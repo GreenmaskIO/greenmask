@@ -321,7 +321,7 @@ func validateColumnsAndSetDefault(driver *toolkit.Driver, columns []*randomNameC
 		}
 	}
 
-	if !hasHashingColumns && engineMode != hashEngineMode {
+	if !hasHashingColumns && engineMode == hashEngineMode {
 		for _, c := range columns {
 			c.Hashing = true
 		}
