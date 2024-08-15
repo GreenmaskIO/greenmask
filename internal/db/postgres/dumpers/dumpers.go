@@ -19,11 +19,10 @@ import (
 
 	"github.com/jackc/pgx/v5"
 
-	"github.com/greenmaskio/greenmask/internal/db/postgres/entries"
 	"github.com/greenmaskio/greenmask/internal/storages"
 )
 
 type DumpTask interface {
-	Execute(ctx context.Context, tx pgx.Tx, st storages.Storager) (entries.Entry, error)
+	Execute(ctx context.Context, tx pgx.Tx, st storages.Storager) error
 	DebugInfo() string
 }

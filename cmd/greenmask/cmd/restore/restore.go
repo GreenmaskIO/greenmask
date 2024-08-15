@@ -165,6 +165,7 @@ func init() {
 	Cmd.Flags().BoolP("use-set-session-authorization", "", false, "use SET SESSION AUTHORIZATION commands instead of ALTER OWNER commands to set ownership")
 	Cmd.Flags().BoolP("on-conflict-do-nothing", "", false, "add ON CONFLICT DO NOTHING to INSERT commands")
 	Cmd.Flags().BoolP("inserts", "", false, "restore data as INSERT commands, rather than COPY")
+	Cmd.Flags().BoolP("topological-sort", "", false, "restore tables in topological order, ensuring that dependent tables are not restored until the tables they depend on have been restored")
 
 	// Connection options:
 	Cmd.Flags().StringP("host", "h", "/var/run/postgres", "database server host or socket directory")
@@ -178,7 +179,7 @@ func init() {
 		"no-owner", "function", "schema-only", "superuser", "table", "trigger", "no-privileges", "single-transaction",
 		"disable-triggers", "enable-row-security", "if-exists", "no-comments", "no-data-for-failed-tables",
 		"no-security-labels", "no-subscriptions", "no-table-access-method", "no-tablespaces", "section",
-		"strict-names", "use-set-session-authorization", "inserts", "on-conflict-do-nothing",
+		"strict-names", "use-set-session-authorization", "inserts", "on-conflict-do-nothing", "topological-sort",
 
 		"host", "port", "username",
 	} {

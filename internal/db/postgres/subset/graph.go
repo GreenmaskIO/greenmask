@@ -474,6 +474,32 @@ func (g *Graph) generateQueryForTables(path *Path, scopeEdge *ScopeEdge) string 
 	return query
 }
 
+func (g *Graph) GetSortedTablesAndDependenciesGraph() ([]toolkit.Oid, map[toolkit.Oid][]toolkit.Oid) {
+	condensedEdges := sortCondensedEdges(g.condensedGraph)
+	var tables []toolkit.Oid
+	dependenciesGraph := make(map[toolkit.Oid][]toolkit.Oid)
+	for _, condEdgeIdx := range condensedEdges {
+		edge := g.scc[condEdgeIdx]
+		var componentTables []toolkit.Oid
+		for _, t := range edge.tables {
+			componentTables = append(componentTables, t.Oid)
+		}
+		tables = append(tables, componentTables...)
+	}
+
+	for _, edge := range g.condensedGraph {
+		for _, e := range edge {
+			for _, srcTable := range e.to.component.tables {
+				for _, dstTable := range e.from.component.tables {
+					dependenciesGraph[srcTable.Oid] = append(dependenciesGraph[srcTable.Oid], dstTable.Oid)
+				}
+			}
+		}
+	}
+
+	return tables, dependenciesGraph
+}
+
 func getReferences(ctx context.Context, tx pgx.Tx, tableOid toolkit.Oid) ([]*toolkit.Reference, error) {
 	var refs []*toolkit.Reference
 	rows, err := tx.Query(ctx, foreignKeyColumnsQuery, tableOid)

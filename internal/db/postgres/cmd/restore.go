@@ -66,6 +66,8 @@ const (
 	textListFormat = "text"
 )
 
+const metadataObjectName = "metadata.json"
+
 type Restore struct {
 	binPath    string
 	dsn        string
@@ -77,6 +79,7 @@ type Restore struct {
 	tocObj     *toc.Toc
 	tmpDir     string
 	cfg        *domains.Restore
+	metadata   *storage.Metadata
 
 	preDataClenUpToc  string
 	postDataClenUpToc string
@@ -94,7 +97,50 @@ func NewRestore(
 		scripts:    s,
 		tmpDir:     path.Join(tmpDir, fmt.Sprintf("%d", time.Now().UnixNano())),
 		cfg:        cfg,
+		metadata:   &storage.Metadata{},
 	}
+}
+
+func (r *Restore) Run(ctx context.Context) error {
+
+	defer r.prune()
+
+	if err := r.readMetadata(ctx); err != nil {
+		return fmt.Errorf("cannot read metadata: %w", err)
+	}
+
+	if err := r.prepare(); err != nil {
+		return fmt.Errorf("preparation error: %w", err)
+	}
+
+	if err := r.preFlightRestore(ctx); err != nil {
+		return fmt.Errorf("pre-flight stage restoration error: %w", err)
+	}
+
+	if err := r.preDataRestore(ctx); err != nil {
+		return fmt.Errorf("pre-data stage restoration error: %w", err)
+	}
+
+	if err := r.dataRestore(ctx); err != nil {
+		return fmt.Errorf("data stage restoration error: %w", err)
+	}
+
+	if err := r.postDataRestore(ctx); err != nil {
+		return fmt.Errorf("post-data stage restoration error: %w", err)
+	}
+
+	return nil
+}
+
+func (r *Restore) readMetadata(ctx context.Context) error {
+	f, err := r.st.GetObject(ctx, metadataObjectName)
+	if err != nil {
+		return fmt.Errorf("cannot open metadata file: %w", err)
+	}
+	if err := json.NewDecoder(f).Decode(r.metadata); err != nil {
+		return fmt.Errorf("cannot decode metadata: %w", err)
+	}
+	return nil
 }
 
 func (r *Restore) RunScripts(ctx context.Context, conn *pgx.Conn, section, when string) error {
@@ -466,37 +512,55 @@ func (r *Restore) prune() {
 	}
 }
 
-func (r *Restore) Run(ctx context.Context) error {
+func (r *Restore) sortTocEntriesInTopoOrder() []*toc.Entry {
+	res := make([]*toc.Entry, 0, len(r.tocObj.Entries))
 
-	defer r.prune()
+	preDataEnd := 0
+	postDataStart := 0
 
-	if err := r.prepare(); err != nil {
-		return fmt.Errorf("preparation error: %w", err)
+	// Find predata last index and postdata first index
+	for idx, item := range r.tocObj.Entries {
+		if item.Section == toc.SectionPreData {
+			preDataEnd = idx
+		}
+		if item.Section == toc.SectionPostData {
+			postDataStart = idx
+			break
+		}
+	}
+	dataEntries := r.tocObj.Entries[preDataEnd+1 : postDataStart]
+	lastTableIdx := slices.IndexFunc(dataEntries, func(entry *toc.Entry) bool {
+		return *entry.Desc == toc.SequenceSetDesc || *entry.Desc == toc.BlobsDesc
+	})
+	tableEntries := dataEntries[:lastTableIdx]
+	sortedTablesEntries := make([]*toc.Entry, 0, len(tableEntries))
+	for _, dumpId := range r.metadata.DumpIdsOrder {
+		idx := slices.IndexFunc(tableEntries, func(entry *toc.Entry) bool {
+			return entry.DumpId == dumpId
+		})
+		if idx == -1 {
+			log.Debug().
+				Int32("DumpId", dumpId).
+				Msg("entry not found in table entries it might be excluded from dump")
+		}
+		sortedTablesEntries = append(sortedTablesEntries, tableEntries[idx])
 	}
 
-	if err := r.preFlightRestore(ctx); err != nil {
-		return fmt.Errorf("pre-flight stage restoration error: %w", err)
-	}
-
-	if err := r.preDataRestore(ctx); err != nil {
-		return fmt.Errorf("pre-data stage restoration error: %w", err)
-	}
-
-	if err := r.dataRestore(ctx); err != nil {
-		return fmt.Errorf("data stage restoration error: %w", err)
-	}
-
-	if err := r.postDataRestore(ctx); err != nil {
-		return fmt.Errorf("post-data stage restoration error: %w", err)
-	}
-
-	return nil
+	res = append(res, r.tocObj.Entries[:preDataEnd+1]...)
+	res = append(res, sortedTablesEntries...)
+	res = append(res, dataEntries[lastTableIdx:]...)
+	res = append(res, r.tocObj.Entries[postDataStart:]...)
+	return res
 }
 
 func (r *Restore) taskPusher(ctx context.Context, tasks chan restorers.RestoreTask) func() error {
 	return func() error {
 		defer close(tasks)
-		for _, entry := range r.tocObj.Entries {
+		tocEntries := r.tocObj.Entries
+		if r.restoreOpt.TopologicalSort {
+			tocEntries = r.sortTocEntriesInTopoOrder()
+		}
+		for _, entry := range tocEntries {
 			select {
 			case <-ctx.Done():
 				return ctx.Err()

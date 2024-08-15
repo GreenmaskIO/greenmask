@@ -42,71 +42,76 @@ func NewTableDumper(table *entries.Table, validate bool) *TableDumper {
 	}
 }
 
-func (td *TableDumper) Execute(ctx context.Context, tx pgx.Tx, st storages.Storager) (entries.Entry, error) {
+// writer - writes the data to the storage
+func (td *TableDumper) writer(ctx context.Context, st storages.Storager, r io.ReadCloser) func() error {
+	return func() error {
+		defer func() {
+			if err := r.Close(); err != nil {
+				log.Warn().Err(err).Msg("error closing TableDumper reader")
+			}
+		}()
+		err := st.PutObject(ctx, fmt.Sprintf("%d.dat.gz", td.table.DumpId), r)
+		if err != nil {
+			return fmt.Errorf("cannot write object: %w", err)
+		}
+		return nil
+	}
+}
+
+// dumper - dumps the data from the table and transform it if needed
+func (td *TableDumper) dumper(ctx context.Context, eg *errgroup.Group, w io.WriteCloser, tx pgx.Tx) func() error {
+	return func() error {
+		var pipeline Pipeliner
+		var err error
+		if len(td.table.TransformersContext) > 0 {
+			if td.validate {
+				pipeline, err = NewValidationPipeline(ctx, eg, td.table, w)
+				if err != nil {
+					return fmt.Errorf("cannot initialize validation pipeline: %w", err)
+				}
+			} else {
+				pipeline, err = NewTransformationPipeline(ctx, eg, td.table, w)
+				if err != nil {
+					return fmt.Errorf("cannot initialize transformation pipeline: %w", err)
+				}
+			}
+
+		} else {
+			pipeline = NewPlainDumpPipeline(td.table, w)
+		}
+		if err := pipeline.Init(ctx); err != nil {
+			return fmt.Errorf("error initializing transformation pipeline: %w", err)
+		}
+		if err := td.process(ctx, tx, w, pipeline); err != nil {
+			doneErr := pipeline.Done(ctx)
+			if doneErr != nil {
+				log.Warn().Err(err).Msg("error terminating transformation pipeline")
+			}
+			return fmt.Errorf("error processing table dump %s.%s: %w", td.table.Schema, td.table.Name, err)
+		}
+		log.Debug().Msg("transformation pipeline executed successfully")
+		return pipeline.Done(ctx)
+	}
+}
+
+func (td *TableDumper) Execute(ctx context.Context, tx pgx.Tx, st storages.Storager) error {
 
 	w, r := countwriter.NewGzipPipe()
 
 	eg, gtx := errgroup.WithContext(ctx)
 
-	// Writing goroutine
-	eg.Go(
-		func() error {
-			defer func() {
-				if err := r.Close(); err != nil {
-					log.Warn().Err(err).Msg("error closing TableDumper reader")
-				}
-			}()
-			err := st.PutObject(gtx, fmt.Sprintf("%d.dat.gz", td.table.DumpId), r)
-			if err != nil {
-				return fmt.Errorf("cannot write object: %w", err)
-			}
-			return nil
-		},
-	)
-
+	// Storage writing goroutine
+	eg.Go(td.writer(gtx, st, r))
 	// Dumping and transformation goroutine
-	eg.Go(
-		func() error {
-			var pipeline Pipeliner
-			var err error
-			if len(td.table.TransformersContext) > 0 {
-				if td.validate {
-					pipeline, err = NewValidationPipeline(gtx, eg, td.table, w)
-					if err != nil {
-						return fmt.Errorf("cannot initialize validation pipeline: %w", err)
-					}
-				} else {
-					pipeline, err = NewTransformationPipeline(gtx, eg, td.table, w)
-					if err != nil {
-						return fmt.Errorf("cannot initialize transformation pipeline: %w", err)
-					}
-				}
-
-			} else {
-				pipeline = NewPlainDumpPipeline(td.table, w)
-			}
-			if err := pipeline.Init(gtx); err != nil {
-				return fmt.Errorf("error initializing transformation pipeline: %w", err)
-			}
-			if err := td.process(gtx, tx, w, pipeline); err != nil {
-				doneErr := pipeline.Done(gtx)
-				if doneErr != nil {
-					log.Warn().Err(err).Msg("error terminating transformation pipeline")
-				}
-				return fmt.Errorf("error processing table dump %s.%s: %w", td.table.Schema, td.table.Name, err)
-			}
-			log.Debug().Msg("transformation pipeline executed successfully")
-			return pipeline.Done(gtx)
-		},
-	)
+	eg.Go(td.dumper(gtx, eg, w, tx))
 
 	if err := eg.Wait(); err != nil {
-		return nil, err
+		return err
 	}
 
 	td.table.OriginalSize = w.GetCount()
 	td.table.CompressedSize = r.GetCount()
-	return td.table, nil
+	return nil
 }
 
 func (td *TableDumper) process(ctx context.Context, tx pgx.Tx, w io.WriteCloser, pipeline Pipeliner) (err error) {

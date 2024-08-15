@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"os"
 	"path"
+	"slices"
 	"time"
 
 	pgxdecimal "github.com/jackc/pgx-shopspring-decimal"
@@ -60,6 +61,11 @@ type Dump struct {
 	tocFileSize       int64
 	version           int
 	blobs             *entries.Blobs
+	// dumpDependenciesGraph - map of table DumpId to its dependencies DumpIds. Stores in meta and uses for restoration
+	// coordination according to the topological order
+	dumpDependenciesGraph map[int32][]int32
+	// sortedTablesDumpIds - sorted tables dump ids in topological order
+	sortedTablesDumpIds []int32
 	// validate shows that dump worker must be in validation mode
 	validate bool
 }
@@ -218,121 +224,153 @@ func (d *Dump) schemaOnlyDump(ctx context.Context, tx pgx.Tx) error {
 	return nil
 }
 
-func (d *Dump) dataDump(ctx context.Context) error {
-	// TODO: You should use pointer to dumpers.DumpTask instead
-	tasks := make(chan dumpers.DumpTask, d.pgDumpOptions.Jobs)
-	result := make(chan entries.Entry, d.pgDumpOptions.Jobs)
-
-	log.Debug().Msgf("planned %d workers", d.pgDumpOptions.Jobs)
-	eg, gtx := errgroup.WithContext(ctx)
-	eg.Go(func() error {
-		workerEg, gtx := errgroup.WithContext(gtx)
-
-		defer close(result)
+// dumpWorkerPlanner - plans dump workers based on d.pgDumpOptions.Jobs
+func (d *Dump) dumpWorkerPlanner(ctx context.Context, tasks <-chan dumpers.DumpTask) func() error {
+	return func() error {
+		workerEg, gtx := errgroup.WithContext(ctx)
 		for j := 0; j < d.pgDumpOptions.Jobs; j++ {
 			workerEg.Go(
-				func(id int) func() error {
-					return func() error {
-						if d.validate {
-							return d.validateDumpWorker(gtx, tasks, result, id+1)
-						} else {
-							return d.dumpWorker(gtx, tasks, result, id+1)
-						}
-					}
-				}(j),
+				d.dumpWorkerRunner(gtx, tasks, j),
 			)
 		}
 		if err := workerEg.Wait(); err != nil {
 			return err
 		}
 		return nil
-	})
+	}
+}
 
-	eg.Go(
-		func() error {
-			defer close(tasks)
+// dumpWorkerRunner - runs dumpWorker or validateDumpWorker depending on the mode
+func (d *Dump) dumpWorkerRunner(
+	ctx context.Context, tasks <-chan dumpers.DumpTask, jobId int,
+) func() error {
+	return func() error {
+		if d.validate {
+			return d.validateDumpWorker(ctx, tasks, jobId)
+		} else {
+			return d.dumpWorker(ctx, tasks, jobId)
+		}
+	}
+}
 
-			for _, dumpObj := range d.context.DataSectionObjects {
-				dumpObj.SetDumpId(d.dumpIdSequence)
-				var task dumpers.DumpTask
-				switch v := dumpObj.(type) {
-				case *entries.Table:
-					task = dumpers.NewTableDumper(v, d.validate)
-				case *entries.Sequence:
-					task = dumpers.NewSequenceDumper(v)
-				case *entries.Blobs:
-					d.blobs = v
-					task = dumpers.NewLargeObjectDumper(v)
-				default:
-					return fmt.Errorf("unknow dumper type")
-				}
-				select {
-				case <-gtx.Done():
-					return gtx.Err()
-				case tasks <- task:
-				}
+// taskProducer - produces tasks for dumpWorker based on d.context.DataSectionObjects
+func (d *Dump) taskProducer(ctx context.Context, tasks chan<- dumpers.DumpTask) func() error {
+	return func() error {
+		defer close(tasks)
+
+		for _, dumpObj := range d.context.DataSectionObjects {
+			dumpObj.SetDumpId(d.dumpIdSequence)
+			var task dumpers.DumpTask
+			switch v := dumpObj.(type) {
+			case *entries.Table:
+				task = dumpers.NewTableDumper(v, d.validate)
+			case *entries.Sequence:
+				task = dumpers.NewSequenceDumper(v)
+			case *entries.Blobs:
+				d.blobs = v
+				task = dumpers.NewLargeObjectDumper(v)
+			default:
+				return fmt.Errorf("unknow dumper type")
 			}
-			return nil
-		},
-	)
-
-	eg.Go(
-		func() error {
-			var tables, sequences, largeObjects []*toc.Entry
-			for {
-				var entry entries.Entry
-				var ok bool
-				select {
-				case <-gtx.Done():
-					return gtx.Err()
-				case entry, ok = <-result:
-				}
-				if !ok {
-					break
-				}
-
-				if entry == nil {
-					panic("unexpected entry nil pointer")
-				}
-				e, err := entry.Entry()
-				if err != nil {
-					return fmt.Errorf("error producing toc entry: %w", err)
-				}
-				switch v := entry.(type) {
-				case *entries.Table:
-					d.dumpedObjectSizes[e.DumpId] = storageDto.ObjectSizeStat{
-						Original:   v.OriginalSize,
-						Compressed: v.CompressedSize,
-					}
-					tables = append(tables, e)
-				case *entries.Sequence:
-					sequences = append(sequences, e)
-				case *entries.Blobs:
-					d.dumpedObjectSizes[e.DumpId] = storageDto.ObjectSizeStat{
-						Original:   v.OriginalSize,
-						Compressed: v.CompressedSize,
-					}
-					largeObjects = append(largeObjects, e)
-				default:
-					return fmt.Errorf("unexpected toc entry type")
-				}
+			select {
+			case <-ctx.Done():
+				return ctx.Err()
+			case tasks <- task:
 			}
+		}
+		return nil
+	}
+}
 
-			d.dataEntries = append(d.dataEntries, tables...)
-			d.dataEntries = append(d.dataEntries, sequences...)
-			d.dataEntries = append(d.dataEntries, largeObjects...)
-			return nil
-		},
-	)
+// createTocEntries - creates TOC entries based on d.context.DataSectionObjects
+// they will be stored in tod.dat file
+func (d *Dump) createTocEntries() error {
+	var sequences, largeObjects, tablesEntry []*toc.Entry
+	var tables []*entries.Table
+
+	for _, obj := range d.context.DataSectionObjects {
+		entry, err := obj.Entry()
+		if err != nil {
+			return fmt.Errorf("error producing toc entry: %w", err)
+		}
+		switch v := obj.(type) {
+		case *entries.Table:
+			d.dumpedObjectSizes[entry.DumpId] = storageDto.ObjectSizeStat{
+				Original:   v.OriginalSize,
+				Compressed: v.CompressedSize,
+			}
+			tablesEntry = append(tablesEntry, entry)
+			tables = append(tables, v)
+		case *entries.Sequence:
+			sequences = append(sequences, entry)
+		case *entries.Blobs:
+			d.dumpedObjectSizes[entry.DumpId] = storageDto.ObjectSizeStat{
+				Original:   v.OriginalSize,
+				Compressed: v.CompressedSize,
+			}
+			largeObjects = append(largeObjects, entry)
+		default:
+			panic("unexpected entry type")
+		}
+	}
+
+	d.setDumpDependenciesGraph(tables)
+
+	d.dataEntries = append(d.dataEntries, tablesEntry...)
+	d.dataEntries = append(d.dataEntries, sequences...)
+	d.dataEntries = append(d.dataEntries, largeObjects...)
+	return nil
+}
+
+// setDumpDependenciesGraph - sets dumpDependenciesGraph of entries using their dumpId and build topological order of
+// dump ids
+func (d *Dump) setDumpDependenciesGraph(tables []*entries.Table) {
+	sortedOids, graph := d.context.Graph.GetSortedTablesAndDependenciesGraph()
+	d.dumpDependenciesGraph = make(map[int32][]int32)
+	for _, oid := range sortedOids {
+		idx := slices.IndexFunc(tables, func(entry *entries.Table) bool {
+			return entry.Oid == oid
+		})
+		if idx == -1 {
+			panic("table not found")
+		}
+		t := tables[idx]
+		// Create dependencies graph with DumpId sequence for easier restoration coordination
+		d.dumpDependenciesGraph[t.DumpId] = []int32{}
+		for _, dep := range graph[oid] {
+			// Find dependency table in the tables slice by OID
+			depIdx := slices.IndexFunc(tables, func(depTable *entries.Table) bool {
+				return depTable.Oid == dep
+			})
+			if depIdx == -1 {
+				panic("table not found")
+			}
+			// Append dependency table DumpId to the current table dependencies
+			d.dumpDependenciesGraph[t.DumpId] = append(d.dumpDependenciesGraph[t.DumpId], tables[depIdx].DumpId)
+		}
+		d.sortedTablesDumpIds = append(d.sortedTablesDumpIds, t.DumpId)
+	}
+}
+
+func (d *Dump) dataDump(ctx context.Context) error {
+	tasks := make(chan dumpers.DumpTask, d.pgDumpOptions.Jobs)
+
+	log.Debug().Msgf("planned %d workers", d.pgDumpOptions.Jobs)
+	eg, gtx := errgroup.WithContext(ctx)
+	eg.Go(d.dumpWorkerPlanner(gtx, tasks))
+	eg.Go(d.taskProducer(gtx, tasks))
 
 	if err := eg.Wait(); err != nil {
 		return fmt.Errorf("at least one worker exited with error: %w", err)
+	}
+	if err := d.createTocEntries(); err != nil {
+		return fmt.Errorf("error creating toc entries: %w", err)
 	}
 	log.Debug().Msg("all the data have been dumped")
 	return nil
 }
 
-func (d *Dump) mergeAndWriteToc(ctx context.Context, tx pgx.Tx) error {
+func (d *Dump) mergeAndWriteToc(ctx context.Context) error {
 	log.Debug().Msg("merging toc entries")
 	mergedEntries, err := d.MergeTocEntries(d.schemaToc.Entries, d.dataEntries)
 	if err != nil {
@@ -366,7 +404,7 @@ func (d *Dump) mergeAndWriteToc(ctx context.Context, tx pgx.Tx) error {
 func (d *Dump) writeMetaData(ctx context.Context, startedAt, completedAt time.Time) error {
 	metadata, err := storageDto.NewMetadata(
 		d.resultToc, d.tocFileSize, startedAt, completedAt, d.config.Dump.Transformation, d.dumpedObjectSizes,
-		d.context.DatabaseSchema,
+		d.context.DatabaseSchema, d.dumpDependenciesGraph, d.sortedTablesDumpIds,
 	)
 	if err != nil {
 		return fmt.Errorf("unable build metadata: %w", err)
@@ -432,7 +470,7 @@ func (d *Dump) Run(ctx context.Context) (err error) {
 		return fmt.Errorf("data stage dumping error: %w", err)
 	}
 
-	if err = d.mergeAndWriteToc(ctx, tx); err != nil {
+	if err = d.mergeAndWriteToc(ctx); err != nil {
 		return fmt.Errorf("mergeAndWriteToc stage dumping error: %w", err)
 	}
 
@@ -512,7 +550,7 @@ func (d *Dump) getWorkerTransaction(ctx context.Context) (*pgx.Conn, pgx.Tx, err
 }
 
 func (d *Dump) dumpWorker(
-	ctx context.Context, tasks <-chan dumpers.DumpTask, result chan<- entries.Entry, id int,
+	ctx context.Context, tasks <-chan dumpers.DumpTask, id int,
 ) error {
 
 	conn, tx, err := d.getWorkerTransaction(ctx)
@@ -558,18 +596,8 @@ func (d *Dump) dumpWorker(
 			Str("ObjectName", task.DebugInfo()).
 			Msgf("dumping started")
 
-		entry, err := task.Execute(ctx, tx, d.st)
-		if err != nil {
+		if err = task.Execute(ctx, tx, d.st); err != nil {
 			return err
-		}
-
-		if entry == nil {
-			panic("received nil entry")
-		}
-
-		select {
-		case <-ctx.Done():
-		case result <- entry:
 		}
 
 		log.Debug().
@@ -580,7 +608,7 @@ func (d *Dump) dumpWorker(
 }
 
 func (d *Dump) validateDumpWorker(
-	ctx context.Context, tasks <-chan dumpers.DumpTask, result chan<- entries.Entry, id int,
+	ctx context.Context, tasks <-chan dumpers.DumpTask, id int,
 ) error {
 	for {
 
@@ -607,39 +635,8 @@ func (d *Dump) validateDumpWorker(
 			Str("ObjectName", task.DebugInfo()).
 			Msgf("dumping started")
 
-		entry, err := func() (entries.Entry, error) {
-			// We do not need to manage transaction in case of validation - we just close the connection. According to the
-			// documentation, the COPY stream can be interrupted by the client via connection close.
-			// If you try to roll back the transaction we will face the deadlock.
-			conn, tx, err := d.getWorkerTransaction(ctx)
-
-			if err != nil {
-				return nil, fmt.Errorf("error preparing worker (id=%v) transaction: %w", id, err)
-			}
-
-			defer func() {
-				if err := conn.Close(ctx); err != nil {
-					log.Debug().Err(err).Int("WorkerId", id).Msg("error closing connection")
-				}
-			}()
-
-			entry, err := task.Execute(ctx, tx, d.st)
-			if err != nil {
-				return nil, err
-			}
-
-			if entry == nil {
-				panic("received nil entry")
-			}
-			return entry, nil
-		}()
-		if err != nil {
+		if err := d.validateDumpExecuteTask(ctx, id, task); err != nil {
 			return err
-		}
-
-		select {
-		case <-ctx.Done():
-		case result <- entry:
 		}
 
 		log.Debug().
@@ -647,4 +644,26 @@ func (d *Dump) validateDumpWorker(
 			Str("ObjectName", task.DebugInfo()).
 			Msgf("dumping is done")
 	}
+}
+
+func (d *Dump) validateDumpExecuteTask(ctx context.Context, id int, task dumpers.DumpTask) error {
+	// We do not need to manage transaction in case of validation - we just close the connection. According to the
+	// documentation, the COPY stream can be interrupted by the client via connection close.
+	// If you try to roll back the transaction we will face the deadlock.
+	conn, tx, err := d.getWorkerTransaction(ctx)
+
+	if err != nil {
+		return fmt.Errorf("error preparing worker (id=%v) transaction: %w", id, err)
+	}
+
+	defer func() {
+		if err := conn.Close(ctx); err != nil {
+			log.Debug().Err(err).Int("WorkerId", id).Msg("error closing connection")
+		}
+	}()
+
+	if err = task.Execute(ctx, tx, d.st); err != nil {
+		return err
+	}
+	return nil
 }
