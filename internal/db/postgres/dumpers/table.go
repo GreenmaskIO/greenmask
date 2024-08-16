@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"io"
 
+	"github.com/greenmaskio/greenmask/internal/utils/ioutils"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/rs/zerolog/log"
@@ -26,19 +27,20 @@ import (
 
 	"github.com/greenmaskio/greenmask/internal/db/postgres/entries"
 	"github.com/greenmaskio/greenmask/internal/storages"
-	"github.com/greenmaskio/greenmask/internal/utils/countwriter"
 )
 
 type TableDumper struct {
 	table     *entries.Table
 	recordNum uint64
 	validate  bool
+	usePgzip  bool
 }
 
-func NewTableDumper(table *entries.Table, validate bool) *TableDumper {
+func NewTableDumper(table *entries.Table, validate bool, usePgzip bool) *TableDumper {
 	return &TableDumper{
 		table:    table,
 		validate: validate,
+		usePgzip: usePgzip,
 	}
 }
 
@@ -96,7 +98,7 @@ func (td *TableDumper) dumper(ctx context.Context, eg *errgroup.Group, w io.Writ
 
 func (td *TableDumper) Execute(ctx context.Context, tx pgx.Tx, st storages.Storager) error {
 
-	w, r := countwriter.NewGzipPipe()
+	w, r := ioutils.NewGzipPipe(td.usePgzip)
 
 	eg, gtx := errgroup.WithContext(ctx)
 

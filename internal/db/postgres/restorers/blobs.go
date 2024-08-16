@@ -16,13 +16,13 @@ package restorers
 
 import (
 	"bufio"
-	"compress/gzip"
 	"context"
 	"fmt"
 	"io"
 	"strconv"
 	"strings"
 
+	"github.com/greenmaskio/greenmask/internal/utils/ioutils"
 	"github.com/jackc/pgx/v5"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
@@ -35,12 +35,14 @@ type BlobsRestorer struct {
 	Entry            *toc.Entry
 	St               storages.Storager
 	largeObjectsOids []uint32
+	usePgzip         bool
 }
 
-func NewBlobsRestorer(entry *toc.Entry, st storages.Storager) *BlobsRestorer {
+func NewBlobsRestorer(entry *toc.Entry, st storages.Storager, usePgzip bool) *BlobsRestorer {
 	return &BlobsRestorer{
-		Entry: entry,
-		St:    st,
+		Entry:    entry,
+		St:       st,
+		usePgzip: usePgzip,
 	}
 }
 
@@ -105,11 +107,17 @@ func (td *BlobsRestorer) execute(ctx context.Context, tx pgx.Tx) error {
 			if err != nil {
 				return fmt.Errorf("error getting object %s: %w", fmt.Sprintf("blob_%d.dat.gz", loOid), err)
 			}
-			gz, err := gzip.NewReader(loReader)
+			gz, err := ioutils.GetGzipReadCloser(loReader, td.usePgzip)
 			if err != nil {
 				return fmt.Errorf("cannot create gzip reader: %w", err)
 			}
-			defer gz.Close()
+			defer func(gz io.Closer) {
+				if err := gz.Close(); err != nil {
+					log.Warn().
+						Err(err).
+						Msg("error closing gzip reader")
+				}
+			}(gz)
 			lo, err := loApi.Open(ctx, loOid, pgx.LargeObjectModeWrite)
 			if err != nil {
 				return fmt.Errorf("unable to open large object %d: %w", loOid, err)

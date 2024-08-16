@@ -12,36 +12,36 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package countwriter
+package ioutils
 
 import "io"
 
-type CountWriteCloser interface {
+type CountReadCloser interface {
 	GetCount() int64
-	io.WriteCloser
+	io.ReadCloser
 }
 
-type Writer struct {
-	w     io.WriteCloser
+type Reader struct {
+	r     io.ReadCloser
 	Count int64
 }
 
-func NewWriter(w io.WriteCloser) *Writer {
-	return &Writer{
-		w: w,
+func NewReader(r io.ReadCloser) *Reader {
+	return &Reader{
+		r: r,
 	}
 }
 
-func (cw *Writer) Write(p []byte) (int, error) {
-	c, err := cw.w.Write(p)
-	cw.Count += int64(c)
+func (r *Reader) Read(p []byte) (n int, err error) {
+	c, err := r.r.Read(p)
+	r.Count += int64(c)
 	return c, err
 }
 
-func (cw *Writer) Close() error {
-	return cw.w.Close()
+func (r *Reader) Close() error {
+	return r.r.Close()
 }
 
-func (cw *Writer) GetCount() int64 {
-	return cw.Count
+func (r *Reader) GetCount() int64 {
+	return r.Count
 }

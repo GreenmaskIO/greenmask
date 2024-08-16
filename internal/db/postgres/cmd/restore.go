@@ -630,16 +630,16 @@ func (r *Restore) taskPusher(ctx context.Context, tasks chan restorers.RestoreTa
 					if r.restoreOpt.Inserts || r.restoreOpt.OnConflictDoNothing {
 						task = restorers.NewTableRestorerInsertFormat(
 							entry, r.st, r.restoreOpt.ExitOnError, r.restoreOpt.OnConflictDoNothing,
-							r.cfg.ErrorExclusions,
+							r.cfg.ErrorExclusions, r.restoreOpt.Pgzip,
 						)
 					} else {
-						task = restorers.NewTableRestorer(entry, r.st, r.restoreOpt.ExitOnError)
+						task = restorers.NewTableRestorer(entry, r.st, r.restoreOpt.ExitOnError, r.restoreOpt.Pgzip)
 					}
 
 				case toc.SequenceSetDesc:
 					task = restorers.NewSequenceRestorer(entry)
 				case toc.BlobsDesc:
-					task = restorers.NewBlobsRestorer(entry, r.st)
+					task = restorers.NewBlobsRestorer(entry, r.st, r.restoreOpt.Pgzip)
 				}
 
 				if task != nil {

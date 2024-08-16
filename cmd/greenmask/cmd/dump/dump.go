@@ -147,6 +147,10 @@ func init() {
 		"use-set-session-authorization", "", false,
 		"use SET SESSION AUTHORIZATION commands instead of ALTER OWNER commands to set ownership",
 	)
+	Cmd.Flags().BoolP(
+		"pgzip", "", false,
+		"use pgzip compression instead of gzip",
+	)
 
 	// Connection options:
 	Cmd.Flags().StringP("dbname", "d", "postgres", "database to dump")
@@ -164,7 +168,7 @@ func init() {
 		"include-foreign-data", "load-via-partition-root", "no-comments", "no-publications", "no-security-labels",
 		"no-subscriptions", "no-synchronized-snapshots", "no-tablespaces", "no-toast-compression",
 		"no-unlogged-table-data", "quote-all-identifiers", "section",
-		"serializable-deferrable", "snapshot", "strict-names", "use-set-session-authorization",
+		"serializable-deferrable", "snapshot", "strict-names", "use-set-session-authorization", "pgzip",
 
 		"dbname", "host", "port", "username",
 	} {

@@ -355,6 +355,7 @@ Flags:
       --use-set-session-authorization   use SET SESSION AUTHORIZATION commands instead of ALTER OWNER commands to set ownership
   -U, --username string                 connect as specified database user (default "postgres")
   -v, --verbose string                  verbose mode
+      --pgzip                           use pgzip compression instead of gzip
 ```
 
 ## list-dumps
@@ -590,6 +591,7 @@ Flags:
       --use-set-session-authorization   use SET SESSION AUTHORIZATION commands instead of ALTER OWNER commands to set ownership
   -U, --username string                 connect as specified database user (default "postgres")
   -v, --verbose string                  verbose mode
+      --pgzip                           use pgzip decompression instead of gzip
 
 ```
 
