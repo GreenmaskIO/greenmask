@@ -100,3 +100,9 @@ tables with foreign key constraints.
     tables with cyclic dependencies is to temporarily remove the foreign key constraint (to break the cycle), restore the
     data, and then re-add the foreign key constraint once the data restoration is complete.
 
+
+If your database has cyclic dependencies you will be notified about it but the restoration will continue.
+
+```text
+2024-08-16T21:39:50+03:00 WRN cycle between tables is detected: cannot guarantee the order of restoration within cycle cycle=["public.employees","public.departments","public.projects","public.employees"]
+```

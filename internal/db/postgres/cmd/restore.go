@@ -537,11 +537,24 @@ func (r *Restore) prune() {
 	}
 }
 
+func (r *Restore) logWarningsIfHasCycles() {
+	if len(r.metadata.Cycles) == 0 {
+		return
+	}
+	for _, cycle := range r.metadata.Cycles {
+		log.Warn().
+			Strs("cycle", cycle).
+			Msg("cycle between tables is detected: cannot guarantee the order of restoration within cycle")
+	}
+}
+
 func (r *Restore) sortTocEntriesInTopoOrder() []*toc.Entry {
 	res := make([]*toc.Entry, 0, len(r.tocObj.Entries))
 
 	preDataEnd := 0
 	postDataStart := 0
+
+	r.logWarningsIfHasCycles()
 
 	// Find predata last index and postdata first index
 	for idx, item := range r.tocObj.Entries {
