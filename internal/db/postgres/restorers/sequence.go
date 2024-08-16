@@ -34,6 +34,10 @@ func NewSequenceRestorer(entry *toc.Entry) *SequenceRestorer {
 	}
 }
 
+func (td *SequenceRestorer) GetEntry() *toc.Entry {
+	return td.Entry
+}
+
 func (td *SequenceRestorer) Execute(ctx context.Context, conn *pgx.Conn) error {
 	tx, err := conn.Begin(ctx)
 	if err != nil {

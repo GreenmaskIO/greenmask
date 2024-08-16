@@ -159,6 +159,10 @@ func (td *BlobsRestorer) execute(ctx context.Context, tx pgx.Tx) error {
 	return nil
 }
 
+func (td *BlobsRestorer) GetEntry() *toc.Entry {
+	return td.Entry
+}
+
 func (td *BlobsRestorer) DebugInfo() string {
 	return fmt.Sprintf("blobs %s", *td.Entry.Tag)
 }

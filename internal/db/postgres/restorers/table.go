@@ -46,6 +46,10 @@ func NewTableRestorer(entry *toc.Entry, st storages.Storager, exitOnError bool) 
 	}
 }
 
+func (td *TableRestorer) GetEntry() *toc.Entry {
+	return td.Entry
+}
+
 func (td *TableRestorer) Execute(ctx context.Context, conn *pgx.Conn) error {
 	// TODO: Add tests
 

@@ -141,12 +141,8 @@ func (r *Restore) Run(ctx context.Context) error {
 }
 
 func (r *Restore) putDumpId(task restorers.RestoreTask) {
-	tableTask, ok := task.(*restorers.TableRestorer)
-	if !ok {
-		return
-	}
 	r.mx.Lock()
-	r.restoredDumpIds[tableTask.Entry.DumpId] = true
+	r.restoredDumpIds[task.GetEntry().DumpId] = true
 	r.mx.Unlock()
 }
 

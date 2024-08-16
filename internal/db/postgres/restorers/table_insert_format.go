@@ -82,6 +82,10 @@ func NewTableRestorerInsertFormat(
 	}
 }
 
+func (td *TableRestorerInsertFormat) GetEntry() *toc.Entry {
+	return td.Entry
+}
+
 func (td *TableRestorerInsertFormat) Execute(ctx context.Context, conn *pgx.Conn) error {
 
 	if td.Entry.FileName == nil {
