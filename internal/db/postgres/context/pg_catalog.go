@@ -54,7 +54,9 @@ func getDumpObjects(
 	return tables, sequesnces, lo, nil
 }
 
-func getTables(ctx context.Context, version int, tx pgx.Tx, options *pgdump.Options, config map[toolkit.Oid]*entries.Table) ([]*entries.Table, []*entries.Sequence, error) {
+func getTables(
+	ctx context.Context, version int, tx pgx.Tx, options *pgdump.Options, config map[toolkit.Oid]*entries.Table,
+) ([]*entries.Table, []*entries.Sequence, error) {
 	// Building relation search query using regexp adaptation rules and pre-defined query templates
 	// TODO: Refactor it to gotemplate
 	query, err := BuildTableSearchQuery(options.Table, options.ExcludeTable,

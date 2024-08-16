@@ -337,10 +337,14 @@ func (d *Dump) setDumpDependenciesGraph(tables []*entries.Table) {
 		t := tables[idx]
 		// Create dependencies graph with DumpId sequence for easier restoration coordination
 		d.dumpDependenciesGraph[t.DumpId] = []int32{}
-		for _, dep := range graph[oid] {
+		for _, depOid := range graph[oid] {
+			// If dependency table is not in the tables slice, it is likely excluded
+			if !slices.Contains(sortedOids, depOid) {
+				continue
+			}
 			// Find dependency table in the tables slice by OID
 			depIdx := slices.IndexFunc(tables, func(depTable *entries.Table) bool {
-				return depTable.Oid == dep
+				return depTable.Oid == depOid
 			})
 			if depIdx == -1 {
 				panic("table not found")

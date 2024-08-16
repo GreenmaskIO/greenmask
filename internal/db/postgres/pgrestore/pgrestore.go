@@ -94,7 +94,7 @@ type Options struct {
 	// statements on fly if needed
 	OnConflictDoNothing bool `mapstructure:"on-conflict-do-nothing"`
 	Inserts             bool `mapstructure:"inserts"`
-	TopologicalSort     bool `mapstructure:"topological-sort"`
+	RestoreInOrder      bool `mapstructure:"restore-in-order"`
 
 	// Connection options:
 	Host       string `mapstructure:"host"`

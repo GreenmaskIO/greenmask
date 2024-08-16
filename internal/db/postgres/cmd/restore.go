@@ -28,13 +28,15 @@ import (
 	"regexp"
 	"slices"
 	"strconv"
+	"sync"
 	"time"
 
-	"github.com/greenmaskio/greenmask/internal/domains"
 	"github.com/jackc/pgx/v5"
 	"github.com/rs/zerolog/log"
 	"golang.org/x/sync/errgroup"
 	"gopkg.in/yaml.v3"
+
+	"github.com/greenmaskio/greenmask/internal/domains"
 
 	"github.com/greenmaskio/greenmask/internal/db/postgres/pgrestore"
 	"github.com/greenmaskio/greenmask/internal/db/postgres/restorers"
@@ -68,6 +70,8 @@ const (
 
 const metadataObjectName = "metadata.json"
 
+const dependenciesCheckInterval = 15 * time.Millisecond
+
 type Restore struct {
 	binPath    string
 	dsn        string
@@ -80,9 +84,11 @@ type Restore struct {
 	tmpDir     string
 	cfg        *domains.Restore
 	metadata   *storage.Metadata
+	mx         *sync.RWMutex
 
 	preDataClenUpToc  string
 	postDataClenUpToc string
+	restoredDumpIds   map[int32]bool
 }
 
 func NewRestore(
@@ -90,14 +96,16 @@ func NewRestore(
 ) *Restore {
 
 	return &Restore{
-		binPath:    binPath,
-		st:         st,
-		pgRestore:  pgrestore.NewPgRestore(binPath),
-		restoreOpt: &cfg.PgRestoreOptions,
-		scripts:    s,
-		tmpDir:     path.Join(tmpDir, fmt.Sprintf("%d", time.Now().UnixNano())),
-		cfg:        cfg,
-		metadata:   &storage.Metadata{},
+		binPath:         binPath,
+		st:              st,
+		pgRestore:       pgrestore.NewPgRestore(binPath),
+		restoreOpt:      &cfg.PgRestoreOptions,
+		scripts:         s,
+		tmpDir:          path.Join(tmpDir, fmt.Sprintf("%d", time.Now().UnixNano())),
+		cfg:             cfg,
+		metadata:        &storage.Metadata{},
+		restoredDumpIds: make(map[int32]bool),
+		mx:              &sync.RWMutex{},
 	}
 }
 
@@ -130,6 +138,27 @@ func (r *Restore) Run(ctx context.Context) error {
 	}
 
 	return nil
+}
+
+func (r *Restore) putDumpId(task restorers.RestoreTask) {
+	tableTask, ok := task.(*restorers.TableRestorer)
+	if !ok {
+		return
+	}
+	r.mx.Lock()
+	r.restoredDumpIds[tableTask.Entry.DumpId] = true
+	r.mx.Unlock()
+}
+
+func (r *Restore) dependenciesAreRestored(deps []int32) bool {
+	r.mx.RLock()
+	defer r.mx.RUnlock()
+	for _, id := range deps {
+		if !r.restoredDumpIds[id] {
+			return false
+		}
+	}
+	return true
 }
 
 func (r *Restore) readMetadata(ctx context.Context) error {
@@ -532,7 +561,10 @@ func (r *Restore) sortTocEntriesInTopoOrder() []*toc.Entry {
 	lastTableIdx := slices.IndexFunc(dataEntries, func(entry *toc.Entry) bool {
 		return *entry.Desc == toc.SequenceSetDesc || *entry.Desc == toc.BlobsDesc
 	})
-	tableEntries := dataEntries[:lastTableIdx]
+	tableEntries := dataEntries
+	if lastTableIdx != -1 {
+		tableEntries = dataEntries[:lastTableIdx]
+	}
 	sortedTablesEntries := make([]*toc.Entry, 0, len(tableEntries))
 	for _, dumpId := range r.metadata.DumpIdsOrder {
 		idx := slices.IndexFunc(tableEntries, func(entry *toc.Entry) bool {
@@ -548,16 +580,32 @@ func (r *Restore) sortTocEntriesInTopoOrder() []*toc.Entry {
 
 	res = append(res, r.tocObj.Entries[:preDataEnd+1]...)
 	res = append(res, sortedTablesEntries...)
-	res = append(res, dataEntries[lastTableIdx:]...)
+	if lastTableIdx != -1 {
+		res = append(res, dataEntries[lastTableIdx:]...)
+	}
 	res = append(res, r.tocObj.Entries[postDataStart:]...)
 	return res
+}
+
+func (r *Restore) waitDependenciesAreRestore(ctx context.Context, deps []int32) error {
+	for {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		default:
+		}
+		if r.dependenciesAreRestored(deps) {
+			return nil
+		}
+		time.Sleep(dependenciesCheckInterval)
+	}
 }
 
 func (r *Restore) taskPusher(ctx context.Context, tasks chan restorers.RestoreTask) func() error {
 	return func() error {
 		defer close(tasks)
 		tocEntries := r.tocObj.Entries
-		if r.restoreOpt.TopologicalSort {
+		if r.restoreOpt.RestoreInOrder {
 			tocEntries = r.sortTocEntriesInTopoOrder()
 		}
 		for _, entry := range tocEntries {
@@ -571,6 +619,13 @@ func (r *Restore) taskPusher(ctx context.Context, tasks chan restorers.RestoreTa
 
 				if !r.isNeedRestore(entry) {
 					continue
+				}
+
+				if r.restoreOpt.RestoreInOrder && r.restoreOpt.Jobs > 1 {
+					deps := r.metadata.DependenciesGraph[entry.DumpId]
+					if err := r.waitDependenciesAreRestore(ctx, deps); err != nil {
+						return fmt.Errorf("cannot wait for dependencies are restored: %w", err)
+					}
 				}
 
 				var task restorers.RestoreTask
@@ -640,6 +695,7 @@ func (r *Restore) restoreWorker(ctx context.Context, tasks <-chan restorers.Rest
 		if err = task.Execute(ctx, conn); err != nil {
 			return fmt.Errorf("unable to perform restoration task (worker %d restoring %s): %w", id, task.DebugInfo(), err)
 		}
+		r.putDumpId(task)
 		log.Debug().
 			Int("workerId", id).
 			Str("objectName", task.DebugInfo()).

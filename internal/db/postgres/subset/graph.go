@@ -7,9 +7,10 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/greenmaskio/greenmask/pkg/toolkit"
 	"github.com/jackc/pgx/v5"
 	"github.com/rs/zerolog/log"
+
+	"github.com/greenmaskio/greenmask/pkg/toolkit"
 
 	"github.com/greenmaskio/greenmask/internal/db/postgres/entries"
 )
@@ -49,6 +50,8 @@ type Graph struct {
 	scc []*Component
 	// condensedGraph - the condensed graph representation of the DB tables
 	condensedGraph [][]*CondensedEdge
+	// reversedCondensedGraph - the reversed condensed graph representation of the DB tables
+	reversedCondensedGraph [][]*CondensedEdge
 	// componentsToOriginalVertexes - the mapping condensed graph vertexes to the original graph vertexes
 	componentsToOriginalVertexes map[int][]int
 	// paths - the subset paths for the tables. The key is the vertex index in the graph and the value is the path for
@@ -238,6 +241,7 @@ func (g *Graph) buildCondensedGraph() {
 
 	// 3. Build condensed graph
 	g.condensedGraph = make([][]*CondensedEdge, g.sscCount)
+	g.reversedCondensedGraph = make([][]*CondensedEdge, g.sscCount)
 	var condensedEdgeIdxSeq int
 	for _, edge := range g.edges {
 		if _, ok := condensedEdges[edge.id]; ok {
@@ -260,6 +264,8 @@ func (g *Graph) buildCondensedGraph() {
 		)
 		condensedEdge := NewCondensedEdge(condensedEdgeIdxSeq, fromLink, toLink, edge)
 		g.condensedGraph[fromLinkIdx] = append(g.condensedGraph[fromLinkIdx], condensedEdge)
+		reversedEdges := NewCondensedEdge(condensedEdgeIdxSeq, toLink, fromLink, edge)
+		g.reversedCondensedGraph[toLinkIdx] = append(g.reversedCondensedGraph[toLinkIdx], reversedEdges)
 		condensedEdgeIdxSeq++
 	}
 }
@@ -475,7 +481,7 @@ func (g *Graph) generateQueryForTables(path *Path, scopeEdge *ScopeEdge) string 
 }
 
 func (g *Graph) GetSortedTablesAndDependenciesGraph() ([]toolkit.Oid, map[toolkit.Oid][]toolkit.Oid) {
-	condensedEdges := sortCondensedEdges(g.condensedGraph)
+	condensedEdges := sortCondensedEdges(g.reversedCondensedGraph)
 	var tables []toolkit.Oid
 	dependenciesGraph := make(map[toolkit.Oid][]toolkit.Oid)
 	for _, condEdgeIdx := range condensedEdges {
@@ -487,7 +493,11 @@ func (g *Graph) GetSortedTablesAndDependenciesGraph() ([]toolkit.Oid, map[toolki
 		tables = append(tables, componentTables...)
 	}
 
-	for _, edge := range g.condensedGraph {
+	for idx, edge := range g.reversedCondensedGraph {
+		for _, srcTable := range g.scc[idx].tables {
+			dependenciesGraph[srcTable.Oid] = make([]toolkit.Oid, 0)
+		}
+
 		for _, e := range edge {
 			for _, srcTable := range e.to.component.tables {
 				for _, dstTable := range e.from.component.tables {
@@ -496,6 +506,8 @@ func (g *Graph) GetSortedTablesAndDependenciesGraph() ([]toolkit.Oid, map[toolki
 			}
 		}
 	}
+
+	slices.Reverse(tables)
 
 	return tables, dependenciesGraph
 }
