@@ -13,6 +13,8 @@ greenmask \
 You can use the following commands within Greenmask:
 
 * `dump` — initiates the data dumping process
+* `validate` -  performs a validation procedure by testing config, comparing transformed data, identifying potential 
+issues, and checking for schema changes.
 * `list-dumps` — lists all available dumps stored in the system
 * `delete` — deletes a specific dump from the storage
 * `list-transformers` — displays a list of available transformers along with their documentation
@@ -34,7 +36,7 @@ For any of the commands mentioned above, you can include the following common fl
 
 ## validate
 
-The `validate` command allows you to perform a validation procedure and compare data transformations.
+The `validate` command allows you to perform a validation procedure and compare transformed data.
 
 Below is a list of all supported flags for the `validate` command:
 

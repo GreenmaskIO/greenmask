@@ -50,7 +50,16 @@ nav:
       - Configuration: configuration.md
       - Architecture: architecture.md
       - Playground: playground.md
-      - Commands: commands.md
+      - Commands:
+          - commands/index.md
+          - list-transformers: commands/list-transformers.md
+          - show-transformer: commands/show-transformer.md
+          - validate: commands/validate.md
+          - dump: commands/dump.md
+          - list-dumps: commands/list-dumps.md
+          - show-dump: commands/show-dump.md
+          - restore: commands/restore.md
+          - delete: commands/delete.md
       - Database subset: database_subset.md
       - Transformers:
           - built_in_transformers/index.md

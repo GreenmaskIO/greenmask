@@ -248,6 +248,8 @@ In the `restore` section of the configuration, you can specify parameters for th
         * `query` — an SQL query string to be executed
         * `query_file` — the path to an SQL query file to be executed
         * `command` — a command with parameters to be executed. It is provided as a list, where the first item is the command name.
+* `insert_error_exclusions` — a list of error codes that should be ignored during the restoration process. This is 
+useful when you want to skip specific errors that are not critical for the restoration process.
 
 As mentioned in [the architecture](architecture.md/#backing-up), a backup contains three sections: pre-data, data, and post-data. The custom script execution allows you to customize and control the restoration process by executing scripts or commands at specific stages. The available restoration stages and their corresponding execution conditions are as follows:
 
@@ -260,7 +262,7 @@ Each stage can have a `"when"` condition with one of the following possible valu
 * `before` — execute the script or SQL command before the mentioned restoration stage
 * `after` — execute the script or SQL command after the mentioned restoration stage
 
-Below you can one of the possible versions for the `scripts` part of the `restore` section:
+Below you can find one of the possible versions for the `scripts` part of the `restore` section:
 
 ``` yaml title="scripts definition example"
 scripts:
@@ -301,6 +303,68 @@ scripts:
 2. **List of data stage scripts**. This section contains scripts that are executed before or after the restoration of the data section. The scripts include shell commands with parameters and SQL query files.
 3. **List of post-data stage scripts**. This section contains scripts that are executed before or after the restoration of the post-data section. The scripts include SQL queries and query files.
 4. **Command in the first argument and the parameters in the rest of the list**. When specifying a command to be executed in the scripts section, you provide the command name as the first item in a list, followed by any parameters or arguments for that command. The command and its parameters are provided as a list within the script configuration.
+
+### restoration error exclusion
+
+You can configure which errors to ignore during the restoration process by setting the insert_error_exclusions
+parameter. This parameter can be applied globally or per table. If both global and table-specific settings are defined,
+the table-specific settings will take precedence. Below is an example of how to configure the insert_error_exclusions
+parameter. You can specify constraint names from your database schema or the error codes returned by PostgreSQL.
+[codes in the PostgreSQL documentation](https://www.postgresql.org/docs/current/errcodes-appendix.html).
+
+```yaml title="parameter defintion"
+insert_error_exclusions:
+
+  global:
+    error_codes: ["23505"] # (1)
+    constraints: ["PK_ProductReview_ProductReviewID"] # (2)
+  tables: # (3)
+    - schema: "production"
+      name: "productreview"
+      constraints: ["PK_ProductReview_ProductReviewID"]
+      error_codes: ["23505"]
+
+```
+
+1. List of strings that contains postgresql error codes
+2. List of strings that contains constraint names (globally)
+3. List of tables with their schema, name, constraints, and error codes
+
+
+Here is an example configuration for the `restore` section:
+
+```yaml
+restore:
+  scripts:
+      pre-data: # (1)
+        - name: "pre-data before script [1] with query"
+          when: "before"
+          query: "create table script_test(stage text)"
+  
+  insert_error_exclusions:
+    tables:
+      - schema: "production"
+        name: "productreview"
+        constraints:
+          - "PK_ProductReview_ProductReviewID"
+        error_codes:
+          - "23505"
+    global:
+      error_codes:
+        - "23505"
+
+  pg_restore_options:
+    jobs: 10
+    exit-on-error: false
+    dbname: "postgresql://postgres:example@localhost:54316/transformed"
+    table: 
+      - "productreview"
+    pgzip: true
+    inserts: true
+    on-conflict-do-nothing: true
+    restore-in-order: true
+    
+```
 
 ## Environment variable configuration
 
