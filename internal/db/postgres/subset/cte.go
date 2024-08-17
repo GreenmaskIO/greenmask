@@ -29,8 +29,8 @@ func (c *cteQuery) addItem(name, query string) {
 func (c *cteQuery) generateQuery(targetTable *entries.Table) string {
 	var queries []string
 	var excludedCteQueries []string
-	if len(c.c.cycles) > 1 {
-		panic("IMPLEMENT ME")
+	if len(c.c.groupedCycles) > 1 {
+		panic("FIXME: found more than one grouped cycle")
 	}
 	for _, edge := range c.c.cycles[0] {
 		if edge.from.table.Oid == targetTable.Oid {

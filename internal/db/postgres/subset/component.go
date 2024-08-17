@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/greenmaskio/greenmask/internal/db/postgres/entries"
+	"github.com/greenmaskio/greenmask/pkg/toolkit"
 )
 
 type Component struct {
@@ -20,6 +21,11 @@ type Component struct {
 	cycles       [][]*Edge
 	cyclesIdents map[string]struct{}
 	keys         []string
+	// groupedCycles - cycles grouped by the vertexes
+	groupedCycles map[string][]int
+	// groupedCyclesGraph - contains the mapping of the vertexes in the component to the edges in the original graph
+	// for grouped cycles. This required to join the separated cycles together
+	groupedCyclesGraph map[string][]*CycleEdge
 }
 
 func NewComponent(id int, componentGraph map[int][]*Edge, tables map[int]*entries.Table) *Component {
@@ -35,6 +41,8 @@ func NewComponent(id int, componentGraph map[int][]*Edge, tables map[int]*entrie
 	} else {
 		c.keys = c.getOneTable().PrimaryKey
 	}
+	c.groupCycles()
+	c.buildCyclesGraph()
 
 	return c
 }
@@ -56,6 +64,19 @@ func (c *Component) getOneTable() *entries.Table {
 		}
 	}
 	panic("cannot call get one table method for cycled scc")
+}
+
+func (c *Component) getOneCycleGroup() [][]*Edge {
+	if len(c.groupedCycles) == 1 {
+		for _, g := range c.groupedCycles {
+			var res [][]*Edge
+			for _, idx := range g {
+				res = append(res, c.cycles[idx])
+			}
+			return res
+		}
+	}
+	panic("get one group cycle group is not allowed for multy cycles")
 }
 
 func (c *Component) hasCycle() bool {
@@ -108,7 +129,7 @@ func (c *Component) findAllCyclesDfs(v int, visited map[int]bool, recStack map[i
 					break
 				}
 			}
-			cycleId := getCycleIdent(cycle)
+			cycleId := getCycleId(cycle)
 			if _, ok := c.cyclesIdents[cycleId]; !ok {
 				res := slices.Clone(cycle)
 				slices.Reverse(res)
@@ -122,7 +143,18 @@ func (c *Component) findAllCyclesDfs(v int, visited map[int]bool, recStack map[i
 	recStack[v] = false
 }
 
-func getCycleIdent(cycle []*Edge) string {
+// getCycleGroupId - returns the group id for the cycle based on the vertexes ID
+func getCycleGroupId(cycle []*Edge) string {
+	ids := make([]string, 0, len(cycle))
+	for _, edge := range cycle {
+		ids = append(ids, fmt.Sprintf("%d", edge.to.idx))
+	}
+	slices.Sort(ids)
+	return strings.Join(ids, "_")
+}
+
+// getCycleId - returns the unique identifier for the cycle based on the edges ID
+func getCycleId(cycle []*Edge) string {
 	ids := make([]string, 0, len(cycle))
 	for _, edge := range cycle {
 		ids = append(ids, fmt.Sprintf("%d", edge.id))
@@ -131,21 +163,91 @@ func getCycleIdent(cycle []*Edge) string {
 	return strings.Join(ids, "_")
 }
 
-func (c *Component) getComponentKeys() []string {
-	if len(c.cycles) > 1 {
-		panic("IMPLEMENT ME: multiple cycles in the component")
+func (c *Component) groupCycles() {
+	c.groupedCycles = make(map[string][]int)
+	for cycleIdx, cycle := range c.cycles {
+		cycleId := getCycleGroupId(cycle)
+		c.groupedCycles[cycleId] = append(c.groupedCycles[cycleId], cycleIdx)
 	}
+}
+
+func (c *Component) buildCyclesGraph() {
+	// TODO: Need to loop through c.groupedCycles instead of c.cycles
+	var idSeq int
+	c.groupedCyclesGraph = make(map[string][]*CycleEdge)
+	for groupIdI, cyclesI := range c.groupedCycles {
+		for groupIdJ, cyclesJ := range c.groupedCycles {
+			if groupIdI == groupIdJ {
+				continue
+			}
+			commonVertexes := c.findCommonVertexes(cyclesI[0], cyclesJ[0])
+			if len(commonVertexes) == 0 {
+				continue
+			}
+			if c.areCyclesLinked(cyclesI[0], cyclesJ[0]) {
+				continue
+			}
+			e := NewCycleEdge(idSeq, groupIdI, groupIdJ, commonVertexes)
+			c.groupedCyclesGraph[groupIdI] = append(c.groupedCyclesGraph[groupIdJ], e)
+			idSeq++
+		}
+	}
+}
+
+func (c *Component) findCommonVertexes(i, j int) (res []*entries.Table) {
+	common := make(map[toolkit.Oid]*entries.Table)
+	for _, edgeI := range c.cycles[i] {
+		for _, edgeJ := range c.cycles[j] {
+			if edgeI.to.idx == edgeJ.to.idx {
+				common[edgeI.to.table.Oid] = edgeI.to.table
+			}
+		}
+	}
+	for _, table := range common {
+		res = append(res, table)
+	}
+	slices.SortFunc(res, func(i, j *entries.Table) int {
+		switch {
+		case i.Oid < j.Oid:
+			return -1
+		case i.Oid > j.Oid:
+			return 1
+		}
+		return 0
+	})
+	return
+}
+
+func (c *Component) areCyclesLinked(i, j int) bool {
+	iId := getCycleGroupId(c.cycles[i])
+	jId := getCycleGroupId(c.cycles[j])
+	for _, to := range c.groupedCyclesGraph[iId] {
+		if to.to == jId {
+			return true
+		}
+	}
+	for _, to := range c.groupedCyclesGraph[jId] {
+		if to.to == iId {
+			return true
+		}
+	}
+	return false
+}
+
+func (c *Component) getComponentKeys() []string {
 	if !c.hasCycle() {
 		return c.getOneTable().PrimaryKey
 	}
 
-	var vertexes []int
-	for _, edge := range c.cycles[0] {
-		vertexes = append(vertexes, edge.to.idx)
+	vertexes := make(map[int]struct{})
+	for _, cycle := range c.cycles {
+		for _, edge := range cycle {
+			vertexes[edge.to.idx] = struct{}{}
+		}
 	}
 
 	var keys []string
-	for _, v := range vertexes {
+	for v := range vertexes {
 		table := c.tables[v]
 		for _, key := range table.PrimaryKey {
 			keys = append(keys, fmt.Sprintf(`%s__%s__%s`, table.Schema, table.Name, key))
