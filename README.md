@@ -14,7 +14,7 @@ backward-compatible with existing PostgreSQL utilities.
   functions. This ensures that the same input data will always produce the same output data. Almost each transformer
   supports either `random` or `hash` engine making it universal for any use case.
 * **Dynamic parameters** — almost each transformer supports dynamic parameters, allowing to parametrize the
-  transformer dynamically from the table column value. This is helpful for resolving the functional dependencies 
+  transformer dynamically from the table column value. This is helpful for resolving the functional dependencies
   between columns and satisfying the constraints.
 * **Cross-platform** - Can be easily built and executed on any platform, thanks to its Go-based architecture,
   which eliminates platform dependencies.
@@ -38,6 +38,8 @@ backward-compatible with existing PostgreSQL utilities.
   to deliver results.
 * **Provide variety of storages** - Greenmask offers a variety of storage options for local and remote data storage,
   including directories and S3-like storage solutions.
+* **Pgzip support for faster compression** — by setting `--pgzip`, greenmask can speeds up the dump and restoration
+processes through parallel compression.
 
 ## Use Cases
 
