@@ -34,8 +34,8 @@ func NewSequenceDumper(sequence *entries.Sequence) *SequenceDumper {
 	}
 }
 
-func (sd *SequenceDumper) Execute(ctx context.Context, tx pgx.Tx, st storages.Storager) (entries.Entry, error) {
-	return sd.sequence, nil
+func (sd *SequenceDumper) Execute(ctx context.Context, tx pgx.Tx, st storages.Storager) error {
+	return nil
 }
 
 func (sd *SequenceDumper) DebugInfo() string {

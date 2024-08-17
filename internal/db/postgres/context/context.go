@@ -21,14 +21,15 @@ import (
 	"os"
 	"slices"
 
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
+
 	"github.com/greenmaskio/greenmask/internal/db/postgres/entries"
 	"github.com/greenmaskio/greenmask/internal/db/postgres/pgdump"
 	"github.com/greenmaskio/greenmask/internal/db/postgres/subset"
 	transformersUtils "github.com/greenmaskio/greenmask/internal/db/postgres/transformers/utils"
 	"github.com/greenmaskio/greenmask/internal/domains"
 	"github.com/greenmaskio/greenmask/pkg/toolkit"
-	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const defaultTransformerCostMultiplier = 0.03
@@ -49,6 +50,8 @@ type RuntimeContext struct {
 	TypeMap *pgtype.Map
 	// DatabaseSchema - list of tables with columns - required for schema diff checking
 	DatabaseSchema toolkit.DatabaseSchema
+	// Graph - graph of tables with dependencies
+	Graph *subset.Graph
 }
 
 // NewRuntimeContext - creating new runtime context.
@@ -94,15 +97,20 @@ func NewRuntimeContext(
 		return nil, fmt.Errorf("cannot get database schema: %w", err)
 	}
 
+	graph, err := subset.NewGraph(ctx, tx, tablesEntries)
+	if err != nil {
+		return nil, fmt.Errorf("error creating graph: %w", err)
+	}
 	if hasSubset(tablesEntries) {
 		// If table has subset the restoration must be in the topological order
 		// The tables must be dumped one by one
-		if err = subset.SetSubsetQueries(ctx, tx, tablesEntries); err != nil {
+		if err = subset.SetSubsetQueries(graph); err != nil {
 			return nil, fmt.Errorf("cannot set subset queries: %w", err)
 		}
 
 	} else {
 		// if there are no subset tables, we can sort them by size and transformation costs
+		// TODO: Implement tables ordering for subsetted tables as well
 		scoreTablesEntriesAndSort(tablesEntries, cfg)
 	}
 
@@ -124,13 +132,8 @@ func NewRuntimeContext(
 		Warnings:           warnings,
 		Registry:           r,
 		DatabaseSchema:     schema,
+		Graph:              graph,
 	}, nil
-}
-
-func hasSubset(tables []*entries.Table) bool {
-	return slices.ContainsFunc(tables, func(table *entries.Table) bool {
-		return len(table.SubsetConds) > 0
-	})
 }
 
 func (rc *RuntimeContext) IsFatal() bool {
@@ -160,4 +163,10 @@ func scoreTablesEntriesAndSort(tables []*entries.Table, cfg []*domains.Table) {
 		return 0
 	})
 
+}
+
+func hasSubset(tables []*entries.Table) bool {
+	return slices.ContainsFunc(tables, func(table *entries.Table) bool {
+		return len(table.SubsetConds) > 0
+	})
 }

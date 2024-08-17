@@ -17,10 +17,12 @@ package restorers
 import (
 	"context"
 
+	"github.com/greenmaskio/greenmask/internal/db/postgres/toc"
 	"github.com/jackc/pgx/v5"
 )
 
 type RestoreTask interface {
-	Execute(ctx context.Context, tx pgx.Tx) error
+	Execute(ctx context.Context, conn *pgx.Conn) error
 	DebugInfo() string
+	GetEntry() *toc.Entry
 }

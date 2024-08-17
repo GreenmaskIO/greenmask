@@ -61,20 +61,25 @@ type Entry struct {
 }
 
 type Metadata struct {
-	StartedAt      time.Time              `yaml:"startedAt" json:"startedAt"`
-	CompletedAt    time.Time              `yaml:"completedAt" json:"completedAt"`
-	OriginalSize   int64                  `yaml:"originalSize" json:"originalSize"`
-	CompressedSize int64                  `yaml:"compressedSize" json:"compressedSize"`
-	Transformers   []*domains.Table       `yaml:"transformers" json:"transformers"`
-	DatabaseSchema toolkit.DatabaseSchema `yaml:"database_schema" json:"database_schema"`
-	Header         Header                 `yaml:"header" json:"header"`
-	Entries        []*Entry               `yaml:"entries" json:"entries"`
+	StartedAt         time.Time              `yaml:"startedAt" json:"startedAt"`
+	CompletedAt       time.Time              `yaml:"completedAt" json:"completedAt"`
+	OriginalSize      int64                  `yaml:"originalSize" json:"originalSize"`
+	CompressedSize    int64                  `yaml:"compressedSize" json:"compressedSize"`
+	Transformers      []*domains.Table       `yaml:"transformers" json:"transformers"`
+	DatabaseSchema    toolkit.DatabaseSchema `yaml:"database_schema" json:"database_schema"`
+	Header            Header                 `yaml:"header" json:"header"`
+	Entries           []*Entry               `yaml:"entries" json:"entries"`
+	DependenciesGraph map[int32][]int32      `yaml:"dependencies_graph" json:"dependencies_graph"`
+	DumpIdsOrder      []int32                `yaml:"dump_ids_order" json:"dump_ids_order"`
+	Cycles            [][]string             `yaml:"cycles" json:"cycles"`
 }
 
 func NewMetadata(
 	tocObj *toc.Toc, tocFileSize int64, startedAt,
 	completedAt time.Time, transformers []*domains.Table,
 	stats map[int32]ObjectSizeStat, databaseSchema []*toolkit.Table,
+	dependenciesGraph map[int32][]int32, dumpIdsOrder []int32,
+	cycles [][]string,
 ) (*Metadata, error) {
 
 	var format string
@@ -157,12 +162,15 @@ func NewMetadata(
 	totalCompressedSize += tocFileSize
 
 	return &Metadata{
-		OriginalSize:   totalOriginalSize,
-		CompressedSize: totalCompressedSize,
-		StartedAt:      startedAt,
-		CompletedAt:    completedAt,
-		Transformers:   transformers,
-		DatabaseSchema: databaseSchema,
+		OriginalSize:      totalOriginalSize,
+		CompressedSize:    totalCompressedSize,
+		StartedAt:         startedAt,
+		CompletedAt:       completedAt,
+		Transformers:      transformers,
+		DatabaseSchema:    databaseSchema,
+		DependenciesGraph: dependenciesGraph,
+		DumpIdsOrder:      dumpIdsOrder,
+		Cycles:            cycles,
 		Header: Header{
 			CreationDate:    tocObj.Header.CrtmDateTime.Time(),
 			DbName:          *tocObj.Header.ArchDbName,

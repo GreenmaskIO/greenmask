@@ -44,7 +44,28 @@ func NewBlobsRestorer(entry *toc.Entry, st storages.Storager) *BlobsRestorer {
 	}
 }
 
-func (td *BlobsRestorer) Execute(ctx context.Context, tx pgx.Tx) error {
+func (td *BlobsRestorer) Execute(ctx context.Context, conn *pgx.Conn) error {
+	tx, err := conn.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("cannot start transaction (restoring %s): %w", td.DebugInfo(), err)
+	}
+
+	if err = td.execute(ctx, tx); err != nil {
+		if txErr := tx.Rollback(ctx); txErr != nil {
+			log.Warn().
+				Err(txErr).
+				Str("objectName", td.DebugInfo()).
+				Msg("cannot rollback transaction")
+		}
+		return fmt.Errorf("unable to restore sequence: %w", err)
+	}
+	if err = tx.Commit(ctx); err != nil {
+		return fmt.Errorf("cannot commit transaction (restoring %s): %w", td.DebugInfo(), err)
+	}
+	return nil
+}
+
+func (td *BlobsRestorer) execute(ctx context.Context, tx pgx.Tx) error {
 
 	// Getting blobs.toc
 	reader, err := td.St.GetObject(ctx, "blobs.toc")
@@ -136,6 +157,10 @@ func (td *BlobsRestorer) Execute(ctx context.Context, tx pgx.Tx) error {
 	}
 
 	return nil
+}
+
+func (td *BlobsRestorer) GetEntry() *toc.Entry {
+	return td.Entry
 }
 
 func (td *BlobsRestorer) DebugInfo() string {

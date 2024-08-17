@@ -19,6 +19,7 @@ import (
 	"fmt"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/rs/zerolog/log"
 
 	"github.com/greenmaskio/greenmask/internal/db/postgres/toc"
 )
@@ -33,7 +34,32 @@ func NewSequenceRestorer(entry *toc.Entry) *SequenceRestorer {
 	}
 }
 
-func (td *SequenceRestorer) Execute(ctx context.Context, tx pgx.Tx) error {
+func (td *SequenceRestorer) GetEntry() *toc.Entry {
+	return td.Entry
+}
+
+func (td *SequenceRestorer) Execute(ctx context.Context, conn *pgx.Conn) error {
+	tx, err := conn.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("cannot start transaction (restoring %s): %w", td.DebugInfo(), err)
+	}
+
+	if err = td.execute(ctx, tx); err != nil {
+		if txErr := tx.Rollback(ctx); txErr != nil {
+			log.Warn().
+				Err(txErr).
+				Str("objectName", td.DebugInfo()).
+				Msg("cannot rollback transaction")
+		}
+		return fmt.Errorf("unable to restore sequence: %w", err)
+	}
+	if err = tx.Commit(ctx); err != nil {
+		return fmt.Errorf("cannot commit transaction (restoring %s): %w", td.DebugInfo(), err)
+	}
+	return nil
+}
+
+func (td *SequenceRestorer) execute(ctx context.Context, tx pgx.Tx) error {
 	if td.Entry.Defn == nil {
 		return fmt.Errorf("received nil pointer intead of sequence")
 	}

@@ -98,8 +98,26 @@ type Dump struct {
 }
 
 type Restore struct {
-	PgRestoreOptions pgrestore.Options             `mapstructure:"pg_restore_options" yaml:"pg_restore_options" json:"pg_restore_options"`
-	Scripts          map[string][]pgrestore.Script `mapstructure:"scripts" yaml:"scripts" json:"scripts,omitempty"`
+	PgRestoreOptions pgrestore.Options               `mapstructure:"pg_restore_options" yaml:"pg_restore_options" json:"pg_restore_options"`
+	Scripts          map[string][]pgrestore.Script   `mapstructure:"scripts" yaml:"scripts" json:"scripts,omitempty"`
+	ErrorExclusions  *DataRestorationErrorExclusions `mapstructure:"insert_error_exclusions" yaml:"insert_error_exclusions" json:"insert_error_exclusions,omitempty"`
+}
+
+type TablesDataRestorationErrorExclusions struct {
+	Name        string   `mapstructure:"name" yaml:"name" json:"name,omitempty"`
+	Schema      string   `mapstructure:"schema" yaml:"schema" json:"schema,omitempty"`
+	Constraints []string `mapstructure:"constraints" yaml:"constraints" json:"constraints,omitempty"`
+	ErrorCodes  []string `mapstructure:"error_codes" yaml:"error_codes" json:"error_codes,omitempty"`
+}
+
+type GlobalDataRestorationErrorExclusions struct {
+	Constraints []string `mapstructure:"constraints" yaml:"constraints" json:"constraints,omitempty"`
+	ErrorCodes  []string `mapstructure:"error_codes" yaml:"error_codes" json:"error_codes,omitempty"`
+}
+
+type DataRestorationErrorExclusions struct {
+	Tables []*TablesDataRestorationErrorExclusions `mapstructure:"tables" yaml:"tables" json:"tables,omitempty"`
+	Global *GlobalDataRestorationErrorExclusions   `mapstructure:"global" yaml:"global" json:"global,omitempty"`
 }
 
 type TransformerSettings struct {

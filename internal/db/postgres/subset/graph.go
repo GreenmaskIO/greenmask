@@ -7,9 +7,10 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/greenmaskio/greenmask/pkg/toolkit"
 	"github.com/jackc/pgx/v5"
 	"github.com/rs/zerolog/log"
+
+	"github.com/greenmaskio/greenmask/pkg/toolkit"
 
 	"github.com/greenmaskio/greenmask/internal/db/postgres/entries"
 )
@@ -49,6 +50,8 @@ type Graph struct {
 	scc []*Component
 	// condensedGraph - the condensed graph representation of the DB tables
 	condensedGraph [][]*CondensedEdge
+	// reversedCondensedGraph - the reversed condensed graph representation of the DB tables
+	reversedCondensedGraph [][]*CondensedEdge
 	// componentsToOriginalVertexes - the mapping condensed graph vertexes to the original graph vertexes
 	componentsToOriginalVertexes map[int][]int
 	// paths - the subset paths for the tables. The key is the vertex index in the graph and the value is the path for
@@ -105,7 +108,7 @@ func NewGraph(ctx context.Context, tx pgx.Tx, tables []*entries.Table) (*Graph, 
 			edgeIdSequence++
 		}
 	}
-	return &Graph{
+	g := &Graph{
 		tables:        tables,
 		graph:         graph,
 		paths:         make(map[int]*Path),
@@ -113,7 +116,32 @@ func NewGraph(ctx context.Context, tx pgx.Tx, tables []*entries.Table) (*Graph, 
 		visited:       make([]int, len(tables)),
 		order:         make([]int, 0),
 		reversedGraph: reversedGraph,
-	}, nil
+	}
+	g.buildCondensedGraph()
+	return g, nil
+}
+
+func (g *Graph) GetCycles() [][]*Edge {
+	var cycles [][]*Edge
+	for _, c := range g.scc {
+		if c.hasCycle() {
+			cycles = append(cycles, c.cycles...)
+		}
+	}
+	return cycles
+}
+
+func (g *Graph) GetCycledTables() (res [][]string) {
+	cycles := g.GetCycles()
+	for _, c := range cycles {
+		var tables []string
+		for _, e := range c {
+			tables = append(tables, fmt.Sprintf(`%s.%s`, e.from.table.Schema, e.from.table.Name))
+		}
+		tables = append(tables, fmt.Sprintf(`%s.%s`, c[len(c)-1].to.table.Schema, c[len(c)-1].to.table.Name))
+		res = append(res, tables)
+	}
+	return res
 }
 
 // findSubsetVertexes - finds the subset vertexes in the graph
@@ -238,6 +266,7 @@ func (g *Graph) buildCondensedGraph() {
 
 	// 3. Build condensed graph
 	g.condensedGraph = make([][]*CondensedEdge, g.sscCount)
+	g.reversedCondensedGraph = make([][]*CondensedEdge, g.sscCount)
 	var condensedEdgeIdxSeq int
 	for _, edge := range g.edges {
 		if _, ok := condensedEdges[edge.id]; ok {
@@ -260,6 +289,8 @@ func (g *Graph) buildCondensedGraph() {
 		)
 		condensedEdge := NewCondensedEdge(condensedEdgeIdxSeq, fromLink, toLink, edge)
 		g.condensedGraph[fromLinkIdx] = append(g.condensedGraph[fromLinkIdx], condensedEdge)
+		reversedEdges := NewCondensedEdge(condensedEdgeIdxSeq, toLink, fromLink, edge)
+		g.reversedCondensedGraph[toLinkIdx] = append(g.reversedCondensedGraph[toLinkIdx], reversedEdges)
 		condensedEdgeIdxSeq++
 	}
 }
@@ -472,6 +503,38 @@ func (g *Graph) generateQueryForTables(path *Path, scopeEdge *ScopeEdge) string 
 	}
 
 	return query
+}
+
+func (g *Graph) GetSortedTablesAndDependenciesGraph() ([]toolkit.Oid, map[toolkit.Oid][]toolkit.Oid) {
+	condensedEdges := sortCondensedEdges(g.reversedCondensedGraph)
+	var tables []toolkit.Oid
+	dependenciesGraph := make(map[toolkit.Oid][]toolkit.Oid)
+	for _, condEdgeIdx := range condensedEdges {
+		edge := g.scc[condEdgeIdx]
+		var componentTables []toolkit.Oid
+		for _, t := range edge.tables {
+			componentTables = append(componentTables, t.Oid)
+		}
+		tables = append(tables, componentTables...)
+	}
+
+	for idx, edge := range g.reversedCondensedGraph {
+		for _, srcTable := range g.scc[idx].tables {
+			dependenciesGraph[srcTable.Oid] = make([]toolkit.Oid, 0)
+		}
+
+		for _, e := range edge {
+			for _, srcTable := range e.to.component.tables {
+				for _, dstTable := range e.from.component.tables {
+					dependenciesGraph[srcTable.Oid] = append(dependenciesGraph[srcTable.Oid], dstTable.Oid)
+				}
+			}
+		}
+	}
+
+	slices.Reverse(tables)
+
+	return tables, dependenciesGraph
 }
 
 func getReferences(ctx context.Context, tx pgx.Tx, tableOid toolkit.Oid) ([]*toolkit.Reference, error) {

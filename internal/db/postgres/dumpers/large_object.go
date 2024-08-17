@@ -45,7 +45,7 @@ func NewLargeObjectDumper(blobs *entries.Blobs) *BlobsDumper {
 	}
 }
 
-func (lod *BlobsDumper) Execute(ctx context.Context, tx pgx.Tx, st storages.Storager) (entries.Entry, error) {
+func (lod *BlobsDumper) Execute(ctx context.Context, tx pgx.Tx, st storages.Storager) error {
 
 	for _, lo := range lod.Blobs.LargeObjects {
 		eg, gtx := errgroup.WithContext(ctx)
@@ -62,7 +62,7 @@ func (lod *BlobsDumper) Execute(ctx context.Context, tx pgx.Tx, st storages.Stor
 		eg.Go(largeObjectDumper(gtx, lo, w, tx))
 
 		if err := eg.Wait(); err != nil {
-			return nil, err
+			return err
 		}
 
 		lod.OriginalSize += w.GetCount()
@@ -75,10 +75,10 @@ func (lod *BlobsDumper) Execute(ctx context.Context, tx pgx.Tx, st storages.Stor
 
 	// Writing blobs.toc
 	if err := lod.generateBlobsToc(ctx, st); err != nil {
-		return nil, fmt.Errorf("cannot write large object blobs.toc: %w", err)
+		return fmt.Errorf("cannot write large object blobs.toc: %w", err)
 	}
 
-	return lod.Blobs, nil
+	return nil
 }
 
 func (lod *BlobsDumper) generateBlobsToc(ctx context.Context, st storages.Storager) error {

@@ -28,12 +28,15 @@ import (
 	"regexp"
 	"slices"
 	"strconv"
+	"sync"
 	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/rs/zerolog/log"
 	"golang.org/x/sync/errgroup"
 	"gopkg.in/yaml.v3"
+
+	"github.com/greenmaskio/greenmask/internal/domains"
 
 	"github.com/greenmaskio/greenmask/internal/db/postgres/pgrestore"
 	"github.com/greenmaskio/greenmask/internal/db/postgres/restorers"
@@ -65,6 +68,10 @@ const (
 	textListFormat = "text"
 )
 
+const metadataObjectName = "metadata.json"
+
+const dependenciesCheckInterval = 15 * time.Millisecond
+
 type Restore struct {
 	binPath    string
 	dsn        string
@@ -75,23 +82,90 @@ type Restore struct {
 	dumpIdList []int32
 	tocObj     *toc.Toc
 	tmpDir     string
+	cfg        *domains.Restore
+	metadata   *storage.Metadata
+	mx         *sync.RWMutex
 
 	preDataClenUpToc  string
 	postDataClenUpToc string
+	restoredDumpIds   map[int32]bool
 }
 
 func NewRestore(
-	binPath string, st storages.Storager, opt *pgrestore.Options, s map[string][]pgrestore.Script, tmpDir string,
+	binPath string, st storages.Storager, cfg *domains.Restore, s map[string][]pgrestore.Script, tmpDir string,
 ) *Restore {
 
 	return &Restore{
-		binPath:    binPath,
-		st:         st,
-		pgRestore:  pgrestore.NewPgRestore(binPath),
-		restoreOpt: opt,
-		scripts:    s,
-		tmpDir:     path.Join(tmpDir, fmt.Sprintf("%d", time.Now().UnixNano())),
+		binPath:         binPath,
+		st:              st,
+		pgRestore:       pgrestore.NewPgRestore(binPath),
+		restoreOpt:      &cfg.PgRestoreOptions,
+		scripts:         s,
+		tmpDir:          path.Join(tmpDir, fmt.Sprintf("%d", time.Now().UnixNano())),
+		cfg:             cfg,
+		metadata:        &storage.Metadata{},
+		restoredDumpIds: make(map[int32]bool),
+		mx:              &sync.RWMutex{},
 	}
+}
+
+func (r *Restore) Run(ctx context.Context) error {
+
+	defer r.prune()
+
+	if err := r.readMetadata(ctx); err != nil {
+		return fmt.Errorf("cannot read metadata: %w", err)
+	}
+
+	if err := r.prepare(); err != nil {
+		return fmt.Errorf("preparation error: %w", err)
+	}
+
+	if err := r.preFlightRestore(ctx); err != nil {
+		return fmt.Errorf("pre-flight stage restoration error: %w", err)
+	}
+
+	if err := r.preDataRestore(ctx); err != nil {
+		return fmt.Errorf("pre-data stage restoration error: %w", err)
+	}
+
+	if err := r.dataRestore(ctx); err != nil {
+		return fmt.Errorf("data stage restoration error: %w", err)
+	}
+
+	if err := r.postDataRestore(ctx); err != nil {
+		return fmt.Errorf("post-data stage restoration error: %w", err)
+	}
+
+	return nil
+}
+
+func (r *Restore) putDumpId(task restorers.RestoreTask) {
+	r.mx.Lock()
+	r.restoredDumpIds[task.GetEntry().DumpId] = true
+	r.mx.Unlock()
+}
+
+func (r *Restore) dependenciesAreRestored(deps []int32) bool {
+	r.mx.RLock()
+	defer r.mx.RUnlock()
+	for _, id := range deps {
+		if !r.restoredDumpIds[id] {
+			return false
+		}
+	}
+	return true
+}
+
+func (r *Restore) readMetadata(ctx context.Context) error {
+	f, err := r.st.GetObject(ctx, metadataObjectName)
+	if err != nil {
+		return fmt.Errorf("cannot open metadata file: %w", err)
+	}
+	if err := json.NewDecoder(f).Decode(r.metadata); err != nil {
+		return fmt.Errorf("cannot decode metadata: %w", err)
+	}
+	return nil
 }
 
 func (r *Restore) RunScripts(ctx context.Context, conn *pgx.Conn, section, when string) error {
@@ -359,12 +433,13 @@ func (r *Restore) dataRestore(ctx context.Context) error {
 	}
 	defer conn.Close(ctx)
 
-	if err := r.RunScripts(ctx, conn, scriptDataSection, scriptExecuteBefore); err != nil {
+	if err = r.RunScripts(ctx, conn, scriptDataSection, scriptExecuteBefore); err != nil {
 		return err
 	}
 
 	tasks := make(chan restorers.RestoreTask, r.restoreOpt.Jobs)
 	eg, gtx := errgroup.WithContext(ctx)
+
 	for j := 0; j < r.restoreOpt.Jobs; j++ {
 		eg.Go(func(id int) func() error {
 			return func() error {
@@ -373,43 +448,7 @@ func (r *Restore) dataRestore(ctx context.Context) error {
 		}(j))
 	}
 
-	eg.Go(func() error {
-		defer close(tasks)
-		for _, entry := range r.tocObj.Entries {
-			select {
-			case <-gtx.Done():
-				return gtx.Err()
-			default:
-			}
-
-			if entry.Section == toc.SectionData {
-
-				if !r.isNeedRestore(entry) {
-					continue
-				}
-
-				var task restorers.RestoreTask
-				switch *entry.Desc {
-				case toc.TableDataDesc:
-					task = restorers.NewTableRestorer(entry, r.st)
-				case toc.SequenceSetDesc:
-					task = restorers.NewSequenceRestorer(entry)
-				case toc.BlobsDesc:
-					task = restorers.NewBlobsRestorer(entry, r.st)
-				}
-
-				if task != nil {
-					select {
-					case <-gtx.Done():
-						return gtx.Err()
-					case tasks <- task:
-					}
-				}
-			}
-
-		}
-		return nil
-	})
+	eg.Go(r.taskPusher(gtx, tasks))
 
 	if err := eg.Wait(); err != nil {
 		return fmt.Errorf("at least one worker exited with error: %w", err)
@@ -466,7 +505,7 @@ func (r *Restore) postDataRestore(ctx context.Context) error {
 	}
 	defer conn.Close(ctx)
 
-	if err := r.RunScripts(ctx, conn, scriptPostDataSection, scriptExecuteBefore); err != nil {
+	if err = r.RunScripts(ctx, conn, scriptPostDataSection, scriptExecuteBefore); err != nil {
 		return err
 	}
 
@@ -478,11 +517,14 @@ func (r *Restore) postDataRestore(ctx context.Context) error {
 		options.DirPath = r.postDataClenUpToc
 	}
 
-	if err := r.pgRestore.Run(ctx, &options); err != nil {
-		return fmt.Errorf("cannot restore post-data section using pg_restore: %w", err)
+	if err = r.pgRestore.Run(ctx, &options); err != nil {
+		var exitErr *exec.ExitError
+		if r.restoreOpt.ExitOnError || (errors.As(err, &exitErr) && exitErr.ExitCode() != 1) {
+			return fmt.Errorf("cannot restore post-data section using pg_restore: %w", err)
+		}
 	}
 
-	if err := r.RunScripts(ctx, conn, scriptPostDataSection, scriptExecuteAfter); err != nil {
+	if err = r.RunScripts(ctx, conn, scriptPostDataSection, scriptExecuteAfter); err != nil {
 		return err
 	}
 
@@ -495,31 +537,136 @@ func (r *Restore) prune() {
 	}
 }
 
-func (r *Restore) Run(ctx context.Context) error {
+func (r *Restore) logWarningsIfHasCycles() {
+	if len(r.metadata.Cycles) == 0 {
+		return
+	}
+	for _, cycle := range r.metadata.Cycles {
+		log.Warn().
+			Strs("cycle", cycle).
+			Msg("cycle between tables is detected: cannot guarantee the order of restoration within cycle")
+	}
+}
 
-	defer r.prune()
+func (r *Restore) sortTocEntriesInTopoOrder() []*toc.Entry {
+	res := make([]*toc.Entry, 0, len(r.tocObj.Entries))
 
-	if err := r.prepare(); err != nil {
-		return fmt.Errorf("preparation error: %w", err)
+	preDataEnd := 0
+	postDataStart := 0
+
+	r.logWarningsIfHasCycles()
+
+	// Find predata last index and postdata first index
+	for idx, item := range r.tocObj.Entries {
+		if item.Section == toc.SectionPreData {
+			preDataEnd = idx
+		}
+		if item.Section == toc.SectionPostData {
+			postDataStart = idx
+			break
+		}
+	}
+	dataEntries := r.tocObj.Entries[preDataEnd+1 : postDataStart]
+	lastTableIdx := slices.IndexFunc(dataEntries, func(entry *toc.Entry) bool {
+		return *entry.Desc == toc.SequenceSetDesc || *entry.Desc == toc.BlobsDesc
+	})
+	tableEntries := dataEntries
+	if lastTableIdx != -1 {
+		tableEntries = dataEntries[:lastTableIdx]
+	}
+	sortedTablesEntries := make([]*toc.Entry, 0, len(tableEntries))
+	for _, dumpId := range r.metadata.DumpIdsOrder {
+		idx := slices.IndexFunc(tableEntries, func(entry *toc.Entry) bool {
+			return entry.DumpId == dumpId
+		})
+		if idx == -1 {
+			log.Debug().
+				Int32("DumpId", dumpId).
+				Msg("entry not found in table entries it might be excluded from dump")
+		}
+		sortedTablesEntries = append(sortedTablesEntries, tableEntries[idx])
 	}
 
-	if err := r.preFlightRestore(ctx); err != nil {
-		return fmt.Errorf("pre-flight stage restoration error: %w", err)
+	res = append(res, r.tocObj.Entries[:preDataEnd+1]...)
+	res = append(res, sortedTablesEntries...)
+	if lastTableIdx != -1 {
+		res = append(res, dataEntries[lastTableIdx:]...)
 	}
+	res = append(res, r.tocObj.Entries[postDataStart:]...)
+	return res
+}
 
-	if err := r.preDataRestore(ctx); err != nil {
-		return fmt.Errorf("pre-data stage restoration error: %w", err)
+func (r *Restore) waitDependenciesAreRestore(ctx context.Context, deps []int32) error {
+	for {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		default:
+		}
+		if r.dependenciesAreRestored(deps) {
+			return nil
+		}
+		time.Sleep(dependenciesCheckInterval)
 	}
+}
 
-	if err := r.dataRestore(ctx); err != nil {
-		return fmt.Errorf("data stage restoration error: %w", err)
+func (r *Restore) taskPusher(ctx context.Context, tasks chan restorers.RestoreTask) func() error {
+	return func() error {
+		defer close(tasks)
+		tocEntries := r.tocObj.Entries
+		if r.restoreOpt.RestoreInOrder {
+			tocEntries = r.sortTocEntriesInTopoOrder()
+		}
+		for _, entry := range tocEntries {
+			select {
+			case <-ctx.Done():
+				return ctx.Err()
+			default:
+			}
+
+			if entry.Section == toc.SectionData {
+
+				if !r.isNeedRestore(entry) {
+					continue
+				}
+
+				if r.restoreOpt.RestoreInOrder && r.restoreOpt.Jobs > 1 {
+					deps := r.metadata.DependenciesGraph[entry.DumpId]
+					if err := r.waitDependenciesAreRestore(ctx, deps); err != nil {
+						return fmt.Errorf("cannot wait for dependencies are restored: %w", err)
+					}
+				}
+
+				var task restorers.RestoreTask
+				switch *entry.Desc {
+				case toc.TableDataDesc:
+					if r.restoreOpt.Inserts || r.restoreOpt.OnConflictDoNothing {
+						task = restorers.NewTableRestorerInsertFormat(
+							entry, r.st, r.restoreOpt.ExitOnError, r.restoreOpt.OnConflictDoNothing,
+							r.cfg.ErrorExclusions,
+						)
+					} else {
+						task = restorers.NewTableRestorer(entry, r.st, r.restoreOpt.ExitOnError)
+					}
+
+				case toc.SequenceSetDesc:
+					task = restorers.NewSequenceRestorer(entry)
+				case toc.BlobsDesc:
+					task = restorers.NewBlobsRestorer(entry, r.st)
+				}
+
+				if task != nil {
+					select {
+					case <-ctx.Done():
+						return ctx.Err()
+					case tasks <- task:
+					}
+				}
+			}
+
+		}
+		return nil
 	}
-
-	if err := r.postDataRestore(ctx); err != nil {
-		return fmt.Errorf("post-data stage restoration error: %w", err)
-	}
-
-	return nil
 }
 
 func (r *Restore) restoreWorker(ctx context.Context, tasks <-chan restorers.RestoreTask, id int) error {
@@ -554,23 +701,10 @@ func (r *Restore) restoreWorker(ctx context.Context, tasks <-chan restorers.Rest
 			Msg("restoring")
 
 		// Open new transaction for each task
-		tx, err := conn.Begin(ctx)
-		if err != nil {
-			return fmt.Errorf("cannot start transaction (worker %d restoring %s): %w", id, task.DebugInfo(), err)
-		}
-		if err = task.Execute(ctx, tx); err != nil {
-			if txErr := tx.Rollback(ctx); txErr != nil {
-				log.Warn().
-					Err(txErr).
-					Int("workerId", id).
-					Str("objectName", task.DebugInfo()).
-					Msg("cannot rollback transaction")
-			}
+		if err = task.Execute(ctx, conn); err != nil {
 			return fmt.Errorf("unable to perform restoration task (worker %d restoring %s): %w", id, task.DebugInfo(), err)
 		}
-		if err = tx.Commit(ctx); err != nil {
-			return fmt.Errorf("cannot commit transaction (worker %d restoring %s): %w", id, task.DebugInfo(), err)
-		}
+		r.putDumpId(task)
 		log.Debug().
 			Int("workerId", id).
 			Str("objectName", task.DebugInfo()).

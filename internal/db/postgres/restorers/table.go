@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"io"
 
+	"github.com/greenmaskio/greenmask/internal/utils/pgerrors"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/rs/zerolog/log"
@@ -32,123 +33,185 @@ import (
 const DefaultBufferSize = 1024 * 1024
 
 type TableRestorer struct {
-	Entry *toc.Entry
-	St    storages.Storager
+	Entry       *toc.Entry
+	St          storages.Storager
+	exitOnError bool
 }
 
-func NewTableRestorer(entry *toc.Entry, st storages.Storager) *TableRestorer {
+func NewTableRestorer(entry *toc.Entry, st storages.Storager, exitOnError bool) *TableRestorer {
 	return &TableRestorer{
-		Entry: entry,
-		St:    st,
+		Entry:       entry,
+		St:          st,
+		exitOnError: exitOnError,
 	}
 }
 
-func (td *TableRestorer) Execute(ctx context.Context, tx pgx.Tx) error {
-	// TODO: Refactor this logic
-	//		  1. Decompose the Execute method into separate functions
-	//		  2. Add tests
-	//		  3. Get rid of the anonymous functions below
+func (td *TableRestorer) GetEntry() *toc.Entry {
+	return td.Entry
+}
 
-	return func() error {
-		if td.Entry.FileName == nil {
-			return fmt.Errorf("cannot get file name from toc Entry")
+func (td *TableRestorer) Execute(ctx context.Context, conn *pgx.Conn) error {
+	// TODO: Add tests
+
+	if td.Entry.FileName == nil {
+		return fmt.Errorf("cannot get file name from toc Entry")
+	}
+
+	reader, err := td.St.GetObject(ctx, *td.Entry.FileName)
+	if err != nil {
+		return fmt.Errorf("cannot open dump file: %w", err)
+	}
+	defer func(reader io.ReadCloser) {
+		if err := reader.Close(); err != nil {
+			log.Warn().
+				Err(err).
+				Msg("error closing dump file")
+		}
+	}(reader)
+	gz, err := gzip.NewReader(reader)
+	if err != nil {
+		return fmt.Errorf("cannot create gzip reader: %w", err)
+	}
+	defer func(gz *gzip.Reader) {
+		if err := gz.Close(); err != nil {
+			log.Warn().
+				Err(err).
+				Msg("error closing gzip reader")
+		}
+	}(gz)
+
+	// Open new transaction for each task
+	tx, err := conn.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("cannot start transaction (restoring %s): %w", td.DebugInfo(), err)
+	}
+
+	log.Debug().Str("copyStmt", *td.Entry.CopyStmt).Msgf("performing pgcopy statement")
+	f := tx.Conn().PgConn().Frontend()
+
+	if err = td.restoreCopy(ctx, f, gz); err != nil {
+		if txErr := tx.Rollback(ctx); txErr != nil {
+			log.Warn().
+				Err(txErr).
+				Str("objectName", td.DebugInfo()).
+				Msg("cannot rollback transaction")
+		}
+		if td.exitOnError {
+			return fmt.Errorf("unable to restore table: %w", err)
+		}
+		log.Warn().Err(err).Msg("unable to restore table")
+		return nil
+	}
+
+	if err = tx.Commit(ctx); err != nil {
+		return fmt.Errorf("cannot commit transaction (restoring %s): %w", td.DebugInfo(), err)
+	}
+
+	return nil
+}
+
+func (td *TableRestorer) restoreCopy(ctx context.Context, f *pgproto3.Frontend, r io.Reader) error {
+	if err := td.initCopy(ctx, f); err != nil {
+		return fmt.Errorf("error initializing pgcopy: %w", err)
+	}
+
+	if err := td.streamCopyData(ctx, f, r); err != nil {
+		return fmt.Errorf("error streaming pgcopy data: %w", err)
+	}
+
+	if err := td.postStreamingHandle(ctx, f); err != nil {
+		return fmt.Errorf("error post streaming handling: %w", err)
+	}
+	return nil
+}
+
+func (td *TableRestorer) initCopy(ctx context.Context, f *pgproto3.Frontend) error {
+	err := sendMessage(f, &pgproto3.Query{String: *td.Entry.CopyStmt})
+	if err != nil {
+		return fmt.Errorf("error sending Query message: %w", err)
+	}
+
+	// Prepare for streaming the pgcopy data
+	process := true
+	for process {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		default:
 		}
 
-		reader, err := td.St.GetObject(ctx, *td.Entry.FileName)
+		msg, err := f.Receive()
 		if err != nil {
-			return fmt.Errorf("cannot open TSV file: %w", err)
+			return fmt.Errorf("unable to perform pgcopy query: %w", err)
 		}
-		defer reader.Close()
-		gz, err := gzip.NewReader(reader)
+		switch v := msg.(type) {
+		case *pgproto3.CopyInResponse:
+			process = false
+		case *pgproto3.ErrorResponse:
+			return fmt.Errorf("error from postgres connection: %w", pgerrors.NewPgError(v))
+		default:
+			return fmt.Errorf("unknown message %+v", v)
+		}
+	}
+	return nil
+}
+
+func (td *TableRestorer) streamCopyData(ctx context.Context, f *pgproto3.Frontend, r io.Reader) error {
+	// Streaming pgcopy data from table dump
+
+	buf := make([]byte, DefaultBufferSize)
+	for {
+		var n int
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		default:
+		}
+
+		n, err := r.Read(buf)
 		if err != nil {
-			return fmt.Errorf("cannot create gzip reader: %w", err)
-		}
-		defer gz.Close()
-
-		log.Debug().Str("copyStmt", *td.Entry.CopyStmt).Msgf("performing pgcopy statement")
-		frontend := tx.Conn().PgConn().Frontend()
-
-		err = sendMessage(frontend, &pgproto3.Query{String: *td.Entry.CopyStmt})
-		if err != nil {
-			return fmt.Errorf("error sending Query message: %w", err)
-		}
-
-		// Prepare for streaming the pgcopy data
-		process := true
-		for process {
-			select {
-			case <-ctx.Done():
-				return ctx.Err()
-			default:
-			}
-
-			msg, err := frontend.Receive()
-			if err != nil {
-				return fmt.Errorf("unable to perform pgcopy query: %w", err)
-			}
-			switch v := msg.(type) {
-			case *pgproto3.CopyInResponse:
-				process = false
-			case *pgproto3.ErrorResponse:
-				return fmt.Errorf("error from postgres connection msg = %s code=%s", v.Message, v.Code)
-			default:
-				return fmt.Errorf("unknown message %+v", v)
-			}
-		}
-
-		// Streaming pgcopy data from table dump
-
-		buf := make([]byte, DefaultBufferSize)
-		for {
-			var n int
-			select {
-			case <-ctx.Done():
-				return ctx.Err()
-			default:
-			}
-
-			n, err = gz.Read(buf)
-			if err != nil {
-				if errors.Is(err, io.EOF) {
-					completionErr := sendMessage(frontend, &pgproto3.CopyDone{})
-					if completionErr != nil {
-						return fmt.Errorf("error sending CopyDone message: %w", err)
-					}
-					break
+			if errors.Is(err, io.EOF) {
+				completionErr := sendMessage(f, &pgproto3.CopyDone{})
+				if completionErr != nil {
+					return fmt.Errorf("error sending CopyDone message: %w", err)
 				}
-				return fmt.Errorf("error readimg from table dump: %w", err)
+				break
 			}
-
-			err = sendMessage(frontend, &pgproto3.CopyData{Data: buf[:n]})
-			if err != nil {
-				return fmt.Errorf("error sending DopyData message: %w", err)
-			}
+			return fmt.Errorf("error readimg from table dump: %w", err)
 		}
 
-		// Perform post streaming handling
-		for {
-			select {
-			case <-ctx.Done():
-				return ctx.Err()
-			default:
-
-			}
-			msg, err := frontend.Receive()
-			if err != nil {
-				return fmt.Errorf("unable to perform pgcopy query: %w", err)
-			}
-			switch v := msg.(type) {
-			case *pgproto3.CommandComplete:
-			case *pgproto3.ReadyForQuery:
-				return nil
-			case *pgproto3.ErrorResponse:
-				return fmt.Errorf("error from postgres connection msg = %s code=%s", v.Message, v.Code)
-			default:
-				return fmt.Errorf("unknown message %+v", v)
-			}
+		err = sendMessage(f, &pgproto3.CopyData{Data: buf[:n]})
+		if err != nil {
+			return fmt.Errorf("error sending DopyData message: %w", err)
 		}
-	}()
+	}
+	return nil
+}
 
+func (td *TableRestorer) postStreamingHandle(ctx context.Context, f *pgproto3.Frontend) error {
+	// Perform post streaming handling
+	var mainErr error
+	for {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		default:
+
+		}
+		msg, err := f.Receive()
+		if err != nil {
+			return fmt.Errorf("unable to perform pgcopy query: %w", err)
+		}
+		switch v := msg.(type) {
+		case *pgproto3.CommandComplete:
+		case *pgproto3.ReadyForQuery:
+			return mainErr
+		case *pgproto3.ErrorResponse:
+			mainErr = fmt.Errorf("error from postgres connection: %w", pgerrors.NewPgError(v))
+		default:
+			return fmt.Errorf("unknown message %+v", v)
+		}
+	}
 }
 
 func (td *TableRestorer) DebugInfo() string {
