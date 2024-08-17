@@ -5,21 +5,36 @@ when you need to dump only a part of the database, such as a specific table or a
 ensures data consistency by including all related data from other tables that are required to maintain the integrity of
 the subset.
 
-The subset is a list of SQL conditions that are applied to table. The conditions are combined with `AND` operator. You 
-need to specify the schema, table and column name when pointing out the column to filter by to avoid ambiguity. 
-The subset condition must be a valid SQL condition. Greenmask does not validate the condition, so make sure it 
-is correct.
+## Detail
 
-!!! warning
+The subset is a list of SQL conditions that are applied to table. The conditions are combined with `AND` operator. **You
+need** to specify the **schema**, **table** and **column** name when pointing out the column to filter by to avoid
+ambiguity. The subset condition must be a valid SQL condition.
 
-    Greenmask currently does not support cycle dependencies resolution. Going to be fixed in the future versions.
+```yaml title="Subset condition example"
+subset_conds:
+  - 'person.businessentity.businessentityid IN (274, 290, 721, 852)'
+```
+
+## References with NULL values
+
+For references that **do not have** `NOT NULL` constraints, Greenmask will automatically generate `LEFT JOIN` queries
+with the appropriate conditions to ensure integrity checks. You can rely on Greenmask to handle such cases correctly—no
+special configuration is needed, as it performs this automatically based on the introspected schema.
+
+## Circular reference
+
+Greenmask **supports circular** references between tables. You can define a subset condition for any table, and
+Greenmask will automatically generate the appropriate queries for the table subset using recursive queries. The subset
+system ensures data consistency by validating all records found through the recursive queries. If a record does not meet
+the subset condition, it will be excluded along with its parent records, preventing constraint violations.
+
+## Example: Dump a subset of the database
 
 !!! info
 
     All examples based on playground database. Read more about the playground database in the 
     [Playground](playground.md) section.
-
-# Example: Dump a subset of the database
 
 The following example demonstrates how to dump a subset of the `person` schema. The subset condition is applied to the
 `businessentity` and `password` tables. The subset condition filters the data based on the `businessentityid` and
