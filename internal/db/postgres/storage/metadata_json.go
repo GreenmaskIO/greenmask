@@ -71,6 +71,7 @@ type Metadata struct {
 	Entries           []*Entry               `yaml:"entries" json:"entries"`
 	DependenciesGraph map[int32][]int32      `yaml:"dependencies_graph" json:"dependencies_graph"`
 	DumpIdsOrder      []int32                `yaml:"dump_ids_order" json:"dump_ids_order"`
+	Cycles            [][]string             `yaml:"cycles" json:"cycles"`
 }
 
 func NewMetadata(
@@ -78,6 +79,7 @@ func NewMetadata(
 	completedAt time.Time, transformers []*domains.Table,
 	stats map[int32]ObjectSizeStat, databaseSchema []*toolkit.Table,
 	dependenciesGraph map[int32][]int32, dumpIdsOrder []int32,
+	cycles [][]string,
 ) (*Metadata, error) {
 
 	var format string
@@ -168,6 +170,7 @@ func NewMetadata(
 		DatabaseSchema:    databaseSchema,
 		DependenciesGraph: dependenciesGraph,
 		DumpIdsOrder:      dumpIdsOrder,
+		Cycles:            cycles,
 		Header: Header{
 			CreationDate:    tocObj.Header.CrtmDateTime.Time(),
 			DbName:          *tocObj.Header.ArchDbName,

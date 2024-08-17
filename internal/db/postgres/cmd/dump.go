@@ -406,9 +406,10 @@ func (d *Dump) mergeAndWriteToc(ctx context.Context) error {
 }
 
 func (d *Dump) writeMetaData(ctx context.Context, startedAt, completedAt time.Time) error {
+	cycles := d.context.Graph.GetCycledTables()
 	metadata, err := storageDto.NewMetadata(
 		d.resultToc, d.tocFileSize, startedAt, completedAt, d.config.Dump.Transformation, d.dumpedObjectSizes,
-		d.context.DatabaseSchema, d.dumpDependenciesGraph, d.sortedTablesDumpIds,
+		d.context.DatabaseSchema, d.dumpDependenciesGraph, d.sortedTablesDumpIds, cycles,
 	)
 	if err != nil {
 		return fmt.Errorf("unable build metadata: %w", err)

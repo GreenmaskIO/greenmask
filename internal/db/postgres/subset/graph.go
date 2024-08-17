@@ -108,7 +108,7 @@ func NewGraph(ctx context.Context, tx pgx.Tx, tables []*entries.Table) (*Graph, 
 			edgeIdSequence++
 		}
 	}
-	return &Graph{
+	g := &Graph{
 		tables:        tables,
 		graph:         graph,
 		paths:         make(map[int]*Path),
@@ -116,7 +116,32 @@ func NewGraph(ctx context.Context, tx pgx.Tx, tables []*entries.Table) (*Graph, 
 		visited:       make([]int, len(tables)),
 		order:         make([]int, 0),
 		reversedGraph: reversedGraph,
-	}, nil
+	}
+	g.buildCondensedGraph()
+	return g, nil
+}
+
+func (g *Graph) GetCycles() [][]*Edge {
+	var cycles [][]*Edge
+	for _, c := range g.scc {
+		if c.hasCycle() {
+			cycles = append(cycles, c.cycles...)
+		}
+	}
+	return cycles
+}
+
+func (g *Graph) GetCycledTables() (res [][]string) {
+	cycles := g.GetCycles()
+	for _, c := range cycles {
+		var tables []string
+		for _, e := range c {
+			tables = append(tables, fmt.Sprintf(`%s.%s`, e.from.table.Schema, e.from.table.Name))
+		}
+		tables = append(tables, fmt.Sprintf(`%s.%s`, c[len(c)-1].to.table.Schema, c[len(c)-1].to.table.Name))
+		res = append(res, tables)
+	}
+	return res
 }
 
 // findSubsetVertexes - finds the subset vertexes in the graph
