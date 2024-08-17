@@ -260,7 +260,7 @@ func (rit *EmailTransformer) Transform(ctx context.Context, r *toolkit.Record) (
 }
 
 func (rit *EmailTransformer) setupTemplateContext(originalEmail []byte, r *toolkit.Record) error {
-	if rit.localPartTemplate != nil && rit.domainTemplate != nil && !rit.keepOriginalDomain {
+	if rit.localPartTemplate == nil && rit.domainTemplate == nil && !rit.keepOriginalDomain {
 		return nil
 	}
 	rit.rrctx.setRecord(r)
