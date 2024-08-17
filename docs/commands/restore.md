@@ -18,7 +18,6 @@ allowing you to configure the restoration process as needed.
 Mostly it supports the same flags as the `pg_restore` utility, with some extra flags for Greenmask-specific features.
 
 ```text title="Supported flags"
-Flags:
   -c, --clean                           clean (drop) database objects before recreating
   -C, --create                          create the target database
   -a, --data-only                       restore only the data, no schema
@@ -45,6 +44,7 @@ Flags:
       --no-table-access-method          do not restore table access methods
       --no-tablespaces                  do not restore tablespace assignments
       --on-conflict-do-nothing          add ON CONFLICT DO NOTHING to INSERT commands
+      --pgzip                           use pgzip decompression instead of gzip
   -p, --port int                        database server port number (default 5432)
       --restore-in-order                restore tables in topological order, ensuring that dependent tables are not restored until the tables they depend on have been restored
   -n, --schema strings                  restore only objects in this schema
@@ -106,3 +106,11 @@ If your database has cyclic dependencies you will be notified about it but the r
 ```text
 2024-08-16T21:39:50+03:00 WRN cycle between tables is detected: cannot guarantee the order of restoration within cycle cycle=["public.employees","public.departments","public.projects","public.employees"]
 ```
+
+### Pgzip decompression
+
+By default, Greenmask uses gzip decompression to restore data. In mist cases it is quite slow and does not utilize all
+available resources and is a bootleneck for IO operations. To speed up the restoration process, you can use
+the `--pgzip` flag to use pgzip decompression instead of gzip. This method splits the data into blocks, which are
+decompressed in parallel, making it ideal for handling large volumes of data. The output remains a standard gzip file.
+

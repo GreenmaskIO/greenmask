@@ -4,7 +4,7 @@ This release introduces a new Greenmask command, improvements, bug fixes, and nu
 
 ## New features
 
-Added a new Greenmask CLI command—[show-transformer](../commands.md#show-transformer) that shows detailed information about a specified transformer.
+Added a new Greenmask CLI command—[show-transformer](../commands/show-transformer.md) that shows detailed information about a specified transformer.
 
 ## Improvements
 
