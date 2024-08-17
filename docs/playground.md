@@ -54,7 +54,7 @@ Below you can see Greenmask commands:
 
 * `completion` — generates the autocompletion script for the specified shell.
 
-To learn more about them, see [Commands](commands.md).
+To learn more about them, see [Commands](commands/index.md).
 
 ## Transformers
 

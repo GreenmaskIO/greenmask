@@ -13,10 +13,6 @@ allowing you to configure the restoration process as needed.
 Mostly it supports the same flags as the `pg_dump` utility, with some extra flags for Greenmask-specific features.
 
 ```text title="Supported flags"
-Usage:
-  greenmask dump [flags]
-
-Flags:
   -b, --blobs                           include large objects in dump
   -c, --clean                           clean (drop) database objects before recreating
   -Z, --compress int                    compression level for compressed formats (default -1)
@@ -51,7 +47,7 @@ Flags:
       --no-tablespaces                  do not dump tablespace assignments
       --no-toast-compression            do not dump TOAST compression methods
       --no-unlogged-table-data          do not dump unlogged table data
-      --on-conflict-do-nothing          add ON CONFLICT DO NOTHING to INSERT commands
+      --pgzip                           use pgzip compression instead of gzip
   -p, --port int                        database server port number (default 5432)
       --quote-all-identifiers           quote all identifiers, even if not key words
   -n, --schema strings                  dump the specified schema(s) only
@@ -67,3 +63,10 @@ Flags:
   -U, --username string                 connect as specified database user (default "postgres")
   -v, --verbose string                  verbose mode
 ```
+
+### Pgzip compression
+
+By default, Greenmask uses gzip compression to restore data. In mist cases it is quite slow and does not utilize all
+available resources and is a bootleneck for IO operations. To speed up the restoration process, you can use
+the `--pgzip` flag to use pgzip compression instead of gzip. This method splits the data into blocks, which are
+compressed in parallel, making it ideal for handling large volumes of data. The output remains a standard gzip file.

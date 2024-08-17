@@ -85,7 +85,7 @@ two storage `type` options are supported: `directory` and `s3`.
 
 In the `dump` section of the configuration, you configure the `greenmask dump` command. It includes the following parameters:
 
-* `pg_dump_options` — a map of `pg_dump` options to configure the behavior of the command itself. You can refer to the list of supported `pg_dump` options in the [Greenmask dump command documentation](commands.md#dump).
+* `pg_dump_options` — a map of `pg_dump` options to configure the behavior of the command itself. You can refer to the list of supported `pg_dump` options in the [Greenmask dump command documentation](commands/dump.md).
 * `transformation` — this section contains configuration for applying transformations to table columns during the dump operation. It includes the following sub-parameters:
 
     * `schema` — the schema name of the table
@@ -225,10 +225,10 @@ validate:
 
 1. A list of tables to validate. If this list is not empty, the validation operation will only be performed for the specified tables. Tables can be written with or without the schema name (e. g., `"public.cart"` or `"orders"`).
 2. Specifies whether to perform data transformation for a limited set of rows. If set to `true`, data transformation will be performed, and the number of rows transformed will be limited to the value specified in the `rows_limit` parameter (default is `10`).
-3. Specifies whether to perform diff operations for the transformed data. If set to `true`, the validation process will **find the differences between the original and transformed data**. See more details in the [validate command documentation](commands.md/#validate).
+3. Specifies whether to perform diff operations for the transformed data. If set to `true`, the validation process will **find the differences between the original and transformed data**. See more details in the [validate command documentation](commands/validate.md).
 4. Limits the number of rows to be transformed during validation. The default limit is `10` rows, but you can change it by modifying this parameter.
 5. A hash list of resolved warnings. These warnings have been addressed and resolved in a previous validation run.
-6. Specifies the format of the transformation output. Possible values are `[horizontal|vertical]`. The default format is `horizontal`. You can choose the format that suits your needs. See more details in the [validate command documentation](commands.md/#validate).
+6. Specifies the format of the transformation output. Possible values are `[horizontal|vertical]`. The default format is `horizontal`. You can choose the format that suits your needs. See more details in the [validate command documentation](commands/validate.md).
 7. The output format (json or text)
 8. Specifies whether to validate the schema current schema with the previous and print the differences if any.
 9. If set to `true`, transformation output will be only with the transformed columns and primary keys
@@ -239,7 +239,7 @@ validate:
 In the `restore` section of the configuration, you can specify parameters for the `greenmask restore` command. It contains `pg_restore` settings and custom script execution settings. Below you can find the available parameters:
 
 * `pg_restore_options` — a map of `pg_restore` options that are used to configure the behavior of
-  the `pg_restore` utility during the restoration process. You can refer to the list of supported `pg_restore` options in the [Greenmask restore command documentation](commands.md#restore).
+  the `pg_restore` utility during the restoration process. You can refer to the list of supported `pg_restore` options in the [Greenmask restore command documentation](commands/restore.md).
 * `scripts` — a map of custom scripts to be executed during different restoration stages. Each script is associated with a specific restoration stage and includes the following attributes:
     * `[pre-data|data|post-data]` — the name of the restoration stage when the script should be executed; has the following parameters:
         * `name` — the name of the script

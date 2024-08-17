@@ -22,13 +22,13 @@ import (
 	"io"
 	"strings"
 
+	"github.com/greenmaskio/greenmask/internal/utils/ioutils"
 	"github.com/jackc/pgx/v5"
 	"github.com/rs/zerolog/log"
 	"golang.org/x/sync/errgroup"
 
 	"github.com/greenmaskio/greenmask/internal/db/postgres/entries"
 	"github.com/greenmaskio/greenmask/internal/storages"
-	"github.com/greenmaskio/greenmask/internal/utils/countwriter"
 )
 
 const loBufSize = 1024 * 1024
@@ -37,11 +37,13 @@ type BlobsDumper struct {
 	Blobs          *entries.Blobs
 	OriginalSize   int64
 	CompressedSize int64
+	usePgzip       bool
 }
 
-func NewLargeObjectDumper(blobs *entries.Blobs) *BlobsDumper {
+func NewLargeObjectDumper(blobs *entries.Blobs, usePgzip bool) *BlobsDumper {
 	return &BlobsDumper{
-		Blobs: blobs,
+		Blobs:    blobs,
+		usePgzip: usePgzip,
 	}
 }
 
@@ -53,7 +55,7 @@ func (lod *BlobsDumper) Execute(ctx context.Context, tx pgx.Tx, st storages.Stor
 			Uint32("oid", uint32(lo.Oid)).
 			Msg("dumping large object")
 
-		w, r := countwriter.NewGzipPipe()
+		w, r := ioutils.NewGzipPipe(lod.usePgzip)
 
 		// Writing goroutine
 		eg.Go(largeObjectWriter(gtx, st, lo, r))
@@ -97,7 +99,7 @@ func (lod *BlobsDumper) generateBlobsToc(ctx context.Context, st storages.Storag
 	return nil
 }
 
-func largeObjectWriter(ctx context.Context, st storages.Storager, lo *entries.LargeObject, r countwriter.CountReadCloser) func() error {
+func largeObjectWriter(ctx context.Context, st storages.Storager, lo *entries.LargeObject, r ioutils.CountReadCloser) func() error {
 	return func() error {
 		defer func() {
 			log.Debug().
@@ -118,7 +120,7 @@ func largeObjectWriter(ctx context.Context, st storages.Storager, lo *entries.La
 	}
 }
 
-func largeObjectDumper(ctx context.Context, lo *entries.LargeObject, w countwriter.CountWriteCloser, tx pgx.Tx) func() error {
+func largeObjectDumper(ctx context.Context, lo *entries.LargeObject, w ioutils.CountWriteCloser, tx pgx.Tx) func() error {
 	return func() error {
 		defer func() {
 			log.Debug().

@@ -263,12 +263,12 @@ func (d *Dump) taskProducer(ctx context.Context, tasks chan<- dumpers.DumpTask) 
 			var task dumpers.DumpTask
 			switch v := dumpObj.(type) {
 			case *entries.Table:
-				task = dumpers.NewTableDumper(v, d.validate)
+				task = dumpers.NewTableDumper(v, d.validate, d.pgDumpOptions.Pgzip)
 			case *entries.Sequence:
 				task = dumpers.NewSequenceDumper(v)
 			case *entries.Blobs:
 				d.blobs = v
-				task = dumpers.NewLargeObjectDumper(v)
+				task = dumpers.NewLargeObjectDumper(v, d.pgDumpOptions.Pgzip)
 			default:
 				return fmt.Errorf("unknow dumper type")
 			}

@@ -44,6 +44,8 @@ obfuscation process remains fresh, predictable, and transparent.
   to deliver results.
 * **Provide variety of storages** — Greenmask offers a variety of storage options for local and remote data storage,
   including directories and S3-like storage solutions.
+* **Pgzip support for faster compression** — by setting `--pgzip`, greenmask can speeds up the dump and restoration
+    processes through parallel compression.
 
 ## Use cases
 

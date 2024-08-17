@@ -167,6 +167,10 @@ func init() {
 	Cmd.Flags().BoolP("on-conflict-do-nothing", "", false, "add ON CONFLICT DO NOTHING to INSERT commands")
 	Cmd.Flags().BoolP("inserts", "", false, "restore data as INSERT commands, rather than COPY")
 	Cmd.Flags().BoolP("restore-in-order", "", false, "restore tables in topological order, ensuring that dependent tables are not restored until the tables they depend on have been restored")
+	Cmd.Flags().BoolP(
+		"pgzip", "", false,
+		"use pgzip decompression instead of gzip",
+	)
 
 	// Connection options:
 	Cmd.Flags().StringP("host", "h", "/var/run/postgres", "database server host or socket directory")
@@ -181,6 +185,7 @@ func init() {
 		"disable-triggers", "enable-row-security", "if-exists", "no-comments", "no-data-for-failed-tables",
 		"no-security-labels", "no-subscriptions", "no-table-access-method", "no-tablespaces", "section",
 		"strict-names", "use-set-session-authorization", "inserts", "on-conflict-do-nothing", "restore-in-order",
+		"pgzip",
 
 		"host", "port", "username",
 	} {

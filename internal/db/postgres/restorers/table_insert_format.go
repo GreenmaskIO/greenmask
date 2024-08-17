@@ -16,7 +16,6 @@ package restorers
 
 import (
 	"bufio"
-	"compress/gzip"
 	"context"
 	"errors"
 	"fmt"
@@ -28,6 +27,7 @@ import (
 	"github.com/greenmaskio/greenmask/internal/db/postgres/toc"
 	"github.com/greenmaskio/greenmask/internal/domains"
 	"github.com/greenmaskio/greenmask/internal/storages"
+	"github.com/greenmaskio/greenmask/internal/utils/ioutils"
 	"github.com/greenmaskio/greenmask/internal/utils/reader"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
@@ -42,11 +42,13 @@ type TableRestorerInsertFormat struct {
 	query            string
 	globalExclusions *domains.GlobalDataRestorationErrorExclusions
 	tableExclusion   *domains.TablesDataRestorationErrorExclusions
+	usePgzip         bool
 }
 
 func NewTableRestorerInsertFormat(
 	entry *toc.Entry, st storages.Storager, exitOnError bool,
 	doNothing bool, exclusions *domains.DataRestorationErrorExclusions,
+	usePgzip bool,
 ) *TableRestorerInsertFormat {
 
 	var (
@@ -79,6 +81,7 @@ func NewTableRestorerInsertFormat(
 		doNothing:        doNothing,
 		globalExclusions: globalExclusion,
 		tableExclusion:   tableExclusion,
+		usePgzip:         usePgzip,
 	}
 }
 
@@ -103,11 +106,11 @@ func (td *TableRestorerInsertFormat) Execute(ctx context.Context, conn *pgx.Conn
 				Msg("error closing dump file")
 		}
 	}(r)
-	gz, err := gzip.NewReader(r)
+	gz, err := ioutils.GetGzipReadCloser(r, td.usePgzip)
 	if err != nil {
 		return fmt.Errorf("cannot create gzip reader: %w", err)
 	}
-	defer func(gz *gzip.Reader) {
+	defer func(gz io.Closer) {
 		if err := gz.Close(); err != nil {
 			log.Warn().
 				Err(err).

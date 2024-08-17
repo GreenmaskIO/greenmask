@@ -12,25 +12,37 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package countwriter
+package ioutils
 
 import (
 	"compress/gzip"
 	"fmt"
 	"io"
 
+	"github.com/klauspost/pgzip"
 	"github.com/rs/zerolog/log"
 )
 
-type GzipWriter struct {
-	w  io.WriteCloser
-	gz *gzip.Writer
+type WriteCloseFlusher interface {
+	io.WriteCloser
+	Flush() error
 }
 
-func NewGzipWriter(w io.WriteCloser) *GzipWriter {
+type GzipWriter struct {
+	w  io.WriteCloser
+	gz WriteCloseFlusher
+}
+
+func NewGzipWriter(w io.WriteCloser, usePgzip bool) *GzipWriter {
+	var gz WriteCloseFlusher
+	if usePgzip {
+		gz = pgzip.NewWriter(w)
+	} else {
+		gz = gzip.NewWriter(w)
+	}
 	return &GzipWriter{
 		w:  w,
-		gz: gzip.NewWriter(w),
+		gz: gz,
 	}
 }
 

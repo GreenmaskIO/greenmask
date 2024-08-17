@@ -93,6 +93,11 @@ type Options struct {
 	Snapshot                   string   `mapstructure:"snapshot"`
 	StrictNames                bool     `mapstructure:"strict-names"`
 	UseSetSessionAuthorization bool     `mapstructure:"use-set-session-authorization"`
+
+	// Custom options (not from pg_dump)
+	// Use pgzip compression instead of gzip
+	Pgzip bool `mapstructure:"pgzip"`
+
 	// Connection options:
 	DbName     string `mapstructure:"dbname"`
 	Host       string `mapstructure:"host"`

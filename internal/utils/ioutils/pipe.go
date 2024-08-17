@@ -12,36 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package countwriter
+package ioutils
 
-import "io"
+import (
+	"io"
+)
 
-type CountReadCloser interface {
-	GetCount() int64
-	io.ReadCloser
-}
-
-type Reader struct {
-	r     io.ReadCloser
-	Count int64
-}
-
-func NewReader(r io.ReadCloser) *Reader {
-	return &Reader{
-		r: r,
-	}
-}
-
-func (r *Reader) Read(p []byte) (n int, err error) {
-	c, err := r.r.Read(p)
-	r.Count += int64(c)
-	return c, err
-}
-
-func (r *Reader) Close() error {
-	return r.r.Close()
-}
-
-func (r *Reader) GetCount() int64 {
-	return r.Count
+// NewGzipPipe - returns wrapped PipeWriter into (GzipWriter && Writer) and PipeReader into (Reader)
+func NewGzipPipe(usePgzip bool) (CountWriteCloser, CountReadCloser) {
+	pr, pw := io.Pipe()
+	// Wrapping writer pipe into count writer and gzip writer and reader pipe
+	// into count reader
+	return NewWriter(NewGzipWriter(pw, usePgzip)), NewReader(pr)
 }

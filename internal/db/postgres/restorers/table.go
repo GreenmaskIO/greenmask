@@ -15,12 +15,12 @@
 package restorers
 
 import (
-	"compress/gzip"
 	"context"
 	"errors"
 	"fmt"
 	"io"
 
+	"github.com/greenmaskio/greenmask/internal/utils/ioutils"
 	"github.com/greenmaskio/greenmask/internal/utils/pgerrors"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgproto3"
@@ -36,13 +36,15 @@ type TableRestorer struct {
 	Entry       *toc.Entry
 	St          storages.Storager
 	exitOnError bool
+	usePgzip    bool
 }
 
-func NewTableRestorer(entry *toc.Entry, st storages.Storager, exitOnError bool) *TableRestorer {
+func NewTableRestorer(entry *toc.Entry, st storages.Storager, exitOnError bool, usePgzip bool) *TableRestorer {
 	return &TableRestorer{
 		Entry:       entry,
 		St:          st,
 		exitOnError: exitOnError,
+		usePgzip:    usePgzip,
 	}
 }
 
@@ -57,7 +59,7 @@ func (td *TableRestorer) Execute(ctx context.Context, conn *pgx.Conn) error {
 		return fmt.Errorf("cannot get file name from toc Entry")
 	}
 
-	reader, err := td.St.GetObject(ctx, *td.Entry.FileName)
+	r, err := td.St.GetObject(ctx, *td.Entry.FileName)
 	if err != nil {
 		return fmt.Errorf("cannot open dump file: %w", err)
 	}
@@ -67,12 +69,12 @@ func (td *TableRestorer) Execute(ctx context.Context, conn *pgx.Conn) error {
 				Err(err).
 				Msg("error closing dump file")
 		}
-	}(reader)
-	gz, err := gzip.NewReader(reader)
+	}(r)
+	gz, err := ioutils.GetGzipReadCloser(r, td.usePgzip)
 	if err != nil {
 		return fmt.Errorf("cannot create gzip reader: %w", err)
 	}
-	defer func(gz *gzip.Reader) {
+	defer func(gz io.Closer) {
 		if err := gz.Close(); err != nil {
 			log.Warn().
 				Err(err).
