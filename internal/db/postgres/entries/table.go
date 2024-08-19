@@ -44,10 +44,8 @@ type Table struct {
 	CompressedSize       int64
 	ExcludeData          bool
 	Driver               *toolkit.Driver
-	// ValidateLimitedRecords - perform dumping and transformation only for N records and exit
-	ValidateLimitedRecords uint64
-	Scores                 int64
-	SubsetConds            []string
+	Scores               int64
+	SubsetConds          []string
 }
 
 func (t *Table) HasCustomTransformer() bool {

@@ -67,7 +67,8 @@ type Dump struct {
 	// sortedTablesDumpIds - sorted tables dump ids in topological order
 	sortedTablesDumpIds []int32
 	// validate shows that dump worker must be in validation mode
-	validate bool
+	validate          bool
+	validateRowsLimit uint64
 }
 
 func NewDump(cfg *domains.Config, st storages.Storager, registry *utils.TransformerRegistry) *Dump {
@@ -257,13 +258,17 @@ func (d *Dump) dumpWorkerRunner(
 func (d *Dump) taskProducer(ctx context.Context, tasks chan<- dumpers.DumpTask) func() error {
 	return func() error {
 		defer close(tasks)
+		dataObjects := d.context.DataSectionObjects
+		if d.validate {
+			dataObjects = d.context.DataSectionObjectsToValidate
+		}
 
-		for _, dumpObj := range d.context.DataSectionObjects {
+		for _, dumpObj := range dataObjects {
 			dumpObj.SetDumpId(d.dumpIdSequence)
 			var task dumpers.DumpTask
 			switch v := dumpObj.(type) {
 			case *entries.Table:
-				task = dumpers.NewTableDumper(v, d.validate, d.pgDumpOptions.Pgzip)
+				task = dumpers.NewTableDumper(v, d.validate, d.validateRowsLimit, d.pgDumpOptions.Pgzip)
 			case *entries.Sequence:
 				task = dumpers.NewSequenceDumper(v)
 			case *entries.Blobs:
@@ -332,7 +337,7 @@ func (d *Dump) setDumpDependenciesGraph(tables []*entries.Table) {
 			return entry.Oid == oid
 		})
 		if idx == -1 {
-			panic("table not found")
+			panic(fmt.Sprintf("table not found: oid=%d", oid))
 		}
 		t := tables[idx]
 		// Create dependencies graph with DumpId sequence for easier restoration coordination
