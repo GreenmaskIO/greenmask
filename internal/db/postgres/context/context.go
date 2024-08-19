@@ -42,6 +42,8 @@ type RuntimeContext struct {
 	Types []*toolkit.Type
 	// DataSectionObjects - list of objects to dump in data-section. There are sequences, tables and large objects
 	DataSectionObjects []entries.Entry
+	// DataSectionObjectsToValidate - list of objects to validate in data-section
+	DataSectionObjectsToValidate []entries.Entry
 	// Warnings - list of occurred ValidationWarning during validation and config building
 	Warnings toolkit.ValidationWarnings
 	// Registry - registry of all the registered transformers definition
@@ -125,14 +127,24 @@ func NewRuntimeContext(
 		dataSectionObjects = append(dataSectionObjects, blobEntries)
 	}
 
+	// Generate list of tables that might be validated during the validate command call
+	var dataSectionObjectsToValidate []entries.Entry
+	for _, item := range dataSectionObjects {
+
+		if t, ok := item.(*entries.Table); ok && len(t.TransformersContext) > 0 {
+			dataSectionObjectsToValidate = append(dataSectionObjectsToValidate, t)
+		}
+	}
+
 	return &RuntimeContext{
-		Tables:             tables,
-		Types:              types,
-		DataSectionObjects: dataSectionObjects,
-		Warnings:           warnings,
-		Registry:           r,
-		DatabaseSchema:     schema,
-		Graph:              graph,
+		Tables:                       tables,
+		Types:                        types,
+		DataSectionObjects:           dataSectionObjects,
+		Warnings:                     warnings,
+		Registry:                     r,
+		DatabaseSchema:               schema,
+		Graph:                        graph,
+		DataSectionObjectsToValidate: dataSectionObjectsToValidate,
 	}, nil
 }
 
