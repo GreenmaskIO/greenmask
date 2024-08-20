@@ -171,6 +171,10 @@ func init() {
 		"pgzip", "", false,
 		"use pgzip decompression instead of gzip",
 	)
+	Cmd.Flags().Int64P(
+		"batch-size", "", 0,
+		"the number of rows to insert in a single batch during the COPY command (0 - all rows will be inserted in a single batch)",
+	)
 
 	// Connection options:
 	Cmd.Flags().StringP("host", "h", "/var/run/postgres", "database server host or socket directory")
@@ -185,7 +189,7 @@ func init() {
 		"disable-triggers", "enable-row-security", "if-exists", "no-comments", "no-data-for-failed-tables",
 		"no-security-labels", "no-subscriptions", "no-table-access-method", "no-tablespaces", "section",
 		"strict-names", "use-set-session-authorization", "inserts", "on-conflict-do-nothing", "restore-in-order",
-		"pgzip",
+		"pgzip", "batch-size",
 
 		"host", "port", "username",
 	} {

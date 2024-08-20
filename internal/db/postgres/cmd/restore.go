@@ -646,7 +646,9 @@ func (r *Restore) taskPusher(ctx context.Context, tasks chan restorers.RestoreTa
 							r.cfg.ErrorExclusions, r.restoreOpt.Pgzip,
 						)
 					} else {
-						task = restorers.NewTableRestorer(entry, r.st, r.restoreOpt.ExitOnError, r.restoreOpt.Pgzip)
+						task = restorers.NewTableRestorer(
+							entry, r.st, r.restoreOpt.ExitOnError, r.restoreOpt.Pgzip, r.restoreOpt.BatchSize,
+						)
 					}
 
 				case toc.SequenceSetDesc:

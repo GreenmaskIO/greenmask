@@ -97,7 +97,8 @@ type Options struct {
 	Inserts             bool `mapstructure:"inserts"`
 	RestoreInOrder      bool `mapstructure:"restore-in-order"`
 	// Use pgzip decompression instead of gzip
-	Pgzip bool `mapstructure:"pgzip"`
+	Pgzip     bool  `mapstructure:"pgzip"`
+	BatchSize int64 `mapstructure:"batch-size"`
 
 	// Connection options:
 	Host       string `mapstructure:"host"`
