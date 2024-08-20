@@ -223,7 +223,7 @@ func (v *Validate) readRecords(r *bufio.Reader, t *entries.Table) (original, tra
 	originalRow = pgcopy.NewRow(len(t.Columns))
 	transformedRow = pgcopy.NewRow(len(t.Columns))
 
-	originalLine, err = reader.ReadLine(r)
+	originalLine, err = reader.ReadLine(r, nil)
 	if err != nil {
 		if errors.Is(err, io.EOF) {
 			return nil, nil, err
@@ -235,7 +235,7 @@ func (v *Validate) readRecords(r *bufio.Reader, t *entries.Table) (original, tra
 		return nil, nil, io.EOF
 	}
 
-	transformedLine, err = reader.ReadLine(r)
+	transformedLine, err = reader.ReadLine(r, nil)
 	if err != nil {
 		return nil, nil, fmt.Errorf("unable to read line: %w", err)
 	}

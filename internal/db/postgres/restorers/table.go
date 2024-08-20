@@ -15,6 +15,7 @@
 package restorers
 
 import (
+	"bufio"
 	"context"
 	"errors"
 	"fmt"
@@ -22,6 +23,7 @@ import (
 
 	"github.com/greenmaskio/greenmask/internal/utils/ioutils"
 	"github.com/greenmaskio/greenmask/internal/utils/pgerrors"
+	"github.com/greenmaskio/greenmask/internal/utils/reader"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/rs/zerolog/log"
@@ -37,14 +39,18 @@ type TableRestorer struct {
 	St          storages.Storager
 	exitOnError bool
 	usePgzip    bool
+	batchSize   int64
 }
 
-func NewTableRestorer(entry *toc.Entry, st storages.Storager, exitOnError bool, usePgzip bool) *TableRestorer {
+func NewTableRestorer(
+	entry *toc.Entry, st storages.Storager, exitOnError bool, usePgzip bool, batchSize int64,
+) *TableRestorer {
 	return &TableRestorer{
 		Entry:       entry,
 		St:          st,
 		exitOnError: exitOnError,
 		usePgzip:    usePgzip,
+		batchSize:   batchSize,
 	}
 }
 
@@ -117,8 +123,14 @@ func (td *TableRestorer) restoreCopy(ctx context.Context, f *pgproto3.Frontend, 
 		return fmt.Errorf("error initializing pgcopy: %w", err)
 	}
 
-	if err := td.streamCopyData(ctx, f, r); err != nil {
-		return fmt.Errorf("error streaming pgcopy data: %w", err)
+	if td.batchSize > 0 {
+		if err := td.streamCopyDataByBatch(ctx, f, r); err != nil {
+			return fmt.Errorf("error streaming pgcopy data: %w", err)
+		}
+	} else {
+		if err := td.streamCopyData(ctx, f, r); err != nil {
+			return fmt.Errorf("error streaming pgcopy data: %w", err)
+		}
 	}
 
 	if err := td.postStreamingHandle(ctx, f); err != nil {
@@ -134,8 +146,7 @@ func (td *TableRestorer) initCopy(ctx context.Context, f *pgproto3.Frontend) err
 	}
 
 	// Prepare for streaming the pgcopy data
-	process := true
-	for process {
+	for {
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
@@ -148,35 +159,67 @@ func (td *TableRestorer) initCopy(ctx context.Context, f *pgproto3.Frontend) err
 		}
 		switch v := msg.(type) {
 		case *pgproto3.CopyInResponse:
-			process = false
+			return nil
 		case *pgproto3.ErrorResponse:
 			return fmt.Errorf("error from postgres connection: %w", pgerrors.NewPgError(v))
 		default:
 			return fmt.Errorf("unknown message %+v", v)
 		}
 	}
+}
+
+// streamCopyDataByBatch - stream pgcopy data from table dump in batches. It handles errors only on the end each batch
+// If the batch size is reached it completes the batch and starts a new one. If an error occurs during the batch it
+// stops immediately and returns the error
+func (td *TableRestorer) streamCopyDataByBatch(ctx context.Context, f *pgproto3.Frontend, r io.Reader) (err error) {
+	bi := bufio.NewReader(r)
+	buf := make([]byte, DefaultBufferSize)
+	var lineNum int64
+	for {
+		buf, err = reader.ReadLine(bi, buf)
+		if err != nil {
+			if errors.Is(err, io.EOF) {
+				break
+			}
+			return fmt.Errorf("error readimg from table dump: %w", err)
+		}
+		if isTerminationSeq(buf) {
+			break
+		}
+		lineNum++
+		buf = append(buf, '\n')
+
+		err = sendMessage(f, &pgproto3.CopyData{Data: buf})
+		if err != nil {
+			return fmt.Errorf("error sending CopyData message: %w", err)
+		}
+
+		if lineNum%td.batchSize == 0 {
+			if err = td.completeBatch(ctx, f); err != nil {
+				return fmt.Errorf("error completing batch: %w", err)
+			}
+		}
+
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		default:
+		}
+	}
 	return nil
 }
 
+// streamCopyData - stream pgcopy data from table dump in classic way. It handles errors only on the end of the stream
 func (td *TableRestorer) streamCopyData(ctx context.Context, f *pgproto3.Frontend, r io.Reader) error {
 	// Streaming pgcopy data from table dump
 
 	buf := make([]byte, DefaultBufferSize)
 	for {
 		var n int
-		select {
-		case <-ctx.Done():
-			return ctx.Err()
-		default:
-		}
 
 		n, err := r.Read(buf)
 		if err != nil {
 			if errors.Is(err, io.EOF) {
-				completionErr := sendMessage(f, &pgproto3.CopyDone{})
-				if completionErr != nil {
-					return fmt.Errorf("error sending CopyDone message: %w", err)
-				}
 				break
 			}
 			return fmt.Errorf("error readimg from table dump: %w", err)
@@ -186,12 +229,32 @@ func (td *TableRestorer) streamCopyData(ctx context.Context, f *pgproto3.Fronten
 		if err != nil {
 			return fmt.Errorf("error sending DopyData message: %w", err)
 		}
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		default:
+		}
+	}
+	return nil
+}
+
+// completeBatch - complete batch of pgcopy data and initiate new one
+func (td *TableRestorer) completeBatch(ctx context.Context, f *pgproto3.Frontend) error {
+	if err := td.postStreamingHandle(ctx, f); err != nil {
+		return err
+	}
+	if err := td.initCopy(ctx, f); err != nil {
+		return err
 	}
 	return nil
 }
 
 func (td *TableRestorer) postStreamingHandle(ctx context.Context, f *pgproto3.Frontend) error {
 	// Perform post streaming handling
+	err := sendMessage(f, &pgproto3.CopyDone{})
+	if err != nil {
+		return fmt.Errorf("error sending CopyDone message: %w", err)
+	}
 	var mainErr error
 	for {
 		select {

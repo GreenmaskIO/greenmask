@@ -18,6 +18,7 @@ allowing you to configure the restoration process as needed.
 Mostly it supports the same flags as the `pg_restore` utility, with some extra flags for Greenmask-specific features.
 
 ```text title="Supported flags"
+      --batch-size int                  the number of rows to insert in a single batch during the COPY command (0 - all rows will be inserted in a single batch)
   -c, --clean                           clean (drop) database objects before recreating
   -C, --create                          create the target database
   -a, --data-only                       restore only the data, no schema
@@ -112,5 +113,28 @@ If your database has cyclic dependencies you will be notified about it but the r
 By default, Greenmask uses gzip decompression to restore data. In mist cases it is quite slow and does not utilize all
 available resources and is a bootleneck for IO operations. To speed up the restoration process, you can use
 the `--pgzip` flag to use pgzip decompression instead of gzip. This method splits the data into blocks, which are
-decompressed in parallel, making it ideal for handling large volumes of data. The output remains a standard gzip file.
+decompressed in parallel, making it ideal for handling large volumes of data.
 
+```shell title="example with pgzip decompression"
+greenmask --config=config.yml restore latest --pgzip
+```
+
+### Restore data batching
+
+The COPY command returns the error only on transaction commit. This means that if you have a large dump and an error
+occurs, you will have to wait until the end of the transaction to see the error message. To avoid this, you can use the
+`--batch-size` flag to specify the number of rows to insert in a single batch during the COPY command. If an error occurs
+during the batch insertion, the error message will be displayed immediately. The data will be committed **only if all 
+batches are inserted successfully**.
+
+!!! warning
+
+    The batch size should be chosen carefully. If the batch size is too small, the restoration process will be slow. If
+    the batch size is too large, you may not be able to identify the error row.
+
+In the example below, the batch size is set to 1000 rows. This means that 1000 rows will be inserted in a single batch,
+so you will be notified of any errors immediately after each batch is inserted.
+
+```shell title="example with batch size" 
+greenmask --config=config.yml restore latest --batch-size 1000
+```
