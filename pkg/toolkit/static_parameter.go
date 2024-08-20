@@ -301,7 +301,7 @@ func scanValue(driver *Driver, definition *ParameterDefinition, rawValue ParamsV
 
 		var typeOid uint32
 		if linkedColumnParameter != nil {
-			typeOid = uint32(linkedColumnParameter.Column.TypeOid)
+			typeOid = uint32(linkedColumnParameter.Column.GetTypeOid())
 		} else {
 			t, ok := driver.GetTypeMap().TypeForName(definition.CastDbType)
 			if !ok {
