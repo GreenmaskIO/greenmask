@@ -315,7 +315,7 @@ func (ctb *CmdTransformerBase) init() error {
 
 func (ctb *CmdTransformerBase) ReceiveStderrLine(ctx context.Context) (line []byte, err error) {
 	go func() {
-		line, err = reader.ReadLine(ctb.StderrReader)
+		line, err = reader.ReadLine(ctb.StderrReader, nil)
 		ctb.receiveChan <- struct{}{}
 	}()
 	select {
@@ -333,7 +333,7 @@ func (ctb *CmdTransformerBase) ReceiveStderrLine(ctx context.Context) (line []by
 
 func (ctb *CmdTransformerBase) ReceiveStdoutLine(ctx context.Context) (line []byte, err error) {
 	go func() {
-		line, err = reader.ReadLine(ctb.StdoutReader)
+		line, err = reader.ReadLine(ctb.StdoutReader, nil)
 		ctb.receiveChan <- struct{}{}
 	}()
 	select {
