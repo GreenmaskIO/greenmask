@@ -154,6 +154,10 @@ func getTables(
 
 	// Assigning columns, pk and fk for each table
 	for _, t := range tables {
+		if len(t.Columns) > 0 {
+			// Columns were already initialized during the transformer initialization
+			continue
+		}
 		columns, err := getColumnsConfig(ctx, tx, t.Oid, version)
 		if err != nil {
 			return nil, nil, fmt.Errorf("unable to collect table columns: %w", err)

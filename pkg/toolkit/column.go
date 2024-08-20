@@ -47,3 +47,10 @@ func (c *Column) GetType() (string, Oid) {
 	}
 	return c.TypeName, c.TypeOid
 }
+
+func (c *Column) GetTypeOid() Oid {
+	if c.OverriddenTypeName != "" {
+		return c.OverriddenTypeOid
+	}
+	return c.TypeOid
+}

@@ -130,7 +130,7 @@ func (d *Driver) EncodeValueByColumnIdx(idx int, src any, buf []byte) ([]byte, e
 		return nil, fmt.Errorf("index out ouf range: must be between 0 and %d received %d", d.maxIdx, idx)
 	}
 	c := d.Table.Columns[idx]
-	oid := uint32(c.TypeOid)
+	oid := uint32(c.GetTypeOid())
 	if c.OverriddenTypeOid != 0 {
 		oid = uint32(c.OverriddenTypeOid)
 	}
@@ -158,7 +158,7 @@ func (d *Driver) ScanValueByColumnIdx(idx int, src []byte, dest any) error {
 		return fmt.Errorf("index out ouf range: must be between 0 and %d received %d", d.maxIdx, idx)
 	}
 	c := d.Table.Columns[idx]
-	oid := uint32(c.TypeOid)
+	oid := uint32(c.GetTypeOid())
 	if c.OverriddenTypeOid != 0 {
 		oid = uint32(c.OverriddenTypeOid)
 	}
@@ -189,7 +189,7 @@ func (d *Driver) DecodeValueByColumnIdx(idx int, src []byte) (any, error) {
 		return nil, fmt.Errorf("index out ouf range: must be between 0 and %d received %d", d.maxIdx, idx)
 	}
 	c := d.Table.Columns[idx]
-	oid := uint32(c.TypeOid)
+	oid := uint32(c.GetTypeOid())
 	if c.OverriddenTypeOid != 0 {
 		oid = uint32(c.OverriddenTypeOid)
 	}
