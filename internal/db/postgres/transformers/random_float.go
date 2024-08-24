@@ -138,11 +138,23 @@ func NewFloatTransformer(ctx context.Context, driver *toolkit.Driver, parameters
 	}
 
 	if !dynamicMode {
-		if err := minParam.Scan(&minVal); err != nil {
-			return nil, nil, fmt.Errorf("error scanning \"min\" parameter: %w", err)
+		minIsEmpty, err := minParam.IsEmpty()
+		if err != nil {
+			return nil, nil, fmt.Errorf("error checking \"min\" parameter: %w", err)
 		}
-		if err := maxParam.Scan(&maxVal); err != nil {
-			return nil, nil, fmt.Errorf("error scanning \"max\" parameter: %w", err)
+		if !minIsEmpty {
+			if err = minParam.Scan(&minVal); err != nil {
+				return nil, nil, fmt.Errorf("error scanning \"min\" parameter: %w", err)
+			}
+		}
+		maxIsEmpty, err := maxParam.IsEmpty()
+		if err != nil {
+			return nil, nil, fmt.Errorf("error checking \"max\" parameter: %w", err)
+		}
+		if !maxIsEmpty {
+			if err = maxParam.Scan(&maxVal); err != nil {
+				return nil, nil, fmt.Errorf("error scanning \"max\" parameter: %w", err)
+			}
 		}
 	}
 

@@ -106,7 +106,7 @@ type NumericTransformer struct {
 func NewRandomNumericTransformer(ctx context.Context, driver *toolkit.Driver, parameters map[string]toolkit.Parameterizer) (utils.Transformer, toolkit.ValidationWarnings, error) {
 
 	var columnName, engine string
-	var minVal, maxVal decimal.Decimal
+	var minVal, maxVal *decimal.Decimal
 	var keepNull, dynamicMode bool
 	var precision int32
 
@@ -144,12 +144,25 @@ func NewRandomNumericTransformer(ctx context.Context, driver *toolkit.Driver, pa
 	}
 
 	if !dynamicMode {
-		if err := minParam.Scan(&minVal); err != nil {
-			return nil, nil, fmt.Errorf("error scanning \"min\" parameter: %w", err)
+		minIsEmpty, err := minParam.IsEmpty()
+		if err != nil {
+			return nil, nil, fmt.Errorf("error checking \"min\" parameter: %w", err)
 		}
-		if err := maxParam.Scan(&maxVal); err != nil {
-			return nil, nil, fmt.Errorf("error scanning \"max\" parameter: %w", err)
+		if !minIsEmpty {
+			if err = minParam.Scan(&minVal); err != nil {
+				return nil, nil, fmt.Errorf("error scanning \"min\" parameter: %w", err)
+			}
 		}
+		maxIsEmpty, err := maxParam.IsEmpty()
+		if err != nil {
+			return nil, nil, fmt.Errorf("error checking \"max\" parameter: %w", err)
+		}
+		if !maxIsEmpty {
+			if err = maxParam.Scan(&maxVal); err != nil {
+				return nil, nil, fmt.Errorf("error scanning \"max\" parameter: %w", err)
+			}
+		}
+
 	}
 
 	limiter, limitsWarnings, err := validateRandomNumericTypeAndSetLimit(bigIntegerTransformerGenByteLength, minVal, maxVal)
@@ -250,7 +263,7 @@ func (bit *NumericTransformer) Transform(ctx context.Context, r *toolkit.Record)
 	return r, nil
 }
 
-func getNumericThresholds(size int, requestedMinValue, requestedMaxValue decimal.Decimal,
+func getNumericThresholds(size int, requestedMinValue, requestedMaxValue *decimal.Decimal,
 ) (decimal.Decimal, decimal.Decimal, toolkit.ValidationWarnings, error) {
 	var warns toolkit.ValidationWarnings
 	minVal, maxVal, err := transformers.GetMinAndMaxNumericValueBySetting(size)
@@ -258,11 +271,14 @@ func getNumericThresholds(size int, requestedMinValue, requestedMaxValue decimal
 		return decimal.Decimal{}, decimal.Decimal{}, nil, fmt.Errorf("error creating limiter by size: %w", err)
 	}
 
-	if requestedMinValue.Equal(decimal.NewFromInt(0)) && requestedMinValue.Equal(decimal.NewFromInt(0)) {
-		return minVal, maxVal, nil, nil
+	if requestedMinValue == nil {
+		requestedMinValue = &minVal
+	}
+	if requestedMaxValue == nil {
+		requestedMaxValue = &maxVal
 	}
 
-	if !numericLimitIsValid(requestedMinValue, minVal, maxVal) {
+	if !numericLimitIsValid(*requestedMinValue, minVal, maxVal) {
 		warns = append(warns, toolkit.NewValidationWarning().
 			SetMsgf("requested min value is out of numeric(%d) range", size).
 			SetSeverity(toolkit.ErrorValidationSeverity).
@@ -273,7 +289,7 @@ func getNumericThresholds(size int, requestedMinValue, requestedMaxValue decimal
 		)
 	}
 
-	if !numericLimitIsValid(requestedMaxValue, minVal, maxVal) {
+	if !numericLimitIsValid(*requestedMaxValue, minVal, maxVal) {
 		warns = append(warns, toolkit.NewValidationWarning().
 			SetMsgf("requested max value is out of NEMERIC(%d) range", size).
 			SetSeverity(toolkit.ErrorValidationSeverity).
@@ -286,11 +302,11 @@ func getNumericThresholds(size int, requestedMinValue, requestedMaxValue decimal
 	if warns.IsFatal() {
 		return decimal.Decimal{}, decimal.Decimal{}, warns, nil
 	}
-	return requestedMinValue, requestedMaxValue, nil, nil
+	return *requestedMinValue, *requestedMaxValue, nil, nil
 }
 
 func validateRandomNumericTypeAndSetLimit(
-	size int, requestedMinValue, requestedMaxValue decimal.Decimal,
+	size int, requestedMinValue, requestedMaxValue *decimal.Decimal,
 ) (limiter *transformers.RandomNumericLimiter, warns toolkit.ValidationWarnings, err error) {
 
 	minVal, maxVal, warns, err := getNumericThresholds(size, requestedMinValue, requestedMaxValue)
