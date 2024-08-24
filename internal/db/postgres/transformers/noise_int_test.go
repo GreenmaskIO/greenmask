@@ -16,7 +16,6 @@ package transformers
 
 import (
 	"context"
-	"fmt"
 	"testing"
 
 	"github.com/rs/zerolog/log"
@@ -38,43 +37,72 @@ func TestNoiseIntTransformer_Transform(t *testing.T) {
 	// Positive cases
 	tests := []struct {
 		name          string
-		ratio         float64
 		columnName    string
+		params        map[string]toolkit.ParamsValue
 		originalValue string
 		result        result
 	}{
 		{
-			name:          "int2",
-			columnName:    "id2",
-			ratio:         0.9,
+			name:       "int2",
+			columnName: "id2",
+			params: map[string]toolkit.ParamsValue{
+				"min_ratio": toolkit.ParamsValue("0.2"),
+				"max_ratio": toolkit.ParamsValue("0.9"),
+			},
 			result:        result{min: 12, max: 234},
 			originalValue: "123",
 		},
 		{
-			name:          "int4",
-			columnName:    "id4",
-			ratio:         0.9,
+			name:       "int4",
+			columnName: "id4",
+			params: map[string]toolkit.ParamsValue{
+				"min_ratio": toolkit.ParamsValue("0.2"),
+				"max_ratio": toolkit.ParamsValue("0.9"),
+			},
 			result:        result{min: 12, max: 234},
 			originalValue: "123",
 		},
 		{
-			name:          "int8",
-			columnName:    "id8",
-			ratio:         0.9,
+			name:       "int8",
+			columnName: "id8",
+			params: map[string]toolkit.ParamsValue{
+				"min_ratio": toolkit.ParamsValue("0.2"),
+				"max_ratio": toolkit.ParamsValue("0.9"),
+			},
 			result:        result{min: 12, max: 234},
+			originalValue: "123",
+		},
+		{
+			name:       "int8",
+			columnName: "id8",
+			params: map[string]toolkit.ParamsValue{
+				"min_ratio": toolkit.ParamsValue("0.2"),
+				"max_ratio": toolkit.ParamsValue("0.9"),
+			},
+			result:        result{min: 12, max: 234},
+			originalValue: "123",
+		},
+		{
+			name:       "int8",
+			columnName: "id8",
+			params: map[string]toolkit.ParamsValue{
+				"min_ratio": toolkit.ParamsValue("0.2"),
+				"max_ratio": toolkit.ParamsValue("0.9"),
+				"min":       toolkit.ParamsValue("0"),
+				"max":       toolkit.ParamsValue("110"),
+			},
+			result:        result{min: 0, max: 110},
 			originalValue: "123",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			tt.params["column"] = toolkit.ParamsValue(tt.columnName)
 			driver, record := getDriverAndRecord(tt.columnName, tt.originalValue)
 			transformerCtx, warnings, err := NoiseIntTransformerDefinition.Instance(
 				context.Background(),
-				driver, map[string]toolkit.ParamsValue{
-					"column":    toolkit.ParamsValue(tt.columnName),
-					"min_ratio": toolkit.ParamsValue(fmt.Sprintf("%f", tt.ratio)),
-				},
+				driver, tt.params,
 				nil,
 			)
 			require.NoError(t, err)

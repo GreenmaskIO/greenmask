@@ -13,12 +13,19 @@ import (
 
 func TestRandomIntTransformer_Transform_random_static(t *testing.T) {
 
+	type expected struct {
+		min    int64
+		max    int64
+		isNull bool
+	}
+
 	tests := []struct {
 		name           string
 		columnName     string
 		originalValue  string
 		expectedRegexp string
 		params         map[string]toolkit.ParamsValue
+		expected       expected
 	}{
 		{
 			name:           "int2",
@@ -28,6 +35,10 @@ func TestRandomIntTransformer_Transform_random_static(t *testing.T) {
 			params: map[string]toolkit.ParamsValue{
 				"min": toolkit.ParamsValue("1"),
 				"max": toolkit.ParamsValue("100"),
+			},
+			expected: expected{
+				min: 1,
+				max: 100,
 			},
 		},
 		{
@@ -39,6 +50,10 @@ func TestRandomIntTransformer_Transform_random_static(t *testing.T) {
 				"min": toolkit.ParamsValue("1"),
 				"max": toolkit.ParamsValue("100"),
 			},
+			expected: expected{
+				min: 1,
+				max: 100,
+			},
 		},
 		{
 			name:           "int8",
@@ -48,6 +63,10 @@ func TestRandomIntTransformer_Transform_random_static(t *testing.T) {
 			params: map[string]toolkit.ParamsValue{
 				"min": toolkit.ParamsValue("1"),
 				"max": toolkit.ParamsValue("100"),
+			},
+			expected: expected{
+				min: 1,
+				max: 100,
 			},
 		},
 		{
@@ -60,6 +79,10 @@ func TestRandomIntTransformer_Transform_random_static(t *testing.T) {
 				"max":       toolkit.ParamsValue("100"),
 				"keep_null": toolkit.ParamsValue("false"),
 			},
+			expected: expected{
+				min: 1,
+				max: 100,
+			},
 		},
 		{
 			name:           "keep_null true and NULL seq",
@@ -71,6 +94,27 @@ func TestRandomIntTransformer_Transform_random_static(t *testing.T) {
 				"max":       toolkit.ParamsValue("100"),
 				"keep_null": toolkit.ParamsValue("true"),
 				"engine":    toolkit.ParamsValue("random"),
+			},
+			expected: expected{
+				min:    1,
+				max:    100,
+				isNull: true,
+			},
+		},
+		{
+			name:           "test zero min",
+			columnName:     "id8",
+			originalValue:  "\\N",
+			expectedRegexp: fmt.Sprintf(`^(\%s)$`, "\\N"),
+			params: map[string]toolkit.ParamsValue{
+				"min":       toolkit.ParamsValue("0"),
+				"max":       toolkit.ParamsValue("100"),
+				"engine":    toolkit.ParamsValue("random"),
+				"keep_null": toolkit.ParamsValue("false"),
+			},
+			expected: expected{
+				min: 0,
+				max: 100,
 			},
 		},
 	}
@@ -96,12 +140,14 @@ func TestRandomIntTransformer_Transform_random_static(t *testing.T) {
 				record,
 			)
 			require.NoError(t, err)
-
-			encoded, err := r.Encode()
-			require.NoError(t, err)
-			res, err := encoded.Encode()
-			require.NoError(t, err)
-			require.Regexp(t, tt.expectedRegexp, string(res))
+			rawData, _ := r.GetRawColumnValueByName(tt.columnName)
+			require.Equal(t, tt.expected.isNull, rawData.IsNull)
+			if !rawData.IsNull {
+				var resInt int64
+				_, err = r.ScanColumnValueByName(tt.columnName, &resInt)
+				require.NoError(t, err)
+				require.True(t, resInt >= tt.expected.min && resInt <= tt.expected.max)
+			}
 		})
 	}
 

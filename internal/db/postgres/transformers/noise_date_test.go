@@ -93,6 +93,22 @@ func TestNoiseDateTransformer_Transform(t *testing.T) {
 				max:     time.Date(2024, 8, 29, 1, 1, 1, 1000, loc),
 			},
 		},
+		{
+			name: "test timestamp type with Truncate till day",
+			params: map[string]toolkit.ParamsValue{
+				"max_ratio": toolkit.ParamsValue("1 year 1 mons 1 day 01:01:01.01"),
+				"truncate":  toolkit.ParamsValue("month"),
+				"column":    toolkit.ParamsValue("date_ts"),
+				"min":       toolkit.ParamsValue("2022-06-01 22:00:00"),
+				"max":       toolkit.ParamsValue("2024-01-29 01:01:01.001"),
+			},
+			original: "2023-06-25 00:00:00",
+			result: result{
+				pattern: `^\d{4}-\d{2}-01 0{2}:0{2}:0{2}$`,
+				min:     time.Date(2022, 3, 1, 22, 00, 0, 0, loc),
+				max:     time.Date(2024, 8, 29, 1, 1, 1, 1000, loc),
+			},
+		},
 	}
 
 	for _, tt := range tests {
