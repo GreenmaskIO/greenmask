@@ -84,7 +84,7 @@ func (t *Table) Entry() (*toc.Entry, error) {
 		}
 	}
 
-	var query = `COPY "%s"."%s" (%s) FROM stdin`
+	var query = "COPY \"%s\".\"%s\" (%s) FROM stdin;\n"
 	var schemaName, tableName string
 	if t.LoadViaPartitionRoot && t.RootPtSchema != "" && t.RootPtName != "" {
 		schemaName = t.RootPtSchema
