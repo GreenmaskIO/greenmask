@@ -140,6 +140,7 @@ func initConfig() {
 			mapstructure.StringToTimeDurationHookFunc(),
 			mapstructure.StringToSliceHookFunc(","),
 		)
+		cfg.ErrorUnused = true
 	}
 
 	if err := viper.Unmarshal(Config, decoderCfg); err != nil {
