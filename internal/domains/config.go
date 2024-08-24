@@ -132,7 +132,11 @@ type TransformerConfig struct {
 	// This cannot be parsed with mapstructure due to uncontrollable lowercasing
 	// https://github.com/spf13/viper/issues/373
 	// Instead we have to use workaround and parse it manually
-	Params toolkit.StaticParameters `mapstructure:"-" yaml:"-" json:"-"` // yaml:"params" json:"params,omitempty"`
+	//
+	// Params attribute decoding is dummy. It is replaced in the runtime internal/utils/config/viper_workaround.go
+	// But it is required to leave mapstruicture tag to avoid errors raised by viper and decoder setting
+	// ErrorUnused = true. It was set in PR #177 (https://github.com/GreenmaskIO/greenmask/pull/177/files)
+	Params toolkit.StaticParameters `mapstructure:"params" yaml:"params" json:"params"`
 	// MetadataParams - encoded transformer parameters - uses only for storing into storage
 	// TODO: You need to get rid of it by creating a separate structure for storing metadata in
 	//   internal/db/postgres/storage/metadata_json.go
