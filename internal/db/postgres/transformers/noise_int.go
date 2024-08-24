@@ -138,20 +138,20 @@ func NewNoiseIntTransformer(ctx context.Context, driver *toolkit.Driver, paramet
 		}
 	}
 
+	limiter, limitsWarnings, err := validateIntTypeAndSetNoiseInt64Limiter(intSize, minValueThreshold, maxValueThreshold)
+	if err != nil {
+		return nil, nil, err
+	}
+	if limitsWarnings.IsFatal() {
+		return nil, limitsWarnings, nil
+	}
+
 	if err := minRatioParam.Scan(&minRatio); err != nil {
 		return nil, nil, fmt.Errorf("unable to scan \"min_ratio\" param: %w", err)
 	}
 
 	if err := maxRatioParam.Scan(&maxRatio); err != nil {
 		return nil, nil, fmt.Errorf("unable to scan \"max_ratio\" param: %w", err)
-	}
-
-	limiter, limitsWarnings, err := validateIntTypeAndSetNoiseInt64Limiter(intSize, maxValueThreshold, minValueThreshold)
-	if err != nil {
-		return nil, nil, err
-	}
-	if limitsWarnings.IsFatal() {
-		return nil, limitsWarnings, nil
 	}
 
 	t, err := transformers.NewNoiseInt64Transformer(limiter, minRatio, maxRatio)
