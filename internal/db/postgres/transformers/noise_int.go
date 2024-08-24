@@ -86,7 +86,7 @@ type NoiseIntTransformer struct {
 func NewNoiseIntTransformer(ctx context.Context, driver *toolkit.Driver, parameters map[string]toolkit.Parameterizer) (utils.Transformer, toolkit.ValidationWarnings, error) {
 	var columnName, engine string
 	var minRatio, maxRatio float64
-	var maxValueThreshold, minValueThreshold int64
+	var maxValueThreshold, minValueThreshold *int64
 	var dynamicMode bool
 
 	columnParam := parameters["column"]
@@ -118,11 +118,23 @@ func NewNoiseIntTransformer(ctx context.Context, driver *toolkit.Driver, paramet
 	}
 
 	if !dynamicMode {
-		if err := minParam.Scan(&maxValueThreshold); err != nil {
-			return nil, nil, fmt.Errorf("error scanning \"min\" parameter: %w", err)
+		minIsEmpty, err := minParam.IsEmpty()
+		if err != nil {
+			return nil, nil, fmt.Errorf("error checking \"min\" parameter: %w", err)
 		}
-		if err := maxParam.Scan(&minValueThreshold); err != nil {
-			return nil, nil, fmt.Errorf("error scanning \"max\" parameter: %w", err)
+		if !minIsEmpty {
+			if err = minParam.Scan(&minValueThreshold); err != nil {
+				return nil, nil, fmt.Errorf("error scanning \"min\" parameter: %w", err)
+			}
+		}
+		maxIsEmpty, err := maxParam.IsEmpty()
+		if err != nil {
+			return nil, nil, fmt.Errorf("error checking \"max\" parameter: %w", err)
+		}
+		if !maxIsEmpty {
+			if err = maxParam.Scan(&maxValueThreshold); err != nil {
+				return nil, nil, fmt.Errorf("error scanning \"max\" parameter: %w", err)
+			}
 		}
 	}
 
@@ -227,7 +239,7 @@ func (nit *NoiseIntTransformer) Transform(ctx context.Context, r *toolkit.Record
 }
 
 func validateIntTypeAndSetNoiseInt64Limiter(
-	size int, requestedMinValue, requestedMaxValue int64,
+	size int, requestedMinValue, requestedMaxValue *int64,
 ) (limiter *transformers.NoiseInt64Limiter, warns toolkit.ValidationWarnings, err error) {
 
 	minValue, maxValue, warns, err := validateInt64AndGetLimits(size, requestedMinValue, requestedMaxValue)

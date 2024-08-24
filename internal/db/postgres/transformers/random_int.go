@@ -93,7 +93,7 @@ type IntegerTransformer struct {
 func NewIntegerTransformer(ctx context.Context, driver *toolkit.Driver, parameters map[string]toolkit.Parameterizer) (utils.Transformer, toolkit.ValidationWarnings, error) {
 
 	var columnName, engine string
-	var minVal, maxVal int64
+	var minVal, maxVal *int64
 	var keepNull, dynamicMode bool
 
 	columnParam := parameters["column"]
@@ -127,11 +127,23 @@ func NewIntegerTransformer(ctx context.Context, driver *toolkit.Driver, paramete
 	}
 
 	if !dynamicMode {
-		if err := minParam.Scan(&minVal); err != nil {
-			return nil, nil, fmt.Errorf("error scanning \"min\" parameter: %w", err)
+		minIsEmpty, err := minParam.IsEmpty()
+		if err != nil {
+			return nil, nil, fmt.Errorf("error checking \"min\" parameter: %w", err)
 		}
-		if err := maxParam.Scan(&maxVal); err != nil {
-			return nil, nil, fmt.Errorf("error scanning \"max\" parameter: %w", err)
+		if !minIsEmpty {
+			if err = minParam.Scan(&minVal); err != nil {
+				return nil, nil, fmt.Errorf("error scanning \"min\" parameter: %w", err)
+			}
+		}
+		maxIsEmpty, err := maxParam.IsEmpty()
+		if err != nil {
+			return nil, nil, fmt.Errorf("error checking \"max\" parameter: %w", err)
+		}
+		if !maxIsEmpty {
+			if err = maxParam.Scan(&maxVal); err != nil {
+				return nil, nil, fmt.Errorf("error scanning \"max\" parameter: %w", err)
+			}
 		}
 	}
 
@@ -281,7 +293,7 @@ func limitIsValid[T int64 | float64](requestedThreshold, minValue, maxValue T) b
 }
 
 func validateIntTypeAndSetRandomInt64Limiter(
-	size int, requestedMinValue, requestedMaxValue int64,
+	size int, requestedMinValue, requestedMaxValue *int64,
 ) (limiter *transformers.Int64Limiter, warns toolkit.ValidationWarnings, err error) {
 
 	minValue, maxValue, warns, err := validateInt64AndGetLimits(size, requestedMinValue, requestedMaxValue)
@@ -299,15 +311,21 @@ func validateIntTypeAndSetRandomInt64Limiter(
 }
 
 func validateInt64AndGetLimits(
-	size int, requestedMinValue, requestedMaxValue int64,
+	size int, requestedMinValue, requestedMaxValue *int64,
 ) (int64, int64, toolkit.ValidationWarnings, error) {
 	var warns toolkit.ValidationWarnings
 	minValue, maxValue, err := getIntThresholds(size)
 	if err != nil {
 		return 0, 0, nil, err
 	}
+	if requestedMinValue == nil {
+		requestedMinValue = &minValue
+	}
+	if requestedMaxValue == nil {
+		requestedMaxValue = &maxValue
+	}
 
-	if !limitIsValid(requestedMinValue, minValue, maxValue) {
+	if !limitIsValid(*requestedMinValue, minValue, maxValue) {
 		warns = append(warns, toolkit.NewValidationWarning().
 			SetMsgf("requested min value is out of int%d range", size).
 			SetSeverity(toolkit.ErrorValidationSeverity).
@@ -318,7 +336,7 @@ func validateInt64AndGetLimits(
 		)
 	}
 
-	if !limitIsValid(requestedMaxValue, minValue, maxValue) {
+	if !limitIsValid(*requestedMaxValue, minValue, maxValue) {
 		warns = append(warns, toolkit.NewValidationWarning().
 			SetMsgf("requested max value is out of int%d range", size).
 			SetSeverity(toolkit.ErrorValidationSeverity).
@@ -332,11 +350,8 @@ func validateInt64AndGetLimits(
 	if warns.IsFatal() {
 		return 0, 0, warns, nil
 	}
-	if requestedMinValue != 0 || requestedMaxValue != 0 {
-		return requestedMinValue, requestedMaxValue, nil, nil
-	}
 
-	return minValue, maxValue, nil, nil
+	return *requestedMinValue, *requestedMaxValue, nil, nil
 }
 
 func init() {

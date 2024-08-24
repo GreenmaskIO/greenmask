@@ -17,7 +17,6 @@ package transformers
 import (
 	"context"
 	"fmt"
-	"math"
 
 	"github.com/greenmaskio/greenmask/internal/db/postgres/transformers/utils"
 	"github.com/greenmaskio/greenmask/internal/generators/transformers"
@@ -97,7 +96,8 @@ func NewNoiseFloatTransformer(ctx context.Context, driver *toolkit.Driver, param
 
 	var columnName, engine string
 	var dynamicMode bool
-	var minValueThreshold, maxValueThreshold, minRatio, maxRatio float64
+	var minValueThreshold, maxValueThreshold *float64
+	var minRatio, maxRatio float64
 	var decimal int
 
 	columnParam := parameters["column"]
@@ -129,11 +129,23 @@ func NewNoiseFloatTransformer(ctx context.Context, driver *toolkit.Driver, param
 	floatSize := c.GetColumnSize()
 
 	if !dynamicMode {
-		if err := minParam.Scan(&minValueThreshold); err != nil {
-			return nil, nil, fmt.Errorf("error scanning \"min\" parameter: %w", err)
+		minIsEmpty, err := minParam.IsEmpty()
+		if err != nil {
+			return nil, nil, fmt.Errorf("error checking \"min\" parameter: %w", err)
 		}
-		if err := maxParam.Scan(&maxValueThreshold); err != nil {
-			return nil, nil, fmt.Errorf("error scanning \"max\" parameter: %w", err)
+		if !minIsEmpty {
+			if err = minParam.Scan(&minValueThreshold); err != nil {
+				return nil, nil, fmt.Errorf("error scanning \"min\" parameter: %w", err)
+			}
+		}
+		maxIsEmpty, err := maxParam.IsEmpty()
+		if err != nil {
+			return nil, nil, fmt.Errorf("error checking \"max\" parameter: %w", err)
+		}
+		if !maxIsEmpty {
+			if err = maxParam.Scan(&maxValueThreshold); err != nil {
+				return nil, nil, fmt.Errorf("error scanning \"max\" parameter: %w", err)
+			}
 		}
 	}
 
@@ -244,15 +256,21 @@ func (nft *NoiseFloatTransformer) Transform(ctx context.Context, r *toolkit.Reco
 }
 
 func validateNoiseFloatTypeAndSetLimit(
-	size int, requestedMinValue, requestedMaxValue float64, decimal int,
+	size int, requestedMinValue, requestedMaxValue *float64, decimal int,
 ) (limiter *transformers.NoiseFloat64Limiter, warns toolkit.ValidationWarnings, err error) {
 
 	minValue, maxValue, err := getFloatThresholds(size)
 	if err != nil {
 		return nil, nil, err
 	}
+	if requestedMinValue == nil {
+		requestedMinValue = &minValue
+	}
+	if requestedMaxValue == nil {
+		requestedMaxValue = &maxValue
+	}
 
-	if !limitIsValid(requestedMinValue, minValue, maxValue) {
+	if !limitIsValid(*requestedMinValue, minValue, maxValue) {
 		warns = append(warns, toolkit.NewValidationWarning().
 			SetMsgf("requested min value is out of float%d range", size).
 			SetSeverity(toolkit.ErrorValidationSeverity).
@@ -263,7 +281,7 @@ func validateNoiseFloatTypeAndSetLimit(
 		)
 	}
 
-	if !limitIsValid(requestedMaxValue, minValue, maxValue) {
+	if !limitIsValid(*requestedMaxValue, minValue, maxValue) {
 		warns = append(warns, toolkit.NewValidationWarning().
 			SetMsgf("requested max value is out of float%d range", size).
 			SetSeverity(toolkit.ErrorValidationSeverity).
@@ -278,16 +296,9 @@ func validateNoiseFloatTypeAndSetLimit(
 		return nil, warns, nil
 	}
 
-	limiter, err = transformers.NewNoiseFloat64Limiter(-math.MaxFloat64, math.MaxFloat64, decimal)
+	limiter, err = transformers.NewNoiseFloat64Limiter(*requestedMinValue, *requestedMaxValue, decimal)
 	if err != nil {
 		return nil, nil, err
-	}
-
-	if requestedMinValue != 0 || requestedMaxValue != 0 {
-		limiter, err = transformers.NewNoiseFloat64Limiter(requestedMinValue, requestedMaxValue, decimal)
-		if err != nil {
-			return nil, nil, err
-		}
 	}
 
 	return limiter, nil, nil
