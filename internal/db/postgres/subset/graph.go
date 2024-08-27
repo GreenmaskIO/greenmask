@@ -874,7 +874,12 @@ func generateInClauseForOverlap(scopeId int, edges []*Edge, overlap [][]*Edge) s
 		rightTableKeys, leftTableKeys []string
 	)
 
-	for _, c := range overlap {
+	var shiftedOverlaps [][]*Edge
+	for _, oc := range overlap {
+		shiftedOverlaps = append(shiftedOverlaps, shiftUntilVertexWillBeFirst(edges[0], oc))
+	}
+
+	for _, c := range shiftedOverlaps {
 		overlapTables = append(overlapTables, getCycleQueryName(scopeId, c, ""))
 	}
 	for _, k := range edges[0].from.table.PrimaryKey {
@@ -1067,4 +1072,16 @@ func shiftCycleGroup(g [][]*Edge) [][]*Edge {
 		g[idx] = shiftCycle(g[idx])
 	}
 	return g
+}
+
+func shiftUntilVertexWillBeFirst(v *Edge, c []*Edge) []*Edge {
+	//generateInClauseForOverlap
+	res := slices.Clone(c)
+	for {
+		if res[0].from.idx == v.from.idx {
+			break
+		}
+		res = shiftCycle(res)
+	}
+	return res
 }
