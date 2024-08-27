@@ -40,6 +40,7 @@ import (
 	"github.com/greenmaskio/greenmask/internal/db/postgres/transformers/utils"
 	"github.com/greenmaskio/greenmask/internal/domains"
 	"github.com/greenmaskio/greenmask/internal/storages"
+	"github.com/greenmaskio/greenmask/pkg/toolkit"
 )
 
 const MetadataJsonFileName = "metadata.json"
@@ -58,6 +59,7 @@ type Dump struct {
 	schemaToc         *toc.Toc
 	resultToc         *toc.Toc
 	dumpedObjectSizes map[int32]storageDto.ObjectSizeStat
+	tableOidToDumpId  map[toolkit.Oid]int32
 	tocFileSize       int64
 	version           int
 	blobs             *entries.Blobs
@@ -81,6 +83,7 @@ func NewDump(cfg *domains.Config, st storages.Storager, registry *utils.Transfor
 		tmpDir:            path.Join(cfg.Common.TempDirectory, fmt.Sprintf("%d", time.Now().UnixNano())),
 		dumpedObjectSizes: map[int32]storageDto.ObjectSizeStat{},
 		registry:          registry,
+		tableOidToDumpId:  make(map[toolkit.Oid]int32),
 	}
 }
 
@@ -300,6 +303,7 @@ func (d *Dump) createTocEntries() error {
 		}
 		switch v := obj.(type) {
 		case *entries.Table:
+			d.tableOidToDumpId[v.Oid] = entry.DumpId
 			d.dumpedObjectSizes[entry.DumpId] = storageDto.ObjectSizeStat{
 				Original:   v.OriginalSize,
 				Compressed: v.CompressedSize,
@@ -414,7 +418,7 @@ func (d *Dump) writeMetaData(ctx context.Context, startedAt, completedAt time.Ti
 	cycles := d.context.Graph.GetCycledTables()
 	metadata, err := storageDto.NewMetadata(
 		d.resultToc, d.tocFileSize, startedAt, completedAt, d.config.Dump.Transformation, d.dumpedObjectSizes,
-		d.context.DatabaseSchema, d.dumpDependenciesGraph, d.sortedTablesDumpIds, cycles,
+		d.context.DatabaseSchema, d.dumpDependenciesGraph, d.sortedTablesDumpIds, cycles, d.tableOidToDumpId,
 	)
 	if err != nil {
 		return fmt.Errorf("unable build metadata: %w", err)

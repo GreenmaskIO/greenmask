@@ -158,7 +158,7 @@ func getTables(
 			// Columns were already initialized during the transformer initialization
 			continue
 		}
-		columns, err := getColumnsConfig(ctx, tx, t.Oid, version)
+		columns, err := getColumnsConfig(ctx, tx, t.Oid, version, true)
 		if err != nil {
 			return nil, nil, fmt.Errorf("unable to collect table columns: %w", err)
 		}

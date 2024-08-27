@@ -23,19 +23,22 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
+	"github.com/rs/zerolog/log"
+
 	"github.com/greenmaskio/greenmask/internal/db/postgres/pgcopy"
 	"github.com/greenmaskio/greenmask/internal/db/postgres/toc"
 	"github.com/greenmaskio/greenmask/internal/domains"
 	"github.com/greenmaskio/greenmask/internal/storages"
 	"github.com/greenmaskio/greenmask/internal/utils/ioutils"
 	"github.com/greenmaskio/greenmask/internal/utils/reader"
-	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgconn"
-	"github.com/rs/zerolog/log"
+	"github.com/greenmaskio/greenmask/pkg/toolkit"
 )
 
 type TableRestorerInsertFormat struct {
 	Entry            *toc.Entry
+	Table            *toolkit.Table
 	St               storages.Storager
 	doNothing        bool
 	exitOnError      bool
@@ -46,7 +49,7 @@ type TableRestorerInsertFormat struct {
 }
 
 func NewTableRestorerInsertFormat(
-	entry *toc.Entry, st storages.Storager, exitOnError bool,
+	entry *toc.Entry, t *toolkit.Table, st storages.Storager, exitOnError bool,
 	doNothing bool, exclusions *domains.DataRestorationErrorExclusions,
 	usePgzip bool,
 ) *TableRestorerInsertFormat {
@@ -75,6 +78,7 @@ func NewTableRestorerInsertFormat(
 	}
 
 	return &TableRestorerInsertFormat{
+		Table:            t,
 		Entry:            entry,
 		St:               st,
 		exitOnError:      exitOnError,
@@ -166,9 +170,13 @@ func (td *TableRestorerInsertFormat) streamInsertData(ctx context.Context, conn 
 	return nil
 }
 
-func (td *TableRestorerInsertFormat) generateInsertStmt(row *pgcopy.Row, onConflictDoNothing bool) string {
+func (td *TableRestorerInsertFormat) generateInsertStmt(onConflictDoNothing bool) string {
 	var placeholders []string
-	for i := 0; i < row.Length(); i++ {
+	var columnNames []string
+	columns := getRealColumns(td.Table.Columns)
+	for i := 0; i < len(columns); i++ {
+		column := fmt.Sprintf(`"%s"`, columns[i].Name)
+		columnNames = append(columnNames, column)
 		placeholders = append(placeholders, fmt.Sprintf("$%d", i+1))
 	}
 	var onConflict string
@@ -177,9 +185,10 @@ func (td *TableRestorerInsertFormat) generateInsertStmt(row *pgcopy.Row, onConfl
 	}
 
 	res := fmt.Sprintf(
-		`INSERT INTO %s.%s VALUES (%s)%s`,
+		`INSERT INTO %s.%s (%s) OVERRIDING SYSTEM VALUE VALUES (%s)%s`,
 		*td.Entry.Namespace,
 		*td.Entry.Tag,
+		strings.Join(columnNames, ", "),
 		strings.Join(placeholders, ", "),
 		onConflict,
 	)
@@ -190,7 +199,7 @@ func (td *TableRestorerInsertFormat) insertDataOnConflictDoNothing(
 	ctx context.Context, conn *pgx.Conn, row *pgcopy.Row,
 ) error {
 	if td.query == "" {
-		td.query = td.generateInsertStmt(row, td.doNothing)
+		td.query = td.generateInsertStmt(td.doNothing)
 	}
 
 	// TODO: The implementation based on pgx.Conn.Exec is not efficient for bulk inserts.
@@ -256,4 +265,16 @@ func isTerminationSeq(data []byte) bool {
 		return true
 	}
 	return false
+}
+
+// GetRealColumns - returns only real columns (not generated)
+func getRealColumns(columns []*toolkit.Column) []*toolkit.Column {
+	res := make([]*toolkit.Column, 0, len(columns))
+	for _, col := range columns {
+		if col.IsGenerated {
+			continue
+		}
+		res = append(res, col)
+	}
+	return res
 }

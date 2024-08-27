@@ -130,6 +130,8 @@ func (t *Table) Entry() (*toc.Entry, error) {
 }
 
 func (t *Table) GetCopyFromStatement() (string, error) {
+	// We could generate an explicit column list for the COPY statement, but it’s not necessary because, by default,
+	// generated columns are excluded from the COPY operation.
 	query := fmt.Sprintf("COPY \"%s\".\"%s\" TO STDOUT", t.Schema, t.Name)
 	if t.Query != "" {
 		query = fmt.Sprintf("COPY (%s) TO STDOUT", t.Query)
