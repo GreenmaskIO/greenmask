@@ -310,6 +310,8 @@ func (g *Graph) generateAndSetQueryForScc(path *Path) {
 	g.generateQueriesSccDfs(cq, path, nil)
 	for _, t := range rootVertex.tables {
 		query := cq.generateQuery(t)
+		fmt.Printf("********************%s.%s*****************\n", t.Schema, t.Name)
+		println(query)
 		t.Query = query
 	}
 }
@@ -338,32 +340,51 @@ func (g *Graph) generateQueryForScc(cq *cteQuery, scopeId int, path *Path, prevS
 		edges = edges[1:]
 		rootVertex = prevScopeEdge.originalCondensedEdge.to.component
 	}
-	if len(rootVertex.cycles) > 1 {
-		panic("IMPLEMENT ME: more than one cycle found in SCC")
+	//cycle := orderCycle(rootVertex.cycles[0], edges, path.scopeGraph[scopeId])
+	if len(rootVertex.groupedCycles) > 1 {
+		panic("IMPLEMENT ME: more than one cycle group found in SCC")
+	}
+	cycleGroup := rootVertex.getOneCycleGroup()
+	overlapMap := g.getOverlapMap(cycleGroup)
+	for _, cycle := range cycleGroup {
+		g.generateRecursiveQueriesForCycle(cq, scopeId, cycle, edges, nextScopeEdges, overlapMap)
 	}
 
-	cycle := orderCycle(rootVertex.cycles[0], edges, path.scopeGraph[scopeId])
-	g.generateRecursiveQueriesForCycle(cq, scopeId, cycle, edges, nextScopeEdges)
-	g.generateQueriesForVertexesInCycle(cq, scopeId, cycle)
+	g.generateFilteredQueries(cq, cycleGroup, scopeId)
+	g.generateQueriesForVertexesInCycle(cq, scopeId, cycleGroup)
 }
 
-func (g *Graph) generateQueriesForVertexesInCycle(cq *cteQuery, scopeId int, cycle []*Edge) {
-	for _, t := range getTablesFromCycle(cycle) {
+func (g *Graph) getOverlapMap(cycles [][]*Edge) map[string][][]*Edge {
+	cyclesOverlap := make(map[string][][]*Edge, len(cycles))
+	for i, currCycle := range cycles {
+		cycleId := getCycleId(currCycle)
+		var overlapCycles [][]*Edge
+		for j, overlapCycle := range cycles {
+			if i == j {
+				continue
+			}
+			overlapCycles = append(overlapCycles, overlapCycle)
+		}
+		cyclesOverlap[cycleId] = overlapCycles
+	}
+	return cyclesOverlap
+}
+
+func (g *Graph) generateQueriesForVertexesInCycle(cq *cteQuery, scopeId int, cycles [][]*Edge) {
+	for _, t := range getTablesFromCycle(cycles[0]) {
 		queryName := fmt.Sprintf("%s__%s__ids", t.Schema, t.Name)
-		query := generateAllTablesValidPkSelection(cycle, scopeId, t)
+		query := generateAllTablesValidPkSelection(cycles, scopeId, t)
 		cq.addItem(queryName, query)
 	}
 }
 
 func (g *Graph) generateRecursiveQueriesForCycle(
 	cq *cteQuery, scopeId int, cycle []*Edge, rest []*CondensedEdge, nextScopeEdges []*ScopeEdge,
+	overlapMap map[string][][]*Edge,
 ) {
-	var (
-		cycleId              = getCycleIdent(cycle)
-		overriddenTableNames = make(map[toolkit.Oid]string)
-	)
-
+	overriddenTableNames := make(map[toolkit.Oid]string)
 	rest = slices.Clone(rest)
+
 	for _, se := range nextScopeEdges {
 		t := se.originalCondensedEdge.originalEdge.to.table
 		overriddenTableNames[t.Oid] = fmt.Sprintf("%s__%s__ids", t.Schema, t.Name)
@@ -373,23 +394,40 @@ func (g *Graph) generateRecursiveQueriesForCycle(
 	//var unionQueries []string
 	shiftedCycle := slices.Clone(cycle)
 	for idx := 1; idx <= len(cycle); idx++ {
-		var (
-			mainTable = shiftedCycle[0].from.table
-			// queryName - name of a query in the recursive CTE
-			// where:
-			//   * s - scope id
-			//   * c - cycle id
-			//   * pt1 - part 1 of the recursive query
-			queryName         = fmt.Sprintf("__s%d__c%s__%s__%s", scopeId, cycleId, mainTable.Schema, mainTable.Name)
-			filteredQueryName = fmt.Sprintf("%s__filtered", queryName)
-		)
-
+		queryName := getCycleQueryName(scopeId, shiftedCycle, "")
 		query := generateQuery(queryName, shiftedCycle, rest, overriddenTableNames)
 		cq.addItem(queryName, query)
-		filteredQuery := generateIntegrityCheckJoinConds(shiftedCycle, mainTable, queryName)
-		cq.addItem(filteredQueryName, filteredQuery)
+		cycleId := getCycleId(shiftedCycle)
+		if len(overlapMap[cycleId]) > 0 {
+			overlapQueryName := getCycleQueryName(scopeId, shiftedCycle, "overlap")
+			overlapQuery := generateOverlapQuery(scopeId, overlapQueryName, shiftedCycle, rest, overriddenTableNames, overlapMap[cycleId])
+			cq.addItem(overlapQueryName, overlapQuery)
+		}
 		shiftedCycle = shiftCycle(shiftedCycle)
 	}
+}
+
+func (g *Graph) generateFilteredQueries(cq *cteQuery, groupedCycles [][]*Edge, scopeId int) {
+
+	// Clone cycles group
+	cycles := make([][]*Edge, 0, len(groupedCycles))
+	for _, cycle := range groupedCycles {
+		cycles = append(cycles, slices.Clone(cycle))
+	}
+	for idx := 1; idx <= len(cycles[0]); idx++ {
+		groupQueryNamePrefix := getCyclesGroupQueryName(scopeId, cycles[0])
+		filteredQueryName := fmt.Sprintf("%s__filtered", groupQueryNamePrefix)
+		if len(cycles) > 1 {
+			unitedQuery := generateUnitedCyclesQuery(scopeId, cycles)
+			groupQueryName := getCyclesGroupQueryName(scopeId, cycles[0])
+			unitedQueryName := fmt.Sprintf("%s__united", groupQueryName)
+			cq.addItem(unitedQueryName, unitedQuery)
+		}
+		filteredQuery := generateIntegrityCheckJoinConds(scopeId, cycles)
+		cq.addItem(filteredQueryName, filteredQuery)
+		shiftCycleGroup(cycles)
+	}
+
 }
 
 func (g *Graph) generateQueriesDfs(path *Path, scopeEdge *ScopeEdge) string {
@@ -566,53 +604,146 @@ func isPathForScc(path *Path, graph *Graph) bool {
 	return graph.scc[path.rootVertex].hasCycle()
 }
 
-func orderCycle(cycle []*Edge, subsetJoins []*CondensedEdge, scopeEdges []*ScopeEdge) []*Edge {
-	var (
-		vertexes         []int
-		valuableEdgesIdx int
-	)
-
-	for _, e := range cycle {
-		vertexes = append(vertexes, e.from.idx)
-	}
-
-	for _, sj := range subsetJoins {
-		if slices.Contains(vertexes, sj.originalEdge.from.idx) {
-			valuableEdgesIdx = slices.IndexFunc(cycle, func(e *Edge) bool {
-				return sj.originalEdge.from.idx == e.from.idx
-			})
-			if !sj.originalEdge.isNullable {
-				break
-			}
-		}
-	}
-
-	for _, se := range scopeEdges {
-		if slices.Contains(vertexes, se.originalCondensedEdge.from.idx) {
-			valuableEdgesIdx = slices.IndexFunc(cycle, func(e *Edge) bool {
-				return se.originalCondensedEdge.originalEdge.from.idx == e.from.idx
-			})
-			if !se.originalCondensedEdge.originalEdge.isNullable {
-				break
-			}
-		}
-	}
-
-	if valuableEdgesIdx == -1 {
-		panic("is not found")
-	}
-
-	resCycle := slices.Clone(cycle[valuableEdgesIdx:])
-	resCycle = append(resCycle, cycle[:valuableEdgesIdx]...)
-	return resCycle
-}
-
-func generateQuery(queryName string, cycle []*Edge, rest []*CondensedEdge, overriddenTables map[toolkit.Oid]string) string {
+func generateQuery(
+	queryName string, cycle []*Edge, rest []*CondensedEdge, overriddenTables map[toolkit.Oid]string,
+) string {
 	var (
 		selectKeys                             []string
 		initialJoins, recursiveJoins           []string
 		initialWhereConds, recursiveWhereConds []string
 		integrityCheck                         string
+		cycleSubsetConds                       []string
+		edges                                  = slices.Clone(cycle[:len(cycle)-1])
+		droppedEdge                            = cycle[len(cycle)-1]
+	)
+	for _, ce := range rest {
+		edges = append(edges, ce.originalEdge)
+	}
+
+	for _, t := range getTablesFromCycle(cycle) {
+		var keysWithAliases []string
+		for _, k := range t.PrimaryKey {
+			keysWithAliases = append(keysWithAliases, fmt.Sprintf(`"%s"."%s"."%s" as "%s__%s__%s"`, t.Schema, t.Name, k, t.Schema, t.Name, k))
+		}
+		selectKeys = append(selectKeys, keysWithAliases...)
+		if len(t.SubsetConds) > 0 {
+			cycleSubsetConds = append(cycleSubsetConds, t.SubsetConds...)
+		}
+	}
+
+	var droppedKeysWithAliases []string
+	for _, k := range droppedEdge.from.keys {
+		t := droppedEdge.from.table
+		droppedKeysWithAliases = append(droppedKeysWithAliases, fmt.Sprintf(`"%s"."%s"."%s" as "%s__%s__%s"`, t.Schema, t.Name, k, t.Schema, t.Name, k))
+	}
+	selectKeys = append(selectKeys, droppedKeysWithAliases...)
+
+	var initialPathSelectionKeys []string
+	for _, k := range cycle[0].from.table.PrimaryKey {
+		t := cycle[0].from.table
+		pathName := fmt.Sprintf(
+			`ARRAY["%s"."%s"."%s"] AS %s__%s__%s__path`,
+			t.Schema, t.Name, k,
+			t.Schema, t.Name, k,
+		)
+		initialPathSelectionKeys = append(initialPathSelectionKeys, pathName)
+	}
+
+	initialKeys := slices.Clone(selectKeys)
+	initialKeys = append(initialKeys, initialPathSelectionKeys...)
+	initFromClause := fmt.Sprintf(`FROM "%s"."%s" `, cycle[0].from.table.Schema, cycle[0].from.table.Name)
+	integrityCheck = "TRUE AS valid"
+	initialKeys = append(initialKeys, integrityCheck)
+	initialWhereConds = append(initialWhereConds, cycleSubsetConds...)
+
+	initialSelect := fmt.Sprintf("SELECT %s", strings.Join(initialKeys, ", "))
+	nullabilityMap := make(map[int]bool)
+	for _, e := range edges {
+		isNullable := e.isNullable
+		if !isNullable {
+			isNullable = nullabilityMap[e.from.idx]
+		}
+		nullabilityMap[e.to.idx] = isNullable
+		joinType := joinTypeInner
+		if isNullable {
+			joinType = joinTypeLeft
+		}
+		initialJoins = append(initialJoins, generateJoinClauseV2(e, joinType, overriddenTables))
+	}
+
+	integrityChecks := generateIntegrityChecksForNullableEdges(nullabilityMap, edges, overriddenTables)
+	initialWhereConds = append(initialWhereConds, integrityChecks...)
+	initialWhereClause := generateWhereClause(initialWhereConds)
+	initialQuery := fmt.Sprintf(`%s %s %s %s`,
+		initialSelect, initFromClause, strings.Join(initialJoins, " "), initialWhereClause,
+	)
+
+	recursiveIntegrityChecks := slices.Clone(cycleSubsetConds)
+	recursiveIntegrityChecks = append(recursiveIntegrityChecks, integrityChecks...)
+	recursiveIntegrityCheck := fmt.Sprintf("(%s) AS valid", strings.Join(recursiveIntegrityChecks, " AND "))
+	recursiveKeys := slices.Clone(selectKeys)
+	for _, k := range cycle[0].from.table.PrimaryKey {
+		t := cycle[0].from.table
+		//recursivePathSelectionKeys = append(recursivePathSelectionKeys, fmt.Sprintf(`coalesce("%s"."%s"."%s"::TEXT, 'NULL')`, t.Schema, t.Name, k))
+
+		pathName := fmt.Sprintf(
+			`"%s__%s__%s__path" || ARRAY["%s"."%s"."%s"]`,
+			t.Schema, t.Name, k,
+			t.Schema, t.Name, k,
+		)
+		recursiveKeys = append(recursiveKeys, pathName)
+	}
+	recursiveKeys = append(recursiveKeys, recursiveIntegrityCheck)
+
+	recursiveSelect := fmt.Sprintf("SELECT %s", strings.Join(recursiveKeys, ", "))
+	recursiveFromClause := fmt.Sprintf(`FROM "%s" `, queryName)
+	recursiveJoins = append(recursiveJoins, generateJoinClauseForDroppedEdge(droppedEdge, queryName))
+	nullabilityMap = make(map[int]bool)
+	for _, e := range edges {
+		isNullable := e.isNullable
+		if !isNullable {
+			isNullable = nullabilityMap[e.from.idx]
+		}
+		nullabilityMap[e.to.idx] = isNullable
+		joinType := joinTypeInner
+		if isNullable {
+			joinType = joinTypeLeft
+		}
+		recursiveJoins = append(recursiveJoins, generateJoinClauseV2(e, joinType, overriddenTables))
+	}
+
+	recursiveValidCond := fmt.Sprintf(`"%s"."%s"`, queryName, "valid")
+	recursiveWhereConds = append(recursiveWhereConds, recursiveValidCond)
+	for _, k := range cycle[0].from.table.PrimaryKey {
+		t := cycle[0].from.table
+
+		recursivePathCheck := fmt.Sprintf(
+			`NOT "%s"."%s"."%s" = ANY("%s"."%s__%s__%s__%s")`,
+			t.Schema, t.Name, k,
+			queryName, t.Schema, t.Name, k, "path",
+		)
+
+		recursiveWhereConds = append(recursiveWhereConds, recursivePathCheck)
+	}
+	recursiveWhereClause := generateWhereClause(recursiveWhereConds)
+
+	recursiveQuery := fmt.Sprintf(`%s %s %s %s`,
+		recursiveSelect, recursiveFromClause, strings.Join(recursiveJoins, " "), recursiveWhereClause,
+	)
+
+	query := fmt.Sprintf("( %s ) UNION ( %s )", initialQuery, recursiveQuery)
+	return query
+}
+
+func generateOverlapQuery(
+	scopeId int,
+	queryName string, cycle []*Edge, rest []*CondensedEdge, overriddenTables map[toolkit.Oid]string,
+	overlap [][]*Edge,
+) string {
+	var (
+		selectKeys                             []string
+		initialJoins, recursiveJoins           []string
+		initialWhereConds, recursiveWhereConds []string
 		cycleSubsetConds                       []string
 		edges                                  = slices.Clone(cycle[:len(cycle)-1])
 		droppedEdge                            = cycle[len(cycle)-1]
@@ -653,11 +784,8 @@ func generateQuery(queryName string, cycle []*Edge, rest []*CondensedEdge, overr
 	initialKeys := slices.Clone(selectKeys)
 	initialKeys = append(initialKeys, initialPathSelectionKeys...)
 	initFromClause := fmt.Sprintf(`FROM "%s"."%s" `, edges[0].from.table.Schema, edges[0].from.table.Name)
-	integrityCheck = "TRUE AS valid"
-	initialKeys = append(initialKeys, integrityCheck)
-	initialWhereConds = append(initialWhereConds, cycleSubsetConds...)
+	initialWhereConds = append(initialWhereConds, generateInClauseForOverlap(scopeId, edges, overlap))
 
-	initialSelect := fmt.Sprintf("SELECT %s", strings.Join(initialKeys, ", "))
 	nullabilityMap := make(map[int]bool)
 	for _, e := range edges {
 		isNullable := e.isNullable
@@ -673,15 +801,18 @@ func generateQuery(queryName string, cycle []*Edge, rest []*CondensedEdge, overr
 	}
 
 	integrityChecks := generateIntegrityChecksForNullableEdges(nullabilityMap, edges, overriddenTables)
-	initialWhereConds = append(initialWhereConds, integrityChecks...)
+	integrityChecks = append(integrityChecks, cycleSubsetConds...)
+	initialIntegrityCheck := fmt.Sprintf("(%s) AS valid", strings.Join(integrityChecks, " AND "))
+	initialKeys = append(initialKeys, initialIntegrityCheck)
+	initialSelect := fmt.Sprintf("SELECT %s", strings.Join(initialKeys, ", "))
+
+	//initialWhereConds = append(initialWhereConds, integrityChecks...)
 	initialWhereClause := generateWhereClause(initialWhereConds)
 	initialQuery := fmt.Sprintf(`%s %s %s %s`,
 		initialSelect, initFromClause, strings.Join(initialJoins, " "), initialWhereClause,
 	)
 
-	recursiveIntegrityChecks := slices.Clone(cycleSubsetConds)
-	recursiveIntegrityChecks = append(recursiveIntegrityChecks, integrityChecks...)
-	recursiveIntegrityCheck := fmt.Sprintf("(%s) AS valid", strings.Join(recursiveIntegrityChecks, " AND "))
+	recursiveIntegrityCheck := fmt.Sprintf("(%s) AS valid", strings.Join(integrityChecks, " AND "))
 	recursiveKeys := slices.Clone(selectKeys)
 	for _, k := range edges[0].from.table.PrimaryKey {
 		t := edges[0].from.table
@@ -736,6 +867,36 @@ func generateQuery(queryName string, cycle []*Edge, rest []*CondensedEdge, overr
 	return query
 }
 
+func generateInClauseForOverlap(scopeId int, edges []*Edge, overlap [][]*Edge) string {
+	var (
+		overlapTables                 []string
+		unionQueryParts               []string
+		rightTableKeys, leftTableKeys []string
+	)
+
+	var shiftedOverlaps [][]*Edge
+	for _, oc := range overlap {
+		shiftedOverlaps = append(shiftedOverlaps, shiftUntilVertexWillBeFirst(edges[0], oc))
+	}
+
+	for _, c := range shiftedOverlaps {
+		overlapTables = append(overlapTables, getCycleQueryName(scopeId, c, ""))
+	}
+	for _, k := range edges[0].from.table.PrimaryKey {
+		rightTableKey := fmt.Sprintf(`"%s__%s__%s"`, edges[0].from.table.Schema, edges[0].from.table.Name, k)
+		rightTableKeys = append(rightTableKeys, rightTableKey)
+		leftTableKey := fmt.Sprintf(`"%s"."%s"."%s"`, edges[0].from.table.Schema, edges[0].from.table.Name, k)
+		leftTableKeys = append(leftTableKeys, leftTableKey)
+	}
+	for _, t := range overlapTables {
+		unionQueryParts = append(unionQueryParts, fmt.Sprintf(`SELECT %s FROM "%s"`, strings.Join(rightTableKeys, ", "), t))
+	}
+	unionQuery := strings.Join(unionQueryParts, " UNION ")
+
+	res := fmt.Sprintf(`(%s) IN (%s)`, strings.Join(leftTableKeys, ", "), unionQuery)
+	return res
+}
+
 func getTablesFromCycle(cycle []*Edge) (res []*entries.Table) {
 	for _, e := range cycle {
 		res = append(res, e.to.table)
@@ -783,15 +944,34 @@ func generateIntegrityChecksForNullableEdges(nullabilityMap map[int]bool, edges 
 	return
 }
 
-func generateIntegrityCheckJoinConds(cycle []*Edge, table *entries.Table, tableName string) string {
+func generateUnitedCyclesQuery(scopeId int, cycles [][]*Edge) string {
+	var tablesSelection []string
+	for _, c := range cycles {
+		q1 := fmt.Sprintf(`SELECT * FROM "%s"`, getCycleQueryName(scopeId, c, ""))
+		tablesSelection = append(tablesSelection, q1)
+		q2 := fmt.Sprintf(`SELECT * FROM "%s"`, getCycleQueryName(scopeId, c, "overlap"))
+		tablesSelection = append(tablesSelection, q2)
+	}
+	res := strings.Join(tablesSelection, " UNION ")
+	return res
+}
+
+func generateIntegrityCheckJoinConds(scopeId int, cycles [][]*Edge) string {
 
 	var (
+		table            = cycles[0][0].from.table
 		allPks           []string
 		mainTablePks     []string
 		unnestSelections []string
+		tableName        = getCycleQueryName(scopeId, cycles[0], "")
 	)
 
-	for _, t := range getTablesFromCycle(cycle) {
+	if len(cycles) > 1 {
+		prefix := getCyclesGroupQueryName(scopeId, cycles[0])
+		tableName = fmt.Sprintf("%s__united", prefix)
+	}
+
+	for _, t := range getTablesFromCycle(cycles[0]) {
 		for _, k := range t.PrimaryKey {
 			key := fmt.Sprintf(`"%s"."%s__%s__%s"`, tableName, t.Schema, t.Name, k)
 			allPks = append(allPks, key)
@@ -822,15 +1002,15 @@ func generateIntegrityCheckJoinConds(cycle []*Edge, table *entries.Table, tableN
 	return filteredQuery
 }
 
-func generateAllTablesValidPkSelection(cycle []*Edge, scopeId int, forTable *entries.Table) string {
+func generateAllTablesValidPkSelection(cycles [][]*Edge, scopeId int, forTable *entries.Table) string {
 
 	var unionParts []string
 
-	for _, t := range getTablesFromCycle(cycle) {
+	for _, t := range getTablesFromCycle(cycles[0]) {
 		var (
 			selectionKeys     []string
-			cycleId           = getCycleIdent(cycle)
-			filteredQueryName = fmt.Sprintf("__s%d__c%s__%s__%s__filtered", scopeId, cycleId, t.Schema, t.Name)
+			groupId           = getCycleGroupId(cycles[0])
+			filteredQueryName = fmt.Sprintf("__s%d__g%s__%s__%s__filtered", scopeId, groupId, t.Schema, t.Name)
 		)
 
 		for _, k := range forTable.PrimaryKey {
@@ -853,4 +1033,55 @@ func shiftCycle(cycle []*Edge) (res []*Edge) {
 	res = append(res, cycle[len(cycle)-1])
 	res = append(res, cycle[:len(cycle)-1]...)
 	return
+}
+
+func getCycleQueryName(scopeId int, cycle []*Edge, postfix string) string {
+	// queryName - name of a query in the recursive CTE
+	// where:
+	//   * s - scope id
+	//   * g - group id
+	//   * c - cycle id
+	//   * postfix with table name
+	mainTable := cycle[0].from.table
+	groupId := getCycleGroupId(cycle)
+	cycleId := getCycleId(cycle)
+	res := fmt.Sprintf("__s%d__g%s__c%s__%s__%s", scopeId, groupId, cycleId, mainTable.Schema, mainTable.Name)
+	if postfix != "" {
+		res = fmt.Sprintf("%s__%s", res, postfix)
+	}
+	return res
+}
+
+func getCyclesGroupQueryName(scopeId int, cycle []*Edge) string {
+	// queryName - name of a query in the recursive CTE
+	// where:
+	//   * s - scope id
+	//   * g - group id
+	//   * postfix with table name
+	mainTable := cycle[0].from.table
+	groupId := getCycleGroupId(cycle)
+	return getCyclesGroupQueryNameByMainTable(scopeId, groupId, mainTable)
+}
+
+func getCyclesGroupQueryNameByMainTable(scopeId int, groupId string, mainTable *entries.Table) string {
+	return fmt.Sprintf("__s%d__g%s__%s__%s", scopeId, groupId, mainTable.Schema, mainTable.Name)
+}
+
+func shiftCycleGroup(g [][]*Edge) [][]*Edge {
+	for idx := range g {
+		g[idx] = shiftCycle(g[idx])
+	}
+	return g
+}
+
+func shiftUntilVertexWillBeFirst(v *Edge, c []*Edge) []*Edge {
+	//generateInClauseForOverlap
+	res := slices.Clone(c)
+	for {
+		if res[0].from.idx == v.from.idx {
+			break
+		}
+		res = shiftCycle(res)
+	}
+	return res
 }
