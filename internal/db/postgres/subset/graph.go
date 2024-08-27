@@ -639,8 +639,8 @@ func generateQuery(
 	selectKeys = append(selectKeys, droppedKeysWithAliases...)
 
 	var initialPathSelectionKeys []string
-	for _, k := range edges[0].from.table.PrimaryKey {
-		t := edges[0].from.table
+	for _, k := range cycle[0].from.table.PrimaryKey {
+		t := cycle[0].from.table
 		pathName := fmt.Sprintf(
 			`ARRAY["%s"."%s"."%s"] AS %s__%s__%s__path`,
 			t.Schema, t.Name, k,
@@ -651,7 +651,7 @@ func generateQuery(
 
 	initialKeys := slices.Clone(selectKeys)
 	initialKeys = append(initialKeys, initialPathSelectionKeys...)
-	initFromClause := fmt.Sprintf(`FROM "%s"."%s" `, edges[0].from.table.Schema, edges[0].from.table.Name)
+	initFromClause := fmt.Sprintf(`FROM "%s"."%s" `, cycle[0].from.table.Schema, cycle[0].from.table.Name)
 	integrityCheck = "TRUE AS valid"
 	initialKeys = append(initialKeys, integrityCheck)
 	initialWhereConds = append(initialWhereConds, cycleSubsetConds...)
@@ -682,8 +682,8 @@ func generateQuery(
 	recursiveIntegrityChecks = append(recursiveIntegrityChecks, integrityChecks...)
 	recursiveIntegrityCheck := fmt.Sprintf("(%s) AS valid", strings.Join(recursiveIntegrityChecks, " AND "))
 	recursiveKeys := slices.Clone(selectKeys)
-	for _, k := range edges[0].from.table.PrimaryKey {
-		t := edges[0].from.table
+	for _, k := range cycle[0].from.table.PrimaryKey {
+		t := cycle[0].from.table
 		//recursivePathSelectionKeys = append(recursivePathSelectionKeys, fmt.Sprintf(`coalesce("%s"."%s"."%s"::TEXT, 'NULL')`, t.Schema, t.Name, k))
 
 		pathName := fmt.Sprintf(
@@ -714,8 +714,8 @@ func generateQuery(
 
 	recursiveValidCond := fmt.Sprintf(`"%s"."%s"`, queryName, "valid")
 	recursiveWhereConds = append(recursiveWhereConds, recursiveValidCond)
-	for _, k := range edges[0].from.table.PrimaryKey {
-		t := edges[0].from.table
+	for _, k := range cycle[0].from.table.PrimaryKey {
+		t := cycle[0].from.table
 
 		recursivePathCheck := fmt.Sprintf(
 			`NOT "%s"."%s"."%s" = ANY("%s"."%s__%s__%s__%s")`,
