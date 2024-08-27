@@ -53,7 +53,7 @@ func Run(ctx context.Context, logger *zerolog.Logger, name string, args ...strin
 				return gtx.Err()
 			default:
 			}
-			line, err := reader.ReadLine(lineScanner)
+			line, err := reader.ReadLine(lineScanner, nil)
 			if err != nil {
 				if errors.Is(err, io.EOF) {
 					return nil
@@ -73,7 +73,7 @@ func Run(ctx context.Context, logger *zerolog.Logger, name string, args ...strin
 				return gtx.Err()
 			default:
 			}
-			line, err := reader.ReadLine(lineScanner)
+			line, err := reader.ReadLine(lineScanner, nil)
 			if err != nil {
 				if errors.Is(err, io.EOF) {
 					return nil

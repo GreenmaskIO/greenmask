@@ -89,6 +89,12 @@ func validateAndBuildTablesConfig(
 			}
 			table.Columns = columns
 
+			pkColumns, err := getPrimaryKeyColumns(ctx, tx, table.Oid)
+			if err != nil {
+				return nil, nil, fmt.Errorf("unable to collect primary key columns: %w", err)
+			}
+			table.PrimaryKey = pkColumns
+
 			// Assigning overridden column types for driver initialization
 			if tableCfg.ColumnsTypeOverride != nil {
 				for _, c := range table.Columns {

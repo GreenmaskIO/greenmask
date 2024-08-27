@@ -18,7 +18,7 @@ type Meta struct {
 	Table               *Table            `json:"table"`
 	Parameters          *Parameters       `json:"parameters"`
 	Types               []*Type           `json:"types"`
-	ColumnTypeOverrides map[string]string `json:"column_type_overrides"`
+	ColumnsTypeOverride map[string]string `json:"columns_type_override"`
 }
 
 type Parameters struct {

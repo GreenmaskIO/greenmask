@@ -97,6 +97,19 @@ func TestNoiseNumericTransformer_Transform(t *testing.T) {
 			input:  "100",
 			result: result{min: 90, max: 110, regexp: `^-*\d+$`},
 		},
+		{
+			name:       "numeric with thresholds",
+			columnName: "id_numeric",
+			params: map[string]toolkit.ParamsValue{
+				"min_ratio": toolkit.ParamsValue("0.2"),
+				"max_ratio": toolkit.ParamsValue("0.9"),
+				"min":       toolkit.ParamsValue("0"),
+				"max":       toolkit.ParamsValue("50"),
+				"decimal":   toolkit.ParamsValue("4"),
+			},
+			input:  "100",
+			result: result{min: 10, max: 190, regexp: `^-*\d+[.]*\d{0,4}$`},
+		},
 	}
 
 	for _, tt := range tests {

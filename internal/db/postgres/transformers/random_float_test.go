@@ -121,6 +121,21 @@ func TestRandomFloatTransformer_Transform(t *testing.T) {
 				isNull: true,
 			},
 		},
+		{
+			name:          "keep_null true and NULL seq",
+			columnName:    "col_float8",
+			originalValue: "\\N",
+			params: map[string]toolkit.ParamsValue{
+				"min":       toolkit.ParamsValue("0"),
+				"max":       toolkit.ParamsValue("1000"),
+				"decimal":   toolkit.ParamsValue("0"),
+				"keep_null": toolkit.ParamsValue("false"),
+			},
+			result: result{
+				min: 0,
+				max: 1000,
+			},
+		},
 		//{
 		//	name: "text with default float8",
 		//	params: map[string]toolkit.ParamsValue{

@@ -19,7 +19,6 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/greenmaskio/greenmask/internal/utils/ioutils"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/rs/zerolog/log"
@@ -27,20 +26,23 @@ import (
 
 	"github.com/greenmaskio/greenmask/internal/db/postgres/entries"
 	"github.com/greenmaskio/greenmask/internal/storages"
+	"github.com/greenmaskio/greenmask/internal/utils/ioutils"
 )
 
 type TableDumper struct {
-	table     *entries.Table
-	recordNum uint64
-	validate  bool
-	usePgzip  bool
+	table             *entries.Table
+	recordNum         uint64
+	validate          bool
+	validateRowsLimit uint64
+	usePgzip          bool
 }
 
-func NewTableDumper(table *entries.Table, validate bool, usePgzip bool) *TableDumper {
+func NewTableDumper(table *entries.Table, validate bool, rowsLimit uint64, usePgzip bool) *TableDumper {
 	return &TableDumper{
-		table:    table,
-		validate: validate,
-		usePgzip: usePgzip,
+		table:             table,
+		validate:          validate,
+		usePgzip:          usePgzip,
+		validateRowsLimit: rowsLimit,
 	}
 }
 
@@ -162,7 +164,7 @@ func (td *TableDumper) process(ctx context.Context, tx pgx.Tx, w io.WriteCloser,
 			if td.validate {
 				// Logic for validation limiter - exit after recordNum rows
 				td.recordNum++
-				if td.recordNum == td.table.ValidateLimitedRecords {
+				if td.recordNum == td.validateRowsLimit {
 					return nil
 				}
 			}

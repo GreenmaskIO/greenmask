@@ -140,7 +140,7 @@ func (td *TableRestorerInsertFormat) streamInsertData(ctx context.Context, conn 
 		default:
 		}
 
-		line, err := reader.ReadLine(buf)
+		line, err := reader.ReadLine(buf, nil)
 		if err != nil {
 			if errors.Is(err, io.EOF) {
 				break

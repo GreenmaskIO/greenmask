@@ -67,6 +67,20 @@ func TestBigIntTransformer_Transform_random_static(t *testing.T) {
 				isNull: true,
 			},
 		},
+		{
+			name:          "Regression for implicitly set threshold",
+			columnName:    "id_numeric",
+			originalValue: "12345",
+			params: map[string]toolkit.ParamsValue{
+				"min":     toolkit.ParamsValue("0.0"),
+				"max":     toolkit.ParamsValue("10.0"),
+				"decimal": toolkit.ParamsValue("2"),
+			},
+			expected: expected{
+				min: decimal.RequireFromString("0.0"),
+				max: decimal.RequireFromString("10.0"),
+			},
+		},
 	}
 
 	for _, tt := range tests {

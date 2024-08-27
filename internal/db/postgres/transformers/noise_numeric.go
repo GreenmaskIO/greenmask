@@ -118,7 +118,7 @@ func NewNumericFloatTransformer(ctx context.Context, driver *toolkit.Driver, par
 	var columnName, engine string
 	var dynamicMode bool
 	var minRatio, maxRatio float64
-	var minValueThreshold, maxValueThreshold decimal.Decimal
+	var minValueThreshold, maxValueThreshold *decimal.Decimal
 	var precision int32
 
 	columnParam := parameters["column"]
@@ -149,12 +149,32 @@ func NewNumericFloatTransformer(ctx context.Context, driver *toolkit.Driver, par
 	affectedColumns[idx] = columnName
 
 	if !dynamicMode {
-		if err := minParam.Scan(&minValueThreshold); err != nil {
-			return nil, nil, fmt.Errorf("error scanning \"min\" parameter: %w", err)
+		minIsEmpty, err := minParam.IsEmpty()
+		if err != nil {
+			return nil, nil, fmt.Errorf("error checking \"min\" parameter: %w", err)
 		}
-		if err := maxParam.Scan(&maxValueThreshold); err != nil {
-			return nil, nil, fmt.Errorf("error scanning \"max\" parameter: %w", err)
+		if !minIsEmpty {
+			if err = minParam.Scan(&minValueThreshold); err != nil {
+				return nil, nil, fmt.Errorf("error scanning \"min\" parameter: %w", err)
+			}
 		}
+		maxIsEmpty, err := maxParam.IsEmpty()
+		if err != nil {
+			return nil, nil, fmt.Errorf("error checking \"max\" parameter: %w", err)
+		}
+		if !maxIsEmpty {
+			if err = maxParam.Scan(&maxValueThreshold); err != nil {
+				return nil, nil, fmt.Errorf("error scanning \"max\" parameter: %w", err)
+			}
+		}
+	}
+
+	limiter, limitsWarnings, err := validateNoiseNumericTypeAndSetLimit(bigIntegerTransformerGenByteLength, minValueThreshold, maxValueThreshold)
+	if err != nil {
+		return nil, nil, err
+	}
+	if limitsWarnings.IsFatal() {
+		return nil, limitsWarnings, nil
 	}
 
 	if err := decimalParam.Scan(&precision); err != nil {
@@ -169,13 +189,6 @@ func NewNumericFloatTransformer(ctx context.Context, driver *toolkit.Driver, par
 		return nil, nil, fmt.Errorf("unable to scan \"max_ratio\" param: %w", err)
 	}
 
-	limiter, limitsWarnings, err := validateNoiseNumericTypeAndSetLimit(bigIntegerTransformerGenByteLength, minValueThreshold, maxValueThreshold)
-	if err != nil {
-		return nil, nil, err
-	}
-	if limitsWarnings.IsFatal() {
-		return nil, limitsWarnings, nil
-	}
 	limiter.SetPrecision(precision)
 
 	t := transformers.NewNoiseNumericTransformer(limiter, minRatio, maxRatio)
@@ -269,7 +282,7 @@ func (nft *NoiseNumericTransformer) Transform(ctx context.Context, r *toolkit.Re
 }
 
 func validateNoiseNumericTypeAndSetLimit(
-	size int, requestedMinValue, requestedMaxValue decimal.Decimal,
+	size int, requestedMinValue, requestedMaxValue *decimal.Decimal,
 ) (limiter *transformers.NoiseNumericLimiter, warns toolkit.ValidationWarnings, err error) {
 
 	minVal, maxVal, warns, err := getNumericThresholds(size, requestedMinValue, requestedMaxValue)
@@ -279,8 +292,14 @@ func validateNoiseNumericTypeAndSetLimit(
 	if warns.IsFatal() {
 		return nil, warns, nil
 	}
+	if requestedMinValue == nil {
+		requestedMinValue = &minVal
+	}
+	if requestedMaxValue == nil {
+		requestedMaxValue = &maxVal
+	}
 
-	limiter, err = transformers.NewNoiseNumericLimiter(minVal, maxVal)
+	limiter, err = transformers.NewNoiseNumericLimiter(*requestedMinValue, *requestedMaxValue)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error creating limiter by size: %w", err)
 	}

@@ -10,10 +10,11 @@ import (
 	"slices"
 	"text/template"
 
+	"github.com/rs/zerolog/log"
+
 	"github.com/greenmaskio/greenmask/internal/db/postgres/transformers/utils"
 	"github.com/greenmaskio/greenmask/internal/generators"
 	"github.com/greenmaskio/greenmask/pkg/toolkit"
-	"github.com/rs/zerolog/log"
 )
 
 const emailTransformerGeneratorSize = 64
@@ -207,7 +208,7 @@ func NewEmailTransformer(ctx context.Context, driver *toolkit.Driver, parameters
 		domainTemplate:           domainTmpl,
 		validate:                 validate,
 		buf:                      bytes.NewBuffer(nil),
-		hexEncodedRandomBytesBuf: make([]byte, hex.EncodedLen(emailTransformerGeneratorSize)),
+		hexEncodedRandomBytesBuf: make([]byte, hex.EncodedLen(maxLength)),
 		rrctx:                    rrctx,
 	}, nil, nil
 }

@@ -107,6 +107,19 @@ func TestNoiseFloatTransformer_Transform(t *testing.T) {
 			input:  "100",
 			result: result{min: 90, max: 110, regexp: `^-*\d+$`},
 		},
+		{
+			name:       "with thresholds min zero",
+			columnName: "col_float8",
+			params: map[string]toolkit.ParamsValue{
+				"min_ratio": toolkit.ParamsValue("0.2"),
+				"max_ratio": toolkit.ParamsValue("0.9"),
+				"min":       toolkit.ParamsValue("0"),
+				"max":       toolkit.ParamsValue("110"),
+				"decimal":   toolkit.ParamsValue("0"),
+			},
+			input:  "100",
+			result: result{min: 0, max: 110, regexp: `^-*\d+$`},
+		},
 	}
 
 	for _, tt := range tests {

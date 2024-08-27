@@ -85,7 +85,7 @@ func GetDynamicTransformerDefinition(ctx context.Context, executable string, arg
 
 				buf := bufio.NewReader(bytes.NewBuffer(stdoutData))
 				for {
-					line, err := reader.ReadLine(buf)
+					line, err := reader.ReadLine(buf, nil)
 					if err != nil {
 						break
 					}
@@ -102,7 +102,7 @@ func GetDynamicTransformerDefinition(ctx context.Context, executable string, arg
 
 				buf := bufio.NewReader(bytes.NewBuffer(stderrData))
 				for {
-					line, err := reader.ReadLine(buf)
+					line, err := reader.ReadLine(buf, nil)
 					if err != nil {
 						break
 					}

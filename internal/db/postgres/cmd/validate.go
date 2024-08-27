@@ -63,6 +63,7 @@ func NewValidate(cfg *domains.Config, registry *utils.TransformerRegistry, st st
 	d.dumpIdSequence = toc.NewDumpSequence(0)
 
 	d.validate = true
+	d.validateRowsLimit = cfg.Validate.RowsLimit
 	return &Validate{
 		Dump:     d,
 		tmpDir:   tmpDirName,
@@ -139,7 +140,7 @@ func (v *Validate) Run(ctx context.Context) (int, error) {
 		return v.exitCode, nil
 	}
 
-	if err = v.dumpTables(ctx); err != nil {
+	if err = v.dataDump(ctx); err != nil {
 		return nonZeroExitCode, err
 	}
 
@@ -152,12 +153,20 @@ func (v *Validate) Run(ctx context.Context) (int, error) {
 
 func (v *Validate) print(ctx context.Context) error {
 	for _, e := range v.dataEntries {
-		idx := slices.IndexFunc(v.context.DataSectionObjects, func(entry entries.Entry) bool {
-			t := entry.(*entries.Table)
+		idx := slices.IndexFunc(v.context.DataSectionObjectsToValidate, func(entry entries.Entry) bool {
+			t, ok := entry.(*entries.Table)
+			if !ok {
+				return false
+			}
 			return t.DumpId == e.DumpId
 		})
 
-		t := v.context.DataSectionObjects[idx].(*entries.Table)
+		if idx == -1 {
+			// skip if not in DataSectionObjectsToValidate
+			continue
+		}
+
+		t := v.context.DataSectionObjectsToValidate[idx].(*entries.Table)
 		doc, err := v.createDocument(ctx, t)
 		if err != nil {
 			return fmt.Errorf("unable to create validation document: %w", err)
@@ -214,7 +223,7 @@ func (v *Validate) readRecords(r *bufio.Reader, t *entries.Table) (original, tra
 	originalRow = pgcopy.NewRow(len(t.Columns))
 	transformedRow = pgcopy.NewRow(len(t.Columns))
 
-	originalLine, err = reader.ReadLine(r)
+	originalLine, err = reader.ReadLine(r, nil)
 	if err != nil {
 		if errors.Is(err, io.EOF) {
 			return nil, nil, err
@@ -226,7 +235,7 @@ func (v *Validate) readRecords(r *bufio.Reader, t *entries.Table) (original, tra
 		return nil, nil, io.EOF
 	}
 
-	transformedLine, err = reader.ReadLine(r)
+	transformedLine, err = reader.ReadLine(r, nil)
 	if err != nil {
 		return nil, nil, fmt.Errorf("unable to read line: %w", err)
 	}
@@ -267,23 +276,6 @@ func (v *Validate) createDocument(ctx context.Context, t *entries.Table) (valida
 	}
 
 	return doc, nil
-}
-
-func (v *Validate) dumpTables(ctx context.Context) error {
-	var tablesWithTransformers []entries.Entry
-	for _, item := range v.context.DataSectionObjects {
-
-		if t, ok := item.(*entries.Table); ok && len(t.TransformersContext) > 0 {
-			t.ValidateLimitedRecords = v.config.Validate.RowsLimit
-			tablesWithTransformers = append(tablesWithTransformers, t)
-		}
-	}
-	v.context.DataSectionObjects = tablesWithTransformers
-
-	if err := v.dataDump(ctx); err != nil {
-		return fmt.Errorf("data stage dumping error: %w", err)
-	}
-	return nil
 }
 
 func (v *Validate) printValidationWarnings() error {
