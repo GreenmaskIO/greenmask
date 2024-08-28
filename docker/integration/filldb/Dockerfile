@@ -8,7 +8,7 @@ ENV TMP_DIR=/tmp/schema
 
 RUN apt-get update && apt-get install -y wget && mkdir /tmp/schema
 
-COPY filldb.sh /filldb.sh
+COPY . /
 
 RUN chmod +x ./filldb.sh
 

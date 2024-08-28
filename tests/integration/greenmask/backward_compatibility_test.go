@@ -51,6 +51,16 @@ dump:
     schema: public
   
   transformation:
+{{ if ge .version 120000 }}
+    - schema: public
+      name: "people"
+      transformers:
+        - name: "Masking"
+          params:
+            column: "first_name"
+            type: "name"
+{{ end }}
+
     - schema: "bookings"
       name: "flights"
       transformers:
@@ -76,6 +86,7 @@ type BackwardCompatibilitySuite struct {
 	configFilePath    string
 	conn              *pgx.Conn
 	restorationDbName string
+	pgVersionNum      int
 }
 
 func (suite *BackwardCompatibilitySuite) SetupSuite() {
@@ -100,20 +111,6 @@ func (suite *BackwardCompatibilitySuite) SetupSuite() {
 	err = os.Mkdir(suite.runtimeTmpDir, 0700)
 	suite.Require().NoError(err, "error creating tmp dir")
 
-	suite.configFilePath = path.Join(suite.tmpDir, "config.yaml")
-	confFile, err := os.Create(suite.configFilePath)
-	suite.Require().NoError(err, "error creating config.yaml file")
-	defer confFile.Close()
-	err = configStr.Execute(
-		confFile,
-		map[string]string{
-			"pgBinPath":  pgBinPath,
-			"tmpDir":     suite.tmpDir,
-			"uri":        uri,
-			"storageDir": suite.storageDir,
-		})
-	suite.Require().NoError(err, "error encoding config into yaml")
-
 	suite.conn, err = pgx.Connect(context.Background(), uri)
 	suite.Require().NoError(err, "error connecting to db")
 
@@ -128,6 +125,33 @@ func (suite *BackwardCompatibilitySuite) SetupSuite() {
 	defer restoreDbConn.Close(context.Background())
 	_, err = restoreDbConn.Exec(context.Background(), "drop schema public;")
 	suite.Require().NoError(err, "error creating database")
+
+	getVersionQuery := `
+		select 
+		    setting::INT 
+		from pg_settings 
+		where name = 'server_version_num'
+	`
+
+	row := suite.conn.QueryRow(context.Background(), getVersionQuery)
+	err = row.Scan(&suite.pgVersionNum)
+	suite.Require().NoError(err, "error getting pg version")
+
+	suite.configFilePath = path.Join(suite.tmpDir, "config.yaml")
+	confFile, err := os.Create(suite.configFilePath)
+	suite.Require().NoError(err, "error creating config.yaml file")
+	defer confFile.Close()
+	err = configStr.Execute(
+		confFile,
+		map[string]any{
+			"pgBinPath":  pgBinPath,
+			"tmpDir":     suite.tmpDir,
+			"uri":        uri,
+			"storageDir": suite.storageDir,
+			"version":    suite.pgVersionNum,
+		})
+	suite.Require().NoError(err, "error encoding config into yaml")
+
 }
 
 func (suite *BackwardCompatibilitySuite) TestGreenmaskCompatibility() {
@@ -171,7 +195,7 @@ func (suite *BackwardCompatibilitySuite) TestGreenmaskCompatibility() {
 		}
 	})
 
-	suite.Run("testing pg_restore to the db", func() {
+	suite.Run("testing pg_restore restoration", func() {
 
 		entry, err := os.ReadDir(suite.storageDir)
 		suite.Require().NoError(err, "error reading storage directory")

@@ -15,13 +15,18 @@
 
 cd $TMP_DIR
 if [ ! -f $FILE_DUMP ]; then
+    echo "Downloading dump file"
     wget https://edu.postgrespro.com/$FILE_DUMP
 fi
 IFS="," read -ra PG_VERSIONS_CHECK <<< "${PG_VERSIONS_CHECK}"
 for pgver in ${PG_VERSIONS_CHECK[@]}; do
+  echo "Restoring database for PostgreSQL $pgver"
   if  psql -p 5432 -h db-$pgver -U postgres -c 'CREATE DATABASE demo;'; then
     psql -p 5432 -h db-$pgver -U postgres -c 'DROP DATABASE demo_restore;'
     psql -p 5432 -h db-$pgver -U postgres -c 'CREATE DATABASE demo_restore;'
     gzip -dc $FILE_DUMP | psql -p 5432 -h db-$pgver -U postgres -d demo
+    if [ $pgver -ne '11' ]; then
+       psql -p 5432 -h db-$pgver -U postgres -d demo -f /generated.sql
+    fi
   fi
 done
