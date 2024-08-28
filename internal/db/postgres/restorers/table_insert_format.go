@@ -37,21 +37,22 @@ import (
 )
 
 type TableRestorerInsertFormat struct {
-	Entry            *toc.Entry
-	Table            *toolkit.Table
-	St               storages.Storager
-	doNothing        bool
-	exitOnError      bool
-	query            string
-	globalExclusions *domains.GlobalDataRestorationErrorExclusions
-	tableExclusion   *domains.TablesDataRestorationErrorExclusions
-	usePgzip         bool
+	Entry                 *toc.Entry
+	Table                 *toolkit.Table
+	St                    storages.Storager
+	doNothing             bool
+	exitOnError           bool
+	query                 string
+	globalExclusions      *domains.GlobalDataRestorationErrorExclusions
+	tableExclusion        *domains.TablesDataRestorationErrorExclusions
+	usePgzip              bool
+	overridingSystemValue bool
 }
 
 func NewTableRestorerInsertFormat(
 	entry *toc.Entry, t *toolkit.Table, st storages.Storager, exitOnError bool,
 	doNothing bool, exclusions *domains.DataRestorationErrorExclusions,
-	usePgzip bool,
+	usePgzip bool, overridingSystemValue bool,
 ) *TableRestorerInsertFormat {
 
 	var (
@@ -78,14 +79,15 @@ func NewTableRestorerInsertFormat(
 	}
 
 	return &TableRestorerInsertFormat{
-		Table:            t,
-		Entry:            entry,
-		St:               st,
-		exitOnError:      exitOnError,
-		doNothing:        doNothing,
-		globalExclusions: globalExclusion,
-		tableExclusion:   tableExclusion,
-		usePgzip:         usePgzip,
+		Table:                 t,
+		Entry:                 entry,
+		St:                    st,
+		exitOnError:           exitOnError,
+		doNothing:             doNothing,
+		globalExclusions:      globalExclusion,
+		tableExclusion:        tableExclusion,
+		usePgzip:              usePgzip,
+		overridingSystemValue: overridingSystemValue,
 	}
 }
 
@@ -184,11 +186,17 @@ func (td *TableRestorerInsertFormat) generateInsertStmt(onConflictDoNothing bool
 		onConflict = " ON CONFLICT DO NOTHING"
 	}
 
+	overridingSystemValue := ""
+	if td.overridingSystemValue {
+		overridingSystemValue = "OVERRIDING SYSTEM VALUE "
+	}
+
 	res := fmt.Sprintf(
-		`INSERT INTO %s.%s (%s) OVERRIDING SYSTEM VALUE VALUES (%s)%s`,
+		`INSERT INTO %s.%s (%s) %sVALUES(%s)%s`,
 		*td.Entry.Namespace,
 		*td.Entry.Tag,
 		strings.Join(columnNames, ", "),
+		overridingSystemValue,
 		strings.Join(placeholders, ", "),
 		onConflict,
 	)

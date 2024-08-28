@@ -96,6 +96,8 @@ type Options struct {
 	OnConflictDoNothing bool `mapstructure:"on-conflict-do-nothing"`
 	Inserts             bool `mapstructure:"inserts"`
 	RestoreInOrder      bool `mapstructure:"restore-in-order"`
+	// OverridingSystemValue is a custom option that allows to use OVERRIDING SYSTEM VALUE for INSERTs
+	OverridingSystemValue bool `mapstructure:"overriding-system-value"`
 	// Use pgzip decompression instead of gzip
 	Pgzip     bool  `mapstructure:"pgzip"`
 	BatchSize int64 `mapstructure:"batch-size"`

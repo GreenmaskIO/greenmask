@@ -651,7 +651,7 @@ func (r *Restore) taskPusher(ctx context.Context, tasks chan restorers.RestoreTa
 						}
 						task = restorers.NewTableRestorerInsertFormat(
 							entry, t, r.st, r.restoreOpt.ExitOnError, r.restoreOpt.OnConflictDoNothing,
-							r.cfg.ErrorExclusions, r.restoreOpt.Pgzip,
+							r.cfg.ErrorExclusions, r.restoreOpt.Pgzip, r.restoreOpt.OverridingSystemValue,
 						)
 					} else {
 						task = restorers.NewTableRestorer(
