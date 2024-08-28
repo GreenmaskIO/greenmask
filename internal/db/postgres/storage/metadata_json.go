@@ -20,10 +20,9 @@ import (
 
 	"github.com/rs/zerolog/log"
 
-	"github.com/greenmaskio/greenmask/pkg/toolkit"
-
 	"github.com/greenmaskio/greenmask/internal/db/postgres/toc"
 	"github.com/greenmaskio/greenmask/internal/domains"
+	"github.com/greenmaskio/greenmask/pkg/toolkit"
 )
 
 type ObjectSizeStat struct {
@@ -72,6 +71,8 @@ type Metadata struct {
 	DependenciesGraph map[int32][]int32      `yaml:"dependencies_graph" json:"dependencies_graph"`
 	DumpIdsOrder      []int32                `yaml:"dump_ids_order" json:"dump_ids_order"`
 	Cycles            [][]string             `yaml:"cycles" json:"cycles"`
+	TableOidToDumpId  map[toolkit.Oid]int32  `yaml:"table_dump_id" json:"table_dump_id"`
+	DumpIdsToTableOid map[int32]toolkit.Oid  `yaml:"dump_id_table" json:"dump_id_table"`
 }
 
 func NewMetadata(
@@ -79,7 +80,7 @@ func NewMetadata(
 	completedAt time.Time, transformers []*domains.Table,
 	stats map[int32]ObjectSizeStat, databaseSchema []*toolkit.Table,
 	dependenciesGraph map[int32][]int32, dumpIdsOrder []int32,
-	cycles [][]string,
+	cycles [][]string, tableOidToDumpId map[toolkit.Oid]int32,
 ) (*Metadata, error) {
 
 	var format string
@@ -160,6 +161,10 @@ func NewMetadata(
 
 	totalOriginalSize += tocFileSize
 	totalCompressedSize += tocFileSize
+	var dumpIdsToTableOid = make(map[int32]toolkit.Oid)
+	for oid, dumpId := range tableOidToDumpId {
+		dumpIdsToTableOid[dumpId] = oid
+	}
 
 	return &Metadata{
 		OriginalSize:      totalOriginalSize,
@@ -184,6 +189,8 @@ func NewMetadata(
 			TocFileSize:     tocFileSize,
 			Compression:     tocObj.Header.CompressionSpec.Level,
 		},
-		Entries: entriesDto,
+		Entries:           entriesDto,
+		TableOidToDumpId:  tableOidToDumpId,
+		DumpIdsToTableOid: dumpIdsToTableOid,
 	}, nil
 }

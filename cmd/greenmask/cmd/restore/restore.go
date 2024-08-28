@@ -175,6 +175,10 @@ func init() {
 		"batch-size", "", 0,
 		"the number of rows to insert in a single batch during the COPY command (0 - all rows will be inserted in a single batch)",
 	)
+	Cmd.Flags().BoolP(
+		"overriding-system-value", "", false,
+		"use OVERRIDING SYSTEM VALUE clause for INSERTs",
+	)
 
 	// Connection options:
 	Cmd.Flags().StringP("host", "h", "/var/run/postgres", "database server host or socket directory")
@@ -189,7 +193,7 @@ func init() {
 		"disable-triggers", "enable-row-security", "if-exists", "no-comments", "no-data-for-failed-tables",
 		"no-security-labels", "no-subscriptions", "no-table-access-method", "no-tablespaces", "section",
 		"strict-names", "use-set-session-authorization", "inserts", "on-conflict-do-nothing", "restore-in-order",
-		"pgzip", "batch-size",
+		"pgzip", "batch-size", "overriding-system-value",
 
 		"host", "port", "username",
 	} {

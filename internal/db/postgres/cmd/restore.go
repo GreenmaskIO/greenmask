@@ -36,13 +36,13 @@ import (
 	"golang.org/x/sync/errgroup"
 	"gopkg.in/yaml.v3"
 
-	"github.com/greenmaskio/greenmask/internal/domains"
-
 	"github.com/greenmaskio/greenmask/internal/db/postgres/pgrestore"
 	"github.com/greenmaskio/greenmask/internal/db/postgres/restorers"
 	"github.com/greenmaskio/greenmask/internal/db/postgres/storage"
 	"github.com/greenmaskio/greenmask/internal/db/postgres/toc"
+	"github.com/greenmaskio/greenmask/internal/domains"
 	"github.com/greenmaskio/greenmask/internal/storages"
+	"github.com/greenmaskio/greenmask/pkg/toolkit"
 )
 
 const (
@@ -71,6 +71,10 @@ const (
 const metadataObjectName = "metadata.json"
 
 const dependenciesCheckInterval = 15 * time.Millisecond
+
+var (
+	ErrTableDefinitionIsEmtpy = errors.New("table definition is empty: please re-dump the data using the latest version of greenmask if you want to use --inserts")
+)
 
 type Restore struct {
 	binPath    string
@@ -641,9 +645,13 @@ func (r *Restore) taskPusher(ctx context.Context, tasks chan restorers.RestoreTa
 				switch *entry.Desc {
 				case toc.TableDataDesc:
 					if r.restoreOpt.Inserts || r.restoreOpt.OnConflictDoNothing {
+						t, err := r.getTableDefinitionFromMeta(entry.DumpId)
+						if err != nil {
+							return fmt.Errorf("cannot get table definition from meta: %w", err)
+						}
 						task = restorers.NewTableRestorerInsertFormat(
-							entry, r.st, r.restoreOpt.ExitOnError, r.restoreOpt.OnConflictDoNothing,
-							r.cfg.ErrorExclusions, r.restoreOpt.Pgzip,
+							entry, t, r.st, r.restoreOpt.ExitOnError, r.restoreOpt.OnConflictDoNothing,
+							r.cfg.ErrorExclusions, r.restoreOpt.Pgzip, r.restoreOpt.OverridingSystemValue,
 						)
 					} else {
 						task = restorers.NewTableRestorer(
@@ -669,6 +677,20 @@ func (r *Restore) taskPusher(ctx context.Context, tasks chan restorers.RestoreTa
 		}
 		return nil
 	}
+}
+
+func (r *Restore) getTableDefinitionFromMeta(dumpId int32) (*toolkit.Table, error) {
+	tableOid, ok := r.metadata.DumpIdsToTableOid[dumpId]
+	if !ok {
+		return nil, ErrTableDefinitionIsEmtpy
+	}
+	idx := slices.IndexFunc(r.metadata.DatabaseSchema, func(t *toolkit.Table) bool {
+		return t.Oid == tableOid
+	})
+	if idx == -1 {
+		panic(fmt.Sprintf("table with oid %d is not found in metadata", tableOid))
+	}
+	return r.metadata.DatabaseSchema[idx], nil
 }
 
 func (r *Restore) restoreWorker(ctx context.Context, tasks <-chan restorers.RestoreTask, id int) error {

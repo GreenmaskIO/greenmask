@@ -45,6 +45,7 @@ Mostly it supports the same flags as the `pg_restore` utility, with some extra f
       --no-table-access-method          do not restore table access methods
       --no-tablespaces                  do not restore tablespace assignments
       --on-conflict-do-nothing          add ON CONFLICT DO NOTHING to INSERT commands
+      --overriding-system-value         use OVERRIDING SYSTEM VALUE clause for INSERTs
       --pgzip                           use pgzip decompression instead of gzip
   -p, --port int                        database server port number (default 5432)
       --restore-in-order                restore tables in topological order, ensuring that dependent tables are not restored until the tables they depend on have been restored
@@ -70,28 +71,47 @@ Mostly it supports the same flags as the `pg_restore` utility, with some extra f
 
     Insert commands are a lot slower than `COPY` commands. Use this feature only when necessary.
 
-By default, Greenmask restores data using the `COPY` command. If you prefer to restore data using `INSERT` commands, you can
+By default, Greenmask restores data using the `COPY` command. If you prefer to restore data using `INSERT` commands, you
+can
 use the `--inserts` flag. This flag allows you to manage errors that occur during the execution of INSERT commands. By
-configuring an error and constraint [exclusion list in the config](../configuration.md#restoration-error-exclusion), 
+configuring an error and constraint [exclusion list in the config](../configuration.md#restoration-error-exclusion),
 you can skip certain errors and continue inserting subsequent rows from the dump.
 
 This can be useful when adding new records to an existing dump, but you don't want the process to stop if some records
 already exist in the database or violate certain constraints.
 
-By adding the `--on-conflict-do-nothing` flag, it generates `INSERT` statements with the ON `CONFLICT DO NOTHING` 
-clause, similar to the original pg_dump option. However, this approach only works for unique or exclusion constraints. 
+By adding the `--on-conflict-do-nothing` flag, it generates `INSERT` statements with the ON `CONFLICT DO NOTHING`
+clause, similar to the original pg_dump option. However, this approach only works for unique or exclusion constraints.
 If a foreign key is missing in the referenced table or any other constraint is violated, the insertion will still fail.
 To handle these issues, you can define
 an[exclusion list in the config](../configuration.md#restoration-error-exclusion).
+
+```shell title="example with inserts and error handling"
 
 ```shell title="example with inserts and on conflict do nothing"
 greenmask --config=config.yml restore DUMP_ID --inserts --on-conflict-do-nothing
 ```
 
+By adding the `--overriding-system-value` flag, it generates `INSERT` statements with the `OVERRIDING SYSTEM VALUE`
+clause, which allows you to insert data into identity columns. 
+
+```postgresql title="example of GENERATED ALWAYS AS IDENTITY column"
+CREATE TABLE people (
+    id integer GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    generated text GENERATED ALWAYS AS (id || first_name) STORED,
+    first_name text
+);
+```
+
+```shell title="example with inserts"
+greenmask --config=config.yml restore DUMP_ID --inserts --overriding-system-value
+```
+
 ### Restoration in topological order
 
 By default, Greenmask restores tables in the order they are listed in the dump file. To restore tables in topological
-order, use the `--restore-in-order` flag. This is particularly useful when your schema includes foreign key references and
+order, use the `--restore-in-order` flag. This is particularly useful when your schema includes foreign key references
+and
 you need to insert data in the correct order. Without this flag, you may encounter errors when inserting data into
 tables with foreign key constraints.
 
@@ -100,7 +120,6 @@ tables with foreign key constraints.
     Greenmask cannot guarantee restoration in topological order when the schema contains cycles. The only way to restore
     tables with cyclic dependencies is to temporarily remove the foreign key constraint (to break the cycle), restore the
     data, and then re-add the foreign key constraint once the data restoration is complete.
-
 
 If your database has cyclic dependencies you will be notified about it but the restoration will continue.
 
@@ -123,8 +142,9 @@ greenmask --config=config.yml restore latest --pgzip
 
 The COPY command returns the error only on transaction commit. This means that if you have a large dump and an error
 occurs, you will have to wait until the end of the transaction to see the error message. To avoid this, you can use the
-`--batch-size` flag to specify the number of rows to insert in a single batch during the COPY command. If an error occurs
-during the batch insertion, the error message will be displayed immediately. The data will be committed **only if all 
+`--batch-size` flag to specify the number of rows to insert in a single batch during the COPY command. If an error
+occurs
+during the batch insertion, the error message will be displayed immediately. The data will be committed **only if all
 batches are inserted successfully**.
 
 !!! warning

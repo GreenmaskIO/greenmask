@@ -83,7 +83,7 @@ func validateAndBuildTablesConfig(
 			table.Constraints = constraints
 
 			// Assign columns and transformersMap if were found
-			columns, err := getColumnsConfig(ctx, tx, table.Oid, version)
+			columns, err := getColumnsConfig(ctx, tx, table.Oid, version, true)
 			if err != nil {
 				return nil, nil, err
 			}
@@ -230,7 +230,7 @@ func getTable(ctx context.Context, tx pgx.Tx, t *domains.Table) ([]*entries.Tabl
 	return tables, warnings, nil
 }
 
-func getColumnsConfig(ctx context.Context, tx pgx.Tx, oid toolkit.Oid, version int) ([]*toolkit.Column, error) {
+func getColumnsConfig(ctx context.Context, tx pgx.Tx, oid toolkit.Oid, version int, excludeGenerated bool) ([]*toolkit.Column, error) {
 	defaultTypeMap := pgtype.NewMap()
 	var res []*toolkit.Column
 	buf := bytes.NewBuffer(nil)
@@ -259,6 +259,10 @@ func getColumnsConfig(ctx context.Context, tx pgx.Tx, oid toolkit.Oid, version i
 		}
 		if err != nil {
 			return nil, fmt.Errorf("cannot scan tableColumnQuery: %w", err)
+		}
+		// Skipping generated columns as they do not contain a real data
+		if excludeGenerated && column.IsGenerated {
+			continue
 		}
 		column.CanonicalTypeName = column.TypeName
 		// Getting canonical type name if exists. For instance - PostgreSQL type Integer is alias for int4

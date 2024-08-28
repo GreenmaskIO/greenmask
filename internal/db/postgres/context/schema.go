@@ -41,7 +41,8 @@ func getDatabaseSchema(
 
 	// fill columns
 	for _, table := range res {
-		columns, err := getColumnsConfig(ctx, tx, table.Oid, version)
+		// We do not exclude generated columns here, because the schema must be compared with the original
+		columns, err := getColumnsConfig(ctx, tx, table.Oid, version, false)
 		if err != nil {
 			return nil, err
 		}
