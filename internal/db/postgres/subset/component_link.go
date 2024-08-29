@@ -5,7 +5,7 @@ type ComponentLink struct {
 	component *Component
 }
 
-func NewComponentLink(idx int, c *Component, keys, overriddenKeys []string) *ComponentLink {
+func NewComponentLink(idx int, c *Component) *ComponentLink {
 	return &ComponentLink{
 		idx:       idx,
 		component: c,

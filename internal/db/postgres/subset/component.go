@@ -20,7 +20,6 @@ type Component struct {
 	// Cycles
 	cycles       [][]*Edge
 	cyclesIdents map[string]struct{}
-	keys         []string
 	// groupedCycles - cycles grouped by the vertexes
 	groupedCycles map[string][]int
 	// groupedCyclesGraph - contains the mapping of the vertexes in the component to the edges in the original graph
@@ -36,11 +35,6 @@ func NewComponent(id int, componentGraph map[int][]*Edge, tables map[int]*entrie
 		cyclesIdents:   make(map[string]struct{}),
 	}
 	c.findCycles()
-	if c.hasCycle() {
-		c.keys = c.getComponentKeys()
-	} else {
-		c.keys = c.getOneTable().PrimaryKey
-	}
 	c.groupCycles()
 	c.buildCyclesGraph()
 

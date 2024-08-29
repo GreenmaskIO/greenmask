@@ -17,10 +17,9 @@ func generateJoinClauseForDroppedEdge(edge *Edge, initTableName string) string {
 	var conds []string
 
 	var leftTableKeys []string
-	keys := edge.from.keys
 	table := edge.from.table
-	for _, key := range keys {
-		leftTableKeys = append(leftTableKeys, fmt.Sprintf(`%s__%s__%s`, table.Schema, table.Name, key))
+	for _, key := range edge.from.keys {
+		leftTableKeys = append(leftTableKeys, fmt.Sprintf(`%s__%s__%s`, table.Schema, table.Name, key.Name))
 	}
 
 	rightTable := edge.to
@@ -32,13 +31,7 @@ func generateJoinClauseForDroppedEdge(edge *Edge, initTableName string) string {
 			leftTableKeys[idx],
 		)
 
-		rightPart := fmt.Sprintf(
-			`"%s"."%s"."%s"`,
-			rightTable.table.Schema,
-			rightTable.table.Name,
-			edge.to.keys[idx],
-		)
-
+		rightPart := edge.to.keys[idx].GetKeyReference(rightTable.table)
 		conds = append(conds, fmt.Sprintf(`%s = %s`, leftPart, rightPart))
 	}
 
@@ -62,24 +55,14 @@ func generateJoinClauseV2(edge *Edge, joinType string, overriddenTables map[tool
 	leftTable, rightTable := edge.from.table, edge.to.table
 	for idx := 0; idx < len(edge.from.keys); idx++ {
 
-		leftPart := fmt.Sprintf(
-			`"%s"."%s"."%s"`,
-			leftTable.Table.Schema,
-			leftTable.Table.Name,
-			edge.from.keys[idx],
-		)
+		leftPart := edge.from.keys[idx].GetKeyReference(leftTable)
+		rightPart := edge.to.keys[idx].GetKeyReference(rightTable)
 
-		rightPart := fmt.Sprintf(
-			`"%s"."%s"."%s"`,
-			rightTable.Table.Schema,
-			rightTable.Table.Name,
-			edge.to.keys[idx],
-		)
 		if override, ok := overriddenTables[rightTable.Table.Oid]; ok {
 			rightPart = fmt.Sprintf(
 				`"%s"."%s"`,
 				override,
-				edge.to.keys[idx],
+				edge.to.keys[idx].Name,
 			)
 		}
 
@@ -91,7 +74,7 @@ func generateJoinClauseV2(edge *Edge, joinType string, overriddenTables map[tool
 
 	rightTableName := fmt.Sprintf(`"%s"."%s"`, rightTable.Table.Schema, rightTable.Table.Name)
 	if override, ok := overriddenTables[rightTable.Table.Oid]; ok {
-		rightTableName = fmt.Sprintf(`"%s"`, override)
+		rightTableName = override
 	}
 
 	joinClause := fmt.Sprintf(

@@ -7,10 +7,10 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/greenmaskio/greenmask/internal/domains"
+	"github.com/greenmaskio/greenmask/pkg/toolkit"
 	"github.com/jackc/pgx/v5"
 	"github.com/rs/zerolog/log"
-
-	"github.com/greenmaskio/greenmask/pkg/toolkit"
 
 	"github.com/greenmaskio/greenmask/internal/db/postgres/entries"
 )
@@ -64,7 +64,9 @@ type Graph struct {
 }
 
 // NewGraph creates a new graph based on the provided tables by finding the references in DB between them
-func NewGraph(ctx context.Context, tx pgx.Tx, tables []*entries.Table) (*Graph, error) {
+func NewGraph(
+	ctx context.Context, tx pgx.Tx, tables []*entries.Table, vr []*domains.VirtualReference,
+) (*Graph, error) {
 	graph := make([][]*Edge, len(tables))
 	reversedGraph := make([][]int, len(tables))
 	edges := make([]*Edge, 0)
@@ -76,36 +78,72 @@ func NewGraph(ctx context.Context, tx pgx.Tx, tables []*entries.Table) (*Graph, 
 			return nil, fmt.Errorf("error getting references: %w", err)
 		}
 		for _, ref := range refs {
-			foreignTableIdx := slices.IndexFunc(tables, func(t *entries.Table) bool {
+			referenceTableIdx := slices.IndexFunc(tables, func(t *entries.Table) bool {
 				return t.Name == ref.Name && t.Schema == ref.Schema
 			})
 
-			if foreignTableIdx == -1 {
+			if referenceTableIdx == -1 {
 				log.Debug().
 					Str("Schema", ref.Schema).
 					Str("Table", ref.Name).
-					Msg("unable to find foreign table: it might be excluded from the dump")
+					Msg("unable to find reference table (primary): it might be excluded from the dump")
 				continue
 			}
 			edge := NewEdge(
 				edgeIdSequence,
-				foreignTableIdx,
+				referenceTableIdx,
 				ref.IsNullable,
-				NewTableLink(idx, table, ref.ReferencedKeys),
-				NewTableLink(foreignTableIdx, tables[foreignTableIdx], tables[foreignTableIdx].PrimaryKey),
+				NewTableLink(idx, table, NewKeysByColumn(ref.ReferencedKeys)),
+				NewTableLink(referenceTableIdx, tables[referenceTableIdx], NewKeysByColumn(tables[referenceTableIdx].PrimaryKey)),
 			)
 			graph[idx] = append(
 				graph[idx],
 				edge,
 			)
 
-			reversedGraph[foreignTableIdx] = append(
-				reversedGraph[foreignTableIdx],
+			reversedGraph[referenceTableIdx] = append(
+				reversedGraph[referenceTableIdx],
 				idx,
 			)
 			edges = append(edges, edge)
 
 			edgeIdSequence++
+		}
+
+		for _, ref := range getVirtualReferences(vr, table) {
+
+			referenceTableIdx := slices.IndexFunc(tables, func(t *entries.Table) bool {
+				return t.Name == ref.Name && t.Schema == ref.Schema
+			})
+
+			if referenceTableIdx == -1 {
+				log.Debug().
+					Str("Schema", ref.Schema).
+					Str("Table", ref.Name).
+					Msg("unable to find reference table (primary): it might be excluded from the dump")
+				continue
+			}
+
+			edge := NewEdge(
+				edgeIdSequence,
+				referenceTableIdx,
+				!ref.NotNull,
+				NewTableLink(idx, table, NewKeysByReferencedColumn(ref.Columns)),
+				NewTableLink(referenceTableIdx, tables[referenceTableIdx], NewKeysByColumn(tables[referenceTableIdx].PrimaryKey)),
+			)
+			graph[idx] = append(
+				graph[idx],
+				edge,
+			)
+
+			reversedGraph[referenceTableIdx] = append(
+				reversedGraph[referenceTableIdx],
+				idx,
+			)
+			edges = append(edges, edge)
+
+			edgeIdSequence++
+
 		}
 	}
 	g := &Graph{
@@ -277,15 +315,11 @@ func (g *Graph) buildCondensedGraph() {
 		fromLink := NewComponentLink(
 			fromLinkIdx,
 			ssc[fromLinkIdx],
-			edge.from.keys,
-			overrideKeys(edge.from.table, edge.from.keys),
 		)
 		toLinkIdx := originalVertexesToComponents[edge.to.idx]
 		toLink := NewComponentLink(
 			toLinkIdx,
 			ssc[toLinkIdx],
-			edge.to.keys,
-			overrideKeys(edge.to.table, edge.to.keys),
 		)
 		condensedEdge := NewCondensedEdge(condensedEdgeIdxSeq, fromLink, toLink, edge)
 		g.condensedGraph[fromLinkIdx] = append(g.condensedGraph[fromLinkIdx], condensedEdge)
@@ -310,8 +344,6 @@ func (g *Graph) generateAndSetQueryForScc(path *Path) {
 	g.generateQueriesSccDfs(cq, path, nil)
 	for _, t := range rootVertex.tables {
 		query := cq.generateQuery(t)
-		fmt.Printf("********************%s.%s*****************\n", t.Schema, t.Name)
-		println(query)
 		t.Query = query
 	}
 }
@@ -521,14 +553,14 @@ func (g *Graph) generateQueryForTables(path *Path, scopeEdge *ScopeEdge) string 
 		originalEdge := scopeEdge.originalCondensedEdge.originalEdge
 		for _, k := range originalEdge.from.keys {
 			leftTable := originalEdge.from.table
-			leftTableConds = append(leftTableConds, fmt.Sprintf(`"%s"."%s"."%s"`, leftTable.Schema, leftTable.Name, k))
+			leftTableConds = append(leftTableConds, k.GetKeyReference(leftTable))
 		}
 		query = fmt.Sprintf("((%s) IN (%s))", strings.Join(leftTableConds, ", "), query)
 
 		if scopeEdge.isNullable {
 			var nullableChecks []string
 			for _, k := range originalEdge.from.keys {
-				nullableCheck := fmt.Sprintf(`"%s"."%s"."%s" IS NULL`, originalEdge.from.table.Schema, originalEdge.from.table.Name, k)
+				nullableCheck := fmt.Sprintf(`%s IS NULL`, k.GetKeyReference(originalEdge.from.table))
 				nullableChecks = append(nullableChecks, nullableCheck)
 			}
 			query = fmt.Sprintf(
@@ -592,14 +624,6 @@ func getReferences(ctx context.Context, tx pgx.Tx, tableOid toolkit.Oid) ([]*too
 	return refs, nil
 }
 
-func overrideKeys(table *entries.Table, keys []string) []string {
-	var res []string
-	for _, k := range keys {
-		res = append(res, fmt.Sprintf(`"%s.%s.%s"`, table.Schema, table.Name, k))
-	}
-	return res
-}
-
 func isPathForScc(path *Path, graph *Graph) bool {
 	return graph.scc[path.rootVertex].hasCycle()
 }
@@ -634,7 +658,10 @@ func generateQuery(
 	var droppedKeysWithAliases []string
 	for _, k := range droppedEdge.from.keys {
 		t := droppedEdge.from.table
-		droppedKeysWithAliases = append(droppedKeysWithAliases, fmt.Sprintf(`"%s"."%s"."%s" as "%s__%s__%s"`, t.Schema, t.Name, k, t.Schema, t.Name, k))
+		droppedKeysWithAliases = append(
+			droppedKeysWithAliases,
+			fmt.Sprintf(`%s as "%s__%s__%s"`, k.GetKeyReference(t), t.Schema, t.Name, k.Name),
+		)
 	}
 	selectKeys = append(selectKeys, droppedKeysWithAliases...)
 
@@ -684,8 +711,6 @@ func generateQuery(
 	recursiveKeys := slices.Clone(selectKeys)
 	for _, k := range cycle[0].from.table.PrimaryKey {
 		t := cycle[0].from.table
-		//recursivePathSelectionKeys = append(recursivePathSelectionKeys, fmt.Sprintf(`coalesce("%s"."%s"."%s"::TEXT, 'NULL')`, t.Schema, t.Name, k))
-
 		pathName := fmt.Sprintf(
 			`"%s__%s__%s__path" || ARRAY["%s"."%s"."%s"]`,
 			t.Schema, t.Name, k,
@@ -766,7 +791,10 @@ func generateOverlapQuery(
 	var droppedKeysWithAliases []string
 	for _, k := range droppedEdge.from.keys {
 		t := droppedEdge.from.table
-		droppedKeysWithAliases = append(droppedKeysWithAliases, fmt.Sprintf(`"%s"."%s"."%s" as "%s__%s__%s"`, t.Schema, t.Name, k, t.Schema, t.Name, k))
+		droppedKeysWithAliases = append(
+			droppedKeysWithAliases,
+			fmt.Sprintf(`%s as "%s__%s__%s"`, k.GetKeyReference(t), t.Schema, t.Name, k.Name),
+		)
 	}
 	selectKeys = append(selectKeys, droppedKeysWithAliases...)
 
@@ -919,22 +947,16 @@ func generateIntegrityChecksForNullableEdges(nullabilityMap map[int]bool, edges 
 			leftTableKey := e.from.keys
 			rightTableKey := e.to.keys
 			k := fmt.Sprintf(
-				`("%s"."%s"."%s" IS NULL OR "%s"."%s"."%s" IS NOT NULL)`,
-				e.from.table.Schema,
-				e.from.table.Name,
-				leftTableKey[idx],
-				e.to.table.Schema,
-				e.to.table.Name,
-				rightTableKey[idx],
+				`(%s IS NULL OR %s IS NOT NULL)`,
+				leftTableKey[idx].GetKeyReference(e.from.table),
+				rightTableKey[idx].GetKeyReference(e.to.table),
 			)
 			if _, ok := overriddenTables[e.to.table.Oid]; ok {
 				k = fmt.Sprintf(
-					`("%s"."%s"."%s" IS NULL OR "%s"."%s" IS NOT NULL)`,
-					e.from.table.Schema,
-					e.from.table.Name,
-					leftTableKey[idx],
+					`(%s IS NULL OR "%s"."%s" IS NOT NULL)`,
+					leftTableKey[idx].GetKeyReference(e.from.table),
 					overriddenTables[e.to.table.Oid],
-					rightTableKey[idx],
+					rightTableKey[idx].Name,
 				)
 			}
 			keys = append(keys, k)
@@ -1084,4 +1106,50 @@ func shiftUntilVertexWillBeFirst(v *Edge, c []*Edge) []*Edge {
 		res = shiftCycle(res)
 	}
 	return res
+}
+
+func validateVirtualReference(r *domains.Reference, pkT, fkT *entries.Table) error {
+	// TODO: Create ValidationWarning for it
+	keys := getReferencedKeys(r)
+	if len(keys) == 0 {
+		return fmt.Errorf("no keys found in reference %s.%s", r.Schema, r.Name)
+	}
+	if len(keys) != len(pkT.PrimaryKey) {
+		return fmt.Errorf("number of keys in reference %s.%s does not match primary key of %s.%s", r.Schema, r.Name, pkT.Schema, pkT.Name)
+	}
+	for _, col := range r.Columns {
+		if col.Name == "" && col.Expression == "" {
+			return fmt.Errorf("empty column name and expression in reference %s.%s", r.Schema, r.Name)
+		}
+		if col.Name != "" && col.Expression != "" {
+			return fmt.Errorf("only name or expression should be set in reference item at the same time %s.%s", r.Schema, r.Name)
+		}
+		if col.Name != "" && !slices.ContainsFunc(fkT.Columns, func(column *toolkit.Column) bool {
+			return column.Name == col.Name
+		}) {
+			return fmt.Errorf("column %s not found in table %s.%s", col.Name, fkT.Schema, fkT.Name)
+		}
+	}
+	return nil
+}
+
+func getVirtualReferences(vr []*domains.VirtualReference, t *entries.Table) []*domains.Reference {
+	idx := slices.IndexFunc(vr, func(r *domains.VirtualReference) bool {
+		return r.Schema == t.Schema && r.Name == t.Name
+	})
+	if idx == -1 {
+		return nil
+	}
+	return vr[idx].References
+}
+
+func getReferencedKeys(r *domains.Reference) (res []string) {
+	for _, ref := range r.Columns {
+		if ref.Name != "" {
+			res = append(res, ref.Name)
+		} else if ref.Expression != "" {
+			res = append(res, ref.Expression)
+		}
+	}
+	return
 }

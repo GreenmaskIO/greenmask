@@ -10,6 +10,8 @@ backward-compatible with existing PostgreSQL utilities.
 
 # Features
 
+* **Database subset** - Dumps only the necessary data consistently based on the subset condition, reducing the size
+  of the dump and speeding up the restoration process.
 * **Deterministic transformers** — deterministic approach to data transformation based on the hash
   functions. This ensures that the same input data will always produce the same output data. Almost each transformer
   supports either `random` or `hash` engine making it universal for any use case.

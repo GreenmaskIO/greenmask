@@ -93,8 +93,9 @@ type LogConfig struct {
 }
 
 type Dump struct {
-	PgDumpOptions  pgdump.Options `mapstructure:"pg_dump_options" yaml:"pg_dump_options" json:"pg_dump_options"`
-	Transformation []*Table       `mapstructure:"transformation" yaml:"transformation" json:"transformation,omitempty"`
+	PgDumpOptions     pgdump.Options      `mapstructure:"pg_dump_options" yaml:"pg_dump_options" json:"pg_dump_options"`
+	Transformation    []*Table            `mapstructure:"transformation" yaml:"transformation" json:"transformation,omitempty"`
+	VirtualReferences []*VirtualReference `mapstructure:"virtual_references" yaml:"virtual_references" json:"virtual_references,omitempty"`
 }
 
 type Restore struct {

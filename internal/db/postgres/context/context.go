@@ -23,6 +23,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/rs/zerolog/log"
 
 	"github.com/greenmaskio/greenmask/internal/db/postgres/entries"
 	"github.com/greenmaskio/greenmask/internal/db/postgres/pgdump"
@@ -61,8 +62,9 @@ type RuntimeContext struct {
 //
 //	warnings are fatal procedure must be terminated immediately due to lack of objects required on the next step
 func NewRuntimeContext(
-	ctx context.Context, tx pgx.Tx, cfg []*domains.Table, r *transformersUtils.TransformerRegistry, opt *pgdump.Options,
-	version int,
+	ctx context.Context, tx pgx.Tx, cfg []*domains.Table,
+	r *transformersUtils.TransformerRegistry, opt *pgdump.Options,
+	vr []*domains.VirtualReference, version int,
 ) (*RuntimeContext, error) {
 	var salt []byte
 	saltHex := os.Getenv("GREENMASK_GLOBAL_SALT")
@@ -98,8 +100,14 @@ func NewRuntimeContext(
 	if err != nil {
 		return nil, fmt.Errorf("cannot get database schema: %w", err)
 	}
+	vrWarns := validateVirtualReferences(vr, tablesEntries)
+	warnings = append(warnings, vrWarns...)
+	if len(vrWarns) > 0 {
+		// if there are any warnings, we should use them in the graph build
+		vr = nil
+	}
 
-	graph, err := subset.NewGraph(ctx, tx, tablesEntries)
+	graph, err := subset.NewGraph(ctx, tx, tablesEntries, vr)
 	if err != nil {
 		return nil, fmt.Errorf("error creating graph: %w", err)
 	}
@@ -109,7 +117,7 @@ func NewRuntimeContext(
 		if err = subset.SetSubsetQueries(graph); err != nil {
 			return nil, fmt.Errorf("cannot set subset queries: %w", err)
 		}
-
+		debugQueries(tablesEntries)
 	} else {
 		// if there are no subset tables, we can sort them by size and transformation costs
 		// TODO: Implement tables ordering for subsetted tables as well
@@ -181,4 +189,17 @@ func hasSubset(tables []*entries.Table) bool {
 	return slices.ContainsFunc(tables, func(table *entries.Table) bool {
 		return len(table.SubsetConds) > 0
 	})
+}
+
+func debugQueries(tables []*entries.Table) {
+	for _, t := range tables {
+		if t.Query == "" {
+			continue
+		}
+		log.Debug().
+			Str("Schema", t.Schema).
+			Str("Table", t.Name).
+			Msg("Debug query")
+		log.Logger.Println(t.Query)
+	}
 }
