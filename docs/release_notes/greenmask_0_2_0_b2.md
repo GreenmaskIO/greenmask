@@ -45,9 +45,9 @@ security.
 
     * Generate `INSERT` statements with the `**ON CONFLICT DO NOTHING**` clause if the flag `--on-conflict-do-nothing`
       is set.
-    * **[Error exclusion list](http://127.0.0.1:8000/configuration/#restoration-error-exclusion)** in the config to skip
+    * **[Error exclusion list](../configuration.md/#restoration-error-exclusion)** in the config to skip
       certain errors and continue inserting subsequent rows from the dump.
-    * Use cases - **incremental dump and restoration** for logical data. For example, if you have a database and you
+    * Use cases - **incremental dump and restoration** for logical data. For example, if you have a database, and you
       want to insert data periodically from another source, this can be used together with the database subset and
       transformations to catch up the target database.
 
