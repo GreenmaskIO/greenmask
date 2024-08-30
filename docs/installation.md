@@ -7,34 +7,27 @@
 
 * If you are building Greenmask from source, make sure you have the `make` utility installed.
 
-## From GitHub binaries
+## Via docker
 
-The easiest way to install Greenmask is by using the latest release's binary. Follow these steps:
+You can find the docker images in the [Docker-hub page](https://hub.docker.com/r/greenmask/greenmask)
 
-1. Check the latest [Greenmask release](https://github.com/GreenmaskIO/greenmask/releases).
-2. From **Assets**, download the required binary.
-3. Execute the downloaded binary to start using Greenmask.
+To run the greenmask container, use the following command:
+```shell
+docker run -it greenmask/greenmask:latest
+```
 
-### Additional instructions for macOS users
+!!! info
+    
+    For pre-releases (rc, beta, etc.), use explicit tags like `greenmaskio/greenmask:v0.2.0b2`.
 
-For those downloading `greenmask-macos-amd64` or `greenmask-macos-arm64`, additional steps are required to ensure proper execution.
+## Via brew 
 
-1. In your terminal, move to the directory where the Greenmask binary is located.
+The greenmask build is [available in brew](https://formulae.brew.sh/formula/greenmask#default), 
+but only a production build is available. To install the greenmask via brew, use the following command:
 
-2. Change the file permissions to make it executable by using the following command:
-
-    ```bash
-    chmod 777 greenmask-macos-[version]
-    ```
-
-3. Remove a quarantine attribute, which macOS may have applied, by using the following command:
-
-    ```bash
-    xattr -d com.apple.quarantine greenmask-macos-[version]
-    ```
-    !!! info
-
-        In both commands above, replace `[version]` with `amd64` or `arm64` according to your download.
+```shell
+brew install greenmask
+```
 
 ## From source
 
@@ -50,4 +43,10 @@ For those downloading `greenmask-macos-amd64` or `greenmask-macos-arm64`, additi
     make build
     ```
 
-After completing the build process, you will find the binary named `greenmask` in the root directory of the repository. Execute the binary to start using Greenmask.
+After completing the build process, you will find the binary named `greenmask` in the root directory of the repository.
+Execute the binary to start using Greenmask.
+
+## Playground
+
+Greenmask Playground is a sandbox environment for your experiments in Docker with sample databases included to help you
+try Greenmask without any additional actions. Read the [Playground](playground.md) guide to learn more.
