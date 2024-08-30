@@ -110,10 +110,11 @@ greenmask --config=config.yml restore DUMP_ID --inserts --overriding-system-valu
 ### Restoration in topological order
 
 By default, Greenmask restores tables in the order they are listed in the dump file. To restore tables in topological
-order, use the `--restore-in-order` flag. This is particularly useful when your schema includes foreign key references
-and
-you need to insert data in the correct order. Without this flag, you may encounter errors when inserting data into
-tables with foreign key constraints.
+order, use the `--restore-in-order` flag. This flag ensures that dependent tables are not restored until the tables they
+depend on have been restored.
+
+This is useful when you have the schema already created with foreign keys and other constraints, and you want to insert
+data into the tables in the correct order or catch-up the target database with the new data.
 
 !!! warning
 
@@ -143,9 +144,11 @@ greenmask --config=config.yml restore latest --pgzip
 The COPY command returns the error only on transaction commit. This means that if you have a large dump and an error
 occurs, you will have to wait until the end of the transaction to see the error message. To avoid this, you can use the
 `--batch-size` flag to specify the number of rows to insert in a single batch during the COPY command. If an error
-occurs
-during the batch insertion, the error message will be displayed immediately. The data will be committed **only if all
-batches are inserted successfully**.
+occurs during the batch insertion, the error message will be displayed immediately. The data will be committed **only 
+if all batches are inserted successfully**.
+
+This is useful when you want to be notified of errors as immediately as possible without waiting for the entire
+table to be restored.
 
 !!! warning
 
