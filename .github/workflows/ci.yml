@@ -15,7 +15,7 @@ on:
       - 'getting_started.md'
 
 env:
-  go-version: '1.21.5'
+  go-version: '1.22.6'
   python-version: 'pypy3.10'
   cmd-name: 'greenmask'
   docker-registry: greenmask/greenmask
