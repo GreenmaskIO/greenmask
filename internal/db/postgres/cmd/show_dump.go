@@ -59,7 +59,7 @@ var templateString = `;
 
 func ShowDump(ctx context.Context, st storages.Storager, dumpId string, format string) error {
 	meta := &storageDto.Metadata{}
-	r, err := st.GetObject(ctx, path.Join(dumpId, "metadata.json"))
+	r, err := st.GetObject(ctx, path.Join(dumpId, MetadataJsonFileName))
 	if err != nil {
 		return fmt.Errorf("cannot get metadata: %w", err)
 	}

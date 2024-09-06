@@ -43,7 +43,19 @@ import (
 	"github.com/greenmaskio/greenmask/pkg/toolkit"
 )
 
-const MetadataJsonFileName = "metadata.json"
+const (
+	MetadataJsonFileName = "metadata.json"
+	HeartBeatFileName    = "heartbeat"
+)
+
+const (
+	HeartBeatWriteInterval = 15 * time.Minute
+)
+
+const (
+	HeartBeatDoneContent       = "done"
+	HeartBeatInProgressContent = "in-progress"
+)
 
 type Dump struct {
 	dsn               string
@@ -231,8 +243,11 @@ func (d *Dump) schemaOnlyDump(ctx context.Context, tx pgx.Tx) error {
 }
 
 // dumpWorkerPlanner - plans dump workers based on d.pgDumpOptions.Jobs
-func (d *Dump) dumpWorkerPlanner(ctx context.Context, tasks <-chan dumpers.DumpTask) func() error {
+func (d *Dump) dumpWorkerPlanner(ctx context.Context, tasks <-chan dumpers.DumpTask, done chan struct{}) func() error {
 	return func() error {
+		defer func() {
+			close(done)
+		}()
 		workerEg, gtx := errgroup.WithContext(ctx)
 		for j := 0; j < d.pgDumpOptions.Jobs; j++ {
 			workerEg.Go(
@@ -371,8 +386,10 @@ func (d *Dump) dataDump(ctx context.Context) error {
 	tasks := make(chan dumpers.DumpTask, d.pgDumpOptions.Jobs)
 
 	log.Debug().Msgf("planned %d workers", d.pgDumpOptions.Jobs)
+	done := make(chan struct{})
 	eg, gtx := errgroup.WithContext(ctx)
-	eg.Go(d.dumpWorkerPlanner(gtx, tasks))
+	eg.Go(d.writeHeartBeatWorker(gtx, done))
+	eg.Go(d.dumpWorkerPlanner(gtx, tasks, done))
 	eg.Go(d.taskProducer(gtx, tasks))
 
 	if err := eg.Wait(); err != nil {
@@ -679,6 +696,41 @@ func (d *Dump) validateDumpExecuteTask(ctx context.Context, id int, task dumpers
 	}()
 
 	if err = task.Execute(ctx, tx, d.st); err != nil {
+		return err
+	}
+	return nil
+}
+
+// writeHeartBeatWorker - writes heart beat file each HeartBeatWriteInterval and on the jobs completion
+func (d *Dump) writeHeartBeatWorker(ctx context.Context, done chan struct{}) func() error {
+	return func() error {
+		// Initial write
+		if err := d.writeHeartBeat(ctx, HeartBeatInProgressContent); err != nil {
+			return fmt.Errorf("error writing heartbeat: %w", err)
+		}
+		t := time.NewTicker(HeartBeatWriteInterval)
+		for {
+			select {
+			case <-ctx.Done():
+				return nil
+			case <-done:
+				if err := d.writeHeartBeat(ctx, HeartBeatDoneContent); err != nil {
+					return fmt.Errorf("error writing heartbeat: %w", err)
+				}
+				return nil
+			case <-t.C:
+				if err := d.writeHeartBeat(ctx, HeartBeatInProgressContent); err != nil {
+					return fmt.Errorf("error writing heartbeat: %w", err)
+				}
+			}
+		}
+	}
+}
+
+// writeHeartBeat - write data in heart beat file
+func (d *Dump) writeHeartBeat(ctx context.Context, data string) error {
+	b := bytes.NewBuffer([]byte(data))
+	if err := d.st.PutObject(ctx, HeartBeatFileName, b); err != nil {
 		return err
 	}
 	return nil

@@ -17,6 +17,8 @@ package storages
 import (
 	"context"
 	"io"
+
+	"github.com/greenmaskio/greenmask/internal/storages/domains"
 )
 
 type Storager interface {
@@ -39,4 +41,6 @@ type Storager interface {
 	// SubStorage - get new Storage instance with the samo config but change current cwd via subPath
 	// If relative == true then path is sub folder in cwd
 	SubStorage(subPath string, relative bool) Storager
+	// Stat - get the metadata info about object from the storage
+	Stat(fileName string) (*domains.ObjectStat, error)
 }

@@ -25,7 +25,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
-	"github.com/greenmaskio/greenmask/cmd/greenmask/cmd/delete_backup"
+	"github.com/greenmaskio/greenmask/cmd/greenmask/cmd/delete"
 	"github.com/greenmaskio/greenmask/cmd/greenmask/cmd/dump"
 	"github.com/greenmaskio/greenmask/cmd/greenmask/cmd/list_dumps"
 	"github.com/greenmaskio/greenmask/cmd/greenmask/cmd/list_transformers"
@@ -94,7 +94,7 @@ func init() {
 	RootCmd.AddCommand(dump.Cmd)
 	RootCmd.AddCommand(list_dumps.Cmd)
 	RootCmd.AddCommand(restore.Cmd)
-	RootCmd.AddCommand(delete_backup.Cmd)
+	RootCmd.AddCommand(delete.Cmd)
 	RootCmd.AddCommand(show_dump.Cmd)
 	RootCmd.AddCommand(list_transformers.Cmd)
 	RootCmd.AddCommand(validate.Cmd)

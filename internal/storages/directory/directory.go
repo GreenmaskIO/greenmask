@@ -24,8 +24,10 @@ import (
 	"path/filepath"
 	"sync"
 	"syscall"
+	"time"
 
 	"github.com/greenmaskio/greenmask/internal/storages"
+	"github.com/greenmaskio/greenmask/internal/storages/domains"
 )
 
 const (
@@ -56,16 +58,16 @@ func NewStorage(cfg *Config) (*Storage, error) {
 	}, nil
 }
 
-func (d *Storage) GetCwd() string {
-	return d.cwd
+func (s *Storage) GetCwd() string {
+	return s.cwd
 }
 
-func (d *Storage) Dirname() string {
-	return filepath.Base(d.cwd)
+func (s *Storage) Dirname() string {
+	return filepath.Base(s.cwd)
 }
 
-func (d *Storage) ListDir(ctx context.Context) (files []string, dirs []storages.Storager, err error) {
-	entries, err := os.ReadDir(d.cwd)
+func (s *Storage) ListDir(ctx context.Context) (files []string, dirs []storages.Storager, err error) {
+	entries, err := os.ReadDir(s.cwd)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -73,9 +75,9 @@ func (d *Storage) ListDir(ctx context.Context) (files []string, dirs []storages.
 		if entry.IsDir() {
 			dirs = append(
 				dirs, &Storage{
-					cwd:      path.Join(d.cwd, entry.Name()),
-					dirMode:  d.dirMode,
-					fileMode: d.fileMode,
+					cwd:      path.Join(s.cwd, entry.Name()),
+					dirMode:  s.dirMode,
+					fileMode: s.fileMode,
 				},
 			)
 		} else {
@@ -85,25 +87,25 @@ func (d *Storage) ListDir(ctx context.Context) (files []string, dirs []storages.
 	return
 }
 
-func (d *Storage) GetObject(ctx context.Context, filePath string) (reader io.ReadCloser, err error) {
-	reader, err = os.Open(path.Join(d.cwd, filePath))
+func (s *Storage) GetObject(ctx context.Context, filePath string) (reader io.ReadCloser, err error) {
+	reader, err = os.Open(path.Join(s.cwd, filePath))
 	return
 }
 
-func (d *Storage) PutObject(ctx context.Context, filePath string, body io.Reader) error {
-	_, err := os.Stat(path.Join(d.cwd, path.Dir(filePath)))
+func (s *Storage) PutObject(ctx context.Context, filePath string, body io.Reader) error {
+	_, err := os.Stat(path.Join(s.cwd, path.Dir(filePath)))
 	var errNo syscall.Errno
 	if err != nil && errors.As(err, &errNo) && errNo == 0x2 {
-		d.mx.Lock()
-		if err = os.MkdirAll(path.Join(d.cwd, path.Dir(filePath)), d.dirMode); err != nil {
-			d.mx.Unlock()
+		s.mx.Lock()
+		if err = os.MkdirAll(path.Join(s.cwd, path.Dir(filePath)), s.dirMode); err != nil {
+			s.mx.Unlock()
 			return fmt.Errorf("error creating directory: %w", err)
 		}
-		d.mx.Unlock()
+		s.mx.Unlock()
 	} else if err != nil {
 		return fmt.Errorf("error getting file stat: %w", err)
 	}
-	f, err := os.Create(path.Join(d.cwd, filePath))
+	f, err := os.Create(path.Join(s.cwd, filePath))
 	if err != nil {
 		return fmt.Errorf("unable to create file: %w", err)
 	}
@@ -126,19 +128,19 @@ func (d *Storage) PutObject(ctx context.Context, filePath string, body io.Reader
 	return nil
 }
 
-func (d *Storage) Delete(ctx context.Context, filePaths ...string) error {
+func (s *Storage) Delete(ctx context.Context, filePaths ...string) error {
 	for _, fp := range filePaths {
-		fileInfo, err := os.Stat(path.Join(d.cwd, fp))
+		fileInfo, err := os.Stat(path.Join(s.cwd, fp))
 		if err != nil {
 			return err
 		}
 		if fileInfo.IsDir() {
-			err = os.RemoveAll(path.Join(d.cwd, fp))
+			err = os.RemoveAll(path.Join(s.cwd, fp))
 			if err != nil {
 				return fmt.Errorf(`error deliting directory %s: %w`, fp, err)
 			}
 		} else {
-			err = os.Remove(path.Join(d.cwd, fp))
+			err = os.Remove(path.Join(s.cwd, fp))
 			if err != nil {
 				return fmt.Errorf(`error deliting file %s: %w`, fp, err)
 			}
@@ -147,18 +149,18 @@ func (d *Storage) Delete(ctx context.Context, filePaths ...string) error {
 	return nil
 }
 
-func (d *Storage) DeleteAll(ctx context.Context, pathPrefix string) error {
-	fileInfo, err := os.Stat(path.Join(d.cwd, pathPrefix))
+func (s *Storage) DeleteAll(ctx context.Context, pathPrefix string) error {
+	fileInfo, err := os.Stat(path.Join(s.cwd, pathPrefix))
 	if err != nil {
 		return err
 	}
 	if fileInfo.IsDir() {
-		err = os.RemoveAll(path.Join(d.cwd, pathPrefix))
+		err = os.RemoveAll(path.Join(s.cwd, pathPrefix))
 		if err != nil {
 			return fmt.Errorf(`error deliting directory %s: %w`, pathPrefix, err)
 		}
 	} else {
-		err = os.Remove(path.Join(d.cwd, pathPrefix))
+		err = os.Remove(path.Join(s.cwd, pathPrefix))
 		if err != nil {
 			return fmt.Errorf(`error deliting file %s: %w`, pathPrefix, err)
 		}
@@ -166,8 +168,8 @@ func (d *Storage) DeleteAll(ctx context.Context, pathPrefix string) error {
 	return nil
 }
 
-func (d *Storage) Exists(ctx context.Context, fileName string) (bool, error) {
-	_, err := os.Stat(path.Join(d.cwd, fileName))
+func (s *Storage) Exists(ctx context.Context, fileName string) (bool, error) {
+	_, err := os.Stat(path.Join(s.cwd, fileName))
 	if err != nil {
 		if errors.Is(err, syscall.ENOENT) {
 			return false, nil
@@ -177,14 +179,35 @@ func (d *Storage) Exists(ctx context.Context, fileName string) (bool, error) {
 	return true, nil
 }
 
-func (d *Storage) SubStorage(dp string, relative bool) storages.Storager {
+func (s *Storage) SubStorage(dp string, relative bool) storages.Storager {
 	dirPath := dp
 	if relative {
-		dirPath = path.Join(d.cwd, dp)
+		dirPath = path.Join(s.cwd, dp)
 	}
 	return &Storage{
 		cwd:      dirPath,
-		dirMode:  d.dirMode,
-		fileMode: d.fileMode,
+		dirMode:  s.dirMode,
+		fileMode: s.fileMode,
 	}
+}
+
+func (s *Storage) Stat(fileName string) (*domains.ObjectStat, error) {
+	fullPath := path.Join(s.cwd, fileName)
+	fileInfo, err := os.Stat(fullPath)
+	var errNo syscall.Errno
+	if err != nil && errors.As(err, &errNo) && errNo == 0x2 {
+		return &domains.ObjectStat{
+			Name:         fullPath,
+			LastModified: time.Time{},
+			Exist:        false,
+		}, nil
+	} else if err != nil {
+		return nil, fmt.Errorf("error getting file stat: %w", err)
+	}
+
+	return &domains.ObjectStat{
+		Name:         fullPath,
+		LastModified: fileInfo.ModTime(),
+		Exist:        true,
+	}, nil
 }

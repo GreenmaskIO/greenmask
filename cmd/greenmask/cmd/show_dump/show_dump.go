@@ -28,6 +28,10 @@ import (
 	"github.com/greenmaskio/greenmask/internal/utils/logger"
 )
 
+const (
+	latestDumpName = "latest"
+)
+
 var (
 	Config = pgDomains.NewConfig()
 	format string
@@ -52,7 +56,7 @@ var (
 				log.Fatal().Err(err).Msg("error building storage")
 			}
 
-			if args[0] == "latest" {
+			if args[0] == latestDumpName {
 				var backupNames []string
 
 				_, dirs, err := st.ListDir(ctx)
@@ -60,7 +64,7 @@ var (
 					log.Fatal().Err(err).Msg("cannot walk through directory")
 				}
 				for _, dir := range dirs {
-					exists, err := dir.Exists(ctx, "metadata.json")
+					exists, err := dir.Exists(ctx, cmdInternals.MetadataJsonFileName)
 					if err != nil {
 						log.Fatal().Err(err).Msg("cannot check file existence")
 					}
@@ -78,7 +82,7 @@ var (
 				dumpId = backupNames[0]
 			} else {
 				dumpId = args[0]
-				exists, err := st.Exists(ctx, path.Join(dumpId, "metadata.json"))
+				exists, err := st.Exists(ctx, path.Join(dumpId, cmdInternals.MetadataJsonFileName))
 				if err != nil {
 					log.Fatal().Err(err).Msg("cannot check file existence")
 				}

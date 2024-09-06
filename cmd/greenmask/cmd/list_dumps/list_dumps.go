@@ -16,7 +16,6 @@ package list_dumps
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"os"
 	"slices"
@@ -26,10 +25,10 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 
-	pgDomains "github.com/greenmaskio/greenmask/internal/db/postgres/storage"
 	"github.com/greenmaskio/greenmask/internal/domains"
 	"github.com/greenmaskio/greenmask/internal/storages"
 	"github.com/greenmaskio/greenmask/internal/storages/builder"
+	"github.com/greenmaskio/greenmask/internal/utils/dumpstatus"
 	"github.com/greenmaskio/greenmask/internal/utils/logger"
 )
 
@@ -80,46 +79,12 @@ func listDumps() error {
 
 	for _, backup := range dirs {
 		dumpId := backup.Dirname()
-
-		var status = "done"
-		metadataFound, err := backup.Exists(ctx, "metadata.json")
-		if err != nil {
-			log.Err(err).Msg("")
+		if err = renderListItem(ctx, backup, &data); err != nil {
+			log.Warn().
+				Err(err).
+				Str("DumpId", dumpId).
+				Msg("unable to render list dump item")
 		}
-		if !metadataFound {
-			status = "unknown or failed"
-		}
-
-		var creationDate, dbName, size, compressedSize, duration, transformed string
-		transformed = "false"
-		if metadataFound {
-			metadata, err := getMetadata(ctx, backup)
-			if err != nil {
-				log.Debug().Err(err).Msg("")
-			}
-			if err == nil {
-				creationDate = metadata.Header.CreationDate.Format(time.RFC3339)
-				dbName = metadata.Header.DbName
-				size = SizePretty(metadata.OriginalSize)
-				compressedSize = SizePretty(metadata.CompressedSize)
-				diff := metadata.CompletedAt.Sub(metadata.StartedAt)
-				duration = time.Time{}.Add(diff).Format("15:04:05")
-				if len(metadata.Transformers) > 0 {
-					transformed = "true"
-				}
-			}
-		}
-
-		data = append(data, []string{
-			dumpId,
-			creationDate,
-			dbName,
-			size,
-			compressedSize,
-			duration,
-			transformed,
-			status,
-		})
 	}
 
 	slices.SortFunc(data, func(a, b []string) int {
@@ -136,16 +101,37 @@ func listDumps() error {
 	return nil
 }
 
-func getMetadata(ctx context.Context, st storages.Storager) (*pgDomains.Metadata, error) {
-	mf, err := st.GetObject(ctx, "metadata.json")
-	if err != nil {
-		log.Err(err).Msg("")
-	}
-	defer mf.Close()
+func renderListItem(ctx context.Context, st storages.Storager, data *[][]string) error {
+	dumpId := st.Dirname()
 
-	metadata := &pgDomains.Metadata{}
-	if err = json.NewDecoder(mf).Decode(metadata); err != nil {
-		return nil, fmt.Errorf("unable to read metadata: %w", err)
+	status, metadata, err := dumpstatus.GetDumpStatusAndMetadata(ctx, st)
+	if err != nil {
+		return fmt.Errorf("failed to get status and metadata: %w", err)
 	}
-	return metadata, nil
+
+	var creationDate, dbName, size, compressedSize, duration, transformed string
+	transformed = "false"
+	if status == dumpstatus.DoneStatusName {
+		creationDate = metadata.Header.CreationDate.Format(time.RFC3339)
+		dbName = metadata.Header.DbName
+		size = SizePretty(metadata.OriginalSize)
+		compressedSize = SizePretty(metadata.CompressedSize)
+		diff := metadata.CompletedAt.Sub(metadata.StartedAt)
+		duration = time.Time{}.Add(diff).Format("15:04:05")
+		if len(metadata.Transformers) > 0 {
+			transformed = "true"
+		}
+	}
+
+	*data = append(*data, []string{
+		dumpId,
+		creationDate,
+		dbName,
+		size,
+		compressedSize,
+		duration,
+		transformed,
+		status,
+	})
+	return nil
 }

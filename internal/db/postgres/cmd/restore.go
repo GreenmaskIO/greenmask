@@ -68,8 +68,6 @@ const (
 	textListFormat = "text"
 )
 
-const metadataObjectName = "metadata.json"
-
 const dependenciesCheckInterval = 15 * time.Millisecond
 
 var (
@@ -162,7 +160,7 @@ func (r *Restore) dependenciesAreRestored(deps []int32) bool {
 }
 
 func (r *Restore) readMetadata(ctx context.Context) error {
-	f, err := r.st.GetObject(ctx, metadataObjectName)
+	f, err := r.st.GetObject(ctx, MetadataJsonFileName)
 	if err != nil {
 		return fmt.Errorf("cannot open metadata file: %w", err)
 	}
