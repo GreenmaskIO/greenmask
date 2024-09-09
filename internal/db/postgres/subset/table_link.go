@@ -39,12 +39,16 @@ type TableLink struct {
 	idx   int
 	table *entries.Table
 	keys  []*Key
+	// polymorphicExprs - polymorphicExprs for single conditions that are not used to match FK and PK values
+	// this might be used for polymorphic relations
+	polymorphicExprs []string
 }
 
-func NewTableLink(idx int, t *entries.Table, keys []*Key) *TableLink {
+func NewTableLink(idx int, t *entries.Table, keys []*Key, polymorphicExprs []string) *TableLink {
 	return &TableLink{
-		idx:   idx,
-		table: t,
-		keys:  keys,
+		idx:              idx,
+		table:            t,
+		keys:             keys,
+		polymorphicExprs: polymorphicExprs,
 	}
 }

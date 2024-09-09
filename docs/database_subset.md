@@ -32,7 +32,6 @@ subset_conds:
   is recommended to [restore tables in topological order](commands/restore.md#restoration-in-topological-order) using
   `--restore-in-order`.
 
-
 ## References with NULL values
 
 For references that **do not have** `NOT NULL` constraints, Greenmask will automatically generate `LEFT JOIN` queries
@@ -114,6 +113,39 @@ dump:
 7. `not_null` - is FK has not null constraint. If `true` Default it is `false`
 8. `expression` - expression that is used to get the value of the column in the referencing table
 
+## Plymorphyc references
+
+Greenmask supports polymorphic references. You can define a virtual reference for a table with polymorphic references
+using `polymorphic_exprs` attribute. The `polymorphic_exprs` attribute is a list of expressions that are used to make
+a polymorphic reference. For instance we might have a table `comments` that has polymorphic reference to `posts` and
+`videos`. The table comments might have `commentable_id` and `commentable_type` columns. The `commentable_type` column
+contains the type of the table that is referenced by the `commentable_id` column. The example of the config:
+
+```yaml title="Polymorphic references example"
+dump:
+  virtual_references:
+    - schema: "public"
+      name: "comments"
+      references:
+        - schema: "public"
+          name: "videos"
+          polymorphic_exprs:
+            - "public.comments.commentable_type = 'video'"
+          columns:
+            - name: "commentable_id"
+        - schema: "public"
+          name: "posts"
+          polymorphic_exprs:
+            - "public.comments.commentable_type = 'post'"
+          columns:
+            - name: "commentable_id"
+```
+
+!!! warning
+
+    The plimorphic references cannot be non_null because the `commentable_id` column can be `NULL` if the 
+    `commentable_type` is not set or different that the values defined in the `polymorphic_exprs` attribute.
+
 ## Troubleshooting
 
 ### Exclude the records that has NULL values in the referenced column
@@ -141,7 +173,7 @@ section.
 
 If you see the error message `ERROR: column reference "{column name}" is ambiguous`, you have specified the column name
 without the table and/or schema name. To avoid ambiguity, always specify the schema and table name when pointing out the
-column to filter by. For instance if you want to filter employees by `employee_id` column, you should 
+column to filter by. For instance if you want to filter employees by `employee_id` column, you should
 use `public.employees.employee_id` instead of `employee_id`.
 
 ```postgresql title="Valid subset condition"
@@ -478,4 +510,107 @@ dump:
 As a result, the `customers` table will be dumped with the `orders` table and its related tables `payments`,
 `order_items`, and `audit_logs`. The subset condition will be applied to the `customers` table, and the data will be
 filtered based on the `customer_id` column.
+
+## Example: Dump a subset with polymorphic references
+
+In this example, we will create a subset of the tables with polymorphic references. This example includes the
+`comments` table and its related tables `posts` and `videos`.
+
+```postgresql title="Create tables with polymorphic references and insert data"
+-- Create the Posts table
+CREATE TABLE posts
+(
+    id      SERIAL PRIMARY KEY,
+    title   VARCHAR(255) NOT NULL,
+    content TEXT         NOT NULL
+);
+
+-- Create the Videos table
+CREATE TABLE videos
+(
+    id    SERIAL PRIMARY KEY,
+    title VARCHAR(255) NOT NULL,
+    url   VARCHAR(255) NOT NULL
+);
+
+-- Create the Comments table with a polymorphic reference
+CREATE TABLE comments
+(
+    id               SERIAL PRIMARY KEY,
+    commentable_id   INT         NOT NULL, -- Will refer to either posts.id or videos.id
+    commentable_type VARCHAR(50) NOT NULL, -- Will store the type of the associated record
+    body             TEXT        NOT NULL,
+    created_at       TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+
+-- Insert data into the Posts table
+INSERT INTO posts (title, content)
+VALUES ('First Post', 'This is the content of the first post.'),
+       ('Second Post', 'This is the content of the second post.');
+
+-- Insert data into the Videos table
+INSERT INTO videos (title, url)
+VALUES ('First Video', 'https://example.com/video1'),
+       ('Second Video', 'https://example.com/video2');
+
+-- Insert data into the Comments table, associating some comments with posts and others with videos
+-- For posts:
+INSERT INTO comments (commentable_id, commentable_type, body)
+VALUES (1, 'post', 'This is a comment on the first post.'),
+       (2, 'post', 'This is a comment on the second post.');
+
+-- For videos:
+INSERT INTO comments (commentable_id, commentable_type, body)
+VALUES (1, 'video', 'This is a comment on the first video.'),
+       (2, 'video', 'This is a comment on the second video.');
+```
+
+The `comments` table has a polymorphic reference to the `posts` and `videos` tables. Depending on the value of the
+`commentable_type` column, the `commentable_id` column will reference either the `posts.id` or `videos.id` column.
+
+The following example demonstrates how to make a subset for tables with polymorphic references.
+
+```yaml title="Subset configuration example"
+dump:
+  virtual_references:
+    - schema: "public"
+      name: "comments"
+      references:
+        - schema: "public"
+          name: "posts"
+          polymorphic_exprs:
+            - "public.comments.commentable_type = 'post'"
+          columns:
+            - name: "commentable_id"
+        - schema: "public"
+          name: "videos"
+          polymorphic_exprs:
+            - "public.comments.commentable_type = 'video'"
+          columns:
+            - name: "commentable_id"
+
+  transformation:
+    - schema: "public"
+      name: "posts"
+      subset_conds:
+        - "public.posts.id in (1)"
+```
+
+This example selects only the first post from the `posts` table and its related comments from the `comments` table. 
+The comments are associated with `videos` are included without filtering because the subset condition is applied only to
+the `posts` table and related comments. 
+
+The resulted records will be:
+
+```plaintext
+transformed=# select * from comments;
+ id | commentable_id | commentable_type |                 body                  |         created_at         
+----+----------------+------------------+---------------------------------------+----------------------------
+  1 |              1 | post             | This is a comment on the first post.  | 2024-09-18 05:27:54.217405
+  2 |              2 | post             | This is a comment on the second post. | 2024-09-18 05:27:54.217405
+  3 |              1 | video            | This is a comment on the first video. | 2024-09-18 05:27:54.229794
+(3 rows)
+
+```
 

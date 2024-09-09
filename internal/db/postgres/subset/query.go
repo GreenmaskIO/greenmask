@@ -34,6 +34,12 @@ func generateJoinClauseForDroppedEdge(edge *Edge, initTableName string) string {
 		rightPart := edge.to.keys[idx].GetKeyReference(rightTable.table)
 		conds = append(conds, fmt.Sprintf(`%s = %s`, leftPart, rightPart))
 	}
+	if len(edge.from.polymorphicExprs) > 0 {
+		conds = append(conds, edge.from.polymorphicExprs...)
+	}
+	if len(edge.to.polymorphicExprs) > 0 {
+		conds = append(conds, edge.to.polymorphicExprs...)
+	}
 
 	rightTableName := fmt.Sprintf(`"%s"."%s"`, edge.to.table.Schema, edge.to.table.Name)
 
@@ -70,6 +76,13 @@ func generateJoinClauseV2(edge *Edge, joinType string, overriddenTables map[tool
 		if len(edge.to.table.SubsetConds) > 0 {
 			conds = append(conds, edge.to.table.SubsetConds...)
 		}
+	}
+
+	if len(edge.from.polymorphicExprs) > 0 {
+		conds = append(conds, edge.from.polymorphicExprs...)
+	}
+	if len(edge.to.polymorphicExprs) > 0 {
+		conds = append(conds, edge.to.polymorphicExprs...)
 	}
 
 	rightTableName := fmt.Sprintf(`"%s"."%s"`, rightTable.Table.Schema, rightTable.Table.Name)

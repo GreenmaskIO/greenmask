@@ -6,10 +6,11 @@ type ReferencedColumn struct {
 }
 
 type Reference struct {
-	Schema  string              `mapstructure:"schema" json:"schema" yaml:"schema"`
-	Name    string              `mapstructure:"name" json:"name" yaml:"name"`
-	NotNull bool                `mapstructure:"not_null" json:"not_null" yaml:"not_null"`
-	Columns []*ReferencedColumn `mapstructure:"columns" json:"columns" yaml:"columns"`
+	Schema           string              `mapstructure:"schema" json:"schema" yaml:"schema"`
+	Name             string              `mapstructure:"name" json:"name" yaml:"name"`
+	NotNull          bool                `mapstructure:"not_null" json:"not_null" yaml:"not_null"`
+	Columns          []*ReferencedColumn `mapstructure:"columns" json:"columns" yaml:"columns"`
+	PolymorphicExprs []string            `mapstructure:"polymorphic_exprs" json:"polymorphic_exprs" yaml:"polymorphic_exprs"`
 }
 
 type VirtualReference struct {

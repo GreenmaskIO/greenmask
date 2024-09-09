@@ -46,10 +46,10 @@ nav:
   - Home:
       - Home: index.md
   - Documentation:
-      - Installation: installation.md
-      - Configuration: configuration.md
       - Architecture: architecture.md
       - Playground: playground.md
+      - Installation: installation.md
+      - Configuration: configuration.md
       - Commands:
           - commands/index.md
           - list-transformers: commands/list-transformers.md
