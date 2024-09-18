@@ -1,6 +1,7 @@
 ## restore command
 
-To perform a dump restoration with the provided dump ID, use the following command:
+The `restore` command is used to restore a database from a previously created dump. You can specify the dump to restore
+by providing the dump ID or use the `latest` keyword to restore the latest completed dump.
 
 ```shell
 greenmask --config=config.yml restore DUMP_ID

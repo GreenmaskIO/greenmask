@@ -42,6 +42,7 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"github.com/greenmaskio/greenmask/internal/storages"
+	"github.com/greenmaskio/greenmask/internal/storages/domains"
 )
 
 const DefaultS3ObjectsDelimiter = "/"
@@ -333,6 +334,25 @@ func (s *Storage) Exists(ctx context.Context, fileName string) (bool, error) {
 		return false, fmt.Errorf("error getting object info: %w", err)
 	}
 	return true, nil
+}
+
+func (s *Storage) Stat(fileName string) (*domains.ObjectStat, error) {
+	fullPath := path.Join(s.prefix, fileName)
+	headObjectInput := &s3.HeadObjectInput{
+		Bucket: aws.String(s.config.Bucket),
+		Key:    aws.String(fullPath),
+	}
+
+	headObjectOutput, err := s.service.HeadObject(headObjectInput)
+	if err != nil {
+		return nil, fmt.Errorf("error getting object info: %w", err)
+	}
+
+	return &domains.ObjectStat{
+		Name:         fullPath,
+		LastModified: *(headObjectOutput.LastModified),
+		Exist:        true,
+	}, nil
 }
 
 func fixPrefix(prefix string) string {

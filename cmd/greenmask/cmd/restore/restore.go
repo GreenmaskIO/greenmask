@@ -32,6 +32,10 @@ import (
 	"github.com/greenmaskio/greenmask/internal/utils/logger"
 )
 
+const (
+	latestDumpName = "latest"
+)
+
 var (
 	Cmd = &cobra.Command{
 		Use:   "restore [flags] dumpId|latest",
@@ -74,7 +78,7 @@ var (
 )
 
 func getDumpId(ctx context.Context, st storages.Storager, dumpId string) (string, error) {
-	if dumpId == "latest" {
+	if dumpId == latestDumpName {
 		var backupNames []string
 
 		_, dirs, err := st.ListDir(ctx)
@@ -82,7 +86,7 @@ func getDumpId(ctx context.Context, st storages.Storager, dumpId string) (string
 			log.Fatal().Err(err).Msg("cannot walk through directory")
 		}
 		for _, dir := range dirs {
-			exists, err := dir.Exists(ctx, "metadata.json")
+			exists, err := dir.Exists(ctx, cmdInternals.MetadataJsonFileName)
 			if err != nil {
 				log.Fatal().Err(err).Msg("cannot check file existence")
 			}
@@ -101,7 +105,7 @@ func getDumpId(ctx context.Context, st storages.Storager, dumpId string) (string
 		)
 		dumpId = backupNames[0]
 	} else {
-		exists, err := st.Exists(ctx, path.Join(dumpId, "metadata.json"))
+		exists, err := st.Exists(ctx, path.Join(dumpId, cmdInternals.MetadataJsonFileName))
 		if err != nil {
 			log.Fatal().
 				Err(err).

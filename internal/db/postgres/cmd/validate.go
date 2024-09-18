@@ -402,7 +402,7 @@ func (v *Validate) getPreviousDumpId(ctx context.Context) (string, error) {
 		return "", fmt.Errorf("cannot walk through directory: %w", err)
 	}
 	for _, dir := range dirs {
-		exists, err := dir.Exists(ctx, "metadata.json")
+		exists, err := dir.Exists(ctx, MetadataJsonFileName)
 		if err != nil {
 			return "", fmt.Errorf("cannot check file existence: %w", err)
 		}
