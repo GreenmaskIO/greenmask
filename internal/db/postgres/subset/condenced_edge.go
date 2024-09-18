@@ -16,6 +16,10 @@ func NewCondensedEdge(id int, from, to *ComponentLink, originalEdge *Edge) *Cond
 	}
 }
 
+func (e *CondensedEdge) hasPolymorphicExpressions() bool {
+	return len(e.originalEdge.from.polymorphicExprs) > 0 || len(e.originalEdge.to.polymorphicExprs) > 0
+}
+
 func sortCondensedEdges(graph [][]*CondensedEdge) []int {
 	stack := make([]int, 0)
 	visited := make([]bool, len(graph))

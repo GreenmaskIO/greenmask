@@ -93,8 +93,8 @@ func NewGraph(
 				edgeIdSequence,
 				referenceTableIdx,
 				ref.IsNullable,
-				NewTableLink(idx, table, NewKeysByColumn(ref.ReferencedKeys)),
-				NewTableLink(referenceTableIdx, tables[referenceTableIdx], NewKeysByColumn(tables[referenceTableIdx].PrimaryKey)),
+				NewTableLink(idx, table, NewKeysByColumn(ref.ReferencedKeys), nil),
+				NewTableLink(referenceTableIdx, tables[referenceTableIdx], NewKeysByColumn(tables[referenceTableIdx].PrimaryKey), nil),
 			)
 			graph[idx] = append(
 				graph[idx],
@@ -128,8 +128,8 @@ func NewGraph(
 				edgeIdSequence,
 				referenceTableIdx,
 				!ref.NotNull,
-				NewTableLink(idx, table, NewKeysByReferencedColumn(ref.Columns)),
-				NewTableLink(referenceTableIdx, tables[referenceTableIdx], NewKeysByColumn(tables[referenceTableIdx].PrimaryKey)),
+				NewTableLink(idx, table, NewKeysByReferencedColumn(ref.Columns), ref.PolymorphicExprs),
+				NewTableLink(referenceTableIdx, tables[referenceTableIdx], NewKeysByColumn(tables[referenceTableIdx].PrimaryKey), nil),
 			)
 			graph[idx] = append(
 				graph[idx],
@@ -187,7 +187,7 @@ func (g *Graph) findSubsetVertexes() {
 	for v := range g.condensedGraph {
 		path := NewPath(v)
 		var from, fullFrom []*CondensedEdge
-		if len(g.scc[v].getSubsetConds()) > 0 {
+		if len(g.scc[v].getSubsetConds()) > 0 || g.scc[v].hasPolymorphicExpressions() {
 			path.AddVertex(v)
 		}
 		g.subsetDfs(path, v, &fullFrom, &from, rootScopeId)
@@ -203,7 +203,7 @@ func (g *Graph) subsetDfs(path *Path, v int, fullFrom, from *[]*CondensedEdge, s
 		*fullFrom = append(*fullFrom, to)
 		*from = append(*from, to)
 		currentScopeId := scopeId
-		if len(g.scc[to.to.idx].getSubsetConds()) > 0 {
+		if len(g.scc[to.to.idx].getSubsetConds()) > 0 || (*fullFrom)[len(*fullFrom)-1].hasPolymorphicExpressions() {
 			for _, e := range *from {
 				currentScopeId = path.AddEdge(e, currentScopeId)
 			}
@@ -555,7 +555,19 @@ func (g *Graph) generateQueryForTables(path *Path, scopeEdge *ScopeEdge) string 
 			leftTable := originalEdge.from.table
 			leftTableConds = append(leftTableConds, k.GetKeyReference(leftTable))
 		}
+		var exprs []string
+		if len(originalEdge.from.polymorphicExprs) > 0 {
+			exprs = append(exprs, originalEdge.from.polymorphicExprs...)
+		}
 		query = fmt.Sprintf("((%s) IN (%s))", strings.Join(leftTableConds, ", "), query)
+		if len(exprs) > 0 {
+			query = fmt.Sprintf(
+				"((%s) AND (%s) IN (%s))",
+				strings.Join(leftTableConds, ", "),
+				strings.Join(exprs, "AND"),
+				query,
+			)
+		}
 
 		if scopeEdge.isNullable {
 			var nullableChecks []string
@@ -946,12 +958,20 @@ func generateIntegrityChecksForNullableEdges(nullabilityMap map[int]bool, edges 
 		for idx := range e.from.keys {
 			leftTableKey := e.from.keys
 			rightTableKey := e.to.keys
+			polymorphicExpr := ""
+			if len(e.from.polymorphicExprs) > 0 {
+				polymorphicExpr = fmt.Sprintf(" OR NOT (%s)", strings.Join(e.from.polymorphicExprs, " AND "))
+			}
 			k := fmt.Sprintf(
-				`(%s IS NULL OR %s IS NOT NULL)`,
+				`(%s IS NULL OR %s IS NOT NULL%s)`,
 				leftTableKey[idx].GetKeyReference(e.from.table),
 				rightTableKey[idx].GetKeyReference(e.to.table),
+				polymorphicExpr,
 			)
 			if _, ok := overriddenTables[e.to.table.Oid]; ok {
+				if polymorphicExpr != "" {
+					panic("IMPLEMENT ME: polymorphic expression for overridden table")
+				}
 				k = fmt.Sprintf(
 					`(%s IS NULL OR "%s"."%s" IS NOT NULL)`,
 					leftTableKey[idx].GetKeyReference(e.from.table),
@@ -1106,31 +1126,6 @@ func shiftUntilVertexWillBeFirst(v *Edge, c []*Edge) []*Edge {
 		res = shiftCycle(res)
 	}
 	return res
-}
-
-func validateVirtualReference(r *domains.Reference, pkT, fkT *entries.Table) error {
-	// TODO: Create ValidationWarning for it
-	keys := getReferencedKeys(r)
-	if len(keys) == 0 {
-		return fmt.Errorf("no keys found in reference %s.%s", r.Schema, r.Name)
-	}
-	if len(keys) != len(pkT.PrimaryKey) {
-		return fmt.Errorf("number of keys in reference %s.%s does not match primary key of %s.%s", r.Schema, r.Name, pkT.Schema, pkT.Name)
-	}
-	for _, col := range r.Columns {
-		if col.Name == "" && col.Expression == "" {
-			return fmt.Errorf("empty column name and expression in reference %s.%s", r.Schema, r.Name)
-		}
-		if col.Name != "" && col.Expression != "" {
-			return fmt.Errorf("only name or expression should be set in reference item at the same time %s.%s", r.Schema, r.Name)
-		}
-		if col.Name != "" && !slices.ContainsFunc(fkT.Columns, func(column *toolkit.Column) bool {
-			return column.Name == col.Name
-		}) {
-			return fmt.Errorf("column %s not found in table %s.%s", col.Name, fkT.Schema, fkT.Name)
-		}
-	}
-	return nil
 }
 
 func getVirtualReferences(vr []*domains.VirtualReference, t *entries.Table) []*domains.Reference {

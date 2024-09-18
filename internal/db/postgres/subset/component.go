@@ -41,6 +41,20 @@ func NewComponent(id int, componentGraph map[int][]*Edge, tables map[int]*entrie
 	return c
 }
 
+func (c *Component) hasPolymorphicExpressions() bool {
+	for _, edges := range c.componentGraph {
+		for _, edge := range edges {
+			if len(edge.from.polymorphicExprs) > 0 {
+				return true
+			}
+			if len(edge.to.polymorphicExprs) > 0 {
+				return true
+			}
+		}
+	}
+	return false
+}
+
 func (c *Component) getSubsetConds() []string {
 	var subsetConds []string
 	for _, table := range c.tables {

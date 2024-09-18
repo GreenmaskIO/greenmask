@@ -135,6 +135,16 @@ func validateReference(vrIdx int, v *domains.Reference, fkT, pkT *entries.Table)
 		res = append(res, w)
 	}
 
+	if len(v.PolymorphicExprs) > 0 && v.NotNull {
+		w := toolkit.NewValidationWarning().
+			SetSeverity(toolkit.ErrorValidationSeverity).
+			SetMsg("virtual reference error: polymorphic expressions cannot be used with not null reference").
+			AddMeta("ReferenceIdx", vrIdx).
+			AddMeta("ReferenceName", v.Name).
+			AddMeta("ReferenceSchema", v.Schema)
+		res = append(res, w)
+	}
+
 	for idx, c := range v.Columns {
 		var vrWarns toolkit.ValidationWarnings
 		for _, w := range validateColumn(idx, c, fkT) {
