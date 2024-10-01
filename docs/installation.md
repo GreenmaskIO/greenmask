@@ -9,16 +9,25 @@
 
 ## Via docker
 
-You can find the docker images in the [Docker-hub page](https://hub.docker.com/r/greenmask/greenmask)
+You can find the docker images in the:
 
-To run the greenmask container, use the following command:
+1. [Docker-hub page](https://hub.docker.com/r/greenmask/greenmask)
+
+To run the greenmask container from DockerHub, use the following command:
 ```shell
 docker run -it greenmask/greenmask:latest
 ```
 
+2. GitHub container registry 
+
+To run the greenmask container from Github registry, use the following command:
+```shell
+docker run -it ghcr.io/GreenmaskIO/greenmask:latest
+```
+
 !!! info
     
-    For pre-releases (rc, beta, etc.), use explicit tags like `greenmaskio/greenmask:v0.2.0b2`.
+    For pre-releases (rc, beta, etc.), use explicit tags like `v0.2.0b2`.
 
 ## Via brew 
 
