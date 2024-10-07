@@ -52,6 +52,7 @@ type Entry struct {
 	Dependencies []int32 /* dumpIds of objects this one depends on */
 	NDeps        int32   /* number of Dependencies */
 	FileName     *string
+	Relkind      byte /* relation kind, only for TABLE tags */
 
 	DataDumper int32 /* Routine to dump data for object */
 

@@ -90,6 +90,7 @@ type BackwardCompatibilitySuite struct {
 }
 
 func (suite *BackwardCompatibilitySuite) SetupSuite() {
+	log.Debug().Msg("URI: " + uri)
 	suite.Require().NotEmpty(tempDir, "-tempDir non-empty flag required")
 	suite.Require().NotEmpty(pgBinPath, "-pgBinPath non-empty flag required")
 	suite.Require().NotEmpty(uri, "-uri non-empty flag required")
@@ -136,21 +137,29 @@ func (suite *BackwardCompatibilitySuite) SetupSuite() {
 	row := suite.conn.QueryRow(context.Background(), getVersionQuery)
 	err = row.Scan(&suite.pgVersionNum)
 	suite.Require().NoError(err, "error getting pg version")
+	log.Info().Int("version", suite.pgVersionNum).Msg("got pg version")
 
 	suite.configFilePath = path.Join(suite.tmpDir, "config.yaml")
-	confFile, err := os.Create(suite.configFilePath)
-	suite.Require().NoError(err, "error creating config.yaml file")
-	defer confFile.Close()
-	err = configStr.Execute(
-		confFile,
-		map[string]any{
-			"pgBinPath":  pgBinPath,
-			"tmpDir":     suite.tmpDir,
-			"uri":        uri,
-			"storageDir": suite.storageDir,
-			"version":    suite.pgVersionNum,
-		})
-	suite.Require().NoError(err, "error encoding config into yaml")
+	func() {
+		confFile, err := os.Create(suite.configFilePath)
+		suite.Require().NoError(err, "error creating config.yaml file")
+		defer confFile.Close()
+		err = configStr.Execute(
+			confFile,
+			map[string]any{
+				"pgBinPath":  pgBinPath,
+				"tmpDir":     suite.tmpDir,
+				"uri":        uri,
+				"storageDir": suite.storageDir,
+				"version":    suite.pgVersionNum,
+			})
+		suite.Require().NoError(err, "error encoding config into yaml")
+	}()
+	// Read file and debug
+	data, err := os.ReadFile(suite.configFilePath)
+	suite.Require().NoError(err, "error reading config file")
+	log.Debug().Msg("config file content")
+	fmt.Println(string(data))
 
 }
 

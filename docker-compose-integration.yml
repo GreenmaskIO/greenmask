@@ -21,6 +21,21 @@ services:
       timeout: 5s
       retries: 2
 
+  db-17:
+    volumes:
+      - "/var/lib/postgresql/data"
+    image: postgres:17
+    ports:
+      - "54317:5432"
+    restart: always
+    environment:
+      POSTGRES_PASSWORD: example
+    healthcheck:
+      test: [ "CMD", "psql", "-U", "postgres" ]
+      interval: 5s
+      timeout: 1s
+      retries: 3
+
   db-16:
     volumes:
       - "/var/lib/postgresql/data"
@@ -116,7 +131,7 @@ services:
       PGPASSWORD: "example"
       FILE_DUMP: "demo-small-en.zip"
       TMP_DIR: "/tmp/schema"
-      PG_VERSIONS_CHECK: "11,12,13,14,15,16"
+      PG_VERSIONS_CHECK: "11,12,13,14,15,16,17"
 #    volumes:
 #      - "/tmp/greenmask_tests:/tmp/schema"
     build:
@@ -134,12 +149,14 @@ services:
         condition: service_healthy
       db-16:
         condition: service_healthy
+      db-17:
+        condition: service_healthy
 
   greenmask:
     volumes:
       - "/tmp"
     environment:
-      PG_VERSIONS_CHECK: "11,12,13,14,15,16"
+      PG_VERSIONS_CHECK: "11,12,13,14,15,16,17"
 
       PG_USER: postgres
       PG_PASSWORD: example
@@ -155,7 +172,6 @@ services:
       STORAGE_S3_REGION: "us-east-1"
       STORAGE_S3_ACCESS_KEY_ID: "Q3AM3UQ867SPQQA43P2F"
       STORAGE_S3_SECRET_KEY: "zuf+tfteSlswRu7BJ86wekitnifILbZam1KYY3TG"
-      STORAGE_S3_PREFIX: "11"
     build:
       dockerfile: docker/integration/tests/Dockerfile
       context: ./

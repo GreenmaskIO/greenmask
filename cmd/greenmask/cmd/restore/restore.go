@@ -147,7 +147,7 @@ func init() {
 	Cmd.Flags().StringP("use-list", "L", "", "use table of contents from this file for selecting/ordering output")
 	Cmd.Flags().StringSliceVarP(&Config.Restore.PgRestoreOptions.Schema, "schema", "n", []string{}, "restore only objects in this schema")
 	Cmd.Flags().StringSliceVarP(&Config.Restore.PgRestoreOptions.ExcludeSchema, "exclude-schema", "N", []string{}, "do not restore objects in this schema")
-	Cmd.Flags().StringP("no-owner", "O", "", "skip restoration of object ownership")
+	Cmd.Flags().BoolP("no-owner", "O", false, "skip restoration of object ownership")
 	Cmd.Flags().StringSliceVarP(&Config.Restore.PgRestoreOptions.Function, "function", "P", []string{}, "restore named function")
 	Cmd.Flags().BoolP("schema-only", "s", false, "restore only the schema, no data")
 	Cmd.Flags().StringP("superuser", "S", "", "superuser user name to use for disabling triggers")

@@ -229,6 +229,14 @@ func (w *Writer) writeEntries(entries []*Entry) error {
 			}
 		}
 
+		if w.version >= BackupVersions["1.16"] {
+			// The relkind data stores it as int value, but according to the sources only 1 byte is used
+			// we can safely cast it byte to int32 and write it
+			if err := w.writeInt(int32(entry.Relkind)); err != nil {
+				return fmt.Errorf("unable to write Relkind: %w", err)
+			}
+		}
+
 		if err := w.writeStr(entry.Owner); err != nil {
 			return fmt.Errorf("unable ro write Owner: %w", err)
 		}
