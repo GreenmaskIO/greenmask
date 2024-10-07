@@ -24,7 +24,7 @@ const (
 
 const InvalidOid = 0
 
-const MaxVersion = "1.15"
+const MaxVersion = "1.16"
 
 const (
 	PgCompressionNone int32 = iota
@@ -50,6 +50,7 @@ var (
 		"1.13": MakeArchiveVersion(1, 13, 0),
 		"1.14": MakeArchiveVersion(1, 14, 0),
 		"1.15": MakeArchiveVersion(1, 15, 0),
+		"1.16": MakeArchiveVersion(1, 16, 0),
 	}
 
 	BackupFormats = map[byte]string{

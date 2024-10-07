@@ -428,6 +428,16 @@ func (r *Reader) readEntries() ([]*Entry, error) {
 			entry.Tableam = tableam
 		}
 
+		if r.version >= BackupVersions["1.16"] {
+			// The relkind data stores it as int value, but according to the sources only 1 byte is used
+			// we can safely cast it to byte
+			realKindInt, err := r.readInt()
+			if err != nil {
+				return nil, fmt.Errorf("cannot read Relkind: %w", err)
+			}
+			entry.Relkind = byte(realKindInt)
+		}
+
 		owner, err := r.readStr()
 		if err != nil {
 			return nil, fmt.Errorf("cannot read Tablespace: %w", err)

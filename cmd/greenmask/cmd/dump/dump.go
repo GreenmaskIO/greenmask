@@ -102,8 +102,8 @@ func init() {
 		&Config.Dump.PgDumpOptions.ExcludeSchema, "exclude-schema", "N", []string{},
 		"dump the specified schema(s) only",
 	)
-	Cmd.Flags().StringP("no-owner", "O", "", "skip restoration of object ownership in plain-text format")
-	Cmd.Flags().StringP("schema-only", "s", "", "dump only the schema, no data")
+	Cmd.Flags().BoolP("no-owner", "O", false, "skip restoration of object ownership in plain-text format")
+	Cmd.Flags().BoolP("schema-only", "s", false, "dump only the schema, no data")
 	Cmd.Flags().StringP("superuser", "S", "", "superuser user name to use in plain-text format")
 	Cmd.Flags().StringSliceVarP(
 		&Config.Dump.PgDumpOptions.Table, "table", "t", []string{}, "dump the specified table(s) only",

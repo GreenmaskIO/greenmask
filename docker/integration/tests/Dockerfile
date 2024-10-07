@@ -6,6 +6,7 @@ RUN apt-get update && apt-get install -y wget gnupg2 lsb-release make \
     && echo "deb https://apt.postgresql.org/pub/repos/apt $(lsb_release -sc)-pgdg main" > /etc/apt/sources.list.d/pgdg.list \
     && wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | apt-key add - \
     && apt-get update && apt-get install --yes --no-install-recommends --no-install-suggests  \
+        postgresql-17 \
         postgresql-16 \
         postgresql-15 \
         postgresql-14 \
@@ -26,6 +27,12 @@ for pg_version in ${PG_VERSIONS_CHECK[@]}; do \n\
     export STORAGE_S3_PREFIX="${pg_version}" \n\
     export URI="host=${PG_HOST} user=${PG_USER} password=${PG_PASSWORD} dbname=${PG_DATABASE} port=${PG_PORT}" \n\
     export PG_BIN_PATH="/usr/lib/postgresql/${pg_version}/bin/" \n\
+    echo "### DEBUG ENVIRONMENT VARIABLES ###" \n\
+    echo "PGHOST: ${PG_HOST} PGUSER: ${PG_USER} PGPASSWORD: ${PG_PASSWORD} PGDATABASE: ${PG_DATABASE} PGPORT: ${PG_PORT}" \n\
+    echo "STORAGE_S3_PREFIX: ${STORAGE_S3_PREFIX}" \n\
+    echo "URI: ${URI}" \n\
+    echo "PG_BIN_PATH: ${PG_BIN_PATH}" \n\
+    echo "### RUN TESTS ###" \n\
     go test -v ./tests/integration/... \n\
     if [ $? -eq 0 ]; then \n\
         echo "### SUCCESSFUL CHECK COMPATIBILITY WITH POSTGRESQL ${pg_version} ###" \n\
