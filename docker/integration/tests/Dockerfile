@@ -33,7 +33,7 @@ for pg_version in ${PG_VERSIONS_CHECK[@]}; do \n\
     echo "URI: ${URI}" \n\
     echo "PG_BIN_PATH: ${PG_BIN_PATH}" \n\
     echo "### RUN TESTS ###" \n\
-    go test -v ./tests/integration/... \n\
+    go clean -testcache && go test -v ./tests/integration/... \n\
     if [ $? -eq 0 ]; then \n\
         echo "### SUCCESSFUL CHECK COMPATIBILITY WITH POSTGRESQL ${pg_version} ###" \n\
     else \n\
