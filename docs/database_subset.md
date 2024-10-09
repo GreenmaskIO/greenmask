@@ -113,7 +113,7 @@ dump:
 7. `not_null` - is FK has not null constraint. If `true` Default it is `false`
 8. `expression` - expression that is used to get the value of the column in the referencing table
 
-## Plymorphyc references
+## Polymorphic references
 
 Greenmask supports polymorphic references. You can define a virtual reference for a table with polymorphic references
 using `polymorphic_exprs` attribute. The `polymorphic_exprs` attribute is a list of expressions that are used to make
