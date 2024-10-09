@@ -100,7 +100,7 @@ func run(dumpId string) error {
 			log.Fatal().Err(err).Msg("error deleting dump")
 		}
 	} else {
-		log.Fatal().Msg("either --prune-failed, --prune-unknown-or-failed, --delete-elder-than, --keep-recent or dumpId should be provided")
+		log.Fatal().Msg("either --prune-failed, --prune-unsafe, --before-date, --retain-recent, --retain-for or dumpId should be provided")
 	}
 
 	return nil
