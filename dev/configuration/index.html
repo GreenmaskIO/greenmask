@@ -1,0 +1,3590 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+      
+        <link rel="canonical" href="https://greenmask.io/dev/configuration/">
+      
+      
+        <link rel="prev" href="../installation/">
+      
+      
+        <link rel="next" href="../commands/">
+      
+      
+      <link rel="icon" href="../assets/logo.png">
+      <meta name="generator" content="mkdocs-1.5.3, mkdocs-material-9.5.18">
+    
+    
+      
+        <title>Configuration - Greenmask — PostgreSQL masking and obfuscation tool</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.66ac8b77.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.06af60db.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce((e,_)=>(e<<5)-e+_.charCodeAt(0),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+      
+        <meta  property="og:type"  content="website" >
+      
+        <meta  property="og:title"  content="Configuration - Greenmask — PostgreSQL masking and obfuscation tool" >
+      
+        <meta  property="og:description"  content="None" >
+      
+        <meta  property="og:image"  content="https://greenmask.io/dev/assets/images/social/configuration.png" >
+      
+        <meta  property="og:image:type"  content="image/png" >
+      
+        <meta  property="og:image:width"  content="1200" >
+      
+        <meta  property="og:image:height"  content="630" >
+      
+        <meta  property="og:url"  content="https://greenmask.io/dev/configuration/" >
+      
+        <meta  name="twitter:card"  content="summary_large_image" >
+      
+        <meta  name="twitter:title"  content="Configuration - Greenmask — PostgreSQL masking and obfuscation tool" >
+      
+        <meta  name="twitter:description"  content="None" >
+      
+        <meta  name="twitter:image"  content="https://greenmask.io/dev/assets/images/social/configuration.png" >
+      
+    
+    
+  </head>
+  
+  
+    
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="teal" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#common-section" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+        <aside class="md-banner">
+          <div class="md-banner__inner md-grid md-typeset">
+            
+              <button class="md-banner__button md-icon" aria-label="Don't show this again">
+                
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12 19 6.41Z"/></svg>
+              </button>
+            
+            
+  A new major version 0.2.0 (2024.10.10) is <a href="https://github.com/GreenmaskIO/greenmask/releases/tag/v0.2.0">released</a>
+
+          </div>
+          
+            <script>var content,el=document.querySelector("[data-md-component=announce]");el&&(content=el.querySelector(".md-typeset"),__md_hash(content.innerHTML)===__md_get("__announce")&&(el.hidden=!0))</script>
+          
+        </aside>
+      
+    </div>
+    
+      <div data-md-color-scheme="default" data-md-component="outdated" hidden>
+        
+          <aside class="md-banner md-banner--warning">
+            <div class="md-banner__inner md-grid md-typeset">
+              
+  You're not viewing the latest version.
+  <a href="../.."> 
+    <strong>Click here to go to latest.</strong>
+  </a>
+
+            </div>
+            <script>var el=document.querySelector("[data-md-component=outdated]"),outdated=__md_get("__outdated",sessionStorage);!0===outdated&&el&&(el.hidden=!1)</script>
+          </aside>
+        
+      </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="Greenmask — PostgreSQL masking and obfuscation tool" class="md-header__button md-logo" aria-label="Greenmask — PostgreSQL masking and obfuscation tool" data-md-component="logo">
+      
+  <img src="../assets/logo.png" alt="logo">
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3V6m0 5h18v2H3v-2m0 5h18v2H3v-2Z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Greenmask — PostgreSQL masking and obfuscation tool
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Configuration
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+    
+    
+    
+    
+      <label class="md-header__button md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.516 6.516 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5Z"/></svg>
+      </label>
+      <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.516 6.516 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5Z"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11h12Z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+          <a href="javascript:void(0)" class="md-search__icon md-icon" title="Share" aria-label="Share" data-clipboard data-clipboard-text="" data-md-component="search-share" tabindex="-1">
+            
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7 0-.24-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9a3 3 0 0 0-3 3 3 3 0 0 0 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.15c-.05.21-.08.43-.08.66 0 1.61 1.31 2.91 2.92 2.91 1.61 0 2.92-1.3 2.92-2.91A2.92 2.92 0 0 0 18 16.08Z"/></svg>
+          </a>
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12 19 6.41Z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/GreenmaskIO/greenmask" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.5.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81z"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GreenmaskIO/greenmask
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href=".." class="md-tabs__link">
+          
+  
+    
+  
+  Home
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../architecture/" class="md-tabs__link">
+          
+  
+    
+  
+  Documentation
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../release_notes/greenmask_0_2_0/" class="md-tabs__link">
+          
+  
+    
+  
+  Release notes
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="Greenmask — PostgreSQL masking and obfuscation tool" class="md-nav__button md-logo" aria-label="Greenmask — PostgreSQL masking and obfuscation tool" data-md-component="logo">
+      
+  <img src="../assets/logo.png" alt="logo">
+
+    </a>
+    Greenmask — PostgreSQL masking and obfuscation tool
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/GreenmaskIO/greenmask" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.5.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81z"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GreenmaskIO/greenmask
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_1" >
+        
+          
+          
+          <div class="md-nav__link md-nav__container">
+            <a href=".." class="md-nav__link ">
+              
+  
+  <span class="md-ellipsis">
+    Home
+  </span>
+  
+
+            </a>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_1">
+            <span class="md-nav__icon md-icon"></span>
+            Home
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+      
+        
+        
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="">
+            
+  
+  <span class="md-ellipsis">
+    Documentation
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            Documentation
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../architecture/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Architecture
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../playground/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Playground
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../installation/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Installation
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  <span class="md-ellipsis">
+    Configuration
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  <span class="md-ellipsis">
+    Configuration
+  </span>
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#common-section" class="md-nav__link">
+    <span class="md-ellipsis">
+      common section
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#log-section" class="md-nav__link">
+    <span class="md-ellipsis">
+      log section
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#storage-section" class="md-nav__link">
+    <span class="md-ellipsis">
+      storage section
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#dump-section" class="md-nav__link">
+    <span class="md-ellipsis">
+      dump section
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#validate-section" class="md-nav__link">
+    <span class="md-ellipsis">
+      validate section
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#restore-section" class="md-nav__link">
+    <span class="md-ellipsis">
+      restore section
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="restore section">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#restoration-error-exclusion" class="md-nav__link">
+    <span class="md-ellipsis">
+      restoration error exclusion
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#environment-variable-configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      Environment variable configuration
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Environment variable configuration">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#global-configuration-variables" class="md-nav__link">
+    <span class="md-ellipsis">
+      Global configuration variables
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#postgres-connection-variables" class="md-nav__link">
+    <span class="md-ellipsis">
+      Postgres connection variables
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_5" >
+        
+          
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../commands/" class="md-nav__link ">
+              
+  
+  <span class="md-ellipsis">
+    Commands
+  </span>
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_2_5" id="__nav_2_5_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_5">
+            <span class="md-nav__icon md-icon"></span>
+            Commands
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../commands/list-transformers/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    list-transformers
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../commands/show-transformer/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    show-transformer
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../commands/validate/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    validate
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../commands/dump/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    dump
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../commands/list-dumps/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    list-dumps
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../commands/show-dump/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    show-dump
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../commands/restore/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    restore
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../commands/delete/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    delete
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../database_subset/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Database subset
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_7" >
+        
+          
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../built_in_transformers/" class="md-nav__link ">
+              
+  
+  <span class="md-ellipsis">
+    Transformers
+  </span>
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_2_7" id="__nav_2_7_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_7">
+            <span class="md-nav__icon md-icon"></span>
+            Transformers
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../built_in_transformers/dynamic_parameters/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Dynamic parameters
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../built_in_transformers/transformation_engines/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Transformation engines
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../built_in_transformers/parameters_templating/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Parameters templating
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_7_5" >
+        
+          
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../built_in_transformers/standard_transformers/" class="md-nav__link ">
+              
+  
+  <span class="md-ellipsis">
+    Standard transformers
+  </span>
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_2_7_5" id="__nav_2_7_5_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_2_7_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_7_5">
+            <span class="md-nav__icon md-icon"></span>
+            Standard transformers
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../built_in_transformers/standard_transformers/cmd/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Cmd
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../built_in_transformers/standard_transformers/dict/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Dict
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../built_in_transformers/standard_transformers/hash/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Hash
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../built_in_transformers/standard_transformers/masking/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Masking
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../built_in_transformers/standard_transformers/noise_date/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    NoiseDate
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../built_in_transformers/standard_transformers/noise_float/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    NoiseFloat
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../built_in_transformers/standard_transformers/noise_numeric/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    NoiseNumeric
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../built_in_transformers/standard_transformers/noise_int/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    NoiseInt
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../built_in_transformers/standard_transformers/random_bool/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    RandomBool
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../built_in_transformers/standard_transformers/random_choice/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    RandomChoice
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../built_in_transformers/standard_transformers/random_date/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    RandomDate
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../built_in_transformers/standard_transformers/random_float/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    RandomFloat
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../built_in_transformers/standard_transformers/random_numeric/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    RandomNumeric
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../built_in_transformers/standard_transformers/random_int/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    RandomInt
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../built_in_transformers/standard_transformers/random_string/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    RandomString
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../built_in_transformers/standard_transformers/random_uuid/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    RandomUuid
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../built_in_transformers/standard_transformers/random_latitude/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    RandomLatitude
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../built_in_transformers/standard_transformers/random_longitude/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    RandomLongitude
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../built_in_transformers/standard_transformers/random_unix_timestamp/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    RandomUnixTimestamp
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../built_in_transformers/standard_transformers/random_day_of_week/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    RandomDayOfWeek
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../built_in_transformers/standard_transformers/random_day_of_month/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    RandomDayOfMonth
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../built_in_transformers/standard_transformers/random_month_name/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    RandomMonthName
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../built_in_transformers/standard_transformers/random_year_string/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    RandomYearString
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../built_in_transformers/standard_transformers/random_century/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    RandomCentury
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../built_in_transformers/standard_transformers/random_timezone/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    RandomTimezone
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../built_in_transformers/standard_transformers/random_email/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    RandomEmail
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../built_in_transformers/standard_transformers/random_username/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    RandomUsername
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../built_in_transformers/standard_transformers/random_password/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    RandomPassword
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../built_in_transformers/standard_transformers/random_domain_name/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    RandomDomainName
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../built_in_transformers/standard_transformers/random_person/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    RandomPerson
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../built_in_transformers/standard_transformers/random_url/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    RandomURL
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../built_in_transformers/standard_transformers/random_mac/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    RandomMac
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../built_in_transformers/standard_transformers/random_ip/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    RandomIP
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../built_in_transformers/standard_transformers/random_word/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    RandomWord
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../built_in_transformers/standard_transformers/random_sentence/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    RandomSentence
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../built_in_transformers/standard_transformers/random_paragraph/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    RandomParagraph
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../built_in_transformers/standard_transformers/random_cc_type/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    RandomCCType
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../built_in_transformers/standard_transformers/random_cc_number/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    RandomCCNumber
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../built_in_transformers/standard_transformers/random_currency/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    RandomCurrency
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../built_in_transformers/standard_transformers/random_amount_with_currency/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    RandomAmountWithCurrency
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../built_in_transformers/standard_transformers/random_phone_number/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    RandomPhoneNumber
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../built_in_transformers/standard_transformers/random_toll_free_phone_number/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    RandomTollFreePhoneNumber
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../built_in_transformers/standard_transformers/random_e164_phone_number/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    RandomE164PhoneNumber
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../built_in_transformers/standard_transformers/real_address/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    RealAddress
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../built_in_transformers/standard_transformers/regexp_replace/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    RegexpReplace
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../built_in_transformers/standard_transformers/replace/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Replace
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../built_in_transformers/standard_transformers/set_null/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    SetNull
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_7_6" >
+        
+          
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../built_in_transformers/advanced_transformers/" class="md-nav__link ">
+              
+  
+  <span class="md-ellipsis">
+    Advanced transformers
+  </span>
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_2_7_6" id="__nav_2_7_6_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_2_7_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_7_6">
+            <span class="md-nav__icon md-icon"></span>
+            Advanced transformers
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../built_in_transformers/advanced_transformers/json/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Json
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../built_in_transformers/advanced_transformers/template/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Template
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../built_in_transformers/advanced_transformers/template_record/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    TemplateRecord
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_7_6_5" >
+        
+          
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../built_in_transformers/advanced_transformers/custom_functions/" class="md-nav__link ">
+              
+  
+  <span class="md-ellipsis">
+    Custom functions
+  </span>
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_2_7_6_5" id="__nav_2_7_6_5_label" tabindex="0">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="4" aria-labelledby="__nav_2_7_6_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_7_6_5">
+            <span class="md-nav__icon md-icon"></span>
+            Custom functions
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../built_in_transformers/advanced_transformers/custom_functions/core_functions/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Core custom functions
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../built_in_transformers/advanced_transformers/custom_functions/faker_function/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Faker function
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  <span class="md-ellipsis">
+    Release notes
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            Release notes
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../release_notes/greenmask_0_2_0/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Greenmask 0.2.0
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../release_notes/greenmask_0_2_0_b2/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Greenmask 0.2.0b2
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../release_notes/greenmask_0_2_0_b1/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Greenmask 0.2.0b1
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../release_notes/greenmask_0_1_14/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Greenmask 0.1.14
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../release_notes/greenmask_0_1_13/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Greenmask 0.1.13
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../release_notes/greenmask_0_1_12/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Greenmask 0.1.12
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../release_notes/greenmask_0_1_11/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Greenmask 0.1.11
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../release_notes/greenmask_0_1_10/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Greenmask 0.1.10
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../release_notes/greenmask_0_1_9/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Greenmask 0.1.9
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../release_notes/greenmask_0_1_8/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Greenmask 0.1.8
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../release_notes/greenmask_0_1_7/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Greenmask 0.1.7
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../release_notes/greenmask_0_1_6/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Greenmask 0.1.6
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../release_notes/greenmask_0_1_5/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Greenmask 0.1.5
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../release_notes/greenmask_0_1_4/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Greenmask 0.1.4
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../release_notes/greenmask_0_1_3/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Greenmask 0.1.3
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../release_notes/greenmask_0_1_2/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Greenmask 0.1.2
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../release_notes/greenmask_0_1_1/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Greenmask 0.1.1
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../release_notes/greenmask_0_1_0/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Greenmask 0.1.0
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../release_notes/greenmask_0_1_0_beta/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Greenmask 0.1.0 Beta
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#common-section" class="md-nav__link">
+    <span class="md-ellipsis">
+      common section
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#log-section" class="md-nav__link">
+    <span class="md-ellipsis">
+      log section
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#storage-section" class="md-nav__link">
+    <span class="md-ellipsis">
+      storage section
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#dump-section" class="md-nav__link">
+    <span class="md-ellipsis">
+      dump section
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#validate-section" class="md-nav__link">
+    <span class="md-ellipsis">
+      validate section
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#restore-section" class="md-nav__link">
+    <span class="md-ellipsis">
+      restore section
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="restore section">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#restoration-error-exclusion" class="md-nav__link">
+    <span class="md-ellipsis">
+      restoration error exclusion
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#environment-variable-configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      Environment variable configuration
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Environment variable configuration">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#global-configuration-variables" class="md-nav__link">
+    <span class="md-ellipsis">
+      Global configuration variables
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#postgres-connection-variables" class="md-nav__link">
+    <span class="md-ellipsis">
+      Postgres connection variables
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+  
+  
+
+
+  <h1>Configuration</h1>
+
+<div class="highlight"><pre><span></span><code># Configuration
+</code></pre></div>
+<p>The configuration is organized into six sections:</p>
+<ul>
+<li><code>common</code> — settings that can be used for both the <code>dump</code> and <code>restore</code> commands</li>
+<li><code>log</code> — settings for the logging subsystem</li>
+<li><code>storage</code> — settings for the storage locations where dumps are stored</li>
+<li><code>dump</code> — settings for the <code>dump</code> command. This section includes <code>pg_dump</code> options and transformation parameters.</li>
+<li><code>restore</code> — settings for the <code>restore</code> command. It contains <code>pg_restore</code> options and additional restoration
+  scripts.</li>
+<li><code>custom_transformers</code> — definitions of the custom transformers that interact through <code>stdin</code> and <code>stdout</code>. Once a custom transformer is configured, it becomes accessible via the <code>greenmask list-transformers</code> command.</li>
+</ul>
+<h2 id="common-section"><code>common</code> section<a class="headerlink" href="#common-section" title="Permanent link">&para;</a></h2>
+<p>In the <code>common</code> section of the configuration, you can specify the following settings:</p>
+<ul>
+<li><code>pg_bin_path</code> — path to the PostgreSQL binaries. Note that the PostgreSQL server version must match the provided binaries.</li>
+<li><code>tmp_dir</code> — temporary directory for storing the table of contents files. Default value is <code>/tmp</code></li>
+</ul>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Greenmask exclusively manages data dumping and data restoration processes, delegating schema dumping to the <code>pg_dump</code>utility and schema restoration to the <code>pg_restore</code> utility. Both <code>pg_dump</code> and <code>pg_restore</code> rely on a <code>toc.dat</code> file located in a specific directory, which contains metadata and object definitions. Therefore, the <code>tmp_dir</code> parameter is essential for storing the <code>toc.dat</code> file during the dumping or restoration procedure. It is important to note that all artifacts in this directory will be automatically deleted once the Greenmask command is completed.</p>
+</div>
+<h2 id="log-section"><code>log</code> section<a class="headerlink" href="#log-section" title="Permanent link">&para;</a></h2>
+<p>In the <code>log</code> section of the configuration, you can specify the following settings:</p>
+<ul>
+<li><code>level</code> — specifies the level of logging, which can be one of the following: <code>debug</code>, <code>info</code>, or <code>error</code>. The default level is <code>info</code>.</li>
+<li><code>format</code> — defines the logging format, which can be either <code>json</code> or <code>text</code>. The default format is <code>text</code>.</li>
+</ul>
+<h2 id="storage-section"><code>storage</code> section<a class="headerlink" href="#storage-section" title="Permanent link">&para;</a></h2>
+<p>In the <code>storage</code> section, you can configure the storage driver for storing the dumped data. Currently,
+two storage <code>type</code> options are supported: <code>directory</code> and <code>s3</code>.</p>
+<div class="tabbed-set tabbed-alternate" data-tabs="1:2"><input checked="checked" id="__tabbed_1_1" name="__tabbed_1" type="radio" /><input id="__tabbed_1_2" name="__tabbed_1" type="radio" /><div class="tabbed-labels"><label for="__tabbed_1_1"><code>directory</code> option</label><label for="__tabbed_1_2"><code>s3</code> option</label></div>
+<div class="tabbed-content">
+<div class="tabbed-block">
+<p>The directory storage option refers to a filesystem directory where the dump data will be stored.</p>
+<p>Parameters include <code>path</code> which specifies the path to the directory in the filesystem where the dumps will be stored.</p>
+<div class="highlight"><span class="filename">directory storage config example</span><pre><span></span><code><span class="nt">storage</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;directory&quot;</span>
+<span class="w">  </span><span class="nt">directory</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">path</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;/home/user_name/storage_dir&quot;</span><span class="w"> </span><span class="c1"># (1)</span>
+</code></pre></div>
+</div>
+<div class="tabbed-block">
+<p>By choosing the <code>s3</code> storage option, you can store dump data in an S3-like remote storage service,
+such as Amazon S3 or Azure Blob Storage. Here are the parameters you can configure for S3 storage:</p>
+<ul>
+<li><code>endpoint</code> — overrides the default AWS endpoint to a custom one for making requests</li>
+<li><code>bucket</code> — the name of the bucket where the dump data will be stored</li>
+<li><code>prefix</code> — a prefix for objects in the bucket, specified in path format</li>
+<li><code>region</code> — the S3 service region</li>
+<li><code>storage_class</code> — the storage class for performing object requests</li>
+<li><code>no_verify_ssl</code> — disable SSL certificate verification</li>
+<li><code>access_key_id</code> — access key for authentication</li>
+<li><code>secret_access_key</code> — secret access key for authentication</li>
+<li><code>session_token</code> — session token for authentication</li>
+<li><code>role_arn</code> — Amazon resource name for role-based authentication</li>
+<li><code>session_name</code> — role session name to uniquely identify a session</li>
+<li><code>max_retries</code> — the number of retries on request failures</li>
+<li><code>cert_file</code> — the path to the SSL certificate for making requests</li>
+<li><code>max_part_size</code> — the maximum part length for one request</li>
+<li><code>concurrency</code> — the number of goroutines to use in parallel for each upload call when sending parts</li>
+<li><code>use_list_objects_v1</code> — use the old v1 <code>ListObjects</code> request instead of v2 one</li>
+<li><code>force_path_style</code> — force the request to use path-style addressing (e. g., <code>http://s3.amazonaws.com/BUCKET/KEY</code>) instead of virtual hosted bucket addressing (e. g., <code>http://BUCKET.s3.amazonaws.com/KEY</code>)</li>
+<li><code>use_accelerate</code> — enable S3 Accelerate feature</li>
+</ul>
+<div class="highlight"><span class="filename">s3 storage config example for Minio running in Docker</span><pre><span></span><code><span class="nt">storage</span><span class="p">:</span><span class="w">  </span>
+<span class="w">  </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;s3&quot;</span>
+<span class="w">  </span><span class="nt">s3</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">endpoint</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;http://localhost:9000&quot;</span>
+<span class="w">    </span><span class="nt">bucket</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;testbucket&quot;</span>
+<span class="w">    </span><span class="nt">region</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;us-east-1&quot;</span>
+<span class="w">    </span><span class="nt">access_key_id</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;Q3AM3UQ867SPQQA43P2F&quot;</span>
+<span class="w">    </span><span class="nt">secret_access_key</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;zuf+tfteSlswRu7BJ86wekitnifILbZam1KYY3TG&quot;</span>
+</code></pre></div>
+</div>
+</div>
+</div>
+<h2 id="dump-section"><code>dump</code> section<a class="headerlink" href="#dump-section" title="Permanent link">&para;</a></h2>
+<p>In the <code>dump</code> section of the configuration, you configure the <code>greenmask dump</code> command. It includes the following parameters:</p>
+<ul>
+<li><code>pg_dump_options</code> — a map of <code>pg_dump</code> options to configure the behavior of the command itself. You can refer to the list of supported <code>pg_dump</code> options in the <a href="../commands/dump/">Greenmask dump command documentation</a>.</li>
+<li>
+<p><code>transformation</code> — this section contains configuration for applying transformations to table columns during the dump operation. It includes the following sub-parameters:</p>
+<ul>
+<li><code>schema</code> — the schema name of the table</li>
+<li><code>name</code> — the name of the table</li>
+<li><code>subset_conds</code> - list of the conditions to filter the rows to be dumped. The conditions are combined with <code>AND</code> operator. For details read <a href="../database_subset/">Database subset</a></li>
+<li>
+<p><code>query</code> — an optional parameter for specifying a custom query to be used in the COPY command. By default, the entire table is dumped, but you can use this parameter to set a custom query.</p>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>Be cautious when using the <code>query</code> parameter, as it may lead to constraint violation errors during restoration, and Greenmask currently cannot handle query validation.</p>
+</div>
+</li>
+<li>
+<p class="annotate"><code>columns_type_override</code> — allows you to override the column types explicitly. You can associate a column with another type that is supported by your transformer. This is useful when the transformer works strictly with specific types of columns. For example, if a column named <code>post_code</code> is of the TEXT type, but the <code>RandomInt</code> transformer works only with INT family types, you can override it as shown in the example provided.
+  <div class="highlight"><span class="filename">column type overridden example</span><pre><span></span><code><span class="w">  </span><span class="nt">columns_type_override</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">post_code</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;int4&quot;</span><span class="w">  </span><span class="c1"># (1)</span>
+</code></pre></div></p>
+<ol>
+<li>Change the data type of the post_code column to <code>INT4</code> (<code>INTEGER</code>)</li>
+</ol>
+</li>
+<li>
+<p><code>apply_for_inherited</code> — an optional parameter to apply the same transformation to all partitions if the table is partitioned. This can save you from defining the transformation for each partition manually.</p>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>It is recommended to use the <code>--load-via-partition-root</code> parameter when dealing with partitioned tables, as the partition key value might change.</p>
+</div>
+</li>
+<li>
+<p><code>transformers</code> — a list of transformers to apply to the table, along with their parameters. Each transformation item includes the following sub-parameters:</p>
+<ul>
+<li><code>name</code> — the name of the transformer</li>
+<li><code>params</code> — a map of the provided transformer parameters</li>
+</ul>
+<div class="highlight"><span class="filename">transformers config example</span><pre><span></span><code><span class="w">   </span><span class="nt">transformers</span><span class="p">:</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;RandomDate&quot;</span>
+<span class="w">      </span><span class="nt">params</span><span class="p">:</span>
+<span class="w">        </span><span class="nt">min</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;2023-01-01</span><span class="nv"> </span><span class="s">00:00:00.0+03&quot;</span>
+<span class="w">        </span><span class="nt">max</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;2023-01-02</span><span class="nv"> </span><span class="s">00:00:00.0+03&quot;</span>
+<span class="w">        </span><span class="nt">column</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;scheduled_departure&quot;</span>
+
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;NoiseDate&quot;</span>
+<span class="w">      </span><span class="nt">params</span><span class="p">:</span>
+<span class="w">        </span><span class="nt">ratio</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;01:00:00&quot;</span>
+<span class="w">        </span><span class="nt">column</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;scheduled_arrival&quot;</span>
+</code></pre></div>
+</li>
+</ul>
+</li>
+</ul>
+<p>Here is an example configuration for the <code>dump</code> section:</p>
+<p class="annotate"><div class="highlight"><span class="filename">dump section config example</span><pre><span></span><code><span class="nt">dump</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">pg_dump_options</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">dbname</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;host=/run/postgresql</span><span class="nv"> </span><span class="s">user=postgres</span><span class="nv"> </span><span class="s">dbname=demo&quot;</span>
+<span class="w">    </span><span class="nt">jobs</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">10</span>
+<span class="w">    </span><span class="nt">exclude-schema</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;(\&quot;teSt\&quot;*|test*)&quot;</span>
+<span class="w">    </span><span class="nt">table</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;bookings.flights&quot;</span>
+<span class="w">    </span><span class="nt">load-via-partition-root</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+
+<span class="w">  </span><span class="nt">transformation</span><span class="p">:</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">schema</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;bookings&quot;</span>
+<span class="w">      </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;flights&quot;</span>
+<span class="w">      </span><span class="nt">query</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;select</span><span class="nv"> </span><span class="s">*</span><span class="nv"> </span><span class="s">from</span><span class="nv"> </span><span class="s">bookings.flights3</span><span class="nv"> </span><span class="s">limit</span><span class="nv"> </span><span class="s">1000000&quot;</span>
+<span class="w">      </span><span class="nt">columns_type_override</span><span class="p">:</span>
+<span class="w">        </span><span class="nt">post_code</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;int4&quot;</span><span class="w"> </span><span class="c1"># (1)</span>
+<span class="w">      </span><span class="nt">transformers</span><span class="p">:</span>
+<span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;RandomDate&quot;</span>
+<span class="w">          </span><span class="nt">params</span><span class="p">:</span>
+<span class="w">            </span><span class="nt">min</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;2023-01-01</span><span class="nv"> </span><span class="s">00:00:00.0+03&quot;</span>
+<span class="w">            </span><span class="nt">max</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;2023-01-02</span><span class="nv"> </span><span class="s">00:00:00.0+03&quot;</span>
+<span class="w">            </span><span class="nt">column</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;scheduled_departure&quot;</span>
+
+<span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;NoiseDate&quot;</span>
+<span class="w">          </span><span class="nt">params</span><span class="p">:</span>
+<span class="w">            </span><span class="nt">ratio</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;01:00:00&quot;</span>
+<span class="w">            </span><span class="nt">column</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;scheduled_arrival&quot;</span>
+
+<span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;RegexpReplace&quot;</span>
+<span class="w">          </span><span class="nt">params</span><span class="p">:</span>
+<span class="w">            </span><span class="nt">column</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;status&quot;</span>
+<span class="w">            </span><span class="nt">regexp</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;On</span><span class="nv"> </span><span class="s">Time&quot;</span>
+<span class="w">            </span><span class="nt">replace</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;Delayed&quot;</span>
+
+<span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;RandomInt&quot;</span><span class="w"> </span><span class="c1"># (2)</span>
+<span class="w">          </span><span class="nt">params</span><span class="p">:</span>
+<span class="w">            </span><span class="nt">column</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;post_code&quot;</span>
+<span class="w">            </span><span class="nt">min</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;11&quot;</span>
+<span class="w">            </span><span class="nt">max</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;99&quot;</span>
+
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">schema</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;bookings&quot;</span>
+<span class="w">      </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;aircrafts_data&quot;</span>
+<span class="w">      </span><span class="nt">subset_conds</span><span class="p">:</span><span class="w"> </span><span class="c1"># (3)</span>
+<span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="s">&quot;bookings.aircrafts_data.model</span><span class="nv"> </span><span class="s">=</span><span class="nv"> </span><span class="s">&#39;Boeing</span><span class="nv"> </span><span class="s">777-300-2023&#39;&quot;</span>
+<span class="w">      </span><span class="nt">transformers</span><span class="p">:</span>
+<span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;Json&quot;</span>
+<span class="w">          </span><span class="nt">params</span><span class="p">:</span>
+<span class="w">            </span><span class="nt">column</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;model&quot;</span>
+<span class="w">            </span><span class="nt">operations</span><span class="p">:</span>
+<span class="w">              </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">operation</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;set&quot;</span>
+<span class="w">                </span><span class="nt">path</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;en&quot;</span>
+<span class="w">                </span><span class="nt">value</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;Boeing</span><span class="nv"> </span><span class="s">777-300-2023&quot;</span>
+<span class="w">              </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">operation</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;set&quot;</span>
+<span class="w">                </span><span class="nt">path</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;crewSize&quot;</span>
+<span class="w">                </span><span class="nt">value</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">10</span>
+
+<span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;NoiseInt&quot;</span>
+<span class="w">          </span><span class="nt">params</span><span class="p">:</span>
+<span class="w">            </span><span class="nt">ratio</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.9</span>
+<span class="w">            </span><span class="nt">column</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;range&quot;</span>
+</code></pre></div></p>
+<ol>
+<li>Override the <code>post_code</code> column type to <code>int4</code> (INTEGER). This is necessary because the <code>post_code</code> column
+   originally has a <code>TEXT</code> type, but it contains values that resemble integers. By explicitly overriding the type to <code>int4</code>, we ensure compatibility with transformers that work with integer types, such as <code>RandomInt</code>.</li>
+<li>After the type is overridden, we can apply a compatible transformer.</li>
+<li>Database subset condition applied to the <code>aircrafts_data</code> table. The subset condition filters the data based on the <code>model</code> column.</li>
+</ol>
+<h2 id="validate-section"><code>validate</code> section<a class="headerlink" href="#validate-section" title="Permanent link">&para;</a></h2>
+<p>In the <code>validate</code> section of the configuration, you can specify parameters for the <code>greenmask validate</code>
+command. Here is an example of the validate section configuration:</p>
+<p class="annotate"><div class="highlight"><span class="filename">validate section config example</span><pre><span></span><code><span class="nt">validate</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">tables</span><span class="p">:</span><span class="w"> </span><span class="c1"># (1)</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="s">&quot;orders&quot;</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="s">&quot;public.cart&quot;</span>
+<span class="w">  </span><span class="nt">data</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span><span class="w"> </span><span class="c1"># (2)</span>
+<span class="w">  </span><span class="nt">diff</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span><span class="w"> </span><span class="c1"># (3)</span>
+<span class="w">  </span><span class="nt">rows_limit</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">10</span><span class="w"> </span><span class="c1"># (4)</span>
+<span class="w">  </span><span class="nt">resolved_warnings</span><span class="p">:</span><span class="w"> </span><span class="c1"># (5)</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="s">&quot;8d436fae67b2b82b36bd3afeb0c93f30&quot;</span>
+<span class="w">  </span><span class="nt">table_format</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;horizontal&quot;</span><span class="w"> </span><span class="c1"># (7)</span>
+<span class="w">  </span><span class="nt">format</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;text&quot;</span><span class="w"> </span><span class="c1"># (6)</span>
+<span class="w">  </span><span class="nt">schema</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span><span class="w"> </span><span class="c1"># (8)</span>
+<span class="w">  </span><span class="nt">transformed_only</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span><span class="w"> </span><span class="c1"># (9)</span>
+<span class="w">  </span><span class="nt">warnings</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span><span class="w"> </span><span class="c1"># (10)</span>
+</code></pre></div></p>
+<ol>
+<li>A list of tables to validate. If this list is not empty, the validation operation will only be performed for the specified tables. Tables can be written with or without the schema name (e. g., <code>"public.cart"</code> or <code>"orders"</code>).</li>
+<li>Specifies whether to perform data transformation for a limited set of rows. If set to <code>true</code>, data transformation will be performed, and the number of rows transformed will be limited to the value specified in the <code>rows_limit</code> parameter (default is <code>10</code>).</li>
+<li>Specifies whether to perform diff operations for the transformed data. If set to <code>true</code>, the validation process will <strong>find the differences between the original and transformed data</strong>. See more details in the <a href="../commands/validate/">validate command documentation</a>.</li>
+<li>Limits the number of rows to be transformed during validation. The default limit is <code>10</code> rows, but you can change it by modifying this parameter.</li>
+<li>A hash list of resolved warnings. These warnings have been addressed and resolved in a previous validation run.</li>
+<li>Specifies the format of the transformation output. Possible values are <code>[horizontal|vertical]</code>. The default format is <code>horizontal</code>. You can choose the format that suits your needs. See more details in the <a href="../commands/validate/">validate command documentation</a>.</li>
+<li>The output format (json or text)</li>
+<li>Specifies whether to validate the schema current schema with the previous and print the differences if any.</li>
+<li>If set to <code>true</code>, transformation output will be only with the transformed columns and primary keys</li>
+<li>If set to then all the warnings be printed</li>
+</ol>
+<h2 id="restore-section"><code>restore</code> section<a class="headerlink" href="#restore-section" title="Permanent link">&para;</a></h2>
+<p>In the <code>restore</code> section of the configuration, you can specify parameters for the <code>greenmask restore</code> command. It contains <code>pg_restore</code> settings and custom script execution settings. Below you can find the available parameters:</p>
+<ul>
+<li><code>pg_restore_options</code> — a map of <code>pg_restore</code> options that are used to configure the behavior of
+  the <code>pg_restore</code> utility during the restoration process. You can refer to the list of supported <code>pg_restore</code> options in the <a href="../commands/restore/">Greenmask restore command documentation</a>.</li>
+<li><code>scripts</code> — a map of custom scripts to be executed during different restoration stages. Each script is associated with a specific restoration stage and includes the following attributes:<ul>
+<li><code>[pre-data|data|post-data]</code> — the name of the restoration stage when the script should be executed; has the following parameters:<ul>
+<li><code>name</code> — the name of the script</li>
+<li><code>when</code> — specifies when to execute the script, which can be either <code>"before"</code> or <code>"after"</code> the
+  specified restoration stage</li>
+<li><code>query</code> — an SQL query string to be executed</li>
+<li><code>query_file</code> — the path to an SQL query file to be executed</li>
+<li><code>command</code> — a command with parameters to be executed. It is provided as a list, where the first item is the command name.</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><code>insert_error_exclusions</code> — a list of error codes that should be ignored during the restoration process. This is 
+useful when you want to skip specific errors that are not critical for the restoration process.</li>
+</ul>
+<p>As mentioned in <a href="../architecture/#backing-up">the architecture</a>, a backup contains three sections: pre-data, data, and post-data. The custom script execution allows you to customize and control the restoration process by executing scripts or commands at specific stages. The available restoration stages and their corresponding execution conditions are as follows:</p>
+<ul>
+<li><code>pre-data</code> — scripts or commands can be executed before or after restoring the pre-data section</li>
+<li><code>data</code> — scripts or commands can be executed before or after restoring the data section</li>
+<li><code>post-data</code> — scripts or commands can be executed before or after restoring the post-data section</li>
+</ul>
+<p>Each stage can have a <code>"when"</code> condition with one of the following possible values:</p>
+<ul>
+<li><code>before</code> — execute the script or SQL command before the mentioned restoration stage</li>
+<li><code>after</code> — execute the script or SQL command after the mentioned restoration stage</li>
+</ul>
+<p>Below you can find one of the possible versions for the <code>scripts</code> part of the <code>restore</code> section:</p>
+<p class="annotate"><div class="highlight"><span class="filename">scripts definition example</span><pre><span></span><code><span class="nt">scripts</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">pre-data</span><span class="p">:</span><span class="w"> </span><span class="c1"># (1)</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;pre-data</span><span class="nv"> </span><span class="s">before</span><span class="nv"> </span><span class="s">script</span><span class="nv"> </span><span class="s">[1]</span><span class="nv"> </span><span class="s">with</span><span class="nv"> </span><span class="s">query&quot;</span>
+<span class="w">      </span><span class="nt">when</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;before&quot;</span>
+<span class="w">      </span><span class="nt">query</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;create</span><span class="nv"> </span><span class="s">table</span><span class="nv"> </span><span class="s">script_test(stage</span><span class="nv"> </span><span class="s">text)&quot;</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;pre-data</span><span class="nv"> </span><span class="s">before</span><span class="nv"> </span><span class="s">script</span><span class="nv"> </span><span class="s">[2]&quot;</span>
+<span class="w">      </span><span class="nt">when</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;before&quot;</span>
+<span class="w">      </span><span class="nt">query</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;insert</span><span class="nv"> </span><span class="s">into</span><span class="nv"> </span><span class="s">script_test</span><span class="nv"> </span><span class="s">values(&#39;pre-data</span><span class="nv"> </span><span class="s">before&#39;)&quot;</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;pre-data</span><span class="nv"> </span><span class="s">after</span><span class="nv"> </span><span class="s">test</span><span class="nv"> </span><span class="s">script</span><span class="nv"> </span><span class="s">[1]&quot;</span>
+<span class="w">      </span><span class="nt">when</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;after&quot;</span>
+<span class="w">      </span><span class="nt">query</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;insert</span><span class="nv"> </span><span class="s">into</span><span class="nv"> </span><span class="s">script_test</span><span class="nv"> </span><span class="s">values(&#39;pre-data</span><span class="nv"> </span><span class="s">after&#39;)&quot;</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;pre-data</span><span class="nv"> </span><span class="s">after</span><span class="nv"> </span><span class="s">script</span><span class="nv"> </span><span class="s">with</span><span class="nv"> </span><span class="s">query_file</span><span class="nv"> </span><span class="s">[1]&quot;</span>
+<span class="w">      </span><span class="nt">when</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;after&quot;</span>
+<span class="w">      </span><span class="nt">query_file</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;pre-data-after.sql&quot;</span>
+<span class="w">  </span><span class="nt">data</span><span class="p">:</span><span class="w"> </span><span class="c1"># (2)</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;data</span><span class="nv"> </span><span class="s">before</span><span class="nv"> </span><span class="s">script</span><span class="nv"> </span><span class="s">with</span><span class="nv"> </span><span class="s">command</span><span class="nv"> </span><span class="s">[1]&quot;</span>
+<span class="w">      </span><span class="nt">when</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;before&quot;</span>
+<span class="w">      </span><span class="nt">command</span><span class="p">:</span><span class="w"> </span><span class="c1"># (4)</span>
+<span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="s">&quot;data-after.sh&quot;</span>
+<span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="s">&quot;param1&quot;</span>
+<span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="s">&quot;param2&quot;</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;data</span><span class="nv"> </span><span class="s">after</span><span class="nv"> </span><span class="s">script</span><span class="nv"> </span><span class="s">[1]&quot;</span>
+<span class="w">      </span><span class="nt">when</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;after&quot;</span>
+<span class="w">      </span><span class="nt">query_file</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;data-after.sql&quot;</span>
+<span class="w">  </span><span class="nt">post-data</span><span class="p">:</span><span class="w"> </span><span class="c1"># (3)</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;post-data</span><span class="nv"> </span><span class="s">before</span><span class="nv"> </span><span class="s">script</span><span class="nv"> </span><span class="s">[1]&quot;</span>
+<span class="w">      </span><span class="nt">when</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;before&quot;</span>
+<span class="w">      </span><span class="nt">query</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;insert</span><span class="nv"> </span><span class="s">into</span><span class="nv"> </span><span class="s">script_test</span><span class="nv"> </span><span class="s">values(&#39;post-data</span><span class="nv"> </span><span class="s">before&#39;)&quot;</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;post-data</span><span class="nv"> </span><span class="s">after</span><span class="nv"> </span><span class="s">script</span><span class="nv"> </span><span class="s">with</span><span class="nv"> </span><span class="s">query_file</span><span class="nv"> </span><span class="s">[1]&quot;</span>
+<span class="w">      </span><span class="nt">when</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;after&quot;</span>
+<span class="w">      </span><span class="nt">query_file</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;post-data-after.sql&quot;</span>
+</code></pre></div></p>
+<ol>
+<li><strong>List of pre-data stage scripts</strong>. This section contains scripts that are executed before or after the restoration of the pre-data section. The scripts include SQL queries and query files.</li>
+<li><strong>List of data stage scripts</strong>. This section contains scripts that are executed before or after the restoration of the data section. The scripts include shell commands with parameters and SQL query files.</li>
+<li><strong>List of post-data stage scripts</strong>. This section contains scripts that are executed before or after the restoration of the post-data section. The scripts include SQL queries and query files.</li>
+<li><strong>Command in the first argument and the parameters in the rest of the list</strong>. When specifying a command to be executed in the scripts section, you provide the command name as the first item in a list, followed by any parameters or arguments for that command. The command and its parameters are provided as a list within the script configuration.</li>
+</ol>
+<h3 id="restoration-error-exclusion">restoration error exclusion<a class="headerlink" href="#restoration-error-exclusion" title="Permanent link">&para;</a></h3>
+<p>You can configure which errors to ignore during the restoration process by setting the insert_error_exclusions
+parameter. This parameter can be applied globally or per table. If both global and table-specific settings are defined,
+the table-specific settings will take precedence. Below is an example of how to configure the insert_error_exclusions
+parameter. You can specify constraint names from your database schema or the error codes returned by PostgreSQL.
+<a href="https://www.postgresql.org/docs/current/errcodes-appendix.html">codes in the PostgreSQL documentation</a>.</p>
+<div class="highlight"><span class="filename">parameter defintion</span><pre><span></span><code><span class="nt">insert_error_exclusions</span><span class="p">:</span>
+
+<span class="w">  </span><span class="nt">global</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">error_codes</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="s">&quot;23505&quot;</span><span class="p p-Indicator">]</span><span class="w"> </span><span class="c1"># (1)</span>
+<span class="w">    </span><span class="nt">constraints</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="s">&quot;PK_ProductReview_ProductReviewID&quot;</span><span class="p p-Indicator">]</span><span class="w"> </span><span class="c1"># (2)</span>
+<span class="w">  </span><span class="nt">tables</span><span class="p">:</span><span class="w"> </span><span class="c1"># (3)</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">schema</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;production&quot;</span>
+<span class="w">      </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;productreview&quot;</span>
+<span class="w">      </span><span class="nt">constraints</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="s">&quot;PK_ProductReview_ProductReviewID&quot;</span><span class="p p-Indicator">]</span>
+<span class="w">      </span><span class="nt">error_codes</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="s">&quot;23505&quot;</span><span class="p p-Indicator">]</span>
+</code></pre></div>
+<ol>
+<li>List of strings that contains postgresql error codes</li>
+<li>List of strings that contains constraint names (globally)</li>
+<li>List of tables with their schema, name, constraints, and error codes</li>
+</ol>
+<p>Here is an example configuration for the <code>restore</code> section:</p>
+<div class="highlight"><pre><span></span><code><span class="nt">restore</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">scripts</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">pre-data</span><span class="p">:</span><span class="w"> </span><span class="c1"># (1)</span>
+<span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;pre-data</span><span class="nv"> </span><span class="s">before</span><span class="nv"> </span><span class="s">script</span><span class="nv"> </span><span class="s">[1]</span><span class="nv"> </span><span class="s">with</span><span class="nv"> </span><span class="s">query&quot;</span>
+<span class="w">          </span><span class="nt">when</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;before&quot;</span>
+<span class="w">          </span><span class="nt">query</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;create</span><span class="nv"> </span><span class="s">table</span><span class="nv"> </span><span class="s">script_test(stage</span><span class="nv"> </span><span class="s">text)&quot;</span>
+
+<span class="w">  </span><span class="nt">insert_error_exclusions</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">tables</span><span class="p">:</span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">schema</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;production&quot;</span>
+<span class="w">        </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;productreview&quot;</span>
+<span class="w">        </span><span class="nt">constraints</span><span class="p">:</span>
+<span class="w">          </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="s">&quot;PK_ProductReview_ProductReviewID&quot;</span>
+<span class="w">        </span><span class="nt">error_codes</span><span class="p">:</span>
+<span class="w">          </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="s">&quot;23505&quot;</span>
+<span class="w">    </span><span class="nt">global</span><span class="p">:</span>
+<span class="w">      </span><span class="nt">error_codes</span><span class="p">:</span>
+<span class="w">        </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="s">&quot;23505&quot;</span>
+
+<span class="w">  </span><span class="nt">pg_restore_options</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">jobs</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">10</span>
+<span class="w">    </span><span class="nt">exit-on-error</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span>
+<span class="w">    </span><span class="nt">dbname</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;postgresql://postgres:example@localhost:54316/transformed&quot;</span>
+<span class="w">    </span><span class="nt">table</span><span class="p">:</span><span class="w"> </span>
+<span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="s">&quot;productreview&quot;</span>
+<span class="w">    </span><span class="nt">pgzip</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">    </span><span class="nt">inserts</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">    </span><span class="nt">on-conflict-do-nothing</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">    </span><span class="nt">restore-in-order</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+</code></pre></div>
+<h2 id="environment-variable-configuration">Environment variable configuration<a class="headerlink" href="#environment-variable-configuration" title="Permanent link">&para;</a></h2>
+<p>It's also possible to configure Greenmask through environment variables. </p>
+<p>Greenmask will automatically parse any environment variable that matches the configuration in the config file by substituting the dot (<code>.</code>) separator for an underscore (<code>_</code>) and uppercasing it. As an example, the config file below would apply the same configuration as defining the <code>LOG_LEVEL=debug</code> environment variable</p>
+<div class="highlight"><span class="filename">config.yaml</span><pre><span></span><code><span class="nt">log</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">level</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">debug</span>
+</code></pre></div>
+<h3 id="global-configuration-variables">Global configuration variables<a class="headerlink" href="#global-configuration-variables" title="Permanent link">&para;</a></h3>
+<ul>
+<li><code>GREENMASK_GLOBAL_SALT</code> - global salt value hex encoded with variadic length, used for the <code>hash</code> engine. For details
+  read <a href="../built_in_transformers/transformation_engines/">Transformation engines</a> section.</li>
+</ul>
+<h3 id="postgres-connection-variables">Postgres connection variables<a class="headerlink" href="#postgres-connection-variables" title="Permanent link">&para;</a></h3>
+<p>Additionaly, there are some environment variables exposed by the <code>dump</code> and <code>restore</code> commands to facilitate the connection configuration with a Postgres database</p>
+<ul>
+<li><code>PGHOST</code> - host used to connect to the postgres database</li>
+<li><code>PGPORT</code> - port where postgres is exposed</li>
+<li><code>PGDATABASE</code> - name of the database to dump/restore</li>
+<li><code>PGUSER</code> - username used to connect to the postgres database</li>
+<li><code>PGPASSWORD</code> - password used to authenticate to the postgres database</li>
+</ul>
+
+
+
+
+
+
+
+  
+  
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8v12Z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      Copyright &copy; 2024 Greenmask
+    </div>
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+        <div class="md-social">
+  
+    
+    
+    
+    
+      
+      
+    
+    <a href="https://twitter.com/GreenmaskIO" target="_blank" rel="noopener" title="twitter.com" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.5.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M389.2 48h70.6L305.6 224.2 487 464H345L233.7 318.6 106.5 464H35.8l164.9-188.5L26.8 48h145.6l100.5 132.9L389.2 48zm-24.8 373.8h39.1L151.1 88h-42l255.3 333.8z"/></svg>
+    </a>
+  
+    
+    
+    
+    
+      
+      
+    
+    <a href="https://discord.gg/97AKHdGD" target="_blank" rel="noopener" title="discord.gg" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 512"><!--! Font Awesome Free 6.5.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M524.531 69.836a1.5 1.5 0 0 0-.764-.7A485.065 485.065 0 0 0 404.081 32.03a1.816 1.816 0 0 0-1.923.91 337.461 337.461 0 0 0-14.9 30.6 447.848 447.848 0 0 0-134.426 0 309.541 309.541 0 0 0-15.135-30.6 1.89 1.89 0 0 0-1.924-.91 483.689 483.689 0 0 0-119.688 37.107 1.712 1.712 0 0 0-.788.676C39.068 183.651 18.186 294.69 28.43 404.354a2.016 2.016 0 0 0 .765 1.375 487.666 487.666 0 0 0 146.825 74.189 1.9 1.9 0 0 0 2.063-.676A348.2 348.2 0 0 0 208.12 430.4a1.86 1.86 0 0 0-1.019-2.588 321.173 321.173 0 0 1-45.868-21.853 1.885 1.885 0 0 1-.185-3.126 251.047 251.047 0 0 0 9.109-7.137 1.819 1.819 0 0 1 1.9-.256c96.229 43.917 200.41 43.917 295.5 0a1.812 1.812 0 0 1 1.924.233 234.533 234.533 0 0 0 9.132 7.16 1.884 1.884 0 0 1-.162 3.126 301.407 301.407 0 0 1-45.89 21.83 1.875 1.875 0 0 0-1 2.611 391.055 391.055 0 0 0 30.014 48.815 1.864 1.864 0 0 0 2.063.7A486.048 486.048 0 0 0 610.7 405.729a1.882 1.882 0 0 0 .765-1.352c12.264-126.783-20.532-236.912-86.934-334.541ZM222.491 337.58c-28.972 0-52.844-26.587-52.844-59.239s23.409-59.241 52.844-59.241c29.665 0 53.306 26.82 52.843 59.239 0 32.654-23.41 59.241-52.843 59.241Zm195.38 0c-28.971 0-52.843-26.587-52.843-59.239s23.409-59.241 52.843-59.241c29.667 0 53.307 26.82 52.844 59.239 0 32.654-23.177 59.241-52.844 59.241Z"/></svg>
+    </a>
+  
+    
+    
+    
+    
+      
+      
+    
+    <a href="https://github.com/GreenmaskIO/greenmask" target="_blank" rel="noopener" title="github.com" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 496 512"><!--! Font Awesome Free 6.5.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M165.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6zm-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3zm44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9zM244.8 8C106.1 8 0 113.3 0 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C428.2 457.8 496 362.9 496 252 496 113.3 383.5 8 244.8 8zM97.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1zm-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7zm32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1zm-11.4-14.7c-1.6 1-1.6 3.6 0 5.9 1.6 2.3 4.3 3.3 5.6 2.3 1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2z"/></svg>
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    <script id="__config" type="application/json">{"base": "..", "features": ["navigation.indexes", "announce.dismiss", "content.code.annotate", "content.code.copy", "content.tooltips", "navigation.tabs", "navigation.top", "search.highlight", "search.share", "search.suggest"], "search": "../assets/javascripts/workers/search.b8dbb3d2.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.3220b9d7.min.js"></script>
+      
+    
+  </body>
+</html>
