@@ -1,0 +1,16 @@
+name: Deploy development documentation (from main branch)
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - 'main'
+    paths:
+      - 'docs/**'
+
+env:
+  python-version: 'pypy3.10'
+
+jobs:
+  docs:
+    uses: ./.github/workflows/docs.yml

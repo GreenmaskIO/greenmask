@@ -1,0 +1,47 @@
+name: Deploy documentation
+
+on:
+  workflow_call:
+
+env:
+  python-version: 'pypy3.10'
+
+jobs:
+  deploy-docs:
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.python-version }}
+
+      - name: Install dependicies
+        run: pip install -r requirements.txt
+
+      - name: Setup docs deploy
+        run: |
+          git config --global user.name "Greenmask CI"
+          git config --global user.email ci@greenmask.io
+
+      - name: Build dev docs
+        if: github.ref == 'refs/heads/main'
+        run: mike deploy --push dev
+
+      - name: Get Git tag
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: echo "TAG=$(git tag --points-at HEAD)" >> $GITHUB_ENV
+
+      - name: Build release docs
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          if [[ "${{ env.TAG }}" == *"rc"* || "${{ env.TAG }}" == *"dev"* || "${{ env.TAG }}" == *"pre"* || "${{ env.TAG }}" == *"beta"* || "${{ env.TAG }}" == *"b"* ]]; then
+            mike deploy --push $tag 
+          else
+            mike deploy --push --update-aliases $tag latest
+            mike set-default --push latest
+          fi
