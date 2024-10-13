@@ -1,7 +1,7 @@
 # About Greenmask
 
 **Greenmask** is a powerful open-source utility that is designed for logical database backup dumping,
-obfuscation, and restoration. It offers extensive functionality for backup, anonymization, and data masking.
+anonymization, and restoration. It offers extensive functionality for backup, anonymization, and data masking.
 
 Greenmask is written in pure Go and includes ported PostgreSQL libraries that allows for platform independence. This
 tool is stateless and does not require any changes to your database schema. It is designed to be highly customizable and
@@ -10,9 +10,9 @@ backward-compatible with existing PostgreSQL utilities.
 ## Purpose
 
 The Greenmask utility plays a central role in the Greenmask ecosystem. Our goal is to develop a comprehensive, UI-based
-solution for managing obfuscation procedures. We recognize the challenges of maintaining obfuscation consistency
+solution for managing anonymization procedures. We recognize the challenges of maintaining anonymization consistency
 throughout the software lifecycle. Greenmask is dedicated to providing valuable tools and features that ensure the
-obfuscation process remains fresh, predictable, and transparent.
+anonymization process remains fresh, predictable, and transparent.
 
 ## Key features
 
@@ -28,11 +28,11 @@ obfuscation process remains fresh, predictable, and transparent.
   which eliminates platform dependencies.
 * **Database type safe** — ensures data integrity by validating data and utilizing the database driver for
   encoding and decoding operations. This approach guarantees the preservation of data formats.
-* **Transformation validation and easy maintainable** — during obfuscation development, Greenmask provides validation
+* **Transformation validation and easy maintainable** — during anonymization development, Greenmask provides validation
   warnings and a transformation diff feature, allowing you to monitor and maintain transformations effectively
   throughout the software lifecycle.
 * **Partitioned tables transformation inheritance** — define transformation configurations once and apply them to all
-  partitions within partitioned tables, simplifying the obfuscation process.
+  partitions within partitioned tables, simplifying the anonymization process.
 * **Stateless** — Greenmask operates as a logical dump and does not impact your existing database schema.
 * **Backward compatible** — it fully supports the same features and protocols as existing vanilla PostgreSQL utilities.
   Dumps created by Greenmask can be successfully restored using the pg_restore utility.
@@ -40,7 +40,7 @@ obfuscation process remains fresh, predictable, and transparent.
   use predefined templates.
 * **Declarative** — Greenmask allows you to define configurations in a structured, easily parsed, and recognizable
   format.
-* **Integrable** — integrate Greenmask seamlessly into your CI/CD system for automated database obfuscation and
+* **Integrable** — integrate Greenmask seamlessly into your CI/CD system for automated database anonymization and
   restoration.
 * **Parallel execution** — take advantage of parallel dumping and restoration, significantly reducing the time required
   to deliver results.

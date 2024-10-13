@@ -25,7 +25,7 @@ subset_conds:
 
 ## Use cases
 
-* Database scale down - create obfuscated dump but for the limited and consistent set of tables
+* Database scale down - create anonymized dump but for the limited and consistent set of tables
 * Data migration - migrate only some records from one database to another
 * Data anonymization - dump and anonymize only a specific records in the database
 * Database catchup - catchup your another instance of database logically by adding a new records. In this case it

@@ -15,7 +15,7 @@ The process of backing up PostgreSQL databases is divided into three distinct se
 Greenmask focuses exclusively on the data section during runtime. It delegates the handling of the `pre-data` and `post-data` sections to the core PostgreSQL utilities, `pg_dump` and `pg_restore`.
 
 Greenmask employs the directory format of `pg_dump` and `pg_restore`. This format is particularly suitable for
-parallel execution and partial restoration, and it includes clear metadata files that aid in determining the backup and restoration steps. Greenmask has been optimized to work seamlessly with remote storage systems and obfuscation procedures.
+parallel execution and partial restoration, and it includes clear metadata files that aid in determining the backup and restoration steps. Greenmask has been optimized to work seamlessly with remote storage systems and anonymization procedures.
 
 When performing data dumping, Greenmask utilizes the COPY command in TEXT format, maintaining reliability and
 compatibility with the vanilla PostgreSQL utilities.
@@ -39,10 +39,10 @@ In the restoration process, Greenmask combines the capabilities of different too
 
 Greenmask also supports **parallel restoration**, which can significantly reduce the time required to complete the restoration process. This parallel execution enhances the efficiency of restoring large datasets.
 
-## Data obfuscation and validation
+## Data anonymization and validation
 
 Greenmask works with COPY lines, collects schema metadata using the Golang driver, and employs this driver in the encoding and decoding process. The **validate command** offers a way to assess the impact on both schema
-(**validation warnings**) and data (**transformation and displaying differences**). This command allows you to validate the schema and data transformations, ensuring the desired outcomes during the obfuscation process.
+(**validation warnings**) and data (**transformation and displaying differences**). This command allows you to validate the schema and data transformations, ensuring the desired outcomes during the anonymization process.
 
 ## Customization
 
@@ -53,7 +53,7 @@ transformers can be seamlessly integrated without requiring recompilation, thank
 interaction.
 
 !!! note
-    Furthermore, Greenmask's architecture is designed to be highly extensible, making it possible to introduce other interaction protocols, such as HTTP or Socket, for conducting obfuscation procedures.
+    Furthermore, Greenmask's architecture is designed to be highly extensible, making it possible to introduce other interaction protocols, such as HTTP or Socket, for conducting anonymization procedures.
 
 ## PostgreSQL version compatibility
 

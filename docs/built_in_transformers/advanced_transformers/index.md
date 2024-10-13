@@ -1,6 +1,6 @@
 # Advanced transformers
 
-Advanced transformers are modifiable obfuscation methods that users can adjust based on their needs by using [custom functions](custom_functions/index.md).
+Advanced transformers are modifiable anonymization methods that users can adjust based on their needs by using [custom functions](custom_functions/index.md).
 
 Below you can find an index of all advanced transformers currently available in Greenmask.
 
