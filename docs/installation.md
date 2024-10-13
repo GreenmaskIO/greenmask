@@ -22,7 +22,7 @@ docker run -it greenmask/greenmask:latest
 
 To run the greenmask container from Github registry, use the following command:
 ```shell
-docker run -it ghcr.io/GreenmaskIO/greenmask:latest
+docker run -it ghcr.io/greenmaskio/greenmask:latest
 ```
 
 !!! info

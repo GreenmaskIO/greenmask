@@ -37,7 +37,7 @@ security.
       recursive query for the SCC whether it is a single cycle or multiple cycles, making the subset system universal
       for any database schema.
   * **Supports polymorphic relationships** - You can define
-    a [virtual reference for a table with polymorphic references]((../database_subset.md/#troubleshooting))
+    a [virtual reference for a table with polymorphic references](../database_subset.md/#troubleshooting)
     using `polymorphic_exprs` attribute and use greenmask to generate a subset for such tables.
 
 * **pgzip** support for faster [compression](../commands/dump.md/#pgzip-compression)

@@ -251,7 +251,7 @@ In the `restore` section of the configuration, you can specify parameters for th
 * `insert_error_exclusions` — a list of error codes that should be ignored during the restoration process. This is 
 useful when you want to skip specific errors that are not critical for the restoration process.
 
-As mentioned in [the architecture](architecture.md/#backing-up), a backup contains three sections: pre-data, data, and post-data. The custom script execution allows you to customize and control the restoration process by executing scripts or commands at specific stages. The available restoration stages and their corresponding execution conditions are as follows:
+As mentioned in [the architecture](architecture.md/#backup-process), a backup contains three sections: pre-data, data, and post-data. The custom script execution allows you to customize and control the restoration process by executing scripts or commands at specific stages. The available restoration stages and their corresponding execution conditions are as follows:
 
 * `pre-data` — scripts or commands can be executed before or after restoring the pre-data section
 * `data` — scripts or commands can be executed before or after restoring the data section
