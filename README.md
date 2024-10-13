@@ -7,6 +7,10 @@ anonymization, synthetic data generation and restoration. It has ported PostgreS
 It is stateless and does not require any changes to your database schema. It is designed to be highly customizable and
 backward-compatible with existing PostgreSQL utilities, fast and reliable.
 
+[![Discord](https://img.shields.io/discord/1179422525294399488?label=Discord&logo=discord)](https://discord.com/invite/rKBKvDECfd)
+[![Telegram](https://img.shields.io/badge/Telegram-Join%20Chat-blue.svg?logo=telegram)](https://t.me/greenmask_community)
+[![X (formerly Twitter) Follow](https://img.shields.io/twitter/follow/GreenmaskIO)](https://twitter.com/GreenmaskIO)
+
 [![Build status](https://github.com/greenmaskio/greenmask/workflows/ci/badge.svg)](https://github.com/GreenmaskIO/greenmask/actions/workflows/release.yml)
 [![Documentation](https://img.shields.io/badge/docs-latest-blue)](https://docs.greenmask.io)
 [![License](https://img.shields.io/github/license/greenmaskio/greenmask)](https://github.com/greenmaskio/greenmask/blob/main/LICENSE)
@@ -16,6 +20,23 @@ backward-compatible with existing PostgreSQL utilities, fast and reliable.
 [![Go Report Card](https://goreportcard.com/badge/github.com/greenmaskio/greenmask)](https://goreportcard.com/report/github.com/greenmaskio/greenmask)
 
 ![schema.png](docs/assets/schema.png)
+
+## Getting started
+
+Greenmask has a [Playground](https://greenmask.io/latest/playground/) - it is a sandbox environment in Docker with
+sample databases included to help you try Greenmask without any additional actions
+
+1. Clone the `greenmask` repository and navigate to its directory by running the following commands:
+
+    ```shell
+    git clone git@github.com:GreenmaskIO/greenmask.git && cd greenmask
+    ```
+
+2. Once you have cloned the repository, start the environment by running Docker Compose:
+
+    ```shell
+    docker-compose run greenmask
+    ```
 
 ## Features
 
@@ -56,22 +77,6 @@ backward-compatible with existing PostgreSQL utilities, fast and reliable.
   setting `--pgzip`, it can speeds up the dump and restoration
   processes through parallel compression.
 
-## Getting started
-
-Greenmask has a [Playground](https://greenmask.io/latest/playground/) - it is a sandbox environment in Docker with
-sample databases included to help you try Greenmask without any additional actions
-
-1. Clone the `greenmask` repository and navigate to its directory by running the following commands:
-
-    ```shell
-    git clone git@github.com:GreenmaskIO/greenmask.git && cd greenmask
-    ```
-
-2. Once you have cloned the repository, start the environment by running Docker Compose:
-
-    ```shell
-    docker-compose run greenmask
-    ```
 
 ## Use Cases
 
