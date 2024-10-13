@@ -7,16 +7,17 @@ anonymization, synthetic data generation and restoration. It has ported PostgreS
 It is stateless and does not require any changes to your database schema. It is designed to be highly customizable and
 backward-compatible with existing PostgreSQL utilities, fast and reliable.
 
-![Build status](https://github.com/greenmaskio/greenmask/workflows/ci/badge.svg)
+[![Build status](https://github.com/greenmaskio/greenmask/workflows/ci/badge.svg)](https://github.com/GreenmaskIO/greenmask/actions/workflows/release.yml)
+[![Documentation](https://img.shields.io/badge/docs-latest-blue)](https://docs.greenmask.io)
 [![License](https://img.shields.io/github/license/greenmaskio/greenmask)](https://github.com/greenmaskio/greenmask/blob/main/LICENSE)
-![GitHub Release](https://img.shields.io/github/v/release/greenmaskio/greenmask)
-![GitHub Downloads (all assets, all releases)](https://img.shields.io/github/downloads/greenmaskio/greenmask/total)
+[![GitHub Release](https://img.shields.io/github/v/release/greenmaskio/greenmask)](https://github.com/greenmaskio/greenmask/releases/latest)
+[![GitHub Downloads (all assets, all releases)](https://img.shields.io/github/downloads/greenmaskio/greenmask/total)](https://somsubhra.github.io/github-release-stats/?username=greenmaskio&repository=greenmask&page=1&per_page=5)
 [![Docker pulls](https://img.shields.io/docker/pulls/greenmask/greenmask)](https://hub.docker.com/r/greenmask/greenmask)
 [![Go Report Card](https://goreportcard.com/badge/github.com/greenmaskio/greenmask)](https://goreportcard.com/report/github.com/greenmaskio/greenmask)
 
 ![schema.png](docs/assets/schema.png)
 
-# Features
+## Features
 
 * **[Deterministic transformers](https://greenmask.io/latest/built_in_transformers/transformation_engines/#hash-engine)**
   — deterministic approach to data transformation based on the hash
@@ -105,14 +106,14 @@ procedures.
   various cloud-based storage solutions.
 * **directory** - This is the standard choice, representing the ordinary filesystem directory for local storage.
 
-## Data Anonymization and Validation
+#### Data Anonymization and Validation
 
 Greenmask works with **COPY lines**, collects schema metadata using the Golang driver, and employs this driver in the
 encoding and decoding process. The **validate command** offers a way to assess the impact on both schema
 (**validation warnings**) and data (**transformation and displaying differences**). This command allows you to validate
 the schema and data transformations, ensuring the desired outcomes during the Anonymization process.
 
-## Customization
+#### Customization
 
 If your table schema relies on functional dependencies between columns, you can address this challenge using the
 [Dynamic parameters](https://greenmask.io/latest/built_in_transformers/dynamic_parameters/). By setting dynamic
@@ -130,16 +131,9 @@ interaction.
 Furthermore, Greenmask's architecture is designed to be highly extensible, making it possible to introduce other
 interaction protocols, such as HTTP or Socket, for conducting anonymization procedures.
 
-## PostgreSQL Version Compatibility
+#### PostgreSQL Version Compatibility
 
 **Greenmask** is compatible with PostgreSQL versions **11 and higher**.
-
-## References
-
-* Utilized the  [Demo database](https://postgrespro.com/community/demodb), provided by PostgresPro, for integration
-  testing purposes.
-* Employed the [adventureworks database](https://github.com/morenoh149/postgresDBSamples) created
-  by `morenoh149/postgresDBSamples`, in the Docker Compose playground.
 
 ## Links
 
@@ -149,3 +143,11 @@ interaction protocols, such as HTTP or Socket, for conducting anonymization proc
 * [Telegram](https://t.me/greenmask_community)
 * [Discord](https://discord.com/invite/rKBKvDECfd)
 * [DockerHub](https://hub.docker.com/r/greenmask/greenmask)
+
+
+## References
+
+* Utilized the  [Demo database](https://postgrespro.com/community/demodb), provided by PostgresPro, for integration
+  testing purposes.
+* Employed the [adventureworks database](https://github.com/morenoh149/postgresDBSamples) created
+  by `morenoh149/postgresDBSamples`, in the Docker Compose playground.
