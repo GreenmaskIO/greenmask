@@ -33,7 +33,7 @@ backward-compatible with existing PostgreSQL utilities, fast and reliable.
   throughout the software lifecycle. Schema diff helps to avoid data leakage when schema changed.
 * **[Partitioned tables transformation inheritance](https://greenmask.io/latest/configuration/?h=partition#dump-section)**
   — Define transformation configurations once and apply them to all
-  partitions within partitioned tables (using `apply_for_inherited` parameter), simplifying the obfuscation process.
+  partitions within partitioned tables (using `apply_for_inherited` parameter), simplifying the anonymization process.
 * **Stateless** - Greenmask operates as a logical dump and does not impact your existing database schema.
 * **Cross-platform** - Can be easily built and executed on any platform, thanks to its Go-based architecture,
   which eliminates platform dependencies.
@@ -45,7 +45,7 @@ backward-compatible with existing PostgreSQL utilities, fast and reliable.
   to [implement domain-based transformations](https://greenmask.io/latest/built_in_transformers/standard_transformers/cmd/)
   in any programming language or
   use [predefined templates](https://greenmask.io/latest/built_in_transformers/advanced_transformers/).
-* **Integrable** - Integrate seamlessly into your CI/CD system for automated database obfuscation and
+* **Integrable** - Integrate seamlessly into your CI/CD system for automated database anonymization and
   restoration.
 * **Parallel execution** - Take advantage of parallel dumping and restoration, significantly reducing the time required
   to deliver results.
@@ -96,7 +96,7 @@ maintaining seamless integration with PostgreSQL's standard tools.
 
 Greenmask uses the **directory format** of _pg_dump_ and _pg_restore_. This format is particularly suitable for
 parallel execution and partial restoration, and it includes clear metadata files that aid in determining the backup and
-restoration steps. Greenmask has been optimized to work seamlessly with remote storage systems and obfuscation
+restoration steps. Greenmask has been optimized to work seamlessly with remote storage systems and anonymization
 procedures.
 
 #### Storage Options
@@ -105,12 +105,12 @@ procedures.
   various cloud-based storage solutions.
 * **directory** - This is the standard choice, representing the ordinary filesystem directory for local storage.
 
-## Data Obfuscation and Validation
+## Data Anonymization and Validation
 
 Greenmask works with **COPY lines**, collects schema metadata using the Golang driver, and employs this driver in the
 encoding and decoding process. The **validate command** offers a way to assess the impact on both schema
 (**validation warnings**) and data (**transformation and displaying differences**). This command allows you to validate
-the schema and data transformations, ensuring the desired outcomes during the obfuscation process.
+the schema and data transformations, ensuring the desired outcomes during the Anonymization process.
 
 ## Customization
 
@@ -128,7 +128,7 @@ transformers can be seamlessly integrated without requiring recompilation, thank
 interaction.
 
 Furthermore, Greenmask's architecture is designed to be highly extensible, making it possible to introduce other
-interaction protocols, such as HTTP or Socket, for conducting obfuscation procedures.
+interaction protocols, such as HTTP or Socket, for conducting anonymization procedures.
 
 ## PostgreSQL Version Compatibility
 

@@ -1,6 +1,6 @@
 # About transformers
 
-Transformers in Greenmask are methods which are applied to obfuscate sensitive data. All Greenmask transformers are
+Transformers in Greenmask are methods which are applied to anonymize sensitive data. All Greenmask transformers are
 split into the following groups:
 
 - [Transformation engines](transformation_engines.md) — the type of generator used in transformers. Hash (deterministic)

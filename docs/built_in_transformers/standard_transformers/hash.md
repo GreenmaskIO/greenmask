@@ -6,7 +6,7 @@ Generate a hash of the text value using the `Scrypt` hash function under the hoo
 |------------|---------------------------------------------------------------------------------------------------------------------------------------|---------|----------|--------------------|
 | column     | The name of the column to be affected                                                                                                 |         | Yes      | text, varchar      |
 | salt       | Hex encoded salt string. This value may be provided via environment variable `GREENMASK_GLOBAL_SALT`                                  |         | Yes      | text, varchar      |
-| function   | Hash algorithm to obfuscate data. Can be any of `md5`, `sha1`, `sha256`, `sha512`, `sha3-224`, `sha3-254`, `sha3-384`, `sha3-512`.    | `sha1`  | No       | -                  |
+| function   | Hash algorithm to anonymize data. Can be any of `md5`, `sha1`, `sha256`, `sha512`, `sha3-224`, `sha3-254`, `sha3-384`, `sha3-512`.    | `sha1`  | No       | -                  |
 | max_length | Indicates whether to truncate the hash tail and specifies at what length. Can be any integer number, where `0` means "no truncation". | `0`     | No       | -                  |
 
 ## Example: Generate hash from job title
