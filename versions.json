@@ -10,5 +10,10 @@
     "aliases": [
       "latest"
     ]
+  },
+  {
+    "version": "v0.2.0b1",
+    "title": "v0.2.0b1",
+    "aliases": []
   }
 ]
