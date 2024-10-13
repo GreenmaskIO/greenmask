@@ -557,9 +557,9 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#data-obfuscation-and-validation" class="md-nav__link">
+  <a href="#data-anonymization-and-validation" class="md-nav__link">
     <span class="md-ellipsis">
-      Data obfuscation and validation
+      Data anonymization and validation
     </span>
   </a>
   
@@ -2995,9 +2995,9 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#data-obfuscation-and-validation" class="md-nav__link">
+  <a href="#data-anonymization-and-validation" class="md-nav__link">
     <span class="md-ellipsis">
-      Data obfuscation and validation
+      Data anonymization and validation
     </span>
   </a>
   
@@ -3051,7 +3051,7 @@
 </ul>
 <p>Greenmask focuses exclusively on the data section during runtime. It delegates the handling of the <code>pre-data</code> and <code>post-data</code> sections to the core PostgreSQL utilities, <code>pg_dump</code> and <code>pg_restore</code>.</p>
 <p>Greenmask employs the directory format of <code>pg_dump</code> and <code>pg_restore</code>. This format is particularly suitable for
-parallel execution and partial restoration, and it includes clear metadata files that aid in determining the backup and restoration steps. Greenmask has been optimized to work seamlessly with remote storage systems and obfuscation procedures.</p>
+parallel execution and partial restoration, and it includes clear metadata files that aid in determining the backup and restoration steps. Greenmask has been optimized to work seamlessly with remote storage systems and anonymization procedures.</p>
 <p>When performing data dumping, Greenmask utilizes the COPY command in TEXT format, maintaining reliability and
 compatibility with the vanilla PostgreSQL utilities.</p>
 <p>Additionally, Greenmask supports parallel execution, significantly reducing the time required for the dumping process.</p>
@@ -3069,9 +3069,9 @@ Greenmask introduces the concept of storages.</p>
 <li>For <strong>data restoration</strong> Greenmask independently applies the data using the COPY protocol. This allows Greenmask to handle the data efficiently, especially when working with various storage solutions. Greenmask is aware of the restoration metadata, which enables it to download only the necessary data. This feature is particularly useful for partial restoration scenarios, such as restoring a single table from a complete backup.</li>
 </ul>
 <p>Greenmask also supports <strong>parallel restoration</strong>, which can significantly reduce the time required to complete the restoration process. This parallel execution enhances the efficiency of restoring large datasets.</p>
-<h2 id="data-obfuscation-and-validation">Data obfuscation and validation<a class="headerlink" href="#data-obfuscation-and-validation" title="Permanent link">&para;</a></h2>
+<h2 id="data-anonymization-and-validation">Data anonymization and validation<a class="headerlink" href="#data-anonymization-and-validation" title="Permanent link">&para;</a></h2>
 <p>Greenmask works with COPY lines, collects schema metadata using the Golang driver, and employs this driver in the encoding and decoding process. The <strong>validate command</strong> offers a way to assess the impact on both schema
-(<strong>validation warnings</strong>) and data (<strong>transformation and displaying differences</strong>). This command allows you to validate the schema and data transformations, ensuring the desired outcomes during the obfuscation process.</p>
+(<strong>validation warnings</strong>) and data (<strong>transformation and displaying differences</strong>). This command allows you to validate the schema and data transformations, ensuring the desired outcomes during the anonymization process.</p>
 <h2 id="customization">Customization<a class="headerlink" href="#customization" title="Permanent link">&para;</a></h2>
 <p>If your table schema relies on functional dependencies between columns, you can address this challenge using the <a href="../built_in_transformers/advanced_transformers/template_record/"><strong>TemplateRecord</strong></a> transformer. This transformer enables you to define transformation logic for entire tables, offering type-safe operations when assigning new values.</p>
 <p>Greenmask provides a framework for creating your custom transformers, which can be reused efficiently. These
@@ -3079,7 +3079,7 @@ transformers can be seamlessly integrated without requiring recompilation, thank
 interaction.</p>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
-<p>Furthermore, Greenmask's architecture is designed to be highly extensible, making it possible to introduce other interaction protocols, such as HTTP or Socket, for conducting obfuscation procedures.</p>
+<p>Furthermore, Greenmask's architecture is designed to be highly extensible, making it possible to introduce other interaction protocols, such as HTTP or Socket, for conducting anonymization procedures.</p>
 </div>
 <h2 id="postgresql-version-compatibility">PostgreSQL version compatibility<a class="headerlink" href="#postgresql-version-compatibility" title="Permanent link">&para;</a></h2>
 <p>Greenmask is compatible with PostgreSQL versions <strong>11 and higher</strong>.</p>
