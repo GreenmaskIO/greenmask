@@ -11,6 +11,10 @@
         <link rel="canonical" href="https://docs.greenmask.io/dev/">
       
       
+        <link rel="prev" href="built_in_transformers/advanced_transformers/custom_functions/faker_function/">
+      
+      
+        <link rel="next" href="release_notes/greenmask_0_2_0/">
       
       
       <link rel="icon" href="assets/logo.png">
@@ -18,7 +22,7 @@
     
     
       
-        <title>Greenmask — PostgreSQL database anonymization and synthetic data generation tool</title>
+        <title>About - Greenmask — PostgreSQL database anonymization and synthetic data generation tool</title>
       
     
     
@@ -63,7 +67,7 @@
       
         <meta  property="og:type"  content="website" >
       
-        <meta  property="og:title"  content="Greenmask — PostgreSQL database anonymization and synthetic data generation tool" >
+        <meta  property="og:title"  content="About - Greenmask — PostgreSQL database anonymization and synthetic data generation tool" >
       
         <meta  property="og:description"  content="None" >
       
@@ -79,7 +83,7 @@
       
         <meta  name="twitter:card"  content="summary_large_image" >
       
-        <meta  name="twitter:title"  content="Greenmask — PostgreSQL database anonymization and synthetic data generation tool" >
+        <meta  name="twitter:title"  content="About - Greenmask — PostgreSQL database anonymization and synthetic data generation tool" >
       
         <meta  name="twitter:description"  content="None" >
       
@@ -102,6 +106,11 @@
     <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
     <label class="md-overlay" for="__drawer"></label>
     <div data-md-component="skip">
+      
+        
+        <a href="#about-greenmask" class="md-skip">
+          Skip to content
+        </a>
       
     </div>
     <div data-md-component="announce">
@@ -165,7 +174,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Home
+              About
             
           </span>
         </div>
@@ -251,10 +260,12 @@
         
   
   
+    
+  
   
     
     
-      <li class="md-tabs__item">
+      <li class="md-tabs__item md-tabs__item--active">
         <a href="architecture/" class="md-tabs__link">
           
   
@@ -338,8 +349,10 @@
       
   
   
+    
   
   
+  
     
     
       
@@ -357,33 +370,46 @@
       
         
       
-        
-      
-    
-    
-      
-      
-    
-    
-    <li class="md-nav__item md-nav__item--nested">
-      
-        
-        
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_1" >
         
           
-          <label class="md-nav__link" for="__nav_1" id="__nav_1_label" tabindex="0">
-            
+        
+      
+    
+    
+      
+        
+        
+      
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_1" checked>
+        
+          
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="." class="md-nav__link md-nav__link--active">
+              
   
   <span class="md-ellipsis">
     Documentation
   </span>
   
 
-            <span class="md-nav__icon md-icon"></span>
-          </label>
+            </a>
+            
+              
+              <label class="md-nav__link md-nav__link--active" for="__nav_1" id="__nav_1_label" tabindex="">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_1_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_1_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_1">
             <span class="md-nav__icon md-icon"></span>
             Documentation
@@ -2261,25 +2287,6 @@
               
             
               
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="about/" class="md-nav__link">
-        
-  
-  <span class="md-ellipsis">
-    About
-  </span>
-  
-
-      </a>
-    </li>
-  
-
-              
             
           </ul>
         </nav>
@@ -2791,6 +2798,52 @@
   
   
   
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#dump-anonymization-and-synthetic-data-generation-tool" class="md-nav__link">
+    <span class="md-ellipsis">
+      Dump anonymization and synthetic data generation tool
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#key-features" class="md-nav__link">
+    <span class="md-ellipsis">
+      Key features
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#use-cases" class="md-nav__link">
+    <span class="md-ellipsis">
+      Use cases
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#links" class="md-nav__link">
+    <span class="md-ellipsis">
+      Links
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
   
 </nav>
                   </div>
@@ -2808,9 +2861,71 @@
   
 
 
-  <h1>Home</h1>
-
-<p><meta http-equiv="refresh" content="0; url=/about/"></p>
+<h1 id="about-greenmask">About Greenmask<a class="headerlink" href="#about-greenmask" title="Permanent link">&para;</a></h1>
+<h2 id="dump-anonymization-and-synthetic-data-generation-tool">Dump anonymization and synthetic data generation tool<a class="headerlink" href="#dump-anonymization-and-synthetic-data-generation-tool" title="Permanent link">&para;</a></h2>
+<p><strong>Greenmask</strong> is a powerful open-source utility that is designed for logical database backup dumping,
+anonymization, synthetic data generation and restoration. It has ported PostgreSQL libraries, making it reliable.
+It is stateless and does not require any changes to your database schema. It is designed to be highly customizable and
+backward-compatible with existing PostgreSQL utilities, fast and reliable.</p>
+<h2 id="key-features">Key features<a class="headerlink" href="#key-features" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong><a href="built_in_transformers/transformation_engines/#hash-engine">Deterministic transformers</a></strong>
+  — deterministic approach to data transformation based on the hash
+  functions. This ensures that the same input data will always produce the same output data. Almost each transformer
+  supports either <code>random</code> or <code>hash</code> engine making it universal for any use case.</li>
+<li><strong><a href="built_in_transformers/dynamic_parameters/">Dynamic parameters</a></strong> — almost each
+  transformer supports dynamic parameters, allowing to parametrize the
+  transformer dynamically from the table column value. This is helpful for resolving the functional dependencies
+  between columns and satisfying the constraints.</li>
+<li><strong><a href="commands/validate/">Transformation validation and easy maintainable</a></strong> - During
+  configuration process, Greenmask provides validation
+  warnings, data transformation diff and schema diff features, allowing you to monitor and maintain transformations
+  effectively
+  throughout the software lifecycle. Schema diff helps to avoid data leakage when schema changed.</li>
+<li><strong><a href="configuration/?h=partition#dump-section">Partitioned tables transformation inheritance</a></strong>
+  — Define transformation configurations once and apply them to all
+  partitions within partitioned tables (using <code>apply_for_inherited</code> parameter), simplifying the anonymization process.</li>
+<li><strong>Stateless</strong> - Greenmask operates as a logical dump and does not impact your existing database schema.</li>
+<li><strong>Cross-platform</strong> - Can be easily built and executed on any platform, thanks to its Go-based architecture,
+  which eliminates platform dependencies.</li>
+<li><strong>Database type safe</strong> - Ensures data integrity by validating data and utilizing the database driver for
+  encoding and decoding operations. This approach guarantees the preservation of data formats.</li>
+<li><strong>Backward compatible</strong> - It fully supports the same features and protocols as existing vanilla PostgreSQL utilities.
+  Dumps created by Greenmask can be successfully restored using the pg_restore utility.</li>
+<li><strong>Extensible</strong> - Users have the flexibility
+  to <a href="built_in_transformers/standard_transformers/cmd/">implement domain-based transformations</a>
+  in any programming language or
+  use <a href="built_in_transformers/advanced_transformers/">predefined templates</a>.</li>
+<li><strong>Integrable</strong> - Integrate seamlessly into your CI/CD system for automated database anonymization and
+  restoration.</li>
+<li><strong>Parallel execution</strong> - Take advantage of parallel dumping and restoration, significantly reducing the time required
+  to deliver results.</li>
+<li><strong>Provide variety of storages</strong> - offers a variety of storage options for local and remote data storage,
+  including directories and S3-like storage solutions.</li>
+<li><strong><a href="commands/dump/?h=pgzip#pgzip-compression">Pgzip support for faster compression</a></strong> — by
+  setting <code>--pgzip</code>, it can speeds up the dump and restoration
+  processes through parallel compression.</li>
+</ul>
+<h2 id="use-cases">Use cases<a class="headerlink" href="#use-cases" title="Permanent link">&para;</a></h2>
+<p>Greenmask is ideal for various scenarios, including:</p>
+<ul>
+<li><strong>Backup and restoration</strong>. Use Greenmask for your daily routines involving logical backup dumping and restoration. It
+  seamlessly handles tasks like table restoration after truncation. Its functionality closely mirrors that of pg_dump
+  and pg_restore, making it a straightforward replacement.</li>
+<li><strong>Anonymization, transformation, and data masking</strong>. Employ Greenmask for anonymizing, transforming, and masking
+  backups, especially when setting up a staging environment or for analytical purposes. It simplifies the deployment of
+  a pre-production environment with consistently anonymized data, facilitating faster time-to-market in the development
+  lifecycle.</li>
+</ul>
+<h2 id="links">Links<a class="headerlink" href="#links" title="Permanent link">&para;</a></h2>
+<ul>
+<li><a href="https://github.com/orgs/GreenmaskIO/projects/6">Greenmask Roadmap</a></li>
+<li><a href="mailto:support@greenmask.io">Email</a></li>
+<li><a href="https://twitter.com/GreenmaskIO">Twitter</a></li>
+<li><a href="https://t.me/greenmask_community">Telegram</a></li>
+<li><a href="https://discord.gg/tAJegUKSTB">Discord</a></li>
+<li><a href="https://hub.docker.com/r/greenmask/greenmask">DockerHub</a></li>
+</ul>
 
 
 
