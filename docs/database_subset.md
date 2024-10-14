@@ -167,7 +167,7 @@ section.
 !!! info
 
      If you find any issues related to the code or greenmask is not working as expected, do not hesitate to contact us 
-     [directly](about.md#links) or by creating an [issue in the repository](https://github.com/GreenmaskIO/greenmask/issues).
+     [directly](index.md#links) or by creating an [issue in the repository](https://github.com/GreenmaskIO/greenmask/issues).
 
 ### ERROR: column reference "id" is ambiguous
 
