@@ -1,4 +1,4 @@
-site_name: Greenmask — PostgreSQL masking and obfuscation tool
+site_name: Greenmask — PostgreSQL database anonymization and synthetic data generation tool
 
 # Theme
 theme:
@@ -43,8 +43,6 @@ markdown_extensions:
   - tables
 
 nav:
-  - Home:
-      - Home: index.md
   - Documentation:
       - Architecture: architecture.md
       - Playground: playground.md
@@ -124,6 +122,8 @@ nav:
                   - built_in_transformers/advanced_transformers/custom_functions/index.md
                   - Core custom functions: built_in_transformers/advanced_transformers/custom_functions/core_functions.md
                   - Faker function: built_in_transformers/advanced_transformers/custom_functions/faker_function.md
+
+      - About: about.md
   - Release notes:
       - Greenmask 0.2.0: release_notes/greenmask_0_2_0.md
       - Greenmask 0.2.0b2: release_notes/greenmask_0_2_0_b2.md
@@ -147,18 +147,51 @@ nav:
 
 repo_url: https://github.com/GreenmaskIO/greenmask
 repo_name: GreenmaskIO/greenmask
-site_url: https://greenmask.io/
+site_url: https://docs.greenmask.io/
 copyright: Copyright &copy; 2024 Greenmask
 
 
 extra:
+  consent:
+    title: Cookie consent
+    description: >-
+      We use cookies to recognize your repeated visits and preferences, as well
+      as to measure the effectiveness of our documentation and whether users
+      find what they're searching for. With your consent, you're helping us to
+      make our documentation better.
+  analytics:
+    provider: google
+    property: G-1LGGK7P1GD
+
+    feedback:
+      title: Was this page helpful?
+      ratings:
+        - icon: material/emoticon-happy-outline
+          name: This page was helpful
+          data: 1
+          note: >-
+            Thanks for your feedback!
+        - icon: material/emoticon-sad-outline
+          name: This page could be improved
+          data: 0
+          note: >-
+            Thanks for your feedback! Help us improve this page by using our feedback form
+            <iframe 
+              src="https://docs.google.com/forms/d/e/1FAIpQLSf6ENCSYImgNa3bNlD1S4ln8AxTVASCt_doTAC2P4Po79ffvA/viewform?embedded=true" 
+              width="640" 
+              height="447" 
+              frameborder="0" 
+              marginheight="0" 
+              marginwidth="0">Loading…</iframe>
+
+
   version:
     provider: mike
   social:
     - icon: fontawesome/brands/x-twitter
       link: https://twitter.com/GreenmaskIO
     - icon: fontawesome/brands/discord
-      link: https://discord.gg/97AKHdGD
+      link: https://discord.com/invite/rKBKvDECfd
     - icon: fontawesome/brands/github
       link: https://github.com/GreenmaskIO/greenmask
 
