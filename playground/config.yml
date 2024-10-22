@@ -26,7 +26,7 @@ dump:
       transformers: # List of transformers to apply
         - name: "NoiseDate" # name of transformers
           params: # Transformer parameters
-            ratio: "10 year 9 mon 1 day"
+            max_ratio: "10 year 9 mon 1 day"
             column: "birthdate" # Column parameter - this transformer affects scheduled_departure column
 
 restore:
