@@ -19,6 +19,8 @@ import (
 	"encoding/hex"
 	"fmt"
 	"slices"
+
+	"github.com/rs/zerolog/log"
 )
 
 const (
@@ -27,15 +29,6 @@ const (
 	InfoValidationSeverity    = "info"
 	DebugValidationSeverity   = "debug"
 )
-
-// deprecated
-type Trace struct {
-	SchemaName      string `json:"schemaName,omitempty"`
-	TableName       string `json:"tableName,omitempty"`
-	TransformerName string `json:"transformerName,omitempty"`
-	ParameterName   string `json:"parameterName,omitempty"`
-	Msg             string `json:"msg,omitempty"`
-}
 
 type ValidationWarnings []*ValidationWarning
 
@@ -48,7 +41,6 @@ func (re ValidationWarnings) IsFatal() bool {
 type ValidationWarning struct {
 	Msg      string         `json:"msg,omitempty"`
 	Severity string         `json:"severity,omitempty"`
-	Trace    *Trace         `json:"trace,omitempty"`
 	Meta     map[string]any `json:"meta,omitempty"`
 	Hash     string         `json:"hash"`
 }
@@ -80,11 +72,6 @@ func (re *ValidationWarning) AddMeta(key string, value any) *ValidationWarning {
 	return re
 }
 
-func (re *ValidationWarning) SetTrace(value *Trace) *ValidationWarning {
-	re.Trace = value
-	return re
-}
-
 func (re *ValidationWarning) MakeHash() {
 	var meta string
 	keys := make([]string, 0, len(re.Meta))
@@ -101,4 +88,29 @@ func (re *ValidationWarning) MakeHash() {
 
 	hash := md5.Sum([]byte(signature))
 	re.Hash = hex.EncodeToString(hash[:])
+}
+
+func PrintValidationWarnings(warns ValidationWarnings, resolvedWarnings []string, printAll bool) error {
+	// TODO: Implement warnings hook, such as logging and HTTP sender
+	for _, w := range warns {
+		w.MakeHash()
+		if idx := slices.Index(resolvedWarnings, w.Hash); idx != -1 {
+			log.Debug().Str("hash", w.Hash).Msg("resolved warning has been excluded")
+			if w.Severity == ErrorValidationSeverity {
+				return fmt.Errorf("warning with hash %s cannot be excluded because it is an error", w.Hash)
+			}
+			continue
+		}
+
+		if w.Severity == ErrorValidationSeverity {
+			// The warnings with error severity must be printed anyway
+			log.Error().Any("ValidationWarning", w).Msg("")
+		} else {
+			// Print warnings with severity level lower than ErrorValidationSeverity only if requested
+			if printAll {
+				log.Warn().Any("ValidationWarning", w).Msg("")
+			}
+		}
+	}
+	return nil
 }

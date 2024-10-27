@@ -52,6 +52,7 @@ func TestRegexpReplaceTransformer_Transform2(t *testing.T) {
 				driver,
 				tt.params,
 				nil,
+				"",
 			)
 			require.NoError(t, err)
 			require.Empty(t, warnings)

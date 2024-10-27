@@ -46,6 +46,7 @@ type Table struct {
 	Driver               *toolkit.Driver
 	Scores               int64
 	SubsetConds          []string
+	When                 string
 }
 
 func (t *Table) HasCustomTransformer() bool {

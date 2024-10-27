@@ -44,6 +44,7 @@ func TestJsonTransformer_Transform(t *testing.T) {
 			]`),
 		},
 		nil,
+		"",
 	)
 	require.NoError(t, err)
 	assert.Empty(t, warnings)
@@ -86,6 +87,7 @@ func TestJsonTransformer_Transform_with_template(t *testing.T) {
 			"operations": opsData,
 		},
 		nil,
+		"",
 	)
 	require.NoError(t, err)
 	assert.Empty(t, warnings)
@@ -130,6 +132,7 @@ func TestJsonTransformer_Transform_null(t *testing.T) {
 			"keep_null":  toolkit.ParamsValue("false"),
 		},
 		nil,
+		"",
 	)
 	require.NoError(t, err)
 	assert.Empty(t, warnings)

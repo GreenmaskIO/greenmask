@@ -37,6 +37,7 @@ func TestSetNullTransformer_Transform(t *testing.T) {
 			"column": toolkit.ParamsValue(columnName),
 		},
 		nil,
+		"",
 	)
 	require.NoError(t, err)
 	assert.Empty(t, warnings)

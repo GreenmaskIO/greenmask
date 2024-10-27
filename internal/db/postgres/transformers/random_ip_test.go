@@ -69,6 +69,7 @@ func TestRandomIpTransformer_Transform_random_dynamic(t *testing.T) {
 				driver,
 				tt.params,
 				tt.dynamicParams,
+				"",
 			)
 			require.NoError(t, err)
 			require.Empty(t, warnings)

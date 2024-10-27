@@ -47,7 +47,7 @@ func (jc *JsonContext) GetColumnValue(name string) (any, error) {
 }
 
 func (jc *JsonContext) GetColumnRawValue(name string) (any, error) {
-	return jc.rc.GetRawColumnValue(name)
+	return jc.rc.GetColumnRawValue(name)
 }
 
 func (jc *JsonContext) EncodeValueByColumn(name string, v any) (any, error) {

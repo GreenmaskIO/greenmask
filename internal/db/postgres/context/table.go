@@ -124,7 +124,7 @@ func validateAndBuildTablesConfig(
 			// InitTransformation toolkit
 			if len(tableCfg.Transformers) > 0 {
 				for _, tc := range tableCfg.Transformers {
-					transformer, initWarnings, err := initTransformer(ctx, driver, tc, registry, types)
+					transformer, initWarnings, err := initTransformer(ctx, driver, tc, registry)
 					if len(initWarnings) > 0 {
 						for _, w := range initWarnings {
 							// Enriching the tables context into meta
@@ -155,6 +155,7 @@ func validateAndBuildTablesConfig(
 func getTable(ctx context.Context, tx pgx.Tx, t *domains.Table) ([]*entries.Table, toolkit.ValidationWarnings, error) {
 	table := &entries.Table{
 		Table: &toolkit.Table{},
+		When:  t.When,
 	}
 	var warnings toolkit.ValidationWarnings
 	var tables []*entries.Table
@@ -204,6 +205,7 @@ func getTable(ctx context.Context, tx pgx.Tx, t *domains.Table) ([]*entries.Tabl
 				RootPtSchema: table.Schema,
 				RootPtName:   table.Name,
 				RootOid:      table.Oid,
+				When:         table.When,
 			}
 			if err = rows.Scan(&pt.Oid, &pt.Schema, &pt.Name); err != nil {
 				return nil, nil, fmt.Errorf("error scanning TableGetChildPatsQuery: %w", err)

@@ -16,6 +16,7 @@ package dumpers
 
 import (
 	"context"
+	"fmt"
 	"sync"
 
 	"golang.org/x/sync/errgroup"
@@ -25,20 +26,23 @@ import (
 	"github.com/greenmaskio/greenmask/pkg/toolkit"
 )
 
-type TransformationWindow struct {
+type asyncContext struct {
+	tc *utils.TransformerContext
+	ch chan struct{}
+}
+
+type transformationWindow struct {
 	affectedColumns map[string]struct{}
-	transformers    []utils.Transformer
-	chs             []chan struct{}
+	window          []*asyncContext
 	done            chan struct{}
 	wg              *sync.WaitGroup
 	eg              *errgroup.Group
 	r               *toolkit.Record
 	ctx             context.Context
-	size            int
 }
 
-func NewTransformationWindow(ctx context.Context, eg *errgroup.Group) *TransformationWindow {
-	return &TransformationWindow{
+func newTransformationWindow(ctx context.Context, eg *errgroup.Group) *transformationWindow {
+	return &transformationWindow{
 		affectedColumns: map[string]struct{}{},
 		done:            make(chan struct{}, 1),
 		wg:              &sync.WaitGroup{},
@@ -47,12 +51,11 @@ func NewTransformationWindow(ctx context.Context, eg *errgroup.Group) *Transform
 	}
 }
 
-func (tw *TransformationWindow) TryAdd(table *entries.Table, t utils.Transformer) bool {
+func (tw *transformationWindow) tryAdd(table *entries.Table, t *utils.TransformerContext) bool {
 
-	affectedColumn := t.GetAffectedColumns()
+	affectedColumn := t.Transformer.GetAffectedColumns()
 	if len(affectedColumn) == 0 {
-		if len(tw.transformers) == 0 {
-			tw.transformers = append(tw.transformers, t)
+		if len(tw.window) == 0 {
 			for _, c := range table.Columns {
 				tw.affectedColumns[c.Name] = struct{}{}
 			}
@@ -68,20 +71,20 @@ func (tw *TransformationWindow) TryAdd(table *entries.Table, t utils.Transformer
 		for _, name := range affectedColumn {
 			tw.affectedColumns[name] = struct{}{}
 		}
-		tw.transformers = append(tw.transformers, t)
 	}
 
-	ch := make(chan struct{}, 1)
-	tw.chs = append(tw.chs, ch)
-	tw.size++
+	tw.window = append(tw.window, &asyncContext{
+		tc: t,
+		ch: make(chan struct{}, 1),
+	})
 
 	return true
 }
 
-func (tw *TransformationWindow) Init() {
-	for idx, t := range tw.transformers {
-		ch := tw.chs[idx]
-		func(t utils.Transformer, ch chan struct{}) {
+// init - runs all transformers in the goroutines and waits for the ac.ch signal to run the transformer
+func (tw *transformationWindow) init() {
+	for _, ac := range tw.window {
+		func(ac *asyncContext) {
 			tw.eg.Go(func() error {
 				for {
 					select {
@@ -89,9 +92,9 @@ func (tw *TransformationWindow) Init() {
 						return tw.ctx.Err()
 					case <-tw.done:
 						return nil
-					case <-ch:
+					case <-ac.ch:
 					}
-					_, err := t.Transform(tw.ctx, tw.r)
+					_, err := ac.tc.Transformer.Transform(tw.ctx, tw.r)
 					if err != nil {
 						tw.wg.Done()
 						return err
@@ -99,26 +102,36 @@ func (tw *TransformationWindow) Init() {
 					tw.wg.Done()
 				}
 			})
-		}(t, ch)
+		}(ac)
 	}
 }
 
-func (tw *TransformationWindow) Done() {
+// close - closes the done channel to stop the transformers goroutines
+func (tw *transformationWindow) close() {
 	close(tw.done)
 }
 
-func (tw *TransformationWindow) Transform(ctx context.Context, r *toolkit.Record) (*toolkit.Record, error) {
-
-	tw.wg.Add(tw.size)
+// Transform - runs the transformation for the record in the window. This function checks the when
+// condition of the transformer and if true sends a signal to the transformer goroutine to run the transformation
+func (tw *transformationWindow) Transform(ctx context.Context, r *toolkit.Record) (*toolkit.Record, error) {
 	tw.r = r
-	for _, ch := range tw.chs {
+	for _, ac := range tw.window {
+		needTransform, err := ac.tc.EvaluateWhen(r)
+		if err != nil {
+			return nil, fmt.Errorf("error evaluating when condition: %w", err)
+		}
+		if !needTransform {
+			continue
+		}
+
+		tw.wg.Add(1)
 
 		select {
 		case <-ctx.Done():
 			return nil, ctx.Err()
 		case <-tw.ctx.Done():
 			return nil, tw.ctx.Err()
-		case ch <- struct{}{}:
+		case ac.ch <- struct{}{}:
 
 		}
 	}

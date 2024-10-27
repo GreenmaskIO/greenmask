@@ -104,6 +104,7 @@ func TestNoiseIntTransformer_Transform(t *testing.T) {
 				context.Background(),
 				driver, tt.params,
 				nil,
+				"",
 			)
 			require.NoError(t, err)
 			require.Empty(t, warnings)
