@@ -5,6 +5,7 @@ package toolkit
 
 import (
 	"fmt"
+	"unsafe"
 
 	"github.com/expr-lang/expr"
 	"github.com/expr-lang/expr/ast"
@@ -108,6 +109,7 @@ func compileCond(whenCond string, driver *Driver, meta map[string]any) (
 // column values by the column name. For instance if the column name is "name", the function __name will return
 // the value
 func newRecordContext(driver *Driver) (*RecordContext, []expr.Option) {
+	intSize := unsafe.Sizeof(int(0)) * 8
 	var funcs []expr.Option
 	rctx := NewRecordContext()
 	for _, c := range driver.Table.Columns {
@@ -128,6 +130,7 @@ func newRecordContext(driver *Driver) (*RecordContext, []expr.Option) {
 					case float32:
 						return float64(vv), nil
 					case int64:
+						raiseAnErrorIfSysIs32AndDriverReturns64(intSize)
 						return int(vv), nil
 					case int32:
 						return int(vv), nil
@@ -240,4 +243,13 @@ func patchRecordOp(node *ast.Node) {
 	log.Debug().Any("OriginalNode", node).Any("NewNode", newOp).Msg("patching record operation")
 	ast.Patch(node, newOp)
 
+}
+
+// raiseAnErrorIfSysIs32AndDriverReturns64 - raises an error if the system is 32 bit and the driver returns 64 bit
+// values. In 32-bit system int type is 32 bit but int 64 is 64 bit. In this case the int8 postgresql type cannot be
+// handled using int type in go because it cast to int32 and loses the data. This is limitation of the go expr library
+func raiseAnErrorIfSysIs32AndDriverReturns64(sysBytes uintptr) {
+	if sysBytes == 32 {
+		panic("go expr and pgx driver are not compatible to handle int8 postgresql type using int type in go")
+	}
 }
