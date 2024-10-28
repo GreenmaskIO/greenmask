@@ -40,43 +40,35 @@ sample databases included to help you try Greenmask without any additional actio
 
 ## Features
 
-* **[Deterministic transformers](https://docs.greenmask.io/latest/built_in_transformers/transformation_engines/#hash-engine)**
-  — deterministic approach to data transformation based on the hash
-  functions. This ensures that the same input data will always produce the same output data. Almost each transformer
-  supports either `random` or `hash` engine making it universal for any use case.
-* **[Dynamic parameters](https://docs.greenmask.io/latest/built_in_transformers/dynamic_parameters/)** — almost each
-  transformer supports dynamic parameters, allowing to parametrize the
-  transformer dynamically from the table column value. This is helpful for resolving the functional dependencies
-  between columns and satisfying the constraints.
-* **[Transformation validation and easy maintainable](https://docs.greenmask.io/latest/commands/validate/)** - During
-  configuration process, Greenmask provides validation
-  warnings, data transformation diff and schema diff features, allowing you to monitor and maintain transformations
-  effectively
-  throughout the software lifecycle. Schema diff helps to avoid data leakage when schema changed.
+* **[Deterministic transformers](https://docs.greenmask.io/latest/built_in_transformers/transformation_engines/#hash-engine)** — Uses hash functions to ensure consistent output for the same input. Most transformers support both `random` and
+  `hash` engines, offering flexibility for various use cases.
+* **[Dynamic parameters](https://docs.greenmask.io/latest/built_in_transformers/dynamic_parameters/)** — most
+  transformers support dynamic parameters, allowing them to adapt based on table column values. This feature helps
+  manage dependencies between columns and meet constraints effectively.
+* **[Transformation Condition](https://docs.greenmask.io/latest/built_in_transformers/standard_transformers/condition/)** —
+  applies the transformation only when a specified condition is met, making it useful for targeting specific rows.
+* **[Transformation validation and easy maintenance](https://docs.greenmask.io/latest/commands/validate/)** — Greenmask
+  provides validation warnings, data transformation diffs, and schema diffs during configuration, enabling effective
+  monitoring and maintenance of transformations. The schema diff feature helps prevent data leakage when the schema
+  changes.
 * **[Partitioned tables transformation inheritance](https://docs.greenmask.io/latest/configuration/?h=partition#dump-section)**
-  — Define transformation configurations once and apply them to all
-  partitions within partitioned tables (using `apply_for_inherited` parameter), simplifying the anonymization process.
-* **Stateless** - Greenmask operates as a logical dump and does not impact your existing database schema.
-* **Cross-platform** - Can be easily built and executed on any platform, thanks to its Go-based architecture,
+  — Define transformation configurations once and apply them across all partitions within partitioned tables (using the
+  `apply_for_inherited` parameter), streamlining the anonymization process.
+* **Stateless** — Greenmask operates as a logical dump and does not impact your existing database schema.
+* **Cross-platform** — Can be easily built and executed on any platform, thanks to its Go-based architecture,
   which eliminates platform dependencies.
-* **Database type safe** - Ensures data integrity by validating data and utilizing the database driver for
-  encoding and decoding operations. This approach guarantees the preservation of data formats.
-* **Backward compatible** - It fully supports the same features and protocols as existing vanilla PostgreSQL utilities.
-  Dumps created by Greenmask can be successfully restored using the pg_restore utility.
-* **Extensible** - Users have the flexibility
+* **Database type safe** — Ensures data integrity by validating data and using the database driver for encoding and
+  decoding operations, preserving accurate data formats.
+* **Backward compatible** — Fully supports the same features and protocols as standard PostgreSQL utilities. Dumps
+  created by Greenmask can be seamlessly restored using the `pg_restore` utility.
+* **Extensible** — Users have the flexibility
   to [implement domain-based transformations](https://docs.greenmask.io/latest/built_in_transformers/standard_transformers/cmd/)
   in any programming language or
   use [predefined templates](https://docs.greenmask.io/latest/built_in_transformers/advanced_transformers/).
-* **Integrable** - Integrate seamlessly into your CI/CD system for automated database anonymization and
-  restoration.
-* **Parallel execution** - Take advantage of parallel dumping and restoration, significantly reducing the time required
-  to deliver results.
-* **Provide variety of storages** - offers a variety of storage options for local and remote data storage,
-  including directories and S3-like storage solutions.
-* **[Pgzip support for faster compression](https://docs.greenmask.io/latest/commands/dump/?h=pgzip#pgzip-compression)** — by
-  setting `--pgzip`, it can speeds up the dump and restoration
-  processes through parallel compression.
-
+* **Parallel execution** — Enables parallel dumping and restoration to significantly speed up results.
+* **Variety of storages** — Supports both local and remote storage, including directories and S3-compatible solutions.
+* **[Pgzip support for faster compression](https://docs.greenmask.io/latest/commands/dump/?h=pgzip#pgzip-compression)** — Speeds up dump and restoration processes with parallel compression 
+  by setting `--pgzip`.
 
 ## Use Cases
 
@@ -92,24 +84,20 @@ Greenmask is ideal for various scenarios, including:
 
 ### General Information
 
-It is evident that the most appropriate approach for executing logical backup dumping and restoration is by leveraging
-the core PostgreSQL utilities, specifically pg_dump and pg_restore. **Greenmask** has been purposefully designed to
-align with PostgreSQL's native utilities, ensuring compatibility. Greenmask primarily handles data dumping
-operations independently and delegates the responsibilities of schema dumping and restoration to pg_dump and pg_restore,
-maintaining seamless integration with PostgreSQL's standard tools.
+The best approach for logical backup dumping and restoration is to use core PostgreSQL utilities, specifically pg_dump
+and pg_restore. Greenmask is designed to align with these native tools, ensuring full compatibility. It independently
+manages data dumping while delegating schema dumping and restoration to `pg_dump` and `pg_restore`, ensuring smooth
+integration with PostgreSQL’s standard workflow.
 
-#### Backup and Process
-
-Greenmask uses the **directory format** of _pg_dump_ and _pg_restore_. This format is particularly suitable for
-parallel execution and partial restoration, and it includes clear metadata files that aid in determining the backup and
-restoration steps. Greenmask has been optimized to work seamlessly with remote storage systems and anonymization
-procedures.
+Greenmask utilizes the directory format of `pg_dump` and `pg_restore`, ideal for parallel execution and partial restoration.
+This format includes metadata files to guide backup and restoration steps.
 
 #### Storage Options
 
-* **s3** - This option supports any S3-like storage system, including AWS S3, making it versatile and adaptable to
-  various cloud-based storage solutions.
-* **directory** - This is the standard choice, representing the ordinary filesystem directory for local storage.
+* **[s3](https://docs.greenmask.io/latest/configuration/#__tabbed_1_2)** - Supports any S3-compatible storage system,
+  including AWS S3, offering flexibility across different cloud storage solutions.
+* **[directory](https://docs.greenmask.io/latest/configuration/#__tabbed_1_1)** - This is the default option,
+  representing a standard filesystem directory for local storage.
 
 #### Data Anonymization and Validation
 
@@ -125,16 +113,10 @@ If your table schema relies on functional dependencies between columns, you can 
 parameters, you can resolve such as created_at and updated_at cases, where the
 updated_at must be greater or equal than the created_at.
 
-If you need to implement custom logic imperatively use
+If you need to implement custom logic imperatively
+use [Cmd](https://docs.greenmask.io/latest/built_in_transformers/standard_transformers/cmd/) or
 [TemplateRecord](https://docs.greenmask.io/latest/built_in_transformers/advanced_transformers/template_record/) or
 [Template](https://docs.greenmask.io/latest/built_in_transformers/advanced_transformers/template/) transformers.
-
-Greenmask provides a framework for creating your custom transformers, which can be reused efficiently. These
-transformers can be seamlessly integrated without requiring recompilation, thanks to the PIPE (stdin/stdout)
-interaction.
-
-Furthermore, Greenmask's architecture is designed to be highly extensible, making it possible to introduce other
-interaction protocols, such as HTTP or Socket, for conducting anonymization procedures.
 
 #### PostgreSQL Version Compatibility
 
@@ -148,7 +130,6 @@ interaction protocols, such as HTTP or Socket, for conducting anonymization proc
 * [Telegram](https://t.me/greenmask_community)
 * [Discord](https://discord.com/invite/rKBKvDECfd)
 * [DockerHub](https://hub.docker.com/r/greenmask/greenmask)
-
 
 ## References
 
