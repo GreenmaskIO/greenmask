@@ -242,7 +242,7 @@ func (c *Component) areCyclesLinked(i, j int) bool {
 	return false
 }
 
-func (c *Component) getComponentKeys() []string {
+func (c *Component) getComponentKeys() []string { //nolint: unused
 	if !c.hasCycle() {
 		return c.getOneTable().PrimaryKey
 	}

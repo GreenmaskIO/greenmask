@@ -1,7 +1,6 @@
 package transformers
 
 import (
-	"context"
 	"encoding/binary"
 	"fmt"
 	"time"
@@ -72,12 +71,10 @@ func NewNoiseTimestamp(minRatio, maxRatio time.Duration, truncatePart string, li
 	}, nil
 }
 
-func (d *NoiseTimestamp) Transform(ctx context.Context, v time.Time) (time.Time, error) {
+func (d *NoiseTimestamp) Transform(l *NoiseTimestampLimiter, v time.Time) (time.Time, error) {
 	limiter := d.limiter
-	limiterAny := ctx.Value("limiter")
-
-	if limiterAny != nil {
-		limiter = limiterAny.(*NoiseTimestampLimiter)
+	if l != nil {
+		limiter = l
 	}
 
 	genBytes, err := d.generator.Generate([]byte(v.String()))
@@ -87,14 +84,14 @@ func (d *NoiseTimestamp) Transform(ctx context.Context, v time.Time) (time.Time,
 
 	negative := genBytes[0]%2 == 0
 	offset := int64(binary.LittleEndian.Uint64(genBytes[1:9])) % d.distance
-	nano := int64(binary.LittleEndian.Uint64(genBytes[9:]) % 1000000000)
-
 	if offset < 0 {
 		offset = -offset
 	}
-	if nano < 0 {
-		nano = -nano
-	}
+	// TODO: Consider how to add nanoseconds
+	//nano := int64(binary.LittleEndian.Uint64(genBytes[9:]) % 1000000000)
+	//if nano < 0 {
+	//	nano = -nano
+	//}
 
 	sec := d.minRatio + offset
 

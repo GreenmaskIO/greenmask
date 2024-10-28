@@ -18,7 +18,7 @@ func NewStaticParameterContext(d *Driver, linkedColumnName string) *StaticParame
 }
 
 func (spc *StaticParameterContext) GetColumnType(name string) (string, error) {
-	return spc.GetColumnType(name)
+	return spc.rc.GetColumnType(name)
 }
 
 func (spc *StaticParameterContext) EncodeValueByColumn(name string, v any) (any, error) {

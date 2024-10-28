@@ -50,7 +50,7 @@ func BootstrapCustomTransformers(ctx context.Context, registry *utils.Transforme
 		}
 
 		if ctd.Driver == nil {
-			ctd.Driver = &(*toolkit.DefaultRowDriverParams)
+			ctd.Driver = &toolkit.DefaultRowDriverParams
 		}
 
 		if ctd.AutoDiscover {

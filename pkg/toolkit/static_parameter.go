@@ -295,7 +295,6 @@ func scanValue(driver *Driver, definition *ParameterDefinition, rawValue ParamsV
 		if err != nil {
 			return fmt.Errorf("unable to perform custom unmarshaller: %w", err)
 		}
-		res = value
 		return ScanPointer(value, dest)
 	} else if definition.CastDbType != "" || linkedColumnParameter != nil {
 
@@ -324,7 +323,6 @@ func scanValue(driver *Driver, definition *ParameterDefinition, rawValue ParamsV
 			if err := driver.ScanValueByTypeOid(typeOid, rawValue, dest); err != nil {
 				return fmt.Errorf("unable to scan parameter via Driver: %w", err)
 			}
-			res = dest
 			return nil
 		}
 	}
@@ -356,7 +354,6 @@ func scanValue(driver *Driver, definition *ParameterDefinition, rawValue ParamsV
 		if err := json.Unmarshal(rawValue, dest); err != nil {
 			return fmt.Errorf("unable to unmarshal value: %w", err)
 		}
-		res = &dest
 		return nil
 	}
 }

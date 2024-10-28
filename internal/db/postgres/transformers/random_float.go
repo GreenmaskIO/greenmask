@@ -96,7 +96,7 @@ type FloatTransformer struct {
 	engineParam   toolkit.Parameterizer
 	decimalParam  toolkit.Parameterizer
 
-	transform func(context.Context, []byte) (float64, error)
+	transform func([]byte) (float64, error)
 }
 
 func NewFloatTransformer(ctx context.Context, driver *toolkit.Driver, parameters map[string]toolkit.Parameterizer) (utils.Transformer, toolkit.ValidationWarnings, error) {
@@ -198,7 +198,9 @@ func NewFloatTransformer(ctx context.Context, driver *toolkit.Driver, parameters
 		dynamicMode: dynamicMode,
 		floatSize:   floatSize,
 
-		transform: t.Transform,
+		transform: func(bytes []byte) (float64, error) {
+			return t.Transform(nil, bytes)
+		},
 	}, nil, nil
 }
 
@@ -206,18 +208,18 @@ func (rit *FloatTransformer) GetAffectedColumns() map[int]string {
 	return rit.affectedColumns
 }
 
-func (rit *FloatTransformer) Init(ctx context.Context) error {
+func (rit *FloatTransformer) Init(_ context.Context) error {
 	if rit.dynamicMode {
 		rit.transform = rit.dynamicTransform
 	}
 	return nil
 }
 
-func (rit *FloatTransformer) Done(ctx context.Context) error {
+func (rit *FloatTransformer) Done(_ context.Context) error {
 	return nil
 }
 
-func (rit *FloatTransformer) dynamicTransform(ctx context.Context, v []byte) (float64, error) {
+func (rit *FloatTransformer) dynamicTransform(v []byte) (float64, error) {
 
 	var minVal, maxVal float64
 	err := rit.minParam.Scan(&minVal)
@@ -234,15 +236,14 @@ func (rit *FloatTransformer) dynamicTransform(ctx context.Context, v []byte) (fl
 	if err != nil {
 		return 0, fmt.Errorf("error creating limiter in dynamic mode: %w", err)
 	}
-	ctx = context.WithValue(ctx, "limiter", limiter)
-	res, err := rit.t.Transform(ctx, v)
+	res, err := rit.t.Transform(limiter, v)
 	if err != nil {
 		return 0, fmt.Errorf("error generating float value: %w", err)
 	}
 	return res, nil
 }
 
-func (rit *FloatTransformer) Transform(ctx context.Context, r *toolkit.Record) (*toolkit.Record, error) {
+func (rit *FloatTransformer) Transform(_ context.Context, r *toolkit.Record) (*toolkit.Record, error) {
 	val, err := r.GetRawColumnValueByIdx(rit.columnIdx)
 	if err != nil {
 		return nil, fmt.Errorf("unable to scan value: %w", err)
@@ -251,7 +252,7 @@ func (rit *FloatTransformer) Transform(ctx context.Context, r *toolkit.Record) (
 		return r, nil
 	}
 
-	newVal, err := rit.transform(ctx, val.Data)
+	newVal, err := rit.transform(val.Data)
 	if err != nil {
 		return nil, err
 	}

@@ -20,7 +20,6 @@ import (
 //			   allows to scan not pointer value into pointer receiver
 
 type DynamicParameterContext struct {
-	//columnType string
 	column       *Column
 	linkedColumn *Column
 	rc           *RecordContext
@@ -39,10 +38,6 @@ func NewDynamicParameterContext(column *Column) *DynamicParameterContext {
 
 func (dpc *DynamicParameterContext) setLinkedColumn(linkedColumn *Column) {
 	dpc.linkedColumn = linkedColumn
-}
-
-func (dpc *DynamicParameterContext) clean() {
-	dpc.rc.Clean()
 }
 
 func (dpc *DynamicParameterContext) setRecord(r *Record) {
@@ -366,13 +361,10 @@ func (dp *DynamicParameter) Value() (value any, err error) {
 		return nil, fmt.Errorf("erro getting raw column value: %w", err)
 	}
 
-	var usedDefaultValue bool
-
 	if v.IsNull {
 		if !dp.hasDefaultValue {
 			return nil, fmt.Errorf("received NULL value from dynamic parameter")
 		}
-		usedDefaultValue = true
 		if dp.defaultValueGot == nil {
 			res, err := getValue(dp.driver, dp.definition, dp.rawDefaultValue, dp.linkedColumnParameter)
 			if err != nil {
@@ -385,7 +377,7 @@ func (dp *DynamicParameter) Value() (value any, err error) {
 
 	rawValue := v.Data
 
-	if dp.tmpl != nil && !usedDefaultValue {
+	if dp.tmpl != nil {
 		if err = dp.tmpl.Execute(dp.buf, dp.tmplCtx); err != nil {
 			log.Debug().
 				Err(err).
@@ -399,7 +391,7 @@ func (dp *DynamicParameter) Value() (value any, err error) {
 			return nil, fmt.Errorf("error executing cast template: %w", err)
 		}
 		rawValue = dp.buf.Bytes()
-	} else if dp.castToFunc != nil && !usedDefaultValue {
+	} else if dp.castToFunc != nil {
 		rawValue, err = dp.castToFunc(dp.driver, rawValue)
 		if err != nil {
 			log.Debug().

@@ -80,7 +80,7 @@ type NoiseIntTransformer struct {
 	minParam      toolkit.Parameterizer
 	engineParam   toolkit.Parameterizer
 
-	transform func(context.Context, int64) (int64, error)
+	transform func(int64) (int64, error)
 }
 
 func NewNoiseIntTransformer(ctx context.Context, driver *toolkit.Driver, parameters map[string]toolkit.Parameterizer) (utils.Transformer, toolkit.ValidationWarnings, error) {
@@ -180,7 +180,9 @@ func NewNoiseIntTransformer(ctx context.Context, driver *toolkit.Driver, paramet
 		minRatioParam: minRatioParam,
 		maxRatioParam: maxRatioParam,
 		engineParam:   engineParam,
-		transform:     t.Transform,
+		transform: func(i int64) (int64, error) {
+			return t.Transform(nil, i)
+		},
 	}, nil, nil
 }
 
@@ -199,7 +201,7 @@ func (nit *NoiseIntTransformer) Done(ctx context.Context) error {
 	return nil
 }
 
-func (nit *NoiseIntTransformer) dynamicTransform(ctx context.Context, v int64) (int64, error) {
+func (nit *NoiseIntTransformer) dynamicTransform(v int64) (int64, error) {
 	minVal, maxVal, err := getMinAndMaxIntDynamicValueNoiseIntTrans(nit.intSize, nit.minParam, nit.maxParam)
 	if err != nil {
 		return 0, fmt.Errorf("unable to get min and max values: %w", err)
@@ -209,8 +211,7 @@ func (nit *NoiseIntTransformer) dynamicTransform(ctx context.Context, v int64) (
 	if err != nil {
 		return 0, fmt.Errorf("error creating limiter in dynamic mode: %w", err)
 	}
-	ctx = context.WithValue(ctx, "limiter", limiter)
-	res, err := nit.t.Transform(ctx, v)
+	res, err := nit.t.Transform(limiter, v)
 	if err != nil {
 		return 0, fmt.Errorf("error generating int value: %w", err)
 	}
@@ -227,7 +228,7 @@ func (nit *NoiseIntTransformer) Transform(ctx context.Context, r *toolkit.Record
 		return r, nil
 	}
 
-	res, err := nit.transform(ctx, val)
+	res, err := nit.transform(val)
 	if err != nil {
 		return nil, fmt.Errorf("unable to transform value: %w", err)
 	}

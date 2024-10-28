@@ -6,9 +6,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/greenmaskio/greenmask/internal/generators"
 	"github.com/rs/zerolog/log"
 	"github.com/stretchr/testify/require"
+
+	"github.com/greenmaskio/greenmask/internal/generators"
 )
 
 func TestMacAddress_Generate(t *testing.T) {
@@ -101,7 +102,7 @@ func TestMacAddress_Generate(t *testing.T) {
 			//g, err := generators.NewHash(tt.original, "sha1")
 			require.NoError(t, err)
 			err = tr.SetGenerator(g)
-
+			require.NoError(t, err)
 			var res []byte
 			res, err = tr.Generate(tt.original, tt.keepOriginalVendor, tt.castType, tt.managementType)
 			require.NoError(t, err)

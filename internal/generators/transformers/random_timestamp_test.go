@@ -1,7 +1,6 @@
 package transformers
 
 import (
-	"context"
 	"testing"
 	"time"
 
@@ -48,7 +47,7 @@ func TestTimestamp_Transform(t *testing.T) {
 	require.NoError(t, err)
 	err = tr.SetGenerator(gen)
 	require.NoError(t, err)
-	res, err := tr.Transform(context.Background(), []byte{})
+	res, err := tr.Transform(nil, []byte{})
 	require.NoError(t, err)
 	log.Debug().
 		Str("minDate", minDate.String()).

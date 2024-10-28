@@ -21,7 +21,7 @@ const emailTransformerGeneratorSize = 64
 
 var emailTransformerRegexp = regexp.MustCompile(`^([a-zA-Z0-9_.+-]+)@([a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+)$`)
 
-var emailTransformerAllowedChars = []rune("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!#$%&'*+-/=?^_`{|}~.")
+//var emailTransformerAllowedChars = []rune("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!#$%&'*+-/=?^_`{|}~.")
 
 var EmailTransformerDefinition = utils.NewTransformerDefinition(
 	utils.NewTransformerProperties(
@@ -90,7 +90,6 @@ type EmailTransformer struct {
 	templetCtx               map[string]any
 	buf                      *bytes.Buffer
 	originalDomain           []byte
-	randomBytesBuf           []byte
 	hexEncodedRandomBytesBuf []byte
 	rctx                     *toolkit.RecordContext
 }

@@ -5,10 +5,8 @@ import (
 	"crypto/rand"
 	"encoding/binary"
 	"fmt"
-	"slices"
 
 	"github.com/greenmaskio/greenmask/internal/generators"
-	"github.com/greenmaskio/greenmask/pkg/toolkit"
 )
 
 const (
@@ -47,33 +45,27 @@ func getRandomBytesGen(size int) (generators.Generator, error) {
 	return generators.NewRandomBytes(seed, size), nil
 }
 
-func mergeParameters(commonParams, deterministicParams []*toolkit.ParameterDefinition) []*toolkit.ParameterDefinition {
-	res := slices.Clone(commonParams)
-	res = append(res, deterministicParams...)
-	return res
-}
-
-func composeGeneratorWithProjectedOutput(hashFunction string, salt []byte, outputLength int) (generators.Generator, error) {
-	switch hashFunction {
-	case Sha1HashFunction:
-		gen, err := generators.NewHash(salt, hashFunction)
-		if err != nil {
-			return nil, err
-		}
-		var hashSize int
-		switch outputLength {
-		case 16:
-			hashSize = generators.MurMurHash128Size
-		case 8:
-			hashSize = generators.MurMurHash64Size
-		case 4:
-			hashSize = generators.MurMurHash32Size
-		default:
-			return nil, fmt.Errorf("unexpeted outputLength %d", outputLength)
-		}
-		murmurGen := generators.NewMurmurHash(0, hashSize)
-		return generators.NewProjector(gen, murmurGen), nil
-	default:
-		return nil, fmt.Errorf("unknown hash function %s", hashFunction)
-	}
-}
+//func composeGeneratorWithProjectedOutput(hashFunction string, salt []byte, outputLength int) (generators.Generator, error) {
+//	switch hashFunction {
+//	case Sha1HashFunction:
+//		gen, err := generators.NewHash(salt, hashFunction)
+//		if err != nil {
+//			return nil, err
+//		}
+//		var hashSize int
+//		switch outputLength {
+//		case 16:
+//			hashSize = generators.MurMurHash128Size
+//		case 8:
+//			hashSize = generators.MurMurHash64Size
+//		case 4:
+//			hashSize = generators.MurMurHash32Size
+//		default:
+//			return nil, fmt.Errorf("unexpeted outputLength %d", outputLength)
+//		}
+//		murmurGen := generators.NewMurmurHash(0, hashSize)
+//		return generators.NewProjector(gen, murmurGen), nil
+//	default:
+//		return nil, fmt.Errorf("unknown hash function %s", hashFunction)
+//	}
+//}

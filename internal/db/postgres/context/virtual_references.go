@@ -81,7 +81,7 @@ func validateVirtualReference(tableIdx int, vr *domains.VirtualReference, tables
 				AddMeta("ReferenceIdx", idx).
 				AddMeta("ReferenceName", v.Name).
 				AddMeta("ReferenceSchema", v.Schema)
-			vrWarns = append(vrWarns, w)
+			res = append(res, w)
 			continue
 		}
 		pkT := tables[primaryKeyTableIdx]

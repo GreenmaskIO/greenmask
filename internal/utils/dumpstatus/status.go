@@ -49,6 +49,9 @@ func GetDumpStatusAndMetadata(ctx context.Context, st storages.Storager) (string
 	}
 
 	f, err := st.GetObject(ctx, cmd.HeartBeatFileName)
+	if err != nil {
+		return "", nil, fmt.Errorf("failed to get heart beat file: %w", err)
+	}
 	defer f.Close()
 	data, err := io.ReadAll(f)
 	if err != nil {

@@ -1,7 +1,6 @@
 package transformers
 
 import (
-	"context"
 	"fmt"
 	"math"
 
@@ -55,13 +54,10 @@ func (f *RandomFloat64Transformer) SetGenerator(g generators.Generator) error {
 	return nil
 }
 
-func (f *RandomFloat64Transformer) Transform(ctx context.Context, original []byte) (float64, error) {
-
+func (f *RandomFloat64Transformer) Transform(l *Float64Limiter, original []byte) (float64, error) {
 	limiter := f.limiter
-	limiterAny := ctx.Value("limiter")
-
-	if limiterAny != nil {
-		limiter = limiterAny.(*Float64Limiter)
+	if l != nil {
+		limiter = l
 	}
 
 	resBytes, err := f.generator.Generate(original)

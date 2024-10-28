@@ -18,10 +18,11 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/shopspring/decimal"
+
 	"github.com/greenmaskio/greenmask/internal/db/postgres/transformers/utils"
 	"github.com/greenmaskio/greenmask/internal/generators/transformers"
 	"github.com/greenmaskio/greenmask/pkg/toolkit"
-	"github.com/shopspring/decimal"
 )
 
 var NoiseNumericTransformerDefinition = utils.NewTransformerDefinition(
@@ -325,7 +326,7 @@ func getNoiseNumericLimiterForDynamicParameter(
 		return nil, err
 	}
 
-	if !requestedMinValue.Equal(decimal.NewFromInt(0)) || !requestedMinValue.Equal(decimal.NewFromInt(0)) {
+	if !requestedMinValue.Equal(decimal.NewFromInt(0)) || !requestedMaxValue.Equal(decimal.NewFromInt(0)) {
 		limiter, err = transformers.NewNoiseNumericLimiter(requestedMinValue, requestedMaxValue)
 		if err != nil {
 			return nil, err

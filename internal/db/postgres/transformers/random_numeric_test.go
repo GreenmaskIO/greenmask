@@ -9,6 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/greenmaskio/greenmask/internal/db/postgres/transformers/utils"
+	utils2 "github.com/greenmaskio/greenmask/internal/utils"
 	"github.com/greenmaskio/greenmask/pkg/toolkit"
 )
 
@@ -240,7 +241,7 @@ func TestBigIntTransformer_Transform_deterministic_dynamic(t *testing.T) {
 		},
 	}
 
-	ctx := context.WithValue(context.Background(), "salt", []byte("ffaacc"))
+	ctx := utils2.WithSalt(context.Background(), []byte("ffaacac"))
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

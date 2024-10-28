@@ -23,7 +23,6 @@ type RawRecordAttrs map[string]*RawValue
 
 type JsonRecordWithAttrNamesBinary struct {
 	idxToNames map[int]string
-	namesToIdx map[string]int
 	record     RawRecordAttrs
 }
 

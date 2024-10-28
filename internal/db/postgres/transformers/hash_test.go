@@ -215,7 +215,7 @@ func TestHashTransformer_Transform_multiple_iterations(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			defer record.Row.Encode()
+			defer record.Row.Encode() // nolint:errcheck
 
 			err = record.Row.Decode([]byte(tt.original))
 			require.NoError(t, err)

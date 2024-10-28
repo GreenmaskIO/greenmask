@@ -89,7 +89,7 @@ type NoiseFloatTransformer struct {
 	maxRatioParam toolkit.Parameterizer
 	minRatioParam toolkit.Parameterizer
 
-	transform func(context.Context, float64) (float64, error)
+	transform func(float64) (float64, error)
 }
 
 func NewNoiseFloatTransformer(ctx context.Context, driver *toolkit.Driver, parameters map[string]toolkit.Parameterizer) (utils.Transformer, toolkit.ValidationWarnings, error) {
@@ -195,7 +195,9 @@ func NewNoiseFloatTransformer(ctx context.Context, driver *toolkit.Driver, param
 		dynamicMode: dynamicMode,
 		floatSize:   floatSize,
 
-		transform:     t.Transform,
+		transform: func(f float64) (float64, error) {
+			return t.Transform(nil, f)
+		},
 		maxRatioParam: maxRatioParam,
 		minRatioParam: minRatioParam,
 	}, nil, nil
@@ -216,7 +218,7 @@ func (nft *NoiseFloatTransformer) Done(ctx context.Context) error {
 	return nil
 }
 
-func (nft *NoiseFloatTransformer) dynamicTransform(ctx context.Context, v float64) (float64, error) {
+func (nft *NoiseFloatTransformer) dynamicTransform(v float64) (float64, error) {
 	minVal, maxVal, err := getMinAndMaxFloatDynamicValueNoiseIntTrans(nft.floatSize, nft.minParam, nft.maxParam)
 	if err != nil {
 		return 0, fmt.Errorf("unable to get min and max values: %w", err)
@@ -226,8 +228,7 @@ func (nft *NoiseFloatTransformer) dynamicTransform(ctx context.Context, v float6
 	if err != nil {
 		return 0, fmt.Errorf("error creating limiter in dynamic mode: %w", err)
 	}
-	ctx = context.WithValue(ctx, "limiter", limiter)
-	res, err := nft.t.Transform(ctx, v)
+	res, err := nft.t.Transform(limiter, v)
 	if err != nil {
 		return 0, fmt.Errorf("error generating int value: %w", err)
 	}
@@ -244,7 +245,7 @@ func (nft *NoiseFloatTransformer) Transform(ctx context.Context, r *toolkit.Reco
 		return r, nil
 	}
 
-	res, err := nft.transform(ctx, val)
+	res, err := nft.transform(val)
 	if err != nil {
 		return nil, fmt.Errorf("unable to transform value: %w", err)
 	}

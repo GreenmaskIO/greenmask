@@ -148,7 +148,7 @@ func (rdt *UnixTimestampTransformer) Init(ctx context.Context) error {
 	return nil
 }
 
-func (rdt *UnixTimestampTransformer) dynamicTransform(ctx context.Context, v []byte) (time.Time, error) {
+func (rdt *UnixTimestampTransformer) dynamicTransform(v []byte) (time.Time, error) {
 	var minIntVal, maxIntVal int64
 	var minVal, maxVal time.Time
 	err := rdt.minParam.Scan(&minIntVal)
@@ -168,15 +168,14 @@ func (rdt *UnixTimestampTransformer) dynamicTransform(ctx context.Context, v []b
 	if err != nil {
 		return time.Time{}, fmt.Errorf("error creating limiter in dynamic mode: %w", err)
 	}
-	ctx = context.WithValue(ctx, "limiter", limiter)
-	res, err := rdt.Timestamp.Transform(ctx, v)
+	res, err := rdt.Timestamp.Transform(limiter, v)
 	if err != nil {
 		return time.Time{}, fmt.Errorf("error generating timestamp value: %w", err)
 	}
 	return res, nil
 }
 
-func (rdt *UnixTimestampTransformer) Transform(ctx context.Context, r *toolkit.Record) (*toolkit.Record, error) {
+func (rdt *UnixTimestampTransformer) Transform(_ context.Context, r *toolkit.Record) (*toolkit.Record, error) {
 	valAny, err := r.GetRawColumnValueByIdx(rdt.columnIdx)
 	if err != nil {
 		return nil, fmt.Errorf("unable to scan value: %w", err)
@@ -184,7 +183,7 @@ func (rdt *UnixTimestampTransformer) Transform(ctx context.Context, r *toolkit.R
 	if valAny.IsNull && rdt.keepNull {
 		return r, nil
 	}
-	timeRes, err := rdt.transform(ctx, valAny.Data)
+	timeRes, err := rdt.transform(valAny.Data)
 	if err != nil {
 		return nil, err
 	}

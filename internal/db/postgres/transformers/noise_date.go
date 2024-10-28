@@ -19,8 +19,9 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/greenmaskio/greenmask/internal/generators/transformers"
 	"github.com/jackc/pgx/v5/pgtype"
+
+	"github.com/greenmaskio/greenmask/internal/generators/transformers"
 
 	"github.com/greenmaskio/greenmask/internal/db/postgres/transformers/utils"
 	"github.com/greenmaskio/greenmask/pkg/toolkit"
@@ -87,7 +88,6 @@ type NoiseDateTransformer struct {
 	t               *transformers.NoiseTimestamp
 	columnName      string
 	columnIdx       int
-	ratioVal        any
 	truncate        *string
 	affectedColumns map[int]string
 
@@ -99,7 +99,7 @@ type NoiseDateTransformer struct {
 	engineParam   toolkit.Parameterizer
 	truncateParam toolkit.Parameterizer
 
-	transform func(context.Context, time.Time) (time.Time, error)
+	transform func(time.Time) (time.Time, error)
 }
 
 type noiseTimestampMinMaxEncoder func(toolkit.Parameterizer, toolkit.Parameterizer) (*time.Time, *time.Time, error)
@@ -229,7 +229,9 @@ func NewNoiseDateTransformerBase(ctx context.Context, driver *toolkit.Driver, pa
 		truncate:        &truncate,
 		affectedColumns: affectedColumns,
 		columnIdx:       idx,
-		transform:       t.Transform,
+		transform: func(v time.Time) (time.Time, error) {
+			return t.Transform(nil, v)
+		},
 
 		columnParam:   columnParam,
 		maxRatioParam: maxRatioParam,
@@ -250,6 +252,9 @@ func (ndt *NoiseDateTransformer) GetAffectedColumns() map[int]string {
 }
 
 func (ndt *NoiseDateTransformer) Init(ctx context.Context) error {
+	if ndt.columnParam.IsDynamic() {
+		ndt.transform = ndt.dynamicTransform
+	}
 	return nil
 }
 
@@ -257,7 +262,7 @@ func (ndt *NoiseDateTransformer) Done(ctx context.Context) error {
 	return nil
 }
 
-func (ndt *NoiseDateTransformer) dynamicTransform(ctx context.Context, v time.Time) (time.Time, error) {
+func (ndt *NoiseDateTransformer) dynamicTransform(v time.Time) (time.Time, error) {
 	minVal := &time.Time{}
 	maxVal := &time.Time{}
 
@@ -287,8 +292,7 @@ func (ndt *NoiseDateTransformer) dynamicTransform(ctx context.Context, v time.Ti
 	if err != nil {
 		return time.Time{}, fmt.Errorf("error creating limiter in dynamic mode: %w", err)
 	}
-	ctx = context.WithValue(ctx, "limiter", limiter)
-	res, err := ndt.t.Transform(ctx, v)
+	res, err := ndt.t.Transform(limiter, v)
 	if err != nil {
 		return time.Time{}, fmt.Errorf("error generating timestamp value: %w", err)
 	}
@@ -306,7 +310,7 @@ func (ndt *NoiseDateTransformer) Transform(ctx context.Context, r *toolkit.Recor
 		return r, nil
 	}
 
-	res, err = ndt.transform(ctx, res)
+	res, err = ndt.transform(res)
 	if err != nil {
 		return nil, fmt.Errorf("unable to transform value: %w", err)
 	}

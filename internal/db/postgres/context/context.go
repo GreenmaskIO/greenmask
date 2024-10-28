@@ -30,6 +30,7 @@ import (
 	"github.com/greenmaskio/greenmask/internal/db/postgres/subset"
 	transformersUtils "github.com/greenmaskio/greenmask/internal/db/postgres/transformers/utils"
 	"github.com/greenmaskio/greenmask/internal/domains"
+	"github.com/greenmaskio/greenmask/internal/utils"
 	"github.com/greenmaskio/greenmask/pkg/toolkit"
 )
 
@@ -75,7 +76,7 @@ func NewRuntimeContext(
 			return nil, fmt.Errorf("error decoding salt from hex: %w", err)
 		}
 	}
-	ctx = context.WithValue(ctx, "salt", salt)
+	ctx = utils.WithSalt(ctx, salt)
 
 	typeMap := tx.Conn().TypeMap()
 	types, err := getCustomTypesUsedInTables(ctx, tx)

@@ -31,12 +31,6 @@ import (
 )
 
 const (
-	cmdRowDriverTextName = "text"
-	cmdRowDriverJsonName = "json"
-	cmdRowDriverCsvName  = "csv"
-)
-
-const (
 	skipOnAny = iota
 	skipOnAll
 )
@@ -46,7 +40,7 @@ const (
 	skipOnAllName = "all"
 )
 
-var defaultRowDriverParams = &toolkit.DriverParams{
+var defaultRowDriverParams = toolkit.DriverParams{
 	Name:                 toolkit.JsonModeName,
 	JsonDataFormat:       toolkit.JsonTextDataFormatName,
 	JsonAttributesFormat: toolkit.JsonAttributesNamesFormatName,
@@ -144,7 +138,6 @@ type Cmd struct {
 	rowDriverParams        *toolkit.DriverParams
 
 	driver *toolkit.Driver
-	t      *time.Ticker
 	eg     *errgroup.Group
 }
 
@@ -162,7 +155,7 @@ func NewCmd(
 	var skipOnBehaviourName string
 	var skipOnBehaviour = skipOnAll
 	var checkSkip bool
-	rowDriverParams := &(*defaultRowDriverParams)
+	rowDriverParams := &defaultRowDriverParams
 
 	p := parameters["columns"]
 	if err := p.Scan(&columns); err != nil {
@@ -446,20 +439,20 @@ func (c *Cmd) Transform(ctx context.Context, r *toolkit.Record) (*toolkit.Record
 	return r, nil
 }
 
-func cmdValidateFormat(p *toolkit.ParameterDefinition, v toolkit.ParamsValue) (toolkit.ValidationWarnings, error) {
-	value := string(v)
-	if value != cmdRowDriverCsvName && value != cmdRowDriverTextName &&
-		value != cmdRowDriverJsonName {
-		return toolkit.ValidationWarnings{
-			toolkit.NewValidationWarning().
-				AddMeta("ParameterName", p.Name).
-				AddMeta("ParameterValue", value).
-				SetSeverity(toolkit.ErrorValidationSeverity).
-				SetMsg("unsupported format type: must be one of csv, json, text"),
-		}, nil
-	}
-	return nil, nil
-}
+//func cmdValidateFormat(p *toolkit.ParameterDefinition, v toolkit.ParamsValue) (toolkit.ValidationWarnings, error) {
+//	value := string(v)
+//	if value != cmdRowDriverCsvName && value != cmdRowDriverTextName &&
+//		value != cmdRowDriverJsonName {
+//		return toolkit.ValidationWarnings{
+//			toolkit.NewValidationWarning().
+//				AddMeta("ParameterName", p.Name).
+//				AddMeta("ParameterValue", value).
+//				SetSeverity(toolkit.ErrorValidationSeverity).
+//				SetMsg("unsupported format type: must be one of csv, json, text"),
+//		}, nil
+//	}
+//	return nil, nil
+//}
 
 func cmdValidateSkipBehaviour(p *toolkit.ParameterDefinition, v toolkit.ParamsValue) (toolkit.ValidationWarnings, error) {
 	value := string(v)
