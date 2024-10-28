@@ -220,7 +220,7 @@ var columnList = []*Column{
 // TODO: You should generate table definition dynamically using faker as well as table tuples
 func GetDriverAndRecord(columnValues map[string]*RawValue) (*Driver, *Record) {
 
-	if columnValues == nil || len(columnValues) == 0 {
+	if len(columnValues) == 0 {
 		panic("received empty columnValues")
 	}
 

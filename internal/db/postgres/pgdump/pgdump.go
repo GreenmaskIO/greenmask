@@ -218,7 +218,7 @@ func (o *Options) GetParams() []string {
 		args = append(args, "--disable-dollar-quoting")
 	}
 	if o.DisableTriggers {
-		args = append(args, "--disable-triggers")
+		//args = append(args, "--disable-triggers")
 		panic("FIXME: --disable-triggers is not implemented")
 	}
 	if o.EnableRowSecurity {
@@ -282,7 +282,7 @@ func (o *Options) GetParams() []string {
 		args = append(args, "--snapshot", o.Snapshot)
 	}
 	if o.StrictNames {
-		args = append(args, "--strict-names")
+		//args = append(args, "--strict-names")
 		panic("FIXME: --strict-names is not implemented")
 	}
 	if o.UseSetSessionAuthorization {

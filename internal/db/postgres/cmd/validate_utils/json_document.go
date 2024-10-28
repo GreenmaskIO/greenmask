@@ -104,7 +104,6 @@ func (jc *JsonDocument) Append(original, transformed *pgcopy.Row) error {
 
 		originalValue = getStringFromRawValue(originalRawValue)
 
-		equal := true
 		expected := true
 
 		transformedRawValue, err := transformed.GetColumn(idx)
@@ -112,7 +111,7 @@ func (jc *JsonDocument) Append(original, transformed *pgcopy.Row) error {
 			return fmt.Errorf("error getting column from transformed record: %w", err)
 		}
 		transformedValue = getStringFromRawValue(transformedRawValue)
-		equal = ValuesEqual(originalRawValue, transformedRawValue)
+		equal := ValuesEqual(originalRawValue, transformedRawValue)
 		if _, ok := jc.expectedAffectedColumns[c.Name]; !equal && !ok {
 			expected = false
 			jc.unexpectedAffectedColumns[c.Name] = struct{}{}

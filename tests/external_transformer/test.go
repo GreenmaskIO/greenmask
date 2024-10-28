@@ -30,7 +30,7 @@ var testTransformerDefinition = toolkit.NewTransformerDefinition(
 	NewTestTransformer,
 ).SetValidate(true).
 	SetDescription("Simple test transformer").
-	SetMode(&(*toolkit.DefaultRowDriverParams)).
+	SetMode(&toolkit.DefaultRowDriverParams).
 	AddParameter(
 		toolkit.MustNewParameterDefinition("column", "test desc").
 			SetIsColumn(

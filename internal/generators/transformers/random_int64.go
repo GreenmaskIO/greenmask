@@ -1,7 +1,6 @@
 package transformers
 
 import (
-	"context"
 	"errors"
 	"fmt"
 
@@ -51,13 +50,11 @@ func NewRandomInt64Transformer(limiter *Int64Limiter, size int) (*RandomInt64Tra
 	}, nil
 }
 
-func (ig *RandomInt64Transformer) Transform(ctx context.Context, original []byte) (int64, error) {
+func (ig *RandomInt64Transformer) Transform(l *Int64Limiter, original []byte) (int64, error) {
 	var res int64
-	var limiter = ig.limiter
-	limiterAny := ctx.Value("limiter")
-
-	if limiterAny != nil {
-		limiter = limiterAny.(*Int64Limiter)
+	limiter := ig.limiter
+	if l != nil {
+		limiter = l
 	}
 
 	resBytes, err := ig.generator.Generate(original)

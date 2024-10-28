@@ -87,7 +87,7 @@ type IntegerTransformer struct {
 	keepNullParam toolkit.Parameterizer
 	engineParam   toolkit.Parameterizer
 
-	transform func(context.Context, []byte) (int64, error)
+	transform func([]byte) (int64, error)
 }
 
 func NewIntegerTransformer(ctx context.Context, driver *toolkit.Driver, parameters map[string]toolkit.Parameterizer) (utils.Transformer, toolkit.ValidationWarnings, error) {
@@ -179,11 +179,14 @@ func NewIntegerTransformer(ctx context.Context, driver *toolkit.Driver, paramete
 		minParam:      minParam,
 		maxParam:      maxParam,
 		keepNullParam: keepNullParam,
+		engineParam:   engineParam,
 
 		dynamicMode: dynamicMode,
 		intSize:     intSize,
 
-		transform: t.Transform,
+		transform: func(bytes []byte) (int64, error) {
+			return t.Transform(nil, bytes)
+		},
 	}, nil, nil
 }
 
@@ -191,18 +194,18 @@ func (rit *IntegerTransformer) GetAffectedColumns() map[int]string {
 	return rit.affectedColumns
 }
 
-func (rit *IntegerTransformer) Init(ctx context.Context) error {
+func (rit *IntegerTransformer) Init(_ context.Context) error {
 	if rit.dynamicMode {
 		rit.transform = rit.dynamicTransform
 	}
 	return nil
 }
 
-func (rit *IntegerTransformer) Done(ctx context.Context) error {
+func (rit *IntegerTransformer) Done(_ context.Context) error {
 	return nil
 }
 
-func (rit *IntegerTransformer) dynamicTransform(ctx context.Context, v []byte) (int64, error) {
+func (rit *IntegerTransformer) dynamicTransform(v []byte) (int64, error) {
 
 	var minVal, maxVal int64
 	err := rit.minParam.Scan(&minVal)
@@ -219,8 +222,7 @@ func (rit *IntegerTransformer) dynamicTransform(ctx context.Context, v []byte) (
 	if err != nil {
 		return 0, fmt.Errorf("error creating limiter in dynamic mode: %w", err)
 	}
-	ctx = context.WithValue(ctx, "limiter", limiter)
-	res, err := rit.RandomInt64Transformer.Transform(ctx, v)
+	res, err := rit.RandomInt64Transformer.Transform(limiter, v)
 	if err != nil {
 		return 0, fmt.Errorf("error generating int value: %w", err)
 	}
@@ -236,7 +238,7 @@ func (rit *IntegerTransformer) Transform(ctx context.Context, r *toolkit.Record)
 		return r, nil
 	}
 
-	newVal, err := rit.transform(ctx, val.Data)
+	newVal, err := rit.transform(val.Data)
 	if err != nil {
 		return nil, err
 	}

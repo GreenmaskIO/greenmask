@@ -93,7 +93,7 @@ type TimestampTransformer struct {
 	engineParam   toolkit.Parameterizer
 	dynamicMode   bool
 
-	transform func(context.Context, []byte) (time.Time, error)
+	transform func([]byte) (time.Time, error)
 }
 
 type timestampMinMaxEncoder func(toolkit.Parameterizer, toolkit.Parameterizer) (time.Time, time.Time, error)
@@ -181,7 +181,9 @@ func NewTimestampTransformerBase(ctx context.Context, driver *toolkit.Driver, pa
 		keepNullParam: keepNullParam,
 		engineParam:   engineParam,
 		dynamicMode:   dynamicMode,
-		transform:     t.Transform,
+		transform: func(bytes []byte) (time.Time, error) {
+			return t.Transform(nil, bytes)
+		},
 	}, nil, nil
 }
 
@@ -204,7 +206,7 @@ func (rdt *TimestampTransformer) Done(ctx context.Context) error {
 	return nil
 }
 
-func (rdt *TimestampTransformer) dynamicTransform(ctx context.Context, v []byte) (time.Time, error) {
+func (rdt *TimestampTransformer) dynamicTransform(v []byte) (time.Time, error) {
 	var minVal, maxVal time.Time
 	err := rdt.minParam.Scan(&minVal)
 	if err != nil {
@@ -220,15 +222,14 @@ func (rdt *TimestampTransformer) dynamicTransform(ctx context.Context, v []byte)
 	if err != nil {
 		return time.Time{}, fmt.Errorf("error creating limiter in dynamic mode: %w", err)
 	}
-	ctx = context.WithValue(ctx, "limiter", limiter)
-	res, err := rdt.Timestamp.Transform(ctx, v)
+	res, err := rdt.Timestamp.Transform(limiter, v)
 	if err != nil {
 		return time.Time{}, fmt.Errorf("error generating timestamp value: %w", err)
 	}
 	return res, nil
 }
 
-func (rdt *TimestampTransformer) Transform(ctx context.Context, r *toolkit.Record) (*toolkit.Record, error) {
+func (rdt *TimestampTransformer) Transform(_ context.Context, r *toolkit.Record) (*toolkit.Record, error) {
 	valAny, err := r.GetRawColumnValueByIdx(rdt.columnIdx)
 	if err != nil {
 		return nil, fmt.Errorf("unable to scan value: %w", err)
@@ -236,7 +237,7 @@ func (rdt *TimestampTransformer) Transform(ctx context.Context, r *toolkit.Recor
 	if valAny.IsNull && rdt.keepNull {
 		return r, nil
 	}
-	res, err := rdt.transform(ctx, valAny.Data)
+	res, err := rdt.transform(valAny.Data)
 	if err != nil {
 		return nil, err
 	}

@@ -7,10 +7,11 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/greenmaskio/greenmask/internal/domains"
-	"github.com/greenmaskio/greenmask/pkg/toolkit"
 	"github.com/jackc/pgx/v5"
 	"github.com/rs/zerolog/log"
+
+	"github.com/greenmaskio/greenmask/internal/domains"
+	"github.com/greenmaskio/greenmask/pkg/toolkit"
 
 	"github.com/greenmaskio/greenmask/internal/db/postgres/entries"
 )
@@ -1138,13 +1139,13 @@ func getVirtualReferences(vr []*domains.VirtualReference, t *entries.Table) []*d
 	return vr[idx].References
 }
 
-func getReferencedKeys(r *domains.Reference) (res []string) {
-	for _, ref := range r.Columns {
-		if ref.Name != "" {
-			res = append(res, ref.Name)
-		} else if ref.Expression != "" {
-			res = append(res, ref.Expression)
-		}
-	}
-	return
-}
+//func getReferencedKeys(r *domains.Reference) (res []string) {
+//	for _, ref := range r.Columns {
+//		if ref.Name != "" {
+//			res = append(res, ref.Name)
+//		} else if ref.Expression != "" {
+//			res = append(res, ref.Expression)
+//		}
+//	}
+//	return
+//}

@@ -1,13 +1,13 @@
 package transformers
 
 import (
-	"context"
 	"testing"
 	"time"
 
-	"github.com/greenmaskio/greenmask/internal/generators"
 	"github.com/rs/zerolog/log"
 	"github.com/stretchr/testify/require"
+
+	"github.com/greenmaskio/greenmask/internal/generators"
 )
 
 func TestNoiseInt64Transformer_Transform(t *testing.T) {
@@ -19,7 +19,8 @@ func TestNoiseInt64Transformer_Transform(t *testing.T) {
 	require.NoError(t, err)
 	g := generators.NewRandomBytes(time.Now().UnixNano(), tr.GetRequiredGeneratorByteLength())
 	err = tr.SetGenerator(g)
-	res, err := tr.Transform(context.Background(), 17)
+	require.NoError(t, err)
+	res, err := tr.Transform(nil, 17)
 	require.NoError(t, err)
 	log.Debug().Int64("value", res).Msg("")
 	require.True(t, res >= minVal && res <= maxVal)

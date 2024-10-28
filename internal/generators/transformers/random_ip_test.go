@@ -5,9 +5,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/greenmaskio/greenmask/internal/generators"
 	"github.com/rs/zerolog/log"
 	"github.com/stretchr/testify/require"
+
+	"github.com/greenmaskio/greenmask/internal/generators"
 )
 
 func TestIpAddress_Generate(t *testing.T) {
@@ -49,7 +50,7 @@ func TestIpAddress_Generate(t *testing.T) {
 			g := generators.NewRandomBytes(time.Now().UnixNano(), tr.GetRequiredGeneratorByteLength())
 			require.NoError(t, err)
 			err = tr.SetGenerator(g)
-
+			require.NoError(t, err)
 			var res net.IP
 			if tt.dynamic {
 				res, err = tr.Generate([]byte{}, subnet)

@@ -1,7 +1,6 @@
 package transformers
 
 import (
-	"context"
 	"encoding/binary"
 	"fmt"
 	"time"
@@ -207,12 +206,10 @@ func NewRandomTimestamp(truncatePart string, limiter *TimestampLimiter) (*Timest
 	}, nil
 }
 
-func (d *Timestamp) Transform(ctx context.Context, data []byte) (time.Time, error) {
+func (d *Timestamp) Transform(l *TimestampLimiter, data []byte) (time.Time, error) {
 	limiter := d.limiter
-	limiterAny := ctx.Value("limiter")
-
-	if limiterAny != nil {
-		limiter = limiterAny.(*TimestampLimiter)
+	if l != nil {
+		limiter = l
 	}
 
 	genBytes, err := d.generator.Generate(data)

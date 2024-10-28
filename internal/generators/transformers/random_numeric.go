@@ -33,7 +33,7 @@ func NewRandomNumericLimiter(minValue, maxValue decimal.Decimal) (*RandomNumeric
 
 func GetMinAndMaxNumericValueBySetting(digitsBeforeDecimal int) (decimal.Decimal, decimal.Decimal, error) {
 	minDecimalStr := fmt.Sprintf("-%s", strings.Repeat("9", digitsBeforeDecimal))
-	maxDecimalStr := fmt.Sprintf("%s", strings.Repeat("9", digitsBeforeDecimal))
+	maxDecimalStr := strings.Repeat("9", digitsBeforeDecimal)
 	minDecimal, err := decimal.NewFromString(minDecimalStr)
 	if err != nil {
 		return decimal.Decimal{}, decimal.Decimal{}, fmt.Errorf("error creating big decimal min threshold")

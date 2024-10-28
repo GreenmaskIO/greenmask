@@ -149,22 +149,6 @@ func (td *TextDocument) printVertical(w io.Writer) error {
 	return nil
 }
 
-func (td *TextDocument) getColumnsIdxsUnexpected() []int {
-	var res []int
-	colToPrint := td.GetUnexpectedlyChangedColumns()
-	for colName := range colToPrint {
-		idx := slices.IndexFunc(td.table.Columns, func(column *toolkit.Column) bool {
-			return column.Name == colName
-		})
-		if idx != -1 {
-			panic("expected column to be found in the table column list")
-		}
-		res = append(res, idx)
-	}
-	slices.Sort(res)
-	return res
-}
-
 func (td *TextDocument) getAffectedColumns() map[int]struct{} {
 	res := make(map[int]struct{})
 	colToPrint := td.GetAffectedColumns()
@@ -337,10 +321,6 @@ func (td *TextDocument) printPlainHorizontal(w io.Writer) error {
 
 	prettyWriter.Render()
 	return nil
-}
-
-func (td *TextDocument) printPlainVertical(w io.Writer) error {
-	panic("implement me")
 }
 
 func (td *TextDocument) getHorizontalSettings() *printSettings {

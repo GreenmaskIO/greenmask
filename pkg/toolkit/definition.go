@@ -24,7 +24,7 @@ const (
 	TextModeName = "text"
 )
 
-var DefaultRowDriverParams = &DriverParams{
+var DefaultRowDriverParams = DriverParams{
 	Name:                 JsonModeName,
 	JsonDataFormat:       JsonBytesDataFormatName,
 	JsonAttributesFormat: JsonAttributesIndexesFormatName,
@@ -97,7 +97,7 @@ func NewTransformerDefinition(name string, makeFunc NewTransformerFunc) *Transfo
 	return &TransformerDefinition{
 		Name:   name,
 		New:    makeFunc,
-		Driver: DefaultRowDriverParams,
+		Driver: &DefaultRowDriverParams,
 	}
 }
 

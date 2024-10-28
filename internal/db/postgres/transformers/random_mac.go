@@ -19,10 +19,11 @@ import (
 	"fmt"
 	"net"
 
+	"github.com/jackc/pgx/v5/pgtype"
+
 	"github.com/greenmaskio/greenmask/internal/db/postgres/transformers/utils"
 	"github.com/greenmaskio/greenmask/internal/generators/transformers"
 	"github.com/greenmaskio/greenmask/pkg/toolkit"
-	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const (
@@ -81,22 +82,14 @@ var RandomMacAddressDefinition = utils.NewTransformerDefinition(
 	engineParameterDefinition,
 )
 
-type RandomMacSettings struct {
-	keepOriginalVendor bool
-	castType           int
-	managementType     string
-}
-
 type RandomMac struct {
 	columnName         string
 	affectedColumns    map[int]string
 	columnIdx          int
-	dynamicMode        bool
 	keepOriginalVendor bool
 	castType           int
 	managementType     int
 	t                  *transformers.MacAddress
-	settings           *RandomMacSettings
 	originalMac        net.HardwareAddr
 }
 
@@ -105,12 +98,13 @@ func NewMacAddressTransformer(ctx context.Context, driver *toolkit.Driver, param
 	keepOriginalVendorParam := parameters["keep_original_vendor"]
 	castTypeParam := parameters["cast_type"]
 	managementTypeParam := parameters["management_type"]
+	engineParam := parameters["engine"]
+	columnParam := parameters["column"]
 
 	var columnName, engine string
 	var castType, managementType int
 	var keepOriginalVendor bool
-	p := parameters["column"]
-	if err := p.Scan(&columnName); err != nil {
+	if err := columnParam.Scan(&columnName); err != nil {
 		return nil, nil, fmt.Errorf(`unable to scan "column" param: %w`, err)
 	}
 
@@ -121,22 +115,18 @@ func NewMacAddressTransformer(ctx context.Context, driver *toolkit.Driver, param
 	affectedColumns := make(map[int]string)
 	affectedColumns[idx] = columnName
 
-	p = parameters["engine"]
-	if err := p.Scan(&engine); err != nil {
+	if err := engineParam.Scan(&engine); err != nil {
 		return nil, nil, fmt.Errorf(`unable to scan "engine" param: %w`, err)
 	}
 
-	p = parameters["keep_original_vendor"]
 	if err := keepOriginalVendorParam.Scan(&keepOriginalVendor); err != nil {
 		return nil, nil, fmt.Errorf(`unable to scan "keep_original_vendor" param: %w`, err)
 	}
 
-	p = parameters["cast_type"]
 	if err := castTypeParam.Scan(&castType); err != nil {
 		return nil, nil, fmt.Errorf(`unable to scan "cast_type" param: %w`, err)
 	}
 
-	p = parameters["management_type"]
 	if err := managementTypeParam.Scan(&managementType); err != nil {
 		return nil, nil, fmt.Errorf(`unable to scan "management_type" param: %w`, err)
 	}

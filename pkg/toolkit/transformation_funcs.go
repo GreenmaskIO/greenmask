@@ -56,22 +56,22 @@ func TruncateDate(part *string, t *time.Time) (*time.Time, error) {
 	return &res, nil
 }
 
-func daysInMonth(t time.Time) []int {
-	days := make([]int, 28, 31)
-	for i := range days {
-		days[i] = i + 1
-	}
-
-	m := t.Month()
-	// Roll to day 29
-	t = time.Date(t.Year(), t.Month(), 29, 0, 0, 0, 0, time.UTC)
-	for t.Month() == m {
-		days = append(days, t.Day())
-		t = t.AddDate(0, 0, 1)
-	}
-
-	return days
-}
+//func daysInMonth(t time.Time) []int {
+//	days := make([]int, 28, 31)
+//	for i := range days {
+//		days[i] = i + 1
+//	}
+//
+//	m := t.Month()
+//	// Roll to day 29
+//	t = time.Date(t.Year(), t.Month(), 29, 0, 0, 0, 0, time.UTC)
+//	for t.Month() == m {
+//		days = append(days, t.Day())
+//		t = t.AddDate(0, 0, 1)
+//	}
+//
+//	return days
+//}
 
 func NoiseDateV2(r *rand.Rand, ratio time.Duration, t *time.Time) *time.Time {
 	var multiplayer time.Duration = 1

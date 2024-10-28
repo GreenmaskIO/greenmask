@@ -56,8 +56,6 @@ var randomPersonTransformerDefinition = utils.NewTransformerDefinition(
 	engineParameterDefinition,
 )
 
-const randomPersonTransformerAllAttributes = "All"
-
 type randomNameColumns struct {
 	Name      string `json:"name"`
 	Template  string `json:"template"`
@@ -181,7 +179,7 @@ func NewRandomNameTransformer(ctx context.Context, driver *toolkit.Driver, param
 		engine:          engineMode,
 		buf:             bytes.NewBuffer(nil),
 		nullableMap:     make(map[int]bool, len(columns)),
-	}, nil, nil
+	}, warns, nil
 }
 
 func (nft *RandomNameTransformer) GetAffectedColumns() map[int]string {

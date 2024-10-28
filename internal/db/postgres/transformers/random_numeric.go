@@ -347,7 +347,7 @@ func getRandomNumericLimiterForDynamicParameter(
 		return nil, err
 	}
 
-	if !requestedMinValue.Equal(decimal.NewFromInt(0)) || !requestedMinValue.Equal(decimal.NewFromInt(0)) {
+	if !requestedMinValue.Equal(decimal.NewFromInt(0)) || !requestedMaxValue.Equal(decimal.NewFromInt(0)) {
 		limiter, err = transformers.NewRandomNumericLimiter(requestedMinValue, requestedMaxValue)
 		if err != nil {
 			return nil, err

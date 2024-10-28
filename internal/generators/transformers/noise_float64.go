@@ -1,7 +1,6 @@
 package transformers
 
 import (
-	"context"
 	"fmt"
 
 	"github.com/greenmaskio/greenmask/internal/generators"
@@ -56,12 +55,10 @@ func NewNoiseFloat64Transformer(limiter *NoiseFloat64Limiter, minRatio, maxRatio
 	}
 }
 
-func (nt *NoiseFloat64Transformer) Transform(ctx context.Context, original float64) (float64, error) {
-	var limiter = nt.limiter
-	limiterAny := ctx.Value("limiter")
-
-	if limiterAny != nil {
-		limiter = limiterAny.(*NoiseFloat64Limiter)
+func (nt *NoiseFloat64Transformer) Transform(l *NoiseFloat64Limiter, original float64) (float64, error) {
+	limiter := nt.limiter
+	if l != nil {
+		limiter = l
 	}
 
 	resBytes, err := nt.generator.Generate([]byte(fmt.Sprintf("%f", original)))

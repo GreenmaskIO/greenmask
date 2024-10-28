@@ -25,9 +25,10 @@ import (
 	"strings"
 	"syscall"
 
-	"github.com/greenmaskio/greenmask/internal/utils/reader"
 	"github.com/rs/zerolog/log"
 	"golang.org/x/sync/errgroup"
+
+	"github.com/greenmaskio/greenmask/internal/utils/reader"
 
 	"github.com/greenmaskio/greenmask/pkg/toolkit"
 )
@@ -173,7 +174,7 @@ func GetDynamicTransformerDefinition(ctx context.Context, executable string, arg
 		return nil, fmt.Errorf("error unmarshalling custom transformer output: %w", err)
 	}
 	if res.Driver == nil {
-		res.Driver = toolkit.DefaultRowDriverParams
+		res.Driver = &toolkit.DefaultRowDriverParams
 	}
 	if res.Driver.Name != "" && res.Driver.Name != JsonModeName && res.Driver.Name != CsvModeName && res.Driver.Name != TextModeName {
 		return nil, fmt.Errorf(`error parsing transformer difinition: unknown mode name %s`, res.Driver.Name)

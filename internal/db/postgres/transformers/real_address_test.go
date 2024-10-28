@@ -80,6 +80,7 @@ func TestMakeNewFakeTransformerFunction_parsing_error(t *testing.T) {
 		nil,
 		"",
 	)
+	require.NoError(t, err)
 	require.Len(t, warnings, 1)
 	require.Equal(t, "error parsing template", warnings[0].Msg)
 }
@@ -106,6 +107,7 @@ func TestMakeNewFakeTransformerFunction_validation_error(t *testing.T) {
 		nil,
 		"",
 	)
+	require.NoError(t, err)
 	require.Len(t, warnings, 1)
 	require.Equal(t, "error validating template", warnings[0].Msg)
 }

@@ -1,13 +1,13 @@
 package transformers
 
 import (
-	"context"
 	"testing"
 	"time"
 
-	"github.com/greenmaskio/greenmask/internal/generators"
 	"github.com/rs/zerolog/log"
 	"github.com/stretchr/testify/require"
+
+	"github.com/greenmaskio/greenmask/internal/generators"
 )
 
 func TestNoiseTimestamp_Transform(t *testing.T) {
@@ -28,7 +28,7 @@ func TestNoiseTimestamp_Transform(t *testing.T) {
 	require.NoError(t, err)
 	err = tr.SetGenerator(g)
 	require.NoError(t, err)
-	res, err := tr.Transform(context.Background(), original)
+	res, err := tr.Transform(nil, original)
 	require.NoError(t, err)
 	log.Debug().
 		Time("original", original).

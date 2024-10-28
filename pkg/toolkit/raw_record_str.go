@@ -49,7 +49,7 @@ func (rrs *RawRecordStr) Encode() ([]byte, error) {
 
 func (rrs *RawRecordStr) Decode(data []byte) error {
 	*rrs = make(map[int]*RawValueStr, len(*rrs))
-	return json.Unmarshal(data, *rrs)
+	return json.Unmarshal(data, rrs)
 }
 
 func (rrs *RawRecordStr) Length() int {

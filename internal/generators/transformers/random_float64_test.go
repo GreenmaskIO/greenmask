@@ -1,12 +1,12 @@
 package transformers
 
 import (
-	"context"
 	"testing"
 
-	"github.com/greenmaskio/greenmask/internal/generators"
 	"github.com/rs/zerolog/log"
 	"github.com/stretchr/testify/require"
+
+	"github.com/greenmaskio/greenmask/internal/generators"
 )
 
 func TestNewFloat64Transformer(t *testing.T) {
@@ -18,7 +18,7 @@ func TestNewFloat64Transformer(t *testing.T) {
 	g = generators.NewHashReducer(g, tr.GetRequiredGeneratorByteLength())
 	err = tr.SetGenerator(g)
 	require.NoError(t, err)
-	res, err := tr.Transform(context.Background(), []byte{})
+	res, err := tr.Transform(nil, []byte{})
 	require.NoError(t, err)
 	log.Debug().Msgf("value = %f", res)
 	require.True(t, res >= -1 && res <= 1)
