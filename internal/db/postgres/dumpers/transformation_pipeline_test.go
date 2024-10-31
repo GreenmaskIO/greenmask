@@ -16,7 +16,8 @@ import (
 func TestTransformationPipeline_Dump(t *testing.T) {
 	termCtx, termCancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer termCancel()
-	table := getTable()
+	tableCond := ""
+	table := getTable(tableCond)
 	ctx := context.Background()
 	eg, gtx := errgroup.WithContext(ctx)
 	driver := getDriver(table.Table)
@@ -47,7 +48,8 @@ func TestTransformationPipeline_Dump(t *testing.T) {
 func TestTransformationPipeline_Dump_with_transformer_cond(t *testing.T) {
 	termCtx, termCancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer termCancel()
-	table := getTable()
+	tableCond := ""
+	table := getTable(tableCond)
 	ctx := context.Background()
 	eg, gtx := errgroup.WithContext(ctx)
 	driver := getDriver(table.Table)
@@ -78,7 +80,8 @@ func TestTransformationPipeline_Dump_with_transformer_cond(t *testing.T) {
 func TestTransformationPipeline_Dump_with_table_cond(t *testing.T) {
 	termCtx, termCancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer termCancel()
-	table := getTable()
+	tableCond := "record.id != 1"
+	table := getTable(tableCond)
 	ctx := context.Background()
 	eg, gtx := errgroup.WithContext(ctx)
 	driver := getDriver(table.Table)
@@ -91,7 +94,6 @@ func TestTransformationPipeline_Dump_with_table_cond(t *testing.T) {
 		When:        when,
 	}
 	table.TransformersContext = []*utils.TransformerContext{tc}
-	table.When = "record.id != 1"
 
 	buf := bytes.NewBuffer(nil)
 

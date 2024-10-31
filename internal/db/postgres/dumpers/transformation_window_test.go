@@ -22,7 +22,7 @@ func TestTransformationWindow_tryAdd(t *testing.T) {
 	tc := utils.TransformerContext{
 		Transformer: &testTransformer{},
 	}
-	table := getTable()
+	table := getTable("")
 	require.True(t, tw.tryAdd(table, &tc))
 	require.False(t, tw.tryAdd(table, &tc))
 }
@@ -38,7 +38,7 @@ func TestTransformationWindow_Transform(t *testing.T) {
 		Transformer: &testTransformer{},
 		When:        when,
 	}
-	table := getTable()
+	table := getTable("")
 	require.True(t, tw.tryAdd(table, &tc))
 
 	driver := getDriver(table.Table)
@@ -60,7 +60,7 @@ func TestTransformationWindow_Transform(t *testing.T) {
 }
 
 func TestTransformationWindow_Transform_with_cond(t *testing.T) {
-	table := getTable()
+	table := getTable("")
 	driver := getDriver(table.Table)
 	record := toolkit.NewRecord(driver)
 	when, warns := toolkit.NewWhenCond("record.id != 1", driver, make(map[string]any))
@@ -128,8 +128,8 @@ func getDriver(table *toolkit.Table) *toolkit.Driver {
 	return driver
 }
 
-func getTable() *entries.Table {
-	return &entries.Table{
+func getTable(when string) *entries.Table {
+	t := &entries.Table{
 		Table: &toolkit.Table{
 			Schema: "public",
 			Name:   "test",
@@ -155,4 +155,12 @@ func getTable() *entries.Table {
 			Constraints: []toolkit.Constraint{},
 		},
 	}
+	d := getDriver(t.Table)
+	t.Driver = d
+	whenCond, warns := toolkit.NewWhenCond(when, d, make(map[string]any))
+	if len(warns) > 0 {
+		panic("unable to create when condition")
+	}
+	t.When = whenCond
+	return t
 }

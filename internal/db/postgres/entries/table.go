@@ -27,28 +27,30 @@ import (
 )
 
 // Table - godoc
-// TODO: Deduplicate SubsetQueries and SubsetInQueries by path
 type Table struct {
 	*toolkit.Table
 	Query                string
 	Owner                string
 	RelKind              rune
-	RootPtSchema         string
-	RootPtName           string
 	LoadViaPartitionRoot bool
-	RootOid              toolkit.Oid
-	TransformersContext  []*utils.TransformerContext
-	Dependencies         []int32
-	DumpId               int32
-	OriginalSize         int64
-	CompressedSize       int64
-	ExcludeData          bool
-	Driver               *toolkit.Driver
-	Scores               int64
-	SubsetConds          []string
-	When                 string
+	// RootPtSchema - schema name of the root partition table uses in partitioned tables when LoadViaPartitionRoot
+	// is set
+	RootPtSchema string
+	// RootPtName - name of the root partition table uses in partitioned tables when LoadViaPartitionRoot is set
+	RootPtName          string
+	TransformersContext []*utils.TransformerContext
+	Dependencies        []int32
+	DumpId              int32
+	OriginalSize        int64
+	CompressedSize      int64
+	//ExcludeData          bool
+	Driver      *toolkit.Driver
+	Scores      int64
+	SubsetConds []string
+	When        *toolkit.WhenCond
 }
 
+// HasCustomTransformer - check if table has custom transformer
 func (t *Table) HasCustomTransformer() bool {
 	return slices.ContainsFunc(t.TransformersContext, func(transformer *utils.TransformerContext) bool {
 		_, ok := transformer.Transformer.(*custom.CmdTransformer)
@@ -56,6 +58,7 @@ func (t *Table) HasCustomTransformer() bool {
 	})
 }
 
+// SetDumpId - set dump id for table - it uses in TOC entry identification
 func (t *Table) SetDumpId(sequence *toc.DumpIdSequence) {
 	if sequence == nil {
 		panic("sequence cannot be nil")
@@ -63,6 +66,7 @@ func (t *Table) SetDumpId(sequence *toc.DumpIdSequence) {
 	t.DumpId = sequence.Next()
 }
 
+// Entry - create TOC entry for table. This uses in toc.dat entries generation
 func (t *Table) Entry() (*toc.Entry, error) {
 	if t.Table == nil {
 		return nil, fmt.Errorf("table is nil")
@@ -130,6 +134,7 @@ func (t *Table) Entry() (*toc.Entry, error) {
 	}, nil
 }
 
+// GetCopyFromStatement - get COPY FROM statement for table
 func (t *Table) GetCopyFromStatement() (string, error) {
 	// We could generate an explicit column list for the COPY statement, but it’s not necessary because, by default,
 	// generated columns are excluded from the COPY operation.

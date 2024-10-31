@@ -160,6 +160,10 @@ func NewGraph(
 	return g, nil
 }
 
+func (g *Graph) GetTables() []*entries.Table {
+	return g.tables
+}
+
 func (g *Graph) GetCycles() [][]*Edge {
 	var cycles [][]*Edge
 	for _, c := range g.scc {
@@ -588,6 +592,8 @@ func (g *Graph) generateQueryForTables(path *Path, scopeEdge *ScopeEdge) string 
 	return query
 }
 
+// GetSortedTablesAndDependenciesGraph - returns the sorted tables in topological order and the dependencies graph
+// where the key is the table OID and the value is the list of table OIDs that depend on the key table
 func (g *Graph) GetSortedTablesAndDependenciesGraph() ([]toolkit.Oid, map[toolkit.Oid][]toolkit.Oid) {
 	condensedEdges := sortCondensedEdges(g.reversedCondensedGraph)
 	var tables []toolkit.Oid

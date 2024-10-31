@@ -28,7 +28,6 @@ type Sequence struct {
 	IsCalled     bool
 	DumpId       int32
 	Dependencies []int32
-	ExcludeData  bool
 	LastValue    int64
 }
 

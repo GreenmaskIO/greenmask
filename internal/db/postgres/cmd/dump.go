@@ -188,7 +188,7 @@ func (d *Dump) startMainTx(ctx context.Context, conn *pgx.Conn) (pgx.Tx, error) 
 
 func (d *Dump) buildContextAndValidate(ctx context.Context, tx pgx.Tx) (err error) {
 	d.context, err = runtimeContext.NewRuntimeContext(
-		ctx, tx, d.config.Dump.Transformation, d.registry, d.pgDumpOptions,
+		ctx, tx, &d.config.Dump, d.registry,
 		d.config.Dump.VirtualReferences, d.version,
 	)
 	if err != nil {

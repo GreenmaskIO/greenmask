@@ -37,12 +37,12 @@ const (
 // TODO: Rewrite it using gotemplate
 
 func getDumpObjects(
-	ctx context.Context, version int, tx pgx.Tx, options *pgdump.Options, config map[toolkit.Oid]*entries.Table,
+	ctx context.Context, version int, tx pgx.Tx, options *pgdump.Options,
 ) ([]*entries.Table, []*entries.Sequence, *entries.Blobs, error) {
 
-	tables, sequesnces, err := getTables(ctx, version, tx, options, config)
+	tables, sequesnces, err := getTables(ctx, version, tx, options)
 	if err != nil {
-		return nil, nil, nil, fmt.Errorf("unable to collect tables: %w", err)
+		return nil, nil, nil, fmt.Errorf("unable to collect Tables: %w", err)
 	}
 
 	// Gather large objects
@@ -55,11 +55,11 @@ func getDumpObjects(
 }
 
 func getTables(
-	ctx context.Context, version int, tx pgx.Tx, options *pgdump.Options, config map[toolkit.Oid]*entries.Table,
+	ctx context.Context, version int, tx pgx.Tx, options *pgdump.Options,
 ) ([]*entries.Table, []*entries.Sequence, error) {
 	// Building relation search query using regexp adaptation rules and pre-defined query templates
 	// TODO: Refactor it to gotemplate
-	query, err := BuildTableSearchQuery(options.Table, options.ExcludeTable,
+	query, err := buildTableSearchQuery(options.Table, options.ExcludeTable,
 		options.ExcludeTableData, options.IncludeForeignData, options.Schema,
 		options.ExcludeSchema)
 	if err != nil {
@@ -74,7 +74,7 @@ func getTables(
 
 	// Generate table objects
 	//sequences := make([]*dump_objects.Sequence, 0)
-	//tables := make([]*dump_objects.Table, 0)
+	//Tables := make([]*dump_objects.Table, 0)
 	var tables []*entries.Table
 	var sequences []*entries.Sequence
 	defer tableSearchRows.Close()
@@ -84,67 +84,53 @@ func getTables(
 		var schemaName, name, owner, rootPtName, rootPtSchema string
 		var relKind rune
 		var excludeData, isCalled bool
-		var ok bool
 
 		err = tableSearchRows.Scan(&oid, &schemaName, &name, &owner, &relSize, &relKind,
 			&rootPtSchema, &rootPtName, &excludeData, &isCalled, &lastVal,
 		)
 		if err != nil {
-			return nil, nil, fmt.Errorf("unnable scan data: %w", err)
+			return nil, nil, fmt.Errorf("scan data: %w", err)
 		}
-		var table *entries.Table
 
+		if excludeData {
+			log.Debug().
+				Str("TableSchema", name).
+				Str("TableName", schemaName).
+				Msg("object data excluded")
+			continue
+		}
+
+		var table *entries.Table
 		switch relKind {
-		case 'S':
+		case 'S': // S - sequence
 			// Building sequence objects
 			s := &entries.Sequence{
-				Name:        name,
-				Schema:      schemaName,
-				Oid:         oid,
-				Owner:       owner,
-				LastValue:   lastVal,
-				IsCalled:    isCalled,
-				ExcludeData: excludeData,
+				Name:      name,
+				Schema:    schemaName,
+				Oid:       oid,
+				Owner:     owner,
+				LastValue: lastVal,
+				IsCalled:  isCalled,
 			}
 			sequences = append(sequences, s)
-		case 'r':
+		case 'r': // r - ordinary table
 			fallthrough
-		case 'p':
+		case 'p': // p - partitioned table
 			fallthrough
-		case 'f':
+		case 'f': // f - foreign table
 			// Building table objects
-			table, ok = config[toolkit.Oid(oid)]
-			if ok {
-				// If table was discovered during Transformer validation - use that object instead of a new
-				table.ExcludeData = excludeData
-				table.LoadViaPartitionRoot = options.LoadViaPartitionRoot
-				table.Size = relSize
-			} else {
-				// If table is not found - create new table object and collect all the columns
-
-				table = &entries.Table{
-					Table: &toolkit.Table{
-						Name:   name,
-						Schema: schemaName,
-						Oid:    toolkit.Oid(oid),
-						Size:   relSize,
-					},
-					Owner:                owner,
-					RelKind:              relKind,
-					RootPtSchema:         rootPtSchema,
-					RootPtName:           rootPtName,
-					ExcludeData:          excludeData,
-					LoadViaPartitionRoot: options.LoadViaPartitionRoot,
-				}
-			}
-
-			if table.ExcludeData {
-				// TODO: Ensure data exclusion works properly
-				log.Debug().
-					Str("TableSchema", table.Schema).
-					Str("TableName", table.Name).
-					Msg("object data excluded")
-				continue
+			table = &entries.Table{
+				Table: &toolkit.Table{
+					Name:   name,
+					Schema: schemaName,
+					Oid:    toolkit.Oid(oid),
+					Size:   relSize,
+				},
+				Owner:                owner,
+				RelKind:              relKind,
+				RootPtSchema:         rootPtSchema,
+				RootPtName:           rootPtName,
+				LoadViaPartitionRoot: options.LoadViaPartitionRoot,
 			}
 			tables = append(tables, table)
 		default:
@@ -361,7 +347,7 @@ func renderForeignDataCond(ss []string, defaultCond string) (string, error) {
 	return defaultCond, nil
 }
 
-func BuildTableSearchQuery(
+func buildTableSearchQuery(
 	includeTable, excludeTable, excludeTableData,
 	includeForeignData, includeSchema, excludeSchema []string,
 ) (string, error) {
@@ -435,7 +421,7 @@ func BuildTableSearchQuery(
 					LEFT JOIN pg_catalog.pg_foreign_table ft ON c.oid = ft.ftrelid
 					LEFT JOIN pg_catalog.pg_foreign_server s ON s.oid = ft.ftserver
 					LEFT JOIN pg_catalog.pg_sequence sq ON c.oid = sq.seqrelid
-			WHERE c.relkind IN ('r', 'f', 'S')
+			WHERE c.relkind IN ('p', 'r', 'f', 'S')
 			  AND %s     -- relname inclusion
 			  AND NOT %s -- relname exclusion
 			  AND %s -- schema inclusion
@@ -451,7 +437,7 @@ func BuildTableSearchQuery(
 		schemaInclusionCond, schemaExclusionCond, foreignDataInclusionCond), nil
 }
 
-func BuildSchemaIntrospectionQuery(includeTable, excludeTable, includeForeignData,
+func buildSchemaIntrospectionQuery(includeTable, excludeTable, includeForeignData,
 	includeSchema, excludeSchema []string,
 ) (string, error) {
 
