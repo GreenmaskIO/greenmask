@@ -126,10 +126,10 @@ func getTables(
 					Oid:    toolkit.Oid(oid),
 					Size:   relSize,
 				},
-				Owner:                owner,
-				RelKind:              relKind,
-				RootPtSchema:         rootPtSchema,
-				RootPtName:           rootPtName,
+				Owner:   owner,
+				RelKind: relKind,
+				//RootPtSchema:         rootPtSchema,
+				//RootPtName:           rootPtName,
 				LoadViaPartitionRoot: options.LoadViaPartitionRoot,
 			}
 			tables = append(tables, table)

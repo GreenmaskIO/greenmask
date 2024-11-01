@@ -52,3 +52,19 @@ func NewTableLink(idx int, t *entries.Table, keys []*Key, polymorphicExprs []str
 		polymorphicExprs: polymorphicExprs,
 	}
 }
+
+func (tl *TableLink) Index() int {
+	return tl.idx
+}
+
+func (tl *TableLink) Table() *entries.Table {
+	return tl.table
+}
+
+func (tl *TableLink) Keys() []*Key {
+	return tl.keys
+}
+
+func (tl *TableLink) PolymorphicExprs() []string {
+	return tl.polymorphicExprs
+}

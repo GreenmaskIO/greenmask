@@ -10,10 +10,25 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"github.com/greenmaskio/greenmask/internal/db/postgres/entries"
+	"github.com/greenmaskio/greenmask/internal/db/postgres/subset"
 	transformersUtils "github.com/greenmaskio/greenmask/internal/db/postgres/transformers/utils"
 	"github.com/greenmaskio/greenmask/internal/domains"
 	"github.com/greenmaskio/greenmask/pkg/toolkit"
 )
+
+const (
+	columnParameterName = "column"
+	engineParameterName = "engine"
+)
+
+// transformersMapping - map dump object to transformation config from yaml. This uses for validation and building
+// configuration for Tables
+type transformersMapping struct {
+	entry      *entries.Table
+	columnName string
+	attNum     int
+	cfg        *domains.TransformerConfig
+}
 
 // tableExistsQuery - map dump object to transformation config from yaml. This uses for validation and building
 // configuration for Tables
@@ -22,67 +37,39 @@ type tableConfigMapping struct {
 	config *domains.Table
 }
 
-// entriesConfig - config for tables, sequences and blobs, that are used in the runtime context
-type entriesConfig struct {
-	tablesWithTransformers []*tableConfigMapping
-	tables                 []*entries.Table
-	sequences              []*entries.Sequence
-	blobs                  *entries.Blobs
-	// cachedRealTables - filtered list of tables that are not partitioned tables
-	cachedRealTables []*entries.Table
-}
-
-func (ec *entriesConfig) Tables() []*entries.Table {
-	if ec.cachedRealTables != nil {
-		return ec.cachedRealTables
-	}
-	for _, t := range ec.tables {
-		if t.RelKind == 'p' {
-			continue
+func (tcm *tableConfigMapping) hasTransformerWithApplyForReferences() bool {
+	for _, tr := range tcm.config.Transformers {
+		if tr.ApplyForReferences {
+			return true
 		}
-		ec.cachedRealTables = append(ec.cachedRealTables, t)
 	}
-	return ec.cachedRealTables
-}
-
-func (ec *entriesConfig) Sequences() []*entries.Sequence {
-	return ec.sequences
-}
-
-func (ec *entriesConfig) Blobs() *entries.Blobs {
-	return ec.blobs
+	return false
 }
 
 // ValidateAndBuildTableConfig - validates Tables, toolkit and their parameters. Builds config for Tables and returns
 // ValidationWarnings that can be used for checking helpers in configuring and debugging transformation. Those
 // may contain the schema affection warnings that would be useful for considering consistency
 func validateAndBuildEntriesConfig(
-	ctx context.Context, tx pgx.Tx, typeMap *pgtype.Map,
+	ctx context.Context, tx pgx.Tx, entries []*entries.Table, typeMap *pgtype.Map,
 	cfg *domains.Dump, registry *transformersUtils.TransformerRegistry,
-	version int, types []*toolkit.Type,
-) (*entriesConfig, toolkit.ValidationWarnings, error) {
+	version int, types []*toolkit.Type, graph *subset.Graph,
+) (toolkit.ValidationWarnings, error) {
 	var warnings toolkit.ValidationWarnings
 	// Validate that the Tables in config exist in the database
 	tableConfigExistsWarns, err := validateConfigTables(ctx, tx, cfg.Transformation)
 	warnings = append(warnings, tableConfigExistsWarns...)
 	if err != nil {
-		return nil, nil, fmt.Errorf("cannot validate Tables: %w", err)
+		return nil, fmt.Errorf("cannot validate Tables: %w", err)
 	}
 	if tableConfigExistsWarns.IsFatal() {
-		return nil, tableConfigExistsWarns, nil
-	}
-
-	// Get list of entries (Tables, sequences, blobs) from the database
-	tables, sequences, blobs, err := getDumpObjects(ctx, version, tx, &cfg.PgDumpOptions)
-	if err != nil {
-		return nil, nil, fmt.Errorf("cannot get Tables: %w", err)
+		return tableConfigExistsWarns, nil
 	}
 
 	// Assign settings to the Tables using config received
 	//entriesWithTransformers := findTablesWithTransformers(cfg.Transformation, Tables)
-	entriesWithTransformers, err := getTablesEntriesConfig(ctx, tx, cfg.Transformation, tables)
+	entriesWithTransformers, err := setConfigToEntries(ctx, tx, cfg.Transformation, entries, graph)
 	if err != nil {
-		return nil, nil, fmt.Errorf("cannot get Tables entries config: %w", err)
+		return nil, fmt.Errorf("cannot get Tables entries config: %w", err)
 	}
 	// TODO:
 	// 		Check if any has relkind = p
@@ -97,14 +84,14 @@ func validateAndBuildEntriesConfig(
 		driverWarnings, err := setGlobalDriverForTable(cfgMapping.entry, types)
 		warnings = append(warnings, driverWarnings...)
 		if err != nil {
-			return nil, nil, fmt.Errorf(
+			return nil, fmt.Errorf(
 				"cannot set global driver for table %s.%s: %w",
 				cfgMapping.entry.Schema, cfgMapping.entry.Name, err,
 			)
 		}
 		enrichWarningsWithTableName(driverWarnings, cfgMapping.entry)
 		if driverWarnings.IsFatal() {
-			return nil, driverWarnings, nil
+			return driverWarnings, nil
 		}
 
 		// Compile when condition and set to the table entry
@@ -112,12 +99,12 @@ func validateAndBuildEntriesConfig(
 		enrichWarningsWithTableName(driverWarnings, cfgMapping.entry)
 		warnings = append(warnings, whenCondWarns...)
 		if whenCondWarns.IsFatal() {
-			return nil, whenCondWarns, nil
+			return whenCondWarns, nil
 		}
 
 		// Set table constraints
 		if err := setTableConstraints(ctx, tx, cfgMapping.entry, version); err != nil {
-			return nil, nil, fmt.Errorf(
+			return nil, fmt.Errorf(
 				"cannot set table constraints for table %s.%s: %w",
 				cfgMapping.entry.Schema, cfgMapping.entry.Name, err,
 			)
@@ -125,7 +112,7 @@ func validateAndBuildEntriesConfig(
 
 		// Set primary keys for the table
 		if err := setTablePrimaryKeys(ctx, tx, cfgMapping.entry); err != nil {
-			return nil, nil, fmt.Errorf(
+			return nil, fmt.Errorf(
 				"cannot set primary keys for table %s.%s: %w",
 				cfgMapping.entry.Schema, cfgMapping.entry.Name, err,
 			)
@@ -139,19 +126,14 @@ func validateAndBuildEntriesConfig(
 		enrichWarningsWithTableName(transformersInitWarns, cfgMapping.entry)
 		warnings = append(warnings, transformersInitWarns...)
 		if err != nil {
-			return nil, nil, fmt.Errorf(
+			return nil, fmt.Errorf(
 				"cannot initialise and set transformers for table %s.%s: %w",
 				cfgMapping.entry.Schema, cfgMapping.entry.Name, err,
 			)
 		}
 	}
 
-	return &entriesConfig{
-		tables:                 tables,
-		tablesWithTransformers: entriesWithTransformers,
-		sequences:              sequences,
-		blobs:                  blobs,
-	}, warnings, nil
+	return warnings, nil
 }
 
 // validateConfigTables - validates that the Tables in the config exist in the database. This function iterate through
@@ -216,12 +198,19 @@ func findTablesWithTransformers(
 	return entriesWithTransformers
 }
 
-func getTablesEntriesConfig(
-	ctx context.Context, tx pgx.Tx, cfg []*domains.Table, tables []*entries.Table,
+func setConfigToEntries(
+	ctx context.Context, tx pgx.Tx, cfg []*domains.Table, tables []*entries.Table, g *subset.Graph,
 ) ([]*tableConfigMapping, error) {
 	var res []*tableConfigMapping
 	for _, tcm := range findTablesWithTransformers(cfg, tables) {
+		if tcm.hasTransformerWithApplyForReferences() {
+			// If table has transformer with apply_for_references, then we need to find all reference tables
+			// and add them to the list
+			refTables := getRefTables(tcm.entry, tcm.config, g)
+			res = append(res, refTables...)
+		}
 		if tcm.entry.RelKind != 'p' {
+			// If table is not partitioned, simply append it to the result
 			res = append(res, tcm)
 			continue
 		}
@@ -232,6 +221,7 @@ func getTablesEntriesConfig(
 				tcm.entry.Schema, tcm.entry.Name,
 			)
 		}
+
 		parts, err := findPartitionsOfPartitionedTable(ctx, tx, tcm.entry)
 		if err != nil {
 			return nil, fmt.Errorf(
@@ -248,6 +238,9 @@ func getTablesEntriesConfig(
 				continue
 			}
 			e := tables[idx]
+			e.RootPtName = tcm.entry.Name
+			e.RootPtSchema = tcm.entry.Schema
+			e.RootPtOid = tcm.entry.Oid
 			e.Columns = tcm.entry.Columns
 			res = append(res, &tableConfigMapping{
 				entry:  e,
@@ -256,6 +249,158 @@ func getTablesEntriesConfig(
 		}
 	}
 	return res, nil
+}
+
+func getRefTables(rootTable *entries.Table, rootTableCfg *domains.Table, graph *subset.Graph) []*tableConfigMapping {
+	var res []*tableConfigMapping
+	//visited := make(map[string]bool)
+	rootTransformersMapping := collectRootTransformers(rootTable, rootTableCfg)
+
+	// Start DFS traversal from the root table
+	for _, rootTr := range rootTransformersMapping {
+		buildRefsWithEndToEndDfs(
+			rootTable, rootTableCfg, graph, rootTransformersMapping, rootTr, &res, false,
+		)
+	}
+
+	return res
+}
+
+// buildRefsWithEndToEndDfs performs depth-first search to apply transformations to child tables
+// based on the root transformers mapping and graph structure, avoiding cycles
+func buildRefsWithEndToEndDfs(
+	table *entries.Table, rootTableCfg *domains.Table, graph *subset.Graph,
+	transformers []*transformersMapping, rootTr *transformersMapping,
+	res *[]*tableConfigMapping, checkEndToEnd bool) {
+	//tableKey := fmt.Sprintf("%s.%s", table.Schema, table.Name)
+	//if visited[tableKey] {
+	//	return
+	//}
+	//visited[tableKey] = true
+	//defer func() { delete(visited, tableKey) }() // unmark after recursion
+
+	rg := graph.ReversedGraph()
+	tableIdx := findTableIndex(graph, table)
+	if tableIdx == -1 {
+		log.Warn().
+			Str("SchemaName", table.Schema).
+			Str("TableName", table.Name).
+			Msg("transformer inheritance for ref: cannot find table in the graph: table will be ignored")
+		return
+	}
+
+	for _, r := range rg[tableIdx] {
+		// Check for end-to-end PK-FK relationship only if it's beyond the first table
+		if checkEndToEnd && !isEndToEndPKFK(graph, r.From().Table()) {
+			continue
+		}
+		processReference(r, rootTableCfg, transformers, res)
+		// Recursively call DFS on child reference, setting checkEndToEnd to true after the first level
+		buildRefsWithEndToEndDfs(
+			r.To().Table(), rootTableCfg, graph, transformers, rootTr, res, true,
+		)
+	}
+}
+
+// collectRootTransformers gathers all transformers in the root table's configuration
+func collectRootTransformers(rootTable *entries.Table, rootTableCfg *domains.Table) []*transformersMapping {
+	var rootTransformersMapping []*transformersMapping
+	for _, tr := range rootTableCfg.Transformers {
+		if !tr.ApplyForReferences || string(tr.Params[engineParameterName]) != "hash" {
+			continue
+		}
+		idx := slices.Index(rootTable.PrimaryKey, string(tr.Params[columnParameterName]))
+		if idx == -1 {
+			continue
+		}
+		rootTransformersMapping = append(rootTransformersMapping, &transformersMapping{
+			entry:      rootTable,
+			columnName: string(tr.Params[columnParameterName]),
+			attNum:     idx,
+			cfg:        tr,
+		})
+	}
+	return rootTransformersMapping
+}
+
+// findTableIndex locates the index of a table in the graph by name and schema
+func findTableIndex(graph *subset.Graph, table *entries.Table) int {
+	return slices.IndexFunc(graph.GetTables(), func(t *entries.Table) bool {
+		return (table.Name == t.Name || fmt.Sprintf(`"%s"`, table.Name) == t.Name) &&
+			(table.Schema == t.Schema || fmt.Sprintf(`"%s"`, table.Schema) == t.Schema)
+	})
+}
+
+// processReference applies transformers to the reference table if it matches criteria
+// and recursively calls buildRefsWithEndToEndDfs on the child references
+func processReference(
+	r *subset.Edge, rootTableCfg *domains.Table, transformers []*transformersMapping,
+	res *[]*tableConfigMapping,
+) {
+	for _, rootTr := range transformers {
+		// Get the primary key column name of the root table
+		fkKeys := r.To().Keys()
+		refColName := fkKeys[rootTr.attNum].Name
+		trConf := rootTr.cfg.Clone()
+		trConf.Params["column"] = toolkit.ParamsValue(refColName)
+
+		colTypeOverride := getColumnTypeOverride(rootTableCfg, rootTr.columnName)
+		addTransformerToReferenceTable(r, trConf, colTypeOverride, res)
+	}
+}
+
+// addTransformerToReferenceTable adds the transformer configuration to the reference table in the results
+func addTransformerToReferenceTable(r *subset.Edge, trConf *domains.TransformerConfig, colTypeOverride map[string]string, res *[]*tableConfigMapping) {
+	refTableIdx := slices.IndexFunc(*res, func(tcm *tableConfigMapping) bool {
+		return tcm.entry.Name == r.To().Table().Name && tcm.entry.Schema == r.To().Table().Schema
+	})
+	if refTableIdx != -1 {
+		(*res)[refTableIdx].config.Transformers = append((*res)[refTableIdx].config.Transformers, trConf)
+	} else {
+		*res = append(*res, &tableConfigMapping{
+			entry: r.To().Table(),
+			config: &domains.Table{
+				Schema:              r.To().Table().Schema,
+				Name:                r.To().Table().Name,
+				Transformers:        []*domains.TransformerConfig{trConf},
+				ColumnsTypeOverride: colTypeOverride,
+			},
+		})
+	}
+}
+
+// getColumnTypeOverride retrieves column type overrides for foreign key columns, if specified
+func getColumnTypeOverride(rootTableCfg *domains.Table, columnName string) map[string]string {
+	colTypeOverride := make(map[string]string)
+	if rootTableCfg.ColumnsTypeOverride != nil && rootTableCfg.ColumnsTypeOverride[columnName] != "" {
+		colTypeOverride[columnName] = rootTableCfg.ColumnsTypeOverride[columnName]
+	}
+	return colTypeOverride
+}
+
+// isEndToEndPKFK checks if a table has PK and FK on the same columns (end-to-end identifier) using the graph
+func isEndToEndPKFK(graph *subset.Graph, table *entries.Table) bool {
+	// Get all references of the table using the graph
+	//references := graph.GetReferencesForTable(table)
+	idx := slices.IndexFunc(graph.Tables(), func(t *entries.Table) bool {
+		return t.Name == table.Name && t.Schema == table.Schema
+	})
+	rg := graph.ReversedGraph()
+	var foundInFK bool
+	for _, ref := range rg[idx] {
+		for _, fkColName := range ref.To().Keys() {
+			for _, pkColName := range ref.To().Table().PrimaryKey {
+				if pkColName == fkColName.Name {
+					foundInFK = true
+					break
+				}
+			}
+			if foundInFK {
+				break
+			}
+		}
+	}
+	return foundInFK
 }
 
 func findPartitionsOfPartitionedTable(ctx context.Context, tx pgx.Tx, t *entries.Table) ([]toolkit.Oid, error) {
@@ -330,8 +475,7 @@ func setTableConstraints(
 	return nil
 }
 
-func setTablePrimaryKeys(
-	ctx context.Context, tx pgx.Tx, t *entries.Table,
+func setTablePrimaryKeys(ctx context.Context, tx pgx.Tx, t *entries.Table,
 ) (err error) {
 	t.PrimaryKey, err = getPrimaryKeyColumns(ctx, tx, t.Oid)
 	if err != nil {
@@ -371,8 +515,7 @@ func enrichWarningsWithTransformerName(warns toolkit.ValidationWarnings, n strin
 	}
 }
 
-func initAndSetupTransformers(
-	ctx context.Context, t *entries.Table, cfg *domains.Table, r *transformersUtils.TransformerRegistry,
+func initAndSetupTransformers(ctx context.Context, t *entries.Table, cfg *domains.Table, r *transformersUtils.TransformerRegistry,
 ) (toolkit.ValidationWarnings, error) {
 	var warnings toolkit.ValidationWarnings
 	if len(cfg.Transformers) == 0 {

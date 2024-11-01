@@ -38,6 +38,7 @@ type Table struct {
 	RootPtSchema string
 	// RootPtName - name of the root partition table uses in partitioned tables when LoadViaPartitionRoot is set
 	RootPtName          string
+	RootPtOid           toolkit.Oid
 	TransformersContext []*utils.TransformerContext
 	Dependencies        []int32
 	DumpId              int32

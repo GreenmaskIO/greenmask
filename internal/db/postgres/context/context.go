@@ -78,8 +78,38 @@ func NewRuntimeContext(
 		return nil, fmt.Errorf("cannot build type map: %w", err)
 	}
 
-	dumpObjects, buildWarns, err := validateAndBuildEntriesConfig(
-		ctx, tx, typeMap, cfg, r, version, types,
+	// Get list of entries (Tables, sequences, blobs) from the database
+	tables, sequences, blobs, err := getDumpObjects(ctx, version, tx, &cfg.PgDumpOptions)
+	if err != nil {
+		return nil, fmt.Errorf("cannot get Tables: %w", err)
+	}
+
+	vrWarns := validateVirtualReferences(vr, tables)
+	warnings = append(warnings, vrWarns...)
+	if len(vrWarns) > 0 {
+		// if there are any warnings, we shouldn't use them in the graph build
+		vr = nil
+	}
+
+	graph, err := subset.NewGraph(ctx, tx, tables, vr)
+	if err != nil {
+		return nil, fmt.Errorf("error creating graph: %w", err)
+	}
+	if hasSubset(tables) {
+		// If table has subset the restoration must be in the topological order
+		// The Tables must be dumped one by one
+		if err = subset.SetSubsetQueries(graph); err != nil {
+			return nil, fmt.Errorf("cannot set subset queries: %w", err)
+		}
+		debugQueries(tables)
+	} else {
+		// if there are no subset Tables, we can sort them by size and transformation costs
+		// TODO: Implement Tables ordering for subsetted Tables as well
+		scoreTablesEntriesAndSort(tables)
+	}
+
+	buildWarns, err := validateAndBuildEntriesConfig(
+		ctx, tx, tables, typeMap, cfg, r, version, types, graph,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("cannot validate and build table config: %w", err)
@@ -91,39 +121,15 @@ func NewRuntimeContext(
 		}, nil
 	}
 
-	vrWarns := validateVirtualReferences(vr, dumpObjects.Tables())
-	warnings = append(warnings, vrWarns...)
-	if len(vrWarns) > 0 {
-		// if there are any warnings, we shouldn't use them in the graph build
-		vr = nil
-	}
-
-	graph, err := subset.NewGraph(ctx, tx, dumpObjects.Tables(), vr)
-	if err != nil {
-		return nil, fmt.Errorf("error creating graph: %w", err)
-	}
-	if hasSubset(dumpObjects.Tables()) {
-		// If table has subset the restoration must be in the topological order
-		// The Tables must be dumped one by one
-		if err = subset.SetSubsetQueries(graph); err != nil {
-			return nil, fmt.Errorf("cannot set subset queries: %w", err)
-		}
-		debugQueries(dumpObjects.Tables())
-	} else {
-		// if there are no subset Tables, we can sort them by size and transformation costs
-		// TODO: Implement Tables ordering for subsetted Tables as well
-		scoreTablesEntriesAndSort(dumpObjects.Tables())
-	}
-
 	var dataSectionObjects []entries.Entry
-	for _, seq := range dumpObjects.sequences {
+	for _, seq := range sequences {
 		dataSectionObjects = append(dataSectionObjects, seq)
 	}
-	for _, table := range dumpObjects.Tables() {
+	for _, table := range tables {
 		dataSectionObjects = append(dataSectionObjects, table)
 	}
-	if dumpObjects.blobs != nil {
-		dataSectionObjects = append(dataSectionObjects, dumpObjects.blobs)
+	if blobs != nil {
+		dataSectionObjects = append(dataSectionObjects, blobs)
 	}
 
 	//inheritTransformerOnReferences(&cfg, graph)
