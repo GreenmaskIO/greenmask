@@ -132,8 +132,6 @@ func NewRuntimeContext(
 		dataSectionObjects = append(dataSectionObjects, blobs)
 	}
 
-	//inheritTransformerOnReferences(&cfg, graph)
-
 	// Generate list of Tables that might be validated during the validate command call
 	var dataSectionObjectsToValidate []entries.Entry
 	for _, item := range dataSectionObjects {
@@ -142,7 +140,6 @@ func NewRuntimeContext(
 		}
 	}
 
-	// TODO: Merge getDatabaseSchema, validateAndBuildTablesConfig and getDumpObjects
 	schema, err := getDatabaseSchema(ctx, tx, &cfg.PgDumpOptions, version)
 	if err != nil {
 		return nil, fmt.Errorf("cannot get database schema: %w", err)
@@ -199,36 +196,6 @@ func debugQueries(tables []*entries.Table) {
 		log.Logger.Println(t.Query)
 	}
 }
-
-//func inheritTransformerOnReferences(cfg *[]*domains.Table, g *subset.Graph) toolkit.ValidationWarnings {
-//	// Requirements:
-//	// 1. Transformer changes PK columns
-//	// 2. Find FK or VirtualReference that refers to this table
-//	// 3. Check that engine is hash, if not so raise Error warning
-//	// 4. If virtual reference with expression is found - raise Error warning
-//
-//	var warnings toolkit.ValidationWarnings
-//	// Find the Tables that have transformers with apply for references
-//	var tablesWithRef []*domains.Table
-//	for _, table := range *cfg {
-//		for _, transformer := range table.Transformers {
-//			if transformer.ApplyForReferences {
-//				tablesWithRef = append(tablesWithRef, table)
-//			}
-//		}
-//	}
-//	// Find Tables that has end-to-end identifier references
-//	// You can detect it by checking that the referenced table has PK and FK on the same columns set
-//
-//	// 1. Get table dependencies
-//	_, depGraph := g.GetSortedTablesAndDependenciesGraph()
-//	// 2. Find Tables that have end-to-end identifier references or just a simple reference
-//	Tables := g.GetTables()
-//	for _, t := range tablesWithRef {
-//		// Find the table in the graph
-//	}
-//
-//}
 
 func withSalt(ctx context.Context) (context.Context, error) {
 	var salt []byte

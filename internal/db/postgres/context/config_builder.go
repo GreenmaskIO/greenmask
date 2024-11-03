@@ -210,7 +210,7 @@ func setConfigToEntries(
 				warnings = append(warnings, checkWarns...)
 				continue
 			}
-			refTables := getRefTables(tcm.entry, tcm.config, g)
+			refTables := getRefTables(tcm.entry, tcm.config, g, cfg)
 			res = append(res, refTables...)
 		}
 		if tcm.entry.RelKind != 'p' {
@@ -258,17 +258,16 @@ func setConfigToEntries(
 	return res, warnings, nil
 }
 
-func getRefTables(rootTable *entries.Table, rootTableCfg *domains.Table, graph *subset.Graph) []*tableConfigMapping {
+func getRefTables(
+	rootTable *entries.Table, rootTableCfg *domains.Table, graph *subset.Graph, allTrans []*domains.Table,
+) []*tableConfigMapping {
 	var res []*tableConfigMapping
-	//visited := make(map[string]bool)
-	rootTransformersMapping := collectRootTransformers(rootTable, rootTableCfg)
+	rootTrans := collectRootTransformers(rootTable, rootTableCfg)
 
 	// Start DFS traversal from the root table
-	for _, rootTr := range rootTransformersMapping {
-		buildRefsWithEndToEndDfs(
-			rootTable, rootTableCfg, graph, rootTransformersMapping, rootTr, &res, false,
-		)
-	}
+	buildRefsWithEndToEndDfs(
+		rootTable, rootTableCfg, rootTrans, graph, allTrans, &res, false,
+	)
 
 	return res
 }
@@ -276,8 +275,8 @@ func getRefTables(rootTable *entries.Table, rootTableCfg *domains.Table, graph *
 // buildRefsWithEndToEndDfs performs depth-first search to apply transformations to child tables
 // based on the root transformers mapping and graph structure, avoiding cycles
 func buildRefsWithEndToEndDfs(
-	table *entries.Table, rootTableCfg *domains.Table, graph *subset.Graph,
-	transformers []*transformersMapping, rootTr *transformersMapping,
+	table *entries.Table, rootTableCfg *domains.Table, rootTrans []*transformersMapping,
+	graph *subset.Graph, allTrans []*domains.Table,
 	res *[]*tableConfigMapping, checkEndToEnd bool) {
 	//tableKey := fmt.Sprintf("%s.%s", table.Schema, table.Name)
 	//if visited[tableKey] {
@@ -301,10 +300,10 @@ func buildRefsWithEndToEndDfs(
 		if checkEndToEnd && !isEndToEndPKFK(graph, r.From().Table()) {
 			continue
 		}
-		processReference(r, rootTableCfg, transformers, res)
+		processReference(r, rootTableCfg, rootTrans, allTrans, res)
 		// Recursively call DFS on child reference, setting checkEndToEnd to true after the first level
 		buildRefsWithEndToEndDfs(
-			r.To().Table(), rootTableCfg, graph, transformers, rootTr, res, true,
+			r.To().Table(), rootTableCfg, rootTrans, graph, allTrans, res, true,
 		)
 	}
 }
@@ -341,13 +340,30 @@ func findTableIndex(graph *subset.Graph, table *entries.Table) int {
 // processReference applies transformers to the reference table if it matches criteria
 // and recursively calls buildRefsWithEndToEndDfs on the child references
 func processReference(
-	r *subset.Edge, rootTableCfg *domains.Table, transformers []*transformersMapping,
-	res *[]*tableConfigMapping,
+	r *subset.Edge, rootTableCfg *domains.Table, rootTrans []*transformersMapping,
+	allTrans []*domains.Table, res *[]*tableConfigMapping,
 ) {
-	for _, rootTr := range transformers {
+	for _, rootTr := range rootTrans {
 		// Get the primary key column name of the root table
 		fkKeys := r.To().Keys()
 		refColName := fkKeys[rootTr.attNum].Name
+
+		found, conf := checkTransformerAlreadyExists(
+			allTrans, r.To().Table().Schema, r.To().Table().Name, rootTr.cfg.Name, refColName,
+		)
+		if found {
+			log.Info().
+				Str("TransformerName", rootTr.cfg.Name).
+				Str("ParentTableSchema", rootTableCfg.Schema).
+				Str("ParentTableName", rootTableCfg.Name).
+				Str("ChildTableSchema", r.To().Table().Schema).
+				Str("ChildTableName", r.To().Table().Name).
+				Str("ChildColumnName", refColName).
+				Any("TransformerConfig", conf).
+				Msg("skipping apply transformer for reference: found manually configured transformer")
+			continue
+		}
+
 		trConf := rootTr.cfg.Clone()
 		trConf.Params["column"] = toolkit.ParamsValue(refColName)
 
@@ -357,7 +373,10 @@ func processReference(
 }
 
 // addTransformerToReferenceTable adds the transformer configuration to the reference table in the results
-func addTransformerToReferenceTable(r *subset.Edge, trConf *domains.TransformerConfig, colTypeOverride map[string]string, res *[]*tableConfigMapping) {
+func addTransformerToReferenceTable(
+	r *subset.Edge, trConf *domains.TransformerConfig,
+	colTypeOverride map[string]string, res *[]*tableConfigMapping,
+) {
 	refTableIdx := slices.IndexFunc(*res, func(tcm *tableConfigMapping) bool {
 		return tcm.entry.Name == r.To().Table().Name && tcm.entry.Schema == r.To().Table().Schema
 	})
@@ -594,4 +613,19 @@ func isTransformerAllowedToApplyForReferences(
 		}
 	}
 	return true, nil
+}
+
+func checkTransformerAlreadyExists(
+	conf []*domains.Table, schemaName, tableName, tranName, tColumn string,
+) (bool, *domains.TransformerConfig) {
+	for _, c := range conf {
+		if c.Name == tableName && c.Schema == schemaName {
+			for _, tr := range c.Transformers {
+				if tr.Name == tranName && string(tr.Params[columnParameterName]) == tColumn {
+					return true, tr
+				}
+			}
+		}
+	}
+	return false, nil
 }
