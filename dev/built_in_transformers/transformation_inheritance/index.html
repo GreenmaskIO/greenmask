@@ -8,13 +8,13 @@
       
       
       
-        <link rel="canonical" href="https://docs.greenmask.io/dev/built_in_transformers/standard_transformers/">
+        <link rel="canonical" href="https://docs.greenmask.io/dev/built_in_transformers/transformation_inheritance/">
       
       
-        <link rel="prev" href="../transformation_inheritance/">
+        <link rel="prev" href="../transformation_condition/">
       
       
-        <link rel="next" href="cmd/">
+        <link rel="next" href="../standard_transformers/">
       
       
       <link rel="icon" href="../../assets/logo.png">
@@ -22,7 +22,7 @@
     
     
       
-        <title>Standard transformers - Greenmask — PostgreSQL database anonymization and synthetic data generation tool</title>
+        <title>Transformation inheritance - Greenmask — PostgreSQL database anonymization and synthetic data generation tool</title>
       
     
     
@@ -67,11 +67,11 @@
       
         <meta  property="og:type"  content="website" >
       
-        <meta  property="og:title"  content="Standard transformers - Greenmask — PostgreSQL database anonymization and synthetic data generation tool" >
+        <meta  property="og:title"  content="Transformation inheritance - Greenmask — PostgreSQL database anonymization and synthetic data generation tool" >
       
         <meta  property="og:description"  content="None" >
       
-        <meta  property="og:image"  content="https://docs.greenmask.io/dev/assets/images/social/built_in_transformers/standard_transformers/index.png" >
+        <meta  property="og:image"  content="https://docs.greenmask.io/dev/assets/images/social/built_in_transformers/transformation_inheritance.png" >
       
         <meta  property="og:image:type"  content="image/png" >
       
@@ -79,15 +79,15 @@
       
         <meta  property="og:image:height"  content="630" >
       
-        <meta  property="og:url"  content="https://docs.greenmask.io/dev/built_in_transformers/standard_transformers/" >
+        <meta  property="og:url"  content="https://docs.greenmask.io/dev/built_in_transformers/transformation_inheritance/" >
       
         <meta  name="twitter:card"  content="summary_large_image" >
       
-        <meta  name="twitter:title"  content="Standard transformers - Greenmask — PostgreSQL database anonymization and synthetic data generation tool" >
+        <meta  name="twitter:title"  content="Transformation inheritance - Greenmask — PostgreSQL database anonymization and synthetic data generation tool" >
       
         <meta  name="twitter:description"  content="None" >
       
-        <meta  name="twitter:image"  content="https://docs.greenmask.io/dev/assets/images/social/built_in_transformers/standard_transformers/index.png" >
+        <meta  name="twitter:image"  content="https://docs.greenmask.io/dev/assets/images/social/built_in_transformers/transformation_inheritance.png" >
       
     
     
@@ -108,7 +108,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#standard-transformers" class="md-skip">
+        <a href="#transformation-inheritance" class="md-skip">
           Skip to content
         </a>
       
@@ -174,7 +174,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Standard transformers
+              Transformation inheritance
             
           </span>
         </div>
@@ -923,10 +923,30 @@
                 
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="../transformation_inheritance/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  <span class="md-ellipsis">
+    Transformation inheritance
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   <span class="md-ellipsis">
@@ -935,6 +955,128 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#description" class="md-nav__link">
+    <span class="md-ellipsis">
+      Description
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#apply-for-inherited" class="md-nav__link">
+    <span class="md-ellipsis">
+      Apply for inherited
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Apply for inherited">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#configuration-conflicts" class="md-nav__link">
+    <span class="md-ellipsis">
+      Configuration conflicts
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#apply-for-references" class="md-nav__link">
+    <span class="md-ellipsis">
+      Apply for references
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Apply for references">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#end-to-end-identifiers" class="md-nav__link">
+    <span class="md-ellipsis">
+      End-to-End Identifiers
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#configuration-conflicts_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      Configuration conflicts
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#limitations" class="md-nav__link">
+    <span class="md-ellipsis">
+      Limitations
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#example-1-partitioned-tables" class="md-nav__link">
+    <span class="md-ellipsis">
+      Example 1. Partitioned tables
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#example-2-simple-table-references" class="md-nav__link">
+    <span class="md-ellipsis">
+      Example 2. Simple table references
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#example-3-references-on-tables-with-end-to-end-identifiers" class="md-nav__link">
+    <span class="md-ellipsis">
+      Example 3. References on tables with end-to-end identifiers
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -944,8 +1086,6 @@
                 
   
   
-    
-  
   
   
     
@@ -1055,16 +1195,16 @@
       
     
     
-    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_1_7_7" checked>
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_1_7_7" >
         
           
           
           <div class="md-nav__link md-nav__container">
-            <a href="./" class="md-nav__link md-nav__link--active">
+            <a href="../standard_transformers/" class="md-nav__link ">
               
   
   <span class="md-ellipsis">
@@ -1075,13 +1215,13 @@
             </a>
             
               
-              <label class="md-nav__link md-nav__link--active" for="__nav_1_7_7" id="__nav_1_7_7_label" tabindex="0">
+              <label class="md-nav__link " for="__nav_1_7_7" id="__nav_1_7_7_label" tabindex="0">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
           </div>
         
-        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_1_7_7_label" aria-expanded="true">
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_1_7_7_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_1_7_7">
             <span class="md-nav__icon md-icon"></span>
             Standard transformers
@@ -1097,7 +1237,7 @@
   
   
     <li class="md-nav__item">
-      <a href="cmd/" class="md-nav__link">
+      <a href="../standard_transformers/cmd/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1118,7 +1258,7 @@
   
   
     <li class="md-nav__item">
-      <a href="dict/" class="md-nav__link">
+      <a href="../standard_transformers/dict/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1139,7 +1279,7 @@
   
   
     <li class="md-nav__item">
-      <a href="hash/" class="md-nav__link">
+      <a href="../standard_transformers/hash/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1160,7 +1300,7 @@
   
   
     <li class="md-nav__item">
-      <a href="masking/" class="md-nav__link">
+      <a href="../standard_transformers/masking/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1181,7 +1321,7 @@
   
   
     <li class="md-nav__item">
-      <a href="noise_date/" class="md-nav__link">
+      <a href="../standard_transformers/noise_date/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1202,7 +1342,7 @@
   
   
     <li class="md-nav__item">
-      <a href="noise_float/" class="md-nav__link">
+      <a href="../standard_transformers/noise_float/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1223,7 +1363,7 @@
   
   
     <li class="md-nav__item">
-      <a href="noise_numeric/" class="md-nav__link">
+      <a href="../standard_transformers/noise_numeric/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1244,7 +1384,7 @@
   
   
     <li class="md-nav__item">
-      <a href="noise_int/" class="md-nav__link">
+      <a href="../standard_transformers/noise_int/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1265,7 +1405,7 @@
   
   
     <li class="md-nav__item">
-      <a href="random_bool/" class="md-nav__link">
+      <a href="../standard_transformers/random_bool/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1286,7 +1426,7 @@
   
   
     <li class="md-nav__item">
-      <a href="random_choice/" class="md-nav__link">
+      <a href="../standard_transformers/random_choice/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1307,7 +1447,7 @@
   
   
     <li class="md-nav__item">
-      <a href="random_date/" class="md-nav__link">
+      <a href="../standard_transformers/random_date/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1328,7 +1468,7 @@
   
   
     <li class="md-nav__item">
-      <a href="random_float/" class="md-nav__link">
+      <a href="../standard_transformers/random_float/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1349,7 +1489,7 @@
   
   
     <li class="md-nav__item">
-      <a href="random_numeric/" class="md-nav__link">
+      <a href="../standard_transformers/random_numeric/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1370,7 +1510,7 @@
   
   
     <li class="md-nav__item">
-      <a href="random_int/" class="md-nav__link">
+      <a href="../standard_transformers/random_int/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1391,7 +1531,7 @@
   
   
     <li class="md-nav__item">
-      <a href="random_string/" class="md-nav__link">
+      <a href="../standard_transformers/random_string/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1412,7 +1552,7 @@
   
   
     <li class="md-nav__item">
-      <a href="random_uuid/" class="md-nav__link">
+      <a href="../standard_transformers/random_uuid/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1433,7 +1573,7 @@
   
   
     <li class="md-nav__item">
-      <a href="random_latitude/" class="md-nav__link">
+      <a href="../standard_transformers/random_latitude/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1454,7 +1594,7 @@
   
   
     <li class="md-nav__item">
-      <a href="random_longitude/" class="md-nav__link">
+      <a href="../standard_transformers/random_longitude/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1475,7 +1615,7 @@
   
   
     <li class="md-nav__item">
-      <a href="random_unix_timestamp/" class="md-nav__link">
+      <a href="../standard_transformers/random_unix_timestamp/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1496,7 +1636,7 @@
   
   
     <li class="md-nav__item">
-      <a href="random_day_of_week/" class="md-nav__link">
+      <a href="../standard_transformers/random_day_of_week/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1517,7 +1657,7 @@
   
   
     <li class="md-nav__item">
-      <a href="random_day_of_month/" class="md-nav__link">
+      <a href="../standard_transformers/random_day_of_month/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1538,7 +1678,7 @@
   
   
     <li class="md-nav__item">
-      <a href="random_month_name/" class="md-nav__link">
+      <a href="../standard_transformers/random_month_name/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1559,7 +1699,7 @@
   
   
     <li class="md-nav__item">
-      <a href="random_year_string/" class="md-nav__link">
+      <a href="../standard_transformers/random_year_string/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1580,7 +1720,7 @@
   
   
     <li class="md-nav__item">
-      <a href="random_century/" class="md-nav__link">
+      <a href="../standard_transformers/random_century/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1601,7 +1741,7 @@
   
   
     <li class="md-nav__item">
-      <a href="random_timezone/" class="md-nav__link">
+      <a href="../standard_transformers/random_timezone/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1622,7 +1762,7 @@
   
   
     <li class="md-nav__item">
-      <a href="random_email/" class="md-nav__link">
+      <a href="../standard_transformers/random_email/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1643,7 +1783,7 @@
   
   
     <li class="md-nav__item">
-      <a href="random_username/" class="md-nav__link">
+      <a href="../standard_transformers/random_username/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1664,7 +1804,7 @@
   
   
     <li class="md-nav__item">
-      <a href="random_password/" class="md-nav__link">
+      <a href="../standard_transformers/random_password/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1685,7 +1825,7 @@
   
   
     <li class="md-nav__item">
-      <a href="random_domain_name/" class="md-nav__link">
+      <a href="../standard_transformers/random_domain_name/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1706,7 +1846,7 @@
   
   
     <li class="md-nav__item">
-      <a href="random_person/" class="md-nav__link">
+      <a href="../standard_transformers/random_person/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1727,7 +1867,7 @@
   
   
     <li class="md-nav__item">
-      <a href="random_url/" class="md-nav__link">
+      <a href="../standard_transformers/random_url/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1748,7 +1888,7 @@
   
   
     <li class="md-nav__item">
-      <a href="random_mac/" class="md-nav__link">
+      <a href="../standard_transformers/random_mac/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1769,7 +1909,7 @@
   
   
     <li class="md-nav__item">
-      <a href="random_ip/" class="md-nav__link">
+      <a href="../standard_transformers/random_ip/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1790,7 +1930,7 @@
   
   
     <li class="md-nav__item">
-      <a href="random_word/" class="md-nav__link">
+      <a href="../standard_transformers/random_word/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1811,7 +1951,7 @@
   
   
     <li class="md-nav__item">
-      <a href="random_sentence/" class="md-nav__link">
+      <a href="../standard_transformers/random_sentence/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1832,7 +1972,7 @@
   
   
     <li class="md-nav__item">
-      <a href="random_paragraph/" class="md-nav__link">
+      <a href="../standard_transformers/random_paragraph/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1853,7 +1993,7 @@
   
   
     <li class="md-nav__item">
-      <a href="random_cc_type/" class="md-nav__link">
+      <a href="../standard_transformers/random_cc_type/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1874,7 +2014,7 @@
   
   
     <li class="md-nav__item">
-      <a href="random_cc_number/" class="md-nav__link">
+      <a href="../standard_transformers/random_cc_number/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1895,7 +2035,7 @@
   
   
     <li class="md-nav__item">
-      <a href="random_currency/" class="md-nav__link">
+      <a href="../standard_transformers/random_currency/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1916,7 +2056,7 @@
   
   
     <li class="md-nav__item">
-      <a href="random_amount_with_currency/" class="md-nav__link">
+      <a href="../standard_transformers/random_amount_with_currency/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1937,7 +2077,7 @@
   
   
     <li class="md-nav__item">
-      <a href="random_phone_number/" class="md-nav__link">
+      <a href="../standard_transformers/random_phone_number/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1958,7 +2098,7 @@
   
   
     <li class="md-nav__item">
-      <a href="random_toll_free_phone_number/" class="md-nav__link">
+      <a href="../standard_transformers/random_toll_free_phone_number/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -1979,7 +2119,7 @@
   
   
     <li class="md-nav__item">
-      <a href="random_e164_phone_number/" class="md-nav__link">
+      <a href="../standard_transformers/random_e164_phone_number/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -2000,7 +2140,7 @@
   
   
     <li class="md-nav__item">
-      <a href="real_address/" class="md-nav__link">
+      <a href="../standard_transformers/real_address/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -2021,7 +2161,7 @@
   
   
     <li class="md-nav__item">
-      <a href="regexp_replace/" class="md-nav__link">
+      <a href="../standard_transformers/regexp_replace/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -2042,7 +2182,7 @@
   
   
     <li class="md-nav__item">
-      <a href="replace/" class="md-nav__link">
+      <a href="../standard_transformers/replace/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -2063,7 +2203,7 @@
   
   
     <li class="md-nav__item">
-      <a href="set_null/" class="md-nav__link">
+      <a href="../standard_transformers/set_null/" class="md-nav__link">
         
   
   <span class="md-ellipsis">
@@ -2847,6 +2987,116 @@
     
   
   
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#description" class="md-nav__link">
+    <span class="md-ellipsis">
+      Description
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#apply-for-inherited" class="md-nav__link">
+    <span class="md-ellipsis">
+      Apply for inherited
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Apply for inherited">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#configuration-conflicts" class="md-nav__link">
+    <span class="md-ellipsis">
+      Configuration conflicts
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#apply-for-references" class="md-nav__link">
+    <span class="md-ellipsis">
+      Apply for references
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Apply for references">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#end-to-end-identifiers" class="md-nav__link">
+    <span class="md-ellipsis">
+      End-to-End Identifiers
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#configuration-conflicts_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      Configuration conflicts
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#limitations" class="md-nav__link">
+    <span class="md-ellipsis">
+      Limitations
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#example-1-partitioned-tables" class="md-nav__link">
+    <span class="md-ellipsis">
+      Example 1. Partitioned tables
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#example-2-simple-table-references" class="md-nav__link">
+    <span class="md-ellipsis">
+      Example 2. Simple table references
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#example-3-references-on-tables-with-end-to-end-identifiers" class="md-nav__link">
+    <span class="md-ellipsis">
+      Example 3. References on tables with end-to-end identifiers
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
 </nav>
                   </div>
                 </div>
@@ -2863,56 +3113,264 @@
   
 
 
-<h1 id="standard-transformers">Standard transformers<a class="headerlink" href="#standard-transformers" title="Permanent link">&para;</a></h1>
-<p>Standard transformers are ready-to-use methods that require no customization and perform with just as little as parameters input. Below you can find an index of all standard transformers currently available in Greenmask.</p>
-<ol>
-<li><a href="cmd/">Cmd</a> — transforms data via external program using <code>stdin</code> and <code>stdout</code> interaction.</li>
-<li><a href="dict/">Dict</a> — replaces values matched by dictionary keys.</li>
-<li><a href="dict/">Hash</a> — generates a hash of the text value.</li>
-<li><a href="masking/">Masking</a> — masks a value using one of the masking behaviors depending on your domain.</li>
-<li><a href="noise_date/">NoiseDate</a> — randomly adds or subtracts a duration within the provided ratio interval to the original date value.</li>
-<li><a href="noise_float/">NoiseFloat</a> — adds or subtracts a random fraction to the original float value.terval to the original date value.</li>
-<li><a href="noise_numeric/">NoiseNumeric</a> — adds or subtracts a random fraction to the original numeric value.</li>
-<li><a href="noise_int/">NoiseInt</a> — adds or subtracts a random fraction to the original integer value.</li>
-<li><a href="random_bool/">RandomBool</a> — generates random boolean values.</li>
-<li><a href="random_choice/">RandomChoice</a> — replaces values randomly chosen from a provided list.</li>
-<li><a href="random_date/">RandomDate</a> — generates a random date in a specified interval.</li>
-<li><a href="random_float/">RandomFloat</a> — generates a random float within the provided interval.</li>
-<li><a href="random_int/">RandomInt</a> — generates a random integer within the provided interval.</li>
-<li><a href="random_string/">RandomString</a> — generates a random string using the provided characters within the specified length range.</li>
-<li><a href="random_uuid/">RandomUuid</a> — generates a random unique user ID.</li>
-<li><a href="random_latitude/">RandomLatitude</a> — generates a random latitude value.</li>
-<li><a href="random_longitude/">RandomLongitude</a> — generates a random longitude value.</li>
-<li><a href="random_unix_timestamp/">RandomUnixTimestamp</a> — generates a random Unix timestamp.</li>
-<li><a href="random_day_of_week/">RandomDayOfWeek</a> — generates a random day of the week.</li>
-<li><a href="random_day_of_month/">RandomDayOfMonth</a> — generates a random day of the month.</li>
-<li><a href="random_month_name/">RandomMonthName</a> — generates the name of a random month.</li>
-<li><a href="random_year_string/">RandomYearString</a> — generates a random year as a string.</li>
-<li><a href="random_century/">RandomCentury</a> — generates a random century.</li>
-<li><a href="random_timezone/">RandomTimezone</a> — generates a random timezone.</li>
-<li><a href="random_email/">RandomEmail</a> — generates a random email address.</li>
-<li><a href="random_username/">RandomUsername</a> — generates a random username.</li>
-<li><a href="random_password/">RandomPassword</a> — generates a random password.</li>
-<li><a href="random_domain_name/">RandomDomainName</a> — generates a random domain name.</li>
-<li><a href="random_url/">RandomURL</a> — generates a random URL.</li>
-<li><a href="random_mac/">RandomMac</a> — generates a random MAC addresses.</li>
-<li><a href="random_ip/">RandomIP</a> — generates a random IPv4 or IPv6 addresses.</li>
-<li><a href="random_word/">RandomWord</a> — generates a random word.</li>
-<li><a href="random_sentence/">RandomSentence</a> — generates a random sentence.</li>
-<li><a href="random_paragraph/">RandomParagraph</a> — generates a random paragraph.</li>
-<li><a href="random_cc_type/">RandomCCType</a> — generates a random credit card type.</li>
-<li><a href="random_cc_number/">RandomCCNumber</a> — generates a random credit card number.</li>
-<li><a href="random_currency/">RandomCurrency</a> — generates a random currency code.</li>
-<li><a href="random_amount_with_currency/">RandomAmountWithCurrency</a> — generates a random monetary amount with currency.</li>
-<li><a href="random_person/">RandomPerson</a> — generates a random person data (first name, last name, etc.)</li>
-<li><a href="random_phone_number/">RandomPhoneNumber</a> — generates a random phone number.</li>
-<li><a href="random_toll_free_phone_number/">RandomTollFreePhoneNumber</a> — generates a random toll-free phone number.</li>
-<li><a href="random_e164_phone_number/">RandomE164PhoneNumber</a> — generates a random phone number in E.164 format.</li>
-<li><a href="real_address/">RealAddress</a> — generates a real address.</li>
-<li><a href="regexp_replace/">RegexpReplace</a> — replaces a string using a regular expression.</li>
-<li><a href="replace/">Replace</a> — replaces an original value by the provided one.</li>
-<li><a href="set_null/">SetNull</a> — sets <code>NULL</code> value to the column.</li>
-</ol>
+<h1 id="transformation-inheritance">Transformation Inheritance<a class="headerlink" href="#transformation-inheritance" title="Permanent link">&para;</a></h1>
+<h2 id="description">Description<a class="headerlink" href="#description" title="Permanent link">&para;</a></h2>
+<p>If you have partitioned tables or want to apply a transformation to a primary key and propagate it to all tables
+referencing that column, you can do so with Greenmask.</p>
+<h2 id="apply-for-inherited">Apply for inherited<a class="headerlink" href="#apply-for-inherited" title="Permanent link">&para;</a></h2>
+<p>Using <code>apply_for_inherited</code>, you can apply transformations to all partitions of a partitioned table, including any
+subpartitions.</p>
+<h3 id="configuration-conflicts">Configuration conflicts<a class="headerlink" href="#configuration-conflicts" title="Permanent link">&para;</a></h3>
+<p>When a partition has a transformation defined manually via config, and <code>apply_for_inherited</code> is set on the parent table,
+Greenmask will merge both the inherited and manually defined configurations. The manually defined transformation will
+execute last, giving it higher priority.</p>
+<p>If this situation occurs, you will see the following information in the log:</p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;level&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;info&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;ParentTableSchema&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;public&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;ParentTableName&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;sales&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;ChildTableSchema&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;public&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;ChildTableName&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;sales_2022_feb&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;ChildTableConfig&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">      </span><span class="nt">&quot;name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;RandomDate&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;params&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="nt">&quot;column&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;sale_date&quot;</span><span class="p">,</span>
+<span class="w">        </span><span class="nt">&quot;engine&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;random&quot;</span><span class="p">,</span>
+<span class="w">        </span><span class="nt">&quot;max&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;2005-01-01&quot;</span><span class="p">,</span>
+<span class="w">        </span><span class="nt">&quot;min&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;2001-01-01&quot;</span>
+<span class="w">      </span><span class="p">}</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">  </span><span class="p">],</span>
+<span class="w">  </span><span class="nt">&quot;time&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;2024-11-03T22:14:01+02:00&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;message&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;config will be merged: found manually defined transformers on the partitioned table&quot;</span>
+<span class="p">}</span>
+</code></pre></div>
+<h2 id="apply-for-references">Apply for references<a class="headerlink" href="#apply-for-references" title="Permanent link">&para;</a></h2>
+<p>Using <code>apply_for_references</code>, you can apply transformations to columns involved in a primary key or in tables with a
+foreign key that references that column. This simplifies the transformation process by requiring you to define the
+transformation only on the primary key column, which will then be applied to all tables referencing that column.</p>
+<p>The transformer must be deterministic or support <code>hash</code> engine and the <code>hash</code> engin must be set in the
+configuration file.</p>
+<p>List of transformers that supports <code>apply_for_references</code>:</p>
+<ul>
+<li>Hash</li>
+<li>NoiseDate</li>
+<li>NoiseFloat</li>
+<li>NoiseInt</li>
+<li>NoiseNumeric</li>
+<li>RandomBool</li>
+<li>RandomDate</li>
+<li>RandomEmail</li>
+<li>RandomFloat</li>
+<li>RandomInt</li>
+<li>RandomIp</li>
+<li>RandomMac</li>
+<li>RandomNumeric</li>
+<li>RandomString</li>
+<li>RandomUuid</li>
+<li>RandomUnixTimestamp</li>
+</ul>
+<h3 id="end-to-end-identifiers">End-to-End Identifiers<a class="headerlink" href="#end-to-end-identifiers" title="Permanent link">&para;</a></h3>
+<p>End-to-end identifiers in databases are unique identifiers that are consistently used across multiple tables in a
+relational database schema, allowing for a seamless chain of references from one table to another. These identifiers
+typically serve as primary keys in one table and are propagated as foreign keys in other tables, creating a direct,
+traceable link from one end of a data relationship to the other.</p>
+<p>Greenmask can detect end-to-end identifiers and apply transformations across the entire sequence of tables. These
+identifiers are detected when the following condition is met: the foreign key serves as both a primary key and a foreign
+key in the referenced table.</p>
+<h3 id="configuration-conflicts_1">Configuration conflicts<a class="headerlink" href="#configuration-conflicts_1" title="Permanent link">&para;</a></h3>
+<p>When on the referenced column a transformation is manually defined via config, and the <code>apply_for_references</code> is set on
+parent table, the transformation defined will be chosen and the inherited transformation will be ignored. You will
+receive a <code>INFO</code> message in the logs.</p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;level&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;info&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;TransformerName&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;RandomInt&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;ParentTableSchema&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;public&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;ParentTableName&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;tablea&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;ChildTableSchema&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;public&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;ChildTableName&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;tablec&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;ChildColumnName&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;id2&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;TransformerConfig&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;RandomInt&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;apply_for_references&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span>
+<span class="w">  </span><span class="p">},</span>
+<span class="w">  </span><span class="nt">&quot;time&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;2024-11-03T21:28:10+02:00&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;message&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;skipping apply transformer for reference: found manually configured transformer&quot;</span>
+<span class="p">}</span>
+</code></pre></div>
+<h3 id="limitations">Limitations<a class="headerlink" href="#limitations" title="Permanent link">&para;</a></h3>
+<ul>
+<li>The transformation must be deterministic.</li>
+<li>The transformation condition will not be applied to the referenced column.</li>
+<li>Not all transformers support <code>apply_for_references</code></li>
+</ul>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>We do not recommend using <code>apply_for_references</code> with transformation conditions, as these conditions are not 
+inherited by transformers on the referenced columns. This may lead to inconsistencies in the data.</p>
+</div>
+<h2 id="example-1-partitioned-tables">Example 1. Partitioned tables<a class="headerlink" href="#example-1-partitioned-tables" title="Permanent link">&para;</a></h2>
+<p>In this example, we have a partitioned table <code>sales</code> that is partitioned by year and then by month. Each partition
+contains a subset of data based on the year and month of the sale. The <code>sales</code> table has a primary key <code>sale_id</code> and is
+partitioned by <code>sale_date</code>. The <code>sale_date</code> column is transformed using the <code>RandomDate</code> transformer.</p>
+<div class="highlight"><pre><span></span><code><span class="k">CREATE</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="n">sales</span>
+<span class="p">(</span>
+<span class="w">    </span><span class="n">sale_id</span><span class="w">   </span><span class="nb">SERIAL</span><span class="w">         </span><span class="k">NOT</span><span class="w"> </span><span class="k">NULL</span><span class="p">,</span>
+<span class="w">    </span><span class="n">sale_date</span><span class="w"> </span><span class="nb">DATE</span><span class="w">           </span><span class="k">NOT</span><span class="w"> </span><span class="k">NULL</span><span class="p">,</span>
+<span class="w">    </span><span class="n">amount</span><span class="w">    </span><span class="nb">NUMERIC</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span><span class="w"> </span><span class="mi">2</span><span class="p">)</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">NULL</span>
+<span class="p">)</span><span class="w"> </span><span class="n">PARTITION</span><span class="w"> </span><span class="k">BY</span><span class="w"> </span><span class="n">RANGE</span><span class="w"> </span><span class="p">(</span><span class="k">EXTRACT</span><span class="p">(</span><span class="k">YEAR</span><span class="w"> </span><span class="k">FROM</span><span class="w"> </span><span class="n">sale_date</span><span class="p">));</span>
+
+<span class="c1">-- Step 2: Create first-level partitions by year</span>
+<span class="k">CREATE</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="n">sales_2022</span><span class="w"> </span><span class="n">PARTITION</span><span class="w"> </span><span class="k">OF</span><span class="w"> </span><span class="n">sales</span>
+<span class="w">    </span><span class="k">FOR</span><span class="w"> </span><span class="k">VALUES</span><span class="w"> </span><span class="k">FROM</span><span class="w"> </span><span class="p">(</span><span class="mi">2022</span><span class="p">)</span><span class="w"> </span><span class="k">TO</span><span class="w"> </span><span class="p">(</span><span class="mi">2023</span><span class="p">)</span>
+<span class="w">    </span><span class="n">PARTITION</span><span class="w"> </span><span class="k">BY</span><span class="w"> </span><span class="n">LIST</span><span class="w"> </span><span class="p">(</span><span class="k">EXTRACT</span><span class="p">(</span><span class="k">MONTH</span><span class="w"> </span><span class="k">FROM</span><span class="w"> </span><span class="n">sale_date</span><span class="p">));</span>
+
+<span class="k">CREATE</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="n">sales_2023</span><span class="w"> </span><span class="n">PARTITION</span><span class="w"> </span><span class="k">OF</span><span class="w"> </span><span class="n">sales</span>
+<span class="w">    </span><span class="k">FOR</span><span class="w"> </span><span class="k">VALUES</span><span class="w"> </span><span class="k">FROM</span><span class="w"> </span><span class="p">(</span><span class="mi">2023</span><span class="p">)</span><span class="w"> </span><span class="k">TO</span><span class="w"> </span><span class="p">(</span><span class="mi">2024</span><span class="p">)</span>
+<span class="w">    </span><span class="n">PARTITION</span><span class="w"> </span><span class="k">BY</span><span class="w"> </span><span class="n">LIST</span><span class="w"> </span><span class="p">(</span><span class="k">EXTRACT</span><span class="p">(</span><span class="k">MONTH</span><span class="w"> </span><span class="k">FROM</span><span class="w"> </span><span class="n">sale_date</span><span class="p">));</span>
+
+<span class="c1">-- Step 3: Create second-level partitions by month for each year, adding PRIMARY KEY on each partition</span>
+
+<span class="c1">-- Monthly partitions for 2022</span>
+<span class="k">CREATE</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="n">sales_2022_jan</span><span class="w"> </span><span class="n">PARTITION</span><span class="w"> </span><span class="k">OF</span><span class="w"> </span><span class="n">sales_2022</span><span class="w"> </span><span class="k">FOR</span><span class="w"> </span><span class="k">VALUES</span><span class="w"> </span><span class="k">IN</span><span class="w"> </span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+<span class="w">    </span><span class="k">WITH</span><span class="w"> </span><span class="p">(</span><span class="n">fillfactor</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">70</span><span class="p">);</span>
+<span class="k">CREATE</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="n">sales_2022_feb</span><span class="w"> </span><span class="n">PARTITION</span><span class="w"> </span><span class="k">OF</span><span class="w"> </span><span class="n">sales_2022</span><span class="w"> </span><span class="k">FOR</span><span class="w"> </span><span class="k">VALUES</span><span class="w"> </span><span class="k">IN</span><span class="w"> </span><span class="p">(</span><span class="mi">2</span><span class="p">);</span>
+<span class="k">CREATE</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="n">sales_2022_mar</span><span class="w"> </span><span class="n">PARTITION</span><span class="w"> </span><span class="k">OF</span><span class="w"> </span><span class="n">sales_2022</span><span class="w"> </span><span class="k">FOR</span><span class="w"> </span><span class="k">VALUES</span><span class="w"> </span><span class="k">IN</span><span class="w"> </span><span class="p">(</span><span class="mi">3</span><span class="p">);</span>
+<span class="c1">-- Continue adding monthly partitions for 2022...</span>
+
+<span class="c1">-- Monthly partitions for 2023</span>
+<span class="k">CREATE</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="n">sales_2023_jan</span><span class="w"> </span><span class="n">PARTITION</span><span class="w"> </span><span class="k">OF</span><span class="w"> </span><span class="n">sales_2023</span><span class="w"> </span><span class="k">FOR</span><span class="w"> </span><span class="k">VALUES</span><span class="w"> </span><span class="k">IN</span><span class="w"> </span><span class="p">(</span><span class="mi">1</span><span class="p">);</span>
+<span class="k">CREATE</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="n">sales_2023_feb</span><span class="w"> </span><span class="n">PARTITION</span><span class="w"> </span><span class="k">OF</span><span class="w"> </span><span class="n">sales_2023</span><span class="w"> </span><span class="k">FOR</span><span class="w"> </span><span class="k">VALUES</span><span class="w"> </span><span class="k">IN</span><span class="w"> </span><span class="p">(</span><span class="mi">2</span><span class="p">);</span>
+<span class="k">CREATE</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="n">sales_2023_mar</span><span class="w"> </span><span class="n">PARTITION</span><span class="w"> </span><span class="k">OF</span><span class="w"> </span><span class="n">sales_2023</span><span class="w"> </span><span class="k">FOR</span><span class="w"> </span><span class="k">VALUES</span><span class="w"> </span><span class="k">IN</span><span class="w"> </span><span class="p">(</span><span class="mi">3</span><span class="p">);</span>
+<span class="c1">-- Continue adding monthly partitions for 2023...</span>
+
+<span class="c1">-- Step 4: Insert sample data</span>
+<span class="k">INSERT</span><span class="w"> </span><span class="k">INTO</span><span class="w"> </span><span class="n">sales</span><span class="w"> </span><span class="p">(</span><span class="n">sale_date</span><span class="p">,</span><span class="w"> </span><span class="n">amount</span><span class="p">)</span>
+<span class="k">VALUES</span><span class="w"> </span><span class="p">(</span><span class="s1">&#39;2022-01-15&#39;</span><span class="p">,</span><span class="w"> </span><span class="mi">100</span><span class="p">.</span><span class="mi">00</span><span class="p">);</span>
+<span class="k">INSERT</span><span class="w"> </span><span class="k">INTO</span><span class="w"> </span><span class="n">sales</span><span class="w"> </span><span class="p">(</span><span class="n">sale_date</span><span class="p">,</span><span class="w"> </span><span class="n">amount</span><span class="p">)</span>
+<span class="k">VALUES</span><span class="w"> </span><span class="p">(</span><span class="s1">&#39;2022-02-20&#39;</span><span class="p">,</span><span class="w"> </span><span class="mi">150</span><span class="p">.</span><span class="mi">00</span><span class="p">);</span>
+<span class="k">INSERT</span><span class="w"> </span><span class="k">INTO</span><span class="w"> </span><span class="n">sales</span><span class="w"> </span><span class="p">(</span><span class="n">sale_date</span><span class="p">,</span><span class="w"> </span><span class="n">amount</span><span class="p">)</span>
+<span class="k">VALUES</span><span class="w"> </span><span class="p">(</span><span class="s1">&#39;2023-03-10&#39;</span><span class="p">,</span><span class="w"> </span><span class="mi">200</span><span class="p">.</span><span class="mi">00</span><span class="p">);</span>
+</code></pre></div>
+<p>To transform the <code>sale_date</code> column in the <code>sales</code> table and all its partitions, you can use the following
+configuration:</p>
+<div class="highlight"><pre><span></span><code><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">schema</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">public</span>
+<span class="w">  </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">sales</span>
+<span class="w">  </span><span class="nt">apply_for_inherited</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">  </span><span class="nt">transformers</span><span class="p">:</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">RandomDate</span>
+<span class="w">      </span><span class="nt">params</span><span class="p">:</span>
+<span class="w">        </span><span class="nt">min</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;2000-01-01&quot;</span>
+<span class="w">        </span><span class="nt">max</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;2005-01-01&quot;</span>
+<span class="w">        </span><span class="nt">column</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;sale_date&quot;</span>
+<span class="w">        </span><span class="nt">engine</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;random&quot;</span>
+</code></pre></div>
+<h2 id="example-2-simple-table-references">Example 2. Simple table references<a class="headerlink" href="#example-2-simple-table-references" title="Permanent link">&para;</a></h2>
+<p>This is ordinary table references where the primary key of the <code>users</code> table is referenced in the <code>orders</code> table.</p>
+<div class="highlight"><pre><span></span><code><span class="c1">-- Enable the extension for UUID generation (if not enabled)</span>
+<span class="k">CREATE</span><span class="w"> </span><span class="n">EXTENSION</span><span class="w"> </span><span class="k">IF</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">EXISTS</span><span class="w"> </span><span class="ss">&quot;uuid-ossp&quot;</span><span class="p">;</span>
+
+<span class="k">CREATE</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="n">users</span>
+<span class="p">(</span>
+<span class="w">    </span><span class="n">user_id</span><span class="w">  </span><span class="n">UUID</span><span class="w"> </span><span class="k">PRIMARY</span><span class="w"> </span><span class="k">KEY</span><span class="w"> </span><span class="k">DEFAULT</span><span class="w"> </span><span class="n">uuid_generate_v4</span><span class="p">(),</span>
+<span class="w">    </span><span class="n">username</span><span class="w"> </span><span class="nb">VARCHAR</span><span class="p">(</span><span class="mi">50</span><span class="p">)</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">NULL</span>
+<span class="p">);</span>
+
+<span class="k">CREATE</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="n">orders</span>
+<span class="p">(</span>
+<span class="w">    </span><span class="n">order_id</span><span class="w">   </span><span class="n">UUID</span><span class="w"> </span><span class="k">PRIMARY</span><span class="w"> </span><span class="k">KEY</span><span class="w"> </span><span class="k">DEFAULT</span><span class="w"> </span><span class="n">uuid_generate_v4</span><span class="p">(),</span>
+<span class="w">    </span><span class="n">user_id</span><span class="w">    </span><span class="n">UUID</span><span class="w"> </span><span class="k">REFERENCES</span><span class="w"> </span><span class="n">users</span><span class="w"> </span><span class="p">(</span><span class="n">user_id</span><span class="p">),</span>
+<span class="w">    </span><span class="n">order_date</span><span class="w"> </span><span class="nb">DATE</span><span class="w"> </span><span class="k">NOT</span><span class="w"> </span><span class="k">NULL</span>
+<span class="p">);</span>
+
+<span class="k">INSERT</span><span class="w"> </span><span class="k">INTO</span><span class="w"> </span><span class="n">users</span><span class="w"> </span><span class="p">(</span><span class="n">username</span><span class="p">)</span>
+<span class="k">VALUES</span><span class="w"> </span><span class="p">(</span><span class="s1">&#39;john_doe&#39;</span><span class="p">);</span>
+<span class="k">INSERT</span><span class="w"> </span><span class="k">INTO</span><span class="w"> </span><span class="n">users</span><span class="w"> </span><span class="p">(</span><span class="n">username</span><span class="p">)</span>
+<span class="k">VALUES</span><span class="w"> </span><span class="p">(</span><span class="s1">&#39;jane_smith&#39;</span><span class="p">);</span>
+
+<span class="k">INSERT</span><span class="w"> </span><span class="k">INTO</span><span class="w"> </span><span class="n">orders</span><span class="w"> </span><span class="p">(</span><span class="n">user_id</span><span class="p">,</span><span class="w"> </span><span class="n">order_date</span><span class="p">)</span>
+<span class="k">VALUES</span><span class="w"> </span><span class="p">((</span><span class="k">SELECT</span><span class="w"> </span><span class="n">user_id</span><span class="w"> </span><span class="k">FROM</span><span class="w"> </span><span class="n">users</span><span class="w"> </span><span class="k">WHERE</span><span class="w"> </span><span class="n">username</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s1">&#39;john_doe&#39;</span><span class="p">),</span><span class="w"> </span><span class="s1">&#39;2024-10-31&#39;</span><span class="p">),</span>
+<span class="w">       </span><span class="p">((</span><span class="k">SELECT</span><span class="w"> </span><span class="n">user_id</span><span class="w"> </span><span class="k">FROM</span><span class="w"> </span><span class="n">users</span><span class="w"> </span><span class="k">WHERE</span><span class="w"> </span><span class="n">username</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s1">&#39;jane_smith&#39;</span><span class="p">),</span><span class="w"> </span><span class="s1">&#39;2024-10-30&#39;</span><span class="p">);</span>
+</code></pre></div>
+<p>To transform the <code>username</code> column in the <code>users</code> table, you can use the following configuration:</p>
+<div class="highlight"><pre><span></span><code><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">schema</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">public</span>
+<span class="w">  </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">users</span>
+<span class="w">  </span><span class="nt">apply_for_inherited</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">  </span><span class="nt">transformers</span><span class="p">:</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">RandomUuid</span>
+<span class="w">      </span><span class="nt">apply_for_references</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">      </span><span class="nt">params</span><span class="p">:</span>
+<span class="w">        </span><span class="nt">column</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;user_id&quot;</span>
+<span class="w">        </span><span class="nt">engine</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;hash&quot;</span>
+</code></pre></div>
+<p>This will apply the <code>RandomUuid</code> transformation to the <code>user_id</code> column in the <code>orders</code> table automatically.</p>
+<h2 id="example-3-references-on-tables-with-end-to-end-identifiers">Example 3. References on tables with end-to-end identifiers<a class="headerlink" href="#example-3-references-on-tables-with-end-to-end-identifiers" title="Permanent link">&para;</a></h2>
+<p>In this example, we have three tables: <code>tablea</code>, <code>tableb</code>, and <code>tablec</code>. All tables have a composite primary key.
+In the tables <code>tableb</code> and <code>tablec</code>, the primary key is also a foreign key that references the primary key of <code>tablea</code>.
+This means that all PKs are end-to-end identifiers.</p>
+<div class="highlight"><pre><span></span><code><span class="k">CREATE</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="n">tablea</span>
+<span class="p">(</span>
+<span class="w">    </span><span class="n">id1</span><span class="w">  </span><span class="nb">INT</span><span class="p">,</span>
+<span class="w">    </span><span class="n">id2</span><span class="w">  </span><span class="nb">INT</span><span class="p">,</span>
+<span class="w">    </span><span class="k">data</span><span class="w"> </span><span class="nb">VARCHAR</span><span class="p">(</span><span class="mi">50</span><span class="p">),</span>
+<span class="w">    </span><span class="k">PRIMARY</span><span class="w"> </span><span class="k">KEY</span><span class="w"> </span><span class="p">(</span><span class="n">id1</span><span class="p">,</span><span class="w"> </span><span class="n">id2</span><span class="p">)</span>
+<span class="p">);</span>
+
+<span class="k">CREATE</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="n">tableb</span>
+<span class="p">(</span>
+<span class="w">    </span><span class="n">id1</span><span class="w">    </span><span class="nb">INT</span><span class="p">,</span>
+<span class="w">    </span><span class="n">id2</span><span class="w">    </span><span class="nb">INT</span><span class="p">,</span>
+<span class="w">    </span><span class="n">detail</span><span class="w"> </span><span class="nb">VARCHAR</span><span class="p">(</span><span class="mi">50</span><span class="p">),</span>
+<span class="w">    </span><span class="k">PRIMARY</span><span class="w"> </span><span class="k">KEY</span><span class="w"> </span><span class="p">(</span><span class="n">id1</span><span class="p">,</span><span class="w"> </span><span class="n">id2</span><span class="p">),</span>
+<span class="w">    </span><span class="k">FOREIGN</span><span class="w"> </span><span class="k">KEY</span><span class="w"> </span><span class="p">(</span><span class="n">id1</span><span class="p">,</span><span class="w"> </span><span class="n">id2</span><span class="p">)</span><span class="w"> </span><span class="k">REFERENCES</span><span class="w"> </span><span class="n">tablea</span><span class="w"> </span><span class="p">(</span><span class="n">id1</span><span class="p">,</span><span class="w"> </span><span class="n">id2</span><span class="p">)</span><span class="w"> </span><span class="k">ON</span><span class="w"> </span><span class="k">DELETE</span><span class="w"> </span><span class="k">CASCADE</span>
+<span class="p">);</span>
+
+<span class="k">CREATE</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="n">tablec</span>
+<span class="p">(</span>
+<span class="w">    </span><span class="n">id1</span><span class="w">         </span><span class="nb">INT</span><span class="p">,</span>
+<span class="w">    </span><span class="n">id2</span><span class="w">         </span><span class="nb">INT</span><span class="p">,</span>
+<span class="w">    </span><span class="n">description</span><span class="w"> </span><span class="nb">VARCHAR</span><span class="p">(</span><span class="mi">50</span><span class="p">),</span>
+<span class="w">    </span><span class="k">PRIMARY</span><span class="w"> </span><span class="k">KEY</span><span class="w"> </span><span class="p">(</span><span class="n">id1</span><span class="p">,</span><span class="w"> </span><span class="n">id2</span><span class="p">),</span>
+<span class="w">    </span><span class="k">FOREIGN</span><span class="w"> </span><span class="k">KEY</span><span class="w"> </span><span class="p">(</span><span class="n">id1</span><span class="p">,</span><span class="w"> </span><span class="n">id2</span><span class="p">)</span><span class="w"> </span><span class="k">REFERENCES</span><span class="w"> </span><span class="n">tableb</span><span class="w"> </span><span class="p">(</span><span class="n">id1</span><span class="p">,</span><span class="w"> </span><span class="n">id2</span><span class="p">)</span><span class="w"> </span><span class="k">ON</span><span class="w"> </span><span class="k">DELETE</span><span class="w"> </span><span class="k">CASCADE</span>
+<span class="p">);</span>
+
+<span class="k">INSERT</span><span class="w"> </span><span class="k">INTO</span><span class="w"> </span><span class="n">tablea</span><span class="w"> </span><span class="p">(</span><span class="n">id1</span><span class="p">,</span><span class="w"> </span><span class="n">id2</span><span class="p">,</span><span class="w"> </span><span class="k">data</span><span class="p">)</span>
+<span class="k">VALUES</span><span class="w"> </span><span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;Data A1&#39;</span><span class="p">),</span>
+<span class="w">       </span><span class="p">(</span><span class="mi">2</span><span class="p">,</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;Data A2&#39;</span><span class="p">),</span>
+<span class="w">       </span><span class="p">(</span><span class="mi">3</span><span class="p">,</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;Data A3&#39;</span><span class="p">);</span>
+
+<span class="k">INSERT</span><span class="w"> </span><span class="k">INTO</span><span class="w"> </span><span class="n">tableb</span><span class="w"> </span><span class="p">(</span><span class="n">id1</span><span class="p">,</span><span class="w"> </span><span class="n">id2</span><span class="p">,</span><span class="w"> </span><span class="n">detail</span><span class="p">)</span>
+<span class="k">VALUES</span><span class="w"> </span><span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;Detail B1&#39;</span><span class="p">),</span>
+<span class="w">       </span><span class="p">(</span><span class="mi">2</span><span class="p">,</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;Detail B2&#39;</span><span class="p">),</span>
+<span class="w">       </span><span class="p">(</span><span class="mi">3</span><span class="p">,</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;Detail B3&#39;</span><span class="p">);</span>
+
+<span class="k">INSERT</span><span class="w"> </span><span class="k">INTO</span><span class="w"> </span><span class="n">tablec</span><span class="w"> </span><span class="p">(</span><span class="n">id1</span><span class="p">,</span><span class="w"> </span><span class="n">id2</span><span class="p">,</span><span class="w"> </span><span class="n">description</span><span class="p">)</span>
+<span class="k">VALUES</span><span class="w"> </span><span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;Description C1&#39;</span><span class="p">),</span>
+<span class="w">       </span><span class="p">(</span><span class="mi">2</span><span class="p">,</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;Description C2&#39;</span><span class="p">),</span>
+<span class="w">       </span><span class="p">(</span><span class="mi">3</span><span class="p">,</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;Description C3&#39;</span><span class="p">);</span>
+</code></pre></div>
+<p>To transform the <code>data</code> column in <code>tablea</code>, you can use the following configuration:</p>
+<div class="highlight"><pre><span></span><code><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">schema</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">public</span>
+<span class="w">  </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;tablea&quot;</span>
+<span class="w">  </span><span class="nt">apply_for_inherited</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">  </span><span class="nt">transformers</span><span class="p">:</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">RandomInt</span>
+<span class="w">      </span><span class="nt">apply_for_references</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">      </span><span class="nt">params</span><span class="p">:</span>
+<span class="w">        </span><span class="nt">min</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0</span>
+<span class="w">        </span><span class="nt">max</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">100</span>
+<span class="w">        </span><span class="nt">column</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;id1&quot;</span>
+<span class="w">        </span><span class="nt">engine</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;hash&quot;</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">RandomInt</span>
+<span class="w">      </span><span class="nt">apply_for_references</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">      </span><span class="nt">params</span><span class="p">:</span>
+<span class="w">        </span><span class="nt">min</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0</span>
+<span class="w">        </span><span class="nt">max</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">100</span>
+<span class="w">        </span><span class="nt">column</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;id2&quot;</span>
+<span class="w">        </span><span class="nt">engine</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;hash&quot;</span>
+</code></pre></div>
+<p>This will apply the <code>RandomInt</code> transformation to the <code>id1</code> and <code>id2</code> columns in <code>tableb</code> and <code>tablec</code> automatically.</p>
 
 
 

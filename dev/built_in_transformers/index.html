@@ -792,6 +792,8 @@
       
         
       
+        
+      
     
     
       
@@ -923,6 +925,27 @@
   
   
   
+    <li class="md-nav__item">
+      <a href="transformation_inheritance/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Transformation inheritance
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
     
     
       
@@ -1034,7 +1057,7 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_1_7_6" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_1_7_7" >
         
           
           
@@ -1050,14 +1073,14 @@
             </a>
             
               
-              <label class="md-nav__link " for="__nav_1_7_6" id="__nav_1_7_6_label" tabindex="0">
+              <label class="md-nav__link " for="__nav_1_7_7" id="__nav_1_7_7_label" tabindex="0">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
           </div>
         
-        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_1_7_6_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_1_7_6">
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_1_7_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_1_7_7">
             <span class="md-nav__icon md-icon"></span>
             Standard transformers
           </label>
@@ -2091,7 +2114,7 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_1_7_7" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_1_7_8" >
         
           
           
@@ -2107,14 +2130,14 @@
             </a>
             
               
-              <label class="md-nav__link " for="__nav_1_7_7" id="__nav_1_7_7_label" tabindex="0">
+              <label class="md-nav__link " for="__nav_1_7_8" id="__nav_1_7_8_label" tabindex="0">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
           </div>
         
-        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_1_7_7_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_1_7_7">
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_1_7_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_1_7_8">
             <span class="md-nav__icon md-icon"></span>
             Advanced transformers
           </label>
@@ -2212,7 +2235,7 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_1_7_7_5" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_1_7_8_5" >
         
           
           
@@ -2228,14 +2251,14 @@
             </a>
             
               
-              <label class="md-nav__link " for="__nav_1_7_7_5" id="__nav_1_7_7_5_label" tabindex="0">
+              <label class="md-nav__link " for="__nav_1_7_8_5" id="__nav_1_7_8_5_label" tabindex="0">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
           </div>
         
-        <nav class="md-nav" data-md-level="4" aria-labelledby="__nav_1_7_7_5_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_1_7_7_5">
+        <nav class="md-nav" data-md-level="4" aria-labelledby="__nav_1_7_8_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_1_7_8_5">
             <span class="md-nav__icon md-icon"></span>
             Custom functions
           </label>
@@ -2842,10 +2865,15 @@
 <p>Transformers in Greenmask are methods which are applied to anonymize sensitive data. All Greenmask transformers are
 split into the following groups:</p>
 <ul>
-<li><a href="transformation_engines/">Transformation engines</a> — the type of generator used in transformers. Hash (deterministic)
-  and random (randomization)</li>
 <li><a href="dynamic_parameters/">Dynamic parameters</a> — transformers that require an input of parameters and generate
   random data based on them.</li>
+<li><a href="transformation_engines/">Transformation engines</a> — the type of generator used in transformers. Hash (deterministic)
+  and random (randomization)</li>
+<li><a href="parameters_templating/">Parameters templating</a> — generate static parameters values from templates.</li>
+<li><a href="transformation_condition/">Transformation conditions</a> — conditions that can be applied to transformers. If the
+  condition is not met, the transformer will not be applied.</li>
+<li><a href="transformation_inheritance/">Transformation Inheritance</a> — transformation inheritance for partitioned tables and
+  tables with foreign keys. Define once and apply to all.</li>
 <li><a href="standard_transformers/">Standard transformers</a> — transformers that require only an input of parameters.</li>
 <li><a href="advanced_transformers/">Advanced transformers</a> — transformers that can be modified according to user's needs
   with the help of <a href="advanced_transformers/custom_functions/">custom functions</a>.</li>
