@@ -45,15 +45,14 @@ sample databases included to help you try Greenmask without any additional actio
 * **[Dynamic parameters](https://docs.greenmask.io/latest/built_in_transformers/dynamic_parameters/)** — most
   transformers support dynamic parameters, allowing them to adapt based on table column values. This feature helps
   manage dependencies between columns and meet constraints effectively.
-* **[Transformation Condition](https://docs.greenmask.io/latest/built_in_transformers/standard_transformers/condition/)** —
+* **[Transformation Condition](https://docs.greenmask.io/latest/built_in_transformers/transformation_condition/)** —
   applies the transformation only when a specified condition is met, making it useful for targeting specific rows.
 * **[Transformation validation and easy maintenance](https://docs.greenmask.io/latest/commands/validate/)** — Greenmask
   provides validation warnings, data transformation diffs, and schema diffs during configuration, enabling effective
   monitoring and maintenance of transformations. The schema diff feature helps prevent data leakage when the schema
   changes.
-* **[Partitioned tables transformation inheritance](https://docs.greenmask.io/latest/configuration/?h=partition#dump-section)**
-  — Define transformation configurations once and apply them across all partitions within partitioned tables (using the
-  `apply_for_inherited` parameter), streamlining the anonymization process.
+* **[Transformation inheritance](https://docs.greenmask.io/latest/built_in_transformers/transformation_inheritance/)**
+  — transformation inheritance for partitioned tables and tables with foreign keys. Define once and apply to all.
 * **Stateless** — Greenmask operates as a logical dump and does not impact your existing database schema.
 * **Cross-platform** — Can be easily built and executed on any platform, thanks to its Go-based architecture,
   which eliminates platform dependencies.
