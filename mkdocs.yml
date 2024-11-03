@@ -126,6 +126,7 @@ nav:
                   - Faker function: built_in_transformers/advanced_transformers/custom_functions/faker_function.md
       - About: index.md
   - Release notes:
+      - Greenmask 0.2.1: release_notes/greenmask_0_2_1.md
       - Greenmask 0.2.0: release_notes/greenmask_0_2_0.md
       - Greenmask 0.2.0b2: release_notes/greenmask_0_2_0_b2.md
       - Greenmask 0.2.0b1: release_notes/greenmask_0_2_0_b1.md
