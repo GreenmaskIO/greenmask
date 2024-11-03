@@ -40,10 +40,12 @@ const (
 	JsonSetOpName    = "set"
 )
 
+const JsonTransformerName = "Json"
+
 var JsonTransformerDefinition = utils.NewTransformerDefinition(
 
 	utils.NewTransformerProperties(
-		"Json",
+		JsonTransformerName,
 		"Update json document",
 	),
 

@@ -23,11 +23,14 @@ import (
 	"github.com/greenmaskio/greenmask/pkg/toolkit"
 )
 
+const NoiseIntTransformerName = "NoiseInt"
+
 var NoiseIntTransformerDefinition = utils.NewTransformerDefinition(
 	utils.NewTransformerProperties(
-		"NoiseInt",
+		NoiseIntTransformerName,
 		"Make noise value for int",
-	),
+	).AddMeta(AllowApplyForReferenced, true).
+		AddMeta(RequireHashEngineParameter, true),
 
 	NewNoiseIntTransformer,
 

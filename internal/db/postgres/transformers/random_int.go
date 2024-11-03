@@ -30,11 +30,14 @@ const (
 	Int8Length = 8
 )
 
+const RandomIntTransformerName = "RandomInt"
+
 var integerTransformerDefinition = utils.NewTransformerDefinition(
 	utils.NewTransformerProperties(
-		"RandomInt",
+		RandomIntTransformerName,
 		"Generate integer value in min and max thresholds",
-	),
+	).AddMeta(AllowApplyForReferenced, true).
+		AddMeta(RequireHashEngineParameter, true),
 
 	NewIntegerTransformer,
 

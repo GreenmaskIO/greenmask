@@ -14,10 +14,13 @@
 
 package utils
 
+type MetaKey string
+
 type TransformerProperties struct {
-	Name        string `json:"name"`
-	Description string `json:"description"`
-	IsCustom    bool   `json:"is_custom"`
+	Name        string          `json:"name"`
+	Description string          `json:"description"`
+	IsCustom    bool            `json:"is_custom"`
+	Meta        map[MetaKey]any `json:"meta"`
 }
 
 func NewTransformerProperties(
@@ -26,5 +29,16 @@ func NewTransformerProperties(
 	return &TransformerProperties{
 		Name:        name,
 		Description: description,
+		Meta:        make(map[MetaKey]any),
 	}
+}
+
+func (tp *TransformerProperties) AddMeta(key MetaKey, value any) *TransformerProperties {
+	tp.Meta[key] = value
+	return tp
+}
+
+func (tp *TransformerProperties) GetMeta(key MetaKey) (any, bool) {
+	value, ok := tp.Meta[key]
+	return value, ok
 }

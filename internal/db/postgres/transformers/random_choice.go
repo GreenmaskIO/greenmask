@@ -18,18 +18,21 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/greenmaskio/greenmask/internal/generators/transformers"
 	"github.com/tidwall/gjson"
 
 	"github.com/greenmaskio/greenmask/internal/db/postgres/transformers/utils"
+	"github.com/greenmaskio/greenmask/internal/generators/transformers"
 	"github.com/greenmaskio/greenmask/pkg/toolkit"
 )
 
+const RandomChoiceTransformerName = "RandomChoice"
+
 var ChoiceTransformerDefinition = utils.NewTransformerDefinition(
 	utils.NewTransformerProperties(
-		"RandomChoice",
+		RandomChoiceTransformerName,
 		"Replace values chosen randomly from list",
-	),
+	).AddMeta(AllowApplyForReferenced, true).
+		AddMeta(RequireHashEngineParameter, true),
 
 	NewRandomChoiceTransformer,
 

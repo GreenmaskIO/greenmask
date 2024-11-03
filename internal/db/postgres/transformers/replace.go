@@ -22,11 +22,14 @@ import (
 	"github.com/greenmaskio/greenmask/pkg/toolkit"
 )
 
+const ReplaceTransformerName = "Replace"
+
 var ReplaceTransformerDefinition = utils.NewTransformerDefinition(
 	utils.NewTransformerProperties(
-		"Replace",
+		ReplaceTransformerName,
 		"Replace column value to the provided",
-	),
+	).AddMeta(AllowApplyForReferenced, true).
+		AddMeta(RequireHashEngineParameter, true),
 
 	NewReplaceTransformer,
 

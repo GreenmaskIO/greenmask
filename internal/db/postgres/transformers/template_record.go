@@ -25,9 +25,11 @@ import (
 	"github.com/greenmaskio/greenmask/pkg/toolkit"
 )
 
+const TemplateRecordTransformerName = "TemplateRecord"
+
 var TemplateRecordTransformerDefinition = utils.NewTransformerDefinition(
 	utils.NewTransformerProperties(
-		"TemplateRecord",
+		TemplateRecordTransformerName,
 		"Modify the record using gotemplate",
 	),
 	NewTemplateRecordTransformer,

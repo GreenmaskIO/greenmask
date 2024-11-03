@@ -19,15 +19,18 @@ const (
 	nanoUnit    = "nanosecond"
 )
 
+const RandomUnixTimestampTransformerName = "RandomUnixTimestamp"
+
 var timestampUnitValues = []string{
 	secondsUnit, milliUnit, microUnit, nanoUnit,
 }
 
 var unixTimestampTransformerDefinition = utils.NewTransformerDefinition(
 	utils.NewTransformerProperties(
-		"RandomUnixTimestamp",
+		RandomUnixTimestampTransformerName,
 		"Generate UnixTimestamp in the provided interval with unit",
-	),
+	).AddMeta(AllowApplyForReferenced, true).
+		AddMeta(RequireHashEngineParameter, true),
 
 	NewUnixTimestampTransformer,
 

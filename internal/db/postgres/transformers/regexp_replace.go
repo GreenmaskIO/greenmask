@@ -23,11 +23,14 @@ import (
 	"github.com/greenmaskio/greenmask/pkg/toolkit"
 )
 
+const RegexpReplaceTransformerName = "RegexpReplace"
+
 var RegexpReplaceTransformerDefinition = utils.NewTransformerDefinition(
 	utils.NewTransformerProperties(
-		"RegexpReplace",
+		RegexpReplaceTransformerName,
 		"Replace string using regular expression",
-	),
+	).AddMeta(AllowApplyForReferenced, true).
+		AddMeta(RequireHashEngineParameter, true),
 
 	NewRegexpReplaceTransformer,
 

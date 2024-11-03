@@ -47,11 +47,11 @@ var defaultRowDriverParams = toolkit.DriverParams{
 	CsvAttributesFormat:  toolkit.CsvAttributesConfigNumeratingFormatName,
 }
 
-var cmdTransformerName = "Cmd"
+var CmdTransformerName = "Cmd"
 
 var CmdTransformerDefinition = utils.NewTransformerDefinition(
 	utils.NewTransformerProperties(
-		cmdTransformerName,
+		CmdTransformerName,
 		"Transform data via external program using stdin and stdout interaction",
 	),
 
@@ -145,7 +145,7 @@ func NewCmd(
 	ctx context.Context, driver *toolkit.Driver, parameters map[string]toolkit.Parameterizer,
 ) (utils.Transformer, toolkit.ValidationWarnings, error) {
 
-	name := cmdTransformerName
+	name := CmdTransformerName
 	var columns []*Column
 	var executable string
 	var args []string

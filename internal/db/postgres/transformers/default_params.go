@@ -8,8 +8,8 @@ import (
 )
 
 const (
-	randomEngineName = "random"
-	hashEngineName   = "hash"
+	RandomEngineParameterName = "random"
+	HashEngineParameterName   = "hash"
 )
 
 var (
@@ -42,7 +42,7 @@ var (
 
 func engineValidator(p *toolkit.ParameterDefinition, v toolkit.ParamsValue) (toolkit.ValidationWarnings, error) {
 	value := string(v)
-	if value != randomEngineName && value != hashEngineName {
+	if value != RandomEngineParameterName && value != HashEngineParameterName {
 		return toolkit.ValidationWarnings{
 			toolkit.NewValidationWarning().
 				SetMsg("Invalid engine value").

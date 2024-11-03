@@ -23,11 +23,14 @@ import (
 	"github.com/greenmaskio/greenmask/pkg/toolkit"
 )
 
+const RandomStringTransformerName = "RandomString"
+
 var stringTransformerDefinition = utils.NewTransformerDefinition(
 	utils.NewTransformerProperties(
-		"RandomString",
+		RandomStringTransformerName,
 		"Generate a string withing the specified length with provided char set",
-	),
+	).AddMeta(AllowApplyForReferenced, true).
+		AddMeta(RequireHashEngineParameter, true),
 
 	NewRandomStringTransformer,
 

@@ -29,11 +29,14 @@ const (
 	float8Length = 8
 )
 
+const RandomFloatTransformerName = "RandomFloat"
+
 var floatTransformerDefinition = utils.NewTransformerDefinition(
 	utils.NewTransformerProperties(
-		"RandomFloat",
+		RandomFloatTransformerName,
 		"Generate float value in min and max thresholds and round up to provided digits",
-	),
+	).AddMeta(AllowApplyForReferenced, true).
+		AddMeta(RequireHashEngineParameter, true),
 
 	NewFloatTransformer,
 

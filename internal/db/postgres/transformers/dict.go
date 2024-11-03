@@ -24,9 +24,11 @@ import (
 
 const defaultNullSeq = `\N`
 
+const DictTransformerName = "Dict"
+
 var DictTransformerDefinition = utils.NewTransformerDefinition(
 	utils.NewTransformerProperties(
-		"Dict",
+		DictTransformerName,
 		"Replace values matched by dictionary keys",
 	),
 

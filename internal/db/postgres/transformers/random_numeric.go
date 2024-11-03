@@ -13,11 +13,14 @@ import (
 
 const bigIntegerTransformerGenByteLength = 20
 
+const RandomNumericTransformerName = "RandomNumeric"
+
 var numericTransformerDefinition = utils.NewTransformerDefinition(
 	utils.NewTransformerProperties(
-		"RandomNumeric",
+		RandomNumericTransformerName,
 		"Generate numeric value in min and max thresholds",
-	),
+	).AddMeta(AllowApplyForReferenced, true).
+		AddMeta(RequireHashEngineParameter, true),
 
 	NewRandomNumericTransformer,
 

@@ -25,9 +25,11 @@ import (
 	"github.com/greenmaskio/greenmask/pkg/toolkit"
 )
 
+const TemplateTransformerName = "Template"
+
 var TemplateTransformerDefinition = utils.NewTransformerDefinition(
 	utils.NewTransformerProperties(
-		"Template",
+		TemplateTransformerName,
 		"Modify the value using gotemplate",
 	),
 	NewTemplateTransformer,

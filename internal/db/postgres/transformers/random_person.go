@@ -19,9 +19,11 @@ const (
 
 const randomPersonAnyGender = "Any"
 
+const RandomPersonTransformerName = "RandomPerson"
+
 var randomPersonTransformerDefinition = utils.NewTransformerDefinition(
 	utils.NewTransformerProperties(
-		"RandomPerson",
+		RandomPersonTransformerName,
 		"Generate random person data (Title, FirstName, LastName, Gender)",
 	),
 
@@ -103,9 +105,9 @@ func NewRandomNameTransformer(ctx context.Context, driver *toolkit.Driver, param
 
 	var engineMode int
 	switch engine {
-	case randomEngineName:
+	case RandomEngineParameterName:
 		engineMode = randomEngineMode
-	case hashEngineName:
+	case HashEngineParameterName:
 		engineMode = hashEngineMode
 	}
 

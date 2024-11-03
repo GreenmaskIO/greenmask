@@ -9,7 +9,7 @@ The condition must be defined as a boolean expression that evaluates to `true` o
 `expr` library.
 
 You can use the same functions that are described in
-the [built-in transformers](/docs/built_in_transformers/advanced_transformers/custom_functions/index.md)
+the [built-in transformers](./advanced_transformers/custom_functions/index.md)
 
 The transformers are executed one by one - this helps you create complex transformation pipelines. For instance
 depending on value chosen in the previous transformer, you can decide to execute the next transformer or not.

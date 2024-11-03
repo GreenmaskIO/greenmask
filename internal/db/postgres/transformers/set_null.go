@@ -22,9 +22,11 @@ import (
 	"github.com/greenmaskio/greenmask/pkg/toolkit"
 )
 
+const SetNullTransformerName = "SetNull"
+
 var SetNullTransformerDefinition = utils.NewTransformerDefinition(
 	utils.NewTransformerProperties(
-		"SetNull",
+		SetNullTransformerName,
 		"Set NULL value",
 	),
 	NewSetNullTransformer,

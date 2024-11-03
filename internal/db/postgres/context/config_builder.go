@@ -11,6 +11,7 @@ import (
 
 	"github.com/greenmaskio/greenmask/internal/db/postgres/entries"
 	"github.com/greenmaskio/greenmask/internal/db/postgres/subset"
+	"github.com/greenmaskio/greenmask/internal/db/postgres/transformers"
 	transformersUtils "github.com/greenmaskio/greenmask/internal/db/postgres/transformers/utils"
 	"github.com/greenmaskio/greenmask/internal/domains"
 	"github.com/greenmaskio/greenmask/pkg/toolkit"
@@ -51,7 +52,7 @@ func (tcm *tableConfigMapping) hasTransformerWithApplyForReferences() bool {
 // may contain the schema affection warnings that would be useful for considering consistency
 func validateAndBuildEntriesConfig(
 	ctx context.Context, tx pgx.Tx, entries []*entries.Table, typeMap *pgtype.Map,
-	cfg *domains.Dump, registry *transformersUtils.TransformerRegistry,
+	cfg *domains.Dump, r *transformersUtils.TransformerRegistry,
 	version int, types []*toolkit.Type, graph *subset.Graph,
 ) (toolkit.ValidationWarnings, error) {
 	var warnings toolkit.ValidationWarnings
@@ -66,14 +67,11 @@ func validateAndBuildEntriesConfig(
 	}
 
 	// Assign settings to the Tables using config received
-	//entriesWithTransformers := findTablesWithTransformers(cfg.Transformation, Tables)
-	entriesWithTransformers, err := setConfigToEntries(ctx, tx, cfg.Transformation, entries, graph)
+	entriesWithTransformers, setConfigWarns, err := setConfigToEntries(ctx, tx, cfg.Transformation, entries, graph, r)
 	if err != nil {
 		return nil, fmt.Errorf("cannot get Tables entries config: %w", err)
 	}
-	// TODO:
-	// 		Check if any has relkind = p
-	// 		If yes, then find all children and remove them from entriesWithTransformers
+	warnings = append(warnings, setConfigWarns...)
 	for _, cfgMapping := range entriesWithTransformers {
 		// set subset conditions
 		setSubsetConds(cfgMapping.entry, cfgMapping.config)
@@ -122,7 +120,7 @@ func validateAndBuildEntriesConfig(
 		setColumnTypeOverrides(cfgMapping.entry, cfgMapping.config, typeMap)
 
 		// Set transformers for the table
-		transformersInitWarns, err := initAndSetupTransformers(ctx, cfgMapping.entry, cfgMapping.config, registry)
+		transformersInitWarns, err := initAndSetupTransformers(ctx, cfgMapping.entry, cfgMapping.config, r)
 		enrichWarningsWithTableName(transformersInitWarns, cfgMapping.entry)
 		warnings = append(warnings, transformersInitWarns...)
 		if err != nil {
@@ -176,9 +174,8 @@ func validateTableExists(
 	return warnings, nil
 }
 
-// findTablesWithTransformers - assigns settings from the config to the table entries. This function
-// iterates through the Tables and do the following:
-// 1. Compile when condition and set to the table entry
+// findTablesWithTransformers - finds Tables with transformers in the config and returns them as a slice of
+// tableConfigMapping
 func findTablesWithTransformers(
 	cfg []*domains.Table, tables []*entries.Table,
 ) []*tableConfigMapping {
@@ -200,12 +197,19 @@ func findTablesWithTransformers(
 
 func setConfigToEntries(
 	ctx context.Context, tx pgx.Tx, cfg []*domains.Table, tables []*entries.Table, g *subset.Graph,
-) ([]*tableConfigMapping, error) {
+	r *transformersUtils.TransformerRegistry,
+) ([]*tableConfigMapping, toolkit.ValidationWarnings, error) {
 	var res []*tableConfigMapping
+	var warnings toolkit.ValidationWarnings
 	for _, tcm := range findTablesWithTransformers(cfg, tables) {
 		if tcm.hasTransformerWithApplyForReferences() {
 			// If table has transformer with apply_for_references, then we need to find all reference tables
 			// and add them to the list
+			ok, checkWarns := checkApplyForReferenceMetRequirements(tcm, r)
+			if !ok {
+				warnings = append(warnings, checkWarns...)
+				continue
+			}
 			refTables := getRefTables(tcm.entry, tcm.config, g)
 			res = append(res, refTables...)
 		}
@@ -216,15 +220,18 @@ func setConfigToEntries(
 		}
 		// If the table is partitioned, then we need to find all children and remove parent from the list
 		if !tcm.config.ApplyForInherited {
-			return nil, fmt.Errorf(
-				"the table \"%s\".\"%s\" is partitioned use apply_for_inherited",
-				tcm.entry.Schema, tcm.entry.Name,
+			warnings = append(warnings, toolkit.NewValidationWarning().
+				SetMsg("the table is partitioned use apply_for_inherited").
+				AddMeta("SchemaName", tcm.entry.Schema).
+				AddMeta("TableName", tcm.entry.Name).
+				SetSeverity(toolkit.ErrorValidationSeverity),
 			)
+			continue
 		}
 
 		parts, err := findPartitionsOfPartitionedTable(ctx, tx, tcm.entry)
 		if err != nil {
-			return nil, fmt.Errorf(
+			return nil, nil, fmt.Errorf(
 				"cannot find partitions of the table %s.%s: %w",
 				tcm.entry.Schema, tcm.entry.Name, err,
 			)
@@ -248,7 +255,7 @@ func setConfigToEntries(
 			})
 		}
 	}
-	return res, nil
+	return res, warnings, nil
 }
 
 func getRefTables(rootTable *entries.Table, rootTableCfg *domains.Table, graph *subset.Graph) []*tableConfigMapping {
@@ -531,4 +538,60 @@ func initAndSetupTransformers(ctx context.Context, t *entries.Table, cfg *domain
 		t.TransformersContext = append(t.TransformersContext, transformationCtx)
 	}
 	return warnings, nil
+}
+
+func checkApplyForReferenceMetRequirements(
+	tcm *tableConfigMapping, r *transformersUtils.TransformerRegistry,
+) (bool, toolkit.ValidationWarnings) {
+	warnings := toolkit.ValidationWarnings{}
+	for _, tr := range tcm.config.Transformers {
+		allowed, w := isTransformerAllowedToApplyForReferences(tr, r)
+		if !allowed {
+			warnings = append(warnings, w...)
+		}
+	}
+	return !warnings.IsFatal(), warnings
+}
+
+// isTransformerAllowedToApplyForReferences - checks if the transformer is allowed to apply for references
+// and if the engine parameter is hash and required
+func isTransformerAllowedToApplyForReferences(
+	cfg *domains.TransformerConfig, r *transformersUtils.TransformerRegistry,
+) (bool, toolkit.ValidationWarnings) {
+	td, ok := r.Get(cfg.Name)
+	if !ok {
+		return false, toolkit.ValidationWarnings{
+			toolkit.NewValidationWarning().
+				SetMsg("transformer not found").
+				AddMeta("TransformerName", cfg.Name).
+				SetSeverity(toolkit.ErrorValidationSeverity),
+		}
+	}
+	allowApplyForReferenced, ok := td.Properties.GetMeta(transformers.AllowApplyForReferenced)
+	if !ok || !allowApplyForReferenced.(bool) {
+		return false, toolkit.ValidationWarnings{
+			toolkit.NewValidationWarning().
+				SetMsg(
+					"cannot apply transformer for references: transformer does not support apply for references",
+				).
+				AddMeta("TransformerName", cfg.Name).
+				SetSeverity(toolkit.ErrorValidationSeverity),
+		}
+	}
+	requireHashEngineParameter, ok := td.Properties.GetMeta(transformers.RequireHashEngineParameter)
+	if !ok {
+		return false, nil
+	}
+	if !requireHashEngineParameter.(bool) {
+		return true, nil
+	}
+	if string(cfg.Params[engineParameterName]) != transformers.HashEngineParameterName {
+		return false, toolkit.ValidationWarnings{
+			toolkit.NewValidationWarning().
+				SetMsg("cannot apply transformer for references: engine parameter is not hash").
+				AddMeta("TransformerName", cfg.Name).
+				SetSeverity(toolkit.ErrorValidationSeverity),
+		}
+	}
+	return true, nil
 }
