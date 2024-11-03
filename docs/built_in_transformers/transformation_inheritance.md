@@ -1,12 +1,53 @@
-# Apply for References
+# Transformation Inheritance
 
 ## Description
+
+If you have partitioned tables or want to apply a transformation to a primary key and propagate it to all tables
+referencing that column, you can do so with Greenmask.
+
+## Apply for inherited
+
+Using `apply_for_inherited`, you can apply transformations to all partitions of a partitioned table, including any
+subpartitions.
+
+### Configuration conflicts
+
+When a partition has a transformation defined manually via config, and `apply_for_inherited` is set on the parent table,
+Greenmask will merge both the inherited and manually defined configurations. The manually defined transformation will
+execute last, giving it higher priority.
+
+If this situation occurs, you will see the following information in the log:
+
+```json
+{
+  "level": "info",
+  "ParentTableSchema": "public",
+  "ParentTableName": "sales",
+  "ChildTableSchema": "public",
+  "ChildTableName": "sales_2022_feb",
+  "ChildTableConfig": [
+    {
+      "name": "RandomDate",
+      "params": {
+        "column": "sale_date",
+        "engine": "random",
+        "max": "2005-01-01",
+        "min": "2001-01-01"
+      }
+    }
+  ],
+  "time": "2024-11-03T22:14:01+02:00",
+  "message": "config will be merged: found manually defined transformers on the partitioned table"
+}
+```
+
+## Apply for references
 
 Using `apply_for_references`, you can apply transformations to columns involved in a primary key or in tables with a
 foreign key that references that column. This simplifies the transformation process by requiring you to define the
 transformation only on the primary key column, which will then be applied to all tables referencing that column.
 
-The transformer must be deterministic or support `hash` engine and the `hash` engin must be set in the 
+The transformer must be deterministic or support `hash` engine and the `hash` engin must be set in the
 configuration file.
 
 List of transformers that supports `apply_for_references`:
@@ -28,7 +69,7 @@ List of transformers that supports `apply_for_references`:
 * RandomUuid
 * RandomUnixTimestamp
 
-## End-to-End Identifiers
+### End-to-End Identifiers
 
 End-to-end identifiers in databases are unique identifiers that are consistently used across multiple tables in a
 relational database schema, allowing for a seamless chain of references from one table to another. These identifiers
@@ -39,10 +80,10 @@ Greenmask can detect end-to-end identifiers and apply transformations across the
 identifiers are detected when the following condition is met: the foreign key serves as both a primary key and a foreign
 key in the referenced table.
 
-## Configuration conflicts
+### Configuration conflicts
 
 When on the referenced column a transformation is manually defined via config, and the `apply_for_references` is set on
-parent table, the transformation defined will be chosen and the inherited transformation will be ignored. You will 
+parent table, the transformation defined will be chosen and the inherited transformation will be ignored. You will
 receive a `INFO` message in the logs.
 
 ```json
@@ -63,18 +104,81 @@ receive a `INFO` message in the logs.
 }
 ```
 
-## Limitations
+### Limitations
 
 - The transformation must be deterministic.
 - The transformation condition will not be applied to the referenced column.
 - Not all transformers support `apply_for_references`
 
 !!! warning
-    
+
     We do not recommend using `apply_for_references` with transformation conditions, as these conditions are not 
     inherited by transformers on the referenced columns. This may lead to inconsistencies in the data.
 
-## Example 1. Simple table references
+## Example 1. Partitioned tables
+
+In this example, we have a partitioned table `sales` that is partitioned by year and then by month. Each partition
+contains a subset of data based on the year and month of the sale. The `sales` table has a primary key `sale_id` and is
+partitioned by `sale_date`. The `sale_date` column is transformed using the `RandomDate` transformer.
+
+```sql
+CREATE TABLE sales
+(
+    sale_id   SERIAL         NOT NULL,
+    sale_date DATE           NOT NULL,
+    amount    NUMERIC(10, 2) NOT NULL
+) PARTITION BY RANGE (EXTRACT(YEAR FROM sale_date));
+
+-- Step 2: Create first-level partitions by year
+CREATE TABLE sales_2022 PARTITION OF sales
+    FOR VALUES FROM (2022) TO (2023)
+    PARTITION BY LIST (EXTRACT(MONTH FROM sale_date));
+
+CREATE TABLE sales_2023 PARTITION OF sales
+    FOR VALUES FROM (2023) TO (2024)
+    PARTITION BY LIST (EXTRACT(MONTH FROM sale_date));
+
+-- Step 3: Create second-level partitions by month for each year, adding PRIMARY KEY on each partition
+
+-- Monthly partitions for 2022
+CREATE TABLE sales_2022_jan PARTITION OF sales_2022 FOR VALUES IN (1)
+    WITH (fillfactor = 70);
+CREATE TABLE sales_2022_feb PARTITION OF sales_2022 FOR VALUES IN (2);
+CREATE TABLE sales_2022_mar PARTITION OF sales_2022 FOR VALUES IN (3);
+-- Continue adding monthly partitions for 2022...
+
+-- Monthly partitions for 2023
+CREATE TABLE sales_2023_jan PARTITION OF sales_2023 FOR VALUES IN (1);
+CREATE TABLE sales_2023_feb PARTITION OF sales_2023 FOR VALUES IN (2);
+CREATE TABLE sales_2023_mar PARTITION OF sales_2023 FOR VALUES IN (3);
+-- Continue adding monthly partitions for 2023...
+
+-- Step 4: Insert sample data
+INSERT INTO sales (sale_date, amount)
+VALUES ('2022-01-15', 100.00);
+INSERT INTO sales (sale_date, amount)
+VALUES ('2022-02-20', 150.00);
+INSERT INTO sales (sale_date, amount)
+VALUES ('2023-03-10', 200.00);
+```
+
+To transform the `sale_date` column in the `sales` table and all its partitions, you can use the following
+configuration:
+
+```yaml
+- schema: public
+  name: sales
+  apply_for_inherited: true
+  transformers:
+    - name: RandomDate
+      params:
+        min: "2000-01-01"
+        max: "2005-01-01"
+        column: "sale_date"
+        engine: "random"
+```
+
+## Example 2. Simple table references
 
 This is ordinary table references where the primary key of the `users` table is referenced in the `orders` table.
 
@@ -121,7 +225,7 @@ To transform the `username` column in the `users` table, you can use the followi
 
 This will apply the `RandomUuid` transformation to the `user_id` column in the `orders` table automatically.
 
-## Example 2. Tables with end-to-end identifiers
+## Example 3. References on tables with end-to-end identifiers
 
 In this example, we have three tables: `tablea`, `tableb`, and `tablec`. All tables have a composite primary key.
 In the tables `tableb` and `tablec`, the primary key is also a foreign key that references the primary key of `tablea`.

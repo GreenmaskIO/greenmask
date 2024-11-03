@@ -228,32 +228,11 @@ func setConfigToEntries(
 			)
 			continue
 		}
-
-		parts, err := findPartitionsOfPartitionedTable(ctx, tx, tcm.entry)
+		inhTab, err := setupConfigForPartitionedTableChildren(ctx, tx, tcm, tables, cfg)
 		if err != nil {
-			return nil, nil, fmt.Errorf(
-				"cannot find partitions of the table %s.%s: %w",
-				tcm.entry.Schema, tcm.entry.Name, err,
-			)
+			return nil, nil, fmt.Errorf("cannot setup config for partitioned table children: %w", err)
 		}
-		for _, pt := range parts {
-			idx := slices.IndexFunc(tables, func(table *entries.Table) bool {
-				return table.Oid == pt
-			})
-			if idx == -1 {
-				log.Debug().Msg("table might be excluded: table not found in selected tables")
-				continue
-			}
-			e := tables[idx]
-			e.RootPtName = tcm.entry.Name
-			e.RootPtSchema = tcm.entry.Schema
-			e.RootPtOid = tcm.entry.Oid
-			e.Columns = tcm.entry.Columns
-			res = append(res, &tableConfigMapping{
-				entry:  e,
-				config: tcm.config,
-			})
-		}
+		res = append(res, inhTab...)
 	}
 	return res, warnings, nil
 }
@@ -628,4 +607,50 @@ func checkTransformerAlreadyExists(
 		}
 	}
 	return false, nil
+}
+
+func setupConfigForPartitionedTableChildren(
+	ctx context.Context, tx pgx.Tx, parentTcm *tableConfigMapping, tables []*entries.Table, cfg []*domains.Table,
+) ([]*tableConfigMapping, error) {
+	parts, err := findPartitionsOfPartitionedTable(ctx, tx, parentTcm.entry)
+	if err != nil {
+		return nil, fmt.Errorf(
+			"cannot find partitions of the table %s.%s: %w",
+			parentTcm.entry.Schema, parentTcm.entry.Name, err,
+		)
+	}
+	var res []*tableConfigMapping
+	for _, pt := range parts {
+		idx := slices.IndexFunc(tables, func(table *entries.Table) bool {
+			return table.Oid == pt
+		})
+		if idx == -1 {
+			log.Debug().Msg("table might be excluded: table not found in selected tables")
+			continue
+		}
+		e := tables[idx]
+		e.RootPtName = parentTcm.entry.Name
+		e.RootPtSchema = parentTcm.entry.Schema
+		e.RootPtOid = parentTcm.entry.Oid
+		e.Columns = parentTcm.entry.Columns
+		// Check table already has transformers. If so print message that they will be merged
+		cfgIdx := slices.IndexFunc(cfg, func(table *domains.Table) bool {
+			return (table.Name == e.Name || fmt.Sprintf(`"%s"`, table.Name) == e.Name) &&
+				(table.Schema == e.Schema || fmt.Sprintf(`"%s"`, table.Schema) == e.Schema)
+		})
+		if cfgIdx != -1 {
+			log.Info().
+				Str("ParentTableSchema", parentTcm.entry.Schema).
+				Str("ParentTableName", parentTcm.entry.Name).
+				Str("ChildTableSchema", e.Schema).
+				Str("ChildTableName", e.Name).
+				Any("ChildTableConfig", cfg[cfgIdx].Transformers).
+				Msg("config will be merged: found manually defined transformers on the partitioned table")
+		}
+		res = append(res, &tableConfigMapping{
+			entry:  e,
+			config: parentTcm.config,
+		})
+	}
+	return res, nil
 }

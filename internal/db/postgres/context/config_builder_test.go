@@ -357,6 +357,72 @@ func Test_validateAndBuildEntriesConfig(t *testing.T) {
 			}
 		}
 	})
+
+	t.Run("ApplyForInherited with manually defined on part", func(t *testing.T) {
+		tables, _, _, err := getDumpObjects(ctx, pgVer, tx, opt)
+		require.NoError(t, err)
+		graph, err := subset.NewGraph(ctx, tx, tables, nil)
+		require.NoError(t, err)
+
+		cfg := &domains.Dump{
+			Transformation: []*domains.Table{
+				{
+					Schema:            "public",
+					Name:              "sales",
+					ApplyForInherited: true,
+					Transformers: []*domains.TransformerConfig{
+						{
+							Name: transformers.RandomDateTransformerName,
+							Params: toolkit.StaticParameters{
+								"column": toolkit.ParamsValue("sale_date"),
+								"engine": toolkit.ParamsValue("random"),
+								"min":    toolkit.ParamsValue("2000-01-01"),
+								"max":    toolkit.ParamsValue("2005-01-01"),
+							},
+						},
+					},
+				},
+				{
+					Schema: "public",
+					Name:   "sales_2022_feb",
+					Transformers: []*domains.TransformerConfig{
+						{
+							Name: transformers.RandomDateTransformerName,
+							Params: toolkit.StaticParameters{
+								"column": toolkit.ParamsValue("sale_date"),
+								"engine": toolkit.ParamsValue("random"),
+								"min":    toolkit.ParamsValue("2001-01-01"),
+								"max":    toolkit.ParamsValue("2005-01-01"),
+							},
+						},
+					},
+				},
+			},
+		}
+		vw, err := validateAndBuildEntriesConfig(
+			ctx, tx, tables, typeMap, cfg,
+			utils.DefaultTransformerRegistry, pgVer, types, graph,
+		)
+		require.NoError(t, err)
+		require.False(t, vw.IsFatal())
+
+		expectedTablesWithTransformer := map[string]int{
+			"sales_2022_jan": 1,
+			"sales_2022_feb": 1,
+			"sales_2022_mar": 1,
+			"sales_2023_jan": 1,
+			"sales_2023_feb": 1,
+			"sales_2023_mar": 1,
+		}
+
+		for _, table := range tables {
+			if _, ok := expectedTablesWithTransformer[table.Name]; ok {
+				assert.Equalf(t, expectedTablesWithTransformer[table.Name], len(table.TransformersContext), "Table %s", table.Name)
+			} else {
+				assert.Empty(t, table.TransformersContext, "Table %s", table.Name)
+			}
+		}
+	})
 }
 
 // runPostgresContainer starts a PostgreSQL container and returns the connection string
@@ -538,7 +604,7 @@ INSERT INTO sales (sale_date, amount)
 VALUES ('2022-02-20', 150.00);
 INSERT INTO sales (sale_date, amount)
 VALUES ('2023-03-10', 200.00);
-	`
+`
 	_, err := con.Exec(ctx, sqlScript)
 	return err
 }
