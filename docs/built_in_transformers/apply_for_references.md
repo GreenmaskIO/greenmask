@@ -6,7 +6,27 @@ Using `apply_for_references`, you can apply transformations to columns involved 
 foreign key that references that column. This simplifies the transformation process by requiring you to define the
 transformation only on the primary key column, which will then be applied to all tables referencing that column.
 
-The transformer must support `hash` engine and the `hash` engin must be set in the configuration file.
+The transformer must be deterministic or support `hash` engine and the `hash` engin must be set in the 
+configuration file.
+
+List of transformers that supports `apply_for_references`:
+
+* Hash
+* NoiseDate
+* NoiseFloat
+* NoiseInt
+* NoiseNumeric
+* RandomBool
+* RandomDate
+* RandomEmail
+* RandomFloat
+* RandomInt
+* RandomIp
+* RandomMac
+* RandomNumeric
+* RandomString
+* RandomUuid
+* RandomUnixTimestamp
 
 ## End-to-End Identifiers
 
@@ -53,25 +73,6 @@ receive a `INFO` message in the logs.
     
     We do not recommend using `apply_for_references` with transformation conditions, as these conditions are not 
     inherited by transformers on the referenced columns. This may lead to inconsistencies in the data.
-
-List of transformers that supports `apply_for_references`:
-
-* Hash
-* NoiseDate
-* NoiseFloat
-* NoiseInt
-* NoiseNumeric
-* RandomBool
-* RandomDate
-* RandomEmail
-* RandomFloat
-* RandomInt
-* RandomIp
-* RandomMac
-* RandomNumeric
-* RandomString
-* RandomUuid
-* RandomUnixTimestamp
 
 ## Example 1. Simple table references
 
