@@ -408,7 +408,7 @@ func Test_validateAndBuildEntriesConfig(t *testing.T) {
 
 		expectedTablesWithTransformer := map[string]int{
 			"sales_2022_jan": 1,
-			"sales_2022_feb": 1,
+			"sales_2022_feb": 2,
 			"sales_2022_mar": 1,
 			"sales_2023_jan": 1,
 			"sales_2023_feb": 1,
