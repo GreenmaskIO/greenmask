@@ -19,6 +19,30 @@ Greenmask can detect end-to-end identifiers and apply transformations across the
 identifiers are detected when the following condition is met: the foreign key serves as both a primary key and a foreign
 key in the referenced table.
 
+## Configuration conflicts
+
+When on the referenced column a transformation is manually defined via config, and the `apply_for_references` is set on
+parent table, the transformation defined will be chosen and the inherited transformation will be ignored. You will 
+receive a `INFO` message in the logs.
+
+```json
+{
+  "level": "info",
+  "TransformerName": "RandomInt",
+  "ParentTableSchema": "public",
+  "ParentTableName": "tablea",
+  "ChildTableSchema": "public",
+  "ChildTableName": "tablec",
+  "ChildColumnName": "id2",
+  "TransformerConfig": {
+    "name": "RandomInt",
+    "apply_for_references": true
+  },
+  "time": "2024-11-03T21:28:10+02:00",
+  "message": "skipping apply transformer for reference: found manually configured transformer"
+}
+```
+
 ## Limitations
 
 - The transformation must be deterministic.
