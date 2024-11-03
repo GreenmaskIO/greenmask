@@ -6,18 +6,20 @@ import (
 	"encoding/binary"
 	"fmt"
 
+	"github.com/greenmaskio/greenmask/internal/db/postgres/transformers/utils"
 	"github.com/greenmaskio/greenmask/internal/generators"
 )
 
 const (
-	Sha1HashFunction = "sha1"
+	AllowApplyForReferenced    utils.MetaKey = "AllowApplyForReferenced"
+	RequireHashEngineParameter utils.MetaKey = "RequireHashEngineParameter"
 )
 
 func getGenerateEngine(ctx context.Context, engineName string, size int) (generators.Generator, error) {
 	switch engineName {
-	case randomEngineName:
+	case RandomEngineParameterName:
 		return getRandomBytesGen(size)
-	case hashEngineName:
+	case HashEngineParameterName:
 		salt, err := getSaltFromCtx(ctx)
 		if err != nil {
 			return nil, fmt.Errorf("error getting salt from context: %w", err)

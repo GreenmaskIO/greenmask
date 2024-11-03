@@ -28,7 +28,7 @@ func TestBuildTableSearchQuery(t *testing.T) {
 	excludeSchema := []string{"public*[[:digit:]]*1"}
 	excludeTableData := []string{"bookings.flights"}
 	includeForeignData := []string{"myserver"}
-	res, err := BuildTableSearchQuery(includeTable, excludeTable, excludeTableData,
+	res, err := buildTableSearchQuery(includeTable, excludeTable, excludeTableData,
 		includeForeignData, includeSchema, excludeSchema)
 	assert.NoError(t, err)
 	fmt.Println(res)
@@ -40,7 +40,7 @@ func TestBuildSchemaIntrospectionQuery(t *testing.T) {
 	includeSchema := []string{"booki*"}
 	excludeSchema := []string{"public*[[:digit:]]*1"}
 	includeForeignData := []string{"myserver"}
-	res, err := BuildSchemaIntrospectionQuery(includeTable, excludeTable,
+	res, err := buildSchemaIntrospectionQuery(includeTable, excludeTable,
 		includeForeignData, includeSchema, excludeSchema)
 	assert.NoError(t, err)
 	fmt.Println(res)

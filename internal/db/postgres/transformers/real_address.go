@@ -27,9 +27,11 @@ import (
 	"github.com/greenmaskio/greenmask/pkg/toolkit"
 )
 
+const RealAddressTransformerName = "RealAddress"
+
 var RealAddressTransformerDefinition = utils.NewTransformerDefinition(
 	utils.NewTransformerProperties(
-		"RealAddress",
+		RealAddressTransformerName,
 		"Generate a real address",
 	),
 

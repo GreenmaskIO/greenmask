@@ -35,8 +35,7 @@ var endOfLineSeq = []byte("\n")
 type transformationFunc func(ctx context.Context, r *toolkit.Record) (*toolkit.Record, error)
 
 type TransformationPipeline struct {
-	table *entries.Table
-	//buf                   *bytes.Buffer
+	table                 *entries.Table
 	w                     io.Writer
 	line                  uint64
 	row                   *pgcopy.Row
@@ -44,8 +43,6 @@ type TransformationPipeline struct {
 	Transform             transformationFunc
 	isAsync               bool
 	record                *toolkit.Record
-	// when - table level when condition
-	when *toolkit.WhenCond
 }
 
 func NewTransformationPipeline(ctx context.Context, eg *errgroup.Group, table *entries.Table, w io.Writer) (*TransformationPipeline, error) {
@@ -95,20 +92,6 @@ func NewTransformationPipeline(ctx context.Context, eg *errgroup.Group, table *e
 		tf = tp.TransformAsync
 	}
 	tp.Transform = tf
-
-	mata := map[string]any{
-		"TableSchema": table.Schema,
-		"TableName":   table.Name,
-	}
-
-	whenCond, warnings := toolkit.NewWhenCond(table.When, table.Driver, mata)
-	if err := toolkit.PrintValidationWarnings(warnings, nil, true); err != nil {
-		return nil, err
-	}
-	if warnings.IsFatal() {
-		return nil, fmt.Errorf("unable to compile when condition: fatal error")
-	}
-	tp.when = whenCond
 
 	return tp, nil
 }
@@ -179,7 +162,7 @@ func (tp *TransformationPipeline) Dump(ctx context.Context, data []byte) (err er
 	}
 	tp.record.SetRow(tp.row)
 
-	needTransform, err := tp.when.Evaluate(tp.record)
+	needTransform, err := tp.table.When.Evaluate(tp.record)
 	if err != nil {
 		return NewDumpError(tp.table.Schema, tp.table.Name, tp.line, fmt.Errorf("error evaluating when condition: %w", err))
 	}

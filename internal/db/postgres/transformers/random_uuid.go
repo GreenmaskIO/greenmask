@@ -23,11 +23,14 @@ import (
 	"github.com/greenmaskio/greenmask/pkg/toolkit"
 )
 
+const RandomUuidTransformerName = "RandomUuid"
+
 var uuidTransformerDefinition = utils.NewTransformerDefinition(
 	utils.NewTransformerProperties(
-		"RandomUuid",
+		RandomUuidTransformerName,
 		"Generate UUID",
-	),
+	).AddMeta(AllowApplyForReferenced, true).
+		AddMeta(RequireHashEngineParameter, true),
 
 	NewRandomUuidTransformer,
 

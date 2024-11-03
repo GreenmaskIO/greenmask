@@ -13,7 +13,7 @@ func getDatabaseSchema(
 	ctx context.Context, tx pgx.Tx, options *pgdump.Options, version int,
 ) ([]*toolkit.Table, error) {
 	var res []*toolkit.Table
-	query, err := BuildSchemaIntrospectionQuery(
+	query, err := buildSchemaIntrospectionQuery(
 		options.Table, options.ExcludeTable,
 		options.IncludeForeignData, options.Schema,
 		options.ExcludeSchema,

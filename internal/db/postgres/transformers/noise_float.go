@@ -23,11 +23,14 @@ import (
 	"github.com/greenmaskio/greenmask/pkg/toolkit"
 )
 
+const NoiseFloatTransformerName = "NoiseFloat"
+
 var NoiseFloatTransformerDefinition = utils.NewTransformerDefinition(
 	utils.NewTransformerProperties(
-		"NoiseFloat",
+		NoiseFloatTransformerName,
 		"Add noise to float value in min and max thresholds",
-	),
+	).AddMeta(AllowApplyForReferenced, true).
+		AddMeta(RequireHashEngineParameter, true),
 	NewNoiseFloatTransformer,
 
 	toolkit.MustNewParameterDefinition(

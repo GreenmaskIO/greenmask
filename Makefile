@@ -23,3 +23,9 @@ install:
 # The build flag -tags=viper_bind_struct has been added to avoid the need to bind each of the environment variables
 build: $(CMD_FILES)	
 	CGO_ENABLED=0 go build -tags=viper_bind_struct -ldflags="$(LDFLAGS)" -v -o $(CMD_NAME) $(MAIN_PATH)
+
+lint:
+	golangci-lint run ./...
+
+up:
+	docker-compose up playground-dbs-filler

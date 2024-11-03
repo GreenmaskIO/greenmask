@@ -45,8 +45,10 @@ type Graph struct {
 	tables []*entries.Table
 	// graph - the oriented graph representation of the DB tables
 	graph [][]*Edge
+	// reversedGraph - the reversed oriented graph representation of the DB tables
+	reversedGraph [][]*Edge
 	// graph - the oriented graph representation of the DB tables
-	reversedGraph [][]int
+	reversedSimpleGraph [][]int
 	// scc - the strongly connected components in the graph
 	scc []*Component
 	// condensedGraph - the condensed graph representation of the DB tables
@@ -69,7 +71,8 @@ func NewGraph(
 	ctx context.Context, tx pgx.Tx, tables []*entries.Table, vr []*domains.VirtualReference,
 ) (*Graph, error) {
 	graph := make([][]*Edge, len(tables))
-	reversedGraph := make([][]int, len(tables))
+	reversedGraph := make([][]*Edge, len(tables))
+	reversedSimpleGraph := make([][]int, len(tables))
 	edges := make([]*Edge, 0)
 
 	var edgeIdSequence int
@@ -102,8 +105,21 @@ func NewGraph(
 				edge,
 			)
 
+			reversedEdge := NewEdge(
+				edgeIdSequence,
+				idx,
+				ref.IsNullable,
+				NewTableLink(referenceTableIdx, tables[referenceTableIdx], NewKeysByColumn(tables[referenceTableIdx].PrimaryKey), nil),
+				NewTableLink(idx, table, NewKeysByColumn(ref.ReferencedKeys), nil),
+			)
+
 			reversedGraph[referenceTableIdx] = append(
 				reversedGraph[referenceTableIdx],
+				reversedEdge,
+			)
+
+			reversedSimpleGraph[referenceTableIdx] = append(
+				reversedSimpleGraph[referenceTableIdx],
 				idx,
 			)
 			edges = append(edges, edge)
@@ -137,8 +153,8 @@ func NewGraph(
 				edge,
 			)
 
-			reversedGraph[referenceTableIdx] = append(
-				reversedGraph[referenceTableIdx],
+			reversedSimpleGraph[referenceTableIdx] = append(
+				reversedSimpleGraph[referenceTableIdx],
 				idx,
 			)
 			edges = append(edges, edge)
@@ -148,16 +164,29 @@ func NewGraph(
 		}
 	}
 	g := &Graph{
-		tables:        tables,
-		graph:         graph,
-		paths:         make(map[int]*Path),
-		edges:         edges,
-		visited:       make([]int, len(tables)),
-		order:         make([]int, 0),
-		reversedGraph: reversedGraph,
+		tables:              tables,
+		graph:               graph,
+		paths:               make(map[int]*Path),
+		edges:               edges,
+		visited:             make([]int, len(tables)),
+		order:               make([]int, 0),
+		reversedSimpleGraph: reversedSimpleGraph,
+		reversedGraph:       reversedGraph,
 	}
 	g.buildCondensedGraph()
 	return g, nil
+}
+
+func (g *Graph) Tables() []*entries.Table {
+	return g.tables
+}
+
+func (g *Graph) ReversedGraph() [][]*Edge {
+	return g.reversedGraph
+}
+
+func (g *Graph) GetTables() []*entries.Table {
+	return g.tables
 }
 
 func (g *Graph) GetCycles() [][]*Edge {
@@ -259,7 +288,7 @@ func (g *Graph) topologicalSortDfs(v int) {
 
 func (g *Graph) markComponentDfs(v, component int) {
 	g.visited[v] = component
-	for _, to := range g.reversedGraph[v] {
+	for _, to := range g.reversedSimpleGraph[v] {
 		if g.visited[to] == sscVertexIsNotVisited {
 			g.markComponentDfs(to, component)
 		}
@@ -588,6 +617,8 @@ func (g *Graph) generateQueryForTables(path *Path, scopeEdge *ScopeEdge) string 
 	return query
 }
 
+// GetSortedTablesAndDependenciesGraph - returns the sorted tables in topological order and the dependencies graph
+// where the key is the table OID and the value is the list of table OIDs that depend on the key table
 func (g *Graph) GetSortedTablesAndDependenciesGraph() ([]toolkit.Oid, map[toolkit.Oid][]toolkit.Oid) {
 	condensedEdges := sortCondensedEdges(g.reversedCondensedGraph)
 	var tables []toolkit.Oid

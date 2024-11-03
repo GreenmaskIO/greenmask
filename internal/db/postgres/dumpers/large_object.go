@@ -22,10 +22,11 @@ import (
 	"io"
 	"strings"
 
-	"github.com/greenmaskio/greenmask/internal/utils/ioutils"
 	"github.com/jackc/pgx/v5"
 	"github.com/rs/zerolog/log"
 	"golang.org/x/sync/errgroup"
+
+	"github.com/greenmaskio/greenmask/internal/utils/ioutils"
 
 	"github.com/greenmaskio/greenmask/internal/db/postgres/entries"
 	"github.com/greenmaskio/greenmask/internal/storages"
@@ -127,7 +128,7 @@ func largeObjectDumper(ctx context.Context, lo *entries.LargeObject, w ioutils.C
 				Uint32("oid", uint32(lo.Oid)).
 				Msg("closing writer")
 			if err := w.Close(); err != nil {
-				log.Warn().Err(err).Msg("error closing Blobs writer")
+				log.Warn().Err(err).Msg("error closing blobs writer")
 			}
 		}()
 		buf := make([]byte, loBufSize)

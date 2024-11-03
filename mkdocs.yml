@@ -65,6 +65,7 @@ nav:
           - Transformation engines: built_in_transformers/transformation_engines.md
           - Parameters templating: built_in_transformers/parameters_templating.md
           - Transformation conditions: built_in_transformers/transformation_condition.md
+          - Transformation inheritance: built_in_transformers/transformation_inheritance.md
           - Standard transformers:
               - built_in_transformers/standard_transformers/index.md
               - Cmd: built_in_transformers/standard_transformers/cmd.md

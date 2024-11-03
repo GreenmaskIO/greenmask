@@ -37,7 +37,7 @@ func validateVirtualReference(tableIdx int, vr *domains.VirtualReference, tables
 	if vr.Name == "" {
 		w := toolkit.NewValidationWarning().
 			SetSeverity(toolkit.ErrorValidationSeverity).
-			SetMsg("table name is required").
+			SetMsg("table columnName is required").
 			AddMeta("TableIdx", tableIdx)
 		res = append(res, w)
 	}

@@ -19,15 +19,18 @@ import (
 
 const emailTransformerGeneratorSize = 64
 
+const RandomEmailTransformerName = "RandomEmail"
+
 var emailTransformerRegexp = regexp.MustCompile(`^([a-zA-Z0-9_.+-]+)@([a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+)$`)
 
 //var emailTransformerAllowedChars = []rune("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!#$%&'*+-/=?^_`{|}~.")
 
 var EmailTransformerDefinition = utils.NewTransformerDefinition(
 	utils.NewTransformerProperties(
-		"RandomEmail",
+		RandomEmailTransformerName,
 		"Generate random email",
-	),
+	).AddMeta(AllowApplyForReferenced, true).
+		AddMeta(RequireHashEngineParameter, true),
 
 	NewEmailTransformer,
 

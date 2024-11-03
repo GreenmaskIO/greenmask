@@ -54,3 +54,9 @@ func (c *Column) GetTypeOid() Oid {
 	}
 	return c.TypeOid
 }
+
+func (c *Column) OverrideType(name string, oid Oid, size int) {
+	c.OverriddenTypeName = name
+	c.OverriddenTypeOid = oid
+	c.OverriddenTypeSize = size
+}

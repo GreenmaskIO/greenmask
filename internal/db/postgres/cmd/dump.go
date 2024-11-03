@@ -188,7 +188,7 @@ func (d *Dump) startMainTx(ctx context.Context, conn *pgx.Conn) (pgx.Tx, error) 
 
 func (d *Dump) buildContextAndValidate(ctx context.Context, tx pgx.Tx) (err error) {
 	d.context, err = runtimeContext.NewRuntimeContext(
-		ctx, tx, d.config.Dump.Transformation, d.registry, d.pgDumpOptions,
+		ctx, tx, &d.config.Dump, d.registry,
 		d.config.Dump.VirtualReferences, d.version,
 	)
 	if err != nil {
@@ -288,6 +288,9 @@ func (d *Dump) taskProducer(ctx context.Context, tasks chan<- dumpers.DumpTask) 
 			var task dumpers.DumpTask
 			switch v := dumpObj.(type) {
 			case *entries.Table:
+				if v.RelKind == 'p' {
+					continue
+				}
 				task = dumpers.NewTableDumper(v, d.validate, d.validateRowsLimit, d.pgDumpOptions.Pgzip)
 			case *entries.Sequence:
 				task = dumpers.NewSequenceDumper(v)
@@ -355,7 +358,7 @@ func (d *Dump) setDumpDependenciesGraph(tables []*entries.Table) {
 	d.dumpDependenciesGraph = make(map[int32][]int32)
 	for _, oid := range sortedOids {
 		idx := slices.IndexFunc(tables, func(entry *entries.Table) bool {
-			return entry.Oid == oid
+			return entry.Oid == oid || entry.RootPtOid == oid
 		})
 		if idx == -1 {
 			panic(fmt.Sprintf("table not found: oid=%d", oid))

@@ -123,8 +123,8 @@ func (v *Validate) Run(ctx context.Context) (int, error) {
 	v.config.Dump.Transformation = tablesToValidate
 
 	v.context, err = runtimeContext.NewRuntimeContext(
-		ctx, tx, v.config.Dump.Transformation, v.registry,
-		v.pgDumpOptions, v.config.Dump.VirtualReferences, v.version,
+		ctx, tx, &v.config.Dump, v.registry,
+		v.config.Dump.VirtualReferences, v.version,
 	)
 	if err != nil {
 		return nonZeroExitCode, fmt.Errorf("unable to build runtime context: %w", err)

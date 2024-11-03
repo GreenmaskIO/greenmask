@@ -25,6 +25,31 @@ import (
 	"github.com/greenmaskio/greenmask/pkg/toolkit"
 )
 
+const (
+	RandomLatitudeTransformerName            = "RandomLatitude"
+	RandomLongitudeTransformerName           = "RandomLongitude"
+	RandomMonthNameTransformerName           = "RandomMonthName"
+	RandomYearStringTransformerName          = "RandomYearString"
+	RandomDayOfWeekTransformerName           = "RandomDayOfWeek"
+	RandomDayOfMonthTransformerName          = "RandomDayOfMonth"
+	RandomCenturyTransformerName             = "RandomCentury"
+	RandomTimezoneTransformerName            = "RandomTimezone"
+	RandomDomainNameTransformerName          = "RandomDomainName"
+	RandomURLTransformerName                 = "RandomURL"
+	RandomUsernameTransformerName            = "RandomUsername"
+	RandomPasswordTransformerName            = "RandomPassword"
+	RandomWordTransformerName                = "RandomWord"
+	RandomSentenceTransformerName            = "RandomSentence"
+	RandomParagraphTransformerName           = "RandomParagraph"
+	RandomCCTypeTransformerName              = "RandomCCType"
+	RandomCCNumberTransformerName            = "RandomCCNumber"
+	RandomCurrencyTransformerName            = "RandomCurrency"
+	RandomAmountWithCurrencyTransformerName  = "RandomAmountWithCurrency"
+	RandomPhoneNumberTransformerName         = "RandomPhoneNumber"
+	RandomTollFreePhoneNumberTransformerName = "RandomTollFreePhoneNumber"
+	RandomE164PhoneNumberTransformerName     = "RandomE164PhoneNumber"
+)
+
 type FakerFunc func(opts ...options.OptionFunc) string
 
 type FakerTransformerDef struct {
@@ -35,14 +60,14 @@ type FakerTransformerDef struct {
 
 var FakerTransformersDes = map[string]*FakerTransformerDef{
 	// Faker geo
-	"RandomLatitude": {
+	RandomLatitudeTransformerName: {
 		Generator: func(opts ...options.OptionFunc) string {
 			return fmt.Sprintf("%f", faker.Latitude())
 		},
 		SupportedTypes: []string{"float4", "float8", "numeric"},
 		Description:    "Generates a random latitude value.",
 	},
-	"RandomLongitude": {
+	RandomLongitudeTransformerName: {
 		Generator: func(opts ...options.OptionFunc) string {
 			return fmt.Sprintf("%f", faker.Longitude())
 		},
@@ -50,110 +75,110 @@ var FakerTransformersDes = map[string]*FakerTransformerDef{
 		Description:    "Generates a random longitude value.",
 	},
 
-	"RandomMonthName": {
+	RandomMonthNameTransformerName: {
 		Generator:      faker.MonthName,
 		SupportedTypes: []string{"text", "varchar"},
 		Description:    "Generates the name of a random month.",
 	},
-	"RandomYearString": {
+	RandomYearStringTransformerName: {
 		Generator:      faker.YearString,
 		SupportedTypes: []string{"text", "varchar", "int2", "int4", "int8", "numeric"},
 		Description:    "Generates a random year as a string.",
 	},
-	"RandomDayOfWeek": {
+	RandomDayOfWeekTransformerName: {
 		Generator:      faker.DayOfWeek,
 		SupportedTypes: []string{"text", "varchar"},
 		Description:    "Generates a random day of the week.",
 	},
-	"RandomDayOfMonth": {
+	RandomDayOfMonthTransformerName: {
 		Generator:      faker.DayOfMonth,
 		SupportedTypes: []string{"text", "varchar", "int2", "int4", "int8", "numeric"},
 		Description:    "Generates a random day of the month.",
 	},
-	"RandomCentury": {
+	RandomCenturyTransformerName: {
 		Generator:      faker.Century,
 		SupportedTypes: []string{"text", "varchar"},
 		Description:    "Generates a random century.",
 	},
-	"RandomTimezone": {
+	RandomTimezoneTransformerName: {
 		Generator:      faker.Timezone,
 		SupportedTypes: []string{"text", "varchar"},
 		Description:    "Generates a random timezone.",
 	},
 
 	// Faker Internet
-	"RandomDomainName": {
+	RandomDomainNameTransformerName: {
 		Generator:      faker.DomainName,
 		SupportedTypes: []string{"text", "varchar"},
 		Description:    "Generates a random domain name.",
 	},
-	"RandomURL": {
+	RandomURLTransformerName: {
 		Generator:      faker.URL,
 		SupportedTypes: []string{"text", "varchar"},
 		Description:    "Generates a random URL.",
 	},
-	"RandomUsername": {
+	RandomUsernameTransformerName: {
 		Generator:      faker.Username,
 		SupportedTypes: []string{"text", "varchar"},
 		Description:    "Generates a random username.",
 	},
-	"RandomPassword": {
+	RandomPasswordTransformerName: {
 		Generator:      faker.Password,
 		SupportedTypes: []string{"text", "varchar"},
 		Description:    "Generates a random password.",
 	},
 
 	// Faker words and Sentences
-	"RandomWord": {
+	RandomWordTransformerName: {
 		Generator:      faker.Word,
 		SupportedTypes: []string{"text", "varchar"},
 		Description:    "Generates a random word.",
 	},
-	"RandomSentence": {
+	RandomSentenceTransformerName: {
 		Generator:      faker.Sentence,
 		SupportedTypes: []string{"text", "varchar"},
 		Description:    "Generates a random sentence.",
 	},
-	"RandomParagraph": {
+	RandomParagraphTransformerName: {
 		Generator:      faker.Paragraph,
 		SupportedTypes: []string{"text", "varchar"},
 		Description:    "Generates a random paragraph.",
 	},
 
 	// Faker Payment
-	"RandomCCType": {
+	RandomCCTypeTransformerName: {
 		Generator:      faker.CCType,
 		SupportedTypes: []string{"text", "varchar"},
 		Description:    "Generates a random credit card type.",
 	},
-	"RandomCCNumber": {
+	RandomCCNumberTransformerName: {
 		Generator:      faker.CCNumber,
 		SupportedTypes: []string{"text", "varchar", "int4", "int8", "numeric"},
 		Description:    "Generates a random credit card number.",
 	},
-	"RandomCurrency": {
+	RandomCurrencyTransformerName: {
 		Generator:      faker.Currency,
 		SupportedTypes: []string{"text", "varchar"},
 		Description:    "Generates a random currency code.",
 	},
-	"RandomAmountWithCurrency": {
+	RandomAmountWithCurrencyTransformerName: {
 		Generator:      faker.AmountWithCurrency,
 		SupportedTypes: []string{"text", "varchar"},
 		Description:    "Generates a random monetary amount with currency.",
 	},
 
 	// Faker Phone
-	"RandomPhoneNumber": {
+	RandomPhoneNumberTransformerName: {
 		Generator:      faker.Phonenumber,
 		SupportedTypes: []string{"text", "varchar"},
 		Description:    "Generates a random phone number.",
 	},
-	"RandomTollFreePhoneNumber": {
+	RandomTollFreePhoneNumberTransformerName: {
 		Generator:      faker.TollFreePhoneNumber,
 		SupportedTypes: []string{"text", "varchar"},
 		Description:    "Generates a random toll-free phone number.",
 	},
-	"RandomE164PhoneNumber": {
+	RandomE164PhoneNumberTransformerName: {
 		Generator:      faker.E164PhoneNumber,
 		SupportedTypes: []string{"text", "varchar"},
 		Description:    "Generates a random phone number in E.164 format.",

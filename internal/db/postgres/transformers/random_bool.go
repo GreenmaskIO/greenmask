@@ -23,12 +23,15 @@ import (
 	"github.com/greenmaskio/greenmask/pkg/toolkit"
 )
 
+const RandomBoolTransformerName = "RandomBool"
+
 var boolTransformerDefinition = utils.NewTransformerDefinition(
 
 	utils.NewTransformerProperties(
-		"RandomBool",
+		RandomBoolTransformerName,
 		"Generate random bool",
-	),
+	).AddMeta(AllowApplyForReferenced, true).
+		AddMeta(RequireHashEngineParameter, true),
 
 	NewBooleanTransformer,
 

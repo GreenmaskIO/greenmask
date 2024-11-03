@@ -25,6 +25,8 @@ import (
 	"github.com/greenmaskio/greenmask/pkg/toolkit"
 )
 
+const RandomDateTransformerName = "RandomDate"
+
 var truncateParts = []string{
 	transformers.YearTruncateName, transformers.MonthTruncateName, transformers.DayTruncateName,
 	transformers.HourTruncateName, transformers.SecondTruncateName, transformers.MillisecondTruncateName,
@@ -33,9 +35,10 @@ var truncateParts = []string{
 
 var timestampTransformerDefinition = utils.NewTransformerDefinition(
 	utils.NewTransformerProperties(
-		"RandomDate",
+		RandomDateTransformerName,
 		"Generate date in the provided interval",
-	),
+	).AddMeta(AllowApplyForReferenced, true).
+		AddMeta(RequireHashEngineParameter, true),
 
 	NewTimestampTransformer,
 

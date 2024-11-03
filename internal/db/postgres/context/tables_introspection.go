@@ -17,16 +17,11 @@ package context
 import (
 	"bytes"
 	"context"
-	"errors"
 	"fmt"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
-	"github.com/rs/zerolog/log"
 
-	"github.com/greenmaskio/greenmask/internal/db/postgres/entries"
-	transformersUtils "github.com/greenmaskio/greenmask/internal/db/postgres/transformers/utils"
-	"github.com/greenmaskio/greenmask/internal/domains"
 	"github.com/greenmaskio/greenmask/pkg/toolkit"
 )
 
@@ -52,184 +47,6 @@ func getTypeOidByName(name string, typeMap *pgtype.Map) toolkit.Oid {
 		return toolkit.Oid(t.OID)
 	}
 	return 0
-}
-
-// ValidateAndBuildTableConfig - validates tables, toolkit and their parameters. Builds config for tables and returns
-// ValidationWarnings that can be used for checking helpers in configuring and debugging transformation. Those
-// may contain the schema affection warnings that would be useful for considering consistency
-func validateAndBuildTablesConfig(
-	ctx context.Context, tx pgx.Tx, typeMap *pgtype.Map,
-	cfg []*domains.Table, registry *transformersUtils.TransformerRegistry,
-	version int, types []*toolkit.Type,
-) (map[toolkit.Oid]*entries.Table, toolkit.ValidationWarnings, error) {
-	result := make(map[toolkit.Oid]*entries.Table, len(cfg))
-	var warnings toolkit.ValidationWarnings
-
-	for _, tableCfg := range cfg {
-		tables, tableWarnings, err := getTable(ctx, tx, tableCfg)
-		if err != nil {
-			return nil, nil, fmt.Errorf("cannot build tables from config: %w", err)
-		}
-		warnings = append(warnings, tableWarnings...)
-		if len(tableWarnings) > 0 {
-			continue
-		}
-		for _, table := range tables {
-			// Assign tables constraints
-			constraints, err := getTableConstraints(ctx, tx, table.Oid, version)
-			if err != nil {
-				return nil, nil, err
-			}
-			table.Constraints = constraints
-
-			// Assign columns and transformersMap if were found
-			columns, err := getColumnsConfig(ctx, tx, table.Oid, version, true)
-			if err != nil {
-				return nil, nil, err
-			}
-			table.Columns = columns
-
-			pkColumns, err := getPrimaryKeyColumns(ctx, tx, table.Oid)
-			if err != nil {
-				return nil, nil, fmt.Errorf("unable to collect primary key columns: %w", err)
-			}
-			table.PrimaryKey = pkColumns
-
-			// Assigning overridden column types for driver initialization
-			if tableCfg.ColumnsTypeOverride != nil {
-				for _, c := range table.Columns {
-					overridingType, ok := tableCfg.ColumnsTypeOverride[c.Name]
-					if ok {
-						c.OverriddenTypeName = overridingType
-						c.OverriddenTypeSize = getTypeSizeByeName(overridingType)
-						c.OverriddenTypeOid = getTypeOidByName(overridingType, typeMap)
-					}
-				}
-			}
-
-			driver, driverWarnings, err := toolkit.NewDriver(table.Table, types)
-			if err != nil {
-				return nil, nil, fmt.Errorf("unnable to initialise driver: %w", err)
-			}
-			table.Driver = driver
-
-			if len(driverWarnings) > 0 {
-				for _, w := range driverWarnings {
-					w.AddMeta("SchemaName", table.Schema).
-						AddMeta("TableName", table.Name)
-				}
-				warnings = append(warnings, driverWarnings...)
-			}
-
-			// InitTransformation toolkit
-			if len(tableCfg.Transformers) > 0 {
-				for _, tc := range tableCfg.Transformers {
-					transformer, initWarnings, err := initTransformer(ctx, driver, tc, registry)
-					if len(initWarnings) > 0 {
-						for _, w := range initWarnings {
-							// Enriching the tables context into meta
-							w.AddMeta("SchemaName", table.Schema).
-								AddMeta("TableName", table.Name).
-								AddMeta("TransformerName", tc.Name)
-
-						}
-					}
-					// Not only errors might be in driver initialization but also a warnings that's why we have to add
-					// append medata to validation warnings and the check error and return error with warnings
-					if err != nil {
-						return nil, warnings, err
-					}
-					warnings = append(warnings, initWarnings...)
-					table.TransformersContext = append(table.TransformersContext, transformer)
-				}
-			}
-
-			result[table.Oid] = table
-		}
-
-	}
-
-	return result, warnings, nil
-}
-
-func getTable(ctx context.Context, tx pgx.Tx, t *domains.Table) ([]*entries.Table, toolkit.ValidationWarnings, error) {
-	table := &entries.Table{
-		Table: &toolkit.Table{},
-		When:  t.When,
-	}
-	var warnings toolkit.ValidationWarnings
-	var tables []*entries.Table
-
-	row := tx.QueryRow(ctx, TableSearchQuery, t.Schema, t.Name)
-	err := row.Scan(&table.Oid, &table.Schema, &table.Name, &table.Owner, &table.RelKind,
-		&table.RootPtSchema, &table.RootPtName, &table.RootOid,
-	)
-
-	if err != nil && errors.Is(err, pgx.ErrNoRows) {
-		warnings = append(warnings, toolkit.NewValidationWarning().
-			SetMsgf("table is not found").
-			SetSeverity(toolkit.ErrorValidationSeverity).
-			AddMeta("Schema", t.Schema).
-			AddMeta("TableName", t.Name),
-		)
-	} else if err != nil {
-		return nil, nil, fmt.Errorf("cannot scan table: %w", err)
-	}
-
-	if t.Query != "" && table.RelKind == 'p' {
-		return nil, nil, fmt.Errorf("cannot aply custom query on partitioned table \"%s\".\"%s\": is not supported", table.Schema, table.Name)
-	}
-	table.Query = t.Query
-	table.SubsetConds = escapeSubsetConds(t.SubsetConds)
-
-	if table.RelKind == 'p' {
-		if !t.ApplyForInherited {
-			return nil, nil, fmt.Errorf("the table \"%s\".\"%s\" is partitioned use apply_for_inherited", table.Schema, table.Name)
-		}
-		log.Debug().
-			Str("TableSchema", table.Schema).
-			Str("TableName", table.Name).
-			Msg("table is partitioned: gathering all partitions and creating dumping tasks")
-		// Get list of inherited tables
-		var parts []*entries.Table
-
-		rows, err := tx.Query(ctx, TableGetChildPatsQuery, table.Oid)
-		if err != nil {
-			return nil, nil, fmt.Errorf("error executing TableGetChildPatsQuery: %w", err)
-		}
-		defer rows.Close()
-
-		for rows.Next() {
-			pt := &entries.Table{
-				Table:        &toolkit.Table{},
-				RootPtSchema: table.Schema,
-				RootPtName:   table.Name,
-				RootOid:      table.Oid,
-				When:         table.When,
-			}
-			if err = rows.Scan(&pt.Oid, &pt.Schema, &pt.Name); err != nil {
-				return nil, nil, fmt.Errorf("error scanning TableGetChildPatsQuery: %w", err)
-			}
-			parts = append(parts, pt)
-		}
-
-		for _, pt := range parts {
-			row = tx.QueryRow(ctx, TableSearchQuery, pt.Schema, pt.Name)
-			err = row.Scan(&pt.Oid, &pt.Schema, &pt.Name, &pt.Owner, &pt.RelKind,
-				&pt.RootPtSchema, &pt.RootPtName, &pt.RootOid,
-			)
-			if err != nil {
-				return nil, nil, fmt.Errorf("error scanning TableSearchQuery for parts: %w", err)
-			}
-		}
-
-		tables = append(tables, parts...)
-
-	} else {
-		tables = append(tables, table)
-	}
-
-	return tables, warnings, nil
 }
 
 func getColumnsConfig(ctx context.Context, tx pgx.Tx, oid toolkit.Oid, version int, excludeGenerated bool) ([]*toolkit.Column, error) {
@@ -375,7 +192,6 @@ func getTableConstraints(ctx context.Context, tx pgx.Tx, tableOid toolkit.Oid, v
 	if err != nil {
 		return nil, fmt.Errorf("error templating TablePrimaryKeyReferencesConstraintsQuery: %w", err)
 	}
-	log.Debug().Str("query", buf.String()).Msg("TablePrimaryKeyReferencesConstraintsQuery templating result")
 	fkRows, err := tx.Query(ctx, buf.String(), tableOid)
 	if err != nil {
 		return nil, fmt.Errorf("cannot execute tableConstraintsQuery: %w", err)

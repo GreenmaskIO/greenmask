@@ -15,6 +15,7 @@
 package domains
 
 import (
+	"maps"
 	"sync"
 
 	"github.com/greenmaskio/greenmask/internal/db/postgres/pgdump"
@@ -121,14 +122,9 @@ type DataRestorationErrorExclusions struct {
 	Global *GlobalDataRestorationErrorExclusions   `mapstructure:"global" yaml:"global" json:"global,omitempty"`
 }
 
-type TransformerSettings struct {
-	NoValidateSchema           bool     `mapstructure:"no_validate_schema" yaml:"no_validate_schema" json:"no_validate_schema,omitempty"`
-	ResolvedValidationWarnings []string `mapstructure:"resolved_validation_warnings" yaml:"resolved_validation_warnings" json:"resolved_validation_warnings,omitempty"`
-}
-
 type TransformerConfig struct {
-	Name     string               `mapstructure:"name" yaml:"name" json:"name,omitempty"`
-	Settings *TransformerSettings `mapstructure:"settings,omitempty" yaml:"settings,omitempty" json:"settings,omitempty"`
+	Name               string `mapstructure:"name" yaml:"name" json:"name,omitempty"`
+	ApplyForReferences bool   `mapstructure:"apply_for_references" yaml:"apply_for_references" json:"apply_for_references,omitempty"`
 	// Params - transformation parameters. It might be any type. If structure should be stored as raw json
 	// This cannot be parsed with mapstructure due to uncontrollable lowercasing
 	// https://github.com/spf13/viper/issues/373
@@ -145,6 +141,17 @@ type TransformerConfig struct {
 	MetadataParams map[string]any            `mapstructure:"-" yaml:"params,omitempty" json:"params,omitempty"`
 	DynamicParams  toolkit.DynamicParameters `mapstructure:"dynamic_params" yaml:"dynamic_params" json:"dynamic_params,omitempty"`
 	When           string                    `mapstructure:"when" yaml:"when" json:"when,omitempty"`
+}
+
+func (tc *TransformerConfig) Clone() *TransformerConfig {
+	return &TransformerConfig{
+		Name:               tc.Name,
+		ApplyForReferences: tc.ApplyForReferences,
+		Params:             maps.Clone(tc.Params),
+		DynamicParams:      maps.Clone(tc.DynamicParams),
+		When:               tc.When,
+	}
+
 }
 
 type Table struct {

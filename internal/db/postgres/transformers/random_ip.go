@@ -24,8 +24,14 @@ import (
 	"github.com/greenmaskio/greenmask/pkg/toolkit"
 )
 
+const RandomIpTransformerName = "RandomIp"
+
 var RandomIpDefinition = utils.NewTransformerDefinition(
-	utils.NewTransformerProperties("RandomIp", "Generate V4 or V6 IP in the provided subnet"),
+	utils.NewTransformerProperties(
+		RandomIpTransformerName,
+		"Generate V4 or V6 IP in the provided subnet",
+	).AddMeta(AllowApplyForReferenced, true).
+		AddMeta(RequireHashEngineParameter, true),
 
 	NewIpTransformer,
 

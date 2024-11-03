@@ -32,11 +32,14 @@ import (
 	"github.com/greenmaskio/greenmask/pkg/toolkit"
 )
 
+const HashTransformerName = "Hash"
+
 var HashTransformerDefinition = utils.NewTransformerDefinition(
 	utils.NewTransformerProperties(
-		"Hash",
+		HashTransformerName,
 		"Generate hash of the text value using Scrypt hash function under the hood",
-	),
+	).AddMeta(AllowApplyForReferenced, true).
+		AddMeta(RequireHashEngineParameter, false),
 
 	NewHashTransformer,
 

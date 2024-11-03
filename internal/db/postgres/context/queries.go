@@ -17,6 +17,17 @@ package context
 import "text/template"
 
 var (
+	tableExistsQuery = `
+		SELECT exists(
+			SELECT 1
+			FROM pg_catalog.pg_class c
+				JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
+			WHERE c.relkind IN ('r', 'f', 'p')
+			  AND n.nspname  = $1  -- schema inclusion
+			  AND c.relname = $2 -- relname inclusion
+        );
+	`
+
 	// TableSearchQuery - SQL query for getting table by name and schema
 	TableSearchQuery = `	
 		SELECT 
@@ -26,8 +37,8 @@ var (
 		   pg_catalog.pg_get_userbyid(c.relowner) as "Owner",
 		   c.relkind 							  as "RelKind",
 		   (coalesce(pn.nspname, '')) 			  as "RootPtSchema",
-		   (coalesce(pc.relname, '')) 			  as "RootPtName",
-		   (coalesce(pc.oid, 0))::TEXT::INT       as "RootOid"
+		   (coalesce(pc.relname, '')) 			  as "RootPtName"
+-- 		   (coalesce(pc.oid, 0))::TEXT::INT       as "RootOid"
         FROM pg_catalog.pg_class c
 				JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
                 LEFT JOIN pg_catalog.pg_inherits i ON i.inhrelid = c.oid
@@ -59,9 +70,7 @@ var (
 												JOIN pg_class child ON inh.inhrelid = child.oid
 												JOIN pg_namespace nmsp_child ON nmsp_child.oid = child.relnamespace
 									   WHERE pt.kind = 'p')
-		SELECT child_oid::INT  AS oid,
-               child_schema    AS "schema",
-			   child           AS "name"
+		SELECT child_oid::INT  AS oid
 		FROM part_tables
 		WHERE kind != 'p';
     `

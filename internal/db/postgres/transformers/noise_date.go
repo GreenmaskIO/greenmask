@@ -21,19 +21,21 @@ import (
 
 	"github.com/jackc/pgx/v5/pgtype"
 
-	"github.com/greenmaskio/greenmask/internal/generators/transformers"
-
 	"github.com/greenmaskio/greenmask/internal/db/postgres/transformers/utils"
+	"github.com/greenmaskio/greenmask/internal/generators/transformers"
 	"github.com/greenmaskio/greenmask/pkg/toolkit"
 )
 
 // TODO: Ensure pqinterval.Duration returns duration in int64 for date and time
 
+const NoiseDateTransformerName = "NoiseDate"
+
 var NoiseDateTransformerDefinition = utils.NewTransformerDefinition(
 	utils.NewTransformerProperties(
-		"NoiseDate",
+		NoiseDateTransformerName,
 		"Add some random value (shift value) in the provided interval",
-	),
+	).AddMeta(AllowApplyForReferenced, true).
+		AddMeta(RequireHashEngineParameter, true),
 
 	NewNoiseDateTransformer,
 

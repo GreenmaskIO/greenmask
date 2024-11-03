@@ -21,6 +21,7 @@ import (
 	"strings"
 
 	"github.com/ggwhite/go-masker"
+
 	"github.com/greenmaskio/greenmask/internal/db/postgres/transformers/utils"
 	"github.com/greenmaskio/greenmask/pkg/toolkit"
 )
@@ -38,9 +39,11 @@ const (
 	MDefault    string = "default"
 )
 
+const MaskingTransformerName = "Masking"
+
 var MaskingTransformerDefinition = utils.NewTransformerDefinition(
 	utils.NewTransformerProperties(
-		"Masking",
+		MaskingTransformerName,
 		"Mask a value using one of masking type",
 	),
 

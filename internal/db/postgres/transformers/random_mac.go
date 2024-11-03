@@ -38,8 +38,14 @@ const (
 	managementTypeNameAny       = "any"
 )
 
+const RandomMacTransformerName = "RandomMac"
+
 var RandomMacAddressDefinition = utils.NewTransformerDefinition(
-	utils.NewTransformerProperties("RandomMac", "Generate random mac address"),
+	utils.NewTransformerProperties(
+		RandomMacTransformerName,
+		"Generate random mac address",
+	).AddMeta(AllowApplyForReferenced, true).
+		AddMeta(RequireHashEngineParameter, true),
 
 	NewMacAddressTransformer,
 
