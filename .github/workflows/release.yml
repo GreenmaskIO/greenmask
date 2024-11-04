@@ -14,6 +14,7 @@ jobs:
     uses: ./.github/workflows/build.yml
     needs: 
       - tests
+    secrets: inherit
 
   docs:
     uses: ./.github/workflows/docs.yml
