@@ -40,8 +40,8 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/v')
         run: |
           if [[ "${{ env.TAG }}" == *"rc"* || "${{ env.TAG }}" == *"dev"* || "${{ env.TAG }}" == *"pre"* || "${{ env.TAG }}" == *"beta"* || "${{ env.TAG }}" == *"b"* ]]; then
-            mike deploy --push $tag 
+            mike deploy --push ${{ env.TAG }} 
           else
-            mike deploy --push --update-aliases $tag latest
+            mike deploy --push --update-aliases ${{ env.TAG }} latest
             mike set-default --push latest
           fi
