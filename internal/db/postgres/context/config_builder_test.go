@@ -423,6 +423,60 @@ func Test_validateAndBuildEntriesConfig(t *testing.T) {
 			}
 		}
 	})
+
+	t.Run("ApplyForReferences is true and only one col in PK", func(t *testing.T) {
+		tables, _, _, err := getDumpObjects(ctx, pgVer, tx, opt)
+		require.NoError(t, err)
+		graph, err := subset.NewGraph(ctx, tx, tables, nil)
+		require.NoError(t, err)
+
+		cfg := &domains.Dump{
+			Transformation: []*domains.Table{
+				{
+					Schema: "public",
+					Name:   "tablea",
+					Transformers: []*domains.TransformerConfig{
+						{
+							ApplyForReferences: true,
+							Name:               transformers.RandomIntTransformerName,
+							Params: toolkit.StaticParameters{
+								"column": toolkit.ParamsValue("id1"),
+								"engine": toolkit.ParamsValue("hash"),
+							},
+						},
+						{
+							ApplyForReferences: false,
+							Name:               transformers.RandomIntTransformerName,
+							Params: toolkit.StaticParameters{
+								"column": toolkit.ParamsValue("id2"),
+								"engine": toolkit.ParamsValue("random"),
+							},
+						},
+					},
+				},
+			},
+		}
+		vw, err := validateAndBuildEntriesConfig(
+			ctx, tx, tables, typeMap, cfg,
+			utils.DefaultTransformerRegistry, pgVer, types, graph,
+		)
+		require.NoError(t, err)
+		require.False(t, vw.IsFatal())
+
+		expectedTablesWithTransformer := map[string]int{
+			"tablea": 2,
+			"tableb": 1,
+			"tablec": 1,
+		}
+
+		for _, table := range tables {
+			if _, ok := expectedTablesWithTransformer[table.Name]; ok {
+				assert.Equalf(t, expectedTablesWithTransformer[table.Name], len(table.TransformersContext), "Table %s", table.Name)
+			} else {
+				assert.Empty(t, table.TransformersContext, "Table %s", table.Name)
+			}
+		}
+	})
 }
 
 // runPostgresContainer starts a PostgreSQL container and returns the connection string

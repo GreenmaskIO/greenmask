@@ -543,6 +543,9 @@ func checkApplyForReferenceMetRequirements(
 ) (bool, toolkit.ValidationWarnings) {
 	warnings := toolkit.ValidationWarnings{}
 	for _, tr := range tcm.config.Transformers {
+		if !tr.ApplyForReferences {
+			continue
+		}
 		allowed, w := isTransformerAllowedToApplyForReferences(tr, r)
 		if !allowed {
 			warnings = append(warnings, w...)
