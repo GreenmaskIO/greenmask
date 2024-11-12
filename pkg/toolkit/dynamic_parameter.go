@@ -53,15 +53,15 @@ func (dpc *DynamicParameterContext) GetValue() (any, error) {
 }
 
 func (dpc *DynamicParameterContext) GetRawValue() (any, error) {
-	return dpc.rc.GetColumnRawValue(dpc.column.Name)
+	return dpc.rc.GetRawColumnValue(dpc.column.Name)
 }
 
 func (dpc *DynamicParameterContext) GetColumnValue(name string) (any, error) {
 	return dpc.rc.GetColumnValue(name)
 }
 
-func (dpc *DynamicParameterContext) GetColumnRawValue(name string) (any, error) {
-	return dpc.rc.GetColumnRawValue(name)
+func (dpc *DynamicParameterContext) GetRawColumnValue(name string) (any, error) {
+	return dpc.rc.GetRawColumnValue(name)
 }
 
 func (dpc *DynamicParameterContext) EncodeValue(v any) (any, error) {

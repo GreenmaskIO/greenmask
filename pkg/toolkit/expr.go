@@ -157,7 +157,7 @@ func newRecordContext(driver *Driver) (*RecordContext, []expr.Option) {
 			fmt.Sprintf("__raw__%s", c.Name),
 			func(name string) func(params ...any) (any, error) {
 				return func(params ...any) (any, error) {
-					return rctx.GetColumnRawValue(name)
+					return rctx.GetRawColumnValue(name)
 				}
 			}(c.Name),
 		)

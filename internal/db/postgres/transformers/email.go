@@ -150,7 +150,7 @@ func NewEmailTransformer(ctx context.Context, driver *toolkit.Driver, parameters
 		for _, c := range driver.Table.Columns {
 			funcMap[c.Name] = func(name string) func() (any, error) {
 				return func() (any, error) {
-					return rrctx.GetColumnRawValue(name)
+					return rrctx.GetRawColumnValue(name)
 				}
 			}(c.Name)
 		}
