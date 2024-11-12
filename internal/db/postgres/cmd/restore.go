@@ -550,52 +550,36 @@ func (r *Restore) logWarningsIfHasCycles() {
 	}
 }
 
-func (r *Restore) sortTocEntriesInTopoOrder() []*toc.Entry {
-	res := make([]*toc.Entry, 0, len(r.tocObj.Entries))
-
-	preDataEnd := 0
-	postDataStart := 0
-
+func (r *Restore) sortTocEntriesInTopoOrder(entries []*toc.Entry) []*toc.Entry {
 	r.logWarningsIfHasCycles()
 
-	// Find predata last index and postdata first index
-	for idx, item := range r.tocObj.Entries {
-		if item.Section == toc.SectionPreData {
-			preDataEnd = idx
-		}
-		if item.Section == toc.SectionPostData {
-			postDataStart = idx
-			break
-		}
-	}
-	dataEntries := r.tocObj.Entries[preDataEnd+1 : postDataStart]
-	lastTableIdx := slices.IndexFunc(dataEntries, func(entry *toc.Entry) bool {
-		return *entry.Desc == toc.SequenceSetDesc || *entry.Desc == toc.BlobsDesc
-	})
-	tableEntries := dataEntries
-	if lastTableIdx != -1 {
-		tableEntries = dataEntries[:lastTableIdx]
-	}
-	sortedTablesEntries := make([]*toc.Entry, 0, len(tableEntries))
+	// Find data section entries
+	sortedTablesEntries := make([]*toc.Entry, 0, len(entries))
 	for _, dumpId := range r.metadata.DumpIdsOrder {
-		idx := slices.IndexFunc(tableEntries, func(entry *toc.Entry) bool {
+		idx := slices.IndexFunc(entries, func(entry *toc.Entry) bool {
 			return entry.DumpId == dumpId
 		})
 		if idx == -1 {
+			tableOid, ok := r.metadata.DumpIdsToTableOid[dumpId]
+			if !ok {
+				panic(fmt.Sprintf("table with dumpId %d is not found in dumpId to Oids map", dumpId))
+			}
+			skippedTableIdx := slices.IndexFunc(r.metadata.DatabaseSchema, func(t *toolkit.Table) bool {
+				return t.Oid == tableOid
+			})
+			if skippedTableIdx == -1 {
+				panic(fmt.Sprintf("table with oid %d is not found in DatabaseSchema", tableOid))
+			}
 			log.Debug().
 				Int32("DumpId", dumpId).
-				Msg("entry not found in table entries it might be excluded from dump")
+				Str("SchemaName", r.metadata.DatabaseSchema[skippedTableIdx].Schema).
+				Str("TableName", r.metadata.DatabaseSchema[skippedTableIdx].Name).
+				Msg("table might be excluded from dump or it is a partitioned table (not partition itself): table is not found in dump entries")
+			continue
 		}
-		sortedTablesEntries = append(sortedTablesEntries, tableEntries[idx])
+		sortedTablesEntries = append(sortedTablesEntries, entries[idx])
 	}
-
-	res = append(res, r.tocObj.Entries[:preDataEnd+1]...)
-	res = append(res, sortedTablesEntries...)
-	if lastTableIdx != -1 {
-		res = append(res, dataEntries[lastTableIdx:]...)
-	}
-	res = append(res, r.tocObj.Entries[postDataStart:]...)
-	return res
+	return sortedTablesEntries
 }
 
 func (r *Restore) waitDependenciesAreRestore(ctx context.Context, deps []int32) error {
@@ -615,9 +599,9 @@ func (r *Restore) waitDependenciesAreRestore(ctx context.Context, deps []int32) 
 func (r *Restore) taskPusher(ctx context.Context, tasks chan restorers.RestoreTask) func() error {
 	return func() error {
 		defer close(tasks)
-		tocEntries := r.tocObj.Entries
+		tocEntries := getDataSectionTocEntries(r.tocObj.Entries)
 		if r.restoreOpt.RestoreInOrder {
-			tocEntries = r.sortTocEntriesInTopoOrder()
+			tocEntries = r.sortTocEntriesInTopoOrder(tocEntries)
 		}
 		for _, entry := range tocEntries {
 			select {
@@ -841,4 +825,14 @@ func removeEscapeQuotes(v string) string {
 		v = v[:len(v)-1]
 	}
 	return v
+}
+
+func getDataSectionTocEntries(tocEntries []*toc.Entry) []*toc.Entry {
+	var dataSectionEntries []*toc.Entry
+	for _, entry := range tocEntries {
+		if entry.Section == toc.SectionData {
+			dataSectionEntries = append(dataSectionEntries, entry)
+		}
+	}
+	return dataSectionEntries
 }
