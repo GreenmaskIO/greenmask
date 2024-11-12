@@ -61,7 +61,7 @@ func (rc *RecordContext) GetColumnValue(name string) (any, error) {
 	return v.Value, nil
 }
 
-func (rc *RecordContext) GetColumnRawValue(name string) (any, error) {
+func (rc *RecordContext) GetRawColumnValue(name string) (any, error) {
 	v, err := rc.record.GetRawColumnValueByName(name)
 	if err != nil {
 		return nil, err
@@ -87,7 +87,7 @@ func (rc *RecordContext) SetColumnValue(name string, v any) (bool, error) {
 	return true, nil
 }
 
-func (rc *RecordContext) SetColumnRawValue(name string, v any) (bool, error) {
+func (rc *RecordContext) SetRawColumnValue(name string, v any) (bool, error) {
 	var val *RawValue
 	switch vv := v.(type) {
 	case NullType:
