@@ -26,16 +26,20 @@ type Reference struct {
 }
 
 type Table struct {
-	Schema      string       `json:"schema"`
-	Name        string       `json:"name"`
-	Oid         Oid          `json:"oid"`
-	Columns     []*Column    `json:"columns"`
-	Kind        string       `json:"kind"`
-	Parent      Oid          `json:"parent"`
-	Children    []Oid        `json:"children"`
-	Size        int64        `json:"size"`
-	PrimaryKey  []string     `json:"primary_key"`
-	Constraints []Constraint `json:"-"`
+	Schema     string    `json:"schema"`
+	Name       string    `json:"name"`
+	Oid        Oid       `json:"oid"`
+	Columns    []*Column `json:"columns"`
+	Kind       string    `json:"kind"`
+	Parent     Oid       `json:"parent"`
+	Children   []Oid     `json:"children"`
+	Size       int64     `json:"size"`
+	PrimaryKey []string  `json:"primary_key"`
+	// RootPtSchema, RootPtName, RootPtOid - the first parent of the partitioned table
+	RootPtSchema string       `json:"root_pt_schema"`
+	RootPtName   string       `json:"root_pt_name"`
+	RootPtOid    Oid          `json:"root_pt_oid"`
+	Constraints  []Constraint `json:"-"`
 }
 
 func (t *Table) Validate() error {

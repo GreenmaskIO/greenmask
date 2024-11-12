@@ -328,7 +328,11 @@ func (d *Dump) createTocEntries() error {
 				Original:   v.OriginalSize,
 				Compressed: v.CompressedSize,
 			}
-			tablesEntry = append(tablesEntry, entry)
+			if v.RelKind != 'p' {
+				// Do not create TOC entry for partitioned tables because they are not dumped. Only their partitions are
+				// dumped
+				tablesEntry = append(tablesEntry, entry)
+			}
 			tables = append(tables, v)
 		case *entries.Sequence:
 			sequences = append(sequences, entry)
@@ -529,7 +533,7 @@ func (d *Dump) MergeTocEntries(schemaEntries []*toc.Entry, dataEntries []*toc.En
 	res := make([]*toc.Entry, 0, len(schemaEntries)+len(dataEntries))
 
 	preDataEnd := 0
-	postDataStart := 0
+	postDataStart := len(schemaEntries) - 1
 
 	// Find predata last index and postdata first index
 	for idx, item := range schemaEntries {

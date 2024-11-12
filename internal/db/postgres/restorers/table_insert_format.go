@@ -191,10 +191,18 @@ func (td *TableRestorerInsertFormat) generateInsertStmt(onConflictDoNothing bool
 		overridingSystemValue = "OVERRIDING SYSTEM VALUE "
 	}
 
+	tableName := *td.Entry.Tag
+	tableSchema := *td.Entry.Namespace
+
+	if td.Table.RootPtOid != 0 {
+		tableName = td.Table.RootPtName
+		tableSchema = td.Table.RootPtSchema
+	}
+
 	res := fmt.Sprintf(
 		`INSERT INTO %s.%s (%s) %sVALUES(%s)%s`,
-		*td.Entry.Namespace,
-		*td.Entry.Tag,
+		tableSchema,
+		tableName,
 		strings.Join(columnNames, ", "),
 		overridingSystemValue,
 		strings.Join(placeholders, ", "),

@@ -408,7 +408,7 @@ func isEndToEndPKFK(graph *subset.Graph, table *entries.Table) bool {
 	return foundInFK
 }
 
-func findPartitionsOfPartitionedTable(ctx context.Context, tx pgx.Tx, t *entries.Table) ([]toolkit.Oid, error) {
+func findPartitionsOfPartitionedTable(ctx context.Context, tx pgx.Tx, t *toolkit.Table) ([]toolkit.Oid, error) {
 	log.Debug().
 		Str("TableSchema", t.Schema).
 		Str("TableName", t.Name).
@@ -615,7 +615,7 @@ func checkTransformerAlreadyExists(
 func setupConfigForPartitionedTableChildren(
 	ctx context.Context, tx pgx.Tx, parentTcm *tableConfigMapping, tables []*entries.Table, cfg []*domains.Table,
 ) ([]*tableConfigMapping, error) {
-	parts, err := findPartitionsOfPartitionedTable(ctx, tx, parentTcm.entry)
+	parts, err := findPartitionsOfPartitionedTable(ctx, tx, parentTcm.entry.Table)
 	if err != nil {
 		return nil, fmt.Errorf(
 			"cannot find partitions of the table %s.%s: %w",

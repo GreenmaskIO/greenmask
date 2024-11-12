@@ -172,8 +172,8 @@ configuration:
   transformers:
     - name: RandomDate
       params:
-        min: "2000-01-01"
-        max: "2005-01-01"
+        min: "2022-01-01"
+        max: "2022-03-01"
         column: "sale_date"
         engine: "random"
 ```
