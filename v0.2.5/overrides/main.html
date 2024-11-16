@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+
+{% block announce %}
+  A new version 0.2.5 (2024.11.16) is <a href="https://github.com/GreenmaskIO/greenmask/releases/tag/v0.2.5">released</a>
+{% endblock %}
+
+{% block outdated %}
+  You're not viewing the latest version.
+  <a href="{{ '../' ~ base_url }}"> 
+    <strong>Click here to go to latest.</strong>
+  </a>
+{% endblock %}
