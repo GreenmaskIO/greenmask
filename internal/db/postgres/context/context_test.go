@@ -203,3 +203,50 @@ func TestNewRuntimeContext_regression_244(t *testing.T) {
 		}
 	}
 }
+
+func TestNewRuntimeContext_regression_247(t *testing.T) {
+	// This test is a regression test for https://github.com/GreenmaskIO/greenmask/issues/247
+	// It validates that subset conditions are correctly applied to the query
+	ctx := context.Background()
+	// Start the PostgreSQL container
+	connStr, cleanup, err := runPostgresContainer(ctx)
+	require.NoError(t, err)
+	defer cleanup() // Ensure the container is terminated after the test
+
+	con, err := pgx.Connect(ctx, connStr)
+	require.NoError(t, err)
+	defer con.Close(ctx) // nolint: errcheck
+	require.NoError(t, initTables(ctx, con, contextTestDb))
+	tx, err := con.Begin(ctx)
+	require.NoError(t, err)
+	defer tx.Rollback(ctx) // nolint: errcheck
+	cfg := &domains.Dump{
+		Transformation: []*domains.Table{
+			{
+				Schema: "public",
+				Name:   "users",
+				SubsetConds: []string{
+					"public.users.user_id = '62c8c546-2420-4ca6-9961-d2cce26f7cb2'",
+				},
+			},
+		},
+	}
+	rc, err := NewRuntimeContext(ctx, tx, cfg, utils.DefaultTransformerRegistry, nil, testContainerPgVersion*10000)
+	require.NoError(t, err)
+	require.NotNil(t, rc)
+	require.False(t, rc.IsFatal())
+
+	expectedTablesWithSubsetQuery := map[string]string{
+		"users":  "SELECT \"public\".\"users\".* FROM \"public\".\"users\"   WHERE ( ( public.users.user_id = '62c8c546-2420-4ca6-9961-d2cce26f7cb2' ) )",
+		"orders": "SELECT \"public\".\"orders\".* FROM \"public\".\"orders\"  LEFT JOIN \"public\".\"users\" ON \"public\".\"orders\".\"user_id\" = \"public\".\"users\".\"user_id\" AND ( public.users.user_id = '62c8c546-2420-4ca6-9961-d2cce26f7cb2' ) WHERE ( ((\"public\".\"orders\".\"user_id\" IS NULL OR \"public\".\"users\".\"user_id\" IS NOT NULL)) )",
+		"foo":    "",
+	}
+
+	for _, table := range rc.DataSectionObjects {
+		tab, ok := table.(*entries.Table)
+		if !ok {
+			continue
+		}
+		assert.Equalf(t, expectedTablesWithSubsetQuery[tab.Name], tab.Query, "Table %s", tab.Name)
+	}
+}

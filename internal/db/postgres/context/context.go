@@ -91,23 +91,13 @@ func NewRuntimeContext(
 		vr = nil
 	}
 
+	// Build graph of Tables
 	graph, err := subset.NewGraph(ctx, tx, slices.Clone(tables), vr)
 	if err != nil {
 		return nil, fmt.Errorf("error creating graph: %w", err)
 	}
-	if hasSubset(tables) {
-		// If table has subset the restoration must be in the topological order
-		// The Tables must be dumped one by one
-		if err = subset.SetSubsetQueries(graph); err != nil {
-			return nil, fmt.Errorf("cannot set subset queries: %w", err)
-		}
-		debugQueries(tables)
-	} else {
-		// if there are no subset Tables, we can sort them by size and transformation costs
-		// TODO: Implement Tables ordering for subsetted Tables as well
-		scoreTablesEntriesAndSort(tables)
-	}
 
+	// Validate, build entries config and initialize transformers, set subset conditions to all Tables if provided
 	buildWarns, err := validateAndBuildEntriesConfig(
 		ctx, tx, tables, typeMap, cfg, r, version, types, graph,
 	)
@@ -119,6 +109,20 @@ func NewRuntimeContext(
 		return &RuntimeContext{
 			Warnings: warnings,
 		}, nil
+	}
+
+	// Set subset queries for Tables if they have subset conditions or sort Tables by size and transformation costs
+	if hasSubset(tables) {
+		// If table has subset the restoration must be in the topological order
+		// The Tables must be dumped one by one
+		if err = subset.SetSubsetQueries(graph); err != nil {
+			return nil, fmt.Errorf("cannot set subset queries: %w", err)
+		}
+		debugQueries(tables)
+	} else {
+		// if there are no subset Tables, we can sort them by size and transformation costs
+		// TODO: Implement Tables ordering for subsetted Tables as well
+		scoreTablesEntriesAndSort(tables)
 	}
 
 	var dataSectionObjects []entries.Entry
