@@ -257,12 +257,6 @@ func buildRefsWithEndToEndDfs(
 	table *entries.Table, rootTableCfg *domains.Table, rootTrans []*transformersMapping,
 	graph *subset.Graph, allTrans []*domains.Table,
 	res *[]*tableConfigMapping, checkEndToEnd bool) {
-	//tableKey := fmt.Sprintf("%s.%s", table.Schema, table.Name)
-	//if visited[tableKey] {
-	//	return
-	//}
-	//visited[tableKey] = true
-	//defer func() { delete(visited, tableKey) }() // unmark after recursion
 
 	rg := graph.ReversedGraph()
 	tableIdx := findTableIndex(graph, table)

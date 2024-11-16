@@ -31,6 +31,140 @@ const (
 	testContainerExposedPort = "5432/tcp"
 )
 
+const (
+	configBuilderTestDb = `
+------------------------------------------------------------------------------------------------------------------------
+------------------------------------------------------------------------------------------------------------------------
+------------------------------------------------------------------------------------------------------------------------
+
+-- tables with end-to-end FK/PK relationships
+
+	-- Step 1: Create TableA with a composite primary key
+CREATE TABLE TableA
+(
+    id1  INT,
+    id2  INT,
+    data VARCHAR(50),
+    PRIMARY KEY (id1, id2)
+);
+
+-- Step 2: Create TableB with a composite primary key and a foreign key reference to TableA
+CREATE TABLE TableB
+(
+    id1    INT,
+    id2    INT,
+    detail VARCHAR(50),
+    PRIMARY KEY (id1, id2),
+    FOREIGN KEY (id1, id2) REFERENCES TableA (id1, id2) ON DELETE CASCADE
+);
+
+-- Step 3: Create TableC with a composite primary key and a foreign key reference to TableB
+CREATE TABLE TableC
+(
+    id1         INT,
+    id2         INT,
+    description VARCHAR(50),
+    PRIMARY KEY (id1, id2),
+    FOREIGN KEY (id1, id2) REFERENCES TableB (id1, id2) ON DELETE CASCADE
+);
+
+-- Step 4: Insert sample data into TableA
+INSERT INTO TableA (id1, id2, data)
+VALUES (1, 1, 'Data A1'),
+       (2, 1, 'Data A2'),
+       (3, 1, 'Data A3');
+
+-- Step 5: Insert sample data into TableB, referencing TableA
+INSERT INTO TableB (id1, id2, detail)
+VALUES (1, 1, 'Detail B1'),
+       (2, 1, 'Detail B2'),
+       (3, 1, 'Detail B3');
+
+-- Step 6: Insert sample data into TableC, referencing TableB
+INSERT INTO TableC (id1, id2, description)
+VALUES (1, 1, 'Description C1'),
+       (2, 1, 'Description C2'),
+       (3, 1, 'Description C3');
+
+
+-- Step 1: Create TableD with a serial primary key and a composite foreign key reference to TableC
+CREATE TABLE TableD
+(
+    id           SERIAL PRIMARY KEY, -- Unique identifier for TableD
+    id1          INT,
+    id2          INT,
+    extra_detail VARCHAR(50),
+    UNIQUE (id1, id2),               -- Composite unique constraint for id1 and id2
+    FOREIGN KEY (id1, id2) REFERENCES TableC (id1, id2) ON DELETE CASCADE
+);
+
+-- Step 2: Create TableE with a reference to TableD based on the primary key id
+CREATE TABLE TableE
+(
+    id              SERIAL PRIMARY KEY, -- Unique identifier for TableE
+    tabled_id       INT,
+    additional_info VARCHAR(50),
+    FOREIGN KEY (tabled_id) REFERENCES TableD (id) ON DELETE CASCADE
+);
+
+-- Step 3: Insert sample data into TableD referencing TableC
+INSERT INTO TableD (id1, id2, extra_detail)
+VALUES (1, 1, 'Extra Detail D1'),
+       (2, 1, 'Extra Detail D2'),
+       (3, 1, 'Extra Detail D3');
+
+-- Step 4: Insert sample data into TableE referencing TableD
+-- Use the 'id' from TableD for the 'tabled_id' in TableE
+INSERT INTO TableE (tabled_id, additional_info)
+VALUES (1, 'Additional Info E1'),
+       (2, 'Additional Info E2'),
+       (3, 'Additional Info E3');
+
+------------------------------------------------------------------------------------------------------------------------
+------------------------------------------------------------------------------------------------------------------------
+------------------------------------------------------------------------------------------------------------------------
+
+CREATE TABLE sales
+(
+    sale_id   SERIAL         NOT NULL,
+    sale_date DATE           NOT NULL,
+    amount    NUMERIC(10, 2) NOT NULL
+) PARTITION BY RANGE (EXTRACT(YEAR FROM sale_date));
+
+-- Step 2: Create first-level partitions by year
+CREATE TABLE sales_2022 PARTITION OF sales
+    FOR VALUES FROM (2022) TO (2023)
+    PARTITION BY LIST (EXTRACT(MONTH FROM sale_date));
+
+CREATE TABLE sales_2023 PARTITION OF sales
+    FOR VALUES FROM (2023) TO (2024)
+    PARTITION BY LIST (EXTRACT(MONTH FROM sale_date));
+
+-- Step 3: Create second-level partitions by month for each year, adding PRIMARY KEY on each partition
+
+-- Monthly partitions for 2022
+CREATE TABLE sales_2022_jan PARTITION OF sales_2022 FOR VALUES IN (1)
+    WITH (fillfactor = 70);
+CREATE TABLE sales_2022_feb PARTITION OF sales_2022 FOR VALUES IN (2);
+CREATE TABLE sales_2022_mar PARTITION OF sales_2022 FOR VALUES IN (3);
+-- Continue adding monthly partitions for 2022...
+
+-- Monthly partitions for 2023
+CREATE TABLE sales_2023_jan PARTITION OF sales_2023 FOR VALUES IN (1);
+CREATE TABLE sales_2023_feb PARTITION OF sales_2023 FOR VALUES IN (2);
+CREATE TABLE sales_2023_mar PARTITION OF sales_2023 FOR VALUES IN (3);
+-- Continue adding monthly partitions for 2023...
+
+-- Step 4: Insert sample data
+INSERT INTO sales (sale_date, amount)
+VALUES ('2022-01-15', 100.00);
+INSERT INTO sales (sale_date, amount)
+VALUES ('2022-02-20', 150.00);
+INSERT INTO sales (sale_date, amount)
+VALUES ('2023-03-10', 200.00);
+`
+)
+
 func Test_isTransformerAllowedToApplyForReferences(t *testing.T) {
 	r := utils.DefaultTransformerRegistry
 
@@ -114,7 +248,7 @@ func Test_validateAndBuildEntriesConfig(t *testing.T) {
 	con, err := pgx.Connect(ctx, connStr)
 	require.NoError(t, err)
 	defer con.Close(ctx) // nolint: errcheck
-	require.NoError(t, initTables(ctx, con))
+	require.NoError(t, initTables(ctx, con, configBuilderTestDb))
 
 	tx, err := con.Begin(ctx)
 	require.NoError(t, err)
@@ -527,138 +661,8 @@ func runPostgresContainer(ctx context.Context) (string, func(), error) {
 	}, nil
 }
 
-func initTables(ctx context.Context, con *pgx.Conn) error {
-	sqlScript := `
-------------------------------------------------------------------------------------------------------------------------
-------------------------------------------------------------------------------------------------------------------------
-------------------------------------------------------------------------------------------------------------------------
+func initTables(ctx context.Context, con *pgx.Conn, migration string) error {
 
--- tables with end-to-end FK/PK relationships
-
-	-- Step 1: Create TableA with a composite primary key
-CREATE TABLE TableA
-(
-    id1  INT,
-    id2  INT,
-    data VARCHAR(50),
-    PRIMARY KEY (id1, id2)
-);
-
--- Step 2: Create TableB with a composite primary key and a foreign key reference to TableA
-CREATE TABLE TableB
-(
-    id1    INT,
-    id2    INT,
-    detail VARCHAR(50),
-    PRIMARY KEY (id1, id2),
-    FOREIGN KEY (id1, id2) REFERENCES TableA (id1, id2) ON DELETE CASCADE
-);
-
--- Step 3: Create TableC with a composite primary key and a foreign key reference to TableB
-CREATE TABLE TableC
-(
-    id1         INT,
-    id2         INT,
-    description VARCHAR(50),
-    PRIMARY KEY (id1, id2),
-    FOREIGN KEY (id1, id2) REFERENCES TableB (id1, id2) ON DELETE CASCADE
-);
-
--- Step 4: Insert sample data into TableA
-INSERT INTO TableA (id1, id2, data)
-VALUES (1, 1, 'Data A1'),
-       (2, 1, 'Data A2'),
-       (3, 1, 'Data A3');
-
--- Step 5: Insert sample data into TableB, referencing TableA
-INSERT INTO TableB (id1, id2, detail)
-VALUES (1, 1, 'Detail B1'),
-       (2, 1, 'Detail B2'),
-       (3, 1, 'Detail B3');
-
--- Step 6: Insert sample data into TableC, referencing TableB
-INSERT INTO TableC (id1, id2, description)
-VALUES (1, 1, 'Description C1'),
-       (2, 1, 'Description C2'),
-       (3, 1, 'Description C3');
-
-
--- Step 1: Create TableD with a serial primary key and a composite foreign key reference to TableC
-CREATE TABLE TableD
-(
-    id           SERIAL PRIMARY KEY, -- Unique identifier for TableD
-    id1          INT,
-    id2          INT,
-    extra_detail VARCHAR(50),
-    UNIQUE (id1, id2),               -- Composite unique constraint for id1 and id2
-    FOREIGN KEY (id1, id2) REFERENCES TableC (id1, id2) ON DELETE CASCADE
-);
-
--- Step 2: Create TableE with a reference to TableD based on the primary key id
-CREATE TABLE TableE
-(
-    id              SERIAL PRIMARY KEY, -- Unique identifier for TableE
-    tabled_id       INT,
-    additional_info VARCHAR(50),
-    FOREIGN KEY (tabled_id) REFERENCES TableD (id) ON DELETE CASCADE
-);
-
--- Step 3: Insert sample data into TableD referencing TableC
-INSERT INTO TableD (id1, id2, extra_detail)
-VALUES (1, 1, 'Extra Detail D1'),
-       (2, 1, 'Extra Detail D2'),
-       (3, 1, 'Extra Detail D3');
-
--- Step 4: Insert sample data into TableE referencing TableD
--- Use the 'id' from TableD for the 'tabled_id' in TableE
-INSERT INTO TableE (tabled_id, additional_info)
-VALUES (1, 'Additional Info E1'),
-       (2, 'Additional Info E2'),
-       (3, 'Additional Info E3');
-
-------------------------------------------------------------------------------------------------------------------------
-------------------------------------------------------------------------------------------------------------------------
-------------------------------------------------------------------------------------------------------------------------
-
-CREATE TABLE sales
-(
-    sale_id   SERIAL         NOT NULL,
-    sale_date DATE           NOT NULL,
-    amount    NUMERIC(10, 2) NOT NULL
-) PARTITION BY RANGE (EXTRACT(YEAR FROM sale_date));
-
--- Step 2: Create first-level partitions by year
-CREATE TABLE sales_2022 PARTITION OF sales
-    FOR VALUES FROM (2022) TO (2023)
-    PARTITION BY LIST (EXTRACT(MONTH FROM sale_date));
-
-CREATE TABLE sales_2023 PARTITION OF sales
-    FOR VALUES FROM (2023) TO (2024)
-    PARTITION BY LIST (EXTRACT(MONTH FROM sale_date));
-
--- Step 3: Create second-level partitions by month for each year, adding PRIMARY KEY on each partition
-
--- Monthly partitions for 2022
-CREATE TABLE sales_2022_jan PARTITION OF sales_2022 FOR VALUES IN (1)
-    WITH (fillfactor = 70);
-CREATE TABLE sales_2022_feb PARTITION OF sales_2022 FOR VALUES IN (2);
-CREATE TABLE sales_2022_mar PARTITION OF sales_2022 FOR VALUES IN (3);
--- Continue adding monthly partitions for 2022...
-
--- Monthly partitions for 2023
-CREATE TABLE sales_2023_jan PARTITION OF sales_2023 FOR VALUES IN (1);
-CREATE TABLE sales_2023_feb PARTITION OF sales_2023 FOR VALUES IN (2);
-CREATE TABLE sales_2023_mar PARTITION OF sales_2023 FOR VALUES IN (3);
--- Continue adding monthly partitions for 2023...
-
--- Step 4: Insert sample data
-INSERT INTO sales (sale_date, amount)
-VALUES ('2022-01-15', 100.00);
-INSERT INTO sales (sale_date, amount)
-VALUES ('2022-02-20', 150.00);
-INSERT INTO sales (sale_date, amount)
-VALUES ('2023-03-10', 200.00);
-`
-	_, err := con.Exec(ctx, sqlScript)
+	_, err := con.Exec(ctx, migration)
 	return err
 }

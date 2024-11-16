@@ -91,7 +91,7 @@ func NewRuntimeContext(
 		vr = nil
 	}
 
-	graph, err := subset.NewGraph(ctx, tx, tables, vr)
+	graph, err := subset.NewGraph(ctx, tx, slices.Clone(tables), vr)
 	if err != nil {
 		return nil, fmt.Errorf("error creating graph: %w", err)
 	}
