@@ -18,6 +18,7 @@ backward-compatible with existing PostgreSQL utilities, fast and reliable.
 [![GitHub Downloads (all assets, all releases)](https://img.shields.io/github/downloads/greenmaskio/greenmask/total)](https://somsubhra.github.io/github-release-stats/?username=greenmaskio&repository=greenmask&page=1&per_page=5)
 [![Docker pulls](https://img.shields.io/docker/pulls/greenmask/greenmask)](https://hub.docker.com/r/greenmask/greenmask)
 [![Go Report Card](https://goreportcard.com/badge/github.com/greenmaskio/greenmask)](https://goreportcard.com/report/github.com/greenmaskio/greenmask)
+[![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=GreenmaskIO_greenmask&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=GreenmaskIO_greenmask)
 
 ![schema.png](docs/assets/schema.png)
 
