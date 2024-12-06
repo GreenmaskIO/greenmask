@@ -130,14 +130,16 @@ func TryRegisterCustomTypes(typeMap *pgtype.Map, types []*Type, silent bool) {
 		if t.Kind == 'd' {
 			if t.BaseType != 0 {
 				baseType, ok := typeMap.TypeForOID(uint32(t.BaseType))
-				if !ok && !silent {
-					log.Warn().
-						Str("Context", "CustomTypeRegistering").
-						Str("Schema", t.Schema).
-						Str("Name", t.Name).
-						Int("Oid", int(t.Oid)).
-						Str("Kind", fmt.Sprintf("%c", t.Kind)).
-						Msg("unable to register domain type")
+				if !ok {
+					if !silent {
+						log.Warn().
+							Str("Context", "CustomTypeRegistering").
+							Str("Schema", t.Schema).
+							Str("Name", t.Name).
+							Int("Oid", int(t.Oid)).
+							Str("Kind", fmt.Sprintf("%c", t.Kind)).
+							Msg("unable to register domain type")
+					}
 					continue
 				}
 				typeMap.RegisterType(&pgtype.Type{
