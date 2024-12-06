@@ -148,14 +148,16 @@ func TryRegisterCustomTypes(typeMap *pgtype.Map, types []*Type, silent bool) {
 					Codec: baseType.Codec,
 				})
 				arrayType, ok := typeMap.TypeForName(fmt.Sprintf("_%s", baseType.Name))
-				if !ok && !silent {
-					log.Warn().
-						Str("Context", "CustomTypeRegistering").
-						Str("Schema", t.Schema).
-						Str("Name", t.Name).
-						Int("Oid", int(t.Oid)).
-						Msg("cannot register array type for custom type")
-					continue
+				if !ok {
+					if !silent {
+						log.Warn().
+							Str("Context", "CustomTypeRegistering").
+							Str("Schema", t.Schema).
+							Str("Name", t.Name).
+							Int("Oid", int(t.Oid)).
+							Msg("cannot register array type for custom type")
+						continue
+					}
 				}
 				arrayTypeName := fmt.Sprintf("_%s", t.Name)
 				typeMap.RegisterType(&pgtype.Type{
