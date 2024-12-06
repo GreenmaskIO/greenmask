@@ -156,8 +156,9 @@ func TryRegisterCustomTypes(typeMap *pgtype.Map, types []*Type, silent bool) {
 							Str("Name", t.Name).
 							Int("Oid", int(t.Oid)).
 							Msg("cannot register array type for custom type")
-						continue
 					}
+					continue
+
 				}
 				arrayTypeName := fmt.Sprintf("_%s", t.Name)
 				typeMap.RegisterType(&pgtype.Type{
