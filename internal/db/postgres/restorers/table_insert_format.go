@@ -28,31 +28,25 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"github.com/greenmaskio/greenmask/internal/db/postgres/pgcopy"
+	"github.com/greenmaskio/greenmask/internal/db/postgres/pgrestore"
 	"github.com/greenmaskio/greenmask/internal/db/postgres/toc"
 	"github.com/greenmaskio/greenmask/internal/domains"
 	"github.com/greenmaskio/greenmask/internal/storages"
-	"github.com/greenmaskio/greenmask/internal/utils/ioutils"
 	"github.com/greenmaskio/greenmask/internal/utils/reader"
 	"github.com/greenmaskio/greenmask/pkg/toolkit"
 )
 
 type TableRestorerInsertFormat struct {
-	Entry                 *toc.Entry
-	Table                 *toolkit.Table
-	St                    storages.Storager
-	doNothing             bool
-	exitOnError           bool
-	query                 string
-	globalExclusions      *domains.GlobalDataRestorationErrorExclusions
-	tableExclusion        *domains.TablesDataRestorationErrorExclusions
-	usePgzip              bool
-	overridingSystemValue bool
+	*restoreBase
+	Table            *toolkit.Table
+	query            string
+	globalExclusions *domains.GlobalDataRestorationErrorExclusions
+	tableExclusion   *domains.TablesDataRestorationErrorExclusions
 }
 
 func NewTableRestorerInsertFormat(
-	entry *toc.Entry, t *toolkit.Table, st storages.Storager, exitOnError bool,
-	doNothing bool, exclusions *domains.DataRestorationErrorExclusions,
-	usePgzip bool, overridingSystemValue bool,
+	entry *toc.Entry, t *toolkit.Table, st storages.Storager, opt *pgrestore.DataSectionSettings,
+	exclusions *domains.DataRestorationErrorExclusions,
 ) *TableRestorerInsertFormat {
 
 	var (
@@ -79,53 +73,27 @@ func NewTableRestorerInsertFormat(
 	}
 
 	return &TableRestorerInsertFormat{
-		Table:                 t,
-		Entry:                 entry,
-		St:                    st,
-		exitOnError:           exitOnError,
-		doNothing:             doNothing,
-		globalExclusions:      globalExclusion,
-		tableExclusion:        tableExclusion,
-		usePgzip:              usePgzip,
-		overridingSystemValue: overridingSystemValue,
+		restoreBase:      newRestoreBase(entry, st, opt),
+		Table:            t,
+		globalExclusions: globalExclusion,
+		tableExclusion:   tableExclusion,
 	}
 }
 
 func (td *TableRestorerInsertFormat) GetEntry() *toc.Entry {
-	return td.Entry
+	return td.entry
 }
 
 func (td *TableRestorerInsertFormat) Execute(ctx context.Context, conn *pgx.Conn) error {
 
-	if td.Entry.FileName == nil {
-		return fmt.Errorf("cannot get file name from toc Entry")
-	}
-
-	r, err := td.St.GetObject(ctx, *td.Entry.FileName)
+	r, complete, err := td.getObject(ctx)
 	if err != nil {
-		return fmt.Errorf("cannot open dump file: %w", err)
+		return fmt.Errorf("cannot get storage object: %w", err)
 	}
-	defer func(reader io.ReadCloser) {
-		if err := reader.Close(); err != nil {
-			log.Warn().
-				Err(err).
-				Msg("error closing dump file")
-		}
-	}(r)
-	gz, err := ioutils.GetGzipReadCloser(r, td.usePgzip)
-	if err != nil {
-		return fmt.Errorf("cannot create gzip reader: %w", err)
-	}
-	defer func(gz io.Closer) {
-		if err := gz.Close(); err != nil {
-			log.Warn().
-				Err(err).
-				Msg("error closing gzip reader")
-		}
-	}(gz)
+	defer complete()
 
-	if err = td.streamInsertData(ctx, conn, gz); err != nil {
-		if td.exitOnError {
+	if err = td.streamInsertData(ctx, conn, r); err != nil {
+		if td.opt.ExitOnError {
 			return fmt.Errorf("error streaming pgcopy data: %w", err)
 		}
 		log.Warn().Err(err).Msg("error streaming pgcopy data")
@@ -187,12 +155,12 @@ func (td *TableRestorerInsertFormat) generateInsertStmt(onConflictDoNothing bool
 	}
 
 	overridingSystemValue := ""
-	if td.overridingSystemValue {
+	if td.opt.OverridingSystemValue {
 		overridingSystemValue = "OVERRIDING SYSTEM VALUE "
 	}
 
-	tableName := *td.Entry.Tag
-	tableSchema := *td.Entry.Namespace
+	tableName := *td.entry.Tag
+	tableSchema := *td.entry.Namespace
 
 	if td.Table.RootPtOid != 0 {
 		tableName = td.Table.RootPtName
@@ -215,11 +183,11 @@ func (td *TableRestorerInsertFormat) insertDataOnConflictDoNothing(
 	ctx context.Context, conn *pgx.Conn, row *pgcopy.Row,
 ) error {
 	if td.query == "" {
-		td.query = td.generateInsertStmt(td.doNothing)
+		td.query = td.generateInsertStmt(td.opt.OnConflictDoNothing)
 	}
 
-	// TODO: The implementation based on pgx.Conn.Exec is not efficient for bulk inserts.
-	// 	Consider rewrite to string literal that contains generated statement instead of using prepared statement
+	// TODO: The implementation based on Exec is not efficient for bulk inserts.
+	// 	 Consider rewrite to string literal that contains generated statement instead of using prepared statement
 	//	 in driver
 	_, err := conn.Exec(ctx, td.query, getAllArguments(row)...)
 	if err != nil {
@@ -251,10 +219,6 @@ func (td *TableRestorerInsertFormat) isErrorAllowed(err error) bool {
 		}
 	}
 	return false
-}
-
-func (td *TableRestorerInsertFormat) DebugInfo() string {
-	return fmt.Sprintf("table %s.%s", *td.Entry.Namespace, *td.Entry.Tag)
 }
 
 func getAllArguments(row *pgcopy.Row) []any {

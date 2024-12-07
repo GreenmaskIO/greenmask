@@ -25,66 +25,66 @@ import (
 // TODO: Simplify that adapter
 
 const (
-	NoneActionStage = iota
-	StartedActionStage
-	EndedActionStage
+	noneActionStage = iota
+	startedActionStage
+	endedActionStage
 )
 
 var (
-	StateLowerCase     StateName = "StateLowerCase"
-	StateKeepCase      StateName = "StateKeepCase"
-	StateWildcard      StateName = "StateWildcard"
-	StateDoubledQuotes StateName = "StateDoubledQuotes"
-	StateQuestionMark  StateName = "StateQuestionMark"
-	DefaultState                 = &State{
-		Name:   StateLowerCase,
-		Action: LowerCaseState,
+	stateLowerCase     stateName = "stateLowerCase"
+	stateKeepCase      stateName = "stateKeepCase"
+	stateWildcard      stateName = "stateWildcard"
+	stateDoubledQuotes stateName = "stateDoubledQuotes"
+	stateQuestionMark  stateName = "stateQuestionMark"
+	defaultState                 = &state{
+		name:   stateLowerCase,
+		action: lowerCaseState,
 	}
 )
 
-type ActionContext struct {
+type actionContext struct {
 	strings.Builder
-	Stage int
+	stage int
 }
 
-func (ac *ActionContext) IsDone() bool {
-	return ac.Stage == EndedActionStage
+func (ac *actionContext) isDone() bool {
+	return ac.stage == endedActionStage
 }
 
-func (ac *ActionContext) SetDone() {
-	ac.Stage = EndedActionStage
+func (ac *actionContext) setDone() {
+	ac.stage = endedActionStage
 }
 
-type StateName string
+type stateName string
 
-type Action func(actx *ActionContext, s string, dest *strings.Builder) error
+type action func(actx *actionContext, s string, dest *strings.Builder) error
 
-type State struct {
-	ActionContext
-	Name   StateName
-	Action Action
+type state struct {
+	actionContext
+	name   stateName
+	action action
 }
 
-func LowerCaseState(actx *ActionContext, s string, dest *strings.Builder) error {
+func lowerCaseState(actx *actionContext, s string, dest *strings.Builder) error {
 	if s == "" {
 		return errors.New("unexpected char length")
 	}
-	actx.SetDone() // It is always done because it's default state
+	actx.setDone() // It is always done because it's default state
 	if _, err := dest.WriteString(strings.ToLower(s)); err != nil {
 		return err
 	}
 	return nil
 }
 
-func KeepCaseState(actx *ActionContext, s string, dest *strings.Builder) error {
+func keepCaseState(actx *actionContext, s string, dest *strings.Builder) error {
 	if s == `"` {
-		if actx.Stage == NoneActionStage {
-			actx.Stage = StartedActionStage
+		if actx.stage == noneActionStage {
+			actx.stage = startedActionStage
 		} else {
-			actx.Stage = EndedActionStage
+			actx.stage = endedActionStage
 		}
 		return nil
-	} else if actx.Stage == NoneActionStage {
+	} else if actx.stage == noneActionStage {
 		return errors.New("syntax error")
 	}
 	if _, err := dest.WriteString(s); err != nil {
@@ -94,58 +94,58 @@ func KeepCaseState(actx *ActionContext, s string, dest *strings.Builder) error {
 
 }
 
-func WildCardState(actx *ActionContext, s string, dest *strings.Builder) error {
+func wildCardState(actx *actionContext, s string, dest *strings.Builder) error {
 	if string(s) != "*" {
 		return errors.New("unknown character")
 	}
 	if _, err := dest.WriteString(".*"); err != nil {
 		return err
 	}
-	actx.SetDone()
+	actx.setDone()
 	return nil
 }
 
-func QuestionMarkState(actx *ActionContext, s string, dest *strings.Builder) error {
+func questionMarkState(actx *actionContext, s string, dest *strings.Builder) error {
 	if s != "?" {
 		return errors.New("unknown character")
 	}
 	if _, err := dest.WriteRune('.'); err != nil {
 		return err
 	}
-	actx.SetDone()
+	actx.setDone()
 	return nil
 }
 
-func DoubleQuoteState(actx *ActionContext, s string, dest *strings.Builder) error {
+func doubleQuoteState(actx *actionContext, s string, dest *strings.Builder) error {
 	if s != `""` {
 		return errors.New("unknown character")
 	}
 	if _, err := dest.WriteRune('"'); err != nil {
 		return err
 	}
-	actx.SetDone()
+	actx.setDone()
 	return nil
 }
 
 type ParserContext struct {
-	currentState *State
+	currentState *state
 	// stateStack - nested states that we would be able to handle
-	stateStack []*State
+	stateStack []*state
 }
 
-func NewParser() *ParserContext {
+func newParser() *ParserContext {
 	return &ParserContext{
-		currentState: DefaultState,
-		stateStack:   []*State{DefaultState},
+		currentState: defaultState,
+		stateStack:   []*state{defaultState},
 	}
 }
 
-func (p *ParserContext) PushState(state *State) {
+func (p *ParserContext) pushState(state *state) {
 	p.currentState = state
 	p.stateStack = append(p.stateStack, state)
 }
 
-func (p *ParserContext) PopState() {
+func (p *ParserContext) popState() {
 	p.currentState = p.stateStack[len(p.stateStack)-2]
 	p.stateStack = p.stateStack[:len(p.stateStack)-1]
 }
@@ -155,7 +155,7 @@ func (p *ParserContext) Depth() int {
 }
 
 func AdaptRegexp(data string) (string, error) {
-	pctx := NewParser()
+	pctx := newParser()
 	src := strings.NewReader(data)
 	dest := &strings.Builder{}
 	var isEOF bool
@@ -192,9 +192,9 @@ func AdaptRegexp(data string) (string, error) {
 			switch ch {
 			case '"':
 				// Doubled double quote parse
-				pctx.PushState(&State{
-					Name:   StateDoubledQuotes,
-					Action: DoubleQuoteState,
+				pctx.pushState(&state{
+					name:   stateDoubledQuotes,
+					action: doubleQuoteState,
 				})
 				if _, err = literals.WriteRune(ch); err != nil {
 					return "", err
@@ -207,36 +207,36 @@ func AdaptRegexp(data string) (string, error) {
 					}
 				}
 
-				if pctx.currentState.Name != StateKeepCase {
-					pctx.PushState(&State{
-						Name:   StateKeepCase,
-						Action: KeepCaseState,
+				if pctx.currentState.name != stateKeepCase {
+					pctx.pushState(&state{
+						name:   stateKeepCase,
+						action: keepCaseState,
 					})
 				}
 			}
 
 		case '*':
-			if pctx.currentState.Name != StateWildcard {
-				pctx.PushState(&State{
-					Name:   StateWildcard,
-					Action: WildCardState,
+			if pctx.currentState.name != stateWildcard {
+				pctx.pushState(&state{
+					name:   stateWildcard,
+					action: wildCardState,
 				})
 			}
 		case '?':
-			if pctx.currentState.Name != StateQuestionMark {
-				pctx.PushState(&State{
-					Name:   StateQuestionMark,
-					Action: QuestionMarkState,
+			if pctx.currentState.name != stateQuestionMark {
+				pctx.pushState(&state{
+					name:   stateQuestionMark,
+					action: questionMarkState,
 				})
 			}
 		}
 
-		if err = pctx.currentState.Action(&pctx.currentState.ActionContext, literals.String(), dest); err != nil {
+		if err = pctx.currentState.action(&pctx.currentState.actionContext, literals.String(), dest); err != nil {
 			return "", err
 		}
 
-		if pctx.Depth() > 1 && pctx.currentState.IsDone() {
-			pctx.PopState()
+		if pctx.Depth() > 1 && pctx.currentState.isDone() {
+			pctx.popState()
 		}
 		literals.Reset()
 	}

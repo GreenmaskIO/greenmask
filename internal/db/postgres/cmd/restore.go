@@ -632,13 +632,10 @@ func (r *Restore) taskPusher(ctx context.Context, tasks chan restorers.RestoreTa
 							return fmt.Errorf("cannot get table definition from meta: %w", err)
 						}
 						task = restorers.NewTableRestorerInsertFormat(
-							entry, t, r.st, r.restoreOpt.ExitOnError, r.restoreOpt.OnConflictDoNothing,
-							r.cfg.ErrorExclusions, r.restoreOpt.Pgzip, r.restoreOpt.OverridingSystemValue,
+							entry, t, r.st, r.restoreOpt.ToDataSectionSettings(), r.cfg.ErrorExclusions,
 						)
 					} else {
-						task = restorers.NewTableRestorer(
-							entry, r.st, r.restoreOpt.ExitOnError, r.restoreOpt.Pgzip, r.restoreOpt.BatchSize,
-						)
+						task = restorers.NewTableRestorer(entry, r.st, r.restoreOpt.ToDataSectionSettings())
 					}
 
 				case toc.SequenceSetDesc:
