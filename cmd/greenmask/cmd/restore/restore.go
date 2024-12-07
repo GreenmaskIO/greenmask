@@ -150,12 +150,11 @@ func init() {
 	Cmd.Flags().BoolP("no-owner", "O", false, "skip restoration of object ownership")
 	Cmd.Flags().StringSliceVarP(&Config.Restore.PgRestoreOptions.Function, "function", "P", []string{}, "restore named function")
 	Cmd.Flags().BoolP("schema-only", "s", false, "restore only the schema, no data")
-	Cmd.Flags().StringP("superuser", "S", "", "superuser user name to use for disabling triggers")
 	Cmd.Flags().StringSliceVarP(&Config.Restore.PgRestoreOptions.Table, "table", "t", []string{}, "restore named relation (table, view, etc.)")
 	Cmd.Flags().StringSliceVarP(&Config.Restore.PgRestoreOptions.Trigger, "trigger", "T", []string{}, "restore named trigger")
 	Cmd.Flags().BoolP("no-privileges", "X", false, "skip restoration of access privileges (grant/revoke)")
 	Cmd.Flags().BoolP("single-transaction", "1", false, "restore as a single transaction")
-	Cmd.Flags().BoolP("disable-triggers", "", false, "disable triggers during data-only restore")
+	Cmd.Flags().BoolP("disable-triggers", "", false, "disable triggers during data section restore")
 	Cmd.Flags().BoolP("enable-row-security", "", false, "enable row security")
 	Cmd.Flags().BoolP("if-exists", "", false, "use IF EXISTS when dropping objects")
 	Cmd.Flags().BoolP("no-comments", "", false, "do not restore comments")
@@ -169,6 +168,12 @@ func init() {
 	Cmd.Flags().BoolP("strict-names", "", false, "restore named section (pre-data, data, or post-data) match at least one entity each")
 	Cmd.Flags().BoolP("use-set-session-authorization", "", false, "use SET SESSION AUTHORIZATION commands instead of ALTER OWNER commands to set ownership")
 	Cmd.Flags().BoolP("on-conflict-do-nothing", "", false, "add ON CONFLICT DO NOTHING to INSERT commands")
+	Cmd.Flags().StringP("superuser", "S", "", "superuser user name to use for disabling triggers")
+	Cmd.Flags().BoolP(
+		"use-session-replication-role-replica", "", false,
+		"use SET session_replication_role = 'replica' to disable triggers during data section restore"+
+			" (alternative for --disable-triggers)",
+	)
 	Cmd.Flags().BoolP("inserts", "", false, "restore data as INSERT commands, rather than COPY")
 	Cmd.Flags().BoolP("restore-in-order", "", false, "restore tables in topological order, ensuring that dependent tables are not restored until the tables they depend on have been restored")
 	Cmd.Flags().BoolP(
@@ -193,11 +198,11 @@ func init() {
 		"dbname", "file", "verbose",
 
 		"data-only", "clean", "create", "exit-on-error", "jobs", "list-format", "use-list", "schema", "exclude-schema",
-		"no-owner", "function", "schema-only", "superuser", "table", "trigger", "no-privileges", "single-transaction",
+		"no-owner", "function", "schema-only", "table", "trigger", "no-privileges", "single-transaction",
 		"disable-triggers", "enable-row-security", "if-exists", "no-comments", "no-data-for-failed-tables",
 		"no-security-labels", "no-subscriptions", "no-table-access-method", "no-tablespaces", "section",
 		"strict-names", "use-set-session-authorization", "inserts", "on-conflict-do-nothing", "restore-in-order",
-		"pgzip", "batch-size", "overriding-system-value",
+		"pgzip", "batch-size", "overriding-system-value", "superuser", "use-session-replication-role-replica",
 
 		"host", "port", "username",
 	} {

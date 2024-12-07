@@ -19,49 +19,50 @@ allowing you to configure the restoration process as needed.
 Mostly it supports the same flags as the `pg_restore` utility, with some extra flags for Greenmask-specific features.
 
 ```text title="Supported flags"
-      --batch-size int                  the number of rows to insert in a single batch during the COPY command (0 - all rows will be inserted in a single batch)
-  -c, --clean                           clean (drop) database objects before recreating
-  -C, --create                          create the target database
-  -a, --data-only                       restore only the data, no schema
-  -d, --dbname string                   connect to database name (default "postgres")
-      --disable-triggers                disable triggers during data-only restore
-      --enable-row-security             enable row security
-  -N, --exclude-schema strings          do not restore objects in this schema
-  -e, --exit-on-error                   exit on error, default is to continue
-  -f, --file string                     output file name (- for stdout)
-  -P, --function strings                restore named function
-  -h, --host string                     database server host or socket directory (default "/var/run/postgres")
-      --if-exists                       use IF EXISTS when dropping objects
-  -i, --index strings                   restore named index
-      --inserts                         restore data as INSERT commands, rather than COPY
-  -j, --jobs int                        use this many parallel jobs to restore (default 1)
-      --list-format string              use table of contents in format of text, json or yaml (default "text")
-      --no-comments                     do not restore comments
-      --no-data-for-failed-tables       do not restore data of tables that could not be created
-  -O, --no-owner string                 skip restoration of object ownership
-  -X, --no-privileges                   skip restoration of access privileges (grant/revoke)
-      --no-publications                 do not restore publications
-      --no-security-labels              do not restore security labels
-      --no-subscriptions                ddo not restore subscriptions
-      --no-table-access-method          do not restore table access methods
-      --no-tablespaces                  do not restore tablespace assignments
-      --on-conflict-do-nothing          add ON CONFLICT DO NOTHING to INSERT commands
-      --overriding-system-value         use OVERRIDING SYSTEM VALUE clause for INSERTs
-      --pgzip                           use pgzip decompression instead of gzip
-  -p, --port int                        database server port number (default 5432)
-      --restore-in-order                restore tables in topological order, ensuring that dependent tables are not restored until the tables they depend on have been restored
-  -n, --schema strings                  restore only objects in this schema
-  -s, --schema-only                     restore only the schema, no data
-      --section string                  restore named section (pre-data, data, or post-data)
-  -1, --single-transaction              restore as a single transaction
-      --strict-names                    restore named section (pre-data, data, or post-data) match at least one entity each
-  -S, --superuser string                superuser user name to use for disabling triggers
-  -t, --table strings                   restore named relation (table, view, etc.)
-  -T, --trigger strings                 restore named trigger
-  -L, --use-list string                 use table of contents from this file for selecting/ordering output
-      --use-set-session-authorization   use SET SESSION AUTHORIZATION commands instead of ALTER OWNER commands to set ownership
-  -U, --username string                 connect as specified database user (default "postgres")
-  -v, --verbose string                  verbose mode
+      --batch-size int                         the number of rows to insert in a single batch during the COPY command (0 - all rows will be inserted in a single batch)
+  -c, --clean                                  clean (drop) database objects before recreating
+  -C, --create                                 create the target database
+  -a, --data-only                              restore only the data, no schema
+  -d, --dbname string                          connect to database name (default "postgres")
+      --disable-triggers                       disable triggers during data section restore
+      --enable-row-security                    enable row security
+  -N, --exclude-schema strings                 do not restore objects in this schema
+  -e, --exit-on-error                          exit on error, default is to continue
+  -f, --file string                            output file name (- for stdout)
+  -P, --function strings                       restore named function
+  -h, --host string                            database server host or socket directory (default "/var/run/postgres")
+      --if-exists                              use IF EXISTS when dropping objects
+  -i, --index strings                          restore named index
+      --inserts                                restore data as INSERT commands, rather than COPY
+  -j, --jobs int                               use this many parallel jobs to restore (default 1)
+      --list-format string                     use table of contents in format of text, json or yaml (default "text")
+      --no-comments                            do not restore comments
+      --no-data-for-failed-tables              do not restore data of tables that could not be created
+  -O, --no-owner                               skip restoration of object ownership
+  -X, --no-privileges                          skip restoration of access privileges (grant/revoke)
+      --no-publications                        do not restore publications
+      --no-security-labels                     do not restore security labels
+      --no-subscriptions                       ddo not restore subscriptions
+      --no-table-access-method                 do not restore table access methods
+      --no-tablespaces                         do not restore tablespace assignments
+      --on-conflict-do-nothing                 add ON CONFLICT DO NOTHING to INSERT commands
+      --overriding-system-value                use OVERRIDING SYSTEM VALUE clause for INSERTs
+      --pgzip                                  use pgzip decompression instead of gzip
+  -p, --port int                               database server port number (default 5432)
+      --restore-in-order                       restore tables in topological order, ensuring that dependent tables are not restored until the tables they depend on have been restored
+  -n, --schema strings                         restore only objects in this schema
+  -s, --schema-only                            restore only the schema, no data
+      --section string                         restore named section (pre-data, data, or post-data)
+  -1, --single-transaction                     restore as a single transaction
+      --strict-names                           restore named section (pre-data, data, or post-data) match at least one entity each
+  -S, --superuser string                       superuser user name to use for disabling triggers
+  -t, --table strings                          restore named relation (table, view, etc.)
+  -T, --trigger strings                        restore named trigger
+  -L, --use-list string                        use table of contents from this file for selecting/ordering output
+      --use-session-replication-role-replica   use SET session_replication_role = 'replica' to disable triggers during data section restore (alternative for --disable-triggers)
+      --use-set-session-authorization          use SET SESSION AUTHORIZATION commands instead of ALTER OWNER commands to set ownership
+  -U, --username string                        connect as specified database user (default "postgres")
+  -v, --verbose string                         verbose mode
 ```
 
 ## Extra features

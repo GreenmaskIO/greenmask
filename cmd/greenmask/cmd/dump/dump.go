@@ -66,7 +66,6 @@ var (
 // TODO: Check how does work mixed options - use-list + tables, etc.
 // TODO: Options currently are not implemented:
 //   - encoding
-//   - disable-triggers
 //   - lock-wait-timeout
 //   - no-sync
 //   - data-only
@@ -104,7 +103,6 @@ func init() {
 	)
 	Cmd.Flags().BoolP("no-owner", "O", false, "skip restoration of object ownership in plain-text format")
 	Cmd.Flags().BoolP("schema-only", "s", false, "dump only the schema, no data")
-	Cmd.Flags().StringP("superuser", "S", "", "superuser user name to use in plain-text format")
 	Cmd.Flags().StringSliceVarP(
 		&Config.Dump.PgDumpOptions.Table, "table", "t", []string{}, "dump the specified table(s) only",
 	)
@@ -113,7 +111,6 @@ func init() {
 	)
 	Cmd.Flags().BoolP("no-privileges", "X", false, "do not dump privileges (grant/revoke)")
 	Cmd.Flags().BoolP("disable-dollar-quoting", "", false, "disable dollar quoting, use SQL standard quoting")
-	Cmd.Flags().BoolP("disable-triggers", "", false, "disable triggers during data-only restore")
 	Cmd.Flags().BoolP(
 		"enable-row-security", "", false, "enable row security (dump only content user has access to)",
 	)
@@ -163,8 +160,8 @@ func init() {
 		"file", "jobs", "verbose", "compress", "dbname", "host", "username", "lock-wait-timeout", "no-sync",
 
 		"data-only", "blobs", "no-blobs", "clean", "create", "extension", "encoding", "schema", "exclude-schema",
-		"no-owner", "schema-only", "superuser", "table", "exclude-table", "no-privileges", "disable-dollar-quoting",
-		"disable-triggers", "enable-row-security", "exclude-table-data", "extra-float-digits", "if-exists",
+		"no-owner", "schema-only", "table", "exclude-table", "no-privileges", "disable-dollar-quoting",
+		"enable-row-security", "exclude-table-data", "extra-float-digits", "if-exists",
 		"include-foreign-data", "load-via-partition-root", "no-comments", "no-publications", "no-security-labels",
 		"no-subscriptions", "no-synchronized-snapshots", "no-tablespaces", "no-toast-compression",
 		"no-unlogged-table-data", "quote-all-identifiers", "section",

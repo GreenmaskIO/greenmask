@@ -67,12 +67,10 @@ type Options struct {
 	ExcludeSchema              []string `mapstructure:"exclude-schema"`
 	NoOwner                    bool     `mapstructure:"no-owner"`
 	SchemaOnly                 bool     `mapstructure:"schema-only"`
-	SuperUser                  string   `mapstructure:"superuser"`
 	Table                      []string `mapstructure:"table"`
 	ExcludeTable               []string `mapstructure:"exclude-table"`
 	NoPrivileges               bool     `mapstructure:"no-privileges"`
 	DisableDollarQuoting       bool     `mapstructure:"disable-dollar-quoting"`
-	DisableTriggers            bool     `mapstructure:"disable-triggers"`
 	EnableRowSecurity          bool     `mapstructure:"enable-row-security"`
 	ExcludeTableData           []string `mapstructure:"exclude-table-data"`
 	ExtraFloatDigits           string   `mapstructure:"extra-float-digits"`
@@ -149,7 +147,8 @@ func (o *Options) GetParams() []string {
 		args = append(args, "--verbose")
 	}
 	if o.Compression != -1 {
-		args = append(args, "--compress", strconv.FormatInt(int64(o.Compression), 10))
+		panic("FIXME: --compress is not implemented")
+		//args = append(args, "--compress", strconv.FormatInt(int64(o.Compression), 10))
 	}
 	if o.LockWaitTimeout != -1 {
 		args = append(args, "--lock-wait-timeout", strconv.FormatInt(int64(o.Compression), 10))
@@ -163,10 +162,12 @@ func (o *Options) GetParams() []string {
 		args = append(args, "--data-only")
 	}
 	if o.Blobs {
-		args = append(args, "--blobs")
+		panic("FIXME: --blobs is not implemented")
+		//args = append(args, "--blobs")
 	}
 	if o.NoBlobs {
-		args = append(args, "--no-blobs")
+		panic("FIXME: --no-blobs is not implemented")
+		//args = append(args, "--no-blobs")
 	}
 	if o.Clean {
 		args = append(args, "--clean")
@@ -198,9 +199,6 @@ func (o *Options) GetParams() []string {
 	if o.SchemaOnly {
 		args = append(args, "--schema-only")
 	}
-	if o.SuperUser != "" {
-		args = append(args, "--superuser", o.SuperUser)
-	}
 	if len(o.Table) > 0 {
 		for _, item := range o.Table {
 			args = append(args, "--table", item)
@@ -217,14 +215,10 @@ func (o *Options) GetParams() []string {
 	if o.DisableDollarQuoting {
 		args = append(args, "--disable-dollar-quoting")
 	}
-	if o.DisableTriggers {
-		//args = append(args, "--disable-triggers")
-		panic("FIXME: --disable-triggers is not implemented")
-	}
 	if o.EnableRowSecurity {
 		// TODO: Seems that this options affects COPY
-		log.Warn().Msgf("FIXME: Seems that this options affects COPY and is not implemented")
-		args = append(args, "--enable-row-security")
+		panic("FIXME: --enable-row-security is not implemented")
+		//args = append(args, "--enable-row-security")
 	}
 	if len(o.ExcludeTableData) > 0 {
 		for _, item := range o.ExcludeTableData {

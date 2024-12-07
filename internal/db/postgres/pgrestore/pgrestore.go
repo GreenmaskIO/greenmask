@@ -45,6 +45,18 @@ func (pr *PgRestore) Run(ctx context.Context, options *Options) error {
 	return cmd_runner.Run(ctx, &log.Logger, path.Join(pr.BinPath, pgRestoreExecutable), options.GetParams()...)
 }
 
+// DataSectionSettings - settings for data section that changes behavior of dumpers
+type DataSectionSettings struct {
+	ExitOnError                      bool
+	UsePgzip                         bool
+	BatchSize                        int64
+	OnConflictDoNothing              bool
+	OverridingSystemValue            bool
+	DisableTriggers                  bool
+	SuperUser                        string
+	UseSessionReplicationRoleReplica bool
+}
+
 type Options struct {
 	// Custom
 	DirPath string
@@ -99,8 +111,9 @@ type Options struct {
 	// OverridingSystemValue is a custom option that allows to use OVERRIDING SYSTEM VALUE for INSERTs
 	OverridingSystemValue bool `mapstructure:"overriding-system-value"`
 	// Use pgzip decompression instead of gzip
-	Pgzip     bool  `mapstructure:"pgzip"`
-	BatchSize int64 `mapstructure:"batch-size"`
+	Pgzip                            bool  `mapstructure:"pgzip"`
+	BatchSize                        int64 `mapstructure:"batch-size"`
+	UseSessionReplicationRoleReplica bool  `mapstructure:"use-session-replication-role-replica"`
 
 	// Connection options:
 	Host       string `mapstructure:"host"`
@@ -109,6 +122,19 @@ type Options struct {
 	NoPassword bool   `mapstructure:"no-password"`
 	Password   bool   `mapstructure:"password"`
 	Role       string `mapstructure:"role"`
+}
+
+func (o *Options) ToDataSectionSettings() *DataSectionSettings {
+	return &DataSectionSettings{
+		ExitOnError:                      o.ExitOnError,
+		UsePgzip:                         o.Pgzip,
+		BatchSize:                        o.BatchSize,
+		OnConflictDoNothing:              o.OnConflictDoNothing,
+		OverridingSystemValue:            o.OverridingSystemValue,
+		DisableTriggers:                  o.DisableTriggers,
+		SuperUser:                        o.SuperUser,
+		UseSessionReplicationRoleReplica: o.UseSessionReplicationRoleReplica,
+	}
 }
 
 func (o *Options) GetPgDSN() (string, error) {

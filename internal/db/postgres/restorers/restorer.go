@@ -17,8 +17,9 @@ package restorers
 import (
 	"context"
 
-	"github.com/greenmaskio/greenmask/internal/db/postgres/toc"
 	"github.com/jackc/pgx/v5"
+
+	"github.com/greenmaskio/greenmask/internal/db/postgres/toc"
 )
 
 type RestoreTask interface {

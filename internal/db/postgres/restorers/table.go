@@ -21,94 +21,86 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/greenmaskio/greenmask/internal/utils/ioutils"
-	"github.com/greenmaskio/greenmask/internal/utils/pgerrors"
-	"github.com/greenmaskio/greenmask/internal/utils/reader"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/rs/zerolog/log"
 
+	"github.com/greenmaskio/greenmask/internal/db/postgres/pgrestore"
 	"github.com/greenmaskio/greenmask/internal/db/postgres/toc"
 	"github.com/greenmaskio/greenmask/internal/storages"
+	"github.com/greenmaskio/greenmask/internal/utils/pgerrors"
+	"github.com/greenmaskio/greenmask/internal/utils/reader"
 )
 
-const DefaultBufferSize = 1024 * 1024
+const defaultBufferSize = 1024 * 1024
 
 type TableRestorer struct {
-	Entry       *toc.Entry
-	St          storages.Storager
-	exitOnError bool
-	usePgzip    bool
-	batchSize   int64
+	*restoreBase
 }
 
 func NewTableRestorer(
-	entry *toc.Entry, st storages.Storager, exitOnError bool, usePgzip bool, batchSize int64,
+	entry *toc.Entry, st storages.Storager, opt *pgrestore.DataSectionSettings,
 ) *TableRestorer {
 	return &TableRestorer{
-		Entry:       entry,
-		St:          st,
-		exitOnError: exitOnError,
-		usePgzip:    usePgzip,
-		batchSize:   batchSize,
+		restoreBase: newRestoreBase(entry, st, opt),
 	}
 }
 
 func (td *TableRestorer) GetEntry() *toc.Entry {
-	return td.Entry
+	return td.entry
 }
 
 func (td *TableRestorer) Execute(ctx context.Context, conn *pgx.Conn) error {
 	// TODO: Add tests
 
-	if td.Entry.FileName == nil {
+	if td.entry.FileName == nil {
 		return fmt.Errorf("cannot get file name from toc Entry")
 	}
 
-	r, err := td.St.GetObject(ctx, *td.Entry.FileName)
+	r, err := td.getObject(ctx)
 	if err != nil {
-		return fmt.Errorf("cannot open dump file: %w", err)
+		return fmt.Errorf("cannot get storage object: %w", err)
 	}
-	defer func(reader io.ReadCloser) {
-		if err := reader.Close(); err != nil {
+	defer func() {
+		if err := r.Close(); err != nil {
 			log.Warn().
 				Err(err).
-				Msg("error closing dump file")
+				Str("objectName", td.DebugInfo()).
+				Msg("cannot close storage object")
 		}
-	}(r)
-	gz, err := ioutils.GetGzipReadCloser(r, td.usePgzip)
-	if err != nil {
-		return fmt.Errorf("cannot create gzip reader: %w", err)
-	}
-	defer func(gz io.Closer) {
-		if err := gz.Close(); err != nil {
-			log.Warn().
-				Err(err).
-				Msg("error closing gzip reader")
-		}
-	}(gz)
+	}()
 
 	// Open new transaction for each task
 	tx, err := conn.Begin(ctx)
 	if err != nil {
 		return fmt.Errorf("cannot start transaction (restoring %s): %w", td.DebugInfo(), err)
 	}
+	if err := td.setupTx(ctx, tx); err != nil {
+		return fmt.Errorf("cannot setup transaction: %w", err)
+	}
 
-	log.Debug().Str("copyStmt", *td.Entry.CopyStmt).Msgf("performing pgcopy statement")
+	log.Debug().
+		Str("copyStmt", *td.entry.CopyStmt).
+		Msgf("performing pgcopy statement")
 	f := tx.Conn().PgConn().Frontend()
 
-	if err = td.restoreCopy(ctx, f, gz); err != nil {
-		if txErr := tx.Rollback(ctx); txErr != nil {
-			log.Warn().
-				Err(txErr).
-				Str("objectName", td.DebugInfo()).
-				Msg("cannot rollback transaction")
-		}
-		if td.exitOnError {
+	if err = td.restoreCopy(ctx, f, r); err != nil {
+		rollbackTransaction(ctx, tx, td.entry)
+		if td.opt.ExitOnError {
 			return fmt.Errorf("unable to restore table: %w", err)
 		}
-		log.Warn().Err(err).Msg("unable to restore table")
+		log.Warn().
+			Err(err).
+			Str("objectName", td.DebugInfo()).
+			Msg("unable to restore table")
 		return nil
+	}
+
+	if err := td.resetTx(ctx, tx); err != nil {
+		rollbackTransaction(ctx, tx, td.entry)
+		if td.opt.ExitOnError {
+			return fmt.Errorf("unable to reset transaction: %w", err)
+		}
 	}
 
 	if err = tx.Commit(ctx); err != nil {
@@ -123,7 +115,7 @@ func (td *TableRestorer) restoreCopy(ctx context.Context, f *pgproto3.Frontend, 
 		return fmt.Errorf("error initializing pgcopy: %w", err)
 	}
 
-	if td.batchSize > 0 {
+	if td.opt.BatchSize > 0 {
 		if err := td.streamCopyDataByBatch(ctx, f, r); err != nil {
 			return fmt.Errorf("error streaming pgcopy data: %w", err)
 		}
@@ -140,7 +132,7 @@ func (td *TableRestorer) restoreCopy(ctx context.Context, f *pgproto3.Frontend, 
 }
 
 func (td *TableRestorer) initCopy(ctx context.Context, f *pgproto3.Frontend) error {
-	err := sendMessage(f, &pgproto3.Query{String: *td.Entry.CopyStmt})
+	err := sendMessage(f, &pgproto3.Query{String: *td.entry.CopyStmt})
 	if err != nil {
 		return fmt.Errorf("error sending Query message: %w", err)
 	}
@@ -173,7 +165,7 @@ func (td *TableRestorer) initCopy(ctx context.Context, f *pgproto3.Frontend) err
 // stops immediately and returns the error
 func (td *TableRestorer) streamCopyDataByBatch(ctx context.Context, f *pgproto3.Frontend, r io.Reader) (err error) {
 	bi := bufio.NewReader(r)
-	buf := make([]byte, DefaultBufferSize)
+	buf := make([]byte, defaultBufferSize)
 	var lineNum int64
 	for {
 		buf, err = reader.ReadLine(bi, buf)
@@ -194,7 +186,7 @@ func (td *TableRestorer) streamCopyDataByBatch(ctx context.Context, f *pgproto3.
 			return fmt.Errorf("error sending CopyData message: %w", err)
 		}
 
-		if lineNum%td.batchSize == 0 {
+		if lineNum%td.opt.BatchSize == 0 {
 			if err = td.completeBatch(ctx, f); err != nil {
 				return fmt.Errorf("error completing batch: %w", err)
 			}
@@ -213,7 +205,7 @@ func (td *TableRestorer) streamCopyDataByBatch(ctx context.Context, f *pgproto3.
 func (td *TableRestorer) streamCopyData(ctx context.Context, f *pgproto3.Frontend, r io.Reader) error {
 	// Streaming pgcopy data from table dump
 
-	buf := make([]byte, DefaultBufferSize)
+	buf := make([]byte, defaultBufferSize)
 	for {
 		var n int
 
@@ -279,8 +271,14 @@ func (td *TableRestorer) postStreamingHandle(ctx context.Context, f *pgproto3.Fr
 	}
 }
 
-func (td *TableRestorer) DebugInfo() string {
-	return fmt.Sprintf("table %s.%s", *td.Entry.Namespace, *td.Entry.Tag)
+func rollbackTransaction(ctx context.Context, tx pgx.Tx, e *toc.Entry) {
+	if err := tx.Rollback(ctx); err != nil {
+		log.Warn().
+			Err(err).
+			Str("SchemaName", *e.Namespace).
+			Str("TableName", *e.Tag).
+			Msg("cannot rollback transaction")
+	}
 }
 
 // sendMessage - send a message to the PostgreSQL backend and flush a buffer

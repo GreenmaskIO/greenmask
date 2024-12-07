@@ -22,13 +22,13 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/greenmaskio/greenmask/internal/utils/ioutils"
 	"github.com/jackc/pgx/v5"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 
 	"github.com/greenmaskio/greenmask/internal/db/postgres/toc"
 	"github.com/greenmaskio/greenmask/internal/storages"
+	"github.com/greenmaskio/greenmask/internal/utils/ioutils"
 )
 
 type BlobsRestorer struct {
@@ -99,7 +99,7 @@ func (td *BlobsRestorer) execute(ctx context.Context, tx pgx.Tx) error {
 
 	loApi := tx.LargeObjects()
 	// restoring large objects one by one
-	buf := make([]byte, DefaultBufferSize)
+	buf := make([]byte, defaultBufferSize)
 	for _, loOid := range td.largeObjectsOids {
 		log.Debug().Uint32("oid", loOid).Msg("large object restoration is started")
 		err = func() error {
