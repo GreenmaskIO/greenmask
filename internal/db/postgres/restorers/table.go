@@ -57,11 +57,18 @@ func (td *TableRestorer) Execute(ctx context.Context, conn *pgx.Conn) error {
 		return fmt.Errorf("cannot get file name from toc Entry")
 	}
 
-	r, complete, err := td.getObject(ctx)
+	r, err := td.getObject(ctx)
 	if err != nil {
 		return fmt.Errorf("cannot get storage object: %w", err)
 	}
-	defer complete()
+	defer func() {
+		if err := r.Close(); err != nil {
+			log.Warn().
+				Err(err).
+				Str("objectName", td.DebugInfo()).
+				Msg("cannot close storage object")
+		}
+	}()
 
 	// Open new transaction for each task
 	tx, err := conn.Begin(ctx)

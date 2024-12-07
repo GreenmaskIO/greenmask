@@ -52,17 +52,18 @@ func (gw *GzipWriter) Write(p []byte) (int, error) {
 
 // Close - closing method with gz buffer flushing
 func (gw *GzipWriter) Close() error {
-	defer gw.w.Close()
-	flushErr := gw.gz.Flush()
-	if flushErr != nil {
-		log.Warn().Err(flushErr).Msg("error flushing gzip buffer")
+	var globalErr error
+	if err := gw.gz.Flush(); err != nil {
+		globalErr = fmt.Errorf("error flushing gzip buffer: %w", err)
+		log.Warn().Err(err).Msg("error flushing gzip buffer")
 	}
-	if closeErr := gw.gz.Close(); closeErr != nil || flushErr != nil {
-		err := closeErr
-		if flushErr != nil {
-			err = flushErr
-		}
-		return fmt.Errorf("error closing gzip writer: %w", err)
+	if err := gw.gz.Close(); err != nil {
+		globalErr = fmt.Errorf("error closing gzip writer: %w", err)
+		log.Warn().Err(err).Msg("error closing gzip writer")
 	}
-	return nil
+	if err := gw.w.Close(); err != nil {
+		globalErr = fmt.Errorf("error closing dump file: %w", err)
+		log.Warn().Err(err).Msg("error closing dump file")
+	}
+	return globalErr
 }

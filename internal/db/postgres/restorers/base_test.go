@@ -1,10 +1,13 @@
 package restorers
 
 import (
+	"bytes"
+	"compress/gzip"
 	"context"
 	"fmt"
 	"testing"
 
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
 
 	"github.com/greenmaskio/greenmask/internal/db/postgres/pgrestore"
@@ -70,6 +73,14 @@ DROP TABLE IF EXISTS orders;
 DROP TABLE IF EXISTS users;
 `
 )
+
+type readCloserMock struct {
+	*bytes.Buffer
+}
+
+func (r *readCloserMock) Close() error {
+	return nil
+}
 
 type restoresSuite struct {
 	nonSuperUserPassword string
@@ -517,6 +528,44 @@ WHERE n.nspname = $1 AND c.relname = $2
 	s.Assert().Equal(expectedReplicaRole, actualReplicaRole)
 
 	s.NoError(tx.Rollback(cxt))
+}
+
+func (s *restoresSuite) Test_restoreBase_getObject() {
+	schemaName := "public"
+	tableName := "orders"
+	fileName := "test.tar.gz"
+
+	data := `20383   24ca7574-0adb-4b17-8777-93f5589dbea2    2017-12-13 13:46:49.39
+20384   d0d4a55c-7752-453e-8334-772a889fb917    2017-12-13 13:46:49.453
+20385   ac8617aa-5a2d-4bb8-a9a5-ed879a4b33cd    2017-12-13 13:46:49.5
+`
+	buf := new(bytes.Buffer)
+	gzData := gzip.NewWriter(buf)
+	_, err := gzData.Write([]byte(data))
+	s.Require().NoError(err)
+	err = gzData.Flush()
+	s.Require().NoError(err)
+	err = gzData.Close()
+	s.Require().NoError(err)
+	objSrc := &readCloserMock{Buffer: buf}
+
+	st := new(testutils.StorageMock)
+	st.On("GetObject", mock.Anything, mock.Anything).
+		Return(objSrc, nil)
+
+	rb := newRestoreBase(&toc.Entry{
+		Namespace: &schemaName,
+		Tag:       &tableName,
+		FileName:  &fileName,
+	}, st, &pgrestore.DataSectionSettings{})
+	ctx := context.Background()
+	obj, err := rb.getObject(ctx)
+	s.Require().NoError(err)
+	readBuf := make([]byte, 1024)
+	n, err := obj.Read(readBuf)
+	s.Require().NoError(err)
+	s.Assert().Equal(data, string(readBuf[:n]))
+	s.NoError(obj.Close())
 }
 
 func TestRestorers(t *testing.T) {

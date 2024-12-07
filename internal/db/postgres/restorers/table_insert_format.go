@@ -85,12 +85,18 @@ func (td *TableRestorerInsertFormat) GetEntry() *toc.Entry {
 }
 
 func (td *TableRestorerInsertFormat) Execute(ctx context.Context, conn *pgx.Conn) error {
-
-	r, complete, err := td.getObject(ctx)
+	r, err := td.getObject(ctx)
 	if err != nil {
 		return fmt.Errorf("cannot get storage object: %w", err)
 	}
-	defer complete()
+	defer func() {
+		if err := r.Close(); err != nil {
+			log.Warn().
+				Err(err).
+				Str("objectName", td.DebugInfo()).
+				Msg("cannot close storage object")
+		}
+	}()
 
 	if err = td.streamInsertData(ctx, conn, r); err != nil {
 		if td.opt.ExitOnError {
