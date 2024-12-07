@@ -6,7 +6,7 @@ This release introduces new features and bug fixes.
 
 * Introduces `--disable-trigers`, `--use-session-replication-role-replica` and `--superuser` options
 for restore command. It allows to disable triggers during data section restore [#248](https://github.com/GreenmaskIO/greenmask/pull/252).
-It closes feature request [#228](https://github.com/GreenmaskIO/greenmask/issues/228)
+Closes feature request [#228](https://github.com/GreenmaskIO/greenmask/issues/228)
 * Fix skipping unknown type when silent is true [#251](https://github.com/GreenmaskIO/greenmask/pull/251)
 * Added sonar qube quality gate badge [#250](https://github.com/GreenmaskIO/greenmask/pull/250)
 
