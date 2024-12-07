@@ -19,6 +19,9 @@ const (
 	migrationUp = `
 CREATE USER non_super_user PASSWORD '1234' NOINHERIT;
 GRANT testuser TO non_super_user;
+GRANT SELECT, INSERT ON ALL TABLES IN SCHEMA public TO non_super_user;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT, INSERT ON TABLES TO non_super_user;
+GRANT INSERT ON ALL TABLES IN SCHEMA public TO non_super_user;
 
 -- Create the 'users' table
 CREATE TABLE users (
@@ -32,6 +35,7 @@ CREATE TABLE users (
 CREATE TABLE orders (
     id SERIAL PRIMARY KEY,
     user_id INT NOT NULL,
+	raise_error TEXT,
     order_amount NUMERIC(10, 2) NOT NULL,
     order_date DATE DEFAULT CURRENT_DATE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -42,6 +46,9 @@ CREATE TABLE orders (
 CREATE OR REPLACE FUNCTION set_order_date()
 RETURNS TRIGGER AS $$
 BEGIN
+	If NEW.raise_error != '' THEN
+		RAISE EXCEPTION '%', NEW.raise_error;
+	END IF;
     IF NEW.order_date IS NULL THEN
         NEW.order_date = CURRENT_DATE;
     END IF;
@@ -66,6 +73,14 @@ INSERT INTO orders (user_id, order_amount) VALUES
 (2, 200.75);
 `
 	migrationDown = `
+REVOKE ALL ON SCHEMA public FROM non_super_user;
+REVOKE ALL ON ALL TABLES IN SCHEMA public FROM non_super_user;
+REVOKE ALL ON ALL SEQUENCES IN SCHEMA public FROM non_super_user;
+REVOKE ALL ON ALL FUNCTIONS IN SCHEMA public FROM non_super_user;
+REVOKE ALL PRIVILEGES ON ALL TABLES IN SCHEMA public FROM non_super_user;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public REVOKE SELECT, INSERT ON TABLES FROM non_super_user;
+REVOKE USAGE ON SCHEMA public FROM non_super_user;
+REVOKE testuser FROM non_super_user;
 DROP USER non_super_user;
 DROP TRIGGER IF EXISTS trg_set_order_date ON orders;
 DROP FUNCTION IF EXISTS set_order_date;
@@ -83,9 +98,9 @@ func (r *readCloserMock) Close() error {
 }
 
 type restoresSuite struct {
+	testutils.PgContainerSuite
 	nonSuperUserPassword string
 	nonSuperUser         string
-	testutils.PgContainerSuite
 }
 
 func (s *restoresSuite) SetupSuite() {
@@ -192,18 +207,18 @@ func (s *restoresSuite) Test_restoreBase_enableTriggers() {
 		Namespace: &schemaName,
 		Tag:       &tableName,
 	}, nil, opt)
-	cxt := context.Background()
-	conn, err := s.GetConnectionWithUser(cxt, s.nonSuperUser, s.nonSuperUserPassword)
-	defer conn.Close(cxt)
+	ctx := context.Background()
+	conn, err := s.GetConnectionWithUser(ctx, s.nonSuperUser, s.nonSuperUserPassword)
+	defer conn.Close(ctx)
 	s.Require().NoError(err)
-	tx, err := conn.Begin(cxt)
+	tx, err := conn.Begin(ctx)
 	s.Require().NoError(err)
-	err = rb.disableTriggers(cxt, tx)
+	err = rb.disableTriggers(ctx, tx)
 	s.Require().NoError(err)
 
 	expectedUser := s.nonSuperUser
 	var actualUser string
-	r := tx.QueryRow(cxt, "SELECT current_user")
+	r := tx.QueryRow(ctx, "SELECT current_user")
 	err = r.Scan(&actualUser)
 	s.Require().NoError(err)
 	s.Assert().Equal(expectedUser, actualUser)
@@ -221,7 +236,7 @@ WHERE n.nspname = $1 AND c.relname = $2
 	AND t.tgname = ANY($3);
 `
 	rows, err := conn.Query(
-		cxt, checkDisabledTriggerSql, schemaName, tableName, []string{"trg_set_order_date"},
+		ctx, checkDisabledTriggerSql, schemaName, tableName, []string{"trg_set_order_date"},
 	)
 	s.Require().NoError(err)
 	defer rows.Close()
@@ -248,7 +263,7 @@ WHERE n.nspname = $1 AND c.relname = $2
 		s.Assert().Equal(expected.tgenabled, triggers[i].tgenabled)
 	}
 
-	s.NoError(tx.Rollback(cxt))
+	s.NoError(tx.Rollback(ctx))
 }
 
 func (s *restoresSuite) Test_restoreBase_disableTriggers() {

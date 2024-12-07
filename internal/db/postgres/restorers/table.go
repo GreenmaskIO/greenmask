@@ -94,7 +94,10 @@ func (td *TableRestorer) Execute(ctx context.Context, conn *pgx.Conn) error {
 		if td.opt.ExitOnError {
 			return fmt.Errorf("unable to restore table: %w", err)
 		}
-		log.Warn().Err(err).Msg("unable to restore table")
+		log.Warn().
+			Err(err).
+			Str("objectName", td.DebugInfo()).
+			Msg("unable to restore table")
 		return nil
 	}
 
