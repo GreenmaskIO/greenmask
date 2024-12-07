@@ -131,7 +131,8 @@ func (s *restoresSuite) Test_restoreBase_setSessionReplicationRole() {
 	rb := newRestoreBase(nil, nil, opt)
 	cxt := context.Background()
 	conn, err := s.GetConnectionWithUser(cxt, s.nonSuperUser, s.nonSuperUserPassword)
-	defer conn.Close(cxt)
+	s.Require().NoError(err)
+	defer conn.Close(cxt) // nolint: errcheck
 	s.Require().NoError(err)
 	tx, err := conn.Begin(cxt)
 	s.Require().NoError(err)
@@ -165,7 +166,8 @@ func (s *restoresSuite) Test_restoreBase_resetSessionReplicationRole() {
 	rb := newRestoreBase(nil, nil, opt)
 	cxt := context.Background()
 	conn, err := s.GetConnectionWithUser(cxt, s.nonSuperUser, s.nonSuperUserPassword)
-	defer conn.Close(cxt)
+	s.Require().NoError(err)
+	defer conn.Close(cxt) // nolint: errcheck
 	s.Require().NoError(err)
 	tx, err := conn.Begin(cxt)
 	s.Require().NoError(err)
@@ -209,7 +211,8 @@ func (s *restoresSuite) Test_restoreBase_enableTriggers() {
 	}, nil, opt)
 	ctx := context.Background()
 	conn, err := s.GetConnectionWithUser(ctx, s.nonSuperUser, s.nonSuperUserPassword)
-	defer conn.Close(ctx)
+	s.Require().NoError(err)
+	defer conn.Close(ctx) // nolint: errcheck
 	s.Require().NoError(err)
 	tx, err := conn.Begin(ctx)
 	s.Require().NoError(err)
@@ -272,7 +275,8 @@ func (s *restoresSuite) Test_restoreBase_disableTriggers() {
 	tableName := "orders"
 
 	suConn, err := s.GetConnection(cxt)
-	defer suConn.Close(cxt)
+	s.Require().NoError(err)
+	defer suConn.Close(cxt) // nolint: errcheck
 	s.Require().NoError(err)
 	_, err = suConn.Exec(cxt, "ALTER TABLE public.orders DISABLE TRIGGER ALL")
 	s.Require().NoError(err)
@@ -286,7 +290,8 @@ func (s *restoresSuite) Test_restoreBase_disableTriggers() {
 		Tag:       &tableName,
 	}, nil, opt)
 	conn, err := s.GetConnectionWithUser(cxt, s.nonSuperUser, s.nonSuperUserPassword)
-	defer conn.Close(cxt)
+	s.Require().NoError(err)
+	defer conn.Close(cxt) // nolint: errcheck
 	s.Require().NoError(err)
 	tx, err := conn.Begin(cxt)
 	s.Require().NoError(err)
@@ -346,11 +351,12 @@ WHERE n.nspname = $1 AND c.relname = $2
 func (s *restoresSuite) Test_restoreBase_setSuperUser() {
 	cxt := context.Background()
 	conn, err := s.GetConnectionWithUser(cxt, s.nonSuperUser, s.nonSuperUserPassword)
+	s.Require().NoError(err)
 	defer conn.Close(cxt)
 	s.Require().NoError(err)
 	tx, err := conn.Begin(cxt)
 	s.Require().NoError(err)
-	defer tx.Rollback(cxt)
+	defer tx.Rollback(cxt) // nolint: errcheck
 	rb := newRestoreBase(nil, nil, &pgrestore.DataSectionSettings{
 		SuperUser: s.GetSuperUser(),
 	})
@@ -368,11 +374,12 @@ func (s *restoresSuite) Test_restoreBase_setSuperUser() {
 func (s *restoresSuite) Test_restoreBase_resetSuperUser() {
 	cxt := context.Background()
 	conn, err := s.GetConnectionWithUser(cxt, s.nonSuperUser, s.nonSuperUserPassword)
+	s.Require().NoError(err)
 	defer conn.Close(cxt)
 	s.Require().NoError(err)
 	tx, err := conn.Begin(cxt)
 	s.Require().NoError(err)
-	defer tx.Rollback(cxt)
+	defer tx.Rollback(cxt) // nolint: errcheck
 
 	_, err = tx.Exec(cxt, fmt.Sprintf("SET ROLE %s", s.GetSuperUser()))
 	s.Require().NoError(err)
@@ -407,6 +414,7 @@ func (s *restoresSuite) Test_restoreBase_setupTx() {
 	}, nil, opt)
 	cxt := context.Background()
 	conn, err := s.GetConnectionWithUser(cxt, s.nonSuperUser, s.nonSuperUserPassword)
+	s.Require().NoError(err)
 	defer conn.Close(cxt)
 	s.Require().NoError(err)
 	tx, err := conn.Begin(cxt)
@@ -480,6 +488,7 @@ func (s *restoresSuite) Test_restoreBase_resetTx() {
 	}, nil, opt)
 	cxt := context.Background()
 	conn, err := s.GetConnectionWithUser(cxt, s.nonSuperUser, s.nonSuperUserPassword)
+	s.Require().NoError(err)
 	defer conn.Close(cxt)
 	s.Require().NoError(err)
 	tx, err := conn.Begin(cxt)

@@ -49,6 +49,7 @@ func TestNewGzipReader_Close(t *testing.T) {
 	err = gzData.Flush()
 	require.NoError(t, err)
 	err = gzData.Close()
+	require.NoError(t, err)
 	objSrc := &readCloserMock{Buffer: buf, closeCallCount: 0}
 	r, err := NewGzipReader(objSrc, false)
 	require.NoError(t, err)

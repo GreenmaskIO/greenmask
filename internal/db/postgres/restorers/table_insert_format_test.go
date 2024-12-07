@@ -69,6 +69,7 @@ func (s *restoresSuite) Test_TableRestorerInsertFormat_check_triggers_errors() {
 		tr := NewTableRestorerInsertFormat(entry, t, st, opt, new(domains.DataRestorationErrorExclusions))
 
 		conn, err := s.GetConnectionWithUser(ctx, s.nonSuperUser, s.nonSuperUserPassword)
+		s.Require().NoError(err)
 		err = tr.Execute(ctx, conn)
 		s.Require().ErrorContains(err, "Test exception (SQLSTATE P0001)")
 	})
@@ -127,8 +128,8 @@ func (s *restoresSuite) Test_TableRestorerInsertFormat_check_triggers_errors() {
 		}
 
 		tr := NewTableRestorerInsertFormat(entry, t, st, opt, new(domains.DataRestorationErrorExclusions))
-
 		conn, err := s.GetConnectionWithUser(ctx, s.nonSuperUser, s.nonSuperUserPassword)
+		s.Require().NoError(err)
 		err = tr.Execute(ctx, conn)
 		s.Require().NoError(err)
 	})
@@ -189,6 +190,7 @@ func (s *restoresSuite) Test_TableRestorerInsertFormat_check_triggers_errors() {
 		tr := NewTableRestorerInsertFormat(entry, t, st, opt, new(domains.DataRestorationErrorExclusions))
 
 		conn, err := s.GetConnectionWithUser(ctx, s.nonSuperUser, s.nonSuperUserPassword)
+		s.Require().NoError(err)
 		err = tr.Execute(ctx, conn)
 		s.Require().NoError(err)
 	})

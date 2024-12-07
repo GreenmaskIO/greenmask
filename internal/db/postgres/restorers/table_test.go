@@ -45,6 +45,7 @@ func (s *restoresSuite) Test_TableRestorer_check_triggers_errors() {
 		tr := NewTableRestorer(entry, st, opt)
 
 		conn, err := s.GetConnectionWithUser(ctx, s.nonSuperUser, s.nonSuperUserPassword)
+		s.Require().NoError(err)
 		err = tr.Execute(ctx, conn)
 		s.Require().ErrorContains(err, "Test exception  (code P0001)")
 	})
@@ -82,6 +83,7 @@ func (s *restoresSuite) Test_TableRestorer_check_triggers_errors() {
 		tr := NewTableRestorer(entry, st, opt)
 
 		conn, err := s.GetConnectionWithUser(ctx, s.nonSuperUser, s.nonSuperUserPassword)
+		s.Require().NoError(err)
 		err = tr.Execute(ctx, conn)
 		s.Require().NoError(err)
 	})
@@ -119,6 +121,7 @@ func (s *restoresSuite) Test_TableRestorer_check_triggers_errors() {
 		tr := NewTableRestorer(entry, st, opt)
 
 		conn, err := s.GetConnectionWithUser(ctx, s.nonSuperUser, s.nonSuperUserPassword)
+		s.Require().NoError(err)
 		err = tr.Execute(ctx, conn)
 		s.Require().NoError(err)
 	})
