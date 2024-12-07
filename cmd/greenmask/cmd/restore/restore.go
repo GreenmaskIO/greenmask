@@ -202,7 +202,7 @@ func init() {
 		"disable-triggers", "enable-row-security", "if-exists", "no-comments", "no-data-for-failed-tables",
 		"no-security-labels", "no-subscriptions", "no-table-access-method", "no-tablespaces", "section",
 		"strict-names", "use-set-session-authorization", "inserts", "on-conflict-do-nothing", "restore-in-order",
-		"pgzip", "batch-size", "overriding-system-value", "disable-triggers", "superuser", "use-session-replication-role-replica",
+		"pgzip", "batch-size", "overriding-system-value", "superuser", "use-session-replication-role-replica",
 
 		"host", "port", "username",
 	} {

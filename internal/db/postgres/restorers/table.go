@@ -85,12 +85,7 @@ func (td *TableRestorer) Execute(ctx context.Context, conn *pgx.Conn) error {
 	f := tx.Conn().PgConn().Frontend()
 
 	if err = td.restoreCopy(ctx, f, r); err != nil {
-		if txErr := tx.Rollback(ctx); txErr != nil {
-			log.Warn().
-				Err(txErr).
-				Str("objectName", td.DebugInfo()).
-				Msg("cannot rollback transaction")
-		}
+		rollbackTransaction(ctx, tx, td.entry)
 		if td.opt.ExitOnError {
 			return fmt.Errorf("unable to restore table: %w", err)
 		}
@@ -102,12 +97,7 @@ func (td *TableRestorer) Execute(ctx context.Context, conn *pgx.Conn) error {
 	}
 
 	if err := td.resetTx(ctx, tx); err != nil {
-		if txErr := tx.Rollback(ctx); txErr != nil {
-			log.Warn().
-				Err(txErr).
-				Str("objectName", td.DebugInfo()).
-				Msg("cannot rollback transaction")
-		}
+		rollbackTransaction(ctx, tx, td.entry)
 		if td.opt.ExitOnError {
 			return fmt.Errorf("unable to reset transaction: %w", err)
 		}
@@ -278,6 +268,16 @@ func (td *TableRestorer) postStreamingHandle(ctx context.Context, f *pgproto3.Fr
 		default:
 			return fmt.Errorf("unknown message %+v", v)
 		}
+	}
+}
+
+func rollbackTransaction(ctx context.Context, tx pgx.Tx, e *toc.Entry) {
+	if err := tx.Rollback(ctx); err != nil {
+		log.Warn().
+			Err(err).
+			Str("SchemaName", *e.Namespace).
+			Str("TableName", *e.Tag).
+			Msg("cannot rollback transaction")
 	}
 }
 

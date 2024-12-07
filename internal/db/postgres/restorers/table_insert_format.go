@@ -198,11 +198,7 @@ func (td *TableRestorerInsertFormat) insertData(
 	}
 
 	if err := td.setupTx(ctx, tx); err != nil {
-		if txErr := tx.Rollback(ctx); txErr != nil {
-			log.Warn().
-				Err(txErr).
-				Msgf("cannot rollback transaction (restoring %s)", td.DebugInfo())
-		}
+		rollbackTransaction(ctx, tx, td.entry)
 		return fmt.Errorf("cannot setup transaction: %w", err)
 	}
 
@@ -211,20 +207,12 @@ func (td *TableRestorerInsertFormat) insertData(
 	//	 in driver
 	_, err = tx.Exec(ctx, td.query, getAllArguments(row)...)
 	if err != nil {
-		if txErr := tx.Rollback(ctx); txErr != nil {
-			log.Warn().
-				Err(txErr).
-				Msgf("cannot rollback transaction (restoring %s)", td.DebugInfo())
-		}
+		rollbackTransaction(ctx, tx, td.entry)
 		return err
 	}
 
 	if err := td.resetTx(ctx, tx); err != nil {
-		if txErr := tx.Rollback(ctx); txErr != nil {
-			log.Warn().
-				Err(txErr).
-				Msgf("cannot rollback transaction (restoring %s)", td.DebugInfo())
-		}
+		rollbackTransaction(ctx, tx, td.entry)
 		return fmt.Errorf("cannot reset transaction: %w", err)
 	}
 

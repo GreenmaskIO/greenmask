@@ -35,7 +35,7 @@ func (rb *restoreBase) DebugInfo() string {
 
 func (rb *restoreBase) setSessionReplicationRole(ctx context.Context, tx pgx.Tx) error {
 	if err := rb.setSuperUser(ctx, tx); err != nil {
-		return fmt.Errorf("cannot set super user: %w", err)
+		return err
 	}
 	if rb.opt.UseSessionReplicationRoleReplica {
 		_, err := tx.Exec(ctx, "SET session_replication_role = 'replica'")
@@ -44,14 +44,14 @@ func (rb *restoreBase) setSessionReplicationRole(ctx context.Context, tx pgx.Tx)
 		}
 	}
 	if err := rb.resetSuperUser(ctx, tx); err != nil {
-		return fmt.Errorf("cannot reset super user: %w", err)
+		return err
 	}
 	return nil
 }
 
 func (rb *restoreBase) resetSessionReplicationRole(ctx context.Context, tx pgx.Tx) error {
 	if err := rb.setSuperUser(ctx, tx); err != nil {
-		return fmt.Errorf("cannot set super user: %w", err)
+		return err
 	}
 	if rb.opt.UseSessionReplicationRoleReplica {
 		_, err := tx.Exec(ctx, "RESET session_replication_role")
@@ -60,7 +60,7 @@ func (rb *restoreBase) resetSessionReplicationRole(ctx context.Context, tx pgx.T
 		}
 	}
 	if err := rb.resetSuperUser(ctx, tx); err != nil {
-		return fmt.Errorf("cannot reset super user: %w", err)
+		return err
 	}
 	return nil
 }
@@ -68,7 +68,7 @@ func (rb *restoreBase) resetSessionReplicationRole(ctx context.Context, tx pgx.T
 func (rb *restoreBase) disableTriggers(ctx context.Context, tx pgx.Tx) error {
 	if rb.opt.DisableTriggers {
 		if err := rb.setSuperUser(ctx, tx); err != nil {
-			return fmt.Errorf("cannot set super user: %w", err)
+			return err
 		}
 		_, err := tx.Exec(
 			ctx,
@@ -82,7 +82,7 @@ func (rb *restoreBase) disableTriggers(ctx context.Context, tx pgx.Tx) error {
 			return err
 		}
 		if err := rb.resetSuperUser(ctx, tx); err != nil {
-			return fmt.Errorf("cannot reset super user: %w", err)
+			return err
 		}
 	}
 	return nil
@@ -91,7 +91,7 @@ func (rb *restoreBase) disableTriggers(ctx context.Context, tx pgx.Tx) error {
 func (rb *restoreBase) enableTriggers(ctx context.Context, tx pgx.Tx) error {
 	if rb.opt.DisableTriggers {
 		if err := rb.setSuperUser(ctx, tx); err != nil {
-			return fmt.Errorf("cannot set super user: %w", err)
+			return err
 		}
 		_, err := tx.Exec(
 			ctx,
@@ -105,7 +105,7 @@ func (rb *restoreBase) enableTriggers(ctx context.Context, tx pgx.Tx) error {
 			return err
 		}
 		if err := rb.resetSuperUser(ctx, tx); err != nil {
-			return fmt.Errorf("cannot reset super user: %w", err)
+			return err
 		}
 	}
 	return nil
@@ -115,7 +115,7 @@ func (rb *restoreBase) setSuperUser(ctx context.Context, tx pgx.Tx) error {
 	if rb.opt.SuperUser != "" {
 		_, err := tx.Exec(ctx, fmt.Sprintf("SET ROLE %s", rb.opt.SuperUser))
 		if err != nil {
-			return err
+			return fmt.Errorf("cannot set superuser: %w", err)
 		}
 	}
 	return nil
@@ -125,7 +125,7 @@ func (rb *restoreBase) resetSuperUser(ctx context.Context, tx pgx.Tx) error {
 	if rb.opt.SuperUser != "" {
 		_, err := tx.Exec(ctx, "RESET ROLE")
 		if err != nil {
-			return err
+			return fmt.Errorf("cannot reset superuser: %w", err)
 		}
 	}
 	return nil
