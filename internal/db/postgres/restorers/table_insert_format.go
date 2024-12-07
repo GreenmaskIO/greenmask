@@ -114,6 +114,7 @@ func (td *TableRestorerInsertFormat) streamInsertData(ctx context.Context, conn 
 		default:
 		}
 
+		// TODO: This might require some optimization because too many allocations
 		line, err := reader.ReadLine(buf, nil)
 		if err != nil {
 			if errors.Is(err, io.EOF) {
@@ -128,7 +129,7 @@ func (td *TableRestorerInsertFormat) streamInsertData(ctx context.Context, conn 
 			return fmt.Errorf("error decoding line: %w", err)
 		}
 
-		if err = td.insertDataOnConflictDoNothing(ctx, conn, row); err != nil {
+		if err = td.insertData(ctx, conn, row); err != nil {
 			if !td.isErrorAllowed(err) {
 				return fmt.Errorf("error inserting data: %w", err)
 			} else {
@@ -179,19 +180,50 @@ func (td *TableRestorerInsertFormat) generateInsertStmt(onConflictDoNothing bool
 	return res
 }
 
-func (td *TableRestorerInsertFormat) insertDataOnConflictDoNothing(
+func (td *TableRestorerInsertFormat) insertData(
 	ctx context.Context, conn *pgx.Conn, row *pgcopy.Row,
 ) error {
 	if td.query == "" {
 		td.query = td.generateInsertStmt(td.opt.OnConflictDoNothing)
 	}
+	tx, err := conn.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("cannot start transaction (restoring %s): %w", td.DebugInfo(), err)
+	}
+
+	if err := td.setupTx(ctx, tx); err != nil {
+		if txErr := tx.Rollback(ctx); txErr != nil {
+			log.Warn().
+				Err(txErr).
+				Msgf("cannot rollback transaction (restoring %s)", td.DebugInfo())
+		}
+		return fmt.Errorf("cannot setup transaction: %w", err)
+	}
 
 	// TODO: The implementation based on Exec is not efficient for bulk inserts.
 	// 	 Consider rewrite to string literal that contains generated statement instead of using prepared statement
 	//	 in driver
-	_, err := conn.Exec(ctx, td.query, getAllArguments(row)...)
+	_, err = tx.Exec(ctx, td.query, getAllArguments(row)...)
 	if err != nil {
+		if txErr := tx.Rollback(ctx); txErr != nil {
+			log.Warn().
+				Err(txErr).
+				Msgf("cannot rollback transaction (restoring %s)", td.DebugInfo())
+		}
 		return err
+	}
+
+	if err := td.resetTx(ctx, tx); err != nil {
+		if txErr := tx.Rollback(ctx); txErr != nil {
+			log.Warn().
+				Err(txErr).
+				Msgf("cannot rollback transaction (restoring %s)", td.DebugInfo())
+		}
+		return fmt.Errorf("cannot reset transaction: %w", err)
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return fmt.Errorf("cannot commit transaction (restoring %s): %w", td.DebugInfo(), err)
 	}
 	return nil
 }
