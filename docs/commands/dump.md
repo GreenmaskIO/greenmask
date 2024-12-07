@@ -20,7 +20,6 @@ Mostly it supports the same flags as the `pg_dump` utility, with some extra flag
   -a, --data-only                       dump only the data, not the schema
   -d, --dbname string                   database to dump (default "postgres")
       --disable-dollar-quoting          disable dollar quoting, use SQL standard quoting
-      --disable-triggers                disable triggers during data-only restore
       --enable-row-security             enable row security (dump only content user has access to)
   -E, --encoding string                 dump the data in encoding ENCODING
   -N, --exclude-schema strings          dump the specified schema(s) only
@@ -37,7 +36,7 @@ Mostly it supports the same flags as the `pg_dump` utility, with some extra flag
       --lock-wait-timeout int           fail after waiting TIMEOUT for a table lock (default -1)
   -B, --no-blobs                        exclude large objects in dump
       --no-comments                     do not dump comments
-  -O, --no-owner string                 skip restoration of object ownership in plain-text format
+  -O, --no-owner                        skip restoration of object ownership in plain-text format
   -X, --no-privileges                   do not dump privileges (grant/revoke)
       --no-publications                 do not dump publications
       --no-security-labels              do not dump security label assignments
@@ -51,12 +50,11 @@ Mostly it supports the same flags as the `pg_dump` utility, with some extra flag
   -p, --port int                        database server port number (default 5432)
       --quote-all-identifiers           quote all identifiers, even if not key words
   -n, --schema strings                  dump the specified schema(s) only
-  -s, --schema-only string              dump only the schema, no data
+  -s, --schema-only                     dump only the schema, no data
       --section string                  dump named section (pre-data, data, or post-data)
       --serializable-deferrable         wait until the dump can run without anomalies
       --snapshot string                 use given snapshot for the dump
       --strict-names                    require table and/or schema include patterns to match at least one entity each
-  -S, --superuser string                superuser user name to use in plain-text format
   -t, --table strings                   dump the specified table(s) only
       --test string                     connect as specified database user (default "postgres")
       --use-set-session-authorization   use SET SESSION AUTHORIZATION commands instead of ALTER OWNER commands to set ownership
