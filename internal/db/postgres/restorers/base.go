@@ -14,47 +14,6 @@ import (
 	"github.com/greenmaskio/greenmask/internal/utils/ioutils"
 )
 
-type GzipObjectWrapper struct {
-	gz io.ReadCloser
-	r  io.ReadCloser
-}
-
-func NewGzipObjectWrapper(r io.ReadCloser, usePgzip bool) (*GzipObjectWrapper, error) {
-	gz, err := ioutils.GetGzipReadCloser(r, usePgzip)
-	if err != nil {
-		if err := r.Close(); err != nil {
-			log.Warn().
-				Err(err).
-				Msg("error closing dump file")
-		}
-		return nil, fmt.Errorf("cannot create gzip reader: %w", err)
-	}
-
-	return &GzipObjectWrapper{
-		gz: gz,
-		r:  r,
-	}, nil
-
-}
-
-func (o *GzipObjectWrapper) Read(p []byte) (n int, err error) {
-	return o.gz.Read(p)
-}
-
-func (o *GzipObjectWrapper) Close() error {
-	if err := o.gz.Close(); err != nil {
-		log.Warn().
-			Err(err).
-			Msg("error closing gzip reader")
-	}
-	if err := o.r.Close(); err != nil {
-		log.Warn().
-			Err(err).
-			Msg("error closing dump file")
-	}
-	return nil
-}
-
 type restoreBase struct {
 	opt   *pgrestore.DataSectionSettings
 	entry *toc.Entry
