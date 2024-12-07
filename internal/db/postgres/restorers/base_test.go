@@ -35,8 +35,8 @@ CREATE TABLE users (
 CREATE TABLE orders (
     id SERIAL PRIMARY KEY,
     user_id INT NOT NULL,
-	raise_error TEXT,
     order_amount NUMERIC(10, 2) NOT NULL,
+	raise_error TEXT,
     order_date DATE DEFAULT CURRENT_DATE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT fk_user FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE

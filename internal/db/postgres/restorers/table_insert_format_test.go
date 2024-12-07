@@ -9,12 +9,13 @@ import (
 
 	"github.com/greenmaskio/greenmask/internal/db/postgres/pgrestore"
 	"github.com/greenmaskio/greenmask/internal/db/postgres/toc"
+	"github.com/greenmaskio/greenmask/internal/domains"
 	"github.com/greenmaskio/greenmask/internal/utils/testutils"
+	"github.com/greenmaskio/greenmask/pkg/toolkit"
 )
 
-func (s *restoresSuite) Test_TableRestorer_check_triggers_errors() {
+func (s *restoresSuite) Test_TableRestorerInsertFormat_check_triggers_errors() {
 	s.Run("check triggers causes error by default", func() {
-		// Given
 		ctx := context.Background()
 		schemaName := "public"
 		tableName := "orders"
@@ -26,7 +27,7 @@ func (s *restoresSuite) Test_TableRestorer_check_triggers_errors() {
 			FileName:  &fileName,
 			CopyStmt:  &copyStmt,
 		}
-		data := "3\t1\t100.50\tTest exception\n"
+		data := "6\t1\t100.50\tTest exception\n"
 		buf := new(bytes.Buffer)
 		gzData := gzip.NewWriter(buf)
 		_, err := gzData.Write([]byte(data))
@@ -42,11 +43,34 @@ func (s *restoresSuite) Test_TableRestorer_check_triggers_errors() {
 		opt := &pgrestore.DataSectionSettings{
 			ExitOnError: true,
 		}
-		tr := NewTableRestorer(entry, st, opt)
+		t := &toolkit.Table{
+			Schema: schemaName,
+			Name:   tableName,
+			Columns: []*toolkit.Column{
+				{
+					Name:     "id",
+					TypeName: "int4",
+				},
+				{
+					Name:     "user_id",
+					TypeName: "int4",
+				},
+				{
+					Name:     "order_amount",
+					TypeName: "numeric",
+				},
+				{
+					Name:     "raise_error",
+					TypeName: "text",
+				},
+			},
+		}
+
+		tr := NewTableRestorerInsertFormat(entry, t, st, opt, new(domains.DataRestorationErrorExclusions))
 
 		conn, err := s.GetConnectionWithUser(ctx, s.nonSuperUser, s.nonSuperUserPassword)
 		err = tr.Execute(ctx, conn)
-		s.Require().ErrorContains(err, "Test exception  (code P0001)")
+		s.Require().ErrorContains(err, "Test exception (SQLSTATE P0001)")
 	})
 
 	s.Run("disable triggers", func() {
@@ -61,7 +85,7 @@ func (s *restoresSuite) Test_TableRestorer_check_triggers_errors() {
 			FileName:  &fileName,
 			CopyStmt:  &copyStmt,
 		}
-		data := "4\t1\t100.50\tTest exception\n"
+		data := "7\t1\t100.50\tTest exception\n"
 		buf := new(bytes.Buffer)
 		gzData := gzip.NewWriter(buf)
 		_, err := gzData.Write([]byte(data))
@@ -79,7 +103,30 @@ func (s *restoresSuite) Test_TableRestorer_check_triggers_errors() {
 			DisableTriggers: true,
 			SuperUser:       s.GetSuperUser(),
 		}
-		tr := NewTableRestorer(entry, st, opt)
+		t := &toolkit.Table{
+			Schema: schemaName,
+			Name:   tableName,
+			Columns: []*toolkit.Column{
+				{
+					Name:     "id",
+					TypeName: "int4",
+				},
+				{
+					Name:     "user_id",
+					TypeName: "int4",
+				},
+				{
+					Name:     "order_amount",
+					TypeName: "numeric",
+				},
+				{
+					Name:     "raise_error",
+					TypeName: "text",
+				},
+			},
+		}
+
+		tr := NewTableRestorerInsertFormat(entry, t, st, opt, new(domains.DataRestorationErrorExclusions))
 
 		conn, err := s.GetConnectionWithUser(ctx, s.nonSuperUser, s.nonSuperUserPassword)
 		err = tr.Execute(ctx, conn)
@@ -98,7 +145,7 @@ func (s *restoresSuite) Test_TableRestorer_check_triggers_errors() {
 			FileName:  &fileName,
 			CopyStmt:  &copyStmt,
 		}
-		data := "5\t1\t100.50\tTest exception\n"
+		data := "8\t1\t100.50\tTest exception\n"
 		buf := new(bytes.Buffer)
 		gzData := gzip.NewWriter(buf)
 		_, err := gzData.Write([]byte(data))
@@ -116,7 +163,30 @@ func (s *restoresSuite) Test_TableRestorer_check_triggers_errors() {
 			UseSessionReplicationRoleReplica: true,
 			SuperUser:                        s.GetSuperUser(),
 		}
-		tr := NewTableRestorer(entry, st, opt)
+		t := &toolkit.Table{
+			Schema: schemaName,
+			Name:   tableName,
+			Columns: []*toolkit.Column{
+				{
+					Name:     "id",
+					TypeName: "int4",
+				},
+				{
+					Name:     "user_id",
+					TypeName: "int4",
+				},
+				{
+					Name:     "order_amount",
+					TypeName: "numeric",
+				},
+				{
+					Name:     "raise_error",
+					TypeName: "text",
+				},
+			},
+		}
+
+		tr := NewTableRestorerInsertFormat(entry, t, st, opt, new(domains.DataRestorationErrorExclusions))
 
 		conn, err := s.GetConnectionWithUser(ctx, s.nonSuperUser, s.nonSuperUserPassword)
 		err = tr.Execute(ctx, conn)
