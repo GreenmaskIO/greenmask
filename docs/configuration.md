@@ -223,7 +223,7 @@ validate:
 ```
 { .annotate }
 
-1. A list of tables to validate. If this list is not empty, the validation operation will only be performed for the specified tables. Tables can be written with or without the schema name (e. g., `"public.cart"` or `"orders"`).
+1. A list of tables to validate. If this list is not empty, the validation operation will only be performed for the specified tables. Tables can be written with or without the schema name (e.g., `"public.cart"` or `"orders"`).
 2. Specifies whether to perform data transformation for a limited set of rows. If set to `true`, data transformation will be performed, and the number of rows transformed will be limited to the value specified in the `rows_limit` parameter (default is `10`).
 3. Specifies whether to perform diff operations for the transformed data. If set to `true`, the validation process will **find the differences between the original and transformed data**. See more details in the [validate command documentation](commands/validate.md).
 4. Limits the number of rows to be transformed during validation. The default limit is `10` rows, but you can change it by modifying this parameter.
