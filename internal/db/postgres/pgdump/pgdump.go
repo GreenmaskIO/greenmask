@@ -108,7 +108,7 @@ type Options struct {
 
 func (o *Options) GetPgDSN() (string, error) {
 	// URI or Standard format
-	if strings.HasPrefix(o.DbName, "postgresql://") || strings.Contains(o.DbName, "=") {
+	if strings.HasPrefix(o.DbName, "postgresql://") || strings.HasPrefix(o.DbName, "postgres://") || strings.Contains(o.DbName, "=") {
 		return o.DbName, nil
 	}
 
