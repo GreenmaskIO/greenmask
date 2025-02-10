@@ -3,7 +3,7 @@ package transformers
 import (
 	"testing"
 
-	"github.com/greenmaskio/greenmask/internal/generators"
+	"github.com/greenmaskio/greenmask/pkg/generators"
 	"github.com/rs/zerolog/log"
 	"github.com/stretchr/testify/require"
 )

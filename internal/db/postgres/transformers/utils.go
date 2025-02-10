@@ -7,7 +7,7 @@ import (
 	"fmt"
 
 	"github.com/greenmaskio/greenmask/internal/db/postgres/transformers/utils"
-	"github.com/greenmaskio/greenmask/internal/generators"
+	"github.com/greenmaskio/greenmask/pkg/generators"
 )
 
 const (

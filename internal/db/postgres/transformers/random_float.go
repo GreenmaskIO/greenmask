@@ -20,7 +20,7 @@ import (
 	"math"
 
 	"github.com/greenmaskio/greenmask/internal/db/postgres/transformers/utils"
-	"github.com/greenmaskio/greenmask/internal/generators/transformers"
+	"github.com/greenmaskio/greenmask/pkg/generators/transformers"
 	"github.com/greenmaskio/greenmask/pkg/toolkit"
 )
 

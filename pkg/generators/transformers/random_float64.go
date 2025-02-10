@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"math"
 
-	"github.com/greenmaskio/greenmask/internal/generators"
+	"github.com/greenmaskio/greenmask/pkg/generators"
 )
 
 type Float64Limiter struct {

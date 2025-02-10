@@ -3,7 +3,7 @@ package transformers
 import (
 	"fmt"
 
-	"github.com/greenmaskio/greenmask/internal/generators"
+	"github.com/greenmaskio/greenmask/pkg/generators"
 )
 
 type RandomBoolean struct {

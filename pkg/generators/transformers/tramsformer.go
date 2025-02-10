@@ -1,7 +1,7 @@
 package transformers
 
 import (
-	"github.com/greenmaskio/greenmask/internal/generators"
+	"github.com/greenmaskio/greenmask/pkg/generators"
 )
 
 type Transformer interface {
