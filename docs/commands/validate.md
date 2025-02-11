@@ -30,7 +30,7 @@ All of those cases may be used for CI/CD pipelines to stop the process when some
 useful when `--schema` flag is used - this allows to avoid data leakage when schema changed.
 
 You can use the `--table` flag multiple times to specify the tables you want to check. Tables can be written with
-or without schema names (e. g., `public.table_name` or `table_name`). If you specify multiple tables from different
+or without schema names (e.g., `public.table_name` or `table_name`). If you specify multiple tables from different
 schemas, an error will be thrown.
 
 To start validation, use the following command:

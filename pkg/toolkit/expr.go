@@ -1,4 +1,4 @@
-// An expression handler for the toolkit package. It is used to evaluate the when condition of the record.
+// An expression handler for the toolkit package. It is used to evaluate when condition of the record.
 // Might be used in transformation conditions and other places where the record is used.
 
 package toolkit
@@ -26,9 +26,9 @@ type WhenCond struct {
 	env      map[string]any
 }
 
-// NewWhenCond - creates a new WhenCond object. It compiles the when condition and returns the compiled program
+// NewWhenCond - creates a new WhenCond object. It compiles when condition and returns the compiled program
 // and the record context with the functions for the columns. The functions represent the column names and return the
-// column values. If the when condition is empty, the WhenCond object will always return true.
+// column values. If when condition is empty, the WhenCond object will always return true.
 func NewWhenCond(when string, driver *Driver, meta map[string]any) (*WhenCond, ValidationWarnings) {
 	var (
 		rc       *RecordContext
@@ -51,7 +51,7 @@ func NewWhenCond(when string, driver *Driver, meta map[string]any) (*WhenCond, V
 	}, nil
 }
 
-// Evaluate - evaluates the when condition. If the when condition is empty, it will always return true.
+// Evaluate - evaluates when condition. If when condition is empty, it will always return true.
 func (wc *WhenCond) Evaluate(r *Record) (bool, error) {
 	if wc.whenCond == nil {
 		return true, nil
@@ -71,7 +71,7 @@ func (wc *WhenCond) Evaluate(r *Record) (bool, error) {
 	return false, fmt.Errorf("when condition should return boolean, got (%T) and value %+v", cond, cond)
 }
 
-// compileCond compiles the when condition and returns the compiled program and the record context
+// compileCond compiles when condition and returns the compiled program and the record context
 // with the functions for the columns. The functions represent the column names and return the column values.
 // meta - additional meta information for debugging the compilation process
 func compileCond(whenCond string, driver *Driver, meta map[string]any) (

@@ -111,7 +111,7 @@ func (tw *transformationWindow) close() {
 	close(tw.done)
 }
 
-// Transform - runs the transformation for the record in the window. This function checks the when
+// Transform - runs the transformation for the record in the window. This function checks when
 // condition of the transformer and if true sends a signal to the transformer goroutine to run the transformation
 func (tw *transformationWindow) Transform(ctx context.Context, r *toolkit.Record) (*toolkit.Record, error) {
 	tw.r = r

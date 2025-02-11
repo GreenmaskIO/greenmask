@@ -2,7 +2,12 @@
 
 ## Introduction
 
-It is evident that the most appropriate approach for executing logical backup dumping and restoration is by leveraging the core PostgreSQL utilities, specifically `pg_dump` and `pg_restore`. Greenmask has been purposefully designed to align with PostgreSQL's native utilities, ensuring compatibility. Greenmask primarily handles data dumping operations independently and delegates the responsibilities of schema dumping and restoration to `pg_dump` and `pg_restore` respectively, maintaining seamless integration with PostgreSQL's standard tools.
+It is evident that the most appropriate approach for executing logical backup dumping 
+and restoration is by leveraging the core PostgreSQL utilities, specifically `pg_dump` and `pg_restore`. 
+Greenmask has been purposefully designed to align with PostgreSQL's native utilities, ensuring compatibility. 
+Greenmask primarily handles data dumping operations independently and delegates 
+the responsibilities of schema dumping and restoration to `pg_dump` and `pg_restore` respectively, 
+maintaining seamless integration with PostgreSQL's standard tools.
 
 ## Backup process
 

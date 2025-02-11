@@ -307,8 +307,8 @@ func (ct *CmdTransformer) stderrForwarder(ctx context.Context) error {
 	lineNum := 0
 	// This is required for convenient verbosity of output.
 	// Write "stderr forwarding" log message each 500ms otherwise just print received stderr data
-	// If it does not use this logic each line would be covered with "stderr forwarding" message and it will be
-	// complicated to recognize the traceback or multiline message
+	// If it does not use this logic each line would be covered with "stderr forwarding" message,
+	// and it will be complicated to recognize the traceback or multiline message
 	for {
 		line, _, err := ct.StderrReader.ReadLine()
 		if err != nil {

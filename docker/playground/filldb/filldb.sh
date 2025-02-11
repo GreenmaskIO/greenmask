@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-cd $TMP_DIR/postgresDBSamples/adventureworks
+cd $TMP_DIR/postgresDBSamples/adventureworks || exit
 
 if ! psql -lqt -p 5432 -h playground-db -U postgres | cut -d \| -f 1 | grep -qw $ORIGINAL_DB_NAME; then
   psql -p 5432 -h playground-db -U postgres -c "CREATE DATABASE $ORIGINAL_DB_NAME;"

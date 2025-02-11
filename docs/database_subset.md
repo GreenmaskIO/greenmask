@@ -117,7 +117,7 @@ dump:
 
 Greenmask supports polymorphic references. You can define a virtual reference for a table with polymorphic references
 using `polymorphic_exprs` attribute. The `polymorphic_exprs` attribute is a list of expressions that are used to make
-a polymorphic reference. For instance we might have a table `comments` that has polymorphic reference to `posts` and
+a polymorphic reference. For instance, we might have a table `comments` that has polymorphic reference to `posts` and
 `videos`. The table comments might have `commentable_id` and `commentable_type` columns. The `commentable_type` column
 contains the type of the table that is referenced by the `commentable_id` column. The example of the config:
 

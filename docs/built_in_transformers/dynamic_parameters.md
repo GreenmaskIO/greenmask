@@ -117,7 +117,7 @@ constraints, you can use dynamic parameters in the `RandomDate` transformer:
           template: '{{ .GetValue | tsModify "18 years" | .EncodeValue }}' # (7)
 ```
 
-1. Firstly we generate the `RadnomDate` for birthdate column. The result of the transformation will used as the minimum
+1. Firstly we generate the `RadnomDate` for birthdate column. The result of the transformation will use as the minimum
    value for the next transformation for `hiredate` column.
 2. Apply the template for static parameter. It calculates the now date and subtracts `30` years from it. The result
    is `1994`. The function tsModify return not a raw data, but time.Time object. For getting the raw value suitable for

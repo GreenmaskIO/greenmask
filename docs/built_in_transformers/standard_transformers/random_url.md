@@ -9,7 +9,7 @@ The `RandomURL` transformer is designed to populate specified database columns w
 
 ## Description
 
-Utilizing advanced algorithms or libraries for generating URL strings, the `RandomURL` transformer injects random, plausible URLs into the designated database column. Each generated URL is structured to include the protocol (e. g., "http://", "https://"), domain name, and path, offering a realistic range of web addresses for various applications.
+Utilizing advanced algorithms or libraries for generating URL strings, the `RandomURL` transformer injects random, plausible URLs into the designated database column. Each generated URL is structured to include the protocol (e.g., "http://", "https://"), domain name, and path, offering a realistic range of web addresses for various applications.
 
 ## Example: Populate random URLs for the `webpages` table
 
