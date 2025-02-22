@@ -62,7 +62,7 @@ func getCustomTypesUsedInTables(ctx context.Context, tx pgx.Tx) ([]*toolkit.Type
 		row := tx.QueryRow(ctx, DomainConstraintsQuery, t.Oid)
 		err = row.Scan(&c.Oid, &c.Schema, &c.Name, &c.Definition)
 		if err != nil {
-			return nil, fmt.Errorf("may be bug: expected domain constraint but was not fund: %w", err)
+			return nil, fmt.Errorf("may be bug: expected domain constraint but was not found: %w", err)
 		}
 		t.Check = c
 	}

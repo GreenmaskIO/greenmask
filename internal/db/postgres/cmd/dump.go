@@ -296,6 +296,16 @@ func (d *Dump) taskProducer(ctx context.Context, tasks chan<- dumpers.DumpTask) 
 				task = dumpers.NewSequenceDumper(v)
 			case *entries.Blobs:
 				d.blobs = v
+				if d.validate {
+					// Skip blobs in validation mode
+					continue
+				}
+				if d.pgDumpOptions.NoBlobs {
+					// Skip blobs if no-blobs option is set
+					// This checks twice because (in Dump.mergeAndWriteToc as well). Should be refactored
+					log.Debug().Msg("skipping blobs")
+					continue
+				}
 				task = dumpers.NewLargeObjectDumper(v, d.pgDumpOptions.Pgzip)
 			default:
 				return fmt.Errorf("unknow dumper type")
@@ -337,6 +347,12 @@ func (d *Dump) createTocEntries() error {
 		case *entries.Sequence:
 			sequences = append(sequences, entry)
 		case *entries.Blobs:
+			if d.pgDumpOptions.NoBlobs {
+				// I don't like that we need to check this here second time. We should probably move this logic to the
+				// taskProducer
+				log.Debug().Msg("skipping blobs")
+				continue
+			}
 			d.dumpedObjectSizes[entry.DumpId] = storageDto.ObjectSizeStat{
 				Original:   v.OriginalSize,
 				Compressed: v.CompressedSize,

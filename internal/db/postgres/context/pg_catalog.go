@@ -381,7 +381,7 @@ func buildTableSearchQuery(
 	// --         WHERE c.relkind IN ('r', 'p', '') (array['r', 'S', 'v', 'm', 'f', 'p'])
 	totalQuery := `
 			SELECT 
-			   c.oid::TEXT::INT, 
+			   c.oid::TEXT::BIGINT, 
 			   n.nspname                              as "Schema",
 			   c.relname                              as "Name",
 			   pg_catalog.pg_get_userbyid(c.relowner) as "Owner",
@@ -464,11 +464,11 @@ func buildSchemaIntrospectionQuery(includeTable, excludeTable, includeForeignDat
 	}
 
 	totalQuery := `
-		SELECT c.oid::TEXT::INT,
+		SELECT c.oid::TEXT::BIGINT,
 			   n.nspname                              as "Schema",
 			   c.relname                              as "Name",
 			   c.relkind::TEXT                        as "RelKind",
-			   (coalesce(pc.oid::INT, 0))             as "RootPtOid",
+			   (coalesce(pc.oid::BIGINT, 0))             as "RootPtOid",
 			   (WITH RECURSIVE part_tables AS (SELECT pg_inherits.inhrelid AS parent_oid,
 													  nmsp_child.nspname   AS child_schema,
 													  child.oid            AS child_oid,
@@ -489,7 +489,7 @@ func buildSchemaIntrospectionQuery(includeTable, excludeTable, includeForeignDat
 												   JOIN pg_class child ON inh.inhrelid = child.oid
 												   JOIN pg_namespace nmsp_child ON nmsp_child.oid = child.relnamespace
 											   WHERE pt.kind = 'p')
-				SELECT array_agg(child_oid::INT) AS oid
+				SELECT array_agg(child_oid::BIGINT) AS oid
 				FROM part_tables
 				WHERE kind != 'p')                    as "ChildrenPtOids"
 		FROM pg_catalog.pg_class c

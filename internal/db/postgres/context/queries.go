@@ -31,14 +31,14 @@ var (
 	// TableSearchQuery - SQL query for getting table by name and schema
 	TableSearchQuery = `	
 		SELECT 
-		   c.oid::TEXT::INT, 
+		   c.oid::TEXT::BIGINT, 
 		   n.nspname                              as "Schema",
 		   c.relname                              as "Name",
 		   pg_catalog.pg_get_userbyid(c.relowner) as "Owner",
 		   c.relkind 							  as "RelKind",
 		   (coalesce(pn.nspname, '')) 			  as "RootPtSchema",
 		   (coalesce(pc.relname, '')) 			  as "RootPtName"
--- 		   (coalesce(pc.oid, 0))::TEXT::INT       as "RootOid"
+-- 		   (coalesce(pc.oid, 0))::TEXT::BIGINT       as "RootOid"
         FROM pg_catalog.pg_class c
 				JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
                 LEFT JOIN pg_catalog.pg_inherits i ON i.inhrelid = c.oid
@@ -70,7 +70,7 @@ var (
 												JOIN pg_class child ON inh.inhrelid = child.oid
 												JOIN pg_namespace nmsp_child ON nmsp_child.oid = child.relnamespace
 									   WHERE pt.kind = 'p')
-		SELECT child_oid::INT  AS oid
+		SELECT child_oid::BIGINT  AS oid
 		FROM part_tables
 		WHERE kind != 'p';
     `
@@ -79,7 +79,7 @@ var (
 	TableColumnsQuery = template.Must(template.New("TableColumnsQuery").Parse(`
 		SELECT 
 		    a.attname 										as name,
-		    a.atttypid::TEXT::INT                          	as typeoid,
+		    a.atttypid::TEXT::BIGINT                          	as typeoid,
 		  	pg_catalog.format_type(a.atttypid, a.atttypmod) as typename,
 		  	a.attnotnull 									as notnull,
 		  	a.atttypmod 									as att_len,
@@ -122,23 +122,23 @@ var (
 						  JOIN pg_type pt ON ct.typbasetype = pt.oid
             ),
 			types_with_chain AS (
-               SELECT ct.oid, coalesce (array_agg(ct.typbasetype ORDER BY num) FILTER ( WHERE ct.typbasetype != 0 ), ARRAY []::INT []) AS chain
+               SELECT ct.oid, coalesce (array_agg(ct.typbasetype ORDER BY num) FILTER ( WHERE ct.typbasetype != 0 ), ARRAY []::BIGINT []) AS chain
 			   FROM basexbase ct
 			   GROUP BY ct.oid
 			)
-			SELECT pt.oid::TEXT::INT         AS oid,
-				   twc.chain::INT[]          AS chain_oids,
+			SELECT pt.oid::TEXT::BIGINT         AS oid,
+				   twc.chain::BIGINT[]          AS chain_oids,
                    (select array_agg(t.typname)::TEXT[] FROM pg_type t WHERE t.oid = ANY (twc.chain)) AS chain_names,
 				   pn.nspname                AS schema,
 				   pt.typname                AS name,
 				   pt.typlen                 AS len,
 				   pt.typtype                AS kind,
-				   pt.typrelid::TEXT::INT    AS composed_relation_oid,
-				   pt.typelem::TEXT::INT     AS element_type_oid,
-				   pt.typarray::TEXT::INT    AS array_type_oid,
+				   pt.typrelid::TEXT::BIGINT    AS composed_relation_oid,
+				   pt.typelem::TEXT::BIGINT     AS element_type_oid,
+				   pt.typarray::TEXT::BIGINT    AS array_type_oid,
 				   pt.typnotnull             AS not_null,
-				   pt.typbasetype::TEXT::INT AS base_type_oid,
-				   pc.oid::TEXT::INT NOTNULL AS has_domain_constraint
+				   pt.typbasetype::TEXT::BIGINT AS base_type_oid,
+				   pc.oid::TEXT::BIGINT NOTNULL AS has_domain_constraint
 			FROM types_with_chain twc
 					 JOIN pg_catalog.pg_type pt ON twc.oid = pt.oid
 					 JOIN pg_catalog.pg_namespace pn on pt.typnamespace = pn.oid
@@ -149,12 +149,12 @@ var (
 	// TableConstraintsCommonQuery - SQL query for searching the common constraints (pk, fk, trigger, check, exclude)
 	// Purpose - find all constraints assigned to the discovering table (excluding Domain constraints)
 	TableConstraintsCommonQuery = `
-		SELECT pc.oid::TEXT::INT,                                            -- constraint oid
+		SELECT pc.oid::TEXT::BIGINT,                                            -- constraint oid
 			   pc.conname                                    AS "name",     -- constraint name
 			   pn.nspname                                    AS "schema",   -- constraint schema name
 			   pc.contype                                    AS "type",     -- constraint type
 			   pc.conkey                                     AS columns,    -- constrained columns at the source table (from which search is performing)
-			   coalesce(rt.oid::TEXT::INT, 0)                AS rt_oid,     -- referenced table oid
+			   coalesce(rt.oid::TEXT::BIGINT, 0)                AS rt_oid,     -- referenced table oid
 			   coalesce(rtn.nspname, '')                     AS rt_name,    -- referenced table name
 			   coalesce(rt.relname, '')                      AS rt_schema,  -- referenced table schema
 			   pc.confkey                                    AS rt_columns, -- referenced table involved columns into constraint
@@ -169,10 +169,10 @@ var (
 	// TablePrimaryKeyReferencesConstraintsQuery - SQL query for collecting all the PK references
 	TablePrimaryKeyReferencesConstraintsQuery = template.Must(
 		template.New("TablePrimaryKeyReferencesConstraintsQuery").Parse(`
-		SELECT pc.oid::TEXT::INT,
+		SELECT pc.oid::TEXT::BIGINT,
 			   pn.nspname                                    AS "schema",
 			   pc.conname                                    AS "name",
-			   c.oid::TEXT::INT                              AS on_table_oid,
+			   c.oid::TEXT::BIGINT                              AS on_table_oid,
 			   cn.nspname                                    AS on_table_schema,
 			   c.relname                                     AS on_table_name,
 			   pc.conkey                                     AS on_table_constrained_columns,
@@ -195,20 +195,25 @@ var (
 
 	// DomainConstraintsQuery - SQL query for getting domain check constraint
 	DomainConstraintsQuery = `
-		SELECT pc.oid::TEXT::INT,                                         -- constraint oid
+		SELECT pc.oid::TEXT::BIGINT,                                         -- constraint oid
 			   pn.nspname                                    AS "schema", -- constraint schema name
 			   pc.conname                                    AS "name",   -- constraint name
-			   pg_catalog.pg_get_constraintdef(pc.oid, true) AS def       -- textual constraint definition
+			   CASE 
+			       WHEN contype = 'n' THEN 
+			           '' 
+			       ELSE 
+			           pg_catalog.pg_get_constraintdef(pc.oid, true) 
+			    END AS def       -- textual constraint definition
 		FROM pg_constraint pc
 				 JOIN pg_namespace pn on pc.connamespace = pn.oid
 				 LEFT JOIN pg_class rt ON pc.confrelid = rt.oid
 				 LEFT JOIN pg_namespace rtn ON rt.relnamespace = rtn.oid
-		WHERE contypid = $1 AND contype = 'c';
+		WHERE contypid = $1 AND contype IN ('c', 'n');
 	`
 
 	LargeObjectsTableOidQuery = `
 		SELECT 
-		    pc.oid::INT
+		    pc.oid::BIGINT
 		FROM pg_catalog.pg_class pc
 			JOIN pg_catalog.pg_namespace pn ON pc.relnamespace = pn.oid
 		WHERE pc.relname = 'pg_largeobject' AND pn.nspname = 'pg_catalog'
@@ -216,7 +221,7 @@ var (
 
 	LargeObjectsListQuery = `
 		SELECT 
-		  oid::INT,
+		  oid::BIGINT,
 		  pg_catalog.pg_get_userbyid(lomowner) as "owner",
 		  coalesce(pg_catalog.obj_description(oid, 'pg_largeobject'), '') as "comment"
 		FROM pg_catalog.pg_largeobject_metadata
