@@ -40,6 +40,7 @@ import (
 	"github.com/greenmaskio/greenmask/internal/db/postgres/restorers"
 	"github.com/greenmaskio/greenmask/internal/db/postgres/storage"
 	"github.com/greenmaskio/greenmask/internal/db/postgres/toc"
+	"github.com/greenmaskio/greenmask/internal/db/postgres/utils"
 	"github.com/greenmaskio/greenmask/internal/domains"
 	"github.com/greenmaskio/greenmask/internal/storages"
 	"github.com/greenmaskio/greenmask/pkg/toolkit"
@@ -73,6 +74,12 @@ const dependenciesCheckInterval = 15 * time.Millisecond
 var (
 	ErrTableDefinitionIsEmtpy = errors.New("table definition is empty: please re-dump the data using the latest version of greenmask if you want to use --inserts")
 )
+
+type restorationTask interface {
+	Execute(ctx context.Context, conn utils.PGConnector) error
+	DebugInfo() string
+	GetEntry() *toc.Entry
+}
 
 type Restore struct {
 	binPath    string
@@ -142,7 +149,7 @@ func (r *Restore) Run(ctx context.Context) error {
 	return nil
 }
 
-func (r *Restore) putDumpId(task restorers.RestoreTask) {
+func (r *Restore) putDumpId(task restorationTask) {
 	r.mx.Lock()
 	r.restoredDumpIds[task.GetEntry().DumpId] = true
 	r.mx.Unlock()
@@ -439,7 +446,7 @@ func (r *Restore) dataRestore(ctx context.Context) error {
 		return err
 	}
 
-	tasks := make(chan restorers.RestoreTask, r.restoreOpt.Jobs)
+	tasks := make(chan restorationTask, r.restoreOpt.Jobs)
 	eg, gtx := errgroup.WithContext(ctx)
 
 	for j := 0; j < r.restoreOpt.Jobs; j++ {
@@ -596,7 +603,7 @@ func (r *Restore) waitDependenciesAreRestore(ctx context.Context, deps []int32) 
 	}
 }
 
-func (r *Restore) taskPusher(ctx context.Context, tasks chan restorers.RestoreTask) func() error {
+func (r *Restore) taskPusher(ctx context.Context, tasks chan restorationTask) func() error {
 	return func() error {
 		defer close(tasks)
 		tocEntries := getDataSectionTocEntries(r.tocObj.Entries)
@@ -623,7 +630,7 @@ func (r *Restore) taskPusher(ctx context.Context, tasks chan restorers.RestoreTa
 					}
 				}
 
-				var task restorers.RestoreTask
+				var task restorationTask
 				switch *entry.Desc {
 				case toc.TableDataDesc:
 					if r.restoreOpt.Inserts || r.restoreOpt.OnConflictDoNothing {
@@ -641,6 +648,13 @@ func (r *Restore) taskPusher(ctx context.Context, tasks chan restorers.RestoreTa
 				case toc.SequenceSetDesc:
 					task = restorers.NewSequenceRestorer(entry)
 				case toc.BlobsDesc:
+					if r.restoreOpt.NoBlobs {
+						// Skip blobs restoration
+						log.Debug().
+							Int32("DumpId", entry.DumpId).
+							Msg("blobs restoration is skipped")
+						continue
+					}
 					task = restorers.NewBlobsRestorer(entry, r.st, r.restoreOpt.Pgzip)
 				}
 
@@ -672,7 +686,7 @@ func (r *Restore) getTableDefinitionFromMeta(dumpId int32) (*toolkit.Table, erro
 	return r.metadata.DatabaseSchema[idx], nil
 }
 
-func (r *Restore) restoreWorker(ctx context.Context, tasks <-chan restorers.RestoreTask, id int) error {
+func (r *Restore) restoreWorker(ctx context.Context, tasks <-chan restorationTask, id int) error {
 	// TODO: You should execute TX for each COPY stmt
 	conn, err := pgx.Connect(ctx, r.dsn)
 	if err != nil {
@@ -685,7 +699,7 @@ func (r *Restore) restoreWorker(ctx context.Context, tasks <-chan restorers.Rest
 	}()
 
 	for {
-		var task restorers.RestoreTask
+		var task restorationTask
 		select {
 		case <-ctx.Done():
 			log.Debug().
@@ -704,7 +718,7 @@ func (r *Restore) restoreWorker(ctx context.Context, tasks <-chan restorers.Rest
 			Msg("restoring")
 
 		// Open new transaction for each task
-		if err = task.Execute(ctx, conn); err != nil {
+		if err = task.Execute(ctx, utils.NewPGConn(conn)); err != nil {
 			return fmt.Errorf("unable to perform restoration task (worker %d restoring %s): %w", id, task.DebugInfo(), err)
 		}
 		r.putDumpId(task)

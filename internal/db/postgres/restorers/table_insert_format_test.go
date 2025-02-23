@@ -9,6 +9,7 @@ import (
 
 	"github.com/greenmaskio/greenmask/internal/db/postgres/pgrestore"
 	"github.com/greenmaskio/greenmask/internal/db/postgres/toc"
+	"github.com/greenmaskio/greenmask/internal/db/postgres/utils"
 	"github.com/greenmaskio/greenmask/internal/domains"
 	"github.com/greenmaskio/greenmask/internal/utils/testutils"
 	"github.com/greenmaskio/greenmask/pkg/toolkit"
@@ -70,7 +71,7 @@ func (s *restoresSuite) Test_TableRestorerInsertFormat_check_triggers_errors() {
 
 		conn, err := s.GetConnectionWithUser(ctx, s.nonSuperUser, s.nonSuperUserPassword)
 		s.Require().NoError(err)
-		err = tr.Execute(ctx, conn)
+		err = tr.Execute(ctx, utils.NewPGConn(conn))
 		s.Require().ErrorContains(err, "Test exception (SQLSTATE P0001)")
 	})
 
@@ -130,7 +131,7 @@ func (s *restoresSuite) Test_TableRestorerInsertFormat_check_triggers_errors() {
 		tr := NewTableRestorerInsertFormat(entry, t, st, opt, new(domains.DataRestorationErrorExclusions))
 		conn, err := s.GetConnectionWithUser(ctx, s.nonSuperUser, s.nonSuperUserPassword)
 		s.Require().NoError(err)
-		err = tr.Execute(ctx, conn)
+		err = tr.Execute(ctx, utils.NewPGConn(conn))
 		s.Require().NoError(err)
 	})
 
@@ -191,7 +192,7 @@ func (s *restoresSuite) Test_TableRestorerInsertFormat_check_triggers_errors() {
 
 		conn, err := s.GetConnectionWithUser(ctx, s.nonSuperUser, s.nonSuperUserPassword)
 		s.Require().NoError(err)
-		err = tr.Execute(ctx, conn)
+		err = tr.Execute(ctx, utils.NewPGConn(conn))
 		s.Require().NoError(err)
 	})
 }

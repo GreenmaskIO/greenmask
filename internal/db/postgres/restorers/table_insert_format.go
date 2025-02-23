@@ -30,6 +30,7 @@ import (
 	"github.com/greenmaskio/greenmask/internal/db/postgres/pgcopy"
 	"github.com/greenmaskio/greenmask/internal/db/postgres/pgrestore"
 	"github.com/greenmaskio/greenmask/internal/db/postgres/toc"
+	"github.com/greenmaskio/greenmask/internal/db/postgres/utils"
 	"github.com/greenmaskio/greenmask/internal/domains"
 	"github.com/greenmaskio/greenmask/internal/storages"
 	"github.com/greenmaskio/greenmask/internal/utils/reader"
@@ -84,7 +85,7 @@ func (td *TableRestorerInsertFormat) GetEntry() *toc.Entry {
 	return td.entry
 }
 
-func (td *TableRestorerInsertFormat) Execute(ctx context.Context, conn *pgx.Conn) error {
+func (td *TableRestorerInsertFormat) Execute(ctx context.Context, conn utils.PGConnector) error {
 	r, err := td.getObject(ctx)
 	if err != nil {
 		return fmt.Errorf("cannot get storage object: %w", err)
@@ -98,7 +99,7 @@ func (td *TableRestorerInsertFormat) Execute(ctx context.Context, conn *pgx.Conn
 		}
 	}()
 
-	if err = td.streamInsertData(ctx, conn, r); err != nil {
+	if err = td.streamInsertData(ctx, conn.GetConn(), r); err != nil {
 		if td.opt.ExitOnError {
 			return fmt.Errorf("error streaming pgcopy data: %w", err)
 		}

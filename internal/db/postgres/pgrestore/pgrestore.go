@@ -101,6 +101,8 @@ type Options struct {
 	Section                    string   `mapstructure:"section"`
 	StrictNames                bool     `mapstructure:"strict-names"`
 	UseSetSessionAuthorization bool     `mapstructure:"use-set-session-authorization"`
+	// NoBlobs - is not supported by pg_restore itself but can be used in restore
+	NoBlobs bool `mapstructure:"no-blobs"`
 
 	// Custom options (not from pg_restore)
 	// OnConflictDoNothing and Inserts were moved from pg_dump because we can generate insert
