@@ -93,6 +93,10 @@ type readCloserMock struct {
 	*bytes.Buffer
 }
 
+func newReadCloserMock() *readCloserMock {
+	return &readCloserMock{Buffer: bytes.NewBuffer(nil)}
+}
+
 func (r *readCloserMock) Close() error {
 	return nil
 }

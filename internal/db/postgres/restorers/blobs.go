@@ -51,7 +51,7 @@ func NewBlobsRestorer(entry *toc.Entry, st storages.Storager, usePgzip bool) *Bl
 // Execute - restore large objects from the storage
 func (br *BlobsRestorer) Execute(ctx context.Context, conn utils.PGConnector) error {
 	// Getting blobs.toc
-	loOids, err := br.getBlobsOIds(ctx)
+	loOids, err := br.getBlobsOids(ctx)
 	if err != nil {
 		return fmt.Errorf("get blobs oids: %w", err)
 	}
@@ -73,8 +73,8 @@ func (br *BlobsRestorer) Execute(ctx context.Context, conn utils.PGConnector) er
 	return nil
 }
 
-// getBlobsOIds - get all large objects oids from blobs.toc from the storage
-func (br *BlobsRestorer) getBlobsOIds(ctx context.Context) ([]uint32, error) {
+// getBlobsOids - get all large objects oids from blobs.toc from the storage
+func (br *BlobsRestorer) getBlobsOids(ctx context.Context) ([]uint32, error) {
 	reader, err := br.St.GetObject(ctx, "blobs.toc")
 	if err != nil {
 		return nil, fmt.Errorf("getting blobs.toc: %w", err)
