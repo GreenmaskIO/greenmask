@@ -9,6 +9,7 @@ import (
 
 	"github.com/greenmaskio/greenmask/internal/db/postgres/pgrestore"
 	"github.com/greenmaskio/greenmask/internal/db/postgres/toc"
+	"github.com/greenmaskio/greenmask/internal/db/postgres/utils"
 	"github.com/greenmaskio/greenmask/internal/utils/testutils"
 )
 
@@ -46,7 +47,7 @@ func (s *restoresSuite) Test_TableRestorer_check_triggers_errors() {
 
 		conn, err := s.GetConnectionWithUser(ctx, s.nonSuperUser, s.nonSuperUserPassword)
 		s.Require().NoError(err)
-		err = tr.Execute(ctx, conn)
+		err = tr.Execute(ctx, utils.NewPGConn(conn))
 		s.Require().ErrorContains(err, "Test exception  (code P0001)")
 	})
 
@@ -84,7 +85,7 @@ func (s *restoresSuite) Test_TableRestorer_check_triggers_errors() {
 
 		conn, err := s.GetConnectionWithUser(ctx, s.nonSuperUser, s.nonSuperUserPassword)
 		s.Require().NoError(err)
-		err = tr.Execute(ctx, conn)
+		err = tr.Execute(ctx, utils.NewPGConn(conn))
 		s.Require().NoError(err)
 	})
 
@@ -122,7 +123,7 @@ func (s *restoresSuite) Test_TableRestorer_check_triggers_errors() {
 
 		conn, err := s.GetConnectionWithUser(ctx, s.nonSuperUser, s.nonSuperUserPassword)
 		s.Require().NoError(err)
-		err = tr.Execute(ctx, conn)
+		err = tr.Execute(ctx, utils.NewPGConn(conn))
 		s.Require().NoError(err)
 	})
 }

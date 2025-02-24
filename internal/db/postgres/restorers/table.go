@@ -27,6 +27,7 @@ import (
 
 	"github.com/greenmaskio/greenmask/internal/db/postgres/pgrestore"
 	"github.com/greenmaskio/greenmask/internal/db/postgres/toc"
+	"github.com/greenmaskio/greenmask/internal/db/postgres/utils"
 	"github.com/greenmaskio/greenmask/internal/storages"
 	"github.com/greenmaskio/greenmask/internal/utils/pgerrors"
 	"github.com/greenmaskio/greenmask/internal/utils/reader"
@@ -50,7 +51,7 @@ func (td *TableRestorer) GetEntry() *toc.Entry {
 	return td.entry
 }
 
-func (td *TableRestorer) Execute(ctx context.Context, conn *pgx.Conn) error {
+func (td *TableRestorer) Execute(ctx context.Context, conn utils.PGConnector) error {
 	// TODO: Add tests
 
 	if td.entry.FileName == nil {
@@ -71,7 +72,7 @@ func (td *TableRestorer) Execute(ctx context.Context, conn *pgx.Conn) error {
 	}()
 
 	// Open new transaction for each task
-	tx, err := conn.Begin(ctx)
+	tx, err := conn.GetConn().Begin(ctx)
 	if err != nil {
 		return fmt.Errorf("cannot start transaction (restoring %s): %w", td.DebugInfo(), err)
 	}

@@ -27,15 +27,16 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"github.com/greenmaskio/greenmask/internal/db/postgres/toc"
+	"github.com/greenmaskio/greenmask/internal/db/postgres/utils"
 	"github.com/greenmaskio/greenmask/internal/storages"
 	"github.com/greenmaskio/greenmask/internal/utils/ioutils"
 )
 
 type BlobsRestorer struct {
-	Entry            *toc.Entry
-	St               storages.Storager
-	largeObjectsOids []uint32
-	usePgzip         bool
+	Entry    *toc.Entry
+	St       storages.Storager
+	usePgzip bool
+	buf      []byte
 }
 
 func NewBlobsRestorer(entry *toc.Entry, st storages.Storager, usePgzip bool) *BlobsRestorer {
@@ -43,38 +44,48 @@ func NewBlobsRestorer(entry *toc.Entry, st storages.Storager, usePgzip bool) *Bl
 		Entry:    entry,
 		St:       st,
 		usePgzip: usePgzip,
+		buf:      make([]byte, defaultBufferSize),
 	}
 }
 
-func (td *BlobsRestorer) Execute(ctx context.Context, conn *pgx.Conn) error {
-	tx, err := conn.Begin(ctx)
+// Execute - restore large objects from the storage
+func (br *BlobsRestorer) Execute(ctx context.Context, conn utils.PGConnector) error {
+	// Getting blobs.toc
+	loOids, err := br.getBlobsOids(ctx)
 	if err != nil {
-		return fmt.Errorf("cannot start transaction (restoring %s): %w", td.DebugInfo(), err)
+		return fmt.Errorf("get blobs oids: %w", err)
 	}
 
-	if err = td.execute(ctx, tx); err != nil {
-		if txErr := tx.Rollback(ctx); txErr != nil {
-			log.Warn().
-				Err(txErr).
-				Str("objectName", td.DebugInfo()).
-				Msg("cannot rollback transaction")
+	for _, loOid := range loOids {
+		log.Debug().
+			Uint32("oid", loOid).
+			Msg("large object restoration is started")
+
+		if err := br.restoreLargeObject(ctx, conn, loOid); err != nil {
+			return fmt.Errorf("restore large object %d: %w", loOid, err)
 		}
-		return fmt.Errorf("unable to restore sequence: %w", err)
+
+		log.Debug().
+			Uint32("oid", loOid).
+			Msg("large object restoration is complete")
 	}
-	if err = tx.Commit(ctx); err != nil {
-		return fmt.Errorf("cannot commit transaction (restoring %s): %w", td.DebugInfo(), err)
-	}
+
 	return nil
 }
 
-func (td *BlobsRestorer) execute(ctx context.Context, tx pgx.Tx) error {
-
-	// Getting blobs.toc
-	reader, err := td.St.GetObject(ctx, "blobs.toc")
+// getBlobsOids - get all large objects oids from blobs.toc from the storage
+func (br *BlobsRestorer) getBlobsOids(ctx context.Context) ([]uint32, error) {
+	reader, err := br.St.GetObject(ctx, "blobs.toc")
 	if err != nil {
-		return fmt.Errorf("error getting blobs.toc: %w", err)
+		return nil, fmt.Errorf("getting blobs.toc: %w", err)
 	}
-	defer reader.Close()
+	defer func() {
+		err := reader.Close()
+		if err != nil {
+			log.Warn().Err(err).Msg("error closing blobs.toc")
+		}
+	}()
+	var loOids []uint32
 	r := bufio.NewReader(reader)
 	for {
 		line, _, err := r.ReadLine()
@@ -82,95 +93,106 @@ func (td *BlobsRestorer) execute(ctx context.Context, tx pgx.Tx) error {
 			if errors.Is(err, io.EOF) {
 				break
 			}
-			return fmt.Errorf("error readling line from blobs.toc: %w", err)
+			return nil, fmt.Errorf("readling line from blobs.toc: %w", err)
 		}
 		loOid := strings.Split(string(line), " ")[0]
 		oid, err := strconv.ParseInt(loOid, 10, 32)
 		if err != nil {
-			return fmt.Errorf("unable to parse oid %s from blobs.toc: %w", loOid, err)
+			return nil, fmt.Errorf("parse oid %s from blobs.toc: %w", loOid, err)
 		}
-		td.largeObjectsOids = append(td.largeObjectsOids, uint32(oid))
+		loOids = append(loOids, uint32(oid))
+		select {
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		default:
+		}
+	}
+	return loOids, nil
+}
+
+// restoreLargeObject - restore large object by oid in single transaction
+// Each large object is restored in a separate transaction.
+func (br *BlobsRestorer) restoreLargeObject(ctx context.Context, conn utils.PGConnector, oid uint32) error {
+	loObj, err := br.getLargeObjectDataReader(ctx, oid)
+	if err != nil {
+		return fmt.Errorf("get large object reader: %w", err)
+	}
+	defer func() {
+		if err := loObj.Close(); err != nil {
+			log.Warn().
+				Uint32("oid", oid).
+				Err(err).
+				Msg("error closing large object reader")
+		}
+	}()
+	err = conn.WithTx(ctx, func(ctx context.Context, tx pgx.Tx) error {
+		if err := br.restoreLargeObjectData(ctx, tx, loObj, oid); err != nil {
+			return fmt.Errorf("restore large object %d: %w", oid, err)
+		}
+		return nil
+	})
+	if err != nil {
+		return fmt.Errorf("restore large object %d: %w", oid, err)
+	}
+	return nil
+}
+
+// getLargeObjectDataReader - get reader for large object by oid
+func (br *BlobsRestorer) getLargeObjectDataReader(ctx context.Context, oid uint32) (io.ReadCloser, error) {
+	loReader, err := br.St.GetObject(ctx, fmt.Sprintf("blob_%d.dat.gz", oid))
+	if err != nil {
+		return nil, fmt.Errorf("error getting object %s: %w", fmt.Sprintf("blob_%d.dat.gz", oid), err)
+	}
+	gz, err := ioutils.GetGzipReadCloser(loReader, br.usePgzip)
+	if err != nil {
+		_ = loReader.Close()
+		return nil, fmt.Errorf("cannot create gzip reader: %w", err)
+	}
+	return gz, nil
+}
+
+// restoreLargeObjectData - restore large object data by oid by given reader withing transaction
+func (br *BlobsRestorer) restoreLargeObjectData(ctx context.Context, tx pgx.Tx, loObj io.Reader, oid uint32) error {
+	loAPI := tx.LargeObjects()
+	lo, err := loAPI.Open(ctx, oid, pgx.LargeObjectModeWrite)
+	if err != nil {
+		return fmt.Errorf("unable to open large object %d: %w", oid, err)
+	}
+	defer func() {
+		if err := lo.Close(); err != nil {
+			log.Warn().
+				Err(err).
+				Uint32("oid", oid).
+				Msg("error closing large object")
+		}
+	}()
+
+	for {
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
 		default:
 		}
-	}
-
-	loApi := tx.LargeObjects()
-	// restoring large objects one by one
-	buf := make([]byte, defaultBufferSize)
-	for _, loOid := range td.largeObjectsOids {
-		log.Debug().Uint32("oid", loOid).Msg("large object restoration is started")
-		err = func() error {
-			loReader, err := td.St.GetObject(ctx, fmt.Sprintf("blob_%d.dat.gz", loOid))
-			if err != nil {
-				return fmt.Errorf("error getting object %s: %w", fmt.Sprintf("blob_%d.dat.gz", loOid), err)
-			}
-			gz, err := ioutils.GetGzipReadCloser(loReader, td.usePgzip)
-			if err != nil {
-				return fmt.Errorf("cannot create gzip reader: %w", err)
-			}
-			defer func(gz io.Closer) {
-				if err := gz.Close(); err != nil {
-					log.Warn().
-						Err(err).
-						Msg("error closing gzip reader")
-				}
-			}(gz)
-			lo, err := loApi.Open(ctx, loOid, pgx.LargeObjectModeWrite)
-			if err != nil {
-				return fmt.Errorf("unable to open large object %d: %w", loOid, err)
-			}
-			defer func() {
-				if err := lo.Close(); err != nil {
-					log.Warn().
-						Err(err).
-						Uint32("oid", loOid).
-						Msg("error closing large object")
-				}
-			}()
-
-			select {
-			case <-ctx.Done():
-				return ctx.Err()
-			default:
-			}
-
-			for {
-				n, err := gz.Read(buf)
-				if err != nil {
-					if errors.Is(err, io.EOF) {
-						break
-					}
-					return fmt.Errorf("error readimg from table dump: %w", err)
-				}
-				_, err = lo.Write(buf[:n])
-				if err != nil {
-					return fmt.Errorf("error writing large object %d: %w", loOid, err)
-				}
-				select {
-				case <-ctx.Done():
-					return ctx.Err()
-				default:
-				}
-			}
-
-			return nil
-		}()
+		n, err := loObj.Read(br.buf)
 		if err != nil {
-			return err
+			if errors.Is(err, io.EOF) {
+				break
+			}
+			return fmt.Errorf("error readimg from table dump: %w", err)
 		}
-		log.Debug().Uint32("oid", loOid).Msg("large object restoration is complete")
+		_, err = lo.Write(br.buf[:n])
+		if err != nil {
+			return fmt.Errorf("error writing large object %d: %w", oid, err)
+		}
 	}
 
 	return nil
 }
 
-func (td *BlobsRestorer) GetEntry() *toc.Entry {
-	return td.Entry
+func (br *BlobsRestorer) GetEntry() *toc.Entry {
+	return br.Entry
 }
 
-func (td *BlobsRestorer) DebugInfo() string {
-	return fmt.Sprintf("blobs %s", *td.Entry.Tag)
+func (br *BlobsRestorer) DebugInfo() string {
+	return fmt.Sprintf("blobs %s", *br.Entry.Tag)
 }

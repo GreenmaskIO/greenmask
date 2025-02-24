@@ -19,7 +19,7 @@ import (
 	"fmt"
 )
 
-type Oid int
+type Oid uint32
 type AttNum uint32
 
 type DynamicParameters map[string]*DynamicParamValue
