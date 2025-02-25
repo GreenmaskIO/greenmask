@@ -41,6 +41,9 @@ sample databases included to help you try Greenmask without any additional actio
 
 ## Features
 
+* **[Database subset](https://docs.greenmask.io/latest/database_subset/)** - One of the most advanced subset systems 
+  on the market. It supports **virtual references**, nullable columns, polymorphic references, and can subset even the 
+  most complex schemas with **cyclic references**.
 * **[Deterministic transformers](https://docs.greenmask.io/latest/built_in_transformers/transformation_engines/#hash-engine)** — Uses hash functions to ensure consistent output for the same input. Most transformers support both `random` and
   `hash` engines, offering flexibility for various use cases.
 * **[Dynamic parameters](https://docs.greenmask.io/latest/built_in_transformers/dynamic_parameters/)** — most
