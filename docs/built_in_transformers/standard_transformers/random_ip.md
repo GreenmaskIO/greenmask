@@ -4,11 +4,11 @@ addresses, or anonymizing real IP addresses in datasets.
 
 ## Parameters
 
-| Name   | Description                                                                                         | Default  | Required | Supported DB types  |
-|--------|-----------------------------------------------------------------------------------------------------|----------|----------|---------------------|
-| column | The name of the column to be affected                                                               |          | Yes      | text, varchar, inet |
-| subnet | Subnet for generating random ip in V4 or V6 format                                                  |          | Yes      | -                   |
-| engine | The engine used for generating the values [`random`, `hash`]. Use hash for deterministic generation | `random` | No       | -                   |
+| Name   | Description                                                                                         | Default  | Required | Supported DB types                        |
+|--------|-----------------------------------------------------------------------------------------------------|----------|----------|-------------------------------------------|
+| column | The name of the column to be affected                                                               |          | Yes      | text, varchar, char, bpchar, citext, inet |
+| subnet | Subnet for generating random ip in V4 or V6 format                                                  |          | Yes      | -                                         |
+| engine | The engine used for generating the values [`random`, `hash`]. Use hash for deterministic generation | `random` | No       | -                                         |
 
 ## Dynamic parameters
 

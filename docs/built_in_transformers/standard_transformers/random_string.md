@@ -2,14 +2,14 @@ Generate a random string using the provided characters within the specified leng
 
 ## Parameters
 
-| Name       | Description                                                                                         | Default                                                | Required | Supported DB types |
-|------------|-----------------------------------------------------------------------------------------------------|--------------------------------------------------------|----------|--------------------|
-| column     | The name of the column to be affected                                                               |                                                        | Yes      | text, varchar      |
-| min_length | The minimum length of the generated string                                                          |                                                        | Yes      | -                  |
-| max_length | The maximum length of the generated string                                                          |                                                        | Yes      | -                  |
-| symbols    | The range of characters that can be used in the random string                                       | `abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ` | No       | -                  |
-| keep_null  | Indicates whether NULL values should be replaced with transformed values or not                     | `true`                                                 | No       | -                  |
-| engine     | The engine used for generating the values [`random`, `hash`]. Use hash for deterministic generation | `random`                                               | No       | -                  |
+| Name       | Description                                                                                         | Default                                                | Required | Supported DB types                  |
+|------------|-----------------------------------------------------------------------------------------------------|--------------------------------------------------------|----------|-------------------------------------|
+| column     | The name of the column to be affected                                                               |                                                        | Yes      | text, varchar, char, bpchar, citext |
+| min_length | The minimum length of the generated string                                                          |                                                        | Yes      | -                                   |
+| max_length | The maximum length of the generated string                                                          |                                                        | Yes      | -                                   |
+| symbols    | The range of characters that can be used in the random string                                       | `abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ` | No       | -                                   |
+| keep_null  | Indicates whether NULL values should be replaced with transformed values or not                     | `true`                                                 | No       | -                                   |
+| engine     | The engine used for generating the values [`random`, `hash`]. Use hash for deterministic generation | `random`                                               | No       | -                                   |
 
 ## Description
 
