@@ -2,11 +2,11 @@ Generate random unique user ID using version 4.
 
 ## Parameters
 
-| Name      | Description                                                                                         | Default  | Required | Supported DB types  |
-|-----------|-----------------------------------------------------------------------------------------------------|----------|----------|---------------------|
-| column    | The name of the column to be affected                                                               |          | Yes      | text, varchar, uuid |
-| keep_null | Indicates whether NULL values should be replaced with transformed values or not                     | `true`   | No       | -                   |
-| engine    | The engine used for generating the values [`random`, `hash`]. Use hash for deterministic generation | `random` | No       | -                   |
+| Name      | Description                                                                                         | Default  | Required | Supported DB types                        |
+|-----------|-----------------------------------------------------------------------------------------------------|----------|----------|-------------------------------------------|
+| column    | The name of the column to be affected                                                               |          | Yes      | text, varchar, char, bpchar, citext, uuid |
+| keep_null | Indicates whether NULL values should be replaced with transformed values or not                     | `true`   | No       | -                                         |
+| engine    | The engine used for generating the values [`random`, `hash`]. Use hash for deterministic generation | `random` | No       | -                                         |
 
 ## Description
 

@@ -39,7 +39,9 @@ var stringTransformerDefinition = utils.NewTransformerDefinition(
 		"column name",
 	).SetIsColumn(toolkit.NewColumnProperties().
 		SetAffected(true).
-		SetAllowedColumnTypes("text", "varchar"),
+		SetAllowedColumnTypes(
+			"text", "varchar", "char", "bpchar", "citext",
+		),
 	).SetRequired(true),
 
 	toolkit.MustNewParameterDefinition(
