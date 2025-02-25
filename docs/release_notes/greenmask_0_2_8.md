@@ -20,6 +20,7 @@ This release includes a new feature and bug fixes.
 * Refactored the logic of restorers and added test coverage to improve maintainability and
   stability [#268](https://github.com/GreenmaskIO/greenmask/pull/266)
 * Fixed domain constraint introspection query [#266](https://github.com/GreenmaskIO/greenmask/pull/266)
+* Revised documentation according to the latest changes [#267](https://github.com/GreenmaskIO/greenmask/pull/267)
 
 #### Full Changelog: [v0.2.7...v0.2.8](https://github.com/GreenmaskIO/greenmask/compare/v0.2.7...v0.2.8)
 
