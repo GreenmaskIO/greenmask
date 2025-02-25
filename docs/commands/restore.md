@@ -36,6 +36,7 @@ Mostly it supports the same flags as the `pg_restore` utility, with some extra f
       --inserts                                restore data as INSERT commands, rather than COPY
   -j, --jobs int                               use this many parallel jobs to restore (default 1)
       --list-format string                     use table of contents in format of text, json or yaml (default "text")
+  -B, --no-blobs                               exclude large objects from restoration (large objects will be created as empty placeholders)
       --no-comments                            do not restore comments
       --no-data-for-failed-tables              do not restore data of tables that could not be created
   -O, --no-owner                               skip restoration of object ownership
