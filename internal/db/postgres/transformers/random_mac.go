@@ -54,7 +54,7 @@ var RandomMacAddressDefinition = utils.NewTransformerDefinition(
 		"Column name",
 	).SetIsColumn(toolkit.NewColumnProperties().
 		SetAffected(true).
-		SetAllowedColumnTypes("macaddr", "varchar", "text"),
+		SetAllowedColumnTypes("macaddr", "text", "varchar", "char", "bpchar", "citext"),
 	).SetRequired(true),
 
 	toolkit.MustNewParameterDefinition(
