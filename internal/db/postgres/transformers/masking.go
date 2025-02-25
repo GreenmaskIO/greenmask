@@ -55,7 +55,9 @@ var MaskingTransformerDefinition = utils.NewTransformerDefinition(
 	).SetIsColumn(
 		toolkit.NewColumnProperties().
 			SetAffected(true).
-			SetAllowedColumnTypes("text", "varchar"),
+			SetAllowedColumnTypes(
+				"text", "varchar", "char", "bpchar", "citext",
+			),
 	).SetRequired(true),
 
 	toolkit.MustNewParameterDefinition(
