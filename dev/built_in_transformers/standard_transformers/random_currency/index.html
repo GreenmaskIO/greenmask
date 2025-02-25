@@ -124,7 +124,7 @@
               </button>
             
             
-  A new version 0.2.6 (2024.12.07) is <a href="https://github.com/GreenmaskIO/greenmask/releases/tag/v0.2.6">released</a>
+  A new version 0.2.8 (2025.02.25) is <a href="https://github.com/GreenmaskIO/greenmask/releases/tag/v0.2.8">released</a>
 
           </div>
           
@@ -286,7 +286,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="../../../release_notes/greenmask_0_2_7/" class="md-tabs__link">
+        <a href="../../../release_notes/greenmask_0_2_8/" class="md-tabs__link">
           
   
     
@@ -2467,6 +2467,8 @@
       
         
       
+        
+      
     
     
       
@@ -2497,6 +2499,27 @@
             Release notes
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../release_notes/greenmask_0_2_8/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Greenmask 0.2.8
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
             
               
                 
@@ -3122,7 +3145,9 @@
 
   <h1>RandomCurrency</h1>
 
-<p>The <code>RandomCurrency</code> transformer is tailored to populate specified database columns with random currency codes. This tool is highly beneficial for applications involving the simulation of international financial data, testing currency conversion features, or anonymizing currency information in datasets.</p>
+<p>The <code>RandomCurrency</code> transformer is tailored to populate specified database columns with random currency codes. This
+tool is highly beneficial for applications involving the simulation of international financial data, testing currency
+conversion features, or anonymizing currency information in datasets.</p>
 <h2 id="parameters">Parameters<a class="headerlink" href="#parameters" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
@@ -3140,7 +3165,7 @@
 <td>The name of the column to be affected</td>
 <td></td>
 <td>Yes</td>
-<td>text, varchar</td>
+<td>text, varchar, char, bpchar, citext</td>
 </tr>
 <tr>
 <td>keep_null</td>
@@ -3152,9 +3177,13 @@
 </tbody>
 </table>
 <h2 id="description">Description<a class="headerlink" href="#description" title="Permanent link">&para;</a></h2>
-<p>Utilizing a comprehensive list of global currency codes (e.g., USD, EUR, JPY), the <code>RandomCurrency</code> transformer injects random currency codes into the designated database column. This feature allows for the creation of diverse and realistic financial transaction datasets by simulating a variety of currencies without relying on actual financial data.</p>
+<p>Utilizing a comprehensive list of global currency codes (e.g., USD, EUR, JPY), the <code>RandomCurrency</code> transformer injects
+random currency codes into the designated database column. This feature allows for the creation of diverse and realistic
+financial transaction datasets by simulating a variety of currencies without relying on actual financial data.</p>
 <h2 id="example-populate-random-currency-codes-for-the-transactions-table">Example: Populate random currency codes for the <code>transactions</code> table<a class="headerlink" href="#example-populate-random-currency-codes-for-the-transactions-table" title="Permanent link">&para;</a></h2>
-<p>This example outlines configuring the <code>RandomCurrency</code> transformer to populate the <code>currency_code</code> column in a <code>transactions</code> table with random currency codes. It is an effective way to simulate international transactions across multiple currencies.</p>
+<p>This example outlines configuring the <code>RandomCurrency</code> transformer to populate the <code>currency_code</code> column in a
+<code>transactions</code> table with random currency codes. It is an effective way to simulate international transactions across
+multiple currencies.</p>
 <div class="highlight"><span class="filename">RandomCurrency transformer example</span><pre><span></span><code><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">schema</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;public&quot;</span>
 <span class="w">  </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;transactions&quot;</span>
 <span class="w">  </span><span class="nt">transformers</span><span class="p">:</span>
@@ -3163,7 +3192,9 @@
 <span class="w">        </span><span class="nt">column</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;currency_code&quot;</span>
 <span class="w">        </span><span class="nt">keep_null</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span>
 </code></pre></div>
-<p>In this configuration, the <code>currency_code</code> column will be updated with random currency codes for each entry, replacing any existing non-NULL values. If the <code>keep_null</code> parameter is set to <code>true</code>, existing NULL values in the column will be preserved, ensuring the integrity of records where currency data may not be applicable.</p>
+<p>In this configuration, the <code>currency_code</code> column will be updated with random currency codes for each entry, replacing
+any existing non-NULL values. If the <code>keep_null</code> parameter is set to <code>true</code>, existing NULL values in the column will be
+preserved, ensuring the integrity of records where currency data may not be applicable.</p>
 
 
 

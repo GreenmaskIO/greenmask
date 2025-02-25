@@ -124,7 +124,7 @@
               </button>
             
             
-  A new version 0.2.6 (2024.12.07) is <a href="https://github.com/GreenmaskIO/greenmask/releases/tag/v0.2.6">released</a>
+  A new version 0.2.8 (2025.02.25) is <a href="https://github.com/GreenmaskIO/greenmask/releases/tag/v0.2.8">released</a>
 
           </div>
           
@@ -286,7 +286,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="../../../release_notes/greenmask_0_2_7/" class="md-tabs__link">
+        <a href="../../../release_notes/greenmask_0_2_8/" class="md-tabs__link">
           
   
     
@@ -2467,6 +2467,8 @@
       
         
       
+        
+      
     
     
       
@@ -2497,6 +2499,27 @@
             Release notes
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../release_notes/greenmask_0_2_8/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Greenmask 0.2.8
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
             
               
                 
@@ -3122,7 +3145,9 @@
 
   <h1>RandomParagraph</h1>
 
-<p>The <code>RandomParagraph</code> transformer is crafted to populate specified database columns with random paragraphs. This utility is indispensable for applications that require the generation of extensive textual content, such as simulating articles, enhancing textual datasets for NLP systems, or anonymizing textual content in databases.</p>
+<p>The <code>RandomParagraph</code> transformer is crafted to populate specified database columns with random paragraphs. This utility
+is indispensable for applications that require the generation of extensive textual content, such as simulating articles,
+enhancing textual datasets for NLP systems, or anonymizing textual content in databases.</p>
 <h2 id="parameters">Parameters<a class="headerlink" href="#parameters" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
@@ -3140,7 +3165,7 @@
 <td>The name of the column to be affected</td>
 <td></td>
 <td>Yes</td>
-<td>text, varchar</td>
+<td>text, varchar, char, bpchar, citext</td>
 </tr>
 <tr>
 <td>keep_null</td>
@@ -3152,9 +3177,14 @@
 </tbody>
 </table>
 <h2 id="description">Description<a class="headerlink" href="#description" title="Permanent link">&para;</a></h2>
-<p>Employing sophisticated text generation algorithms or libraries, the <code>RandomParagraph</code> transformer generates random paragraphs, injecting them into the designated database column. This transformer is designed to create varied and plausible paragraphs that simulate real-world textual content, providing a valuable tool for database enrichment, testing, and anonymization.</p>
+<p>Employing sophisticated text generation algorithms or libraries, the <code>RandomParagraph</code> transformer generates random
+paragraphs, injecting them into the designated database column. This transformer is designed to create varied and
+plausible paragraphs that simulate real-world textual content, providing a valuable tool for database enrichment,
+testing, and anonymization.</p>
 <h2 id="example-populate-random-paragraphs-for-the-articles-table">Example: Populate random paragraphs for the <code>articles</code> table<a class="headerlink" href="#example-populate-random-paragraphs-for-the-articles-table" title="Permanent link">&para;</a></h2>
-<p>This example illustrates configuring the <code>RandomParagraph</code> transformer to populate the <code>body</code> column in an <code>articles</code> table with random paragraphs. It is an effective way to simulate diverse article content for development, testing, or demonstration purposes.</p>
+<p>This example illustrates configuring the <code>RandomParagraph</code> transformer to populate the <code>body</code> column in an <code>articles</code>
+table with random paragraphs. It is an effective way to simulate diverse article content for development, testing, or
+demonstration purposes.</p>
 <div class="highlight"><span class="filename">RandomParagraph transformer example</span><pre><span></span><code><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">schema</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;public&quot;</span>
 <span class="w">  </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;articles&quot;</span>
 <span class="w">  </span><span class="nt">transformers</span><span class="p">:</span>
@@ -3163,7 +3193,9 @@
 <span class="w">        </span><span class="nt">column</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;body&quot;</span>
 <span class="w">        </span><span class="nt">keep_null</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span>
 </code></pre></div>
-<p>With this setup, the <code>body</code> column will receive random paragraphs for each entry, replacing any existing non-NULL values. Setting the <code>keep_null</code> parameter to <code>true</code> allows for the preservation of existing NULL values within the column, maintaining the integrity of records where article content is not applicable or provided.</p>
+<p>With this setup, the <code>body</code> column will receive random paragraphs for each entry, replacing any existing non-NULL
+values. Setting the <code>keep_null</code> parameter to <code>true</code> allows for the preservation of existing NULL values within the
+column, maintaining the integrity of records where article content is not applicable or provided.</p>
 
 
 

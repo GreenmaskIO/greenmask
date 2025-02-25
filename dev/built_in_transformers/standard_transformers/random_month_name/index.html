@@ -124,7 +124,7 @@
               </button>
             
             
-  A new version 0.2.6 (2024.12.07) is <a href="https://github.com/GreenmaskIO/greenmask/releases/tag/v0.2.6">released</a>
+  A new version 0.2.8 (2025.02.25) is <a href="https://github.com/GreenmaskIO/greenmask/releases/tag/v0.2.8">released</a>
 
           </div>
           
@@ -286,7 +286,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="../../../release_notes/greenmask_0_2_7/" class="md-tabs__link">
+        <a href="../../../release_notes/greenmask_0_2_8/" class="md-tabs__link">
           
   
     
@@ -2467,6 +2467,8 @@
       
         
       
+        
+      
     
     
       
@@ -2497,6 +2499,27 @@
             Release notes
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../release_notes/greenmask_0_2_8/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Greenmask 0.2.8
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
             
               
                 
@@ -3122,7 +3145,9 @@
 
   <h1>RandomMonthName</h1>
 
-<p>The <code>RandomMonthName</code> transformer is crafted to populate specified database columns with random month names. This transformer is especially useful for scenarios requiring the simulation of time-related data, such as user birth months or event months, without relying on specific date values.</p>
+<p>The <code>RandomMonthName</code> transformer is crafted to populate specified database columns with random month names. This
+transformer is especially useful for scenarios requiring the simulation of time-related data, such as user birth months
+or event months, without relying on specific date values.</p>
 <h2 id="parameters">Parameters<a class="headerlink" href="#parameters" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
@@ -3140,7 +3165,7 @@
 <td>The name of the column to be affected</td>
 <td></td>
 <td>Yes</td>
-<td>text, varchar</td>
+<td>text, varchar, char, bpchar, citext</td>
 </tr>
 <tr>
 <td>keep_null</td>
@@ -3152,9 +3177,12 @@
 </tbody>
 </table>
 <h2 id="description">Description<a class="headerlink" href="#description" title="Permanent link">&para;</a></h2>
-<p>The <code>RandomMonthName</code> transformer utilizes the <code>faker</code> library to generate the names of months at random. It can be applied to any textual column in a database to introduce variety and realism into data sets that require representations of months without the need for specific calendar dates.</p>
+<p>The <code>RandomMonthName</code> transformer utilizes the <code>faker</code> library to generate the names of months at random. It can be
+applied to any textual column in a database to introduce variety and realism into data sets that require representations
+of months without the need for specific calendar dates.</p>
 <h2 id="example-populate-random-month-names-for-the-user_profiles-table">Example: Populate random month names for the <code>user_profiles</code> table<a class="headerlink" href="#example-populate-random-month-names-for-the-user_profiles-table" title="Permanent link">&para;</a></h2>
-<p>This example demonstrates how to configure the <code>RandomMonthName</code> transformer to fill the <code>birth_month</code> column in the <code>user_profiles</code> table with random month names, adding a layer of diversity to user data without using actual birthdates.</p>
+<p>This example demonstrates how to configure the <code>RandomMonthName</code> transformer to fill the <code>birth_month</code> column in the
+<code>user_profiles</code> table with random month names, adding a layer of diversity to user data without using actual birthdates.</p>
 <div class="highlight"><span class="filename">RandomMonthName transformer example</span><pre><span></span><code><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">schema</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;public&quot;</span>
 <span class="w">  </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;user_profiles&quot;</span>
 <span class="w">  </span><span class="nt">transformers</span><span class="p">:</span>
@@ -3163,7 +3191,9 @@
 <span class="w">        </span><span class="nt">column</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;birth_month&quot;</span>
 <span class="w">        </span><span class="nt">keep_null</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span>
 </code></pre></div>
-<p>With this setup, the <code>birth_month</code> column will be updated with random month names, replacing any existing non-NULL values. If the <code>keep_null</code> parameter is set to <code>true</code>, then existing NULL values within the column will remain untouched.</p>
+<p>With this setup, the <code>birth_month</code> column will be updated with random month names, replacing any existing non-NULL
+values. If the <code>keep_null</code> parameter is set to <code>true</code>, then existing NULL values within the column will remain
+untouched.</p>
 
 
 

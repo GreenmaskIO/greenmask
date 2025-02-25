@@ -124,7 +124,7 @@
               </button>
             
             
-  A new version 0.2.6 (2024.12.07) is <a href="https://github.com/GreenmaskIO/greenmask/releases/tag/v0.2.6">released</a>
+  A new version 0.2.8 (2025.02.25) is <a href="https://github.com/GreenmaskIO/greenmask/releases/tag/v0.2.8">released</a>
 
           </div>
           
@@ -286,7 +286,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="../../../release_notes/greenmask_0_2_7/" class="md-tabs__link">
+        <a href="../../../release_notes/greenmask_0_2_8/" class="md-tabs__link">
           
   
     
@@ -2467,6 +2467,8 @@
       
         
       
+        
+      
     
     
       
@@ -2497,6 +2499,27 @@
             Release notes
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../release_notes/greenmask_0_2_8/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Greenmask 0.2.8
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
             
               
                 
@@ -3122,7 +3145,9 @@
 
   <h1>RandomTollFreePhoneNumber</h1>
 
-<p>The <code>RandomTollFreePhoneNumber</code> transformer is designed to populate specified database columns with random toll-free phone numbers. This tool is essential for applications requiring the simulation of contact information, testing phone number validation systems, or anonymizing phone number data in datasets while focusing on toll-free numbers.</p>
+<p>The <code>RandomTollFreePhoneNumber</code> transformer is designed to populate specified database columns with random toll-free
+phone numbers. This tool is essential for applications requiring the simulation of contact information, testing phone
+number validation systems, or anonymizing phone number data in datasets while focusing on toll-free numbers.</p>
 <h2 id="parameters">Parameters<a class="headerlink" href="#parameters" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
@@ -3140,7 +3165,7 @@
 <td>The name of the column to be affected</td>
 <td></td>
 <td>Yes</td>
-<td>text, varchar</td>
+<td>text, varchar, char, bpchar, citext</td>
 </tr>
 <tr>
 <td>keep_null</td>
@@ -3152,9 +3177,14 @@
 </tbody>
 </table>
 <h2 id="description">Description<a class="headerlink" href="#description" title="Permanent link">&para;</a></h2>
-<p>The <code>RandomTollFreePhoneNumber</code> transformer utilizes algorithms capable of generating random toll-free phone numbers with various formats and injects them into the designated database column. This feature allows for the creation of diverse and realistic toll-free contact information in datasets for development, testing, or data anonymization purposes.</p>
+<p>The <code>RandomTollFreePhoneNumber</code> transformer utilizes algorithms capable of generating random toll-free phone numbers
+with various formats and injects them into the designated database column. This feature allows for the creation of
+diverse and realistic toll-free contact information in datasets for development, testing, or data anonymization
+purposes.</p>
 <h2 id="example-populate-random-toll-free-phone-numbers-for-the-contact_information-table">Example: Populate random toll-free phone numbers for the <code>contact_information</code> table<a class="headerlink" href="#example-populate-random-toll-free-phone-numbers-for-the-contact_information-table" title="Permanent link">&para;</a></h2>
-<p>This example demonstrates configuring the <code>RandomTollFreePhoneNumber</code> transformer to populate the <code>phone_number</code> column in the <code>contact_information</code> table with random toll-free phone numbers. It is an effective method for simulating a variety of contact information entries with toll-free numbers.</p>
+<p>This example demonstrates configuring the <code>RandomTollFreePhoneNumber</code> transformer to populate the <code>phone_number</code> column
+in the <code>contact_information</code> table with random toll-free phone numbers. It is an effective method for simulating a
+variety of contact information entries with toll-free numbers.</p>
 <div class="highlight"><span class="filename">RandomTollFreePhoneNumber transformer example</span><pre><span></span><code><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">schema</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;public&quot;</span>
 <span class="w">  </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;contact_information&quot;</span>
 <span class="w">  </span><span class="nt">transformers</span><span class="p">:</span>
@@ -3163,7 +3193,10 @@
 <span class="w">        </span><span class="nt">column</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;phone_number&quot;</span>
 <span class="w">        </span><span class="nt">keep_null</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span>
 </code></pre></div>
-<p>In this configuration, the <code>phone_number</code> column will be updated with random toll-free phone numbers for each contact information entry, replacing any existing non-NULL values. If the <code>keep_null</code> parameter is set to <code>true</code>, existing NULL values in the column will be preserved, ensuring the integrity of records where toll-free phone number information is not applicable or provided.</p>
+<p>In this configuration, the <code>phone_number</code> column will be updated with random toll-free phone numbers for each contact
+information entry, replacing any existing non-NULL values. If the <code>keep_null</code> parameter is set to <code>true</code>, existing NULL
+values in the column will be preserved, ensuring the integrity of records where toll-free phone number information is
+not applicable or provided.</p>
 
 
 

@@ -124,7 +124,7 @@
               </button>
             
             
-  A new version 0.2.6 (2024.12.07) is <a href="https://github.com/GreenmaskIO/greenmask/releases/tag/v0.2.6">released</a>
+  A new version 0.2.8 (2025.02.25) is <a href="https://github.com/GreenmaskIO/greenmask/releases/tag/v0.2.8">released</a>
 
           </div>
           
@@ -286,7 +286,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="../../../release_notes/greenmask_0_2_7/" class="md-tabs__link">
+        <a href="../../../release_notes/greenmask_0_2_8/" class="md-tabs__link">
           
   
     
@@ -2467,6 +2467,8 @@
       
         
       
+        
+      
     
     
       
@@ -2497,6 +2499,27 @@
             Release notes
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../release_notes/greenmask_0_2_8/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Greenmask 0.2.8
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
             
               
                 
@@ -3122,7 +3145,10 @@
 
   <h1>RandomAmountWithCurrency</h1>
 
-<p>The <code>RandomAmountWithCurrency</code> transformer is specifically designed to populate specified database columns with random financial amounts accompanied by currency codes. Ideal for applications requiring the simulation of financial transactions, this utility enhances the realism of financial datasets by introducing variability in amounts and currencies.</p>
+<p>The <code>RandomAmountWithCurrency</code> transformer is specifically designed to populate specified database columns with random
+financial amounts accompanied by currency codes. Ideal for applications requiring the simulation of financial
+transactions, this utility enhances the realism of financial datasets by introducing variability in amounts and
+currencies.</p>
 <h2 id="parameters">Parameters<a class="headerlink" href="#parameters" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
@@ -3140,7 +3166,7 @@
 <td>The name of the column to be affected</td>
 <td></td>
 <td>Yes</td>
-<td>text, varchar</td>
+<td>text, varchar, char, bpchar, citext</td>
 </tr>
 <tr>
 <td>keep_null</td>
@@ -3152,9 +3178,14 @@
 </tbody>
 </table>
 <h2 id="description">Description<a class="headerlink" href="#description" title="Permanent link">&para;</a></h2>
-<p>This transformer automatically generates random financial amounts along with corresponding global currency codes (e. g., <code>250.00 USD</code>, <code>300.00 EUR</code>), injecting them into the designated database column. It provides a straightforward solution for populating financial records with varied and realistic data, suitable for testing payment systems, data anonymization, and simulation of economic models.</p>
+<p>This transformer automatically generates random financial amounts along with corresponding global currency codes (e. g.,
+<code>250.00 USD</code>, <code>300.00 EUR</code>), injecting them into the designated database column. It provides a straightforward solution
+for populating financial records with varied and realistic data, suitable for testing payment systems, data
+anonymization, and simulation of economic models.</p>
 <h2 id="example-populate-the-payments-table-with-random-amounts-and-currencies">Example: Populate the <code>payments</code> table with random amounts and currencies<a class="headerlink" href="#example-populate-the-payments-table-with-random-amounts-and-currencies" title="Permanent link">&para;</a></h2>
-<p>This example shows how to configure the <code>RandomAmountWithCurrency</code> transformer to populate the <code>payment_details</code> column in the <code>payments</code> table with random amounts and currencies. It is an effective approach to simulating a diverse range of payment transactions.</p>
+<p>This example shows how to configure the <code>RandomAmountWithCurrency</code> transformer to populate the <code>payment_details</code> column
+in the <code>payments</code> table with random amounts and currencies. It is an effective approach to simulating a diverse range of
+payment transactions.</p>
 <div class="highlight"><span class="filename">RandomAmountWithCurrency transformer example</span><pre><span></span><code><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">schema</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;public&quot;</span>
 <span class="w">  </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;payments&quot;</span>
 <span class="w">  </span><span class="nt">transformers</span><span class="p">:</span>
@@ -3163,7 +3194,9 @@
 <span class="w">        </span><span class="nt">column</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;payment_details&quot;</span>
 <span class="w">        </span><span class="nt">keep_null</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span>
 </code></pre></div>
-<p>In this setup, the <code>payment_details</code> column will be updated with random financial amounts and currency codes for each entry, replacing any existing non-NULL values. The <code>keep_null</code> parameter, when set to <code>true</code>, ensures that existing NULL values in the column remain unchanged, preserving the integrity of records without specified payment details.</p>
+<p>In this setup, the <code>payment_details</code> column will be updated with random financial amounts and currency codes for each
+entry, replacing any existing non-NULL values. The <code>keep_null</code> parameter, when set to <code>true</code>, ensures that existing NULL
+values in the column remain unchanged, preserving the integrity of records without specified payment details.</p>
 
 
 

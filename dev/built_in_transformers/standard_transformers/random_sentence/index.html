@@ -124,7 +124,7 @@
               </button>
             
             
-  A new version 0.2.6 (2024.12.07) is <a href="https://github.com/GreenmaskIO/greenmask/releases/tag/v0.2.6">released</a>
+  A new version 0.2.8 (2025.02.25) is <a href="https://github.com/GreenmaskIO/greenmask/releases/tag/v0.2.8">released</a>
 
           </div>
           
@@ -286,7 +286,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="../../../release_notes/greenmask_0_2_7/" class="md-tabs__link">
+        <a href="../../../release_notes/greenmask_0_2_8/" class="md-tabs__link">
           
   
     
@@ -2467,6 +2467,8 @@
       
         
       
+        
+      
     
     
       
@@ -2497,6 +2499,27 @@
             Release notes
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../release_notes/greenmask_0_2_8/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Greenmask 0.2.8
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
             
               
                 
@@ -3122,7 +3145,8 @@
 
   <h1>RandomSentence</h1>
 
-<p>The <code>RandomSentence</code> transformer is designed to populate specified database columns with random sentences. Ideal for simulating natural language text for user comments, testing NLP systems, or anonymizing textual data in databases.</p>
+<p>The <code>RandomSentence</code> transformer is designed to populate specified database columns with random sentences. Ideal for
+simulating natural language text for user comments, testing NLP systems, or anonymizing textual data in databases.</p>
 <h2 id="parameters">Parameters<a class="headerlink" href="#parameters" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
@@ -3140,7 +3164,7 @@
 <td>The name of the column to be affected</td>
 <td></td>
 <td>Yes</td>
-<td>text, varchar</td>
+<td>text, varchar, char, bpchar, citext</td>
 </tr>
 <tr>
 <td>keep_null</td>
@@ -3152,9 +3176,12 @@
 </tbody>
 </table>
 <h2 id="description">Description<a class="headerlink" href="#description" title="Permanent link">&para;</a></h2>
-<p>The <code>RandomSentence</code> transformer employs complex text generation algorithms or libraries to generate random sentences, injecting them into a designated database column without the need for specifying sentence length. This flexibility ensures the creation of varied and plausible text for a wide range of applications.</p>
+<p>The <code>RandomSentence</code> transformer employs complex text generation algorithms or libraries to generate random sentences,
+injecting them into a designated database column without the need for specifying sentence length. This flexibility
+ensures the creation of varied and plausible text for a wide range of applications.</p>
 <h2 id="example-populate-random-sentences-for-the-comments-table">Example: Populate random sentences for the <code>comments</code> table<a class="headerlink" href="#example-populate-random-sentences-for-the-comments-table" title="Permanent link">&para;</a></h2>
-<p>This example shows how to configure the <code>RandomSentence</code> transformer to populate the <code>comment</code> column in the <code>comments</code> table with random sentences. It is a straightforward method for simulating diverse user-generated content.</p>
+<p>This example shows how to configure the <code>RandomSentence</code> transformer to populate the <code>comment</code> column in the <code>comments</code>
+table with random sentences. It is a straightforward method for simulating diverse user-generated content.</p>
 <div class="highlight"><span class="filename">RandomSentence transformer example</span><pre><span></span><code><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">schema</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;public&quot;</span>
 <span class="w">  </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;comments&quot;</span>
 <span class="w">  </span><span class="nt">transformers</span><span class="p">:</span>
@@ -3163,7 +3190,9 @@
 <span class="w">        </span><span class="nt">column</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;comment&quot;</span>
 <span class="w">        </span><span class="nt">keep_null</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span>
 </code></pre></div>
-<p>In this configuration, the <code>comment</code> column will be updated with random sentences for each entry, replacing any existing non-NULL values. If <code>keep_null</code> is set to <code>true</code>, existing NULL values in the column will be preserved, maintaining the integrity of records where comments are not applicable.</p>
+<p>In this configuration, the <code>comment</code> column will be updated with random sentences for each entry, replacing any existing
+non-NULL values. If <code>keep_null</code> is set to <code>true</code>, existing NULL values in the column will be preserved, maintaining the
+integrity of records where comments are not applicable.</p>
 
 
 

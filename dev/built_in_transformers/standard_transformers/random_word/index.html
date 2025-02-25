@@ -124,7 +124,7 @@
               </button>
             
             
-  A new version 0.2.6 (2024.12.07) is <a href="https://github.com/GreenmaskIO/greenmask/releases/tag/v0.2.6">released</a>
+  A new version 0.2.8 (2025.02.25) is <a href="https://github.com/GreenmaskIO/greenmask/releases/tag/v0.2.8">released</a>
 
           </div>
           
@@ -286,7 +286,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="../../../release_notes/greenmask_0_2_7/" class="md-tabs__link">
+        <a href="../../../release_notes/greenmask_0_2_8/" class="md-tabs__link">
           
   
     
@@ -2467,6 +2467,8 @@
       
         
       
+        
+      
     
     
       
@@ -2497,6 +2499,27 @@
             Release notes
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../release_notes/greenmask_0_2_8/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Greenmask 0.2.8
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
             
               
                 
@@ -3122,7 +3145,8 @@
 
   <h1>RandomWord</h1>
 
-<p>The <code>RandomWord</code> transformer populates specified database columns with random words. Ideal for simulating textual content, enhancing linguistic datasets, or anonymizing text in databases.</p>
+<p>The <code>RandomWord</code> transformer populates specified database columns with random words. Ideal for simulating textual
+content, enhancing linguistic datasets, or anonymizing text in databases.</p>
 <h2 id="parameters">Parameters<a class="headerlink" href="#parameters" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
@@ -3140,7 +3164,7 @@
 <td>The name of the column to be affected</td>
 <td></td>
 <td>Yes</td>
-<td>text, varchar</td>
+<td>text, varchar, char, bpchar, citext</td>
 </tr>
 <tr>
 <td>keep_null</td>
@@ -3152,9 +3176,13 @@
 </tbody>
 </table>
 <h2 id="description">Description<a class="headerlink" href="#description" title="Permanent link">&para;</a></h2>
-<p>The <code>RandomWord</code> transformer employs a mechanism to inject random words into a designated database column, supporting the generation of linguistically plausible and contextually diverse text. This transformer is particularly beneficial for creating rich text datasets for development, testing, or educational purposes without specifying the language, focusing on versatility and ease of use.</p>
+<p>The <code>RandomWord</code> transformer employs a mechanism to inject random words into a designated database column, supporting
+the generation of linguistically plausible and contextually diverse text. This transformer is particularly beneficial
+for creating rich text datasets for development, testing, or educational purposes without specifying the language,
+focusing on versatility and ease of use.</p>
 <h2 id="example-populate-random-words-for-the-content-table">Example: Populate random words for the <code>content</code> table<a class="headerlink" href="#example-populate-random-words-for-the-content-table" title="Permanent link">&para;</a></h2>
-<p>This example demonstrates configuring the <code>RandomWord</code> transformer to populate the <code>tag</code> column in the <code>content</code> table with random words. It is a straightforward approach to adding varied textual data for tagging or content categorization.</p>
+<p>This example demonstrates configuring the <code>RandomWord</code> transformer to populate the <code>tag</code> column in the <code>content</code> table
+with random words. It is a straightforward approach to adding varied textual data for tagging or content categorization.</p>
 <div class="highlight"><span class="filename">RandomWord transformer example</span><pre><span></span><code><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">schema</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;public&quot;</span>
 <span class="w">  </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;content&quot;</span>
 <span class="w">  </span><span class="nt">transformers</span><span class="p">:</span>
@@ -3163,7 +3191,9 @@
 <span class="w">        </span><span class="nt">column</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;tag&quot;</span>
 <span class="w">        </span><span class="nt">keep_null</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span>
 </code></pre></div>
-<p>In this setup, the <code>tag</code> column will be updated with random words for each entry, replacing any existing non-NULL values. If <code>keep_null</code> is set to <code>true</code>, existing NULL values in the column will remain unchanged, maintaining data integrity for records where textual data is not applicable.</p>
+<p>In this setup, the <code>tag</code> column will be updated with random words for each entry, replacing any existing non-NULL
+values. If <code>keep_null</code> is set to <code>true</code>, existing NULL values in the column will remain unchanged, maintaining data
+integrity for records where textual data is not applicable.</p>
 
 
 

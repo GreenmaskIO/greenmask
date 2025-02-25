@@ -124,7 +124,7 @@
               </button>
             
             
-  A new version 0.2.6 (2024.12.07) is <a href="https://github.com/GreenmaskIO/greenmask/releases/tag/v0.2.6">released</a>
+  A new version 0.2.8 (2025.02.25) is <a href="https://github.com/GreenmaskIO/greenmask/releases/tag/v0.2.8">released</a>
 
           </div>
           
@@ -286,7 +286,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="../../../release_notes/greenmask_0_2_7/" class="md-tabs__link">
+        <a href="../../../release_notes/greenmask_0_2_8/" class="md-tabs__link">
           
   
     
@@ -2467,6 +2467,8 @@
       
         
       
+        
+      
     
     
       
@@ -2497,6 +2499,27 @@
             Release notes
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../release_notes/greenmask_0_2_8/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Greenmask 0.2.8
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
             
               
                 
@@ -3122,7 +3145,9 @@
 
   <h1>RandomPassword</h1>
 
-<p>The <code>RandomPassword</code> transformer is designed to populate specified database columns with random passwords. This utility is vital for applications that require the simulation of secure user data, testing systems with authentication mechanisms, or anonymizing real passwords in datasets.</p>
+<p>The <code>RandomPassword</code> transformer is designed to populate specified database columns with random passwords. This utility
+is vital for applications that require the simulation of secure user data, testing systems with authentication
+mechanisms, or anonymizing real passwords in datasets.</p>
 <h2 id="parameters">Parameters<a class="headerlink" href="#parameters" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
@@ -3140,7 +3165,7 @@
 <td>The name of the column to be affected</td>
 <td></td>
 <td>Yes</td>
-<td>text, varchar</td>
+<td>text, varchar, char, bpchar, citext</td>
 </tr>
 <tr>
 <td>keep_null</td>
@@ -3152,9 +3177,12 @@
 </tbody>
 </table>
 <h2 id="description">Description<a class="headerlink" href="#description" title="Permanent link">&para;</a></h2>
-<p>Employing sophisticated password generation algorithms or libraries, the <code>RandomPassword</code> transformer injects random passwords into the designated database column. This feature is particularly useful for creating realistic and secure user password datasets for development, testing, or demonstration purposes.</p>
+<p>Employing sophisticated password generation algorithms or libraries, the <code>RandomPassword</code> transformer injects random
+passwords into the designated database column. This feature is particularly useful for creating realistic and secure
+user password datasets for development, testing, or demonstration purposes.</p>
 <h2 id="example-populate-random-passwords-for-the-user_accounts-table">Example: Populate random passwords for the <code>user_accounts</code> table<a class="headerlink" href="#example-populate-random-passwords-for-the-user_accounts-table" title="Permanent link">&para;</a></h2>
-<p>This example demonstrates how to configure the <code>RandomPassword</code> transformer to populate the <code>password</code> column in the <code>user_accounts</code> table with random passwords.</p>
+<p>This example demonstrates how to configure the <code>RandomPassword</code> transformer to populate the <code>password</code> column in the
+<code>user_accounts</code> table with random passwords.</p>
 <div class="highlight"><span class="filename">RandomPassword transformer example</span><pre><span></span><code><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">schema</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;public&quot;</span>
 <span class="w">  </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;user_accounts&quot;</span>
 <span class="w">  </span><span class="nt">transformers</span><span class="p">:</span>
@@ -3163,7 +3191,9 @@
 <span class="w">        </span><span class="nt">column</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;password&quot;</span>
 <span class="w">        </span><span class="nt">keep_null</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span>
 </code></pre></div>
-<p>In this configuration, every entry in the <code>password</code> column will be updated with a random password. Setting the <code>keep_null</code> parameter to <code>true</code> will preserve existing NULL values in the column, accommodating scenarios where password data may not be applicable.</p>
+<p>In this configuration, every entry in the <code>password</code> column will be updated with a random password. Setting the
+<code>keep_null</code> parameter to <code>true</code> will preserve existing NULL values in the column, accommodating scenarios where password
+data may not be applicable.</p>
 
 
 

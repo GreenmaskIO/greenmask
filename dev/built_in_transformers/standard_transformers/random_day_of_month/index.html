@@ -124,7 +124,7 @@
               </button>
             
             
-  A new version 0.2.6 (2024.12.07) is <a href="https://github.com/GreenmaskIO/greenmask/releases/tag/v0.2.6">released</a>
+  A new version 0.2.8 (2025.02.25) is <a href="https://github.com/GreenmaskIO/greenmask/releases/tag/v0.2.8">released</a>
 
           </div>
           
@@ -286,7 +286,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="../../../release_notes/greenmask_0_2_7/" class="md-tabs__link">
+        <a href="../../../release_notes/greenmask_0_2_8/" class="md-tabs__link">
           
   
     
@@ -2467,6 +2467,8 @@
       
         
       
+        
+      
     
     
       
@@ -2497,6 +2499,27 @@
             Release notes
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../release_notes/greenmask_0_2_8/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Greenmask 0.2.8
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
             
               
                 
@@ -3122,7 +3145,10 @@
 
   <h1>RandomDayOfMonth</h1>
 
-<p>The <code>RandomDayOfMonth</code> transformer is designed to populate specified database columns with random day-of-the-month values. It is particularly useful for scenarios requiring the simulation of dates, such as generating random event dates, user sign-up dates, or any situation where the specific day of the month is needed without reference to the actual month or year.</p>
+<p>The <code>RandomDayOfMonth</code> transformer is designed to populate specified database columns with random day-of-the-month
+values. It is particularly useful for scenarios requiring the simulation of dates, such as generating random event
+dates, user sign-up dates, or any situation where the specific day of the month is needed without reference to the
+actual month or year.</p>
 <h2 id="parameters">Parameters<a class="headerlink" href="#parameters" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
@@ -3140,7 +3166,7 @@
 <td>The name of the column to be affected</td>
 <td></td>
 <td>Yes</td>
-<td>text, varchar, int2, int4, int8, numeric</td>
+<td>text, varchar, char, bpchar, citext, int2, int4, int8, numeric</td>
 </tr>
 <tr>
 <td>keep_null</td>
@@ -3152,9 +3178,12 @@
 </tbody>
 </table>
 <h2 id="description">Description<a class="headerlink" href="#description" title="Permanent link">&para;</a></h2>
-<p>Utilizing the <code>faker</code> library, the <code>RandomDayOfMonth</code> transformer generates random numerical values representing days of the month, ranging from 1 to 31. This allows for the easy insertion of random but plausible day-of-the-month data into a database, enhancing realism or anonymizing actual dates.</p>
+<p>Utilizing the <code>faker</code> library, the <code>RandomDayOfMonth</code> transformer generates random numerical values representing days of
+the month, ranging from 1 to 31. This allows for the easy insertion of random but plausible day-of-the-month data into a
+database, enhancing realism or anonymizing actual dates.</p>
 <h2 id="example-populate-random-days-of-the-month-for-the-events-table">Example: Populate random days of the month for the <code>events</code> table<a class="headerlink" href="#example-populate-random-days-of-the-month-for-the-events-table" title="Permanent link">&para;</a></h2>
-<p>This example illustrates how to configure the <code>RandomDayOfMonth</code> transformer to fill the <code>event_day</code> column in the <code>events</code> table with random day-of-the-month values, facilitating the simulation of varied event scheduling.</p>
+<p>This example illustrates how to configure the <code>RandomDayOfMonth</code> transformer to fill the <code>event_day</code> column in the
+<code>events</code> table with random day-of-the-month values, facilitating the simulation of varied event scheduling.</p>
 <div class="highlight"><span class="filename">RandomDayOfMonth transformer example</span><pre><span></span><code><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">schema</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;public&quot;</span>
 <span class="w">  </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;events&quot;</span>
 <span class="w">  </span><span class="nt">transformers</span><span class="p">:</span>
@@ -3163,7 +3192,9 @@
 <span class="w">        </span><span class="nt">column</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;event_day&quot;</span>
 <span class="w">        </span><span class="nt">keep_null</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span>
 </code></pre></div>
-<p>With this setup, the <code>event_day</code> column will be updated with random day-of-the-month values, replacing any existing non-NULL values. Setting <code>keep_null</code> to <code>true</code> ensures that NULL values in the column are left unchanged, maintaining any existing gaps in the data.</p>
+<p>With this setup, the <code>event_day</code> column will be updated with random day-of-the-month values, replacing any existing
+non-NULL values. Setting <code>keep_null</code> to <code>true</code> ensures that NULL values in the column are left unchanged, maintaining
+any existing gaps in the data.</p>
 
 
 

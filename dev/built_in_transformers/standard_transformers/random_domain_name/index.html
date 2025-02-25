@@ -124,7 +124,7 @@
               </button>
             
             
-  A new version 0.2.6 (2024.12.07) is <a href="https://github.com/GreenmaskIO/greenmask/releases/tag/v0.2.6">released</a>
+  A new version 0.2.8 (2025.02.25) is <a href="https://github.com/GreenmaskIO/greenmask/releases/tag/v0.2.8">released</a>
 
           </div>
           
@@ -286,7 +286,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="../../../release_notes/greenmask_0_2_7/" class="md-tabs__link">
+        <a href="../../../release_notes/greenmask_0_2_8/" class="md-tabs__link">
           
   
     
@@ -2467,6 +2467,8 @@
       
         
       
+        
+      
     
     
       
@@ -2497,6 +2499,27 @@
             Release notes
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../release_notes/greenmask_0_2_8/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Greenmask 0.2.8
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
             
               
                 
@@ -3122,7 +3145,9 @@
 
   <h1>RandomDomainName</h1>
 
-<p>The <code>RandomDomainName</code> transformer is designed to populate specified database columns with random domain names. This tool is invaluable for simulating web data, testing applications that interact with domain names, or anonymizing real domain information in datasets.</p>
+<p>The <code>RandomDomainName</code> transformer is designed to populate specified database columns with random domain names. This
+tool is invaluable for simulating web data, testing applications that interact with domain names, or anonymizing real
+domain information in datasets.</p>
 <h2 id="parameters">Parameters<a class="headerlink" href="#parameters" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
@@ -3140,7 +3165,7 @@
 <td>The name of the column to be affected</td>
 <td></td>
 <td>Yes</td>
-<td>text, varchar</td>
+<td>text, varchar, char, bpchar, citext</td>
 </tr>
 <tr>
 <td>keep_null</td>
@@ -3152,9 +3177,14 @@
 </tbody>
 </table>
 <h2 id="description">Description<a class="headerlink" href="#description" title="Permanent link">&para;</a></h2>
-<p>By leveraging an algorithm or library capable of generating believable domain names, the <code>RandomDomainName</code> transformer introduces random domain names into the specified database column. Each generated domain name includes a second-level domain (SLD) and a top-level domain (TLD), such as "example.com" or "website.org," providing a wide range of plausible web addresses for database enrichment.</p>
+<p>By leveraging an algorithm or library capable of generating believable domain names, the <code>RandomDomainName</code> transformer
+introduces random domain names into the specified database column. Each generated domain name includes a second-level
+domain (SLD) and a top-level domain (TLD), such as "example.com" or "website.org," providing a wide range of plausible
+web addresses for database enrichment.</p>
 <h2 id="example-populate-random-domain-names-for-the-websites-table">Example: Populate random domain names for the <code>websites</code> table<a class="headerlink" href="#example-populate-random-domain-names-for-the-websites-table" title="Permanent link">&para;</a></h2>
-<p>This example demonstrates configuring the <code>RandomDomainName</code> transformer to populate the <code>domain</code> column in the <code>websites</code> table with random domain names. This approach facilitates the creation of a diverse and realistic set of web addresses for testing, simulation, or data anonymization purposes.</p>
+<p>This example demonstrates configuring the <code>RandomDomainName</code> transformer to populate the <code>domain</code> column in the
+<code>websites</code> table with random domain names. This approach facilitates the creation of a diverse and realistic set of web
+addresses for testing, simulation, or data anonymization purposes.</p>
 <div class="highlight"><span class="filename">RandomDomainName transformer example</span><pre><span></span><code><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">schema</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;public&quot;</span>
 <span class="w">  </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;websites&quot;</span>
 <span class="w">  </span><span class="nt">transformers</span><span class="p">:</span>
@@ -3163,7 +3193,9 @@
 <span class="w">        </span><span class="nt">column</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;domain&quot;</span>
 <span class="w">        </span><span class="nt">keep_null</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span>
 </code></pre></div>
-<p>In this setup, the <code>domain</code> column will be updated with random domain names for each entry, replacing any existing non-NULL values. If <code>keep_null</code> is set to <code>true</code>, the transformer will preserve existing NULL values in the column, maintaining the integrity of data where domain information is not applicable.</p>
+<p>In this setup, the <code>domain</code> column will be updated with random domain names for each entry, replacing any existing
+non-NULL values. If <code>keep_null</code> is set to <code>true</code>, the transformer will preserve existing NULL values in the column,
+maintaining the integrity of data where domain information is not applicable.</p>
 
 
 

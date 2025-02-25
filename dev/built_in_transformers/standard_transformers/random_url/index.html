@@ -124,7 +124,7 @@
               </button>
             
             
-  A new version 0.2.6 (2024.12.07) is <a href="https://github.com/GreenmaskIO/greenmask/releases/tag/v0.2.6">released</a>
+  A new version 0.2.8 (2025.02.25) is <a href="https://github.com/GreenmaskIO/greenmask/releases/tag/v0.2.8">released</a>
 
           </div>
           
@@ -286,7 +286,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="../../../release_notes/greenmask_0_2_7/" class="md-tabs__link">
+        <a href="../../../release_notes/greenmask_0_2_8/" class="md-tabs__link">
           
   
     
@@ -2467,6 +2467,8 @@
       
         
       
+        
+      
     
     
       
@@ -2497,6 +2499,27 @@
             Release notes
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../release_notes/greenmask_0_2_8/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Greenmask 0.2.8
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
             
               
                 
@@ -3122,7 +3145,9 @@
 
   <h1>RandomURL</h1>
 
-<p>The <code>RandomURL</code> transformer is designed to populate specified database columns with random URL (Uniform Resource Locator) addresses. This tool is highly beneficial for simulating web content, testing applications that require URL input, or anonymizing real web addresses in datasets.</p>
+<p>The <code>RandomURL</code> transformer is designed to populate specified database columns with random URL (Uniform Resource
+Locator) addresses. This tool is highly beneficial for simulating web content, testing applications that require URL
+input, or anonymizing real web addresses in datasets.</p>
 <h2 id="parameters">Parameters<a class="headerlink" href="#parameters" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
@@ -3140,7 +3165,7 @@
 <td>The name of the column to be affected</td>
 <td></td>
 <td>Yes</td>
-<td>text, varchar</td>
+<td>text, varchar, char, bpchar, citext</td>
 </tr>
 <tr>
 <td>keep_null</td>
@@ -3152,9 +3177,12 @@
 </tbody>
 </table>
 <h2 id="description">Description<a class="headerlink" href="#description" title="Permanent link">&para;</a></h2>
-<p>Utilizing advanced algorithms or libraries for generating URL strings, the <code>RandomURL</code> transformer injects random, plausible URLs into the designated database column. Each generated URL is structured to include the protocol (e. g., "http://", "https://"), domain name, and path, offering a realistic range of web addresses for various applications.</p>
+<p>Utilizing advanced algorithms or libraries for generating URL strings, the <code>RandomURL</code> transformer injects random,
+plausible URLs into the designated database column. Each generated URL is structured to include the protocol (e. g., "
+http://", "https://"), domain name, and path, offering a realistic range of web addresses for various applications.</p>
 <h2 id="example-populate-random-urls-for-the-webpages-table">Example: Populate random URLs for the <code>webpages</code> table<a class="headerlink" href="#example-populate-random-urls-for-the-webpages-table" title="Permanent link">&para;</a></h2>
-<p>This example illustrates how to configure the <code>RandomURL</code> transformer to populate the <code>page_url</code> column in a <code>webpages</code> table with random URLs, providing a broad spectrum of web addresses for testing or data simulation purposes.</p>
+<p>This example illustrates how to configure the <code>RandomURL</code> transformer to populate the <code>page_url</code> column in a <code>webpages</code>
+table with random URLs, providing a broad spectrum of web addresses for testing or data simulation purposes.</p>
 <div class="highlight"><span class="filename">RandomURL transformer example</span><pre><span></span><code><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">schema</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;public&quot;</span>
 <span class="w">  </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;webpages&quot;</span>
 <span class="w">  </span><span class="nt">transformers</span><span class="p">:</span>
@@ -3163,7 +3191,9 @@
 <span class="w">        </span><span class="nt">column</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;page_url&quot;</span>
 <span class="w">        </span><span class="nt">keep_null</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span>
 </code></pre></div>
-<p>With this configuration, the <code>page_url</code> column will be filled with random URLs for each entry, replacing any existing non-NULL values. Setting the <code>keep_null</code> parameter to <code>true</code> allows for the preservation of existing NULL values within the column, accommodating scenarios where URL data may be intentionally omitted.</p>
+<p>With this configuration, the <code>page_url</code> column will be filled with random URLs for each entry, replacing any existing
+non-NULL values. Setting the <code>keep_null</code> parameter to <code>true</code> allows for the preservation of existing NULL values within
+the column, accommodating scenarios where URL data may be intentionally omitted.</p>
 
 
 

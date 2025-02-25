@@ -124,7 +124,7 @@
               </button>
             
             
-  A new version 0.2.6 (2024.12.07) is <a href="https://github.com/GreenmaskIO/greenmask/releases/tag/v0.2.6">released</a>
+  A new version 0.2.8 (2025.02.25) is <a href="https://github.com/GreenmaskIO/greenmask/releases/tag/v0.2.8">released</a>
 
           </div>
           
@@ -286,7 +286,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="../../release_notes/greenmask_0_2_7/" class="md-tabs__link">
+        <a href="../../release_notes/greenmask_0_2_8/" class="md-tabs__link">
           
   
     
@@ -2498,6 +2498,8 @@
       
         
       
+        
+      
     
     
       
@@ -2528,6 +2530,27 @@
             Release notes
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../release_notes/greenmask_0_2_8/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Greenmask 0.2.8
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
             
               
                 
@@ -3214,6 +3237,7 @@ allowing you to configure the restoration process as needed.</p>
       --inserts                                restore data as INSERT commands, rather than COPY
   -j, --jobs int                               use this many parallel jobs to restore (default 1)
       --list-format string                     use table of contents in format of text, json or yaml (default &quot;text&quot;)
+  -B, --no-blobs                               exclude large objects from restoration (large objects will be created as empty placeholders)
       --no-comments                            do not restore comments
       --no-data-for-failed-tables              do not restore data of tables that could not be created
   -O, --no-owner                               skip restoration of object ownership

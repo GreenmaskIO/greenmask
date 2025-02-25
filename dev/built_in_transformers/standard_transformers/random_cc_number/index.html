@@ -124,7 +124,7 @@
               </button>
             
             
-  A new version 0.2.6 (2024.12.07) is <a href="https://github.com/GreenmaskIO/greenmask/releases/tag/v0.2.6">released</a>
+  A new version 0.2.8 (2025.02.25) is <a href="https://github.com/GreenmaskIO/greenmask/releases/tag/v0.2.8">released</a>
 
           </div>
           
@@ -286,7 +286,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="../../../release_notes/greenmask_0_2_7/" class="md-tabs__link">
+        <a href="../../../release_notes/greenmask_0_2_8/" class="md-tabs__link">
           
   
     
@@ -2467,6 +2467,8 @@
       
         
       
+        
+      
     
     
       
@@ -2497,6 +2499,27 @@
             Release notes
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../release_notes/greenmask_0_2_8/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Greenmask 0.2.8
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
             
               
                 
@@ -3122,7 +3145,9 @@
 
   <h1>RandomCCNumber</h1>
 
-<p>The <code>RandomCCNumber</code> transformer is specifically designed to populate specified database columns with random credit card numbers. This utility is crucial for applications that involve simulating financial data, testing payment systems, or anonymizing real credit card numbers in datasets.</p>
+<p>The <code>RandomCCNumber</code> transformer is specifically designed to populate specified database columns with random credit card
+numbers. This utility is crucial for applications that involve simulating financial data, testing payment systems, or
+anonymizing real credit card numbers in datasets.</p>
 <h2 id="parameters">Parameters<a class="headerlink" href="#parameters" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
@@ -3140,7 +3165,7 @@
 <td>The name of the column to be affected</td>
 <td></td>
 <td>Yes</td>
-<td>text, varchar</td>
+<td>text, varchar, char, bpchar, citext</td>
 </tr>
 <tr>
 <td>keep_null</td>
@@ -3152,9 +3177,14 @@
 </tbody>
 </table>
 <h2 id="description">Description<a class="headerlink" href="#description" title="Permanent link">&para;</a></h2>
-<p>By leveraging algorithms capable of generating plausible credit card numbers that adhere to standard credit card validation rules (such as the Luhn algorithm), the <code>RandomCCNumber</code> transformer injects random credit card numbers into the designated database column. This approach ensures the generation of credit card numbers that are realistic for testing and development purposes, without compromising real-world applicability and security.</p>
+<p>By leveraging algorithms capable of generating plausible credit card numbers that adhere to standard credit card
+validation rules (such as the Luhn algorithm), the <code>RandomCCNumber</code> transformer injects random credit card numbers into
+the designated database column. This approach ensures the generation of credit card numbers that are realistic for
+testing and development purposes, without compromising real-world applicability and security.</p>
 <h2 id="example-populate-random-credit-card-numbers-for-the-payment_information-table">Example: Populate random credit card numbers for the <code>payment_information</code> table<a class="headerlink" href="#example-populate-random-credit-card-numbers-for-the-payment_information-table" title="Permanent link">&para;</a></h2>
-<p>This example demonstrates configuring the <code>RandomCCNumber</code> transformer to populate the <code>cc_number</code> column in the <code>payment_information</code> table with random credit card numbers. It is an effective strategy for creating a realistic set of payment data for application testing or data anonymization.</p>
+<p>This example demonstrates configuring the <code>RandomCCNumber</code> transformer to populate the <code>cc_number</code> column in the
+<code>payment_information</code> table with random credit card numbers. It is an effective strategy for creating a realistic set of
+payment data for application testing or data anonymization.</p>
 <div class="highlight"><span class="filename">RandomCCNumber transformer example</span><pre><span></span><code><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">schema</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;public&quot;</span>
 <span class="w">  </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;payment_information&quot;</span>
 <span class="w">  </span><span class="nt">transformers</span><span class="p">:</span>
@@ -3163,7 +3193,9 @@
 <span class="w">        </span><span class="nt">column</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;cc_number&quot;</span>
 <span class="w">        </span><span class="nt">keep_null</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span>
 </code></pre></div>
-<p>With this setup, the <code>cc_number</code> column will be updated with random credit card numbers for each entry, replacing any existing non-NULL values. If the <code>keep_null</code> parameter is set to <code>true</code>, it will ensure that existing NULL values in the column are preserved, maintaining the integrity of records where credit card information is not applicable or available.</p>
+<p>With this setup, the <code>cc_number</code> column will be updated with random credit card numbers for each entry, replacing any
+existing non-NULL values. If the <code>keep_null</code> parameter is set to <code>true</code>, it will ensure that existing NULL values in the
+column are preserved, maintaining the integrity of records where credit card information is not applicable or available.</p>
 
 
 

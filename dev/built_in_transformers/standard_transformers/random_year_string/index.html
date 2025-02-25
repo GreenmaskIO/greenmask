@@ -124,7 +124,7 @@
               </button>
             
             
-  A new version 0.2.6 (2024.12.07) is <a href="https://github.com/GreenmaskIO/greenmask/releases/tag/v0.2.6">released</a>
+  A new version 0.2.8 (2025.02.25) is <a href="https://github.com/GreenmaskIO/greenmask/releases/tag/v0.2.8">released</a>
 
           </div>
           
@@ -286,7 +286,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="../../../release_notes/greenmask_0_2_7/" class="md-tabs__link">
+        <a href="../../../release_notes/greenmask_0_2_8/" class="md-tabs__link">
           
   
     
@@ -2467,6 +2467,8 @@
       
         
       
+        
+      
     
     
       
@@ -2497,6 +2499,27 @@
             Release notes
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../release_notes/greenmask_0_2_8/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Greenmask 0.2.8
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
             
               
                 
@@ -3122,7 +3145,9 @@
 
   <h1>RandomYearString</h1>
 
-<p>The <code>RandomYearString</code> transformer is designed to populate specified database columns with random year strings. It is ideal for scenarios that require the representation of years without specific dates, such as manufacturing years of products, birth years of users, or any other context where only the year is relevant.</p>
+<p>The <code>RandomYearString</code> transformer is designed to populate specified database columns with random year strings. It is
+ideal for scenarios that require the representation of years without specific dates, such as manufacturing years of
+products, birth years of users, or any other context where only the year is relevant.</p>
 <h2 id="parameters">Parameters<a class="headerlink" href="#parameters" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
@@ -3140,7 +3165,7 @@
 <td>The name of the column to be affected</td>
 <td></td>
 <td>Yes</td>
-<td>text, varchar, int2, int4, int8, numeric</td>
+<td>text, varchar, char, bpchar, citext, int2, int4, int8, numeric</td>
 </tr>
 <tr>
 <td>keep_null</td>
@@ -3152,9 +3177,12 @@
 </tbody>
 </table>
 <h2 id="description">Description<a class="headerlink" href="#description" title="Permanent link">&para;</a></h2>
-<p>The <code>RandomYearString</code> transformer leverages the <code>faker</code> library to generate strings representing random years. This allows for the easy generation of year data in a string format, adding versatility and realism to datasets that need to simulate or anonymize year-related information.</p>
+<p>The <code>RandomYearString</code> transformer leverages the <code>faker</code> library to generate strings representing random years. This
+allows for the easy generation of year data in a string format, adding versatility and realism to datasets that need to
+simulate or anonymize year-related information.</p>
 <h2 id="example-populate-random-year-strings-for-the-products-table">Example: Populate random year strings for the <code>products</code> table<a class="headerlink" href="#example-populate-random-year-strings-for-the-products-table" title="Permanent link">&para;</a></h2>
-<p>This example shows how to use the <code>RandomYearString</code> transformer to fill the <code>manufacturing_year</code> column in the <code>products</code> table with random year strings, simulating the diversity of manufacturing dates.</p>
+<p>This example shows how to use the <code>RandomYearString</code> transformer to fill the <code>manufacturing_year</code> column in the
+<code>products</code> table with random year strings, simulating the diversity of manufacturing dates.</p>
 <div class="highlight"><span class="filename">RandomYearString transformer example</span><pre><span></span><code><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">schema</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;public&quot;</span>
 <span class="w">  </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;products&quot;</span>
 <span class="w">  </span><span class="nt">transformers</span><span class="p">:</span>
@@ -3163,7 +3191,8 @@
 <span class="w">        </span><span class="nt">column</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;manufacturing_year&quot;</span>
 <span class="w">        </span><span class="nt">keep_null</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span>
 </code></pre></div>
-<p>In this configuration, the <code>manufacturing_year</code> column will be populated with random year strings, replacing any existing non-NULL values. If <code>keep_null</code> is set to <code>true</code>, then existing NULL values in the column will be preserved.</p>
+<p>In this configuration, the <code>manufacturing_year</code> column will be populated with random year strings, replacing any
+existing non-NULL values. If <code>keep_null</code> is set to <code>true</code>, then existing NULL values in the column will be preserved.</p>
 
 
 

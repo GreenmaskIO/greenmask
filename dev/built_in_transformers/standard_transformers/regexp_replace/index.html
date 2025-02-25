@@ -124,7 +124,7 @@
               </button>
             
             
-  A new version 0.2.6 (2024.12.07) is <a href="https://github.com/GreenmaskIO/greenmask/releases/tag/v0.2.6">released</a>
+  A new version 0.2.8 (2025.02.25) is <a href="https://github.com/GreenmaskIO/greenmask/releases/tag/v0.2.8">released</a>
 
           </div>
           
@@ -286,7 +286,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="../../../release_notes/greenmask_0_2_7/" class="md-tabs__link">
+        <a href="../../../release_notes/greenmask_0_2_8/" class="md-tabs__link">
           
   
     
@@ -2467,6 +2467,8 @@
       
         
       
+        
+      
     
     
       
@@ -2497,6 +2499,27 @@
             Release notes
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../release_notes/greenmask_0_2_8/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Greenmask 0.2.8
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
             
               
                 
@@ -3140,7 +3163,7 @@
 <td>The name of the column to be affected</td>
 <td></td>
 <td>Yes</td>
-<td>text, varchar</td>
+<td>text, varchar, char, bpchar, citext</td>
 </tr>
 <tr>
 <td>regexp</td>
@@ -3159,9 +3182,12 @@
 </tbody>
 </table>
 <h2 id="description">Description<a class="headerlink" href="#description" title="Permanent link">&para;</a></h2>
-<p>The <code>RegexpReplace</code> transformer replaces a string according to the applied regular expression. The valid regular expressions syntax is the same as the general syntax used by Perl, Python, and other languages. To be precise, it is the syntax accepted by RE2 and described in the <a href="https://golang.org/s/re2syntax">Golang documentation</a>, except for <code>\C</code>.</p>
+<p>The <code>RegexpReplace</code> transformer replaces a string according to the applied regular expression. The valid regular
+expressions syntax is the same as the general syntax used by Perl, Python, and other languages. To be precise, it is the
+syntax accepted by RE2 and described in the <a href="https://golang.org/s/re2syntax">Golang documentation</a>, except for <code>\C</code>.</p>
 <h2 id="example-removing-leading-prefix-from-loginid-column-value">Example: Removing leading prefix from <code>loginid</code> column value<a class="headerlink" href="#example-removing-leading-prefix-from-loginid-column-value" title="Permanent link">&para;</a></h2>
-<p>In the following example, the original values from <code>loginid</code> matching the <code>adventure-works\{{ id_name }}</code> format are replaced with <code>{{ id_name }}</code>.</p>
+<p>In the following example, the original values from <code>loginid</code> matching the <code>adventure-works\{{ id_name }}</code> format are
+replaced with <code>{{ id_name }}</code>.</p>
 <div class="highlight"><span class="filename">RegexpReplace transformer example</span><pre><span></span><code><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">schema</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;humanresources&quot;</span>
 <span class="w">  </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;employee&quot;</span>
 <span class="w">  </span><span class="nt">transformers</span><span class="p">:</span>
