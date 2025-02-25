@@ -40,7 +40,7 @@ var RandomIpDefinition = utils.NewTransformerDefinition(
 		"Column name",
 	).SetIsColumn(toolkit.NewColumnProperties().
 		SetAffected(true).
-		SetAllowedColumnTypes("text", "varchar", "inet"),
+		SetAllowedColumnTypes("text", "varchar", "char", "bpchar", "citext", "inet"),
 	).SetRequired(true),
 
 	toolkit.MustNewParameterDefinition(

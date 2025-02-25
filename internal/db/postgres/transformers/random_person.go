@@ -39,7 +39,7 @@ var randomPersonTransformerDefinition = utils.NewTransformerDefinition(
 		"set specific gender (possible values: Male, Female, Any)",
 	).SetDynamicMode(
 		toolkit.NewDynamicModeProperties().
-			SetCompatibleTypes("text", "varchar", "char", "bpchar"),
+			SetCompatibleTypes("text", "varchar", "char", "bpchar", "citext"),
 	).SetDefaultValue(toolkit.ParamsValue("Any")),
 
 	toolkit.MustNewParameterDefinition(
