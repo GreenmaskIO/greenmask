@@ -76,7 +76,7 @@ column in the `audit_logs` table that contains `order_id` field, you can use thi
 
 !!! info
 
-    You do not need to define primry key of the referenced table. Greenmask will automatically resolve it and use it in
+    You do not need to define primary key of the referenced table. Greenmask will automatically resolve it and use it in
     the join condition.
 
 ```yaml title="Virtual references example"
