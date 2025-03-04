@@ -25,6 +25,7 @@ Standard transformers are ready-to-use methods that require no customization and
 1. [RandomMonthName](random_month_name.md) — generates the name of a random month.
 1. [RandomYearString](random_year_string.md) — generates a random year as a string.
 1. [RandomCentury](random_century.md) — generates a random century.
+1. [RandomCompany](random_company.md) — generates a random company.
 1. [RandomTimezone](random_timezone.md) — generates a random timezone.
 1. [RandomEmail](random_email.md) — generates a random email address.
 1. [RandomUsername](random_username.md) — generates a random username.

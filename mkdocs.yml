@@ -92,6 +92,7 @@ nav:
               - RandomMonthName: built_in_transformers/standard_transformers/random_month_name.md
               - RandomYearString: built_in_transformers/standard_transformers/random_year_string.md
               - RandomCentury: built_in_transformers/standard_transformers/random_century.md
+              - RandomCompany: built_in_transformers/standard_transformers/random_company.md
               - RandomTimezone: built_in_transformers/standard_transformers/random_timezone.md
               - RandomEmail: built_in_transformers/standard_transformers/random_email.md
               - RandomUsername: built_in_transformers/standard_transformers/random_username.md
