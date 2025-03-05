@@ -6,43 +6,15 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/jackc/pgx/v5"
 	"github.com/rs/zerolog/log"
 	"golang.org/x/sync/errgroup"
 
 	"github.com/greenmaskio/greenmask/internal/storages"
 )
 
-const (
-	MetadataJsonFileName = "metadata.json"
-	HeartBeatFileName    = "heartbeat"
-)
-
-const (
-	HeartBeatWriteInterval = 15 * time.Minute
-)
-
-const (
-	HeartBeatDoneContent       = "done"
-	HeartBeatInProgressContent = "in-progress"
-)
-
-type Connector interface {
-	WithTx(ctx context.Context, fn func(ctx context.Context, tx pgx.Tx) error) error
-	GetConn() *pgx.Conn
-}
-
 type dumpTask interface {
 	Dump(ctx context.Context, st storages.Storager) error
 	DebugInfo() string
-}
-
-// introspector - interface to introspect the database
-//
-// It embeds the Config builder interface to build the config
-type introspector interface {
-	Introspect() error
-	GetTables() []Table
 }
 
 type taskProducer interface {

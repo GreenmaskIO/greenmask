@@ -25,50 +25,61 @@ import (
 	"github.com/spf13/viper"
 
 	cmdInternals "github.com/greenmaskio/greenmask/internal/db/mysql"
-	"github.com/greenmaskio/greenmask/internal/storages/builder"
+
 	"github.com/greenmaskio/greenmask/internal/utils/logger"
+	"github.com/greenmaskio/greenmask/v1/internal/storages"
 )
 
 var (
 	dumpCmd = &cobra.Command{
 		Use:   "dump",
 		Short: "perform a logical dump, transform data, and store it in storage",
-		Run: func(cmd *cobra.Command, args []string) {
-			if err := logger.SetLogLevel(Config.Log.Level, Config.Log.Format); err != nil {
-				log.Fatal().Err(err).Msg("")
-			}
-
-			ctx, cancel := context.WithCancel(context.Background())
-			defer cancel()
-			st, err := builder.GetStorage(ctx, &Config.Storage, &Config.Log)
-			if err != nil {
-				log.Fatal().Err(err).Msg("fatal")
-			}
-			st = st.SubStorage(strconv.FormatInt(time.Now().UnixMilli(), 10), true)
-
-			if Config.Common.TempDirectory == "" {
-				log.Fatal().Msg("common.tmp_dir cannot be empty")
-			}
-
-			dump := cmdInternals.NewDump(&Config.Dump, st, "mysqldump")
-
-			if err := dump.Run(ctx); err != nil {
-				log.Fatal().Err(err).Msg("cannot make a backup")
-			}
-
-		},
+		Run:   run,
 	}
 )
 
+func run(cmd *cobra.Command, args []string) {
+	if err := logger.SetLogLevel(Config.Log.Level, Config.Log.Format); err != nil {
+		log.Fatal().
+			Err(err).
+			Msg("setup loger")
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	st, err := storages.GetStorage(ctx, Config.Storage, Config.Log)
+	if err != nil {
+		log.Fatal().
+			Err(err).
+			Msg("get storage")
+	}
+	st = st.SubStorage(strconv.FormatInt(time.Now().UnixMilli(), 10), true)
+
+	validateConfig()
+
+	dump := cmdInternals.NewDump(&Config.Dump, st, "mysqldump")
+
+	if err := dump.Run(ctx); err != nil {
+		log.Fatal().Err(err).Msg("cannot make a backup")
+	}
+}
+
+func validateConfig() {
+	if Config.Common.TempDirectory == "" {
+		log.Fatal().
+			Msg("common.tmp_dir cannot be empty")
+	}
+}
+
 func init() {
 	// General options:
-	//dumpCmd.Flags().StringP("file", "f", "", "output file or directory name")
+	dumpCmd.Flags().StringP("file", "f", "", "output file or directory name")
 
 	for _, flagName := range []string{
 		//"file", "jobs", "verbose", "compress", "dbname", "host", "username", "lock-wait-timeout", "no-sync",
 	} {
 		flag := dumpCmd.Flags().Lookup(flagName)
-		if err := viper.BindPFlag(fmt.Sprintf("%s.%s", "dump.pg_dump_options", flagName), flag); err != nil {
+		if err := viper.BindPFlag(fmt.Sprintf("%s.%s", "dump.options", flagName), flag); err != nil {
 			log.Fatal().Err(err).Msg("")
 		}
 	}
