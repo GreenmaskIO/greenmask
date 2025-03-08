@@ -8,7 +8,10 @@ import (
 	"golang.org/x/sync/errgroup"
 
 	"github.com/greenmaskio/greenmask/internal/utils/ioutils"
+	"github.com/greenmaskio/greenmask/v1/internal/common/utils"
 )
+
+const executable = "mysqldump"
 
 type options interface {
 	SchemaDumpParams() ([]string, error)
@@ -19,12 +22,14 @@ type storager interface {
 }
 
 type DumpCli struct {
-	opt options
+	executable string
+	opt        options
 }
 
 func NewDumpCli(opt options) *DumpCli {
 	return &DumpCli{
-		opt: opt,
+		executable: executable,
+		opt:        opt,
 	}
 }
 
@@ -33,7 +38,6 @@ func (d *DumpCli) Run(ctx context.Context, st storager) error {
 	if err != nil {
 		return fmt.Errorf("cannot get dump params: %w", err)
 	}
-
 	w, r := ioutils.NewGzipPipe(false)
 	eg, gtx := errgroup.WithContext(ctx)
 	eg.Go(func() error {
@@ -45,7 +49,7 @@ func (d *DumpCli) Run(ctx context.Context, st storager) error {
 
 	eg.Go(func() error {
 		defer w.Close()
-		if err := cmdrunner.NewCmdRunner(d.binPath, params, w).Run(ctx); err != nil {
+		if err := utils.NewCmdRunner(d.executable, params).ExecuteCmdAndWriteStdout(ctx, w); err != nil {
 			return fmt.Errorf("cannot run mysqldump: %w", err)
 		}
 		return nil
