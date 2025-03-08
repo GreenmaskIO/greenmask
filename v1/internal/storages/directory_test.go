@@ -1,4 +1,4 @@
-package directory
+package storages
 
 import (
 	"bytes"
@@ -13,7 +13,7 @@ import (
 type DirectorySuite struct {
 	suite.Suite
 	tmpDir string
-	st     *Storage
+	st     *DirectoryStorage
 }
 
 func (suite *DirectorySuite) SetupSuite() {
@@ -26,7 +26,7 @@ func (suite *DirectorySuite) SetupSuite() {
 	suite.tmpDir, err = os.MkdirTemp(tempDir, "directory_storage_unit_test_")
 	suite.Require().NoError(err)
 
-	suite.st, err = NewStorage(&Config{Path: suite.tmpDir})
+	suite.st, err = NewDirectoryStorage(&DirectoryConfig{Path: suite.tmpDir})
 	suite.Require().NoError(err)
 }
 

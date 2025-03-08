@@ -1,4 +1,4 @@
-package common
+package dump
 
 import (
 	"context"
@@ -9,7 +9,7 @@ import (
 	"github.com/rs/zerolog/log"
 	"golang.org/x/sync/errgroup"
 
-	"github.com/greenmaskio/greenmask/internal/storages"
+	"github.com/greenmaskio/greenmask/v1/internal/storages"
 )
 
 type dumpTask interface {

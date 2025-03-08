@@ -17,18 +17,12 @@ package mysql
 import (
 	"context"
 	"fmt"
-	"strconv"
-	"time"
 
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
-	cmdInternals "github.com/greenmaskio/greenmask/internal/db/mysql"
-
-	"github.com/greenmaskio/greenmask/internal/utils/logger"
-	"github.com/greenmaskio/greenmask/v1/internal/common"
-	"github.com/greenmaskio/greenmask/v1/internal/storages"
+	"github.com/greenmaskio/greenmask/v1/internal/mysql"
 )
 
 var (
@@ -40,31 +34,9 @@ var (
 )
 
 func run(cmd *cobra.Command, args []string) {
-	if err := logger.SetLogLevel(Config.Log.Level, Config.Log.Format); err != nil {
-		log.Fatal().
-			Err(err).
-			Msg("setup loger")
-	}
-
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	st, err := storages.GetStorage(ctx, Config.Storage, Config.Log)
-	if err != nil {
-		log.Fatal().
-			Err(err).
-			Msg("get storage")
-	}
-	st = st.SubStorage(strconv.FormatInt(time.Now().UnixMilli(), 10), true)
-
 	validateConfig()
-
-	//dump := cmdInternals.NewDump(&Config.Dump, st, "mysqldump")
-	dump := common.NewDumpRuntime()
-
-	if err := dump.Run(ctx); err != nil {
-		log.Fatal().
-			Err(err).
-			Msg("cannot make a backup")
+	if err := mysql.RunDump(context.Background(), Config); err != nil {
+		log.Fatal().Err(err).Msg("")
 	}
 }
 

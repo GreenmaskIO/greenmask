@@ -1,4 +1,4 @@
-package config
+package storages
 
 const (
 	defaultS3StorageMaxRetries   = 3
@@ -7,7 +7,7 @@ const (
 	defaultS3StorageForcePath    = true
 )
 
-type StorageS3 struct {
+type S3Config struct {
 	Endpoint         string `mapstructure:"endpoint"`
 	Bucket           string `mapstructure:"bucket"`
 	Prefix           string `mapstructure:"prefix"`
@@ -29,8 +29,8 @@ type StorageS3 struct {
 	NoVerifySsl      bool   `mapstructure:"no_verify_ssl"`
 }
 
-func NewStorageS3() *StorageS3 {
-	return &StorageS3{
+func NewStorageS3() *S3Config {
+	return &S3Config{
 		StorageClass:   defaultS3StorageStorageClass,
 		ForcePathStyle: defaultS3StorageForcePath,
 		MaxRetries:     defaultS3StorageMaxRetries,

@@ -15,7 +15,6 @@ import (
 	"github.com/greenmaskio/greenmask/internal/domains"
 	"github.com/greenmaskio/greenmask/internal/storages"
 	"github.com/greenmaskio/greenmask/internal/utils/ioutils"
-	
 )
 
 type Dump struct {
@@ -113,7 +112,7 @@ func (d *Dump) schemaOnlyDump(ctx context.Context) error {
 	eg.Go(func() error {
 		defer w.Close()
 		if err := cmdrunner.NewCmdRunner(d.binPath, params, w).Run(ctx); err != nil {
-			return fmt.Errorf("cannot run mysqldump: %w", err)
+			return fmt.Errorf("cannot RunDump mysqldump: %w", err)
 		}
 		return nil
 	})

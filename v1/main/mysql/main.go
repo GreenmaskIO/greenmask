@@ -17,7 +17,7 @@ package main
 import (
 	"github.com/rs/zerolog/log"
 
-	"github.com/greenmaskio/greenmask/cmd/mysql"
+	"github.com/greenmaskio/greenmask/v1/cmd/mysql"
 )
 
 func main() {

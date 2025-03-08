@@ -6,8 +6,9 @@ import (
 	"path"
 )
 
-func Walk(ctx context.Context, st Storager, parent string) (res []string, err error) {
+func walk(ctx context.Context, st Storager, parent string) ([]string, error) {
 	var files []string
+	var res []string
 	files, dirs, err := st.ListDir(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("error listing directory: %w", err)
@@ -17,7 +18,7 @@ func Walk(ctx context.Context, st Storager, parent string) (res []string, err er
 	}
 	if len(dirs) > 0 {
 		for _, d := range dirs {
-			subFiles, err := Walk(ctx, d, d.Dirname())
+			subFiles, err := walk(ctx, d, d.Dirname())
 			if err != nil {
 				return nil, fmt.Errorf("error walking through directory: %w", err)
 			}
@@ -26,6 +27,5 @@ func Walk(ctx context.Context, st Storager, parent string) (res []string, err er
 			}
 		}
 	}
-
-	return
+	return res, nil
 }

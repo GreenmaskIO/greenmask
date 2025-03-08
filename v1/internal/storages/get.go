@@ -16,8 +16,20 @@ package storages
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"time"
+
+	"github.com/greenmaskio/greenmask/v1/internal/common/config"
+)
+
+const (
+	directoryStorageType = "directory"
+	s3StorageType        = "s3"
+)
+
+var (
+	errUnknownStorageType = fmt.Errorf("unknown storage type")
 )
 
 type ObjectStat struct {
@@ -48,4 +60,19 @@ type Storager interface {
 	SubStorage(subPath string, relative bool) Storager
 	// Stat - get the metadata info about object from the storage
 	Stat(fileName string) (*ObjectStat, error)
+}
+
+// Get returns a storage based on the configuration.
+func Get(
+	ctx context.Context,
+	stCfg config.Storage,
+	logCgf config.Log,
+) (Storager, error) {
+	switch stCfg.Type {
+	case directoryStorageType:
+		return NewDirectoryStorage(*stCfg.Directory)
+	case s3StorageType:
+		return NewStorage(ctx, *stCfg.S3, logCgf.Level)
+	}
+	return nil, fmt.Errorf("storage type %s: %w", stCfg.Type, errUnknownStorageType)
 }

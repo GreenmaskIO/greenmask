@@ -12,18 +12,23 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package directory
+package storages
 
 import (
-	"github.com/greenmaskio/greenmask/v1/internal/common/config"
+	"fmt"
+
+	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
 )
 
-type Config struct {
-	Path string `mapstructure:"path"`
+type LogWrapper struct {
+	logger *zerolog.Logger
 }
 
-func NewConfig(cfg config.StorageDirectory) *Config {
-	return &Config{
-		Path: cfg.Path,
+func (lw LogWrapper) Log(objs ...interface{}) {
+	event := log.Debug()
+	for idx, o := range objs {
+		event.Any(fmt.Sprintf("%d", idx), o)
 	}
+	event.Msg("s3 storage logging")
 }

@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package s3
+package storages
 
 import (
 	"context"
@@ -40,20 +40,17 @@ import (
 	"github.com/aws/aws-sdk-go/service/sts"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
-
-	"github.com/greenmaskio/greenmask/internal/storages"
-	"github.com/greenmaskio/greenmask/internal/storages/domains"
 )
 
-const DefaultS3ObjectsDelimiter = "/"
+const s3StorageDefaultDelimiter = "/"
 
 const (
-	NotFountAwsErrorCode  = "NotFound"
-	NoSuchKeyAwsErrorCode = "NoSuchKey"
+	s3StorageAwsErrorCodeNotFount  = "NotFound"
+	s3StorageAwsErrorCodeNoSuchKey = "NoSuchKey"
 )
 
 type Storage struct {
-	config    *Config
+	config    *S3Config
 	session   *session.Session
 	service   s3iface.S3API
 	uploader  s3manageriface.UploaderAPI
@@ -61,7 +58,7 @@ type Storage struct {
 	delimiter string
 }
 
-func NewStorage(ctx context.Context, cfg Config, logLevel string) (*Storage, error) {
+func NewStorage(ctx context.Context, cfg S3Config, logLevel string) (*Storage, error) {
 
 	ses, err := session.NewSession()
 	if err != nil {
@@ -182,7 +179,7 @@ func (s *Storage) Dirname() string {
 	return filepath.Base(s.prefix)
 }
 
-func (s *Storage) ListDir(ctx context.Context) (files []string, dirs []storages.Storager, err error) {
+func (s *Storage) ListDir(ctx context.Context) (files []string, dirs []Storager, err error) {
 
 	listFunc := func(commonPrefixes []*s3.CommonPrefix, contents []*s3.Object) {
 		for _, prefix := range commonPrefixes {
@@ -203,7 +200,7 @@ func (s *Storage) ListDir(ctx context.Context) (files []string, dirs []storages.
 	}
 
 	prefix := aws.String(s.prefix)
-	delimiter := aws.String(DefaultS3ObjectsDelimiter)
+	delimiter := aws.String(s3StorageDefaultDelimiter)
 	if s.config.UseListObjectsV1 {
 		page := &s3.ListObjectsInput{
 			Prefix:    prefix,
@@ -293,7 +290,7 @@ func (s *Storage) Delete(ctx context.Context, filePaths ...string) error {
 func (s *Storage) DeleteAll(ctx context.Context, pathPrefix string) error {
 	pathPrefix = fixPrefix(pathPrefix)
 	ss := s.SubStorage(pathPrefix, true)
-	filesList, err := storages.Walk(ctx, ss, "")
+	filesList, err := walk(ctx, ss, "")
 	if err != nil {
 		return fmt.Errorf("error walking through storage: %w", err)
 	}
@@ -304,7 +301,7 @@ func (s *Storage) DeleteAll(ctx context.Context, pathPrefix string) error {
 	return nil
 }
 
-func (s *Storage) SubStorage(subPath string, relative bool) storages.Storager {
+func (s *Storage) SubStorage(subPath string, relative bool) Storager {
 	prefix := subPath
 	if relative {
 		prefix = fixPrefix(path.Join(s.prefix, prefix))
@@ -328,7 +325,7 @@ func (s *Storage) Exists(ctx context.Context, fileName string) (bool, error) {
 	_, err := s.service.HeadObjectWithContext(ctx, hoi)
 	if err != nil {
 		var awsErr awserr.Error
-		if errors.As(err, &awsErr) && (awsErr.Code() == NotFountAwsErrorCode || awsErr.Code() == NoSuchKeyAwsErrorCode) {
+		if errors.As(err, &awsErr) && (awsErr.Code() == s3StorageAwsErrorCodeNotFount || awsErr.Code() == s3StorageAwsErrorCodeNoSuchKey) {
 			return false, nil
 		}
 		return false, fmt.Errorf("error getting object info: %w", err)
@@ -336,7 +333,7 @@ func (s *Storage) Exists(ctx context.Context, fileName string) (bool, error) {
 	return true, nil
 }
 
-func (s *Storage) Stat(fileName string) (*domains.ObjectStat, error) {
+func (s *Storage) Stat(fileName string) (*ObjectStat, error) {
 	fullPath := path.Join(s.prefix, fileName)
 	headObjectInput := &s3.HeadObjectInput{
 		Bucket: aws.String(s.config.Bucket),
@@ -348,7 +345,7 @@ func (s *Storage) Stat(fileName string) (*domains.ObjectStat, error) {
 		return nil, fmt.Errorf("error getting object info: %w", err)
 	}
 
-	return &domains.ObjectStat{
+	return &ObjectStat{
 		Name:         fullPath,
 		LastModified: *(headObjectOutput.LastModified),
 		Exist:        true,

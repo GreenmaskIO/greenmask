@@ -1,14 +1,14 @@
-package mysql
+package introspect
 
 type Table struct {
 	Schema     string
 	Name       string
 	Columns    []Column
-	Size       int64
+	Size       *int64
 	PrimaryKey []string
 }
 
-func NewTable(schema, name string, size int64) Table {
+func NewTable(schema, name string, size *int64) Table {
 	return Table{
 		Schema: schema,
 		Name:   name,
