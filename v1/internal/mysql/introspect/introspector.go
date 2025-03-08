@@ -9,6 +9,9 @@ import (
 
 	"github.com/Masterminds/sprig/v3"
 	_ "github.com/go-sql-driver/mysql"
+	"github.com/jackc/pgx/v5"
+
+	"github.com/greenmaskio/greenmask/pkg/toolkit"
 )
 
 type options interface {
@@ -164,6 +167,57 @@ func (i *Introspector) introspectColumns(ctx context.Context, tableName, tableSc
 		idx++
 	}
 	return columns, nil
+}
+
+func getReferences(ctx context.Context, tx pgx.Tx, tableOid toolkit.Oid) ([]*toolkit.Reference, error) {
+	var refs []*toolkit.Reference
+	rows, err := tx.Query(ctx, foreignKeyColumnsQuery, tableOid)
+	if err != nil {
+		return nil, fmt.Errorf("error executing ForeignKeyColumnsQuery: %w", err)
+	}
+	defer rows.Close()
+	for rows.Next() {
+		ref := &toolkit.Reference{}
+		if err = rows.Scan(&ref.Schema, &ref.Name, &ref.ReferencedKeys, &ref.IsNullable); err != nil {
+			return nil, fmt.Errorf("error scanning ForeignKeyColumnsQuery: %w", err)
+		}
+		refs = append(refs, ref)
+	}
+	return refs, nil
+}
+
+func (i *Introspector) GetReferencedTables(ctx context.Context, tableName, tableSchema string) ([]Table, error) {
+	query := `
+		SELECT 
+			kcu.TABLE_SCHEMA AS fk_table_schema,
+			kcu.TABLE_NAME AS fk_table_name,
+			GROUP_CONCAT(kcu.COLUMN_NAME ORDER BY kcu.ORDINAL_POSITION) AS curr_table_columns,
+			MAX(COLUMNPROPERTY(OBJECT_ID(kcu.TABLE_NAME), kcu.COLUMN_NAME, 'AllowsNull')) AS is_nullable
+		FROM INFORMATION_SCHEMA.TABLE_CONSTRAINTS tc
+		JOIN INFORMATION_SCHEMA.KEY_COLUMN_USAGE kcu 
+			ON tc.CONSTRAINT_NAME = kcu.CONSTRAINT_NAME
+			AND tc.TABLE_SCHEMA = kcu.TABLE_SCHEMA
+		WHERE tc.TABLE_NAME = ?
+		AND tc.CONSTRAINT_TYPE = 'FOREIGN KEY'
+		GROUP BY kcu.TABLE_SCHEMA, kcu.TABLE_NAME, kcu.CONSTRAINT_NAME;
+	`
+	rows, err := i.db.QueryContext(ctx, query, tableName, tableSchema)
+	if err != nil {
+		return nil, fmt.Errorf("execute referenced tables query: %w", err)
+	}
+	defer rows.Close()
+
+	var tables []Table
+	for rows.Next() {
+		var (
+			refTableName, refTableSchema string
+		)
+		if err := rows.Scan(&refTableName, &refTableSchema); err != nil {
+			return nil, fmt.Errorf("scan referenced tables row: %w", err)
+		}
+		tables = append(tables, NewTable(refTableSchema, refTableName, nil))
+	}
+	return tables, nil
 }
 
 func buildArgs(args ...interface{}) []interface{} {
