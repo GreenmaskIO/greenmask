@@ -28,10 +28,8 @@ func NewDumpOptions() *DumpOptions {
 	return &DumpOptions{}
 }
 
-// GetParams generates a slice of command-line arguments for mysqldump based on DumpOptions.
-func (d *DumpOptions) GetParams() ([]string, error) {
+func (d *DumpOptions) commonParams() ([]string, error) {
 	var args []string
-
 	// Connection options
 	if d.User != "" {
 		args = append(args, "-u", d.User)
@@ -45,14 +43,17 @@ func (d *DumpOptions) GetParams() ([]string, error) {
 	if d.Port != 0 {
 		args = append(args, fmt.Sprintf("-P%d", d.Port))
 	}
+	return args, nil
+}
 
-	// General dump options
-	if d.NoCreateInfo {
-		args = append(args, "--no-create-info")
+func (d *DumpOptions) SchemaDumpParams() ([]string, error) {
+	var args []string
+
+	args, err := d.commonParams()
+	if err != nil {
+		return nil, err
 	}
-	if d.NoData {
-		args = append(args, "--no-data")
-	}
+	args = append(args, "--no-data")
 	if d.AddDropTable {
 		args = append(args, "--add-drop-table")
 	}
@@ -65,24 +66,19 @@ func (d *DumpOptions) GetParams() ([]string, error) {
 	if d.SingleTransaction {
 		args = append(args, "--single-transaction")
 	}
-	if d.Quick {
-		args = append(args, "--quick")
-	}
 	if d.LockTables {
 		args = append(args, "--lock-tables")
 	}
 	if d.NoTablespaces {
 		args = append(args, "--no-tablespaces")
 	}
-
-	// Specify the database
-	if d.Database != "" {
-		args = append(args, d.Database)
-	}
-
 	return args, nil
 }
 
-func (d *DumpOptions) GetConnURI() (string, error) {
+func (d *DumpOptions) ParameterValue(key string) (any, error) {
+	panic("not implemented")
+}
+
+func (d *DumpOptions) ConnectionURI() (string, error) {
 	return fmt.Sprintf("%s:%s@tcp(%s:%d)/%s", d.User, d.Password, d.Host, d.Port, d.Database), nil
 }

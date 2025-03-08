@@ -14,8 +14,8 @@ import (
 
 	"github.com/greenmaskio/greenmask/internal/domains"
 	"github.com/greenmaskio/greenmask/internal/storages"
-	"github.com/greenmaskio/greenmask/internal/utils/cmdrunner"
 	"github.com/greenmaskio/greenmask/internal/utils/ioutils"
+	
 )
 
 type Dump struct {
@@ -96,7 +96,7 @@ func (d *Dump) introspect(ctx context.Context, tx driver.Tx) error {
 }
 
 func (d *Dump) schemaOnlyDump(ctx context.Context) error {
-	params, err := d.dumpOptions.GetParams()
+	params, err := d.dumpOptions.Params()
 	if err != nil {
 		return fmt.Errorf("cannot get dump params: %w", err)
 	}

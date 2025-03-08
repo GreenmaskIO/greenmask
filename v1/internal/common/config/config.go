@@ -12,8 +12,9 @@ var (
 // options is an interface for all dump options. Since we delegate schema dumping to the external tool,
 // utilities, depending on the DBMS the set of parameters can be different.
 type options interface {
-	GetConnURI() (string, error)
-	GetParams() ([]string, error)
+	ConnectionURI() (string, error)
+	SchemaDumpParams() ([]string, error)
+	ParameterValue(key string) (any, error)
 }
 
 func NewConfig(o options) *Config {

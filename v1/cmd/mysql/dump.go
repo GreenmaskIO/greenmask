@@ -27,6 +27,7 @@ import (
 	cmdInternals "github.com/greenmaskio/greenmask/internal/db/mysql"
 
 	"github.com/greenmaskio/greenmask/internal/utils/logger"
+	"github.com/greenmaskio/greenmask/v1/internal/common"
 	"github.com/greenmaskio/greenmask/v1/internal/storages"
 )
 
@@ -57,10 +58,13 @@ func run(cmd *cobra.Command, args []string) {
 
 	validateConfig()
 
-	dump := cmdInternals.NewDump(&Config.Dump, st, "mysqldump")
+	//dump := cmdInternals.NewDump(&Config.Dump, st, "mysqldump")
+	dump := common.NewDumpRuntime()
 
 	if err := dump.Run(ctx); err != nil {
-		log.Fatal().Err(err).Msg("cannot make a backup")
+		log.Fatal().
+			Err(err).
+			Msg("cannot make a backup")
 	}
 }
 
