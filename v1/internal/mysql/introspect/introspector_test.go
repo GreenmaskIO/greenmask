@@ -236,6 +236,150 @@ func (s *mysqlSuite) TestIntrospector_Introspect() {
 
 		compareTables(s.T(), expected, i.tables)
 	})
+
+	s.Run("filter by exclude tables", func() {
+		opt := &optMock{}
+		opt.On("GetIncludedTables").Return(nil)
+		opt.On("GetExcludedTables").Return([]string{"testdb.test_table_1"})
+		opt.On("GetExcludedSchemas").Return(nil)
+		opt.On("GetIncludedSchemas").Return(nil)
+
+		i := NewIntrospector(db, opt)
+		err = i.Introspect(ctx)
+		s.Require().NoError(err)
+
+		expected := []Table{
+			{
+				Name:   "test_table_2",
+				Schema: "testdb",
+				Columns: []Column{
+					{
+						Name:              "id",
+						TypeName:          "int",
+						DataType:          newPtr("int"),
+						NumericPrecision:  newPtr(10),
+						NumericScale:      newPtr(0),
+						DateTimePrecision: nil,
+						NotNull:           true,
+					},
+					{
+						Name:              "name",
+						TypeName:          "varchar(255)",
+						DataType:          newPtr("varchar"),
+						NumericPrecision:  nil,
+						NumericScale:      nil,
+						DateTimePrecision: nil,
+						NotNull:           true,
+					},
+				},
+			},
+			{
+				Name:   "test_table_3",
+				Schema: "testdb1",
+				Columns: []Column{
+					{
+						Name:              "id",
+						TypeName:          "int",
+						DataType:          newPtr("int"),
+						NumericPrecision:  newPtr(10),
+						NumericScale:      newPtr(0),
+						DateTimePrecision: nil,
+						NotNull:           true,
+					},
+					{
+						Name:              "name",
+						TypeName:          "varchar(255)",
+						DataType:          newPtr("varchar"),
+						NumericPrecision:  nil,
+						NumericScale:      nil,
+						DateTimePrecision: nil,
+						NotNull:           true,
+					},
+				},
+			},
+		}
+		compareTables(s.T(), expected, i.tables)
+	})
+
+	s.Run("filter by exclude schemas", func() {
+		opt := &optMock{}
+		opt.On("GetIncludedTables").Return(nil)
+		opt.On("GetExcludedTables").Return(nil)
+		opt.On("GetExcludedSchemas").Return([]string{"testdb"})
+		opt.On("GetIncludedSchemas").Return(nil)
+
+		i := NewIntrospector(db, opt)
+		err = i.Introspect(ctx)
+		s.Require().NoError(err)
+
+		expected := []Table{
+			{
+				Name:   "test_table_3",
+				Schema: "testdb1",
+				Columns: []Column{
+					{
+						Name:              "id",
+						TypeName:          "int",
+						DataType:          newPtr("int"),
+						NumericPrecision:  newPtr(10),
+						NumericScale:      newPtr(0),
+						DateTimePrecision: nil,
+						NotNull:           true,
+					},
+					{
+						Name:              "name",
+						TypeName:          "varchar(255)",
+						DataType:          newPtr("varchar"),
+						NumericPrecision:  nil,
+						NumericScale:      nil,
+						DateTimePrecision: nil,
+						NotNull:           true,
+					},
+				},
+			},
+		}
+		compareTables(s.T(), expected, i.tables)
+	})
+
+	s.Run("filter by include schemas", func() {
+		opt := &optMock{}
+		opt.On("GetIncludedTables").Return(nil)
+		opt.On("GetExcludedTables").Return(nil)
+		opt.On("GetExcludedSchemas").Return(nil)
+		opt.On("GetIncludedSchemas").Return([]string{"testdb1"})
+
+		i := NewIntrospector(db, opt)
+		err = i.Introspect(ctx)
+		s.Require().NoError(err)
+
+		expected := []Table{
+			{
+				Name:   "test_table_3",
+				Schema: "testdb1",
+				Columns: []Column{
+					{
+						Name:              "id",
+						TypeName:          "int",
+						DataType:          newPtr("int"),
+						NumericPrecision:  newPtr(10),
+						NumericScale:      newPtr(0),
+						DateTimePrecision: nil,
+						NotNull:           true,
+					},
+					{
+						Name:              "name",
+						TypeName:          "varchar(255)",
+						DataType:          newPtr("varchar"),
+						NumericPrecision:  nil,
+						NumericScale:      nil,
+						DateTimePrecision: nil,
+						NotNull:           true,
+					},
+				},
+			},
+		}
+		compareTables(s.T(), expected, i.tables)
+	})
 }
 
 func compareTables(t *testing.T, expected, actual []Table) {
