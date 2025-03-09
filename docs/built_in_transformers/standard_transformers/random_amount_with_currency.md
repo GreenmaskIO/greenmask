@@ -12,10 +12,10 @@ currencies.
 
 ## Description
 
-This transformer automatically generates random financial amounts along with corresponding global currency codes (e. g.,
+This transformer automatically generates random financial amounts along with corresponding global currency codes (e.g., 
 `250.00 USD`, `300.00 EUR`), injecting them into the designated database column. It provides a straightforward solution
-for populating financial records with varied and realistic data, suitable for testing payment systems, data
-anonymization, and simulation of economic models.
+for populating financial records with varied and realistic data, suitable for testing payment systems, data anonymization,
+and simulation of economic models.
 
 ## Example: Populate the `payments` table with random amounts and currencies
 

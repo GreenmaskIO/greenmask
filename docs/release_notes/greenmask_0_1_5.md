@@ -8,7 +8,7 @@ Added a new Greenmask CLI command—[show-transformer](../commands/show-transfor
 
 ## Improvements
 
-- The [Hash transformer](../built_in_transformers/standard_transformers/hash.md) has been completely remastered and now has the `function` parameter to choose from several hash algorithm options and the `max_length` parameter to truncate the hash tail.
+- The [Hash transformer](../built_in_transformers/standard_transformers/hash.md) has been completely remastered and now has the `function` parameter to choose from some hash algorithm options and the `max_length` parameter to truncate the hash tail.
 - Split information about transformers between the `list-transformers` and new `show-transformer` CLI commands, which allows for more comprehensible and useful outputs for both commands
 - Added error severity for the `Cmd` parameter validator
 - Improved UX for the Greenmask release binaries

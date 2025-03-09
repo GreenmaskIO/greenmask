@@ -12,8 +12,8 @@ input, or anonymizing real web addresses in datasets.
 ## Description
 
 Utilizing advanced algorithms or libraries for generating URL strings, the `RandomURL` transformer injects random,
-plausible URLs into the designated database column. Each generated URL is structured to include the protocol (e. g., "
-http://", "https://"), domain name, and path, offering a realistic range of web addresses for various applications.
+plausible URLs into the designated database column. Each generated URL is structured to include the protocol 
+(e.g., "http://", "https://"), domain name, and path, offering a realistic range of web addresses for various applications.
 
 ## Example: Populate random URLs for the `webpages` table
 

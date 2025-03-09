@@ -11,8 +11,8 @@ planning, or any scenario where the day of the week is relevant but the specific
 
 ## Description
 
-Utilizing the `faker` library, the `RandomDayOfWeek` transformer generates names of days (e. g., Monday, Tuesday) at
-random. This transformer can be applied to any text or varchar column in a database, introducing variability and realism
+Utilizing the `faker` library, the `RandomDayOfWeek` transformer generates names of days (e.g., Monday, Tuesday) at random. 
+This transformer can be applied to any text or varchar column in a database, introducing variability and realism 
 into data sets that need to represent days of the week in a non-specific manner.
 
 ## Example: Populate random days of the week for the `work_schedule` table
