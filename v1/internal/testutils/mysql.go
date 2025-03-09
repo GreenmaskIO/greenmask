@@ -67,16 +67,17 @@ func (r *readinessChecker) ping(ctx context.Context, target wait.StrategyTarget)
 
 type MySQLContainerSuite struct {
 	suite.Suite
-	database      string
-	username      string
-	password      string
-	migrationUser string
-	migrationPass string
-	rootUser      string
-	rootPass      string
-	Container     testcontainers.Container
-	MigrationUp   []string
-	MigrationDown []string
+	database             string
+	username             string
+	password             string
+	migrationUser        string
+	migrationPass        string
+	rootUser             string
+	rootPass             string
+	Container            testcontainers.Container
+	MigrationUp          []string
+	MigrationDown        []string
+	migrateAutomatically bool
 }
 
 func (s *MySQLContainerSuite) SetupSuite() {
@@ -124,12 +125,12 @@ func (s *MySQLContainerSuite) SetupSuite() {
 	)
 	s.Require().NoErrorf(err, "failed to start MySQL Container")
 
-	s.MigrateUp(ctx)
+	s.MigrateUpGlobal(ctx)
 }
 
 func (s *MySQLContainerSuite) TearDownSuite() {
 	ctx := context.Background()
-	s.MigrateDown(ctx)
+	s.MigrateDownGlobal(ctx)
 	err := s.Container.Terminate(ctx)
 	s.Assert().NoErrorf(err, "failed to terminate MySQL Container")
 }
@@ -206,30 +207,38 @@ func (s *MySQLContainerSuite) GetConnectionWithUser(ctx context.Context, usernam
 	return sql.Open("mysql", connStr)
 }
 
-func (s *MySQLContainerSuite) MigrateUp(ctx context.Context) {
-	if len(s.MigrationUp) == 0 {
+func (s *MySQLContainerSuite) MigrateUpGlobal(ctx context.Context) {
+	s.MigrateUp(ctx, s.MigrationUp)
+}
+
+func (s *MySQLContainerSuite) MigrateUp(ctx context.Context, sqls []string) {
+	if len(sqls) == 0 {
 		return
 	}
 	conn, err := s.GetConnectionWithUser(ctx, s.migrationUser, s.migrationPass)
 	s.Require().NoErrorf(err, "failed to connect to MySQL")
 	defer conn.Close()
 	s.Require().NoErrorf(conn.Ping(), "failed to ping MySQL")
-	for _, migration := range s.MigrationUp {
+	for _, migration := range sqls {
 		_, err = conn.Exec(migration)
 		s.Require().NoErrorf(err, "failed to run up migration")
 	}
 	s.Require().NoErrorf(err, "failed to run up migration")
 }
 
-func (s *MySQLContainerSuite) MigrateDown(ctx context.Context) {
-	if len(s.MigrationDown) == 0 {
+func (s *MySQLContainerSuite) MigrateDownGlobal(ctx context.Context) {
+	s.MigrateDown(ctx, s.MigrationDown)
+}
+
+func (s *MySQLContainerSuite) MigrateDown(ctx context.Context, sqls []string) {
+	if len(sqls) == 0 {
 		return
 	}
 	conn, err := s.GetConnectionWithUser(ctx, s.migrationUser, s.migrationPass)
 	s.Require().NoErrorf(err, "failed to connect to MySQL")
 	defer conn.Close()
 	s.Require().NoErrorf(conn.Ping(), "failed to ping MySQL")
-	for _, migration := range s.MigrationDown {
+	for _, migration := range sqls {
 		_, err = conn.Exec(migration)
 		s.Require().NoErrorf(err, "failed to run down migration")
 	}

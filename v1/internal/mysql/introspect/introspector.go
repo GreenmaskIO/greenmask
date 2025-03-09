@@ -9,9 +9,12 @@ import (
 
 	"github.com/Masterminds/sprig/v3"
 	_ "github.com/go-sql-driver/mysql"
-	"github.com/jackc/pgx/v5"
 
-	"github.com/greenmaskio/greenmask/pkg/toolkit"
+	"github.com/greenmaskio/greenmask/v1/internal/common/domains"
+)
+
+var (
+	errNoKeysFound = fmt.Errorf("no keys found")
 )
 
 type options interface {
@@ -35,26 +38,38 @@ func NewIntrospector(db *sql.DB, opt options) Introspector {
 }
 
 func (i *Introspector) Introspect(ctx context.Context) error {
-	tables, err := i.introspectTables(ctx)
+	tables, err := i.getTables(ctx)
 	if err != nil {
 		return fmt.Errorf("introspect tables: %w", err)
 	}
 
 	for _, t := range tables {
-		columns, err := i.introspectColumns(ctx, t.Name, t.Schema)
+		columns, err := i.getColumns(ctx, t.Schema, t.Name)
 		if err != nil {
 			return fmt.Errorf("introspect columns for table %s.%s: %w", t.Schema, t.Name, err)
 		}
+		t.SetColumns(columns)
 
-		t.Columns = columns
+		pkColumns, err := i.getPrimaryKey(ctx, t.Schema, t.Name)
+		if err != nil {
+			return fmt.Errorf("introspect primary key for table %s.%s: %w", t.Schema, t.Name, err)
+		}
+		t.SetPrimaryKey(pkColumns)
+
+		fks, err := i.getForeignKeys(ctx, t.Name, t.Schema)
+		if err != nil {
+			return fmt.Errorf("introspect foreign keys for table %s.%s: %w", t.Schema, t.Name, err)
+		}
+		t.SetReferences(fks)
+
 		i.tables = append(i.tables, t)
 	}
 
 	return nil
 }
 
-// introspectTables - get all tables from the database excluding system tables
-func (i *Introspector) introspectTables(ctx context.Context) ([]Table, error) {
+// getTables - get all tables from the database excluding system tables
+func (i *Introspector) getTables(ctx context.Context) ([]Table, error) {
 	excludeTables := i.opt.GetExcludedTables()
 	excludeSchemas := i.opt.GetExcludedSchemas()
 	includeTables := i.opt.GetIncludedTables()
@@ -66,7 +81,7 @@ func (i *Introspector) introspectTables(ctx context.Context) ([]Table, error) {
 		"includeTables":  includeTables,
 		"includeSchemas": includeSchemas,
 	}
-	query, err := template.New("introspectTables").
+	query, err := template.New("getTables").
 		Funcs(getFuncMap()).
 		Parse(
 			`
@@ -122,8 +137,8 @@ func (i *Introspector) introspectTables(ctx context.Context) ([]Table, error) {
 	return tables, nil
 }
 
-// introspectColumns - get all columns for a given table
-func (i *Introspector) introspectColumns(ctx context.Context, tableName, tableSchema string) ([]Column, error) {
+// getColumns - get all columns for a given table
+func (i *Introspector) getColumns(ctx context.Context, tableSchema string, tableName string) ([]Column, error) {
 	query := `
 		select c.COLUMN_NAME,
 			   c.COLUMN_TYPE,
@@ -169,55 +184,135 @@ func (i *Introspector) introspectColumns(ctx context.Context, tableName, tableSc
 	return columns, nil
 }
 
-func getReferences(ctx context.Context, tx pgx.Tx, tableOid toolkit.Oid) ([]*toolkit.Reference, error) {
-	var refs []*toolkit.Reference
-	rows, err := tx.Query(ctx, foreignKeyColumnsQuery, tableOid)
+// getPrimaryKey - get primary key columns for a given table.
+func (i *Introspector) getPrimaryKey(ctx context.Context, tableSchema string, tableName string) ([]string, error) {
+	query := `
+		SELECT k.column_name
+		FROM information_schema.table_constraints t
+				 JOIN information_schema.key_column_usage k
+					  USING (constraint_name, table_schema, table_name)
+		WHERE t.constraint_type = 'PRIMARY KEY'
+		  AND t.table_schema = ?
+		  AND t.table_name = ?
+		ORDER BY k.ordinal_position;
+	`
+	var columns []string
+	rows, err := i.db.QueryContext(ctx, query, tableSchema, tableName)
 	if err != nil {
-		return nil, fmt.Errorf("error executing ForeignKeyColumnsQuery: %w", err)
+		return nil, fmt.Errorf("execute primary key query: %w", err)
 	}
 	defer rows.Close()
 	for rows.Next() {
-		ref := &toolkit.Reference{}
-		if err = rows.Scan(&ref.Schema, &ref.Name, &ref.ReferencedKeys, &ref.IsNullable); err != nil {
-			return nil, fmt.Errorf("error scanning ForeignKeyColumnsQuery: %w", err)
+		var columnName string
+		if err := rows.Scan(&columnName); err != nil {
+			return nil, fmt.Errorf("scan primary key row: %w", err)
 		}
-		refs = append(refs, ref)
+		columns = append(columns, columnName)
 	}
-	return refs, nil
+	return columns, nil
 }
 
-func (i *Introspector) GetReferencedTables(ctx context.Context, tableName, tableSchema string) ([]Table, error) {
+// getForeignKeys - get foreign keys for a given table.
+func (i *Introspector) getForeignKeys(
+	ctx context.Context,
+	tableSchema string,
+	tableName string,
+) ([]domains.Reference, error) {
+	constraints, err := i.getForeignKeyConstraints(ctx, tableSchema, tableName)
+	if err != nil {
+		return nil, fmt.Errorf("get foreign key constraints: %w", err)
+	}
+
+	for idx, c := range constraints {
+		keys, err := i.getForeignKeyKeys(ctx, c.ConstraintSchema, c.ConstraintName)
+		if err != nil {
+			return nil, fmt.Errorf("get foreign key keys: %w", err)
+		}
+		constraints[idx].SetKeys(keys)
+	}
+	return constraints, nil
+}
+
+// getForeignKeyKeys - get foreign key constraint keys for a given constraint.
+func (i *Introspector) getForeignKeyKeys(ctx context.Context, constraintSchema, constraintName string) ([]string, error) {
 	query := `
-		SELECT 
-			kcu.TABLE_SCHEMA AS fk_table_schema,
-			kcu.TABLE_NAME AS fk_table_name,
-			GROUP_CONCAT(kcu.COLUMN_NAME ORDER BY kcu.ORDINAL_POSITION) AS curr_table_columns,
-			MAX(COLUMNPROPERTY(OBJECT_ID(kcu.TABLE_NAME), kcu.COLUMN_NAME, 'AllowsNull')) AS is_nullable
-		FROM INFORMATION_SCHEMA.TABLE_CONSTRAINTS tc
-		JOIN INFORMATION_SCHEMA.KEY_COLUMN_USAGE kcu 
-			ON tc.CONSTRAINT_NAME = kcu.CONSTRAINT_NAME
-			AND tc.TABLE_SCHEMA = kcu.TABLE_SCHEMA
-		WHERE tc.TABLE_NAME = ?
-		AND tc.CONSTRAINT_TYPE = 'FOREIGN KEY'
-		GROUP BY kcu.TABLE_SCHEMA, kcu.TABLE_NAME, kcu.CONSTRAINT_NAME;
+		SELECT k.column_name
+		FROM information_schema.key_column_usage k
+		WHERE k.CONSTRAINT_SCHEMA = ?
+		  AND k.CONSTRAINT_NAME = ?
+		ORDER BY k.ordinal_position;
 	`
-	rows, err := i.db.QueryContext(ctx, query, tableName, tableSchema)
+	rows, err := i.db.QueryContext(ctx, query, constraintSchema, constraintName)
+	if err != nil {
+		return nil, fmt.Errorf("execute foreign key keys query: %w", err)
+	}
+	defer rows.Close()
+
+	var keys []string
+	for rows.Next() {
+		var key string
+		if err := rows.Scan(&key); err != nil {
+			return nil, fmt.Errorf("scan foreign key keys row: %w", err)
+		}
+		keys = append(keys, key)
+	}
+	if len(keys) == 0 {
+		return nil, fmt.Errorf(
+			"get fk column for constraint %s.%s: %w",
+			constraintSchema, constraintName, errNoKeysFound,
+		)
+	}
+	return keys, nil
+}
+
+// getForeignKeyConstraints - get foreign keys for a given table.
+func (i *Introspector) getForeignKeyConstraints(
+	ctx context.Context,
+	tableSchema string,
+	tableName string,
+) ([]domains.Reference, error) {
+	query := `
+		SELECT t.CONSTRAINT_SCHEMA,
+			   t.CONSTRAINT_NAME,
+			   exists(select 1
+					  from information_schema.key_column_usage k
+							   JOIN information_schema.COLUMNS c
+									ON k.COLUMN_NAME = c.COLUMN_NAME AND k.TABLE_NAME = c.TABLE_NAME AND
+									   k.TABLE_SCHEMA = c.TABLE_SCHEMA
+					  where k.CONSTRAINT_SCHEMA = t.CONSTRAINT_SCHEMA
+						AND k.CONSTRAINT_NAME = t.CONSTRAINT_NAME
+						AND c.IS_NULLABLE = 'YES') as is_nullable
+		FROM information_schema.table_constraints t
+		WHERE t.constraint_type = 'FOREIGN KEY'
+		  AND t.table_schema = ?
+		  AND t.table_name = ?;
+	`
+	rows, err := i.db.QueryContext(ctx, query, tableSchema, tableName)
 	if err != nil {
 		return nil, fmt.Errorf("execute referenced tables query: %w", err)
 	}
 	defer rows.Close()
 
-	var tables []Table
+	var constraints []domains.Reference
 	for rows.Next() {
 		var (
-			refTableName, refTableSchema string
+			constraintSchema, constantName string
+			isNullable                     bool
 		)
-		if err := rows.Scan(&refTableName, &refTableSchema); err != nil {
+		if err := rows.Scan(&constraintSchema, &constantName, &isNullable); err != nil {
 			return nil, fmt.Errorf("scan referenced tables row: %w", err)
 		}
-		tables = append(tables, NewTable(refTableSchema, refTableName, nil))
+		c := domains.NewReference(
+			tableSchema,
+			tableName,
+			constraintSchema,
+			constantName,
+			nil,
+			isNullable,
+		)
+		constraints = append(constraints, c)
 	}
-	return tables, nil
+	return constraints, nil
 }
 
 func buildArgs(args ...interface{}) []interface{} {

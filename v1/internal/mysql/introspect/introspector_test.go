@@ -9,33 +9,8 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 
+	"github.com/greenmaskio/greenmask/v1/internal/common/domains"
 	"github.com/greenmaskio/greenmask/v1/internal/testutils"
-)
-
-var (
-	migrationUp = []string{
-		`
-			CREATE TABLE testdb.test_table_1 (
-					id INT PRIMARY KEY AUTO_INCREMENT,
-					name VARCHAR(255) NOT NULL
-			);
-		`,
-		`
-			CREATE TABLE testdb.test_table_2 (
-					id INT PRIMARY KEY AUTO_INCREMENT,
-					name VARCHAR(255) NOT NULL
-			);
-		`,
-		`
-			CREATE SCHEMA testdb1;
-		`,
-		`
-			CREATE TABLE testdb1.test_table_3 (
-					id INT PRIMARY KEY AUTO_INCREMENT,
-					name VARCHAR(255) NOT NULL
-    	 	);
-        `,
-	}
 )
 
 const (
@@ -84,8 +59,7 @@ type mysqlSuite struct {
 }
 
 func (s *mysqlSuite) SetupSuite() {
-	s.SetMigrationUp(migrationUp).
-		SetMigrationUser(mysqlRootUser, mysqlRootPass).
+	s.SetMigrationUser(mysqlRootUser, mysqlRootPass).
 		SetRootUser(mysqlRootUser, mysqlRootPass).
 		SetupSuite()
 }
@@ -106,6 +80,39 @@ func (s *mysqlSuite) TestIntrospector_Introspect() {
 	ctx := context.Background()
 	db, err := s.GetConnectionWithUser(ctx, mysqlRootUser, mysqlRootPass)
 	s.Require().NoError(err)
+
+	migrationUp := []string{
+		`
+			CREATE TABLE testdb.test_table_1 (
+					id INT PRIMARY KEY AUTO_INCREMENT,
+					name VARCHAR(255) NOT NULL
+			);
+		`,
+		`
+			CREATE TABLE testdb.test_table_2 (
+					id INT PRIMARY KEY AUTO_INCREMENT,
+					name VARCHAR(255) NOT NULL
+			);
+		`,
+		`
+			CREATE SCHEMA testdb1;
+		`,
+		`
+			CREATE TABLE testdb1.test_table_3 (
+					id INT PRIMARY KEY AUTO_INCREMENT,
+					name VARCHAR(255) NOT NULL
+    	 	);
+        `,
+	}
+
+	migrationDown := []string{
+		`DROP TABLE testdb.test_table_1;`,
+		`DROP TABLE testdb.test_table_2;`,
+		`DROP TABLE testdb1.test_table_3;`,
+		`DROP SCHEMA testdb1;`,
+	}
+	s.MigrateUp(ctx, migrationUp)
+	defer s.MigrateDown(ctx, migrationDown)
 
 	s.Run("basic", func() {
 		opt := &optMock{}
@@ -379,6 +386,382 @@ func (s *mysqlSuite) TestIntrospector_Introspect() {
 			},
 		}
 		compareTables(s.T(), expected, i.tables)
+	})
+}
+
+func (s *mysqlSuite) TestIntrospector_getPrimaryKey() {
+	ctx := context.Background()
+	_, err := s.GetConnectionWithUser(ctx, mysqlRootUser, mysqlRootPass)
+	s.Require().NoError(err)
+
+	s.Run("basic", func() {
+		migrationUp := []string{
+			`
+			CREATE TABLE simple_table
+			(
+				id   INT PRIMARY KEY,
+				name VARCHAR(255) NOT NULL
+			);
+			`,
+		}
+
+		migrationDown := []string{
+			`DROP TABLE simple_table;`,
+		}
+
+		s.MigrateUp(ctx, migrationUp)
+		defer s.MigrateDown(ctx, migrationDown)
+
+		db, err := s.GetConnectionWithUser(ctx, mysqlRootUser, mysqlRootPass)
+		s.Require().NoError(err)
+		i := NewIntrospector(db, &optMock{})
+		pks, err := i.getPrimaryKey(ctx, "testdb", "simple_table")
+		s.Require().Equal([]string{"id"}, pks)
+		s.Require().NoError(err)
+	})
+
+	s.Run("no pks", func() {
+		migrationUp := []string{
+			`
+			CREATE TABLE simple_table_with_no_pk
+			(
+				id   INT,
+				name VARCHAR(255) NOT NULL
+			);
+			`,
+		}
+
+		migrationDown := []string{
+			`DROP TABLE simple_table_with_no_pk;`,
+		}
+
+		s.MigrateUp(ctx, migrationUp)
+		defer s.MigrateDown(ctx, migrationDown)
+
+		db, err := s.GetConnectionWithUser(ctx, mysqlRootUser, mysqlRootPass)
+		s.Require().NoError(err)
+		i := NewIntrospector(db, &optMock{})
+		pks, err := i.getPrimaryKey(ctx, "testdb", "simple_table_with_no_pk")
+		s.Require().Nil(pks)
+		s.Require().NoError(err)
+	})
+}
+
+func (s *mysqlSuite) TestIntrospector_getForeignKeyConstraints() {
+	ctx := context.Background()
+	_, err := s.GetConnectionWithUser(ctx, mysqlRootUser, mysqlRootPass)
+	s.Require().NoError(err)
+
+	s.Run("table with no fks", func() {
+		migrationUp := []string{
+			`
+			CREATE TABLE simple_table_with_no_fk
+			(
+				id   INT PRIMARY KEY,
+				name VARCHAR(255) NOT NULL
+			);
+			`,
+		}
+
+		migrationDown := []string{
+			`DROP TABLE simple_table_with_no_fk;`,
+		}
+
+		s.MigrateUp(ctx, migrationUp)
+		defer s.MigrateDown(ctx, migrationDown)
+
+		db, err := s.GetConnectionWithUser(ctx, mysqlRootUser, mysqlRootPass)
+		s.Require().NoError(err)
+		i := NewIntrospector(db, &optMock{})
+		refs, err := i.getForeignKeyConstraints(ctx, "testdb", "simple_table_with_no_fk")
+		s.Require().NoError(err)
+		s.Require().Emptyf(refs, "expected no foreign keys, got %v", refs)
+	})
+
+	s.Run("one column fk not nullable", func() {
+		migrationUp := []string{
+			`
+			CREATE TABLE simple_main_table
+			(
+				id   INT PRIMARY KEY,
+				name VARCHAR(255) NOT NULL
+			);
+		`,
+			`
+			CREATE TABLE simple_ref_table_not_nullable
+			(
+				id   					INT PRIMARY KEY,
+				simple_main_table_id 	INT NOT NULL ,
+				FOREIGN KEY (simple_main_table_id) REFERENCES simple_main_table (id)
+			);
+		`,
+		}
+
+		migrationDown := []string{
+			`DROP TABLE simple_ref_table_not_nullable;`,
+			`DROP TABLE simple_main_table;`,
+		}
+
+		s.MigrateUp(ctx, migrationUp)
+		defer s.MigrateDown(ctx, migrationDown)
+
+		db, err := s.GetConnectionWithUser(ctx, mysqlRootUser, mysqlRootPass)
+		s.Require().NoError(err)
+		i := NewIntrospector(db, &optMock{})
+		actual, err := i.getForeignKeyConstraints(ctx, "testdb", "simple_ref_table_not_nullable")
+		s.Require().NoError(err)
+		expected := []domains.Reference{
+			{
+				ReferencedSchema: "testdb",
+				ReferencedName:   "simple_ref_table_not_nullable",
+				ConstraintSchema: "testdb",
+				ConstraintName:   "simple_ref_table_not_nullable_ibfk_1",
+				IsNullable:       false,
+			},
+		}
+		s.Require().Equal(expected, actual)
+	})
+
+	s.Run("one column fk nullable", func() {
+		migrationUp := []string{
+			`
+			CREATE TABLE simple_main_table
+			(
+				id   INT PRIMARY KEY,
+				name VARCHAR(255) NOT NULL
+			);
+		`,
+			`
+			CREATE TABLE simple_ref_table_nullable
+			(
+				id   					INT PRIMARY KEY,
+				simple_main_table_id 	INT,
+				FOREIGN KEY (simple_main_table_id) REFERENCES simple_main_table (id)
+			);
+		`,
+		}
+
+		migrationDown := []string{
+			`DROP TABLE simple_ref_table_nullable;`,
+			`DROP TABLE simple_main_table;`,
+		}
+
+		s.MigrateUp(ctx, migrationUp)
+		defer s.MigrateDown(ctx, migrationDown)
+
+		db, err := s.GetConnectionWithUser(ctx, mysqlRootUser, mysqlRootPass)
+		s.Require().NoError(err)
+		i := NewIntrospector(db, &optMock{})
+		actual, err := i.getForeignKeyConstraints(ctx, "testdb", "simple_ref_table_nullable")
+		s.Require().NoError(err)
+		expected := []domains.Reference{
+			{
+				ReferencedSchema: "testdb",
+				ReferencedName:   "simple_ref_table_nullable",
+				ConstraintSchema: "testdb",
+				ConstraintName:   "simple_ref_table_nullable_ibfk_1",
+				IsNullable:       true,
+			},
+		}
+		s.Require().Equal(expected, actual)
+	})
+
+	s.Run("two column fk not nullable", func() {
+		migrationUp := []string{
+			`
+				CREATE TABLE complex_pk_main_table
+				(
+					id1  INT,
+					id2  INT,
+					name VARCHAR(255) NOT NULL,
+					PRIMARY KEY (id1, id2)
+				);
+			`,
+			`
+				CREATE TABLE complex_pk_ref_table_not_nullable
+				(
+					id    INT PRIMARY KEY,
+					complex_pk_main_table_id1 INT NOT NULL,
+					complex_pk_main_table_id2 INT NOT NULL,
+					FOREIGN KEY (
+						complex_pk_main_table_id1,
+						complex_pk_main_table_id2
+					) REFERENCES complex_pk_main_table (id1, id2)
+				);
+		`,
+		}
+
+		migrationDown := []string{
+			`DROP TABLE complex_pk_ref_table_not_nullable;`,
+			`DROP TABLE complex_pk_main_table;`,
+		}
+
+		s.MigrateUp(ctx, migrationUp)
+		defer s.MigrateDown(ctx, migrationDown)
+
+		db, err := s.GetConnectionWithUser(ctx, mysqlRootUser, mysqlRootPass)
+		s.Require().NoError(err)
+		i := NewIntrospector(db, &optMock{})
+		actual, err := i.getForeignKeyConstraints(ctx, "testdb", "complex_pk_ref_table_not_nullable")
+		s.Require().NoError(err)
+		expected := []domains.Reference{
+			{
+				ReferencedSchema: "testdb",
+				ReferencedName:   "complex_pk_ref_table_not_nullable",
+				ConstraintSchema: "testdb",
+				ConstraintName:   "complex_pk_ref_table_not_nullable_ibfk_1",
+				IsNullable:       false,
+			},
+		}
+		s.Require().Equal(expected, actual)
+	})
+
+	s.Run("two column fk nullable", func() {
+		migrationUp := []string{
+			`
+				CREATE TABLE complex_pk_main_table
+				(
+					id1  INT,
+					id2  INT,
+					name VARCHAR(255) NOT NULL,
+					PRIMARY KEY (id1, id2)
+				);
+			`,
+			`
+				CREATE TABLE complex_pk_ref_table_nullable
+				(
+					id    INT PRIMARY KEY,
+					complex_pk_main_table_id1 INT,
+					complex_pk_main_table_id2 INT,
+					FOREIGN KEY (
+						complex_pk_main_table_id1,
+						complex_pk_main_table_id2
+					) REFERENCES complex_pk_main_table (id1, id2)
+				);
+		`,
+		}
+
+		migrationDown := []string{
+			`DROP TABLE complex_pk_ref_table_nullable;`,
+			`DROP TABLE complex_pk_main_table;`,
+		}
+
+		s.MigrateUp(ctx, migrationUp)
+		defer s.MigrateDown(ctx, migrationDown)
+
+		db, err := s.GetConnectionWithUser(ctx, mysqlRootUser, mysqlRootPass)
+		s.Require().NoError(err)
+		i := NewIntrospector(db, &optMock{})
+		actual, err := i.getForeignKeyConstraints(ctx, "testdb", "complex_pk_ref_table_nullable")
+		s.Require().NoError(err)
+		expected := []domains.Reference{
+			{
+				ReferencedSchema: "testdb",
+				ReferencedName:   "complex_pk_ref_table_nullable",
+				ConstraintSchema: "testdb",
+				ConstraintName:   "complex_pk_ref_table_nullable_ibfk_1",
+				IsNullable:       true,
+			},
+		}
+		s.Require().Equal(expected, actual)
+	})
+}
+
+func (s *mysqlSuite) TestIntrospector_getForeignKeyKeys() {
+	ctx := context.Background()
+	_, err := s.GetConnectionWithUser(ctx, mysqlRootUser, mysqlRootPass)
+	s.Require().NoError(err)
+
+	s.Run("unknown fk", func() {
+		db, err := s.GetConnectionWithUser(ctx, mysqlRootUser, mysqlRootPass)
+		s.Require().NoError(err)
+		i := NewIntrospector(db, &optMock{})
+		_, err = i.getForeignKeyKeys(ctx, "testdb", "unknown_table_ibfk_1")
+		s.Require().ErrorIs(err, errNoKeysFound)
+	})
+
+	s.Run("one fk column", func() {
+		migrationUp := []string{
+			`
+			CREATE TABLE simple_main_table
+			(
+				id   INT PRIMARY KEY,
+				name VARCHAR(255) NOT NULL
+			);
+		`,
+			`
+			CREATE TABLE simple_ref_table_not_nullable
+			(
+				id   					INT PRIMARY KEY,
+				simple_main_table_id 	INT NOT NULL ,
+				FOREIGN KEY (simple_main_table_id) REFERENCES simple_main_table (id)
+			);
+		`,
+		}
+
+		migrationDown := []string{
+			`DROP TABLE simple_ref_table_not_nullable;`,
+			`DROP TABLE simple_main_table;`,
+		}
+
+		s.MigrateUp(ctx, migrationUp)
+		defer s.MigrateDown(ctx, migrationDown)
+
+		db, err := s.GetConnectionWithUser(ctx, mysqlRootUser, mysqlRootPass)
+		s.Require().NoError(err)
+		i := NewIntrospector(db, &optMock{})
+		keys, err := i.getForeignKeyKeys(
+			ctx,
+			"testdb",
+			"simple_ref_table_not_nullable_ibfk_1",
+		)
+		s.Require().NoError(err)
+		s.Require().Equal([]string{"simple_main_table_id"}, keys)
+	})
+
+	s.Run("two fk columns", func() {
+		migrationUp := []string{
+			`
+				CREATE TABLE complex_pk_main_table
+				(
+					id1  INT,
+					id2  INT,
+					name VARCHAR(255) NOT NULL,
+					PRIMARY KEY (id1, id2)
+				);
+			`,
+			`
+				CREATE TABLE complex_pk_ref_table_nullable
+				(
+					id    INT PRIMARY KEY,
+					complex_pk_main_table_id1 INT,
+					complex_pk_main_table_id2 INT,
+					FOREIGN KEY (
+						complex_pk_main_table_id1,
+						complex_pk_main_table_id2
+					) REFERENCES complex_pk_main_table (id1, id2)
+				);
+		`,
+		}
+
+		migrationDown := []string{
+			`DROP TABLE complex_pk_ref_table_nullable;`,
+			`DROP TABLE complex_pk_main_table;`,
+		}
+
+		s.MigrateUp(ctx, migrationUp)
+		defer s.MigrateDown(ctx, migrationDown)
+
+		db, err := s.GetConnectionWithUser(ctx, mysqlRootUser, mysqlRootPass)
+		s.Require().NoError(err)
+		i := NewIntrospector(db, &optMock{})
+		keys, err := i.getForeignKeyKeys(
+			ctx,
+			"testdb",
+			"complex_pk_ref_table_nullable_ibfk_1",
+		)
+		s.Require().NoError(err)
+		s.Require().Equal([]string{"complex_pk_main_table_id1", "complex_pk_main_table_id2"}, keys)
 	})
 }
 
