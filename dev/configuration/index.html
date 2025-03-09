@@ -3531,7 +3531,7 @@ command. Here is an example of the validate section configuration:</p>
 <span class="w">  </span><span class="nt">warnings</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span><span class="w"> </span><span class="c1"># (10)</span>
 </code></pre></div></p>
 <ol>
-<li>A list of tables to validate. If this list is not empty, the validation operation will only be performed for the specified tables. Tables can be written with or without the schema name (e. g., <code>"public.cart"</code> or <code>"orders"</code>).</li>
+<li>A list of tables to validate. If this list is not empty, the validation operation will only be performed for the specified tables. Tables can be written with or without the schema name (e.g., <code>"public.cart"</code> or <code>"orders"</code>).</li>
 <li>Specifies whether to perform data transformation for a limited set of rows. If set to <code>true</code>, data transformation will be performed, and the number of rows transformed will be limited to the value specified in the <code>rows_limit</code> parameter (default is <code>10</code>).</li>
 <li>Specifies whether to perform diff operations for the transformed data. If set to <code>true</code>, the validation process will <strong>find the differences between the original and transformed data</strong>. See more details in the <a href="../commands/validate/">validate command documentation</a>.</li>
 <li>Limits the number of rows to be transformed during validation. The default limit is <code>10</code> rows, but you can change it by modifying this parameter.</li>

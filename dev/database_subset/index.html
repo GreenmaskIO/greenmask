@@ -3521,7 +3521,7 @@ the join condition.</p>
 <h2 id="polymorphic-references">Polymorphic references<a class="headerlink" href="#polymorphic-references" title="Permanent link">&para;</a></h2>
 <p>Greenmask supports polymorphic references. You can define a virtual reference for a table with polymorphic references
 using <code>polymorphic_exprs</code> attribute. The <code>polymorphic_exprs</code> attribute is a list of expressions that are used to make
-a polymorphic reference. For instance we might have a table <code>comments</code> that has polymorphic reference to <code>posts</code> and
+a polymorphic reference. For instance, we might have a table <code>comments</code> that has polymorphic reference to <code>posts</code> and
 <code>videos</code>. The table comments might have <code>commentable_id</code> and <code>commentable_type</code> columns. The <code>commentable_type</code> column
 contains the type of the table that is referenced by the <code>commentable_id</code> column. The example of the config:</p>
 <div class="highlight"><span class="filename">Polymorphic references example</span><pre><span></span><code><span class="nt">dump</span><span class="p">:</span>

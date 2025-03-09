@@ -3465,7 +3465,7 @@ constraints, you can use dynamic parameters in the <code>RandomDate</code> trans
 <span class="w">          </span><span class="nt">template</span><span class="p">:</span><span class="w"> </span><span class="s">&#39;{{</span><span class="nv"> </span><span class="s">.GetValue</span><span class="nv"> </span><span class="s">|</span><span class="nv"> </span><span class="s">tsModify</span><span class="nv"> </span><span class="s">&quot;18</span><span class="nv"> </span><span class="s">years&quot;</span><span class="nv"> </span><span class="s">|</span><span class="nv"> </span><span class="s">.EncodeValue</span><span class="nv"> </span><span class="s">}}&#39;</span><span class="w"> </span><span class="c1"># (7)</span>
 </code></pre></div>
 <ol>
-<li>Firstly we generate the <code>RadnomDate</code> for birthdate column. The result of the transformation will used as the minimum
+<li>Firstly we generate the <code>RadnomDate</code> for birthdate column. The result of the transformation will use as the minimum
    value for the next transformation for <code>hiredate</code> column.</li>
 <li>Apply the template for static parameter. It calculates the now date and subtracts <code>30</code> years from it. The result
    is <code>1994</code>. The function tsModify return not a raw data, but time.Time object. For getting the raw value suitable for

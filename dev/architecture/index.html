@@ -3240,7 +3240,12 @@
 
 <h1 id="architecture">Architecture<a class="headerlink" href="#architecture" title="Permanent link">&para;</a></h1>
 <h2 id="introduction">Introduction<a class="headerlink" href="#introduction" title="Permanent link">&para;</a></h2>
-<p>It is evident that the most appropriate approach for executing logical backup dumping and restoration is by leveraging the core PostgreSQL utilities, specifically <code>pg_dump</code> and <code>pg_restore</code>. Greenmask has been purposefully designed to align with PostgreSQL's native utilities, ensuring compatibility. Greenmask primarily handles data dumping operations independently and delegates the responsibilities of schema dumping and restoration to <code>pg_dump</code> and <code>pg_restore</code> respectively, maintaining seamless integration with PostgreSQL's standard tools.</p>
+<p>It is evident that the most appropriate approach for executing logical backup dumping 
+and restoration is by leveraging the core PostgreSQL utilities, specifically <code>pg_dump</code> and <code>pg_restore</code>. 
+Greenmask has been purposefully designed to align with PostgreSQL's native utilities, ensuring compatibility. 
+Greenmask primarily handles data dumping operations independently and delegates 
+the responsibilities of schema dumping and restoration to <code>pg_dump</code> and <code>pg_restore</code> respectively, 
+maintaining seamless integration with PostgreSQL's standard tools.</p>
 <h2 id="backup-process">Backup process<a class="headerlink" href="#backup-process" title="Permanent link">&para;</a></h2>
 <p>The process of backing up PostgreSQL databases is divided into three distinct sections:</p>
 <ul>
