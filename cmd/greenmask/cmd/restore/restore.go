@@ -188,6 +188,7 @@ func init() {
 		"overriding-system-value", "", false,
 		"use OVERRIDING SYSTEM VALUE clause for INSERTs",
 	)
+	Cmd.Flags().BoolP("no-blobs", "B", false, "exclude large objects from restoration (large objects will be created as empty placeholders)")
 
 	// Connection options:
 	Cmd.Flags().StringP("host", "h", "/var/run/postgres", "database server host or socket directory")
@@ -204,7 +205,7 @@ func init() {
 		"strict-names", "use-set-session-authorization", "inserts", "on-conflict-do-nothing", "restore-in-order",
 		"pgzip", "batch-size", "overriding-system-value", "superuser", "use-session-replication-role-replica",
 
-		"host", "port", "username",
+		"host", "port", "username", "no-blobs",
 	} {
 		flag := Cmd.Flags().Lookup(flagName)
 		if err := viper.BindPFlag(fmt.Sprintf("%s.%s", "restore.pg_restore_options", flagName), flag); err != nil {

@@ -108,7 +108,7 @@ type Options struct {
 
 func (o *Options) GetPgDSN() (string, error) {
 	// URI or Standard format
-	if strings.HasPrefix(o.DbName, "postgresql://") || strings.Contains(o.DbName, "=") {
+	if strings.HasPrefix(o.DbName, "postgresql://") || strings.HasPrefix(o.DbName, "postgres://") || strings.Contains(o.DbName, "=") {
 		return o.DbName, nil
 	}
 
@@ -161,13 +161,13 @@ func (o *Options) GetParams() []string {
 	if o.DataOnly {
 		args = append(args, "--data-only")
 	}
-	if o.Blobs {
-		panic("FIXME: --blobs is not implemented")
-		//args = append(args, "--blobs")
+	if o.Blobs && o.NoBlobs {
+		// Here can be a conflict between --blobs and --no-blobs that's why we need to check both
+		args = append(args, "--blobs")
 	}
 	if o.NoBlobs {
-		panic("FIXME: --no-blobs is not implemented")
-		//args = append(args, "--no-blobs")
+		// Let's prioritize --no-blobs if it set
+		args = append(args, "--no-blobs")
 	}
 	if o.Clean {
 		args = append(args, "--clean")

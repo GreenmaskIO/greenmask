@@ -40,7 +40,7 @@ var EmailTransformerDefinition = utils.NewTransformerDefinition(
 	).SetIsColumn(toolkit.NewColumnProperties().
 		SetAffected(true).
 		SetAllowedColumnTypes(
-			"text", "varchar", "char", "bpchar",
+			"text", "varchar", "char", "bpchar", "citext",
 		),
 	).SetRequired(true),
 

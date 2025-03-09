@@ -92,6 +92,7 @@ nav:
               - RandomMonthName: built_in_transformers/standard_transformers/random_month_name.md
               - RandomYearString: built_in_transformers/standard_transformers/random_year_string.md
               - RandomCentury: built_in_transformers/standard_transformers/random_century.md
+              - RandomCompany: built_in_transformers/standard_transformers/random_company.md
               - RandomTimezone: built_in_transformers/standard_transformers/random_timezone.md
               - RandomEmail: built_in_transformers/standard_transformers/random_email.md
               - RandomUsername: built_in_transformers/standard_transformers/random_username.md
@@ -126,6 +127,8 @@ nav:
                   - Faker function: built_in_transformers/advanced_transformers/custom_functions/faker_function.md
       - About: index.md
   - Release notes:
+      - Greenmask 0.2.8: release_notes/greenmask_0_2_8.md
+      - Greenmask 0.2.7: release_notes/greenmask_0_2_7.md
       - Greenmask 0.2.6: release_notes/greenmask_0_2_6.md
       - Greenmask 0.2.5: release_notes/greenmask_0_2_5.md
       - Greenmask 0.2.4: release_notes/greenmask_0_2_4.md

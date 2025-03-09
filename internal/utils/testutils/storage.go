@@ -31,6 +31,9 @@ func (s *StorageMock) ListDir(ctx context.Context) (files []string, dirs []stora
 
 func (s *StorageMock) GetObject(ctx context.Context, filePath string) (reader io.ReadCloser, err error) {
 	args := s.Called(ctx, filePath)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
 	return args.Get(0).(io.ReadCloser), args.Error(1)
 }
 

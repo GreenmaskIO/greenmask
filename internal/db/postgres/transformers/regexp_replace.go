@@ -39,7 +39,7 @@ var RegexpReplaceTransformerDefinition = utils.NewTransformerDefinition(
 		"column name",
 	).SetIsColumn(toolkit.NewColumnProperties().
 		SetAffected(true).
-		SetAllowedColumnTypes("varchar", "text", "bpchar"),
+		SetAllowedColumnTypes("text", "varchar", "char", "bpchar", "citext"),
 	).SetRequired(true),
 
 	toolkit.MustNewParameterDefinition(

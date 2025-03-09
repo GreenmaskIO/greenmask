@@ -39,7 +39,7 @@ var uuidTransformerDefinition = utils.NewTransformerDefinition(
 		"column name",
 	).SetIsColumn(toolkit.NewColumnProperties().
 		SetAffected(true).
-		SetAllowedColumnTypes("text", "varchar", "uuid"),
+		SetAllowedColumnTypes("text", "varchar", "char", "bpchar", "citext", "uuid"),
 	).SetRequired(true),
 
 	keepNullParameterDefinition,

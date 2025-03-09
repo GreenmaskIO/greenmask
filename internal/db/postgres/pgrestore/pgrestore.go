@@ -101,6 +101,8 @@ type Options struct {
 	Section                    string   `mapstructure:"section"`
 	StrictNames                bool     `mapstructure:"strict-names"`
 	UseSetSessionAuthorization bool     `mapstructure:"use-set-session-authorization"`
+	// NoBlobs - is not supported by pg_restore itself but can be used in restore
+	NoBlobs bool `mapstructure:"no-blobs"`
 
 	// Custom options (not from pg_restore)
 	// OnConflictDoNothing and Inserts were moved from pg_dump because we can generate insert
@@ -138,7 +140,7 @@ func (o *Options) ToDataSectionSettings() *DataSectionSettings {
 }
 
 func (o *Options) GetPgDSN() (string, error) {
-	if strings.HasPrefix(o.DbName, "postgresql://") || strings.Contains(o.DbName, "=") {
+	if strings.HasPrefix(o.DbName, "postgresql://") || strings.HasPrefix(o.DbName, "postgres://") || strings.Contains(o.DbName, "=") {
 		return o.DbName, nil
 	}
 
