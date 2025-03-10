@@ -12,7 +12,13 @@ import (
 )
 
 func GetDumpStorage(ctx context.Context, cfg *config.Config) (storages.Storager, error) {
-	st, err := storages.Get(ctx, cfg.Storage, cfg.Log)
+	st, err := storages.Get(
+		ctx,
+		cfg.Storage.Type,
+		cfg.Storage.S3.ToS3Config(),
+		cfg.Storage.Directory.ToDirectoryConfig(),
+		cfg.Log.Level,
+	)
 	if err != nil {
 		return nil, err
 	}

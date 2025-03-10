@@ -19,8 +19,6 @@ import (
 	"fmt"
 	"io"
 	"time"
-
-	"github.com/greenmaskio/greenmask/v1/internal/common/config"
 )
 
 const (
@@ -65,14 +63,16 @@ type Storager interface {
 // Get returns a storage based on the configuration.
 func Get(
 	ctx context.Context,
-	stCfg config.Storage,
-	logCgf config.Log,
+	storageType string,
+	s3 S3Config,
+	directory DirectoryConfig,
+	logLevel string,
 ) (Storager, error) {
-	switch stCfg.Type {
+	switch storageType {
 	case directoryStorageType:
-		return NewDirectoryStorage(*stCfg.Directory)
+		return NewDirectoryStorage(directory)
 	case s3StorageType:
-		return NewStorage(ctx, *stCfg.S3, logCgf.Level)
+		return NewS3Storage(ctx, s3, logLevel)
 	}
-	return nil, fmt.Errorf("storage type %s: %w", stCfg.Type, errUnknownStorageType)
+	return nil, fmt.Errorf("storage type %s: %w", storageType, errUnknownStorageType)
 }

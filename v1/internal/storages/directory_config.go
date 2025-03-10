@@ -1,9 +1,11 @@
 package storages
 
 type DirectoryConfig struct {
-	Path string `mapstructure:"path"`
+	Path string
 }
 
-func NewStorageDirectory() *DirectoryConfig {
-	return &DirectoryConfig{}
+func NewDirectoryConfig(path string) DirectoryConfig {
+	return DirectoryConfig{
+		Path: path,
+	}
 }

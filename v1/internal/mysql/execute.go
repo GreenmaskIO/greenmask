@@ -4,11 +4,11 @@ import (
 	"context"
 	"fmt"
 
-	commonconfig "github.com/greenmaskio/greenmask/v1/internal/common/config"
 	commondump "github.com/greenmaskio/greenmask/v1/internal/common/dump"
+	"github.com/greenmaskio/greenmask/v1/internal/config"
 )
 
-func RunDump(ctx context.Context, cfg *commonconfig.Config) error {
+func RunDump(ctx context.Context, cfg *config.Config) error {
 	ctx, err := commondump.GetContext(cfg)
 	if err != nil {
 		return fmt.Errorf("get context: %w", err)

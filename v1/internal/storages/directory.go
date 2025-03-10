@@ -43,7 +43,7 @@ type DirectoryStorage struct {
 	mx       sync.Mutex
 }
 
-func NewDirectoryStorage(cfg *DirectoryConfig) (*DirectoryStorage, error) {
+func NewDirectoryStorage(cfg DirectoryConfig) (*DirectoryStorage, error) {
 	if cfg.Path == "" {
 		return nil, errPathIsRequired
 	}

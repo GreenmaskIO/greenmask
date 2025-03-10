@@ -49,7 +49,7 @@ const (
 	s3StorageAwsErrorCodeNoSuchKey = "NoSuchKey"
 )
 
-type Storage struct {
+type S3Storage struct {
 	config    *S3Config
 	session   *session.Session
 	service   s3iface.S3API
@@ -58,11 +58,11 @@ type Storage struct {
 	delimiter string
 }
 
-func NewStorage(ctx context.Context, cfg S3Config, logLevel string) (*Storage, error) {
+func NewS3Storage(ctx context.Context, cfg S3Config, logLevel string) (*S3Storage, error) {
 
 	ses, err := session.NewSession()
 	if err != nil {
-		return nil, fmt.Errorf("cannot establish Storage session: %w", err)
+		return nil, fmt.Errorf("cannot establish session: %w", err)
 	}
 
 	awsCfg := aws.NewConfig()
@@ -162,7 +162,7 @@ func NewStorage(ctx context.Context, cfg S3Config, logLevel string) (*Storage, e
 		Str("bucket", cfg.Bucket).
 		Msg("s3 storage bucket")
 
-	return &Storage{
+	return &S3Storage{
 		prefix:   fixPrefix(cfg.Prefix),
 		session:  ses,
 		config:   &cfg,
@@ -171,21 +171,21 @@ func NewStorage(ctx context.Context, cfg S3Config, logLevel string) (*Storage, e
 	}, nil
 }
 
-func (s *Storage) GetCwd() string {
+func (s *S3Storage) GetCwd() string {
 	return s.prefix
 }
 
-func (s *Storage) Dirname() string {
+func (s *S3Storage) Dirname() string {
 	return filepath.Base(s.prefix)
 }
 
-func (s *Storage) ListDir(ctx context.Context) (files []string, dirs []Storager, err error) {
+func (s *S3Storage) ListDir(ctx context.Context) (files []string, dirs []Storager, err error) {
 
 	listFunc := func(commonPrefixes []*s3.CommonPrefix, contents []*s3.Object) {
 		for _, prefix := range commonPrefixes {
 
 			dirs = append(
-				dirs, &Storage{
+				dirs, &S3Storage{
 					config:   s.config,
 					session:  s.session,
 					service:  s.service,
@@ -238,7 +238,7 @@ func (s *Storage) ListDir(ctx context.Context) (files []string, dirs []Storager,
 	return
 }
 
-func (s *Storage) GetObject(ctx context.Context, filePath string) (writer io.ReadCloser, err error) {
+func (s *S3Storage) GetObject(ctx context.Context, filePath string) (writer io.ReadCloser, err error) {
 	obj, err := s.service.GetObjectWithContext(
 		ctx, &s3.GetObjectInput{
 			Bucket: aws.String(s.config.Bucket),
@@ -251,7 +251,7 @@ func (s *Storage) GetObject(ctx context.Context, filePath string) (writer io.Rea
 	return obj.Body, nil
 }
 
-func (s *Storage) PutObject(ctx context.Context, filePath string, body io.Reader) error {
+func (s *S3Storage) PutObject(ctx context.Context, filePath string, body io.Reader) error {
 	ui := &s3manager.UploadInput{
 		Bucket:       aws.String(s.config.Bucket),
 		Key:          aws.String(path.Join(s.prefix, filePath)),
@@ -266,7 +266,7 @@ func (s *Storage) PutObject(ctx context.Context, filePath string, body io.Reader
 	return nil
 }
 
-func (s *Storage) Delete(ctx context.Context, filePaths ...string) error {
+func (s *S3Storage) Delete(ctx context.Context, filePaths ...string) error {
 	objs := make([]*s3.ObjectIdentifier, len(filePaths))
 	for idx, fp := range filePaths {
 		objs[idx] = &s3.ObjectIdentifier{
@@ -287,7 +287,7 @@ func (s *Storage) Delete(ctx context.Context, filePaths ...string) error {
 	return nil
 }
 
-func (s *Storage) DeleteAll(ctx context.Context, pathPrefix string) error {
+func (s *S3Storage) DeleteAll(ctx context.Context, pathPrefix string) error {
 	pathPrefix = fixPrefix(pathPrefix)
 	ss := s.SubStorage(pathPrefix, true)
 	filesList, err := walk(ctx, ss, "")
@@ -301,12 +301,12 @@ func (s *Storage) DeleteAll(ctx context.Context, pathPrefix string) error {
 	return nil
 }
 
-func (s *Storage) SubStorage(subPath string, relative bool) Storager {
+func (s *S3Storage) SubStorage(subPath string, relative bool) Storager {
 	prefix := subPath
 	if relative {
 		prefix = fixPrefix(path.Join(s.prefix, prefix))
 	}
-	return &Storage{
+	return &S3Storage{
 		config:    s.config,
 		session:   s.session,
 		service:   s.service,
@@ -316,7 +316,7 @@ func (s *Storage) SubStorage(subPath string, relative bool) Storager {
 	}
 }
 
-func (s *Storage) Exists(ctx context.Context, fileName string) (bool, error) {
+func (s *S3Storage) Exists(ctx context.Context, fileName string) (bool, error) {
 	hoi := &s3.HeadObjectInput{
 		Bucket: aws.String(s.config.Bucket),
 		Key:    aws.String(path.Join(s.prefix, fileName)),
@@ -333,7 +333,7 @@ func (s *Storage) Exists(ctx context.Context, fileName string) (bool, error) {
 	return true, nil
 }
 
-func (s *Storage) Stat(fileName string) (*ObjectStat, error) {
+func (s *S3Storage) Stat(fileName string) (*ObjectStat, error) {
 	fullPath := path.Join(s.prefix, fileName)
 	headObjectInput := &s3.HeadObjectInput{
 		Bucket: aws.String(s.config.Bucket),
