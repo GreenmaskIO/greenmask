@@ -32,7 +32,8 @@ var randomPersonTransformerDefinition = utils.NewTransformerDefinition(
 	toolkit.MustNewParameterDefinition(
 		"columns",
 		"columns name",
-	).SetRequired(true),
+	).SetRequired(true).
+		SetIsColumnContainer(true),
 
 	toolkit.MustNewParameterDefinition(
 		"gender",
