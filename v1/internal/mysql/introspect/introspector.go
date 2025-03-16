@@ -10,7 +10,7 @@ import (
 	"github.com/Masterminds/sprig/v3"
 	_ "github.com/go-sql-driver/mysql"
 
-	"github.com/greenmaskio/greenmask/v1/internal/common/domains"
+	"github.com/greenmaskio/greenmask/v1/internal/common/models"
 )
 
 var (
@@ -217,7 +217,7 @@ func (i *Introspector) getForeignKeys(
 	ctx context.Context,
 	tableSchema string,
 	tableName string,
-) ([]domains.Reference, error) {
+) ([]models.Reference, error) {
 	constraints, err := i.getForeignKeyConstraints(ctx, tableSchema, tableName)
 	if err != nil {
 		return nil, fmt.Errorf("get foreign key constraints: %w", err)
@@ -270,7 +270,7 @@ func (i *Introspector) getForeignKeyConstraints(
 	ctx context.Context,
 	tableSchema string,
 	tableName string,
-) ([]domains.Reference, error) {
+) ([]models.Reference, error) {
 	query := `
 		SELECT t.CONSTRAINT_SCHEMA,
 			   t.CONSTRAINT_NAME,
@@ -293,7 +293,7 @@ func (i *Introspector) getForeignKeyConstraints(
 	}
 	defer rows.Close()
 
-	var constraints []domains.Reference
+	var constraints []models.Reference
 	for rows.Next() {
 		var (
 			constraintSchema, constantName string
@@ -302,7 +302,7 @@ func (i *Introspector) getForeignKeyConstraints(
 		if err := rows.Scan(&constraintSchema, &constantName, &isNullable); err != nil {
 			return nil, fmt.Errorf("scan referenced tables row: %w", err)
 		}
-		c := domains.NewReference(
+		c := models.NewReference(
 			tableSchema,
 			tableName,
 			constraintSchema,

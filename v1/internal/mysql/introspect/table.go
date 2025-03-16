@@ -1,6 +1,8 @@
 package introspect
 
-import "github.com/greenmaskio/greenmask/v1/internal/common/domains"
+import (
+	"github.com/greenmaskio/greenmask/v1/internal/common/models"
+)
 
 type Table struct {
 	Schema     string
@@ -8,7 +10,7 @@ type Table struct {
 	Columns    []Column
 	Size       *int64
 	PrimaryKey []string
-	References []domains.Reference
+	References []models.Reference
 }
 
 func NewTable(schema, name string, size *int64) Table {
@@ -27,7 +29,7 @@ func (t *Table) SetPrimaryKey(pk []string) {
 	t.PrimaryKey = pk
 }
 
-func (t *Table) SetReferences(refs []domains.Reference) {
+func (t *Table) SetReferences(refs []models.Reference) {
 	t.References = refs
 }
 

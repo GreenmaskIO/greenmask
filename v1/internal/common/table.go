@@ -1,11 +1,24 @@
 package common
 
+import (
+	"fmt"
+
+	"github.com/greenmaskio/greenmask/v1/internal/common/models"
+)
+
 type Table struct {
-	Schema     string
-	Name       string
-	Columns    []*Column
-	Size       int64
-	PrimaryKey []string
+	Schema           string
+	Name             string
+	Columns          []*Column
+	Size             int64
+	PrimaryKey       []string
+	References       []models.Reference
+	SubsetConditions []string
+}
+
+// TableName - returns the full table name.
+func (t Table) TableName() string {
+	return fmt.Sprintf("%s.%s", t.Schema, t.Name)
 }
 
 type Column struct {
