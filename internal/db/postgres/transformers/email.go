@@ -294,7 +294,7 @@ func (rit *EmailTransformer) generateEmail(data []byte) ([]byte, error) {
 		localPart = slices.Clone(rit.buf.Bytes())
 		rit.buf.Reset()
 	} else {
-		localPart = rit.hexEncodedRandomBytesBuf
+		localPart = rit.hexEncodedRandomBytesBuf[:2*len(data)]
 	}
 
 	if rit.domainTemplate != nil {
