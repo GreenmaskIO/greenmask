@@ -1,24 +1,46 @@
 package condencedgraph
 
-import (
-	"github.com/greenmaskio/greenmask/v1/internal/common"
-)
+import "github.com/greenmaskio/greenmask/v1/internal/common/subset/tablegraph"
 
-type CycleEdge struct {
-	id     int
-	from   string
-	to     string
-	tables []common.Table
+type Edge struct {
+	id           int
+	from         ComponentLink
+	to           ComponentLink
+	originalEdge tablegraph.Edge
 }
 
-func NewCycleEdge(id int, from, to string, tables []common.Table) *CycleEdge {
-	if len(tables) == 0 {
-		panic("empty tables provided for cycle edge")
+func NewEdge(id int, from, to ComponentLink, originalEdge tablegraph.Edge) Edge {
+	return Edge{
+		id:           id,
+		from:         from,
+		to:           to,
+		originalEdge: originalEdge,
 	}
-	return &CycleEdge{
-		id:     id,
-		from:   from,
-		to:     to,
-		tables: tables,
+}
+
+//func (e *Edge) hasPolymorphicExpressions() bool {
+//	return len(e.originalEdge.from.polymorphicExprs) > 0 || len(e.originalEdge.to.polymorphicExprs) > 0
+//}
+
+// sortCondensedEdges - returns condensed graph vertices in topological order
+func sortCondensedEdges(graph [][]Edge) []int {
+	stack := make([]int, 0)
+	visited := make([]bool, len(graph))
+	for i := range graph {
+		if !visited[i] {
+			topologicalSortDfs(graph, i, visited, &stack)
+		}
 	}
+	return stack
+}
+
+// topologicalSortDfs - recursive function to visit all vertices of the graph
+func topologicalSortDfs(graph [][]Edge, v int, visited []bool, stack *[]int) {
+	visited[v] = true
+	for _, edge := range graph[v] {
+		if !visited[edge.to.idx] {
+			topologicalSortDfs(graph, edge.to.idx, visited, stack)
+		}
+	}
+	*stack = append(*stack, v)
 }

@@ -10,9 +10,9 @@ import (
 )
 
 func TestComponent_findCycles(t *testing.T) {
-	c := &Component{
+	c := &SCC{
 		cyclesIdents: make(map[string]struct{}),
-		componentGraph: map[int][]tablegraph.Edge{
+		sccGraph: map[int][]tablegraph.Edge{
 			1: {
 				{
 					id:  1,
@@ -92,7 +92,7 @@ func TestComponent_findCycles(t *testing.T) {
 				},
 			},
 		},
-		tables: map[int]*entries.Table{},
+		vertexes: map[int]*entries.Table{},
 	}
 
 	c.findCycles()
@@ -100,8 +100,8 @@ func TestComponent_findCycles(t *testing.T) {
 }
 
 func TestComponent_findCycles_pt2(t *testing.T) {
-	c := &Component{
-		componentGraph: map[int][]*Edge{
+	c := &SCC{
+		sccGraph: map[int][]*Edge{
 			1: {
 				{
 					id:  1,
@@ -137,7 +137,7 @@ func TestComponent_findCycles_pt2(t *testing.T) {
 				},
 			},
 		},
-		tables:       map[int]*entries.Table{},
+		vertexes:     map[int]*entries.Table{},
 		cyclesIdents: make(map[string]struct{}),
 	}
 
@@ -146,9 +146,9 @@ func TestComponent_findCycles_pt2(t *testing.T) {
 }
 
 func BenchmarkComponent_findCycles(b *testing.B) {
-	c := &Component{
+	c := &SCC{
 		cyclesIdents: make(map[string]struct{}),
-		componentGraph: map[int][]*Edge{
+		sccGraph: map[int][]*Edge{
 			1: {
 				{
 					id:  1,
@@ -184,7 +184,7 @@ func BenchmarkComponent_findCycles(b *testing.B) {
 				},
 			},
 		},
-		tables: map[int]*entries.Table{},
+		vertexes: map[int]*entries.Table{},
 	}
 
 	// Reset the timer to exclude the setup time from the benchmark

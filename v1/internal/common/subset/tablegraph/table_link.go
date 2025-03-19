@@ -6,9 +6,9 @@ import (
 	"github.com/greenmaskio/greenmask/v1/internal/common"
 )
 
-// TableLink - a right or left table that contains all the required data to make a join between two tables.
+// TableLink - a right or left table that contains all the required data to make a join between two Vertexes.
 type TableLink struct {
-	// idx - the index of the table in the graph.
+	// idx - the index of the table in the Graph.
 	idx int
 	// table - the table itself.
 	table common.Table
@@ -34,7 +34,7 @@ func NewTableLink(
 	}
 }
 
-// Index - returns the index of the table in the graph.
+// Index - returns the index of the table in the Graph.
 func (tl TableLink) Index() int {
 	return tl.idx
 }

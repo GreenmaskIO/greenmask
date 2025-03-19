@@ -11,21 +11,21 @@ import (
 var errReferenceTableNotFound = errors.New("reference table not found")
 
 type Graph struct {
-	// tables - the tables that are part of the graph.
+	// Vertexes - the Vertexes that are part of the Graph. Basically they are the tables in the DB.
 	//
-	// The index of the table in the slice is the index of the table in the graph.
+	// The index of the table in the slice is the index of the table in the Graph.
 	// This index used in TableLink to reference the table as well.
-	tables []common.Table
-	// graph - the oriented graph representation of the DB tables.
-	graph [][]*Edge
+	Vertexes []common.Table
+	// Graph - the oriented Graph representation of the DB Vertexes.
+	Graph [][]Edge
 }
 
 // NewGraph - creates a new Graph instance.
 //
-// It builds a graph based on the introspected tables and their references.
+// It builds a Graph based on the introspected Vertexes and their references.
 func NewGraph(tables []common.Table) (Graph, error) {
 	var edgeIdSequence int
-	graph := make([][]*Edge, len(tables))
+	graph := make([][]Edge, len(tables))
 	for tableIdx, table := range tables {
 		for _, reference := range table.References {
 			referenceTableIdx := slices.IndexFunc(tables, func(t common.Table) bool {
@@ -67,7 +67,7 @@ func NewGraph(tables []common.Table) (Graph, error) {
 		}
 	}
 	return Graph{
-		tables: tables,
-		graph:  graph,
+		Vertexes: tables,
+		Graph:    graph,
 	}, nil
 }
