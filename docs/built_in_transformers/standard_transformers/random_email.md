@@ -107,6 +107,6 @@ Result:
 <th>Column</th><th>OriginalValue</th><th>TransformedValue</th>
 </tr>
 <tr>
-<td>email</td><td><span style="color:green">john.smith@gmail.com</span></td><td><span style="color:red">john.smith.a075d99e2d@gmail.com</span></td>
+<td>email</td><td><span style="color:green">john.smith@gmail.com</span></td><td><span style="color:red">a075d99e2d@protonmail.com</span></td>
 </tr>
 </table>
