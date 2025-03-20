@@ -168,6 +168,49 @@ func TestRandomEmailTransformer_Transform(t *testing.T) {
 				assert.Contains(t, transformedEmail, "@custom-domain.com")
 			},
 		},
+		{
+			name:       "use template to generate an invalid email with validate false",
+			original:   "cian@detroy.com",
+			columnName: "data",
+			params: map[string]toolkit.ParamsValue{
+				"column":              toolkit.ParamsValue("data"),
+				"local_part_template": toolkit.ParamsValue("prefix@,&@"),
+			},
+			validateFn: func(t *testing.T, originalEmail, transformedEmail string) {
+				assert.False(t, validEmailRegexp.MatchString(transformedEmail))
+				assert.NotEqual(t, originalEmail, transformedEmail)
+				assert.Contains(t, transformedEmail, "prefix@,&@")
+			},
+		},
+		{
+			name:       "use template to generate an invalid email with validate true",
+			original:   "nicodeme@detroy.com",
+			columnName: "data",
+			params: map[string]toolkit.ParamsValue{
+				"column":              toolkit.ParamsValue("data"),
+				"validate":            toolkit.ParamsValue("true"),
+				"local_part_template": toolkit.ParamsValue("prefix@,&@"),
+			},
+			validateFn: func(t *testing.T, originalEmail, transformedEmail string) {
+				assert.False(t, validEmailRegexp.MatchString(transformedEmail))
+				assert.NotEqual(t, originalEmail, transformedEmail)
+				assert.Contains(t, transformedEmail, "prefix@,&@")
+			},
+			expectedErr: "generated email is invalid",
+		},
+		{
+			name:       "common hash",
+			original:   "dupont@mycompany.com",
+			columnName: "data",
+			params: map[string]toolkit.ParamsValue{
+				"column": toolkit.ParamsValue("data"),
+				"engine": toolkit.ParamsValue("hash"),
+			},
+			validateFn: func(t *testing.T, originalEmail, transformedEmail string) {
+				assert.True(t, validEmailRegexp.MatchString(transformedEmail))
+				assert.NotEqual(t, originalEmail, transformedEmail)
+			},
+		},
 	}
 
 	for _, tt := range tests {
@@ -188,8 +231,12 @@ func TestRandomEmailTransformer_Transform(t *testing.T) {
 				context.Background(),
 				record,
 			)
-			require.NoError(t, err)
+			if tt.expectedErr != "" {
+				require.ErrorContains(t, err, tt.expectedErr)
+				return
+			}
 
+			require.NoError(t, err)
 			val, err := r.GetColumnValueByName(tt.columnName)
 			require.NoError(t, err)
 			require.Equal(t, tt.isNull, val.IsNull)

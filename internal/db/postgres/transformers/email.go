@@ -17,8 +17,6 @@ import (
 	"github.com/greenmaskio/greenmask/pkg/toolkit"
 )
 
-const emailTransformerGeneratorSize = 64
-
 const RandomEmailTransformerName = "RandomEmail"
 
 var emailTransformerRegexp = regexp.MustCompile(`^([a-zA-Z0-9_.+-]+)@([a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+)$`)
@@ -196,11 +194,6 @@ func NewEmailTransformer(ctx context.Context, driver *toolkit.Driver, parameters
 	if err != nil {
 		return nil, nil, fmt.Errorf("unable to get generator: %w", err)
 	}
-	randomBufferSize := emailTransformerGeneratorSize
-	if engine == "random" {
-		randomBufferSize = maxRandomLength
-	}
-
 	return &EmailTransformer{
 		g:                        g,
 		columnName:               columnName,
@@ -214,7 +207,7 @@ func NewEmailTransformer(ctx context.Context, driver *toolkit.Driver, parameters
 		domainTemplate:           domainTmpl,
 		validate:                 validate,
 		buf:                      bytes.NewBuffer(nil),
-		hexEncodedRandomBytesBuf: make([]byte, hex.EncodedLen(randomBufferSize)),
+		hexEncodedRandomBytesBuf: make([]byte, hex.EncodedLen(maxRandomLength)),
 		rctx:                     rrctx,
 	}, nil, nil
 }
