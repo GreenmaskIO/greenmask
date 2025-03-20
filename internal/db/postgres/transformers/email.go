@@ -90,7 +90,7 @@ type EmailTransformer struct {
 	domains                  []string
 	localPartTemplate        *template.Template
 	domainTemplate           *template.Template
-	templetCtx               map[string]any
+	templateCtx              map[string]any
 	buf                      *bytes.Buffer
 	originalDomain           []byte
 	hexEncodedRandomBytesBuf []byte
@@ -105,7 +105,7 @@ func NewEmailTransformer(ctx context.Context, driver *toolkit.Driver, parameters
 	var err error
 	var domainTmpl, localTmpl *template.Template
 
-	var maxLength int
+	var maxRandomLength int
 
 	columnParam := parameters["column"]
 	keepOriginalDomainParam := parameters["keep_original_domain"]
@@ -115,7 +115,7 @@ func NewEmailTransformer(ctx context.Context, driver *toolkit.Driver, parameters
 	validateParam := parameters["validate"]
 	keepNullParam := parameters["keep_null"]
 	engineParam := parameters["engine"]
-	maxRamdomLengthParam := parameters["max_random_length"]
+	maxRandomLengthParam := parameters["max_random_length"]
 
 	if err = engineParam.Scan(&engine); err != nil {
 		return nil, nil, fmt.Errorf(`unable to scan "engine" param: %w`, err)
@@ -184,17 +184,21 @@ func NewEmailTransformer(ctx context.Context, driver *toolkit.Driver, parameters
 	if err := validateParam.Scan(&validate); err != nil {
 		return nil, nil, fmt.Errorf(`unable to scan "validate" param: %w`, err)
 	}
-	if err := maxRamdomLengthParam.Scan(&maxLength); err != nil {
-		return nil, nil, fmt.Errorf(`unable to scan "max_length" param: %w`, err)
+	if err := maxRandomLengthParam.Scan(&maxRandomLength); err != nil {
+		return nil, nil, fmt.Errorf(`unable to scan "max_random_length" param: %w`, err)
 	}
 
-	if maxLength < 1 {
-		return nil, nil, errors.New("max_length must be greater than 0")
+	if maxRandomLength < 1 {
+		return nil, nil, errors.New("max_random_length must be greater than 0")
 	}
 
-	g, err := getGenerateEngine(ctx, engine, maxLength)
+	g, err := getGenerateEngine(ctx, engine, maxRandomLength)
 	if err != nil {
 		return nil, nil, fmt.Errorf("unable to get generator: %w", err)
+	}
+	randomBufferSize := emailTransformerGeneratorSize
+	if engine == "random" {
+		randomBufferSize = maxRandomLength
 	}
 
 	return &EmailTransformer{
@@ -203,14 +207,14 @@ func NewEmailTransformer(ctx context.Context, driver *toolkit.Driver, parameters
 		keepNull:                 keepNull,
 		affectedColumns:          affectedColumns,
 		columnIdx:                idx,
-		templetCtx:               make(map[string]any, 10),
+		templateCtx:              make(map[string]any, 10),
 		keepOriginalDomain:       keepOriginalDomain,
 		domains:                  domains,
 		localPartTemplate:        localTmpl,
 		domainTemplate:           domainTmpl,
 		validate:                 validate,
 		buf:                      bytes.NewBuffer(nil),
-		hexEncodedRandomBytesBuf: make([]byte, hex.EncodedLen(emailTransformerGeneratorSize)),
+		hexEncodedRandomBytesBuf: make([]byte, hex.EncodedLen(randomBufferSize)),
 		rctx:                     rrctx,
 	}, nil, nil
 }
@@ -238,7 +242,7 @@ func (rit *EmailTransformer) Transform(ctx context.Context, r *toolkit.Record) (
 		return r, nil
 	}
 
-	defer clear(rit.templetCtx)
+	defer clear(rit.templateCtx)
 
 	data, err := rit.g.Generate(val.Data)
 	if err != nil {
@@ -276,9 +280,9 @@ func (rit *EmailTransformer) setupTemplateContext(originalEmail []byte, r *toolk
 		rit.originalDomain = slices.Clone(originalDomain)
 	}
 
-	rit.templetCtx["original_local_part"] = string(originalLocalPart)
-	rit.templetCtx["original_domain"] = string(originalDomain)
-	rit.templetCtx["random_string"] = string(rit.hexEncodedRandomBytesBuf)
+	rit.templateCtx["original_local_part"] = string(originalLocalPart)
+	rit.templateCtx["original_domain"] = string(originalDomain)
+	rit.templateCtx["random_string"] = string(rit.hexEncodedRandomBytesBuf)
 
 	return nil
 }
@@ -288,17 +292,17 @@ func (rit *EmailTransformer) generateEmail(data []byte) ([]byte, error) {
 	var localPart, domainPart []byte
 
 	if rit.localPartTemplate != nil {
-		if err := rit.localPartTemplate.Execute(rit.buf, rit.templetCtx); err != nil {
+		if err := rit.localPartTemplate.Execute(rit.buf, rit.templateCtx); err != nil {
 			return nil, fmt.Errorf("unable to execute local part template: %w", err)
 		}
 		localPart = slices.Clone(rit.buf.Bytes())
 		rit.buf.Reset()
 	} else {
-		localPart = rit.hexEncodedRandomBytesBuf[:2*len(data)]
+		localPart = rit.hexEncodedRandomBytesBuf
 	}
 
 	if rit.domainTemplate != nil {
-		if err := rit.domainTemplate.Execute(rit.buf, rit.templetCtx); err != nil {
+		if err := rit.domainTemplate.Execute(rit.buf, rit.templateCtx); err != nil {
 			return nil, fmt.Errorf("unable to execute domain template: %w", err)
 		}
 		domainPart = slices.Clone(rit.buf.Bytes())
