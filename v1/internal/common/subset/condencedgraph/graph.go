@@ -16,14 +16,12 @@ const (
 type Graph struct {
 	// tg - the table graph. It contains the oriented graph representation of the DB vertexes.
 	tg tablegraph.Graph
-	// graph - the oriented graph representation of the DB vertexes
-	reversedSimpleGraph [][]int
 	// scc - the strongly connected components in the graph
 	scc []SCC
 	// graph - the condensed graph representation of the DB vertexes
 	graph [][]Edge
-	// reversedCondensedGraph - the reversed condensed graph representation of the DB vertexes
-	reversedCondensedGraph [][]Edge
+	// transposedGraph - the reversed condensed graph representation of the DB vertexes
+	transposedGraph [][]Edge
 	// sccToOriginalVertexes - the mapping condensed graph vertexes to the original graph vertexes
 	sccToOriginalVertexes map[int][]int
 	// paths - the subset paths for the vertexes. The key is the vertex index in the graph and the value is the path for
@@ -42,12 +40,13 @@ func NewGraph(tg tablegraph.Graph) Graph {
 	g := Graph{
 		tg:             tg,
 		condensedEdges: make(map[int]struct{}),
+		visited:        make([]int, len(tg.Vertexes)),
 	}
-	g.buildGraph()
+	g.build()
 	return g
 }
 
-func (g *Graph) buildGraph() {
+func (g *Graph) build() {
 	g.findSCC()
 	g.buildSCC()
 	g.buildSCCGraph()
@@ -83,10 +82,9 @@ func (g *Graph) buildSCC() {
 }
 
 func (g *Graph) buildSCCGraph() {
-
 	// 3. Build condensed graph
 	g.graph = make([][]Edge, g.sccCount)
-	g.reversedCondensedGraph = make([][]Edge, g.sccCount)
+	g.transposedGraph = make([][]Edge, g.sccCount)
 	var condensedEdgeIdxSeq int
 	for _, edge := range g.edges {
 		if _, ok := g.condensedEdges[edge.ID()]; ok {
@@ -106,7 +104,7 @@ func (g *Graph) buildSCCGraph() {
 		condensedEdge := NewEdge(condensedEdgeIdxSeq, fromLink, toLink, edge)
 		g.graph[fromLinkIdx] = append(g.graph[fromLinkIdx], condensedEdge)
 		reversedEdges := NewEdge(condensedEdgeIdxSeq, toLink, fromLink, edge)
-		g.reversedCondensedGraph[toLinkIdx] = append(g.reversedCondensedGraph[toLinkIdx], reversedEdges)
+		g.transposedGraph[toLinkIdx] = append(g.transposedGraph[toLinkIdx], reversedEdges)
 		condensedEdgeIdxSeq++
 	}
 }
@@ -155,8 +153,8 @@ func (g *Graph) eraseVisited() {
 func (g *Graph) topologicalSortDfs(v int) {
 	g.visited[v] = sccVertexIsVisited
 	for _, to := range g.tg.Graph[v] {
-		if g.visited[to.From().TableID()] == sccVertexIsNotVisited {
-			g.topologicalSortDfs(to.From().TableID())
+		if g.visited[to.To().TableID()] == sccVertexIsNotVisited {
+			g.topologicalSortDfs(to.To().TableID())
 		}
 	}
 	g.order = append(g.order, v)
@@ -164,9 +162,9 @@ func (g *Graph) topologicalSortDfs(v int) {
 
 func (g *Graph) markComponentDfs(v, component int) {
 	g.visited[v] = component
-	for _, to := range g.reversedSimpleGraph[v] {
-		if g.visited[to] == sccVertexIsNotVisited {
-			g.markComponentDfs(to, component)
+	for _, e := range g.tg.TransposedGraph[v] {
+		if g.visited[e.To().TableID()] == sccVertexIsNotVisited {
+			g.markComponentDfs(e.To().TableID(), component)
 		}
 	}
 }

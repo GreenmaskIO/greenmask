@@ -13,11 +13,14 @@ func TestNewGraph(t *testing.T) {
 
 			The graph should be represented as follows:
 
+					f -          -- (F -> B  has a cycle)
+					^  |
+					|-<
 				a <- b <- c
 				|
 				 <- c
 
-				d --    -- D has a cycle
+				d --             -- D has a cycle
 				^	|
 		        |----
 	*/
@@ -37,6 +40,12 @@ func TestNewGraph(t *testing.T) {
 				ReferencedSchema: "test",
 				ReferencedName:   "a",
 				Keys:             []string{"a_id"},
+				IsNullable:       false,
+			},
+			{
+				ReferencedSchema: "test",
+				ReferencedName:   "f",
+				Keys:             []string{"f_id"},
 				IsNullable:       false,
 			},
 		},
@@ -76,7 +85,21 @@ func TestNewGraph(t *testing.T) {
 		},
 	}
 
-	tables := []common.Table{tableA, tableB, tableC, tableD}
+	tableF := common.Table{
+		Schema:     "test",
+		Name:       "f",
+		PrimaryKey: []string{"id"},
+		References: []models.Reference{
+			{
+				ReferencedSchema: "test",
+				ReferencedName:   "b",
+				Keys:             []string{"b_id"},
+				IsNullable:       false,
+			},
+		},
+	}
+
+	tables := []common.Table{tableA, tableB, tableC, tableD, tableF}
 
 	expected := Graph{
 		Vertexes: tables,
@@ -84,7 +107,6 @@ func TestNewGraph(t *testing.T) {
 			// the edge a do not have any references
 			nil,
 			{
-				// the edge b references a
 				{
 					id:         0,
 					isNullable: false,
@@ -107,11 +129,33 @@ func TestNewGraph(t *testing.T) {
 						},
 					},
 				},
+				{
+					id:         1,
+					isNullable: false,
+					from: TableLink{
+						ID:    1,
+						table: tableB,
+						keys: []Key{
+							{
+								Name: "f_id",
+							},
+						},
+					},
+					to: TableLink{
+						ID:    4,
+						table: tableF,
+						keys: []Key{
+							{
+								Name: "id",
+							},
+						},
+					},
+				},
 			},
 			{
 				// the edge c references b and a
 				{
-					id:         1,
+					id:         2,
 					isNullable: false,
 					from: TableLink{
 						ID:    2,
@@ -133,7 +177,7 @@ func TestNewGraph(t *testing.T) {
 					},
 				},
 				{
-					id:         2,
+					id:         3,
 					isNullable: false,
 					from: TableLink{
 						ID:    2,
@@ -158,7 +202,7 @@ func TestNewGraph(t *testing.T) {
 			{
 				// the edge d references d
 				{
-					id:         3,
+					id:         4,
 					isNullable: false,
 					from: TableLink{
 						ID:    3,
@@ -172,6 +216,31 @@ func TestNewGraph(t *testing.T) {
 					to: TableLink{
 						ID:    3,
 						table: tableD,
+						keys: []Key{
+							{
+								Name: "id",
+							},
+						},
+					},
+				},
+			},
+			{
+				// the edge d references d
+				{
+					id:         5,
+					isNullable: false,
+					from: TableLink{
+						ID:    4,
+						table: tableF,
+						keys: []Key{
+							{
+								Name: "b_id",
+							},
+						},
+					},
+					to: TableLink{
+						ID:    1,
+						table: tableB,
 						keys: []Key{
 							{
 								Name: "id",
@@ -208,7 +277,7 @@ func TestNewGraph(t *testing.T) {
 					},
 				},
 				{
-					id:         2,
+					id:         3,
 					isNullable: false,
 					from: TableLink{
 						ID:    0,
@@ -233,7 +302,7 @@ func TestNewGraph(t *testing.T) {
 			{
 				// the edge b references a
 				{
-					id:         1,
+					id:         2,
 					isNullable: false,
 					from: TableLink{
 						ID:    1,
@@ -254,13 +323,35 @@ func TestNewGraph(t *testing.T) {
 						},
 					},
 				},
+				{
+					id:         5,
+					isNullable: false,
+					from: TableLink{
+						ID:    1,
+						table: tableB,
+						keys: []Key{
+							{
+								Name: "id",
+							},
+						},
+					},
+					to: TableLink{
+						ID:    4,
+						table: tableF,
+						keys: []Key{
+							{
+								Name: "b_id",
+							},
+						},
+					},
+				},
 			},
 			// the edge a do not have any references
 			nil,
 			{
 				// the edge d references d
 				{
-					id:         3,
+					id:         4,
 					isNullable: false,
 					from: TableLink{
 						ID:    3,
@@ -277,6 +368,31 @@ func TestNewGraph(t *testing.T) {
 						keys: []Key{
 							{
 								Name: "d_id",
+							},
+						},
+					},
+				},
+			},
+			{
+				// the edge f references b
+				{
+					id:         1,
+					isNullable: false,
+					from: TableLink{
+						ID:    4,
+						table: tableF,
+						keys: []Key{
+							{
+								Name: "id",
+							},
+						},
+					},
+					to: TableLink{
+						ID:    1,
+						table: tableB,
+						keys: []Key{
+							{
+								Name: "f_id",
 							},
 						},
 					},

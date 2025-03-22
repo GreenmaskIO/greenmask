@@ -1,14 +1,9 @@
 package condencedgraph
 
 import (
-	"errors"
 	"github.com/greenmaskio/greenmask/v1/internal/common"
 	"github.com/greenmaskio/greenmask/v1/internal/common/subset/cyclesgraph"
 	"github.com/greenmaskio/greenmask/v1/internal/common/subset/tablegraph"
-)
-
-var (
-	errComponentHasMoreThanOneCycleGroup = errors.New("component has more than one cycle group")
 )
 
 // SCC - represents a strongly connected component in the graph. It may contain one vertex (table) with no cycles

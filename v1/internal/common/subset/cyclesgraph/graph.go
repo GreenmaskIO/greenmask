@@ -101,9 +101,9 @@ func (g *Graph) findAllCyclesDfs(
 	for _, to := range edges {
 
 		path = append(path, to)
-		if !visited[to.Index()] {
-			g.findAllCyclesDfs(componentGraph, to.Index(), visited, recStack, path)
-		} else if recStack[to.Index()] {
+		if !visited[to.To().TableID()] {
+			g.findAllCyclesDfs(componentGraph, to.To().TableID(), visited, recStack, path)
+		} else if recStack[to.To().TableID()] {
 			// Cycle detected
 			var cycle []tablegraph.Edge
 			for idx := len(path) - 1; idx >= 0; idx-- {
