@@ -2,12 +2,10 @@ package testutils
 
 import (
 	"context"
+	"github.com/greenmaskio/greenmask/v1/internal/storages"
 	"io"
 
 	"github.com/stretchr/testify/mock"
-
-	"github.com/greenmaskio/greenmask/internal/storages"
-	"github.com/greenmaskio/greenmask/internal/storages/domains"
 )
 
 type StorageMock struct {
@@ -62,7 +60,7 @@ func (s *StorageMock) SubStorage(subPath string, relative bool) storages.Storage
 	return args.Get(0).(storages.Storager)
 }
 
-func (s *StorageMock) Stat(fileName string) (*domains.ObjectStat, error) {
+func (s *StorageMock) Stat(fileName string) (*storages.ObjectStat, error) {
 	args := s.Called(fileName)
-	return args.Get(0).(*domains.ObjectStat), args.Error(1)
+	return args.Get(0).(*storages.ObjectStat), args.Error(1)
 }
