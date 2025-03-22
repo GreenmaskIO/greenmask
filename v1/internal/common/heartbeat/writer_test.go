@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
-	"github.com/greenmaskio/greenmask/internal/utils/testutils"
+	"github.com/greenmaskio/greenmask/v1/internal/testutils"
 )
 
 func TestWriter_Write(t *testing.T) {

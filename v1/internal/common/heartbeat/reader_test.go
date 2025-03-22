@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
-	"github.com/greenmaskio/greenmask/v2/internal/testutils"
+	"github.com/greenmaskio/greenmask/v1/internal/testutils"
 )
 
 func TestReader_Read(t *testing.T) {

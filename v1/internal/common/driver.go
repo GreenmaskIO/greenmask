@@ -3,10 +3,9 @@ package common
 import (
 	"errors"
 	"fmt"
+	"github.com/greenmaskio/greenmask/v1/internal/common/models"
 
 	"github.com/rs/zerolog/log"
-
-	"github.com/greenmaskio/greenmask/pkg/toolkit"
 )
 
 var (
@@ -44,10 +43,10 @@ type TableDriver struct {
 }
 
 func NewTableDriver(d DBMSDriver, t *Table, typeOverride map[string]string) (
-	*TableDriver, toolkit.ValidationWarnings, error,
+	*TableDriver, models.ValidationWarnings, error,
 ) {
 
-	var warnings toolkit.ValidationWarnings
+	var warnings models.ValidationWarnings
 	columnMap := make(map[string]*Column, len(t.Columns))
 	attrIdxMap := make(map[string]int, len(t.Columns))
 	unsupportedColumnNames := make(map[string]string)
@@ -75,8 +74,8 @@ func NewTableDriver(d DBMSDriver, t *Table, typeOverride map[string]string) (
 			if !d.TypeExistsByName(typeOverride[c.Name]) {
 				warnings = append(
 					warnings,
-					toolkit.NewValidationWarning().
-						SetSeverity(toolkit.WarningValidationSeverity).
+					models.NewValidationWarning().
+						SetSeverity(models.WarningValidationSeverity).
 						SetMsg("unknown or unsupported overridden type name by DBMS driver:"+
 							" encode and decode operations are not supported").
 						AddMeta("OverriddenColumnName", c.Name).

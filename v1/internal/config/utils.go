@@ -3,13 +3,12 @@ package config
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/mitchellh/mapstructure"
 	"os"
 	"path"
+	"reflect"
 
 	"gopkg.in/yaml.v3"
-
-	"github.com/greenmaskio/greenmask/internal/domains"
-	"github.com/greenmaskio/greenmask/pkg/toolkit"
 )
 
 // dummyConfig - This is a dummy config to the viper workaround
@@ -27,17 +26,17 @@ type dummyConfig struct {
 
 // setTransformerParams - get the value from domains.TransformerConfig.MetadataParams, marshall
 // this value and store into domains.TransformerConfig.Params.
-func setTransformerParams(tmpCfg *dummyConfig, cfg *domains.Config) (err error) {
+func setTransformerParams(tmpCfg *dummyConfig, cfg *Config) (err error) {
 	for tableIdx, tableObj := range tmpCfg.Dump.Transformation {
 		for transformationIdx, transformationObj := range tableObj.Transformers {
 			transformer := cfg.Dump.Transformation[tableIdx].Transformers[transformationIdx]
 			tmpTransformer := tmpCfg.Dump.Transformation[tableIdx].Transformers[transformationIdx]
-			paramsMap := make(map[string]toolkit.ParamsValue, len(transformationObj.Params))
+			paramsMap := make(map[string]ParamsValue, len(transformationObj.Params))
 			for paramName, decodedValue := range tmpTransformer.Params {
-				var encodedVal toolkit.ParamsValue
+				var encodedVal ParamsValue
 				switch v := decodedValue.(type) {
 				case string:
-					encodedVal = toolkit.ParamsValue(v)
+					encodedVal = ParamsValue(v)
 				default:
 					encodedVal, err = json.Marshal(v)
 					if err != nil {
@@ -57,7 +56,7 @@ func setTransformerParams(tmpCfg *dummyConfig, cfg *domains.Config) (err error) 
 // The problem described https://github.com/GreenmaskIO/greenmask/issues/76
 // We need to keep the original keys in the map without lowercasing
 // To overcome this problem we need use default yaml and json parsers avoiding vaiper or mapstructure usage.
-func ParseTransformerParamsManually(cfgFilePath string, cfg *domains.Config) error {
+func ParseTransformerParamsManually(cfgFilePath string, cfg *Config) error {
 	ext := path.Ext(cfgFilePath)
 	tmpCfg := &dummyConfig{}
 	f, err := os.Open(cfgFilePath)
@@ -79,4 +78,27 @@ func ParseTransformerParamsManually(cfgFilePath string, cfg *domains.Config) err
 		return fmt.Errorf("unsupported file extension \"%s\"", err)
 	}
 	return setTransformerParams(tmpCfg, cfg)
+}
+
+func ParamsToByteSliceHookFunc() mapstructure.DecodeHookFunc {
+	return func(
+		f reflect.Type,
+		t reflect.Type,
+		data interface{},
+	) (interface{}, error) {
+		if t != reflect.TypeOf(ParamsValue{}) {
+			return data, nil
+		}
+
+		switch v := data.(type) {
+		case string:
+			return ParamsValue(v), nil
+		default:
+			res, err := json.Marshal(data)
+			if err != nil {
+				return nil, fmt.Errorf("cannot convert object to json bytes: %w", err)
+			}
+			return res, nil
+		}
+	}
 }

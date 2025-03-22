@@ -5,7 +5,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/greenmaskio/greenmask/internal/storages"
+	"github.com/greenmaskio/greenmask/v1/internal/storages"
 )
 
 const (

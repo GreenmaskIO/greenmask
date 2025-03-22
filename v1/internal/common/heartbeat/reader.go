@@ -7,7 +7,7 @@ import (
 
 	"github.com/rs/zerolog/log"
 
-	"github.com/greenmaskio/greenmask/internal/storages"
+	"github.com/greenmaskio/greenmask/v1/internal/storages"
 )
 
 type Reader struct {

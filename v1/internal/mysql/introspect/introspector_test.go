@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 
-	"github.com/greenmaskio/greenmask/v1/internal/common/domains"
+	"github.com/greenmaskio/greenmask/v1/internal/common/models"
 	"github.com/greenmaskio/greenmask/v1/internal/testutils"
 )
 
@@ -510,7 +510,7 @@ func (s *mysqlSuite) TestIntrospector_getForeignKeyConstraints() {
 		i := NewIntrospector(db, &optMock{})
 		actual, err := i.getForeignKeyConstraints(ctx, "testdb", "simple_ref_table_not_nullable")
 		s.Require().NoError(err)
-		expected := []domains.Reference{
+		expected := []models.Reference{
 			{
 				ReferencedSchema: "testdb",
 				ReferencedName:   "simple_ref_table_not_nullable",
@@ -554,7 +554,7 @@ func (s *mysqlSuite) TestIntrospector_getForeignKeyConstraints() {
 		i := NewIntrospector(db, &optMock{})
 		actual, err := i.getForeignKeyConstraints(ctx, "testdb", "simple_ref_table_nullable")
 		s.Require().NoError(err)
-		expected := []domains.Reference{
+		expected := []models.Reference{
 			{
 				ReferencedSchema: "testdb",
 				ReferencedName:   "simple_ref_table_nullable",
@@ -604,7 +604,7 @@ func (s *mysqlSuite) TestIntrospector_getForeignKeyConstraints() {
 		i := NewIntrospector(db, &optMock{})
 		actual, err := i.getForeignKeyConstraints(ctx, "testdb", "complex_pk_ref_table_not_nullable")
 		s.Require().NoError(err)
-		expected := []domains.Reference{
+		expected := []models.Reference{
 			{
 				ReferencedSchema: "testdb",
 				ReferencedName:   "complex_pk_ref_table_not_nullable",
@@ -654,7 +654,7 @@ func (s *mysqlSuite) TestIntrospector_getForeignKeyConstraints() {
 		i := NewIntrospector(db, &optMock{})
 		actual, err := i.getForeignKeyConstraints(ctx, "testdb", "complex_pk_ref_table_nullable")
 		s.Require().NoError(err)
-		expected := []domains.Reference{
+		expected := []models.Reference{
 			{
 				ReferencedSchema: "testdb",
 				ReferencedName:   "complex_pk_ref_table_nullable",
