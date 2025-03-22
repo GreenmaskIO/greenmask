@@ -1,4 +1,4 @@
-package condencedgraph
+package condensationgraph
 
 //import (
 //	"github.com/greenmaskio/greenmask/internal/db/postgres/entries"

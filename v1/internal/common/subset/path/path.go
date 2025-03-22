@@ -1,7 +1,7 @@
 package subset
 
 import (
-	"github.com/greenmaskio/greenmask/v1/internal/common/subset/condencedgraph"
+	"github.com/greenmaskio/greenmask/v1/internal/common/subset/condensationgraph"
 	"slices"
 )
 
@@ -12,12 +12,12 @@ type Path struct {
 	// vertexes contains all the vertexes that are in the subset of the rootVertex vertex
 	vertexes []int
 	// scopeEdges - edges that are in the same scope with proper order
-	scopeEdges         map[int][]condencedgraph.Edge
+	scopeEdges         map[int][]condensationgraph.Edge
 	scopeEdgesNullable map[int]map[int]bool
 	// scopeGraph - graph scope to scope connections
 	scopeGraph      map[int][]ScopeEdge
-	edges           []condencedgraph.Edge
-	graph           map[int][]condencedgraph.Edge
+	edges           []condensationgraph.Edge
+	graph           map[int][]condensationgraph.Edge
 	scopeIdSequence int
 }
 
@@ -25,10 +25,10 @@ func NewPath(rootVertex int) *Path {
 	return &Path{
 		rootVertex:         rootVertex,
 		scopeGraph:         make(map[int][]ScopeEdge),
-		scopeEdges:         make(map[int][]condencedgraph.Edge),
+		scopeEdges:         make(map[int][]condensationgraph.Edge),
 		scopeEdgesNullable: make(map[int]map[int]bool),
 		scopeIdSequence:    rootScopeId,
-		graph:              make(map[int][]condencedgraph.Edge),
+		graph:              make(map[int][]condensationgraph.Edge),
 	}
 }
 
@@ -37,7 +37,7 @@ func (p *Path) AddVertex(v int) {
 }
 
 // AddEdge adds the edge to the path and return it scope
-func (p *Path) AddEdge(e condencedgraph.Edge, scopeId int) int {
+func (p *Path) AddEdge(e condensationgraph.Edge, scopeId int) int {
 	p.addEdgeToGraph(e)
 	if len(p.vertexes) == 0 {
 		// if there are no vertexes in the path, add the first (root) vertex
@@ -46,7 +46,7 @@ func (p *Path) AddEdge(e condencedgraph.Edge, scopeId int) int {
 	return p.addEdge(e, scopeId)
 }
 
-func (p *Path) addEdgeToGraph(e condencedgraph.Edge) {
+func (p *Path) addEdgeToGraph(e condensationgraph.Edge) {
 	p.graph[e.from.idx] = append(p.graph[e.from.idx], e)
 	if _, ok := p.graph[e.to.idx]; !ok {
 		p.graph[e.to.idx] = nil
@@ -57,7 +57,7 @@ func (p *Path) Len() int {
 	return len(p.vertexes)
 }
 
-func (p *Path) addEdge(e condencedgraph.Edge, scopeId int) int {
+func (p *Path) addEdge(e condensationgraph.Edge, scopeId int) int {
 	if scopeId > p.scopeIdSequence {
 		panic("scopeId is greater than the sequence")
 	}
@@ -89,7 +89,7 @@ func (p *Path) createScopeIfNotExist(scopeId int) {
 	}
 }
 
-func (p *Path) createScopeWithParent(parentScopeId int, e condencedgraph.Edge) int {
+func (p *Path) createScopeWithParent(parentScopeId int, e condensationgraph.Edge) int {
 	p.scopeIdSequence++
 	scopeId := p.scopeIdSequence
 

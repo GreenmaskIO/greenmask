@@ -1,4 +1,4 @@
-package condencedgraph
+package condensationgraph
 
 type ComponentLink struct {
 	idx       int
