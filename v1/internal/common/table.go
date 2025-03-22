@@ -21,6 +21,14 @@ func (t Table) TableName() string {
 	return fmt.Sprintf("%s.%s", t.Schema, t.Name)
 }
 
+func (t Table) DebugString() string {
+	return fmt.Sprintf(
+		"Table[schema=%s name=%s]",
+		t.Schema,
+		t.Name,
+	)
+}
+
 type Column struct {
 	Idx      int
 	Name     string
@@ -31,4 +39,13 @@ type Column struct {
 	CanonicalTypeName string
 	NotNull           bool
 	Size              int
+}
+
+func (c Column) DebugString() string {
+	return fmt.Sprintf(
+		"Column[name=%s type=%s not_null=%t]",
+		c.Name,
+		c.TypeName,
+		c.NotNull,
+	)
 }

@@ -18,6 +18,8 @@ type Graph struct {
 	Vertexes []common.Table
 	// Graph - the oriented Graph representation of the DB Vertexes.
 	Graph [][]Edge
+	// TransposedGraph - the transposed Graph representation of the DB Vertexes.
+	TransposedGraph [][]Edge
 }
 
 // NewGraph - creates a new Graph instance.
@@ -26,6 +28,7 @@ type Graph struct {
 func NewGraph(tables []common.Table) (Graph, error) {
 	var edgeIdSequence int
 	graph := make([][]Edge, len(tables))
+	transposedGraph := make([][]Edge, len(tables))
 	for tableIdx, table := range tables {
 		for _, reference := range table.References {
 			referenceTableIdx := slices.IndexFunc(tables, func(t common.Table) bool {
@@ -54,7 +57,6 @@ func NewGraph(tables []common.Table) (Graph, error) {
 
 			edge := NewEdge(
 				edgeIdSequence,
-				referenceTableIdx,
 				reference.IsNullable,
 				from,
 				to,
@@ -63,11 +65,40 @@ func NewGraph(tables []common.Table) (Graph, error) {
 				graph[tableIdx],
 				edge,
 			)
+
+			// Transpose the edge
+
+			transposedFrom := NewTableLink(
+				referenceTableIdx,
+				tables[referenceTableIdx],
+				NewKeysByColumn(tables[referenceTableIdx].PrimaryKey),
+				nil,
+			)
+
+			transposedTo := NewTableLink(
+				tableIdx,
+				table,
+				NewKeysByColumn(reference.Keys),
+				nil,
+			)
+
+			transposedEdge := NewEdge(
+				edgeIdSequence,
+				reference.IsNullable,
+				transposedFrom,
+				transposedTo,
+			)
+
+			transposedGraph[referenceTableIdx] = append(
+				transposedGraph[referenceTableIdx],
+				transposedEdge,
+			)
 			edgeIdSequence++
 		}
 	}
 	return Graph{
-		Vertexes: tables,
-		Graph:    graph,
+		Vertexes:        tables,
+		Graph:           graph,
+		TransposedGraph: transposedGraph,
 	}, nil
 }

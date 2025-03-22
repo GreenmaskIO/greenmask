@@ -95,7 +95,7 @@ func (g *Graph) findAllCyclesDfs(
 	var edges []tablegraph.Edge
 	edges = append(edges, componentGraph[v]...)
 	sort.Slice(edges, func(i, j int) bool {
-		return edges[i].To().Index() < edges[j].To().Index()
+		return edges[i].To().TableID() < edges[j].To().TableID()
 	})
 
 	for _, to := range edges {
@@ -108,7 +108,7 @@ func (g *Graph) findAllCyclesDfs(
 			var cycle []tablegraph.Edge
 			for idx := len(path) - 1; idx >= 0; idx-- {
 				cycle = append(cycle, path[idx])
-				if path[idx].From().Index() == to.To().Index() {
+				if path[idx].From().TableID() == to.To().TableID() {
 					break
 				}
 			}
@@ -164,8 +164,8 @@ func (g *Graph) findCommonVertexes(i, j int) []common.Table {
 	commonTables := make(map[string]common.Table)
 	for _, edgeI := range g.cycles[i] {
 		for _, edgeJ := range g.cycles[j] {
-			if edgeI.To().Index() == edgeJ.To().Index() {
-				tableName := edgeI.To().GetTableName()
+			if edgeI.To().TableID() == edgeJ.To().TableID() {
+				tableName := edgeI.To().FullTableName()
 				commonTables[tableName] = edgeI.To().Table()
 			}
 		}
@@ -210,7 +210,7 @@ func (g *Graph) areCyclesLinked(i, j int) bool {
 func getCycleGroupId(cycle []tablegraph.Edge) string {
 	ids := make([]string, 0, len(cycle))
 	for _, edge := range cycle {
-		ids = append(ids, fmt.Sprintf("%d", edge.To().Index()))
+		ids = append(ids, fmt.Sprintf("%d", edge.To().TableID()))
 	}
 	slices.Sort(ids)
 	return strings.Join(ids, "_")
