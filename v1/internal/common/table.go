@@ -29,6 +29,10 @@ func (t Table) DebugString() string {
 	)
 }
 
+func (t Table) HasSubsetConditions() bool {
+	return len(t.SubsetConditions) > 0
+}
+
 type Column struct {
 	Idx      int
 	Name     string

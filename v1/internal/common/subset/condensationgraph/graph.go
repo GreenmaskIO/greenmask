@@ -22,17 +22,15 @@ type Graph struct {
 	graph [][]Edge
 	// transposedGraph - the reversed condensed graph representation of the DB vertexes
 	transposedGraph [][]Edge
-	// sccToOriginalVertexes - the mapping condensed graph vertexes to the original graph vertexes
-	sccToOriginalVertexes map[int][]int
 	// paths - the subset paths for the vertexes. The key is the vertex index in the graph and the value is the path for
 	// creating the subset query
 	//paths    map[int]*Path
-	edges    []tablegraph.Edge
 	visited  []int
 	order    []int
 	sccCount int
-	// condensedEdges - the edges that are part of the condensed graph
-	// TODO: Clarify what is that
+	// condensedEdges - the edges that are part of the condensed graph. In case from and to parts in edge
+	// contains condensed vertexes - this vertex can't be edge of condensed graph. Instead, this edge should be
+	// inside CycleGraph
 	condensedEdges map[int]struct{}
 }
 
@@ -52,26 +50,36 @@ func (g *Graph) build() {
 	g.buildSCCGraph()
 }
 
+// buildSCC - builds the strongly connected components in the graph.
+//
+// It uses the visited array to aggregate the vertexes for each ssc. Then it finds the edges within the ssc.
+// The result is a list of SCC instances.
 func (g *Graph) buildSCC() {
-	g.sccToOriginalVertexes = make(map[int][]int, g.sccCount)
+	// sccToOriginalVertexes - the mapping condensed graph vertexes to the original graph vertexes
+	sccToOriginalVertexes := make(map[int][]int, g.sccCount)
 	for vertexIdx, componentIdx := range g.visited {
-		g.sccToOriginalVertexes[componentIdx] = append(g.sccToOriginalVertexes[componentIdx], vertexIdx)
+		sccToOriginalVertexes[componentIdx] = append(sccToOriginalVertexes[componentIdx], vertexIdx)
 	}
-	// 1. Collect all vertexes for the component
-	// 2. Find all edges within the component
+
 	for sccIdx := 0; sccIdx < g.sccCount; sccIdx++ {
+		// Build list of vertexes for the SCC
 		vertexes := make(map[int]common.Table)
-		for _, vertexIdx := range g.sccToOriginalVertexes[sccIdx] {
+		for _, vertexIdx := range sccToOriginalVertexes[sccIdx] {
 			vertexes[vertexIdx] = g.tg.Vertexes[vertexIdx]
 		}
 
+		// Create an internal graph of the SCC
 		sccGraph := make(map[int][]tablegraph.Edge)
-		for _, vertexIdx := range g.sccToOriginalVertexes[sccIdx] {
+		for _, vertexIdx := range sccToOriginalVertexes[sccIdx] {
+			// Get each vertex from the grouped SCC and find the edges that are connected to the vertex.
 			var edges []tablegraph.Edge
 			for _, e := range g.tg.Graph[vertexIdx] {
-				if slices.Contains(g.sccToOriginalVertexes[sccIdx], e.To().TableID()) {
+				if slices.Contains(sccToOriginalVertexes[sccIdx], e.To().TableID()) {
+					// In case TO vertex is in the same SCC, we should add this edge to the SCC graph/
 					edges = append(edges, e)
-					g.condensedEdges[e.From().TableID()] = struct{}{}
+					// Add the edge to the condensedEdges so it won't be part of the condensed graph
+					// Later if this edge ID will be found in the map it will be skipped.
+					g.condensedEdges[e.ID()] = struct{}{}
 				}
 			}
 			sccGraph[vertexIdx] = edges
@@ -81,32 +89,38 @@ func (g *Graph) buildSCC() {
 	}
 }
 
+// buildSCCGraph - builds the condensed graph.
+//
+// It uses the condensedEdges map to skip the edges that are part of the condensed graph.
 func (g *Graph) buildSCCGraph() {
 	// 3. Build condensed graph
 	g.graph = make([][]Edge, g.sccCount)
 	g.transposedGraph = make([][]Edge, g.sccCount)
 	var condensedEdgeIdxSeq int
-	for _, edge := range g.edges {
-		if _, ok := g.condensedEdges[edge.ID()]; ok {
-			continue
-		}
+	for v := range g.tg.Graph {
+		for _, edge := range g.tg.Graph[v] {
+			if _, ok := g.condensedEdges[edge.ID()]; ok {
+				continue
+			}
 
-		fromLinkIdx := g.visited[edge.From().TableID()]
-		fromLink := NewComponentLink(
-			fromLinkIdx,
-			g.scc[fromLinkIdx],
-		)
-		toLinkIdx := g.visited[edge.To().TableID()]
-		toLink := NewComponentLink(
-			toLinkIdx,
-			g.scc[toLinkIdx],
-		)
-		condensedEdge := NewEdge(condensedEdgeIdxSeq, fromLink, toLink, edge)
-		g.graph[fromLinkIdx] = append(g.graph[fromLinkIdx], condensedEdge)
-		reversedEdges := NewEdge(condensedEdgeIdxSeq, toLink, fromLink, edge)
-		g.transposedGraph[toLinkIdx] = append(g.transposedGraph[toLinkIdx], reversedEdges)
-		condensedEdgeIdxSeq++
+			fromLinkIdx := g.visited[edge.From().TableID()]
+			fromLink := NewLink(
+				fromLinkIdx,
+				g.scc[fromLinkIdx],
+			)
+			toLinkIdx := g.visited[edge.To().TableID()]
+			toLink := NewLink(
+				toLinkIdx,
+				g.scc[toLinkIdx],
+			)
+			condensedEdge := NewEdge(condensedEdgeIdxSeq, fromLink, toLink, edge)
+			g.graph[fromLinkIdx] = append(g.graph[fromLinkIdx], condensedEdge)
+			reversedEdges := NewEdge(condensedEdgeIdxSeq, toLink, fromLink, edge)
+			g.transposedGraph[toLinkIdx] = append(g.transposedGraph[toLinkIdx], reversedEdges)
+			condensedEdgeIdxSeq++
+		}
 	}
+
 }
 
 // findSCC - finds the strongly connected components in the graph.
@@ -115,7 +129,7 @@ func (g *Graph) buildSCCGraph() {
 //
 // 1. Find the topological order of the graph using DFS.
 // 2. Reverse the graph.
-// 3. Mark the components using DFS. Each component will have a unique identifier.
+// 3. Mark the components using DFS. Each ssc will have a unique identifier.
 // 4. Count the components.
 //
 // Once components are marked in visited array, we can use this information to build the condensed graph.
@@ -160,6 +174,9 @@ func (g *Graph) topologicalSortDfs(v int) {
 	g.order = append(g.order, v)
 }
 
+// markComponentDfs - recursive function to mark the components in the graph.
+//
+// It marks the vertexes with the component identifier in visited array.
 func (g *Graph) markComponentDfs(v, component int) {
 	g.visited[v] = component
 	for _, e := range g.tg.TransposedGraph[v] {

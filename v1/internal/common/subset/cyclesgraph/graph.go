@@ -9,6 +9,10 @@ import (
 	"strings"
 )
 
+// Graph - contains the cycles in the component and the graph of the cycles.
+//
+// It requires to generate the correct recursive SQL queries to check the integrity of the group of cycles.
+// It also uses for joining two groups of cycles and checking the integrity between them.
 type Graph struct {
 	// cycles - a list of cycles in the component
 	//
@@ -42,7 +46,9 @@ func NewGraph(
 	componentGraph map[int][]tablegraph.Edge,
 ) Graph {
 	g := Graph{
-		cyclesIdents: make(map[string]struct{}),
+		cyclesIdents:  make(map[string]struct{}),
+		groupedCycles: make(map[string][]int),
+		graph:         make(map[string][]Edge),
 	}
 	g.findCycles(componentGraph)
 	g.groupCycles()
@@ -65,14 +71,14 @@ func (g *Graph) findCycles(componentGraph map[int][]tablegraph.Edge) {
 	var path []tablegraph.Edge
 	recStack := make(map[int]bool)
 
-	// Collect and sort all vertices
-	var vertices []int
+	// Collect and sort all vertexes
+	var vertexes []int
 	for v := range componentGraph {
-		vertices = append(vertices, v)
+		vertexes = append(vertexes, v)
 	}
-	sort.Ints(vertices) // Ensure deterministic order
+	sort.Ints(vertexes) // Ensure deterministic order
 
-	for _, v := range vertices {
+	for _, v := range vertexes {
 		if !visited[v] {
 			g.findAllCyclesDfs(componentGraph, v, visited, recStack, path)
 		}
@@ -129,7 +135,6 @@ func (g *Graph) findAllCyclesDfs(
 // groupCycles - groups the cycles by the vertexes. It builds the map where the key is the group id and the value
 // is the list of the cycles indexes.
 func (g *Graph) groupCycles() {
-	g.groupedCycles = make(map[string][]int)
 	for cycleIdx, cycle := range g.cycles {
 		cycleId := getCycleGroupId(cycle)
 		g.groupedCycles[cycleId] = append(g.groupedCycles[cycleId], cycleIdx)
@@ -139,7 +144,6 @@ func (g *Graph) groupCycles() {
 // buildCyclesGraph - builds the graph of the grouped cycles. It contains the mapping of the vertexes in the component
 func (g *Graph) buildCyclesGraph() {
 	var idSeq int
-	g.graph = make(map[string][]Edge)
 	for groupIdI, cyclesI := range g.groupedCycles {
 		for groupIdJ, cyclesJ := range g.groupedCycles {
 			if groupIdI == groupIdJ {
