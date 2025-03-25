@@ -144,8 +144,16 @@ func (g *Graph) groupCycles() {
 // buildCyclesGraph - builds the graph of the grouped cycles. It contains the mapping of the vertexes in the component
 func (g *Graph) buildCyclesGraph() {
 	var idSeq int
-	for groupIdI, cyclesI := range g.groupedCycles {
-		for groupIdJ, cyclesJ := range g.groupedCycles {
+	// Cast the map keys to the slice to have deterministic order for each run.
+	cyclesGroups := make([]string, 0, len(g.groupedCycles))
+	for group := range g.groupedCycles {
+		cyclesGroups = append(cyclesGroups, group)
+	}
+	sort.Strings(cyclesGroups)
+	for _, groupIdI := range cyclesGroups {
+		cyclesI := g.groupedCycles[groupIdI]
+		for _, groupIdJ := range cyclesGroups {
+			cyclesJ := g.groupedCycles[groupIdJ]
 			if groupIdI == groupIdJ {
 				continue
 			}
