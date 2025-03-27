@@ -1,11 +1,13 @@
 package condensationgraph
 
 import (
+	"testing"
+
+	"github.com/stretchr/testify/require"
+
 	"github.com/greenmaskio/greenmask/v1/internal/common"
 	"github.com/greenmaskio/greenmask/v1/internal/common/models"
 	"github.com/greenmaskio/greenmask/v1/internal/common/subset/tablegraph"
-	"github.com/stretchr/testify/require"
-	"testing"
 )
 
 func TestNewGraph(t *testing.T) {
@@ -90,9 +92,9 @@ func TestNewGraph(t *testing.T) {
 	require.NoError(t, err)
 
 	/*
-			There are 3 tables in the graph: a, b, c
+			There are 3 tables in the Graph: a, b, c
 
-			The graph should be represented as follows:
+			The Graph should be represented as follows:
 
 					f -          -- (F -> B  has a cycle)
 					^  |
@@ -108,25 +110,25 @@ func TestNewGraph(t *testing.T) {
 
 	cg := NewGraph(g)
 	require.NotNil(t, cg)
-	require.Len(t, cg.scc, 4)
+	require.Len(t, cg.SCC, 4)
 
 	// Validate SCCs
 	// SCC 0
-	scc0 := cg.scc[0]
+	scc0 := cg.SCC[0]
 	require.Equal(t, scc0.id, 0)
-	require.True(t, scc0.cyclesGraph.HasCycle())
-	require.Len(t, scc0.sccGraph, 1)
+	require.True(t, scc0.CyclesGraph.HasCycle())
+	require.Len(t, scc0.SCCGraph, 1)
 	require.Len(t, scc0.vertexes, 1)
 	require.Equal(t, scc0.vertexes, map[int]common.Table{3: tableD})
 
 	// Validate SCCs
 	// SCC 1
-	scc1 := cg.scc[1]
+	scc1 := cg.SCC[1]
 	require.Equal(t, scc1.id, 1)
-	require.False(t, scc1.cyclesGraph.HasCycle())
-	require.Len(t, scc1.sccGraph, 1)
+	require.False(t, scc1.CyclesGraph.HasCycle())
+	require.Len(t, scc1.SCCGraph, 1)
 
-	edges, ok := scc1.sccGraph[2]
+	edges, ok := scc1.SCCGraph[2]
 	require.True(t, ok)
 	require.Len(t, edges, 0)
 
@@ -135,20 +137,20 @@ func TestNewGraph(t *testing.T) {
 
 	// Validate SCCs
 	// SCC 2
-	scc2 := cg.scc[2]
+	scc2 := cg.SCC[2]
 	require.Equal(t, scc2.id, 2)
-	require.True(t, scc2.cyclesGraph.HasCycle())
-	require.Len(t, scc2.sccGraph, 2)
+	require.True(t, scc2.CyclesGraph.HasCycle())
+	require.Len(t, scc2.SCCGraph, 2)
 	require.Equal(t, scc2.vertexes, map[int]common.Table{1: tableB, 4: tableF})
 
-	edges, ok = scc2.sccGraph[1]
+	edges, ok = scc2.SCCGraph[1]
 	require.True(t, ok)
 	require.Len(t, edges, 1)
 	require.Equal(t, edges[0].From().Table().Name, "b")
 	require.Equal(t, edges[0].To().Table().Name, "f")
 	require.Equal(t, edges[0].ID(), 1)
 
-	edges, ok = scc2.sccGraph[4]
+	edges, ok = scc2.SCCGraph[4]
 	require.True(t, ok)
 	require.Len(t, edges, 1)
 	require.Equal(t, edges[0].From().Table().Name, "f")
@@ -157,51 +159,51 @@ func TestNewGraph(t *testing.T) {
 
 	// Validate SCCs
 	// SCC 3
-	scc3 := cg.scc[3]
+	scc3 := cg.SCC[3]
 	require.Equal(t, scc3.id, 3)
-	require.False(t, scc3.cyclesGraph.HasCycle())
-	require.Len(t, scc3.sccGraph, 1)
+	require.False(t, scc3.CyclesGraph.HasCycle())
+	require.Len(t, scc3.SCCGraph, 1)
 	require.Equal(t, scc3.vertexes, map[int]common.Table{0: tableA})
 
-	edges, ok = scc3.sccGraph[0]
+	edges, ok = scc3.SCCGraph[0]
 	require.True(t, ok)
 	require.Len(t, edges, 0)
 
-	// The graph
-	scc0Edges := cg.graph[0]
+	// The Graph
+	scc0Edges := cg.Graph[0]
 	require.Len(t, scc0Edges, 0)
 
-	scc1Edges := cg.graph[1]
+	scc1Edges := cg.Graph[1]
 	require.Len(t, scc1Edges, 2)
-	require.Equal(t, scc1Edges[0].from.sscID, 1)
-	require.Equal(t, scc1Edges[0].to.sscID, 2)
-	require.Equal(t, scc1Edges[1].from.sscID, 1)
-	require.Equal(t, scc1Edges[1].to.sscID, 3)
+	require.Equal(t, scc1Edges[0].from.tableID, 1)
+	require.Equal(t, scc1Edges[0].to.tableID, 2)
+	require.Equal(t, scc1Edges[1].from.tableID, 1)
+	require.Equal(t, scc1Edges[1].to.tableID, 3)
 
-	scc2Edges := cg.graph[2]
+	scc2Edges := cg.Graph[2]
 	require.Len(t, scc2Edges, 1)
-	require.Equal(t, scc2Edges[0].from.sscID, 2)
-	require.Equal(t, scc2Edges[0].to.sscID, 3)
+	require.Equal(t, scc2Edges[0].from.tableID, 2)
+	require.Equal(t, scc2Edges[0].to.tableID, 3)
 
-	scc3Edges := cg.graph[3]
+	scc3Edges := cg.Graph[3]
 	require.Len(t, scc3Edges, 0)
 
-	// The transposed graph
-	scc0TEdges := cg.transposedGraph[0]
+	// The transposed Graph
+	scc0TEdges := cg.TransposedGraph[0]
 	require.Len(t, scc0TEdges, 0)
 
-	scc1TEdges := cg.transposedGraph[1]
+	scc1TEdges := cg.TransposedGraph[1]
 	require.Len(t, scc1TEdges, 0)
 
-	scc2TEdges := cg.transposedGraph[2]
+	scc2TEdges := cg.TransposedGraph[2]
 	require.Len(t, scc2TEdges, 1)
-	require.Equal(t, scc2TEdges[0].from.sscID, 2)
-	require.Equal(t, scc2TEdges[0].to.sscID, 1)
+	require.Equal(t, scc2TEdges[0].from.tableID, 2)
+	require.Equal(t, scc2TEdges[0].to.tableID, 1)
 
-	scc3TEdges := cg.transposedGraph[3]
+	scc3TEdges := cg.TransposedGraph[3]
 	require.Len(t, scc3TEdges, 2)
-	require.Equal(t, scc3TEdges[0].from.sscID, 3)
-	require.Equal(t, scc3TEdges[0].to.sscID, 2)
-	require.Equal(t, scc3TEdges[1].from.sscID, 3)
-	require.Equal(t, scc3TEdges[1].to.sscID, 1)
+	require.Equal(t, scc3TEdges[0].from.tableID, 3)
+	require.Equal(t, scc3TEdges[0].to.tableID, 2)
+	require.Equal(t, scc3TEdges[1].from.tableID, 3)
+	require.Equal(t, scc3TEdges[1].to.tableID, 1)
 }

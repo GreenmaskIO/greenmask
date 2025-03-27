@@ -2,9 +2,9 @@ package cyclesgraph
 
 import "github.com/greenmaskio/greenmask/v1/internal/common"
 
-// Edge - represents an edge in the graph in cycles.
+// Edge - represents an edge in the Graph in Cycles.
 //
-// It connects two cycles via common vertexes. For example, we have two cycles 1->2->3 and 2->3->4.
+// It connects two Cycles via common vertexes. For example, we have two Cycles 1->2->3 and 2->3->4.
 // The common vertexes are 2 and 3.
 // The from value will be 1_2_3 and the to value will be 2_3_4.
 type Edge struct {
@@ -14,7 +14,7 @@ type Edge struct {
 	from string
 	// to - the to cycle identifier.
 	to string
-	// commonVertexes - the common vertexes that can be used to join the cycles.
+	// commonVertexes - the common vertexes that can be used to join the Cycles.
 	commonVertexes []common.Table
 }
 

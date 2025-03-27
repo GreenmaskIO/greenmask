@@ -2,9 +2,9 @@ package condensationgraph
 
 import "github.com/greenmaskio/greenmask/v1/internal/common/subset/tablegraph"
 
-// Edge - represents an edge in the condensation graph.
+// Edge - represents an edge in the condensation Graph.
 //
-// It encapsulates the original edge from the table graph and the condensed vertexes.
+// It encapsulates the original edge from the table Graph and the condensed vertexes.
 type Edge struct {
 	// id - unique identifier of the edge.
 	id int
@@ -12,7 +12,7 @@ type Edge struct {
 	from Link
 	// to - the right part of the edge.
 	to Link
-	// originalEdge - the original edge from the table graph.
+	// originalEdge - the original edge from the table Graph.
 	originalEdge tablegraph.Edge
 }
 
@@ -24,4 +24,20 @@ func NewEdge(id int, from, to Link, originalEdge tablegraph.Edge) Edge {
 		to:           to,
 		originalEdge: originalEdge,
 	}
+}
+
+func (e Edge) ID() int {
+	return e.id
+}
+
+func (e Edge) From() Link {
+	return e.from
+}
+
+func (e Edge) To() Link {
+	return e.to
+}
+
+func (e Edge) OriginalEdge() tablegraph.Edge {
+	return e.originalEdge
 }

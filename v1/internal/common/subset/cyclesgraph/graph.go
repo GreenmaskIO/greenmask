@@ -2,44 +2,46 @@ package cyclesgraph
 
 import (
 	"fmt"
-	"github.com/greenmaskio/greenmask/v1/internal/common"
-	"github.com/greenmaskio/greenmask/v1/internal/common/subset/tablegraph"
 	"slices"
 	"sort"
 	"strings"
+
+	"github.com/greenmaskio/greenmask/v1/internal/common"
+	"github.com/greenmaskio/greenmask/v1/internal/common/subset/tablegraph"
 )
 
-// Graph - contains the cycles in the component and the graph of the cycles.
+// Graph - contains the Cycles in the component and the Graph of the Cycles.
 //
-// It requires to generate the correct recursive SQL queries to check the integrity of the group of cycles.
-// It also uses for joining two groups of cycles and checking the integrity between them.
+// It requires to generate the correct recursive SQL queries to check the integrity of the group of Cycles.
+// It also uses for joining two groups of Cycles and checking the integrity between them.
 type Graph struct {
-	// cycles - a list of cycles in the component
+	// Graph - contains the mapping of the vertexes in the component to the edges in the original Graph
+	// for grouped Cycles. This required to join the separated Cycles together.
 	//
-	// It contains list of edges that are involved in the cycle.
-	cycles [][]tablegraph.Edge
-	// cyclesIdents - contains the unique identifiers for the cycles. It uses to avoid duplicates
-	// in the cycles list.
-	cyclesIdents map[string]struct{}
-	// groupedCycles - cycles grouped by the vertexes.
-	//
-	// For example
-	//	1. Two cycles 1->2->3 and 1->2->3 - the both has the same vertexes. Then the group
-	//     will be 1,2,3 for both.
-	//  2. Two cycles 1->2->3 and 2->3->4 - The group has different vertexes in the cycles.
-	//     The group will be 1,2,3 and 2,3,4.
-	//
-	// This later uses to determine the way how to check the integrity when we have multiple cycles group.
-	// Because if we have more than one group we need to check the integrity between them  joining them
-	// and validate the conditions that the records appeared in one cycles satisfies the conditions in the other.
-	groupedCycles map[string][]int
-	// graph - contains the mapping of the vertexes in the component to the edges in the original graph
-	// for grouped cycles. This required to join the separated cycles together.
-	//
-	// For example, we found two cycles 1->2->3 and 2->3->4. The group will be 1,2,3 and 2,3,4. But they have to be
+	// For example, we found two Cycles 1->2->3 and 2->3->4. The group will be 1,2,3 and 2,3,4. But they have to be
 	// joined for integrity checks, because one group may produce records that are not satisfying the conditions
 	// in the other group.
-	graph map[string][]Edge
+	Graph map[string][]Edge
+	// Cycles - a list of Cycles in the component
+	//
+	// It contains list of edges that are involved in the cycle.
+	Cycles [][]tablegraph.Edge
+
+	// GroupedCycles - Cycles grouped by the vertexes.
+	//
+	// For example
+	//	1. Two Cycles 1->2->3 and 1->2->3 - the both has the same vertexes. Then the group
+	//     will be 1,2,3 for both.
+	//  2. Two Cycles 1->2->3 and 2->3->4 - The group has different vertexes in the Cycles.
+	//     The group will be 1,2,3 and 2,3,4.
+	//
+	// This later uses to determine the way how to check the integrity when we have multiple Cycles group.
+	// Because if we have more than one group we need to check the integrity between them  joining them
+	// and validate the conditions that the records appeared in one Cycles satisfies the conditions in the other.
+	GroupedCycles map[string][]int
+	// cyclesIdents - contains the unique identifiers for the Cycles. It uses to avoid duplicates
+	// in the Cycles list.
+	cyclesIdents map[string]struct{}
 }
 
 func NewGraph(
@@ -47,8 +49,8 @@ func NewGraph(
 ) Graph {
 	g := Graph{
 		cyclesIdents:  make(map[string]struct{}),
-		groupedCycles: make(map[string][]int),
-		graph:         make(map[string][]Edge),
+		GroupedCycles: make(map[string][]int),
+		Graph:         make(map[string][]Edge),
 	}
 	g.findCycles(componentGraph)
 	g.groupCycles()
@@ -58,14 +60,14 @@ func NewGraph(
 }
 
 func (g *Graph) HasCycle() bool {
-	return len(g.cycles) > 0
+	return len(g.Cycles) > 0
 }
 
 func (g *Graph) CyclesGroupCount() int {
-	return len(g.groupedCycles)
+	return len(g.GroupedCycles)
 }
 
-// findCycles - finds all cycles in the component
+// findCycles - finds all Cycles in the component
 func (g *Graph) findCycles(componentGraph map[int][]tablegraph.Edge) {
 	visited := make(map[int]bool)
 	var path []tablegraph.Edge
@@ -85,7 +87,7 @@ func (g *Graph) findCycles(componentGraph map[int][]tablegraph.Edge) {
 	}
 }
 
-// findAllCyclesDfs - the basic DFS algorithm adapted to find all cycles in the graph of components and
+// findAllCyclesDfs - the basic DFS algorithm adapted to find all Cycles in the Graph of components and
 // collect the cycle vertices.
 func (g *Graph) findAllCyclesDfs(
 	componentGraph map[int][]tablegraph.Edge,
@@ -122,7 +124,7 @@ func (g *Graph) findAllCyclesDfs(
 			if _, ok := g.cyclesIdents[cycleId]; !ok {
 				res := slices.Clone(cycle)
 				slices.Reverse(res)
-				g.cycles = append(g.cycles, res)
+				g.Cycles = append(g.Cycles, res)
 				g.cyclesIdents[cycleId] = struct{}{}
 			}
 		}
@@ -132,28 +134,28 @@ func (g *Graph) findAllCyclesDfs(
 	recStack[v] = false
 }
 
-// groupCycles - groups the cycles by the vertexes. It builds the map where the key is the group id and the value
-// is the list of the cycles indexes.
+// groupCycles - groups the Cycles by the vertexes. It builds the map where the key is the group id and the value
+// is the list of the Cycles indexes.
 func (g *Graph) groupCycles() {
-	for cycleIdx, cycle := range g.cycles {
+	for cycleIdx, cycle := range g.Cycles {
 		cycleId := getCycleGroupId(cycle)
-		g.groupedCycles[cycleId] = append(g.groupedCycles[cycleId], cycleIdx)
+		g.GroupedCycles[cycleId] = append(g.GroupedCycles[cycleId], cycleIdx)
 	}
 }
 
-// buildCyclesGraph - builds the graph of the grouped cycles. It contains the mapping of the vertexes in the component
+// buildCyclesGraph - builds the Graph of the grouped Cycles. It contains the mapping of the vertexes in the component
 func (g *Graph) buildCyclesGraph() {
 	var idSeq int
 	// Cast the map keys to the slice to have deterministic order for each run.
-	cyclesGroups := make([]string, 0, len(g.groupedCycles))
-	for group := range g.groupedCycles {
+	cyclesGroups := make([]string, 0, len(g.GroupedCycles))
+	for group := range g.GroupedCycles {
 		cyclesGroups = append(cyclesGroups, group)
 	}
 	sort.Strings(cyclesGroups)
 	for _, groupIdI := range cyclesGroups {
-		cyclesI := g.groupedCycles[groupIdI]
+		cyclesI := g.GroupedCycles[groupIdI]
 		for _, groupIdJ := range cyclesGroups {
-			cyclesJ := g.groupedCycles[groupIdJ]
+			cyclesJ := g.GroupedCycles[groupIdJ]
 			if groupIdI == groupIdJ {
 				continue
 			}
@@ -165,17 +167,17 @@ func (g *Graph) buildCyclesGraph() {
 				continue
 			}
 			e := NewEdge(idSeq, groupIdI, groupIdJ, commonVertexes)
-			g.graph[groupIdI] = append(g.graph[groupIdJ], e)
+			g.Graph[groupIdI] = append(g.Graph[groupIdJ], e)
 			idSeq++
 		}
 	}
 }
 
-// findCommonVertexes - finds the common vertexes between the cycles.
+// findCommonVertexes - finds the common vertexes between the Cycles.
 func (g *Graph) findCommonVertexes(i, j int) []common.Table {
 	commonTables := make(map[string]common.Table)
-	for _, edgeI := range g.cycles[i] {
-		for _, edgeJ := range g.cycles[j] {
+	for _, edgeI := range g.Cycles[i] {
+		for _, edgeJ := range g.Cycles[j] {
 			if edgeI.To().TableID() == edgeJ.To().TableID() {
 				tableName := edgeI.To().FullTableName()
 				commonTables[tableName] = edgeI.To().Table()
@@ -192,22 +194,22 @@ func (g *Graph) findCommonVertexes(i, j int) []common.Table {
 	return res
 }
 
-// areCyclesLinked - checks if the cycles are linked by the vertexes.
+// areCyclesLinked - checks if the Cycles are linked by the vertexes.
 //
-// It checks if the cycles have the same vertexes in the edges of cycles. If they have the common vertexes
+// It checks if the Cycles have the same vertexes in the edges of Cycles. If they have the common vertexes
 // then they are linked.
 //
-// For example, we have two cycles 1->2->3 and 2->3->4. The group will be 1,2,3 and 2,3,4. The cycles are linked
-// because they have the common vertex 2,3. Those 2 and 3 vertexes can be used to join the cycles.
+// For example, we have two Cycles 1->2->3 and 2->3->4. The group will be 1,2,3 and 2,3,4. The Cycles are linked
+// because they have the common vertex 2,3. Those 2 and 3 vertexes can be used to join the Cycles.
 func (g *Graph) areCyclesLinked(i, j int) bool {
-	iId := getCycleGroupId(g.cycles[i])
-	jId := getCycleGroupId(g.cycles[j])
-	for _, to := range g.graph[iId] {
+	iId := getCycleGroupId(g.Cycles[i])
+	jId := getCycleGroupId(g.Cycles[j])
+	for _, to := range g.Graph[iId] {
 		if to.to == jId {
 			return true
 		}
 	}
-	for _, to := range g.graph[jId] {
+	for _, to := range g.Graph[jId] {
 		if to.to == iId {
 			return true
 		}
@@ -217,7 +219,7 @@ func (g *Graph) areCyclesLinked(i, j int) bool {
 
 // getCycleGroupId - returns the group id for the cycle based on the vertexes ID.
 //
-// For example, we have two cycles 1->2->3 and 2->3->4. The group will be 1,2,3 and 2,3,4.
+// For example, we have two Cycles 1->2->3 and 2->3->4. The group will be 1,2,3 and 2,3,4.
 // The group id will be 1_2_3 and 2_3_4.
 func getCycleGroupId(cycle []tablegraph.Edge) string {
 	ids := make([]string, 0, len(cycle))
@@ -230,7 +232,7 @@ func getCycleGroupId(cycle []tablegraph.Edge) string {
 
 // getCycleId - returns the unique identifier for the cycle based on the edges ID.
 //
-// For example, we have two similar cycles 1->2->3 (with edges 11->12->13) and 1->2->3 (with edges 21->22->23).
+// For example, we have two similar Cycles 1->2->3 (with edges 11->12->13) and 1->2->3 (with edges 21->22->23).
 // Then the unique identifier will be 11_12_13 and 21_22_23.
 func getCycleId(cycle []tablegraph.Edge) string {
 	ids := make([]string, 0, len(cycle))

@@ -20,7 +20,7 @@ var (
 )
 
 const (
-	mysqlPingTries         = 100
+	mysqlPingTries         = 1000
 	mysqlPingRetryInterval = 100 * time.Millisecond
 
 	mysqlRootUser     = "root"

@@ -1,10 +1,12 @@
 package cyclesgraph
 
 import (
+	"testing"
+
+	"github.com/stretchr/testify/require"
+
 	"github.com/greenmaskio/greenmask/v1/internal/common"
 	"github.com/greenmaskio/greenmask/v1/internal/common/subset/tablegraph"
-	"github.com/stretchr/testify/require"
-	"testing"
 )
 
 func Test_NewGraph(t *testing.T) {
@@ -54,17 +56,17 @@ func Test_NewGraph(t *testing.T) {
 	}
 
 	g := NewGraph(simpleGraph)
-	// Validate cycles
-	require.Len(t, g.cycles, 2)
+	// Validate Cycles
+	require.Len(t, g.Cycles, 2)
 
 	// 1st cycle
-	cycle1 := g.cycles[0]
+	cycle1 := g.Cycles[0]
 	require.Len(t, cycle1, 2)
 	require.Equal(t, 10, cycle1[0].ID())
 	require.Equal(t, 11, cycle1[1].ID())
 
 	// 2nd cycle
-	cycle2 := g.cycles[1]
+	cycle2 := g.Cycles[1]
 	require.Len(t, cycle2, 2)
 	require.Equal(t, 12, cycle2[0].ID())
 	require.Equal(t, 13, cycle2[1].ID())
@@ -72,12 +74,12 @@ func Test_NewGraph(t *testing.T) {
 	// Check cycle identification
 	require.Equal(t, map[string]struct{}{"10_11": {}, "12_13": {}}, g.cyclesIdents)
 
-	// Check cycles group
-	require.Equal(t, map[string][]int{"0_1": {0}, "1_2": {1}}, g.groupedCycles)
+	// Check Cycles group
+	require.Equal(t, map[string][]int{"0_1": {0}, "1_2": {1}}, g.GroupedCycles)
 
-	// Check cycles graph
-	require.Len(t, g.graph, 1)
-	cycleEdgesFrom0To1 := g.graph["0_1"]
+	// Check Cycles Graph
+	require.Len(t, g.Graph, 1)
+	cycleEdgesFrom0To1 := g.Graph["0_1"]
 	require.Len(t, cycleEdgesFrom0To1, 1)
 	cycleEdgeFrom0To1 := cycleEdgesFrom0To1[0]
 	require.Equal(t, "0_1", cycleEdgeFrom0To1.from)
