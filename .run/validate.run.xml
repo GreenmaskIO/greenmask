@@ -1,0 +1,17 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="validate" type="GoApplicationRunConfiguration" factoryName="Go Application">
+    <module name="greenmask" />
+    <working_directory value="$PROJECT_DIR$" />
+    <parameters value="--config config.yml validate --data --rows-limit=10 --diff --format text --rows-limit 2  --transformed-only" />
+    <envs>
+      <env name="GREENMASK_GLOBAL_SALT" value="FFAAAAFFAA" />
+      <env name="PYTHONPATH" value="$PROJECT_DIR$/../pygreenmask" />
+      <env name="PGPASSWORD" value="aediavieNg5Eemeshi9eojaicoiyob1ooxec4Ieshairoo3IethufahziphaekaR" />
+    </envs>
+    <kind value="PACKAGE" />
+    <package value="github.com/greenmaskio/greenmask/cmd/greenmask" />
+    <directory value="$PROJECT_DIR$" />
+    <filePath value="$PROJECT_DIR$/cmd/greenmask/main.go" />
+    <method v="2" />
+  </configuration>
+</component>

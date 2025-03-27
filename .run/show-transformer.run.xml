@@ -1,0 +1,16 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="show-transformer" type="GoApplicationRunConfiguration" factoryName="Go Application">
+    <module name="greenmask" />
+    <working_directory value="$PROJECT_DIR$" />
+    <useCustomBuildTags value="true" />
+    <parameters value="--config $PROJECT_DIR$/config.yml show-transformer IncrementTransformer" />
+    <envs>
+      <env name="PYTHONPATH" value="$PROJECT_DIR$/../pygreenmask" />
+    </envs>
+    <kind value="PACKAGE" />
+    <package value="github.com/greenmaskio/greenmask/cmd/greenmask" />
+    <directory value="$PROJECT_DIR$" />
+    <filePath value="$PROJECT_DIR$/cmd/greenmask/main.go" />
+    <method v="2" />
+  </configuration>
+</component>
