@@ -15,13 +15,6 @@ import (
 // 1. Build all graphs
 // 2. Use Condensation graph for building a query path since it's a DAG
 // 3. Store each query path to the list of queries
-//
-// Plan query
-// There are at least three possible cases to plan a query
-//  1. Query do not have any JOIN's (edges)
-//  2. Query with simple JOIN's
-//  3. One of the vertexes has SCC with cycle
-//
 
 // I believe we can store the required sub-graph in map[int][]condensationgraph.Edge.
 // If there is a table that has only one vertex without JOIN's then we will use only
@@ -34,10 +27,10 @@ type Subset struct {
 	tables            []common.Table
 	tableGraph        tablegraph.Graph
 	condensationGraph condensationgraph.Graph
-	// sccsGraph - is a list of graphs assigned to the specific SCC.
+	// subGraphs - is a list of sub-graphs assigned to the specific SCC.
 	// The index of slice represents SCC Idx, meaning you can find SCC
 	// in SCC list by Idx.
-	sccsGraph []map[int][]condensationgraph.Edge
+	subGraphs []map[int][]condensationgraph.Edge
 }
 
 // NewSubset - creates a new Subset instance.
@@ -51,7 +44,7 @@ func NewSubset(tables []common.Table) (Subset, error) {
 		tables:            tables,
 		tableGraph:        tableGraph,
 		condensationGraph: condensationGraph,
-		sccsGraph:         make([]map[int][]condensationgraph.Edge, len(condensationGraph.SCC)),
+		subGraphs:         make([]map[int][]condensationgraph.Edge, len(condensationGraph.SCC)),
 	}, nil
 }
 
@@ -88,7 +81,7 @@ func (s *Subset) searchTablesGraph() {
 			sscsSubGraph[v] = nil
 		}
 		s.searchTablesGraphDFS(v, from, sscsSubGraph)
-		s.sccsGraph[v] = sscsSubGraph
+		s.subGraphs[v] = sscsSubGraph
 	}
 }
 
