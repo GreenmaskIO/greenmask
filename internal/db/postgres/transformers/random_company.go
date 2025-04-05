@@ -25,7 +25,8 @@ var randomCompanyTransformerDefinition = utils.NewTransformerDefinition(
 	toolkit.MustNewParameterDefinition(
 		"columns",
 		"columns name",
-	).SetRequired(true),
+	).SetRequired(true).
+		SetIsColumnContainer(true),
 
 	engineParameterDefinition,
 )

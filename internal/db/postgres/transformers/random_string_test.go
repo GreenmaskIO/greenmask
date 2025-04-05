@@ -24,7 +24,7 @@ import (
 	"github.com/greenmaskio/greenmask/pkg/toolkit"
 )
 
-// TODO: Cover error casesю
+// TODO: Cover error cases
 func TestRandomStringTransformer_Transform(t *testing.T) {
 	tests := []struct {
 		name       string
@@ -100,7 +100,6 @@ func TestRandomStringTransformer_Transform(t *testing.T) {
 				context.Background(),
 				record,
 			)
-			require.NoError(t, err)
 			require.NoError(t, err)
 			encoded, err := r.Encode()
 			require.NoError(t, err)

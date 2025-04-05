@@ -12,9 +12,9 @@ timezone-related functionalities, or anonymizing real user timezone information 
 ## Description
 
 Utilizing a comprehensive library or algorithm for generating timezone data, the `RandomTimezone` transformer provides
-random timezone strings (e. g., "America/New_York", "Europe/London") for database columns. This feature enables the
-creation of diverse and realistic datasets by simulating timezone information for user profiles, event timings, or any
-other data requiring timezone context.
+random timezone strings (e.g., "America/New_York", "Europe/London") for database columns. 
+This feature enables the creation of diverse and realistic datasets by simulating timezone information for user profiles, 
+event timings, or any other data requiring timezone context.
 
 ## Example: Populate random timezone strings for  the `user_accounts` table
 

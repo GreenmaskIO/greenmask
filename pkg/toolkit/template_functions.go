@@ -459,7 +459,8 @@ func randomDate(randGen *rand.Rand, min, max time.Time) (time.Time, error) {
 	return *(RandomDate(randGen, &min, &max)), nil
 }
 
-// randomFloat - generate float randomly in the interval [min, max] with precision. By default precision is 4 digits
+// randomFloat - generate float randomly in the interval [min, max] with precision.
+// By default, precision is 4 digits
 func randomFloat(randGen *rand.Rand, min, max any, decimal ...any) (float64, error) {
 	var err error
 	var p = 4
@@ -503,8 +504,8 @@ func randomInt(randGen *rand.Rand, min, max any) (int64, error) {
 	return RandomInt(randGen, minInt, maxInt), nil
 }
 
-// randomString - generate random string in the provided min and max length using provided symbols. By default symbols
-// are "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890"
+// randomString - generate random string in the provided min and max length using provided symbols.
+// By default, symbols are "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890"
 func randomString(randGen *rand.Rand, minLength, maxLength any, symbols ...string) (string, error) {
 	s := []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890")
 	if len(symbols) > 0 {
