@@ -5,7 +5,7 @@
 ```shell title="Greenmask available commands"
 greenmask \
 --log-format=[json|text] \
---log-level=[debug|info|error] \
+--log-level=[debug|info|warn] \
 --config=config.yml \
 [dump|list-dumps|delete|list-transformers|show-transformer|restore|show-dump]`
 ```
@@ -28,7 +28,7 @@ For any of the commands mentioned above, you can include the following common fl
 
 * `--log-format` — specifies the desired format for log output, which can be either `json` or `text`. This parameter is
 optional, with the default format set to `text`.
-* `--log-level` — sets the desired level for log output, which can be one of `debug`, `info`, or `error`. This parameter
+* `--log-level` — sets the desired level for log output, which can be one of `debug`, `info`, or `warn`. This parameter
 is optional, with the default log level being `info`.
 * `--config` — requires the specification of a configuration file in YAML format. This configuration file is mandatory
 for Greenmask to operate correctly.

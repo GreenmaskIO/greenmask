@@ -25,7 +25,7 @@ In the `common` section of the configuration, you can specify the following sett
 
 In the `log` section of the configuration, you can specify the following settings:
 
-* `level` — specifies the level of logging, which can be one of the following: `debug`, `info`, or `error`. The default level is `info`.
+* `level` — specifies the level of logging, which can be one of the following: `debug`, `info`, or `warn`. The default level is `info`.
 * `format` — defines the logging format, which can be either `json` or `text`. The default format is `text`.
 
 ## `storage` section
