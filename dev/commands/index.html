@@ -3112,7 +3112,7 @@
 <h2 id="introduction">Introduction<a class="headerlink" href="#introduction" title="Permanent link">&para;</a></h2>
 <div class="highlight"><span class="filename">Greenmask available commands</span><pre><span></span><code>greenmask<span class="w"> </span><span class="se">\</span>
 --log-format<span class="o">=[</span>json<span class="p">|</span>text<span class="o">]</span><span class="w"> </span><span class="se">\</span>
---log-level<span class="o">=[</span>debug<span class="p">|</span>info<span class="p">|</span>error<span class="o">]</span><span class="w"> </span><span class="se">\</span>
+--log-level<span class="o">=[</span>debug<span class="p">|</span>info<span class="p">|</span>warn<span class="o">]</span><span class="w"> </span><span class="se">\</span>
 --config<span class="o">=</span>config.yml<span class="w"> </span><span class="se">\</span>
 <span class="o">[</span>dump<span class="p">|</span>list-dumps<span class="p">|</span>delete<span class="p">|</span>list-transformers<span class="p">|</span>show-transformer<span class="p">|</span>restore<span class="p">|</span>show-dump<span class="o">]</span><span class="sb">`</span>
 </code></pre></div>
@@ -3133,7 +3133,7 @@ potential issues, and checking for schema changes.</li>
 <ul>
 <li><code>--log-format</code> — specifies the desired format for log output, which can be either <code>json</code> or <code>text</code>. This parameter is
 optional, with the default format set to <code>text</code>.</li>
-<li><code>--log-level</code> — sets the desired level for log output, which can be one of <code>debug</code>, <code>info</code>, or <code>error</code>. This parameter
+<li><code>--log-level</code> — sets the desired level for log output, which can be one of <code>debug</code>, <code>info</code>, or <code>warn</code>. This parameter
 is optional, with the default log level being <code>info</code>.</li>
 <li><code>--config</code> — requires the specification of a configuration file in YAML format. This configuration file is mandatory
 for Greenmask to operate correctly.</li>
