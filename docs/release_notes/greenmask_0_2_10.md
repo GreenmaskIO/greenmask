@@ -2,7 +2,7 @@
 
 ## Changes
 
-* Bump dependencies and upgraded go to 1.24 [#285](https://github.com/GreenmaskIO/greenmask/pull/285) [#289](https://github.com/GreenmaskIO/greenmask/pull/289).
+* Bump dependencies and upgraded go to 1.24 [#285](https://github.com/GreenmaskIO/greenmask/pull/285).
 * Changed Oid type in TOC archive library [#286](https://github.com/GreenmaskIO/greenmask/pull/286). 
   Closes [#284](https://github.com/GreenmaskIO/greenmask/issues/284)
 * Revised documentation related to the log level values [#287](https://github.com/GreenmaskIO/greenmask/pull/287).
