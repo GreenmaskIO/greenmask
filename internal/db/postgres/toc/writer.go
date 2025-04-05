@@ -23,7 +23,6 @@ import (
 
 type Writer struct {
 	w        io.Writer
-	buf      []byte
 	intSize  uint32
 	version  int
 	position int
@@ -36,7 +35,6 @@ func NewWriter(w io.Writer) *Writer {
 }
 
 func (w *Writer) prune() {
-	w.buf = w.buf[:]
 	w.intSize = 0
 	w.version = 0
 	w.position = 0
