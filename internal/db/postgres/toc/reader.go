@@ -26,7 +26,6 @@ import (
 
 type Reader struct {
 	r         io.Reader
-	buf       []byte
 	intSize   uint32
 	version   int
 	position  int
@@ -40,7 +39,6 @@ func NewReader(r io.Reader) *Reader {
 }
 
 func (r *Reader) prune() {
-	r.buf = r.buf[:]
 	r.intSize = 0
 	r.version = 0
 	r.position = 0
