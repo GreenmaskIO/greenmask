@@ -14,7 +14,11 @@ var (
 type options interface {
 	ConnectionURI() (string, error)
 	SchemaDumpParams() ([]string, error)
-	ParameterValue(key string) (any, error)
+	Get(key string) (any, error)
+	GetIncludedTables() []string
+	GetExcludedTables() []string
+	GetExcludedSchemas() []string
+	GetIncludedSchemas() []string
 }
 
 func NewConfig(o options) *Config {
@@ -23,6 +27,8 @@ func NewConfig(o options) *Config {
 			cfg = &Config{
 				Common:  NewCommon(),
 				Storage: NewStorageConfig(),
+				// TODO: Consider how to forward two dependencies
+				//	dump and restore cfg interfaces.
 				Dump:    NewDump(o),
 				Restore: NewRestore(o),
 			}

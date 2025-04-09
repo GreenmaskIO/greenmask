@@ -244,7 +244,7 @@ func mustJsonGetRaw(path string, data string) (string, error) {
 	return res.Raw, nil
 }
 
-func jsonGet(path string, data string) interface{} {
+func jsonGet(data string, path string) interface{} {
 	return gjson.Get(data, path).Value()
 }
 

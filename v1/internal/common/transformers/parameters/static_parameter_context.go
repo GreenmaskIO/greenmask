@@ -1,52 +1,42 @@
 package parameters
 
-import "fmt"
+import (
+	"fmt"
+
+	commonininterfaces "github.com/greenmaskio/greenmask/v1/internal/common/interfaces"
+	"github.com/greenmaskio/greenmask/v1/internal/common/transformers/template"
+)
+
+var (
+	errLinkedColumnNameNotSet = fmt.Errorf("linked column name is not set")
+)
 
 type StaticParameterContext struct {
-	rc               *RecordContext
+	*template.TableDriverContext
 	linkedColumnName string
 }
 
-func NewStaticParameterContext(d driver, linkedColumnName string) *StaticParameterContext {
-	dummyRecord := NewRecord(d)
-	rc := NewRecordContext()
-	rc.SetRecord(dummyRecord)
+func NewStaticParameterContext(td commonininterfaces.TableDriver, linkedColumnName string) *StaticParameterContext {
 	return &StaticParameterContext{
-		rc:               rc,
-		linkedColumnName: linkedColumnName,
+		TableDriverContext: template.NewTableDriverContext(td),
+		linkedColumnName:   linkedColumnName,
 	}
-}
-
-func (spc *StaticParameterContext) GetColumnType(name string) (string, error) {
-	return spc.rc.GetColumnType(name)
-}
-
-func (spc *StaticParameterContext) EncodeValueByColumn(name string, v any) (any, error) {
-	return spc.rc.EncodeValueByColumn(name, v)
-}
-
-func (spc *StaticParameterContext) DecodeValueByColumn(name string, v any) (any, error) {
-	return spc.rc.DecodeValueByColumn(name, v)
-}
-
-func (spc *StaticParameterContext) EncodeValueByType(name string, v any) (any, error) {
-	return spc.rc.EncodeValueByType(name, v)
-}
-
-func (spc *StaticParameterContext) DecodeValueByType(name string, v any) (any, error) {
-	return spc.rc.DecodeValueByType(name, v)
 }
 
 func (spc *StaticParameterContext) EncodeValue(v any) (any, error) {
 	if spc.linkedColumnName == "" {
-		return nil, fmt.Errorf("linked column name is not set use .EncodeValueByType or .EncodeValueByColumn instead")
+		return nil, fmt.Errorf(
+			"use .EncodeValueByType or .EncodeValueByColumn instead: %w", errLinkedColumnNameNotSet,
+		)
 	}
-	return spc.rc.EncodeValueByColumn(spc.linkedColumnName, v)
+	return spc.EncodeValueByColumn(spc.linkedColumnName, v)
 }
 
 func (spc *StaticParameterContext) DecodeValue(v any) (any, error) {
 	if spc.linkedColumnName == "" {
-		return nil, fmt.Errorf("linked column name is not set use .DecodeValueByType or .DecodeValueByColumn instead")
+		return nil, fmt.Errorf(
+			"use .DecodeValueByType or .DecodeValueByColumn instead: %w", errLinkedColumnNameNotSet,
+		)
 	}
-	return spc.rc.DecodeValueByColumn(spc.linkedColumnName, v)
+	return spc.DecodeValueByColumn(spc.linkedColumnName, v)
 }

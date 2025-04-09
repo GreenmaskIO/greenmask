@@ -26,7 +26,7 @@ func (suite *DirectorySuite) SetupSuite() {
 	suite.tmpDir, err = os.MkdirTemp(tempDir, "directory_storage_unit_test_")
 	suite.Require().NoError(err)
 
-	suite.st, err = NewDirectoryStorage(&DirectoryConfig{Path: suite.tmpDir})
+	suite.st, err = NewDirectoryStorage(DirectoryConfig{Path: suite.tmpDir})
 	suite.Require().NoError(err)
 }
 

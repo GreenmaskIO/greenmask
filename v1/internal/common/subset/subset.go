@@ -2,12 +2,20 @@ package subset
 
 import (
 	"fmt"
-	"slices"
 
-	"github.com/greenmaskio/greenmask/v1/internal/common"
+	commonmodels "github.com/greenmaskio/greenmask/v1/internal/common/models"
 	"github.com/greenmaskio/greenmask/v1/internal/common/subset/condensationgraph"
 	"github.com/greenmaskio/greenmask/v1/internal/common/subset/tablegraph"
 )
+
+// queryBuilder - returns built query for SCC.
+//
+// Since the root SCC may be a cycle and contain more tha one
+// vertex (table) it return a map of vertexes to the query render.
+// The key is TableID and value is a query for this table.
+type queryBuilder interface {
+	build() (map[int]string, error)
+}
 
 // The tasks to resolve
 //
@@ -24,28 +32,55 @@ import (
 //
 // It generates the subset queries for the tables.
 type Subset struct {
-	tables            []common.Table
+	tables            []commonmodels.Table
 	tableGraph        tablegraph.Graph
 	condensationGraph condensationgraph.Graph
-	// subGraphs - is a list of sub-graphs assigned to the specific SCC.
+	// subsetGraphs - is a list of sub-graphs assigned to the specific SCC.
 	// The index of slice represents SCC Idx, meaning you can find SCC
 	// in SCC list by Idx.
-	subGraphs []map[int][]condensationgraph.Edge
+	subsetGraphs  []*subsetGraph
+	tablesQueries []string
+	dialect       Dialect
+}
+
+// validateTablesHasUniqueIDs - validates that all tables have unique IDs.
+// This will help you to debug cases when IDs are forgotten to be set.
+func validateTablesHasUniqueIDs(tables []commonmodels.Table) {
+	// Validate that all tables have unique IDs
+	seen := make(map[int]struct{})
+	for _, table := range tables {
+		if _, exists := seen[table.ID]; exists {
+			panic(fmt.Sprintf("table with ID %d already exists", table.ID))
+		}
+		seen[table.ID] = struct{}{}
+	}
 }
 
 // NewSubset - creates a new Subset instance.
-func NewSubset(tables []common.Table) (Subset, error) {
+//
+// TODO: I suspect the version of dialect is required as well but a bit later I decide to add it.
+//
+//	I don't know the version format for now
+func NewSubset(tables []commonmodels.Table, dialect Dialect) (Subset, error) {
+	validateTablesHasUniqueIDs(tables)
 	tableGraph, err := tablegraph.NewGraph(tables)
 	if err != nil {
 		return Subset{}, fmt.Errorf("create table graph: %w", err)
 	}
 	condensationGraph := condensationgraph.NewGraph(tableGraph)
-	return Subset{
+	s := Subset{
 		tables:            tables,
 		tableGraph:        tableGraph,
 		condensationGraph: condensationGraph,
-		subGraphs:         make([]map[int][]condensationgraph.Edge, len(condensationGraph.SCC)),
-	}, nil
+		subsetGraphs:      make([]*subsetGraph, len(condensationGraph.SCC)),
+		tablesQueries:     make([]string, len(tables)),
+		dialect:           dialect,
+	}
+	s.searchTablesGraph()
+	if err := s.buildSubsetQueries(); err != nil {
+		return Subset{}, fmt.Errorf("render subset queries: %w", err)
+	}
+	return s, nil
 }
 
 // searchTablesGraph - find sub-graphs for tables that has at least one subset condition in the path.
@@ -54,16 +89,16 @@ func NewSubset(tables []common.Table) (Subset, error) {
 // The value is the subset query for the table.
 func (s *Subset) searchTablesGraph() {
 	// We start the DFS from each vertex.
-	// When Subset condition is found we have to add all edges start from the beginning
+	// When Subset condition is found we have to addEdge all edges start from the beginning
 	// (or the previous vertex with subset). Those edges must be added as a graph.
 	//
 	//  For example
 	// 		The graph 1 -> 2 -> 3 -> 4 -> 5 -> 6
 	//		List of vertexes with subset: 3, 5
 	//  	Then
-	//			Once subset 3 is met - add the edges with vertexes 1 -> 2 -> 3 into graph
+	//			Once subset 3 is met - addEdge the edges with vertexes 1 -> 2 -> 3 into graph
 	//				The result: 1 -> 2 -> 3
-	//			Once subset 5 is met - add the edges with vertexes 4 -> 5 into graph
+	//			Once subset 5 is met - addEdge the edges with vertexes 4 -> 5 into graph
 	//				The result: 1 -> 2 -> 3 -> 4 -> 5
 	//			The vertex 6 will be skipped because it does not affect the previous, because it does not has
 	//			subset conditions.
@@ -71,17 +106,21 @@ func (s *Subset) searchTablesGraph() {
 	// The resulting Sub-Graph will be used for query planning later.
 	for v := range s.condensationGraph.Graph {
 		var (
-			from *[]condensationgraph.Edge
-			// sscsSubGraph - the graph that contains all the vertexes (SCC) that are affected
+			from []condensationgraph.Edge
+			// sg - the graph that contains all the vertexes (SCC) that are affected
 			// by subset conditions. This will be used for query planning.
-			sscsSubGraph = make(map[int][]condensationgraph.Edge)
+			sg = newSubsetGraph(v)
 		)
 		if s.condensationGraph.SCC[v].HasSubsetConditions() {
-			// If the first vertex has subset conditions, then add it into graph.
-			sscsSubGraph[v] = nil
+			// If the first vertex has subset conditions, then addEdge it into graph.
+			sg.addVertex(v, s.condensationGraph.SCC[v])
+
 		}
-		s.searchTablesGraphDFS(v, from, sscsSubGraph)
-		s.subGraphs[v] = sscsSubGraph
+		s.searchTablesGraphDFS(v, &from, sg)
+		if sg.vertexCount() != 0 {
+			// If the sub-graph is not empty, then we have to store the graph for the vertex (SCC).
+			s.subsetGraphs[v] = sg
+		}
 	}
 }
 
@@ -89,18 +128,18 @@ func (s *Subset) searchTablesGraph() {
 func (s *Subset) searchTablesGraphDFS(
 	v int,
 	from *[]condensationgraph.Edge,
-	subGraph map[int][]condensationgraph.Edge,
+	subGraph *subsetGraph,
 ) {
 	for _, to := range s.condensationGraph.Graph[v] {
 		// Add current edge to from list
 		*from = append(*from, to)
-		if s.condensationGraph.SCC[to.To().SCCID()].HasSubsetConditions() {
+		if s.condensationGraph.SCC[to.To().SCC.ID()].HasSubsetConditions() {
 			// If SCC has subset condition, then dump it into sub graph
 			dumpEdgesIntoGraph(subGraph, *from)
 			// Clen up "from" slice in order to avoid duplicates in future edges dumps.
 			*from = (*from)[:0]
 		}
-		s.searchTablesGraphDFS(v, from, subGraph)
+		s.searchTablesGraphDFS(to.To().SCC.ID(), from, subGraph)
 		// Since the "from" slice can be cleaned on edges dump, we should check if it's 0
 		// in order to avoid panic
 		if len(*from) > 0 {
@@ -111,28 +150,54 @@ func (s *Subset) searchTablesGraphDFS(
 
 // dumpEdgesIntoGraph - dumps the list of edges into sub-graph.
 //
-// It generates panic if the edges was already added, because they are unique, and this is definitely a bug
-func dumpEdgesIntoGraph(graph map[int][]condensationgraph.Edge, edges []condensationgraph.Edge) {
+// It generates panic if the edges was already added, because they are unique, and this is definitely a bug.
+func dumpEdgesIntoGraph(graph *subsetGraph, edges []condensationgraph.Edge) {
 	for _, e := range edges {
-		if existingEdges, ok := graph[e.From().SCCID()]; ok {
-			// Check if this edges is already dumped. If it's dumped - panic. This might be helpful to find
-			// bugs where dumpEdgesIntoGraph function is not correctly called or graph map contains wrong vertexes
-			// and edges.
-			found := slices.ContainsFunc(existingEdges, func(edge condensationgraph.Edge) bool {
-				if edge.ID() == e.ID() {
-					return true
-				}
-				return false
-			})
-			if found {
-				panic(
-					fmt.Sprintf(
-						"the concdesed edge %d is going to be added again %v+",
-						e.ID(), e,
-					),
-				)
-			}
-		}
-		graph[e.From().SCCID()] = append(graph[e.From().SCCID()], e)
+		graph.addEdge(e)
 	}
+}
+
+// buildSubsetQueries - builds the queries for each SCC.
+func (s *Subset) buildSubsetQueries() error {
+	for _, sg := range s.subsetGraphs {
+		if sg == nil || sg.vertexCount() == 0 {
+			// If the sub-graph is empty, then we can skip it.
+			continue
+		}
+		queries, err := s.buildQueryForSCC(sg)
+		if err != nil {
+			return fmt.Errorf("render query for SCC %d: %w", sg.rootVertex, err)
+		}
+		s.setQueryForEachTableOfSCC(queries)
+	}
+	return nil
+}
+
+// setQueryForEachTableOfSCC - sets the query for each table of SCC.
+// It associates the generated query with list of tables.
+func (s *Subset) setQueryForEachTableOfSCC(queries map[int]string) {
+	for tableID, query := range queries {
+		s.tablesQueries[tableID] = query
+	}
+}
+
+// buildQueryForSCC - builds the query for the provides subsetGraph.
+//
+// Since the root vertex (root SCC) may be a cycle and contain more than one
+// vertex (table) it returns a map of vertexes to the query render.
+// The map key represents TableID and value is a query for this table.
+func (s *Subset) buildQueryForSCC(sg *subsetGraph) (map[int]string, error) {
+	var builder queryBuilder
+	if sg.hasCycles() {
+		// If the graph has cycles, then we need to use the cycle query builder.
+		builder = newCyclesQueryBuilder(sg, s.dialect)
+	} else {
+		// If the graph is a DAG, then we need to use the DAG query builder.
+		builder = newDAGQueryBuilder(sg, s.dialect)
+	}
+	queries, err := builder.build()
+	if err != nil {
+		return nil, err
+	}
+	return queries, nil
 }

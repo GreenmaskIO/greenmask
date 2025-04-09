@@ -10,6 +10,7 @@ require (
 	github.com/go-faker/faker/v4 v4.6.0
 	github.com/go-sql-driver/mysql v1.9.1
 	github.com/greenmaskio/greenmask v0.2.9
+	github.com/huandu/go-sqlbuilder v1.35.0
 	github.com/jackc/pgx/v5 v5.7.4
 	github.com/joho/sqltocsv v0.0.0-20210428211105-a6d6801d59df
 	github.com/mitchellh/mapstructure v1.5.0

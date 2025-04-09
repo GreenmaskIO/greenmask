@@ -1,5 +1,7 @@
 package driver
 
+import "github.com/greenmaskio/greenmask/v1/internal/common/models"
+
 const (
 	// Numeric types
 	TypeTinyInt   = "tinyint"
@@ -63,7 +65,7 @@ const (
 
 const (
 	// Numeric types with Virtual OIDs
-	VirtualOidTinyInt uint32 = iota
+	VirtualOidTinyInt models.VirtualOID = iota
 	VirtualOidSmallInt
 	VirtualOidMediumInt
 	VirtualOidInt
@@ -123,7 +125,7 @@ const (
 )
 
 var (
-	VirtualOidToTypeName = map[uint32]string{
+	VirtualOidToTypeName = map[models.VirtualOID]string{
 		VirtualOidTinyInt:            TypeTinyInt,
 		VirtualOidSmallInt:           TypeSmallInt,
 		VirtualOidMediumInt:          TypeMediumInt,
@@ -166,7 +168,7 @@ var (
 		VirtualOidJSON:               TypeJSON,
 	}
 
-	TypeNameToVirtualOid = map[string]uint32{
+	TypeNameToVirtualOid = map[string]models.VirtualOID{
 		TypeTinyInt:            VirtualOidTinyInt,
 		TypeSmallInt:           VirtualOidSmallInt,
 		TypeMediumInt:          VirtualOidMediumInt,

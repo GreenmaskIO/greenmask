@@ -3,7 +3,7 @@ package tablegraph
 import (
 	"fmt"
 
-	"github.com/greenmaskio/greenmask/v1/internal/common"
+	commonmodels "github.com/greenmaskio/greenmask/v1/internal/common/models"
 )
 
 // Key - represents a simple primary key or foreign key item. Depending on the context it can represent a column
@@ -30,7 +30,7 @@ func NewKeysByColumn(cols []string) []Key {
 //	return keys
 //}
 
-func (k *Key) GetKeyReference(t common.Table) string {
+func (k *Key) GetKeyReference(t commonmodels.Table) string {
 	if k.Expression != "" {
 		return k.Expression
 	}

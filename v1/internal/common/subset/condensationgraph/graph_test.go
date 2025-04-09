@@ -5,20 +5,20 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/greenmaskio/greenmask/v1/internal/common"
 	"github.com/greenmaskio/greenmask/v1/internal/common/models"
+	commonmodels "github.com/greenmaskio/greenmask/v1/internal/common/models"
 	"github.com/greenmaskio/greenmask/v1/internal/common/subset/tablegraph"
 )
 
 func TestNewGraph(t *testing.T) {
-	tableA := common.Table{
+	tableA := commonmodels.Table{
 		Schema:     "test",
 		Name:       "a",
 		PrimaryKey: []string{"id"},
 		References: nil,
 	}
 
-	tableB := common.Table{
+	tableB := commonmodels.Table{
 		Schema:     "test",
 		Name:       "b",
 		PrimaryKey: []string{"id"},
@@ -38,7 +38,7 @@ func TestNewGraph(t *testing.T) {
 		},
 	}
 
-	tableC := common.Table{
+	tableC := commonmodels.Table{
 		Schema:     "test",
 		Name:       "c",
 		PrimaryKey: []string{"id"},
@@ -58,7 +58,7 @@ func TestNewGraph(t *testing.T) {
 		},
 	}
 
-	tableD := common.Table{
+	tableD := commonmodels.Table{
 		Schema:     "test",
 		Name:       "d",
 		PrimaryKey: []string{"id"},
@@ -72,7 +72,7 @@ func TestNewGraph(t *testing.T) {
 		},
 	}
 
-	tableF := common.Table{
+	tableF := commonmodels.Table{
 		Schema:     "test",
 		Name:       "f",
 		PrimaryKey: []string{"id"},
@@ -86,7 +86,7 @@ func TestNewGraph(t *testing.T) {
 		},
 	}
 
-	tables := []common.Table{tableA, tableB, tableC, tableD, tableF}
+	tables := []commonmodels.Table{tableA, tableB, tableC, tableD, tableF}
 
 	g, err := tablegraph.NewGraph(tables)
 	require.NoError(t, err)
@@ -119,7 +119,7 @@ func TestNewGraph(t *testing.T) {
 	require.True(t, scc0.CyclesGraph.HasCycle())
 	require.Len(t, scc0.SCCGraph, 1)
 	require.Len(t, scc0.vertexes, 1)
-	require.Equal(t, scc0.vertexes, map[int]common.Table{3: tableD})
+	require.Equal(t, scc0.vertexes, map[int]commonmodels.Table{3: tableD})
 
 	// Validate SCCs
 	// SCC 1
@@ -133,7 +133,7 @@ func TestNewGraph(t *testing.T) {
 	require.Len(t, edges, 0)
 
 	require.Len(t, scc1.vertexes, 1)
-	require.Equal(t, scc1.vertexes, map[int]common.Table{2: tableC})
+	require.Equal(t, scc1.vertexes, map[int]commonmodels.Table{2: tableC})
 
 	// Validate SCCs
 	// SCC 2
@@ -141,7 +141,7 @@ func TestNewGraph(t *testing.T) {
 	require.Equal(t, scc2.id, 2)
 	require.True(t, scc2.CyclesGraph.HasCycle())
 	require.Len(t, scc2.SCCGraph, 2)
-	require.Equal(t, scc2.vertexes, map[int]common.Table{1: tableB, 4: tableF})
+	require.Equal(t, scc2.vertexes, map[int]commonmodels.Table{1: tableB, 4: tableF})
 
 	edges, ok = scc2.SCCGraph[1]
 	require.True(t, ok)
@@ -163,7 +163,7 @@ func TestNewGraph(t *testing.T) {
 	require.Equal(t, scc3.id, 3)
 	require.False(t, scc3.CyclesGraph.HasCycle())
 	require.Len(t, scc3.SCCGraph, 1)
-	require.Equal(t, scc3.vertexes, map[int]common.Table{0: tableA})
+	require.Equal(t, scc3.vertexes, map[int]commonmodels.Table{0: tableA})
 
 	edges, ok = scc3.SCCGraph[0]
 	require.True(t, ok)

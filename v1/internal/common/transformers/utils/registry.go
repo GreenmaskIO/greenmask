@@ -18,6 +18,10 @@ import (
 	"fmt"
 )
 
+var (
+	errTransformerAlreadyExists = fmt.Errorf("transformer already exists")
+)
+
 var DefaultTransformerRegistry = NewTransformerRegistry()
 
 type TransformerRegistry struct {
@@ -32,8 +36,8 @@ func NewTransformerRegistry() *TransformerRegistry {
 
 func (tm *TransformerRegistry) Register(definition *TransformerDefinition) error {
 	if _, ok := tm.M[definition.Properties.Name]; ok {
-		return fmt.Errorf("unable to register transformer: transformer with Name %s already exists",
-			definition.Properties.Name)
+		return fmt.Errorf("register transformer '%s': %w",
+			definition.Properties.Name, errTransformerAlreadyExists)
 	}
 	tm.M[definition.Properties.Name] = definition
 	return nil

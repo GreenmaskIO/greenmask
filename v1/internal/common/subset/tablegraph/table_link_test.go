@@ -1,21 +1,23 @@
 package tablegraph
 
 import (
-	"github.com/greenmaskio/greenmask/v1/internal/common"
-	"github.com/stretchr/testify/require"
 	"testing"
+
+	"github.com/stretchr/testify/require"
+
+	commonmodels "github.com/greenmaskio/greenmask/v1/internal/common/models"
 )
 
 func TestNewTableLink(t *testing.T) {
 	actual := NewTableLink(
 		1,
-		common.Table{Schema: "test", Name: "test1"},
+		commonmodels.Table{Schema: "test", Name: "test1"},
 		[]Key{{Name: "test"}},
 		[]string{"test"},
 	)
 	expected := TableLink{
 		ID: 1,
-		table: common.Table{
+		table: commonmodels.Table{
 			Schema: "test",
 			Name:   "test1",
 		},
@@ -28,7 +30,7 @@ func TestNewTableLink(t *testing.T) {
 func TestTableLink_Index(t *testing.T) {
 	tableLink := NewTableLink(
 		1,
-		common.Table{Schema: "test", Name: "test1"},
+		commonmodels.Table{Schema: "test", Name: "test1"},
 		[]Key{{Name: "test"}},
 		[]string{"test"},
 	)
@@ -39,18 +41,18 @@ func TestTableLink_Index(t *testing.T) {
 func TestTableLink_Table(t *testing.T) {
 	tableLink := NewTableLink(
 		1,
-		common.Table{Schema: "test", Name: "test1"},
+		commonmodels.Table{Schema: "test", Name: "test1"},
 		[]Key{{Name: "test"}},
 		[]string{"test"},
 	)
 	actual := tableLink.Table()
-	require.Equal(t, common.Table{Schema: "test", Name: "test1"}, actual)
+	require.Equal(t, commonmodels.Table{Schema: "test", Name: "test1"}, actual)
 }
 
 func TestTableLink_GetTableName(t *testing.T) {
 	tableLink := NewTableLink(
 		1,
-		common.Table{Schema: "test", Name: "test1"},
+		commonmodels.Table{Schema: "test", Name: "test1"},
 		[]Key{{Name: "test"}},
 		[]string{"test"},
 	)
@@ -61,7 +63,7 @@ func TestTableLink_GetTableName(t *testing.T) {
 func TestTableLink_Keys(t *testing.T) {
 	tableLink := NewTableLink(
 		1,
-		common.Table{Schema: "test", Name: "test1"},
+		commonmodels.Table{Schema: "test", Name: "test1"},
 		[]Key{{Name: "test"}},
 		[]string{"test"},
 	)
@@ -72,7 +74,7 @@ func TestTableLink_Keys(t *testing.T) {
 func TestTableLink_PolymorphicExpressions(t *testing.T) {
 	tableLink := NewTableLink(
 		1,
-		common.Table{Schema: "test", Name: "test1"},
+		commonmodels.Table{Schema: "test", Name: "test1"},
 		[]Key{{Name: "test"}},
 		[]string{"test"},
 	)

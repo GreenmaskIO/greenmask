@@ -76,7 +76,7 @@ func init() {
 	)
 
 	RootCmd.AddCommand(dumpCmd)
-	RootCmd.AddCommand(restoreCmd)
+	//RootCmd.AddCommand(restoreCmd)
 
 	if err := viper.BindPFlag("log.format", RootCmd.PersistentFlags().Lookup("log-format")); err != nil {
 		log.Fatal().Err(err).Msg("")

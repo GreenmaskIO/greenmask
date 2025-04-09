@@ -11,26 +11,11 @@
 package driver
 
 import (
-	"encoding/binary"
 	"errors"
 	"fmt"
 	"strconv"
 	"time"
 )
-
-// Returns the bool value of the input.
-// The 2nd return value indicates if the input was a valid bool value
-func readBool(input string) (value bool, valid bool) {
-	switch input {
-	case "1", "true", "TRUE", "True":
-		return true, true
-	case "0", "false", "FALSE", "False":
-		return false, true
-	}
-
-	// Not a valid bool value
-	return
-}
 
 /******************************************************************************
 *                           Time related utils                                *
@@ -220,60 +205,5 @@ func appendDateTime(buf []byte, t time.Time, timeTruncate time.Duration) ([]byte
 	return append(buf, localBuf[:n]...), nil
 }
 
-// zeroDateTime is used in formatBinaryDateTime to avoid an allocation
-// if the DATE or DATETIME has the zero value.
-// It must never be changed.
-// The current behavior depends on database/sql copying the result.
-var zeroDateTime = []byte("0000-00-00 00:00:00.000000")
-
 const digits01 = "0123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789"
 const digits10 = "0000000000111111111122222222223333333333444444444455555555556666666666777777777788888888889999999999"
-
-func appendMicrosecs(dst, src []byte, decimals int) []byte {
-	if decimals <= 0 {
-		return dst
-	}
-	if len(src) == 0 {
-		return append(dst, ".000000"[:decimals+1]...)
-	}
-
-	microsecs := binary.LittleEndian.Uint32(src[:4])
-	p1 := byte(microsecs / 10000)
-	microsecs -= 10000 * uint32(p1)
-	p2 := byte(microsecs / 100)
-	microsecs -= 100 * uint32(p2)
-	p3 := byte(microsecs)
-
-	switch decimals {
-	default:
-		return append(dst, '.',
-			digits10[p1], digits01[p1],
-			digits10[p2], digits01[p2],
-			digits10[p3], digits01[p3],
-		)
-	case 1:
-		return append(dst, '.',
-			digits10[p1],
-		)
-	case 2:
-		return append(dst, '.',
-			digits10[p1], digits01[p1],
-		)
-	case 3:
-		return append(dst, '.',
-			digits10[p1], digits01[p1],
-			digits10[p2],
-		)
-	case 4:
-		return append(dst, '.',
-			digits10[p1], digits01[p1],
-			digits10[p2], digits01[p2],
-		)
-	case 5:
-		return append(dst, '.',
-			digits10[p1], digits01[p1],
-			digits10[p2], digits01[p2],
-			digits10[p3],
-		)
-	}
-}

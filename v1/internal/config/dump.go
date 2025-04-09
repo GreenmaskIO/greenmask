@@ -10,8 +10,8 @@ import (
 
 type Transformers []TransformerConfig
 
-func (t Transformers) ToTransformerConfig() models.Transformers {
-	transformers := make(models.Transformers, len(t))
+func (t Transformers) ToTransformerConfig() []models.TransformerConfig {
+	transformers := make([]models.TransformerConfig, len(t))
 	for i, transformer := range t {
 		transformers[i] = transformer.ToTransformerConfig()
 	}
@@ -103,12 +103,12 @@ type VirtualReference struct {
 
 type TransformationConfig []Table
 
-func (tc TransformationConfig) ToTransformationConfig() models.TransformationConfig {
-	tables := make(models.TransformationConfig, len(tc))
+func (tc TransformationConfig) ToTransformationConfig() []models.TableConfig {
+	tables := make([]models.TableConfig, len(tc))
 	for i, table := range tc {
 		tables[i] = table.ToTableConfig()
 	}
-	return models.NewTransformationConfig(tables)
+	return tables
 }
 
 type Dump struct {

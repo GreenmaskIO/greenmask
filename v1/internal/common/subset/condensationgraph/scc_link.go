@@ -7,20 +7,15 @@ type Link struct {
 	// tableID - index of the SCC in. Using this index the SCC can be identified
 	// in the condensation Graph or SCC list. Meaning this ID point to the left or right vertex in the edge.
 	tableID int
-	scc     SCC
+	SCC     SCC
 }
 
 // NewLink - creates a new Link instance.
 func NewLink(tableID int, c SCC) Link {
 	return Link{
 		tableID: tableID,
-		scc:     c,
+		SCC:     c,
 	}
-}
-
-// SCCID - returns the ID of SCC.
-func (l Link) SCCID() int {
-	return l.scc.ID()
 }
 
 // TableID - return the table ID.

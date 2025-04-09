@@ -1,10 +1,11 @@
 package tablegraph
 
 import (
-	"github.com/greenmaskio/greenmask/v1/internal/common"
-	"github.com/greenmaskio/greenmask/v1/internal/common/models"
-	"github.com/stretchr/testify/require"
 	"testing"
+
+	"github.com/stretchr/testify/require"
+
+	commonmodels "github.com/greenmaskio/greenmask/v1/internal/common/models"
 )
 
 func TestNewGraph(t *testing.T) {
@@ -24,18 +25,18 @@ func TestNewGraph(t *testing.T) {
 				^	|
 		        |----
 	*/
-	tableA := common.Table{
+	tableA := commonmodels.Table{
 		Schema:     "test",
 		Name:       "a",
 		PrimaryKey: []string{"id"},
 		References: nil,
 	}
 
-	tableB := common.Table{
+	tableB := commonmodels.Table{
 		Schema:     "test",
 		Name:       "b",
 		PrimaryKey: []string{"id"},
-		References: []models.Reference{
+		References: []commonmodels.Reference{
 			{
 				ReferencedSchema: "test",
 				ReferencedName:   "a",
@@ -51,11 +52,11 @@ func TestNewGraph(t *testing.T) {
 		},
 	}
 
-	tableC := common.Table{
+	tableC := commonmodels.Table{
 		Schema:     "test",
 		Name:       "c",
 		PrimaryKey: []string{"id"},
-		References: []models.Reference{
+		References: []commonmodels.Reference{
 			{
 				ReferencedSchema: "test",
 				ReferencedName:   "b",
@@ -71,11 +72,11 @@ func TestNewGraph(t *testing.T) {
 		},
 	}
 
-	tableD := common.Table{
+	tableD := commonmodels.Table{
 		Schema:     "test",
 		Name:       "d",
 		PrimaryKey: []string{"id"},
-		References: []models.Reference{
+		References: []commonmodels.Reference{
 			{
 				ReferencedSchema: "test",
 				ReferencedName:   "d",
@@ -85,11 +86,11 @@ func TestNewGraph(t *testing.T) {
 		},
 	}
 
-	tableF := common.Table{
+	tableF := commonmodels.Table{
 		Schema:     "test",
 		Name:       "f",
 		PrimaryKey: []string{"id"},
-		References: []models.Reference{
+		References: []commonmodels.Reference{
 			{
 				ReferencedSchema: "test",
 				ReferencedName:   "b",
@@ -99,7 +100,7 @@ func TestNewGraph(t *testing.T) {
 		},
 	}
 
-	tables := []common.Table{tableA, tableB, tableC, tableD, tableF}
+	tables := []commonmodels.Table{tableA, tableB, tableC, tableD, tableF}
 
 	expected := Graph{
 		Vertexes: tables,

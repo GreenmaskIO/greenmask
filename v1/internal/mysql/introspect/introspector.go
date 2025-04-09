@@ -10,7 +10,8 @@ import (
 	"github.com/Masterminds/sprig/v3"
 	_ "github.com/go-sql-driver/mysql"
 
-	"github.com/greenmaskio/greenmask/v1/internal/common/models"
+	commonmodels "github.com/greenmaskio/greenmask/v1/internal/common/models"
+	mysqlmodels "github.com/greenmaskio/greenmask/v1/internal/mysql/models"
 )
 
 var (
@@ -25,38 +26,56 @@ type options interface {
 }
 
 type Introspector struct {
-	db     *sql.DB
-	tables []Table
+	tables []mysqlmodels.Table
 	opt    options
 }
 
-func NewIntrospector(db *sql.DB, opt options) Introspector {
-	return Introspector{
-		db:  db,
+func NewIntrospector(opt options) *Introspector {
+	return &Introspector{
 		opt: opt,
 	}
 }
 
-func (i *Introspector) Introspect(ctx context.Context) error {
-	tables, err := i.getTables(ctx)
+func (i *Introspector) GetTables() []mysqlmodels.Table {
+	return i.tables
+}
+
+func (i *Introspector) GetCommonTables() []commonmodels.Table {
+	tables := make([]commonmodels.Table, len(i.tables))
+	for idx, table := range i.tables {
+		tables[idx] = table.ToCommonTable()
+	}
+	return tables
+}
+
+// Introspect - introspects the mysql instance provided. It received a transaction
+// because the data have to be consistent.
+// TODO: Keep in ming that mysql does not have schema as in postgresql.
+//
+//	      It has database and it plays both roles as a schema and database.
+//	      Meaning there might be cross references between databases.
+//			 Additionally check if possible to open one TX lock snapshot
+//			 and import it in the new transaction/session.
+func (i *Introspector) Introspect(ctx context.Context, tx *sql.Tx) error {
+	tables, err := i.getTables(ctx, tx)
 	if err != nil {
 		return fmt.Errorf("introspect tables: %w", err)
 	}
 
 	for _, t := range tables {
-		columns, err := i.getColumns(ctx, t.Schema, t.Name)
+		columns, err := i.getColumns(ctx, tx, t.Schema, t.Name)
 		if err != nil {
 			return fmt.Errorf("introspect columns for table %s.%s: %w", t.Schema, t.Name, err)
 		}
 		t.SetColumns(columns)
 
-		pkColumns, err := i.getPrimaryKey(ctx, t.Schema, t.Name)
+		pkColumns, err := i.getPrimaryKey(ctx, tx, t.Schema, t.Name)
 		if err != nil {
 			return fmt.Errorf("introspect primary key for table %s.%s: %w", t.Schema, t.Name, err)
 		}
 		t.SetPrimaryKey(pkColumns)
 
-		fks, err := i.getForeignKeys(ctx, t.Name, t.Schema)
+		fks, err := i.getForeignKeys(ctx, tx, t.Name, t.Schema)
 		if err != nil {
 			return fmt.Errorf("introspect foreign keys for table %s.%s: %w", t.Schema, t.Name, err)
 		}
@@ -69,7 +88,7 @@ func (i *Introspector) Introspect(ctx context.Context) error {
 }
 
 // getTables - get all tables from the database excluding system tables
-func (i *Introspector) getTables(ctx context.Context) ([]Table, error) {
+func (i *Introspector) getTables(ctx context.Context, tx *sql.Tx) ([]mysqlmodels.Table, error) {
 	excludeTables := i.opt.GetExcludedTables()
 	excludeSchemas := i.opt.GetExcludedSchemas()
 	includeTables := i.opt.GetIncludedTables()
@@ -112,9 +131,8 @@ func (i *Introspector) getTables(ctx context.Context) ([]Table, error) {
 	if err := query.Execute(buf, data); err != nil {
 		return nil, fmt.Errorf("execute introspect tables query template: %w", err)
 	}
-	println(buf.String())
 	args := buildArgs(excludeTables, includeTables, excludeSchemas, includeSchemas)
-	rows, err := i.db.QueryContext(
+	rows, err := tx.QueryContext(
 		ctx,
 		buf.String(),
 		args...,
@@ -122,8 +140,11 @@ func (i *Introspector) getTables(ctx context.Context) ([]Table, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
-	var tables []Table
+	defer func() {
+		_ = rows.Close()
+	}()
+	var tableIDSeq int
+	var tables []mysqlmodels.Table
 	for rows.Next() {
 		var (
 			tableName, tableSchema string
@@ -132,13 +153,14 @@ func (i *Introspector) getTables(ctx context.Context) ([]Table, error) {
 		if err := rows.Scan(&tableSchema, &tableName, &tableSize); err != nil {
 			return nil, err
 		}
-		tables = append(tables, NewTable(tableSchema, tableName, tableSize))
+		tables = append(tables, mysqlmodels.NewTable(tableIDSeq, tableSchema, tableName, tableSize))
+		tableIDSeq++
 	}
 	return tables, nil
 }
 
 // getColumns - get all columns for a given table
-func (i *Introspector) getColumns(ctx context.Context, tableSchema string, tableName string) ([]Column, error) {
+func (i *Introspector) getColumns(ctx context.Context, tx *sql.Tx, tableSchema string, tableName string) ([]mysqlmodels.Column, error) {
 	query := `
 		select c.COLUMN_NAME,
 			   c.COLUMN_TYPE,
@@ -153,13 +175,15 @@ func (i *Introspector) getColumns(ctx context.Context, tableSchema string, table
 		  and t.TABLE_NAME = ?
 		ORDER BY c.ORDINAL_POSITION;
 	`
-	rows, err := i.db.QueryContext(ctx, query, tableSchema, tableName)
+	rows, err := tx.QueryContext(ctx, query, tableSchema, tableName)
 	if err != nil {
 		return nil, fmt.Errorf("execute column introspection query: %w", err)
 	}
-	defer rows.Close()
+	defer func() {
+		_ = rows.Close()
+	}()
 
-	var columns []Column
+	var columns []mysqlmodels.Column
 	idx := 0
 	for rows.Next() {
 		var (
@@ -175,7 +199,7 @@ func (i *Introspector) getColumns(ctx context.Context, tableSchema string, table
 		); err != nil {
 			return nil, fmt.Errorf("scan column introspection row: %w", err)
 		}
-		columns = append(columns, NewColumn(
+		columns = append(columns, mysqlmodels.NewColumn(
 			idx, columnName, columnType, dataType, numericPrecision,
 			numericScale, datetimePrecision, notNull,
 		))
@@ -185,7 +209,7 @@ func (i *Introspector) getColumns(ctx context.Context, tableSchema string, table
 }
 
 // getPrimaryKey - get primary key columns for a given table.
-func (i *Introspector) getPrimaryKey(ctx context.Context, tableSchema string, tableName string) ([]string, error) {
+func (i *Introspector) getPrimaryKey(ctx context.Context, tx *sql.Tx, tableSchema string, tableName string) ([]string, error) {
 	query := `
 		SELECT k.column_name
 		FROM information_schema.table_constraints t
@@ -197,7 +221,7 @@ func (i *Introspector) getPrimaryKey(ctx context.Context, tableSchema string, ta
 		ORDER BY k.ordinal_position;
 	`
 	var columns []string
-	rows, err := i.db.QueryContext(ctx, query, tableSchema, tableName)
+	rows, err := tx.QueryContext(ctx, query, tableSchema, tableName)
 	if err != nil {
 		return nil, fmt.Errorf("execute primary key query: %w", err)
 	}
@@ -215,16 +239,17 @@ func (i *Introspector) getPrimaryKey(ctx context.Context, tableSchema string, ta
 // getForeignKeys - get foreign keys for a given table.
 func (i *Introspector) getForeignKeys(
 	ctx context.Context,
+	tx *sql.Tx,
 	tableSchema string,
 	tableName string,
-) ([]models.Reference, error) {
-	constraints, err := i.getForeignKeyConstraints(ctx, tableSchema, tableName)
+) ([]commonmodels.Reference, error) {
+	constraints, err := i.getForeignKeyConstraints(ctx, tx, tableSchema, tableName)
 	if err != nil {
 		return nil, fmt.Errorf("get foreign key constraints: %w", err)
 	}
 
 	for idx, c := range constraints {
-		keys, err := i.getForeignKeyKeys(ctx, c.ConstraintSchema, c.ConstraintName)
+		keys, err := i.getForeignKeyKeys(ctx, tx, c.ConstraintSchema, c.ConstraintName)
 		if err != nil {
 			return nil, fmt.Errorf("get foreign key keys: %w", err)
 		}
@@ -234,7 +259,7 @@ func (i *Introspector) getForeignKeys(
 }
 
 // getForeignKeyKeys - get foreign key constraint keys for a given constraint.
-func (i *Introspector) getForeignKeyKeys(ctx context.Context, constraintSchema, constraintName string) ([]string, error) {
+func (i *Introspector) getForeignKeyKeys(ctx context.Context, tx *sql.Tx, constraintSchema, constraintName string) ([]string, error) {
 	query := `
 		SELECT k.column_name
 		FROM information_schema.key_column_usage k
@@ -242,7 +267,7 @@ func (i *Introspector) getForeignKeyKeys(ctx context.Context, constraintSchema, 
 		  AND k.CONSTRAINT_NAME = ?
 		ORDER BY k.ordinal_position;
 	`
-	rows, err := i.db.QueryContext(ctx, query, constraintSchema, constraintName)
+	rows, err := tx.QueryContext(ctx, query, constraintSchema, constraintName)
 	if err != nil {
 		return nil, fmt.Errorf("execute foreign key keys query: %w", err)
 	}
@@ -268,9 +293,10 @@ func (i *Introspector) getForeignKeyKeys(ctx context.Context, constraintSchema, 
 // getForeignKeyConstraints - get foreign keys for a given table.
 func (i *Introspector) getForeignKeyConstraints(
 	ctx context.Context,
+	tx *sql.Tx,
 	tableSchema string,
 	tableName string,
-) ([]models.Reference, error) {
+) ([]commonmodels.Reference, error) {
 	query := `
 		SELECT t.CONSTRAINT_SCHEMA,
 			   t.CONSTRAINT_NAME,
@@ -287,13 +313,13 @@ func (i *Introspector) getForeignKeyConstraints(
 		  AND t.table_schema = ?
 		  AND t.table_name = ?;
 	`
-	rows, err := i.db.QueryContext(ctx, query, tableSchema, tableName)
+	rows, err := tx.QueryContext(ctx, query, tableSchema, tableName)
 	if err != nil {
 		return nil, fmt.Errorf("execute referenced tables query: %w", err)
 	}
 	defer rows.Close()
 
-	var constraints []models.Reference
+	var constraints []commonmodels.Reference
 	for rows.Next() {
 		var (
 			constraintSchema, constantName string
@@ -302,7 +328,7 @@ func (i *Introspector) getForeignKeyConstraints(
 		if err := rows.Scan(&constraintSchema, &constantName, &isNullable); err != nil {
 			return nil, fmt.Errorf("scan referenced tables row: %w", err)
 		}
-		c := models.NewReference(
+		c := commonmodels.NewReference(
 			tableSchema,
 			tableName,
 			constraintSchema,

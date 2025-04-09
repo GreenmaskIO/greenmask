@@ -10,6 +10,7 @@ import (
 	"github.com/stretchr/testify/suite"
 
 	"github.com/greenmaskio/greenmask/v1/internal/common/models"
+	mysqlmodels "github.com/greenmaskio/greenmask/v1/internal/mysql/models"
 	"github.com/greenmaskio/greenmask/v1/internal/testutils"
 )
 
@@ -121,15 +122,20 @@ func (s *mysqlSuite) TestIntrospector_Introspect() {
 		opt.On("GetExcludedSchemas").Return(nil)
 		opt.On("GetIncludedSchemas").Return(nil)
 
-		i := NewIntrospector(db, opt)
-		err = i.Introspect(ctx)
+		tx, err := db.Begin()
+		s.NoError(err)
+		defer func() {
+			_ = tx.Rollback()
+		}()
+		i := NewIntrospector(opt)
+		err = i.Introspect(ctx, tx)
 		s.Require().NoError(err)
 
-		expected := []Table{
+		expected := []mysqlmodels.Table{
 			{
 				Name:   "test_table_1",
 				Schema: "testdb",
-				Columns: []Column{
+				Columns: []mysqlmodels.Column{
 					{
 						Name:              "id",
 						TypeName:          "int",
@@ -153,7 +159,7 @@ func (s *mysqlSuite) TestIntrospector_Introspect() {
 			{
 				Name:   "test_table_2",
 				Schema: "testdb",
-				Columns: []Column{
+				Columns: []mysqlmodels.Column{
 					{
 						Name:              "id",
 						TypeName:          "int",
@@ -177,7 +183,7 @@ func (s *mysqlSuite) TestIntrospector_Introspect() {
 			{
 				Name:   "test_table_3",
 				Schema: "testdb1",
-				Columns: []Column{
+				Columns: []mysqlmodels.Column{
 					{
 						Name:              "id",
 						TypeName:          "int",
@@ -210,15 +216,20 @@ func (s *mysqlSuite) TestIntrospector_Introspect() {
 		opt.On("GetExcludedSchemas").Return(nil)
 		opt.On("GetIncludedSchemas").Return(nil)
 
-		i := NewIntrospector(db, opt)
-		err = i.Introspect(ctx)
+		tx, err := db.Begin()
+		s.NoError(err)
+		defer func() {
+			_ = tx.Rollback()
+		}()
+		i := NewIntrospector(opt)
+		err = i.Introspect(ctx, tx)
 		s.Require().NoError(err)
 
-		expected := []Table{
+		expected := []mysqlmodels.Table{
 			{
 				Name:   "test_table_1",
 				Schema: "testdb",
-				Columns: []Column{
+				Columns: []mysqlmodels.Column{
 					{
 						Name:              "id",
 						TypeName:          "int",
@@ -251,15 +262,20 @@ func (s *mysqlSuite) TestIntrospector_Introspect() {
 		opt.On("GetExcludedSchemas").Return(nil)
 		opt.On("GetIncludedSchemas").Return(nil)
 
-		i := NewIntrospector(db, opt)
-		err = i.Introspect(ctx)
+		tx, err := db.Begin()
+		s.NoError(err)
+		defer func() {
+			_ = tx.Rollback()
+		}()
+		i := NewIntrospector(opt)
+		err = i.Introspect(ctx, tx)
 		s.Require().NoError(err)
 
-		expected := []Table{
+		expected := []mysqlmodels.Table{
 			{
 				Name:   "test_table_2",
 				Schema: "testdb",
-				Columns: []Column{
+				Columns: []mysqlmodels.Column{
 					{
 						Name:              "id",
 						TypeName:          "int",
@@ -283,7 +299,7 @@ func (s *mysqlSuite) TestIntrospector_Introspect() {
 			{
 				Name:   "test_table_3",
 				Schema: "testdb1",
-				Columns: []Column{
+				Columns: []mysqlmodels.Column{
 					{
 						Name:              "id",
 						TypeName:          "int",
@@ -315,15 +331,20 @@ func (s *mysqlSuite) TestIntrospector_Introspect() {
 		opt.On("GetExcludedSchemas").Return([]string{"testdb"})
 		opt.On("GetIncludedSchemas").Return(nil)
 
-		i := NewIntrospector(db, opt)
-		err = i.Introspect(ctx)
+		tx, err := db.Begin()
+		s.NoError(err)
+		defer func() {
+			_ = tx.Rollback()
+		}()
+		i := NewIntrospector(opt)
+		err = i.Introspect(ctx, tx)
 		s.Require().NoError(err)
 
-		expected := []Table{
+		expected := []mysqlmodels.Table{
 			{
 				Name:   "test_table_3",
 				Schema: "testdb1",
-				Columns: []Column{
+				Columns: []mysqlmodels.Column{
 					{
 						Name:              "id",
 						TypeName:          "int",
@@ -355,15 +376,20 @@ func (s *mysqlSuite) TestIntrospector_Introspect() {
 		opt.On("GetExcludedSchemas").Return(nil)
 		opt.On("GetIncludedSchemas").Return([]string{"testdb1"})
 
-		i := NewIntrospector(db, opt)
-		err = i.Introspect(ctx)
+		tx, err := db.Begin()
+		s.NoError(err)
+		defer func() {
+			_ = tx.Rollback()
+		}()
+		i := NewIntrospector(opt)
+		err = i.Introspect(ctx, tx)
 		s.Require().NoError(err)
 
-		expected := []Table{
+		expected := []mysqlmodels.Table{
 			{
 				Name:   "test_table_3",
 				Schema: "testdb1",
-				Columns: []Column{
+				Columns: []mysqlmodels.Column{
 					{
 						Name:              "id",
 						TypeName:          "int",
@@ -414,8 +440,13 @@ func (s *mysqlSuite) TestIntrospector_getPrimaryKey() {
 
 		db, err := s.GetConnectionWithUser(ctx, mysqlRootUser, mysqlRootPass)
 		s.Require().NoError(err)
-		i := NewIntrospector(db, &optMock{})
-		pks, err := i.getPrimaryKey(ctx, "testdb", "simple_table")
+		tx, err := db.Begin()
+		s.NoError(err)
+		defer func() {
+			_ = tx.Rollback()
+		}()
+		i := NewIntrospector(&optMock{})
+		pks, err := i.getPrimaryKey(ctx, tx, "testdb", "simple_table")
 		s.Require().Equal([]string{"id"}, pks)
 		s.Require().NoError(err)
 	})
@@ -440,8 +471,13 @@ func (s *mysqlSuite) TestIntrospector_getPrimaryKey() {
 
 		db, err := s.GetConnectionWithUser(ctx, mysqlRootUser, mysqlRootPass)
 		s.Require().NoError(err)
-		i := NewIntrospector(db, &optMock{})
-		pks, err := i.getPrimaryKey(ctx, "testdb", "simple_table_with_no_pk")
+		tx, err := db.Begin()
+		s.NoError(err)
+		defer func() {
+			_ = tx.Rollback()
+		}()
+		i := NewIntrospector(&optMock{})
+		pks, err := i.getPrimaryKey(ctx, tx, "testdb", "simple_table_with_no_pk")
 		s.Require().Nil(pks)
 		s.Require().NoError(err)
 	})
@@ -472,8 +508,13 @@ func (s *mysqlSuite) TestIntrospector_getForeignKeyConstraints() {
 
 		db, err := s.GetConnectionWithUser(ctx, mysqlRootUser, mysqlRootPass)
 		s.Require().NoError(err)
-		i := NewIntrospector(db, &optMock{})
-		refs, err := i.getForeignKeyConstraints(ctx, "testdb", "simple_table_with_no_fk")
+		tx, err := db.Begin()
+		s.NoError(err)
+		defer func() {
+			_ = tx.Rollback()
+		}()
+		i := NewIntrospector(&optMock{})
+		refs, err := i.getForeignKeyConstraints(ctx, tx, "testdb", "simple_table_with_no_fk")
 		s.Require().NoError(err)
 		s.Require().Emptyf(refs, "expected no foreign keys, got %v", refs)
 	})
@@ -507,8 +548,13 @@ func (s *mysqlSuite) TestIntrospector_getForeignKeyConstraints() {
 
 		db, err := s.GetConnectionWithUser(ctx, mysqlRootUser, mysqlRootPass)
 		s.Require().NoError(err)
-		i := NewIntrospector(db, &optMock{})
-		actual, err := i.getForeignKeyConstraints(ctx, "testdb", "simple_ref_table_not_nullable")
+		tx, err := db.Begin()
+		s.NoError(err)
+		defer func() {
+			_ = tx.Rollback()
+		}()
+		i := NewIntrospector(&optMock{})
+		actual, err := i.getForeignKeyConstraints(ctx, tx, "testdb", "simple_ref_table_not_nullable")
 		s.Require().NoError(err)
 		expected := []models.Reference{
 			{
@@ -551,8 +597,13 @@ func (s *mysqlSuite) TestIntrospector_getForeignKeyConstraints() {
 
 		db, err := s.GetConnectionWithUser(ctx, mysqlRootUser, mysqlRootPass)
 		s.Require().NoError(err)
-		i := NewIntrospector(db, &optMock{})
-		actual, err := i.getForeignKeyConstraints(ctx, "testdb", "simple_ref_table_nullable")
+		tx, err := db.Begin()
+		s.NoError(err)
+		defer func() {
+			_ = tx.Rollback()
+		}()
+		i := NewIntrospector(&optMock{})
+		actual, err := i.getForeignKeyConstraints(ctx, tx, "testdb", "simple_ref_table_nullable")
 		s.Require().NoError(err)
 		expected := []models.Reference{
 			{
@@ -601,8 +652,13 @@ func (s *mysqlSuite) TestIntrospector_getForeignKeyConstraints() {
 
 		db, err := s.GetConnectionWithUser(ctx, mysqlRootUser, mysqlRootPass)
 		s.Require().NoError(err)
-		i := NewIntrospector(db, &optMock{})
-		actual, err := i.getForeignKeyConstraints(ctx, "testdb", "complex_pk_ref_table_not_nullable")
+		tx, err := db.Begin()
+		s.NoError(err)
+		defer func() {
+			_ = tx.Rollback()
+		}()
+		i := NewIntrospector(&optMock{})
+		actual, err := i.getForeignKeyConstraints(ctx, tx, "testdb", "complex_pk_ref_table_not_nullable")
 		s.Require().NoError(err)
 		expected := []models.Reference{
 			{
@@ -651,8 +707,13 @@ func (s *mysqlSuite) TestIntrospector_getForeignKeyConstraints() {
 
 		db, err := s.GetConnectionWithUser(ctx, mysqlRootUser, mysqlRootPass)
 		s.Require().NoError(err)
-		i := NewIntrospector(db, &optMock{})
-		actual, err := i.getForeignKeyConstraints(ctx, "testdb", "complex_pk_ref_table_nullable")
+		tx, err := db.Begin()
+		s.NoError(err)
+		defer func() {
+			_ = tx.Rollback()
+		}()
+		i := NewIntrospector(&optMock{})
+		actual, err := i.getForeignKeyConstraints(ctx, tx, "testdb", "complex_pk_ref_table_nullable")
 		s.Require().NoError(err)
 		expected := []models.Reference{
 			{
@@ -675,8 +736,13 @@ func (s *mysqlSuite) TestIntrospector_getForeignKeyKeys() {
 	s.Run("unknown fk", func() {
 		db, err := s.GetConnectionWithUser(ctx, mysqlRootUser, mysqlRootPass)
 		s.Require().NoError(err)
-		i := NewIntrospector(db, &optMock{})
-		_, err = i.getForeignKeyKeys(ctx, "testdb", "unknown_table_ibfk_1")
+		tx, err := db.Begin()
+		s.NoError(err)
+		defer func() {
+			_ = tx.Rollback()
+		}()
+		i := NewIntrospector(&optMock{})
+		_, err = i.getForeignKeyKeys(ctx, tx, "testdb", "unknown_table_ibfk_1")
 		s.Require().ErrorIs(err, errNoKeysFound)
 	})
 
@@ -709,9 +775,15 @@ func (s *mysqlSuite) TestIntrospector_getForeignKeyKeys() {
 
 		db, err := s.GetConnectionWithUser(ctx, mysqlRootUser, mysqlRootPass)
 		s.Require().NoError(err)
-		i := NewIntrospector(db, &optMock{})
+		tx, err := db.Begin()
+		s.NoError(err)
+		defer func() {
+			_ = tx.Rollback()
+		}()
+		i := NewIntrospector(&optMock{})
 		keys, err := i.getForeignKeyKeys(
 			ctx,
+			tx,
 			"testdb",
 			"simple_ref_table_not_nullable_ibfk_1",
 		)
@@ -754,9 +826,15 @@ func (s *mysqlSuite) TestIntrospector_getForeignKeyKeys() {
 
 		db, err := s.GetConnectionWithUser(ctx, mysqlRootUser, mysqlRootPass)
 		s.Require().NoError(err)
-		i := NewIntrospector(db, &optMock{})
+		tx, err := db.Begin()
+		s.NoError(err)
+		defer func() {
+			_ = tx.Rollback()
+		}()
+		i := NewIntrospector(&optMock{})
 		keys, err := i.getForeignKeyKeys(
 			ctx,
+			tx,
 			"testdb",
 			"complex_pk_ref_table_nullable_ibfk_1",
 		)
@@ -765,7 +843,7 @@ func (s *mysqlSuite) TestIntrospector_getForeignKeyKeys() {
 	})
 }
 
-func compareTables(t *testing.T, expected, actual []Table) {
+func compareTables(t *testing.T, expected, actual []mysqlmodels.Table) {
 	t.Helper()
 	require.Lenf(t, actual, len(expected), "expected %d tables, got %d", len(expected), len(actual))
 	for i := range expected {
@@ -775,7 +853,7 @@ func compareTables(t *testing.T, expected, actual []Table) {
 	}
 }
 
-func compareColumns(t *testing.T, expected, actual []Column) {
+func compareColumns(t *testing.T, expected, actual []mysqlmodels.Column) {
 	t.Helper()
 	require.Lenf(t, actual, len(expected), "expected %d columns, got %d", len(expected), len(actual))
 	for i := range expected {

@@ -3,40 +3,43 @@ package mysql
 import (
 	"context"
 	"database/sql"
-	"database/sql/driver"
 	"fmt"
 	"time"
 
 	_ "github.com/go-sql-driver/mysql"
+	"github.com/greenmaskio/greenmask/internal/utils/ioutils"
 	"github.com/joho/sqltocsv"
 	"github.com/rs/zerolog/log"
 	"golang.org/x/sync/errgroup"
 
-	"github.com/greenmaskio/greenmask/internal/domains"
-	"github.com/greenmaskio/greenmask/internal/storages"
-	"github.com/greenmaskio/greenmask/internal/utils/ioutils"
+	commonmodels "github.com/greenmaskio/greenmask/v1/internal/common/models"
+	commonconfig "github.com/greenmaskio/greenmask/v1/internal/config"
+	mysqlintrospect "github.com/greenmaskio/greenmask/v1/internal/mysql/introspect"
+	mysqlmodels "github.com/greenmaskio/greenmask/v1/internal/mysql/models"
+	"github.com/greenmaskio/greenmask/v1/internal/storages"
 )
+
+type introspector interface {
+	GetTables() []mysqlmodels.Table
+	GetCommonTables() []commonmodels.Table
+	Introspect(ctx context.Context, tx *sql.Tx) error
+}
 
 type Dump struct {
 	binPath                  string
-	cfg                      *domains.Dump
+	cfg                      *commonconfig.Dump
 	st                       storages.Storager
-	dumpOptions              *DumpOptions
 	schemaDumpSize           int64
 	schemaDumpSizeCompressed int64
-	tables                   []*Table
+	introspector             introspector
 }
 
-func NewDump(cfg *domains.Dump, st storages.Storager, binPath string) *Dump {
-	do, ok := cfg.Options.(*DumpOptions)
-	if !ok {
-		panic("invalid options")
-	}
+func NewDump(cfg *commonconfig.Dump, st storages.Storager, binPath string) *Dump {
 	return &Dump{
-		cfg:         cfg,
-		st:          st,
-		dumpOptions: do,
-		binPath:     binPath,
+		cfg:          cfg,
+		st:           st,
+		binPath:      binPath,
+		introspector: mysqlintrospect.NewIntrospector(cfg.DumpOptions),
 	}
 }
 
@@ -90,7 +93,10 @@ func (d *Dump) connect(ctx context.Context) (*sql.DB, error) {
 	return db, nil
 }
 
-func (d *Dump) introspect(ctx context.Context, tx driver.Tx) error {
+func (d *Dump) introspect(ctx context.Context, tx *sql.Tx) error {
+	if err := d.introspector.Introspect(ctx, tx); err != nil {
+		return fmt.Errorf("introspect database: %w", err)
+	}
 	return nil
 }
 

@@ -4,6 +4,13 @@ import (
 	"fmt"
 	"strconv"
 	"time"
+
+	commonininterfaces "github.com/greenmaskio/greenmask/v1/internal/common/interfaces"
+	commonmodels "github.com/greenmaskio/greenmask/v1/internal/common/models"
+)
+
+var (
+	_ commonininterfaces.DBMSDriver = (*Driver)(nil)
 )
 
 type Driver struct {
@@ -17,7 +24,7 @@ func NewDriver() *Driver {
 	}
 }
 
-func (e *Driver) EncodeValueByTypeOid(oid uint32, src any, buf []byte) ([]byte, error) {
+func (e *Driver) EncodeValueByTypeOid(oid commonmodels.VirtualOID, src any, buf []byte) ([]byte, error) {
 	typeName, ok := VirtualOidToTypeName[oid]
 	if !ok {
 		return nil, fmt.Errorf("unsupported oid %d", oid)
@@ -25,7 +32,7 @@ func (e *Driver) EncodeValueByTypeOid(oid uint32, src any, buf []byte) ([]byte, 
 	return e.EncodeValueByTypeName(typeName, src, buf)
 }
 
-func (e *Driver) DecodeValueByTypeOid(oid uint32, src []byte) (any, error) {
+func (e *Driver) DecodeValueByTypeOid(oid commonmodels.VirtualOID, src []byte) (any, error) {
 	typeName, ok := VirtualOidToTypeName[oid]
 	if !ok {
 		return nil, fmt.Errorf("unsupported oid %d", oid)
@@ -33,7 +40,7 @@ func (e *Driver) DecodeValueByTypeOid(oid uint32, src []byte) (any, error) {
 	return e.DecodeValueByTypeName(typeName, src)
 }
 
-func (e *Driver) ScanValueByTypeOid(oid uint32, src []byte, dest any) error {
+func (e *Driver) ScanValueByTypeOid(oid commonmodels.VirtualOID, src []byte, dest any) error {
 	typeName, ok := VirtualOidToTypeName[oid]
 	if !ok {
 		return fmt.Errorf("unsupported oid %d", oid)
@@ -46,17 +53,21 @@ func (e *Driver) TypeExistsByName(name string) bool {
 	return ok
 }
 
-func (e *Driver) TypeExistsByOid(oid uint32) bool {
+func (e *Driver) TypeExistsByOid(oid commonmodels.VirtualOID) bool {
 	_, ok := VirtualOidToTypeName[oid]
 	return ok
 }
 
-func (e *Driver) GetTypeOid(name string) (uint32, error) {
+func (e *Driver) GetTypeOid(name string) (commonmodels.VirtualOID, error) {
 	oid, ok := TypeNameToVirtualOid[name]
 	if !ok {
 		return 0, fmt.Errorf("unsupported type %s", name)
 	}
 	return oid, nil
+}
+
+func (e *Driver) GetCanonicalTypeName(name string, oid commonmodels.VirtualOID) (string, error) {
+	return
 }
 
 func (e *Driver) WithLocation(loc *time.Location) *Driver {
@@ -68,11 +79,13 @@ func (e *Driver) EncodeValueByTypeName(name string, src any, buf []byte) ([]byte
 	switch name {
 	case TypeJSON:
 		return encodeJson(src, buf)
+	case TypeTime:
+		return encodeTime(src, buf)
 	case TypeTimestamp,
 		TypeDateTime,
 		TypeDate:
 		return encodeTimestamp(src, buf, e.loc)
-	case TypeTinyInt, TypeSmallInt, TypeMediumInt, TypeInt, TypeBigInt, TypeTime, TypeYear:
+	case TypeTinyInt, TypeSmallInt, TypeMediumInt, TypeInt, TypeBigInt, TypeYear:
 		return encodeInt64(src, buf)
 	case TypeFloat, TypeDouble, TypeReal:
 		return encodeFloat(src, buf)
@@ -89,6 +102,8 @@ func (e *Driver) EncodeValueByTypeName(name string, src any, buf []byte) ([]byte
 		return encodeGeometry(src, buf)
 	case TypeDecimal, TypeNumeric:
 		return encodeDecimal(src, buf)
+	case TypeBit:
+		return encodeBit(src, buf)
 	}
 	return nil, fmt.Errorf("unsupported type %s", name)
 }
@@ -102,7 +117,9 @@ func (e *Driver) DecodeValueByTypeName(name string, src []byte) (any, error) {
 		TypeDateTime,
 		TypeDate:
 		return parseDateTime(src, e.loc)
-	case TypeTinyInt, TypeSmallInt, TypeMediumInt, TypeInt, TypeBigInt, TypeTime, TypeYear:
+	case TypeTime:
+		return decodeTime(src)
+	case TypeTinyInt, TypeSmallInt, TypeMediumInt, TypeInt, TypeBigInt, TypeYear:
 		// Here may be unsigned type consider to add it but it is likely redundant
 		return strconv.ParseInt(string(src), 10, 64)
 	case TypeFloat, TypeDouble, TypeReal:
@@ -118,9 +135,11 @@ func (e *Driver) DecodeValueByTypeName(name string, src []byte) (any, error) {
 		return decodeEnum(src)
 	case TypeGeometry, TypePoint, TypeLineString, TypePolygon, TypeMultiPoint, TypeMultiLineString,
 		TypeMultiPolygon, TypeGeometryCollection:
-		return decodeGeometry(src)
+		return src, nil
 	case TypeDecimal, TypeNumeric:
 		return decodeDecimal(src)
+	case TypeBit:
+		return decodeBit(src)
 	}
 	return nil, fmt.Errorf("unsupported type %s", name)
 }
@@ -133,7 +152,9 @@ func (e *Driver) ScanValueByTypeName(name string, src []byte, dest any) error {
 		TypeDateTime,
 		TypeDate:
 		return scanTimestamp(src, dest, e.loc)
-	case TypeTinyInt, TypeSmallInt, TypeMediumInt, TypeInt, TypeBigInt, TypeTime, TypeYear:
+	case TypeTime:
+		return scanTime(src, dest)
+	case TypeTinyInt, TypeSmallInt, TypeMediumInt, TypeInt, TypeBigInt, TypeYear:
 		return scanInt64(src, dest)
 	case TypeFloat, TypeDouble, TypeReal:
 		return scanFloat(src, dest)
@@ -151,6 +172,8 @@ func (e *Driver) ScanValueByTypeName(name string, src []byte, dest any) error {
 		return scanGeometry(src, dest)
 	case TypeDecimal, TypeNumeric:
 		return scanDecimal(src, dest)
+	case TypeBit:
+		return scanBit(src, dest)
 	}
 	return fmt.Errorf("unsupported type %s", name)
 }

@@ -403,7 +403,7 @@ func TestFuncMap_masking(t *testing.T) {
 
 	buf := bytes.NewBuffer(nil)
 	tmplStr := `
-		{{- .Data | masking .Type -}}
+		{{- .Data | masking .TypeName -}}
 	`
 	tmpl, err := template.New("test").Funcs(FuncMap()).Parse(tmplStr)
 	require.NoError(t, err)

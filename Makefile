@@ -29,3 +29,12 @@ lint:
 
 up:
 	docker-compose up playground-dbs-filler
+
+compose-run:
+	docker-compose run greenmask
+
+compose-from-source-build:
+	docker-compose build
+
+compose-from-source-run:
+	docker-compose run greenmask-from-source

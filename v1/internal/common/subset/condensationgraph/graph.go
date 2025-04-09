@@ -3,7 +3,7 @@ package condensationgraph
 import (
 	"slices"
 
-	"github.com/greenmaskio/greenmask/v1/internal/common"
+	commonmodels "github.com/greenmaskio/greenmask/v1/internal/common/models"
 	"github.com/greenmaskio/greenmask/v1/internal/common/subset/tablegraph"
 )
 
@@ -53,7 +53,7 @@ func (g *Graph) build() {
 
 // buildSCC - builds the strongly connected components in the Graph.
 //
-// It uses the visited array to aggregate the vertexes for each scc. Then it finds the edges within the scc.
+// It uses the visited array to aggregate the vertexes for each SCC. Then it finds the edges within the SCC.
 // The result is a list of SCC instances.
 func (g *Graph) buildSCC() {
 	// sccToOriginalVertexes - the mapping condensed Graph vertexes to the original Graph vertexes
@@ -64,7 +64,7 @@ func (g *Graph) buildSCC() {
 
 	for sccIdx := 0; sccIdx < g.sccCount; sccIdx++ {
 		// Build list of vertexes for the SCC
-		vertexes := make(map[int]common.Table)
+		vertexes := make(map[int]commonmodels.Table)
 		for _, vertexIdx := range sccToOriginalVertexes[sccIdx] {
 			vertexes[vertexIdx] = g.tg.Vertexes[vertexIdx]
 		}
@@ -126,11 +126,11 @@ func (g *Graph) buildSCCGraph() {
 
 // findSCC - finds the strongly connected components in the Graph.
 //
-// This is common Kosaraju's algorithm for finding the strongly connected components in the Graph.
+// This is commonmodels Kosaraju's algorithm for finding the strongly connected components in the Graph.
 //
 // 1. Find the topological order of the Graph using DFS.
 // 2. Reverse the Graph.
-// 3. Mark the components using DFS. Each scc will have a unique identifier.
+// 3. Mark the components using DFS. Each SCC will have a unique identifier.
 // 4. Count the components.
 //
 // Once components are marked in visited array, we can use this information to build the condensed Graph.

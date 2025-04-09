@@ -15,16 +15,22 @@
 package parameters
 
 import (
+	commonininterfaces "github.com/greenmaskio/greenmask/v1/internal/common/interfaces"
 	"github.com/greenmaskio/greenmask/v1/internal/common/models"
+	"github.com/greenmaskio/greenmask/v1/internal/common/validationcollector"
 )
 
-type Unmarshaller func(parameter *ParameterDefinition, driver driver, src models.ParamsValue) (any, error)
-type DatabaseTypeUnmarshaler func(driver driver, typeName string, v models.ParamsValue) (any, error)
-type RawValueValidator func(p *ParameterDefinition, v models.ParamsValue) (models.ValidationWarnings, error)
+type Unmarshaler func(parameter *ParameterDefinition, driver commonininterfaces.DBMSDriver, src models.ParamsValue) (any, error)
+type DatabaseTypeUnmarshaler func(driver commonininterfaces.DBMSDriver, typeName string, v models.ParamsValue) (any, error)
+type RawValueValidator func(
+	vc *validationcollector.Collector,
+	p *ParameterDefinition,
+	v models.ParamsValue,
+) error
 
 const WithoutMaxLength = -1
 
-func DefaultDatabaseTypeUnmarshaler(driver driver, typeName string, v models.ParamsValue) (any, error) {
+func DefaultDatabaseTypeUnmarshaler(driver commonininterfaces.DBMSDriver, typeName string, v models.ParamsValue) (any, error) {
 	return driver.DecodeValueByTypeName(typeName, v)
 }
 
@@ -133,16 +139,12 @@ type ParameterDefinition struct {
 	// IsColumn - shows is this parameter column related. If so ColumnProperties must be defined and assigned
 	// otherwise it may cause an unhandled behaviour
 	IsColumn bool `mapstructure:"is_column" json:"is_column"`
-	// IsColumnContainer - describe is parameter container map or list with multiple columns inside. It allows us to
+	// IsColumnContainer - describe is parameter container map or list with multiple columns inside. It allows to
+	// use this parameter as a container for multiple columns and apply changes to all columns inside.
 	IsColumnContainer bool `mapstructure:"is_column_container" json:"is_column_container"`
 	// LinkColumnParameter - link with parameter with provided name. This is required if performing raw value encoding
 	// depends on the provided column type and/or relies on the database Driver
 	LinkColumnParameter string `mapstructure:"link_column_parameter" json:"link_column_parameter,omitempty"`
-	// CastDbType - name of PostgreSQL type that would be used for Decoding raw value to the real go type. Is this
-	// type does not exist will cause an error
-	CastDbType string `mapstructure:"cast_db_type" json:"cast_db_type,omitempty"`
-	// GlobalEnvVariable - the nane of the global environment variable that can be used on empty input
-	GetFromGlobalEnvVariable string `mapstructure:"get_from_global_env_variable" json:"get_from_global_env_variable,omitempty"`
 	// DynamicModeProperties - shows that parameter support dynamic mode and contains allowed types and unmarshaler
 	DynamicModeProperties *DynamicModeProperties
 	// DefaultValue - default value of the parameter
@@ -153,7 +155,7 @@ type ParameterDefinition struct {
 	// SupportTemplate - shows that parameter supports golang template and might be calculated dynamically
 	SupportTemplate bool `mapstructure:"support_template" json:"support_template,omitempty"`
 	// Unmarshaller - unmarshal function for the parameter raw data []byte. Using by default json.Unmarshal function
-	Unmarshaller Unmarshaller `json:"-"`
+	Unmarshaller Unmarshaler `json:"-"`
 	// RawValueValidator - raw value validator function that performs assertion and cause ValidationWarnings if it
 	// has violations
 	RawValueValidator RawValueValidator `json:"-"`
@@ -176,19 +178,13 @@ func NewParameterDefinition(name string, description string) (*ParameterDefiniti
 	}, nil
 }
 
-func (p *ParameterDefinition) SetLinkParameter(name string) *ParameterDefinition {
+// LinkParameter - links parameter with the column parameter by name. If set it uses the column type
+// to decode raw value to the real go type.
+func (p *ParameterDefinition) LinkParameter(name string) *ParameterDefinition {
 	if p.IsColumn {
 		panic("cannot link column parameter with column parameter")
 	}
-	if p.CastDbType != "" && p.LinkColumnParameter != "" {
-		panic("parameter cannot be with two properties cast_db_type and link_column_parameter enabled")
-	}
 	p.LinkColumnParameter = name
-	return p
-}
-
-func (p *ParameterDefinition) SetGetFromGlobalEnvVariable(v string) *ParameterDefinition {
-	p.GetFromGlobalEnvVariable = v
 	return p
 }
 
@@ -208,7 +204,7 @@ func (p *ParameterDefinition) SetIsColumnContainer(v bool) *ParameterDefinition 
 	return p
 }
 
-func (p *ParameterDefinition) SetUnmarshaler(unmarshaler Unmarshaller) *ParameterDefinition {
+func (p *ParameterDefinition) SetUnmarshaler(unmarshaler Unmarshaler) *ParameterDefinition {
 	p.Unmarshaller = unmarshaler
 	return p
 }
@@ -226,14 +222,6 @@ func (p *ParameterDefinition) SetRequired(v bool) *ParameterDefinition {
 
 func (p *ParameterDefinition) SetSupportTemplate(v bool) *ParameterDefinition {
 	p.SupportTemplate = v
-	return p
-}
-
-func (p *ParameterDefinition) SetCastDbType(v string) *ParameterDefinition {
-	if p.CastDbType != "" && p.LinkColumnParameter != "" {
-		panic("parameter cannot be with two properties cast_db_type and link_column_parameter enabled")
-	}
-	p.CastDbType = v
 	return p
 }
 

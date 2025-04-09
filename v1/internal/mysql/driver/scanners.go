@@ -146,18 +146,116 @@ func scanGeometry(data []byte, dest interface{}) error {
 	return scanString(data, dest)
 }
 
-func scanDecimal(data []byte, dest interface{}) error {
-	switch v := dest.(type) {
-	case *string:
-		*v = string(data)
-	case *[]byte:
-		*v = data
-	case *decimal.Decimal:
-		vv, err := decimal.NewFromString(string(data))
-		if err != nil {
-			return err
-		}
-		*v = vv
+func scanTime(src []byte, dest any) error {
+	if dest == nil {
+		return fmt.Errorf("destination is nil")
 	}
-	return fmt.Errorf("cannot scan decimal into destination %T", dest)
+
+	parsed, err := time.Parse("15:04:05", string(src))
+	if err != nil {
+		return fmt.Errorf("invalid TIME format: %w", err)
+	}
+
+	duration := time.Duration(parsed.Hour())*time.Hour +
+		time.Duration(parsed.Minute())*time.Minute +
+		time.Duration(parsed.Second())*time.Second
+
+	switch d := dest.(type) {
+	case *time.Duration:
+		*d = duration
+		return nil
+	case *int64:
+		*d = int64(duration)
+		return nil
+	case *string:
+		*d = string(src)
+		return nil
+	default:
+		return fmt.Errorf("unsupported scan destination for TIME: %T", dest)
+	}
+}
+
+func scanBit(src []byte, dest any) error {
+	if dest == nil {
+		return fmt.Errorf("destination is nil")
+	}
+
+	// Parse the string to int64 (expecting "0" or "1")
+	val, err := strconv.ParseInt(string(src), 10, 64)
+	if err != nil {
+		return fmt.Errorf("invalid BIT format: %w", err)
+	}
+	if val != 0 && val != 1 {
+		return fmt.Errorf("BIT value out of range: %d", val)
+	}
+
+	switch d := dest.(type) {
+	case *bool:
+		*d = val == 1
+	case *int64:
+		*d = val
+	case *int:
+		*d = int(val)
+	case *int8:
+		*d = int8(val)
+	case *int16:
+		*d = int16(val)
+	case *int32:
+		*d = int32(val)
+	case *uint:
+		*d = uint(val)
+	case *uint8:
+		*d = uint8(val)
+	case *uint16:
+		*d = uint16(val)
+	case *uint32:
+		*d = uint32(val)
+	case *uint64:
+		*d = uint64(val)
+	case *string:
+		*d = string(src)
+	case *[]byte:
+		*d = append((*d)[:0], src...)
+	default:
+		return fmt.Errorf("unsupported scan destination for BIT: %T", dest)
+	}
+
+	return nil
+}
+
+func scanDecimal(src []byte, dest any) error {
+	if dest == nil {
+		return fmt.Errorf("destination is nil")
+	}
+
+	strVal := string(src)
+
+	switch d := dest.(type) {
+	case *string:
+		*d = strVal
+	case *[]byte:
+		*d = append((*d)[:0], src...)
+	case *float64:
+		val, err := strconv.ParseFloat(strVal, 64)
+		if err != nil {
+			return fmt.Errorf("scanDecimal: parse float64: %w", err)
+		}
+		*d = val
+	case *float32:
+		val, err := strconv.ParseFloat(strVal, 32)
+		if err != nil {
+			return fmt.Errorf("scanDecimal: parse float32: %w", err)
+		}
+		*d = float32(val)
+	case *decimal.Decimal:
+		dec, err := decimal.NewFromString(strVal)
+		if err != nil {
+			return fmt.Errorf("scanDecimal: parse decimal: %w", err)
+		}
+		*d = dec
+	default:
+		return fmt.Errorf("unsupported scan destination for DECIMAL: %T", dest)
+	}
+
+	return nil
 }

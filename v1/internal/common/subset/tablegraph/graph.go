@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"slices"
 
-	"github.com/greenmaskio/greenmask/v1/internal/common"
+	commonmodels "github.com/greenmaskio/greenmask/v1/internal/common/models"
 )
 
 var errReferenceTableNotFound = errors.New("reference table not found")
@@ -15,7 +15,7 @@ type Graph struct {
 	//
 	// The index of the table in the slice is the index of the table in the Graph.
 	// This index used in TableLink to reference the table as well.
-	Vertexes []common.Table
+	Vertexes []commonmodels.Table
 	// Graph - the oriented Graph representation of the DB Vertexes.
 	Graph [][]Edge
 	// TransposedGraph - the transposed Graph representation of the DB Vertexes.
@@ -25,13 +25,13 @@ type Graph struct {
 // NewGraph - creates a new Graph instance.
 //
 // It builds a Graph based on the introspected Vertexes and their references.
-func NewGraph(tables []common.Table) (Graph, error) {
+func NewGraph(tables []commonmodels.Table) (Graph, error) {
 	var edgeIdSequence int
 	graph := make([][]Edge, len(tables))
 	transposedGraph := make([][]Edge, len(tables))
 	for tableIdx, table := range tables {
 		for _, reference := range table.References {
-			referenceTableIdx := slices.IndexFunc(tables, func(t common.Table) bool {
+			referenceTableIdx := slices.IndexFunc(tables, func(t commonmodels.Table) bool {
 				return t.Name == reference.ReferencedName && t.Schema == reference.ReferencedSchema
 			})
 

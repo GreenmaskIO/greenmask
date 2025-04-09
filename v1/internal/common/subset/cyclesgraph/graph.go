@@ -6,7 +6,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/greenmaskio/greenmask/v1/internal/common"
+	commonmodels "github.com/greenmaskio/greenmask/v1/internal/common/models"
 	"github.com/greenmaskio/greenmask/v1/internal/common/subset/tablegraph"
 )
 
@@ -173,9 +173,9 @@ func (g *Graph) buildCyclesGraph() {
 	}
 }
 
-// findCommonVertexes - finds the common vertexes between the Cycles.
-func (g *Graph) findCommonVertexes(i, j int) []common.Table {
-	commonTables := make(map[string]common.Table)
+// findCommonVertexes - finds the commonmodels vertexes between the Cycles.
+func (g *Graph) findCommonVertexes(i, j int) []commonmodels.Table {
+	commonTables := make(map[string]commonmodels.Table)
 	for _, edgeI := range g.Cycles[i] {
 		for _, edgeJ := range g.Cycles[j] {
 			if edgeI.To().TableID() == edgeJ.To().TableID() {
@@ -184,23 +184,23 @@ func (g *Graph) findCommonVertexes(i, j int) []common.Table {
 			}
 		}
 	}
-	var res []common.Table
+	var res []commonmodels.Table
 	for _, table := range commonTables {
 		res = append(res, table)
 	}
-	slices.SortFunc(res, func(i, j common.Table) int {
-		return strings.Compare(i.TableName(), j.TableName())
+	slices.SortFunc(res, func(i, j commonmodels.Table) int {
+		return strings.Compare(i.FullTableName(), j.FullTableName())
 	})
 	return res
 }
 
 // areCyclesLinked - checks if the Cycles are linked by the vertexes.
 //
-// It checks if the Cycles have the same vertexes in the edges of Cycles. If they have the common vertexes
+// It checks if the Cycles have the same vertexes in the edges of Cycles. If they have the commonmodels vertexes
 // then they are linked.
 //
 // For example, we have two Cycles 1->2->3 and 2->3->4. The group will be 1,2,3 and 2,3,4. The Cycles are linked
-// because they have the common vertex 2,3. Those 2 and 3 vertexes can be used to join the Cycles.
+// because they have the commonmodels vertex 2,3. Those 2 and 3 vertexes can be used to join the Cycles.
 func (g *Graph) areCyclesLinked(i, j int) bool {
 	iId := getCycleGroupId(g.Cycles[i])
 	jId := getCycleGroupId(g.Cycles[j])

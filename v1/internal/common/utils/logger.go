@@ -15,7 +15,6 @@
 package utils
 
 import (
-	"context"
 	"fmt"
 	"io"
 	"os"
@@ -68,10 +67,11 @@ func GetLogger(logLevelStr string, logFormat string) (zerolog.Logger, error) {
 		Logger(), nil
 }
 
-func GetLoggerContext(ctx context.Context, logLevelStr string, logFormat string) (context.Context, error) {
+func SetDefaultContextLogger(logLevelStr string, logFormat string) error {
 	logger, err := GetLogger(logLevelStr, logFormat)
 	if err != nil {
-		return nil, fmt.Errorf("get logger: %w", err)
+		return fmt.Errorf("get logger: %w", err)
 	}
-	return logger.WithContext(ctx), nil
+	zerolog.DefaultContextLogger = &logger
+	return nil
 }

@@ -5,7 +5,7 @@ type TableConfig struct {
 	Name                string
 	Query               string
 	ApplyForInherited   bool
-	Transformers        Transformers
+	Transformers        []TransformerConfig
 	ColumnsTypeOverride map[string]string
 	SubsetConds         []string
 	When                string

@@ -5,20 +5,20 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/greenmaskio/greenmask/v1/internal/common"
+	commonmodels "github.com/greenmaskio/greenmask/v1/internal/common/models"
 	"github.com/greenmaskio/greenmask/v1/internal/common/subset/tablegraph"
 )
 
 func Test_NewGraph(t *testing.T) {
-	table1 := common.Table{
+	table1 := commonmodels.Table{
 		Schema: "test",
 		Name:   "a",
 	}
-	table2 := common.Table{
+	table2 := commonmodels.Table{
 		Schema: "test",
 		Name:   "b",
 	}
-	table3 := common.Table{
+	table3 := commonmodels.Table{
 		Schema: "test",
 		Name:   "c",
 	}
@@ -90,15 +90,15 @@ func Test_getCycleGroupId(t *testing.T) {
 	edge1 := tablegraph.NewEdge(
 		4,
 		false,
-		tablegraph.NewTableLink(2, common.Table{}, nil, nil),
-		tablegraph.NewTableLink(3, common.Table{}, nil, nil),
+		tablegraph.NewTableLink(2, commonmodels.Table{}, nil, nil),
+		tablegraph.NewTableLink(3, commonmodels.Table{}, nil, nil),
 	)
 
 	edge2 := tablegraph.NewEdge(
 		5,
 		false,
-		tablegraph.NewTableLink(3, common.Table{}, nil, nil),
-		tablegraph.NewTableLink(2, common.Table{}, nil, nil),
+		tablegraph.NewTableLink(3, commonmodels.Table{}, nil, nil),
+		tablegraph.NewTableLink(2, commonmodels.Table{}, nil, nil),
 	)
 	cycle := []tablegraph.Edge{edge1, edge2}
 
@@ -111,15 +111,15 @@ func Test_getCycleId(t *testing.T) {
 	edge1 := tablegraph.NewEdge(
 		5,
 		false,
-		tablegraph.NewTableLink(2, common.Table{}, nil, nil),
-		tablegraph.NewTableLink(3, common.Table{}, nil, nil),
+		tablegraph.NewTableLink(2, commonmodels.Table{}, nil, nil),
+		tablegraph.NewTableLink(3, commonmodels.Table{}, nil, nil),
 	)
 
 	edge2 := tablegraph.NewEdge(
 		4,
 		false,
-		tablegraph.NewTableLink(3, common.Table{}, nil, nil),
-		tablegraph.NewTableLink(2, common.Table{}, nil, nil),
+		tablegraph.NewTableLink(3, commonmodels.Table{}, nil, nil),
+		tablegraph.NewTableLink(2, commonmodels.Table{}, nil, nil),
 	)
 	cycle := []tablegraph.Edge{edge1, edge2}
 

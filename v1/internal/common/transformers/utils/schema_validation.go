@@ -15,33 +15,34 @@
 package utils
 
 import (
-	"context"
 	"slices"
 
 	"github.com/greenmaskio/greenmask/pkg/toolkit"
+
+	commonmodels "github.com/greenmaskio/greenmask/v1/internal/common/models"
+	commonparameters "github.com/greenmaskio/greenmask/v1/internal/common/transformers/parameters"
+	"github.com/greenmaskio/greenmask/v1/internal/common/validationcollector"
 )
 
-type SchemaValidationFunc func(ctx context.Context, table *toolkit.Driver, properties *TransformerProperties, parameters map[string]*toolkit.StaticParameter) (toolkit.ValidationWarnings, error)
+type SchemaValidationFunc func(
+	vc *validationcollector.Collector,
+	table commonmodels.Table,
+	properties *TransformerProperties,
+	parameters map[string]*commonparameters.StaticParameter,
+) error
 
-func ValidateSchema(
-	table *toolkit.Table, column *toolkit.Column, columnProperties *toolkit.ColumnProperties,
-) toolkit.ValidationWarnings {
-	var warnings toolkit.ValidationWarnings
-	for _, c := range table.Constraints {
-		if w := c.IsAffected(column, columnProperties); len(w) > 0 {
-			warnings = append(warnings, w...)
-		}
-	}
-	return warnings
+func isConstraintAffected(constraintColumns []string, transformingColumn string) bool {
+	return slices.Contains(constraintColumns, transformingColumn)
 }
 
 func DefaultSchemaValidator(
-	ctx context.Context, driver *toolkit.Driver, properties *TransformerProperties,
-	parameters map[string]*toolkit.StaticParameter) (toolkit.ValidationWarnings, error) {
-	var warnings toolkit.ValidationWarnings
-
+	vc *validationcollector.Collector,
+	table commonmodels.Table,
+	properties *TransformerProperties,
+	parameters map[string]*commonparameters.StaticParameter,
+) error {
 	if parameters == nil {
-		return nil, nil
+		return nil
 	}
 
 	for _, p := range parameters {
@@ -50,56 +51,48 @@ func DefaultSchemaValidator(
 			// violate constraints
 			continue
 		}
+		vc = vc.WithMeta(map[string]any{
+			"ParameterName": p.GetDefinition().Name,
+			"ColumnName":    p.Column.Name,
+		})
 
 		// Checking is transformer can produce NULL value
 		if p.GetDefinition().ColumnProperties.Nullable && p.Column.NotNull {
-			warnings = append(warnings, toolkit.NewValidationWarning().
+			vc.Add(commonmodels.NewValidationWarning().
 				SetMsg("transformer may produce NULL values but column has NOT NULL constraint").
-				SetSeverity(toolkit.WarningValidationSeverity).
+				SetSeverity(commonmodels.ValidationSeverityWarning).
 				AddMeta("ConstraintType", toolkit.NotNullConstraintType).
 				AddMeta("ParameterName", p.GetDefinition().Name).
-				AddMeta("ColumnName", p.Column.Name),
-			)
+				AddMeta("ColumnName", p.Column.Name))
 		}
 
 		// Checking transformed value will not exceed the column length
 		if p.GetDefinition().ColumnProperties.MaxLength != toolkit.WithoutMaxLength &&
 			p.Column.Length < p.GetDefinition().ColumnProperties.MaxLength {
-			warnings = append(warnings, toolkit.NewValidationWarning().
+			vc.Add(commonmodels.NewValidationWarning().
 				SetMsg("transformer value might be out of length range: column has a length").
-				SetSeverity(toolkit.WarningValidationSeverity).
+				SetSeverity(commonmodels.ValidationSeverityWarning).
 				AddMeta("ConstraintType", toolkit.LengthConstraintType).
 				AddMeta("ParameterName", p.GetDefinition().Name).
 				AddMeta("ColumnName", p.Column.Name).
 				AddMeta("ColumnMaxLength", p.Column.Length).
-				AddMeta("TransformerMaxLength", p.GetDefinition().ColumnProperties.MaxLength),
-			)
+				AddMeta("TransformerMaxLength", p.GetDefinition().ColumnProperties.MaxLength))
 		}
 
 		// Performing checks constraint checks with the affected column
-		for _, c := range driver.Table.Constraints {
-			if p.GetDefinition().IsColumn && (p.GetDefinition().ColumnProperties == nil ||
-				p.GetDefinition().ColumnProperties != nil && p.GetDefinition().ColumnProperties.Affected) {
-				if warns := c.IsAffected(p.Column, p.GetDefinition().ColumnProperties); len(warns) > 0 {
-					for _, w := range warns {
-						w.AddMeta("ParameterName", p.GetDefinition().Name)
-					}
-					warnings = append(warnings, warns...)
-				}
+		for _, c := range table.Constraints {
+			if isConstraintAffected(c.Columns(), p.Column.Name) {
+				vc.Add(commonmodels.NewValidationWarning().
+					SetSeverity(commonmodels.ValidationSeverityWarning).
+					AddMeta("ConstraintName", c.Name()).
+					AddMeta("ConstraintType", c.Type()).
+					AddMeta("ConstraintColumns", c.Columns()).
+					SetMsg("potential constraint violation detected"))
 			}
 		}
-
-		// Performing type validation
-		idx := slices.IndexFunc(driver.CustomTypes, func(t *toolkit.Type) bool {
-			return t.Oid == p.Column.TypeOid
-		})
-		if idx != -1 {
-			columnType := driver.CustomTypes[idx]
-			w := columnType.IsAffected(p)
-			warnings = append(warnings, w...)
-		}
-
+		// TODO: add type constraint violation checks.
+		// TODO: check transformer properties.
 	}
 
-	return warnings, nil
+	return nil
 }

@@ -3,7 +3,7 @@ package tablegraph
 import (
 	"fmt"
 
-	"github.com/greenmaskio/greenmask/v1/internal/common"
+	commonmodels "github.com/greenmaskio/greenmask/v1/internal/common/models"
 )
 
 // TableLink - a right or left table that contains all the required data to make a join between two Vertexes.
@@ -11,7 +11,7 @@ type TableLink struct {
 	// ID - the index of the table in the Graph.
 	ID int
 	// table - the table itself.
-	table common.Table
+	table commonmodels.Table
 	// keys - the keys that are used to join this specific table with another table.
 	keys []Key
 	// polymorphicExpressions - polymorphic expressions for single conditions that are not used to match FK and
@@ -22,7 +22,7 @@ type TableLink struct {
 // NewTableLink - creates a new TableLink instance.
 func NewTableLink(
 	id int,
-	table common.Table,
+	table commonmodels.Table,
 	keys []Key,
 	polymorphicExpressions []string,
 ) TableLink {
@@ -40,7 +40,7 @@ func (tl TableLink) TableID() int {
 }
 
 // Table - returns the table itself.
-func (tl TableLink) Table() common.Table {
+func (tl TableLink) Table() commonmodels.Table {
 	return tl.table
 }
 

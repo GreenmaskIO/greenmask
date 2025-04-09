@@ -36,7 +36,7 @@ func NewTypeCaster(
 	if !ok {
 		warnings = append(warnings,
 			models.NewValidationWarning().
-				SetSeverity(models.ErrorValidationSeverity).
+				SetSeverity(models.ValidationSeverityError).
 				AddMeta("RequestedInputType", inputType).
 				SetMsg("unsupported input type"),
 		)
@@ -45,7 +45,7 @@ func NewTypeCaster(
 	if !ok {
 		warnings = append(warnings,
 			models.NewValidationWarning().
-				SetSeverity(models.ErrorValidationSeverity).
+				SetSeverity(models.ValidationSeverityError).
 				AddMeta("RequestedOutputType", outputType).
 				SetMsg("unsupported output type"),
 		)
@@ -54,7 +54,7 @@ func NewTypeCaster(
 	if inputTypeOID == outputTypeOID {
 		warnings = append(warnings,
 			models.NewValidationWarning().
-				SetSeverity(models.ErrorValidationSeverity).
+				SetSeverity(models.ValidationSeverityError).
 				AddMeta("RequestedOutputType", outputType).
 				AddMeta("RequestedInputType", outputType).
 				SetMsg("casting is not required for equal type"),
@@ -69,7 +69,7 @@ func NewTypeCaster(
 	if !ok {
 		warnings = append(warnings,
 			models.NewValidationWarning().
-				SetSeverity(models.ErrorValidationSeverity).
+				SetSeverity(models.ValidationSeverityError).
 				AddMeta("CastFuncName", castFunction).
 				SetMsg("unable to find cast function"),
 		)
@@ -82,7 +82,7 @@ func NewTypeCaster(
 
 		warnings = append(warnings,
 			models.NewValidationWarning().
-				SetSeverity(models.ErrorValidationSeverity).
+				SetSeverity(models.ValidationSeverityError).
 				AddMeta("AllowedInputTypes", castFuncDef.InputTypes).
 				AddMeta("RequestedInputType", inputType).
 				AddMeta("CastFuncName", castFunction).
@@ -92,7 +92,7 @@ func NewTypeCaster(
 	if !slices.Contains(castFuncDef.OutputTypes, outputType) {
 		warnings = append(warnings,
 			models.NewValidationWarning().
-				SetSeverity(models.ErrorValidationSeverity).
+				SetSeverity(models.ValidationSeverityError).
 				AddMeta("AllowedOutputTypes", castFuncDef.OutputTypes).
 				AddMeta("RequestedOutputType", outputType).
 				AddMeta("CastFuncName", castFunction).

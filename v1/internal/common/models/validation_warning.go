@@ -19,37 +19,41 @@ import (
 	"encoding/hex"
 	"fmt"
 	"slices"
-
-	"github.com/rs/zerolog/log"
 )
 
+type ValidationSeverity string
+
 const (
-	ErrorValidationSeverity   = "error"
-	WarningValidationSeverity = "warning"
-	InfoValidationSeverity    = "info"
-	DebugValidationSeverity   = "debug"
+	ValidationSeverityError   ValidationSeverity = "error"
+	ValidationSeverityWarning ValidationSeverity = "warning"
+	ValidationSeverityInfo    ValidationSeverity = "info"
+	ValidationSeverityDebug   ValidationSeverity = "debug"
 )
 
 type ValidationWarnings []*ValidationWarning
 
 func (re ValidationWarnings) IsFatal() bool {
 	return slices.ContainsFunc(re, func(warning *ValidationWarning) bool {
-		return warning.Severity == ErrorValidationSeverity
+		return warning.Severity == ValidationSeverityError
 	})
 }
 
 type ValidationWarning struct {
-	Msg      string         `json:"msg,omitempty"`
-	Severity string         `json:"severity,omitempty"`
-	Meta     map[string]any `json:"meta,omitempty"`
-	Hash     string         `json:"hash"`
+	Msg      string             `json:"msg,omitempty"`
+	Severity ValidationSeverity `json:"severity,omitempty"`
+	Meta     map[string]any     `json:"meta,omitempty"`
+	Hash     string             `json:"hash"`
 }
 
 func NewValidationWarning() *ValidationWarning {
 	return &ValidationWarning{
-		Severity: WarningValidationSeverity,
+		Severity: ValidationSeverityWarning,
 		Meta:     make(map[string]interface{}),
 	}
+}
+
+func (re *ValidationWarning) IsFatal() bool {
+	return re.Severity == ValidationSeverityError
 }
 
 func (re *ValidationWarning) SetMsg(msg string) *ValidationWarning {
@@ -62,7 +66,7 @@ func (re *ValidationWarning) SetMsgf(msg string, args ...any) *ValidationWarning
 	return re
 }
 
-func (re *ValidationWarning) SetSeverity(severity string) *ValidationWarning {
+func (re *ValidationWarning) SetSeverity(severity ValidationSeverity) *ValidationWarning {
 	re.Severity = severity
 	return re
 }
@@ -90,27 +94,27 @@ func (re *ValidationWarning) MakeHash() {
 	re.Hash = hex.EncodeToString(hash[:])
 }
 
-func PrintValidationWarnings(warns ValidationWarnings, resolvedWarnings []string, printAll bool) error {
-	// TODO: Implement warnings hook, such as logging and HTTP sender
-	for _, w := range warns {
-		w.MakeHash()
-		if idx := slices.Index(resolvedWarnings, w.Hash); idx != -1 {
-			log.Debug().Str("hash", w.Hash).Msg("resolved warning has been excluded")
-			if w.Severity == ErrorValidationSeverity {
-				return fmt.Errorf("warning with hash %s cannot be excluded because it is an error", w.Hash)
-			}
-			continue
-		}
-
-		if w.Severity == ErrorValidationSeverity {
-			// The warnings with error severity must be printed anyway
-			log.Error().Any("ValidationWarning", w).Msg("")
-		} else {
-			// Print warnings with severity level lower than ErrorValidationSeverity only if requested
-			if printAll {
-				log.Warn().Any("ValidationWarning", w).Msg("")
-			}
-		}
-	}
-	return nil
-}
+//func PrintValidationWarnings(warns ValidationWarnings, resolvedWarnings []string, printAll bool) error {
+//	// TODO: Implement warnings hook, such as logging and HTTP sender
+//	for _, w := range warns {
+//		w.MakeHash()
+//		if idx := slices.Index(resolvedWarnings, w.Hash); idx != -1 {
+//			log.Debug().Str("hash", w.Hash).Msg("resolved warning has been excluded")
+//			if w.Severity == ValidationSeverityError {
+//				return fmt.Errorf("warning with hash %s cannot be excluded because it is an error", w.Hash)
+//			}
+//			continue
+//		}
+//
+//		if w.Severity == ValidationSeverityError {
+//			// The warnings with error severity must be printed anyway
+//			log.Error().Any("ValidationWarning", w).Msg("")
+//		} else {
+//			// Print warnings with severity level lower than ValidationSeverityError only if requested
+//			if printAll {
+//				log.Warn().Any("ValidationWarning", w).Msg("")
+//			}
+//		}
+//	}
+//	return nil
+//}
