@@ -332,7 +332,7 @@ func EmailParse(email []byte) (localPart, domain []byte, err error) {
 		return nil, nil, errors.New("invalid email format")
 	}
 	matches := emailTransformerRegexp.FindSubmatch(email)
-	if matches == nil || len(matches) < 3 {
+	if len(matches) == 0 || len(matches) < 3 {
 		return nil, nil, errors.New("failed to parse email")
 	}
 	return matches[1], matches[2], nil

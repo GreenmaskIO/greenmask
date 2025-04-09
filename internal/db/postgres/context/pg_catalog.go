@@ -34,13 +34,11 @@ const (
 	falseCond = "FALSE"
 )
 
-// TODO: Rewrite it using gotemplate
-
 func getDumpObjects(
 	ctx context.Context, version int, tx pgx.Tx, options *pgdump.Options,
 ) ([]*entries.Table, []*entries.Sequence, *entries.Blobs, error) {
 
-	tables, sequesnces, err := getTables(ctx, version, tx, options)
+	tables, sequesnces, err := getTablesAndSequences(ctx, version, tx, options)
 	if err != nil {
 		return nil, nil, nil, fmt.Errorf("unable to collect Tables: %w", err)
 	}
@@ -54,16 +52,23 @@ func getDumpObjects(
 	return tables, sequesnces, lo, nil
 }
 
-func getTables(
-	ctx context.Context, version int, tx pgx.Tx, options *pgdump.Options,
+// findTablesAndSequences - find all tables and sequences and filters them using the options provided.
+func findTablesAndSequences(
+	ctx context.Context,
+	tx pgx.Tx,
+	options *pgdump.Options,
 ) ([]*entries.Table, []*entries.Sequence, error) {
 	// Building relation search query using regexp adaptation rules and pre-defined query templates
-	// TODO: Refactor it to gotemplate
-	query, err := buildTableSearchQuery(options.Table, options.ExcludeTable,
-		options.ExcludeTableData, options.IncludeForeignData, options.Schema,
-		options.ExcludeSchema)
+	query, err := buildTableSearchQuery(
+		options.Table,
+		options.ExcludeTable,
+		options.ExcludeTableData,
+		options.IncludeForeignData,
+		options.Schema,
+		options.ExcludeSchema,
+	)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, fmt.Errorf("build table search query: %w", err)
 	}
 
 	tableSearchRows, err := tx.Query(ctx, query)
@@ -136,6 +141,17 @@ func getTables(
 		default:
 			return nil, nil, fmt.Errorf("unknown relkind \"%c\"", relKind)
 		}
+	}
+	return tables, sequences, nil
+}
+
+// getTablesAndSequences - returns list of tables and sequences.
+func getTablesAndSequences(
+	ctx context.Context, version int, tx pgx.Tx, options *pgdump.Options,
+) ([]*entries.Table, []*entries.Sequence, error) {
+	tables, sequences, err := findTablesAndSequences(ctx, tx, options)
+	if err != nil {
+		return nil, nil, fmt.Errorf("find tables and sequences: %w", err)
 	}
 
 	// Assigning columns, pk and fk for each table
@@ -347,6 +363,10 @@ func renderForeignDataCond(ss []string, defaultCond string) (string, error) {
 	return defaultCond, nil
 }
 
+// buildSchemaIntrospectionQuery - returns query to introspect schema and
+//
+// This is using to initialise objects during the dump stage. It is not used
+// for schema collecting for validate schema diff.
 func buildTableSearchQuery(
 	includeTable, excludeTable, excludeTableData,
 	includeForeignData, includeSchema, excludeSchema []string,
@@ -406,7 +426,7 @@ func buildTableSearchQuery(
 					   END
 				   ELSE 
 						FALSE
-				  END AS "IsCalled",
+				  END 									AS "IsCalled",
 				CASE 
 					WHEN c.relkind = 'S' THEN 
 						coalesce(pg_sequence_last_value(c.oid::regclass), sq.seqstart)
@@ -437,6 +457,11 @@ func buildTableSearchQuery(
 		schemaInclusionCond, schemaExclusionCond, foreignDataInclusionCond), nil
 }
 
+// buildSchemaIntrospectionQuery - returns query to introspect schema.
+//
+// This schema is using to compare a difference between current snapshot and
+// the previous dump when using validate command with --schema-diff. It find
+// all tables including the partitions.
 func buildSchemaIntrospectionQuery(includeTable, excludeTable, includeForeignData,
 	includeSchema, excludeSchema []string,
 ) (string, error) {
