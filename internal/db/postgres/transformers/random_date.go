@@ -54,19 +54,16 @@ var timestampTransformerDefinition = utils.NewTransformerDefinition(
 		"min",
 		"min threshold date (and/or time) of value",
 	).SetRequired(true).
-		SetSupportTemplate(true).
 		SetLinkParameter("column").
 		SetSupportTemplate(true).
 		SetDynamicMode(
-			toolkit.NewDynamicModeProperties().
-				SetCompatibleTypes("date", "timestamp", "timestamptz"),
+			toolkit.NewDynamicModeProperties(),
 		),
 
 	toolkit.MustNewParameterDefinition(
 		"max",
 		"max threshold date (and/or time) of value",
 	).SetRequired(true).
-		SetSupportTemplate(true).
 		SetLinkParameter("column").
 		SetSupportTemplate(true).
 		SetDynamicMode(
