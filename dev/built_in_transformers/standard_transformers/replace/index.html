@@ -2116,6 +2116,15 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#dynamic-parameters" class="md-nav__link">
+    <span class="md-ellipsis">
+      Dynamic parameters
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#description" class="md-nav__link">
     <span class="md-ellipsis">
       Description
@@ -2128,6 +2137,15 @@
   <a href="#example-updating-the-jobtitle-column" class="md-nav__link">
     <span class="md-ellipsis">
       Example: Updating the jobtitle column
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#example-set-the-same-value-from-another-column" class="md-nav__link">
+    <span class="md-ellipsis">
+      Example: Set the same value from another column
     </span>
   </a>
   
@@ -3200,6 +3218,15 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#dynamic-parameters" class="md-nav__link">
+    <span class="md-ellipsis">
+      Dynamic parameters
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#description" class="md-nav__link">
     <span class="md-ellipsis">
       Description
@@ -3212,6 +3239,15 @@
   <a href="#example-updating-the-jobtitle-column" class="md-nav__link">
     <span class="md-ellipsis">
       Example: Updating the jobtitle column
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#example-set-the-same-value-from-another-column" class="md-nav__link">
+    <span class="md-ellipsis">
+      Example: Set the same value from another column
     </span>
   </a>
   
@@ -3258,7 +3294,7 @@
 <td>any</td>
 </tr>
 <tr>
-<td>replace</td>
+<td>value</td>
 <td>The value to replace</td>
 <td></td>
 <td>Yes</td>
@@ -3280,6 +3316,26 @@
 </tr>
 </tbody>
 </table>
+<h2 id="dynamic-parameters">Dynamic parameters<a class="headerlink" href="#dynamic-parameters" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Supported types</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>value</td>
+<td>any</td>
+</tr>
+</tbody>
+</table>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>The <code>validate</code> parameter in dynamic mode validates each dynamic value by decoding it value via the PostgreSQL 
+driver. In case there is type format violation the dump command will be terminated with an error message.</p>
+</div>
 <h2 id="description">Description<a class="headerlink" href="#description" title="Permanent link">&para;</a></h2>
 <p>The <code>Replace</code> transformer replace an original value from the specified column with the provided one. It can optionally run a validation check with the <code>validate</code> parameter to ensure that the values are of a correct type before starting transformation. The behaviour for NULL values can be configured using the <code>keep_null</code> parameter.</p>
 <h2 id="example-updating-the-jobtitle-column">Example: Updating the <code>jobtitle</code> column<a class="headerlink" href="#example-updating-the-jobtitle-column" title="Permanent link">&para;</a></h2>
@@ -3299,6 +3355,46 @@ remain <code>NULL</code>.</p>
 <div class="highlight"><span class="filename">Expected result</span><pre><span></span><code><span class="p">|</span><span class="w"> </span>column<span class="w"> </span>name<span class="w"> </span><span class="p">|</span><span class="w"> </span>original<span class="w"> </span>value<span class="w">          </span><span class="p">|</span><span class="w"> </span>transformed<span class="w"> </span><span class="p">|</span>
 <span class="p">|</span>-------------<span class="p">|</span>-------------------------<span class="p">|</span>-------------<span class="p">|</span>
 <span class="p">|</span><span class="w"> </span>jobtitle<span class="w">    </span><span class="p">|</span><span class="w"> </span>Chief<span class="w"> </span>Executive<span class="w"> </span>Officer<span class="w"> </span><span class="p">|</span><span class="w"> </span>programmer<span class="w">  </span><span class="p">|</span>
+</code></pre></div>
+<h2 id="example-set-the-same-value-from-another-column">Example: Set the same value from another column<a class="headerlink" href="#example-set-the-same-value-from-another-column" title="Permanent link">&para;</a></h2>
+<p>In this example, the <code>jobdescription</code> column value will be set the same as for the <code>jobtitle</code> column.  </p>
+<p>Create schema and insert data:
+<div class="highlight"><pre><span></span><code><span class="k">CREATE</span><span class="w"> </span><span class="k">TABLE</span><span class="w"> </span><span class="n">employee</span><span class="w"> </span><span class="p">(</span>
+<span class="w">    </span><span class="n">jobtitle</span><span class="w"> </span><span class="nb">varchar</span><span class="p">(</span><span class="mi">50</span><span class="p">),</span>
+<span class="w">    </span><span class="n">jobdescription</span><span class="w"> </span><span class="nb">varchar</span><span class="p">(</span><span class="mi">50</span><span class="p">)</span>
+<span class="p">);</span>
+
+<span class="k">INSERT</span><span class="w"> </span><span class="k">INTO</span><span class="w"> </span><span class="n">employee</span><span class="w"> </span><span class="p">(</span><span class="n">jobtitle</span><span class="p">,</span><span class="w"> </span><span class="n">jobdescription</span><span class="p">)</span><span class="w"> </span><span class="k">VALUES</span>
+<span class="p">(</span><span class="s1">&#39;CEO&#39;</span><span class="p">,</span><span class="w"> </span><span class="s1">&#39;Chief Executive Officer&#39;</span><span class="p">);</span>
+</code></pre></div></p>
+<div class="highlight"><span class="filename">Replace transformer example</span><pre><span></span><code><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">schema</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;public&quot;</span>
+<span class="w">  </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;employee&quot;</span>
+<span class="w">  </span><span class="nt">transformers</span><span class="p">:</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;RandomChoice&quot;</span>
+<span class="w">      </span><span class="nt">params</span><span class="p">:</span>
+<span class="w">        </span><span class="nt">column</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;jobtitle&quot;</span>
+<span class="w">        </span><span class="nt">values</span><span class="p">:</span>
+<span class="w">          </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="s">&quot;Programmer&quot;</span>
+<span class="w">          </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="s">&quot;Analyst&quot;</span>
+<span class="w">          </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="s">&quot;Manager&quot;</span>
+
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;Replace&quot;</span>
+<span class="w">      </span><span class="nt">params</span><span class="p">:</span>
+<span class="w">        </span><span class="nt">column</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;jobdescription&quot;</span>
+<span class="w">        </span><span class="nt">validate</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+<span class="w">      </span><span class="nt">dynamic_params</span><span class="p">:</span>
+<span class="w">        </span><span class="nt">value</span><span class="p">:</span>
+<span class="w">          </span><span class="nt">column</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;jobtitle&quot;</span>
+</code></pre></div>
+<p>Result:</p>
+<div class="highlight"><pre><span></span><code>        &quot;public&quot;.&quot;employee&quot;
++-----------+----------------+-------------------------+------------------+
+| %LineNum% | Column         | OriginalValue           | TransformedValue |
++-----------+----------------+-------------------------+------------------+
+| 0         | jobtitle       | Chief Executive Officer | Manager          |
++           +----------------+-------------------------+------------------+
+|           | jobdescription | Chief Executive Officer | Manager          |
++-----------+----------------+-------------------------+------------------+
 </code></pre></div>
 
 
