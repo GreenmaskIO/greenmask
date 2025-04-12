@@ -134,7 +134,7 @@ func init() {
 	// General options:
 	Cmd.Flags().StringP("dbname", "d", "postgres", "connect to database name")
 	Cmd.Flags().StringP("file", "f", "", "output file name (- for stdout)")
-	Cmd.Flags().StringP("verbose", "v", "", "verbose mode")
+	Cmd.Flags().BoolP("verbose", "v", false, "verbose mode")
 
 	// Options controlling the output content:
 	Cmd.Flags().BoolP("data-only", "a", false, "restore only the data, no schema")
