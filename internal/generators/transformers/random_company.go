@@ -52,7 +52,7 @@ func NewCompanyDatabase(data map[string][]string) *CompanyDatabase {
 	attrsCount := 0
 	attributes := make([]string, 0, len(data))
 
-	for key, _ := range data {
+	for key := range data {
 		attributes = append(attributes, key)
 	}
 

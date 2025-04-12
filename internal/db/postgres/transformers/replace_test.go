@@ -21,6 +21,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/greenmaskio/greenmask/internal/db/postgres/transformers/utils"
 	"github.com/greenmaskio/greenmask/pkg/toolkit"
 )
 
@@ -169,6 +170,142 @@ func TestReplaceTransformer_Transform_with_raw_value(t *testing.T) {
 		})
 
 	}
+}
+
+func TestReplaceTransformer_Transform_dynamic(t *testing.T) {
+	t.Run("basic", func(t *testing.T) {
+		type expected struct {
+			isNull        bool
+			value         string
+			errorContains string
+		}
+
+		tests := []struct {
+			name          string
+			columnName    string
+			params        map[string]toolkit.ParamsValue
+			dynamicParams map[string]*toolkit.DynamicParamValue
+			record        map[string]*toolkit.RawValue
+			expected      expected
+		}{
+			{
+				name:       "set int value from another column",
+				columnName: "id4",
+				record: map[string]*toolkit.RawValue{
+					"id4":      toolkit.NewRawValue([]byte("123"), false),
+					"int4_val": toolkit.NewRawValue([]byte("10"), false),
+				},
+				params: map[string]toolkit.ParamsValue{},
+				dynamicParams: map[string]*toolkit.DynamicParamValue{
+					"value": {
+						Column: "int4_val",
+					},
+				},
+				expected: expected{
+					isNull: false,
+					value:  "10",
+				},
+			},
+			{
+				name:       "set null value from another column",
+				columnName: "id4",
+				record: map[string]*toolkit.RawValue{
+					"id4":      toolkit.NewRawValue([]byte("123"), false),
+					"int4_val": toolkit.NewRawValue(nil, true),
+				},
+				params: map[string]toolkit.ParamsValue{},
+				dynamicParams: map[string]*toolkit.DynamicParamValue{
+					"value": {
+						Column: "int4_val",
+					},
+				},
+				expected: expected{
+					isNull: true,
+					value:  "",
+				},
+			},
+			{
+				name:       "different types and validate true",
+				columnName: "id4",
+				record: map[string]*toolkit.RawValue{
+					"id4":  toolkit.NewRawValue([]byte("123"), false),
+					"data": toolkit.NewRawValue([]byte("asad"), false),
+				},
+				params: map[string]toolkit.ParamsValue{},
+				dynamicParams: map[string]*toolkit.DynamicParamValue{
+					"value": {
+						Column: "data",
+					},
+				},
+				expected: expected{
+					errorContains: "dynamic value validation error",
+				},
+			},
+			{
+				name:       "different types and validate false",
+				columnName: "id4",
+				record: map[string]*toolkit.RawValue{
+					"id4":  toolkit.NewRawValue([]byte("123"), false),
+					"data": toolkit.NewRawValue([]byte("asad"), false),
+				},
+				params: map[string]toolkit.ParamsValue{
+					"validate": toolkit.ParamsValue("false"),
+				},
+				dynamicParams: map[string]*toolkit.DynamicParamValue{
+					"value": {
+						Column: "data",
+					},
+				},
+				expected: expected{
+					isNull: false,
+					value:  "asad",
+				},
+			},
+		}
+
+		for _, tt := range tests {
+			t.Run(tt.name, func(t *testing.T) {
+
+				driver, record := toolkit.GetDriverAndRecord(tt.record)
+
+				tt.params["column"] = toolkit.ParamsValue(tt.columnName)
+				def, ok := utils.DefaultTransformerRegistry.Get("Replace")
+				require.True(t, ok)
+
+				ctx := context.Background()
+				transformer, warnings, err := def.Instance(
+					ctx,
+					driver,
+					tt.params,
+					tt.dynamicParams,
+					"",
+				)
+				require.NoError(t, err)
+				require.Empty(t, warnings)
+
+				err = transformer.Transformer.Init(ctx)
+				require.NoError(t, err)
+
+				for _, dp := range transformer.DynamicParameters {
+					dp.SetRecord(record)
+				}
+
+				r, err := transformer.Transformer.Transform(
+					ctx,
+					record,
+				)
+
+				if tt.expected.errorContains == "" {
+					actual, err := r.GetRawColumnValueByName(tt.columnName)
+					require.NoError(t, err)
+					require.Equal(t, tt.expected.isNull, actual.IsNull)
+					require.Equal(t, tt.expected.value, string(actual.Data))
+				} else {
+					require.ErrorContains(t, err, tt.expected.errorContains)
+				}
+			})
+		}
+	})
 }
 
 func TestReplaceTransformer_Transform_with_validation_error(t *testing.T) {

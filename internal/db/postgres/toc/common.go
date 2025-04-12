@@ -27,7 +27,7 @@ var (
 	AclDesc          = "ACL"
 )
 
-type Oid int32
+type Oid uint32
 
 type DumpIdSequence struct {
 	current int32

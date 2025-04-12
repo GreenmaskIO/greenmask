@@ -82,12 +82,12 @@ func TestDecode_positions_panic_error_regression(t *testing.T) {
 			require.NoError(t, err)
 			require.Equal(t, len(tt.expected.positions), len(row.columnPos))
 
-			for idx, _ := range row.columnPos {
+			for idx := range row.columnPos {
 				assert.Equalf(t, tt.expected.positions[idx].start, row.columnPos[idx].start, "wrong start value for idx %d", idx)
 				assert.Equalf(t, tt.expected.positions[idx].end, row.columnPos[idx].end, "wrong end value for idx %d", idx)
 			}
 
-			for idx, _ := range tt.expected.values {
+			for idx := range tt.expected.values {
 				v, err := row.GetColumn(idx)
 				require.NoErrorf(t, err, "unexpected error for idx %d", idx)
 				require.Falsef(t, v.IsNull, "unexpected NULL value for idx %d", idx)
