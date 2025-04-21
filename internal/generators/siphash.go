@@ -17,7 +17,8 @@ type SipHash struct {
 
 func NewSipHash(salt []byte) (Generator, error) {
 
-	salt = sha3.New224().Sum(salt)[:16]
+	sum224 := sha3.Sum224(salt)
+	salt = sum224[:16]
 
 	h := siphash.New(salt)
 
