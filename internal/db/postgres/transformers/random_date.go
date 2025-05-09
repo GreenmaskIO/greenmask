@@ -28,9 +28,15 @@ import (
 const RandomDateTransformerName = "RandomDate"
 
 var truncateParts = []string{
-	transformers.YearTruncateName, transformers.MonthTruncateName, transformers.DayTruncateName,
-	transformers.HourTruncateName, transformers.SecondTruncateName, transformers.MillisecondTruncateName,
-	transformers.MicrosecondTruncateName, transformers.NanosecondTruncateName,
+	transformers.YearTruncateName,
+	transformers.MonthTruncateName,
+	transformers.DayTruncateName,
+	transformers.HourTruncateName,
+	transformers.MinuteTruncateName,
+	transformers.SecondTruncateName,
+	transformers.MillisecondTruncateName,
+	transformers.MicrosecondTruncateName,
+	transformers.NanosecondTruncateName,
 }
 
 var timestampTransformerDefinition = utils.NewTransformerDefinition(
