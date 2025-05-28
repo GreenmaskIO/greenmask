@@ -31,13 +31,13 @@ func DefaultDatabaseTypeUnmarshaler(driver *Driver, typeName string, v ParamsVal
 
 // ColumnProperties - column-like parameter properties that would help to understand the affection on the consistency
 type ColumnProperties struct {
-	// Nullable - shows that transformer can produce NULL value for the column. Togather with Affected shows that
+	// Nullable - shows that transformer can produce NULL value for the column. Together with Affected shows that
 	// this parameter may generate null values and write it in this column. It only plays with Affected
 	Nullable bool `mapstructure:"nullable" json:"nullable,omitempty"`
 	// Unique - shows that transformer guarantee that every transformer call the value will be unique. It only plays
 	// with Affected
 	Unique bool `mapstructure:"unique" json:"unique,omitempty"`
-	// Unique - defines max length of the value. It only plays with Affected. Togather with Affected shows
+	// Unique - defines max length of the value. It only plays with Affected. Together with Affected shows
 	// that values will not exceed the length of the column. It only plays with Affected
 	MaxLength int `mapstructure:"max_length" json:"max_length,omitempty"`
 	// Affected - shows assigned column name will be affected after the transformation
@@ -100,6 +100,8 @@ func (cp *ColumnProperties) SetSkipOnNull(v bool) *ColumnProperties {
 }
 
 type DynamicModeProperties struct {
+	// SupportedTypes - list of supported types.
+	// If empty any type is supported.
 	SupportedTypes []string
 	Unmarshal      DatabaseTypeUnmarshaler `json:"-"`
 }

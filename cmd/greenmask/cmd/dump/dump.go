@@ -79,7 +79,7 @@ func init() {
 	// General options:
 	Cmd.Flags().StringP("file", "f", "", "output file or directory name")
 	Cmd.Flags().IntP("jobs", "j", 1, "use this many parallel jobs to dump")
-	Cmd.Flags().StringP("verbose", "v", "", "verbose mode")
+	Cmd.Flags().BoolP("verbose", "v", false, "verbose mode")
 	Cmd.Flags().IntP("compress", "Z", -1, "compression level for compressed formats")
 	Cmd.Flags().IntP("lock-wait-timeout", "", -1, "fail after waiting TIMEOUT for a table lock")
 	Cmd.Flags().BoolP("no-sync", "", false, "do not wait for changes to be written safely to dis")

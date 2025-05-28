@@ -30,9 +30,6 @@ on:
 env:
   go-version: '1.24'
   golangci-lint-version: v1.64
-  sonar-project-key: GreenmaskIO_greenmask
-  sonar-org: greenmaskio
-  sonar-exclude-files: docker/**,.github/**,docs/**,playground/**,test/**,**/*_test.go
 
 permissions:
   contents: read
@@ -70,15 +67,3 @@ jobs:
         uses: golangci/golangci-lint-action@v6
         with:
           version: ${{ env.golangci-lint-version }}
-
-      - name: SonarQube Scan
-        uses: SonarSource/sonarcloud-github-action@master
-        with:
-          args: >
-            -Dsonar.go.coverage.reportPaths=coverage.out
-            -Dsonar.projectKey=${{ env.sonar-project-key }}
-            -Dsonar.organization=${{ env.sonar-org }}
-            -Dsonar.exclusions=${{ env.sonar-exclude-files }}
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}

@@ -28,9 +28,15 @@ import (
 const RandomDateTransformerName = "RandomDate"
 
 var truncateParts = []string{
-	transformers.YearTruncateName, transformers.MonthTruncateName, transformers.DayTruncateName,
-	transformers.HourTruncateName, transformers.SecondTruncateName, transformers.MillisecondTruncateName,
-	transformers.MicrosecondTruncateName, transformers.NanosecondTruncateName,
+	transformers.YearTruncateName,
+	transformers.MonthTruncateName,
+	transformers.DayTruncateName,
+	transformers.HourTruncateName,
+	transformers.MinuteTruncateName,
+	transformers.SecondTruncateName,
+	transformers.MillisecondTruncateName,
+	transformers.MicrosecondTruncateName,
+	transformers.NanosecondTruncateName,
 }
 
 var timestampTransformerDefinition = utils.NewTransformerDefinition(
@@ -54,19 +60,16 @@ var timestampTransformerDefinition = utils.NewTransformerDefinition(
 		"min",
 		"min threshold date (and/or time) of value",
 	).SetRequired(true).
-		SetSupportTemplate(true).
 		SetLinkParameter("column").
 		SetSupportTemplate(true).
 		SetDynamicMode(
-			toolkit.NewDynamicModeProperties().
-				SetCompatibleTypes("date", "timestamp", "timestamptz"),
+			toolkit.NewDynamicModeProperties(),
 		),
 
 	toolkit.MustNewParameterDefinition(
 		"max",
 		"max threshold date (and/or time) of value",
 	).SetRequired(true).
-		SetSupportTemplate(true).
 		SetLinkParameter("column").
 		SetSupportTemplate(true).
 		SetDynamicMode(
