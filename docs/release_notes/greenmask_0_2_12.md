@@ -10,6 +10,7 @@
   otherwise. [#282](https://github.com/GreenmaskIO/greenmask/pull/282)
 * Fixed a bug in the `RandomDate` transformer where minutes were not truncated as
   expected. [#298](https://github.com/GreenmaskIO/greenmask/pull/298)
+* Updated go dependencies to the latest. [#304](https://github.com/GreenmaskIO/greenmask/pull/304)
 
 #### Full Changelog: [v0.2.11...v0.2.12](https://github.com/GreenmaskIO/greenmask/compare/v0.2.11...v0.2.12)
 
