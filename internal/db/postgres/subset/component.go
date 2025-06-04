@@ -2,6 +2,7 @@ package subset
 
 import (
 	"fmt"
+	"github.com/rs/zerolog/log"
 	"slices"
 	"sort"
 	"strings"
@@ -37,6 +38,8 @@ func NewComponent(id int, componentGraph map[int][]*Edge, tables map[int]*entrie
 	c.findCycles()
 	c.groupCycles()
 	c.buildCyclesGraph()
+
+	debugComponent(c)
 
 	return c
 }
@@ -262,4 +265,26 @@ func (c *Component) getComponentKeys() []string { //nolint: unused
 		}
 	}
 	return keys
+}
+
+func debugComponent(c *Component) {
+	var res [][]string
+	for _, c := range c.cycles {
+		var tables []string
+		for _, e := range c {
+			tables = append(tables, fmt.Sprintf(`%s.%s`, e.from.table.Schema, e.from.table.Name))
+		}
+		tables = append(tables, fmt.Sprintf(`%s.%s`, c[len(c)-1].to.table.Schema, c[len(c)-1].to.table.Name))
+		res = append(res, tables)
+	}
+
+	log.Debug().
+		Any("componentID", c.id).
+		Any("componentGraph", c.componentGraph).
+		Any("cycles", c.cycles).
+		Any("cyclesIdents", c.cyclesIdents).
+		Any("groupedCycles", c.groupedCycles).
+		Any("cycledTables", res).
+		Any("groupedCyclesGraph", c.groupedCyclesGraph).
+		Msg("")
 }
