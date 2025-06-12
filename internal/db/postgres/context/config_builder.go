@@ -3,7 +3,9 @@ package context
 import (
 	"context"
 	"fmt"
+	"regexp"
 	"slices"
+	"strings"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -210,7 +212,8 @@ func setConfigToEntries(
 				warnings = append(warnings, checkWarns...)
 				continue
 			}
-			refTables := getRefTables(tcm.entry, tcm.config, g, cfg)
+			refTables, warns := getRefTables(tcm.entry, tcm.config, g, cfg)
+			warnings = append(warnings, warns...)
 			res = append(res, refTables...)
 		}
 		if tcm.entry.RelKind != 'p' {
@@ -239,16 +242,16 @@ func setConfigToEntries(
 
 func getRefTables(
 	rootTable *entries.Table, rootTableCfg *domains.Table, graph *subset.Graph, allTrans []*domains.Table,
-) []*tableConfigMapping {
+) ([]*tableConfigMapping, toolkit.ValidationWarnings) {
 	var res []*tableConfigMapping
 	rootTrans := collectRootTransformers(rootTable, rootTableCfg)
 
 	// Start DFS traversal from the root table
-	buildRefsWithEndToEndDfs(
+	warnings := buildRefsWithEndToEndDfs(
 		rootTable, rootTableCfg, rootTrans, graph, allTrans, &res, false,
 	)
 
-	return res
+	return res, warnings
 }
 
 // buildRefsWithEndToEndDfs performs depth-first search to apply transformations to child tables
@@ -256,29 +259,35 @@ func getRefTables(
 func buildRefsWithEndToEndDfs(
 	table *entries.Table, rootTableCfg *domains.Table, rootTrans []*transformersMapping,
 	graph *subset.Graph, allTrans []*domains.Table,
-	res *[]*tableConfigMapping, checkEndToEnd bool) {
+	res *[]*tableConfigMapping, checkEndToEnd bool) toolkit.ValidationWarnings {
 
 	rg := graph.ReversedGraph()
 	tableIdx := findTableIndex(graph, table)
 	if tableIdx == -1 {
-		log.Warn().
-			Str("SchemaName", table.Schema).
-			Str("TableName", table.Name).
-			Msg("transformer inheritance for ref: cannot find table in the graph: table will be ignored")
-		return
+		return toolkit.ValidationWarnings{
+			toolkit.NewValidationWarning().
+				SetSeverity(toolkit.WarningValidationSeverity).
+				AddMeta("SchemaName", table.Schema).
+				AddMeta("TableName", table.Name).
+				SetMsg("transformer inheritance for ref: cannot find table in the graph: table will be ignored"),
+		}
 	}
 
+	var warnings toolkit.ValidationWarnings
 	for _, r := range rg[tableIdx] {
 		// Check for end-to-end PK-FK relationship only if it's beyond the first table
 		if checkEndToEnd && !isEndToEndPKFK(graph, r.From().Table()) {
 			continue
 		}
-		processReference(r, rootTableCfg, rootTrans, allTrans, res)
+		ws := processReference(r, rootTableCfg, rootTrans, allTrans, res)
+		warnings = append(warnings, ws...)
 		// Recursively call DFS on child reference, setting checkEndToEnd to true after the first level
-		buildRefsWithEndToEndDfs(
+		ws = buildRefsWithEndToEndDfs(
 			r.To().Table(), rootTableCfg, rootTrans, graph, allTrans, res, true,
 		)
+		warnings = append(warnings, ws...)
 	}
+	return warnings
 }
 
 // collectRootTransformers gathers all transformers in the root table's configuration
@@ -310,12 +319,50 @@ func findTableIndex(graph *subset.Graph, table *entries.Table) int {
 	})
 }
 
+func validateDoesInheritedConditionHaveAllColumns(
+	t *toolkit.Table, cfg *domains.TransformerConfig,
+) toolkit.ValidationWarnings {
+	// First find all the columns in when condition by using regexp.
+	// They can be found by looking for the pattern `record.column_name` or `raw_record.column_name`
+	if cfg.When == "" {
+		return nil // No condition means all columns are considered
+	}
+	re := regexp.MustCompile(`(?:record|raw_record)\.([a-zA-Z_][a-zA-Z0-9_]*)`)
+	matches := re.FindAllStringSubmatch(cfg.When, -1)
+	if len(matches) == 0 {
+		return nil // No columns found in the condition means all columns are considered
+	}
+	var warnings toolkit.ValidationWarnings
+	for _, match := range matches {
+		if len(match) < 2 {
+			continue // Skip if no column name is captured
+		}
+		colName := match[1]
+		if !slices.ContainsFunc(t.Columns, func(c *toolkit.Column) bool {
+			return c.Name == colName
+		}) {
+			warnings = append(warnings, toolkit.NewValidationWarning().
+				SetMsgf(
+					"cannot inherit condition: column %s not found in table %s.%s",
+					colName, t.Schema, t.Name,
+				).
+				SetSeverity(toolkit.ErrorValidationSeverity).
+				AddMeta("SchemaName", t.Schema).
+				AddMeta("TableName", t.Name).
+				AddMeta("ColumnName", colName),
+			)
+		}
+	}
+	return warnings // All columns in the condition are found in the table
+}
+
 // processReference applies transformers to the reference table if it matches criteria
 // and recursively calls buildRefsWithEndToEndDfs on the child references
 func processReference(
 	r *subset.Edge, rootTableCfg *domains.Table, rootTrans []*transformersMapping,
 	allTrans []*domains.Table, res *[]*tableConfigMapping,
-) {
+) toolkit.ValidationWarnings {
+	var warnings toolkit.ValidationWarnings
 	for _, rootTr := range rootTrans {
 		// Get the primary key column name of the root table
 		fkKeys := r.To().Keys()
@@ -340,9 +387,27 @@ func processReference(
 		trConf := rootTr.cfg.Clone()
 		trConf.Params["column"] = toolkit.ParamsValue(refColName)
 
+		// Inherit the when condition from the parent transformer
+		if rootTr.cfg.When != "" {
+			// Replace the parent table name with the child table name in the when condition
+			whenCondition := rootTr.cfg.When
+			// Replace column references in the when condition for both record namespaces
+			whenCondition = strings.ReplaceAll(whenCondition,
+				fmt.Sprintf("%s.%s", toolkit.TransformationConditionNamespaceRecord, rootTr.columnName),
+				fmt.Sprintf("%s.%s", toolkit.TransformationConditionNamespaceRecord, refColName))
+			whenCondition = strings.ReplaceAll(whenCondition,
+				fmt.Sprintf("%s.%s", toolkit.TransformationConditionNamespaceRawRecord, rootTr.columnName),
+				fmt.Sprintf("%s.%s", toolkit.TransformationConditionNamespaceRawRecord, refColName))
+			trConf.When = whenCondition
+		}
+
+		ws := validateDoesInheritedConditionHaveAllColumns(r.To().Table().Table, trConf)
+		warnings = append(warnings, ws...)
+
 		colTypeOverride := getColumnTypeOverride(rootTableCfg, rootTr.columnName)
 		addTransformerToReferenceTable(r, trConf, colTypeOverride, res)
 	}
+	return warnings
 }
 
 // addTransformerToReferenceTable adds the transformer configuration to the reference table in the results

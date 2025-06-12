@@ -3,6 +3,7 @@ package context
 import (
 	"context"
 	"fmt"
+	"slices"
 	"testing"
 
 	"github.com/docker/go-connections/nat"
@@ -13,6 +14,7 @@ import (
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
 
+	"github.com/greenmaskio/greenmask/internal/db/postgres/entries"
 	"github.com/greenmaskio/greenmask/internal/db/postgres/pgdump"
 	"github.com/greenmaskio/greenmask/internal/db/postgres/subset"
 	"github.com/greenmaskio/greenmask/internal/db/postgres/transformers"
@@ -162,6 +164,46 @@ INSERT INTO sales (sale_date, amount)
 VALUES ('2022-02-20', 150.00);
 INSERT INTO sales (sale_date, amount)
 VALUES ('2023-03-10', 200.00);
+
+------------------------------------------------------------------------------------------------------------------------
+------------------------------------------------------------------------------------------------------------------------
+------------------------------------------------------------------------------------------------------------------------
+
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+
+CREATE TABLE public.users
+(
+    id              uuid DEFAULT public.uuid_generate_v4() NOT NULL,
+    username        character varying                      NOT NULL
+);
+
+ALTER TABLE public.users
+    ADD CONSTRAINT users_pkey PRIMARY KEY (id);
+
+CREATE TABLE public.posts
+(
+    id              uuid DEFAULT public.uuid_generate_v4() NOT NULL,
+    title           character varying                      NOT NULL,
+    user_id         uuid                                   NOT NULL,
+    CONSTRAINT posts_user_id_fkey FOREIGN KEY (user_id)
+        REFERENCES public.users (id) MATCH SIMPLE
+);
+
+ALTER TABLE public.posts
+    ADD CONSTRAINT posts_pkey PRIMARY KEY (id);
+
+INSERT INTO public.users (id, username)
+VALUES ('4a6ea148-076b-4eb0-985b-390cf49e8338', 'admin');
+
+INSERT INTO public.posts (title, user_id)
+VALUES ('Hello World', '4a6ea148-076b-4eb0-985b-390cf49e8338');
+
+
+INSERT INTO public.users (username)
+VALUES ('user');
+
+INSERT INTO public.posts (title, user_id)
+VALUES ('Hello World', (SELECT id FROM users WHERE username = 'user'));
 `
 )
 
@@ -611,6 +653,214 @@ func Test_validateAndBuildEntriesConfig(t *testing.T) {
 			}
 		}
 	})
+
+	t.Run("ApplyForReferences with when condition inheritance", func(t *testing.T) {
+		tables, _, _, err := getDumpObjects(ctx, pgVer, tx, opt)
+		require.NoError(t, err)
+		graph, err := subset.NewGraph(ctx, tx, tables, nil)
+		require.NoError(t, err)
+
+		cfg := &domains.Dump{
+			Transformation: []*domains.Table{
+				{
+					Schema: "public",
+					Name:   "users",
+					Transformers: []*domains.TransformerConfig{
+						{
+							ApplyForReferences: true,
+							Name:               transformers.RandomUuidTransformerName,
+							When:               "record.username == 'admin'",
+							Params: toolkit.StaticParameters{
+								"column": toolkit.ParamsValue("id"),
+								"engine": toolkit.ParamsValue("hash"),
+							},
+						},
+					},
+				},
+			},
+		}
+		vw, err := validateAndBuildEntriesConfig(
+			ctx, tx, tables, typeMap, cfg,
+			utils.DefaultTransformerRegistry, pgVer, types, graph,
+		)
+		require.NoError(t, err)
+		require.True(t, vw.IsFatal())
+	})
+
+	t.Run("ApplyForReferences with when condition and FK column reference", func(t *testing.T) {
+		tables, _, _, err := getDumpObjects(ctx, pgVer, tx, opt)
+		require.NoError(t, err)
+		graph, err := subset.NewGraph(ctx, tx, tables, nil)
+		require.NoError(t, err)
+
+		cfg := &domains.Dump{
+			Transformation: []*domains.Table{
+				{
+					Schema: "public",
+					Name:   "users",
+					Transformers: []*domains.TransformerConfig{
+						{
+							ApplyForReferences: true,
+							Name:               transformers.RandomUuidTransformerName,
+							When:               "record.id == '4a6ea148-076b-4eb0-985b-390cf49e8338'",
+							Params: toolkit.StaticParameters{
+								"column": toolkit.ParamsValue("id"),
+								"engine": toolkit.ParamsValue("hash"),
+							},
+						},
+					},
+				},
+			},
+		}
+		vw, err := validateAndBuildEntriesConfig(
+			ctx, tx, tables, typeMap, cfg,
+			utils.DefaultTransformerRegistry, pgVer, types, graph,
+		)
+		require.NoError(t, err)
+		require.False(t, vw.IsFatal())
+
+		// Find the posts table and verify its transformer configuration
+		var postsTable *entries.Table
+		for _, table := range tables {
+			if table.Name == "posts" {
+				postsTable = table
+				break
+			}
+		}
+		require.NotNil(t, postsTable, "posts table not found")
+		require.Len(t, postsTable.TransformersContext, 1, "posts table should have one transformer")
+
+		// Verify the inherited when condition with FK column reference
+		transformer := postsTable.TransformersContext[0]
+		require.NotNil(t, transformer.When)
+		expectedCondition := "record.user_id == '4a6ea148-076b-4eb0-985b-390cf49e8338'"
+		require.Equal(t, expectedCondition, transformer.When.Condition(), "when condition should be inherited and FK column reference should be replaced")
+	})
+
+	t.Run("ApplyForReferences with when condition referencing non-existent column", func(t *testing.T) {
+		tables, _, _, err := getDumpObjects(ctx, pgVer, tx, opt)
+		require.NoError(t, err)
+		graph, err := subset.NewGraph(ctx, tx, tables, nil)
+		require.NoError(t, err)
+
+		cfg := &domains.Dump{
+			Transformation: []*domains.Table{
+				{
+					Schema: "public",
+					Name:   "users",
+					Transformers: []*domains.TransformerConfig{
+						{
+							ApplyForReferences: true,
+							Name:               transformers.RandomUuidTransformerName,
+							When:               "record.non_existent_column == 'value'",
+							Params: toolkit.StaticParameters{
+								"column": toolkit.ParamsValue("id"),
+								"engine": toolkit.ParamsValue("hash"),
+							},
+						},
+					},
+				},
+			},
+		}
+		vw, err := validateAndBuildEntriesConfig(
+			ctx, tx, tables, typeMap, cfg,
+			utils.DefaultTransformerRegistry, pgVer, types, graph,
+		)
+		require.NoError(t, err)
+		require.True(t, vw.IsFatal(), "should have fatal validation warnings")
+
+		// Verify the validation warning
+		require.True(t, slices.ContainsFunc(vw, func(w *toolkit.ValidationWarning) bool {
+			return w.Msg == "cannot inherit condition: column non_existent_column not found in table public.posts"
+		}))
+	})
+}
+
+func Test_validateDoesInheritedConditionHaveAllColumns(t *testing.T) {
+	tests := []struct {
+		name             string
+		table            *toolkit.Table
+		config           *domains.TransformerConfig
+		expectedFatal    bool
+		expectedWarnings int
+	}{
+		{
+			name: "Condition references existing columns",
+			table: &toolkit.Table{
+				Columns: []*toolkit.Column{
+					{Name: "column1"},
+					{Name: "column2"},
+				},
+			},
+			config: &domains.TransformerConfig{
+				When: "record.column1 == 'value' && record.column2 > 10",
+			},
+			expectedFatal:    false,
+			expectedWarnings: 0,
+		},
+		{
+			name: "Condition references non-existent column",
+			table: &toolkit.Table{
+				Columns: []*toolkit.Column{
+					{Name: "column1"},
+				},
+			},
+			config: &domains.TransformerConfig{
+				When: "record.column1 == 'value' && record.column2 > 10",
+			},
+			expectedFatal:    true,
+			expectedWarnings: 1,
+		},
+		{
+			name: "No condition specified",
+			table: &toolkit.Table{
+				Columns: []*toolkit.Column{
+					{Name: "column1"},
+					{Name: "column2"},
+				},
+			},
+			config: &domains.TransformerConfig{
+				When: "",
+			},
+			expectedFatal:    false,
+			expectedWarnings: 0,
+		},
+		{
+			name: "Condition references raw_record namespace",
+			table: &toolkit.Table{
+				Columns: []*toolkit.Column{
+					{Name: "column1"},
+					{Name: "column2"},
+				},
+			},
+			config: &domains.TransformerConfig{
+				When: "raw_record.column1 == 'value' && raw_record.column2 > 10",
+			},
+			expectedFatal:    false,
+			expectedWarnings: 0,
+		},
+		{
+			name: "Condition references mixed namespaces with non-existent column",
+			table: &toolkit.Table{
+				Columns: []*toolkit.Column{
+					{Name: "column1"},
+				},
+			},
+			config: &domains.TransformerConfig{
+				When: "record.column1 == 'value' && raw_record.column2 > 10",
+			},
+			expectedFatal:    true,
+			expectedWarnings: 1,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			warnings := validateDoesInheritedConditionHaveAllColumns(tt.table, tt.config)
+			assert.Equal(t, tt.expectedFatal, warnings.IsFatal())
+			assert.Equal(t, tt.expectedWarnings, len(warnings))
+		})
+	}
 }
 
 // runPostgresContainer starts a PostgreSQL container and returns the connection string

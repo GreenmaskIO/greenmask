@@ -14,8 +14,8 @@ import (
 )
 
 const (
-	recordExprNamespace    = "record"
-	rawRecordExprNamespace = "raw_record"
+	TransformationConditionNamespaceRecord    = "record"
+	TransformationConditionNamespaceRawRecord = "raw_record"
 )
 
 // WhenCond - A condition that should be evaluated to determine if the record should be processed.
@@ -24,6 +24,11 @@ type WhenCond struct {
 	whenCond *vm.Program
 	when     string
 	env      map[string]any
+}
+
+// Condition returns the original when condition string
+func (wc *WhenCond) Condition() string {
+	return wc.when
 }
 
 // NewWhenCond - creates a new WhenCond object. It compiles when condition and returns the compiled program
@@ -204,7 +209,7 @@ func isRecordOp(node *ast.Node) bool {
 	if !ok {
 		return false
 	}
-	return owner.Value == recordExprNamespace || owner.Value == rawRecordExprNamespace
+	return owner.Value == TransformationConditionNamespaceRecord || owner.Value == TransformationConditionNamespaceRawRecord
 }
 
 // patchRecordOp patches the record access operation
@@ -225,14 +230,14 @@ func patchRecordOp(node *ast.Node) {
 	}
 	var newOp *ast.CallNode
 	switch owner.Value {
-	case recordExprNamespace:
+	case TransformationConditionNamespaceRecord:
 		newOp = &ast.CallNode{
 			Callee: &ast.IdentifierNode{
 				Value: fmt.Sprintf("__%s", attr.Value),
 			},
 		}
 
-	case rawRecordExprNamespace:
+	case TransformationConditionNamespaceRawRecord:
 		newOp = &ast.CallNode{
 			Callee: &ast.IdentifierNode{
 				Value: fmt.Sprintf("__raw__%s", attr.Value),
