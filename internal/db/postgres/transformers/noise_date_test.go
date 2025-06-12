@@ -23,6 +23,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/greenmaskio/greenmask/internal/db/postgres/transformers/utils"
 	"github.com/greenmaskio/greenmask/pkg/toolkit"
 )
 
@@ -148,6 +149,85 @@ func TestNoiseDateTransformer_Transform(t *testing.T) {
 			require.False(t, rawValue.IsNull)
 			require.Regexp(t, tt.result.pattern, string(rawValue.Data))
 
+		})
+	}
+}
+
+func TestNoiseDateTransformer_Transform_dynamic(t *testing.T) {
+	type expected struct {
+		min time.Time
+		max time.Time
+	}
+
+	tests := []struct {
+		name          string
+		columnName    string
+		params        map[string]toolkit.ParamsValue
+		dynamicParams map[string]*toolkit.DynamicParamValue
+		record        map[string]*toolkit.RawValue
+		expected      expected
+	}{
+		{
+			name:       "NoiseDate with dynamic min",
+			columnName: "hiredate",
+			record: map[string]*toolkit.RawValue{
+				"hiredate":  toolkit.NewRawValue([]byte("2009-01-01 00:00:00"), false),
+				"birthdate": toolkit.NewRawValue([]byte("1996-01-01 00:00:00"), false),
+			},
+			params: map[string]toolkit.ParamsValue{
+				"max_ratio": toolkit.ParamsValue("100 year 2 mons 3 day 04:05:06.07"),
+				"truncate":  toolkit.ParamsValue("month"),
+				"max":       toolkit.ParamsValue("2020-01-01 00:00:00"),
+				"engine":    toolkit.ParamsValue("hash"),
+			},
+			dynamicParams: map[string]*toolkit.DynamicParamValue{
+				"min": {
+					Column: "birthdate",
+				},
+			},
+			expected: expected{
+				min: time.Date(1996, 1, 1, 0, 0, 0, 0, time.UTC),
+				max: time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC),
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			driver, record := toolkit.GetDriverAndRecord(tt.record)
+
+			tt.params["column"] = toolkit.ParamsValue(tt.columnName)
+			def, ok := utils.DefaultTransformerRegistry.Get("NoiseDate")
+			require.True(t, ok)
+
+			transformer, warnings, err := def.Instance(
+				context.Background(),
+				driver,
+				tt.params,
+				tt.dynamicParams,
+				"",
+			)
+			require.NoError(t, err)
+			require.Empty(t, warnings)
+
+			err = transformer.Transformer.Init(context.Background())
+			require.NoError(t, err)
+
+			for _, dp := range transformer.DynamicParameters {
+				dp.SetRecord(record)
+			}
+
+			r, err := transformer.Transformer.Transform(
+				context.Background(),
+				record,
+			)
+			require.NoError(t, err)
+
+			var res time.Time
+			empty, err := r.ScanColumnValueByName(tt.columnName, &res)
+			require.False(t, empty)
+			require.NoError(t, err)
+			require.True(t, res.After(tt.expected.min) && res.Before(tt.expected.max))
 		})
 	}
 }
