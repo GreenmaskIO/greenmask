@@ -101,7 +101,8 @@ type NoiseDateTransformer struct {
 	engineParam   toolkit.Parameterizer
 	truncateParam toolkit.Parameterizer
 
-	transform func(time.Time) (time.Time, error)
+	dynamicMode bool
+	transform   func(time.Time) (time.Time, error)
 }
 
 type noiseTimestampMinMaxEncoder func(toolkit.Parameterizer, toolkit.Parameterizer) (*time.Time, *time.Time, error)
@@ -242,6 +243,7 @@ func NewNoiseDateTransformerBase(ctx context.Context, driver *toolkit.Driver, pa
 		minParam:      minParam,
 		engineParam:   engineParam,
 		truncateParam: truncateParam,
+		dynamicMode:   dynamicMode,
 	}, nil, nil
 }
 
@@ -254,7 +256,7 @@ func (ndt *NoiseDateTransformer) GetAffectedColumns() map[int]string {
 }
 
 func (ndt *NoiseDateTransformer) Init(ctx context.Context) error {
-	if ndt.columnParam.IsDynamic() {
+	if ndt.dynamicMode {
 		ndt.transform = ndt.dynamicTransform
 	}
 	return nil
