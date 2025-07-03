@@ -1,0 +1,12 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="list-dumps" type="GoApplicationRunConfiguration" factoryName="Go Application">
+    <module name="greenmask" />
+    <working_directory value="$PROJECT_DIR$" />
+    <parameters value="--config $PROJECT_DIR$/config.yml list-dumps" />
+    <kind value="PACKAGE" />
+    <package value="github.com/greenmaskio/greenmask/cmd/greenmask" />
+    <directory value="$PROJECT_DIR$" />
+    <filePath value="$PROJECT_DIR$/cmd/greenmask/main.go" />
+    <method v="2" />
+  </configuration>
+</component>
