@@ -5,7 +5,12 @@ import (
 
 	"github.com/stretchr/testify/mock"
 
+	commonininterfaces "github.com/greenmaskio/greenmask/v1/internal/common/interfaces"
 	commonmodels "github.com/greenmaskio/greenmask/v1/internal/common/models"
+)
+
+var (
+	_ commonininterfaces.TableDriver = (*TableDriverMock)(nil)
 )
 
 type TableDriverMock struct {

@@ -26,7 +26,7 @@ type NewTableDriverFunc func(
 type Producer struct {
 	tables              []commonmodels.Table
 	dumpQueries         []string
-	config              []commonmodels.TableConfig
+	tableConfigs        []commonmodels.TableConfig
 	newTableDriver      NewTableDriverFunc
 	transformerRegistry *transformerutils.TransformerRegistry
 }
@@ -34,14 +34,14 @@ type Producer struct {
 func NewProducer(
 	tables []commonmodels.Table,
 	dumpQueries []string,
-	config []commonmodels.TableConfig,
+	tableConfigs []commonmodels.TableConfig,
 	newDriverFunc NewTableDriverFunc,
 	transformerRegistry *transformerutils.TransformerRegistry,
 ) *Producer {
 	return &Producer{
 		tables:              tables,
 		dumpQueries:         dumpQueries,
-		config:              config,
+		tableConfigs:        tableConfigs,
 		newTableDriver:      newDriverFunc,
 		transformerRegistry: transformerRegistry,
 	}
@@ -53,11 +53,11 @@ func (p *Producer) Produce(ctx context.Context, vc *validationcollector.Collecto
 	tableRuntimes := make([]TableRuntime, len(p.tables))
 	for i := range p.tables {
 		var transformationConfig commonmodels.TableConfig
-		idx := slices.IndexFunc(p.config, func(config commonmodels.TableConfig) bool {
+		idx := slices.IndexFunc(p.tableConfigs, func(config commonmodels.TableConfig) bool {
 			return p.tables[i].Schema == config.Schema && p.tables[i].Name == config.Name
 		})
 		if idx != -1 {
-			transformationConfig = p.config[idx]
+			transformationConfig = p.tableConfigs[idx]
 		}
 		query := p.dumpQueries[i]
 		tableRuntimes[i], err = p.initTable(ctx, vc, p.tables[i], transformationConfig, query)
@@ -96,7 +96,7 @@ func (p *Producer) initTable(
 		TableCondition:      tableCondition,
 		TransformerRuntimes: transformationRuntimes,
 		Query:               dumpQueries,
-		Driver:              driver,
+		TableDriver:         driver,
 	}, nil
 }
 

@@ -13,8 +13,8 @@ import (
 	"github.com/greenmaskio/greenmask/v1/internal/common/models"
 	commonmodels "github.com/greenmaskio/greenmask/v1/internal/common/models"
 	gmtemplate "github.com/greenmaskio/greenmask/v1/internal/common/transformers/template"
+	"github.com/greenmaskio/greenmask/v1/internal/common/utils"
 	"github.com/greenmaskio/greenmask/v1/internal/common/validationcollector"
-	"github.com/greenmaskio/greenmask/v1/internal/utils"
 )
 
 var (
@@ -270,7 +270,7 @@ func getValue(
 		// TODO: Be careful - this may cause an error in Scan func if the the returning value is not a pointer
 		res, err = driver.DecodeValueByTypeName(linkedColumnParameter.Column.TypeName, rawValue)
 		if err != nil {
-			return nil, fmt.Errorf("scan parameter via Driver: %w", err)
+			return nil, fmt.Errorf("scan parameter via TableDriver: %w", err)
 		}
 	case definition.IsColumn:
 		res = string(rawValue)

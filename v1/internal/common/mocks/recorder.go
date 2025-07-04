@@ -7,6 +7,10 @@ import (
 	commonmodels "github.com/greenmaskio/greenmask/v1/internal/common/models"
 )
 
+var (
+	_ commonininterfaces.Recorder = (*RecorderMock)(nil)
+)
+
 type RecorderMock struct {
 	mock.Mock
 }

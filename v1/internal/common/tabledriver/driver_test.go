@@ -1,96 +1,15 @@
 package tabledriver
 
 import (
-	"errors"
-	"reflect"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
+	"github.com/greenmaskio/greenmask/v1/internal/common/mocks"
 	commonmodels "github.com/greenmaskio/greenmask/v1/internal/common/models"
 	validationcollector "github.com/greenmaskio/greenmask/v1/internal/common/validationcollector"
 )
-
-func scanPointer(src, dest any) error {
-	srcValue := reflect.ValueOf(src)
-	destValue := reflect.ValueOf(dest)
-	if srcValue.Kind() == destValue.Kind() {
-		srcInd := reflect.Indirect(srcValue)
-		destInd := reflect.Indirect(destValue)
-		if srcInd.Kind() == destInd.Kind() {
-			if srcInd.CanSet() {
-				destInd.Set(srcInd)
-				return nil
-			}
-			return errors.New("unable to set the value")
-		}
-		return errors.New("unexpected src type")
-	}
-	return errors.New("src must be pointer")
-}
-
-// MockDBMSDriver is a mock implementation of DBMSDriver for testing using testify/mock
-type MockDBMSDriver struct {
-	mock.Mock
-}
-
-func (m *MockDBMSDriver) EncodeValueByTypeName(name string, src any, buf []byte) ([]byte, error) {
-	args := m.Called(name, src, buf)
-	if args.Error(1) != nil {
-		return nil, args.Error(1)
-	}
-	return args.Get(0).([]byte), args.Error(1)
-}
-
-func (m *MockDBMSDriver) EncodeValueByTypeOid(oid commonmodels.VirtualOID, src any, buf []byte) ([]byte, error) {
-	args := m.Called(oid, src, buf)
-	if args.Error(1) != nil {
-		return nil, args.Error(1)
-	}
-	return args.Get(0).([]byte), args.Error(1)
-}
-
-func (m *MockDBMSDriver) DecodeValueByTypeName(name string, src []byte) (any, error) {
-	args := m.Called(name, src)
-	return args.Get(0), args.Error(1)
-}
-
-func (m *MockDBMSDriver) DecodeValueByTypeOid(oid commonmodels.VirtualOID, src []byte) (any, error) {
-	args := m.Called(oid, src)
-	return args.Get(0), args.Error(1)
-}
-
-func (m *MockDBMSDriver) ScanValueByTypeName(name string, src []byte, dest any) error {
-	args := m.Called(name, src, dest)
-	return args.Error(0)
-}
-
-func (m *MockDBMSDriver) ScanValueByTypeOid(oid commonmodels.VirtualOID, src []byte, dest any) error {
-	args := m.Called(oid, src, dest)
-	if vv, ok := dest.(*string); ok {
-		*vv = string(src)
-	} else {
-		panic("unable to assert string")
-	}
-	return args.Error(0)
-}
-
-func (m *MockDBMSDriver) TypeExistsByName(name string) bool {
-	args := m.Called(name)
-	return args.Bool(0)
-}
-
-func (m *MockDBMSDriver) TypeExistsByOid(oid commonmodels.VirtualOID) bool {
-	args := m.Called(oid)
-	return args.Bool(0)
-}
-
-func (m *MockDBMSDriver) GetTypeOid(name string) (commonmodels.VirtualOID, error) {
-	args := m.Called(name)
-	return args.Get(0).(commonmodels.VirtualOID), args.Error(1)
-}
 
 func TestNewTableDriver(t *testing.T) {
 	t.Run("common", func(t *testing.T) {
@@ -105,7 +24,7 @@ func TestNewTableDriver(t *testing.T) {
 
 		typeOverride := map[string]string{}
 
-		mockDriver := new(MockDBMSDriver)
+		mockDriver := mocks.NewDBMSDriverMock()
 		mockDriver.On("TypeExistsByOid", commonmodels.VirtualOID(1)).Return(true)
 		mockDriver.On("TypeExistsByOid", commonmodels.VirtualOID(2)).Return(true)
 		vc := validationcollector.NewCollector()
@@ -152,7 +71,7 @@ func TestNewTableDriver(t *testing.T) {
 
 		typeOverride := map[string]string{}
 
-		mockDriver := new(MockDBMSDriver)
+		mockDriver := mocks.NewDBMSDriverMock()
 		mockDriver.On("TypeExistsByOid", commonmodels.VirtualOID(1)).Return(true)
 		mockDriver.On("TypeExistsByOid", commonmodels.VirtualOID(2)).Return(false)
 
@@ -214,7 +133,7 @@ func TestNewTableDriver(t *testing.T) {
 			"col2": "text", // Override to a known type
 		}
 
-		mockDriver := new(MockDBMSDriver)
+		mockDriver := mocks.NewDBMSDriverMock()
 		mockDriver.On("TypeExistsByOid", commonmodels.VirtualOID(1)).Return(true).Once()
 		mockDriver.On("TypeExistsByOid", commonmodels.VirtualOID(100)).Return(false).Once()
 		mockDriver.On("TypeExistsByName", "text").Return(true).Once()
@@ -266,7 +185,7 @@ func TestNewTableDriver(t *testing.T) {
 			"col2": "text", // Override to a known type
 		}
 
-		mockDriver := new(MockDBMSDriver)
+		mockDriver := mocks.NewDBMSDriverMock()
 		mockDriver.On("TypeExistsByOid", commonmodels.VirtualOID(1)).Return(true).Once()
 		mockDriver.On("TypeExistsByOid", commonmodels.VirtualOID(100)).Return(false).Once()
 		mockDriver.On("TypeExistsByName", "text").Return(false).Once()
@@ -317,7 +236,7 @@ func TestNewTableDriver(t *testing.T) {
 
 func TestDriver_EncodeValueByColumnIdx(t *testing.T) {
 	t.Run("common case", func(t *testing.T) {
-		mockDriver := new(MockDBMSDriver)
+		mockDriver := mocks.NewDBMSDriverMock()
 		mockDriver.On("TypeExistsByOid", commonmodels.VirtualOID(1)).Return(true).Once()
 		mockDriver.On("EncodeValueByTypeOid", commonmodels.VirtualOID(1), "value", []byte(nil)).Return([]byte("encoded"), nil).Once()
 
@@ -341,7 +260,7 @@ func TestDriver_EncodeValueByColumnIdx(t *testing.T) {
 	})
 
 	t.Run("type overridden", func(t *testing.T) {
-		mockDriver := new(MockDBMSDriver)
+		mockDriver := mocks.NewDBMSDriverMock()
 		mockDriver.On("TypeExistsByOid", commonmodels.VirtualOID(1)).Return(true).Once()
 		mockDriver.On("TypeExistsByName", "text").Return(true).Once()
 		mockDriver.On("GetTypeOid", "text").Return(commonmodels.VirtualOID(2), nil).Once()
@@ -368,7 +287,7 @@ func TestDriver_EncodeValueByColumnIdx(t *testing.T) {
 	})
 
 	t.Run("unsupported type", func(t *testing.T) {
-		mockDriver := new(MockDBMSDriver)
+		mockDriver := mocks.NewDBMSDriverMock()
 		mockDriver.On("TypeExistsByOid", commonmodels.VirtualOID(1)).Return(false).Once()
 
 		table := &commonmodels.Table{
@@ -392,7 +311,7 @@ func TestDriver_EncodeValueByColumnIdx(t *testing.T) {
 
 func TestDriver_EncodeValueByColumnName(t *testing.T) {
 	t.Run("common case", func(t *testing.T) {
-		mockDriver := new(MockDBMSDriver)
+		mockDriver := mocks.NewDBMSDriverMock()
 		mockDriver.On("TypeExistsByOid", commonmodels.VirtualOID(1)).Return(true).Once()
 		mockDriver.On("EncodeValueByTypeOid", commonmodels.VirtualOID(1), "value", []byte(nil)).Return([]byte("encoded"), nil).Once()
 
@@ -416,7 +335,7 @@ func TestDriver_EncodeValueByColumnName(t *testing.T) {
 	})
 
 	t.Run("type overridden", func(t *testing.T) {
-		mockDriver := new(MockDBMSDriver)
+		mockDriver := mocks.NewDBMSDriverMock()
 		mockDriver.On("TypeExistsByOid", commonmodels.VirtualOID(1)).Return(true).Once()
 		mockDriver.On("TypeExistsByName", "text").Return(true).Once()
 		mockDriver.On("GetTypeOid", "text").Return(commonmodels.VirtualOID(2), nil).Once()
@@ -443,7 +362,7 @@ func TestDriver_EncodeValueByColumnName(t *testing.T) {
 	})
 
 	t.Run("unsupported type", func(t *testing.T) {
-		mockDriver := new(MockDBMSDriver)
+		mockDriver := mocks.NewDBMSDriverMock()
 		mockDriver.On("TypeExistsByOid", commonmodels.VirtualOID(1)).Return(false).Once()
 
 		table := &commonmodels.Table{
@@ -467,7 +386,7 @@ func TestDriver_EncodeValueByColumnName(t *testing.T) {
 
 func TestDriver_ScanValueByColumnIdx(t *testing.T) {
 	t.Run("common case", func(t *testing.T) {
-		mockDriver := new(MockDBMSDriver)
+		mockDriver := mocks.NewDBMSDriverMock()
 		actual := ""
 		mockDriver.On("TypeExistsByOid", commonmodels.VirtualOID(1)).Return(true).Once()
 		mockDriver.On("ScanValueByTypeOid", commonmodels.VirtualOID(1), []byte("value"), &actual).
@@ -494,7 +413,7 @@ func TestDriver_ScanValueByColumnIdx(t *testing.T) {
 	})
 
 	t.Run("type overridden", func(t *testing.T) {
-		mockDriver := new(MockDBMSDriver)
+		mockDriver := mocks.NewDBMSDriverMock()
 		actual := ""
 		mockDriver.On("TypeExistsByOid", commonmodels.VirtualOID(1)).Return(true).Once()
 		mockDriver.On("TypeExistsByName", "text").Return(true).Once()
@@ -524,7 +443,7 @@ func TestDriver_ScanValueByColumnIdx(t *testing.T) {
 	})
 
 	t.Run("unsupported type", func(t *testing.T) {
-		mockDriver := new(MockDBMSDriver)
+		mockDriver := mocks.NewDBMSDriverMock()
 		mockDriver.On("TypeExistsByOid", commonmodels.VirtualOID(1)).Return(false).Once()
 
 		table := &commonmodels.Table{
@@ -549,7 +468,7 @@ func TestDriver_ScanValueByColumnIdx(t *testing.T) {
 
 func TestDriver_ScanValueByColumnName(t *testing.T) {
 	t.Run("common case", func(t *testing.T) {
-		mockDriver := new(MockDBMSDriver)
+		mockDriver := mocks.NewDBMSDriverMock()
 		actual := ""
 		mockDriver.On("TypeExistsByOid", commonmodels.VirtualOID(1)).Return(true).Once()
 		mockDriver.On("ScanValueByTypeOid", commonmodels.VirtualOID(1), []byte("value"), &actual).
@@ -576,7 +495,7 @@ func TestDriver_ScanValueByColumnName(t *testing.T) {
 	})
 
 	t.Run("type overridden", func(t *testing.T) {
-		mockDriver := new(MockDBMSDriver)
+		mockDriver := mocks.NewDBMSDriverMock()
 		actual := ""
 		mockDriver.On("TypeExistsByOid", commonmodels.VirtualOID(1)).Return(true).Once()
 		mockDriver.On("TypeExistsByName", "text").Return(true).Once()
@@ -606,7 +525,7 @@ func TestDriver_ScanValueByColumnName(t *testing.T) {
 	})
 
 	t.Run("unsupported type", func(t *testing.T) {
-		mockDriver := new(MockDBMSDriver)
+		mockDriver := mocks.NewDBMSDriverMock()
 		mockDriver.On("TypeExistsByOid", commonmodels.VirtualOID(1)).Return(false).Once()
 
 		table := &commonmodels.Table{
@@ -631,7 +550,7 @@ func TestDriver_ScanValueByColumnName(t *testing.T) {
 
 func TestDriver_DecodeValueByColumnName(t *testing.T) {
 	t.Run("common case", func(t *testing.T) {
-		mockDriver := new(MockDBMSDriver)
+		mockDriver := mocks.NewDBMSDriverMock()
 		mockDriver.On("TypeExistsByOid", commonmodels.VirtualOID(1)).Return(true).Once()
 		mockDriver.On("DecodeValueByTypeOid", commonmodels.VirtualOID(1), []byte("value")).
 			Return("value", nil).
@@ -657,7 +576,7 @@ func TestDriver_DecodeValueByColumnName(t *testing.T) {
 	})
 
 	t.Run("type overridden", func(t *testing.T) {
-		mockDriver := new(MockDBMSDriver)
+		mockDriver := mocks.NewDBMSDriverMock()
 		mockDriver.On("TypeExistsByOid", commonmodels.VirtualOID(1)).Return(true).Once()
 		mockDriver.On("TypeExistsByName", "text").Return(true).Once()
 		mockDriver.On("GetTypeOid", "text").Return(commonmodels.VirtualOID(2), nil).Once()
@@ -686,7 +605,7 @@ func TestDriver_DecodeValueByColumnName(t *testing.T) {
 	})
 
 	t.Run("unsupported type", func(t *testing.T) {
-		mockDriver := new(MockDBMSDriver)
+		mockDriver := mocks.NewDBMSDriverMock()
 		mockDriver.On("TypeExistsByOid", commonmodels.VirtualOID(1)).Return(false).Once()
 
 		table := &commonmodels.Table{
@@ -710,7 +629,7 @@ func TestDriver_DecodeValueByColumnName(t *testing.T) {
 
 func TestDriver_DecodeValueByColumnIdx(t *testing.T) {
 	t.Run("common case", func(t *testing.T) {
-		mockDriver := new(MockDBMSDriver)
+		mockDriver := mocks.NewDBMSDriverMock()
 		mockDriver.On("TypeExistsByOid", commonmodels.VirtualOID(1)).Return(true).Once()
 		mockDriver.On("DecodeValueByTypeOid", commonmodels.VirtualOID(1), []byte("value")).
 			Return("value", nil).
@@ -736,7 +655,7 @@ func TestDriver_DecodeValueByColumnIdx(t *testing.T) {
 	})
 
 	t.Run("type overridden", func(t *testing.T) {
-		mockDriver := new(MockDBMSDriver)
+		mockDriver := mocks.NewDBMSDriverMock()
 		mockDriver.On("TypeExistsByOid", commonmodels.VirtualOID(1)).Return(true).Once()
 		mockDriver.On("TypeExistsByName", "text").Return(true).Once()
 		mockDriver.On("GetTypeOid", "text").Return(commonmodels.VirtualOID(2), nil).Once()
@@ -765,7 +684,7 @@ func TestDriver_DecodeValueByColumnIdx(t *testing.T) {
 	})
 
 	t.Run("unsupported type", func(t *testing.T) {
-		mockDriver := new(MockDBMSDriver)
+		mockDriver := mocks.NewDBMSDriverMock()
 		mockDriver.On("TypeExistsByOid", commonmodels.VirtualOID(1)).Return(false).Once()
 
 		table := &commonmodels.Table{

@@ -11,18 +11,32 @@ import (
 	"github.com/greenmaskio/greenmask/v1/internal/common/validationcollector"
 )
 
+var (
+	_ commonininterfaces.Transformer = (*TransformerMock)(nil)
+)
+
 type TransformerMock struct {
 	mock.Mock
 }
 
-func NewTransformerMock() (*TransformerMock, utils.NewTransformerFunc) {
+func NewTransformerMock(
+	newFunctionMock func(
+		ctx context.Context,
+		vc *validationcollector.Collector,
+		tableDriver commonininterfaces.TableDriver,
+		parameters map[string]commonparameters.Parameterizer,
+	) error,
+) (*TransformerMock, utils.NewTransformerFunc) {
 	tm := &TransformerMock{}
 	return tm, func(
 		ctx context.Context,
 		vc *validationcollector.Collector,
-		driver commonininterfaces.TableDriver,
+		tableDriver commonininterfaces.TableDriver,
 		parameters map[string]commonparameters.Parameterizer,
 	) (commonininterfaces.Transformer, error) {
+		if err := newFunctionMock(ctx, vc, tableDriver, parameters); err != nil {
+			return nil, err
+		}
 		return tm, nil
 	}
 }

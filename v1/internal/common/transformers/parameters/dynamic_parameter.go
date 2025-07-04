@@ -11,8 +11,8 @@ import (
 	commoninterfaces "github.com/greenmaskio/greenmask/v1/internal/common/interfaces"
 	commonmodels "github.com/greenmaskio/greenmask/v1/internal/common/models"
 	gmtemplate "github.com/greenmaskio/greenmask/v1/internal/common/transformers/template"
+	"github.com/greenmaskio/greenmask/v1/internal/common/utils"
 	"github.com/greenmaskio/greenmask/v1/internal/common/validationcollector"
-	"github.com/greenmaskio/greenmask/v1/internal/utils"
 )
 
 var (

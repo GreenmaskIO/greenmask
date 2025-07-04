@@ -19,5 +19,5 @@ type TableRuntime struct {
 	TransformerRuntimes []*TransformerRuntime
 	TableCondition      *conditions.WhenCond
 	Query               string
-	Driver              commonininterfaces.TableDriver
+	TableDriver         commonininterfaces.TableDriver
 }
