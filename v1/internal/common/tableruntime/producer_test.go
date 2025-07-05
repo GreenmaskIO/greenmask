@@ -286,7 +286,7 @@ func TestProducer_Produce(t *testing.T) {
 				Transformers: []commonmodels.TransformerConfig{
 					{
 						Name: "TestTransformer",
-						Params: map[string]commonmodels.ParamsValue{
+						StaticParams: map[string]commonmodels.ParamsValue{
 							"column": commonmodels.ParamsValue("id"),
 						},
 						When: `id == 1`,
@@ -366,7 +366,7 @@ func TestProducer_Produce(t *testing.T) {
 				Transformers: []commonmodels.TransformerConfig{
 					{
 						Name: "TestTransformer",
-						Params: map[string]commonmodels.ParamsValue{
+						StaticParams: map[string]commonmodels.ParamsValue{
 							"column": commonmodels.ParamsValue("id"),
 						},
 					},
@@ -412,7 +412,7 @@ func TestProducer_Produce(t *testing.T) {
 				Transformers: []commonmodels.TransformerConfig{
 					{
 						Name: "UnknownTransformer",
-						Params: map[string]commonmodels.ParamsValue{
+						StaticParams: map[string]commonmodels.ParamsValue{
 							"column": commonmodels.ParamsValue("id"),
 						},
 					},
@@ -490,7 +490,7 @@ func TestProducer_Produce(t *testing.T) {
 				Transformers: []commonmodels.TransformerConfig{
 					{
 						Name: "TestTransformer",
-						Params: map[string]commonmodels.ParamsValue{
+						StaticParams: map[string]commonmodels.ParamsValue{
 							"column": commonmodels.ParamsValue("id"),
 						},
 					},

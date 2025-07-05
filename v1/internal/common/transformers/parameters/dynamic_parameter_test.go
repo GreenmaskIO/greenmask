@@ -33,6 +33,16 @@ type recorderMock struct {
 	mock.Mock
 }
 
+func (r *recorderMock) IsNullByColumnName(columName string) (bool, error) {
+	args := r.Called(columName)
+	return args.Bool(0), args.Error(1)
+}
+
+func (r *recorderMock) IsNullByColumnIdx(columIdx int) (bool, error) {
+	args := r.Called(columIdx)
+	return args.Bool(0), args.Error(1)
+}
+
 func (r *recorderMock) GetRawColumnValueByIdx(columnIdx int) (*commonmodels.ColumnRawValue, error) {
 	args := r.Called(columnIdx)
 	if args.Get(1) != nil {

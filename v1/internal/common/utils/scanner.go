@@ -6,25 +6,44 @@ import (
 )
 
 var (
-	errUnableToSet       = errors.New("unable to set the value")
-	errUnexpectedSrcType = errors.New("unexpected src type")
-	errSrcMustBePointer  = errors.New("src must be pointer")
+	errDestMustBePointer = errors.New("destination must be a pointer")
+	errIncompatibleTypes = errors.New("incompatible types for assignment")
+	errUnableToSet       = errors.New("destination value is not settable")
 )
 
 func ScanPointer(src, dest any) error {
-	srcValue := reflect.ValueOf(src)
-	destValue := reflect.ValueOf(dest)
-	if srcValue.Kind() == destValue.Kind() {
-		srcInd := reflect.Indirect(srcValue)
-		destInd := reflect.Indirect(destValue)
-		if srcInd.Kind() == destInd.Kind() {
-			if srcInd.CanSet() {
-				destInd.Set(srcInd)
-				return nil
-			}
-			return errUnableToSet
-		}
-		return errUnexpectedSrcType
+	destVal := reflect.ValueOf(dest)
+	if destVal.Kind() != reflect.Ptr || destVal.IsNil() {
+		return errDestMustBePointer
 	}
-	return errSrcMustBePointer
+
+	// Dereference destination to get the actual value
+	destElem := destVal.Elem()
+
+	srcVal := reflect.ValueOf(src)
+	if !srcVal.IsValid() {
+		// If src is nil, set dest to zero value
+		destElem.Set(reflect.Zero(destElem.Type()))
+		return nil
+	}
+
+	// If src is a pointer, dereference it
+	if srcVal.Kind() == reflect.Ptr {
+		if srcVal.IsNil() {
+			destElem.Set(reflect.Zero(destElem.Type()))
+			return nil
+		}
+		srcVal = srcVal.Elem()
+	}
+
+	// Convert or assign if possible
+	if !srcVal.Type().AssignableTo(destElem.Type()) {
+		return errIncompatibleTypes
+	}
+	if !destElem.CanSet() {
+		return errUnableToSet
+	}
+
+	destElem.Set(srcVal)
+	return nil
 }

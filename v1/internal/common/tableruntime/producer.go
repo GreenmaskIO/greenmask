@@ -142,7 +142,7 @@ func (p *Producer) initTransformer(
 		vc,
 		driver,
 		transformerDefinition.Parameters,
-		config.Params,
+		config.StaticParams,
 		config.DynamicParams,
 	)
 	if err != nil {

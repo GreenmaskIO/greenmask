@@ -48,6 +48,10 @@ func NewStaticParameter(def *ParameterDefinition, driver commonininterfaces.Tabl
 	}
 }
 
+func (sp *StaticParameter) Name() string {
+	return sp.definition.Name
+}
+
 func (sp *StaticParameter) IsEmpty() (bool, error) {
 	if sp.rawValue != nil {
 		return false, nil

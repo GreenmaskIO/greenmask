@@ -25,7 +25,7 @@ type dummyConfig struct {
 }
 
 // setTransformerParams - get the value from domains.TransformerConfig.MetadataParams, marshall
-// this value and store into domains.TransformerConfig.Params.
+// this value and store into domains.TransformerConfig.StaticParams.
 func setTransformerParams(tmpCfg *dummyConfig, cfg *Config) (err error) {
 	for tableIdx, tableObj := range tmpCfg.Dump.Transformation {
 		for transformationIdx, transformationObj := range tableObj.Transformers {

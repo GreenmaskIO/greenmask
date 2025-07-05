@@ -76,6 +76,10 @@ func (dp *DynamicParameter) IsEmpty() (bool, error) {
 	return !dp.hasDefaultValue, nil
 }
 
+func (dp *DynamicParameter) Name() string {
+	return dp.definition.Name
+}
+
 func (dp *DynamicParameter) IsDynamic() bool {
 	return true
 }

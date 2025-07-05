@@ -21,6 +21,10 @@ import (
 	"slices"
 )
 
+const (
+	metaKeyError = "SetError"
+)
+
 type ValidationSeverity string
 
 const (
@@ -28,6 +32,15 @@ const (
 	ValidationSeverityWarning ValidationSeverity = "warning"
 	ValidationSeverityInfo    ValidationSeverity = "info"
 	ValidationSeverityDebug   ValidationSeverity = "debug"
+)
+
+const (
+	MetaKeyParameterName  = "ParameterName"
+	MetaKeyColumnName     = "ColumnName"
+	MetaKeyTableName      = "TableName"
+	MetaKeyTableSchema    = "TableSchema"
+	MetaKeyParameterValue = "ParameterValue"
+	MetaKeyColumnTypeName = "ColumnTypeName"
 )
 
 type ValidationWarnings []*ValidationWarning
@@ -68,6 +81,11 @@ func (re *ValidationWarning) SetMsgf(msg string, args ...any) *ValidationWarning
 
 func (re *ValidationWarning) SetSeverity(severity ValidationSeverity) *ValidationWarning {
 	re.Severity = severity
+	return re
+}
+
+func (re *ValidationWarning) SetError(v error) *ValidationWarning {
+	re.Meta[metaKeyError] = v.Error()
 	return re
 }
 

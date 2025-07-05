@@ -19,6 +19,16 @@ func NewRecorderMock() *RecorderMock {
 	return &RecorderMock{}
 }
 
+func (r *RecorderMock) IsNullByColumnName(columName string) (bool, error) {
+	args := r.Called(columName)
+	return args.Bool(0), args.Error(1)
+}
+
+func (r *RecorderMock) IsNullByColumnIdx(columIdx int) (bool, error) {
+	args := r.Called(columIdx)
+	return args.Bool(0), args.Error(1)
+}
+
 func (r *RecorderMock) GetRawColumnValueByIdx(columnIdx int) (*commonmodels.ColumnRawValue, error) {
 	args := r.Called(columnIdx)
 	if args.Get(1) != nil {

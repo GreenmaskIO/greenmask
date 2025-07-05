@@ -6,16 +6,16 @@ import (
 	"encoding/binary"
 	"fmt"
 
-	"github.com/greenmaskio/greenmask/internal/db/postgres/transformers/utils"
-	"github.com/greenmaskio/greenmask/internal/generators"
+	transformergens "github.com/greenmaskio/greenmask/v1/internal/common/transformers/generators"
+	transformerutils "github.com/greenmaskio/greenmask/v1/internal/common/transformers/utils"
 )
 
 const (
-	AllowApplyForReferenced    utils.MetaKey = "AllowApplyForReferenced"
-	RequireHashEngineParameter utils.MetaKey = "RequireHashEngineParameter"
+	AllowApplyForReferenced    transformerutils.MetaKey = "AllowApplyForReferenced"
+	RequireHashEngineParameter transformerutils.MetaKey = "RequireHashEngineParameter"
 )
 
-func getGenerateEngine(ctx context.Context, engineName string, size int) (generators.Generator, error) {
+func getGenerateEngine(ctx context.Context, engineName string, size int) (transformergens.Generator, error) {
 	switch engineName {
 	case RandomEngineParameterName:
 		return getRandomBytesGen(size)
@@ -24,7 +24,7 @@ func getGenerateEngine(ctx context.Context, engineName string, size int) (genera
 		if err != nil {
 			return nil, fmt.Errorf("error getting salt from context: %w", err)
 		}
-		return generators.GetHashBytesGen(salt, size)
+		return transformergens.GetHashBytesGen(salt, size)
 	}
 	return nil, fmt.Errorf("unknown engine %s", engineName)
 }
@@ -37,14 +37,14 @@ func getSaltFromCtx(ctx context.Context) (salt []byte, err error) {
 	return salt, nil
 }
 
-func getRandomBytesGen(size int) (generators.Generator, error) {
+func getRandomBytesGen(size int) (transformergens.Generator, error) {
 	buf := make([]byte, 8)
 	_, err := rand.Read(buf)
 	if err != nil {
 		return nil, fmt.Errorf("error generating random bytes sequence: %w", err)
 	}
 	seed := int64(binary.LittleEndian.Uint64(buf))
-	return generators.NewRandomBytes(seed, size), nil
+	return transformergens.NewRandomBytes(seed, size), nil
 }
 
 //func composeGeneratorWithProjectedOutput(hashFunction string, salt []byte, outputLength int) (generators.Generator, error) {
