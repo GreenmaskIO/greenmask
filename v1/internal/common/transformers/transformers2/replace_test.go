@@ -682,3 +682,20 @@ func TestReplaceTransformer_Transform(t *testing.T) {
 		recorder.AssertExpectations(t)
 	})
 }
+
+func TestReplaceTransformer_GetAffectedColumns(t *testing.T) {
+	tr := &ReplaceTransformer{
+		affectedColumns: map[int]string{1: "id"},
+	}
+	require.Equal(t, tr.GetAffectedColumns(), map[int]string{1: "id"})
+}
+
+func TestReplaceTransformer_Init(t *testing.T) {
+	tr := &ReplaceTransformer{}
+	require.NoError(t, tr.Init(context.Background()))
+}
+
+func TestReplaceTransformer_Done(t *testing.T) {
+	tr := &ReplaceTransformer{}
+	require.NoError(t, tr.Done(context.Background()))
+}
