@@ -1,0 +1,220 @@
+package transformers2
+
+import (
+	"context"
+	"fmt"
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
+
+	commonininterfaces "github.com/greenmaskio/greenmask/v1/internal/common/interfaces"
+	"github.com/greenmaskio/greenmask/v1/internal/common/mocks"
+	commonmodels "github.com/greenmaskio/greenmask/v1/internal/common/models"
+	commonparameters "github.com/greenmaskio/greenmask/v1/internal/common/transformers/parameters"
+	"github.com/greenmaskio/greenmask/v1/internal/common/utils"
+	"github.com/greenmaskio/greenmask/v1/internal/common/validationcollector"
+)
+
+func TestTransformWithKeepNull(t *testing.T) {
+	t.Run("success not null", func(t *testing.T) {
+		recorder := mocks.NewRecorderMock()
+		tr, _ := mocks.NewTransformerMock(func(ctx context.Context, vc *validationcollector.Collector, tableDriver commonininterfaces.TableDriver, parameters map[string]commonparameters.Parameterizer) error {
+			return nil
+		})
+		tr.On("Transform", mock.Anything, recorder).
+			Return(nil)
+
+		recorder.On("IsNullByColumnIdx", 1).
+			Return(false, nil)
+		transformationFunc := TransformWithKeepNull(tr.Transform, 1)
+		err := transformationFunc(context.Background(), recorder)
+		assert.NoError(t, err)
+		recorder.AssertExpectations(t)
+		tr.AssertExpectations(t)
+	})
+
+	t.Run("success null", func(t *testing.T) {
+		recorder := mocks.NewRecorderMock()
+		tr, _ := mocks.NewTransformerMock(func(ctx context.Context, vc *validationcollector.Collector, tableDriver commonininterfaces.TableDriver, parameters map[string]commonparameters.Parameterizer) error {
+			return nil
+		})
+
+		recorder.On("IsNullByColumnIdx", 1).
+			Return(true, nil)
+		transformationFunc := TransformWithKeepNull(tr.Transform, 1)
+		err := transformationFunc(context.Background(), recorder)
+		assert.NoError(t, err)
+		recorder.AssertExpectations(t)
+		tr.AssertExpectations(t)
+	})
+
+	t.Run("error check is null", func(t *testing.T) {
+		recorder := mocks.NewRecorderMock()
+		tr, _ := mocks.NewTransformerMock(func(ctx context.Context, vc *validationcollector.Collector, tableDriver commonininterfaces.TableDriver, parameters map[string]commonparameters.Parameterizer) error {
+			return nil
+		})
+
+		recorder.On("IsNullByColumnIdx", 1).
+			Return(false, assert.AnError)
+		transformationFunc := TransformWithKeepNull(tr.Transform, 1)
+		err := transformationFunc(context.Background(), recorder)
+		assert.ErrorIs(t, err, assert.AnError)
+		assert.ErrorContains(t, err, "unable to scan column value")
+		recorder.AssertExpectations(t)
+		tr.AssertExpectations(t)
+	})
+
+	t.Run("error transformer method", func(t *testing.T) {
+		recorder := mocks.NewRecorderMock()
+		tr, _ := mocks.NewTransformerMock(func(ctx context.Context, vc *validationcollector.Collector, tableDriver commonininterfaces.TableDriver, parameters map[string]commonparameters.Parameterizer) error {
+			return nil
+		})
+
+		recorder.On("IsNullByColumnIdx", 1).
+			Return(false, nil)
+
+		tr.On("Transform", mock.Anything, recorder).
+			Return(assert.AnError)
+		transformationFunc := TransformWithKeepNull(tr.Transform, 1)
+		err := transformationFunc(context.Background(), recorder)
+		assert.ErrorIs(t, err, assert.AnError)
+		recorder.AssertExpectations(t)
+		tr.AssertExpectations(t)
+	})
+}
+
+func assertPanicParameterDoesNotExists(t *testing.T, paramName string, v any) {
+	t.Helper()
+	assert.ErrorIs(t, v.(error), commonmodels.ErrCheckTransformerImplementation)
+	assert.ErrorContains(t, v.(error), fmt.Sprintf(`parameter "%s" is not found`, paramName))
+}
+
+func TestPanicParameterDoesNotExists(t *testing.T) {
+	parameterName := "foo"
+	defer func() {
+		assertPanicParameterDoesNotExists(t, parameterName, recover())
+	}()
+	panicParameterDoesNotExists(parameterName)
+}
+
+func TestGetParameterValueWithName(t *testing.T) {
+	t.Run("success", func(t *testing.T) {
+		vc := validationcollector.NewCollector()
+		boolParameter := mocks.NewParametrizerMock()
+		parameterName := "boolParameter"
+		parameters := map[string]commonparameters.Parameterizer{
+			parameterName: boolParameter,
+		}
+		// Column parameter calls
+		boolParameter.On("Scan", mock.Anything).
+			Run(func(args mock.Arguments) {
+				dest := args.Get(0)
+				require.NoError(t, utils.ScanPointer(true, dest))
+			}).Return(nil)
+		res, err := getParameterValueWithName[bool](vc, parameters, parameterName)
+		assert.NoError(t, err)
+		assert.Equal(t, res, true)
+		require.False(t, vc.HasWarnings())
+		boolParameter.AssertExpectations(t)
+	})
+
+	t.Run("parameter is not found", func(t *testing.T) {
+		vc := validationcollector.NewCollector()
+		parameterName := "unknownParameter"
+		defer func() {
+			assertPanicParameterDoesNotExists(t, parameterName, recover())
+		}()
+		parameters := map[string]commonparameters.Parameterizer{}
+		res, err := getParameterValueWithName[bool](vc, parameters, parameterName)
+		assert.NoError(t, err)
+		assert.Equal(t, res, true)
+		require.False(t, vc.HasWarnings())
+	})
+
+	t.Run("scan error", func(t *testing.T) {
+		vc := validationcollector.NewCollector()
+		boolParameter := mocks.NewParametrizerMock()
+		parameterName := "boolParameter"
+		parameters := map[string]commonparameters.Parameterizer{
+			parameterName: boolParameter,
+		}
+		// Column parameter calls
+		boolParameter.On("Scan", mock.Anything).
+			Return(assert.AnError)
+		_, err := getParameterValueWithName[bool](vc, parameters, parameterName)
+		assert.ErrorIs(t, err, commonmodels.ErrFatalValidationError)
+		require.True(t, vc.IsFatal())
+		require.Equal(t, vc.Len(), 1)
+		warning := vc.GetWarnings()[0]
+		assert.Equal(t, warning.Severity, commonmodels.ValidationSeverityError)
+		assert.Equal(t, warning.Msg, "error scanning parameter")
+		assert.Equal(t, warning.Meta, map[string]any{
+			commonmodels.MetaKeyParameterName: parameterName,
+			commonmodels.MetaKeyError:         assert.AnError,
+		})
+		boolParameter.AssertExpectations(t)
+	})
+}
+
+func TestGetColumnParameterValue(t *testing.T) {
+	t.Run("success", func(t *testing.T) {
+		vc := validationcollector.NewCollector()
+		tableDriver := mocks.NewTableDriverMock()
+		columnParameter := mocks.NewParametrizerMock()
+		parameterName := "column"
+		expectedColumnName := "test"
+		parameters := map[string]commonparameters.Parameterizer{
+			parameterName: columnParameter,
+		}
+		// Column parameter calls
+		columnParameter.On("Scan", mock.Anything).
+			Run(func(args mock.Arguments) {
+				dest := args.Get(0)
+				require.NoError(t, utils.ScanPointer(expectedColumnName, dest))
+			}).Return(nil)
+		expectedColumn := &commonmodels.Column{
+			Name: expectedColumnName,
+		}
+		tableDriver.On("GetColumnByName", expectedColumnName).
+			Return(expectedColumn, true)
+		actualColumnName, actualColumn, err := getColumnParameterValue(vc, tableDriver, parameters)
+		assert.NoError(t, err)
+		assert.Equal(t, expectedColumnName, actualColumnName)
+		assert.Equal(t, expectedColumn, actualColumn)
+		require.False(t, vc.HasWarnings())
+		columnParameter.AssertExpectations(t)
+	})
+
+	t.Run("unknown column", func(t *testing.T) {
+		vc := validationcollector.NewCollector()
+		tableDriver := mocks.NewTableDriverMock()
+		columnParameter := mocks.NewParametrizerMock()
+		parameterName := "column"
+		expectedColumnName := "test"
+		parameters := map[string]commonparameters.Parameterizer{
+			parameterName: columnParameter,
+		}
+		// Column parameter calls
+		columnParameter.On("Scan", mock.Anything).
+			Run(func(args mock.Arguments) {
+				dest := args.Get(0)
+				require.NoError(t, utils.ScanPointer(expectedColumnName, dest))
+			}).Return(nil)
+		tableDriver.On("GetColumnByName", expectedColumnName).
+			Return(nil, false)
+		_, _, err := getColumnParameterValue(vc, tableDriver, parameters)
+		assert.ErrorIs(t, err, commonmodels.ErrFatalValidationError)
+		require.True(t, vc.IsFatal())
+		require.Equal(t, vc.Len(), 1)
+		warning := vc.GetWarnings()[0]
+		assert.Equal(t, warning.Severity, commonmodels.ValidationSeverityError)
+		assert.Equal(t, warning.Msg, "column is not found")
+		assert.Equal(t, warning.Meta, map[string]any{
+			commonmodels.MetaKeyParameterName:  parameterName,
+			commonmodels.MetaKeyParameterValue: expectedColumnName,
+		})
+		columnParameter.AssertExpectations(t)
+	})
+}
