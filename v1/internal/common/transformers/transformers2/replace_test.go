@@ -31,7 +31,7 @@ import (
 )
 
 func TestReplaceNewReplaceTransformer(t *testing.T) {
-	t.Run("success static and no validate", func(t *testing.T) {
+	t.Run("success static no validate no keep null", func(t *testing.T) {
 		vc := validationcollector.NewCollector()
 		ctx := context.Background()
 		column := commonmodels.Column{
@@ -71,7 +71,7 @@ func TestReplaceNewReplaceTransformer(t *testing.T) {
 		keepNullParameter.On("Scan", mock.Anything).
 			Run(func(args mock.Arguments) {
 				dest := args.Get(0)
-				require.NoError(t, utils.ScanPointer(true, dest))
+				require.NoError(t, utils.ScanPointer(false, dest))
 			}).Return(nil)
 
 		parameters := map[string]commonparameters.Parameterizer{
@@ -88,9 +88,8 @@ func TestReplaceNewReplaceTransformer(t *testing.T) {
 		replaceTransformer := tr.(*ReplaceTransformer)
 		assert.Equal(t, replaceTransformer.columnName, column.Name)
 		assert.Equal(t, replaceTransformer.columnIdx, column.Idx)
-		assert.Equal(t, replaceTransformer.keepNull, true)
 		assert.Equal(t, replaceTransformer.affectedColumns, map[int]string{1: "id"})
-		assert.Equal(t, replaceTransformer.validate, false)
+		assert.Equal(t, replaceTransformer.needValidate, false)
 		assert.Equal(t, replaceTransformer.columnOIDToValidate, column.TypeOID)
 
 		expectedTransformationFunc := reflect.ValueOf(replaceTransformer.transformStatic).Pointer()
@@ -107,7 +106,7 @@ func TestReplaceNewReplaceTransformer(t *testing.T) {
 		keepNullParameter.AssertExpectations(t)
 	})
 
-	t.Run("success static and validate and valid", func(t *testing.T) {
+	t.Run("success static and validate and valid and not keep null", func(t *testing.T) {
 		vc := validationcollector.NewCollector()
 		ctx := context.Background()
 		column := commonmodels.Column{
@@ -152,7 +151,7 @@ func TestReplaceNewReplaceTransformer(t *testing.T) {
 		keepNullParameter.On("Scan", mock.Anything).
 			Run(func(args mock.Arguments) {
 				dest := args.Get(0)
-				require.NoError(t, utils.ScanPointer(true, dest))
+				require.NoError(t, utils.ScanPointer(false, dest))
 			}).Return(nil)
 
 		parameters := map[string]commonparameters.Parameterizer{
@@ -169,9 +168,8 @@ func TestReplaceNewReplaceTransformer(t *testing.T) {
 		replaceTransformer := tr.(*ReplaceTransformer)
 		assert.Equal(t, replaceTransformer.columnName, column.Name)
 		assert.Equal(t, replaceTransformer.columnIdx, column.Idx)
-		assert.Equal(t, replaceTransformer.keepNull, true)
 		assert.Equal(t, replaceTransformer.affectedColumns, map[int]string{1: "id"})
-		assert.Equal(t, replaceTransformer.validate, true)
+		assert.Equal(t, replaceTransformer.needValidate, true)
 		assert.Equal(t, replaceTransformer.columnOIDToValidate, column.TypeOID)
 
 		expectedTransformationFunc := reflect.ValueOf(replaceTransformer.transformStatic).Pointer()
@@ -188,7 +186,7 @@ func TestReplaceNewReplaceTransformer(t *testing.T) {
 		keepNullParameter.AssertExpectations(t)
 	})
 
-	t.Run("failure static and validate and invalid", func(t *testing.T) {
+	t.Run("failure static and validate and invalid and not keep null", func(t *testing.T) {
 		vc := validationcollector.NewCollector()
 		ctx := context.Background()
 		column := commonmodels.Column{
@@ -227,6 +225,13 @@ func TestReplaceNewReplaceTransformer(t *testing.T) {
 			Return(nil, assert.AnError)
 		valueParameter.On("Name").
 			Return("value")
+
+		// Keep null parameter calls
+		keepNullParameter.On("Scan", mock.Anything).
+			Run(func(args mock.Arguments) {
+				dest := args.Get(0)
+				require.NoError(t, utils.ScanPointer(false, dest))
+			}).Return(nil)
 
 		parameters := map[string]commonparameters.Parameterizer{
 			"column":    columnParameter,
@@ -285,7 +290,7 @@ func TestReplaceNewReplaceTransformer(t *testing.T) {
 		keepNullParameter.On("Scan", mock.Anything).
 			Run(func(args mock.Arguments) {
 				dest := args.Get(0)
-				require.NoError(t, utils.ScanPointer(true, dest))
+				require.NoError(t, utils.ScanPointer(false, dest))
 			}).Return(nil)
 
 		parameters := map[string]commonparameters.Parameterizer{
@@ -302,9 +307,8 @@ func TestReplaceNewReplaceTransformer(t *testing.T) {
 		replaceTransformer := tr.(*ReplaceTransformer)
 		assert.Equal(t, replaceTransformer.columnName, column.Name)
 		assert.Equal(t, replaceTransformer.columnIdx, column.Idx)
-		assert.Equal(t, replaceTransformer.keepNull, true)
 		assert.Equal(t, replaceTransformer.affectedColumns, map[int]string{1: "id"})
-		assert.Equal(t, replaceTransformer.validate, true)
+		assert.Equal(t, replaceTransformer.needValidate, true)
 		assert.Equal(t, replaceTransformer.columnOIDToValidate, column.TypeOID)
 
 		expectedTransformationFunc := reflect.ValueOf(replaceTransformer.transformDynamic).Pointer()
@@ -459,8 +463,6 @@ func TestReplaceTransformer_Transform(t *testing.T) {
 		})
 
 		recorder := mocks.NewRecorderMock()
-		recorder.On("IsNullByColumnIdx", setup.column.Idx).
-			Return(true, nil)
 		recorder.On("SetRawColumnValueByIdx",
 			setup.column.Idx, commonmodels.NewColumnRawValue([]byte("123"), false),
 		).Return(nil)
@@ -668,8 +670,6 @@ func TestReplaceTransformer_Transform(t *testing.T) {
 		})
 
 		recorder := mocks.NewRecorderMock()
-		recorder.On("IsNullByColumnIdx", setup.column.Idx).
-			Return(true, nil)
 		recorder.On("TableDriver").Return(setup.tableDriver)
 		setup.valueParam.On("IsEmpty").
 			Return(true, nil)

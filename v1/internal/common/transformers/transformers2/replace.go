@@ -64,26 +64,20 @@ var ReplaceTransformerDefinition = transformerutils.NewTransformerDefinition(
 	).SetDefaultValue(commonmodels.ParamsValue("true")),
 )
 
-type transformWithoutContextFn func(r commonininterfaces.Recorder) error
-
 type ReplaceTransformer struct {
 	columnName          string
 	columnIdx           int
-	keepNull            bool
 	rawValue            *commonmodels.ColumnRawValue
 	affectedColumns     map[int]string
-	validate            bool
+	needValidate        bool
 	columnOIDToValidate commonmodels.VirtualOID
 
-	columnParam   commonparameters.Parameterizer
-	valueParam    commonparameters.Parameterizer
-	validateParam commonparameters.Parameterizer
-	keepNullParam commonparameters.Parameterizer
+	valueParam commonparameters.Parameterizer
 
 	// transform function to be used for transforming the record.
 	//
 	// Depending on the value parameter type, it can be either static or dynamic.
-	transform transformWithoutContextFn
+	transform TransformationFunc
 }
 
 func NewReplaceTransformer(
@@ -92,41 +86,20 @@ func NewReplaceTransformer(
 	tableDriver commonininterfaces.TableDriver,
 	parameters map[string]commonparameters.Parameterizer,
 ) (commonininterfaces.Transformer, error) {
-	var columnName string
-	var keepNull, validate bool
-
-	columnParam := parameters["column"]
-	if err := columnParam.Scan(&columnName); err != nil {
-		vc.Add(commonmodels.NewValidationWarning().
-			SetSeverity(commonmodels.ValidationSeverityError).
-			AddMeta(commonmodels.MetaKeyParameterName, columnParam.Name()).
-			SetError(err).
-			SetMsg("error getting parameter value"))
+	columnName, column, err := getColumnParameterValue(vc, tableDriver, parameters)
+	if err != nil {
+		return nil, err
+	}
+	keepNull, err := getParameterValueWithName[bool](vc, parameters, ParameterNameKeepNull)
+	if err != nil {
+		return nil, err
 	}
 
-	c, ok := tableDriver.GetColumnByName(columnName)
-	if !ok {
-		vc.Add(commonmodels.NewValidationWarning().
-			SetSeverity(commonmodels.ValidationSeverityError).
-			AddMeta(commonmodels.MetaKeyParameterName, columnParam.Name()).
-			AddMeta(commonmodels.MetaKeyParameterValue, columnName).
-			SetMsg("column not found"))
-		return nil, commonmodels.ErrFatalValidationError
-	}
-	affectedColumns := make(map[int]string)
-	affectedColumns[c.Idx] = columnName
-
-	validateParam := parameters["validate"]
-	if err := validateParam.Scan(&validate); err != nil {
-		vc.Add(commonmodels.NewValidationWarning().
-			SetSeverity(commonmodels.ValidationSeverityError).
-			AddMeta(commonmodels.MetaKeyParameterName, validateParam.Name()).
-			SetError(err).
-			SetMsg("error getting parameter value"))
-		return nil, commonmodels.ErrFatalValidationError
+	needValidate, err := getParameterValueWithName[bool](vc, parameters, ParameterValueValidate)
+	if err != nil {
+		return nil, err
 	}
 
-	columnOIDToValidate := c.TypeOID
 	valueParam := parameters["value"]
 	var rawValue *commonmodels.ColumnRawValue
 	if !valueParam.IsDynamic() {
@@ -141,13 +114,13 @@ func NewReplaceTransformer(
 			return nil, commonmodels.ErrFatalValidationError
 		}
 		// Validate the value if requested
-		if validate {
-			_, err = tableDriver.DecodeValueByTypeOid(c.TypeOID, value)
+		if needValidate {
+			_, err = tableDriver.DecodeValueByTypeOid(column.TypeOID, value)
 			if err != nil {
 				vc.Add(commonmodels.NewValidationWarning().
 					SetSeverity(commonmodels.ValidationSeverityError).
 					SetMsg("error validating parameter value").
-					AddMeta(commonmodels.MetaKeyColumnTypeName, c.TypeName).
+					AddMeta(commonmodels.MetaKeyColumnTypeName, column.TypeName).
 					AddMeta(commonmodels.MetaKeyParameterName, valueParam.Name()).
 					AddMeta(commonmodels.MetaKeyParameterValue, string(value)).
 					SetError(err))
@@ -157,29 +130,16 @@ func NewReplaceTransformer(
 		rawValue = commonmodels.NewColumnRawValue(value, false)
 	}
 
-	keepNullParam := parameters["keep_null"]
-	if err := keepNullParam.Scan(&keepNull); err != nil {
-		vc.Add(commonmodels.NewValidationWarning().
-			SetSeverity(commonmodels.ValidationSeverityError).
-			AddMeta(commonmodels.MetaKeyColumnTypeName, keepNullParam.Name()).
-			SetMsg("error scanning param").
-			SetError(err),
-		)
-		return nil, commonmodels.ErrFatalValidationError
-	}
 	t := &ReplaceTransformer{
-		columnName:          columnName,
-		keepNull:            keepNull,
-		affectedColumns:     affectedColumns,
+		columnName: columnName,
+		affectedColumns: map[int]string{
+			column.Idx: column.Name,
+		},
 		rawValue:            rawValue,
-		columnIdx:           c.Idx,
-		validate:            validate,
-		columnOIDToValidate: columnOIDToValidate,
-
-		columnParam:   columnParam,
-		validateParam: validateParam,
-		valueParam:    valueParam,
-		keepNullParam: keepNullParam,
+		columnIdx:           column.Idx,
+		needValidate:        needValidate,
+		columnOIDToValidate: column.TypeOID,
+		valueParam:          valueParam,
 	}
 
 	// Set the transform function based on the value parameter type.
@@ -187,26 +147,18 @@ func NewReplaceTransformer(
 	if valueParam.IsDynamic() {
 		t.transform = t.transformDynamic
 	}
+	if keepNull {
+		t.transform = TransformWithKeepNull(t.transform, column.Idx)
+	}
+
 	return t, nil
 }
 
-func (rt *ReplaceTransformer) GetAffectedColumns() map[int]string {
-	return rt.affectedColumns
-}
-
-func (rt *ReplaceTransformer) Init(_ context.Context) error {
-	return nil
-}
-
-func (rt *ReplaceTransformer) Done(_ context.Context) error {
-	return nil
-}
-
-func (rt *ReplaceTransformer) getValueToReplace(
+func (t *ReplaceTransformer) getValueToReplace(
 	driver commonininterfaces.TableDriver,
 ) (*commonmodels.ColumnRawValue, error) {
 	// Check if the current dynamic value is empty (is null).
-	isEmpty, err := rt.valueParam.IsEmpty()
+	isEmpty, err := t.valueParam.IsEmpty()
 	if err != nil {
 		return nil, fmt.Errorf("verify value is empty: %w", err)
 	}
@@ -218,15 +170,15 @@ func (rt *ReplaceTransformer) getValueToReplace(
 		return commonmodels.NewColumnRawValue(nil, true), nil
 	}
 	// If not empty just get the raw value from the parameter
-	v, err := rt.valueParam.RawValue()
+	v, err := t.valueParam.RawValue()
 	if err != nil {
 		return nil, fmt.Errorf(
 			"get raw value from parameter \"%s\": %w",
-			rt.valueParam.Name(), err,
+			t.valueParam.Name(), err,
 		)
 	}
-	if rt.validate {
-		_, err = driver.DecodeValueByTypeOid(rt.columnOIDToValidate, v)
+	if t.needValidate {
+		_, err = driver.DecodeValueByTypeOid(t.columnOIDToValidate, v)
 		if err != nil {
 			return nil, fmt.Errorf("dynamic value validation error: %w", err)
 		}
@@ -235,43 +187,48 @@ func (rt *ReplaceTransformer) getValueToReplace(
 	return commonmodels.NewColumnRawValue(v, false), nil
 }
 
-func (rt *ReplaceTransformer) transformDynamic(
+func (t *ReplaceTransformer) transformDynamic(
+	_ context.Context,
 	r commonininterfaces.Recorder,
 ) error {
-	newValue, err := rt.getValueToReplace(r.TableDriver())
+	newValue, err := t.getValueToReplace(r.TableDriver())
 	if err != nil {
 		return fmt.Errorf("get value to replace: %w", err)
 	}
 
-	if err := r.SetRawColumnValueByIdx(rt.columnIdx, newValue); err != nil {
+	if err := r.SetRawColumnValueByIdx(t.columnIdx, newValue); err != nil {
 		return fmt.Errorf("unable to set new value: %w", err)
 	}
 	return nil
 }
 
-func (rt *ReplaceTransformer) transformStatic(
-	r commonininterfaces.Recorder,
-) error {
-	if err := r.SetRawColumnValueByIdx(rt.columnIdx, rt.rawValue); err != nil {
-		return fmt.Errorf("unable to set new value: %w", err)
-	}
-	return nil
-}
-
-func (rt *ReplaceTransformer) Transform(
+func (t *ReplaceTransformer) transformStatic(
 	_ context.Context,
 	r commonininterfaces.Recorder,
 ) error {
-	isNull, err := r.IsNullByColumnIdx(rt.columnIdx)
-	if err != nil {
-		return fmt.Errorf("unable to scan column value value: %w", err)
+	if err := r.SetRawColumnValueByIdx(t.columnIdx, t.rawValue); err != nil {
+		return fmt.Errorf("unable to set new value: %w", err)
 	}
-	if isNull && rt.keepNull {
-		// If is null and need to keep null - do not change a record.
-		return nil
-	}
+	return nil
+}
 
-	return rt.transform(r)
+func (t *ReplaceTransformer) Transform(
+	ctx context.Context,
+	r commonininterfaces.Recorder,
+) error {
+	return t.transform(ctx, r)
+}
+
+func (t *ReplaceTransformer) GetAffectedColumns() map[int]string {
+	return t.affectedColumns
+}
+
+func (t *ReplaceTransformer) Init(_ context.Context) error {
+	return nil
+}
+
+func (t *ReplaceTransformer) Done(_ context.Context) error {
+	return nil
 }
 
 func init() {
