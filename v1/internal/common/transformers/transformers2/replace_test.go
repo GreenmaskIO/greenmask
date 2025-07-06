@@ -246,154 +246,439 @@ func TestReplaceNewReplaceTransformer(t *testing.T) {
 		valueParameter.AssertExpectations(t)
 		keepNullParameter.AssertExpectations(t)
 	})
+
+	t.Run("dynamic and validate", func(t *testing.T) {
+		vc := validationcollector.NewCollector()
+		ctx := context.Background()
+		column := commonmodels.Column{
+			Idx:      1,
+			Name:     "id",
+			TypeName: "int",
+			TypeOID:  2,
+		}
+		tableDriver := mocks.NewTableDriverMock()
+		columnParameter := mocks.NewParametrizerMock()
+		validateParameter := mocks.NewParametrizerMock()
+		valueParameter := mocks.NewParametrizerMock()
+		keepNullParameter := mocks.NewParametrizerMock()
+
+		// column parameter calls
+		columnParameter.On("Scan", mock.Anything).
+			Run(func(args mock.Arguments) {
+				dest := args.Get(0)
+				require.NoError(t, utils.ScanPointer(column.Name, dest))
+			}).Return(nil)
+		tableDriver.On("GetColumnByName", column.Name).Return(&column, true)
+
+		// Validate parameter calls
+		validateParameter.On("Scan", mock.Anything).
+			Run(func(args mock.Arguments) {
+				dest := args.Get(0)
+				require.NoError(t, utils.ScanPointer(true, dest))
+			}).Return(nil)
+
+		// Value parameter calls
+		valueParameter.On("IsDynamic").
+			Return(true)
+
+		// Keep null parameter calls
+		keepNullParameter.On("Scan", mock.Anything).
+			Run(func(args mock.Arguments) {
+				dest := args.Get(0)
+				require.NoError(t, utils.ScanPointer(true, dest))
+			}).Return(nil)
+
+		parameters := map[string]commonparameters.Parameterizer{
+			"column":    columnParameter,
+			"value":     valueParameter,
+			"validate":  validateParameter,
+			"keep_null": keepNullParameter,
+		}
+
+		tr, err := NewReplaceTransformer(ctx, vc, tableDriver, parameters)
+		require.NoError(t, err)
+		assert.NotNil(t, tr)
+		assert.False(t, vc.HasWarnings())
+		replaceTransformer := tr.(*ReplaceTransformer)
+		assert.Equal(t, replaceTransformer.columnName, column.Name)
+		assert.Equal(t, replaceTransformer.columnIdx, column.Idx)
+		assert.Equal(t, replaceTransformer.keepNull, true)
+		assert.Equal(t, replaceTransformer.affectedColumns, map[int]string{1: "id"})
+		assert.Equal(t, replaceTransformer.validate, true)
+		assert.Equal(t, replaceTransformer.columnOIDToValidate, column.TypeOID)
+
+		expectedTransformationFunc := reflect.ValueOf(replaceTransformer.transformDynamic).Pointer()
+		actualTransformationFunc := reflect.ValueOf(replaceTransformer.transform).Pointer()
+
+		assert.Equal(t, expectedTransformationFunc, actualTransformationFunc,
+			"transform should be transformStatic",
+		)
+
+		tableDriver.AssertExpectations(t)
+		columnParameter.AssertExpectations(t)
+		validateParameter.AssertExpectations(t)
+		valueParameter.AssertExpectations(t)
+		keepNullParameter.AssertExpectations(t)
+	})
 }
 
-//func TestReplaceTransformer_Transform_with_raw_value(t *testing.T) {
-//	type result struct {
-//		isNull bool
-//		value  string
-//	}
-//
-//	tests := []struct {
-//		name       string
-//		params     map[string]commonmodels.ParamsValue
-//		columnName string
-//		original   string
-//		result     result
-//	}{
-//		{
-//			name:       "common",
-//			original:   `{}`,
-//			columnName: "doc",
-//			params: map[string]commonmodels.ParamsValue{
-//				"value": commonmodels.ParamsValue(`{"test": 1234}`),
-//			},
-//			result: result{
-//				isNull: false,
-//				value:  `{"test": 1234}`,
-//			},
-//		},
-//	}
-//
-//	for _, tt := range tests {
-//		t.Run(tt.name, func(t *testing.T) {
-//			driver, record := transformers.getDriverAndRecord(tt.columnName, tt.original)
-//			tt.params["column"] = commonmodels.ParamsValue(tt.columnName)
-//			transformerCtx, warnings, err := ReplaceTransformerDefinition.Instance(
-//				context.Background(),
-//				driver,
-//				tt.params,
-//				nil,
-//				"",
-//			)
-//			require.NoError(t, err)
-//			require.Empty(t, warnings)
-//
-//			r, err := transformerCtx.Transformer.Transform(
-//				context.Background(),
-//				record,
-//			)
-//			require.NoError(t, err)
-//
-//			attVal, err := r.GetColumnValueByName(tt.columnName)
-//			require.Equal(t, tt.result.isNull, attVal.IsNull)
-//			require.NoError(t, err)
-//			encoded, err := r.Encode()
-//			require.NoError(t, err)
-//			res, err := encoded.Encode()
-//			require.NoError(t, err)
-//			require.JSONEq(t, tt.result.value, string(res))
-//		})
-//
-//	}
-//}
-//
-//func TestReplaceTransformer_Transform(t *testing.T) {
-//	tests := []struct {
-//		name       string
-//		params     map[string]commonmodels.ParamsValue
-//		columnName string
-//		original   *commonmodels.ColumnRawValue
-//	}{
-//		{
-//			name:       "common",
-//			original:   commonmodels.NewColumnRawValue([]byte("1"), false),
-//			columnName: "id",
-//			params: map[string]commonmodels.ParamsValue{
-//				"value": commonmodels.ParamsValue("123"),
-//			},
-//		},
-//		{
-//			name:       "keep_null false and NULL seq",
-//			original:   commonmodels.NewColumnRawValue([]byte("1"), false),
-//			columnName: "id",
-//			params: map[string]commonmodels.ParamsValue{
-//				"value":     commonmodels.ParamsValue("123"),
-//				"keep_null": commonmodels.ParamsValue("false"),
-//			},
-//		},
-//		{
-//			name:       "keep_null true and NULL seq",
-//			original:   commonmodels.NewColumnRawValue([]byte("1"), false),
-//			columnName: "id",
-//			params: map[string]commonmodels.ParamsValue{
-//				"value":     commonmodels.ParamsValue("123"),
-//				"keep_null": commonmodels.ParamsValue("true"),
-//			},
-//		},
-//	}
-//
-//	for _, tt := range tests {
-//		t.Run(tt.name, func(t *testing.T) {
-//			vc := validationcollector.NewCollector()
-//			ctx := context.Background()
-//			tableDriver := mocks.NewTableDriverMock()
-//			columnParameter := mocks.NewParametrizerMock()
-//			columnParameter := mocks.NewParametrizerMock()
-//
-//			NewReplaceTransformer(ctx, vc, tableDriver)
-//		})
-//	}
-//
-//	t.Run("replace with null value", func(t *testing.T) {
-//		vc := validationcollector.NewCollector()
-//		ctx := context.Background()
-//		tableDriver := mocks.NewTableDriverMock()
-//		columnParameter := mocks.NewParametrizerMock()
-//		valueParameter := mocks.NewParametrizerMock()
-//		validateParameter := mocks.NewParametrizerMock()
-//		keepNullParameter := mocks.NewParametrizerMock()
-//
-//		parameters := map[string]commonparameters.Parameterizer{
-//			"column":    columnParameter,
-//			"value":     valueParameter,
-//			"validate":  validateParameter,
-//			"keep_null": keepNullParameter,
-//		}
-//
-//		NewReplaceTransformer(ctx, vc, tableDriver)
-//	})
-//}
-//
-//func TestReplaceTransformer_Transform_with_validation_error(t *testing.T) {
-//
-//	original := "doc"
-//	columnName := "doc"
-//	params := map[string]commonmodels.ParamsValue{
-//		"column":   commonmodels.ParamsValue(columnName),
-//		"value":    commonmodels.ParamsValue(`{"test": 1a234}`),
-//		"validate": commonmodels.ParamsValue("true"),
-//	}
-//	driver, _ := transformers.getDriverAndRecord(columnName, original)
-//
-//	_, warnings, err := ReplaceTransformerDefinition.Instance(
-//		context.Background(),
-//		driver,
-//		params,
-//		nil,
-//		"",
-//	)
-//	require.NoError(t, err)
-//	assert.NotEmpty(t, warnings)
-//	assert.Equal(t, warnings[0].Severity, toolkit.ErrorValidationSeverity)
-//}
+type replaceTestSetup struct {
+	tableDriver   *mocks.TableDriverMock
+	columnParam   *mocks.ParametrizerMock
+	validateParam *mocks.ParametrizerMock
+	valueParam    *mocks.ParametrizerMock
+	keepNullParam *mocks.ParametrizerMock
+	collector     *validationcollector.Collector
+	column        commonmodels.Column
+	transformer   *ReplaceTransformer
+}
+
+func (m *replaceTestSetup) assertExpectations(t *testing.T) {
+	m.tableDriver.AssertExpectations(t)
+	m.columnParam.AssertExpectations(t)
+	m.validateParam.AssertExpectations(t)
+	m.valueParam.AssertExpectations(t)
+	m.keepNullParam.AssertExpectations(t)
+}
+
+func newTestReplaceTransformer(t *testing.T, opt ...func(*replaceTestSetup)) *replaceTestSetup {
+	t.Helper()
+
+	ctx := context.Background()
+	vc := validationcollector.NewCollector()
+
+	column := commonmodels.Column{
+		Idx:      1,
+		Name:     "id",
+		TypeName: "int",
+		TypeOID:  2,
+	}
+
+	setup := &replaceTestSetup{
+		tableDriver:   mocks.NewTableDriverMock(),
+		columnParam:   mocks.NewParametrizerMock(),
+		validateParam: mocks.NewParametrizerMock(),
+		valueParam:    mocks.NewParametrizerMock(),
+		keepNullParam: mocks.NewParametrizerMock(),
+		collector:     vc,
+		column:        column,
+	}
+
+	// Allow test-specific overrides
+	for _, o := range opt {
+		o(setup)
+	}
+
+	parameters := map[string]commonparameters.Parameterizer{
+		"column":    setup.columnParam,
+		"value":     setup.valueParam,
+		"validate":  setup.validateParam,
+		"keep_null": setup.keepNullParam,
+	}
+
+	transformer, err := NewReplaceTransformer(ctx, vc, setup.tableDriver, parameters)
+	require.NoError(t, err)
+	setup.transformer = transformer.(*ReplaceTransformer)
+
+	return setup
+}
+
+func TestReplaceTransformer_Transform(t *testing.T) {
+	t.Run("static non null no validate", func(t *testing.T) {
+		setup := newTestReplaceTransformer(t, func(setup *replaceTestSetup) {
+			setup.columnParam.On("Scan", mock.Anything).
+				Run(func(args mock.Arguments) {
+					dest := args.Get(0)
+					require.NoError(t, utils.ScanPointer(setup.column.Name, dest))
+				}).Return(nil)
+			setup.tableDriver.On("GetColumnByName", setup.column.Name).
+				Return(&setup.column, true)
+
+			// Validate parameter calls
+			setup.validateParam.On("Scan", mock.Anything).
+				Run(func(args mock.Arguments) {
+					dest := args.Get(0)
+					require.NoError(t, utils.ScanPointer(false, dest))
+				}).Return(nil)
+
+			// Value parameter calls
+			setup.valueParam.On("IsDynamic").
+				Return(false)
+			setup.valueParam.On("RawValue").
+				Return(commonmodels.ParamsValue("123"), nil)
+
+			// Keep null parameter calls
+			setup.keepNullParam.On("Scan", mock.Anything).
+				Run(func(args mock.Arguments) {
+					dest := args.Get(0)
+					require.NoError(t, utils.ScanPointer(true, dest))
+				}).Return(nil)
+		})
+
+		recorder := mocks.NewRecorderMock()
+		recorder.On("IsNullByColumnIdx", setup.column.Idx).
+			Return(false, nil)
+		recorder.On("SetRawColumnValueByIdx",
+			setup.column.Idx, commonmodels.NewColumnRawValue([]byte("123"), false),
+		).Return(nil)
+		err := setup.transformer.Transform(context.Background(), recorder)
+		require.NoError(t, err)
+		setup.assertExpectations(t)
+		recorder.AssertExpectations(t)
+	})
+
+	t.Run("static null no validate replace null", func(t *testing.T) {
+		setup := newTestReplaceTransformer(t, func(setup *replaceTestSetup) {
+			setup.columnParam.On("Scan", mock.Anything).
+				Run(func(args mock.Arguments) {
+					dest := args.Get(0)
+					require.NoError(t, utils.ScanPointer(setup.column.Name, dest))
+				}).Return(nil)
+			setup.tableDriver.On("GetColumnByName", setup.column.Name).
+				Return(&setup.column, true)
+
+			// Validate parameter calls
+			setup.validateParam.On("Scan", mock.Anything).
+				Run(func(args mock.Arguments) {
+					dest := args.Get(0)
+					require.NoError(t, utils.ScanPointer(false, dest))
+				}).Return(nil)
+
+			// Value parameter calls
+			setup.valueParam.On("IsDynamic").
+				Return(false)
+			setup.valueParam.On("RawValue").
+				Return(commonmodels.ParamsValue("123"), nil)
+
+			// Keep null parameter calls
+			setup.keepNullParam.On("Scan", mock.Anything).
+				Run(func(args mock.Arguments) {
+					dest := args.Get(0)
+					require.NoError(t, utils.ScanPointer(false, dest))
+				}).Return(nil)
+		})
+
+		recorder := mocks.NewRecorderMock()
+		recorder.On("IsNullByColumnIdx", setup.column.Idx).
+			Return(true, nil)
+		recorder.On("SetRawColumnValueByIdx",
+			setup.column.Idx, commonmodels.NewColumnRawValue([]byte("123"), false),
+		).Return(nil)
+		err := setup.transformer.Transform(context.Background(), recorder)
+		require.NoError(t, err)
+		setup.assertExpectations(t)
+		recorder.AssertExpectations(t)
+	})
+
+	t.Run("static null no validate keep null", func(t *testing.T) {
+		setup := newTestReplaceTransformer(t, func(setup *replaceTestSetup) {
+			setup.columnParam.On("Scan", mock.Anything).
+				Run(func(args mock.Arguments) {
+					dest := args.Get(0)
+					require.NoError(t, utils.ScanPointer(setup.column.Name, dest))
+				}).Return(nil)
+			setup.tableDriver.On("GetColumnByName", setup.column.Name).
+				Return(&setup.column, true)
+
+			// Validate parameter calls
+			setup.validateParam.On("Scan", mock.Anything).
+				Run(func(args mock.Arguments) {
+					dest := args.Get(0)
+					require.NoError(t, utils.ScanPointer(false, dest))
+				}).Return(nil)
+
+			// Value parameter calls
+			setup.valueParam.On("IsDynamic").
+				Return(false)
+			setup.valueParam.On("RawValue").
+				Return(commonmodels.ParamsValue("123"), nil)
+
+			// Keep null parameter calls
+			setup.keepNullParam.On("Scan", mock.Anything).
+				Run(func(args mock.Arguments) {
+					dest := args.Get(0)
+					require.NoError(t, utils.ScanPointer(true, dest))
+				}).Return(nil)
+		})
+
+		recorder := mocks.NewRecorderMock()
+		recorder.On("IsNullByColumnIdx", setup.column.Idx).
+			Return(true, nil)
+		err := setup.transformer.Transform(context.Background(), recorder)
+		require.NoError(t, err)
+		setup.assertExpectations(t)
+		recorder.AssertExpectations(t)
+	})
+
+	t.Run("dynamic non null no validate", func(t *testing.T) {
+		setup := newTestReplaceTransformer(t, func(setup *replaceTestSetup) {
+			setup.columnParam.On("Scan", mock.Anything).
+				Run(func(args mock.Arguments) {
+					dest := args.Get(0)
+					require.NoError(t, utils.ScanPointer(setup.column.Name, dest))
+				}).Return(nil)
+			setup.tableDriver.On("GetColumnByName", setup.column.Name).Return(&setup.column, true)
+
+			// Validate parameter calls
+			setup.validateParam.On("Scan", mock.Anything).
+				Run(func(args mock.Arguments) {
+					dest := args.Get(0)
+					require.NoError(t, utils.ScanPointer(false, dest))
+				}).Return(nil)
+
+			// Value parameter calls
+			setup.valueParam.On("IsDynamic").
+				Return(true)
+
+			// Keep null parameter calls
+			setup.keepNullParam.On("Scan", mock.Anything).
+				Run(func(args mock.Arguments) {
+					dest := args.Get(0)
+					require.NoError(t, utils.ScanPointer(true, dest))
+				}).Return(nil)
+		})
+
+		recorder := mocks.NewRecorderMock()
+		recorder.On("IsNullByColumnIdx", setup.column.Idx).
+			Return(false, nil)
+		recorder.On("TableDriver").Return(setup.tableDriver)
+		setup.valueParam.On("IsEmpty").
+			Return(false, nil)
+		setup.valueParam.On("RawValue").
+			Return(commonmodels.ParamsValue("123"), nil)
+		recorder.On("SetRawColumnValueByIdx",
+			setup.column.Idx, commonmodels.NewColumnRawValue([]byte("123"), false),
+		).Return(nil)
+		err := setup.transformer.Transform(context.Background(), recorder)
+		require.NoError(t, err)
+		setup.assertExpectations(t)
+		recorder.AssertExpectations(t)
+	})
+
+	t.Run("dynamic non null validate", func(t *testing.T) {
+		setup := newTestReplaceTransformer(t, func(setup *replaceTestSetup) {
+			setup.columnParam.On("Scan", mock.Anything).
+				Run(func(args mock.Arguments) {
+					dest := args.Get(0)
+					require.NoError(t, utils.ScanPointer(setup.column.Name, dest))
+				}).Return(nil)
+			setup.tableDriver.On("GetColumnByName", setup.column.Name).Return(&setup.column, true)
+
+			// Validate parameter calls
+			setup.validateParam.On("Scan", mock.Anything).
+				Run(func(args mock.Arguments) {
+					dest := args.Get(0)
+					require.NoError(t, utils.ScanPointer(true, dest))
+				}).Return(nil)
+
+			// Value parameter calls
+			setup.valueParam.On("IsDynamic").
+				Return(true)
+
+			// Keep null parameter calls
+			setup.keepNullParam.On("Scan", mock.Anything).
+				Run(func(args mock.Arguments) {
+					dest := args.Get(0)
+					require.NoError(t, utils.ScanPointer(true, dest))
+				}).Return(nil)
+		})
+
+		recorder := mocks.NewRecorderMock()
+		recorder.On("IsNullByColumnIdx", setup.column.Idx).
+			Return(false, nil)
+		recorder.On("TableDriver").Return(setup.tableDriver)
+		setup.valueParam.On("IsEmpty").
+			Return(false, nil)
+		setup.valueParam.On("RawValue").
+			Return(commonmodels.ParamsValue("123"), nil)
+		setup.tableDriver.On("DecodeValueByTypeOid", setup.column.TypeOID, []byte("123")).
+			Return(int64(123), nil)
+		recorder.On("SetRawColumnValueByIdx",
+			setup.column.Idx, commonmodels.NewColumnRawValue([]byte("123"), false),
+		).Return(nil)
+		err := setup.transformer.Transform(context.Background(), recorder)
+		require.NoError(t, err)
+		setup.assertExpectations(t)
+		recorder.AssertExpectations(t)
+	})
+
+	t.Run("dynamic null no validate keep null", func(t *testing.T) {
+		setup := newTestReplaceTransformer(t, func(setup *replaceTestSetup) {
+			setup.columnParam.On("Scan", mock.Anything).
+				Run(func(args mock.Arguments) {
+					dest := args.Get(0)
+					require.NoError(t, utils.ScanPointer(setup.column.Name, dest))
+				}).Return(nil)
+			setup.tableDriver.On("GetColumnByName", setup.column.Name).Return(&setup.column, true)
+
+			// Validate parameter calls
+			setup.validateParam.On("Scan", mock.Anything).
+				Run(func(args mock.Arguments) {
+					dest := args.Get(0)
+					require.NoError(t, utils.ScanPointer(true, dest))
+				}).Return(nil)
+
+			// Value parameter calls
+			setup.valueParam.On("IsDynamic").
+				Return(true)
+
+			// Keep null parameter calls
+			setup.keepNullParam.On("Scan", mock.Anything).
+				Run(func(args mock.Arguments) {
+					dest := args.Get(0)
+					require.NoError(t, utils.ScanPointer(true, dest))
+				}).Return(nil)
+		})
+
+		recorder := mocks.NewRecorderMock()
+		recorder.On("IsNullByColumnIdx", setup.column.Idx).
+			Return(true, nil)
+		err := setup.transformer.Transform(context.Background(), recorder)
+		require.NoError(t, err)
+		setup.assertExpectations(t)
+		recorder.AssertExpectations(t)
+	})
+
+	t.Run("dynamic null validate replace null and param value is empty", func(t *testing.T) {
+		setup := newTestReplaceTransformer(t, func(setup *replaceTestSetup) {
+			setup.columnParam.On("Scan", mock.Anything).
+				Run(func(args mock.Arguments) {
+					dest := args.Get(0)
+					require.NoError(t, utils.ScanPointer(setup.column.Name, dest))
+				}).Return(nil)
+			setup.tableDriver.On("GetColumnByName", setup.column.Name).Return(&setup.column, true)
+
+			// Validate parameter calls
+			setup.validateParam.On("Scan", mock.Anything).
+				Run(func(args mock.Arguments) {
+					dest := args.Get(0)
+					require.NoError(t, utils.ScanPointer(true, dest))
+				}).Return(nil)
+
+			// Value parameter calls
+			setup.valueParam.On("IsDynamic").
+				Return(true)
+
+			// Keep null parameter calls
+			setup.keepNullParam.On("Scan", mock.Anything).
+				Run(func(args mock.Arguments) {
+					dest := args.Get(0)
+					require.NoError(t, utils.ScanPointer(false, dest))
+				}).Return(nil)
+		})
+
+		recorder := mocks.NewRecorderMock()
+		recorder.On("IsNullByColumnIdx", setup.column.Idx).
+			Return(true, nil)
+		recorder.On("TableDriver").Return(setup.tableDriver)
+		setup.valueParam.On("IsEmpty").
+			Return(true, nil)
+		recorder.On("SetRawColumnValueByIdx",
+			setup.column.Idx, commonmodels.NewColumnRawValue(nil, true),
+		).Return(nil)
+		err := setup.transformer.Transform(context.Background(), recorder)
+		require.NoError(t, err)
+		setup.assertExpectations(t)
+		recorder.AssertExpectations(t)
+	})
+}

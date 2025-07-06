@@ -97,7 +97,11 @@ func NewReplaceTransformer(
 
 	columnParam := parameters["column"]
 	if err := columnParam.Scan(&columnName); err != nil {
-		return nil, fmt.Errorf(`scam "column" parameter: %w`, err)
+		vc.Add(commonmodels.NewValidationWarning().
+			SetSeverity(commonmodels.ValidationSeverityError).
+			AddMeta(commonmodels.MetaKeyParameterName, columnParam.Name()).
+			SetError(err).
+			SetMsg("error getting parameter value"))
 	}
 
 	c, ok := tableDriver.GetColumnByName(columnName)
@@ -105,7 +109,8 @@ func NewReplaceTransformer(
 		vc.Add(commonmodels.NewValidationWarning().
 			SetSeverity(commonmodels.ValidationSeverityError).
 			AddMeta(commonmodels.MetaKeyParameterName, columnParam.Name()).
-			AddMeta(commonmodels.MetaKeyParameterValue, columnName))
+			AddMeta(commonmodels.MetaKeyParameterValue, columnName).
+			SetMsg("column not found"))
 		return nil, commonmodels.ErrFatalValidationError
 	}
 	affectedColumns := make(map[int]string)
@@ -113,7 +118,12 @@ func NewReplaceTransformer(
 
 	validateParam := parameters["validate"]
 	if err := validateParam.Scan(&validate); err != nil {
-		return nil, fmt.Errorf(`scan "validate" parameter: %w`, err)
+		vc.Add(commonmodels.NewValidationWarning().
+			SetSeverity(commonmodels.ValidationSeverityError).
+			AddMeta(commonmodels.MetaKeyParameterName, validateParam.Name()).
+			SetError(err).
+			SetMsg("error getting parameter value"))
+		return nil, commonmodels.ErrFatalValidationError
 	}
 
 	columnOIDToValidate := c.TypeOID
@@ -123,10 +133,12 @@ func NewReplaceTransformer(
 		// Get value from parameter
 		value, err := valueParam.RawValue()
 		if err != nil {
-			return nil, fmt.Errorf(
-				"error getting raw value from parameter \"%s\": %w",
-				valueParam.Name(), err,
-			)
+			vc.Add(commonmodels.NewValidationWarning().
+				SetSeverity(commonmodels.ValidationSeverityError).
+				AddMeta(commonmodels.MetaKeyParameterName, valueParam.Name()).
+				SetError(err).
+				SetMsg("error getting parameter value"))
+			return nil, commonmodels.ErrFatalValidationError
 		}
 		// Validate the value if requested
 		if validate {
@@ -196,7 +208,7 @@ func (rt *ReplaceTransformer) getValueToReplace(
 	// Check if the current dynamic value is empty (is null).
 	isEmpty, err := rt.valueParam.IsEmpty()
 	if err != nil {
-		return nil, fmt.Errorf("check if value is empty: %w", err)
+		return nil, fmt.Errorf("verify value is empty: %w", err)
 	}
 	if isEmpty {
 		// if empty then create the toolkit.RawValue with null value
