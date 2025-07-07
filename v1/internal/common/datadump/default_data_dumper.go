@@ -3,8 +3,6 @@ package datadump
 import (
 	"context"
 	"fmt"
-	"strconv"
-	"time"
 
 	"github.com/rs/zerolog/log"
 	"golang.org/x/sync/errgroup"
@@ -37,7 +35,6 @@ type DefaultDataDumper struct {
 	hbw      heartBeatWorker
 	jobs     int
 	taskList []dumpTask
-	dumpID   string
 }
 
 func NewDefaultDataDumper(
@@ -61,7 +58,6 @@ func (dr *DefaultDataDumper) SetJobs(v int) *DefaultDataDumper {
 
 // Run - runs the dump command
 func (dr *DefaultDataDumper) Run(ctx context.Context) (err error) {
-	dr.cwd()
 	dr.taskList, err = dr.tp.Produce(ctx)
 	if err != nil {
 		return fmt.Errorf("produce tasks: %w", err)
@@ -74,14 +70,6 @@ func (dr *DefaultDataDumper) Run(ctx context.Context) (err error) {
 		return fmt.Errorf("data dump: %w", err)
 	}
 	return nil
-}
-
-// cwd - change working directory
-//
-// It creates the directory with dumpID as the name
-func (dr *DefaultDataDumper) cwd() {
-	dr.dumpID = strconv.FormatInt(time.Now().UnixMilli(), 10)
-	dr.st = dr.st.SubStorage(dr.dumpID, true)
 }
 
 func (dr *DefaultDataDumper) schemaOnlyDump(ctx context.Context) error {

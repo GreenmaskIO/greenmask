@@ -26,13 +26,13 @@ type Script struct {
 }
 
 type Restore struct {
-	RestoreOptions  options                        `mapstructure:"options" yaml:"options" json:"options"`
+	Options         options                        `mapstructure:"options" yaml:"options" json:"options"`
 	Scripts         map[string][]Script            `mapstructure:"scripts" yaml:"scripts" json:"scripts,omitempty"`
 	ErrorExclusions DataRestorationErrorExclusions `mapstructure:"insert_error_exclusions" yaml:"insert_error_exclusions" json:"insert_error_exclusions,omitempty"`
 }
 
 func NewRestore(o options) Restore {
 	return Restore{
-		RestoreOptions: o,
+		Options: o,
 	}
 }

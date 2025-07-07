@@ -39,7 +39,7 @@ func NewDump(cfg *commonconfig.Dump, st storages.Storager, binPath string) *Dump
 		cfg:          cfg,
 		st:           st,
 		binPath:      binPath,
-		introspector: mysqlintrospect.NewIntrospector(cfg.DumpOptions),
+		introspector: mysqlintrospect.NewIntrospector(cfg.Options),
 	}
 }
 

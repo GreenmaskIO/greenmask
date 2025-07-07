@@ -112,13 +112,13 @@ func (tc TransformationConfig) ToTransformationConfig() []models.TableConfig {
 }
 
 type Dump struct {
-	DumpOptions       options              `mapstructure:"dump_options" yaml:"dump_options" json:"dump_options"`
+	Options           options              `mapstructure:"options" yaml:"options" json:"options"`
 	Transformation    TransformationConfig `mapstructure:"transformation" yaml:"transformation" json:"transformation,omitempty"`
 	VirtualReferences []VirtualReference   `mapstructure:"virtual_references" yaml:"virtual_references" json:"virtual_references,omitempty"`
 }
 
 func NewDump(o options) Dump {
 	return Dump{
-		DumpOptions: o,
+		Options: o,
 	}
 }

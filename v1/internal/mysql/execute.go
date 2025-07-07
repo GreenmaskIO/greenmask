@@ -9,7 +9,7 @@ import (
 )
 
 func RunDump(ctx context.Context, cfg *config.Config) error {
-	st, err := commondump.GetDumpStorage(ctx, cfg)
+	st, err := commondump.GetStorage(ctx, cfg)
 	if err != nil {
 		return fmt.Errorf("get storage: %w", err)
 	}

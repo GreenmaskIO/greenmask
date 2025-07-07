@@ -31,6 +31,7 @@ const (
 )
 
 const (
+	MetaKeyDumpID         = "DumpID"
 	MetaKeyParameterName  = "ParameterName"
 	MetaKeyColumnName     = "ColumnName"
 	MetaKeyTableName      = "TableName"

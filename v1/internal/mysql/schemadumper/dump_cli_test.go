@@ -1,7 +1,6 @@
 package schemadumper
 
 import (
-	"bytes"
 	"compress/gzip"
 	"context"
 	"errors"
@@ -13,27 +12,6 @@ import (
 
 	"github.com/greenmaskio/greenmask/v1/internal/common/mocks"
 )
-
-type stMock struct {
-	*mocks.StorageMock
-	gzData *bytes.Buffer
-}
-
-func newStMock() *stMock {
-	return &stMock{
-		StorageMock: mocks.NewStorageMock(),
-	}
-}
-
-func (s *stMock) PutObject(ctx context.Context, filePath string, body io.Reader) error {
-	s.gzData = bytes.NewBuffer(nil)
-	args := s.Called(ctx, filePath, body)
-	_, err := io.Copy(s.gzData, body)
-	if err != nil {
-		return err
-	}
-	return args.Error(0)
-}
 
 type optsMock struct {
 	mock.Mock

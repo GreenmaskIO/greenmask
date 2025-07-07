@@ -3,6 +3,7 @@ package validationcollector
 import (
 	"context"
 	"errors"
+	"fmt"
 	"maps"
 	"slices"
 	"sync"
@@ -43,11 +44,40 @@ type Collector struct {
 	contextMeta map[string]any
 }
 
-// NewCollector creates a brand-new (root) collector.
+// NewCollector creates a brand-new (root) collector with empty meta.
 func NewCollector() *Collector {
 	return &Collector{
 		contextMeta: make(map[string]any),
 	}
+}
+
+func getMetaFromPairs(pairs ...any) map[string]any {
+	if len(pairs)%2 != 0 {
+		panic("pairs must have pairs")
+	}
+	meta := make(map[string]any, len(pairs)/2)
+	for i := 0; i < len(pairs); i += 2 {
+		key, ok := pairs[i].(string)
+		if !ok {
+			panic(fmt.Sprintf("key should be a string, got %T", pairs[i]))
+		}
+		value := pairs[i+1]
+		meta[key] = value
+	}
+	return meta
+}
+
+// NewCollectorWithMeta create a new collector with the meta provided.
+func NewCollectorWithMeta(pairs ...any) *Collector {
+	return &Collector{
+		contextMeta: getMetaFromPairs(pairs...),
+	}
+}
+
+// WithMetaV2 returns a child collector that adds `meta` to its context.
+// All Add() calls on the child still append into the same root collector.
+func (vc *Collector) WithMetaV2(pairs ...any) *Collector {
+	return vc.WithMeta(getMetaFromPairs(pairs...))
 }
 
 // WithMeta returns a child collector that adds `meta` to its context.

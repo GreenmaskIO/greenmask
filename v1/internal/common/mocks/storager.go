@@ -12,6 +12,7 @@ import (
 
 type StorageMock struct {
 	mock.Mock
+	// Data - contains a data that was read on PutObject call.
 	Data *bytes.Buffer
 }
 
