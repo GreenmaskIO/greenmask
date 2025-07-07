@@ -99,8 +99,8 @@ func findTablesAndSequences(
 
 		if excludeData {
 			log.Debug().
-				Str("TableSchema", name).
-				Str("TableName", schemaName).
+				Str("TableSchema", schemaName).
+				Str("TableName", name).
 				Msg("object data excluded")
 			continue
 		}

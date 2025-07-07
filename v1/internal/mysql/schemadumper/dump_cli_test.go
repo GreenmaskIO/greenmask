@@ -10,11 +10,19 @@ import (
 
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
+
+	"github.com/greenmaskio/greenmask/v1/internal/common/mocks"
 )
 
 type stMock struct {
-	mock.Mock
+	*mocks.StorageMock
 	gzData *bytes.Buffer
+}
+
+func newStMock() *stMock {
+	return &stMock{
+		StorageMock: mocks.NewStorageMock(),
+	}
 }
 
 func (s *stMock) PutObject(ctx context.Context, filePath string, body io.Reader) error {
@@ -41,7 +49,7 @@ func (o *optsMock) SchemaDumpParams() ([]string, error) {
 
 func TestDumpCli_Run(t *testing.T) {
 	t.Run("basic", func(t *testing.T) {
-		st := stMock{}
+		st := mocks.NewStorageMock()
 		expected := "CREATE TABLE test (id int);\n"
 		st.On(
 			"PutObject",
@@ -53,11 +61,11 @@ func TestDumpCli_Run(t *testing.T) {
 		d := NewDumpCli(&opts)
 		d.executable = "echo"
 		ctx := context.Background()
-		err := d.Run(ctx, &st)
+		err := d.Run(ctx, st)
 		require.NoError(t, err)
 		st.AssertNumberOfCalls(t, "PutObject", 1)
 
-		gzReader, err := gzip.NewReader(st.gzData)
+		gzReader, err := gzip.NewReader(st.Data)
 		require.NoError(t, err)
 		actual, err := io.ReadAll(gzReader)
 		require.NoError(t, err)
@@ -65,18 +73,18 @@ func TestDumpCli_Run(t *testing.T) {
 	})
 
 	t.Run("error schema params", func(t *testing.T) {
-		st := stMock{}
+		st := mocks.NewStorageMock()
 		opts := optsMock{}
 		opts.On("SchemaDumpParams").Return(nil, errors.New("some err"))
 		d := NewDumpCli(&opts)
 		ctx := context.Background()
-		err := d.Run(ctx, &st)
+		err := d.Run(ctx, st)
 		require.Error(t, err)
 		st.AssertNumberOfCalls(t, "PutObject", 0)
 	})
 
 	t.Run("put object error", func(t *testing.T) {
-		st := stMock{}
+		st := mocks.NewStorageMock()
 		st.On(
 			"PutObject",
 			mock.Anything, "schema.sql",
@@ -86,13 +94,13 @@ func TestDumpCli_Run(t *testing.T) {
 		opts.On("SchemaDumpParams").Return([]string{"CREATE TABLE test (id int);"}, nil)
 		d := NewDumpCli(&opts)
 		ctx := context.Background()
-		err := d.Run(ctx, &st)
+		err := d.Run(ctx, st)
 		require.Error(t, err)
 		st.AssertNumberOfCalls(t, "PutObject", 1)
 	})
 
 	t.Run("cmd error", func(t *testing.T) {
-		st := stMock{}
+		st := mocks.NewStorageMock()
 		st.On(
 			"PutObject",
 			mock.Anything, "schema.sql",
@@ -103,7 +111,7 @@ func TestDumpCli_Run(t *testing.T) {
 		d := NewDumpCli(&opts)
 		d.executable = "121312 unknown command"
 		ctx := context.Background()
-		err := d.Run(ctx, &st)
+		err := d.Run(ctx, st)
 		require.Error(t, err)
 		st.AssertNumberOfCalls(t, "PutObject", 1)
 	})

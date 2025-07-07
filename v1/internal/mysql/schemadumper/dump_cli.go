@@ -3,21 +3,17 @@ package schemadumper
 import (
 	"context"
 	"fmt"
-	"io"
 
 	"golang.org/x/sync/errgroup"
 
 	"github.com/greenmaskio/greenmask/v1/internal/common/utils"
+	"github.com/greenmaskio/greenmask/v1/internal/storages"
 )
 
 const executable = "mysqldump"
 
 type options interface {
 	SchemaDumpParams() ([]string, error)
-}
-
-type storager interface {
-	PutObject(ctx context.Context, filePath string, body io.Reader) error
 }
 
 type DumpCli struct {
@@ -32,7 +28,7 @@ func NewDumpCli(opt options) *DumpCli {
 	}
 }
 
-func (d *DumpCli) Run(ctx context.Context, st storager) error {
+func (d *DumpCli) Run(ctx context.Context, st storages.Storager) error {
 	params, err := d.opt.SchemaDumpParams()
 	if err != nil {
 		return fmt.Errorf("cannot get dump params: %w", err)
