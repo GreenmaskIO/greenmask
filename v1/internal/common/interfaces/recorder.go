@@ -5,6 +5,8 @@ import "github.com/greenmaskio/greenmask/v1/internal/common/models"
 type Recorder interface {
 	IsNullByColumnName(columName string) (bool, error)
 	IsNullByColumnIdx(columIdx int) (bool, error)
+	ScanColumnValueByIdx(idx int, v any) (bool, error)
+	ScanColumnValueByName(name string, v any) (bool, error)
 	GetRawColumnValueByIdx(columnIdx int) (*models.ColumnRawValue, error)
 	GetColumnValueByIdx(columnIdx int) (*models.ColumnValue, error)
 	GetColumnValueByName(columnName string) (*models.ColumnValue, error)
