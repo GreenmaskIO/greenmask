@@ -17,14 +17,10 @@ package pipeline
 import (
 	"context"
 	"fmt"
-	"io"
 
-	"github.com/rs/zerolog/log"
-	"golang.org/x/sync/errgroup"
-
-	"github.com/greenmaskio/greenmask/internal/db/postgres/pgcopy"
 	"github.com/greenmaskio/greenmask/internal/db/postgres/transformers/utils"
 	"github.com/greenmaskio/greenmask/pkg/toolkit"
+	"github.com/rs/zerolog/log"
 
 	commoninterfaces "github.com/greenmaskio/greenmask/v1/internal/common/interfaces"
 	"github.com/greenmaskio/greenmask/v1/internal/common/tableruntime"
@@ -35,43 +31,22 @@ var endOfLineSeq = []byte("\n")
 type transformationFunc func(ctx context.Context, r *toolkit.Record) (*toolkit.Record, error)
 
 type TransformationPipeline struct {
-	table  *tableruntime.TableRuntime
-	w      io.Writer
-	line   uint64
-	row    commoninterfaces.RowDriver
-	record *toolkit.Record
+	tableRuntime *tableruntime.TableRuntime
+	line         uint64
+	row          commoninterfaces.RowDriver
 }
 
-func NewTransformationPipeline(
-	ctx context.Context,
-	eg *errgroup.Group,
-	table *commoninterfaces.RowDriver,
-	w io.Writer,
-) (*TransformationPipeline, error) {
-	record := toolkit.NewRecord(table.Driver)
-	tp := &TransformationPipeline{
-		table:                 table,
-		w:                     w,
-		row:                   pgcopy.NewRow(len(table.Columns)),
-		transformationWindows: tws,
-		isAsync:               true,
-		record:                record,
+func NewTransformationPipeline(tableRuntime *tableruntime.TableRuntime) *TransformationPipeline {
+	return &TransformationPipeline{
+		tableRuntime: tableRuntime,
 	}
-
-	var tf transformationFunc = tp.TransformSync
-	if isAsync {
-		tf = tp.TransformAsync
-	}
-	tp.Transform = tf
-
-	return tp, nil
 }
 
 func (tp *TransformationPipeline) Init(ctx context.Context) error {
 	var lastInitErr error
 	var idx int
 	var t *utils.TransformerContext
-	for idx, t = range tp.table.TransformersContext {
+	for idx, t = range tp.tableRuntime.TransformerRuntimes {
 		if err := t.Transformer.Init(ctx); err != nil {
 			lastInitErr = err
 			log.Warn().Err(err).Msg("error initializing transformer")
@@ -80,7 +55,7 @@ func (tp *TransformationPipeline) Init(ctx context.Context) error {
 
 	if lastInitErr != nil {
 		lastInitialized := idx
-		for _, t = range tp.table.TransformersContext[:lastInitialized] {
+		for _, t = range tp.tableRuntime.TransformerRuntimes[:lastInitialized] {
 			if err := t.Transformer.Done(ctx); err != nil {
 				log.Warn().Err(err).Msg("error terminating previously initialized transformer")
 			}
@@ -89,104 +64,35 @@ func (tp *TransformationPipeline) Init(ctx context.Context) error {
 	if lastInitErr != nil {
 		return fmt.Errorf("unable to initialize transformer: %w", lastInitErr)
 	}
-	if tp.isAsync {
-		for _, w := range tp.transformationWindows {
-			w.init()
-		}
-	}
 
 	return nil
 }
 
-func (tp *TransformationPipeline) TransformSync(ctx context.Context, r *toolkit.Record) (*toolkit.Record, error) {
-	for _, t := range tp.table.TransformersContext {
-		needTransform, err := t.EvaluateWhen(r)
+func (tp *TransformationPipeline) Transform(ctx context.Context, r commoninterfaces.Recorder) error {
+	for _, t := range tp.tableRuntime.TransformerRuntimes {
+		needTransform, err := t.WhenCond.Evaluate(r)
 		if err != nil {
-			return nil, NewDumpError(tp.table.Schema, tp.table.Name, tp.line, fmt.Errorf("error evaluating when condition: %w", err))
+			log.Ctx(ctx).Warn().Err(err).Msg("error evaluating transformer")
+			return fmt.Errorf("evaluate transformer condition: %w", err)
 		}
 		if !needTransform {
 			continue
 		}
-		_, err = t.Transformer.Transform(ctx, r)
+		err = t.Transformer.Transform(ctx, r)
 		if err != nil {
-			return nil, NewDumpError(tp.table.Schema, tp.table.Name, tp.line, err)
+			log.Ctx(ctx).Warn().Err(err).Msg("transformation failed")
+			return fmt.Errorf("transform record: %w", err)
 		}
-	}
-	return r, nil
-}
-
-func (tp *TransformationPipeline) TransformAsync(ctx context.Context, r *toolkit.Record) (*toolkit.Record, error) {
-	var err error
-	for _, w := range tp.transformationWindows {
-		_, err = w.Transform(ctx, r)
-		if err != nil {
-			return nil, NewDumpError(tp.table.Schema, tp.table.Name, tp.line, err)
-		}
-	}
-	return r, nil
-}
-
-func (tp *TransformationPipeline) Dump(ctx context.Context, data []byte) (err error) {
-	tp.line++
-	if err = tp.row.Decode(data[:len(data)-1]); err != nil {
-		return fmt.Errorf("error decoding copy line: %w", err)
-	}
-	tp.record.SetRow(tp.row)
-
-	needTransform, err := tp.table.When.Evaluate(tp.record)
-	if err != nil {
-		return NewDumpError(tp.table.Schema, tp.table.Name, tp.line, fmt.Errorf("error evaluating when condition: %w", err))
-	}
-
-	if needTransform {
-		_, err = tp.Transform(ctx, tp.record)
-		if err != nil {
-			return NewDumpError(tp.table.Schema, tp.table.Name, tp.line, err)
-		}
-	}
-
-	rowDriver, err := tp.record.Encode()
-	if err != nil {
-		return NewDumpError(tp.table.Schema, tp.table.Name, tp.line, fmt.Errorf("error enocding Record to RowDriver: %w", err))
-	}
-	res, err := rowDriver.Encode()
-	if err != nil {
-		return NewDumpError(tp.table.Schema, tp.table.Name, tp.line, fmt.Errorf("error encoding RowDriver to []byte: %w", err))
-	}
-
-	_, err = tp.w.Write(res)
-	if err != nil {
-		return NewDumpError(tp.table.Schema, tp.table.Name, tp.line, fmt.Errorf("error writing dumped data: %w", err))
-	}
-	_, err = tp.w.Write(endOfLineSeq)
-	if err != nil {
-		return NewDumpError(tp.table.Schema, tp.table.Name, tp.line, fmt.Errorf("error writing dumped data: %w", err))
-	}
-	return nil
-}
-
-func (tp *TransformationPipeline) CompleteDump() (err error) {
-	res := make([]byte, 0, 4)
-	res = append(res, pgcopy.DefaultCopyTerminationSeq...)
-	res = append(res, '\n', '\n')
-	_, err = tp.w.Write(res)
-	if err != nil {
-		return NewDumpError(tp.table.Schema, tp.table.Name, tp.line, fmt.Errorf("error end of dump symbols: %w", err))
 	}
 	return nil
 }
 
 func (tp *TransformationPipeline) Done(ctx context.Context) error {
 	var lastErr error
-	for _, t := range tp.table.TransformersContext {
+	for _, t := range tp.tableRuntime.TransformerRuntimes {
 		if err := t.Transformer.Done(ctx); err != nil {
 			lastErr = err
 			log.Warn().Err(err).Msg("error terminating initialized transformer")
-		}
-	}
-	if tp.isAsync {
-		for _, w := range tp.transformationWindows {
-			w.close()
 		}
 	}
 

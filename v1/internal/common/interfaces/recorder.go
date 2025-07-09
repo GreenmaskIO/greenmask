@@ -15,6 +15,6 @@ type Recorder interface {
 	SetRawColumnValueByIdx(columnIdx int, value *models.ColumnRawValue) error
 	SetColumnValueByName(columnName string, v any) error
 	SetRawColumnValueByName(columnName string, value *models.ColumnRawValue) error
-	GetColumnByName(columnName string) (*models.Column, bool)
+	GetColumnByName(columnName string) (*models.Column, error)
 	TableDriver() TableDriver
 }

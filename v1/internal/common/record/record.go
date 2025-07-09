@@ -12,13 +12,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package toolkit
+package record
 
 import (
+	"errors"
 	"fmt"
 
 	commonininterfaces "github.com/greenmaskio/greenmask/v1/internal/common/interfaces"
 	commonmodels "github.com/greenmaskio/greenmask/v1/internal/common/models"
+)
+
+var (
+	errValueCannotBeNil = errors.New("value cannot be nil")
 )
 
 var (
@@ -28,10 +33,26 @@ var (
 type Tuple map[string]*commonmodels.ColumnValue
 
 type Record struct {
+	// tableDriver - it's a driver that was initialized with table data like columns.
+	// This driver can encode/decode/scan value from raw data []byte into scalar
+	// type (like int, str, etc.) and vice versa.
 	tableDriver commonininterfaces.TableDriver
-	row         commonininterfaces.RowDriver
+	// row - low level interface to address to the raw value of column in the row (tuple).
+	// It simply can get/set value and encode/decode from/into raw row data (like CSV row).
+	row commonininterfaces.RowDriver
 	// rawValuesCache - needs for avoiding new RawValue creation when calling SetFunction
 	rawValuesCache []*commonmodels.ColumnRawValue
+}
+
+func NewRecord(tableDriver commonininterfaces.TableDriver) *Record {
+	rawValuesCache := make([]*commonmodels.ColumnRawValue, len(tableDriver.Table().Columns))
+	for idx := range rawValuesCache {
+		rawValuesCache[idx] = commonmodels.NewColumnRawValue(nil, false)
+	}
+	return &Record{
+		tableDriver:    tableDriver,
+		rawValuesCache: rawValuesCache,
+	}
 }
 
 func (r *Record) IsNullByColumnName(columName string) (bool, error) {
@@ -50,23 +71,12 @@ func (r *Record) IsNullByColumnIdx(columIdx int) (bool, error) {
 	return v.IsNull, nil
 }
 
-func (r *Record) GetColumnByName(columnName string) (*commonmodels.Column, bool) {
+func (r *Record) GetColumnByName(columnName string) (*commonmodels.Column, error) {
 	return r.tableDriver.GetColumnByName(columnName)
 }
 
 func (r *Record) TableDriver() commonininterfaces.TableDriver {
 	return r.tableDriver
-}
-
-func NewRecord(tableDriver commonininterfaces.TableDriver) *Record {
-	rawValuesCache := make([]*commonmodels.ColumnRawValue, len(tableDriver.Table().Columns))
-	for idx := range rawValuesCache {
-		rawValuesCache[idx] = commonmodels.NewColumnRawValue(nil, false)
-	}
-	return &Record{
-		tableDriver:    tableDriver,
-		rawValuesCache: rawValuesCache,
-	}
 }
 
 func (r *Record) SetRow(row commonininterfaces.RowDriver) {
@@ -104,15 +114,15 @@ func (r *Record) ScanColumnValueByIdx(idx int, v any) (bool, error) {
 }
 
 func (r *Record) ScanColumnValueByName(name string, v any) (bool, error) {
-	c, ok := r.tableDriver.GetColumnByName(name)
-	if !ok {
-		return false, fmt.Errorf(`unknown column name "%s"`, name)
+	idx, err := r.tableDriver.GetColumnIdxByName(name)
+	if err != nil {
+		return false, err
 	}
-	isNull, err := r.ScanColumnValueByIdx(c.Idx, v)
+	isNull, err := r.ScanColumnValueByIdx(idx, v)
 	if err != nil {
 		return false, fmt.Errorf(
 			"error getting column %s.%s.%s value: %w",
-			r.tableDriver.Table().Schema, r.tableDriver.Table().Name, c.Name,
+			r.tableDriver.Table().Schema, r.tableDriver.Table().Name, name,
 			err,
 		)
 	}
@@ -135,15 +145,15 @@ func (r *Record) GetColumnValueByIdx(idx int) (*commonmodels.ColumnValue, error)
 }
 
 func (r *Record) GetColumnValueByName(name string) (*commonmodels.ColumnValue, error) {
-	idx, ok := r.tableDriver.AttrIdxMap[name]
-	if !ok {
-		return nil, fmt.Errorf(`unknown column name "%s"`, name)
+	idx, err := r.tableDriver.GetColumnIdxByName(name)
+	if err != nil {
+		return nil, err
 	}
 	v, err := r.GetColumnValueByIdx(idx)
 	if err != nil {
 		return nil, fmt.Errorf(
 			"error getting column %s.%s.%s value: %w",
-			r.tableDriver.Table.Schema, r.tableDriver.Table.Name, name,
+			r.tableDriver.Table().Schema, r.tableDriver.Table().Name, name,
 			err,
 		)
 	}
@@ -184,11 +194,11 @@ func (r *Record) SetColumnValueByIdx(idx int, v any) error {
 // SetColumnValueByName - set transformed attribute to the tuple
 func (r *Record) SetColumnValueByName(name string, v any) error {
 	if v == nil {
-		return fmt.Errorf("value cannot be nil pointer")
+		return errValueCannotBeNil
 	}
-	idx, ok := r.tableDriver.AttrIdxMap[name]
-	if !ok {
-		return fmt.Errorf("unable to find column by name")
+	idx, err := r.tableDriver.GetColumnIdxByName(name)
+	if err != nil {
+		return err
 	}
 
 	return r.SetColumnValueByIdx(idx, v)
@@ -213,9 +223,9 @@ func (r *Record) encodeValue(idx int, v any) (res []byte, err error) {
 }
 
 func (r *Record) GetRawColumnValueByName(name string) (*commonmodels.ColumnRawValue, error) {
-	idx, ok := r.tableDriver.AttrIdxMap[name]
-	if !ok {
-		return nil, fmt.Errorf("unable to find column by name")
+	idx, err := r.tableDriver.GetColumnIdxByName(name)
+	if err != nil {
+		return nil, err
 	}
 	return r.row.GetColumn(idx)
 }
@@ -225,9 +235,9 @@ func (r *Record) GetRawColumnValueByIdx(idx int) (*commonmodels.ColumnRawValue, 
 }
 
 func (r *Record) SetRawColumnValueByName(name string, value *commonmodels.ColumnRawValue) error {
-	idx, ok := r.tableDriver.AttrIdxMap[name]
-	if !ok {
-		return fmt.Errorf("unable to find column by name")
+	idx, err := r.tableDriver.GetColumnIdxByName(name)
+	if err != nil {
+		return nil
 	}
 	if err := r.row.SetColumn(idx, value); err != nil {
 		return fmt.Errorf("error setting raw atribute value: %w", err)

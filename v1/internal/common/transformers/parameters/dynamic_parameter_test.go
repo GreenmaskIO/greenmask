@@ -120,6 +120,11 @@ func newTableDriverMock() *tableDriverMock {
 	return &tableDriverMock{}
 }
 
+func (t *tableDriverMock) GetColumnIdxByName(name string) (int, error) {
+	args := t.Called(name)
+	return args.Int(0), args.Error(1)
+}
+
 func (t *tableDriverMock) EncodeValueByTypeName(name string, src any, buf []byte) ([]byte, error) {
 	args := t.Called(name, src, buf)
 	if args.Get(0) == nil {
@@ -284,16 +289,16 @@ func (t *tableDriverMock) DecodeValueByColumnName(name string, src []byte) (any,
 	return value, args.Error(1)
 }
 
-func (t *tableDriverMock) GetColumnByName(name string) (*commonmodels.Column, bool) {
+func (t *tableDriverMock) GetColumnByName(name string) (*commonmodels.Column, error) {
 	args := t.Called(name)
 	if args.Get(0) == nil {
-		return nil, false
+		return nil, nil
 	}
 	column, ok := args.Get(0).(*commonmodels.Column)
 	if !ok {
 		panic(fmt.Sprintf("expected *commonmodels.Column, got %T", args.Get(0)))
 	}
-	return column, args.Bool(1)
+	return column, args.Error(1)
 }
 
 func (t *tableDriverMock) Table() *commonmodels.Table {

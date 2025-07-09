@@ -28,6 +28,7 @@ type TableDriver interface {
 	ScanValueByColumnName(name string, src []byte, dest any) error
 	DecodeValueByColumnIdx(idx int, src []byte) (any, error)
 	DecodeValueByColumnName(name string, src []byte) (any, error)
-	GetColumnByName(name string) (*commonmodels.Column, bool)
+	GetColumnByName(name string) (*commonmodels.Column, error)
 	Table() *commonmodels.Table
+	GetColumnIdxByName(name string) (int, error)
 }

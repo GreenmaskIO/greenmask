@@ -31,6 +31,7 @@ type TableDumper struct {
 	tableRuntime *tableruntime.TableRuntime
 	config       *MySQLConnectionConfig
 	usePgzip     bool
+	lineNum      int64
 }
 
 func NewTableDumper(table *tableruntime.TableRuntime, config *MySQLConnectionConfig, usePgzip bool) *TableDumper {
@@ -132,6 +133,45 @@ func (td *TableDumper) dataDumper(
 		log.Debug().Msg("transformation pipeline executed successfully")
 		return pipeline.Done(ctx)
 	}
+}
+
+func (tp *TransformationPipeline) Dump(ctx context.Context, data []byte) (err error) {
+	tp.line++
+	if err = tp.row.Decode(data[:len(data)-1]); err != nil {
+		return fmt.Errorf("error decoding copy line: %w", err)
+	}
+	tp.record.SetRow(tp.row)
+
+	needTransform, err := tp.table.When.Evaluate(tp.record)
+	if err != nil {
+		return NewDumpError(tp.table.Schema, tp.table.Name, tp.line, fmt.Errorf("error evaluating when condition: %w", err))
+	}
+
+	if needTransform {
+		_, err = tp.Transform(ctx, tp.record)
+		if err != nil {
+			return NewDumpError(tp.table.Schema, tp.table.Name, tp.line, err)
+		}
+	}
+
+	rowDriver, err := tp.record.Encode()
+	if err != nil {
+		return NewDumpError(tp.table.Schema, tp.table.Name, tp.line, fmt.Errorf("error enocding Record to RowDriver: %w", err))
+	}
+	res, err := rowDriver.Encode()
+	if err != nil {
+		return NewDumpError(tp.table.Schema, tp.table.Name, tp.line, fmt.Errorf("error encoding RowDriver to []byte: %w", err))
+	}
+
+	_, err = tp.w.Write(res)
+	if err != nil {
+		return NewDumpError(tp.table.Schema, tp.table.Name, tp.line, fmt.Errorf("error writing dumped data: %w", err))
+	}
+	_, err = tp.w.Write(endOfLineSeq)
+	if err != nil {
+		return NewDumpError(tp.table.Schema, tp.table.Name, tp.line, fmt.Errorf("error writing dumped data: %w", err))
+	}
+	return nil
 }
 
 func (t *TableDumper) DebugInfo() string {
