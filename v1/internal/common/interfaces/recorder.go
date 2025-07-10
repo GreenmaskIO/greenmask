@@ -3,6 +3,8 @@ package interfaces
 import "github.com/greenmaskio/greenmask/v1/internal/common/models"
 
 type Recorder interface {
+	SetRow(rawRecord [][]byte) error
+	GetRow() [][]byte
 	IsNullByColumnName(columName string) (bool, error)
 	IsNullByColumnIdx(columIdx int) (bool, error)
 	ScanColumnValueByIdx(idx int, v any) (bool, error)

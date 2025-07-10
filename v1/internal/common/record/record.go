@@ -44,12 +44,16 @@ type Record struct {
 	rawValuesCache []*commonmodels.ColumnRawValue
 }
 
-func NewRecord(tableDriver commonininterfaces.TableDriver) *Record {
+func NewRecord(
+	row commonininterfaces.RowDriver,
+	tableDriver commonininterfaces.TableDriver,
+) *Record {
 	rawValuesCache := make([]*commonmodels.ColumnRawValue, len(tableDriver.Table().Columns))
 	for idx := range rawValuesCache {
 		rawValuesCache[idx] = commonmodels.NewColumnRawValue(nil, false)
 	}
 	return &Record{
+		row:            row,
 		tableDriver:    tableDriver,
 		rawValuesCache: rawValuesCache,
 	}
@@ -79,8 +83,12 @@ func (r *Record) TableDriver() commonininterfaces.TableDriver {
 	return r.tableDriver
 }
 
-func (r *Record) SetRow(row commonininterfaces.RowDriver) {
-	r.row = row
+func (r *Record) SetRow(rawRecord [][]byte) error {
+	return r.row.SetRow(rawRecord)
+}
+
+func (r *Record) GetRow() [][]byte {
+	return r.row.GetRow()
 }
 
 func (r *Record) GetTuple() (Tuple, error) {
@@ -160,6 +168,19 @@ func (r *Record) GetColumnValueByName(name string) (*commonmodels.ColumnValue, e
 	return v, nil
 }
 
+func (r *Record) encodeValue(idx int, v any) (res []byte, err error) {
+	switch vv := v.(type) {
+	case string:
+		res = []byte(vv)
+	default:
+		res, err = r.tableDriver.EncodeValueByColumnIdx(idx, vv, nil)
+		if err != nil {
+			return nil, fmt.Errorf("encoding error: %w", err)
+		}
+	}
+	return res, nil
+}
+
 func (r *Record) SetColumnValueByIdx(idx int, v any) error {
 	var value *commonmodels.ColumnValue
 	switch vv := v.(type) {
@@ -202,24 +223,6 @@ func (r *Record) SetColumnValueByName(name string, v any) error {
 	}
 
 	return r.SetColumnValueByIdx(idx, v)
-}
-
-func (r *Record) Encode() (commonininterfaces.RowDriver, error) {
-	return r.row, nil
-}
-
-func (r *Record) encodeValue(idx int, v any) (res []byte, err error) {
-
-	switch vv := v.(type) {
-	case string:
-		res = []byte(vv)
-	default:
-		res, err = r.tableDriver.EncodeValueByColumnIdx(idx, vv, nil)
-		if err != nil {
-			return nil, fmt.Errorf("encoding error: %w", err)
-		}
-	}
-	return res, nil
 }
 
 func (r *Record) GetRawColumnValueByName(name string) (*commonmodels.ColumnRawValue, error) {

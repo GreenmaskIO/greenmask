@@ -15,6 +15,34 @@ type RecorderMock struct {
 	mock.Mock
 }
 
+func (r *RecorderMock) SetRow(rawRecord [][]byte) error {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (r *RecorderMock) GetRow() [][]byte {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (r *RecorderMock) ScanColumnValueByIdx(idx int, v any) (bool, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (r *RecorderMock) ScanColumnValueByName(name string, v any) (bool, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (r *RecorderMock) GetColumnByName(columnName string) (*commonmodels.Column, error) {
+	args := r.Called(columnName)
+	if args.Get(1) != nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*commonmodels.Column), nil
+}
+
 func NewRecorderMock() *RecorderMock {
 	return &RecorderMock{}
 }
@@ -79,14 +107,6 @@ func (r *RecorderMock) SetColumnValueByName(columnName string, v any) error {
 func (r *RecorderMock) SetRawColumnValueByName(columnName string, value *commonmodels.ColumnRawValue) error {
 	args := r.Called(columnName, value)
 	return args.Error(0)
-}
-
-func (r *RecorderMock) GetColumnByName(columnName string) (*commonmodels.Column, bool) {
-	args := r.Called(columnName)
-	if args.Get(1) != nil {
-		return nil, false
-	}
-	return args.Get(0).(*commonmodels.Column), true
 }
 
 func (r *RecorderMock) TableDriver() commonininterfaces.TableDriver {

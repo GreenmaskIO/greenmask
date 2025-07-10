@@ -11,13 +11,11 @@ type RowDriver interface {
 	GetColumn(idx int) (*models.ColumnRawValue, error)
 	// SetColumn - set RawValue value by column idx to the current row
 	SetColumn(idx int, v *models.ColumnRawValue) error
-	// Encode - encode the whole row to the []byte representation of RowDriver. It would be CSV
-	// line or JSON object, etc.
-	Encode() ([]byte, error)
-	// Decode - decode []bytes to RowDriver instance
-	Decode([]byte) error
-	// Length - count of attributes in the row
-	Length() int
-	// Clean - clean the state
-	Clean()
+	// SetRow - sets a row data directly to the RowDriver state.
+	// This can be used to override the whole record or
+	// to copy a data from driver if it has been provided already split
+	// by columns. Can return error if the requested row to replace
+	// len if not equal to the current.
+	SetRow(row [][]byte) error
+	GetRow() [][]byte
 }
