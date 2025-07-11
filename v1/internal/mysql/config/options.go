@@ -1,6 +1,10 @@
 package config
 
-import "fmt"
+import (
+	"fmt"
+
+	"github.com/greenmaskio/greenmask/v1/internal/common/interfaces"
+)
 
 type DumpOptions struct {
 	// Connection details
@@ -99,6 +103,6 @@ func (d *DumpOptions) Get(key string) (any, error) {
 	panic("not implemented")
 }
 
-func (d *DumpOptions) ConnectionURI() (string, error) {
+func (d *DumpOptions) ConnectionConfig() (interfaces.ConnectionConfigurator, error) {
 	return fmt.Sprintf("%s:%s@tcp(%s:%d)/%s", d.User, d.Password, d.Host, d.Port, d.Database), nil
 }

@@ -1,4 +1,4 @@
-package driver
+package dbmsdriver
 
 import (
 	"reflect"
@@ -20,7 +20,7 @@ func must(t any, err error) any {
 }
 
 func TestDriver_DecodeValueByTypeName(t *testing.T) {
-	driver := NewDriver().WithLocation(time.UTC)
+	driver := New().WithLocation(time.UTC)
 
 	tests := []struct {
 		name     string
@@ -91,7 +91,7 @@ func TestDriver_DecodeValueByTypeName(t *testing.T) {
 }
 
 func TestDriver_DecodeValueByTypeOid(t *testing.T) {
-	driver := NewDriver().WithLocation(time.UTC)
+	driver := New().WithLocation(time.UTC)
 
 	tests := []struct {
 		name     string
@@ -162,7 +162,7 @@ func TestDriver_DecodeValueByTypeOid(t *testing.T) {
 }
 
 func TestDriver_EncodeValueByTypeName(t *testing.T) {
-	driver := NewDriver().WithLocation(time.UTC)
+	driver := New().WithLocation(time.UTC)
 
 	tests := []struct {
 		name     string
@@ -233,7 +233,7 @@ func TestDriver_EncodeValueByTypeName(t *testing.T) {
 }
 
 func TestDriver_EncodeValueByTypeOid(t *testing.T) {
-	driver := NewDriver().WithLocation(time.UTC)
+	driver := New().WithLocation(time.UTC)
 
 	tests := []struct {
 		name     string
@@ -304,7 +304,7 @@ func TestDriver_EncodeValueByTypeOid(t *testing.T) {
 }
 
 func TestDriver_ScanValueByTypeOid(t *testing.T) {
-	driver := NewDriver().WithLocation(time.UTC)
+	driver := New().WithLocation(time.UTC)
 
 	tests := []struct {
 		name     string
@@ -392,7 +392,7 @@ func TestDriver_ScanValueByTypeOid(t *testing.T) {
 }
 
 func TestDriver_ScanValueByTypeName(t *testing.T) {
-	driver := NewDriver().WithLocation(time.UTC)
+	driver := New().WithLocation(time.UTC)
 
 	tests := []struct {
 		name     string

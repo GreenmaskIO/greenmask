@@ -2,15 +2,36 @@ package mysql
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"time"
 
+	"github.com/rs/zerolog/log"
+
 	"github.com/greenmaskio/greenmask/v1/internal/common/datadump"
+	"github.com/greenmaskio/greenmask/v1/internal/common/heartbeat"
+	commonininterfaces "github.com/greenmaskio/greenmask/v1/internal/common/interfaces"
 	commonmodels "github.com/greenmaskio/greenmask/v1/internal/common/models"
+	"github.com/greenmaskio/greenmask/v1/internal/common/subset"
+	"github.com/greenmaskio/greenmask/v1/internal/common/tabledriver"
+	"github.com/greenmaskio/greenmask/v1/internal/common/tableruntime"
+	utils2 "github.com/greenmaskio/greenmask/v1/internal/common/transformers/utils"
 	"github.com/greenmaskio/greenmask/v1/internal/common/validationcollector"
 	"github.com/greenmaskio/greenmask/v1/internal/config"
+	"github.com/greenmaskio/greenmask/v1/internal/mysql/dbmsdriver"
+	"github.com/greenmaskio/greenmask/v1/internal/mysql/introspect"
+	mysqlmodels "github.com/greenmaskio/greenmask/v1/internal/mysql/models"
+	"github.com/greenmaskio/greenmask/v1/internal/mysql/schemadumper"
 	"github.com/greenmaskio/greenmask/v1/internal/storages"
 )
+
+func newMysqlTableDriver(
+	vc *validationcollector.Collector,
+	table commonmodels.Table,
+	columnsTypeOverride map[string]string,
+) (commonininterfaces.TableDriver, error) {
+	return tabledriver.New(vc, dbmsdriver.New(), &table, columnsTypeOverride)
+}
 
 const (
 	defaultInitTimeout = 30 * time.Second
@@ -19,14 +40,18 @@ const (
 // Dump2 it's responsible for initialization and perform the whole
 // dump procedure of mysql instance.
 type Dump2 struct {
-	dumpID commonmodels.DumpID
-	st     storages.Storager
-	vc     *validationcollector.Collector
+	dumpID     commonmodels.DumpID
+	st         storages.Storager
+	vc         *validationcollector.Collector
+	cfg        *config.Config
+	connConfig *mysqlmodels.ConnConfig
+	registry   *utils2.TransformerRegistry
 }
 
 func NewDump2(
 	ctx context.Context,
 	cfg *config.Config,
+	registry *utils2.TransformerRegistry,
 ) (*Dump2, error) {
 	ctx, cancel := context.WithTimeout(ctx, defaultInitTimeout)
 	defer cancel()
@@ -40,18 +65,39 @@ func NewDump2(
 	st = storages.SubStorageWithDumpID(st, dumpID)
 	vc := validationcollector.NewCollectorWithMeta(
 		commonmodels.MetaKeyParameterName, dumpID,
+		commonmodels.MetaKeyEngine, "mysql",
 	)
 	return &Dump2{
-		st:     st,
-		dumpID: dumpID,
-		vc:     vc,
+		st:       st,
+		dumpID:   dumpID,
+		vc:       vc,
+		registry: registry,
 	}, nil
+}
+
+func (d *Dump2) connect() (*sql.DB, error) {
+	connConfig, err := d.cfg.Dump.Options.ConnectionConfig()
+	if err != nil {
+		return nil, fmt.Errorf("get connection config: %w", err)
+	}
+	var ok bool
+	d.connConfig, ok = connConfig.(*mysqlmodels.ConnConfig)
+	if !ok {
+		panic("invalid connection config type")
+	}
+	connStr, err := connConfig.URI()
+	if err != nil {
+		return nil, fmt.Errorf("get connection URI: %w", err)
+	}
+	conn, err := sql.Open("mysql", connStr)
+	if err != nil {
+		return nil, fmt.Errorf("open connection: %w", err)
+	}
+	return conn, nil
 }
 
 /*
 It must:
-  - Create Storgae with DumpID provided
-  - Initialize validation Collector
   - Introspect schema
   - Generate subsets
   - Rewrite a config if some requirements are met (FK inharitance / partitioning)
@@ -70,5 +116,55 @@ For tables:
 - Produce TransformationPipelineDumper - executes transformer one by one and valudates conditions.
 */
 func (d *Dump2) Run(ctx context.Context) error {
+	conn, err := d.connect()
+	if err != nil {
+		return fmt.Errorf("connect to mysql: %w", err)
+	}
+	defer func() {
+		if err := conn.Close(); err != nil {
+			log.Ctx(ctx).Warn().Err(err).Msg("failed to close mysql connection")
+		}
+	}()
+	tx, err := conn.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("begin transaction: %w", err)
+	}
+	defer func() {
+		if err := tx.Rollback(); err != nil {
+			log.Ctx(ctx).Warn().Err(err).Msg("failed to rollback transaction")
+		}
+	}()
+
+	i := introspect.NewIntrospector(d.cfg.Dump.Options)
+	if err := i.Introspect(ctx, tx); err != nil {
+		return fmt.Errorf("introspect mysql server: %w", err)
+	}
+
+	s, err := subset.NewSubset(i.GetCommonTables(), subset.DialectMySQL)
+	if err != nil {
+		return fmt.Errorf("create subset: %w", err)
+	}
+
+	p := tableruntime.New(
+		i.GetCommonTables(),
+		s.GetTableQueries(),
+		d.cfg.Dump.Transformation.ToTransformationConfig(),
+		newMysqlTableDriver,
+		d.registry,
+	)
+	tableRuntimes, err := p.Produce(ctx, d.vc)
+	if err != nil {
+		return fmt.Errorf("produce table runtimes: %w", err)
+	}
+
+	hbw := heartbeat.NewWorker(heartbeat.NewWriter(d.st))
+	sd := schemadumper.New(d.st, d.cfg.Dump.Options)
+
+	dumper := datadump.NewDefaultDataDumper(nil, hbw, sd).
+		SetJobs(2)
+
+	if err := dumper.Run(ctx); err != nil {
+		return fmt.Errorf("run dumper: %w", err)
+	}
 	return nil
 }

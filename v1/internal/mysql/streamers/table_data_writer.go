@@ -1,4 +1,4 @@
-package tablestreamer
+package streamers
 
 import (
 	"context"
@@ -61,7 +61,7 @@ func (t *TableDataWriter) WriteRow(_ context.Context, row [][]byte) error {
 	return nil
 }
 
-func (t *TableDataWriter) Close(ctx context.Context) error {
+func (t *TableDataWriter) Close(_ context.Context) error {
 	t.csvWriter.Flush()
 	if err := t.cr.Close(); err != nil {
 		return fmt.Errorf("close writer: %w", err)
@@ -69,6 +69,7 @@ func (t *TableDataWriter) Close(ctx context.Context) error {
 	if err := t.eg.Wait(); err != nil {
 		return fmt.Errorf("wait for stream: %w", err)
 	}
+	return nil
 }
 
 func (t *TableDataWriter) Stat() commonmodels.ObjectStat {
@@ -78,9 +79,5 @@ func (t *TableDataWriter) Stat() commonmodels.ObjectStat {
 	if t.cr == nil {
 		panic("reader is not opened")
 	}
-	return commonmodels.ObjectStat{
-		Size:           t.cw.GetCount(),
-		CompressedSize: t.cr.GetCount(),
-		FileName:       t.fileName,
-	}
+	return commonmodels.NewObjectStat(t.cw.GetCount(), t.cr.GetCount(), t.fileName)
 }

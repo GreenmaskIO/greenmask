@@ -82,7 +82,7 @@ func TestProducer_Produce(t *testing.T) {
 		//	),
 		//)
 
-		p := NewProducer(tables, dumpQueries, nil, newDriverFuncMock, tr)
+		p := New(tables, dumpQueries, nil, newDriverFuncMock, tr)
 		ctx := context.Background()
 		vc := validationcollector.NewCollector()
 		tableRuntimes, err := p.Produce(ctx, vc)
@@ -112,7 +112,7 @@ func TestProducer_Produce(t *testing.T) {
 
 		tr := transformerutils.NewTransformerRegistry()
 
-		p := NewProducer(tables, dumpQueries, nil, newDriverFuncMock, tr)
+		p := New(tables, dumpQueries, nil, newDriverFuncMock, tr)
 		ctx := context.Background()
 		vc := validationcollector.NewCollector()
 		tableRuntimes, err := p.Produce(ctx, vc)
@@ -148,7 +148,7 @@ func TestProducer_Produce(t *testing.T) {
 
 		tr := transformerutils.NewTransformerRegistry()
 
-		p := NewProducer(tables, dumpQueries, tableConfigs, newDriverFuncMock, tr)
+		p := New(tables, dumpQueries, tableConfigs, newDriverFuncMock, tr)
 		ctx := context.Background()
 		vc := validationcollector.NewCollector()
 		tableRuntimes, err := p.Produce(ctx, vc)
@@ -183,7 +183,7 @@ func TestProducer_Produce(t *testing.T) {
 
 		tr := transformerutils.NewTransformerRegistry()
 
-		p := NewProducer(tables, dumpQueries, tableConfigs, newDriverFuncMock, tr)
+		p := New(tables, dumpQueries, tableConfigs, newDriverFuncMock, tr)
 		ctx := context.Background()
 		vc := validationcollector.NewCollector()
 		tableRuntimes, err := p.Produce(ctx, vc)
@@ -218,7 +218,7 @@ func TestProducer_Produce(t *testing.T) {
 
 		tr := transformerutils.NewTransformerRegistry()
 
-		p := NewProducer(tables, dumpQueries, tableConfigs, newDriverFuncMock, tr)
+		p := New(tables, dumpQueries, tableConfigs, newDriverFuncMock, tr)
 		ctx := context.Background()
 		vc := validationcollector.NewCollector()
 		tableRuntimes, err := p.Produce(ctx, vc)
@@ -245,7 +245,7 @@ func TestProducer_Produce(t *testing.T) {
 					TypeName: "int",
 					TypeOID:  12,
 				},
-				true,
+				nil,
 			)
 		newDriverFuncMock := func(
 			table commonmodels.Table,
@@ -295,7 +295,7 @@ func TestProducer_Produce(t *testing.T) {
 			},
 		}
 
-		p := NewProducer(tables, dumpQueries, tableConfigs, newDriverFuncMock, tr)
+		p := New(tables, dumpQueries, tableConfigs, newDriverFuncMock, tr)
 		ctx := context.Background()
 		vc := validationcollector.NewCollector()
 		tableRuntimes, err := p.Produce(ctx, vc)
@@ -325,7 +325,7 @@ func TestProducer_Produce(t *testing.T) {
 					TypeName: "int",
 					TypeOID:  12,
 				},
-				true,
+				nil,
 			)
 		newDriverFuncMock := func(
 			table commonmodels.Table,
@@ -374,7 +374,7 @@ func TestProducer_Produce(t *testing.T) {
 			},
 		}
 
-		p := NewProducer(tables, dumpQueries, tableConfigs, newDriverFuncMock, tr)
+		p := New(tables, dumpQueries, tableConfigs, newDriverFuncMock, tr)
 		ctx := context.Background()
 		vc := validationcollector.NewCollector()
 		tableRuntimes, err := p.Produce(ctx, vc)
@@ -420,7 +420,7 @@ func TestProducer_Produce(t *testing.T) {
 			},
 		}
 
-		p := NewProducer(tables, dumpQueries, tableConfigs, newDriverFuncMock, tr)
+		p := New(tables, dumpQueries, tableConfigs, newDriverFuncMock, tr)
 		ctx := context.Background()
 		vc := validationcollector.NewCollector()
 		_, err := p.Produce(ctx, vc)
@@ -443,7 +443,7 @@ func TestProducer_Produce(t *testing.T) {
 					TypeName: "int",
 					TypeOID:  12,
 				},
-				true,
+				nil,
 			)
 		newDriverFuncMock := func(
 			table commonmodels.Table,
@@ -498,7 +498,7 @@ func TestProducer_Produce(t *testing.T) {
 			},
 		}
 
-		p := NewProducer(tables, dumpQueries, tableConfigs, newDriverFuncMock, tr)
+		p := New(tables, dumpQueries, tableConfigs, newDriverFuncMock, tr)
 		ctx := context.Background()
 		vc := validationcollector.NewCollector()
 		_, err := p.Produce(ctx, vc)

@@ -89,9 +89,9 @@ func (tdc *TableDriverContext) DecodeValueByType(name string, v any) (any, error
 }
 
 func (tdc *TableDriverContext) GetColumnType(name string) (string, error) {
-	c, ok := tdc.td.GetColumnByName(name)
-	if !ok {
-		return "", errColumnNotFound
+	c, err := tdc.td.GetColumnByName(name)
+	if err != nil {
+		return "", err
 	}
 	return c.TypeName, nil
 }

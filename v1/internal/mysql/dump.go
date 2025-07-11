@@ -15,12 +15,10 @@ import (
 	commonmodels "github.com/greenmaskio/greenmask/v1/internal/common/models"
 	commonconfig "github.com/greenmaskio/greenmask/v1/internal/config"
 	mysqlintrospect "github.com/greenmaskio/greenmask/v1/internal/mysql/introspect"
-	mysqlmodels "github.com/greenmaskio/greenmask/v1/internal/mysql/models"
 	"github.com/greenmaskio/greenmask/v1/internal/storages"
 )
 
 type introspector interface {
-	GetTables() []mysqlmodels.Table
 	GetCommonTables() []commonmodels.Table
 	Introspect(ctx context.Context, tx *sql.Tx) error
 }

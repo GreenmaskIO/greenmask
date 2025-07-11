@@ -36,10 +36,10 @@ func TestDumpCli_Run(t *testing.T) {
 		).Return(nil)
 		opts := optsMock{}
 		opts.On("SchemaDumpParams").Return([]string{expected}, nil)
-		d := NewDumpCli(&opts)
+		d := New(st, &opts)
 		d.executable = "echo"
 		ctx := context.Background()
-		err := d.Run(ctx, st)
+		err := d.DumpSchema(ctx)
 		require.NoError(t, err)
 		st.AssertNumberOfCalls(t, "PutObject", 1)
 
@@ -54,9 +54,9 @@ func TestDumpCli_Run(t *testing.T) {
 		st := mocks.NewStorageMock()
 		opts := optsMock{}
 		opts.On("SchemaDumpParams").Return(nil, errors.New("some err"))
-		d := NewDumpCli(&opts)
+		d := New(st, &opts)
 		ctx := context.Background()
-		err := d.Run(ctx, st)
+		err := d.DumpSchema(ctx)
 		require.Error(t, err)
 		st.AssertNumberOfCalls(t, "PutObject", 0)
 	})
@@ -70,9 +70,9 @@ func TestDumpCli_Run(t *testing.T) {
 		).Return(errors.New("put error"))
 		opts := optsMock{}
 		opts.On("SchemaDumpParams").Return([]string{"CREATE TABLE test (id int);"}, nil)
-		d := NewDumpCli(&opts)
+		d := New(st, &opts)
 		ctx := context.Background()
-		err := d.Run(ctx, st)
+		err := d.DumpSchema(ctx)
 		require.Error(t, err)
 		st.AssertNumberOfCalls(t, "PutObject", 1)
 	})
@@ -86,10 +86,10 @@ func TestDumpCli_Run(t *testing.T) {
 		).Return(nil)
 		opts := optsMock{}
 		opts.On("SchemaDumpParams").Return([]string{"CREATE TABLE test (id int);"}, nil)
-		d := NewDumpCli(&opts)
+		d := New(st, &opts)
 		d.executable = "121312 unknown command"
 		ctx := context.Background()
-		err := d.Run(ctx, st)
+		err := d.DumpSchema(ctx)
 		require.Error(t, err)
 		st.AssertNumberOfCalls(t, "PutObject", 1)
 	})

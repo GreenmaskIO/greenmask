@@ -31,11 +31,13 @@ const (
 )
 
 const (
+	MetaKeyEngine         = "mysql"
 	MetaKeyDumpID         = "DumpID"
 	MetaKeyParameterName  = "ParameterName"
 	MetaKeyColumnName     = "ColumnName"
 	MetaKeyTableName      = "TableName"
 	MetaKeyTableSchema    = "TableSchema"
+	MetaKeyTableDumpQuery = "TableDumpQuery"
 	MetaKeyParameterValue = "ParameterValue"
 	MetaKeyColumnTypeName = "ColumnTypeName"
 	MetaKeyError          = "Error"

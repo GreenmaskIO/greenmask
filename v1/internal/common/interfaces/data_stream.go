@@ -9,8 +9,13 @@ import (
 // RowStreamReader - represents a stream reader from DBMS.
 type RowStreamReader interface {
 	Open(ctx context.Context) error
+	// ReadRow - returns row from stream until commonmodels.ErrEndOfStream
+	// error is returned.
 	ReadRow(ctx context.Context) ([][]byte, error)
 	Close(ctx context.Context) error
+	// DebugInfo - info about resource that is dumping.
+	// It contains map metadata with meta keys from commonmodels.
+	DebugInfo() map[string]any
 }
 
 // RowStreamWriter -

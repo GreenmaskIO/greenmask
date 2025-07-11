@@ -8,5 +8,5 @@ import (
 
 type Dumper interface {
 	Dump(ctx context.Context) (commonmodels.DumpStat, error)
-	DebugInfo() string
+	DebugInfo() map[string]any
 }

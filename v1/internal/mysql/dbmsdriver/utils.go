@@ -8,7 +8,7 @@
 //
 // This code was borrowed from the Go-MySQL-Driver project https://github.com/go-sql-driver/mysql
 
-package driver
+package dbmsdriver
 
 import (
 	"errors"

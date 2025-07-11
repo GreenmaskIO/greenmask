@@ -2,6 +2,7 @@ package subset
 
 import (
 	"fmt"
+	"slices"
 
 	commonmodels "github.com/greenmaskio/greenmask/v1/internal/common/models"
 	"github.com/greenmaskio/greenmask/v1/internal/common/subset/condensationgraph"
@@ -200,4 +201,8 @@ func (s *Subset) buildQueryForSCC(sg *subsetGraph) (map[int]string, error) {
 		return nil, err
 	}
 	return queries, nil
+}
+
+func (s *Subset) GetTableQueries() []string {
+	return slices.Clone(s.tablesQueries)
 }

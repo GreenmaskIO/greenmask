@@ -12,6 +12,8 @@ import (
 	commonmodels "github.com/greenmaskio/greenmask/v1/internal/common/models"
 )
 
+const dumperTypeTableDumper = "table_dumper"
+
 type TableDumper struct {
 	pipeline         commonininterfaces.Pipeliner
 	dataStreamReader commonininterfaces.RowStreamReader
@@ -62,10 +64,11 @@ func (t *TableDumper) Dump(ctx context.Context) (commonmodels.DumpStat, error) {
 		)
 	}
 
-	return commonmodels.DumpStat{
-		ObjectStat: t.dataStreamWriter.Stat(),
-		Duration:   time.Since(startedAt),
-	}, nil
+	return commonmodels.NewDumpStat(
+		t.dataStreamWriter.Stat(),
+		time.Since(startedAt),
+		dumperTypeTableDumper,
+	), nil
 }
 
 // dumper - dumps the data from the table and transform it if needed
@@ -144,4 +147,8 @@ func (t *TableDumper) streamRecords(ctx context.Context) error {
 			return fmt.Errorf("write transformed raw data: %w", err)
 		}
 	}
+}
+
+func (t *TableDumper) DebugInfo() map[string]any {
+	return t.dataStreamReader.DebugInfo()
 }

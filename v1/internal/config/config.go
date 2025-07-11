@@ -2,6 +2,8 @@ package config
 
 import (
 	"sync"
+
+	"github.com/greenmaskio/greenmask/v1/internal/common/interfaces"
 )
 
 var (
@@ -12,7 +14,7 @@ var (
 // options is an interface for all dump options. Since we delegate schema dumping to the external tool,
 // utilities, depending on the DBMS the set of parameters can be different.
 type options interface {
-	ConnectionURI() (string, error)
+	ConnectionConfig() (interfaces.ConnectionConfigurator, error)
 	SchemaDumpParams() ([]string, error)
 	Get(key string) (any, error)
 	GetIncludedTables() []string

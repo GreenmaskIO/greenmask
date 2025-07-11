@@ -24,5 +24,5 @@ import (
 
 type DumpTask interface {
 	Execute(ctx context.Context, tx pgx.Tx, st storages.Storager) error
-	DebugInfo() string
+	DebugInfo() map[string]any
 }

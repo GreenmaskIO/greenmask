@@ -18,6 +18,7 @@ import (
 // NewTableDriverFunc - function that uses to create a table driver for a specific DBMS driver.
 // The column type override can be used in order to override driver encode-decode behaviour.
 type NewTableDriverFunc func(
+	vc *validationcollector.Collector,
 	table commonmodels.Table,
 	columnsTypeOverride map[string]string,
 ) (commonininterfaces.TableDriver, error)
@@ -31,7 +32,7 @@ type Producer struct {
 	transformerRegistry *transformerutils.TransformerRegistry
 }
 
-func NewProducer(
+func New(
 	tables []commonmodels.Table,
 	dumpQueries []string,
 	tableConfigs []commonmodels.TableConfig,
@@ -76,7 +77,7 @@ func (p *Producer) initTable(
 	tableConfig commonmodels.TableConfig,
 	dumpQueries string,
 ) (TableRuntime, error) {
-	driver, err := p.newTableDriver(table, tableConfig.ColumnsTypeOverride)
+	driver, err := p.newTableDriver(vc, table, tableConfig.ColumnsTypeOverride)
 	if err != nil {
 		return TableRuntime{}, fmt.Errorf("new driver: %w", err)
 	}

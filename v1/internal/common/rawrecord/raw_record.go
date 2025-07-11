@@ -9,16 +9,16 @@ import (
 )
 
 type RawRecord struct {
-	columnCount int
-	row         [][]byte
-	nullValue   []byte
+	columnCount  int
+	row          [][]byte
+	nullValueSeq []byte
 }
 
-func NewRawRecord(columnCount int, nullValue []byte) *RawRecord {
+func NewRawRecord(columnCount int, nullValueSeq []byte) *RawRecord {
 	return &RawRecord{
-		columnCount: columnCount,
-		row:         make([][]byte, columnCount),
-		nullValue:   nullValue,
+		columnCount:  columnCount,
+		row:          make([][]byte, columnCount),
+		nullValueSeq: nullValueSeq,
 	}
 }
 
@@ -26,7 +26,7 @@ func (c *RawRecord) GetColumn(idx int) (*commonmodels.ColumnRawValue, error) {
 	if idx < 0 || idx >= c.columnCount {
 		return nil, fmt.Errorf("column index %d out of range: %w", idx, commonmodels.ErrUnknownColumnIdx)
 	}
-	if bytes.Equal(c.nullValue, c.row[idx]) {
+	if bytes.Equal(c.nullValueSeq, c.row[idx]) {
 		return commonmodels.NewColumnRawValue(nil, true), nil
 	}
 	return commonmodels.NewColumnRawValue(c.row[idx], false), nil
@@ -37,7 +37,7 @@ func (c *RawRecord) SetColumn(idx int, v *commonmodels.ColumnRawValue) error {
 		return fmt.Errorf("column index %d out of range: %w", idx, commonmodels.ErrUnknownColumnIdx)
 	}
 	if v.IsNull {
-		c.row[idx] = utils.CopyAndExtendIfNeeded(c.row[idx], c.nullValue)
+		c.row[idx] = utils.CopyAndExtendIfNeeded(c.row[idx], c.nullValueSeq)
 		return nil
 	}
 	c.row[idx] = utils.CopyAndExtendIfNeeded(c.row[idx], v.Data)

@@ -1,9 +1,11 @@
-package driver
+package dbmsdriver
 
 import (
 	"fmt"
 	"strconv"
 	"time"
+
+	"github.com/rs/zerolog/log"
 
 	commonininterfaces "github.com/greenmaskio/greenmask/v1/internal/common/interfaces"
 	commonmodels "github.com/greenmaskio/greenmask/v1/internal/common/models"
@@ -18,7 +20,7 @@ type Driver struct {
 	loc *time.Location
 }
 
-func NewDriver() *Driver {
+func New() *Driver {
 	return &Driver{
 		loc: time.Now().Location(),
 	}
@@ -67,7 +69,9 @@ func (e *Driver) GetTypeOid(name string) (commonmodels.VirtualOID, error) {
 }
 
 func (e *Driver) GetCanonicalTypeName(name string, oid commonmodels.VirtualOID) (string, error) {
-	return
+	// TODO: implement canonical dbmsdriver.Driver.GetCanonicalTypeName
+	log.Warn().Msg("implement canonical dbmsdriver.Driver.GetCanonicalTypeName")
+	return name, nil
 }
 
 func (e *Driver) WithLocation(loc *time.Location) *Driver {

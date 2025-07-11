@@ -1,4 +1,4 @@
-package driver
+package dbmsdriver
 
 import "github.com/greenmaskio/greenmask/v1/internal/common/models"
 

@@ -152,11 +152,12 @@ func (sp *StaticParameter) validateValue(vc *validationcollector.Collector, rawV
 
 	if sp.definition.IsColumn {
 		columnName := string(rawValue)
-		column, ok := sp.driver.GetColumnByName(columnName)
-		if !ok {
+		column, err := sp.driver.GetColumnByName(columnName)
+		if err != nil {
 			vc.Add(models.NewValidationWarning().
 				SetSeverity(models.ValidationSeverityError).
-				SetMsg("column does not exist").
+				SetMsg("get column by name failed").
+				SetError(err).
 				AddMeta("ColumnName", columnName).
 				AddMeta("ParameterName", sp.definition.Name))
 			return models.ErrFatalValidationError

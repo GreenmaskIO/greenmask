@@ -1,4 +1,4 @@
-package tablestreamer
+package streamers
 
 import (
 	"context"
@@ -25,6 +25,7 @@ type TableDataReader struct {
 	query        string
 	eg           *errgroup.Group
 	cancel       context.CancelFunc
+	table        *commonmodels.Table
 	// dataCh - actually stored data.
 	dataCh chan [][]byte
 	// endOfStreamCh - marks stream as completed successfully. Return ErrEndOfStream.
@@ -78,8 +79,8 @@ func (r *TableDataReader) stream(ctx context.Context) func() error {
 func (r *TableDataReader) Open(ctx context.Context) error {
 	var err error
 	r.conn, err = client.ConnectWithContext(
-		ctx, r.connConfig.Address, r.connConfig.User,
-		r.connConfig.Password, r.connConfig.DbName, r.connConfig.Timeout,
+		ctx, r.connConfig.Address(), r.connConfig.User,
+		r.connConfig.Password, r.connConfig.Database, r.connConfig.Timeout,
 	)
 	if err != nil {
 		return fmt.Errorf("connect to mysql server: %w", err)
@@ -121,4 +122,12 @@ func (r *TableDataReader) Close(_ context.Context) error {
 		return fmt.Errorf("close mysql connection: %w", err)
 	}
 	return nil
+}
+
+func (r *TableDataReader) DebugInfo() map[string]any {
+	return map[string]any{
+		commonmodels.MetaKeyTableName:      r.table.Name,
+		commonmodels.MetaKeyTableSchema:    r.table.Schema,
+		commonmodels.MetaKeyTableDumpQuery: r.query,
+	}
 }

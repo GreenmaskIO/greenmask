@@ -7,6 +7,7 @@ import (
 	"github.com/rs/zerolog/log"
 	"golang.org/x/sync/errgroup"
 
+	commonininterfaces "github.com/greenmaskio/greenmask/v1/internal/common/interfaces"
 	"github.com/greenmaskio/greenmask/v1/internal/storages"
 )
 
@@ -14,13 +15,8 @@ const (
 	defaultRuntimeJobs = 1
 )
 
-type dumpTask interface {
-	Dump(ctx context.Context, st storages.Storager) error
-	DebugInfo() string
-}
-
 type taskProducer interface {
-	Produce(ctx context.Context) ([]dumpTask, error)
+	Produce(ctx context.Context) ([]commonininterfaces.Dumper, error)
 	Metadata(ctx context.Context) any
 }
 
@@ -29,24 +25,29 @@ type heartBeatWorker interface {
 	Run(ctx context.Context, done <-chan struct{}) func() error
 }
 
+type schemaDumper interface {
+	DumpSchema(ctx context.Context) error
+}
+
 type DefaultDataDumper struct {
-	tp       taskProducer
-	st       storages.Storager
-	hbw      heartBeatWorker
-	jobs     int
-	taskList []dumpTask
+	tp           taskProducer
+	st           storages.Storager
+	hbw          heartBeatWorker
+	jobs         int
+	taskList     []commonininterfaces.Dumper
+	schemaDumper schemaDumper
 }
 
 func NewDefaultDataDumper(
 	tp taskProducer,
 	hbw heartBeatWorker,
-	st storages.Storager,
+	schemaDumper schemaDumper,
 ) *DefaultDataDumper {
 	return &DefaultDataDumper{
-		hbw:  hbw,
-		tp:   tp,
-		st:   st,
-		jobs: defaultRuntimeJobs,
+		hbw:          hbw,
+		tp:           tp,
+		jobs:         defaultRuntimeJobs,
+		schemaDumper: schemaDumper,
 	}
 }
 
@@ -62,8 +63,8 @@ func (dr *DefaultDataDumper) Run(ctx context.Context) (err error) {
 	if err != nil {
 		return fmt.Errorf("produce tasks: %w", err)
 	}
-	if err := dr.schemaOnlyDump(ctx); err != nil {
-		return fmt.Errorf("schema only dump: %w", err)
+	if err := dr.schemaDumper.DumpSchema(ctx); err != nil {
+		return fmt.Errorf("schema dump: %w", err)
 	}
 
 	if err := dr.dataDump(ctx); err != nil {
@@ -72,12 +73,8 @@ func (dr *DefaultDataDumper) Run(ctx context.Context) (err error) {
 	return nil
 }
 
-func (dr *DefaultDataDumper) schemaOnlyDump(ctx context.Context) error {
-	return nil
-}
-
 func (dr *DefaultDataDumper) dataDump(ctx context.Context) error {
-	tasks := make(chan dumpTask, dr.jobs)
+	tasks := make(chan commonininterfaces.Dumper, dr.jobs)
 
 	log.Debug().Msgf("planned %d workers", dr.jobs)
 	done := make(chan struct{})
@@ -97,7 +94,7 @@ func (dr *DefaultDataDumper) dataDump(ctx context.Context) error {
 }
 
 // taskProducer - produces tasks and sends them to tasks channel.
-func (dr *DefaultDataDumper) taskProducer(ctx context.Context, tasks chan<- dumpTask) func() error {
+func (dr *DefaultDataDumper) taskProducer(ctx context.Context, tasks chan<- commonininterfaces.Dumper) func() error {
 	return func() error {
 		defer close(tasks)
 		for _, t := range dr.taskList {
@@ -114,7 +111,11 @@ func (dr *DefaultDataDumper) taskProducer(ctx context.Context, tasks chan<- dump
 // dumpWorkerPlanner - plans dump workers based on the number of jobs and runs them.
 //
 // It waits until all the workers are done and then closes the done channel to signal the end.
-func (dr *DefaultDataDumper) dumpWorkerPlanner(ctx context.Context, tasks <-chan dumpTask, done chan struct{}) func() error {
+func (dr *DefaultDataDumper) dumpWorkerPlanner(
+	ctx context.Context,
+	tasks <-chan commonininterfaces.Dumper,
+	done chan struct{},
+) func() error {
 	return func() error {
 		defer close(done)
 		workerEg, gtx := errgroup.WithContext(ctx)
@@ -132,7 +133,7 @@ func (dr *DefaultDataDumper) dumpWorkerPlanner(ctx context.Context, tasks <-chan
 
 // dumpWorkerRunner - runs dumpWorker or validateDumpWorker depending on the mode.
 func (dr *DefaultDataDumper) dumpWorkerRunner(
-	ctx context.Context, tasks <-chan dumpTask, jobId int,
+	ctx context.Context, tasks <-chan commonininterfaces.Dumper, jobId int,
 ) func() error {
 	return func() error {
 		return dr.dumpWorker(ctx, tasks, jobId)
@@ -141,10 +142,12 @@ func (dr *DefaultDataDumper) dumpWorkerRunner(
 
 // dumpWorker - runs a dumpWorker that consumes tasks from tasks channel and executes them.
 func (dr *DefaultDataDumper) dumpWorker(
-	ctx context.Context, tasks <-chan dumpTask, id int,
+	ctx context.Context,
+	tasks <-chan commonininterfaces.Dumper,
+	id int,
 ) error {
 	for {
-		var task dumpTask
+		var task commonininterfaces.Dumper
 		var ok bool
 		select {
 		case <-ctx.Done():
@@ -163,16 +166,17 @@ func (dr *DefaultDataDumper) dumpWorker(
 		}
 		log.Debug().
 			Int("WorkerId", id).
-			Str("ObjectName", task.DebugInfo()).
+			Any("ObjectName", task.DebugInfo()).
 			Msgf("dumping started")
 
-		if err := task.Dump(ctx, dr.st); err != nil {
+		_, err := task.Dump(ctx)
+		if err != nil {
 			return fmt.Errorf(`dump task '%s': %w`, task.DebugInfo(), err)
 		}
 
 		log.Debug().
 			Int("WorkerId", id).
-			Str("ObjectName", task.DebugInfo()).
+			Any("ObjectName", task.DebugInfo()).
 			Msgf("dumping is done")
 	}
 }

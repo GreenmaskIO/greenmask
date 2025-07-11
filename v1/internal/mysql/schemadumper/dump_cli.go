@@ -16,19 +16,21 @@ type options interface {
 	SchemaDumpParams() ([]string, error)
 }
 
-type DumpCli struct {
+type SchemaDumper struct {
 	executable string
 	opt        options
+	st         storages.Storager
 }
 
-func NewDumpCli(opt options) *DumpCli {
-	return &DumpCli{
+func New(st storages.Storager, opt options) *SchemaDumper {
+	return &SchemaDumper{
 		executable: executable,
 		opt:        opt,
+		st:         st,
 	}
 }
 
-func (d *DumpCli) Run(ctx context.Context, st storages.Storager) error {
+func (d *SchemaDumper) DumpSchema(ctx context.Context) error {
 	params, err := d.opt.SchemaDumpParams()
 	if err != nil {
 		return fmt.Errorf("cannot get dump params: %w", err)
@@ -36,7 +38,7 @@ func (d *DumpCli) Run(ctx context.Context, st storages.Storager) error {
 	w, r := utils.NewGzipPipe(false)
 	eg, gtx := errgroup.WithContext(ctx)
 	eg.Go(func() error {
-		if err := st.PutObject(gtx, "schema.sql", r); err != nil {
+		if err := d.st.PutObject(gtx, "schema.sql", r); err != nil {
 			return fmt.Errorf("put schema schema.sql: %w", err)
 		}
 		return nil
