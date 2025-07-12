@@ -22,8 +22,8 @@ import (
 	"github.com/greenmaskio/greenmask/pkg/toolkit"
 	"github.com/rs/zerolog/log"
 
+	"github.com/greenmaskio/greenmask/v1/internal/common/dumpcontext"
 	commoninterfaces "github.com/greenmaskio/greenmask/v1/internal/common/interfaces"
-	"github.com/greenmaskio/greenmask/v1/internal/common/tableruntime"
 )
 
 var endOfLineSeq = []byte("\n")
@@ -31,14 +31,14 @@ var endOfLineSeq = []byte("\n")
 type transformationFunc func(ctx context.Context, r *toolkit.Record) (*toolkit.Record, error)
 
 type TransformationPipeline struct {
-	tableRuntime *tableruntime.TableRuntime
+	tableContext *dumpcontext.TableContext
 	line         uint64
 	row          commoninterfaces.RowDriver
 }
 
-func NewTransformationPipeline(tableRuntime *tableruntime.TableRuntime) *TransformationPipeline {
+func NewTransformationPipeline(tableContext *dumpcontext.TableContext) *TransformationPipeline {
 	return &TransformationPipeline{
-		tableRuntime: tableRuntime,
+		tableContext: tableContext,
 	}
 }
 
@@ -46,7 +46,7 @@ func (tp *TransformationPipeline) Init(ctx context.Context) error {
 	var lastInitErr error
 	var idx int
 	var t *utils.TransformerContext
-	for idx, t = range tp.tableRuntime.TransformerRuntimes {
+	for idx, t = range tp.tableContext.TransformerContext {
 		if err := t.Transformer.Init(ctx); err != nil {
 			lastInitErr = err
 			log.Warn().Err(err).Msg("error initializing transformer")
@@ -55,7 +55,7 @@ func (tp *TransformationPipeline) Init(ctx context.Context) error {
 
 	if lastInitErr != nil {
 		lastInitialized := idx
-		for _, t = range tp.tableRuntime.TransformerRuntimes[:lastInitialized] {
+		for _, t = range tp.tableContext.TransformerContext[:lastInitialized] {
 			if err := t.Transformer.Done(ctx); err != nil {
 				log.Warn().Err(err).Msg("error terminating previously initialized transformer")
 			}
@@ -69,7 +69,7 @@ func (tp *TransformationPipeline) Init(ctx context.Context) error {
 }
 
 func (tp *TransformationPipeline) Transform(ctx context.Context, r commoninterfaces.Recorder) error {
-	for _, t := range tp.tableRuntime.TransformerRuntimes {
+	for _, t := range tp.tableContext.TransformerContext {
 		needTransform, err := t.WhenCond.Evaluate(r)
 		if err != nil {
 			log.Ctx(ctx).Warn().Err(err).Msg("error evaluating transformer")
@@ -89,7 +89,7 @@ func (tp *TransformationPipeline) Transform(ctx context.Context, r commoninterfa
 
 func (tp *TransformationPipeline) Done(ctx context.Context) error {
 	var lastErr error
-	for _, t := range tp.tableRuntime.TransformerRuntimes {
+	for _, t := range tp.tableContext.TransformerContext {
 		if err := t.Transformer.Done(ctx); err != nil {
 			lastErr = err
 			log.Warn().Err(err).Msg("error terminating initialized transformer")

@@ -12,9 +12,7 @@ import (
 	"github.com/greenmaskio/greenmask/v1/internal/common/heartbeat"
 	commonininterfaces "github.com/greenmaskio/greenmask/v1/internal/common/interfaces"
 	commonmodels "github.com/greenmaskio/greenmask/v1/internal/common/models"
-	"github.com/greenmaskio/greenmask/v1/internal/common/subset"
 	"github.com/greenmaskio/greenmask/v1/internal/common/tabledriver"
-	"github.com/greenmaskio/greenmask/v1/internal/common/tableruntime"
 	utils2 "github.com/greenmaskio/greenmask/v1/internal/common/transformers/utils"
 	"github.com/greenmaskio/greenmask/v1/internal/common/validationcollector"
 	"github.com/greenmaskio/greenmask/v1/internal/config"
@@ -22,6 +20,7 @@ import (
 	"github.com/greenmaskio/greenmask/v1/internal/mysql/introspect"
 	mysqlmodels "github.com/greenmaskio/greenmask/v1/internal/mysql/models"
 	"github.com/greenmaskio/greenmask/v1/internal/mysql/schemadumper"
+	"github.com/greenmaskio/greenmask/v1/internal/mysql/taskproducer"
 	"github.com/greenmaskio/greenmask/v1/internal/storages"
 )
 
@@ -140,30 +139,21 @@ func (d *Dump2) Run(ctx context.Context) error {
 		return fmt.Errorf("introspect mysql server: %w", err)
 	}
 
-	s, err := subset.NewSubset(i.GetCommonTables(), subset.DialectMySQL)
-	if err != nil {
-		return fmt.Errorf("create subset: %w", err)
-	}
-
-	p := tableruntime.New(
-		i.GetCommonTables(),
-		s.GetTableQueries(),
+	tp := taskproducer.New(
+		i,
 		d.cfg.Dump.Transformation.ToTransformationConfig(),
-		newMysqlTableDriver,
 		d.registry,
+		*d.connConfig,
+		d.st,
 	)
-	tableRuntimes, err := p.Produce(ctx, d.vc)
-	if err != nil {
-		return fmt.Errorf("produce table runtimes: %w", err)
-	}
 
 	hbw := heartbeat.NewWorker(heartbeat.NewWriter(d.st))
 	sd := schemadumper.New(d.st, d.cfg.Dump.Options)
 
-	dumper := datadump.NewDefaultDataDumper(nil, hbw, sd).
+	dumper := datadump.NewDefaultDataDumper(tp, hbw, sd).
 		SetJobs(2)
 
-	if err := dumper.Run(ctx); err != nil {
+	if err := dumper.Run(ctx, d.vc); err != nil {
 		return fmt.Errorf("run dumper: %w", err)
 	}
 	return nil

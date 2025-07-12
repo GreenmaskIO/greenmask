@@ -52,7 +52,7 @@ func setTransformerParams(tmpCfg *dummyConfig, cfg *Config) (err error) {
 	return nil
 }
 
-// ParseTransformerParamsManually - manually parse dump.transformation[a].transformers[b].params
+// ParseTransformerParamsManually - manually parse taskproducers.transformation[a].transformers[b].params
 // The problem described https://github.com/GreenmaskIO/greenmask/issues/76
 // We need to keep the original keys in the map without lowercasing
 // To overcome this problem we need use default yaml and json parsers avoiding vaiper or mapstructure usage.

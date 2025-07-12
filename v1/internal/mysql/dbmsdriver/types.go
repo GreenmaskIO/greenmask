@@ -2,6 +2,8 @@ package dbmsdriver
 
 import "github.com/greenmaskio/greenmask/v1/internal/common/models"
 
+var NullValueSeq = []byte("\\N")
+
 const (
 	// Numeric types
 	TypeTinyInt   = "tinyint"

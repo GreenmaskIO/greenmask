@@ -8,6 +8,7 @@ import (
 	"golang.org/x/sync/errgroup"
 
 	commonininterfaces "github.com/greenmaskio/greenmask/v1/internal/common/interfaces"
+	"github.com/greenmaskio/greenmask/v1/internal/common/validationcollector"
 	"github.com/greenmaskio/greenmask/v1/internal/storages"
 )
 
@@ -16,7 +17,7 @@ const (
 )
 
 type taskProducer interface {
-	Produce(ctx context.Context) ([]commonininterfaces.Dumper, error)
+	Generate(ctx context.Context, vc *validationcollector.Collector) ([]commonininterfaces.Dumper, error)
 	Metadata(ctx context.Context) any
 }
 
@@ -58,8 +59,8 @@ func (dr *DefaultDataDumper) SetJobs(v int) *DefaultDataDumper {
 }
 
 // Run - runs the dump command
-func (dr *DefaultDataDumper) Run(ctx context.Context) (err error) {
-	dr.taskList, err = dr.tp.Produce(ctx)
+func (dr *DefaultDataDumper) Run(ctx context.Context, vc *validationcollector.Collector) (err error) {
+	dr.taskList, err = dr.tp.Generate(ctx, vc)
 	if err != nil {
 		return fmt.Errorf("produce tasks: %w", err)
 	}
@@ -78,13 +79,13 @@ func (dr *DefaultDataDumper) dataDump(ctx context.Context) error {
 
 	log.Debug().Msgf("planned %d workers", dr.jobs)
 	done := make(chan struct{})
-	eg, gctx := errgroup.WithContext(ctx)
+	eg, egCtx := errgroup.WithContext(ctx)
 	// write heart beat file writer worker
-	eg.Go(dr.hbw.Run(gctx, done))
+	eg.Go(dr.hbw.Run(egCtx, done))
 	// dump worker planner
-	eg.Go(dr.dumpWorkerPlanner(gctx, tasks, done))
+	eg.Go(dr.dumpWorkerPlanner(egCtx, tasks, done))
 	// task producer
-	eg.Go(dr.taskProducer(gctx, tasks))
+	eg.Go(dr.taskProducer(egCtx, tasks))
 
 	if err := eg.Wait(); err != nil {
 		return fmt.Errorf("at least one worker exited with error: %w", err)
