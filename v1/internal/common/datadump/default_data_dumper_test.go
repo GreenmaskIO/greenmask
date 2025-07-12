@@ -159,7 +159,7 @@ func TestDumpRuntime_Run(t *testing.T) {
 
 		tp := &taskProducerMock{}
 		// Produce the task list by the producer.
-		tp.On("Produce", mock.Anything).
+		tp.On("Build", mock.Anything).
 			Return([]dumpTask{task1, task2}, nil)
 
 		hbw := &heartBeatWorkerMock{}

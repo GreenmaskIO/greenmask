@@ -33,5 +33,5 @@ func NewDumpError(schema, table string, line uint64, err error) *DumpError {
 }
 
 func (de *DumpError) Error() string {
-	return fmt.Sprintf("dump error on table %s.%s at line %d: %s", de.Schema, de.Table, de.Line, de.Err.Error())
+	return fmt.Sprintf("taskproducers error on table %s.%s at line %d: %s", de.Schema, de.Table, de.Line, de.Err.Error())
 }

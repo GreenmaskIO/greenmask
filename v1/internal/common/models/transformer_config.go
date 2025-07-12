@@ -5,7 +5,7 @@ import "maps"
 type TransformerConfig struct {
 	Name               string
 	ApplyForReferences bool
-	Params             map[string]ParamsValue
+	StaticParams       map[string]ParamsValue
 	DynamicParams      map[string]DynamicParamValue
 	When               string
 }
@@ -20,7 +20,7 @@ func NewTransformerConfig(
 	return TransformerConfig{
 		Name:               name,
 		ApplyForReferences: applyForReferences,
-		Params:             params,
+		StaticParams:       params,
 		DynamicParams:      dynamicParams,
 		When:               when,
 	}
@@ -30,7 +30,7 @@ func (tc *TransformerConfig) Clone() *TransformerConfig {
 	return &TransformerConfig{
 		Name:               tc.Name,
 		ApplyForReferences: tc.ApplyForReferences,
-		Params:             maps.Clone(tc.Params),
+		StaticParams:       maps.Clone(tc.StaticParams),
 		DynamicParams:      maps.Clone(tc.DynamicParams),
 		When:               tc.When,
 	}

@@ -5,7 +5,12 @@ import (
 
 	"github.com/stretchr/testify/mock"
 
+	commonininterfaces "github.com/greenmaskio/greenmask/v1/internal/common/interfaces"
 	commonmodels "github.com/greenmaskio/greenmask/v1/internal/common/models"
+)
+
+var (
+	_ commonininterfaces.TableDriver = (*TableDriverMock)(nil)
 )
 
 type TableDriverMock struct {
@@ -14,6 +19,11 @@ type TableDriverMock struct {
 
 func NewTableDriverMock() *TableDriverMock {
 	return &TableDriverMock{}
+}
+
+func (t *TableDriverMock) GetColumnIdxByName(name string) (int, error) {
+	args := t.Called(name)
+	return args.Int(0), args.Error(1)
 }
 
 func (t *TableDriverMock) EncodeValueByTypeName(name string, src any, buf []byte) ([]byte, error) {
@@ -180,16 +190,16 @@ func (t *TableDriverMock) DecodeValueByColumnName(name string, src []byte) (any,
 	return value, args.Error(1)
 }
 
-func (t *TableDriverMock) GetColumnByName(name string) (*commonmodels.Column, bool) {
+func (t *TableDriverMock) GetColumnByName(name string) (*commonmodels.Column, error) {
 	args := t.Called(name)
 	if args.Get(0) == nil {
-		return nil, false
+		return nil, nil
 	}
 	column, ok := args.Get(0).(*commonmodels.Column)
 	if !ok {
 		panic(fmt.Sprintf("expected *commonmodels.Column, got %T", args.Get(0)))
 	}
-	return column, args.Bool(1)
+	return column, args.Error(1)
 }
 
 func (t *TableDriverMock) Table() *commonmodels.Table {

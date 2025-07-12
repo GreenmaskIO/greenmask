@@ -1,0 +1,30 @@
+common:
+  bin_path: "/usr/bin/"
+  tmp_dir: "/tmp"
+
+log:
+  level: "debug"
+  format: "text"
+
+storage:
+  directory:
+    path: "/home/vadim/tmp/storage/mysql"
+#  s3:
+#    endpoint: "http://localhost:9000"
+#    bucket: "testbucket"
+#    region: "us-east-1"
+#    access_key_id: "Q3AM3UQ867SPQQA43P2F"
+#    secret_access_key: "zuf+tfteSlswRu7BJ86wekitnifILbZam1KYY3TG"
+#       MYSQL_ROOT_PASSWORD: 1234
+#      MYSQL_DATABASE: playground
+#      MYSQL_USER: admin
+#      MYSQL_PASSWORD: admin
+dump:
+  options:
+    user: root
+    password: 1234
+    connect_database: playground
+    databases: playground
+    host: 127.0.0.1
+    port: 3306
+

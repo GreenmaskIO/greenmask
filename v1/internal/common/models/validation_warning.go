@@ -30,6 +30,20 @@ const (
 	ValidationSeverityDebug   ValidationSeverity = "debug"
 )
 
+const (
+	MetaKeyEngine           = "mysql"
+	MetaKeyDumpID           = "DumpID"
+	MetaKeyParameterName    = "ParameterName"
+	MetaKeyColumnName       = "ColumnName"
+	MetaKeyTableName        = "TableName"
+	MetaKeyTableSchema      = "TableSchema"
+	MetaKeyTableDumpQuery   = "TableDumpQuery"
+	MetaKeyParameterValue   = "ParameterValue"
+	MetaKeyColumnTypeName   = "ColumnTypeName"
+	MetaKeyError            = "Error"
+	MetaKeyUniqueDumpTaskID = "UniqueDumpTaskID"
+)
+
 type ValidationWarnings []*ValidationWarning
 
 func (re ValidationWarnings) IsFatal() bool {
@@ -68,6 +82,11 @@ func (re *ValidationWarning) SetMsgf(msg string, args ...any) *ValidationWarning
 
 func (re *ValidationWarning) SetSeverity(severity ValidationSeverity) *ValidationWarning {
 	re.Severity = severity
+	return re
+}
+
+func (re *ValidationWarning) SetError(v error) *ValidationWarning {
+	re.Meta[MetaKeyError] = v
 	return re
 }
 

@@ -170,7 +170,7 @@ func (i *Introspector) getColumns(ctx context.Context, tx *sql.Tx, tableSchema s
 			   c.DATETIME_PRECISION,
 			   NOT c.IS_NULLABLE AS is_not_null
 		from information_schema.tables t
-				 join information_schema.columns c on t.TABLE_NAME = c.TABLE_NAME
+				 join information_schema.columns c on t.TABLE_NAME = c.TABLE_NAME and t.TABLE_SCHEMA = c.TABLE_SCHEMA
 		WHERE t.TABLE_SCHEMA = ? 
 		  and t.TABLE_NAME = ?
 		ORDER BY c.ORDINAL_POSITION;

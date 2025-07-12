@@ -10,7 +10,7 @@ import (
 )
 
 var (
-	_ commonininterfaces.TableDriver = (*Driver)(nil)
+	_ commonininterfaces.TableDriver = (*TableDriver)(nil)
 )
 
 var (
@@ -20,7 +20,7 @@ var (
 	ErrorCannotMatchColumnIdxToTypeOID = errors.New("cannot match column index to type OID")
 )
 
-type Driver struct {
+type TableDriver struct {
 	commonininterfaces.DBMSDriver
 	table *commonmodels.Table
 	// columnMap - map column name to Column object
@@ -48,7 +48,7 @@ func New(
 	d commonininterfaces.DBMSDriver,
 	t *commonmodels.Table,
 	typeOverride map[string]string,
-) (*Driver, error) {
+) (*TableDriver, error) {
 
 	columnMap := make(map[string]*commonmodels.Column, len(t.Columns))
 	columnIdxToTypeOID := make(map[int]commonmodels.VirtualOID, len(t.Columns))
@@ -103,7 +103,7 @@ func New(
 		}
 	}
 
-	return &Driver{
+	return &TableDriver{
 		DBMSDriver:                  d,
 		table:                       t,
 		columnMap:                   columnMap,
@@ -119,7 +119,7 @@ func New(
 
 }
 
-func (d *Driver) EncodeValueByColumnIdx(idx int, src any, buf []byte) ([]byte, error) {
+func (d *TableDriver) EncodeValueByColumnIdx(idx int, src any, buf []byte) ([]byte, error) {
 	if err := validateDriverSupportColumnByIdx(d.unsupportedColumnIdxs, idx); err != nil {
 		return nil, err
 	}
@@ -136,7 +136,7 @@ func (d *Driver) EncodeValueByColumnIdx(idx int, src any, buf []byte) ([]byte, e
 	return d.DBMSDriver.EncodeValueByTypeOid(oid, src, buf)
 }
 
-func (d *Driver) EncodeValueByColumnName(name string, src any, buf []byte) ([]byte, error) {
+func (d *TableDriver) EncodeValueByColumnName(name string, src any, buf []byte) ([]byte, error) {
 	idx, ok := d.columnIdxMap[name]
 	if !ok {
 		return nil, fmt.Errorf("name=%s: %w", name, ErrorUnknownColumnName)
@@ -144,7 +144,7 @@ func (d *Driver) EncodeValueByColumnName(name string, src any, buf []byte) ([]by
 	return d.EncodeValueByColumnIdx(idx, src, buf)
 }
 
-func (d *Driver) ScanValueByColumnIdx(idx int, src []byte, dest any) error {
+func (d *TableDriver) ScanValueByColumnIdx(idx int, src []byte, dest any) error {
 	if err := validateDriverSupportColumnByIdx(d.unsupportedColumnIdxs, idx); err != nil {
 		return err
 	}
@@ -161,7 +161,7 @@ func (d *Driver) ScanValueByColumnIdx(idx int, src []byte, dest any) error {
 	return d.DBMSDriver.ScanValueByTypeOid(oid, src, dest)
 }
 
-func (d *Driver) ScanValueByColumnName(name string, src []byte, dest any) error {
+func (d *TableDriver) ScanValueByColumnName(name string, src []byte, dest any) error {
 	if err := validateDriverSupportColumnByName(d.unsupportedColumnNames, name); err != nil {
 		return err
 	}
@@ -172,7 +172,7 @@ func (d *Driver) ScanValueByColumnName(name string, src []byte, dest any) error 
 	return d.ScanValueByColumnIdx(idx, src, dest)
 }
 
-func (d *Driver) DecodeValueByColumnIdx(idx int, src []byte) (any, error) {
+func (d *TableDriver) DecodeValueByColumnIdx(idx int, src []byte) (any, error) {
 	if err := validateDriverSupportColumnByIdx(d.unsupportedColumnIdxs, idx); err != nil {
 		return nil, err
 	}
@@ -189,7 +189,7 @@ func (d *Driver) DecodeValueByColumnIdx(idx int, src []byte) (any, error) {
 	return d.DBMSDriver.DecodeValueByTypeOid(oid, src)
 }
 
-func (d *Driver) DecodeValueByColumnName(name string, src []byte) (any, error) {
+func (d *TableDriver) DecodeValueByColumnName(name string, src []byte) (any, error) {
 	idx, ok := d.columnIdxMap[name]
 	if !ok {
 		return nil, fmt.Errorf("name=%s: %w", name, ErrorUnknownColumnName)
@@ -197,15 +197,23 @@ func (d *Driver) DecodeValueByColumnName(name string, src []byte) (any, error) {
 	return d.DecodeValueByColumnIdx(idx, src)
 }
 
-func (d *Driver) GetColumnByName(name string) (*commonmodels.Column, bool) {
+func (d *TableDriver) GetColumnByName(name string) (*commonmodels.Column, error) {
 	v, ok := d.columnMap[name]
 	if !ok {
-		return nil, false
+		return nil, commonmodels.ErrUnknownColumnName
 	}
-	return v, ok
+	return v, nil
 }
 
-func (d *Driver) Table() *commonmodels.Table {
+func (d *TableDriver) GetColumnIdxByName(name string) (int, error) {
+	idx, ok := d.columnIdxMap[name]
+	if !ok {
+		return 0, commonmodels.ErrUnknownColumnName
+	}
+	return idx, nil
+}
+
+func (d *TableDriver) Table() *commonmodels.Table {
 	return d.table
 }
 

@@ -16,6 +16,11 @@ package utils
 
 type MetaKey string
 
+const (
+	AllowApplyForReferenced    MetaKey = "AllowApplyForReferenced"
+	RequireHashEngineParameter MetaKey = "RequireHashEngineParameter"
+)
+
 type TransformerProperties struct {
 	Name        string          `json:"name"`
 	Description string          `json:"description"`

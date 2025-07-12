@@ -13,8 +13,8 @@ import (
 	"github.com/greenmaskio/greenmask/v1/internal/common/models"
 	commonmodels "github.com/greenmaskio/greenmask/v1/internal/common/models"
 	gmtemplate "github.com/greenmaskio/greenmask/v1/internal/common/transformers/template"
+	"github.com/greenmaskio/greenmask/v1/internal/common/utils"
 	"github.com/greenmaskio/greenmask/v1/internal/common/validationcollector"
-	"github.com/greenmaskio/greenmask/v1/internal/utils"
 )
 
 var (
@@ -46,6 +46,10 @@ func NewStaticParameter(def *ParameterDefinition, driver commonininterfaces.Tabl
 		definition: def,
 		driver:     driver,
 	}
+}
+
+func (sp *StaticParameter) Name() string {
+	return sp.definition.Name
 }
 
 func (sp *StaticParameter) IsEmpty() (bool, error) {
@@ -148,11 +152,12 @@ func (sp *StaticParameter) validateValue(vc *validationcollector.Collector, rawV
 
 	if sp.definition.IsColumn {
 		columnName := string(rawValue)
-		column, ok := sp.driver.GetColumnByName(columnName)
-		if !ok {
+		column, err := sp.driver.GetColumnByName(columnName)
+		if err != nil {
 			vc.Add(models.NewValidationWarning().
 				SetSeverity(models.ValidationSeverityError).
-				SetMsg("column does not exist").
+				SetMsg("get column by name failed").
+				SetError(err).
 				AddMeta("ColumnName", columnName).
 				AddMeta("ParameterName", sp.definition.Name))
 			return models.ErrFatalValidationError
@@ -270,7 +275,7 @@ func getValue(
 		// TODO: Be careful - this may cause an error in Scan func if the the returning value is not a pointer
 		res, err = driver.DecodeValueByTypeName(linkedColumnParameter.Column.TypeName, rawValue)
 		if err != nil {
-			return nil, fmt.Errorf("scan parameter via Driver: %w", err)
+			return nil, fmt.Errorf("scan parameter via TableDriver: %w", err)
 		}
 	case definition.IsColumn:
 		res = string(rawValue)

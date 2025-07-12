@@ -1,14 +1,22 @@
 package config
 
-import "fmt"
+import (
+	"fmt"
+	"os"
+
+	"github.com/greenmaskio/greenmask/v1/internal/common/interfaces"
+	"github.com/greenmaskio/greenmask/v1/internal/mysql/models"
+)
 
 type DumpOptions struct {
 	// Connection details
-	User     string `mapstructure:"user"`     // MySQL username
-	Password string `mapstructure:"password"` // MySQL password
-	Host     string `mapstructure:"host"`     // MySQL server hostname or IP
-	Port     int    `mapstructure:"port"`     // MySQL server port, default is 3306
-	Database string `mapstructure:"database"` // Name of the database to dump
+	User            string   `mapstructure:"user"`     // MySQL username
+	Password        string   `mapstructure:"password"` // MySQL password
+	Host            string   `mapstructure:"host"`     // MySQL server hostname or IP
+	Port            int      `mapstructure:"port"`     // MySQL server port, default is 3306s 3306
+	ConnectDatabase string   `mapstructure:"connect_database"`
+	Databases       []string `mapstructure:"databases"` // List of databases to dump
+	AllDatabases    bool     `mapstructure:"all_databases"`
 
 	// General dump options
 	NoCreateInfo      bool `mapstructure:"no-create-info"`     // Exclude CREATE TABLE statements (--no-create-info)
@@ -25,54 +33,72 @@ type DumpOptions struct {
 }
 
 func (d *DumpOptions) GetIncludedTables() []string {
-	//TODO implement me
-	panic("implement me")
+	return nil
 }
 
 func (d *DumpOptions) GetExcludedTables() []string {
-	//TODO implement me
-	panic("implement me")
+	return nil
 }
 
 func (d *DumpOptions) GetExcludedSchemas() []string {
-	//TODO implement me
-	panic("implement me")
+	return nil
 }
 
 func (d *DumpOptions) GetIncludedSchemas() []string {
-	//TODO implement me
-	panic("implement me")
+	return nil
+}
+
+func (d *DumpOptions) Env() ([]string, error) {
+	env := []string{
+		"MYSQL_PWD=" + d.Password,
+	}
+
+	// Optional connection-related environment variables
+	if d.Host != "" {
+		env = append(env, "MYSQL_HOST="+d.Host)
+	}
+	if d.Port != 0 {
+		env = append(env, fmt.Sprintf("MYSQL_PORT=%d", d.Port))
+	}
+
+	// Inherit parent environment securely
+	return append(env, os.Environ()...), nil
 }
 
 func NewDumpOptions() *DumpOptions {
 	return &DumpOptions{}
 }
 
-func (d *DumpOptions) commonParams() ([]string, error) {
+func (d *DumpOptions) commonParams() []string {
 	var args []string
-	// Connection options
+	//// Connection options
 	if d.User != "" {
-		args = append(args, "-u", d.User)
+		args = append(args, "--user", d.User)
 	}
-	if d.Password != "" {
-		args = append(args, fmt.Sprintf("--password=%s", d.Password))
+	//if d.Password != "" {
+	//	args = append(args, fmt.Sprintf("--password=%s", d.Password))
+	//}
+	//if d.Port != 0 {
+	//	args = append(args, fmt.Sprintf("-P%d", d.Port))
+	//}
+	if d.Port != 0 {
+		args = append(args, "--port", fmt.Sprintf("%d", d.Port))
 	}
 	if d.Host != "" {
 		args = append(args, "-h", d.Host)
 	}
-	if d.Port != 0 {
-		args = append(args, fmt.Sprintf("-P%d", d.Port))
+	if len(d.Databases) > 0 {
+		args = append(args, "--databases")
+		args = append(args, d.Databases...)
 	}
-	return args, nil
+	if d.AllDatabases {
+		args = append(args, "--all-databases")
+	}
+	return args
 }
 
 func (d *DumpOptions) SchemaDumpParams() ([]string, error) {
-	var args []string
-
-	args, err := d.commonParams()
-	if err != nil {
-		return nil, err
-	}
+	args := d.commonParams()
 	args = append(args, "--no-data")
 	if d.AddDropTable {
 		args = append(args, "--add-drop-table")
@@ -99,6 +125,16 @@ func (d *DumpOptions) Get(key string) (any, error) {
 	panic("not implemented")
 }
 
-func (d *DumpOptions) ConnectionURI() (string, error) {
-	return fmt.Sprintf("%s:%s@tcp(%s:%d)/%s", d.User, d.Password, d.Host, d.Port, d.Database), nil
+func (d *DumpOptions) ConnectionConfig() (interfaces.ConnectionConfigurator, error) {
+	database := d.ConnectDatabase
+	if database == "" {
+		database = d.Databases[0]
+	}
+	return &models.ConnConfig{
+		User:     d.User,
+		Password: d.Password,
+		Host:     d.Host,
+		Port:     d.Port,
+		Database: database,
+	}, nil
 }

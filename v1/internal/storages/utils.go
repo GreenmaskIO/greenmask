@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"path"
+
+	commonmodels "github.com/greenmaskio/greenmask/v1/internal/common/models"
 )
 
 func walk(ctx context.Context, st Storager, parent string) ([]string, error) {
@@ -28,4 +30,8 @@ func walk(ctx context.Context, st Storager, parent string) ([]string, error) {
 		}
 	}
 	return res, nil
+}
+
+func SubStorageWithDumpID(st Storager, dumpID commonmodels.DumpID) Storager {
+	return st.SubStorage(string(dumpID), true)
 }

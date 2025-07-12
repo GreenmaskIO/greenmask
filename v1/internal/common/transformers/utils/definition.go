@@ -29,7 +29,7 @@ import (
 type NewTransformerFunc func(
 	ctx context.Context,
 	vc *validationcollector.Collector,
-	driver commonininterfaces.TableDriver,
+	tableDriver commonininterfaces.TableDriver,
 	parameters map[string]commonparameters.Parameterizer,
 ) (commonininterfaces.Transformer, error)
 

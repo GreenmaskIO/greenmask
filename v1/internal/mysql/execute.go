@@ -5,19 +5,27 @@ import (
 	"fmt"
 
 	commondump "github.com/greenmaskio/greenmask/v1/internal/common/datadump"
+	"github.com/greenmaskio/greenmask/v1/internal/common/transformers/utils"
+	utils2 "github.com/greenmaskio/greenmask/v1/internal/common/utils"
 	"github.com/greenmaskio/greenmask/v1/internal/config"
 )
 
 func RunDump(ctx context.Context, cfg *config.Config) error {
-	st, err := commondump.GetDumpStorage(ctx, cfg)
+	st, err := commondump.GetStorage(ctx, cfg)
 	if err != nil {
 		return fmt.Errorf("get storage: %w", err)
 	}
 
-	dump := commondump.NewDefaultDataDumper(nil, nil, st)
+	if err := utils2.SetDefaultContextLogger(cfg.Log.Level, cfg.Log.Format); err != nil {
+		return fmt.Errorf("init logger: %w", err)
+	}
 
+	dump, err := NewDump2(ctx, cfg, utils.DefaultTransformerRegistry, st)
+	if err != nil {
+		return fmt.Errorf("init dump process: %w", err)
+	}
 	if err := dump.Run(ctx); err != nil {
-		return fmt.Errorf("run dump: %w", err)
+		return fmt.Errorf("run dump process: %w", err)
 	}
 	return nil
 }

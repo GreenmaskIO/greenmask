@@ -17,11 +17,11 @@ package main
 import (
 	"github.com/rs/zerolog/log"
 
-	"github.com/greenmaskio/greenmask/v1/cmd/mysql"
+	"github.com/greenmaskio/greenmask/v1/internal/mysql/cmd"
 )
 
 func main() {
-	if err := mysql.Execute(); err != nil {
+	if err := cmd.Execute(); err != nil {
 		log.Fatal().Err(err).Msg("")
 	}
 }
