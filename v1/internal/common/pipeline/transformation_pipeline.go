@@ -18,7 +18,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/greenmaskio/greenmask/internal/db/postgres/transformers/utils"
 	"github.com/greenmaskio/greenmask/pkg/toolkit"
 	"github.com/rs/zerolog/log"
 
@@ -45,7 +44,7 @@ func NewTransformationPipeline(tableContext *dumpcontext.TableContext) *Transfor
 func (tp *TransformationPipeline) Init(ctx context.Context) error {
 	var lastInitErr error
 	var idx int
-	var t *utils.TransformerContext
+	var t *dumpcontext.TransformerContext
 	for idx, t = range tp.tableContext.TransformerContext {
 		if err := t.Transformer.Init(ctx); err != nil {
 			lastInitErr = err

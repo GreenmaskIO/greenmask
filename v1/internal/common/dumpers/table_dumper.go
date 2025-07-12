@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"maps"
 	"time"
 
 	"github.com/rs/zerolog/log"
@@ -12,7 +13,7 @@ import (
 	commonmodels "github.com/greenmaskio/greenmask/v1/internal/common/models"
 )
 
-const dumperTypeTableDumper = "table_dumper"
+const dumperTypeTableDumper = "TableDumper"
 
 type TableDumper struct {
 	pipeline         commonininterfaces.Pipeliner
@@ -149,6 +150,14 @@ func (t *TableDumper) streamRecords(ctx context.Context) error {
 	}
 }
 
-func (t *TableDumper) DebugInfo() map[string]any {
-	return t.dataStreamReader.DebugInfo()
+func (t *TableDumper) Meta() map[string]any {
+	meta := t.dataStreamReader.DebugInfo()
+	uniqueDumpTaskID := getUniqueDumpTaskID(dumperTypeTableDumper, meta)
+	meta = maps.Clone(meta)
+	meta[commonmodels.MetaKeyUniqueDumpTaskID] = uniqueDumpTaskID
+	return meta
+}
+
+func (t *TableDumper) DebugInfo() string {
+	return getUniqueDumpTaskID(dumperTypeTableDumper, t.dataStreamReader.DebugInfo())
 }

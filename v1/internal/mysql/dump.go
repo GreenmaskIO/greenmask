@@ -6,148 +6,152 @@ import (
 	"fmt"
 	"time"
 
-	_ "github.com/go-sql-driver/mysql"
-	"github.com/greenmaskio/greenmask/internal/utils/ioutils"
-	"github.com/joho/sqltocsv"
 	"github.com/rs/zerolog/log"
-	"golang.org/x/sync/errgroup"
 
+	"github.com/greenmaskio/greenmask/v1/internal/common/datadump"
+	"github.com/greenmaskio/greenmask/v1/internal/common/heartbeat"
+	commonininterfaces "github.com/greenmaskio/greenmask/v1/internal/common/interfaces"
 	commonmodels "github.com/greenmaskio/greenmask/v1/internal/common/models"
-	commonconfig "github.com/greenmaskio/greenmask/v1/internal/config"
-	mysqlintrospect "github.com/greenmaskio/greenmask/v1/internal/mysql/introspect"
+	"github.com/greenmaskio/greenmask/v1/internal/common/tabledriver"
+	utils2 "github.com/greenmaskio/greenmask/v1/internal/common/transformers/utils"
+	"github.com/greenmaskio/greenmask/v1/internal/common/validationcollector"
+	"github.com/greenmaskio/greenmask/v1/internal/config"
+	"github.com/greenmaskio/greenmask/v1/internal/mysql/dbmsdriver"
+	"github.com/greenmaskio/greenmask/v1/internal/mysql/introspect"
+	mysqlmodels "github.com/greenmaskio/greenmask/v1/internal/mysql/models"
+	"github.com/greenmaskio/greenmask/v1/internal/mysql/schemadumper"
+	"github.com/greenmaskio/greenmask/v1/internal/mysql/taskproducer"
 	"github.com/greenmaskio/greenmask/v1/internal/storages"
 )
 
-type introspector interface {
-	GetCommonTables() []commonmodels.Table
-	Introspect(ctx context.Context, tx *sql.Tx) error
+func newMysqlTableDriver(
+	vc *validationcollector.Collector,
+	table commonmodels.Table,
+	columnsTypeOverride map[string]string,
+) (commonininterfaces.TableDriver, error) {
+	return tabledriver.New(vc, dbmsdriver.New(), &table, columnsTypeOverride)
 }
 
+const (
+	defaultInitTimeout = 30 * time.Second
+)
+
+// Dump it's responsible for initialization and perform the whole
+// dump procedure of mysql instance.
 type Dump struct {
-	binPath                  string
-	cfg                      *commonconfig.Dump
-	st                       storages.Storager
-	schemaDumpSize           int64
-	schemaDumpSizeCompressed int64
-	introspector             introspector
+	dumpID     commonmodels.DumpID
+	st         storages.Storager
+	vc         *validationcollector.Collector
+	cfg        *config.Config
+	connConfig *mysqlmodels.ConnConfig
+	registry   *utils2.TransformerRegistry
 }
 
-func NewDump(cfg *commonconfig.Dump, st storages.Storager, binPath string) *Dump {
+func NewDump2(
+	ctx context.Context,
+	cfg *config.Config,
+	registry *utils2.TransformerRegistry,
+	st storages.Storager,
+) (*Dump, error) {
+	ctx, cancel := context.WithTimeout(ctx, defaultInitTimeout)
+	defer cancel()
+
+	dumpID := commonmodels.NewDumpID()
+	st = storages.SubStorageWithDumpID(st, dumpID)
+	vc := validationcollector.NewCollectorWithMeta(
+		commonmodels.MetaKeyParameterName, dumpID,
+		commonmodels.MetaKeyEngine, "mysql",
+	)
 	return &Dump{
-		cfg:          cfg,
-		st:           st,
-		binPath:      binPath,
-		introspector: mysqlintrospect.NewIntrospector(cfg.Options),
-	}
+		cfg:      cfg,
+		st:       st,
+		dumpID:   dumpID,
+		vc:       vc,
+		registry: registry,
+	}, nil
 }
 
-func (d *Dump) Run(ctx context.Context) error {
-	conn, err := d.connect(ctx)
+func (d *Dump) connect() (*sql.DB, error) {
+	connConfig, err := d.cfg.Dump.Options.ConnectionConfig()
 	if err != nil {
-		return fmt.Errorf("cannot connect to database: %w", err)
+		return nil, fmt.Errorf("get connection config: %w", err)
+	}
+	var ok bool
+	d.connConfig, ok = connConfig.(*mysqlmodels.ConnConfig)
+	if !ok {
+		panic("invalid connection config type")
+	}
+	connStr, err := connConfig.URI()
+	if err != nil {
+		return nil, fmt.Errorf("get connection URI: %w", err)
+	}
+	conn, err := sql.Open("mysql", connStr)
+	if err != nil {
+		return nil, fmt.Errorf("open connection: %w", err)
+	}
+	return conn, nil
+}
+
+/*
+It must:
+  - Introspect schema
+  - Generate subsets
+  - Rewrite a config if some requirements are met (FK inharitance / partitioning)
+  - Initialize TableRuntime (transformers, conditions, dump queries)
+  - Run heartbeat worker
+  - Generate schema dump
+  - Generate data dump -> Receives (task producer) -> Produce tasks -> execute on the workerы
+  - Generate metadata based on the config, collected tables and some additional data
+  - Complete dump
+
+How tasks producer should work?
+- Dedicate producer for each type of data object (table, sequences, large objects, etc.)
+
+For tables:
+- Produce raw dumper if there is no transformations - need to store data only.
+- Produce TransformationPipelineDumper - executes transformer one by one and valudates conditions.
+*/
+func (d *Dump) Run(ctx context.Context) error {
+	conn, err := d.connect()
+	if err != nil {
+		return fmt.Errorf("connect to mysql: %w", err)
 	}
 	defer func() {
 		if err := conn.Close(); err != nil {
-			log.Warn().Err(err).Msg("cannot close connection")
+			log.Ctx(ctx).Warn().Err(err).Msg("failed to close mysql connection")
 		}
 	}()
-	tx, err := conn.Begin()
+	tx, err := conn.BeginTx(ctx, nil)
 	if err != nil {
-		return fmt.Errorf("cannot start transaction: %w", err)
+		return fmt.Errorf("begin transaction: %w", err)
 	}
 	defer func() {
 		if err := tx.Rollback(); err != nil {
-			log.Warn().Err(err).Msg("cannot rollback transaction")
+			log.Ctx(ctx).Warn().Err(err).Msg("failed to rollback transaction")
 		}
 	}()
 
-	if err := d.introspect(ctx, tx); err != nil {
-		return fmt.Errorf("cannot introspect database: %w", err)
-	}
-	if err := d.schemaOnlyDump(ctx); err != nil {
-		return fmt.Errorf("cannot dump schema: %w", err)
-	}
-	if err := d.dataDump(ctx); err != nil {
-		return fmt.Errorf("cannot dump data: %w", err)
-	}
-	if err := d.writeMetadata(ctx); err != nil {
-		return fmt.Errorf("cannot write metadata: %w", err)
-	}
-	return nil
-}
-
-// implement
-// schemaOnlyDump(ctx)
-// dataDump(ctx)
-// writeMetadata(ctx)
-// introspect(ctx)
-
-func (d *Dump) connect(ctx context.Context) (*sql.DB, error) {
-	dsn := "admin:admin@tcp(localhost:3306)/playground?parseTime=true"
-	db, err := sql.Open("mysql", dsn)
-	if err != nil {
-		return nil, fmt.Errorf("cannot open connection: %w", err)
-	}
-	return db, nil
-}
-
-func (d *Dump) introspect(ctx context.Context, tx *sql.Tx) error {
-	if err := d.introspector.Introspect(ctx, tx); err != nil {
-		return fmt.Errorf("introspect database: %w", err)
-	}
-	return nil
-}
-
-func (d *Dump) schemaOnlyDump(ctx context.Context) error {
-	params, err := d.dumpOptions.Params()
-	if err != nil {
-		return fmt.Errorf("cannot get dump params: %w", err)
+	i := introspect.NewIntrospector(d.cfg.Dump.Options)
+	if err := i.Introspect(ctx, tx); err != nil {
+		return fmt.Errorf("introspect mysql server: %w", err)
 	}
 
-	w, r := ioutils.NewGzipPipe(false)
-	eg, gtx := errgroup.WithContext(ctx)
-	eg.Go(func() error {
-		if err := d.st.PutObject(gtx, "schema.sql", r); err != nil {
-			return fmt.Errorf("cannot get object: %w", err)
-		}
-		return nil
-	})
+	tp := taskproducer.New(
+		i,
+		d.cfg.Dump.Transformation.ToTransformationConfig(),
+		d.registry,
+		*d.connConfig,
+		d.st,
+	)
 
-	eg.Go(func() error {
-		defer w.Close()
-		if err := cmdrunner.NewCmdRunner(d.binPath, params, w).Run(ctx); err != nil {
-			return fmt.Errorf("cannot RunDump mysqldump: %w", err)
-		}
-		return nil
-	})
-	if err := eg.Wait(); err != nil {
-		return err
+	hbw := heartbeat.NewWorker(heartbeat.NewWriter(d.st))
+	sd := schemadumper.New(d.st, d.cfg.Dump.Options)
+
+	dumper := datadump.NewDefaultDataDumper(tp, hbw, sd).
+		SetJobs(1)
+
+	if err := dumper.Run(ctx, d.vc); err != nil {
+		return fmt.Errorf("run dumper: %w", err)
 	}
-	return nil
-}
-
-func (d *Dump) dataDump(ctx context.Context) error {
-	for _, table := range d.tables {
-		if err := d.runTableDump(ctx, table, nil); err != nil {
-			return fmt.Errorf("cannot dump table: %w", err)
-		}
-	}
-	return nil
-}
-
-func (d *Dump) runTableDump(ctx context.Context, t *Table, tx *sql.Tx) error {
-	//
-	rows, err := tx.Query("SELECT * FROM users WHERE something=72")
-	if err != nil {
-		return fmt.Errorf("cannot execute query: %w", err)
-	}
-
-	csvConverter := sqltocsv.New(rows)
-	csvConverter.TimeFormat = time.RFC822
-	//csvConverter.Write()
-	return nil
-}
-
-func (d *Dump) writeMetadata(ctx context.Context) error {
 	return nil
 }

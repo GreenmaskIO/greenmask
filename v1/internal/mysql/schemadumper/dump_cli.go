@@ -14,6 +14,7 @@ const executable = "mysqldump"
 
 type options interface {
 	SchemaDumpParams() ([]string, error)
+	Env() ([]string, error)
 }
 
 type SchemaDumper struct {
@@ -31,6 +32,10 @@ func New(st storages.Storager, opt options) *SchemaDumper {
 }
 
 func (d *SchemaDumper) DumpSchema(ctx context.Context) error {
+	env, err := d.opt.Env()
+	if err != nil {
+		return fmt.Errorf("getting environment variables: %w", err)
+	}
 	params, err := d.opt.SchemaDumpParams()
 	if err != nil {
 		return fmt.Errorf("cannot get dump params: %w", err)
@@ -48,7 +53,7 @@ func (d *SchemaDumper) DumpSchema(ctx context.Context) error {
 		defer func(w utils.CountWriteCloser) {
 			_ = w.Close()
 		}(w)
-		if err := utils.NewCmdRunner(d.executable, params).ExecuteCmdAndWriteStdout(ctx, w); err != nil {
+		if err := utils.NewCmdRunner(d.executable, params, env).ExecuteCmdAndWriteStdout(ctx, w); err != nil {
 			return fmt.Errorf("cannot run mysqldump: %w", err)
 		}
 		return nil

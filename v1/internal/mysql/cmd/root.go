@@ -12,20 +12,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package mysql
+package cmd
 
 import (
 	"fmt"
 	"runtime/debug"
 	"strings"
 
-	"github.com/mitchellh/mapstructure"
+	"github.com/go-viper/mapstructure/v2"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
-	configUtils "github.com/greenmaskio/greenmask/internal/utils/config"
+	"github.com/greenmaskio/greenmask/v1/internal/config"
 )
 
 var (
@@ -114,7 +114,7 @@ func initConfig() {
 
 	decoderCfg := func(cfg *mapstructure.DecoderConfig) {
 		cfg.DecodeHook = mapstructure.ComposeDecodeHookFunc(
-			configUtils.ParamsToByteSliceHookFunc(),
+			config.ParamsToByteSliceHookFunc(),
 			mapstructure.StringToTimeDurationHookFunc(),
 			mapstructure.StringToSliceHookFunc(","),
 		)
@@ -128,7 +128,7 @@ func initConfig() {
 	if cfgFile != "" {
 		// This solves problem with map structure described -> https://github.com/spf13/viper/issues/373
 		// that caused issue in Greenmask https://github.com/GreenmaskIO/greenmask/issues/76
-		if err := configUtils.ParseTransformerParamsManually(cfgFile, Config); err != nil {
+		if err := config.ParseTransformerParamsManually(cfgFile, Config); err != nil {
 			log.Fatal().Err(err).Msg("error parsing transformer parameters")
 		}
 	}

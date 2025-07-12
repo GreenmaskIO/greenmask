@@ -112,6 +112,9 @@ func (s *DirectoryStorage) PutObject(ctx context.Context, filePath string, body 
 	if err != nil {
 		return fmt.Errorf("unable to create file: %w", err)
 	}
+	defer func() {
+		_ = f.Close()
+	}()
 
 	done := make(chan struct{})
 	go func() {
@@ -128,7 +131,7 @@ func (s *DirectoryStorage) PutObject(ctx context.Context, filePath string, body 
 	if err != nil {
 		return fmt.Errorf("error writing data: %w", err)
 	}
-	return nil
+	return f.Close()
 }
 
 func (s *DirectoryStorage) Delete(ctx context.Context, filePaths ...string) error {

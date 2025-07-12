@@ -4,18 +4,22 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strconv"
 
 	"github.com/go-mysql-org/go-mysql/client"
 	"github.com/go-mysql-org/go-mysql/mysql"
 	"golang.org/x/sync/errgroup"
 
 	commonmodels "github.com/greenmaskio/greenmask/v1/internal/common/models"
+	mysqldbmsdriver "github.com/greenmaskio/greenmask/v1/internal/mysql/dbmsdriver"
 	mysqlmodels "github.com/greenmaskio/greenmask/v1/internal/mysql/models"
 )
 
 var (
 	errConnectionWasNotOpened        = errors.New("connection was not opened")
 	errDataChannelUnexpectedlyClosed = errors.New("data channel was not closed")
+	errCannotAssertType              = errors.New("cannot assert type")
+	errUnknownFieldType              = errors.New("unknown field type")
 )
 
 type TableDataReader struct {
@@ -41,9 +45,10 @@ func NewTableDataReader(
 		panic("no columns in table")
 	}
 	if query == "" {
-		panic("no query")
+		query = fmt.Sprintf(`SELECT * FROM %s.%s`, table.Schema, table.Name)
 	}
 	return &TableDataReader{
+		table:        table,
 		query:        query,
 		connConfig:   &connConfig,
 		dataCh:       make(chan [][]byte),
@@ -52,14 +57,66 @@ func NewTableDataReader(
 	}
 }
 
+// FieldValueTypeNull = iota
+// FieldValueTypeUnsigned
+// FieldValueTypeSigned
+// FieldValueTypeFloat
+// FieldValueTypeString
+func fieldValueToString(field mysql.FieldValue) ([]byte, error) {
+	switch field.Type {
+	case mysql.FieldValueTypeNull:
+		return mysqldbmsdriver.NullValueSeq, nil
+	case mysql.FieldValueTypeUnsigned:
+		val, ok := field.Value().(uint64)
+		if !ok {
+			return nil, fmt.Errorf(
+				"invalid type %T, expected uint64: %w", field.Value(), errCannotAssertType,
+			)
+		}
+		return []byte(strconv.FormatUint(val, 10)), nil
+	case mysql.FieldValueTypeSigned:
+		val, ok := field.Value().(int64)
+		if !ok {
+			return nil, fmt.Errorf(
+				"invalid type %T, expected int64: %w", field.Value(), errCannotAssertType,
+			)
+		}
+		return []byte(strconv.FormatInt(val, 10)), nil
+	case mysql.FieldValueTypeFloat:
+		val, ok := field.Value().(int64)
+		if !ok {
+			return nil, fmt.Errorf(
+				"invalid type %T, expected uint64: %w", field.Value(), errCannotAssertType,
+			)
+		}
+		return []byte(strconv.FormatInt(val, 10)), nil
+	case mysql.FieldValueTypeString:
+		val, ok := field.Value().([]byte)
+		if !ok {
+			return nil, fmt.Errorf(
+				"invalid type %T, expected []byte: %w", field.Value(), errCannotAssertType,
+			)
+		}
+		return val, nil
+	default:
+		return nil, fmt.Errorf("field type %d: %w", field.Type, errUnknownFieldType)
+	}
+}
+
 func (r *TableDataReader) stream(ctx context.Context) func() error {
 	return func() error {
 		defer close(r.errorCh)
 		var result mysql.Result
 		recordData := make([][]byte, r.columnLength)
+		var lineNum int64
 		err := r.conn.ExecuteSelectStreaming(r.query, &result, func(row []mysql.FieldValue) error {
+			lineNum++
 			for i := range row {
-				recordData = append(recordData, row[i].AsString())
+				v, err := fieldValueToString(row[i])
+				if err != nil {
+					return fmt.Errorf(`parse column "%s" value: %w`, string(result.Fields[i].Name), err)
+				}
+				recordData[i] = v
 			}
 			select {
 			case r.dataCh <- recordData:
@@ -70,7 +127,7 @@ func (r *TableDataReader) stream(ctx context.Context) func() error {
 		}, nil)
 		if err != nil {
 			r.errorCh <- err
-			return fmt.Errorf("stream table data: %w", err)
+			return fmt.Errorf("stream table data at line %d: %w", lineNum, err)
 		}
 		return nil
 	}
@@ -99,7 +156,7 @@ func (r *TableDataReader) ReadRow(ctx context.Context) ([][]byte, error) {
 		}
 		return data, nil
 	case err, ok := <-r.errorCh:
-		if ok {
+		if !ok {
 			// If the channel was closed with no items
 			// then streamer exited successfully.
 			return nil, commonmodels.ErrEndOfStream

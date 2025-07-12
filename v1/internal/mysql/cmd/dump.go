@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package mysql
+package cmd
 
 import (
 	"context"
@@ -34,16 +34,8 @@ var (
 )
 
 func run(cmd *cobra.Command, args []string) {
-	validateConfig()
 	if err := mysql.RunDump(context.Background(), Config); err != nil {
 		log.Fatal().Err(err).Msg("")
-	}
-}
-
-func validateConfig() {
-	if Config.Common.TempDirectory == "" {
-		log.Fatal().
-			Msg("common.tmp_dir cannot be empty")
 	}
 }
 

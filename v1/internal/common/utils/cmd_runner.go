@@ -34,12 +34,14 @@ const cmdRunnerStdoutReaderBufSize = 1024
 type CmdRunner struct {
 	executable string
 	args       []string
+	env        []string
 }
 
-func NewCmdRunner(executable string, args []string) *CmdRunner {
+func NewCmdRunner(executable string, args []string, env []string) *CmdRunner {
 	return &CmdRunner{
 		executable: executable,
 		args:       args,
+		env:        env,
 	}
 }
 
@@ -49,17 +51,23 @@ func (c *CmdRunner) ExecuteCmdAndWriteStdout(ctx context.Context, w io.Writer) e
 	log.Ctx(ctx).
 		Debug().
 		Str("Cmd", fmt.Sprintf("%s %s", path.Join(c.executable), strings.Join(c.args, " "))).
+		Strs("Env", c.env).
 		Msg("running mysqldump")
 	cmd := exec.CommandContext(ctx, c.executable, c.args...)
+	cmd.Env = append(cmd.Env, c.env...)
 
 	errReader, errWriter := io.Pipe()
-	defer errReader.Close()
 	outReader, outWriter := io.Pipe()
-	defer outWriter.Close()
 
 	cmd.Stderr = errWriter
 	cmd.Stdout = outWriter
 	if err := cmd.Start(); err != nil {
+		if err := errWriter.Close(); err != nil {
+			log.Warn().Err(err).Msg("close stderr")
+		}
+		if err := outWriter.Close(); err != nil {
+			log.Warn().Err(err).Msg("close stderr")
+		}
 		return fmt.Errorf("start external command: %w", err)
 	}
 
@@ -76,8 +84,18 @@ func (c *CmdRunner) ExecuteCmdAndWriteStdout(ctx context.Context, w io.Writer) e
 
 	eg.Go(func() error {
 		// Wait for the command to finish and close the writer to signal the end of the stream.
-		defer outWriter.Close()
-		defer errWriter.Close()
+		defer func() {
+			if err := outWriter.Close(); err != nil {
+				log.Warn().Err(err).Msg("close stdout")
+			}
+		}()
+
+		defer func() {
+			if err := errWriter.Close(); err != nil {
+				log.Warn().Err(err).Msg("close stderr")
+			}
+		}()
+
 		if err := cmd.Wait(); err != nil {
 			return err
 		}
@@ -93,26 +111,24 @@ func (c *CmdRunner) ExecuteCmdAndWriteStdout(ctx context.Context, w io.Writer) e
 
 // listenStderrAndLog reads from the provided reader and logs the stderr output.
 func (c *CmdRunner) listenStderrAndLog(ctx context.Context, errReader io.Reader) error {
-	lineScanner := bufio.NewReader(errReader)
-	for {
+	lineScanner := bufio.NewScanner(errReader)
+	for lineScanner.Scan() {
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
 		default:
 		}
-		line, err := ReadLine(lineScanner, nil)
-		if err != nil {
-			if errors.Is(err, io.EOF) {
-				return nil
-			}
-			return err
-		}
 		log.Ctx(ctx).
 			Info().
 			Str("Executable", c.executable).
-			Str("Stderr", string(line)).
+			Str("Stderr", lineScanner.Text()).
 			Msg("stderr forwarding")
 	}
+
+	if err := lineScanner.Err(); err != nil && !errors.Is(err, io.EOF) {
+		return fmt.Errorf("read stderr: %w", err)
+	}
+	return nil
 }
 
 // listenStdoutAndWrite reads from the provided reader and writes to the provided writer.

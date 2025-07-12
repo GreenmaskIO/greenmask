@@ -21,6 +21,7 @@ type options interface {
 	GetExcludedTables() []string
 	GetExcludedSchemas() []string
 	GetIncludedSchemas() []string
+	Env() ([]string, error)
 }
 
 func NewConfig(o options) *Config {

@@ -63,7 +63,7 @@ func (t *TableDataWriter) WriteRow(_ context.Context, row [][]byte) error {
 
 func (t *TableDataWriter) Close(_ context.Context) error {
 	t.csvWriter.Flush()
-	if err := t.cr.Close(); err != nil {
+	if err := t.cw.Close(); err != nil {
 		return fmt.Errorf("close writer: %w", err)
 	}
 	if err := t.eg.Wait(); err != nil {
