@@ -86,7 +86,7 @@ func (re *ValidationWarning) SetSeverity(severity ValidationSeverity) *Validatio
 }
 
 func (re *ValidationWarning) SetError(v error) *ValidationWarning {
-	re.Meta[MetaKeyError] = v
+	re.Meta[MetaKeyError] = v.Error()
 	return re
 }
 

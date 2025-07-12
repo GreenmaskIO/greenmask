@@ -230,7 +230,3 @@ func (t *ReplaceTransformer) Init(_ context.Context) error {
 func (t *ReplaceTransformer) Done(_ context.Context) error {
 	return nil
 }
-
-func init() {
-	transformerutils.DefaultTransformerRegistry.MustRegister(ReplaceTransformerDefinition)
-}

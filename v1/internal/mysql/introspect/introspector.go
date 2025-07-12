@@ -3,6 +3,7 @@ package introspect
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"strings"
 	"text/template"
@@ -11,11 +12,13 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 
 	commonmodels "github.com/greenmaskio/greenmask/v1/internal/common/models"
+	"github.com/greenmaskio/greenmask/v1/internal/mysql/dbmsdriver"
 	mysqlmodels "github.com/greenmaskio/greenmask/v1/internal/mysql/models"
 )
 
 var (
-	errNoKeysFound = fmt.Errorf("no keys found")
+	errNoKeysFound                 = fmt.Errorf("no keys found")
+	errCannotMatchTypeToVirtualOID = errors.New("cannot match type to virtual OID")
 )
 
 type options interface {
@@ -159,6 +162,24 @@ func (i *Introspector) getTables(ctx context.Context, tx *sql.Tx) ([]mysqlmodels
 	return tables, nil
 }
 
+func getTypeOID(columnType string, dataType *string) (commonmodels.VirtualOID, error) {
+	typeOID, ok := dbmsdriver.TypeNameToVirtualOid[columnType]
+	if ok {
+		return typeOID, nil
+	}
+	// If not found, try to use fallback using dataType if provided.
+	if dataType == nil {
+		return 0, fmt.Errorf("match type OID for %s: %w", columnType, errCannotMatchTypeToVirtualOID)
+	}
+	typeOID, ok = dbmsdriver.TypeNameToVirtualOid[*dataType]
+	if ok {
+		return typeOID, nil
+	}
+	return 0, fmt.Errorf(
+		"match type OID for %s or %s: %w", columnType, *dataType, errCannotMatchTypeToVirtualOID,
+	)
+}
+
 // getColumns - get all columns for a given table
 func (i *Introspector) getColumns(ctx context.Context, tx *sql.Tx, tableSchema string, tableName string) ([]mysqlmodels.Column, error) {
 	query := `
@@ -199,9 +220,13 @@ func (i *Introspector) getColumns(ctx context.Context, tx *sql.Tx, tableSchema s
 		); err != nil {
 			return nil, fmt.Errorf("scan column introspection row: %w", err)
 		}
+		typeOID, err := getTypeOID(columnType, dataType)
+		if err != nil {
+			return nil, fmt.Errorf("get type oid: %w")
+		}
 		columns = append(columns, mysqlmodels.NewColumn(
 			idx, columnName, columnType, dataType, numericPrecision,
-			numericScale, datetimePrecision, notNull,
+			numericScale, datetimePrecision, notNull, typeOID,
 		))
 		idx++
 	}

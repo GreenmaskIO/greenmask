@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	commondump "github.com/greenmaskio/greenmask/v1/internal/common/datadump"
-	"github.com/greenmaskio/greenmask/v1/internal/common/transformers/utils"
+	"github.com/greenmaskio/greenmask/v1/internal/common/transformers/registry"
 	utils2 "github.com/greenmaskio/greenmask/v1/internal/common/utils"
 	"github.com/greenmaskio/greenmask/v1/internal/config"
 )
@@ -20,7 +20,7 @@ func RunDump(ctx context.Context, cfg *config.Config) error {
 		return fmt.Errorf("init logger: %w", err)
 	}
 
-	dump, err := NewDump2(ctx, cfg, utils.DefaultTransformerRegistry, st)
+	dump, err := NewDump2(ctx, cfg, registry.DefaultTransformerRegistry, st)
 	if err != nil {
 		return fmt.Errorf("init dump process: %w", err)
 	}

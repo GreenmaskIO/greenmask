@@ -13,7 +13,7 @@ import (
 	"github.com/greenmaskio/greenmask/v1/internal/common/record"
 	"github.com/greenmaskio/greenmask/v1/internal/common/subset"
 	"github.com/greenmaskio/greenmask/v1/internal/common/tabledriver"
-	transformerutils "github.com/greenmaskio/greenmask/v1/internal/common/transformers/utils"
+	transformerutils "github.com/greenmaskio/greenmask/v1/internal/common/transformers/registry"
 	"github.com/greenmaskio/greenmask/v1/internal/common/validationcollector"
 	mysqldbmsdriver "github.com/greenmaskio/greenmask/v1/internal/mysql/dbmsdriver"
 	mysqlmodels "github.com/greenmaskio/greenmask/v1/internal/mysql/models"

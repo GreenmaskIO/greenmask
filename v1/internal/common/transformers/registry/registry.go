@@ -12,10 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package utils
+package registry
 
 import (
 	"fmt"
+
+	"github.com/greenmaskio/greenmask/v1/internal/common/transformers/transformers2"
+	"github.com/greenmaskio/greenmask/v1/internal/common/transformers/utils"
 )
 
 var (
@@ -25,16 +28,16 @@ var (
 var DefaultTransformerRegistry = NewTransformerRegistry()
 
 type TransformerRegistry struct {
-	M map[string]*TransformerDefinition
+	M map[string]*utils.TransformerDefinition
 }
 
 func NewTransformerRegistry() *TransformerRegistry {
 	return &TransformerRegistry{
-		M: make(map[string]*TransformerDefinition),
+		M: make(map[string]*utils.TransformerDefinition),
 	}
 }
 
-func (tm *TransformerRegistry) Register(definition *TransformerDefinition) error {
+func (tm *TransformerRegistry) Register(definition *utils.TransformerDefinition) error {
 	if _, ok := tm.M[definition.Properties.Name]; ok {
 		return fmt.Errorf("register transformer '%s': %w",
 			definition.Properties.Name, errTransformerAlreadyExists)
@@ -43,13 +46,17 @@ func (tm *TransformerRegistry) Register(definition *TransformerDefinition) error
 	return nil
 }
 
-func (tm *TransformerRegistry) MustRegister(definition *TransformerDefinition) {
+func (tm *TransformerRegistry) MustRegister(definition *utils.TransformerDefinition) {
 	if err := tm.Register(definition); err != nil {
 		panic(err.Error())
 	}
 }
 
-func (tm *TransformerRegistry) Get(name string) (*TransformerDefinition, bool) {
+func (tm *TransformerRegistry) Get(name string) (*utils.TransformerDefinition, bool) {
 	t, ok := tm.M[name]
 	return t, ok
+}
+
+func init() {
+	DefaultTransformerRegistry.MustRegister(transformers2.ReplaceTransformerDefinition)
 }

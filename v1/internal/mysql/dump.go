@@ -13,7 +13,8 @@ import (
 	commonininterfaces "github.com/greenmaskio/greenmask/v1/internal/common/interfaces"
 	commonmodels "github.com/greenmaskio/greenmask/v1/internal/common/models"
 	"github.com/greenmaskio/greenmask/v1/internal/common/tabledriver"
-	utils2 "github.com/greenmaskio/greenmask/v1/internal/common/transformers/utils"
+	utils2 "github.com/greenmaskio/greenmask/v1/internal/common/transformers/registry"
+	"github.com/greenmaskio/greenmask/v1/internal/common/utils"
 	"github.com/greenmaskio/greenmask/v1/internal/common/validationcollector"
 	"github.com/greenmaskio/greenmask/v1/internal/config"
 	"github.com/greenmaskio/greenmask/v1/internal/mysql/dbmsdriver"
@@ -59,7 +60,7 @@ func NewDump2(
 	dumpID := commonmodels.NewDumpID()
 	st = storages.SubStorageWithDumpID(st, dumpID)
 	vc := validationcollector.NewCollectorWithMeta(
-		commonmodels.MetaKeyParameterName, dumpID,
+		commonmodels.MetaKeyDumpID, dumpID,
 		commonmodels.MetaKeyEngine, "mysql",
 	)
 	return &Dump{
@@ -150,6 +151,9 @@ func (d *Dump) Run(ctx context.Context) error {
 	dumper := datadump.NewDefaultDataDumper(tp, hbw, sd).
 		SetJobs(1)
 
+	defer func() {
+		_ = utils.PrintValidationWarnings(ctx, d.vc, nil, true)
+	}()
 	if err := dumper.Run(ctx, d.vc); err != nil {
 		return fmt.Errorf("run dumper: %w", err)
 	}

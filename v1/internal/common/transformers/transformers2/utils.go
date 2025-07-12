@@ -82,13 +82,14 @@ func getColumnParameterValueWithName(
 	if err != nil {
 		return "", nil, err
 	}
-	c, ok := tableDriver.GetColumnByName(columnName)
-	if !ok {
+	c, err := tableDriver.GetColumnByName(columnName)
+	if err != nil {
 		vc.Add(commonmodels.NewValidationWarning().
 			SetSeverity(commonmodels.ValidationSeverityError).
 			AddMeta(commonmodels.MetaKeyParameterName, parameterName).
 			AddMeta(commonmodels.MetaKeyParameterValue, columnName).
-			SetMsg("column is not found"))
+			SetError(err).
+			SetMsg("error getting column value"))
 		return "", nil, commonmodels.ErrFatalValidationError
 	}
 	return columnName, c, nil

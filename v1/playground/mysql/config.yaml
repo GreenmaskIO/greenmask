@@ -28,3 +28,12 @@ dump:
     host: 127.0.0.1
     port: 3306
 
+  transformation:
+    - schema: "playground"
+      name: "users"
+      transformers:
+        - name: "Replace"
+          params:
+            column: "username"
+            value: "test"
+

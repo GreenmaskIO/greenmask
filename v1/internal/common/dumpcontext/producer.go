@@ -10,7 +10,7 @@ import (
 	commonmodels "github.com/greenmaskio/greenmask/v1/internal/common/models"
 	"github.com/greenmaskio/greenmask/v1/internal/common/transformers/parameters"
 	commonparameters "github.com/greenmaskio/greenmask/v1/internal/common/transformers/parameters"
-	transformerutils "github.com/greenmaskio/greenmask/v1/internal/common/transformers/utils"
+	transformerutils "github.com/greenmaskio/greenmask/v1/internal/common/transformers/registry"
 	"github.com/greenmaskio/greenmask/v1/internal/common/utils"
 	"github.com/greenmaskio/greenmask/v1/internal/common/validationcollector"
 )
