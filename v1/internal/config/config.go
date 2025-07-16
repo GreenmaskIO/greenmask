@@ -24,7 +24,7 @@ type options interface {
 	Env() ([]string, error)
 }
 
-func NewConfig(o options) *Config {
+func NewConfig() *Config {
 	once.Do(
 		func() {
 			cfg = &Config{
@@ -32,8 +32,8 @@ func NewConfig(o options) *Config {
 				Storage: NewStorageConfig(),
 				// TODO: Consider how to forward two dependencies
 				//	dump and restore cfg interfaces.
-				Dump:    NewDump(o),
-				Restore: NewRestore(o),
+				Dump:    NewDump(),
+				Restore: NewRestore(),
 			}
 		},
 	)

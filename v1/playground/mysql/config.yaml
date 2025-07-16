@@ -1,5 +1,5 @@
 common:
-  bin_path: "/usr/bin/"
+  bin_path: "/opt/homebrew/opt/mysql@8.0/bin/mysqldump"
   tmp_dir: "/tmp"
 
 log:
@@ -8,7 +8,7 @@ log:
 
 storage:
   directory:
-    path: "/home/vadim/tmp/storage/mysql"
+    path: "/Users/vadim/tmp/storage/mysql"
 #  s3:
 #    endpoint: "http://localhost:9000"
 #    bucket: "testbucket"
@@ -20,11 +20,12 @@ storage:
 #      MYSQL_USER: admin
 #      MYSQL_PASSWORD: admin
 dump:
-  options:
-    user: root
-    password: 1234
-    connect_database: playground
-    databases: playground
-    host: 127.0.0.1
-    port: 3306
+  mysql:
+    options:
+      user: root
+      password: 1234
+      connect_database: playground
+      databases: playground
+      host: 127.0.0.1
+      port: 3306
 

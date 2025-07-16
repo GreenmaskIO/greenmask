@@ -24,6 +24,10 @@ import (
 	"github.com/greenmaskio/greenmask/v1/internal/storages"
 )
 
+const (
+	defaultInitTimeout = 30 * time.Second
+)
+
 func newMysqlTableDriver(
 	vc *validationcollector.Collector,
 	table commonmodels.Table,
@@ -31,10 +35,6 @@ func newMysqlTableDriver(
 ) (commonininterfaces.TableDriver, error) {
 	return tabledriver.New(vc, dbmsdriver.New(), &table, columnsTypeOverride)
 }
-
-const (
-	defaultInitTimeout = 30 * time.Second
-)
 
 // Dump it's responsible for initialization and perform the whole
 // dump procedure of mysql instance.
@@ -47,7 +47,7 @@ type Dump struct {
 	registry   *utils2.TransformerRegistry
 }
 
-func NewDump2(
+func NewDump(
 	ctx context.Context,
 	cfg *config.Config,
 	registry *utils2.TransformerRegistry,
@@ -72,7 +72,7 @@ func NewDump2(
 }
 
 func (d *Dump) connect() (*sql.DB, error) {
-	connConfig, err := d.cfg.Dump.Options.ConnectionConfig()
+	connConfig, err := d.cfg.Dump.MysqlOptions.Options.ConnectionConfig()
 	if err != nil {
 		return nil, fmt.Errorf("get connection config: %w", err)
 	}
@@ -100,7 +100,7 @@ It must:
   - Initialize TableRuntime (transformers, conditions, dump queries)
   - Run heartbeat worker
   - Generate schema dump
-  - Generate data dump -> Receives (task producer) -> Produce tasks -> execute on the workerы
+  - Generate data dump -> Receives (task producer) -> Produce tasks -> execute on the worker
   - Generate metadata based on the config, collected tables and some additional data
   - Complete dump
 
@@ -131,7 +131,7 @@ func (d *Dump) Run(ctx context.Context) error {
 		}
 	}()
 
-	i := introspect.NewIntrospector(d.cfg.Dump.Options)
+	i := introspect.NewIntrospector(&d.cfg.Dump.MysqlOptions.Options)
 	if err := i.Introspect(ctx, tx); err != nil {
 		return fmt.Errorf("introspect mysql server: %w", err)
 	}
@@ -145,7 +145,7 @@ func (d *Dump) Run(ctx context.Context) error {
 	)
 
 	hbw := heartbeat.NewWorker(heartbeat.NewWriter(d.st))
-	sd := schemadumper.New(d.st, d.cfg.Dump.Options)
+	sd := schemadumper.New(d.st, &d.cfg.Dump.MysqlOptions.Options)
 
 	dumper := datadump.NewDefaultDataDumper(tp, hbw, sd).
 		SetJobs(1)

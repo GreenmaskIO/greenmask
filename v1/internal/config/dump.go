@@ -2,6 +2,8 @@ package config
 
 import (
 	"github.com/greenmaskio/greenmask/v1/internal/common/models"
+	mysqlconfig "github.com/greenmaskio/greenmask/v1/internal/mysql/config"
+	pgconfig "github.com/greenmaskio/greenmask/v1/internal/pg/config"
 )
 
 /*
@@ -111,14 +113,21 @@ func (tc TransformationConfig) ToTransformationConfig() []models.TableConfig {
 	return tables
 }
 
+type MysqlDumpConfig struct {
+	Options mysqlconfig.DumpOptions `mapstructure:"options" yaml:"options" json:"options"`
+}
+
+type PostgresqlDumpConfig struct {
+	Options pgconfig.DumpOptions `mapstructure:"options" yaml:"options" json:"options"`
+}
+
 type Dump struct {
-	Options           options              `mapstructure:"options" yaml:"options" json:"options"`
+	MysqlOptions      MysqlDumpConfig      `mapstructure:"mysql" yaml:"mysql"`
+	PGOptions         PostgresqlDumpConfig `mapstructure:"postgresql" yaml:"postgresql"`
 	Transformation    TransformationConfig `mapstructure:"transformation" yaml:"transformation" json:"transformation,omitempty"`
 	VirtualReferences []VirtualReference   `mapstructure:"virtual_references" yaml:"virtual_references" json:"virtual_references,omitempty"`
 }
 
-func NewDump(o options) Dump {
-	return Dump{
-		Options: o,
-	}
+func NewDump() Dump {
+	return Dump{}
 }
