@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"slices"
 
+	"github.com/rs/zerolog/log"
+
 	"github.com/greenmaskio/greenmask/v1/internal/common/conditions"
 	commonininterfaces "github.com/greenmaskio/greenmask/v1/internal/common/interfaces"
 	commonmodels "github.com/greenmaskio/greenmask/v1/internal/common/models"
@@ -77,6 +79,10 @@ func (p *TableContextBuilder) initTable(
 	tableConfig commonmodels.TableConfig,
 	dumpQueries string,
 ) (TableContext, error) {
+	ctx = log.Ctx(ctx).With().
+		Str(commonmodels.MetaKeyTableSchema, table.Schema).
+		Str(commonmodels.MetaKeyTableName, table.Name).
+		Logger().WithContext(ctx)
 	driver, err := p.newTableDriver(vc, table, tableConfig.ColumnsTypeOverride)
 	if err != nil {
 		return TableContext{}, fmt.Errorf("new driver: %w", err)
@@ -84,7 +90,7 @@ func (p *TableContextBuilder) initTable(
 	if dumpQueries == "" && tableConfig.Query != "" {
 		dumpQueries = tableConfig.Query
 	}
-	tableCondition, err := p.compileTableCondition(vc, utils.Value(driver.Table()), tableConfig)
+	tableCondition, err := p.compileTableCondition(ctx, vc, utils.Value(driver.Table()), tableConfig)
 	if err != nil {
 		return TableContext{}, fmt.Errorf("compile table condition: %w", err)
 	}
@@ -109,11 +115,14 @@ func (p *TableContextBuilder) initTableTransformers(
 ) ([]*TransformerContext, error) {
 	res := make([]*TransformerContext, len(transformerConfigs))
 	for i := range transformerConfigs {
+		ctx := log.Ctx(ctx).With().
+			Str(commonmodels.MetaKeyTransformerName, transformerConfigs[i].Name).
+			Logger().WithContext(ctx)
 		transformer, err := p.initTransformer(ctx, vc, driver, transformerConfigs[i])
 		if err != nil {
 			return nil, fmt.Errorf("init transformer \"%s\": %w", transformerConfigs[i].Name, err)
 		}
-		transformerCond, err := p.compileTransformerCondition(vc, utils.Value(driver.Table()), transformerConfigs[i])
+		transformerCond, err := p.compileTransformerCondition(ctx, vc, utils.Value(driver.Table()), transformerConfigs[i])
 		if err != nil {
 			return nil, fmt.Errorf("compile transformer condition: %w", err)
 		}
@@ -177,17 +186,22 @@ func (p *TableContextBuilder) initTransformer(
 }
 
 func (p *TableContextBuilder) compileTransformerCondition(
+	ctx context.Context,
 	vc *validationcollector.Collector,
 	table commonmodels.Table,
 	transformerConfig commonmodels.TransformerConfig,
 ) (*conditions.WhenCond, error) {
+	//ctx = log.Ctx(ctx).With().
+	//	Any(commonmodels.MetaKeyConditionScope, "Table").
+	//	Logger().WithContext(ctx)
 	if transformerConfig.When == "" {
 		return nil, nil
 	}
-	return conditions.NewWhenCond(vc, transformerConfig.When, table)
+	return conditions.NewWhenCond(ctx, vc, transformerConfig.When, table)
 }
 
 func (p *TableContextBuilder) compileTableCondition(
+	ctx context.Context,
 	vc *validationcollector.Collector,
 	table commonmodels.Table,
 	tableConfig commonmodels.TableConfig,
@@ -195,5 +209,5 @@ func (p *TableContextBuilder) compileTableCondition(
 	if tableConfig.When == "" {
 		return nil, nil
 	}
-	return conditions.NewWhenCond(vc, tableConfig.When, table)
+	return conditions.NewWhenCond(ctx, vc, tableConfig.When, table)
 }

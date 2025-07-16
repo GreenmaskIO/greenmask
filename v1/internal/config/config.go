@@ -41,6 +41,7 @@ func NewConfig() *Config {
 }
 
 type Config struct {
+	Engine   string        `mapstructure:"engine" yaml:"engine" json:"engine"`
 	Common   Common        `mapstructure:"common" yaml:"common" json:"common"`
 	Log      Log           `mapstructure:"log" yaml:"log" json:"log"`
 	Storage  StorageConfig `mapstructure:"storage" yaml:"storage" json:"storage"`

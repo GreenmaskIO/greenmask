@@ -6,6 +6,8 @@ log:
   level: "debug"
   format: "text"
 
+engine: mysql
+
 storage:
   directory:
     path: "/home/vadim/tmp/storage/mysql"
@@ -21,6 +23,8 @@ storage:
 #      MYSQL_USER: admin
 #      MYSQL_PASSWORD: admin
 dump:
+  options:
+
   mysql:
     options:
       user: root
@@ -33,8 +37,10 @@ dump:
   transformation:
     - schema: "playground"
       name: "users"
+      when: "record.id == 1"
       transformers:
         - name: "Replace"
+          when: "record.id == 1"
           params:
             column: "username"
             value: "test"

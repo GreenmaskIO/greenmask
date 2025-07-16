@@ -73,7 +73,7 @@ func NewDump(
 }
 
 func (d *Dump) connect() (*sql.DB, error) {
-	connConfig, err := d.cfg.Dump.MysqlOptions.Options.ConnectionConfig()
+	connConfig, err := d.cfg.Dump.MysqlConfig.Options.ConnectionConfig()
 	if err != nil {
 		return nil, fmt.Errorf("get connection config: %w", err)
 	}
@@ -132,7 +132,7 @@ func (d *Dump) Run(ctx context.Context) error {
 		}
 	}()
 
-	i := introspect.NewIntrospector(&d.cfg.Dump.MysqlOptions.Options)
+	i := introspect.NewIntrospector(&d.cfg.Dump.MysqlConfig.Options)
 	if err := i.Introspect(ctx, tx); err != nil {
 		return fmt.Errorf("introspect mysql server: %w", err)
 	}
@@ -146,7 +146,7 @@ func (d *Dump) Run(ctx context.Context) error {
 	)
 
 	hbw := heartbeat.NewWorker(heartbeat.NewWriter(d.st))
-	sd := schemadumper.New(d.st, &d.cfg.Dump.MysqlOptions.Options)
+	sd := schemadumper.New(d.st, &d.cfg.Dump.MysqlConfig.Options)
 
 	dumper := datadump.NewDefaultDataDumper(tp, hbw, sd).
 		SetJobs(1)

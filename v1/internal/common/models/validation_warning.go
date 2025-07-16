@@ -31,7 +31,7 @@ const (
 )
 
 const (
-	MetaKeyEngine           = "mysql"
+	MetaKeyEngine           = "Engine"
 	MetaKeyDumpID           = "DumpID"
 	MetaKeyParameterName    = "ParameterName"
 	MetaKeyColumnName       = "ColumnName"
@@ -42,6 +42,8 @@ const (
 	MetaKeyColumnTypeName   = "ColumnTypeName"
 	MetaKeyError            = "Error"
 	MetaKeyUniqueDumpTaskID = "UniqueDumpTaskID"
+	MetaKeyTransformerName  = "TransformerName"
+	MetaKeyConditionScope   = "ConditionScope"
 )
 
 type ValidationWarnings []*ValidationWarning

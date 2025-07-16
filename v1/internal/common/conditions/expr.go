@@ -4,6 +4,7 @@
 package conditions
 
 import (
+	"context"
 	"fmt"
 	"unsafe"
 
@@ -40,6 +41,7 @@ type WhenCond struct {
 // and the record context with the functions for the columns. The functions represent the column names and return the
 // column values. If when condition is empty, the WhenCond object will always return true.
 func NewWhenCond(
+	ctx context.Context,
 	vc *validationcollector.Collector,
 	when string,
 	table commonmodels.Table,
@@ -50,7 +52,7 @@ func NewWhenCond(
 		err      error
 	)
 	if when != "" {
-		whenCond, rc, err = compileCond(vc, when, table)
+		whenCond, rc, err = compileCond(ctx, vc, when, table)
 		if err != nil {
 			return nil, fmt.Errorf("compile condition: %w", err)
 		}
@@ -89,6 +91,7 @@ func (wc *WhenCond) Evaluate(r commonininterfaces.Recorder) (bool, error) {
 // with the functions for the columns. The functions represent the column names and return the column values.
 // meta - additional meta information for debugging the compilation process
 func compileCond(
+	ctx context.Context,
 	vc *validationcollector.Collector,
 	whenCond string,
 	table commonmodels.Table,
@@ -101,12 +104,12 @@ func compileCond(
 		scope = metaTableTransformer
 	}
 	vc = vc.WithMeta(map[string]any{"Scope": scope})
-	log.Debug().
+	log.Ctx(ctx).Debug().
 		Str("WhenCond", whenCond).
 		Any("Meta", vc.GetMeta()).
 		Msg("found when condition: compiling")
 	rc, ops := newRecordContext(table)
-	ops = append(ops, expr.Patch(newExprPatcher(vc.GetMeta())))
+	ops = append(ops, expr.Patch(newExprPatcher(ctx, vc.GetMeta())))
 
 	cond, err := expr.Compile(whenCond, ops...)
 	if err != nil {
@@ -184,24 +187,26 @@ func newRecordContext(table commonmodels.Table) (*template.RecordContextReadOnly
 // exprPatcher - patcher for the expression compiler. It patches the expression tree by some identifiers to
 // function calls. For instance is null, is not null, records address
 type exprPatcher struct {
+	ctx  context.Context
 	meta map[string]any
 }
 
-func newExprPatcher(meta map[string]any) *exprPatcher {
+func newExprPatcher(ctx context.Context, meta map[string]any) *exprPatcher {
 	return &exprPatcher{
+		ctx:  ctx,
 		meta: meta,
 	}
 }
 
 func (ep *exprPatcher) Visit(node *ast.Node) {
-	log.Debug().
+	log.Ctx(ep.ctx).Debug().
 		Any("Meta", ep.meta).
 		Any("Node", node).
 		Type("NodeType", *node).
 		Str("NodeFmt", fmt.Sprintf("%+v", *node)).
 		Msg("debugging expr tree nodes")
 	if isRecordOp(node) {
-		patchRecordOp(node)
+		patchRecordOp(ep.ctx, node)
 	}
 }
 
@@ -225,7 +230,7 @@ func isRecordOp(node *ast.Node) bool {
 // patchRecordOp patches the record access operation
 // 1. record.id -> __id() function call for decoding the column value into type using pgx driver
 // 2. raw_record.id -> __raw_id() function call getting a raw value as a string
-func patchRecordOp(node *ast.Node) {
+func patchRecordOp(ctx context.Context, node *ast.Node) {
 	mn, ok := (*node).(*ast.MemberNode)
 	if !ok {
 		return
@@ -255,7 +260,10 @@ func patchRecordOp(node *ast.Node) {
 		}
 	}
 
-	log.Debug().Any("OriginalNode", node).Any("NewNode", newOp).Msg("patching record operation")
+	log.Ctx(ctx).Debug().
+		Any("OriginalNode", node).
+		Any("NewNode", newOp).
+		Msg("patching record operation")
 	ast.Patch(node, newOp)
 
 }

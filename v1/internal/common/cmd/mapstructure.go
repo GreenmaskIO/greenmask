@@ -3,9 +3,13 @@ package cmd
 import (
 	"errors"
 	"fmt"
+	"strings"
 
+	"github.com/go-viper/mapstructure/v2"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+
+	"github.com/greenmaskio/greenmask/v1/internal/config"
 )
 
 var (
@@ -13,12 +17,89 @@ var (
 	errFlagIsNotRegistered = errors.New("flag is not registered")
 )
 
+var (
+	configFlag = Flag{
+		Name:         "config",
+		Shorthand:    "",
+		Usage:        "Path to config file. Can be JSON or YAML format.",
+		BindToConfig: false,
+		Type:         FlagTypeString,
+		Default:      "",
+		IsRequired:   true,
+	}
+)
+
+func initConfig(cfgFile string, cfg *config.Config) error {
+	if cfgFile != "" {
+		viper.SetConfigFile(cfgFile)
+		if err := viper.ReadInConfig(); err != nil {
+			return fmt.Errorf("error reading config file, %s", err)
+		}
+	}
+
+	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
+	viper.AutomaticEnv()
+
+	decoderCfg := func(cfg *mapstructure.DecoderConfig) {
+		cfg.DecodeHook = mapstructure.ComposeDecodeHookFunc(
+			config.ParamsToByteSliceHookFunc(),
+			mapstructure.StringToTimeDurationHookFunc(),
+			mapstructure.StringToSliceHookFunc(","),
+		)
+		cfg.ErrorUnused = true
+	}
+
+	if err := viper.Unmarshal(cfg, decoderCfg); err != nil {
+		return fmt.Errorf("unmarshall config, %s", err)
+	}
+
+	if cfgFile != "" {
+		// This solves problem with map structure described -> https://github.com/spf13/viper/issues/373
+		// that caused issue in Greenmask https://github.com/GreenmaskIO/greenmask/issues/76
+		if err := config.ParseTransformerParamsManually(cfgFile, cfg); err != nil {
+			return fmt.Errorf("parse transformation config: %w", err)
+		}
+	}
+	return nil
+}
+
 type Command struct {
 	*cobra.Command
 	parent       *Command
-	mainCfg      any
 	otherConfigs map[string]any
 	flags        []Flag
+	configPath   string
+	config       *config.Config
+	IsRoot       bool
+}
+
+func MustRootCommand(cobraCmd *cobra.Command, version string, flags ...Flag) *Command {
+	cmd, err := NewRootCommand(cobraCmd, version, flags...)
+	if err != nil {
+		panic(err)
+	}
+	return cmd
+}
+
+func NewRootCommand(cobraCmd *cobra.Command, version string, flags ...Flag) (*Command, error) {
+	rootCmd, err := NewCommand(cobraCmd, flags...)
+	if err != nil {
+		return nil, fmt.Errorf("create root command: %w", err)
+	}
+	rootCmd.PersistentFlags().StringVar(&rootCmd.configPath, "config", "", "config file ")
+	rootCmd.config = config.NewConfig()
+	rootCmd.Command.Version = version
+	rootCmd.IsRoot = true
+	rootCmd.PersistentPreRunE = func(cmd *cobra.Command, args []string) error {
+		cmd.InitDefaultCompletionCmd()
+		cmd.InitDefaultHelpCmd()
+		cmd.InitDefaultVersionFlag()
+		if err := initConfig(rootCmd.configPath, rootCmd.config); err != nil {
+			return fmt.Errorf("init config: %w", err)
+		}
+		return nil
+	}
+	return rootCmd, nil
 }
 
 func MustCommand(cobraCmd *cobra.Command, flags ...Flag) *Command {
@@ -115,7 +196,7 @@ func (c *Command) registerFlag(opt Flag) error {
 	case FlagTypeBool:
 		return c.registerBool(opt)
 	case FlagTypeStringSlice:
-		return c.registerBool(opt)
+		return c.registerStringSlice(opt)
 	case FlagTypeInt:
 		return c.registerInt(opt)
 	case FlagRegisterInt32:
@@ -132,7 +213,7 @@ func (c *Command) register(opt Flag) error {
 	if err := opt.Validate(); err != nil {
 		return fmt.Errorf("validate flag: %w", err)
 	}
-	if err := c.registerString(opt); err != nil {
+	if err := c.registerFlag(opt); err != nil {
 		return fmt.Errorf("register flag: %w", err)
 	}
 	if !opt.BindToConfig {
@@ -178,4 +259,14 @@ func (c *Command) AddCommand(cmds ...*Command) *Command {
 
 func (c *Command) Parent() *Command {
 	return c.parent
+}
+
+func (c *Command) MustGetConfig() *config.Config {
+	if c.IsRoot {
+		if c.config != nil {
+			return c.config
+		}
+		panic("config is not set for root command")
+	}
+	return c.parent.MustGetConfig()
 }
