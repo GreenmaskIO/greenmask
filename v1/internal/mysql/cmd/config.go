@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"github.com/greenmaskio/greenmask/v1/internal/config"
-	mysqlconfig "github.com/greenmaskio/greenmask/v1/internal/mysql/config"
 )
 
 const (
@@ -10,5 +9,5 @@ const (
 )
 
 var (
-	Config = config.NewConfig(mysqlconfig.NewDumpOptions())
+	Config = config.NewConfig()
 )

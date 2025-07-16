@@ -13,7 +13,7 @@ import (
 	"github.com/greenmaskio/greenmask/v1/internal/common/record"
 	"github.com/greenmaskio/greenmask/v1/internal/common/subset"
 	"github.com/greenmaskio/greenmask/v1/internal/common/tabledriver"
-	transformerutils "github.com/greenmaskio/greenmask/v1/internal/common/transformers/registry"
+	"github.com/greenmaskio/greenmask/v1/internal/common/transformers/registry"
 	"github.com/greenmaskio/greenmask/v1/internal/common/validationcollector"
 	mysqldbmsdriver "github.com/greenmaskio/greenmask/v1/internal/mysql/dbmsdriver"
 	mysqlmodels "github.com/greenmaskio/greenmask/v1/internal/mysql/models"
@@ -32,7 +32,7 @@ func newMysqlTableDriver(
 type TaskProducer struct {
 	introspector commonininterfaces.Introspector
 	tableConfigs []commonmodels.TableConfig
-	registry     *transformerutils.TransformerRegistry
+	registry     *registry.TransformerRegistry
 	connConfig   mysqlmodels.ConnConfig
 	st           storages.Storager
 }
@@ -40,7 +40,7 @@ type TaskProducer struct {
 func New(
 	i commonininterfaces.Introspector,
 	tableConfigs []commonmodels.TableConfig,
-	registry *transformerutils.TransformerRegistry,
+	registry *registry.TransformerRegistry,
 	connConfig mysqlmodels.ConnConfig,
 	st storages.Storager,
 ) *TaskProducer {
