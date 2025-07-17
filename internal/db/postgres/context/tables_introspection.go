@@ -176,60 +176,58 @@ func getTableConstraints(ctx context.Context, tx pgx.Tx, tableOid toolkit.Oid, v
 		default:
 			return nil, fmt.Errorf("unknown constraint type %c", constraintType)
 		}
-
-		if err != nil {
-			return nil, fmt.Errorf("cannot scan tableConstraintsQuery: %w", err)
-		}
 		constraints = append(constraints, c)
 	}
 
-	// Add FK references to PK
-	buf := bytes.NewBuffer(nil)
-	err = TablePrimaryKeyReferencesConstraintsQuery.Execute(
-		buf,
-		map[string]int{"Version": version},
-	)
-	if err != nil {
-		return nil, fmt.Errorf("error templating TablePrimaryKeyReferencesConstraintsQuery: %w", err)
-	}
-	fkRows, err := tx.Query(ctx, buf.String(), tableOid)
-	if err != nil {
-		return nil, fmt.Errorf("cannot execute tableConstraintsQuery: %w", err)
-	}
-	defer fkRows.Close()
-
-	for fkRows.Next() {
-		var constraintOid, onTableOid toolkit.Oid
-		var constraintName, constraintSchema, constraintDefinition, onTableSchema, onTableName string
-		var constraintColumns []toolkit.AttNum
-
-		err = fkRows.Scan(
-			&constraintOid, &constraintSchema, &constraintName, &onTableOid,
-			&onTableSchema, &onTableName, &constraintColumns, &constraintDefinition,
+	if pk != nil {
+		// Add FK references to PK
+		buf := bytes.NewBuffer(nil)
+		err = TablePrimaryKeyReferencesConstraintsQuery.Execute(
+			buf,
+			map[string]int{"Version": version},
 		)
 		if err != nil {
-			return nil, fmt.Errorf("unable to build constraints list: %w", err)
+			return nil, fmt.Errorf("error templating TablePrimaryKeyReferencesConstraintsQuery: %w", err)
 		}
+		fkRows, err := tx.Query(ctx, buf.String(), tableOid)
+		if err != nil {
+			return nil, fmt.Errorf("cannot execute tableConstraintsQuery: %w", err)
+		}
+		defer fkRows.Close()
 
-		pk.References = append(pk.References, &toolkit.LinkedTable{
-			Oid:    onTableOid,
-			Schema: onTableSchema,
-			Name:   onTableName,
-			Constraint: &toolkit.ForeignKey{
-				DefaultConstraintDefinition: toolkit.DefaultConstraintDefinition{
-					Schema:     constraintSchema,
-					Name:       constraintName,
-					Oid:        constraintOid,
-					Columns:    constraintColumns,
-					Definition: constraintDefinition,
+		for fkRows.Next() {
+			var constraintOid, onTableOid toolkit.Oid
+			var constraintName, constraintSchema, constraintDefinition, onTableSchema, onTableName string
+			var constraintColumns []toolkit.AttNum
+
+			err = fkRows.Scan(
+				&constraintOid, &constraintSchema, &constraintName, &onTableOid,
+				&onTableSchema, &onTableName, &constraintColumns, &constraintDefinition,
+			)
+			if err != nil {
+				return nil, fmt.Errorf("unable to build constraints list: %w", err)
+			}
+
+			pk.References = append(pk.References, &toolkit.LinkedTable{
+				Oid:    onTableOid,
+				Schema: onTableSchema,
+				Name:   onTableName,
+				Constraint: &toolkit.ForeignKey{
+					DefaultConstraintDefinition: toolkit.DefaultConstraintDefinition{
+						Schema:     constraintSchema,
+						Name:       constraintName,
+						Oid:        constraintOid,
+						Columns:    constraintColumns,
+						Definition: constraintDefinition,
+					},
+					ReferencedTable: toolkit.LinkedTable{
+						Schema: onTableSchema,
+						Name:   onTableName,
+						Oid:    onTableOid,
+					},
 				},
-				ReferencedTable: toolkit.LinkedTable{
-					Schema: onTableSchema,
-					Name:   onTableName,
-					Oid:    onTableOid,
-				},
-			},
-		})
+			})
+		}
 	}
 
 	return constraints, nil
