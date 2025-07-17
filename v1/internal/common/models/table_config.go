@@ -1,14 +1,14 @@
 package models
 
 type TableConfig struct {
-	Schema              string
-	Name                string
-	Query               string
-	ApplyForInherited   bool
-	Transformers        []TransformerConfig
-	ColumnsTypeOverride map[string]string
-	SubsetConds         []string
-	When                string
+	Schema              string              `json:"schema"`
+	Name                string              `json:"name"`
+	Query               string              `json:"query"`
+	ApplyForInherited   bool                `json:"apply_for_inherited"`
+	Transformers        []TransformerConfig `json:"transformers"`
+	ColumnsTypeOverride map[string]string   `json:"columns_type_override"`
+	SubsetConds         []string            `json:"subset_conds"`
+	When                string              `json:"when"`
 }
 
 func NewTableConfig(

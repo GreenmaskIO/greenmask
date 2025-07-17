@@ -19,6 +19,7 @@ import (
 	"github.com/greenmaskio/greenmask/v1/internal/config"
 	"github.com/greenmaskio/greenmask/v1/internal/mysql/dbmsdriver"
 	"github.com/greenmaskio/greenmask/v1/internal/mysql/introspect"
+	"github.com/greenmaskio/greenmask/v1/internal/mysql/metadata"
 	mysqlmodels "github.com/greenmaskio/greenmask/v1/internal/mysql/models"
 	"github.com/greenmaskio/greenmask/v1/internal/mysql/schemadumper"
 	"github.com/greenmaskio/greenmask/v1/internal/mysql/taskproducer"
@@ -113,6 +114,7 @@ For tables:
 - Produce TransformationPipelineDumper - executes transformer one by one and valudates conditions.
 */
 func (d *Dump) Run(ctx context.Context) error {
+	startedAt := time.Now()
 	conn, err := d.connect()
 	if err != nil {
 		return fmt.Errorf("connect to mysql: %w", err)
@@ -152,10 +154,17 @@ func (d *Dump) Run(ctx context.Context) error {
 		SetJobs(1)
 
 	defer func() {
-		_ = utils.PrintValidationWarnings(ctx, d.vc, nil, true)
+		_ = utils.PrintValidationWarnings(ctx, d.vc, nil, false)
 	}()
 	if err := dumper.Run(ctx, d.vc); err != nil {
 		return fmt.Errorf("run dumper: %w", err)
+	}
+	completedAt := time.Now()
+	if err := metadata.WriteMetadata(
+		ctx, d.st, d.cfg.Dump.Transformation.ToTransformationConfig(),
+		startedAt, completedAt, dumper.GetStats(), i.GetCommonTables(),
+	); err != nil {
+		return fmt.Errorf("write metadata: %w", err)
 	}
 	return nil
 }

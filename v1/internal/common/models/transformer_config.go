@@ -3,11 +3,11 @@ package models
 import "maps"
 
 type TransformerConfig struct {
-	Name               string
-	ApplyForReferences bool
-	StaticParams       map[string]ParamsValue
-	DynamicParams      map[string]DynamicParamValue
-	When               string
+	Name               string                       `json:"name"`
+	ApplyForReferences bool                         `json:"apply_for_references"`
+	StaticParams       map[string]ParamsValue       `json:"static_params"`
+	DynamicParams      map[string]DynamicParamValue `json:"dynamic_params"`
+	When               string                       `json:"when,omitempty"`
 }
 
 func NewTransformerConfig(

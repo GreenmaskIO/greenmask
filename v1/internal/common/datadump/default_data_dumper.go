@@ -8,6 +8,7 @@ import (
 	"golang.org/x/sync/errgroup"
 
 	commonininterfaces "github.com/greenmaskio/greenmask/v1/internal/common/interfaces"
+	commonmodels "github.com/greenmaskio/greenmask/v1/internal/common/models"
 	"github.com/greenmaskio/greenmask/v1/internal/common/validationcollector"
 	"github.com/greenmaskio/greenmask/v1/internal/storages"
 )
@@ -37,6 +38,7 @@ type DefaultDataDumper struct {
 	jobs         int
 	taskList     []commonininterfaces.Dumper
 	schemaDumper schemaDumper
+	stats        []commonmodels.DumpStat
 }
 
 func NewDefaultDataDumper(
@@ -72,6 +74,10 @@ func (dr *DefaultDataDumper) Run(ctx context.Context, vc *validationcollector.Co
 		return fmt.Errorf("data dump: %w", err)
 	}
 	return nil
+}
+
+func (dr *DefaultDataDumper) GetStats() []commonmodels.DumpStat {
+	return dr.stats
 }
 
 func (dr *DefaultDataDumper) dataDump(ctx context.Context) error {
@@ -170,10 +176,11 @@ func (dr *DefaultDataDumper) dumpWorker(
 			Any("ObjectName", task.DebugInfo()).
 			Msgf("dumping started")
 
-		_, err := task.Dump(ctx)
+		stat, err := task.Dump(ctx)
 		if err != nil {
 			return fmt.Errorf(`dump task '%s': %w`, task.DebugInfo(), err)
 		}
+		dr.stats = append(dr.stats, stat)
 
 		log.Ctx(ctx).Debug().
 			Int("WorkerId", id).

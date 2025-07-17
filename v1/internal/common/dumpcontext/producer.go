@@ -191,9 +191,9 @@ func (p *TableContextBuilder) compileTransformerCondition(
 	table commonmodels.Table,
 	transformerConfig commonmodels.TransformerConfig,
 ) (*conditions.WhenCond, error) {
-	//ctx = log.Ctx(ctx).With().
-	//	Any(commonmodels.MetaKeyConditionScope, "Table").
-	//	Logger().WithContext(ctx)
+	ctx = log.Ctx(ctx).With().
+		Any(commonmodels.MetaKeyConditionScope, "Transformer").
+		Logger().WithContext(ctx)
 	if transformerConfig.When == "" {
 		return nil, nil
 	}
@@ -206,6 +206,9 @@ func (p *TableContextBuilder) compileTableCondition(
 	table commonmodels.Table,
 	tableConfig commonmodels.TableConfig,
 ) (*conditions.WhenCond, error) {
+	ctx = log.Ctx(ctx).With().
+		Any(commonmodels.MetaKeyConditionScope, "Table").
+		Logger().WithContext(ctx)
 	if tableConfig.When == "" {
 		return nil, nil
 	}
