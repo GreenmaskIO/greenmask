@@ -17,22 +17,22 @@ type Table struct {
 	// ID - runtime identifier of the table.
 	// It's important to fill ID of a table in runtime. And this ID is an index of table
 	// in the table slice.
-	ID int
+	ID int `json:"id"`
 	// Schema - schema name of the table.
-	Schema string
+	Schema string `json:"schema"`
 	// Name - name of the table.
-	Name    string
-	Columns []Column
+	Name    string   `json:"name"`
+	Columns []Column `json:"columns"`
 	// Size - size of the table in bytes.
-	Size int64
+	Size int64 `json:"size"`
 	// PrimaryKey - list of primary key column names.
-	PrimaryKey []string
+	PrimaryKey []string `json:"primary_key"`
 	// References - list of references to other tables.
-	References []Reference
-	// SubsetConditions - list of conditions that are used to filter the table data.
-	SubsetConditions []string
+	References []Reference `json:"-"`
+	// SubsetConditions - list of conditions  that are used to filter the table data.
+	SubsetConditions []string `json:"-"`
 	// Constraints - list of constraints that are defined on the table.
-	Constraints []Constraint
+	Constraints []Constraint `json:"-"`
 }
 
 // FullTableName - returns the full table name.
@@ -61,18 +61,18 @@ type VirtualOID uint32
 
 type Column struct {
 	// Idx - column number in the table. It preserves the order of columns in the defined table.
-	Idx int
+	Idx int `json:"idx"`
 	// Name - name of the column.
-	Name string
+	Name string `json:"name"`
 	// TypeName - name of the column type, e.g. "integer", "text", "boolean", etc.
-	TypeName string
+	TypeName string `json:"type_name"`
 	// NotNull - indicates whether the column is NOT NULL.
-	NotNull bool
+	NotNull bool `json:"not_null"`
 	// TypeOID - OID of the column type in PostgreSQL. For other DBMS that does not have OIDs,
 	// this is just a unique identifier of the type in the greenmask implementation.
-	TypeOID VirtualOID
+	TypeOID VirtualOID `json:"type_oid"`
 	// Name - column number in the table. It is used to identify the column in the tuple.
-	Length int
+	Length int `json:"length"`
 }
 
 func NewColumn(idx int, name string, colTyp string, oid VirtualOID, notNull bool) Column {

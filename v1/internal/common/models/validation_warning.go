@@ -31,7 +31,7 @@ const (
 )
 
 const (
-	MetaKeyEngine           = "mysql"
+	MetaKeyEngine           = "Engine"
 	MetaKeyDumpID           = "DumpID"
 	MetaKeyParameterName    = "ParameterName"
 	MetaKeyColumnName       = "ColumnName"
@@ -42,6 +42,8 @@ const (
 	MetaKeyColumnTypeName   = "ColumnTypeName"
 	MetaKeyError            = "Error"
 	MetaKeyUniqueDumpTaskID = "UniqueDumpTaskID"
+	MetaKeyTransformerName  = "TransformerName"
+	MetaKeyConditionScope   = "ConditionScope"
 )
 
 type ValidationWarnings []*ValidationWarning
@@ -86,7 +88,7 @@ func (re *ValidationWarning) SetSeverity(severity ValidationSeverity) *Validatio
 }
 
 func (re *ValidationWarning) SetError(v error) *ValidationWarning {
-	re.Meta[MetaKeyError] = v
+	re.Meta[MetaKeyError] = v.Error()
 	return re
 }
 

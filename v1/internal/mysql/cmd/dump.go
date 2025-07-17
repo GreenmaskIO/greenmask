@@ -15,14 +15,11 @@
 package cmd
 
 import (
-	"context"
 	"fmt"
 
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-
-	"github.com/greenmaskio/greenmask/v1/internal/mysql"
 )
 
 var (
@@ -34,9 +31,7 @@ var (
 )
 
 func run(cmd *cobra.Command, args []string) {
-	if err := mysql.RunDump(context.Background(), Config); err != nil {
-		log.Fatal().Err(err).Msg("")
-	}
+	return
 }
 
 func init() {

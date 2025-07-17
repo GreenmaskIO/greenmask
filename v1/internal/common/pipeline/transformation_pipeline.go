@@ -69,7 +69,7 @@ func (tp *TransformationPipeline) Init(ctx context.Context) error {
 
 func (tp *TransformationPipeline) Transform(ctx context.Context, r commoninterfaces.Recorder) error {
 	for _, t := range tp.tableContext.TransformerContext {
-		needTransform, err := t.WhenCond.Evaluate(r)
+		needTransform, err := t.EvaluateWhen(r)
 		if err != nil {
 			log.Ctx(ctx).Warn().Err(err).Msg("error evaluating transformer")
 			return fmt.Errorf("evaluate transformer condition: %w", err)

@@ -1,14 +1,17 @@
 common:
-  bin_path: "/usr/bin/"
+  bin_path: "/opt/homebrew/opt/mysql@8.0/bin/mysqldump"
   tmp_dir: "/tmp"
 
 log:
   level: "debug"
   format: "text"
 
+engine: mysql
+
 storage:
   directory:
     path: "/home/vadim/tmp/storage/mysql"
+#    path: "/Users/vadim/tmp/storage/mysql"
 #  s3:
 #    endpoint: "http://localhost:9000"
 #    bucket: "testbucket"
@@ -21,10 +24,24 @@ storage:
 #      MYSQL_PASSWORD: admin
 dump:
   options:
-    user: root
-    password: 1234
-    connect_database: playground
-    databases: playground
-    host: 127.0.0.1
-    port: 3306
+
+  mysql:
+    options:
+      user: root
+      password: 1234
+      connect_database: playground
+      databases: playground
+      host: 127.0.0.1
+      port: 3306
+
+  transformation:
+    - schema: "playground"
+      name: "users"
+      when: "record.id == 1"
+      transformers:
+        - name: "Replace"
+          when: "record.id == 1"
+          params:
+            column: "username"
+            value: "test"
 

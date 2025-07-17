@@ -30,7 +30,7 @@ func (t *Table) ToCommonTable() models.Table {
 			i,
 			col.Name,
 			col.TypeName,
-			0, // TypeOID is not used in common.Table
+			col.TypeOID,
 			col.NotNull,
 		)
 	}

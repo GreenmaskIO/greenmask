@@ -43,7 +43,7 @@ func InitParameters(
 		return nil, commonmodels.ErrFatalValidationError
 	}
 
-	otherParams, err := initOtherParameters(vc, driver, otherParamsDef, staticValues, dynamicValues)
+	otherParams, err := initOtherParameters(vc, driver, otherParamsDef, staticValues, dynamicValues, columnParams)
 	if err != nil {
 		return nil, fmt.Errorf("initialize non-column parameters: %w", err)
 	}
@@ -208,8 +208,17 @@ func initOtherParameters(
 	otherParamsDef []*ParameterDefinition,
 	staticValues map[string]models.ParamsValue,
 	dynamicValues map[string]models.DynamicParamValue,
+	columnParams map[string]Parameterizer,
 ) (map[string]Parameterizer, error) {
 	params := make(map[string]Parameterizer)
+	assertedColumnParameters := make(map[string]*StaticParameter, len(columnParams))
+	for k, v := range columnParams {
+		vv, ok := v.(*StaticParameter)
+		if !ok {
+			panic("invalid parameter type")
+		}
+		assertedColumnParameters[k] = vv
+	}
 	for _, pd := range otherParamsDef {
 		dynamicValue, ok := dynamicValues[pd.Name]
 		if ok {
@@ -220,7 +229,7 @@ func initOtherParameters(
 				vc.WithMeta(
 					map[string]any{"ParameterName": pd.Name},
 				),
-				nil,
+				assertedColumnParameters,
 				dynamicValue,
 			); err != nil {
 				return nil, fmt.Errorf("initialize dynamic parameter \"%s\": %w", pd.Name, err)
@@ -233,9 +242,9 @@ func initOtherParameters(
 		sp := NewStaticParameter(pd, driver)
 		if err := sp.Init(
 			vc.WithMeta(
-				map[string]any{"ParameterName": pd.Name},
+				map[string]any{commonmodels.MetaKeyParameterName: pd.Name},
 			),
-			nil,
+			assertedColumnParameters,
 			staticValue,
 		); err != nil {
 			return nil, fmt.Errorf("initialize static parameter \"%s\": %w", pd.Name, err)

@@ -11,6 +11,7 @@ import (
 	"github.com/greenmaskio/greenmask/v1/internal/common/mocks"
 	commonmodels "github.com/greenmaskio/greenmask/v1/internal/common/models"
 	"github.com/greenmaskio/greenmask/v1/internal/common/transformers/parameters"
+	"github.com/greenmaskio/greenmask/v1/internal/common/transformers/registry"
 	transformerutils "github.com/greenmaskio/greenmask/v1/internal/common/transformers/utils"
 	"github.com/greenmaskio/greenmask/v1/internal/common/utils"
 	"github.com/greenmaskio/greenmask/v1/internal/common/validationcollector"
@@ -70,7 +71,7 @@ func TestProducer_Produce(t *testing.T) {
 
 		//_, newFunc := mocks.NewTransformerMock()
 
-		tr := transformerutils.NewTransformerRegistry()
+		tr := registry.NewTransformerRegistry()
 		//tr.MustRegister(
 		//	transformerutils.NewTransformerDefinition(
 		//		transformerutils.NewTransformerProperties("Test", "test desc"),
@@ -112,7 +113,7 @@ func TestProducer_Produce(t *testing.T) {
 			return tableDriverMock, nil
 		}
 
-		tr := transformerutils.NewTransformerRegistry()
+		tr := registry.NewTransformerRegistry()
 
 		p := New(tables, dumpQueries, nil, newDriverFuncMock, tr)
 		ctx := context.Background()
@@ -149,7 +150,7 @@ func TestProducer_Produce(t *testing.T) {
 			},
 		}
 
-		tr := transformerutils.NewTransformerRegistry()
+		tr := registry.NewTransformerRegistry()
 
 		p := New(tables, dumpQueries, tableConfigs, newDriverFuncMock, tr)
 		ctx := context.Background()
@@ -185,7 +186,7 @@ func TestProducer_Produce(t *testing.T) {
 			},
 		}
 
-		tr := transformerutils.NewTransformerRegistry()
+		tr := registry.NewTransformerRegistry()
 
 		p := New(tables, dumpQueries, tableConfigs, newDriverFuncMock, tr)
 		ctx := context.Background()
@@ -221,7 +222,7 @@ func TestProducer_Produce(t *testing.T) {
 			},
 		}
 
-		tr := transformerutils.NewTransformerRegistry()
+		tr := registry.NewTransformerRegistry()
 
 		p := New(tables, dumpQueries, tableConfigs, newDriverFuncMock, tr)
 		ctx := context.Background()
@@ -272,7 +273,7 @@ func TestProducer_Produce(t *testing.T) {
 			return nil
 		})
 
-		tr := transformerutils.NewTransformerRegistry()
+		tr := registry.NewTransformerRegistry()
 		tr.MustRegister(
 			transformerutils.NewTransformerDefinition(
 				transformerutils.NewTransformerProperties("TestTransformer", "test desc"),
@@ -353,7 +354,7 @@ func TestProducer_Produce(t *testing.T) {
 			return nil
 		})
 
-		tr := transformerutils.NewTransformerRegistry()
+		tr := registry.NewTransformerRegistry()
 		tr.MustRegister(
 			transformerutils.NewTransformerDefinition(
 				transformerutils.NewTransformerProperties("TestTransformer", "test desc"),
@@ -411,7 +412,7 @@ func TestProducer_Produce(t *testing.T) {
 			return tableDriverMock, nil
 		}
 
-		tr := transformerutils.NewTransformerRegistry()
+		tr := registry.NewTransformerRegistry()
 
 		tableConfigs := []commonmodels.TableConfig{
 			{
@@ -473,7 +474,7 @@ func TestProducer_Produce(t *testing.T) {
 			return nil
 		})
 
-		tr := transformerutils.NewTransformerRegistry()
+		tr := registry.NewTransformerRegistry()
 		tr.MustRegister(
 			transformerutils.NewTransformerDefinition(
 				transformerutils.NewTransformerProperties("TestTransformer", "test desc"),

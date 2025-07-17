@@ -1,10 +1,10 @@
 package models
 
 type DynamicParamValue struct {
-	Column       string
-	CastTo       string
-	Template     string
-	DefaultValue ParamsValue
+	Column       string      `json:"column"`
+	CastTo       string      `json:"cast_to,omitempty"`
+	Template     string      `json:"template,omitempty"`
+	DefaultValue ParamsValue `json:"default_value,omitempty"`
 }
 
 func NewDynamicParamValue(

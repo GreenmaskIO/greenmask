@@ -12,6 +12,13 @@ type TransformerContext struct {
 	WhenCond    *conditions.WhenCond
 }
 
+func (tc *TransformerContext) EvaluateWhen(r commonininterfaces.Recorder) (bool, error) {
+	if tc.WhenCond == nil {
+		return true, nil
+	}
+	return tc.WhenCond.Evaluate(r)
+}
+
 // TableContext - everything related to the table that must be applied for a record.
 // It contains table, transformers, dump query, table driver and conditions.
 type TableContext struct {

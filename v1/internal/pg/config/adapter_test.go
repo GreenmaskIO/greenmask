@@ -12,16 +12,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package main
+package config
 
 import (
-	"github.com/rs/zerolog/log"
+	"testing"
 
-	"github.com/greenmaskio/greenmask/v1/internal/mysql/cmd"
+	"github.com/stretchr/testify/assert"
 )
 
-func main() {
-	if err := cmd.Execute(); err != nil {
-		log.Fatal().Err(err).Msg("")
-	}
+func TestParser_AdaptRegexp(t *testing.T) {
+	testStr := `asda"As"?as*a"Te""sT"`
+	expectedStr := `^(asdaAs.as.*aTe"sT)$`
+	res, err := AdaptRegexp(testStr)
+	assert.NoError(t, err)
+	assert.Equal(t, expectedStr, res)
 }

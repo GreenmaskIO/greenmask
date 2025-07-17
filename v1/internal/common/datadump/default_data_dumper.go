@@ -8,6 +8,7 @@ import (
 	"golang.org/x/sync/errgroup"
 
 	commonininterfaces "github.com/greenmaskio/greenmask/v1/internal/common/interfaces"
+	commonmodels "github.com/greenmaskio/greenmask/v1/internal/common/models"
 	"github.com/greenmaskio/greenmask/v1/internal/common/validationcollector"
 	"github.com/greenmaskio/greenmask/v1/internal/storages"
 )
@@ -37,6 +38,7 @@ type DefaultDataDumper struct {
 	jobs         int
 	taskList     []commonininterfaces.Dumper
 	schemaDumper schemaDumper
+	stats        []commonmodels.DumpStat
 }
 
 func NewDefaultDataDumper(
@@ -74,10 +76,14 @@ func (dr *DefaultDataDumper) Run(ctx context.Context, vc *validationcollector.Co
 	return nil
 }
 
+func (dr *DefaultDataDumper) GetStats() []commonmodels.DumpStat {
+	return dr.stats
+}
+
 func (dr *DefaultDataDumper) dataDump(ctx context.Context) error {
 	tasks := make(chan commonininterfaces.Dumper, dr.jobs)
 
-	log.Debug().Msgf("planned %d workers", dr.jobs)
+	log.Ctx(ctx).Debug().Msgf("planned %d workers", dr.jobs)
 	done := make(chan struct{})
 	eg, egCtx := errgroup.WithContext(ctx)
 	// write heart beat file writer worker
@@ -90,7 +96,7 @@ func (dr *DefaultDataDumper) dataDump(ctx context.Context) error {
 	if err := eg.Wait(); err != nil {
 		return fmt.Errorf("at least one worker exited with error: %w", err)
 	}
-	log.Debug().Msg("all the data have been dumped")
+	log.Ctx(ctx).Debug().Msg("all the data have been dumped")
 	return nil
 }
 
@@ -152,30 +158,31 @@ func (dr *DefaultDataDumper) dumpWorker(
 		var ok bool
 		select {
 		case <-ctx.Done():
-			log.Debug().
+			log.Ctx(ctx).Debug().
 				Int("WorkerId", id).
 				Msgf("exited due to context cancellation")
 			return nil
 		case task, ok = <-tasks:
 			if !ok {
-				log.Debug().
+				log.Ctx(ctx).Debug().
 					Err(ctx.Err()).
 					Int("WorkerId", id).
 					Msgf("exited normally")
 				return nil
 			}
 		}
-		log.Debug().
+		log.Ctx(ctx).Debug().
 			Int("WorkerId", id).
 			Any("ObjectName", task.DebugInfo()).
 			Msgf("dumping started")
 
-		_, err := task.Dump(ctx)
+		stat, err := task.Dump(ctx)
 		if err != nil {
 			return fmt.Errorf(`dump task '%s': %w`, task.DebugInfo(), err)
 		}
+		dr.stats = append(dr.stats, stat)
 
-		log.Debug().
+		log.Ctx(ctx).Debug().
 			Int("WorkerId", id).
 			Any("ObjectName", task.DebugInfo()).
 			Msgf("dumping is done")

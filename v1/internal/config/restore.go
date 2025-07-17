@@ -31,8 +31,6 @@ type Restore struct {
 	ErrorExclusions DataRestorationErrorExclusions `mapstructure:"insert_error_exclusions" yaml:"insert_error_exclusions" json:"insert_error_exclusions,omitempty"`
 }
 
-func NewRestore(o options) Restore {
-	return Restore{
-		Options: o,
-	}
+func NewRestore() Restore {
+	return Restore{}
 }

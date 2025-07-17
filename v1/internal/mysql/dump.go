@@ -13,15 +13,21 @@ import (
 	commonininterfaces "github.com/greenmaskio/greenmask/v1/internal/common/interfaces"
 	commonmodels "github.com/greenmaskio/greenmask/v1/internal/common/models"
 	"github.com/greenmaskio/greenmask/v1/internal/common/tabledriver"
-	utils2 "github.com/greenmaskio/greenmask/v1/internal/common/transformers/utils"
+	utils2 "github.com/greenmaskio/greenmask/v1/internal/common/transformers/registry"
+	"github.com/greenmaskio/greenmask/v1/internal/common/utils"
 	"github.com/greenmaskio/greenmask/v1/internal/common/validationcollector"
 	"github.com/greenmaskio/greenmask/v1/internal/config"
 	"github.com/greenmaskio/greenmask/v1/internal/mysql/dbmsdriver"
 	"github.com/greenmaskio/greenmask/v1/internal/mysql/introspect"
+	"github.com/greenmaskio/greenmask/v1/internal/mysql/metadata"
 	mysqlmodels "github.com/greenmaskio/greenmask/v1/internal/mysql/models"
 	"github.com/greenmaskio/greenmask/v1/internal/mysql/schemadumper"
 	"github.com/greenmaskio/greenmask/v1/internal/mysql/taskproducer"
 	"github.com/greenmaskio/greenmask/v1/internal/storages"
+)
+
+const (
+	defaultInitTimeout = 30 * time.Second
 )
 
 func newMysqlTableDriver(
@@ -31,10 +37,6 @@ func newMysqlTableDriver(
 ) (commonininterfaces.TableDriver, error) {
 	return tabledriver.New(vc, dbmsdriver.New(), &table, columnsTypeOverride)
 }
-
-const (
-	defaultInitTimeout = 30 * time.Second
-)
 
 // Dump it's responsible for initialization and perform the whole
 // dump procedure of mysql instance.
@@ -47,7 +49,7 @@ type Dump struct {
 	registry   *utils2.TransformerRegistry
 }
 
-func NewDump2(
+func NewDump(
 	ctx context.Context,
 	cfg *config.Config,
 	registry *utils2.TransformerRegistry,
@@ -59,7 +61,7 @@ func NewDump2(
 	dumpID := commonmodels.NewDumpID()
 	st = storages.SubStorageWithDumpID(st, dumpID)
 	vc := validationcollector.NewCollectorWithMeta(
-		commonmodels.MetaKeyParameterName, dumpID,
+		commonmodels.MetaKeyDumpID, dumpID,
 		commonmodels.MetaKeyEngine, "mysql",
 	)
 	return &Dump{
@@ -72,7 +74,7 @@ func NewDump2(
 }
 
 func (d *Dump) connect() (*sql.DB, error) {
-	connConfig, err := d.cfg.Dump.Options.ConnectionConfig()
+	connConfig, err := d.cfg.Dump.MysqlConfig.Options.ConnectionConfig()
 	if err != nil {
 		return nil, fmt.Errorf("get connection config: %w", err)
 	}
@@ -112,6 +114,7 @@ For tables:
 - Produce TransformationPipelineDumper - executes transformer one by one and valudates conditions.
 */
 func (d *Dump) Run(ctx context.Context) error {
+	startedAt := time.Now()
 	conn, err := d.connect()
 	if err != nil {
 		return fmt.Errorf("connect to mysql: %w", err)
@@ -131,7 +134,7 @@ func (d *Dump) Run(ctx context.Context) error {
 		}
 	}()
 
-	i := introspect.NewIntrospector(d.cfg.Dump.Options)
+	i := introspect.NewIntrospector(&d.cfg.Dump.MysqlConfig.Options)
 	if err := i.Introspect(ctx, tx); err != nil {
 		return fmt.Errorf("introspect mysql server: %w", err)
 	}
@@ -145,13 +148,23 @@ func (d *Dump) Run(ctx context.Context) error {
 	)
 
 	hbw := heartbeat.NewWorker(heartbeat.NewWriter(d.st))
-	sd := schemadumper.New(d.st, d.cfg.Dump.Options)
+	sd := schemadumper.New(d.st, &d.cfg.Dump.MysqlConfig.Options)
 
 	dumper := datadump.NewDefaultDataDumper(tp, hbw, sd).
 		SetJobs(1)
 
+	defer func() {
+		_ = utils.PrintValidationWarnings(ctx, d.vc, nil, false)
+	}()
 	if err := dumper.Run(ctx, d.vc); err != nil {
 		return fmt.Errorf("run dumper: %w", err)
+	}
+	completedAt := time.Now()
+	if err := metadata.WriteMetadata(
+		ctx, d.st, d.cfg.Dump.Transformation.ToTransformationConfig(),
+		startedAt, completedAt, dumper.GetStats(), i.GetCommonTables(),
+	); err != nil {
+		return fmt.Errorf("write metadata: %w", err)
 	}
 	return nil
 }

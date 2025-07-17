@@ -2,15 +2,31 @@ package models
 
 import "time"
 
+type ObjectKind string
+
+const (
+	ObjectKindTable ObjectKind = "table"
+)
+
 type ObjectStat struct {
-	Size           int64
+	ID             string
+	Kind           ObjectKind
+	OriginalSize   int64
 	CompressedSize int64
 	FileName       string
 }
 
-func NewObjectStat(size int64, compressedSize int64, fileName string) ObjectStat {
+func NewObjectStat(
+	kind ObjectKind,
+	id string,
+	size int64,
+	compressedSize int64,
+	fileName string,
+) ObjectStat {
 	return ObjectStat{
-		Size:           size,
+		Kind:           kind,
+		ID:             id,
+		OriginalSize:   size,
 		CompressedSize: compressedSize,
 		FileName:       fileName,
 	}
