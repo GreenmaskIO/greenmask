@@ -1,4 +1,4 @@
-package dumpcontext
+package context
 
 import (
 	"github.com/greenmaskio/greenmask/v1/internal/common/conditions"

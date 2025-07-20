@@ -1,4 +1,4 @@
-package dumpcontext
+package context
 
 import (
 	"context"

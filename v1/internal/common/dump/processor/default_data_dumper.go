@@ -1,4 +1,4 @@
-package datadump
+package processor
 
 import (
 	"context"
@@ -14,7 +14,7 @@ import (
 )
 
 const (
-	defaultRuntimeJobs = 1
+	defaultJobCount = 1
 )
 
 type taskProducer interface {
@@ -31,7 +31,7 @@ type schemaDumper interface {
 	DumpSchema(ctx context.Context) error
 }
 
-type DefaultDataDumper struct {
+type DefaultDumpProcessor struct {
 	tp           taskProducer
 	st           storages.Storager
 	hbw          heartBeatWorker
@@ -41,27 +41,27 @@ type DefaultDataDumper struct {
 	stats        []commonmodels.DumpStat
 }
 
-func NewDefaultDataDumper(
+func NewDefaultDumpProcessor(
 	tp taskProducer,
 	hbw heartBeatWorker,
 	schemaDumper schemaDumper,
-) *DefaultDataDumper {
-	return &DefaultDataDumper{
+) *DefaultDumpProcessor {
+	return &DefaultDumpProcessor{
 		hbw:          hbw,
 		tp:           tp,
-		jobs:         defaultRuntimeJobs,
+		jobs:         defaultJobCount,
 		schemaDumper: schemaDumper,
 	}
 }
 
 // SetJobs - sets the number of jobs to run
-func (dr *DefaultDataDumper) SetJobs(v int) *DefaultDataDumper {
+func (dr *DefaultDumpProcessor) SetJobs(v int) *DefaultDumpProcessor {
 	dr.jobs = v
 	return dr
 }
 
 // Run - runs the dump command
-func (dr *DefaultDataDumper) Run(ctx context.Context, vc *validationcollector.Collector) (err error) {
+func (dr *DefaultDumpProcessor) Run(ctx context.Context, vc *validationcollector.Collector) (err error) {
 	dr.taskList, err = dr.tp.Generate(ctx, vc)
 	if err != nil {
 		return fmt.Errorf("produce tasks: %w", err)
@@ -76,11 +76,11 @@ func (dr *DefaultDataDumper) Run(ctx context.Context, vc *validationcollector.Co
 	return nil
 }
 
-func (dr *DefaultDataDumper) GetStats() []commonmodels.DumpStat {
+func (dr *DefaultDumpProcessor) GetStats() []commonmodels.DumpStat {
 	return dr.stats
 }
 
-func (dr *DefaultDataDumper) dataDump(ctx context.Context) error {
+func (dr *DefaultDumpProcessor) dataDump(ctx context.Context) error {
 	tasks := make(chan commonininterfaces.Dumper, dr.jobs)
 
 	log.Ctx(ctx).Debug().Msgf("planned %d workers", dr.jobs)
@@ -101,7 +101,7 @@ func (dr *DefaultDataDumper) dataDump(ctx context.Context) error {
 }
 
 // taskProducer - produces tasks and sends them to tasks channel.
-func (dr *DefaultDataDumper) taskProducer(ctx context.Context, tasks chan<- commonininterfaces.Dumper) func() error {
+func (dr *DefaultDumpProcessor) taskProducer(ctx context.Context, tasks chan<- commonininterfaces.Dumper) func() error {
 	return func() error {
 		defer close(tasks)
 		for _, t := range dr.taskList {
@@ -118,7 +118,7 @@ func (dr *DefaultDataDumper) taskProducer(ctx context.Context, tasks chan<- comm
 // dumpWorkerPlanner - plans dump workers based on the number of jobs and runs them.
 //
 // It waits until all the workers are done and then closes the done channel to signal the end.
-func (dr *DefaultDataDumper) dumpWorkerPlanner(
+func (dr *DefaultDumpProcessor) dumpWorkerPlanner(
 	ctx context.Context,
 	tasks <-chan commonininterfaces.Dumper,
 	done chan struct{},
@@ -139,7 +139,7 @@ func (dr *DefaultDataDumper) dumpWorkerPlanner(
 }
 
 // dumpWorkerRunner - runs dumpWorker or validateDumpWorker depending on the mode.
-func (dr *DefaultDataDumper) dumpWorkerRunner(
+func (dr *DefaultDumpProcessor) dumpWorkerRunner(
 	ctx context.Context, tasks <-chan commonininterfaces.Dumper, jobId int,
 ) func() error {
 	return func() error {
@@ -148,7 +148,7 @@ func (dr *DefaultDataDumper) dumpWorkerRunner(
 }
 
 // dumpWorker - runs a dumpWorker that consumes tasks from tasks channel and executes them.
-func (dr *DefaultDataDumper) dumpWorker(
+func (dr *DefaultDumpProcessor) dumpWorker(
 	ctx context.Context,
 	tasks <-chan commonininterfaces.Dumper,
 	id int,

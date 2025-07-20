@@ -2,6 +2,7 @@ package cmdrun
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/rs/zerolog/log"
@@ -18,8 +19,8 @@ const (
 )
 
 var (
-	errUnsupportedEngine  = fmt.Errorf("unsupported DBMS engine")
-	errEngineNotSpecified = fmt.Errorf("dbms engine is not specified")
+	errUnsupportedEngine  = errors.New("unsupported DBMS engine")
+	errEngineNotSpecified = errors.New("dbms engine is not specified")
 )
 
 // RunDump - runs dump for the specified DBMS engine.

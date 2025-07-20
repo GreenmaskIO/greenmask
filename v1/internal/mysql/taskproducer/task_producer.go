@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 
-	commondumpcontext "github.com/greenmaskio/greenmask/v1/internal/common/dumpcontext"
-	"github.com/greenmaskio/greenmask/v1/internal/common/dumpers"
+	context2 "github.com/greenmaskio/greenmask/v1/internal/common/dump/context"
+	dumpers2 "github.com/greenmaskio/greenmask/v1/internal/common/dump/dumpers"
 	commonininterfaces "github.com/greenmaskio/greenmask/v1/internal/common/interfaces"
 	commonmodels "github.com/greenmaskio/greenmask/v1/internal/common/models"
 	"github.com/greenmaskio/greenmask/v1/internal/common/pipeline"
@@ -52,13 +52,13 @@ func New(
 		st:           st,
 	}
 }
-func (tp *TaskProducer) getTableContext(ctx context.Context, vc *validationcollector.Collector) ([]commondumpcontext.TableContext, error) {
+func (tp *TaskProducer) getTableContext(ctx context.Context, vc *validationcollector.Collector) ([]context2.TableContext, error) {
 	s, err := subset.NewSubset(tp.introspector.GetCommonTables(), subset.DialectMySQL)
 	if err != nil {
 		return nil, fmt.Errorf("build subset queries: %w", err)
 	}
 
-	p := commondumpcontext.New(
+	p := context2.New(
 		tp.introspector.GetCommonTables(),
 		s.GetTableQueries(),
 		tp.tableConfigs,
@@ -73,22 +73,22 @@ func (tp *TaskProducer) getTableContext(ctx context.Context, vc *validationcolle
 }
 
 func (tp *TaskProducer) initTableDumper(
-	tableContext commondumpcontext.TableContext,
+	tableContext context2.TableContext,
 ) commonininterfaces.Dumper {
 	tr := streamers.NewTableDataReader(tableContext.Table, tp.connConfig, tableContext.Query)
 	tw := streamers.NewTableDataWriter(*tableContext.Table, tp.st, true)
 	rawRecord := rawrecord.NewRawRecord(len(tableContext.Table.Columns), mysqldbmsdriver.NullValueSeq)
 	r := record.NewRecord(rawRecord, tableContext.TableDriver)
 	p := pipeline.NewTransformationPipeline(&tableContext)
-	return dumpers.NewTableDumper(tr, tw, r, p)
+	return dumpers2.NewTableDumper(tr, tw, r, p)
 }
 
 func (tp *TaskProducer) initTableRawDumper(
-	tableContext commondumpcontext.TableContext,
+	tableContext context2.TableContext,
 ) commonininterfaces.Dumper {
 	tr := streamers.NewTableDataReader(tableContext.Table, tp.connConfig, tableContext.Query)
 	tw := streamers.NewTableDataWriter(*tableContext.Table, tp.st, true)
-	return dumpers.NewTableRawDumper(tr, tw)
+	return dumpers2.NewTableRawDumper(tr, tw)
 }
 
 func (tp *TaskProducer) Generate(

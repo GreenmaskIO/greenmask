@@ -8,7 +8,7 @@ import (
 
 	"github.com/rs/zerolog/log"
 
-	"github.com/greenmaskio/greenmask/v1/internal/common/datadump"
+	"github.com/greenmaskio/greenmask/v1/internal/common/dump/processor"
 	"github.com/greenmaskio/greenmask/v1/internal/common/heartbeat"
 	commonininterfaces "github.com/greenmaskio/greenmask/v1/internal/common/interfaces"
 	commonmodels "github.com/greenmaskio/greenmask/v1/internal/common/models"
@@ -150,7 +150,7 @@ func (d *Dump) Run(ctx context.Context) error {
 	hbw := heartbeat.NewWorker(heartbeat.NewWriter(d.st))
 	sd := schemadumper.New(d.st, &d.cfg.Dump.MysqlConfig.Options)
 
-	dumper := datadump.NewDefaultDataDumper(tp, hbw, sd).
+	dumper := processor.NewDefaultDumpProcessor(tp, hbw, sd).
 		SetJobs(1)
 
 	defer func() {

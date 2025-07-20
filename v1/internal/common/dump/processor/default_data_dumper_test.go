@@ -1,4 +1,4 @@
-package datadump
+package processor
 
 import (
 	"context"
@@ -165,7 +165,7 @@ func TestDumpRuntime_Run(t *testing.T) {
 		hbw := &heartBeatWorkerMock{}
 		hbw.On("Run", mock.Anything, mock.Anything)
 
-		dumpRuntime := NewDefaultDataDumper(tp, hbw, st)
+		dumpRuntime := NewDefaultDumpProcessor(tp, hbw, st)
 		ctx := context.Background()
 		err := dumpRuntime.Run(ctx)
 		require.NoError(t, err)
