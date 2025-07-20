@@ -10,7 +10,7 @@ engine: mysql
 
 storage:
   directory:
-    path: "/home/vadim/tmp/storage/mysql"
+    path: "/tmp/gmstorage"
 #    path: "/Users/vadim/tmp/storage/mysql"
 #  s3:
 #    endpoint: "http://localhost:9000"

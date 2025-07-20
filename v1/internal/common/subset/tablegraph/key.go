@@ -25,7 +25,7 @@ func NewKeysByColumn(cols []string) []Key {
 //func NewKeysByReferencedColumn(cols []*domains.ReferencedColumn) []*Key {
 //	keys := make([]*Key, 0, len(cols))
 //	for _, col := range cols {
-//		keys = append(keys, &Key{Name: col.Name, Expression: col.Expression})
+//		keys = append(keys, &Key{ID: col.ID, Expression: col.Expression})
 //	}
 //	return keys
 //}

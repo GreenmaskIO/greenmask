@@ -223,7 +223,7 @@ func TestReplaceNewReplaceTransformer(t *testing.T) {
 			Return(commonmodels.ParamsValue("abc"), nil)
 		tableDriver.On("DecodeValueByTypeOid", column.TypeOID, []byte("abc")).
 			Return(nil, assert.AnError)
-		valueParameter.On("Name").
+		valueParameter.On("ID").
 			Return("value")
 
 		// Keep null parameter calls

@@ -13,7 +13,7 @@ import (
 	commonmodels "github.com/greenmaskio/greenmask/v1/internal/common/models"
 )
 
-const dumperTypeTableDumper = "TableDumper"
+const dumperTypeTableDumper = "table_dumper"
 
 type TableDumper struct {
 	pipeline         commonininterfaces.Pipeliner

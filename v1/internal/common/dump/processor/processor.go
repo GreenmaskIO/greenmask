@@ -19,7 +19,6 @@ const (
 
 type taskProducer interface {
 	Generate(ctx context.Context, vc *validationcollector.Collector) ([]commonininterfaces.Dumper, error)
-	Metadata(ctx context.Context) any
 }
 
 // heartBeatWorker - interface to write heart beat file.

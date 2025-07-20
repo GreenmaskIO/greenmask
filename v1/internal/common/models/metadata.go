@@ -14,6 +14,12 @@ type TableMetadata struct {
 	CompressedSize int64    `json:"compressed_size"`
 }
 
+type DataSectionEntry struct {
+	ID       string     `json:"id"`
+	Kind     ObjectKind `json:"kind"`
+	FileName string     `json:"file_name"`
+}
+
 func NewTableMetadata(stat DumpStat, table Table) TableMetadata {
 	return TableMetadata{
 		ID:             table.ID,
@@ -27,12 +33,13 @@ func NewTableMetadata(stat DumpStat, table Table) TableMetadata {
 }
 
 type Metadata struct {
-	StartedAt      time.Time       `yaml:"started_at" json:"started_at"`
-	CompletedAt    time.Time       `yaml:"completed_at" json:"completed_at"`
-	OriginalSize   int64           `yaml:"original_size" json:"original_size"`
-	CompressedSize int64           `yaml:"compressed_size" json:"compressed_size"`
-	Transformers   []TableConfig   `yaml:"transformers" json:"transformers"`
-	DatabaseSchema []TableMetadata `yaml:"database_schema" json:"database_schema"`
+	StartedAt      time.Time          `yaml:"started_at" json:"started_at"`
+	CompletedAt    time.Time          `yaml:"completed_at" json:"completed_at"`
+	OriginalSize   int64              `yaml:"original_size" json:"original_size"`
+	CompressedSize int64              `yaml:"compressed_size" json:"compressed_size"`
+	Transformers   []TableConfig      `yaml:"transformers" json:"transformers"`
+	DatabaseSchema []TableMetadata    `yaml:"database_schema" json:"database_schema"`
+	DataSection    []DataSectionEntry `yaml:"data_section" json:"data_section"`
 }
 
 func NewMetadata(
@@ -51,6 +58,14 @@ func NewMetadata(
 	for i, table := range databaseSchema {
 		tableMetadata = append(tableMetadata, NewTableMetadata(stats[i], table))
 	}
+	dataSection := make([]DataSectionEntry, len(databaseSchema))
+	for i := range stats {
+		dataSection[i] = DataSectionEntry{
+			ID:       stats[i].ID,
+			Kind:     stats[i].Kind,
+			FileName: stats[i].FileName,
+		}
+	}
 
 	return Metadata{
 		StartedAt:      startedAt,
@@ -59,5 +74,6 @@ func NewMetadata(
 		CompressedSize: compressedSize,
 		Transformers:   transformers,
 		DatabaseSchema: tableMetadata,
+		DataSection:    dataSection,
 	}
 }

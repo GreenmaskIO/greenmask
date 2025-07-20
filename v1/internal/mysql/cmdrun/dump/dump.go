@@ -1,4 +1,4 @@
-package mysql
+package dump
 
 import (
 	"context"
@@ -10,33 +10,22 @@ import (
 
 	"github.com/greenmaskio/greenmask/v1/internal/common/dump/processor"
 	"github.com/greenmaskio/greenmask/v1/internal/common/heartbeat"
-	commonininterfaces "github.com/greenmaskio/greenmask/v1/internal/common/interfaces"
 	commonmodels "github.com/greenmaskio/greenmask/v1/internal/common/models"
-	"github.com/greenmaskio/greenmask/v1/internal/common/tabledriver"
-	utils2 "github.com/greenmaskio/greenmask/v1/internal/common/transformers/registry"
+	"github.com/greenmaskio/greenmask/v1/internal/common/transformers/registry"
 	"github.com/greenmaskio/greenmask/v1/internal/common/utils"
 	"github.com/greenmaskio/greenmask/v1/internal/common/validationcollector"
 	"github.com/greenmaskio/greenmask/v1/internal/config"
-	"github.com/greenmaskio/greenmask/v1/internal/mysql/dbmsdriver"
-	"github.com/greenmaskio/greenmask/v1/internal/mysql/introspect"
+	"github.com/greenmaskio/greenmask/v1/internal/mysql/dump/introspect"
+	"github.com/greenmaskio/greenmask/v1/internal/mysql/dump/schema"
+	"github.com/greenmaskio/greenmask/v1/internal/mysql/dump/taskproducer"
 	"github.com/greenmaskio/greenmask/v1/internal/mysql/metadata"
 	mysqlmodels "github.com/greenmaskio/greenmask/v1/internal/mysql/models"
-	"github.com/greenmaskio/greenmask/v1/internal/mysql/schemadumper"
-	"github.com/greenmaskio/greenmask/v1/internal/mysql/taskproducer"
 	"github.com/greenmaskio/greenmask/v1/internal/storages"
 )
 
 const (
 	defaultInitTimeout = 30 * time.Second
 )
-
-func newMysqlTableDriver(
-	vc *validationcollector.Collector,
-	table commonmodels.Table,
-	columnsTypeOverride map[string]string,
-) (commonininterfaces.TableDriver, error) {
-	return tabledriver.New(vc, dbmsdriver.New(), &table, columnsTypeOverride)
-}
 
 // Dump it's responsible for initialization and perform the whole
 // dump procedure of mysql instance.
@@ -46,13 +35,13 @@ type Dump struct {
 	vc         *validationcollector.Collector
 	cfg        *config.Config
 	connConfig *mysqlmodels.ConnConfig
-	registry   *utils2.TransformerRegistry
+	registry   *registry.TransformerRegistry
 }
 
 func NewDump(
 	ctx context.Context,
 	cfg *config.Config,
-	registry *utils2.TransformerRegistry,
+	registry *registry.TransformerRegistry,
 	st storages.Storager,
 ) (*Dump, error) {
 	ctx, cancel := context.WithTimeout(ctx, defaultInitTimeout)
@@ -148,7 +137,7 @@ func (d *Dump) Run(ctx context.Context) error {
 	)
 
 	hbw := heartbeat.NewWorker(heartbeat.NewWriter(d.st))
-	sd := schemadumper.New(d.st, &d.cfg.Dump.MysqlConfig.Options)
+	sd := schema.New(d.st, &d.cfg.Dump.MysqlConfig.Options)
 
 	dumper := processor.NewDefaultDumpProcessor(tp, hbw, sd).
 		SetJobs(1)

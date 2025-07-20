@@ -34,21 +34,18 @@ func NewObjectStat(
 
 type DumpStat struct {
 	ObjectStat
-	Duration time.Duration
-	Type     string
-	ID       string
+	Duration   time.Duration
+	DumperType string
 }
 
 func NewDumpStat(
 	objectStat ObjectStat,
 	duration time.Duration,
 	dumperType string,
-	// id string,
 ) DumpStat {
 	return DumpStat{
 		ObjectStat: objectStat,
 		Duration:   duration,
-		Type:       dumperType,
-		//ID: id,
+		DumperType: dumperType,
 	}
 }

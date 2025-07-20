@@ -10,7 +10,7 @@ import (
 	commonmodels "github.com/greenmaskio/greenmask/v1/internal/common/models"
 	commonutils "github.com/greenmaskio/greenmask/v1/internal/common/utils"
 	"github.com/greenmaskio/greenmask/v1/internal/config"
-	"github.com/greenmaskio/greenmask/v1/internal/mysql"
+	"github.com/greenmaskio/greenmask/v1/internal/mysql/cmdrun/dump"
 )
 
 const (
@@ -39,7 +39,7 @@ func RunDump(cfg *config.Config) error {
 	ctx = log.Ctx(ctx).With().Str(commonmodels.MetaKeyEngine, cfg.Engine).Logger().WithContext(ctx)
 	switch cfg.Engine {
 	case engineNameMySQL:
-		if err := mysql.RunDump(ctx, cfg, st); err != nil {
+		if err := dump.RunDump(ctx, cfg, st); err != nil {
 			return fmt.Errorf("mysql engine dump: %w", err)
 		}
 	case engineNamePostgres:

@@ -83,7 +83,7 @@ func (t *TableDataWriter) Stat() commonmodels.ObjectStat {
 	}
 	return commonmodels.NewObjectStat(
 		commonmodels.ObjectKindTable,
-		t.fileName,
+		t.tableFullName,
 		t.cw.GetCount(),
 		t.cr.GetCount(),
 		t.fileName,

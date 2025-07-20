@@ -16,8 +16,8 @@ import (
 	"github.com/greenmaskio/greenmask/v1/internal/common/transformers/registry"
 	"github.com/greenmaskio/greenmask/v1/internal/common/validationcollector"
 	mysqldbmsdriver "github.com/greenmaskio/greenmask/v1/internal/mysql/dbmsdriver"
+	streamers2 "github.com/greenmaskio/greenmask/v1/internal/mysql/dump/streamers"
 	mysqlmodels "github.com/greenmaskio/greenmask/v1/internal/mysql/models"
-	"github.com/greenmaskio/greenmask/v1/internal/mysql/streamers"
 	"github.com/greenmaskio/greenmask/v1/internal/storages"
 )
 
@@ -75,8 +75,8 @@ func (tp *TaskProducer) getTableContext(ctx context.Context, vc *validationcolle
 func (tp *TaskProducer) initTableDumper(
 	tableContext context2.TableContext,
 ) commonininterfaces.Dumper {
-	tr := streamers.NewTableDataReader(tableContext.Table, tp.connConfig, tableContext.Query)
-	tw := streamers.NewTableDataWriter(*tableContext.Table, tp.st, true)
+	tr := streamers2.NewTableDataReader(tableContext.Table, tp.connConfig, tableContext.Query)
+	tw := streamers2.NewTableDataWriter(*tableContext.Table, tp.st, true)
 	rawRecord := rawrecord.NewRawRecord(len(tableContext.Table.Columns), mysqldbmsdriver.NullValueSeq)
 	r := record.NewRecord(rawRecord, tableContext.TableDriver)
 	p := pipeline.NewTransformationPipeline(&tableContext)
@@ -86,8 +86,8 @@ func (tp *TaskProducer) initTableDumper(
 func (tp *TaskProducer) initTableRawDumper(
 	tableContext context2.TableContext,
 ) commonininterfaces.Dumper {
-	tr := streamers.NewTableDataReader(tableContext.Table, tp.connConfig, tableContext.Query)
-	tw := streamers.NewTableDataWriter(*tableContext.Table, tp.st, true)
+	tr := streamers2.NewTableDataReader(tableContext.Table, tp.connConfig, tableContext.Query)
+	tw := streamers2.NewTableDataWriter(*tableContext.Table, tp.st, true)
 	return dumpers2.NewTableRawDumper(tr, tw)
 }
 
@@ -109,8 +109,4 @@ func (tp *TaskProducer) Generate(
 	// TODO: Add scoring for tables so they have to be sorted by size.
 
 	return res, nil
-}
-
-func (tp *TaskProducer) Metadata(ctx context.Context) any {
-	panic("implement me")
 }

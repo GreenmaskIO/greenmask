@@ -1,4 +1,4 @@
-package schemadumper
+package schema
 
 import (
 	"compress/gzip"
