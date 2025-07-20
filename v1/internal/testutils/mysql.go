@@ -11,6 +11,8 @@ import (
 	"github.com/stretchr/testify/suite"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
+
+	"github.com/greenmaskio/greenmask/v1/internal/mysql/config"
 )
 
 var (
@@ -188,22 +190,46 @@ func (s *MySQLContainerSuite) GetConnection(ctx context.Context) (
 	return s.GetConnectionWithUser(ctx, s.username, s.password)
 }
 
-func (s *MySQLContainerSuite) GetConnectionWithUser(ctx context.Context, username, password string) (
-	conn *sql.DB, err error,
-) {
+func (s *MySQLContainerSuite) GetConnectionOpts(ctx context.Context) config.ConnectionOpts {
+	return s.GetConnectionOptsWithUser(ctx, s.username, s.password)
+}
+
+func (s *MySQLContainerSuite) GetConnectionOptsWithUser(ctx context.Context, username, password string) config.ConnectionOpts {
 	// Get the host and port for connecting to the Container
 	host, err := s.Container.Host(ctx)
 	s.Require().NoErrorf(err, "failed to get Container host")
 	port, err := s.Container.MappedPort(ctx, mysqlTestContainerPort)
 	s.Require().NoErrorf(err, "failed to get Container port")
+	return config.ConnectionOpts{
+		Host:     host,
+		Port:     port.Int(),
+		User:     username,
+		Password: password,
+	}
+}
 
-	// Create the connection string
-	connStr := fmt.Sprintf(
+func (s *MySQLContainerSuite) GetConnectionURI(ctx context.Context) string {
+	return s.GetConnectionURIWithUser(ctx, s.username, s.password)
+}
+
+func (s *MySQLContainerSuite) GetConnectionURIWithUser(ctx context.Context, username, password string) string {
+	// Get the host and port for connecting to the Container
+	host, err := s.Container.Host(ctx)
+	s.Require().NoErrorf(err, "failed to get Container host")
+	port, err := s.Container.MappedPort(ctx, mysqlTestContainerPort)
+	s.Require().NoErrorf(err, "failed to get Container port")
+	return fmt.Sprintf(
 		"%s:%s@tcp(%s:%s)/%s?parseTime=true",
 		username, password, host, port.Port(), testContainerDatabase,
 	)
-	print(connStr)
+}
 
+func (s *MySQLContainerSuite) GetConnectionWithUser(ctx context.Context, username, password string) (
+	conn *sql.DB, err error,
+) {
+	// Create the connection string
+	connStr := s.GetConnectionURIWithUser(ctx, username, password)
+	print(connStr)
 	return sql.Open("mysql", connStr)
 }
 

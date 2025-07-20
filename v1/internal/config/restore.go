@@ -1,5 +1,11 @@
 package config
 
+import (
+	pgconfig "github.com/greenmaskio/greenmask/v1/internal/pg/restore/config"
+
+	mysqlconfig "github.com/greenmaskio/greenmask/v1/internal/mysql/restore/config"
+)
+
 type TablesDataRestorationErrorExclusions struct {
 	Name        string   `mapstructure:"name" yaml:"name" json:"name,omitempty"`
 	Schema      string   `mapstructure:"schema" yaml:"schema" json:"schema,omitempty"`
@@ -25,10 +31,20 @@ type Script struct {
 	Command   []string `mapstructure:"command"`
 }
 
+type MysqlRestoreConfig struct {
+	Options mysqlconfig.RestoreOptions `mapstructure:"options" yaml:"options" json:"options"`
+}
+
+type PostgresqlRestoreConfig struct {
+	Options pgconfig.RestoreOptions `mapstructure:"options" yaml:"options" json:"options"`
+}
+
 type Restore struct {
-	Options         options                        `mapstructure:"options" yaml:"options" json:"options"`
-	Scripts         map[string][]Script            `mapstructure:"scripts" yaml:"scripts" json:"scripts,omitempty"`
-	ErrorExclusions DataRestorationErrorExclusions `mapstructure:"insert_error_exclusions" yaml:"insert_error_exclusions" json:"insert_error_exclusions,omitempty"`
+	Options          Options                        `mapstructure:"options" yaml:"options" json:"options"`
+	MysqlConfig      MysqlRestoreConfig             `mapstructure:"mysql" yaml:"mysql"`
+	PostgresqlConfig PostgresqlRestoreConfig        `mapstructure:"postgresql" yaml:"postgresql"`
+	Scripts          map[string][]Script            `mapstructure:"scripts" yaml:"scripts" json:"scripts,omitempty"`
+	ErrorExclusions  DataRestorationErrorExclusions `mapstructure:"insert_error_exclusions" yaml:"insert_error_exclusions" json:"insert_error_exclusions,omitempty"`
 }
 
 func NewRestore() Restore {

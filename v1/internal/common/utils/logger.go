@@ -24,8 +24,8 @@ import (
 )
 
 const (
-	LogFormatJsonValue = "json"
-	LogFormatTextValue = "text"
+	LogFormatJson = "json"
+	LogFormatText = "text"
 )
 
 var errUnknownLogFormat = fmt.Errorf("unknown log format")
@@ -46,9 +46,9 @@ func GetLogger(logLevelStr string, logFormat string) (zerolog.Logger, error) {
 
 	var formatWriter io.Writer
 	switch logFormat {
-	case LogFormatJsonValue:
+	case LogFormatJson:
 		formatWriter = os.Stderr
-	case LogFormatTextValue:
+	case LogFormatText:
 		formatWriter = zerolog.ConsoleWriter{Out: os.Stderr, TimeFormat: time.RFC3339}
 	}
 

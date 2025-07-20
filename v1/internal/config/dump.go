@@ -2,8 +2,8 @@ package config
 
 import (
 	"github.com/greenmaskio/greenmask/v1/internal/common/models"
-	mysqlconfig "github.com/greenmaskio/greenmask/v1/internal/mysql/config"
-	pgconfig "github.com/greenmaskio/greenmask/v1/internal/pg/config"
+	mysqlconfig "github.com/greenmaskio/greenmask/v1/internal/mysql/dump/config"
+	pgconfig "github.com/greenmaskio/greenmask/v1/internal/pg/dump/config"
 )
 
 /*
