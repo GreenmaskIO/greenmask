@@ -135,6 +135,7 @@ services:
 #    volumes:
 #      - "/tmp/greenmask_tests:/tmp/schema"
     build:
+      dockerfile: docker/integration/filldb/Dockerfile
       context: docker/integration/filldb
     depends_on:
       db-11:
