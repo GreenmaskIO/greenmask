@@ -127,6 +127,7 @@ services:
       retries: 3
 
   test-dbs-filler:
+    image: greenmask-test-dbs-filler:latest
     environment:
       PGPASSWORD: "example"
       FILE_DUMP: "demo-small-en.zip"
@@ -135,7 +136,6 @@ services:
 #    volumes:
 #      - "/tmp/greenmask_tests:/tmp/schema"
     build:
-      dockerfile: docker/integration/filldb/Dockerfile
       context: docker/integration/filldb
     depends_on:
       db-11:
