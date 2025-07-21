@@ -8,6 +8,7 @@ import (
 
 	"github.com/greenmaskio/greenmask/internal/db/postgres/transformers/utils"
 	"github.com/greenmaskio/greenmask/internal/generators"
+	commonutils "github.com/greenmaskio/greenmask/internal/utils"
 )
 
 const (
@@ -20,21 +21,10 @@ func getGenerateEngine(ctx context.Context, engineName string, size int) (genera
 	case RandomEngineParameterName:
 		return getRandomBytesGen(size)
 	case HashEngineParameterName:
-		salt, err := getSaltFromCtx(ctx)
-		if err != nil {
-			return nil, fmt.Errorf("error getting salt from context: %w", err)
-		}
+		salt := commonutils.SaltFromCtx(ctx)
 		return generators.GetHashBytesGen(salt, size)
 	}
 	return nil, fmt.Errorf("unknown engine %s", engineName)
-}
-
-func getSaltFromCtx(ctx context.Context) (salt []byte, err error) {
-	saltAny := ctx.Value("salt")
-	if saltAny != nil {
-		salt = saltAny.([]byte)
-	}
-	return salt, nil
 }
 
 func getRandomBytesGen(size int) (generators.Generator, error) {
