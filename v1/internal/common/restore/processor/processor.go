@@ -8,7 +8,7 @@ import (
 	"golang.org/x/sync/errgroup"
 
 	commonininterfaces "github.com/greenmaskio/greenmask/v1/internal/common/interfaces"
-	"github.com/greenmaskio/greenmask/v1/internal/common/validationcollector"
+	commonmodels "github.com/greenmaskio/greenmask/v1/internal/common/models"
 	"github.com/greenmaskio/greenmask/v1/internal/storages"
 )
 
@@ -16,30 +16,45 @@ const (
 	defaultJobCount = 1
 )
 
-type taskProducer interface {
-	Generate(ctx context.Context, vc *validationcollector.Collector) ([]commonininterfaces.Restorer, error)
-}
-
 type schemaRestorer interface {
 	RestoreSchema(ctx context.Context) error
 }
 
+type Config struct {
+	Jobs           int
+	RestoreInOrder bool
+}
+
+func (c *Config) SetDefault(ctx context.Context) {
+	if c.Jobs <= 0 {
+		c.Jobs = defaultJobCount
+	}
+	if c.RestoreInOrder {
+		log.Ctx(ctx).Info().Msg("setting jobs to 1 due to restore-in-order=true")
+		// Temporary force single job to ensure order.
+		// Later it should be fixed to allow parallelism with order.
+		c.Jobs = 1
+	}
+}
+
 type DefaultRestoreProcessor struct {
-	tp       taskProducer
-	taskList []commonininterfaces.Restorer
-	st       storages.Storager
-	sr       schemaRestorer
-	jobs     int
+	tp  commonininterfaces.RestoreTaskProducer
+	st  storages.Storager
+	sr  schemaRestorer
+	cfg Config
 }
 
 func NewDefaultRestoreProcessor(
-	tp taskProducer,
+	ctx context.Context,
+	tp commonininterfaces.RestoreTaskProducer,
 	sr schemaRestorer,
+	cfg Config,
 ) *DefaultRestoreProcessor {
+	cfg.SetDefault(ctx)
 	return &DefaultRestoreProcessor{
-		tp:   tp,
-		jobs: defaultJobCount,
-		sr:   sr,
+		tp:  tp,
+		sr:  sr,
+		cfg: cfg,
 	}
 }
 
@@ -50,15 +65,40 @@ func (p *DefaultRestoreProcessor) taskProducer(
 ) func() error {
 	return func() error {
 		defer close(tasks)
-		for _, t := range p.taskList {
+		for p.tp.Next(ctx) {
+			if err := p.tp.Err(); err != nil {
+				return err
+			}
+			task, err := p.tp.Task()
+			if err != nil {
+				return fmt.Errorf("could not get task: %w", err)
+			}
 			select {
 			case <-ctx.Done():
 				return nil
-			case tasks <- t:
+			case tasks <- task:
 			}
 		}
 		return nil
 	}
+}
+
+func runTask(ctx context.Context, task commonininterfaces.Restorer) error {
+	if err := task.Init(ctx); err != nil {
+		return fmt.Errorf(`init task: %w`, err)
+	}
+	defer func() {
+		if err := task.Close(ctx); err != nil {
+			log.Ctx(ctx).Error().
+				Err(err).
+				Str(commonmodels.MetaKeyUniqueDumpTaskID, task.DebugInfo()).
+				Msg("error closing task")
+		}
+	}()
+	if err := task.Restore(ctx); err != nil {
+		return fmt.Errorf(`restore task: %w`, err)
+	}
+	return nil
 }
 
 // restoreWorker - runs a restoreWorker that consumes tasks from tasks channel and executes them.
@@ -90,7 +130,12 @@ func (p *DefaultRestoreProcessor) restoreWorker(
 			Any("ObjectName", task.DebugInfo()).
 			Msgf("restoration started")
 
-		if err := task.Restore(ctx); err != nil {
+		if err := runTask(ctx, task); err != nil {
+			log.Ctx(ctx).Error().
+				Err(err).
+				Int("WorkerId", id).
+				Any("ObjectName", task.DebugInfo()).
+				Msgf("error restoring task")
 			return fmt.Errorf(`restore task '%s': %w`, task.DebugInfo(), err)
 		}
 
@@ -121,7 +166,7 @@ func (p *DefaultRestoreProcessor) restoreWorkerPlanner(
 	return func() error {
 		defer close(done)
 		workerEg, gtx := errgroup.WithContext(ctx)
-		for j := 0; j < p.jobs; j++ {
+		for j := 0; j < p.cfg.Jobs; j++ {
 			workerEg.Go(
 				p.restoreWorkerRunner(gtx, tasks, j),
 			)
@@ -134,9 +179,9 @@ func (p *DefaultRestoreProcessor) restoreWorkerPlanner(
 }
 
 func (p *DefaultRestoreProcessor) dataRestore(ctx context.Context) error {
-	tasks := make(chan commonininterfaces.Restorer, p.jobs)
+	tasks := make(chan commonininterfaces.Restorer, p.cfg.Jobs)
 
-	log.Ctx(ctx).Debug().Msgf("planned %d workers", p.jobs)
+	log.Ctx(ctx).Debug().Msgf("planned %d workers", p.cfg.Jobs)
 	done := make(chan struct{})
 	eg, egCtx := errgroup.WithContext(ctx)
 	// restore worker planner
@@ -151,13 +196,7 @@ func (p *DefaultRestoreProcessor) dataRestore(ctx context.Context) error {
 	return nil
 }
 
-func (p *DefaultRestoreProcessor) Run(ctx context.Context, vc *validationcollector.Collector) error {
-	var err error
-	p.taskList, err = p.tp.Generate(ctx, vc)
-	if err != nil {
-		return fmt.Errorf("produce tasks: %w", err)
-	}
-
+func (p *DefaultRestoreProcessor) Run(ctx context.Context) error {
 	if err := p.sr.RestoreSchema(ctx); err != nil {
 		return fmt.Errorf("schema restore: %w", err)
 	}

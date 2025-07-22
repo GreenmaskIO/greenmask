@@ -52,7 +52,7 @@ func (ip *IpAddress) Generate(original []byte, runtimeSubnet *net.IPNet) (net.IP
 		return nil, fmt.Errorf("subnet too small")
 	}
 
-	// Generate random host part within the range, avoiding special addresses
+	// Produce random host part within the range, avoiding special addresses
 	randomHostNum := big.NewInt(0)
 
 	hostBytes, err := ip.generator.Generate(original)

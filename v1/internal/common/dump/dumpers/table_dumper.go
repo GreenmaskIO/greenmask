@@ -2,6 +2,7 @@ package dumpers
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"maps"
@@ -16,34 +17,40 @@ import (
 const dumperTypeTableDumper = "table_dumper"
 
 type TableDumper struct {
+	ID               commonmodels.TaskID
 	pipeline         commonininterfaces.Pipeliner
 	dataStreamReader commonininterfaces.RowStreamReader
 	dataStreamWriter commonininterfaces.RowStreamWriter
 	record           commonininterfaces.Recorder
 	lineNum          int64
+	table            *commonmodels.Table
 }
 
 func NewTableDumper(
+	id commonmodels.TaskID,
 	dataStreamReader commonininterfaces.RowStreamReader,
 	dataStreamWriter commonininterfaces.RowStreamWriter,
 	record commonininterfaces.Recorder,
 	pipeliner commonininterfaces.Pipeliner,
+	table *commonmodels.Table,
 ) *TableDumper {
 	return &TableDumper{
+		ID:               id,
 		dataStreamReader: dataStreamReader,
 		dataStreamWriter: dataStreamWriter,
 		record:           record,
 		pipeline:         pipeliner,
+		table:            table,
 	}
 }
 
-func (t *TableDumper) Dump(ctx context.Context) (commonmodels.DumpStat, error) {
+func (t *TableDumper) Dump(ctx context.Context) (commonmodels.TaskStat, error) {
 	startedAt := time.Now()
 	// Initialize transformation pipeline.
 	// It gets transformers ready to transform. For example if external transformer
 	// is used then it starts its process.
 	if err := t.pipeline.Init(ctx); err != nil {
-		return commonmodels.DumpStat{}, commonmodels.NewDumpError(
+		return commonmodels.TaskStat{}, commonmodels.NewDumpError(
 			t.lineNum, fmt.Errorf("init transformation pipeline: %w", err),
 		)
 	}
@@ -60,15 +67,24 @@ func (t *TableDumper) Dump(ctx context.Context) (commonmodels.DumpStat, error) {
 
 	// Stream records and transform them one by one.
 	if err := t.streamRecords(ctx); err != nil {
-		return commonmodels.DumpStat{}, commonmodels.NewDumpError(
+		return commonmodels.TaskStat{}, commonmodels.NewDumpError(
 			t.lineNum, fmt.Errorf("stream data: %w", err),
 		)
 	}
 
+	objectDefinition, err := json.Marshal(*t.table)
+	if err != nil {
+		return commonmodels.TaskStat{}, fmt.Errorf("marshalling table definition: %w", err)
+	}
+
 	return commonmodels.NewDumpStat(
+		t.ID,
 		t.dataStreamWriter.Stat(),
 		time.Since(startedAt),
 		dumperTypeTableDumper,
+		t.lineNum-1,
+		commonmodels.EngineMysql,
+		objectDefinition,
 	), nil
 }
 

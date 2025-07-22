@@ -38,11 +38,36 @@ func (d *restoreTaskMock) DebugInfo() string {
 	return args.String(0)
 }
 
+func (d *restoreTaskMock) Init(ctx context.Context) error {
+	args := d.Called(ctx)
+	return args.Error(0)
+}
+
+func (d *restoreTaskMock) Close(ctx context.Context) error {
+	args := d.Called(ctx)
+	return args.Error(0)
+}
+
 type taskProducerMock struct {
 	mock.Mock
 }
 
-func (t *taskProducerMock) Generate(
+func (t *taskProducerMock) Next(ctx context.Context) bool {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (t *taskProducerMock) Err() error {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (t *taskProducerMock) Task() (commonininterfaces.Restorer, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (t *taskProducerMock) Produce(
 	ctx context.Context,
 	vc *validationcollector.Collector,
 ) ([]commonininterfaces.Restorer, error) {
@@ -73,16 +98,15 @@ func TestProcessor_Run(t *testing.T) {
 
 		tp := &taskProducerMock{}
 		// Produce the task list by the producer.
-		tp.On("Generate", mock.Anything, mock.Anything).
+		tp.On("Produce", mock.Anything, mock.Anything).
 			Return([]commonininterfaces.Restorer{task1, task2}, nil)
 
 		sr.On("RestoreSchema", mock.Anything).
 			Return(nil)
 
-		vc := validationcollector.NewCollector()
 		dumpRuntime := NewDefaultRestoreProcessor(tp, sr)
 		ctx := context.Background()
-		err := dumpRuntime.Run(ctx, vc)
+		err := dumpRuntime.Run(ctx)
 		require.NoError(t, err)
 
 		task1.AssertExpectations(t)

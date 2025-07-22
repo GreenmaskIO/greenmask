@@ -2,8 +2,10 @@ package heartbeat
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -11,28 +13,56 @@ import (
 	"github.com/greenmaskio/greenmask/v1/internal/testutils"
 )
 
+func mustJsonMarshal(v any) []byte {
+	data, err := json.Marshal(v)
+	if err != nil {
+		panic(err)
+	}
+	return data
+}
+
 func TestReader_Read(t *testing.T) {
 	// Test heartbeat reader using Storage mock
 	// Test all cases
 
-	// Test case 1: Status is done
+	// Test case 1: Status is terminateWithStatus
 	// Test case 2: Status is in-progress
 	// Test case 3: Status is invalid
 	// Test case 4: storage read error
 
 	type test struct {
-		name   string
-		status Status
+		name      string
+		heartbeat Heartbeat
 	}
 
 	tests := []test{
 		{
-			name:   "Status is done",
-			status: StatusDone,
+			name: "Status is terminateWithStatus",
+			heartbeat: Heartbeat{
+				Status:    StatusDone,
+				UpdatedAt: time.Now(),
+			},
 		},
 		{
-			name:   "Status is in-progress",
-			status: StatusInProgress,
+			name: "Status is in-progress",
+			heartbeat: Heartbeat{
+				Status:    StatusInProgress,
+				UpdatedAt: time.Now(),
+			},
+		},
+		{
+			name: "Status is failed",
+			heartbeat: Heartbeat{
+				Status:    StatusFailed,
+				UpdatedAt: time.Now(),
+			},
+		},
+		{
+			name: "Status is terminateWithStatus with old timestamp",
+			heartbeat: Heartbeat{
+				Status:    StatusDone,
+				UpdatedAt: time.Now().Add(-100 * time.Minute), // Old timestamp
+			},
 		},
 	}
 
@@ -43,7 +73,7 @@ func TestReader_Read(t *testing.T) {
 			st := &testutils.StorageMock{}
 			obj := testutils.NewReadWriteCloserMock()
 			obj.On("Read", mock.Anything).
-				Return(0, nil, []byte(tc.status))
+				Return(0, nil, mustJsonMarshal(tc.heartbeat))
 			obj.On("Close").
 				Return(nil)
 
@@ -53,7 +83,7 @@ func TestReader_Read(t *testing.T) {
 			r := NewReader(st)
 			s, err := r.Read(cxt)
 			require.NoError(t, err)
-			require.Equal(t, tc.status, s)
+			require.Equal(t, tc.heartbeat.Status, s)
 			st.AssertNumberOfCalls(t, "GetObject", 1)
 			obj.AssertNumberOfCalls(t, "Read", 1)
 			obj.AssertNumberOfCalls(t, "Close", 1)
@@ -65,8 +95,12 @@ func TestReader_Read(t *testing.T) {
 		cxt := context.Background()
 		st := &testutils.StorageMock{}
 		obj := testutils.NewReadWriteCloserMock()
+		heartbeat := Heartbeat{
+			Status:    "unknown", // Invalid status
+			UpdatedAt: time.Now(),
+		}
 		obj.On("Read", mock.Anything).
-			Return(0, nil, []byte("unknown"))
+			Return(0, nil, mustJsonMarshal(heartbeat))
 		obj.On("Close").
 			Return(nil)
 

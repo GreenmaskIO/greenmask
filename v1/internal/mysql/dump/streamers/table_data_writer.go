@@ -13,15 +13,15 @@ import (
 )
 
 type TableDataWriter struct {
-	st            storages.Storager
-	usePgzip      bool
-	fileName      string
-	csvWriter     *csv.Writer
-	cw            utils.CountWriteCloser
-	cr            utils.CountReadCloser
-	eg            *errgroup.Group
-	cancel        context.CancelFunc
-	tableFullName string
+	st        storages.Storager
+	usePgzip  bool
+	fileName  string
+	csvWriter *csv.Writer
+	cw        utils.CountWriteCloser
+	cr        utils.CountReadCloser
+	eg        *errgroup.Group
+	cancel    context.CancelFunc
+	table     *commonmodels.Table
 }
 
 func NewTableDataWriter(
@@ -31,10 +31,10 @@ func NewTableDataWriter(
 ) *TableDataWriter {
 	fileName := fmt.Sprintf("%s__%s.csv.gz", table.Schema, table.Name)
 	return &TableDataWriter{
-		st:            st,
-		usePgzip:      usePgzip,
-		fileName:      fileName,
-		tableFullName: table.FullTableName(),
+		st:       st,
+		usePgzip: usePgzip,
+		fileName: fileName,
+		table:    &table,
 	}
 }
 
@@ -82,8 +82,10 @@ func (t *TableDataWriter) Stat() commonmodels.ObjectStat {
 		panic("reader is not opened")
 	}
 	return commonmodels.NewObjectStat(
+		commonmodels.EngineMysql,
 		commonmodels.ObjectKindTable,
-		t.tableFullName,
+		commonmodels.ObjectID(t.table.ID),
+		t.table.FullTableName(),
 		t.cw.GetCount(),
 		t.cr.GetCount(),
 		t.fileName,

@@ -3,7 +3,9 @@ package schema
 import (
 	"context"
 	"fmt"
+	"io"
 
+	"github.com/rs/zerolog/log"
 	"golang.org/x/sync/errgroup"
 
 	"github.com/greenmaskio/greenmask/v1/internal/common/utils"
@@ -17,21 +19,21 @@ type options interface {
 	Env() ([]string, error)
 }
 
-type SchemaDumper struct {
+type Dumper struct {
 	executable string
 	opt        options
 	st         storages.Storager
 }
 
-func New(st storages.Storager, opt options) *SchemaDumper {
-	return &SchemaDumper{
+func New(st storages.Storager, opt options) *Dumper {
+	return &Dumper{
 		executable: executable,
 		opt:        opt,
 		st:         st,
 	}
 }
 
-func (d *SchemaDumper) DumpSchema(ctx context.Context) error {
+func (d *Dumper) DumpSchema(ctx context.Context) error {
 	env, err := d.opt.Env()
 	if err != nil {
 		return fmt.Errorf("getting environment variables: %w", err)
@@ -40,7 +42,7 @@ func (d *SchemaDumper) DumpSchema(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("cannot get dump params: %w", err)
 	}
-	w, r := utils.NewGzipPipe(false)
+	r, w := io.Pipe()
 	eg, gtx := errgroup.WithContext(ctx)
 	eg.Go(func() error {
 		if err := d.st.PutObject(gtx, "schema.sql", r); err != nil {
@@ -50,8 +52,12 @@ func (d *SchemaDumper) DumpSchema(ctx context.Context) error {
 	})
 
 	eg.Go(func() error {
-		defer func(w utils.CountWriteCloser) {
-			_ = w.Close()
+		defer func(w io.Closer) {
+			if err := w.Close(); err != nil {
+				log.Ctx(ctx).Error().
+					Str("Stage", "SchemaDump").
+					Msgf("closing output writer: %v", err)
+			}
 		}(w)
 		if err := utils.NewCmdRunner(d.executable, params, env).ExecuteCmdAndWriteStdout(ctx, w); err != nil {
 			return fmt.Errorf("cannot run mysqldump: %w", err)

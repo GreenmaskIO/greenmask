@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"strconv"
 
 	"github.com/go-mysql-org/go-mysql/client"
@@ -45,7 +46,7 @@ func NewTableDataReader(
 		panic("no columns in table")
 	}
 	if query == "" {
-		query = fmt.Sprintf(`SELECT * FROM %s.%s`, table.Schema, table.Name)
+		query = fmt.Sprintf("SELECT * FROM `%s`.`%s`", table.Schema, table.Name)
 	}
 	return &TableDataReader{
 		table:        table,
@@ -57,11 +58,6 @@ func NewTableDataReader(
 	}
 }
 
-// FieldValueTypeNull = iota
-// FieldValueTypeUnsigned
-// FieldValueTypeSigned
-// FieldValueTypeFloat
-// FieldValueTypeString
 func fieldValueToString(field mysql.FieldValue) ([]byte, error) {
 	switch field.Type {
 	case mysql.FieldValueTypeNull:
@@ -119,7 +115,10 @@ func (r *TableDataReader) stream(ctx context.Context) func() error {
 				recordData[i] = v
 			}
 			select {
-			case r.dataCh <- recordData:
+			// We have to clone the recordData slice because it may be changed
+			// when the next row is read and the data writing side is not yet ready.
+			// We could optimize this, but it would require more complex logic.
+			case r.dataCh <- slices.Clone(recordData):
 			case <-ctx.Done():
 				return fmt.Errorf("write row into channel: %w", ctx.Err())
 			}

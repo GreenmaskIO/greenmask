@@ -10,7 +10,7 @@ import (
 )
 
 func RunDump(ctx context.Context, cfg *config.Config, st storages.Storager) error {
-	dump, err := NewDump(ctx, cfg, registry.DefaultTransformerRegistry, st)
+	dump, err := NewDump(cfg, registry.DefaultTransformerRegistry, st)
 	if err != nil {
 		return fmt.Errorf("init dump process: %w", err)
 	}

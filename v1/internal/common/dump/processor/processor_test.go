@@ -25,12 +25,12 @@ type dumpTaskMock struct {
 	mock.Mock
 }
 
-func (d *dumpTaskMock) Dump(ctx context.Context) (commonmodels.DumpStat, error) {
+func (d *dumpTaskMock) Dump(ctx context.Context) (commonmodels.TaskStat, error) {
 	args := d.Called(ctx)
 	if args.Error(1) != nil {
-		return commonmodels.DumpStat{}, args.Error(1)
+		return commonmodels.TaskStat{}, args.Error(1)
 	}
-	return args.Get(0).(commonmodels.DumpStat), args.Error(1)
+	return args.Get(0).(commonmodels.TaskStat), args.Error(1)
 }
 
 func (d *dumpTaskMock) Meta() map[string]any {
@@ -46,7 +46,7 @@ type taskProducerMock struct {
 	mock.Mock
 }
 
-func (t *taskProducerMock) Generate(
+func (t *taskProducerMock) Produce(
 	ctx context.Context,
 	vc *validationcollector.Collector,
 ) ([]commonininterfaces.Dumper, error) {
@@ -61,53 +61,33 @@ func (t *taskProducerMock) Metadata(ctx context.Context) any {
 	panic("implement me")
 }
 
-type heartBeatWorkerMock struct {
-	mock.Mock
-}
-
-func (h *heartBeatWorkerMock) Run(ctx context.Context, done <-chan struct{}) func() error {
-	_ = h.Called(ctx, done)
-	return func() error {
-		select {
-		case <-done:
-			return nil
-		case <-ctx.Done():
-			return nil
-		}
-	}
-}
-
 func TestProcessor_Run(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 
 		sd := &schemaDumperMock{}
-		sd.On("DumpSchema").Return(nil)
 
 		// Create 2 tasks.
 		task1 := &dumpTaskMock{}
 		task1.On("DebugInfo").
 			Return("task1")
 		task1.On("Dump", mock.Anything).
-			Return(commonmodels.DumpStat{}, nil)
+			Return(commonmodels.TaskStat{}, nil)
 		task2 := &dumpTaskMock{}
 		task2.On("Dump", mock.Anything).
-			Return(commonmodels.DumpStat{}, nil)
+			Return(commonmodels.TaskStat{}, nil)
 		task2.On("DebugInfo").
 			Return("task2")
 
 		tp := &taskProducerMock{}
 		// Produce the task list by the producer.
-		tp.On("Generate", mock.Anything, mock.Anything).
+		tp.On("Produce", mock.Anything, mock.Anything).
 			Return([]commonininterfaces.Dumper{task1, task2}, nil)
 
 		sd.On("DumpSchema", mock.Anything).
 			Return(nil)
 
-		hbw := &heartBeatWorkerMock{}
-		hbw.On("Run", mock.Anything, mock.Anything)
-
 		vc := validationcollector.NewCollector()
-		dumpRuntime := NewDefaultDumpProcessor(tp, hbw, sd)
+		dumpRuntime := NewDefaultDumpProcessor(tp, sd)
 		ctx := context.Background()
 		err := dumpRuntime.Run(ctx, vc)
 		require.NoError(t, err)
@@ -115,7 +95,6 @@ func TestProcessor_Run(t *testing.T) {
 		task1.AssertExpectations(t)
 		task2.AssertExpectations(t)
 		tp.AssertExpectations(t)
-		hbw.AssertExpectations(t)
 		sd.AssertExpectations(t)
 	})
 }

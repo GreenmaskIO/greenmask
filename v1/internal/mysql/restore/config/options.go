@@ -5,9 +5,14 @@ import (
 )
 
 type RestoreOptions struct {
-	config.ConnectionOpts
+	config.ConnectionOpts `mapstructure:",squash"`
+	Verbose               bool `mapstructure:"verbose"`
 }
 
 func (r *RestoreOptions) SchemaRestoreParams() ([]string, error) {
-	return r.ConnectionOpts.Params(), nil
+	params := r.ConnectionOpts.Params()
+	if r.Verbose {
+		params = append(params, "--verbose")
+	}
+	return params, nil
 }

@@ -1,25 +1,24 @@
 package config
 
 import (
-	"fmt"
-	"os"
-
 	"github.com/greenmaskio/greenmask/v1/internal/common/interfaces"
 	"github.com/greenmaskio/greenmask/v1/internal/mysql/config"
 	"github.com/greenmaskio/greenmask/v1/internal/mysql/models"
 )
 
 type DumpOptions struct {
-	config.ConnectionOpts
+	config.ConnectionOpts `mapstructure:",squash"`
 	// General dump options
-	NoCreateInfo      bool `mapstructure:"no-create-info"`     // Exclude CREATE TABLE statements (--no-create-info)
-	NoData            bool `mapstructure:"no-data"`            // Exclude data from dump (--no-data)
-	AddDropTable      bool `mapstructure:"add-drop-table"`     // Include DROP TABLE statements (--add-drop-table)
-	Compact           bool `mapstructure:"compact"`            // Reduce dump size with minimal comments (--compact)
-	SkipComments      bool `mapstructure:"skip-comments"`      // Do not include comments in dump (--skip-comments)
-	SingleTransaction bool `mapstructure:"single-transaction"` // Use a single transaction for the dump (--single-transaction)
-	Quick             bool `mapstructure:"quick"`              // Fetch rows one at a time (--quick)
-	LockTables        bool `mapstructure:"lock-tables"`        // Lock all tables during dump (--lock-tables)
+	AllDatabases      bool     `mapstructure:"all-databases"`      // Dump all databases (--all-databases)
+	Databases         []string `mapstructure:"databases"`          // List of databases to dump
+	NoCreateInfo      bool     `mapstructure:"no-create-info"`     // Exclude CREATE TABLE statements (--no-create-info)
+	NoData            bool     `mapstructure:"no-data"`            // Exclude data from dump (--no-data)
+	AddDropTable      bool     `mapstructure:"add-drop-table"`     // Include DROP TABLE statements (--add-drop-table)
+	Compact           bool     `mapstructure:"compact"`            // Reduce dump size with minimal comments (--compact)
+	SkipComments      bool     `mapstructure:"skip-comments"`      // Do not include comments in dump (--skip-comments)
+	SingleTransaction bool     `mapstructure:"single-transaction"` // Use a single transaction for the dump (--single-transaction)
+	Quick             bool     `mapstructure:"quick"`              // Fetch rows one at a time (--quick)
+	LockTables        bool     `mapstructure:"lock-tables"`        // Lock all tables during dump (--lock-tables)
 
 	// Tablespace and metadata options
 	NoTablespaces bool `mapstructure:"no-tablespaces"` // Exclude tablespace information (--no-tablespaces)
@@ -42,20 +41,7 @@ func (d *DumpOptions) GetIncludedSchemas() []string {
 }
 
 func (d *DumpOptions) Env() ([]string, error) {
-	env := []string{
-		"MYSQL_PWD=" + d.Password,
-	}
-
-	// Optional connection-related environment variables
-	if d.Host != "" {
-		env = append(env, "MYSQL_HOST="+d.Host)
-	}
-	if d.Port != 0 {
-		env = append(env, fmt.Sprintf("MYSQL_PORT=%d", d.Port))
-	}
-
-	// Inherit parent environment securely
-	return append(env, os.Environ()...), nil
+	return d.ConnectionOpts.Env()
 }
 
 func (d *DumpOptions) SchemaDumpParams() ([]string, error) {
@@ -79,6 +65,13 @@ func (d *DumpOptions) SchemaDumpParams() ([]string, error) {
 	if d.NoTablespaces {
 		args = append(args, "--no-tablespaces")
 	}
+	if len(d.Databases) > 0 {
+		args = append(args, "--databases")
+		args = append(args, d.Databases...)
+	}
+	if d.AllDatabases {
+		args = append(args, "--all-databases")
+	}
 	return args, nil
 }
 
@@ -87,15 +80,11 @@ func (d *DumpOptions) Get(key string) (any, error) {
 }
 
 func (d *DumpOptions) ConnectionConfig() (interfaces.ConnectionConfigurator, error) {
-	database := d.ConnectDatabase
-	if database == "" {
-		database = d.Databases[0]
-	}
 	return &models.ConnConfig{
 		User:     d.User,
 		Password: d.Password,
 		Host:     d.Host,
 		Port:     d.Port,
-		Database: database,
+		Database: d.ConnectDatabase,
 	}, nil
 }

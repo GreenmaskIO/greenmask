@@ -17,6 +17,7 @@ vendor/
 # IDEs directories
 .idea
 .vscode
+.python-version
 scratch
 config.yml
 !playground/config.yml

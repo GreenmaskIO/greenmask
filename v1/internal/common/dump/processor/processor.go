@@ -18,12 +18,11 @@ const (
 )
 
 type taskProducer interface {
-	Generate(ctx context.Context, vc *validationcollector.Collector) ([]commonininterfaces.Dumper, error)
-}
-
-// heartBeatWorker - interface to write heart beat file.
-type heartBeatWorker interface {
-	Run(ctx context.Context, done <-chan struct{}) func() error
+	Produce(ctx context.Context, vc *validationcollector.Collector) (
+		[]commonininterfaces.Dumper,
+		commonmodels.RestorationContext,
+		error,
+	)
 }
 
 type schemaDumper interface {
@@ -33,23 +32,21 @@ type schemaDumper interface {
 type DefaultDumpProcessor struct {
 	tp           taskProducer
 	st           storages.Storager
-	hbw          heartBeatWorker
 	jobs         int
 	taskList     []commonininterfaces.Dumper
 	schemaDumper schemaDumper
-	stats        []commonmodels.DumpStat
+	taskStats    map[commonmodels.TaskID]commonmodels.TaskStat
 }
 
 func NewDefaultDumpProcessor(
 	tp taskProducer,
-	hbw heartBeatWorker,
 	schemaDumper schemaDumper,
 ) *DefaultDumpProcessor {
 	return &DefaultDumpProcessor{
-		hbw:          hbw,
 		tp:           tp,
 		jobs:         defaultJobCount,
 		schemaDumper: schemaDumper,
+		taskStats:    make(map[commonmodels.TaskID]commonmodels.TaskStat),
 	}
 }
 
@@ -60,23 +57,57 @@ func (dr *DefaultDumpProcessor) SetJobs(v int) *DefaultDumpProcessor {
 }
 
 // Run - runs the dump command
-func (dr *DefaultDumpProcessor) Run(ctx context.Context, vc *validationcollector.Collector) (err error) {
-	dr.taskList, err = dr.tp.Generate(ctx, vc)
+func (dr *DefaultDumpProcessor) Run(
+	ctx context.Context,
+	vc *validationcollector.Collector,
+) (commonmodels.DumpStat, error) {
+	var err error
+	var restorationContext commonmodels.RestorationContext
+	dr.taskList, restorationContext, err = dr.tp.Produce(ctx, vc)
 	if err != nil {
-		return fmt.Errorf("produce tasks: %w", err)
+		return commonmodels.DumpStat{}, fmt.Errorf("produce tasks: %w", err)
 	}
 	if err := dr.schemaDumper.DumpSchema(ctx); err != nil {
-		return fmt.Errorf("schema dump: %w", err)
+		return commonmodels.DumpStat{}, fmt.Errorf("schema dump: %w", err)
 	}
 
 	if err := dr.dataDump(ctx); err != nil {
-		return fmt.Errorf("data dump: %w", err)
+		return commonmodels.DumpStat{}, fmt.Errorf("data dump: %w", err)
 	}
-	return nil
-}
+	taskID2ObjectID := make(map[commonmodels.ObjectKind]map[commonmodels.TaskID]commonmodels.ObjectID)
+	objectID2TaskID := make(map[commonmodels.ObjectKind]map[commonmodels.ObjectID]commonmodels.TaskID)
+	restorationItems := make(map[commonmodels.TaskID]commonmodels.RestorationItem, len(dr.taskList))
+	for _, s := range dr.taskStats {
+		kindTask2Object, ok := taskID2ObjectID[s.ObjectStat.Kind]
+		if !ok {
+			kindTask2Object = make(map[commonmodels.TaskID]commonmodels.ObjectID)
+		}
+		kindObject2Task, ok := objectID2TaskID[s.ObjectStat.Kind]
+		if !ok {
+			kindObject2Task = make(map[commonmodels.ObjectID]commonmodels.TaskID)
+		}
+		kindTask2Object[s.ID] = s.ObjectStat.ID
+		kindObject2Task[s.ObjectStat.ID] = s.ID
+		taskID2ObjectID[s.ObjectStat.Kind] = kindTask2Object
+		objectID2TaskID[s.ObjectStat.Kind] = kindObject2Task
 
-func (dr *DefaultDumpProcessor) GetStats() []commonmodels.DumpStat {
-	return dr.stats
+		restorationItems[s.ID] = commonmodels.RestorationItem{
+			TaskID:           s.ID,
+			ObjectKind:       s.ObjectStat.Kind,
+			ObjectID:         s.ObjectStat.ID,
+			Engine:           s.Engine,
+			ObjectDefinition: s.ObjectDefinition,
+			Filename:         s.ObjectStat.Filename,
+			RecordCount:      s.RecordCount,
+		}
+	}
+	return commonmodels.DumpStat{
+		RestorationContext: restorationContext,
+		TaskStats:          dr.taskStats,
+		TaskID2ObjectID:    taskID2ObjectID,
+		ObjectID2TaskID:    objectID2TaskID,
+		RestorationItems:   restorationItems,
+	}, nil
 }
 
 func (dr *DefaultDumpProcessor) dataDump(ctx context.Context) error {
@@ -85,8 +116,6 @@ func (dr *DefaultDumpProcessor) dataDump(ctx context.Context) error {
 	log.Ctx(ctx).Debug().Msgf("planned %d workers", dr.jobs)
 	done := make(chan struct{})
 	eg, egCtx := errgroup.WithContext(ctx)
-	// write heart beat file writer worker
-	eg.Go(dr.hbw.Run(egCtx, done))
 	// dump worker planner
 	eg.Go(dr.dumpWorkerPlanner(egCtx, tasks, done))
 	// task producer
@@ -179,7 +208,7 @@ func (dr *DefaultDumpProcessor) dumpWorker(
 		if err != nil {
 			return fmt.Errorf(`dump task '%s': %w`, task.DebugInfo(), err)
 		}
-		dr.stats = append(dr.stats, stat)
+		dr.taskStats[stat.ID] = stat
 
 		log.Ctx(ctx).Debug().
 			Int("WorkerId", id).

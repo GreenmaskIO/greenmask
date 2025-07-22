@@ -2,6 +2,7 @@ package dumpers
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"maps"
@@ -16,35 +17,51 @@ import (
 const dumperTypeTableRawDumper = "table_raw_dumper"
 
 type TableRawDumper struct {
+	ID               commonmodels.TaskID
 	dataStreamReader commonininterfaces.RowStreamReader
 	dataStreamWriter commonininterfaces.RowStreamWriter
 	lineNum          int64
+	table            *commonmodels.Table
 }
 
 func NewTableRawDumper(
+	id commonmodels.TaskID,
 	dataStreamReader commonininterfaces.RowStreamReader,
 	dataStreamWriter commonininterfaces.RowStreamWriter,
+	table *commonmodels.Table,
 ) *TableRawDumper {
 	return &TableRawDumper{
+		ID:               id,
 		dataStreamReader: dataStreamReader,
 		dataStreamWriter: dataStreamWriter,
+		lineNum:          0,
+		table:            table,
 	}
 }
 
-func (t *TableRawDumper) Dump(ctx context.Context) (commonmodels.DumpStat, error) {
+func (t *TableRawDumper) Dump(ctx context.Context) (commonmodels.TaskStat, error) {
 	startedAt := time.Now()
 
 	// Stream records and transform them one by one.
 	if err := t.stream(ctx); err != nil {
-		return commonmodels.DumpStat{}, commonmodels.NewDumpError(
+		return commonmodels.TaskStat{}, commonmodels.NewDumpError(
 			t.lineNum, fmt.Errorf("stream data: %w", err),
 		)
 	}
 
+	objectDefinition, err := json.Marshal(*t.table)
+	if err != nil {
+		return commonmodels.TaskStat{}, fmt.Errorf("marshalling table definition: %w", err)
+	}
+
 	return commonmodels.NewDumpStat(
+		t.ID,
 		t.dataStreamWriter.Stat(),
 		time.Since(startedAt),
 		dumperTypeTableRawDumper,
+		t.lineNum-1,
+		commonmodels.EngineMysql,
+		objectDefinition,
 	), nil
 }
 

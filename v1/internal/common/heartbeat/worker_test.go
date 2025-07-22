@@ -31,15 +31,14 @@ func TestWorker_Run(t *testing.T) {
 
 		w := NewWorker(hbw)
 		w.SetInterval(200 * time.Millisecond)
-		doneCh := make(chan struct{})
 		wg, ctx := errgroup.WithContext(ctx)
-		wg.Go(w.Run(ctx, doneCh))
+		wg.Go(w.Run(ctx))
 		wg.Go(func() error {
 			select {
 			case <-ctx.Done():
 				require.NoError(t, ctx.Err())
 			case <-time.After(1 * time.Second):
-				close(doneCh)
+				w.Terminate(StatusDone)
 			}
 			return nil
 		})
@@ -62,10 +61,8 @@ func TestWorker_Run(t *testing.T) {
 
 		w := NewWorker(hbw)
 		w.SetInterval(500 * time.Millisecond)
-		doneCh := make(chan struct{})
-		defer close(doneCh)
 		wg, ctx := errgroup.WithContext(ctx)
-		wg.Go(w.Run(ctx, doneCh))
+		wg.Go(w.Run(ctx))
 		wg.Go(func() error {
 			select {
 			case <-ctx.Done():
@@ -77,7 +74,7 @@ func TestWorker_Run(t *testing.T) {
 		})
 
 		err := wg.Wait()
-		require.ErrorIs(t, err, context.Canceled)
+		require.NoError(t, err)
 		hbw.AssertCalled(t, "Write", mock.Anything, StatusInProgress)
 	})
 }

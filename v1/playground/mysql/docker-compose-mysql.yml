@@ -1,5 +1,3 @@
-version: '3'
-
 services:
   playground-mysql-storage:
     image: minio/minio:latest
@@ -18,9 +16,9 @@ services:
       timeout: 5s
       retries: 2
 
-  playground-mysql-db:
+  playground-mysql-db-original:
     image: mysql:8.0
-    container_name: mysql_playground
+    container_name: mysql_playground_original
     environment:
       MYSQL_ROOT_PASSWORD: 1234
       MYSQL_DATABASE: playground
@@ -28,61 +26,15 @@ services:
       MYSQL_PASSWORD: admin
     ports:
       - "3306:3306"
-#    volumes:
-#      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
-#    healthcheck:
-#      test: [ "CMD", "psql", "-U", "postgres" ]
-#      interval: 5s
-#      timeout: 1s
-#      retries: 3
 
-#  playground-mysql-dbs-filler:
-#    environment:
-#      PGPASSWORD: "example"
-#      TMP_DIR: "/tmp/schema"
-#      ORIGINAL_DB_NAME: "original"
-#      TRANSFORMED_DB_NAME: "transformed"
-#      DBHOST: "db"
-#      DBUSER: "postgres"
-#      DBPASSWORD: "example"
-#    build:
-#      context: docker/playground/filldb
-#    depends_on:
-#      playground-mysql-db:
-#        condition: service_healthy
-
-#  greenmask:
-#    volumes:
-#      - ./playground:/var/lib/playground
-#    image: "greenmask/greenmask:latest"
-#    working_dir: /var/lib/playground
-#    environment:
-#      PGPASSWORD: example
-#      ORIGINAL_DB_NAME: "original"
-#      TRANSFORMED_DB_NAME: "transformed"
-#      DATABASE_HOST: "playground-mysql-db"
-#    depends_on:
-#      playground-mysql-dbs-filler:
-#        condition: service_completed_successfully
-#      playground-mysql-storage:
-#        condition: service_healthy
-#    entrypoint: "/var/lib/playground/run.sh"
-
-#  greenmask-from-source:
-#    working_dir: /var/lib/playground
-#    volumes:
-#      - ./playground:/var/lib/playground
-#    build:
-#      dockerfile: docker/greenmask/Dockerfile
-#      context: ./
-#    environment:
-#      PGPASSWORD: example
-#      ORIGINAL_DB_NAME: "original"
-#      TRANSFORMED_DB_NAME: "transformed"
-#      DATABASE_HOST: "playground-mysql-db"
-#    depends_on:
-#      playground-mysql-dbs-filler:
-#        condition: service_completed_successfully
-#      playground-mysql-storage:
-#        condition: service_healthy
-#    entrypoint: "/var/lib/playground/run.sh"
+  playground-mysql-db-transformed:
+    image: mysql:8.0
+    container_name: mysql_playground_transformed
+    command: --local-infile=1
+    environment:
+      MYSQL_ROOT_PASSWORD: 1234
+      MYSQL_DATABASE: playground
+      MYSQL_USER: admin
+      MYSQL_PASSWORD: admin
+    ports:
+      - "3307:3306"

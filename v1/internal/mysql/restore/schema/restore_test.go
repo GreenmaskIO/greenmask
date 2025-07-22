@@ -16,15 +16,6 @@ import (
 	"github.com/greenmaskio/greenmask/v1/internal/testutils"
 )
 
-type connCfgMock struct {
-	mock.Mock
-}
-
-func (c *connCfgMock) URI() (string, error) {
-	args := c.Called()
-	return args.String(0), args.Error(1)
-}
-
 type restoreSuite struct {
 	testutils.MySQLContainerSuite
 }
@@ -41,9 +32,6 @@ func (s *restoreSuite) TestRestorer_RestoreSchema() {
 	err := utils.SetDefaultContextLogger(zerolog.LevelDebugValue, utils.LogFormatText)
 	s.Require().NoError(err)
 	ctx := context.Background()
-	cc := &connCfgMock{}
-	cc.On("URI").
-		Return(s.GetConnectionURI(ctx), nil)
 
 	r, err := os.Open(filepath.Join("testdata", "schema.sql"))
 	s.Require().NoError(err)
@@ -52,10 +40,11 @@ func (s *restoreSuite) TestRestorer_RestoreSchema() {
 	st.On("GetObject", mock.Anything, schemaFileName).
 		Return(r, nil)
 
-	opts := s.GetConnectionOpts(ctx)
+	opts := s.GetRootConnectionOpts(ctx)
 	rr := NewRestorer(st, &config.RestoreOptions{
 		ConnectionOpts: opts,
+		Verbose:        true,
 	})
 	err = rr.RestoreSchema(ctx)
-	s.Require().Nil(err)
+	s.Require().NoError(err)
 }

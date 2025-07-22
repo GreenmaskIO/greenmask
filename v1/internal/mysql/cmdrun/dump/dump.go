@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/rs/zerolog/log"
+	"golang.org/x/sync/errgroup"
 
 	"github.com/greenmaskio/greenmask/v1/internal/common/dump/processor"
 	"github.com/greenmaskio/greenmask/v1/internal/common/heartbeat"
@@ -24,7 +25,7 @@ import (
 )
 
 const (
-	defaultInitTimeout = 30 * time.Second
+	engineName = "mysql"
 )
 
 // Dump it's responsible for initialization and perform the whole
@@ -39,14 +40,10 @@ type Dump struct {
 }
 
 func NewDump(
-	ctx context.Context,
 	cfg *config.Config,
 	registry *registry.TransformerRegistry,
 	st storages.Storager,
 ) (*Dump, error) {
-	ctx, cancel := context.WithTimeout(ctx, defaultInitTimeout)
-	defer cancel()
-
 	dumpID := commonmodels.NewDumpID()
 	st = storages.SubStorageWithDumpID(st, dumpID)
 	vc := validationcollector.NewCollectorWithMeta(
@@ -83,26 +80,7 @@ func (d *Dump) connect() (*sql.DB, error) {
 	return conn, nil
 }
 
-/*
-It must:
-  - Introspect schema
-  - Generate subsets
-  - Rewrite a config if some requirements are met (FK inharitance / partitioning)
-  - Initialize TableRuntime (transformers, conditions, dump queries)
-  - Run heartbeat worker
-  - Generate schema dump
-  - Generate data dump -> Receives (task producer) -> Produce tasks -> execute on the workerы
-  - Generate metadata based on the config, collected tables and some additional data
-  - Complete dump
-
-How tasks producer should work?
-- Dedicate producer for each type of data object (table, sequences, large objects, etc.)
-
-For tables:
-- Produce raw dumper if there is no transformations - need to store data only.
-- Produce TransformationPipelineDumper - executes transformer one by one and valudates conditions.
-*/
-func (d *Dump) Run(ctx context.Context) error {
+func (d *Dump) Run(ctx context.Context) (err error) {
 	startedAt := time.Now()
 	conn, err := d.connect()
 	if err != nil {
@@ -128,32 +106,53 @@ func (d *Dump) Run(ctx context.Context) error {
 		return fmt.Errorf("introspect mysql server: %w", err)
 	}
 
-	tp := taskproducer.New(
+	tp, err := taskproducer.New(
 		i,
 		d.cfg.Dump.Transformation.ToTransformationConfig(),
 		d.registry,
 		*d.connConfig,
 		d.st,
 	)
+	if err != nil {
+		return fmt.Errorf("create task producer: %w", err)
+	}
 
 	hbw := heartbeat.NewWorker(heartbeat.NewWriter(d.st))
+
+	eg, ctx := errgroup.WithContext(ctx)
+	eg.Go(hbw.Run(ctx))
+	defer func() {
+		// Send termination signal to heartbeat worker.
+		// If there is no error, then we mark it as done.
+		status := heartbeat.StatusDone
+		if err != nil {
+			// if there is an error, we mark it as failed.
+			status = heartbeat.StatusFailed
+		}
+		hbw.Terminate(status)
+		// Wait for heartbeat worker to finish.
+		if err := eg.Wait(); err != nil {
+			log.Ctx(ctx).Warn().Err(err).Msg("failed to wait for heartbeat worker")
+		}
+	}()
+
 	sd := schema.New(d.st, &d.cfg.Dump.MysqlConfig.Options)
-
-	dumper := processor.NewDefaultDumpProcessor(tp, hbw, sd).
+	dumper := processor.NewDefaultDumpProcessor(tp, sd).
 		SetJobs(1)
-
 	defer func() {
 		_ = utils.PrintValidationWarnings(ctx, d.vc, nil, false)
 	}()
-	if err := dumper.Run(ctx, d.vc); err != nil {
+	dumpStats, err := dumper.Run(ctx, d.vc)
+	if err != nil {
 		return fmt.Errorf("run dumper: %w", err)
 	}
 	completedAt := time.Now()
-	if err := metadata.WriteMetadata(
-		ctx, d.st, d.cfg.Dump.Transformation.ToTransformationConfig(),
-		startedAt, completedAt, dumper.GetStats(), i.GetCommonTables(),
+	if err = metadata.WriteMetadata(
+		ctx, d.st, engineName, d.cfg.Dump.Transformation.ToTransformationConfig(),
+		startedAt, completedAt, dumpStats, i.GetCommonTables(),
 	); err != nil {
 		return fmt.Errorf("write metadata: %w", err)
 	}
+
 	return nil
 }
