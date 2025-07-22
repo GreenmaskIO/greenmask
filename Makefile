@@ -30,11 +30,10 @@ lint:
 up:
 	docker-compose up playground-dbs-filler
 
-compose-run:
-	docker-compose run greenmask
+integration:
+	docker buildx build --load -t greenmask-test-dbs-filler:latest -f docker/integration/filldb/Dockerfile docker/integration/filldb
+	docker buildx build --load -t greenmask-integration:latest -f docker/integration/tests/Dockerfile .
+	docker compose -f docker-compose-integration.yml -p greenmask up \
+                --renew-anon-volumes --force-recreate \
+                --exit-code-from greenmask --abort-on-container-exit greenmask
 
-compose-from-source-build:
-	docker-compose build
-
-compose-from-source-run:
-	docker-compose run greenmask-from-source
