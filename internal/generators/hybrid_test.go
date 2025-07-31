@@ -8,7 +8,7 @@ import (
 )
 
 func TestSibHashHybrid(t *testing.T) {
-	expected := []byte{176, 20, 124, 157, 15, 119, 202, 213, 41, 32}
+	expected := []byte{0x8b, 0x16, 0xe4, 0xaa, 0x8d, 0x9, 0x2, 0xf1, 0x82, 0xcf}
 	requiredLength := 10
 	sp, err := NewSipHash([]byte("test"))
 	require.NoError(t, err)
@@ -18,5 +18,5 @@ func TestSibHashHybrid(t *testing.T) {
 		Bytes("Res", res).
 		Msg("")
 	require.NoError(t, err)
-	require.Equal(t, res, expected)
+	require.Equal(t, expected, res)
 }
