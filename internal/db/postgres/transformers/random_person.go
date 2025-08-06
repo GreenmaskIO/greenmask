@@ -212,7 +212,7 @@ func (nft *RandomNameTransformer) Transform(ctx context.Context, r *toolkit.Reco
 
 	// if we are in hash engine mode, we need to clear buffer before filling it with new data
 	if nft.engine == hashEngineMode {
-		clear(nft.originalData)
+		nft.originalData = nft.originalData[:0]
 		for _, c := range nft.columns {
 			rawVal, err := r.GetRawColumnValueByIdx(c.columnIdx)
 			if err != nil {
