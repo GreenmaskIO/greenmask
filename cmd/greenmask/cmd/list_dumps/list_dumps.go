@@ -33,6 +33,8 @@ import (
 )
 
 var (
+	quietFlag bool // Flag to print only the dump IDs
+
 	Cmd = &cobra.Command{
 		Use:   "list-dumps",
 		Short: "list all dumps in the storage",
@@ -41,7 +43,7 @@ var (
 				log.Err(err).Msg("")
 			}
 
-			if err := listDumps(); err != nil {
+			if err := listDumps(quietFlag); err != nil {
 				log.Fatal().Err(err).Msg("")
 			}
 		},
@@ -62,7 +64,11 @@ func SizePretty(b int64) string {
 	return fmt.Sprintf("%.1f %ciB", float64(b)/float64(div), "KMGTPE"[exp])
 }
 
-func listDumps() error {
+func init() {
+	Cmd.Flags().BoolVarP(&quietFlag, "quiet", "q", false, "Only display dump IDs")
+}
+
+func listDumps(quiet bool) error {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	st, err := builder.GetStorage(ctx, &Config.Storage, &Config.Log)
@@ -79,12 +85,23 @@ func listDumps() error {
 
 	for _, backup := range dirs {
 		dumpId := backup.Dirname()
+		if quiet {
+			// In quiet mode, just print the dump ID
+			fmt.Println(dumpId)
+			continue
+		}
+
 		if err = renderListItem(ctx, backup, &data); err != nil {
 			log.Warn().
 				Err(err).
 				Str("DumpId", dumpId).
 				Msg("unable to render list dump item")
 		}
+	}
+
+	if quiet {
+		// In quiet mode, we're done after printing the IDs
+		return nil
 	}
 
 	slices.SortFunc(data, func(a, b []string) int {
