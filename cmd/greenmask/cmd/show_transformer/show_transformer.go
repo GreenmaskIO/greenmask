@@ -19,6 +19,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -34,15 +35,20 @@ import (
 
 var (
 	Cmd = &cobra.Command{
-		Use:   "show-transformer",
-		Args:  cobra.ExactArgs(1),
-		Short: "show transformer details",
+		Use:   "show-transformer [name]",
+		Args:  cobra.MaximumNArgs(1),
+		Short: "show transformer details or list all transformers if no name provided",
 		Run: func(cmd *cobra.Command, args []string) {
 			if err := logger.SetLogLevel(Config.Log.Level, Config.Log.Format); err != nil {
 				log.Err(err).Msg("")
 			}
 
-			if err := run(args[0]); err != nil {
+			transformerName := ""
+			if len(args) > 0 {
+				transformerName = args[0]
+			}
+
+			if err := run(transformerName); err != nil {
 				log.Fatal().Err(err).Msg("")
 			}
 		},
@@ -66,13 +72,25 @@ func run(name string) error {
 		return fmt.Errorf("error registering custom transformer: %w", err)
 	}
 
-	switch format {
-	case JsonFormatName:
-		err = showTransformerJson(utils.DefaultTransformerRegistry, name)
-	case TextFormatName:
-		err = showTransformerText(utils.DefaultTransformerRegistry, name)
-	default:
-		return fmt.Errorf(`unknown format \"%s\"`, format)
+	// If no name is provided, list all transformers
+	if name == "" {
+		switch format {
+		case JsonFormatName:
+			err = listAllTransformersJson(utils.DefaultTransformerRegistry)
+		case TextFormatName:
+			err = listAllTransformersText(utils.DefaultTransformerRegistry)
+		default:
+			return fmt.Errorf(`unknown format \"%s\"`, format)
+		}
+	} else {
+		switch format {
+		case JsonFormatName:
+			err = showTransformerJson(utils.DefaultTransformerRegistry, name)
+		case TextFormatName:
+			err = showTransformerText(utils.DefaultTransformerRegistry, name)
+		default:
+			return fmt.Errorf(`unknown format \"%s\"`, format)
+		}
 	}
 	if err != nil {
 		return fmt.Errorf("error listing transformers: %w", err)
@@ -152,6 +170,51 @@ func getTransformerDefinition(registry *utils.TransformerRegistry, name string) 
 		return def, nil
 	}
 	return nil, fmt.Errorf("unknown transformer \"%s\"", name)
+}
+
+func listAllTransformersJson(registry *utils.TransformerRegistry) error {
+	var transformers []*utils.TransformerDefinition
+
+	// Add all transformers to the list
+	for _, def := range registry.M {
+		transformers = append(transformers, def)
+	}
+
+	// Sort transformers by name
+	sort.Slice(transformers, func(i, j int) bool {
+		return transformers[i].Properties.Name < transformers[j].Properties.Name
+	})
+
+	if err := json.NewEncoder(os.Stdout).Encode(transformers); err != nil {
+		return err
+	}
+	return nil
+}
+
+func listAllTransformersText(registry *utils.TransformerRegistry) error {
+	table := tablewriter.NewWriter(os.Stdout)
+	table.SetHeader([]string{"Name", "Description"})
+
+	var rows [][]string
+	for _, def := range registry.M {
+		rows = append(rows, []string{
+			def.Properties.Name,
+			def.Properties.Description,
+		})
+	}
+
+	// Sort rows by transformer name
+	sort.Slice(rows, func(i, j int) bool {
+		return rows[i][0] < rows[j][0]
+	})
+
+	fmt.Printf("Found %d transformers:\n", len(registry.M))
+
+	table.AppendBulk(rows)
+	table.Render()
+
+	fmt.Println("Use 'show-transformer <name>' to see detailed information about a specific transformer")
+	return nil
 }
 
 func init() {
