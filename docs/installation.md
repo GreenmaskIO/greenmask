@@ -7,6 +7,22 @@
 
 * If you are building Greenmask from source, make sure you have the `make` utility installed.
 
+## Via install script
+
+You can quickly install Greenmask using the official install script:
+
+```shell
+curl -fsSL https://greenmask.io/install.sh | sh
+```
+
+Options can be passed directly to the installation script. For example, to see the available options:
+
+```shell
+curl -fsSL https://greenmask.io/install.sh | sh -s -- --help
+```
+
+> **Note:** Windows is not supported yet. The install script works on Linux and macOS.
+
 ## Via docker
 
 You can find the docker images in the:
