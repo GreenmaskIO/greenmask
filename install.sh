@@ -136,7 +136,7 @@ print_path_tips() {
 
 unpack_tar_to() {
   archive="$1"; dest="$2"; 
-  has tar || die "need 'tar' to extra archives"
+  has tar || die "need 'tar' to extract archives"
   tar xzf "$archive" -C "$dest"
 }
 
