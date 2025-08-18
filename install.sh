@@ -135,6 +135,7 @@ print_path_tips() {
 
 unpack_tar_to() {
   archive="$1"; dest="$2"; 
+  has tar || die "need 'tar' to extra archives"
   tar xzf "$archive" -C "$dest"
 }
 
@@ -142,6 +143,8 @@ install_asset() {
   os="$1"; arch="$2"; base="$3"
   asset="${REPO}-${os}-${arch}.tar.gz"
   url="${base}/${asset}"
+
+  has mktemp || die "need 'mktemp' to create temp directories"
   tmp="$(mktemp -d)"
 
   # clean the tmp directory at the end
