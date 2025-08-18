@@ -172,6 +172,23 @@ var columnList = []*toolkit.Column{
 		NotNull:  false,
 		Length:   -1,
 	},
+	{
+		Name:     "first_name",
+		TypeName: "text",
+		TypeOid:  pgtype.TextOID,
+		Num:      18,
+		NotNull:  false,
+		Length:   -1,
+	},
+
+	{
+		Name:     "last_name",
+		TypeName: "text",
+		TypeOid:  pgtype.TextOID,
+		Num:      19,
+		NotNull:  false,
+		Length:   -1,
+	},
 }
 
 // getDriverAndRecord - return adhoc table for testing
@@ -201,6 +218,42 @@ func getDriverAndRecord(name string, value string) (*toolkit.Driver, *toolkit.Re
 		panic(err.Error())
 	}
 	row := pgcopy.NewRow(1)
+	_ = row.Decode([]byte(value))
+	r := toolkit.NewRecord(
+		driver,
+	)
+	r.SetRow(row)
+	return driver, r
+}
+
+func getDriverAndRecordByColumns(columnNames []string, value string) (*toolkit.Driver, *toolkit.Record) {
+	filteredColumns := make([]*toolkit.Column, 0, len(columnList))
+	for _, columnName := range columnNames {
+		idx := slices.IndexFunc(columnList, func(column *toolkit.Column) bool {
+			return column.Name == columnName
+		})
+		if idx == -1 {
+			panic("cannot find column: " + columnName)
+		}
+		filteredColumns = append(filteredColumns, columnList[idx])
+	}
+
+	table := &toolkit.Table{
+		Schema:      "public",
+		Name:        "test",
+		Oid:         1224,
+		Columns:     filteredColumns,
+		Constraints: []toolkit.Constraint{},
+	}
+
+	driver, warns, err := toolkit.NewDriver(table, nil)
+	if len(warns) > 0 {
+		panic("warn")
+	}
+	if err != nil {
+		panic(err.Error())
+	}
+	row := pgcopy.NewRow(len(columnList))
 	_ = row.Decode([]byte(value))
 	r := toolkit.NewRecord(
 		driver,
