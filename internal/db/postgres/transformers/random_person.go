@@ -211,16 +211,20 @@ func (nft *RandomNameTransformer) Transform(ctx context.Context, r *toolkit.Reco
 	}
 
 	// if we are in hash engine mode, we need to clear buffer before filling it with new data
-	if nft.engine == hashEngineMode {
-		nft.originalData = nft.originalData[:0]
-		for _, c := range nft.columns {
-			rawVal, err := r.GetRawColumnValueByIdx(c.columnIdx)
-			if err != nil {
-				return nil, fmt.Errorf("unable to get raw value by idx %d: %w", c.columnIdx, err)
-			}
-			nft.nullableMap[c.columnIdx] = rawVal.IsNull
-			// we need to hash only columns that are marked for hashing
+	nft.originalData = nft.originalData[:0]
+	for _, c := range nft.columns {
+		// In this cycle we need to get the raw values for each column
+		// and check if it is null or not.
+		rawVal, err := r.GetRawColumnValueByIdx(c.columnIdx)
+		if err != nil {
+			return nil, fmt.Errorf("unable to get raw value by idx %d: %w", c.columnIdx, err)
+		}
+		nft.nullableMap[c.columnIdx] = rawVal.IsNull
+		// we need to hash only columns that are marked for hashing
+		if nft.engine == hashEngineMode {
+			// This part is required only for hash engine mode.
 			if !c.Hashing {
+				// If column is not marked for hashing, we skip it.
 				continue
 			}
 			if !rawVal.IsNull {
