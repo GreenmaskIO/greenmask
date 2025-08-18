@@ -207,6 +207,11 @@ main() {
 
   [ "$DEBUG" -eq 1 ] && set -x
   
+  # If we're not connected to a TTY (piped/CI), default to non-interactive
+  if [ "$ASSUME_YES" -ne 1 ] && [ ! -t 0 ]; then
+    ASSUME_YES=1
+  fi
+
   os="$(detect_os)"
   arch="$(detect_arch)"
   base="$(build_base_url)"
