@@ -117,8 +117,10 @@ need_sudo_or_exit() {
 check_bin_in_path() {
   # remove the trailing /
   dir="${1%/}"
+  OLDIFS="$IFS"
   IFS=:
   for p in $PATH; do [ "${p%/}" = "$dir" ] && return 0; done
+  IFS="$OLDIFS"
   return 1
 }
 
