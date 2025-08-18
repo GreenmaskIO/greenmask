@@ -18,7 +18,8 @@ curl -fsSL https://greenmask.io/install.sh | sh
 Options can be passed directly to the installation script. For example, to see the available options:
 
 ```shell
-curl -fsSL https://greenmask.io/install.sh | sh -s -- --help
+curl -fsSL -o install.sh https://greenmask.io/install.sh
+sh install.sh --help
 ```
 
 > **Note:** Windows is not supported yet. The install script works on Linux and macOS.
