@@ -325,7 +325,7 @@ func TestRandomPersonTransformer_Transform_keep_null(t *testing.T) {
 		require.False(t, lastNameRawValue.IsNull)
 		lastName := string(lastNameRawValue.Data)
 
-		driver, record = getDriverAndRecordByColumns([]string{"first_name", "last_name"}, originalValue)
+		_, record = getDriverAndRecordByColumns([]string{"first_name", "last_name"}, originalValue)
 
 		r, err = transformer.Transformer.Transform(
 			context.Background(),
