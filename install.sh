@@ -30,6 +30,7 @@ greenmask installer
 Options:
   -b, --bin-dir DIR   install directory (default: ${BIN_DIR})
   -y, --yes           skip confirmation (non-interactive)
+  -v, --version VER   version tag (e.g. v1.2.3) (default: ${VERSION})
   --debug             verbose output
   -h, --help          show this help
 EOF
@@ -198,6 +199,7 @@ main() {
   while [ $# -gt 0 ]; do
     case "$1" in
       -b|--bin-dir) BIN_DIR="$2"; shift 2 ;;
+      -v|--version) VERSION="$2"; shift 2 ;;
       -y|--yes) ASSUME_YES=1;shift;;
       --debug) DEBUG=1; shift;;
       -h|--help) usage; exit 0 ;;
