@@ -158,7 +158,7 @@ install_asset() {
 
   info "Verifying checksum…"
   # find the executable file
-  bin_path="$(find "$tmp" -type f -name "$REPO*" -perm -111 2>/dev/null | head -n1 || true)"
+  bin_path="$(find "$tmp" -type f -name "$REPO*" \( -perm -u+x -o -perm -g+x -o -perm -o+x \) 2>/dev/null | head -n1 || true)"
   [ -n "$bin_path" ] || die "binary '$REPO' not found in archive"
   
   verify_checksum_from_archive "$tmp" "$bin_path"
