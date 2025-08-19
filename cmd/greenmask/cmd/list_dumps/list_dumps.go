@@ -15,6 +15,7 @@
 package list_dumps
 
 import (
+	"cmp"
 	"context"
 	"fmt"
 	"os"
@@ -81,36 +82,42 @@ func listDumps(quiet bool) error {
 		return err
 	}
 
+	if quiet {
+		return printDumpIDsSorted(dirs)
+	}
+	return printDumpTablePretty(ctx, dirs)
+}
+
+func printDumpIDsSorted(dirs []storages.Storager) error {
+	dumpIDs := make([]string, 0, len(dirs))
+
+	for _, backup := range dirs {
+		dumpIDs = append(dumpIDs, backup.Dirname())
+	}
+	slices.SortFunc(dumpIDs, func(a, b string) int {
+		return cmp.Compare(b, a) // reverse order
+	})
+	for _, id := range dumpIDs {
+		fmt.Println(id)
+	}
+	return nil
+}
+
+func printDumpTablePretty(ctx context.Context, dirs []storages.Storager) error {
 	var data [][]string
 
 	for _, backup := range dirs {
 		dumpId := backup.Dirname()
-		if quiet {
-			// In quiet mode, just print the dump ID
-			fmt.Println(dumpId)
-			continue
-		}
-
-		if err = renderListItem(ctx, backup, &data); err != nil {
+		if err := renderListItem(ctx, backup, &data); err != nil {
 			log.Warn().
 				Err(err).
 				Str("DumpId", dumpId).
 				Msg("unable to render list dump item")
 		}
 	}
-
-	if quiet {
-		// In quiet mode, we're done after printing the IDs
-		return nil
-	}
-
 	slices.SortFunc(data, func(a, b []string) int {
-		if a[0] > b[0] {
-			return -1
-		}
-		return 1
+		return cmp.Compare(b[0], a[0]) // reverse order by id
 	})
-
 	table := tablewriter.NewWriter(os.Stdout)
 	table.SetHeader([]string{"id", "date", "database", "size", "compressed size", "duration", "transformed", "status"})
 	table.AppendBulk(data)
