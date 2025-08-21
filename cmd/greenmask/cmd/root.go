@@ -16,6 +16,8 @@ package cmd
 
 import (
 	"fmt"
+	"os"
+	"path/filepath"
 	"runtime/debug"
 	"strings"
 
@@ -128,6 +130,19 @@ func initConfig() {
 		viper.SetConfigFile(cfgFile)
 		if err := viper.ReadInConfig(); err != nil {
 			log.Fatal().Err(err).Msg("error reading from config file")
+		}
+	} else {
+		// Check for default config file in platform-specific user config directory
+		configDir, err := os.UserConfigDir()
+		if err == nil {
+			defaultConfigPath := filepath.Join(configDir, "greenmask", "config.yml")
+			if _, err := os.Stat(defaultConfigPath); err == nil {
+				cfgFile = defaultConfigPath
+				viper.SetConfigFile(cfgFile)
+				if err := viper.ReadInConfig(); err != nil {
+					log.Fatal().Err(err).Msg("error reading from default config file")
+				}
+			}
 		}
 	}
 
