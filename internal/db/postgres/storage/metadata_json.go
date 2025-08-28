@@ -64,6 +64,7 @@ type Metadata struct {
 	CompletedAt       time.Time              `yaml:"completedAt" json:"completedAt"`
 	OriginalSize      int64                  `yaml:"originalSize" json:"originalSize"`
 	CompressedSize    int64                  `yaml:"compressedSize" json:"compressedSize"`
+	Description       string                 `yaml:"description" json:"description"`
 	Transformers      []*domains.Table       `yaml:"transformers" json:"transformers"`
 	DatabaseSchema    toolkit.DatabaseSchema `yaml:"database_schema" json:"database_schema"`
 	Header            Header                 `yaml:"header" json:"header"`
@@ -80,7 +81,7 @@ func NewMetadata(
 	completedAt time.Time, transformers []*domains.Table,
 	stats map[int32]ObjectSizeStat, databaseSchema []*toolkit.Table,
 	dependenciesGraph map[int32][]int32, dumpIdsOrder []int32,
-	cycles [][]string, tableOidToDumpId map[toolkit.Oid]int32,
+	cycles [][]string, tableOidToDumpId map[toolkit.Oid]int32, description string,
 ) (*Metadata, error) {
 
 	var format string
@@ -171,6 +172,7 @@ func NewMetadata(
 		CompressedSize:    totalCompressedSize,
 		StartedAt:         startedAt,
 		CompletedAt:       completedAt,
+		Description:       description,
 		Transformers:      transformers,
 		DatabaseSchema:    databaseSchema,
 		DependenciesGraph: dependenciesGraph,
