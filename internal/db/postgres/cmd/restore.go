@@ -560,7 +560,7 @@ func (r *Restore) logWarningsIfHasCycles() {
 func (r *Restore) sortTocEntriesInTopoOrder(entries []*toc.Entry) []*toc.Entry {
 	r.logWarningsIfHasCycles()
 
-	// Find data section entries
+	// Find data section entries - tables are sorted topologically
 	sortedTablesEntries := make([]*toc.Entry, 0, len(entries))
 	for _, dumpId := range r.metadata.DumpIdsOrder {
 		idx := slices.IndexFunc(entries, func(entry *toc.Entry) bool {
@@ -586,6 +586,26 @@ func (r *Restore) sortTocEntriesInTopoOrder(entries []*toc.Entry) []*toc.Entry {
 		}
 		sortedTablesEntries = append(sortedTablesEntries, entries[idx])
 	}
+
+	// Add non-table DATA section entries (like SEQUENCE SET, BLOBS, etc.)
+	// These entries are not part of the dependency graph but must still be restored
+
+	// Build a map of already added DumpIds for O(1) duplicate checking
+	seenDumpIds := make(map[int32]bool, len(sortedTablesEntries))
+	for _, entry := range sortedTablesEntries {
+		seenDumpIds[entry.DumpId] = true
+	}
+
+	// Add non-table entries that haven't been added yet
+	// Note: Not prefiltering entries as performance gain is negligible for typical dataset sizes (KISS)
+	for _, entry := range entries {
+		if entry.Desc != nil && *entry.Desc != toc.TableDataDesc {
+			if !seenDumpIds[entry.DumpId] {
+				sortedTablesEntries = append(sortedTablesEntries, entry)
+			}
+		}
+	}
+
 	return sortedTablesEntries
 }
 
