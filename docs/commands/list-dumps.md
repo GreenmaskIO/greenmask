@@ -15,6 +15,8 @@ The `list-dumps` command provides a list of all dumps stored in the storage. The
     * `failed` — the dump creation process failed
     * `unknown or failed` — the deprecated status of the dump that is used for failed dumps or dumps in progress for 
        version v0.1.14 and earlier
+* `DESCRIPTION` — an optional user-provided note about the dump
+
 
 Example of `list-dumps` output:
 ![list_dumps_screen.png](../assets/list_dumps_screen.png)
