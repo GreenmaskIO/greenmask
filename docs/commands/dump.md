@@ -19,6 +19,7 @@ Mostly it supports the same flags as the `pg_dump` utility, with some extra flag
   -C, --create                          include commands to create database in dump
   -a, --data-only                       dump only the data, not the schema
   -d, --dbname string                   database to dump (default "postgres")
+      --description string              add a description for this dump
       --disable-dollar-quoting          disable dollar quoting, use SQL standard quoting
       --enable-row-security             enable row security (dump only content user has access to)
   -E, --encoding string                 dump the data in encoding ENCODING

@@ -54,6 +54,7 @@ type Options struct {
 	Compression     int    `mapstructure:"compress"`
 	LockWaitTimeout int    `mapstructure:"lock-wait-timeout"`
 	NoSync          bool   `mapstructure:"no-sync"`
+	Description     string `mapstructure:"description"`
 
 	// Options controlling the output content
 	DataOnly                   bool     `mapstructure:"data-only"`

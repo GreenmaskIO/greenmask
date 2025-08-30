@@ -84,6 +84,9 @@ func init() {
 	Cmd.Flags().IntP("lock-wait-timeout", "", -1, "fail after waiting TIMEOUT for a table lock")
 	Cmd.Flags().BoolP("no-sync", "", false, "do not wait for changes to be written safely to dis")
 
+	// Description options
+	Cmd.Flags().StringVarP(&Config.Dump.PgDumpOptions.Description, "description", "", "", "add a description for this dump")
+
 	// Options controlling the output content:
 	Cmd.Flags().BoolP("data-only", "a", false, "dump only the data, not the schema")
 	Cmd.Flags().BoolP("blobs", "b", true, "include large objects in dump")

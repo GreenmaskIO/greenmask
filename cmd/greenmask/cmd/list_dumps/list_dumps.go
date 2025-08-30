@@ -95,7 +95,7 @@ func listDumps() error {
 	})
 
 	table := tablewriter.NewWriter(os.Stdout)
-	table.SetHeader([]string{"id", "date", "database", "size", "compressed size", "duration", "transformed", "status"})
+	table.SetHeader([]string{"id", "date", "database", "size", "compressed size", "duration", "transformed", "status", "description"})
 	table.AppendBulk(data)
 	table.Render()
 	return nil
@@ -123,6 +123,14 @@ func renderListItem(ctx context.Context, st storages.Storager, data *[][]string)
 		}
 	}
 
+	description := ""
+	if metadata != nil {
+		description = metadata.Description
+		if len(description) > 60 {
+			description = description[:57] + "..."
+		}
+	}
+
 	*data = append(*data, []string{
 		dumpId,
 		creationDate,
@@ -132,6 +140,7 @@ func renderListItem(ctx context.Context, st storages.Storager, data *[][]string)
 		duration,
 		transformed,
 		status,
+		description,
 	})
 	return nil
 }
