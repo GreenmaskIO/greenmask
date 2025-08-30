@@ -15,6 +15,7 @@
 package list_dumps
 
 import (
+	"cmp"
 	"context"
 	"fmt"
 	"os"
@@ -33,6 +34,8 @@ import (
 )
 
 var (
+	quietFlag bool // Flag to print only the dump IDs
+
 	Cmd = &cobra.Command{
 		Use:   "list-dumps",
 		Short: "list all dumps in the storage",
@@ -41,7 +44,7 @@ var (
 				log.Err(err).Msg("")
 			}
 
-			if err := listDumps(); err != nil {
+			if err := listDumps(quietFlag); err != nil {
 				log.Fatal().Err(err).Msg("")
 			}
 		},
@@ -62,7 +65,11 @@ func SizePretty(b int64) string {
 	return fmt.Sprintf("%.1f %ciB", float64(b)/float64(div), "KMGTPE"[exp])
 }
 
-func listDumps() error {
+func init() {
+	Cmd.Flags().BoolVarP(&quietFlag, "quiet", "q", false, "Only display dump IDs")
+}
+
+func listDumps(quiet bool) error {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	st, err := builder.GetStorage(ctx, &Config.Storage, &Config.Log)
@@ -75,25 +82,42 @@ func listDumps() error {
 		return err
 	}
 
+	if quiet {
+		return printDumpIDsSorted(dirs)
+	}
+	return printDumpTablePretty(ctx, dirs)
+}
+
+func printDumpIDsSorted(dirs []storages.Storager) error {
+	dumpIDs := make([]string, 0, len(dirs))
+
+	for _, backup := range dirs {
+		dumpIDs = append(dumpIDs, backup.Dirname())
+	}
+	slices.SortFunc(dumpIDs, func(a, b string) int {
+		return cmp.Compare(b, a) // reverse order
+	})
+	for _, id := range dumpIDs {
+		fmt.Println(id)
+	}
+	return nil
+}
+
+func printDumpTablePretty(ctx context.Context, dirs []storages.Storager) error {
 	var data [][]string
 
 	for _, backup := range dirs {
 		dumpId := backup.Dirname()
-		if err = renderListItem(ctx, backup, &data); err != nil {
+		if err := renderListItem(ctx, backup, &data); err != nil {
 			log.Warn().
 				Err(err).
 				Str("DumpId", dumpId).
 				Msg("unable to render list dump item")
 		}
 	}
-
 	slices.SortFunc(data, func(a, b []string) int {
-		if a[0] > b[0] {
-			return -1
-		}
-		return 1
+		return cmp.Compare(b[0], a[0]) // reverse order by id
 	})
-
 	table := tablewriter.NewWriter(os.Stdout)
 	table.SetHeader([]string{"id", "date", "database", "size", "compressed size", "duration", "transformed", "status", "description"})
 	table.AppendBulk(data)
