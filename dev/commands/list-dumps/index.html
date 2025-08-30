@@ -3246,25 +3246,26 @@
   <h1>list-dumps</h1>
 
 <h2 id="list-dumps-command">list-dumps command<a class="headerlink" href="#list-dumps-command" title="Permanent link">&para;</a></h2>
-<p>The <code>list-dumps</code> command provides a list of all dumps stored in the storage. The list includes the following attributes:</p>
-<ul>
-<li><code>ID</code> — the unique identifier of the dump, used for operations like <code>restore</code>, <code>delete</code>, and <code>show-dump</code></li>
-<li><code>DATE</code> — the date when the snapshot was created</li>
-<li><code>DATABASE</code> — the name of the database associated with the dump</li>
-<li><code>SIZE</code> — the original size of the dump</li>
-<li><code>COMPRESSED SIZE</code> — the size of the dump after compression</li>
-<li><code>DURATION</code> — the duration of the dump procedure</li>
-<li><code>TRANSFORMED</code> — indicates whether the dump has been transformed</li>
-<li><code>STATUS</code> — the status of the dump, which can be one of the following:<ul>
-<li><code>done</code> — the dump was completed successfully</li>
-<li><code>in progress</code> — the dump is currently being created</li>
-<li><code>failed</code> — the dump creation process failed</li>
-<li><code>unknown or failed</code> — the deprecated status of the dump that is used for failed dumps or dumps in progress for 
-   version v0.1.14 and earlier</li>
-</ul>
-</li>
-<li><code>DESCRIPTION</code> — an optional user-provided note about the dump</li>
-</ul>
+<p>The <code>list-dumps</code> command provides a list of all dumps stored in the storage.</p>
+<p>Below is a list of all supported flags for the <code>list-dumps</code> command:
+<div class="highlight"><span class="filename">Supported flags</span><pre><span></span><code>Flags:
+  -q, --quiet   Only display dump IDs
+</code></pre></div></p>
+<p>The list includes the following attributes:
+* <code>ID</code> — the unique identifier of the dump, used for operations like <code>restore</code>, <code>delete</code>, and <code>show-dump</code>
+* <code>DATE</code> — the date when the snapshot was created
+* <code>DATABASE</code> — the name of the database associated with the dump
+* <code>SIZE</code> — the original size of the dump
+* <code>COMPRESSED SIZE</code> — the size of the dump after compression
+* <code>DURATION</code> — the duration of the dump procedure
+* <code>TRANSFORMED</code> — indicates whether the dump has been transformed
+* <code>STATUS</code> — the status of the dump, which can be one of the following:
+    * <code>done</code> — the dump was completed successfully
+    * <code>in progress</code> — the dump is currently being created
+    * <code>failed</code> — the dump creation process failed
+    * <code>unknown or failed</code> — the deprecated status of the dump that is used for failed dumps or dumps in progress for 
+       version v0.1.14 and earlier
+* <code>DESCRIPTION</code> — an optional user-provided note about the dump</p>
 <p>Example of <code>list-dumps</code> output:
 <img alt="list_dumps_screen.png" src="../../assets/list_dumps_screen.png" /></p>
 <div class="admonition info">
