@@ -1,7 +1,14 @@
 ## list-dumps command
 
-The `list-dumps` command provides a list of all dumps stored in the storage. The list includes the following attributes:
+The `list-dumps` command provides a list of all dumps stored in the storage.
 
+Below is a list of all supported flags for the `list-dumps` command:
+```text title="Supported flags"
+Flags:
+  -q, --quiet   Only display dump IDs
+```
+
+The list includes the following attributes:
 * `ID` — the unique identifier of the dump, used for operations like `restore`, `delete`, and `show-dump`
 * `DATE` — the date when the snapshot was created
 * `DATABASE` — the name of the database associated with the dump
