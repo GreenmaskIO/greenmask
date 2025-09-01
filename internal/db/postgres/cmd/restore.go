@@ -596,6 +596,21 @@ func (r *Restore) sortTocEntriesInTopoOrder(entries []*toc.Entry) []*toc.Entry {
 		if entry.Desc != nil && *entry.Desc != toc.TableDataDesc {
 			if !seenDumpIds[entry.DumpId] {
 				sortedTablesEntries = append(sortedTablesEntries, entry)
+				seenDumpIds[entry.DumpId] = true
+			}
+		}
+	}
+
+	// Add ACL entries when using --restore-in-order
+	// ACL entries have Section == SectionNone (not SectionData) because they're metadata
+	// They must be restored after data to ensure the objects they reference exist
+	if r.tocObj != nil {
+		for _, entry := range r.tocObj.Entries {
+			if entry.Section == toc.SectionNone && entry.Desc != nil && *entry.Desc == toc.AclDesc {
+				if !seenDumpIds[entry.DumpId] {
+					sortedTablesEntries = append(sortedTablesEntries, entry)
+					seenDumpIds[entry.DumpId] = true
+				}
 			}
 		}
 	}
@@ -631,53 +646,62 @@ func (r *Restore) taskPusher(ctx context.Context, tasks chan restorationTask) fu
 			default:
 			}
 
-			if entry.Section == toc.SectionData {
+			if !r.isNeedRestore(entry) {
+				continue
+			}
 
-				if !r.isNeedRestore(entry) {
+			if r.restoreOpt.RestoreInOrder && r.restoreOpt.Jobs > 1 {
+				deps := r.metadata.DependenciesGraph[entry.DumpId]
+				if err := r.waitDependenciesAreRestore(ctx, deps); err != nil {
+					return fmt.Errorf("cannot wait for dependencies are restored: %w", err)
+				}
+			}
+
+			var task restorationTask
+			if entry.Desc == nil {
+				continue
+			}
+			switch *entry.Desc {
+			case toc.TableDataDesc:
+				if r.restoreOpt.Inserts || r.restoreOpt.OnConflictDoNothing {
+					t, err := r.getTableDefinitionFromMeta(entry.DumpId)
+					if err != nil {
+						return fmt.Errorf("cannot get table definition from meta: %w", err)
+					}
+					task = restorers.NewTableRestorerInsertFormat(
+						entry, t, r.st, r.restoreOpt.ToDataSectionSettings(), r.cfg.ErrorExclusions,
+					)
+				} else {
+					task = restorers.NewTableRestorer(entry, r.st, r.restoreOpt.ToDataSectionSettings())
+				}
+
+			case toc.SequenceSetDesc:
+				task = restorers.NewSequenceRestorer(entry)
+			case toc.BlobsDesc:
+				if r.restoreOpt.NoBlobs {
+					// Skip blobs restoration
+					log.Debug().
+						Int32("DumpId", entry.DumpId).
+						Msg("blobs restoration is skipped")
 					continue
 				}
-
-				if r.restoreOpt.RestoreInOrder && r.restoreOpt.Jobs > 1 {
-					deps := r.metadata.DependenciesGraph[entry.DumpId]
-					if err := r.waitDependenciesAreRestore(ctx, deps); err != nil {
-						return fmt.Errorf("cannot wait for dependencies are restored: %w", err)
-					}
+				task = restorers.NewBlobsRestorer(entry, r.st, r.restoreOpt.Pgzip)
+			case toc.AclDesc:
+				// Skip ACL restoration if --no-privileges is set
+				if r.restoreOpt.NoPrivileges {
+					log.Debug().
+						Int32("DumpId", entry.DumpId).
+						Msg("ACL restoration is skipped due to --no-privileges")
+					continue
 				}
+				task = restorers.NewAclRestorer(entry)
+			}
 
-				var task restorationTask
-				switch *entry.Desc {
-				case toc.TableDataDesc:
-					if r.restoreOpt.Inserts || r.restoreOpt.OnConflictDoNothing {
-						t, err := r.getTableDefinitionFromMeta(entry.DumpId)
-						if err != nil {
-							return fmt.Errorf("cannot get table definition from meta: %w", err)
-						}
-						task = restorers.NewTableRestorerInsertFormat(
-							entry, t, r.st, r.restoreOpt.ToDataSectionSettings(), r.cfg.ErrorExclusions,
-						)
-					} else {
-						task = restorers.NewTableRestorer(entry, r.st, r.restoreOpt.ToDataSectionSettings())
-					}
-
-				case toc.SequenceSetDesc:
-					task = restorers.NewSequenceRestorer(entry)
-				case toc.BlobsDesc:
-					if r.restoreOpt.NoBlobs {
-						// Skip blobs restoration
-						log.Debug().
-							Int32("DumpId", entry.DumpId).
-							Msg("blobs restoration is skipped")
-						continue
-					}
-					task = restorers.NewBlobsRestorer(entry, r.st, r.restoreOpt.Pgzip)
-				}
-
-				if task != nil {
-					select {
-					case <-ctx.Done():
-						return ctx.Err()
-					case tasks <- task:
-					}
+			if task != nil {
+				select {
+				case <-ctx.Done():
+					return ctx.Err()
+				case tasks <- task:
 				}
 			}
 
