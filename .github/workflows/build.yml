@@ -46,27 +46,21 @@ jobs:
             make build CMD_NAME="builds/${{ env.app-name }}"
           fi
 
-      - name: Create checksum
-        if: startsWith(github.ref, 'refs/tags/v')
-        working-directory: builds
-        run: |
-          find . -type f -exec shasum -a 256 -b {} + | sed 's# \*\./# *#' | while read sum file; do echo "$sum $file" > "${file#\*}".sha256; done
-
       - name: Create archive
         if: startsWith(github.ref, 'refs/tags/v')
+        working-directory: builds
         run: |
           export GOOS=$(echo ${{ matrix.platforms }} | cut -d '/' -f 1)
           export GOARCH=$(echo ${{ matrix.platforms }} | cut -d '/' -f 2)
           export GOARM=$(echo ${{ matrix.platforms }} | cut -d '/' -f 3 | cut -d 'v' -f 2)
           export ARCHIVE_NAME=$(echo "${{ env.app-name }}-${GOOS}-${GOARCH}$(if [ -n "${GOARM}" ]; then echo v${GOARM}; fi).$(if [ "${GOOS}" = "windows" ]; then echo "zip"; else echo "tar.gz"; fi)")
-          cp LICENSE builds/
-          cd builds
           if [[ "$GOOS" == "windows" ]]; then
             zip "${ARCHIVE_NAME}" *
           else
             tar -czvf "${ARCHIVE_NAME}" *
           fi
-          find . -maxdepth 1 -type f ! -name ${ARCHIVE_NAME} -exec rm -f {} +
+          shasum -a 256 -b ${ARCHIVE_NAME} > ${ARCHIVE_NAME}.sha256
+          find . -maxdepth 1 -type f ! -name ${ARCHIVE_NAME} ! -name ${ARCHIVE_NAME}.sha256 -exec rm -f {} +
 
       - name: GitHub Release
         if: startsWith(github.ref, 'refs/tags/v')
