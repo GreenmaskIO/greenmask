@@ -20,6 +20,7 @@ import (
 	"path"
 	"slices"
 
+	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -35,6 +36,8 @@ import (
 const (
 	latestDumpName = "latest"
 )
+
+var errNoDumpFoundInStorage = errors.New("no dumps available in storage")
 
 var (
 	Cmd = &cobra.Command{
@@ -85,6 +88,10 @@ func getDumpId(ctx context.Context, st storages.Storager, dumpId string) (string
 		if err != nil {
 			log.Fatal().Err(err).Msg("cannot walk through directory")
 		}
+		if len(dirs) == 0 {
+			return "", errNoDumpFoundInStorage
+		}
+
 		for _, dir := range dirs {
 			exists, err := dir.Exists(ctx, cmdInternals.MetadataJsonFileName)
 			if err != nil {
