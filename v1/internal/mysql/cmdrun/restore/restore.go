@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"time"
 
 	"github.com/rs/zerolog/log"
 
@@ -19,10 +18,6 @@ import (
 	"github.com/greenmaskio/greenmask/v1/internal/mysql/restore/schema"
 	"github.com/greenmaskio/greenmask/v1/internal/mysql/restore/taskproducer"
 	"github.com/greenmaskio/greenmask/v1/internal/storages"
-)
-
-const (
-	defaultInitTimeout = 30 * time.Second
 )
 
 // Restore it's responsible for initialization and perform the whole

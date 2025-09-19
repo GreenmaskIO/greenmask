@@ -421,7 +421,7 @@ func (d *Dump) dataDump(ctx context.Context) error {
 	if err := d.createTocEntries(); err != nil {
 		return fmt.Errorf("error creating toc entries: %w", err)
 	}
-	log.Debug().Msg("all the data have been dumped")
+	log.Debug().Msg("all data has been restored")
 	return nil
 }
 
