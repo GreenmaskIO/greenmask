@@ -2,6 +2,7 @@ package heartbeat
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 
@@ -32,14 +33,13 @@ func (r *Reader) Read(ctx context.Context) (Status, error) {
 				Msg("cannot close object")
 		}
 	}(obj)
-	// TODO: Limit the max read bytes
-	data, err := io.ReadAll(obj)
+	var res Heartbeat
+	if err := json.NewDecoder(obj).Decode(&res); err != nil {
+		return "", fmt.Errorf("decode heartbeat: %w", err)
+	}
+	actualStatus, err := res.GetStatus(heartBeatWriteInterval)
 	if err != nil {
-		return "", fmt.Errorf("read object: %w", err)
+		return "", fmt.Errorf("get status from heartbeat: %w", err)
 	}
-	s := Status(data)
-	if err := s.Validate(); err != nil {
-		return "", fmt.Errorf("validate status: %w", err)
-	}
-	return s, nil
+	return actualStatus, nil
 }

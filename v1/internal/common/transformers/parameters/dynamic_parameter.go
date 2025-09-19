@@ -341,10 +341,10 @@ func (dp *DynamicParameter) Value() (value any, err error) {
 		//if err != nil {
 		//	log.Debug().
 		//		Err(err).
-		//		Str("ParameterName", dp.definition.Name).
+		//		Str("ParameterName", dp.definition.ID).
 		//		Str("RawValue", string(v.Data)).
 		//		Str("TableSchema", dp.tableDriver.Table().Schema).
-		//		Str("FullTableName", dp.tableDriver.Table().Name).
+		//		Str("FullTableName", dp.tableDriver.Table().ID).
 		//		Str("Error", err.Error()).
 		//		Msg("error executing cast_to function")
 		//
@@ -449,10 +449,10 @@ func (dp *DynamicParameter) Scan(dest any) error {
 		//if err != nil {
 		//	log.Debug().
 		//		Err(err).
-		//		Str("ParameterName", dp.definition.Name).
+		//		Str("ParameterName", dp.definition.ID).
 		//		Str("RawValue", string(v.Data)).
 		//		Str("TableSchema", dp.tableDriver.Table().Schema).
-		//		Str("FullTableName", dp.tableDriver.Table().Name).
+		//		Str("FullTableName", dp.tableDriver.Table().ID).
 		//		Str("Error", err.Error()).
 		//		Msg("error executing cast_to function")
 		//

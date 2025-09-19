@@ -1,6 +1,9 @@
 package models
 
-import "fmt"
+import (
+	"errors"
+	"fmt"
+)
 
 type Constraint interface {
 	// Columns - returns the list of columns that are affected by the constraint.
@@ -35,12 +38,27 @@ type Table struct {
 	Constraints []Constraint `json:"-"`
 }
 
+var (
+	errTableNameIsEmpty  = errors.New("table name is empty")
+	errSchemaNameIsEmpty = errors.New("schema name is empty")
+)
+
+func (t *Table) Validate() error {
+	if t.Name == "" {
+		return errTableNameIsEmpty
+	}
+	if t.Schema == "" {
+		return errSchemaNameIsEmpty
+	}
+	return nil
+}
+
 // FullTableName - returns the full table name.
-func (t Table) FullTableName() string {
+func (t *Table) FullTableName() string {
 	return fmt.Sprintf("%s.%s", t.Schema, t.Name)
 }
 
-func (t Table) DebugString() string {
+func (t *Table) DebugString() string {
 	return fmt.Sprintf(
 		"Table[schema=%s name=%s]",
 		t.Schema,
@@ -48,13 +66,13 @@ func (t Table) DebugString() string {
 	)
 }
 
-func (t Table) HasSubsetConditions() bool {
+func (t *Table) HasSubsetConditions() bool {
 	return len(t.SubsetConditions) > 0
 }
 
 // VirtualOID - represents OID in PostgreSQL, but at the same time might be used
 // for any other DB by the uint32 mapping to the real type. Don't know,
-// maybe we should rename it to the ObjectID or smth like that.
+// maybe we should rename it to the TaskID or smth like that.
 // This is expected to reduce allocations when accessing to the types or
 // any other database/table objects.
 type VirtualOID uint32

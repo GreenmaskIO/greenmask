@@ -738,7 +738,7 @@ func TestDynamicParameter_Value(t *testing.T) {
 //	timestampParam := NewDynamicParameter(timestampDef, driver)
 //
 //	warns, err = timestampParam.Init(
-//		map[string]*StaticParameter{columnDef.Name: columnParam},
+//		map[string]*StaticParameter{columnDef.ID: columnParam},
 //		&DynamicParamValue{
 //			Column: "date_tstz",
 //		},

@@ -33,8 +33,13 @@ jobs:
           path: coverage.out
           key: ${{ runner.os }}-coverage-${{ github.sha }}
 
+      - name: Build integration images
+        run: |
+          docker buildx build --load -t greenmask-test-dbs-filler:latest -f docker/integration/filldb/Dockerfile docker/integration/filldb
+          docker buildx build --load -t greenmask:latest -f docker/integration/tests/Dockerfile .
+
       - name: Run integration tests
         run: |
           docker compose -f docker-compose-integration.yml -p greenmask up \
-          --renew-anon-volumes --force-recreate --build --exit-code-from greenmask \
-          --abort-on-container-exit greenmask
+            --renew-anon-volumes --force-recreate \
+            --exit-code-from greenmask --abort-on-container-exit greenmask

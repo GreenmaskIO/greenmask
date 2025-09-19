@@ -10,7 +10,7 @@ engine: mysql
 
 storage:
   directory:
-    path: "/home/vadim/tmp/storage/mysql"
+    path: "/tmp/gmstorage"
 #    path: "/Users/vadim/tmp/storage/mysql"
 #  s3:
 #    endpoint: "http://localhost:9000"
@@ -29,7 +29,7 @@ dump:
     options:
       user: root
       password: 1234
-      connect_database: playground
+      connect-database: playground
       databases: playground
       host: 127.0.0.1
       port: 3306
@@ -45,3 +45,15 @@ dump:
             column: "username"
             value: "test"
 
+restore:
+  options:
+    jobs: 2
+    restore-in-order: true
+
+  mysql:
+    options:
+      user: root
+      password: 1234
+      connect-database: mysql
+      host: 127.0.0.1
+      port: 3307

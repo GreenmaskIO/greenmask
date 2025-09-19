@@ -16,14 +16,16 @@ const metadataFileName = "metadata.json"
 func WriteMetadata(
 	ctx context.Context,
 	st storages.Storager,
+	engine string,
 	transformationConfig []commonmodels.TableConfig,
 	startedAt time.Time,
 	completedAt time.Time,
-	stats []commonmodels.DumpStat,
+	dumpStats commonmodels.DumpStat,
 	tables []commonmodels.Table,
 ) error {
 	meta := commonmodels.NewMetadata(
-		stats,
+		engine,
+		dumpStats,
 		startedAt,
 		completedAt,
 		transformationConfig,

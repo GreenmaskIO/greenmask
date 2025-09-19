@@ -2,9 +2,11 @@ package heartbeat
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"io"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -16,27 +18,41 @@ func TestWriter_Write(t *testing.T) {
 	// Test heartbeat reader using Storage mock
 	// Test all cases
 
-	// Test case 1: Status is done
+	// Test case 1: Status is terminateWithStatus
 	// Test case 2: Status is in-progress
 	// Test case 3: Status is invalid
 	// Test case 4: storage read error
 
 	type test struct {
-		name         string
-		status       Status
-		bytesWritten int
+		name     string
+		status   Status
+		expected Heartbeat
 	}
 
 	tests := []test{
 		{
-			name:         "Status is done",
-			status:       StatusDone,
-			bytesWritten: 4,
+			name:   "Status is terminateWithStatus",
+			status: StatusDone,
+			expected: Heartbeat{
+				Status:    StatusDone,
+				UpdatedAt: time.Now(),
+			},
 		},
 		{
-			name:         "Status is in-progress",
-			status:       StatusInProgress,
-			bytesWritten: 11,
+			name:   "Status is in-progress",
+			status: StatusInProgress,
+			expected: Heartbeat{
+				Status:    StatusInProgress,
+				UpdatedAt: time.Now(),
+			},
+		},
+		{
+			name:   "Status is failed",
+			status: StatusFailed,
+			expected: Heartbeat{
+				Status:    StatusFailed,
+				UpdatedAt: time.Now(),
+			},
 		},
 	}
 
@@ -47,9 +63,11 @@ func TestWriter_Write(t *testing.T) {
 			st.On("PutObject", mock.Anything, heartBeatFileName, mock.Anything).
 				Run(func(args mock.Arguments) {
 					body := args.Get(2).(io.Reader)
-					data, err := io.ReadAll(body) // Read the data from the reader
+					actual := Heartbeat{}
+					err := json.NewDecoder(body).Decode(&actual)
 					require.NoError(t, err)
-					require.Equal(t, string(tt.status), string(data), "body should match expected content")
+					require.Equal(t, tt.expected.Status, actual.Status)
+					require.WithinDuration(t, tt.expected.UpdatedAt, actual.UpdatedAt, 1*time.Second)
 				}).
 				Return(nil)
 

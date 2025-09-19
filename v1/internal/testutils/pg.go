@@ -15,7 +15,7 @@ import (
 const (
 	testContainerDatabase = "testdb"
 	testContainerUser     = "testuser"
-	testContainerPassword = "testpassword"
+	testContainerPassword = "test"
 )
 
 const (

@@ -25,7 +25,7 @@ import (
 
 // NewTransformerFunc - make new transformer. This function receives Driver for making some steps for validation or
 // anything else. parameters - the map of the parsed parameters, for get an appropriate parameter find it
-// in the map by the Name. All those parameters has been defined in the TransformerDefinition object of the transformer
+// in the map by the ID. All those parameters has been defined in the TransformerDefinition object of the transformer
 type NewTransformerFunc func(
 	ctx context.Context,
 	vc *validationcollector.Collector,

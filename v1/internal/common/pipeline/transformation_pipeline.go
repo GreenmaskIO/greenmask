@@ -21,7 +21,7 @@ import (
 	"github.com/greenmaskio/greenmask/pkg/toolkit"
 	"github.com/rs/zerolog/log"
 
-	"github.com/greenmaskio/greenmask/v1/internal/common/dumpcontext"
+	context2 "github.com/greenmaskio/greenmask/v1/internal/common/dump/context"
 	commoninterfaces "github.com/greenmaskio/greenmask/v1/internal/common/interfaces"
 )
 
@@ -30,12 +30,12 @@ var endOfLineSeq = []byte("\n")
 type transformationFunc func(ctx context.Context, r *toolkit.Record) (*toolkit.Record, error)
 
 type TransformationPipeline struct {
-	tableContext *dumpcontext.TableContext
+	tableContext *context2.TableContext
 	line         uint64
 	row          commoninterfaces.RowDriver
 }
 
-func NewTransformationPipeline(tableContext *dumpcontext.TableContext) *TransformationPipeline {
+func NewTransformationPipeline(tableContext *context2.TableContext) *TransformationPipeline {
 	return &TransformationPipeline{
 		tableContext: tableContext,
 	}
@@ -44,7 +44,7 @@ func NewTransformationPipeline(tableContext *dumpcontext.TableContext) *Transfor
 func (tp *TransformationPipeline) Init(ctx context.Context) error {
 	var lastInitErr error
 	var idx int
-	var t *dumpcontext.TransformerContext
+	var t *context2.TransformerContext
 	for idx, t = range tp.tableContext.TransformerContext {
 		if err := t.Transformer.Init(ctx); err != nil {
 			lastInitErr = err

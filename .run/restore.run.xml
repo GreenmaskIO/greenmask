@@ -9,4 +9,14 @@
     <filePath value="$PROJECT_DIR$/cmd/greenmask/main.go" />
     <method v="2" />
   </configuration>
+  <configuration default="false" name="restore" type="GoApplicationRunConfiguration" factoryName="Go Application">
+    <module name="greenmask" />
+    <working_directory value="$PROJECT_DIR$/v1/playground/mysql" />
+    <parameters value="--config config.yaml restore latest" />
+    <kind value="PACKAGE" />
+    <package value="github.com/greenmaskio/greenmask/v1/cmd" />
+    <directory value="$PROJECT_DIR$" />
+    <filePath value="$PROJECT_DIR$/cmd/greenmask/main.go" />
+    <method v="2" />
+  </configuration>
 </component>

@@ -41,9 +41,10 @@ const (
 	MetaKeyParameterValue   = "ParameterValue"
 	MetaKeyColumnTypeName   = "ColumnTypeName"
 	MetaKeyError            = "Error"
-	MetaKeyUniqueDumpTaskID = "UniqueDumpTaskID"
+	MetaKeyUniqueDumpTaskID = "UniqueTaskID"
 	MetaKeyTransformerName  = "TransformerName"
 	MetaKeyConditionScope   = "ConditionScope"
+	MetaKeyQuery            = "Query"
 )
 
 type ValidationWarnings []*ValidationWarning

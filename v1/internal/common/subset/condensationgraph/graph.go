@@ -26,7 +26,8 @@ type Graph struct {
 	// paths - the subset paths for the vertexes. The key is the vertex index in the Graph and the value is the path for
 	// creating the subset query
 	//paths    map[int]*Path
-	visited  []int
+	visited []int
+	// order - the topological order of the Graph. It is used to find the SCCs in the Graph.
 	order    []int
 	sccCount int
 	// condensedEdges - the edges that are part of the condensed Graph. In case from and to parts in edge
@@ -185,4 +186,20 @@ func (g *Graph) markComponentDfs(v, component int) {
 			g.markComponentDfs(e.To().TableID(), component)
 		}
 	}
+}
+
+func (g *Graph) HasCycles() bool {
+	for _, scc := range g.SCC {
+		if scc.HasCycle() {
+			return true
+		}
+	}
+	return false
+}
+
+func (g *Graph) GetTopologicalOrder() ([]int, error) {
+	if g.HasCycles() {
+		return nil, commonmodels.ErrTableGraphHasCycles
+	}
+	return slices.Clone(g.order), nil
 }

@@ -2,8 +2,8 @@ package config
 
 import (
 	"github.com/greenmaskio/greenmask/v1/internal/common/models"
-	mysqlconfig "github.com/greenmaskio/greenmask/v1/internal/mysql/config"
-	pgconfig "github.com/greenmaskio/greenmask/v1/internal/pg/config"
+	mysqlconfig "github.com/greenmaskio/greenmask/v1/internal/mysql/dump/config"
+	pgconfig "github.com/greenmaskio/greenmask/v1/internal/pg/dump/config"
 )
 
 /*
@@ -129,12 +129,14 @@ type Options struct {
 	ExcludeTableData []string `mapstructure:"exclude-table-data" yaml:"exclude-table-data" json:"exclude-table-data"`
 	DataOnly         bool     `mapstructure:"data-only" yaml:"data-only" json:"data-only"`
 	SchemaOnly       bool     `mapstructure:"schema-only" yaml:"schema-only" json:"schema-only"`
+	Jobs             int      `mapstructure:"jobs" yaml:"jobs" json:"jobs"`
+	RestoreInOrder   bool     `mapstructure:"restore-in-order" yaml:"restore-in-order" json:"restore-in-order"`
 }
 
 type Dump struct {
-	Options           Options
-	MysqlConfig       MysqlDumpConfig      `mapstructure:"mysql" yaml:"mysql"`
-	PostgresqlConfig  PostgresqlDumpConfig `mapstructure:"postgresql" yaml:"postgresql"`
+	Options           Options              `mapstructure:"options" yaml:"options" json:"options"`
+	MysqlConfig       MysqlDumpConfig      `mapstructure:"mysql" yaml:"mysql" json:"mysql"`
+	PostgresqlConfig  PostgresqlDumpConfig `mapstructure:"postgresql" yaml:"postgresql" json:"postgresql"`
 	Transformation    TransformationConfig `mapstructure:"transformation" yaml:"transformation" json:"transformation,omitempty"`
 	VirtualReferences []VirtualReference   `mapstructure:"virtual_references" yaml:"virtual_references" json:"virtual_references,omitempty"`
 }

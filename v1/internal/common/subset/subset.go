@@ -206,3 +206,11 @@ func (s *Subset) buildQueryForSCC(sg *subsetGraph) (map[int]string, error) {
 func (s *Subset) GetTableQueries() []string {
 	return slices.Clone(s.tablesQueries)
 }
+
+func (s *Subset) GetTopologicalOrder() ([]int, error) {
+	return s.condensationGraph.GetTopologicalOrder()
+}
+
+func (s *Subset) GetTableGraph() tablegraph.Graph {
+	return s.tableGraph
+}

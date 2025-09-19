@@ -4,66 +4,26 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"time"
 
 	"github.com/docker/go-connections/nat"
 	_ "github.com/go-sql-driver/mysql"
+	"github.com/rs/zerolog/log"
 	"github.com/stretchr/testify/suite"
 	"github.com/testcontainers/testcontainers-go"
-	"github.com/testcontainers/testcontainers-go/wait"
+	tcmysql "github.com/testcontainers/testcontainers-go/modules/mysql"
+
+	"github.com/greenmaskio/greenmask/v1/internal/mysql/config"
 )
 
 var (
-	mysqlTestContainerImage                = "mysql:8"
-	mysqlTestContainerExposedPort          = "3306/tcp"
-	mysqlTestContainerPort        nat.Port = "3306"
+	mysqlTestContainerImage          = "mysql:8"
+	mysqlTestContainerPort  nat.Port = "3306"
 )
 
 const (
-	mysqlPingTries         = 1000
-	mysqlPingRetryInterval = 100 * time.Millisecond
-
 	mysqlRootUser     = "root"
-	mysqlRootPassword = "root"
+	mysqlRootPassword = testContainerPassword
 )
-
-type readinessChecker struct{}
-
-func (r *readinessChecker) WaitUntilReady(ctx context.Context, target wait.StrategyTarget) (err error) {
-	for i := 0; i < mysqlPingTries; i++ {
-		if err = r.ping(ctx, target); err == nil {
-			return nil
-		}
-		time.Sleep(mysqlPingRetryInterval)
-	}
-	return fmt.Errorf("ping: %w", err)
-}
-
-func (r *readinessChecker) ping(ctx context.Context, target wait.StrategyTarget) (err error) {
-	host, err := target.Host(ctx)
-	if err != nil {
-		return fmt.Errorf("get host: %w", err)
-	}
-	port, err := target.MappedPort(ctx, mysqlTestContainerPort)
-	if err != nil {
-		return fmt.Errorf("get port: %w", err)
-	}
-
-	// Create the connection string
-	connStr := fmt.Sprintf(
-		"%s:%s@tcp(%s:%s)/%s?parseTime=true",
-		testContainerUser, testContainerPassword, host, port.Port(), testContainerDatabase,
-	)
-	db, err := sql.Open("mysql", connStr)
-	if err != nil {
-		return fmt.Errorf("open connection: %w", err)
-	}
-	defer db.Close()
-	if err := db.Ping(); err != nil {
-		return fmt.Errorf("ping: %w", err)
-	}
-	return nil
-}
 
 type MySQLContainerSuite struct {
 	suite.Suite
@@ -78,6 +38,7 @@ type MySQLContainerSuite struct {
 	MigrationUp          []string
 	MigrationDown        []string
 	migrateAutomatically bool
+	scriptPaths          []string
 }
 
 func (s *MySQLContainerSuite) SetupSuite() {
@@ -89,10 +50,10 @@ func (s *MySQLContainerSuite) SetupSuite() {
 		s.password = testContainerPassword
 	}
 	if s.migrationUser == "" {
-		s.migrationUser = testContainerUser
+		s.migrationUser = mysqlRootUser
 	}
 	if s.migrationPass == "" {
-		s.migrationPass = testContainerPassword
+		s.migrationPass = mysqlRootPassword
 	}
 	if s.rootUser == "" {
 		s.rootUser = mysqlRootUser
@@ -103,26 +64,22 @@ func (s *MySQLContainerSuite) SetupSuite() {
 	if s.database == "" {
 		s.database = testContainerDatabase
 	}
-
-	req := testcontainers.ContainerRequest{
-		Image:        mysqlTestContainerImage,                 // Specify the MySQL image
-		ExposedPorts: []string{mysqlTestContainerExposedPort}, // Expose the MySQL port
-		Env: map[string]string{
-			"MYSQL_ROOT_PASSWORD": s.rootPass,
-			"MYSQL_USER":          s.username,
-			"MYSQL_PASSWORD":      s.password,
-			"MYSQL_DATABASE":      s.database,
-		},
-		WaitingFor: &readinessChecker{},
-	}
-
 	var err error
-	s.Container, err = testcontainers.GenericContainer(ctx,
-		testcontainers.GenericContainerRequest{
-			ContainerRequest: req,
-			Started:          true,
-		},
+	s.Container, err = tcmysql.Run(
+		ctx,
+		mysqlTestContainerImage,
+		tcmysql.WithScripts(s.scriptPaths...),
+		testcontainers.CustomizeRequestOption(
+			func(req *testcontainers.GenericContainerRequest) error {
+				req.Env["MYSQL_ROOT_PASSWORD"] = s.rootPass
+				req.Env["MYSQL_USER"] = s.username
+				req.Env["MYSQL_PASSWORD"] = s.password
+				req.Env["MYSQL_DATABASE"] = s.database
+				return nil
+			},
+		),
 	)
+
 	s.Require().NoErrorf(err, "failed to start MySQL Container")
 
 	s.MigrateUpGlobal(ctx)
@@ -168,6 +125,11 @@ func (s *MySQLContainerSuite) SetRootUser(userName, password string) *MySQLConta
 	return s
 }
 
+func (s *MySQLContainerSuite) SetScripts(scripts ...string) *MySQLContainerSuite {
+	s.scriptPaths = scripts
+	return s
+}
+
 //
 //func (s *MySQLContainerSuite) CreateSchema(ctx context.Context, name string) {
 //	conn, err := s.GetConnectionWithUser(ctx, mysqlRootUser, testContainerPassword)
@@ -188,22 +150,56 @@ func (s *MySQLContainerSuite) GetConnection(ctx context.Context) (
 	return s.GetConnectionWithUser(ctx, s.username, s.password)
 }
 
-func (s *MySQLContainerSuite) GetConnectionWithUser(ctx context.Context, username, password string) (
+func (s *MySQLContainerSuite) GetRootConnection(ctx context.Context) (
 	conn *sql.DB, err error,
 ) {
+	return s.GetConnectionWithUser(ctx, s.rootUser, s.rootPass)
+}
+
+func (s *MySQLContainerSuite) GetConnectionOpts(ctx context.Context) config.ConnectionOpts {
+	return s.GetConnectionOptsWithUser(ctx, s.username, s.password)
+}
+
+func (s *MySQLContainerSuite) GetRootConnectionOpts(ctx context.Context) config.ConnectionOpts {
+	return s.GetConnectionOptsWithUser(ctx, s.rootUser, s.rootPass)
+}
+
+func (s *MySQLContainerSuite) GetConnectionOptsWithUser(ctx context.Context, username, password string) config.ConnectionOpts {
 	// Get the host and port for connecting to the Container
 	host, err := s.Container.Host(ctx)
 	s.Require().NoErrorf(err, "failed to get Container host")
 	port, err := s.Container.MappedPort(ctx, mysqlTestContainerPort)
 	s.Require().NoErrorf(err, "failed to get Container port")
+	return config.ConnectionOpts{
+		Host:     host,
+		Port:     port.Int(),
+		User:     username,
+		Password: password,
+	}
+}
 
-	// Create the connection string
-	connStr := fmt.Sprintf(
+func (s *MySQLContainerSuite) GetConnectionURI(ctx context.Context) string {
+	return s.GetConnectionURIWithUser(ctx, s.username, s.password)
+}
+
+func (s *MySQLContainerSuite) GetConnectionURIWithUser(ctx context.Context, username, password string) string {
+	// Get the host and port for connecting to the Container
+	host, err := s.Container.Host(ctx)
+	s.Require().NoErrorf(err, "failed to get Container host")
+	port, err := s.Container.MappedPort(ctx, mysqlTestContainerPort)
+	s.Require().NoErrorf(err, "failed to get Container port")
+	return fmt.Sprintf(
 		"%s:%s@tcp(%s:%s)/%s?parseTime=true",
 		username, password, host, port.Port(), testContainerDatabase,
 	)
-	print(connStr)
+}
 
+func (s *MySQLContainerSuite) GetConnectionWithUser(ctx context.Context, username, password string) (
+	conn *sql.DB, err error,
+) {
+	// Create the connection string
+	connStr := s.GetConnectionURIWithUser(ctx, username, password)
+	print(connStr)
 	return sql.Open("mysql", connStr)
 }
 
@@ -219,7 +215,11 @@ func (s *MySQLContainerSuite) MigrateUp(ctx context.Context, sqls []string) {
 	s.Require().NoErrorf(err, "failed to connect to MySQL")
 	defer conn.Close()
 	s.Require().NoErrorf(conn.Ping(), "failed to ping MySQL")
-	for _, migration := range sqls {
+	for i, migration := range sqls {
+		log.Info().
+			Str("migration", migration).
+			Int("index", i).
+			Msg("running migration")
 		_, err = conn.Exec(migration)
 		s.Require().NoErrorf(err, "failed to run up migration")
 	}

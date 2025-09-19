@@ -127,6 +127,7 @@ services:
       retries: 3
 
   test-dbs-filler:
+    image: greenmask-test-dbs-filler:latest
     environment:
       PGPASSWORD: "example"
       FILE_DUMP: "demo-small-en.zip"
@@ -153,6 +154,7 @@ services:
         condition: service_healthy
 
   greenmask:
+    image: greenmask-integration:latest
     volumes:
       - "/tmp"
     environment:

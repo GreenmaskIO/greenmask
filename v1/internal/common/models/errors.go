@@ -13,6 +13,7 @@ var (
 	ErrProvidedRowLengthIsNotEqualToTheDestination = errors.New("provided row length is not equal to destination")
 	ErrUnknownColumnIdx                            = errors.New("unknown column index")
 	ErrEndOfStream                                 = errors.New("end of stream")
+	ErrTableGraphHasCycles                         = errors.New("table graph has cycles")
 )
 
 type DumpError struct {

@@ -7,7 +7,7 @@ import (
 )
 
 type Dumper interface {
-	Dump(ctx context.Context) (commonmodels.DumpStat, error)
+	Dump(ctx context.Context) (commonmodels.TaskStat, error)
 	DebugInfo() string
 	Meta() map[string]any
 }
