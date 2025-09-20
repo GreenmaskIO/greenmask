@@ -17,9 +17,9 @@ You can use the following commands within Greenmask:
 * [validate](validate.md) - performs a validation procedure by testing config, comparing transformed data, identifying 
 potential issues, and checking for schema changes.
 * [dump](dump.md) — initiates the data dumping process
-* [restore](list-dumps.md) — restores data to the target database either by specifying a `dumpId` or using the latest available dump
-* [list-dumps](show-dump.md) — lists all available dumps stored in the system
-* [show-dump](restore.md) — provides metadata information about a particular dump, offering insights into its structure and
+* [restore](restore.md) — restores data to the target database either by specifying a `dumpId` or using the latest available dump
+* [list-dumps](list-dumps.md) — lists all available dumps stored in the system
+* [show-dump](show-dump.md) — provides metadata information about a particular dump, offering insights into its structure and
     attributes
 * [delete](delete.md) — deletes a specific dump from the storage
 

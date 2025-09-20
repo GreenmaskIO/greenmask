@@ -71,9 +71,7 @@ const (
 
 const dependenciesCheckInterval = 15 * time.Millisecond
 
-var (
-	ErrTableDefinitionIsEmtpy = errors.New("table definition is empty: please re-dump the data using the latest version of greenmask if you want to use --inserts")
-)
+var ErrTableDefinitionIsEmtpy = errors.New("table definition is empty: please re-dump the data using the latest version of greenmask if you want to use --inserts")
 
 type restorationTask interface {
 	Execute(ctx context.Context, conn utils.PGConnector) error
@@ -103,7 +101,6 @@ type Restore struct {
 func NewRestore(
 	binPath string, st storages.Storager, cfg *domains.Restore, s map[string][]pgrestore.Script, tmpDir string,
 ) *Restore {
-
 	return &Restore{
 		binPath:         binPath,
 		st:              st,
@@ -119,7 +116,6 @@ func NewRestore(
 }
 
 func (r *Restore) Run(ctx context.Context) error {
-
 	defer r.prune()
 
 	if err := r.readMetadata(ctx); err != nil {
@@ -240,7 +236,6 @@ func (r *Restore) prepare() error {
 }
 
 func (r *Restore) preFlightRestore(ctx context.Context) error {
-
 	tocFile, err := r.st.GetObject(ctx, "toc.dat")
 	if err != nil {
 		return fmt.Errorf("cannot open toc file: %w", err)
@@ -449,7 +444,7 @@ func (r *Restore) dataRestore(ctx context.Context) error {
 	tasks := make(chan restorationTask, r.restoreOpt.Jobs)
 	eg, gtx := errgroup.WithContext(ctx)
 
-	for j := 0; j < r.restoreOpt.Jobs; j++ {
+	for j := range r.restoreOpt.Jobs {
 		eg.Go(func(id int) func() error {
 			return func() error {
 				return r.restoreWorker(gtx, tasks, id+1)
@@ -472,13 +467,12 @@ func (r *Restore) dataRestore(ctx context.Context) error {
 }
 
 func (r *Restore) isNeedRestore(e *toc.Entry) bool {
-
 	if *e.Desc == toc.TableDataDesc || *e.Desc == toc.SequenceSetDesc {
 
 		if len(r.restoreOpt.ExcludeSchema) > 0 &&
 			slices.Contains(r.restoreOpt.ExcludeSchema, removeEscapeQuotes(*e.Namespace)) {
 
-			return true
+			return false
 		}
 
 		if len(r.restoreOpt.Schema) > 0 &&
@@ -560,7 +554,7 @@ func (r *Restore) logWarningsIfHasCycles() {
 func (r *Restore) sortTocEntriesInTopoOrder(entries []*toc.Entry) []*toc.Entry {
 	r.logWarningsIfHasCycles()
 
-	// Find data section entries
+	// Find data section entries - tables are sorted topologically
 	sortedTablesEntries := make([]*toc.Entry, 0, len(entries))
 	for _, dumpId := range r.metadata.DumpIdsOrder {
 		idx := slices.IndexFunc(entries, func(entry *toc.Entry) bool {
@@ -586,6 +580,26 @@ func (r *Restore) sortTocEntriesInTopoOrder(entries []*toc.Entry) []*toc.Entry {
 		}
 		sortedTablesEntries = append(sortedTablesEntries, entries[idx])
 	}
+
+	// Add non-table DATA section entries (like SEQUENCE SET, BLOBS, etc.)
+	// These entries are not part of the dependency graph but must still be restored
+
+	// Build a map of already added DumpIds for O(1) duplicate checking
+	seenDumpIds := make(map[int32]bool, len(sortedTablesEntries))
+	for _, entry := range sortedTablesEntries {
+		seenDumpIds[entry.DumpId] = true
+	}
+
+	// Add non-table entries that haven't been added yet
+	// Note: Not prefiltering entries as performance gain is negligible for typical dataset sizes (KISS)
+	for _, entry := range entries {
+		if entry.Desc != nil && *entry.Desc != toc.TableDataDesc {
+			if !seenDumpIds[entry.DumpId] {
+				sortedTablesEntries = append(sortedTablesEntries, entry)
+			}
+		}
+	}
+
 	return sortedTablesEntries
 }
 
@@ -747,14 +761,14 @@ func (r *Restore) setRestoreList(fileName string, format string) (err error) {
 func (r *Restore) parseTextList(f *os.File) ([]int32, error) {
 	const dumpIdGroup = 1
 	var lineNumber int
-	var lineBuf = make([]byte, 0, 1024)
+	lineBuf := make([]byte, 0, 1024)
 	buf := bytes.NewBuffer(lineBuf)
 	lr := bufio.NewReader(f)
 	pattern, err := regexp.Compile(`^\s*(?P<DumpIdSequence>\d+)\s*;.*$`)
 	if err != nil {
 		return nil, fmt.Errorf("cannot compile regexp: %s", err)
 	}
-	//res := make(map[int32]bool)
+	// res := make(map[int32]bool)
 	var res []int32
 	idx := 0
 	for {
