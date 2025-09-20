@@ -1,4 +1,18 @@
-package transformers2
+// Copyright 2025 Greenmask
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+package transformers
 
 import (
 	"context"
@@ -10,10 +24,17 @@ import (
 	"github.com/greenmaskio/greenmask/v1/internal/common/validationcollector"
 )
 
-var (
+const (
 	ParameterNameKeepNull  = "keep_null"
 	ParameterNameColumn    = "column"
-	ParameterValueValidate = "validate"
+	ParameterValueValidate = "needValidate"
+)
+
+var (
+	defaultKeepNullParameterDefinition = commonparameters.MustNewParameterDefinition(
+		"keep_null",
+		"indicates that NULL values must not be replaced with transformed values",
+	).SetDefaultValue(commonmodels.ParamsValue("true"))
 )
 
 // TransformationFunc - a transformation function. It has the same signature as
@@ -50,7 +71,7 @@ func panicParameterDoesNotExists(parameterName string) {
 // panicParameterDoesNotExists - returns the parameter value by scanning a value into variable.
 // The type is provided via generic parameter.
 func getParameterValueWithName[T any](
-	vc *validationcollector.Collector,
+	ctx context.Context,
 	parameters map[string]commonparameters.Parameterizer,
 	parameterName string,
 ) (T, error) {
@@ -60,11 +81,12 @@ func getParameterValueWithName[T any](
 	}
 	var res T
 	if err := parameter.Scan(&res); err != nil {
-		vc.Add(commonmodels.NewValidationWarning().
-			SetSeverity(commonmodels.ValidationSeverityError).
-			AddMeta(commonmodels.MetaKeyParameterName, parameterName).
-			SetError(err).
-			SetMsg("error scanning parameter"))
+		validationcollector.FromContext(ctx).
+			Add(commonmodels.NewValidationWarning().
+				SetSeverity(commonmodels.ValidationSeverityError).
+				AddMeta(commonmodels.MetaKeyParameterName, parameterName).
+				SetError(err).
+				SetMsg("error scanning parameter"))
 		return res, commonmodels.ErrFatalValidationError
 	}
 	return res, nil
@@ -73,18 +95,18 @@ func getParameterValueWithName[T any](
 // getColumnParameterValueWithName - simplifies the logic of common column parameter.
 // It gets the column name, get column definition.
 func getColumnParameterValueWithName(
-	vc *validationcollector.Collector,
+	ctx context.Context,
 	tableDriver commonininterfaces.TableDriver,
 	parameters map[string]commonparameters.Parameterizer,
 	parameterName string,
 ) (string, *commonmodels.Column, error) {
-	columnName, err := getParameterValueWithName[string](vc, parameters, parameterName)
+	columnName, err := getParameterValueWithName[string](ctx, parameters, parameterName)
 	if err != nil {
 		return "", nil, err
 	}
 	c, err := tableDriver.GetColumnByName(columnName)
 	if err != nil {
-		vc.Add(commonmodels.NewValidationWarning().
+		validationcollector.FromContext(ctx).Add(commonmodels.NewValidationWarning().
 			SetSeverity(commonmodels.ValidationSeverityError).
 			AddMeta(commonmodels.MetaKeyParameterName, parameterName).
 			AddMeta(commonmodels.MetaKeyParameterValue, columnName).
@@ -98,9 +120,9 @@ func getColumnParameterValueWithName(
 // getColumnParameterValue - get a column parameter value with name "column". It does the same
 // as getColumnParameterValueWithName helper.
 func getColumnParameterValue(
-	vc *validationcollector.Collector,
+	ctx context.Context,
 	tableDriver commonininterfaces.TableDriver,
 	parameters map[string]commonparameters.Parameterizer,
 ) (string, *commonmodels.Column, error) {
-	return getColumnParameterValueWithName(vc, tableDriver, parameters, ParameterNameColumn)
+	return getColumnParameterValueWithName(ctx, tableDriver, parameters, ParameterNameColumn)
 }

@@ -8,7 +8,6 @@ import (
 	commonininterfaces "github.com/greenmaskio/greenmask/v1/internal/common/interfaces"
 	commonparameters "github.com/greenmaskio/greenmask/v1/internal/common/transformers/parameters"
 	"github.com/greenmaskio/greenmask/v1/internal/common/transformers/utils"
-	"github.com/greenmaskio/greenmask/v1/internal/common/validationcollector"
 )
 
 var (
@@ -22,7 +21,6 @@ type TransformerMock struct {
 func NewTransformerMock(
 	newFunctionMock func(
 		ctx context.Context,
-		vc *validationcollector.Collector,
 		tableDriver commonininterfaces.TableDriver,
 		parameters map[string]commonparameters.Parameterizer,
 	) error,
@@ -30,11 +28,10 @@ func NewTransformerMock(
 	tm := &TransformerMock{}
 	return tm, func(
 		ctx context.Context,
-		vc *validationcollector.Collector,
 		tableDriver commonininterfaces.TableDriver,
 		parameters map[string]commonparameters.Parameterizer,
 	) (commonininterfaces.Transformer, error) {
-		if err := newFunctionMock(ctx, vc, tableDriver, parameters); err != nil {
+		if err := newFunctionMock(ctx, tableDriver, parameters); err != nil {
 			return nil, err
 		}
 		return tm, nil

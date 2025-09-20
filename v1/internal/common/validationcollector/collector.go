@@ -15,6 +15,10 @@ var (
 	ErrorCollectorNotFound = errors.New("validation collector not found in context")
 )
 
+// DefaultCollector is a global default collector. It is returned by FromContext if no collector is
+// found in the context.
+var DefaultCollector = NewCollector()
+
 type contextKey struct{}
 
 var collectorKey = contextKey{}
@@ -25,11 +29,11 @@ func WithCollector(ctx context.Context, vc *Collector) context.Context {
 }
 
 // FromContext returns the Collector from the context, or nil if not found.
-func FromContext(ctx context.Context) (*Collector, error) {
+func FromContext(ctx context.Context) *Collector {
 	if vc, ok := ctx.Value(collectorKey).(*Collector); ok {
-		return vc, nil
+		return vc
 	}
-	return nil, ErrorCollectorNotFound
+	return DefaultCollector
 }
 
 // Collector gathers warnings, layering on context metadata.

@@ -17,7 +17,7 @@ package registry
 import (
 	"fmt"
 
-	"github.com/greenmaskio/greenmask/v1/internal/common/transformers/transformers2"
+	"github.com/greenmaskio/greenmask/v1/internal/common/transformers/transformers"
 	"github.com/greenmaskio/greenmask/v1/internal/common/transformers/utils"
 )
 
@@ -58,5 +58,6 @@ func (tm *TransformerRegistry) Get(name string) (*utils.TransformerDefinition, b
 }
 
 func init() {
-	DefaultTransformerRegistry.MustRegister(transformers2.ReplaceTransformerDefinition)
+	DefaultTransformerRegistry.MustRegister(transformers.ReplaceTransformerDefinition)
+	DefaultTransformerRegistry.MustRegister(transformers.DictTransformerDefinition)
 }
