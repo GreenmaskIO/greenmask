@@ -25,15 +25,20 @@ import (
 )
 
 const (
-	ParameterNameKeepNull  = "keep_null"
-	ParameterNameColumn    = "column"
-	ParameterValueValidate = "needValidate"
+	ParameterNameKeepNull = "keep_null"
+	ParameterNameColumn   = "column"
+	ParameterNameValidate = "validate"
 )
 
 var (
 	defaultKeepNullParameterDefinition = commonparameters.MustNewParameterDefinition(
 		"keep_null",
 		"indicates that NULL values must not be replaced with transformed values",
+	).SetDefaultValue(commonmodels.ParamsValue("true"))
+
+	defaultValidateParameterDefinition = commonparameters.MustNewParameterDefinition(
+		ParameterNameValidate,
+		"validate the value via driver decoding procedure",
 	).SetDefaultValue(commonmodels.ParamsValue("true"))
 )
 

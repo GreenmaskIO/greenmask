@@ -135,9 +135,9 @@ func newTransformerTestEnv(
 		parameters[k] = v
 	}
 
-	transformer, err := setup.new(ctx, setup.tableDriver, parameters)
+	var err error
+	setup.transformer, err = setup.new(ctx, setup.tableDriver, parameters)
 	require.NoError(t, err)
-	setup.transformer = transformer.(*ReplaceTransformer)
 
 	return setup
 }

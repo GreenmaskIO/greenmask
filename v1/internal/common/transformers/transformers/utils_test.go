@@ -169,7 +169,7 @@ func TestGetParameterValueWithName(t *testing.T) {
 		assert.Equal(t, warning.Msg, "error scanning parameter")
 		assert.Equal(t, warning.Meta, map[string]any{
 			commonmodels.MetaKeyParameterName: parameterName,
-			commonmodels.MetaKeyError:         assert.AnError,
+			commonmodels.MetaKeyError:         assert.AnError.Error(),
 		})
 		boolParameter.AssertExpectations(t)
 	})
@@ -196,7 +196,7 @@ func TestGetColumnParameterValue(t *testing.T) {
 			Name: expectedColumnName,
 		}
 		tableDriver.On("GetColumnByName", expectedColumnName).
-			Return(expectedColumn, true)
+			Return(expectedColumn, nil)
 		actualColumnName, actualColumn, err := getColumnParameterValue(ctx, tableDriver, parameters)
 		assert.NoError(t, err)
 		assert.Equal(t, expectedColumnName, actualColumnName)
@@ -222,18 +222,19 @@ func TestGetColumnParameterValue(t *testing.T) {
 				require.NoError(t, utils.ScanPointer(expectedColumnName, dest))
 			}).Return(nil)
 		tableDriver.On("GetColumnByName", expectedColumnName).
-			Return(nil, false)
+			Return(nil, commonmodels.ErrUnknownColumnName)
 		_, _, err := getColumnParameterValue(ctx, tableDriver, parameters)
 		assert.ErrorIs(t, err, commonmodels.ErrFatalValidationError)
 		require.True(t, vc.IsFatal())
 		require.Equal(t, vc.Len(), 1)
 		warning := vc.GetWarnings()[0]
-		assert.Equal(t, warning.Severity, commonmodels.ValidationSeverityError)
-		assert.Equal(t, warning.Msg, "column is not found")
-		assert.Equal(t, warning.Meta, map[string]any{
+		assert.Equal(t, commonmodels.ValidationSeverityError, warning.Severity)
+		assert.Equal(t, commonmodels.ErrUnknownColumnName, warning.Err)
+		assert.Equal(t, map[string]any{
 			commonmodels.MetaKeyParameterName:  parameterName,
 			commonmodels.MetaKeyParameterValue: expectedColumnName,
-		})
+			commonmodels.MetaKeyError:          commonmodels.ErrUnknownColumnName.Error(),
+		}, warning.Meta)
 		columnParameter.AssertExpectations(t)
 	})
 }

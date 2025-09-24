@@ -56,10 +56,8 @@ var ReplaceTransformerDefinition = transformerutils.NewTransformerDefinition(
 	// keep_null parameter definition
 	defaultKeepNullParameterDefinition,
 
-	commonparameters.MustNewParameterDefinition(
-		"needValidate",
-		"needValidate the value via driver decoding procedure",
-	).SetDefaultValue(commonmodels.ParamsValue("true")),
+	// validate parameter definition
+	defaultValidateParameterDefinition,
 )
 
 type ReplaceTransformer struct {
@@ -92,7 +90,7 @@ func NewReplaceTransformer(
 		return nil, err
 	}
 
-	needValidate, err := getParameterValueWithName[bool](ctx, parameters, ParameterValueValidate)
+	needValidate, err := getParameterValueWithName[bool](ctx, parameters, ParameterNameValidate)
 	if err != nil {
 		return nil, err
 	}

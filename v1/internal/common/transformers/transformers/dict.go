@@ -25,9 +25,13 @@ import (
 	"github.com/greenmaskio/greenmask/v1/internal/common/validationcollector"
 )
 
-const defaultNullSeq = `\N`
+const (
+	DictTransformerName = "Dict"
 
-const DictTransformerName = "Dict"
+	defaultNullSeq = `\N`
+)
+
+var ErrDictTransformerFailNotMatched = fmt.Errorf("value not matched with dict")
 
 var DictTransformerDefinition = transformerutils.NewTransformerDefinition(
 	transformerutils.NewTransformerProperties(
@@ -54,11 +58,9 @@ var DictTransformerDefinition = transformerutils.NewTransformerDefinition(
 		`fail if value is not matched with dict otherwise keep value`,
 	).SetRequired(false).
 		SetDefaultValue(commonmodels.ParamsValue("true")),
-	commonparameters.MustNewParameterDefinition(
-		"needValidate",
-		`perform encode-decode procedure using column type, ensuring that value has correct type`,
-	).SetRequired(false).
-		SetDefaultValue(commonmodels.ParamsValue("true")),
+
+	// validate parameter definition
+	defaultValidateParameterDefinition,
 )
 
 type DictTransformer struct {
@@ -67,11 +69,11 @@ type DictTransformer struct {
 	dict            map[string]*commonmodels.ColumnRawValue
 	defaultValue    *commonmodels.ColumnRawValue
 	failNotMatched  bool
-	needValidate    bool
+	validate        bool
 	affectedColumns map[int]string
 }
 
-// dictValidateValue - needValidate value via table driver decode procedure.
+// dictValidateValue - validate value via table driver decode procedure.
 func dictValidateValue(data []byte, tableDriver commonininterfaces.TableDriver, columnIdx int) error {
 	_, err := tableDriver.DecodeValueByColumnIdx(columnIdx, data)
 	if err != nil {
@@ -80,7 +82,7 @@ func dictValidateValue(data []byte, tableDriver commonininterfaces.TableDriver, 
 	return nil
 }
 
-// validateKeyAndValue - needValidate key and value if they are not NULL sequence.
+// validateKeyAndValue - validate key and value if they are not NULL sequence.
 func validateKeyAndValue(
 	ctx context.Context,
 	tableDriver commonininterfaces.TableDriver,
@@ -172,7 +174,7 @@ func NewDictTransformer(
 	if err != nil {
 		return nil, err
 	}
-	validate, err := getParameterValueWithName[bool](ctx, parameters, ParameterValueValidate)
+	validate, err := getParameterValueWithName[bool](ctx, parameters, ParameterNameValidate)
 	if err != nil {
 		return nil, err
 	}
@@ -209,7 +211,7 @@ func NewDictTransformer(
 	return &DictTransformer{
 		dict:           dict,
 		defaultValue:   defaultValue,
-		needValidate:   validate,
+		validate:       validate,
 		failNotMatched: failNotMatched,
 		columnName:     columnName,
 		columnIdx:      column.Idx,
@@ -248,11 +250,17 @@ func (ht *DictTransformer) Transform(_ context.Context, r commonininterfaces.Rec
 	}
 
 	if !isSet {
-		if ht.defaultValue != nil {
+		switch {
+		case ht.defaultValue != nil:
+			// If default value is set - use it.
 			newVal = ht.defaultValue
-		} else if ht.failNotMatched {
+		case ht.failNotMatched:
+			// If fail if not matched - return error.
 			// FIXME: we might not want to push it as an error. This might be a sensitive data.
-			return fmt.Errorf(`unable to match value for "%s"`, string(val.Data))
+			return fmt.Errorf(
+				`unable to match value for "%s": %w`,
+				val.String(), ErrDictTransformerFailNotMatched,
+			)
 		}
 	}
 

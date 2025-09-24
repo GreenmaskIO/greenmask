@@ -31,7 +31,7 @@ import (
 )
 
 func TestNewReplaceTransformer(t *testing.T) {
-	t.Run("success static no needValidate no keep null", func(t *testing.T) {
+	t.Run("success static no validate no keep null", func(t *testing.T) {
 		vc := validationcollector.NewCollector()
 		ctx := context.Background()
 		column := commonmodels.Column{
@@ -75,10 +75,10 @@ func TestNewReplaceTransformer(t *testing.T) {
 			}).Return(nil)
 
 		parameters := map[string]commonparameters.Parameterizer{
-			"column":       columnParameter,
-			"value":        valueParameter,
-			"needValidate": validateParameter,
-			"keep_null":    keepNullParameter,
+			"column":    columnParameter,
+			"value":     valueParameter,
+			"validate":  validateParameter,
+			"keep_null": keepNullParameter,
 		}
 
 		tr, err := NewReplaceTransformer(ctx, tableDriver, parameters)
@@ -106,7 +106,7 @@ func TestNewReplaceTransformer(t *testing.T) {
 		keepNullParameter.AssertExpectations(t)
 	})
 
-	t.Run("success static and needValidate and valid and not keep null", func(t *testing.T) {
+	t.Run("success static and validate and valid and not keep null", func(t *testing.T) {
 		vc := validationcollector.NewCollector()
 		ctx := validationcollector.WithCollector(context.Background(), vc)
 		column := commonmodels.Column{
@@ -155,10 +155,10 @@ func TestNewReplaceTransformer(t *testing.T) {
 			}).Return(nil)
 
 		parameters := map[string]commonparameters.Parameterizer{
-			"column":       columnParameter,
-			"value":        valueParameter,
-			"needValidate": validateParameter,
-			"keep_null":    keepNullParameter,
+			"column":    columnParameter,
+			"value":     valueParameter,
+			"validate":  validateParameter,
+			"keep_null": keepNullParameter,
 		}
 
 		tr, err := NewReplaceTransformer(ctx, tableDriver, parameters)
@@ -186,7 +186,7 @@ func TestNewReplaceTransformer(t *testing.T) {
 		keepNullParameter.AssertExpectations(t)
 	})
 
-	t.Run("failure static and needValidate and invalid and not keep null", func(t *testing.T) {
+	t.Run("failure static and validate and invalid and not keep null", func(t *testing.T) {
 		vc := validationcollector.NewCollector()
 		ctx := validationcollector.WithCollector(context.Background(), vc)
 		column := commonmodels.Column{
@@ -224,7 +224,7 @@ func TestNewReplaceTransformer(t *testing.T) {
 		tableDriver.On("DecodeValueByTypeOid", column.TypeOID, []byte("abc")).
 			Return(nil, assert.AnError)
 		valueParameter.On("Name").
-			Return("needValidate")
+			Return("validate")
 
 		// Keep null parameter calls
 		keepNullParameter.On("Scan", mock.Anything).
@@ -234,10 +234,10 @@ func TestNewReplaceTransformer(t *testing.T) {
 			}).Return(nil)
 
 		parameters := map[string]commonparameters.Parameterizer{
-			"column":       columnParameter,
-			"value":        valueParameter,
-			"needValidate": validateParameter,
-			"keep_null":    keepNullParameter,
+			"column":    columnParameter,
+			"value":     valueParameter,
+			"validate":  validateParameter,
+			"keep_null": keepNullParameter,
 		}
 
 		_, err := NewReplaceTransformer(ctx, tableDriver, parameters)
@@ -252,7 +252,7 @@ func TestNewReplaceTransformer(t *testing.T) {
 		keepNullParameter.AssertExpectations(t)
 	})
 
-	t.Run("dynamic and needValidate", func(t *testing.T) {
+	t.Run("dynamic and validate", func(t *testing.T) {
 		vc := validationcollector.NewCollector()
 		ctx := validationcollector.WithCollector(context.Background(), vc)
 		column := commonmodels.Column{
@@ -294,10 +294,10 @@ func TestNewReplaceTransformer(t *testing.T) {
 			}).Return(nil)
 
 		parameters := map[string]commonparameters.Parameterizer{
-			"column":       columnParameter,
-			"value":        valueParameter,
-			"needValidate": validateParameter,
-			"keep_null":    keepNullParameter,
+			"column":    columnParameter,
+			"value":     valueParameter,
+			"validate":  validateParameter,
+			"keep_null": keepNullParameter,
 		}
 
 		tr, err := NewReplaceTransformer(ctx, tableDriver, parameters)
@@ -374,10 +374,10 @@ func newTestReplaceTransformer(t *testing.T, opt ...func(*replaceTestSetup)) *re
 	}
 
 	parameters := map[string]commonparameters.Parameterizer{
-		"column":       setup.columnParam,
-		"value":        setup.valueParam,
-		"needValidate": setup.validateParam,
-		"keep_null":    setup.keepNullParam,
+		"column":    setup.columnParam,
+		"value":     setup.valueParam,
+		"validate":  setup.validateParam,
+		"keep_null": setup.keepNullParam,
 	}
 
 	transformer, err := NewReplaceTransformer(ctx, setup.tableDriver, parameters)
@@ -388,7 +388,7 @@ func newTestReplaceTransformer(t *testing.T, opt ...func(*replaceTestSetup)) *re
 }
 
 func TestReplaceTransformer_Transform(t *testing.T) {
-	t.Run("static non null no needValidate", func(t *testing.T) {
+	t.Run("static non null no validate", func(t *testing.T) {
 		env := newTransformerTestEnv(t,
 			NewReplaceTransformer,
 			withColumns(commonmodels.Column{
@@ -409,7 +409,7 @@ func TestReplaceTransformer_Transform(t *testing.T) {
 				env.tableDriver.On("GetColumnByName", "id").
 					Return(env.getColumnPtr("id"), nil)
 			},
-			withParameter("needValidate", func(param *mocks.ParametrizerMock, env *transformerTestEnv) {
+			withParameter("validate", func(param *mocks.ParametrizerMock, env *transformerTestEnv) {
 				param.On("Scan", mock.Anything).
 					Run(func(args mock.Arguments) {
 						dest := args.Get(0)
@@ -443,7 +443,7 @@ func TestReplaceTransformer_Transform(t *testing.T) {
 		env.assertExpectations(t)
 	})
 
-	t.Run("static null no needValidate replace null", func(t *testing.T) {
+	t.Run("static null no validate replace null", func(t *testing.T) {
 		setup := newTestReplaceTransformer(t, func(setup *replaceTestSetup) {
 			setup.columnParam.On("Scan", mock.Anything).
 				Run(func(args mock.Arguments) {
@@ -484,7 +484,7 @@ func TestReplaceTransformer_Transform(t *testing.T) {
 		recorder.AssertExpectations(t)
 	})
 
-	t.Run("static null no needValidate keep null", func(t *testing.T) {
+	t.Run("static null no validate keep null", func(t *testing.T) {
 		setup := newTestReplaceTransformer(t, func(setup *replaceTestSetup) {
 			setup.columnParam.On("Scan", mock.Anything).
 				Run(func(args mock.Arguments) {
@@ -524,7 +524,7 @@ func TestReplaceTransformer_Transform(t *testing.T) {
 		recorder.AssertExpectations(t)
 	})
 
-	t.Run("dynamic non null no needValidate", func(t *testing.T) {
+	t.Run("dynamic non null no validate", func(t *testing.T) {
 		setup := newTestReplaceTransformer(t, func(setup *replaceTestSetup) {
 			setup.columnParam.On("Scan", mock.Anything).
 				Run(func(args mock.Arguments) {
@@ -569,7 +569,7 @@ func TestReplaceTransformer_Transform(t *testing.T) {
 		recorder.AssertExpectations(t)
 	})
 
-	t.Run("dynamic non null needValidate", func(t *testing.T) {
+	t.Run("dynamic non null validate", func(t *testing.T) {
 		setup := newTestReplaceTransformer(t, func(setup *replaceTestSetup) {
 			setup.columnParam.On("Scan", mock.Anything).
 				Run(func(args mock.Arguments) {
@@ -616,7 +616,7 @@ func TestReplaceTransformer_Transform(t *testing.T) {
 		recorder.AssertExpectations(t)
 	})
 
-	t.Run("dynamic null no needValidate keep null", func(t *testing.T) {
+	t.Run("dynamic null no validate keep null", func(t *testing.T) {
 		setup := newTestReplaceTransformer(t, func(setup *replaceTestSetup) {
 			setup.columnParam.On("Scan", mock.Anything).
 				Run(func(args mock.Arguments) {
@@ -653,7 +653,7 @@ func TestReplaceTransformer_Transform(t *testing.T) {
 		recorder.AssertExpectations(t)
 	})
 
-	t.Run("dynamic null needValidate replace null and param value is empty", func(t *testing.T) {
+	t.Run("dynamic null validate replace null and param value is empty", func(t *testing.T) {
 		setup := newTestReplaceTransformer(t, func(setup *replaceTestSetup) {
 			setup.columnParam.On("Scan", mock.Anything).
 				Run(func(args mock.Arguments) {
