@@ -28,6 +28,12 @@ func WithCollector(ctx context.Context, vc *Collector) context.Context {
 	return context.WithValue(ctx, collectorKey, vc)
 }
 
+// WithMeta returns a context with a child Collector that adds `meta` to its context.
+// All Add() calls on the child still append into the same root collector.
+func WithMeta(ctx context.Context, meta map[string]any) context.Context {
+	return WithCollector(ctx, FromContext(ctx).WithMeta(meta))
+}
+
 // FromContext returns the Collector from the context, or nil if not found.
 func FromContext(ctx context.Context) *Collector {
 	if vc, ok := ctx.Value(collectorKey).(*Collector); ok {

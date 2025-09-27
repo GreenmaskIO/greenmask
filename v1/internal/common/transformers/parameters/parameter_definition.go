@@ -15,15 +15,16 @@
 package parameters
 
 import (
+	"context"
+
 	commonininterfaces "github.com/greenmaskio/greenmask/v1/internal/common/interfaces"
 	"github.com/greenmaskio/greenmask/v1/internal/common/models"
-	"github.com/greenmaskio/greenmask/v1/internal/common/validationcollector"
 )
 
 type Unmarshaler func(parameter *ParameterDefinition, driver commonininterfaces.DBMSDriver, src models.ParamsValue) (any, error)
 type DatabaseTypeUnmarshaler func(driver commonininterfaces.DBMSDriver, typeName string, v models.ParamsValue) (any, error)
 type RawValueValidator func(
-	vc *validationcollector.Collector,
+	ctx context.Context,
 	p *ParameterDefinition,
 	v models.ParamsValue,
 ) error

@@ -15,6 +15,7 @@
 package utils
 
 import (
+	"context"
 	"slices"
 
 	"github.com/greenmaskio/greenmask/pkg/toolkit"
@@ -25,7 +26,7 @@ import (
 )
 
 type SchemaValidationFunc func(
-	vc *validationcollector.Collector,
+	ctx context.Context,
 	table commonmodels.Table,
 	properties *TransformerProperties,
 	parameters map[string]*commonparameters.StaticParameter,

@@ -2,6 +2,7 @@ package parameters
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -91,7 +92,8 @@ func (sp *StaticParameter) linkColumnParameter(
 	return nil
 }
 
-func (sp *StaticParameter) executeTemplate(vc *validationcollector.Collector) error {
+func (sp *StaticParameter) executeTemplate(ctx context.Context) error {
+	vc := validationcollector.FromContext(ctx)
 	if len(sp.rawValue) == 0 || !sp.definition.SupportTemplate {
 		return nil
 	}
@@ -125,9 +127,11 @@ func (sp *StaticParameter) executeTemplate(vc *validationcollector.Collector) er
 	return nil
 }
 
-func (sp *StaticParameter) validateValue(vc *validationcollector.Collector, rawValue models.ParamsValue) error {
+func (sp *StaticParameter) validateValue(ctx context.Context, rawValue models.ParamsValue) error {
 	// We are comparing to nil because there can be empty string "" and it shouldn't be a nil pointer
 	// and an empty value itself.
+	vc := validationcollector.FromContext(ctx)
+
 	if rawValue == nil {
 		if sp.definition.Required && sp.definition.DefaultValue == nil {
 			vc.Add(models.NewValidationWarning().
@@ -141,7 +145,7 @@ func (sp *StaticParameter) validateValue(vc *validationcollector.Collector, rawV
 	}
 
 	if sp.definition.RawValueValidator != nil {
-		err := sp.definition.RawValueValidator(vc, sp.definition, sp.rawValue)
+		err := sp.definition.RawValueValidator(ctx, sp.definition, sp.rawValue)
 		if err != nil {
 			return fmt.Errorf("execute raw value validator: %w", err)
 		}
@@ -163,6 +167,9 @@ func (sp *StaticParameter) validateValue(vc *validationcollector.Collector, rawV
 			return models.ErrFatalValidationError
 		}
 		sp.Column = column
+		if sp.Column == nil {
+			panic("bug detected: column is nil after getting it by name")
+		}
 
 		if sp.definition.ColumnProperties != nil &&
 			len(sp.definition.ColumnProperties.AllowedTypes) > 0 &&
@@ -194,7 +201,7 @@ func (sp *StaticParameter) validateValue(vc *validationcollector.Collector, rawV
 }
 
 func (sp *StaticParameter) Init(
-	vc *validationcollector.Collector,
+	ctx context.Context,
 	columnParams map[string]*StaticParameter,
 	rawValue models.ParamsValue,
 ) error {
@@ -204,11 +211,11 @@ func (sp *StaticParameter) Init(
 		return fmt.Errorf("link column parameter: %w", err)
 	}
 
-	if err := sp.executeTemplate(vc); err != nil {
+	if err := sp.executeTemplate(ctx); err != nil {
 		return fmt.Errorf("execute parameter template: %w", err)
 	}
 
-	if err := sp.validateValue(vc, sp.rawValue); err != nil {
+	if err := sp.validateValue(ctx, sp.rawValue); err != nil {
 		return fmt.Errorf("validate parameter value: %w", err)
 	}
 

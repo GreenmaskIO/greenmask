@@ -28,6 +28,9 @@ const (
 	ParameterNameKeepNull = "keep_null"
 	ParameterNameColumn   = "column"
 	ParameterNameValidate = "validate"
+
+	EngineParameterValueRandom = "random"
+	EngineParameterValueHash   = "deterministic"
 )
 
 var (
@@ -40,7 +43,25 @@ var (
 		ParameterNameValidate,
 		"validate the value via driver decoding procedure",
 	).SetDefaultValue(commonmodels.ParamsValue("true"))
+
+	defaultEngineParameterDefinition = commonparameters.MustNewParameterDefinition(
+		"engine",
+		"The engine used for generating the values [random, deterministic]",
+	).SetDefaultValue([]byte(EngineParameterValueRandom)).
+		SetRawValueValidator(engineValidator)
 )
+
+func engineValidator(ctx context.Context, p *commonparameters.ParameterDefinition, v commonmodels.ParamsValue) error {
+	value := string(v)
+	if value != EngineParameterValueRandom && value != EngineParameterValueHash {
+		validationcollector.FromContext(ctx).
+			Add(commonmodels.NewValidationWarning().
+				SetMsg("Invalid engine value").
+				AddMeta("ParameterValue", value).
+				SetSeverity(commonmodels.ValidationSeverityError))
+	}
+	return nil
+}
 
 // TransformationFunc - a transformation function. It has the same signature as
 // commonininterfaces.Transformer.Transform method.
