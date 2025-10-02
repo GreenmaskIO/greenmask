@@ -149,6 +149,13 @@ func (d *Dump) startMainTx(ctx context.Context, conn *pgx.Conn) (pgx.Tx, error) 
 		isolationLevel = "SERIALIZABLE DEFERRABLE"
 	}
 
+	// Ensure the long-lived snapshot holder transaction is not killed by short
+	// idle_in_transaction_session_timeout by setting it at the session level
+	// to some reasonable value before beginning the transaction. Set to 12 hours.
+	if _, err := conn.Exec(ctx, "SET idle_in_transaction_session_timeout = 43200000"); err != nil {
+		return nil, fmt.Errorf("unable to set idle_in_transaction_session_timeout: %w", err)
+	}
+
 	tx, err := conn.Begin(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("unable to start transaction: %w", err)
@@ -587,7 +594,14 @@ func (d *Dump) getWorkerTransaction(ctx context.Context) (*pgx.Conn, pgx.Tx, err
 
 	conn, err := pgx.Connect(ctx, d.dsn)
 	if err != nil {
-		return nil, nil, fmt.Errorf("cannot connecti to server: %w", err)
+		return nil, nil, fmt.Errorf("cannot connect to server: %w", err)
+	}
+
+	// Ensure the long-lived snapshot holder transaction is not killed by short
+	// idle_in_transaction_session_timeout by setting it at the session level
+	// to some reasonable value before beginning the transaction. Set to 12 hours.
+	if _, err := conn.Exec(ctx, "SET idle_in_transaction_session_timeout = 43200000"); err != nil {
+		return nil, nil, fmt.Errorf("unable to set idle_in_transaction_session_timeout: %w", err)
 	}
 
 	tx, err := conn.Begin(ctx)
