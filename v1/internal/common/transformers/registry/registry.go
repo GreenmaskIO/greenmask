@@ -60,4 +60,5 @@ func (tm *TransformerRegistry) Get(name string) (*utils.TransformerDefinition, b
 func init() {
 	DefaultTransformerRegistry.MustRegister(transformers.ReplaceTransformerDefinition)
 	DefaultTransformerRegistry.MustRegister(transformers.DictTransformerDefinition)
+	DefaultTransformerRegistry.MustRegister(transformers.EmailTransformerDefinition)
 }

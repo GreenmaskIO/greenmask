@@ -16,10 +16,15 @@ package transformers
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/binary"
 	"fmt"
+
+	commonutils "github.com/greenmaskio/greenmask/internal/utils"
 
 	commonininterfaces "github.com/greenmaskio/greenmask/v1/internal/common/interfaces"
 	commonmodels "github.com/greenmaskio/greenmask/v1/internal/common/models"
+	"github.com/greenmaskio/greenmask/v1/internal/common/transformers/generators"
 	commonparameters "github.com/greenmaskio/greenmask/v1/internal/common/transformers/parameters"
 	"github.com/greenmaskio/greenmask/v1/internal/common/validationcollector"
 )
@@ -28,9 +33,16 @@ const (
 	ParameterNameKeepNull = "keep_null"
 	ParameterNameColumn   = "column"
 	ParameterNameValidate = "validate"
+	ParameterNameEngine   = "engine"
 
-	EngineParameterValueRandom = "random"
-	EngineParameterValueHash   = "deterministic"
+	EngineParameterValueRandom        = "random"
+	EngineParameterValueDeterministic = "deterministic"
+	//EngineParameterValueHash - deprecated, use deterministic instead
+	EngineParameterValueHash = "hash"
+)
+
+var (
+	ErrMaxRandomLengthMustBeGreaterThanZero = fmt.Errorf("max_random_length must be greater than 0")
 )
 
 var (
@@ -53,7 +65,7 @@ var (
 
 func engineValidator(ctx context.Context, p *commonparameters.ParameterDefinition, v commonmodels.ParamsValue) error {
 	value := string(v)
-	if value != EngineParameterValueRandom && value != EngineParameterValueHash {
+	if value != EngineParameterValueRandom && value != EngineParameterValueDeterministic {
 		validationcollector.FromContext(ctx).
 			Add(commonmodels.NewValidationWarning().
 				SetMsg("Invalid engine value").
@@ -151,4 +163,25 @@ func getColumnParameterValue(
 	parameters map[string]commonparameters.Parameterizer,
 ) (string, *commonmodels.Column, error) {
 	return getColumnParameterValueWithName(ctx, tableDriver, parameters, ParameterNameColumn)
+}
+
+func getGenerateEngine(ctx context.Context, engineName string, size int) (generators.Generator, error) {
+	switch engineName {
+	case EngineParameterValueRandom:
+		return getRandomBytesGen(size)
+	case EngineParameterValueDeterministic, EngineParameterValueHash:
+		salt := commonutils.SaltFromCtx(ctx)
+		return generators.GetHashBytesGen(salt, size)
+	}
+	return nil, fmt.Errorf("unknown engine %s", engineName)
+}
+
+func getRandomBytesGen(size int) (generators.Generator, error) {
+	buf := make([]byte, 8)
+	_, err := rand.Read(buf)
+	if err != nil {
+		return nil, fmt.Errorf("error generating random bytes sequence: %w", err)
+	}
+	seed := int64(binary.LittleEndian.Uint64(buf))
+	return generators.NewRandomBytes(seed, size), nil
 }

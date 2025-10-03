@@ -25,11 +25,11 @@ import (
 	"github.com/greenmaskio/greenmask/v1/internal/common/validationcollector"
 )
 
-const ReplaceTransformerName = "Replace"
+const TransformerNameReplace = "Replace"
 
 var ReplaceTransformerDefinition = transformerutils.NewTransformerDefinition(
 	transformerutils.NewTransformerProperties(
-		ReplaceTransformerName,
+		TransformerNameReplace,
 		"Replace column value to the provided",
 	).AddMeta(transformerutils.AllowApplyForReferenced, true).
 		AddMeta(transformerutils.RequireHashEngineParameter, true),

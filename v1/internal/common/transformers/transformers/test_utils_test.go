@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
 	commonininterfaces "github.com/greenmaskio/greenmask/v1/internal/common/interfaces"
@@ -24,6 +25,7 @@ type transformerTestEnv struct {
 	recorder    *mocks.RecorderMock
 	ctx         context.Context
 	new         transformerutils.NewTransformerFunc
+	t           *testing.T
 }
 
 func (m *transformerTestEnv) getColumnPtr(name string) *commonmodels.Column {
@@ -77,6 +79,20 @@ func withRecorder(setupFn func(recorder *mocks.RecorderMock, env *transformerTes
 	}
 }
 
+func withParametersScanner(parameters map[string]any) func(*transformerTestEnv) {
+	return func(e *transformerTestEnv) {
+		for paramName, paramValue := range parameters {
+			withParameter(paramName, func(param *mocks.ParametrizerMock, env *transformerTestEnv) {
+				param.On("Scan", mock.Anything).
+					Run(func(args mock.Arguments) {
+						dest := args.Get(0)
+						require.NoError(e.t, utils.ScanPointer(paramValue, dest))
+					}).Return(nil)
+			})(e)
+		}
+	}
+}
+
 func withColumns(columns ...commonmodels.Column) func(*transformerTestEnv) {
 	if len(columns) == 0 {
 		panic("at least one column should be provided")
@@ -123,6 +139,7 @@ func newTransformerTestEnv(
 		ctx:         ctx,
 		new:         new,
 		recorder:    mocks.NewRecorderMock(),
+		t:           t,
 	}
 
 	// Allow test-specific overrides

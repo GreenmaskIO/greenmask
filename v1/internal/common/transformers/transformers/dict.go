@@ -26,7 +26,7 @@ import (
 )
 
 const (
-	DictTransformerName = "Dict"
+	TransformerNameDict = "Dict"
 
 	defaultNullSeq = `\N`
 )
@@ -35,7 +35,7 @@ var ErrDictTransformerFailNotMatched = fmt.Errorf("value not matched with dict")
 
 var DictTransformerDefinition = transformerutils.NewTransformerDefinition(
 	transformerutils.NewTransformerProperties(
-		DictTransformerName,
+		TransformerNameDict,
 		"Replace values matched by dictionary keys",
 	),
 	NewDictTransformer,
