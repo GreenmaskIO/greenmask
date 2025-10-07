@@ -28,6 +28,7 @@ import (
 	commonparameters "github.com/greenmaskio/greenmask/v1/internal/common/transformers/parameters"
 	"github.com/greenmaskio/greenmask/v1/internal/common/utils"
 	"github.com/greenmaskio/greenmask/v1/internal/common/validationcollector"
+	mysqldbmsdriver "github.com/greenmaskio/greenmask/v1/internal/mysql/dbmsdriver"
 )
 
 func TestNewEmailTransformer(t *testing.T) {
@@ -174,6 +175,7 @@ func TestRandomEmailTransformer_Transform(t *testing.T) {
 		isNull           bool
 		validateFn       func(t *testing.T, originalEmail, transformedEmail string)
 		expectedErr      string
+		columns          []commonmodels.Column
 	}{
 		{
 			name:       "common",
@@ -185,6 +187,14 @@ func TestRandomEmailTransformer_Transform(t *testing.T) {
 			validateFn: func(t *testing.T, originalEmail, transformedEmail string) {
 				assert.True(t, validEmailRegexp.MatchString(transformedEmail))
 				assert.NotEqual(t, originalEmail, transformedEmail)
+			},
+			columns: []commonmodels.Column{
+				{
+					Idx:      0,
+					Name:     "data",
+					TypeName: "text",
+					TypeOID:  23,
+				},
 			},
 		},
 		{
@@ -207,6 +217,14 @@ func TestRandomEmailTransformer_Transform(t *testing.T) {
 				assert.NotContains(t, transformedEmail, "\x00", "Email should not contain null characters")
 				assert.NotEqual(t, originalEmail, transformedEmail)
 			},
+			columns: []commonmodels.Column{
+				{
+					Idx:      0,
+					Name:     "data",
+					TypeName: "text",
+					TypeOID:  23,
+				},
+			},
 		},
 		{
 			name:       "keep_null true and NULL value",
@@ -217,6 +235,14 @@ func TestRandomEmailTransformer_Transform(t *testing.T) {
 				"keep_null": commonmodels.ParamsValue("true"),
 			},
 			isNull: true,
+			columns: []commonmodels.Column{
+				{
+					Idx:      0,
+					Name:     "data",
+					TypeName: "text",
+					TypeOID:  23,
+				},
+			},
 		},
 		{
 			name:       "keep_null false and NULL value",
@@ -228,6 +254,14 @@ func TestRandomEmailTransformer_Transform(t *testing.T) {
 			},
 			validateFn: func(t *testing.T, originalEmail, transformedEmail string) {
 				assert.True(t, validEmailRegexp.MatchString(transformedEmail))
+			},
+			columns: []commonmodels.Column{
+				{
+					Idx:      0,
+					Name:     "data",
+					TypeName: "text",
+					TypeOID:  23,
+				},
 			},
 		},
 		{
@@ -242,6 +276,14 @@ func TestRandomEmailTransformer_Transform(t *testing.T) {
 				assert.True(t, validEmailRegexp.MatchString(transformedEmail))
 				assert.NotEqual(t, originalEmail, transformedEmail)
 				assert.Contains(t, transformedEmail, "@luke.be")
+			},
+			columns: []commonmodels.Column{
+				{
+					Idx:      0,
+					Name:     "data",
+					TypeName: "text",
+					TypeOID:  23,
+				},
 			},
 		},
 		{
@@ -259,6 +301,14 @@ func TestRandomEmailTransformer_Transform(t *testing.T) {
 					transformedEmail[len(transformedEmail)-11:] == "haddock.org" ||
 						transformedEmail[len(transformedEmail)-10:] == "dupont.net")
 			},
+			columns: []commonmodels.Column{
+				{
+					Idx:      0,
+					Name:     "data",
+					TypeName: "text",
+					TypeOID:  23,
+				},
+			},
 		},
 		{
 			// verify that we can truncate the random string, used to avoid a bug in random buffer handling
@@ -273,6 +323,14 @@ func TestRandomEmailTransformer_Transform(t *testing.T) {
 				assert.True(t, validEmailRegexp.MatchString(transformedEmail))
 				assert.NotEqual(t, originalEmail, transformedEmail)
 				assert.Contains(t, transformedEmail, "prefix_")
+			},
+			columns: []commonmodels.Column{
+				{
+					Idx:      0,
+					Name:     "data",
+					TypeName: "text",
+					TypeOID:  23,
+				},
 			},
 		},
 		{
@@ -289,6 +347,14 @@ func TestRandomEmailTransformer_Transform(t *testing.T) {
 				assert.NotEqual(t, originalEmail, transformedEmail)
 				assert.Contains(t, transformedEmail, "prefix_")
 			},
+			columns: []commonmodels.Column{
+				{
+					Idx:      0,
+					Name:     "data",
+					TypeName: "text",
+					TypeOID:  23,
+				},
+			},
 		},
 		{
 			name:       "domain_part_template",
@@ -303,6 +369,14 @@ func TestRandomEmailTransformer_Transform(t *testing.T) {
 				assert.NotEqual(t, originalEmail, transformedEmail)
 				assert.Contains(t, transformedEmail, "@custom-domain.com")
 			},
+			columns: []commonmodels.Column{
+				{
+					Idx:      0,
+					Name:     "data",
+					TypeName: "text",
+					TypeOID:  23,
+				},
+			},
 		},
 		{
 			name:       "use template to generate an invalid email with validate false",
@@ -316,6 +390,14 @@ func TestRandomEmailTransformer_Transform(t *testing.T) {
 				assert.False(t, validEmailRegexp.MatchString(transformedEmail))
 				assert.NotEqual(t, originalEmail, transformedEmail)
 				assert.Contains(t, transformedEmail, "prefix@,&@")
+			},
+			columns: []commonmodels.Column{
+				{
+					Idx:      0,
+					Name:     "data",
+					TypeName: "text",
+					TypeOID:  23,
+				},
 			},
 		},
 		{
@@ -333,6 +415,14 @@ func TestRandomEmailTransformer_Transform(t *testing.T) {
 				assert.Contains(t, transformedEmail, "prefix@,&@")
 			},
 			expectedErr: "generated email is invalid",
+			columns: []commonmodels.Column{
+				{
+					Idx:      0,
+					Name:     "data",
+					TypeName: "text",
+					TypeOID:  23,
+				},
+			},
 		},
 		{
 			name:       "common hash",
@@ -346,6 +436,14 @@ func TestRandomEmailTransformer_Transform(t *testing.T) {
 				assert.True(t, validEmailRegexp.MatchString(transformedEmail))
 				assert.NotEqual(t, originalEmail, transformedEmail)
 			},
+			columns: []commonmodels.Column{
+				{
+					Idx:      0,
+					Name:     "data",
+					TypeName: "text",
+					TypeOID:  mysqldbmsdriver.VirtualOidText,
+				},
+			},
 		},
 	}
 
@@ -355,14 +453,7 @@ func TestRandomEmailTransformer_Transform(t *testing.T) {
 			ctx := validationcollector.WithCollector(context.Background(), vc)
 			env := newTransformerTestEnvReal(t,
 				EmailTransformerDefinition,
-				[]commonmodels.Column{
-					{
-						Idx:      0,
-						Name:     tt.columnName,
-						TypeName: "text",
-						TypeOID:  23,
-					},
-				},
+				tt.columns,
 				tt.staticParameters,
 				tt.dynamicParameter,
 			)
@@ -383,6 +474,7 @@ func TestRandomEmailTransformer_Transform(t *testing.T) {
 			}
 			rec := env.GetRecord()
 			val, err := rec.GetRawColumnValueByName(tt.columnName)
+			require.NoError(t, err)
 			require.Equal(t, tt.isNull, val.IsNull)
 			if !tt.isNull && tt.validateFn != nil {
 				tt.validateFn(t, tt.original, string(val.Data))

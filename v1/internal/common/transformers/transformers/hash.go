@@ -74,7 +74,7 @@ var HashTransformerDefinition = transformerutils.NewTransformerDefinition(
 
 	commonparameters.MustNewParameterDefinition(
 		"max_length",
-		"limit length of hash function result",
+		"limit length of hash function expected",
 	).SetDefaultValue([]byte("0")).
 		SetRawValueValidator(validateMaxLengthParameter),
 )
@@ -153,7 +153,7 @@ func NewHashTransformer(
 		return nil, fmt.Errorf("unknown hash function \"%s\"", hashFunctionName)
 	}
 
-	salt, err := getParameterValueWithName[[]byte](ctx, parameters, "salt")
+	salt, err := getParameterValueWithName[string](ctx, parameters, "salt")
 	if err != nil {
 		return nil, err
 	}
@@ -225,7 +225,7 @@ func (ht *HashTransformer) Transform(_ context.Context, r commonininterfaces.Rec
 
 func validateHashFunctionsParameter(
 	ctx context.Context,
-	p *commonparameters.ParameterDefinition,
+	_ *commonparameters.ParameterDefinition,
 	v models.ParamsValue,
 ) error {
 	functionName := string(v)
@@ -236,8 +236,12 @@ func validateHashFunctionsParameter(
 		log.Ctx(ctx).
 			Warn().
 			Str("ParameterValue", functionName).
-			Str("ParameterName", p.Name).
 			Msg("md5 hash function is deprecated and will be removed in the future")
+		validationcollector.FromContext(ctx).Add(
+			commonmodels.NewValidationWarning().
+				SetSeverity(commonmodels.ValidationSeverityWarning).
+				AddMeta("ParameterValue", functionName).
+				SetMsg(`md5 hash function is deprecated and will be removed in the future`))
 		return nil
 	}
 	validationcollector.FromContext(ctx).Add(
