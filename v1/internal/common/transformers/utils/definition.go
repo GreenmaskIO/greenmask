@@ -18,6 +18,7 @@ import (
 	"context"
 
 	commonininterfaces "github.com/greenmaskio/greenmask/v1/internal/common/interfaces"
+	commonmodels "github.com/greenmaskio/greenmask/v1/internal/common/models"
 	"github.com/greenmaskio/greenmask/v1/internal/common/transformers/parameters"
 	commonparameters "github.com/greenmaskio/greenmask/v1/internal/common/transformers/parameters"
 )
@@ -48,6 +49,17 @@ func NewTransformerDefinition(
 		Parameters:      parameters,
 		SchemaValidator: DefaultSchemaValidator,
 	}
+}
+
+func (d *TransformerDefinition) ValidateColumnParameters(
+	ctx context.Context,
+	table commonmodels.Table,
+	columnParameters map[string]*commonparameters.StaticParameter,
+) error {
+	if d.SchemaValidator == nil {
+		return nil
+	}
+	return d.SchemaValidator(ctx, table, d.Properties, columnParameters)
 }
 
 func (d *TransformerDefinition) SetSchemaValidator(v SchemaValidationFunc) *TransformerDefinition {

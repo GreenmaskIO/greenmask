@@ -162,242 +162,25 @@ func TestNewEmailTransformer(t *testing.T) {
 	})
 }
 
-func TestEmailTransformer_Transform(t *testing.T) {
-	t.Run("with template", func(t *testing.T) {
-		env := newTransformerTestEnv(t, NewEmailTransformer,
-			withColumns(commonmodels.Column{
-				Idx:      0,
-				Name:     "email",
-				TypeName: "text",
-				TypeOID:  23,
-			}),
-			withParameter(ParameterNameColumn, func(param *mocks.ParametrizerMock, env *transformerTestEnv) {
-				param.On("Scan", mock.Anything).
-					Run(func(args mock.Arguments) {
-						dest := args.Get(0)
-						require.NoError(t, utils.ScanPointer(env.columns["email"].Name, dest))
-					}).Return(nil)
-			}),
-			func(env *transformerTestEnv) {
-				// Setup get column call for driver during initialization.
-				env.tableDriver.On("GetColumnByName", "email").
-					Return(env.getColumnPtr("email"), nil)
-			},
-			withParameter(ParameterNameEngine, func(param *mocks.ParametrizerMock, env *transformerTestEnv) {
-				param.On("Scan", mock.Anything).
-					Run(func(args mock.Arguments) {
-						dest := args.Get(0)
-						require.NoError(t, utils.ScanPointer("random", dest))
-					}).Return(nil)
-			}),
-			withParameter("keep_original_domain", func(param *mocks.ParametrizerMock, env *transformerTestEnv) {
-				param.On("Scan", mock.Anything).
-					Run(func(args mock.Arguments) {
-						dest := args.Get(0)
-						require.NoError(t, utils.ScanPointer(true, dest))
-					}).Return(nil)
-			}),
-			withParameter(ParameterNameKeepNull, func(param *mocks.ParametrizerMock, env *transformerTestEnv) {
-				param.On("Scan", mock.Anything).
-					Run(func(args mock.Arguments) {
-						dest := args.Get(0)
-						require.NoError(t, utils.ScanPointer(true, dest))
-					}).Return(nil)
-			}),
-			withParameter("domains", func(param *mocks.ParametrizerMock, env *transformerTestEnv) {
-				param.On("Scan", mock.Anything).
-					Run(func(args mock.Arguments) {
-						dest := args.Get(0)
-						require.NoError(t, utils.ScanPointer([]string{"example.com"}, dest))
-					}).Return(nil)
-			}),
-			withParameter(ParameterNameValidate, func(param *mocks.ParametrizerMock, env *transformerTestEnv) {
-				param.On("Scan", mock.Anything).
-					Run(func(args mock.Arguments) {
-						dest := args.Get(0)
-						require.NoError(t, utils.ScanPointer(false, dest))
-					}).Return(nil)
-			}),
-			withParameter("max_random_length", func(param *mocks.ParametrizerMock, env *transformerTestEnv) {
-				param.On("Scan", mock.Anything).
-					Run(func(args mock.Arguments) {
-						dest := args.Get(0)
-						require.NoError(t, utils.ScanPointer(10, dest))
-					}).Return(nil)
-			}),
-			func(env *transformerTestEnv) {
-				columns := make([]commonmodels.Column, 0, len(env.columns))
-				for _, c := range env.columns {
-					columns = append(columns, c)
-				}
-				env.tableDriver.On("Table").Return(&commonmodels.Table{
-					Columns: columns,
-				})
-			},
-			withParameter("local_part_template", func(param *mocks.ParametrizerMock, env *transformerTestEnv) {
-				param.On("Scan", mock.Anything).
-					Run(func(args mock.Arguments) {
-						dest := args.Get(0)
-						require.NoError(t, utils.ScanPointer(`{{ "new" }}`, dest))
-					}).Return(nil)
-			}),
-			withParameter("domain_part_template", func(param *mocks.ParametrizerMock, env *transformerTestEnv) {
-				param.On("Scan", mock.Anything).
-					Run(func(args mock.Arguments) {
-						dest := args.Get(0)
-						require.NoError(t, utils.ScanPointer(`{{ "new.com" }}`, dest))
-					}).Return(nil)
-			}),
-			withRecorder(func(recorder *mocks.RecorderMock, env *transformerTestEnv) {
-				recorder.On("GetRawColumnValueByIdx", env.getColumn("email").Idx).
-					Return(commonmodels.NewColumnRawValue([]byte("test@test.com"), false), nil)
-				recorder.On("TableDriver").Return(env.tableDriver)
-				recorder.On("SetRawColumnValueByIdx",
-					env.columns["email"].Idx, commonmodels.NewColumnRawValue([]byte("new@new.com"), false),
-				).Return(nil)
-			}),
-		)
-
-		err := env.transform()
-		require.NoError(t, err)
-		env.assertExpectations(t)
-	})
-
-	t.Run("default", func(t *testing.T) {
-		env := newTransformerTestEnv(t, NewEmailTransformer,
-			withColumns(commonmodels.Column{
-				Idx:      0,
-				Name:     "email",
-				TypeName: "text",
-				TypeOID:  23,
-			}),
-			withParameter(ParameterNameColumn, func(param *mocks.ParametrizerMock, env *transformerTestEnv) {
-				param.On("Scan", mock.Anything).
-					Run(func(args mock.Arguments) {
-						dest := args.Get(0)
-						require.NoError(t, utils.ScanPointer(env.columns["email"].Name, dest))
-					}).Return(nil)
-			}),
-			func(env *transformerTestEnv) {
-				// Setup get column call for driver during initialization.
-				env.tableDriver.On("GetColumnByName", "email").
-					Return(env.getColumnPtr("email"), nil)
-			},
-			withParameter(ParameterNameEngine, func(param *mocks.ParametrizerMock, env *transformerTestEnv) {
-				param.On("Scan", mock.Anything).
-					Run(func(args mock.Arguments) {
-						dest := args.Get(0)
-						require.NoError(t, utils.ScanPointer("random", dest))
-					}).Return(nil)
-			}),
-			withParameter("keep_original_domain", func(param *mocks.ParametrizerMock, env *transformerTestEnv) {
-				param.On("Scan", mock.Anything).
-					Run(func(args mock.Arguments) {
-						dest := args.Get(0)
-						require.NoError(t, utils.ScanPointer(false, dest))
-					}).Return(nil)
-			}),
-			withParameter(ParameterNameKeepNull, func(param *mocks.ParametrizerMock, env *transformerTestEnv) {
-				param.On("Scan", mock.Anything).
-					Run(func(args mock.Arguments) {
-						dest := args.Get(0)
-						require.NoError(t, utils.ScanPointer(false, dest))
-					}).Return(nil)
-			}),
-			withParameter("domains", func(param *mocks.ParametrizerMock, env *transformerTestEnv) {
-				param.On("Scan", mock.Anything).
-					Run(func(args mock.Arguments) {
-						dest := args.Get(0)
-						require.NoError(t, utils.ScanPointer([]string{"example.com"}, dest))
-					}).Return(nil)
-			}),
-			withParameter(ParameterNameValidate, func(param *mocks.ParametrizerMock, env *transformerTestEnv) {
-				param.On("Scan", mock.Anything).
-					Run(func(args mock.Arguments) {
-						dest := args.Get(0)
-						require.NoError(t, utils.ScanPointer(false, dest))
-					}).Return(nil)
-			}),
-			withParameter("max_random_length", func(param *mocks.ParametrizerMock, env *transformerTestEnv) {
-				param.On("Scan", mock.Anything).
-					Run(func(args mock.Arguments) {
-						dest := args.Get(0)
-						require.NoError(t, utils.ScanPointer(10, dest))
-					}).Return(nil)
-			}),
-			func(env *transformerTestEnv) {
-				columns := make([]commonmodels.Column, 0, len(env.columns))
-				for _, c := range env.columns {
-					columns = append(columns, c)
-				}
-				env.tableDriver.On("Table").Return(&commonmodels.Table{
-					Columns: columns,
-				})
-			},
-			withParameter("local_part_template", func(param *mocks.ParametrizerMock, env *transformerTestEnv) {
-				param.On("Scan", mock.Anything).
-					Run(func(args mock.Arguments) {
-						dest := args.Get(0)
-						require.NoError(t, utils.ScanPointer("", dest))
-					}).Return(nil)
-			}),
-			withParameter("domain_part_template", func(param *mocks.ParametrizerMock, env *transformerTestEnv) {
-				param.On("Scan", mock.Anything).
-					Run(func(args mock.Arguments) {
-						dest := args.Get(0)
-						require.NoError(t, utils.ScanPointer("", dest))
-					}).Return(nil)
-			}),
-			withRecorder(func(recorder *mocks.RecorderMock, env *transformerTestEnv) {
-				recorder.On("GetRawColumnValueByIdx", env.getColumn("email").Idx).
-					Return(commonmodels.NewColumnRawValue([]byte("test@test.com"), false), nil)
-				recorder.On("SetRawColumnValueByIdx",
-					env.columns["email"].Idx, mock.MatchedBy(func(v *commonmodels.ColumnRawValue) bool {
-						if v.IsNull || len(v.Data) == 0 {
-							return false
-						}
-						local, dom, err := EmailParse(v.Data)
-						if err != nil {
-							return false
-						}
-						return len(local) != 10 && string(dom) == "example.com"
-					}),
-				).Return(nil)
-			}),
-		)
-
-		err := env.transform()
-		require.NoError(t, err)
-		env.assertExpectations(t)
-	})
-}
-
-func TestRandomEmailTransformer_Transform_check_email_parsing(t *testing.T) {
+func TestRandomEmailTransformer_Transform(t *testing.T) {
 	validEmailRegexp := regexp.MustCompile(`^([a-zA-Z0-9_.+-]+)@([a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+)$`)
 
 	tests := []struct {
-		name        string
-		params      map[string]any
-		columnName  string
-		original    string
-		isNull      bool
-		validateFn  func(t *testing.T, originalEmail, transformedEmail string)
-		expectedErr string
+		name             string
+		staticParameters map[string]commonmodels.ParamsValue
+		dynamicParameter map[string]commonmodels.DynamicParamValue
+		columnName       string
+		original         string
+		isNull           bool
+		validateFn       func(t *testing.T, originalEmail, transformedEmail string)
+		expectedErr      string
 	}{
 		{
 			name:       "common",
 			original:   "dupont@mycompany.com",
 			columnName: "data",
-			params: map[string]any{
-				"column":               "data",
-				"engine":               "random",
-				"keep_original_domain": false,
-				"keep_null":            false,
-				"domains":              nil,
-				"validate":             false,
-				"max_random_length":    16,
-				"local_part_template":  "",
-				"domain_part_template": "",
+			staticParameters: map[string]commonmodels.ParamsValue{
+				"column": commonmodels.ParamsValue("data"),
 			},
 			validateFn: func(t *testing.T, originalEmail, transformedEmail string) {
 				assert.True(t, validEmailRegexp.MatchString(transformedEmail))
@@ -408,16 +191,9 @@ func TestRandomEmailTransformer_Transform_check_email_parsing(t *testing.T) {
 			name:       "random_local_short",
 			original:   "dupond@mycompany.com",
 			columnName: "data",
-			params: map[string]any{
-				"column":               "data",
-				"max_random_length":    10,
-				"engine":               "random",
-				"keep_original_domain": false,
-				"keep_null":            false,
-				"domains":              nil,
-				"validate":             false,
-				"local_part_template":  "",
-				"domain_part_template": "",
+			staticParameters: map[string]commonmodels.ParamsValue{
+				"column":            commonmodels.ParamsValue("data"),
+				"max_random_length": commonmodels.ParamsValue("10"),
 			},
 			validateFn: func(t *testing.T, originalEmail, transformedEmail string) {
 				assert.True(t, validEmailRegexp.MatchString(transformedEmail))
@@ -436,16 +212,9 @@ func TestRandomEmailTransformer_Transform_check_email_parsing(t *testing.T) {
 			name:       "keep_null true and NULL value",
 			original:   "\\N",
 			columnName: "data",
-			params: map[string]any{
-				"column":               "data",
-				"keep_null":            true,
-				"max_random_length":    16,
-				"engine":               "random",
-				"keep_original_domain": false,
-				"domains":              nil,
-				"validate":             false,
-				"local_part_template":  "",
-				"domain_part_template": "",
+			staticParameters: map[string]commonmodels.ParamsValue{
+				"column":    commonmodels.ParamsValue("data"),
+				"keep_null": commonmodels.ParamsValue("true"),
 			},
 			isNull: true,
 		},
@@ -453,16 +222,9 @@ func TestRandomEmailTransformer_Transform_check_email_parsing(t *testing.T) {
 			name:       "keep_null false and NULL value",
 			original:   "\\N",
 			columnName: "data",
-			params: map[string]any{
-				"column":               "data",
-				"keep_null":            false,
-				"max_random_length":    16,
-				"engine":               "random",
-				"keep_original_domain": false,
-				"domains":              nil,
-				"validate":             false,
-				"local_part_template":  "",
-				"domain_part_template": "",
+			staticParameters: map[string]commonmodels.ParamsValue{
+				"column":    commonmodels.ParamsValue("data"),
+				"keep_null": commonmodels.ParamsValue("false"),
 			},
 			validateFn: func(t *testing.T, originalEmail, transformedEmail string) {
 				assert.True(t, validEmailRegexp.MatchString(transformedEmail))
@@ -472,16 +234,9 @@ func TestRandomEmailTransformer_Transform_check_email_parsing(t *testing.T) {
 			name:       "keep_original_domain",
 			original:   "lucky@luke.be",
 			columnName: "data",
-			params: map[string]any{
-				"column":               "data",
-				"keep_original_domain": true,
-				"keep_null":            true,
-				"max_random_length":    16,
-				"engine":               "random",
-				"domains":              nil,
-				"validate":             false,
-				"local_part_template":  "",
-				"domain_part_template": "",
+			staticParameters: map[string]commonmodels.ParamsValue{
+				"column":               commonmodels.ParamsValue("data"),
+				"keep_original_domain": commonmodels.ParamsValue("true"),
 			},
 			validateFn: func(t *testing.T, originalEmail, transformedEmail string) {
 				assert.True(t, validEmailRegexp.MatchString(transformedEmail))
@@ -493,16 +248,9 @@ func TestRandomEmailTransformer_Transform_check_email_parsing(t *testing.T) {
 			name:       "custom domains",
 			original:   "tintin@milousart.com",
 			columnName: "data",
-			params: map[string]any{
-				"column":               "data",
-				"domains":              []string{"haddock.org", "dupont.net"},
-				"keep_null":            true,
-				"max_random_length":    16,
-				"engine":               "random",
-				"keep_original_domain": false,
-				"validate":             false,
-				"local_part_template":  "",
-				"domain_part_template": "",
+			staticParameters: map[string]commonmodels.ParamsValue{
+				"column":  commonmodels.ParamsValue("data"),
+				"domains": commonmodels.ParamsValue(`["haddock.org", "dupont.net"]`),
 			},
 			validateFn: func(t *testing.T, originalEmail, transformedEmail string) {
 				assert.True(t, validEmailRegexp.MatchString(transformedEmail))
@@ -517,16 +265,9 @@ func TestRandomEmailTransformer_Transform_check_email_parsing(t *testing.T) {
 			name:       "local_part_template truncated",
 			original:   "lanfeust@detroy.com",
 			columnName: "data",
-			params: map[string]any{
-				"column":               "data",
-				"local_part_template":  "prefix_{{.random_string | trunc 10}}",
-				"keep_null":            true,
-				"max_random_length":    16,
-				"engine":               "random",
-				"keep_original_domain": false,
-				"domains":              nil,
-				"validate":             false,
-				"domain_part_template": "",
+			staticParameters: map[string]commonmodels.ParamsValue{
+				"column":              commonmodels.ParamsValue("data"),
+				"local_part_template": commonmodels.ParamsValue("prefix_{{.random_string | trunc 10}}"),
 			},
 			validateFn: func(t *testing.T, originalEmail, transformedEmail string) {
 				assert.True(t, validEmailRegexp.MatchString(transformedEmail))
@@ -539,16 +280,9 @@ func TestRandomEmailTransformer_Transform_check_email_parsing(t *testing.T) {
 			name:       "local_part_template",
 			original:   "troll@detroy.com",
 			columnName: "data",
-			params: map[string]any{
-				"column":               "data",
-				"local_part_template":  "prefix_{{.random_string}}",
-				"keep_null":            true,
-				"max_random_length":    16,
-				"engine":               "random",
-				"keep_original_domain": false,
-				"domains":              nil,
-				"validate":             false,
-				"domain_part_template": "",
+			staticParameters: map[string]commonmodels.ParamsValue{
+				"column":              commonmodels.ParamsValue("data"),
+				"local_part_template": commonmodels.ParamsValue("prefix_{{.random_string}}"),
 			},
 			validateFn: func(t *testing.T, originalEmail, transformedEmail string) {
 				assert.True(t, validEmailRegexp.MatchString(transformedEmail))
@@ -560,16 +294,9 @@ func TestRandomEmailTransformer_Transform_check_email_parsing(t *testing.T) {
 			name:       "domain_part_template",
 			original:   "cixi@detroy.com",
 			columnName: "data",
-			params: map[string]any{
-				"column":               "data",
-				"domain_part_template": "custom-domain.com",
-				"keep_null":            true,
-				"max_random_length":    16,
-				"engine":               "random",
-				"keep_original_domain": false,
-				"domains":              nil,
-				"validate":             false,
-				"local_part_template":  "",
+			staticParameters: map[string]commonmodels.ParamsValue{
+				"column":               commonmodels.ParamsValue("data"),
+				"domain_part_template": commonmodels.ParamsValue("custom-domain.com"),
 			},
 			validateFn: func(t *testing.T, originalEmail, transformedEmail string) {
 				assert.True(t, validEmailRegexp.MatchString(transformedEmail))
@@ -581,16 +308,9 @@ func TestRandomEmailTransformer_Transform_check_email_parsing(t *testing.T) {
 			name:       "use template to generate an invalid email with validate false",
 			original:   "cian@detroy.com",
 			columnName: "data",
-			params: map[string]any{
-				"column":               "data",
-				"local_part_template":  "prefix@,&@",
-				"keep_null":            true,
-				"max_random_length":    16,
-				"engine":               "random",
-				"keep_original_domain": false,
-				"domains":              nil,
-				"validate":             false,
-				"domain_part_template": "",
+			staticParameters: map[string]commonmodels.ParamsValue{
+				"column":              commonmodels.ParamsValue("data"),
+				"local_part_template": commonmodels.ParamsValue("prefix@,&@"),
 			},
 			validateFn: func(t *testing.T, originalEmail, transformedEmail string) {
 				assert.False(t, validEmailRegexp.MatchString(transformedEmail))
@@ -602,16 +322,10 @@ func TestRandomEmailTransformer_Transform_check_email_parsing(t *testing.T) {
 			name:       "use template to generate an invalid email with validate true",
 			original:   "nicodeme@detroy.com",
 			columnName: "data",
-			params: map[string]any{
-				"column":               "data",
-				"validate":             true,
-				"local_part_template":  "prefix@,&@",
-				"keep_null":            true,
-				"max_random_length":    16,
-				"engine":               "random",
-				"keep_original_domain": false,
-				"domains":              nil,
-				"domain_part_template": "",
+			staticParameters: map[string]commonmodels.ParamsValue{
+				"column":              commonmodels.ParamsValue("data"),
+				"validate":            commonmodels.ParamsValue("true"),
+				"local_part_template": commonmodels.ParamsValue("prefix@,&@"),
 			},
 			validateFn: func(t *testing.T, originalEmail, transformedEmail string) {
 				assert.False(t, validEmailRegexp.MatchString(transformedEmail))
@@ -624,16 +338,9 @@ func TestRandomEmailTransformer_Transform_check_email_parsing(t *testing.T) {
 			name:       "common hash",
 			original:   "dupont@mycompany.com",
 			columnName: "data",
-			params: map[string]any{
-				"column":               "data",
-				"engine":               "hash",
-				"keep_null":            true,
-				"max_random_length":    16,
-				"keep_original_domain": false,
-				"domains":              nil,
-				"validate":             false,
-				"local_part_template":  "",
-				"domain_part_template": "",
+			staticParameters: map[string]commonmodels.ParamsValue{
+				"column": commonmodels.ParamsValue("data"),
+				"engine": commonmodels.ParamsValue("hash"),
 			},
 			validateFn: func(t *testing.T, originalEmail, transformedEmail string) {
 				assert.True(t, validEmailRegexp.MatchString(transformedEmail))
@@ -644,66 +351,41 @@ func TestRandomEmailTransformer_Transform_check_email_parsing(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			env := newTransformerTestEnv(t, NewEmailTransformer,
-				withColumns(commonmodels.Column{
-					Idx:      0,
-					Name:     tt.columnName,
-					TypeName: "text",
-					TypeOID:  23,
-				}),
-				withParametersScanner(tt.params),
-				func(env *transformerTestEnv) {
-					// Setup get column call for driver during initialization.
-					env.tableDriver.On("GetColumnByName", tt.columnName).
-						Return(env.getColumnPtr(tt.columnName), nil)
+			vc := validationcollector.NewCollector()
+			ctx := validationcollector.WithCollector(context.Background(), vc)
+			env := newTransformerTestEnvReal(t,
+				EmailTransformerDefinition,
+				[]commonmodels.Column{
+					{
+						Idx:      0,
+						Name:     tt.columnName,
+						TypeName: "text",
+						TypeOID:  23,
+					},
 				},
-				func(env *transformerTestEnv) {
-					columns := make([]commonmodels.Column, 0, len(env.columns))
-					for _, c := range env.columns {
-						columns = append(columns, c)
-					}
-					env.tableDriver.On("Table").Return(&commonmodels.Table{
-						Columns: columns,
-					})
-				},
-				func(env *transformerTestEnv) {
-					// Setup get column call for driver during initialization.
-					env.tableDriver.On("GetColumnByName", tt.columnName).
-						Return(env.getColumnPtr(tt.columnName), nil)
-				},
-				func(env *transformerTestEnv) {
-					columns := make([]commonmodels.Column, 0, len(env.columns))
-					for _, c := range env.columns {
-						columns = append(columns, c)
-					}
-					env.tableDriver.On("Table").Return(&commonmodels.Table{
-						Columns: columns,
-					})
-				},
-				withRecorder(func(recorder *mocks.RecorderMock, env *transformerTestEnv) {
-					val := commonmodels.NewColumnRawValue(nil, true)
-					if !tt.isNull {
-						val = commonmodels.NewColumnRawValue([]byte(tt.original), false)
-					}
-					recorder.On("GetRawColumnValueByIdx", env.getColumn(tt.columnName).Idx).
-						Return(val, nil)
-					recorder.On("TableDriver").Return(env.tableDriver)
-					recorder.On("SetRawColumnValueByIdx", env.columns[tt.columnName].Idx, mock.Anything).
-						Run(func(args mock.Arguments) {
-							val := args.Get(1).(*commonmodels.ColumnRawValue)
-							require.Equal(t, tt.isNull, val.IsNull)
-							if !tt.isNull && tt.validateFn != nil {
-								tt.validateFn(t, tt.original, string(val.Data))
-							}
-
-						}).Return(nil)
-				}),
+				tt.staticParameters,
+				tt.dynamicParameter,
 			)
+			err := env.InitParameters(t, ctx)
+			require.NoError(t, err)
+			require.False(t, vc.HasWarnings())
 
-			err := env.transformer.Transform(context.Background(), env.recorder)
+			err = env.InitTransformer(t, ctx)
+			require.NoError(t, err)
+			require.False(t, vc.HasWarnings())
+
+			env.SetRecord(t, commonmodels.NewColumnRawValue([]byte(tt.original), tt.isNull))
+
+			err = env.Transform(t, ctx)
 			if tt.expectedErr != "" {
 				require.ErrorContains(t, err, tt.expectedErr)
 				return
+			}
+			rec := env.GetRecord()
+			val, err := rec.GetRawColumnValueByName(tt.columnName)
+			require.Equal(t, tt.isNull, val.IsNull)
+			if !tt.isNull && tt.validateFn != nil {
+				tt.validateFn(t, tt.original, string(val.Data))
 			}
 		})
 	}

@@ -162,6 +162,8 @@ type ParameterDefinition struct {
 	RawValueValidator RawValueValidator `json:"-"`
 	// AllowedValues - slice of values which allowed to use
 	AllowedValues []models.ParamsValue `mapstructure:"allowed_values" json:"allowed_values,omitempty"`
+	// GlobalEnvVariable - the nane of the global environment variable that can be used on empty input
+	GetFromGlobalEnvVariable string `mapstructure:"get_from_global_env_variable" json:"get_from_global_env_variable,omitempty"`
 }
 
 func MustNewParameterDefinition(name string, description string) *ParameterDefinition {
@@ -233,5 +235,10 @@ func (p *ParameterDefinition) SetDefaultValue(v models.ParamsValue) *ParameterDe
 
 func (p *ParameterDefinition) SetDynamicMode(v *DynamicModeProperties) *ParameterDefinition {
 	p.DynamicModeProperties = v
+	return p
+}
+
+func (p *ParameterDefinition) SetGetFromGlobalEnvVariable(v string) *ParameterDefinition {
+	p.GetFromGlobalEnvVariable = v
 	return p
 }

@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"os"
 	"slices"
 	"text/template"
 	"time"
@@ -206,6 +207,9 @@ func (sp *StaticParameter) Init(
 	rawValue models.ParamsValue,
 ) error {
 	sp.rawValue = slices.Clone(rawValue)
+	if sp.definition.GetFromGlobalEnvVariable != "" {
+		sp.rawValue = []byte(os.Getenv(sp.definition.GetFromGlobalEnvVariable))
+	}
 
 	if err := sp.linkColumnParameter(columnParams); err != nil {
 		return fmt.Errorf("link column parameter: %w", err)

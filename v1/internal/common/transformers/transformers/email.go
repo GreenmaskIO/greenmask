@@ -267,11 +267,11 @@ func (rit *EmailTransformer) GetAffectedColumns() map[int]string {
 	return rit.affectedColumns
 }
 
-func (rit *EmailTransformer) Init(_ context.Context) error {
+func (rit *EmailTransformer) Init(context.Context) error {
 	return nil
 }
 
-func (rit *EmailTransformer) Done(_ context.Context) error {
+func (rit *EmailTransformer) Done(context.Context) error {
 	return nil
 }
 

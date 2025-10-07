@@ -65,10 +65,13 @@ var (
 
 func engineValidator(ctx context.Context, p *commonparameters.ParameterDefinition, v commonmodels.ParamsValue) error {
 	value := string(v)
-	if value != EngineParameterValueRandom && value != EngineParameterValueDeterministic {
+	switch value {
+	case EngineParameterValueRandom, EngineParameterValueDeterministic, EngineParameterValueHash:
+		return nil
+	default:
 		validationcollector.FromContext(ctx).
 			Add(commonmodels.NewValidationWarning().
-				SetMsg("Invalid engine value").
+				SetMsg("invalid engine value").
 				AddMeta("ParameterValue", value).
 				SetSeverity(commonmodels.ValidationSeverityError))
 	}
