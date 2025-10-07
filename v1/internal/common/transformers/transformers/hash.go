@@ -77,6 +77,8 @@ var HashTransformerDefinition = transformerutils.NewTransformerDefinition(
 		"limit length of hash function expected",
 	).SetDefaultValue([]byte("0")).
 		SetRawValueValidator(validateMaxLengthParameter),
+
+	defaultKeepNullParameterDefinition,
 )
 
 const (
@@ -100,6 +102,7 @@ type HashTransformer struct {
 	hashBuf             []byte
 	resultBuf           []byte
 	salt                []byte
+	keepNull            bool
 }
 
 func NewHashTransformer(
@@ -158,6 +161,11 @@ func NewHashTransformer(
 		return nil, err
 	}
 
+	keepNull, err := getParameterValueWithName[bool](ctx, parameters, "keep_null")
+	if err != nil {
+		return nil, fmt.Errorf("unable to scan \"keep_null\" parameter: %w", err)
+	}
+
 	return &HashTransformer{
 		columnName: columnName,
 		affectedColumns: map[int]string{
@@ -170,6 +178,7 @@ func NewHashTransformer(
 		salt:                []byte(salt),
 		encodedOutputLength: hex.EncodedLen(hashFunctionLength),
 		h:                   h,
+		keepNull:            keepNull,
 	}, nil
 }
 
@@ -190,7 +199,7 @@ func (ht *HashTransformer) Transform(_ context.Context, r commonininterfaces.Rec
 	if err != nil {
 		return fmt.Errorf("unable to scan attribute value: %w", err)
 	}
-	if val.IsNull {
+	if val.IsNull && ht.keepNull {
 		return nil
 	}
 

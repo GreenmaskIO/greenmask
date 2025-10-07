@@ -30,9 +30,9 @@ func TestHashTransformer_Transform(t *testing.T) {
 		columnName       string
 		staticParameters map[string]commonmodels.ParamsValue
 		dynamicParameter map[string]commonmodels.DynamicParamValue
-		original         string
-		expected         string
-		validateFn       func(t *testing.T, originalEmail, transformedEmail string)
+		original         *commonmodels.ColumnRawValue
+		expected         *commonmodels.ColumnRawValue
+		validateFn       func(t *testing.T, expected, actual *commonmodels.ColumnRawValue)
 		expectedErr      string
 		columns          []commonmodels.Column
 		isNull           bool
@@ -43,8 +43,11 @@ func TestHashTransformer_Transform(t *testing.T) {
 				"column":   commonmodels.ParamsValue("data"),
 				"function": commonmodels.ParamsValue("md5"),
 			},
-			original:   "123",
-			expected:   "202cb962ac59075b964b07152d234b70",
+			original: commonmodels.NewColumnRawValue([]byte("123"), false),
+			expected: commonmodels.NewColumnRawValue(
+				[]byte("202cb962ac59075b964b07152d234b70"),
+				false,
+			),
 			isNull:     false,
 			columnName: "data",
 			columns: []commonmodels.Column{
@@ -55,7 +58,7 @@ func TestHashTransformer_Transform(t *testing.T) {
 					TypeOID:  23,
 				},
 			},
-			validateFn: func(t *testing.T, expected, actual string) {
+			validateFn: func(t *testing.T, expected, actual *commonmodels.ColumnRawValue) {
 				require.Equal(t, expected, actual)
 			},
 		},
@@ -65,8 +68,8 @@ func TestHashTransformer_Transform(t *testing.T) {
 				"column":   commonmodels.ParamsValue("data"),
 				"function": commonmodels.ParamsValue("sha1"),
 			},
-			original:   "123",
-			expected:   "40bd001563085fc35165329ea1ff5c5ecbdbbeef",
+			original:   commonmodels.NewColumnRawValue([]byte("123"), false),
+			expected:   commonmodels.NewColumnRawValue([]byte("40bd001563085fc35165329ea1ff5c5ecbdbbeef"), false),
 			isNull:     false,
 			columnName: "data",
 			columns: []commonmodels.Column{
@@ -77,7 +80,7 @@ func TestHashTransformer_Transform(t *testing.T) {
 					TypeOID:  23,
 				},
 			},
-			validateFn: func(t *testing.T, expected, actual string) {
+			validateFn: func(t *testing.T, expected, actual *commonmodels.ColumnRawValue) {
 				require.Equal(t, expected, actual)
 			},
 		},
@@ -87,8 +90,8 @@ func TestHashTransformer_Transform(t *testing.T) {
 				"column":   commonmodels.ParamsValue("data"),
 				"function": commonmodels.ParamsValue("sha256"),
 			},
-			original:   "123",
-			expected:   "a665a45920422f9d417e4867efdc4fb8a04a1f3fff1fa07e998e86f7f7a27ae3",
+			original:   commonmodels.NewColumnRawValue([]byte("123"), false),
+			expected:   commonmodels.NewColumnRawValue([]byte("a665a45920422f9d417e4867efdc4fb8a04a1f3fff1fa07e998e86f7f7a27ae3"), false),
 			isNull:     false,
 			columnName: "data",
 			columns: []commonmodels.Column{
@@ -99,7 +102,7 @@ func TestHashTransformer_Transform(t *testing.T) {
 					TypeOID:  23,
 				},
 			},
-			validateFn: func(t *testing.T, expected, actual string) {
+			validateFn: func(t *testing.T, expected, actual *commonmodels.ColumnRawValue) {
 				require.Equal(t, expected, actual)
 			},
 		},
@@ -109,8 +112,8 @@ func TestHashTransformer_Transform(t *testing.T) {
 				"column":   commonmodels.ParamsValue("data"),
 				"function": commonmodels.ParamsValue("sha512"),
 			},
-			original:   "123",
-			expected:   "3c9909afec25354d551dae21590bb26e38d53f2173b8d3dc3eee4c047e7ab1c1eb8b85103e3be7ba613b31bb5c9c36214dc9f14a42fd7a2fdb84856bca5c44c2",
+			original:   commonmodels.NewColumnRawValue([]byte("123"), false),
+			expected:   commonmodels.NewColumnRawValue([]byte("3c9909afec25354d551dae21590bb26e38d53f2173b8d3dc3eee4c047e7ab1c1eb8b85103e3be7ba613b31bb5c9c36214dc9f14a42fd7a2fdb84856bca5c44c2"), false),
 			isNull:     false,
 			columnName: "data",
 			columns: []commonmodels.Column{
@@ -121,7 +124,7 @@ func TestHashTransformer_Transform(t *testing.T) {
 					TypeOID:  23,
 				},
 			},
-			validateFn: func(t *testing.T, expected, actual string) {
+			validateFn: func(t *testing.T, expected, actual *commonmodels.ColumnRawValue) {
 				require.Equal(t, expected, actual)
 			},
 		},
@@ -131,8 +134,8 @@ func TestHashTransformer_Transform(t *testing.T) {
 				"column":   commonmodels.ParamsValue("data"),
 				"function": commonmodels.ParamsValue("sha3-224"),
 			},
-			original:   "123",
-			expected:   "602bdc204140db016bee5374895e5568ce422fabe17e064061d80097",
+			original:   commonmodels.NewColumnRawValue([]byte("123"), false),
+			expected:   commonmodels.NewColumnRawValue([]byte("602bdc204140db016bee5374895e5568ce422fabe17e064061d80097"), false),
 			isNull:     false,
 			columnName: "data",
 			columns: []commonmodels.Column{
@@ -143,7 +146,7 @@ func TestHashTransformer_Transform(t *testing.T) {
 					TypeOID:  23,
 				},
 			},
-			validateFn: func(t *testing.T, expected, actual string) {
+			validateFn: func(t *testing.T, expected, actual *commonmodels.ColumnRawValue) {
 				require.Equal(t, expected, actual)
 			},
 		},
@@ -153,8 +156,8 @@ func TestHashTransformer_Transform(t *testing.T) {
 				"column":   commonmodels.ParamsValue("data"),
 				"function": commonmodels.ParamsValue("sha3-254"),
 			},
-			original:   "123",
-			expected:   "a03ab19b866fc585b5cb1812a2f63ca861e7e7643ee5d43fd7106b623725fd67",
+			original:   commonmodels.NewColumnRawValue([]byte("123"), false),
+			expected:   commonmodels.NewColumnRawValue([]byte("a03ab19b866fc585b5cb1812a2f63ca861e7e7643ee5d43fd7106b623725fd67"), false),
 			isNull:     false,
 			columnName: "data",
 			columns: []commonmodels.Column{
@@ -165,7 +168,7 @@ func TestHashTransformer_Transform(t *testing.T) {
 					TypeOID:  23,
 				},
 			},
-			validateFn: func(t *testing.T, expected, actual string) {
+			validateFn: func(t *testing.T, expected, actual *commonmodels.ColumnRawValue) {
 				require.Equal(t, expected, actual)
 			},
 		},
@@ -175,8 +178,8 @@ func TestHashTransformer_Transform(t *testing.T) {
 				"column":   commonmodels.ParamsValue("data"),
 				"function": commonmodels.ParamsValue("sha3-384"),
 			},
-			original:   "123",
-			expected:   "9bd942d1678a25d029b114306f5e1dae49fe8abeeacd03cfab0f156aa2e363c988b1c12803d4a8c9ba38fdc873e5f007",
+			original:   commonmodels.NewColumnRawValue([]byte("123"), false),
+			expected:   commonmodels.NewColumnRawValue([]byte("9bd942d1678a25d029b114306f5e1dae49fe8abeeacd03cfab0f156aa2e363c988b1c12803d4a8c9ba38fdc873e5f007"), false),
 			isNull:     false,
 			columnName: "data",
 			columns: []commonmodels.Column{
@@ -187,7 +190,7 @@ func TestHashTransformer_Transform(t *testing.T) {
 					TypeOID:  23,
 				},
 			},
-			validateFn: func(t *testing.T, expected, actual string) {
+			validateFn: func(t *testing.T, expected, actual *commonmodels.ColumnRawValue) {
 				require.Equal(t, expected, actual)
 			},
 		},
@@ -197,8 +200,8 @@ func TestHashTransformer_Transform(t *testing.T) {
 				"column":   commonmodels.ParamsValue("data"),
 				"function": commonmodels.ParamsValue("sha3-512"),
 			},
-			original:   "123",
-			expected:   "48c8947f69c054a5caa934674ce8881d02bb18fb59d5a63eeaddff735b0e9801e87294783281ae49fc8287a0fd86779b27d7972d3e84f0fa0d826d7cb67dfefc",
+			original:   commonmodels.NewColumnRawValue([]byte("123"), false),
+			expected:   commonmodels.NewColumnRawValue([]byte("48c8947f69c054a5caa934674ce8881d02bb18fb59d5a63eeaddff735b0e9801e87294783281ae49fc8287a0fd86779b27d7972d3e84f0fa0d826d7cb67dfefc"), false),
 			isNull:     false,
 			columnName: "data",
 			columns: []commonmodels.Column{
@@ -209,7 +212,7 @@ func TestHashTransformer_Transform(t *testing.T) {
 					TypeOID:  23,
 				},
 			},
-			validateFn: func(t *testing.T, expected, actual string) {
+			validateFn: func(t *testing.T, expected, actual *commonmodels.ColumnRawValue) {
 				require.Equal(t, expected, actual)
 			},
 		},
@@ -220,8 +223,8 @@ func TestHashTransformer_Transform(t *testing.T) {
 				"function":   commonmodels.ParamsValue("sha3-512"),
 				"max_length": commonmodels.ParamsValue("4"),
 			},
-			original:   "123",
-			expected:   "48c8",
+			original:   commonmodels.NewColumnRawValue([]byte("123"), false),
+			expected:   commonmodels.NewColumnRawValue([]byte("48c8"), false),
 			isNull:     false,
 			columnName: "data",
 			columns: []commonmodels.Column{
@@ -232,8 +235,54 @@ func TestHashTransformer_Transform(t *testing.T) {
 					TypeOID:  23,
 				},
 			},
-			validateFn: func(t *testing.T, expected, actual string) {
+			validateFn: func(t *testing.T, expected, actual *commonmodels.ColumnRawValue) {
 				require.Equal(t, expected, actual)
+			},
+		},
+		{
+			name: "keep null false and null value",
+			staticParameters: map[string]commonmodels.ParamsValue{
+				"column":     commonmodels.ParamsValue("data"),
+				"function":   commonmodels.ParamsValue("sha3-512"),
+				"max_length": commonmodels.ParamsValue("4"),
+			},
+			original:   commonmodels.NewColumnRawValue([]byte(""), false),
+			expected:   commonmodels.NewColumnRawValue([]byte("48c8"), false),
+			isNull:     true,
+			columnName: "data",
+			columns: []commonmodels.Column{
+				{
+					Idx:      0,
+					Name:     "data",
+					TypeName: "text",
+					TypeOID:  23,
+				},
+			},
+			validateFn: func(t *testing.T, expected, actual *commonmodels.ColumnRawValue) {
+				require.Equal(t, expected.IsNull, actual.IsNull)
+			},
+		},
+		{
+			name: "keep null true and null value",
+			staticParameters: map[string]commonmodels.ParamsValue{
+				"column":     commonmodels.ParamsValue("data"),
+				"function":   commonmodels.ParamsValue("sha3-512"),
+				"max_length": commonmodels.ParamsValue("4"),
+			},
+			original:   commonmodels.NewColumnRawValue([]byte(""), false),
+			expected:   commonmodels.NewColumnRawValue([]byte("48c8"), false),
+			isNull:     true,
+			columnName: "data",
+			columns: []commonmodels.Column{
+				{
+					Idx:      0,
+					Name:     "data",
+					TypeName: "text",
+					TypeOID:  23,
+				},
+			},
+			validateFn: func(t *testing.T, expected, actual *commonmodels.ColumnRawValue) {
+				require.Equal(t, expected.IsNull, actual.IsNull)
 			},
 		},
 	}
@@ -256,7 +305,7 @@ func TestHashTransformer_Transform(t *testing.T) {
 			require.NoError(t, err)
 			require.False(t, vc.HasWarnings())
 
-			env.SetRecord(t, commonmodels.NewColumnRawValue([]byte(tt.original), tt.isNull))
+			env.SetRecord(t, tt.original)
 
 			err = env.Transform(t, ctx)
 			if tt.expectedErr != "" {
@@ -264,11 +313,10 @@ func TestHashTransformer_Transform(t *testing.T) {
 				return
 			}
 			rec := env.GetRecord()
-			val, err := rec.GetRawColumnValueByName(tt.columnName)
+			actual, err := rec.GetRawColumnValueByName(tt.columnName)
 			require.NoError(t, err)
-			require.Equal(t, tt.isNull, val.IsNull)
 			if !tt.isNull && tt.validateFn != nil {
-				tt.validateFn(t, tt.expected, string(val.Data))
+				tt.validateFn(t, tt.expected, actual)
 			}
 		})
 	}
