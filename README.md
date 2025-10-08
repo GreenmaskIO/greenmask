@@ -45,12 +45,10 @@ sample databases included to help you try Greenmask without any additional actio
 
 ## Features
 
-* **[Database subset](https://docs.greenmask.io/latest/database_subset/)** - One of the most advanced subset systems
-  on the market. It supports **virtual references**, nullable columns, polymorphic references, and can subset even the
+* **[Database subset](https://docs.greenmask.io/latest/database_subset/)** - One of the most advanced subset systems 
+  on the market. It supports **virtual references**, nullable columns, polymorphic references, and can subset even the 
   most complex schemas with **cyclic references**.
-* *
-  *[Deterministic transformers](https://docs.greenmask.io/latest/built_in_transformers/transformation_engines/#hash-engine)
-  ** — Uses hash functions to ensure consistent output for the same input. Most transformers support both `random` and
+* **[Deterministic transformers](https://docs.greenmask.io/latest/built_in_transformers/transformation_engines/#hash-engine)** — Uses hash functions to ensure consistent output for the same input. Most transformers support both `random` and
   `hash` engines, offering flexibility for various use cases.
 * **[Dynamic parameters](https://docs.greenmask.io/latest/built_in_transformers/dynamic_parameters/)** — most
   transformers support dynamic parameters, allowing them to adapt based on table column values. This feature helps
@@ -76,8 +74,7 @@ sample databases included to help you try Greenmask without any additional actio
   use [predefined templates](https://docs.greenmask.io/latest/built_in_transformers/advanced_transformers/).
 * **Parallel execution** — Enables parallel dumping and restoration to significantly speed up results.
 * **Variety of storages** — Supports both local and remote storage, including directories and S3-compatible solutions.
-* **[Pgzip support for faster compression](https://docs.greenmask.io/latest/commands/dump/?h=pgzip#pgzip-compression)
-  ** — Speeds up dump and restoration processes with parallel compression
+* **[Pgzip support for faster compression](https://docs.greenmask.io/latest/commands/dump/?h=pgzip#pgzip-compression)** — Speeds up dump and restoration processes with parallel compression 
   by setting `--pgzip`.
 
 ## Use Cases
@@ -99,8 +96,7 @@ and pg_restore. Greenmask is designed to align with these native tools, ensuring
 manages data dumping while delegating schema dumping and restoration to `pg_dump` and `pg_restore`, ensuring smooth
 integration with PostgreSQL’s standard workflow.
 
-Greenmask utilizes the directory format of `pg_dump` and `pg_restore`, ideal for parallel execution and partial
-restoration.
+Greenmask utilizes the directory format of `pg_dump` and `pg_restore`, ideal for parallel execution and partial restoration.
 This format includes metadata files to guide backup and restoration steps.
 
 #### Storage Options
