@@ -3,6 +3,7 @@ package transformers
 import (
 	"context"
 	"errors"
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/mock"
@@ -393,7 +394,14 @@ func (m *transformerTestEnvReal) InitTransformer(
 	t.Helper()
 	var err error
 	m.transformer, err = m.definition.New(ctx, m.tableDriverReal, m.initializedParameters)
-	return err
+	if err != nil {
+		return fmt.Errorf("create transformer: %w", err)
+	}
+	if err := m.transformer.Init(ctx); err != nil {
+		return fmt.Errorf("init transformer: %w", err)
+	}
+
+	return nil
 }
 
 // SetRecord - init recorder with mysql-specific record.

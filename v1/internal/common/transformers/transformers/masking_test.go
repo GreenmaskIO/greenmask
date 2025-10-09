@@ -172,9 +172,7 @@ func TestMaskingTransformer_Transform(t *testing.T) {
 			rec := env.GetRecord()
 			actual, err := rec.GetRawColumnValueByName(tt.columnName)
 			require.NoError(t, err)
-			if !tt.isNull && tt.validateFn != nil {
-				tt.validateFn(t, tt.expected, actual)
-			}
+			tt.validateFn(t, tt.expected, actual)
 		})
 	}
 }

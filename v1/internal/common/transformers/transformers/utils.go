@@ -18,13 +18,20 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/binary"
+	"encoding/json"
+	"errors"
 	"fmt"
+	"slices"
+	"strings"
+	"time"
 
 	commonutils "github.com/greenmaskio/greenmask/internal/utils"
+	"github.com/jackc/pgx/v5/pgtype"
 
 	commonininterfaces "github.com/greenmaskio/greenmask/v1/internal/common/interfaces"
 	commonmodels "github.com/greenmaskio/greenmask/v1/internal/common/models"
 	"github.com/greenmaskio/greenmask/v1/internal/common/transformers/generators"
+	"github.com/greenmaskio/greenmask/v1/internal/common/transformers/generators/transformers"
 	commonparameters "github.com/greenmaskio/greenmask/v1/internal/common/transformers/parameters"
 	"github.com/greenmaskio/greenmask/v1/internal/common/validationcollector"
 )
@@ -34,6 +41,9 @@ const (
 	ParameterNameColumn   = "column"
 	ParameterNameValidate = "validate"
 	ParameterNameEngine   = "engine"
+	ParameterNameTruncate = "truncate"
+	ParameterNameMinRatio = "min_ratio"
+	ParameterNameMaxRatio = "max_ratio"
 
 	EngineParameterValueRandom        = "random"
 	EngineParameterValueDeterministic = "deterministic"
@@ -47,7 +57,7 @@ var (
 
 var (
 	defaultKeepNullParameterDefinition = commonparameters.MustNewParameterDefinition(
-		"keep_null",
+		ParameterNameKeepNull,
 		"indicates that NULL values must not be replaced with transformed values",
 	).SetDefaultValue(commonmodels.ParamsValue("true"))
 
@@ -57,11 +67,56 @@ var (
 	).SetDefaultValue(commonmodels.ParamsValue("true"))
 
 	defaultEngineParameterDefinition = commonparameters.MustNewParameterDefinition(
-		"engine",
+		ParameterNameEngine,
 		"The engine used for generating the values [random, deterministic]",
 	).SetDefaultValue([]byte(EngineParameterValueRandom)).
 		SetRawValueValidator(engineValidator)
+
+	defaultMinRatioParameterDefinition = commonparameters.MustNewParameterDefinition(
+		ParameterNameMinRatio,
+		"min random percentage for noise",
+	).SetDefaultValue(commonmodels.ParamsValue("0.05"))
+
+	defaultMaxRatioParameterDefinition = commonparameters.MustNewParameterDefinition(
+		ParameterNameMaxRatio,
+		"max random percentage for noise",
+	).SetDefaultValue(commonmodels.ParamsValue("0.2"))
+
+	truncateParts = []string{
+		transformers.YearTruncateName,
+		transformers.MonthTruncateName,
+		transformers.DayTruncateName,
+		transformers.HourTruncateName,
+		transformers.MinuteTruncateName,
+		transformers.SecondTruncateName,
+		transformers.MillisecondTruncateName,
+		transformers.MicrosecondTruncateName,
+		transformers.NanosecondTruncateName,
+	}
+
+	defaultTruncateDateParameterDefinition = commonparameters.MustNewParameterDefinition(
+		ParameterNameTruncate,
+		fmt.Sprintf("truncate date till the part (%s)", strings.Join(truncateParts, ", ")),
+	).SetRawValueValidator(validateDateTruncationParameterValue)
 )
+
+func validateDateTruncationParameterValue(
+	ctx context.Context,
+	_ *commonparameters.ParameterDefinition,
+	v commonmodels.ParamsValue,
+) error {
+	if string(v) == "" || slices.Contains(truncateParts, string(v)) {
+		return nil
+	}
+	validationcollector.FromContext(ctx).Add(
+		commonmodels.NewValidationWarning().
+			SetSeverity(commonmodels.ValidationSeverityError).
+			AddMeta("ParameterValue", string(v)).
+			AddMeta("AllowedValues", truncateParts).
+			SetMsg("wrong truncation part value"),
+	)
+	return commonmodels.ErrFatalValidationError
+}
 
 func engineValidator(ctx context.Context, p *commonparameters.ParameterDefinition, v commonmodels.ParamsValue) error {
 	value := string(v)
@@ -183,8 +238,99 @@ func getRandomBytesGen(size int) (generators.Generator, error) {
 	buf := make([]byte, 8)
 	_, err := rand.Read(buf)
 	if err != nil {
-		return nil, fmt.Errorf("error generating random bytes sequence: %w", err)
+		return nil, fmt.Errorf("generate random bytes sequence: %w", err)
 	}
 	seed := int64(binary.LittleEndian.Uint64(buf))
 	return generators.NewRandomBytes(seed, size), nil
+}
+
+func getPgInterval(parameters map[string]commonparameters.Parameterizer, name string) (time.Duration, error) {
+	// TODO: It's not stable and does not fully support pgsyntax.
+	src, err := getParameterValueWithName[string](context.Background(), parameters, name)
+	if err != nil {
+		return 0, err
+	}
+
+	var dst pgtype.Interval
+	if err := dst.Scan(src); err != nil {
+		return 0, fmt.Errorf("scan interval: %w", err)
+	}
+	dur := (time.Duration(dst.Days) * time.Hour * 24) +
+		(time.Duration(dst.Months) * 30 * time.Hour * 24) +
+		(time.Duration(dst.Microseconds) * time.Millisecond)
+	return dur, nil
+}
+
+type Duration struct {
+	Years        int `json:"years,omitempty"`
+	Months       int `json:"months,omitempty"`
+	Days         int `json:"days,omitempty"`
+	Weeks        int `json:"weeks,omitempty"`
+	Hours        int `json:"hours,omitempty"`
+	Minutes      int `json:"minutes,omitempty"`
+	Seconds      int `json:"seconds,omitempty"`
+	Milliseconds int `json:"milliseconds,omitempty"`
+	Microseconds int `json:"microseconds,omitempty"`
+	Nanoseconds  int `json:"nanoseconds,omitempty"`
+}
+
+func (d *Duration) ToDuration() time.Duration {
+	return (time.Duration(d.Years) * 365 * 24 * time.Hour) +
+		(time.Duration(d.Months) * 30 * 24 * time.Hour) +
+		(time.Duration(d.Days) * 24 * time.Hour) +
+		(time.Duration(d.Weeks) * 7 * 24 * time.Hour) +
+		(time.Duration(d.Hours) * time.Hour) +
+		(time.Duration(d.Minutes) * time.Minute) +
+		(time.Duration(d.Seconds) * time.Second) +
+		(time.Duration(d.Milliseconds) * time.Millisecond) +
+		(time.Duration(d.Microseconds) * time.Microsecond) +
+		(time.Duration(d.Nanoseconds) * time.Nanosecond)
+}
+
+func (d *Duration) IsZero() bool {
+	return d.Years == 0 &&
+		d.Months == 0 &&
+		d.Days == 0 &&
+		d.Weeks == 0 &&
+		d.Hours == 0 &&
+		d.Minutes == 0 &&
+		d.Seconds == 0 &&
+		d.Milliseconds == 0 &&
+		d.Microseconds == 0 &&
+		d.Nanoseconds == 0
+}
+
+func defaultRatioValidator(
+	ctx context.Context,
+	p *commonparameters.ParameterDefinition,
+	raw commonmodels.ParamsValue,
+) error {
+	var v Duration
+	if err := json.Unmarshal(raw, &v); err != nil {
+		validationcollector.FromContext(ctx).
+			Add(commonmodels.NewValidationWarning().
+				SetSeverity(commonmodels.ValidationSeverityError).
+				AddMeta(commonmodels.MetaKeyParameterName, p.Name).
+				SetError(err).
+				SetMsg("error parsing parameter value"))
+		return errors.Join(err, commonmodels.ErrFatalValidationError)
+	}
+	if v.IsZero() {
+		validationcollector.FromContext(ctx).
+			Add(commonmodels.NewValidationWarning().
+				SetSeverity(commonmodels.ValidationSeverityError).
+				AddMeta(commonmodels.MetaKeyParameterName, p.Name).
+				SetMsg("parameter value must not be zero"))
+		return commonmodels.ErrFatalValidationError
+	}
+	return nil
+}
+
+func isDynamicMode(parameters map[string]commonparameters.Parameterizer) bool {
+	for _, p := range parameters {
+		if p.IsDynamic() {
+			return true
+		}
+	}
+	return false
 }

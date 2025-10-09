@@ -170,8 +170,6 @@ func NewEmailTransformer(
 	tableDriver commonininterfaces.TableDriver,
 	parameters map[string]commonparameters.Parameterizer,
 ) (commonininterfaces.Transformer, error) {
-
-	var err error
 	var domainTmpl, localTmpl *template.Template
 
 	columnName, column, err := getColumnParameterValue(ctx, tableDriver, parameters)
