@@ -192,17 +192,12 @@ func TestNewMaskingTransformer(t *testing.T) {
 		},
 		map[string]commonmodels.ParamsValue{
 			"column": commonmodels.ParamsValue("data"),
-			"type":   commonmodels.ParamsValue(MPassword),
+			"type":   commonmodels.ParamsValue("test"),
 		},
 		nil,
 	)
 	err := env.InitParameters(t, ctx)
-	require.NoError(t, err)
-	require.False(t, vc.HasWarnings())
-
-	err = env.InitTransformer(t, ctx)
-	require.NoError(t, err)
+	require.ErrorIs(t, err, commonmodels.ErrFatalValidationError)
 	require.Equal(t, vc.Len(), 1)
-	require.NoError(t, err)
-	assert.Contains(t, vc.GetWarnings()[0].Msg, "unknown type")
+	assert.Contains(t, vc.GetWarnings()[0].Msg, "unknown masking type")
 }

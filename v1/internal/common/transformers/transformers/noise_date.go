@@ -106,7 +106,7 @@ func NewNoiseDateTransformer(
 	maxParam := parameters["max"]
 	minParam := parameters["min"]
 
-	dynamicMode := isDynamicMode(parameters)
+	dynamicMode := isInDynamicMode(parameters)
 
 	columnName, column, err := getColumnParameterValue(ctx, tableDriver, parameters)
 	if err != nil {
@@ -179,14 +179,14 @@ func (ndt *NoiseDateTransformer) GetAffectedColumns() map[int]string {
 	return ndt.affectedColumns
 }
 
-func (ndt *NoiseDateTransformer) Init(_ context.Context) error {
+func (ndt *NoiseDateTransformer) Init(context.Context) error {
 	if ndt.dynamicMode {
 		ndt.transform = ndt.dynamicTransform
 	}
 	return nil
 }
 
-func (ndt *NoiseDateTransformer) Done(_ context.Context) error {
+func (ndt *NoiseDateTransformer) Done(context.Context) error {
 	return nil
 }
 

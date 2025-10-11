@@ -222,7 +222,7 @@ func TestGetColumnParameterValue(t *testing.T) {
 				require.NoError(t, utils.ScanPointer(expectedColumnName, dest))
 			}).Return(nil)
 		tableDriver.On("GetColumnByName", expectedColumnName).
-			Return(nil, commonmodels.ErrUnknownColumnName)
+			Return((*commonmodels.Column)(nil), commonmodels.ErrUnknownColumnName)
 		_, _, err := getColumnParameterValue(ctx, tableDriver, parameters)
 		assert.ErrorIs(t, err, commonmodels.ErrFatalValidationError)
 		require.True(t, vc.IsFatal())

@@ -21,18 +21,21 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math"
 	"slices"
 	"strings"
 	"time"
 
 	commonutils "github.com/greenmaskio/greenmask/internal/utils"
 	"github.com/jackc/pgx/v5/pgtype"
+	"golang.org/x/exp/constraints"
 
 	commonininterfaces "github.com/greenmaskio/greenmask/v1/internal/common/interfaces"
 	commonmodels "github.com/greenmaskio/greenmask/v1/internal/common/models"
 	"github.com/greenmaskio/greenmask/v1/internal/common/transformers/generators"
 	"github.com/greenmaskio/greenmask/v1/internal/common/transformers/generators/transformers"
 	commonparameters "github.com/greenmaskio/greenmask/v1/internal/common/transformers/parameters"
+	"github.com/greenmaskio/greenmask/v1/internal/common/utils"
 	"github.com/greenmaskio/greenmask/v1/internal/common/validationcollector"
 )
 
@@ -188,6 +191,34 @@ func getParameterValueWithName[T any](
 	return res, nil
 }
 
+// panicParameterDoesNotExists - returns the parameter value by scanning a value into variable.
+// The type is provided via generic parameter.
+func getParameterValueWithNameAndDefault[T any](
+	ctx context.Context,
+	parameters map[string]commonparameters.Parameterizer,
+	parameterName string,
+	defaultValue T,
+) (T, error) {
+	parameter, ok := parameters[parameterName]
+	if !ok {
+		panicParameterDoesNotExists(parameterName)
+	}
+	if utils.Must(parameter.IsEmpty()) {
+		return defaultValue, nil
+	}
+	var res T
+	if err := parameter.Scan(&res); err != nil {
+		validationcollector.FromContext(ctx).
+			Add(commonmodels.NewValidationWarning().
+				SetSeverity(commonmodels.ValidationSeverityError).
+				AddMeta(commonmodels.MetaKeyParameterName, parameterName).
+				SetError(err).
+				SetMsg("error scanning parameter"))
+		return res, commonmodels.ErrFatalValidationError
+	}
+	return res, nil
+}
+
 // getColumnParameterValueWithName - simplifies the logic of common column parameter.
 // It gets the column name, get column definition.
 func getColumnParameterValueWithName(
@@ -326,11 +357,93 @@ func defaultRatioValidator(
 	return nil
 }
 
-func isDynamicMode(parameters map[string]commonparameters.Parameterizer) bool {
+func isInDynamicMode(parameters map[string]commonparameters.Parameterizer) bool {
 	for _, p := range parameters {
 		if p.IsDynamic() {
 			return true
 		}
 	}
 	return false
+}
+
+func isValueInLimits[T constraints.Ordered](requestedThreshold, minValue, maxValue T) bool {
+	return requestedThreshold >= minValue && requestedThreshold <= maxValue
+}
+
+func getOptionalMinAndMaxThresholds[T any](
+	minParameter, maxParameter commonparameters.Parameterizer,
+) (*T, *T, error) {
+	var minVal, maxVal *T
+	if !utils.Must(minParameter.IsEmpty()) {
+		minVal = new(T)
+		if err := minParameter.Scan(minVal); err != nil {
+			return nil, nil, fmt.Errorf("error scanning \"min\" parameter: %w", err)
+		}
+	}
+
+	if !utils.Must(minParameter.IsEmpty()) {
+		maxVal = new(T)
+		if err := maxParameter.Scan(maxVal); err != nil {
+			return nil, nil, fmt.Errorf("error scanning \"max\" parameter: %w", err)
+		}
+	}
+
+	return minVal, maxVal, nil
+}
+
+func getFloatLimits(size int) (float64, float64, error) {
+	switch size {
+	case float4Length:
+		return -math.MaxFloat32, math.MaxFloat32, nil
+	case float8Length:
+		return -math.MaxFloat64, math.MaxFloat64, nil
+	}
+
+	return 0, 0, fmt.Errorf("unsupported float size %d", size)
+}
+
+func getNoiseFloatMinAndMaxThresholds[T constraints.Ordered](
+	size int,
+	minParam commonparameters.Parameterizer,
+	maxParam commonparameters.Parameterizer,
+	limitGetter func(int) (T, T, error),
+) (T, T, error) {
+	var zero T
+	var requestedMinValue, requestedMaxValue T
+	var minRequested, maxRequested bool
+	minLimit, maxLimit, err := limitGetter(size)
+	if err != nil {
+		return zero, zero, fmt.Errorf("get limits: %w", err)
+	}
+
+	if minParam.IsDynamic() {
+		minRequested = true
+		err = minParam.Scan(&requestedMinValue)
+		if err != nil {
+			return zero, zero, fmt.Errorf("scnan \"min\" param: %w", err)
+		}
+		if !isValueInLimits[T](requestedMinValue, minLimit, maxLimit) {
+			return zero, zero, fmt.Errorf("is value in limits: %w", err)
+		}
+	}
+
+	if maxParam.IsDynamic() {
+		maxRequested = true
+		err = maxParam.Scan(&requestedMaxValue)
+		if err != nil {
+			return zero, zero, fmt.Errorf(`unable to scan "max" dynamic param: %w`, err)
+		}
+		if !isValueInLimits[T](requestedMaxValue, minLimit, maxLimit) {
+			return zero, zero, fmt.Errorf("is value in limits: %w", err)
+		}
+	}
+
+	if minRequested {
+		minLimit = requestedMinValue
+	}
+	if maxRequested {
+		maxLimit = requestedMaxValue
+	}
+
+	return minLimit, maxLimit, nil
 }

@@ -416,5 +416,11 @@ func (m *transformerTestEnvReal) GetRecord() commonininterfaces.Recorder {
 
 func (m *transformerTestEnvReal) Transform(t *testing.T, ctx context.Context) error {
 	t.Helper()
+	for _, p := range m.initializedParameters {
+		if !p.IsDynamic() {
+			continue
+		}
+		p.(*commonparameters.DynamicParameter).SetRecord(m.recorder)
+	}
 	return m.transformer.Transform(ctx, m.recorder)
 }

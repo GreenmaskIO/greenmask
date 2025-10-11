@@ -299,11 +299,11 @@ func TestHashTransformer_Transform(t *testing.T) {
 			)
 			err := env.InitParameters(t, ctx)
 			require.NoError(t, err)
-			require.False(t, vc.HasWarnings())
+			require.False(t, vc.IsFatal())
 
 			err = env.InitTransformer(t, ctx)
 			require.NoError(t, err)
-			require.False(t, vc.HasWarnings())
+			require.False(t, vc.IsFatal())
 
 			env.SetRecord(t, tt.original)
 

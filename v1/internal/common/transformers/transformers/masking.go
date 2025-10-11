@@ -184,6 +184,8 @@ func maskerTypeValidator(
 		commonmodels.NewValidationWarning().
 			SetSeverity(commonmodels.ValidationSeverityWarning).
 			AddMeta("ParameterValue", string(v)).
-			SetMsg(`md5 hash function is deprecated and will be removed in the future`))
-	return commonmodels.ErrFatalValidationError
+			AddMeta("AllowedValues", []string{
+				MDefault, MPassword, MName, MAddress, MEmail, MMobile, MTelephone, MID, MCreditCard, MURL,
+			}).SetMsg(`unknown masking type`))
+	return fmt.Errorf("unknown masking type: %w", commonmodels.ErrFatalValidationError)
 }
