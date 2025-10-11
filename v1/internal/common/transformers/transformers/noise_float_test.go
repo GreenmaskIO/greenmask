@@ -31,7 +31,6 @@ import (
 func TestNoiseFloatTransformer_Transform(t *testing.T) {
 	tests := []struct {
 		name             string
-		columnName       string
 		staticParameters map[string]commonmodels.ParamsValue
 		dynamicParameter map[string]commonmodels.DynamicParamValue
 		original         []*commonmodels.ColumnRawValue
@@ -41,8 +40,7 @@ func TestNoiseFloatTransformer_Transform(t *testing.T) {
 		isNull           bool
 	}{
 		{
-			name:       "float4",
-			columnName: "data",
+			name: "float4",
 			staticParameters: map[string]commonmodels.ParamsValue{
 				"column":    commonmodels.ParamsValue("data"),
 				"min_ratio": commonmodels.ParamsValue("0.2"),
@@ -72,8 +70,7 @@ func TestNoiseFloatTransformer_Transform(t *testing.T) {
 			},
 		},
 		{
-			name:       "float8",
-			columnName: "data",
+			name: "float8",
 			staticParameters: map[string]commonmodels.ParamsValue{
 				"column":    commonmodels.ParamsValue("data"),
 				"min_ratio": commonmodels.ParamsValue("0.2"),
@@ -103,8 +100,7 @@ func TestNoiseFloatTransformer_Transform(t *testing.T) {
 			},
 		},
 		{
-			name:       "10 decimals",
-			columnName: "data",
+			name: "10 decimals",
 			staticParameters: map[string]commonmodels.ParamsValue{
 				"column":    commonmodels.ParamsValue("data"),
 				"min_ratio": commonmodels.ParamsValue("0.2"),
@@ -133,8 +129,7 @@ func TestNoiseFloatTransformer_Transform(t *testing.T) {
 			},
 		},
 		{
-			name:       "0 decimals",
-			columnName: "data",
+			name: "0 decimals",
 			staticParameters: map[string]commonmodels.ParamsValue{
 				"column":    commonmodels.ParamsValue("data"),
 				"min_ratio": commonmodels.ParamsValue("0.2"),
@@ -161,8 +156,7 @@ func TestNoiseFloatTransformer_Transform(t *testing.T) {
 			},
 		},
 		{
-			name:       "deterministic engine",
-			columnName: "data",
+			name: "deterministic engine",
 			staticParameters: map[string]commonmodels.ParamsValue{
 				"column":    commonmodels.ParamsValue("data"),
 				"min_ratio": commonmodels.ParamsValue("0.2"),
@@ -191,8 +185,7 @@ func TestNoiseFloatTransformer_Transform(t *testing.T) {
 			},
 		},
 		{
-			name:       "with tresholds",
-			columnName: "data",
+			name: "with thresholds",
 			staticParameters: map[string]commonmodels.ParamsValue{
 				"column":    commonmodels.ParamsValue("data"),
 				"min_ratio": commonmodels.ParamsValue("0.2"),
@@ -222,8 +215,7 @@ func TestNoiseFloatTransformer_Transform(t *testing.T) {
 			},
 		},
 		{
-			name:       "with tresholds",
-			columnName: "data",
+			name: "with thresholds",
 			staticParameters: map[string]commonmodels.ParamsValue{
 				"column":    commonmodels.ParamsValue("data"),
 				"min_ratio": commonmodels.ParamsValue("0.2"),
@@ -253,8 +245,7 @@ func TestNoiseFloatTransformer_Transform(t *testing.T) {
 			},
 		},
 		{
-			name:       "dynamic mode with min and max",
-			columnName: "data",
+			name: "dynamic mode with min and max",
 			staticParameters: map[string]commonmodels.ParamsValue{
 				"column":    commonmodels.ParamsValue("data"),
 				"min_ratio": commonmodels.ParamsValue("0.2"),
@@ -309,7 +300,6 @@ func TestNoiseFloatTransformer_Transform(t *testing.T) {
 		{
 			name: "dynamic mode with min and empty max",
 			// This should use the default max value for float8.
-			columnName: "data",
 			staticParameters: map[string]commonmodels.ParamsValue{
 				"column":    commonmodels.ParamsValue("data"),
 				"min_ratio": commonmodels.ParamsValue("0.2"),
@@ -361,7 +351,6 @@ func TestNoiseFloatTransformer_Transform(t *testing.T) {
 		{
 			name: "dynamic mode with max and empty min",
 			// This should use the default max value for float8.
-			columnName: "data",
 			staticParameters: map[string]commonmodels.ParamsValue{
 				"column":    commonmodels.ParamsValue("data"),
 				"min_ratio": commonmodels.ParamsValue("0.2"),

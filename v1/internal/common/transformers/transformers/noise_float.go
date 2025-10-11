@@ -18,11 +18,11 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/greenmaskio/greenmask/internal/generators/transformers"
 	"github.com/rs/zerolog/log"
 
 	commonininterfaces "github.com/greenmaskio/greenmask/v1/internal/common/interfaces"
 	commonmodels "github.com/greenmaskio/greenmask/v1/internal/common/models"
+	"github.com/greenmaskio/greenmask/v1/internal/common/transformers/generators/transformers"
 	commonparameters "github.com/greenmaskio/greenmask/v1/internal/common/transformers/parameters"
 	transformerutils "github.com/greenmaskio/greenmask/v1/internal/common/transformers/utils"
 	"github.com/greenmaskio/greenmask/v1/internal/common/validationcollector"
@@ -30,8 +30,6 @@ import (
 
 const (
 	NoiseFloatTransformerName = "NoiseFloat"
-
-	noiseFloatTransformerDefaultFloatSize = 4
 
 	float4Length = 4
 	float8Length = 8
@@ -43,6 +41,7 @@ var NoiseFloatTransformerDefinition = transformerutils.NewTransformerDefinition(
 		"Add noise to float value in min and max thresholds",
 	).AddMeta(transformerutils.AllowApplyForReferenced, true).
 		AddMeta(transformerutils.RequireHashEngineParameter, true),
+
 	NewNoiseFloatTransformer,
 
 	commonparameters.MustNewParameterDefinition(
@@ -84,7 +83,7 @@ var NoiseFloatTransformerDefinition = transformerutils.NewTransformerDefinition(
 		),
 
 	commonparameters.MustNewParameterDefinition(
-		"float_size",
+		"type_size",
 		"float size (4 or 8). It is used if greenmask can't detect it from column length",
 	).SetDefaultValue(commonmodels.ParamsValue("4")),
 
@@ -130,20 +129,20 @@ func NewNoiseFloatTransformer(
 		return nil, fmt.Errorf("get \"engine\" param: %w", err)
 	}
 
-	floatSize := column.Length
-	if floatSize == 0 {
+	typeSize := column.Length
+	if typeSize == 0 {
 		log.Ctx(ctx).
 			Warn().
-			Msg("unable to detect float size from column length, trying to it from \"float_size\" parameter")
-		floatSize, err = getParameterValueWithName[int](
+			Msg("unable to detect float size from column length, trying to it from \"type_size\" parameter")
+		typeSize, err = getParameterValueWithName[int](
 			ctx,
 			parameters,
-			"float_size",
+			"type_size",
 		)
 		if err != nil {
-			return nil, fmt.Errorf("unable to scan \"float_size\" param: %w", err)
+			return nil, fmt.Errorf("unable to scan \"type_size\" param: %w", err)
 		}
-		log.Warn().Msgf("using float size %d from \"float_size\" parameter", floatSize)
+		log.Warn().Msgf("using float size %d from \"type_size\" parameter", typeSize)
 	}
 
 	var minValueThreshold, maxValueThreshold *float64
@@ -169,7 +168,7 @@ func NewNoiseFloatTransformer(
 	}
 
 	limiter, err := validateNoiseFloatTypeAndSetLimit(
-		ctx, floatSize, minValueThreshold, maxValueThreshold, decimal,
+		ctx, typeSize, minValueThreshold, maxValueThreshold, decimal,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("validate float type and set limits: %w", err)
@@ -196,7 +195,7 @@ func NewNoiseFloatTransformer(
 		minParam:    minParam,
 		maxParam:    maxParam,
 		dynamicMode: dynamicMode,
-		floatSize:   floatSize,
+		floatSize:   typeSize,
 		transform: func(f float64) (float64, error) {
 			return t.Transform(nil, f)
 		},
