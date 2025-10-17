@@ -1,0 +1,249 @@
+package transformers
+
+import (
+	"context"
+	"net"
+	"testing"
+
+	"github.com/stretchr/testify/require"
+
+	commonininterfaces "github.com/greenmaskio/greenmask/v1/internal/common/interfaces"
+	commonmodels "github.com/greenmaskio/greenmask/v1/internal/common/models"
+	"github.com/greenmaskio/greenmask/v1/internal/common/utils"
+	"github.com/greenmaskio/greenmask/v1/internal/common/validationcollector"
+	mysqldbmsdriver "github.com/greenmaskio/greenmask/v1/internal/mysql/dbmsdriver"
+)
+
+func TestRandomIP_Transform(t *testing.T) {
+	tests := []struct {
+		name             string
+		staticParameters map[string]commonmodels.ParamsValue
+		dynamicParameter map[string]commonmodels.DynamicParamValue
+		original         []*commonmodels.ColumnRawValue
+		validateFn       func(t *testing.T, recorder commonininterfaces.Recorder)
+		expectedErr      string
+		columns          []commonmodels.Column
+		isNull           bool
+	}{
+		{
+			name: "dynamic",
+			staticParameters: map[string]commonmodels.ParamsValue{
+				"column": commonmodels.ParamsValue("data"),
+				"engine": commonmodels.ParamsValue("random"),
+			},
+			dynamicParameter: map[string]commonmodels.DynamicParamValue{
+				"subnet": {
+					Column: "subnet",
+				},
+			},
+			original: []*commonmodels.ColumnRawValue{
+				commonmodels.NewColumnRawValue([]byte("192.168.1.1"), false),
+				commonmodels.NewColumnRawValue([]byte("192.168.1.1/24"), false),
+			},
+			columns: []commonmodels.Column{
+				{
+					Idx:      0,
+					Name:     "data",
+					TypeName: mysqldbmsdriver.TypeText,
+					TypeOID:  mysqldbmsdriver.VirtualOidText,
+					Length:   -1,
+				},
+				{
+					Idx:      1,
+					Name:     "subnet",
+					TypeName: mysqldbmsdriver.TypeText,
+					TypeOID:  mysqldbmsdriver.VirtualOidText,
+					Length:   -1,
+				},
+			},
+			validateFn: func(t *testing.T, record commonininterfaces.Recorder) {
+				val, err := record.GetRawColumnValueByName("data")
+				require.NoError(t, err)
+				require.False(t, val.IsNull)
+				_, subnet, err := net.ParseCIDR("192.168.1.1/24")
+				require.NoError(t, err)
+				ip := net.ParseIP(string(val.Data))
+				require.NotNil(t, ip)
+				require.True(t, subnet.Contains(ip))
+			},
+		},
+		{
+			name: "static",
+			staticParameters: map[string]commonmodels.ParamsValue{
+				"column": commonmodels.ParamsValue("data"),
+				"subnet": commonmodels.ParamsValue("192.168.1.1/24"),
+				"engine": commonmodels.ParamsValue("random"),
+			},
+			original: []*commonmodels.ColumnRawValue{
+				commonmodels.NewColumnRawValue([]byte("192.168.1.1"), false)},
+			columns: []commonmodels.Column{
+				{
+					Idx:      0,
+					Name:     "data",
+					TypeName: mysqldbmsdriver.TypeText,
+					TypeOID:  mysqldbmsdriver.VirtualOidText,
+					Length:   4,
+				},
+			},
+			validateFn: func(t *testing.T, record commonininterfaces.Recorder) {
+				val, err := record.GetRawColumnValueByName("data")
+				require.NoError(t, err)
+				require.False(t, val.IsNull)
+				_, subnet, err := net.ParseCIDR("192.168.1.1/24")
+				require.NoError(t, err)
+				ip := net.ParseIP(string(val.Data))
+				require.NotNil(t, ip)
+				require.True(t, subnet.Contains(ip))
+			},
+		},
+		{
+			name: "static deterministic",
+			staticParameters: map[string]commonmodels.ParamsValue{
+				"column": commonmodels.ParamsValue("data"),
+				"subnet": commonmodels.ParamsValue("192.168.1.1/24"),
+				"engine": commonmodels.ParamsValue("deterministic"),
+			},
+			original: []*commonmodels.ColumnRawValue{
+				commonmodels.NewColumnRawValue([]byte("192.168.1.1"), false)},
+			columns: []commonmodels.Column{
+				{
+					Idx:      0,
+					Name:     "data",
+					TypeName: mysqldbmsdriver.TypeText,
+					TypeOID:  mysqldbmsdriver.VirtualOidText,
+					Length:   4,
+				},
+			},
+			validateFn: func(t *testing.T, record commonininterfaces.Recorder) {
+				val, err := record.GetRawColumnValueByName("data")
+				require.NoError(t, err)
+				require.False(t, val.IsNull)
+				_, subnet, err := net.ParseCIDR("192.168.1.1/24")
+				require.NoError(t, err)
+				ip := net.ParseIP(string(val.Data))
+				require.NotNil(t, ip)
+				require.True(t, subnet.Contains(ip))
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			vc := validationcollector.NewCollector()
+			ctx := validationcollector.WithCollector(context.Background(), vc)
+			env := newTransformerTestEnvReal(t,
+				RandomIPDefinition,
+				tt.columns,
+				tt.staticParameters,
+				tt.dynamicParameter,
+			)
+			err := env.InitParameters(t, ctx)
+			require.NoError(t, utils.PrintValidationWarnings(ctx, vc, nil, true))
+			require.NoError(t, err)
+			require.False(t, vc.HasWarnings())
+
+			err = env.InitTransformer(t, ctx)
+			require.NoError(t, utils.PrintValidationWarnings(ctx, vc, nil, true))
+			require.NoError(t, err)
+			require.False(t, vc.HasWarnings())
+
+			env.SetRecord(t, tt.original...)
+
+			err = env.Transform(t, ctx)
+			require.NoError(t, utils.PrintValidationWarnings(ctx, vc, nil, true))
+			if tt.expectedErr != "" {
+				require.ErrorContains(t, err, tt.expectedErr)
+				return
+			} else {
+				require.NoError(t, err)
+			}
+			tt.validateFn(t, env.GetRecord())
+		})
+	}
+}
+
+//func TestRandomIpTransformer_Transform_random_dynamic(t *testing.T) {
+//
+//	tests := []struct {
+//		name          string
+//		columnName    string
+//		params        map[string]toolkit.ParamsValue
+//		dynamicParams map[string]*toolkit.DynamicParamValue
+//		record        map[string]*toolkit.RawValue
+//		expected      string
+//	}{
+//		{
+//			name:       "IPv4 dynamic test with strict types",
+//			columnName: "ip_address",
+//			record: map[string]*toolkit.RawValue{
+//				"ip_address": toolkit.NewRawValue([]byte("192.168.1.10"), false),
+//				"net_mask":   toolkit.NewRawValue([]byte("192.168.1.0/30"), false),
+//			},
+//			params: map[string]toolkit.ParamsValue{
+//				"engine": toolkit.ParamsValue("random"),
+//			},
+//			dynamicParams: map[string]*toolkit.DynamicParamValue{
+//				"subnet": {
+//					Column: "net_mask",
+//				},
+//			},
+//			expected: "192.168.1.[1,2]",
+//		},
+//		{
+//			name:       "IPv4 dynamic test with strings",
+//			columnName: "data",
+//			record: map[string]*toolkit.RawValue{
+//				"data":  toolkit.NewRawValue([]byte("192.168.1.10"), false),
+//				"data2": toolkit.NewRawValue([]byte("192.168.1.0/30"), false),
+//			},
+//			params: map[string]toolkit.ParamsValue{
+//				"engine": toolkit.ParamsValue("random"),
+//			},
+//			dynamicParams: map[string]*toolkit.DynamicParamValue{
+//				"subnet": {
+//					Column: "data2",
+//				},
+//			},
+//			expected: "192.168.1.[1,2]",
+//		},
+//	}
+//
+//	for _, tt := range tests {
+//		t.Run(tt.name, func(t *testing.T) {
+//
+//			driver, record := toolkit.GetDriverAndRecord(tt.record)
+//
+//			tt.params["column"] = toolkit.ParamsValue(tt.columnName)
+//			def, ok := utils.DefaultTransformerRegistry.Get("RandomIp")
+//			require.True(t, ok)
+//
+//			transformer, warnings, err := def.Instance(
+//				context.Background(),
+//				driver,
+//				tt.params,
+//				tt.dynamicParams,
+//				"",
+//			)
+//			require.NoError(t, err)
+//			require.Empty(t, warnings)
+//
+//			err = transformer.Transformer.Init(context.Background())
+//			require.NoError(t, err)
+//
+//			for _, dp := range transformer.DynamicParameters {
+//				dp.SetRecord(record)
+//			}
+//
+//			r, err := transformer.Transformer.Transform(
+//				context.Background(),
+//				record,
+//			)
+//			require.NoError(t, err)
+//
+//			rawVal, err := r.GetRawColumnValueByName(tt.columnName)
+//			require.NoError(t, err)
+//			require.False(t, rawVal.IsNull)
+//			require.Regexp(t, tt.expected, string(rawVal.Data))
+//		})
+//	}
+//}

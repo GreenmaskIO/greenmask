@@ -22,11 +22,13 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"net"
 	"slices"
 	"strings"
 	"time"
 
 	commonutils "github.com/greenmaskio/greenmask/internal/utils"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"golang.org/x/exp/constraints"
 
@@ -60,9 +62,7 @@ const (
 	Int8Length = 8
 )
 
-var (
-	ErrMaxRandomLengthMustBeGreaterThanZero = fmt.Errorf("max_random_length must be greater than 0")
-)
+var pgGlobalTypeMap = pgtype.NewMap()
 
 var (
 	defaultKeepNullParameterDefinition = commonparameters.MustNewParameterDefinition(
@@ -465,4 +465,8 @@ func getIntThresholds(size int) (int64, int64, error) {
 	}
 
 	return 0, 0, fmt.Errorf("unsupported int size %d", size)
+}
+
+func scanIPNet(src []byte, dest *net.IPNet) error {
+	return pgGlobalTypeMap.Scan(pgtype.InetOID, pgx.TextFormatCode, src, dest)
 }
