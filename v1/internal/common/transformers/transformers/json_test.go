@@ -199,6 +199,58 @@ func TestJsonTransformer_Transform(t *testing.T) {
 				assert.Equal(t, string(expected.Data), string(actual.Data))
 			},
 		},
+		{
+			name: "skip if key does exits and key does not exist",
+			staticParameters: map[string]commonmodels.ParamsValue{
+				"column": commonmodels.ParamsValue("data"),
+				"operations": commonmodels.ParamsValue(`
+					[
+						{"operation": "set", "path": "key1.unknown", "value": "modified", "skip_not_exist": true}
+					]
+				`),
+			},
+			original:   commonmodels.NewColumnRawValue([]byte(`{"key1": {"key2": "value"}}`), false),
+			expected:   commonmodels.NewColumnRawValue([]byte(`{"key1": {"key2": "value"}}`), false),
+			columnName: "data",
+			columns: []commonmodels.Column{
+				{
+					Idx:      0,
+					Name:     "data",
+					TypeName: "text",
+					TypeOID:  23,
+				},
+			},
+			validateFn: func(t *testing.T, expected, actual *commonmodels.ColumnRawValue) {
+				assert.Equal(t, expected.IsNull, actual.IsNull)
+				assert.Equal(t, string(expected.Data), string(actual.Data))
+			},
+		},
+		{
+			name: "skip if key does exits and key exists",
+			staticParameters: map[string]commonmodels.ParamsValue{
+				"column": commonmodels.ParamsValue("data"),
+				"operations": commonmodels.ParamsValue(`
+					[
+						{"operation": "set", "path": "key1.key2", "value": "modified", "skip_not_exist": true}
+					]
+				`),
+			},
+			original:   commonmodels.NewColumnRawValue([]byte(`{"key1": {"key2": "value"}}`), false),
+			expected:   commonmodels.NewColumnRawValue([]byte(`{"key1": {"key2": "modified"}}`), false),
+			columnName: "data",
+			columns: []commonmodels.Column{
+				{
+					Idx:      0,
+					Name:     "data",
+					TypeName: "text",
+					TypeOID:  23,
+				},
+			},
+			validateFn: func(t *testing.T, expected, actual *commonmodels.ColumnRawValue) {
+				assert.Equal(t, expected.IsNull, actual.IsNull)
+				assert.Equal(t, string(expected.Data), string(actual.Data))
+			},
+		},
 	}
 
 	for _, tt := range tests {
