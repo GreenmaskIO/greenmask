@@ -80,7 +80,12 @@ type Operation struct {
 	ValueTemplate string      `mapstructure:"value_template,omitempty" json:"value_template"`
 	Path          string      `mapstructure:"path" json:"path"`
 	ErrorNotExist bool        `mapstructure:"error_not_exist" json:"error_not_exist"`
+	SkipNotExist  bool        `mapstructure:"skip_not_exist" json:"skip_not_exist"`
 	tmpl          *template.Template
+}
+
+func doesKeyExist(data []byte, path string) bool {
+	return gjson.GetBytes(data, path).Exists()
 }
 
 func (o *Operation) Apply(inp []byte, tctx *JsonContext, buf *bytes.Buffer) ([]byte, error) {
@@ -89,6 +94,9 @@ func (o *Operation) Apply(inp []byte, tctx *JsonContext, buf *bytes.Buffer) ([]b
 
 	switch o.Operation {
 	case JsonSetOpName:
+		if o.SkipNotExist && !doesKeyExist(inp, o.Path) {
+			return inp, nil
+		}
 		if o.tmpl != nil {
 			buf.Reset()
 			tctx.setValue(inp, o.Path)
@@ -111,6 +119,9 @@ func (o *Operation) Apply(inp []byte, tctx *JsonContext, buf *bytes.Buffer) ([]b
 		}
 
 	case JsonDeleteOpName:
+		if o.SkipNotExist && !doesKeyExist(inp, o.Path) {
+			return inp, nil
+		}
 		if o.ErrorNotExist && !gjson.GetBytes(inp, o.Path).Exists() {
 			return nil, fmt.Errorf("value by path \"%s\" does not exist", o.Path)
 		}
