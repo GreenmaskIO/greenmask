@@ -260,6 +260,44 @@ func getColumnParameterValue(
 	return getColumnParameterValueWithName(ctx, tableDriver, parameters, ParameterNameColumn)
 }
 
+func getColumnContainerParameter[T commonparameters.ColumnContainer](
+	ctx context.Context,
+	tableDriver commonininterfaces.TableDriver,
+	parameters map[string]commonparameters.Parameterizer,
+	parameterName string,
+) ([]T, map[int]string, error) {
+	parameter, ok := parameters[parameterName]
+	if !ok {
+		panicParameterDoesNotExists(parameterName)
+	}
+	var res []T
+	if err := parameter.Scan(&res); err != nil {
+		validationcollector.FromContext(ctx).
+			Add(commonmodels.NewValidationWarning().
+				SetSeverity(commonmodels.ValidationSeverityError).
+				AddMeta(commonmodels.MetaKeyParameterName, parameterName).
+				SetError(err).
+				SetMsg("error scanning parameter"))
+		return nil, nil, commonmodels.ErrFatalValidationError
+	}
+	columns := make(map[int]string)
+	for idx := range res {
+		c, err := tableDriver.GetColumnByName(res[idx].ColumnName())
+		if err != nil {
+			validationcollector.FromContext(ctx).Add(commonmodels.NewValidationWarning().
+				SetSeverity(commonmodels.ValidationSeverityError).
+				AddMeta(commonmodels.MetaKeyParameterName, parameterName).
+				AddMeta(commonmodels.MetaKeyParameterValue, res[idx].ColumnName()).
+				AddMeta("ContainerIdx", idx).
+				SetError(err).
+				SetMsg("error getting column value"))
+			return nil, nil, commonmodels.ErrFatalValidationError
+		}
+		columns[c.Idx] = c.Name
+	}
+	return res, columns, nil
+}
+
 func getGenerateEngine(ctx context.Context, engineName string, size int) (generators.Generator, error) {
 	switch engineName {
 	case EngineParameterValueRandom:
@@ -469,4 +507,8 @@ func getIntThresholds(size int) (int64, int64, error) {
 
 func scanIPNet(src []byte, dest *net.IPNet) error {
 	return pgGlobalTypeMap.Scan(pgtype.InetOID, pgx.TextFormatCode, src, dest)
+}
+
+func scanMacAddr(src []byte, dest *net.HardwareAddr) error {
+	return pgGlobalTypeMap.Scan(pgtype.MacaddrOID, pgx.TextFormatCode, src, dest)
 }

@@ -23,11 +23,9 @@ import (
 
 type Unmarshaler func(parameter *ParameterDefinition, driver commonininterfaces.DBMSDriver, src models.ParamsValue) (any, error)
 type DatabaseTypeUnmarshaler func(driver commonininterfaces.DBMSDriver, typeName string, v models.ParamsValue) (any, error)
-type RawValueValidator func(
-	ctx context.Context,
-	p *ParameterDefinition,
-	v models.ParamsValue,
-) error
+type RawValueValidator func(ctx context.Context, p *ParameterDefinition, v models.ParamsValue) error
+
+type ColumnContainerUnmarshaler func(ctx context.Context, parameter *ParameterDefinition, data models.ParamsValue) ([]ColumnContainer, error)
 
 const WithoutMaxLength = -1
 
@@ -142,7 +140,8 @@ type ParameterDefinition struct {
 	IsColumn bool `mapstructure:"is_column" json:"is_column"`
 	// IsColumnContainer - describe is parameter container map or list with multiple columns inside. It allows to
 	// use this parameter as a container for multiple columns and apply changes to all columns inside.
-	IsColumnContainer bool `mapstructure:"is_column_container" json:"is_column_container"`
+	IsColumnContainer         bool                       `mapstructure:"is_column_container" json:"is_column_container"`
+	ColumnContainerProperties *ColumnContainerProperties `mapstructure:"-" json:"-"`
 	// LinkColumnParameter - link with parameter with provided name. This is required if performing raw value encoding
 	// depends on the provided column type and/or relies on the database Driver
 	LinkColumnParameter string `mapstructure:"link_column_parameter" json:"link_column_parameter,omitempty"`
@@ -204,6 +203,35 @@ func (p *ParameterDefinition) SetIsColumn(columnProperties *ColumnProperties) *P
 
 func (p *ParameterDefinition) SetIsColumnContainer(v bool) *ParameterDefinition {
 	p.IsColumnContainer = v
+	return p
+}
+
+type ColumnContainer interface {
+	ColumnName() string
+}
+
+type ColumnContainerProperties struct {
+	AllowedTypes []string                   `mapstructure:"allowed_types" json:"allowed_types,omitempty"`
+	Unmarshaler  ColumnContainerUnmarshaler `mapstructure:"-" json:"-"`
+}
+
+func NewColumnContainerProperties() *ColumnContainerProperties {
+	return &ColumnContainerProperties{}
+}
+
+func (cp *ColumnContainerProperties) SetAllowedTypes(allowedTypes ...string) *ColumnContainerProperties {
+	cp.AllowedTypes = allowedTypes
+	return cp
+}
+
+func (cp *ColumnContainerProperties) SetUnmarshaler(unmarshaler ColumnContainerUnmarshaler) *ColumnContainerProperties {
+	cp.Unmarshaler = unmarshaler
+	return cp
+}
+
+func (p *ParameterDefinition) SetColumnContainer(prop *ColumnContainerProperties) *ParameterDefinition {
+	p.ColumnContainerProperties = prop
+	p.IsColumnContainer = true
 	return p
 }
 

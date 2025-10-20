@@ -132,8 +132,8 @@ func NewNoiseFloatTransformer(
 	typeSize := column.Length
 	if typeSize == 0 {
 		log.Ctx(ctx).
-			Warn().
-			Msg("unable to detect float size from column length, trying to it from \"type_size\" parameter")
+			Info().
+			Msg("unable to detect float size from column length, trying to get it from \"type_size\" parameter")
 		typeSize, err = getParameterValueWithName[int](
 			ctx,
 			parameters,
@@ -142,7 +142,9 @@ func NewNoiseFloatTransformer(
 		if err != nil {
 			return nil, fmt.Errorf("unable to scan \"type_size\" param: %w", err)
 		}
-		log.Warn().Msgf("using float size %d from \"type_size\" parameter", typeSize)
+		log.Ctx(ctx).
+			Info().
+			Msgf("using float size %d from \"type_size\" parameter", typeSize)
 	}
 
 	var minValueThreshold, maxValueThreshold *float64

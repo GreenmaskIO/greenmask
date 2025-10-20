@@ -128,6 +128,53 @@ func (sp *StaticParameter) executeTemplate(ctx context.Context) error {
 	return nil
 }
 
+func isColumnSupportAllowedTypes(column commonmodels.Column, allowedTypes []string) bool {
+	if len(allowedTypes) == 0 {
+		return true
+	}
+	return slices.Contains(allowedTypes, column.TypeName)
+}
+
+func (sp *StaticParameter) validateColumnContainer(ctx context.Context, rawValue models.ParamsValue) error {
+	if sp.definition.ColumnContainerProperties.Unmarshaler == nil {
+		return nil
+	}
+	cc, err := sp.definition.ColumnContainerProperties.Unmarshaler(ctx, sp.definition, rawValue)
+	if err != nil {
+		return fmt.Errorf("unamrshal column container: %w", err)
+	}
+	foundColumns := make([]commonmodels.Column, 0, len(cc))
+	for i, container := range cc {
+		column, err := sp.driver.GetColumnByName(container.ColumnName())
+		if err != nil {
+			if errors.Is(err, commonmodels.ErrUnknownColumnName) {
+				validationcollector.FromContext(ctx).
+					Add(models.NewValidationWarning().
+						SetSeverity(models.ValidationSeverityError).
+						SetMsg("get column by name failed").
+						SetError(err).
+						AddMeta("ColumnName", container.ColumnName()).
+						AddMeta("ColumnContainerItem", i).
+						AddMeta("ParameterName", sp.definition.Name))
+				return models.ErrFatalValidationError
+			}
+		}
+		foundColumns = append(foundColumns, *column)
+		if !isColumnSupportAllowedTypes(*column, sp.definition.ColumnContainerProperties.AllowedTypes) {
+			validationcollector.FromContext(ctx).
+				Add(models.NewValidationWarning().
+					SetSeverity(models.ValidationSeverityError).
+					SetMsg("unsupported column type").
+					AddMeta("ColumnName", container.ColumnName()).
+					AddMeta("ColumnContainerItem", i).
+					AddMeta("TypeName", column.TypeName).
+					AddMeta("AllowedTypes", sp.definition.ColumnContainerProperties.AllowedTypes))
+			return models.ErrFatalValidationError
+		}
+	}
+	return nil
+}
+
 func (sp *StaticParameter) validateValue(ctx context.Context, rawValue models.ParamsValue) error {
 	// We are comparing to nil because there can be empty string "" and it shouldn't be a nil pointer
 	// and an empty value itself.
@@ -183,6 +230,12 @@ func (sp *StaticParameter) validateValue(ctx context.Context, rawValue models.Pa
 				AddMeta("AllowedTypes", sp.definition.ColumnProperties.AllowedTypes),
 			)
 			return models.ErrFatalValidationError
+		}
+	}
+
+	if sp.definition.IsColumnContainer {
+		if err := sp.validateColumnContainer(ctx, rawValue); err != nil {
+			return fmt.Errorf("validate column container: %w", err)
 		}
 	}
 

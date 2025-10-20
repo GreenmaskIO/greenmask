@@ -50,7 +50,6 @@ var RandomIPDefinition = transformerutils.NewTransformerDefinition(
 		"Subnet for generating random ip in V4 or V6 format",
 	).SetRequired(true).
 		SetSupportTemplate(true).
-		//SetCastDbType("cidr").
 		SetDynamicMode(
 			commonparameters.NewDynamicModeProperties().
 				SetCompatibleTypes("text", "varchar", "cidr").
