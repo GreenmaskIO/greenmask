@@ -141,7 +141,7 @@ func NewRandomNumericTransformer(
 
 	keepNull, err := getParameterValueWithName[bool](ctx, parameters, ParameterNameKeepNull)
 	if err != nil {
-		return nil, fmt.Errorf("get \"engine\" param: %w", err)
+		return nil, fmt.Errorf("get \"keep_null\" param: %w", err)
 	}
 
 	decimalVal, err := getParameterValueWithName[int32](ctx, parameters, "decimal")

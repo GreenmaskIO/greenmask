@@ -5,23 +5,24 @@ import (
 	"fmt"
 
 	"github.com/greenmaskio/greenmask/internal/generators"
-	"github.com/greenmaskio/greenmask/pkg/toolkit"
+
+	commonmodels "github.com/greenmaskio/greenmask/v1/internal/common/models"
 )
 
 type RandomChoiceTransformer struct {
-	values     []*toolkit.RawValue
+	values     []*commonmodels.ColumnRawValue
 	byteLength int
 	generator  generators.Generator
 }
 
-func NewRandomChoiceTransformer(values []*toolkit.RawValue) *RandomChoiceTransformer {
+func NewRandomChoiceTransformer(values []*commonmodels.ColumnRawValue) *RandomChoiceTransformer {
 	return &RandomChoiceTransformer{
 		values:     values,
 		byteLength: 4,
 	}
 }
 
-func (rc *RandomChoiceTransformer) Transform(original []byte) (*toolkit.RawValue, error) {
+func (rc *RandomChoiceTransformer) Transform(original []byte) (*commonmodels.ColumnRawValue, error) {
 	resBytes, err := rc.generator.Generate(original)
 	if err != nil {
 		return nil, err

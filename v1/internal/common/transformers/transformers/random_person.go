@@ -133,7 +133,7 @@ func NewRandomNameTransformer(
 		return nil, fmt.Errorf("get \"column\" parameter: %w", err)
 	}
 
-	if err := validateColumnsAndSetDefault(ctx, columns, randomEngineMode); err != nil {
+	if err := validateRandomPersonColumnsAndSetDefault(ctx, columns, randomEngineMode); err != nil {
 		return nil, fmt.Errorf("validate \"columns\" parameter: %w", err)
 	}
 
@@ -274,13 +274,12 @@ func (nft *RandomNameTransformer) Transform(ctx context.Context, r commonininter
 		if nft.nullableMap[c.columnIdx] && c.KeepNull != nil && *c.KeepNull {
 			continue
 		}
-		newRawVal := commonmodels.NewColumnRawValue(nil, false)
 		nft.buf.Reset()
 		err = c.tmpl.Execute(nft.buf, nameAttrs)
 		if err != nil {
 			return fmt.Errorf("execute template for column %s: %w", c.Name, err)
 		}
-		newRawVal.Data = slices.Clone(nft.buf.Bytes())
+		newRawVal := commonmodels.NewColumnRawValue(slices.Clone(nft.buf.Bytes()), false)
 		if err = r.SetRawColumnValueByIdx(c.columnIdx, newRawVal); err != nil {
 			return fmt.Errorf("set new value for column \"%s\": %w", c.Name, err)
 		}
@@ -303,7 +302,7 @@ func randomNameTransformerValidateGender(
 	return nil
 }
 
-func validateColumnsAndSetDefault(
+func validateRandomPersonColumnsAndSetDefault(
 	ctx context.Context, columns []*randomPersonColumns, engineMode int,
 ) error {
 	var hasHashingColumns bool

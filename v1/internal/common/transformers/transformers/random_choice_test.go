@@ -1,0 +1,178 @@
+package transformers
+
+import (
+	"context"
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
+	commonininterfaces "github.com/greenmaskio/greenmask/v1/internal/common/interfaces"
+	commonmodels "github.com/greenmaskio/greenmask/v1/internal/common/models"
+	commonutils "github.com/greenmaskio/greenmask/v1/internal/common/utils"
+	"github.com/greenmaskio/greenmask/v1/internal/common/validationcollector"
+	mysqldbmsdriver "github.com/greenmaskio/greenmask/v1/internal/mysql/dbmsdriver"
+)
+
+func TestRandomChoiceTransformer_Transform(t *testing.T) {
+	tests := []struct {
+		name             string
+		staticParameters map[string]commonmodels.ParamsValue
+		dynamicParameter map[string]commonmodels.DynamicParamValue
+		original         []*commonmodels.ColumnRawValue
+		validateFn       func(t *testing.T, recorder commonininterfaces.Recorder)
+		expectedErr      string
+		columns          []commonmodels.Column
+		isNull           bool
+	}{
+		{
+			name: "success date type",
+			columns: []commonmodels.Column{
+				{
+					Idx:      0,
+					Name:     "data",
+					TypeName: mysqldbmsdriver.TypeDate,
+					TypeOID:  mysqldbmsdriver.VirtualOidDate,
+					Length:   0,
+				},
+			},
+			original: []*commonmodels.ColumnRawValue{
+				commonmodels.NewColumnRawValue([]byte("2023-11-10"), false)},
+			staticParameters: map[string]commonmodels.ParamsValue{
+				"column":   commonmodels.ParamsValue("data"),
+				"engine":   commonmodels.ParamsValue("random"),
+				"values":   commonmodels.ParamsValue(`["2023-11-10", "2023-01-01", "2023-01-02"]`),
+				"validate": commonmodels.ParamsValue(`true`),
+			},
+			validateFn: func(t *testing.T, recorder commonininterfaces.Recorder) {
+				var val string
+				isNull, err := recorder.ScanColumnValueByName("data", &val)
+				require.NoError(t, err)
+				require.False(t, isNull)
+				require.True(t, val == "2023-11-10" || val == "2023-01-01" || val == "2023-01-02")
+			},
+		},
+		{
+			name: "success json type",
+			columns: []commonmodels.Column{
+				{
+					Idx:      0,
+					Name:     "data",
+					TypeName: mysqldbmsdriver.TypeText,
+					TypeOID:  mysqldbmsdriver.VirtualOidText,
+					Length:   0,
+				},
+			},
+			original: []*commonmodels.ColumnRawValue{
+				commonmodels.NewColumnRawValue([]byte("2023-11-10"), false)},
+			staticParameters: map[string]commonmodels.ParamsValue{
+				"column":   commonmodels.ParamsValue("data"),
+				"engine":   commonmodels.ParamsValue("random"),
+				"values":   commonmodels.ParamsValue(`[{"a": 1}, {"b": 2}, {"c": 3}]`),
+				"validate": commonmodels.ParamsValue(`true`),
+			},
+			validateFn: func(t *testing.T, recorder commonininterfaces.Recorder) {
+				var val string
+				isNull, err := recorder.ScanColumnValueByName("data", &val)
+				require.NoError(t, err)
+				require.False(t, isNull)
+				require.True(t, val == `{"a": 1}` || val == `{"b": 2}` || val == `{"c": 3}`)
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			vc := validationcollector.NewCollector()
+			ctx := validationcollector.WithCollector(context.Background(), vc)
+			env := newTransformerTestEnvReal(t,
+				ChoiceTransformerDefinition,
+				tt.columns,
+				tt.staticParameters,
+				tt.dynamicParameter,
+			)
+			err := env.InitParameters(t, ctx)
+			require.NoError(t, commonutils.PrintValidationWarnings(ctx, vc, nil, true))
+			require.NoError(t, err)
+			require.False(t, vc.HasWarnings())
+
+			err = env.InitTransformer(t, ctx)
+			require.NoError(t, commonutils.PrintValidationWarnings(ctx, vc, nil, true))
+			require.NoError(t, err)
+			require.False(t, vc.HasWarnings())
+
+			env.SetRecord(t, tt.original...)
+
+			err = env.Transform(t, ctx)
+			require.NoError(t, commonutils.PrintValidationWarnings(ctx, vc, nil, true))
+			if tt.expectedErr != "" {
+				require.ErrorContains(t, err, tt.expectedErr)
+				return
+			} else {
+				require.NoError(t, err)
+			}
+			tt.validateFn(t, env.GetRecord())
+		})
+	}
+}
+
+func TestNewRandomChoiceTransformer(t *testing.T) {
+	t.Run("validation failure", func(t *testing.T) {
+		columns := []commonmodels.Column{
+			{
+				Idx:      0,
+				Name:     "data",
+				TypeName: mysqldbmsdriver.TypeDate,
+				TypeOID:  mysqldbmsdriver.VirtualOidDate,
+				Length:   0,
+			},
+		}
+		staticParameters := map[string]commonmodels.ParamsValue{
+			"column":   commonmodels.ParamsValue("data"),
+			"engine":   commonmodels.ParamsValue("random"),
+			"values":   commonmodels.ParamsValue(`["INVALID_DATE"]`),
+			"validate": commonmodels.ParamsValue(`true`),
+		}
+		vc := validationcollector.NewCollector()
+		ctx := validationcollector.WithCollector(context.Background(), vc)
+		env := newTransformerTestEnvReal(t,
+			ChoiceTransformerDefinition,
+			columns,
+			staticParameters,
+			nil,
+		)
+		err := env.InitParameters(t, ctx)
+		require.NoError(t, commonutils.PrintValidationWarnings(ctx, vc, nil, true))
+		require.NoError(t, err)
+		require.False(t, vc.HasWarnings())
+
+		err = env.InitTransformer(t, ctx)
+		require.NoError(t, commonutils.PrintValidationWarnings(ctx, vc, nil, true))
+		require.Error(t, err)
+		assert.ErrorIs(t, err, commonmodels.ErrFatalValidationError)
+		require.True(t, vc.HasWarnings())
+	})
+}
+
+//func TestRandomChoiceTransformer_Transform_validation_error(t *testing.T) {
+//
+//	original := "2023-11-10"
+//
+//	params := map[string]toolkit.ParamsValue{
+//		"column":   toolkit.ParamsValue("date_date"),
+//		"values":   toolkit.ParamsValue(`["value_error"]`),
+//		"validate": toolkit.ParamsValue(`true`),
+//	}
+//
+//	driver, _ := getDriverAndRecord(string(params["column"]), original)
+//	_, warnings, err := ChoiceTransformerDefinition.Instance(
+//		context.Background(),
+//		driver, params,
+//		nil,
+//		"",
+//	)
+//	require.NoError(t, err)
+//	require.NotEmpty(t, warnings)
+//	require.True(t, warnings.IsFatal())
+//}
+//

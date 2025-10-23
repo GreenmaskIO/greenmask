@@ -1,3 +1,17 @@
+// Copyright 2023 Greenmask
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package transformers
 
 import (
@@ -5,6 +19,7 @@ import (
 	"regexp"
 	"testing"
 
+	"github.com/rs/zerolog/log"
 	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/require"
 
@@ -15,7 +30,7 @@ import (
 	mysqldbmsdriver "github.com/greenmaskio/greenmask/v1/internal/mysql/dbmsdriver"
 )
 
-func TestRandomNumericTransformer_Transform(t *testing.T) {
+func TestNoiseNumericTransformer_Transform(t *testing.T) {
 	tests := []struct {
 		name             string
 		staticParameters map[string]commonmodels.ParamsValue
@@ -24,6 +39,7 @@ func TestRandomNumericTransformer_Transform(t *testing.T) {
 		validateFn       func(t *testing.T, recorder commonininterfaces.Recorder)
 		expectedErr      string
 		columns          []commonmodels.Column
+		isNull           bool
 	}{
 		{
 			name: "numeric",
@@ -37,16 +53,16 @@ func TestRandomNumericTransformer_Transform(t *testing.T) {
 				},
 			},
 			original: []*commonmodels.ColumnRawValue{
-				commonmodels.NewColumnRawValue([]byte("1234567"), false)},
+				commonmodels.NewColumnRawValue([]byte("100"), false)},
 			staticParameters: map[string]commonmodels.ParamsValue{
-				"column": commonmodels.ParamsValue("data"),
-				"engine": commonmodels.ParamsValue("deterministic"),
-				"min":    commonmodels.ParamsValue("10000000000000000000"),
-				"max":    commonmodels.ParamsValue("100000000000000000000"),
+				"column":    commonmodels.ParamsValue("data"),
+				"engine":    commonmodels.ParamsValue("random"),
+				"min_ratio": commonmodels.ParamsValue("0.2"),
+				"max_ratio": commonmodels.ParamsValue("0.9"),
 			},
 			validateFn: func(t *testing.T, recorder commonininterfaces.Recorder) {
-				expectedMin := decimal.RequireFromString("10000000000000000000")
-				expectedMax := decimal.RequireFromString("100000000000000000000")
+				expectedMin := decimal.RequireFromString("10")
+				expectedMax := decimal.RequireFromString("190")
 				var val decimal.Decimal
 				isNull, err := recorder.ScanColumnValueByName("data", &val)
 				require.NoError(t, err)
@@ -55,16 +71,7 @@ func TestRandomNumericTransformer_Transform(t *testing.T) {
 			},
 		},
 		{
-			name: "keep_null false and NULL seq",
-			staticParameters: map[string]commonmodels.ParamsValue{
-				"column":    commonmodels.ParamsValue("data"),
-				"engine":    commonmodels.ParamsValue("deterministic"),
-				"min":       commonmodels.ParamsValue("10000000000000000000"),
-				"max":       commonmodels.ParamsValue("100000000000000000000"),
-				"keep_null": commonmodels.ParamsValue("false"),
-			},
-			original: []*commonmodels.ColumnRawValue{
-				commonmodels.NewColumnRawValue(nil, true)},
+			name: "numeric with 10 decimal places",
 			columns: []commonmodels.Column{
 				{
 					Idx:      0,
@@ -74,85 +81,132 @@ func TestRandomNumericTransformer_Transform(t *testing.T) {
 					Length:   0,
 				},
 			},
+			original: []*commonmodels.ColumnRawValue{
+				commonmodels.NewColumnRawValue([]byte("100"), false)},
+			staticParameters: map[string]commonmodels.ParamsValue{
+				"column":    commonmodels.ParamsValue("data"),
+				"engine":    commonmodels.ParamsValue("random"),
+				"min_ratio": commonmodels.ParamsValue("0.2"),
+				"max_ratio": commonmodels.ParamsValue("0.9"),
+				"decimal":   commonmodels.ParamsValue("10"),
+			},
 			validateFn: func(t *testing.T, recorder commonininterfaces.Recorder) {
-				expectedMin := decimal.RequireFromString("10000000000000000000")
-				expectedMax := decimal.RequireFromString("100000000000000000000")
+				expectedMin := decimal.RequireFromString("10")
+				expectedMax := decimal.RequireFromString("190")
 				var val decimal.Decimal
 				isNull, err := recorder.ScanColumnValueByName("data", &val)
 				require.NoError(t, err)
 				require.False(t, isNull)
 				require.True(t, val.GreaterThanOrEqual(expectedMin) && val.LessThanOrEqual(expectedMax))
-			},
-		},
-		{
-			name: "keep_null false and NULL seq",
-			staticParameters: map[string]commonmodels.ParamsValue{
-				"column":    commonmodels.ParamsValue("data"),
-				"engine":    commonmodels.ParamsValue("deterministic"),
-				"min":       commonmodels.ParamsValue("10000000000000000000"),
-				"max":       commonmodels.ParamsValue("100000000000000000000"),
-				"keep_null": commonmodels.ParamsValue("true"),
-			},
-			original: []*commonmodels.ColumnRawValue{
-				commonmodels.NewColumnRawValue(nil, true)},
-			columns: []commonmodels.Column{
-				{
-					Idx:      0,
-					Name:     "data",
-					TypeName: mysqldbmsdriver.TypeNumeric,
-					TypeOID:  mysqldbmsdriver.VirtualOidNumeric,
-					Length:   0,
-				},
-			},
-			validateFn: func(t *testing.T, recorder commonininterfaces.Recorder) {
-				var val decimal.Decimal
-				isNull, err := recorder.ScanColumnValueByName("data", &val)
-				require.NoError(t, err)
-				require.True(t, isNull)
-			},
-		},
-		{
-			name: "Implicitly set threshold",
-			staticParameters: map[string]commonmodels.ParamsValue{
-				"column":    commonmodels.ParamsValue("data"),
-				"engine":    commonmodels.ParamsValue("deterministic"),
-				"min":       commonmodels.ParamsValue("0.0"),
-				"max":       commonmodels.ParamsValue("10.0"),
-				"keep_null": commonmodels.ParamsValue("false"),
-				"decimal":   commonmodels.ParamsValue("2"),
-			},
-			original: []*commonmodels.ColumnRawValue{
-				commonmodels.NewColumnRawValue(nil, true)},
-			columns: []commonmodels.Column{
-				{
-					Idx:      0,
-					Name:     "data",
-					TypeName: mysqldbmsdriver.TypeNumeric,
-					TypeOID:  mysqldbmsdriver.VirtualOidNumeric,
-					Length:   0,
-				},
-			},
-			validateFn: func(t *testing.T, recorder commonininterfaces.Recorder) {
-				expectedMin := decimal.RequireFromString("0.0")
-				expectedMax := decimal.RequireFromString("10.0")
-				var val decimal.Decimal
-				isNull, err := recorder.ScanColumnValueByName("data", &val)
-				require.NoError(t, err)
-				require.False(t, isNull)
-				require.True(t, val.GreaterThanOrEqual(expectedMin) && val.LessThanOrEqual(expectedMax))
+				// Validate that decimal has max 10 decimal places
 				valStr := val.String()
-				matched, err := regexp.MatchString(`^-*\d+[.]*\d{0,2}$`, valStr)
+				log.Info().Msgf("Transformed value: %s", valStr)
+				matched, err := regexp.MatchString(`^-*\d+[.]*\d{0,10}$`, valStr)
 				require.NoError(t, err)
-				require.True(t, matched, "value %s does not match regexp for max 2 decimal places", valStr)
+				require.True(t, matched, "value %s does not match regexp for max 10 decimal places", valStr)
+			},
+		},
+		{
+			name: "numeric without decimal places",
+			columns: []commonmodels.Column{
+				{
+					Idx:      0,
+					Name:     "data",
+					TypeName: mysqldbmsdriver.TypeNumeric,
+					TypeOID:  mysqldbmsdriver.VirtualOidNumeric,
+					Length:   0,
+				},
+			},
+			original: []*commonmodels.ColumnRawValue{
+				commonmodels.NewColumnRawValue([]byte("100"), false)},
+			staticParameters: map[string]commonmodels.ParamsValue{
+				"column":    commonmodels.ParamsValue("data"),
+				"engine":    commonmodels.ParamsValue("random"),
+				"min_ratio": commonmodels.ParamsValue("0.2"),
+				"max_ratio": commonmodels.ParamsValue("0.9"),
+				"decimal":   commonmodels.ParamsValue("0"),
+			},
+			validateFn: func(t *testing.T, recorder commonininterfaces.Recorder) {
+				expectedMin := decimal.RequireFromString("10")
+				expectedMax := decimal.RequireFromString("190")
+				var val decimal.Decimal
+				isNull, err := recorder.ScanColumnValueByName("data", &val)
+				require.NoError(t, err)
+				require.False(t, isNull)
+				require.True(t, val.GreaterThanOrEqual(expectedMin) && val.LessThanOrEqual(expectedMax))
+				// Validate that no decimal places
+				valStr := val.String()
+				log.Info().Msgf("Transformed value: %s", valStr)
+				matched, err := regexp.MatchString(`^-*\d+$`, valStr)
+				require.NoError(t, err)
+				require.True(t, matched, "value %s does not match regexp for no decimal places", valStr)
+			},
+		},
+		{
+			name: "numeric with no decimal and deterministic engine",
+			columns: []commonmodels.Column{
+				{
+					Idx:      0,
+					Name:     "data",
+					TypeName: mysqldbmsdriver.TypeNumeric,
+					TypeOID:  mysqldbmsdriver.VirtualOidNumeric,
+					Length:   0,
+				},
+			},
+			original: []*commonmodels.ColumnRawValue{
+				commonmodels.NewColumnRawValue([]byte("100"), false)},
+			staticParameters: map[string]commonmodels.ParamsValue{
+				"column":    commonmodels.ParamsValue("data"),
+				"engine":    commonmodels.ParamsValue("deterministic"),
+				"min_ratio": commonmodels.ParamsValue("0.2"),
+				"max_ratio": commonmodels.ParamsValue("0.9"),
+				"decimal":   commonmodels.ParamsValue("0"),
+			},
+			validateFn: func(t *testing.T, recorder commonininterfaces.Recorder) {
+				val, err := recorder.GetRawColumnValueByName("data")
+				require.NoError(t, err)
+				require.False(t, val.IsNull)
+				require.Equal(t, "162", val.String())
+			},
+		},
+		{
+			name: "numeric with thresholds",
+			columns: []commonmodels.Column{
+				{
+					Idx:      0,
+					Name:     "data",
+					TypeName: mysqldbmsdriver.TypeNumeric,
+					TypeOID:  mysqldbmsdriver.VirtualOidNumeric,
+					Length:   0,
+				},
+			},
+			original: []*commonmodels.ColumnRawValue{
+				commonmodels.NewColumnRawValue([]byte("100"), false)},
+			staticParameters: map[string]commonmodels.ParamsValue{
+				"column":    commonmodels.ParamsValue("data"),
+				"engine":    commonmodels.ParamsValue("random"),
+				"min_ratio": commonmodels.ParamsValue("0.2"),
+				"max_ratio": commonmodels.ParamsValue("0.9"),
+				"min":       commonmodels.ParamsValue("90"),
+				"max":       commonmodels.ParamsValue("110"),
+			},
+			validateFn: func(t *testing.T, recorder commonininterfaces.Recorder) {
+				expectedMin := decimal.RequireFromString("90")
+				expectedMax := decimal.RequireFromString("110")
+				var val decimal.Decimal
+				isNull, err := recorder.ScanColumnValueByName("data", &val)
+				require.NoError(t, err)
+				require.False(t, isNull)
+				require.True(t, val.GreaterThanOrEqual(expectedMin) && val.LessThanOrEqual(expectedMax))
 			},
 		},
 		{
 			name: "Dynamic mode",
 			staticParameters: map[string]commonmodels.ParamsValue{
 				"column":    commonmodels.ParamsValue("data"),
-				"engine":    commonmodels.ParamsValue("deterministic"),
-				"keep_null": commonmodels.ParamsValue("false"),
-				"decimal":   commonmodels.ParamsValue("2"),
+				"engine":    commonmodels.ParamsValue("random"),
+				"min_ratio": commonmodels.ParamsValue("0.2"),
+				"max_ratio": commonmodels.ParamsValue("0.9"),
 			},
 			dynamicParameter: map[string]commonmodels.DynamicParamValue{
 				"min": {
@@ -163,9 +217,9 @@ func TestRandomNumericTransformer_Transform(t *testing.T) {
 				},
 			},
 			original: []*commonmodels.ColumnRawValue{
-				commonmodels.NewColumnRawValue([]byte("1234"), false),
-				commonmodels.NewColumnRawValue([]byte("-1000020102102"), false),
-				commonmodels.NewColumnRawValue([]byte("10"), false),
+				commonmodels.NewColumnRawValue([]byte("100"), false),
+				commonmodels.NewColumnRawValue([]byte("90"), false),
+				commonmodels.NewColumnRawValue([]byte("100"), false),
 			},
 			columns: []commonmodels.Column{
 				{
@@ -191,17 +245,13 @@ func TestRandomNumericTransformer_Transform(t *testing.T) {
 				},
 			},
 			validateFn: func(t *testing.T, recorder commonininterfaces.Recorder) {
-				expectedMin := decimal.RequireFromString("-1000020102102")
-				expectedMax := decimal.RequireFromString("10")
+				expectedMin := decimal.RequireFromString("90")
+				expectedMax := decimal.RequireFromString("110")
 				var val decimal.Decimal
 				isNull, err := recorder.ScanColumnValueByName("data", &val)
 				require.NoError(t, err)
 				require.False(t, isNull)
 				require.True(t, val.GreaterThanOrEqual(expectedMin) && val.LessThanOrEqual(expectedMax))
-				valStr := val.String()
-				matched, err := regexp.MatchString(`^-*\d+[.]*\d{0,2}$`, valStr)
-				require.NoError(t, err)
-				require.True(t, matched, "value %s does not match regexp for max 2 decimal places", valStr)
 			},
 		},
 	}
@@ -211,7 +261,7 @@ func TestRandomNumericTransformer_Transform(t *testing.T) {
 			vc := validationcollector.NewCollector()
 			ctx := validationcollector.WithCollector(context.Background(), vc)
 			env := newTransformerTestEnvReal(t,
-				RandomNumericTransformerDefinition,
+				NoiseNumericTransformerDefinition,
 				tt.columns,
 				tt.staticParameters,
 				tt.dynamicParameter,
