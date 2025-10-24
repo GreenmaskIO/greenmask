@@ -24,6 +24,7 @@ import (
 	"math"
 	"net"
 	"slices"
+	"strconv"
 	"strings"
 	"time"
 
@@ -90,6 +91,63 @@ var (
 		ParameterNameMaxRatio,
 		"max random percentage for noise",
 	).SetDefaultValue(commonmodels.ParamsValue("0.2"))
+
+	defaultFloatTypeSizeParameterDefinition = commonparameters.MustNewParameterDefinition(
+		"type_size",
+		"float size (4 or 8). It is used if greenmask can't detect it from column length",
+	).SetRawValueValidator(func(ctx context.Context, p *commonparameters.ParameterDefinition, v commonmodels.ParamsValue) error {
+		val, err := strconv.ParseInt(string(v), 10, 64)
+		if err != nil {
+			validationcollector.FromContext(ctx).Add(
+				commonmodels.NewValidationWarning().
+					AddMeta("ParameterValue", string(v)).
+					SetError(err).
+					SetSeverity(commonmodels.ValidationSeverityError).
+					SetMsg("unable to parse int value"),
+			)
+		}
+		switch int(val) {
+		case float4Length, float8Length:
+			return nil
+		}
+		validationcollector.FromContext(ctx).Add(
+			commonmodels.NewValidationWarning().
+				AddMeta("ParameterValue", string(v)).
+				AddMeta("AllowedValues", []int{float4Length, float8Length}).
+				SetSeverity(commonmodels.ValidationSeverityError).
+				SetMsg("invalid int size"),
+		)
+		return commonmodels.ErrFatalValidationError
+	}).SetDefaultValue(commonmodels.ParamsValue("4"))
+
+	defaultIntTypeSizeParameterDefinition = commonparameters.MustNewParameterDefinition(
+		"type_size",
+		"int size (2, 4 or 8). It is used if greenmask can't detect it from column length",
+	).SetDefaultValue(commonmodels.ParamsValue("4")).
+		SetRawValueValidator(func(ctx context.Context, p *commonparameters.ParameterDefinition, v commonmodels.ParamsValue) error {
+			val, err := strconv.ParseInt(string(v), 10, 64)
+			if err != nil {
+				validationcollector.FromContext(ctx).Add(
+					commonmodels.NewValidationWarning().
+						AddMeta("ParameterValue", string(v)).
+						SetError(err).
+						SetSeverity(commonmodels.ValidationSeverityError).
+						SetMsg("unable to parse int value"),
+				)
+			}
+			switch int(val) {
+			case Int2Length, Int4Length, Int8Length:
+				return nil
+			}
+			validationcollector.FromContext(ctx).Add(
+				commonmodels.NewValidationWarning().
+					AddMeta("ParameterValue", string(v)).
+					AddMeta("AllowedValues", []int{Int2Length, Int4Length, Int8Length}).
+					SetSeverity(commonmodels.ValidationSeverityError).
+					SetMsg("invalid int size"),
+			)
+			return commonmodels.ErrFatalValidationError
+		})
 
 	truncateParts = []string{
 		transformers.YearTruncateName,

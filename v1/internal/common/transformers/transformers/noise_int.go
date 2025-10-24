@@ -17,7 +17,6 @@ package transformers
 import (
 	"context"
 	"fmt"
-	"strconv"
 
 	"github.com/rs/zerolog/log"
 
@@ -65,34 +64,7 @@ var NoiseIntTransformerDefinition = transformerutils.NewTransformerDefinition(
 				SetCompatibleTypes("int2", "int4", "int8"),
 		),
 
-	commonparameters.MustNewParameterDefinition(
-		"type_size",
-		"float size (2, 4 or 8). It is used if greenmask can't detect it from column length",
-	).SetDefaultValue(commonmodels.ParamsValue("4")).
-		SetRawValueValidator(func(ctx context.Context, p *commonparameters.ParameterDefinition, v commonmodels.ParamsValue) error {
-			val, err := strconv.ParseInt(string(v), 10, 64)
-			if err != nil {
-				validationcollector.FromContext(ctx).Add(
-					commonmodels.NewValidationWarning().
-						AddMeta("ParameterValue", string(v)).
-						SetError(err).
-						SetSeverity(commonmodels.ValidationSeverityError).
-						SetMsg("unable to parse int value"),
-				)
-			}
-			switch int(val) {
-			case Int2Length, Int4Length, Int8Length:
-				return nil
-			}
-			validationcollector.FromContext(ctx).Add(
-				commonmodels.NewValidationWarning().
-					AddMeta("ParameterValue", string(v)).
-					AddMeta("AllowedValues", []int{Int2Length, Int4Length, Int8Length}).
-					SetSeverity(commonmodels.ValidationSeverityError).
-					SetMsg("invalid int size"),
-			)
-			return commonmodels.ErrFatalValidationError
-		}),
+	defaultIntTypeSizeParameterDefinition,
 
 	defaultMinRatioParameterDefinition,
 

@@ -26,13 +26,14 @@ func dumpColumnContainers(columnContainers ...any) []byte {
 	return res
 }
 
-func testStringContainsOneOfItemFromList(val string, values []string) bool {
+func assertStringContainsOneOfItemFromList(t *testing.T, val string, values []string) {
+	t.Helper()
 	for _, item := range values {
 		if strings.Contains(val, item) {
-			return true
+			return
 		}
 	}
-	return false
+	require.Failf(t, "value does not contain any of the expected items", "value: %s, expected items: %v", val, values)
 }
 
 func TestRandomPersonTransformer_Transform(t *testing.T) {
@@ -76,8 +77,9 @@ func TestRandomPersonTransformer_Transform(t *testing.T) {
 				require.NoError(t, err)
 				require.False(t, rawVal.IsNull)
 				log.Debug().Str("Result", string(rawVal.Data)).Msg("Generated data")
-				require.True(t, testStringContainsOneOfItemFromList(string(rawVal.Data), transformers.DefaultFirstNamesFemale) || testStringContainsOneOfItemFromList(string(rawVal.Data), transformers.DefaultFirstNamesMale))
-				require.True(t, testStringContainsOneOfItemFromList(string(rawVal.Data), transformers.DefaultLastNames))
+				assertStringContainsOneOfItemFromList(t, string(rawVal.Data), transformers.DefaultFirstNamesFemale)
+				assertStringContainsOneOfItemFromList(t, string(rawVal.Data), transformers.DefaultFirstNamesMale)
+				assertStringContainsOneOfItemFromList(t, string(rawVal.Data), transformers.DefaultLastNames)
 			},
 		},
 	}

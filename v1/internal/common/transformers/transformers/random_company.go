@@ -39,7 +39,7 @@ var RandomCompanyTransformerDefinition = transformerutils.NewTransformerDefiniti
 				func(_ context.Context, _ *commonparameters.ParameterDefinition, data commonmodels.ParamsValue) (
 					[]commonparameters.ColumnContainer, error,
 				) {
-					var columns []*randomCompanyNameColumns
+					var columns []*randomCompanyNameColumn
 					if err := json.Unmarshal(data, &columns); err != nil {
 						return nil, fmt.Errorf("unmarshal columns parameter: %w", err)
 					}
@@ -55,7 +55,7 @@ var RandomCompanyTransformerDefinition = transformerutils.NewTransformerDefiniti
 	defaultEngineParameterDefinition,
 )
 
-type randomCompanyNameColumns struct {
+type randomCompanyNameColumn struct {
 	Name      string `json:"name"`
 	Template  string `json:"template"`
 	Hashing   bool   `json:"hashing"`
@@ -65,13 +65,13 @@ type randomCompanyNameColumns struct {
 	columnIdx int
 }
 
-func (cc *randomCompanyNameColumns) ColumnName() string {
+func (cc *randomCompanyNameColumn) ColumnName() string {
 	return cc.Name
 }
 
 type RandomCompanyTransformer struct {
 	t               *transformers.RandomCompanyTransformer
-	columns         []*randomCompanyNameColumns
+	columns         []*randomCompanyNameColumn
 	affectedColumns map[int]string
 	originalData    []byte
 	engine          int
@@ -84,7 +84,7 @@ func NewRandomCompanyTransformer(
 	tableDriver commonininterfaces.TableDriver,
 	parameters map[string]commonparameters.Parameterizer,
 ) (commonininterfaces.Transformer, error) {
-	columns, affectedColumns, err := getColumnContainerParameter[*randomCompanyNameColumns](
+	columns, affectedColumns, err := getColumnContainerParameter[*randomCompanyNameColumn](
 		ctx, tableDriver, parameters, "columns",
 	)
 	if err != nil {
@@ -191,7 +191,7 @@ func (nft *RandomCompanyTransformer) Transform(_ context.Context, r commonininte
 
 func validateRandomCompanyColumnsAndSetDefault(
 	ctx context.Context,
-	columns []*randomCompanyNameColumns,
+	columns []*randomCompanyNameColumn,
 	engineMode int,
 ) error {
 	var hasHashingColumns bool

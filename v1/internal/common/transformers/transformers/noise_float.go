@@ -82,10 +82,7 @@ var NoiseFloatTransformerDefinition = transformerutils.NewTransformerDefinition(
 				SetCompatibleTypes("float4", "float8", "int2", "int4", "int8"),
 		),
 
-	commonparameters.MustNewParameterDefinition(
-		"type_size",
-		"float size (4 or 8). It is used if greenmask can't detect it from column length",
-	).SetDefaultValue(commonmodels.ParamsValue("4")),
+	defaultFloatTypeSizeParameterDefinition,
 
 	defaultMinRatioParameterDefinition,
 

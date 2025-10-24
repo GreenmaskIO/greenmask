@@ -153,26 +153,3 @@ func TestNewRandomChoiceTransformer(t *testing.T) {
 		require.True(t, vc.HasWarnings())
 	})
 }
-
-//func TestRandomChoiceTransformer_Transform_validation_error(t *testing.T) {
-//
-//	original := "2023-11-10"
-//
-//	params := map[string]toolkit.ParamsValue{
-//		"column":   toolkit.ParamsValue("date_date"),
-//		"values":   toolkit.ParamsValue(`["value_error"]`),
-//		"validate": toolkit.ParamsValue(`true`),
-//	}
-//
-//	driver, _ := getDriverAndRecord(string(params["column"]), original)
-//	_, warnings, err := ChoiceTransformerDefinition.Instance(
-//		context.Background(),
-//		driver, params,
-//		nil,
-//		"",
-//	)
-//	require.NoError(t, err)
-//	require.NotEmpty(t, warnings)
-//	require.True(t, warnings.IsFatal())
-//}
-//

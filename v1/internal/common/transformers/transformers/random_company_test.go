@@ -2,15 +2,11 @@ package transformers
 
 import (
 	"context"
-	"slices"
 	"testing"
 
+	"github.com/greenmaskio/greenmask/internal/generators/transformers"
 	"github.com/rs/zerolog/log"
 	"github.com/stretchr/testify/require"
-
-	"github.com/greenmaskio/greenmask/internal/db/postgres/transformers/utils"
-	"github.com/greenmaskio/greenmask/internal/generators/transformers"
-	"github.com/greenmaskio/greenmask/pkg/toolkit"
 
 	commonininterfaces "github.com/greenmaskio/greenmask/v1/internal/common/interfaces"
 	commonmodels "github.com/greenmaskio/greenmask/v1/internal/common/models"
@@ -42,26 +38,93 @@ func TestRandomCompanyTransformer_Transform(t *testing.T) {
 				},
 			},
 			original: []*commonmodels.ColumnRawValue{
-				commonmodels.NewColumnRawValue([]byte("1234567"), false)},
+				commonmodels.NewColumnRawValue([]byte("Some Inc."), false)},
 			staticParameters: map[string]commonmodels.ParamsValue{
 				"columns": dumpColumnContainers(
-					randomPersonColumns{
+					randomCompanyNameColumn{
 						Name:     "data",
-						Template: "{{ .Title }} {{ .FirstName }} {{ .LastName }}",
+						Template: "{{ .CompanyName }} {{ .CompanySuffix }}",
 						Hashing:  true,
 						HashOnly: false,
 					},
 				),
 				"engine": commonmodels.ParamsValue("deterministic"),
-				"gender": commonmodels.ParamsValue("Any"),
 			},
 			validateFn: func(t *testing.T, recorder commonininterfaces.Recorder) {
 				rawVal, err := recorder.GetRawColumnValueByName("data")
 				require.NoError(t, err)
 				require.False(t, rawVal.IsNull)
 				log.Debug().Str("Result", string(rawVal.Data)).Msg("Generated data")
-				require.True(t, testStringContainsOneOfItemFromList(string(rawVal.Data), transformers.DefaultFirstNamesFemale) || testStringContainsOneOfItemFromList(string(rawVal.Data), transformers.DefaultFirstNamesMale))
-				require.True(t, testStringContainsOneOfItemFromList(string(rawVal.Data), transformers.DefaultLastNames))
+				assertStringContainsOneOfItemFromList(t, string(rawVal.Data), transformers.DefaultCompanyNames)
+				assertStringContainsOneOfItemFromList(t, string(rawVal.Data), transformers.DefaultCompanySuffixes)
+			},
+		},
+		{
+			name: "keep_null and original is not null",
+			columns: []commonmodels.Column{
+				{
+					Idx:      0,
+					Name:     "data",
+					TypeName: mysqldbmsdriver.TypeText,
+					TypeOID:  mysqldbmsdriver.VirtualOidText,
+					Length:   0,
+				},
+			},
+			original: []*commonmodels.ColumnRawValue{
+				commonmodels.NewColumnRawValue([]byte("Some Inc."), false)},
+			staticParameters: map[string]commonmodels.ParamsValue{
+				"columns": dumpColumnContainers(
+					randomCompanyNameColumn{
+						Name:     "data",
+						Template: "{{ .CompanyName }} {{ .CompanySuffix }}",
+						Hashing:  true,
+						HashOnly: false,
+						KeepNull: commonutils.New(true),
+					},
+				),
+				"engine": commonmodels.ParamsValue("deterministic"),
+			},
+			validateFn: func(t *testing.T, recorder commonininterfaces.Recorder) {
+				rawVal, err := recorder.GetRawColumnValueByName("data")
+				require.NoError(t, err)
+				require.False(t, rawVal.IsNull)
+				log.Debug().Str("Result", string(rawVal.Data)).Msg("Generated data")
+				assertStringContainsOneOfItemFromList(t, string(rawVal.Data), transformers.DefaultCompanyNames)
+				assertStringContainsOneOfItemFromList(t, string(rawVal.Data), transformers.DefaultCompanySuffixes)
+			},
+		},
+		{
+			name: "keep_null and original is not null",
+			columns: []commonmodels.Column{
+				{
+					Idx:      0,
+					Name:     "data",
+					TypeName: mysqldbmsdriver.TypeText,
+					TypeOID:  mysqldbmsdriver.VirtualOidText,
+					Length:   0,
+				},
+			},
+			original: []*commonmodels.ColumnRawValue{
+				commonmodels.NewColumnRawValue(nil, true)},
+			staticParameters: map[string]commonmodels.ParamsValue{
+				"columns": dumpColumnContainers(
+					randomCompanyNameColumn{
+						Name:     "data",
+						Template: "{{ .CompanyName }} {{ .CompanySuffix }}",
+						Hashing:  true,
+						HashOnly: false,
+						KeepNull: commonutils.New(false),
+					},
+				),
+				"engine": commonmodels.ParamsValue("deterministic"),
+			},
+			validateFn: func(t *testing.T, recorder commonininterfaces.Recorder) {
+				rawVal, err := recorder.GetRawColumnValueByName("data")
+				require.NoError(t, err)
+				require.False(t, rawVal.IsNull)
+				log.Debug().Str("Result", string(rawVal.Data)).Msg("Generated data")
+				assertStringContainsOneOfItemFromList(t, string(rawVal.Data), transformers.DefaultCompanyNames)
+				assertStringContainsOneOfItemFromList(t, string(rawVal.Data), transformers.DefaultCompanySuffixes)
 			},
 		},
 	}
@@ -99,145 +162,4 @@ func TestRandomCompanyTransformer_Transform(t *testing.T) {
 			tt.validateFn(t, env.GetRecord())
 		})
 	}
-}
-
-func TestRandomCompanyTransformer_Transform_static_fullname(t *testing.T) {
-	columnName := "data"
-	originalValue := "ACME Corp."
-	params := map[string]toolkit.ParamsValue{
-		"columns": toolkit.ParamsValue(`[{"name": "data", "template": "{{ .CompanyName }} {{ .CompanySuffix }}"}]`),
-		"engine":  toolkit.ParamsValue("random"),
-	}
-
-	driver, record := getDriverAndRecord(columnName, originalValue)
-	def, ok := utils.DefaultTransformerRegistry.Get("RandomCompany")
-	require.True(t, ok)
-
-	transformer, warnings, err := def.Instance(
-		context.Background(),
-		driver,
-		params,
-		nil,
-		"",
-	)
-	require.NoError(t, err)
-	require.Empty(t, warnings)
-
-	r, err := transformer.Transformer.Transform(
-		context.Background(),
-		record,
-	)
-	require.NoError(t, err)
-
-	rawVal, err := r.GetRawColumnValueByName(columnName)
-	require.NoError(t, err)
-	require.False(t, rawVal.IsNull)
-	log.Debug().Str("Result", string(rawVal.Data)).Msg("Generated data")
-	require.True(t, testStringContainsOneOfItemFromList(string(rawVal.Data), transformers.DefaultCompanyNames))
-}
-
-func TestRandomCompanyTransformer_Transform_static_Suffix(t *testing.T) {
-
-	columnName := "data"
-	originalValue := "ACME Corp."
-	params := map[string]toolkit.ParamsValue{
-		"columns": toolkit.ParamsValue(`[{"name": "data", "template": "{{ .CompanySuffix }}"}]`),
-		"engine":  toolkit.ParamsValue("random"),
-	}
-
-	driver, record := getDriverAndRecord(columnName, originalValue)
-	def, ok := utils.DefaultTransformerRegistry.Get("RandomCompany")
-	require.True(t, ok)
-
-	transformer, warnings, err := def.Instance(
-		context.Background(),
-		driver,
-		params,
-		nil,
-		"",
-	)
-	require.NoError(t, err)
-	require.Empty(t, warnings)
-
-	r, err := transformer.Transformer.Transform(
-		context.Background(),
-		record,
-	)
-	require.NoError(t, err)
-
-	rawVal, err := r.GetRawColumnValueByName(columnName)
-	require.NoError(t, err)
-	require.False(t, rawVal.IsNull)
-	log.Debug().Str("Result", string(rawVal.Data)).Msg("Generated data")
-	suffixes := transformers.DefaultCompanySuffixes
-	require.True(t, slices.Contains(suffixes, string(rawVal.Data)))
-}
-
-func TestRandomCompanyTransformer_Transform_static_CompanyName(t *testing.T) {
-
-	columnName := "data"
-	originalValue := "ACME Corp."
-	params := map[string]toolkit.ParamsValue{
-		"columns": toolkit.ParamsValue(`[{"name": "data", "template": "{{ .CompanyName }}"}]`),
-		"engine":  toolkit.ParamsValue("random"),
-	}
-
-	driver, record := getDriverAndRecord(columnName, originalValue)
-	def, ok := utils.DefaultTransformerRegistry.Get("RandomCompany")
-	require.True(t, ok)
-
-	transformer, warnings, err := def.Instance(
-		context.Background(),
-		driver,
-		params,
-		nil,
-		"",
-	)
-	require.NoError(t, err)
-	require.Empty(t, warnings)
-
-	r, err := transformer.Transformer.Transform(
-		context.Background(),
-		record,
-	)
-	require.NoError(t, err)
-
-	rawVal, err := r.GetRawColumnValueByName(columnName)
-	require.NoError(t, err)
-	require.False(t, rawVal.IsNull)
-	log.Debug().Str("Result", string(rawVal.Data)).Msg("Generated data")
-	require.True(t, slices.Contains(transformers.DefaultCompanyNames, string(rawVal.Data)))
-}
-
-func TestRandomCompanyTransformer_Transform_static_nullable(t *testing.T) {
-	columnName := "data"
-	originalValue := "\\N"
-	params := map[string]toolkit.ParamsValue{
-		"columns": toolkit.ParamsValue(`[{"name": "data", "template": "{{ .CompanyName }} {{ .CompanySuffix }}"}]`),
-		"engine":  toolkit.ParamsValue("hash"),
-	}
-
-	driver, record := getDriverAndRecord(columnName, originalValue)
-	def, ok := utils.DefaultTransformerRegistry.Get("RandomCompany")
-	require.True(t, ok)
-
-	transformer, warnings, err := def.Instance(
-		context.Background(),
-		driver,
-		params,
-		nil,
-		"",
-	)
-	require.NoError(t, err)
-	require.Empty(t, warnings)
-
-	r, err := transformer.Transformer.Transform(
-		context.Background(),
-		record,
-	)
-	require.NoError(t, err)
-
-	rawVal, err := r.GetRawColumnValueByName(columnName)
-	require.NoError(t, err)
-	require.True(t, rawVal.IsNull)
 }
