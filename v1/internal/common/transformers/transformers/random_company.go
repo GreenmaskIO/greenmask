@@ -115,7 +115,7 @@ func NewRandomCompanyTransformer(
 		return nil, fmt.Errorf("set generator: %w", err)
 	}
 
-	if err := validateRandomCompanyColumnsAndSetDefault(ctx, columns, engineMode); err != nil {
+	if err := validateRandomCompanyColumnsAndSetDefault(ctx, tableDriver, columns, engineMode); err != nil {
 		return nil, fmt.Errorf("validate columns: %w", err)
 	}
 
@@ -191,12 +191,18 @@ func (nft *RandomCompanyTransformer) Transform(_ context.Context, r commonininte
 
 func validateRandomCompanyColumnsAndSetDefault(
 	ctx context.Context,
+	tableDriver commonininterfaces.TableDriver,
 	columns []*randomCompanyNameColumn,
 	engineMode int,
 ) error {
 	var hasHashingColumns bool
 
 	for idx, c := range columns {
+		column, err := tableDriver.GetColumnByName(c.Name)
+		if err != nil {
+			return fmt.Errorf("get column by name: %w", err)
+		}
+		c.columnIdx = column.Idx
 		if c.Name == "" {
 			validationcollector.FromContext(ctx).
 				Add(commonmodels.NewValidationWarning().

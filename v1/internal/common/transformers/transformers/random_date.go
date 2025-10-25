@@ -19,9 +19,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/greenmaskio/greenmask/internal/generators/transformers"
-
 	commonininterfaces "github.com/greenmaskio/greenmask/v1/internal/common/interfaces"
+	"github.com/greenmaskio/greenmask/v1/internal/common/transformers/generators/transformers"
 	commonparameters "github.com/greenmaskio/greenmask/v1/internal/common/transformers/parameters"
 	transformerutils "github.com/greenmaskio/greenmask/v1/internal/common/transformers/utils"
 )

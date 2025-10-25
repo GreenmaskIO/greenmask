@@ -2,22 +2,20 @@ package transformers
 
 import (
 	"context"
-	"fmt"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-
-	"github.com/greenmaskio/greenmask/internal/db/postgres/transformers/utils"
-	utils2 "github.com/greenmaskio/greenmask/internal/utils"
-	"github.com/greenmaskio/greenmask/pkg/toolkit"
 
 	commonininterfaces "github.com/greenmaskio/greenmask/v1/internal/common/interfaces"
 	commonmodels "github.com/greenmaskio/greenmask/v1/internal/common/models"
+	commonutils "github.com/greenmaskio/greenmask/v1/internal/common/utils"
+	"github.com/greenmaskio/greenmask/v1/internal/common/validationcollector"
+	mysqldbmsdriver "github.com/greenmaskio/greenmask/v1/internal/mysql/dbmsdriver"
 )
 
-func TestRandomIntTransformer_Transform_random_static(t *testing.T) {
-
-	type expected struct {
+func TestRandomIntTransformer_Transform(t *testing.T) {
+	tests := []struct {
 		name             string
 		staticParameters map[string]commonmodels.ParamsValue
 		dynamicParameter map[string]commonmodels.DynamicParamValue
@@ -25,298 +23,241 @@ func TestRandomIntTransformer_Transform_random_static(t *testing.T) {
 		validateFn       func(t *testing.T, recorder commonininterfaces.Recorder)
 		expectedErr      string
 		columns          []commonmodels.Column
-	}
-
-	tests := []struct {
-		name           string
-		columnName     string
-		originalValue  string
-		expectedRegexp string
-		params         map[string]toolkit.ParamsValue
-		expected       expected
 	}{
 		{
-			name:           "int2",
-			columnName:     "id2",
-			originalValue:  "12345",
-			expectedRegexp: `^\d{1,3}$`,
-			params: map[string]toolkit.ParamsValue{
-				"min": toolkit.ParamsValue("1"),
-				"max": toolkit.ParamsValue("100"),
+			name: "int2",
+			columns: []commonmodels.Column{
+				{
+					Idx:      0,
+					Name:     "data",
+					TypeName: mysqldbmsdriver.TypeSmallInt,
+					TypeOID:  mysqldbmsdriver.VirtualOidSmallInt,
+					Length:   0,
+					Size:     2,
+				},
 			},
-			expected: expected{
-				min: 1,
-				max: 100,
+			original: []*commonmodels.ColumnRawValue{
+				commonmodels.NewColumnRawValue([]byte("12345"), false)},
+			staticParameters: map[string]commonmodels.ParamsValue{
+				"column": commonmodels.ParamsValue("data"),
+				"min":    commonmodels.ParamsValue("1"),
+				"max":    commonmodels.ParamsValue("100"),
+				"engine": commonmodels.ParamsValue("random"),
 			},
-		},
-		{
-			name:           "int4",
-			columnName:     "id4",
-			originalValue:  "12345",
-			expectedRegexp: `^\d{1,3}$`,
-			params: map[string]toolkit.ParamsValue{
-				"min": toolkit.ParamsValue("1"),
-				"max": toolkit.ParamsValue("100"),
-			},
-			expected: expected{
-				min: 1,
-				max: 100,
-			},
-		},
-		{
-			name:           "int8",
-			columnName:     "id8",
-			originalValue:  "12345",
-			expectedRegexp: `^\d{1,3}$`,
-			params: map[string]toolkit.ParamsValue{
-				"min": toolkit.ParamsValue("1"),
-				"max": toolkit.ParamsValue("100"),
-			},
-			expected: expected{
-				min: 1,
-				max: 100,
-			},
-		},
-		{
-			name:           "keep_null false and NULL seq",
-			columnName:     "id8",
-			originalValue:  "\\N",
-			expectedRegexp: `^\d{1,3}$`,
-			params: map[string]toolkit.ParamsValue{
-				"min":       toolkit.ParamsValue("1"),
-				"max":       toolkit.ParamsValue("100"),
-				"keep_null": toolkit.ParamsValue("false"),
-			},
-			expected: expected{
-				min: 1,
-				max: 100,
-			},
-		},
-		{
-			name:           "keep_null true and NULL seq",
-			columnName:     "id8",
-			originalValue:  "\\N",
-			expectedRegexp: fmt.Sprintf(`^(\%s)$`, "\\N"),
-			params: map[string]toolkit.ParamsValue{
-				"min":       toolkit.ParamsValue("1"),
-				"max":       toolkit.ParamsValue("100"),
-				"keep_null": toolkit.ParamsValue("true"),
-				"engine":    toolkit.ParamsValue("random"),
-			},
-			expected: expected{
-				min:    1,
-				max:    100,
-				isNull: true,
-			},
-		},
-		{
-			name:           "test zero min",
-			columnName:     "id8",
-			originalValue:  "\\N",
-			expectedRegexp: fmt.Sprintf(`^(\%s)$`, "\\N"),
-			params: map[string]toolkit.ParamsValue{
-				"min":       toolkit.ParamsValue("0"),
-				"max":       toolkit.ParamsValue("100"),
-				"engine":    toolkit.ParamsValue("random"),
-				"keep_null": toolkit.ParamsValue("false"),
-			},
-			expected: expected{
-				min: 0,
-				max: 100,
-			},
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			tt.params["column"] = toolkit.ParamsValue(tt.columnName)
-			driver, record := getDriverAndRecord(tt.columnName, tt.originalValue)
-			def, ok := utils.DefaultTransformerRegistry.Get("RandomInt")
-			require.True(t, ok)
-
-			transformer, warnings, err := def.Instance(
-				context.Background(),
-				driver,
-				tt.params,
-				nil,
-				"",
-			)
-			require.NoError(t, err)
-			require.Empty(t, warnings)
-
-			r, err := transformer.Transformer.Transform(
-				context.Background(),
-				record,
-			)
-			require.NoError(t, err)
-			rawData, _ := r.GetRawColumnValueByName(tt.columnName)
-			require.Equal(t, tt.expected.isNull, rawData.IsNull)
-			if !rawData.IsNull {
-				var resInt int64
-				_, err = r.ScanColumnValueByName(tt.columnName, &resInt)
+			validateFn: func(t *testing.T, recorder commonininterfaces.Recorder) {
+				var val int64
+				isNull, err := recorder.ScanColumnValueByName("data", &val)
 				require.NoError(t, err)
-				require.True(t, resInt >= tt.expected.min && resInt <= tt.expected.max)
-			}
-		})
-	}
-
-}
-
-func TestRandomIntTransformer_Transform_random_dynamic(t *testing.T) {
-
-	type expected struct {
-		min int64
-		max int64
-	}
-
-	tests := []struct {
-		name          string
-		columnName    string
-		params        map[string]toolkit.ParamsValue
-		dynamicParams map[string]*toolkit.DynamicParamValue
-		record        map[string]*toolkit.RawValue
-		expected      expected
-	}{
+				require.False(t, isNull)
+				assert.GreaterOrEqual(t, val, int64(1))
+				assert.LessOrEqual(t, val, int64(100))
+			},
+		},
 		{
-			name:       "int4",
-			columnName: "id4",
-			record: map[string]*toolkit.RawValue{
-				"id4":      toolkit.NewRawValue([]byte("123"), false),
-				"int4_val": toolkit.NewRawValue([]byte("10"), false),
-			},
-			params: map[string]toolkit.ParamsValue{
-				"max":    toolkit.ParamsValue("10000000"),
-				"engine": toolkit.ParamsValue("random"),
-			},
-			dynamicParams: map[string]*toolkit.DynamicParamValue{
-				"min": {
-					Column: "int4_val",
+			name: "int4",
+			columns: []commonmodels.Column{
+				{
+					Idx:      0,
+					Name:     "data",
+					TypeName: mysqldbmsdriver.TypeMediumInt,
+					TypeOID:  mysqldbmsdriver.VirtualOidMediumInt,
+					Length:   0,
+					Size:     4,
 				},
 			},
-			expected: expected{
-				min: 123,
-				max: 10000000,
+			original: []*commonmodels.ColumnRawValue{
+				commonmodels.NewColumnRawValue([]byte("12345"), false)},
+			staticParameters: map[string]commonmodels.ParamsValue{
+				"column": commonmodels.ParamsValue("data"),
+				"min":    commonmodels.ParamsValue("1"),
+				"max":    commonmodels.ParamsValue("100"),
+				"engine": commonmodels.ParamsValue("random"),
+			},
+			validateFn: func(t *testing.T, recorder commonininterfaces.Recorder) {
+				var val int64
+				isNull, err := recorder.ScanColumnValueByName("data", &val)
+				require.NoError(t, err)
+				require.False(t, isNull)
+				assert.GreaterOrEqual(t, val, int64(1))
+				assert.LessOrEqual(t, val, int64(100))
+
+			},
+		},
+		{
+			name: "int8",
+			columns: []commonmodels.Column{
+				{
+					Idx:      0,
+					Name:     "data",
+					TypeName: mysqldbmsdriver.TypeBigInt,
+					TypeOID:  mysqldbmsdriver.VirtualOidBigInt,
+					Length:   0,
+					Size:     8,
+				},
+			},
+			original: []*commonmodels.ColumnRawValue{
+				commonmodels.NewColumnRawValue([]byte("12345"), false)},
+			staticParameters: map[string]commonmodels.ParamsValue{
+				"column": commonmodels.ParamsValue("data"),
+				"min":    commonmodels.ParamsValue("1"),
+				"max":    commonmodels.ParamsValue("100"),
+				"engine": commonmodels.ParamsValue("random"),
+			},
+			validateFn: func(t *testing.T, recorder commonininterfaces.Recorder) {
+				var val int64
+				isNull, err := recorder.ScanColumnValueByName("data", &val)
+				require.NoError(t, err)
+				require.False(t, isNull)
+				assert.GreaterOrEqual(t, val, int64(1))
+				assert.LessOrEqual(t, val, int64(100))
+
+			},
+		},
+		{
+			name: "keep_null true and NULL seq",
+			staticParameters: map[string]commonmodels.ParamsValue{
+				"column":    commonmodels.ParamsValue("data"),
+				"engine":    commonmodels.ParamsValue("deterministic"),
+				"min":       commonmodels.ParamsValue("1"),
+				"max":       commonmodels.ParamsValue("100"),
+				"keep_null": commonmodels.ParamsValue("true"),
+			},
+			original: []*commonmodels.ColumnRawValue{
+				commonmodels.NewColumnRawValue(nil, true)},
+			columns: []commonmodels.Column{
+				{
+					Idx:      0,
+					Name:     "data",
+					TypeName: mysqldbmsdriver.TypeBigInt,
+					TypeOID:  mysqldbmsdriver.VirtualOidBigInt,
+					Length:   0,
+					Size:     8,
+				},
+			},
+			validateFn: func(t *testing.T, recorder commonininterfaces.Recorder) {
+				var val float64
+				isNull, err := recorder.ScanColumnValueByName("data", &val)
+				require.NoError(t, err)
+				require.True(t, isNull)
+			},
+		},
+		{
+			name: "keep_null true and not NULL seq",
+			staticParameters: map[string]commonmodels.ParamsValue{
+				"column":    commonmodels.ParamsValue("data"),
+				"engine":    commonmodels.ParamsValue("deterministic"),
+				"min":       commonmodels.ParamsValue("1"),
+				"max":       commonmodels.ParamsValue("100"),
+				"keep_null": commonmodels.ParamsValue("true"),
+			},
+			original: []*commonmodels.ColumnRawValue{
+				commonmodels.NewColumnRawValue([]byte("12345"), false)},
+			columns: []commonmodels.Column{
+				{
+					Idx:      0,
+					Name:     "data",
+					TypeName: mysqldbmsdriver.TypeBigInt,
+					TypeOID:  mysqldbmsdriver.VirtualOidBigInt,
+					Length:   0,
+					Size:     8,
+				},
+			},
+			validateFn: func(t *testing.T, recorder commonininterfaces.Recorder) {
+				var val int64
+				isNull, err := recorder.ScanColumnValueByName("data", &val)
+				require.NoError(t, err)
+				require.False(t, isNull)
+			},
+		},
+		{
+			name: "dynamic mode",
+			staticParameters: map[string]commonmodels.ParamsValue{
+				"column":    commonmodels.ParamsValue("data"),
+				"engine":    commonmodels.ParamsValue("deterministic"),
+				"keep_null": commonmodels.ParamsValue("false"),
+			},
+			dynamicParameter: map[string]commonmodels.DynamicParamValue{
+				"min": {
+					Column: "min_val",
+				},
+				"max": {
+					Column: "max_val",
+				},
+			},
+			original: []*commonmodels.ColumnRawValue{
+				commonmodels.NewColumnRawValue([]byte("1234"), false),
+				commonmodels.NewColumnRawValue([]byte("1"), false),
+				commonmodels.NewColumnRawValue([]byte("100"), false),
+			},
+			columns: []commonmodels.Column{
+				{
+					Idx:      0,
+					Name:     "data",
+					TypeName: mysqldbmsdriver.TypeBigInt,
+					TypeOID:  mysqldbmsdriver.VirtualOidBigInt,
+					Length:   0,
+					Size:     8,
+				},
+				{
+					Idx:      1,
+					Name:     "min_val",
+					TypeName: mysqldbmsdriver.TypeBigInt,
+					TypeOID:  mysqldbmsdriver.VirtualOidBigInt,
+					Length:   0,
+					Size:     8,
+				},
+				{
+					Idx:      2,
+					Name:     "max_val",
+					TypeName: mysqldbmsdriver.TypeBigInt,
+					TypeOID:  mysqldbmsdriver.VirtualOidBigInt,
+					Length:   0,
+					Size:     8,
+				},
+			},
+			validateFn: func(t *testing.T, recorder commonininterfaces.Recorder) {
+				var expectedMin int64 = 1
+				var expectedMax int64 = 10
+				var val int64
+				isNull, err := recorder.ScanColumnValueByName("data", &val)
+				require.NoError(t, err)
+				require.False(t, isNull)
+				require.True(t, val >= expectedMin && val <= expectedMax)
 			},
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-
-			driver, record := toolkit.GetDriverAndRecord(tt.record)
-
-			tt.params["column"] = toolkit.ParamsValue(tt.columnName)
-			def, ok := utils.DefaultTransformerRegistry.Get("RandomInt")
-			require.True(t, ok)
-
-			transformer, warnings, err := def.Instance(
-				context.Background(),
-				driver,
-				tt.params,
-				tt.dynamicParams,
-				"",
+			vc := validationcollector.NewCollector()
+			ctx := validationcollector.WithCollector(context.Background(), vc)
+			env := newTransformerTestEnvReal(t,
+				RandomIntegerTransformerDefinition,
+				tt.columns,
+				tt.staticParameters,
+				tt.dynamicParameter,
 			)
+			err := env.InitParameters(t, ctx)
+			require.NoError(t, commonutils.PrintValidationWarnings(ctx, vc, nil, true))
 			require.NoError(t, err)
-			require.Empty(t, warnings)
+			require.False(t, vc.HasWarnings())
 
-			err = transformer.Transformer.Init(context.Background())
+			err = env.InitTransformer(t, ctx)
+			require.NoError(t, commonutils.PrintValidationWarnings(ctx, vc, nil, true))
 			require.NoError(t, err)
+			require.False(t, vc.HasWarnings())
 
-			for _, dp := range transformer.DynamicParameters {
-				dp.SetRecord(record)
+			env.SetRecord(t, tt.original...)
+
+			err = env.Transform(t, ctx)
+			require.NoError(t, commonutils.PrintValidationWarnings(ctx, vc, nil, true))
+			if tt.expectedErr != "" {
+				require.ErrorContains(t, err, tt.expectedErr)
+				return
+			} else {
+				require.NoError(t, err)
 			}
-
-			r, err := transformer.Transformer.Transform(
-				context.Background(),
-				record,
-			)
-			require.NoError(t, err)
-
-			var res int64
-			empty, err := r.ScanColumnValueByName(tt.columnName, &res)
-			require.False(t, empty)
-			require.NoError(t, err)
-			require.True(t, res >= tt.expected.min && res <= tt.expected.max)
-		})
-	}
-}
-
-func TestRandomIntTransformer_Transform_deterministic_dynamic(t *testing.T) {
-	type expected struct {
-		min int64
-		max int64
-	}
-
-	tests := []struct {
-		name          string
-		columnName    string
-		params        map[string]toolkit.ParamsValue
-		dynamicParams map[string]*toolkit.DynamicParamValue
-		record        map[string]*toolkit.RawValue
-		expected      expected
-	}{
-		{
-			name:       "int4",
-			columnName: "id4",
-			record: map[string]*toolkit.RawValue{
-				"id4":      toolkit.NewRawValue([]byte("123"), false),
-				"int4_val": toolkit.NewRawValue([]byte("10"), false),
-			},
-			params: map[string]toolkit.ParamsValue{
-				"max":    toolkit.ParamsValue("10000000"),
-				"engine": toolkit.ParamsValue("hash"),
-			},
-			dynamicParams: map[string]*toolkit.DynamicParamValue{
-				"min": {
-					Column: "int4_val",
-				},
-			},
-			expected: expected{
-				min: 10,
-				max: 10000000,
-			},
-		},
-	}
-
-	ctx := utils2.WithSalt(context.Background(), []byte("ffaacac"))
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-
-			driver, record := toolkit.GetDriverAndRecord(tt.record)
-
-			tt.params["column"] = toolkit.ParamsValue(tt.columnName)
-			def, ok := utils.DefaultTransformerRegistry.Get("RandomInt")
-			require.True(t, ok)
-
-			transformer, warnings, err := def.Instance(
-				ctx,
-				driver,
-				tt.params,
-				tt.dynamicParams,
-				"",
-			)
-			require.NoError(t, err)
-			require.Empty(t, warnings)
-
-			err = transformer.Transformer.Init(ctx)
-			require.NoError(t, err)
-
-			for _, dp := range transformer.DynamicParameters {
-				dp.SetRecord(record)
-			}
-
-			r, err := transformer.Transformer.Transform(
-				ctx,
-				record,
-			)
-			require.NoError(t, err)
-
-			var res int64
-			empty, err := r.ScanColumnValueByName(tt.columnName, &res)
-			require.False(t, empty)
-			require.NoError(t, err)
-			require.True(t, res >= tt.expected.min && res <= tt.expected.max)
+			tt.validateFn(t, env.GetRecord())
 		})
 	}
 }

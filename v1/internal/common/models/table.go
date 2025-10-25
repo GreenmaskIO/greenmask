@@ -91,6 +91,8 @@ type Column struct {
 	TypeOID VirtualOID `json:"type_oid"`
 	// Length - length of the column type, e.g. for varchar(255) it will be 255.
 	Length int `json:"length"`
+	// Size - size of the column in bytes.
+	Size int `json:"size"`
 }
 
 func NewColumn(idx int, name string, colTyp string, oid VirtualOID, notNull bool) Column {

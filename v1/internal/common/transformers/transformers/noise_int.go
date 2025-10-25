@@ -44,7 +44,7 @@ var NoiseIntTransformerDefinition = transformerutils.NewTransformerDefinition(
 		"column name",
 	).SetIsColumn(commonparameters.NewColumnProperties().
 		SetAffected(true).
-		SetAllowedColumnTypes("int2", "int4", "int8", "int"),
+		SetAllowedColumnTypes("int2", "int4", "int8", "int", "smallint", "mediumint", "bigint"),
 	).SetRequired(true),
 
 	commonparameters.MustNewParameterDefinition(
@@ -52,7 +52,7 @@ var NoiseIntTransformerDefinition = transformerutils.NewTransformerDefinition(
 		"min value threshold limiter",
 	).SetSupportTemplate(true).
 		SetDynamicMode(commonparameters.NewDynamicModeProperties().
-			SetCompatibleTypes("int2", "int4", "int8"),
+			SetCompatibleTypes("int2", "int4", "int8", "int", "smallint", "mediumint", "bigint"),
 		),
 
 	commonparameters.MustNewParameterDefinition(
@@ -61,7 +61,7 @@ var NoiseIntTransformerDefinition = transformerutils.NewTransformerDefinition(
 	).SetSupportTemplate(true).
 		SetDynamicMode(
 			commonparameters.NewDynamicModeProperties().
-				SetCompatibleTypes("int2", "int4", "int8"),
+				SetCompatibleTypes("int2", "int4", "int8", "int", "smallint", "mediumint", "bigint"),
 		),
 
 	defaultIntTypeSizeParameterDefinition,
@@ -107,7 +107,7 @@ func NewNoiseIntTransformer(
 		return nil, fmt.Errorf("get \"engine\" param: %w", err)
 	}
 
-	typeSize := column.Length
+	typeSize := column.Size
 	if typeSize == 0 {
 		log.Ctx(ctx).
 			Warn().

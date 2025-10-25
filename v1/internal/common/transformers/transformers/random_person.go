@@ -133,7 +133,7 @@ func NewRandomNameTransformer(
 		return nil, fmt.Errorf("get \"column\" parameter: %w", err)
 	}
 
-	if err := validateRandomPersonColumnsAndSetDefault(ctx, columns, randomEngineMode); err != nil {
+	if err := validateRandomPersonColumnsAndSetDefault(ctx, tableDriver, columns, randomEngineMode); err != nil {
 		return nil, fmt.Errorf("validate \"columns\" parameter: %w", err)
 	}
 
@@ -303,11 +303,19 @@ func randomNameTransformerValidateGender(
 }
 
 func validateRandomPersonColumnsAndSetDefault(
-	ctx context.Context, columns []*randomPersonColumns, engineMode int,
+	ctx context.Context,
+	tableDriver commonininterfaces.TableDriver,
+	columns []*randomPersonColumns,
+	engineMode int,
 ) error {
 	var hasHashingColumns bool
 
 	for idx, c := range columns {
+		column, err := tableDriver.GetColumnByName(c.Name)
+		if err != nil {
+			return fmt.Errorf("get column by name: %w", err)
+		}
+		c.columnIdx = column.Idx
 		if c.HashOnly {
 			log.Ctx(ctx).Debug().
 				Str("ColumnName", c.Name).

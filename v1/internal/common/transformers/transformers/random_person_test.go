@@ -9,10 +9,9 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/stretchr/testify/require"
 
-	"github.com/greenmaskio/greenmask/internal/generators/transformers"
-
 	commonininterfaces "github.com/greenmaskio/greenmask/v1/internal/common/interfaces"
 	commonmodels "github.com/greenmaskio/greenmask/v1/internal/common/models"
+	"github.com/greenmaskio/greenmask/v1/internal/common/transformers/generators/transformers"
 	commonutils "github.com/greenmaskio/greenmask/v1/internal/common/utils"
 	"github.com/greenmaskio/greenmask/v1/internal/common/validationcollector"
 	mysqldbmsdriver "github.com/greenmaskio/greenmask/v1/internal/mysql/dbmsdriver"
@@ -48,7 +47,7 @@ func TestRandomPersonTransformer_Transform(t *testing.T) {
 		isNull           bool
 	}{
 		{
-			name: "numeric",
+			name: "all fields",
 			columns: []commonmodels.Column{
 				{
 					Idx:      0,
@@ -80,6 +79,127 @@ func TestRandomPersonTransformer_Transform(t *testing.T) {
 				assertStringContainsOneOfItemFromList(t, string(rawVal.Data), transformers.DefaultFirstNamesFemale)
 				assertStringContainsOneOfItemFromList(t, string(rawVal.Data), transformers.DefaultFirstNamesMale)
 				assertStringContainsOneOfItemFromList(t, string(rawVal.Data), transformers.DefaultLastNames)
+			},
+		},
+		{
+			name: "keep_null and original is not null",
+			columns: []commonmodels.Column{
+				{
+					Idx:      0,
+					Name:     "data",
+					TypeName: mysqldbmsdriver.TypeText,
+					TypeOID:  mysqldbmsdriver.VirtualOidText,
+					Length:   0,
+				},
+			},
+			original: []*commonmodels.ColumnRawValue{
+				commonmodels.NewColumnRawValue([]byte("1234567"), false)},
+			staticParameters: map[string]commonmodels.ParamsValue{
+				"columns": dumpColumnContainers(
+					randomPersonColumns{
+						Name:     "data",
+						Template: "{{ .Title }} {{ .FirstName }} {{ .LastName }}",
+						Hashing:  true,
+						HashOnly: false,
+						KeepNull: commonutils.New(true),
+					},
+				),
+				"engine": commonmodels.ParamsValue("deterministic"),
+				"gender": commonmodels.ParamsValue("Any"),
+			},
+			validateFn: func(t *testing.T, recorder commonininterfaces.Recorder) {
+				rawVal, err := recorder.GetRawColumnValueByName("data")
+				require.NoError(t, err)
+				require.False(t, rawVal.IsNull)
+				log.Debug().Str("Result", string(rawVal.Data)).Msg("Generated data")
+				assertStringContainsOneOfItemFromList(t, string(rawVal.Data), transformers.DefaultFirstNamesFemale)
+				assertStringContainsOneOfItemFromList(t, string(rawVal.Data), transformers.DefaultFirstNamesMale)
+				assertStringContainsOneOfItemFromList(t, string(rawVal.Data), transformers.DefaultLastNames)
+			},
+		},
+		{
+			name: "keep_null and original is null",
+			columns: []commonmodels.Column{
+				{
+					Idx:      0,
+					Name:     "data",
+					TypeName: mysqldbmsdriver.TypeText,
+					TypeOID:  mysqldbmsdriver.VirtualOidText,
+					Length:   0,
+				},
+			},
+			original: []*commonmodels.ColumnRawValue{
+				commonmodels.NewColumnRawValue(nil, true)},
+			staticParameters: map[string]commonmodels.ParamsValue{
+				"columns": dumpColumnContainers(
+					randomPersonColumns{
+						Name:     "data",
+						Template: "{{ .Title }} {{ .FirstName }} {{ .LastName }}",
+						Hashing:  true,
+						HashOnly: false,
+						KeepNull: commonutils.New(true),
+					},
+				),
+				"engine": commonmodels.ParamsValue("deterministic"),
+				"gender": commonmodels.ParamsValue("Any"),
+			},
+			validateFn: func(t *testing.T, recorder commonininterfaces.Recorder) {
+				rawVal, err := recorder.GetRawColumnValueByName("data")
+				require.NoError(t, err)
+				require.True(t, rawVal.IsNull)
+			},
+		},
+		{
+			name: "keep_null and original is null multiple columns",
+			columns: []commonmodels.Column{
+				{
+					Idx:      0,
+					Name:     "first_name",
+					TypeName: mysqldbmsdriver.TypeText,
+					TypeOID:  mysqldbmsdriver.VirtualOidText,
+					Length:   0,
+				},
+				{
+					Idx:      1,
+					Name:     "last_name",
+					TypeName: mysqldbmsdriver.TypeText,
+					TypeOID:  mysqldbmsdriver.VirtualOidText,
+					Length:   0,
+				},
+			},
+			original: []*commonmodels.ColumnRawValue{
+				commonmodels.NewColumnRawValue([]byte("some"), false),
+				commonmodels.NewColumnRawValue(nil, true),
+			},
+			staticParameters: map[string]commonmodels.ParamsValue{
+				"columns": dumpColumnContainers(
+					randomPersonColumns{
+						Name:     "first_name",
+						Template: "{{ .FirstName }}",
+						Hashing:  true,
+						HashOnly: false,
+						KeepNull: commonutils.New(true),
+					},
+					randomPersonColumns{
+						Name:     "last_name",
+						Template: "{{ .LastName }}",
+						Hashing:  true,
+						HashOnly: false,
+						KeepNull: commonutils.New(true),
+					},
+				),
+				"engine": commonmodels.ParamsValue("deterministic"),
+				"gender": commonmodels.ParamsValue("Female"),
+			},
+			validateFn: func(t *testing.T, recorder commonininterfaces.Recorder) {
+				rawVal, err := recorder.GetRawColumnValueByName("first_name")
+				require.NoError(t, err)
+				require.False(t, rawVal.IsNull)
+				assertStringContainsOneOfItemFromList(t, string(rawVal.Data), transformers.DefaultFirstNamesFemale)
+
+				rawVal, err = recorder.GetRawColumnValueByName("last_name")
+				require.NoError(t, err)
+				require.True(t, rawVal.IsNull)
 			},
 		},
 	}
@@ -119,115 +239,6 @@ func TestRandomPersonTransformer_Transform(t *testing.T) {
 	}
 }
 
-//func TestRandomPersonTransformer_Transform_static_firstname(t *testing.T) {
-//
-//	columnName := "data"
-//	originalValue := "John Dust123"
-//	params := map[string]toolkit.ParamsValue{
-//		"columns": toolkit.ParamsValue(`[{"name": "data", "template": "{{ .FirstName }}"}]`),
-//		"engine":  toolkit.ParamsValue("random"),
-//		"gender":  toolkit.ParamsValue("Any"),
-//	}
-//
-//	driver, record := getDriverAndRecord(columnName, originalValue)
-//	def, ok := utils.DefaultTransformerRegistry.Get("RandomPerson")
-//	require.True(t, ok)
-//
-//	transformer, warnings, err := def.Instance(
-//		context.Background(),
-//		driver,
-//		params,
-//		nil,
-//		"",
-//	)
-//	require.NoError(t, err)
-//	require.Empty(t, warnings)
-//
-//	r, err := transformer.Transformer.Transform(
-//		context.Background(),
-//		record,
-//	)
-//	require.NoError(t, err)
-//
-//	rawVal, err := r.GetRawColumnValueByName(columnName)
-//	require.NoError(t, err)
-//	require.False(t, rawVal.IsNull)
-//	log.Debug().Str("Result", string(rawVal.Data)).Msg("Generated data")
-//	totalNames := append(transformers.DefaultFirstNamesFemale, transformers.DefaultFirstNamesMale...)
-//	require.True(t, slices.Contains(totalNames, string(rawVal.Data)))
-//}
-//
-//func TestRandomPersonTransformer_Transform_static_lastname(t *testing.T) {
-//
-//	columnName := "data"
-//	originalValue := "John Dust123"
-//	params := map[string]toolkit.ParamsValue{
-//		"columns": toolkit.ParamsValue(`[{"name": "data", "template": "{{ .LastName }}"}]`),
-//		"engine":  toolkit.ParamsValue("random"),
-//		"gender":  toolkit.ParamsValue("Any"),
-//	}
-//
-//	driver, record := getDriverAndRecord(columnName, originalValue)
-//	def, ok := utils.DefaultTransformerRegistry.Get("RandomPerson")
-//	require.True(t, ok)
-//
-//	transformer, warnings, err := def.Instance(
-//		context.Background(),
-//		driver,
-//		params,
-//		nil,
-//		"",
-//	)
-//	require.NoError(t, err)
-//	require.Empty(t, warnings)
-//
-//	r, err := transformer.Transformer.Transform(
-//		context.Background(),
-//		record,
-//	)
-//	require.NoError(t, err)
-//
-//	rawVal, err := r.GetRawColumnValueByName(columnName)
-//	require.NoError(t, err)
-//	require.False(t, rawVal.IsNull)
-//	log.Debug().Str("Result", string(rawVal.Data)).Msg("Generated data")
-//	require.True(t, slices.Contains(transformers.DefaultLastNames, string(rawVal.Data)))
-//}
-//
-//func TestRandomPersonTransformer_Transform_static_nullable(t *testing.T) {
-//	columnName := "data"
-//	originalValue := "\\N"
-//	params := map[string]toolkit.ParamsValue{
-//		"columns": toolkit.ParamsValue(`[{"name": "data", "template": "{{ .Title }} {{ .FirstName }} {{ .LastName }}"}]`),
-//		"engine":  toolkit.ParamsValue("hash"),
-//		"gender":  toolkit.ParamsValue("Any"),
-//	}
-//
-//	driver, record := getDriverAndRecord(columnName, originalValue)
-//	def, ok := utils.DefaultTransformerRegistry.Get("RandomPerson")
-//	require.True(t, ok)
-//
-//	transformer, warnings, err := def.Instance(
-//		context.Background(),
-//		driver,
-//		params,
-//		nil,
-//		"",
-//	)
-//	require.NoError(t, err)
-//	require.Empty(t, warnings)
-//
-//	r, err := transformer.Transformer.Transform(
-//		context.Background(),
-//		record,
-//	)
-//	require.NoError(t, err)
-//
-//	rawVal, err := r.GetRawColumnValueByName(columnName)
-//	require.NoError(t, err)
-//	require.True(t, rawVal.IsNull)
-//}
-//
 //func TestRandomPersonTransformer_Transform_keep_null(t *testing.T) {
 //	t.Run("keep_null for all columns", func(t *testing.T) {
 //		originalValue := "\\N\t\\N"

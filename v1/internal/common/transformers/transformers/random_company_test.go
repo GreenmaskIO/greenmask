@@ -4,12 +4,12 @@ import (
 	"context"
 	"testing"
 
-	"github.com/greenmaskio/greenmask/internal/generators/transformers"
 	"github.com/rs/zerolog/log"
 	"github.com/stretchr/testify/require"
 
 	commonininterfaces "github.com/greenmaskio/greenmask/v1/internal/common/interfaces"
 	commonmodels "github.com/greenmaskio/greenmask/v1/internal/common/models"
+	"github.com/greenmaskio/greenmask/v1/internal/common/transformers/generators/transformers"
 	commonutils "github.com/greenmaskio/greenmask/v1/internal/common/utils"
 	"github.com/greenmaskio/greenmask/v1/internal/common/validationcollector"
 	mysqldbmsdriver "github.com/greenmaskio/greenmask/v1/internal/mysql/dbmsdriver"
@@ -125,6 +125,58 @@ func TestRandomCompanyTransformer_Transform(t *testing.T) {
 				log.Debug().Str("Result", string(rawVal.Data)).Msg("Generated data")
 				assertStringContainsOneOfItemFromList(t, string(rawVal.Data), transformers.DefaultCompanyNames)
 				assertStringContainsOneOfItemFromList(t, string(rawVal.Data), transformers.DefaultCompanySuffixes)
+			},
+		},
+		{
+			name: "keep_null and original is null multiple columns",
+			columns: []commonmodels.Column{
+				{
+					Idx:      0,
+					Name:     "name",
+					TypeName: mysqldbmsdriver.TypeText,
+					TypeOID:  mysqldbmsdriver.VirtualOidText,
+					Length:   0,
+				},
+				{
+					Idx:      1,
+					Name:     "suffix",
+					TypeName: mysqldbmsdriver.TypeText,
+					TypeOID:  mysqldbmsdriver.VirtualOidText,
+					Length:   0,
+				},
+			},
+			original: []*commonmodels.ColumnRawValue{
+				commonmodels.NewColumnRawValue([]byte("some"), false),
+				commonmodels.NewColumnRawValue(nil, true),
+			},
+			staticParameters: map[string]commonmodels.ParamsValue{
+				"columns": dumpColumnContainers(
+					randomCompanyNameColumn{
+						Name:     "name",
+						Template: "{{ .CompanyName }}",
+						Hashing:  true,
+						HashOnly: false,
+						KeepNull: commonutils.New(true),
+					},
+					randomCompanyNameColumn{
+						Name:     "suffix",
+						Template: "{{ .CompanySuffix }}",
+						Hashing:  true,
+						HashOnly: false,
+						KeepNull: commonutils.New(true),
+					},
+				),
+				"engine": commonmodels.ParamsValue("deterministic"),
+			},
+			validateFn: func(t *testing.T, recorder commonininterfaces.Recorder) {
+				rawVal, err := recorder.GetRawColumnValueByName("name")
+				require.NoError(t, err)
+				require.False(t, rawVal.IsNull)
+				assertStringContainsOneOfItemFromList(t, string(rawVal.Data), transformers.DefaultCompanyNames)
+
+				rawVal, err = recorder.GetRawColumnValueByName("suffix")
+				require.NoError(t, err)
+				require.True(t, rawVal.IsNull)
 			},
 		},
 	}
