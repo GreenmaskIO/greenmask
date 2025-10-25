@@ -89,8 +89,10 @@ type Column struct {
 	// TypeOID - OID of the column type in PostgreSQL. For other DBMS that does not have OIDs,
 	// this is just a unique identifier of the type in the greenmask implementation.
 	TypeOID VirtualOID `json:"type_oid"`
-	// Name - column number in the table. It is used to identify the column in the tuple.
+	// Length - length of the column type, e.g. for varchar(255) it will be 255.
 	Length int `json:"length"`
+	// Size - size of the column in bytes.
+	Size int `json:"size"`
 }
 
 func NewColumn(idx int, name string, colTyp string, oid VirtualOID, notNull bool) Column {

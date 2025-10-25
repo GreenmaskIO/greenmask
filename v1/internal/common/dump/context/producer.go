@@ -118,7 +118,7 @@ func (p *TableContextBuilder) initTableTransformers(
 		ctx := log.Ctx(ctx).With().
 			Str(commonmodels.MetaKeyTransformerName, transformerConfigs[i].Name).
 			Logger().WithContext(ctx)
-		transformer, err := p.initTransformer(ctx, vc, driver, transformerConfigs[i])
+		transformer, err := p.initTransformer(ctx, driver, transformerConfigs[i])
 		if err != nil {
 			return nil, fmt.Errorf("init transformer \"%s\": %w", transformerConfigs[i].Name, err)
 		}
@@ -136,20 +136,20 @@ func (p *TableContextBuilder) initTableTransformers(
 
 func (p *TableContextBuilder) initTransformer(
 	ctx context.Context,
-	vc *validationcollector.Collector,
 	driver commonininterfaces.TableDriver,
 	config commonmodels.TransformerConfig,
 ) (commonininterfaces.Transformer, error) {
-	vc = vc.WithMeta(map[string]any{"TransformerName": config.Name})
+	ctx = validationcollector.WithMeta(ctx, map[string]any{"TransformerName": config.Name})
 	transformerDefinition, ok := p.transformerRegistry.Get(config.Name)
 	if !ok {
-		vc.Add(commonmodels.NewValidationWarning().
-			SetSeverity(commonmodels.ValidationSeverityError).
-			SetMsg("transformer is not found"))
+		validationcollector.FromContext(ctx).
+			Add(commonmodels.NewValidationWarning().
+				SetSeverity(commonmodels.ValidationSeverityError).
+				SetMsg("transformer is not found"))
 		return nil, fmt.Errorf("get transformer from registry: %w", commonmodels.ErrFatalValidationError)
 	}
 	params, err := parameters.InitParameters(
-		vc,
+		ctx,
 		driver,
 		transformerDefinition.Parameters,
 		config.StaticParams,
@@ -172,7 +172,7 @@ func (p *TableContextBuilder) initTransformer(
 
 	// Validate schema
 	err = transformerDefinition.SchemaValidator(
-		vc,
+		ctx,
 		utils.Value(driver.Table()),
 		transformerDefinition.Properties,
 		staticParams,
@@ -182,7 +182,7 @@ func (p *TableContextBuilder) initTransformer(
 	}
 
 	// Create a new transformer
-	return transformerDefinition.New(ctx, vc, driver, params)
+	return transformerDefinition.New(ctx, driver, params)
 }
 
 func (p *TableContextBuilder) compileTransformerCondition(

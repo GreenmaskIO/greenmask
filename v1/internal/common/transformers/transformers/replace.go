@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package transformers2
+package transformers
 
 import (
 	"context"
@@ -25,11 +25,11 @@ import (
 	"github.com/greenmaskio/greenmask/v1/internal/common/validationcollector"
 )
 
-const ReplaceTransformerName = "Replace"
+const TransformerNameReplace = "Replace"
 
 var ReplaceTransformerDefinition = transformerutils.NewTransformerDefinition(
 	transformerutils.NewTransformerProperties(
-		ReplaceTransformerName,
+		TransformerNameReplace,
 		"Replace column value to the provided",
 	).AddMeta(transformerutils.AllowApplyForReferenced, true).
 		AddMeta(transformerutils.RequireHashEngineParameter, true),
@@ -53,15 +53,11 @@ var ReplaceTransformerDefinition = transformerutils.NewTransformerDefinition(
 			commonparameters.NewDynamicModeProperties(),
 		),
 
-	commonparameters.MustNewParameterDefinition(
-		"keep_null",
-		"indicates that NULL values must not be replaced with transformed values",
-	).SetDefaultValue(commonmodels.ParamsValue("true")),
+	// keep_null parameter definition
+	defaultKeepNullParameterDefinition,
 
-	commonparameters.MustNewParameterDefinition(
-		"validate",
-		"validate the value via driver decoding procedure",
-	).SetDefaultValue(commonmodels.ParamsValue("true")),
+	// validate parameter definition
+	defaultValidateParameterDefinition,
 )
 
 type ReplaceTransformer struct {
@@ -81,49 +77,51 @@ type ReplaceTransformer struct {
 }
 
 func NewReplaceTransformer(
-	_ context.Context,
-	vc *validationcollector.Collector,
+	ctx context.Context,
 	tableDriver commonininterfaces.TableDriver,
 	parameters map[string]commonparameters.Parameterizer,
 ) (commonininterfaces.Transformer, error) {
-	columnName, column, err := getColumnParameterValue(vc, tableDriver, parameters)
+	columnName, column, err := getColumnParameterValue(ctx, tableDriver, parameters)
 	if err != nil {
 		return nil, err
 	}
-	keepNull, err := getParameterValueWithName[bool](vc, parameters, ParameterNameKeepNull)
+	keepNull, err := getParameterValueWithName[bool](ctx, parameters, ParameterNameKeepNull)
 	if err != nil {
 		return nil, err
 	}
 
-	needValidate, err := getParameterValueWithName[bool](vc, parameters, ParameterValueValidate)
+	needValidate, err := getParameterValueWithName[bool](ctx, parameters, ParameterNameValidate)
 	if err != nil {
 		return nil, err
 	}
 
 	valueParam := parameters["value"]
 	var rawValue *commonmodels.ColumnRawValue
+
 	if !valueParam.IsDynamic() {
 		// Get value from parameter
 		value, err := valueParam.RawValue()
 		if err != nil {
-			vc.Add(commonmodels.NewValidationWarning().
-				SetSeverity(commonmodels.ValidationSeverityError).
-				AddMeta(commonmodels.MetaKeyParameterName, valueParam.Name()).
-				SetError(err).
-				SetMsg("error getting parameter value"))
+			validationcollector.FromContext(ctx).
+				Add(commonmodels.NewValidationWarning().
+					SetSeverity(commonmodels.ValidationSeverityError).
+					AddMeta(commonmodels.MetaKeyParameterName, valueParam.Name()).
+					SetError(err).
+					SetMsg("error getting parameter value"))
 			return nil, commonmodels.ErrFatalValidationError
 		}
 		// Validate the value if requested
 		if needValidate {
 			_, err = tableDriver.DecodeValueByTypeOid(column.TypeOID, value)
 			if err != nil {
-				vc.Add(commonmodels.NewValidationWarning().
-					SetSeverity(commonmodels.ValidationSeverityError).
-					SetMsg("error validating parameter value").
-					AddMeta(commonmodels.MetaKeyColumnTypeName, column.TypeName).
-					AddMeta(commonmodels.MetaKeyParameterName, valueParam.Name()).
-					AddMeta(commonmodels.MetaKeyParameterValue, string(value)).
-					SetError(err))
+				validationcollector.FromContext(ctx).
+					Add(commonmodels.NewValidationWarning().
+						SetSeverity(commonmodels.ValidationSeverityError).
+						SetMsg("error validating parameter value").
+						AddMeta(commonmodels.MetaKeyColumnTypeName, column.TypeName).
+						AddMeta(commonmodels.MetaKeyParameterName, valueParam.Name()).
+						AddMeta(commonmodels.MetaKeyParameterValue, string(value)).
+						SetError(err))
 				return nil, commonmodels.ErrFatalValidationError
 			}
 		}

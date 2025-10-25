@@ -18,9 +18,9 @@ import (
 	"context"
 
 	commonininterfaces "github.com/greenmaskio/greenmask/v1/internal/common/interfaces"
+	commonmodels "github.com/greenmaskio/greenmask/v1/internal/common/models"
 	"github.com/greenmaskio/greenmask/v1/internal/common/transformers/parameters"
 	commonparameters "github.com/greenmaskio/greenmask/v1/internal/common/transformers/parameters"
-	"github.com/greenmaskio/greenmask/v1/internal/common/validationcollector"
 )
 
 // NewTransformerFunc - make new transformer. This function receives Driver for making some steps for validation or
@@ -28,7 +28,6 @@ import (
 // in the map by the ID. All those parameters has been defined in the TransformerDefinition object of the transformer
 type NewTransformerFunc func(
 	ctx context.Context,
-	vc *validationcollector.Collector,
 	tableDriver commonininterfaces.TableDriver,
 	parameters map[string]commonparameters.Parameterizer,
 ) (commonininterfaces.Transformer, error)
@@ -50,6 +49,17 @@ func NewTransformerDefinition(
 		Parameters:      parameters,
 		SchemaValidator: DefaultSchemaValidator,
 	}
+}
+
+func (d *TransformerDefinition) ValidateColumnParameters(
+	ctx context.Context,
+	table commonmodels.Table,
+	columnParameters map[string]*commonparameters.StaticParameter,
+) error {
+	if d.SchemaValidator == nil {
+		return nil
+	}
+	return d.SchemaValidator(ctx, table, d.Properties, columnParameters)
 }
 
 func (d *TransformerDefinition) SetSchemaValidator(v SchemaValidationFunc) *TransformerDefinition {

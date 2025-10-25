@@ -20,6 +20,15 @@ backward-compatible with existing PostgreSQL utilities, fast and reliable.
 
 ![schema.png](docs/assets/schema.png)
 
+## Testing sponsor 💚
+
+<a href="https://www.lambdatest.com/?utm_source=greenmask&utm_medium=sponsor" target="_blank">
+    <img src="https://www.lambdatest.com/blue-logo.png" style="vertical-align: middle;" width="250" height="45" />
+</a>
+
+### Powered by
+[![JetBrains logo.](https://resources.jetbrains.com/storage/products/company/brand/logos/jetbrains.svg)](https://jb.gg/OpenSource)
+
 ## Getting started
 
 Greenmask has a [Playground](https://docs.greenmask.io/latest/playground/) - it is a sandbox environment in Docker with

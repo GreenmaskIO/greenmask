@@ -2,6 +2,7 @@ package parameters
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"slices"
 	"text/template"
@@ -94,14 +95,14 @@ func (dp *DynamicParameter) SetRecord(r commoninterfaces.Recorder) {
 }
 
 func (dp *DynamicParameter) Init(
-	vc *validationcollector.Collector,
+	ctx context.Context,
 	columnParameters map[string]*StaticParameter,
 	dynamicValue commonmodels.DynamicParamValue,
 ) error {
 	dp.DynamicValue = &dynamicValue
 
 	// Validate dynamic value
-	if err := dp.validate(vc, dp.DynamicValue); err != nil {
+	if err := dp.validate(ctx, dp.DynamicValue); err != nil {
 		return fmt.Errorf("validate value: %w", err)
 	}
 
@@ -109,36 +110,37 @@ func (dp *DynamicParameter) Init(
 	dp.determineDefaultValue()
 
 	// Render template
-	if err := dp.renderTemplate(vc); err != nil {
+	if err := dp.renderTemplate(ctx); err != nil {
 		return fmt.Errorf("render dynamic template: %w", err)
 	}
 
 	// Initialize dynamic parameter context
 	// It gets column by name and sets it to the context
-	if err := dp.initDynamicParameterContext(vc); err != nil {
+	if err := dp.initDynamicParameterContext(ctx); err != nil {
 		return fmt.Errorf("init dynamic parameter context: %w", err)
 	}
 
 	// Initialize cast_to function
-	if err := dp.initCastTo(vc); err != nil {
+	if err := dp.initCastTo(ctx); err != nil {
 		return fmt.Errorf("init cast to: %w", err)
 	}
 
 	// Initialize link column parameter
-	if err := dp.initLinkColumnParameter(vc, columnParameters); err != nil {
+	if err := dp.initLinkColumnParameter(ctx, columnParameters); err != nil {
 		return fmt.Errorf("initialize link column parameter: %w", err)
 	}
 	return nil
 }
 
 func (dp *DynamicParameter) validate(
-	vc *validationcollector.Collector,
+	ctx context.Context,
 	v *commonmodels.DynamicParamValue,
 ) error {
 	if dp.definition.DynamicModeProperties == nil {
-		vc.Add(commonmodels.NewValidationWarning().
-			SetSeverity(commonmodels.ValidationSeverityError).
-			SetMsg("parameter does not support dynamic mode"))
+		validationcollector.FromContext(ctx).
+			Add(commonmodels.NewValidationWarning().
+				SetSeverity(commonmodels.ValidationSeverityError).
+				SetMsg("parameter does not support dynamic mode"))
 		return commonmodels.ErrFatalValidationError
 	}
 
@@ -147,17 +149,19 @@ func (dp *DynamicParameter) validate(
 	}
 
 	if dp.DynamicValue.Column == "" {
-		vc.Add(commonmodels.NewValidationWarning().
-			SetSeverity(commonmodels.ValidationSeverityError).
-			SetMsg("received empty \"column\" parameter").
-			AddMeta("DynamicParameterSetting", "column"))
+		validationcollector.FromContext(ctx).
+			Add(commonmodels.NewValidationWarning().
+				SetSeverity(commonmodels.ValidationSeverityError).
+				SetMsg("received empty \"column\" parameter").
+				AddMeta("DynamicParameterSetting", "column"))
 		return commonmodels.ErrFatalValidationError
 	}
 
 	if dp.definition.IsColumn {
-		vc.Add(commonmodels.NewValidationWarning().
-			SetSeverity(commonmodels.ValidationSeverityError).
-			SetMsg("column parameter cannot work in dynamic mode"))
+		validationcollector.FromContext(ctx).
+			Add(commonmodels.NewValidationWarning().
+				SetSeverity(commonmodels.ValidationSeverityError).
+				SetMsg("column parameter cannot work in dynamic mode"))
 		return commonmodels.ErrFatalValidationError
 	}
 	return nil
@@ -173,7 +177,7 @@ func (dp *DynamicParameter) determineDefaultValue() {
 	}
 }
 
-func (dp *DynamicParameter) renderTemplate(vc *validationcollector.Collector) error {
+func (dp *DynamicParameter) renderTemplate(ctx context.Context) error {
 	if dp.DynamicValue.Template == "" {
 		return nil
 	}
@@ -182,25 +186,27 @@ func (dp *DynamicParameter) renderTemplate(vc *validationcollector.Collector) er
 		Funcs(gmtemplate.FuncMap()).
 		Parse(dp.DynamicValue.Template)
 	if err != nil {
-		vc.Add(commonmodels.NewValidationWarning().
-			SetSeverity(commonmodels.ValidationSeverityError).
-			SetMsg("unable to render cast template").
-			SetError(err).
-			AddMeta("DynamicParameterSetting", "cast_template"))
+		validationcollector.FromContext(ctx).
+			Add(commonmodels.NewValidationWarning().
+				SetSeverity(commonmodels.ValidationSeverityError).
+				SetMsg("unable to render cast template").
+				SetError(err).
+				AddMeta("DynamicParameterSetting", "cast_template"))
 		return commonmodels.ErrFatalValidationError
 	}
 	return nil
 }
 
-func (dp *DynamicParameter) initDynamicParameterContext(vc *validationcollector.Collector) error {
+func (dp *DynamicParameter) initDynamicParameterContext(ctx context.Context) error {
 	column, err := dp.tableDriver.GetColumnByName(dp.DynamicValue.Column)
 	if err != nil {
-		vc.Add(commonmodels.NewValidationWarning().
-			SetSeverity(commonmodels.ValidationSeverityError).
-			SetError(err).
-			SetMsg("error getting column by name").
-			AddMeta("DynamicParameterSetting", "column").
-			AddMeta("ColumnName", dp.definition.Name))
+		validationcollector.FromContext(ctx).
+			Add(commonmodels.NewValidationWarning().
+				SetSeverity(commonmodels.ValidationSeverityError).
+				SetError(err).
+				SetMsg("error getting column by name").
+				AddMeta("DynamicParameterSetting", "column").
+				AddMeta("ColumnName", dp.definition.Name))
 		return commonmodels.ErrFatalValidationError
 	}
 	dp.column = column
@@ -209,7 +215,7 @@ func (dp *DynamicParameter) initDynamicParameterContext(vc *validationcollector.
 	return nil
 }
 
-func (dp *DynamicParameter) initCastTo(vc *validationcollector.Collector) error {
+func (dp *DynamicParameter) initCastTo(ctx context.Context) error {
 	if dp.DynamicValue.CastTo == "" {
 		return nil
 	}
@@ -239,7 +245,7 @@ func (dp *DynamicParameter) initCastTo(vc *validationcollector.Collector) error 
 }
 
 func (dp *DynamicParameter) initLinkColumnParameter(
-	vc *validationcollector.Collector,
+	ctx context.Context,
 	columnParameters map[string]*StaticParameter,
 ) (err error) {
 	if dp.definition.LinkColumnParameter == "" {
@@ -275,16 +281,17 @@ func (dp *DynamicParameter) initLinkColumnParameter(
 			dp.linkedColumnParameter.definition.ColumnProperties != nil &&
 			len(dp.linkedColumnParameter.definition.ColumnProperties.AllowedTypes) > 0 &&
 			!slices.Contains(dp.linkedColumnParameter.definition.ColumnProperties.AllowedTypes, dp.columnCanonicalTypeName) {
-			vc.Add(commonmodels.NewValidationWarning().
-				SetSeverity(commonmodels.ValidationSeverityError).
-				AddMeta("DynamicParameterSetting", "column").
-				AddMeta("DynamicParameterColumnType", dp.column.TypeName).
-				AddMeta("DynamicParameterColumnName", dp.column.Name).
-				AddMeta("LinkedParameterName", dp.definition.LinkColumnParameter).
-				AddMeta("LinkedColumnName", dp.linkedColumnParameter.Column.Name).
-				AddMeta("LinkedColumnType", dp.linkedColumnParameter.Column.TypeName).
-				AddMeta("Hint", "you can use \"cast_template\" for casting value to supported type").
-				SetMsg("linked parameter and dynamic parameter column name has different types"))
+			validationcollector.FromContext(ctx).
+				Add(commonmodels.NewValidationWarning().
+					SetSeverity(commonmodels.ValidationSeverityError).
+					AddMeta("DynamicParameterSetting", "column").
+					AddMeta("DynamicParameterColumnType", dp.column.TypeName).
+					AddMeta("DynamicParameterColumnName", dp.column.Name).
+					AddMeta("LinkedParameterName", dp.definition.LinkColumnParameter).
+					AddMeta("LinkedColumnName", dp.linkedColumnParameter.Column.Name).
+					AddMeta("LinkedColumnType", dp.linkedColumnParameter.Column.TypeName).
+					AddMeta("Hint", "you can use \"cast_template\" for casting value to supported type").
+					SetMsg("linked parameter and dynamic parameter column name has different types"))
 			return commonmodels.ErrFatalValidationError
 		}
 	}

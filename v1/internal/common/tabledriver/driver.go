@@ -1,6 +1,7 @@
 package tabledriver
 
 import (
+	"context"
 	"errors"
 	"fmt"
 
@@ -41,6 +42,16 @@ type TableDriver struct {
 	columnIdxTypeOidOverrideMap map[int]commonmodels.VirtualOID
 	// maxIdx - the maximum index of the column in the table.
 	maxIdx int
+}
+
+func NewWithContext(
+	ctx context.Context,
+	d commonininterfaces.DBMSDriver,
+	t *commonmodels.Table,
+	typeOverride map[string]string,
+) (*TableDriver, error) {
+	vc := validationcollector.FromContext(ctx)
+	return New(vc, d, t, typeOverride)
 }
 
 func New(

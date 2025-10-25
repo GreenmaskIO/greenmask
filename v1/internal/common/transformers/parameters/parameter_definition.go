@@ -15,18 +15,17 @@
 package parameters
 
 import (
+	"context"
+
 	commonininterfaces "github.com/greenmaskio/greenmask/v1/internal/common/interfaces"
 	"github.com/greenmaskio/greenmask/v1/internal/common/models"
-	"github.com/greenmaskio/greenmask/v1/internal/common/validationcollector"
 )
 
 type Unmarshaler func(parameter *ParameterDefinition, driver commonininterfaces.DBMSDriver, src models.ParamsValue) (any, error)
 type DatabaseTypeUnmarshaler func(driver commonininterfaces.DBMSDriver, typeName string, v models.ParamsValue) (any, error)
-type RawValueValidator func(
-	vc *validationcollector.Collector,
-	p *ParameterDefinition,
-	v models.ParamsValue,
-) error
+type RawValueValidator func(ctx context.Context, p *ParameterDefinition, v models.ParamsValue) error
+
+type ColumnContainerUnmarshaler func(ctx context.Context, parameter *ParameterDefinition, data models.ParamsValue) ([]ColumnContainer, error)
 
 const WithoutMaxLength = -1
 
@@ -141,7 +140,8 @@ type ParameterDefinition struct {
 	IsColumn bool `mapstructure:"is_column" json:"is_column"`
 	// IsColumnContainer - describe is parameter container map or list with multiple columns inside. It allows to
 	// use this parameter as a container for multiple columns and apply changes to all columns inside.
-	IsColumnContainer bool `mapstructure:"is_column_container" json:"is_column_container"`
+	IsColumnContainer         bool                       `mapstructure:"is_column_container" json:"is_column_container"`
+	ColumnContainerProperties *ColumnContainerProperties `mapstructure:"-" json:"-"`
 	// LinkColumnParameter - link with parameter with provided name. This is required if performing raw value encoding
 	// depends on the provided column type and/or relies on the database Driver
 	LinkColumnParameter string `mapstructure:"link_column_parameter" json:"link_column_parameter,omitempty"`
@@ -161,6 +161,8 @@ type ParameterDefinition struct {
 	RawValueValidator RawValueValidator `json:"-"`
 	// AllowedValues - slice of values which allowed to use
 	AllowedValues []models.ParamsValue `mapstructure:"allowed_values" json:"allowed_values,omitempty"`
+	// GlobalEnvVariable - the nane of the global environment variable that can be used on empty input
+	GetFromGlobalEnvVariable string `mapstructure:"get_from_global_env_variable" json:"get_from_global_env_variable,omitempty"`
 }
 
 func MustNewParameterDefinition(name string, description string) *ParameterDefinition {
@@ -204,6 +206,35 @@ func (p *ParameterDefinition) SetIsColumnContainer(v bool) *ParameterDefinition 
 	return p
 }
 
+type ColumnContainer interface {
+	ColumnName() string
+}
+
+type ColumnContainerProperties struct {
+	AllowedTypes []string                   `mapstructure:"allowed_types" json:"allowed_types,omitempty"`
+	Unmarshaler  ColumnContainerUnmarshaler `mapstructure:"-" json:"-"`
+}
+
+func NewColumnContainerProperties() *ColumnContainerProperties {
+	return &ColumnContainerProperties{}
+}
+
+func (cp *ColumnContainerProperties) SetAllowedTypes(allowedTypes ...string) *ColumnContainerProperties {
+	cp.AllowedTypes = allowedTypes
+	return cp
+}
+
+func (cp *ColumnContainerProperties) SetUnmarshaler(unmarshaler ColumnContainerUnmarshaler) *ColumnContainerProperties {
+	cp.Unmarshaler = unmarshaler
+	return cp
+}
+
+func (p *ParameterDefinition) SetColumnContainer(prop *ColumnContainerProperties) *ParameterDefinition {
+	p.ColumnContainerProperties = prop
+	p.IsColumnContainer = true
+	return p
+}
+
 func (p *ParameterDefinition) SetUnmarshaler(unmarshaler Unmarshaler) *ParameterDefinition {
 	p.Unmarshaller = unmarshaler
 	return p
@@ -232,5 +263,10 @@ func (p *ParameterDefinition) SetDefaultValue(v models.ParamsValue) *ParameterDe
 
 func (p *ParameterDefinition) SetDynamicMode(v *DynamicModeProperties) *ParameterDefinition {
 	p.DynamicModeProperties = v
+	return p
+}
+
+func (p *ParameterDefinition) SetGetFromGlobalEnvVariable(v string) *ParameterDefinition {
+	p.GetFromGlobalEnvVariable = v
 	return p
 }

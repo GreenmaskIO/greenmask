@@ -60,6 +60,7 @@ type ValidationWarning struct {
 	Severity ValidationSeverity `json:"severity,omitempty"`
 	Meta     map[string]any     `json:"meta,omitempty"`
 	Hash     string             `json:"hash"`
+	Err      error              `json:"error,omitempty"`
 }
 
 func NewValidationWarning() *ValidationWarning {
@@ -90,6 +91,7 @@ func (re *ValidationWarning) SetSeverity(severity ValidationSeverity) *Validatio
 
 func (re *ValidationWarning) SetError(v error) *ValidationWarning {
 	re.Meta[MetaKeyError] = v.Error()
+	re.Err = v
 	return re
 }
 

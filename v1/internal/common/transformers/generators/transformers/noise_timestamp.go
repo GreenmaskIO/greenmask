@@ -14,7 +14,6 @@ type NoiseTimestampLimiter struct {
 }
 
 func NewNoiseTimestampLimiter(minDate, maxDate *time.Time) (*NoiseTimestampLimiter, error) {
-
 	if minDate != nil && maxDate != nil && minDate.After(*maxDate) {
 		return nil, ErrWrongLimits
 	}

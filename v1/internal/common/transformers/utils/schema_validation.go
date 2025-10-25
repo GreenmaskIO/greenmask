@@ -15,6 +15,7 @@
 package utils
 
 import (
+	"context"
 	"slices"
 
 	"github.com/greenmaskio/greenmask/pkg/toolkit"
@@ -25,7 +26,7 @@ import (
 )
 
 type SchemaValidationFunc func(
-	vc *validationcollector.Collector,
+	ctx context.Context,
 	table commonmodels.Table,
 	properties *TransformerProperties,
 	parameters map[string]*commonparameters.StaticParameter,
@@ -36,7 +37,7 @@ func isConstraintAffected(constraintColumns []string, transformingColumn string)
 }
 
 func DefaultSchemaValidator(
-	vc *validationcollector.Collector,
+	ctx context.Context,
 	table commonmodels.Table,
 	properties *TransformerProperties,
 	parameters map[string]*commonparameters.StaticParameter,
@@ -51,43 +52,46 @@ func DefaultSchemaValidator(
 			// violate constraints
 			continue
 		}
-		vc = vc.WithMeta(map[string]any{
+		ctx = validationcollector.WithMeta(ctx, map[string]any{
 			"ParameterName": p.GetDefinition().Name,
 			"ColumnName":    p.Column.Name,
 		})
 
 		// Checking is transformer can produce NULL value
 		if p.GetDefinition().ColumnProperties.Nullable && p.Column.NotNull {
-			vc.Add(commonmodels.NewValidationWarning().
-				SetMsg("transformer may produce NULL values but column has NOT NULL constraint").
-				SetSeverity(commonmodels.ValidationSeverityWarning).
-				AddMeta("ConstraintType", toolkit.NotNullConstraintType).
-				AddMeta("ParameterName", p.GetDefinition().Name).
-				AddMeta("ColumnName", p.Column.Name))
+			validationcollector.FromContext(ctx).
+				Add(commonmodels.NewValidationWarning().
+					SetMsg("transformer may produce NULL values but column has NOT NULL constraint").
+					SetSeverity(commonmodels.ValidationSeverityWarning).
+					AddMeta("ConstraintType", toolkit.NotNullConstraintType).
+					AddMeta("ParameterName", p.GetDefinition().Name).
+					AddMeta("ColumnName", p.Column.Name))
 		}
 
 		// Checking transformed value will not exceed the column length
 		if p.GetDefinition().ColumnProperties.MaxLength != toolkit.WithoutMaxLength &&
 			p.Column.Length < p.GetDefinition().ColumnProperties.MaxLength {
-			vc.Add(commonmodels.NewValidationWarning().
-				SetMsg("transformer value might be out of length range: column has a length").
-				SetSeverity(commonmodels.ValidationSeverityWarning).
-				AddMeta("ConstraintType", toolkit.LengthConstraintType).
-				AddMeta("ParameterName", p.GetDefinition().Name).
-				AddMeta("ColumnName", p.Column.Name).
-				AddMeta("ColumnMaxLength", p.Column.Length).
-				AddMeta("TransformerMaxLength", p.GetDefinition().ColumnProperties.MaxLength))
+			validationcollector.FromContext(ctx).
+				Add(commonmodels.NewValidationWarning().
+					SetMsg("transformer value might be out of length range: column has a length").
+					SetSeverity(commonmodels.ValidationSeverityWarning).
+					AddMeta("ConstraintType", toolkit.LengthConstraintType).
+					AddMeta("ParameterName", p.GetDefinition().Name).
+					AddMeta("ColumnName", p.Column.Name).
+					AddMeta("ColumnMaxLength", p.Column.Length).
+					AddMeta("TransformerMaxLength", p.GetDefinition().ColumnProperties.MaxLength))
 		}
 
 		// Performing checks constraint checks with the affected column
 		for _, c := range table.Constraints {
 			if isConstraintAffected(c.Columns(), p.Column.Name) {
-				vc.Add(commonmodels.NewValidationWarning().
-					SetSeverity(commonmodels.ValidationSeverityWarning).
-					AddMeta("ConstraintName", c.Name()).
-					AddMeta("ConstraintType", c.Type()).
-					AddMeta("ConstraintColumns", c.Columns()).
-					SetMsg("potential constraint violation detected"))
+				validationcollector.FromContext(ctx).
+					Add(commonmodels.NewValidationWarning().
+						SetSeverity(commonmodels.ValidationSeverityWarning).
+						AddMeta("ConstraintName", c.Name()).
+						AddMeta("ConstraintType", c.Type()).
+						AddMeta("ConstraintColumns", c.Columns()).
+						SetMsg("potential constraint violation detected"))
 			}
 		}
 		// TODO: add type constraint violation checks.
