@@ -17,7 +17,7 @@ package registry
 import (
 	"fmt"
 
-	"github.com/greenmaskio/greenmask/v1/internal/common/transformers/transformers2"
+	"github.com/greenmaskio/greenmask/v1/internal/common/transformers/transformers"
 	"github.com/greenmaskio/greenmask/v1/internal/common/transformers/utils"
 )
 
@@ -58,5 +58,33 @@ func (tm *TransformerRegistry) Get(name string) (*utils.TransformerDefinition, b
 }
 
 func init() {
-	DefaultTransformerRegistry.MustRegister(transformers2.ReplaceTransformerDefinition)
+	DefaultTransformerRegistry.MustRegister(transformers.DictTransformerDefinition)
+	DefaultTransformerRegistry.MustRegister(transformers.EmailTransformerDefinition)
+	DefaultTransformerRegistry.MustRegister(transformers.HashTransformerDefinition)
+	DefaultTransformerRegistry.MustRegister(transformers.JsonTransformerDefinition)
+	DefaultTransformerRegistry.MustRegister(transformers.MaskingTransformerDefinition)
+	DefaultTransformerRegistry.MustRegister(transformers.NoiseDateTransformerDefinition)
+	DefaultTransformerRegistry.MustRegister(transformers.NoiseFloatTransformerDefinition)
+	DefaultTransformerRegistry.MustRegister(transformers.NoiseIntTransformerDefinition)
+	DefaultTransformerRegistry.MustRegister(transformers.NoiseNumericTransformerDefinition)
+	DefaultTransformerRegistry.MustRegister(transformers.BoolTransformerDefinition)
+	DefaultTransformerRegistry.MustRegister(transformers.ChoiceTransformerDefinition)
+	DefaultTransformerRegistry.MustRegister(transformers.RandomCompanyTransformerDefinition)
+	DefaultTransformerRegistry.MustRegister(transformers.RandomDateTransformerDefinition)
+	DefaultTransformerRegistry.MustRegister(transformers.RamdomFloatTransformerDefinition)
+	DefaultTransformerRegistry.MustRegister(transformers.RandomIntegerTransformerDefinition)
+	DefaultTransformerRegistry.MustRegister(transformers.RandomIPDefinition)
+	DefaultTransformerRegistry.MustRegister(transformers.RandomMacAddressDefinition)
+	DefaultTransformerRegistry.MustRegister(transformers.RandomNumericTransformerDefinition)
+	DefaultTransformerRegistry.MustRegister(transformers.RandomPersonTransformerDefinition)
+	DefaultTransformerRegistry.MustRegister(transformers.RandomStringTransformerDefinition)
+	DefaultTransformerRegistry.MustRegister(transformers.UnixTimestampTransformerDefinition)
+	DefaultTransformerRegistry.MustRegister(transformers.UUIDTransformerDefinition)
+	DefaultTransformerRegistry.MustRegister(transformers.RealAddressTransformerDefinition)
+	DefaultTransformerRegistry.MustRegister(transformers.RegexpReplaceTransformerDefinition)
+	DefaultTransformerRegistry.MustRegister(transformers.RegexpReplaceTransformerDefinition)
+	DefaultTransformerRegistry.MustRegister(transformers.ReplaceTransformerDefinition)
+	DefaultTransformerRegistry.MustRegister(transformers.SetNullTransformerDefinition)
+	DefaultTransformerRegistry.MustRegister(transformers.TemplateTransformerDefinition)
+	DefaultTransformerRegistry.MustRegister(transformers.TemplateRecordTransformerDefinition)
 }

@@ -37,7 +37,7 @@ func encodeTimestamp(v interface{}, buf []byte, loc *time.Location) ([]byte, err
 		if v.IsZero() {
 			buf = append(buf, "'0000-00-00'"...)
 		} else {
-			buf, err = appendDateTime(buf, v.In(loc), 0)
+			buf, err = appendDateTime(buf, v.In(loc), time.Millisecond)
 			if err != nil {
 				return nil, err
 			}

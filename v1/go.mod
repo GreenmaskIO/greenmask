@@ -13,6 +13,7 @@ require (
 	github.com/go-mysql-org/go-mysql v1.12.0
 	github.com/go-sql-driver/mysql v1.9.1
 	github.com/go-viper/mapstructure/v2 v2.2.1
+	github.com/google/go-cmp v0.7.0
 	github.com/google/uuid v1.6.0
 	github.com/greenmaskio/greenmask v0.2.9
 	github.com/huandu/go-sqlbuilder v1.35.0
@@ -31,6 +32,7 @@ require (
 	github.com/tidwall/gjson v1.18.0
 	github.com/tidwall/sjson v1.2.5
 	golang.org/x/crypto v0.37.0
+	golang.org/x/exp v0.0.0-20250128182459-e0ece0dbea4c
 	golang.org/x/sync v0.13.0
 	gopkg.in/yaml.v3 v3.0.1
 )

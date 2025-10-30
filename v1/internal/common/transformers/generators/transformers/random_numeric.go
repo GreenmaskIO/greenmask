@@ -19,7 +19,6 @@ type RandomNumericLimiter struct {
 }
 
 func NewRandomNumericLimiter(minValue, maxValue decimal.Decimal) (*RandomNumericLimiter, error) {
-
 	if minValue.GreaterThanOrEqual(maxValue) {
 		return nil, ErrWrongLimits
 	}

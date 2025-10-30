@@ -192,14 +192,7 @@ func (t *TableDriverMock) DecodeValueByColumnName(name string, src []byte) (any,
 
 func (t *TableDriverMock) GetColumnByName(name string) (*commonmodels.Column, error) {
 	args := t.Called(name)
-	if args.Get(0) == nil {
-		return nil, nil
-	}
-	column, ok := args.Get(0).(*commonmodels.Column)
-	if !ok {
-		panic(fmt.Sprintf("expected *commonmodels.Column, got %T", args.Get(0)))
-	}
-	return column, args.Error(1)
+	return args.Get(0).(*commonmodels.Column), args.Error(1)
 }
 
 func (t *TableDriverMock) Table() *commonmodels.Table {

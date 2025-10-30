@@ -11,3 +11,10 @@ func NewColumnRawValue(data []byte, isNull bool) *ColumnRawValue {
 		IsNull: isNull,
 	}
 }
+
+func (s *ColumnRawValue) String() string {
+	if s.IsNull {
+		return "NULL"
+	}
+	return string(s.Data)
+}

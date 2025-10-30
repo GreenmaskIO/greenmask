@@ -2,9 +2,11 @@ package parameters
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"os"
 	"slices"
 	"text/template"
 	"time"
@@ -91,7 +93,8 @@ func (sp *StaticParameter) linkColumnParameter(
 	return nil
 }
 
-func (sp *StaticParameter) executeTemplate(vc *validationcollector.Collector) error {
+func (sp *StaticParameter) executeTemplate(ctx context.Context) error {
+	vc := validationcollector.FromContext(ctx)
 	if len(sp.rawValue) == 0 || !sp.definition.SupportTemplate {
 		return nil
 	}
@@ -125,9 +128,58 @@ func (sp *StaticParameter) executeTemplate(vc *validationcollector.Collector) er
 	return nil
 }
 
-func (sp *StaticParameter) validateValue(vc *validationcollector.Collector, rawValue models.ParamsValue) error {
+func isColumnSupportAllowedTypes(column commonmodels.Column, allowedTypes []string) bool {
+	if len(allowedTypes) == 0 {
+		return true
+	}
+	return slices.Contains(allowedTypes, column.TypeName)
+}
+
+func (sp *StaticParameter) validateColumnContainer(ctx context.Context, rawValue models.ParamsValue) error {
+	if sp.definition.ColumnContainerProperties.Unmarshaler == nil {
+		return nil
+	}
+	cc, err := sp.definition.ColumnContainerProperties.Unmarshaler(ctx, sp.definition, rawValue)
+	if err != nil {
+		return fmt.Errorf("unamrshal column container: %w", err)
+	}
+	foundColumns := make([]commonmodels.Column, 0, len(cc))
+	for i, container := range cc {
+		column, err := sp.driver.GetColumnByName(container.ColumnName())
+		if err != nil {
+			if errors.Is(err, commonmodels.ErrUnknownColumnName) {
+				validationcollector.FromContext(ctx).
+					Add(models.NewValidationWarning().
+						SetSeverity(models.ValidationSeverityError).
+						SetMsg("get column by name failed").
+						SetError(err).
+						AddMeta("ColumnName", container.ColumnName()).
+						AddMeta("ColumnContainerItem", i).
+						AddMeta("ParameterName", sp.definition.Name))
+				return models.ErrFatalValidationError
+			}
+		}
+		foundColumns = append(foundColumns, *column)
+		if !isColumnSupportAllowedTypes(*column, sp.definition.ColumnContainerProperties.AllowedTypes) {
+			validationcollector.FromContext(ctx).
+				Add(models.NewValidationWarning().
+					SetSeverity(models.ValidationSeverityError).
+					SetMsg("unsupported column type").
+					AddMeta("ColumnName", container.ColumnName()).
+					AddMeta("ColumnContainerItem", i).
+					AddMeta("TypeName", column.TypeName).
+					AddMeta("AllowedTypes", sp.definition.ColumnContainerProperties.AllowedTypes))
+			return models.ErrFatalValidationError
+		}
+	}
+	return nil
+}
+
+func (sp *StaticParameter) validateValue(ctx context.Context, rawValue models.ParamsValue) error {
 	// We are comparing to nil because there can be empty string "" and it shouldn't be a nil pointer
 	// and an empty value itself.
+	vc := validationcollector.FromContext(ctx)
+
 	if rawValue == nil {
 		if sp.definition.Required && sp.definition.DefaultValue == nil {
 			vc.Add(models.NewValidationWarning().
@@ -141,7 +193,7 @@ func (sp *StaticParameter) validateValue(vc *validationcollector.Collector, rawV
 	}
 
 	if sp.definition.RawValueValidator != nil {
-		err := sp.definition.RawValueValidator(vc, sp.definition, sp.rawValue)
+		err := sp.definition.RawValueValidator(ctx, sp.definition, sp.rawValue)
 		if err != nil {
 			return fmt.Errorf("execute raw value validator: %w", err)
 		}
@@ -163,6 +215,9 @@ func (sp *StaticParameter) validateValue(vc *validationcollector.Collector, rawV
 			return models.ErrFatalValidationError
 		}
 		sp.Column = column
+		if sp.Column == nil {
+			panic("bug detected: column is nil after getting it by name")
+		}
 
 		if sp.definition.ColumnProperties != nil &&
 			len(sp.definition.ColumnProperties.AllowedTypes) > 0 &&
@@ -175,6 +230,12 @@ func (sp *StaticParameter) validateValue(vc *validationcollector.Collector, rawV
 				AddMeta("AllowedTypes", sp.definition.ColumnProperties.AllowedTypes),
 			)
 			return models.ErrFatalValidationError
+		}
+	}
+
+	if sp.definition.IsColumnContainer {
+		if err := sp.validateColumnContainer(ctx, rawValue); err != nil {
+			return fmt.Errorf("validate column container: %w", err)
 		}
 	}
 
@@ -194,21 +255,24 @@ func (sp *StaticParameter) validateValue(vc *validationcollector.Collector, rawV
 }
 
 func (sp *StaticParameter) Init(
-	vc *validationcollector.Collector,
+	ctx context.Context,
 	columnParams map[string]*StaticParameter,
 	rawValue models.ParamsValue,
 ) error {
 	sp.rawValue = slices.Clone(rawValue)
+	if sp.definition.GetFromGlobalEnvVariable != "" {
+		sp.rawValue = []byte(os.Getenv(sp.definition.GetFromGlobalEnvVariable))
+	}
 
 	if err := sp.linkColumnParameter(columnParams); err != nil {
 		return fmt.Errorf("link column parameter: %w", err)
 	}
 
-	if err := sp.executeTemplate(vc); err != nil {
+	if err := sp.executeTemplate(ctx); err != nil {
 		return fmt.Errorf("execute parameter template: %w", err)
 	}
 
-	if err := sp.validateValue(vc, sp.rawValue); err != nil {
+	if err := sp.validateValue(ctx, sp.rawValue); err != nil {
 		return fmt.Errorf("validate parameter value: %w", err)
 	}
 
