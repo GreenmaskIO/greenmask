@@ -191,10 +191,8 @@ func (ndt *NoiseDateTransformer) Done(context.Context) error {
 }
 
 func (ndt *NoiseDateTransformer) dynamicTransform(v time.Time) (time.Time, error) {
-	var (
-		minVal *time.Time
-		maxVal *time.Time
-	)
+	minVal := &time.Time{}
+	maxVal := &time.Time{}
 
 	if err := ndt.minParam.Scan(minVal); err != nil {
 		return time.Time{}, fmt.Errorf(`unable to scan "min" param: %w`, err)

@@ -332,7 +332,7 @@ func TestUnixTimestampTransformer_Transform(t *testing.T) {
 			vc := validationcollector.NewCollector()
 			ctx := validationcollector.WithCollector(context.Background(), vc)
 			env := newTransformerTestEnvReal(t,
-				unixTimestampTransformerDefinition,
+				UnixTimestampTransformerDefinition,
 				tt.columns,
 				tt.staticParameters,
 				tt.dynamicParameter,

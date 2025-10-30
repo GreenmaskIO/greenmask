@@ -17,11 +17,8 @@ package transformers
 import (
 	"context"
 	"fmt"
-	"net"
 	"testing"
 
-	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -240,11 +237,4 @@ func TestGetColumnParameterValue(t *testing.T) {
 		}, warning.Meta)
 		columnParameter.AssertExpectations(t)
 	})
-}
-
-func TestTest(t *testing.T) {
-	subnet := &net.IPNet{}
-	err := pgGlobalTypeMap.Scan(pgtype.InetOID, pgx.TextFormatCode, []byte("/24"), subnet)
-	require.NoError(t, err)
-	require.Equal(t, &net.IPNet{}, subnet)
 }

@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/shopspring/decimal"
 )
 
@@ -118,6 +119,12 @@ func scanString(data []byte, dest interface{}) error {
 		*v = string(data)
 	case *[]byte:
 		*v = data
+	case *uuid.UUID:
+		parsedUUID, err := uuid.ParseBytes(data)
+		if err != nil {
+			return err
+		}
+		*v = parsedUUID
 	default:
 		return fmt.Errorf("cannot scan string into destination %T", dest)
 	}

@@ -28,7 +28,7 @@ var timestampUnitValues = []string{
 	secondsUnit, milliUnit, microUnit, nanoUnit,
 }
 
-var unixTimestampTransformerDefinition = transformerutils.NewTransformerDefinition(
+var UnixTimestampTransformerDefinition = transformerutils.NewTransformerDefinition(
 	transformerutils.NewTransformerProperties(
 		RandomUnixTimestampTransformerName,
 		"Generate UnixTimestamp in the provided interval with unit",

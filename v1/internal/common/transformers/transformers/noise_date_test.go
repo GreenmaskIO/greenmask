@@ -207,8 +207,8 @@ func TestNoiseDateTransformer_Transform(t *testing.T) {
 				commonmodels.NewColumnRawValue([]byte("2023-02-01 00:00:00"), false),
 			},
 			validateFn: func(t *testing.T, record commonininterfaces.Recorder) {
-				minDate := time.Date(2022, 11, 1, 1, 00, 0, 0, loc)
-				maxDate := time.Date(2023, 2, 1, 1, 0, 0, 0, loc)
+				minDate := time.Date(2022, 11, 1, 0, 00, 0, 0, loc)
+				maxDate := time.Date(2023, 2, 1, 0, 0, 0, 0, loc)
 				// ^\d{4}-\d{2}-\d{2}$
 				val, err := record.GetColumnValueByName("data")
 				require.NoError(t, err)

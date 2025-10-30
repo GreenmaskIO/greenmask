@@ -105,15 +105,15 @@ func TestRandomPersonTransformer_Transform(t *testing.T) {
 					},
 				),
 				"engine": commonmodels.ParamsValue("deterministic"),
-				"gender": commonmodels.ParamsValue("Any"),
+				"gender": commonmodels.ParamsValue("Female"),
 			},
 			validateFn: func(t *testing.T, recorder commonininterfaces.Recorder) {
 				rawVal, err := recorder.GetRawColumnValueByName("data")
 				require.NoError(t, err)
 				require.False(t, rawVal.IsNull)
 				log.Debug().Str("Result", string(rawVal.Data)).Msg("Generated data")
+				assertStringContainsOneOfItemFromList(t, string(rawVal.Data), transformers.DefaultTitlesFemale)
 				assertStringContainsOneOfItemFromList(t, string(rawVal.Data), transformers.DefaultFirstNamesFemale)
-				assertStringContainsOneOfItemFromList(t, string(rawVal.Data), transformers.DefaultFirstNamesMale)
 				assertStringContainsOneOfItemFromList(t, string(rawVal.Data), transformers.DefaultLastNames)
 			},
 		},
