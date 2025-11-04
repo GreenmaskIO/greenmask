@@ -3,9 +3,12 @@
 ## Dump anonymization and synthetic data generation tool
 
 **Greenmask** is a powerful open-source utility that is designed for logical database backup dumping,
-anonymization, synthetic data generation and restoration. It has ported PostgreSQL libraries, making it reliable.
-It is stateless and does not require any changes to your database schema. It is designed to be highly customizable and
-backward-compatible with existing PostgreSQL utilities, fast and reliable.
+anonymization, synthetic data generation and restoration. It is stateless and does not require any changes to your database schema.
+
+Greenmask Supports:
+
+* PostgreSQL
+* [MySQL is in progress](https://github.com/GreenmaskIO/greenmask/issues/222)
 
 [![Discord](https://img.shields.io/discord/1179422525294399488?label=Discord&logo=discord)](https://discord.com/invite/rKBKvDECfd)
 [![Telegram](https://img.shields.io/badge/Telegram-Join%20Chat-blue.svg?logo=telegram)](https://t.me/greenmask_ru)
@@ -69,7 +72,7 @@ sample databases included to help you try Greenmask without any additional actio
   which eliminates platform dependencies.
 * **Database type safe** — Ensures data integrity by validating data and using the database driver for encoding and
   decoding operations, preserving accurate data formats.
-* **Backward compatible** — Fully supports the same features and protocols as standard PostgreSQL utilities. Dumps
+* **Backward compatible** — Fully supports the same features and protocols as standard Datutilities. Dumps
   created by Greenmask can be seamlessly restored using the `pg_restore` utility.
 * **Extensible** — Users have the flexibility
   to [implement domain-based transformations](https://docs.greenmask.io/latest/built_in_transformers/standard_transformers/cmd/)
