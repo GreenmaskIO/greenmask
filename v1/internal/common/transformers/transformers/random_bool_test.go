@@ -44,11 +44,12 @@ func TestRandomBoolTransformer_Transform(t *testing.T) {
 			name: "common",
 			columns: []commonmodels.Column{
 				{
-					Idx:      0,
-					Name:     "data",
-					TypeName: mysqldbmsdriver.TypeBoolean,
-					TypeOID:  mysqldbmsdriver.VirtualOidBoolean,
-					Length:   0,
+					Idx:       0,
+					Name:      "data",
+					TypeName:  mysqldbmsdriver.TypeBoolean,
+					TypeOID:   mysqldbmsdriver.VirtualOidBoolean,
+					TypeClass: commonmodels.TypeClassBoolean,
+					Length:    0,
 				},
 			},
 			original: []*commonmodels.ColumnRawValue{
@@ -67,11 +68,12 @@ func TestRandomBoolTransformer_Transform(t *testing.T) {
 			name: "keep_null false and NULL seq",
 			columns: []commonmodels.Column{
 				{
-					Idx:      0,
-					Name:     "data",
-					TypeName: mysqldbmsdriver.TypeBoolean,
-					TypeOID:  mysqldbmsdriver.VirtualOidBoolean,
-					Length:   0,
+					Idx:       0,
+					Name:      "data",
+					TypeName:  mysqldbmsdriver.TypeBoolean,
+					TypeOID:   mysqldbmsdriver.VirtualOidBoolean,
+					TypeClass: commonmodels.TypeClassBoolean,
+					Length:    0,
 				},
 			},
 			original: []*commonmodels.ColumnRawValue{
@@ -91,11 +93,12 @@ func TestRandomBoolTransformer_Transform(t *testing.T) {
 			name: "keep_null true and NULL seq",
 			columns: []commonmodels.Column{
 				{
-					Idx:      0,
-					Name:     "data",
-					TypeName: mysqldbmsdriver.TypeBoolean,
-					TypeOID:  mysqldbmsdriver.VirtualOidBoolean,
-					Length:   0,
+					Idx:       0,
+					Name:      "data",
+					TypeName:  mysqldbmsdriver.TypeBoolean,
+					TypeOID:   mysqldbmsdriver.VirtualOidBoolean,
+					TypeClass: commonmodels.TypeClassBoolean,
+					Length:    0,
 				},
 			},
 			original: []*commonmodels.ColumnRawValue{

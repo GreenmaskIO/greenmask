@@ -42,7 +42,10 @@ var RandomIPDefinition = transformerutils.NewTransformerDefinition(
 		"Column name",
 	).SetIsColumn(commonparameters.NewColumnProperties().
 		SetAffected(true).
-		SetAllowedColumnTypes("text", "varchar", "char", "bpchar", "citext", "inet"),
+		SetAllowedColumnTypeClasses(
+			commonmodels.TypeClassText,
+			commonmodels.TypeClassInet,
+		),
 	).SetRequired(true),
 
 	commonparameters.MustNewParameterDefinition(
@@ -52,16 +55,15 @@ var RandomIPDefinition = transformerutils.NewTransformerDefinition(
 		SetSupportTemplate(true).
 		SetDynamicMode(
 			commonparameters.NewDynamicModeProperties().
-				SetCompatibleTypes("text", "varchar", "cidr").
-				SetUnmarshaler(
-					func(_ commonininterfaces.DBMSDriver, _ string, v commonmodels.ParamsValue) (any, error) {
-						dest := &net.IPNet{}
-						err := scanIPNet(v, dest)
-						return dest, err
-					},
+				SetColumnProperties(
+					commonparameters.NewColumnProperties().
+						SetAllowedColumnTypeClasses(
+							commonmodels.TypeClassText,
+							commonmodels.TypeClassCidr,
+						),
 				),
-		).
-		SetUnmarshaler(func(_ *commonparameters.ParameterDefinition, _ commonininterfaces.DBMSDriver, src commonmodels.ParamsValue) (any, error) {
+		).SetUnmarshaler(
+		func(_ *commonparameters.ParameterDefinition, _ commonininterfaces.DBMSDriver, src commonmodels.ParamsValue) (any, error) {
 			dest := &net.IPNet{}
 			err := scanIPNet(src, dest)
 			return dest, err

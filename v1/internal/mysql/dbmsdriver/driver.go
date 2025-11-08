@@ -19,8 +19,6 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/rs/zerolog/log"
-
 	commonininterfaces "github.com/greenmaskio/greenmask/v1/internal/common/interfaces"
 	commonmodels "github.com/greenmaskio/greenmask/v1/internal/common/models"
 )
@@ -45,7 +43,7 @@ func (e *Driver) EncodeValueByTypeOid(oid commonmodels.VirtualOID, src any, buf 
 	if !ok {
 		return nil, fmt.Errorf("unsupported oid %d", oid)
 	}
-	return e.EncodeValueByTypeName(typeName, src, buf)
+	return e.EncodeValueByTypeName(string(typeName), src, buf)
 }
 
 func (e *Driver) DecodeValueByTypeOid(oid commonmodels.VirtualOID, src []byte) (any, error) {
@@ -80,12 +78,6 @@ func (e *Driver) GetTypeOid(name string) (commonmodels.VirtualOID, error) {
 		return 0, fmt.Errorf("unsupported type %s", name)
 	}
 	return oid, nil
-}
-
-func (e *Driver) GetCanonicalTypeName(name string, oid commonmodels.VirtualOID) (string, error) {
-	// TODO: implement canonical dbmsdriver.Driver.GetCanonicalTypeName
-	log.Warn().Msg("implement canonical dbmsdriver.Driver.GetCanonicalTypeName")
-	return name, nil
 }
 
 func (e *Driver) WithLocation(loc *time.Location) *Driver {
@@ -194,4 +186,24 @@ func (e *Driver) ScanValueByTypeName(name string, src []byte, dest any) error {
 		return scanBit(src, dest)
 	}
 	return fmt.Errorf("unsupported type %s", name)
+}
+
+func (e *Driver) GetCanonicalTypeClassName(typeName string, typeOid commonmodels.VirtualOID) (commonmodels.TypeClass, error) {
+	className, ok := typeDataNameTypeToClass[typeName]
+	if ok {
+		return className, nil
+	}
+	oidClassName, ok := typeDataOidToClass[typeOid]
+	if ok {
+		return oidClassName, nil
+	}
+	return "", fmt.Errorf("find type class \"%s\": %w", typeName, commonmodels.ErrUnknownDBMSTypeClass)
+}
+
+func (e *Driver) GetCanonicalTypeName(_ string, oid commonmodels.VirtualOID) (string, error) {
+	typeName, ok := VirtualOidToTypeName[oid]
+	if !ok {
+		return "", fmt.Errorf("find type \"%s\": %w", typeName, commonmodels.ErrUnknownDBMSType)
+	}
+	return string(typeName), nil
 }

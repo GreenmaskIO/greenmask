@@ -76,9 +76,7 @@ var EmailTransformerDefinition = transformerutils.NewTransformerDefinition(
 		"column name",
 	).SetIsColumn(commonparameters.NewColumnProperties().
 		SetAffected(true).
-		SetAllowedColumnTypes(
-			"text", "varchar", "char", "bpchar", "citext",
-		),
+		SetAllowedColumnTypeClasses(commonmodels.TypeClassText),
 	).SetRequired(true),
 
 	commonparameters.MustNewParameterDefinition(

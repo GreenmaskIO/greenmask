@@ -16,6 +16,7 @@ package parameters
 
 import (
 	"context"
+	"slices"
 
 	commonininterfaces "github.com/greenmaskio/greenmask/v1/internal/common/interfaces"
 	"github.com/greenmaskio/greenmask/v1/internal/common/models"
@@ -47,17 +48,25 @@ type ColumnProperties struct {
 	// Affected - shows assigned column name will be affected after the transformation
 	Affected bool `mapstructure:"affected" json:"affected,omitempty"`
 	// AllowedTypes - defines all the allowed column types in textual format. If not assigned (nil) then any
-	// of the types is valid
+	// of the types is valid.
 	// TODO: AllowedTypes has a problem if we set int and our column is int2, then it cause an error though
 	//		 it is workable case. Decide how to define subtype or type "aliases" references.
 	//		 Also it has problem with custom type naming because it has schema name and type name. It might be better
 	//		 to describe types with {{ schemaName }}.{{ typeName }}, but then we have to implement types classes
 	//		 (such as textual, digits, etc.)
 	AllowedTypes []string `mapstructure:"allowed_types" json:"allowed_types,omitempty"`
-	// SkipOriginalData - Is transformer require original data or not
+	// AllowedTypeClasses - defines all the allowed column type classes. If not assigned (nil) then any
+	// of the types is valid.
+	AllowedTypeClasses []models.TypeClass `mapstructure:"allowed_type_classes" json:"allowed_type_classes,omitempty"`
+	// DeniedTypes - defines all the excluded column type classes. If not assigned (nil) then any
+	// of the types is valid.
+	DeniedTypes []string `mapstructure:"denied_types" json:"denied_types,omitempty"`
+	// DeniedTypeClasses - defines all the excluded column type classes. If not assigned (nil) then any
+	// of the types is valid.
+	DeniedTypeClasses []models.TypeClass `mapstructure:"denied_type_classes" json:"denied_type_classes,omitempty"`
+	// SkipOriginalData - Is transformer require original data or not.
 	SkipOriginalData bool `mapstructure:"skip_original_data" json:"skip_original_data,omitempty"`
-	// TODO: Implement SkipOnNull
-	// SkipOnNull - transformation for column with NULL is not expected
+	// SkipOnNull - transformation for column with NULL is not expected.
 	SkipOnNull bool `mapstructure:"skip_on_null" json:"skip_on_null"`
 }
 
@@ -88,6 +97,21 @@ func (cp *ColumnProperties) SetAllowedColumnTypes(v ...string) *ColumnProperties
 	return cp
 }
 
+func (cp *ColumnProperties) SetAllowedColumnTypeClasses(v ...models.TypeClass) *ColumnProperties {
+	cp.AllowedTypeClasses = v
+	return cp
+}
+
+func (cp *ColumnProperties) SetDeniedColumnTypes(v ...string) *ColumnProperties {
+	cp.DeniedTypes = v
+	return cp
+}
+
+func (cp *ColumnProperties) SetDeniedColumnTypeClasses(v ...models.TypeClass) *ColumnProperties {
+	cp.DeniedTypeClasses = v
+	return cp
+}
+
 func (cp *ColumnProperties) SetAffected(v bool) *ColumnProperties {
 	cp.Affected = v
 	return cp
@@ -103,25 +127,53 @@ func (cp *ColumnProperties) SetSkipOnNull(v bool) *ColumnProperties {
 	return cp
 }
 
+func (cp *ColumnProperties) IsColumnTypeAllowed(v string) bool {
+	if len(cp.AllowedTypes) > 0 && !slices.Contains(cp.AllowedTypes, v) {
+		return false
+	}
+	return true
+}
+
+func (cp *ColumnProperties) IsColumnTypeDenied(v string) bool {
+	if len(cp.DeniedTypes) > 0 && slices.Contains(cp.DeniedTypes, v) {
+		return true
+	}
+	return false
+}
+
+func (cp *ColumnProperties) IsColumnTypeClassAllowed(v models.TypeClass) bool {
+	if len(cp.AllowedTypeClasses) > 0 && !slices.Contains(cp.AllowedTypeClasses, v) {
+		return false
+	}
+	return true
+}
+
+func (cp *ColumnProperties) IsColumnTypeClassDenied(v models.TypeClass) bool {
+	if len(cp.DeniedTypeClasses) > 0 && slices.Contains(cp.DeniedTypeClasses, v) {
+		return true
+	}
+	return false
+}
+
 type DynamicModeProperties struct {
-	SupportedTypes []string
-	Unmarshal      DatabaseTypeUnmarshaler `json:"-"`
+	*ColumnProperties
+	Unmarshal DatabaseTypeUnmarshaler `json:"-"`
 }
 
 func NewDynamicModeProperties() *DynamicModeProperties {
 	return &DynamicModeProperties{
-		//Unmarshal: DefaultDatabaseTypeUnmarshaler,
+		ColumnProperties: NewColumnProperties(),
 	}
 }
 
-func (dmp *DynamicModeProperties) SetCompatibleTypes(compatibleTypes ...string) *DynamicModeProperties {
-	dmp.SupportedTypes = compatibleTypes
-	return dmp
+func (m *DynamicModeProperties) SetColumnProperties(v *ColumnProperties) *DynamicModeProperties {
+	m.ColumnProperties = v
+	return m
 }
 
-func (dmp *DynamicModeProperties) SetUnmarshaler(unmarshaler DatabaseTypeUnmarshaler) *DynamicModeProperties {
-	dmp.Unmarshal = unmarshaler
-	return dmp
+func (m *DynamicModeProperties) SetUnmarshaler(unmarshaler DatabaseTypeUnmarshaler) *DynamicModeProperties {
+	m.Unmarshal = unmarshaler
+	return m
 }
 
 // ParameterDefinition - wide parameter entity definition that contains properties that allows to check schema, find affection,
@@ -140,8 +192,9 @@ type ParameterDefinition struct {
 	IsColumn bool `mapstructure:"is_column" json:"is_column"`
 	// IsColumnContainer - describe is parameter container map or list with multiple columns inside. It allows to
 	// use this parameter as a container for multiple columns and apply changes to all columns inside.
-	IsColumnContainer         bool                       `mapstructure:"is_column_container" json:"is_column_container"`
-	ColumnContainerProperties *ColumnContainerProperties `mapstructure:"-" json:"-"`
+	IsColumnContainer bool `mapstructure:"is_column_container" json:"is_column_container"`
+	// ColumnContainerProperties - properties of the column container that describes allowed types and unmarshaler.
+	ColumnContainerProperties *ColumnContainerProperties `mapstructure:"column_container_properties" json:"column_container_properties,omitempty"`
 	// LinkColumnParameter - link with parameter with provided name. This is required if performing raw value encoding
 	// depends on the provided column type and/or relies on the database Driver
 	LinkColumnParameter string `mapstructure:"link_column_parameter" json:"link_column_parameter,omitempty"`
@@ -212,21 +265,23 @@ type ColumnContainer interface {
 }
 
 type ColumnContainerProperties struct {
-	AllowedTypes []string                   `mapstructure:"allowed_types" json:"allowed_types,omitempty"`
-	Unmarshaler  ColumnContainerUnmarshaler `mapstructure:"-" json:"-"`
+	*ColumnProperties
+	Unmarshaler ColumnContainerUnmarshaler `mapstructure:"-" json:"-"`
 }
 
 func NewColumnContainerProperties() *ColumnContainerProperties {
-	return &ColumnContainerProperties{}
-}
-
-func (cp *ColumnContainerProperties) SetAllowedTypes(allowedTypes ...string) *ColumnContainerProperties {
-	cp.AllowedTypes = allowedTypes
-	return cp
+	return &ColumnContainerProperties{
+		ColumnProperties: NewColumnProperties(),
+	}
 }
 
 func (cp *ColumnContainerProperties) SetUnmarshaler(unmarshaler ColumnContainerUnmarshaler) *ColumnContainerProperties {
 	cp.Unmarshaler = unmarshaler
+	return cp
+}
+
+func (cp *ColumnContainerProperties) SetColumnProperties(v *ColumnProperties) *ColumnContainerProperties {
+	cp.ColumnProperties = v
 	return cp
 }
 

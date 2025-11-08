@@ -44,15 +44,19 @@ var NoiseIntTransformerDefinition = transformerutils.NewTransformerDefinition(
 		"column name",
 	).SetIsColumn(commonparameters.NewColumnProperties().
 		SetAffected(true).
-		SetAllowedColumnTypes("int2", "int4", "int8", "int", "smallint", "mediumint", "bigint"),
+		SetAllowedColumnTypeClasses(commonmodels.TypeClassInt),
 	).SetRequired(true),
 
 	commonparameters.MustNewParameterDefinition(
 		"min",
 		"min value threshold limiter",
 	).SetSupportTemplate(true).
-		SetDynamicMode(commonparameters.NewDynamicModeProperties().
-			SetCompatibleTypes("int2", "int4", "int8", "int", "smallint", "mediumint", "bigint"),
+		SetDynamicMode(
+			commonparameters.NewDynamicModeProperties().
+				SetColumnProperties(
+					commonparameters.NewColumnProperties().
+						SetAllowedColumnTypeClasses(commonmodels.TypeClassInt),
+				),
 		),
 
 	commonparameters.MustNewParameterDefinition(
@@ -61,7 +65,10 @@ var NoiseIntTransformerDefinition = transformerutils.NewTransformerDefinition(
 	).SetSupportTemplate(true).
 		SetDynamicMode(
 			commonparameters.NewDynamicModeProperties().
-				SetCompatibleTypes("int2", "int4", "int8", "int", "smallint", "mediumint", "bigint"),
+				SetColumnProperties(
+					commonparameters.NewColumnProperties().
+						SetAllowedColumnTypeClasses(commonmodels.TypeClassInt),
+				),
 		),
 
 	defaultIntTypeSizeParameterDefinition,

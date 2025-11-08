@@ -28,6 +28,7 @@ import (
 	commonparameters "github.com/greenmaskio/greenmask/v1/internal/common/transformers/parameters"
 	"github.com/greenmaskio/greenmask/v1/internal/common/utils"
 	"github.com/greenmaskio/greenmask/v1/internal/common/validationcollector"
+	mysqldbmsdriver "github.com/greenmaskio/greenmask/v1/internal/mysql/dbmsdriver"
 )
 
 func TestNewReplaceTransformer(t *testing.T) {
@@ -35,10 +36,11 @@ func TestNewReplaceTransformer(t *testing.T) {
 		vc := validationcollector.NewCollector()
 		ctx := context.Background()
 		column := commonmodels.Column{
-			Idx:      1,
-			Name:     "id",
-			TypeName: "int",
-			TypeOID:  2,
+			Idx:       1,
+			Name:      "id",
+			TypeName:  mysqldbmsdriver.TypeInt,
+			TypeOID:   mysqldbmsdriver.VirtualOidInt,
+			TypeClass: commonmodels.TypeClassInt,
 		}
 		tableDriver := mocks.NewTableDriverMock()
 		columnParameter := mocks.NewParametrizerMock()
@@ -110,10 +112,11 @@ func TestNewReplaceTransformer(t *testing.T) {
 		vc := validationcollector.NewCollector()
 		ctx := validationcollector.WithCollector(context.Background(), vc)
 		column := commonmodels.Column{
-			Idx:      1,
-			Name:     "id",
-			TypeName: "int",
-			TypeOID:  2,
+			Idx:       1,
+			Name:      "id",
+			TypeName:  mysqldbmsdriver.TypeInt,
+			TypeOID:   mysqldbmsdriver.VirtualOidInt,
+			TypeClass: commonmodels.TypeClassInt,
 		}
 		tableDriver := mocks.NewTableDriverMock()
 		columnParameter := mocks.NewParametrizerMock()
@@ -190,10 +193,11 @@ func TestNewReplaceTransformer(t *testing.T) {
 		vc := validationcollector.NewCollector()
 		ctx := validationcollector.WithCollector(context.Background(), vc)
 		column := commonmodels.Column{
-			Idx:      1,
-			Name:     "id",
-			TypeName: "int",
-			TypeOID:  2,
+			Idx:       1,
+			Name:      "id",
+			TypeName:  mysqldbmsdriver.TypeInt,
+			TypeOID:   mysqldbmsdriver.VirtualOidInt,
+			TypeClass: commonmodels.TypeClassInt,
 		}
 		tableDriver := mocks.NewTableDriverMock()
 		columnParameter := mocks.NewParametrizerMock()
@@ -256,10 +260,11 @@ func TestNewReplaceTransformer(t *testing.T) {
 		vc := validationcollector.NewCollector()
 		ctx := validationcollector.WithCollector(context.Background(), vc)
 		column := commonmodels.Column{
-			Idx:      1,
-			Name:     "id",
-			TypeName: "int",
-			TypeOID:  2,
+			Idx:       1,
+			Name:      "id",
+			TypeName:  mysqldbmsdriver.TypeInt,
+			TypeOID:   mysqldbmsdriver.VirtualOidInt,
+			TypeClass: commonmodels.TypeClassInt,
 		}
 		tableDriver := mocks.NewTableDriverMock()
 		columnParameter := mocks.NewParametrizerMock()

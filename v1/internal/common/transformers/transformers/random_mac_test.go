@@ -54,11 +54,12 @@ func TestRandomMacTransformer_Transform(t *testing.T) {
 				commonmodels.NewColumnRawValue([]byte("00:1a:2b:3c:4d:5e"), false)},
 			columns: []commonmodels.Column{
 				{
-					Idx:      0,
-					Name:     "data",
-					TypeName: mysqldbmsdriver.TypeText,
-					TypeOID:  mysqldbmsdriver.VirtualOidText,
-					Length:   4,
+					Idx:       0,
+					Name:      "data",
+					TypeName:  mysqldbmsdriver.TypeText,
+					TypeClass: commonmodels.TypeClassText,
+					TypeOID:   mysqldbmsdriver.VirtualOidText,
+					Length:    0,
 				},
 			},
 			validateFn: func(t *testing.T, record commonininterfaces.Recorder) {
@@ -91,11 +92,12 @@ func TestRandomMacTransformer_Transform(t *testing.T) {
 				commonmodels.NewColumnRawValue([]byte("01:1a:2b:3c:4d:5e"), false)},
 			columns: []commonmodels.Column{
 				{
-					Idx:      0,
-					Name:     "data",
-					TypeName: mysqldbmsdriver.TypeText,
-					TypeOID:  mysqldbmsdriver.VirtualOidText,
-					Length:   4,
+					Idx:       0,
+					Name:      "data",
+					TypeName:  mysqldbmsdriver.TypeText,
+					TypeClass: commonmodels.TypeClassText,
+					TypeOID:   mysqldbmsdriver.VirtualOidText,
+					Length:    0,
 				},
 			},
 			validateFn: func(t *testing.T, record commonininterfaces.Recorder) {
@@ -129,11 +131,12 @@ func TestRandomMacTransformer_Transform(t *testing.T) {
 				commonmodels.NewColumnRawValue([]byte("03:1a:2b:3c:4d:5e"), false)},
 			columns: []commonmodels.Column{
 				{
-					Idx:      0,
-					Name:     "data",
-					TypeName: mysqldbmsdriver.TypeText,
-					TypeOID:  mysqldbmsdriver.VirtualOidText,
-					Length:   4,
+					Idx:       0,
+					Name:      "data",
+					TypeName:  mysqldbmsdriver.TypeText,
+					TypeClass: commonmodels.TypeClassText,
+					TypeOID:   mysqldbmsdriver.VirtualOidText,
+					Length:    0,
 				},
 			},
 			validateFn: func(t *testing.T, record commonininterfaces.Recorder) {
@@ -167,11 +170,12 @@ func TestRandomMacTransformer_Transform(t *testing.T) {
 				commonmodels.NewColumnRawValue([]byte("03:1a:2b:3c:4d:5e"), false)},
 			columns: []commonmodels.Column{
 				{
-					Idx:      0,
-					Name:     "data",
-					TypeName: mysqldbmsdriver.TypeText,
-					TypeOID:  mysqldbmsdriver.VirtualOidText,
-					Length:   4,
+					Idx:       0,
+					Name:      "data",
+					TypeName:  mysqldbmsdriver.TypeText,
+					TypeClass: commonmodels.TypeClassText,
+					TypeOID:   mysqldbmsdriver.VirtualOidText,
+					Length:    0,
 				},
 			},
 			validateFn: func(t *testing.T, record commonininterfaces.Recorder) {
@@ -205,11 +209,12 @@ func TestRandomMacTransformer_Transform(t *testing.T) {
 				commonmodels.NewColumnRawValue([]byte("03:1a:2b:3c:4d:5e"), false)},
 			columns: []commonmodels.Column{
 				{
-					Idx:      0,
-					Name:     "data",
-					TypeName: mysqldbmsdriver.TypeText,
-					TypeOID:  mysqldbmsdriver.VirtualOidText,
-					Length:   4,
+					Idx:       0,
+					Name:      "data",
+					TypeName:  mysqldbmsdriver.TypeText,
+					TypeClass: commonmodels.TypeClassText,
+					TypeOID:   mysqldbmsdriver.VirtualOidText,
+					Length:    0,
 				},
 			},
 			validateFn: func(t *testing.T, record commonininterfaces.Recorder) {

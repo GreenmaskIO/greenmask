@@ -70,10 +70,11 @@ func TestNoiseDateTransformer_Transform(t *testing.T) {
 			},
 			columns: []commonmodels.Column{
 				{
-					Idx:      0,
-					Name:     "data",
-					TypeName: mysqldbmsdriver.TypeTimestamp,
-					TypeOID:  mysqldbmsdriver.VirtualOidTimestamp,
+					Idx:       0,
+					Name:      "data",
+					TypeName:  mysqldbmsdriver.TypeTimestamp,
+					TypeOID:   mysqldbmsdriver.VirtualOidTimestamp,
+					TypeClass: commonmodels.TypeClassDateTime,
 				},
 			},
 			original: []*commonmodels.ColumnRawValue{
@@ -121,10 +122,11 @@ func TestNoiseDateTransformer_Transform(t *testing.T) {
 			},
 			columns: []commonmodels.Column{
 				{
-					Idx:      0,
-					Name:     "data",
-					TypeName: mysqldbmsdriver.TypeTimestamp,
-					TypeOID:  mysqldbmsdriver.VirtualOidTimestamp,
+					Idx:       0,
+					Name:      "data",
+					TypeName:  mysqldbmsdriver.TypeTimestamp,
+					TypeOID:   mysqldbmsdriver.VirtualOidTimestamp,
+					TypeClass: commonmodels.TypeClassDateTime,
 				},
 			},
 			original: []*commonmodels.ColumnRawValue{
@@ -183,22 +185,25 @@ func TestNoiseDateTransformer_Transform(t *testing.T) {
 			},
 			columns: []commonmodels.Column{
 				{
-					Idx:      0,
-					Name:     "data",
-					TypeName: mysqldbmsdriver.TypeTimestamp,
-					TypeOID:  mysqldbmsdriver.VirtualOidTimestamp,
+					Idx:       0,
+					Name:      "data",
+					TypeName:  mysqldbmsdriver.TypeTimestamp,
+					TypeOID:   mysqldbmsdriver.VirtualOidTimestamp,
+					TypeClass: commonmodels.TypeClassDateTime,
 				},
 				{
-					Idx:      1,
-					Name:     "min_col",
-					TypeName: mysqldbmsdriver.TypeTimestamp,
-					TypeOID:  mysqldbmsdriver.VirtualOidTimestamp,
+					Idx:       1,
+					Name:      "min_col",
+					TypeName:  mysqldbmsdriver.TypeTimestamp,
+					TypeOID:   mysqldbmsdriver.VirtualOidTimestamp,
+					TypeClass: commonmodels.TypeClassDateTime,
 				},
 				{
-					Idx:      1,
-					Name:     "max_col",
-					TypeName: mysqldbmsdriver.TypeTimestamp,
-					TypeOID:  mysqldbmsdriver.VirtualOidTimestamp,
+					Idx:       1,
+					Name:      "max_col",
+					TypeName:  mysqldbmsdriver.TypeTimestamp,
+					TypeOID:   mysqldbmsdriver.VirtualOidTimestamp,
+					TypeClass: commonmodels.TypeClassDateTime,
 				},
 			},
 			original: []*commonmodels.ColumnRawValue{

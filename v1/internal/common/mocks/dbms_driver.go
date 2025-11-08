@@ -94,3 +94,8 @@ func (m *DBMSDriverMock) GetCanonicalTypeName(typeName string, typeOid commonmod
 	args := m.Called(typeName, typeOid)
 	return args.String(0), args.Error(1)
 }
+
+func (m *DBMSDriverMock) GetCanonicalTypeClassName(typeName string, typeOid commonmodels.VirtualOID) (commonmodels.TypeClass, error) {
+	args := m.Called(typeName, typeOid)
+	return args.Get(0).(commonmodels.TypeClass), args.Error(1)
+}

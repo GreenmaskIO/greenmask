@@ -24,6 +24,7 @@ import (
 
 	commonmodels "github.com/greenmaskio/greenmask/v1/internal/common/models"
 	"github.com/greenmaskio/greenmask/v1/internal/common/validationcollector"
+	mysqldbmsdriver "github.com/greenmaskio/greenmask/v1/internal/mysql/dbmsdriver"
 )
 
 func TestMaskingTransformer_Transform(t *testing.T) {
@@ -54,10 +55,11 @@ func TestMaskingTransformer_Transform(t *testing.T) {
 			columnName: "data",
 			columns: []commonmodels.Column{
 				{
-					Idx:      0,
-					Name:     "data",
-					TypeName: "text",
-					TypeOID:  23,
+					Idx:       0,
+					Name:      "data",
+					TypeName:  mysqldbmsdriver.TypeText,
+					TypeOID:   mysqldbmsdriver.VirtualOidText,
+					TypeClass: commonmodels.TypeClassText,
 				},
 			},
 			validateFn: func(t *testing.T, expected, actual *commonmodels.ColumnRawValue) {
@@ -79,10 +81,11 @@ func TestMaskingTransformer_Transform(t *testing.T) {
 			columnName: "data",
 			columns: []commonmodels.Column{
 				{
-					Idx:      0,
-					Name:     "data",
-					TypeName: "text",
-					TypeOID:  23,
+					Idx:       0,
+					Name:      "data",
+					TypeName:  mysqldbmsdriver.TypeText,
+					TypeOID:   mysqldbmsdriver.VirtualOidText,
+					TypeClass: commonmodels.TypeClassText,
 				},
 			},
 			validateFn: func(t *testing.T, expected, actual *commonmodels.ColumnRawValue) {
@@ -104,10 +107,11 @@ func TestMaskingTransformer_Transform(t *testing.T) {
 			columnName: "data",
 			columns: []commonmodels.Column{
 				{
-					Idx:      0,
-					Name:     "data",
-					TypeName: "text",
-					TypeOID:  23,
+					Idx:       0,
+					Name:      "data",
+					TypeName:  mysqldbmsdriver.TypeText,
+					TypeOID:   mysqldbmsdriver.VirtualOidText,
+					TypeClass: commonmodels.TypeClassText,
 				},
 			},
 			validateFn: func(t *testing.T, expected, actual *commonmodels.ColumnRawValue) {
@@ -129,10 +133,11 @@ func TestMaskingTransformer_Transform(t *testing.T) {
 			columnName: "data",
 			columns: []commonmodels.Column{
 				{
-					Idx:      0,
-					Name:     "data",
-					TypeName: "text",
-					TypeOID:  23,
+					Idx:       0,
+					Name:      "data",
+					TypeName:  mysqldbmsdriver.TypeText,
+					TypeOID:   mysqldbmsdriver.VirtualOidText,
+					TypeClass: commonmodels.TypeClassText,
 				},
 			},
 			validateFn: func(t *testing.T, expected, actual *commonmodels.ColumnRawValue) {
@@ -184,10 +189,11 @@ func TestNewMaskingTransformer(t *testing.T) {
 		MaskingTransformerDefinition,
 		[]commonmodels.Column{
 			{
-				Idx:      0,
-				Name:     "data",
-				TypeName: "text",
-				TypeOID:  23,
+				Idx:       0,
+				Name:      "data",
+				TypeName:  mysqldbmsdriver.TypeText,
+				TypeOID:   mysqldbmsdriver.VirtualOidText,
+				TypeClass: commonmodels.TypeClassText,
 			},
 		},
 		map[string]commonmodels.ParamsValue{

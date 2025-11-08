@@ -61,10 +61,11 @@ func TestJsonTransformer_Transform(t *testing.T) {
 			columnName: "data",
 			columns: []commonmodels.Column{
 				{
-					Idx:      0,
-					Name:     "data",
-					TypeName: "text",
-					TypeOID:  23,
+					Idx:       0,
+					Name:      "data",
+					TypeName:  mysqldbmsdriver.TypeText,
+					TypeClass: commonmodels.TypeClassText,
+					TypeOID:   mysqldbmsdriver.VirtualOidText,
 				},
 			},
 			validateFn: func(t *testing.T, expected, actual *commonmodels.ColumnRawValue) {
@@ -95,10 +96,11 @@ func TestJsonTransformer_Transform(t *testing.T) {
 			columnName: "data",
 			columns: []commonmodels.Column{
 				{
-					Idx:      0,
-					Name:     "data",
-					TypeName: "text",
-					TypeOID:  23,
+					Idx:       0,
+					Name:      "data",
+					TypeName:  mysqldbmsdriver.TypeText,
+					TypeClass: commonmodels.TypeClassText,
+					TypeOID:   mysqldbmsdriver.VirtualOidText,
 				},
 			},
 			validateFn: func(t *testing.T, expected, actual *commonmodels.ColumnRawValue) {
@@ -134,10 +136,11 @@ func TestJsonTransformer_Transform(t *testing.T) {
 			columnName: "data",
 			columns: []commonmodels.Column{
 				{
-					Idx:      0,
-					Name:     "data",
-					TypeName: "text",
-					TypeOID:  23,
+					Idx:       0,
+					Name:      "data",
+					TypeName:  mysqldbmsdriver.TypeText,
+					TypeClass: commonmodels.TypeClassText,
+					TypeOID:   mysqldbmsdriver.VirtualOidText,
 				},
 			},
 			validateFn: func(t *testing.T, expected, actual *commonmodels.ColumnRawValue) {
@@ -161,10 +164,11 @@ func TestJsonTransformer_Transform(t *testing.T) {
 			columnName: "data",
 			columns: []commonmodels.Column{
 				{
-					Idx:      0,
-					Name:     "data",
-					TypeName: "text",
-					TypeOID:  23,
+					Idx:       0,
+					Name:      "data",
+					TypeName:  mysqldbmsdriver.TypeText,
+					TypeClass: commonmodels.TypeClassText,
+					TypeOID:   mysqldbmsdriver.VirtualOidText,
 				},
 			},
 			expectedErr: errInvalidJson.Error(),
@@ -188,10 +192,11 @@ func TestJsonTransformer_Transform(t *testing.T) {
 			columnName: "data",
 			columns: []commonmodels.Column{
 				{
-					Idx:      0,
-					Name:     "data",
-					TypeName: "text",
-					TypeOID:  23,
+					Idx:       0,
+					Name:      "data",
+					TypeName:  mysqldbmsdriver.TypeText,
+					TypeClass: commonmodels.TypeClassText,
+					TypeOID:   mysqldbmsdriver.VirtualOidText,
 				},
 			},
 			validateFn: func(t *testing.T, expected, actual *commonmodels.ColumnRawValue) {
@@ -214,10 +219,11 @@ func TestJsonTransformer_Transform(t *testing.T) {
 			columnName: "data",
 			columns: []commonmodels.Column{
 				{
-					Idx:      0,
-					Name:     "data",
-					TypeName: "text",
-					TypeOID:  23,
+					Idx:       0,
+					Name:      "data",
+					TypeName:  mysqldbmsdriver.TypeText,
+					TypeClass: commonmodels.TypeClassText,
+					TypeOID:   mysqldbmsdriver.VirtualOidText,
 				},
 			},
 			validateFn: func(t *testing.T, expected, actual *commonmodels.ColumnRawValue) {
@@ -240,10 +246,11 @@ func TestJsonTransformer_Transform(t *testing.T) {
 			columnName: "data",
 			columns: []commonmodels.Column{
 				{
-					Idx:      0,
-					Name:     "data",
-					TypeName: "text",
-					TypeOID:  23,
+					Idx:       0,
+					Name:      "data",
+					TypeName:  mysqldbmsdriver.TypeText,
+					TypeClass: commonmodels.TypeClassText,
+					TypeOID:   mysqldbmsdriver.VirtualOidText,
 				},
 			},
 			validateFn: func(t *testing.T, expected, actual *commonmodels.ColumnRawValue) {

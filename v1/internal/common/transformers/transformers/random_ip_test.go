@@ -56,11 +56,12 @@ func TestRandomIP_Transform(t *testing.T) {
 			},
 			columns: []commonmodels.Column{
 				{
-					Idx:      0,
-					Name:     "data",
-					TypeName: mysqldbmsdriver.TypeText,
-					TypeOID:  mysqldbmsdriver.VirtualOidText,
-					Length:   -1,
+					Idx:       0,
+					Name:      "data",
+					TypeName:  mysqldbmsdriver.TypeText,
+					TypeOID:   mysqldbmsdriver.VirtualOidText,
+					TypeClass: commonmodels.TypeClassText,
+					Length:    -1,
 				},
 				{
 					Idx:      1,
@@ -92,11 +93,12 @@ func TestRandomIP_Transform(t *testing.T) {
 				commonmodels.NewColumnRawValue([]byte("192.168.1.1"), false)},
 			columns: []commonmodels.Column{
 				{
-					Idx:      0,
-					Name:     "data",
-					TypeName: mysqldbmsdriver.TypeText,
-					TypeOID:  mysqldbmsdriver.VirtualOidText,
-					Length:   4,
+					Idx:       0,
+					Name:      "data",
+					TypeName:  mysqldbmsdriver.TypeText,
+					TypeOID:   mysqldbmsdriver.VirtualOidText,
+					TypeClass: commonmodels.TypeClassText,
+					Length:    4,
 				},
 			},
 			validateFn: func(t *testing.T, record commonininterfaces.Recorder) {
@@ -121,11 +123,12 @@ func TestRandomIP_Transform(t *testing.T) {
 				commonmodels.NewColumnRawValue([]byte("192.168.1.1"), false)},
 			columns: []commonmodels.Column{
 				{
-					Idx:      0,
-					Name:     "data",
-					TypeName: mysqldbmsdriver.TypeText,
-					TypeOID:  mysqldbmsdriver.VirtualOidText,
-					Length:   4,
+					Idx:       0,
+					Name:      "data",
+					TypeName:  mysqldbmsdriver.TypeText,
+					TypeOID:   mysqldbmsdriver.VirtualOidText,
+					TypeClass: commonmodels.TypeClassText,
+					Length:    4,
 				},
 			},
 			validateFn: func(t *testing.T, record commonininterfaces.Recorder) {

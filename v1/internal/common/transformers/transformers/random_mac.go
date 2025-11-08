@@ -54,7 +54,10 @@ var RandomMacAddressDefinition = transformerutils.NewTransformerDefinition(
 		"Column name",
 	).SetIsColumn(commonparameters.NewColumnProperties().
 		SetAffected(true).
-		SetAllowedColumnTypes("macaddr", "text", "varchar", "char", "bpchar", "citext"),
+		SetAllowedColumnTypeClasses(
+			commonmodels.TypeClassText,
+			commonmodels.TypeClassMacAddress,
+		),
 	).SetRequired(true),
 
 	commonparameters.MustNewParameterDefinition(

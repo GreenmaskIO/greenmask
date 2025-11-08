@@ -19,6 +19,7 @@ import (
 	"fmt"
 
 	commonininterfaces "github.com/greenmaskio/greenmask/v1/internal/common/interfaces"
+	commonmodels "github.com/greenmaskio/greenmask/v1/internal/common/models"
 	"github.com/greenmaskio/greenmask/v1/internal/common/transformers/generators/transformers"
 	commonparameters "github.com/greenmaskio/greenmask/v1/internal/common/transformers/parameters"
 	transformerutils "github.com/greenmaskio/greenmask/v1/internal/common/transformers/utils"
@@ -40,7 +41,7 @@ var BoolTransformerDefinition = transformerutils.NewTransformerDefinition(
 		"column name",
 	).SetIsColumn(commonparameters.NewColumnProperties().
 		SetAffected(true).
-		SetAllowedColumnTypes("bool", "boolean"),
+		SetAllowedColumnTypeClasses(commonmodels.TypeClassBoolean),
 	).SetRequired(true),
 
 	defaultKeepNullParameterDefinition,

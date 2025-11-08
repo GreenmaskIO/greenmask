@@ -56,7 +56,7 @@ var UnixTimestampTransformerDefinition = transformerutils.NewTransformerDefiniti
 		"column name",
 	).SetIsColumn(commonparameters.NewColumnProperties().
 		SetAffected(true).
-		SetAllowedColumnTypes("int2", "int4", "int8", "int", "smallint", "int", "smallint", "mediumint", "bigint"),
+		SetAllowedColumnTypeClasses(commonmodels.TypeClassInt),
 	).SetRequired(true),
 
 	commonparameters.MustNewParameterDefinition(
@@ -67,7 +67,10 @@ var UnixTimestampTransformerDefinition = transformerutils.NewTransformerDefiniti
 		LinkParameter("column").
 		SetDynamicMode(
 			commonparameters.NewDynamicModeProperties().
-				SetCompatibleTypes("int2", "int4", "int8", "int", "smallint", "int", "smallint", "mediumint", "bigint"),
+				SetColumnProperties(
+					commonparameters.NewColumnProperties().
+						SetAllowedColumnTypeClasses(commonmodels.TypeClassInt),
+				),
 		),
 
 	commonparameters.MustNewParameterDefinition(
@@ -78,7 +81,10 @@ var UnixTimestampTransformerDefinition = transformerutils.NewTransformerDefiniti
 		LinkParameter("column").
 		SetDynamicMode(
 			commonparameters.NewDynamicModeProperties().
-				SetCompatibleTypes("int2", "int4", "int8", "int", "smallint", "int", "smallint", "mediumint", "bigint"),
+				SetColumnProperties(
+					commonparameters.NewColumnProperties().
+						SetAllowedColumnTypeClasses(commonmodels.TypeClassInt),
+				),
 		),
 
 	commonparameters.MustNewParameterDefinition(

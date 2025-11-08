@@ -41,12 +41,13 @@ func TestTemplateTransformer_Transform(t *testing.T) {
 			name: "success",
 			columns: []commonmodels.Column{
 				{
-					Idx:      0,
-					Name:     "data",
-					TypeName: mysqldbmsdriver.TypeInt,
-					TypeOID:  mysqldbmsdriver.VirtualOidInt,
-					Length:   0,
-					Size:     2,
+					Idx:       0,
+					Name:      "data",
+					TypeName:  mysqldbmsdriver.TypeInt,
+					TypeOID:   mysqldbmsdriver.VirtualOidInt,
+					TypeClass: commonmodels.TypeClassInt,
+					Length:    0,
+					Size:      2,
 				},
 			},
 			original: []*commonmodels.ColumnRawValue{
@@ -76,12 +77,13 @@ func TestTemplateTransformer_Transform(t *testing.T) {
 			name: "validation error",
 			columns: []commonmodels.Column{
 				{
-					Idx:      0,
-					Name:     "data",
-					TypeName: mysqldbmsdriver.TypeInt,
-					TypeOID:  mysqldbmsdriver.VirtualOidInt,
-					Length:   0,
-					Size:     2,
+					Idx:       0,
+					Name:      "data",
+					TypeName:  mysqldbmsdriver.TypeInt,
+					TypeOID:   mysqldbmsdriver.VirtualOidInt,
+					TypeClass: commonmodels.TypeClassInt,
+					Length:    0,
+					Size:      2,
 				},
 			},
 			original: []*commonmodels.ColumnRawValue{

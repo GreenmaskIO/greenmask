@@ -46,7 +46,7 @@ var RamdomFloatTransformerDefinition = transformerutils.NewTransformerDefinition
 	).SetIsColumn(
 		commonparameters.NewColumnProperties().
 			SetAffected(true).
-			SetAllowedColumnTypes("float4", "float8", "float"),
+			SetAllowedColumnTypeClasses(commonmodels.TypeClassFloat),
 	).SetRequired(true),
 
 	commonparameters.MustNewParameterDefinition(
@@ -56,7 +56,13 @@ var RamdomFloatTransformerDefinition = transformerutils.NewTransformerDefinition
 		LinkParameter("column").
 		SetDynamicMode(
 			commonparameters.NewDynamicModeProperties().
-				SetCompatibleTypes("float4", "float8", "float"),
+				SetColumnProperties(
+					commonparameters.NewColumnProperties().
+						SetAllowedColumnTypeClasses(
+							commonmodels.TypeClassInt,
+							commonmodels.TypeClassFloat,
+						),
+				),
 		),
 
 	commonparameters.MustNewParameterDefinition(
@@ -66,7 +72,13 @@ var RamdomFloatTransformerDefinition = transformerutils.NewTransformerDefinition
 		LinkParameter("column").
 		SetDynamicMode(
 			commonparameters.NewDynamicModeProperties().
-				SetCompatibleTypes("float4", "float8", "float"),
+				SetColumnProperties(
+					commonparameters.NewColumnProperties().
+						SetAllowedColumnTypeClasses(
+							commonmodels.TypeClassInt,
+							commonmodels.TypeClassFloat,
+						),
+				),
 		),
 
 	commonparameters.MustNewParameterDefinition(

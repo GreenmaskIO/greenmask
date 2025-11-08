@@ -63,7 +63,8 @@ type DynamicParameter struct {
 	tmplCtx             *DynamicParameterContext
 	castToFunc          gmtemplate.TypeCastFunc
 	// columnCanonicalTypeName - canonical type name of the column that is used for dynamic parameter.
-	columnCanonicalTypeName string
+	columnCanonicalTypeName      string
+	columnCanonicalTypeClassName commonmodels.TypeClass
 }
 
 func NewDynamicParameter(def *ParameterDefinition, driver commoninterfaces.TableDriver) *DynamicParameter {
@@ -229,7 +230,7 @@ func (dp *DynamicParameter) initDynamicParameterContext(ctx context.Context) err
 	return nil
 }
 
-func (dp *DynamicParameter) initCastTo(ctx context.Context) error {
+func (dp *DynamicParameter) initCastTo(_ context.Context) error {
 	if dp.DynamicValue.CastTo == "" {
 		return nil
 	}
@@ -279,6 +280,10 @@ func (dp *DynamicParameter) initLinkColumnParameter(
 	if err != nil {
 		return fmt.Errorf("get input canonical type name: %w", err)
 	}
+	dp.columnCanonicalTypeClassName, err = dp.tableDriver.GetCanonicalTypeClassName(dp.column.TypeName, dp.column.TypeOID)
+	if err != nil {
+		return fmt.Errorf("get input canonical type class name: %w", err)
+	}
 	linkedParameterColumnType, err := dp.tableDriver.GetCanonicalTypeName(
 		dp.linkedColumnParameter.Column.TypeName,
 		dp.linkedColumnParameter.Column.TypeOID,
@@ -286,29 +291,75 @@ func (dp *DynamicParameter) initLinkColumnParameter(
 	if err != nil {
 		return fmt.Errorf("get output canonical type name: %w", err)
 	}
+	linkedParameterColumnTypeClass, err := dp.tableDriver.GetCanonicalTypeClassName(
+		dp.linkedColumnParameter.Column.TypeName,
+		dp.linkedColumnParameter.Column.TypeOID,
+	)
+	if err != nil {
+		return fmt.Errorf("get output canonical type class name: %w", err)
+	}
 
-	if dp.tmpl == nil && dp.castToFunc == nil {
-		// Check that column parameter has the same type with dynamic parameter value or at least dynamic parameter
-		// column is compatible with type in the list. This logic is controversial since it might be unexpected
-		// when dynamic param column has different though compatible types. Consider it
-		if linkedParameterColumnType != dp.columnCanonicalTypeName &&
-			dp.linkedColumnParameter.definition.ColumnProperties != nil &&
-			len(dp.linkedColumnParameter.definition.ColumnProperties.AllowedTypes) > 0 &&
-			!slices.Contains(dp.linkedColumnParameter.definition.ColumnProperties.AllowedTypes, dp.columnCanonicalTypeName) {
-			validationcollector.FromContext(ctx).
-				Add(commonmodels.NewValidationWarning().
-					SetSeverity(commonmodels.ValidationSeverityError).
-					AddMeta("DynamicParameterSetting", "column").
-					AddMeta("DynamicParameterColumnType", dp.column.TypeName).
-					AddMeta("DynamicParameterColumnName", dp.column.Name).
-					AddMeta("LinkedParameterName", dp.definition.LinkColumnParameter).
-					AddMeta("LinkedColumnName", dp.linkedColumnParameter.Column.Name).
-					AddMeta("LinkedColumnType", dp.linkedColumnParameter.Column.TypeName).
-					AddMeta("Hint", "you can use \"cast_template\" for casting value to supported type").
-					SetMsg("linked parameter and dynamic parameter column name has different types"))
+	if dp.tmpl != nil || dp.castToFunc != nil {
+		// If we do have cast template or cast_to function, then we skip type compatibility check.
+		return nil
+	}
+
+	// Check that column parameter has the same type with dynamic parameter value or at least dynamic parameter
+	// column is compatible with type in the list. This logic is controversial since it might be unexpected
+	// when dynamic param column has different though compatible types. Consider it
+	if linkedParameterColumnType != dp.columnCanonicalTypeName &&
+		linkedParameterColumnTypeClass != dp.columnCanonicalTypeClassName {
+		vc := validationcollector.FromContext(ctx).
+			WithMeta(map[string]any{
+				"DynamicParameterAttribute":  "column",
+				"DynamicParameterColumnType": dp.column.TypeName,
+				"DynamicParameterColumnName": dp.column.Name,
+				"LinkedParameterName":        dp.definition.LinkColumnParameter,
+				"LinkedColumnName":           dp.linkedColumnParameter.Column.Name,
+				"LinkedColumnType":           dp.linkedColumnParameter.Column.TypeName,
+			})
+
+		// If types are different, then we must check compatibility.
+		properties := dp.linkedColumnParameter.definition.ColumnProperties
+		if properties != nil && !properties.IsColumnTypeAllowed(dp.columnCanonicalTypeName) {
+			vc.Add(commonmodels.NewValidationWarning().
+				SetSeverity(commonmodels.ValidationSeverityError).
+				AddMeta("AllowedTypes", properties.AllowedTypes).
+				AddMeta("Hint", "you can use \"cast_template\" for casting value to supported type").
+				AddMeta("Reason", "type is not allowed").
+				SetMsg("linked parameter and dynamic parameter column name has " +
+					"different types and linked one is not allowed"))
+			return commonmodels.ErrFatalValidationError
+		}
+		if properties != nil && !properties.IsColumnTypeClassAllowed(dp.columnCanonicalTypeClassName) {
+			vc.Add(commonmodels.NewValidationWarning().
+				AddMeta("AllowedTypeClasses", properties.AllowedTypeClasses).
+				AddMeta("Hint", "you can use \"cast_template\" for casting value to supported type").
+				AddMeta("Reason", "type class is not allowed").
+				SetMsg("linked parameter and dynamic parameter column name has " +
+					"different type classes and linked one is not allowed"))
+			return commonmodels.ErrFatalValidationError
+		}
+		if properties != nil && properties.IsColumnTypeDenied(dp.columnCanonicalTypeName) {
+			vc.Add(commonmodels.NewValidationWarning().
+				AddMeta("DeniedTypes", properties.DeniedTypes).
+				AddMeta("Hint", "you can use \"cast_template\" for casting value to supported type").
+				AddMeta("Reason", "type is denied").
+				SetMsg("linked parameter and dynamic parameter column name has " +
+					"different types and linked one is not allowed"))
+			return commonmodels.ErrFatalValidationError
+		}
+		if properties != nil && properties.IsColumnTypeClassDenied(dp.columnCanonicalTypeClassName) {
+			vc.Add(commonmodels.NewValidationWarning().
+				AddMeta("DeniedTypes", properties.DeniedTypeClasses).
+				AddMeta("Reason", "type class is denied").
+				AddMeta("Hint", "you can use \"cast_template\" for casting value to supported type").
+				SetMsg("linked parameter and dynamic parameter column name has " +
+					"different column class and linked one is not allowed"))
 			return commonmodels.ErrFatalValidationError
 		}
 	}
+
 	return nil
 }
 

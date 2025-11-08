@@ -53,7 +53,7 @@ var HashTransformerDefinition = transformerutils.NewTransformerDefinition(
 		"column name",
 	).SetIsColumn(commonparameters.NewColumnProperties().
 		SetAffected(true).
-		SetAllowedColumnTypes("text", "varchar"),
+		SetAllowedColumnTypeClasses(commonmodels.TypeClassText),
 	).SetRequired(true),
 
 	commonparameters.MustNewParameterDefinition(

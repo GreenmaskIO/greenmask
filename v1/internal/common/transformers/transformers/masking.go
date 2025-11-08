@@ -58,9 +58,7 @@ var MaskingTransformerDefinition = transformerutils.NewTransformerDefinition(
 	).SetIsColumn(
 		commonparameters.NewColumnProperties().
 			SetAffected(true).
-			SetAllowedColumnTypes(
-				"text", "varchar", "char", "bpchar", "citext",
-			),
+			SetAllowedColumnTypeClasses(commonmodels.TypeClassText),
 	).SetRequired(true),
 
 	commonparameters.MustNewParameterDefinition(

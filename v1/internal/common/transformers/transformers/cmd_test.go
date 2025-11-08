@@ -25,7 +25,7 @@ import (
 
 	commonininterfaces "github.com/greenmaskio/greenmask/v1/internal/common/interfaces"
 	commonmodels "github.com/greenmaskio/greenmask/v1/internal/common/models"
-	cmd "github.com/greenmaskio/greenmask/v1/internal/common/transformers/transformers/cmd"
+	"github.com/greenmaskio/greenmask/v1/internal/common/transformers/transformers/cmd"
 	commonutils "github.com/greenmaskio/greenmask/v1/internal/common/utils"
 	"github.com/greenmaskio/greenmask/v1/internal/common/validationcollector"
 	mysqldbmsdriver "github.com/greenmaskio/greenmask/v1/internal/mysql/dbmsdriver"

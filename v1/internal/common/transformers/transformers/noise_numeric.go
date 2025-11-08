@@ -44,7 +44,7 @@ var NoiseNumericTransformerDefinition = transformerutils.NewTransformerDefinitio
 		"column name",
 	).SetIsColumn(commonparameters.NewColumnProperties().
 		SetAffected(true).
-		SetAllowedColumnTypes("numeric", "decimal").
+		SetAllowedColumnTypeClasses(commonmodels.TypeClassNumeric).
 		SetSkipOnNull(true),
 	).SetRequired(true),
 
@@ -61,14 +61,13 @@ var NoiseNumericTransformerDefinition = transformerutils.NewTransformerDefinitio
 		LinkParameter("column").
 		SetDynamicMode(
 			commonparameters.NewDynamicModeProperties().
-				SetCompatibleTypes(
-					"float4",
-					"float8",
-					"numeric",
-					"decimal",
-					"int2",
-					"int4",
-					"int8",
+				SetColumnProperties(
+					commonparameters.NewColumnProperties().
+						SetAllowedColumnTypeClasses(
+							commonmodels.TypeClassFloat,
+							commonmodels.TypeClassInt,
+							commonmodels.TypeClassNumeric,
+						),
 				).SetUnmarshaler(numericTypeUnmarshaler),
 		),
 
@@ -79,14 +78,13 @@ var NoiseNumericTransformerDefinition = transformerutils.NewTransformerDefinitio
 		LinkParameter("column").
 		SetDynamicMode(
 			commonparameters.NewDynamicModeProperties().
-				SetCompatibleTypes(
-					"float4",
-					"float8",
-					"numeric",
-					"decimal",
-					"int2",
-					"int4",
-					"int8",
+				SetColumnProperties(
+					commonparameters.NewColumnProperties().
+						SetAllowedColumnTypeClasses(
+							commonmodels.TypeClassFloat,
+							commonmodels.TypeClassInt,
+							commonmodels.TypeClassNumeric,
+						),
 				).SetUnmarshaler(numericTypeUnmarshaler),
 		),
 
