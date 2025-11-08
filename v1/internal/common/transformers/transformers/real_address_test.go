@@ -134,7 +134,7 @@ func TestRealAddressTransformer_Transform(t *testing.T) {
 //	require.NoError(t, err)
 //	rawValue, err := record.GetRawColumnValueByName("data")
 //	require.NoError(t, err)
-//	require.False(t, rawValue.IsNull)
+//	require.False(t, rawValue.IsValueNull)
 //	require.Regexp(t, `.* \d+ \-?\d+.\d+ \-?\d+.\d+`, string(rawValue.Data))
 //}
 //

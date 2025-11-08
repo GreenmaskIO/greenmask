@@ -1,3 +1,17 @@
+// Copyright 2025 Greenmask
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package transformers
 
 import (
@@ -283,11 +297,11 @@ func TestRandomPersonTransformer_Transform(t *testing.T) {
 //
 //		fistNameRawValue, err := r.GetRawColumnValueByName("first_name")
 //		require.NoError(t, err)
-//		require.True(t, fistNameRawValue.IsNull)
+//		require.True(t, fistNameRawValue.IsValueNull)
 //
 //		lastNameRawValue, err := r.GetRawColumnValueByName("last_name")
 //		require.NoError(t, err)
-//		require.True(t, lastNameRawValue.IsNull)
+//		require.True(t, lastNameRawValue.IsValueNull)
 //	})
 //
 //	t.Run("keep_null only for one column", func(t *testing.T) {
@@ -333,11 +347,11 @@ func TestRandomPersonTransformer_Transform(t *testing.T) {
 //
 //		fistNameRawValue, err := r.GetRawColumnValueByName("first_name")
 //		require.NoError(t, err)
-//		require.False(t, fistNameRawValue.IsNull)
+//		require.False(t, fistNameRawValue.IsValueNull)
 //
 //		lastNameRawValue, err := r.GetRawColumnValueByName("last_name")
 //		require.NoError(t, err)
-//		require.True(t, lastNameRawValue.IsNull)
+//		require.True(t, lastNameRawValue.IsValueNull)
 //	})
 //
 //	t.Run("keep_null false for all columns and hash two times", func(t *testing.T) {
@@ -385,12 +399,12 @@ func TestRandomPersonTransformer_Transform(t *testing.T) {
 //
 //		fistNameRawValue, err := r.GetRawColumnValueByName("first_name")
 //		require.NoError(t, err)
-//		require.False(t, fistNameRawValue.IsNull)
+//		require.False(t, fistNameRawValue.IsValueNull)
 //		fistName := string(fistNameRawValue.Data)
 //
 //		lastNameRawValue, err := r.GetRawColumnValueByName("last_name")
 //		require.NoError(t, err)
-//		require.False(t, lastNameRawValue.IsNull)
+//		require.False(t, lastNameRawValue.IsValueNull)
 //		lastName := string(lastNameRawValue.Data)
 //
 //		_, record = getDriverAndRecordByColumns([]string{"first_name", "last_name"}, originalValue)
@@ -403,12 +417,12 @@ func TestRandomPersonTransformer_Transform(t *testing.T) {
 //
 //		fistNameRawValue, err = r.GetRawColumnValueByName("first_name")
 //		require.NoError(t, err)
-//		require.False(t, fistNameRawValue.IsNull)
+//		require.False(t, fistNameRawValue.IsValueNull)
 //		assert.Equal(t, fistName, string(fistNameRawValue.Data))
 //
 //		lastNameRawValue, err = r.GetRawColumnValueByName("last_name")
 //		require.NoError(t, err)
-//		require.False(t, lastNameRawValue.IsNull)
+//		require.False(t, lastNameRawValue.IsValueNull)
 //		assert.Equal(t, lastName, string(lastNameRawValue.Data))
 //	})
 //}

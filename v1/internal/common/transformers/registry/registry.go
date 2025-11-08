@@ -87,4 +87,5 @@ func init() {
 	DefaultTransformerRegistry.MustRegister(transformers.SetNullTransformerDefinition)
 	DefaultTransformerRegistry.MustRegister(transformers.TemplateTransformerDefinition)
 	DefaultTransformerRegistry.MustRegister(transformers.TemplateRecordTransformerDefinition)
+	DefaultTransformerRegistry.MustRegister(transformers.CMDTransformerDefinition)
 }

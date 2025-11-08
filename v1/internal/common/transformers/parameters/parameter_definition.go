@@ -208,6 +208,7 @@ func (p *ParameterDefinition) SetIsColumnContainer(v bool) *ParameterDefinition 
 
 type ColumnContainer interface {
 	ColumnName() string
+	IsAffected() bool
 }
 
 type ColumnContainerProperties struct {
