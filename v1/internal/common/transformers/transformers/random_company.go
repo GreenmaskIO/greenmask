@@ -47,23 +47,27 @@ var RandomCompanyTransformerDefinition = transformerutils.NewTransformerDefiniti
 		"columns",
 		"columns name",
 	).SetRequired(true).
-		SetColumnContainer(commonparameters.NewColumnContainerProperties().
-			SetAllowedTypes("text", "varchar").
-			SetUnmarshaler(
-				func(_ context.Context, _ *commonparameters.ParameterDefinition, data commonmodels.ParamsValue) (
-					[]commonparameters.ColumnContainer, error,
-				) {
-					var columns []*randomCompanyNameColumn
-					if err := json.Unmarshal(data, &columns); err != nil {
-						return nil, fmt.Errorf("unmarshal columns parameter: %w", err)
-					}
-					cc := make([]commonparameters.ColumnContainer, len(columns))
-					for i := range columns {
-						cc[i] = columns[i]
-					}
-					return cc, nil
-				},
-			),
+		SetColumnContainer(
+			commonparameters.NewColumnContainerProperties().
+				SetColumnProperties(
+					commonparameters.NewColumnProperties().
+						SetAllowedColumnTypeClasses(commonmodels.TypeClassText),
+				).
+				SetUnmarshaler(
+					func(_ context.Context, _ *commonparameters.ParameterDefinition, data commonmodels.ParamsValue) (
+						[]commonparameters.ColumnContainer, error,
+					) {
+						var columns []*randomCompanyNameColumn
+						if err := json.Unmarshal(data, &columns); err != nil {
+							return nil, fmt.Errorf("unmarshal columns parameter: %w", err)
+						}
+						cc := make([]commonparameters.ColumnContainer, len(columns))
+						for i := range columns {
+							cc[i] = columns[i]
+						}
+						return cc, nil
+					},
+				),
 		),
 
 	defaultEngineParameterDefinition,
@@ -117,9 +121,9 @@ func NewRandomCompanyTransformer(
 	var engineMode int
 	switch engine {
 	case EngineParameterValueRandom:
-		engineMode = randomEngineMode
+		engineMode = engineModeRandom
 	case EngineParameterValueDeterministic, EngineParameterValueHash:
-		engineMode = deterministicEngineMode
+		engineMode = engineModeDeterministic
 	}
 
 	t := transformers.NewRandomCompanyTransformer(nil)
@@ -170,7 +174,7 @@ func (nft *RandomCompanyTransformer) Transform(_ context.Context, r commonininte
 		}
 		nft.nullableMap[c.columnIdx] = rawVal.IsNull
 
-		if nft.engine == deterministicEngineMode {
+		if nft.engine == engineModeDeterministic {
 			// we need to hash only columns that are marked for hashing
 			if !c.Hashing {
 				continue
@@ -269,7 +273,7 @@ func validateRandomCompanyColumnsAndSetDefault(
 		}
 	}
 
-	if !hasHashingColumns && engineMode == deterministicEngineMode {
+	if !hasHashingColumns && engineMode == engineModeDeterministic {
 		for _, c := range columns {
 			log.Ctx(ctx).Debug().
 				Str("ColumnName", c.Name).

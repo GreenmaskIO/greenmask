@@ -41,12 +41,12 @@ func TestRealAddressTransformer_Transform(t *testing.T) {
 			name: "seconds",
 			columns: []commonmodels.Column{
 				{
-					Idx:      0,
-					Name:     "data",
-					TypeName: mysqldbmsdriver.TypeText,
-					TypeOID:  mysqldbmsdriver.VirtualOidText,
-					Length:   0,
-					Size:     8,
+					Idx:       0,
+					Name:      "data",
+					TypeName:  mysqldbmsdriver.TypeText,
+					TypeClass: commonmodels.TypeClassText,
+					TypeOID:   mysqldbmsdriver.VirtualOidText,
+					Length:    0,
 				},
 			},
 			original: []*commonmodels.ColumnRawValue{

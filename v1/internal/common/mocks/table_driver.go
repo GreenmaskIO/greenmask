@@ -220,3 +220,15 @@ func (t *TableDriverMock) Table() *commonmodels.Table {
 	}
 	return table
 }
+
+func (t *TableDriverMock) GetCanonicalTypeClassName(typeName string, typeOid commonmodels.VirtualOID) (commonmodels.TypeClass, error) {
+	args := t.Called(typeName, typeOid)
+	if args.Get(0) == nil {
+		return "", args.Error(1)
+	}
+	canonicalTypeClass, ok := args.Get(0).(commonmodels.TypeClass)
+	if !ok {
+		panic(fmt.Sprintf("expected commonmodels.TypeClass, got %T", args.Get(0)))
+	}
+	return canonicalTypeClass, args.Error(1)
+}

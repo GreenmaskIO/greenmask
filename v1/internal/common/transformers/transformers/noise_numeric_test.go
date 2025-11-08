@@ -45,11 +45,12 @@ func TestNoiseNumericTransformer_Transform(t *testing.T) {
 			name: "numeric",
 			columns: []commonmodels.Column{
 				{
-					Idx:      0,
-					Name:     "data",
-					TypeName: mysqldbmsdriver.TypeNumeric,
-					TypeOID:  mysqldbmsdriver.VirtualOidNumeric,
-					Length:   0,
+					Idx:       0,
+					Name:      "data",
+					TypeName:  mysqldbmsdriver.TypeNumeric,
+					TypeOID:   mysqldbmsdriver.VirtualOidNumeric,
+					TypeClass: commonmodels.TypeClassNumeric,
+					Length:    0,
 				},
 			},
 			original: []*commonmodels.ColumnRawValue{
@@ -74,11 +75,12 @@ func TestNoiseNumericTransformer_Transform(t *testing.T) {
 			name: "numeric with 10 decimal places",
 			columns: []commonmodels.Column{
 				{
-					Idx:      0,
-					Name:     "data",
-					TypeName: mysqldbmsdriver.TypeNumeric,
-					TypeOID:  mysqldbmsdriver.VirtualOidNumeric,
-					Length:   0,
+					Idx:       0,
+					Name:      "data",
+					TypeName:  mysqldbmsdriver.TypeNumeric,
+					TypeOID:   mysqldbmsdriver.VirtualOidNumeric,
+					TypeClass: commonmodels.TypeClassNumeric,
+					Length:    0,
 				},
 			},
 			original: []*commonmodels.ColumnRawValue{
@@ -110,11 +112,12 @@ func TestNoiseNumericTransformer_Transform(t *testing.T) {
 			name: "numeric without decimal places",
 			columns: []commonmodels.Column{
 				{
-					Idx:      0,
-					Name:     "data",
-					TypeName: mysqldbmsdriver.TypeNumeric,
-					TypeOID:  mysqldbmsdriver.VirtualOidNumeric,
-					Length:   0,
+					Idx:       0,
+					Name:      "data",
+					TypeName:  mysqldbmsdriver.TypeNumeric,
+					TypeOID:   mysqldbmsdriver.VirtualOidNumeric,
+					TypeClass: commonmodels.TypeClassNumeric,
+					Length:    0,
 				},
 			},
 			original: []*commonmodels.ColumnRawValue{
@@ -146,11 +149,12 @@ func TestNoiseNumericTransformer_Transform(t *testing.T) {
 			name: "numeric with no decimal and deterministic engine",
 			columns: []commonmodels.Column{
 				{
-					Idx:      0,
-					Name:     "data",
-					TypeName: mysqldbmsdriver.TypeNumeric,
-					TypeOID:  mysqldbmsdriver.VirtualOidNumeric,
-					Length:   0,
+					Idx:       0,
+					Name:      "data",
+					TypeName:  mysqldbmsdriver.TypeNumeric,
+					TypeOID:   mysqldbmsdriver.VirtualOidNumeric,
+					TypeClass: commonmodels.TypeClassNumeric,
+					Length:    0,
 				},
 			},
 			original: []*commonmodels.ColumnRawValue{
@@ -173,11 +177,12 @@ func TestNoiseNumericTransformer_Transform(t *testing.T) {
 			name: "numeric with thresholds",
 			columns: []commonmodels.Column{
 				{
-					Idx:      0,
-					Name:     "data",
-					TypeName: mysqldbmsdriver.TypeNumeric,
-					TypeOID:  mysqldbmsdriver.VirtualOidNumeric,
-					Length:   0,
+					Idx:       0,
+					Name:      "data",
+					TypeName:  mysqldbmsdriver.TypeNumeric,
+					TypeOID:   mysqldbmsdriver.VirtualOidNumeric,
+					TypeClass: commonmodels.TypeClassNumeric,
+					Length:    0,
 				},
 			},
 			original: []*commonmodels.ColumnRawValue{
@@ -223,25 +228,28 @@ func TestNoiseNumericTransformer_Transform(t *testing.T) {
 			},
 			columns: []commonmodels.Column{
 				{
-					Idx:      0,
-					Name:     "data",
-					TypeName: mysqldbmsdriver.TypeNumeric,
-					TypeOID:  mysqldbmsdriver.VirtualOidNumeric,
-					Length:   0,
+					Idx:       0,
+					Name:      "data",
+					TypeName:  mysqldbmsdriver.TypeNumeric,
+					TypeOID:   mysqldbmsdriver.VirtualOidNumeric,
+					TypeClass: commonmodels.TypeClassNumeric,
+					Length:    0,
 				},
 				{
-					Idx:      1,
-					Name:     "min_val",
-					TypeName: mysqldbmsdriver.TypeNumeric,
-					TypeOID:  mysqldbmsdriver.VirtualOidNumeric,
-					Length:   0,
+					Idx:       1,
+					Name:      "min_val",
+					TypeName:  mysqldbmsdriver.TypeNumeric,
+					TypeOID:   mysqldbmsdriver.VirtualOidNumeric,
+					TypeClass: commonmodels.TypeClassNumeric,
+					Length:    0,
 				},
 				{
-					Idx:      2,
-					Name:     "max_val",
-					TypeName: mysqldbmsdriver.TypeNumeric,
-					TypeOID:  mysqldbmsdriver.VirtualOidNumeric,
-					Length:   0,
+					Idx:       2,
+					Name:      "max_val",
+					TypeName:  mysqldbmsdriver.TypeNumeric,
+					TypeOID:   mysqldbmsdriver.VirtualOidNumeric,
+					TypeClass: commonmodels.TypeClassNumeric,
+					Length:    0,
 				},
 			},
 			validateFn: func(t *testing.T, recorder commonininterfaces.Recorder) {

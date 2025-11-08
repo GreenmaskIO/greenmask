@@ -22,6 +22,7 @@ import (
 	"github.com/rs/zerolog/log"
 
 	commonininterfaces "github.com/greenmaskio/greenmask/v1/internal/common/interfaces"
+	commonmodels "github.com/greenmaskio/greenmask/v1/internal/common/models"
 	commonparameters "github.com/greenmaskio/greenmask/v1/internal/common/transformers/parameters"
 	transformerutils "github.com/greenmaskio/greenmask/v1/internal/common/transformers/utils"
 )
@@ -43,7 +44,7 @@ var RandomIntegerTransformerDefinition = transformerutils.NewTransformerDefiniti
 	).SetIsColumn(
 		commonparameters.NewColumnProperties().
 			SetAffected(true).
-			SetAllowedColumnTypes("int2", "int4", "int8", "int", "smallint", "int", "smallint", "mediumint", "bigint"),
+			SetAllowedColumnTypeClasses(commonmodels.TypeClassInt),
 	).SetRequired(true),
 
 	commonparameters.MustNewParameterDefinition(
@@ -53,7 +54,10 @@ var RandomIntegerTransformerDefinition = transformerutils.NewTransformerDefiniti
 		SetSupportTemplate(true).
 		SetDynamicMode(
 			commonparameters.NewDynamicModeProperties().
-				SetCompatibleTypes("int2", "int4", "int8", "int", "smallint", "mediumint", "bigint"),
+				SetColumnProperties(
+					commonparameters.NewColumnProperties().
+						SetAllowedColumnTypeClasses(commonmodels.TypeClassInt),
+				),
 		),
 
 	commonparameters.MustNewParameterDefinition(
@@ -63,7 +67,10 @@ var RandomIntegerTransformerDefinition = transformerutils.NewTransformerDefiniti
 		SetSupportTemplate(true).
 		SetDynamicMode(
 			commonparameters.NewDynamicModeProperties().
-				SetCompatibleTypes("int2", "int4", "int8", "int", "smallint", "mediumint", "bigint"),
+				SetColumnProperties(
+					commonparameters.NewColumnProperties().
+						SetAllowedColumnTypeClasses(commonmodels.TypeClassInt),
+				),
 		),
 
 	defaultIntTypeSizeParameterDefinition,

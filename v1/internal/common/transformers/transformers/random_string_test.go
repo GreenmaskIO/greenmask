@@ -27,7 +27,6 @@ import (
 	mysqldbmsdriver "github.com/greenmaskio/greenmask/v1/internal/mysql/dbmsdriver"
 )
 
-// TODO: Cover error cases
 func TestRandomStringTransformer_Transform(t *testing.T) {
 	tests := []struct {
 		name             string
@@ -43,11 +42,12 @@ func TestRandomStringTransformer_Transform(t *testing.T) {
 			name: "default fixed string",
 			columns: []commonmodels.Column{
 				{
-					Idx:      0,
-					Name:     "data",
-					TypeName: mysqldbmsdriver.TypeText,
-					TypeOID:  mysqldbmsdriver.VirtualOidText,
-					Length:   0,
+					Idx:       0,
+					Name:      "data",
+					TypeName:  mysqldbmsdriver.TypeText,
+					TypeClass: commonmodels.TypeClassText,
+					TypeOID:   mysqldbmsdriver.VirtualOidText,
+					Length:    0,
 				},
 			},
 			original: []*commonmodels.ColumnRawValue{
@@ -68,11 +68,12 @@ func TestRandomStringTransformer_Transform(t *testing.T) {
 			name: "default variadic string",
 			columns: []commonmodels.Column{
 				{
-					Idx:      0,
-					Name:     "data",
-					TypeName: mysqldbmsdriver.TypeText,
-					TypeOID:  mysqldbmsdriver.VirtualOidText,
-					Length:   0,
+					Idx:       0,
+					Name:      "data",
+					TypeName:  mysqldbmsdriver.TypeText,
+					TypeClass: commonmodels.TypeClassText,
+					TypeOID:   mysqldbmsdriver.VirtualOidText,
+					Length:    0,
 				},
 			},
 			original: []*commonmodels.ColumnRawValue{
@@ -93,11 +94,12 @@ func TestRandomStringTransformer_Transform(t *testing.T) {
 			name: "custom variadic string",
 			columns: []commonmodels.Column{
 				{
-					Idx:      0,
-					Name:     "data",
-					TypeName: mysqldbmsdriver.TypeText,
-					TypeOID:  mysqldbmsdriver.VirtualOidText,
-					Length:   0,
+					Idx:       0,
+					Name:      "data",
+					TypeName:  mysqldbmsdriver.TypeText,
+					TypeClass: commonmodels.TypeClassText,
+					TypeOID:   mysqldbmsdriver.VirtualOidText,
+					Length:    0,
 				},
 			},
 			original: []*commonmodels.ColumnRawValue{
@@ -119,11 +121,12 @@ func TestRandomStringTransformer_Transform(t *testing.T) {
 			name: "keep_null",
 			columns: []commonmodels.Column{
 				{
-					Idx:      0,
-					Name:     "data",
-					TypeName: mysqldbmsdriver.TypeText,
-					TypeOID:  mysqldbmsdriver.VirtualOidText,
-					Length:   0,
+					Idx:       0,
+					Name:      "data",
+					TypeName:  mysqldbmsdriver.TypeText,
+					TypeClass: commonmodels.TypeClassText,
+					TypeOID:   mysqldbmsdriver.VirtualOidText,
+					Length:    0,
 				},
 			},
 			original: []*commonmodels.ColumnRawValue{

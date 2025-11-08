@@ -61,7 +61,10 @@ var JsonTransformerDefinition = transformerutils.NewTransformerDefinition(
 		"column name",
 	).SetIsColumn(commonparameters.NewColumnProperties().
 		SetAffected(true).
-		SetAllowedColumnTypes("json", "jsonb", "text"),
+		SetAllowedColumnTypeClasses(
+			commonmodels.TypeClassText,
+			commonmodels.TypeClassJson,
+		),
 	).SetRequired(true),
 
 	commonparameters.MustNewParameterDefinition(

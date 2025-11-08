@@ -40,9 +40,13 @@ var UUIDTransformerDefinition = transformerutils.NewTransformerDefinition(
 	commonparameters.MustNewParameterDefinition(
 		"column",
 		"column name",
-	).SetIsColumn(commonparameters.NewColumnProperties().
-		SetAffected(true).
-		SetAllowedColumnTypes("text", "varchar", "char", "bpchar", "citext", "uuid"),
+	).SetIsColumn(
+		commonparameters.NewColumnProperties().
+			SetAffected(true).
+			SetAllowedColumnTypeClasses(
+				commonmodels.TypeClassText,
+				commonmodels.TypeClassUuid,
+			),
 	).SetRequired(true),
 
 	defaultKeepNullParameterDefinition,

@@ -44,11 +44,12 @@ func TestRandomCompanyTransformer_Transform(t *testing.T) {
 			name: "numeric",
 			columns: []commonmodels.Column{
 				{
-					Idx:      0,
-					Name:     "data",
-					TypeName: mysqldbmsdriver.TypeText,
-					TypeOID:  mysqldbmsdriver.VirtualOidText,
-					Length:   0,
+					Idx:       0,
+					Name:      "data",
+					TypeName:  mysqldbmsdriver.TypeText,
+					TypeClass: commonmodels.TypeClassText,
+					TypeOID:   mysqldbmsdriver.VirtualOidText,
+					Length:    0,
 				},
 			},
 			original: []*commonmodels.ColumnRawValue{
@@ -77,11 +78,12 @@ func TestRandomCompanyTransformer_Transform(t *testing.T) {
 			name: "keep_null and original is not null",
 			columns: []commonmodels.Column{
 				{
-					Idx:      0,
-					Name:     "data",
-					TypeName: mysqldbmsdriver.TypeText,
-					TypeOID:  mysqldbmsdriver.VirtualOidText,
-					Length:   0,
+					Idx:       0,
+					Name:      "data",
+					TypeName:  mysqldbmsdriver.TypeText,
+					TypeClass: commonmodels.TypeClassText,
+					TypeOID:   mysqldbmsdriver.VirtualOidText,
+					Length:    0,
 				},
 			},
 			original: []*commonmodels.ColumnRawValue{
@@ -111,11 +113,12 @@ func TestRandomCompanyTransformer_Transform(t *testing.T) {
 			name: "keep_null and original is not null",
 			columns: []commonmodels.Column{
 				{
-					Idx:      0,
-					Name:     "data",
-					TypeName: mysqldbmsdriver.TypeText,
-					TypeOID:  mysqldbmsdriver.VirtualOidText,
-					Length:   0,
+					Idx:       0,
+					Name:      "data",
+					TypeName:  mysqldbmsdriver.TypeText,
+					TypeClass: commonmodels.TypeClassText,
+					TypeOID:   mysqldbmsdriver.VirtualOidText,
+					Length:    0,
 				},
 			},
 			original: []*commonmodels.ColumnRawValue{
@@ -145,18 +148,20 @@ func TestRandomCompanyTransformer_Transform(t *testing.T) {
 			name: "keep_null and original is null multiple columns",
 			columns: []commonmodels.Column{
 				{
-					Idx:      0,
-					Name:     "name",
-					TypeName: mysqldbmsdriver.TypeText,
-					TypeOID:  mysqldbmsdriver.VirtualOidText,
-					Length:   0,
+					Idx:       0,
+					Name:      "name",
+					TypeName:  mysqldbmsdriver.TypeText,
+					TypeClass: commonmodels.TypeClassText,
+					TypeOID:   mysqldbmsdriver.VirtualOidText,
+					Length:    0,
 				},
 				{
-					Idx:      1,
-					Name:     "suffix",
-					TypeName: mysqldbmsdriver.TypeText,
-					TypeOID:  mysqldbmsdriver.VirtualOidText,
-					Length:   0,
+					Idx:       1,
+					Name:      "suffix",
+					TypeName:  mysqldbmsdriver.TypeText,
+					TypeClass: commonmodels.TypeClassText,
+					TypeOID:   mysqldbmsdriver.VirtualOidText,
+					Length:    0,
 				},
 			},
 			original: []*commonmodels.ColumnRawValue{

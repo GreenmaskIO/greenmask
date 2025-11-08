@@ -43,11 +43,12 @@ func TestRandomChoiceTransformer_Transform(t *testing.T) {
 			name: "success date type",
 			columns: []commonmodels.Column{
 				{
-					Idx:      0,
-					Name:     "data",
-					TypeName: mysqldbmsdriver.TypeDate,
-					TypeOID:  mysqldbmsdriver.VirtualOidDate,
-					Length:   0,
+					Idx:       0,
+					Name:      "data",
+					TypeName:  mysqldbmsdriver.TypeDate,
+					TypeOID:   mysqldbmsdriver.VirtualOidDate,
+					TypeClass: commonmodels.TypeClassDateTime,
+					Length:    0,
 				},
 			},
 			original: []*commonmodels.ColumnRawValue{
@@ -70,11 +71,12 @@ func TestRandomChoiceTransformer_Transform(t *testing.T) {
 			name: "success json type",
 			columns: []commonmodels.Column{
 				{
-					Idx:      0,
-					Name:     "data",
-					TypeName: mysqldbmsdriver.TypeText,
-					TypeOID:  mysqldbmsdriver.VirtualOidText,
-					Length:   0,
+					Idx:       0,
+					Name:      "data",
+					TypeName:  mysqldbmsdriver.TypeText,
+					TypeClass: commonmodels.TypeClassText,
+					TypeOID:   mysqldbmsdriver.VirtualOidText,
+					Length:    0,
 				},
 			},
 			original: []*commonmodels.ColumnRawValue{

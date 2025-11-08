@@ -20,6 +20,7 @@ import (
 	"time"
 
 	commonininterfaces "github.com/greenmaskio/greenmask/v1/internal/common/interfaces"
+	commonmodels "github.com/greenmaskio/greenmask/v1/internal/common/models"
 	generators "github.com/greenmaskio/greenmask/v1/internal/common/transformers/generators/transformers"
 	commonparameters "github.com/greenmaskio/greenmask/v1/internal/common/transformers/parameters"
 	transformerutils "github.com/greenmaskio/greenmask/v1/internal/common/transformers/utils"
@@ -42,7 +43,7 @@ var NoiseDateTransformerDefinition = transformerutils.NewTransformerDefinition(
 		"column name",
 	).SetIsColumn(commonparameters.NewColumnProperties().
 		SetAffected(true).
-		SetAllowedColumnTypes("date", "timestamp", "timestamptz").
+		SetAllowedColumnTypeClasses(commonmodels.TypeClassDateTime).
 		SetSkipOnNull(true),
 	).SetRequired(true),
 
@@ -67,7 +68,10 @@ var NoiseDateTransformerDefinition = transformerutils.NewTransformerDefinition(
 		LinkParameter("column").
 		SetDynamicMode(
 			commonparameters.NewDynamicModeProperties().
-				SetCompatibleTypes("date", "timestamp", "timestamptz"),
+				SetColumnProperties(
+					commonparameters.NewColumnProperties().
+						SetAllowedColumnTypeClasses(commonmodels.TypeClassDateTime),
+				),
 		),
 
 	commonparameters.MustNewParameterDefinition(
@@ -77,7 +81,10 @@ var NoiseDateTransformerDefinition = transformerutils.NewTransformerDefinition(
 		LinkParameter("column").
 		SetDynamicMode(
 			commonparameters.NewDynamicModeProperties().
-				SetCompatibleTypes("date", "timestamp", "timestamptz"),
+				SetColumnProperties(
+					commonparameters.NewColumnProperties().
+						SetAllowedColumnTypeClasses(commonmodels.TypeClassDateTime),
+				),
 		),
 
 	defaultTruncateDateParameterDefinition,

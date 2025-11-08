@@ -48,7 +48,7 @@ var RandomNumericTransformerDefinition = transformerutils.NewTransformerDefiniti
 	).SetIsColumn(
 		commonparameters.NewColumnProperties().
 			SetAffected(true).
-			SetAllowedColumnTypes("numeric", "decimal"),
+			SetAllowedColumnTypeClasses(commonmodels.TypeClassNumeric),
 	).SetRequired(true),
 
 	commonparameters.MustNewParameterDefinition(
@@ -65,16 +65,14 @@ var RandomNumericTransformerDefinition = transformerutils.NewTransformerDefiniti
 		SetRequired(true).
 		SetDynamicMode(
 			commonparameters.NewDynamicModeProperties().
-				SetCompatibleTypes(
-					"numeric",
-					"decimal",
-					"int2",
-					"int4",
-					"int8",
-					"float4",
-					"float8",
-				).
-				SetUnmarshaler(numericTypeUnmarshaler),
+				SetColumnProperties(
+					commonparameters.NewColumnProperties().
+						SetAllowedColumnTypeClasses(
+							commonmodels.TypeClassFloat,
+							commonmodels.TypeClassInt,
+							commonmodels.TypeClassNumeric,
+						),
+				).SetUnmarshaler(numericTypeUnmarshaler),
 		),
 
 	commonparameters.MustNewParameterDefinition(
@@ -85,16 +83,14 @@ var RandomNumericTransformerDefinition = transformerutils.NewTransformerDefiniti
 		SetRequired(true).
 		SetDynamicMode(
 			commonparameters.NewDynamicModeProperties().
-				SetCompatibleTypes(
-					"numeric",
-					"decimal",
-					"int2",
-					"int4",
-					"int8",
-					"float4",
-					"float8",
-				).
-				SetUnmarshaler(numericTypeUnmarshaler),
+				SetColumnProperties(
+					commonparameters.NewColumnProperties().
+						SetAllowedColumnTypeClasses(
+							commonmodels.TypeClassFloat,
+							commonmodels.TypeClassInt,
+							commonmodels.TypeClassNumeric,
+						),
+				).SetUnmarshaler(numericTypeUnmarshaler),
 		),
 
 	commonparameters.MustNewParameterDefinition(

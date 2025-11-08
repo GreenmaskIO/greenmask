@@ -737,7 +737,7 @@ func TestDynamicParameter_Value(t *testing.T) {
 //	)
 //
 //	columnDef := MustNewParameterDefinition("column", "some desc").
-//		SetIsColumn(
+//		SetColumnProperties(
 //			NewColumnProperties().
 //				SetAllowedColumnTypes("date", "timestamp", "timestamptz"),
 //		)

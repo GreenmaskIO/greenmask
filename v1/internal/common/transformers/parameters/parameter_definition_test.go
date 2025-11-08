@@ -23,7 +23,7 @@ package parameters
 //	)
 //
 //	column := MustNewParameterDefinition("column", "column").
-//		SetIsColumn(NewColumnProperties().SetAllowedColumnTypes("date", "timestamp", "timestamptz"))
+//		SetColumnProperties(NewColumnProperties().SetAllowedColumnTypes("date", "timestamp", "timestamptz"))
 //
 //	minDate := MustNewParameterDefinition("min_date", "min date").
 //		LinkParameter("column").

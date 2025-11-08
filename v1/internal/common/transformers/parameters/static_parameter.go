@@ -142,11 +142,51 @@ func (sp *StaticParameter) executeTemplate(ctx context.Context) error {
 	return nil
 }
 
-func isColumnSupportAllowedTypes(column commonmodels.Column, allowedTypes []string) bool {
-	if len(allowedTypes) == 0 {
-		return true
+func validateColumnTypeIsSupported(ctx context.Context, properties *ColumnProperties, c *commonmodels.Column) error {
+	if properties == nil {
+		return nil
 	}
-	return slices.Contains(allowedTypes, column.TypeName)
+	vc := validationcollector.FromContext(ctx).WithMeta(map[string]any{
+		"ColumnName":      c.Name,
+		"ColumnTypeName":  c.TypeName,
+		"ColumnTypeClass": c.TypeClass,
+	})
+	if !properties.IsColumnTypeAllowed(c.TypeName) {
+		vc.Add(models.NewValidationWarning().
+			SetSeverity(models.ValidationSeverityError).
+			SetMsg("column type is not allowed").
+			AddMeta("AllowedTypes", properties.AllowedTypes),
+		)
+		return models.ErrFatalValidationError
+	}
+
+	if !properties.IsColumnTypeClassAllowed(c.TypeClass) {
+		vc.Add(models.NewValidationWarning().
+			SetSeverity(models.ValidationSeverityError).
+			SetMsg("column type class is not allowed").
+			AddMeta("AllowedTypeClasses", properties.AllowedTypeClasses),
+		)
+		return models.ErrFatalValidationError
+	}
+
+	if properties.IsColumnTypeDenied(c.TypeName) {
+		vc.Add(models.NewValidationWarning().
+			SetSeverity(models.ValidationSeverityError).
+			SetMsg("column type is denied").
+			AddMeta("DeniedTypes", properties.DeniedTypes),
+		)
+		return models.ErrFatalValidationError
+	}
+
+	if properties.IsColumnTypeClassDenied(c.TypeClass) {
+		vc.Add(models.NewValidationWarning().
+			SetSeverity(models.ValidationSeverityError).
+			SetMsg("column type class is denied").
+			AddMeta("DeniedTypeClasses", properties.DeniedTypeClasses),
+		)
+		return models.ErrFatalValidationError
+	}
+	return nil
 }
 
 func (sp *StaticParameter) validateColumnContainer(ctx context.Context, rawValue models.ParamsValue) error {
@@ -174,16 +214,10 @@ func (sp *StaticParameter) validateColumnContainer(ctx context.Context, rawValue
 			}
 		}
 		foundColumns = append(foundColumns, *column)
-		if !isColumnSupportAllowedTypes(*column, sp.definition.ColumnContainerProperties.AllowedTypes) {
-			validationcollector.FromContext(ctx).
-				Add(models.NewValidationWarning().
-					SetSeverity(models.ValidationSeverityError).
-					SetMsg("unsupported column type").
-					AddMeta("ColumnName", container.ColumnName()).
-					AddMeta("ColumnContainerItem", i).
-					AddMeta("TypeName", column.TypeName).
-					AddMeta("AllowedTypes", sp.definition.ColumnContainerProperties.AllowedTypes))
-			return models.ErrFatalValidationError
+		if err := validateColumnTypeIsSupported(
+			ctx, sp.definition.ColumnContainerProperties.ColumnProperties, column,
+		); err != nil {
+			return fmt.Errorf("validate column is supported: %w", err)
 		}
 	}
 	return nil
@@ -233,17 +267,11 @@ func (sp *StaticParameter) validateValue(ctx context.Context, rawValue models.Pa
 			panic("bug detected: column is nil after getting it by name")
 		}
 
-		if sp.definition.ColumnProperties != nil &&
-			len(sp.definition.ColumnProperties.AllowedTypes) > 0 &&
-			!slices.Contains(sp.definition.ColumnProperties.AllowedTypes, sp.Column.TypeName) {
-			vc.Add(models.NewValidationWarning().
-				SetSeverity(models.ValidationSeverityError).
-				SetMsg("unsupported column type").
-				AddMeta("ColumnName", columnName).
-				AddMeta("TypeName", sp.Column.TypeName).
-				AddMeta("AllowedTypes", sp.definition.ColumnProperties.AllowedTypes),
-			)
-			return models.ErrFatalValidationError
+		if sp.definition.ColumnProperties != nil {
+			properties := sp.definition.ColumnProperties
+			if err := validateColumnTypeIsSupported(ctx, properties, column); err != nil {
+				return fmt.Errorf("validate column type is supported: %w", err)
+			}
 		}
 	}
 

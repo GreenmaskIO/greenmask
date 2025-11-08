@@ -35,8 +35,8 @@ import (
 )
 
 const (
-	randomEngineMode = iota
-	deterministicEngineMode
+	engineModeRandom = iota
+	engineModeDeterministic
 )
 
 const randomPersonAnyGender = "Any"
@@ -75,23 +75,27 @@ var RandomPersonTransformerDefinition = transformerutils.NewTransformerDefinitio
 		"columns",
 		"column names and templates to fill with random person data. See documentation for details.",
 	).SetRequired(true).
-		SetColumnContainer(commonparameters.NewColumnContainerProperties().
-			SetAllowedTypes("text", "varchar").
-			SetUnmarshaler(
-				func(_ context.Context, _ *commonparameters.ParameterDefinition, data commonmodels.ParamsValue) (
-					[]commonparameters.ColumnContainer, error,
-				) {
-					var columns []*randomPersonColumns
-					if err := json.Unmarshal(data, &columns); err != nil {
-						return nil, fmt.Errorf("unmarshal columns parameter: %w", err)
-					}
-					cc := make([]commonparameters.ColumnContainer, len(columns))
-					for i := range columns {
-						cc[i] = columns[i]
-					}
-					return cc, nil
-				},
-			),
+		SetColumnContainer(
+			commonparameters.NewColumnContainerProperties().
+				SetColumnProperties(
+					commonparameters.NewColumnProperties().
+						SetAllowedColumnTypeClasses(commonmodels.TypeClassText),
+				).
+				SetUnmarshaler(
+					func(_ context.Context, _ *commonparameters.ParameterDefinition, data commonmodels.ParamsValue) (
+						[]commonparameters.ColumnContainer, error,
+					) {
+						var columns []*randomPersonColumns
+						if err := json.Unmarshal(data, &columns); err != nil {
+							return nil, fmt.Errorf("unmarshal columns parameter: %w", err)
+						}
+						cc := make([]commonparameters.ColumnContainer, len(columns))
+						for i := range columns {
+							cc[i] = columns[i]
+						}
+						return cc, nil
+					},
+				),
 		),
 
 	commonparameters.MustNewParameterDefinition(
@@ -99,7 +103,10 @@ var RandomPersonTransformerDefinition = transformerutils.NewTransformerDefinitio
 		"set specific gender (possible values: Male, Female, Any)",
 	).SetDynamicMode(
 		commonparameters.NewDynamicModeProperties().
-			SetCompatibleTypes("text", "varchar", "char", "bpchar", "citext"),
+			SetColumnProperties(
+				commonparameters.NewColumnProperties().
+					SetAllowedColumnTypeClasses(commonmodels.TypeClassText),
+			),
 	).SetDefaultValue(commonmodels.ParamsValue("Any")),
 
 	commonparameters.MustNewParameterDefinition(
@@ -151,7 +158,7 @@ func NewRandomNameTransformer(
 		return nil, fmt.Errorf("get \"column\" parameter: %w", err)
 	}
 
-	if err := validateRandomPersonColumnsAndSetDefault(ctx, tableDriver, columns, randomEngineMode); err != nil {
+	if err := validateRandomPersonColumnsAndSetDefault(ctx, tableDriver, columns, engineModeRandom); err != nil {
 		return nil, fmt.Errorf("validate \"columns\" parameter: %w", err)
 	}
 
@@ -163,9 +170,9 @@ func NewRandomNameTransformer(
 	var engineMode int
 	switch engine {
 	case EngineParameterValueRandom:
-		engineMode = randomEngineMode
+		engineMode = engineModeRandom
 	case EngineParameterValueDeterministic, EngineParameterValueHash:
-		engineMode = deterministicEngineMode
+		engineMode = engineModeDeterministic
 	}
 
 	db, err := getParameterValueWithNameAndDefault[transformers.Database](ctx, parameters, "database", transformers.DefaultPersonMap)
@@ -267,7 +274,7 @@ func (nft *RandomNameTransformer) Transform(ctx context.Context, r commonininter
 		}
 		nft.nullableMap[c.columnIdx] = rawVal.IsNull
 		// we need to hash only columns that are marked for hashing
-		if nft.engine == deterministicEngineMode {
+		if nft.engine == engineModeDeterministic {
 			// This part is required only for hash engine mode.
 			if !c.Hashing {
 				// If column is not marked for hashing, we skip it.
@@ -378,7 +385,7 @@ func validateRandomPersonColumnsAndSetDefault(
 		}
 	}
 
-	if !hasHashingColumns && engineMode == deterministicEngineMode {
+	if !hasHashingColumns && engineMode == engineModeDeterministic {
 		for _, c := range columns {
 			log.Ctx(ctx).Debug().
 				Str("ColumnName", c.Name).

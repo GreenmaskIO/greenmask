@@ -39,9 +39,10 @@ var RegexpReplaceTransformerDefinition = transformerutils.NewTransformerDefiniti
 	commonparameters.MustNewParameterDefinition(
 		"column",
 		"column name",
-	).SetIsColumn(commonparameters.NewColumnProperties().
-		SetAffected(true).
-		SetAllowedColumnTypes("text", "varchar", "char", "bpchar", "citext"),
+	).SetIsColumn(
+		commonparameters.NewColumnProperties().
+			SetAffected(true).
+			SetAllowedColumnTypeClasses(commonmodels.TypeClassText),
 	).SetRequired(true),
 
 	commonparameters.MustNewParameterDefinition(

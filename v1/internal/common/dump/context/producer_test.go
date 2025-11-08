@@ -91,7 +91,7 @@ func TestProducer_Produce(t *testing.T) {
 		//		transformerutils.NewTransformerProperties("Test", "test desc"),
 		//		newFunc,
 		//		parameters.MustNewParameterDefinition("Test", "test desc").
-		//			SetIsColumn(
+		//			SetColumnProperties(
 		//				parameters.NewColumnProperties().
 		//					SetAllowedColumnTypes("int"),
 		//			),

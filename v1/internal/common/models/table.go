@@ -91,6 +91,26 @@ func (t *Table) HasSubsetConditions() bool {
 // any other database/table objects.
 type VirtualOID uint32
 
+type TypeClass string
+
+const (
+	TypeClassUnsupported TypeClass = "unsupported"
+	TypeClassBinary      TypeClass = "binary"
+	TypeClassText        TypeClass = "text"
+	TypeClassInt         TypeClass = "int"
+	TypeClassFloat       TypeClass = "float"
+	TypeClassNumeric     TypeClass = "numeric"
+	TypeClassBoolean     TypeClass = "boolean"
+	TypeClassDateTime    TypeClass = "datetime"
+	TypeClassTime        TypeClass = "time"
+	TypeClassJson        TypeClass = "json"
+	TypeClassUuid        TypeClass = "uuid"
+	TypeClassEnum        TypeClass = "enum"
+	TypeClassInet        TypeClass = "inet"
+	TypeClassCidr        TypeClass = "cidr"
+	TypeClassMacAddress  TypeClass = "macaddr"
+)
+
 type Column struct {
 	// Idx - column number in the table. It preserves the order of columns in the defined table.
 	Idx int `json:"idx"`
@@ -98,11 +118,13 @@ type Column struct {
 	Name string `json:"name"`
 	// TypeName - name of the column type, e.g. "integer", "text", "boolean", etc.
 	TypeName string `json:"type_name"`
-	// NotNull - indicates whether the column is NOT NULL.
-	NotNull bool `json:"not_null"`
 	// TypeOID - OID of the column type in PostgreSQL. For other DBMS that does not have OIDs,
 	// this is just a unique identifier of the type in the greenmask implementation.
 	TypeOID VirtualOID `json:"type_oid"`
+	// TypeClass - class of the column type, e.g. "numeric", "string", "datetime", etc.
+	TypeClass TypeClass
+	// NotNull - indicates whether the column is NOT NULL.
+	NotNull bool `json:"not_null"`
 	// Length - length of the column type, e.g. for varchar(255) it will be 255.
 	Length int `json:"length"`
 	// Size - size of the column in bytes.

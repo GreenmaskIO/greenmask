@@ -55,7 +55,7 @@ var ChoiceTransformerDefinition = transformerutils.NewTransformerDefinition(
 
 	commonparameters.MustNewParameterDefinition(
 		"validate",
-		`perform decode procedure via PostgreSQL driver using column type, ensuring that value has correct type`,
+		`perform decode procedure DBMS driver using column type, ensuring that value has correct type`,
 	).SetRequired(false).
 		SetDefaultValue(commonmodels.ParamsValue("true")),
 

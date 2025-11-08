@@ -29,6 +29,8 @@ var (
 	ErrEndOfStream                                 = errors.New("end of stream")
 	ErrTableGraphHasCycles                         = errors.New("table graph has cycles")
 	ErrValueValidationFailed                       = errors.New("value validation failed")
+	ErrUnknownDBMSType                             = errors.New("unknown DBMS type")
+	ErrUnknownDBMSTypeClass                        = errors.New("unknown DBMS type class")
 )
 
 type DumpError struct {

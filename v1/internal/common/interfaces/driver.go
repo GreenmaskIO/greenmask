@@ -14,7 +14,9 @@
 
 package interfaces
 
-import commonmodels "github.com/greenmaskio/greenmask/v1/internal/common/models"
+import (
+	commonmodels "github.com/greenmaskio/greenmask/v1/internal/common/models"
+)
 
 type DBMSDriver interface {
 	EncodeValueByTypeName(name string, src any, buf []byte) ([]byte, error)
@@ -31,6 +33,7 @@ type DBMSDriver interface {
 	// Each DBMS has their own type aliases so this method must return a canonical type for any existing alias
 	// or an error if not found. If not found must return commonmodels.ErrCanonicalTypeMismatch.
 	GetCanonicalTypeName(typeName string, typeOid commonmodels.VirtualOID) (string, error)
+	GetCanonicalTypeClassName(typeName string, typeOid commonmodels.VirtualOID) (commonmodels.TypeClass, error)
 }
 
 type TableDriver interface {

@@ -51,23 +51,27 @@ var RealAddressTransformerDefinition = transformerutils.NewTransformerDefinition
 			`"keep_null": "type:bool, required:false, description: keep null values",`+
 			`}`,
 	).SetRequired(true).
-		SetColumnContainer(commonparameters.NewColumnContainerProperties().
-			SetAllowedTypes("text", "varchar").
-			SetUnmarshaler(
-				func(_ context.Context, _ *commonparameters.ParameterDefinition, data commonmodels.ParamsValue) (
-					[]commonparameters.ColumnContainer, error,
-				) {
-					var columns []*realAddressColumn
-					if err := json.Unmarshal(data, &columns); err != nil {
-						return nil, fmt.Errorf("unmarshal columns parameter: %w", err)
-					}
-					cc := make([]commonparameters.ColumnContainer, len(columns))
-					for i := range columns {
-						cc[i] = columns[i]
-					}
-					return cc, nil
-				},
-			),
+		SetColumnContainer(
+			commonparameters.NewColumnContainerProperties().
+				SetColumnProperties(
+					commonparameters.NewColumnProperties().
+						SetAllowedColumnTypeClasses(commonmodels.TypeClassText),
+				).
+				SetUnmarshaler(
+					func(_ context.Context, _ *commonparameters.ParameterDefinition, data commonmodels.ParamsValue) (
+						[]commonparameters.ColumnContainer, error,
+					) {
+						var columns []*realAddressColumn
+						if err := json.Unmarshal(data, &columns); err != nil {
+							return nil, fmt.Errorf("unmarshal columns parameter: %w", err)
+						}
+						cc := make([]commonparameters.ColumnContainer, len(columns))
+						for i := range columns {
+							cc[i] = columns[i]
+						}
+						return cc, nil
+					},
+				),
 		),
 )
 

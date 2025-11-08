@@ -49,7 +49,7 @@ var NoiseFloatTransformerDefinition = transformerutils.NewTransformerDefinition(
 		"column name",
 	).SetIsColumn(commonparameters.NewColumnProperties().
 		SetAffected(true).
-		SetAllowedColumnTypes("float4", "float8", "float").
+		SetAllowedColumnTypeClasses(commonmodels.TypeClassFloat).
 		SetSkipOnNull(true),
 	).SetRequired(true),
 
@@ -66,9 +66,12 @@ var NoiseFloatTransformerDefinition = transformerutils.NewTransformerDefinition(
 		SetSupportTemplate(true).
 		SetDynamicMode(
 			commonparameters.NewDynamicModeProperties().
-				SetCompatibleTypes(
-					"float4", "float8", "int2", "int4", "int8",
-					"float",
+				SetColumnProperties(
+					commonparameters.NewColumnProperties().
+						SetAllowedColumnTypeClasses(
+							commonmodels.TypeClassInt,
+							commonmodels.TypeClassFloat,
+						),
 				),
 		),
 
@@ -79,7 +82,13 @@ var NoiseFloatTransformerDefinition = transformerutils.NewTransformerDefinition(
 		SetSupportTemplate(true).
 		SetDynamicMode(
 			commonparameters.NewDynamicModeProperties().
-				SetCompatibleTypes("float4", "float8", "int2", "int4", "int8"),
+				SetColumnProperties(
+					commonparameters.NewColumnProperties().
+						SetAllowedColumnTypeClasses(
+							commonmodels.TypeClassInt,
+							commonmodels.TypeClassFloat,
+						),
+				),
 		),
 
 	defaultFloatTypeSizeParameterDefinition,

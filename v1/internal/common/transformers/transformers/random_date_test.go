@@ -51,11 +51,12 @@ func TestTimestampTransformer_Transform(t *testing.T) {
 			name: "test date type",
 			columns: []commonmodels.Column{
 				{
-					Idx:      0,
-					Name:     "data",
-					TypeName: mysqldbmsdriver.TypeDate,
-					TypeOID:  mysqldbmsdriver.VirtualOidDate,
-					Length:   0,
+					Idx:       0,
+					Name:      "data",
+					TypeName:  mysqldbmsdriver.TypeDate,
+					TypeOID:   mysqldbmsdriver.VirtualOidDate,
+					TypeClass: commonmodels.TypeClassDateTime,
+					Length:    0,
 				},
 			},
 			original: []*commonmodels.ColumnRawValue{
@@ -82,11 +83,12 @@ func TestTimestampTransformer_Transform(t *testing.T) {
 			name: "test timestamp without timezone type",
 			columns: []commonmodels.Column{
 				{
-					Idx:      0,
-					Name:     "data",
-					TypeName: mysqldbmsdriver.TypeTimestamp,
-					TypeOID:  mysqldbmsdriver.VirtualOidTimestamp,
-					Length:   0,
+					Idx:       0,
+					Name:      "data",
+					TypeName:  mysqldbmsdriver.TypeTimestamp,
+					TypeOID:   mysqldbmsdriver.VirtualOidTimestamp,
+					TypeClass: commonmodels.TypeClassDateTime,
+					Length:    0,
 				},
 			},
 			original: []*commonmodels.ColumnRawValue{
@@ -113,11 +115,12 @@ func TestTimestampTransformer_Transform(t *testing.T) {
 			name: "test timestamp type with Truncate till day",
 			columns: []commonmodels.Column{
 				{
-					Idx:      0,
-					Name:     "data",
-					TypeName: mysqldbmsdriver.TypeTimestamp,
-					TypeOID:  mysqldbmsdriver.VirtualOidTimestamp,
-					Length:   0,
+					Idx:       0,
+					Name:      "data",
+					TypeName:  mysqldbmsdriver.TypeTimestamp,
+					TypeOID:   mysqldbmsdriver.VirtualOidTimestamp,
+					TypeClass: commonmodels.TypeClassDateTime,
+					Length:    0,
 				},
 			},
 			original: []*commonmodels.ColumnRawValue{
@@ -149,11 +152,12 @@ func TestTimestampTransformer_Transform(t *testing.T) {
 			name: "keep_null false and NULL seq",
 			columns: []commonmodels.Column{
 				{
-					Idx:      0,
-					Name:     "data",
-					TypeName: mysqldbmsdriver.TypeTimestamp,
-					TypeOID:  mysqldbmsdriver.VirtualOidTimestamp,
-					Length:   0,
+					Idx:       0,
+					Name:      "data",
+					TypeName:  mysqldbmsdriver.TypeTimestamp,
+					TypeOID:   mysqldbmsdriver.VirtualOidTimestamp,
+					TypeClass: commonmodels.TypeClassDateTime,
+					Length:    0,
 				},
 			},
 			original: []*commonmodels.ColumnRawValue{
@@ -181,11 +185,12 @@ func TestTimestampTransformer_Transform(t *testing.T) {
 			name: "keep_null true and NULL seq",
 			columns: []commonmodels.Column{
 				{
-					Idx:      0,
-					Name:     "data",
-					TypeName: mysqldbmsdriver.TypeTimestamp,
-					TypeOID:  mysqldbmsdriver.VirtualOidTimestamp,
-					Length:   0,
+					Idx:       0,
+					Name:      "data",
+					TypeName:  mysqldbmsdriver.TypeTimestamp,
+					TypeOID:   mysqldbmsdriver.VirtualOidTimestamp,
+					TypeClass: commonmodels.TypeClassDateTime,
+					Length:    0,
 				},
 			},
 			original: []*commonmodels.ColumnRawValue{

@@ -22,6 +22,7 @@ import (
 
 	commonmodels "github.com/greenmaskio/greenmask/v1/internal/common/models"
 	"github.com/greenmaskio/greenmask/v1/internal/common/validationcollector"
+	mysqldbmsdriver "github.com/greenmaskio/greenmask/v1/internal/mysql/dbmsdriver"
 )
 
 func TestHashTransformer_Transform(t *testing.T) {
@@ -52,10 +53,11 @@ func TestHashTransformer_Transform(t *testing.T) {
 			columnName: "data",
 			columns: []commonmodels.Column{
 				{
-					Idx:      0,
-					Name:     "data",
-					TypeName: "text",
-					TypeOID:  23,
+					Idx:       0,
+					Name:      "data",
+					TypeName:  mysqldbmsdriver.TypeText,
+					TypeClass: commonmodels.TypeClassText,
+					TypeOID:   mysqldbmsdriver.VirtualOidText,
 				},
 			},
 			validateFn: func(t *testing.T, expected, actual *commonmodels.ColumnRawValue) {
@@ -74,10 +76,11 @@ func TestHashTransformer_Transform(t *testing.T) {
 			columnName: "data",
 			columns: []commonmodels.Column{
 				{
-					Idx:      0,
-					Name:     "data",
-					TypeName: "text",
-					TypeOID:  23,
+					Idx:       0,
+					Name:      "data",
+					TypeName:  mysqldbmsdriver.TypeText,
+					TypeClass: commonmodels.TypeClassText,
+					TypeOID:   mysqldbmsdriver.VirtualOidText,
 				},
 			},
 			validateFn: func(t *testing.T, expected, actual *commonmodels.ColumnRawValue) {
@@ -96,10 +99,11 @@ func TestHashTransformer_Transform(t *testing.T) {
 			columnName: "data",
 			columns: []commonmodels.Column{
 				{
-					Idx:      0,
-					Name:     "data",
-					TypeName: "text",
-					TypeOID:  23,
+					Idx:       0,
+					Name:      "data",
+					TypeName:  mysqldbmsdriver.TypeText,
+					TypeClass: commonmodels.TypeClassText,
+					TypeOID:   mysqldbmsdriver.VirtualOidText,
 				},
 			},
 			validateFn: func(t *testing.T, expected, actual *commonmodels.ColumnRawValue) {
@@ -118,10 +122,11 @@ func TestHashTransformer_Transform(t *testing.T) {
 			columnName: "data",
 			columns: []commonmodels.Column{
 				{
-					Idx:      0,
-					Name:     "data",
-					TypeName: "text",
-					TypeOID:  23,
+					Idx:       0,
+					Name:      "data",
+					TypeName:  mysqldbmsdriver.TypeText,
+					TypeClass: commonmodels.TypeClassText,
+					TypeOID:   mysqldbmsdriver.VirtualOidText,
 				},
 			},
 			validateFn: func(t *testing.T, expected, actual *commonmodels.ColumnRawValue) {
@@ -140,10 +145,11 @@ func TestHashTransformer_Transform(t *testing.T) {
 			columnName: "data",
 			columns: []commonmodels.Column{
 				{
-					Idx:      0,
-					Name:     "data",
-					TypeName: "text",
-					TypeOID:  23,
+					Idx:       0,
+					Name:      "data",
+					TypeName:  mysqldbmsdriver.TypeText,
+					TypeClass: commonmodels.TypeClassText,
+					TypeOID:   mysqldbmsdriver.VirtualOidText,
 				},
 			},
 			validateFn: func(t *testing.T, expected, actual *commonmodels.ColumnRawValue) {
@@ -162,10 +168,11 @@ func TestHashTransformer_Transform(t *testing.T) {
 			columnName: "data",
 			columns: []commonmodels.Column{
 				{
-					Idx:      0,
-					Name:     "data",
-					TypeName: "text",
-					TypeOID:  23,
+					Idx:       0,
+					Name:      "data",
+					TypeName:  mysqldbmsdriver.TypeText,
+					TypeClass: commonmodels.TypeClassText,
+					TypeOID:   mysqldbmsdriver.VirtualOidText,
 				},
 			},
 			validateFn: func(t *testing.T, expected, actual *commonmodels.ColumnRawValue) {
@@ -184,10 +191,11 @@ func TestHashTransformer_Transform(t *testing.T) {
 			columnName: "data",
 			columns: []commonmodels.Column{
 				{
-					Idx:      0,
-					Name:     "data",
-					TypeName: "text",
-					TypeOID:  23,
+					Idx:       0,
+					Name:      "data",
+					TypeName:  mysqldbmsdriver.TypeText,
+					TypeClass: commonmodels.TypeClassText,
+					TypeOID:   mysqldbmsdriver.VirtualOidText,
 				},
 			},
 			validateFn: func(t *testing.T, expected, actual *commonmodels.ColumnRawValue) {
@@ -206,10 +214,11 @@ func TestHashTransformer_Transform(t *testing.T) {
 			columnName: "data",
 			columns: []commonmodels.Column{
 				{
-					Idx:      0,
-					Name:     "data",
-					TypeName: "text",
-					TypeOID:  23,
+					Idx:       0,
+					Name:      "data",
+					TypeName:  mysqldbmsdriver.TypeText,
+					TypeClass: commonmodels.TypeClassText,
+					TypeOID:   mysqldbmsdriver.VirtualOidText,
 				},
 			},
 			validateFn: func(t *testing.T, expected, actual *commonmodels.ColumnRawValue) {
@@ -229,10 +238,11 @@ func TestHashTransformer_Transform(t *testing.T) {
 			columnName: "data",
 			columns: []commonmodels.Column{
 				{
-					Idx:      0,
-					Name:     "data",
-					TypeName: "text",
-					TypeOID:  23,
+					Idx:       0,
+					Name:      "data",
+					TypeName:  mysqldbmsdriver.TypeText,
+					TypeClass: commonmodels.TypeClassText,
+					TypeOID:   mysqldbmsdriver.VirtualOidText,
 				},
 			},
 			validateFn: func(t *testing.T, expected, actual *commonmodels.ColumnRawValue) {
@@ -252,10 +262,11 @@ func TestHashTransformer_Transform(t *testing.T) {
 			columnName: "data",
 			columns: []commonmodels.Column{
 				{
-					Idx:      0,
-					Name:     "data",
-					TypeName: "text",
-					TypeOID:  23,
+					Idx:       0,
+					Name:      "data",
+					TypeName:  mysqldbmsdriver.TypeText,
+					TypeClass: commonmodels.TypeClassText,
+					TypeOID:   mysqldbmsdriver.VirtualOidText,
 				},
 			},
 			validateFn: func(t *testing.T, expected, actual *commonmodels.ColumnRawValue) {
@@ -275,10 +286,11 @@ func TestHashTransformer_Transform(t *testing.T) {
 			columnName: "data",
 			columns: []commonmodels.Column{
 				{
-					Idx:      0,
-					Name:     "data",
-					TypeName: "text",
-					TypeOID:  23,
+					Idx:       0,
+					Name:      "data",
+					TypeName:  mysqldbmsdriver.TypeText,
+					TypeClass: commonmodels.TypeClassText,
+					TypeOID:   mysqldbmsdriver.VirtualOidText,
 				},
 			},
 			validateFn: func(t *testing.T, expected, actual *commonmodels.ColumnRawValue) {
@@ -392,10 +404,11 @@ func TestHashTransformer_Transform_multiple_iterations(t *testing.T) {
 		HashTransformerDefinition,
 		[]commonmodels.Column{
 			{
-				Idx:      0,
-				Name:     "data",
-				TypeName: "text",
-				TypeOID:  23,
+				Idx:       0,
+				Name:      "data",
+				TypeName:  mysqldbmsdriver.TypeText,
+				TypeOID:   mysqldbmsdriver.VirtualOidText,
+				TypeClass: commonmodels.TypeClassText,
 			},
 		},
 		map[string]commonmodels.ParamsValue{
