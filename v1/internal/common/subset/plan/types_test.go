@@ -42,7 +42,7 @@ func TestTest(t *testing.T) {
 
 	//test := "my_column" // column name as string
 	//cond := sqlbuilder.NewCond()
-	//cond.IsNull(test)
+	//cond.IsValueNull(test)
 	//print(cond.Var("my_column"))
 	//
 	//sb := sqlbuilder.NewSelectBuilder()

@@ -130,7 +130,7 @@ func TestRecord_GetAttribute_text(t *testing.T) {
 //	res, err := r.GetTuple()
 //	require.NoError(t, err)
 //	for name := range expected {
-//		assert.Equalf(t, expected[name].IsNull, res[name].IsNull, "wrong IsNull value %s", name)
+//		assert.Equalf(t, expected[name].IsValueNull, res[name].IsValueNull, "wrong IsValueNull value %s", name)
 //		assert.Equalf(t, expected[name].Value, res[name].Value, "wrong Value %s", name)
 //	}
 //}

@@ -297,11 +297,11 @@ func TestRandomPersonTransformer_Transform(t *testing.T) {
 //
 //		fistNameRawValue, err := r.GetRawColumnValueByName("first_name")
 //		require.NoError(t, err)
-//		require.True(t, fistNameRawValue.IsNull)
+//		require.True(t, fistNameRawValue.IsValueNull)
 //
 //		lastNameRawValue, err := r.GetRawColumnValueByName("last_name")
 //		require.NoError(t, err)
-//		require.True(t, lastNameRawValue.IsNull)
+//		require.True(t, lastNameRawValue.IsValueNull)
 //	})
 //
 //	t.Run("keep_null only for one column", func(t *testing.T) {
@@ -347,11 +347,11 @@ func TestRandomPersonTransformer_Transform(t *testing.T) {
 //
 //		fistNameRawValue, err := r.GetRawColumnValueByName("first_name")
 //		require.NoError(t, err)
-//		require.False(t, fistNameRawValue.IsNull)
+//		require.False(t, fistNameRawValue.IsValueNull)
 //
 //		lastNameRawValue, err := r.GetRawColumnValueByName("last_name")
 //		require.NoError(t, err)
-//		require.True(t, lastNameRawValue.IsNull)
+//		require.True(t, lastNameRawValue.IsValueNull)
 //	})
 //
 //	t.Run("keep_null false for all columns and hash two times", func(t *testing.T) {
@@ -399,12 +399,12 @@ func TestRandomPersonTransformer_Transform(t *testing.T) {
 //
 //		fistNameRawValue, err := r.GetRawColumnValueByName("first_name")
 //		require.NoError(t, err)
-//		require.False(t, fistNameRawValue.IsNull)
+//		require.False(t, fistNameRawValue.IsValueNull)
 //		fistName := string(fistNameRawValue.Data)
 //
 //		lastNameRawValue, err := r.GetRawColumnValueByName("last_name")
 //		require.NoError(t, err)
-//		require.False(t, lastNameRawValue.IsNull)
+//		require.False(t, lastNameRawValue.IsValueNull)
 //		lastName := string(lastNameRawValue.Data)
 //
 //		_, record = getDriverAndRecordByColumns([]string{"first_name", "last_name"}, originalValue)
@@ -417,12 +417,12 @@ func TestRandomPersonTransformer_Transform(t *testing.T) {
 //
 //		fistNameRawValue, err = r.GetRawColumnValueByName("first_name")
 //		require.NoError(t, err)
-//		require.False(t, fistNameRawValue.IsNull)
+//		require.False(t, fistNameRawValue.IsValueNull)
 //		assert.Equal(t, fistName, string(fistNameRawValue.Data))
 //
 //		lastNameRawValue, err = r.GetRawColumnValueByName("last_name")
 //		require.NoError(t, err)
-//		require.False(t, lastNameRawValue.IsNull)
+//		require.False(t, lastNameRawValue.IsValueNull)
 //		assert.Equal(t, lastName, string(lastNameRawValue.Data))
 //	})
 //}

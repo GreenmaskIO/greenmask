@@ -79,6 +79,10 @@ type realAddressColumn struct {
 	tmpl      *template.Template
 }
 
+func (r realAddressColumn) IsAffected() bool {
+	return true
+}
+
 func (r realAddressColumn) ColumnName() string {
 	return r.Name
 }

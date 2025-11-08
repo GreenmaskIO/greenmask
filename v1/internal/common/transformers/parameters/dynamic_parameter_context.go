@@ -27,7 +27,7 @@ import (
 // 			1. Custom Unmarshaler function execution for ColumnValue and Scan
 //  		2. Test cast template and cast functions for it
 //			3. Test defaultValue caching after decoding - defaultValueScanned and defaultValueGot
-//			4. Test default values behaviour when dynamic value IsNull
+//			4. Test default values behaviour when dynamic value IsValueNull
 //		Implement:
 //			1. Smart scanning - it must be possible scan compatible types values like int32 into int64. Add feature that
 //			   allows to scan not pointer value into pointer receiver

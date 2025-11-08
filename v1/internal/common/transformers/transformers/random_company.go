@@ -22,11 +22,11 @@ import (
 	"slices"
 	"text/template"
 
-	"github.com/greenmaskio/greenmask/internal/generators/transformers"
 	"github.com/rs/zerolog/log"
 
 	commonininterfaces "github.com/greenmaskio/greenmask/v1/internal/common/interfaces"
 	commonmodels "github.com/greenmaskio/greenmask/v1/internal/common/models"
+	"github.com/greenmaskio/greenmask/v1/internal/common/transformers/generators/transformers"
 	commonparameters "github.com/greenmaskio/greenmask/v1/internal/common/transformers/parameters"
 	gmtemplate "github.com/greenmaskio/greenmask/v1/internal/common/transformers/template"
 	transformerutils "github.com/greenmaskio/greenmask/v1/internal/common/transformers/utils"
@@ -77,6 +77,10 @@ type randomCompanyNameColumn struct {
 	HashOnly  bool   `json:"hash_only"`
 	tmpl      *template.Template
 	columnIdx int
+}
+
+func (cc *randomCompanyNameColumn) IsAffected() bool {
+	return true
 }
 
 func (cc *randomCompanyNameColumn) ColumnName() string {

@@ -28,6 +28,7 @@ var (
 	ErrUnknownColumnIdx                            = errors.New("unknown column index")
 	ErrEndOfStream                                 = errors.New("end of stream")
 	ErrTableGraphHasCycles                         = errors.New("table graph has cycles")
+	ErrValueValidationFailed                       = errors.New("value validation failed")
 )
 
 type DumpError struct {

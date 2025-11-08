@@ -53,6 +53,10 @@ type randomPersonColumns struct {
 	columnIdx int
 }
 
+func (cc *randomPersonColumns) IsAffected() bool {
+	return true
+}
+
 func (cc *randomPersonColumns) ColumnName() string {
 	return cc.Name
 }

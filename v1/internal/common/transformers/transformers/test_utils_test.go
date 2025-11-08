@@ -418,6 +418,15 @@ func (m *transformerTestEnvReal) InitTransformer(
 	return nil
 }
 
+func (m *transformerTestEnvReal) DoneTransformer(
+	t *testing.T,
+	ctx context.Context,
+) error {
+	t.Helper()
+	err := m.transformer.Done(ctx)
+	return err
+}
+
 // SetRecord - init recorder with mysql-specific record.
 func (m *transformerTestEnvReal) SetRecord(t *testing.T, record ...*commonmodels.ColumnRawValue) {
 	t.Helper()

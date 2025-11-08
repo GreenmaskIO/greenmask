@@ -340,6 +340,9 @@ func getColumnContainerParameter[T commonparameters.ColumnContainer](
 	}
 	columns := make(map[int]string)
 	for idx := range res {
+		if !res[idx].IsAffected() {
+			continue
+		}
 		c, err := tableDriver.GetColumnByName(res[idx].ColumnName())
 		if err != nil {
 			validationcollector.FromContext(ctx).Add(commonmodels.NewValidationWarning().
@@ -569,4 +572,20 @@ func scanIPNet(src []byte, dest *net.IPNet) error {
 
 func scanMacAddr(src []byte, dest *net.HardwareAddr) error {
 	return pgGlobalTypeMap.Scan(pgtype.MacaddrOID, pgx.TextFormatCode, src, dest)
+}
+
+func defaultColumnContainerUnmarshaler[T commonparameters.ColumnContainer](
+	_ context.Context, _ *commonparameters.ParameterDefinition, data commonmodels.ParamsValue,
+) (
+	[]commonparameters.ColumnContainer, error,
+) {
+	var columns []T
+	if err := json.Unmarshal(data, &columns); err != nil {
+		return nil, fmt.Errorf("unmarshal columns parameter: %w", err)
+	}
+	res := make([]commonparameters.ColumnContainer, len(columns))
+	for i, c := range columns {
+		res[i] = c // ok because T is constrained to implement ColumnContainer
+	}
+	return res, nil
 }
