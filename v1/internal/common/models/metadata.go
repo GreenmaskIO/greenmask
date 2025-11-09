@@ -92,6 +92,9 @@ type Metadata struct {
 	DatabaseSchema        []Table                 `yaml:"database_schema" json:"database_schema"`
 	KindsTopologicalOrder map[ObjectKind][]TaskID `yaml:"kinds_topological_order" json:"kinds_topological_order"`
 	DumpStat              DumpStat                `yaml:"dump_stat" json:"dump_stat"`
+	Description           string                  `yaml:"description" json:"description"`
+	Tags                  []string                `yaml:"tags" json:"tags"`
+	DatabaseName          string                  `yaml:"database_name" json:"database_name"`
 }
 
 func NewMetadata(
@@ -101,6 +104,9 @@ func NewMetadata(
 	completedAt time.Time,
 	transformers []TableConfig,
 	databaseSchema []Table,
+	databaseName string,
+	tags []string,
+	description string,
 ) Metadata {
 	var originalSize, compressedSize int64
 	for _, stat := range dumpStat.TaskStats {
@@ -117,5 +123,8 @@ func NewMetadata(
 		Transformers:   transformers,
 		DatabaseSchema: databaseSchema,
 		DumpStat:       dumpStat,
+		DatabaseName:   databaseName,
+		Tags:           tags,
+		Description:    description,
 	}
 }

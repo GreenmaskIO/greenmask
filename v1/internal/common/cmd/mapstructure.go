@@ -154,6 +154,14 @@ func (c *Command) registerBool(flag Flag) error {
 	if !ok {
 		return fmt.Errorf("flag %T is not a bool: %w", flag, errWrongTypeProvided)
 	}
+	if flag.Dest != nil {
+		boolPtr, ok := flag.Dest.(*bool)
+		if !ok {
+			return fmt.Errorf("flag destination %T is not *bool: %w", flag.Dest, errWrongTypeProvided)
+		}
+		c.Flags().BoolVarP(boolPtr, flag.Name, flag.Shorthand, vv, flag.Usage)
+		return nil
+	}
 	c.Flags().BoolP(flag.Name, flag.Shorthand, vv, flag.Usage)
 	return nil
 }
@@ -162,6 +170,14 @@ func (c *Command) registerString(flag Flag) error {
 	vv, ok := flag.Default.(string)
 	if !ok {
 		return fmt.Errorf("flag %T is not a string: %w", flag, errWrongTypeProvided)
+	}
+	if flag.Dest != nil {
+		strPtr, ok := flag.Dest.(*string)
+		if !ok {
+			return fmt.Errorf("flag destination %T is not *string: %w", flag.Dest, errWrongTypeProvided)
+		}
+		c.Flags().StringVarP(strPtr, flag.Name, flag.Shorthand, vv, flag.Usage)
+		return nil
 	}
 	c.Flags().StringP(flag.Name, flag.Shorthand, vv, flag.Usage)
 	return nil
@@ -172,6 +188,14 @@ func (c *Command) registerInt(flag Flag) error {
 	if !ok {
 		return fmt.Errorf("flag %T is not an int: %w", flag, errWrongTypeProvided)
 	}
+	if flag.Dest != nil {
+		intPtr, ok := flag.Dest.(*int)
+		if !ok {
+			return fmt.Errorf("flag destination %T is not *int: %w", flag.Dest, errWrongTypeProvided)
+		}
+		c.Flags().IntVarP(intPtr, flag.Name, flag.Shorthand, vv, flag.Usage)
+		return nil
+	}
 	c.Flags().IntP(flag.Name, flag.Shorthand, vv, flag.Usage)
 	return nil
 }
@@ -180,6 +204,14 @@ func (c *Command) registerInt32(flag Flag) error {
 	vv, ok := flag.Default.(int32)
 	if !ok {
 		return fmt.Errorf("flag %T is not an int32: %w", flag, errWrongTypeProvided)
+	}
+	if flag.Dest != nil {
+		int32Ptr, ok := flag.Dest.(*int32)
+		if !ok {
+			return fmt.Errorf("flag destination %T is not *int32: %w", flag.Dest, errWrongTypeProvided)
+		}
+		c.Flags().Int32VarP(int32Ptr, flag.Name, flag.Shorthand, vv, flag.Usage)
+		return nil
 	}
 	c.Flags().Int32P(flag.Name, flag.Shorthand, vv, flag.Usage)
 	return nil
@@ -190,6 +222,14 @@ func (c *Command) registerInt64(flag Flag) error {
 	if !ok {
 		return fmt.Errorf("flag %T is not an int64: %w", flag, errWrongTypeProvided)
 	}
+	if flag.Dest != nil {
+		int64Ptr, ok := flag.Dest.(*int64)
+		if !ok {
+			return fmt.Errorf("flag destination %T is not *int64: %w", flag.Dest, errWrongTypeProvided)
+		}
+		c.Flags().Int64VarP(int64Ptr, flag.Name, flag.Shorthand, vv, flag.Usage)
+		return nil
+	}
 	c.Flags().Int64P(flag.Name, flag.Shorthand, vv, flag.Usage)
 	return nil
 }
@@ -198,6 +238,14 @@ func (c *Command) registerStringSlice(flag Flag) error {
 	vv, ok := flag.Default.([]string)
 	if !ok {
 		return fmt.Errorf("flag %T is not a []string: %w", flag, errWrongTypeProvided)
+	}
+	if flag.Dest != nil {
+		strSlicePtr, ok := flag.Dest.(*[]string)
+		if !ok {
+			return fmt.Errorf("flag destination %T is not *[]string: %w", flag.Dest, errWrongTypeProvided)
+		}
+		c.Flags().StringSliceVarP(strSlicePtr, flag.Name, flag.Shorthand, vv, flag.Usage)
+		return nil
 	}
 	c.Flags().StringSliceP(flag.Name, flag.Shorthand, vv, flag.Usage)
 	return nil

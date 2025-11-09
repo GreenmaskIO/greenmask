@@ -34,7 +34,7 @@ func NewReader(st storages.Storager) *Reader {
 }
 
 func (r *Reader) Read(ctx context.Context) (Status, error) {
-	obj, err := r.st.GetObject(ctx, heartBeatFileName)
+	obj, err := r.st.GetObject(ctx, FileName)
 	if err != nil {
 		return "", fmt.Errorf("get object: %w", err)
 	}

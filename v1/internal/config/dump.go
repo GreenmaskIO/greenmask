@@ -153,6 +153,8 @@ type Dump struct {
 	PostgresqlConfig  PostgresqlDumpConfig `mapstructure:"postgresql" yaml:"postgresql" json:"postgresql"`
 	Transformation    TransformationConfig `mapstructure:"transformation" yaml:"transformation" json:"transformation,omitempty"`
 	VirtualReferences []VirtualReference   `mapstructure:"virtual_references" yaml:"virtual_references" json:"virtual_references,omitempty"`
+	Tag               []string             `mapstructure:"tag" yaml:"tag" json:"tag,omitempty"`
+	Description       string               `mapstructure:"description" yaml:"description" json:"description,omitempty"`
 }
 
 func NewDump() Dump {

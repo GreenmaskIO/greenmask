@@ -91,7 +91,7 @@ func TestReader_Read(t *testing.T) {
 			obj.On("Close").
 				Return(nil)
 
-			st.On("GetObject", mock.Anything, heartBeatFileName).
+			st.On("GetObject", mock.Anything, FileName).
 				Return(obj, nil)
 
 			r := NewReader(st)
@@ -118,7 +118,7 @@ func TestReader_Read(t *testing.T) {
 		obj.On("Close").
 			Return(nil)
 
-		st.On("GetObject", mock.Anything, heartBeatFileName).
+		st.On("GetObject", mock.Anything, FileName).
 			Return(obj, nil)
 
 		r := NewReader(st)
@@ -134,7 +134,7 @@ func TestReader_Read(t *testing.T) {
 		cxt := context.Background()
 		st := &testutils.StorageMock{}
 
-		st.On("GetObject", mock.Anything, heartBeatFileName).
+		st.On("GetObject", mock.Anything, FileName).
 			Return(nil, errors.New("some error"))
 
 		r := NewReader(st)

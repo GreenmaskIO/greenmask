@@ -37,6 +37,9 @@ storage:
 #      MYSQL_USER: admin
 #      MYSQL_PASSWORD: admin
 dump:
+  tag:
+    - "v1"
+    - "daily"
   options:
 
   mysql:

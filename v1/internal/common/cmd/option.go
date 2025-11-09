@@ -58,6 +58,8 @@ type Flag struct {
 	Type             FlagType
 	ConfigDest       *config.Config
 	IsRequired       bool
+	Dest             any
+	ScanIntoDest     bool
 }
 
 func (o *Flag) Validate() error {

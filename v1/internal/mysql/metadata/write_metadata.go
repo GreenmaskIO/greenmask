@@ -22,6 +22,7 @@ import (
 	"time"
 
 	commonmodels "github.com/greenmaskio/greenmask/v1/internal/common/models"
+	"github.com/greenmaskio/greenmask/v1/internal/config"
 	"github.com/greenmaskio/greenmask/v1/internal/storages"
 )
 
@@ -31,19 +32,23 @@ func WriteMetadata(
 	ctx context.Context,
 	st storages.Storager,
 	engine string,
-	transformationConfig []commonmodels.TableConfig,
+	cfg config.Dump,
 	startedAt time.Time,
 	completedAt time.Time,
 	dumpStats commonmodels.DumpStat,
 	tables []commonmodels.Table,
+	databaseName string,
 ) error {
 	meta := commonmodels.NewMetadata(
 		engine,
 		dumpStats,
 		startedAt,
 		completedAt,
-		transformationConfig,
+		cfg.Transformation.ToTransformationConfig(),
 		tables,
+		databaseName,
+		cfg.Tag,
+		cfg.Description,
 	)
 	buf := bytes.NewBuffer(nil)
 	if err := json.NewEncoder(buf).Encode(meta); err != nil {

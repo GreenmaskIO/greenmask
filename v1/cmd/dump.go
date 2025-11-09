@@ -88,6 +88,24 @@ var (
 			IsRequired:       false,
 			Default:          false,
 		},
+		{
+			Name:             "tag",
+			Usage:            "Add tag to the dump metadata.",
+			ConfigPathPrefix: "dump",
+			BindToConfig:     true,
+			Type:             cmd.FlagTypeStringSlice,
+			IsRequired:       false,
+			Default:          []string{},
+		},
+		{
+			Name:             "description",
+			Usage:            "Add description to the dump metadata.",
+			ConfigPathPrefix: "dump",
+			BindToConfig:     true,
+			Type:             cmd.FlagTypeString,
+			IsRequired:       false,
+			Default:          "",
+		},
 	}
 
 	dumpCmd = cmd.MustCommand(&cobra.Command{
