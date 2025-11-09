@@ -25,7 +25,7 @@ import (
 )
 
 const (
-	heartBeatFileName = "heartbeat"
+	FileName = "heartbeat"
 )
 
 type Writer struct {
@@ -46,7 +46,7 @@ func (w *Writer) Write(ctx context.Context, s Status) error {
 	if err := json.NewEncoder(b).Encode(heartbeat); err != nil {
 		return fmt.Errorf("encode heartbeat: %w", err)
 	}
-	if err := w.st.PutObject(ctx, heartBeatFileName, b); err != nil {
+	if err := w.st.PutObject(ctx, FileName, b); err != nil {
 		return err
 	}
 	return nil

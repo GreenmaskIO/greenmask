@@ -74,7 +74,7 @@ func TestWriter_Write(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			cxt := context.Background()
 			st := &testutils.StorageMock{}
-			st.On("PutObject", mock.Anything, heartBeatFileName, mock.Anything).
+			st.On("PutObject", mock.Anything, FileName, mock.Anything).
 				Run(func(args mock.Arguments) {
 					body := args.Get(2).(io.Reader)
 					actual := Heartbeat{}
@@ -105,7 +105,7 @@ func TestWriter_Write(t *testing.T) {
 	t.Run("Storage error", func(t *testing.T) {
 		cxt := context.Background()
 		st := &testutils.StorageMock{}
-		st.On("PutObject", mock.Anything, heartBeatFileName, mock.Anything).
+		st.On("PutObject", mock.Anything, FileName, mock.Anything).
 			Return(errors.New("some err"))
 
 		r := NewWriter(st)

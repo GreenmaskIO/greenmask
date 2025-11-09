@@ -162,8 +162,9 @@ func (d *Dump) Run(ctx context.Context) (err error) {
 	}
 	completedAt := time.Now()
 	if err = metadata.WriteMetadata(
-		ctx, d.st, engineName, d.cfg.Dump.Transformation.ToTransformationConfig(),
+		ctx, d.st, engineName, d.cfg.Dump,
 		startedAt, completedAt, dumpStats, i.GetCommonTables(),
+		d.connConfig.Database,
 	); err != nil {
 		return fmt.Errorf("write metadata: %w", err)
 	}

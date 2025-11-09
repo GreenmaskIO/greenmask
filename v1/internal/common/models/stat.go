@@ -25,6 +25,7 @@ const (
 )
 
 type DumpStat struct {
+	DatabaseName       string                             `json:"database_name"`
 	RestorationContext RestorationContext                 `json:"restoration_context"`
 	RestorationItems   map[TaskID]RestorationItem         `json:"restoration_items"`
 	TaskStats          map[TaskID]TaskStat                `json:"task_stats"`

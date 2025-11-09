@@ -82,7 +82,6 @@ func init() {
 	DefaultTransformerRegistry.MustRegister(transformers.UUIDTransformerDefinition)
 	DefaultTransformerRegistry.MustRegister(transformers.RealAddressTransformerDefinition)
 	DefaultTransformerRegistry.MustRegister(transformers.RegexpReplaceTransformerDefinition)
-	DefaultTransformerRegistry.MustRegister(transformers.RegexpReplaceTransformerDefinition)
 	DefaultTransformerRegistry.MustRegister(transformers.ReplaceTransformerDefinition)
 	DefaultTransformerRegistry.MustRegister(transformers.SetNullTransformerDefinition)
 	DefaultTransformerRegistry.MustRegister(transformers.TemplateTransformerDefinition)
