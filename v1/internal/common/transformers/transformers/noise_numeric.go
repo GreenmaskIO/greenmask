@@ -28,11 +28,11 @@ import (
 	transformerutils "github.com/greenmaskio/greenmask/v1/internal/common/transformers/utils"
 )
 
-const NoiseNumericTransformerName = "NoiseNumeric"
+const TransformerNameNoiseNumeric = "NoiseNumeric"
 
 var NoiseNumericTransformerDefinition = transformerutils.NewTransformerDefinition(
 	transformerutils.NewTransformerProperties(
-		NoiseNumericTransformerName,
+		TransformerNameNoiseNumeric,
 		"Add noise to numeric value in min and max thresholds",
 	).AddMeta(transformerutils.AllowApplyForReferenced, true).
 		AddMeta(transformerutils.RequireHashEngineParameter, true),
@@ -223,44 +223,44 @@ func NewNumericFloatTransformer(
 	}, nil
 }
 
-func (nft *NoiseNumericTransformer) GetAffectedColumns() map[int]string {
-	return nft.affectedColumns
+func (t *NoiseNumericTransformer) GetAffectedColumns() map[int]string {
+	return t.affectedColumns
 }
 
-func (nft *NoiseNumericTransformer) Init(context.Context) error {
-	if nft.dynamicMode {
-		nft.transform = nft.dynamicTransform
+func (t *NoiseNumericTransformer) Init(context.Context) error {
+	if t.dynamicMode {
+		t.transform = t.dynamicTransform
 	}
 	return nil
 }
 
-func (nft *NoiseNumericTransformer) Done(context.Context) error {
+func (t *NoiseNumericTransformer) Done(context.Context) error {
 	return nil
 }
 
-func (nft *NoiseNumericTransformer) dynamicTransform(original decimal.Decimal) (decimal.Decimal, error) {
+func (t *NoiseNumericTransformer) dynamicTransform(original decimal.Decimal) (decimal.Decimal, error) {
 	var minVal, maxVal decimal.Decimal
-	err := nft.minParam.Scan(&minVal)
+	err := t.minParam.Scan(&minVal)
 	if err != nil {
 		return decimal.Decimal{}, fmt.Errorf(`unable to scan "min" param: %w`, err)
 	}
 
-	err = nft.maxParam.Scan(&maxVal)
+	err = t.maxParam.Scan(&maxVal)
 	if err != nil {
 		return decimal.Decimal{}, fmt.Errorf(`unable to scan "max" param: %w`, err)
 	}
 
-	limiter, err := getNoiseNumericLimiterForDynamicParameter(nft.numericSize, minVal, maxVal, nft.minAllowedValue, nft.maxAllowedValue)
+	limiter, err := getNoiseNumericLimiterForDynamicParameter(t.numericSize, minVal, maxVal, t.minAllowedValue, t.maxAllowedValue)
 	if err != nil {
 		return decimal.Decimal{}, fmt.Errorf("error creating limiter in dynamic mode: %w", err)
 	}
-	limiter.SetPrecision(nft.decimal)
-	return nft.t.SetDynamicLimiter(limiter).Transform(original)
+	limiter.SetPrecision(t.decimal)
+	return t.t.SetDynamicLimiter(limiter).Transform(original)
 }
 
-func (nft *NoiseNumericTransformer) Transform(_ context.Context, r commonininterfaces.Recorder) error {
+func (t *NoiseNumericTransformer) Transform(_ context.Context, r commonininterfaces.Recorder) error {
 	var val decimal.Decimal
-	isNull, err := r.ScanColumnValueByIdx(nft.columnIdx, &val)
+	isNull, err := r.ScanColumnValueByIdx(t.columnIdx, &val)
 	if err != nil {
 		return fmt.Errorf("scan value: %w", err)
 	}
@@ -268,15 +268,19 @@ func (nft *NoiseNumericTransformer) Transform(_ context.Context, r commonininter
 		return nil
 	}
 
-	res, err := nft.transform(val)
+	res, err := t.transform(val)
 	if err != nil {
 		return fmt.Errorf("transform value: %w", err)
 	}
 
-	if err = r.SetColumnValueByIdx(nft.columnIdx, res); err != nil {
+	if err = r.SetColumnValueByIdx(t.columnIdx, res); err != nil {
 		return fmt.Errorf("set new value: %w", err)
 	}
 	return nil
+}
+
+func (t *NoiseNumericTransformer) Describe() string {
+	return TransformerNameNoiseNumeric
 }
 
 func validateNoiseNumericTypeAndSetLimit(

@@ -25,3 +25,10 @@ func NewGzipPipe(usePgzip bool) (CountWriteCloser, CountReadCloser) {
 	// into count reader
 	return NewWriter(NewGzipWriter(pw, usePgzip)), NewReader(pr)
 }
+
+func NewPlainPipe() (CountWriteCloser, CountReadCloser) {
+	pr, pw := io.Pipe()
+	// Wrapping writer pipe into count writer and reader pipe
+	// into count reader
+	return NewWriter(pw), NewReader(pr)
+}

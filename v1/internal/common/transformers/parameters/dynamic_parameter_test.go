@@ -330,6 +330,11 @@ func (t *tableDriverMock) Table() *commonmodels.Table {
 	return table
 }
 
+func (t *tableDriverMock) GetCanonicalTypeClassName(typeName string, typeOid commonmodels.VirtualOID) (commonmodels.TypeClass, error) {
+	args := t.Called(typeName, typeOid)
+	return args.Get(0).(commonmodels.TypeClass), args.Error(1)
+}
+
 func TestDynamicParameter_Init(t *testing.T) {
 	t.Run("error column param cannot be dynamic", func(t *testing.T) {
 		columnDef := MustNewParameterDefinition("column", "some desc").
@@ -385,7 +390,8 @@ func TestDynamicParameter_Init(t *testing.T) {
 			LinkParameter("column").
 			SetDynamicMode(
 				NewDynamicModeProperties().
-					SetCompatibleTypes("int2"),
+					SetColumnProperties(NewColumnProperties().
+						SetAllowedColumnTypes("int2")),
 			)
 
 		// Initialize dynamic parameter with a timestamp column. So it is not supported by
@@ -403,8 +409,12 @@ func TestDynamicParameter_Init(t *testing.T) {
 			)
 		tableDriver.On("GetCanonicalTypeName", "int2", commonmodels.VirtualOID(10)).
 			Return("int2", nil)
+		tableDriver.On("GetCanonicalTypeClassName", "int2", commonmodels.VirtualOID(10)).
+			Return(commonmodels.TypeClassInt, nil)
 		tableDriver.On("GetCanonicalTypeName", "timestamp", commonmodels.VirtualOID(12)).
 			Return("timestamp", nil)
+		tableDriver.On("GetCanonicalTypeClassName", "timestamp", commonmodels.VirtualOID(12)).
+			Return(commonmodels.TypeClassDateTime, nil)
 		err = timestampParam.Init(
 			ctx,
 			map[string]*StaticParameter{columnDef.Name: columnParam},
@@ -451,7 +461,8 @@ func TestDynamicParameter_Init(t *testing.T) {
 			LinkParameter("column").
 			SetDynamicMode(
 				NewDynamicModeProperties().
-					SetCompatibleTypes("int2"),
+					SetColumnProperties(NewColumnProperties().
+						SetAllowedColumnTypes("int2")),
 			)
 
 		// Initialize dynamic parameter with a timestamp column. So it is not supported by
@@ -469,6 +480,9 @@ func TestDynamicParameter_Init(t *testing.T) {
 			)
 		tableDriver.On("GetCanonicalTypeName", "int2", commonmodels.VirtualOID(10)).
 			Return("int2", nil).
+			Twice()
+		tableDriver.On("GetCanonicalTypeClassName", "int2", commonmodels.VirtualOID(10)).
+			Return(commonmodels.TypeClassInt, nil).
 			Twice()
 		err = dynamicParameter.Init(
 			ctx,
@@ -513,7 +527,8 @@ func TestDynamicParameter_Value(t *testing.T) {
 			LinkParameter("column").
 			SetDynamicMode(
 				NewDynamicModeProperties().
-					SetCompatibleTypes("int2"),
+					SetColumnProperties(NewColumnProperties().
+						SetAllowedColumnTypes("int2")),
 			)
 
 		// Initialize dynamic parameter with a timestamp column. So it is not supported by
@@ -531,6 +546,9 @@ func TestDynamicParameter_Value(t *testing.T) {
 			)
 		tableDriver.On("GetCanonicalTypeName", "int2", commonmodels.VirtualOID(10)).
 			Return("int2", nil).
+			Twice()
+		tableDriver.On("GetCanonicalTypeClassName", "int2", commonmodels.VirtualOID(10)).
+			Return(commonmodels.TypeClassInt, nil).
 			Twice()
 		err = dynamicParameter.Init(
 			ctx,
@@ -591,7 +609,8 @@ func TestDynamicParameter_Value(t *testing.T) {
 			LinkParameter("column").
 			SetDynamicMode(
 				NewDynamicModeProperties().
-					SetCompatibleTypes("int2").
+					SetColumnProperties(NewColumnProperties().
+						SetAllowedColumnTypes("int2")).
 					SetUnmarshaler(func(driver commonininterfaces.DBMSDriver, typeName string, v commonmodels.ParamsValue) (any, error) {
 						assert.Equal(t, "int2", typeName)
 						assert.Equal(t, "1234", string(v))
@@ -614,6 +633,9 @@ func TestDynamicParameter_Value(t *testing.T) {
 			)
 		tableDriver.On("GetCanonicalTypeName", "int2", commonmodels.VirtualOID(10)).
 			Return("int2", nil).
+			Twice()
+		tableDriver.On("GetCanonicalTypeClassName", "int2", commonmodels.VirtualOID(10)).
+			Return(commonmodels.TypeClassInt, nil).
 			Twice()
 		err = dynamicParameter.Init(
 			ctx,
@@ -671,7 +693,8 @@ func TestDynamicParameter_Value(t *testing.T) {
 			LinkParameter("column").
 			SetDynamicMode(
 				NewDynamicModeProperties().
-					SetCompatibleTypes("int2"),
+					SetColumnProperties(NewColumnProperties().
+						SetAllowedColumnTypes("int2")),
 			)
 
 		// Initialize dynamic parameter with a timestamp column. So it is not supported by
@@ -689,6 +712,9 @@ func TestDynamicParameter_Value(t *testing.T) {
 			)
 		tableDriver.On("GetCanonicalTypeName", "int2", commonmodels.VirtualOID(10)).
 			Return("int2", nil).
+			Twice()
+		tableDriver.On("GetCanonicalTypeClassName", "int2", commonmodels.VirtualOID(10)).
+			Return(commonmodels.TypeClassInt, nil).
 			Twice()
 		err = dynamicParameter.Init(
 			ctx,

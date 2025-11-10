@@ -18,13 +18,13 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/greenmaskio/greenmask/v1/internal/common/interfaces"
 	"github.com/greenmaskio/greenmask/v1/internal/common/transformers/registry"
 	"github.com/greenmaskio/greenmask/v1/internal/config"
-	"github.com/greenmaskio/greenmask/v1/internal/storages"
 )
 
-func RunDump(ctx context.Context, cfg *config.Config, st storages.Storager) error {
-	dump, err := NewDump(cfg, registry.DefaultTransformerRegistry, st)
+func RunDump(ctx context.Context, cfg *config.Config, st interfaces.Storager, opts ...Option) error {
+	dump, err := NewDump(cfg, registry.DefaultTransformerRegistry, st, opts...)
 	if err != nil {
 		return fmt.Errorf("init dump process: %w", err)
 	}

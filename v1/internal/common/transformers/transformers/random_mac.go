@@ -38,11 +38,11 @@ const (
 	managementTypeNameAny       = "any"
 )
 
-const RandomMacTransformerName = "RandomMac"
+const TransformerNameRandomMac = "RandomMac"
 
 var RandomMacAddressDefinition = transformerutils.NewTransformerDefinition(
 	transformerutils.NewTransformerProperties(
-		RandomMacTransformerName,
+		TransformerNameRandomMac,
 		"Generate random mac address",
 	).AddMeta(transformerutils.AllowApplyForReferenced, true).
 		AddMeta(transformerutils.RequireHashEngineParameter, true),
@@ -166,43 +166,47 @@ func NewMacAddressTransformer(
 	}, nil
 }
 
-func (rbt *RandomMac) GetAffectedColumns() map[int]string {
-	return rbt.affectedColumns
+func (t *RandomMac) GetAffectedColumns() map[int]string {
+	return t.affectedColumns
 }
 
-func (rbt *RandomMac) Init(context.Context) error {
+func (t *RandomMac) Init(context.Context) error {
 	return nil
 }
 
-func (rbt *RandomMac) Done(context.Context) error {
+func (t *RandomMac) Done(context.Context) error {
 	return nil
 }
 
-func (rbt *RandomMac) Transform(_ context.Context, r commonininterfaces.Recorder) error {
-	rawVal, err := r.GetRawColumnValueByIdx(rbt.columnIdx)
+func (t *RandomMac) Transform(_ context.Context, r commonininterfaces.Recorder) error {
+	rawVal, err := r.GetRawColumnValueByIdx(t.columnIdx)
 	if err != nil {
 		return fmt.Errorf("unable to scan value: %w", err)
 	}
 
-	if rawVal.IsNull && rbt.keepNull {
+	if rawVal.IsNull && t.keepNull {
 		return nil
 	}
 
-	if err := scanMacAddr(rawVal.Data, &rbt.originalMac); err != nil {
+	if err := scanMacAddr(rawVal.Data, &t.originalMac); err != nil {
 		return fmt.Errorf("unable to scan mac address: %w", err)
 	}
 
-	macAddr, err := rbt.t.Generate(rbt.originalMac, rbt.keepOriginalVendor, rbt.castType, rbt.managementType)
+	macAddr, err := t.t.Generate(t.originalMac, t.keepOriginalVendor, t.castType, t.managementType)
 	if err != nil {
 		return fmt.Errorf("unable to transform value: %w", err)
 	}
 
 	newVal := commonmodels.NewColumnRawValue([]byte(macAddr.String()), false)
-	if err = r.SetRawColumnValueByIdx(rbt.columnIdx, newVal); err != nil {
+	if err = r.SetRawColumnValueByIdx(t.columnIdx, newVal); err != nil {
 		return fmt.Errorf("unable to set new value: %w", err)
 	}
 
 	return nil
+}
+
+func (t *RandomMac) Describe() string {
+	return TransformerNameRandomMac
 }
 
 func scanCastType(_ *commonparameters.ParameterDefinition, _ commonininterfaces.DBMSDriver, src commonmodels.ParamsValue) (any, error) {

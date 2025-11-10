@@ -26,6 +26,7 @@ type Column struct {
 	DateTimePrecision *int
 	NotNull           bool
 	TypeOID           models.VirtualOID
+	TypeClass         models.TypeClass
 }
 
 func NewColumn(
@@ -35,6 +36,7 @@ func NewColumn(
 	numericPrecision, numericScale, dateTimePrecision *int,
 	notNull bool,
 	typeOID models.VirtualOID,
+	typeClass models.TypeClass,
 ) Column {
 	return Column{
 		Idx:               idx,
@@ -46,5 +48,6 @@ func NewColumn(
 		DateTimePrecision: dateTimePrecision,
 		NotNull:           notNull,
 		TypeOID:           typeOID,
+		TypeClass:         typeClass,
 	}
 }

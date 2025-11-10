@@ -26,11 +26,11 @@ import (
 	transformerutils "github.com/greenmaskio/greenmask/v1/internal/common/transformers/utils"
 )
 
-const TemplateRecordTransformerName = "TemplateRecord"
+const TransformerNameTemplateRecord = "TemplateRecord"
 
 var TemplateRecordTransformerDefinition = transformerutils.NewTransformerDefinition(
 	transformerutils.NewTransformerProperties(
-		TemplateRecordTransformerName,
+		TransformerNameTemplateRecord,
 		"Modify the record using gotemplate",
 	),
 
@@ -80,26 +80,30 @@ func NewTemplateRecordTransformer(
 	}, nil
 }
 
-func (sut *TemplateRecordTransformer) GetAffectedColumns() map[int]string {
+func (t *TemplateRecordTransformer) GetAffectedColumns() map[int]string {
 	return map[int]string{}
 }
 
-func (sut *TemplateRecordTransformer) Init(context.Context) error {
+func (t *TemplateRecordTransformer) Init(context.Context) error {
 	return nil
 }
 
-func (sut *TemplateRecordTransformer) Done(context.Context) error {
+func (t *TemplateRecordTransformer) Done(context.Context) error {
 	return nil
 }
 
-func (sut *TemplateRecordTransformer) Transform(_ context.Context, r commonininterfaces.Recorder) error {
-	sut.tctx.SetRecord(r)
+func (t *TemplateRecordTransformer) Transform(_ context.Context, r commonininterfaces.Recorder) error {
+	t.tctx.SetRecord(r)
 
-	if err := sut.tmpl.Execute(sut.buf, sut.tctx); err != nil {
+	if err := t.tmpl.Execute(t.buf, t.tctx); err != nil {
 		return fmt.Errorf("execute template: %w", err)
 	}
 
-	sut.buf.Reset()
-	sut.tctx.Clean()
+	t.buf.Reset()
+	t.tctx.Clean()
 	return nil
+}
+
+func (t *TemplateRecordTransformer) Describe() string {
+	return TransformerNameTemplateRecord
 }

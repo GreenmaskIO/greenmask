@@ -25,11 +25,11 @@ import (
 	transformerutils "github.com/greenmaskio/greenmask/v1/internal/common/transformers/utils"
 )
 
-const RandomBoolTransformerName = "RandomBool"
+const TransformerNameRandomBool = "RandomBool"
 
 var BoolTransformerDefinition = transformerutils.NewTransformerDefinition(
 	transformerutils.NewTransformerProperties(
-		RandomBoolTransformerName,
+		TransformerNameRandomBool,
 		"Generate random bool",
 	).AddMeta(transformerutils.AllowApplyForReferenced, true).
 		AddMeta(transformerutils.RequireHashEngineParameter, true),
@@ -97,34 +97,38 @@ func NewBooleanTransformer(
 	}, nil
 }
 
-func (rbt *BooleanTransformer) GetAffectedColumns() map[int]string {
-	return rbt.affectedColumns
+func (t *BooleanTransformer) GetAffectedColumns() map[int]string {
+	return t.affectedColumns
 }
 
-func (rbt *BooleanTransformer) Init(context.Context) error {
+func (t *BooleanTransformer) Init(context.Context) error {
 	return nil
 }
 
-func (rbt *BooleanTransformer) Done(context.Context) error {
+func (t *BooleanTransformer) Done(context.Context) error {
 	return nil
 }
 
-func (rbt *BooleanTransformer) Transform(_ context.Context, r commonininterfaces.Recorder) error {
-	val, err := r.GetRawColumnValueByIdx(rbt.columnIdx)
+func (t *BooleanTransformer) Transform(_ context.Context, r commonininterfaces.Recorder) error {
+	val, err := r.GetRawColumnValueByIdx(t.columnIdx)
 	if err != nil {
 		return fmt.Errorf("scan value: %w", err)
 	}
-	if val.IsNull && rbt.keepNull {
+	if val.IsNull && t.keepNull {
 		return nil
 	}
 
-	boolVal, err := rbt.t.Transform(val.Data)
+	boolVal, err := t.t.Transform(val.Data)
 	if err != nil {
 		return fmt.Errorf("transform value: %w", err)
 	}
 
-	if err = r.SetColumnValueByIdx(rbt.columnIdx, boolVal); err != nil {
+	if err = r.SetColumnValueByIdx(t.columnIdx, boolVal); err != nil {
 		return fmt.Errorf("set new value: %w", err)
 	}
 	return nil
+}
+
+func (t *BooleanTransformer) Describe() string {
+	return TransformerNameRandomBool
 }

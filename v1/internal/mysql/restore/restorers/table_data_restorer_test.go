@@ -17,12 +17,14 @@ package restorers
 import (
 	"context"
 	"encoding/csv"
+	"encoding/json"
 	"os"
 	"path"
 	"strings"
 	"testing"
 
 	"github.com/rs/zerolog"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
 
@@ -31,6 +33,16 @@ import (
 	"github.com/greenmaskio/greenmask/v1/internal/common/utils"
 	"github.com/greenmaskio/greenmask/v1/internal/testutils"
 )
+
+type dummyTaskMapper struct{}
+
+func (*dummyTaskMapper) SetTaskCompleted(_ commonmodels.TaskID) {
+	// no-op
+}
+
+func (*dummyTaskMapper) IsTaskCompleted(_ commonmodels.TaskID) bool {
+	return true
+}
 
 type restoreSuite struct {
 	testutils.MySQLContainerSuite
@@ -99,17 +111,21 @@ func (s *restoreSuite) TestRestorer_RestoreData() {
 		Schema: "playground",
 		Name:   "users",
 	}
-	meta := commonmodels.DataSectionEntry{
-		FileName:    "playground__users.csv.gz",
-		RecordCount: 3,
+	rawData := utils.Must(json.Marshal(table))
+	meta := commonmodels.RestorationItem{
+		Filename:         "playground__users.csv.gz",
+		RecordCount:      3,
+		ObjectDefinition: rawData,
 	}
 
 	st := mocks.NewStorageMock()
-	st.On("GetObject", mock.Anything, meta.FileName).
+	st.On("GetObject", mock.Anything, meta.Filename).
 		Return(r, nil)
 
 	opts := s.GetRootConnectionOpts(ctx)
-	rr := NewTableDataRestorer(table, meta, opts, st)
+	tr := &dummyTaskMapper{}
+	rr, err := NewTableDataRestorer(meta, opts, st, tr)
+	assert.NoError(s.T(), err)
 	err = rr.Init(ctx)
 	s.Require().NoError(err, "failed to open table data restorer")
 	err = rr.Restore(ctx)

@@ -62,13 +62,12 @@ type taskProducerMock struct {
 
 func (t *taskProducerMock) Produce(
 	ctx context.Context,
-	vc *validationcollector.Collector,
-) ([]commonininterfaces.Dumper, error) {
-	args := t.Called(ctx, vc)
-	if args.Error(1) != nil {
-		return nil, args.Error(1)
+) ([]commonininterfaces.Dumper, commonmodels.RestorationContext, error) {
+	args := t.Called(ctx)
+	if args.Error(2) != nil {
+		return nil, commonmodels.RestorationContext{}, args.Error(2)
 	}
-	return args.Get(0).([]commonininterfaces.Dumper), args.Error(1)
+	return args.Get(0).([]commonininterfaces.Dumper), args.Get(1).(commonmodels.RestorationContext), args.Error(2)
 }
 
 func (t *taskProducerMock) Metadata(ctx context.Context) any {
@@ -94,16 +93,16 @@ func TestProcessor_Run(t *testing.T) {
 
 		tp := &taskProducerMock{}
 		// Produce the task list by the producer.
-		tp.On("Produce", mock.Anything, mock.Anything).
-			Return([]commonininterfaces.Dumper{task1, task2}, nil)
+		tp.On("Produce", mock.Anything).
+			Return([]commonininterfaces.Dumper{task1, task2}, commonmodels.RestorationContext{}, nil)
 
 		sd.On("DumpSchema", mock.Anything).
 			Return(nil)
 
 		vc := validationcollector.NewCollector()
-		dumpRuntime := NewDefaultDumpProcessor(tp, sd)
-		ctx := context.Background()
-		err := dumpRuntime.Run(ctx, vc)
+		ctx := validationcollector.WithCollector(context.Background(), vc)
+		dumpRuntime, _ := NewDefaultDumpProcessor(tp, sd)
+		_, err := dumpRuntime.Run(ctx)
 		require.NoError(t, err)
 
 		task1.AssertExpectations(t)

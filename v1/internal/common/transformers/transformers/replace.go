@@ -210,11 +210,12 @@ func (t *ReplaceTransformer) transformStatic(
 	return nil
 }
 
-func (t *ReplaceTransformer) Transform(
-	ctx context.Context,
-	r commonininterfaces.Recorder,
-) error {
+func (t *ReplaceTransformer) Transform(ctx context.Context, r commonininterfaces.Recorder) error {
 	return t.transform(ctx, r)
+}
+
+func (t *ReplaceTransformer) Describe() string {
+	return TransformerNameReplace
 }
 
 func (t *ReplaceTransformer) GetAffectedColumns() map[int]string {

@@ -1,4 +1,4 @@
-// Copyright 2023 Greenmask
+// Copyright 2025 Greenmask
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,23 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package storages
+package directory
 
-import (
-	"fmt"
-
-	"github.com/rs/zerolog"
-	"github.com/rs/zerolog/log"
-)
-
-type LogWrapper struct {
-	logger *zerolog.Logger
+type DirectoryConfig struct {
+	Path string
 }
 
-func (lw LogWrapper) Log(objs ...interface{}) {
-	event := log.Debug()
-	for idx, o := range objs {
-		event.Any(fmt.Sprintf("%d", idx), o)
+func NewDirectoryConfig(path string) DirectoryConfig {
+	return DirectoryConfig{
+		Path: path,
 	}
-	event.Msg("s3 storage logging")
 }

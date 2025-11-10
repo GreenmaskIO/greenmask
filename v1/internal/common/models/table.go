@@ -131,12 +131,20 @@ type Column struct {
 	Size int `json:"size"`
 }
 
-func NewColumn(idx int, name string, colTyp string, oid VirtualOID, notNull bool) Column {
+func NewColumn(
+	idx int,
+	name string,
+	colTyp string,
+	oid VirtualOID,
+	notNull bool,
+	typeClass TypeClass,
+) Column {
 	return Column{
-		Idx:      idx,
-		Name:     name,
-		TypeName: colTyp,
-		TypeOID:  oid,
-		NotNull:  notNull,
+		Idx:       idx,
+		Name:      name,
+		TypeName:  colTyp,
+		TypeOID:   oid,
+		NotNull:   notNull,
+		TypeClass: typeClass,
 	}
 }

@@ -221,22 +221,22 @@ func NewDictTransformer(
 	}, nil
 }
 
-func (ht *DictTransformer) GetAffectedColumns() map[int]string {
-	return ht.affectedColumns
+func (t *DictTransformer) GetAffectedColumns() map[int]string {
+	return t.affectedColumns
 }
 
-func (ht *DictTransformer) Init(context.Context) error {
+func (t *DictTransformer) Init(context.Context) error {
 	return nil
 }
 
-func (ht *DictTransformer) Done(context.Context) error {
+func (t *DictTransformer) Done(context.Context) error {
 	return nil
 }
 
-func (ht *DictTransformer) Transform(_ context.Context, r commonininterfaces.Recorder) error {
+func (t *DictTransformer) Transform(_ context.Context, r commonininterfaces.Recorder) error {
 	var val *commonmodels.ColumnRawValue
 	var err error
-	val, err = r.GetRawColumnValueByIdx(ht.columnIdx)
+	val, err = r.GetRawColumnValueByIdx(t.columnIdx)
 	if err != nil {
 		return fmt.Errorf("unable to scan attribute value: %w", err)
 	}
@@ -244,17 +244,17 @@ func (ht *DictTransformer) Transform(_ context.Context, r commonininterfaces.Rec
 	var newVal *commonmodels.ColumnRawValue
 	var isSet bool
 	if val.IsNull {
-		newVal, isSet = ht.dict[defaultNullSeq]
+		newVal, isSet = t.dict[defaultNullSeq]
 	} else {
-		newVal, isSet = ht.dict[string(val.Data)]
+		newVal, isSet = t.dict[string(val.Data)]
 	}
 
 	if !isSet {
 		switch {
-		case ht.defaultValue != nil:
+		case t.defaultValue != nil:
 			// If default value is set - use it.
-			newVal = ht.defaultValue
-		case ht.failNotMatched:
+			newVal = t.defaultValue
+		case t.failNotMatched:
 			// If fail if not matched - return error.
 			// FIXME: we might not want to push it as an error. This might be a sensitive data.
 			return fmt.Errorf(
@@ -264,9 +264,13 @@ func (ht *DictTransformer) Transform(_ context.Context, r commonininterfaces.Rec
 		}
 	}
 
-	if err = r.SetRawColumnValueByIdx(ht.columnIdx, newVal); err != nil {
+	if err = r.SetRawColumnValueByIdx(t.columnIdx, newVal); err != nil {
 		return fmt.Errorf("unable to set new value: %w", err)
 	}
 
 	return nil
+}
+
+func (t *DictTransformer) Describe() string {
+	return TransformerNameDict
 }

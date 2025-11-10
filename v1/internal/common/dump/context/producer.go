@@ -34,7 +34,7 @@ import (
 // NewTableDriverFunc - function that uses to create a table driver for a specific DBMS driver.
 // The column type override can be used in order to override driver encode-decode behaviour.
 type NewTableDriverFunc func(
-	vc *validationcollector.Collector,
+	ctx context.Context,
 	table commonmodels.Table,
 	columnsTypeOverride map[string]string,
 ) (commonininterfaces.TableDriver, error)
@@ -65,7 +65,7 @@ func New(
 }
 
 // Build - returns list of TableContext objects that are used in the TaskProducer interface.
-func (p *TableContextBuilder) Build(ctx context.Context, vc *validationcollector.Collector) ([]TableContext, error) {
+func (p *TableContextBuilder) Build(ctx context.Context) ([]TableContext, error) {
 	var err error
 	tableRuntimes := make([]TableContext, len(p.tables))
 	for i := range p.tables {
@@ -77,7 +77,7 @@ func (p *TableContextBuilder) Build(ctx context.Context, vc *validationcollector
 			transformationConfig = p.tableConfigs[idx]
 		}
 		query := p.dumpQueries[i]
-		tableRuntimes[i], err = p.initTable(ctx, vc, p.tables[i], transformationConfig, query)
+		tableRuntimes[i], err = p.initTable(ctx, p.tables[i], transformationConfig, query)
 		if err != nil {
 			return nil, fmt.Errorf("init table %s.%s: %w", p.tables[i].Schema, p.tables[i].Name, err)
 		}
@@ -88,7 +88,6 @@ func (p *TableContextBuilder) Build(ctx context.Context, vc *validationcollector
 // initTable - initialize a table runtime for a specific table.
 func (p *TableContextBuilder) initTable(
 	ctx context.Context,
-	vc *validationcollector.Collector,
 	table commonmodels.Table,
 	tableConfig commonmodels.TableConfig,
 	dumpQueries string,
@@ -97,24 +96,24 @@ func (p *TableContextBuilder) initTable(
 		Str(commonmodels.MetaKeyTableSchema, table.Schema).
 		Str(commonmodels.MetaKeyTableName, table.Name).
 		Logger().WithContext(ctx)
-	driver, err := p.newTableDriver(vc, table, tableConfig.ColumnsTypeOverride)
+	driver, err := p.newTableDriver(ctx, table, tableConfig.ColumnsTypeOverride)
 	if err != nil {
 		return TableContext{}, fmt.Errorf("new driver: %w", err)
 	}
 	if dumpQueries == "" && tableConfig.Query != "" {
 		dumpQueries = tableConfig.Query
 	}
-	tableCondition, err := p.compileTableCondition(ctx, vc, utils.Value(driver.Table()), tableConfig)
+	tableCondition, err := p.compileTableCondition(ctx, utils.Value(driver.Table()), tableConfig)
 	if err != nil {
 		return TableContext{}, fmt.Errorf("compile table condition: %w", err)
 	}
-	transformationRuntimes, err := p.initTableTransformers(ctx, vc, driver, tableConfig.Transformers)
+	transformationRuntimes, err := p.initTableTransformers(ctx, driver, tableConfig.Transformers)
 	if err != nil {
 		return TableContext{}, fmt.Errorf("init transformation runtimes: %w", err)
 	}
 	return TableContext{
 		Table:              &table,
-		TableCondition:     tableCondition,
+		Condition:          tableCondition,
 		TransformerContext: transformationRuntimes,
 		Query:              dumpQueries,
 		TableDriver:        driver,
@@ -123,7 +122,6 @@ func (p *TableContextBuilder) initTable(
 
 func (p *TableContextBuilder) initTableTransformers(
 	ctx context.Context,
-	vc *validationcollector.Collector,
 	driver commonininterfaces.TableDriver,
 	transformerConfigs []commonmodels.TransformerConfig,
 ) ([]*TransformerContext, error) {
@@ -136,13 +134,13 @@ func (p *TableContextBuilder) initTableTransformers(
 		if err != nil {
 			return nil, fmt.Errorf("init transformer \"%s\": %w", transformerConfigs[i].Name, err)
 		}
-		transformerCond, err := p.compileTransformerCondition(ctx, vc, utils.Value(driver.Table()), transformerConfigs[i])
+		transformerCond, err := p.compileTransformerCondition(ctx, utils.Value(driver.Table()), transformerConfigs[i])
 		if err != nil {
 			return nil, fmt.Errorf("compile transformer condition: %w", err)
 		}
 		res[i] = &TransformerContext{
 			Transformer: transformer,
-			WhenCond:    transformerCond,
+			Condition:   transformerCond,
 		}
 	}
 	return res, nil
@@ -153,7 +151,9 @@ func (p *TableContextBuilder) initTransformer(
 	driver commonininterfaces.TableDriver,
 	config commonmodels.TransformerConfig,
 ) (commonininterfaces.Transformer, error) {
-	ctx = validationcollector.WithMeta(ctx, map[string]any{"TransformerName": config.Name})
+	ctx = validationcollector.WithMeta(ctx,
+		commonmodels.MetaKeyTransformerName, config.Name,
+	)
 	transformerDefinition, ok := p.transformerRegistry.Get(config.Name)
 	if !ok {
 		validationcollector.FromContext(ctx).
@@ -201,30 +201,28 @@ func (p *TableContextBuilder) initTransformer(
 
 func (p *TableContextBuilder) compileTransformerCondition(
 	ctx context.Context,
-	vc *validationcollector.Collector,
 	table commonmodels.Table,
 	transformerConfig commonmodels.TransformerConfig,
-) (*conditions.WhenCond, error) {
+) (CondEvaluator, error) {
 	ctx = log.Ctx(ctx).With().
 		Any(commonmodels.MetaKeyConditionScope, "Transformer").
 		Logger().WithContext(ctx)
 	if transformerConfig.When == "" {
 		return nil, nil
 	}
-	return conditions.NewWhenCond(ctx, vc, transformerConfig.When, table)
+	return conditions.NewWhenCond(ctx, transformerConfig.When, table)
 }
 
 func (p *TableContextBuilder) compileTableCondition(
 	ctx context.Context,
-	vc *validationcollector.Collector,
 	table commonmodels.Table,
 	tableConfig commonmodels.TableConfig,
-) (*conditions.WhenCond, error) {
+) (CondEvaluator, error) {
 	ctx = log.Ctx(ctx).With().
 		Any(commonmodels.MetaKeyConditionScope, "Table").
 		Logger().WithContext(ctx)
 	if tableConfig.When == "" {
 		return nil, nil
 	}
-	return conditions.NewWhenCond(ctx, vc, tableConfig.When, table)
+	return conditions.NewWhenCond(ctx, tableConfig.When, table)
 }

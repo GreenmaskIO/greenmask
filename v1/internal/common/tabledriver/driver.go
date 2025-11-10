@@ -58,18 +58,8 @@ type TableDriver struct {
 	maxIdx int
 }
 
-func NewWithContext(
-	ctx context.Context,
-	d commonininterfaces.DBMSDriver,
-	t *commonmodels.Table,
-	typeOverride map[string]string,
-) (*TableDriver, error) {
-	vc := validationcollector.FromContext(ctx)
-	return New(vc, d, t, typeOverride)
-}
-
 func New(
-	vc *validationcollector.Collector,
+	ctx context.Context,
 	d commonininterfaces.DBMSDriver,
 	t *commonmodels.Table,
 	typeOverride map[string]string,
@@ -89,7 +79,7 @@ func New(
 		columnIdxToTypeOID[idx] = c.TypeOID
 		// Check column type is supported by driver
 		if !d.TypeExistsByOid(c.TypeOID) && typeOverride[c.Name] == "" {
-			vc.Add(
+			validationcollector.FromContext(ctx).Add(
 				commonmodels.NewValidationWarning().
 					AddMeta("TableSchema", t.Schema).
 					AddMeta("TableName", t.Name).
@@ -106,7 +96,7 @@ func New(
 			if !d.TypeExistsByName(typeOverride[c.Name]) {
 				// In case type is overridden but does not exist in DBMS driver
 				// we consider it as a fatal error.
-				vc.Add(
+				validationcollector.FromContext(ctx).Add(
 					commonmodels.NewValidationWarning().
 						SetSeverity(commonmodels.ValidationSeverityError).
 						SetMsg("unknown or unsupported overridden type name by DBMS driver:"+

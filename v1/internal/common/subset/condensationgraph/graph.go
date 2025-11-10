@@ -215,5 +215,7 @@ func (g *Graph) GetTopologicalOrder() ([]int, error) {
 	if g.HasCycles() {
 		return nil, commonmodels.ErrTableGraphHasCycles
 	}
-	return slices.Clone(g.order), nil
+	res := slices.Clone(g.order)
+	slices.Reverse(res)
+	return res, nil
 }

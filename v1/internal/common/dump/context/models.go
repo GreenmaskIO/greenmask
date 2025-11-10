@@ -15,22 +15,26 @@
 package context
 
 import (
-	"github.com/greenmaskio/greenmask/v1/internal/common/conditions"
 	commonininterfaces "github.com/greenmaskio/greenmask/v1/internal/common/interfaces"
 	commonmodels "github.com/greenmaskio/greenmask/v1/internal/common/models"
 )
 
+type CondEvaluator interface {
+	Evaluate(r commonininterfaces.Recorder) (bool, error)
+}
+
 // TransformerContext - supplied transformer and conditions that have to be executed.
 type TransformerContext struct {
 	Transformer commonininterfaces.Transformer
-	WhenCond    *conditions.WhenCond
+	// Condition - transformer level condition to evaluate before applying the transformer.
+	Condition CondEvaluator
 }
 
 func (tc *TransformerContext) EvaluateWhen(r commonininterfaces.Recorder) (bool, error) {
-	if tc.WhenCond == nil {
+	if tc.Condition == nil {
 		return true, nil
 	}
-	return tc.WhenCond.Evaluate(r)
+	return tc.Condition.Evaluate(r)
 }
 
 // TableContext - everything related to the table that must be applied for a record.
@@ -38,11 +42,33 @@ func (tc *TransformerContext) EvaluateWhen(r commonininterfaces.Recorder) (bool,
 type TableContext struct {
 	Table              *commonmodels.Table
 	TransformerContext []*TransformerContext
-	TableCondition     *conditions.WhenCond
-	Query              string
-	TableDriver        commonininterfaces.TableDriver
+	// Condition - table level condition to evaluate before applying any transformers.
+	Condition   CondEvaluator
+	Query       string
+	TableDriver commonininterfaces.TableDriver
 }
 
 func (tc *TableContext) HasTransformer() bool {
 	return len(tc.TransformerContext) > 0
+}
+
+func (tc *TableContext) GetAffectedColumns() []int {
+	affectedColumns := make(map[int]struct{})
+	for _, transformerCtx := range tc.TransformerContext {
+		ac := transformerCtx.Transformer.GetAffectedColumns()
+		for idx := range ac {
+			affectedColumns[idx] = struct{}{}
+		}
+	}
+	res := make([]int, 0, len(affectedColumns))
+	for col := range affectedColumns {
+		res = append(res, col)
+	}
+	return res
+}
+func (tc *TableContext) EvaluateWhen(r commonininterfaces.Recorder) (bool, error) {
+	if tc.Condition == nil {
+		return true, nil
+	}
+	return tc.Condition.Evaluate(r)
 }

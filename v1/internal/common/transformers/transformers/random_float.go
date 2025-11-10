@@ -29,11 +29,11 @@ import (
 	"github.com/greenmaskio/greenmask/v1/internal/common/validationcollector"
 )
 
-const RandomFloatTransformerName = "RandomFloat"
+const TransformerNameRandomFloat = "RandomFloat"
 
 var RamdomFloatTransformerDefinition = transformerutils.NewTransformerDefinition(
 	transformerutils.NewTransformerProperties(
-		RandomFloatTransformerName,
+		TransformerNameRandomFloat,
 		"Generate float value in min and max thresholds and round up to provided digits",
 	).AddMeta(transformerutils.AllowApplyForReferenced, true).
 		AddMeta(transformerutils.RequireHashEngineParameter, true),
@@ -204,63 +204,67 @@ func NewFloatTransformer(
 	}, nil
 }
 
-func (rit *FloatTransformer) GetAffectedColumns() map[int]string {
-	return rit.affectedColumns
+func (t *FloatTransformer) GetAffectedColumns() map[int]string {
+	return t.affectedColumns
 }
 
-func (rit *FloatTransformer) Init(_ context.Context) error {
-	if rit.dynamicMode {
-		rit.transform = rit.dynamicTransform
+func (t *FloatTransformer) Init(_ context.Context) error {
+	if t.dynamicMode {
+		t.transform = t.dynamicTransform
 	}
 	return nil
 }
 
-func (rit *FloatTransformer) Done(_ context.Context) error {
+func (t *FloatTransformer) Done(_ context.Context) error {
 	return nil
 }
 
-func (rit *FloatTransformer) dynamicTransform(v []byte) (float64, error) {
+func (t *FloatTransformer) dynamicTransform(v []byte) (float64, error) {
 
 	var minVal, maxVal float64
-	err := rit.minParam.Scan(&minVal)
+	err := t.minParam.Scan(&minVal)
 	if err != nil {
 		return 0, fmt.Errorf(`scan "min" param: %w`, err)
 	}
 
-	err = rit.maxParam.Scan(&maxVal)
+	err = t.maxParam.Scan(&maxVal)
 	if err != nil {
 		return 0, fmt.Errorf(`scan "max" param: %w`, err)
 	}
 
-	limiter, err := getFloat64LimiterForDynamicParameter(rit.floatSize, minVal, maxVal, rit.decimal)
+	limiter, err := getFloat64LimiterForDynamicParameter(t.floatSize, minVal, maxVal, t.decimal)
 	if err != nil {
 		return 0, fmt.Errorf("create limiter in dynamic mode: %w", err)
 	}
-	res, err := rit.t.Transform(limiter, v)
+	res, err := t.t.Transform(limiter, v)
 	if err != nil {
 		return 0, fmt.Errorf("generate float value: %w", err)
 	}
 	return res, nil
 }
 
-func (rit *FloatTransformer) Transform(_ context.Context, r commonininterfaces.Recorder) error {
-	val, err := r.GetRawColumnValueByIdx(rit.columnIdx)
+func (t *FloatTransformer) Transform(_ context.Context, r commonininterfaces.Recorder) error {
+	val, err := r.GetRawColumnValueByIdx(t.columnIdx)
 	if err != nil {
 		return fmt.Errorf("scan value: %w", err)
 	}
-	if val.IsNull && rit.keepNull {
+	if val.IsNull && t.keepNull {
 		return nil
 	}
 
-	newVal, err := rit.transform(val.Data)
+	newVal, err := t.transform(val.Data)
 	if err != nil {
 		return err
 	}
 
-	if err = r.SetColumnValueByIdx(rit.columnIdx, newVal); err != nil {
+	if err = r.SetColumnValueByIdx(t.columnIdx, newVal); err != nil {
 		return fmt.Errorf("set new value: %w", err)
 	}
 	return nil
+}
+
+func (t *FloatTransformer) Describe() string {
+	return TransformerNameRandomFloat
 }
 
 func getFloatThresholds(size int) (float64, float64, error) {

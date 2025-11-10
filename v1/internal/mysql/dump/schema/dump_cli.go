@@ -22,8 +22,8 @@ import (
 	"github.com/rs/zerolog/log"
 	"golang.org/x/sync/errgroup"
 
+	"github.com/greenmaskio/greenmask/v1/internal/common/interfaces"
 	"github.com/greenmaskio/greenmask/v1/internal/common/utils"
-	"github.com/greenmaskio/greenmask/v1/internal/storages"
 )
 
 const executable = "mysqldump"
@@ -36,10 +36,10 @@ type options interface {
 type Dumper struct {
 	executable string
 	opt        options
-	st         storages.Storager
+	st         interfaces.Storager
 }
 
-func New(st storages.Storager, opt options) *Dumper {
+func New(st interfaces.Storager, opt options) *Dumper {
 	return &Dumper{
 		executable: executable,
 		opt:        opt,

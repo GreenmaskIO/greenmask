@@ -26,11 +26,11 @@ import (
 	transformerutils "github.com/greenmaskio/greenmask/v1/internal/common/transformers/utils"
 )
 
-const RandomIpTransformerName = "RandomIp"
+const TransformerNameRandomIp = "RandomIp"
 
 var RandomIPDefinition = transformerutils.NewTransformerDefinition(
 	transformerutils.NewTransformerProperties(
-		RandomIpTransformerName,
+		TransformerNameRandomIp,
 		"Generate V4 or V6 IP in the provided subnet",
 	).AddMeta(transformerutils.AllowApplyForReferenced, true).
 		AddMeta(transformerutils.RequireHashEngineParameter, true),
@@ -134,41 +134,45 @@ func NewIpTransformer(
 	}, nil
 }
 
-func (rbt *RandomIp) GetAffectedColumns() map[int]string {
-	return rbt.affectedColumns
+func (t *RandomIp) GetAffectedColumns() map[int]string {
+	return t.affectedColumns
 }
 
-func (rbt *RandomIp) Init(context.Context) error {
+func (t *RandomIp) Init(context.Context) error {
 	return nil
 }
 
-func (rbt *RandomIp) Done(context.Context) error {
+func (t *RandomIp) Done(context.Context) error {
 	return nil
 }
 
-func (rbt *RandomIp) Transform(_ context.Context, r commonininterfaces.Recorder) error {
+func (t *RandomIp) Transform(_ context.Context, r commonininterfaces.Recorder) error {
 
-	val, err := r.GetRawColumnValueByIdx(rbt.columnIdx)
+	val, err := r.GetRawColumnValueByIdx(t.columnIdx)
 	if err != nil {
 		return fmt.Errorf("unable to scan value: %w", err)
 	}
 
 	var subnet *net.IPNet
-	if rbt.dynamicMode {
+	if t.dynamicMode {
 		subnet = &net.IPNet{}
-		if err = rbt.subnetParam.Scan(subnet); err != nil {
+		if err = t.subnetParam.Scan(subnet); err != nil {
 			return fmt.Errorf(`unable to scan "subnet" param: %w`, err)
 		}
 	}
 
-	ipVal, err := rbt.t.Generate(val.Data, subnet)
+	ipVal, err := t.t.Generate(val.Data, subnet)
 	if err != nil {
 		return fmt.Errorf("unable to transform value: %w", err)
 	}
 
 	newVal := commonmodels.NewColumnRawValue([]byte(ipVal.String()), false)
-	if err = r.SetRawColumnValueByIdx(rbt.columnIdx, newVal); err != nil {
+	if err = r.SetRawColumnValueByIdx(t.columnIdx, newVal); err != nil {
 		return fmt.Errorf("unable to set new value: %w", err)
 	}
 	return nil
+}
+
+func (t *RandomIp) Describe() string {
+	return TransformerNameRandomIp
 }

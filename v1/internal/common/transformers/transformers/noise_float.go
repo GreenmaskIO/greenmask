@@ -29,7 +29,7 @@ import (
 )
 
 const (
-	NoiseFloatTransformerName = "NoiseFloat"
+	TransformerNameNoiseFloat = "NoiseFloat"
 
 	float4Length = 4
 	float8Length = 8
@@ -37,7 +37,7 @@ const (
 
 var NoiseFloatTransformerDefinition = transformerutils.NewTransformerDefinition(
 	transformerutils.NewTransformerProperties(
-		NoiseFloatTransformerName,
+		TransformerNameNoiseFloat,
 		"Add noise to float value in min and max thresholds",
 	).AddMeta(transformerutils.AllowApplyForReferenced, true).
 		AddMeta(transformerutils.RequireHashEngineParameter, true),
@@ -210,41 +210,41 @@ func NewNoiseFloatTransformer(
 	}, nil
 }
 
-func (nft *NoiseFloatTransformer) GetAffectedColumns() map[int]string {
-	return nft.affectedColumns
+func (t *NoiseFloatTransformer) GetAffectedColumns() map[int]string {
+	return t.affectedColumns
 }
 
-func (nft *NoiseFloatTransformer) Init(context.Context) error {
-	if nft.dynamicMode {
-		nft.transform = nft.dynamicTransform
+func (t *NoiseFloatTransformer) Init(context.Context) error {
+	if t.dynamicMode {
+		t.transform = t.dynamicTransform
 	}
 	return nil
 }
 
-func (nft *NoiseFloatTransformer) Done(context.Context) error {
+func (t *NoiseFloatTransformer) Done(context.Context) error {
 	return nil
 }
 
-func (nft *NoiseFloatTransformer) dynamicTransform(v float64) (float64, error) {
-	minVal, maxVal, err := getNoiseFloatMinAndMaxThresholds[float64](nft.floatSize, nft.minParam, nft.maxParam, getFloatLimits)
+func (t *NoiseFloatTransformer) dynamicTransform(v float64) (float64, error) {
+	minVal, maxVal, err := getNoiseFloatMinAndMaxThresholds[float64](t.floatSize, t.minParam, t.maxParam, getFloatLimits)
 	if err != nil {
 		return 0, fmt.Errorf("unable to get min and max values: %w", err)
 	}
 
-	limiter, err := transformers.NewNoiseFloat64Limiter(minVal, maxVal, nft.decimal)
+	limiter, err := transformers.NewNoiseFloat64Limiter(minVal, maxVal, t.decimal)
 	if err != nil {
 		return 0, fmt.Errorf("error creating limiter in dynamic mode: %w", err)
 	}
-	res, err := nft.t.Transform(limiter, v)
+	res, err := t.t.Transform(limiter, v)
 	if err != nil {
 		return 0, fmt.Errorf("error generating int value: %w", err)
 	}
 	return res, nil
 }
 
-func (nft *NoiseFloatTransformer) Transform(_ context.Context, r commonininterfaces.Recorder) error {
+func (t *NoiseFloatTransformer) Transform(_ context.Context, r commonininterfaces.Recorder) error {
 	var val float64
-	isNull, err := r.ScanColumnValueByIdx(nft.columnIdx, &val)
+	isNull, err := r.ScanColumnValueByIdx(t.columnIdx, &val)
 	if err != nil {
 		return fmt.Errorf("unable to scan value: %w", err)
 	}
@@ -252,15 +252,19 @@ func (nft *NoiseFloatTransformer) Transform(_ context.Context, r commonininterfa
 		return nil
 	}
 
-	res, err := nft.transform(val)
+	res, err := t.transform(val)
 	if err != nil {
 		return fmt.Errorf("unable to transform value: %w", err)
 	}
 
-	if err = r.SetColumnValueByIdx(nft.columnIdx, res); err != nil {
+	if err = r.SetColumnValueByIdx(t.columnIdx, res); err != nil {
 		return fmt.Errorf("unable to set new value: %w", err)
 	}
 	return nil
+}
+
+func (t *NoiseFloatTransformer) Describe() string {
+	return TransformerNameNoiseFloat
 }
 
 func validateNoiseFloatTypeAndSetLimit(

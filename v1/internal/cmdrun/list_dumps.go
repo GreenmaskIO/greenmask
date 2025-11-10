@@ -14,10 +14,10 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"github.com/greenmaskio/greenmask/v1/internal/common/heartbeat"
+	"github.com/greenmaskio/greenmask/v1/internal/common/interfaces"
 	commonmodels "github.com/greenmaskio/greenmask/v1/internal/common/models"
 	commonutils "github.com/greenmaskio/greenmask/v1/internal/common/utils"
 	"github.com/greenmaskio/greenmask/v1/internal/config"
-	"github.com/greenmaskio/greenmask/v1/internal/storages"
 )
 
 const (
@@ -93,7 +93,7 @@ func RunListDumps(cfg *config.Config, quiet bool, f *Filter) error {
 	return printDumpTablePretty(ctx, dirs, f)
 }
 
-func readMetadata(ctx context.Context, st storages.Storager) (commonmodels.Metadata, error) {
+func readMetadata(ctx context.Context, st interfaces.Storager) (commonmodels.Metadata, error) {
 	r, err := st.GetObject(ctx, MetadataJsonFileName)
 	if err != nil {
 		return commonmodels.Metadata{}, fmt.Errorf("get metadata.json object: %w", err)
@@ -107,7 +107,7 @@ func readMetadata(ctx context.Context, st storages.Storager) (commonmodels.Metad
 	return res, nil
 }
 
-func getMetadataAndStatus(ctx context.Context, st storages.Storager) (heartbeat.Status, commonmodels.Metadata, error) {
+func getMetadataAndStatus(ctx context.Context, st interfaces.Storager) (heartbeat.Status, commonmodels.Metadata, error) {
 	r := heartbeat.NewReader(st)
 	status, err := r.Read(ctx)
 	if err != nil {
@@ -120,7 +120,7 @@ func getMetadataAndStatus(ctx context.Context, st storages.Storager) (heartbeat.
 	return status, metadata, nil
 }
 
-func printDumpIDsSorted(ctx context.Context, st storages.Storager, dirs []storages.Storager, f *Filter) error {
+func printDumpIDsSorted(ctx context.Context, st interfaces.Storager, dirs []interfaces.Storager, f *Filter) error {
 	dumpIDs := make([]string, 0, len(dirs))
 
 	for _, backup := range dirs {
@@ -145,7 +145,7 @@ func printDumpIDsSorted(ctx context.Context, st storages.Storager, dirs []storag
 	return nil
 }
 
-func renderListItem(ctx context.Context, st storages.Storager, f *Filter, data *[][]string) error {
+func renderListItem(ctx context.Context, st interfaces.Storager, f *Filter, data *[][]string) error {
 	dumpId := st.Dirname()
 	status, metadata, err := getMetadataAndStatus(ctx, st)
 	if err != nil {
@@ -193,7 +193,7 @@ func renderListItem(ctx context.Context, st storages.Storager, f *Filter, data *
 	return nil
 }
 
-func printDumpTablePretty(ctx context.Context, dirs []storages.Storager, f *Filter) error {
+func printDumpTablePretty(ctx context.Context, dirs []interfaces.Storager, f *Filter) error {
 	var data [][]string
 	for _, backup := range dirs {
 		dumpId := backup.Dirname()

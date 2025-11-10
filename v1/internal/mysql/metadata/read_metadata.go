@@ -21,13 +21,13 @@ import (
 
 	"github.com/rs/zerolog/log"
 
+	"github.com/greenmaskio/greenmask/v1/internal/common/interfaces"
 	commonmodels "github.com/greenmaskio/greenmask/v1/internal/common/models"
-	"github.com/greenmaskio/greenmask/v1/internal/storages"
 )
 
 func ReadMetadata(
 	ctx context.Context,
-	st storages.Storager,
+	st interfaces.Storager,
 ) (commonmodels.Metadata, error) {
 	f, err := st.GetObject(ctx, metadataFileName)
 	if err != nil {

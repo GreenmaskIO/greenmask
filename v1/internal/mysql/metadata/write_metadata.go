@@ -21,16 +21,16 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/greenmaskio/greenmask/v1/internal/common/interfaces"
 	commonmodels "github.com/greenmaskio/greenmask/v1/internal/common/models"
 	"github.com/greenmaskio/greenmask/v1/internal/config"
-	"github.com/greenmaskio/greenmask/v1/internal/storages"
 )
 
 const metadataFileName = "metadata.json"
 
 func WriteMetadata(
 	ctx context.Context,
-	st storages.Storager,
+	st interfaces.Storager,
 	engine string,
 	cfg config.Dump,
 	startedAt time.Time,

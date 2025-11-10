@@ -56,7 +56,6 @@ type WhenCond struct {
 // column values. If when condition is empty, the WhenCond object will always return true.
 func NewWhenCond(
 	ctx context.Context,
-	vc *validationcollector.Collector,
 	when string,
 	table commonmodels.Table,
 ) (*WhenCond, error) {
@@ -66,7 +65,7 @@ func NewWhenCond(
 		err      error
 	)
 	if when != "" {
-		whenCond, rc, err = compileCond(ctx, vc, when, table)
+		whenCond, rc, err = compileCond(ctx, when, table)
 		if err != nil {
 			return nil, fmt.Errorf("compile condition: %w", err)
 		}
@@ -106,7 +105,6 @@ func (wc *WhenCond) Evaluate(r commonininterfaces.Recorder) (bool, error) {
 // meta - additional meta information for debugging the compilation process
 func compileCond(
 	ctx context.Context,
-	vc *validationcollector.Collector,
 	whenCond string,
 	table commonmodels.Table,
 ) (*vm.Program, *template.RecordContextReadOnly, error) {
@@ -114,12 +112,13 @@ func compileCond(
 		return nil, nil, nil
 	}
 	scope := metaScopeTable
+	vc := validationcollector.FromContext(ctx)
 	if _, ok := vc.GetMetaKey("TransformerName"); ok {
 		scope = metaTableTransformer
 	}
 	vc = vc.WithMeta(map[string]any{"Scope": scope})
 	log.Ctx(ctx).Debug().
-		Str("WhenCond", whenCond).
+		Str("Condition", whenCond).
 		Any("Meta", vc.GetMeta()).
 		Msg("found when condition: compiling")
 	rc, ops := newRecordContext(table)

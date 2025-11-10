@@ -35,8 +35,8 @@ var (
 )
 
 const (
-	mysqlRootUser     = "root"
-	mysqlRootPassword = testContainerPassword
+	MysqlRootUser     = "root"
+	MysqlRootPassword = testContainerPassword
 )
 
 type MySQLContainerSuite struct {
@@ -64,16 +64,16 @@ func (s *MySQLContainerSuite) SetupSuite() {
 		s.password = testContainerPassword
 	}
 	if s.migrationUser == "" {
-		s.migrationUser = mysqlRootUser
+		s.migrationUser = MysqlRootUser
 	}
 	if s.migrationPass == "" {
-		s.migrationPass = mysqlRootPassword
+		s.migrationPass = MysqlRootPassword
 	}
 	if s.rootUser == "" {
-		s.rootUser = mysqlRootUser
+		s.rootUser = MysqlRootUser
 	}
 	if s.rootPass == "" {
-		s.rootPass = mysqlRootPassword
+		s.rootPass = MysqlRootPassword
 	}
 	if s.database == "" {
 		s.database = testContainerDatabase

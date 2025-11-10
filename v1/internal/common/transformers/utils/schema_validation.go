@@ -52,10 +52,10 @@ func DefaultSchemaValidator(
 			// violate constraints
 			continue
 		}
-		ctx = validationcollector.WithMeta(ctx, map[string]any{
-			"ParameterName": p.GetDefinition().Name,
-			"ColumnName":    p.Column.Name,
-		})
+		ctx = validationcollector.WithMeta(ctx,
+			commonmodels.MetaKeyParameterName, p.GetDefinition().Name,
+			commonmodels.MetaKeyColumnName, p.Column.Name,
+		)
 
 		// Checking is transformer can produce NULL value
 		if p.GetDefinition().ColumnProperties.Nullable && p.Column.NotNull {

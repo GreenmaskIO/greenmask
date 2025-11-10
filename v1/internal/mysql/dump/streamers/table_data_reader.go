@@ -23,6 +23,7 @@ import (
 
 	"github.com/go-mysql-org/go-mysql/client"
 	"github.com/go-mysql-org/go-mysql/mysql"
+	"github.com/rs/zerolog/log"
 	"golang.org/x/sync/errgroup"
 
 	commonmodels "github.com/greenmaskio/greenmask/v1/internal/common/models"
@@ -134,7 +135,11 @@ func (r *TableDataReader) stream(ctx context.Context) func() error {
 			// We could optimize this, but it would require more complex logic.
 			case r.dataCh <- slices.Clone(recordData):
 			case <-ctx.Done():
-				return fmt.Errorf("write row into channel: %w", ctx.Err())
+				log.Ctx(ctx).Debug().
+					Int("LineNum", int(lineNum)).
+					Err(ctx.Err()).
+					Msg("data reader context done")
+				return nil
 			}
 			return nil
 		}, nil)

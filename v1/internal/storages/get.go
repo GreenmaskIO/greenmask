@@ -17,8 +17,11 @@ package storages
 import (
 	"context"
 	"fmt"
-	"io"
-	"time"
+
+	"github.com/greenmaskio/greenmask/v1/internal/common/interfaces"
+	commonmodels "github.com/greenmaskio/greenmask/v1/internal/common/models"
+	"github.com/greenmaskio/greenmask/v1/internal/storages/directory"
+	"github.com/greenmaskio/greenmask/v1/internal/storages/s3"
 )
 
 const (
@@ -30,49 +33,23 @@ var (
 	errUnknownStorageType = fmt.Errorf("unknown storage type")
 )
 
-type ObjectStat struct {
-	Name         string
-	LastModified time.Time
-	Exist        bool
-}
-
-type Storager interface {
-	// GetCwd - get current working directory (CWD) path
-	GetCwd() string
-	// Dirname - returns current dirname without prefix
-	Dirname() string
-	// ListDir - walking through storage and returns directories and files in the cwd
-	ListDir(ctx context.Context) (files []string, dirs []Storager, err error)
-	// GetObject - returns ReadCloser by the provided path
-	GetObject(ctx context.Context, filePath string) (reader io.ReadCloser, err error)
-	// PutObject - puts data to the provided file path
-	PutObject(ctx context.Context, filePath string, body io.Reader) error
-	// Delete - delete list of objects by the provided paths
-	Delete(ctx context.Context, filePaths ...string) error
-	// DeleteAll - delete all objects by the provided path prefix
-	DeleteAll(ctx context.Context, pathPrefix string) error
-	// Exists - check object existence
-	Exists(ctx context.Context, fileName string) (bool, error)
-	// SubStorage - get new Storage instance with the samo config but change current cwd via subPath
-	// If relative == true then path is sub folder in cwd
-	SubStorage(subPath string, relative bool) Storager
-	// Stat - get the metadata info about object from the storage
-	Stat(fileName string) (*ObjectStat, error)
-}
-
 // Get returns a storage based on the configuration.
 func Get(
 	ctx context.Context,
 	storageType string,
-	s3 S3Config,
-	directory DirectoryConfig,
+	s3Cfg s3.S3Config,
+	directoryCfg directory.DirectoryConfig,
 	logLevel string,
-) (Storager, error) {
+) (interfaces.Storager, error) {
 	switch storageType {
 	case directoryStorageType:
-		return NewDirectoryStorage(directory)
+		return directory.New(directoryCfg)
 	case s3StorageType:
-		return NewS3Storage(ctx, s3, logLevel)
+		return s3.New(ctx, s3Cfg, logLevel)
 	}
 	return nil, fmt.Errorf("storage type %s: %w", storageType, errUnknownStorageType)
+}
+
+func SubStorageWithDumpID(st interfaces.Storager, dumpID commonmodels.DumpID) interfaces.Storager {
+	return st.SubStorage(string(dumpID), true)
 }

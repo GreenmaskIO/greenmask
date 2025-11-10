@@ -73,7 +73,7 @@ func (w *Worker) Run(ctx context.Context) func() error {
 				return fmt.Errorf("handle heartbeat: %w", err)
 			}
 			if needExit {
-				close(w.terminateWithStatus)
+				w.terminateWithStatus <- StatusDone
 				return nil
 			}
 		}

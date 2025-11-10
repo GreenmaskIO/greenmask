@@ -26,11 +26,11 @@ import (
 	transformerutils "github.com/greenmaskio/greenmask/v1/internal/common/transformers/utils"
 )
 
-const RandomUuidTransformerName = "RandomUuid"
+const TransformerNameRandomUUID = "RandomUuid"
 
 var UUIDTransformerDefinition = transformerutils.NewTransformerDefinition(
 	transformerutils.NewTransformerProperties(
-		RandomUuidTransformerName,
+		TransformerNameRandomUUID,
 		"Generate UUID",
 	).AddMeta(transformerutils.AllowApplyForReferenced, true).
 		AddMeta(transformerutils.RequireHashEngineParameter, true),
@@ -103,28 +103,28 @@ func NewRandomUuidTransformer(
 	}, nil
 }
 
-func (rut *RandomUuidTransformer) GetAffectedColumns() map[int]string {
-	return rut.affectedColumns
+func (t *RandomUuidTransformer) GetAffectedColumns() map[int]string {
+	return t.affectedColumns
 }
 
-func (rut *RandomUuidTransformer) Init(context.Context) error {
+func (t *RandomUuidTransformer) Init(context.Context) error {
 	return nil
 }
 
-func (rut *RandomUuidTransformer) Done(context.Context) error {
+func (t *RandomUuidTransformer) Done(context.Context) error {
 	return nil
 }
 
-func (rut *RandomUuidTransformer) Transform(_ context.Context, r commonininterfaces.Recorder) error {
-	val, err := r.GetRawColumnValueByIdx(rut.columnIdx)
+func (t *RandomUuidTransformer) Transform(_ context.Context, r commonininterfaces.Recorder) error {
+	val, err := r.GetRawColumnValueByIdx(t.columnIdx)
 	if err != nil {
 		return fmt.Errorf("scan value: %w", err)
 	}
-	if val.IsNull && rut.keepNull {
+	if val.IsNull && t.keepNull {
 		return nil
 	}
 
-	uuidVal, err := rut.t.Transform(val.Data)
+	uuidVal, err := t.t.Transform(val.Data)
 	if err != nil {
 		return err
 	}
@@ -133,8 +133,12 @@ func (rut *RandomUuidTransformer) Transform(_ context.Context, r commonininterfa
 	if err != nil {
 		return fmt.Errorf("error unmarshal uuid: %w", err)
 	}
-	if err = r.SetRawColumnValueByIdx(rut.columnIdx, commonmodels.NewColumnRawValue(data, false)); err != nil {
+	if err = r.SetRawColumnValueByIdx(t.columnIdx, commonmodels.NewColumnRawValue(data, false)); err != nil {
 		return fmt.Errorf("set new value: %w", err)
 	}
 	return nil
+}
+
+func (t *RandomUuidTransformer) Describe() string {
+	return TransformerNameRandomUUID
 }

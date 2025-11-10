@@ -74,19 +74,19 @@ func TestSetNullTransformer_Transform(t *testing.T) {
 				tt.dynamicParameter,
 			)
 			err := env.InitParameters(t, ctx)
-			require.NoError(t, commonutils.PrintValidationWarnings(ctx, vc, nil, true))
+			require.NoError(t, commonutils.PrintValidationWarnings(ctx, nil, true))
 			require.NoError(t, err)
 			require.False(t, vc.HasWarnings())
 
 			err = env.InitTransformer(t, ctx)
-			require.NoError(t, commonutils.PrintValidationWarnings(ctx, vc, nil, true))
+			require.NoError(t, commonutils.PrintValidationWarnings(ctx, nil, true))
 			require.NoError(t, err)
 			require.False(t, vc.HasWarnings())
 
 			env.SetRecord(t, tt.original...)
 
 			err = env.Transform(t, ctx)
-			require.NoError(t, commonutils.PrintValidationWarnings(ctx, vc, nil, true))
+			require.NoError(t, commonutils.PrintValidationWarnings(ctx, nil, true))
 			if tt.expectedErr != "" {
 				require.ErrorContains(t, err, tt.expectedErr)
 				return

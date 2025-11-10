@@ -166,12 +166,13 @@ func TestWhenCond_Evaluate(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			vc := validationcollector.NewCollector()
+			ctx := validationcollector.WithCollector(context.Background(), vc)
 			tableDriverMock := mocks.NewTableDriverMock()
 			recorderMock := mocks.NewRecorderMock()
 			recorderMock.On("TableDriver").Return(tableDriverMock)
 			// GetColumnValueByName(columnName string) (*commonmodels.ColumnValue, error) {
 			tt.setupExpectation(recorderMock)
-			whenCond, warns := NewWhenCond(context.Background(), vc, tt.when, table)
+			whenCond, warns := NewWhenCond(ctx, tt.when, table)
 			require.Empty(t, warns)
 			res, err := whenCond.Evaluate(recorderMock)
 			require.NoError(t, err)

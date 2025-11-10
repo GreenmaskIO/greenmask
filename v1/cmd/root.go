@@ -62,4 +62,5 @@ func init() {
 	rootCmd.AddCommand(dumpCmd)
 	rootCmd.AddCommand(restoreCmd)
 	rootCmd.AddCommand(listDumpsCmd)
+	rootCmd.AddCommand(validateCmd)
 }

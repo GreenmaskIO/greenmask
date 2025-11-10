@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package storages
+package directory
 
 import (
 	"context"
@@ -25,6 +25,9 @@ import (
 	"sync"
 	"syscall"
 	"time"
+
+	"github.com/greenmaskio/greenmask/v1/internal/common/interfaces"
+	"github.com/greenmaskio/greenmask/v1/internal/common/models"
 )
 
 var (
@@ -36,14 +39,14 @@ const (
 	directoryStorageFileMode os.FileMode = 0650
 )
 
-type DirectoryStorage struct {
+type Storage struct {
 	dirMode  os.FileMode
 	fileMode os.FileMode
 	cwd      string
 	mx       sync.Mutex
 }
 
-func NewDirectoryStorage(cfg DirectoryConfig) (*DirectoryStorage, error) {
+func New(cfg DirectoryConfig) (*Storage, error) {
 	if cfg.Path == "" {
 		return nil, errPathIsRequired
 	}
@@ -54,22 +57,22 @@ func NewDirectoryStorage(cfg DirectoryConfig) (*DirectoryStorage, error) {
 	if !fileInfo.IsDir() {
 		return nil, errors.New("received directory path is file")
 	}
-	return &DirectoryStorage{
+	return &Storage{
 		dirMode:  directoryStorageDirMode,
 		fileMode: directoryStorageFileMode,
 		cwd:      cfg.Path,
 	}, nil
 }
 
-func (s *DirectoryStorage) GetCwd() string {
+func (s *Storage) GetCwd() string {
 	return s.cwd
 }
 
-func (s *DirectoryStorage) Dirname() string {
+func (s *Storage) Dirname() string {
 	return filepath.Base(s.cwd)
 }
 
-func (s *DirectoryStorage) ListDir(ctx context.Context) (files []string, dirs []Storager, err error) {
+func (s *Storage) ListDir(ctx context.Context) (files []string, dirs []interfaces.Storager, err error) {
 	entries, err := os.ReadDir(s.cwd)
 	if err != nil {
 		return nil, nil, err
@@ -77,7 +80,7 @@ func (s *DirectoryStorage) ListDir(ctx context.Context) (files []string, dirs []
 	for _, entry := range entries {
 		if entry.IsDir() {
 			dirs = append(
-				dirs, &DirectoryStorage{
+				dirs, &Storage{
 					cwd:      path.Join(s.cwd, entry.Name()),
 					dirMode:  s.dirMode,
 					fileMode: s.fileMode,
@@ -90,12 +93,12 @@ func (s *DirectoryStorage) ListDir(ctx context.Context) (files []string, dirs []
 	return
 }
 
-func (s *DirectoryStorage) GetObject(ctx context.Context, filePath string) (reader io.ReadCloser, err error) {
+func (s *Storage) GetObject(ctx context.Context, filePath string) (reader io.ReadCloser, err error) {
 	reader, err = os.Open(path.Join(s.cwd, filePath))
 	return
 }
 
-func (s *DirectoryStorage) PutObject(ctx context.Context, filePath string, body io.Reader) error {
+func (s *Storage) PutObject(ctx context.Context, filePath string, body io.Reader) error {
 	_, err := os.Stat(path.Join(s.cwd, path.Dir(filePath)))
 	var errNo syscall.Errno
 	if err != nil && errors.As(err, &errNo) && errNo == 0x2 {
@@ -134,7 +137,7 @@ func (s *DirectoryStorage) PutObject(ctx context.Context, filePath string, body 
 	return f.Close()
 }
 
-func (s *DirectoryStorage) Delete(ctx context.Context, filePaths ...string) error {
+func (s *Storage) Delete(ctx context.Context, filePaths ...string) error {
 	for _, fp := range filePaths {
 		fileInfo, err := os.Stat(path.Join(s.cwd, fp))
 		if err != nil {
@@ -155,7 +158,7 @@ func (s *DirectoryStorage) Delete(ctx context.Context, filePaths ...string) erro
 	return nil
 }
 
-func (s *DirectoryStorage) DeleteAll(ctx context.Context, pathPrefix string) error {
+func (s *Storage) DeleteAll(ctx context.Context, pathPrefix string) error {
 	fileInfo, err := os.Stat(path.Join(s.cwd, pathPrefix))
 	if err != nil {
 		return err
@@ -174,7 +177,7 @@ func (s *DirectoryStorage) DeleteAll(ctx context.Context, pathPrefix string) err
 	return nil
 }
 
-func (s *DirectoryStorage) Exists(ctx context.Context, fileName string) (bool, error) {
+func (s *Storage) Exists(ctx context.Context, fileName string) (bool, error) {
 	_, err := os.Stat(path.Join(s.cwd, fileName))
 	if err != nil {
 		if errors.Is(err, syscall.ENOENT) {
@@ -185,24 +188,24 @@ func (s *DirectoryStorage) Exists(ctx context.Context, fileName string) (bool, e
 	return true, nil
 }
 
-func (s *DirectoryStorage) SubStorage(dp string, relative bool) Storager {
+func (s *Storage) SubStorage(dp string, relative bool) interfaces.Storager {
 	dirPath := dp
 	if relative {
 		dirPath = path.Join(s.cwd, dp)
 	}
-	return &DirectoryStorage{
+	return &Storage{
 		cwd:      dirPath,
 		dirMode:  s.dirMode,
 		fileMode: s.fileMode,
 	}
 }
 
-func (s *DirectoryStorage) Stat(fileName string) (*ObjectStat, error) {
+func (s *Storage) Stat(fileName string) (*models.StorageObjectStat, error) {
 	fullPath := path.Join(s.cwd, fileName)
 	fileInfo, err := os.Stat(fullPath)
 	var errNo syscall.Errno
 	if err != nil && errors.As(err, &errNo) && errNo == 0x2 {
-		return &ObjectStat{
+		return &models.StorageObjectStat{
 			Name:         fullPath,
 			LastModified: time.Time{},
 			Exist:        false,
@@ -211,7 +214,7 @@ func (s *DirectoryStorage) Stat(fileName string) (*ObjectStat, error) {
 		return nil, fmt.Errorf("error getting file stat: %w", err)
 	}
 
-	return &ObjectStat{
+	return &models.StorageObjectStat{
 		Name:         fullPath,
 		LastModified: fileInfo.ModTime(),
 		Exist:        true,

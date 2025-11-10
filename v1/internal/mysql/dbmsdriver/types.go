@@ -200,8 +200,8 @@ var (
 
 	TypeNameToVirtualOid = make(map[string]commonmodels.VirtualOID)
 
-	// typeDataNameTypeToClass - mapping MySQL data types to common type classes.
-	typeDataNameTypeToClass = map[string]commonmodels.TypeClass{
+	// TypeDataNameTypeToClass - mapping MySQL data types to common type classes.
+	TypeDataNameTypeToClass = map[string]commonmodels.TypeClass{
 		TypeChar:       commonmodels.TypeClassText,
 		TypeVarChar:    commonmodels.TypeClassText,
 		TypeTinyText:   commonmodels.TypeClassText,
@@ -246,10 +246,10 @@ var (
 		TypeSet:  commonmodels.TypeClassEnum, // MySQL-specific
 	}
 
-	typeDataOidToClass = make(map[commonmodels.VirtualOID]commonmodels.TypeClass)
+	TypeDataOidToClass = make(map[commonmodels.VirtualOID]commonmodels.TypeClass)
 
-	// typeClassToDataTypes - reverse mapping from common type classes to MySQL data types.
-	typeClassToDataTypes = make(map[commonmodels.TypeClass][]string)
+	// TypeClassToDataTypes - reverse mapping from common type classes to MySQL data types.
+	TypeClassToDataTypes = make(map[commonmodels.TypeClass][]string)
 )
 
 func init() {
@@ -258,15 +258,15 @@ func init() {
 	}
 
 	// Initialize the reverse mapping from type classes to data types.
-	for dt, tc := range typeDataNameTypeToClass {
-		typeClassToDataTypes[tc] = append(typeClassToDataTypes[tc], dt)
+	for dt, tc := range TypeDataNameTypeToClass {
+		TypeClassToDataTypes[tc] = append(TypeClassToDataTypes[tc], dt)
 	}
 
-	for dt, tc := range typeDataNameTypeToClass {
+	for dt, tc := range TypeDataNameTypeToClass {
 		oid, ok := TypeNameToVirtualOid[dt]
 		if !ok {
 			panic(fmt.Sprintf("invalid type name \"%s\"", dt))
 		}
-		typeDataOidToClass[oid] = tc
+		TypeDataOidToClass[oid] = tc
 	}
 }

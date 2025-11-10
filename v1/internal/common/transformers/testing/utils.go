@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package transformers
+package testing
 
 import (
 	"context"
@@ -83,7 +83,7 @@ func NewTransformerTestEnvReal(
 	}
 
 	driver := mysqldbmsdriver.New()
-	tableDriver, err := commontabledriver.NewWithContext(ctx, driver, &table, nil)
+	tableDriver, err := commontabledriver.New(ctx, driver, &table, nil)
 	require.NoError(t, err)
 	require.Empty(t, vc.GetWarnings())
 

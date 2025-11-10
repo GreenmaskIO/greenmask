@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package storages
+package s3
 
 import (
 	"context"
@@ -40,6 +40,9 @@ import (
 	"github.com/aws/aws-sdk-go/service/sts"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
+
+	"github.com/greenmaskio/greenmask/v1/internal/common/interfaces"
+	"github.com/greenmaskio/greenmask/v1/internal/common/models"
 )
 
 const s3StorageDefaultDelimiter = "/"
@@ -49,7 +52,7 @@ const (
 	s3StorageAwsErrorCodeNoSuchKey = "NoSuchKey"
 )
 
-type S3Storage struct {
+type Storage struct {
 	config    *S3Config
 	session   *session.Session
 	service   s3iface.S3API
@@ -58,7 +61,7 @@ type S3Storage struct {
 	delimiter string
 }
 
-func NewS3Storage(ctx context.Context, cfg S3Config, logLevel string) (*S3Storage, error) {
+func New(ctx context.Context, cfg S3Config, logLevel string) (*Storage, error) {
 
 	ses, err := session.NewSession()
 	if err != nil {
@@ -162,7 +165,7 @@ func NewS3Storage(ctx context.Context, cfg S3Config, logLevel string) (*S3Storag
 		Str("bucket", cfg.Bucket).
 		Msg("s3 storage bucket")
 
-	return &S3Storage{
+	return &Storage{
 		prefix:   fixPrefix(cfg.Prefix),
 		session:  ses,
 		config:   &cfg,
@@ -171,21 +174,21 @@ func NewS3Storage(ctx context.Context, cfg S3Config, logLevel string) (*S3Storag
 	}, nil
 }
 
-func (s *S3Storage) GetCwd() string {
+func (s *Storage) GetCwd() string {
 	return s.prefix
 }
 
-func (s *S3Storage) Dirname() string {
+func (s *Storage) Dirname() string {
 	return filepath.Base(s.prefix)
 }
 
-func (s *S3Storage) ListDir(ctx context.Context) (files []string, dirs []Storager, err error) {
+func (s *Storage) ListDir(ctx context.Context) (files []string, dirs []interfaces.Storager, err error) {
 
 	listFunc := func(commonPrefixes []*s3.CommonPrefix, contents []*s3.Object) {
 		for _, prefix := range commonPrefixes {
 
 			dirs = append(
-				dirs, &S3Storage{
+				dirs, &Storage{
 					config:   s.config,
 					session:  s.session,
 					service:  s.service,
@@ -238,7 +241,7 @@ func (s *S3Storage) ListDir(ctx context.Context) (files []string, dirs []Storage
 	return
 }
 
-func (s *S3Storage) GetObject(ctx context.Context, filePath string) (writer io.ReadCloser, err error) {
+func (s *Storage) GetObject(ctx context.Context, filePath string) (writer io.ReadCloser, err error) {
 	obj, err := s.service.GetObjectWithContext(
 		ctx, &s3.GetObjectInput{
 			Bucket: aws.String(s.config.Bucket),
@@ -251,7 +254,7 @@ func (s *S3Storage) GetObject(ctx context.Context, filePath string) (writer io.R
 	return obj.Body, nil
 }
 
-func (s *S3Storage) PutObject(ctx context.Context, filePath string, body io.Reader) error {
+func (s *Storage) PutObject(ctx context.Context, filePath string, body io.Reader) error {
 	ui := &s3manager.UploadInput{
 		Bucket:       aws.String(s.config.Bucket),
 		Key:          aws.String(path.Join(s.prefix, filePath)),
@@ -266,7 +269,7 @@ func (s *S3Storage) PutObject(ctx context.Context, filePath string, body io.Read
 	return nil
 }
 
-func (s *S3Storage) Delete(ctx context.Context, filePaths ...string) error {
+func (s *Storage) Delete(ctx context.Context, filePaths ...string) error {
 	objs := make([]*s3.ObjectIdentifier, len(filePaths))
 	for idx, fp := range filePaths {
 		objs[idx] = &s3.ObjectIdentifier{
@@ -287,7 +290,7 @@ func (s *S3Storage) Delete(ctx context.Context, filePaths ...string) error {
 	return nil
 }
 
-func (s *S3Storage) DeleteAll(ctx context.Context, pathPrefix string) error {
+func (s *Storage) DeleteAll(ctx context.Context, pathPrefix string) error {
 	pathPrefix = fixPrefix(pathPrefix)
 	ss := s.SubStorage(pathPrefix, true)
 	filesList, err := walk(ctx, ss, "")
@@ -301,12 +304,12 @@ func (s *S3Storage) DeleteAll(ctx context.Context, pathPrefix string) error {
 	return nil
 }
 
-func (s *S3Storage) SubStorage(subPath string, relative bool) Storager {
+func (s *Storage) SubStorage(subPath string, relative bool) interfaces.Storager {
 	prefix := subPath
 	if relative {
 		prefix = fixPrefix(path.Join(s.prefix, prefix))
 	}
-	return &S3Storage{
+	return &Storage{
 		config:    s.config,
 		session:   s.session,
 		service:   s.service,
@@ -316,7 +319,7 @@ func (s *S3Storage) SubStorage(subPath string, relative bool) Storager {
 	}
 }
 
-func (s *S3Storage) Exists(ctx context.Context, fileName string) (bool, error) {
+func (s *Storage) Exists(ctx context.Context, fileName string) (bool, error) {
 	hoi := &s3.HeadObjectInput{
 		Bucket: aws.String(s.config.Bucket),
 		Key:    aws.String(path.Join(s.prefix, fileName)),
@@ -333,7 +336,7 @@ func (s *S3Storage) Exists(ctx context.Context, fileName string) (bool, error) {
 	return true, nil
 }
 
-func (s *S3Storage) Stat(fileName string) (*ObjectStat, error) {
+func (s *Storage) Stat(fileName string) (*models.StorageObjectStat, error) {
 	fullPath := path.Join(s.prefix, fileName)
 	headObjectInput := &s3.HeadObjectInput{
 		Bucket: aws.String(s.config.Bucket),
@@ -345,7 +348,7 @@ func (s *S3Storage) Stat(fileName string) (*ObjectStat, error) {
 		return nil, fmt.Errorf("error getting object info: %w", err)
 	}
 
-	return &ObjectStat{
+	return &models.StorageObjectStat{
 		Name:         fullPath,
 		LastModified: *(headObjectOutput.LastModified),
 		Exist:        true,

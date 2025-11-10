@@ -30,14 +30,17 @@ var (
 	errCannotExcludeWarningWithErrorSeverity = errors.New("cannot exclude warnings with errors severity")
 )
 
-func PrintValidationWarnings(ctx context.Context, vc *validationcollector.Collector, resolvedWarnings []string, printAll bool) error {
+func PrintValidationWarnings(ctx context.Context, resolvedWarnings []string, printAll bool) error {
+	vc := validationcollector.FromContext(ctx)
 	if !vc.HasWarnings() {
 		return nil
 	}
 	for _, w := range vc.GetWarnings() {
 		w.MakeHash()
 		if idx := slices.Index(resolvedWarnings, w.Hash); idx != -1 {
-			log.Ctx(ctx).Debug().Str("hash", w.Hash).Msg("resolved warning has been excluded")
+			log.Ctx(ctx).Debug().
+				Str("Hash", w.Hash).
+				Msg("resolved warning has been excluded")
 			if w.Severity == commonmodels.ValidationSeverityError {
 				return fmt.Errorf(
 					"exclude warning %s with hash: %w", w.Hash, errCannotExcludeWarningWithErrorSeverity,

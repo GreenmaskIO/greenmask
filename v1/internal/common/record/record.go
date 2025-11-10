@@ -40,22 +40,15 @@ type Record struct {
 	// row - low level interface to address to the raw value of column in the row (tuple).
 	// It simply can get/set value and encode/decode from/into raw row data (like CSV row).
 	row commonininterfaces.RowDriver
-	// rawValuesCache - needs for avoiding new RawValue creation when calling SetFunction
-	rawValuesCache []*commonmodels.ColumnRawValue
 }
 
 func NewRecord(
 	row commonininterfaces.RowDriver,
 	tableDriver commonininterfaces.TableDriver,
 ) *Record {
-	rawValuesCache := make([]*commonmodels.ColumnRawValue, len(tableDriver.Table().Columns))
-	for idx := range rawValuesCache {
-		rawValuesCache[idx] = commonmodels.NewColumnRawValue(nil, false)
-	}
 	return &Record{
-		row:            row,
-		tableDriver:    tableDriver,
-		rawValuesCache: rawValuesCache,
+		row:         row,
+		tableDriver: tableDriver,
 	}
 }
 
@@ -190,10 +183,7 @@ func (r *Record) SetColumnValueByIdx(idx int, v any) error {
 		value = commonmodels.NewColumnValue(v, false)
 	}
 	if value.IsNull {
-		rv := r.rawValuesCache[idx]
-		rv.IsNull = true
-		rv.Data = nil
-		if err := r.row.SetColumn(idx, rv); err != nil {
+		if err := r.row.SetColumn(idx, commonmodels.NewColumnRawValue(nil, true)); err != nil {
 			return fmt.Errorf("error setting column value in RowDriver: %w", err)
 		}
 	} else {
@@ -201,10 +191,7 @@ func (r *Record) SetColumnValueByIdx(idx int, v any) error {
 		if err != nil {
 			return fmt.Errorf("unable to encode attr value: %w", err)
 		}
-		rv := r.rawValuesCache[idx]
-		rv.IsNull = false
-		rv.Data = encodedValue
-		if err = r.row.SetColumn(idx, rv); err != nil {
+		if err = r.row.SetColumn(idx, commonmodels.NewColumnRawValue(encodedValue, false)); err != nil {
 			return fmt.Errorf("error setting column value in RowDriver: %w", err)
 		}
 	}

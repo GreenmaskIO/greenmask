@@ -71,3 +71,8 @@ func (t *TransformerMock) GetAffectedColumns() map[int]string {
 	args := t.Called()
 	return args.Get(0).(map[int]string)
 }
+
+func (t *TransformerMock) Describe() string {
+	args := t.Called()
+	return args.String(0)
+}

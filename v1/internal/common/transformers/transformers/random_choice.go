@@ -29,11 +29,11 @@ import (
 	"github.com/greenmaskio/greenmask/v1/internal/common/validationcollector"
 )
 
-const RandomChoiceTransformerName = "RandomChoice"
+const TransformerNameRandomChoice = "RandomChoice"
 
 var ChoiceTransformerDefinition = transformerutils.NewTransformerDefinition(
 	transformerutils.NewTransformerProperties(
-		RandomChoiceTransformerName,
+		TransformerNameRandomChoice,
 		"Replace values chosen randomly from list",
 	).AddMeta(transformerutils.AllowApplyForReferenced, true).
 		AddMeta(transformerutils.RequireHashEngineParameter, true),
@@ -140,37 +140,41 @@ func NewRandomChoiceTransformer(
 	}, nil
 }
 
-func (rct *ChoiceTransformer) GetAffectedColumns() map[int]string {
-	return rct.affectedColumns
+func (t *ChoiceTransformer) GetAffectedColumns() map[int]string {
+	return t.affectedColumns
 }
 
-func (rct *ChoiceTransformer) Init(context.Context) error {
+func (t *ChoiceTransformer) Init(context.Context) error {
 	return nil
 }
 
-func (rct *ChoiceTransformer) Done(context.Context) error {
+func (t *ChoiceTransformer) Done(context.Context) error {
 	return nil
 }
 
-func (rct *ChoiceTransformer) Transform(_ context.Context, r commonininterfaces.Recorder) error {
-	val, err := r.GetRawColumnValueByIdx(rct.columnIdx)
+func (t *ChoiceTransformer) Transform(_ context.Context, r commonininterfaces.Recorder) error {
+	val, err := r.GetRawColumnValueByIdx(t.columnIdx)
 	if err != nil {
 		return fmt.Errorf("scan value: %w", err)
 	}
-	if val.IsNull && rct.keepNull {
+	if val.IsNull && t.keepNull {
 		return nil
 	}
 
-	val, err = rct.t.Transform(val.Data)
+	val, err = t.t.Transform(val.Data)
 	if err != nil {
 		return fmt.Errorf("transform value: %w", err)
 	}
 
-	if err = r.SetRawColumnValueByIdx(rct.columnIdx, val); err != nil {
+	if err = r.SetRawColumnValueByIdx(t.columnIdx, val); err != nil {
 		return fmt.Errorf("set new value: %w", err)
 	}
 
 	return nil
+}
+
+func (t *ChoiceTransformer) Describe() string {
+	return TransformerNameRandomChoice
 }
 
 var (

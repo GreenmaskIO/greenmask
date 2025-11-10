@@ -15,110 +15,339 @@
 package pipeline
 
 import (
-	"bytes"
 	"context"
 	"testing"
-	"time"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
-	"golang.org/x/sync/errgroup"
 
-	"github.com/greenmaskio/greenmask/internal/db/postgres/transformers/utils"
-	"github.com/greenmaskio/greenmask/pkg/toolkit"
+	dumpcontext "github.com/greenmaskio/greenmask/v1/internal/common/dump/context"
+	commonininterfaces "github.com/greenmaskio/greenmask/v1/internal/common/interfaces"
+	commonmodels "github.com/greenmaskio/greenmask/v1/internal/common/models"
+	transformerstesting "github.com/greenmaskio/greenmask/v1/internal/common/transformers/testing"
+	mysqldbmsdriver "github.com/greenmaskio/greenmask/v1/internal/mysql/dbmsdriver"
 )
 
-func TestTransformationPipeline_Dump(t *testing.T) {
-	termCtx, termCancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer termCancel()
-	tableCond := ""
-	table := getTable(tableCond)
-	ctx := context.Background()
-	eg, gtx := errgroup.WithContext(ctx)
-	driver := getDriver(table.Table)
-	table.Driver = driver
-	when, warns := toolkit.NewWhenCond("", driver, nil)
-	require.Empty(t, warns)
-	tt := &testTransformer{}
-	tc := &utils.TransformerContext{
-		Transformer: tt,
-		When:        when,
-	}
-	table.TransformersContext = []*utils.TransformerContext{tc}
-
-	buf := bytes.NewBuffer(nil)
-
-	pipeline, err := NewTransformationPipeline(gtx, eg, table, buf)
-	require.NoError(t, err)
-	require.NoError(t, pipeline.Init(termCtx))
-	data := []byte("1\t2023-08-27 00:00:00.000000")
-	err = pipeline.Dump(ctx, data)
-	require.NoError(t, err)
-	require.NoError(t, pipeline.Done(termCtx))
-	require.NoError(t, pipeline.CompleteDump())
-	require.Equal(t, tt.callsCount, 1)
-	require.Equal(t, buf.String(), "2\t2023-08-27 00:00:00.00000\n\\.\n\n")
+type whenMock struct {
+	mock.Mock
 }
 
-func TestTransformationPipeline_Dump_with_transformer_cond(t *testing.T) {
-	termCtx, termCancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer termCancel()
-	tableCond := ""
-	table := getTable(tableCond)
-	ctx := context.Background()
-	eg, gtx := errgroup.WithContext(ctx)
-	driver := getDriver(table.Table)
-	table.Driver = driver
-	when, warns := toolkit.NewWhenCond("record.id != 1", driver, make(map[string]any))
-	require.Empty(t, warns)
-	tt := &testTransformer{}
-	tc := &utils.TransformerContext{
-		Transformer: tt,
-		When:        when,
-	}
-	table.TransformersContext = []*utils.TransformerContext{tc}
-
-	buf := bytes.NewBuffer(nil)
-
-	pipeline, err := NewTransformationPipeline(gtx, eg, table, buf)
-	require.NoError(t, err)
-	require.NoError(t, pipeline.Init(termCtx))
-	data := []byte("1\t2023-08-27 00:00:00.000000")
-	err = pipeline.Dump(ctx, data)
-	require.NoError(t, err)
-	require.NoError(t, pipeline.Done(termCtx))
-	require.NoError(t, pipeline.CompleteDump())
-	require.Equal(t, tt.callsCount, 0)
-	require.Equal(t, buf.String(), "1\t2023-08-27 00:00:00.00000\n\\.\n\n")
+func (w *whenMock) Evaluate(r commonininterfaces.Recorder) (bool, error) {
+	args := w.Called(r)
+	return args.Bool(0), args.Error(1)
 }
 
-func TestTransformationPipeline_Dump_with_table_cond(t *testing.T) {
-	termCtx, termCancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer termCancel()
-	tableCond := "record.id != 1"
-	table := getTable(tableCond)
-	ctx := context.Background()
-	eg, gtx := errgroup.WithContext(ctx)
-	driver := getDriver(table.Table)
-	table.Driver = driver
-	when, warns := toolkit.NewWhenCond("", driver, make(map[string]any))
-	require.Empty(t, warns)
-	tt := &testTransformer{}
-	tc := &utils.TransformerContext{
-		Transformer: tt,
-		When:        when,
-	}
-	table.TransformersContext = []*utils.TransformerContext{tc}
+type transformerMock struct {
+	mock.Mock
+}
 
-	buf := bytes.NewBuffer(nil)
+func (t *transformerMock) Describe() string {
+	args := t.Called()
+	return args.String(0)
+}
 
-	pipeline, err := NewTransformationPipeline(gtx, eg, table, buf)
-	require.NoError(t, err)
-	require.NoError(t, pipeline.Init(termCtx))
-	data := []byte("1\t2023-08-27 00:00:00.000000")
-	err = pipeline.Dump(ctx, data)
-	require.NoError(t, err)
-	require.NoError(t, pipeline.Done(termCtx))
-	require.NoError(t, pipeline.CompleteDump())
-	require.Equal(t, tt.callsCount, 0)
-	require.Equal(t, buf.String(), "1\t2023-08-27 00:00:00.00000\n\\.\n\n")
+func (t *transformerMock) Init(ctx context.Context) error {
+	args := t.Called(ctx)
+	return args.Error(0)
+}
+
+func (t *transformerMock) Done(ctx context.Context) error {
+	args := t.Called(ctx)
+	return args.Error(0)
+}
+
+func (t *transformerMock) Transform(ctx context.Context, r commonininterfaces.Recorder) error {
+	args := t.Called(ctx, r)
+	return args.Error(0)
+}
+
+func (t *transformerMock) GetAffectedColumns() map[int]string {
+	args := t.Called()
+	return args.Get(0).(map[int]string)
+}
+
+func TestTransformerBase_Init(t *testing.T) {
+	t.Run("init error of the second tran", func(t *testing.T) {
+		columns := []commonmodels.Column{
+			{
+				Idx:       0,
+				Name:      "first_name",
+				TypeName:  mysqldbmsdriver.TypeText,
+				TypeOID:   mysqldbmsdriver.VirtualOidText,
+				TypeClass: mysqldbmsdriver.TypeText,
+				Length:    0,
+			},
+			{
+				Idx:       1,
+				Name:      "last_name",
+				TypeName:  mysqldbmsdriver.TypeText,
+				TypeOID:   mysqldbmsdriver.VirtualOidText,
+				TypeClass: mysqldbmsdriver.TypeText,
+				Length:    0,
+			},
+			{
+				Idx:       2,
+				Name:      "middle_name",
+				TypeName:  mysqldbmsdriver.TypeText,
+				TypeOID:   mysqldbmsdriver.VirtualOidText,
+				TypeClass: mysqldbmsdriver.TypeText,
+				Length:    0,
+			},
+		}
+		table := commonmodels.Table{
+			Schema:  "public",
+			Name:    "users",
+			Columns: columns,
+		}
+
+		columnValues := []*commonmodels.ColumnRawValue{
+			commonmodels.NewColumnRawValue([]byte("a"), false),
+			commonmodels.NewColumnRawValue([]byte("b"), false),
+			commonmodels.NewColumnRawValue([]byte("c"), false),
+		}
+		env := transformerstesting.NewTransformerTestEnvReal(t, nil, columns, nil, nil)
+		env.SetRecord(t, columnValues...)
+
+		tran1 := &transformerMock{}
+		tran1.On("Init", mock.Anything).
+			Return(nil)
+		tran1.On("Done", mock.Anything).
+			Return(nil)
+
+		tranCtx1 := &dumpcontext.TransformerContext{
+			Transformer: tran1,
+		}
+
+		tran2 := &transformerMock{}
+		tran2.On("Init", mock.Anything).
+			Return(assert.AnError)
+		tran2.On("Describe").
+			Return("TestTran2")
+
+		tranCtx2 := &dumpcontext.TransformerContext{
+			Transformer: tran2,
+		}
+
+		tableCond := &whenMock{}
+
+		tableContext := &dumpcontext.TableContext{
+			Table: &table,
+			TransformerContext: []*dumpcontext.TransformerContext{
+				tranCtx1,
+				tranCtx2,
+			},
+			Condition:   tableCond,
+			TableDriver: nil,
+		}
+
+		tp := NewTransformationPipeline(tableContext)
+		err := tp.Init(context.Background())
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "initialize transformer 'TestTran2'[1]")
+
+		tran1.AssertExpectations(t)
+		tran2.AssertExpectations(t)
+		tableCond.AssertExpectations(t)
+	})
+}
+
+func TestTransformerBase_Transform(t *testing.T) {
+	t.Run("success", func(t *testing.T) {
+		columns := []commonmodels.Column{
+			{
+				Idx:       0,
+				Name:      "first_name",
+				TypeName:  mysqldbmsdriver.TypeText,
+				TypeOID:   mysqldbmsdriver.VirtualOidText,
+				TypeClass: mysqldbmsdriver.TypeText,
+				Length:    0,
+			},
+			{
+				Idx:       1,
+				Name:      "last_name",
+				TypeName:  mysqldbmsdriver.TypeText,
+				TypeOID:   mysqldbmsdriver.VirtualOidText,
+				TypeClass: mysqldbmsdriver.TypeText,
+				Length:    0,
+			},
+			{
+				Idx:       2,
+				Name:      "middle_name",
+				TypeName:  mysqldbmsdriver.TypeText,
+				TypeOID:   mysqldbmsdriver.VirtualOidText,
+				TypeClass: mysqldbmsdriver.TypeText,
+				Length:    0,
+			},
+		}
+		table := commonmodels.Table{
+			Schema:  "public",
+			Name:    "users",
+			Columns: columns,
+		}
+
+		columnValues := []*commonmodels.ColumnRawValue{
+			commonmodels.NewColumnRawValue([]byte("a"), false),
+			commonmodels.NewColumnRawValue([]byte("b"), false),
+			commonmodels.NewColumnRawValue([]byte("c"), false),
+		}
+		env := transformerstesting.NewTransformerTestEnvReal(t, nil, columns, nil, nil)
+		env.SetRecord(t, columnValues...)
+
+		tran1 := &transformerMock{}
+		tran1.On("Init", mock.Anything).
+			Return(nil)
+		tran1.On("Transform", mock.Anything, mock.Anything).
+			Return(nil)
+		tran1.On("Done", mock.Anything).
+			Return(nil)
+
+		tranCond1 := &whenMock{}
+		tranCond1.On("Evaluate", mock.Anything).
+			Return(true, nil)
+		tranCtx1 := &dumpcontext.TransformerContext{
+			Transformer: tran1,
+			Condition:   tranCond1,
+		}
+
+		tran2 := &transformerMock{}
+		tran2.On("Init", mock.Anything).
+			Return(nil)
+		tran2.On("Transform", mock.Anything, mock.Anything).
+			Return(nil)
+		tran2.On("Done", mock.Anything).
+			Return(nil)
+
+		tranCond2 := &whenMock{}
+		tranCond2.On("Evaluate", mock.Anything).
+			Return(true, nil)
+		tranCtx2 := &dumpcontext.TransformerContext{
+			Transformer: tran2,
+			Condition:   tranCond2,
+		}
+
+		tableCond := &whenMock{}
+		tableCond.On("Evaluate", mock.Anything).
+			Return(true, nil)
+
+		tableContext := &dumpcontext.TableContext{
+			Table: &table,
+			TransformerContext: []*dumpcontext.TransformerContext{
+				tranCtx1,
+				tranCtx2,
+			},
+			Condition:   tableCond,
+			TableDriver: nil,
+		}
+
+		tp := NewTransformationPipeline(tableContext)
+		err := tp.Init(context.Background())
+		require.NoError(t, err)
+
+		err = tp.Transform(context.Background(), env.Recorder)
+		require.NoError(t, err)
+
+		err = tp.Done(context.Background())
+		require.NoError(t, err)
+
+		tran1.AssertExpectations(t)
+		tran2.AssertExpectations(t)
+		tableCond.AssertExpectations(t)
+		tranCond1.AssertExpectations(t)
+		tranCond2.AssertExpectations(t)
+	})
+
+	t.Run("without conds", func(t *testing.T) {
+		columns := []commonmodels.Column{
+			{
+				Idx:       0,
+				Name:      "first_name",
+				TypeName:  mysqldbmsdriver.TypeText,
+				TypeOID:   mysqldbmsdriver.VirtualOidText,
+				TypeClass: mysqldbmsdriver.TypeText,
+				Length:    0,
+			},
+			{
+				Idx:       1,
+				Name:      "last_name",
+				TypeName:  mysqldbmsdriver.TypeText,
+				TypeOID:   mysqldbmsdriver.VirtualOidText,
+				TypeClass: mysqldbmsdriver.TypeText,
+				Length:    0,
+			},
+			{
+				Idx:       2,
+				Name:      "middle_name",
+				TypeName:  mysqldbmsdriver.TypeText,
+				TypeOID:   mysqldbmsdriver.VirtualOidText,
+				TypeClass: mysqldbmsdriver.TypeText,
+				Length:    0,
+			},
+		}
+		table := commonmodels.Table{
+			Schema:  "public",
+			Name:    "users",
+			Columns: columns,
+		}
+
+		columnValues := []*commonmodels.ColumnRawValue{
+			commonmodels.NewColumnRawValue([]byte("a"), false),
+			commonmodels.NewColumnRawValue([]byte("b"), false),
+			commonmodels.NewColumnRawValue([]byte("c"), false),
+		}
+		env := transformerstesting.NewTransformerTestEnvReal(t, nil, columns, nil, nil)
+		env.SetRecord(t, columnValues...)
+
+		tran1 := &transformerMock{}
+		tran1.On("Init", mock.Anything).
+			Return(nil)
+		tran1.On("Transform", mock.Anything, mock.Anything).
+			Return(nil)
+		tran1.On("Done", mock.Anything).
+			Return(nil)
+
+		tranCtx1 := &dumpcontext.TransformerContext{
+			Transformer: tran1,
+		}
+
+		tran2 := &transformerMock{}
+		tran2.On("Init", mock.Anything).
+			Return(nil)
+		tran2.On("Transform", mock.Anything, mock.Anything).
+			Return(nil)
+		tran2.On("Done", mock.Anything).
+			Return(nil)
+
+		tranCtx2 := &dumpcontext.TransformerContext{
+			Transformer: tran2,
+		}
+
+		tableCond := &whenMock{}
+		tableCond.On("Evaluate", mock.Anything).
+			Return(true, nil)
+
+		tableContext := &dumpcontext.TableContext{
+			Table: &table,
+			TransformerContext: []*dumpcontext.TransformerContext{
+				tranCtx1,
+				tranCtx2,
+			},
+			Condition:   tableCond,
+			TableDriver: nil,
+		}
+
+		tp := NewTransformationPipeline(tableContext)
+		err := tp.Init(context.Background())
+		require.NoError(t, err)
+
+		err = tp.Transform(context.Background(), env.Recorder)
+		require.NoError(t, err)
+
+		err = tp.Done(context.Background())
+		require.NoError(t, err)
+
+		tran1.AssertExpectations(t)
+		tran2.AssertExpectations(t)
+		tableCond.AssertExpectations(t)
+	})
 }

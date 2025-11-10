@@ -213,7 +213,7 @@ func initColumnParameters(
 			nil,
 			value,
 		); err != nil {
-			return nil, fmt.Errorf("error initializing \"%s\" parameter: %w", pd.Name, err)
+			return nil, fmt.Errorf("initialize \"%s\" parameter: %w", pd.Name, err)
 		}
 		params[pd.Name] = sp
 

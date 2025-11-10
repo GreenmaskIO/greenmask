@@ -21,7 +21,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/greenmaskio/greenmask/v1/internal/storages"
+	"github.com/greenmaskio/greenmask/v1/internal/common/interfaces"
 )
 
 const (
@@ -29,10 +29,10 @@ const (
 )
 
 type Writer struct {
-	st storages.Storager
+	st interfaces.Storager
 }
 
-func NewWriter(st storages.Storager) *Writer {
+func NewWriter(st interfaces.Storager) *Writer {
 	return &Writer{st: st}
 }
 

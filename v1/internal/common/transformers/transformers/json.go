@@ -43,14 +43,14 @@ const (
 	jsonSetOpName    = "set"
 )
 
-const JsonTransformerName = "Json"
+const TransformerNameJson = "Json"
 
 var errInvalidJson = fmt.Errorf("invalid json data")
 
 var JsonTransformerDefinition = transformerutils.NewTransformerDefinition(
 
 	transformerutils.NewTransformerProperties(
-		JsonTransformerName,
+		TransformerNameJson,
 		"Update json document",
 	),
 
@@ -209,47 +209,51 @@ func NewJsonTransformer(
 	}, nil
 }
 
-func (jt *JsonTransformer) GetAffectedColumns() map[int]string {
-	return jt.affectedColumns
+func (t *JsonTransformer) GetAffectedColumns() map[int]string {
+	return t.affectedColumns
 }
 
-func (jt *JsonTransformer) Init(context.Context) error {
+func (t *JsonTransformer) Init(context.Context) error {
 	return nil
 }
 
-func (jt *JsonTransformer) Done(context.Context) error {
+func (t *JsonTransformer) Done(context.Context) error {
 	return nil
 }
 
-func (jt *JsonTransformer) Transform(_ context.Context, r commonininterfaces.Recorder) error {
-	v, err := r.GetRawColumnValueByIdx(jt.columnIdx)
+func (t *JsonTransformer) Transform(_ context.Context, r commonininterfaces.Recorder) error {
+	v, err := r.GetRawColumnValueByIdx(t.columnIdx)
 	if err != nil {
 		return fmt.Errorf("cannot scan column value: %w", err)
 	}
-	if v.IsNull && jt.keepNull {
+	if v.IsNull && t.keepNull {
 		return nil
 	}
 	if !gjson.ValidBytes(v.Data) {
-		if jt.skipInvalidJson {
+		if t.skipInvalidJson {
 			return nil
 		}
 		return errInvalidJson
 	}
 
-	jt.tctx.setRecord(r)
+	t.tctx.setRecord(r)
 
 	res := slices.Clone(v.Data)
-	for idx, op := range jt.operations {
-		jt.buf.Reset()
-		res, err = op.Apply(res, jt.tctx, jt.buf)
+	for idx, op := range t.operations {
+		t.buf.Reset()
+		res, err = op.Apply(res, t.tctx, t.buf)
 		if err != nil {
 			return fmt.Errorf("cannot apply \"%s\" operation[%d] with path %s: %w", op.Operation, idx, op.Path, err)
 		}
 	}
 
-	if err = r.SetRawColumnValueByIdx(jt.columnIdx, commonmodels.NewColumnRawValue(res, false)); err != nil {
+	if err = r.SetRawColumnValueByIdx(t.columnIdx, commonmodels.NewColumnRawValue(res, false)); err != nil {
 		return fmt.Errorf("unable to set new value: %w", err)
 	}
 
 	return nil
+}
+
+func (t *JsonTransformer) Describe() string {
+	return TransformerNameJson
 }
