@@ -35,6 +35,7 @@ require (
 	github.com/testcontainers/testcontainers-go/modules/mysql v0.40.0
 	github.com/tidwall/gjson v1.18.0
 	github.com/tidwall/sjson v1.2.5
+	github.com/xhit/go-str2duration/v2 v2.1.0
 	golang.org/x/crypto v0.43.0
 	golang.org/x/exp v0.0.0-20251023183803-a4bb9ffd2546
 	golang.org/x/sync v0.18.0
