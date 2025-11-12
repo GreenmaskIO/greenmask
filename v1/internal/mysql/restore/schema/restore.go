@@ -22,8 +22,8 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/rs/zerolog/log"
 
+	"github.com/greenmaskio/greenmask/v1/internal/common/interfaces"
 	"github.com/greenmaskio/greenmask/v1/internal/common/utils"
-	"github.com/greenmaskio/greenmask/v1/internal/storages"
 )
 
 const (
@@ -40,13 +40,13 @@ type options interface {
 // Restorer - restores mysql schema from the given storage folder.
 // It expected that schema DDL commands are stored in schema.sql.
 type Restorer struct {
-	st         storages.Storager
+	st         interfaces.Storager
 	cfg        options
 	executable string
 }
 
 func NewRestorer(
-	st storages.Storager,
+	st interfaces.Storager,
 	connCfg options,
 ) *Restorer {
 	return &Restorer{

@@ -24,6 +24,7 @@ import (
 
 	"github.com/Masterminds/sprig/v3"
 	_ "github.com/go-sql-driver/mysql"
+	"github.com/rs/zerolog/log"
 
 	commonmodels "github.com/greenmaskio/greenmask/v1/internal/common/models"
 	"github.com/greenmaskio/greenmask/v1/internal/mysql/dbmsdriver"
@@ -92,7 +93,7 @@ func (i *Introspector) Introspect(ctx context.Context, tx *sql.Tx) error {
 		}
 		t.SetPrimaryKey(pkColumns)
 
-		fks, err := i.getForeignKeys(ctx, tx, t.Name, t.Schema)
+		fks, err := i.getForeignKeys(ctx, tx, t.Schema, t.Name)
 		if err != nil {
 			return fmt.Errorf("introspect foreign keys for table %s.%s: %w", t.Schema, t.Name, err)
 		}
@@ -194,6 +195,36 @@ func getTypeOID(columnType string, dataType *string) (commonmodels.VirtualOID, e
 	)
 }
 
+func getTypeClass(
+	ctx context.Context,
+	columnName string,
+	typeName string,
+	dataType *string,
+) commonmodels.TypeClass {
+	defaultTypeClass := commonmodels.TypeClassUnsupported
+	typeClass, ok := dbmsdriver.TypeDataNameTypeToClass[typeName]
+	if ok {
+		return typeClass
+	}
+	if dataType == nil {
+		log.Ctx(ctx).Debug().
+			Str("TypeName", typeName).
+			Str("ColumnName", columnName).
+			Msg("data type is nil, defaulting to unsupported")
+		return defaultTypeClass
+	}
+	typeClass, ok = dbmsdriver.TypeDataNameTypeToClass[*dataType]
+	if !ok {
+		log.Ctx(ctx).Debug().
+			Str("TypeName", typeName).
+			Str("DataType", *dataType).
+			Str("ColumnName", columnName).
+			Msg("cannot match data type to type class, defaulting to unsupported")
+		return commonmodels.TypeClassUnsupported
+	}
+	return typeClass
+}
+
 // getColumns - get all columns for a given table
 func (i *Introspector) getColumns(ctx context.Context, tx *sql.Tx, tableSchema string, tableName string) ([]mysqlmodels.Column, error) {
 	query := `
@@ -236,11 +267,12 @@ func (i *Introspector) getColumns(ctx context.Context, tx *sql.Tx, tableSchema s
 		}
 		typeOID, err := getTypeOID(columnType, dataType)
 		if err != nil {
-			return nil, fmt.Errorf("get type oid: %w")
+			return nil, fmt.Errorf("get type oid: %w", err)
 		}
+		typeClass := getTypeClass(ctx, columnName, columnType, dataType)
 		columns = append(columns, mysqlmodels.NewColumn(
 			idx, columnName, columnType, dataType, numericPrecision,
-			numericScale, datetimePrecision, notNull, typeOID,
+			numericScale, datetimePrecision, notNull, typeOID, typeClass,
 		))
 		idx++
 	}
@@ -337,39 +369,54 @@ func (i *Introspector) getForeignKeyConstraints(
 	tableName string,
 ) ([]commonmodels.Reference, error) {
 	query := `
-		SELECT t.CONSTRAINT_SCHEMA,
-			   t.CONSTRAINT_NAME,
-			   exists(select 1
-					  from information_schema.key_column_usage k
-							   JOIN information_schema.COLUMNS c
-									ON k.COLUMN_NAME = c.COLUMN_NAME AND k.TABLE_NAME = c.TABLE_NAME AND
-									   k.TABLE_SCHEMA = c.TABLE_SCHEMA
-					  where k.CONSTRAINT_SCHEMA = t.CONSTRAINT_SCHEMA
-						AND k.CONSTRAINT_NAME = t.CONSTRAINT_NAME
-						AND c.IS_NULLABLE = 'YES') as is_nullable
+		SELECT DISTINCT 
+			t.CONSTRAINT_SCHEMA,
+			t.CONSTRAINT_NAME,
+			k.REFERENCED_TABLE_SCHEMA AS referenced_schema,
+			k.REFERENCED_TABLE_NAME AS referenced_table,
+			EXISTS (
+				SELECT 1
+				FROM information_schema.key_column_usage k2
+						 JOIN information_schema.COLUMNS c
+							  ON k2.COLUMN_NAME = c.COLUMN_NAME
+								  AND k2.TABLE_NAME = c.TABLE_NAME
+								  AND k2.TABLE_SCHEMA = c.TABLE_SCHEMA
+				WHERE k2.CONSTRAINT_SCHEMA = t.CONSTRAINT_SCHEMA
+				  AND k2.CONSTRAINT_NAME = t.CONSTRAINT_NAME
+				  AND c.IS_NULLABLE = 'YES'
+			) AS is_nullable
 		FROM information_schema.table_constraints t
-		WHERE t.constraint_type = 'FOREIGN KEY'
-		  AND t.table_schema = ?
-		  AND t.table_name = ?;
+				 JOIN information_schema.key_column_usage k
+					  ON t.CONSTRAINT_NAME = k.CONSTRAINT_NAME
+						  AND t.CONSTRAINT_SCHEMA = k.CONSTRAINT_SCHEMA
+						  AND t.TABLE_NAME = k.TABLE_NAME
+		WHERE t.CONSTRAINT_TYPE = 'FOREIGN KEY'
+		  AND t.TABLE_SCHEMA = ?
+		  AND t.TABLE_NAME = ?;
 	`
 	rows, err := tx.QueryContext(ctx, query, tableSchema, tableName)
 	if err != nil {
 		return nil, fmt.Errorf("execute referenced tables query: %w", err)
 	}
-	defer rows.Close()
+	defer func() {
+		_ = rows.Close()
+	}()
 
 	var constraints []commonmodels.Reference
 	for rows.Next() {
 		var (
-			constraintSchema, constantName string
-			isNullable                     bool
+			constraintSchema, constantName    string
+			referencedSchema, referencedTable string
+			isNullable                        bool
 		)
-		if err := rows.Scan(&constraintSchema, &constantName, &isNullable); err != nil {
+		if err := rows.Scan(
+			&constraintSchema, &constantName, &referencedSchema, &referencedTable, &isNullable,
+		); err != nil {
 			return nil, fmt.Errorf("scan referenced tables row: %w", err)
 		}
 		c := commonmodels.NewReference(
-			tableSchema,
-			tableName,
+			referencedSchema,
+			referencedTable,
 			constraintSchema,
 			constantName,
 			nil,

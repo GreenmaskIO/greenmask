@@ -23,4 +23,5 @@ type Transformer interface {
 	Done(ctx context.Context) error
 	Transform(ctx context.Context, r Recorder) error
 	GetAffectedColumns() map[int]string
+	Describe() string
 }

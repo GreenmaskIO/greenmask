@@ -16,26 +16,22 @@ package pipeline
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
-	"github.com/greenmaskio/greenmask/pkg/toolkit"
 	"github.com/rs/zerolog/log"
 
-	context2 "github.com/greenmaskio/greenmask/v1/internal/common/dump/context"
+	dumpcontext "github.com/greenmaskio/greenmask/v1/internal/common/dump/context"
 	commoninterfaces "github.com/greenmaskio/greenmask/v1/internal/common/interfaces"
 )
 
-var endOfLineSeq = []byte("\n")
-
-type transformationFunc func(ctx context.Context, r *toolkit.Record) (*toolkit.Record, error)
-
 type TransformationPipeline struct {
-	tableContext *context2.TableContext
+	tableContext *dumpcontext.TableContext
 	line         uint64
 	row          commoninterfaces.RowDriver
 }
 
-func NewTransformationPipeline(tableContext *context2.TableContext) *TransformationPipeline {
+func NewTransformationPipeline(tableContext *dumpcontext.TableContext) *TransformationPipeline {
 	return &TransformationPipeline{
 		tableContext: tableContext,
 	}
@@ -43,44 +39,64 @@ func NewTransformationPipeline(tableContext *context2.TableContext) *Transformat
 
 func (tp *TransformationPipeline) Init(ctx context.Context) error {
 	var lastInitErr error
-	var idx int
-	var t *context2.TransformerContext
-	for idx, t = range tp.tableContext.TransformerContext {
+	var i int
+	var t *dumpcontext.TransformerContext
+	for i, t = range tp.tableContext.TransformerContext {
 		if err := t.Transformer.Init(ctx); err != nil {
-			lastInitErr = err
-			log.Warn().Err(err).Msg("error initializing transformer")
+			lastInitErr = errors.Join(
+				lastInitErr,
+				fmt.Errorf("initialize transformer '%s'[%d]", t.Transformer.Describe(), i),
+			)
+			log.Ctx(ctx).
+				Warn().
+				Int("Position", i).
+				Str("TransformerName", t.Transformer.Describe()).
+				Err(err).
+				Msg("error initializing transformer")
 		}
 	}
 
 	if lastInitErr != nil {
-		lastInitialized := idx
-		for _, t = range tp.tableContext.TransformerContext[:lastInitialized] {
+		lastInitialized := i
+		for i, t := range tp.tableContext.TransformerContext[:lastInitialized] {
 			if err := t.Transformer.Done(ctx); err != nil {
-				log.Warn().Err(err).Msg("error terminating previously initialized transformer")
+				log.Ctx(ctx).
+					Warn().
+					Int("Position", i+lastInitialized).
+					Str("TransformerName", t.Transformer.Describe()).
+					Err(err).
+					Msg("error terminating transformer")
 			}
 		}
 	}
 	if lastInitErr != nil {
-		return fmt.Errorf("unable to initialize transformer: %w", lastInitErr)
+		return fmt.Errorf("initialize transformer: %w", lastInitErr)
 	}
 
 	return nil
 }
 
 func (tp *TransformationPipeline) Transform(ctx context.Context, r commoninterfaces.Recorder) error {
-	for _, t := range tp.tableContext.TransformerContext {
+	needTransform, err := tp.tableContext.EvaluateWhen(r)
+	if err != nil {
+		return fmt.Errorf("evaluate table condition: %w", err)
+	}
+	if !needTransform {
+		return nil
+	}
+	for i, t := range tp.tableContext.TransformerContext {
 		needTransform, err := t.EvaluateWhen(r)
 		if err != nil {
-			log.Ctx(ctx).Warn().Err(err).Msg("error evaluating transformer")
-			return fmt.Errorf("evaluate transformer condition: %w", err)
+			tranName := t.Transformer.Describe()
+			return fmt.Errorf("evaluate transformer '%s'[%d] condition: %w", tranName, i, err)
 		}
 		if !needTransform {
 			continue
 		}
 		err = t.Transformer.Transform(ctx, r)
 		if err != nil {
-			log.Ctx(ctx).Warn().Err(err).Msg("transformation failed")
-			return fmt.Errorf("transform record: %w", err)
+			tranName := t.Transformer.Describe()
+			return fmt.Errorf("transform record using '%s'[%d] transformer : %w", tranName, i, err)
 		}
 	}
 	return nil
@@ -88,15 +104,23 @@ func (tp *TransformationPipeline) Transform(ctx context.Context, r commoninterfa
 
 func (tp *TransformationPipeline) Done(ctx context.Context) error {
 	var lastErr error
-	for _, t := range tp.tableContext.TransformerContext {
+	for i, t := range tp.tableContext.TransformerContext {
 		if err := t.Transformer.Done(ctx); err != nil {
-			lastErr = err
-			log.Warn().Err(err).Msg("error terminating initialized transformer")
+			lastErr = errors.Join(
+				lastErr,
+				fmt.Errorf("initialize transformer '%s'[%d]", t.Transformer.Describe(), i),
+			)
+			log.Ctx(ctx).
+				Warn().
+				Int("Position", i).
+				Str("TransformerName", t.Transformer.Describe()).
+				Err(err).
+				Msg("error initializing transformer")
 		}
 	}
 
 	if lastErr != nil {
-		return fmt.Errorf("error terminating initialized transformer: %w", lastErr)
+		return fmt.Errorf("terminate transformer: %w", lastErr)
 	}
 	return nil
 }

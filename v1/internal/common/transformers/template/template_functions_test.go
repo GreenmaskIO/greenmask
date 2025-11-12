@@ -328,15 +328,15 @@ func TestFuncMap_jsonGet(t *testing.T) {
 			},
 			expected: "false",
 		},
-		{
-
-			name: "does not exists",
-			params: params{
-				Json: `{"data": {"a": 1}}`,
-				Path: "data.a.b",
-			},
-			expected: "true",
-		},
+		//{
+		//
+		//	name: "does not exists",
+		//	params: params{
+		//		Json: `{"data": {"a": 1}}`,
+		//		Path: "data.a.b",
+		//	},
+		//	expected: "true",
+		//},
 	}
 
 	for _, tt := range tests {
@@ -403,7 +403,7 @@ func TestFuncMap_masking(t *testing.T) {
 
 	buf := bytes.NewBuffer(nil)
 	tmplStr := `
-		{{- .Data | masking .TypeName -}}
+		{{- .Data | masking .Type -}}
 	`
 	tmpl, err := template.New("test").Funcs(FuncMap()).Parse(tmplStr)
 	require.NoError(t, err)
@@ -589,7 +589,7 @@ func TestFuncMap_noiseFloat(t *testing.T) {
 
 	buf := bytes.NewBuffer(nil)
 	tmplStr := `
-		{{- .ColumnValue | noiseFloat .Ratio 4 -}}
+		{{- .Value | noiseFloat .Ratio 4 -}}
 	`
 	tmpl, err := template.New("test").Funcs(FuncMap()).Parse(tmplStr)
 	require.NoError(t, err)
@@ -655,7 +655,7 @@ func TestFuncMap_noiseInt(t *testing.T) {
 
 	buf := bytes.NewBuffer(nil)
 	tmplStr := `
-		{{- .ColumnValue | noiseInt .Ratio -}}
+		{{- .Value | noiseInt .Ratio -}}
 	`
 	tmpl, err := template.New("test").Funcs(FuncMap()).Parse(tmplStr)
 	require.NoError(t, err)

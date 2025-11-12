@@ -76,7 +76,7 @@ func TestProducer_Produce(t *testing.T) {
 		tableDriverMock := mocks.NewTableDriverMock()
 		tableDriverMock.On("Table").Return(&tables[0])
 		newDriverFuncMock := func(
-			vc *validationcollector.Collector,
+			ctx context.Context,
 			table commonmodels.Table,
 			columnsTypeOverride map[string]string,
 		) (commonininterfaces.TableDriver, error) {
@@ -101,13 +101,13 @@ func TestProducer_Produce(t *testing.T) {
 		p := New(tables, dumpQueries, nil, newDriverFuncMock, tr)
 		ctx := context.Background()
 		vc := validationcollector.NewCollector()
-		tableRuntimes, err := p.Build(ctx, vc)
+		tableRuntimes, err := p.Build(ctx)
 		require.NoError(t, err)
 		require.False(t, vc.HasWarnings())
 		require.Len(t, tableRuntimes, 1)
 		require.Equal(t, tableRuntimes[0].Table, &tables[0])
 		require.Len(t, tableRuntimes[0].TransformerContext, 0)
-		require.Nil(t, tableRuntimes[0].TableCondition)
+		require.Nil(t, tableRuntimes[0].Condition)
 		require.Empty(t, tableRuntimes[0].Query)
 		require.Equal(t, tableRuntimes[0].TableDriver, tableDriverMock)
 		tableDriverMock.AssertExpectations(t)
@@ -120,7 +120,7 @@ func TestProducer_Produce(t *testing.T) {
 		tableDriverMock := mocks.NewTableDriverMock()
 		tableDriverMock.On("Table").Return(&tables[0])
 		newDriverFuncMock := func(
-			vc *validationcollector.Collector,
+			ctx context.Context,
 			table commonmodels.Table,
 			columnsTypeOverride map[string]string,
 		) (commonininterfaces.TableDriver, error) {
@@ -132,13 +132,14 @@ func TestProducer_Produce(t *testing.T) {
 		p := New(tables, dumpQueries, nil, newDriverFuncMock, tr)
 		ctx := context.Background()
 		vc := validationcollector.NewCollector()
-		tableRuntimes, err := p.Build(ctx, vc)
+		ctx = validationcollector.WithCollector(ctx, vc)
+		tableRuntimes, err := p.Build(ctx)
 		require.NoError(t, err)
 		require.False(t, vc.HasWarnings())
 		require.Len(t, tableRuntimes, 1)
 		require.Equal(t, tableRuntimes[0].Table, &tables[0])
 		require.Len(t, tableRuntimes[0].TransformerContext, 0)
-		require.Nil(t, tableRuntimes[0].TableCondition)
+		require.Nil(t, tableRuntimes[0].Condition)
 		require.Equal(t, tableRuntimes[0].Query, dumpQueries[0])
 		require.Equal(t, tableRuntimes[0].TableDriver, tableDriverMock)
 		tableDriverMock.AssertExpectations(t)
@@ -149,7 +150,7 @@ func TestProducer_Produce(t *testing.T) {
 		tableDriverMock := mocks.NewTableDriverMock()
 		tableDriverMock.On("Table").Return(&tables[0])
 		newDriverFuncMock := func(
-			vc *validationcollector.Collector,
+			ctx context.Context,
 			table commonmodels.Table,
 			columnsTypeOverride map[string]string,
 		) (commonininterfaces.TableDriver, error) {
@@ -169,13 +170,14 @@ func TestProducer_Produce(t *testing.T) {
 		p := New(tables, dumpQueries, tableConfigs, newDriverFuncMock, tr)
 		ctx := context.Background()
 		vc := validationcollector.NewCollector()
-		tableRuntimes, err := p.Build(ctx, vc)
+		ctx = validationcollector.WithCollector(ctx, vc)
+		tableRuntimes, err := p.Build(ctx)
 		require.NoError(t, err)
 		require.False(t, vc.HasWarnings())
 		require.Len(t, tableRuntimes, 1)
 		require.Equal(t, tableRuntimes[0].Table, &tables[0])
 		require.Len(t, tableRuntimes[0].TransformerContext, 0)
-		require.NotNil(t, tableRuntimes[0].TableCondition)
+		require.NotNil(t, tableRuntimes[0].Condition)
 		require.Empty(t, tableRuntimes[0].Query)
 		require.Equal(t, tableRuntimes[0].TableDriver, tableDriverMock)
 		tableDriverMock.AssertExpectations(t)
@@ -186,7 +188,7 @@ func TestProducer_Produce(t *testing.T) {
 		tableDriverMock := mocks.NewTableDriverMock()
 		tableDriverMock.On("Table").Return(&tables[0])
 		newDriverFuncMock := func(
-			vc *validationcollector.Collector,
+			ctx context.Context,
 			table commonmodels.Table,
 			columnsTypeOverride map[string]string,
 		) (commonininterfaces.TableDriver, error) {
@@ -205,13 +207,14 @@ func TestProducer_Produce(t *testing.T) {
 		p := New(tables, dumpQueries, tableConfigs, newDriverFuncMock, tr)
 		ctx := context.Background()
 		vc := validationcollector.NewCollector()
-		tableRuntimes, err := p.Build(ctx, vc)
+		ctx = validationcollector.WithCollector(ctx, vc)
+		tableRuntimes, err := p.Build(ctx)
 		require.NoError(t, err)
 		require.False(t, vc.HasWarnings())
 		require.Len(t, tableRuntimes, 1)
 		require.Equal(t, tableRuntimes[0].Table, &tables[0])
 		require.Len(t, tableRuntimes[0].TransformerContext, 0)
-		require.Nil(t, tableRuntimes[0].TableCondition)
+		require.Nil(t, tableRuntimes[0].Condition)
 		require.Empty(t, tableRuntimes[0].Query)
 		require.Equal(t, tableRuntimes[0].TableDriver, tableDriverMock)
 	})
@@ -221,7 +224,7 @@ func TestProducer_Produce(t *testing.T) {
 		tableDriverMock := mocks.NewTableDriverMock()
 		tableDriverMock.On("Table").Return(&tables[0])
 		newDriverFuncMock := func(
-			vc *validationcollector.Collector,
+			ctx context.Context,
 			table commonmodels.Table,
 			columnsTypeOverride map[string]string,
 		) (commonininterfaces.TableDriver, error) {
@@ -241,13 +244,14 @@ func TestProducer_Produce(t *testing.T) {
 		p := New(tables, dumpQueries, tableConfigs, newDriverFuncMock, tr)
 		ctx := context.Background()
 		vc := validationcollector.NewCollector()
-		tableRuntimes, err := p.Build(ctx, vc)
+		ctx = validationcollector.WithCollector(ctx, vc)
+		tableRuntimes, err := p.Build(ctx)
 		require.NoError(t, err)
 		require.False(t, vc.HasWarnings())
 		require.Len(t, tableRuntimes, 1)
 		require.Equal(t, tableRuntimes[0].Table, &tables[0])
 		require.Len(t, tableRuntimes[0].TransformerContext, 0)
-		require.Nil(t, tableRuntimes[0].TableCondition)
+		require.Nil(t, tableRuntimes[0].Condition)
 		require.Equal(t, tableRuntimes[0].Query, tableConfigs[0].Query)
 		require.Equal(t, tableRuntimes[0].TableDriver, tableDriverMock)
 		tableDriverMock.AssertExpectations(t)
@@ -268,7 +272,7 @@ func TestProducer_Produce(t *testing.T) {
 				nil,
 			)
 		newDriverFuncMock := func(
-			vc *validationcollector.Collector,
+			ctx context.Context,
 			table commonmodels.Table,
 			columnsTypeOverride map[string]string,
 		) (commonininterfaces.TableDriver, error) {
@@ -277,7 +281,6 @@ func TestProducer_Produce(t *testing.T) {
 
 		transformerMock, newFunc := mocks.NewTransformerMock(func(
 			ctx context.Context,
-			vc *validationcollector.Collector,
 			tableDriver commonininterfaces.TableDriver,
 			parameters map[string]parameters.Parameterizer,
 		) error {
@@ -319,15 +322,16 @@ func TestProducer_Produce(t *testing.T) {
 		p := New(tables, dumpQueries, tableConfigs, newDriverFuncMock, tr)
 		ctx := context.Background()
 		vc := validationcollector.NewCollector()
-		tableRuntimes, err := p.Build(ctx, vc)
+		ctx = validationcollector.WithCollector(ctx, vc)
+		tableRuntimes, err := p.Build(ctx)
 		require.NoError(t, err)
 		require.False(t, vc.HasWarnings())
 		require.Len(t, tableRuntimes, 1)
 		require.Equal(t, tableRuntimes[0].Table, &tables[0])
 		require.Len(t, tableRuntimes[0].TransformerContext, 1)
 		require.Equal(t, tableRuntimes[0].TransformerContext[0].Transformer, transformerMock)
-		require.NotNil(t, tableRuntimes[0].TransformerContext[0].WhenCond)
-		require.Nil(t, tableRuntimes[0].TableCondition)
+		require.NotNil(t, tableRuntimes[0].TransformerContext[0].Condition)
+		require.Nil(t, tableRuntimes[0].Condition)
 		require.Equal(t, tableRuntimes[0].Query, tableConfigs[0].Query)
 		require.Equal(t, tableRuntimes[0].TableDriver, tableDriverMock)
 		tableDriverMock.AssertExpectations(t)
@@ -349,7 +353,7 @@ func TestProducer_Produce(t *testing.T) {
 				nil,
 			)
 		newDriverFuncMock := func(
-			vc *validationcollector.Collector,
+			ctx context.Context,
 			table commonmodels.Table,
 			columnsTypeOverride map[string]string,
 		) (commonininterfaces.TableDriver, error) {
@@ -358,7 +362,6 @@ func TestProducer_Produce(t *testing.T) {
 
 		transformerMock, newFunc := mocks.NewTransformerMock(func(
 			ctx context.Context,
-			vc *validationcollector.Collector,
 			tableDriver commonininterfaces.TableDriver,
 			parameters map[string]parameters.Parameterizer,
 		) error {
@@ -399,15 +402,16 @@ func TestProducer_Produce(t *testing.T) {
 		p := New(tables, dumpQueries, tableConfigs, newDriverFuncMock, tr)
 		ctx := context.Background()
 		vc := validationcollector.NewCollector()
-		tableRuntimes, err := p.Build(ctx, vc)
+		ctx = validationcollector.WithCollector(ctx, vc)
+		tableRuntimes, err := p.Build(ctx)
 		require.NoError(t, err)
 		require.False(t, vc.HasWarnings())
 		require.Len(t, tableRuntimes, 1)
 		require.Equal(t, tableRuntimes[0].Table, &tables[0])
 		require.Len(t, tableRuntimes[0].TransformerContext, 1)
 		require.Equal(t, tableRuntimes[0].TransformerContext[0].Transformer, transformerMock)
-		require.Nil(t, tableRuntimes[0].TransformerContext[0].WhenCond)
-		require.Nil(t, tableRuntimes[0].TableCondition)
+		require.Nil(t, tableRuntimes[0].TransformerContext[0].Condition)
+		require.Nil(t, tableRuntimes[0].Condition)
 		require.Equal(t, tableRuntimes[0].Query, tableConfigs[0].Query)
 		require.Equal(t, tableRuntimes[0].TableDriver, tableDriverMock)
 		tableDriverMock.AssertExpectations(t)
@@ -419,7 +423,7 @@ func TestProducer_Produce(t *testing.T) {
 		tableDriverMock := mocks.NewTableDriverMock()
 		tableDriverMock.On("Table").Return(&tables[0])
 		newDriverFuncMock := func(
-			vc *validationcollector.Collector,
+			ctx context.Context,
 			table commonmodels.Table,
 			columnsTypeOverride map[string]string,
 		) (commonininterfaces.TableDriver, error) {
@@ -446,7 +450,8 @@ func TestProducer_Produce(t *testing.T) {
 		p := New(tables, dumpQueries, tableConfigs, newDriverFuncMock, tr)
 		ctx := context.Background()
 		vc := validationcollector.NewCollector()
-		_, err := p.Build(ctx, vc)
+		ctx = validationcollector.WithCollector(ctx, vc)
+		_, err := p.Build(ctx)
 		require.ErrorIs(t, err, commonmodels.ErrFatalValidationError)
 		require.True(t, vc.IsFatal())
 		require.Equal(t, vc.Len(), 1)
@@ -469,7 +474,7 @@ func TestProducer_Produce(t *testing.T) {
 				nil,
 			)
 		newDriverFuncMock := func(
-			vc *validationcollector.Collector,
+			ctx context.Context,
 			table commonmodels.Table,
 			columnsTypeOverride map[string]string,
 		) (commonininterfaces.TableDriver, error) {
@@ -478,7 +483,6 @@ func TestProducer_Produce(t *testing.T) {
 
 		transformerMock, newFunc := mocks.NewTransformerMock(func(
 			ctx context.Context,
-			vc *validationcollector.Collector,
 			tableDriver commonininterfaces.TableDriver,
 			parameters map[string]parameters.Parameterizer,
 		) error {
@@ -499,7 +503,7 @@ func TestProducer_Produce(t *testing.T) {
 							SetAllowedColumnTypes("int"),
 					),
 			).SetSchemaValidator(func(
-				_ *validationcollector.Collector,
+				_ context.Context,
 				_ commonmodels.Table,
 				_ *transformerutils.TransformerProperties,
 				_ map[string]*parameters.StaticParameter) error {
@@ -525,7 +529,8 @@ func TestProducer_Produce(t *testing.T) {
 		p := New(tables, dumpQueries, tableConfigs, newDriverFuncMock, tr)
 		ctx := context.Background()
 		vc := validationcollector.NewCollector()
-		_, err := p.Build(ctx, vc)
+		ctx = validationcollector.WithCollector(ctx, vc)
+		_, err := p.Build(ctx)
 		require.ErrorIs(t, err, assert.AnError)
 		require.False(t, vc.HasWarnings())
 		tableDriverMock.AssertExpectations(t)

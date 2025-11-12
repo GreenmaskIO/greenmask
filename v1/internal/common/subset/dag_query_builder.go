@@ -15,6 +15,8 @@
 package subset
 
 import (
+	"fmt"
+
 	"github.com/huandu/go-sqlbuilder"
 
 	"github.com/greenmaskio/greenmask/v1/internal/common/subset/condensationgraph"
@@ -72,10 +74,12 @@ func (b dagQueryBuilder) build() (map[int]string, error) {
 
 	tableAliasMap := make(map[int]string)
 	// Build the main select ... from clause for root table
+	rootTableName := getFullTableName(b.dialect, rootTable, tableAliasMap)
 	sb := sqlbuilder.PostgreSQL.
 		NewSelectBuilder().
-		Select("*").
-		From(getFullTableName(b.dialect, rootTable, tableAliasMap))
+		Select(
+			fmt.Sprintf("%s.*", rootTableName),
+		).From(rootTableName)
 
 	// Add subset conditions to the query
 	if rootTable.HasSubsetConditions() {

@@ -64,7 +64,7 @@ nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Du
 in reprehenderit in voluptate velit esse cillum
 dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt
 mollit anim id est laborum.`
-		cmd := NewCmdRunner("echo", []string{text})
+		cmd := NewCmdRunner("echo", []string{text}, nil)
 		writer := bytes.NewBuffer(nil)
 		err := cmd.ExecuteCmdAndWriteStdout(ctx, writer)
 		require.NoError(t, err)
@@ -73,7 +73,7 @@ mollit anim id est laborum.`
 
 	t.Run("error on start", func(t *testing.T) {
 		ctx := context.Background()
-		cmd := NewCmdRunner("unknown-command-123", nil)
+		cmd := NewCmdRunner("unknown-command-123", nil, nil)
 		writer := bytes.NewBuffer(nil)
 		err := cmd.ExecuteCmdAndWriteStdout(ctx, writer)
 		require.ErrorContains(t, err, "start external command")
@@ -82,7 +82,7 @@ mollit anim id est laborum.`
 	t.Run("context canceled on the start", func(t *testing.T) {
 		ctx, cancel := context.WithCancel(context.Background())
 		cancel()
-		cmd := NewCmdRunner("echo", []string{"test"})
+		cmd := NewCmdRunner("echo", []string{"test"}, nil)
 		writer := bytes.NewBuffer(nil)
 		err := cmd.ExecuteCmdAndWriteStdout(ctx, writer)
 		require.ErrorContains(t, err, "start external command")
@@ -90,7 +90,7 @@ mollit anim id est laborum.`
 
 	t.Run("context canceled in runtime", func(t *testing.T) {
 		ctx, cancel := context.WithCancel(context.Background())
-		cmd := NewCmdRunner("sleep", []string{"10"})
+		cmd := NewCmdRunner("sleep", []string{"10"}, nil)
 		writer := bytes.NewBuffer(nil)
 		go func() {
 			// Wait for the command to start
@@ -118,7 +118,7 @@ mollit anim id est laborum.`
 		_, err := stderrReader.Write([]byte(text))
 		require.NoError(t, err)
 
-		cmd := NewCmdRunner("echo", nil)
+		cmd := NewCmdRunner("echo", nil, nil)
 		err = cmd.listenStderrAndLog(ctx, stderrReader)
 		require.NoError(t, err)
 
@@ -139,7 +139,7 @@ adipiscing elit, sed do eiusmod tempor incididunt`
 			Run(func(args mock.Arguments) {
 				cancel()
 			}).Return([]byte(text), io.EOF)
-		cmd := NewCmdRunner("echo", nil)
+		cmd := NewCmdRunner("echo", nil, nil)
 		err := cmd.listenStderrAndLog(ctx, mockStderr)
 		require.ErrorIs(t, err, context.Canceled)
 	})
@@ -151,7 +151,7 @@ adipiscing elit, sed do eiusmod tempor incididunt`
 adipiscing elit, sed do eiusmod tempor incididunt`
 		mockStderr.On("Read", mock.Anything).
 			Return([]byte(text), errors.New("some error"))
-		cmd := NewCmdRunner("echo", nil)
+		cmd := NewCmdRunner("echo", nil, nil)
 		err := cmd.listenStderrAndLog(ctx, mockStderr)
 		require.ErrorContains(t, err, "some error")
 	})
@@ -171,7 +171,7 @@ mollit anim id est laborum.`
 		_, err := stdoutReader.Write([]byte(text))
 		require.NoError(t, err)
 		writer := bytes.NewBuffer(nil)
-		cmd := NewCmdRunner("echo", nil)
+		cmd := NewCmdRunner("echo", nil, nil)
 		err = cmd.listenStdoutAndWrite(ctx, stdoutReader, writer)
 		require.NoError(t, err)
 		assert.Equal(t, text, writer.String())
@@ -191,7 +191,7 @@ mollit anim id est laborum.`
 		require.NoError(t, err)
 		writer := &writerMock{}
 		writer.On("Write", mock.Anything).Return(errors.New("some error"))
-		cmd := NewCmdRunner("echo", nil)
+		cmd := NewCmdRunner("echo", nil, nil)
 		err = cmd.listenStdoutAndWrite(ctx, stdoutReader, writer)
 		require.ErrorContains(t, err, "some error")
 	})
@@ -205,7 +205,7 @@ mollit anim id est laborum.`
 
 		writer := &writerMock{}
 		writer.On("Write", mock.Anything).Return(nil)
-		cmd := NewCmdRunner("echo", nil)
+		cmd := NewCmdRunner("echo", nil, nil)
 		err := cmd.listenStdoutAndWrite(ctx, stdoutReader, writer)
 		require.ErrorContains(t, err, "some error")
 	})
@@ -213,7 +213,7 @@ mollit anim id est laborum.`
 	t.Run("context canceled", func(t *testing.T) {
 		ctx, cancel := context.WithCancel(context.Background())
 		cancel()
-		cmd := NewCmdRunner("echo", nil)
+		cmd := NewCmdRunner("echo", nil, nil)
 		err := cmd.listenStdoutAndWrite(ctx, &readerMock{}, &writerMock{})
 		require.ErrorIs(t, err, context.Canceled)
 	})

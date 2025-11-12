@@ -48,7 +48,7 @@ const (
 )
 
 var (
-	CmdTransformerName = "Cmd"
+	TransformerNameCmd = "Cmd"
 
 	ErrUnexpectedCmdExitCode = errors.New("unexpected cmd transformer exit code")
 )
@@ -71,7 +71,7 @@ func (m *cmdColumnContainer) ColumnName() string {
 
 var CMDTransformerDefinition = transformerutils.NewTransformerDefinition(
 	transformerutils.NewTransformerProperties(
-		CmdTransformerName,
+		TransformerNameCmd,
 		"Transform data via external program using stdin and stdout interaction",
 	),
 
@@ -242,7 +242,7 @@ func NewCmd(
 	}
 
 	cct := cmd.NewTransformerBase(
-		CmdTransformerName, expectedExitCode, timeout, tableDriver.Table(), proto,
+		TransformerNameCmd, expectedExitCode, timeout, tableDriver.Table(), proto,
 	)
 
 	ct := &Cmd{
@@ -264,49 +264,53 @@ func NewCmd(
 	return ct, nil
 }
 
-func (c *Cmd) GetAffectedColumns() map[int]string {
-	return c.affectedColumns
+func (t *Cmd) GetAffectedColumns() map[int]string {
+	return t.affectedColumns
 }
 
-func (c *Cmd) Init(ctx context.Context) error {
+func (t *Cmd) Describe() string {
+	return TransformerNameCmd
+}
+
+func (t *Cmd) Init(ctx context.Context) error {
 	logger := log.Ctx(ctx).With().
-		Str("TableSchema", c.table.Schema).
-		Str("TableName", c.table.Name).
-		Str("TransformerName", CmdTransformerName).
+		Str("TableSchema", t.table.Schema).
+		Str("TableName", t.table.Name).
+		Str("TransformerName", TransformerNameCmd).
 		Logger()
 
-	if err := c.TransformerBase.Init(ctx, c.executable, c.args); err != nil {
+	if err := t.TransformerBase.Init(ctx, t.executable, t.args); err != nil {
 		return err
 	}
-	c.eg.Go(func() error {
-		return c.stderrForwarder(ctx)
+	t.eg.Go(func() error {
+		return t.stderrForwarder(ctx)
 	})
 
-	c.eg.Go(func() error {
-		if err := c.Cmd.Wait(); err != nil {
+	t.eg.Go(func() error {
+		if err := t.Cmd.Wait(); err != nil {
 			var exitErr *exec.ExitError
 			if errors.As(err, &exitErr) {
-				if exitErr.ExitCode() != c.expectedExitCode {
+				if exitErr.ExitCode() != t.expectedExitCode {
 					logger.Warn().
-						Int("TransformerExitCode", c.Cmd.ProcessState.ExitCode()).
+						Int("TransformerExitCode", t.Cmd.ProcessState.ExitCode()).
 						Err(ErrUnexpectedCmdExitCode).
 						Msg("unexpected exit code")
 					return fmt.Errorf("exepected exit code %d received %d: %w",
-						c.expectedExitCode, c.Cmd.ProcessState.ExitCode(), ErrUnexpectedCmdExitCode,
+						t.expectedExitCode, t.Cmd.ProcessState.ExitCode(), ErrUnexpectedCmdExitCode,
 					)
 				}
 				return nil
 			} else {
 				logger.Error().
 					Err(err).
-					Int("TransformerPid", c.Cmd.Process.Pid).
+					Int("TransformerPid", t.Cmd.Process.Pid).
 					Msg("cmd transformer exited with error")
 				return fmt.Errorf("transformer exited with error: %w", err)
 			}
 		}
 
 		logger.Debug().
-			Int("TransformerPid", c.Cmd.Process.Pid).
+			Int("TransformerPid", t.Cmd.Process.Pid).
 			Msg("transformer exited normally")
 		return nil
 	})
@@ -314,17 +318,17 @@ func (c *Cmd) Init(ctx context.Context) error {
 	return nil
 }
 
-func (c *Cmd) Done(ctx context.Context) error {
+func (t *Cmd) Done(ctx context.Context) error {
 	logger := log.Ctx(ctx).With().
-		Str("TableSchema", c.table.Schema).
-		Str("TableName", c.table.Name).
-		Str("TransformerName", CmdTransformerName).
+		Str("TableSchema", t.table.Schema).
+		Str("TableName", t.table.Name).
+		Str("TransformerName", TransformerNameCmd).
 		Logger()
 
-	if err := c.TransformerBase.Done(ctx); err != nil {
+	if err := t.TransformerBase.Done(ctx); err != nil {
 		return fmt.Errorf("transformer done with error: %w", err)
 	}
-	if err := c.eg.Wait(); err != nil {
+	if err := t.eg.Wait(); err != nil {
 		logger.Warn().
 			Err(err).
 			Msg("cmd transformer goroutine exited with error")
@@ -333,15 +337,15 @@ func (c *Cmd) Done(ctx context.Context) error {
 	return nil
 }
 
-func (c *Cmd) stderrForwarder(ctx context.Context) error {
+func (t *Cmd) stderrForwarder(ctx context.Context) error {
 	logger := log.Ctx(ctx).With().
-		Str("TableSchema", c.table.Schema).
-		Str("TableName", c.table.Name).
-		Str("TransformerName", CmdTransformerName).
-		Int("TransformerPid", c.Cmd.Process.Pid).
+		Str("TableSchema", t.table.Schema).
+		Str("TableName", t.table.Name).
+		Str("TransformerName", TransformerNameCmd).
+		Int("TransformerPid", t.Cmd.Process.Pid).
 		Logger()
 	for {
-		line, err := c.ReceiveStderrLine(ctx)
+		line, err := t.ReceiveStderrLine(ctx)
 		if err != nil {
 			if errors.Is(err, io.EOF) || errors.Is(err, os.ErrClosed) {
 				return nil
@@ -364,9 +368,9 @@ func (c *Cmd) stderrForwarder(ctx context.Context) error {
 	}
 }
 
-func (c *Cmd) needSkip(r commonininterfaces.Recorder) (bool, error) {
+func (t *Cmd) needSkip(r commonininterfaces.Recorder) (bool, error) {
 	var score int
-	for _, c := range c.config.TransferringColumns {
+	for _, c := range t.config.TransferringColumns {
 		v, err := r.GetRawColumnValueByIdx(c.Column.Idx)
 		if err != nil {
 			return false, fmt.Errorf("get value: %w", err)
@@ -375,16 +379,16 @@ func (c *Cmd) needSkip(r commonininterfaces.Recorder) (bool, error) {
 			score++
 		}
 	}
-	if score == len(c.config.TransferringColumns) && skipOnAll == c.skipOnBehaviour {
+	if score == len(t.config.TransferringColumns) && skipOnAll == t.skipOnBehaviour {
 		return true, nil
-	} else if score > 0 && skipOnAny == c.skipOnBehaviour {
+	} else if score > 0 && skipOnAny == t.skipOnBehaviour {
 		return true, nil
 	}
 	return false, nil
 }
 
-func (c *Cmd) validate(r commonininterfaces.Recorder) error {
-	for _, col := range c.config.AffectedColumns {
+func (t *Cmd) validate(r commonininterfaces.Recorder) error {
+	for _, col := range t.config.AffectedColumns {
 		_, err := r.GetColumnValueByIdx(col.Column.Idx)
 		if err != nil {
 			return errors.Join(commonmodels.ErrValueValidationFailed, fmt.Errorf(
@@ -396,26 +400,26 @@ func (c *Cmd) validate(r commonininterfaces.Recorder) error {
 	return nil
 }
 
-func (c *Cmd) Transform(ctx context.Context, r commonininterfaces.Recorder) error {
+func (t *Cmd) Transform(ctx context.Context, r commonininterfaces.Recorder) error {
 	var err error
-	if c.config.CheckCanSkip {
+	if t.config.CheckCanSkip {
 		var skip bool
-		skip, err = c.needSkip(r)
+		skip, err = t.needSkip(r)
 		if err != nil {
 			return fmt.Errorf("check need skip: %w", err)
 		}
 		if skip {
-			c.TransformerBase.ProcessedLines++
+			t.TransformerBase.ProcessedLines++
 			return nil
 		}
 	}
 
-	err = c.TransformerBase.Transform(ctx, r)
+	err = t.TransformerBase.Transform(ctx, r)
 	if err != nil {
 		return fmt.Errorf("transform: %w", err)
 	}
-	if c.validateOutput {
-		if err = c.validate(r); err != nil {
+	if t.validateOutput {
+		if err = t.validate(r); err != nil {
 			return fmt.Errorf("validate transformed data: %w", err)
 		}
 	}

@@ -189,11 +189,11 @@ func (e *Driver) ScanValueByTypeName(name string, src []byte, dest any) error {
 }
 
 func (e *Driver) GetCanonicalTypeClassName(typeName string, typeOid commonmodels.VirtualOID) (commonmodels.TypeClass, error) {
-	className, ok := typeDataNameTypeToClass[typeName]
+	className, ok := TypeDataNameTypeToClass[typeName]
 	if ok {
 		return className, nil
 	}
-	oidClassName, ok := typeDataOidToClass[typeOid]
+	oidClassName, ok := TypeDataOidToClass[typeOid]
 	if ok {
 		return oidClassName, nil
 	}

@@ -18,12 +18,13 @@ import (
 	"testing"
 
 	"github.com/greenmaskio/greenmask/internal/generators"
-	"github.com/greenmaskio/greenmask/pkg/toolkit"
 	"github.com/stretchr/testify/require"
+
+	"github.com/greenmaskio/greenmask/v1/internal/common/models"
 )
 
 func TestChoiceTransformer_Transform(t *testing.T) {
-	data := []*toolkit.RawValue{
+	data := []*models.ColumnRawValue{
 		{Data: []byte("a")},
 		{Data: []byte("b")},
 	}

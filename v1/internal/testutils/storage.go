@@ -16,10 +16,12 @@ package testutils
 
 import (
 	"context"
-	"github.com/greenmaskio/greenmask/v1/internal/storages"
 	"io"
 
 	"github.com/stretchr/testify/mock"
+
+	"github.com/greenmaskio/greenmask/v1/internal/common/interfaces"
+	"github.com/greenmaskio/greenmask/v1/internal/common/models"
 )
 
 type StorageMock struct {
@@ -36,9 +38,9 @@ func (s *StorageMock) Dirname() string {
 	return args.String(0)
 }
 
-func (s *StorageMock) ListDir(ctx context.Context) (files []string, dirs []storages.Storager, err error) {
+func (s *StorageMock) ListDir(ctx context.Context) (files []string, dirs []interfaces.Storager, err error) {
 	args := s.Called(ctx)
-	return args.Get(0).([]string), args.Get(1).([]storages.Storager), args.Error(2)
+	return args.Get(0).([]string), args.Get(1).([]interfaces.Storager), args.Error(2)
 }
 
 func (s *StorageMock) GetObject(ctx context.Context, filePath string) (reader io.ReadCloser, err error) {
@@ -69,12 +71,12 @@ func (s *StorageMock) Exists(ctx context.Context, fileName string) (bool, error)
 	return args.Bool(0), args.Error(1)
 }
 
-func (s *StorageMock) SubStorage(subPath string, relative bool) storages.Storager {
+func (s *StorageMock) SubStorage(subPath string, relative bool) interfaces.Storager {
 	args := s.Called(subPath, relative)
-	return args.Get(0).(storages.Storager)
+	return args.Get(0).(interfaces.Storager)
 }
 
-func (s *StorageMock) Stat(fileName string) (*storages.ObjectStat, error) {
+func (s *StorageMock) Stat(fileName string) (*models.StorageObjectStat, error) {
 	args := s.Called(fileName)
-	return args.Get(0).(*storages.ObjectStat), args.Error(1)
+	return args.Get(0).(*models.StorageObjectStat), args.Error(1)
 }

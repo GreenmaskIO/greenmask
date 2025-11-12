@@ -21,7 +21,8 @@ import (
 
 	"github.com/stretchr/testify/mock"
 
-	storages2 "github.com/greenmaskio/greenmask/v1/internal/storages"
+	"github.com/greenmaskio/greenmask/v1/internal/common/interfaces"
+	"github.com/greenmaskio/greenmask/v1/internal/common/models"
 )
 
 type StorageMock struct {
@@ -34,19 +35,19 @@ func NewStorageMock() *StorageMock {
 	return &StorageMock{}
 }
 
-func (s *StorageMock) ListDir(ctx context.Context) (files []string, dirs []storages2.Storager, err error) {
+func (s *StorageMock) ListDir(ctx context.Context) (files []string, dirs []interfaces.Storager, err error) {
 	args := s.Called(ctx)
-	return args.Get(0).([]string), args.Get(1).([]storages2.Storager), args.Error(2)
+	return args.Get(0).([]string), args.Get(1).([]interfaces.Storager), args.Error(2)
 }
 
-func (s *StorageMock) SubStorage(subPath string, relative bool) storages2.Storager {
+func (s *StorageMock) SubStorage(subPath string, relative bool) interfaces.Storager {
 	args := s.Called(subPath, relative)
-	return args.Get(0).(storages2.Storager)
+	return args.Get(0).(interfaces.Storager)
 }
 
-func (s *StorageMock) Stat(fileName string) (*storages2.ObjectStat, error) {
+func (s *StorageMock) Stat(fileName string) (*models.StorageObjectStat, error) {
 	args := s.Called(fileName)
-	return args.Get(0).(*storages2.ObjectStat), args.Error(1)
+	return args.Get(0).(*models.StorageObjectStat), args.Error(1)
 }
 
 func (s *StorageMock) GetCwd() string {

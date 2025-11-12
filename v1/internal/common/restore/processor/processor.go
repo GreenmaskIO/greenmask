@@ -23,7 +23,6 @@ import (
 
 	commonininterfaces "github.com/greenmaskio/greenmask/v1/internal/common/interfaces"
 	commonmodels "github.com/greenmaskio/greenmask/v1/internal/common/models"
-	"github.com/greenmaskio/greenmask/v1/internal/storages"
 )
 
 const (
@@ -53,7 +52,7 @@ func (c *Config) SetDefault(ctx context.Context) {
 
 type DefaultRestoreProcessor struct {
 	tp  commonininterfaces.RestoreTaskProducer
-	st  storages.Storager
+	st  commonininterfaces.Storager
 	sr  schemaRestorer
 	cfg Config
 }

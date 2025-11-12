@@ -20,35 +20,40 @@ import (
 
 	"golang.org/x/sync/errgroup"
 
+	"github.com/greenmaskio/greenmask/v1/internal/common/interfaces"
 	commonmodels "github.com/greenmaskio/greenmask/v1/internal/common/models"
 	"github.com/greenmaskio/greenmask/v1/internal/common/utils"
-	"github.com/greenmaskio/greenmask/v1/internal/storages"
 	"github.com/greenmaskio/greenmask/v1/pkg/csv"
 )
 
+type CompressionSettings struct {
+	Enabled bool
+	Pgzip   bool
+}
+
 type TableDataWriter struct {
-	st        storages.Storager
-	usePgzip  bool
-	fileName  string
-	csvWriter *csv.Writer
-	cw        utils.CountWriteCloser
-	cr        utils.CountReadCloser
-	eg        *errgroup.Group
-	cancel    context.CancelFunc
-	table     *commonmodels.Table
+	st           interfaces.Storager
+	fileName     string
+	csvWriter    *csv.Writer
+	cw           utils.CountWriteCloser
+	cr           utils.CountReadCloser
+	eg           *errgroup.Group
+	cancel       context.CancelFunc
+	table        *commonmodels.Table
+	compSettings CompressionSettings
 }
 
 func NewTableDataWriter(
 	table commonmodels.Table,
-	st storages.Storager,
-	usePgzip bool,
+	st interfaces.Storager,
+	compSettings CompressionSettings,
 ) *TableDataWriter {
 	fileName := fmt.Sprintf("%s__%s.csv.gz", table.Schema, table.Name)
 	return &TableDataWriter{
-		st:       st,
-		usePgzip: usePgzip,
-		fileName: fileName,
-		table:    &table,
+		st:           st,
+		fileName:     fileName,
+		table:        &table,
+		compSettings: compSettings,
 	}
 }
 
@@ -62,7 +67,12 @@ func (t *TableDataWriter) steam(ctx context.Context) func() error {
 }
 
 func (t *TableDataWriter) Open(ctx context.Context) error {
-	t.cw, t.cr = utils.NewGzipPipe(t.usePgzip)
+	if t.compSettings.Enabled {
+		t.cw, t.cr = utils.NewGzipPipe(t.compSettings.Pgzip)
+	} else {
+		t.cw, t.cr = utils.NewPlainPipe()
+	}
+
 	t.csvWriter = csv.NewWriter(t.cw)
 	ctx, t.cancel = context.WithCancel(ctx)
 	t.eg, ctx = errgroup.WithContext(ctx)

@@ -270,7 +270,7 @@ func (sp *StaticParameter) validateValue(ctx context.Context, rawValue models.Pa
 		if sp.definition.ColumnProperties != nil {
 			properties := sp.definition.ColumnProperties
 			if err := validateColumnTypeIsSupported(ctx, properties, column); err != nil {
-				return fmt.Errorf("validate column type is supported: %w", err)
+				return fmt.Errorf("validate column type: %w", err)
 			}
 		}
 	}

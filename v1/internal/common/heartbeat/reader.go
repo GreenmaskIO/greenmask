@@ -22,14 +22,14 @@ import (
 
 	"github.com/rs/zerolog/log"
 
-	"github.com/greenmaskio/greenmask/v1/internal/storages"
+	"github.com/greenmaskio/greenmask/v1/internal/common/interfaces"
 )
 
 type Reader struct {
-	st storages.Storager
+	st interfaces.Storager
 }
 
-func NewReader(st storages.Storager) *Reader {
+func NewReader(st interfaces.Storager) *Reader {
 	return &Reader{st: st}
 }
 

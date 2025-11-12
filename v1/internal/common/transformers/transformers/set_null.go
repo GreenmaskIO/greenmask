@@ -24,11 +24,11 @@ import (
 	transformerutils "github.com/greenmaskio/greenmask/v1/internal/common/transformers/utils"
 )
 
-const SetNullTransformerName = "SetNull"
+const TransformerNameSetNull = "SetNull"
 
 var SetNullTransformerDefinition = transformerutils.NewTransformerDefinition(
 	transformerutils.NewTransformerProperties(
-		SetNullTransformerName,
+		TransformerNameSetNull,
 		"Set NULL value",
 	),
 
@@ -68,21 +68,25 @@ func NewSetNullTransformer(
 	}, nil
 }
 
-func (sut *SetNullTransformer) GetAffectedColumns() map[int]string {
-	return sut.affectedColumns
+func (t *SetNullTransformer) GetAffectedColumns() map[int]string {
+	return t.affectedColumns
 }
 
-func (sut *SetNullTransformer) Init(context.Context) error {
+func (t *SetNullTransformer) Init(context.Context) error {
 	return nil
 }
 
-func (sut *SetNullTransformer) Done(context.Context) error {
+func (t *SetNullTransformer) Done(context.Context) error {
 	return nil
 }
 
-func (sut *SetNullTransformer) Transform(_ context.Context, r commonininterfaces.Recorder) error {
-	if err := r.SetRawColumnValueByIdx(sut.columnIdx, commonmodels.NewColumnRawValue(nil, true)); err != nil {
+func (t *SetNullTransformer) Transform(_ context.Context, r commonininterfaces.Recorder) error {
+	if err := r.SetRawColumnValueByIdx(t.columnIdx, commonmodels.NewColumnRawValue(nil, true)); err != nil {
 		return fmt.Errorf("unable to set new value: %w", err)
 	}
 	return nil
+}
+
+func (t *SetNullTransformer) Describe() string {
+	return TransformerNameSetNull
 }

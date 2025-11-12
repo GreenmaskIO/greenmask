@@ -33,11 +33,11 @@ import (
 	"github.com/greenmaskio/greenmask/v1/internal/common/validationcollector"
 )
 
-const RandomCompanyTransformerName = "RandomCompany"
+const TransformerNameRandomCompany = "RandomCompany"
 
 var RandomCompanyTransformerDefinition = transformerutils.NewTransformerDefinition(
 	transformerutils.NewTransformerProperties(
-		RandomCompanyTransformerName,
+		TransformerNameRandomCompany,
 		"Generate random company data (CompanyName, CompanySuffix)",
 	),
 
@@ -152,63 +152,67 @@ func NewRandomCompanyTransformer(
 	}, nil
 }
 
-func (nft *RandomCompanyTransformer) GetAffectedColumns() map[int]string {
-	return nft.affectedColumns
+func (t *RandomCompanyTransformer) GetAffectedColumns() map[int]string {
+	return t.affectedColumns
 }
 
-func (nft *RandomCompanyTransformer) Init(context.Context) error {
+func (t *RandomCompanyTransformer) Init(context.Context) error {
 	return nil
 }
 
-func (nft *RandomCompanyTransformer) Done(context.Context) error {
+func (t *RandomCompanyTransformer) Done(context.Context) error {
 	return nil
 }
 
-func (nft *RandomCompanyTransformer) Transform(_ context.Context, r commonininterfaces.Recorder) error {
+func (t *RandomCompanyTransformer) Transform(_ context.Context, r commonininterfaces.Recorder) error {
 	// if we are in hash engine mode, we need to clear buffer before filling it with new data
-	nft.originalData = nft.originalData[:0]
-	for _, c := range nft.columns {
+	t.originalData = t.originalData[:0]
+	for _, c := range t.columns {
 		rawVal, err := r.GetRawColumnValueByIdx(c.columnIdx)
 		if err != nil {
 			return fmt.Errorf("unable to get raw value by idx %d: %w", c.columnIdx, err)
 		}
-		nft.nullableMap[c.columnIdx] = rawVal.IsNull
+		t.nullableMap[c.columnIdx] = rawVal.IsNull
 
-		if nft.engine == engineModeDeterministic {
+		if t.engine == engineModeDeterministic {
 			// we need to hash only columns that are marked for hashing
 			if !c.Hashing {
 				continue
 			}
 			if !rawVal.IsNull {
-				nft.originalData = append(nft.originalData, rawVal.Data...)
+				t.originalData = append(t.originalData, rawVal.Data...)
 			}
 		}
 	}
 
-	nameAttrs, err := nft.t.GetCompanyName(nft.originalData)
+	nameAttrs, err := t.t.GetCompanyName(t.originalData)
 	if err != nil {
 		return fmt.Errorf("generate company: %w", err)
 	}
 
-	for _, c := range nft.columns {
+	for _, c := range t.columns {
 		if c.HashOnly {
 			// Skip not affected columns, they can be used for hashing only.
 			continue
 		}
-		if nft.nullableMap[c.columnIdx] && c.KeepNull != nil && *c.KeepNull {
+		if t.nullableMap[c.columnIdx] && c.KeepNull != nil && *c.KeepNull {
 			continue
 		}
-		nft.buf.Reset()
-		err = c.tmpl.Execute(nft.buf, nameAttrs)
+		t.buf.Reset()
+		err = c.tmpl.Execute(t.buf, nameAttrs)
 		if err != nil {
 			return fmt.Errorf("execute template for column %s: %w", c.Name, err)
 		}
-		newRawVal := commonmodels.NewColumnRawValue(slices.Clone(nft.buf.Bytes()), false)
+		newRawVal := commonmodels.NewColumnRawValue(slices.Clone(t.buf.Bytes()), false)
 		if err = r.SetRawColumnValueByIdx(c.columnIdx, newRawVal); err != nil {
 			return fmt.Errorf("set new value for column \"%s\": %w", c.Name, err)
 		}
 	}
 	return nil
+}
+
+func (t *RandomCompanyTransformer) Describe() string {
+	return TransformerNameRandomCompany
 }
 
 func validateRandomCompanyColumnsAndSetDefault(

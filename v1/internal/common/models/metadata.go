@@ -47,9 +47,10 @@ type RestorationItem struct {
 }
 
 type RestorationContext struct {
-	HasTopologicalOrder bool                `json:"has_topological_order"`
-	RestorationOrder    []TaskID            `json:"restoration_order"`
-	TaskDependencies    map[TaskID][]TaskID `json:"dependencies"`
+	HasTopologicalOrder      bool                `json:"has_topological_order"`
+	RestorationOrder         []TaskID            `json:"restoration_order"`
+	TaskDependencies         map[TaskID][]TaskID `json:"dependencies"`
+	TableIDToAffectedColumns map[ObjectID][]int  `json:"table_id_to_affected_columns"`
 }
 
 type TableMetadata struct {

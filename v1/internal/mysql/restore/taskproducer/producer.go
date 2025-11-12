@@ -22,7 +22,6 @@ import (
 	commonmodels "github.com/greenmaskio/greenmask/v1/internal/common/models"
 	mysqlconfig "github.com/greenmaskio/greenmask/v1/internal/mysql/config"
 	"github.com/greenmaskio/greenmask/v1/internal/mysql/restore/restorers"
-	"github.com/greenmaskio/greenmask/v1/internal/storages"
 )
 
 type dummyTaskMapper struct{}
@@ -37,7 +36,7 @@ func (*dummyTaskMapper) IsTaskCompleted(_ commonmodels.TaskID) bool {
 
 type Producer struct {
 	meta    commonmodels.Metadata
-	st      storages.Storager
+	st      commoninterfaces.Storager
 	connCfg mysqlconfig.ConnectionOpts
 	err     error
 	lastIdx int
@@ -46,7 +45,7 @@ type Producer struct {
 
 func New(
 	meta commonmodels.Metadata,
-	st storages.Storager,
+	st commoninterfaces.Storager,
 	connCfg mysqlconfig.ConnectionOpts,
 ) *Producer {
 	taskIDs := make([]commonmodels.TaskID, 0, len(meta.DumpStat.RestorationItems))
@@ -91,7 +90,10 @@ func (p *Producer) Task() (commoninterfaces.Restorer, error) {
 	}
 	switch restorationItem.ObjectKind {
 	case commonmodels.ObjectKindTable:
-		return restorers.NewTableDataRestorer(restorationItem, p.connCfg, p.st, &dummyTaskMapper{})
+		opts := []restorers.Option{restorers.WithCompression(true, true)}
+		return restorers.NewTableDataRestorer(
+			restorationItem, p.connCfg, p.st, &dummyTaskMapper{}, opts...,
+		)
 	}
 	return nil, fmt.Errorf("create restore task for kind '%s': %w",
 		restorationItem.ObjectKind, errUnsupportedObjectKind)

@@ -36,7 +36,7 @@ const (
 	nanoUnit    = "nanosecond"
 )
 
-const RandomUnixTimestampTransformerName = "RandomUnixTimestamp"
+const TransformerNameRandomUnixTimestamp = "RandomUnixTimestamp"
 
 var timestampUnitValues = []string{
 	secondsUnit, milliUnit, microUnit, nanoUnit,
@@ -44,7 +44,7 @@ var timestampUnitValues = []string{
 
 var UnixTimestampTransformerDefinition = transformerutils.NewTransformerDefinition(
 	transformerutils.NewTransformerProperties(
-		RandomUnixTimestampTransformerName,
+		TransformerNameRandomUnixTimestamp,
 		"Generate UnixTimestamp in the provided interval with unit",
 	).AddMeta(transformerutils.AllowApplyForReferenced, true).
 		AddMeta(transformerutils.RequireHashEngineParameter, true),
@@ -171,59 +171,63 @@ func NewUnixTimestampTransformer(
 
 }
 
-func (rdt *UnixTimestampTransformer) Init(context.Context) error {
-	if rdt.dynamicMode {
-		rdt.transform = rdt.dynamicTransform
+func (t *UnixTimestampTransformer) Init(context.Context) error {
+	if t.dynamicMode {
+		t.transform = t.dynamicTransform
 	}
 	return nil
 }
 
-func (rdt *UnixTimestampTransformer) dynamicTransform(v []byte) (time.Time, error) {
+func (t *UnixTimestampTransformer) dynamicTransform(v []byte) (time.Time, error) {
 	var minIntVal, maxIntVal int64
 	var minVal, maxVal time.Time
-	err := rdt.minParam.Scan(&minIntVal)
+	err := t.minParam.Scan(&minIntVal)
 	if err != nil {
 		return time.Time{}, fmt.Errorf(`scan "min" param: %w`, err)
 	}
 
-	err = rdt.maxParam.Scan(&maxIntVal)
+	err = t.maxParam.Scan(&maxIntVal)
 	if err != nil {
 		return time.Time{}, fmt.Errorf(`scan "max" param: %w`, err)
 	}
 
-	minVal = getTimeByUnit(minIntVal, rdt.minUnit)
-	maxVal = getTimeByUnit(maxIntVal, rdt.maxUnit)
+	minVal = getTimeByUnit(minIntVal, t.minUnit)
+	maxVal = getTimeByUnit(maxIntVal, t.maxUnit)
 
 	limiter, err := transformers.NewTimestampLimiter(minVal, maxVal)
 	if err != nil {
 		return time.Time{}, fmt.Errorf("create limiter in dynamic mode: %w", err)
 	}
-	res, err := rdt.Timestamp.Transform(limiter, v)
+	res, err := t.Timestamp.Transform(limiter, v)
 	if err != nil {
 		return time.Time{}, fmt.Errorf("generate timestamp value: %w", err)
 	}
 	return res, nil
 }
 
-func (rdt *UnixTimestampTransformer) Transform(_ context.Context, r commonininterfaces.Recorder) error {
-	valAny, err := r.GetRawColumnValueByIdx(rdt.columnIdx)
+func (t *UnixTimestampTransformer) Transform(_ context.Context, r commonininterfaces.Recorder) error {
+	valAny, err := r.GetRawColumnValueByIdx(t.columnIdx)
 	if err != nil {
 		return fmt.Errorf("scan value: %w", err)
 	}
-	if valAny.IsNull && rdt.keepNull {
+	if valAny.IsNull && t.keepNull {
 		return nil
 	}
-	timeRes, err := rdt.transform(valAny.Data)
+	timeRes, err := t.transform(valAny.Data)
 	if err != nil {
 		return err
 	}
 
-	res := getUnixByUnit(timeRes, rdt.unit)
+	res := getUnixByUnit(timeRes, t.unit)
 
-	if err = r.SetColumnValueByIdx(rdt.columnIdx, res); err != nil {
+	if err = r.SetColumnValueByIdx(t.columnIdx, res); err != nil {
 		return fmt.Errorf("set new value: %w", err)
 	}
 	return nil
+}
+
+func (t *UnixTimestampTransformer) Describe() string {
+	return TransformerNameRandomUnixTimestamp
 }
 
 func getTimeByUnit(v int64, unit string) time.Time {

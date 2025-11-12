@@ -31,11 +31,11 @@ import (
 
 const bigIntegerTransformerGenByteLength = 20
 
-const RandomNumericTransformerName = "RandomNumeric"
+const TransformerNameRandomNumeric = "RandomNumeric"
 
 var RandomNumericTransformerDefinition = transformerutils.NewTransformerDefinition(
 	transformerutils.NewTransformerProperties(
-		RandomNumericTransformerName,
+		TransformerNameRandomNumeric,
 		"Generate numeric value in min and max thresholds",
 	).AddMeta(transformerutils.AllowApplyForReferenced, true).
 		AddMeta(transformerutils.RequireHashEngineParameter, true),
@@ -276,6 +276,10 @@ func (t *NumericTransformer) Transform(_ context.Context, r commonininterfaces.R
 		return fmt.Errorf("set new value: %w", err)
 	}
 	return nil
+}
+
+func (t *NumericTransformer) Describe() string {
+	return TransformerNameRandomNumeric
 }
 
 func getNumericThresholds(ctx context.Context, size int, requestedMinValue, requestedMaxValue *decimal.Decimal,

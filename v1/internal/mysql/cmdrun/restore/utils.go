@@ -24,9 +24,9 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"github.com/greenmaskio/greenmask/v1/internal/common/heartbeat"
+	"github.com/greenmaskio/greenmask/v1/internal/common/interfaces"
 	commonmodels "github.com/greenmaskio/greenmask/v1/internal/common/models"
 	"github.com/greenmaskio/greenmask/v1/internal/config"
-	"github.com/greenmaskio/greenmask/v1/internal/storages"
 )
 
 const DumpIDLatest = "latest"
@@ -38,7 +38,7 @@ var (
 )
 
 func getDumpStatus(
-	ctx context.Context, st storages.Storager, dumpID commonmodels.DumpID,
+	ctx context.Context, st interfaces.Storager, dumpID commonmodels.DumpID,
 ) (heartbeat.Status, error) {
 	if dumpID == DumpIDLatest {
 		return "", errEmptyDumpID
@@ -51,7 +51,7 @@ func getDumpStatus(
 	return status, nil
 }
 
-func getLatestDumpID(ctx context.Context, st storages.Storager) (commonmodels.DumpID, error) {
+func getLatestDumpID(ctx context.Context, st interfaces.Storager) (commonmodels.DumpID, error) {
 	var dumpIDs []commonmodels.DumpID
 
 	_, dirs, err := st.ListDir(ctx)
@@ -91,7 +91,7 @@ func getLatestDumpID(ctx context.Context, st storages.Storager) (commonmodels.Du
 }
 
 func verifyConcreteDumpID(
-	ctx context.Context, st storages.Storager, dumpId commonmodels.DumpID,
+	ctx context.Context, st interfaces.Storager, dumpId commonmodels.DumpID,
 ) (commonmodels.DumpID, error) {
 	exists, err := st.Exists(ctx, path.Join(string(dumpId), cmdInternals.MetadataJsonFileName))
 	if err != nil {
@@ -104,8 +104,8 @@ func verifyConcreteDumpID(
 }
 
 func getStorageByDumpID(
-	ctx context.Context, st storages.Storager, dumpID commonmodels.DumpID,
-) (storages.Storager, error) {
+	ctx context.Context, st interfaces.Storager, dumpID commonmodels.DumpID,
+) (interfaces.Storager, error) {
 	var err error
 	actualDumpID := dumpID
 	if dumpID == DumpIDLatest {
@@ -123,7 +123,7 @@ func getStorageByDumpID(
 }
 
 func RunRestore(
-	ctx context.Context, cfg *config.Config, st storages.Storager, dumpIDArg string,
+	ctx context.Context, cfg *config.Config, st interfaces.Storager, dumpIDArg string,
 ) error {
 	dumpID := commonmodels.DumpID(dumpIDArg)
 	if err := dumpID.Validate(); err != nil {

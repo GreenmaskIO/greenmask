@@ -15,6 +15,7 @@
 package tabledriver
 
 import (
+	"context"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -41,8 +42,10 @@ func TestNewTableDriver(t *testing.T) {
 		mockDriver := mocks.NewDBMSDriverMock()
 		mockDriver.On("TypeExistsByOid", commonmodels.VirtualOID(1)).Return(true)
 		mockDriver.On("TypeExistsByOid", commonmodels.VirtualOID(2)).Return(true)
+		ctx := context.Background()
 		vc := validationcollector.NewCollector()
-		actual, err := New(vc, mockDriver, table, typeOverride)
+		ctx = validationcollector.WithCollector(ctx, vc)
+		actual, err := New(ctx, mockDriver, table, typeOverride)
 
 		assert.NoError(t, err)
 		assert.NotNil(t, actual)
@@ -89,8 +92,10 @@ func TestNewTableDriver(t *testing.T) {
 		mockDriver.On("TypeExistsByOid", commonmodels.VirtualOID(1)).Return(true)
 		mockDriver.On("TypeExistsByOid", commonmodels.VirtualOID(2)).Return(false)
 
+		ctx := context.Background()
 		vc := validationcollector.NewCollector()
-		actual, err := New(vc, mockDriver, table, typeOverride)
+		ctx = validationcollector.WithCollector(ctx, vc)
+		actual, err := New(ctx, mockDriver, table, typeOverride)
 
 		assert.NoError(t, err)
 		assert.NotNil(t, actual)
@@ -153,8 +158,10 @@ func TestNewTableDriver(t *testing.T) {
 		mockDriver.On("TypeExistsByName", "text").Return(true).Once()
 		mockDriver.On("GetTypeOid", "text").Return(commonmodels.VirtualOID(2), nil).Once()
 
+		ctx := context.Background()
 		vc := validationcollector.NewCollector()
-		actual, err := New(vc, mockDriver, table, typeOverride)
+		ctx = validationcollector.WithCollector(ctx, vc)
+		actual, err := New(ctx, mockDriver, table, typeOverride)
 		assert.NoError(t, err)
 		assert.NotNil(t, actual)
 		// One warning for unsupported column type is expected.
@@ -204,8 +211,10 @@ func TestNewTableDriver(t *testing.T) {
 		mockDriver.On("TypeExistsByOid", commonmodels.VirtualOID(100)).Return(false).Once()
 		mockDriver.On("TypeExistsByName", "text").Return(false).Once()
 
+		ctx := context.Background()
 		vc := validationcollector.NewCollector()
-		actual, err := New(vc, mockDriver, table, typeOverride)
+		ctx = validationcollector.WithCollector(ctx, vc)
+		actual, err := New(ctx, mockDriver, table, typeOverride)
 		assert.NoError(t, err)
 		assert.NotNil(t, actual)
 		// One warning for unsupported column type is expected.
@@ -262,8 +271,10 @@ func TestDriver_EncodeValueByColumnIdx(t *testing.T) {
 			},
 		}
 
+		ctx := context.Background()
 		vc := validationcollector.NewCollector()
-		driver, err := New(vc, mockDriver, table, nil)
+		ctx = validationcollector.WithCollector(ctx, vc)
+		driver, err := New(ctx, mockDriver, table, nil)
 		assert.NoError(t, err)
 
 		result, err := driver.EncodeValueByColumnIdx(0, "value", nil)
@@ -288,9 +299,11 @@ func TestDriver_EncodeValueByColumnIdx(t *testing.T) {
 			},
 		}
 
+		ctx := context.Background()
 		vc := validationcollector.NewCollector()
+		ctx = validationcollector.WithCollector(ctx, vc)
 		typeOverride := map[string]string{"col1": "text"}
-		driver, err := New(vc, mockDriver, table, typeOverride)
+		driver, err := New(ctx, mockDriver, table, typeOverride)
 		assert.NoError(t, err)
 
 		result, err := driver.EncodeValueByColumnIdx(0, "value", nil)
@@ -312,8 +325,10 @@ func TestDriver_EncodeValueByColumnIdx(t *testing.T) {
 			},
 		}
 
+		ctx := context.Background()
 		vc := validationcollector.NewCollector()
-		driver, err := New(vc, mockDriver, table, nil)
+		ctx = validationcollector.WithCollector(ctx, vc)
+		driver, err := New(ctx, mockDriver, table, nil)
 		assert.NoError(t, err)
 
 		_, err = driver.EncodeValueByColumnIdx(0, "value", nil)
@@ -337,8 +352,10 @@ func TestDriver_EncodeValueByColumnName(t *testing.T) {
 			},
 		}
 
+		ctx := context.Background()
 		vc := validationcollector.NewCollector()
-		driver, err := New(vc, mockDriver, table, nil)
+		ctx = validationcollector.WithCollector(ctx, vc)
+		driver, err := New(ctx, mockDriver, table, nil)
 		assert.NoError(t, err)
 
 		result, err := driver.EncodeValueByColumnName("col1", "value", nil)
@@ -363,9 +380,11 @@ func TestDriver_EncodeValueByColumnName(t *testing.T) {
 			},
 		}
 
+		ctx := context.Background()
 		vc := validationcollector.NewCollector()
+		ctx = validationcollector.WithCollector(ctx, vc)
 		typeOverride := map[string]string{"col1": "text"}
-		driver, err := New(vc, mockDriver, table, typeOverride)
+		driver, err := New(ctx, mockDriver, table, typeOverride)
 		assert.NoError(t, err)
 
 		result, err := driver.EncodeValueByColumnName("col1", "value", nil)
@@ -387,8 +406,10 @@ func TestDriver_EncodeValueByColumnName(t *testing.T) {
 			},
 		}
 
+		ctx := context.Background()
 		vc := validationcollector.NewCollector()
-		driver, err := New(vc, mockDriver, table, nil)
+		ctx = validationcollector.WithCollector(ctx, vc)
+		driver, err := New(ctx, mockDriver, table, nil)
 		assert.NoError(t, err)
 
 		_, err = driver.EncodeValueByColumnName("col1", "value", nil)
@@ -415,8 +436,10 @@ func TestDriver_ScanValueByColumnIdx(t *testing.T) {
 			},
 		}
 
+		ctx := context.Background()
 		vc := validationcollector.NewCollector()
-		driver, err := New(vc, mockDriver, table, nil)
+		ctx = validationcollector.WithCollector(ctx, vc)
+		driver, err := New(ctx, mockDriver, table, nil)
 		assert.NoError(t, err)
 
 		err = driver.ScanValueByColumnIdx(0, []byte("value"), &actual)
@@ -444,9 +467,11 @@ func TestDriver_ScanValueByColumnIdx(t *testing.T) {
 			},
 		}
 
+		ctx := context.Background()
 		vc := validationcollector.NewCollector()
+		ctx = validationcollector.WithCollector(ctx, vc)
 		typeOverride := map[string]string{"col1": "text"}
-		driver, err := New(vc, mockDriver, table, typeOverride)
+		driver, err := New(ctx, mockDriver, table, typeOverride)
 		assert.NoError(t, err)
 
 		err = driver.ScanValueByColumnIdx(0, []byte("value"), &actual)
@@ -468,8 +493,10 @@ func TestDriver_ScanValueByColumnIdx(t *testing.T) {
 			},
 		}
 
+		ctx := context.Background()
 		vc := validationcollector.NewCollector()
-		driver, err := New(vc, mockDriver, table, nil)
+		ctx = validationcollector.WithCollector(ctx, vc)
+		driver, err := New(ctx, mockDriver, table, nil)
 		assert.NoError(t, err)
 
 		var actual string
@@ -497,8 +524,10 @@ func TestDriver_ScanValueByColumnName(t *testing.T) {
 			},
 		}
 
+		ctx := context.Background()
 		vc := validationcollector.NewCollector()
-		driver, err := New(vc, mockDriver, table, nil)
+		ctx = validationcollector.WithCollector(ctx, vc)
+		driver, err := New(ctx, mockDriver, table, nil)
 		assert.NoError(t, err)
 
 		err = driver.ScanValueByColumnName("col1", []byte("value"), &actual)
@@ -526,9 +555,11 @@ func TestDriver_ScanValueByColumnName(t *testing.T) {
 			},
 		}
 
+		ctx := context.Background()
 		vc := validationcollector.NewCollector()
+		ctx = validationcollector.WithCollector(ctx, vc)
 		typeOverride := map[string]string{"col1": "text"}
-		driver, err := New(vc, mockDriver, table, typeOverride)
+		driver, err := New(ctx, mockDriver, table, typeOverride)
 		assert.NoError(t, err)
 
 		err = driver.ScanValueByColumnName("col1", []byte("value"), &actual)
@@ -550,8 +581,10 @@ func TestDriver_ScanValueByColumnName(t *testing.T) {
 			},
 		}
 
+		ctx := context.Background()
 		vc := validationcollector.NewCollector()
-		driver, err := New(vc, mockDriver, table, nil)
+		ctx = validationcollector.WithCollector(ctx, vc)
+		driver, err := New(ctx, mockDriver, table, nil)
 		assert.NoError(t, err)
 
 		var actual string
@@ -578,8 +611,10 @@ func TestDriver_DecodeValueByColumnName(t *testing.T) {
 			},
 		}
 
+		ctx := context.Background()
 		vc := validationcollector.NewCollector()
-		driver, err := New(vc, mockDriver, table, nil)
+		ctx = validationcollector.WithCollector(ctx, vc)
+		driver, err := New(ctx, mockDriver, table, nil)
 		assert.NoError(t, err)
 
 		actual, err := driver.DecodeValueByColumnName("col1", []byte("value"))
@@ -606,9 +641,11 @@ func TestDriver_DecodeValueByColumnName(t *testing.T) {
 			},
 		}
 
+		ctx := context.Background()
 		vc := validationcollector.NewCollector()
+		ctx = validationcollector.WithCollector(ctx, vc)
 		typeOverride := map[string]string{"col1": "text"}
-		driver, err := New(vc, mockDriver, table, typeOverride)
+		driver, err := New(ctx, mockDriver, table, typeOverride)
 		assert.NoError(t, err)
 
 		actual, err := driver.DecodeValueByColumnName("col1", []byte("value"))
@@ -630,8 +667,10 @@ func TestDriver_DecodeValueByColumnName(t *testing.T) {
 			},
 		}
 
+		ctx := context.Background()
 		vc := validationcollector.NewCollector()
-		driver, err := New(vc, mockDriver, table, nil)
+		ctx = validationcollector.WithCollector(ctx, vc)
+		driver, err := New(ctx, mockDriver, table, nil)
 		assert.NoError(t, err)
 
 		_, err = driver.DecodeValueByColumnName("col1", []byte("value"))
@@ -657,8 +696,10 @@ func TestDriver_DecodeValueByColumnIdx(t *testing.T) {
 			},
 		}
 
+		ctx := context.Background()
 		vc := validationcollector.NewCollector()
-		driver, err := New(vc, mockDriver, table, nil)
+		ctx = validationcollector.WithCollector(ctx, vc)
+		driver, err := New(ctx, mockDriver, table, nil)
 		assert.NoError(t, err)
 
 		actual, err := driver.DecodeValueByColumnIdx(0, []byte("value"))
@@ -685,9 +726,11 @@ func TestDriver_DecodeValueByColumnIdx(t *testing.T) {
 			},
 		}
 
+		ctx := context.Background()
 		vc := validationcollector.NewCollector()
+		ctx = validationcollector.WithCollector(ctx, vc)
 		typeOverride := map[string]string{"col1": "text"}
-		driver, err := New(vc, mockDriver, table, typeOverride)
+		driver, err := New(ctx, mockDriver, table, typeOverride)
 		assert.NoError(t, err)
 
 		actual, err := driver.DecodeValueByColumnIdx(0, []byte("value"))
@@ -709,8 +752,10 @@ func TestDriver_DecodeValueByColumnIdx(t *testing.T) {
 			},
 		}
 
+		ctx := context.Background()
 		vc := validationcollector.NewCollector()
-		driver, err := New(vc, mockDriver, table, nil)
+		ctx = validationcollector.WithCollector(ctx, vc)
+		driver, err := New(ctx, mockDriver, table, nil)
 		assert.NoError(t, err)
 
 		_, err = driver.DecodeValueByColumnIdx(0, []byte("value"))

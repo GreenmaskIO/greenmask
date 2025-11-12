@@ -25,7 +25,6 @@ import (
 	"github.com/greenmaskio/greenmask/v1/internal/common/restore/taskmapper"
 	mysqlconfig "github.com/greenmaskio/greenmask/v1/internal/mysql/config"
 	"github.com/greenmaskio/greenmask/v1/internal/mysql/restore/restorers"
-	"github.com/greenmaskio/greenmask/v1/internal/storages"
 )
 
 const (
@@ -43,7 +42,7 @@ type taskMapper interface {
 
 type ProducerWithOrder struct {
 	meta         commonmodels.Metadata
-	st           storages.Storager
+	st           commoninterfaces.Storager
 	connCfg      mysqlconfig.ConnectionOpts
 	err          error
 	lastIdx      int
@@ -52,7 +51,7 @@ type ProducerWithOrder struct {
 
 func NewWithOrder(
 	meta commonmodels.Metadata,
-	st storages.Storager,
+	st commoninterfaces.Storager,
 	connCfg mysqlconfig.ConnectionOpts,
 	taskResolver *taskmapper.TaskResolver,
 ) *ProducerWithOrder {
@@ -92,6 +91,10 @@ func (p *ProducerWithOrder) waitForTasks(ctx context.Context, dependencies []com
 	}
 }
 
+// Next - moves to the next task.
+//
+// TODO: if we have an issue with the graph or some tables are missing in the dump
+// we can get stuck here forever. Consider add additional checks.
 func (p *ProducerWithOrder) Next(ctx context.Context) bool {
 	if p.err != nil {
 		return false
@@ -121,7 +124,8 @@ func (p *ProducerWithOrder) Task() (commoninterfaces.Restorer, error) {
 	}
 	switch restorationItem.ObjectKind {
 	case commonmodels.ObjectKindTable:
-		return restorers.NewTableDataRestorer(restorationItem, p.connCfg, p.st, p.taskResolver)
+		opts := []restorers.Option{restorers.WithCompression(true, true)}
+		return restorers.NewTableDataRestorer(restorationItem, p.connCfg, p.st, p.taskResolver, opts...)
 	}
 	return nil, fmt.Errorf("create restore task for kind '%s': %w",
 		restorationItem.ObjectKind, errUnsupportedObjectKind)

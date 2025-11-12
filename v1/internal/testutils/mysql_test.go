@@ -37,8 +37,8 @@ type mysqlTestSuite struct {
 }
 
 func (s *mysqlTestSuite) SetupSuite() {
-	s.SetMigrationUp(migrationUp).
-		SetMigrationDown(migrationDown).
+	s.SetMigrationUp([]string{migrationUp}).
+		SetMigrationDown([]string{migrationDown}).
 		SetupSuite()
 }
 

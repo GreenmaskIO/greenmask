@@ -23,6 +23,7 @@ import (
 
 	commonmodels "github.com/greenmaskio/greenmask/v1/internal/common/models"
 	commonutils "github.com/greenmaskio/greenmask/v1/internal/common/utils"
+	"github.com/greenmaskio/greenmask/v1/internal/common/validationcollector"
 	"github.com/greenmaskio/greenmask/v1/internal/config"
 	mysqldump "github.com/greenmaskio/greenmask/v1/internal/mysql/cmdrun/dump"
 )
@@ -37,23 +38,44 @@ var (
 	errEngineNotSpecified = errors.New("dbms engine is not specified")
 )
 
-// RunDump - runs dump for the specified DBMS engine.
-func RunDump(cfg *config.Config) error {
-	ctx := context.Background()
-	st, err := commonutils.GetStorage(ctx, cfg)
-	if err != nil {
-		return fmt.Errorf("get storage: %w", err)
+func getOptions(_ *config.Config) []mysqldump.Option {
+	return []mysqldump.Option{
+		mysqldump.WithCompression(true, true),
 	}
+}
+
+func setupContext(ctx context.Context, cfg *config.Config) context.Context {
+	ctx = log.Ctx(ctx).With().Str(commonmodels.MetaKeyEngine, cfg.Engine).Logger().WithContext(ctx)
+	vc := validationcollector.NewCollectorWithMeta(commonmodels.MetaKeyEngine, cfg.Engine)
+	ctx = validationcollector.WithCollector(ctx, vc)
+	return ctx
+}
+
+func setupInfrastructure(cfg *config.Config) error {
 	if err := commonutils.SetDefaultContextLogger(cfg.Log.Level, cfg.Log.Format); err != nil {
 		return fmt.Errorf("init logger: %w", err)
 	}
 	if cfg.Engine == "" {
 		return fmt.Errorf("specify dbms engine in \"engine\" key in the config: %w", errEngineNotSpecified)
 	}
-	ctx = log.Ctx(ctx).With().Str(commonmodels.MetaKeyEngine, cfg.Engine).Logger().WithContext(ctx)
+	return nil
+}
+
+// RunDump - runs dump for the specified DBMS engine.
+func RunDump(cfg *config.Config) error {
+	ctx := context.Background()
+	ctx = setupContext(ctx, cfg)
+	if err := setupInfrastructure(cfg); err != nil {
+		return fmt.Errorf("setup infrastructure: %w", err)
+	}
+	st, err := commonutils.GetStorage(ctx, cfg)
+	if err != nil {
+		return fmt.Errorf("get storage: %w", err)
+	}
 	switch cfg.Engine {
 	case engineNameMySQL:
-		if err := mysqldump.RunDump(ctx, cfg, st); err != nil {
+		opts := getOptions(cfg)
+		if err := mysqldump.RunDump(ctx, cfg, st, opts...); err != nil {
 			return fmt.Errorf("mysql engine dump: %w", err)
 		}
 	case engineNamePostgres:

@@ -14,7 +14,10 @@
 
 package config
 
-import "github.com/greenmaskio/greenmask/v1/internal/storages"
+import (
+	"github.com/greenmaskio/greenmask/v1/internal/storages/directory"
+	"github.com/greenmaskio/greenmask/v1/internal/storages/s3"
+)
 
 const (
 	defaultStorageType = "directory"
@@ -28,8 +31,8 @@ func NewStorageDirectory() DirectoryConfig {
 	return DirectoryConfig{}
 }
 
-func (d DirectoryConfig) ToDirectoryConfig() storages.DirectoryConfig {
-	return storages.NewDirectoryConfig(d.Path)
+func (d DirectoryConfig) ToDirectoryConfig() directory.DirectoryConfig {
+	return directory.NewDirectoryConfig(d.Path)
 }
 
 type S3Config struct {
@@ -61,26 +64,26 @@ func NewStorageS3() S3Config {
 	}
 }
 
-func (s3 S3Config) ToS3Config() storages.S3Config {
-	return storages.NewS3Config(
-		s3.Endpoint,
-		s3.Bucket,
-		s3.Prefix,
-		s3.Region,
-		s3.StorageClass,
-		s3.AccessKeyId,
-		s3.SecretAccessKey,
-		s3.SessionToken,
-		s3.RoleArn,
-		s3.SessionName,
-		s3.MaxRetries,
-		s3.CertFile,
-		s3.MaxPartSize,
-		s3.Concurrency,
-		s3.UseListObjectsV1,
-		s3.ForcePathStyle,
-		s3.UseAccelerate,
-		s3.NoVerifySsl,
+func (st S3Config) ToS3Config() s3.S3Config {
+	return s3.NewS3Config(
+		st.Endpoint,
+		st.Bucket,
+		st.Prefix,
+		st.Region,
+		st.StorageClass,
+		st.AccessKeyId,
+		st.SecretAccessKey,
+		st.SessionToken,
+		st.RoleArn,
+		st.SessionName,
+		st.MaxRetries,
+		st.CertFile,
+		st.MaxPartSize,
+		st.Concurrency,
+		st.UseListObjectsV1,
+		st.ForcePathStyle,
+		st.UseAccelerate,
+		st.NoVerifySsl,
 	)
 }
 

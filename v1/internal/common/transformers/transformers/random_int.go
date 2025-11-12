@@ -27,11 +27,11 @@ import (
 	transformerutils "github.com/greenmaskio/greenmask/v1/internal/common/transformers/utils"
 )
 
-const RandomIntTransformerName = "RandomInt"
+const TransformerNameRandomInt = "RandomInt"
 
 var RandomIntegerTransformerDefinition = transformerutils.NewTransformerDefinition(
 	transformerutils.NewTransformerProperties(
-		RandomIntTransformerName,
+		TransformerNameRandomInt,
 		"Generate integer value in min and max thresholds",
 	).AddMeta(transformerutils.AllowApplyForReferenced, true).
 		AddMeta(transformerutils.RequireHashEngineParameter, true),
@@ -184,63 +184,67 @@ func NewIntegerTransformer(
 	}, nil
 }
 
-func (rit *IntegerTransformer) GetAffectedColumns() map[int]string {
-	return rit.affectedColumns
+func (t *IntegerTransformer) GetAffectedColumns() map[int]string {
+	return t.affectedColumns
 }
 
-func (rit *IntegerTransformer) Init(context.Context) error {
-	if rit.dynamicMode {
-		rit.transform = rit.dynamicTransform
+func (t *IntegerTransformer) Init(context.Context) error {
+	if t.dynamicMode {
+		t.transform = t.dynamicTransform
 	}
 	return nil
 }
 
-func (rit *IntegerTransformer) Done(context.Context) error {
+func (t *IntegerTransformer) Done(context.Context) error {
 	return nil
 }
 
-func (rit *IntegerTransformer) dynamicTransform(v []byte) (int64, error) {
+func (t *IntegerTransformer) dynamicTransform(v []byte) (int64, error) {
 
 	var minVal, maxVal int64
-	err := rit.minParam.Scan(&minVal)
+	err := t.minParam.Scan(&minVal)
 	if err != nil {
 		return 0, fmt.Errorf(`scan "min" param: %w`, err)
 	}
 
-	err = rit.maxParam.Scan(&maxVal)
+	err = t.maxParam.Scan(&maxVal)
 	if err != nil {
 		return 0, fmt.Errorf(`scan "max" param: %w`, err)
 	}
 
-	limiter, err := getRandomInt64LimiterForDynamicParameter(rit.intSize, minVal, maxVal)
+	limiter, err := getRandomInt64LimiterForDynamicParameter(t.intSize, minVal, maxVal)
 	if err != nil {
 		return 0, fmt.Errorf("create limiter in dynamic mode: %w", err)
 	}
-	res, err := rit.RandomInt64Transformer.Transform(limiter, v)
+	res, err := t.RandomInt64Transformer.Transform(limiter, v)
 	if err != nil {
 		return 0, fmt.Errorf("generate int value: %w", err)
 	}
 	return res, nil
 }
 
-func (rit *IntegerTransformer) Transform(_ context.Context, r commonininterfaces.Recorder) error {
-	val, err := r.GetRawColumnValueByIdx(rit.columnIdx)
+func (t *IntegerTransformer) Transform(_ context.Context, r commonininterfaces.Recorder) error {
+	val, err := r.GetRawColumnValueByIdx(t.columnIdx)
 	if err != nil {
 		return fmt.Errorf("scan value: %w", err)
 	}
-	if val.IsNull && rit.keepNull {
+	if val.IsNull && t.keepNull {
 		return nil
 	}
 
-	newVal, err := rit.transform(val.Data)
+	newVal, err := t.transform(val.Data)
 	if err != nil {
 		return err
 	}
 
-	if err = r.SetColumnValueByIdx(rit.columnIdx, newVal); err != nil {
+	if err = r.SetColumnValueByIdx(t.columnIdx, newVal); err != nil {
 		return fmt.Errorf("set new value: %w", err)
 	}
 	return nil
+}
+
+func (t *IntegerTransformer) Describe() string {
+	return TransformerNameRandomInt
 }
 
 func getRandomInt64LimiterForDynamicParameter(size int, requestedMinValue, requestedMaxValue int64) (*transformers.Int64Limiter, error) {

@@ -31,14 +31,13 @@ import (
 	mysqlmodels "github.com/greenmaskio/greenmask/v1/internal/mysql/models"
 	"github.com/greenmaskio/greenmask/v1/internal/mysql/restore/schema"
 	"github.com/greenmaskio/greenmask/v1/internal/mysql/restore/taskproducer"
-	"github.com/greenmaskio/greenmask/v1/internal/storages"
 )
 
 // Restore it's responsible for initialization and perform the whole
 // dump procedure of mysql instance.
 type Restore struct {
 	dumpID     commonmodels.DumpID
-	st         storages.Storager
+	st         commonininterfaces.Storager
 	vc         *validationcollector.Collector
 	cfg        *config.Config
 	connConfig *mysqlmodels.ConnConfig
@@ -46,7 +45,7 @@ type Restore struct {
 
 func NewRestore(
 	cfg *config.Config,
-	st storages.Storager,
+	st commonininterfaces.Storager,
 	dumpID commonmodels.DumpID,
 ) *Restore {
 	vc := validationcollector.NewCollectorWithMeta(

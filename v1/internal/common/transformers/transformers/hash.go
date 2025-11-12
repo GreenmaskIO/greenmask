@@ -37,11 +37,11 @@ import (
 	"github.com/greenmaskio/greenmask/v1/internal/common/validationcollector"
 )
 
-const HashTransformerName = "Hash"
+const TransformerNameHash = "Hash"
 
 var HashTransformerDefinition = transformerutils.NewTransformerDefinition(
 	transformerutils.NewTransformerProperties(
-		HashTransformerName,
+		TransformerNameHash,
 		"Generate hash of the text value using Scrypt hash function under the hood",
 	).AddMeta(transformerutils.AllowApplyForReferenced, true).
 		AddMeta(transformerutils.RequireHashEngineParameter, false),
@@ -182,54 +182,58 @@ func NewHashTransformer(
 	}, nil
 }
 
-func (ht *HashTransformer) GetAffectedColumns() map[int]string {
-	return ht.affectedColumns
+func (t *HashTransformer) GetAffectedColumns() map[int]string {
+	return t.affectedColumns
 }
 
-func (ht *HashTransformer) Init(context.Context) error {
+func (t *HashTransformer) Init(context.Context) error {
 	return nil
 }
 
-func (ht *HashTransformer) Done(context.Context) error {
+func (t *HashTransformer) Done(context.Context) error {
 	return nil
 }
 
-func (ht *HashTransformer) Transform(_ context.Context, r commonininterfaces.Recorder) error {
-	val, err := r.GetRawColumnValueByIdx(ht.columnIdx)
+func (t *HashTransformer) Transform(_ context.Context, r commonininterfaces.Recorder) error {
+	val, err := r.GetRawColumnValueByIdx(t.columnIdx)
 	if err != nil {
 		return fmt.Errorf("unable to scan attribute value: %w", err)
 	}
-	if val.IsNull && ht.keepNull {
+	if val.IsNull && t.keepNull {
 		return nil
 	}
 
-	defer ht.h.Reset()
-	_, err = ht.h.Write(ht.salt)
+	defer t.h.Reset()
+	_, err = t.h.Write(t.salt)
 	if err != nil {
 		return fmt.Errorf("unable to write salt into writer: %w", err)
 	}
-	_, err = ht.h.Write(val.Data)
+	_, err = t.h.Write(val.Data)
 	if err != nil {
 		return fmt.Errorf("unable to write raw data into writer: %w", err)
 	}
-	ht.hashBuf = ht.hashBuf[:0]
-	ht.hashBuf = ht.h.Sum(ht.hashBuf)
+	t.hashBuf = t.hashBuf[:0]
+	t.hashBuf = t.h.Sum(t.hashBuf)
 
-	hex.Encode(ht.resultBuf, ht.hashBuf)
+	hex.Encode(t.resultBuf, t.hashBuf)
 
-	maxLength := ht.encodedOutputLength
-	if ht.maxLength > 0 && ht.encodedOutputLength > ht.maxLength {
-		maxLength = ht.maxLength
+	maxLength := t.encodedOutputLength
+	if t.maxLength > 0 && t.encodedOutputLength > t.maxLength {
+		maxLength = t.maxLength
 	}
 
 	if err := r.SetRawColumnValueByIdx(
-		ht.columnIdx,
-		commonmodels.NewColumnRawValue(ht.resultBuf[:maxLength], false),
+		t.columnIdx,
+		commonmodels.NewColumnRawValue(t.resultBuf[:maxLength], false),
 	); err != nil {
 		return fmt.Errorf("unable to set new value: %w", err)
 	}
 
 	return nil
+}
+
+func (t *HashTransformer) Describe() string {
+	return TransformerNameHash
 }
 
 func validateHashFunctionsParameter(

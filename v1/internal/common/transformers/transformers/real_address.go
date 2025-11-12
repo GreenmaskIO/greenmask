@@ -31,11 +31,11 @@ import (
 	"github.com/greenmaskio/greenmask/v1/internal/common/validationcollector"
 )
 
-const RealAddressTransformerName = "RealAddress"
+const TransformerNameRealAddress = "RealAddress"
 
 var RealAddressTransformerDefinition = transformerutils.NewTransformerDefinition(
 	transformerutils.NewTransformerProperties(
-		RealAddressTransformerName,
+		TransformerNameRealAddress,
 		"Generate a real address",
 	),
 
@@ -179,23 +179,23 @@ func NewRealAddressTransformer(
 	}, nil
 }
 
-func (rat *RealAddressTransformer) GetAffectedColumns() map[int]string {
-	return rat.affectedColumns
+func (t *RealAddressTransformer) GetAffectedColumns() map[int]string {
+	return t.affectedColumns
 }
 
-func (rat *RealAddressTransformer) Init(context.Context) error {
+func (t *RealAddressTransformer) Init(context.Context) error {
 	return nil
 }
 
-func (rat *RealAddressTransformer) Done(context.Context) error {
+func (t *RealAddressTransformer) Done(context.Context) error {
 	return nil
 }
 
-func (rat *RealAddressTransformer) Transform(ctx context.Context, r commonininterfaces.Recorder) error {
+func (t *RealAddressTransformer) Transform(_ context.Context, r commonininterfaces.Recorder) error {
 	address := getRealAddress()
 
 	// Iterate over the columns and update the record with generated address data
-	for _, col := range rat.columns {
+	for _, col := range t.columns {
 		rawValue, err := r.GetRawColumnValueByIdx(col.columnIdx)
 		if err != nil {
 			return fmt.Errorf("get raw column value: %w", err)
@@ -204,12 +204,12 @@ func (rat *RealAddressTransformer) Transform(ctx context.Context, r commonininte
 			return nil
 		}
 
-		rat.buf.Reset()
-		if err = col.tmpl.Execute(rat.buf, address); err != nil {
+		t.buf.Reset()
+		if err = col.tmpl.Execute(t.buf, address); err != nil {
 			return fmt.Errorf("execute template for column \"%s\": %w", col.Name, err)
 		}
 
-		newRawValue := commonmodels.NewColumnRawValue(slices.Clone(rat.buf.Bytes()), false)
+		newRawValue := commonmodels.NewColumnRawValue(slices.Clone(t.buf.Bytes()), false)
 
 		// Update the record for the current column with the generated value
 		if err := r.SetRawColumnValueByIdx(col.columnIdx, newRawValue); err != nil {
@@ -218,6 +218,10 @@ func (rat *RealAddressTransformer) Transform(ctx context.Context, r commonininte
 	}
 
 	return nil
+}
+
+func (t *RealAddressTransformer) Describe() string {
+	return TransformerNameRealAddress
 }
 
 func getRealAddress() *realAddressValue {

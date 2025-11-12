@@ -28,11 +28,11 @@ import (
 	"github.com/greenmaskio/greenmask/v1/internal/common/validationcollector"
 )
 
-const NoiseIntTransformerName = "NoiseInt"
+const TransformerNameNoiseInt = "NoiseInt"
 
 var NoiseIntTransformerDefinition = transformerutils.NewTransformerDefinition(
 	transformerutils.NewTransformerProperties(
-		NoiseIntTransformerName,
+		TransformerNameNoiseInt,
 		"Add noise to int in min and max thresholds",
 	).AddMeta(transformerutils.AllowApplyForReferenced, true).
 		AddMeta(transformerutils.RequireHashEngineParameter, true),
@@ -179,23 +179,23 @@ func NewNoiseIntTransformer(
 	}, nil
 }
 
-func (nit *NoiseIntTransformer) GetAffectedColumns() map[int]string {
-	return nit.affectedColumns
+func (t *NoiseIntTransformer) GetAffectedColumns() map[int]string {
+	return t.affectedColumns
 }
 
-func (nit *NoiseIntTransformer) Init(context.Context) error {
-	if nit.dynamicMode {
-		nit.transform = nit.dynamicTransform
+func (t *NoiseIntTransformer) Init(context.Context) error {
+	if t.dynamicMode {
+		t.transform = t.dynamicTransform
 	}
 	return nil
 }
 
-func (nit *NoiseIntTransformer) Done(context.Context) error {
+func (t *NoiseIntTransformer) Done(context.Context) error {
 	return nil
 }
 
-func (nit *NoiseIntTransformer) dynamicTransform(v int64) (int64, error) {
-	minVal, maxVal, err := getMinAndMaxIntDynamicValueNoiseIntTrans(nit.intSize, nit.minParam, nit.maxParam)
+func (t *NoiseIntTransformer) dynamicTransform(v int64) (int64, error) {
+	minVal, maxVal, err := getMinAndMaxIntDynamicValueNoiseIntTrans(t.intSize, t.minParam, t.maxParam)
 	if err != nil {
 		return 0, fmt.Errorf("unable to get min and max values: %w", err)
 	}
@@ -204,16 +204,16 @@ func (nit *NoiseIntTransformer) dynamicTransform(v int64) (int64, error) {
 	if err != nil {
 		return 0, fmt.Errorf("error creating limiter in dynamic mode: %w", err)
 	}
-	res, err := nit.t.Transform(limiter, v)
+	res, err := t.t.Transform(limiter, v)
 	if err != nil {
 		return 0, fmt.Errorf("error generating int value: %w", err)
 	}
 	return res, nil
 }
 
-func (nit *NoiseIntTransformer) Transform(_ context.Context, r commonininterfaces.Recorder) error {
+func (t *NoiseIntTransformer) Transform(_ context.Context, r commonininterfaces.Recorder) error {
 	var val int64
-	isNull, err := r.ScanColumnValueByIdx(nit.columnIdx, &val)
+	isNull, err := r.ScanColumnValueByIdx(t.columnIdx, &val)
 	if err != nil {
 		return fmt.Errorf("unable to scan value: %w", err)
 	}
@@ -221,15 +221,19 @@ func (nit *NoiseIntTransformer) Transform(_ context.Context, r commonininterface
 		return nil
 	}
 
-	res, err := nit.transform(val)
+	res, err := t.transform(val)
 	if err != nil {
 		return fmt.Errorf("unable to transform value: %w", err)
 	}
 
-	if err = r.SetColumnValueByIdx(nit.columnIdx, res); err != nil {
+	if err = r.SetColumnValueByIdx(t.columnIdx, res); err != nil {
 		return fmt.Errorf("unable to set new value: %w", err)
 	}
 	return nil
+}
+
+func (t *NoiseIntTransformer) Describe() string {
+	return TransformerNameNoiseInt
 }
 
 func validateIntTypeAndSetNoiseInt64Limiter(

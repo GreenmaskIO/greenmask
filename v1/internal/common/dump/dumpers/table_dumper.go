@@ -38,7 +38,28 @@ type TableDumper struct {
 	record           commonininterfaces.Recorder
 	lineNum          int64
 	table            *commonmodels.Table
+	saveOriginal     bool
+	rowLimit         int64
 }
+
+func WithSaveOriginalData() func(t *TableDumper) error {
+	return func(t *TableDumper) error {
+		t.saveOriginal = true
+		return nil
+	}
+}
+
+func WithRowLimit(limit int64) func(t *TableDumper) error {
+	return func(t *TableDumper) error {
+		if limit < 0 {
+			return fmt.Errorf("row limit cannot be negative: %d", limit)
+		}
+		t.rowLimit = limit
+		return nil
+	}
+}
+
+type TableDumperOption func(t *TableDumper) error
 
 func NewTableDumper(
 	id commonmodels.TaskID,
@@ -47,8 +68,9 @@ func NewTableDumper(
 	record commonininterfaces.Recorder,
 	pipeliner commonininterfaces.Pipeliner,
 	table *commonmodels.Table,
-) *TableDumper {
-	return &TableDumper{
+	opts ...TableDumperOption,
+) (*TableDumper, error) {
+	res := &TableDumper{
 		ID:               id,
 		dataStreamReader: dataStreamReader,
 		dataStreamWriter: dataStreamWriter,
@@ -56,10 +78,19 @@ func NewTableDumper(
 		pipeline:         pipeliner,
 		table:            table,
 	}
+	for i, opt := range opts {
+		if err := opt(res); err != nil {
+			return nil, fmt.Errorf("apply option %d: %w", i, err)
+		}
+	}
+	return res, nil
 }
 
 func (t *TableDumper) Dump(ctx context.Context) (commonmodels.TaskStat, error) {
 	startedAt := time.Now()
+	log.Ctx(ctx).Debug().
+		Any("Metadata", t.dataStreamReader.DebugInfo()).
+		Msg("dumping table")
 	// Initialize transformation pipeline.
 	// It gets transformers ready to transform. For example if external transformer
 	// is used then it starts its process.
@@ -168,6 +199,11 @@ func (t *TableDumper) streamRecords(ctx context.Context) error {
 			}
 			return fmt.Errorf("read row from stream: %w", err)
 		}
+		if t.saveOriginal {
+			if err := t.dataStreamWriter.WriteRow(ctx, row); err != nil {
+				return fmt.Errorf("save original row data: %w", err)
+			}
+		}
 		if err := t.record.SetRow(row); err != nil {
 			return fmt.Errorf("set raw record data: %w", err)
 		}
@@ -176,6 +212,14 @@ func (t *TableDumper) streamRecords(ctx context.Context) error {
 		}
 		if err := t.dataStreamWriter.WriteRow(ctx, t.record.GetRow()); err != nil {
 			return fmt.Errorf("write transformed raw data: %w", err)
+		}
+		if t.rowLimit > 0 && t.lineNum >= t.rowLimit {
+			log.Ctx(ctx).
+				Debug().
+				Int64("LinesDumped", t.lineNum).
+				Int64("RowsLimit", t.rowLimit).
+				Msg("row limit reached, stopping dump for table")
+			return nil
 		}
 	}
 }

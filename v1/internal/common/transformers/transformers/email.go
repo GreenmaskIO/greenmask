@@ -273,98 +273,102 @@ func NewEmailTransformer(
 	}, nil
 }
 
-func (rit *EmailTransformer) GetAffectedColumns() map[int]string {
-	return rit.affectedColumns
+func (t *EmailTransformer) GetAffectedColumns() map[int]string {
+	return t.affectedColumns
 }
 
-func (rit *EmailTransformer) Init(context.Context) error {
+func (t *EmailTransformer) Init(context.Context) error {
 	return nil
 }
 
-func (rit *EmailTransformer) Done(context.Context) error {
+func (t *EmailTransformer) Done(context.Context) error {
 	return nil
 }
 
-func (rit *EmailTransformer) Transform(_ context.Context, r commonininterfaces.Recorder) error {
-	val, err := r.GetRawColumnValueByIdx(rit.columnIdx)
+func (t *EmailTransformer) Transform(_ context.Context, r commonininterfaces.Recorder) error {
+	val, err := r.GetRawColumnValueByIdx(t.columnIdx)
 	if err != nil {
 		return fmt.Errorf("unable to scan value: %w", err)
 	}
 	// TODO: is is null and keepNull is false we can't generate unique value
 	//  instead we would use PK or the whole record as input value to hash function
-	if val.IsNull && rit.keepNull {
+	if val.IsNull && t.keepNull {
 		return nil
 	}
 
-	defer clear(rit.templateCtx)
+	defer clear(t.templateCtx)
 
-	data, err := rit.g.Generate(val.Data)
+	data, err := t.g.Generate(val.Data)
 	if err != nil {
 		return fmt.Errorf("unable to generate bytes: %w", err)
 	}
 
-	hex.Encode(rit.hexEncodedRandomBytesBuf, data)
+	hex.Encode(t.hexEncodedRandomBytesBuf, data)
 
-	if err := rit.setupTemplateContext(val.Data, r); err != nil {
+	if err := t.setupTemplateContext(val.Data, r); err != nil {
 		return fmt.Errorf("unable to setup template context: %w", err)
 	}
 
-	newVal, err := rit.generateEmail(data)
+	newVal, err := t.generateEmail(data)
 	if err != nil {
 		return fmt.Errorf("unable to generate email: %w", err)
 	}
 
-	if err = r.SetRawColumnValueByIdx(rit.columnIdx, commonmodels.NewColumnRawValue(newVal, false)); err != nil {
+	if err = r.SetRawColumnValueByIdx(t.columnIdx, commonmodels.NewColumnRawValue(newVal, false)); err != nil {
 		return fmt.Errorf("unable to set new raw value: %w", err)
 	}
 	return nil
 }
 
-func (rit *EmailTransformer) setupTemplateContext(originalEmail []byte, r commonininterfaces.Recorder) error {
-	if rit.localPartTemplate == nil && rit.domainTemplate == nil && !rit.keepOriginalDomain {
+func (t *EmailTransformer) Describe() string {
+	return TransformerNameRandomEmail
+}
+
+func (t *EmailTransformer) setupTemplateContext(originalEmail []byte, r commonininterfaces.Recorder) error {
+	if t.localPartTemplate == nil && t.domainTemplate == nil && !t.keepOriginalDomain {
 		return nil
 	}
-	rit.rctx.SetRecord(r)
+	t.rctx.SetRecord(r)
 
 	originalLocalPart, originalDomain, err := EmailParse(originalEmail)
 	if err != nil {
 		return fmt.Errorf("unable to parse email perfoming keepOriginalDomain operation: %w", err)
 	}
-	if rit.keepOriginalDomain {
-		rit.originalDomain = slices.Clone(originalDomain)
+	if t.keepOriginalDomain {
+		t.originalDomain = slices.Clone(originalDomain)
 	}
 
-	rit.templateCtx["original_local_part"] = string(originalLocalPart)
-	rit.templateCtx["original_domain"] = string(originalDomain)
-	rit.templateCtx["random_string"] = string(rit.hexEncodedRandomBytesBuf)
+	t.templateCtx["original_local_part"] = string(originalLocalPart)
+	t.templateCtx["original_domain"] = string(originalDomain)
+	t.templateCtx["random_string"] = string(t.hexEncodedRandomBytesBuf)
 
 	return nil
 }
 
-func (rit *EmailTransformer) generateEmail(data []byte) ([]byte, error) {
+func (t *EmailTransformer) generateEmail(data []byte) ([]byte, error) {
 	var localPart, domainPart []byte
 
-	if rit.localPartTemplate != nil {
-		if err := rit.localPartTemplate.Execute(rit.buf, rit.templateCtx); err != nil {
+	if t.localPartTemplate != nil {
+		if err := t.localPartTemplate.Execute(t.buf, t.templateCtx); err != nil {
 			return nil, fmt.Errorf("unable to execute local part template: %w", err)
 		}
-		localPart = slices.Clone(rit.buf.Bytes())
-		rit.buf.Reset()
+		localPart = slices.Clone(t.buf.Bytes())
+		t.buf.Reset()
 	} else {
-		localPart = rit.hexEncodedRandomBytesBuf
+		localPart = t.hexEncodedRandomBytesBuf
 	}
 
-	if rit.domainTemplate != nil {
-		if err := rit.domainTemplate.Execute(rit.buf, rit.templateCtx); err != nil {
+	if t.domainTemplate != nil {
+		if err := t.domainTemplate.Execute(t.buf, t.templateCtx); err != nil {
 			return nil, fmt.Errorf("unable to execute domain template: %w", err)
 		}
-		domainPart = slices.Clone(rit.buf.Bytes())
-		rit.buf.Reset()
-	} else if rit.keepOriginalDomain {
-		domainPart = rit.originalDomain
-	} else if len(rit.domains) > 0 {
-		idx := generators.BuildUint64FromBytes(data[:8]) % uint64(len(rit.domains))
-		domainPart = []byte(rit.domains[idx])
+		domainPart = slices.Clone(t.buf.Bytes())
+		t.buf.Reset()
+	} else if t.keepOriginalDomain {
+		domainPart = t.originalDomain
+	} else if len(t.domains) > 0 {
+		idx := generators.BuildUint64FromBytes(data[:8]) % uint64(len(t.domains))
+		domainPart = []byte(t.domains[idx])
 	} else {
 		idx := generators.BuildUint64FromBytes(data[:8]) % uint64(len(defaultEmailProviders))
 		domainPart = []byte(defaultEmailProviders[idx])
@@ -372,7 +376,7 @@ func (rit *EmailTransformer) generateEmail(data []byte) ([]byte, error) {
 	res := append(localPart, '@')
 	res = append(res, domainPart...)
 
-	if rit.validate && !EmailValidate(res) {
+	if t.validate && !EmailValidate(res) {
 		log.Debug().
 			Str("email", string(res)).
 			Msg("generated email is invalid")

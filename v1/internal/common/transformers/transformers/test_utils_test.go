@@ -145,7 +145,7 @@ func withColumns(columns ...commonmodels.Column) func(*transformerTestEnv) {
 		driver := mysqldbmsdriver.New()
 		vc := validationcollector.NewCollector()
 		ctx := validationcollector.WithCollector(context.Background(), vc)
-		tableDriver, err := commontabledriver.NewWithContext(ctx, driver, &e.table, nil)
+		tableDriver, err := commontabledriver.New(ctx, driver, &e.table, nil)
 		require.NoError(e.t, err)
 		require.Empty(e.t, vc.GetWarnings())
 
@@ -341,7 +341,7 @@ func newTransformerTestEnvReal(
 	}
 
 	driver := mysqldbmsdriver.New()
-	tableDriver, err := commontabledriver.NewWithContext(ctx, driver, &table, nil)
+	tableDriver, err := commontabledriver.New(ctx, driver, &table, nil)
 	require.NoError(t, err)
 	require.Empty(t, vc.GetWarnings())
 

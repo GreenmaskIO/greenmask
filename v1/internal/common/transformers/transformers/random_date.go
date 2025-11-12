@@ -26,11 +26,11 @@ import (
 	transformerutils "github.com/greenmaskio/greenmask/v1/internal/common/transformers/utils"
 )
 
-const RandomDateTransformerName = "RandomDate"
+const TransformerNameRandomDate = "RandomDate"
 
 var RandomDateTransformerDefinition = transformerutils.NewTransformerDefinition(
 	transformerutils.NewTransformerProperties(
-		RandomDateTransformerName,
+		TransformerNameRandomDate,
 		"Generate date in the provided interval",
 	).AddMeta(transformerutils.AllowApplyForReferenced, true).
 		AddMeta(transformerutils.RequireHashEngineParameter, true),
@@ -180,29 +180,29 @@ func NewTimestampTransformer(ctx context.Context,
 	return NewTimestampTransformerBase(ctx, tableDriver, parameters, getTimestampMinAndMaxThresholds)
 }
 
-func (rdt *TimestampTransformer) GetAffectedColumns() map[int]string {
-	return rdt.affectedColumns
+func (t *TimestampTransformer) GetAffectedColumns() map[int]string {
+	return t.affectedColumns
 }
 
-func (rdt *TimestampTransformer) Init(context.Context) error {
-	if rdt.dynamicMode {
-		rdt.transform = rdt.dynamicTransform
+func (t *TimestampTransformer) Init(context.Context) error {
+	if t.dynamicMode {
+		t.transform = t.dynamicTransform
 	}
 	return nil
 }
 
-func (rdt *TimestampTransformer) Done(context.Context) error {
+func (t *TimestampTransformer) Done(context.Context) error {
 	return nil
 }
 
-func (rdt *TimestampTransformer) dynamicTransform(v []byte) (time.Time, error) {
+func (t *TimestampTransformer) dynamicTransform(v []byte) (time.Time, error) {
 	var minVal, maxVal time.Time
-	err := rdt.minParam.Scan(&minVal)
+	err := t.minParam.Scan(&minVal)
 	if err != nil {
 		return time.Time{}, fmt.Errorf(`scan "min" param: %w`, err)
 	}
 
-	err = rdt.maxParam.Scan(&maxVal)
+	err = t.maxParam.Scan(&maxVal)
 	if err != nil {
 		return time.Time{}, fmt.Errorf(`scan "max" param: %w`, err)
 	}
@@ -211,29 +211,33 @@ func (rdt *TimestampTransformer) dynamicTransform(v []byte) (time.Time, error) {
 	if err != nil {
 		return time.Time{}, fmt.Errorf("create limiter in dynamic mode: %w", err)
 	}
-	res, err := rdt.Timestamp.Transform(limiter, v)
+	res, err := t.Timestamp.Transform(limiter, v)
 	if err != nil {
 		return time.Time{}, fmt.Errorf("generate timestamp value: %w", err)
 	}
 	return res, nil
 }
 
-func (rdt *TimestampTransformer) Transform(_ context.Context, r commonininterfaces.Recorder) error {
-	valAny, err := r.GetRawColumnValueByIdx(rdt.columnIdx)
+func (t *TimestampTransformer) Transform(_ context.Context, r commonininterfaces.Recorder) error {
+	valAny, err := r.GetRawColumnValueByIdx(t.columnIdx)
 	if err != nil {
 		return fmt.Errorf("scan value: %w", err)
 	}
-	if valAny.IsNull && rdt.keepNull {
+	if valAny.IsNull && t.keepNull {
 		return nil
 	}
-	res, err := rdt.transform(valAny.Data)
+	res, err := t.transform(valAny.Data)
 	if err != nil {
 		return err
 	}
-	if err = r.SetColumnValueByIdx(rdt.columnIdx, res); err != nil {
+	if err = r.SetColumnValueByIdx(t.columnIdx, res); err != nil {
 		return fmt.Errorf("set new value: %w", err)
 	}
 	return nil
+}
+
+func (t *TimestampTransformer) Describe() string {
+	return TransformerNameRandomDate
 }
 
 func getTimestampMinAndMaxThresholds(minParameter, maxParameter commonparameters.Parameterizer) (time.Time, time.Time, error) {

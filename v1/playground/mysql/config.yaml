@@ -50,17 +50,37 @@ dump:
       databases: playground
       host: 127.0.0.1
       port: 3306
+      add-drop-table: false
 
   transformation:
     - schema: "playground"
       name: "users"
-      when: "record.id == 1"
+#      subset_conds:
+#        - "playground.users.id = 1"
+#      when: "record.id == 1"
       transformers:
-        - name: "Replace"
-          when: "record.id == 1"
+        - name: "RandomPerson"
           params:
-            column: "username"
-            value: "test"
+            gender: "Any"
+            columns:
+              - name: "username"
+                template: "{{ .FirstName }}"
+            engine: "random"
+        - name: "RandomDate"
+#          when: "record.id == 1"
+          params:
+            column: "created_at"
+            min: "2020-01-01 00:00:00"
+            max: "2023-01-01 00:00:00"
+    - schema: "playground"
+      name: "orders"
+      transformers:
+        - name: "RandomDate"
+          #          when: "record.id == 1"
+          params:
+            column: "created_at"
+            min: "2020-01-01 00:00:00"
+            max: "2023-01-01 00:00:00"
 
 restore:
   options:

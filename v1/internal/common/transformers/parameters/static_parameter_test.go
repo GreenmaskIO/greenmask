@@ -88,7 +88,7 @@ func TestStaticParameter_Init(t *testing.T) {
 		assert.True(t, validationcollector.FromContext(ctx).IsFatal())
 		assert.Contains(t,
 			validationcollector.FromContext(ctx).GetWarnings()[0].Msg,
-			"unsupported column type",
+			"column type is not allowed",
 		)
 	})
 

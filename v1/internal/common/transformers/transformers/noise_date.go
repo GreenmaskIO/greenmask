@@ -27,11 +27,11 @@ import (
 	"github.com/greenmaskio/greenmask/v1/internal/common/utils"
 )
 
-const NoiseDateTransformerName = "NoiseDate"
+const TransformerNameNoiseDate = "NoiseDate"
 
 var NoiseDateTransformerDefinition = transformerutils.NewTransformerDefinition(
 	transformerutils.NewTransformerProperties(
-		NoiseDateTransformerName,
+		TransformerNameNoiseDate,
 		"Add some random value (shift value) in the provided interval",
 	).AddMeta(transformerutils.AllowApplyForReferenced, true).
 		AddMeta(transformerutils.RequireHashEngineParameter, true),
@@ -182,30 +182,30 @@ func NewNoiseDateTransformer(
 	}, nil
 }
 
-func (ndt *NoiseDateTransformer) GetAffectedColumns() map[int]string {
-	return ndt.affectedColumns
+func (t *NoiseDateTransformer) GetAffectedColumns() map[int]string {
+	return t.affectedColumns
 }
 
-func (ndt *NoiseDateTransformer) Init(context.Context) error {
-	if ndt.dynamicMode {
-		ndt.transform = ndt.dynamicTransform
+func (t *NoiseDateTransformer) Init(context.Context) error {
+	if t.dynamicMode {
+		t.transform = t.dynamicTransform
 	}
 	return nil
 }
 
-func (ndt *NoiseDateTransformer) Done(context.Context) error {
+func (t *NoiseDateTransformer) Done(context.Context) error {
 	return nil
 }
 
-func (ndt *NoiseDateTransformer) dynamicTransform(v time.Time) (time.Time, error) {
+func (t *NoiseDateTransformer) dynamicTransform(v time.Time) (time.Time, error) {
 	minVal := &time.Time{}
 	maxVal := &time.Time{}
 
-	if err := ndt.minParam.Scan(minVal); err != nil {
+	if err := t.minParam.Scan(minVal); err != nil {
 		return time.Time{}, fmt.Errorf(`unable to scan "min" param: %w`, err)
 	}
 
-	if err := ndt.maxParam.Scan(maxVal); err != nil {
+	if err := t.maxParam.Scan(maxVal); err != nil {
 		return time.Time{}, fmt.Errorf(`unable to scan "max" param: %w`, err)
 	}
 
@@ -214,16 +214,16 @@ func (ndt *NoiseDateTransformer) dynamicTransform(v time.Time) (time.Time, error
 		return time.Time{}, fmt.Errorf("error creating limiter in dynamic mode: %w", err)
 	}
 
-	res, err := ndt.t.Transform(limiter, v)
+	res, err := t.t.Transform(limiter, v)
 	if err != nil {
 		return time.Time{}, fmt.Errorf("error generating timestamp value: %w", err)
 	}
 	return res, nil
 }
 
-func (ndt *NoiseDateTransformer) Transform(_ context.Context, r commonininterfaces.Recorder) error {
+func (t *NoiseDateTransformer) Transform(_ context.Context, r commonininterfaces.Recorder) error {
 	var res time.Time
-	isNull, err := r.ScanColumnValueByIdx(ndt.columnIdx, &res)
+	isNull, err := r.ScanColumnValueByIdx(t.columnIdx, &res)
 	if err != nil {
 		return fmt.Errorf("unable to scan attribute value: %w", err)
 	}
@@ -231,15 +231,19 @@ func (ndt *NoiseDateTransformer) Transform(_ context.Context, r commonininterfac
 		return nil
 	}
 
-	res, err = ndt.transform(res)
+	res, err = t.transform(res)
 	if err != nil {
 		return fmt.Errorf("unable to transform value: %w", err)
 	}
 
-	if err = r.SetColumnValueByIdx(ndt.columnIdx, res); err != nil {
+	if err = r.SetColumnValueByIdx(t.columnIdx, res); err != nil {
 		return fmt.Errorf("unable to set new value: %w", err)
 	}
 	return nil
+}
+
+func (t *NoiseDateTransformer) Describe() string {
+	return TransformerNameNoiseDate
 }
 
 func getNoiseTimestampMinAndMaxThresholds(

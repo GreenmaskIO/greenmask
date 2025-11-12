@@ -26,11 +26,11 @@ import (
 	"github.com/greenmaskio/greenmask/v1/internal/common/validationcollector"
 )
 
-const RegexpReplaceTransformerName = "RegexpReplace"
+const TransformerNameRegexpReplace = "RegexpReplace"
 
 var RegexpReplaceTransformerDefinition = transformerutils.NewTransformerDefinition(
 	transformerutils.NewTransformerProperties(
-		RegexpReplaceTransformerName,
+		TransformerNameRegexpReplace,
 		"Replace string using regular expression",
 	),
 
@@ -106,20 +106,20 @@ func NewRegexpReplaceTransformer(
 	}, nil
 }
 
-func (rrt *RegexpReplaceTransformer) GetAffectedColumns() map[int]string {
-	return rrt.affectedColumns
+func (t *RegexpReplaceTransformer) GetAffectedColumns() map[int]string {
+	return t.affectedColumns
 }
 
-func (rrt *RegexpReplaceTransformer) Init(context.Context) error {
+func (t *RegexpReplaceTransformer) Init(context.Context) error {
 	return nil
 }
 
-func (rrt *RegexpReplaceTransformer) Done(context.Context) error {
+func (t *RegexpReplaceTransformer) Done(context.Context) error {
 	return nil
 }
 
-func (rrt *RegexpReplaceTransformer) Transform(_ context.Context, r commonininterfaces.Recorder) error {
-	v, err := r.GetRawColumnValueByIdx(rrt.columnIdx)
+func (t *RegexpReplaceTransformer) Transform(_ context.Context, r commonininterfaces.Recorder) error {
+	v, err := r.GetRawColumnValueByIdx(t.columnIdx)
 	if err != nil {
 		return fmt.Errorf("scan value: %w", err)
 	}
@@ -127,9 +127,13 @@ func (rrt *RegexpReplaceTransformer) Transform(_ context.Context, r commonininte
 		return nil
 	}
 
-	v.Data = rrt.regexp.ReplaceAll(v.Data, rrt.replace)
-	if err := r.SetRawColumnValueByIdx(rrt.columnIdx, v); err != nil {
+	v.Data = t.regexp.ReplaceAll(v.Data, t.replace)
+	if err := r.SetRawColumnValueByIdx(t.columnIdx, v); err != nil {
 		return fmt.Errorf("set new value: %w", err)
 	}
 	return nil
+}
+
+func (t *RegexpReplaceTransformer) Describe() string {
+	return TransformerNameRegexpReplace
 }

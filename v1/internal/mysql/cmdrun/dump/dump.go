@@ -25,13 +25,13 @@ import (
 
 	"github.com/greenmaskio/greenmask/v1/internal/common/dump/processor"
 	"github.com/greenmaskio/greenmask/v1/internal/common/heartbeat"
+	"github.com/greenmaskio/greenmask/v1/internal/common/interfaces"
 	commonmodels "github.com/greenmaskio/greenmask/v1/internal/common/models"
 	"github.com/greenmaskio/greenmask/v1/internal/common/transformers/registry"
-	"github.com/greenmaskio/greenmask/v1/internal/common/utils"
 	"github.com/greenmaskio/greenmask/v1/internal/common/validationcollector"
 	"github.com/greenmaskio/greenmask/v1/internal/config"
 	"github.com/greenmaskio/greenmask/v1/internal/mysql/dump/introspect"
-	"github.com/greenmaskio/greenmask/v1/internal/mysql/dump/schema"
+	schemadump "github.com/greenmaskio/greenmask/v1/internal/mysql/dump/schema"
 	"github.com/greenmaskio/greenmask/v1/internal/mysql/dump/taskproducer"
 	"github.com/greenmaskio/greenmask/v1/internal/mysql/metadata"
 	mysqlmodels "github.com/greenmaskio/greenmask/v1/internal/mysql/models"
@@ -42,35 +42,89 @@ const (
 	engineName = "mysql"
 )
 
+type Option func(dump *Dump) error
+
+func WithFilter(
+	filter commonmodels.TaskProducerFilter,
+) Option {
+	return func(dump *Dump) error {
+		dump.filter = &filter
+		return nil
+	}
+}
+
+func WithSaveOriginal(
+	saveOriginal bool,
+) Option {
+	return func(dump *Dump) error {
+		dump.saveOriginal = saveOriginal
+		return nil
+	}
+}
+
+func WithRowsLimit(
+	limit int64,
+) Option {
+	return func(dump *Dump) error {
+		dump.rowsLimit = limit
+		return nil
+	}
+}
+
+func WithDataOnly() Option {
+	return func(dump *Dump) error {
+		dump.dataOnly = true
+		return nil
+	}
+}
+
+func WithCompression(
+	enabled bool,
+	pgzip bool,
+) Option {
+	return func(dump *Dump) error {
+		dump.compressionEnabled = enabled
+		dump.compressionPgzip = pgzip
+		return nil
+	}
+}
+
 // Dump it's responsible for initialization and perform the whole
 // dump procedure of mysql instance.
 type Dump struct {
-	dumpID     commonmodels.DumpID
-	st         storages.Storager
-	vc         *validationcollector.Collector
-	cfg        *config.Config
-	connConfig *mysqlmodels.ConnConfig
-	registry   *registry.TransformerRegistry
+	dumpID             commonmodels.DumpID
+	st                 interfaces.Storager
+	cfg                *config.Config
+	connConfig         *mysqlmodels.ConnConfig
+	registry           *registry.TransformerRegistry
+	filter             *commonmodels.TaskProducerFilter
+	saveOriginal       bool
+	rowsLimit          int64
+	dataOnly           bool
+	compressionEnabled bool
+	compressionPgzip   bool
 }
 
 func NewDump(
 	cfg *config.Config,
 	registry *registry.TransformerRegistry,
-	st storages.Storager,
+	st interfaces.Storager,
+	opts ...Option,
 ) (*Dump, error) {
 	dumpID := commonmodels.NewDumpID()
 	st = storages.SubStorageWithDumpID(st, dumpID)
-	vc := validationcollector.NewCollectorWithMeta(
-		commonmodels.MetaKeyDumpID, dumpID,
-		commonmodels.MetaKeyEngine, "mysql",
-	)
-	return &Dump{
+	res := &Dump{
 		cfg:      cfg,
 		st:       st,
 		dumpID:   dumpID,
-		vc:       vc,
 		registry: registry,
-	}, nil
+	}
+	for i, opt := range opts {
+		if err := opt(res); err != nil {
+			return nil, fmt.Errorf("apply dump option %d: %w", i, err)
+		}
+	}
+	return res, nil
 }
 
 func (d *Dump) connect() (*sql.DB, error) {
@@ -96,6 +150,10 @@ func (d *Dump) connect() (*sql.DB, error) {
 
 func (d *Dump) Run(ctx context.Context) (err error) {
 	startedAt := time.Now()
+	ctx = validationcollector.WithMeta(ctx,
+		commonmodels.MetaKeyDumpID, d.dumpID,
+		commonmodels.MetaKeyEngine, "mysql",
+	)
 	conn, err := d.connect()
 	if err != nil {
 		return fmt.Errorf("connect to mysql: %w", err)
@@ -120,12 +178,30 @@ func (d *Dump) Run(ctx context.Context) (err error) {
 		return fmt.Errorf("introspect mysql server: %w", err)
 	}
 
+	var taskProducerOpts []taskproducer.Option
+	if d.filter != nil {
+		taskProducerOpts = append(taskProducerOpts, taskproducer.WithFilter(*d.filter))
+	}
+	if d.saveOriginal {
+		taskProducerOpts = append(taskProducerOpts, taskproducer.WithSaveOriginalData())
+	}
+	if d.rowsLimit > 0 {
+		taskProducerOpts = append(taskProducerOpts, taskproducer.WithRowLimit(d.rowsLimit))
+	}
+	if d.compressionEnabled {
+		taskProducerOpts = append(taskProducerOpts, taskproducer.WithCompressionEnabled())
+		if d.compressionPgzip {
+			taskProducerOpts = append(taskProducerOpts, taskproducer.WithCompressionPgzip())
+		}
+	}
+
 	tp, err := taskproducer.New(
 		i,
 		d.cfg.Dump.Transformation.ToTransformationConfig(),
 		d.registry,
 		*d.connConfig,
 		d.st,
+		taskProducerOpts...,
 	)
 	if err != nil {
 		return fmt.Errorf("create task producer: %w", err)
@@ -150,13 +226,23 @@ func (d *Dump) Run(ctx context.Context) (err error) {
 		}
 	}()
 
-	sd := schema.New(d.st, &d.cfg.Dump.MysqlConfig.Options)
-	dumper := processor.NewDefaultDumpProcessor(tp, sd).
-		SetJobs(1)
-	defer func() {
-		_ = utils.PrintValidationWarnings(ctx, d.vc, nil, false)
-	}()
-	dumpStats, err := dumper.Run(ctx, d.vc)
+	sd := schemadump.New(d.st, &d.cfg.Dump.MysqlConfig.Options)
+	var processorOpts []processor.Option
+	if d.dataOnly {
+		processorOpts = append(
+			processorOpts,
+			processor.WithDataOnly(),
+		)
+	}
+	processorOpts = append(
+		processorOpts,
+		processor.WithJobs(1),
+	)
+	dumper, err := processor.NewDefaultDumpProcessor(tp, sd, processorOpts...)
+	if err != nil {
+		return fmt.Errorf("create dump processor: %w", err)
+	}
+	dumpStats, err := dumper.Run(ctx)
 	if err != nil {
 		return fmt.Errorf("run dumper: %w", err)
 	}
@@ -170,4 +256,8 @@ func (d *Dump) Run(ctx context.Context) (err error) {
 	}
 
 	return nil
+}
+
+func (d *Dump) GetDumpID() commonmodels.DumpID {
+	return d.dumpID
 }

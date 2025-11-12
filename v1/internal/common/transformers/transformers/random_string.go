@@ -25,11 +25,11 @@ import (
 	transformerutils "github.com/greenmaskio/greenmask/v1/internal/common/transformers/utils"
 )
 
-const RandomStringTransformerName = "RandomString"
+const TransformerNameRandomString = "RandomString"
 
 var RandomStringTransformerDefinition = transformerutils.NewTransformerDefinition(
 	transformerutils.NewTransformerProperties(
-		RandomStringTransformerName,
+		TransformerNameRandomString,
 		"Generate a string withing the specified length with provided char set",
 	).AddMeta(transformerutils.AllowApplyForReferenced, true).
 		AddMeta(transformerutils.RequireHashEngineParameter, true),
@@ -139,35 +139,39 @@ func NewRandomStringTransformer(
 	}, nil
 }
 
-func (rst *RandomStringTransformer) GetAffectedColumns() map[int]string {
-	return rst.affectedColumns
+func (t *RandomStringTransformer) GetAffectedColumns() map[int]string {
+	return t.affectedColumns
 }
 
-func (rst *RandomStringTransformer) Init(context.Context) error {
+func (t *RandomStringTransformer) Init(context.Context) error {
 	return nil
 }
 
-func (rst *RandomStringTransformer) Done(context.Context) error {
+func (t *RandomStringTransformer) Done(context.Context) error {
 	return nil
 }
 
-func (rst *RandomStringTransformer) Transform(_ context.Context, r commonininterfaces.Recorder) error {
-	val, err := r.GetRawColumnValueByIdx(rst.columnIdx)
+func (t *RandomStringTransformer) Transform(_ context.Context, r commonininterfaces.Recorder) error {
+	val, err := r.GetRawColumnValueByIdx(t.columnIdx)
 	if err != nil {
 		return fmt.Errorf("scan value: %w", err)
 	}
-	if val.IsNull && rst.keepNull {
+	if val.IsNull && t.keepNull {
 		return nil
 	}
 
 	res := commonmodels.NewColumnRawValue(
-		[]byte(string(rst.t.Transform(val.Data))),
+		[]byte(string(t.t.Transform(val.Data))),
 		false,
 	)
 
-	if err = r.SetRawColumnValueByIdx(rst.columnIdx, res); err != nil {
+	if err = r.SetRawColumnValueByIdx(t.columnIdx, res); err != nil {
 		return fmt.Errorf("set new value: %w", err)
 	}
 
 	return nil
+}
+
+func (t *RandomStringTransformer) Describe() string {
+	return TransformerNameRandomString
 }

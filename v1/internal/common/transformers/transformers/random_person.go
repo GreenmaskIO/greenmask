@@ -41,7 +41,7 @@ const (
 
 const randomPersonAnyGender = "Any"
 
-const RandomPersonTransformerName = "RandomPerson"
+const TransformerNameRandomPerson = "RandomPerson"
 
 type randomPersonColumns struct {
 	Name      string `json:"name"`
@@ -65,7 +65,7 @@ var errUnableToMapGender = errors.New("unable to map gender")
 
 var RandomPersonTransformerDefinition = transformerutils.NewTransformerDefinition(
 	transformerutils.NewTransformerProperties(
-		RandomPersonTransformerName,
+		TransformerNameRandomPerson,
 		"Generate random person data (Title, FirstName, LastName, Gender)",
 	),
 
@@ -211,7 +211,7 @@ func NewRandomNameTransformer(
 	// generate reverse mapping for faster access
 	for k, v := range genderMapping {
 		if err := randomNameTransformerValidateGender(
-			validationcollector.WithMeta(ctx, map[string]any{"MappingKey": k}), k, t.GetDb().Genders,
+			validationcollector.WithMeta(ctx, "MappingKey", k), k, t.GetDb().Genders,
 		); err != nil {
 			return nil, fmt.Errorf("validate \"gender_mapping\" parameter: %w", err)
 		}
@@ -310,6 +310,10 @@ func (nft *RandomNameTransformer) Transform(ctx context.Context, r commonininter
 		}
 	}
 	return nil
+}
+
+func (t *RandomNameTransformer) Describe() string {
+	return TransformerNameRandomPerson
 }
 
 func randomNameTransformerValidateGender(

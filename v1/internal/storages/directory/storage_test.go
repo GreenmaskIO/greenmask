@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package storages
+package directory
 
 import (
 	"bytes"
@@ -27,7 +27,7 @@ import (
 type DirectorySuite struct {
 	suite.Suite
 	tmpDir string
-	st     *DirectoryStorage
+	st     *Storage
 }
 
 func (suite *DirectorySuite) SetupSuite() {
@@ -40,7 +40,7 @@ func (suite *DirectorySuite) SetupSuite() {
 	suite.tmpDir, err = os.MkdirTemp(tempDir, "directory_storage_unit_test_")
 	suite.Require().NoError(err)
 
-	suite.st, err = NewDirectoryStorage(DirectoryConfig{Path: suite.tmpDir})
+	suite.st, err = New(DirectoryConfig{Path: suite.tmpDir})
 	suite.Require().NoError(err)
 }
 

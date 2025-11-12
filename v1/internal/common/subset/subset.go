@@ -222,7 +222,23 @@ func (s *Subset) GetTableQueries() []string {
 }
 
 func (s *Subset) GetTopologicalOrder() ([]int, error) {
-	return s.condensationGraph.GetTopologicalOrder()
+	condGraphTopOrder, err := s.condensationGraph.GetTopologicalOrder()
+	if err != nil {
+		return nil, err
+	}
+	tableTopOrder := make([]int, 0, len(s.tables))
+	for _, sccIdx := range condGraphTopOrder {
+		vxs := s.condensationGraph.SCC[sccIdx].Vertexes()
+		if len(vxs) == 0 {
+			return nil, fmt.Errorf("SCC %d has no vertexes", sccIdx)
+		}
+		if len(vxs) > 1 {
+			panic(fmt.Errorf("graph is not DAG: SCC %d has more than 1 vertex", sccIdx))
+		}
+		tableID := vxs[0].ID
+		tableTopOrder = append(tableTopOrder, tableID)
+	}
+	return tableTopOrder, nil
 }
 
 func (s *Subset) GetTableGraph() tablegraph.Graph {

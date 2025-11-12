@@ -23,8 +23,6 @@ import (
 
 	commonininterfaces "github.com/greenmaskio/greenmask/v1/internal/common/interfaces"
 	commonmodels "github.com/greenmaskio/greenmask/v1/internal/common/models"
-	"github.com/greenmaskio/greenmask/v1/internal/common/validationcollector"
-	"github.com/greenmaskio/greenmask/v1/internal/storages"
 )
 
 const (
@@ -32,7 +30,7 @@ const (
 )
 
 type taskProducer interface {
-	Produce(ctx context.Context, vc *validationcollector.Collector) (
+	Produce(ctx context.Context) (
 		[]commonininterfaces.Dumper,
 		commonmodels.RestorationContext,
 		error,
@@ -45,44 +43,63 @@ type schemaDumper interface {
 
 type DefaultDumpProcessor struct {
 	tp           taskProducer
-	st           storages.Storager
+	st           commonininterfaces.Storager
 	jobs         int
 	taskList     []commonininterfaces.Dumper
 	schemaDumper schemaDumper
 	taskStats    map[commonmodels.TaskID]commonmodels.TaskStat
+	dataOnly     bool
+}
+
+type Option func(*DefaultDumpProcessor) error
+
+func WithDataOnly() Option {
+	return func(ddp *DefaultDumpProcessor) error {
+		ddp.dataOnly = true
+		return nil
+	}
+}
+
+func WithJobs(jobs int) Option {
+	return func(ddp *DefaultDumpProcessor) error {
+		ddp.jobs = jobs
+		return nil
+	}
 }
 
 func NewDefaultDumpProcessor(
 	tp taskProducer,
 	schemaDumper schemaDumper,
-) *DefaultDumpProcessor {
-	return &DefaultDumpProcessor{
+	opts ...Option,
+) (*DefaultDumpProcessor, error) {
+	res := &DefaultDumpProcessor{
 		tp:           tp,
 		jobs:         defaultJobCount,
 		schemaDumper: schemaDumper,
 		taskStats:    make(map[commonmodels.TaskID]commonmodels.TaskStat),
 	}
-}
-
-// SetJobs - sets the number of jobs to run
-func (dr *DefaultDumpProcessor) SetJobs(v int) *DefaultDumpProcessor {
-	dr.jobs = v
-	return dr
+	for _, opt := range opts {
+		if err := opt(res); err != nil {
+			return nil, fmt.Errorf("apply option: %w", err)
+		}
+	}
+	return res, nil
 }
 
 // Run - runs the dump command
 func (dr *DefaultDumpProcessor) Run(
 	ctx context.Context,
-	vc *validationcollector.Collector,
 ) (commonmodels.DumpStat, error) {
 	var err error
 	var restorationContext commonmodels.RestorationContext
-	dr.taskList, restorationContext, err = dr.tp.Produce(ctx, vc)
+	dr.taskList, restorationContext, err = dr.tp.Produce(ctx)
 	if err != nil {
 		return commonmodels.DumpStat{}, fmt.Errorf("produce tasks: %w", err)
 	}
-	if err := dr.schemaDumper.DumpSchema(ctx); err != nil {
-		return commonmodels.DumpStat{}, fmt.Errorf("schema dump: %w", err)
+	if !dr.dataOnly {
+		if err := dr.schemaDumper.DumpSchema(ctx); err != nil {
+			return commonmodels.DumpStat{}, fmt.Errorf("schema dump: %w", err)
+		}
 	}
 
 	if err := dr.dataDump(ctx); err != nil {
@@ -216,7 +233,7 @@ func (dr *DefaultDumpProcessor) dumpWorker(
 		log.Ctx(ctx).Debug().
 			Int("WorkerId", id).
 			Any("ObjectName", task.DebugInfo()).
-			Msgf("dumping started")
+			Msgf("dumping is started")
 
 		stat, err := task.Dump(ctx)
 		if err != nil {

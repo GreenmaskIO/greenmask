@@ -42,11 +42,11 @@ const (
 	MDefault    string = "default"
 )
 
-const MaskingTransformerName = "Masking"
+const TransformerNameMasking = "Masking"
 
 var MaskingTransformerDefinition = transformerutils.NewTransformerDefinition(
 	transformerutils.NewTransformerProperties(
-		MaskingTransformerName,
+		TransformerNameMasking,
 		"Mask a value using one of masking type",
 	),
 
@@ -136,20 +136,20 @@ func NewMaskingTransformer(
 	}, nil
 }
 
-func (mt *MaskingTransformer) GetAffectedColumns() map[int]string {
-	return mt.affectedColumns
+func (t *MaskingTransformer) GetAffectedColumns() map[int]string {
+	return t.affectedColumns
 }
 
-func (mt *MaskingTransformer) Init(ctx context.Context) error {
+func (t *MaskingTransformer) Init(context.Context) error {
 	return nil
 }
 
-func (mt *MaskingTransformer) Done(ctx context.Context) error {
+func (t *MaskingTransformer) Done(context.Context) error {
 	return nil
 }
 
-func (mt *MaskingTransformer) Transform(_ context.Context, r commonininterfaces.Recorder) error {
-	val, err := r.GetRawColumnValueByIdx(mt.columnIdx)
+func (t *MaskingTransformer) Transform(_ context.Context, r commonininterfaces.Recorder) error {
+	val, err := r.GetRawColumnValueByIdx(t.columnIdx)
 	if err != nil {
 		return fmt.Errorf("unable to scan attribute value: %w", err)
 	}
@@ -157,8 +157,8 @@ func (mt *MaskingTransformer) Transform(_ context.Context, r commonininterfaces.
 		return nil
 	}
 
-	maskedValue := mt.maskingFunction(string(val.Data))
-	err = r.SetRawColumnValueByIdx(mt.columnIdx, commonmodels.NewColumnRawValue([]byte(maskedValue), false))
+	maskedValue := t.maskingFunction(string(val.Data))
+	err = r.SetRawColumnValueByIdx(t.columnIdx, commonmodels.NewColumnRawValue([]byte(maskedValue), false))
 	if err != nil {
 		return fmt.Errorf("unable to set new value: %w", err)
 	}
@@ -171,7 +171,7 @@ func defaultMasker(v string) string {
 
 func maskerTypeValidator(
 	ctx context.Context,
-	p *commonparameters.ParameterDefinition,
+	_ *commonparameters.ParameterDefinition,
 	v models.ParamsValue,
 ) error {
 	switch string(v) {
@@ -186,4 +186,8 @@ func maskerTypeValidator(
 				MDefault, MPassword, MName, MAddress, MEmail, MMobile, MTelephone, MID, MCreditCard, MURL,
 			}).SetMsg(`unknown masking type`))
 	return fmt.Errorf("unknown masking type: %w", commonmodels.ErrFatalValidationError)
+}
+
+func (t *MaskingTransformer) Describe() string {
+	return TransformerNameMasking
 }

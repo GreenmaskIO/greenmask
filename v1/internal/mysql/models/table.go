@@ -46,6 +46,7 @@ func (t *Table) ToCommonTable() models.Table {
 			col.TypeName,
 			col.TypeOID,
 			col.NotNull,
+			col.TypeClass,
 		)
 	}
 	return models.Table{

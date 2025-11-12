@@ -28,11 +28,11 @@ import (
 	transformerutils "github.com/greenmaskio/greenmask/v1/internal/common/transformers/utils"
 )
 
-const TemplateTransformerName = "Template"
+const TransformerNameTemplate = "Template"
 
 var TemplateTransformerDefinition = transformerutils.NewTransformerDefinition(
 	transformerutils.NewTransformerProperties(
-		TemplateTransformerName,
+		TransformerNameTemplate,
 		"Modify the value using gotemplate",
 	),
 
@@ -108,43 +108,47 @@ func NewTemplateTransformer(
 	}, nil
 }
 
-func (sut *TemplateTransformer) GetAffectedColumns() map[int]string {
-	return sut.affectedColumns
+func (t *TemplateTransformer) GetAffectedColumns() map[int]string {
+	return t.affectedColumns
 }
 
-func (sut *TemplateTransformer) Init(context.Context) error {
+func (t *TemplateTransformer) Init(context.Context) error {
 	return nil
 }
 
-func (sut *TemplateTransformer) Done(context.Context) error {
+func (t *TemplateTransformer) Done(context.Context) error {
 	return nil
 }
 
-func (sut *TemplateTransformer) Transform(_ context.Context, r commonininterfaces.Recorder) error {
-	sut.tctx.SetRecord(r)
+func (t *TemplateTransformer) Transform(_ context.Context, r commonininterfaces.Recorder) error {
+	t.tctx.SetRecord(r)
 
-	if err := sut.tmpl.Execute(sut.buf, sut.tctx); err != nil {
+	if err := t.tmpl.Execute(t.buf, t.tctx); err != nil {
 		return fmt.Errorf("execute template: %w", err)
 	}
 
-	data := sut.buf.Bytes()
+	data := t.buf.Bytes()
 	var res *commonmodels.ColumnRawValue
 	if len(data) == 2 && data[0] == '\\' && data[1] == 'N' {
 		res = commonmodels.NewColumnRawValue(nil, true)
 	} else {
-		if sut.validate {
-			if _, err := r.TableDriver().DecodeValueByColumnIdx(sut.columnIdx, data); err != nil {
+		if t.validate {
+			if _, err := r.TableDriver().DecodeValueByColumnIdx(t.columnIdx, data); err != nil {
 				return fmt.Errorf("validate template output via driver: %w", err)
 			}
 		}
 		res = commonmodels.NewColumnRawValue(data, false)
 	}
-	if err := r.SetRawColumnValueByIdx(sut.columnIdx, res); err != nil {
+	if err := r.SetRawColumnValueByIdx(t.columnIdx, res); err != nil {
 		return fmt.Errorf("set raw value: %w", err)
 	}
 
-	sut.buf.Reset()
+	t.buf.Reset()
 	return nil
+}
+
+func (t *TemplateTransformer) Describe() string {
+	return TransformerNameTemplate
 }
 
 type ColumnContext struct {

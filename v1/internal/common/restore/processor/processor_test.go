@@ -22,7 +22,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	commonininterfaces "github.com/greenmaskio/greenmask/v1/internal/common/interfaces"
-	"github.com/greenmaskio/greenmask/v1/internal/common/validationcollector"
 )
 
 type schemaRestorerMock struct {
@@ -64,62 +63,77 @@ func (d *restoreTaskMock) Close(ctx context.Context) error {
 
 type taskProducerMock struct {
 	mock.Mock
+	tasks   []commonininterfaces.Restorer
+	current int
+}
+
+func newTaskProducerMock(tasks []commonininterfaces.Restorer) *taskProducerMock {
+	return &taskProducerMock{
+		tasks:   tasks,
+		current: -1,
+	}
 }
 
 func (t *taskProducerMock) Next(ctx context.Context) bool {
-	//TODO implement me
-	panic("implement me")
+	t.current++
+	if t.current >= len(t.tasks) || len(t.tasks) == 0 {
+		return false
+	}
+	t.Called(ctx)
+	return true
 }
 
 func (t *taskProducerMock) Err() error {
-	//TODO implement me
-	panic("implement me")
+	args := t.Called()
+	return args.Error(0)
 }
 
 func (t *taskProducerMock) Task() (commonininterfaces.Restorer, error) {
-	//TODO implement me
-	panic("implement me")
-}
-
-func (t *taskProducerMock) Produce(
-	ctx context.Context,
-	vc *validationcollector.Collector,
-) ([]commonininterfaces.Restorer, error) {
-	args := t.Called(ctx, vc)
-	if args.Error(1) != nil {
-		return nil, args.Error(1)
-	}
-	return args.Get(0).([]commonininterfaces.Restorer), args.Error(1)
+	t.Called()
+	return t.tasks[t.current], nil
 }
 
 func TestProcessor_Run(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
+		ctx := context.Background()
 
 		sr := &schemaRestorerMock{}
-		sr.On("RestoreSchema").Return(nil)
+		sr.On("RestoreSchema", mock.Anything).
+			Return(nil)
 
 		// Create 2 tasks.
 		task1 := &restoreTaskMock{}
+		task1.On("Init", mock.Anything).
+			Return(nil)
 		task1.On("DebugInfo").
 			Return("task1")
 		task1.On("Restore", mock.Anything).
 			Return(nil)
+		task1.On("Close", mock.Anything).
+			Return(nil)
+
 		task2 := &restoreTaskMock{}
+		task2.On("Init", mock.Anything).
+			Return(nil)
 		task2.On("Restore", mock.Anything).
 			Return(nil)
 		task2.On("DebugInfo").
 			Return("task2")
-
-		tp := &taskProducerMock{}
-		// Produce the task list by the producer.
-		tp.On("Produce", mock.Anything, mock.Anything).
-			Return([]commonininterfaces.Restorer{task1, task2}, nil)
-
-		sr.On("RestoreSchema", mock.Anything).
+		task2.On("Close", mock.Anything).
 			Return(nil)
 
-		dumpRuntime := NewDefaultRestoreProcessor(tp, sr)
-		ctx := context.Background()
+		tp := newTaskProducerMock([]commonininterfaces.Restorer{task1, task2})
+		//Produce the task list by the producer.
+		tp.On("Next", mock.Anything)
+		tp.On("Err").Return(nil)
+		tp.On("Task")
+
+		cfg := Config{
+			Jobs:           2,
+			RestoreInOrder: true,
+		}
+
+		dumpRuntime := NewDefaultRestoreProcessor(ctx, tp, sr, cfg)
 		err := dumpRuntime.Run(ctx)
 		require.NoError(t, err)
 

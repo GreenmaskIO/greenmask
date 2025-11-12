@@ -12,17 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package storages
+package s3
 
 import (
 	"context"
 	"fmt"
 	"path"
 
-	commonmodels "github.com/greenmaskio/greenmask/v1/internal/common/models"
+	"github.com/greenmaskio/greenmask/v1/internal/common/interfaces"
 )
 
-func walk(ctx context.Context, st Storager, parent string) ([]string, error) {
+func walk(ctx context.Context, st interfaces.Storager, parent string) ([]string, error) {
 	var files []string
 	var res []string
 	files, dirs, err := st.ListDir(ctx)
@@ -44,8 +44,4 @@ func walk(ctx context.Context, st Storager, parent string) ([]string, error) {
 		}
 	}
 	return res, nil
-}
-
-func SubStorageWithDumpID(st Storager, dumpID commonmodels.DumpID) Storager {
-	return st.SubStorage(string(dumpID), true)
 }

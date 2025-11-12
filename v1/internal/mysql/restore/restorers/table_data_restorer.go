@@ -28,7 +28,6 @@ import (
 	commonmodels "github.com/greenmaskio/greenmask/v1/internal/common/models"
 	"github.com/greenmaskio/greenmask/v1/internal/common/utils"
 	"github.com/greenmaskio/greenmask/v1/internal/mysql/config"
-	"github.com/greenmaskio/greenmask/v1/internal/storages"
 )
 
 const dumperTypeTableData = "table_restorer"
@@ -41,8 +40,10 @@ type TableDataRestorer struct {
 	table        *commonmodels.Table
 	meta         commonmodels.RestorationItem
 	connConfig   config.ConnectionOpts
-	st           storages.Storager
+	st           commonininterfaces.Storager
 	taskResolver commonininterfaces.TaskMapper
+	compress     bool
+	pgzip        bool
 }
 
 func (r *TableDataRestorer) Meta() map[string]any {
@@ -57,11 +58,25 @@ func (r *TableDataRestorer) DebugInfo() string {
 	return utils.GetUniqueTaskID(dumperTypeTableData, r.table.Schema, r.table.Name)
 }
 
+type Option func(v *TableDataRestorer) error
+
+func WithCompression(
+	enabled bool,
+	pgzip bool,
+) Option {
+	return func(v *TableDataRestorer) error {
+		v.compress = enabled
+		v.pgzip = pgzip
+		return nil
+	}
+}
+
 func NewTableDataRestorer(
 	meta commonmodels.RestorationItem,
 	connConfig config.ConnectionOpts,
-	st storages.Storager,
+	st commonininterfaces.Storager,
 	taskResolver commonininterfaces.TaskMapper,
+	opts ...Option,
 ) (*TableDataRestorer, error) {
 	var table commonmodels.Table
 	if err := json.Unmarshal(meta.ObjectDefinition, &table); err != nil {
@@ -70,13 +85,19 @@ func NewTableDataRestorer(
 	if err := table.Validate(); err != nil {
 		return nil, fmt.Errorf("validate table: %w", err)
 	}
-	return &TableDataRestorer{
+	res := &TableDataRestorer{
 		table:        &table,
 		meta:         meta,
 		connConfig:   connConfig,
 		st:           st,
 		taskResolver: taskResolver,
-	}, nil
+	}
+	for _, opt := range opts {
+		if err := opt(res); err != nil {
+			return nil, fmt.Errorf("options failed: %w", err)
+		}
+	}
+	return res, nil
 }
 
 func getFileHandlerName(t commonmodels.Table) string {
@@ -155,13 +176,20 @@ func (r *TableDataRestorer) Init(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("open table data file %s: %w", r.meta.Filename, err)
 	}
-	gzReader, err := utils.NewGzipReader(file, false)
-	if err != nil {
-		return fmt.Errorf("create gzip reader for file %s: %w", r.meta.Filename, err)
+	var readCloser io.ReadCloser
+	readCloser = file
+	if r.compress {
+		readCloser, err = utils.NewGzipReader(file, false)
+		if err != nil {
+			return fmt.Errorf("create gzip reader for file %s: %w", r.meta.Filename, err)
+		}
 	}
+
 	mysql.RegisterReaderHandler(getFileHandlerName(*r.table), func() io.Reader {
 		// You do not need to close the reader, it will be closed automatically	by the driver.
-		return gzReader
+		// It's hard to believe but the driver tries to cast io.Reader to io.ReadCloser
+		// and close it
+		return readCloser
 	})
 	return nil
 }
@@ -215,6 +243,7 @@ func (r *TableDataRestorer) Restore(ctx context.Context) error {
 }
 
 func (r *TableDataRestorer) Close(_ context.Context) error {
+	r.taskResolver.SetTaskCompleted(r.meta.TaskID)
 	mysql.DeregisterReaderHandler(getFileHandlerName(*r.table))
 	return nil
 }

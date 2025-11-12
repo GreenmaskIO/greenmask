@@ -18,6 +18,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/google/go-cmp/cmp"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -29,8 +30,8 @@ import (
 )
 
 const (
-	mysqlRootUser = "root"
-	mysqlRootPass = "root"
+	mysqlRootUser = testutils.MysqlRootUser
+	mysqlRootPass = testutils.MysqlRootPassword
 )
 
 type optMock struct {
@@ -73,11 +74,11 @@ type mysqlSuite struct {
 	testutils.MySQLContainerSuite
 }
 
-func (s *mysqlSuite) SetupSuite() {
-	s.SetMigrationUser(mysqlRootUser, mysqlRootPass).
-		SetRootUser(mysqlRootUser, mysqlRootPass).
-		SetupSuite()
-}
+//func (s *mysqlSuite) SetupSuite() {
+//	s.SetMigrationUser(mysqlRootUser, mysqlRootPass).
+//		SetRootUser(mysqlRootUser, mysqlRootPass).
+//		SetupSuite()
+//}
 
 func (s *mysqlSuite) TearDownSuite() {
 	s.MySQLContainerSuite.TearDownSuite()
@@ -573,7 +574,7 @@ func (s *mysqlSuite) TestIntrospector_getForeignKeyConstraints() {
 		expected := []models.Reference{
 			{
 				ReferencedSchema: "testdb",
-				ReferencedName:   "simple_ref_table_not_nullable",
+				ReferencedName:   "simple_main_table",
 				ConstraintSchema: "testdb",
 				ConstraintName:   "simple_ref_table_not_nullable_ibfk_1",
 				IsNullable:       false,
@@ -622,7 +623,7 @@ func (s *mysqlSuite) TestIntrospector_getForeignKeyConstraints() {
 		expected := []models.Reference{
 			{
 				ReferencedSchema: "testdb",
-				ReferencedName:   "simple_ref_table_nullable",
+				ReferencedName:   "simple_main_table",
 				ConstraintSchema: "testdb",
 				ConstraintName:   "simple_ref_table_nullable_ibfk_1",
 				IsNullable:       true,
@@ -677,13 +678,16 @@ func (s *mysqlSuite) TestIntrospector_getForeignKeyConstraints() {
 		expected := []models.Reference{
 			{
 				ReferencedSchema: "testdb",
-				ReferencedName:   "complex_pk_ref_table_not_nullable",
+				ReferencedName:   "complex_pk_main_table",
 				ConstraintSchema: "testdb",
 				ConstraintName:   "complex_pk_ref_table_not_nullable_ibfk_1",
 				IsNullable:       false,
 			},
 		}
-		s.Require().Equal(expected, actual)
+		diff := cmp.Diff(expected, actual)
+		if diff != "" {
+			s.T().Errorf("mismatch (-expected +actual):\n%s", diff)
+		}
 	})
 
 	s.Run("two column fk nullable", func() {
@@ -732,7 +736,7 @@ func (s *mysqlSuite) TestIntrospector_getForeignKeyConstraints() {
 		expected := []models.Reference{
 			{
 				ReferencedSchema: "testdb",
-				ReferencedName:   "complex_pk_ref_table_nullable",
+				ReferencedName:   "complex_pk_main_table",
 				ConstraintSchema: "testdb",
 				ConstraintName:   "complex_pk_ref_table_nullable_ibfk_1",
 				IsNullable:       true,
