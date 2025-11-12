@@ -61,6 +61,7 @@ on [ggwhite/go-masker](https://github.com/ggwhite/go-masker).
     | `id`          | Masks last 4 digits of an ID                                                                                     | `A123456789`                                       | `A12345****`                            |
     | `credit_card` | Masks 6 digits starting from the 7th digit                                                                       | `1234567890123456`                                 | `123456******3456`                      |
     | `url`         | Masks the password part of the URL (if applicable)                                                               | `http://admin:mysecretpassword@localhost:1234/uri` | `http://admin:xxxxx@localhost:1234/uri` |
+    | `postcode`    | Keeps first 2 characters, masks the rest                                                                         | `SW1A 1AA`                                         | `SW******`                              |
 
 === "Signature"
 

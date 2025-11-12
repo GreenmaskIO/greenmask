@@ -5,7 +5,7 @@ Mask a value using one of the masking rules depending on your domain. `NULL` val
 | Name   | Description                                                                                                     | Default   | Required | Supported DB types                  |
 |--------|-----------------------------------------------------------------------------------------------------------------|-----------|----------|-------------------------------------|
 | column | The name of the column to be affected                                                                           |           | Yes      | text, varchar, char, bpchar, citext |
-| type   | Data type of attribute (`default`, `password`, `name`, `addr`, `email`, `mobile`, `tel`, `id`, `credit`, `url`) | `default` | No       | -                                   |
+| type   | Data type of attribute (`default`, `password`, `name`, `addr`, `email`, `mobile`, `tel`, `id`, `credit`, `url`, `postcode`) | `default` | No       | -                                   |
 
 ## Description
 
@@ -25,6 +25,7 @@ supports the following masking rules:
 |     id      | Masks last 4 digits of ID number, e. g. input: `A123456789` output: `A12345****`                                                                                     |
 | credit_cart | Masks 6 digits starting from the 7th digit, e. g. input `1234567890123456` output `123456******3456`                                                                 |
 |     url     | Masks the password part of the URL, if applicable, e. g. `http://admin:mysecretpassword@localhost:1234/uri` output: `http://admin:xxxxx@localhost:1234/uri`          |
+|  postcode   | Keeps first 2 characters, masks the rest, e. g. input: `SW1A 1AA` output: `SW******`                                                                                 |
 
 ## Example: Masking employee national ID number
 
