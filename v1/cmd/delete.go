@@ -101,6 +101,12 @@ func runDelete(_ *cobra.Command, args []string) {
 		dumpId = args[0]
 	}
 
+	if dumpId == "" && retainRecent < 0 && !pruneFailed && beforeDate == "" && retainFor == "" {
+		log.Fatal().Msg("at least one deletion criteria must " +
+			"be specified: dumpId, --retain-recent, --prune-failed, " +
+			"--before-date, --retain-for")
+	}
+
 	opts := cmdrun.DeleteOptions{
 		DumpID:       dumpId,
 		RetainRecent: retainRecent,
