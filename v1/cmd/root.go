@@ -64,4 +64,5 @@ func init() {
 	rootCmd.AddCommand(listDumpsCmd)
 	rootCmd.AddCommand(validateCmd)
 	rootCmd.AddCommand(deleteCmd)
+	rootCmd.AddCommand(listTransformersCmd)
 }
