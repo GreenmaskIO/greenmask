@@ -31,6 +31,7 @@ var (
 	ErrValueValidationFailed                       = errors.New("value validation failed")
 	ErrUnknownDBMSType                             = errors.New("unknown DBMS type")
 	ErrUnknownDBMSTypeClass                        = errors.New("unknown DBMS type class")
+	ErrFatalError                                  = errors.New("fatal error")
 )
 
 type DumpError struct {
