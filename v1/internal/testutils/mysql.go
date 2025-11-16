@@ -53,6 +53,7 @@ type MySQLContainerSuite struct {
 	MigrationDown        []string
 	migrateAutomatically bool
 	scriptPaths          []string
+	image                string
 }
 
 func (s *MySQLContainerSuite) SetupSuite() {
@@ -78,10 +79,13 @@ func (s *MySQLContainerSuite) SetupSuite() {
 	if s.database == "" {
 		s.database = testContainerDatabase
 	}
+	if s.image == "" {
+		s.image = mysqlTestContainerImage
+	}
 	var err error
 	s.Container, err = tcmysql.Run(
 		ctx,
-		mysqlTestContainerImage,
+		s.image,
 		tcmysql.WithScripts(s.scriptPaths...),
 		testcontainers.CustomizeRequestOption(
 			func(req *testcontainers.GenericContainerRequest) error {
@@ -97,6 +101,11 @@ func (s *MySQLContainerSuite) SetupSuite() {
 	s.Require().NoErrorf(err, "failed to start MySQL Container")
 
 	s.MigrateUpGlobal(ctx)
+}
+
+func (s *MySQLContainerSuite) SetImage(image string) *MySQLContainerSuite {
+	s.image = image
+	return s
 }
 
 func (s *MySQLContainerSuite) TearDownSuite() {
@@ -214,7 +223,13 @@ func (s *MySQLContainerSuite) GetConnectionWithUser(ctx context.Context, usernam
 	// Create the connection string
 	connStr := s.GetConnectionURIWithUser(ctx, username, password)
 	print(connStr)
-	return sql.Open("mysql", connStr)
+	db, err := sql.Open("mysql", connStr)
+	if err != nil {
+		return nil, fmt.Errorf("open mysql connection: %w", err)
+	}
+	db.SetMaxOpenConns(10)
+	db.SetMaxIdleConns(5)
+	return db, nil
 }
 
 func (s *MySQLContainerSuite) MigrateUpGlobal(ctx context.Context) {

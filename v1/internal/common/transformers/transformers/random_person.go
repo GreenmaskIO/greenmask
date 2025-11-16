@@ -235,26 +235,26 @@ func NewRandomNameTransformer(
 	}, nil
 }
 
-func (nft *RandomNameTransformer) GetAffectedColumns() map[int]string {
-	return nft.affectedColumns
+func (t *RandomNameTransformer) GetAffectedColumns() map[int]string {
+	return t.affectedColumns
 }
 
-func (nft *RandomNameTransformer) Init(context.Context) error {
+func (t *RandomNameTransformer) Init(context.Context) error {
 	return nil
 }
 
-func (nft *RandomNameTransformer) Done(context.Context) error {
+func (t *RandomNameTransformer) Done(context.Context) error {
 	return nil
 }
 
-func (nft *RandomNameTransformer) Transform(ctx context.Context, r commonininterfaces.Recorder) error {
-	gender := nft.gender
-	if nft.dynamicMode {
-		if err := nft.genderParam.Scan(&gender); err != nil {
+func (t *RandomNameTransformer) Transform(ctx context.Context, r commonininterfaces.Recorder) error {
+	gender := t.gender
+	if t.dynamicMode {
+		if err := t.genderParam.Scan(&gender); err != nil {
 			return fmt.Errorf("scan \"gender\" parameter in dynamic mode: %w", err)
 		}
 		var ok bool
-		gender, ok = nft.genderMapping[gender]
+		gender, ok = t.genderMapping[gender]
 		if !ok {
 			log.Ctx(ctx).Debug().
 				Str("DynamiValue", gender).
@@ -264,47 +264,47 @@ func (nft *RandomNameTransformer) Transform(ctx context.Context, r commonininter
 	}
 
 	// if we are in hash engine mode, we need to clear buffer before filling it with new data
-	nft.originalData = nft.originalData[:0]
-	for _, c := range nft.columns {
+	t.originalData = t.originalData[:0]
+	for _, c := range t.columns {
 		// In this cycle we need to get the raw values for each column
 		// and check if it is null or not.
 		rawVal, err := r.GetRawColumnValueByIdx(c.columnIdx)
 		if err != nil {
 			return fmt.Errorf("get raw value by idx %d: %w", c.columnIdx, err)
 		}
-		nft.nullableMap[c.columnIdx] = rawVal.IsNull
+		t.nullableMap[c.columnIdx] = rawVal.IsNull
 		// we need to hash only columns that are marked for hashing
-		if nft.engine == engineModeDeterministic {
+		if t.engine == engineModeDeterministic {
 			// This part is required only for hash engine mode.
 			if !c.Hashing {
 				// If column is not marked for hashing, we skip it.
 				continue
 			}
 			if !rawVal.IsNull {
-				nft.originalData = append(nft.originalData, rawVal.Data...)
+				t.originalData = append(t.originalData, rawVal.Data...)
 			}
 		}
 	}
 
-	nameAttrs, err := nft.t.GetFullName(gender, nft.originalData)
+	nameAttrs, err := t.t.GetFullName(gender, t.originalData)
 	if err != nil {
 		return fmt.Errorf("generate name: %w", err)
 	}
 
-	for _, c := range nft.columns {
+	for _, c := range t.columns {
 		if c.HashOnly {
 			// Skip not affected columns, they can be used for hashing only.
 			continue
 		}
-		if nft.nullableMap[c.columnIdx] && c.KeepNull != nil && *c.KeepNull {
+		if t.nullableMap[c.columnIdx] && c.KeepNull != nil && *c.KeepNull {
 			continue
 		}
-		nft.buf.Reset()
-		err = c.tmpl.Execute(nft.buf, nameAttrs)
+		t.buf.Reset()
+		err = c.tmpl.Execute(t.buf, nameAttrs)
 		if err != nil {
 			return fmt.Errorf("execute template for column %s: %w", c.Name, err)
 		}
-		newRawVal := commonmodels.NewColumnRawValue(slices.Clone(nft.buf.Bytes()), false)
+		newRawVal := commonmodels.NewColumnRawValue(slices.Clone(t.buf.Bytes()), false)
 		if err = r.SetRawColumnValueByIdx(c.columnIdx, newRawVal); err != nil {
 			return fmt.Errorf("set new value for column \"%s\": %w", c.Name, err)
 		}

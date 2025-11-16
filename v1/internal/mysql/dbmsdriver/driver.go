@@ -101,7 +101,7 @@ func (e *Driver) EncodeValueByTypeName(name string, src any, buf []byte) ([]byte
 		return encodeFloat(src, buf)
 	case TypeChar, TypeVarChar, TypeTinyText, TypeText, TypeMediumText, TypeLongText:
 		return encodeString(src, buf)
-	case TypeBoolean:
+	case TypeBoolean, TypeBool:
 		return encodeBool(src, buf)
 	case TypeBinary, TypeVarBinary, TypeTinyBlob, TypeBlob, TypeMediumBlob, TypeLongBlob:
 		return encodeBinary(src, buf)
@@ -136,7 +136,7 @@ func (e *Driver) DecodeValueByTypeName(name string, src []byte) (any, error) {
 		return strconv.ParseFloat(string(src), 64)
 	case TypeChar, TypeVarChar, TypeTinyText, TypeText, TypeMediumText, TypeLongText:
 		return string(src), nil
-	case TypeBoolean:
+	case TypeBoolean, TypeBool:
 		return decodeBool(src)
 	case TypeBinary, TypeVarBinary, TypeTinyBlob, TypeBlob, TypeMediumBlob, TypeLongBlob:
 		// I suspect there might be some hex encoding
@@ -170,7 +170,7 @@ func (e *Driver) ScanValueByTypeName(name string, src []byte, dest any) error {
 		return scanFloat(src, dest)
 	case TypeChar, TypeVarChar, TypeTinyText, TypeText, TypeMediumText, TypeLongText:
 		return scanString(src, dest)
-	case TypeBoolean:
+	case TypeBoolean, TypeBool:
 		return scanBool(src, dest)
 	case TypeBinary, TypeVarBinary, TypeTinyBlob, TypeBlob, TypeMediumBlob, TypeLongBlob:
 		// I suspect there might be some hex encoding

@@ -21,6 +21,22 @@ import (
 *                           Time related utils                                *
 ******************************************************************************/
 
+var isoLayouts = []string{
+	time.RFC3339Nano, // 2025-01-02T15:04:05Z07:00 with nanos
+	time.RFC3339,     // 2025-01-02T15:04:05Z07:00
+	"2006-01-02",     // date only
+}
+
+func parseISODate(s string) (time.Time, error) {
+	for _, layout := range isoLayouts {
+		t, err := time.Parse(layout, s)
+		if err == nil {
+			return t, nil
+		}
+	}
+	return time.Time{}, fmt.Errorf("unsupported date format: %q", s)
+}
+
 func parseDateTime(b []byte, loc *time.Location) (time.Time, error) {
 	const base = "0000-00-00 00:00:00.000000"
 	switch len(b) {
@@ -92,7 +108,11 @@ func parseDateTime(b []byte, loc *time.Location) (time.Time, error) {
 		}
 		return time.Date(year, month, day, hour, min, sec, nsec, loc), nil
 	default:
-		return time.Time{}, fmt.Errorf("invalid time bytes: %s", b)
+		res, err := parseISODate(string(b))
+		if err != nil {
+			return time.Time{}, fmt.Errorf("bad value for field: `%c`", b)
+		}
+		return res, nil
 	}
 }
 
