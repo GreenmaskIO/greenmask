@@ -18,3 +18,10 @@ type Log struct {
 	Format string `mapstructure:"format" yaml:"format" json:"format,omitempty"`
 	Level  string `mapstructure:"level" yaml:"level" json:"level,omitempty"`
 }
+
+func NewLog() Log {
+	return Log{
+		Format: "text",
+		Level:  "info",
+	}
+}

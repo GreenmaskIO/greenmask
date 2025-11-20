@@ -26,7 +26,7 @@ engine: mysql
 storage:
   type: "s3"
   s3:
-    endpoint: "http://playground-mysql-storage:9000"
+    endpoint: "http://localhost:9000"
     bucket: "adventureworks"
     region: "us-east-1"
     access_key_id: "Q3AM3UQ867SPQQA43P2F"
@@ -43,16 +43,16 @@ dump:
       password: 1234
       connect-database: employees
       databases: employees
-      host: playground-mysql-db-original
+      host: localhost
       port: 3306
       add-drop-table: false
 
   transformation:
     - schema: "playground"
       name: "users"
-#      subset_conds:
-#        - "playground.users.id = 1"
-#      when: "record.id == 1"
+      #      subset_conds:
+      #        - "playground.users.id = 1"
+      #      when: "record.id == 1"
       transformers:
         - name: "RandomPerson"
           params:
@@ -62,7 +62,7 @@ dump:
                 template: "{{ .FirstName }}"
             engine: "random"
         - name: "RandomDate"
-#          when: "record.id == 1"
+          #          when: "record.id == 1"
           params:
             column: "created_at"
             min: "2020-01-01 00:00:00"
@@ -80,12 +80,12 @@ dump:
 restore:
   options:
     jobs: 2
-#    restore-in-order: true
+    restore-in-order: true
 
   mysql:
     options:
       user: root
       password: 1234
       connect-database: playground
-      host: playground-mysql-db-transformed
-      port: 3306
+      host: localhost
+      port: 3307

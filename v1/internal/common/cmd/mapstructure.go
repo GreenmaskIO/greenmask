@@ -31,26 +31,7 @@ var (
 	errFlagIsNotRegistered = errors.New("flag is not registered")
 )
 
-var (
-	configFlag = Flag{
-		Name:         "config",
-		Shorthand:    "",
-		Usage:        "Path to config file. Can be JSON or YAML format.",
-		BindToConfig: false,
-		Type:         FlagTypeString,
-		Default:      "",
-		IsRequired:   true,
-	}
-)
-
 func initConfig(cfgFile string, cfg *config.Config) error {
-	if cfgFile != "" {
-		viper.SetConfigFile(cfgFile)
-		if err := viper.ReadInConfig(); err != nil {
-			return fmt.Errorf("error reading config file, %s", err)
-		}
-	}
-
 	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 	viper.AutomaticEnv()
 
@@ -62,12 +43,14 @@ func initConfig(cfgFile string, cfg *config.Config) error {
 		)
 		cfg.ErrorUnused = true
 	}
-
-	if err := viper.Unmarshal(cfg, decoderCfg); err != nil {
-		return fmt.Errorf("unmarshall config, %s", err)
-	}
-
 	if cfgFile != "" {
+		viper.SetConfigFile(cfgFile)
+		if err := viper.ReadInConfig(); err != nil {
+			return fmt.Errorf("error reading config file, %s", err)
+		}
+		if err := viper.Unmarshal(cfg, decoderCfg); err != nil {
+			return fmt.Errorf("unmarshall config, %s", err)
+		}
 		// This solves problem with map structure described -> https://github.com/spf13/viper/issues/373
 		// that caused issue in Greenmask https://github.com/GreenmaskIO/greenmask/issues/76
 		if err := config.ParseTransformerParamsManually(cfgFile, cfg); err != nil {
@@ -100,7 +83,10 @@ func NewRootCommand(cobraCmd *cobra.Command, version string, flags ...Flag) (*Co
 	if err != nil {
 		return nil, fmt.Errorf("create root command: %w", err)
 	}
-	rootCmd.PersistentFlags().StringVar(&rootCmd.configPath, "config", "", "config file ")
+	rootCmd.PersistentFlags().StringVar(
+		&rootCmd.configPath, "config", "",
+		"Path to config file. Can be JSON or YAML format.",
+	)
 	rootCmd.config = config.NewConfig()
 	rootCmd.Command.Version = version
 	rootCmd.IsRoot = true
