@@ -18,7 +18,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"slices"
 	"strconv"
 
 	"github.com/go-mysql-org/go-mysql/client"
@@ -114,6 +113,19 @@ func fieldValueToString(field mysql.FieldValue) ([]byte, error) {
 	}
 }
 
+func deepCopyRow(row [][]byte) [][]byte {
+	copied := make([][]byte, len(row))
+	for i := range row {
+		if row[i] != nil {
+			copied[i] = make([]byte, len(row[i]))
+			copy(copied[i], row[i])
+		} else {
+			copied[i] = nil
+		}
+	}
+	return copied
+}
+
 func (r *TableDataReader) stream(ctx context.Context) func() error {
 	return func() error {
 		defer close(r.errorCh)
@@ -133,7 +145,8 @@ func (r *TableDataReader) stream(ctx context.Context) func() error {
 			// We have to clone the recordData slice because it may be changed
 			// when the next row is read and the data writing side is not yet ready.
 			// We could optimize this, but it would require more complex logic.
-			case r.dataCh <- slices.Clone(recordData):
+			// TODO: Consider optimizing this with a buffer pool.
+			case r.dataCh <- deepCopyRow(recordData):
 			case <-ctx.Done():
 				log.Ctx(ctx).Debug().
 					Int("LineNum", int(lineNum)).

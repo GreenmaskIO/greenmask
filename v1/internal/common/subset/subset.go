@@ -238,6 +238,7 @@ func (s *Subset) GetTopologicalOrder() ([]int, error) {
 		tableID := vxs[0].ID
 		tableTopOrder = append(tableTopOrder, tableID)
 	}
+	slices.Reverse(tableTopOrder)
 	return tableTopOrder, nil
 }
 

@@ -24,18 +24,22 @@ log:
 engine: mysql
 
 storage:
-  type: "s3"
-  s3:
-    endpoint: "http://localhost:9000"
-    bucket: "adventureworks"
-    region: "us-east-1"
-    access_key_id: "Q3AM3UQ867SPQQA43P2F"
-    secret_access_key: "zuf+tfteSlswRu7BJ86wekitnifILbZam1KYY3TG"
+  type: "directory"
+  directory:
+    path: "/tmp/gmstorage"
+#  type: "s3"
+#  s3:
+#    endpoint: "http://localhost:9000"
+#    bucket: "adventureworks"
+#    region: "us-east-1"
+#    access_key_id: "Q3AM3UQ867SPQQA43P2F"
+#    secret_access_key: "zuf+tfteSlswRu7BJ86wekitnifILbZam1KYY3TG"
 dump:
   tag:
     - "v1"
     - "daily"
-  options:
+#  options:
+#    jobs: 4
 
   mysql:
     options:
