@@ -28,15 +28,6 @@ type Table struct {
 	References []models.Reference
 }
 
-func NewTable(id int, schema, name string, size *int64) Table {
-	return Table{
-		ID:     id,
-		Schema: schema,
-		Name:   name,
-		Size:   size,
-	}
-}
-
 func (t *Table) ToCommonTable() models.Table {
 	columns := make([]models.Column, len(t.Columns))
 	for i, col := range t.Columns {

@@ -126,8 +126,10 @@ func (i *Introspector) getTables(ctx context.Context, tx *sql.Tx) ([]mysqlmodels
 					   t.table_name   as table_name,
 					   t.DATA_LENGTH  AS table_size_mb
 				from information_schema.tables t
-				WHERE 
-					t.TABLE_SCHEMA NOT IN ('information_schema', 'performance_schema', 'mysql', 'sys')
+				WHERE
+				    TRUE
+					AND t.TABLE_SCHEMA NOT IN ('information_schema', 'performance_schema', 'mysql', 'sys')
+					AND t.TABLE_TYPE = 'BASE TABLE'
 				{{- if gt (len .excludeTables) 0 }}
 					AND CONCAT(t.TABLE_SCHEMA, '.', t.TABLE_NAME) NOT IN ( {{ len .excludeTables | repeatPlaceholder }} )
 				{{- end}}
@@ -171,7 +173,12 @@ func (i *Introspector) getTables(ctx context.Context, tx *sql.Tx) ([]mysqlmodels
 		if err := rows.Scan(&tableSchema, &tableName, &tableSize); err != nil {
 			return nil, err
 		}
-		tables = append(tables, mysqlmodels.NewTable(tableIDSeq, tableSchema, tableName, tableSize))
+		tables = append(tables, mysqlmodels.Table{
+			ID:     tableIDSeq,
+			Name:   tableName,
+			Schema: tableSchema,
+			Size:   tableSize,
+		})
 		tableIDSeq++
 	}
 	return tables, nil

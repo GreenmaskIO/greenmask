@@ -42,6 +42,7 @@ func NewConfig() *Config {
 	once.Do(
 		func() {
 			cfg = &Config{
+				Log:     NewLog(),
 				Common:  NewCommon(),
 				Storage: NewStorageConfig(),
 				// TODO: Consider how to forward two dependencies
