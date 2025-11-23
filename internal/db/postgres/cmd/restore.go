@@ -42,6 +42,7 @@ import (
 	"github.com/greenmaskio/greenmask/internal/db/postgres/toc"
 	"github.com/greenmaskio/greenmask/internal/db/postgres/utils"
 	"github.com/greenmaskio/greenmask/internal/domains"
+	"github.com/greenmaskio/greenmask/internal/filestore"
 	"github.com/greenmaskio/greenmask/internal/storages"
 	"github.com/greenmaskio/greenmask/pkg/toolkit"
 )
@@ -140,6 +141,10 @@ func (r *Restore) Run(ctx context.Context) error {
 
 	if err := r.postDataRestore(ctx); err != nil {
 		return fmt.Errorf("post-data stage restoration error: %w", err)
+	}
+
+	if err := filestore.Restore(ctx, r.cfg.Filestore, r.st); err != nil {
+		return fmt.Errorf("filestore restoration error: %w", err)
 	}
 
 	return nil

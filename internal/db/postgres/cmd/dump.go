@@ -39,6 +39,7 @@ import (
 	"github.com/greenmaskio/greenmask/internal/db/postgres/transformers/custom"
 	"github.com/greenmaskio/greenmask/internal/db/postgres/transformers/utils"
 	"github.com/greenmaskio/greenmask/internal/domains"
+	"github.com/greenmaskio/greenmask/internal/filestore"
 	"github.com/greenmaskio/greenmask/internal/storages"
 	"github.com/greenmaskio/greenmask/pkg/toolkit"
 )
@@ -536,6 +537,10 @@ func (d *Dump) Run(ctx context.Context) (err error) {
 
 	if err = d.writeMetaData(ctx, startedAt, time.Now()); err != nil {
 		return fmt.Errorf("writeMetaData stage dumping error: %w", err)
+	}
+
+	if err := filestore.Dump(ctx, d.config.Dump.Filestore, d.st, d.pgDumpOptions.Pgzip); err != nil {
+		return fmt.Errorf("filestore dumping error: %w", err)
 	}
 
 	return nil
