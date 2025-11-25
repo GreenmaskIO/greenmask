@@ -38,8 +38,8 @@ dump:
   tag:
     - "v1"
     - "daily"
-#  options:
-#    jobs: 4
+  options:
+    jobs: 4
 
   mysql:
     options:

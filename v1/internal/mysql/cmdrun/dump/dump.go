@@ -234,9 +234,13 @@ func (d *Dump) Run(ctx context.Context) (err error) {
 			processor.WithDataOnly(),
 		)
 	}
+	jobs := 1
+	if d.cfg.Dump.Options.Jobs > 0 {
+		jobs = d.cfg.Dump.Options.Jobs
+	}
 	processorOpts = append(
 		processorOpts,
-		processor.WithJobs(1),
+		processor.WithJobs(jobs),
 	)
 	dumper, err := processor.NewDefaultDumpProcessor(tp, sd, processorOpts...)
 	if err != nil {
