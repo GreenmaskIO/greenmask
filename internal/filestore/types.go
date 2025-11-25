@@ -24,15 +24,18 @@ type archiveMeta struct {
 }
 
 type metadata struct {
-	GeneratedAt          time.Time    `json:"generated_at"`
-	RootPath             string       `json:"root_path,omitempty"`
-	FileList             string       `json:"file_list,omitempty"`
-	Subdir               string       `json:"subdir"`
-	ArchiveName          string       `json:"archive_name"`
-	UsePgzip             bool         `json:"use_pgzip"`
-	TotalFiles           int          `json:"total_files"`
-	TotalOriginalBytes   int64        `json:"total_original_bytes"`
-	TotalCompressedBytes int64        `json:"total_compressed_bytes"`
+	GeneratedAt          time.Time     `json:"generated_at"`
+	RootPath             string        `json:"root_path,omitempty"`
+	FileList             string        `json:"file_list,omitempty"`
+	IncludeListQuery     string        `json:"include_list_query,omitempty"`
+	IncludeListQueryFile string        `json:"include_list_query_file,omitempty"`
+	IncludeListSource    string        `json:"include_list_source,omitempty"`
+	Subdir               string        `json:"subdir"`
+	ArchiveName          string        `json:"archive_name"`
+	UsePgzip             bool          `json:"use_pgzip"`
+	TotalFiles           int           `json:"total_files"`
+	TotalOriginalBytes   int64         `json:"total_original_bytes"`
+	TotalCompressedBytes int64         `json:"total_compressed_bytes"`
 	Archives             []archiveMeta `json:"archives"`
 	Split                struct {
 		MaxSizeBytes int64 `json:"max_size_bytes,omitempty"`

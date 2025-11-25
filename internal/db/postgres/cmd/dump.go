@@ -539,11 +539,59 @@ func (d *Dump) Run(ctx context.Context) (err error) {
 		return fmt.Errorf("writeMetaData stage dumping error: %w", err)
 	}
 
-	if err := filestore.Dump(ctx, d.config.Dump.Filestore, d.st, d.pgDumpOptions.Pgzip); err != nil {
+	var includeListExecutor filestore.IncludeListQueryExecutor
+	if d.config.Dump.Filestore != nil {
+		includeListExecutor = &filestoreQueryExecutor{dump: d}
+	}
+	if err := filestore.Dump(ctx, d.config.Dump.Filestore, d.st, d.pgDumpOptions.Pgzip, includeListExecutor); err != nil {
 		return fmt.Errorf("filestore dumping error: %w", err)
 	}
 
 	return nil
+}
+
+type filestoreQueryExecutor struct {
+	dump *Dump
+}
+
+func (e *filestoreQueryExecutor) RunIncludeListQuery(ctx context.Context, query string) ([]string, error) {
+	conn, tx, err := e.dump.getWorkerTransaction(ctx)
+	if err != nil {
+		return nil, err
+	}
+	defer func() {
+		if err := conn.Close(ctx); err != nil {
+			log.Debug().Err(err).Msg("error closing include list query connection")
+		}
+	}()
+	defer func() {
+		if err := tx.Rollback(ctx); err != nil {
+			log.Debug().Err(err).Msg("unable to rollback include list query transaction")
+		}
+	}()
+
+	rows, err := tx.Query(ctx, query)
+	if err != nil {
+		return nil, fmt.Errorf("run include_list_query: %w", err)
+	}
+	defer rows.Close()
+
+	if len(rows.FieldDescriptions()) != 1 {
+		return nil, fmt.Errorf("include_list_query must return exactly one column, got %d", len(rows.FieldDescriptions()))
+	}
+
+	var values []string
+	for rows.Next() {
+		var rel string
+		if scanErr := rows.Scan(&rel); scanErr != nil {
+			return nil, fmt.Errorf("scan include_list_query result: %w", scanErr)
+		}
+		values = append(values, rel)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate include_list_query result: %w", err)
+	}
+	return values, nil
 }
 
 func (d *Dump) MergeTocEntries(schemaEntries []*toc.Entry, dataEntries []*toc.Entry) (

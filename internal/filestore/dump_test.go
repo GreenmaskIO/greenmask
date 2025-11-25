@@ -45,7 +45,7 @@ func TestDumpWholeDirectory(t *testing.T) {
 		Enabled:  true,
 		RootPath: src,
 	}
-	require.NoError(t, Dump(ctx, cfg, dumpStorage, false))
+	require.NoError(t, Dump(ctx, cfg, dumpStorage, false, nil))
 
 	meta := readMetadata(t, storage, "filestore.json")
 	require.Equal(t, 3, meta.TotalFiles)
@@ -74,7 +74,7 @@ func TestDumpSplitByMaxFiles(t *testing.T) {
 			MaxFiles: 1,
 		},
 	}
-	require.NoError(t, Dump(ctx, cfg, dumpStorage, false))
+	require.NoError(t, Dump(ctx, cfg, dumpStorage, false, nil))
 
 	meta := readMetadata(t, storage, "filestore.json")
 	require.Len(t, meta.Archives, 2)
@@ -86,13 +86,13 @@ func TestRestoreExtractsArchives(t *testing.T) {
 	src := t.TempDir()
 	writeFile(t, filepath.Join(src, "a.txt"), "payload")
 
-	storage, dumpStorage := newStorage(t)
+	_, dumpStorage := newStorage(t)
 
 	cfg := &domains.FilestoreDump{
 		Enabled:  true,
 		RootPath: src,
 	}
-	require.NoError(t, Dump(ctx, cfg, dumpStorage, false))
+	require.NoError(t, Dump(ctx, cfg, dumpStorage, false, nil))
 
 	target := t.TempDir()
 	restoreCfg := &domains.FilestoreRestore{
@@ -104,6 +104,130 @@ func TestRestoreExtractsArchives(t *testing.T) {
 	bytes, err := os.ReadFile(filepath.Join(target, "a.txt"))
 	require.NoError(t, err)
 	require.Equal(t, "payload", string(bytes))
+}
+
+func TestDumpIncludeListQuery(t *testing.T) {
+	ctx := context.Background()
+	src := t.TempDir()
+	writeFile(t, filepath.Join(src, "a.txt"), "payload-a")
+	writeFile(t, filepath.Join(src, "nested", "b.txt"), "payload-b")
+
+	storage, dumpStorage := newStorage(t)
+
+	query := "SELECT path FROM keep_list"
+	executor := &stubIncludeListQueryExecutor{
+		t:              t,
+		expectedQuery:  query,
+		result:         []string{"a.txt", "nested/b.txt"},
+	}
+
+	cfg := &domains.FilestoreDump{
+		Enabled:          true,
+		RootPath:         src,
+		IncludeListQuery: query,
+	}
+	require.NoError(t, Dump(ctx, cfg, dumpStorage, false, executor))
+
+	meta := readMetadata(t, storage, "filestore.json")
+	require.Equal(t, query, meta.IncludeListQuery)
+	require.Equal(t, "inline_query", meta.IncludeListSource)
+	require.Empty(t, meta.IncludeListQueryFile)
+
+	files := readArchive(t, storage, meta.Archives[0].Name)
+	require.Equal(t, map[string]string{
+		"a.txt":        "payload-a",
+		"nested/b.txt": "payload-b",
+	}, files)
+}
+
+func TestDumpIncludeListQueryFile(t *testing.T) {
+	ctx := context.Background()
+	src := t.TempDir()
+	writeFile(t, filepath.Join(src, "only.txt"), "payload")
+	writeFile(t, filepath.Join(src, "skip.txt"), "nope")
+
+	storage, dumpStorage := newStorage(t)
+
+	queryFile := filepath.Join(t.TempDir(), "include.sql")
+	require.NoError(t, os.WriteFile(queryFile, []byte("SELECT path FROM keep_source;\n"), 0o644))
+
+	executor := &stubIncludeListQueryExecutor{
+		t:             t,
+		expectedQuery: "SELECT path FROM keep_source",
+		result:        []string{"only.txt"},
+	}
+
+	cfg := &domains.FilestoreDump{
+		Enabled:             true,
+		RootPath:            src,
+		IncludeListQueryFile: queryFile,
+	}
+	require.NoError(t, Dump(ctx, cfg, dumpStorage, false, executor))
+
+	meta := readMetadata(t, storage, "filestore.json")
+	require.Equal(t, "SELECT path FROM keep_source", meta.IncludeListQuery)
+	require.Equal(t, filepath.Clean(queryFile), meta.IncludeListQueryFile)
+	require.Equal(t, "query_file", meta.IncludeListSource)
+	files := readArchive(t, storage, meta.Archives[0].Name)
+	require.Equal(t, map[string]string{"only.txt": "payload"}, files)
+}
+
+func TestDumpIncludeListQueryRequiresExecutor(t *testing.T) {
+	ctx := context.Background()
+	src := t.TempDir()
+	writeFile(t, filepath.Join(src, "a.txt"), "payload")
+
+	_, dumpStorage := newStorage(t)
+
+	cfg := &domains.FilestoreDump{
+		Enabled:          true,
+		RootPath:         src,
+		IncludeListQuery: "SELECT 'a.txt'",
+	}
+	err := Dump(ctx, cfg, dumpStorage, false, nil)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "query executor")
+}
+
+func TestBuildDumpSettingsRejectsConflictingSources(t *testing.T) {
+	root := t.TempDir()
+	cfg := &domains.FilestoreDump{
+		Enabled:          true,
+		RootPath:         root,
+		FileList:         "list.txt",
+		IncludeListQuery: "SELECT 'a.txt'",
+	}
+	_, err := buildDumpSettings(cfg, false)
+	require.Error(t, err)
+}
+
+func TestNormalizeIncludeListQueryValidation(t *testing.T) {
+	_, err := normalizeIncludeListQuery("DELETE FROM files")
+	require.Error(t, err)
+
+	query, err := normalizeIncludeListQuery("SELECT path FROM keep_list ; ")
+	require.NoError(t, err)
+	require.Equal(t, "SELECT path FROM keep_list", query)
+
+	_, err = normalizeIncludeListQuery("SELECT path FROM t; SELECT 'x'")
+	require.Error(t, err)
+}
+
+type stubIncludeListQueryExecutor struct {
+	t             *testing.T
+	expectedQuery string
+	result        []string
+	err           error
+}
+
+func (s *stubIncludeListQueryExecutor) RunIncludeListQuery(ctx context.Context, query string) ([]string, error) {
+	if s.expectedQuery != "" {
+		require.Equal(s.t, s.expectedQuery, query)
+	}
+	if s.err != nil {
+		return nil, s.err
+	}
+	return append([]string(nil), s.result...), nil
 }
 
 func newStorage(t *testing.T) (*directory.Storage, storages.Storager) {

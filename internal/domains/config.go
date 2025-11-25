@@ -125,15 +125,18 @@ type DataRestorationErrorExclusions struct {
 }
 
 type FilestoreDump struct {
-	Enabled       bool               `mapstructure:"enabled" yaml:"enabled" json:"enabled,omitempty"`
-	RootPath      string             `mapstructure:"root_path" yaml:"root_path" json:"root_path,omitempty"`
-	FileList      string             `mapstructure:"file_list" yaml:"file_list" json:"file_list,omitempty"`
-	Subdir        string             `mapstructure:"subdir" yaml:"subdir" json:"subdir,omitempty"`
-	ArchiveName   string             `mapstructure:"archive_name" yaml:"archive_name" json:"archive_name,omitempty"`
-	MetadataName  string             `mapstructure:"metadata_name" yaml:"metadata_name" json:"metadata_name,omitempty"`
-	UsePgzip      *bool              `mapstructure:"use_pgzip" yaml:"use_pgzip" json:"use_pgzip,omitempty"`
-	FailOnMissing bool               `mapstructure:"fail_on_missing" yaml:"fail_on_missing" json:"fail_on_missing,omitempty"`
-	Split         FilestoreDumpSplit `mapstructure:"split" yaml:"split" json:"split,omitempty"`
+	Enabled             bool               `mapstructure:"enabled" yaml:"enabled" json:"enabled,omitempty"`
+	RootPath            string             `mapstructure:"root_path" yaml:"root_path" json:"root_path,omitempty"`
+	FileList            string             `mapstructure:"file_list" yaml:"file_list" json:"file_list,omitempty"`
+	IncludeListFile     string             `mapstructure:"include_list_file" yaml:"include_list_file" json:"include_list_file,omitempty"`
+	IncludeListQuery    string             `mapstructure:"include_list_query" yaml:"include_list_query" json:"include_list_query,omitempty"`
+	IncludeListQueryFile string            `mapstructure:"include_list_query_file" yaml:"include_list_query_file" json:"include_list_query_file,omitempty"`
+	Subdir              string             `mapstructure:"subdir" yaml:"subdir" json:"subdir,omitempty"`
+	ArchiveName         string             `mapstructure:"archive_name" yaml:"archive_name" json:"archive_name,omitempty"`
+	MetadataName        string             `mapstructure:"metadata_name" yaml:"metadata_name" json:"metadata_name,omitempty"`
+	UsePgzip            *bool              `mapstructure:"use_pgzip" yaml:"use_pgzip" json:"use_pgzip,omitempty"`
+	FailOnMissing       bool               `mapstructure:"fail_on_missing" yaml:"fail_on_missing" json:"fail_on_missing,omitempty"`
+	Split               FilestoreDumpSplit `mapstructure:"split" yaml:"split" json:"split,omitempty"`
 }
 
 type FilestoreDumpSplit struct {

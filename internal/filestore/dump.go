@@ -45,17 +45,21 @@ const (
 )
 
 type dumpSettings struct {
-	cfg            *domains.FilestoreDump
-	usePgzip       bool
-	splitEnabled   bool
-	subdir         string
-	archiveName    string
-	metadataName   string
-	maxSizeBytes   int64
-	maxFiles       int
-	failOnMissing  bool
-	fileListPath   string
-	rootPath       string
+	cfg                  *domains.FilestoreDump
+	usePgzip             bool
+	splitEnabled         bool
+	subdir               string
+	archiveName          string
+	metadataName         string
+	maxSizeBytes         int64
+	maxFiles             int
+	failOnMissing        bool
+	fileListPath         string
+	includeListQuery     string
+	includeListQueryFile string
+	includeListSource    includeListSource
+	queryExecutor        IncludeListQueryExecutor
+	rootPath             string
 }
 
 type fileEntry struct {
@@ -64,18 +68,51 @@ type fileEntry struct {
 }
 
 type archiveState struct {
-	index          int
-	name           string
-	tw             *tar.Writer
-	gzWriter       ioutils.CountWriteCloser
-	reader         ioutils.CountReadCloser
-	done           chan error
-	files          int
-	originalBytes  int64
+	index         int
+	name          string
+	tw            *tar.Writer
+	gzWriter      ioutils.CountWriteCloser
+	reader        ioutils.CountReadCloser
+	done          chan error
+	files         int
+	originalBytes int64
+}
+
+// IncludeListQueryExecutor executes the configured include list SQL query and returns the resulting paths.
+type IncludeListQueryExecutor interface {
+	RunIncludeListQuery(ctx context.Context, query string) ([]string, error)
+}
+
+type includeListSource int
+
+const (
+	includeListSourceNone includeListSource = iota
+	includeListSourceFile
+	includeListSourceQueryInline
+	includeListSourceQueryFile
+)
+
+func (s includeListSource) String() string {
+	switch s {
+	case includeListSourceFile:
+		return "file"
+	case includeListSourceQueryInline:
+		return "inline_query"
+	case includeListSourceQueryFile:
+		return "query_file"
+	default:
+		return ""
+	}
 }
 
 // Dump packs the configured filestore subset (or whole directory) and uploads it to storage.
-func Dump(ctx context.Context, cfg *domains.FilestoreDump, st storages.Storager, defaultPgzip bool) error {
+func Dump(
+	ctx context.Context,
+	cfg *domains.FilestoreDump,
+	st storages.Storager,
+	defaultPgzip bool,
+	executor IncludeListQueryExecutor,
+) error {
 	if cfg == nil || !cfg.Enabled {
 		return nil
 	}
@@ -83,9 +120,10 @@ func Dump(ctx context.Context, cfg *domains.FilestoreDump, st storages.Storager,
 	if err != nil {
 		return err
 	}
+	settings.queryExecutor = executor
 
 	log.Info().Msg("starting filestore dump")
-	entries, missing, err := collectEntries(settings)
+	entries, missing, err := collectEntries(ctx, settings)
 	if err != nil {
 		return err
 	}
@@ -147,26 +185,100 @@ func buildDumpSettings(cfg *domains.FilestoreDump, defaultPgzip bool) (*dumpSett
 		usePgzip = *cfg.UsePgzip
 	}
 	splitEnabled := cfg.Split.MaxFiles > 0 || cfg.Split.MaxSizeBytes > 0
+
+	fileListPath := strings.TrimSpace(cfg.FileList)
+	if fileListPath == "" {
+		fileListPath = strings.TrimSpace(cfg.IncludeListFile)
+	}
+	if fileListPath != "" {
+		fileListPath = filepath.Clean(fileListPath)
+	}
+
+	includeQuery, querySource, queryFile, err := resolveIncludeListQuery(cfg)
+	if err != nil {
+		return nil, err
+	}
+	if fileListPath != "" && includeQuery != "" {
+		return nil, errors.New("only one of file_list/include_list_file or include_list_query/include_list_query_file can be set")
+	}
+	listSource := querySource
+	if fileListPath != "" {
+		listSource = includeListSourceFile
+	}
+
 	return &dumpSettings{
-		cfg:           cfg,
-		usePgzip:      usePgzip,
-		splitEnabled:  splitEnabled,
-		subdir:        subdir,
-		archiveName:   archiveName,
-		metadataName:  metadataName,
-		maxSizeBytes:  cfg.Split.MaxSizeBytes,
-		maxFiles:      cfg.Split.MaxFiles,
-		failOnMissing: cfg.FailOnMissing,
-		fileListPath:  cfg.FileList,
-		rootPath:      rootPath,
+		cfg:                  cfg,
+		usePgzip:             usePgzip,
+		splitEnabled:         splitEnabled,
+		subdir:               subdir,
+		archiveName:          archiveName,
+		metadataName:         metadataName,
+		maxSizeBytes:         cfg.Split.MaxSizeBytes,
+		maxFiles:             cfg.Split.MaxFiles,
+		failOnMissing:        cfg.FailOnMissing,
+		fileListPath:         fileListPath,
+		includeListQuery:     includeQuery,
+		includeListQueryFile: queryFile,
+		includeListSource:    listSource,
+		rootPath:             rootPath,
 	}, nil
 }
 
-func collectEntries(settings *dumpSettings) ([]fileEntry, []string, error) {
-	if settings.fileListPath != "" {
-		return collectFromList(settings)
+func resolveIncludeListQuery(cfg *domains.FilestoreDump) (string, includeListSource, string, error) {
+	inlineQuery := strings.TrimSpace(cfg.IncludeListQuery)
+	queryFilePath := strings.TrimSpace(cfg.IncludeListQueryFile)
+	if inlineQuery != "" && queryFilePath != "" {
+		return "", includeListSourceNone, "", errors.New("only one of include_list_query or include_list_query_file can be set")
 	}
-	return collectWholeDirectory(settings)
+	if queryFilePath != "" {
+		cleanPath := filepath.Clean(queryFilePath)
+		bytes, err := os.ReadFile(cleanPath)
+		if err != nil {
+			return "", includeListSourceNone, "", fmt.Errorf("read include_list_query_file: %w", err)
+		}
+		inlineQuery = string(bytes)
+		queryFilePath = cleanPath
+	}
+	normalized, err := normalizeIncludeListQuery(inlineQuery)
+	if err != nil {
+		return "", includeListSourceNone, "", err
+	}
+	if normalized == "" {
+		return "", includeListSourceNone, "", nil
+	}
+	source := includeListSourceQueryInline
+	if queryFilePath != "" {
+		source = includeListSourceQueryFile
+	}
+	return normalized, source, queryFilePath, nil
+}
+
+func normalizeIncludeListQuery(query string) (string, error) {
+	trimmed := strings.TrimSpace(query)
+	if trimmed == "" {
+		return "", nil
+	}
+	for strings.HasSuffix(trimmed, ";") {
+		trimmed = strings.TrimSpace(strings.TrimSuffix(trimmed, ";"))
+	}
+	if strings.Contains(trimmed, ";") {
+		return "", errors.New("include_list_query must contain a single SELECT statement without additional commands")
+	}
+	if !strings.HasPrefix(strings.ToUpper(trimmed), "SELECT") {
+		return "", errors.New("include_list_query must start with SELECT")
+	}
+	return trimmed, nil
+}
+
+func collectEntries(ctx context.Context, settings *dumpSettings) ([]fileEntry, []string, error) {
+	switch {
+	case settings.includeListQuery != "":
+		return collectFromQuery(ctx, settings)
+	case settings.fileListPath != "":
+		return collectFromList(settings)
+	default:
+		return collectWholeDirectory(settings)
+	}
 }
 
 func collectFromList(settings *dumpSettings) ([]fileEntry, []string, error) {
@@ -180,42 +292,71 @@ func collectFromList(settings *dumpSettings) ([]fileEntry, []string, error) {
 	var missing []string
 	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {
-		line := strings.TrimSpace(scanner.Text())
-		if line == "" || strings.HasPrefix(line, "#") {
-			continue
+		if err := appendEntryFromValue(&entries, &missing, scanner.Text(), settings); err != nil {
+			return nil, nil, err
 		}
-		relPath := filepath.Clean(line)
-		if filepath.IsAbs(relPath) {
-			return nil, nil, fmt.Errorf("file list entries must be relative: %s", relPath)
-		}
-		fullPath := filepath.Join(settings.rootPath, relPath)
-		if !strings.HasPrefix(fullPath, settings.rootPath) {
-			return nil, nil, fmt.Errorf("file list entry exits filestore root: %s", relPath)
-		}
-		info, err := os.Lstat(fullPath)
-		if err != nil {
-			if errors.Is(err, os.ErrNotExist) {
-				if settings.failOnMissing {
-					return nil, nil, fmt.Errorf("listed file %s not found", relPath)
-				}
-				missing = append(missing, relPath)
-				continue
-			}
-			return nil, nil, fmt.Errorf("stat %s: %w", relPath, err)
-		}
-		if info.IsDir() {
-			log.Warn().Str("path", relPath).Msg("skipping directory entry in file list")
-			continue
-		}
-		entries = append(entries, fileEntry{
-			AbsolutePath: fullPath,
-			RelativePath: filepath.ToSlash(relPath),
-		})
 	}
 	if err := scanner.Err(); err != nil {
 		return nil, nil, fmt.Errorf("read file list: %w", err)
 	}
 	return entries, missing, nil
+}
+
+func collectFromQuery(ctx context.Context, settings *dumpSettings) ([]fileEntry, []string, error) {
+	if settings.queryExecutor == nil {
+		return nil, nil, errors.New("include_list_query requires a query executor but none was provided")
+	}
+	values, err := settings.queryExecutor.RunIncludeListQuery(ctx, settings.includeListQuery)
+	if err != nil {
+		return nil, nil, fmt.Errorf("execute include_list_query: %w", err)
+	}
+	return collectEntriesFromValues(values, settings)
+}
+
+func collectEntriesFromValues(values []string, settings *dumpSettings) ([]fileEntry, []string, error) {
+	var entries []fileEntry
+	var missing []string
+	for _, raw := range values {
+		if err := appendEntryFromValue(&entries, &missing, raw, settings); err != nil {
+			return nil, nil, err
+		}
+	}
+	return entries, missing, nil
+}
+
+func appendEntryFromValue(entries *[]fileEntry, missing *[]string, raw string, settings *dumpSettings) error {
+	line := strings.TrimSpace(raw)
+	if line == "" || strings.HasPrefix(line, "#") {
+		return nil
+	}
+	relPath := filepath.Clean(line)
+	if filepath.IsAbs(relPath) {
+		return fmt.Errorf("file list entries must be relative: %s", relPath)
+	}
+	fullPath := filepath.Join(settings.rootPath, relPath)
+	if !strings.HasPrefix(fullPath, settings.rootPath) {
+		return fmt.Errorf("file list entry exits filestore root: %s", relPath)
+	}
+	info, err := os.Lstat(fullPath)
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			if settings.failOnMissing {
+				return fmt.Errorf("listed file %s not found", relPath)
+			}
+			*missing = append(*missing, filepath.ToSlash(relPath))
+			return nil
+		}
+		return fmt.Errorf("stat %s: %w", relPath, err)
+	}
+	if info.IsDir() {
+		log.Warn().Str("path", filepath.ToSlash(relPath)).Msg("skipping directory entry in file list")
+		return nil
+	}
+	*entries = append(*entries, fileEntry{
+		AbsolutePath: fullPath,
+		RelativePath: filepath.ToSlash(relPath),
+	})
+	return nil
 }
 
 func collectWholeDirectory(settings *dumpSettings) ([]fileEntry, []string, error) {
@@ -443,6 +584,9 @@ func writeMetadata(ctx context.Context, st storages.Storager, settings *dumpSett
 		GeneratedAt:          time.Now().UTC(),
 		RootPath:             settings.rootPath,
 		FileList:             settings.fileListPath,
+		IncludeListQuery:     settings.includeListQuery,
+		IncludeListQueryFile: settings.includeListQueryFile,
+		IncludeListSource:    settings.includeListSource.String(),
 		Subdir:               settings.subdir,
 		ArchiveName:          settings.archiveName,
 		UsePgzip:             settings.usePgzip,
@@ -471,4 +615,3 @@ func writeMetadata(ctx context.Context, st storages.Storager, settings *dumpSett
 	}
 	return nil
 }
-
