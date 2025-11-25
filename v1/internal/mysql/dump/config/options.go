@@ -51,6 +51,9 @@ func (d *DumpOptions) GetExcludedSchemas() []string {
 }
 
 func (d *DumpOptions) GetIncludedSchemas() []string {
+	if len(d.Databases) > 0 {
+		return d.Databases
+	}
 	return nil
 }
 

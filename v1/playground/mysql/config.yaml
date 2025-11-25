@@ -42,7 +42,9 @@ dump:
       user: root
       password: 1234
       connect-database: employees
-      databases: employees
+      databases:
+        - employees
+#        - playground
       host: playground-mysql-db-original
       port: 3306
       add-drop-table: false
@@ -80,7 +82,7 @@ dump:
 restore:
   options:
     jobs: 2
-#    restore-in-order: true
+    restore-in-order: true
 
   mysql:
     options:

@@ -33,7 +33,6 @@ import (
 var (
 	errConnectionWasNotOpened        = errors.New("connection was not opened")
 	errDataChannelUnexpectedlyClosed = errors.New("data channel was not closed")
-	errCannotAssertType              = errors.New("cannot assert type")
 	errUnknownFieldType              = errors.New("unknown field type")
 )
 
@@ -77,36 +76,16 @@ func fieldValueToString(field mysql.FieldValue) ([]byte, error) {
 	case mysql.FieldValueTypeNull:
 		return mysqldbmsdriver.NullValueSeq, nil
 	case mysql.FieldValueTypeUnsigned:
-		val, ok := field.Value().(uint64)
-		if !ok {
-			return nil, fmt.Errorf(
-				"invalid type %T, expected uint64: %w", field.Value(), errCannotAssertType,
-			)
-		}
+		val := field.AsUint64()
 		return []byte(strconv.FormatUint(val, 10)), nil
 	case mysql.FieldValueTypeSigned:
-		val, ok := field.Value().(int64)
-		if !ok {
-			return nil, fmt.Errorf(
-				"invalid type %T, expected int64: %w", field.Value(), errCannotAssertType,
-			)
-		}
+		val := field.AsInt64()
 		return []byte(strconv.FormatInt(val, 10)), nil
 	case mysql.FieldValueTypeFloat:
-		val, ok := field.Value().(float64)
-		if !ok {
-			return nil, fmt.Errorf(
-				"invalid type %T, expected uint64: %w", field.Value(), errCannotAssertType,
-			)
-		}
+		val := field.AsFloat64()
 		return []byte(strconv.FormatFloat(val, 'f', -1, 64)), nil
 	case mysql.FieldValueTypeString:
-		val, ok := field.Value().([]byte)
-		if !ok {
-			return nil, fmt.Errorf(
-				"invalid type %T, expected []byte: %w", field.Value(), errCannotAssertType,
-			)
-		}
+		val := field.AsString()
 		return val, nil
 	default:
 		return nil, fmt.Errorf("field type %d: %w", field.Type, errUnknownFieldType)
