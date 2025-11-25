@@ -93,13 +93,13 @@ func fieldValueToString(field mysql.FieldValue) ([]byte, error) {
 		}
 		return []byte(strconv.FormatInt(val, 10)), nil
 	case mysql.FieldValueTypeFloat:
-		val, ok := field.Value().(int64)
+		val, ok := field.Value().(float64)
 		if !ok {
 			return nil, fmt.Errorf(
 				"invalid type %T, expected uint64: %w", field.Value(), errCannotAssertType,
 			)
 		}
-		return []byte(strconv.FormatInt(val, 10)), nil
+		return []byte(strconv.FormatFloat(val, 'f', -1, 64)), nil
 	case mysql.FieldValueTypeString:
 		val, ok := field.Value().([]byte)
 		if !ok {
