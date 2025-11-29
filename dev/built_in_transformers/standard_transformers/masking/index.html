@@ -3328,7 +3328,7 @@
 </tr>
 <tr>
 <td>type</td>
-<td>Data type of attribute (<code>default</code>, <code>password</code>, <code>name</code>, <code>addr</code>, <code>email</code>, <code>mobile</code>, <code>tel</code>, <code>id</code>, <code>credit</code>, <code>url</code>)</td>
+<td>Data type of attribute (<code>default</code>, <code>password</code>, <code>name</code>, <code>addr</code>, <code>email</code>, <code>mobile</code>, <code>tel</code>, <code>id</code>, <code>credit</code>, <code>url</code>, <code>postcode</code>)</td>
 <td><code>default</code></td>
 <td>No</td>
 <td>-</td>
@@ -3386,6 +3386,10 @@ supports the following masking rules:</p>
 <tr>
 <td style="text-align: center;">url</td>
 <td style="text-align: left;">Masks the password part of the URL, if applicable, e. g. <code>http://admin:mysecretpassword@localhost:1234/uri</code> output: <code>http://admin:xxxxx@localhost:1234/uri</code></td>
+</tr>
+<tr>
+<td style="text-align: center;">postcode</td>
+<td style="text-align: left;">Keeps first 2 characters, masks the rest, e. g. input: <code>SW1A 1AA</code> output: <code>SW******</code></td>
 </tr>
 </tbody>
 </table>
