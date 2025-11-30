@@ -36,6 +36,7 @@ const (
 	MID         string = "id"
 	MCreditCard string = "credit_card"
 	MURL        string = "url"
+	MPostcode   string = "postcode"
 	MDefault    string = "default"
 )
 
@@ -62,7 +63,7 @@ var MaskingTransformerDefinition = utils.NewTransformerDefinition(
 
 	toolkit.MustNewParameterDefinition(
 		"type",
-		"logical type of attribute (default, password, name, addr, email, mobile, tel, id, credit_card, url)",
+		"logical type of attribute (default, password, name, addr, email, mobile, tel, id, credit_card, url, postcode)",
 	).SetRawValueValidator(maskerTypeValidator).
 		SetDefaultValue(toolkit.ParamsValue(MDefault)),
 )
@@ -121,6 +122,8 @@ func NewMaskingTransformer(ctx context.Context, driver *toolkit.Driver, paramete
 		mf = m.CreditCard
 	case MURL:
 		mf = m.URL
+	case MPostcode:
+		mf = postcodeMasker
 	case MDefault:
 		mf = defaultMasker
 	default:
@@ -169,10 +172,17 @@ func defaultMasker(v string) string {
 	return strings.Repeat("*", len(v))
 }
 
+func postcodeMasker(v string) string {
+	if len(v) <= 2 {
+		return v
+	}
+	return v[:2] + strings.Repeat("*", len(v)-2)
+}
+
 func maskerTypeValidator(p *toolkit.ParameterDefinition, v toolkit.ParamsValue) (toolkit.ValidationWarnings, error) {
 	typeName := string(v)
 
-	types := []string{MDefault, MPassword, MName, MAddress, MEmail, MMobile, MTelephone, MID, MCreditCard, MURL}
+	types := []string{MDefault, MPassword, MName, MAddress, MEmail, MMobile, MTelephone, MID, MCreditCard, MURL, MPostcode}
 	if !slices.Contains(types, typeName) {
 		return toolkit.ValidationWarnings{
 			toolkit.NewValidationWarning().
