@@ -169,7 +169,7 @@ func restoreEntry(targetDir string, hdr *tar.Header, content io.Reader, skipExis
 	fullPath := filepath.Join(targetDir, cleanName)
 
 	switch hdr.Typeflag {
-	case tar.TypeReg, tar.TypeRegA:
+	case tar.TypeReg:
 		if err := os.MkdirAll(filepath.Dir(fullPath), 0o750); err != nil {
 			return fmt.Errorf("create parent dirs: %w", err)
 		}
@@ -204,4 +204,3 @@ func restoreEntry(targetDir string, hdr *tar.Header, content io.Reader, skipExis
 		return nil
 	}
 }
-
