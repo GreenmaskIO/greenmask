@@ -51,14 +51,13 @@ jobs:
 
       - name: Create checksum
         if: startsWith(github.ref, 'refs/tags/v')
-        working-directory: builds
+        working-directory: v1/builds
         run: |
           find . -type f -exec shasum -a 256 -b {} + | sed 's# \*\./# *#' | while read sum file; do echo "$sum $file" > "${file#\*}".sha256; done
 
       - name: Create archive
         if: startsWith(github.ref, 'refs/tags/v')
         run: |
-          pwd
           export GOOS=$(echo ${{ matrix.platforms }} | cut -d '/' -f 1)
           export GOARCH=$(echo ${{ matrix.platforms }} | cut -d '/' -f 2)
           export GOARM=$(echo ${{ matrix.platforms }} | cut -d '/' -f 3 | cut -d 'v' -f 2)
