@@ -28,7 +28,7 @@ jobs:
         - 'linux/s390x'
     defaults:
       run:
-        working-directory: ./v1
+        working-directory: v1
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -58,6 +58,7 @@ jobs:
       - name: Create archive
         if: startsWith(github.ref, 'refs/tags/v')
         run: |
+          pwd
           export GOOS=$(echo ${{ matrix.platforms }} | cut -d '/' -f 1)
           export GOARCH=$(echo ${{ matrix.platforms }} | cut -d '/' -f 2)
           export GOARM=$(echo ${{ matrix.platforms }} | cut -d '/' -f 3 | cut -d 'v' -f 2)
