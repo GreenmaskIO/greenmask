@@ -7,7 +7,7 @@ env:
   go-version: '1.24'
   docker-io-registry: greenmask
   docker-ghcr-registry: greenmaskio
-  app-name: greenmask
+  app-name: greenmask-mysql
 
 jobs:
   build-binary:
@@ -26,6 +26,9 @@ jobs:
         - 'linux/ppc64le'
         - 'linux/riscv64'
         - 'linux/s390x'
+    defaults:
+      run:
+        working-directory: ./v1
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -106,17 +109,18 @@ jobs:
       - name: Get Git tag
         run: echo "TAG=$(git tag --points-at HEAD)" >> $GITHUB_ENV
 
-      - name: Set IS_RELEASE variable
-        if: | 
-          ! contains(github.ref, 'rc') &&
-          ! contains(github.ref, 'dev') &&
-          ! contains(github.ref, 'pre') &&
-          ! contains(github.ref, 'beta') &&
-          ! contains(github.ref, 'b')
-        run: echo "IS_RELEASE=true" >> $GITHUB_ENV
-
-      - name: Build and push
+      - name: Build and push - MySQL 8.0
         uses: docker/bake-action@v6
+        env:
+          MYSQL_VERSION: "8.0"
         with:
           push: true
-          targets: postgresql
+          targets: mysql
+
+      - name: Build and push - MySQL 8.4
+        uses: docker/bake-action@v6
+        env:
+          MYSQL_VERSION: "8.4-lts"
+        with:
+          push: true
+          targets: mysql
