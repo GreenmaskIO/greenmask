@@ -69,6 +69,8 @@ jobs:
           find . -maxdepth 1 -type f ! -name ${ARCHIVE_NAME} -exec rm -f {} +
 
       - name: Build with different arch - version v1 (with mysql)
+        env:
+          app-name: greenmask-mysql
         run: |
           export GOOS=$(echo ${{ matrix.platforms }} | cut -d '/' -f 1)
           export GOARCH=$(echo ${{ matrix.platforms }} | cut -d '/' -f 2)
@@ -82,12 +84,16 @@ jobs:
 
       - name: Create checksum - version v1 (with mysql)
         if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          app-name: greenmask-mysql
         run: |
           find . -type f -exec shasum -a 256 -b {} + | sed 's# \*\./# *#' | while read sum file; do echo "$sum $file" > "${file#\*}".sha256; done
         working-directory: v1/builds
 
       - name: Create archive - version v1 (with mysql)
         if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          app-name: greenmask-mysql
         run: |
           export GOOS=$(echo ${{ matrix.platforms }} | cut -d '/' -f 1)
           export GOARCH=$(echo ${{ matrix.platforms }} | cut -d '/' -f 2)
