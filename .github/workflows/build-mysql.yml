@@ -78,7 +78,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           draft: true
-          files: builds/*
+          files: v1/builds/*
 
   build-docker-images-and-push:
     runs-on: ubuntu-latest
