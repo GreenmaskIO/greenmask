@@ -62,7 +62,7 @@ jobs:
           export GOARCH=$(echo ${{ matrix.platforms }} | cut -d '/' -f 2)
           export GOARM=$(echo ${{ matrix.platforms }} | cut -d '/' -f 3 | cut -d 'v' -f 2)
           export ARCHIVE_NAME=$(echo "${{ env.app-name }}-${GOOS}-${GOARCH}$(if [ -n "${GOARM}" ]; then echo v${GOARM}; fi).$(if [ "${GOOS}" = "windows" ]; then echo "zip"; else echo "tar.gz"; fi)")
-          cp LICENSE builds/
+          cp ../LICENSE builds/
           cd builds
           if [[ "$GOOS" == "windows" ]]; then
             zip "${ARCHIVE_NAME}" *
