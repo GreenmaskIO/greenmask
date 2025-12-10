@@ -19,7 +19,7 @@ jobs:
   build-mysql:
     uses: ./.github/workflows/build-mysql.yml
     needs: 
-      - build
+      - tests
     secrets: inherit
 
   docs:
