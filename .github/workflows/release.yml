@@ -16,12 +16,6 @@ jobs:
       - tests
     secrets: inherit
 
-  build-mysql:
-    uses: ./.github/workflows/build-mysql.yml
-    needs: 
-      - tests
-    secrets: inherit
-
   docs:
     uses: ./.github/workflows/docs.yml
     needs: 
