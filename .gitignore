@@ -31,3 +31,6 @@ venv
 .cache
 # Binaries
 cmd/greenmask/greenmask
+
+# Allure artifacts
+allure-results/
