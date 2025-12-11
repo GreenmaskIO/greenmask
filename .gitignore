@@ -24,6 +24,7 @@ vendor/
 scratch
 config.yml
 !playground/config.yml
+*.pyc
 
 # Project exclusion
 site
