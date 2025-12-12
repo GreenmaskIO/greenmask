@@ -223,7 +223,6 @@ func (d *Dump) schemaOnlyDump(ctx context.Context, tx pgx.Tx) error {
 	if err != nil {
 		return fmt.Errorf("error openning schema toc file: %w", err)
 	}
-	defer tocFile.Close()
 
 	defer func() {
 		// Deleting file after closing it
@@ -231,6 +230,12 @@ func (d *Dump) schemaOnlyDump(ctx context.Context, tx pgx.Tx) error {
 			log.Warn().Err(err).Msgf("unable to delete temp file")
 		}
 	}()
+	defer func() {
+		if err := tocFile.Close(); err != nil {
+			log.Warn().Err(err).Msgf("unable to close temp file")
+		}
+	}()
+
 	rocReader := toc.NewReader(tocFile)
 	schemaToc, err := rocReader.Read()
 	if err != nil {
