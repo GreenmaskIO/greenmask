@@ -3,7 +3,7 @@
 # Usage:
 #   curl -fsSL https://greenmask.io/install.sh | sh
 #   sh install.sh --bin-dir /usr/local/bin --yes
-#   sh install.sh --bin-dir /usr/local/bin --binary greenmask-mysql --yes
+#   sh install.sh --bin-dir /usr/local/bin --binary greenmask-mysql --version <tag_name> --yes
 
 set -eu
 
