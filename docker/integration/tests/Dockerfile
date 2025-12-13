@@ -1,19 +1,21 @@
 FROM golang:1.24-bookworm
 
 ARG DEBIAN_FRONTEND=noninteractive
+# PG_VERSIONS: Comma-separated list of PostgreSQL versions to install client binaries for
+ARG PG_VERSIONS
 
 RUN apt-get update && apt-get install -y wget gnupg2 lsb-release make \
     && echo "deb https://apt.postgresql.org/pub/repos/apt $(lsb_release -sc)-pgdg main" > /etc/apt/sources.list.d/pgdg.list \
     && wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | apt-key add - \
-    && apt-get update && apt-get install --yes --no-install-recommends --no-install-suggests  \
-        postgresql-18 \
-        postgresql-17 \
-        postgresql-16 \
-        postgresql-15 \
-        postgresql-14 \
-        postgresql-13 \
-        postgresql-12 \
-        postgresql-11
+    && apt-get update \
+    && if [ -z "$PG_VERSIONS" ]; then \
+        echo "ERROR: PG_VERSIONS build arg is required!"; \
+        exit 1; \
+    fi \
+    && for version in $(echo "$PG_VERSIONS" | tr ',' ' '); do \
+        echo "Installing postgresql-$version"; \
+        apt-get install --yes --no-install-recommends --no-install-suggests postgresql-$version; \
+    done
 
 WORKDIR /var/lib/greenmask
 
