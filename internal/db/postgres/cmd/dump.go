@@ -552,8 +552,8 @@ func (d *Dump) MergeTocEntries(schemaEntries []*toc.Entry, dataEntries []*toc.En
 	// TODO: Assign dependencies and sort entries in the same order
 	res := make([]*toc.Entry, 0, len(schemaEntries)+len(dataEntries))
 
-	preDataEnd := 0
-	postDataStart := len(schemaEntries) - 1
+	preDataEnd := -1
+	postDataStart := -1
 
 	// Find predata last index and postdata first index
 	for idx, item := range schemaEntries {
@@ -566,13 +566,18 @@ func (d *Dump) MergeTocEntries(schemaEntries []*toc.Entry, dataEntries []*toc.En
 		}
 	}
 
-	res = append(res, schemaEntries[:preDataEnd+1]...)
+	if preDataEnd >= 0 {
+		res = append(res, schemaEntries[:preDataEnd+1]...)
+	}
+
 	if d.blobs != nil {
 		blobsDDLEntries := d.blobs.GetAllDDLs()
 		res = append(res, blobsDDLEntries...)
 	}
 	res = append(res, dataEntries...)
-	res = append(res, schemaEntries[postDataStart:]...)
+	if postDataStart != -1 {
+		res = append(res, schemaEntries[postDataStart:]...)
+	}
 
 	return res, nil
 }
