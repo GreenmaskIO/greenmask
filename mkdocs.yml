@@ -59,6 +59,7 @@ nav:
           - restore: commands/restore.md
           - delete: commands/delete.md
       - Database subset: database_subset.md
+      - Supporting New Postgres: supporting_new_postgres.md
       - Transformers:
           - built_in_transformers/index.md
           - Dynamic parameters: built_in_transformers/dynamic_parameters.md

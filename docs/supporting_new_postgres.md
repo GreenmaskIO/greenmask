@@ -1,8 +1,8 @@
-# PostgreSQL Version Compatibility Testing
+# Supporting a New PostgreSQL Version
 
 ## Overview
 
-Greenmask is tested against multiple PostgreSQL versions to ensure backward and forward compatibility. The test suite verifies:
+Greenmask supports multiple PostgreSQL versions to ensure backward and forward compatibility. This guide explains how to add support for new PostgreSQL versions and test them. The test suite verifies:
 
 - Successful database dumps with transformations
 - Compatibility with native `pg_restore` tool
@@ -15,6 +15,8 @@ Currently tested versions: **PostgreSQL 13, 14, 15, 16, 17, 18**
 ## Running Tests Locally
 
 ### Quick Start
+
+The `PG_VERSIONS` variable determines which PostgreSQL client binaries to install.
 
 ```bash
 PG_VERSIONS="17" docker compose -f docker-compose-integration.yml --profile pg17 up
@@ -76,14 +78,14 @@ greenmask:
     ["pg13", "pg14", "pg15", "pg16", "pg17", "pg18", "all"]
 ```
 
-### Step 3: Run the Tests
+### Step 2: Run the Tests
 
 ```bash
 # Test only the new version
 PG_VERSIONS="18" docker compose -f docker-compose-integration.yml --profile pg18 up
 ```
 
-### Step 4: Fix Any Compatibility Issues
+### Step 3: Fix Any Compatibility Issues
 
 If tests fail, check:
 
@@ -98,13 +100,5 @@ The main test is in: `tests/integration/greenmask/backward_compatibility_test.go
 
 For developers adding new PostgreSQL versions, these commits serve as examples of the changes typically required:
 
-- **PostgreSQL 17 Support**: https://github.com/GreenmaskIO/greenmask/commit/194a08dc7f10d7a44e37919a706a36cfa8e9d3c6
-- **PostgreSQL 18 Support**: https://github.com/GreenmaskIO/greenmask/commit/3717afcfbb71f6bcd9f9820cfeda72d0507b2d4c
-
-## Key Files
-
-- **Test Suite**: `tests/integration/greenmask/backward_compatibility_test.go`
-- **Docker Compose**: `docker-compose-integration.yml`
-- **Test Container**: `docker/integration/tests/Dockerfile`
-- **DB Filler**: `docker/integration/filldb/filldb.sh`
-- **Test Config**: `tests/integration/greenmask/args.go`
+- [PostgreSQL 17 Support](https://github.com/GreenmaskIO/greenmask/commit/194a08dc7f10d7a44e37919a706a36cfa8e9d3c6)
+- [PostgreSQL 18 Support](https://github.com/GreenmaskIO/greenmask/commit/3717afcfbb71f6bcd9f9820cfeda72d0507b2d4c)
