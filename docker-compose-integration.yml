@@ -1,5 +1,3 @@
-version: '3'
-
 services:
   storage:
     profiles: ["pg13", "pg14", "pg15", "pg16", "pg17", "pg18", "all"]

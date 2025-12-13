@@ -1,5 +1,3 @@
-version: '3'
-
 services:
   playground-storage:
     image: minio/minio:latest
