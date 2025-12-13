@@ -7,7 +7,7 @@
 
 set -eu
 
-APP="tarbaev-vl"
+APP="greenmaskio"
 REPO="greenmask"
 BIN_DIR="/usr/local/bin"
 VERSION="latest"
