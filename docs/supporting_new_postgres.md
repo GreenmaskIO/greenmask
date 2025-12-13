@@ -16,13 +16,11 @@ Currently tested versions: **PostgreSQL 13, 14, 15, 16, 17, 18**
 
 ### Quick Start
 
-The `PG_VERSIONS` variable determines which PostgreSQL client binaries to install.
-
 ```bash
-PG_VERSIONS="17" docker compose -f docker-compose-integration.yml --profile pg17 up
+docker compose -f docker-compose-integration.yml --profile pg17 up
 
 # to run against all versions
-PG_VERSIONS="13,14,15,16,17,18" docker compose -f docker-compose-integration.yml --profile all up
+docker compose -f docker-compose-integration.yml --profile all up
 ```
 
 ### Available Profiles
@@ -82,7 +80,7 @@ greenmask:
 
 ```bash
 # Test only the new version
-PG_VERSIONS="18" docker compose -f docker-compose-integration.yml --profile pg18 up
+docker compose -f docker-compose-integration.yml --profile pg18 up
 ```
 
 ### Step 3: Fix Any Compatibility Issues

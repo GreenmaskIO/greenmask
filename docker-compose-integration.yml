@@ -31,7 +31,7 @@ services:
     environment:
       POSTGRES_PASSWORD: example
     healthcheck:
-      test: [ "CMD", "psql", "-U", "postgres" ]
+      test: ["CMD", "psql", "-U", "postgres"]
       interval: 5s
       timeout: 1s
       retries: 3
@@ -123,9 +123,9 @@ services:
       PGPASSWORD: "example"
       FILE_DUMP: "demo-small-en.zip"
       TMP_DIR: "/tmp/schema"
-      PG_VERSIONS_CHECK: "${PG_VERSIONS:-13,14,15,16,17,18}"
-    #    volumes:
-    #      - "/tmp/greenmask_tests:/tmp/schema"
+      PG_VERSIONS_CHECK: "13,14,15,16,17,18"
+    # volumes:
+    #  - "/tmp/greenmask_tests:/tmp/schema"
     build:
       context: docker/integration/filldb
     depends_on:
@@ -154,7 +154,7 @@ services:
     volumes:
       - "/tmp"
     environment:
-      PG_VERSIONS_CHECK: "${PG_VERSIONS:-13,14,15,16,17,18}"
+      PG_VERSIONS_CHECK: "13,14,15,16,17,18"
 
       PG_USER: postgres
       PG_PASSWORD: example
@@ -173,8 +173,6 @@ services:
     build:
       dockerfile: docker/integration/tests/Dockerfile
       context: ./
-      args:
-        PG_VERSIONS: "${PG_VERSIONS:-13,14,15,16,17,18}"
     depends_on:
       test-dbs-filler:
         condition: service_completed_successfully

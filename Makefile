@@ -32,8 +32,7 @@ up:
 
 integration:
 	docker buildx build --load -t greenmask-test-dbs-filler:latest -f docker/integration/filldb/Dockerfile docker/integration/filldb
-	docker buildx build --load -t greenmask-integration:latest -f docker/integration/tests/Dockerfile . \
-		--build-arg PG_VERSIONS="13,14,15,16,17,18"
+	docker buildx build --load -t greenmask-integration:latest -f docker/integration/tests/Dockerfile .
 	docker compose -f docker-compose-integration.yml -p greenmask up \
                 --renew-anon-volumes --force-recreate \
                 --exit-code-from greenmask --abort-on-container-exit greenmask \
