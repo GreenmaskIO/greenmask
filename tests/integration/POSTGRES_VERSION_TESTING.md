@@ -2,7 +2,7 @@
 
 ## Overview
 
-Greenmask is tested against multiple PostgreSQL versions (currently 11-17) to ensure backward and forward compatibility. The test suite verifies:
+Greenmask is tested against multiple PostgreSQL versions to ensure backward and forward compatibility. The test suite verifies:
 
 - Successful database dumps with transformations
 - Compatibility with native `pg_restore` tool
@@ -10,7 +10,7 @@ Greenmask is tested against multiple PostgreSQL versions (currently 11-17) to en
 
 ## Supported Versions
 
-Currently tested versions: **PostgreSQL 11, 12, 13, 14, 15, 16, 17**
+Currently tested versions: **PostgreSQL 13, 14, 15, 16, 17, 18**
 
 ## Running Tests Locally
 
@@ -20,13 +20,13 @@ Currently tested versions: **PostgreSQL 11, 12, 13, 14, 15, 16, 17**
 PG_VERSIONS="17" docker compose -f docker-compose-integration.yml --profile pg17 up
 
 # to run against all versions
-PG_VERSIONS="11,12,13,14,15,16,17" docker compose -f docker-compose-integration.yml --profile all up
+PG_VERSIONS="13,14,15,16,17,18" docker compose -f docker-compose-integration.yml --profile all up
 ```
 
 ### Available Profiles
 
-- **`pg17`, `pg16`, `pg15`, `pg14`, `pg13`, `pg12`, `pg11`** - Test a specific PostgreSQL version
-- **`all`** - Test all supported versions 11-17 (for CI/CD)
+- **`pg18`, `pg17`, `pg16`, `pg15`, `pg14`, `pg13`** - Test a specific PostgreSQL version
+- **`all`** - Test all supported versions (for CI/CD)
 
 This will:
 
@@ -45,7 +45,7 @@ Add a new database service in `docker-compose-integration.yml`:
 db-18: # New version
   profiles: ["pg18", "all"]
   volumes:
-    - "/var/lib/postgresql/data"
+    - "/var/lib/postgresql/18/data"
   image: postgres:18
   ports:
     - "54318:5432"
@@ -64,7 +64,7 @@ Update the profiles in `test-dbs-filler` and `greenmask` services:
 ```yaml
 test-dbs-filler:
   profiles:
-    ["pg11", "pg12", "pg13", "pg14", "pg15", "pg16", "pg17", "pg18", "all"]
+    ["pg13", "pg14", "pg15", "pg16", "pg17", "pg18", "all"]
   depends_on:
     # ... existing dbs ...
     db-18:
@@ -73,7 +73,7 @@ test-dbs-filler:
 
 greenmask:
   profiles:
-    ["pg11", "pg12", "pg13", "pg14", "pg15", "pg16", "pg17", "pg18", "all"]
+    ["pg13", "pg14", "pg15", "pg16", "pg17", "pg18", "all"]
 ```
 
 ### Step 3: Run the Tests
@@ -93,6 +93,13 @@ If tests fail, check:
 - SQL syntax changes
 
 The main test is in: `tests/integration/greenmask/backward_compatibility_test.go`
+
+## Historical Reference: Past Version Updates
+
+For developers adding new PostgreSQL versions, these commits serve as examples of the changes typically required:
+
+- **PostgreSQL 17 Support**: https://github.com/GreenmaskIO/greenmask/commit/194a08dc7f10d7a44e37919a706a36cfa8e9d3c6
+- **PostgreSQL 18 Support**: https://github.com/GreenmaskIO/greenmask/commit/3717afcfbb71f6bcd9f9820cfeda72d0507b2d4c
 
 ## Key Files
 
