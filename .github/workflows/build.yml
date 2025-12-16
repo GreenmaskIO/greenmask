@@ -68,14 +68,57 @@ jobs:
           fi
           find . -maxdepth 1 -type f ! -name ${ARCHIVE_NAME} -exec rm -f {} +
 
+      - name: Build with different arch - version v1 (with mysql)
+        env:
+          app-name: greenmask-mysql
+        run: |
+          export GOOS=$(echo ${{ matrix.platforms }} | cut -d '/' -f 1)
+          export GOARCH=$(echo ${{ matrix.platforms }} | cut -d '/' -f 2)
+          export GOARM=$(echo ${{ matrix.platforms }} | cut -d '/' -f 3 | cut -d 'v' -f 2)
+          if [[ "$GOOS" == "windows" ]]; then
+            make build CMD_NAME="builds/${{ env.app-name }}.exe"
+          else
+            make build CMD_NAME="builds/${{ env.app-name }}"
+          fi
+        working-directory: v1
+
+      - name: Create checksum - version v1 (with mysql)
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          app-name: greenmask-mysql
+        run: |
+          find . -type f -exec shasum -a 256 -b {} + | sed 's# \*\./# *#' | while read sum file; do echo "$sum $file" > "${file#\*}".sha256; done
+        working-directory: v1/builds
+
+      - name: Create archive - version v1 (with mysql)
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          app-name: greenmask-mysql
+        run: |
+          export GOOS=$(echo ${{ matrix.platforms }} | cut -d '/' -f 1)
+          export GOARCH=$(echo ${{ matrix.platforms }} | cut -d '/' -f 2)
+          export GOARM=$(echo ${{ matrix.platforms }} | cut -d '/' -f 3 | cut -d 'v' -f 2)
+          export ARCHIVE_NAME=$(echo "${{ env.app-name }}-${GOOS}-${GOARCH}$(if [ -n "${GOARM}" ]; then echo v${GOARM}; fi).$(if [ "${GOOS}" = "windows" ]; then echo "zip"; else echo "tar.gz"; fi)")
+          cp ../LICENSE builds/
+          cd builds
+          if [[ "$GOOS" == "windows" ]]; then
+            zip "${ARCHIVE_NAME}" *
+          else
+            tar -czvf "${ARCHIVE_NAME}" *
+          fi
+          find . -maxdepth 1 -type f ! -name ${ARCHIVE_NAME} -exec rm -f {} +
+        working-directory: v1
+
       - name: GitHub Release
         if: startsWith(github.ref, 'refs/tags/v')
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           draft: true
-          files: builds/*
+          files: |
+            builds/*
+            v1/builds/*
 
   build-docker-images-and-push:
     runs-on: ubuntu-latest
@@ -106,30 +149,33 @@ jobs:
       - name: Get Git tag
         run: echo "TAG=$(git tag --points-at HEAD)" >> $GITHUB_ENV
 
-      - name: Build docker image and push
-        uses: docker/build-push-action@v5
-        with:
-          file: docker/greenmask/Dockerfile
-          context: .
-          platforms: linux/amd64,linux/arm64
-          push: true
-          tags: |
-            ${{ env.docker-io-registry }}/${{ env.app-name }}:${{ env.TAG }}
-            ghcr.io/${{ env.docker-ghcr-registry }}/${{ env.app-name }}:${{ env.TAG }}
-
-      - name: Build docker imaget with latest tag and push
-        uses: docker/build-push-action@v5
+      - name: Set IS_RELEASE variable
         if: | 
           ! contains(github.ref, 'rc') &&
           ! contains(github.ref, 'dev') &&
           ! contains(github.ref, 'pre') &&
           ! contains(github.ref, 'beta') &&
           ! contains(github.ref, 'b')
+        run: echo "IS_RELEASE=true" >> $GITHUB_ENV
+
+      - name: Build and push - PostgreSQL
+        uses: docker/bake-action@v6
         with:
-          file: docker/greenmask/Dockerfile
-          context: .
-          platforms: linux/amd64,linux/arm64
           push: true
-          tags: |
-            ${{ env.docker-io-registry }}/${{ env.app-name }}:latest
-            ghcr.io/${{ env.docker-ghcr-registry }}/${{ env.app-name }}:latest
+          targets: postgresql
+
+      - name: Build and push - MySQL 8.0
+        uses: docker/bake-action@v6
+        env:
+          MYSQL_VERSION: "8.0"
+        with:
+          push: true
+          targets: mysql
+
+      - name: Build and push - MySQL 8.4
+        uses: docker/bake-action@v6
+        env:
+          MYSQL_VERSION: "8.4-lts"
+        with:
+          push: true
+          targets: mysql
