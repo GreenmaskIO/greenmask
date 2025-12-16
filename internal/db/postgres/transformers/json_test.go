@@ -183,3 +183,85 @@ func TestJsonTransformer_structure_tags_encoding_regression(t *testing.T) {
 	assert.Equal(t, expected.Value, op.Value)
 	assert.Equal(t, expected.ErrorNotExist, op.ErrorNotExist)
 }
+
+func TestJsonTransformer_Transform_skip_does_not_exist(t *testing.T) {
+	t.Run("skip non-existing path", func(t *testing.T) {
+		ops := []*Operation{
+			{
+				Operation:    "set",
+				Path:         "name.unknown",
+				Value:        "modified",
+				SkipNotExist: true,
+			},
+		}
+
+		opsData, err := json.Marshal(ops)
+		require.NoError(t, err)
+
+		var attrName = "doc"
+		var originalValue = `{"name":{"test":"test"}}`
+		driver, record := getDriverAndRecord(attrName, originalValue)
+
+		transformerCtx, warnings, err := JsonTransformerDefinition.Instance(
+			context.Background(),
+			driver, map[string]toolkit.ParamsValue{
+				"column":     toolkit.ParamsValue(attrName),
+				"operations": opsData,
+				"keep_null":  toolkit.ParamsValue("false"),
+			},
+			nil,
+			"",
+		)
+		require.NoError(t, err)
+		assert.Empty(t, warnings)
+		r, err := transformerCtx.Transformer.Transform(
+			context.Background(),
+			record,
+		)
+		require.NoError(t, err)
+		actual, err := r.GetRawColumnValueByName(attrName)
+		require.NoError(t, err)
+		require.False(t, actual.IsNull)
+		require.JSONEq(t, originalValue, string(actual.Data))
+	})
+
+	t.Run("skip existing path", func(t *testing.T) {
+		ops := []*Operation{
+			{
+				Operation:    "set",
+				Path:         "name.test",
+				Value:        "modified",
+				SkipNotExist: true,
+			},
+		}
+
+		opsData, err := json.Marshal(ops)
+		require.NoError(t, err)
+
+		var attrName = "doc"
+		var originalValue = `{"name":{"test":"test"}}`
+		driver, record := getDriverAndRecord(attrName, originalValue)
+
+		transformerCtx, warnings, err := JsonTransformerDefinition.Instance(
+			context.Background(),
+			driver, map[string]toolkit.ParamsValue{
+				"column":     toolkit.ParamsValue(attrName),
+				"operations": opsData,
+				"keep_null":  toolkit.ParamsValue("false"),
+			},
+			nil,
+			"",
+		)
+		require.NoError(t, err)
+		assert.Empty(t, warnings)
+		r, err := transformerCtx.Transformer.Transform(
+			context.Background(),
+			record,
+		)
+		require.NoError(t, err)
+		actual, err := r.GetRawColumnValueByName(attrName)
+		require.NoError(t, err)
+		require.False(t, actual.IsNull)
+		require.JSONEq(t, `{"name":{"test":"modified"}}`, string(actual.Data))
+	})
+}

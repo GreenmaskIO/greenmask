@@ -11,6 +11,7 @@ Change a JSON document using `delete` and `set` operations. `NULL` values are ke
 |          ∟ | value           | A value to be assigned to the provided path                                                      |         | No       | -                  |
 |          ∟ | value_template  | A Golang template to be assigned to the provided path. See the list of template functions below. |         | No       | -                  |
 |          ∟ | error_not_exist | Throws an error if the key does not exist by the provided path. Disabled by default.             | `false` | No       | -                  |
+|          ∟ | skip_not_exist  | Skip operation if the key does not exist.                                                        | `false` | No       | -                  |
 
 ## Description
 
@@ -54,6 +55,7 @@ The Json transformer is based on [tidwall/sjson](https://github.com/tidwall/sjso
           - operation: "set"
             path: "details.preperties.1"
             value: {"name": "somename", "description": null}
+            skip_not_exist: true
           - operation: "delete"
             path: "values.:2"
 ```

@@ -19,10 +19,10 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/greenmaskio/greenmask/pkg/toolkit"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
-
-	"github.com/greenmaskio/greenmask/pkg/toolkit"
+	"github.com/rs/zerolog/log"
 )
 
 var typeSizes = map[string]int{
@@ -165,14 +165,14 @@ func getTableConstraints(ctx context.Context, tx pgx.Tx, tableOid toolkit.Oid, v
 				Columns:    constraintColumns,
 				Definition: constraintDefinition,
 			}
-		case 'x':
-			c = &toolkit.Exclusion{
-				Schema:     constraintSchema,
-				Name:       constraintName,
-				Oid:        constraintOid,
-				Columns:    constraintColumns,
-				Definition: constraintDefinition,
-			}
+		case 'n':
+			// Ignore not null constraint as it's introspected in table definition query.
+			// Before pg18 it was only for domain types, since 18 all null constraints
+			// can be found in pg_constraint table.
+			log.Debug().
+				Str("ConstraintType", string(constraintType)).
+				Msg("ignoring table constraint")
+			continue
 		default:
 			return nil, fmt.Errorf("unknown constraint type %c", constraintType)
 		}
