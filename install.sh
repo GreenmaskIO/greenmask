@@ -3,7 +3,6 @@
 # Usage:
 #   curl -fsSL https://greenmask.io/install.sh | sh
 #   sh install.sh --bin-dir /usr/local/bin --yes
-#   sh install.sh --bin-dir /usr/local/bin --binary greenmask-mysql --version <tag_name> --yes
 
 set -eu
 
@@ -11,7 +10,6 @@ APP="greenmaskio"
 REPO="greenmask"
 BIN_DIR="/usr/local/bin"
 VERSION="latest"
-BINARY="greenmask"
 
 ASSUME_YES=0
 DEBUG=0
@@ -30,12 +28,11 @@ usage() {
 greenmask installer
 
 Options:
-  -b, --bin-dir DIR     install directory (default: ${BIN_DIR})
-  -y, --yes             skip confirmation (non-interactive)
-  -v, --version VER     version tag (e.g. v1.2.3) (default: ${VERSION})
-  --binary BINARY       binary to install: greenmask or greenmask-mysql (default: ${BINARY})
-  --debug               verbose output
-  -h, --help            show this help
+  -b, --bin-dir DIR   install directory (default: ${BIN_DIR})
+  -y, --yes           skip confirmation (non-interactive)
+  -v, --version VER   version tag (e.g. v1.2.3) (default: ${VERSION})
+  --debug             verbose output
+  -h, --help          show this help
 EOF
 }
 
@@ -88,7 +85,7 @@ verify_checksum_from_archive() {
   tmpdir="$1"
   bin="$2"
 
-  sha_file="$tmpdir/${BINARY}.sha256"
+  sha_file="$tmpdir/greenmask.sha256"
 
   [ -f "$sha_file" ] || die "checksum file not found in archive"
 
@@ -145,7 +142,7 @@ unpack_tar_to() {
 
 install_asset() {
   os="$1"; arch="$2"; base="$3"
-  asset="${BINARY}-${os}-${arch}.tar.gz"
+  asset="${REPO}-${os}-${arch}.tar.gz"
   url="${base}/${asset}"
 
   has mktemp || die "need 'mktemp' to create temp directories"
@@ -162,8 +159,8 @@ install_asset() {
 
   info "Verifying checksum…"
   # find the executable file
-  bin_path="$(find "$tmp" -type f -name "$BINARY*" \( -perm -u+x -o -perm -g+x -o -perm -o+x \) 2>/dev/null | head -n1 || true)"
-  [ -n "$bin_path" ] || die "binary '$BINARY' not found in archive"
+  bin_path="$(find "$tmp" -type f -name "$REPO*" \( -perm -u+x -o -perm -g+x -o -perm -o+x \) 2>/dev/null | head -n1 || true)"
+  [ -n "$bin_path" ] || die "binary '$REPO' not found in archive"
   
   verify_checksum_from_archive "$tmp" "$bin_path"
 
@@ -176,25 +173,25 @@ install_asset() {
 
   info "Installing to ${BIN_DIR}…"
   if has install; then
-    $sudo install -m 0755 "$bin_path" "$BIN_DIR/$BINARY"
+    $sudo install -m 0755 "$bin_path" "$BIN_DIR/$REPO"
   else
-    $sudo cp "$bin_path" "$BIN_DIR/$BINARY"
-    $sudo chmod 0755 "$BIN_DIR/$BINARY"
+    $sudo cp "$bin_path" "$BIN_DIR/$REPO"
+    $sudo chmod 0755 "$BIN_DIR/$REPO"
   fi
 
-  info "Installed: $BIN_DIR/$BINARY"
+  info "Installed: $BIN_DIR/$REPO"
 
   # Shadowed binary warning
-  present="$(command -v "$BINARY" 2>/dev/null || true)"
-  if [ -n "$present" ] && [ "$present" != "$BIN_DIR/$BINARY" ]; then
-    warn "'$BINARY' on PATH is '$present' (not '$BIN_DIR/$BINARY')"
+  present="$(command -v "$REPO" 2>/dev/null || true)"
+  if [ -n "$present" ] && [ "$present" != "$BIN_DIR/$REPO" ]; then
+    warn "'$REPO' on PATH is '$present' (not '$BIN_DIR/$REPO')"
   fi
 
   if ! check_bin_in_path "$BIN_DIR"; then
     if has realpath; then print_path_tips "$(realpath "$BIN_DIR")"; else print_path_tips "$BIN_DIR"; fi
   fi
 
-  printf "✓ %s %sinstalled\n" "$BINARY" "$( [ "$VERSION" = "latest" ] && printf '' || printf "%s " "$VERSION")"
+  printf "✓ %s %sinstalled\n" "$APP" "$( [ "$VERSION" = "latest" ] && printf '' || printf "%s " "$VERSION")"
 }
 
 main() {
@@ -203,7 +200,6 @@ main() {
     case "$1" in
       -b|--bin-dir) BIN_DIR="$2"; shift 2 ;;
       -v|--version) VERSION="$2"; shift 2 ;;
-      --binary) BINARY="$2"; shift 2 ;;
       -y|--yes) ASSUME_YES=1;shift;;
       --debug) DEBUG=1; shift;;
       -h|--help) usage; exit 0 ;;
@@ -212,12 +208,6 @@ main() {
   done
 
   [ "$DEBUG" -eq 1 ] && set -x
-  
-  # Validate binary parameter
-  case "$BINARY" in
-    greenmask|greenmask-mysql) ;;
-    *) die "invalid binary: $BINARY (must be 'greenmask' or 'greenmask-mysql')" ;;
-  esac
   
   # If we're not connected to a TTY (piped/CI), default to non-interactive
   if [ "$ASSUME_YES" -ne 1 ] && [ ! -t 0 ]; then
@@ -229,21 +219,20 @@ main() {
   base="$(build_base_url)"
 
   printf "Configuration\n"
-  info "Binary      : ${BINARY}"
   info "Bin directory: ${BIN_DIR}"
   info "OS/ARCH     : ${os}/${arch}"
   info "Version     : ${VERSION}"
   printf "\n"
 
   if [ "$ASSUME_YES" -ne 1 ]; then
-    printf "? Install %s %s to %s? [y/N] " "$BINARY" "$VERSION" "$BIN_DIR"
+    printf "? Install %s %s to %s? [y/N] " "$APP" "$VERSION" "$BIN_DIR"
     read -r ans || true
     case "$ans" in y|Y|yes|YES) ;; *) die "aborted" ;; esac
   fi
 
   install_asset "$os" "$arch" "$base"
 
-  info "Uninstall: rm -f $BIN_DIR/$BINARY"
+  info "Uninstall: rm -f $BIN_DIR/$REPO"
 }
 
 main "$@"
