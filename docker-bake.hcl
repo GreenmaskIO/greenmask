@@ -59,7 +59,7 @@ target "mysql" {
   }
 
   tags = compact([
-    "greenmask:mysql-${MYSQL_VERSION}-${TAG}",
+    "greenmask/greenmask:mysql-${MYSQL_VERSION}-${TAG}",
     "ghcr.io/greenmaskio/greenmask:mysql-${MYSQL_VERSION}-${TAG}"
   ])
 }
