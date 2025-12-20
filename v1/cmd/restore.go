@@ -24,7 +24,48 @@ import (
 )
 
 var (
-	restoreFlags = []cmd.Flag{}
+	//DataOnly       bool `mapstructure:"data-only" yaml:"data-only" json:"data-only"`
+	//SchemaOnly     bool `mapstructure:"schema-only" yaml:"schema-only" json:"schema-only"`
+	//Jobs           int  `mapstructure:"jobs" yaml:"jobs" json:"jobs"`
+	//RestoreInOrder bool `mapstructure:"restore-in-order" yaml:"restore-in-order" json:"restore-in-order"`
+	restoreFlags = []cmd.Flag{
+		{
+			Name:             "data-only",
+			Usage:            "Restore only data, without schema.",
+			ConfigPathPrefix: "restore.options",
+			BindToConfig:     true,
+			Type:             cmd.FlagTypeBool,
+			IsRequired:       false,
+			Default:          false,
+		},
+		{
+			Name:             "schema-only",
+			Usage:            "Restore only schema, without data.",
+			ConfigPathPrefix: "restore.options",
+			BindToConfig:     true,
+			Type:             cmd.FlagTypeBool,
+			IsRequired:       false,
+			Default:          false,
+		},
+		{
+			Name:             "jobs",
+			Usage:            "Number of jobs to use for restoring.",
+			ConfigPathPrefix: "restore.options",
+			BindToConfig:     true,
+			Type:             cmd.FlagTypeInt,
+			IsRequired:       false,
+			Default:          1,
+		},
+		{
+			Name:             "restore-in-order",
+			Usage:            "Restore data in order, otherwise the data might not be restored due to dependencies.",
+			ConfigPathPrefix: "restore.options",
+			BindToConfig:     true,
+			Type:             cmd.FlagTypeBool,
+			IsRequired:       false,
+			Default:          false,
+		},
+	}
 
 	restoreCmd = cmd.MustCommand(&cobra.Command{
 		Use:   "restore [flags] dumpId|latest",

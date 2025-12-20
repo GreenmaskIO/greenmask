@@ -135,7 +135,7 @@ type PostgresqlDumpConfig struct {
 	Options pgconfig.DumpOptions `mapstructure:"options" yaml:"options" json:"options"`
 }
 
-type Options struct {
+type CommonDumpOptions struct {
 	IncludeTable     []string `mapstructure:"include-table" yaml:"include-table" json:"include-table"`
 	ExcludeTable     []string `mapstructure:"exclude-table" yaml:"exclude-table" json:"exclude-table"`
 	IncludeSchema    []string `mapstructure:"include-schema" yaml:"include-schema" json:"include-schema"`
@@ -148,7 +148,7 @@ type Options struct {
 }
 
 type Dump struct {
-	Options           Options              `mapstructure:"options" yaml:"options" json:"options"`
+	Options           CommonDumpOptions    `mapstructure:"options" yaml:"options" json:"options"`
 	MysqlConfig       MysqlDumpConfig      `mapstructure:"mysql" yaml:"mysql" json:"mysql"`
 	PostgresqlConfig  PostgresqlDumpConfig `mapstructure:"postgresql" yaml:"postgresql" json:"postgresql"`
 	Transformation    TransformationConfig `mapstructure:"transformation" yaml:"transformation" json:"transformation,omitempty"`

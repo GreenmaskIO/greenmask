@@ -53,8 +53,20 @@ type PostgresqlRestoreConfig struct {
 	Options pgconfig.RestoreOptions `mapstructure:"options" yaml:"options" json:"options"`
 }
 
+type CommonRestoreOptions struct {
+	//IncludeTable     []string `mapstructure:"include-table" yaml:"include-table" json:"include-table"`
+	//ExcludeTable     []string `mapstructure:"exclude-table" yaml:"exclude-table" json:"exclude-table"`
+	//IncludeSchema    []string `mapstructure:"include-schema" yaml:"include-schema" json:"include-schema"`
+	//ExcludeSchema    []string `mapstructure:"exclude-schema" yaml:"exclude-schema" json:"exclude-schema"`
+	//ExcludeTableData []string `mapstructure:"exclude-table-data" yaml:"exclude-table-data" json:"exclude-table-data"`
+	DataOnly       bool `mapstructure:"data-only" yaml:"data-only" json:"data-only"`
+	SchemaOnly     bool `mapstructure:"schema-only" yaml:"schema-only" json:"schema-only"`
+	Jobs           int  `mapstructure:"jobs" yaml:"jobs" json:"jobs"`
+	RestoreInOrder bool `mapstructure:"restore-in-order" yaml:"restore-in-order" json:"restore-in-order"`
+}
+
 type Restore struct {
-	Options          Options                        `mapstructure:"options" yaml:"options" json:"options"`
+	Options          CommonRestoreOptions           `mapstructure:"options" yaml:"options" json:"options"`
 	MysqlConfig      MysqlRestoreConfig             `mapstructure:"mysql" yaml:"mysql"`
 	PostgresqlConfig PostgresqlRestoreConfig        `mapstructure:"postgresql" yaml:"postgresql"`
 	Scripts          map[string][]Script            `mapstructure:"scripts" yaml:"scripts" json:"scripts,omitempty"`

@@ -84,8 +84,8 @@ services:
       TRANSFORMED_DB_PORT: "3306"
       DATABASE_HOST: "playground-db"
     depends_on:
-      #      playground-dbs-filler:
-      #        condition: service_completed_successfully
+      playground-dbs-filler:
+        condition: service_completed_successfully
       playground-mysql-storage:
         condition: service_healthy
       playground-mysql-db-original:
@@ -112,6 +112,8 @@ services:
       TRANSFORMED_DB_NAME: "employees"
       TRANSFORMED_DB_PORT: "3306"
     depends_on:
+      playground-dbs-filler:
+        condition: service_completed_successfully
       playground-mysql-storage:
         condition: service_healthy
       playground-mysql-db-original:
