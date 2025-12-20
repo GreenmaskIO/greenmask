@@ -32,6 +32,7 @@ var (
 	ErrUnknownDBMSType                             = errors.New("unknown DBMS type")
 	ErrUnknownDBMSTypeClass                        = errors.New("unknown DBMS type class")
 	ErrFatalError                                  = errors.New("fatal error")
+	ErrDumpStreamTerminated                        = errors.New("dump stream terminated")
 )
 
 type DumpError struct {

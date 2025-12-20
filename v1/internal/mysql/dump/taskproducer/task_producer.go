@@ -47,17 +47,18 @@ func newMysqlTableDriver(
 type Option func(*TaskProducer) error
 
 type TaskProducer struct {
-	introspector       commonininterfaces.Introspector
-	tableConfigs       []commonmodels.TableConfig
-	registry           *registry.TransformerRegistry
-	connConfig         mysqlmodels.ConnConfig
-	st                 commonininterfaces.Storager
-	subset             subset.Subset
-	filter             commonmodels.TaskProducerFilter
-	saveOriginal       bool
-	rowLimit           int64
-	compressionEnabled bool
-	compressionPgzip   bool
+	introspector          commonininterfaces.Introspector
+	tableConfigs          []commonmodels.TableConfig
+	registry              *registry.TransformerRegistry
+	connConfig            mysqlmodels.ConnConfig
+	st                    commonininterfaces.Storager
+	subset                subset.Subset
+	filter                commonmodels.TaskProducerFilter
+	saveOriginal          bool
+	rowLimit              int64
+	compressionEnabled    bool
+	compressionPgzip      bool
+	transformedTablesOnly bool
 }
 
 func WithFilter(
@@ -96,6 +97,13 @@ func WithCompressionEnabled() Option {
 func WithCompressionPgzip() Option {
 	return func(tp *TaskProducer) error {
 		tp.compressionPgzip = true
+		return nil
+	}
+}
+
+func WithTransformedTablesOnly() Option {
+	return func(tp *TaskProducer) error {
+		tp.transformedTablesOnly = true
 		return nil
 	}
 }
@@ -215,16 +223,21 @@ func (tp *TaskProducer) Produce(
 
 	tableID2TaskID := make(map[commonmodels.ObjectID]commonmodels.TaskID)
 	tableIDAffectedColumns := make(map[commonmodels.ObjectID][]int)
-	res := make([]commonininterfaces.Dumper, len(tablesContext))
+	res := make([]commonininterfaces.Dumper, 0, len(tablesContext))
 	for i := range tablesContext {
+		if !tablesContext[i].HasTransformer() && tp.transformedTablesOnly {
+			// Skip non transformed tables for validate command.
+			continue
+		}
 		taskID++
 		if tablesContext[i].HasTransformer() {
-			res[i], err = tp.initTableDumper(tablesContext[i], taskID)
+			dumper, err := tp.initTableDumper(tablesContext[i], taskID)
 			if err != nil {
 				return nil, commonmodels.RestorationContext{}, fmt.Errorf("init table dumper: %w", err)
 			}
+			res = append(res, dumper)
 		} else {
-			res[i] = tp.initTableRawDumper(tablesContext[i], taskID)
+			res = append(res, tp.initTableRawDumper(tablesContext[i], taskID))
 		}
 		tableID2TaskID[commonmodels.ObjectID(tablesContext[i].Table.ID)] = taskID
 		affectedColumns := tablesContext[i].GetAffectedColumns()

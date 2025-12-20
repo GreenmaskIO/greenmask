@@ -49,7 +49,7 @@ func PrintValidationWarnings(ctx context.Context, resolvedWarnings []string, pri
 			continue
 		}
 
-		if w.Severity == commonmodels.ValidationSeverityWarning {
+		if w.Severity == commonmodels.ValidationSeverityError {
 			// The warnings with error severity must be printed anyway
 			log.Error().Any("ValidationWarning", w).Msg("")
 		} else {

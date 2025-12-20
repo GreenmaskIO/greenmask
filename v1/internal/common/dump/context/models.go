@@ -17,6 +17,7 @@ package context
 import (
 	commonininterfaces "github.com/greenmaskio/greenmask/v1/internal/common/interfaces"
 	commonmodels "github.com/greenmaskio/greenmask/v1/internal/common/models"
+	commonparameters "github.com/greenmaskio/greenmask/v1/internal/common/transformers/parameters"
 )
 
 type CondEvaluator interface {
@@ -27,7 +28,15 @@ type CondEvaluator interface {
 type TransformerContext struct {
 	Transformer commonininterfaces.Transformer
 	// Condition - transformer level condition to evaluate before applying the transformer.
-	Condition CondEvaluator
+	Condition         CondEvaluator
+	StaticParameters  map[string]*commonparameters.DynamicParameter
+	DynamicParameters map[string]*commonparameters.DynamicParameter
+}
+
+func (tc *TransformerContext) SetRecordForDynamicParameters(r commonininterfaces.Recorder) {
+	for _, param := range tc.DynamicParameters {
+		param.SetRecord(r)
+	}
 }
 
 func (tc *TransformerContext) EvaluateWhen(r commonininterfaces.Recorder) (bool, error) {

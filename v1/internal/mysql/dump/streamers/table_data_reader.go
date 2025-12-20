@@ -129,9 +129,11 @@ func (r *TableDataReader) stream(ctx context.Context) func() error {
 			case <-ctx.Done():
 				log.Ctx(ctx).Debug().
 					Int("LineNum", int(lineNum)).
+					Str("TableName", r.table.Name).
+					Str("SchemaName", r.table.Schema).
 					Err(ctx.Err()).
-					Msg("data reader context done")
-				return nil
+					Msg("data reader context done - ignore it in validate command")
+				return errors.Join(commonmodels.ErrDumpStreamTerminated, ctx.Err())
 			}
 			return nil
 		}, nil)

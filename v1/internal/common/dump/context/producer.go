@@ -130,7 +130,7 @@ func (p *TableContextBuilder) initTableTransformers(
 		ctx := log.Ctx(ctx).With().
 			Str(commonmodels.MetaKeyTransformerName, transformerConfigs[i].Name).
 			Logger().WithContext(ctx)
-		transformer, err := p.initTransformer(ctx, driver, transformerConfigs[i])
+		initRes, err := p.initTransformer(ctx, driver, transformerConfigs[i])
 		if err != nil {
 			return nil, fmt.Errorf("init transformer \"%s\": %w", transformerConfigs[i].Name, err)
 		}
@@ -139,18 +139,26 @@ func (p *TableContextBuilder) initTableTransformers(
 			return nil, fmt.Errorf("compile transformer condition: %w", err)
 		}
 		res[i] = &TransformerContext{
-			Transformer: transformer,
-			Condition:   transformerCond,
+			Transformer:       initRes.transformer,
+			Condition:         transformerCond,
+			StaticParameters:  initRes.staticParameters,
+			DynamicParameters: initRes.dynamicParameters,
 		}
 	}
 	return res, nil
+}
+
+type tranInitRes struct {
+	transformer       commonininterfaces.Transformer
+	staticParameters  map[string]*commonparameters.DynamicParameter
+	dynamicParameters map[string]*commonparameters.DynamicParameter
 }
 
 func (p *TableContextBuilder) initTransformer(
 	ctx context.Context,
 	driver commonininterfaces.TableDriver,
 	config commonmodels.TransformerConfig,
-) (commonininterfaces.Transformer, error) {
+) (tranInitRes, error) {
 	ctx = validationcollector.WithMeta(ctx,
 		commonmodels.MetaKeyTransformerName, config.Name,
 	)
@@ -160,7 +168,7 @@ func (p *TableContextBuilder) initTransformer(
 			Add(commonmodels.NewValidationWarning().
 				SetSeverity(commonmodels.ValidationSeverityError).
 				SetMsg("transformer is not found"))
-		return nil, fmt.Errorf("get transformer from registry: %w", commonmodels.ErrFatalValidationError)
+		return tranInitRes{}, fmt.Errorf("get transformer from registry: %w", commonmodels.ErrFatalValidationError)
 	}
 	params, err := parameters.InitParameters(
 		ctx,
@@ -170,7 +178,7 @@ func (p *TableContextBuilder) initTransformer(
 		config.DynamicParams,
 	)
 	if err != nil {
-		return nil, err
+		return tranInitRes{}, err
 	}
 
 	dynamicParams := make(map[string]*commonparameters.DynamicParameter)
@@ -192,11 +200,19 @@ func (p *TableContextBuilder) initTransformer(
 		staticParams,
 	)
 	if err != nil {
-		return nil, fmt.Errorf("schema validation error: %w", err)
+		return tranInitRes{}, fmt.Errorf("schema validation error: %w", err)
 	}
 
 	// Create a new transformer
-	return transformerDefinition.New(ctx, driver, params)
+	tran, err := transformerDefinition.New(ctx, driver, params)
+	if err != nil {
+		return tranInitRes{}, fmt.Errorf("new transformer: %w", err)
+	}
+	return tranInitRes{
+		transformer:       tran,
+		dynamicParameters: dynamicParams,
+		staticParameters:  dynamicParams,
+	}, nil
 }
 
 func (p *TableContextBuilder) compileTransformerCondition(

@@ -477,7 +477,7 @@ func (dp *DynamicParameter) Scan(dest any) error {
 
 	v, err := dp.record.GetRawColumnValueByIdx(dp.columnIdx)
 	if err != nil {
-		return fmt.Errorf("erro getting raw column value: %w", err)
+		return fmt.Errorf("error getting raw column value: %w", err)
 	}
 
 	if v.IsNull {

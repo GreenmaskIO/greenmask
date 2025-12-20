@@ -18,7 +18,7 @@ common:
   tmp_dir: "/tmp"
 
 log:
-  level: "debug"
+  level: "info"
   format: "text"
 
 engine: mysql
@@ -36,6 +36,7 @@ dump:
     - "v1"
     - "daily"
   options:
+    jobs: 4
 
   mysql:
     options:
@@ -44,40 +45,33 @@ dump:
       connect-database: employees
       databases:
         - employees
-#        - playground
       host: playground-mysql-db-original
       port: 3306
       add-drop-table: false
 
   transformation:
-    - schema: "playground"
-      name: "users"
-#      subset_conds:
-#        - "playground.users.id = 1"
-#      when: "record.id == 1"
+    - schema: employees
+      name: employees
+      subset_conds:
+        - "employees.employees.hire_date > '1990-01-01'"
       transformers:
         - name: "RandomPerson"
           params:
-            gender: "Any"
-            columns:
-              - name: "username"
-                template: "{{ .FirstName }}"
             engine: "random"
+            columns:
+              - name: "first_name"
+                template: "{{ .FirstName }}"
+              - name: "last_name"
+                template: "{{ .LastName }}"
+          dynamic_params:
+            gender:
+              column: gender
+
         - name: "RandomDate"
-#          when: "record.id == 1"
           params:
-            column: "created_at"
-            min: "2020-01-01 00:00:00"
-            max: "2023-01-01 00:00:00"
-    - schema: "playground"
-      name: "orders"
-      transformers:
-        - name: "RandomDate"
-          #          when: "record.id == 1"
-          params:
-            column: "created_at"
-            min: "2020-01-01 00:00:00"
-            max: "2023-01-01 00:00:00"
+            column: "birth_date"
+            min: "1950-01-01"
+            max: "1990-01-01"
 
 restore:
   options:

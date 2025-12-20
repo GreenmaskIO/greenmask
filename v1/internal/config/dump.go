@@ -144,7 +144,22 @@ type CommonDumpOptions struct {
 	DataOnly         bool     `mapstructure:"data-only" yaml:"data-only" json:"data-only"`
 	SchemaOnly       bool     `mapstructure:"schema-only" yaml:"schema-only" json:"schema-only"`
 	Jobs             int      `mapstructure:"jobs" yaml:"jobs" json:"jobs"`
-	RestoreInOrder   bool     `mapstructure:"restore-in-order" yaml:"restore-in-order" json:"restore-in-order"`
+}
+
+func (o *CommonDumpOptions) GetIncludedTables() []string {
+	return o.IncludeTable
+}
+
+func (o *CommonDumpOptions) GetExcludedTables() []string {
+	return o.ExcludeTable
+}
+
+func (o *CommonDumpOptions) GetExcludedSchemas() []string {
+	return o.ExcludeSchema
+}
+
+func (o *CommonDumpOptions) GetIncludedSchemas() []string {
+	return o.IncludeSchema
 }
 
 type Dump struct {

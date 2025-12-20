@@ -71,7 +71,7 @@ services:
   greenmask:
     volumes:
       - ./playground/mysql:/var/lib/playground
-    image: "greenmask/greenmask:mysql-8.0-latest"
+    image: "greenmask/greenmask:mysql-8.0-v1.0.0b1"
     working_dir: /var/lib/playground
     environment:
       MYSQL_USER: root

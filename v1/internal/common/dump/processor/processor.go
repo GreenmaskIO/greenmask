@@ -18,6 +18,8 @@ import (
 	"context"
 	"fmt"
 
+	"sync"
+
 	"github.com/rs/zerolog/log"
 	"golang.org/x/sync/errgroup"
 
@@ -48,6 +50,7 @@ type DefaultDumpProcessor struct {
 	taskList     []commonininterfaces.Dumper
 	schemaDumper schemaDumper
 	taskStats    map[commonmodels.TaskID]commonmodels.TaskStat
+	mx           sync.Mutex
 	dataOnly     bool
 }
 
@@ -233,17 +236,21 @@ func (dr *DefaultDumpProcessor) dumpWorker(
 		log.Ctx(ctx).Debug().
 			Int("WorkerId", id).
 			Any("ObjectName", task.DebugInfo()).
+			Any("ObjectMetadata", task.Meta()).
 			Msgf("dumping is started")
 
 		stat, err := task.Dump(ctx)
 		if err != nil {
 			return fmt.Errorf(`dump task '%s': %w`, task.DebugInfo(), err)
 		}
+		dr.mx.Lock()
 		dr.taskStats[stat.ID] = stat
+		dr.mx.Unlock()
 
 		log.Ctx(ctx).Debug().
 			Int("WorkerId", id).
 			Any("ObjectName", task.DebugInfo()).
+			Any("ObjectMetadata", task.Meta()).
 			Msgf("dumping is done")
 	}
 }

@@ -85,6 +85,7 @@ func (tp *TransformationPipeline) Transform(ctx context.Context, r commoninterfa
 		return nil
 	}
 	for i, t := range tp.tableContext.TransformerContext {
+		t.SetRecordForDynamicParameters(r)
 		needTransform, err := t.EvaluateWhen(r)
 		if err != nil {
 			tranName := t.Transformer.Describe()
