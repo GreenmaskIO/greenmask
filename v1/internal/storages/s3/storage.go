@@ -160,7 +160,7 @@ func New(ctx context.Context, cfg S3Config, logLevel string) (*Storage, error) {
 		},
 	)
 
-	log.Debug().
+	log.Ctx(ctx).Debug().
 		Str("region", *service.Config.Region).
 		Str("bucket", cfg.Bucket).
 		Msg("s3 storage bucket")
