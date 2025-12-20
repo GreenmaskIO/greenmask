@@ -24,10 +24,6 @@ import (
 )
 
 var (
-	//DataOnly       bool `mapstructure:"data-only" yaml:"data-only" json:"data-only"`
-	//SchemaOnly     bool `mapstructure:"schema-only" yaml:"schema-only" json:"schema-only"`
-	//Jobs           int  `mapstructure:"jobs" yaml:"jobs" json:"jobs"`
-	//RestoreInOrder bool `mapstructure:"restore-in-order" yaml:"restore-in-order" json:"restore-in-order"`
 	restoreFlags = []cmd.Flag{
 		{
 			Name:             "data-only",
