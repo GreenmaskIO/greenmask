@@ -51,7 +51,7 @@ func getMySQLDumpOpts(cfg *config.Config) ([]mysqldump.Option, error) {
 	if cfg.Validate.RowsLimit > 0 {
 		opts = append(opts, mysqldump.WithRowsLimit(int64(cfg.Validate.RowsLimit)))
 	}
-	opts = append(opts, mysqldump.WithDataOnly())
+	opts = append(opts, mysqldump.WithDataOnly(), mysqldump.WithTransformedTablesOnly())
 	if len(cfg.Validate.Tables) > 0 {
 		filterOpt, err := getMySQLDumpFilter(cfg.Validate)
 		if err != nil {
@@ -63,7 +63,7 @@ func getMySQLDumpOpts(cfg *config.Config) ([]mysqldump.Option, error) {
 	return opts, nil
 }
 
-func printValidatWarning(ctx context.Context, cfg *config.Config) error {
+func printValidateWarning(ctx context.Context, cfg *config.Config) error {
 	err := commonutils.PrintValidationWarnings(ctx, cfg.Validate.ResolvedWarnings, cfg.Validate.Warnings)
 	if err != nil {
 		return fmt.Errorf("print validation warnings: %w", err)
@@ -85,7 +85,7 @@ func runMySQLValidate(ctx context.Context, st interfaces.Storager, cfg *config.C
 		return nonZeroExitCode, fmt.Errorf("init dump process: %w", err)
 	}
 	if err := dump.Run(ctx); err != nil {
-		if printErr := printValidatWarning(ctx, cfg); printErr != nil {
+		if printErr := printValidateWarning(ctx, cfg); printErr != nil {
 			if errors.Is(err, commonmodels.ErrFatalValidationError) {
 				return nonZeroExitCode, nil
 			}
@@ -93,7 +93,7 @@ func runMySQLValidate(ctx context.Context, st interfaces.Storager, cfg *config.C
 		}
 		return nonZeroExitCode, fmt.Errorf("run mysql dump for validation: %w", err)
 	}
-	if err := printValidatWarning(ctx, cfg); err != nil {
+	if err := printValidateWarning(ctx, cfg); err != nil {
 		return nonZeroExitCode, err
 	}
 	if cfg.Validate.Data {

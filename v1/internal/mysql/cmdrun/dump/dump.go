@@ -89,6 +89,13 @@ func WithCompression(
 	}
 }
 
+func WithTransformedTablesOnly() Option {
+	return func(dump *Dump) error {
+		dump.transformedTablesOnly = true
+		return nil
+	}
+}
+
 // Dump it's responsible for initialization and perform the whole
 // dump procedure of mysql instance.
 type Dump struct {
@@ -103,6 +110,8 @@ type Dump struct {
 	dataOnly           bool
 	compressionEnabled bool
 	compressionPgzip   bool
+	// transformedTablesOnly - dump only transformed tables. This is used in validate command.
+	transformedTablesOnly bool
 }
 
 func NewDump(
@@ -173,7 +182,7 @@ func (d *Dump) Run(ctx context.Context) (err error) {
 		}
 	}()
 
-	i := introspect.NewIntrospector(&d.cfg.Dump.MysqlConfig.Options)
+	i := introspect.NewIntrospector(&d.cfg.Dump.Options)
 	if err := i.Introspect(ctx, tx); err != nil {
 		return fmt.Errorf("introspect mysql server: %w", err)
 	}
@@ -193,6 +202,9 @@ func (d *Dump) Run(ctx context.Context) (err error) {
 		if d.compressionPgzip {
 			taskProducerOpts = append(taskProducerOpts, taskproducer.WithCompressionPgzip())
 		}
+	}
+	if d.transformedTablesOnly {
+		taskProducerOpts = append(taskProducerOpts, taskproducer.WithTransformedTablesOnly())
 	}
 
 	tp, err := taskproducer.New(

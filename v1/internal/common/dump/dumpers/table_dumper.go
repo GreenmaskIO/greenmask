@@ -88,9 +88,6 @@ func NewTableDumper(
 
 func (t *TableDumper) Dump(ctx context.Context) (commonmodels.TaskStat, error) {
 	startedAt := time.Now()
-	log.Ctx(ctx).Debug().
-		Any("Metadata", t.dataStreamReader.DebugInfo()).
-		Msg("dumping table")
 	// Initialize transformation pipeline.
 	// It gets transformers ready to transform. For example if external transformer
 	// is used then it starts its process.
@@ -169,10 +166,12 @@ func (t *TableDumper) streamRecords(ctx context.Context) error {
 	defer func() {
 		// Close stream reader.
 		if err := t.dataStreamReader.Close(ctx); err != nil {
-			log.Ctx(ctx).
-				Warn().
-				Err(err).
-				Msg("error closing data streamer reader")
+			if !errors.Is(err, commonmodels.ErrDumpStreamTerminated) {
+				log.Ctx(ctx).
+					Warn().
+					Err(err).
+					Msg("error closing data streamer reader")
+			}
 		}
 	}()
 	// Open stream writer - the one that writes transformed data
