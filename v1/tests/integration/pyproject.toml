@@ -1,0 +1,20 @@
+[tool.poetry]
+name = "integration"
+version = "0.1.0"
+description = "Integration tests for Greenmask"
+authors = ["Greenmask Team"]
+readme = "README.md"
+package-mode = false
+
+[tool.poetry.dependencies]
+python = "^3.11"
+pytest = "^8.0.0"
+pytest-asyncio = "^0.23.0"
+allure-pytest = "^2.13.0"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"

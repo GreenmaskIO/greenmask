@@ -24,6 +24,7 @@ vendor/
 scratch
 config.yml
 !playground/config.yml
+*.pyc
 
 # Project exclusion
 site
@@ -31,3 +32,6 @@ venv
 .cache
 # Binaries
 cmd/greenmask/greenmask
+
+# Allure artifacts
+allure-results/
