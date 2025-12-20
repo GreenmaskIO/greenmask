@@ -120,17 +120,35 @@ func listTransformersText(registry *registry.TransformerRegistry) error {
 		"supported type classes",
 	})
 	for _, name := range names {
+		var params [][]string
 		def := registry.M[name]
 		for _, p := range def.Parameters {
 			if !p.IsColumn && !p.IsColumnContainer {
 				continue
 			}
-			data = append(data, []string{
-				def.Properties.Name,
-				def.Properties.Description,
+			params = append(params, []string{
 				p.Name,
 				strings.Join(getColumnTypes(p), ", "),
 				strings.Join(getColumnClasses(p), ", "),
+			})
+		}
+		if len(params) > 0 {
+			for i := range params {
+				data = append(data, []string{
+					def.Properties.Name,
+					def.Properties.Description,
+					params[i][0],
+					params[i][1],
+					params[i][2],
+				})
+			}
+		} else {
+			data = append(data, []string{
+				def.Properties.Name,
+				def.Properties.Description,
+				"",
+				"",
+				"",
 			})
 		}
 	}
