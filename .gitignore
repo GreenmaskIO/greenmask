@@ -31,3 +31,19 @@ venv
 .cache
 # Binaries
 cmd/greenmask/greenmask
+
+# Docusaurus
+node_modules
+.docusaurus
+build
+.DS_Store
+
+# Integration Tests
+v1/tests/integration/*.txt
+v1/tests/integration/*.log
+v1/tests/integration/tmp/
+v1/tests/integration/allure-results/
+v1/tests/integration/venv/
+v1/tests/integration/.pytest_cache/
+__pycache__/
+*.py[cod]
