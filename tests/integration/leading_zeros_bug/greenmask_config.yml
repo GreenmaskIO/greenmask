@@ -1,0 +1,41 @@
+# Greenmask config that reproduces issue #394
+# The Template transformer triggers the encode/decode cycle that loses leading zeros
+
+common:
+  pg_bin_path: "/usr/lib/postgresql/16/bin"
+  tmp_dir: "/tmp/greenmask"
+
+storage:
+  type: "directory"
+  directory:
+    path: "/tmp/greenmask_dump"
+
+dump:
+  pg_dump_options:
+    dbname: "host=localhost port=5432 user=test password=test dbname=testdb"
+    jobs: 1
+
+  transformation:
+    - schema: "public"
+      name: "products"
+      transformers:
+        # This pass-through Template transformer triggers the bug
+        # It reads the GTIN value and writes it back unchanged
+        # But the encode/decode cycle strips leading zeros
+        - name: "Template"
+          params:
+            column: "gtin"
+            template: "{{ .GetColumnValue \"gtin\" }}"
+
+    - schema: "public"
+      name: "identifiers"
+      transformers:
+        - name: "Template"
+          params:
+            column: "code"
+            template: "{{ .GetColumnValue \"code\" }}"
+
+restore:
+  pg_restore_options:
+    dbname: "host=localhost port=5432 user=test password=test dbname=testdb_restored"
+    jobs: 1

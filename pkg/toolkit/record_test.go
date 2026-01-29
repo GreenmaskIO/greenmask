@@ -309,3 +309,86 @@ func TestIsTextTypeOid(t *testing.T) {
 		})
 	}
 }
+
+// TestBugDemo_Issue394_LeadingZerosStripped demonstrates the bug from issue #394.
+//
+// SCENARIO: A VARCHAR column contains a GTIN like "00001402417161". When a
+// transformer reads this value via GetColumnValue and writes it back, the
+// leading zeros should be preserved.
+//
+// BUG (before fix): The value would become "1402417161" because the old code
+// would decode the value using pgx which could interpret numeric-looking
+// strings as numbers, losing leading zeros.
+//
+// FIX: For text-typed columns (varchar, text, char, name), we now return the
+// raw bytes as a string directly, preserving exact content including leading zeros.
+func TestBugDemo_Issue394_LeadingZerosStripped(t *testing.T) {
+	// These are real GTIN-14 values where leading zeros are mandatory
+	testCases := []struct {
+		name  string
+		value string
+	}{
+		{"GTIN with 4 leading zeros", "00001402417161"},
+		{"GTIN with 6 leading zeros", "00000012345678"},
+		{"GTIN that is mostly zeros", "00000000000001"},
+		{"Padded sequence number", "00000001"},
+		{"Zero-padded code", "007"},
+	}
+
+	driver := getDriverWithVarchar()
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			// Create a row with the test value in the VARCHAR column
+			row := newTestRowDriver([]string{"1", tc.value, ""})
+			r := NewRecord(driver)
+			r.SetRow(row)
+
+			// Step 1: Get the value (simulates what a transformer does)
+			val, err := r.GetColumnValueByName("gtin")
+			require.NoError(t, err)
+			require.False(t, val.IsNull)
+
+			// ASSERTION: The retrieved value must match exactly
+			// Before the fix, this would fail for numeric-looking strings
+			assert.Equal(t, tc.value, val.Value,
+				"GetColumnValue should return exact string including leading zeros")
+
+			// Step 2: Set it back (simulates a pass-through transformer)
+			err = r.SetColumnValueByName("gtin", val)
+			require.NoError(t, err)
+
+			// Step 3: Encode the row
+			rowDriver, err := r.Encode()
+			require.NoError(t, err)
+			encodedBytes, err := rowDriver.Encode()
+			require.NoError(t, err)
+
+			// ASSERTION: The encoded output must contain the exact value
+			// Before the fix, leading zeros would be stripped here
+			assert.Contains(t, string(encodedBytes), tc.value,
+				"Encoded output should preserve exact string including leading zeros")
+		})
+	}
+}
+
+// TestBugDemo_Issue394_TextColumnAlsoAffected demonstrates that TEXT columns
+// (not just VARCHAR) were also affected by the leading zeros bug.
+func TestBugDemo_Issue394_TextColumnAlsoAffected(t *testing.T) {
+	driver := getDriverWithVarchar()
+
+	// Test with the TEXT column (description)
+	testValue := "000123456"
+	row := newTestRowDriver([]string{"1", "", testValue})
+	r := NewRecord(driver)
+	r.SetRow(row)
+
+	// Get the value from TEXT column
+	val, err := r.GetColumnValueByName("description")
+	require.NoError(t, err)
+	require.False(t, val.IsNull)
+
+	// Must preserve leading zeros
+	assert.Equal(t, testValue, val.Value,
+		"TEXT column should preserve leading zeros in numeric-looking strings")
+}
