@@ -153,3 +153,159 @@ func TestRecord_Encode(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, expected, res)
 }
+
+// getDriverWithVarchar creates a driver with a VARCHAR column for testing
+// text content preservation (e.g., leading zeros in numeric-looking strings)
+func getDriverWithVarchar() *Driver {
+	table := &Table{
+		Schema: "public",
+		Name:   "test_varchar",
+		Oid:    1225,
+		Columns: []*Column{
+			{
+				Name:     "id",
+				TypeName: "int4",
+				TypeOid:  pgtype.Int4OID,
+				Num:      1,
+				NotNull:  true,
+				Length:   -1,
+			},
+			{
+				Name:     "gtin",
+				TypeName: "varchar",
+				TypeOid:  pgtype.VarcharOID, // OID 1043
+				Num:      2,
+				NotNull:  false,
+				Length:   14,
+			},
+			{
+				Name:     "description",
+				TypeName: "text",
+				TypeOid:  pgtype.TextOID, // OID 25
+				Num:      3,
+				NotNull:  false,
+				Length:   -1,
+			},
+		},
+		Constraints: []Constraint{},
+	}
+	driver, _, err := NewDriver(table, nil)
+	if err != nil {
+		panic(err.Error())
+	}
+	return driver
+}
+
+// TestRecord_GetColumnValue_VarcharWithLeadingZeros tests that VARCHAR columns
+// containing numeric-looking strings preserve leading zeros when retrieved.
+// This is the core fix for issue #394.
+func TestRecord_GetColumnValue_VarcharWithLeadingZeros(t *testing.T) {
+	// GTIN with leading zeros - this is a common real-world case
+	gtinWithLeadingZeros := "00001402417161"
+
+	row := newTestRowDriver([]string{"1", gtinWithLeadingZeros, "Test product"})
+	driver := getDriverWithVarchar()
+	r := NewRecord(driver)
+	r.SetRow(row)
+
+	// Get the value - should preserve leading zeros
+	res, err := r.GetColumnValueByName("gtin")
+	require.NoError(t, err)
+	assert.False(t, res.IsNull)
+	assert.Equal(t, gtinWithLeadingZeros, res.Value, "VARCHAR column should preserve leading zeros")
+}
+
+// TestRecord_GetColumnValue_TextWithLeadingZeros tests that TEXT columns
+// also preserve leading zeros in numeric-looking strings.
+func TestRecord_GetColumnValue_TextWithLeadingZeros(t *testing.T) {
+	numericLookingString := "000123456"
+
+	row := newTestRowDriver([]string{"1", "", numericLookingString})
+	driver := getDriverWithVarchar()
+	r := NewRecord(driver)
+	r.SetRow(row)
+
+	res, err := r.GetColumnValueByName("description")
+	require.NoError(t, err)
+	assert.False(t, res.IsNull)
+	assert.Equal(t, numericLookingString, res.Value, "TEXT column should preserve leading zeros")
+}
+
+// TestRecord_SetColumnValue_VarcharPreservesLeadingZeros tests that setting
+// a string value on a VARCHAR column and then encoding preserves leading zeros.
+func TestRecord_SetColumnValue_VarcharPreservesLeadingZeros(t *testing.T) {
+	gtinWithLeadingZeros := "00001402417161"
+
+	row := newTestRowDriver([]string{"1", "old_value", ""})
+	driver := getDriverWithVarchar()
+	r := NewRecord(driver)
+	r.SetRow(row)
+
+	// Set new value with leading zeros
+	err := r.SetColumnValueByName("gtin", NewValue(gtinWithLeadingZeros, false))
+	require.NoError(t, err)
+
+	// Encode and verify
+	rowDriver, err := r.Encode()
+	require.NoError(t, err)
+	res, err := rowDriver.Encode()
+	require.NoError(t, err)
+
+	// The encoded result should contain the GTIN with leading zeros
+	assert.Contains(t, string(res), gtinWithLeadingZeros, "Encoded output should preserve leading zeros")
+}
+
+// TestRecord_RoundTrip_VarcharWithLeadingZeros tests the full round-trip:
+// read value, set it back, encode - should preserve exact content.
+func TestRecord_RoundTrip_VarcharWithLeadingZeros(t *testing.T) {
+	gtinWithLeadingZeros := "00001402417161"
+
+	row := newTestRowDriver([]string{"1", gtinWithLeadingZeros, ""})
+	driver := getDriverWithVarchar()
+	r := NewRecord(driver)
+	r.SetRow(row)
+
+	// Get the value
+	val, err := r.GetColumnValueByName("gtin")
+	require.NoError(t, err)
+	assert.Equal(t, gtinWithLeadingZeros, val.Value)
+
+	// Set it back (simulating a pass-through transformer)
+	err = r.SetColumnValueByName("gtin", val)
+	require.NoError(t, err)
+
+	// Encode
+	rowDriver, err := r.Encode()
+	require.NoError(t, err)
+	res, err := rowDriver.Encode()
+	require.NoError(t, err)
+
+	// Verify leading zeros are preserved
+	assert.Contains(t, string(res), gtinWithLeadingZeros, "Round-trip should preserve leading zeros")
+}
+
+// TestIsTextTypeOid tests the helper function that identifies text-based types.
+func TestIsTextTypeOid(t *testing.T) {
+	tests := []struct {
+		name     string
+		oid      Oid
+		expected bool
+	}{
+		{"text", 25, true},
+		{"bpchar", 1042, true},
+		{"varchar", 1043, true},
+		{"name", 19, true},
+		{"int4", pgtype.Int4OID, false},
+		{"int8", pgtype.Int8OID, false},
+		{"numeric", pgtype.NumericOID, false},
+		{"float4", pgtype.Float4OID, false},
+		{"jsonb", pgtype.JSONBOID, false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := isTextTypeOid(tt.oid)
+			assert.Equal(t, tt.expected, result, "isTextTypeOid(%d) should be %v", tt.oid, tt.expected)
+		})
+	}
+}
