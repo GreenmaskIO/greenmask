@@ -189,21 +189,19 @@ func (r *Record) encodeValue(idx int, v any) (res []byte, err error) {
 		return res, nil
 	}
 
-	// For text-typed columns (varchar, text, char, name), always use Driver encoding
-	// when the value is NOT a string. This handles cases where a numeric value is
-	// being written to a text column - the Driver will format it as text properly.
+	// For text-typed columns (varchar, text, char, name), convert the value to
+	// its string representation. This handles cases where a numeric value is
+	// being written to a text column.
 	// OIDs: 25=text, 1042=bpchar, 1043=varchar, 19=name
 	if isTextTypeOid(col.TypeOid) {
-		switch v.(type) {
+		switch vv := v.(type) {
 		case string:
-			// String to text column - direct byte conversion is fine
-			res = []byte(v.(string))
+			// String to text column - direct byte conversion preserves content exactly
+			res = []byte(vv)
 		default:
-			// Non-string to text column - use Driver to format properly
-			res, err = r.Driver.EncodeValueByColumnIdx(idx, v, nil)
-			if err != nil {
-				return nil, fmt.Errorf("encoding error: %w", err)
-			}
+			// Non-string to text column - convert to string representation
+			// This allows writing numeric values to text columns
+			res = []byte(fmt.Sprintf("%v", vv))
 		}
 		return res, nil
 	}
