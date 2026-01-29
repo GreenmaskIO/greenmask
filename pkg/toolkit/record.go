@@ -95,6 +95,16 @@ func (r *Record) GetColumnValueByIdx(idx int) (*Value, error) {
 	if rawData.IsNull {
 		return NewValue(nil, true), nil
 	}
+
+	col := r.Driver.Table.Columns[idx]
+
+	// For text-typed columns (varchar, text, char, name), return the raw bytes
+	// as a string to preserve exact content including leading zeros.
+	// This prevents numeric-looking strings from being interpreted as numbers.
+	if isTextTypeOid(col.TypeOid) && col.OverriddenTypeOid == 0 {
+		return NewValue(string(rawData.Data), false), nil
+	}
+
 	decodedValue, err := r.Driver.DecodeValueByColumnIdx(idx, rawData.Data)
 	if err != nil {
 		return nil, fmt.Errorf("error decoding arribute: %w", err)
@@ -167,6 +177,36 @@ func (r *Record) Encode() (RowDriver, error) {
 }
 
 func (r *Record) encodeValue(idx int, v any) (res []byte, err error) {
+	col := r.Driver.Table.Columns[idx]
+
+	// If the column has a type override, always use Driver encoding to ensure
+	// proper type handling (e.g., preserving leading zeros in varchar)
+	if col.OverriddenTypeOid != 0 {
+		res, err = r.Driver.EncodeValueByColumnIdx(idx, v, nil)
+		if err != nil {
+			return nil, fmt.Errorf("encoding error: %w", err)
+		}
+		return res, nil
+	}
+
+	// For text-typed columns (varchar, text, char, name), always use Driver encoding
+	// when the value is NOT a string. This handles cases where a numeric value is
+	// being written to a text column - the Driver will format it as text properly.
+	// OIDs: 25=text, 1042=bpchar, 1043=varchar, 19=name
+	if isTextTypeOid(col.TypeOid) {
+		switch v.(type) {
+		case string:
+			// String to text column - direct byte conversion is fine
+			res = []byte(v.(string))
+		default:
+			// Non-string to text column - use Driver to format properly
+			res, err = r.Driver.EncodeValueByColumnIdx(idx, v, nil)
+			if err != nil {
+				return nil, fmt.Errorf("encoding error: %w", err)
+			}
+		}
+		return res, nil
+	}
 
 	switch vv := v.(type) {
 	case string:
@@ -178,6 +218,14 @@ func (r *Record) encodeValue(idx int, v any) (res []byte, err error) {
 		}
 	}
 	return res, nil
+}
+
+// isTextTypeOid returns true if the OID represents a text-based type
+// where content should be preserved as-is without numeric interpretation
+func isTextTypeOid(oid Oid) bool {
+	// PostgreSQL OIDs for text types:
+	// 25 = text, 1042 = bpchar (char), 1043 = varchar, 19 = name
+	return oid == 25 || oid == 1042 || oid == 1043 || oid == 19
 }
 
 func (r *Record) GetRawColumnValueByName(name string) (*RawValue, error) {
