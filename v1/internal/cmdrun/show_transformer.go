@@ -8,11 +8,10 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/greenmaskio/greenmask/v1/pkg/common/transformers/registry"
+	"github.com/greenmaskio/greenmask/v1/pkg/common/transformers/utils"
+	"github.com/greenmaskio/greenmask/v1/pkg/config"
 	"github.com/olekukonko/tablewriter"
-
-	"github.com/greenmaskio/greenmask/v1/internal/common/transformers/registry"
-	"github.com/greenmaskio/greenmask/v1/internal/common/transformers/utils"
-	"github.com/greenmaskio/greenmask/v1/internal/config"
 )
 
 func RunShowTransformers(

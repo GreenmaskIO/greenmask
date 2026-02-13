@@ -1,0 +1,130 @@
+// Copyright 2023 Greenmask
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+package transformers
+
+import (
+	"context"
+	"testing"
+
+	commonininterfaces "github.com/greenmaskio/greenmask/v1/pkg/common/interfaces"
+	"github.com/greenmaskio/greenmask/v1/pkg/common/models"
+	commonutils "github.com/greenmaskio/greenmask/v1/pkg/common/utils"
+	"github.com/greenmaskio/greenmask/v1/pkg/common/validationcollector"
+	mysqldbmsdriver "github.com/greenmaskio/greenmask/v1/pkg/mysql/dbmsdriver"
+	"github.com/stretchr/testify/require"
+)
+
+func TestTemplateRecordTransformer_Transform(t *testing.T) {
+	tests := []struct {
+		name             string
+		staticParameters map[string]models.ParamsValue
+		dynamicParameter map[string]models.DynamicParamValue
+		original         []*models.ColumnRawValue
+		validateFn       func(t *testing.T, recorder commonininterfaces.Recorder)
+		expectedErr      string
+		columns          []models.Column
+	}{
+		{
+			name: "success with date",
+			columns: []models.Column{
+				{
+					Idx:      0,
+					Name:     "data",
+					TypeName: mysqldbmsdriver.TypeDateTime,
+					TypeOID:  mysqldbmsdriver.VirtualOidDateTime,
+					Length:   0,
+					Size:     2,
+				},
+			},
+			original: []*models.ColumnRawValue{
+				models.NewColumnRawValue([]byte(""), true)},
+			staticParameters: map[string]models.ParamsValue{
+				"template": models.ParamsValue(`
+					 {{ $val := .GetColumnValue "data" }}
+					  {{ if isNull $val }}
+						{{ "2023-11-20 01:00:00" | .DecodeValueByColumn "data" | dateModify "24h" | .SetColumnValue "data" }}
+					  {{ else }}
+						 {{ "2023-11-20 01:00:00" | .DecodeValueByColumn "data" | dateModify "48h" | .SetColumnValue "data" }}
+					  {{ end }}
+				`),
+			},
+			validateFn: func(t *testing.T, recorder commonininterfaces.Recorder) {
+				data, err := recorder.GetRawColumnValueByName("data")
+				require.NoError(t, err)
+				require.Equal(t, "2023-11-21 01:00:00", string(data.Data))
+			},
+		},
+		{
+			name: "success json",
+			columns: []models.Column{
+				{
+					Idx:       0,
+					Name:      "data",
+					TypeName:  mysqldbmsdriver.TypeText,
+					TypeClass: models.TypeClassText,
+					TypeOID:   mysqldbmsdriver.VirtualOidText,
+					Length:    0,
+				},
+			},
+			original: []*models.ColumnRawValue{
+				models.NewColumnRawValue([]byte("{\"name\": \"test\"}"), false)},
+			staticParameters: map[string]models.ParamsValue{
+				"template": models.ParamsValue(`
+					{{ $val := .GetRawColumnValue "data" }}
+					{{ jsonSet "name" "hello" $val | jsonValidate | .SetColumnValue "data" }}
+				`),
+			},
+			validateFn: func(t *testing.T, recorder commonininterfaces.Recorder) {
+				data, err := recorder.GetRawColumnValueByName("data")
+				require.NoError(t, err)
+				require.Equal(t, "{\"name\": \"hello\"}", string(data.Data))
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			vc := validationcollector.NewCollector()
+			ctx := validationcollector.WithCollector(context.Background(), vc)
+			env := newTransformerTestEnvReal(t,
+				TemplateRecordTransformerDefinition,
+				tt.columns,
+				tt.staticParameters,
+				tt.dynamicParameter,
+			)
+			err := env.InitParameters(t, ctx)
+			require.NoError(t, commonutils.PrintValidationWarnings(ctx, nil, true))
+			require.NoError(t, err)
+			require.False(t, vc.HasWarnings())
+
+			err = env.InitTransformer(t, ctx)
+			require.NoError(t, commonutils.PrintValidationWarnings(ctx, nil, true))
+			require.NoError(t, err)
+			require.False(t, vc.HasWarnings())
+
+			env.SetRecord(t, tt.original...)
+
+			err = env.Transform(t, ctx)
+			require.NoError(t, commonutils.PrintValidationWarnings(ctx, nil, true))
+			if tt.expectedErr != "" {
+				require.ErrorContains(t, err, tt.expectedErr)
+				return
+			} else {
+				require.NoError(t, err)
+			}
+			tt.validateFn(t, env.GetRecord())
+		})
+	}
+}

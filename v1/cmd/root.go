@@ -17,10 +17,9 @@ package main
 import (
 	"fmt"
 
+	"github.com/greenmaskio/greenmask/v1/pkg/common/cmd"
 	"github.com/rs/zerolog"
 	"github.com/spf13/cobra"
-
-	"github.com/greenmaskio/greenmask/v1/internal/common/cmd"
 )
 
 var (

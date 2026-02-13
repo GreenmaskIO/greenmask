@@ -18,22 +18,21 @@ import (
 	"context"
 	"fmt"
 
+	commonmodels "github.com/greenmaskio/greenmask/v1/pkg/common/models"
+	"github.com/greenmaskio/greenmask/v1/pkg/common/utils"
+	"github.com/greenmaskio/greenmask/v1/pkg/config"
+	mysqlrestore "github.com/greenmaskio/greenmask/v1/pkg/mysql/cmdrun/restore"
 	"github.com/rs/zerolog/log"
-
-	commonmodels "github.com/greenmaskio/greenmask/v1/internal/common/models"
-	commonutils "github.com/greenmaskio/greenmask/v1/internal/common/utils"
-	"github.com/greenmaskio/greenmask/v1/internal/config"
-	mysqlrestore "github.com/greenmaskio/greenmask/v1/internal/mysql/cmdrun/restore"
 )
 
 // RunRestore - runs restore for the specified DBMS engine and dump ID.
 func RunRestore(cfg *config.Config, dumpID string) error {
 	ctx := context.Background()
-	st, err := commonutils.GetStorage(ctx, cfg)
+	st, err := utils.GetStorage(ctx, cfg)
 	if err != nil {
 		return fmt.Errorf("get storage: %w", err)
 	}
-	if err := commonutils.SetDefaultContextLogger(cfg.Log.Level, cfg.Log.Format); err != nil {
+	if err := utils.SetDefaultContextLogger(cfg.Log.Level, cfg.Log.Format); err != nil {
 		return fmt.Errorf("init logger: %w", err)
 	}
 	if cfg.Engine == "" {

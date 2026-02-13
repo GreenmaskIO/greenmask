@@ -1,0 +1,268 @@
+// Copyright 2023 Greenmask
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+package transformers
+
+import (
+	"context"
+	"fmt"
+	"time"
+
+	"github.com/greenmaskio/greenmask/v1/pkg/common/interfaces"
+	commonmodels "github.com/greenmaskio/greenmask/v1/pkg/common/models"
+	generators "github.com/greenmaskio/greenmask/v1/pkg/common/transformers/generators/transformers"
+	"github.com/greenmaskio/greenmask/v1/pkg/common/transformers/parameters"
+	utils2 "github.com/greenmaskio/greenmask/v1/pkg/common/transformers/utils"
+	"github.com/greenmaskio/greenmask/v1/pkg/common/utils"
+)
+
+const TransformerNameNoiseDate = "NoiseDate"
+
+var NoiseDateTransformerDefinition = utils2.NewTransformerDefinition(
+	utils2.NewTransformerProperties(
+		TransformerNameNoiseDate,
+		"Add some random value (shift value) in the provided interval",
+	).AddMeta(utils2.AllowApplyForReferenced, true).
+		AddMeta(utils2.RequireHashEngineParameter, true),
+
+	NewNoiseDateTransformer,
+
+	parameters.MustNewParameterDefinition(
+		"column",
+		"column name",
+	).SetIsColumn(parameters.NewColumnProperties().
+		SetAffected(true).
+		SetAllowedColumnTypeClasses(commonmodels.TypeClassDateTime).
+		SetSkipOnNull(true),
+	).SetRequired(true),
+
+	parameters.MustNewParameterDefinition(
+		"min_ratio",
+		"min random duration for noise. Dy default 5% of the max_ratio",
+	).SetRequired(true).
+		SetRawValueValidator(defaultRatioValidator).
+		SetSupportTemplate(true),
+
+	parameters.MustNewParameterDefinition(
+		"max_ratio",
+		"max random duration for noise",
+	).SetRequired(true).
+		SetRawValueValidator(defaultRatioValidator).
+		SetSupportTemplate(true),
+
+	parameters.MustNewParameterDefinition(
+		"min",
+		"min threshold date (and/or time) of value",
+	).SetSupportTemplate(true).
+		LinkParameter("column").
+		SetDynamicMode(
+			parameters.NewDynamicModeProperties().
+				SetColumnProperties(
+					parameters.NewColumnProperties().
+						SetAllowedColumnTypeClasses(commonmodels.TypeClassDateTime),
+				),
+		),
+
+	parameters.MustNewParameterDefinition(
+		"max",
+		"max threshold date (and/or time) of value",
+	).SetSupportTemplate(true).
+		LinkParameter("column").
+		SetDynamicMode(
+			parameters.NewDynamicModeProperties().
+				SetColumnProperties(
+					parameters.NewColumnProperties().
+						SetAllowedColumnTypeClasses(commonmodels.TypeClassDateTime),
+				),
+		),
+
+	defaultTruncateDateParameterDefinition,
+
+	defaultEngineParameterDefinition,
+)
+
+type NoiseDateTransformer struct {
+	t               *generators.NoiseTimestamp
+	columnName      string
+	columnIdx       int
+	truncate        *string
+	affectedColumns map[int]string
+	maxParam        parameters.Parameterizer
+	minParam        parameters.Parameterizer
+	dynamicMode     bool
+	transform       func(time.Time) (time.Time, error)
+}
+
+func NewNoiseDateTransformer(
+	ctx context.Context,
+	tableDriver interfaces.TableDriver,
+	parameters map[string]parameters.Parameterizer,
+) (interfaces.Transformer, error) {
+
+	maxParam := parameters["max"]
+	minParam := parameters["min"]
+
+	dynamicMode := isInDynamicMode(parameters)
+
+	columnName, column, err := getColumnParameterValue(ctx, tableDriver, parameters)
+	if err != nil {
+		return nil, fmt.Errorf("get \"column\" parameter: %w", err)
+	}
+
+	engine, err := getParameterValueWithName[string](ctx, parameters, ParameterNameEngine)
+	if err != nil {
+		return nil, fmt.Errorf("get \"engine\" param: %w", err)
+	}
+
+	truncate, err := getParameterValueWithName[string](ctx, parameters, ParameterNameTruncate)
+	if err != nil {
+		return nil, fmt.Errorf("error validating truncate value: %w", err)
+	}
+
+	var limiter *generators.NoiseTimestampLimiter
+	if !dynamicMode {
+		minValueThreshold, maxValueThreshold, err := getNoiseTimestampMinAndMaxThresholds(minParam, maxParam)
+		if err != nil {
+			return nil, fmt.Errorf("get min and max thresholds: %w", err)
+		}
+		limiter, err = generators.NewNoiseTimestampLimiter(minValueThreshold, maxValueThreshold)
+		if err != nil {
+			return nil, fmt.Errorf("unable to create timestamp limiter: %w", err)
+		}
+	}
+
+	minRatio, err := getParameterValueWithName[Duration](ctx, parameters, "min_ratio")
+	if err != nil {
+		return nil, fmt.Errorf("get \"max_ratio\" param: %w", err)
+	}
+	maxRatio, err := getParameterValueWithName[Duration](ctx, parameters, "max_ratio")
+	if err != nil {
+		return nil, fmt.Errorf("get \"max_ratio\" param: %w", err)
+	}
+
+	t, err := generators.NewNoiseTimestamp(minRatio.ToDuration(), maxRatio.ToDuration(), truncate, limiter)
+	if err != nil {
+		return nil, fmt.Errorf("create noise timestamp transformer: %w", err)
+	}
+
+	g, err := getGenerateEngine(ctx, engine, t.GetRequiredGeneratorByteLength())
+	if err != nil {
+		return nil, fmt.Errorf("unable to get generator: %w", err)
+	}
+
+	if err = t.SetGenerator(g); err != nil {
+		return nil, fmt.Errorf("unable to set generator: %w", err)
+	}
+
+	return &NoiseDateTransformer{
+		t:        t,
+		truncate: &truncate,
+		affectedColumns: map[int]string{
+			column.Idx: column.Name,
+		},
+		columnIdx:  column.Idx,
+		columnName: columnName,
+		transform: func(v time.Time) (time.Time, error) {
+			return t.Transform(nil, v)
+		},
+		maxParam:    maxParam,
+		minParam:    minParam,
+		dynamicMode: dynamicMode,
+	}, nil
+}
+
+func (t *NoiseDateTransformer) GetAffectedColumns() map[int]string {
+	return t.affectedColumns
+}
+
+func (t *NoiseDateTransformer) Init(context.Context) error {
+	if t.dynamicMode {
+		t.transform = t.dynamicTransform
+	}
+	return nil
+}
+
+func (t *NoiseDateTransformer) Done(context.Context) error {
+	return nil
+}
+
+func (t *NoiseDateTransformer) dynamicTransform(v time.Time) (time.Time, error) {
+	minVal := &time.Time{}
+	maxVal := &time.Time{}
+
+	if err := t.minParam.Scan(minVal); err != nil {
+		return time.Time{}, fmt.Errorf(`unable to scan "min" param: %w`, err)
+	}
+
+	if err := t.maxParam.Scan(maxVal); err != nil {
+		return time.Time{}, fmt.Errorf(`unable to scan "max" param: %w`, err)
+	}
+
+	limiter, err := generators.NewNoiseTimestampLimiter(minVal, maxVal)
+	if err != nil {
+		return time.Time{}, fmt.Errorf("error creating limiter in dynamic mode: %w", err)
+	}
+
+	res, err := t.t.Transform(limiter, v)
+	if err != nil {
+		return time.Time{}, fmt.Errorf("error generating timestamp value: %w", err)
+	}
+	return res, nil
+}
+
+func (t *NoiseDateTransformer) Transform(_ context.Context, r interfaces.Recorder) error {
+	var res time.Time
+	isNull, err := r.ScanColumnValueByIdx(t.columnIdx, &res)
+	if err != nil {
+		return fmt.Errorf("unable to scan attribute value: %w", err)
+	}
+	if isNull {
+		return nil
+	}
+
+	res, err = t.transform(res)
+	if err != nil {
+		return fmt.Errorf("unable to transform value: %w", err)
+	}
+
+	if err = r.SetColumnValueByIdx(t.columnIdx, res); err != nil {
+		return fmt.Errorf("unable to set new value: %w", err)
+	}
+	return nil
+}
+
+func (t *NoiseDateTransformer) Describe() string {
+	return TransformerNameNoiseDate
+}
+
+func getNoiseTimestampMinAndMaxThresholds(
+	minParameter, maxParameter parameters.Parameterizer,
+) (*time.Time, *time.Time, error) {
+	var minVal, maxVal *time.Time
+	if !utils.Must(minParameter.IsEmpty()) {
+		minVal = &time.Time{}
+		if err := minParameter.Scan(&minVal); err != nil {
+			return nil, nil, fmt.Errorf("error scanning \"min\" parameter: %w", err)
+		}
+	}
+
+	if !utils.Must(minParameter.IsEmpty()) {
+		maxVal = &time.Time{}
+		if err := maxParameter.Scan(&maxVal); err != nil {
+			return nil, nil, fmt.Errorf("error scanning \"max\" parameter: %w", err)
+		}
+	}
+
+	return minVal, maxVal, nil
+}

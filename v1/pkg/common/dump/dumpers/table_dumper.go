@@ -1,0 +1,235 @@
+// Copyright 2025 Greenmask
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+package dumpers
+
+import (
+	"context"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"maps"
+	"time"
+
+	"github.com/greenmaskio/greenmask/v1/pkg/common/interfaces"
+	"github.com/greenmaskio/greenmask/v1/pkg/common/models"
+	"github.com/rs/zerolog/log"
+)
+
+const dumperTypeTableDumper = "table_dumper"
+
+type TableDumper struct {
+	ID               models.TaskID
+	pipeline         interfaces.Pipeliner
+	dataStreamReader interfaces.RowStreamReader
+	dataStreamWriter interfaces.RowStreamWriter
+	record           interfaces.Recorder
+	lineNum          int64
+	table            *models.Table
+	saveOriginal     bool
+	rowLimit         int64
+}
+
+func WithSaveOriginalData() func(t *TableDumper) error {
+	return func(t *TableDumper) error {
+		t.saveOriginal = true
+		return nil
+	}
+}
+
+func WithRowLimit(limit int64) func(t *TableDumper) error {
+	return func(t *TableDumper) error {
+		if limit < 0 {
+			return fmt.Errorf("row limit cannot be negative: %d", limit)
+		}
+		t.rowLimit = limit
+		return nil
+	}
+}
+
+type TableDumperOption func(t *TableDumper) error
+
+func NewTableDumper(
+	id models.TaskID,
+	dataStreamReader interfaces.RowStreamReader,
+	dataStreamWriter interfaces.RowStreamWriter,
+	record interfaces.Recorder,
+	pipeliner interfaces.Pipeliner,
+	table *models.Table,
+	opts ...TableDumperOption,
+) (*TableDumper, error) {
+	res := &TableDumper{
+		ID:               id,
+		dataStreamReader: dataStreamReader,
+		dataStreamWriter: dataStreamWriter,
+		record:           record,
+		pipeline:         pipeliner,
+		table:            table,
+	}
+	for i, opt := range opts {
+		if err := opt(res); err != nil {
+			return nil, fmt.Errorf("apply option %d: %w", i, err)
+		}
+	}
+	return res, nil
+}
+
+func (t *TableDumper) Dump(ctx context.Context) (models.TaskStat, error) {
+	startedAt := time.Now()
+	// Initialize transformation pipeline.
+	// It gets transformers ready to transform. For example if external transformer
+	// is used then it starts its process.
+	if err := t.pipeline.Init(ctx); err != nil {
+		return models.TaskStat{}, models.NewDumpError(
+			t.lineNum, fmt.Errorf("init transformation pipeline: %w", err),
+		)
+	}
+
+	defer func() {
+		// Terminate transformers that were started.
+		if err := t.pipeline.Done(ctx); err != nil {
+			log.Ctx(ctx).
+				Warn().
+				Err(err).
+				Msg("error closing transformation pipeline")
+		}
+	}()
+
+	// Stream records and transform them one by one.
+	if err := t.streamRecords(ctx); err != nil {
+		return models.TaskStat{}, models.NewDumpError(
+			t.lineNum, fmt.Errorf("stream data: %w", err),
+		)
+	}
+
+	objectDefinition, err := json.Marshal(*t.table)
+	if err != nil {
+		return models.TaskStat{}, fmt.Errorf("marshalling table definition: %w", err)
+	}
+
+	return models.NewDumpStat(
+		t.ID,
+		t.dataStreamWriter.Stat(),
+		time.Since(startedAt),
+		dumperTypeTableDumper,
+		t.lineNum-1,
+		models.EngineMysql,
+		objectDefinition,
+	), nil
+}
+
+// dumper - dumps the data from the table and transform it if needed
+func (t *TableDumper) dataDumper(ctx context.Context) func() error {
+	return func() error {
+		// Initialize transformation pipeline.
+		// It gets transformers ready to transform. For example if external transformer
+		// is used then it starts its process.
+		if err := t.pipeline.Init(ctx); err != nil {
+			return models.NewDumpError(t.lineNum, fmt.Errorf("init transformation pipeline: %w", err))
+		}
+
+		defer func() {
+			// Terminate transformers that were started.
+			if err := t.pipeline.Done(ctx); err != nil {
+				log.Ctx(ctx).
+					Warn().
+					Err(err).
+					Msg("error closing transformation pipeline")
+			}
+		}()
+
+		// Stream records and transform them one by one.
+		if err := t.streamRecords(ctx); err != nil {
+			return models.NewDumpError(t.lineNum, fmt.Errorf("stream data: %w", err))
+		}
+		return nil
+	}
+}
+
+func (t *TableDumper) streamRecords(ctx context.Context) error {
+	// Open stream reader - the one that reads data from table in DBMS.
+	if err := t.dataStreamReader.Open(ctx); err != nil {
+		return fmt.Errorf("open data streamer: %w", err)
+	}
+	defer func() {
+		// Close stream reader.
+		if err := t.dataStreamReader.Close(ctx); err != nil {
+			if !errors.Is(err, models.ErrDumpStreamTerminated) {
+				log.Ctx(ctx).
+					Warn().
+					Err(err).
+					Msg("error closing data streamer reader")
+			}
+		}
+	}()
+	// Open stream writer - the one that writes transformed data
+	// directly to the storage.
+	if err := t.dataStreamWriter.Open(ctx); err != nil {
+		return fmt.Errorf("open data streamer: %w", err)
+	}
+	defer func() {
+		// Close stream writer. The one that stores data
+		// into the storage.
+		if err := t.dataStreamWriter.Close(ctx); err != nil {
+			log.Ctx(ctx).
+				Warn().
+				Err(err).
+				Msg("error closing data stream writer")
+		}
+	}()
+	for {
+		t.lineNum++
+		row, err := t.dataStreamReader.ReadRow(ctx)
+		if err != nil {
+			if errors.Is(err, models.ErrEndOfStream) {
+				return nil
+			}
+			return fmt.Errorf("read row from stream: %w", err)
+		}
+		if t.saveOriginal {
+			if err := t.dataStreamWriter.WriteRow(ctx, row); err != nil {
+				return fmt.Errorf("save original row data: %w", err)
+			}
+		}
+		if err := t.record.SetRow(row); err != nil {
+			return fmt.Errorf("set raw record data: %w", err)
+		}
+		if err := t.pipeline.Transform(ctx, t.record); err != nil {
+			return fmt.Errorf("run transform: %w", err)
+		}
+		if err := t.dataStreamWriter.WriteRow(ctx, t.record.GetRow()); err != nil {
+			return fmt.Errorf("write transformed raw data: %w", err)
+		}
+		if t.rowLimit > 0 && t.lineNum >= t.rowLimit {
+			log.Ctx(ctx).
+				Debug().
+				Int64("LinesDumped", t.lineNum).
+				Int64("RowsLimit", t.rowLimit).
+				Msg("row limit reached, stopping dump for table")
+			return nil
+		}
+	}
+}
+
+func (t *TableDumper) Meta() map[string]any {
+	meta := t.dataStreamReader.DebugInfo()
+	uniqueDumpTaskID := getUniqueDumpTaskID(dumperTypeTableDumper, meta)
+	meta = maps.Clone(meta)
+	meta[models.MetaKeyUniqueDumpTaskID] = uniqueDumpTaskID
+	return meta
+}
+
+func (t *TableDumper) DebugInfo() string {
+	return getUniqueDumpTaskID(dumperTypeTableDumper, t.dataStreamReader.DebugInfo())
+}

@@ -1,0 +1,165 @@
+// Copyright 2025 Greenmask
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+package dumpers
+
+import (
+	"context"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"maps"
+	"time"
+
+	commonininterfaces "github.com/greenmaskio/greenmask/v1/pkg/common/interfaces"
+	"github.com/greenmaskio/greenmask/v1/pkg/common/models"
+	"github.com/rs/zerolog/log"
+)
+
+const dumperTypeTableRawDumper = "table_raw_dumper"
+
+type TableRawDumper struct {
+	ID               models.TaskID
+	dataStreamReader commonininterfaces.RowStreamReader
+	dataStreamWriter commonininterfaces.RowStreamWriter
+	lineNum          int64
+	table            *models.Table
+}
+
+func NewTableRawDumper(
+	id models.TaskID,
+	dataStreamReader commonininterfaces.RowStreamReader,
+	dataStreamWriter commonininterfaces.RowStreamWriter,
+	table *models.Table,
+) *TableRawDumper {
+	return &TableRawDumper{
+		ID:               id,
+		dataStreamReader: dataStreamReader,
+		dataStreamWriter: dataStreamWriter,
+		lineNum:          0,
+		table:            table,
+	}
+}
+
+func (t *TableRawDumper) Dump(ctx context.Context) (models.TaskStat, error) {
+	startedAt := time.Now()
+
+	// Stream records and transform them one by one.
+	if err := t.stream(ctx); err != nil {
+		return models.TaskStat{}, models.NewDumpError(
+			t.lineNum, fmt.Errorf("stream data: %w", err),
+		)
+	}
+
+	objectDefinition, err := json.Marshal(*t.table)
+	if err != nil {
+		return models.TaskStat{}, fmt.Errorf("marshalling table definition: %w", err)
+	}
+
+	return models.NewDumpStat(
+		t.ID,
+		t.dataStreamWriter.Stat(),
+		time.Since(startedAt),
+		dumperTypeTableRawDumper,
+		t.lineNum-1,
+		models.EngineMysql,
+		objectDefinition,
+	), nil
+}
+
+func (t *TableRawDumper) streamRecords(ctx context.Context) error {
+	for {
+		t.lineNum++
+		row, err := t.dataStreamReader.ReadRow(ctx)
+		if err != nil {
+			if errors.Is(err, models.ErrEndOfStream) {
+				return nil
+			}
+			return fmt.Errorf("read row from stream: %w", err)
+		}
+		if err := t.dataStreamWriter.WriteRow(ctx, row); err != nil {
+			return fmt.Errorf("write transformed raw data: %w", err)
+		}
+	}
+}
+
+func (t *TableRawDumper) stream(ctx context.Context) error {
+	// Open stream reader - the one that reads data from table in DBMS.
+	if err := t.dataStreamReader.Open(ctx); err != nil {
+		return fmt.Errorf("open data streamer: %w", err)
+	}
+	// Open stream writer - the one that writes transformed data
+	// directly to the storage.
+	if err := t.dataStreamWriter.Open(ctx); err != nil {
+		return fmt.Errorf("open data streamer: %w", err)
+	}
+
+	if err := t.streamRecords(ctx); err != nil {
+		log.Ctx(ctx).
+			Warn().
+			Err(err).
+			Msg("error streaming records")
+		lastErr := err
+
+		// Close stream writer. The one that stores data into the storage.
+		if err := t.dataStreamWriter.Close(ctx); err != nil {
+			log.Ctx(ctx).
+				Warn().
+				Err(err).
+				Msg("error closing data stream writer")
+		}
+		// Close stream reader - the one that gets data from table.
+		if err := t.dataStreamReader.Close(ctx); err != nil {
+			log.Ctx(ctx).
+				Warn().
+				Err(err).
+				Msg("error closing data streamer reader")
+		}
+		return fmt.Errorf("stream records records: %w", lastErr)
+	}
+
+	var lastErr error
+	// Close stream writer. The one that stores data into the storage.
+	if err := t.dataStreamWriter.Close(ctx); err != nil {
+		lastErr = fmt.Errorf("close data stream writer: %w", err)
+		log.Ctx(ctx).
+			Warn().
+			Err(err).
+			Msg("error closing data stream writer")
+	}
+	// Close stream reader - the one that gets data from table.
+	if err := t.dataStreamReader.Close(ctx); err != nil {
+		lastErr = fmt.Errorf("close data streame reader: %w", err)
+		log.Ctx(ctx).
+			Warn().
+			Err(err).
+			Msg("error closing data streamer reader")
+	}
+	if lastErr != nil {
+		return fmt.Errorf("close data stream writer or reader: %w", lastErr)
+	}
+	return nil
+}
+
+func (t *TableRawDumper) Meta() map[string]any {
+	meta := t.dataStreamReader.DebugInfo()
+	uniqueDumpTaskID := getUniqueDumpTaskID(dumperTypeTableDumper, meta)
+	meta = maps.Clone(meta)
+	meta[models.MetaKeyUniqueDumpTaskID] = uniqueDumpTaskID
+	return meta
+}
+
+func (t *TableRawDumper) DebugInfo() string {
+	return getUniqueDumpTaskID(dumperTypeTableDumper, t.dataStreamReader.DebugInfo())
+}

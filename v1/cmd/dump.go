@@ -17,10 +17,9 @@ package main
 import (
 	"log"
 
-	"github.com/spf13/cobra"
-
 	"github.com/greenmaskio/greenmask/v1/internal/cmdrun"
-	"github.com/greenmaskio/greenmask/v1/internal/common/cmd"
+	"github.com/greenmaskio/greenmask/v1/pkg/common/cmd"
+	"github.com/spf13/cobra"
 )
 
 var (

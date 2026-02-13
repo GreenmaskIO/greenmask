@@ -8,15 +8,14 @@ import (
 	"slices"
 	"time"
 
+	"github.com/greenmaskio/greenmask/v1/pkg/common/heartbeat"
+	"github.com/greenmaskio/greenmask/v1/pkg/common/interfaces"
+	commonmodels "github.com/greenmaskio/greenmask/v1/pkg/common/models"
+	commonutils "github.com/greenmaskio/greenmask/v1/pkg/common/utils"
+	"github.com/greenmaskio/greenmask/v1/pkg/config"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	gostr "github.com/xhit/go-str2duration/v2"
-
-	"github.com/greenmaskio/greenmask/v1/internal/common/heartbeat"
-	"github.com/greenmaskio/greenmask/v1/internal/common/interfaces"
-	commonmodels "github.com/greenmaskio/greenmask/v1/internal/common/models"
-	commonutils "github.com/greenmaskio/greenmask/v1/internal/common/utils"
-	"github.com/greenmaskio/greenmask/v1/internal/config"
 )
 
 var ErrDeleteWrongOptions = errors.New("wrong delete options")

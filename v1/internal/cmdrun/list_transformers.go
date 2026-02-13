@@ -8,12 +8,11 @@ import (
 	"slices"
 	"strings"
 
+	commonmodels "github.com/greenmaskio/greenmask/v1/pkg/common/models"
+	"github.com/greenmaskio/greenmask/v1/pkg/common/transformers/parameters"
+	"github.com/greenmaskio/greenmask/v1/pkg/common/transformers/registry"
+	"github.com/greenmaskio/greenmask/v1/pkg/config"
 	"github.com/olekukonko/tablewriter"
-
-	commonmodels "github.com/greenmaskio/greenmask/v1/internal/common/models"
-	"github.com/greenmaskio/greenmask/v1/internal/common/transformers/parameters"
-	"github.com/greenmaskio/greenmask/v1/internal/common/transformers/registry"
-	"github.com/greenmaskio/greenmask/v1/internal/config"
 )
 
 type OutputFormat string

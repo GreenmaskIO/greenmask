@@ -1,0 +1,242 @@
+// Copyright 2025 Greenmask
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+package context
+
+import (
+	"context"
+	"fmt"
+	"slices"
+
+	"github.com/greenmaskio/greenmask/v1/pkg/common/conditions"
+	"github.com/greenmaskio/greenmask/v1/pkg/common/interfaces"
+	"github.com/greenmaskio/greenmask/v1/pkg/common/models"
+	parameters2 "github.com/greenmaskio/greenmask/v1/pkg/common/transformers/parameters"
+	transformerutils "github.com/greenmaskio/greenmask/v1/pkg/common/transformers/registry"
+	"github.com/greenmaskio/greenmask/v1/pkg/common/utils"
+	"github.com/greenmaskio/greenmask/v1/pkg/common/validationcollector"
+	"github.com/rs/zerolog/log"
+)
+
+// NewTableDriverFunc - function that uses to create a table driver for a specific DBMS driver.
+// The column type override can be used in order to override driver encode-decode behaviour.
+type NewTableDriverFunc func(
+	ctx context.Context,
+	table models.Table,
+	columnsTypeOverride map[string]string,
+) (interfaces.TableDriver, error)
+
+// TableContextBuilder - produces list of TableContext that will be used in the task producer.
+type TableContextBuilder struct {
+	tables              []models.Table
+	dumpQueries         []string
+	tableConfigs        []models.TableConfig
+	newTableDriver      NewTableDriverFunc
+	transformerRegistry *transformerutils.TransformerRegistry
+}
+
+func New(
+	tables []models.Table,
+	dumpQueries []string,
+	tableConfigs []models.TableConfig,
+	newDriverFunc NewTableDriverFunc,
+	transformerRegistry *transformerutils.TransformerRegistry,
+) *TableContextBuilder {
+	return &TableContextBuilder{
+		tables:              tables,
+		dumpQueries:         dumpQueries,
+		tableConfigs:        tableConfigs,
+		newTableDriver:      newDriverFunc,
+		transformerRegistry: transformerRegistry,
+	}
+}
+
+// Build - returns list of TableContext objects that are used in the TaskProducer interface.
+func (p *TableContextBuilder) Build(ctx context.Context) ([]TableContext, error) {
+	var err error
+	tableRuntimes := make([]TableContext, len(p.tables))
+	for i := range p.tables {
+		var transformationConfig models.TableConfig
+		idx := slices.IndexFunc(p.tableConfigs, func(config models.TableConfig) bool {
+			return p.tables[i].Schema == config.Schema && p.tables[i].Name == config.Name
+		})
+		if idx != -1 {
+			transformationConfig = p.tableConfigs[idx]
+		}
+		query := p.dumpQueries[i]
+		tableRuntimes[i], err = p.initTable(ctx, p.tables[i], transformationConfig, query)
+		if err != nil {
+			return nil, fmt.Errorf("init table %s.%s: %w", p.tables[i].Schema, p.tables[i].Name, err)
+		}
+	}
+	return tableRuntimes, nil
+}
+
+// initTable - initialize a table runtime for a specific table.
+func (p *TableContextBuilder) initTable(
+	ctx context.Context,
+	table models.Table,
+	tableConfig models.TableConfig,
+	dumpQueries string,
+) (TableContext, error) {
+	ctx = log.Ctx(ctx).With().
+		Str(models.MetaKeyTableSchema, table.Schema).
+		Str(models.MetaKeyTableName, table.Name).
+		Logger().WithContext(ctx)
+	driver, err := p.newTableDriver(ctx, table, tableConfig.ColumnsTypeOverride)
+	if err != nil {
+		return TableContext{}, fmt.Errorf("new driver: %w", err)
+	}
+	if dumpQueries == "" && tableConfig.Query != "" {
+		dumpQueries = tableConfig.Query
+	}
+	tableCondition, err := p.compileTableCondition(ctx, utils.Value(driver.Table()), tableConfig)
+	if err != nil {
+		return TableContext{}, fmt.Errorf("compile table condition: %w", err)
+	}
+	transformationRuntimes, err := p.initTableTransformers(ctx, driver, tableConfig.Transformers)
+	if err != nil {
+		return TableContext{}, fmt.Errorf("init transformation runtimes: %w", err)
+	}
+	return TableContext{
+		Table:              &table,
+		Condition:          tableCondition,
+		TransformerContext: transformationRuntimes,
+		Query:              dumpQueries,
+		TableDriver:        driver,
+	}, nil
+}
+
+func (p *TableContextBuilder) initTableTransformers(
+	ctx context.Context,
+	driver interfaces.TableDriver,
+	transformerConfigs []models.TransformerConfig,
+) ([]*TransformerContext, error) {
+	res := make([]*TransformerContext, len(transformerConfigs))
+	for i := range transformerConfigs {
+		ctx := log.Ctx(ctx).With().
+			Str(models.MetaKeyTransformerName, transformerConfigs[i].Name).
+			Logger().WithContext(ctx)
+		initRes, err := p.initTransformer(ctx, driver, transformerConfigs[i])
+		if err != nil {
+			return nil, fmt.Errorf("init transformer \"%s\": %w", transformerConfigs[i].Name, err)
+		}
+		transformerCond, err := p.compileTransformerCondition(ctx, utils.Value(driver.Table()), transformerConfigs[i])
+		if err != nil {
+			return nil, fmt.Errorf("compile transformer condition: %w", err)
+		}
+		res[i] = &TransformerContext{
+			Transformer:       initRes.transformer,
+			Condition:         transformerCond,
+			StaticParameters:  initRes.staticParameters,
+			DynamicParameters: initRes.dynamicParameters,
+		}
+	}
+	return res, nil
+}
+
+type tranInitRes struct {
+	transformer       interfaces.Transformer
+	staticParameters  map[string]*parameters2.DynamicParameter
+	dynamicParameters map[string]*parameters2.DynamicParameter
+}
+
+func (p *TableContextBuilder) initTransformer(
+	ctx context.Context,
+	driver interfaces.TableDriver,
+	config models.TransformerConfig,
+) (tranInitRes, error) {
+	ctx = validationcollector.WithMeta(ctx,
+		models.MetaKeyTransformerName, config.Name,
+	)
+	transformerDefinition, ok := p.transformerRegistry.Get(config.Name)
+	if !ok {
+		validationcollector.FromContext(ctx).
+			Add(models.NewValidationWarning().
+				SetSeverity(models.ValidationSeverityError).
+				SetMsg("transformer is not found"))
+		return tranInitRes{}, fmt.Errorf("get transformer from registry: %w", models.ErrFatalValidationError)
+	}
+	params, err := parameters2.InitParameters(
+		ctx,
+		driver,
+		transformerDefinition.Parameters,
+		config.StaticParams,
+		config.DynamicParams,
+	)
+	if err != nil {
+		return tranInitRes{}, err
+	}
+
+	dynamicParams := make(map[string]*parameters2.DynamicParameter)
+	staticParams := make(map[string]*parameters2.StaticParameter)
+	for name, pp := range params {
+		switch v := pp.(type) {
+		case *parameters2.StaticParameter:
+			staticParams[name] = v
+		case *parameters2.DynamicParameter:
+			dynamicParams[name] = v
+		}
+	}
+
+	// Validate schema
+	err = transformerDefinition.SchemaValidator(
+		ctx,
+		utils.Value(driver.Table()),
+		transformerDefinition.Properties,
+		staticParams,
+	)
+	if err != nil {
+		return tranInitRes{}, fmt.Errorf("schema validation error: %w", err)
+	}
+
+	// Create a new transformer
+	tran, err := transformerDefinition.New(ctx, driver, params)
+	if err != nil {
+		return tranInitRes{}, fmt.Errorf("new transformer: %w", err)
+	}
+	return tranInitRes{
+		transformer:       tran,
+		dynamicParameters: dynamicParams,
+		staticParameters:  dynamicParams,
+	}, nil
+}
+
+func (p *TableContextBuilder) compileTransformerCondition(
+	ctx context.Context,
+	table models.Table,
+	transformerConfig models.TransformerConfig,
+) (CondEvaluator, error) {
+	ctx = log.Ctx(ctx).With().
+		Any(models.MetaKeyConditionScope, "Transformer").
+		Logger().WithContext(ctx)
+	if transformerConfig.When == "" {
+		return nil, nil
+	}
+	return conditions.NewWhenCond(ctx, transformerConfig.When, table)
+}
+
+func (p *TableContextBuilder) compileTableCondition(
+	ctx context.Context,
+	table models.Table,
+	tableConfig models.TableConfig,
+) (CondEvaluator, error) {
+	ctx = log.Ctx(ctx).With().
+		Any(models.MetaKeyConditionScope, "Table").
+		Logger().WithContext(ctx)
+	if tableConfig.When == "" {
+		return nil, nil
+	}
+	return conditions.NewWhenCond(ctx, tableConfig.When, table)
+}

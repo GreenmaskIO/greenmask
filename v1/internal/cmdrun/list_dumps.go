@@ -10,14 +10,13 @@ import (
 	"strings"
 	"time"
 
+	heartbeat2 "github.com/greenmaskio/greenmask/v1/pkg/common/heartbeat"
+	"github.com/greenmaskio/greenmask/v1/pkg/common/interfaces"
+	"github.com/greenmaskio/greenmask/v1/pkg/common/models"
+	"github.com/greenmaskio/greenmask/v1/pkg/common/utils"
+	"github.com/greenmaskio/greenmask/v1/pkg/config"
 	"github.com/olekukonko/tablewriter"
 	"github.com/rs/zerolog/log"
-
-	"github.com/greenmaskio/greenmask/v1/internal/common/heartbeat"
-	"github.com/greenmaskio/greenmask/v1/internal/common/interfaces"
-	commonmodels "github.com/greenmaskio/greenmask/v1/internal/common/models"
-	commonutils "github.com/greenmaskio/greenmask/v1/internal/common/utils"
-	"github.com/greenmaskio/greenmask/v1/internal/config"
 )
 
 const (
@@ -25,18 +24,18 @@ const (
 )
 
 type Filter struct {
-	Tags     []string           `json:"tags"`
-	Statuses []heartbeat.Status `json:"statuses"`
+	Tags     []string            `json:"tags"`
+	Statuses []heartbeat2.Status `json:"statuses"`
 }
 
 func NewFilter(tags []string, statuses []string) (*Filter, error) {
-	var statusEnums []heartbeat.Status
+	var statusEnums []heartbeat2.Status
 	for _, statusStr := range statuses {
-		status := heartbeat.Status(statusStr)
+		status := heartbeat2.Status(statusStr)
 		if err := status.Validate(); err != nil {
 			return nil, fmt.Errorf("validate status '%s': %w", statusStr, err)
 		}
-		statusEnums = append(statusEnums, heartbeat.Status(statusStr))
+		statusEnums = append(statusEnums, heartbeat2.Status(statusStr))
 	}
 	return &Filter{
 		Tags:     tags,
@@ -44,7 +43,7 @@ func NewFilter(tags []string, statuses []string) (*Filter, error) {
 	}, nil
 }
 
-func (f *Filter) Match(metadata commonmodels.Metadata, status heartbeat.Status) bool {
+func (f *Filter) Match(metadata models.Metadata, status heartbeat2.Status) bool {
 	if len(f.Tags) == 0 && len(f.Statuses) == 0 {
 		return true
 	}
@@ -67,15 +66,15 @@ func (f *Filter) Match(metadata commonmodels.Metadata, status heartbeat.Status) 
 func RunListDumps(cfg *config.Config, quiet bool, f *Filter) error {
 	ctx := context.Background()
 	ctx = log.Ctx(ctx).With().
-		Str(commonmodels.MetaKeyEngine, cfg.Engine).
+		Str(models.MetaKeyEngine, cfg.Engine).
 		Logger().
 		WithContext(ctx)
 
-	st, err := commonutils.GetStorage(ctx, cfg)
+	st, err := utils.GetStorage(ctx, cfg)
 	if err != nil {
 		return fmt.Errorf("get storage: %w", err)
 	}
-	if err := commonutils.SetDefaultContextLogger(cfg.Log.Level, cfg.Log.Format); err != nil {
+	if err := utils.SetDefaultContextLogger(cfg.Log.Level, cfg.Log.Format); err != nil {
 		return fmt.Errorf("init logger: %w", err)
 	}
 	if cfg.Engine == "" {
@@ -93,29 +92,29 @@ func RunListDumps(cfg *config.Config, quiet bool, f *Filter) error {
 	return printDumpTablePretty(ctx, dirs, f)
 }
 
-func readMetadata(ctx context.Context, st interfaces.Storager) (commonmodels.Metadata, error) {
+func readMetadata(ctx context.Context, st interfaces.Storager) (models.Metadata, error) {
 	r, err := st.GetObject(ctx, MetadataJsonFileName)
 	if err != nil {
-		return commonmodels.Metadata{}, fmt.Errorf("get metadata.json object: %w", err)
+		return models.Metadata{}, fmt.Errorf("get metadata.json object: %w", err)
 	}
 	defer r.Close()
 
-	var res commonmodels.Metadata
+	var res models.Metadata
 	if err := json.NewDecoder(r).Decode(&res); err != nil {
-		return commonmodels.Metadata{}, fmt.Errorf("decode metadata.json: %w", err)
+		return models.Metadata{}, fmt.Errorf("decode metadata.json: %w", err)
 	}
 	return res, nil
 }
 
-func getMetadataAndStatus(ctx context.Context, st interfaces.Storager) (heartbeat.Status, commonmodels.Metadata, error) {
-	r := heartbeat.NewReader(st)
+func getMetadataAndStatus(ctx context.Context, st interfaces.Storager) (heartbeat2.Status, models.Metadata, error) {
+	r := heartbeat2.NewReader(st)
 	status, err := r.Read(ctx)
 	if err != nil {
-		return "", commonmodels.Metadata{}, fmt.Errorf("read dump status: %w", err)
+		return "", models.Metadata{}, fmt.Errorf("read dump status: %w", err)
 	}
 	metadata, err := readMetadata(ctx, st)
 	if err != nil {
-		return "", commonmodels.Metadata{}, fmt.Errorf("read dump metadata: %w", err)
+		return "", models.Metadata{}, fmt.Errorf("read dump metadata: %w", err)
 	}
 	return status, metadata, nil
 }
@@ -160,11 +159,11 @@ func renderListItem(ctx context.Context, st interfaces.Storager, f *Filter, data
 
 	var creationDate, dbName, size, compressedSize, duration, transformed string
 	transformed = "false"
-	if status == heartbeat.StatusDone {
+	if status == heartbeat2.StatusDone {
 		creationDate = metadata.CompletedAt.Format(time.RFC3339)
 		dbName = metadata.DatabaseName
-		size = commonutils.SizePretty(metadata.OriginalSize)
-		compressedSize = commonutils.SizePretty(metadata.CompressedSize)
+		size = utils.SizePretty(metadata.OriginalSize)
+		compressedSize = utils.SizePretty(metadata.CompressedSize)
 		diff := metadata.CompletedAt.Sub(metadata.StartedAt)
 		duration = time.Time{}.Add(diff).Format("15:04:05")
 		if len(metadata.Transformers) > 0 {
