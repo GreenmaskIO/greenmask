@@ -15,10 +15,11 @@
 package main
 
 import (
-	"github.com/greenmaskio/greenmask/v1/internal/cmdrun"
-	"github.com/greenmaskio/greenmask/v1/pkg/common/cmd"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
+
+	"github.com/greenmaskio/greenmask/v1/internal/cmdrun"
+	"github.com/greenmaskio/greenmask/v1/pkg/common/cmd"
 )
 
 var (
