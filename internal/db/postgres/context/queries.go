@@ -257,7 +257,7 @@ var (
 	`
 
 	PrimaryKeyColumnsQuery = `
-		select array_agg(DISTINCT a.attname) AS pk_columns
+		select array_agg(a.attname ORDER BY array_position(pcp.conkey, a.attnum)) AS pk_columns
 		from pg_catalog.pg_constraint pcp
 			JOIN pg_catalog.pg_attribute a ON a.attrelid = pcp.conrelid AND a.attnum = ANY (pcp.conkey) AND pcp.contype = 'p'
 		WHERE pcp.conrelid = $1;
