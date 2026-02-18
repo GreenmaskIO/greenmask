@@ -25,8 +25,8 @@ Greenmask Supports:
 
 ## Testing sponsor 💚
 
-<a href="https://www.lambdatest.com/?utm_source=greenmask&utm_medium=sponsor" target="_blank">
-    <img src="https://www.lambdatest.com/blue-logo.png" style="vertical-align: middle;" width="250" height="45" />
+<a href="https://www.testmuai.com/?utm_medium=sponsor&utm_source=greenmask" target="_blank">
+    <img src="https://assets.testmu.ai/resources/images/logos/black-logo.png" style="vertical-align: middle;" width="250" height="100" />
 </a>
 
 ### Powered by
