@@ -27,7 +27,6 @@ theme:
     toggle:
       icon: material/brightness-7
 
-
 # Markdown extensions
 markdown_extensions:
   - attr_list
@@ -59,7 +58,6 @@ nav:
           - restore: commands/restore.md
           - delete: commands/delete.md
       - Database subset: database_subset.md
-      - Supporting New Postgres: supporting_new_postgres.md
       - Transformers:
           - built_in_transformers/index.md
           - Dynamic parameters: built_in_transformers/dynamic_parameters.md
@@ -127,6 +125,8 @@ nav:
                   - Core custom functions: built_in_transformers/advanced_transformers/custom_functions/core_functions.md
                   - Faker function: built_in_transformers/advanced_transformers/custom_functions/faker_function.md
       - About: index.md
+      - Contributors:
+          - Supporting New Postgres: supporting_new_postgres.md
   - Release notes:
       - Greenmask 0.2.15: release_notes/greenmask_0_2_15.md
       - Greenmask 0.2.14: release_notes/greenmask_0_2_14.md
@@ -168,7 +168,6 @@ repo_name: GreenmaskIO/greenmask
 site_url: https://docs.greenmask.io/
 copyright: Copyright &copy; 2024 Greenmask
 
-
 extra:
   consent:
     title: Cookie consent
@@ -201,7 +200,6 @@ extra:
               frameborder="0" 
               marginheight="0" 
               marginwidth="0">Loading…</iframe>
-
 
   version:
     provider: mike
