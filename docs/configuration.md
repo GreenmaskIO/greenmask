@@ -81,6 +81,27 @@ two storage `type` options are supported: `directory` and `s3`.
         secret_access_key: "zuf+tfteSlswRu7BJ86wekitnifILbZam1KYY3TG"
     ```
 
+    !!! tip "Cloudflare R2 Compatibility"
+
+        Greenmask is compatible with Cloudflare R2 storage. To ensure it works correctly, you must use the following configuration:
+
+        *   **Endpoint**: Use the R2 S3 API endpoint (e.g., `https://<account_id>.r2.cloudflarestorage.com`). Do **not** include the bucket name in the endpoint URL.
+        *   **Force Path Style**: You must set `force_path_style` to `true`.
+        *   **Region**: Set it to `us-east-1` (R2 is regionless, but this value is often required by S3 clients).
+
+        ```yaml title="S3 storage config example for Cloudflare R2"
+        storage:
+          type: "s3"
+          s3:
+            endpoint: "https://<account_id>.r2.cloudflarestorage.com"
+            bucket: "my-bucket"
+            prefix: "backups"
+            region: "us-east-1"
+            force_path_style: true
+            access_key_id: "<access_key>"
+            secret_access_key: "<secret_key>"
+        ```
+
 ## `dump` section
 
 In the `dump` section of the configuration, you configure the `greenmask dump` command. It includes the following parameters:
@@ -230,7 +251,7 @@ validate:
 5. A hash list of resolved warnings. These warnings have been addressed and resolved in a previous validation run.
 6. Specifies the format of the transformation output. Possible values are `[horizontal|vertical]`. The default format is `horizontal`. You can choose the format that suits your needs. See more details in the [validate command documentation](commands/validate.md).
 7. The output format (json or text)
-8. Specifies whether to validate the schema current schema with the previous and print the differences if any.
+8. Specifies whether to validate the current schema with the previous and print the differences if any.
 9. If set to `true`, transformation output will be only with the transformed columns and primary keys
 10. If set to then all the warnings be printed
 
@@ -310,9 +331,9 @@ You can configure which errors to ignore during the restoration process by setti
 parameter. This parameter can be applied globally or per table. If both global and table-specific settings are defined,
 the table-specific settings will take precedence. Below is an example of how to configure the insert_error_exclusions
 parameter. You can specify constraint names from your database schema or the error codes returned by PostgreSQL.
-[codes in the PostgreSQL documentation](https://www.postgresql.org/docs/current/errcodes-appendix.html).
+[codes in the PostgreSQL documentation](https://www.postgresql.org/docs/docs/current/errcodes-appendix.html).
 
-```yaml title="parameter defintion"
+```yaml title="parameter definition"
 insert_error_exclusions:
 
   global:
@@ -384,7 +405,7 @@ log:
 
 ### Postgres connection variables
 
-Additionaly, there are some environment variables exposed by the `dump` and `restore` commands to facilitate the connection configuration with a Postgres database
+Additionally, there are some environment variables exposed by the `dump` and `restore` commands to facilitate the connection configuration with a Postgres database
 
 * `PGHOST` - host used to connect to the postgres database
 * `PGPORT` - port where postgres is exposed
