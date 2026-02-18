@@ -25,7 +25,7 @@ var (
 	foreignKeyColumnsQuery = `
 		SELECT n.nspname                as             fk_table_schema,
 			   fk_ref_table.relname     as             fk_table_name,
-			   array_agg(curr_table_attrs.attname)     curr_table_columns,
+			   array_agg(curr_table_attrs.attname ORDER BY array_position(curr_table_con.conkey, curr_table_attrs.attnum))     curr_table_columns,
 			   bool_or(NOT attnotnull)  as 		       is_nullable
 		FROM pg_catalog.pg_constraint curr_table_con
 				 join pg_catalog.pg_class fk_ref_table on curr_table_con.confrelid = fk_ref_table.oid
