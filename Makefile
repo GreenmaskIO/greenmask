@@ -35,5 +35,6 @@ integration:
 	docker buildx build --load -t greenmask-integration:latest -f docker/integration/tests/Dockerfile .
 	docker compose -f docker-compose-integration.yml -p greenmask up \
                 --renew-anon-volumes --force-recreate \
-                --exit-code-from greenmask --abort-on-container-exit greenmask
+                --exit-code-from greenmask --abort-on-container-exit greenmask \
+				--profile all
 

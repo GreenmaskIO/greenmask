@@ -11,9 +11,7 @@ RUN apt-get update && apt-get install -y wget gnupg2 lsb-release make \
         postgresql-16 \
         postgresql-15 \
         postgresql-14 \
-        postgresql-13 \
-        postgresql-12 \
-        postgresql-11
+        postgresql-13
 
 WORKDIR /var/lib/greenmask
 
