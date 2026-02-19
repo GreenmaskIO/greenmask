@@ -6,6 +6,10 @@ import (
 	"path"
 )
 
+var (
+	ErrFileNotFound = fmt.Errorf("file not found")
+)
+
 func Walk(ctx context.Context, st Storager, parent string) (res []string, err error) {
 	var files []string
 	files, dirs, err := st.ListDir(ctx)
