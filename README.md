@@ -31,7 +31,7 @@
 *   **[Transformation Inheritance](https://docs.greenmask.io/latest/built_in_transformers/transformation_inheritance/)**: Eliminate redundancy by automatically applying transformations to partitioned tables and foreign key references.
 *   **Database Type Safety**: Ensures data integrity by using the native database driver for all encoding and decoding operations.
 *   **[Extensible](https://docs.greenmask.io/latest/built_in_transformers/standard_transformers/cmd/)**: Implement domain-specific transformations in any programming language or use [predefined templates](https://docs.greenmask.io/latest/built_in_transformers/advanced_transformers/).
-*   **[Cross-Platform](https://github.com/GreenmaskIO/greenmask/releases)**: Single binary, runs anywhere.
+*   **Cross-Platform**: Single binary, runs anywhere.
 
 ## Use Cases
 
