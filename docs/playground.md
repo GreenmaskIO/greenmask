@@ -1,5 +1,7 @@
 # Greenmask Playground
 
+![Demo](assets/tapes/playground.gif)
+
 Greenmask Playground is a sandbox environment in Docker with sample databases included to help you try Greenmask without any additional actions. It includes the following components:
 
 * **Original database** — the source database you'll be working with.

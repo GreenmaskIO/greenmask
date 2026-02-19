@@ -44,7 +44,7 @@
 Output playground.gif
 
 Set FontSize 18
-Set Width 1200
+Set Width 1600
 Set Height 800
 Set Padding 20
 Set Theme "Catppuccin Macchiato"
@@ -58,13 +58,14 @@ Enter
 Sleep 3s
 
 # Clear screen to start fresh inside the container
-Type "clear"
-Enter
+Ctrl+L
 
 # 1. Inspect original data
 Type "# Step 1: Inspect the original data (birthdate column)"
 Enter
-Type "psql_o -c 'SELECT businessentityid, jobtitle, birthdate FROM humanresources.employee LIMIT 5;'"
+Type "psql -U postgres -d original -h playground-db \"
+Enter
+Type  "  -c 'SELECT businessentityid, jobtitle, birthdate FROM humanresources.employee LIMIT 2;'"
 Enter
 Sleep 1s
 
@@ -74,24 +75,27 @@ Enter
 Type "cat config.yml | sed -n 23,32p"
 Enter
 Sleep 3s
-Type "clear"
-Enter
+Ctrl+L
 
 # 3.Validate data change before dumping
 Type "# Step 3: Validate the transformation logic without dumping"
 Enter
 Type "greenmask --config config.yml validate \"
 Enter
-Type "  --warnings --data \"
+Type "  --warnings \"
 Enter
-Type "  --diff --transformed-only \"
+Type "  --data \"
+Enter
+Type "  --diff \"
+Enter
+Type "  --transformed-only \"
 Enter
 Type "  --rows-limit 2"
 Enter
 Sleep 1s
 
 # 3. Dump the database
-Type "# Step 4: Run the dump command to generate masked data"
+Type "# Step 4: Run the dump command to create an anonymized database dump"
 Sleep 1s
 Enter
 Type "greenmask --config config.yml dump"
@@ -99,6 +103,7 @@ Sleep 1s
 Enter
 # Wait for dump to complete
 Sleep 1s
+Ctrl+L
 
 # 4. List dumps
 Type "# Step 5: Check the list of dumps to confirm success"
@@ -114,15 +119,15 @@ Type "# Step 6: Restore the masked data into a new database"
 Sleep 1s
 Enter
 Type "greenmask --config config.yml restore latest"
-Sleep 1s
+Sleep 2s
 Enter
 
 # 6. Verify the result
 Type "# Step 7: Verify the results in the target database"
-Sleep 1s
 Enter
-Type "psql_t -c 'SELECT businessentityid, jobtitle, birthdate FROM humanresources.employee LIMIT 5;'"
-Sleep 1s
+Type "psql -U postgres -d transformed -h playground-db \"
+Enter
+Type  "  -c 'SELECT businessentityid, jobtitle, birthdate FROM humanresources.employee LIMIT 2;'"
 Enter
 Sleep 1s
 
@@ -132,9 +137,11 @@ Sleep 1s
 Enter
 Type "greenmask --config config.yml validate \"
 Enter
-Type "  --warnings --data \"
+Type "  --data \"
 Enter
-Type "  --diff --transformed-only \"
+Type "  --diff \"
+Enter
+Type "  --transformed-only \"
 Enter
 Type "  --rows-limit 2"
 Enter
