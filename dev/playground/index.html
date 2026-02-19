@@ -499,6 +499,24 @@ A new version 0.2.15 (2025.12.13) is <a href="https://github.com/GreenmaskIO/gre
 </li>
       
         <li class="md-nav__item">
+  <a href="#playground-workflow" class="md-nav__link">
+    <span class="md-ellipsis">
+      Playground Workflow
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#useful-aliases" class="md-nav__link">
+    <span class="md-ellipsis">
+      Useful Aliases
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#commands" class="md-nav__link">
     <span class="md-ellipsis">
       Commands
@@ -3390,6 +3408,24 @@ A new version 0.2.15 (2025.12.13) is <a href="https://github.com/GreenmaskIO/gre
 </li>
       
         <li class="md-nav__item">
+  <a href="#playground-workflow" class="md-nav__link">
+    <span class="md-ellipsis">
+      Playground Workflow
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#useful-aliases" class="md-nav__link">
+    <span class="md-ellipsis">
+      Useful Aliases
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#commands" class="md-nav__link">
     <span class="md-ellipsis">
       Commands
@@ -3426,6 +3462,7 @@ A new version 0.2.15 (2025.12.13) is <a href="https://github.com/GreenmaskIO/gre
 
 
 <h1 id="greenmask-playground">Greenmask Playground<a class="headerlink" href="#greenmask-playground" title="Permanent link">&para;</a></h1>
+<p><img alt="Demo" src="../assets/tapes/playground.gif" /></p>
 <p>Greenmask Playground is a sandbox environment in Docker with sample databases included to help you try Greenmask without any additional actions. It includes the following components:</p>
 <ul>
 <li><strong>Original database</strong> — the source database you'll be working with.</li>
@@ -3457,6 +3494,43 @@ A new version 0.2.15 (2025.12.13) is <a href="https://github.com/GreenmaskIO/gre
 </code></pre></div>
 </div>
 <p>Now you have Greenmask Playground up and running with a shell prompt inside the container. All further operations will be carried out within this container's shell.</p>
+<h2 id="playground-workflow">Playground Workflow<a class="headerlink" href="#playground-workflow" title="Permanent link">&para;</a></h2>
+<p>To simplify your experience in the playground, use the following workflow:</p>
+<ol>
+<li>
+<p><strong>Connect to the original DB</strong></p>
+<p>Connect to the original database to create schema and insert data. There are some aliases, for example <code>psql_o</code>, to connect psql to the original DB:</p>
+<div class="highlight"><pre><span></span><code>psql_o
+</code></pre></div>
+</li>
+<li>
+<p><strong>Edit Configuration</strong></p>
+<p>You can edit <code>playground/config.yml</code> using any editor in your host machine or container (the file is located in a docker volume so the changes you made in the host machine will be available in the container as well).</p>
+</li>
+<li>
+<p><strong>Dump original DB</strong></p>
+<div class="highlight"><pre><span></span><code>greenmask<span class="w"> </span>--config<span class="w"> </span>config.yml<span class="w"> </span>dump
+</code></pre></div>
+</li>
+<li>
+<p><strong>Restore into transformed DB</strong></p>
+<div class="highlight"><pre><span></span><code>greenmask<span class="w"> </span>--config<span class="w"> </span>config.yml<span class="w"> </span>restore<span class="w"> </span>latest
+</code></pre></div>
+</li>
+<li>
+<p><strong>Verify the result</strong></p>
+<p>Run <code>psql_t</code> and verify the result of subset:</p>
+<div class="highlight"><pre><span></span><code>psql_t
+</code></pre></div>
+</li>
+</ol>
+<h2 id="useful-aliases">Useful Aliases<a class="headerlink" href="#useful-aliases" title="Permanent link">&para;</a></h2>
+<p>There are some aliases available to simplify your work:</p>
+<ul>
+<li><code>psql_o</code> — connect to the original DB via psql.</li>
+<li><code>psql_t</code> — connect to the transformed DB via psql.</li>
+<li><code>cleanup</code> — drop and create transformed databases.</li>
+</ul>
 <h2 id="commands">Commands<a class="headerlink" href="#commands" title="Permanent link">&para;</a></h2>
 <p>Below you can see Greenmask commands:</p>
 <ul>
