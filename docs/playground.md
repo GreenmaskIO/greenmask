@@ -1,5 +1,7 @@
 # Greenmask Playground
 
+![Demo](assets/tapes/playground.gif)
+
 Greenmask Playground is a sandbox environment in Docker with sample databases included to help you try Greenmask without any additional actions. It includes the following components:
 
 * **Original database** — the source database you'll be working with.
@@ -34,7 +36,54 @@ Greenmask Playground is a sandbox environment in Docker with sample databases in
 
 Now you have Greenmask Playground up and running with a shell prompt inside the container. All further operations will be carried out within this container's shell.
 
+## Playground Workflow
+
+To simplify your experience in the playground, use the following workflow:
+
+1.  **Connect to the original DB**
+
+    Connect to the original database to create schema and insert data. There are some aliases, for example `psql_o`, to connect psql to the original DB:
+
+    ```shell
+    psql_o
+    ```
+
+2.  **Edit Configuration**
+
+    You can edit `playground/config.yml` using any editor in your host machine or container (the file is located in a docker volume so the changes you made in the host machine will be available in the container as well).
+
+3.  **Dump original DB**
+
+    ```shell
+    greenmask --config config.yml dump
+    ```
+
+4.  **Restore into transformed DB**
+
+    ```shell
+    greenmask --config config.yml restore latest
+    ```
+
+5.  **Verify the result**
+
+    Run `psql_t` and verify the result of subset:
+
+    ```shell
+    psql_t
+    ```
+
+
+
+## Useful Aliases
+
+There are some aliases available to simplify your work:
+
+* `psql_o` — connect to the original DB via psql.
+* `psql_t` — connect to the transformed DB via psql.
+* `cleanup` — drop and create transformed databases.
+
 ## Commands
+
 
 Below you can see Greenmask commands:
 
