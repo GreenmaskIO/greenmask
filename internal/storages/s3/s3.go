@@ -249,6 +249,12 @@ func (s *Storage) GetObject(ctx context.Context, filePath string) (writer io.Rea
 		},
 	)
 	if err != nil {
+		var awsErr awserr.Error
+		if ok := errors.As(err, &awsErr); ok {
+			if awsErr.Code() == NotFountAwsErrorCode || awsErr.Code() == NoSuchKeyAwsErrorCode {
+				return nil, storages.ErrFileNotFound
+			}
+		}
 		return nil, fmt.Errorf("error getting object: %w", err)
 	}
 	return obj.Body, nil

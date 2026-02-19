@@ -3,6 +3,7 @@ package dumpstatus
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"time"
@@ -43,6 +44,9 @@ func GetDumpStatusAndMetadata(ctx context.Context, st storages.Storager) (string
 		}
 		md, err := getMetadata(ctx, st)
 		if err != nil {
+			if errors.Is(err, storages.ErrFileNotFound) {
+				return UnknownOrFailedStatusName, nil, nil
+			}
 			return "", nil, fmt.Errorf("failed to get metadata: %w", err)
 		}
 		return heartBeatDoneContent, md, nil
@@ -65,6 +69,9 @@ func GetDumpStatusAndMetadata(ctx context.Context, st storages.Storager) (string
 		// if done - read and parse metadata
 		md, err := getMetadata(ctx, st)
 		if err != nil {
+			if errors.Is(err, storages.ErrFileNotFound) {
+				return UnknownOrFailedStatusName, nil, nil
+			}
 			return "", nil, fmt.Errorf("failed to get metadata: %w", err)
 		}
 		return heartBeatDoneContent, md, nil
@@ -88,9 +95,13 @@ func isMetadataExist(st storages.Storager) (bool, error) {
 func getMetadata(ctx context.Context, st storages.Storager) (*storage.Metadata, error) {
 	mf, err := st.GetObject(ctx, cmd.MetadataJsonFileName)
 	if err != nil {
-		log.Err(err).Msg("")
+		return nil, fmt.Errorf("get metadata from storage: %w", err)
 	}
-	defer mf.Close()
+	defer func() {
+		if err := mf.Close(); err != nil {
+			log.Warn().Err(err).Msg("failed to close metadata file")
+		}
+	}()
 
 	metadata := &storage.Metadata{}
 	if err = json.NewDecoder(mf).Decode(metadata); err != nil {
