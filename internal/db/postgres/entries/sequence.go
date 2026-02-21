@@ -43,7 +43,7 @@ func (s *Sequence) Entry() (*toc.Entry, error) {
 	if !s.IsCalled {
 		isCalled = "false"
 	}
-	statement := fmt.Sprintf(`SELECT pg_catalog.setval('"%s"."%s"', %d, %s);`, s.Schema, s.Name, s.LastValue, isCalled)
+	statement := fmt.Sprintf(`SELECT pg_catalog.setval('"%s"."%s"', %d, %s);`, escapeIdent(s.Schema), escapeIdent(s.Name), s.LastValue, isCalled)
 
 	name := fmt.Sprintf(`"%s"`, s.Name)
 	schema := fmt.Sprintf(`"%s"`, s.Schema)
