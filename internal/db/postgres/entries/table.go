@@ -26,6 +26,13 @@ import (
 	"github.com/greenmaskio/greenmask/pkg/toolkit"
 )
 
+// escapeIdent escapes double-quote characters within a PostgreSQL identifier
+// by doubling them. This is required when embedding identifier names in SQL
+// strings using double-quote delimiters, e.g. "my""table".
+func escapeIdent(name string) string {
+	return strings.ReplaceAll(name, `"`, `""`)
+}
+
 // Table - godoc
 type Table struct {
 	*toolkit.Table
@@ -86,7 +93,7 @@ func (t *Table) Entry() (*toc.Entry, error) {
 
 	for _, column := range t.Columns {
 		if !column.IsGenerated {
-			columns = append(columns, fmt.Sprintf(`"%s"`, column.Name))
+			columns = append(columns, fmt.Sprintf(`"%s"`, escapeIdent(column.Name)))
 		}
 	}
 
@@ -99,7 +106,7 @@ func (t *Table) Entry() (*toc.Entry, error) {
 		schemaName = t.Schema
 		tableName = t.Name
 	}
-	copyStmt := fmt.Sprintf(query, schemaName, tableName, strings.Join(columns, ", "))
+	copyStmt := fmt.Sprintf(query, escapeIdent(schemaName), escapeIdent(tableName), strings.Join(columns, ", "))
 
 	fileName := fmt.Sprintf("%d.dat.gz", t.DumpId)
 
@@ -139,7 +146,7 @@ func (t *Table) Entry() (*toc.Entry, error) {
 func (t *Table) GetCopyFromStatement() (string, error) {
 	// We could generate an explicit column list for the COPY statement, but it’s not necessary because, by default,
 	// generated columns are excluded from the COPY operation.
-	query := fmt.Sprintf("COPY \"%s\".\"%s\" TO STDOUT", t.Schema, t.Name)
+	query := fmt.Sprintf("COPY \"%s\".\"%s\" TO STDOUT", escapeIdent(t.Schema), escapeIdent(t.Name))
 	if t.Query != "" {
 		query = fmt.Sprintf("COPY (%s) TO STDOUT", t.Query)
 	}
