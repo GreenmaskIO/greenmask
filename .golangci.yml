@@ -1,0 +1,28 @@
+version: "2"
+
+run:
+  timeout: 5m
+  tests: true
+
+linters:
+  enable:
+    - errcheck
+    - govet
+    - ineffassign
+    - staticcheck
+    - unused
+  settings:
+    errcheck:
+      check-type-assertions: true
+      check-blank: true
+  exclusions:
+    rules:
+      - path: ^internal/utils/testutils/
+        linters:
+          - errcheck
+      - path: _test\.go
+        linters:
+          - errcheck
+      - path: ^tests/
+        linters:
+          - errcheck

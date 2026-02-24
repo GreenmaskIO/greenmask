@@ -422,7 +422,7 @@ func (c *Cmd) Transform(ctx context.Context, r *toolkit.Record) (*toolkit.Record
 			return nil, err
 		}
 		if skip {
-			c.CmdTransformerBase.ProcessedLines++
+			c.ProcessedLines++
 			return r, nil
 		}
 	}

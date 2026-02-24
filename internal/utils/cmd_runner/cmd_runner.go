@@ -32,9 +32,17 @@ func Run(ctx context.Context, logger *zerolog.Logger, name string, args ...strin
 	cmd := exec.CommandContext(ctx, name, args...)
 
 	errReader, errWriter := io.Pipe()
-	defer errReader.Close()
+	defer func() {
+		if err := errReader.Close(); err != nil {
+			logger.Warn().Err(err).Msg("error closing errReader")
+		}
+	}()
 	outReader, outWriter := io.Pipe()
-	defer outWriter.Close()
+	defer func() {
+		if err := outWriter.Close(); err != nil {
+			logger.Warn().Err(err).Msg("error closing outWriter")
+		}
+	}()
 
 	cmd.Stderr = errWriter
 	cmd.Stdout = outWriter
@@ -85,8 +93,16 @@ func Run(ctx context.Context, logger *zerolog.Logger, name string, args ...strin
 	})
 
 	eg.Go(func() error {
-		defer outWriter.Close()
-		defer errWriter.Close()
+		defer func() {
+			if err := outWriter.Close(); err != nil {
+				logger.Warn().Err(err).Msg("error closing outWriter")
+			}
+		}()
+		defer func() {
+			if err := errWriter.Close(); err != nil {
+				logger.Warn().Err(err).Msg("error closing errWriter")
+			}
+		}()
 		if err := cmd.Wait(); err != nil {
 			return err
 		}

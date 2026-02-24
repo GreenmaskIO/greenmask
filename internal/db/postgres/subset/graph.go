@@ -1151,10 +1151,7 @@ func shiftCycleGroup(g [][]*Edge) [][]*Edge {
 func shiftUntilVertexWillBeFirst(v *Edge, c []*Edge) []*Edge {
 	//generateInClauseForOverlap
 	res := slices.Clone(c)
-	for {
-		if res[0].from.idx == v.from.idx {
-			break
-		}
+	for res[0].from.idx != v.from.idx {
 		res = shiftCycle(res)
 	}
 	return res

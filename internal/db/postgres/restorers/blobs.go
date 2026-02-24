@@ -145,7 +145,9 @@ func (br *BlobsRestorer) getLargeObjectDataReader(ctx context.Context, oid uint3
 	}
 	gz, err := ioutils.GetGzipReadCloser(loReader, br.usePgzip)
 	if err != nil {
-		_ = loReader.Close()
+		if err := loReader.Close(); err != nil {
+			log.Warn().Err(err).Msg("error closing large object reader")
+		}
 		return nil, fmt.Errorf("cannot create gzip reader: %w", err)
 	}
 	return gz, nil

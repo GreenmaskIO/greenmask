@@ -136,7 +136,7 @@ func NewUnixTimestampTransformer(ctx context.Context, driver *toolkit.Driver, pa
 	}
 
 	return &UnixTimestampTransformer{
-		TimestampTransformer: t.(*TimestampTransformer),
+		TimestampTransformer: t.(*TimestampTransformer), //nolint:errcheck
 		unit:                 unit,
 		minUnit:              minUnit,
 		maxUnit:              maxUnit,

@@ -171,10 +171,7 @@ func (s *restoresSuite) Test_BlobsRestorer_Execute() {
 		s.Require().NoError(err)
 
 		blobsTocData := newReadCloserMock()
-		blobsTocData.Write([]byte(fmt.Sprintf(
-			`%d blob_%d.dat
-%d blob_%d.dat
-`, loOid1, loOid1, loOid2, loOid2)))
+		fmt.Fprintf(blobsTocData, "%d blob_%d.dat\n%d blob_%d.dat\n", loOid1, loOid1, loOid2, loOid2)
 
 		obj1 := newReadCloserMock()
 		gzw1 := gzip.NewWriter(obj1)

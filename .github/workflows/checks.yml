@@ -4,32 +4,32 @@ on:
   workflow_dispatch:
   push:
     branches:
-      - 'main'
+      - "main"
     paths-ignore:
-      - 'README.md'
-      - 'docs/**'
-      - 'mkdocs.yml'
-      - 'LICENSE'
-      - 'getting_started.md'
-      - 'docker-compose.yml'
-      - 'playground/**'
-      - 'CNAME'
-      - 'requirements.txt'
+      - "README.md"
+      - "docs/**"
+      - "mkdocs.yml"
+      - "LICENSE"
+      - "getting_started.md"
+      - "docker-compose.yml"
+      - "playground/**"
+      - "CNAME"
+      - "requirements.txt"
   pull_request:
     paths-ignore:
-      - 'README.md'
-      - 'docs/**'
-      - 'mkdocs.yml'
-      - 'LICENSE'
-      - 'getting_started.md'
-      - 'docker-compose.yml'
-      - 'playground/**'
-      - 'CNAME'
-      - 'requirements.txt'
+      - "README.md"
+      - "docs/**"
+      - "mkdocs.yml"
+      - "LICENSE"
+      - "getting_started.md"
+      - "docker-compose.yml"
+      - "playground/**"
+      - "CNAME"
+      - "requirements.txt"
 
 env:
-  go-version: '1.24'
-  golangci-lint-version: v1.64
+  go-version: "1.24"
+  golangci-lint-version: v2.10.1
 
 permissions:
   contents: read
@@ -40,16 +40,16 @@ jobs:
 
   build:
     uses: ./.github/workflows/build.yml
-    needs: 
+    needs:
       - tests
 
   code_check:
     name: lint
     runs-on: ubuntu-latest
-    needs: 
+    needs:
       - tests
     steps:
-      - uses: actions/checkout@v4      
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
@@ -64,6 +64,6 @@ jobs:
           key: ${{ runner.os }}-coverage-${{ github.sha }}
 
       - name: golangci-lint
-        uses: golangci/golangci-lint-action@v6
+        uses: golangci/golangci-lint-action@v9
         with:
           version: ${{ env.golangci-lint-version }}

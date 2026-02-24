@@ -64,7 +64,7 @@ func generateJoinClauseV2(edge *Edge, joinType string, overriddenTables map[tool
 		leftPart := edge.from.keys[idx].GetKeyReference(leftTable)
 		rightPart := edge.to.keys[idx].GetKeyReference(rightTable)
 
-		if override, ok := overriddenTables[rightTable.Table.Oid]; ok {
+		if override, ok := overriddenTables[rightTable.Oid]; ok {
 			rightPart = fmt.Sprintf(
 				`"%s"."%s"`,
 				override,
@@ -85,8 +85,8 @@ func generateJoinClauseV2(edge *Edge, joinType string, overriddenTables map[tool
 		conds = append(conds, edge.to.polymorphicExprs...)
 	}
 
-	rightTableName := fmt.Sprintf(`"%s"."%s"`, rightTable.Table.Schema, rightTable.Table.Name)
-	if override, ok := overriddenTables[rightTable.Table.Oid]; ok {
+	rightTableName := fmt.Sprintf(`"%s"."%s"`, rightTable.Schema, rightTable.Name)
+	if override, ok := overriddenTables[rightTable.Oid]; ok {
 		rightTableName = override
 	}
 

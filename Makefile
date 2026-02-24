@@ -14,7 +14,9 @@ unittest:
 	go list ./... | grep -E 'internal|pkg' | xargs go test -v
 
 coverage:
-	go list ./... | grep -E 'internal|pkg' | xargs go test -v -coverprofile=$(COVERAGE_FILE) | grep -v 'no test files'
+	go list ./... | grep -E 'internal|pkg' | xargs go test -v -coverprofile=$(COVERAGE_FILE)
+
+coverage-view:
 	go tool cover -html=$(COVERAGE_FILE)
 
 install:

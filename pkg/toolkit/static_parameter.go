@@ -316,7 +316,11 @@ func scanValue(driver *Driver, definition *ParameterDefinition, rawValue ParamsV
 			if err != nil {
 				return fmt.Errorf("unable to scan parameter via Driver: %w", err)
 			}
-			valTime := val.(time.Time)
+			valTime, ok := val.(time.Time)
+			if !ok {
+				return fmt.Errorf("unable to scan parameter via Driver: expected time.Time, got %T", val)
+			}
+
 			res = &valTime
 			return ScanPointer(res, dest)
 		default:

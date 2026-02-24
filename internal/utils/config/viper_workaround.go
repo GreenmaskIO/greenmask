@@ -20,6 +20,7 @@ import (
 	"os"
 	"path"
 
+	"github.com/rs/zerolog/log"
 	"gopkg.in/yaml.v3"
 
 	"github.com/greenmaskio/greenmask/internal/domains"
@@ -37,7 +38,11 @@ func ParseTransformerParamsManually(cfgFilePath string, cfg *domains.Config) err
 	if err != nil {
 		return err
 	}
-	defer f.Close()
+	defer func() {
+		if err := f.Close(); err != nil {
+			log.Warn().Err(err).Msg("error closing config file")
+		}
+	}()
 
 	switch ext {
 	case ".json":
@@ -49,7 +54,7 @@ func ParseTransformerParamsManually(cfgFilePath string, cfg *domains.Config) err
 			return err
 		}
 	default:
-		return fmt.Errorf("unsupported file extension \"%s\"", err)
+		return fmt.Errorf("unsupported file extension \"%s\"", ext)
 	}
 	return setTransformerParams(tmpCfg, cfg)
 }

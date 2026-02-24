@@ -145,7 +145,11 @@ func NewStorage(ctx context.Context, cfg *Config, logLevel string) (*Storage, er
 		if err != nil {
 			return nil, fmt.Errorf("")
 		}
-		defer file.Close()
+		defer func() {
+			if err := file.Close(); err != nil {
+				log.Warn().Err(err).Msg("error closing cert file")
+			}
+		}()
 		ses, err = session.NewSessionWithOptions(session.Options{Config: *ses.Config, CustomCABundle: file})
 		if err != nil {
 			return nil, fmt.Errorf("cannot establish session using provided certFile: %w", err)

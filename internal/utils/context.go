@@ -9,6 +9,9 @@ func WithSalt(ctx context.Context, salt []byte) context.Context {
 }
 
 func SaltFromCtx(ctx context.Context) []byte {
-	salt, _ := ctx.Value(saltKey{}).([]byte)
+	salt, ok := ctx.Value(saltKey{}).([]byte)
+	if !ok {
+		return nil
+	}
 	return salt
 }

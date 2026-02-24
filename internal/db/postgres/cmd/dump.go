@@ -135,7 +135,9 @@ func (d *Dump) connect(ctx context.Context, dsn string) (*pgx.Conn, error) {
 	pgxdecimal.Register(conn.TypeMap())
 
 	if err := conn.Ping(ctx); err != nil {
-		conn.Close(ctx)
+		if err := conn.Close(ctx); err != nil {
+			log.Debug().Err(err).Msg("unable to close connection")
+		}
 		return nil, err
 	}
 
@@ -602,17 +604,23 @@ func (d *Dump) getWorkerTransaction(ctx context.Context) (*pgx.Conn, pgx.Tx, err
 
 	tx, err := conn.Begin(ctx)
 	if err != nil {
-		conn.Close(ctx)
+		if err := conn.Close(ctx); err != nil {
+			log.Debug().Err(err).Msg("unable to close connection")
+		}
 		return nil, nil, fmt.Errorf("cannot start transaction: %w", err)
 	}
 	if !d.pgDumpOptions.NoSynchronizedSnapshots {
 		if _, err := tx.Exec(ctx, setIsolationLevelQuery); err != nil {
-			conn.Close(ctx)
+			if err := conn.Close(ctx); err != nil {
+				log.Debug().Err(err).Msg("unable to close connection")
+			}
 			return nil, nil, fmt.Errorf("unable to set transaction isolation level: %w", err)
 		}
 
 		if _, err := tx.Exec(ctx, setSnapshotQuery); err != nil {
-			conn.Close(ctx)
+			if err := conn.Close(ctx); err != nil {
+				log.Debug().Err(err).Msg("unable to close connection")
+			}
 			return nil, nil, fmt.Errorf("cannot import snapshot: %w", err)
 		}
 	}
