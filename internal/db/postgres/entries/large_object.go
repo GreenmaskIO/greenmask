@@ -104,7 +104,7 @@ func (lo *LargeObject) AclDdl() *toc.Entry {
 	})
 	// If not exists than create revoke all statement
 	if defaultAclIdx == -1 {
-		sb.Write([]byte(fmt.Sprintf("REVOKE ALL ON LARGE OBJECT %d FROM \"%s\";\n", lo.Oid, lo.Owner)))
+		fmt.Fprintf(sb, "REVOKE ALL ON LARGE OBJECT %d FROM \"%s\";\n", lo.Oid, lo.Owner)
 	}
 
 	for idx, acl := range lo.ACL {
@@ -113,7 +113,7 @@ func (lo *LargeObject) AclDdl() *toc.Entry {
 		}
 
 		if acl.Items[0].Grantor != lo.Owner {
-			sb.Write([]byte(fmt.Sprintf("SET SESSION AUTHORIZATION \"%s\";\n", acl.Items[0].Grantor)))
+			fmt.Fprintf(sb, "SET SESSION AUTHORIZATION \"%s\";\n", acl.Items[0].Grantor)
 		}
 
 		for _, item := range acl.Items {

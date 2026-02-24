@@ -97,7 +97,7 @@ func validateAndBuildEntriesConfig(
 
 		// Compile when condition and set to the table entry
 		whenCondWarns := compileAndSetWhenCondForTable(cfgMapping.entry, cfgMapping.config)
-		enrichWarningsWithTableName(driverWarnings, cfgMapping.entry)
+		enrichWarningsWithTableName(whenCondWarns, cfgMapping.entry)
 		warnings = append(warnings, whenCondWarns...)
 		if whenCondWarns.IsFatal() {
 			return whenCondWarns, nil
@@ -293,8 +293,6 @@ func buildRefsWithEndToEndDfs(
 
 	var warnings toolkit.ValidationWarnings
 	for _, r := range rg[tableIdx] {
-		ws := processReference(r, rootTableCfg, allTrans, res, activeMappings, visited)
-		warnings = append(warnings, ws...)
 
 		// Calculate active mappings for child table to continue propagation.
 		// We map transformed columns from parent's PK to child's FK, and check if those
@@ -314,6 +312,13 @@ func buildRefsWithEndToEndDfs(
 				}
 			}
 		}
+
+		if checkEndToEnd && len(childActiveMappings) == 0 {
+			continue
+		}
+
+		ws := processReference(r, rootTableCfg, allTrans, res, activeMappings, visited)
+		warnings = append(warnings, ws...)
 
 		if len(childActiveMappings) == 0 {
 			continue
@@ -654,7 +659,16 @@ func isTransformerAllowedToApplyForReferences(
 		}
 	}
 	allowApplyForReferenced, ok := td.Properties.GetMeta(transformers.AllowApplyForReferenced)
-	if !ok || !allowApplyForReferenced.(bool) {
+	if !ok {
+		return false, toolkit.ValidationWarnings{
+			toolkit.NewValidationWarning().
+				SetMsg("transformer does not support apply for references").
+				AddMeta("TransformerName", cfg.Name).
+				SetSeverity(toolkit.ErrorValidationSeverity),
+		}
+	}
+	allowApplyForReferencedBool, ok := allowApplyForReferenced.(bool)
+	if !ok || !allowApplyForReferencedBool {
 		return false, toolkit.ValidationWarnings{
 			toolkit.NewValidationWarning().
 				SetMsg(
@@ -666,9 +680,18 @@ func isTransformerAllowedToApplyForReferences(
 	}
 	requireHashEngineParameter, ok := td.Properties.GetMeta(transformers.RequireHashEngineParameter)
 	if !ok {
-		return false, nil
+		return true, nil
 	}
-	if !requireHashEngineParameter.(bool) {
+	requireHashEngineParameterBool, ok := requireHashEngineParameter.(bool)
+	if !ok {
+		return false, toolkit.ValidationWarnings{
+			toolkit.NewValidationWarning().
+				SetMsg("transformer does not support apply for references").
+				AddMeta("TransformerName", cfg.Name).
+				SetSeverity(toolkit.ErrorValidationSeverity),
+		}
+	}
+	if !requireHashEngineParameterBool {
 		return true, nil
 	}
 	if string(cfg.Params[engineParameterName]) != transformers.HashEngineParameterName {

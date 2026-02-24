@@ -116,7 +116,7 @@ func (td *TextDocument) printVertical(w io.Writer) error {
 	prettyWriter.Rich(header, headerColors)
 	affectedColumns := td.getAffectedColumns()
 
-	result := td.JsonDocument.Get()
+	result := td.Get()
 	colIdxsToPrint := td.getColumnsIdxsToPrint()
 
 	for lineIdx, res := range result.RecordsWithDiff {
@@ -202,7 +202,7 @@ func (td *TextDocument) printWithDiffHorizontal(w io.Writer) error {
 	prettyWriter := tablewriter.NewWriter(w)
 	prettyWriter.SetColumnAlignment(settings.ColumnsAlignments)
 
-	result := td.JsonDocument.Get()
+	result := td.Get()
 	colIdxsToPrint := td.getColumnsIdxsToPrint()
 
 	for lineIdx, res := range result.RecordsWithDiff {
@@ -261,7 +261,7 @@ func (td *TextDocument) printWithDiffHorizontal(w io.Writer) error {
 }
 
 func (td *TextDocument) writeTableTitle(w io.Writer) error {
-	_, err := w.Write([]byte(fmt.Sprintf("\n\n\t\"%s\".\"%s\"\n", td.table.Schema, td.table.Name)))
+	_, err := fmt.Fprintf(w, "\n\n\t\"%s\".\"%s\"\n", td.table.Schema, td.table.Name)
 	if err != nil {
 		return fmt.Errorf("error writing title: %w", err)
 	}
@@ -273,7 +273,7 @@ func (td *TextDocument) printPlainHorizontal(w io.Writer) error {
 	prettyWriter := tablewriter.NewWriter(w)
 	prettyWriter.SetColumnAlignment(settings.ColumnsAlignments)
 
-	result := td.JsonDocument.Get()
+	result := td.Get()
 	colIdxsToPrint := td.getColumnsIdxsToPrint()
 
 	for lineIdx, res := range result.RecordsWithDiff {

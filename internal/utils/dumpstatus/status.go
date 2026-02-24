@@ -56,7 +56,11 @@ func GetDumpStatusAndMetadata(ctx context.Context, st storages.Storager) (string
 	if err != nil {
 		return "", nil, fmt.Errorf("failed to get heart beat file: %w", err)
 	}
-	defer f.Close()
+	defer func() {
+		if err := f.Close(); err != nil {
+			log.Warn().Err(err).Msg("failed to close heart beat file")
+		}
+	}()
 	data, err := io.ReadAll(f)
 	if err != nil {
 		return "", nil, fmt.Errorf("failed to read heart beat file: %w", err)

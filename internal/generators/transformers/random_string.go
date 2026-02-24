@@ -55,7 +55,10 @@ func NewRandomStringTransformer(chars []rune, minLength, maxLength int) (*Random
 
 func (st *RandomStringTransformer) Transform(data []byte) []rune {
 	clear(st.buf)
-	resBytes, _ := st.generator.Generate(data)
+	resBytes, err := st.generator.Generate(data)
+	if err != nil {
+		return nil
+	}
 
 	stringLength := int(binary.LittleEndian.Uint32(resBytes[:stringLengthByteSize]))
 	stringLength = st.minLength + (stringLength % st.offsetFromMinLen)

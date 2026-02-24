@@ -90,7 +90,7 @@ func (lod *BlobsDumper) generateBlobsToc(ctx context.Context, st storages.Storag
 	blobsTocBuf := bytes.NewBuffer(nil)
 
 	for _, lo := range lod.Blobs.LargeObjects {
-		blobsTocBuf.Write([]byte(fmt.Sprintf("%d blob_%d.dat\n", lo.Oid, lo.Oid)))
+		fmt.Fprintf(blobsTocBuf, "%d blob_%d.dat\n", lo.Oid, lo.Oid)
 	}
 
 	err := st.PutObject(ctx, "blobs.toc", blobsTocBuf)
@@ -142,9 +142,6 @@ func largeObjectDumper(ctx context.Context, lo *entries.LargeObject, w ioutils.C
 				log.Warn().Err(err).Msg("error closing large object")
 			}
 		}()
-		if err != nil {
-			return fmt.Errorf("error dumping large object %d: %w", lo.Oid, err)
-		}
 		var done bool
 		for !done {
 			size, err := loObj.Read(buf)

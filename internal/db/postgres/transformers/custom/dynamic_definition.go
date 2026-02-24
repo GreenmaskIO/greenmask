@@ -44,12 +44,20 @@ func GetDynamicTransformerDefinition(ctx context.Context, executable string, arg
 	if err != nil {
 		return nil, fmt.Errorf("error openning stdout pipe: %w", err)
 	}
-	defer stdout.Close()
+	defer func() {
+		if err := stdout.Close(); err != nil {
+			log.Warn().Err(err).Msg("error closing stdout pipe")
+		}
+	}()
 	stderr, err := cmd.StderrPipe()
 	if err != nil {
 		return nil, fmt.Errorf("error openning stdout pipe: %w", err)
 	}
-	defer stderr.Close()
+	defer func() {
+		if err := stderr.Close(); err != nil {
+			log.Warn().Err(err).Msg("error closing stderr pipe")
+		}
+	}()
 	if err != nil {
 		log.Debug().
 			Err(err).

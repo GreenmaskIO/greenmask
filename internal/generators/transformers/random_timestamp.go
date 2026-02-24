@@ -164,9 +164,10 @@ func NewTimestampLimiter(minDate, maxDate time.Time) (*TimestampLimiter, error) 
 
 func (dl *TimestampLimiter) Limit(sec, nano int64) (int64, int64) {
 	sec = (sec % int64(dl.maxValueFromZero)) + dl.offset
-	if sec == dl.minDate.sec {
+	switch sec {
+	case dl.minDate.sec:
 		nano = nano % dl.minDate.nano
-	} else if sec == dl.maxDate.sec {
+	case dl.maxDate.sec:
 		nano = nano % dl.maxDate.nano
 	}
 	return sec, nano

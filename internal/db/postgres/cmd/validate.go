@@ -174,7 +174,10 @@ func (v *Validate) print(ctx context.Context) error {
 			continue
 		}
 
-		t := v.context.DataSectionObjectsToValidate[idx].(*entries.Table)
+		t, ok := v.context.DataSectionObjectsToValidate[idx].(*entries.Table)
+		if !ok {
+			return fmt.Errorf("table %d not found", e.DumpId)
+		}
 		doc, err := v.createDocument(ctx, t)
 		if err != nil {
 			return fmt.Errorf("unable to create validation document: %w", err)
@@ -208,7 +211,9 @@ func (v *Validate) getReader(ctx context.Context, table *entries.Table) (closeFu
 
 	gz, err := gzip.NewReader(tableData)
 	if err != nil {
-		tableData.Close()
+		if err := tableData.Close(); err != nil {
+			log.Warn().Err(err).Msg("error closing table data")
+		}
 		return nil, nil, fmt.Errorf("cannot create gzip reader: %w", err)
 	}
 
@@ -411,7 +416,11 @@ func (v *Validate) getPreviousMetadata(ctx context.Context, dumpId string) (*sto
 	if err != nil {
 		return nil, fmt.Errorf("cannot open metadata file: %w", err)
 	}
-	defer f.Close()
+	defer func() {
+		if err := f.Close(); err != nil {
+			log.Warn().Err(err).Msg("error closing metadata file")
+		}
+	}()
 
 	previousMetadata := &storageDto.Metadata{}
 

@@ -240,13 +240,21 @@ func (r *Restore) preFlightRestore(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("cannot open toc file: %w", err)
 	}
-	defer tocFile.Close()
+	defer func() {
+		if err := tocFile.Close(); err != nil {
+			log.Warn().Err(err).Msg("error closing toc file")
+		}
+	}()
 
 	tmpTocFile, err := os.Create(path.Join(r.tmpDir, "toc.dat"))
 	if err != nil {
 		return fmt.Errorf("error creating temp to file in tmpDir: %w", err)
 	}
-	defer tmpTocFile.Close()
+	defer func() {
+		if err := tmpTocFile.Close(); err != nil {
+			log.Warn().Err(err).Msg("error closing temp toc file")
+		}
+	}()
 
 	if _, err = io.Copy(tmpTocFile, tocFile); err != nil {
 		return fmt.Errorf("error uploading toc file to tmpDir: %w", err)
@@ -324,7 +332,11 @@ func (r *Restore) preDataRestore(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("cannot establish connection to db: %w", err)
 	}
-	defer conn.Close(ctx)
+	defer func() {
+		if err := conn.Close(ctx); err != nil {
+			log.Debug().Err(err).Msg("unable to close connection")
+		}
+	}()
 
 	// Execute PreData Before scripts
 	if err := r.RunScripts(ctx, conn, scriptPreDataSection, scriptExecuteBefore); err != nil {
@@ -398,7 +410,11 @@ func (r *Restore) prepareCleanupToc() (string, string, error) {
 	if err != nil {
 		return "", "", fmt.Errorf("cannot create clean up toc file: %w", err)
 	}
-	defer f1.Close()
+	defer func() {
+		if err := f1.Close(); err != nil {
+			log.Warn().Err(err).Msg("error closing clean up toc file")
+		}
+	}()
 
 	if err = toc.NewWriter(f1).Write(preDataCleanUpToc); err != nil {
 		return "", "", fmt.Errorf("cannot write clean up toc: %w", err)
@@ -413,7 +429,11 @@ func (r *Restore) prepareCleanupToc() (string, string, error) {
 	if err != nil {
 		return "", "", fmt.Errorf("cannot create clean up toc file: %w", err)
 	}
-	defer f2.Close()
+	defer func() {
+		if err := f2.Close(); err != nil {
+			log.Warn().Err(err).Msg("error closing clean up toc file")
+		}
+	}()
 
 	if err = toc.NewWriter(f2).Write(postDataCleanUpToc); err != nil {
 		return "", "", fmt.Errorf("cannot write clean up toc: %w", err)
@@ -435,7 +455,11 @@ func (r *Restore) dataRestore(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("cannot establish connection to db: %w", err)
 	}
-	defer conn.Close(ctx)
+	defer func() {
+		if err := conn.Close(ctx); err != nil {
+			log.Warn().Err(err).Msg("error closing connection")
+		}
+	}()
 
 	if err = r.RunScripts(ctx, conn, scriptDataSection, scriptExecuteBefore); err != nil {
 		return err
@@ -506,7 +530,11 @@ func (r *Restore) postDataRestore(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("cannot establish connection to db: %w", err)
 	}
-	defer conn.Close(ctx)
+	defer func() {
+		if err := conn.Close(ctx); err != nil {
+			log.Warn().Err(err).Msg("error closing connection")
+		}
+	}()
 
 	if err = r.RunScripts(ctx, conn, scriptPostDataSection, scriptExecuteBefore); err != nil {
 		return err
@@ -772,7 +800,11 @@ func (r *Restore) setRestoreList(fileName string, format string) (err error) {
 	if err != nil {
 		return fmt.Errorf("unable to open list file: %w", err)
 	}
-	defer f.Close()
+	defer func() {
+		if err := f.Close(); err != nil {
+			log.Warn().Err(err).Msg("error closing list file")
+		}
+	}()
 	switch format {
 	case textListFormat:
 		r.dumpIdList, err = r.parseTextList(f)
@@ -849,7 +881,11 @@ func (r *Restore) parseStructuredList(f *os.File, format string) ([]int32, error
 	if err != nil {
 		return nil, fmt.Errorf("unable to create temporal use-list file: %w", err)
 	}
-	defer tmpListFile.Close()
+	defer func() {
+		if err := tmpListFile.Close(); err != nil {
+			log.Warn().Err(err).Msg("error closing temp list file")
+		}
+	}()
 
 	var res []int32
 	for idx, entry := range meta.Entries {
@@ -857,7 +893,7 @@ func (r *Restore) parseStructuredList(f *os.File, format string) ([]int32, error
 			return nil, fmt.Errorf("broken list file dumpId: must not be 0: entry number %d", idx)
 		}
 		res = append(res, entry.DumpId)
-		_, err = tmpListFile.Write([]byte(fmt.Sprintf("%d; \n", entry.DumpId)))
+		_, err = fmt.Fprintf(tmpListFile, "%d; \n", entry.DumpId)
 		if err != nil {
 			return nil, fmt.Errorf("unable to write line into list file: %w", err)
 		}

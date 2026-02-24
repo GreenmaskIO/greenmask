@@ -37,7 +37,10 @@ func getPrimaryKeyConstraintColumns(t *entries.Table) map[int]*toolkit.Column {
 	if idx == -1 {
 		return nil
 	}
-	pk := t.Constraints[idx].(*toolkit.PrimaryKey)
+	pk, ok := t.Constraints[idx].(*toolkit.PrimaryKey)
+	if !ok || pk == nil {
+		return nil
+	}
 
 	columns := make(map[int]*toolkit.Column, len(pk.Columns))
 

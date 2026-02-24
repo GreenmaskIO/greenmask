@@ -21,7 +21,7 @@ func TestRestorers(t *testing.T) {
 
 func (s *connectorSuite) Test_connectorSuite_WithTx() {
 	ctx := context.Background()
-	conn, err := s.PgContainerSuite.GetConnection(ctx)
+	conn, err := s.GetConnection(ctx)
 	s.Require().NoError(err)
 	pgConn := NewPGConn(conn)
 	s.Run("check commit", func() {

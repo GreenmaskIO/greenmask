@@ -225,14 +225,20 @@ func (ctb *CmdTransformerBase) init() error {
 	}
 	stdout, err := ctb.Cmd.StdoutPipe()
 	if err != nil {
-		stdout.Close()
+		if err := stdout.Close(); err != nil {
+			log.Warn().Err(err).Msg("error closing stdout pipe")
+		}
 		return err
 	}
 
 	stdin, err := ctb.Cmd.StdinPipe()
 	if err != nil {
-		stderr.Close()
-		stdout.Close()
+		if err := stderr.Close(); err != nil {
+			log.Warn().Err(err).Msg("error closing stderr pipe")
+		}
+		if err := stdout.Close(); err != nil {
+			log.Warn().Err(err).Msg("error closing stdout pipe")
+		}
 		return err
 	}
 	ctb.StderrReader = bufio.NewReader(stderr)

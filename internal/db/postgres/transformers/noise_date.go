@@ -169,7 +169,10 @@ func NewNoiseDateTransformerBase(ctx context.Context, driver *toolkit.Driver, pa
 		return nil, nil, fmt.Errorf("unable to scan \"max_ratio\" param: %w", err)
 	}
 
-	empty, _ := minRatioParam.IsEmpty()
+	empty, err := minRatioParam.IsEmpty()
+	if err != nil {
+		return nil, nil, fmt.Errorf("unable to check if \"min_ratio\" param is empty: %w", err)
+	}
 	minRatioIsProvided := !empty
 	if minRatioIsProvided {
 		if err = minRatioParam.Scan(&minRatio); err != nil {
@@ -337,14 +340,20 @@ func validateIntervalValue(v pgtype.Interval) *toolkit.ValidationWarning {
 
 func getNoiseTimestampMinAndMaxThresholds(minParameter, maxParameter toolkit.Parameterizer) (*time.Time, *time.Time, error) {
 	var minVal, maxVal *time.Time
-	if empty, _ := minParameter.IsEmpty(); !empty {
+	if empty, err := minParameter.IsEmpty(); !empty {
+		if err != nil {
+			return nil, nil, fmt.Errorf("error checking \"min\" parameter: %w", err)
+		}
 		minVal = &time.Time{}
 		if err := minParameter.Scan(&minVal); err != nil {
 			return nil, nil, fmt.Errorf("error scanning \"min\" parameter: %w", err)
 		}
 	}
 
-	if empty, _ := minParameter.IsEmpty(); !empty {
+	if empty, err := minParameter.IsEmpty(); !empty {
+		if err != nil {
+			return nil, nil, fmt.Errorf("error checking \"max\" parameter: %w", err)
+		}
 		maxVal = &time.Time{}
 		if err := maxParameter.Scan(&maxVal); err != nil {
 			return nil, nil, fmt.Errorf("error scanning \"max\" parameter: %w", err)
