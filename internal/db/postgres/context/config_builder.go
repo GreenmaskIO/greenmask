@@ -31,6 +31,7 @@ type transformersMapping struct {
 	columnName string
 	attNum     int
 	cfg        *domains.TransformerConfig
+	index      int
 }
 
 // tableExistsQuery - map dump object to transformation config from yaml. This uses for validation and building
@@ -247,19 +248,36 @@ func getRefTables(
 	rootTrans := collectRootTransformers(rootTable, rootTableCfg)
 
 	// Start DFS traversal from the root table
+	// visited tracks (EdgeID -> TransformerMappingIndex) to prevent infinite loops
+	// while allowing visiting the same table multiple times through different edges
+	// or different transformers.
+	visited := make(map[int]map[int]struct{})
+	// activeMappings tracks which transformers from the ROOT table are currently being propagated,
+	// keyed by the current table's PK column index.
+	activeMappings := make(map[int][]*transformersMapping)
+	for i, rt := range rootTrans {
+		rt.index = i
+		activeMappings[rt.attNum] = append(activeMappings[rt.attNum], rt)
+	}
 	warnings := buildRefsWithEndToEndDfs(
-		rootTable, rootTableCfg, rootTrans, graph, allTrans, &res, false,
+		rootTable, rootTableCfg, rootTrans, graph, allTrans, &res, false, visited, activeMappings,
 	)
 
 	return res, warnings
 }
 
 // buildRefsWithEndToEndDfs performs depth-first search to apply transformations to child tables
-// based on the root transformers mapping and graph structure, avoiding cycles
+// based on the root transformers mapping and graph structure, avoiding cycles.
+// activeMappings tracks the mappings of current table's PK indices to the original root transformers.
 func buildRefsWithEndToEndDfs(
 	table *entries.Table, rootTableCfg *domains.Table, rootTrans []*transformersMapping,
 	graph *subset.Graph, allTrans []*domains.Table,
-	res *[]*tableConfigMapping, checkEndToEnd bool) toolkit.ValidationWarnings {
+	res *[]*tableConfigMapping, checkEndToEnd bool, visited map[int]map[int]struct{},
+	activeMappings map[int][]*transformersMapping) toolkit.ValidationWarnings {
+
+	if len(activeMappings) == 0 {
+		return nil
+	}
 
 	rg := graph.ReversedGraph()
 	tableIdx := findTableIndex(graph, table)
@@ -275,15 +293,35 @@ func buildRefsWithEndToEndDfs(
 
 	var warnings toolkit.ValidationWarnings
 	for _, r := range rg[tableIdx] {
-		// Check for end-to-end PK-FK relationship only if it's beyond the first table
-		if checkEndToEnd && !isEndToEndPKFK(graph, r.From().Table()) {
+		ws := processReference(r, rootTableCfg, allTrans, res, activeMappings, visited)
+		warnings = append(warnings, ws...)
+
+		// Calculate active mappings for child table to continue propagation.
+		// We map transformed columns from parent's PK to child's FK, and check if those
+		// child columns are also part of child's PK to allow further end-to-end propagation.
+		childActiveMappings := make(map[int][]*transformersMapping)
+		childPK := r.To().Table().PrimaryKey
+		fkKeys := r.To().Keys()
+		for parentIdx, trans := range activeMappings {
+			// child FK column at parentIdx represents the same data as parent PK at parentIdx.
+			childColName := fkKeys[parentIdx].Name
+			// Is this child column part of child's PK?
+			for j, pkColName := range childPK {
+				if pkColName == childColName {
+					// This column is part of child's PK, so we can propagate it further.
+					childActiveMappings[j] = trans
+					break
+				}
+			}
+		}
+
+		if len(childActiveMappings) == 0 {
 			continue
 		}
-		ws := processReference(r, rootTableCfg, rootTrans, allTrans, res)
-		warnings = append(warnings, ws...)
+
 		// Recursively call DFS on child reference, setting checkEndToEnd to true after the first level
 		ws = buildRefsWithEndToEndDfs(
-			r.To().Table(), rootTableCfg, rootTrans, graph, allTrans, res, true,
+			r.To().Table(), rootTableCfg, rootTrans, graph, allTrans, res, true, visited, childActiveMappings,
 		)
 		warnings = append(warnings, ws...)
 	}
@@ -356,56 +394,69 @@ func validateDoesInheritedConditionHaveAllColumns(
 	return warnings // All columns in the condition are found in the table
 }
 
-// processReference applies transformers to the reference table if it matches criteria
-// and recursively calls buildRefsWithEndToEndDfs on the child references
+// processReference applies transformers to the reference table if it matches criteria.
+// It uses activeMappings and visited set to ensure that only the intended transformations
+// derived from the parent table are applied, and that we don't enter infinite loops.
 func processReference(
-	r *subset.Edge, rootTableCfg *domains.Table, rootTrans []*transformersMapping,
+	r *subset.Edge, rootTableCfg *domains.Table,
 	allTrans []*domains.Table, res *[]*tableConfigMapping,
+	activeMappings map[int][]*transformersMapping, visited map[int]map[int]struct{},
 ) toolkit.ValidationWarnings {
 	var warnings toolkit.ValidationWarnings
-	for _, rootTr := range rootTrans {
-		// Get the primary key column name of the root table
-		fkKeys := r.To().Keys()
-		refColName := fkKeys[rootTr.attNum].Name
+	for parentIdx, trans := range activeMappings {
+		for _, rootTr := range trans {
+			// Cycle detection and over-processing prevention
+			if _, ok := visited[r.ID()]; !ok {
+				visited[r.ID()] = make(map[int]struct{})
+			}
+			if _, ok := visited[r.ID()][rootTr.index]; ok {
+				continue
+			}
+			visited[r.ID()][rootTr.index] = struct{}{}
 
-		found, conf := checkTransformerAlreadyExists(
-			allTrans, r.To().Table().Schema, r.To().Table().Name, rootTr.cfg.Name, refColName,
-		)
-		if found {
-			log.Info().
-				Str("TransformerName", rootTr.cfg.Name).
-				Str("ParentTableSchema", rootTableCfg.Schema).
-				Str("ParentTableName", rootTableCfg.Name).
-				Str("ChildTableSchema", r.To().Table().Schema).
-				Str("ChildTableName", r.To().Table().Name).
-				Str("ChildColumnName", refColName).
-				Any("TransformerConfig", conf).
-				Msg("skipping apply transformer for reference: found manually configured transformer")
-			continue
+			// Get the primary key column name of the root table
+			fkKeys := r.To().Keys()
+			refColName := fkKeys[parentIdx].Name
+
+			found, conf := checkTransformerAlreadyExists(
+				allTrans, r.To().Table().Schema, r.To().Table().Name, rootTr.cfg.Name, refColName,
+			)
+			if found {
+				log.Info().
+					Str("TransformerName", rootTr.cfg.Name).
+					Str("ParentTableSchema", rootTableCfg.Schema).
+					Str("ParentTableName", rootTableCfg.Name).
+					Str("ChildTableSchema", r.To().Table().Schema).
+					Str("ChildTableName", r.To().Table().Name).
+					Str("ChildColumnName", refColName).
+					Any("TransformerConfig", conf).
+					Msg("skipping apply transformer for reference: found manually configured transformer")
+				continue
+			}
+
+			trConf := rootTr.cfg.Clone()
+			trConf.Params["column"] = toolkit.ParamsValue(refColName)
+
+			// Inherit the when condition from the parent transformer
+			if rootTr.cfg.When != "" {
+				// Replace the parent table name with the child table name in the when condition
+				whenCondition := rootTr.cfg.When
+				// Replace column references in the when condition for both record namespaces
+				whenCondition = strings.ReplaceAll(whenCondition,
+					fmt.Sprintf("%s.%s", toolkit.TransformationConditionNamespaceRecord, rootTr.columnName),
+					fmt.Sprintf("%s.%s", toolkit.TransformationConditionNamespaceRecord, refColName))
+				whenCondition = strings.ReplaceAll(whenCondition,
+					fmt.Sprintf("%s.%s", toolkit.TransformationConditionNamespaceRawRecord, rootTr.columnName),
+					fmt.Sprintf("%s.%s", toolkit.TransformationConditionNamespaceRawRecord, refColName))
+				trConf.When = whenCondition
+			}
+
+			ws := validateDoesInheritedConditionHaveAllColumns(r.To().Table().Table, trConf)
+			warnings = append(warnings, ws...)
+
+			colTypeOverride := getColumnTypeOverride(rootTableCfg, rootTr.columnName)
+			addTransformerToReferenceTable(r, trConf, colTypeOverride, res)
 		}
-
-		trConf := rootTr.cfg.Clone()
-		trConf.Params["column"] = toolkit.ParamsValue(refColName)
-
-		// Inherit the when condition from the parent transformer
-		if rootTr.cfg.When != "" {
-			// Replace the parent table name with the child table name in the when condition
-			whenCondition := rootTr.cfg.When
-			// Replace column references in the when condition for both record namespaces
-			whenCondition = strings.ReplaceAll(whenCondition,
-				fmt.Sprintf("%s.%s", toolkit.TransformationConditionNamespaceRecord, rootTr.columnName),
-				fmt.Sprintf("%s.%s", toolkit.TransformationConditionNamespaceRecord, refColName))
-			whenCondition = strings.ReplaceAll(whenCondition,
-				fmt.Sprintf("%s.%s", toolkit.TransformationConditionNamespaceRawRecord, rootTr.columnName),
-				fmt.Sprintf("%s.%s", toolkit.TransformationConditionNamespaceRawRecord, refColName))
-			trConf.When = whenCondition
-		}
-
-		ws := validateDoesInheritedConditionHaveAllColumns(r.To().Table().Table, trConf)
-		warnings = append(warnings, ws...)
-
-		colTypeOverride := getColumnTypeOverride(rootTableCfg, rootTr.columnName)
-		addTransformerToReferenceTable(r, trConf, colTypeOverride, res)
 	}
 	return warnings
 }
@@ -440,31 +491,6 @@ func getColumnTypeOverride(rootTableCfg *domains.Table, columnName string) map[s
 		colTypeOverride[columnName] = rootTableCfg.ColumnsTypeOverride[columnName]
 	}
 	return colTypeOverride
-}
-
-// isEndToEndPKFK checks if a table has PK and FK on the same columns (end-to-end identifier) using the graph
-func isEndToEndPKFK(graph *subset.Graph, table *entries.Table) bool {
-	// Get all references of the table using the graph
-	//references := graph.GetReferencesForTable(table)
-	idx := slices.IndexFunc(graph.Tables(), func(t *entries.Table) bool {
-		return t.Name == table.Name && t.Schema == table.Schema
-	})
-	rg := graph.ReversedGraph()
-	var foundInFK bool
-	for _, ref := range rg[idx] {
-		for _, fkColName := range ref.To().Keys() {
-			for _, pkColName := range ref.To().Table().PrimaryKey {
-				if pkColName == fkColName.Name {
-					foundInFK = true
-					break
-				}
-			}
-			if foundInFK {
-				break
-			}
-		}
-	}
-	return foundInFK
 }
 
 func findPartitionsOfPartitionedTable(ctx context.Context, tx pgx.Tx, t *toolkit.Table) ([]toolkit.Oid, error) {
