@@ -247,19 +247,35 @@ func getRefTables(
 	rootTrans := collectRootTransformers(rootTable, rootTableCfg)
 
 	// Start DFS traversal from the root table
+	visited := make(map[toolkit.Oid]struct{})
+	// activeIndices tracks which columns in the current table's primary key (PK) are being transformed.
+	// This is essential for preventing "over-propagation" where a transformation from the root table
+	// might incorrectly "jump" onto unrelated columns in child tables with composite keys.
+	activeIndices := make(map[int]struct{})
+	for _, rt := range rootTrans {
+		activeIndices[rt.attNum] = struct{}{}
+	}
 	warnings := buildRefsWithEndToEndDfs(
-		rootTable, rootTableCfg, rootTrans, graph, allTrans, &res, false,
+		rootTable, rootTableCfg, rootTrans, graph, allTrans, &res, false, visited, activeIndices,
 	)
 
 	return res, warnings
 }
 
 // buildRefsWithEndToEndDfs performs depth-first search to apply transformations to child tables
-// based on the root transformers mapping and graph structure, avoiding cycles
+// based on the root transformers mapping and graph structure, avoiding cycles.
+// activeIndices tracks the indices of PK columns that are currently undergoing transformation,
+// ensuring precise propagation across the reference graph.
 func buildRefsWithEndToEndDfs(
 	table *entries.Table, rootTableCfg *domains.Table, rootTrans []*transformersMapping,
 	graph *subset.Graph, allTrans []*domains.Table,
-	res *[]*tableConfigMapping, checkEndToEnd bool) toolkit.ValidationWarnings {
+	res *[]*tableConfigMapping, checkEndToEnd bool, visited map[toolkit.Oid]struct{},
+	activeIndices map[int]struct{}) toolkit.ValidationWarnings {
+
+	if _, ok := visited[table.Oid]; ok {
+		return nil
+	}
+	visited[table.Oid] = struct{}{}
 
 	rg := graph.ReversedGraph()
 	tableIdx := findTableIndex(graph, table)
@@ -279,11 +295,31 @@ func buildRefsWithEndToEndDfs(
 		if checkEndToEnd && !isEndToEndPKFK(graph, r.From().Table()) {
 			continue
 		}
-		ws := processReference(r, rootTableCfg, rootTrans, allTrans, res)
+		ws := processReference(r, rootTableCfg, rootTrans, allTrans, res, activeIndices)
 		warnings = append(warnings, ws...)
+
+		// Calculate active indices for child table to continue propagation.
+		// We map transformed columns from parent's PK to child's FK, and check if those
+		// child columns are also part of child's PK to allow further end-to-end propagation.
+		childActiveIndices := make(map[int]struct{})
+		childPK := r.To().Table().PrimaryKey
+		fkKeys := r.To().Keys()
+		for i := range activeIndices {
+			// parent PK column at index i was transformed.
+			// child FK column at index i represents the same data.
+			childColName := fkKeys[i].Name
+			// Is this child column part of child's PK?
+			for j, pkColName := range childPK {
+				if pkColName == childColName {
+					childActiveIndices[j] = struct{}{}
+					break
+				}
+			}
+		}
+
 		// Recursively call DFS on child reference, setting checkEndToEnd to true after the first level
 		ws = buildRefsWithEndToEndDfs(
-			r.To().Table(), rootTableCfg, rootTrans, graph, allTrans, res, true,
+			r.To().Table(), rootTableCfg, rootTrans, graph, allTrans, res, true, visited, childActiveIndices,
 		)
 		warnings = append(warnings, ws...)
 	}
@@ -356,14 +392,19 @@ func validateDoesInheritedConditionHaveAllColumns(
 	return warnings // All columns in the condition are found in the table
 }
 
-// processReference applies transformers to the reference table if it matches criteria
-// and recursively calls buildRefsWithEndToEndDfs on the child references
+// processReference applies transformers to the reference table if it matches criteria.
+// It uses activeIndices to only apply transformers that correspond to columns actually
+// being transformed in the parent table, preventing accidental transformation of
+// unrelated columns in composite foreign keys.
 func processReference(
 	r *subset.Edge, rootTableCfg *domains.Table, rootTrans []*transformersMapping,
-	allTrans []*domains.Table, res *[]*tableConfigMapping,
+	allTrans []*domains.Table, res *[]*tableConfigMapping, activeIndices map[int]struct{},
 ) toolkit.ValidationWarnings {
 	var warnings toolkit.ValidationWarnings
 	for _, rootTr := range rootTrans {
+		if _, ok := activeIndices[rootTr.attNum]; !ok {
+			continue
+		}
 		// Get the primary key column name of the root table
 		fkKeys := r.To().Keys()
 		refColName := fkKeys[rootTr.attNum].Name
