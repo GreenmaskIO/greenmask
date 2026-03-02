@@ -1,0 +1,765 @@
+// Copyright 2025 Greenmask
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+package tabledriver
+
+import (
+	"context"
+	"testing"
+
+	"github.com/greenmaskio/greenmask/pkg/common/mocks"
+	"github.com/greenmaskio/greenmask/pkg/common/models"
+	"github.com/greenmaskio/greenmask/pkg/common/validationcollector"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+)
+
+func TestNewTableDriver(t *testing.T) {
+	t.Run("common", func(t *testing.T) {
+		table := &models.Table{
+			Schema: "public",
+			Name:   "test_table",
+			Columns: []models.Column{
+				{Name: "col1", TypeOID: 1, TypeName: "int"},
+				{Name: "col2", TypeOID: 2, TypeName: "text"},
+			},
+		}
+
+		typeOverride := map[string]string{}
+
+		mockDriver := mocks.NewDBMSDriverMock()
+		mockDriver.On("TypeExistsByOid", models.VirtualOID(1)).Return(true)
+		mockDriver.On("TypeExistsByOid", models.VirtualOID(2)).Return(true)
+		ctx := context.Background()
+		vc := validationcollector.NewCollector()
+		ctx = validationcollector.WithCollector(ctx, vc)
+		actual, err := New(ctx, mockDriver, table, typeOverride)
+
+		assert.NoError(t, err)
+		assert.NotNil(t, actual)
+		require.Equal(t, vc.Len(), 0)
+
+		// Check columnMap
+		assert.Equal(t, actual.columnMap, map[string]*models.Column{
+			"col1": {Name: "col1", TypeOID: 1, TypeName: "int"},
+			"col2": {Name: "col2", TypeOID: 2, TypeName: "text"},
+		})
+
+		// Check columnIdxMap
+		assert.Equal(t, actual.columnIdxMap, map[string]int{
+			"col1": 0,
+			"col2": 1,
+		})
+
+		// Check unsupported columns
+		assert.Len(t, actual.unsupportedColumnNames, 0)
+		assert.Len(t, actual.unsupportedColumnIdxs, 0)
+
+		// Check type override
+		assert.Len(t, actual.typeOverride, 0)
+		assert.Len(t, actual.columnTypeOidOverrideMap, 0)
+		assert.Len(t, actual.columnIdxTypeOidOverrideMap, 0)
+
+		// Check maxIdx
+		assert.Equal(t, actual.maxIdx, 1)
+	})
+
+	t.Run("with unsupported columns", func(t *testing.T) {
+		table := &models.Table{
+			Schema: "public",
+			Name:   "test_table",
+			Columns: []models.Column{
+				{Name: "col1", TypeOID: 1, TypeName: "int"},
+				{Name: "col2", TypeOID: 2, TypeName: "unknown_type"},
+			},
+		}
+
+		typeOverride := map[string]string{}
+
+		mockDriver := mocks.NewDBMSDriverMock()
+		mockDriver.On("TypeExistsByOid", models.VirtualOID(1)).Return(true)
+		mockDriver.On("TypeExistsByOid", models.VirtualOID(2)).Return(false)
+
+		ctx := context.Background()
+		vc := validationcollector.NewCollector()
+		ctx = validationcollector.WithCollector(ctx, vc)
+		actual, err := New(ctx, mockDriver, table, typeOverride)
+
+		assert.NoError(t, err)
+		assert.NotNil(t, actual)
+		// One warning for unsupported column type is expected.
+		require.Equal(t, vc.Len(), 1)
+		warning := vc.GetWarnings()[0]
+		assert.Equal(t, warning.Severity, models.ValidationSeverityWarning)
+		assert.Equal(
+			t,
+			warning.Msg,
+			"cannot match encoder/decoder for type: encode and decode operations is not supported",
+		)
+
+		// Check columnMap
+		assert.Equal(t, actual.columnMap, map[string]*models.Column{
+			"col1": {Name: "col1", TypeOID: 1, TypeName: "int"},
+			"col2": {Name: "col2", TypeOID: 2, TypeName: "unknown_type"},
+		})
+
+		// Check columnIdxMap
+		assert.Equal(t, actual.columnIdxMap, map[string]int{
+			"col1": 0,
+			"col2": 1,
+		})
+
+		// Check unsupported columns
+		assert.Equal(t, actual.unsupportedColumnNames, map[string]string{
+			"col2": "unknown_type",
+		})
+		assert.Equal(t, actual.unsupportedColumnIdxs, map[int]string{
+			1: "unknown_type",
+		})
+
+		// Check type override
+		assert.Len(t, actual.typeOverride, 0)
+		assert.Len(t, actual.columnTypeOidOverrideMap, 0)
+		assert.Len(t, actual.columnIdxTypeOidOverrideMap, 0)
+
+		// Check maxIdx
+		assert.Equal(t, actual.maxIdx, 1)
+	})
+
+	t.Run("with type override and type exists", func(t *testing.T) {
+		table := &models.Table{
+			Schema: "public",
+			Name:   "test_table",
+			Columns: []models.Column{
+				{Name: "col1", TypeOID: 1, TypeName: "int"},
+				{Name: "col2", TypeOID: 100, TypeName: "unknown_type"},
+			},
+		}
+
+		typeOverride := map[string]string{
+			"col2": "text", // Override to a known type
+		}
+
+		mockDriver := mocks.NewDBMSDriverMock()
+		mockDriver.On("TypeExistsByOid", models.VirtualOID(1)).Return(true).Once()
+		mockDriver.On("TypeExistsByOid", models.VirtualOID(100)).Return(false).Once()
+		mockDriver.On("TypeExistsByName", "text").Return(true).Once()
+		mockDriver.On("GetTypeOid", "text").Return(models.VirtualOID(2), nil).Once()
+
+		ctx := context.Background()
+		vc := validationcollector.NewCollector()
+		ctx = validationcollector.WithCollector(ctx, vc)
+		actual, err := New(ctx, mockDriver, table, typeOverride)
+		assert.NoError(t, err)
+		assert.NotNil(t, actual)
+		// One warning for unsupported column type is expected.
+		require.Equal(t, vc.Len(), 0)
+
+		// Check columnMap
+		assert.Equal(t, actual.columnMap, map[string]*models.Column{
+			"col1": {Name: "col1", TypeOID: 1, TypeName: "int"},
+			"col2": {Name: "col2", TypeOID: 100, TypeName: "unknown_type"},
+		})
+
+		// Check columnIdxMap
+		assert.Equal(t, actual.columnIdxMap, map[string]int{
+			"col1": 0,
+			"col2": 1,
+		})
+
+		// Check unsupported columns
+		assert.Empty(t, actual.unsupportedColumnNames)
+		assert.Empty(t, actual.unsupportedColumnIdxs)
+
+		// Check type override
+		assert.Equal(t, map[string]string{"col2": "text"}, actual.typeOverride)
+		assert.Equal(t, map[string]models.VirtualOID{"col2": models.VirtualOID(2)}, actual.columnTypeOidOverrideMap)
+		assert.Equal(t, actual.columnIdxTypeOidOverrideMap, map[int]models.VirtualOID{1: models.VirtualOID(2)})
+
+		// Check maxIdx
+		assert.Equal(t, actual.maxIdx, 1)
+	})
+
+	t.Run("with type override and does type exist", func(t *testing.T) {
+		table := &models.Table{
+			Schema: "public",
+			Name:   "test_table",
+			Columns: []models.Column{
+				{Name: "col1", TypeOID: 1, TypeName: "int"},
+				{Name: "col2", TypeOID: 100, TypeName: "unknown_type"},
+			},
+		}
+
+		typeOverride := map[string]string{
+			"col2": "text", // Override to a known type
+		}
+
+		mockDriver := mocks.NewDBMSDriverMock()
+		mockDriver.On("TypeExistsByOid", models.VirtualOID(1)).Return(true).Once()
+		mockDriver.On("TypeExistsByOid", models.VirtualOID(100)).Return(false).Once()
+		mockDriver.On("TypeExistsByName", "text").Return(false).Once()
+
+		ctx := context.Background()
+		vc := validationcollector.NewCollector()
+		ctx = validationcollector.WithCollector(ctx, vc)
+		actual, err := New(ctx, mockDriver, table, typeOverride)
+		assert.NoError(t, err)
+		assert.NotNil(t, actual)
+		// One warning for unsupported column type is expected.
+		require.Equal(t, vc.Len(), 1)
+		assert.Equal(t, models.ValidationSeverityError, vc.GetWarnings()[0].Severity)
+		assert.Equal(
+			t,
+			vc.GetWarnings()[0].Msg,
+			"unknown or unsupported overridden type name by DBMS driver:"+
+				" encode and decode operations are not supported",
+		)
+
+		// Check columnMap
+		assert.Equal(t, actual.columnMap, map[string]*models.Column{
+			"col1": {Name: "col1", TypeOID: 1, TypeName: "int"},
+			"col2": {Name: "col2", TypeOID: 100, TypeName: "unknown_type"},
+		})
+
+		// Check columnIdxMap
+		assert.Equal(t, actual.columnIdxMap, map[string]int{
+			"col1": 0,
+			"col2": 1,
+		})
+
+		// Check unsupported columns
+		assert.Equal(t, actual.unsupportedColumnNames, map[string]string{
+			"col2": "unknown_type",
+		})
+		assert.Equal(t, actual.unsupportedColumnIdxs, map[int]string{
+			1: "unknown_type",
+		})
+
+		// Check type override
+		assert.Len(t, actual.typeOverride, 1)
+		assert.Len(t, actual.columnTypeOidOverrideMap, 0)
+		assert.Len(t, actual.columnIdxTypeOidOverrideMap, 0)
+
+		// Check maxIdx
+		assert.Equal(t, actual.maxIdx, 1)
+	})
+}
+
+func TestDriver_EncodeValueByColumnIdx(t *testing.T) {
+	t.Run("common case", func(t *testing.T) {
+		mockDriver := mocks.NewDBMSDriverMock()
+		mockDriver.On("TypeExistsByOid", models.VirtualOID(1)).Return(true).Once()
+		mockDriver.On("EncodeValueByTypeOid", models.VirtualOID(1), "value", []byte(nil)).Return([]byte("encoded"), nil).Once()
+
+		table := &models.Table{
+			Schema: "public",
+			Name:   "test_table",
+			Columns: []models.Column{
+				{Name: "col1", TypeOID: 1, TypeName: "int"},
+			},
+		}
+
+		ctx := context.Background()
+		vc := validationcollector.NewCollector()
+		ctx = validationcollector.WithCollector(ctx, vc)
+		driver, err := New(ctx, mockDriver, table, nil)
+		assert.NoError(t, err)
+
+		result, err := driver.EncodeValueByColumnIdx(0, "value", nil)
+		assert.NoError(t, err)
+		assert.Equal(t, []byte("encoded"), result)
+
+		mockDriver.AssertExpectations(t)
+	})
+
+	t.Run("type overridden", func(t *testing.T) {
+		mockDriver := mocks.NewDBMSDriverMock()
+		mockDriver.On("TypeExistsByOid", models.VirtualOID(1)).Return(true).Once()
+		mockDriver.On("TypeExistsByName", "text").Return(true).Once()
+		mockDriver.On("GetTypeOid", "text").Return(models.VirtualOID(2), nil).Once()
+		mockDriver.On("EncodeValueByTypeOid", models.VirtualOID(2), "value", []byte(nil)).Return([]byte("encoded"), nil).Once()
+
+		table := &models.Table{
+			Schema: "public",
+			Name:   "test_table",
+			Columns: []models.Column{
+				{Name: "col1", TypeOID: 1, TypeName: "unknown_type"},
+			},
+		}
+
+		ctx := context.Background()
+		vc := validationcollector.NewCollector()
+		ctx = validationcollector.WithCollector(ctx, vc)
+		typeOverride := map[string]string{"col1": "text"}
+		driver, err := New(ctx, mockDriver, table, typeOverride)
+		assert.NoError(t, err)
+
+		result, err := driver.EncodeValueByColumnIdx(0, "value", nil)
+		assert.NoError(t, err)
+		assert.Equal(t, []byte("encoded"), result)
+
+		mockDriver.AssertExpectations(t)
+	})
+
+	t.Run("unsupported type", func(t *testing.T) {
+		mockDriver := mocks.NewDBMSDriverMock()
+		mockDriver.On("TypeExistsByOid", models.VirtualOID(1)).Return(false).Once()
+
+		table := &models.Table{
+			Schema: "public",
+			Name:   "test_table",
+			Columns: []models.Column{
+				{Name: "col1", TypeOID: 1, TypeName: "unknown_type"},
+			},
+		}
+
+		ctx := context.Background()
+		vc := validationcollector.NewCollector()
+		ctx = validationcollector.WithCollector(ctx, vc)
+		driver, err := New(ctx, mockDriver, table, nil)
+		assert.NoError(t, err)
+
+		_, err = driver.EncodeValueByColumnIdx(0, "value", nil)
+		assert.Error(t, err)
+
+		mockDriver.AssertExpectations(t)
+	})
+}
+
+func TestDriver_EncodeValueByColumnName(t *testing.T) {
+	t.Run("common case", func(t *testing.T) {
+		mockDriver := mocks.NewDBMSDriverMock()
+		mockDriver.On("TypeExistsByOid", models.VirtualOID(1)).Return(true).Once()
+		mockDriver.On("EncodeValueByTypeOid", models.VirtualOID(1), "value", []byte(nil)).Return([]byte("encoded"), nil).Once()
+
+		table := &models.Table{
+			Schema: "public",
+			Name:   "test_table",
+			Columns: []models.Column{
+				{Name: "col1", TypeOID: 1, TypeName: "int"},
+			},
+		}
+
+		ctx := context.Background()
+		vc := validationcollector.NewCollector()
+		ctx = validationcollector.WithCollector(ctx, vc)
+		driver, err := New(ctx, mockDriver, table, nil)
+		assert.NoError(t, err)
+
+		result, err := driver.EncodeValueByColumnName("col1", "value", nil)
+		assert.NoError(t, err)
+		assert.Equal(t, []byte("encoded"), result)
+
+		mockDriver.AssertExpectations(t)
+	})
+
+	t.Run("type overridden", func(t *testing.T) {
+		mockDriver := mocks.NewDBMSDriverMock()
+		mockDriver.On("TypeExistsByOid", models.VirtualOID(1)).Return(true).Once()
+		mockDriver.On("TypeExistsByName", "text").Return(true).Once()
+		mockDriver.On("GetTypeOid", "text").Return(models.VirtualOID(2), nil).Once()
+		mockDriver.On("EncodeValueByTypeOid", models.VirtualOID(2), "value", []byte(nil)).Return([]byte("encoded"), nil).Once()
+
+		table := &models.Table{
+			Schema: "public",
+			Name:   "test_table",
+			Columns: []models.Column{
+				{Name: "col1", TypeOID: 1, TypeName: "unknown_type"},
+			},
+		}
+
+		ctx := context.Background()
+		vc := validationcollector.NewCollector()
+		ctx = validationcollector.WithCollector(ctx, vc)
+		typeOverride := map[string]string{"col1": "text"}
+		driver, err := New(ctx, mockDriver, table, typeOverride)
+		assert.NoError(t, err)
+
+		result, err := driver.EncodeValueByColumnName("col1", "value", nil)
+		assert.NoError(t, err)
+		assert.Equal(t, []byte("encoded"), result)
+
+		mockDriver.AssertExpectations(t)
+	})
+
+	t.Run("unsupported type", func(t *testing.T) {
+		mockDriver := mocks.NewDBMSDriverMock()
+		mockDriver.On("TypeExistsByOid", models.VirtualOID(1)).Return(false).Once()
+
+		table := &models.Table{
+			Schema: "public",
+			Name:   "test_table",
+			Columns: []models.Column{
+				{Name: "col1", TypeOID: 1, TypeName: "unknown_type"},
+			},
+		}
+
+		ctx := context.Background()
+		vc := validationcollector.NewCollector()
+		ctx = validationcollector.WithCollector(ctx, vc)
+		driver, err := New(ctx, mockDriver, table, nil)
+		assert.NoError(t, err)
+
+		_, err = driver.EncodeValueByColumnName("col1", "value", nil)
+		assert.Error(t, err)
+
+		mockDriver.AssertExpectations(t)
+	})
+}
+
+func TestDriver_ScanValueByColumnIdx(t *testing.T) {
+	t.Run("common case", func(t *testing.T) {
+		mockDriver := mocks.NewDBMSDriverMock()
+		actual := ""
+		mockDriver.On("TypeExistsByOid", models.VirtualOID(1)).Return(true).Once()
+		mockDriver.On("ScanValueByTypeOid", models.VirtualOID(1), []byte("value"), &actual).
+			Return(nil).
+			Once()
+
+		table := &models.Table{
+			Schema: "public",
+			Name:   "test_table",
+			Columns: []models.Column{
+				{Name: "col1", TypeOID: 1, TypeName: "int"},
+			},
+		}
+
+		ctx := context.Background()
+		vc := validationcollector.NewCollector()
+		ctx = validationcollector.WithCollector(ctx, vc)
+		driver, err := New(ctx, mockDriver, table, nil)
+		assert.NoError(t, err)
+
+		err = driver.ScanValueByColumnIdx(0, []byte("value"), &actual)
+		assert.NoError(t, err)
+		assert.Equal(t, "value", actual)
+
+		mockDriver.AssertExpectations(t)
+	})
+
+	t.Run("type overridden", func(t *testing.T) {
+		mockDriver := mocks.NewDBMSDriverMock()
+		actual := ""
+		mockDriver.On("TypeExistsByOid", models.VirtualOID(1)).Return(true).Once()
+		mockDriver.On("TypeExistsByName", "text").Return(true).Once()
+		mockDriver.On("GetTypeOid", "text").Return(models.VirtualOID(2), nil).Once()
+		mockDriver.On("ScanValueByTypeOid", models.VirtualOID(2), []byte("value"), &actual).
+			Return(nil).
+			Once()
+
+		table := &models.Table{
+			Schema: "public",
+			Name:   "test_table",
+			Columns: []models.Column{
+				{Name: "col1", TypeOID: 1, TypeName: "unknown_type"},
+			},
+		}
+
+		ctx := context.Background()
+		vc := validationcollector.NewCollector()
+		ctx = validationcollector.WithCollector(ctx, vc)
+		typeOverride := map[string]string{"col1": "text"}
+		driver, err := New(ctx, mockDriver, table, typeOverride)
+		assert.NoError(t, err)
+
+		err = driver.ScanValueByColumnIdx(0, []byte("value"), &actual)
+		assert.NoError(t, err)
+		assert.Equal(t, "value", actual)
+
+		mockDriver.AssertExpectations(t)
+	})
+
+	t.Run("unsupported type", func(t *testing.T) {
+		mockDriver := mocks.NewDBMSDriverMock()
+		mockDriver.On("TypeExistsByOid", models.VirtualOID(1)).Return(false).Once()
+
+		table := &models.Table{
+			Schema: "public",
+			Name:   "test_table",
+			Columns: []models.Column{
+				{Name: "col1", TypeOID: 1, TypeName: "unknown_type"},
+			},
+		}
+
+		ctx := context.Background()
+		vc := validationcollector.NewCollector()
+		ctx = validationcollector.WithCollector(ctx, vc)
+		driver, err := New(ctx, mockDriver, table, nil)
+		assert.NoError(t, err)
+
+		var actual string
+		err = driver.ScanValueByColumnIdx(0, []byte("value"), &actual)
+		assert.Error(t, err)
+
+		mockDriver.AssertExpectations(t)
+	})
+}
+
+func TestDriver_ScanValueByColumnName(t *testing.T) {
+	t.Run("common case", func(t *testing.T) {
+		mockDriver := mocks.NewDBMSDriverMock()
+		actual := ""
+		mockDriver.On("TypeExistsByOid", models.VirtualOID(1)).Return(true).Once()
+		mockDriver.On("ScanValueByTypeOid", models.VirtualOID(1), []byte("value"), &actual).
+			Return(nil).
+			Once()
+
+		table := &models.Table{
+			Schema: "public",
+			Name:   "test_table",
+			Columns: []models.Column{
+				{Name: "col1", TypeOID: 1, TypeName: "int"},
+			},
+		}
+
+		ctx := context.Background()
+		vc := validationcollector.NewCollector()
+		ctx = validationcollector.WithCollector(ctx, vc)
+		driver, err := New(ctx, mockDriver, table, nil)
+		assert.NoError(t, err)
+
+		err = driver.ScanValueByColumnName("col1", []byte("value"), &actual)
+		assert.NoError(t, err)
+		assert.Equal(t, "value", actual)
+
+		mockDriver.AssertExpectations(t)
+	})
+
+	t.Run("type overridden", func(t *testing.T) {
+		mockDriver := mocks.NewDBMSDriverMock()
+		actual := ""
+		mockDriver.On("TypeExistsByOid", models.VirtualOID(1)).Return(true).Once()
+		mockDriver.On("TypeExistsByName", "text").Return(true).Once()
+		mockDriver.On("GetTypeOid", "text").Return(models.VirtualOID(2), nil).Once()
+		mockDriver.On("ScanValueByTypeOid", models.VirtualOID(2), []byte("value"), &actual).
+			Return(nil).
+			Once()
+
+		table := &models.Table{
+			Schema: "public",
+			Name:   "test_table",
+			Columns: []models.Column{
+				{Name: "col1", TypeOID: 1, TypeName: "unknown_type"},
+			},
+		}
+
+		ctx := context.Background()
+		vc := validationcollector.NewCollector()
+		ctx = validationcollector.WithCollector(ctx, vc)
+		typeOverride := map[string]string{"col1": "text"}
+		driver, err := New(ctx, mockDriver, table, typeOverride)
+		assert.NoError(t, err)
+
+		err = driver.ScanValueByColumnName("col1", []byte("value"), &actual)
+		assert.NoError(t, err)
+		assert.Equal(t, "value", actual)
+
+		mockDriver.AssertExpectations(t)
+	})
+
+	t.Run("unsupported type", func(t *testing.T) {
+		mockDriver := mocks.NewDBMSDriverMock()
+		mockDriver.On("TypeExistsByOid", models.VirtualOID(1)).Return(false).Once()
+
+		table := &models.Table{
+			Schema: "public",
+			Name:   "test_table",
+			Columns: []models.Column{
+				{Name: "col1", TypeOID: 1, TypeName: "unknown_type"},
+			},
+		}
+
+		ctx := context.Background()
+		vc := validationcollector.NewCollector()
+		ctx = validationcollector.WithCollector(ctx, vc)
+		driver, err := New(ctx, mockDriver, table, nil)
+		assert.NoError(t, err)
+
+		var actual string
+		err = driver.ScanValueByColumnName("col1", []byte("value"), &actual)
+		assert.Error(t, err)
+
+		mockDriver.AssertExpectations(t)
+	})
+}
+
+func TestDriver_DecodeValueByColumnName(t *testing.T) {
+	t.Run("common case", func(t *testing.T) {
+		mockDriver := mocks.NewDBMSDriverMock()
+		mockDriver.On("TypeExistsByOid", models.VirtualOID(1)).Return(true).Once()
+		mockDriver.On("DecodeValueByTypeOid", models.VirtualOID(1), []byte("value")).
+			Return("value", nil).
+			Once()
+
+		table := &models.Table{
+			Schema: "public",
+			Name:   "test_table",
+			Columns: []models.Column{
+				{Name: "col1", TypeOID: 1, TypeName: "int"},
+			},
+		}
+
+		ctx := context.Background()
+		vc := validationcollector.NewCollector()
+		ctx = validationcollector.WithCollector(ctx, vc)
+		driver, err := New(ctx, mockDriver, table, nil)
+		assert.NoError(t, err)
+
+		actual, err := driver.DecodeValueByColumnName("col1", []byte("value"))
+		assert.NoError(t, err)
+		assert.Equal(t, "value", actual)
+
+		mockDriver.AssertExpectations(t)
+	})
+
+	t.Run("type overridden", func(t *testing.T) {
+		mockDriver := mocks.NewDBMSDriverMock()
+		mockDriver.On("TypeExistsByOid", models.VirtualOID(1)).Return(true).Once()
+		mockDriver.On("TypeExistsByName", "text").Return(true).Once()
+		mockDriver.On("GetTypeOid", "text").Return(models.VirtualOID(2), nil).Once()
+		mockDriver.On("DecodeValueByTypeOid", models.VirtualOID(2), []byte("value")).
+			Return("value", nil).
+			Once()
+
+		table := &models.Table{
+			Schema: "public",
+			Name:   "test_table",
+			Columns: []models.Column{
+				{Name: "col1", TypeOID: 1, TypeName: "unknown_type"},
+			},
+		}
+
+		ctx := context.Background()
+		vc := validationcollector.NewCollector()
+		ctx = validationcollector.WithCollector(ctx, vc)
+		typeOverride := map[string]string{"col1": "text"}
+		driver, err := New(ctx, mockDriver, table, typeOverride)
+		assert.NoError(t, err)
+
+		actual, err := driver.DecodeValueByColumnName("col1", []byte("value"))
+		assert.NoError(t, err)
+		assert.Equal(t, "value", actual)
+
+		mockDriver.AssertExpectations(t)
+	})
+
+	t.Run("unsupported type", func(t *testing.T) {
+		mockDriver := mocks.NewDBMSDriverMock()
+		mockDriver.On("TypeExistsByOid", models.VirtualOID(1)).Return(false).Once()
+
+		table := &models.Table{
+			Schema: "public",
+			Name:   "test_table",
+			Columns: []models.Column{
+				{Name: "col1", TypeOID: 1, TypeName: "unknown_type"},
+			},
+		}
+
+		ctx := context.Background()
+		vc := validationcollector.NewCollector()
+		ctx = validationcollector.WithCollector(ctx, vc)
+		driver, err := New(ctx, mockDriver, table, nil)
+		assert.NoError(t, err)
+
+		_, err = driver.DecodeValueByColumnName("col1", []byte("value"))
+		assert.Error(t, err)
+
+		mockDriver.AssertExpectations(t)
+	})
+}
+
+func TestDriver_DecodeValueByColumnIdx(t *testing.T) {
+	t.Run("common case", func(t *testing.T) {
+		mockDriver := mocks.NewDBMSDriverMock()
+		mockDriver.On("TypeExistsByOid", models.VirtualOID(1)).Return(true).Once()
+		mockDriver.On("DecodeValueByTypeOid", models.VirtualOID(1), []byte("value")).
+			Return("value", nil).
+			Once()
+
+		table := &models.Table{
+			Schema: "public",
+			Name:   "test_table",
+			Columns: []models.Column{
+				{Name: "col1", TypeOID: 1, TypeName: "int"},
+			},
+		}
+
+		ctx := context.Background()
+		vc := validationcollector.NewCollector()
+		ctx = validationcollector.WithCollector(ctx, vc)
+		driver, err := New(ctx, mockDriver, table, nil)
+		assert.NoError(t, err)
+
+		actual, err := driver.DecodeValueByColumnIdx(0, []byte("value"))
+		assert.NoError(t, err)
+		assert.Equal(t, "value", actual)
+
+		mockDriver.AssertExpectations(t)
+	})
+
+	t.Run("type overridden", func(t *testing.T) {
+		mockDriver := mocks.NewDBMSDriverMock()
+		mockDriver.On("TypeExistsByOid", models.VirtualOID(1)).Return(true).Once()
+		mockDriver.On("TypeExistsByName", "text").Return(true).Once()
+		mockDriver.On("GetTypeOid", "text").Return(models.VirtualOID(2), nil).Once()
+		mockDriver.On("DecodeValueByTypeOid", models.VirtualOID(2), []byte("value")).
+			Return("value", nil).
+			Once()
+
+		table := &models.Table{
+			Schema: "public",
+			Name:   "test_table",
+			Columns: []models.Column{
+				{Name: "col1", TypeOID: 1, TypeName: "unknown_type"},
+			},
+		}
+
+		ctx := context.Background()
+		vc := validationcollector.NewCollector()
+		ctx = validationcollector.WithCollector(ctx, vc)
+		typeOverride := map[string]string{"col1": "text"}
+		driver, err := New(ctx, mockDriver, table, typeOverride)
+		assert.NoError(t, err)
+
+		actual, err := driver.DecodeValueByColumnIdx(0, []byte("value"))
+		assert.NoError(t, err)
+		assert.Equal(t, "value", actual)
+
+		mockDriver.AssertExpectations(t)
+	})
+
+	t.Run("unsupported type", func(t *testing.T) {
+		mockDriver := mocks.NewDBMSDriverMock()
+		mockDriver.On("TypeExistsByOid", models.VirtualOID(1)).Return(false).Once()
+
+		table := &models.Table{
+			Schema: "public",
+			Name:   "test_table",
+			Columns: []models.Column{
+				{Name: "col1", TypeOID: 1, TypeName: "unknown_type"},
+			},
+		}
+
+		ctx := context.Background()
+		vc := validationcollector.NewCollector()
+		ctx = validationcollector.WithCollector(ctx, vc)
+		driver, err := New(ctx, mockDriver, table, nil)
+		assert.NoError(t, err)
+
+		_, err = driver.DecodeValueByColumnIdx(0, []byte("value"))
+		assert.Error(t, err)
+
+		mockDriver.AssertExpectations(t)
+	})
+}

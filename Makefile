@@ -1,10 +1,10 @@
-MAIN_PATH := ./cmd/greenmask/
+MAIN_PATH := ./cmd/
 CMD_NAME := greenmask
 CMD_FILES = $(wildcard *.go)
 TEST_FILES = $(wildcard *.go)
 COVERAGE_FILE := coverage.out
 VERSION ?= $(shell git tag --points-at HEAD)
-LDFLAGS ?= -X github.com/greenmaskio/greenmask/cmd/greenmask/cmd.Version=$(VERSION)
+LDFLAGS ?= -X main.Version=$(VERSION)
 
 .PHONY: build
 
