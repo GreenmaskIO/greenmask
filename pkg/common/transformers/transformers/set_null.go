@@ -1,0 +1,92 @@
+// Copyright 2023 Greenmask
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+package transformers
+
+import (
+	"context"
+	"fmt"
+
+	"github.com/greenmaskio/greenmask/pkg/common/interfaces"
+	commonmodels "github.com/greenmaskio/greenmask/pkg/common/models"
+	"github.com/greenmaskio/greenmask/pkg/common/transformers/parameters"
+	"github.com/greenmaskio/greenmask/pkg/common/transformers/utils"
+)
+
+const TransformerNameSetNull = "SetNull"
+
+var SetNullTransformerDefinition = utils.NewTransformerDefinition(
+	utils.NewTransformerProperties(
+		TransformerNameSetNull,
+		"Set NULL value",
+	),
+
+	NewSetNullTransformer,
+
+	parameters.MustNewParameterDefinition(
+		"column",
+		"column name",
+	).SetIsColumn(commonmodels.NewColumnProperties().
+		SetAffected(true).
+		SetNullable(true),
+	).SetRequired(true),
+)
+
+type SetNullTransformer struct {
+	columnName      string
+	columnIdx       int
+	affectedColumns map[int]string
+}
+
+func NewSetNullTransformer(
+	ctx context.Context,
+	tableDriver interfaces.TableDriver,
+	parameters map[string]parameters.Parameterizer,
+) (interfaces.Transformer, error) {
+	columnName, column, err := getColumnParameterValue(ctx, tableDriver, parameters)
+	if err != nil {
+		return nil, fmt.Errorf("get \"column\" parameter: %w", err)
+	}
+
+	return &SetNullTransformer{
+		columnName: columnName,
+		columnIdx:  column.Idx,
+		affectedColumns: map[int]string{
+			column.Idx: columnName,
+		},
+	}, nil
+}
+
+func (t *SetNullTransformer) GetAffectedColumns() map[int]string {
+	return t.affectedColumns
+}
+
+func (t *SetNullTransformer) Init(context.Context) error {
+	return nil
+}
+
+func (t *SetNullTransformer) Done(context.Context) error {
+	return nil
+}
+
+func (t *SetNullTransformer) Transform(_ context.Context, r interfaces.Recorder) error {
+	if err := r.SetRawColumnValueByIdx(t.columnIdx, commonmodels.NewColumnRawValue(nil, true)); err != nil {
+		return fmt.Errorf("unable to set new value: %w", err)
+	}
+	return nil
+}
+
+func (t *SetNullTransformer) Describe() string {
+	return TransformerNameSetNull
+}

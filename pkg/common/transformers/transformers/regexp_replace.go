@@ -1,0 +1,139 @@
+// Copyright 2023 Greenmask
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+package transformers
+
+import (
+	"context"
+	"fmt"
+	"regexp"
+
+	"github.com/greenmaskio/greenmask/pkg/common/interfaces"
+	"github.com/greenmaskio/greenmask/pkg/common/models"
+	"github.com/greenmaskio/greenmask/pkg/common/transformers/parameters"
+	"github.com/greenmaskio/greenmask/pkg/common/transformers/utils"
+	"github.com/greenmaskio/greenmask/pkg/common/validationcollector"
+)
+
+const TransformerNameRegexpReplace = "RegexpReplace"
+
+var RegexpReplaceTransformerDefinition = utils.NewTransformerDefinition(
+	utils.NewTransformerProperties(
+		TransformerNameRegexpReplace,
+		"Replace string using regular expression",
+	),
+
+	NewRegexpReplaceTransformer,
+
+	parameters.MustNewParameterDefinition(
+		"column",
+		"column name",
+	).SetIsColumn(
+		models.NewColumnProperties().
+			SetAffected(true).
+			SetAllowedColumnTypeClasses(models.TypeClassText),
+	).SetRequired(true),
+
+	parameters.MustNewParameterDefinition(
+		"regexp",
+		"regular expression",
+	).SetRequired(true),
+
+	parameters.MustNewParameterDefinition(
+		"replace",
+		"replacement value",
+	).SetRequired(true),
+)
+
+type RegexpReplaceTransformer struct {
+	columnName      string
+	columnIdx       int
+	regexp          *regexp.Regexp
+	replace         []byte
+	affectedColumns map[int]string
+}
+
+func NewRegexpReplaceTransformer(
+	ctx context.Context,
+	tableDriver interfaces.TableDriver,
+	parameters map[string]parameters.Parameterizer,
+) (interfaces.Transformer, error) {
+	columnName, column, err := getColumnParameterValue(ctx, tableDriver, parameters)
+	if err != nil {
+		return nil, fmt.Errorf("get \"column\" parameter: %w", err)
+	}
+
+	regexpStr, err := getParameterValueWithName[string](ctx, parameters, "regexp")
+	if err != nil {
+		return nil, fmt.Errorf("get \"regexp\" param: %w", err)
+	}
+
+	replace, err := getParameterValueWithName[string](ctx, parameters, "replace")
+	if err != nil {
+		return nil, fmt.Errorf("get \"regexp\" param: %w", err)
+	}
+
+	re, err := regexp.Compile(regexpStr)
+	if err != nil {
+		validationcollector.FromContext(ctx).Add(models.NewValidationWarning().
+			SetSeverity(models.ValidationSeverityError).
+			AddMeta("ParameterName", "regexp").
+			AddMeta("ParameterValue", regexpStr).
+			AddMeta("Error", err.Error()).
+			SetMsg("cannot compile regular expression"))
+		return nil, fmt.Errorf("compile regexp: %w", err)
+	}
+
+	return &RegexpReplaceTransformer{
+		columnName: columnName,
+		regexp:     re,
+		replace:    []byte(replace),
+		affectedColumns: map[int]string{
+			column.Idx: columnName,
+		},
+		columnIdx: column.Idx,
+	}, nil
+}
+
+func (t *RegexpReplaceTransformer) GetAffectedColumns() map[int]string {
+	return t.affectedColumns
+}
+
+func (t *RegexpReplaceTransformer) Init(context.Context) error {
+	return nil
+}
+
+func (t *RegexpReplaceTransformer) Done(context.Context) error {
+	return nil
+}
+
+func (t *RegexpReplaceTransformer) Transform(_ context.Context, r interfaces.Recorder) error {
+	v, err := r.GetRawColumnValueByIdx(t.columnIdx)
+	if err != nil {
+		return fmt.Errorf("scan value: %w", err)
+	}
+	if v.IsNull {
+		return nil
+	}
+
+	v.Data = t.regexp.ReplaceAll(v.Data, t.replace)
+	if err := r.SetRawColumnValueByIdx(t.columnIdx, v); err != nil {
+		return fmt.Errorf("set new value: %w", err)
+	}
+	return nil
+}
+
+func (t *RegexpReplaceTransformer) Describe() string {
+	return TransformerNameRegexpReplace
+}
