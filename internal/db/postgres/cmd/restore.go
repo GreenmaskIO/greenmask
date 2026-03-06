@@ -71,7 +71,10 @@ const (
 
 const dependenciesCheckInterval = 15 * time.Millisecond
 
-var ErrTableDefinitionIsEmtpy = errors.New("table definition is empty: please re-dump the data using the latest version of greenmask if you want to use --inserts")
+var (
+	ErrTableDefinitionIsEmpty   = errors.New("table definition is empty: please re-dump the data using the latest version of greenmask if you want to use --inserts")
+	ErrDatabaseNameIsEmptyInTOC = errors.New("database name is empty in TOC: cannot use --create option because of missing database name in TOC")
+)
 
 type restorationTask interface {
 	Execute(ctx context.Context, conn utils.PGConnector) error
@@ -96,6 +99,7 @@ type Restore struct {
 	preDataClenUpToc  string
 	postDataClenUpToc string
 	restoredDumpIds   map[int32]bool
+	maintenanceDbName string
 }
 
 func NewRestore(
@@ -122,11 +126,11 @@ func (r *Restore) Run(ctx context.Context) error {
 		return fmt.Errorf("cannot read metadata: %w", err)
 	}
 
-	if err := r.prepare(); err != nil {
+	if err := r.prepare(ctx); err != nil {
 		return fmt.Errorf("preparation error: %w", err)
 	}
 
-	if err := r.preFlightRestore(ctx); err != nil {
+	if err := r.preFlightRestore(); err != nil {
 		return fmt.Errorf("pre-flight stage restoration error: %w", err)
 	}
 
@@ -215,9 +219,13 @@ func (r *Restore) RunScripts(ctx context.Context, conn *pgx.Conn, section, when 
 	return nil
 }
 
-func (r *Restore) prepare() error {
+func (r *Restore) prepare(ctx context.Context) error {
 	if err := os.Mkdir(r.tmpDir, 0700); err != nil {
 		return fmt.Errorf("error creating temp dir: %w", err)
+	}
+
+	if err := r.readTocDatFile(ctx); err != nil {
+		return fmt.Errorf("read toc header: %w", err)
 	}
 
 	if r.restoreOpt.UseList != "" {
@@ -227,15 +235,36 @@ func (r *Restore) prepare() error {
 			return fmt.Errorf("restore list parsing error: %w", err)
 		}
 	}
-	dsn, err := r.restoreOpt.GetPgDSN()
-	if err != nil {
-		return fmt.Errorf("cennot generate DSN: %w", err)
+
+	if r.restoreOpt.Create {
+		if r.tocObj.Header.ArchDbName == nil {
+			return ErrDatabaseNameIsEmptyInTOC
+		}
+
+		targetDbName := *r.tocObj.Header.ArchDbName
+		r.maintenanceDbName = r.restoreOpt.DbName
+		if r.maintenanceDbName == "" {
+			r.maintenanceDbName = "postgres"
+		}
+
+		dsn, err := r.restoreOpt.GetPgDSNFor(targetDbName)
+		if err != nil {
+			return fmt.Errorf("generate DSN: %w", err)
+		}
+		r.dsn = dsn
+
+		r.restoreOpt.DbName = dsn
+	} else {
+		dsn, err := r.restoreOpt.GetPgDSN()
+		if err != nil {
+			return fmt.Errorf("generate DSN: %w", err)
+		}
+		r.dsn = dsn
 	}
-	r.dsn = dsn
 	return nil
 }
 
-func (r *Restore) preFlightRestore(ctx context.Context) error {
+func (r *Restore) readTocDatFile(ctx context.Context) error {
 	tocFile, err := r.st.GetObject(ctx, "toc.dat")
 	if err != nil {
 		return fmt.Errorf("cannot open toc file: %w", err)
@@ -246,7 +275,18 @@ func (r *Restore) preFlightRestore(ctx context.Context) error {
 		}
 	}()
 
-	tmpTocFile, err := os.Create(path.Join(r.tmpDir, "toc.dat"))
+	tocReader := toc.NewReader(tocFile)
+	r.tocObj, err = tocReader.Read()
+	if err != nil {
+		return fmt.Errorf("unable to read toc file: %w", err)
+	}
+	return nil
+}
+
+func (r *Restore) preFlightRestore() error {
+	// Create temp toc.dat file for pg_restore
+	tmpTocPath := path.Join(r.tmpDir, "toc.dat")
+	tmpTocFile, err := os.OpenFile(tmpTocPath, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0666)
 	if err != nil {
 		return fmt.Errorf("error creating temp to file in tmpDir: %w", err)
 	}
@@ -255,21 +295,12 @@ func (r *Restore) preFlightRestore(ctx context.Context) error {
 			log.Warn().Err(err).Msg("error closing temp toc file")
 		}
 	}()
-
-	if _, err = io.Copy(tmpTocFile, tocFile); err != nil {
-		return fmt.Errorf("error uploading toc file to tmpDir: %w", err)
-	}
-	if _, err = tmpTocFile.Seek(0, 0); err != nil {
-		return fmt.Errorf("unnable to move toc file offset to the head: %w", err)
-	}
-	tocReader := toc.NewReader(tmpTocFile)
-	r.tocObj, err = tocReader.Read()
-	if err != nil {
-		return fmt.Errorf("unable to read toc file: %w", err)
+	if err := toc.NewWriter(tmpTocFile).Write(r.tocObj); err != nil {
+		return fmt.Errorf("error writing toc file to tmpDir: %w", err)
 	}
 
 	if r.dumpIdList != nil {
-		if err = r.sortAndFilterEntriesByRestoreList(); err != nil {
+		if err := r.sortAndFilterEntriesByRestoreList(); err != nil {
 			return fmt.Errorf("unable to sort entries by the provided list: %w", err)
 		}
 	}
@@ -328,24 +359,50 @@ func (r *Restore) preDataRestore(ctx context.Context) error {
 		return nil
 	}
 
-	conn, err := pgx.Connect(ctx, r.dsn)
-	if err != nil {
-		return fmt.Errorf("cannot establish connection to db: %w", err)
-	}
-	defer func() {
-		if err := conn.Close(ctx); err != nil {
-			log.Debug().Err(err).Msg("unable to close connection")
-		}
-	}()
+	var conn *pgx.Conn
+	var err error
 
-	// Execute PreData Before scripts
-	if err := r.RunScripts(ctx, conn, scriptPreDataSection, scriptExecuteBefore); err != nil {
-		return err
+	if !r.restoreOpt.Create {
+		conn, err = pgx.Connect(ctx, r.dsn)
+		if err != nil {
+			return fmt.Errorf("cannot establish connection to db: %w", err)
+		}
+		defer func() {
+			if conn != nil {
+				if err := conn.Close(ctx); err != nil {
+					log.Debug().Err(err).Msg("unable to close connection")
+				}
+			}
+		}()
+
+		// Execute PreData Before scripts
+		// We cannot execute scripts on database before creation. So we should skip execution of PreData Before
+		// scripts if --create is provided and execute them after database creation in pre-data section restoration.
+		if err := r.RunScripts(ctx, conn, scriptPreDataSection, scriptExecuteBefore); err != nil {
+			return err
+		}
 	}
 
 	options := *r.restoreOpt
 
-	if r.restoreOpt.Clean && r.restoreOpt.Section == "" {
+	if r.restoreOpt.Create {
+		options.DbName = r.maintenanceDbName
+		if r.restoreOpt.Section == "" {
+			// When delegating database creation to pg_restore, we should not restrict sections
+			// if we want the "DATABASE" entry (SectionNone) to be included for DROP/CREATE.
+			// Instead, we use --schema-only and the neutralized TOC to skip post-data.
+			options.SchemaOnly = true
+			options.Section = ""
+			var err error
+			r.preDataClenUpToc, r.postDataClenUpToc, err = r.prepareCleanupToc()
+			if err != nil {
+				return fmt.Errorf("cannot prepare clean up toc: %w", err)
+			}
+			options.DirPath = r.preDataClenUpToc
+		} else {
+			options.DirPath = r.tmpDir
+		}
+	} else if r.restoreOpt.Clean && r.restoreOpt.Section == "" {
 		// Handling parameters for --clean
 		options.SchemaOnly = true
 
@@ -369,6 +426,22 @@ func (r *Restore) preDataRestore(ctx context.Context) error {
 		}
 	}
 
+	if r.restoreOpt.Create {
+		conn, err = pgx.Connect(ctx, r.dsn)
+		if err != nil {
+			return fmt.Errorf("cannot establish connection to db after creation: %w", err)
+		}
+		defer func() {
+			if conn != nil {
+				if err := conn.Close(ctx); err != nil {
+					log.Debug().Err(err).Msg("unable to close connection")
+				}
+			}
+		}()
+		// Reset Create flag for subsequent stages
+		r.restoreOpt.Create = false
+	}
+
 	// Execute PreData After scripts
 	if err := r.RunScripts(ctx, conn, scriptPreDataSection, scriptExecuteAfter); err != nil {
 		return err
@@ -385,7 +458,6 @@ func (r *Restore) prepareCleanupToc() (string, string, error) {
 	statementReplacements := ";"
 
 	for idx := range preDataCleanUpToc.Entries {
-		log.Debug().Int("a", idx)
 		preEntry := preDataCleanUpToc.Entries[idx]
 		if preEntry.Section == toc.SectionPostData && preEntry.Defn != nil {
 			preEntry.Defn = &statementReplacements
@@ -741,7 +813,7 @@ func (r *Restore) taskPusher(ctx context.Context, tasks chan restorationTask) fu
 func (r *Restore) getTableDefinitionFromMeta(dumpId int32) (*toolkit.Table, error) {
 	tableOid, ok := r.metadata.DumpIdsToTableOid[dumpId]
 	if !ok {
-		return nil, ErrTableDefinitionIsEmtpy
+		return nil, ErrTableDefinitionIsEmpty
 	}
 	idx := slices.IndexFunc(r.metadata.DatabaseSchema, func(t *toolkit.Table) bool {
 		return t.Oid == tableOid

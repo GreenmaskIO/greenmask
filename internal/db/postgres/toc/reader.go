@@ -75,11 +75,10 @@ func (r *Reader) readStr() (*string, error) {
 
 	buf := make([]byte, l)
 
-	n, err := r.r.Read(buf)
-	if err != nil {
+	if _, err := io.ReadFull(r.r, buf); err != nil {
 		return nil, err
 	}
-	r.position += n
+	r.position += int(l)
 	strVal := string(buf)
 	return &strVal, nil
 }
@@ -105,11 +104,10 @@ func (r *Reader) readInt() (int32, error) {
 	}
 
 	intBytes := make([]byte, r.intSize)
-	n, err := r.r.Read(intBytes)
-	if err != nil {
+	if _, err := io.ReadFull(r.r, intBytes); err != nil {
 		return 0, err
 	}
-	r.position += n
+	r.position += int(r.intSize)
 
 	for _, b := range intBytes {
 		bv := b & 0xFF
@@ -135,11 +133,10 @@ func (r *Reader) readByte() (byte, error) {
 
 func (r *Reader) readBytes(length int) ([]byte, error) {
 	bytes := make([]byte, length)
-	n, err := r.r.Read(bytes)
-	if err != nil {
+	if _, err := io.ReadFull(r.r, bytes); err != nil {
 		return nil, err
 	}
-	r.position += n
+	r.position += length
 	return bytes, nil
 }
 
