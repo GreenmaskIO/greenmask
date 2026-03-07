@@ -17,6 +17,7 @@ package pgrestore
 import (
 	"context"
 	"fmt"
+	"net/url"
 	"path"
 	"strconv"
 	"strings"
@@ -143,6 +144,39 @@ func (o *Options) GetPgDSN() (string, error) {
 	if strings.HasPrefix(o.DbName, "postgresql://") || strings.HasPrefix(o.DbName, "postgres://") || strings.Contains(o.DbName, "=") {
 		return o.DbName, nil
 	}
+	return o.GetPgDSNFor(o.DbName)
+}
+
+func (o *Options) GetPgDSNFor(dbName string) (string, error) {
+	// If the base dbname (from config) is a connection string, we must treat it as a template
+	// if we're trying to connect to a different database.
+	// We check the original o.DbName because it might be the only source of connection info.
+	if strings.HasPrefix(o.DbName, "postgresql://") || strings.HasPrefix(o.DbName, "postgres://") {
+		u, err := url.Parse(o.DbName)
+		if err != nil {
+			return "", err
+		}
+		u.Path = "/" + dbName
+		return u.String(), nil
+	}
+
+	if strings.Contains(o.DbName, "=") {
+		// key=value format. If we want to change dbname, we need to replace it.
+		// This is a bit naive but common for PG DSNs.
+		if !strings.Contains(o.DbName, "dbname=") {
+			return fmt.Sprintf("%s dbname=%s", o.DbName, dbName), nil
+		}
+		// Naive replacement: find dbname= and replace its value
+		// For robustness, one should really use a parser, but let's try to be simple.
+		parts := strings.Fields(o.DbName)
+		for i, p := range parts {
+			if strings.HasPrefix(p, "dbname=") {
+				parts[i] = "dbname=" + dbName
+				break
+			}
+		}
+		return strings.Join(parts, " "), nil
+	}
 
 	var parts []string
 	if o.Host != "" {
@@ -154,8 +188,8 @@ func (o *Options) GetPgDSN() (string, error) {
 	if o.UserName != "" {
 		parts = append(parts, fmt.Sprintf("user=%s", o.UserName))
 	}
-	if o.DbName != "" {
-		parts = append(parts, fmt.Sprintf("dbname=%s", o.DbName))
+	if dbName != "" {
+		parts = append(parts, fmt.Sprintf("dbname=%s", dbName))
 	}
 	return strings.Join(parts, " "), nil
 }
