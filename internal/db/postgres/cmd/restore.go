@@ -450,12 +450,32 @@ func (r *Restore) preDataRestore(ctx context.Context) error {
 	return nil
 }
 
-// prepareCleanupToc - replaces create statements in post-data section with SELECT 1 and stores in tmp directory
+// prepareCleanupToc - replaces create and drop statements in post-data section with a semicolon and stores in tmp directory.
+//
+// This function creates two separate modified TOC files because pg_restore's --clean option has limitations when used
+// with --section. To work around this, we run pg_restore in the pre-data phase without section restrictions (to allow
+// it to drop everything and handle dependencies correctly), but we use a "neutralized" TOC where post-data CREATE
+// statements are replaced with a semicolon.
+//
+// We need two separate files (directories) because:
+//  1. The Pre-data phase needs to DROP everything but only CREATE pre-data objects.
+//  2. The Post-data phase needs to CREATE post-data objects, but it must NOT attempt to DROP them again using --clean,
+//     as they were already dropped during the pre-data phase. Trying to drop them again might fail or cause issues
+//     if the objects are already gone or have new dependencies.
 func (r *Restore) prepareCleanupToc() (string, string, error) {
 	preDataCleanUpToc := r.tocObj.Copy()
 	postDataCleanUpToc := r.tocObj.Copy()
 
+	// statementReplacements - replaces the original statement with a semicolon to "neuter" it.
+	// This is done to avoid redundant or conflicting operations during phased restoration.
+	// Note: This causes pg_restore to emit warnings when --if-exists is used:
+	// "pg_restore: warning: could not find where to insert IF EXISTS in statement ";""
+	// These warnings are harmless and expected.
 	statementReplacements := ";"
+	if r.restoreOpt.IfExists {
+		log.Info().Msg("using neutralized TOC for phased restoration: pg_restore might emit harmless warnings about " +
+			"IF EXISTS and \";\" statements - this is expected behavior")
+	}
 
 	for idx := range preDataCleanUpToc.Entries {
 		preEntry := preDataCleanUpToc.Entries[idx]
