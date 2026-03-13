@@ -38,12 +38,28 @@ const (
 	CompressionPgzip Compression = "pgzip"
 )
 
+type DumpFormat string
+
+const (
+	DumpFormatCsv    DumpFormat = "csv"
+	DumpFormatInsert DumpFormat = "insert"
+)
+
 func (c Compression) Validate() error {
 	switch c {
 	case CompressionNone, CompressionGzip, CompressionPgzip:
 		return nil
 	default:
 		return fmt.Errorf("value = '%s': %w", string(c), ErrModelValidation)
+	}
+}
+
+func (f DumpFormat) Validate() error {
+	switch f {
+	case DumpFormatCsv, DumpFormatInsert:
+		return nil
+	default:
+		return fmt.Errorf("value = '%s': %w", string(f), ErrModelValidation)
 	}
 }
 
@@ -65,6 +81,7 @@ type ObjectStat struct {
 	CompressedSize  int64       `json:"compressed_size"`
 	Filename        string      `json:"filename"`
 	Compression     Compression `json:"compression"`
+	Format          DumpFormat  `json:"format"`
 }
 
 func NewObjectStat(
@@ -76,6 +93,7 @@ func NewObjectStat(
 	compressedSize int64,
 	fileName string,
 	compression Compression,
+	format DumpFormat,
 ) ObjectStat {
 	return ObjectStat{
 		Engine:          engine,
@@ -86,6 +104,7 @@ func NewObjectStat(
 		CompressedSize:  compressedSize,
 		Filename:        fileName,
 		Compression:     compression,
+		Format:          format,
 	}
 }
 

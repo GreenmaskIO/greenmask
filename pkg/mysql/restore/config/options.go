@@ -18,9 +18,25 @@ import (
 	"github.com/greenmaskio/greenmask/pkg/mysql/config"
 )
 
+const DefaultMaxFetchWarnings = 10
+
 type RestoreOptions struct {
 	config.ConnectionOpts `mapstructure:",squash"`
-	Verbose               bool `mapstructure:"verbose"`
+	Verbose               bool `mapstructure:"verbose" yaml:"verbose" json:"verbose"`
+	PrintWarnings         bool `mapstructure:"print-warnings" yaml:"print-warnings" json:"print_warnings"`
+	// MaxFetchWarnings - the maximum number of warnings to fetch and print. If 0, all warnings are printed.
+	MaxFetchWarnings int `mapstructure:"max-fetch-warnings" yaml:"max-fetch-warnings" json:"max_fetch_warnings"`
+}
+
+func NewRestoreOptions() RestoreOptions {
+	return RestoreOptions{
+		PrintWarnings:    false,
+		MaxFetchWarnings: DefaultMaxFetchWarnings,
+	}
+}
+
+func (r *RestoreOptions) Validate() error {
+	return nil
 }
 
 func (r *RestoreOptions) SchemaRestoreParams() ([]string, error) {
