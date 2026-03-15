@@ -81,6 +81,9 @@ func (d *Restore) connect() (*sql.DB, error) {
 }
 
 func (d *Restore) Run(ctx context.Context) error {
+	if err := d.cfg.Restore.MysqlConfig.Options.Validate(); err != nil {
+		return fmt.Errorf("validate mysql options: %w", err)
+	}
 	conn, err := d.connect()
 	if err != nil {
 		return fmt.Errorf("connect to mysql: %w", err)
@@ -109,9 +112,9 @@ func (d *Restore) Run(ctx context.Context) error {
 	var tp interfaces.RestoreTaskProducer
 	if d.cfg.Restore.Options.RestoreInOrder {
 		log.Ctx(ctx).Info().Msg("restoring tables in topological")
-		tp = taskproducer2.NewWithOrder(meta, d.st, d.cfg.Restore.MysqlConfig.Options.ConnectionOpts, taskResolver)
+		tp = taskproducer2.NewWithOrder(meta, d.st, d.cfg.Restore.MysqlConfig.Options, taskResolver)
 	} else {
-		tp = taskproducer2.New(meta, d.st, d.cfg.Restore.MysqlConfig.Options.ConnectionOpts)
+		tp = taskproducer2.New(meta, d.st, d.cfg.Restore.MysqlConfig.Options)
 	}
 
 	sr := schema.NewRestorer(d.st, &d.cfg.Restore.MysqlConfig.Options)

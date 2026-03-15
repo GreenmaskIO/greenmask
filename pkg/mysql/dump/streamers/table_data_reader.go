@@ -15,18 +15,20 @@
 package streamers
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
 	"strconv"
 
 	"github.com/go-mysql-org/go-mysql/mysql"
+	"github.com/rs/zerolog/log"
+	"golang.org/x/sync/errgroup"
+
 	"github.com/greenmaskio/greenmask/pkg/common/models"
 	mysqldbmsdriver "github.com/greenmaskio/greenmask/pkg/mysql/dbmsdriver"
 	mysqlmodels "github.com/greenmaskio/greenmask/pkg/mysql/models"
 	"github.com/greenmaskio/greenmask/pkg/mysql/pool"
-	"github.com/rs/zerolog/log"
-	"golang.org/x/sync/errgroup"
 )
 
 var (
@@ -86,10 +88,22 @@ func fieldValueToString(field mysql.FieldValue) ([]byte, error) {
 		return []byte(strconv.FormatFloat(val, 'f', -1, 64)), nil
 	case mysql.FieldValueTypeString:
 		val := field.AsString()
+		// If the string value is the same as the NULL sequence, we need to escape it
+		// to avoid confusion with a real NULL value during record processing.
+		if bytes.Equal(val, mysqldbmsdriver.NullValueSeq) {
+			return escapeConflictingValue(val), nil
+		}
 		return val, nil
 	default:
 		return nil, fmt.Errorf("field type %d: %w", field.Type, errUnknownFieldType)
 	}
+}
+
+func escapeConflictingValue(val []byte) []byte {
+	escaped := make([]byte, len(val)+1)
+	escaped[0] = '\\'
+	copy(escaped[1:], val)
+	return escaped
 }
 
 func deepCopyRow(row [][]byte) [][]byte {
