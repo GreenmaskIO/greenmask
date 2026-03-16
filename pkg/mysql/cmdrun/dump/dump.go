@@ -118,6 +118,13 @@ func WithTransformedTablesOnly() Option {
 	}
 }
 
+func WithFormat(format models.DumpFormat) Option {
+	return func(dump *Dump) error {
+		dump.format = format
+		return nil
+	}
+}
+
 func getMySQLDumpFilter(cfg config.Validate) (Option, error) {
 	filters := make([]models.TableFilter, 0, len(cfg.Tables))
 	for i := range cfg.Tables {
@@ -138,6 +145,11 @@ func GetMySQLDumpOpts(cfg *config.Config) []Option {
 	if cfg.Dump.Options.SchemaOnly {
 		opts = append(opts, WithSchemaOnly())
 	}
+	format := cfg.Dump.MysqlConfig.Options.DumpFormat
+	if format == "" {
+		format = models.DumpFormatInsert
+	}
+	opts = append(opts, WithFormat(format))
 	return opts
 }
 
@@ -189,6 +201,7 @@ type Dump struct {
 	hbw                   *heartbeat.Worker
 	hbwEg                 *errgroup.Group
 	txPool                *pool.ConsistentTxPool
+	format                models.DumpFormat
 }
 
 func NewDump(
@@ -225,7 +238,7 @@ func (d *Dump) startPool(ctx context.Context) error {
 		poolOpts = append(poolOpts, pool.WithHeartbeatTimeout(d.cfg.Dump.MysqlConfig.Options.PoolHeartbeatInterval))
 	}
 	if d.synchronizeTx {
-		poolOpts = append(poolOpts)
+		// TODO: Implement synchronization if needed, currently it is always performed in p.Init()
 	}
 	connCfg, err := d.cfg.Dump.MysqlConfig.Options.ConnectionConfig()
 	if err != nil {
@@ -244,6 +257,9 @@ func (d *Dump) startPool(ctx context.Context) error {
 }
 
 func (d *Dump) Init(ctx context.Context) error {
+	if err := d.cfg.Dump.MysqlConfig.Options.Validate(); err != nil {
+		return fmt.Errorf("validate mysql options: %w", err)
+	}
 	if err := d.startPool(ctx); err != nil {
 		return fmt.Errorf("start transaction pool: %w", err)
 	}
@@ -338,6 +354,8 @@ func (d *Dump) DataDump(ctx context.Context) (err error) {
 	if d.transformedTablesOnly {
 		taskProducerOpts = append(taskProducerOpts, taskproducer.WithTransformedTablesOnly())
 	}
+	taskProducerOpts = append(taskProducerOpts, taskproducer.WithDumpFormat(d.format))
+	taskProducerOpts = append(taskProducerOpts, taskproducer.WithInsertBatchSize(d.cfg.Dump.MysqlConfig.Options.InsertBatchSize))
 
 	tp, err := taskproducer.New(
 		d.introsp,
@@ -414,6 +432,10 @@ func (d *Dump) Run(ctx context.Context) (err error) {
 	if err := d.Introspect(ctx); err != nil {
 		return fmt.Errorf("introspect mysql server: %w", err)
 	}
+
+	log.Ctx(ctx).Debug().
+		Str("format", string(d.format)).
+		Msg("using dump format")
 
 	d.StartHBWorker(ctx)
 	defer func() {

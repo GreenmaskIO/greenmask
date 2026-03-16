@@ -72,5 +72,9 @@ type Restore struct {
 }
 
 func NewRestore() Restore {
-	return Restore{}
+	return Restore{
+		MysqlConfig: MysqlRestoreConfig{
+			Options: mysqlconfig.NewRestoreOptions(),
+		},
+	}
 }

@@ -123,7 +123,7 @@ func (s *restoreSuite) TestRestorer_RestoreData() {
 
 	opts := s.GetRootConnectionOpts(ctx)
 	tr := &dummyTaskMapper{}
-	rr, err := NewTableDataRestorer(meta, opts, st, tr)
+	rr, err := NewTableDataRestorerCsv(meta, opts, st, tr)
 	assert.NoError(s.T(), err)
 	err = rr.Init(ctx)
 	s.Require().NoError(err, "failed to open table data restorer")

@@ -226,7 +226,10 @@ func (p *ConsistentTxPool) connectSql(ctx context.Context) (*sql.Conn, error) {
 func (p *ConsistentTxPool) prepareWorkerConns(ctx context.Context) error {
 	log.Ctx(ctx).Debug().Msgf("phase 0: preparing %d worker sessions", p.poolSize)
 	p.pool = make([]*workerConn, p.poolSize)
-	cfg, _ := p.cfg.(*mysqlmodels.ConnConfig)
+	cfg, ok := p.cfg.(*mysqlmodels.ConnConfig)
+	if !ok {
+		return fmt.Errorf("invalid connection configurator type: expected *mysqlmodels.ConnConfig, got %T", p.cfg)
+	}
 
 	for i := 0; i < p.poolSize; i++ {
 		// Prepare raw connection
@@ -239,7 +242,10 @@ func (p *ConsistentTxPool) prepareWorkerConns(ctx context.Context) error {
 			Msg("opened raw mysql connection")
 
 		if _, err := rawConn.Execute("SET SESSION TRANSACTION ISOLATION LEVEL REPEATABLE READ"); err != nil {
-			rawConn.Close()
+			if err := rawConn.Close(); err != nil {
+				log.Ctx(ctx).Warn().Err(err).Int("connID", i).
+					Msg("failed to close raw connection after isolation level setup failure")
+			}
 			return fmt.Errorf("set isolation level on worker raw %d: %w", i, err)
 		}
 

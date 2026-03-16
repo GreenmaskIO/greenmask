@@ -22,43 +22,89 @@ import (
 
 	"github.com/greenmaskio/greenmask/pkg/common/interfaces"
 	"github.com/greenmaskio/greenmask/pkg/common/models"
-	utils2 "github.com/greenmaskio/greenmask/pkg/common/utils"
+	"github.com/greenmaskio/greenmask/pkg/common/utils"
 
 	"github.com/greenmaskio/greenmask/pkg/csv"
 )
 
-type CompressionSettings struct {
-	Enabled bool
-	Pgzip   bool
+const (
+	ExtensionCsv  = "csv"
+	ExtensionSql  = "sql"
+	ExtensionGzip = "gz"
+)
+
+type RowWriter interface {
+	Write(row [][]byte) error
+	Flush() error
 }
 
+type Option func(*TableDataWriter)
+
 type TableDataWriter struct {
-	st           interfaces.Storager
-	fileName     string
-	csvWriter    *csv.Writer
-	cw           utils2.CountWriteCloser
-	cr           utils2.CountReadCloser
-	eg           *errgroup.Group
-	cancel       context.CancelFunc
-	table        *models.Table
-	compSettings CompressionSettings
+	st              interfaces.Storager
+	fileName        string
+	rowWriter       RowWriter
+	cw              utils.CountWriteCloser
+	cr              utils.CountReadCloser
+	eg              *errgroup.Group
+	cancel          context.CancelFunc
+	table           *models.Table
+	enabled         bool
+	pgzip           bool
+	format          models.DumpFormat
+	insertBatchSize int
 }
 
 func NewTableDataWriter(
 	table models.Table,
 	st interfaces.Storager,
-	compSettings CompressionSettings,
+	opts ...Option,
 ) *TableDataWriter {
-	ext := "csv"
-	if compSettings.Enabled {
-		ext = "csv.gz"
+	res := &TableDataWriter{
+		st:              st,
+		table:           &table,
+		format:          models.DumpFormatInsert,
+		insertBatchSize: DefaultInsertBatchSize,
 	}
-	fileName := fmt.Sprintf("%s__%s.%s", table.Schema, table.Name, ext)
-	return &TableDataWriter{
-		st:           st,
-		fileName:     fileName,
-		table:        &table,
-		compSettings: compSettings,
+
+	for _, opt := range opts {
+		opt(res)
+	}
+
+	ext := ExtensionCsv
+	if res.format == models.DumpFormatInsert {
+		ext = ExtensionSql
+	}
+	if res.enabled {
+		ext += "." + ExtensionGzip
+	}
+	res.fileName = fmt.Sprintf("%s__%s.%s", table.Schema, table.Name, ext)
+	return res
+}
+
+func WithFormat(format models.DumpFormat) Option {
+	return func(t *TableDataWriter) {
+		if format != "" {
+			t.format = format
+		}
+	}
+}
+
+func WithInsertBatchSize(size int) Option {
+	return func(t *TableDataWriter) {
+		t.insertBatchSize = size
+	}
+}
+
+func WithCompression(enabled bool) Option {
+	return func(t *TableDataWriter) {
+		t.enabled = enabled
+	}
+}
+
+func WithPgzip(enabled bool) Option {
+	return func(t *TableDataWriter) {
+		t.pgzip = enabled
 	}
 }
 
@@ -72,13 +118,17 @@ func (t *TableDataWriter) steam(ctx context.Context) func() error {
 }
 
 func (t *TableDataWriter) Open(ctx context.Context) error {
-	if t.compSettings.Enabled {
-		t.cw, t.cr = utils2.NewGzipPipe(t.compSettings.Pgzip)
+	if t.enabled {
+		t.cw, t.cr = utils.NewGzipPipe(t.pgzip)
 	} else {
-		t.cw, t.cr = utils2.NewPlainPipe()
+		t.cw, t.cr = utils.NewPlainPipe()
 	}
 
-	t.csvWriter = csv.NewWriter(t.cw)
+	if t.format == models.DumpFormatInsert {
+		t.rowWriter = NewInsertWriter(*t.table, t.cw, t.insertBatchSize)
+	} else {
+		t.rowWriter = csv.NewWriter(t.cw)
+	}
 	ctx, t.cancel = context.WithCancel(ctx)
 	t.eg, ctx = errgroup.WithContext(ctx)
 	t.eg.Go(t.steam(ctx))
@@ -86,15 +136,15 @@ func (t *TableDataWriter) Open(ctx context.Context) error {
 }
 
 func (t *TableDataWriter) WriteRow(_ context.Context, row [][]byte) error {
-	if err := t.csvWriter.Write(row); err != nil {
-		return fmt.Errorf("write csv: %w", err)
+	if err := t.rowWriter.Write(row); err != nil {
+		return fmt.Errorf("write row: %w", err)
 	}
 	return nil
 }
 
 func (t *TableDataWriter) Close(_ context.Context) error {
-	if err := t.csvWriter.Flush(); err != nil {
-		return fmt.Errorf("flush csv writer: %w", err)
+	if err := t.rowWriter.Flush(); err != nil {
+		return fmt.Errorf("flush row writer: %w", err)
 	}
 	if err := t.cw.Close(); err != nil {
 		return fmt.Errorf("close writer: %w", err)
@@ -113,9 +163,9 @@ func (t *TableDataWriter) Stat() models.ObjectStat {
 		panic("reader is not opened")
 	}
 	compression := models.CompressionNone
-	if t.compSettings.Enabled {
+	if t.enabled {
 		compression = models.CompressionGzip
-		if t.compSettings.Pgzip {
+		if t.pgzip {
 			compression = models.CompressionPgzip
 		}
 	}
@@ -129,5 +179,6 @@ func (t *TableDataWriter) Stat() models.ObjectStat {
 		t.cr.GetCount(),
 		t.fileName,
 		compression,
+		t.format,
 	)
 }

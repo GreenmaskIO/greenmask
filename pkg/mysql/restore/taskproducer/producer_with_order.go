@@ -23,7 +23,8 @@ import (
 	"github.com/greenmaskio/greenmask/pkg/common/interfaces"
 	"github.com/greenmaskio/greenmask/pkg/common/models"
 	"github.com/greenmaskio/greenmask/pkg/common/restore/taskmapper"
-	mysqlconfig "github.com/greenmaskio/greenmask/pkg/mysql/config"
+
+	mysqlrestoreconfig "github.com/greenmaskio/greenmask/pkg/mysql/restore/config"
 	"github.com/greenmaskio/greenmask/pkg/mysql/restore/restorers"
 )
 
@@ -43,7 +44,7 @@ type taskMapper interface {
 type ProducerWithOrder struct {
 	meta         models.Metadata
 	st           interfaces.Storager
-	connCfg      mysqlconfig.ConnectionOpts
+	opt          mysqlrestoreconfig.RestoreOptions
 	err          error
 	lastIdx      int
 	taskResolver interfaces.TaskMapper
@@ -52,13 +53,13 @@ type ProducerWithOrder struct {
 func NewWithOrder(
 	meta models.Metadata,
 	st interfaces.Storager,
-	connCfg mysqlconfig.ConnectionOpts,
+	opt mysqlrestoreconfig.RestoreOptions,
 	taskResolver *taskmapper.TaskResolver,
 ) *ProducerWithOrder {
 	return &ProducerWithOrder{
 		meta:         meta,
 		st:           st,
-		connCfg:      connCfg,
+		opt:          opt,
 		taskResolver: taskResolver,
 		lastIdx:      -1,
 	}
@@ -130,8 +131,21 @@ func (p *ProducerWithOrder) Task() (interfaces.Restorer, error) {
 					restorationItem.Compression == models.CompressionPgzip,
 				restorationItem.Compression == models.CompressionPgzip,
 			),
+			restorers.WithWarnings(p.opt.PrintWarnings, p.opt.MaxFetchWarnings),
 		}
-		return restorers.NewTableDataRestorer(restorationItem, p.connCfg, p.st, p.taskResolver, opts...)
+		stat := p.meta.DumpStat.TaskStats[currentTaskID]
+		switch stat.ObjectStat.Format {
+		case models.DumpFormatInsert:
+			return restorers.NewTableDataRestorerInsert(
+				restorationItem, p.opt.ConnectionOpts, p.st, p.taskResolver, opts...,
+			)
+		case models.DumpFormatCsv:
+			return restorers.NewTableDataRestorerCsv(
+				restorationItem, p.opt.ConnectionOpts, p.st, p.taskResolver, opts...,
+			)
+		default:
+			return nil, fmt.Errorf("dump format ='%s': %w", stat.ObjectStat.Format, errUnknownDumpFormat)
+		}
 	}
 	return nil, fmt.Errorf("create restore task for kind '%s': %w",
 		restorationItem.ObjectKind, errUnsupportedObjectKind)
