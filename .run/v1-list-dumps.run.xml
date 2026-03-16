@@ -1,0 +1,12 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="v1-list-dumps" type="GoApplicationRunConfiguration" factoryName="Go Application">
+    <module name="v1" />
+    <working_directory value="$PROJECT_DIR$/v1" />
+    <parameters value="--config playground/mysql/config.yaml list-dumps" />
+    <kind value="PACKAGE" />
+    <package value="github.com/greenmaskio/greenmask/v1/cmd" />
+    <directory value="$PROJECT_DIR$" />
+    <filePath value="$PROJECT_DIR$/v1/cmd/main.go" />
+    <method v="2" />
+  </configuration>
+</component>
