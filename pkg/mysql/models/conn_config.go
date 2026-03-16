@@ -20,12 +20,13 @@ import (
 )
 
 type ConnConfig struct {
-	Host     string
-	Port     int
-	User     string
-	Password string
-	Database string
-	Timeout  time.Duration
+	Host             string
+	Port             int
+	User             string
+	Password         string
+	Database         string
+	Timeout          time.Duration
+	MaxAllowedPacket int
 	// TODO: Add TLS setting.
 }
 
@@ -34,5 +35,9 @@ func (d *ConnConfig) Address() string {
 }
 
 func (d *ConnConfig) URI() (string, error) {
-	return fmt.Sprintf("%s:%s@tcp(%s:%d)/%s", d.User, d.Password, d.Host, d.Port, d.Database), nil
+	uri := fmt.Sprintf("%s:%s@tcp(%s:%d)/%s", d.User, d.Password, d.Host, d.Port, d.Database)
+	if d.MaxAllowedPacket > 0 {
+		uri = fmt.Sprintf("%s?maxAllowedPacket=%d", uri, d.MaxAllowedPacket)
+	}
+	return uri, nil
 }

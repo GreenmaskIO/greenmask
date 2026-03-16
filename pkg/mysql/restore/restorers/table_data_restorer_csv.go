@@ -143,7 +143,7 @@ func (r *TableDataRestorerCsv) restoreTable(ctx context.Context, db *sql.DB) err
 			"IGNORE INTO TABLE `%s`.`%s` "+
 			`FIELDS TERMINATED BY ',' `+
 			`ENCLOSED BY '"' `+
-			`ESCAPED BY '"' `+
+			`ESCAPED BY '\\' `+
 			`LINES TERMINATED BY '\n'`,
 		getFileHandlerName(*r.table),
 		r.table.Schema,

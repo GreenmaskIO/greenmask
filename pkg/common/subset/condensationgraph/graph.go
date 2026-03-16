@@ -215,7 +215,18 @@ func (g *Graph) GetTopologicalOrder() ([]int, error) {
 	if g.HasCycles() {
 		return nil, models.ErrTableGraphHasCycles
 	}
-	res := slices.Clone(g.order)
-	slices.Reverse(res)
+
+	// Since we are using Kosaraju's algorithm in findSCC, the discovered SCCs
+	// are already in topological order (Source to Sink of the condensation graph).
+	// Because our edges point from Dependent to Referenced (Child -> Parent),
+	// SCCs are discovered in Child -> Parent order.
+	// Returning these indices [0...sccCount-1] is equivalent to returning
+	// the topological order of SCCs.
+	// In Subset.go, this order will be reversed to get the final restoration
+	// order (Parent before Child).
+	res := make([]int, g.sccCount)
+	for i := 0; i < g.sccCount; i++ {
+		res[i] = i
+	}
 	return res, nil
 }

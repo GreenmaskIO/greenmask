@@ -48,21 +48,22 @@ func newMysqlTableDriver(
 type Option func(*TaskProducer) error
 
 type TaskProducer struct {
-	introspector          interfaces.Introspector
-	tableConfigs          []models.TableConfig
-	registry              *registry.TransformerRegistry
-	connConfig            mysqlmodels.ConnConfig
-	st                    interfaces.Storager
-	txPool                *pool.ConsistentTxPool
-	subset                subset.Subset
-	filter                models.TaskProducerFilter
-	saveOriginal          bool
-	rowLimit              int64
-	compressionEnabled    bool
-	compressionPgzip      bool
-	transformedTablesOnly bool
-	dumpFormat            models.DumpFormat
-	insertBatchSize       int
+	introspector           interfaces.Introspector
+	tableConfigs           []models.TableConfig
+	registry               *registry.TransformerRegistry
+	connConfig             mysqlmodels.ConnConfig
+	st                     interfaces.Storager
+	txPool                 *pool.ConsistentTxPool
+	subset                 subset.Subset
+	filter                 models.TaskProducerFilter
+	saveOriginal           bool
+	rowLimit               int64
+	compressionEnabled     bool
+	compressionPgzip       bool
+	transformedTablesOnly  bool
+	dumpFormat             models.DumpFormat
+	insertBatchSize        int
+	maxInsertStatementSize int
 }
 
 func WithFilter(
@@ -124,6 +125,13 @@ func WithDumpFormat(format models.DumpFormat) Option {
 func WithInsertBatchSize(size int) Option {
 	return func(tp *TaskProducer) error {
 		tp.insertBatchSize = size
+		return nil
+	}
+}
+
+func WithMaxInsertStatementSize(size int) Option {
+	return func(tp *TaskProducer) error {
+		tp.maxInsertStatementSize = size
 		return nil
 	}
 }
@@ -208,6 +216,7 @@ func (tp *TaskProducer) initTableDumper(
 		dumpstreamers.WithPgzip(tp.compressionPgzip),
 		dumpstreamers.WithFormat(tp.dumpFormat),
 		dumpstreamers.WithInsertBatchSize(tp.insertBatchSize),
+		dumpstreamers.WithMaxInsertStatementSize(tp.maxInsertStatementSize),
 	)
 	rawRecord := rawrecord.NewRawRecord(len(tableContext.Table.Columns), dbmsdriver.NullValueSeq)
 	r := record.NewRecord(rawRecord, tableContext.TableDriver)
@@ -236,6 +245,7 @@ func (tp *TaskProducer) initTableRawDumper(
 		dumpstreamers.WithPgzip(tp.compressionPgzip),
 		dumpstreamers.WithFormat(tp.dumpFormat),
 		dumpstreamers.WithInsertBatchSize(tp.insertBatchSize),
+		dumpstreamers.WithMaxInsertStatementSize(tp.maxInsertStatementSize),
 	)
 	return dumpers.NewTableRawDumper(objectID, tr, tw, tableContext.Table)
 }

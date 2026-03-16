@@ -30,6 +30,9 @@ type RestoreOptions struct {
 
 func NewRestoreOptions() RestoreOptions {
 	return RestoreOptions{
+		ConnectionOpts: config.ConnectionOpts{
+			MaxAllowedPacket: config.DefaultMaxAllowedPacket,
+		},
 		PrintWarnings:    false,
 		MaxFetchWarnings: DefaultMaxFetchWarnings,
 	}
