@@ -247,6 +247,39 @@ func TestNewSubset(t *testing.T) {
 		}
 		require.Equal(t, expectedTablesQueries, s.tablesQueries)
 	})
+
+	t.Run("GetTopologicalOrder returns correct restoration order", func(t *testing.T) {
+		// tableB depends on tableA
+		// Edge: B -> A
+		tableA := models.Table{
+			ID:         1,
+			Schema:     "public",
+			Name:       "a",
+			PrimaryKey: []string{"id"},
+		}
+		tableB := models.Table{
+			ID:         2,
+			Schema:     "public",
+			Name:       "b",
+			PrimaryKey: []string{"id"},
+			References: []models.Reference{
+				{
+					ReferencedSchema: "public",
+					ReferencedName:   "a",
+					Keys:             []string{"a_id"},
+				},
+			},
+		}
+		tables := []models.Table{tableA, tableB}
+		s, err := NewSubset(tables, DialectPostgres)
+		require.NoError(t, err)
+
+		order, err := s.GetTopologicalOrder()
+		require.NoError(t, err)
+
+		// Restoration order must be [tableA, tableB]
+		require.Equal(t, []int{1, 2}, order)
+	})
 }
 
 func verifySubGraphs(t *testing.T, expected []map[int][]expectedLink, actual Subset) {

@@ -16,6 +16,7 @@ package config
 
 import (
 	commonmodels "github.com/greenmaskio/greenmask/pkg/common/models"
+	mysqlcommonconfig "github.com/greenmaskio/greenmask/pkg/mysql/config"
 	mysqlconfig "github.com/greenmaskio/greenmask/pkg/mysql/dump/config"
 )
 
@@ -175,8 +176,12 @@ func NewDump() Dump {
 	return Dump{
 		MysqlConfig: MysqlDumpConfig{
 			Options: mysqlconfig.DumpOptions{
-				InsertBatchSize: mysqlconfig.DefaultInsertBatchSize,
-				DumpFormat:      commonmodels.DumpFormatInsert,
+				ConnectionOpts: mysqlcommonconfig.ConnectionOpts{
+					MaxAllowedPacket: mysqlcommonconfig.DefaultMaxAllowedPacket,
+				},
+				InsertBatchSize:        mysqlconfig.DefaultInsertBatchSize,
+				MaxInsertStatementSize: mysqlconfig.DefaultMaxInsertStatementSize,
+				DumpFormat:             commonmodels.DumpFormatInsert,
 			},
 		},
 	}

@@ -226,10 +226,7 @@ func (p *ConsistentTxPool) connectSql(ctx context.Context) (*sql.Conn, error) {
 func (p *ConsistentTxPool) prepareWorkerConns(ctx context.Context) error {
 	log.Ctx(ctx).Debug().Msgf("phase 0: preparing %d worker sessions", p.poolSize)
 	p.pool = make([]*workerConn, p.poolSize)
-	cfg, ok := p.cfg.(*mysqlmodels.ConnConfig)
-	if !ok {
-		return fmt.Errorf("invalid connection configurator type: expected *mysqlmodels.ConnConfig, got %T", p.cfg)
-	}
+	cfg, _ := p.cfg.(*mysqlmodels.ConnConfig)
 
 	for i := 0; i < p.poolSize; i++ {
 		// Prepare raw connection

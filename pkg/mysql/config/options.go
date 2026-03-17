@@ -22,13 +22,18 @@ import (
 	"github.com/greenmaskio/greenmask/pkg/mysql/models"
 )
 
+const (
+	DefaultMaxAllowedPacket = 0
+)
+
 type ConnectionOpts struct {
 	// Connection details
-	User            string `mapstructure:"user" json:"user,omitempty"`         // MySQL username
-	Password        string `mapstructure:"password" json:"password,omitempty"` // MySQL password
-	Host            string `mapstructure:"host" json:"host,omitempty"`         // MySQL server hostname or IP
-	Port            int    `mapstructure:"port" json:"port,omitempty"`         // MySQL server port, default is 3306
-	ConnectDatabase string `mapstructure:"connect-database" json:"connect_database,omitempty"`
+	User             string `mapstructure:"user" json:"user,omitempty"`         // MySQL username
+	Password         string `mapstructure:"password" json:"password,omitempty"` // MySQL password
+	Host             string `mapstructure:"host" json:"host,omitempty"`         // MySQL server hostname or IP
+	Port             int    `mapstructure:"port" json:"port,omitempty"`         // MySQL server port, default is 3306
+	ConnectDatabase  string `mapstructure:"connect-database" json:"connect_database,omitempty"`
+	MaxAllowedPacket int    `mapstructure:"max-allowed-packet" json:"max_allowed_packet,omitempty"`
 }
 
 func (d *ConnectionOpts) Env() ([]string, error) {
@@ -69,10 +74,11 @@ func (d *ConnectionOpts) Params() []string {
 
 func (d *ConnectionOpts) ConnectionConfig() (interfaces.ConnectionConfigurator, error) {
 	return &models.ConnConfig{
-		User:     d.User,
-		Password: d.Password,
-		Host:     d.Host,
-		Port:     d.Port,
-		Database: d.ConnectDatabase,
+		User:             d.User,
+		Password:         d.Password,
+		Host:             d.Host,
+		Port:             d.Port,
+		Database:         d.ConnectDatabase,
+		MaxAllowedPacket: d.MaxAllowedPacket,
 	}, nil
 }

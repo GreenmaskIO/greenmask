@@ -26,7 +26,7 @@ func TestInsertWriter_Write(t *testing.T) {
 		}
 
 		var buf bytes.Buffer
-		iw := NewInsertWriter(table, &buf, DefaultInsertBatchSize)
+		iw := NewInsertWriter(table, &buf, DefaultInsertBatchSize, 0)
 
 		rows := [][][]byte{
 			{[]byte("1"), []byte("John Doe"), []byte("john@example.com")},
@@ -54,7 +54,7 @@ func TestInsertWriter_Write(t *testing.T) {
 		}
 
 		var buf bytes.Buffer
-		iw := NewInsertWriter(table, &buf, DefaultInsertBatchSize)
+		iw := NewInsertWriter(table, &buf, DefaultInsertBatchSize, 0)
 
 		row := [][]byte{[]byte("101"), []byte("Widget")}
 		err := iw.Write(row)
@@ -76,9 +76,9 @@ func TestInsertWriter_Write(t *testing.T) {
 		}
 
 		var buf bytes.Buffer
-		iw := NewInsertWriter(table, &buf, DefaultInsertBatchSize)
+		iw := NewInsertWriter(table, &buf, DefaultInsertBatchSize, 0)
 
-		row := [][]byte{[]byte("1"), nil}
+		row := [][]byte{[]byte("1"), []byte("\\N")}
 		err := iw.Write(row)
 		assert.NoError(t, err)
 		err = iw.Flush()
@@ -98,7 +98,7 @@ func TestInsertWriter_Write(t *testing.T) {
 		}
 
 		var buf bytes.Buffer
-		iw := NewInsertWriter(table, &buf, DefaultInsertBatchSize)
+		iw := NewInsertWriter(table, &buf, DefaultInsertBatchSize, 0)
 
 		row := [][]byte{[]byte("1"), dbmsdriver.NullValueSeq}
 		err := iw.Write(row)
@@ -120,7 +120,7 @@ func TestInsertWriter_Write(t *testing.T) {
 		}
 
 		var buf bytes.Buffer
-		iw := NewInsertWriter(table, &buf, DefaultInsertBatchSize)
+		iw := NewInsertWriter(table, &buf, DefaultInsertBatchSize, 0)
 
 		// Use RawRecord to prepare the row, ensuring consistent escaping logic
 		rr := rawrecord.NewRawRecord(2, dbmsdriver.NullValueSeq)
@@ -154,7 +154,7 @@ func TestInsertWriter_Write(t *testing.T) {
 		}
 
 		var buf bytes.Buffer
-		iw := NewInsertWriter(table, &buf, DefaultInsertBatchSize)
+		iw := NewInsertWriter(table, &buf, DefaultInsertBatchSize, 0)
 
 		row := [][]byte{
 			[]byte("O'Reilly's Book"),
@@ -181,7 +181,7 @@ func TestInsertWriter_Write(t *testing.T) {
 		}
 
 		var buf bytes.Buffer
-		iw := NewInsertWriter(table, &buf, DefaultInsertBatchSize)
+		iw := NewInsertWriter(table, &buf, DefaultInsertBatchSize, 0)
 
 		err := iw.Flush()
 		assert.NoError(t, err)
@@ -199,7 +199,7 @@ func TestInsertWriter_Write(t *testing.T) {
 		}
 
 		var buf bytes.Buffer
-		iw := NewInsertWriter(table, &buf, 2)
+		iw := NewInsertWriter(table, &buf, 2, 0)
 
 		rows := [][][]byte{
 			{[]byte("1")},
@@ -231,7 +231,7 @@ func TestInsertWriter_Write(t *testing.T) {
 		}
 
 		var buf bytes.Buffer
-		iw := NewInsertWriter(table, &buf, 0)
+		iw := NewInsertWriter(table, &buf, 0, 0)
 
 		rows := [][][]byte{
 			{[]byte("1")},
@@ -247,6 +247,45 @@ func TestInsertWriter_Write(t *testing.T) {
 
 		// batchSize=0 implies one statement per row
 		expected := "INSERT INTO `public`.`users` (`id`) VALUES \n('1');\nINSERT INTO `public`.`users` (`id`) VALUES \n('2');\n"
+		assert.Equal(t, expected, buf.String())
+	})
+
+	t.Run("size_based_batching", func(t *testing.T) {
+		table := models.Table{
+			Schema: "public",
+			Name:   "users",
+			Columns: []models.Column{
+				{Name: "id"},
+			},
+		}
+
+		var buf bytes.Buffer
+		headerSize := len("INSERT INTO `public`.`users` (`id`) VALUES \n")
+		rowSize := len("('1')")
+		separatorSize := len(",\n")
+		terminatorSize := len(";\n")
+
+		// Set limit so it fits header + 1 row + terminator, but not 2 rows
+		maxSize := headerSize + rowSize + separatorSize + rowSize + terminatorSize - 1
+		iw := NewInsertWriter(table, &buf, 100, maxSize)
+
+		rows := [][][]byte{
+			{[]byte("1")},
+			{[]byte("2")},
+			{[]byte("3")},
+		}
+
+		err := iw.Write(rows[0])
+		assert.NoError(t, err)
+		err = iw.Write(rows[1])
+		assert.NoError(t, err)
+		err = iw.Write(rows[2])
+		assert.NoError(t, err)
+		err = iw.Flush()
+		assert.NoError(t, err)
+
+		// Expect each row in its own statement because of size limit
+		expected := "INSERT INTO `public`.`users` (`id`) VALUES \n('1');\nINSERT INTO `public`.`users` (`id`) VALUES \n('2');\nINSERT INTO `public`.`users` (`id`) VALUES \n('3');\n"
 		assert.Equal(t, expected, buf.String())
 	})
 }

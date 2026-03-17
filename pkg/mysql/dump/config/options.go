@@ -24,23 +24,27 @@ import (
 	"github.com/greenmaskio/greenmask/pkg/mysql/models"
 )
 
-const DefaultInsertBatchSize = 100
+const (
+	DefaultInsertBatchSize        = 10_000_000
+	DefaultMaxInsertStatementSize = 4 * 1024 * 1024
+)
 
 type DumpOptions struct {
 	config.ConnectionOpts `mapstructure:",squash" json:",squash,omitempty"` //nolint:staticcheck
 	// General dump options
-	AllDatabases      bool                    `mapstructure:"all-databases" json:"all_databases,omitempty"`           // Dump all databases (--all-databases)
-	Databases         []string                `mapstructure:"databases" json:"databases,omitempty"`                   // List of databases to dump
-	NoCreateInfo      bool                    `mapstructure:"no-create-info" json:"no_create_info,omitempty"`         // Exclude CREATE TABLE statements (--no-create-info)
-	NoData            bool                    `mapstructure:"no-data" json:"no_data,omitempty"`                       // Exclude data from dump (--no-data)
-	AddDropTable      bool                    `mapstructure:"add-drop-table" json:"add_drop_table,omitempty"`         // Include DROP TABLE statements (--add-drop-table)
-	Compact           bool                    `mapstructure:"compact" json:"compact,omitempty"`                       // Reduce dump size with minimal comments (--compact)
-	SkipComments      bool                    `mapstructure:"skip-comments" json:"skip_comments,omitempty"`           // Do not include comments in dump (--skip-comments)
-	SingleTransaction bool                    `mapstructure:"single-transaction" json:"single_transaction,omitempty"` // Use a single transaction for the dump (--single-transaction)
-	Quick             bool                    `mapstructure:"quick" json:"quick,omitempty"`                           // Fetch rows one at a time (--quick)
-	LockTables        bool                    `mapstructure:"lock-tables" json:"lock_tables,omitempty"`               // Lock all tables during dump (--lock-tables)
-	DumpFormat        commonmodels.DumpFormat `mapstructure:"dump-format" json:"dump_format,omitempty"`               // Format for data dump (csv or insert)
-	InsertBatchSize   int                     `mapstructure:"insert-batch-size" json:"insert_batch_size,omitempty"`   // Batch size for insert statements (--insert-batch-size)
+	AllDatabases           bool                    `mapstructure:"all-databases" json:"all_databases,omitempty"`                         // Dump all databases (--all-databases)
+	Databases              []string                `mapstructure:"databases" json:"databases,omitempty"`                                 // List of databases to dump
+	NoCreateInfo           bool                    `mapstructure:"no-create-info" json:"no_create_info,omitempty"`                       // Exclude CREATE TABLE statements (--no-create-info)
+	NoData                 bool                    `mapstructure:"no-data" json:"no_data,omitempty"`                                     // Exclude data from dump (--no-data)
+	AddDropTable           bool                    `mapstructure:"add-drop-table" json:"add_drop_table,omitempty"`                       // Include DROP TABLE statements (--add-drop-table)
+	Compact                bool                    `mapstructure:"compact" json:"compact,omitempty"`                                     // Reduce dump size with minimal comments (--compact)
+	SkipComments           bool                    `mapstructure:"skip-comments" json:"skip_comments,omitempty"`                         // Do not include comments in dump (--skip-comments)
+	SingleTransaction      bool                    `mapstructure:"single-transaction" json:"single_transaction,omitempty"`               // Use a single transaction for the dump (--single-transaction)
+	Quick                  bool                    `mapstructure:"quick" json:"quick,omitempty"`                                         // Fetch rows one at a time (--quick)
+	LockTables             bool                    `mapstructure:"lock-tables" json:"lock_tables,omitempty"`                             // Lock all tables during dump (--lock-tables)
+	DumpFormat             commonmodels.DumpFormat `mapstructure:"dump-format" json:"dump_format,omitempty"`                             // Format for data dump (csv or insert)
+	InsertBatchSize        int                     `mapstructure:"insert-batch-size" json:"insert_batch_size,omitempty"`                 // Batch size for insert statements (--insert-batch-size)
+	MaxInsertStatementSize int                     `mapstructure:"max-insert-statement-size" json:"max_insert_statement_size,omitempty"` // Max size of a single insert statement in bytes
 
 	// Tablespace and metadata options
 	NoTablespaces         bool          `mapstructure:"no-tablespaces" json:"no_tablespaces,omitempty"`                   // Exclude tablespace information (--no-tablespaces)
@@ -108,17 +112,21 @@ func (d *DumpOptions) Get(key string) (any, error) {
 
 func (d *DumpOptions) ConnectionConfig() (interfaces.ConnectionConfigurator, error) {
 	return &models.ConnConfig{
-		User:     d.User,
-		Password: d.Password,
-		Host:     d.Host,
-		Port:     d.Port,
-		Database: d.ConnectDatabase,
+		User:             d.User,
+		Password:         d.Password,
+		Host:             d.Host,
+		Port:             d.Port,
+		Database:         d.ConnectDatabase,
+		MaxAllowedPacket: d.MaxAllowedPacket,
 	}, nil
 }
 
 func (d *DumpOptions) Validate() error {
 	if d.InsertBatchSize < 1 {
 		return fmt.Errorf("insert-batch-size must be at least 1")
+	}
+	if d.MaxAllowedPacket > 0 && d.MaxInsertStatementSize > d.MaxAllowedPacket {
+		d.MaxInsertStatementSize = d.MaxAllowedPacket
 	}
 	return nil
 }

@@ -39,6 +39,9 @@ func GetGzipReadCloser(r io.Reader, usePgzip bool) (gz io.ReadCloser, err error)
 }
 
 func CopyAndExtendIfNeeded(dst, src []byte) []byte {
+	if src == nil {
+		return nil
+	}
 	if cap(dst) < len(src) {
 		// Not enough capacity — allocate new slice.
 		dst = make([]byte, len(src))
@@ -46,7 +49,6 @@ func CopyAndExtendIfNeeded(dst, src []byte) []byte {
 		// Enough capacity — extend length without allocation.
 		dst = dst[:len(src)]
 	}
-	dst = dst[:len(src)]
 	copy(dst, src)
 	return dst
 }
