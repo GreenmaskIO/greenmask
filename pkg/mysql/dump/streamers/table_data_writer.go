@@ -23,7 +23,6 @@ import (
 	"github.com/greenmaskio/greenmask/pkg/common/interfaces"
 	"github.com/greenmaskio/greenmask/pkg/common/models"
 	"github.com/greenmaskio/greenmask/pkg/common/utils"
-
 	"github.com/greenmaskio/greenmask/pkg/csv"
 )
 
@@ -52,7 +51,6 @@ type TableDataWriter struct {
 	enabled                bool
 	pgzip                  bool
 	format                 models.DumpFormat
-	insertBatchSize        int
 	maxInsertStatementSize int
 }
 
@@ -62,10 +60,9 @@ func NewTableDataWriter(
 	opts ...Option,
 ) *TableDataWriter {
 	res := &TableDataWriter{
-		st:              st,
-		table:           &table,
-		format:          models.DumpFormatInsert,
-		insertBatchSize: DefaultInsertBatchSize,
+		st:     st,
+		table:  &table,
+		format: models.DumpFormatInsert,
 	}
 
 	for _, opt := range opts {
@@ -88,12 +85,6 @@ func WithFormat(format models.DumpFormat) Option {
 		if format != "" {
 			t.format = format
 		}
-	}
-}
-
-func WithInsertBatchSize(size int) Option {
-	return func(t *TableDataWriter) {
-		t.insertBatchSize = size
 	}
 }
 
@@ -132,7 +123,7 @@ func (t *TableDataWriter) Open(ctx context.Context) error {
 	}
 
 	if t.format == models.DumpFormatInsert {
-		t.rowWriter = NewInsertWriter(*t.table, t.cw, t.insertBatchSize, t.maxInsertStatementSize)
+		t.rowWriter = NewInsertWriter(*t.table, t.cw, t.maxInsertStatementSize)
 	} else {
 		t.rowWriter = csv.NewWriter(t.cw)
 	}

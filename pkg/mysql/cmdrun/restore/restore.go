@@ -19,17 +19,19 @@ import (
 	"database/sql"
 	"fmt"
 
+	"github.com/rs/zerolog/log"
+
 	"github.com/greenmaskio/greenmask/pkg/common/interfaces"
 	"github.com/greenmaskio/greenmask/pkg/common/models"
 	"github.com/greenmaskio/greenmask/pkg/common/restore/processor"
 	"github.com/greenmaskio/greenmask/pkg/common/restore/taskmapper"
+	"github.com/greenmaskio/greenmask/pkg/common/utils"
 	"github.com/greenmaskio/greenmask/pkg/common/validationcollector"
 	"github.com/greenmaskio/greenmask/pkg/config"
 	"github.com/greenmaskio/greenmask/pkg/mysql/metadata"
 	mysqlmodels "github.com/greenmaskio/greenmask/pkg/mysql/models"
 	"github.com/greenmaskio/greenmask/pkg/mysql/restore/schema"
 	taskproducer2 "github.com/greenmaskio/greenmask/pkg/mysql/restore/taskproducer"
-	"github.com/rs/zerolog/log"
 )
 
 // Restore it's responsible for initialization and perform the whole
@@ -40,12 +42,14 @@ type Restore struct {
 	vc         *validationcollector.Collector
 	cfg        *config.Config
 	connConfig *mysqlmodels.ConnConfig
+	cmd        utils.CmdProducer
 }
 
 func NewRestore(
 	cfg *config.Config,
 	st interfaces.Storager,
 	dumpID models.DumpID,
+	cmd utils.CmdProducer,
 ) *Restore {
 	vc := validationcollector.NewCollectorWithMeta(
 		models.MetaKeyDumpID, dumpID,
@@ -56,6 +60,7 @@ func NewRestore(
 		st:     st,
 		dumpID: dumpID,
 		vc:     vc,
+		cmd:    cmd,
 	}
 }
 
@@ -117,7 +122,7 @@ func (d *Restore) Run(ctx context.Context) error {
 		tp = taskproducer2.New(meta, d.st, d.cfg.Restore.MysqlConfig.Options)
 	}
 
-	sr := schema.NewRestorer(d.st, &d.cfg.Restore.MysqlConfig.Options)
+	sr := schema.NewRestorer(d.st, &d.cfg.Restore.MysqlConfig.Options, d.cmd)
 
 	if err := processor.NewDefaultRestoreProcessor(ctx, tp, sr, processor.Config{
 		Jobs:           d.cfg.Restore.Options.Jobs,

@@ -20,9 +20,10 @@ import (
 	"io"
 
 	_ "github.com/go-sql-driver/mysql"
+	"github.com/rs/zerolog/log"
+
 	"github.com/greenmaskio/greenmask/pkg/common/interfaces"
 	"github.com/greenmaskio/greenmask/pkg/common/utils"
-	"github.com/rs/zerolog/log"
 )
 
 const (
@@ -42,16 +43,19 @@ type Restorer struct {
 	st         interfaces.Storager
 	cfg        options
 	executable string
+	cmd        utils.CmdProducer
 }
 
 func NewRestorer(
 	st interfaces.Storager,
 	connCfg options,
+	cmd utils.CmdProducer,
 ) *Restorer {
 	return &Restorer{
 		st:         st,
 		cfg:        connCfg,
 		executable: executable,
+		cmd:        cmd,
 	}
 }
 
@@ -64,7 +68,10 @@ func (r *Restorer) restoreSchemaData(ctx context.Context, f io.Reader) error {
 	if err != nil {
 		return fmt.Errorf("get schema restore env: %w", err)
 	}
-	cmd := utils.NewCmdRunnerWithStdin(r.executable, params, env, f)
+	cmd, err := r.cmd.Produce(r.executable, params, env, f)
+	if err != nil {
+		return fmt.Errorf("produce schema restore command: %w", err)
+	}
 
 	if err := cmd.ExecuteCmdAndForwardStdout(ctx); err != nil {
 		return fmt.Errorf("execute schema restore command: %w", err)

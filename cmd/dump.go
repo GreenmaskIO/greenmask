@@ -108,33 +108,6 @@ var (
 			IsRequired:       false,
 			Default:          "",
 		},
-		{
-			Name:             "insert-batch-size",
-			Usage:            "Batch size for insert statements.",
-			ConfigPathPrefix: "dump.mysql.options",
-			BindToConfig:     true,
-			Type:             cmd.FlagTypeInt,
-			IsRequired:       false,
-			Default:          mysqlconfig.DefaultInsertBatchSize,
-		},
-		{
-			Name:             "max-insert-statement-size",
-			Usage:            "Max size of a single insert statement in bytes.",
-			ConfigPathPrefix: "dump.mysql.options",
-			BindToConfig:     true,
-			Type:             cmd.FlagTypeInt,
-			IsRequired:       false,
-			Default:          mysqlconfig.DefaultMaxInsertStatementSize,
-		},
-		{
-			Name:             "max-allowed-packet",
-			Usage:            "Max packet size for MySQL connection.",
-			ConfigPathPrefix: "dump.mysql.options",
-			BindToConfig:     true,
-			Type:             cmd.FlagTypeInt,
-			IsRequired:       false,
-			Default:          mysqlcommonconfig.DefaultMaxAllowedPacket,
-		},
 	}
 
 	dumpCmd = cmd.MustCommand(&cobra.Command{

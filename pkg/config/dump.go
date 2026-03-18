@@ -179,7 +179,6 @@ func NewDump() Dump {
 				ConnectionOpts: mysqlcommonconfig.ConnectionOpts{
 					MaxAllowedPacket: mysqlcommonconfig.DefaultMaxAllowedPacket,
 				},
-				InsertBatchSize:        mysqlconfig.DefaultInsertBatchSize,
 				MaxInsertStatementSize: mysqlconfig.DefaultMaxInsertStatementSize,
 				DumpFormat:             commonmodels.DumpFormatInsert,
 			},

@@ -27,13 +27,9 @@ import (
 )
 
 const (
-	DefaultInsertBatchSize = 100
 	// defaultReservedPacketBytes is the amount of bytes we reserve for safety margin
 	// in each INSERT statement to avoid exceeding max_allowed_packet.
-	defaultReservedPacketBytes = 256
-	// maxReservedBytesRatio is the maximum ratio of reserved bytes to total statement size.
-	// If reserved bytes exceed this ratio, we don't use them (safety margin is disabled).
-	maxReservedBytesRatio = 0.05
+	defaultReservedPacketBytes = 100
 )
 
 var (
@@ -49,14 +45,12 @@ type InsertWriter struct {
 	vals                   []interface{}
 	rowTemplate            string
 	headerWritten          bool
-	batchSize              int
 	maxInsertStatementSize int
-	rowsCount              int
 	currentStatementSize   int
 	header                 []byte
 }
 
-func NewInsertWriter(table models.Table, w io.Writer, batchSize int, maxInsertStatementSize int) *InsertWriter {
+func NewInsertWriter(table models.Table, w io.Writer, maxInsertStatementSize int) *InsertWriter {
 	placeholders := make([]string, len(table.Columns))
 	for i := range table.Columns {
 		placeholders[i] = "?"
@@ -75,13 +69,11 @@ func NewInsertWriter(table models.Table, w io.Writer, batchSize int, maxInsertSt
 		headerStr += sqlbuilder.MySQL.Quote(col.Name)
 	}
 	headerStr += ") VALUES \n"
-
 	return &InsertWriter{
 		table:                  &table,
 		w:                      w,
 		vals:                   make([]interface{}, len(table.Columns)),
 		rowTemplate:            rowTemplate,
-		batchSize:              batchSize,
 		maxInsertStatementSize: maxInsertStatementSize,
 		header:                 []byte(headerStr),
 	}
@@ -114,20 +106,11 @@ func (iw *InsertWriter) Write(row [][]byte) error {
 		rowSize += len(rowSeparatorBytes)
 	}
 
-	// Check if we need to start a new statement due to size limit
-	reservedBytes := 0
-	if iw.maxInsertStatementSize > 0 {
-		if float64(defaultReservedPacketBytes)/float64(iw.maxInsertStatementSize) <= maxReservedBytesRatio {
-			reservedBytes = defaultReservedPacketBytes
-		}
-	}
-
-	if iw.maxInsertStatementSize > 0 && iw.headerWritten && iw.currentStatementSize+rowSize+len(insertTerminatorBytes) > iw.maxInsertStatementSize-reservedBytes {
+	if iw.headerWritten && iw.currentStatementSize+rowSize+len(insertTerminatorBytes) > iw.maxInsertStatementSize-defaultReservedPacketBytes {
 		if _, err := iw.w.Write(insertTerminatorBytes); err != nil {
 			return fmt.Errorf("terminate insert: %w", err)
 		}
 		iw.headerWritten = false
-		iw.rowsCount = 0
 		iw.currentStatementSize = 0
 	}
 
@@ -148,17 +131,6 @@ func (iw *InsertWriter) Write(row [][]byte) error {
 	}
 	iw.currentStatementSize += len(interpolated)
 
-	iw.rowsCount++
-
-	if iw.batchSize == 0 || iw.rowsCount == iw.batchSize {
-		if _, err := iw.w.Write(insertTerminatorBytes); err != nil {
-			return fmt.Errorf("terminate insert: %w", err)
-		}
-		iw.headerWritten = false
-		iw.rowsCount = 0
-		iw.currentStatementSize = 0
-	}
-
 	return nil
 }
 
@@ -168,7 +140,6 @@ func (iw *InsertWriter) Flush() error {
 			return fmt.Errorf("terminate insert: %w", err)
 		}
 		iw.headerWritten = false
-		iw.rowsCount = 0
 	}
 	return nil
 }

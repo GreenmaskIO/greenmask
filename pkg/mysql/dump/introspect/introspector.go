@@ -23,11 +23,12 @@ import (
 
 	"github.com/Masterminds/sprig/v3"
 	_ "github.com/go-sql-driver/mysql"
+	"github.com/rs/zerolog/log"
+
 	"github.com/greenmaskio/greenmask/pkg/common/interfaces"
 	models2 "github.com/greenmaskio/greenmask/pkg/common/models"
 	"github.com/greenmaskio/greenmask/pkg/mysql/dbmsdriver"
 	"github.com/greenmaskio/greenmask/pkg/mysql/models"
-	"github.com/rs/zerolog/log"
 )
 
 var (
@@ -43,8 +44,9 @@ type options interface {
 }
 
 type Introspector struct {
-	tables []models.Table
-	opt    options
+	tables           []models.Table
+	opt              options
+	maxAllowedPacket uint64
 }
 
 func NewIntrospector(opt options) *Introspector {
@@ -65,6 +67,10 @@ func (i *Introspector) GetCommonTables() []models2.Table {
 	return tables
 }
 
+func (i *Introspector) GetMaxAllowedPacket() uint64 {
+	return i.maxAllowedPacket
+}
+
 // Introspect - introspects the mysql instance provided. It received a transaction
 // because the data have to be consistent.
 // TODO: Keep in ming that mysql does not have schema as in postgresql.
@@ -74,6 +80,12 @@ func (i *Introspector) GetCommonTables() []models2.Table {
 //			 Additionally check if possible to open one TX lock snapshot
 //			 and import it in the new transaction/session.
 func (i *Introspector) Introspect(ctx context.Context, tx interfaces.DB) error {
+	maxAllowedPacket, err := i.getMaxAllowedPacket(ctx, tx)
+	if err != nil {
+		return fmt.Errorf("get max_allowed_packet: %w", err)
+	}
+	i.maxAllowedPacket = maxAllowedPacket
+
 	tables, err := i.getTables(ctx, tx)
 	if err != nil {
 		return fmt.Errorf("introspect tables: %w", err)
@@ -102,6 +114,15 @@ func (i *Introspector) Introspect(ctx context.Context, tx interfaces.DB) error {
 	}
 
 	return nil
+}
+
+func (i *Introspector) getMaxAllowedPacket(ctx context.Context, tx interfaces.DB) (uint64, error) {
+	var maxAllowedPacket uint64
+	err := tx.QueryRowContext(ctx, "SELECT @@max_allowed_packet").Scan(&maxAllowedPacket)
+	if err != nil {
+		return 0, err
+	}
+	return maxAllowedPacket, nil
 }
 
 // getTables - get all tables from the database excluding system tables

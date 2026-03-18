@@ -27,6 +27,7 @@ import (
 	"github.com/greenmaskio/greenmask/pkg/common/interfaces"
 	"github.com/greenmaskio/greenmask/pkg/common/models"
 	"github.com/greenmaskio/greenmask/pkg/common/transformers/registry"
+	"github.com/greenmaskio/greenmask/pkg/common/utils"
 	"github.com/greenmaskio/greenmask/pkg/common/validationcollector"
 	"github.com/greenmaskio/greenmask/pkg/config"
 	"github.com/greenmaskio/greenmask/pkg/mysql/dump/introspect"
@@ -202,12 +203,14 @@ type Dump struct {
 	hbwEg                 *errgroup.Group
 	txPool                *pool.ConsistentTxPool
 	format                models.DumpFormat
+	cmd                   utils.CmdProducer
 }
 
 func NewDump(
 	cfg *config.Config,
 	registry *registry.TransformerRegistry,
 	st interfaces.Storager,
+	cmd utils.CmdProducer,
 	opts ...Option,
 ) (*Dump, error) {
 	dumpID := models.NewDumpID()
@@ -217,6 +220,7 @@ func NewDump(
 		st:       st,
 		dumpID:   dumpID,
 		registry: registry,
+		cmd:      cmd,
 	}
 	for i, opt := range opts {
 		if err := opt(res); err != nil {
@@ -312,6 +316,21 @@ func (d *Dump) Introspect(ctx context.Context) (err error) {
 	if err := d.introsp.Introspect(ctx, d.txPool.GetMetaTx()); err != nil {
 		return fmt.Errorf("introspect mysql server: %w", err)
 	}
+
+	if mi, ok := d.introsp.(*introspect.Introspector); ok {
+		maxAllowedPacket := mi.GetMaxAllowedPacket()
+		if maxAllowedPacket > 0 {
+			if d.cfg.Dump.MysqlConfig.Options.MaxInsertStatementSize == 0 ||
+				d.cfg.Dump.MysqlConfig.Options.MaxInsertStatementSize > int(maxAllowedPacket) {
+				log.Ctx(ctx).Info().
+					Uint64("max_allowed_packet", maxAllowedPacket).
+					Int("old_max_insert_statement_size", d.cfg.Dump.MysqlConfig.Options.MaxInsertStatementSize).
+					Msg("synchronizing max-insert-statement-size with server max_allowed_packet")
+				d.cfg.Dump.MysqlConfig.Options.MaxInsertStatementSize = int(maxAllowedPacket)
+			}
+		}
+	}
+
 	return nil
 }
 
@@ -323,7 +342,7 @@ func (d *Dump) IntrospectAndGetTables(ctx context.Context) ([]models.Table, erro
 }
 
 func (d *Dump) SchemaDump(ctx context.Context) (err error) {
-	sd := schemadump.New(d.st, &d.cfg.Dump.MysqlConfig.Options)
+	sd := schemadump.New(d.st, &d.cfg.Dump.MysqlConfig.Options, d.cmd)
 	if err := sd.DumpSchema(ctx); err != nil {
 		return fmt.Errorf("dump schema: %w", err)
 	}
@@ -355,7 +374,6 @@ func (d *Dump) DataDump(ctx context.Context) (err error) {
 		taskProducerOpts = append(taskProducerOpts, taskproducer.WithTransformedTablesOnly())
 	}
 	taskProducerOpts = append(taskProducerOpts, taskproducer.WithDumpFormat(d.format))
-	taskProducerOpts = append(taskProducerOpts, taskproducer.WithInsertBatchSize(d.cfg.Dump.MysqlConfig.Options.InsertBatchSize))
 	taskProducerOpts = append(taskProducerOpts, taskproducer.WithMaxInsertStatementSize(d.cfg.Dump.MysqlConfig.Options.MaxInsertStatementSize))
 
 	tp, err := taskproducer.New(

@@ -80,6 +80,67 @@ func showWarnings(ctx context.Context, db *sql.DB, printWarnings bool, maxFetch 
 	return nil
 }
 
+func showInsertWarnings(ctx context.Context, db *sql.DB, printWarnings bool, maxFetch int, batchNum int, printedCount *int) (int, error) {
+	totalCount, err := getWarningCount(ctx, db)
+	if err != nil {
+		return 0, fmt.Errorf("get warning count: %w", err)
+	}
+	if totalCount == 0 {
+		return 0, nil
+	}
+
+	if !printWarnings {
+		return totalCount, nil
+	}
+
+	var fetchLimit int
+	if maxFetch > 0 {
+		fetchLimit = maxFetch - *printedCount
+		if fetchLimit <= 0 {
+			return totalCount, nil
+		}
+	}
+
+	var query string
+	if fetchLimit > 0 {
+		query = fmt.Sprintf("SHOW WARNINGS LIMIT %d", fetchLimit)
+	} else {
+		query = "SHOW WARNINGS"
+	}
+	query += ";"
+
+	rows, err := db.QueryContext(ctx, query)
+	if err != nil {
+		return 0, fmt.Errorf("execute query: %w", err)
+	}
+	defer func() {
+		if err := rows.Close(); err != nil {
+			log.Ctx(ctx).Error().Err(err).Msg("failed to close show warnings rows")
+		}
+	}()
+
+	for rows.Next() {
+		var level, code, message string
+		if err := rows.Scan(&level, &code, &message); err != nil {
+			return 0, fmt.Errorf("scan row: %w", err)
+		}
+
+		log.Ctx(ctx).Warn().
+			Str("MysqlLevel", level).
+			Str("MysqlCode", code).
+			Str("MysqlWarning", message).
+			Int("BatchNum", batchNum).
+			Msg("warning from Mysql server after restoring table data")
+		*printedCount++
+	}
+
+	if err := rows.Err(); err != nil {
+		return 0, err
+	}
+
+	return totalCount, nil
+}
+
 func getWarningCount(ctx context.Context, db *sql.DB) (int, error) {
 	var count int
 	if err := db.QueryRowContext(ctx, "SHOW COUNT(*) WARNINGS;").Scan(&count); err != nil {

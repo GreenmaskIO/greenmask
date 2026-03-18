@@ -15,7 +15,6 @@
 package config
 
 import (
-	"fmt"
 	"time"
 
 	"github.com/greenmaskio/greenmask/pkg/common/interfaces"
@@ -25,7 +24,6 @@ import (
 )
 
 const (
-	DefaultInsertBatchSize        = 10_000_000
 	DefaultMaxInsertStatementSize = 4 * 1024 * 1024
 )
 
@@ -43,7 +41,6 @@ type DumpOptions struct {
 	Quick                  bool                    `mapstructure:"quick" json:"quick,omitempty"`                                         // Fetch rows one at a time (--quick)
 	LockTables             bool                    `mapstructure:"lock-tables" json:"lock_tables,omitempty"`                             // Lock all tables during dump (--lock-tables)
 	DumpFormat             commonmodels.DumpFormat `mapstructure:"dump-format" json:"dump_format,omitempty"`                             // Format for data dump (csv or insert)
-	InsertBatchSize        int                     `mapstructure:"insert-batch-size" json:"insert_batch_size,omitempty"`                 // Batch size for insert statements (--insert-batch-size)
 	MaxInsertStatementSize int                     `mapstructure:"max-insert-statement-size" json:"max_insert_statement_size,omitempty"` // Max size of a single insert statement in bytes
 
 	// Tablespace and metadata options
@@ -122,8 +119,8 @@ func (d *DumpOptions) ConnectionConfig() (interfaces.ConnectionConfigurator, err
 }
 
 func (d *DumpOptions) Validate() error {
-	if d.InsertBatchSize < 1 {
-		return fmt.Errorf("insert-batch-size must be at least 1")
+	if d.MaxInsertStatementSize <= 0 {
+		d.MaxInsertStatementSize = DefaultMaxInsertStatementSize
 	}
 	if d.MaxAllowedPacket > 0 && d.MaxInsertStatementSize > d.MaxAllowedPacket {
 		d.MaxInsertStatementSize = d.MaxAllowedPacket

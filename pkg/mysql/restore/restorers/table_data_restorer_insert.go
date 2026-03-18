@@ -44,6 +44,8 @@ type TableDataRestorerInsert struct {
 	printWarnings    bool
 	maxFetchWarnings int
 	reader           io.ReadCloser
+	totalWarnings    int
+	printedCount     int
 }
 
 func NewTableDataRestorerInsert(
@@ -141,6 +143,17 @@ func (r *TableDataRestorerInsert) Restore(ctx context.Context) error {
 		return fmt.Errorf("restore table data: %w", err)
 	}
 
+	if r.totalWarnings > 0 {
+		log.Ctx(ctx).Warn().
+			Int("totalWarnings", r.totalWarnings).
+			Msg("warnings occurred during table data restoration")
+		if r.printWarnings && r.maxFetchWarnings > 0 && r.totalWarnings > r.printedCount {
+			log.Ctx(ctx).Warn().
+				Int("suppressedCount", r.totalWarnings-r.printedCount).
+				Msg("more warnings suppressed")
+		}
+	}
+
 	return nil
 }
 
@@ -173,9 +186,11 @@ func (r *TableDataRestorerInsert) restoreTable(ctx context.Context, db *sql.DB) 
 				if execErr != nil {
 					return fmt.Errorf("execute batch %d: %w", batchNum, execErr)
 				}
-				if err := r.showWarnings(ctx, db); err != nil {
+				count, err := showInsertWarnings(ctx, db, r.printWarnings, r.maxFetchWarnings, batchNum, &r.printedCount)
+				if err != nil {
 					log.Ctx(ctx).Warn().Err(err).Msg("failed to show warnings after batch")
 				}
+				r.totalWarnings += count
 			}
 			stmt = stmt[:0] // reset without reallocating
 		}
@@ -188,9 +203,7 @@ func (r *TableDataRestorerInsert) restoreTable(ctx context.Context, db *sql.DB) 
 	return nil
 }
 
-func (r *TableDataRestorerInsert) showWarnings(ctx context.Context, db *sql.DB) error {
-	return showWarnings(ctx, db, r.printWarnings, r.maxFetchWarnings)
-}
+// showWarnings is now handled by showInsertWarnings in restoreTable
 
 func (r *TableDataRestorerInsert) Close(ctx context.Context) error {
 	if r.reader != nil {

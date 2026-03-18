@@ -19,9 +19,11 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/greenmaskio/greenmask/pkg/common/mocks"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
+
+	"github.com/greenmaskio/greenmask/pkg/common/mocks"
+	"github.com/greenmaskio/greenmask/pkg/common/utils"
 )
 
 type optsMock struct {
@@ -56,7 +58,7 @@ func TestDumpCli_Run(t *testing.T) {
 		opts := optsMock{}
 		opts.On("SchemaDumpParams").Return([]string{expected}, nil)
 		opts.On("Env").Return([]string{"_TEST=1"}, nil)
-		d := New(st, &opts)
+		d := New(st, &opts, utils.NewDefaultCmdProducer())
 		d.executable = "echo"
 		ctx := context.Background()
 		err := d.DumpSchema(ctx)
@@ -73,7 +75,7 @@ func TestDumpCli_Run(t *testing.T) {
 		opts := optsMock{}
 		opts.On("SchemaDumpParams").Return(nil, errors.New("some err"))
 		opts.On("Env").Return([]string{"_TEST=1"}, nil)
-		d := New(st, &opts)
+		d := New(st, &opts, utils.NewDefaultCmdProducer())
 		ctx := context.Background()
 		err := d.DumpSchema(ctx)
 		require.Error(t, err)
@@ -90,7 +92,7 @@ func TestDumpCli_Run(t *testing.T) {
 		opts := optsMock{}
 		opts.On("SchemaDumpParams").Return([]string{"CREATE TABLE test (id int);"}, nil)
 		opts.On("Env").Return([]string{"_TEST=1"}, nil)
-		d := New(st, &opts)
+		d := New(st, &opts, utils.NewDefaultCmdProducer())
 		ctx := context.Background()
 		err := d.DumpSchema(ctx)
 		require.Error(t, err)
@@ -107,7 +109,7 @@ func TestDumpCli_Run(t *testing.T) {
 		opts := optsMock{}
 		opts.On("SchemaDumpParams").Return([]string{"CREATE TABLE test (id int);"}, nil)
 		opts.On("Env").Return([]string{"_TEST=1"}, nil)
-		d := New(st, &opts)
+		d := New(st, &opts, utils.NewDefaultCmdProducer())
 		d.executable = "121312 unknown command"
 		ctx := context.Background()
 		err := d.DumpSchema(ctx)

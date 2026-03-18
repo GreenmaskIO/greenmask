@@ -48,7 +48,7 @@ func RunMySQLValidate(ctx context.Context, st interfaces.Storager, cfg *config2.
 	if err != nil {
 		return nonZeroExitCode, fmt.Errorf("get mysql dump options: %w", err)
 	}
-	dump, err := mysqldump.NewDump(cfg, registry.DefaultTransformerRegistry, st, opts...)
+	dump, err := mysqldump.NewDump(cfg, registry.DefaultTransformerRegistry, st, commonutils.NewDefaultCmdProducer(), opts...)
 	if err != nil {
 		return nonZeroExitCode, fmt.Errorf("init dump process: %w", err)
 	}

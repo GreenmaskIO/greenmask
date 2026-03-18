@@ -62,7 +62,6 @@ type TaskProducer struct {
 	compressionPgzip       bool
 	transformedTablesOnly  bool
 	dumpFormat             models.DumpFormat
-	insertBatchSize        int
 	maxInsertStatementSize int
 }
 
@@ -118,13 +117,6 @@ func WithDumpFormat(format models.DumpFormat) Option {
 		if format != "" {
 			tp.dumpFormat = format
 		}
-		return nil
-	}
-}
-
-func WithInsertBatchSize(size int) Option {
-	return func(tp *TaskProducer) error {
-		tp.insertBatchSize = size
 		return nil
 	}
 }
@@ -215,7 +207,6 @@ func (tp *TaskProducer) initTableDumper(
 		dumpstreamers.WithCompression(tp.compressionEnabled),
 		dumpstreamers.WithPgzip(tp.compressionPgzip),
 		dumpstreamers.WithFormat(tp.dumpFormat),
-		dumpstreamers.WithInsertBatchSize(tp.insertBatchSize),
 		dumpstreamers.WithMaxInsertStatementSize(tp.maxInsertStatementSize),
 	)
 	rawRecord := rawrecord.NewRawRecord(len(tableContext.Table.Columns), dbmsdriver.NullValueSeq)
@@ -244,7 +235,6 @@ func (tp *TaskProducer) initTableRawDumper(
 		dumpstreamers.WithCompression(tp.compressionEnabled),
 		dumpstreamers.WithPgzip(tp.compressionPgzip),
 		dumpstreamers.WithFormat(tp.dumpFormat),
-		dumpstreamers.WithInsertBatchSize(tp.insertBatchSize),
 		dumpstreamers.WithMaxInsertStatementSize(tp.maxInsertStatementSize),
 	)
 	return dumpers.NewTableRawDumper(objectID, tr, tw, tableContext.Table)

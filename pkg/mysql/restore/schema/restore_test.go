@@ -20,13 +20,14 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/rs/zerolog"
+	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/suite"
+
 	"github.com/greenmaskio/greenmask/pkg/common/mocks"
 	"github.com/greenmaskio/greenmask/pkg/common/utils"
 	"github.com/greenmaskio/greenmask/pkg/mysql/restore/config"
 	"github.com/greenmaskio/greenmask/pkg/testutils"
-	"github.com/rs/zerolog"
-	"github.com/stretchr/testify/mock"
-	"github.com/stretchr/testify/suite"
 )
 
 type restoreSuite struct {
@@ -57,7 +58,7 @@ func (s *restoreSuite) TestRestorer_RestoreSchema() {
 	rr := NewRestorer(st, &config.RestoreOptions{
 		ConnectionOpts: opts,
 		Verbose:        true,
-	})
+	}, utils.NewDefaultCmdProducer())
 	err = rr.RestoreSchema(ctx)
 	s.Require().NoError(err)
 }
