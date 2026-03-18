@@ -38,6 +38,12 @@ func New(basePath string) *Storage {
 	}
 }
 
+func (s *Storage) Cleanup() {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.files = make(map[string]*memoryObject)
+}
+
 func (s *Storage) GetCwd() string {
 	return s.basePath
 }

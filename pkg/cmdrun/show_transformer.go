@@ -26,12 +26,12 @@ func RunShowTransformers(
 		return err
 	}
 	switch format {
-	case FormatNameJson:
+	case OutputFormatJSON:
 		err := showTransformerJson(registry.DefaultTransformerRegistry, transformerName)
 		if err != nil {
 			return fmt.Errorf("error listing transformers: %w", err)
 		}
-	case FormatNameText:
+	case OutputFormatText:
 		err := showTransformerText(registry.DefaultTransformerRegistry, transformerName)
 		if err != nil {
 			return fmt.Errorf("error listing transformers: %w", err)

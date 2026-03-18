@@ -15,23 +15,27 @@
 package models
 
 import (
-	models2 "github.com/greenmaskio/greenmask/pkg/common/models"
+	"fmt"
+
+	commonmodels "github.com/greenmaskio/greenmask/pkg/common/models"
 )
 
 type Table struct {
-	ID         int
-	Schema     string
-	Name       string
-	Columns    []Column
-	Size       *int64
-	PrimaryKey []string
-	References []models2.Reference
+	ID             int
+	Schema         string
+	Name           string
+	Columns        []Column
+	Size           *int64
+	PrimaryKey     []string
+	References     []commonmodels.Reference
+	NeedDumpSchema bool
+	NeedDumpData   bool
 }
 
-func (t *Table) ToCommonTable() models2.Table {
-	columns := make([]models2.Column, len(t.Columns))
+func (t *Table) ToCommonTable() commonmodels.Table {
+	columns := make([]commonmodels.Column, len(t.Columns))
 	for i, col := range t.Columns {
-		columns[i] = models2.NewColumn(
+		columns[i] = commonmodels.NewColumn(
 			i,
 			col.Name,
 			col.TypeName,
@@ -40,13 +44,15 @@ func (t *Table) ToCommonTable() models2.Table {
 			col.TypeClass,
 		)
 	}
-	return models2.Table{
-		ID:         t.ID,
-		Schema:     t.Schema,
-		Name:       t.Name,
-		PrimaryKey: t.PrimaryKey,
-		References: t.References,
-		Columns:    columns,
+	return commonmodels.Table{
+		ID:             t.ID,
+		Schema:         t.Schema,
+		Name:           t.Name,
+		PrimaryKey:     t.PrimaryKey,
+		References:     t.References,
+		Columns:        columns,
+		NeedDumpSchema: t.NeedDumpSchema,
+		NeedDumpData:   t.NeedDumpData,
 	}
 }
 
@@ -58,6 +64,10 @@ func (t *Table) SetPrimaryKey(pk []string) {
 	t.PrimaryKey = pk
 }
 
-func (t *Table) SetReferences(refs []models2.Reference) {
+func (t *Table) SetReferences(refs []commonmodels.Reference) {
 	t.References = refs
+}
+
+func (t *Table) GetFullTableName() string {
+	return fmt.Sprintf("%s.%s", t.Schema, t.Name)
 }

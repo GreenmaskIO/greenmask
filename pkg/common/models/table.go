@@ -49,7 +49,9 @@ type Table struct {
 	// SubsetConditions - list of conditions  that are used to filter the table data.
 	SubsetConditions []string `json:"-"`
 	// Constraints - list of constraints that are defined on the table.
-	Constraints []Constraint `json:"-"`
+	Constraints    []Constraint `json:"-"`
+	NeedDumpSchema bool         `json:"need_dump_schema"`
+	NeedDumpData   bool         `json:"need_dump_data"`
 }
 
 var (

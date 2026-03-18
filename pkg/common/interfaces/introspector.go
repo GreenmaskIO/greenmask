@@ -30,4 +30,6 @@ type DB interface {
 type Introspector interface {
 	GetCommonTables() []commonmodels.Table
 	Introspect(ctx context.Context, tx DB) error
+	GetSchemaRelatedSettings() commonmodels.MysqlDumpRelatedSettings
+	GetMatchedDatabases() []string
 }

@@ -19,7 +19,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	cmdrun2 "github.com/greenmaskio/greenmask/pkg/cmdrun"
+	cmdrun "github.com/greenmaskio/greenmask/pkg/cmdrun"
 	"github.com/greenmaskio/greenmask/pkg/common/cmd"
 )
 
@@ -43,7 +43,7 @@ var (
 		Use:   "show-transformer",
 		Short: "show transformer details",
 		Run: func(cmd *cobra.Command, args []string) {
-			err := cmdrun2.RunShowTransformers(rootCmd.MustGetConfig(), cmdrun2.OutputFormat(format), args[0])
+			err := cmdrun.RunShowTransformers(rootCmd.MustGetConfig(), cmdrun.OutputFormat(showTransformerFormat), args[0])
 			if err != nil {
 				log.Fatal(err)
 			}

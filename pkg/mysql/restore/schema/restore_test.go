@@ -25,6 +25,7 @@ import (
 	"github.com/stretchr/testify/suite"
 
 	"github.com/greenmaskio/greenmask/pkg/common/mocks"
+	commonmodels "github.com/greenmaskio/greenmask/pkg/common/models"
 	"github.com/greenmaskio/greenmask/pkg/common/utils"
 	"github.com/greenmaskio/greenmask/pkg/mysql/restore/config"
 	"github.com/greenmaskio/greenmask/pkg/testutils"
@@ -50,15 +51,25 @@ func (s *restoreSuite) TestRestorer_RestoreSchema() {
 	r, err := os.Open(filepath.Join("testdata", "schema.sql"))
 	s.Require().NoError(err)
 	defer r.Close()
+	schemaMeta := &commonmodels.SchemaDumpMetadata{
+		DumpedDatabaseSchema: []commonmodels.DumpedDatabaseSchemaStat{
+			{
+				DatabaseName: "test",
+				FileName:     "schema_test.sql",
+				Compression:  commonmodels.CompressionNone,
+			},
+		},
+	}
+
 	st := mocks.NewStorageMock()
-	st.On("GetObject", mock.Anything, schemaFileName).
+	st.On("GetObject", mock.Anything, "schema_test.sql").
 		Return(r, nil)
 
 	opts := s.GetRootConnectionOpts(ctx)
 	rr := NewRestorer(st, &config.RestoreOptions{
 		ConnectionOpts: opts,
 		Verbose:        true,
-	}, utils.NewDefaultCmdProducer())
+	}, utils.NewDefaultCmdProducer(), schemaMeta)
 	err = rr.RestoreSchema(ctx)
 	s.Require().NoError(err)
 }

@@ -101,14 +101,14 @@ func (p *ProducerWithOrder) Next(ctx context.Context) bool {
 		return false
 	}
 	p.lastIdx++
-	if len(p.meta.DumpStat.RestorationContext.RestorationOrder) == 0 ||
-		len(p.meta.DumpStat.RestorationContext.RestorationOrder) == p.lastIdx {
+	if len(p.meta.DataDump.DumpStat.RestorationContext.RestorationOrder) == 0 ||
+		len(p.meta.DataDump.DumpStat.RestorationContext.RestorationOrder) == p.lastIdx {
 		// If there are no tasks or we have reached the end of the tasks.
 		// Return false to stop the iteration.
 		return false
 	}
-	currentTaskID := p.meta.DumpStat.RestorationContext.RestorationOrder[p.lastIdx]
-	dependencies := p.meta.DumpStat.RestorationContext.TaskDependencies[currentTaskID]
+	currentTaskID := p.meta.DataDump.DumpStat.RestorationContext.RestorationOrder[p.lastIdx]
+	dependencies := p.meta.DataDump.DumpStat.RestorationContext.TaskDependencies[currentTaskID]
 	p.waitForTasks(ctx, dependencies)
 	return true
 }
@@ -117,9 +117,9 @@ func (p *ProducerWithOrder) Task() (interfaces.Restorer, error) {
 	if p.err != nil {
 		return nil, p.err
 	}
-	currentTaskID := p.meta.DumpStat.RestorationContext.RestorationOrder[p.lastIdx]
+	currentTaskID := p.meta.DataDump.DumpStat.RestorationContext.RestorationOrder[p.lastIdx]
 
-	restorationItem, ok := p.meta.DumpStat.RestorationItems[currentTaskID]
+	restorationItem, ok := p.meta.DataDump.DumpStat.RestorationItems[currentTaskID]
 	if !ok {
 		panic("no restoration item")
 	}
@@ -133,7 +133,7 @@ func (p *ProducerWithOrder) Task() (interfaces.Restorer, error) {
 			),
 			restorers.WithWarnings(p.opt.PrintWarnings, p.opt.MaxFetchWarnings),
 		}
-		stat := p.meta.DumpStat.TaskStats[currentTaskID]
+		stat := p.meta.DataDump.DumpStat.TaskStats[currentTaskID]
 		switch stat.ObjectStat.Format {
 		case models.DumpFormatInsert:
 			return restorers.NewTableDataRestorerInsert(

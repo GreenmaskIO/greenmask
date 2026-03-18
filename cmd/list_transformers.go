@@ -24,7 +24,7 @@ import (
 )
 
 var (
-	format string
+	listTransformersFormat string
 
 	listTransformersFlags = []cmd.Flag{
 		{
@@ -35,7 +35,7 @@ var (
 			Type:             cmd.FlagTypeString,
 			IsRequired:       false,
 			Default:          "text",
-			Dest:             &format,
+			Dest:             &listTransformersFormat,
 		},
 	}
 
@@ -43,7 +43,7 @@ var (
 		Use:   "list-transformers",
 		Short: "list of the allowed transformers with documentation",
 		Run: func(cmd *cobra.Command, args []string) {
-			if err := cmdrun.RunListTransformers(rootCmd.MustGetConfig(), cmdrun.OutputFormat(format)); err != nil {
+			if err := cmdrun.RunListTransformers(rootCmd.MustGetConfig(), cmdrun.OutputFormat(listTransformersFormat)); err != nil {
 				log.Fatal(err)
 			}
 		},

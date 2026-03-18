@@ -122,7 +122,7 @@ func (d *Restore) Run(ctx context.Context) error {
 		tp = taskproducer2.New(meta, d.st, d.cfg.Restore.MysqlConfig.Options)
 	}
 
-	sr := schema.NewRestorer(d.st, &d.cfg.Restore.MysqlConfig.Options, d.cmd)
+	sr := schema.NewRestorer(d.st, &d.cfg.Restore.MysqlConfig.Options, d.cmd, meta.SchemaDump)
 
 	if err := processor.NewDefaultRestoreProcessor(ctx, tp, sr, processor.Config{
 		Jobs:           d.cfg.Restore.Options.Jobs,

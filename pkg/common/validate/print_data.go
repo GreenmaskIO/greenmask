@@ -123,7 +123,7 @@ func printTable(
 	if err := json.Unmarshal(item.ObjectDefinition, &table); err != nil {
 		return fmt.Errorf("unmarshal table data: %w", err)
 	}
-	affectedColumns, ok := meta.DumpStat.RestorationContext.TableIDToAffectedColumns[models.ObjectID(table.ID)]
+	affectedColumns, ok := meta.DataDump.DumpStat.RestorationContext.TableIDToAffectedColumns[models.ObjectID(table.ID)]
 	if !ok {
 		affectedColumns = []int{}
 	}
@@ -167,8 +167,8 @@ func PrintData(
 	if err != nil {
 		return fmt.Errorf("get metadata: %w", err)
 	}
-	items := make([]models.RestorationItem, 0, len(meta.DumpStat.RestorationItems))
-	for _, item := range meta.DumpStat.RestorationItems {
+	items := make([]models.RestorationItem, 0, len(meta.DataDump.DumpStat.RestorationItems))
+	for _, item := range meta.DataDump.DumpStat.RestorationItems {
 		items = append(items, item)
 	}
 	slices.SortFunc(items, func(a, b models.RestorationItem) int {

@@ -21,8 +21,6 @@ import (
 
 	"github.com/greenmaskio/greenmask/pkg/cmdrun"
 	"github.com/greenmaskio/greenmask/pkg/common/cmd"
-	mysqlcommonconfig "github.com/greenmaskio/greenmask/pkg/mysql/config"
-	mysqlconfig "github.com/greenmaskio/greenmask/pkg/mysql/dump/config"
 )
 
 var (
@@ -57,6 +55,24 @@ var (
 		{
 			Name:             "exclude-schema",
 			Usage:            "Exclude specified schema from dump. Can be specified multiple times.",
+			ConfigPathPrefix: "dump.options",
+			BindToConfig:     true,
+			Type:             cmd.FlagTypeStringSlice,
+			IsRequired:       false,
+			Default:          []string{},
+		},
+		{
+			Name:             "include-database",
+			Usage:            "Include specified database into dump. Can be specified multiple times.",
+			ConfigPathPrefix: "dump.options",
+			BindToConfig:     true,
+			Type:             cmd.FlagTypeStringSlice,
+			IsRequired:       false,
+			Default:          []string{},
+		},
+		{
+			Name:             "exclude-database",
+			Usage:            "Exclude specified database from dump. Can be specified multiple times.",
 			ConfigPathPrefix: "dump.options",
 			BindToConfig:     true,
 			Type:             cmd.FlagTypeStringSlice,
@@ -107,6 +123,33 @@ var (
 			Type:             cmd.FlagTypeString,
 			IsRequired:       false,
 			Default:          "",
+		},
+		{
+			Name:             "jobs",
+			Usage:            "Number of parallel jobs to use for dump.",
+			ConfigPathPrefix: "dump.options",
+			BindToConfig:     true,
+			Type:             cmd.FlagTypeInt,
+			IsRequired:       false,
+			Default:          1,
+		},
+		{
+			Name:             "compress",
+			Usage:            "Compress the dump output.",
+			ConfigPathPrefix: "dump.options",
+			BindToConfig:     true,
+			Type:             cmd.FlagTypeBool,
+			IsRequired:       false,
+			Default:          true,
+		},
+		{
+			Name:             "pgzip",
+			Usage:            "Use pgzip for compression.",
+			ConfigPathPrefix: "dump.options",
+			BindToConfig:     true,
+			Type:             cmd.FlagTypeBool,
+			IsRequired:       false,
+			Default:          true,
 		},
 	}
 

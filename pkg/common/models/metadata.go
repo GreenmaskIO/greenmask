@@ -84,36 +84,95 @@ type DataSectionEntry struct {
 	TaskID         TaskID     `json:"task_id"`
 }
 
-type Metadata struct {
-	Engine                string                  `yaml:"engine" json:"engine"`
-	StartedAt             time.Time               `yaml:"started_at" json:"started_at"`
-	CompletedAt           time.Time               `yaml:"completed_at" json:"completed_at"`
-	OriginalSize          int64                   `yaml:"original_size" json:"original_size"`
-	CompressedSize        int64                   `yaml:"compressed_size" json:"compressed_size"`
+type DataDumpMetadata struct {
 	Transformers          []TableConfig           `yaml:"transformers" json:"transformers"`
-	DatabaseSchema        []Table                 `yaml:"database_schema" json:"database_schema"`
 	KindsTopologicalOrder map[ObjectKind][]TaskID `yaml:"kinds_topological_order" json:"kinds_topological_order"`
 	DumpStat              DumpStat                `yaml:"dump_stat" json:"dump_stat"`
-	Description           string                  `yaml:"description" json:"description"`
-	Tags                  []string                `yaml:"tags" json:"tags"`
-	DatabaseName          string                  `yaml:"database_name" json:"database_name"`
+	OriginalSize          int64                   `yaml:"original_size" json:"original_size"`
+	CompressedSize        int64                   `yaml:"compressed_size" json:"compressed_size"`
 }
 
-func NewMetadata(
-	engine Engine,
-	dumpStat DumpStat,
-	startedAt time.Time,
-	completedAt time.Time,
+func NewDataDumpMetadata(
 	transformers []TableConfig,
-	databaseSchema []Table,
-	databaseName string,
-	tags []string,
-	description string,
-) Metadata {
+	kindsTopologicalOrder map[ObjectKind][]TaskID,
+	dumpStat DumpStat,
+) *DataDumpMetadata {
+	if len(dumpStat.TaskStats) == 0 {
+		return nil
+	}
 	var originalSize, compressedSize int64
 	for _, stat := range dumpStat.TaskStats {
 		originalSize += stat.ObjectStat.OriginalSize
 		compressedSize += stat.ObjectStat.CompressedSize
+	}
+	return &DataDumpMetadata{
+		Transformers:          transformers,
+		KindsTopologicalOrder: kindsTopologicalOrder,
+		DumpStat:              dumpStat,
+		OriginalSize:          originalSize,
+		CompressedSize:        compressedSize,
+	}
+}
+
+type SchemaDumpMetadata struct {
+	DumpedDatabaseSchema []DumpedDatabaseSchemaStat `yaml:"dumped_database_schema" json:"dumped_database_schema"`
+	OriginalSize         int64                      `yaml:"original_size" json:"original_size"`
+	CompressedSize       int64                      `yaml:"compressed_size" json:"compressed_size"`
+}
+
+func NewSchemaDumpMetadata(
+	dumpedDatabaseSchema []DumpedDatabaseSchemaStat,
+) *SchemaDumpMetadata {
+	if len(dumpedDatabaseSchema) == 0 {
+		return nil
+	}
+	var originalSize, compressedSize int64
+	for _, schemaStat := range dumpedDatabaseSchema {
+		originalSize += schemaStat.OriginalSize
+		compressedSize += schemaStat.CompressedSize
+	}
+	return &SchemaDumpMetadata{
+		DumpedDatabaseSchema: dumpedDatabaseSchema,
+		OriginalSize:         originalSize,
+		CompressedSize:       compressedSize,
+	}
+}
+
+type Metadata struct {
+	Engine         string              `yaml:"engine" json:"engine"`
+	StartedAt      time.Time           `yaml:"started_at" json:"started_at"`
+	CompletedAt    time.Time           `yaml:"completed_at" json:"completed_at"`
+	OriginalSize   int64               `yaml:"original_size" json:"original_size"`
+	CompressedSize int64               `yaml:"compressed_size" json:"compressed_size"`
+	Description    string              `yaml:"description" json:"description"`
+	Tags           []string            `yaml:"tags" json:"tags"`
+	Introspection  []Table             `yaml:"introspection" json:"introspection"`
+	DataDump       *DataDumpMetadata   `yaml:"data_dump" json:"data_dump"`
+	SchemaDump     *SchemaDumpMetadata `yaml:"schema_dump" json:"schema_dump"`
+	Databases      []string            `yaml:"databases" json:"databases"`
+}
+
+func NewMetadata(
+	engine Engine,
+	startedAt time.Time,
+	completedAt time.Time,
+	description string,
+	tags []string,
+	introspection []Table,
+	dataDump *DataDumpMetadata,
+	schemaDump *SchemaDumpMetadata,
+	databases []string,
+) Metadata {
+	var originalSize, compressedSize int64
+
+	if dataDump != nil {
+		originalSize += dataDump.OriginalSize
+		compressedSize += dataDump.CompressedSize
+	}
+
+	if schemaDump != nil {
+		originalSize += schemaDump.OriginalSize
+		compressedSize += schemaDump.CompressedSize
 	}
 
 	return Metadata{
@@ -122,11 +181,11 @@ func NewMetadata(
 		CompletedAt:    completedAt,
 		OriginalSize:   originalSize,
 		CompressedSize: compressedSize,
-		Transformers:   transformers,
-		DatabaseSchema: databaseSchema,
-		DumpStat:       dumpStat,
-		DatabaseName:   databaseName,
 		Tags:           tags,
 		Description:    description,
+		Introspection:  introspection,
+		DataDump:       dataDump,
+		SchemaDump:     schemaDump,
+		Databases:      databases,
 	}
 }

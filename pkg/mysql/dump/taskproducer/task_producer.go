@@ -253,6 +253,9 @@ func (tp *TaskProducer) Produce(
 	tableIDAffectedColumns := make(map[models.ObjectID][]int)
 	res := make([]interfaces.Dumper, 0, len(tablesContext))
 	for i := range tablesContext {
+		if !tp.filter.IsDataAllowed(*tablesContext[i].Table) || !tablesContext[i].Table.NeedDumpData {
+			continue
+		}
 		if !tablesContext[i].HasTransformer() && tp.transformedTablesOnly {
 			// Skip non transformed tables for validate command.
 			continue

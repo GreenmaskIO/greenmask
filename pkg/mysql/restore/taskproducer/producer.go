@@ -53,8 +53,8 @@ func New(
 	st interfaces.Storager,
 	opt mysqlrestoreconfig.RestoreOptions,
 ) *Producer {
-	taskIDs := make([]models.TaskID, 0, len(meta.DumpStat.RestorationItems))
-	for taskID := range meta.DumpStat.RestorationItems {
+	taskIDs := make([]models.TaskID, 0, len(meta.DataDump.DumpStat.RestorationItems))
+	for taskID := range meta.DataDump.DumpStat.RestorationItems {
 		taskIDs = append(taskIDs, taskID)
 	}
 	return &Producer{
@@ -89,7 +89,7 @@ func (p *Producer) Task() (interfaces.Restorer, error) {
 		return nil, p.err
 	}
 	taskID := p.taskIDs[p.lastIdx]
-	restorationItem, ok := p.meta.DumpStat.RestorationItems[taskID]
+	restorationItem, ok := p.meta.DataDump.DumpStat.RestorationItems[taskID]
 	if !ok {
 		panic("no restoration item")
 	}
@@ -104,7 +104,7 @@ func (p *Producer) Task() (interfaces.Restorer, error) {
 			restorers.WithWarnings(p.opt.PrintWarnings, p.opt.MaxFetchWarnings),
 		}
 
-		stat := p.meta.DumpStat.TaskStats[taskID]
+		stat := p.meta.DataDump.DumpStat.TaskStats[taskID]
 		switch stat.ObjectStat.Format {
 		case models.DumpFormatInsert:
 			return restorers.NewTableDataRestorerInsert(

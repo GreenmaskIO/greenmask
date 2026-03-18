@@ -9,27 +9,10 @@ import (
 
 	"github.com/olekukonko/tablewriter"
 
-	commonmodels "github.com/greenmaskio/greenmask/pkg/common/models"
 	"github.com/greenmaskio/greenmask/pkg/common/transformers/parameters"
 	"github.com/greenmaskio/greenmask/pkg/common/transformers/registry"
 	"github.com/greenmaskio/greenmask/pkg/config"
 )
-
-type OutputFormat string
-
-const (
-	FormatNameJson OutputFormat = "json"
-	FormatNameText OutputFormat = "text"
-)
-
-func (m OutputFormat) Validate() error {
-	switch m {
-	case FormatNameJson, FormatNameText:
-		return nil
-	default:
-		return fmt.Errorf("format '%s': %w", m, commonmodels.ErrValueValidationFailed)
-	}
-}
 
 const anyTypesValue = "any"
 
@@ -53,12 +36,12 @@ func RunListTransformers(cfg *config.Config, format OutputFormat) error {
 	}
 
 	switch format {
-	case FormatNameJson:
+	case OutputFormatJSON:
 		err := listTransformersJson(registry.DefaultTransformerRegistry)
 		if err != nil {
 			return fmt.Errorf("error listing transformers: %w", err)
 		}
-	case FormatNameText:
+	case OutputFormatText:
 		err := listTransformersText(registry.DefaultTransformerRegistry)
 		if err != nil {
 			return fmt.Errorf("error listing transformers: %w", err)

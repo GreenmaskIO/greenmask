@@ -226,7 +226,10 @@ func (p *ConsistentTxPool) connectSql(ctx context.Context) (*sql.Conn, error) {
 func (p *ConsistentTxPool) prepareWorkerConns(ctx context.Context) error {
 	log.Ctx(ctx).Debug().Msgf("phase 0: preparing %d worker sessions", p.poolSize)
 	p.pool = make([]*workerConn, p.poolSize)
-	cfg, _ := p.cfg.(*mysqlmodels.ConnConfig)
+	cfg, ok := p.cfg.(*mysqlmodels.ConnConfig)
+	if !ok {
+		panic("ConsistentTxPool requires a *mysqlmodels.ConnConfig for worker connection preparation")
+	}
 
 	for i := 0; i < p.poolSize; i++ {
 		// Prepare raw connection

@@ -14,7 +14,7 @@ import (
 	"github.com/olekukonko/tablewriter"
 	"github.com/rs/zerolog/log"
 
-	heartbeat2 "github.com/greenmaskio/greenmask/pkg/common/heartbeat"
+	"github.com/greenmaskio/greenmask/pkg/common/heartbeat"
 	"github.com/greenmaskio/greenmask/pkg/common/interfaces"
 	"github.com/greenmaskio/greenmask/pkg/common/models"
 	"github.com/greenmaskio/greenmask/pkg/common/utils"
@@ -26,18 +26,32 @@ const (
 )
 
 type Filter struct {
-	Tags     []string            `json:"tags"`
-	Statuses []heartbeat2.Status `json:"statuses"`
+	Tags     []string           `json:"tags"`
+	Statuses []heartbeat.Status `json:"statuses"`
+}
+
+type DumpListItem struct {
+	ID             string           `json:"id"`
+	Date           string           `json:"date"`
+	Engine         string           `json:"engine"`
+	Databases      []string         `json:"databases"`
+	Size           int64            `json:"size"`
+	CompressedSize int64            `json:"compressed_size"`
+	Duration       string           `json:"duration"`
+	Transformed    bool             `json:"transformed"`
+	Status         heartbeat.Status `json:"status"`
+	Description    string           `json:"description"`
+	Tags           []string         `json:"tags"`
 }
 
 func NewFilter(tags []string, statuses []string) (*Filter, error) {
-	var statusEnums []heartbeat2.Status
+	var statusEnums []heartbeat.Status
 	for _, statusStr := range statuses {
-		status := heartbeat2.Status(statusStr)
+		status := heartbeat.Status(statusStr)
 		if err := status.Validate(); err != nil {
 			return nil, fmt.Errorf("validate status '%s': %w", statusStr, err)
 		}
-		statusEnums = append(statusEnums, heartbeat2.Status(statusStr))
+		statusEnums = append(statusEnums, heartbeat.Status(statusStr))
 	}
 	return &Filter{
 		Tags:     tags,
@@ -45,7 +59,7 @@ func NewFilter(tags []string, statuses []string) (*Filter, error) {
 	}, nil
 }
 
-func (f *Filter) Match(metadata models.Metadata, status heartbeat2.Status) bool {
+func (f *Filter) Match(metadata models.Metadata, status heartbeat.Status) bool {
 	if len(f.Tags) == 0 && len(f.Statuses) == 0 {
 		return true
 	}
@@ -65,7 +79,7 @@ func (f *Filter) Match(metadata models.Metadata, status heartbeat2.Status) bool 
 }
 
 // RunListDumps - list all dumps in the storage
-func RunListDumps(cfg *config.Config, quiet bool, f *Filter) error {
+func RunListDumps(cfg *config.Config, quiet bool, format OutputFormat, f *Filter) error {
 	ctx := context.Background()
 	ctx = log.Ctx(ctx).With().
 		Str(models.MetaKeyEngine, cfg.Engine).
@@ -91,6 +105,9 @@ func RunListDumps(cfg *config.Config, quiet bool, f *Filter) error {
 	if quiet {
 		return printDumpIDsSorted(ctx, cfg, dirs, f)
 	}
+	if format == OutputFormatJSON {
+		return printDumpJSON(ctx, cfg, dirs, f)
+	}
 	return printDumpTablePretty(ctx, cfg, dirs, f)
 }
 
@@ -112,8 +129,8 @@ func readMetadata(ctx context.Context, st interfaces.Storager) (models.Metadata,
 	return res, nil
 }
 
-func getMetadataAndStatus(ctx context.Context, cfg *config.Config, st interfaces.Storager) (heartbeat2.Status, models.Metadata, error) {
-	r := heartbeat2.NewReader(st).SetStaleTimeout(cfg.Common.HeartbeatInterval)
+func getMetadataAndStatus(ctx context.Context, cfg *config.Config, st interfaces.Storager) (heartbeat.Status, models.Metadata, error) {
+	r := heartbeat.NewReader(st).SetStaleTimeout(cfg.Common.HeartbeatInterval)
 	status, err := r.Read(ctx)
 	if err != nil {
 		return "", models.Metadata{}, fmt.Errorf("read dump status: %w", err)
@@ -121,8 +138,8 @@ func getMetadataAndStatus(ctx context.Context, cfg *config.Config, st interfaces
 	metadata, err := readMetadata(ctx, st)
 	if err != nil {
 		if errors.Is(err, models.ErrFileNotFound) {
-			if status == heartbeat2.StatusDone {
-				return heartbeat2.StatusFailed, models.Metadata{}, nil
+			if status == heartbeat.StatusDone {
+				return heartbeat.StatusFailed, models.Metadata{}, nil
 			}
 			return status, models.Metadata{}, nil
 		}
@@ -156,66 +173,84 @@ func printDumpIDsSorted(ctx context.Context, cfg *config.Config, dirs []interfac
 	return nil
 }
 
-func renderListItem(ctx context.Context, cfg *config.Config, st interfaces.Storager, f *Filter, data *[][]string) error {
+func getDumpInfo(ctx context.Context, cfg *config.Config, st interfaces.Storager, f *Filter) (*DumpListItem, bool, error) {
 	dumpId := st.Dirname()
 	status, metadata, err := getMetadataAndStatus(ctx, cfg, st)
 	if err != nil {
-		return fmt.Errorf("get metadata and status : %w", err)
+		return nil, false, fmt.Errorf("get metadata and status : %w", err)
 	}
 	if !f.Match(metadata, status) {
 		log.Ctx(ctx).Debug().
 			Str("DumpId", dumpId).
 			Msg("dump does not match the filter, skipping")
-		return nil
+		return nil, false, nil
 	}
 
-	var creationDate, dbName, size, compressedSize, duration, transformed string
-	transformed = "false"
-	if status == heartbeat2.StatusDone {
+	var creationDate, duration string
+	var size, compressedSize int64
+	var transformed bool
+	if status == heartbeat.StatusDone {
 		creationDate = metadata.CompletedAt.Format(time.RFC3339)
-		dbName = metadata.DatabaseName
-		size = utils.SizePretty(metadata.OriginalSize)
-		compressedSize = utils.SizePretty(metadata.CompressedSize)
+		size = metadata.OriginalSize
+		compressedSize = metadata.CompressedSize
 		diff := metadata.CompletedAt.Sub(metadata.StartedAt)
 		duration = time.Time{}.Add(diff).Format("15:04:05")
-		if len(metadata.Transformers) > 0 {
-			transformed = "true"
+		if metadata.DataDump != nil && len(metadata.DataDump.Transformers) > 0 {
+			transformed = true
 		}
 	}
 
-	description := metadata.Description
-	if len(description) > 60 {
-		description = description[:57] + "..."
-	}
-
-	*data = append(*data, []string{
-		dumpId,
-		creationDate,
-		metadata.Engine,
-		dbName,
-		size,
-		compressedSize,
-		duration,
-		transformed,
-		string(status),
-		description,
-		strings.Join(metadata.Tags, ", "),
-	})
-	return nil
+	return &DumpListItem{
+		ID:             dumpId,
+		Date:           creationDate,
+		Engine:         metadata.Engine,
+		Databases:      metadata.Databases,
+		Size:           size,
+		CompressedSize: compressedSize,
+		Duration:       duration,
+		Transformed:    transformed,
+		Status:         status,
+		Description:    metadata.Description,
+		Tags:           metadata.Tags,
+	}, true, nil
 }
 
 func printDumpTablePretty(ctx context.Context, cfg *config.Config, dirs []interfaces.Storager, f *Filter) error {
 	var data [][]string
 	for _, backup := range dirs {
 		dumpId := backup.Dirname()
-		if err := renderListItem(ctx, cfg, backup, f, &data); err != nil {
+		info, ok, err := getDumpInfo(ctx, cfg, backup, f)
+		if err != nil {
 			log.Ctx(ctx).
 				Warn().
 				Err(err).
 				Str("Hint", "delete the dump if it's corrupted").
 				Str("DumpId", dumpId).
-				Msg("cannot render dump info, skipping")
+				Msg("cannot get dump info, skipping")
+			continue
 		}
+		if !ok {
+			continue
+		}
+
+		description := info.Description
+		if len(description) > 60 {
+			description = description[:57] + "..."
+		}
+
+		data = append(data, []string{
+			info.ID,
+			info.Date,
+			info.Engine,
+			strings.Join(info.Databases, ", "),
+			utils.SizePretty(info.Size),
+			utils.SizePretty(info.CompressedSize),
+			info.Duration,
+			fmt.Sprintf("%t", info.Transformed),
+			string(info.Status),
+			description,
+			strings.Join(info.Tags, ", "),
+		})
 	}
 	slices.SortFunc(data, func(a, b []string) int {
 		return cmp.Compare(b[0], a[0]) // reverse order by id
@@ -223,11 +258,38 @@ func printDumpTablePretty(ctx context.Context, cfg *config.Config, dirs []interf
 	table := tablewriter.NewWriter(os.Stdout)
 	table.SetHeader([]string{
 		"id", "date", "engine",
-		"database", "size", "compressed size",
+		"databases", "size", "compressed size",
 		"duration", "transformed", "status",
 		"description", "tags",
 	})
 	table.AppendBulk(data)
 	table.Render()
 	return nil
+}
+
+func printDumpJSON(ctx context.Context, cfg *config.Config, dirs []interfaces.Storager, f *Filter) error {
+	var results []*DumpListItem
+	for _, backup := range dirs {
+		dumpId := backup.Dirname()
+		info, ok, err := getDumpInfo(ctx, cfg, backup, f)
+		if err != nil {
+			log.Ctx(ctx).
+				Warn().
+				Err(err).
+				Str("Hint", "delete the dump if it's corrupted").
+				Str("DumpId", dumpId).
+				Msg("cannot get dump info, skipping")
+			continue
+		}
+		if !ok {
+			continue
+		}
+		results = append(results, info)
+	}
+	slices.SortFunc(results, func(a, b *DumpListItem) int {
+		return cmp.Compare(b.ID, a.ID) // reverse order by id
+	})
+	enc := json.NewEncoder(os.Stdout)
+	enc.SetIndent("", "  ")
+	return enc.Encode(results)
 }

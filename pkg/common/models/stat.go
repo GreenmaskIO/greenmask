@@ -64,7 +64,6 @@ func (f DumpFormat) Validate() error {
 }
 
 type DumpStat struct {
-	DatabaseName       string                             `json:"database_name"`
 	RestorationContext RestorationContext                 `json:"restoration_context"`
 	RestorationItems   map[TaskID]RestorationItem         `json:"restoration_items"`
 	TaskStats          map[TaskID]TaskStat                `json:"task_stats"`
@@ -137,4 +136,12 @@ func NewDumpStat(
 		Engine:           engine,
 		ObjectDefinition: objectDefinition,
 	}
+}
+
+type DumpedDatabaseSchemaStat struct {
+	DatabaseName   string      `json:"database_name"`
+	FileName       string      `json:"file_name"`
+	Compression    Compression `json:"compression"`
+	OriginalSize   int64       `json:"original_size"`
+	CompressedSize int64       `json:"compressed_size"`
 }
