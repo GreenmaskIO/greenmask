@@ -21,8 +21,6 @@ import (
 
 	"github.com/greenmaskio/greenmask/pkg/cmdrun"
 	"github.com/greenmaskio/greenmask/pkg/common/cmd"
-	mysqlcommonconfig "github.com/greenmaskio/greenmask/pkg/mysql/config"
-	mysqlconfig "github.com/greenmaskio/greenmask/pkg/mysql/dump/config"
 )
 
 var (
