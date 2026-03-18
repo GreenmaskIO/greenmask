@@ -19,10 +19,11 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/greenmaskio/greenmask/pkg/common/interfaces"
-	"github.com/greenmaskio/greenmask/pkg/common/utils"
 	"github.com/rs/zerolog/log"
 	"golang.org/x/sync/errgroup"
+
+	"github.com/greenmaskio/greenmask/pkg/common/interfaces"
+	"github.com/greenmaskio/greenmask/pkg/common/utils"
 )
 
 const executable = "mysqldump"
@@ -36,13 +37,15 @@ type Dumper struct {
 	executable string
 	opt        options
 	st         interfaces.Storager
+	cmd        utils.CmdProducer
 }
 
-func New(st interfaces.Storager, opt options) *Dumper {
+func New(st interfaces.Storager, opt options, cmd utils.CmdProducer) *Dumper {
 	return &Dumper{
 		executable: executable,
 		opt:        opt,
 		st:         st,
+		cmd:        cmd,
 	}
 }
 
@@ -72,7 +75,11 @@ func (d *Dumper) DumpSchema(ctx context.Context) error {
 					Msgf("closing output writer: %v", err)
 			}
 		}(w)
-		if err := utils.NewCmdRunner(d.executable, params, env).ExecuteCmdAndWriteStdout(ctx, w); err != nil {
+		cmd, err := d.cmd.Produce(d.executable, params, env, nil)
+		if err != nil {
+			return fmt.Errorf("cannot produce mysqldump command: %w", err)
+		}
+		if err := cmd.ExecuteCmdAndWriteStdout(ctx, w); err != nil {
 			return fmt.Errorf("cannot run mysqldump: %w", err)
 		}
 		return nil

@@ -20,11 +20,12 @@ import (
 
 	"github.com/greenmaskio/greenmask/pkg/common/interfaces"
 	"github.com/greenmaskio/greenmask/pkg/common/transformers/registry"
+	"github.com/greenmaskio/greenmask/pkg/common/utils"
 	"github.com/greenmaskio/greenmask/pkg/config"
 )
 
 func RunDump(ctx context.Context, cfg *config.Config, st interfaces.Storager, opts ...Option) error {
-	dump, err := NewDump(cfg, registry.DefaultTransformerRegistry, st, opts...)
+	dump, err := NewDump(cfg, registry.DefaultTransformerRegistry, st, utils.NewDefaultCmdProducer(), opts...)
 	if err != nil {
 		return fmt.Errorf("init dump process: %w", err)
 	}

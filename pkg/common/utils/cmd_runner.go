@@ -28,6 +28,41 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
+// CmdRunnerInterface defines the standard interface for executing commands
+// that matches the existing CmdRunner struct.
+type CmdRunnerInterface interface {
+	// ExecuteCmdAndForwardStdout executes the command and forwards its stdout to the log.
+	// It blocks until the command completes or the context is cancelled.
+	ExecuteCmdAndForwardStdout(ctx context.Context) error
+	// ExecuteCmdAndWriteStdout executes the command and writes its stdout to the provided writer.
+	// It blocks until the command completes or the context is cancelled.
+	// If the writer returns an error, the command execution will be terminated, and the error will be returned.
+	ExecuteCmdAndWriteStdout(ctx context.Context, w io.Writer) error
+	// ExecuteCmd executes the command using the specified mode (forwarder or storage writer).
+	// It blocks until the command completes or the context is cancelled.
+	// If a writer is provided and it returns an error, the command execution will be terminated,
+	// and the error will be returned.
+	ExecuteCmd(ctx context.Context, w io.Writer, mode int) error
+}
+
+// CmdProducer defines an interface for providing a CmdRunnerInterface instance
+// initialized with the necessary parameters but without immediately running it.
+type CmdProducer interface {
+	Produce(executable string, args []string, env []string, stdin io.Reader) (CmdRunnerInterface, error)
+}
+
+// DefaultCmdProducer is a default implementation of the CmdProducer interface
+// that returns the existing CmdRunner struct (which implements CmdRunnerInterface).
+type DefaultCmdProducer struct{}
+
+func NewDefaultCmdProducer() *DefaultCmdProducer {
+	return &DefaultCmdProducer{}
+}
+
+func (d *DefaultCmdProducer) Produce(executable string, args []string, env []string, stdin io.Reader) (CmdRunnerInterface, error) {
+	return NewCmdRunnerWithStdin(executable, args, env, stdin), nil
+}
+
 const (
 	cmdRunnerStdoutReaderBufSize = 1024
 
@@ -68,7 +103,7 @@ func (c *CmdRunner) ExecuteCmdAndWriteStdout(ctx context.Context, w io.Writer) e
 	return c.ExecuteCmd(ctx, w, cmdModeStdoutStorageWriter)
 }
 
-// ExecuteCmdAndWriteStdout executes the command and writes stdout to the provided writer and logs stderr
+// ExecuteCmd executes the command and writes stdout to the provided writer and logs stderr
 // It returns an error if the command execution fails.
 func (c *CmdRunner) ExecuteCmd(ctx context.Context, w io.Writer, mode int) error {
 	log.Ctx(ctx).

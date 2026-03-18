@@ -25,6 +25,7 @@ import (
 	heartbeat2 "github.com/greenmaskio/greenmask/pkg/common/heartbeat"
 	"github.com/greenmaskio/greenmask/pkg/common/interfaces"
 	commonmodels "github.com/greenmaskio/greenmask/pkg/common/models"
+	"github.com/greenmaskio/greenmask/pkg/common/utils"
 	"github.com/greenmaskio/greenmask/pkg/config"
 )
 
@@ -134,7 +135,7 @@ func RunRestore(
 	if err != nil {
 		return fmt.Errorf("get storage by dumpID: %w", err)
 	}
-	if err := NewRestore(cfg, st, dumpID).Run(ctx); err != nil {
+	if err := NewRestore(cfg, st, dumpID, utils.NewDefaultCmdProducer()).Run(ctx); err != nil {
 		return fmt.Errorf("run restore process: %w", err)
 	}
 	return nil
