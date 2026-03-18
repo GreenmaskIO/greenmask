@@ -61,6 +61,8 @@ type TaskProducer struct {
 	compressionEnabled    bool
 	compressionPgzip      bool
 	transformedTablesOnly bool
+	dumpFormat            models.DumpFormat
+	insertBatchSize       int
 }
 
 func WithFilter(
@@ -106,6 +108,22 @@ func WithCompressionPgzip() Option {
 func WithTransformedTablesOnly() Option {
 	return func(tp *TaskProducer) error {
 		tp.transformedTablesOnly = true
+		return nil
+	}
+}
+
+func WithDumpFormat(format models.DumpFormat) Option {
+	return func(tp *TaskProducer) error {
+		if format != "" {
+			tp.dumpFormat = format
+		}
+		return nil
+	}
+}
+
+func WithInsertBatchSize(size int) Option {
+	return func(tp *TaskProducer) error {
+		tp.insertBatchSize = size
 		return nil
 	}
 }
@@ -185,10 +203,12 @@ func (tp *TaskProducer) initTableDumper(
 ) (interfaces.Dumper, error) {
 	tr := dumpstreamers.NewTableDataReader(tableContext.Table, tp.connConfig, tableContext.Query)
 	tr.SetTxPool(tp.txPool)
-	tw := dumpstreamers.NewTableDataWriter(*tableContext.Table, tp.st, dumpstreamers.CompressionSettings{
-		Enabled: tp.compressionEnabled,
-		Pgzip:   tp.compressionPgzip,
-	})
+	tw := dumpstreamers.NewTableDataWriter(*tableContext.Table, tp.st,
+		dumpstreamers.WithCompression(tp.compressionEnabled),
+		dumpstreamers.WithPgzip(tp.compressionPgzip),
+		dumpstreamers.WithFormat(tp.dumpFormat),
+		dumpstreamers.WithInsertBatchSize(tp.insertBatchSize),
+	)
 	rawRecord := rawrecord.NewRawRecord(len(tableContext.Table.Columns), dbmsdriver.NullValueSeq)
 	r := record.NewRecord(rawRecord, tableContext.TableDriver)
 	p := pipeline.NewTransformationPipeline(&tableContext)
@@ -211,10 +231,12 @@ func (tp *TaskProducer) initTableRawDumper(
 ) interfaces.Dumper {
 	tr := dumpstreamers.NewTableDataReader(tableContext.Table, tp.connConfig, tableContext.Query)
 	tr.SetTxPool(tp.txPool)
-	tw := dumpstreamers.NewTableDataWriter(*tableContext.Table, tp.st, dumpstreamers.CompressionSettings{
-		Enabled: tp.compressionEnabled,
-		Pgzip:   tp.compressionPgzip,
-	})
+	tw := dumpstreamers.NewTableDataWriter(*tableContext.Table, tp.st,
+		dumpstreamers.WithCompression(tp.compressionEnabled),
+		dumpstreamers.WithPgzip(tp.compressionPgzip),
+		dumpstreamers.WithFormat(tp.dumpFormat),
+		dumpstreamers.WithInsertBatchSize(tp.insertBatchSize),
+	)
 	return dumpers.NewTableRawDumper(objectID, tr, tw, tableContext.Table)
 }
 

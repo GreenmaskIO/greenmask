@@ -33,20 +33,22 @@ import (
 const dumperTypeTableData = "table_restorer"
 
 var (
-	_ interfaces.Restorer = (*TableDataRestorer)(nil)
+	_ interfaces.Restorer = (*TableDataRestorerCsv)(nil)
 )
 
-type TableDataRestorer struct {
-	table        *models.Table
-	meta         models.RestorationItem
-	connConfig   config.ConnectionOpts
-	st           interfaces.Storager
-	taskResolver interfaces.TaskMapper
-	compress     bool
-	pgzip        bool
+type TableDataRestorerCsv struct {
+	table            *models.Table
+	meta             models.RestorationItem
+	connConfig       config.ConnectionOpts
+	st               interfaces.Storager
+	taskResolver     interfaces.TaskMapper
+	compress         bool
+	pgzip            bool
+	printWarnings    bool
+	maxFetchWarnings int
 }
 
-func (r *TableDataRestorer) Meta() map[string]any {
+func (r *TableDataRestorerCsv) Meta() map[string]any {
 	return map[string]any{
 		models.MetaKeyTableSchema:      r.table.Schema,
 		models.MetaKeyTableName:        r.table.Name,
@@ -54,30 +56,48 @@ func (r *TableDataRestorer) Meta() map[string]any {
 	}
 }
 
-func (r *TableDataRestorer) DebugInfo() string {
+func (r *TableDataRestorerCsv) DebugInfo() string {
 	return utils2.GetUniqueTaskID(dumperTypeTableData, r.table.Schema, r.table.Name)
 }
 
-type Option func(v *TableDataRestorer) error
+type TableRestorerConfig struct {
+	Compress         bool
+	Pgzip            bool
+	PrintWarnings    bool
+	MaxFetchWarnings int
+}
+
+type Option func(v *TableRestorerConfig) error
 
 func WithCompression(
 	enabled bool,
 	pgzip bool,
 ) Option {
-	return func(v *TableDataRestorer) error {
-		v.compress = enabled
-		v.pgzip = pgzip
+	return func(v *TableRestorerConfig) error {
+		v.Compress = enabled
+		v.Pgzip = pgzip
 		return nil
 	}
 }
 
-func NewTableDataRestorer(
+func WithWarnings(
+	printWarnings bool,
+	maxFetch int,
+) Option {
+	return func(v *TableRestorerConfig) error {
+		v.PrintWarnings = printWarnings
+		v.MaxFetchWarnings = maxFetch
+		return nil
+	}
+}
+
+func NewTableDataRestorerCsv(
 	meta models.RestorationItem,
 	connConfig config.ConnectionOpts,
 	st interfaces.Storager,
 	taskResolver interfaces.TaskMapper,
 	opts ...Option,
-) (*TableDataRestorer, error) {
+) (*TableDataRestorerCsv, error) {
 	var table models.Table
 	if err := json.Unmarshal(meta.ObjectDefinition, &table); err != nil {
 		return nil, err
@@ -85,17 +105,23 @@ func NewTableDataRestorer(
 	if err := table.Validate(); err != nil {
 		return nil, fmt.Errorf("validate table: %w", err)
 	}
-	res := &TableDataRestorer{
-		table:        &table,
-		meta:         meta,
-		connConfig:   connConfig,
-		st:           st,
-		taskResolver: taskResolver,
-	}
+	cfg := &TableRestorerConfig{}
 	for _, opt := range opts {
-		if err := opt(res); err != nil {
+		if err := opt(cfg); err != nil {
 			return nil, fmt.Errorf("options failed: %w", err)
 		}
+	}
+
+	res := &TableDataRestorerCsv{
+		table:            &table,
+		meta:             meta,
+		connConfig:       connConfig,
+		st:               st,
+		taskResolver:     taskResolver,
+		compress:         cfg.Compress,
+		pgzip:            cfg.Pgzip,
+		printWarnings:    cfg.PrintWarnings,
+		maxFetchWarnings: cfg.MaxFetchWarnings,
 	}
 	return res, nil
 }
@@ -104,35 +130,11 @@ func getFileHandlerName(t models.Table) string {
 	return fmt.Sprintf("%s__%s", t.Schema, t.Name)
 }
 
-func (r *TableDataRestorer) showWarnings(ctx context.Context, db *sql.DB) error {
-	rows, err := db.Query("SHOW WARNINGS;")
-	if err != nil {
-		return fmt.Errorf("execute query: %w", err)
-	}
-	defer func() {
-		if err := rows.Close(); err != nil {
-			log.Ctx(ctx).Error().Err(err).Msg("failed to close rows")
-		}
-	}()
-
-	for rows.Next() {
-		var level, code, message string
-		if err := rows.Scan(&level, &code, &message); err != nil {
-			return fmt.Errorf("scan row: %w", err)
-		}
-		log.Ctx(ctx).Warn().
-			Str("MysqlLevel", level).
-			Str("MysqlCode", code).
-			Str("MysqlWarning", message).
-			Msg("warning from Mysql server after restoring table data")
-	}
-	if err := rows.Err(); err != nil {
-		return fmt.Errorf("iterate rows: %w", err)
-	}
-	return nil
+func (r *TableDataRestorerCsv) showWarnings(ctx context.Context, db *sql.DB) error {
+	return showWarnings(ctx, db, r.printWarnings, r.maxFetchWarnings)
 }
 
-func (r *TableDataRestorer) restoreTable(ctx context.Context, db *sql.DB) error {
+func (r *TableDataRestorerCsv) restoreTable(ctx context.Context, db *sql.DB) error {
 	// TODO: REPLACE option
 	// YOU MIGHT WANT TO USE LOAD DATA LOCAL INFILE 'Reader::%s' REPLACE
 	// I think you should implement a replace option in the config.
@@ -171,7 +173,7 @@ func (r *TableDataRestorer) restoreTable(ctx context.Context, db *sql.DB) error 
 	return nil
 }
 
-func (r *TableDataRestorer) Init(ctx context.Context) error {
+func (r *TableDataRestorerCsv) Init(ctx context.Context) error {
 	file, err := r.st.GetObject(ctx, r.meta.Filename)
 	if err != nil {
 		return fmt.Errorf("open table data file %s: %w", r.meta.Filename, err)
@@ -195,7 +197,7 @@ func (r *TableDataRestorer) Init(ctx context.Context) error {
 }
 
 // setupConnection - set up the MySQL connection to disable or enable some settings on the session level.
-func (r *TableDataRestorer) setupConnection(ctx context.Context, db *sql.DB) error { //nolint:unused
+func (r *TableDataRestorerCsv) setupConnection(ctx context.Context, db *sql.DB) error { //nolint:unused
 	// TODO: Add setup connections commands like disabling foreign key checks, unique checks, etc.
 	//       and enable them back in the end.
 	_, err := db.ExecContext(ctx, "SET FOREIGN_KEY_CHECKS=1;")
@@ -205,7 +207,7 @@ func (r *TableDataRestorer) setupConnection(ctx context.Context, db *sql.DB) err
 	return nil
 }
 
-func (r *TableDataRestorer) Restore(ctx context.Context) error {
+func (r *TableDataRestorerCsv) Restore(ctx context.Context) error {
 	ctx = log.Ctx(ctx).With().
 		Str(models.MetaKeyTableSchema, r.table.Schema).
 		Str(models.MetaKeyTableName, r.table.Name).
@@ -244,7 +246,7 @@ func (r *TableDataRestorer) Restore(ctx context.Context) error {
 	return nil
 }
 
-func (r *TableDataRestorer) Close(_ context.Context) error {
+func (r *TableDataRestorerCsv) Close(_ context.Context) error {
 	r.taskResolver.SetTaskCompleted(r.meta.TaskID)
 	mysql.DeregisterReaderHandler(getFileHandlerName(*r.table))
 	return nil

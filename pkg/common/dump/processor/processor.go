@@ -39,17 +39,12 @@ type taskProducer interface {
 	)
 }
 
-type schemaDumper interface {
-	DumpSchema(ctx context.Context) error
-}
-
 type DefaultDumpProcessor struct {
-	tp           taskProducer
-	jobs         int
-	taskList     []interfaces.Dumper
-	schemaDumper schemaDumper
-	taskStats    map[models.TaskID]models.TaskStat
-	mx           sync.Mutex
+	tp        taskProducer
+	jobs      int
+	taskList  []interfaces.Dumper
+	taskStats map[models.TaskID]models.TaskStat
+	mx        sync.Mutex
 }
 
 type Option func(*DefaultDumpProcessor) error

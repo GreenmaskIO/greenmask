@@ -172,5 +172,12 @@ type Dump struct {
 }
 
 func NewDump() Dump {
-	return Dump{}
+	return Dump{
+		MysqlConfig: MysqlDumpConfig{
+			Options: mysqlconfig.DumpOptions{
+				InsertBatchSize: mysqlconfig.DefaultInsertBatchSize,
+				DumpFormat:      commonmodels.DumpFormatInsert,
+			},
+		},
+	}
 }

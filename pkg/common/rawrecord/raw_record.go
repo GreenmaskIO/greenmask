@@ -23,17 +23,29 @@ import (
 )
 
 type RawRecord struct {
-	columnCount  int
-	row          [][]byte
-	nullValueSeq []byte
+	columnCount         int
+	row                 [][]byte
+	nullValueSeq        []byte
+	escapedNullValueSeq []byte
 }
 
 func NewRawRecord(columnCount int, nullValueSeq []byte) *RawRecord {
 	return &RawRecord{
-		columnCount:  columnCount,
-		row:          make([][]byte, columnCount),
-		nullValueSeq: nullValueSeq,
+		columnCount:         columnCount,
+		row:                 make([][]byte, columnCount),
+		nullValueSeq:        nullValueSeq,
+		escapedNullValueSeq: escapeNullValueSeq(nullValueSeq),
 	}
+}
+
+func escapeNullValueSeq(nullValueSeq []byte) []byte {
+	if len(nullValueSeq) == 0 {
+		return nil
+	}
+	res := make([]byte, len(nullValueSeq)+1)
+	res[0] = '\\'
+	copy(res[1:], nullValueSeq)
+	return res
 }
 
 func (c *RawRecord) GetColumn(idx int) (*models.ColumnRawValue, error) {
@@ -42,6 +54,9 @@ func (c *RawRecord) GetColumn(idx int) (*models.ColumnRawValue, error) {
 	}
 	if bytes.Equal(c.nullValueSeq, c.row[idx]) {
 		return models.NewColumnRawValue(nil, true), nil
+	}
+	if bytes.Equal(c.escapedNullValueSeq, c.row[idx]) {
+		return models.NewColumnRawValue(c.nullValueSeq, false), nil
 	}
 	return models.NewColumnRawValue(c.row[idx], false), nil
 }
@@ -52,6 +67,10 @@ func (c *RawRecord) SetColumn(idx int, v *models.ColumnRawValue) error {
 	}
 	if v.IsNull {
 		c.row[idx] = utils.CopyAndExtendIfNeeded(c.row[idx], c.nullValueSeq)
+		return nil
+	}
+	if bytes.Equal(v.Data, c.nullValueSeq) {
+		c.row[idx] = utils.CopyAndExtendIfNeeded(c.row[idx], c.escapedNullValueSeq)
 		return nil
 	}
 	c.row[idx] = utils.CopyAndExtendIfNeeded(c.row[idx], v.Data)
