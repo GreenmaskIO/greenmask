@@ -35,6 +35,7 @@ var (
 	errConnectionWasNotOpened        = errors.New("connection was not opened")
 	errDataChannelUnexpectedlyClosed = errors.New("data channel was not closed")
 	errUnknownFieldType              = errors.New("unknown field type")
+	errRowColumnCountMismatch        = errors.New("row column count mismatch")
 )
 
 type TableDataReader struct {
@@ -127,6 +128,10 @@ func (r *TableDataReader) stream(ctx context.Context) func() error {
 		var lineNum int64
 		err := r.tx.RawConn().ExecuteSelectStreaming(r.query, &result, func(row []mysql.FieldValue) error {
 			lineNum++
+			if len(row) != r.columnLength {
+				return fmt.Errorf("%w: expected %d, got %d at line %d for table %s",
+					errRowColumnCountMismatch, r.columnLength, len(row), lineNum, r.table.Name)
+			}
 			for i := range row {
 				v, err := fieldValueToString(row[i])
 				if err != nil {

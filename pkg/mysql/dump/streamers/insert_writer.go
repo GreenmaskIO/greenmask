@@ -26,7 +26,15 @@ import (
 	"github.com/greenmaskio/greenmask/pkg/mysql/dbmsdriver"
 )
 
-const DefaultInsertBatchSize = 100
+const (
+	DefaultInsertBatchSize = 100
+	// defaultReservedPacketBytes is the amount of bytes we reserve for safety margin
+	// in each INSERT statement to avoid exceeding max_allowed_packet.
+	defaultReservedPacketBytes = 256
+	// maxReservedBytesRatio is the maximum ratio of reserved bytes to total statement size.
+	// If reserved bytes exceed this ratio, we don't use them (safety margin is disabled).
+	maxReservedBytesRatio = 0.05
+)
 
 var (
 	// rowSeparatorBytes and insertTerminatorBytes are preallocated to avoid
@@ -36,17 +44,19 @@ var (
 )
 
 type InsertWriter struct {
-	table         *models.Table
-	w             io.Writer
-	vals          []interface{}
-	rowTemplate   string
-	headerWritten bool
-	batchSize     int
-	rowsCount     int
-	header        []byte
+	table                  *models.Table
+	w                      io.Writer
+	vals                   []interface{}
+	rowTemplate            string
+	headerWritten          bool
+	batchSize              int
+	maxInsertStatementSize int
+	rowsCount              int
+	currentStatementSize   int
+	header                 []byte
 }
 
-func NewInsertWriter(table models.Table, w io.Writer, batchSize int) *InsertWriter {
+func NewInsertWriter(table models.Table, w io.Writer, batchSize int, maxInsertStatementSize int) *InsertWriter {
 	placeholders := make([]string, len(table.Columns))
 	for i := range table.Columns {
 		placeholders[i] = "?"
@@ -67,12 +77,13 @@ func NewInsertWriter(table models.Table, w io.Writer, batchSize int) *InsertWrit
 	headerStr += ") VALUES \n"
 
 	return &InsertWriter{
-		table:       &table,
-		w:           w,
-		vals:        make([]interface{}, len(table.Columns)),
-		rowTemplate: rowTemplate,
-		batchSize:   batchSize,
-		header:      []byte(headerStr),
+		table:                  &table,
+		w:                      w,
+		vals:                   make([]interface{}, len(table.Columns)),
+		rowTemplate:            rowTemplate,
+		batchSize:              batchSize,
+		maxInsertStatementSize: maxInsertStatementSize,
+		header:                 []byte(headerStr),
 	}
 }
 
@@ -80,23 +91,13 @@ func (iw *InsertWriter) writeHeader() error {
 	if _, err := iw.w.Write(iw.header); err != nil {
 		return err
 	}
+	iw.currentStatementSize = len(iw.header)
 	return nil
 }
 
 func (iw *InsertWriter) Write(row [][]byte) error {
-	if !iw.headerWritten {
-		if err := iw.writeHeader(); err != nil {
-			return fmt.Errorf("write header: %w", err)
-		}
-		iw.headerWritten = true
-	} else {
-		if _, err := iw.w.Write(rowSeparatorBytes); err != nil {
-			return fmt.Errorf("write row separator: %w", err)
-		}
-	}
-
 	for i, val := range row {
-		if val == nil || bytes.Equal(val, dbmsdriver.NullValueSeq) {
+		if bytes.Equal(val, dbmsdriver.NullValueSeq) {
 			iw.vals[i] = nil
 		} else {
 			iw.vals[i] = string(val)
@@ -108,9 +109,44 @@ func (iw *InsertWriter) Write(row [][]byte) error {
 		return fmt.Errorf("interpolate row: %w", err)
 	}
 
+	rowSize := len(interpolated)
+	if iw.headerWritten {
+		rowSize += len(rowSeparatorBytes)
+	}
+
+	// Check if we need to start a new statement due to size limit
+	reservedBytes := 0
+	if iw.maxInsertStatementSize > 0 {
+		if float64(defaultReservedPacketBytes)/float64(iw.maxInsertStatementSize) <= maxReservedBytesRatio {
+			reservedBytes = defaultReservedPacketBytes
+		}
+	}
+
+	if iw.maxInsertStatementSize > 0 && iw.headerWritten && iw.currentStatementSize+rowSize+len(insertTerminatorBytes) > iw.maxInsertStatementSize-reservedBytes {
+		if _, err := iw.w.Write(insertTerminatorBytes); err != nil {
+			return fmt.Errorf("terminate insert: %w", err)
+		}
+		iw.headerWritten = false
+		iw.rowsCount = 0
+		iw.currentStatementSize = 0
+	}
+
+	if !iw.headerWritten {
+		if err := iw.writeHeader(); err != nil {
+			return fmt.Errorf("write header: %w", err)
+		}
+		iw.headerWritten = true
+	} else {
+		if _, err := iw.w.Write(rowSeparatorBytes); err != nil {
+			return fmt.Errorf("write row separator: %w", err)
+		}
+		iw.currentStatementSize += len(rowSeparatorBytes)
+	}
+
 	if _, err := fmt.Fprint(iw.w, interpolated); err != nil {
 		return fmt.Errorf("write row: %w", err)
 	}
+	iw.currentStatementSize += len(interpolated)
 
 	iw.rowsCount++
 
@@ -120,6 +156,7 @@ func (iw *InsertWriter) Write(row [][]byte) error {
 		}
 		iw.headerWritten = false
 		iw.rowsCount = 0
+		iw.currentStatementSize = 0
 	}
 
 	return nil

@@ -41,18 +41,19 @@ type RowWriter interface {
 type Option func(*TableDataWriter)
 
 type TableDataWriter struct {
-	st              interfaces.Storager
-	fileName        string
-	rowWriter       RowWriter
-	cw              utils.CountWriteCloser
-	cr              utils.CountReadCloser
-	eg              *errgroup.Group
-	cancel          context.CancelFunc
-	table           *models.Table
-	enabled         bool
-	pgzip           bool
-	format          models.DumpFormat
-	insertBatchSize int
+	st                     interfaces.Storager
+	fileName               string
+	rowWriter              RowWriter
+	cw                     utils.CountWriteCloser
+	cr                     utils.CountReadCloser
+	eg                     *errgroup.Group
+	cancel                 context.CancelFunc
+	table                  *models.Table
+	enabled                bool
+	pgzip                  bool
+	format                 models.DumpFormat
+	insertBatchSize        int
+	maxInsertStatementSize int
 }
 
 func NewTableDataWriter(
@@ -96,6 +97,12 @@ func WithInsertBatchSize(size int) Option {
 	}
 }
 
+func WithMaxInsertStatementSize(size int) Option {
+	return func(t *TableDataWriter) {
+		t.maxInsertStatementSize = size
+	}
+}
+
 func WithCompression(enabled bool) Option {
 	return func(t *TableDataWriter) {
 		t.enabled = enabled
@@ -125,7 +132,7 @@ func (t *TableDataWriter) Open(ctx context.Context) error {
 	}
 
 	if t.format == models.DumpFormatInsert {
-		t.rowWriter = NewInsertWriter(*t.table, t.cw, t.insertBatchSize)
+		t.rowWriter = NewInsertWriter(*t.table, t.cw, t.insertBatchSize, t.maxInsertStatementSize)
 	} else {
 		t.rowWriter = csv.NewWriter(t.cw)
 	}
