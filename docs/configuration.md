@@ -10,6 +10,56 @@ The configuration is organized into six sections:
   scripts.
 * `custom_transformers` — definitions of the custom transformers that interact through `stdin` and `stdout`. Once a custom transformer is configured, it becomes accessible via the `greenmask list-transformers` command.
 
+## Environment Variables in Configuration
+
+Greenmask supports inline environment variable interpolation in YAML configuration file values using
+the `${VAR}` and `${VAR:-default}` syntax. This lets you store config files in version control
+without hardcoding secrets or environment-specific values.
+
+### Syntax
+
+| Syntax | Description |
+|---|---|
+| `${VAR}` | Replaced with the value of `VAR`. Greenmask exits with an error if `VAR` is unset or empty. |
+| `${VAR:-default}` | Replaced with the value of `VAR`, or `"default"` if `VAR` is unset or empty. |
+| `${VAR:-}` | Replaced with an empty string when `VAR` is unset or empty (explicit empty default). |
+| `$${VAR}` | Escape sequence — produces the literal string `${VAR}` without any env lookup. |
+
+### Example
+
+```yaml title="config with environment variable interpolation"
+log:
+  level: ${LOG_LEVEL:-info}
+  format: ${LOG_FORMAT:-text}
+
+storage:
+  type: "s3"
+  s3:
+    endpoint: "${S3_ENDPOINT:-http://localhost:9000}"
+    bucket: "${S3_BUCKET}"
+    region: "${AWS_REGION:-us-east-1}"
+    access_key_id: "${AWS_ACCESS_KEY_ID}"
+    secret_access_key: "${AWS_SECRET_ACCESS_KEY}"
+
+dump:
+  pg_dump_options:
+    dbname: "host=${DB_HOST:-localhost} user=${DB_USER:-postgres} dbname=${DB_NAME:-mydb}"
+```
+
+### Notes
+
+- Interpolation is applied to the entire config file, including transformer `params`.
+- Variable values that contain YAML special characters (`:`, `{`, `}`, `#`, etc.) should be
+  enclosed in quotes in the config file to avoid YAML parsing errors.
+- The existing behavior of overriding whole config keys via environment variables (e.g., setting
+  `LOG_LEVEL=debug` to override `log.level`) is preserved and unaffected by this feature.
+
+!!! warning
+
+    If you reference `${VAR}` without a default and the variable is not set, Greenmask will exit
+    with an error message indicating which variable is missing. Use `${VAR:-fallback}` to provide
+    a fallback value for optional variables.
+
 ## `common` section
 
 In the `common` section of the configuration, you can specify the following settings:

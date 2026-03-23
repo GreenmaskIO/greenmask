@@ -17,10 +17,8 @@ package config
 import (
 	"encoding/json"
 	"fmt"
-	"os"
-	"path"
+	"io"
 
-	"github.com/rs/zerolog/log"
 	"gopkg.in/yaml.v3"
 
 	"github.com/greenmaskio/greenmask/internal/domains"
@@ -30,31 +28,21 @@ import (
 // ParseTransformerParamsManually - manually parse dump.transformation[a].transformers[b].params
 // The problem described https://github.com/GreenmaskIO/greenmask/issues/76
 // We need to keep the original keys in the map without lowercasing
-// To overcome this problem we need use default yaml and json parsers avoiding vaiper or mapstructure usage.
-func ParseTransformerParamsManually(cfgFilePath string, cfg *domains.Config) error {
-	ext := path.Ext(cfgFilePath)
+// To overcome this problem we need use default yaml and json parsers avoiding viper or mapstructure usage.
+func ParseTransformerParamsManually(r io.Reader, ext string, cfg *domains.Config) error {
 	tmpCfg := &domains.DummyConfig{}
-	f, err := os.Open(cfgFilePath)
-	if err != nil {
-		return err
-	}
-	defer func() {
-		if err := f.Close(); err != nil {
-			log.Warn().Err(err).Msg("error closing config file")
-		}
-	}()
 
 	switch ext {
 	case ".json":
-		if err = json.NewDecoder(f).Decode(&tmpCfg); err != nil {
+		if err := json.NewDecoder(r).Decode(tmpCfg); err != nil {
 			return err
 		}
 	case ".yaml", ".yml":
-		if err = yaml.NewDecoder(f).Decode(&tmpCfg); err != nil {
+		if err := yaml.NewDecoder(r).Decode(tmpCfg); err != nil {
 			return err
 		}
 	default:
-		return fmt.Errorf("unsupported file extension \"%s\"", ext)
+		return fmt.Errorf("unsupported file extension %q", ext)
 	}
 	return setTransformerParams(tmpCfg, cfg)
 }

@@ -1,3 +1,24 @@
+# Environment variables can be used in any config value with ${VAR} or ${VAR:-default} syntax:
+#
+#   log:
+#     level: ${LOG_LEVEL:-info}
+#     format: ${LOG_FORMAT:-text}
+#
+#   storage:
+#     type: "s3"
+#     s3:
+#       endpoint: "${S3_ENDPOINT:-http://localhost:9000}"
+#       bucket: "${S3_BUCKET}"
+#       access_key_id: "${AWS_ACCESS_KEY_ID}"
+#       secret_access_key: "${AWS_SECRET_ACCESS_KEY}"
+#
+#   dump:
+#     pg_dump_options:
+#       dbname: "host=${DB_HOST:-localhost} user=${DB_USER:-postgres} dbname=${DB_NAME}"
+#
+# Use $${VAR} to write a literal "${VAR}" without environment variable substitution.
+# If ${VAR} is used without a default and the variable is not set, Greenmask exits with an error.
+
 common:
   pg_bin_path: "/usr/bin/"
   tmp_dir: "/tmp"
