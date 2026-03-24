@@ -16,8 +16,6 @@ package cmd
 
 import (
 	"fmt"
-	"os"
-	"path"
 	"runtime/debug"
 	"strings"
 
@@ -126,26 +124,10 @@ func init() {
 }
 
 func initConfig() {
-	var expandedContent string
-
 	if cfgFile != "" {
-		raw, err := os.ReadFile(cfgFile)
-		if err != nil {
+		viper.SetConfigFile(cfgFile)
+		if err := viper.ReadInConfig(); err != nil {
 			log.Fatal().Err(err).Msg("error reading config file")
-		}
-
-		// Expand ${VAR} and ${VAR:-default} placeholders before Viper processes the config.
-		// This allows environment variables to be used as inline values in the YAML file,
-		// for example: secret_access_key: ${AWS_SECRET_ACCESS_KEY}
-		expandedContent, err = configUtils.ExpandEnvVars(string(raw))
-		if err != nil {
-			log.Fatal().Err(err).Msg("error expanding environment variables in config")
-		}
-
-		ext := strings.TrimPrefix(path.Ext(cfgFile), ".")
-		viper.SetConfigType(ext)
-		if err := viper.ReadConfig(strings.NewReader(expandedContent)); err != nil {
-			log.Fatal().Err(err).Msg("error reading from config file")
 		}
 	}
 
@@ -154,6 +136,7 @@ func initConfig() {
 
 	decoderCfg := func(cfg *mapstructure.DecoderConfig) {
 		cfg.DecodeHook = mapstructure.ComposeDecodeHookFunc(
+			configUtils.InterpolateEnvVarsHookFunc(),
 			configUtils.ParamsToByteSliceHookFunc(),
 			mapstructure.StringToTimeDurationHookFunc(),
 			mapstructure.StringToSliceHookFunc(","),
@@ -168,12 +151,7 @@ func initConfig() {
 	if cfgFile != "" {
 		// This solves problem with map structure described -> https://github.com/spf13/viper/issues/373
 		// that caused issue in Greenmask https://github.com/GreenmaskIO/greenmask/issues/76
-		// We pass the already-expanded content so transformer params also see substituted env vars.
-		if err := configUtils.ParseTransformerParamsManually(
-			strings.NewReader(expandedContent),
-			path.Ext(cfgFile),
-			Config,
-		); err != nil {
+		if err := configUtils.ParseTransformerParamsManually(cfgFile, Config); err != nil {
 			log.Fatal().Err(err).Msg("error parsing transformer parameters")
 		}
 	}

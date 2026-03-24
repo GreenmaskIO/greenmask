@@ -17,8 +17,10 @@ package config
 import (
 	"encoding/json"
 	"fmt"
-	"io"
+	"os"
+	"path"
 
+	"github.com/rs/zerolog/log"
 	"gopkg.in/yaml.v3"
 
 	"github.com/greenmaskio/greenmask/internal/domains"
@@ -29,16 +31,27 @@ import (
 // The problem described https://github.com/GreenmaskIO/greenmask/issues/76
 // We need to keep the original keys in the map without lowercasing
 // To overcome this problem we need use default yaml and json parsers avoiding viper or mapstructure usage.
-func ParseTransformerParamsManually(r io.Reader, ext string, cfg *domains.Config) error {
+func ParseTransformerParamsManually(cfgFilePath string, cfg *domains.Config) error {
+	ext := path.Ext(cfgFilePath)
+	f, err := os.Open(cfgFilePath)
+	if err != nil {
+		return err
+	}
+	defer func() {
+		if err := f.Close(); err != nil {
+			log.Warn().Err(err).Msg("error closing config file")
+		}
+	}()
+
 	tmpCfg := &domains.DummyConfig{}
 
 	switch ext {
 	case ".json":
-		if err := json.NewDecoder(r).Decode(tmpCfg); err != nil {
+		if err := json.NewDecoder(f).Decode(tmpCfg); err != nil {
 			return err
 		}
 	case ".yaml", ".yml":
-		if err := yaml.NewDecoder(r).Decode(tmpCfg); err != nil {
+		if err := yaml.NewDecoder(f).Decode(tmpCfg); err != nil {
 			return err
 		}
 	default:

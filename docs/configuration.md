@@ -12,18 +12,20 @@ The configuration is organized into six sections:
 
 ## Environment Variables in Configuration
 
-Greenmask supports inline environment variable interpolation in YAML configuration file values using
-the `${VAR}` and `${VAR:-default}` syntax. This lets you store config files in version control
-without hardcoding secrets or environment-specific values.
+Greenmask supports inline environment variable interpolation in YAML configuration file values
+using [POSIX Parameter Expansion](https://github.com/buildkite/interpolate) syntax. This lets you
+store config files in version control without hardcoding secrets or environment-specific values.
 
 ### Syntax
 
 | Syntax | Description |
 |---|---|
-| `${VAR}` | Replaced with the value of `VAR`. Greenmask exits with an error if `VAR` is unset or empty. |
+| `${VAR}` or `$VAR` | Replaced with the value of `VAR`; empty string if `VAR` is unset. |
 | `${VAR:-default}` | Replaced with the value of `VAR`, or `"default"` if `VAR` is unset or empty. |
+| `${VAR-default}` | Replaced with the value of `VAR`, or `"default"` if `VAR` is unset (but not if empty). |
 | `${VAR:-}` | Replaced with an empty string when `VAR` is unset or empty (explicit empty default). |
-| `$${VAR}` | Escape sequence — produces the literal string `${VAR}` without any env lookup. |
+| `${VAR?message}` | Replaced with the value of `VAR`; Greenmask exits with `message` if `VAR` is unset. |
+| `$$VAR` | Escape sequence — produces the literal string `$VAR` without any env lookup. |
 
 ### Example
 
@@ -36,10 +38,10 @@ storage:
   type: "s3"
   s3:
     endpoint: "${S3_ENDPOINT:-http://localhost:9000}"
-    bucket: "${S3_BUCKET}"
+    bucket: "${S3_BUCKET?S3 bucket name must be set}"
     region: "${AWS_REGION:-us-east-1}"
-    access_key_id: "${AWS_ACCESS_KEY_ID}"
-    secret_access_key: "${AWS_SECRET_ACCESS_KEY}"
+    access_key_id: "${AWS_ACCESS_KEY_ID?AWS access key ID must be set}"
+    secret_access_key: "${AWS_SECRET_ACCESS_KEY?AWS secret access key must be set}"
 
 dump:
   pg_dump_options:
@@ -48,17 +50,19 @@ dump:
 
 ### Notes
 
-- Interpolation is applied to the entire config file, including transformer `params`.
+- Interpolation is applied to all string values in the config during unmarshaling.
+- Transformer `params` values are parsed separately (to preserve key casing) and are **not**
+  subject to env var interpolation.
 - Variable values that contain YAML special characters (`:`, `{`, `}`, `#`, etc.) should be
   enclosed in quotes in the config file to avoid YAML parsing errors.
 - The existing behavior of overriding whole config keys via environment variables (e.g., setting
   `LOG_LEVEL=debug` to override `log.level`) is preserved and unaffected by this feature.
 
-!!! warning
+!!! tip
 
-    If you reference `${VAR}` without a default and the variable is not set, Greenmask will exit
-    with an error message indicating which variable is missing. Use `${VAR:-fallback}` to provide
-    a fallback value for optional variables.
+    Use `${VAR?your error message}` to mark a variable as required. Greenmask will exit with the
+    provided message if the variable is not set, making misconfiguration errors explicit and
+    easy to diagnose.
 
 ## `common` section
 

@@ -8,16 +8,19 @@
 #     type: "s3"
 #     s3:
 #       endpoint: "${S3_ENDPOINT:-http://localhost:9000}"
-#       bucket: "${S3_BUCKET}"
-#       access_key_id: "${AWS_ACCESS_KEY_ID}"
-#       secret_access_key: "${AWS_SECRET_ACCESS_KEY}"
+#       bucket: "${S3_BUCKET?S3 bucket name must be set}"
+#       access_key_id: "${AWS_ACCESS_KEY_ID?AWS access key ID must be set}"
+#       secret_access_key: "${AWS_SECRET_ACCESS_KEY?AWS secret access key must be set}"
 #
 #   dump:
 #     pg_dump_options:
 #       dbname: "host=${DB_HOST:-localhost} user=${DB_USER:-postgres} dbname=${DB_NAME}"
 #
-# Use $${VAR} to write a literal "${VAR}" without environment variable substitution.
-# If ${VAR} is used without a default and the variable is not set, Greenmask exits with an error.
+# Supported syntax (POSIX Parameter Expansion):
+#   ${VAR}          - value of VAR; empty string if unset
+#   ${VAR:-default} - value of VAR, or "default" if unset or empty
+#   ${VAR?message}  - value of VAR; exit with "message" if unset (use for required vars)
+#   $$VAR           - literal $VAR (escape sequence)
 
 common:
   pg_bin_path: "/usr/bin/"
