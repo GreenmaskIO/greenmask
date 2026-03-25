@@ -16,6 +16,8 @@ package config
 
 import (
 	"sync"
+
+	"github.com/greenmaskio/greenmask/pkg/common/models"
 )
 
 var (
@@ -41,11 +43,11 @@ func NewConfig() *Config {
 }
 
 type Config struct {
-	Engine   string        `mapstructure:"engine" yaml:"engine" json:"engine"`
-	Common   Common        `mapstructure:"common" yaml:"common" json:"common"`
-	Log      Log           `mapstructure:"log" yaml:"log" json:"log"`
-	Storage  StorageConfig `mapstructure:"storage" yaml:"storage" json:"storage"`
-	Dump     Dump          `mapstructure:"dump" yaml:"dump" json:"dump"`
-	Validate Validate      `mapstructure:"validate" yaml:"validate" json:"validate"`
-	Restore  Restore       `mapstructure:"restore" yaml:"restore" json:"restore"`
+	Engine   models.DBMSEngine `mapstructure:"engine" yaml:"engine" json:"engine"`
+	Common   Common            `mapstructure:"common" yaml:"common" json:"common"`
+	Log      Log               `mapstructure:"log" yaml:"log" json:"log"`
+	Storage  StorageConfig     `mapstructure:"storage" yaml:"storage" json:"storage"`
+	Dump     Dump              `mapstructure:"dump" yaml:"dump" json:"dump"`
+	Validate Validate          `mapstructure:"validate" yaml:"validate" json:"validate"`
+	Restore  Restore           `mapstructure:"restore" yaml:"restore" json:"restore"`
 }

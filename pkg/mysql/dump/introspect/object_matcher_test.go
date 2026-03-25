@@ -113,8 +113,11 @@ func TestObjectMatcher_matchSchema(t *testing.T) {
 			opt.On("GetExcludedSchemas").Return(tt.excludeSchemas)
 			opt.On("GetIncludedSchemas").Return(tt.includeSchemas)
 			opt.On("GetExcludedTableData").Return(nil)
+			opt.On("GetIncludedTableData").Return(nil)
 			opt.On("GetIncludedTableDefinitions").Return(nil)
 			opt.On("GetExcludedTableDefinitions").Return(nil)
+			opt.On("GetIncludedDatabases").Return(nil)
+			opt.On("GetExcludedDatabases").Return(nil)
 
 			om, err := newObjectMatcher(opt)
 			require.NoError(t, err)
@@ -198,8 +201,11 @@ func TestObjectMatcher_match(t *testing.T) {
 			opt.On("GetExcludedSchemas").Return(tt.excludeSchemas)
 			opt.On("GetIncludedSchemas").Return(tt.includeSchemas)
 			opt.On("GetExcludedTableData").Return(tt.excludeTableData)
+			opt.On("GetIncludedTableData").Return(nil)
 			opt.On("GetIncludedTableDefinitions").Return(nil)
 			opt.On("GetExcludedTableDefinitions").Return(nil)
+			opt.On("GetIncludedDatabases").Return(nil)
+			opt.On("GetExcludedDatabases").Return(nil)
 
 			om, err := newObjectMatcher(opt)
 			require.NoError(t, err)

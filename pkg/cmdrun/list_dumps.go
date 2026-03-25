@@ -82,7 +82,7 @@ func (f *Filter) Match(metadata models.Metadata, status heartbeat.Status) bool {
 func RunListDumps(cfg *config.Config, quiet bool, format OutputFormat, f *Filter) error {
 	ctx := context.Background()
 	ctx = log.Ctx(ctx).With().
-		Str(models.MetaKeyEngine, cfg.Engine).
+		Str(models.MetaKeyEngine, string(cfg.Engine)).
 		Logger().
 		WithContext(ctx)
 
@@ -203,7 +203,7 @@ func getDumpInfo(ctx context.Context, cfg *config.Config, st interfaces.Storager
 	return &DumpListItem{
 		ID:             dumpId,
 		Date:           creationDate,
-		Engine:         metadata.Engine,
+		Engine:         string(metadata.Engine),
 		Databases:      metadata.Databases,
 		Size:           size,
 		CompressedSize: compressedSize,

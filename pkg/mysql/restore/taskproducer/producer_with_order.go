@@ -24,7 +24,7 @@ import (
 	"github.com/greenmaskio/greenmask/pkg/common/models"
 	"github.com/greenmaskio/greenmask/pkg/common/restore/taskmapper"
 
-	mysqlrestoreconfig "github.com/greenmaskio/greenmask/pkg/mysql/restore/config"
+	mysqlcommonconfig "github.com/greenmaskio/greenmask/pkg/mysql/config"
 	"github.com/greenmaskio/greenmask/pkg/mysql/restore/restorers"
 )
 
@@ -44,7 +44,8 @@ type taskMapper interface {
 type ProducerWithOrder struct {
 	meta         models.Metadata
 	st           interfaces.Storager
-	opt          mysqlrestoreconfig.RestoreOptions
+	conn         mysqlcommonconfig.ConnectionOpts
+	opts         RestoreOptions
 	err          error
 	lastIdx      int
 	taskResolver interfaces.TaskMapper
@@ -53,13 +54,15 @@ type ProducerWithOrder struct {
 func NewWithOrder(
 	meta models.Metadata,
 	st interfaces.Storager,
-	opt mysqlrestoreconfig.RestoreOptions,
+	conn mysqlcommonconfig.ConnectionOpts,
+	opts RestoreOptions,
 	taskResolver *taskmapper.TaskResolver,
 ) *ProducerWithOrder {
 	return &ProducerWithOrder{
 		meta:         meta,
 		st:           st,
-		opt:          opt,
+		conn:         conn,
+		opts:         opts,
 		taskResolver: taskResolver,
 		lastIdx:      -1,
 	}
@@ -127,21 +130,22 @@ func (p *ProducerWithOrder) Task() (interfaces.Restorer, error) {
 	case models.ObjectKindTable:
 		opts := []restorers.Option{
 			restorers.WithCompression(
-				restorationItem.Compression == models.CompressionGzip ||
-					restorationItem.Compression == models.CompressionPgzip,
-				restorationItem.Compression == models.CompressionPgzip,
+				restorationItem.Compression.IsEnabled(),
+				restorationItem.Compression.IsPgzip(),
 			),
-			restorers.WithWarnings(p.opt.PrintWarnings, p.opt.MaxFetchWarnings),
+			restorers.WithWarnings(p.opts.PrintWarnings, p.opts.MaxFetchWarnings),
+			restorers.WithForeignKeyChecks(p.opts.DisableForeignKeyChecks),
+			restorers.WithUniqueChecks(p.opts.DisableUniqueChecks),
 		}
 		stat := p.meta.DataDump.DumpStat.TaskStats[currentTaskID]
 		switch stat.ObjectStat.Format {
 		case models.DumpFormatInsert:
 			return restorers.NewTableDataRestorerInsert(
-				restorationItem, p.opt.ConnectionOpts, p.st, p.taskResolver, opts...,
+				restorationItem, p.conn, p.st, p.taskResolver, opts...,
 			)
 		case models.DumpFormatCsv:
 			return restorers.NewTableDataRestorerCsv(
-				restorationItem, p.opt.ConnectionOpts, p.st, p.taskResolver, opts...,
+				restorationItem, p.conn, p.st, p.taskResolver, opts...,
 			)
 		default:
 			return nil, fmt.Errorf("dump format ='%s': %w", stat.ObjectStat.Format, errUnknownDumpFormat)

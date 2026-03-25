@@ -15,7 +15,7 @@
 package config
 
 import (
-	mysqlconfig "github.com/greenmaskio/greenmask/pkg/mysql/restore/config"
+	mysqlcommonconfig "github.com/greenmaskio/greenmask/pkg/mysql/config"
 )
 
 type TablesDataRestorationErrorExclusions struct {
@@ -43,8 +43,26 @@ type Script struct {
 	Command   []string `mapstructure:"command"`
 }
 
+const DefaultMaxFetchWarnings = 10
+
 type MysqlRestoreConfig struct {
-	Options mysqlconfig.RestoreOptions `mapstructure:"options" yaml:"options" json:"options"`
+	mysqlcommonconfig.ConnectionOpts `mapstructure:",squash" json:",squash,omitempty"`
+	VendorOptions                    []string `mapstructure:"vendor-options" yaml:"vendor-options" json:"vendor-options,omitempty"`
+	PrintWarnings                    bool     `mapstructure:"print-warnings" yaml:"print-warnings" json:"print_warnings"`
+	// MaxFetchWarnings - the maximum number of warnings to fetch and print. If 0, all warnings are printed.
+	MaxFetchWarnings        int  `mapstructure:"max-fetch-warnings" yaml:"max-fetch-warnings" json:"max_fetch_warnings"`
+	DisableForeignKeyChecks bool `mapstructure:"disable-fk-checks" yaml:"disable-fk-checks" json:"disable_fk_checks"`
+	DisableUniqueChecks     bool `mapstructure:"disable-unique-checks" yaml:"disable-unique-checks" json:"disable_unique_checks"`
+}
+
+func (r *MysqlRestoreConfig) Validate() error {
+	return nil
+}
+
+func (r *MysqlRestoreConfig) SchemaRestoreParams() ([]string, error) {
+	params := r.Params()
+	params = append(params, r.VendorOptions...)
+	return params, nil
 }
 
 type PostgresqlRestoreConfig struct {
@@ -74,7 +92,10 @@ type Restore struct {
 func NewRestore() Restore {
 	return Restore{
 		MysqlConfig: MysqlRestoreConfig{
-			Options: mysqlconfig.NewRestoreOptions(),
+			ConnectionOpts: mysqlcommonconfig.ConnectionOpts{
+				MaxAllowedPacket: mysqlcommonconfig.DefaultMaxAllowedPacket,
+			},
+			MaxFetchWarnings: DefaultMaxFetchWarnings,
 		},
 	}
 }

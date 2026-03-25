@@ -55,7 +55,7 @@ func TestDumpCli_Run(t *testing.T) {
 		st.AssertNumberOfCalls(t, "PutObject", 1)
 
 		actual := st.Data.String()
-		require.Equal(t, "testdb\n", actual)
+		require.Equal(t, "--no-data testdb\n", actual)
 	})
 
 	t.Run("put object error", func(t *testing.T) {

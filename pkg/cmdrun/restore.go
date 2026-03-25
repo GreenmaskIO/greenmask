@@ -39,7 +39,7 @@ func RunRestore(cfg *config.Config, dumpID string) error {
 	if cfg.Engine == "" {
 		return fmt.Errorf("specify dbms engine in \"engine\" key in the config: %w", errEngineNotSpecified)
 	}
-	ctx = log.Ctx(ctx).With().Str(commonmodels.MetaKeyEngine, cfg.Engine).Logger().WithContext(ctx)
+	ctx = log.Ctx(ctx).With().Str(commonmodels.MetaKeyEngine, string(cfg.Engine)).Logger().WithContext(ctx)
 	switch cfg.Engine {
 	case engineNameMySQL:
 		if err := mysqlrestore.RunRestore(ctx, cfg, st, dumpID); err != nil {

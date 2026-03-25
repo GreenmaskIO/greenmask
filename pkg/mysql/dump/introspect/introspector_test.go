@@ -210,6 +210,8 @@ func (s *mysqlSuite) TestIntrospector_Introspect() {
 		opt.On("GetIncludedTableData").Return(nil)
 		opt.On("GetIncludedTableDefinitions").Return(nil)
 		opt.On("GetExcludedTableDefinitions").Return(nil)
+		opt.On("GetIncludedDatabases").Return(nil)
+		opt.On("GetExcludedDatabases").Return(nil)
 		tx, err := db.Begin()
 		s.NoError(err)
 		defer func() {
@@ -309,6 +311,8 @@ func (s *mysqlSuite) TestIntrospector_Introspect() {
 		opt.On("GetIncludedTableData").Return(nil)
 		opt.On("GetIncludedTableDefinitions").Return(nil)
 		opt.On("GetExcludedTableDefinitions").Return(nil)
+		opt.On("GetIncludedDatabases").Return(nil)
+		opt.On("GetExcludedDatabases").Return(nil)
 		tx, err := db.Begin()
 		s.NoError(err)
 		defer func() {
@@ -360,6 +364,8 @@ func (s *mysqlSuite) TestIntrospector_Introspect() {
 		opt.On("GetIncludedTableData").Return(nil)
 		opt.On("GetIncludedTableDefinitions").Return(nil)
 		opt.On("GetExcludedTableDefinitions").Return(nil)
+		opt.On("GetIncludedDatabases").Return(nil)
+		opt.On("GetExcludedDatabases").Return(nil)
 		tx, err := db.Begin()
 		s.NoError(err)
 		defer func() {
@@ -434,6 +440,8 @@ func (s *mysqlSuite) TestIntrospector_Introspect() {
 		opt.On("GetIncludedTableData").Return(nil)
 		opt.On("GetIncludedTableDefinitions").Return(nil)
 		opt.On("GetExcludedTableDefinitions").Return(nil)
+		opt.On("GetIncludedDatabases").Return(nil)
+		opt.On("GetExcludedDatabases").Return(nil)
 		tx, err := db.Begin()
 		s.NoError(err)
 		defer func() {
@@ -484,6 +492,8 @@ func (s *mysqlSuite) TestIntrospector_Introspect() {
 		opt.On("GetIncludedTableData").Return(nil)
 		opt.On("GetIncludedTableDefinitions").Return(nil)
 		opt.On("GetExcludedTableDefinitions").Return(nil)
+		opt.On("GetIncludedDatabases").Return(nil)
+		opt.On("GetExcludedDatabases").Return(nil)
 		tx, err := db.Begin()
 		s.NoError(err)
 		defer func() {
@@ -535,6 +545,8 @@ func (s *mysqlSuite) TestIntrospector_Introspect() {
 		opt.On("GetIncludedTableData").Return(nil)
 		opt.On("GetIncludedTableDefinitions").Return(nil)
 		opt.On("GetExcludedTableDefinitions").Return(nil)
+		opt.On("GetIncludedDatabases").Return(nil)
+		opt.On("GetExcludedDatabases").Return(nil)
 
 		tx, err := db.Begin()
 		s.NoError(err)
@@ -591,6 +603,8 @@ func (s *mysqlSuite) TestIntrospector_Introspect() {
 		opt.On("GetExcludedTableDefinitions").Return(nil)
 		opt.On("GetExcludedTableData").Return(nil)
 		opt.On("GetIncludedTableData").Return(nil)
+		opt.On("GetIncludedDatabases").Return(nil)
+		opt.On("GetExcludedDatabases").Return(nil)
 
 		tx, err := db.Begin()
 		s.NoError(err)
@@ -625,6 +639,8 @@ func (s *mysqlSuite) TestIntrospector_Introspect() {
 		opt.On("GetExcludedTableDefinitions").Return(nil)
 		opt.On("GetExcludedTableData").Return(nil)
 		opt.On("GetIncludedTableData").Return(nil)
+		opt.On("GetIncludedDatabases").Return(nil)
+		opt.On("GetExcludedDatabases").Return(nil)
 
 		tx, err := db.Begin()
 		s.NoError(err)
@@ -668,6 +684,8 @@ func (s *mysqlSuite) TestIntrospector_GetSchemaRelatedSettings() {
 		opt.On("GetExcludedTableDefinitions").Return(nil)
 		opt.On("GetExcludedTableData").Return(nil)
 		opt.On("GetIncludedTableData").Return(nil)
+		opt.On("GetIncludedDatabases").Return(nil)
+		opt.On("GetExcludedDatabases").Return(nil)
 
 		i, err := NewIntrospector(opt)
 		s.Require().NoError(err)
@@ -701,6 +719,8 @@ func (s *mysqlSuite) TestIntrospector_GetSchemaRelatedSettings() {
 		opt.On("GetExcludedTableDefinitions").Return(nil)
 		opt.On("GetExcludedTableData").Return([]string{"testdb.test_table_2"})
 		opt.On("GetIncludedTableData").Return(nil)
+		opt.On("GetIncludedDatabases").Return(nil)
+		opt.On("GetExcludedDatabases").Return(nil)
 
 		i, err := NewIntrospector(opt)
 		s.Require().NoError(err)

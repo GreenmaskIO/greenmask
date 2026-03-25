@@ -112,8 +112,8 @@ func (r *Restorer) restoreDatabaseSchema(ctx context.Context, schemaStat commonm
 	}
 
 	reader := f
-	if schemaStat.Compression != commonmodels.CompressionNone {
-		gzReader, err := utils.NewGzipReader(f, schemaStat.Compression == commonmodels.CompressionPgzip)
+	if schemaStat.Compression.IsEnabled() {
+		gzReader, err := utils.NewGzipReader(f, schemaStat.Compression.IsPgzip())
 		if err != nil {
 			return fmt.Errorf("create gzip reader: %w", err)
 		}

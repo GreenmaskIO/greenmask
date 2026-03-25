@@ -54,6 +54,14 @@ func (c Compression) Validate() error {
 	}
 }
 
+func (c Compression) IsEnabled() bool {
+	return c != CompressionNone
+}
+
+func (c Compression) IsPgzip() bool {
+	return c == CompressionPgzip
+}
+
 func (f DumpFormat) Validate() error {
 	switch f {
 	case DumpFormatCsv, DumpFormatInsert:
@@ -72,7 +80,7 @@ type DumpStat struct {
 }
 
 type ObjectStat struct {
-	Engine          Engine      `json:"engine"`
+	Engine          DBMSEngine  `json:"engine"`
 	ID              ObjectID    `json:"id"`
 	Kind            ObjectKind  `json:"kind"`
 	HumanReadableID string      `json:"human_readable_id"`
@@ -84,7 +92,7 @@ type ObjectStat struct {
 }
 
 func NewObjectStat(
-	engine Engine,
+	engine DBMSEngine,
 	kind ObjectKind,
 	id ObjectID,
 	humanReadableID string,
@@ -110,7 +118,7 @@ func NewObjectStat(
 type TaskStat struct {
 	ObjectStat  ObjectStat    `json:"object_stat"`
 	ID          TaskID        `json:"id"`
-	Engine      Engine        `json:"engine"`
+	Engine      DBMSEngine    `json:"engine"`
 	Duration    time.Duration `json:"duration"`
 	DumperType  string        `json:"dumper_type"`
 	RecordCount int64         `json:"record_count"`
@@ -124,7 +132,7 @@ func NewDumpStat(
 	duration time.Duration,
 	dumperType string,
 	recordCount int64,
-	engine Engine,
+	engine DBMSEngine,
 	objectDefinition []byte,
 ) TaskStat {
 	return TaskStat{

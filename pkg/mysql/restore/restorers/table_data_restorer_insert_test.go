@@ -72,6 +72,8 @@ func (s *restoreSuite) TestRestorerInsert_RestoreData() {
 	s.Require().NoError(err, "failed to init table data restorer")
 	err = rr.Restore(ctx)
 	s.Require().NoError(err)
+	err = rr.Close(ctx)
+	s.Require().NoError(err)
 
 	db, err = s.GetRootConnection(context.Background())
 	s.Require().NoError(err, "failed to connect to database")
@@ -142,6 +144,8 @@ func (s *restoreSuite) TestRestorerInsert_RestoreData_Batched() {
 	s.Require().NoError(err, "failed to init table data restorer")
 	err = rr.Restore(ctx)
 	s.Require().NoError(err)
+	err = rr.Close(ctx)
+	s.Require().NoError(err)
 
 	db, err = s.GetRootConnection(context.Background())
 	s.Require().NoError(err, "failed to connect to database")
@@ -209,6 +213,8 @@ func (s *restoreSuite) TestRestorerInsert_RestoreData_SingleRow() {
 	s.Require().NoError(err, "failed to init table data restorer")
 	err = rr.Restore(ctx)
 	s.Require().NoError(err)
+	err = rr.Close(ctx)
+	s.Require().NoError(err)
 
 	db, err = s.GetRootConnection(context.Background())
 	s.Require().NoError(err, "failed to connect to database")
@@ -272,6 +278,8 @@ func (s *restoreSuite) TestRestorerInsert_RestoreData_CRLF_TrailingSpaces() {
 	err = rr.Init(ctx)
 	s.Require().NoError(err, "failed to init table data restorer")
 	err = rr.Restore(ctx)
+	s.Require().NoError(err)
+	err = rr.Close(ctx)
 	s.Require().NoError(err)
 
 	db, err = s.GetRootConnection(context.Background())

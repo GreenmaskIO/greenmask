@@ -27,7 +27,7 @@ import (
 	"github.com/greenmaskio/greenmask/pkg/common/mocks"
 	commonmodels "github.com/greenmaskio/greenmask/pkg/common/models"
 	"github.com/greenmaskio/greenmask/pkg/common/utils"
-	"github.com/greenmaskio/greenmask/pkg/mysql/restore/config"
+	mysqlconfig "github.com/greenmaskio/greenmask/pkg/mysql/config"
 	"github.com/greenmaskio/greenmask/pkg/testutils"
 )
 
@@ -43,6 +43,17 @@ func TestMySQL(t *testing.T) {
 	suite.Run(t, new(restoreSuite))
 }
 
+type mockOptions struct {
+	mysqlconfig.ConnectionOpts
+	VendorOptions []string
+}
+
+func (m *mockOptions) SchemaRestoreParams() ([]string, error) {
+	params := m.Params()
+	params = append(params, m.VendorOptions...)
+	return params, nil
+}
+
 func (s *restoreSuite) TestRestorer_RestoreSchema() {
 	err := utils.SetDefaultContextLogger(zerolog.LevelDebugValue, utils.LogFormatText)
 	s.Require().NoError(err)
@@ -54,21 +65,21 @@ func (s *restoreSuite) TestRestorer_RestoreSchema() {
 	schemaMeta := &commonmodels.SchemaDumpMetadata{
 		DumpedDatabaseSchema: []commonmodels.DumpedDatabaseSchemaStat{
 			{
-				DatabaseName: "test",
-				FileName:     "schema_test.sql",
+				DatabaseName: "testdb",
+				FileName:     "schema_testdb.sql",
 				Compression:  commonmodels.CompressionNone,
 			},
 		},
 	}
 
 	st := mocks.NewStorageMock()
-	st.On("GetObject", mock.Anything, "schema_test.sql").
+	st.On("GetObject", mock.Anything, "schema_testdb.sql").
 		Return(r, nil)
 
 	opts := s.GetRootConnectionOpts(ctx)
-	rr := NewRestorer(st, &config.RestoreOptions{
+	rr := NewRestorer(st, &mockOptions{
 		ConnectionOpts: opts,
-		Verbose:        true,
+		VendorOptions:  []string{"--verbose"},
 	}, utils.NewDefaultCmdProducer(), schemaMeta)
 	err = rr.RestoreSchema(ctx)
 	s.Require().NoError(err)

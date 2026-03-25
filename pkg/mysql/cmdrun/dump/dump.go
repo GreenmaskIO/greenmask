@@ -323,7 +323,7 @@ func (d *Dump) StopHBWorker(ctx context.Context, err error) error {
 func (d *Dump) Introspect(ctx context.Context) (err error) {
 	ctx = validationcollector.WithMeta(ctx,
 		models.MetaKeyDumpID, d.dumpID,
-		models.MetaKeyEngine, models.EngineMysql,
+		models.MetaKeyEngine, models.DBMSEngineMySQL,
 	)
 
 	d.introsp, err = introspect.NewIntrospector(&d.cfg.Dump.Options)
@@ -429,7 +429,7 @@ func (d *Dump) GetDumpMetadata(completedAt time.Time) (models.Metadata, error) {
 	)
 
 	meta := models.NewMetadata(
-		models.EngineMysql,
+		models.DBMSEngineMySQL,
 		d.startedAt,
 		completedAt,
 		d.cfg.Dump.Description,
@@ -457,7 +457,7 @@ func (d *Dump) Run(ctx context.Context) (err error) {
 	d.startedAt = time.Now()
 	ctx = validationcollector.WithMeta(ctx,
 		models.MetaKeyDumpID, d.dumpID,
-		models.MetaKeyEngine, models.EngineMysql,
+		models.MetaKeyEngine, models.DBMSEngineMySQL,
 	)
 
 	if err := d.Init(ctx); err != nil {

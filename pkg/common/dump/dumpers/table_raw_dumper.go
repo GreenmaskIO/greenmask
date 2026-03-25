@@ -73,7 +73,7 @@ func (t *TableRawDumper) Dump(ctx context.Context) (models.TaskStat, error) {
 		time.Since(startedAt),
 		dumperTypeTableRawDumper,
 		t.lineNum-1,
-		models.EngineMysql,
+		models.DBMSEngineMySQL,
 		objectDefinition,
 	), nil
 }

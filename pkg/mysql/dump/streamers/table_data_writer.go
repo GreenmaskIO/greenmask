@@ -169,7 +169,7 @@ func (t *TableDataWriter) Stat() models.ObjectStat {
 	}
 
 	return models.NewObjectStat(
-		models.EngineMysql,
+		models.DBMSEngineMySQL,
 		models.ObjectKindTable,
 		models.ObjectID(t.table.ID),
 		t.table.FullTableName(),

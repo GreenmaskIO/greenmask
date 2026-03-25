@@ -15,31 +15,16 @@
 package models
 
 import (
-	"errors"
-	"fmt"
 	"time"
 )
 
 // TaskID - global unique identifier for objects the object that are stored in the system.
 type TaskID int
 
-type Engine string
-
-var (
-	EngineMysql      Engine = "mysql"
-	EnginePostgresql Engine = "postgresql"
-)
-
-var errUnknownEngine = errors.New("unknown engine")
-
-func (m Engine) Validate() error {
-	return fmt.Errorf("engine '%s': %w", m, errUnknownEngine)
-}
-
 type RestorationItem struct {
 	TaskID           TaskID      `json:"task_id"`
 	Filename         string      `json:"filename"`
-	Engine           Engine      `json:"engine"`
+	Engine           DBMSEngine  `json:"engine"`
 	ObjectKind       ObjectKind  `json:"object_kind"`
 	ObjectID         ObjectID    `json:"object_id"`
 	ObjectDefinition []byte      `json:"object_definition"`
@@ -139,7 +124,7 @@ func NewSchemaDumpMetadata(
 }
 
 type Metadata struct {
-	Engine         string              `yaml:"engine" json:"engine"`
+	Engine         DBMSEngine          `yaml:"engine" json:"engine"`
 	StartedAt      time.Time           `yaml:"started_at" json:"started_at"`
 	CompletedAt    time.Time           `yaml:"completed_at" json:"completed_at"`
 	OriginalSize   int64               `yaml:"original_size" json:"original_size"`
@@ -153,7 +138,7 @@ type Metadata struct {
 }
 
 func NewMetadata(
-	engine Engine,
+	engine DBMSEngine,
 	startedAt time.Time,
 	completedAt time.Time,
 	description string,
@@ -176,7 +161,7 @@ func NewMetadata(
 	}
 
 	return Metadata{
-		Engine:         string(engine),
+		Engine:         engine,
 		StartedAt:      startedAt,
 		CompletedAt:    completedAt,
 		OriginalSize:   originalSize,

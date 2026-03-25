@@ -125,7 +125,7 @@ func (t *TableDumper) Dump(ctx context.Context) (models.TaskStat, error) {
 		time.Since(startedAt),
 		dumperTypeTableDumper,
 		t.lineNum-1,
-		models.EngineMysql,
+		models.DBMSEngineMySQL,
 		objectDefinition,
 	), nil
 }
