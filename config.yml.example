@@ -1,3 +1,27 @@
+# Environment variables can be used in any config value with ${VAR} or ${VAR:-default} syntax:
+#
+#   log:
+#     level: ${LOG_LEVEL:-info}
+#     format: ${LOG_FORMAT:-text}
+#
+#   storage:
+#     type: "s3"
+#     s3:
+#       endpoint: "${S3_ENDPOINT:-http://localhost:9000}"
+#       bucket: "${S3_BUCKET?S3 bucket name must be set}"
+#       access_key_id: "${AWS_ACCESS_KEY_ID?AWS access key ID must be set}"
+#       secret_access_key: "${AWS_SECRET_ACCESS_KEY?AWS secret access key must be set}"
+#
+#   dump:
+#     pg_dump_options:
+#       dbname: "host=${DB_HOST:-localhost} user=${DB_USER:-postgres} dbname=${DB_NAME}"
+#
+# Supported syntax (POSIX Parameter Expansion):
+#   ${VAR}          - value of VAR; empty string if unset
+#   ${VAR:-default} - value of VAR, or "default" if unset or empty
+#   ${VAR?message}  - value of VAR; exit with "message" if unset (use for required vars)
+#   $$VAR           - literal $VAR (escape sequence)
+
 common:
   pg_bin_path: "/usr/bin/"
   tmp_dir: "/tmp"

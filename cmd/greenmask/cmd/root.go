@@ -127,7 +127,7 @@ func initConfig() {
 	if cfgFile != "" {
 		viper.SetConfigFile(cfgFile)
 		if err := viper.ReadInConfig(); err != nil {
-			log.Fatal().Err(err).Msg("error reading from config file")
+			log.Fatal().Err(err).Msg("error reading config file")
 		}
 	}
 
@@ -136,6 +136,7 @@ func initConfig() {
 
 	decoderCfg := func(cfg *mapstructure.DecoderConfig) {
 		cfg.DecodeHook = mapstructure.ComposeDecodeHookFunc(
+			configUtils.InterpolateEnvVarsHookFunc(),
 			configUtils.ParamsToByteSliceHookFunc(),
 			mapstructure.StringToTimeDurationHookFunc(),
 			mapstructure.StringToSliceHookFunc(","),
