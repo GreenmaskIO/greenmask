@@ -28,7 +28,7 @@ on:
       - "requirements.txt"
 
 env:
-  go-version: "1.24"
+  go-version: "1.26"
   golangci-lint-version: v2.10.1
 
 permissions:
