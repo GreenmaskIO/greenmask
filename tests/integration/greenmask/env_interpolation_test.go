@@ -18,7 +18,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"testing"
 
 	"github.com/stretchr/testify/suite"
 )
@@ -105,8 +104,4 @@ storage:
 	suite.Require().Error(err, "expected failure when required env var is unset")
 	suite.Contains(string(out), "storage path is required",
 		"error output should contain the ?message text; got:\n%s", string(out))
-}
-
-func TestEnvInterpolation(t *testing.T) {
-	suite.Run(t, new(EnvInterpolationSuite))
 }

@@ -49,14 +49,12 @@ func InterpolateEnvVars(s string) (string, error) {
 // InterpolateEnvVarsHookFunc returns a mapstructure DecodeHookFunc that expands
 // environment variable references in every string field during config unmarshaling.
 func InterpolateEnvVarsHookFunc() mapstructure.DecodeHookFunc {
-	return func(
-		f reflect.Type,
-		t reflect.Type,
-		data interface{},
-	) (interface{}, error) {
-		if f.Kind() != reflect.String {
+	return func(f reflect.Type, t reflect.Type, data interface{}) (interface{}, error) {
+		val, ok := data.(string)
+		if !ok {
+			// We can't parse value it's not a string value
 			return data, nil
 		}
-		return InterpolateEnvVars(data.(string))
+		return InterpolateEnvVars(val)
 	}
 }

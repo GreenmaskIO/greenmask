@@ -27,3 +27,7 @@ func TestTocLibrary(t *testing.T) {
 func TestGreenmaskBackwardCompatibility(t *testing.T) {
 	suite.Run(t, new(BackwardCompatibilitySuite))
 }
+
+func TestEnvInterpolation(t *testing.T) {
+	suite.Run(t, new(EnvInterpolationSuite))
+}
