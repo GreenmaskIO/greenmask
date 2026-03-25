@@ -14,7 +14,7 @@ unittest:
 	go list ./... | grep -E 'internal|pkg' | xargs go test -v
 
 coverage:
-	go test $$(go list ./... | grep -v '^github.com/greenmaskio/greenmask/tests.*') -v -coverprofile=$(COVERAGE_FILE)
+	go list ./... | grep -E 'internal|pkg' | xargs go test -v -coverprofile=$(COVERAGE_FILE)
 
 coverage-view:
 	go tool cover -html=$(COVERAGE_FILE)
