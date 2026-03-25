@@ -108,7 +108,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#common-section" class="md-skip">
+        <a href="#environment-variables-in-configuration" class="md-skip">
           Skip to content
         </a>
       
@@ -527,6 +527,48 @@ You're not viewing the latest version.
       Table of contents
     </label>
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#environment-variables-in-configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      Environment Variables in Configuration
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Environment Variables in Configuration">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#syntax" class="md-nav__link">
+    <span class="md-ellipsis">
+      Syntax
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#example" class="md-nav__link">
+    <span class="md-ellipsis">
+      Example
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#notes" class="md-nav__link">
+    <span class="md-ellipsis">
+      Notes
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
       
         <li class="md-nav__item">
   <a href="#common-section" class="md-nav__link">
@@ -3474,6 +3516,48 @@ You're not viewing the latest version.
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#environment-variables-in-configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      Environment Variables in Configuration
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Environment Variables in Configuration">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#syntax" class="md-nav__link">
+    <span class="md-ellipsis">
+      Syntax
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#example" class="md-nav__link">
+    <span class="md-ellipsis">
+      Example
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#notes" class="md-nav__link">
+    <span class="md-ellipsis">
+      Notes
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#common-section" class="md-nav__link">
     <span class="md-ellipsis">
       common section
@@ -3607,6 +3691,79 @@ You're not viewing the latest version.
   scripts.</li>
 <li><code>custom_transformers</code> — definitions of the custom transformers that interact through <code>stdin</code> and <code>stdout</code>. Once a custom transformer is configured, it becomes accessible via the <code>greenmask list-transformers</code> command.</li>
 </ul>
+<h2 id="environment-variables-in-configuration">Environment Variables in Configuration<a class="headerlink" href="#environment-variables-in-configuration" title="Permanent link">&para;</a></h2>
+<p>Greenmask supports inline environment variable interpolation in YAML configuration file values
+using <a href="https://github.com/buildkite/interpolate">POSIX Parameter Expansion</a> syntax. This lets you
+store config files in version control without hardcoding secrets or environment-specific values.</p>
+<h3 id="syntax">Syntax<a class="headerlink" href="#syntax" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Syntax</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>${VAR}</code> or <code>$VAR</code></td>
+<td>Replaced with the value of <code>VAR</code>; empty string if <code>VAR</code> is unset.</td>
+</tr>
+<tr>
+<td><code>${VAR:-default}</code></td>
+<td>Replaced with the value of <code>VAR</code>, or <code>"default"</code> if <code>VAR</code> is unset or empty.</td>
+</tr>
+<tr>
+<td><code>${VAR-default}</code></td>
+<td>Replaced with the value of <code>VAR</code>, or <code>"default"</code> if <code>VAR</code> is unset (but not if empty).</td>
+</tr>
+<tr>
+<td><code>${VAR:-}</code></td>
+<td>Replaced with an empty string when <code>VAR</code> is unset or empty (explicit empty default).</td>
+</tr>
+<tr>
+<td><code>${VAR?message}</code></td>
+<td>Replaced with the value of <code>VAR</code>; Greenmask exits with <code>message</code> if <code>VAR</code> is unset.</td>
+</tr>
+<tr>
+<td><code>$$VAR</code></td>
+<td>Escape sequence — produces the literal string <code>$VAR</code> without any env lookup.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="example">Example<a class="headerlink" href="#example" title="Permanent link">&para;</a></h3>
+<div class="highlight"><span class="filename">config with environment variable interpolation</span><pre><span></span><code><span class="nt">log</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">level</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${LOG_LEVEL:-info}</span>
+<span class="w">  </span><span class="nt">format</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">${LOG_FORMAT:-text}</span>
+
+<span class="nt">storage</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;s3&quot;</span>
+<span class="w">  </span><span class="nt">s3</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">endpoint</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;${S3_ENDPOINT:-http://localhost:9000}&quot;</span>
+<span class="w">    </span><span class="nt">bucket</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;${S3_BUCKET?S3</span><span class="nv"> </span><span class="s">bucket</span><span class="nv"> </span><span class="s">name</span><span class="nv"> </span><span class="s">must</span><span class="nv"> </span><span class="s">be</span><span class="nv"> </span><span class="s">set}&quot;</span>
+<span class="w">    </span><span class="nt">region</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;${AWS_REGION:-us-east-1}&quot;</span>
+<span class="w">    </span><span class="nt">access_key_id</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;${AWS_ACCESS_KEY_ID?AWS</span><span class="nv"> </span><span class="s">access</span><span class="nv"> </span><span class="s">key</span><span class="nv"> </span><span class="s">ID</span><span class="nv"> </span><span class="s">must</span><span class="nv"> </span><span class="s">be</span><span class="nv"> </span><span class="s">set}&quot;</span>
+<span class="w">    </span><span class="nt">secret_access_key</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;${AWS_SECRET_ACCESS_KEY?AWS</span><span class="nv"> </span><span class="s">secret</span><span class="nv"> </span><span class="s">access</span><span class="nv"> </span><span class="s">key</span><span class="nv"> </span><span class="s">must</span><span class="nv"> </span><span class="s">be</span><span class="nv"> </span><span class="s">set}&quot;</span>
+
+<span class="nt">dump</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">pg_dump_options</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">dbname</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;host=${DB_HOST:-localhost}</span><span class="nv"> </span><span class="s">user=${DB_USER:-postgres}</span><span class="nv"> </span><span class="s">dbname=${DB_NAME:-mydb}&quot;</span>
+</code></pre></div>
+<h3 id="notes">Notes<a class="headerlink" href="#notes" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Interpolation is applied to all string values in the config during unmarshaling.</li>
+<li>Transformer <code>params</code> values are parsed separately (to preserve key casing) and are <strong>not</strong>
+  subject to env var interpolation.</li>
+<li>Variable values that contain YAML special characters (<code>:</code>, <code>{</code>, <code>}</code>, <code>#</code>, etc.) should be
+  enclosed in quotes in the config file to avoid YAML parsing errors.</li>
+<li>The existing behavior of overriding whole config keys via environment variables (e.g., setting
+  <code>LOG_LEVEL=debug</code> to override <code>log.level</code>) is preserved and unaffected by this feature.</li>
+</ul>
+<div class="admonition tip">
+<p class="admonition-title">Tip</p>
+<p>Use <code>${VAR?your error message}</code> to mark a variable as required. Greenmask will exit with the
+provided message if the variable is not set, making misconfiguration errors explicit and
+easy to diagnose.</p>
+</div>
 <h2 id="common-section"><code>common</code> section<a class="headerlink" href="#common-section" title="Permanent link">&para;</a></h2>
 <p>In the <code>common</code> section of the configuration, you can specify the following settings:</p>
 <ul>
