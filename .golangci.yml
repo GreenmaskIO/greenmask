@@ -26,3 +26,5 @@ linters:
       - path: ^tests/
         linters:
           - errcheck
+      - path: internal/storages/s3/s3.go
+        text: "SA1019"

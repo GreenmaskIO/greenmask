@@ -4,7 +4,7 @@ on:
   workflow_call:
 
 env:
-  go-version: '1.24'
+  go-version: '1.26'
 
 jobs:
   tests:

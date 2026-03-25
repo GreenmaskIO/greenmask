@@ -31,3 +31,7 @@ func TestGreenmaskBackwardCompatibility(t *testing.T) {
 func TestEnvInterpolation(t *testing.T) {
 	suite.Run(t, new(EnvInterpolationSuite))
 }
+
+func TestRestore(t *testing.T) {
+	suite.Run(t, new(RestoreCreateSuite))
+}
