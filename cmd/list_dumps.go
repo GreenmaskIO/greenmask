@@ -24,10 +24,11 @@ import (
 )
 
 var (
-	quiet          bool
-	tags           []string
-	statuses       []string
-	listDumpsFlags = []cmd.Flag{
+	quiet           bool
+	listDumpsFormat string
+	tags            []string
+	statuses        []string
+	listDumpsFlags  = []cmd.Flag{
 		{
 			Name:         "quiet",
 			Shorthand:    "q",
@@ -55,6 +56,15 @@ var (
 			Default:      []string{},
 			Dest:         &statuses,
 		},
+		{
+			Name:         "format",
+			Usage:        "Format of the output. Possible values [text|json]",
+			BindToConfig: false,
+			Type:         cmd.FlagTypeString,
+			IsRequired:   false,
+			Default:      "text",
+			Dest:         &listDumpsFormat,
+		},
 	}
 
 	listDumpsCmd = cmd.MustCommand(&cobra.Command{
@@ -65,7 +75,11 @@ var (
 			if err != nil {
 				log.Fatal(err)
 			}
-			if err := cmdrun.RunListDumps(rootCmd.MustGetConfig(), quiet, f); err != nil {
+			fType := cmdrun.OutputFormat(listDumpsFormat)
+			if err := fType.Validate(); err != nil {
+				log.Fatal(err)
+			}
+			if err := cmdrun.RunListDumps(rootCmd.MustGetConfig(), quiet, fType, f); err != nil {
 				log.Fatal(err)
 			}
 		},

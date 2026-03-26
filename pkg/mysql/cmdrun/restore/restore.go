@@ -31,7 +31,7 @@ import (
 	"github.com/greenmaskio/greenmask/pkg/mysql/metadata"
 	mysqlmodels "github.com/greenmaskio/greenmask/pkg/mysql/models"
 	"github.com/greenmaskio/greenmask/pkg/mysql/restore/schema"
-	taskproducer2 "github.com/greenmaskio/greenmask/pkg/mysql/restore/taskproducer"
+	"github.com/greenmaskio/greenmask/pkg/mysql/restore/taskproducer"
 )
 
 // Restore it's responsible for initialization and perform the whole
@@ -65,7 +65,7 @@ func NewRestore(
 }
 
 func (d *Restore) connect() (*sql.DB, error) {
-	connConfig, err := d.cfg.Restore.MysqlConfig.Options.ConnectionConfig()
+	connConfig, err := d.cfg.Restore.MysqlConfig.ConnectionConfig()
 	if err != nil {
 		return nil, fmt.Errorf("get connection config: %w", err)
 	}
@@ -86,7 +86,7 @@ func (d *Restore) connect() (*sql.DB, error) {
 }
 
 func (d *Restore) Run(ctx context.Context) error {
-	if err := d.cfg.Restore.MysqlConfig.Options.Validate(); err != nil {
+	if err := d.cfg.Restore.MysqlConfig.Validate(); err != nil {
 		return fmt.Errorf("validate mysql options: %w", err)
 	}
 	conn, err := d.connect()
@@ -115,14 +115,28 @@ func (d *Restore) Run(ctx context.Context) error {
 	taskResolver := taskmapper.NewTaskResolver()
 
 	var tp interfaces.RestoreTaskProducer
-	if d.cfg.Restore.Options.RestoreInOrder {
-		log.Ctx(ctx).Info().Msg("restoring tables in topological")
-		tp = taskproducer2.NewWithOrder(meta, d.st, d.cfg.Restore.MysqlConfig.Options, taskResolver)
-	} else {
-		tp = taskproducer2.New(meta, d.st, d.cfg.Restore.MysqlConfig.Options)
+	opts := taskproducer.RestoreOptions{
+		PrintWarnings:           d.cfg.Restore.MysqlConfig.PrintWarnings,
+		MaxFetchWarnings:        d.cfg.Restore.MysqlConfig.MaxFetchWarnings,
+		DisableForeignKeyChecks: d.cfg.Restore.MysqlConfig.DisableForeignKeyChecks,
+		DisableUniqueChecks:     d.cfg.Restore.MysqlConfig.DisableUniqueChecks,
 	}
 
-	sr := schema.NewRestorer(d.st, &d.cfg.Restore.MysqlConfig.Options, d.cmd)
+	if d.cfg.Restore.Options.RestoreInOrder {
+		log.Ctx(ctx).Info().Msg("restoring tables in topological")
+		tp = taskproducer.NewWithOrder(
+			meta, d.st, d.cfg.Restore.MysqlConfig.ConnectionOpts,
+			opts,
+			taskResolver,
+		)
+	} else {
+		tp = taskproducer.New(
+			meta, d.st, d.cfg.Restore.MysqlConfig.ConnectionOpts,
+			opts,
+		)
+	}
+
+	sr := schema.NewRestorer(d.st, &d.cfg.Restore.MysqlConfig, d.cmd, meta.SchemaDump)
 
 	if err := processor.NewDefaultRestoreProcessor(ctx, tp, sr, processor.Config{
 		Jobs:           d.cfg.Restore.Options.Jobs,

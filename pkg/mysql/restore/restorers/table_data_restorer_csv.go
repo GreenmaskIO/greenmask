@@ -37,15 +37,20 @@ var (
 )
 
 type TableDataRestorerCsv struct {
-	table            *models.Table
-	meta             models.RestorationItem
-	connConfig       config.ConnectionOpts
-	st               interfaces.Storager
-	taskResolver     interfaces.TaskMapper
-	compress         bool
-	pgzip            bool
-	printWarnings    bool
-	maxFetchWarnings int
+	table               *models.Table
+	meta                models.RestorationItem
+	connConfig          config.ConnectionOpts
+	st                  interfaces.Storager
+	taskResolver        interfaces.TaskMapper
+	compress            bool
+	pgzip               bool
+	printWarnings       bool
+	maxFetchWarnings    int
+	disableFkChecks     bool
+	disableUniqueChecks bool
+	db                  *sql.DB
+	tx                  *sql.Tx
+	execErr             error
 }
 
 func (r *TableDataRestorerCsv) Meta() map[string]any {
@@ -61,10 +66,12 @@ func (r *TableDataRestorerCsv) DebugInfo() string {
 }
 
 type TableRestorerConfig struct {
-	Compress         bool
-	Pgzip            bool
-	PrintWarnings    bool
-	MaxFetchWarnings int
+	Compress                bool
+	Pgzip                   bool
+	PrintWarnings           bool
+	MaxFetchWarnings        int
+	DisableForeignKeyChecks bool
+	DisableUniqueChecks     bool
 }
 
 type Option func(v *TableRestorerConfig) error
@@ -91,6 +98,20 @@ func WithWarnings(
 	}
 }
 
+func WithForeignKeyChecks(enabled bool) Option {
+	return func(v *TableRestorerConfig) error {
+		v.DisableForeignKeyChecks = enabled
+		return nil
+	}
+}
+
+func WithUniqueChecks(enabled bool) Option {
+	return func(v *TableRestorerConfig) error {
+		v.DisableUniqueChecks = enabled
+		return nil
+	}
+}
+
 func NewTableDataRestorerCsv(
 	meta models.RestorationItem,
 	connConfig config.ConnectionOpts,
@@ -113,15 +134,17 @@ func NewTableDataRestorerCsv(
 	}
 
 	res := &TableDataRestorerCsv{
-		table:            &table,
-		meta:             meta,
-		connConfig:       connConfig,
-		st:               st,
-		taskResolver:     taskResolver,
-		compress:         cfg.Compress,
-		pgzip:            cfg.Pgzip,
-		printWarnings:    cfg.PrintWarnings,
-		maxFetchWarnings: cfg.MaxFetchWarnings,
+		table:               &table,
+		meta:                meta,
+		connConfig:          connConfig,
+		st:                  st,
+		taskResolver:        taskResolver,
+		compress:            cfg.Compress,
+		pgzip:               cfg.Pgzip,
+		printWarnings:       cfg.PrintWarnings,
+		maxFetchWarnings:    cfg.MaxFetchWarnings,
+		disableFkChecks:     cfg.DisableForeignKeyChecks,
+		disableUniqueChecks: cfg.DisableUniqueChecks,
 	}
 	return res, nil
 }
@@ -134,7 +157,7 @@ func (r *TableDataRestorerCsv) showWarnings(ctx context.Context, db *sql.DB) err
 	return showWarnings(ctx, db, r.printWarnings, r.maxFetchWarnings)
 }
 
-func (r *TableDataRestorerCsv) restoreTable(ctx context.Context, db *sql.DB) error {
+func (r *TableDataRestorerCsv) restoreTable(ctx context.Context, tx *sql.Tx) error {
 	// TODO: REPLACE option
 	// YOU MIGHT WANT TO USE LOAD DATA LOCAL INFILE 'Reader::%s' REPLACE
 	// I think you should implement a replace option in the config.
@@ -154,7 +177,7 @@ func (r *TableDataRestorerCsv) restoreTable(ctx context.Context, db *sql.DB) err
 		Str(models.MetaKeyQuery, query).
 		Msg("restoring table data")
 
-	res, err := db.Exec(query)
+	res, err := tx.ExecContext(ctx, query)
 	if err != nil {
 		return fmt.Errorf("execute query: %w", err)
 	}
@@ -170,6 +193,60 @@ func (r *TableDataRestorerCsv) restoreTable(ctx context.Context, db *sql.DB) err
 			Msg("some rows may be skipped: rows affected does not match expected record count")
 	}
 
+	return nil
+}
+
+func (r *TableDataRestorerCsv) setupTx(ctx context.Context, tx *sql.Tx) error {
+	return setupTransaction(ctx, tx, r.disableFkChecks, r.disableUniqueChecks)
+}
+
+func (r *TableDataRestorerCsv) openTx(ctx context.Context, db *sql.DB) (err error) {
+	tx, err := db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("begin transaction: %w", err)
+	}
+
+	defer func() {
+		if err != nil {
+			r.execErr = err
+			_ = closeTransaction(ctx, tx, r.execErr, r.disableFkChecks, r.disableUniqueChecks)
+		}
+	}()
+
+	if err = r.setupTx(ctx, tx); err != nil {
+		return err
+	}
+
+	r.tx = tx
+	return nil
+}
+
+func (r *TableDataRestorerCsv) connectDB(ctx context.Context) (err error) {
+	connCfg, err := r.connConfig.ConnectionConfig()
+	if err != nil {
+		return fmt.Errorf("get connection config: %w", err)
+	}
+	uri, err := connCfg.URI()
+	if err != nil {
+		return fmt.Errorf("get connection URI: %w", err)
+	}
+
+	db, err := sql.Open("mysql", uri)
+	if err != nil {
+		return fmt.Errorf("open mysql connection: %w", err)
+	}
+
+	defer func() {
+		if err != nil {
+			closeDatabase(ctx, db)
+		}
+	}()
+
+	if err = r.openTx(ctx, db); err != nil {
+		return fmt.Errorf("open transaction: %w", err)
+	}
+
+	r.db = db
 	return nil
 }
 
@@ -193,18 +270,8 @@ func (r *TableDataRestorerCsv) Init(ctx context.Context) error {
 		// and close it
 		return readCloser
 	})
-	return nil
-}
 
-// setupConnection - set up the MySQL connection to disable or enable some settings on the session level.
-func (r *TableDataRestorerCsv) setupConnection(ctx context.Context, db *sql.DB) error { //nolint:unused
-	// TODO: Add setup connections commands like disabling foreign key checks, unique checks, etc.
-	//       and enable them back in the end.
-	_, err := db.ExecContext(ctx, "SET FOREIGN_KEY_CHECKS=1;")
-	if err != nil {
-		return fmt.Errorf("disable foreign key checks: %w", err)
-	}
-	return nil
+	return r.connectDB(ctx)
 }
 
 func (r *TableDataRestorerCsv) Restore(ctx context.Context) error {
@@ -213,40 +280,33 @@ func (r *TableDataRestorerCsv) Restore(ctx context.Context) error {
 		Str(models.MetaKeyTableName, r.table.Name).
 		Logger().WithContext(ctx)
 
-	connCfg, err := r.connConfig.ConnectionConfig()
-	if err != nil {
-		return fmt.Errorf("get connection config: %w", err)
-	}
-	uri, err := connCfg.URI()
-	if err != nil {
-		return fmt.Errorf("get connection URI: %w", err)
-	}
-	db, err := sql.Open("mysql", uri)
-	if err != nil {
-		return fmt.Errorf("open mysql connection: %w", err)
-	}
-	defer func() {
-		if closeErr := db.Close(); closeErr != nil {
-			log.Ctx(ctx).Error().Err(closeErr).Msg("failed to close database connection")
-		}
-	}()
-
-	//if err := r.setupConnection(ctx, db); err != nil {
-	//	return fmt.Errorf("setup connection: %w", err)
-	//}
-
-	if err := r.restoreTable(ctx, db); err != nil {
+	if err := r.restoreTable(ctx, r.tx); err != nil {
+		r.execErr = err
 		return fmt.Errorf("restore table data: %w", err)
 	}
 
-	if err := r.showWarnings(ctx, db); err != nil {
+	if err := r.showWarnings(ctx, r.db); err != nil {
 		return fmt.Errorf("show warnings: %w", err)
 	}
 
 	return nil
 }
 
-func (r *TableDataRestorerCsv) Close(_ context.Context) error {
+func (r *TableDataRestorerCsv) closeTx(ctx context.Context) error {
+	return closeTransaction(ctx, r.tx, r.execErr, r.disableFkChecks, r.disableUniqueChecks)
+}
+
+func (r *TableDataRestorerCsv) closeDB(ctx context.Context) {
+	closeDatabase(ctx, r.db)
+}
+
+func (r *TableDataRestorerCsv) Close(ctx context.Context) error {
+	if err := r.closeTx(ctx); err != nil {
+		log.Ctx(ctx).Error().Err(err).Msg("failed to close transaction")
+	}
+
+	r.closeDB(ctx)
+
 	r.taskResolver.SetTaskCompleted(r.meta.TaskID)
 	mysql.DeregisterReaderHandler(getFileHandlerName(*r.table))
 	return nil

@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"slices"
+	"strings"
 	"time"
 
 	"github.com/rs/zerolog"
@@ -320,7 +321,7 @@ func getSortedBackupWithStatuses(ctx context.Context, cfg *config.Config, st int
 		}
 		if status == heartbeat.StatusDone {
 			d.Date = metadata.StartedAt
-			d.Database = metadata.DatabaseName
+			d.Database = strings.Join(metadata.Databases, ", ")
 		}
 		switch dumpStatus {
 		case DumpStatusDone:

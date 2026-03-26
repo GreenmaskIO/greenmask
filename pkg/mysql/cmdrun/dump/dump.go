@@ -146,11 +146,27 @@ func GetMySQLDumpOpts(cfg *config.Config) []Option {
 	if cfg.Dump.Options.SchemaOnly {
 		opts = append(opts, WithSchemaOnly())
 	}
-	format := cfg.Dump.MysqlConfig.Options.DumpFormat
+
+	filter := models.TaskProducerFilter{}
+	for _, t := range cfg.Dump.Options.ExcludeTableData {
+		tf, err := models.NewTableFilterItemFromString(t)
+		if err != nil {
+			log.Warn().Err(err).Str("table", t).Msg("invalid table name in exclude-table-data")
+			continue
+		}
+		filter.ExcludedTableData = append(filter.ExcludedTableData, tf)
+	}
+
+	if len(filter.ExcludedTableData) > 0 {
+		opts = append(opts, WithFilter(filter))
+	}
+
+	format := cfg.Dump.MysqlConfig.DumpFormat
 	if format == "" {
 		format = models.DumpFormatInsert
 	}
 	opts = append(opts, WithFormat(format))
+	opts = append(opts, WithCompression(cfg.Dump.Options.Compress, cfg.Dump.Options.Pgzip))
 	return opts
 }
 
@@ -172,7 +188,7 @@ func GetMySQLDumpOptsWithValidate(cfg *config.Config) ([]Option, error) {
 		}
 		opts = append(opts, filterOpt)
 	}
-	opts = append(opts, WithCompression(false, false))
+	opts = append(opts, WithCompression(cfg.Dump.Options.Compress, cfg.Dump.Options.Pgzip))
 	opts = append(opts, GetMySQLDumpOpts(cfg)...)
 	return opts, nil
 }
@@ -204,6 +220,7 @@ type Dump struct {
 	txPool                *pool.ConsistentTxPool
 	format                models.DumpFormat
 	cmd                   utils.CmdProducer
+	dumpedDatabaseSchema  []models.DumpedDatabaseSchemaStat
 }
 
 func NewDump(
@@ -237,14 +254,14 @@ func (d *Dump) startPool(ctx context.Context) error {
 	}
 
 	var poolOpts []pool.Option
-	if d.cfg.Dump.MysqlConfig.Options.PoolHeartbeatInterval > 0 {
-		poolOpts = append(poolOpts, pool.WithHeartbeat(d.cfg.Dump.MysqlConfig.Options.PoolHeartbeatInterval))
-		poolOpts = append(poolOpts, pool.WithHeartbeatTimeout(d.cfg.Dump.MysqlConfig.Options.PoolHeartbeatInterval))
+	if d.cfg.Dump.MysqlConfig.PoolHeartbeatInterval > 0 {
+		poolOpts = append(poolOpts, pool.WithHeartbeat(d.cfg.Dump.MysqlConfig.PoolHeartbeatInterval))
+		poolOpts = append(poolOpts, pool.WithHeartbeatTimeout(d.cfg.Dump.MysqlConfig.PoolHeartbeatInterval))
 	}
 	if d.synchronizeTx {
 		// TODO: Implement synchronization if needed, currently it is always performed in p.Init()
 	}
-	connCfg, err := d.cfg.Dump.MysqlConfig.Options.ConnectionConfig()
+	connCfg, err := d.cfg.Dump.MysqlConfig.ConnectionConfig()
 	if err != nil {
 		return fmt.Errorf("get connection config: %w", err)
 	}
@@ -261,9 +278,6 @@ func (d *Dump) startPool(ctx context.Context) error {
 }
 
 func (d *Dump) Init(ctx context.Context) error {
-	if err := d.cfg.Dump.MysqlConfig.Options.Validate(); err != nil {
-		return fmt.Errorf("validate mysql options: %w", err)
-	}
 	if err := d.startPool(ctx); err != nil {
 		return fmt.Errorf("start transaction pool: %w", err)
 	}
@@ -309,26 +323,15 @@ func (d *Dump) StopHBWorker(ctx context.Context, err error) error {
 func (d *Dump) Introspect(ctx context.Context) (err error) {
 	ctx = validationcollector.WithMeta(ctx,
 		models.MetaKeyDumpID, d.dumpID,
-		models.MetaKeyEngine, models.EngineMysql,
+		models.MetaKeyEngine, models.DBMSEngineMySQL,
 	)
 
-	d.introsp = introspect.NewIntrospector(&d.cfg.Dump.Options)
+	d.introsp, err = introspect.NewIntrospector(&d.cfg.Dump.Options)
+	if err != nil {
+		return fmt.Errorf("new introspector: %w", err)
+	}
 	if err := d.introsp.Introspect(ctx, d.txPool.GetMetaTx()); err != nil {
 		return fmt.Errorf("introspect mysql server: %w", err)
-	}
-
-	if mi, ok := d.introsp.(*introspect.Introspector); ok {
-		maxAllowedPacket := mi.GetMaxAllowedPacket()
-		if maxAllowedPacket > 0 {
-			if d.cfg.Dump.MysqlConfig.Options.MaxInsertStatementSize == 0 ||
-				d.cfg.Dump.MysqlConfig.Options.MaxInsertStatementSize > int(maxAllowedPacket) {
-				log.Ctx(ctx).Info().
-					Uint64("max_allowed_packet", maxAllowedPacket).
-					Int("old_max_insert_statement_size", d.cfg.Dump.MysqlConfig.Options.MaxInsertStatementSize).
-					Msg("synchronizing max-insert-statement-size with server max_allowed_packet")
-				d.cfg.Dump.MysqlConfig.Options.MaxInsertStatementSize = int(maxAllowedPacket)
-			}
-		}
 	}
 
 	return nil
@@ -341,12 +344,20 @@ func (d *Dump) IntrospectAndGetTables(ctx context.Context) ([]models.Table, erro
 	return d.introsp.GetCommonTables(), nil
 }
 
-func (d *Dump) SchemaDump(ctx context.Context) (err error) {
-	sd := schemadump.New(d.st, &d.cfg.Dump.MysqlConfig.Options, d.cmd)
-	if err := sd.DumpSchema(ctx); err != nil {
-		return fmt.Errorf("dump schema: %w", err)
+func (d *Dump) SchemaDump(ctx context.Context) ([]models.DumpedDatabaseSchemaStat, error) {
+	settings := d.introsp.GetSchemaRelatedSettings()
+	envs, err := d.cfg.Dump.MysqlConfig.Env()
+	if err != nil {
+		return nil, fmt.Errorf("get environment variables: %w", err)
 	}
-	return nil
+	options := d.cfg.Dump.MysqlConfig.Params()
+	options = append(options, d.cfg.Dump.MysqlConfig.VendorOptions...)
+	sd := schemadump.New(d.cmd, d.st, envs, options, settings, d.compressionEnabled, d.compressionPgzip)
+	res, err := sd.DumpSchema(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("dump schema: %w", err)
+	}
+	return res, nil
 }
 
 func (d *Dump) DataDump(ctx context.Context) (err error) {
@@ -374,7 +385,8 @@ func (d *Dump) DataDump(ctx context.Context) (err error) {
 		taskProducerOpts = append(taskProducerOpts, taskproducer.WithTransformedTablesOnly())
 	}
 	taskProducerOpts = append(taskProducerOpts, taskproducer.WithDumpFormat(d.format))
-	taskProducerOpts = append(taskProducerOpts, taskproducer.WithMaxInsertStatementSize(d.cfg.Dump.MysqlConfig.Options.MaxInsertStatementSize))
+	taskProducerOpts = append(taskProducerOpts,
+		taskproducer.WithMaxInsertStatementSize(d.cfg.Dump.MysqlConfig.MaxInsertStatementSize))
 
 	tp, err := taskproducer.New(
 		d.introsp,
@@ -407,16 +419,25 @@ func (d *Dump) DataDump(ctx context.Context) (err error) {
 }
 
 func (d *Dump) GetDumpMetadata(completedAt time.Time) (models.Metadata, error) {
-	meta := models.NewMetadata(
-		models.EngineMysql,
+	dataDump := models.NewDataDumpMetadata(
+		d.cfg.Dump.Transformation.ToTransformationConfig(),
+		d.getKindsTopologicalOrder(),
 		d.dumpStats,
+	)
+	schemaDump := models.NewSchemaDumpMetadata(
+		d.dumpedDatabaseSchema,
+	)
+
+	meta := models.NewMetadata(
+		models.DBMSEngineMySQL,
 		d.startedAt,
 		completedAt,
-		d.cfg.Dump.Transformation.ToTransformationConfig(),
-		d.introsp.GetCommonTables(),
-		d.connConfig.Database,
-		d.cfg.Dump.Tag,
 		d.cfg.Dump.Description,
+		d.cfg.Dump.Tag,
+		d.introsp.GetCommonTables(),
+		dataDump,
+		schemaDump,
+		d.introsp.GetMatchedDatabases(),
 	)
 	return meta, nil
 }
@@ -436,7 +457,7 @@ func (d *Dump) Run(ctx context.Context) (err error) {
 	d.startedAt = time.Now()
 	ctx = validationcollector.WithMeta(ctx,
 		models.MetaKeyDumpID, d.dumpID,
-		models.MetaKeyEngine, models.EngineMysql,
+		models.MetaKeyEngine, models.DBMSEngineMySQL,
 	)
 
 	if err := d.Init(ctx); err != nil {
@@ -471,9 +492,11 @@ func (d *Dump) Run(ctx context.Context) (err error) {
 			Bool("data_only", d.dataOnly).
 			Bool("schema_only", d.schemaOnly).
 			Msg("dumping schema")
-		if err := d.SchemaDump(ctx); err != nil {
+		var schemaStats []models.DumpedDatabaseSchemaStat
+		if schemaStats, err = d.SchemaDump(ctx); err != nil {
 			return fmt.Errorf("dump schema: %w", err)
 		}
+		d.dumpedDatabaseSchema = schemaStats
 	}
 
 	if !d.schemaOnly {
@@ -491,6 +514,19 @@ func (d *Dump) Run(ctx context.Context) (err error) {
 	}
 
 	return nil
+}
+
+func (d *Dump) getKindsTopologicalOrder() map[models.ObjectKind][]models.TaskID {
+	res := make(map[models.ObjectKind][]models.TaskID)
+	for _, taskID := range d.dumpStats.RestorationContext.RestorationOrder {
+		stat, ok := d.dumpStats.TaskStats[taskID]
+		if !ok {
+			continue
+		}
+		kind := stat.ObjectStat.Kind
+		res[kind] = append(res[kind], taskID)
+	}
+	return res
 }
 
 func (d *Dump) GetDumpID() models.DumpID {

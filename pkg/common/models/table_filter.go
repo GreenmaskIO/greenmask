@@ -35,7 +35,8 @@ func NewTableFilterItemFromString(fullName string) (TableFilter, error) {
 }
 
 type TaskProducerFilter struct {
-	Tables []TableFilter
+	Tables            []TableFilter
+	ExcludedTableData []TableFilter
 }
 
 func (f *TaskProducerFilter) IsAllowed(table Table) bool {
@@ -48,4 +49,13 @@ func (f *TaskProducerFilter) IsAllowed(table Table) bool {
 		}
 	}
 	return false
+}
+
+func (f *TaskProducerFilter) IsDataAllowed(table Table) bool {
+	for _, tf := range f.ExcludedTableData {
+		if tf.Name == table.Name && (tf.Schema == "" || tf.Schema == table.Schema) {
+			return false
+		}
+	}
+	return true
 }

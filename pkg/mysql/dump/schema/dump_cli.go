@@ -19,50 +19,113 @@ import (
 	"fmt"
 	"io"
 
+	"github.com/greenmaskio/greenmask/pkg/common/interfaces"
+	commonmodels "github.com/greenmaskio/greenmask/pkg/common/models"
+	"github.com/greenmaskio/greenmask/pkg/common/utils"
 	"github.com/rs/zerolog/log"
 	"golang.org/x/sync/errgroup"
-
-	"github.com/greenmaskio/greenmask/pkg/common/interfaces"
-	"github.com/greenmaskio/greenmask/pkg/common/utils"
 )
 
 const executable = "mysqldump"
 
-type options interface {
-	SchemaDumpParams() ([]string, error)
-	Env() ([]string, error)
-}
-
 type Dumper struct {
-	executable string
-	opt        options
-	st         interfaces.Storager
-	cmd        utils.CmdProducer
+	st               interfaces.Storager
+	cmdProducer      utils.CmdProducer
+	executable       string
+	envs             []string
+	mysqlParams      []string
+	genericSettings  commonmodels.MysqlDumpRelatedSettings
+	compression      bool
+	compressionPgzip bool
 }
 
-func New(st interfaces.Storager, opt options, cmd utils.CmdProducer) *Dumper {
+func New(
+	cmd utils.CmdProducer,
+	st interfaces.Storager,
+	envs []string,
+	mysqlParams []string,
+	genericSettings commonmodels.MysqlDumpRelatedSettings,
+	compression bool,
+	compressionPgzip bool,
+) *Dumper {
 	return &Dumper{
-		executable: executable,
-		opt:        opt,
-		st:         st,
-		cmd:        cmd,
+		executable:       executable,
+		envs:             envs,
+		st:               st,
+		cmdProducer:      cmd,
+		mysqlParams:      mysqlParams,
+		genericSettings:  genericSettings,
+		compression:      compression,
+		compressionPgzip: compressionPgzip,
 	}
 }
 
-func (d *Dumper) DumpSchema(ctx context.Context) error {
-	env, err := d.opt.Env()
-	if err != nil {
-		return fmt.Errorf("getting environment variables: %w", err)
+func (d *Dumper) getCliParameter(dbname string) []string {
+	args := []string{"--no-data"} // Dump only schema, no data
+
+	args = append(args, d.mysqlParams...)
+
+	// Add ignored tables for this database. Note that mysqldump requires database.table format for --ignore-table
+	// These are named parameters (options) and should come before the positional arguments.
+	if excludeTables, ok := d.genericSettings.ExcludeTables[dbname]; ok {
+		for _, et := range excludeTables {
+			args = append(args, fmt.Sprintf("--ignore-table=%s.%s", dbname, et))
+		}
 	}
-	params, err := d.opt.SchemaDumpParams()
-	if err != nil {
-		return fmt.Errorf("cannot get dump params: %w", err)
+
+	// Add database name as the first positional argument
+	args = append(args, dbname)
+
+	// Add included tables for this database as subsequent positional arguments
+	if tables, ok := d.genericSettings.IncludeTables[dbname]; ok {
+		args = append(args, tables...)
 	}
-	r, w := io.Pipe()
+
+	return args
+}
+
+func (d *Dumper) DumpSchema(ctx context.Context) ([]commonmodels.DumpedDatabaseSchemaStat, error) {
+	res := make([]commonmodels.DumpedDatabaseSchemaStat, 0)
+	for _, dbname := range d.genericSettings.AllowedSchemas {
+		stat, err := d.dumpDatabaseSchema(ctx, dbname)
+		if err != nil {
+			return nil, fmt.Errorf("database '%s': %w", dbname, err)
+		}
+		res = append(res, stat)
+	}
+	return res, nil
+}
+
+func (d *Dumper) dumpDatabaseSchema(ctx context.Context, dbname string) (commonmodels.DumpedDatabaseSchemaStat, error) {
+	var r utils.CountReadCloser
+	var w utils.CountWriteCloser
+	if d.compression {
+		w, r = utils.NewGzipPipe(d.compressionPgzip)
+	} else {
+		w, r = utils.NewPlainPipe()
+	}
+
 	eg, gtx := errgroup.WithContext(ctx)
+	fileName := fmt.Sprintf("schema_%s.sql", dbname)
+	if d.compression {
+		fileName += ".gz"
+	}
+	ctx = log.Ctx(ctx).With().
+		Str("Stage", "SchemaDump").
+		Str("Database", dbname).
+		Str("FileName", fileName).
+		Logger().WithContext(ctx)
+
 	eg.Go(func() error {
-		if err := d.st.PutObject(gtx, "schema.sql", r); err != nil {
-			return fmt.Errorf("put schema schema.sql: %w", err)
+		defer func() {
+			if err := r.Close(); err != nil {
+				log.Ctx(ctx).Warn().
+					Err(err).
+					Msg("error closing input reader")
+			}
+		}()
+		if err := d.st.PutObject(gtx, fileName, r); err != nil {
+			return fmt.Errorf("put schema %s: %w", fileName, err)
 		}
 		return nil
 	})
@@ -71,21 +134,38 @@ func (d *Dumper) DumpSchema(ctx context.Context) error {
 		defer func(w io.Closer) {
 			if err := w.Close(); err != nil {
 				log.Ctx(ctx).Error().
-					Str("Stage", "SchemaDump").
-					Msgf("closing output writer: %v", err)
+					Err(err).
+					Msg("error closing output writer")
 			}
 		}(w)
-		cmd, err := d.cmd.Produce(d.executable, params, env, nil)
+		params := d.getCliParameter(dbname)
+		cmd, err := d.cmdProducer.Produce(d.executable, params, d.envs, nil)
 		if err != nil {
 			return fmt.Errorf("cannot produce mysqldump command: %w", err)
 		}
 		if err := cmd.ExecuteCmdAndWriteStdout(ctx, w); err != nil {
-			return fmt.Errorf("cannot run mysqldump: %w", err)
+			return fmt.Errorf("cannot run mysqldump for database %s: %w", dbname, err)
 		}
 		return nil
 	})
+
 	if err := eg.Wait(); err != nil {
-		return err
+		return commonmodels.DumpedDatabaseSchemaStat{}, err
 	}
-	return nil
+
+	compression := commonmodels.CompressionNone
+	if d.compression {
+		compression = commonmodels.CompressionGzip
+		if d.compressionPgzip {
+			compression = commonmodels.CompressionPgzip
+		}
+	}
+
+	return commonmodels.DumpedDatabaseSchemaStat{
+		DatabaseName:   dbname,
+		FileName:       fileName,
+		Compression:    compression,
+		OriginalSize:   w.GetCount(),
+		CompressedSize: r.GetCount(),
+	}, nil
 }

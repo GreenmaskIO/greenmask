@@ -15,14 +15,20 @@
 package config
 
 import (
+	"time"
+
 	commonmodels "github.com/greenmaskio/greenmask/pkg/common/models"
 	mysqlcommonconfig "github.com/greenmaskio/greenmask/pkg/mysql/config"
-	mysqlconfig "github.com/greenmaskio/greenmask/pkg/mysql/dump/config"
 )
 
 /*
 	Transformation config
 */
+
+const (
+	DefaultMaxAllowedPacket       = 0
+	DefaultMaxInsertStatementSize = 4 * 1024 * 1024
+)
 
 type Transformers []TransformerConfig
 
@@ -128,7 +134,13 @@ func (tc TransformationConfig) ToTransformationConfig() []commonmodels.TableConf
 }
 
 type MysqlDumpConfig struct {
-	Options mysqlconfig.DumpOptions `mapstructure:"options" yaml:"options" json:"options"`
+	mysqlcommonconfig.ConnectionOpts `mapstructure:",squash" json:",squash,omitempty"` //nolint:staticcheck
+	DumpFormat                       commonmodels.DumpFormat                           `mapstructure:"dump-format" json:"dump_format,omitempty"`                             // Format for data dump (csv or insert)
+	MaxInsertStatementSize           int                                               `mapstructure:"max-insert-statement-size" json:"max_insert_statement_size,omitempty"` // Max size of a single insert statement in bytes
+	NoTablespaces                    bool                                              `mapstructure:"no-tablespaces" json:"no_databases,omitempty"`                         // Exclude tablespace information (--no-tablespaces)
+	PoolHeartbeatInterval            time.Duration                                     `mapstructure:"pool-heartbeat-interval" json:"pool_heartbeat_interval,omitempty"`     // Interval for connection pool heartbeat in seconds
+	PoolHeartbeatTimeout             time.Duration                                     `mapstructure:"pool-heartbeat-timeout" json:"pool_heartbeat_timeout,omitempty"`       // Timeout for connection pool heartbeat in seconds
+	VendorOptions                    []string                                          `mapstructure:"vendor-options" json:"vendor-options,omitempty"`                       // Arbitrary options for mysqldump
 }
 
 type PostgresqlDumpConfig struct {
@@ -136,14 +148,22 @@ type PostgresqlDumpConfig struct {
 }
 
 type CommonDumpOptions struct {
-	IncludeTable     []string `mapstructure:"include-table" yaml:"include-table" json:"include-table"`
-	ExcludeTable     []string `mapstructure:"exclude-table" yaml:"exclude-table" json:"exclude-table"`
-	IncludeSchema    []string `mapstructure:"include-schema" yaml:"include-schema" json:"include-schema"`
-	ExcludeSchema    []string `mapstructure:"exclude-schema" yaml:"exclude-schema" json:"exclude-schema"`
-	ExcludeTableData []string `mapstructure:"exclude-table-data" yaml:"exclude-table-data" json:"exclude-table-data"`
-	DataOnly         bool     `mapstructure:"data-only" yaml:"data-only" json:"data-only"`
-	SchemaOnly       bool     `mapstructure:"schema-only" yaml:"schema-only" json:"schema-only"`
-	Jobs             int      `mapstructure:"jobs" yaml:"jobs" json:"jobs"`
+	IncludeDatabase        []string `mapstructure:"include-database" yaml:"include-database" json:"include-database"`
+	ExcludeDatabase        []string `mapstructure:"exclude-database" yaml:"exclude-database" json:"exclude-database"`
+	IncludeSchema          []string `mapstructure:"include-schema" yaml:"include-schema" json:"include-schema"`
+	ExcludeSchema          []string `mapstructure:"exclude-schema" yaml:"exclude-schema" json:"exclude-schema"`
+	IncludeTableData       []string `mapstructure:"include-table-data" yaml:"include-table-data" json:"include-table-data"`
+	ExcludeTableData       []string `mapstructure:"exclude-table-data" yaml:"exclude-table-data" json:"exclude-table-data"`
+	IncludeTable           []string `mapstructure:"include-table" yaml:"include-table" json:"include-table"`
+	ExcludeTable           []string `mapstructure:"exclude-table" yaml:"exclude-table" json:"exclude-table"`
+	IncludeTableDefinition []string `mapstructure:"include-table-definition" yaml:"include-table-definition" json:"include-table-definition"`
+	ExcludeTableDefinition []string `mapstructure:"exclude-table-definition" yaml:"exclude-table-definition" json:"exclude-table-definition"`
+	DataOnly               bool     `mapstructure:"data-only" yaml:"data-only" json:"data-only"`
+	SchemaOnly             bool     `mapstructure:"schema-only" yaml:"schema-only" json:"schema-only"`
+	Options                []string `mapstructure:"options" yaml:"options" json:"options"`
+	Jobs                   int      `mapstructure:"jobs" yaml:"jobs" json:"jobs"`
+	Compress               bool     `mapstructure:"compress" yaml:"compress" json:"compress"`
+	Pgzip                  bool     `mapstructure:"pgzip" yaml:"pgzip" json:"pgzip"`
 }
 
 func (o *CommonDumpOptions) GetIncludedTables() []string {
@@ -154,12 +174,36 @@ func (o *CommonDumpOptions) GetExcludedTables() []string {
 	return o.ExcludeTable
 }
 
+func (o *CommonDumpOptions) GetExcludedDatabases() []string {
+	return o.ExcludeDatabase
+}
+
+func (o *CommonDumpOptions) GetIncludedDatabases() []string {
+	return o.IncludeDatabase
+}
+
 func (o *CommonDumpOptions) GetExcludedSchemas() []string {
 	return o.ExcludeSchema
 }
 
 func (o *CommonDumpOptions) GetIncludedSchemas() []string {
 	return o.IncludeSchema
+}
+
+func (o *CommonDumpOptions) GetExcludedTableData() []string {
+	return o.ExcludeTableData
+}
+
+func (o *CommonDumpOptions) GetIncludedTableData() []string {
+	return o.IncludeTableData
+}
+
+func (o *CommonDumpOptions) GetIncludedTableDefinitions() []string {
+	return o.IncludeTableDefinition
+}
+
+func (o *CommonDumpOptions) GetExcludedTableDefinitions() []string {
+	return o.ExcludeTableDefinition
 }
 
 type Dump struct {
@@ -175,13 +219,16 @@ type Dump struct {
 func NewDump() Dump {
 	return Dump{
 		MysqlConfig: MysqlDumpConfig{
-			Options: mysqlconfig.DumpOptions{
-				ConnectionOpts: mysqlcommonconfig.ConnectionOpts{
-					MaxAllowedPacket: mysqlcommonconfig.DefaultMaxAllowedPacket,
-				},
-				MaxInsertStatementSize: mysqlconfig.DefaultMaxInsertStatementSize,
-				DumpFormat:             commonmodels.DumpFormatInsert,
+			ConnectionOpts: mysqlcommonconfig.ConnectionOpts{
+				MaxAllowedPacket: DefaultMaxAllowedPacket,
 			},
+			MaxInsertStatementSize: DefaultMaxInsertStatementSize,
+			DumpFormat:             commonmodels.DumpFormatInsert,
+		},
+		Options: CommonDumpOptions{
+			Compress: true,
+			Pgzip:    true,
+			Jobs:     1,
 		},
 	}
 }

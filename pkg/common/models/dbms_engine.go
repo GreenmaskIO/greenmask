@@ -12,24 +12,24 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package interfaces
+package models
 
 import (
-	"context"
-	"database/sql"
-
-	commonmodels "github.com/greenmaskio/greenmask/pkg/common/models"
+	"fmt"
 )
 
-type DB interface {
-	QueryContext(ctx context.Context, query string, args ...any) (*sql.Rows, error)
-	ExecContext(ctx context.Context, query string, args ...any) (sql.Result, error)
-	QueryRowContext(ctx context.Context, query string, args ...any) *sql.Row
-}
+type DBMSEngine string
 
-type Introspector interface {
-	GetCommonTables() []commonmodels.Table
-	Introspect(ctx context.Context, tx DB) error
-	GetSchemaRelatedSettings() commonmodels.MysqlDumpRelatedSettings
-	GetMatchedDatabases() []string
+const (
+	DBMSEngineMySQL      DBMSEngine = "mysql"
+	DBMSEnginePostgreSQL DBMSEngine = "postgresql"
+)
+
+func (e DBMSEngine) Validate() error {
+	switch e {
+	case DBMSEngineMySQL, DBMSEnginePostgreSQL:
+		return nil
+	default:
+		return fmt.Errorf("value = '%s': %w", string(e), ErrModelValidation)
+	}
 }

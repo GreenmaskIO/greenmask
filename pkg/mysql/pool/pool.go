@@ -35,10 +35,10 @@ type WorkerConn interface {
 }
 
 type workerConn struct {
-	id         int
-	Conn       *client.Conn
-	metaTx     *sql.Tx
-	connConfig *mysqlmodels.ConnConfig
+	id     int
+	Conn   *client.Conn
+	metaTx *sql.Tx
+	cfg    interfaces.ConnectionConfigurator
 }
 
 func (wc *workerConn) ID() int {
@@ -226,8 +226,6 @@ func (p *ConsistentTxPool) connectSql(ctx context.Context) (*sql.Conn, error) {
 func (p *ConsistentTxPool) prepareWorkerConns(ctx context.Context) error {
 	log.Ctx(ctx).Debug().Msgf("phase 0: preparing %d worker sessions", p.poolSize)
 	p.pool = make([]*workerConn, p.poolSize)
-	cfg, _ := p.cfg.(*mysqlmodels.ConnConfig)
-
 	for i := 0; i < p.poolSize; i++ {
 		// Prepare raw connection
 		rawConn, err := p.connectRaw(ctx)
@@ -247,9 +245,9 @@ func (p *ConsistentTxPool) prepareWorkerConns(ctx context.Context) error {
 		}
 
 		p.pool[i] = &workerConn{
-			id:         i,
-			Conn:       rawConn,
-			connConfig: cfg,
+			id:   i,
+			Conn: rawConn,
+			cfg:  p.cfg,
 		}
 	}
 	return nil
@@ -319,6 +317,9 @@ func (p *ConsistentTxPool) synchronizeSnapshots(ctx context.Context) error {
 		worker := p.pool[i]
 		worker.metaTx = p.metaTx
 		g.Go(func() error {
+			log.Ctx(ctx).Debug().
+				Int("connID", worker.id).
+				Msg("starting tx in pool connection")
 			// Start Raw Transaction
 			if err := worker.Conn.BeginTx(true, "REPEATABLE READ"); err != nil {
 				return fmt.Errorf("begin raw tx: %w", err)
@@ -336,6 +337,8 @@ func (p *ConsistentTxPool) synchronizeSnapshots(ctx context.Context) error {
 	if err := g.Wait(); err != nil {
 		return fmt.Errorf("establish consistent snapshots: %w", err)
 	}
+
+	log.Ctx(ctx).Debug().Msg("phase 2: consistent snapshots established")
 
 	return nil
 }

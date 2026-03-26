@@ -7,7 +7,7 @@ variable "TAG" {
 }
 
 variable "GO_VERSION" {
-  default = "1.24"
+  default = "1.26"
 }
 
 variable "DEBIAN_RELEASE" {

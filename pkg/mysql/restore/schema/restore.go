@@ -23,12 +23,11 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"github.com/greenmaskio/greenmask/pkg/common/interfaces"
+	commonmodels "github.com/greenmaskio/greenmask/pkg/common/models"
 	"github.com/greenmaskio/greenmask/pkg/common/utils"
 )
 
 const (
-	schemaFileName = "schema.sql"
-
 	executable = "mysql"
 )
 
@@ -44,26 +43,34 @@ type Restorer struct {
 	cfg        options
 	executable string
 	cmd        utils.CmdProducer
+	schemaMeta *commonmodels.SchemaDumpMetadata
 }
 
 func NewRestorer(
 	st interfaces.Storager,
 	connCfg options,
 	cmd utils.CmdProducer,
+	schemaMeta *commonmodels.SchemaDumpMetadata,
 ) *Restorer {
 	return &Restorer{
 		st:         st,
 		cfg:        connCfg,
 		executable: executable,
 		cmd:        cmd,
+		schemaMeta: schemaMeta,
 	}
 }
 
-func (r *Restorer) restoreSchemaData(ctx context.Context, f io.Reader) error {
+func (r *Restorer) restoreSchemaData(ctx context.Context, dbName string, f io.Reader) error {
 	params, err := r.cfg.SchemaRestoreParams()
 	if err != nil {
 		return fmt.Errorf("get schema restore params: %w", err)
 	}
+
+	if dbName != "" {
+		params = append(params, dbName)
+	}
+
 	env, err := r.cfg.Env()
 	if err != nil {
 		return fmt.Errorf("get schema restore env: %w", err)
@@ -80,16 +87,46 @@ func (r *Restorer) restoreSchemaData(ctx context.Context, f io.Reader) error {
 }
 
 func (r *Restorer) RestoreSchema(ctx context.Context) error {
-	f, err := r.st.GetObject(ctx, schemaFileName)
+	if r.schemaMeta == nil {
+		log.Ctx(ctx).Debug().Msg("no schema dump found in metadata")
+		return nil
+	}
+
+	for _, schemaStat := range r.schemaMeta.DumpedDatabaseSchema {
+		if err := r.restoreDatabaseSchema(ctx, schemaStat); err != nil {
+			return fmt.Errorf("database '%s': %w", schemaStat.DatabaseName, err)
+		}
+	}
+	return nil
+}
+
+func (r *Restorer) restoreDatabaseSchema(ctx context.Context, schemaStat commonmodels.DumpedDatabaseSchemaStat) error {
+	log.Ctx(ctx).Info().
+		Str("Database", schemaStat.DatabaseName).
+		Str("FileName", schemaStat.FileName).
+		Msg("restoring database schema")
+
+	f, err := r.st.GetObject(ctx, schemaStat.FileName)
 	if err != nil {
 		return fmt.Errorf("get schema file from storage: %w", err)
 	}
+
+	reader := f
+	if schemaStat.Compression.IsEnabled() {
+		gzReader, err := utils.NewGzipReader(f, schemaStat.Compression.IsPgzip())
+		if err != nil {
+			return fmt.Errorf("create gzip reader: %w", err)
+		}
+		reader = gzReader
+	}
+
 	defer func() {
-		if err := f.Close(); err != nil {
+		if err := reader.Close(); err != nil {
 			log.Ctx(ctx).Warn().Err(err).Msg("close schema file")
 		}
 	}()
-	if err := r.restoreSchemaData(ctx, f); err != nil {
+
+	if err := r.restoreSchemaData(ctx, schemaStat.DatabaseName, reader); err != nil {
 		return fmt.Errorf("restore schema data: %w", err)
 	}
 	return nil

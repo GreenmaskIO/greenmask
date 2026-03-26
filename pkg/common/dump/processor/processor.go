@@ -138,7 +138,7 @@ func (dr *DefaultDumpProcessor) dataDump(ctx context.Context) error {
 	if err := eg.Wait(); err != nil {
 		return fmt.Errorf("at least one worker exited with error: %w", err)
 	}
-	log.Ctx(ctx).Debug().Msg("all the data have been dumped")
+	log.Ctx(ctx).Debug().Msg("data have been dumped")
 	return nil
 }
 

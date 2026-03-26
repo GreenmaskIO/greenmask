@@ -29,8 +29,8 @@ import (
 )
 
 const (
-	engineNameMySQL    = "mysql"
-	engineNamePostgres = "postgresql"
+	engineNameMySQL    = commonmodels.DBMSEngineMySQL
+	engineNamePostgres = commonmodels.DBMSEnginePostgreSQL
 )
 
 var (
@@ -39,7 +39,7 @@ var (
 )
 
 func SetupContext(ctx context.Context, cfg *config.Config) context.Context {
-	ctx = log.Ctx(ctx).With().Str(commonmodels.MetaKeyEngine, cfg.Engine).Logger().WithContext(ctx)
+	ctx = log.Ctx(ctx).With().Str(commonmodels.MetaKeyEngine, string(cfg.Engine)).Logger().WithContext(ctx)
 	vc := validationcollector.NewCollectorWithMeta(commonmodels.MetaKeyEngine, cfg.Engine)
 	ctx = validationcollector.WithCollector(ctx, vc)
 	return ctx
@@ -51,6 +51,9 @@ func SetupInfrastructure(cfg *config.Config) error {
 	}
 	if cfg.Engine == "" {
 		return fmt.Errorf("specify dbms engine in \"engine\" key in the config: %w", errEngineNotSpecified)
+	}
+	if err := cfg.Engine.Validate(); err != nil {
+		return fmt.Errorf("invalid engine: %w", err)
 	}
 	return nil
 }
