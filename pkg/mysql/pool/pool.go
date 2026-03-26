@@ -317,6 +317,9 @@ func (p *ConsistentTxPool) synchronizeSnapshots(ctx context.Context) error {
 		worker := p.pool[i]
 		worker.metaTx = p.metaTx
 		g.Go(func() error {
+			log.Ctx(ctx).Debug().
+				Int("connID", worker.id).
+				Msg("starting tx in pool connection")
 			// Start Raw Transaction
 			if err := worker.Conn.BeginTx(true, "REPEATABLE READ"); err != nil {
 				return fmt.Errorf("begin raw tx: %w", err)
@@ -334,6 +337,8 @@ func (p *ConsistentTxPool) synchronizeSnapshots(ctx context.Context) error {
 	if err := g.Wait(); err != nil {
 		return fmt.Errorf("establish consistent snapshots: %w", err)
 	}
+
+	log.Ctx(ctx).Debug().Msg("phase 2: consistent snapshots established")
 
 	return nil
 }
