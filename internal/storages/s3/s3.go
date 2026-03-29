@@ -47,6 +47,10 @@ import (
 
 const DefaultS3ObjectsDelimiter = "/"
 
+// deleteObjectsBatchSize is the maximum number of objects per DeleteObjects API call.
+// The S3 API has a hard limit of 1000 objects per request.
+const deleteObjectsBatchSize = 1000
+
 const (
 	NotFountAwsErrorCode  = "NotFound"
 	NoSuchKeyAwsErrorCode = "NoSuchKey"
@@ -287,15 +291,20 @@ func (s *Storage) Delete(ctx context.Context, filePaths ...string) error {
 		}
 	}
 
-	input := &s3.DeleteObjectsInput{
-		Bucket: aws.String(s.config.Bucket),
-		Delete: &s3.Delete{
-			Objects: objs,
-		},
-	}
-	_, err := s.service.DeleteObjectsWithContext(ctx, input)
-	if err != nil {
-		return fmt.Errorf("error deleting objects: %w", err)
+	for i := 0; i < len(objs); i += deleteObjectsBatchSize {
+		end := i + deleteObjectsBatchSize
+		if end > len(objs) {
+			end = len(objs)
+		}
+		input := &s3.DeleteObjectsInput{
+			Bucket: aws.String(s.config.Bucket),
+			Delete: &s3.Delete{
+				Objects: objs[i:end],
+			},
+		}
+		if _, err := s.service.DeleteObjectsWithContext(ctx, input); err != nil {
+			return fmt.Errorf("error deleting objects: %w", err)
+		}
 	}
 	return nil
 }
