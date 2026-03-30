@@ -4,7 +4,7 @@ on:
   workflow_call:
 
 env:
-  python-version: 'pypy3.10'
+  python-version: 'pypy3.13'
 
 jobs:
   deploy-docs:
