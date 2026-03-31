@@ -97,12 +97,14 @@ type Dump struct {
 	PgDumpOptions     pgdump.Options      `mapstructure:"pg_dump_options" yaml:"pg_dump_options" json:"pg_dump_options"`
 	Transformation    []*Table            `mapstructure:"transformation" yaml:"transformation" json:"transformation,omitempty"`
 	VirtualReferences []*VirtualReference `mapstructure:"virtual_references" yaml:"virtual_references" json:"virtual_references,omitempty"`
+	Filestore         *FilestoreDump      `mapstructure:"filestore" yaml:"filestore" json:"filestore,omitempty"`
 }
 
 type Restore struct {
 	PgRestoreOptions pgrestore.Options               `mapstructure:"pg_restore_options" yaml:"pg_restore_options" json:"pg_restore_options"`
 	Scripts          map[string][]pgrestore.Script   `mapstructure:"scripts" yaml:"scripts" json:"scripts,omitempty"`
 	ErrorExclusions  *DataRestorationErrorExclusions `mapstructure:"insert_error_exclusions" yaml:"insert_error_exclusions" json:"insert_error_exclusions,omitempty"`
+	Filestore        *FilestoreRestore               `mapstructure:"filestore" yaml:"filestore" json:"filestore,omitempty"`
 }
 
 type TablesDataRestorationErrorExclusions struct {
@@ -120,6 +122,36 @@ type GlobalDataRestorationErrorExclusions struct {
 type DataRestorationErrorExclusions struct {
 	Tables []*TablesDataRestorationErrorExclusions `mapstructure:"tables" yaml:"tables" json:"tables,omitempty"`
 	Global *GlobalDataRestorationErrorExclusions   `mapstructure:"global" yaml:"global" json:"global,omitempty"`
+}
+
+type FilestoreDump struct {
+	Enabled             bool               `mapstructure:"enabled" yaml:"enabled" json:"enabled,omitempty"`
+	RootPath            string             `mapstructure:"root_path" yaml:"root_path" json:"root_path,omitempty"`
+	FileList            string             `mapstructure:"file_list" yaml:"file_list" json:"file_list,omitempty"`
+	IncludeListFile     string             `mapstructure:"include_list_file" yaml:"include_list_file" json:"include_list_file,omitempty"`
+	IncludeListQuery    string             `mapstructure:"include_list_query" yaml:"include_list_query" json:"include_list_query,omitempty"`
+	IncludeListQueryFile string            `mapstructure:"include_list_query_file" yaml:"include_list_query_file" json:"include_list_query_file,omitempty"`
+	Subdir              string             `mapstructure:"subdir" yaml:"subdir" json:"subdir,omitempty"`
+	ArchiveName         string             `mapstructure:"archive_name" yaml:"archive_name" json:"archive_name,omitempty"`
+	MetadataName        string             `mapstructure:"metadata_name" yaml:"metadata_name" json:"metadata_name,omitempty"`
+	UsePgzip            *bool              `mapstructure:"use_pgzip" yaml:"use_pgzip" json:"use_pgzip,omitempty"`
+	FailOnMissing       bool               `mapstructure:"fail_on_missing" yaml:"fail_on_missing" json:"fail_on_missing,omitempty"`
+	Split               FilestoreDumpSplit `mapstructure:"split" yaml:"split" json:"split,omitempty"`
+}
+
+type FilestoreDumpSplit struct {
+	MaxSizeBytes int64 `mapstructure:"max_size_bytes" yaml:"max_size_bytes" json:"max_size_bytes,omitempty"`
+	MaxFiles     int   `mapstructure:"max_files" yaml:"max_files" json:"max_files,omitempty"`
+}
+
+type FilestoreRestore struct {
+	Enabled      bool   `mapstructure:"enabled" yaml:"enabled" json:"enabled,omitempty"`
+	TargetPath   string `mapstructure:"target_path" yaml:"target_path" json:"target_path,omitempty"`
+	Subdir       string `mapstructure:"subdir" yaml:"subdir" json:"subdir,omitempty"`
+	MetadataName string `mapstructure:"metadata_name" yaml:"metadata_name" json:"metadata_name,omitempty"`
+	UsePgzip     *bool  `mapstructure:"use_pgzip" yaml:"use_pgzip" json:"use_pgzip,omitempty"`
+	CleanTarget  bool   `mapstructure:"clean_target" yaml:"clean_target" json:"clean_target,omitempty"`
+	SkipExisting bool   `mapstructure:"skip_existing" yaml:"skip_existing" json:"skip_existing,omitempty"`
 }
 
 type TransformerConfig struct {
