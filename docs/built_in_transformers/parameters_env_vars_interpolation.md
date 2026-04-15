@@ -69,7 +69,8 @@ dump:
 
 ```bash
 export NEW_PASSWORD="s3cr3t!"
-greenmask dump ...
+greenmask --config config.yml validate --data --diff --transformed-only
+greenmask --config config.yaml dump
 ```
 
 The `password` column in every dumped row will be replaced with the value of `NEW_PASSWORD`
@@ -79,3 +80,10 @@ resolved at dump time.
 
     Use `${VAR?your error message}` to make a variable required. Greenmask will exit with
     the provided message if the variable is not set, making misconfiguration explicit.
+
+## Playground
+
+You can try this example interactively using the Greenmask [Playground](../playground.md).
+The playground ships with a pre-configured Docker environment where you can run the schema
+setup above, adjust the config, and execute `greenmask validate` or `greenmask dump` to see
+env var interpolation in action.

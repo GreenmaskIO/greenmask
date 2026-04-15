@@ -66,7 +66,9 @@ dump:
     To apply env vars interpolation to transformer parameters, set `resolve_env: true` on the
     specific transformer. By default it is `false` — parameter values containing `$` are treated
     as plain strings, which prevents accidental expansion of literal dollar signs that may appear
-    in stored data or config values.
+    in stored data or config values. See
+    [Parameters env vars interpolation](built_in_transformers/parameters_env_vars_interpolation.md)
+    for details and examples.
 
 !!! tip
 
