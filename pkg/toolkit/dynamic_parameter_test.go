@@ -47,7 +47,7 @@ func TestDynamicParameter_Init_linked_column_parameter_unsupported_types(t *test
 				SetAllowedColumnTypes("int2", "int4", "int8"),
 		)
 
-	columnParam := NewStaticParameter(columnDef, driver)
+	columnParam := NewStaticParameter(columnDef, driver, false)
 	warns, err := columnParam.Init(nil, ParamsValue("id2"))
 	require.NoError(t, err)
 	require.Empty(t, warns)
@@ -90,7 +90,7 @@ func TestDynamicParameter_Init_linked_column_parameter_supported_types(t *testin
 				SetAllowedColumnTypes("date", "timestamp", "timestamptz"),
 		)
 
-	columnParam := NewStaticParameter(columnDef, driver)
+	columnParam := NewStaticParameter(columnDef, driver, false)
 	warns, err := columnParam.Init(nil, ParamsValue("date_date"))
 	require.NoError(t, err)
 	require.Empty(t, warns)

@@ -117,6 +117,7 @@ func TestTimestampTransformer_Transform(t *testing.T) {
 				driver, tt.params,
 				nil,
 				"",
+				false,
 			)
 			require.NoError(t, err)
 			require.Empty(t, warnings)

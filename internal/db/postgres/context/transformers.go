@@ -41,7 +41,7 @@ func initTransformer(
 		)
 		return nil, totalWarnings, nil
 	}
-	transformer, warnings, err := td.Instance(ctx, d, c.Params, c.DynamicParams, c.When)
+	transformer, warnings, err := td.Instance(ctx, d, c.Params, c.DynamicParams, c.When, c.ResolveEnv)
 	if err != nil {
 		return nil, nil, fmt.Errorf("unable to init transformer: %w", err)
 	}

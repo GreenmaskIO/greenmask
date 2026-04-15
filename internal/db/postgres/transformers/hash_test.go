@@ -78,6 +78,7 @@ func TestHashTransformer_Transform_all_functions(t *testing.T) {
 				driver, tt.params,
 				nil,
 				"",
+				false,
 			)
 			require.NoError(t, err)
 			require.Empty(t, warnings)
@@ -156,6 +157,7 @@ func TestHashTransformer_Transform_length_truncation(t *testing.T) {
 		driver, params,
 		nil,
 		"",
+		false,
 	)
 	require.NoError(t, err)
 	require.Empty(t, warnings)
@@ -187,6 +189,7 @@ func TestHashTransformer_Transform_multiple_iterations(t *testing.T) {
 		driver, params,
 		nil,
 		"",
+		false,
 	)
 	require.NoError(t, err)
 	require.Empty(t, warnings)

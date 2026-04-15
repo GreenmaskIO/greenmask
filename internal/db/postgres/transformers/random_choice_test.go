@@ -27,6 +27,7 @@ func TestRandomChoiceTransformer_Transform_with_fail(t *testing.T) {
 		driver, params,
 		nil,
 		"",
+		false,
 	)
 	require.NoError(t, err)
 	require.Empty(t, warnings)
@@ -59,6 +60,7 @@ func TestRandomChoiceTransformer_Transform_validation_error(t *testing.T) {
 		driver, params,
 		nil,
 		"",
+		false,
 	)
 	require.NoError(t, err)
 	require.NotEmpty(t, warnings)
@@ -81,6 +83,7 @@ func TestRandomChoiceTransformer_Transform_json(t *testing.T) {
 		driver, params,
 		nil,
 		"",
+		false,
 	)
 	require.NoError(t, err)
 	require.Empty(t, warnings)

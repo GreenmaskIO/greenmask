@@ -321,7 +321,10 @@ func (c *Cmd) init(ctx context.Context) (Transformer, *Driver, ValidationWarning
 	}
 	warnings = append(warnings, driverWarnings...)
 
-	params, pw, err := InitParameters(driver, c.definition.Parameters, meta.Parameters.Static, meta.Parameters.Dynamic)
+	params, pw, err := InitParameters(
+		driver, c.definition.Parameters,
+		meta.Parameters.Static, meta.Parameters.Dynamic, false,
+	)
 	if err != nil {
 		return nil, nil, nil, fmt.Errorf("error parsing parameters: %w", err)
 	}

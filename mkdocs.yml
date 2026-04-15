@@ -63,6 +63,7 @@ nav:
           - Dynamic parameters: built_in_transformers/dynamic_parameters.md
           - Transformation engines: built_in_transformers/transformation_engines.md
           - Parameters templating: built_in_transformers/parameters_templating.md
+          - Parameters env vars interpolation: built_in_transformers/parameters_env_vars_interpolation.md
           - Transformation conditions: built_in_transformers/transformation_condition.md
           - Transformation inheritance: built_in_transformers/transformation_inheritance.md
           - Standard transformers:

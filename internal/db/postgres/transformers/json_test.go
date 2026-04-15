@@ -45,6 +45,7 @@ func TestJsonTransformer_Transform(t *testing.T) {
 		},
 		nil,
 		"",
+		false,
 	)
 	require.NoError(t, err)
 	assert.Empty(t, warnings)
@@ -88,6 +89,7 @@ func TestJsonTransformer_Transform_with_template(t *testing.T) {
 		},
 		nil,
 		"",
+		false,
 	)
 	require.NoError(t, err)
 	assert.Empty(t, warnings)
@@ -133,6 +135,7 @@ func TestJsonTransformer_Transform_null(t *testing.T) {
 		},
 		nil,
 		"",
+		false,
 	)
 	require.NoError(t, err)
 	assert.Empty(t, warnings)
@@ -211,6 +214,7 @@ func TestJsonTransformer_Transform_skip_does_not_exist(t *testing.T) {
 			},
 			nil,
 			"",
+			false,
 		)
 		require.NoError(t, err)
 		assert.Empty(t, warnings)
@@ -251,6 +255,7 @@ func TestJsonTransformer_Transform_skip_does_not_exist(t *testing.T) {
 			},
 			nil,
 			"",
+			false,
 		)
 		require.NoError(t, err)
 		assert.Empty(t, warnings)

@@ -70,6 +70,7 @@ func TestRandomIpTransformer_Transform_random_dynamic(t *testing.T) {
 				tt.params,
 				tt.dynamicParams,
 				"",
+				false,
 			)
 			require.NoError(t, err)
 			require.Empty(t, warnings)

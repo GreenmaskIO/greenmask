@@ -89,6 +89,7 @@ func TestMaskingTransformer_Transform(t *testing.T) {
 				driver, tt.params,
 				nil,
 				"",
+				false,
 			)
 			require.NoError(t, err)
 			require.Empty(t, warnings)
@@ -120,6 +121,7 @@ func TestMaskingTransformer_type_validation(t *testing.T) {
 		},
 		nil,
 		"",
+		false,
 	)
 	require.NoError(t, err)
 	assert.Len(t, warnings, 1)

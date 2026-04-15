@@ -61,6 +61,7 @@ func TestTemplateRecordTransformer_Transform_date(t *testing.T) {
 		},
 		nil,
 		"",
+		false,
 	)
 	require.NoError(t, err)
 	require.Empty(t, warnings)
@@ -111,6 +112,7 @@ func TestTemplateRecordTransformer_Transform_json(t *testing.T) {
 		},
 		nil,
 		"",
+		false,
 	)
 	require.NoError(t, err)
 	require.Empty(t, warnings)
