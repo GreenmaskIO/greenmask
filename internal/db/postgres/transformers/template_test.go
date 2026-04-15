@@ -49,6 +49,7 @@ func TestTemplateTransformer_Transform_int(t *testing.T) {
 		},
 		nil,
 		"",
+		false,
 	)
 	require.NoError(t, err)
 	assert.Empty(t, warnings)
@@ -88,6 +89,7 @@ func TestTemplateTransformer_Transform_timestamp(t *testing.T) {
 		},
 		nil,
 		"",
+		false,
 	)
 	require.NoError(t, err)
 	assert.Empty(t, warnings)

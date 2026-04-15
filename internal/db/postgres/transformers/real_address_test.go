@@ -45,6 +45,7 @@ func TestRealAddressTransformer_Transform(t *testing.T) {
 		},
 		nil,
 		"",
+		false,
 	)
 
 	require.NoError(t, err)
@@ -79,6 +80,7 @@ func TestMakeNewFakeTransformerFunction_parsing_error(t *testing.T) {
 		},
 		nil,
 		"",
+		false,
 	)
 	require.NoError(t, err)
 	require.Len(t, warnings, 1)
@@ -106,6 +108,7 @@ func TestMakeNewFakeTransformerFunction_validation_error(t *testing.T) {
 		},
 		nil,
 		"",
+		false,
 	)
 	require.NoError(t, err)
 	require.Len(t, warnings, 1)

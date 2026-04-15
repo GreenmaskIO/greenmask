@@ -35,6 +35,7 @@ func TestRandomPersonTransformer_Transform_static_fullname(t *testing.T) {
 		params,
 		nil,
 		"",
+		false,
 	)
 	require.NoError(t, err)
 	require.Empty(t, warnings)
@@ -73,6 +74,7 @@ func TestRandomPersonTransformer_Transform_static_firstname(t *testing.T) {
 		params,
 		nil,
 		"",
+		false,
 	)
 	require.NoError(t, err)
 	require.Empty(t, warnings)
@@ -111,6 +113,7 @@ func TestRandomPersonTransformer_Transform_static_lastname(t *testing.T) {
 		params,
 		nil,
 		"",
+		false,
 	)
 	require.NoError(t, err)
 	require.Empty(t, warnings)
@@ -156,6 +159,7 @@ func TestRandomPersonTransformer_Transform_static_nullable(t *testing.T) {
 		params,
 		nil,
 		"",
+		false,
 	)
 	require.NoError(t, err)
 	require.Empty(t, warnings)
@@ -203,6 +207,7 @@ func TestRandomPersonTransformer_Transform_keep_null(t *testing.T) {
 			params,
 			nil,
 			"",
+			false,
 		)
 		require.NoError(t, err)
 		require.Empty(t, warnings)
@@ -253,6 +258,7 @@ func TestRandomPersonTransformer_Transform_keep_null(t *testing.T) {
 			params,
 			nil,
 			"",
+			false,
 		)
 		require.NoError(t, err)
 		require.Empty(t, warnings)
@@ -305,6 +311,7 @@ func TestRandomPersonTransformer_Transform_keep_null(t *testing.T) {
 			params,
 			nil,
 			"",
+			false,
 		)
 		require.NoError(t, err)
 		require.Empty(t, warnings)

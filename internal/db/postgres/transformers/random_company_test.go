@@ -32,6 +32,7 @@ func TestRandomCompanyTransformer_Transform_static_fullname(t *testing.T) {
 		params,
 		nil,
 		"",
+		false,
 	)
 	require.NoError(t, err)
 	require.Empty(t, warnings)
@@ -68,6 +69,7 @@ func TestRandomCompanyTransformer_Transform_static_Suffix(t *testing.T) {
 		params,
 		nil,
 		"",
+		false,
 	)
 	require.NoError(t, err)
 	require.Empty(t, warnings)
@@ -105,6 +107,7 @@ func TestRandomCompanyTransformer_Transform_static_CompanyName(t *testing.T) {
 		params,
 		nil,
 		"",
+		false,
 	)
 	require.NoError(t, err)
 	require.Empty(t, warnings)
@@ -140,6 +143,7 @@ func TestRandomCompanyTransformer_Transform_static_nullable(t *testing.T) {
 		params,
 		nil,
 		"",
+		false,
 	)
 	require.NoError(t, err)
 	require.Empty(t, warnings)

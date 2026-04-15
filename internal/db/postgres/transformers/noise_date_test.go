@@ -120,6 +120,7 @@ func TestNoiseDateTransformer_Transform(t *testing.T) {
 				driver, tt.params,
 				nil,
 				"",
+				false,
 			)
 			require.NoError(t, err)
 			require.Empty(t, warnings)
@@ -206,6 +207,7 @@ func TestNoiseDateTransformer_Transform_dynamic(t *testing.T) {
 				tt.params,
 				tt.dynamicParams,
 				"",
+				false,
 			)
 			require.NoError(t, err)
 			require.Empty(t, warnings)

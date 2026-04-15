@@ -89,6 +89,7 @@ func TestReplaceTransformer_Transform(t *testing.T) {
 				tt.params,
 				nil,
 				"",
+				false,
 			)
 			require.NoError(t, err)
 			require.Empty(t, warnings)
@@ -149,6 +150,7 @@ func TestReplaceTransformer_Transform_with_raw_value(t *testing.T) {
 				tt.params,
 				nil,
 				"",
+				false,
 			)
 			require.NoError(t, err)
 			require.Empty(t, warnings)
@@ -279,6 +281,7 @@ func TestReplaceTransformer_Transform_dynamic(t *testing.T) {
 					tt.params,
 					tt.dynamicParams,
 					"",
+					false,
 				)
 				require.NoError(t, err)
 				require.Empty(t, warnings)
@@ -325,6 +328,7 @@ func TestReplaceTransformer_Transform_with_validation_error(t *testing.T) {
 		params,
 		nil,
 		"",
+		false,
 	)
 	require.NoError(t, err)
 	assert.NotEmpty(t, warnings)

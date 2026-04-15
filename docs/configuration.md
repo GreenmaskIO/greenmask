@@ -52,11 +52,23 @@ dump:
 
 - Interpolation is applied to all string values in the config during unmarshaling.
 - Transformer `params` values are parsed separately (to preserve key casing) and are **not**
-  subject to env var interpolation.
+  subject to env var interpolation by default. To enable interpolation for a specific transformer,
+  set `resolve_env: true` on it — see
+  [Parameters env vars interpolation](built_in_transformers/parameters_env_vars_interpolation.md)
+  for details and examples.
 - Variable values that contain YAML special characters (`:`, `{`, `}`, `#`, etc.) should be
   enclosed in quotes in the config file to avoid YAML parsing errors.
 - The existing behavior of overriding whole config keys via environment variables (e.g., setting
   `LOG_LEVEL=debug` to override `log.level`) is preserved and unaffected by this feature.
+
+!!! warning
+
+    To apply env vars interpolation to transformer parameters, set `resolve_env: true` on the
+    specific transformer. By default it is `false` — parameter values containing `$` are treated
+    as plain strings, which prevents accidental expansion of literal dollar signs that may appear
+    in stored data or config values. See
+    [Parameters env vars interpolation](built_in_transformers/parameters_env_vars_interpolation.md)
+    for details and examples.
 
 !!! tip
 

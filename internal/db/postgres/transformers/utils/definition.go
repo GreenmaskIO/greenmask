@@ -53,11 +53,13 @@ func (d *TransformerDefinition) SetSchemaValidator(v SchemaValidationFunc) *Tran
 }
 
 func (d *TransformerDefinition) Instance(
-	ctx context.Context, driver *toolkit.Driver, rawParams map[string]toolkit.ParamsValue, dynamicParameters map[string]*toolkit.DynamicParamValue,
-	whenCond string,
+	ctx context.Context, driver *toolkit.Driver, rawParams map[string]toolkit.ParamsValue,
+	dynamicParameters map[string]*toolkit.DynamicParamValue, whenCond string, interpolate bool,
 ) (*TransformerContext, toolkit.ValidationWarnings, error) {
 	// DecodeValue parameters and get the pgcopy of parsed
-	params, parametersWarnings, err := toolkit.InitParameters(driver, d.Parameters, rawParams, dynamicParameters)
+	params, parametersWarnings, err := toolkit.InitParameters(
+		driver, d.Parameters, rawParams, dynamicParameters, interpolate,
+	)
 	if err != nil {
 		return nil, nil, err
 	}

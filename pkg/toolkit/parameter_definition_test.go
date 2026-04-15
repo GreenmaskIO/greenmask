@@ -52,6 +52,7 @@ func TestInitParametersV2(t *testing.T) {
 		[]*ParameterDefinition{column, minDate, maxDate},
 		map[string]ParamsValue{"column": []byte("date_tstz"), "max_date": []byte("2024-01-14 00:00:00.0+00")},
 		map[string]*DynamicParamValue{"min_date": {Column: "date_tstz"}},
+		false,
 	)
 	require.NoError(t, err)
 	require.Empty(t, warns)

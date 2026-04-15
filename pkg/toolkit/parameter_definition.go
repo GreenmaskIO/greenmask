@@ -251,8 +251,11 @@ func (p *ParameterDefinition) SetDynamicMode(v *DynamicModeProperties) *Paramete
 }
 
 func InitParameters(
-	driver *Driver, paramDef []*ParameterDefinition, staticValues map[string]ParamsValue,
+	driver *Driver,
+	paramDef []*ParameterDefinition,
+	staticValues map[string]ParamsValue,
 	dynamicValues map[string]*DynamicParamValue,
+	interpolate bool,
 ) (map[string]Parameterizer, ValidationWarnings, error) {
 
 	var requiredParamsWarns ValidationWarnings
@@ -354,7 +357,7 @@ func InitParameters(
 		value, ok := staticValues[pd.Name]
 		if ok {
 			// TODO: Enrich parameters with ParameterName in Meta
-			sp := NewStaticParameter(pd, driver)
+			sp := NewStaticParameter(pd, driver, interpolate)
 			initWarns, err := sp.Init(nil, value)
 			if err != nil {
 				return nil, warnings, fmt.Errorf("error initializing \"%s\" parameter: %w", pd.Name, err)
@@ -399,7 +402,7 @@ func InitParameters(
 		}
 
 		staticValue := staticValues[pd.Name]
-		sp := NewStaticParameter(pd, driver)
+		sp := NewStaticParameter(pd, driver, interpolate)
 		initWarns, err := sp.Init(columnParams, staticValue)
 		for _, w := range initWarns {
 			w.AddMeta("ParameterName", pd.Name)

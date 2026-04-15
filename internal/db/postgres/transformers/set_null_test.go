@@ -38,6 +38,7 @@ func TestSetNullTransformer_Transform(t *testing.T) {
 		},
 		nil,
 		"",
+		false,
 	)
 	require.NoError(t, err)
 	assert.Empty(t, warnings)

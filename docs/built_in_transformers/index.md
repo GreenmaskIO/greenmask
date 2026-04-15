@@ -8,6 +8,7 @@ split into the following groups:
 - [Transformation engines](transformation_engines.md) — the type of generator used in transformers. Hash (deterministic)
   and random (randomization)
 - [Parameters templating](parameters_templating.md) — generate static parameters values from templates.
+- [Parameters env vars interpolation](parameters_env_vars_interpolation.md) — inject environment variable values into transformer parameters at dump time.
 - [Transformation conditions](transformation_condition.md) — conditions that can be applied to transformers. If the
   condition is not met, the transformer will not be applied.
 - [Transformation Inheritance](transformation_inheritance.md) — transformation inheritance for partitioned tables and

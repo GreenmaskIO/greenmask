@@ -97,6 +97,7 @@ func TestBigIntTransformer_Transform_random_static(t *testing.T) {
 				tt.params,
 				nil,
 				"",
+				false,
 			)
 			require.NoError(t, err)
 			require.Empty(t, warnings)
@@ -178,6 +179,7 @@ func TestBigIntTransformer_Transform_random_dynamic(t *testing.T) {
 				tt.params,
 				tt.dynamicParams,
 				"",
+				false,
 			)
 			require.NoError(t, err)
 			require.Empty(t, warnings)
@@ -258,6 +260,7 @@ func TestBigIntTransformer_Transform_deterministic_dynamic(t *testing.T) {
 				tt.params,
 				tt.dynamicParams,
 				"",
+				false,
 			)
 			require.NoError(t, err)
 			require.Empty(t, warnings)

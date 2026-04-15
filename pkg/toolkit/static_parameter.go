@@ -9,6 +9,8 @@ import (
 	"slices"
 	"text/template"
 	"time"
+
+	"github.com/greenmaskio/greenmask/internal/utils/env"
 )
 
 type StaticParameter struct {
@@ -25,13 +27,15 @@ type StaticParameter struct {
 	// value - cached parsed value after Scan or Value
 	value any
 	// rawValue - original raw value received from config
-	rawValue ParamsValue
+	rawValue    ParamsValue
+	interpolate bool
 }
 
-func NewStaticParameter(def *ParameterDefinition, driver *Driver) *StaticParameter {
+func NewStaticParameter(def *ParameterDefinition, driver *Driver, interpolate bool) *StaticParameter {
 	return &StaticParameter{
-		definition: def,
-		driver:     driver,
+		definition:  def,
+		driver:      driver,
+		interpolate: interpolate,
 	}
 }
 
@@ -54,8 +58,23 @@ func (sp *StaticParameter) GetDefinition() *ParameterDefinition {
 }
 
 func (sp *StaticParameter) Init(columnParams map[string]*StaticParameter, rawValue ParamsValue) (ValidationWarnings, error) {
-
 	var warnings ValidationWarnings
+
+	if sp.interpolate && rawValue != nil {
+		interpolatedValue, err := env.InterpolateEnvVars(string(rawValue))
+		if err != nil {
+			return ValidationWarnings{
+					NewValidationWarning().
+						SetSeverity(ErrorValidationSeverity).
+						SetMsg("error interpolating environment variables in parameter value").
+						AddMeta("Error", err.Error()).
+						AddMeta("ParameterName", sp.definition.Name).
+						AddMeta("ParameterValue", string(rawValue)),
+				},
+				nil
+		}
+		rawValue = []byte(interpolatedValue)
+	}
 
 	sp.rawValue = slices.Clone(rawValue)
 
