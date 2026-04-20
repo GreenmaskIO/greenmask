@@ -62,10 +62,14 @@ func New(
 	conn mysqlcommonconfig.ConnectionOpts,
 	opts RestoreOptions,
 ) *Producer {
-	taskIDs := make([]models.TaskID, 0, len(meta.DataDump.DumpStat.RestorationItems))
-	for taskID := range meta.DataDump.DumpStat.RestorationItems {
-		taskIDs = append(taskIDs, taskID)
+	var taskIDs []models.TaskID
+	if meta.DataDump != nil {
+		taskIDs = make([]models.TaskID, 0, len(meta.DataDump.DumpStat.RestorationItems))
+		for taskID := range meta.DataDump.DumpStat.RestorationItems {
+			taskIDs = append(taskIDs, taskID)
+		}
 	}
+
 	return &Producer{
 		meta:    meta,
 		st:      st,

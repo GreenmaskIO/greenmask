@@ -164,6 +164,7 @@ type CommonDumpOptions struct {
 	Jobs                   int      `mapstructure:"jobs" yaml:"jobs" json:"jobs"`
 	Compress               bool     `mapstructure:"compress" yaml:"compress" json:"compress"`
 	Pgzip                  bool     `mapstructure:"pgzip" yaml:"pgzip" json:"pgzip"`
+	Section                []string `mapstructure:"section" yaml:"section" json:"section,omitempty"`
 }
 
 func (o *CommonDumpOptions) GetIncludedTables() []string {

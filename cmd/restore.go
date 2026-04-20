@@ -61,6 +61,33 @@ var (
 			IsRequired:       false,
 			Default:          false,
 		},
+		{
+			Name:             "create-database",
+			Usage:            "Create databases before restoring schema. Disabled by default.",
+			ConfigPathPrefix: "restore.options",
+			BindToConfig:     true,
+			Type:             cmd.FlagTypeBool,
+			IsRequired:       false,
+			Default:          false,
+		},
+		{
+			Name:             "if-not-exists",
+			Usage:            "Add IF NOT EXISTS to CREATE DATABASE and other object creation statements.",
+			ConfigPathPrefix: "restore.options",
+			BindToConfig:     true,
+			Type:             cmd.FlagTypeBool,
+			IsRequired:       false,
+			Default:          false,
+		},
+		{
+			Name:             "section",
+			Usage:            "Restore only the named section (pre-data, data, post-data). Can be specified multiple times.",
+			ConfigPathPrefix: "restore.options",
+			BindToConfig:     true,
+			Type:             cmd.FlagTypeStringSlice,
+			IsRequired:       false,
+			Default:          []string{},
+		},
 	}
 
 	restoreCmd = cmd.MustCommand(&cobra.Command{

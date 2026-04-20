@@ -30,7 +30,8 @@ const (
 )
 
 type schemaRestorer interface {
-	RestoreSchema(ctx context.Context) error
+	RestorePreDataSchema(ctx context.Context) error
+	RestorePostDataSchema(ctx context.Context) error
 }
 
 type Config struct {
@@ -38,6 +39,27 @@ type Config struct {
 	RestoreInOrder bool
 	DataOnly       bool
 	SchemaOnly     bool
+	Section        []string
+}
+
+// sectionEnabled reports whether the given section should be restored.
+// When no explicit sections are configured it falls back to the DataOnly/SchemaOnly flags.
+func (p *DefaultRestoreProcessor) sectionEnabled(section commonmodels.DumpSection) bool {
+	if len(p.cfg.Section) == 0 {
+		switch section {
+		case commonmodels.DumpSectionPreData, commonmodels.DumpSectionPostData:
+			return !p.cfg.DataOnly
+		case commonmodels.DumpSectionData:
+			return !p.cfg.SchemaOnly
+		}
+		return true
+	}
+	for _, s := range p.cfg.Section {
+		if commonmodels.DumpSection(s) == section {
+			return true
+		}
+	}
+	return false
 }
 
 func (c *Config) SetDefault(ctx context.Context) {
@@ -211,15 +233,21 @@ func (p *DefaultRestoreProcessor) dataRestore(ctx context.Context) error {
 }
 
 func (p *DefaultRestoreProcessor) Run(ctx context.Context) error {
-	if !p.cfg.DataOnly {
-		if err := p.sr.RestoreSchema(ctx); err != nil {
-			return fmt.Errorf("schema restore: %w", err)
+	if p.sectionEnabled(commonmodels.DumpSectionPreData) {
+		if err := p.sr.RestorePreDataSchema(ctx); err != nil {
+			return fmt.Errorf("pre-data schema restore: %w", err)
 		}
 	}
 
-	if !p.cfg.SchemaOnly {
+	if p.sectionEnabled(commonmodels.DumpSectionData) {
 		if err := p.dataRestore(ctx); err != nil {
 			return fmt.Errorf("data restore: %w", err)
+		}
+	}
+
+	if p.sectionEnabled(commonmodels.DumpSectionPostData) {
+		if err := p.sr.RestorePostDataSchema(ctx); err != nil {
+			return fmt.Errorf("post-data schema restore: %w", err)
 		}
 	}
 	return nil

@@ -16,6 +16,7 @@ package schema
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"io"
 
@@ -36,14 +37,37 @@ type options interface {
 	Env() ([]string, error)
 }
 
-// Restorer - restores mysql schema from the given storage folder.
-// It expected that schema DDL commands are stored in schema.sql.
+type Option func(*Restorer)
+
+// WithCreateDatabase instructs the restorer to issue CREATE DATABASE statements
+// before restoring the pre-data schema.
+func WithCreateDatabase(conn *sql.DB, databases []string) Option {
+	return func(r *Restorer) {
+		r.conn = conn
+		r.databases = databases
+		r.createDatabase = true
+	}
+}
+
+// WithIfNotExists adds IF NOT EXISTS to CREATE DATABASE statements.
+// Has no effect unless WithCreateDatabase is also applied.
+func WithIfNotExists() Option {
+	return func(r *Restorer) {
+		r.ifNotExists = true
+	}
+}
+
+// Restorer restores a MySQL schema from files stored in the dump directory.
 type Restorer struct {
-	st         interfaces.Storager
-	cfg        options
-	executable string
-	cmd        utils.CmdProducer
-	schemaMeta *commonmodels.SchemaDumpMetadata
+	st             interfaces.Storager
+	cfg            options
+	executable     string
+	cmd            utils.CmdProducer
+	schemaMeta     *commonmodels.SchemaDumpMetadata
+	conn           *sql.DB
+	databases      []string
+	createDatabase bool
+	ifNotExists    bool
 }
 
 func NewRestorer(
@@ -51,14 +75,19 @@ func NewRestorer(
 	connCfg options,
 	cmd utils.CmdProducer,
 	schemaMeta *commonmodels.SchemaDumpMetadata,
+	opts ...Option,
 ) *Restorer {
-	return &Restorer{
+	r := &Restorer{
 		st:         st,
 		cfg:        connCfg,
 		executable: executable,
 		cmd:        cmd,
 		schemaMeta: schemaMeta,
 	}
+	for _, opt := range opts {
+		opt(r)
+	}
+	return r
 }
 
 func (r *Restorer) restoreSchemaData(ctx context.Context, dbName string, f io.Reader) error {
@@ -86,13 +115,62 @@ func (r *Restorer) restoreSchemaData(ctx context.Context, dbName string, f io.Re
 	return nil
 }
 
-func (r *Restorer) RestoreSchema(ctx context.Context) error {
+func (r *Restorer) createDatabases(ctx context.Context) error {
+	for _, db := range r.databases {
+		var stmt string
+		if r.ifNotExists {
+			stmt = fmt.Sprintf("CREATE DATABASE IF NOT EXISTS `%s`", db)
+		} else {
+			stmt = fmt.Sprintf("CREATE DATABASE `%s`", db)
+		}
+		log.Ctx(ctx).Debug().
+			Str("DatabaseName", db).
+			Str("Query", stmt).
+			Msg("creating database")
+		if _, err := r.conn.ExecContext(ctx, stmt); err != nil {
+			return fmt.Errorf("create database %q: %w", db, err)
+		}
+	}
+	return nil
+}
+
+// RestorePreDataSchema restores the pre-data section (tables, views) for all databases.
+// For backward-compatible dumps that have no section set, the file is treated as pre-data.
+func (r *Restorer) RestorePreDataSchema(ctx context.Context) error {
+	if r.schemaMeta == nil {
+		log.Ctx(ctx).Debug().Msg("no schema dump found in metadata")
+		return nil
+	}
+
+	if r.createDatabase && len(r.databases) > 0 {
+		if err := r.createDatabases(ctx); err != nil {
+			return fmt.Errorf("create databases: %w", err)
+		}
+	}
+
+	for _, schemaStat := range r.schemaMeta.DumpedDatabaseSchema {
+		// Backward compat: entries without a section are treated as pre-data.
+		if schemaStat.Section != "" && schemaStat.Section != commonmodels.DumpSectionPreData {
+			continue
+		}
+		if err := r.restoreDatabaseSchema(ctx, schemaStat); err != nil {
+			return fmt.Errorf("database '%s': %w", schemaStat.DatabaseName, err)
+		}
+	}
+	return nil
+}
+
+// RestorePostDataSchema restores the post-data section (triggers, routines, events) for all databases.
+func (r *Restorer) RestorePostDataSchema(ctx context.Context) error {
 	if r.schemaMeta == nil {
 		log.Ctx(ctx).Debug().Msg("no schema dump found in metadata")
 		return nil
 	}
 
 	for _, schemaStat := range r.schemaMeta.DumpedDatabaseSchema {
+		if schemaStat.Section != commonmodels.DumpSectionPostData {
+			continue
+		}
 		if err := r.restoreDatabaseSchema(ctx, schemaStat); err != nil {
 			return fmt.Errorf("database '%s': %w", schemaStat.DatabaseName, err)
 		}
@@ -103,6 +181,7 @@ func (r *Restorer) RestoreSchema(ctx context.Context) error {
 func (r *Restorer) restoreDatabaseSchema(ctx context.Context, schemaStat commonmodels.DumpedDatabaseSchemaStat) error {
 	log.Ctx(ctx).Info().
 		Str("Database", schemaStat.DatabaseName).
+		Str("Section", string(schemaStat.Section)).
 		Str("FileName", schemaStat.FileName).
 		Msg("restoring database schema")
 

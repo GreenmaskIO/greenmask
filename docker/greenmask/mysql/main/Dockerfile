@@ -14,10 +14,11 @@ COPY . .
 
 RUN GOOS=${TARGETOS} GOARCH=${TARGETARCH} GOARM=$(echo ${TARGETVARIANT} | cut -d 'v' -f 2) make build
 
-FROM debian:${DEBIAN_RELEASE}-slim AS mysql
+FROM debian:${DEBIAN_RELEASE}-slim AS main
 
 ARG DEBIAN_RELEASE=bookworm
 ARG MYSQL_VERSION=8.0
+ARG TARGETARCH
 
 ENV DEBIAN_FRONTEND=noninteractive
 
@@ -25,20 +26,22 @@ RUN apt-get update \
 	&& apt-get install -y wget gnupg2 bash-completion bzip2 openssl zstd xz-utils perl \
 	&& rm -rf /var/lib/apt/lists/*
 
-RUN echo "deb [ signed-by=/etc/apt/keyrings/mysql.gpg ] http://repo.mysql.com/apt/debian/ ${DEBIAN_RELEASE} mysql-${MYSQL_VERSION}" > /etc/apt/sources.list.d/mysql.list
-
+# The MySQL Community apt repo only publishes amd64 packages for Debian.
+# On other architectures (arm64, etc.) fall back to Debian's default-mysql-client.
 RUN set -eux; \
-	key='BCA4 3417 C3B4 85DD 128E C6D4 B7B3 B788 A8D3 785C'; \
-	export GNUPGHOME="$(mktemp -d)"; \
-	gpg --batch --keyserver keyserver.ubuntu.com --recv-keys "$key"; \
-	mkdir -p /etc/apt/keyrings; \
-	gpg --batch --export "$key" > /etc/apt/keyrings/mysql.gpg; \
-	gpgconf --kill all; \
-	rm -rf "$GNUPGHOME"
-
-RUN apt-get update \
-	&& apt-get install -y \
-	mysql-community-client \
+	if [ "${TARGETARCH}" = "amd64" ]; then \
+		echo "deb [ signed-by=/etc/apt/keyrings/mysql.gpg ] http://repo.mysql.com/apt/debian/ ${DEBIAN_RELEASE} mysql-${MYSQL_VERSION}" > /etc/apt/sources.list.d/mysql.list; \
+		key='BCA4 3417 C3B4 85DD 128E C6D4 B7B3 B788 A8D3 785C'; \
+		export GNUPGHOME="$(mktemp -d)"; \
+		gpg --batch --keyserver keyserver.ubuntu.com --recv-keys "$key"; \
+		mkdir -p /etc/apt/keyrings; \
+		gpg --batch --export "$key" > /etc/apt/keyrings/mysql.gpg; \
+		gpgconf --kill all; \
+		rm -rf "$GNUPGHOME"; \
+		apt-get update && apt-get install -y mysql-community-client; \
+	else \
+		apt-get update && apt-get install -y default-mysql-client; \
+	fi \
 	&& rm -rf /var/lib/apt/lists/*
 
 COPY --from=build /var/lib/greenmask/greenmask /usr/bin

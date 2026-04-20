@@ -151,6 +151,15 @@ var (
 			IsRequired:       false,
 			Default:          true,
 		},
+		{
+			Name:             "section",
+			Usage:            "Dump only the named section (pre-data, data, post-data). Can be specified multiple times.",
+			ConfigPathPrefix: "dump.options",
+			BindToConfig:     true,
+			Type:             cmd.FlagTypeStringSlice,
+			IsRequired:       false,
+			Default:          []string{},
+		},
 	}
 
 	dumpCmd = cmd.MustCommand(&cobra.Command{

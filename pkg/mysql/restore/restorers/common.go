@@ -17,6 +17,7 @@ package restorers
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 
 	"github.com/rs/zerolog/log"
@@ -42,7 +43,7 @@ func closeTransaction(ctx context.Context, tx *sql.Tx, execErr error, disableFkC
 		return nil
 	}
 	if execErr != nil {
-		if rollbackErr := tx.Rollback(); rollbackErr != nil && rollbackErr != sql.ErrTxDone {
+		if rollbackErr := tx.Rollback(); rollbackErr != nil && !errors.Is(rollbackErr, sql.ErrTxDone) {
 			log.Ctx(ctx).Error().Err(rollbackErr).Msg("failed to rollback transaction")
 		}
 		return nil
@@ -61,7 +62,7 @@ func closeTransaction(ctx context.Context, tx *sql.Tx, execErr error, disableFkC
 	}
 
 	if err := tx.Commit(); err != nil {
-		if rollbackErr := tx.Rollback(); rollbackErr != nil && rollbackErr != sql.ErrTxDone {
+		if rollbackErr := tx.Rollback(); rollbackErr != nil && !errors.Is(rollbackErr, sql.ErrTxDone) {
 			log.Ctx(ctx).Error().Err(rollbackErr).Msg("failed to rollback transaction")
 		}
 		return fmt.Errorf("commit transaction: %w", err)

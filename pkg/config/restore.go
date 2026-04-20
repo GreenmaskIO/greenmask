@@ -15,6 +15,8 @@
 package config
 
 import (
+	"fmt"
+
 	mysqlcommonconfig "github.com/greenmaskio/greenmask/pkg/mysql/config"
 )
 
@@ -79,6 +81,26 @@ type CommonRestoreOptions struct {
 	SchemaOnly     bool `mapstructure:"schema-only" yaml:"schema-only" json:"schema-only"`
 	Jobs           int  `mapstructure:"jobs" yaml:"jobs" json:"jobs"`
 	RestoreInOrder bool `mapstructure:"restore-in-order" yaml:"restore-in-order" json:"restore-in-order"`
+	// CreateDatabase controls whether greenmask issues CREATE DATABASE statements before restoring schema.
+	CreateDatabase bool `mapstructure:"create-database" yaml:"create-database" json:"create_database"`
+	// IfNotExists adds IF NOT EXISTS to CREATE DATABASE and (in future) other object creation statements.
+	IfNotExists bool     `mapstructure:"if-not-exists" yaml:"if-not-exists" json:"if_not_exists"`
+	Section     []string `mapstructure:"section" yaml:"section" json:"section,omitempty"`
+}
+
+func (o *CommonRestoreOptions) Validate() error {
+	for _, s := range o.Section {
+		if _, ok := knownRestoreSections[s]; !ok {
+			return fmt.Errorf("unknown section %q: must be one of pre-data, data, post-data", s)
+		}
+	}
+	return nil
+}
+
+var knownRestoreSections = map[string]struct{}{
+	"pre-data":  {},
+	"data":      {},
+	"post-data": {},
 }
 
 type Restore struct {

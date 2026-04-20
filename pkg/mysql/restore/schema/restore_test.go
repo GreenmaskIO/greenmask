@@ -81,6 +81,6 @@ func (s *restoreSuite) TestRestorer_RestoreSchema() {
 		ConnectionOpts: opts,
 		VendorOptions:  []string{"--verbose"},
 	}, utils.NewDefaultCmdProducer(), schemaMeta)
-	err = rr.RestoreSchema(ctx)
+	err = rr.RestorePreDataSchema(ctx)
 	s.Require().NoError(err)
 }

@@ -209,7 +209,9 @@ func (r *TableDataRestorerCsv) openTx(ctx context.Context, db *sql.DB) (err erro
 	defer func() {
 		if err != nil {
 			r.execErr = err
-			_ = closeTransaction(ctx, tx, r.execErr, r.disableFkChecks, r.disableUniqueChecks)
+			if err := closeTransaction(ctx, tx, r.execErr, r.disableFkChecks, r.disableUniqueChecks); err != nil {
+				log.Ctx(ctx).Error().Err(err).Msg("failed to close transaction in defer")
+			}
 		}
 	}()
 

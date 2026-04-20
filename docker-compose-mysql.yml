@@ -98,10 +98,8 @@ services:
     working_dir: /var/lib/playground
     volumes:
       - ./playground/mysql:/var/lib/playground
-    build:
-      dockerfile: docker/greenmask/mysql/main/Dockerfile
-      context: ./
-    platform: linux/amd64
+    image: greenmask-from-source:latest
+    pull_policy: never
     environment:
       MYSQL_USER: root
       MYSQL_PWD: 1234

@@ -39,18 +39,27 @@ dump:
     - "v1"
     - "daily"
   options:
-    jobs: 4
+#    section:
+#      - pre-data
+#      - data
+#      - post-data
+    jobs: 10
+    include-database:
+      - employees
+      - playground
 
   mysql:
-    options:
-      user: root
-      password: 1234
-      connect-database: employees
-      databases:
-        - employees
-      host: localhost
-      port: 3306
-      add-drop-table: false
+    user: root
+    password: 1234
+    connect-database: employees
+    #    databases:
+    #      - employees
+    host: localhost
+    port: 3306
+    #    add-drop-table: false
+    dump-format: insert
+    #      insert-batch-size: 100000000
+    vendor-options: [ ]
 
   transformation:
     - schema: employees
@@ -78,13 +87,20 @@ dump:
 
 restore:
   options:
-    jobs: 2
-    restore-in-order: true
+    jobs: 10
+    schema-only: true
+#    create-database: true
+#    if-not-exists: true
+#    section:
+#      - pre-data
+#      - post-data
+#      - data
+#    restore-in-order: true
 
   mysql:
-    options:
-      user: root
-      password: 1234
-      connect-database: playground
-      host: localhost
-      port: 3307
+    user: root
+    password: 1234
+    connect-database: playground
+    host: localhost
+    port: 3307
+    disable-fk-checks: true

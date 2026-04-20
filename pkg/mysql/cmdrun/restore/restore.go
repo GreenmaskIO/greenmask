@@ -112,6 +112,7 @@ func (d *Restore) Run(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("read metadata: %w", err)
 	}
+
 	taskResolver := taskmapper.NewTaskResolver()
 
 	var tp interfaces.RestoreTaskProducer
@@ -136,13 +137,21 @@ func (d *Restore) Run(ctx context.Context) error {
 		)
 	}
 
-	sr := schema.NewRestorer(d.st, &d.cfg.Restore.MysqlConfig, d.cmd, meta.SchemaDump)
+	schemaOpts := []schema.Option{}
+	if d.cfg.Restore.Options.CreateDatabase && len(meta.Databases) > 0 {
+		schemaOpts = append(schemaOpts, schema.WithCreateDatabase(conn, meta.Databases))
+	}
+	if d.cfg.Restore.Options.IfNotExists {
+		schemaOpts = append(schemaOpts, schema.WithIfNotExists())
+	}
+	sr := schema.NewRestorer(d.st, &d.cfg.Restore.MysqlConfig, d.cmd, meta.SchemaDump, schemaOpts...)
 
 	if err := processor.NewDefaultRestoreProcessor(ctx, tp, sr, processor.Config{
 		Jobs:           d.cfg.Restore.Options.Jobs,
 		RestoreInOrder: d.cfg.Restore.Options.RestoreInOrder,
 		DataOnly:       d.cfg.Restore.Options.DataOnly,
 		SchemaOnly:     d.cfg.Restore.Options.SchemaOnly,
+		Section:        d.cfg.Restore.Options.Section,
 	}).Run(ctx); err != nil {
 		return fmt.Errorf("run restore processor: %w", err)
 	}

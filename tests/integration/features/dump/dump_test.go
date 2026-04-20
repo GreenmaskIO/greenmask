@@ -123,6 +123,13 @@ func (s *dumpTestSuite) getBaseConfig(ctx context.Context) *config.Config {
 	cfg.Dump.Options.IncludeDatabase = nil
 	cfg.Dump.Options.ExcludeDatabase = nil
 	cfg.Dump.Options.ExcludeTableData = nil
+	cfg.Dump.Options.IncludeTableData = nil
+	cfg.Dump.Options.IncludeTableDefinition = nil
+	cfg.Dump.Options.ExcludeTableDefinition = nil
+	cfg.Dump.MysqlConfig.VendorOptions = nil
+	// Disable compression so test file expectations don't need .gz suffixes.
+	cfg.Dump.Options.Compress = false
+	cfg.Dump.Options.Pgzip = false
 	return cfg
 }
 
@@ -207,7 +214,13 @@ func (s *dumpTestSuite) TestDump() {
 		// Verify results in the storage
 		files, _, err := st.ListDir(ctx)
 		s.Require().NoError(err)
-		s.requireOnlyFiles(files, "schema.sql", "testdb__test_table.sql", "testdb__excluded_table.sql", "testdb__data_excluded_table.sql", "other_db__other_table.sql", "metadata.json", "heartbeat")
+		s.requireOnlyFiles(files,
+			"schema_pre_testdb.sql", "schema_post_testdb.sql",
+			"schema_pre_other_db.sql", "schema_post_other_db.sql",
+			"testdb__test_table.sql", "testdb__excluded_table.sql", "testdb__data_excluded_table.sql",
+			"other_db__other_table.sql",
+			"metadata.json", "heartbeat",
+		)
 
 		cmdProducer.AssertExpectations(s.T())
 		cmdRunner.AssertExpectations(s.T())
@@ -246,7 +259,11 @@ func (s *dumpTestSuite) TestDump() {
 		// Verify results in the storage
 		files, _, err := st.ListDir(ctx)
 		s.Require().NoError(err)
-		s.requireOnlyFiles(files, "schema.sql", "metadata.json", "heartbeat")
+		s.requireOnlyFiles(files,
+			"schema_pre_testdb.sql", "schema_post_testdb.sql",
+			"schema_pre_other_db.sql", "schema_post_other_db.sql",
+			"metadata.json", "heartbeat",
+		)
 
 		cmdProducer.AssertExpectations(s.T())
 		cmdRunner.AssertExpectations(s.T())
@@ -285,11 +302,15 @@ func (s *dumpTestSuite) TestDump() {
 		cfg.Dump.Options.IncludeTable = []string{"testdb.test_table"}
 		st := validate.New("")
 		defer st.Cleanup()
-		expectedCliParams := []string{"testdb.test_table"}
-		cmdProducer, cmdRunner := s.runDump(ctx, cfg, st, expectedCliParams, nil)
+		cmdProducer, cmdRunner := s.runDump(ctx, cfg, st, nil, nil)
 		files, _, err := st.ListDir(ctx)
 		s.Require().NoError(err)
-		s.requireOnlyFiles(files, "schema.sql", "testdb__test_table.sql", "metadata.json", "heartbeat")
+		s.requireOnlyFiles(files,
+			"schema_pre_testdb.sql", "schema_post_testdb.sql",
+			"schema_pre_other_db.sql", "schema_post_other_db.sql",
+			"testdb__test_table.sql",
+			"metadata.json", "heartbeat",
+		)
 		cmdProducer.AssertExpectations(s.T())
 		cmdRunner.AssertExpectations(s.T())
 	})
@@ -303,7 +324,13 @@ func (s *dumpTestSuite) TestDump() {
 		cmdProducer, cmdRunner := s.runDump(ctx, cfg, st, nil, nil)
 		files, _, err := st.ListDir(ctx)
 		s.Require().NoError(err)
-		s.requireOnlyFiles(files, "schema.sql", "testdb__test_table.sql", "testdb__data_excluded_table.sql", "other_db__other_table.sql", "metadata.json", "heartbeat")
+		s.requireOnlyFiles(files,
+			"schema_pre_testdb.sql", "schema_post_testdb.sql",
+			"schema_pre_other_db.sql", "schema_post_other_db.sql",
+			"testdb__test_table.sql", "testdb__data_excluded_table.sql",
+			"other_db__other_table.sql",
+			"metadata.json", "heartbeat",
+		)
 		cmdProducer.AssertExpectations(s.T())
 		cmdRunner.AssertExpectations(s.T())
 	})
@@ -318,7 +345,13 @@ func (s *dumpTestSuite) TestDump() {
 		files, _, err := st.ListDir(ctx)
 		s.Require().NoError(err)
 		// data_excluded_table.sql should be missing (but it currently fails because ExcludeTableData is not implemented)
-		s.requireOnlyFiles(files, "schema.sql", "testdb__test_table.sql", "testdb__excluded_table.sql", "other_db__other_table.sql", "metadata.json", "heartbeat")
+		s.requireOnlyFiles(files,
+			"schema_pre_testdb.sql", "schema_post_testdb.sql",
+			"schema_pre_other_db.sql", "schema_post_other_db.sql",
+			"testdb__test_table.sql", "testdb__excluded_table.sql",
+			"other_db__other_table.sql",
+			"metadata.json", "heartbeat",
+		)
 		cmdProducer.AssertExpectations(s.T())
 		cmdRunner.AssertExpectations(s.T())
 	})
@@ -332,7 +365,11 @@ func (s *dumpTestSuite) TestDump() {
 		cmdProducer, cmdRunner := s.runDump(ctx, cfg, st, nil, nil)
 		files, _, err := st.ListDir(ctx)
 		s.Require().NoError(err)
-		s.requireOnlyFiles(files, "schema.sql", "testdb__test_table.sql", "testdb__excluded_table.sql", "testdb__data_excluded_table.sql", "metadata.json", "heartbeat")
+		s.requireOnlyFiles(files,
+			"schema_pre_testdb.sql", "schema_post_testdb.sql",
+			"testdb__test_table.sql", "testdb__excluded_table.sql", "testdb__data_excluded_table.sql",
+			"metadata.json", "heartbeat",
+		)
 		cmdProducer.AssertExpectations(s.T())
 		cmdRunner.AssertExpectations(s.T())
 	})
@@ -346,7 +383,11 @@ func (s *dumpTestSuite) TestDump() {
 		cmdProducer, cmdRunner := s.runDump(ctx, cfg, st, nil, nil)
 		files, _, err := st.ListDir(ctx)
 		s.Require().NoError(err)
-		s.requireOnlyFiles(files, "schema.sql", "testdb__test_table.sql", "testdb__excluded_table.sql", "testdb__data_excluded_table.sql", "metadata.json", "heartbeat")
+		s.requireOnlyFiles(files,
+			"schema_pre_testdb.sql", "schema_post_testdb.sql",
+			"testdb__test_table.sql", "testdb__excluded_table.sql", "testdb__data_excluded_table.sql",
+			"metadata.json", "heartbeat",
+		)
 		cmdProducer.AssertExpectations(s.T())
 		cmdRunner.AssertExpectations(s.T())
 	})
@@ -360,7 +401,11 @@ func (s *dumpTestSuite) TestDump() {
 		cmdProducer, cmdRunner := s.runDump(ctx, cfg, st, nil, nil)
 		files, _, err := st.ListDir(ctx)
 		s.Require().NoError(err)
-		s.requireOnlyFiles(files, "schema.sql", "testdb__test_table.sql", "testdb__excluded_table.sql", "testdb__data_excluded_table.sql", "metadata.json", "heartbeat")
+		s.requireOnlyFiles(files,
+			"schema_pre_testdb.sql", "schema_post_testdb.sql",
+			"testdb__test_table.sql", "testdb__excluded_table.sql", "testdb__data_excluded_table.sql",
+			"metadata.json", "heartbeat",
+		)
 		cmdProducer.AssertExpectations(s.T())
 		cmdRunner.AssertExpectations(s.T())
 	})
@@ -374,7 +419,11 @@ func (s *dumpTestSuite) TestDump() {
 		cmdProducer, cmdRunner := s.runDump(ctx, cfg, st, nil, nil)
 		files, _, err := st.ListDir(ctx)
 		s.Require().NoError(err)
-		s.requireOnlyFiles(files, "schema.sql", "testdb__test_table.sql", "testdb__excluded_table.sql", "testdb__data_excluded_table.sql", "metadata.json", "heartbeat")
+		s.requireOnlyFiles(files,
+			"schema_pre_testdb.sql", "schema_post_testdb.sql",
+			"testdb__test_table.sql", "testdb__excluded_table.sql", "testdb__data_excluded_table.sql",
+			"metadata.json", "heartbeat",
+		)
 		cmdProducer.AssertExpectations(s.T())
 		cmdRunner.AssertExpectations(s.T())
 	})
@@ -392,15 +441,13 @@ func (s *dumpTestSuite) TestDump() {
 		files, _, err := st.ListDir(ctx)
 		s.Require().NoError(err)
 
-		// All schemas should be there, but only test_table should have a data file
-		// excluded_table, data_excluded_table, and other_db.other_table should NOT have data files
-		s.requireOnlyFiles(files, "schema.sql", "testdb__test_table.sql", "metadata.json", "heartbeat")
-		// Wait, all tables are discovered by introspector.
-		// Introspector does NOT filter by IncludeTableData.
-		// So schema.sql will contain all tables.
-		// But in Storage, we check which files are present.
-		// If IncludeTableData = ["testdb.test_table"], then only testdb__test_table.sql should be present.
-		// Wait, what about other tables? They should NOT have data files.
+		// All schemas should be there, but only test_table should have a data file.
+		s.requireOnlyFiles(files,
+			"schema_pre_testdb.sql", "schema_post_testdb.sql",
+			"schema_pre_other_db.sql", "schema_post_other_db.sql",
+			"testdb__test_table.sql",
+			"metadata.json", "heartbeat",
+		)
 		cmdProducer.AssertExpectations(s.T())
 		cmdRunner.AssertExpectations(s.T())
 	})
