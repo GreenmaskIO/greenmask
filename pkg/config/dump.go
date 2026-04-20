@@ -26,8 +26,7 @@ import (
 */
 
 const (
-	DefaultMaxAllowedPacket       = 0
-	DefaultMaxInsertStatementSize = 4 * 1024 * 1024
+	DefaultMaxAllowedPacket = 0
 )
 
 type Transformers []TransformerConfig
@@ -135,12 +134,11 @@ func (tc TransformationConfig) ToTransformationConfig() []commonmodels.TableConf
 
 type MysqlDumpConfig struct {
 	mysqlcommonconfig.ConnectionOpts `mapstructure:",squash" json:",squash,omitempty"` //nolint:staticcheck
-	DumpFormat                       commonmodels.DumpFormat                           `mapstructure:"dump-format" json:"dump_format,omitempty"`                             // Format for data dump (csv or insert)
-	MaxInsertStatementSize           int                                               `mapstructure:"max-insert-statement-size" json:"max_insert_statement_size,omitempty"` // Max size of a single insert statement in bytes
-	NoTablespaces                    bool                                              `mapstructure:"no-tablespaces" json:"no_databases,omitempty"`                         // Exclude tablespace information (--no-tablespaces)
-	PoolHeartbeatInterval            time.Duration                                     `mapstructure:"pool-heartbeat-interval" json:"pool_heartbeat_interval,omitempty"`     // Interval for connection pool heartbeat in seconds
-	PoolHeartbeatTimeout             time.Duration                                     `mapstructure:"pool-heartbeat-timeout" json:"pool_heartbeat_timeout,omitempty"`       // Timeout for connection pool heartbeat in seconds
-	VendorOptions                    []string                                          `mapstructure:"vendor-options" json:"vendor-options,omitempty"`                       // Arbitrary options for mysqldump
+	DumpFormat                       commonmodels.DumpFormat                           `mapstructure:"dump-format" json:"dump_format,omitempty"`                         // Format for data dump (csv or insert)
+	NoTablespaces                    bool                                              `mapstructure:"no-tablespaces" json:"no_databases,omitempty"`                     // Exclude tablespace information (--no-tablespaces)
+	PoolHeartbeatInterval            time.Duration                                     `mapstructure:"pool-heartbeat-interval" json:"pool_heartbeat_interval,omitempty"` // Interval for connection pool heartbeat in seconds
+	PoolHeartbeatTimeout             time.Duration                                     `mapstructure:"pool-heartbeat-timeout" json:"pool_heartbeat_timeout,omitempty"`   // Timeout for connection pool heartbeat in seconds
+	VendorOptions                    []string                                          `mapstructure:"vendor-options" json:"vendor-options,omitempty"`                   // Arbitrary options for mysqldump
 }
 
 type PostgresqlDumpConfig struct {
@@ -223,8 +221,7 @@ func NewDump() Dump {
 			ConnectionOpts: mysqlcommonconfig.ConnectionOpts{
 				MaxAllowedPacket: DefaultMaxAllowedPacket,
 			},
-			MaxInsertStatementSize: DefaultMaxInsertStatementSize,
-			DumpFormat:             commonmodels.DumpFormatInsert,
+			DumpFormat: commonmodels.DumpFormatInsert,
 		},
 		Options: CommonDumpOptions{
 			Compress: true,

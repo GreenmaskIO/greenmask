@@ -47,6 +47,8 @@ type Script struct {
 
 const DefaultMaxFetchWarnings = 10
 
+const DefaultMaxInsertStatementSize = 4 * 1024 * 1024
+
 type MysqlRestoreConfig struct {
 	mysqlcommonconfig.ConnectionOpts `mapstructure:",squash" json:",squash,omitempty"`
 	VendorOptions                    []string `mapstructure:"vendor-options" yaml:"vendor-options" json:"vendor-options,omitempty"`
@@ -55,6 +57,10 @@ type MysqlRestoreConfig struct {
 	MaxFetchWarnings        int  `mapstructure:"max-fetch-warnings" yaml:"max-fetch-warnings" json:"max_fetch_warnings"`
 	DisableForeignKeyChecks bool `mapstructure:"disable-fk-checks" yaml:"disable-fk-checks" json:"disable_fk_checks"`
 	DisableUniqueChecks     bool `mapstructure:"disable-unique-checks" yaml:"disable-unique-checks" json:"disable_unique_checks"`
+	// MaxInsertStatementSize controls the maximum byte size of a single batched INSERT statement.
+	MaxInsertStatementSize int  `mapstructure:"max-insert-statement-size" yaml:"max-insert-statement-size" json:"max_insert_statement_size"`
+	InsertIgnore           bool `mapstructure:"insert-ignore" yaml:"insert-ignore" json:"insert_ignore"`
+	InsertReplace          bool `mapstructure:"insert-replace" yaml:"insert-replace" json:"insert_replace"`
 }
 
 func (r *MysqlRestoreConfig) Validate() error {
@@ -117,7 +123,8 @@ func NewRestore() Restore {
 			ConnectionOpts: mysqlcommonconfig.ConnectionOpts{
 				MaxAllowedPacket: mysqlcommonconfig.DefaultMaxAllowedPacket,
 			},
-			MaxFetchWarnings: DefaultMaxFetchWarnings,
+			MaxFetchWarnings:       DefaultMaxFetchWarnings,
+			MaxInsertStatementSize: DefaultMaxInsertStatementSize,
 		},
 	}
 }

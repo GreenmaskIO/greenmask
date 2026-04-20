@@ -34,6 +34,9 @@ type RestoreOptions struct {
 	MaxFetchWarnings        int
 	DisableForeignKeyChecks bool
 	DisableUniqueChecks     bool
+	InsertIgnore            bool
+	InsertReplace           bool
+	MaxInsertStatementSize  int
 }
 
 type dummyTaskMapper struct{}
@@ -117,6 +120,13 @@ func (p *Producer) Task() (interfaces.Restorer, error) {
 			restorers.WithWarnings(p.opts.PrintWarnings, p.opts.MaxFetchWarnings),
 			restorers.WithForeignKeyChecks(p.opts.DisableForeignKeyChecks),
 			restorers.WithUniqueChecks(p.opts.DisableUniqueChecks),
+			restorers.WithMaxInsertStatementSize(p.opts.MaxInsertStatementSize),
+		}
+		if p.opts.InsertIgnore {
+			opts = append(opts, restorers.WithInsertIgnore())
+		}
+		if p.opts.InsertReplace {
+			opts = append(opts, restorers.WithInsertReplace())
 		}
 
 		stat := p.meta.DataDump.DumpStat.TaskStats[taskID]
