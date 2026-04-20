@@ -56,7 +56,7 @@ func TestDumpPreDataSchema(t *testing.T) {
 		require.NoError(t, err)
 		st.AssertNumberOfCalls(t, "PutObject", 1)
 
-		require.Equal(t, "--no-data --skip-triggers testdb\n", st.Data.String())
+		require.Equal(t, "--no-data --skip-triggers --skip-opt testdb\n", st.Data.String())
 	})
 
 	t.Run("put object error", func(t *testing.T) {
