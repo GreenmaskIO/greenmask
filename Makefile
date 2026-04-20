@@ -37,3 +37,25 @@ integration:
                 --renew-anon-volumes --force-recreate \
                 --exit-code-from greenmask --abort-on-container-exit greenmask
 
+local-build:
+	DOCKER_BUILDKIT=1 \
+		docker build \
+			-f docker/greenmask/mysql/main/Dockerfile \
+			. \
+			-t greenmask-from-source:latest \
+			--target main
+
+local-stop:
+	docker compose  -f ./docker-compose-mysql.yml down
+
+local-cleanup: local-stop
+	docker container prune -f
+	docker network prune -f
+	docker volume prune -f
+	docker image prune -f
+
+greenmask-latest:
+	docker compose -f docker-compose-mysql.yml run greenmask
+
+greenmask-from-source: local-build
+	docker compose -f docker-compose-mysql.yml run greenmask-from-source

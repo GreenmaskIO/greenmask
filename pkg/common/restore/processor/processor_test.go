@@ -27,7 +27,12 @@ type schemaRestorerMock struct {
 	mock.Mock
 }
 
-func (s *schemaRestorerMock) RestoreSchema(ctx context.Context) error {
+func (s *schemaRestorerMock) RestorePreDataSchema(ctx context.Context) error {
+	args := s.Called(ctx)
+	return args.Error(0)
+}
+
+func (s *schemaRestorerMock) RestorePostDataSchema(ctx context.Context) error {
 	args := s.Called(ctx)
 	return args.Error(0)
 }
@@ -97,8 +102,8 @@ func TestProcessor_Run(t *testing.T) {
 		ctx := context.Background()
 
 		sr := &schemaRestorerMock{}
-		sr.On("RestoreSchema", mock.Anything).
-			Return(nil)
+		sr.On("RestorePreDataSchema", mock.Anything).Return(nil)
+		sr.On("RestorePostDataSchema", mock.Anything).Return(nil)
 
 		// Create 2 tasks.
 		task1 := &restoreTaskMock{}

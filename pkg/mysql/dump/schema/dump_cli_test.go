@@ -27,87 +27,97 @@ import (
 	"github.com/greenmaskio/greenmask/pkg/common/utils"
 )
 
-func TestDumpCli_Run(t *testing.T) {
+func newTestDumper(st *mocks.StorageMock, vendorOptions []string) *Dumper {
+	d := New(
+		utils.NewDefaultCmdProducer(),
+		st,
+		[]string{"_TEST=1"},
+		[]string{},
+		vendorOptions,
+		commonmodels.MysqlDumpRelatedSettings{
+			AllowedSchemas: []string{"testdb"},
+			IncludeTables:  map[string][]string{"testdb": nil},
+		},
+		false,
+		false,
+	)
+	d.executable = "echo"
+	return d
+}
+
+func TestDumpPreDataSchema(t *testing.T) {
 	t.Run("basic", func(t *testing.T) {
 		st := mocks.NewStorageMock()
-		st.On(
-			"PutObject",
-			mock.Anything, "schema_testdb.sql",
-			mock.Anything,
-		).Return(nil)
+		st.On("PutObject", mock.Anything, "schema_pre_testdb.sql", mock.Anything).Return(nil)
 
-		d := New(
-			utils.NewDefaultCmdProducer(),
-			st,
-			[]string{"_TEST=1"},
-			[]string{},
-			commonmodels.MysqlDumpRelatedSettings{
-				AllowedSchemas: []string{"testdb"},
-				IncludeTables:  map[string][]string{"testdb": nil},
-			},
-			false,
-			false,
-		)
-		d.executable = "echo"
+		d := newTestDumper(st, nil)
 		ctx := context.Background()
-		_, err := d.DumpSchema(ctx)
+		_, err := d.DumpPreDataSchema(ctx)
 		require.NoError(t, err)
 		st.AssertNumberOfCalls(t, "PutObject", 1)
 
-		actual := st.Data.String()
-		require.Equal(t, "--no-data testdb\n", actual)
+		require.Equal(t, "--no-data --skip-triggers --skip-opt testdb\n", st.Data.String())
 	})
 
 	t.Run("put object error", func(t *testing.T) {
 		st := mocks.NewStorageMock()
-		st.On(
-			"PutObject",
-			mock.Anything, "schema_testdb.sql",
-			mock.Anything,
-		).Return(errors.New("put error"))
+		st.On("PutObject", mock.Anything, "schema_pre_testdb.sql", mock.Anything).
+			Return(errors.New("put error"))
 
-		d := New(
-			utils.NewDefaultCmdProducer(),
-			st,
-			[]string{"_TEST=1"},
-			[]string{},
-			commonmodels.MysqlDumpRelatedSettings{
-				AllowedSchemas: []string{"testdb"},
-				IncludeTables:  map[string][]string{"testdb": nil},
-			},
-			false,
-			false,
-		)
+		d := newTestDumper(st, nil)
 		ctx := context.Background()
-		_, err := d.DumpSchema(ctx)
+		_, err := d.DumpPreDataSchema(ctx)
 		require.Error(t, err)
 		st.AssertNumberOfCalls(t, "PutObject", 1)
 	})
 
 	t.Run("cmdProducer error", func(t *testing.T) {
 		st := mocks.NewStorageMock()
-		st.On(
-			"PutObject",
-			mock.Anything, "schema_testdb.sql",
-			mock.Anything,
-		).Return(nil)
+		st.On("PutObject", mock.Anything, "schema_pre_testdb.sql", mock.Anything).Return(nil)
 
-		d := New(
-			utils.NewDefaultCmdProducer(),
-			st,
-			[]string{"_TEST=1"},
-			[]string{},
-			commonmodels.MysqlDumpRelatedSettings{
-				AllowedSchemas: []string{"testdb"},
-				IncludeTables:  map[string][]string{"testdb": nil},
-			},
-			false,
-			false,
-		)
+		d := newTestDumper(st, nil)
 		d.executable = "121312 unknown command"
 		ctx := context.Background()
-		_, err := d.DumpSchema(ctx)
+		_, err := d.DumpPreDataSchema(ctx)
 		require.Error(t, err)
+	})
+}
+
+func TestDumpPostDataSchema(t *testing.T) {
+	t.Run("basic includes triggers by default", func(t *testing.T) {
+		st := mocks.NewStorageMock()
+		st.On("PutObject", mock.Anything, "schema_post_testdb.sql", mock.Anything).Return(nil)
+
+		d := newTestDumper(st, nil)
+		ctx := context.Background()
+		_, err := d.DumpPostDataSchema(ctx)
+		require.NoError(t, err)
 		st.AssertNumberOfCalls(t, "PutObject", 1)
+
+		require.Equal(t, "--no-create-info --no-data --no-create-db --triggers testdb\n", st.Data.String())
+	})
+
+	t.Run("skip-triggers vendor option suppresses triggers", func(t *testing.T) {
+		st := mocks.NewStorageMock()
+		st.On("PutObject", mock.Anything, "schema_post_testdb.sql", mock.Anything).Return(nil)
+
+		d := newTestDumper(st, []string{"--skip-triggers"})
+		ctx := context.Background()
+		_, err := d.DumpPostDataSchema(ctx)
+		require.NoError(t, err)
+
+		require.Equal(t, "--no-create-info --no-data --no-create-db testdb\n", st.Data.String())
+	})
+
+	t.Run("routines and events included when requested", func(t *testing.T) {
+		st := mocks.NewStorageMock()
+		st.On("PutObject", mock.Anything, "schema_post_testdb.sql", mock.Anything).Return(nil)
+
+		d := newTestDumper(st, []string{"--routines", "--events"})
+		ctx := context.Background()
+		_, err := d.DumpPostDataSchema(ctx)
+		require.NoError(t, err)
+
+		require.Equal(t, "--no-create-info --no-data --no-create-db --triggers --routines --events testdb\n", st.Data.String())
 	})
 }

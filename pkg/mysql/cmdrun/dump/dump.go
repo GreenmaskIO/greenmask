@@ -82,6 +82,36 @@ func WithSchemaOnly() Option {
 	}
 }
 
+func WithSections(sections []string) Option {
+	return func(dump *Dump) error {
+		dump.sections = make(map[models.DumpSection]struct{}, len(sections))
+		for _, s := range sections {
+			ss := models.DumpSection(s)
+			if err := ss.Validate(); err != nil {
+				return fmt.Errorf("validate section %q: %w", s, err)
+			}
+			dump.sections[ss] = struct{}{}
+		}
+		return nil
+	}
+}
+
+// sectionEnabled reports whether the given section (pre-data, data, post-data) should be dumped.
+// When no explicit sections are configured it falls back to the dataOnly/schemaOnly flags.
+func (d *Dump) sectionEnabled(section models.DumpSection) bool {
+	if len(d.sections) == 0 {
+		switch section {
+		case models.DumpSectionPreData, models.DumpSectionPostData:
+			return !d.dataOnly
+		case models.DumpSectionData:
+			return !d.schemaOnly
+		}
+		return true
+	}
+	_, ok := d.sections[section]
+	return ok
+}
+
 func WithCompression(
 	enabled bool,
 	pgzip bool,
@@ -161,6 +191,10 @@ func GetMySQLDumpOpts(cfg *config.Config) []Option {
 		opts = append(opts, WithFilter(filter))
 	}
 
+	if len(cfg.Dump.Options.Section) > 0 {
+		opts = append(opts, WithSections(cfg.Dump.Options.Section))
+	}
+
 	format := cfg.Dump.MysqlConfig.DumpFormat
 	if format == "" {
 		format = models.DumpFormatInsert
@@ -207,6 +241,7 @@ type Dump struct {
 	rowsLimit          int64
 	dataOnly           bool
 	schemaOnly         bool
+	sections           map[models.DumpSection]struct{}
 	compressionEnabled bool
 	compressionPgzip   bool
 	// transformedTablesOnly - dump only transformed tables. This is used in validate command.
@@ -350,14 +385,29 @@ func (d *Dump) SchemaDump(ctx context.Context) ([]models.DumpedDatabaseSchemaSta
 	if err != nil {
 		return nil, fmt.Errorf("get environment variables: %w", err)
 	}
-	options := d.cfg.Dump.MysqlConfig.Params()
-	options = append(options, d.cfg.Dump.MysqlConfig.VendorOptions...)
-	sd := schemadump.New(d.cmd, d.st, envs, options, settings, d.compressionEnabled, d.compressionPgzip)
-	res, err := sd.DumpSchema(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("dump schema: %w", err)
+	connParams := d.cfg.Dump.MysqlConfig.Params()
+	vendorOptions := d.cfg.Dump.MysqlConfig.VendorOptions
+	sd := schemadump.New(d.cmd, d.st, envs, connParams, vendorOptions, settings, d.compressionEnabled, d.compressionPgzip)
+
+	var stats []models.DumpedDatabaseSchemaStat
+
+	if d.sectionEnabled(models.DumpSectionPreData) {
+		preDataStats, err := sd.DumpPreDataSchema(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("dump pre-data schema: %w", err)
+		}
+		stats = append(stats, preDataStats...)
 	}
-	return res, nil
+
+	if d.sectionEnabled(models.DumpSectionPostData) {
+		postDataStats, err := sd.DumpPostDataSchema(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("dump post-data schema: %w", err)
+		}
+		stats = append(stats, postDataStats...)
+	}
+
+	return stats, nil
 }
 
 func (d *Dump) DataDump(ctx context.Context) (err error) {
@@ -484,7 +534,7 @@ func (d *Dump) Run(ctx context.Context) (err error) {
 		}
 	}()
 
-	if !d.dataOnly {
+	if d.sectionEnabled(models.DumpSectionPreData) || d.sectionEnabled(models.DumpSectionPostData) {
 		// TODO: You need to implement a wrapper that does not release a lock until
 		//       schema dump is not finished. This requires to achieve consistent
 		//       snapshot for data and schema dump.
@@ -499,7 +549,7 @@ func (d *Dump) Run(ctx context.Context) (err error) {
 		d.dumpedDatabaseSchema = schemaStats
 	}
 
-	if !d.schemaOnly {
+	if d.sectionEnabled("data") {
 		log.Ctx(ctx).Debug().
 			Bool("data_only", d.dataOnly).
 			Bool("schema_only", d.schemaOnly).

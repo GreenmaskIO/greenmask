@@ -18,7 +18,7 @@ common:
   tmp_dir: "/tmp"
 
 log:
-  level: "info"
+  level: "debug"
   format: "text"
 
 engine: mysql
@@ -39,15 +39,17 @@ dump:
     jobs: 4
 
   mysql:
-    options:
-      user: root
-      password: 1234
-      connect-database: employees
-      databases:
-        - employees
-      host: playground-mysql-db-original
-      port: 3306
-      add-drop-table: false
+    user: root
+    password: 1234
+    connect-database: employees
+#    databases:
+#      - employees
+    host: playground-mysql-db-original
+    port: 3306
+#    add-drop-table: false
+    dump-format: insert
+#      insert-batch-size: 100000000
+    vendor-options: [ ]
 
   transformation:
     - schema: employees
@@ -75,13 +77,15 @@ dump:
 
 restore:
   options:
-    jobs: 2
-    restore-in-order: true
+    jobs: 10
+    create-database: true
+    if-not-exists: true
+    restore-in-order: false
 
   mysql:
-    options:
-      user: root
-      password: 1234
-      connect-database: playground
-      host: playground-mysql-db-transformed
-      port: 3306
+    user: root
+    password: 1234
+    connect-database: playground
+    host: playground-mysql-db-transformed
+    port: 3306
+    disable-fk-checks: true

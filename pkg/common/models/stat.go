@@ -146,9 +146,27 @@ func NewDumpStat(
 	}
 }
 
+type DumpSection string
+
+const (
+	DumpSectionPreData  DumpSection = "pre-data"
+	DumpSectionPostData DumpSection = "post-data"
+	DumpSectionData     DumpSection = "data"
+)
+
+func (m DumpSection) Validate() error {
+	switch m {
+	case DumpSectionPreData, DumpSectionPostData, DumpSectionData:
+		return nil
+	default:
+		return fmt.Errorf("value = '%s': %w", string(m), ErrModelValidation)
+	}
+}
+
 type DumpedDatabaseSchemaStat struct {
 	DatabaseName   string      `json:"database_name"`
 	FileName       string      `json:"file_name"`
+	Section        DumpSection `json:"section"`
 	Compression    Compression `json:"compression"`
 	OriginalSize   int64       `json:"original_size"`
 	CompressedSize int64       `json:"compressed_size"`
