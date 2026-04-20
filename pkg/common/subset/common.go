@@ -33,6 +33,17 @@ const (
 	DialectMySQL    = Dialect(sqlbuilder.MySQL)
 )
 
+func (d Dialect) String() string {
+	switch d {
+	case DialectPostgres:
+		return "postgres"
+	case DialectMySQL:
+		return "mysql"
+	default:
+		return fmt.Sprintf("unknown dialect %d", d)
+	}
+}
+
 // mustGetOneTableFromSCC - retrieves a single table from the strongly connected component (SCC) of the subset graph.
 // If the SCC contains more than one table, it panics.
 func mustGetOneTableFromSCC(scc condensationgraph2.SCC) commonmodels.Table {

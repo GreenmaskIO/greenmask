@@ -75,7 +75,14 @@ func (b dagQueryBuilder) build() (map[int]string, error) {
 	tableAliasMap := make(map[int]string)
 	// Build the main select ... from clause for root table
 	rootTableName := getFullTableName(b.dialect, rootTable, tableAliasMap)
-	sb := sqlbuilder.PostgreSQL.
+	var flavor sqlbuilder.Flavor
+	switch b.dialect {
+	case DialectMySQL:
+		flavor = sqlbuilder.MySQL
+	default:
+		panic(fmt.Sprintf("unsupported dialect: '%s'", b.dialect))
+	}
+	sb := flavor.
 		NewSelectBuilder().
 		Select(
 			fmt.Sprintf("%s.*", rootTableName),

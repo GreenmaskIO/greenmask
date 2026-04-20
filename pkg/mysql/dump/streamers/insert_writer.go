@@ -26,65 +26,34 @@ import (
 	"github.com/greenmaskio/greenmask/pkg/mysql/dbmsdriver"
 )
 
-const (
-	// defaultReservedPacketBytes is the amount of bytes we reserve for safety margin
-	// in each INSERT statement to avoid exceeding max_allowed_packet.
-	defaultReservedPacketBytes = 100
-)
-
-var (
-	// rowSeparatorBytes and insertTerminatorBytes are preallocated to avoid
-	// string allocations during Write and Flush, reducing GC overhead.
-	rowSeparatorBytes     = []byte(",\n")
-	insertTerminatorBytes = []byte(";\n")
-)
-
+// InsertWriter writes one value tuple per line:
+//
+//	(val1,val2,val3)
+//	(val4,val5,val6)
+//
+// No INSERT keyword, table name, commas between rows, or semicolons are written.
+// The INSERT statement is assembled on the restore side, allowing the conflict
+// resolution strategy (INSERT / INSERT IGNORE / REPLACE) and batch size to be
+// chosen at restore time.
 type InsertWriter struct {
-	table                  *models.Table
-	w                      io.Writer
-	vals                   []interface{}
-	rowTemplate            string
-	headerWritten          bool
-	maxInsertStatementSize int
-	currentStatementSize   int
-	header                 []byte
+	table       *models.Table
+	w           io.Writer
+	vals        []interface{}
+	rowTemplate string
 }
 
-func NewInsertWriter(table models.Table, w io.Writer, maxInsertStatementSize int) *InsertWriter {
+func NewInsertWriter(table models.Table, w io.Writer) *InsertWriter {
 	placeholders := make([]string, len(table.Columns))
 	for i := range table.Columns {
 		placeholders[i] = "?"
 	}
 	rowTemplate := "(" + strings.Join(placeholders, ", ") + ")"
-
-	tableName := sqlbuilder.MySQL.Quote(table.Name)
-	if table.Schema != "" {
-		tableName = fmt.Sprintf("%s.%s", sqlbuilder.MySQL.Quote(table.Schema), tableName)
-	}
-	headerStr := fmt.Sprintf("INSERT INTO %s (", tableName)
-	for i, col := range table.Columns {
-		if i > 0 {
-			headerStr += ", "
-		}
-		headerStr += sqlbuilder.MySQL.Quote(col.Name)
-	}
-	headerStr += ") VALUES \n"
 	return &InsertWriter{
-		table:                  &table,
-		w:                      w,
-		vals:                   make([]interface{}, len(table.Columns)),
-		rowTemplate:            rowTemplate,
-		maxInsertStatementSize: maxInsertStatementSize,
-		header:                 []byte(headerStr),
+		table:       &table,
+		w:           w,
+		vals:        make([]interface{}, len(table.Columns)),
+		rowTemplate: rowTemplate,
 	}
-}
-
-func (iw *InsertWriter) writeHeader() error {
-	if _, err := iw.w.Write(iw.header); err != nil {
-		return err
-	}
-	iw.currentStatementSize = len(iw.header)
-	return nil
 }
 
 func (iw *InsertWriter) Write(row [][]byte) error {
@@ -101,45 +70,13 @@ func (iw *InsertWriter) Write(row [][]byte) error {
 		return fmt.Errorf("interpolate row: %w", err)
 	}
 
-	rowSize := len(interpolated)
-	if iw.headerWritten {
-		rowSize += len(rowSeparatorBytes)
-	}
-
-	if iw.headerWritten && iw.currentStatementSize+rowSize+len(insertTerminatorBytes) > iw.maxInsertStatementSize-defaultReservedPacketBytes {
-		if _, err := iw.w.Write(insertTerminatorBytes); err != nil {
-			return fmt.Errorf("terminate insert: %w", err)
-		}
-		iw.headerWritten = false
-		iw.currentStatementSize = 0
-	}
-
-	if !iw.headerWritten {
-		if err := iw.writeHeader(); err != nil {
-			return fmt.Errorf("write header: %w", err)
-		}
-		iw.headerWritten = true
-	} else {
-		if _, err := iw.w.Write(rowSeparatorBytes); err != nil {
-			return fmt.Errorf("write row separator: %w", err)
-		}
-		iw.currentStatementSize += len(rowSeparatorBytes)
-	}
-
-	if _, err := fmt.Fprint(iw.w, interpolated); err != nil {
+	if _, err := fmt.Fprintf(iw.w, "%s\n", interpolated); err != nil {
 		return fmt.Errorf("write row: %w", err)
 	}
-	iw.currentStatementSize += len(interpolated)
-
 	return nil
 }
 
+// Flush is a no-op: each row is written atomically with its newline.
 func (iw *InsertWriter) Flush() error {
-	if iw.headerWritten {
-		if _, err := iw.w.Write(insertTerminatorBytes); err != nil {
-			return fmt.Errorf("terminate insert: %w", err)
-		}
-		iw.headerWritten = false
-	}
 	return nil
 }

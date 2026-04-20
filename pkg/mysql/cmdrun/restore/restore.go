@@ -121,6 +121,9 @@ func (d *Restore) Run(ctx context.Context) error {
 		MaxFetchWarnings:        d.cfg.Restore.MysqlConfig.MaxFetchWarnings,
 		DisableForeignKeyChecks: d.cfg.Restore.MysqlConfig.DisableForeignKeyChecks,
 		DisableUniqueChecks:     d.cfg.Restore.MysqlConfig.DisableUniqueChecks,
+		InsertIgnore:            d.cfg.Restore.MysqlConfig.InsertIgnore,
+		InsertReplace:           d.cfg.Restore.MysqlConfig.InsertReplace,
+		MaxInsertStatementSize:  d.cfg.Restore.MysqlConfig.MaxInsertStatementSize,
 	}
 
 	if d.cfg.Restore.Options.RestoreInOrder {

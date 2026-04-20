@@ -48,6 +48,8 @@ type TableDataRestorerCsv struct {
 	maxFetchWarnings    int
 	disableFkChecks     bool
 	disableUniqueChecks bool
+	insertIgnore        bool
+	insertReplace       bool
 	db                  *sql.DB
 	tx                  *sql.Tx
 	execErr             error
@@ -72,6 +74,9 @@ type TableRestorerConfig struct {
 	MaxFetchWarnings        int
 	DisableForeignKeyChecks bool
 	DisableUniqueChecks     bool
+	InsertIgnore            bool
+	InsertReplace           bool
+	MaxInsertStatementSize  int
 }
 
 type Option func(v *TableRestorerConfig) error
@@ -112,6 +117,33 @@ func WithUniqueChecks(enabled bool) Option {
 	}
 }
 
+func WithInsertIgnore() Option {
+	return func(v *TableRestorerConfig) error {
+		if v.InsertReplace {
+			return fmt.Errorf("insert-ignore and insert-replace are mutually exclusive")
+		}
+		v.InsertIgnore = true
+		return nil
+	}
+}
+
+func WithInsertReplace() Option {
+	return func(v *TableRestorerConfig) error {
+		if v.InsertIgnore {
+			return fmt.Errorf("insert-ignore and insert-replace are mutually exclusive")
+		}
+		v.InsertReplace = true
+		return nil
+	}
+}
+
+func WithMaxInsertStatementSize(size int) Option {
+	return func(v *TableRestorerConfig) error {
+		v.MaxInsertStatementSize = size
+		return nil
+	}
+}
+
 func NewTableDataRestorerCsv(
 	meta models.RestorationItem,
 	connConfig config.ConnectionOpts,
@@ -145,6 +177,8 @@ func NewTableDataRestorerCsv(
 		maxFetchWarnings:    cfg.MaxFetchWarnings,
 		disableFkChecks:     cfg.DisableForeignKeyChecks,
 		disableUniqueChecks: cfg.DisableUniqueChecks,
+		insertIgnore:        cfg.InsertIgnore,
+		insertReplace:       cfg.InsertReplace,
 	}
 	return res, nil
 }
@@ -158,17 +192,21 @@ func (r *TableDataRestorerCsv) showWarnings(ctx context.Context, db *sql.DB) err
 }
 
 func (r *TableDataRestorerCsv) restoreTable(ctx context.Context, tx *sql.Tx) error {
-	// TODO: REPLACE option
-	// YOU MIGHT WANT TO USE LOAD DATA LOCAL INFILE 'Reader::%s' REPLACE
-	// I think you should implement a replace option in the config.
+	conflictKeyword := ""
+	if r.insertReplace {
+		conflictKeyword = "REPLACE "
+	} else if r.insertIgnore {
+		conflictKeyword = "IGNORE "
+	}
 	query := fmt.Sprintf(
 		`LOAD DATA LOCAL INFILE 'Reader::%s' `+
-			"IGNORE INTO TABLE `%s`.`%s` "+
+			"%sINTO TABLE `%s`.`%s` "+
 			`FIELDS TERMINATED BY ',' `+
 			`ENCLOSED BY '"' `+
 			`ESCAPED BY '\\' `+
 			`LINES TERMINATED BY '\n'`,
 		getFileHandlerName(*r.table),
+		conflictKeyword,
 		r.table.Schema,
 		r.table.Name,
 	)

@@ -24,7 +24,7 @@ import (
 	"io"
 	"strings"
 
-	alocutils "github.com/go-mysql-org/go-mysql/utils"
+	"github.com/huandu/go-sqlbuilder"
 	"github.com/rs/zerolog/log"
 
 	"github.com/greenmaskio/greenmask/pkg/common/interfaces"
@@ -34,23 +34,29 @@ import (
 )
 
 type TableDataRestorerInsert struct {
-	table               *models.Table
-	meta                models.RestorationItem
-	connConfig          config.ConnectionOpts
-	st                  interfaces.Storager
-	taskResolver        interfaces.TaskMapper
-	compress            bool
-	pgzip               bool
-	printWarnings       bool
-	maxFetchWarnings    int
-	disableFkChecks     bool
-	disableUniqueChecks bool
-	reader              io.ReadCloser
-	totalWarnings       int
-	printedCount        int
-	db                  *sql.DB
-	tx                  *sql.Tx
-	execErr             error
+	table                  *models.Table
+	meta                   models.RestorationItem
+	connConfig             config.ConnectionOpts
+	st                     interfaces.Storager
+	taskResolver           interfaces.TaskMapper
+	compress               bool
+	pgzip                  bool
+	printWarnings          bool
+	maxFetchWarnings       int
+	disableFkChecks        bool
+	disableUniqueChecks    bool
+	insertIgnore           bool
+	insertReplace          bool
+	maxInsertStatementSize int
+	// headerLen is the byte length of the INSERT header including "VALUES ",
+	// pre-computed once so that batch size estimation avoids rebuilding the header.
+	headerLen     int
+	reader        io.ReadCloser
+	totalWarnings int
+	printedCount  int
+	db            *sql.DB
+	tx            *sql.Tx
+	execErr       error
 }
 
 func NewTableDataRestorerInsert(
@@ -76,20 +82,76 @@ func NewTableDataRestorerInsert(
 	}
 
 	res := &TableDataRestorerInsert{
-		table:               &table,
-		meta:                meta,
-		connConfig:          connConfig,
-		st:                  st,
-		taskResolver:        taskResolver,
-		compress:            cfg.Compress,
-		pgzip:               cfg.Pgzip,
-		printWarnings:       cfg.PrintWarnings,
-		maxFetchWarnings:    cfg.MaxFetchWarnings,
-		disableFkChecks:     cfg.DisableForeignKeyChecks,
-		disableUniqueChecks: cfg.DisableUniqueChecks,
+		table:                  &table,
+		meta:                   meta,
+		connConfig:             connConfig,
+		st:                     st,
+		taskResolver:           taskResolver,
+		compress:               cfg.Compress,
+		pgzip:                  cfg.Pgzip,
+		printWarnings:          cfg.PrintWarnings,
+		maxFetchWarnings:       cfg.MaxFetchWarnings,
+		disableFkChecks:        cfg.DisableForeignKeyChecks,
+		disableUniqueChecks:    cfg.DisableUniqueChecks,
+		insertIgnore:           cfg.InsertIgnore,
+		insertReplace:          cfg.InsertReplace,
+		maxInsertStatementSize: cfg.MaxInsertStatementSize,
 	}
+	res.headerLen = res.computeHeaderLen()
 
 	return res, nil
+}
+
+// newInsertBuilder creates a fresh InsertBuilder configured with the correct
+// verb (INSERT / INSERT IGNORE / REPLACE), table name, and column list.
+// The table name and column names are quoted for MySQL using backticks.
+func (r *TableDataRestorerInsert) newInsertBuilder() *sqlbuilder.InsertBuilder {
+	ib := sqlbuilder.MySQL.NewInsertBuilder()
+	tableName := sqlbuilder.MySQL.Quote(r.table.Schema) + "." + sqlbuilder.MySQL.Quote(r.table.Name)
+
+	switch {
+	case r.insertReplace:
+		ib.ReplaceInto(tableName)
+	case r.insertIgnore:
+		ib.InsertIgnoreInto(tableName)
+	default:
+		ib.InsertInto(tableName)
+	}
+
+	cols := make([]string, len(r.table.Columns))
+	for i, col := range r.table.Columns {
+		cols[i] = sqlbuilder.MySQL.Quote(col.Name)
+	}
+	ib.Cols(cols...)
+	return ib
+}
+
+// computeHeaderLen returns the byte length of the INSERT header string up to
+// and including "VALUES ", by building a single-row dummy statement and
+// finding where the first tuple starts.
+func (r *TableDataRestorerInsert) computeHeaderLen() int {
+	ib := r.newInsertBuilder()
+	ib.Values(sqlbuilder.Raw("X"))
+	stmt, _ := ib.Build()
+	idx := strings.LastIndex(stmt, "VALUES ")
+	if idx < 0 {
+		return len(stmt)
+	}
+	return idx + len("VALUES ")
+}
+
+// buildBatch builds and executes one INSERT statement from the accumulated tuples.
+// Each element of tuples is a raw line from the dump file, e.g. `('val1', 'val2')`.
+func (r *TableDataRestorerInsert) buildBatch(tuples [][]byte) string {
+	ib := r.newInsertBuilder()
+	for _, tuple := range tuples {
+		// Each line from the file is a complete tuple including outer parens:
+		// ('val1', 'val2'). Strip the outer parens so that Values() re-wraps them.
+		inner := tuple[1 : len(tuple)-1]
+		ib.Values(sqlbuilder.Raw(string(inner)))
+	}
+	stmt, _ := ib.Build()
+	return stmt
 }
 
 func (r *TableDataRestorerInsert) Meta() map[string]any {
@@ -205,52 +267,74 @@ func (r *TableDataRestorerInsert) Restore(ctx context.Context) error {
 }
 
 func (r *TableDataRestorerInsert) restoreTable(ctx context.Context) error {
-	reader := bufio.NewReader(r.reader)
-	var stmt []byte
-	var batchNum int
+	scanner := bufio.NewScanner(r.reader)
 
-	for {
-		line, err := reader.ReadBytes('\n')
-		if err != nil && err != io.EOF {
-			return fmt.Errorf("read sql content at batch %d: %w", batchNum+1, err)
-		}
+	var batch [][]byte
+	batchSize := 0
+	batchNum := 0
+	const separatorLen = 2  // ", " between tuples in the VALUES list
+	const terminatorLen = 1 // ";" appended by Build()
 
-		if len(line) > 0 {
-			stmt = append(stmt, line...)
-		}
-
-		// Check if we reached the end of an INSERT statement.
-		// We trim trailing whitespace (including \r and \n) to be robust against CRLF
-		// and different formatting.
-		trimmed := bytes.TrimSpace(line)
-		if bytes.HasSuffix(trimmed, []byte(";")) || (err == io.EOF && len(stmt) > 0) {
-			batchNum++
-
-			stmtStr := alocutils.ByteSliceToString(stmt)
-
-			if strings.TrimSpace(stmtStr) != "" {
-				_, execErr := r.tx.ExecContext(ctx, stmtStr)
-				if execErr != nil {
-					return fmt.Errorf("execute batch %d: %w", batchNum, execErr)
-				}
-				count, err := showInsertWarnings(ctx, r.db, r.printWarnings, r.maxFetchWarnings, batchNum, &r.printedCount)
-				if err != nil {
-					log.Ctx(ctx).Warn().Err(err).Msg("failed to show warnings after batch")
-				}
-				r.totalWarnings += count
-			}
-			stmt = stmt[:0] // reset without reallocating
-		}
-
-		if err == io.EOF {
-			break
-		}
+	maxSize := r.maxInsertStatementSize
+	if maxSize <= 0 {
+		maxSize = 4 * 1024 * 1024
 	}
 
-	return nil
-}
+	flush := func() error {
+		if len(batch) == 0 {
+			return nil
+		}
+		batchNum++
 
-// showWarnings is now handled by showInsertWarnings in restoreTable
+		stmt := r.buildBatch(batch)
+		if _, err := r.tx.ExecContext(ctx, stmt); err != nil {
+			return fmt.Errorf("execute batch %d: %w", batchNum, err)
+		}
+		count, err := showInsertWarnings(ctx, r.db, r.printWarnings, r.maxFetchWarnings, batchNum, &r.printedCount)
+		if err != nil {
+			log.Ctx(ctx).Warn().Err(err).Msg("failed to show warnings after batch")
+		}
+		r.totalWarnings += count
+
+		batch = batch[:0]
+		batchSize = 0
+		return nil
+	}
+
+	for scanner.Scan() {
+		line := scanner.Bytes()
+		if len(bytes.TrimSpace(line)) == 0 {
+			continue
+		}
+
+		tuple := make([]byte, len(line))
+		copy(tuple, line)
+		tupleLen := len(tuple)
+
+		var newSize int
+		if len(batch) == 0 {
+			newSize = r.headerLen + tupleLen + terminatorLen
+		} else {
+			newSize = batchSize + separatorLen + tupleLen
+		}
+
+		if len(batch) > 0 && newSize > maxSize {
+			if err := flush(); err != nil {
+				return err
+			}
+			newSize = r.headerLen + tupleLen + terminatorLen
+		}
+
+		batch = append(batch, tuple)
+		batchSize = newSize
+	}
+
+	if err := scanner.Err(); err != nil {
+		return fmt.Errorf("scan file content: %w", err)
+	}
+
+	return flush()
+}
 
 func (r *TableDataRestorerInsert) closeTx(ctx context.Context) error {
 	return closeTransaction(ctx, r.tx, r.execErr, r.disableFkChecks, r.disableUniqueChecks)

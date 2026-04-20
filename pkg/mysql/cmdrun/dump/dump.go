@@ -435,8 +435,6 @@ func (d *Dump) DataDump(ctx context.Context) (err error) {
 		taskProducerOpts = append(taskProducerOpts, taskproducer.WithTransformedTablesOnly())
 	}
 	taskProducerOpts = append(taskProducerOpts, taskproducer.WithDumpFormat(d.format))
-	taskProducerOpts = append(taskProducerOpts,
-		taskproducer.WithMaxInsertStatementSize(d.cfg.Dump.MysqlConfig.MaxInsertStatementSize))
 
 	tp, err := taskproducer.New(
 		d.introsp,

@@ -118,7 +118,7 @@ func TestNewSubset(t *testing.T) {
 		}
 
 		tables := []models.Table{tableE, tableA, tableB, tableC, tableD}
-		s, err := NewSubset(tables, DialectPostgres)
+		s, err := NewSubset(tables, DialectMySQL)
 		require.NoError(t, err)
 		require.Len(t, s.subsetGraphs, 5)
 
@@ -160,10 +160,10 @@ func TestNewSubset(t *testing.T) {
 		verifySubGraphs(t, expectedSubGraphs, s)
 		expectedTablesQueries := []string{
 			``,
-			`SELECT "public"."a".* FROM "public"."a" WHERE (public.a.id = 1)`,
-			`SELECT "public"."b".* FROM "public"."b" INNER JOIN "public"."a" ON ("public"."b"."a_id" = "public"."a"."id") WHERE (public.a.id = 1)`,
-			`SELECT "public"."c".* FROM "public"."c" INNER JOIN "public"."b" ON ("public"."c"."b_id" = "public"."b"."id") INNER JOIN "public_a__1" ON ("public"."b"."a_id" = "public_a__1"."id") INNER JOIN "public_a__0" ON ("public"."c"."a_id" = "public_a__0"."id") WHERE (public.c.id = 1) AND (public_a__1.id = 1) AND (public_a__0.id = 1)`,
-			`SELECT "public"."d".* FROM "public"."d" INNER JOIN "public"."c" ON ("public"."d"."c_id" = "public"."c"."id") INNER JOIN "public"."b" ON ("public"."c"."b_id" = "public"."b"."id") INNER JOIN "public_a__1" ON ("public"."b"."a_id" = "public_a__1"."id") INNER JOIN "public_a__0" ON ("public"."c"."a_id" = "public_a__0"."id") WHERE (public.c.id = 1) AND (public_a__1.id = 1) AND (public_a__0.id = 1)`,
+			"SELECT `public`.`a`.* FROM `public`.`a` WHERE (public.a.id = 1)",
+			"SELECT `public`.`b`.* FROM `public`.`b` INNER JOIN `public`.`a` ON (`public`.`b`.`a_id` = `public`.`a`.`id`) WHERE (public.a.id = 1)",
+			"SELECT `public`.`c`.* FROM `public`.`c` INNER JOIN `public`.`b` ON (`public`.`c`.`b_id` = `public`.`b`.`id`) INNER JOIN `public_a__1` ON (`public`.`b`.`a_id` = `public_a__1`.`id`) INNER JOIN `public_a__0` ON (`public`.`c`.`a_id` = `public_a__0`.`id`) WHERE (public.c.id = 1) AND (public_a__1.id = 1) AND (public_a__0.id = 1)",
+			"SELECT `public`.`d`.* FROM `public`.`d` INNER JOIN `public`.`c` ON (`public`.`d`.`c_id` = `public`.`c`.`id`) INNER JOIN `public`.`b` ON (`public`.`c`.`b_id` = `public`.`b`.`id`) INNER JOIN `public_a__1` ON (`public`.`b`.`a_id` = `public_a__1`.`id`) INNER JOIN `public_a__0` ON (`public`.`c`.`a_id` = `public_a__0`.`id`) WHERE (public.c.id = 1) AND (public_a__1.id = 1) AND (public_a__0.id = 1)",
 		}
 		require.Equal(t, expectedTablesQueries, s.tablesQueries)
 	})
@@ -237,13 +237,13 @@ func TestNewSubset(t *testing.T) {
 			},
 		}
 		tables := []models.Table{tableA, tableB, tableC}
-		s, err := NewSubset(tables, DialectPostgres)
+		s, err := NewSubset(tables, DialectMySQL)
 		require.NoError(t, err)
 		verifySubGraphs(t, expectedSubGraphs, s)
 		expectedTablesQueries := []string{
-			`SELECT "public"."a".* FROM "public"."a" WHERE (public.a.id = 1)`,
-			`SELECT "public"."b".* FROM "public"."b" LEFT JOIN "public"."a" ON ("public"."b"."a_id" = "public"."a"."id") WHERE (public.b.id = 1) AND (("public"."b"."a_id" IS NULL) OR (public.a.id = 1))`,
-			`SELECT "public"."c".* FROM "public"."c" LEFT JOIN "public"."b" ON ("public"."c"."b_id" = "public"."b"."id") LEFT JOIN "public"."a" ON ("public"."b"."a_id" = "public"."a"."id") WHERE (public.c.id = 1) AND (("public"."c"."b_id" IS NULL) OR (public.b.id = 1)) AND (("public"."b"."a_id" IS NULL) OR (public.a.id = 1))`,
+			"SELECT `public`.`a`.* FROM `public`.`a` WHERE (public.a.id = 1)",
+			"SELECT `public`.`b`.* FROM `public`.`b` LEFT JOIN `public`.`a` ON (`public`.`b`.`a_id` = `public`.`a`.`id`) WHERE (public.b.id = 1) AND ((`public`.`b`.`a_id` IS NULL) OR (public.a.id = 1))",
+			"SELECT `public`.`c`.* FROM `public`.`c` LEFT JOIN `public`.`b` ON (`public`.`c`.`b_id` = `public`.`b`.`id`) LEFT JOIN `public`.`a` ON (`public`.`b`.`a_id` = `public`.`a`.`id`) WHERE (public.c.id = 1) AND ((`public`.`c`.`b_id` IS NULL) OR (public.b.id = 1)) AND ((`public`.`b`.`a_id` IS NULL) OR (public.a.id = 1))",
 		}
 		require.Equal(t, expectedTablesQueries, s.tablesQueries)
 	})
@@ -271,7 +271,7 @@ func TestNewSubset(t *testing.T) {
 			},
 		}
 		tables := []models.Table{tableA, tableB}
-		s, err := NewSubset(tables, DialectPostgres)
+		s, err := NewSubset(tables, DialectMySQL)
 		require.NoError(t, err)
 
 		order, err := s.GetTopologicalOrder()
