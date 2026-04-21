@@ -135,6 +135,12 @@ func (s *hexBlobDumpSuite) getBaseConfig(ctx context.Context) *config.Config {
 func (s *hexBlobDumpSuite) TestHexBlobDump() {
 	ctx := context.Background()
 
+	const (
+		hexRow1 = `('1', X'00000000000000000000000000000000', X'0001020304', X'00', X'DEADBEEF', X'CAFEBABE0102030405', X'FFFEFDFCFBFA')`
+		hexRow2 = `('2', X'DEADBEEFDEADBEEFDEADBEEFDEADBEEF', X'80818283848586878889', X'F0F1F2F3', X'C0C1FEFF', X'E0E1E2E3E4E5', X'F8F9FAFBFCFDFEFF')`
+		hexRow3 = `('3', X'00000000000000000000000000000000', X'0A0D5C27', X'1A', X'22', X'0000000000', X'AABBCCDDEE')`
+	)
+
 	s.Run("hex_blob_enabled_all_binary_cols_encoded", func() {
 		ctx := s.setupInfrastructure(ctx)
 		cfg := s.getBaseConfig(ctx)
@@ -161,52 +167,18 @@ func (s *hexBlobDumpSuite) TestHexBlobDump() {
 		s.Require().NoError(err)
 		s.Require().NoError(dumpProcess.Run(ctx))
 
-		// Read the dumped file from in-memory storage.
 		rc, err := st.GetObject(ctx, "testdb__hex_blob_test.sql")
 		s.Require().NoError(err)
 		defer rc.Close()
 
 		content, err := io.ReadAll(rc)
 		s.Require().NoError(err)
-		s.Require().NotEmpty(content)
 
 		lines := splitNonEmpty(string(content))
 		s.Require().Len(lines, 3, "expected 3 data rows")
-
-		// Every binary column value (positions 1-6, 0-indexed after the id) must be
-		// an X'...' hex literal — no raw bytes or escaped string literals.
-		for i, line := range lines {
-			cols := parseTupleCols(line)
-			s.Require().Len(cols, 7, "row %d: expected 7 columns", i+1)
-			// col_binary (BINARY(16)) — previously produced raw escaped bytes
-			s.assertHexLiteral(cols[1], "row %d col_binary", i+1)
-			// col_varbinary (VARBINARY(255)) — previously produced raw escaped bytes
-			s.assertHexLiteral(cols[2], "row %d col_varbinary", i+1)
-			// blob family — these already worked before the fix
-			s.assertHexLiteral(cols[3], "row %d col_tinyblob", i+1)
-			s.assertHexLiteral(cols[4], "row %d col_blob", i+1)
-			s.assertHexLiteral(cols[5], "row %d col_medblob", i+1)
-			s.assertHexLiteral(cols[6], "row %d col_longblob", i+1)
-		}
-
-		// Verify exact hex values for the known test rows.
-		row1 := parseTupleCols(lines[0])
-		s.Equal("X'00000000000000000000000000000000'", row1[1])
-		s.Equal("X'0001020304'", row1[2])
-		s.Equal("X'00'", row1[3])
-		s.Equal("X'DEADBEEF'", row1[4])
-		s.Equal("X'CAFEBABE0102030405'", row1[5])
-		s.Equal("X'FFFEFDFCFBFA'", row1[6])
-
-		row2 := parseTupleCols(lines[1])
-		s.Equal("X'DEADBEEFDEADBEEFDEADBEEFDEADBEEF'", row2[1])
-		s.Equal("X'80818283848586878889'", row2[2])
-
-		row3 := parseTupleCols(lines[2])
-		// \n \r \ ' — bytes that require escaping in a plain string literal
-		s.Equal("X'0A0D5C27'", row3[2])
-		s.Equal("X'1A'", row3[3]) // Ctrl-Z
-		s.Equal("X'22'", row3[4]) // double-quote
+		s.Equal(hexRow1, lines[0])
+		s.Equal(hexRow2, lines[1])
+		s.Equal(hexRow3, lines[2])
 
 		cmdProducer.AssertExpectations(s.T())
 		cmdRunner.AssertExpectations(s.T())
@@ -260,14 +232,6 @@ func (s *hexBlobDumpSuite) TestHexBlobDump() {
 	})
 }
 
-// assertHexLiteral asserts that val is an X'...' hex literal.
-func (s *hexBlobDumpSuite) assertHexLiteral(val, msgFmt string, args ...any) {
-	s.Truef(
-		strings.HasPrefix(val, "X'") && strings.HasSuffix(val, "'"),
-		msgFmt+" = %q: expected X'...' hex literal", append(args, val)...,
-	)
-}
-
 // splitNonEmpty splits content by newlines and returns non-empty lines.
 func splitNonEmpty(content string) []string {
 	var lines []string
@@ -278,63 +242,6 @@ func splitNonEmpty(content string) []string {
 		}
 	}
 	return lines
-}
-
-// parseTupleCols splits a dump tuple "(v1, v2, v3)" into its column values.
-// It handles X'...' literals, 'string' literals, and unquoted values (NULL, numbers).
-// This is a best-effort parser sufficient for the known test data shapes.
-func parseTupleCols(line string) []string {
-	// Strip outer parens.
-	line = strings.TrimSpace(line)
-	line = strings.TrimPrefix(line, "(")
-	line = strings.TrimSuffix(line, ")")
-
-	var cols []string
-	i := 0
-	for i < len(line) {
-		// Skip leading whitespace / comma separator.
-		for i < len(line) && (line[i] == ' ' || line[i] == ',') {
-			i++
-		}
-		if i >= len(line) {
-			break
-		}
-
-		if line[i] == 'X' && i+1 < len(line) && line[i+1] == '\'' {
-			// X'...' hex literal — find the closing single-quote.
-			end := strings.Index(line[i+2:], "'")
-			if end < 0 {
-				break
-			}
-			cols = append(cols, line[i:i+2+end+1])
-			i += 2 + end + 1
-		} else if line[i] == '\'' {
-			// 'string' literal — scan until unescaped closing quote.
-			j := i + 1
-			for j < len(line) {
-				if line[j] == '\\' {
-					j += 2
-					continue
-				}
-				if line[j] == '\'' {
-					break
-				}
-				j++
-			}
-			cols = append(cols, line[i:j+1])
-			i = j + 1
-		} else {
-			// Unquoted token (NULL, number).
-			end := strings.IndexAny(line[i:], ", ")
-			if end < 0 {
-				cols = append(cols, line[i:])
-				break
-			}
-			cols = append(cols, line[i:i+end])
-			i += end
-		}
-	}
-	return cols
 }
 
 func TestHexBlobDumpSuite(t *testing.T) {
