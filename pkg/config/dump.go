@@ -135,6 +135,7 @@ func (tc TransformationConfig) ToTransformationConfig() []commonmodels.TableConf
 type MysqlDumpConfig struct {
 	mysqlcommonconfig.ConnectionOpts `mapstructure:",squash" json:",squash,omitempty"` //nolint:staticcheck
 	DumpFormat                       commonmodels.DumpFormat                           `mapstructure:"dump-format" json:"dump_format,omitempty"`                         // Format for data dump (csv or insert)
+	HexBlob                          bool                                              `mapstructure:"hex-blob" json:"hex_blob,omitempty"`                               // Encode BINARY/VARBINARY/BLOB columns as X'...' hex literals
 	NoTablespaces                    bool                                              `mapstructure:"no-tablespaces" json:"no_databases,omitempty"`                     // Exclude tablespace information (--no-tablespaces)
 	PoolHeartbeatInterval            time.Duration                                     `mapstructure:"pool-heartbeat-interval" json:"pool_heartbeat_interval,omitempty"` // Interval for connection pool heartbeat in seconds
 	PoolHeartbeatTimeout             time.Duration                                     `mapstructure:"pool-heartbeat-timeout" json:"pool_heartbeat_timeout,omitempty"`   // Timeout for connection pool heartbeat in seconds
@@ -222,6 +223,7 @@ func NewDump() Dump {
 				MaxAllowedPacket: DefaultMaxAllowedPacket,
 			},
 			DumpFormat: commonmodels.DumpFormatInsert,
+			HexBlob:    true,
 		},
 		Options: CommonDumpOptions{
 			Compress: true,

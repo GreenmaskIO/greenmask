@@ -58,8 +58,8 @@ dump:
     port: 3306
     #    add-drop-table: false
     dump-format: insert
-    #      insert-batch-size: 100000000
-    vendor-options: [ ]
+    hex-blob: true
+    vendor-options: [ "--opt" ]
 
   transformation:
     - schema: employees
@@ -88,14 +88,13 @@ dump:
 restore:
   options:
     jobs: 10
-    schema-only: true
-#    create-database: true
-#    if-not-exists: true
+    create-database: true
+    if-not-exists: true
 #    section:
 #      - pre-data
 #      - post-data
 #      - data
-#    restore-in-order: true
+    restore-in-order: true
 
   mysql:
     user: root
