@@ -62,6 +62,7 @@ type TaskProducer struct {
 	compressionPgzip      bool
 	transformedTablesOnly bool
 	dumpFormat            models.DumpFormat
+	hexBlob               bool
 }
 
 func WithFilter(
@@ -116,6 +117,13 @@ func WithDumpFormat(format models.DumpFormat) Option {
 		if format != "" {
 			tp.dumpFormat = format
 		}
+		return nil
+	}
+}
+
+func WithHexBlob() Option {
+	return func(tp *TaskProducer) error {
+		tp.hexBlob = true
 		return nil
 	}
 }
@@ -199,6 +207,7 @@ func (tp *TaskProducer) initTableDumper(
 		dumpstreamers.WithCompression(tp.compressionEnabled),
 		dumpstreamers.WithPgzip(tp.compressionPgzip),
 		dumpstreamers.WithFormat(tp.dumpFormat),
+		dumpstreamers.WithHexBlob(tp.hexBlob),
 	)
 	rawRecord := rawrecord.NewRawRecord(len(tableContext.Table.Columns), dbmsdriver.NullValueSeq)
 	r := record.NewRecord(rawRecord, tableContext.TableDriver)
@@ -226,6 +235,7 @@ func (tp *TaskProducer) initTableRawDumper(
 		dumpstreamers.WithCompression(tp.compressionEnabled),
 		dumpstreamers.WithPgzip(tp.compressionPgzip),
 		dumpstreamers.WithFormat(tp.dumpFormat),
+		dumpstreamers.WithHexBlob(tp.hexBlob),
 	)
 	return dumpers.NewTableRawDumper(objectID, tr, tw, tableContext.Table)
 }

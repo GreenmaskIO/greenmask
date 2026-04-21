@@ -26,6 +26,8 @@ import (
 	"github.com/greenmaskio/greenmask/pkg/mysql/dbmsdriver"
 )
 
+const hexChars = "0123456789ABCDEF"
+
 // InsertWriter writes one value tuple per line:
 //
 //	(val1,val2,val3)
@@ -35,42 +37,71 @@ import (
 // The INSERT statement is assembled on the restore side, allowing the conflict
 // resolution strategy (INSERT / INSERT IGNORE / REPLACE) and batch size to be
 // chosen at restore time.
+//
+// When hexBlob is true, columns of binary/blob types are emitted as X'...' hex
+// literals instead of escaped string literals, making the dump charset-independent
+// and safe for arbitrary byte values.
 type InsertWriter struct {
-	table       *models.Table
-	w           io.Writer
-	vals        []interface{}
-	rowTemplate string
+	table      *models.Table
+	w          io.Writer
+	isBinary   []bool // pre-computed: true for BINARY/VARBINARY/BLOB family columns
+	hasHexCols bool   // true when any column in isBinary is set
+	sb         strings.Builder
 }
 
-func NewInsertWriter(table models.Table, w io.Writer) *InsertWriter {
-	placeholders := make([]string, len(table.Columns))
-	for i := range table.Columns {
-		placeholders[i] = "?"
+func NewInsertWriter(table models.Table, w io.Writer, hexBlob bool) *InsertWriter {
+	isBinary := make([]bool, len(table.Columns))
+	hasHexCols := false
+	for i, col := range table.Columns {
+		if hexBlob && isBinaryType(col) {
+			isBinary[i] = true
+			hasHexCols = true
+		}
 	}
-	rowTemplate := "(" + strings.Join(placeholders, ", ") + ")"
 	return &InsertWriter{
-		table:       &table,
-		w:           w,
-		vals:        make([]interface{}, len(table.Columns)),
-		rowTemplate: rowTemplate,
+		table:      &table,
+		w:          w,
+		isBinary:   isBinary,
+		hasHexCols: hasHexCols,
 	}
+}
+
+// isBinaryType reports whether the column belongs to the binary/blob type class.
+// TypeClass is used rather than TypeName because MySQL reports COLUMN_TYPE as
+// "binary(16)" or "varbinary(255)" (with length suffix), which does not match
+// the bare type-name constants. TypeClass is always resolved correctly via the
+// DATA_TYPE fallback in the introspector.
+func isBinaryType(col models.Column) bool {
+	return col.TypeClass == models.TypeClassBinary
 }
 
 func (iw *InsertWriter) Write(row [][]byte) error {
+	iw.sb.Reset()
+	iw.sb.WriteByte('(')
 	for i, val := range row {
-		if bytes.Equal(val, dbmsdriver.NullValueSeq) {
-			iw.vals[i] = nil
-		} else {
-			iw.vals[i] = string(val)
+		if i > 0 {
+			iw.sb.WriteString(", ")
+		}
+		switch {
+		case bytes.Equal(val, dbmsdriver.NullValueSeq):
+			iw.sb.WriteString("NULL")
+		case iw.hasHexCols && iw.isBinary[i]:
+			iw.sb.WriteString("X'")
+			for _, b := range val {
+				iw.sb.WriteByte(hexChars[b>>4])
+				iw.sb.WriteByte(hexChars[b&0x0f])
+			}
+			iw.sb.WriteByte('\'')
+		default:
+			s, err := sqlbuilder.MySQL.Interpolate("?", []interface{}{string(val)})
+			if err != nil {
+				return fmt.Errorf("interpolate col %d: %w", i, err)
+			}
+			iw.sb.WriteString(s)
 		}
 	}
-
-	interpolated, err := sqlbuilder.MySQL.Interpolate(iw.rowTemplate, iw.vals)
-	if err != nil {
-		return fmt.Errorf("interpolate row: %w", err)
-	}
-
-	if _, err := fmt.Fprintf(iw.w, "%s\n", interpolated); err != nil {
+	iw.sb.WriteString(")\n")
+	if _, err := fmt.Fprint(iw.w, iw.sb.String()); err != nil {
 		return fmt.Errorf("write row: %w", err)
 	}
 	return nil

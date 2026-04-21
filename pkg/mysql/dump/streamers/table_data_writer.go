@@ -51,6 +51,7 @@ type TableDataWriter struct {
 	enabled   bool
 	pgzip     bool
 	format    models.DumpFormat
+	hexBlob   bool
 }
 
 func NewTableDataWriter(
@@ -99,6 +100,12 @@ func WithPgzip(enabled bool) Option {
 	}
 }
 
+func WithHexBlob(enabled bool) Option {
+	return func(t *TableDataWriter) {
+		t.hexBlob = enabled
+	}
+}
+
 func (t *TableDataWriter) steam(ctx context.Context) func() error {
 	return func() error {
 		if err := t.st.PutObject(ctx, t.fileName, t.cr); err != nil {
@@ -116,7 +123,7 @@ func (t *TableDataWriter) Open(ctx context.Context) error {
 	}
 
 	if t.format == models.DumpFormatInsert {
-		t.rowWriter = NewInsertWriter(*t.table, t.cw)
+		t.rowWriter = NewInsertWriter(*t.table, t.cw, t.hexBlob)
 	} else {
 		t.rowWriter = csv.NewWriter(t.cw)
 	}

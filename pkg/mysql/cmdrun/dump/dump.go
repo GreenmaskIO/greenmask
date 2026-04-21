@@ -435,6 +435,9 @@ func (d *Dump) DataDump(ctx context.Context) (err error) {
 		taskProducerOpts = append(taskProducerOpts, taskproducer.WithTransformedTablesOnly())
 	}
 	taskProducerOpts = append(taskProducerOpts, taskproducer.WithDumpFormat(d.format))
+	if d.cfg.Dump.MysqlConfig.HexBlob {
+		taskProducerOpts = append(taskProducerOpts, taskproducer.WithHexBlob())
+	}
 
 	tp, err := taskproducer.New(
 		d.introsp,
