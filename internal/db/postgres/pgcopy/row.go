@@ -16,12 +16,21 @@ package pgcopy
 
 import (
 	"errors"
+	"fmt"
 	"slices"
 
 	"github.com/greenmaskio/greenmask/pkg/toolkit"
 )
 
 var ErrIndexOutOfRage = errors.New("wrong column idx: index out of range")
+
+// ErrTupleSizeMismatch is returned by (*Row).Decode when the COPY stream
+// contains more columns than the row was constructed for. This happens when
+// a transformation's `query:` selects extra columns beyond the table's
+// declared schema; the decoder cannot guess which slot they belong to, so
+// it reports the discrepancy back to the caller instead of indexing past
+// the end of columnPos and panicking (#432).
+var ErrTupleSizeMismatch = errors.New("decoded column count exceeds row tuple size")
 
 type columnPos struct {
 	start int
@@ -98,6 +107,13 @@ func (r *Row) Decode(raw []byte) error {
 		}
 		if r.isDynamic && idx >= r.tupleSize {
 			r.appendNewEmptyBuffer()
+		} else if idx >= len(r.columnPos) {
+			// Fixed-size row but the COPY stream produced more columns
+			// than expected. Surfacing this as a typed error lets the
+			// caller report 'transformation produced N columns, table
+			// has M' instead of crashing the dump goroutine (#432).
+			return fmt.Errorf("%w: got more than %d columns at byte offset %d",
+				ErrTupleSizeMismatch, r.tupleSize, colStartPos)
 		}
 
 		p := r.columnPos[idx]
