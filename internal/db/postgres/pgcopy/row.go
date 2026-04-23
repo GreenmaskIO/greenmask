@@ -16,6 +16,7 @@ package pgcopy
 
 import (
 	"errors"
+	"fmt"
 	"slices"
 
 	"github.com/greenmaskio/greenmask/pkg/toolkit"
@@ -98,6 +99,14 @@ func (r *Row) Decode(raw []byte) error {
 		}
 		if r.isDynamic && idx >= r.tupleSize {
 			r.appendNewEmptyBuffer()
+		}
+
+		// A static-tuple row that receives a stream with more columns
+		// than the table (e.g. a user `query:` that joins extra columns)
+		// would otherwise panic here with 'index out of range' inside
+		// the dump pipeline. Return a clear error instead.
+		if idx >= len(r.columnPos) {
+			return fmt.Errorf("pgcopy: row has more columns than the configured tuple size (%d); check that the transformation's `query:` does not select additional columns", r.tupleSize)
 		}
 
 		p := r.columnPos[idx]
