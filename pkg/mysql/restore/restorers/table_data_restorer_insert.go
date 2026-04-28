@@ -30,13 +30,13 @@ import (
 	"github.com/greenmaskio/greenmask/pkg/common/interfaces"
 	"github.com/greenmaskio/greenmask/pkg/common/models"
 	"github.com/greenmaskio/greenmask/pkg/common/utils"
-	"github.com/greenmaskio/greenmask/pkg/mysql/config"
+	mysqlmodels "github.com/greenmaskio/greenmask/pkg/mysql/models"
 )
 
 type TableDataRestorerInsert struct {
 	table                  *models.Table
 	meta                   models.RestorationItem
-	connConfig             config.ConnectionOpts
+	connConfig             *mysqlmodels.ConnConfig
 	st                     interfaces.Storager
 	taskResolver           interfaces.TaskMapper
 	compress               bool
@@ -61,7 +61,7 @@ type TableDataRestorerInsert struct {
 
 func NewTableDataRestorerInsert(
 	meta models.RestorationItem,
-	connConfig config.ConnectionOpts,
+	connConfig *mysqlmodels.ConnConfig,
 	st interfaces.Storager,
 	taskResolver interfaces.TaskMapper,
 	opts ...Option,
@@ -194,11 +194,7 @@ func (r *TableDataRestorerInsert) openTx(ctx context.Context, db *sql.DB) (err e
 }
 
 func (r *TableDataRestorerInsert) connectDB(ctx context.Context) (err error) {
-	connCfg, err := r.connConfig.ConnectionConfig()
-	if err != nil {
-		return fmt.Errorf("get connection config: %w", err)
-	}
-	uri, err := connCfg.URI()
+	uri, err := r.connConfig.URI()
 	if err != nil {
 		return fmt.Errorf("get connection URI: %w", err)
 	}

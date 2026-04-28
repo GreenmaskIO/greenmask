@@ -43,6 +43,7 @@ local-build:
 			-f docker/greenmask/mysql/main/Dockerfile \
 			. \
 			-t greenmask-from-source:latest \
+			--platform linux/amd64 \
 			--target main
 
 local-stop:

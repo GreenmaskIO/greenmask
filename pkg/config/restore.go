@@ -17,6 +17,7 @@ package config
 import (
 	"fmt"
 
+	commonconfig "github.com/greenmaskio/greenmask/pkg/common/config"
 	mysqlcommonconfig "github.com/greenmaskio/greenmask/pkg/mysql/config"
 )
 
@@ -67,8 +68,8 @@ func (r *MysqlRestoreConfig) Validate() error {
 	return nil
 }
 
-func (r *MysqlRestoreConfig) SchemaRestoreParams() ([]string, error) {
-	params := r.Params()
+func (r *MysqlRestoreConfig) SchemaRestoreParams(ssl commonconfig.SSLOpts) ([]string, error) {
+	params := r.Params(ssl)
 	params = append(params, r.VendorOptions...)
 	return params, nil
 }
@@ -90,8 +91,9 @@ type CommonRestoreOptions struct {
 	// CreateDatabase controls whether greenmask issues CREATE DATABASE statements before restoring schema.
 	CreateDatabase bool `mapstructure:"create-database" yaml:"create-database" json:"create_database"`
 	// IfNotExists adds IF NOT EXISTS to CREATE DATABASE and (in future) other object creation statements.
-	IfNotExists bool     `mapstructure:"if-not-exists" yaml:"if-not-exists" json:"if_not_exists"`
-	Section     []string `mapstructure:"section" yaml:"section" json:"section,omitempty"`
+	IfNotExists bool                 `mapstructure:"if-not-exists" yaml:"if-not-exists" json:"if_not_exists"`
+	Section     []string             `mapstructure:"section"       yaml:"section"       json:"section,omitempty"`
+	SSL         commonconfig.SSLOpts `mapstructure:",squash" json:",squash,omitempty"` //nolint:staticcheck
 }
 
 func (o *CommonRestoreOptions) Validate() error {

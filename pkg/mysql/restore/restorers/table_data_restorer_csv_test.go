@@ -130,7 +130,7 @@ func (s *restoreSuite) TestRestorer_RestoreData() {
 	st.On("GetObject", mock.Anything, meta.Filename).
 		Return(r, nil)
 
-	opts := s.GetRootConnectionOpts(ctx)
+	opts := s.GetRootConnConfig(ctx)
 	tr := &dummyTaskMapper{}
 	rr, err := NewTableDataRestorerCsv(meta, opts, st, tr)
 	assert.NoError(s.T(), err)

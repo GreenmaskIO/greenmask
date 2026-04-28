@@ -18,10 +18,13 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"os"
 
 	"github.com/docker/go-connections/nat"
 	_ "github.com/go-sql-driver/mysql"
+	commonconfig "github.com/greenmaskio/greenmask/pkg/common/config"
 	"github.com/greenmaskio/greenmask/pkg/mysql/config"
+	mysqlmodels "github.com/greenmaskio/greenmask/pkg/mysql/models"
 	"github.com/rs/zerolog/log"
 	"github.com/stretchr/testify/suite"
 	"github.com/testcontainers/testcontainers-go"
@@ -52,6 +55,7 @@ type MySQLContainerSuite struct {
 	MigrationDown []string
 	scriptPaths   []string
 	image         string
+	containerOpts []testcontainers.ContainerCustomizer
 }
 
 func (s *MySQLContainerSuite) SetupSuite() {
@@ -62,17 +66,19 @@ func (s *MySQLContainerSuite) SetupSuite() {
 	if s.password == "" {
 		s.password = testContainerPassword
 	}
-	if s.migrationUser == "" {
-		s.migrationUser = MysqlRootUser
-	}
-	if s.migrationPass == "" {
-		s.migrationPass = MysqlRootPassword
-	}
 	if s.rootUser == "" {
 		s.rootUser = MysqlRootUser
 	}
 	if s.rootPass == "" {
 		s.rootPass = MysqlRootPassword
+	}
+	if s.migrationUser == "" {
+		s.migrationUser = MysqlRootUser
+	}
+	// Default migration password matches the root password so that migrations can
+	// connect via root@% (created by the built-in init script below).
+	if s.migrationPass == "" {
+		s.migrationPass = s.rootPass
 	}
 	if s.database == "" {
 		s.database = testContainerDatabase
@@ -80,21 +86,48 @@ func (s *MySQLContainerSuite) SetupSuite() {
 	if s.image == "" {
 		s.image = mysqlTestContainerImage
 	}
-	var err error
-	s.Container, err = tcmysql.Run(
-		ctx,
-		s.image,
-		tcmysql.WithScripts(s.scriptPaths...),
+
+	// tcmysql.Run always appends WithDefaultCredentials() last, which sets
+	// MYSQL_ROOT_PASSWORD = MYSQL_PASSWORD.  That means any MYSQL_ROOT_PASSWORD we
+	// set in an env customizer gets overridden.  The resulting root@localhost account
+	// therefore carries the regular user's password, not s.rootPass.
+	//
+	// To give tests a consistent root account that is reachable from outside the
+	// container (published port), we inject a built-in init script that creates
+	// root@% with s.rootPass.  The script is prepended so it runs before any
+	// caller-supplied scripts.
+	rootGrantSQL := fmt.Sprintf(
+		"CREATE USER IF NOT EXISTS 'root'@'%%' IDENTIFIED BY '%s';\n"+
+			"GRANT ALL PRIVILEGES ON *.* TO 'root'@'%%' WITH GRANT OPTION;\n"+
+			"FLUSH PRIVILEGES;\n",
+		s.rootPass,
+	)
+	rootGrantFile, err := os.CreateTemp("", "greenmask-mysql-root-*.sql")
+	s.Require().NoError(err)
+	_, err = rootGrantFile.WriteString(rootGrantSQL)
+	s.Require().NoError(err)
+	s.Require().NoError(rootGrantFile.Close())
+	// The file is copied into the container by testcontainers before tcmysql.Run
+	// returns, so it is safe to remove it afterwards.
+	defer os.Remove(rootGrantFile.Name())
+
+	allScripts := append([]string{rootGrantFile.Name()}, s.scriptPaths...)
+
+	runOpts := []testcontainers.ContainerCustomizer{
+		tcmysql.WithScripts(allScripts...),
 		testcontainers.CustomizeRequestOption(
 			func(req *testcontainers.GenericContainerRequest) error {
 				req.Env["MYSQL_ROOT_PASSWORD"] = s.rootPass
+				req.Env["MYSQL_ROOT_HOST"] = "%"
 				req.Env["MYSQL_USER"] = s.username
 				req.Env["MYSQL_PASSWORD"] = s.password
 				req.Env["MYSQL_DATABASE"] = s.database
 				return nil
 			},
 		),
-	)
+	}
+	runOpts = append(runOpts, s.containerOpts...)
+	s.Container, err = tcmysql.Run(ctx, s.image, runOpts...)
 
 	s.Require().NoErrorf(err, "failed to start MySQL Container")
 
@@ -151,19 +184,13 @@ func (s *MySQLContainerSuite) SetScripts(scripts ...string) *MySQLContainerSuite
 	return s
 }
 
-//
-//func (s *MySQLContainerSuite) CreateSchema(ctx context.Context, name string) {
-//	conn, err := s.GetConnectionWithUser(ctx, mysqlRootUser, testContainerPassword)
-//	s.Require().NoErrorf(err, "failed to connect to MySQL")
-//	defer conn.Close()
-//	s.Require().NoErrorf(conn.Ping(), "failed to ping MySQL")
-//	_, err = conn.Exec(fmt.Sprintf("CREATE DATABASE %s", name))
-//	s.Require().NoErrorf(err, "failed to create schema")
-//}
-//
-//func (s *MySQLContainerSuite) DropSchema(name string) *MySQLContainerSuite {
-//
-//}
+// SetContainerOptions appends extra testcontainers customizers that are applied
+// when the MySQL container is started. Use this to mount files (e.g. TLS
+// certificates, custom my.cnf snippets) or set additional environment variables.
+func (s *MySQLContainerSuite) SetContainerOptions(opts ...testcontainers.ContainerCustomizer) *MySQLContainerSuite {
+	s.containerOpts = append(s.containerOpts, opts...)
+	return s
+}
 
 func (s *MySQLContainerSuite) GetConnection(ctx context.Context) (
 	conn *sql.DB, err error,
@@ -183,6 +210,13 @@ func (s *MySQLContainerSuite) GetConnectionOpts(ctx context.Context) config.Conn
 
 func (s *MySQLContainerSuite) GetRootConnectionOpts(ctx context.Context) config.ConnectionOpts {
 	return s.GetConnectionOptsWithUser(ctx, s.rootUser, s.rootPass)
+}
+
+func (s *MySQLContainerSuite) GetRootConnConfig(ctx context.Context) *mysqlmodels.ConnConfig {
+	opts := s.GetRootConnectionOpts(ctx)
+	cfg, err := opts.ConnectionConfig(commonconfig.SSLOpts{})
+	s.Require().NoError(err, "failed to build ConnConfig for root user")
+	return cfg
 }
 
 func (s *MySQLContainerSuite) GetConnectionOptsWithUser(ctx context.Context, username, password string) config.ConnectionOpts {
@@ -211,16 +245,14 @@ func (s *MySQLContainerSuite) GetConnectionURIWithUser(ctx context.Context, user
 	s.Require().NoErrorf(err, "failed to get Container port")
 	return fmt.Sprintf(
 		"%s:%s@tcp(%s:%s)/%s?parseTime=true",
-		username, password, host, port.Port(), testContainerDatabase,
+		username, password, host, port.Port(), s.database,
 	)
 }
 
 func (s *MySQLContainerSuite) GetConnectionWithUser(ctx context.Context, username, password string) (
 	conn *sql.DB, err error,
 ) {
-	// Create the connection string
 	connStr := s.GetConnectionURIWithUser(ctx, username, password)
-	print(connStr)
 	db, err := sql.Open("mysql", connStr)
 	if err != nil {
 		return nil, fmt.Errorf("open mysql connection: %w", err)

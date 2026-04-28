@@ -65,15 +65,11 @@ func NewRestore(
 }
 
 func (d *Restore) connect() (*sql.DB, error) {
-	connConfig, err := d.cfg.Restore.MysqlConfig.ConnectionConfig()
+	connConfig, err := d.cfg.Restore.MysqlConfig.ConnectionConfig(d.cfg.Restore.Options.SSL)
 	if err != nil {
 		return nil, fmt.Errorf("get connection config: %w", err)
 	}
-	var ok bool
-	d.connConfig, ok = connConfig.(*mysqlmodels.ConnConfig)
-	if !ok {
-		panic("invalid connection config type")
-	}
+	d.connConfig = connConfig
 	connStr, err := connConfig.URI()
 	if err != nil {
 		return nil, fmt.Errorf("get connection URI: %w", err)
@@ -129,13 +125,13 @@ func (d *Restore) Run(ctx context.Context) error {
 	if d.cfg.Restore.Options.RestoreInOrder {
 		log.Ctx(ctx).Info().Msg("restoring tables in topological")
 		tp = taskproducer.NewWithOrder(
-			meta, d.st, d.cfg.Restore.MysqlConfig.ConnectionOpts,
+			meta, d.st, d.connConfig,
 			opts,
 			taskResolver,
 		)
 	} else {
 		tp = taskproducer.New(
-			meta, d.st, d.cfg.Restore.MysqlConfig.ConnectionOpts,
+			meta, d.st, d.connConfig,
 			opts,
 		)
 	}
@@ -147,7 +143,7 @@ func (d *Restore) Run(ctx context.Context) error {
 	if d.cfg.Restore.Options.IfNotExists {
 		schemaOpts = append(schemaOpts, schema.WithIfNotExists())
 	}
-	sr := schema.NewRestorer(d.st, &d.cfg.Restore.MysqlConfig, d.cmd, meta.SchemaDump, schemaOpts...)
+	sr := schema.NewRestorer(d.st, &d.cfg.Restore.MysqlConfig, d.cfg.Restore.Options.SSL, d.cmd, meta.SchemaDump, schemaOpts...)
 
 	if err := processor.NewDefaultRestoreProcessor(ctx, tp, sr, processor.Config{
 		Jobs:           d.cfg.Restore.Options.Jobs,

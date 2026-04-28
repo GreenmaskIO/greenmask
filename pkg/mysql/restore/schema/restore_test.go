@@ -24,6 +24,7 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
 
+	commonconfig "github.com/greenmaskio/greenmask/pkg/common/config"
 	"github.com/greenmaskio/greenmask/pkg/common/mocks"
 	commonmodels "github.com/greenmaskio/greenmask/pkg/common/models"
 	"github.com/greenmaskio/greenmask/pkg/common/utils"
@@ -48,8 +49,8 @@ type mockOptions struct {
 	VendorOptions []string
 }
 
-func (m *mockOptions) SchemaRestoreParams() ([]string, error) {
-	params := m.Params()
+func (m *mockOptions) SchemaRestoreParams(ssl commonconfig.SSLOpts) ([]string, error) {
+	params := m.Params(ssl)
 	params = append(params, m.VendorOptions...)
 	return params, nil
 }
@@ -80,7 +81,7 @@ func (s *restoreSuite) TestRestorer_RestoreSchema() {
 	rr := NewRestorer(st, &mockOptions{
 		ConnectionOpts: opts,
 		VendorOptions:  []string{"--verbose"},
-	}, utils.NewDefaultCmdProducer(), schemaMeta)
+	}, commonconfig.SSLOpts{}, utils.NewDefaultCmdProducer(), schemaMeta)
 	err = rr.RestorePreDataSchema(ctx)
 	s.Require().NoError(err)
 }

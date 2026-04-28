@@ -296,15 +296,11 @@ func (d *Dump) startPool(ctx context.Context) error {
 	if d.synchronizeTx {
 		// TODO: Implement synchronization if needed, currently it is always performed in p.Init()
 	}
-	connCfg, err := d.cfg.Dump.MysqlConfig.ConnectionConfig()
+	connCfg, err := d.cfg.Dump.MysqlConfig.ConnectionConfig(d.cfg.Dump.Options.SSL)
 	if err != nil {
 		return fmt.Errorf("get connection config: %w", err)
 	}
-	var ok bool
-	d.connConfig, ok = connCfg.(*mysqlmodels.ConnConfig)
-	if !ok {
-		return fmt.Errorf("invalid connection config type")
-	}
+	d.connConfig = connCfg
 	d.txPool = pool.NewConsistentTxPool(connCfg, jobs, poolOpts...)
 	if err := d.txPool.Init(ctx); err != nil {
 		return fmt.Errorf("start transaction pool: %w", err)
@@ -385,7 +381,7 @@ func (d *Dump) SchemaDump(ctx context.Context) ([]models.DumpedDatabaseSchemaSta
 	if err != nil {
 		return nil, fmt.Errorf("get environment variables: %w", err)
 	}
-	connParams := d.cfg.Dump.MysqlConfig.Params()
+	connParams := d.cfg.Dump.MysqlConfig.Params(d.cfg.Dump.Options.SSL)
 	vendorOptions := d.cfg.Dump.MysqlConfig.VendorOptions
 	sd := schemadump.New(d.cmd, d.st, envs, connParams, vendorOptions, settings, d.compressionEnabled, d.compressionPgzip)
 
