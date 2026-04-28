@@ -21,7 +21,7 @@ import (
 
 	"github.com/greenmaskio/greenmask/pkg/common/interfaces"
 	"github.com/greenmaskio/greenmask/pkg/common/models"
-	mysqlcommonconfig "github.com/greenmaskio/greenmask/pkg/mysql/config"
+	mysqlmodels "github.com/greenmaskio/greenmask/pkg/mysql/models"
 	"github.com/greenmaskio/greenmask/pkg/mysql/restore/restorers"
 )
 
@@ -52,7 +52,7 @@ func (*dummyTaskMapper) IsTaskCompleted(_ models.TaskID) bool {
 type Producer struct {
 	meta    models.Metadata
 	st      interfaces.Storager
-	conn    mysqlcommonconfig.ConnectionOpts
+	conn    *mysqlmodels.ConnConfig
 	opts    RestoreOptions
 	err     error
 	lastIdx int
@@ -62,7 +62,7 @@ type Producer struct {
 func New(
 	meta models.Metadata,
 	st interfaces.Storager,
-	conn mysqlcommonconfig.ConnectionOpts,
+	conn *mysqlmodels.ConnConfig,
 	opts RestoreOptions,
 ) *Producer {
 	var taskIDs []models.TaskID

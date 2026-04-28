@@ -66,7 +66,7 @@ func (s *restoreSuite) TestRestorerInsert_RestoreData() {
 	st.On("GetObject", mock.Anything, meta.Filename).
 		Return(io.NopCloser(r), nil)
 
-	opts := s.GetRootConnectionOpts(ctx)
+	opts := s.GetRootConnConfig(ctx)
 	tr := &dummyTaskMapper{}
 	rr, err := NewTableDataRestorerInsert(meta, opts, st, tr)
 	s.NoError(err)
@@ -138,7 +138,7 @@ func (s *restoreSuite) TestRestorerInsert_RestoreData_Batched() {
 	st.On("GetObject", mock.Anything, meta.Filename).
 		Return(io.NopCloser(r), nil)
 
-	opts := s.GetRootConnectionOpts(ctx)
+	opts := s.GetRootConnConfig(ctx)
 	tr := &dummyTaskMapper{}
 	// Small MaxInsertStatementSize to force batching (fits ~2 rows per batch)
 	rr, err := NewTableDataRestorerInsert(meta, opts, st, tr,
@@ -213,7 +213,7 @@ func (s *restoreSuite) TestRestorerInsert_RestoreData_SingleRow() {
 	st.On("GetObject", mock.Anything, meta.Filename).
 		Return(io.NopCloser(r), nil)
 
-	opts := s.GetRootConnectionOpts(ctx)
+	opts := s.GetRootConnConfig(ctx)
 	tr := &dummyTaskMapper{}
 	// MaxInsertStatementSize=1 forces one row per statement
 	rr, err := NewTableDataRestorerInsert(meta, opts, st, tr,

@@ -90,8 +90,10 @@ func TestRandomPersonTransformer_Transform(t *testing.T) {
 				require.NoError(t, err)
 				require.False(t, rawVal.IsNull)
 				log.Debug().Str("Result", string(rawVal.Data)).Msg("Generated data")
-				assertStringContainsOneOfItemFromList(t, string(rawVal.Data), transformers.DefaultFirstNamesFemale)
-				assertStringContainsOneOfItemFromList(t, string(rawVal.Data), transformers.DefaultFirstNamesMale)
+				// With gender "Any" and a deterministic engine the hash selects one gender,
+				// so the result contains either a female or a male first name, not both.
+				allFirstNames := append(transformers.DefaultFirstNamesFemale, transformers.DefaultFirstNamesMale...)
+				assertStringContainsOneOfItemFromList(t, string(rawVal.Data), allFirstNames)
 				assertStringContainsOneOfItemFromList(t, string(rawVal.Data), transformers.DefaultLastNames)
 			},
 		},

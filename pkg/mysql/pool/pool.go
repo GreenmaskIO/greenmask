@@ -3,16 +3,17 @@ package pool
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
+	"net"
 	"sync"
 	"time"
 
 	"github.com/go-mysql-org/go-mysql/client"
-	"github.com/go-sql-driver/mysql"
+	_ "github.com/go-sql-driver/mysql" // register mysql driver
 	"github.com/rs/zerolog/log"
 	"golang.org/x/sync/errgroup"
 
-	"github.com/greenmaskio/greenmask/pkg/common/interfaces"
 	mysqlmodels "github.com/greenmaskio/greenmask/pkg/mysql/models"
 )
 
@@ -38,7 +39,7 @@ type workerConn struct {
 	id     int
 	Conn   *client.Conn
 	metaTx *sql.Tx
-	cfg    interfaces.ConnectionConfigurator
+	cfg    *mysqlmodels.ConnConfig
 }
 
 func (wc *workerConn) ID() int {
@@ -115,7 +116,7 @@ func (m *metaTx) QueryRowContext(ctx context.Context, query string, args ...any)
 //   - Snapshot Persistence: Transactions in the pool remain open indefinitely until Close is called.
 //     Long-lived pools will keep the MySQL undo logs from being purged (History List Length).
 type ConsistentTxPool struct {
-	cfg               interfaces.ConnectionConfigurator
+	cfg               *mysqlmodels.ConnConfig
 	db                *sql.DB
 	metaConn          *sql.Conn
 	metaTx            *sql.Tx
@@ -153,7 +154,7 @@ func WithHeartbeatTimeout(timeout time.Duration) Option {
 	}
 }
 
-func NewConsistentTxPool(cfg interfaces.ConnectionConfigurator, poolSize int, opts ...Option) *ConsistentTxPool {
+func NewConsistentTxPool(cfg *mysqlmodels.ConnConfig, poolSize int, opts ...Option) *ConsistentTxPool {
 	p := &ConsistentTxPool{
 		cfg:              cfg,
 		poolSize:         poolSize,
@@ -167,34 +168,32 @@ func NewConsistentTxPool(cfg interfaces.ConnectionConfigurator, poolSize int, op
 
 // connectRaw establishes a raw go-mysql connection.
 func (p *ConsistentTxPool) connectRaw(ctx context.Context) (*client.Conn, error) {
-	var address, user, password, database string
-	var timeout time.Duration
-
-	if cfg, ok := p.cfg.(*mysqlmodels.ConnConfig); ok {
-		address = cfg.Address()
-		user = cfg.User
-		password = cfg.Password
-		database = cfg.Database
-		timeout = cfg.Timeout
-	} else {
-		uri, err := p.cfg.URI()
-		if err != nil {
-			return nil, fmt.Errorf("get connection URI: %w", err)
-		}
-		config, err := mysql.ParseDSN(uri)
-		if err != nil {
-			return nil, fmt.Errorf("parse connection URI: %w", err)
-		}
-		address = config.Addr
-		user = config.User
-		password = config.Passwd
-		database = config.DBName
-		timeout = config.Timeout
+	var opts []client.Option
+	if p.cfg.TLSConfig != nil {
+		opts = append(opts, func(c *client.Conn) error {
+			c.SetTLSConfig(p.cfg.TLSConfig)
+			return nil
+		})
 	}
 
-	conn, err := client.ConnectWithContext(
-		ctx, address, user, password, database, timeout,
-	)
+	var conn *client.Conn
+	var err error
+
+	if p.cfg.Socket != "" {
+		dialer := func(ctx context.Context, network, addr string) (net.Conn, error) {
+			var d net.Dialer
+			return d.DialContext(ctx, "unix", p.cfg.Socket)
+		}
+		conn, err = client.ConnectWithDialer(
+			ctx, "unix", p.cfg.Socket,
+			p.cfg.User, p.cfg.Password, p.cfg.Database,
+			dialer, opts...,
+		)
+	} else {
+		conn, err = client.ConnectWithContext(
+			ctx, p.cfg.Address(), p.cfg.User, p.cfg.Password, p.cfg.Database, p.cfg.Timeout, opts...,
+		)
+	}
 	if err != nil {
 		return nil, fmt.Errorf("connect to mysql (raw): %w", err)
 	}
@@ -412,6 +411,23 @@ func (p *ConsistentTxPool) Close(ctx context.Context) error {
 	}
 }
 
+// closeWorkerConn rolls back and closes a single raw worker connection.
+// Both operations are attempted regardless; all errors are joined and returned.
+func (p *ConsistentTxPool) closeWorkerConn(ctx context.Context, conn *workerConn) error {
+	if conn == nil || conn.Conn == nil {
+		return nil
+	}
+	var errs []error
+	if err := conn.Conn.Rollback(); err != nil {
+		errs = append(errs, fmt.Errorf("rollback raw tx for conn %d: %w", conn.id, err))
+	}
+	if err := conn.Conn.Close(); err != nil {
+		errs = append(errs, fmt.Errorf("close raw conn %d: %w", conn.id, err))
+	}
+	log.Ctx(ctx).Debug().Int("connID", conn.id).Msg("closed raw connection in pool")
+	return errors.Join(errs...)
+}
+
 func (p *ConsistentTxPool) close(ctx context.Context) error {
 	if p.heartbeatCancel != nil {
 		p.heartbeatCancel()
@@ -419,8 +435,6 @@ func (p *ConsistentTxPool) close(ctx context.Context) error {
 	}
 
 	var errs []error
-	var mu sync.Mutex
-	var wg sync.WaitGroup
 
 	if p.metaTx != nil {
 		if err := p.metaTx.Rollback(); err != nil {
@@ -437,44 +451,29 @@ func (p *ConsistentTxPool) close(ctx context.Context) error {
 	}
 
 	if p.pool != nil {
-		for i := range p.pool {
-			wg.Add(1)
-			go func(conn *workerConn) {
-				defer wg.Done()
-				if conn == nil {
-					return
-				}
-				if conn.Conn != nil {
-					if err := conn.Conn.Rollback(); err != nil {
-						mu.Lock()
-						errs = append(errs, fmt.Errorf("rollback conn raw tx: %w", err))
-						mu.Unlock()
-					}
-					if err := conn.Conn.Close(); err != nil {
-						mu.Lock()
-						errs = append(errs, fmt.Errorf("close conn raw conn: %w", err))
-						mu.Unlock()
-					} else {
-						log.Ctx(ctx).Debug().Int("connID", conn.id).Msg("closed raw connection in pool")
-					}
-				}
-			}(p.pool[i])
+		connErrs := make([]error, len(p.pool))
+		g, _ := errgroup.WithContext(ctx)
+		for i, conn := range p.pool {
+			g.Go(func() error {
+				connErrs[i] = p.closeWorkerConn(ctx, conn)
+				return nil
+			})
 		}
+		if err := g.Wait(); err != nil {
+			// goroutines never return errors; all errors stored in connErrs
+			// but anyway let's handle it just in case
+			errs = append(errs, fmt.Errorf("close pool: %w", err))
+		}
+		errs = append(errs, connErrs...)
 	}
-	wg.Wait()
 
 	if p.db != nil {
 		if err := p.db.Close(); err != nil {
-			mu.Lock()
 			errs = append(errs, fmt.Errorf("close db: %w", err))
-			mu.Unlock()
 		}
 	}
 
-	if len(errs) > 0 {
-		return fmt.Errorf("errors closing pool: %v", errs)
-	}
-	return nil
+	return errors.Join(errs...)
 }
 
 func (p *ConsistentTxPool) heartbeatWorker(ctx context.Context) {
@@ -532,7 +531,6 @@ func (p *ConsistentTxPool) runHeartbeat(ctx context.Context) {
 	}
 
 	for _, conn := range conns {
-		conn := conn
 		g.Go(func() error {
 			// Heartbeat on raw connection
 			if _, err := conn.RawConn().Execute("SELECT 1"); err != nil {

@@ -17,6 +17,7 @@ package config
 import (
 	"time"
 
+	commonconfig "github.com/greenmaskio/greenmask/pkg/common/config"
 	commonmodels "github.com/greenmaskio/greenmask/pkg/common/models"
 	mysqlcommonconfig "github.com/greenmaskio/greenmask/pkg/mysql/config"
 )
@@ -147,23 +148,24 @@ type PostgresqlDumpConfig struct {
 }
 
 type CommonDumpOptions struct {
-	IncludeDatabase        []string `mapstructure:"include-database" yaml:"include-database" json:"include-database"`
-	ExcludeDatabase        []string `mapstructure:"exclude-database" yaml:"exclude-database" json:"exclude-database"`
-	IncludeSchema          []string `mapstructure:"include-schema" yaml:"include-schema" json:"include-schema"`
-	ExcludeSchema          []string `mapstructure:"exclude-schema" yaml:"exclude-schema" json:"exclude-schema"`
-	IncludeTableData       []string `mapstructure:"include-table-data" yaml:"include-table-data" json:"include-table-data"`
-	ExcludeTableData       []string `mapstructure:"exclude-table-data" yaml:"exclude-table-data" json:"exclude-table-data"`
-	IncludeTable           []string `mapstructure:"include-table" yaml:"include-table" json:"include-table"`
-	ExcludeTable           []string `mapstructure:"exclude-table" yaml:"exclude-table" json:"exclude-table"`
-	IncludeTableDefinition []string `mapstructure:"include-table-definition" yaml:"include-table-definition" json:"include-table-definition"`
-	ExcludeTableDefinition []string `mapstructure:"exclude-table-definition" yaml:"exclude-table-definition" json:"exclude-table-definition"`
-	DataOnly               bool     `mapstructure:"data-only" yaml:"data-only" json:"data-only"`
-	SchemaOnly             bool     `mapstructure:"schema-only" yaml:"schema-only" json:"schema-only"`
-	Options                []string `mapstructure:"options" yaml:"options" json:"options"`
-	Jobs                   int      `mapstructure:"jobs" yaml:"jobs" json:"jobs"`
-	Compress               bool     `mapstructure:"compress" yaml:"compress" json:"compress"`
-	Pgzip                  bool     `mapstructure:"pgzip" yaml:"pgzip" json:"pgzip"`
-	Section                []string `mapstructure:"section" yaml:"section" json:"section,omitempty"`
+	SSL                    commonconfig.SSLOpts `mapstructure:",squash" json:",squash,omitempty"` //nolint:staticcheck
+	IncludeDatabase        []string             `mapstructure:"include-database" yaml:"include-database" json:"include-database"`
+	ExcludeDatabase        []string             `mapstructure:"exclude-database" yaml:"exclude-database" json:"exclude-database"`
+	IncludeSchema          []string             `mapstructure:"include-schema" yaml:"include-schema" json:"include-schema"`
+	ExcludeSchema          []string             `mapstructure:"exclude-schema" yaml:"exclude-schema" json:"exclude-schema"`
+	IncludeTableData       []string             `mapstructure:"include-table-data" yaml:"include-table-data" json:"include-table-data"`
+	ExcludeTableData       []string             `mapstructure:"exclude-table-data" yaml:"exclude-table-data" json:"exclude-table-data"`
+	IncludeTable           []string             `mapstructure:"include-table" yaml:"include-table" json:"include-table"`
+	ExcludeTable           []string             `mapstructure:"exclude-table" yaml:"exclude-table" json:"exclude-table"`
+	IncludeTableDefinition []string             `mapstructure:"include-table-definition" yaml:"include-table-definition" json:"include-table-definition"`
+	ExcludeTableDefinition []string             `mapstructure:"exclude-table-definition" yaml:"exclude-table-definition" json:"exclude-table-definition"`
+	DataOnly               bool                 `mapstructure:"data-only" yaml:"data-only" json:"data-only"`
+	SchemaOnly             bool                 `mapstructure:"schema-only" yaml:"schema-only" json:"schema-only"`
+	Options                []string             `mapstructure:"options" yaml:"options" json:"options"`
+	Jobs                   int                  `mapstructure:"jobs" yaml:"jobs" json:"jobs"`
+	Compress               bool                 `mapstructure:"compress" yaml:"compress" json:"compress"`
+	Pgzip                  bool                 `mapstructure:"pgzip" yaml:"pgzip" json:"pgzip"`
+	Section                []string             `mapstructure:"section"   yaml:"section"   json:"section,omitempty"`
 }
 
 func (o *CommonDumpOptions) GetIncludedTables() []string {

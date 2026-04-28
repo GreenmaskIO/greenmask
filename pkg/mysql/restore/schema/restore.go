@@ -23,6 +23,7 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/rs/zerolog/log"
 
+	commonconfig "github.com/greenmaskio/greenmask/pkg/common/config"
 	"github.com/greenmaskio/greenmask/pkg/common/interfaces"
 	commonmodels "github.com/greenmaskio/greenmask/pkg/common/models"
 	"github.com/greenmaskio/greenmask/pkg/common/utils"
@@ -33,7 +34,7 @@ const (
 )
 
 type options interface {
-	SchemaRestoreParams() ([]string, error)
+	SchemaRestoreParams(ssl commonconfig.SSLOpts) ([]string, error)
 	Env() ([]string, error)
 }
 
@@ -61,6 +62,7 @@ func WithIfNotExists() Option {
 type Restorer struct {
 	st             interfaces.Storager
 	cfg            options
+	sslOpts        commonconfig.SSLOpts
 	executable     string
 	cmd            utils.CmdProducer
 	schemaMeta     *commonmodels.SchemaDumpMetadata
@@ -73,6 +75,7 @@ type Restorer struct {
 func NewRestorer(
 	st interfaces.Storager,
 	connCfg options,
+	sslOpts commonconfig.SSLOpts,
 	cmd utils.CmdProducer,
 	schemaMeta *commonmodels.SchemaDumpMetadata,
 	opts ...Option,
@@ -80,6 +83,7 @@ func NewRestorer(
 	r := &Restorer{
 		st:         st,
 		cfg:        connCfg,
+		sslOpts:    sslOpts,
 		executable: executable,
 		cmd:        cmd,
 		schemaMeta: schemaMeta,
@@ -91,7 +95,7 @@ func NewRestorer(
 }
 
 func (r *Restorer) restoreSchemaData(ctx context.Context, dbName string, f io.Reader) error {
-	params, err := r.cfg.SchemaRestoreParams()
+	params, err := r.cfg.SchemaRestoreParams(r.sslOpts)
 	if err != nil {
 		return fmt.Errorf("get schema restore params: %w", err)
 	}

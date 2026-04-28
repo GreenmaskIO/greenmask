@@ -26,8 +26,8 @@ import (
 
 	"github.com/greenmaskio/greenmask/pkg/common/interfaces"
 	"github.com/greenmaskio/greenmask/pkg/common/models"
-	utils2 "github.com/greenmaskio/greenmask/pkg/common/utils"
-	"github.com/greenmaskio/greenmask/pkg/mysql/config"
+	commonutils "github.com/greenmaskio/greenmask/pkg/common/utils"
+	mysqlmodels "github.com/greenmaskio/greenmask/pkg/mysql/models"
 )
 
 const dumperTypeTableData = "table_restorer"
@@ -39,7 +39,7 @@ var (
 type TableDataRestorerCsv struct {
 	table               *models.Table
 	meta                models.RestorationItem
-	connConfig          config.ConnectionOpts
+	connConfig          *mysqlmodels.ConnConfig
 	st                  interfaces.Storager
 	taskResolver        interfaces.TaskMapper
 	compress            bool
@@ -64,7 +64,7 @@ func (r *TableDataRestorerCsv) Meta() map[string]any {
 }
 
 func (r *TableDataRestorerCsv) DebugInfo() string {
-	return utils2.GetUniqueTaskID(dumperTypeTableData, r.table.Schema, r.table.Name)
+	return commonutils.GetUniqueTaskID(dumperTypeTableData, r.table.Schema, r.table.Name)
 }
 
 type TableRestorerConfig struct {
@@ -146,7 +146,7 @@ func WithMaxInsertStatementSize(size int) Option {
 
 func NewTableDataRestorerCsv(
 	meta models.RestorationItem,
-	connConfig config.ConnectionOpts,
+	connConfig *mysqlmodels.ConnConfig,
 	st interfaces.Storager,
 	taskResolver interfaces.TaskMapper,
 	opts ...Option,
@@ -262,11 +262,7 @@ func (r *TableDataRestorerCsv) openTx(ctx context.Context, db *sql.DB) (err erro
 }
 
 func (r *TableDataRestorerCsv) connectDB(ctx context.Context) (err error) {
-	connCfg, err := r.connConfig.ConnectionConfig()
-	if err != nil {
-		return fmt.Errorf("get connection config: %w", err)
-	}
-	uri, err := connCfg.URI()
+	uri, err := r.connConfig.URI()
 	if err != nil {
 		return fmt.Errorf("get connection URI: %w", err)
 	}
@@ -298,7 +294,7 @@ func (r *TableDataRestorerCsv) Init(ctx context.Context) error {
 	var readCloser io.ReadCloser
 	readCloser = file
 	if r.compress {
-		readCloser, err = utils2.NewGzipReader(file, r.pgzip)
+		readCloser, err = commonutils.NewGzipReader(file, r.pgzip)
 		if err != nil {
 			return fmt.Errorf("create gzip reader for file %s: %w", r.meta.Filename, err)
 		}
