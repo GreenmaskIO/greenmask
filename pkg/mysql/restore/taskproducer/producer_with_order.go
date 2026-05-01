@@ -144,6 +144,9 @@ func (p *ProducerWithOrder) Task() (interfaces.Restorer, error) {
 		if p.opts.InsertReplace {
 			opts = append(opts, restorers.WithInsertReplace())
 		}
+		if len(p.opts.DatabaseRemap) > 0 {
+			opts = append(opts, restorers.WithDatabaseRemap(p.opts.DatabaseRemap))
+		}
 		stat := p.meta.DataDump.DumpStat.TaskStats[currentTaskID]
 		switch stat.ObjectStat.Format {
 		case models.DumpFormatInsert:

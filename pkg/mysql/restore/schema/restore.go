@@ -58,6 +58,20 @@ func WithIfNotExists() Option {
 	}
 }
 
+// WithDatabaseRemap sets the database name mapping applied before schema creation and restoration.
+func WithDatabaseRemap(remap map[string]string) Option {
+	return func(r *Restorer) {
+		r.databaseRemap = remap
+	}
+}
+
+func (r *Restorer) remapDB(name string) string {
+	if mapped, ok := r.databaseRemap[name]; ok {
+		return mapped
+	}
+	return name
+}
+
 // Restorer restores a MySQL schema from files stored in the dump directory.
 type Restorer struct {
 	st             interfaces.Storager
@@ -70,6 +84,7 @@ type Restorer struct {
 	databases      []string
 	createDatabase bool
 	ifNotExists    bool
+	databaseRemap  map[string]string
 }
 
 func NewRestorer(
@@ -121,18 +136,19 @@ func (r *Restorer) restoreSchemaData(ctx context.Context, dbName string, f io.Re
 
 func (r *Restorer) createDatabases(ctx context.Context) error {
 	for _, db := range r.databases {
+		target := r.remapDB(db)
 		var stmt string
 		if r.ifNotExists {
-			stmt = fmt.Sprintf("CREATE DATABASE IF NOT EXISTS `%s`", db)
+			stmt = fmt.Sprintf("CREATE DATABASE IF NOT EXISTS `%s`", target)
 		} else {
-			stmt = fmt.Sprintf("CREATE DATABASE `%s`", db)
+			stmt = fmt.Sprintf("CREATE DATABASE `%s`", target)
 		}
 		log.Ctx(ctx).Debug().
-			Str("DatabaseName", db).
+			Str("DatabaseName", target).
 			Str("Query", stmt).
 			Msg("creating database")
 		if _, err := r.conn.ExecContext(ctx, stmt); err != nil {
-			return fmt.Errorf("create database %q: %w", db, err)
+			return fmt.Errorf("create database %q: %w", target, err)
 		}
 	}
 	return nil
@@ -183,8 +199,10 @@ func (r *Restorer) RestorePostDataSchema(ctx context.Context) error {
 }
 
 func (r *Restorer) restoreDatabaseSchema(ctx context.Context, schemaStat commonmodels.DumpedDatabaseSchemaStat) error {
+	target := r.remapDB(schemaStat.DatabaseName)
 	log.Ctx(ctx).Info().
 		Str("Database", schemaStat.DatabaseName).
+		Str("TargetDatabase", target).
 		Str("Section", string(schemaStat.Section)).
 		Str("FileName", schemaStat.FileName).
 		Msg("restoring database schema")
@@ -209,7 +227,7 @@ func (r *Restorer) restoreDatabaseSchema(ctx context.Context, schemaStat commonm
 		}
 	}()
 
-	if err := r.restoreSchemaData(ctx, schemaStat.DatabaseName, reader); err != nil {
+	if err := r.restoreSchemaData(ctx, target, reader); err != nil {
 		return fmt.Errorf("restore schema data: %w", err)
 	}
 	return nil

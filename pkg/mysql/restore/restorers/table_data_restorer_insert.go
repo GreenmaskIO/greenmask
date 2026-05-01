@@ -80,6 +80,9 @@ func NewTableDataRestorerInsert(
 			return nil, fmt.Errorf("options failed: %w", err)
 		}
 	}
+	if mapped, ok := cfg.DatabaseRemap[table.Schema]; ok {
+		table.Schema = mapped
+	}
 
 	res := &TableDataRestorerInsert{
 		table:                  &table,
