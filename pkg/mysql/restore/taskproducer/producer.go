@@ -37,6 +37,7 @@ type RestoreOptions struct {
 	InsertIgnore            bool
 	InsertReplace           bool
 	MaxInsertStatementSize  int
+	DatabaseRemap           map[string]string
 }
 
 type dummyTaskMapper struct{}
@@ -127,6 +128,9 @@ func (p *Producer) Task() (interfaces.Restorer, error) {
 		}
 		if p.opts.InsertReplace {
 			opts = append(opts, restorers.WithInsertReplace())
+		}
+		if len(p.opts.DatabaseRemap) > 0 {
+			opts = append(opts, restorers.WithDatabaseRemap(p.opts.DatabaseRemap))
 		}
 
 		stat := p.meta.DataDump.DumpStat.TaskStats[taskID]

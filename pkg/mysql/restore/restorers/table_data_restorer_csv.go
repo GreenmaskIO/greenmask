@@ -77,6 +77,7 @@ type TableRestorerConfig struct {
 	InsertIgnore            bool
 	InsertReplace           bool
 	MaxInsertStatementSize  int
+	DatabaseRemap           map[string]string
 }
 
 type Option func(v *TableRestorerConfig) error
@@ -144,6 +145,13 @@ func WithMaxInsertStatementSize(size int) Option {
 	}
 }
 
+func WithDatabaseRemap(remap map[string]string) Option {
+	return func(v *TableRestorerConfig) error {
+		v.DatabaseRemap = remap
+		return nil
+	}
+}
+
 func NewTableDataRestorerCsv(
 	meta models.RestorationItem,
 	connConfig *mysqlmodels.ConnConfig,
@@ -163,6 +171,9 @@ func NewTableDataRestorerCsv(
 		if err := opt(cfg); err != nil {
 			return nil, fmt.Errorf("options failed: %w", err)
 		}
+	}
+	if mapped, ok := cfg.DatabaseRemap[table.Schema]; ok {
+		table.Schema = mapped
 	}
 
 	res := &TableDataRestorerCsv{

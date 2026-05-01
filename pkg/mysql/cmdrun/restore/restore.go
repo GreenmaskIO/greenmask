@@ -81,6 +81,29 @@ func (d *Restore) connect() (*sql.DB, error) {
 	return conn, nil
 }
 
+func (d *Restore) remapDB(meta models.Metadata) (map[string]string, error) {
+	remap := d.cfg.Restore.Options.RemapDatabase
+	if len(remap) == 0 {
+		return nil, nil
+	}
+	mode := d.cfg.Restore.Options.DatabaseReplaceMode
+	if mode == "" {
+		mode = models.DatabaseReplaceModeStrict
+	}
+	switch mode {
+	case models.DatabaseReplaceModeStrict:
+		for _, db := range meta.Databases {
+			if _, ok := remap[db]; !ok {
+				return nil, fmt.Errorf("database-replace-mode=strict: database %q has no entry in remap-database", db)
+			}
+		}
+	case models.DatabaseReplaceModeRelaxed:
+	default:
+		return nil, fmt.Errorf("unknown database-replace-mode %q", mode)
+	}
+	return remap, nil
+}
+
 func (d *Restore) Run(ctx context.Context) error {
 	if err := d.cfg.Restore.MysqlConfig.Validate(); err != nil {
 		return fmt.Errorf("validate mysql options: %w", err)
@@ -111,6 +134,11 @@ func (d *Restore) Run(ctx context.Context) error {
 
 	taskResolver := taskmapper.NewTaskResolver()
 
+	remap, err := d.remapDB(meta)
+	if err != nil {
+		return fmt.Errorf("remapDB: %w", err)
+	}
+
 	var tp interfaces.RestoreTaskProducer
 	opts := taskproducer.RestoreOptions{
 		PrintWarnings:           d.cfg.Restore.MysqlConfig.PrintWarnings,
@@ -120,6 +148,7 @@ func (d *Restore) Run(ctx context.Context) error {
 		InsertIgnore:            d.cfg.Restore.MysqlConfig.InsertIgnore,
 		InsertReplace:           d.cfg.Restore.MysqlConfig.InsertReplace,
 		MaxInsertStatementSize:  d.cfg.Restore.MysqlConfig.MaxInsertStatementSize,
+		DatabaseRemap:           remap,
 	}
 
 	if d.cfg.Restore.Options.RestoreInOrder {
@@ -142,6 +171,9 @@ func (d *Restore) Run(ctx context.Context) error {
 	}
 	if d.cfg.Restore.Options.IfNotExists {
 		schemaOpts = append(schemaOpts, schema.WithIfNotExists())
+	}
+	if len(remap) > 0 {
+		schemaOpts = append(schemaOpts, schema.WithDatabaseRemap(remap))
 	}
 	sr := schema.NewRestorer(d.st, &d.cfg.Restore.MysqlConfig, d.cfg.Restore.Options.SSL, d.cmd, meta.SchemaDump, schemaOpts...)
 

@@ -18,6 +18,7 @@ import (
 	"fmt"
 
 	commonconfig "github.com/greenmaskio/greenmask/pkg/common/config"
+	commonmodels "github.com/greenmaskio/greenmask/pkg/common/models"
 	mysqlcommonconfig "github.com/greenmaskio/greenmask/pkg/mysql/config"
 )
 
@@ -51,9 +52,9 @@ const DefaultMaxFetchWarnings = 10
 const DefaultMaxInsertStatementSize = 4 * 1024 * 1024
 
 type MysqlRestoreConfig struct {
-	mysqlcommonconfig.ConnectionOpts `mapstructure:",squash" json:",squash,omitempty"`
-	VendorOptions                    []string `mapstructure:"vendor-options" yaml:"vendor-options" json:"vendor-options,omitempty"`
-	PrintWarnings                    bool     `mapstructure:"print-warnings" yaml:"print-warnings" json:"print_warnings"`
+	mysqlcommonconfig.ConnectionOpts `mapstructure:",squash" json:",squash,omitempty"` //nolint:staticcheck
+	VendorOptions                    []string                                          `mapstructure:"vendor-options" yaml:"vendor-options" json:"vendor-options,omitempty"`
+	PrintWarnings                    bool                                              `mapstructure:"print-warnings" yaml:"print-warnings" json:"print_warnings"`
 	// MaxFetchWarnings - the maximum number of warnings to fetch and print. If 0, all warnings are printed.
 	MaxFetchWarnings        int  `mapstructure:"max-fetch-warnings" yaml:"max-fetch-warnings" json:"max_fetch_warnings"`
 	DisableForeignKeyChecks bool `mapstructure:"disable-fk-checks" yaml:"disable-fk-checks" json:"disable_fk_checks"`
@@ -91,15 +92,26 @@ type CommonRestoreOptions struct {
 	// CreateDatabase controls whether greenmask issues CREATE DATABASE statements before restoring schema.
 	CreateDatabase bool `mapstructure:"create-database" yaml:"create-database" json:"create_database"`
 	// IfNotExists adds IF NOT EXISTS to CREATE DATABASE and (in future) other object creation statements.
-	IfNotExists bool                 `mapstructure:"if-not-exists" yaml:"if-not-exists" json:"if_not_exists"`
-	Section     []string             `mapstructure:"section"       yaml:"section"       json:"section,omitempty"`
-	SSL         commonconfig.SSLOpts `mapstructure:",squash" json:",squash,omitempty"` //nolint:staticcheck
+	IfNotExists bool `mapstructure:"if-not-exists" yaml:"if-not-exists" json:"if_not_exists"`
+	// RemapDatabase maps original database names to new names (original → renamed).
+	RemapDatabase map[string]string `mapstructure:"remap-database" yaml:"remap-database" json:"remap-database,omitempty"`
+	// DatabaseReplaceMode controls mapping strictness: "strict" (default) requires all databases in the dump
+	// to have a mapping entry; "relaxed" renames only the listed databases and keeps the rest as-is.
+	DatabaseReplaceMode commonmodels.DatabaseReplacementMode `mapstructure:"database-replace-mode" yaml:"database-replace-mode" json:"database-replace-mode,omitempty"`
+	Section             []string                             `mapstructure:"section"               yaml:"section"               json:"section,omitempty"`
+	SSL                 commonconfig.SSLOpts                 `mapstructure:",squash"               json:",squash,omitempty"` //nolint:staticcheck
 }
 
 func (o *CommonRestoreOptions) Validate() error {
 	for _, s := range o.Section {
 		if _, ok := knownRestoreSections[s]; !ok {
 			return fmt.Errorf("unknown section %q: must be one of pre-data, data, post-data", s)
+		}
+	}
+
+	if o.DatabaseReplaceMode != "" {
+		if err := o.DatabaseReplaceMode.Validate(); err != nil {
+			return fmt.Errorf("invalid database replace mode: %w", err)
 		}
 	}
 	return nil
@@ -127,6 +139,10 @@ func NewRestore() Restore {
 			},
 			MaxFetchWarnings:       DefaultMaxFetchWarnings,
 			MaxInsertStatementSize: DefaultMaxInsertStatementSize,
+		},
+		Options: CommonRestoreOptions{
+			RemapDatabase:       make(map[string]string),
+			DatabaseReplaceMode: commonmodels.DatabaseReplaceModeStrict,
 		},
 	}
 }
