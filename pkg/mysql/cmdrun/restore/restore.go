@@ -183,7 +183,7 @@ func (d *Restore) Run(ctx context.Context) error {
 		DataOnly:       d.cfg.Restore.Options.DataOnly,
 		SchemaOnly:     d.cfg.Restore.Options.SchemaOnly,
 		Section:        d.cfg.Restore.Options.Section,
-	}).Run(ctx); err != nil {
+	}, d.cfg.Restore.Scripts, d.connConfig).Run(ctx); err != nil {
 		return fmt.Errorf("run restore processor: %w", err)
 	}
 	return nil

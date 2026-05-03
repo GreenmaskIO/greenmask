@@ -137,7 +137,7 @@ func TestProcessor_Run(t *testing.T) {
 			RestoreInOrder: true,
 		}
 
-		dumpRuntime := NewDefaultRestoreProcessor(ctx, tp, sr, cfg)
+		dumpRuntime := NewDefaultRestoreProcessor(ctx, tp, sr, cfg, nil, nil) //nolint:staticcheck
 		err := dumpRuntime.Run(ctx)
 		require.NoError(t, err)
 

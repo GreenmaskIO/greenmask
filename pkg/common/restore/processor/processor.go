@@ -16,8 +16,11 @@ package processor
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 
+	"github.com/greenmaskio/greenmask/pkg/common/restore/script"
+	mysqlmodels "github.com/greenmaskio/greenmask/pkg/mysql/models"
 	"github.com/rs/zerolog/log"
 	"golang.org/x/sync/errgroup"
 
@@ -75,9 +78,11 @@ func (c *Config) SetDefault(ctx context.Context) {
 }
 
 type DefaultRestoreProcessor struct {
-	tp  interfaces.RestoreTaskProducer
-	sr  schemaRestorer
-	cfg Config
+	tp              interfaces.RestoreTaskProducer
+	sr              schemaRestorer
+	cfg             Config
+	scriptScheduler *script.Scheduler
+	connConfig      *mysqlmodels.ConnConfig
 }
 
 func NewDefaultRestoreProcessor(
@@ -85,12 +90,16 @@ func NewDefaultRestoreProcessor(
 	tp interfaces.RestoreTaskProducer,
 	sr schemaRestorer,
 	cfg Config,
+	scripts []commonmodels.Script,
+	connConfig *mysqlmodels.ConnConfig,
 ) *DefaultRestoreProcessor {
 	cfg.SetDefault(ctx)
 	return &DefaultRestoreProcessor{
-		tp:  tp,
-		sr:  sr,
-		cfg: cfg,
+		tp:              tp,
+		sr:              sr,
+		cfg:             cfg,
+		scriptScheduler: script.NewScheduler(scripts),
+		connConfig:      connConfig,
 	}
 }
 
@@ -232,21 +241,116 @@ func (p *DefaultRestoreProcessor) dataRestore(ctx context.Context) error {
 	return nil
 }
 
+// buildTxExec opens a MySQL connection from connConfig and returns a TxExec
+// that executes SQL statements against it, plus a cleanup that closes the connection.
+// Returns (nil, no-op, nil) when connConfig is not set (no SQL scripts possible).
+func (p *DefaultRestoreProcessor) buildTxExec(ctx context.Context) (script.TxExec, func(), error) {
+	if p.connConfig == nil {
+		return nil, func() {}, nil
+	}
+	uri, err := p.connConfig.URI()
+	if err != nil {
+		return nil, func() {}, fmt.Errorf("build script TxExec: get connection URI: %w", err)
+	}
+	db, err := sql.Open("mysql", uri)
+	if err != nil {
+		return nil, func() {}, fmt.Errorf("build script TxExec: open connection: %w", err)
+	}
+	exec := script.TxExec(func(ctx context.Context, query string) error {
+		_, err := db.ExecContext(ctx, query)
+		return err
+	})
+	return exec, func() {
+		if err := db.Close(); err != nil {
+			log.Ctx(ctx).Warn().Err(err).Msg("close script db connection")
+		}
+	}, nil
+}
+
+func (p *DefaultRestoreProcessor) restorePreDataSchema(ctx context.Context) error {
+	exec, closeDB, err := p.buildTxExec(ctx)
+	if err != nil {
+		return err
+	}
+	defer closeDB()
+
+	if err := p.scriptScheduler.Exec(
+		ctx, exec, commonmodels.DumpSectionPreData, commonmodels.ScriptEventTypeBefore,
+	); err != nil {
+		return fmt.Errorf("execute scripts section='%s' when='%s': %w", commonmodels.DumpSectionPreData, commonmodels.ScriptEventTypeBefore, err)
+	}
+	if err := p.sr.RestorePreDataSchema(ctx); err != nil {
+		return fmt.Errorf("pre-data schema restore: %w", err)
+	}
+	if err := p.scriptScheduler.Exec(
+		ctx, exec, commonmodels.DumpSectionPreData, commonmodels.ScriptEventTypeAfter,
+	); err != nil {
+		return fmt.Errorf("execute scripts section='%s' when='%s': %w", commonmodels.DumpSectionPreData, commonmodels.ScriptEventTypeAfter, err)
+	}
+	return nil
+}
+
+func (p *DefaultRestoreProcessor) restoreData(ctx context.Context) error {
+	exec, closeDB, err := p.buildTxExec(ctx)
+	if err != nil {
+		return err
+	}
+	defer closeDB()
+
+	if err := p.scriptScheduler.Exec(
+		ctx, exec, commonmodels.DumpSectionData, commonmodels.ScriptEventTypeBefore,
+	); err != nil {
+		return fmt.Errorf("execute scripts section='%s' when='%s': %w", commonmodels.DumpSectionData, commonmodels.ScriptEventTypeBefore, err)
+	}
+	if err := p.dataRestore(ctx); err != nil {
+		return fmt.Errorf("data restore: %w", err)
+	}
+	if err := p.scriptScheduler.Exec(
+		ctx, exec, commonmodels.DumpSectionData, commonmodels.ScriptEventTypeAfter,
+	); err != nil {
+		return fmt.Errorf("execute scripts section='%s' when='%s': %w", commonmodels.DumpSectionData, commonmodels.ScriptEventTypeAfter, err)
+	}
+	return nil
+}
+
+func (p *DefaultRestoreProcessor) restorePostDataSchema(ctx context.Context) error {
+	exec, closeDB, err := p.buildTxExec(ctx)
+	if err != nil {
+		return err
+	}
+	defer closeDB()
+
+	if err := p.scriptScheduler.Exec(
+		ctx, exec, commonmodels.DumpSectionPostData, commonmodels.ScriptEventTypeBefore,
+	); err != nil {
+		return fmt.Errorf("execute scripts section='%s' when='%s': %w", commonmodels.DumpSectionPostData, commonmodels.ScriptEventTypeBefore, err)
+	}
+	if err := p.sr.RestorePostDataSchema(ctx); err != nil {
+		return fmt.Errorf("post-data schema restore: %w", err)
+	}
+	if err := p.scriptScheduler.Exec(
+		ctx, exec, commonmodels.DumpSectionPostData, commonmodels.ScriptEventTypeAfter,
+	); err != nil {
+		return fmt.Errorf("execute scripts section='%s' when='%s': %w", commonmodels.DumpSectionPostData, commonmodels.ScriptEventTypeAfter, err)
+	}
+	return nil
+}
+
 func (p *DefaultRestoreProcessor) Run(ctx context.Context) error {
 	if p.sectionEnabled(commonmodels.DumpSectionPreData) {
-		if err := p.sr.RestorePreDataSchema(ctx); err != nil {
+		if err := p.restorePreDataSchema(ctx); err != nil {
 			return fmt.Errorf("pre-data schema restore: %w", err)
 		}
 	}
 
 	if p.sectionEnabled(commonmodels.DumpSectionData) {
-		if err := p.dataRestore(ctx); err != nil {
+		if err := p.restoreData(ctx); err != nil {
 			return fmt.Errorf("data restore: %w", err)
 		}
 	}
 
 	if p.sectionEnabled(commonmodels.DumpSectionPostData) {
-		if err := p.sr.RestorePostDataSchema(ctx); err != nil {
+		if err := p.restorePostDataSchema(ctx); err != nil {
 			return fmt.Errorf("post-data schema restore: %w", err)
 		}
 	}
