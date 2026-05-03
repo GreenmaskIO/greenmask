@@ -39,14 +39,6 @@ type DataRestorationErrorExclusions struct {
 	Global GlobalDataRestorationErrorExclusions   `mapstructure:"global" yaml:"global" json:"global,omitempty"`
 }
 
-type Script struct {
-	Name      string   `mapstructure:"name"`
-	When      string   `mapstructure:"when"`
-	Query     string   `mapstructure:"query"`
-	QueryFile string   `mapstructure:"query_file"`
-	Command   []string `mapstructure:"command"`
-}
-
 const DefaultMaxFetchWarnings = 10
 
 const DefaultMaxInsertStatementSize = 4 * 1024 * 1024
@@ -127,8 +119,20 @@ type Restore struct {
 	Options          CommonRestoreOptions           `mapstructure:"options" yaml:"options" json:"options"`
 	MysqlConfig      MysqlRestoreConfig             `mapstructure:"mysql" yaml:"mysql"`
 	PostgresqlConfig PostgresqlRestoreConfig        `mapstructure:"postgresql" yaml:"postgresql"`
-	Scripts          map[string][]Script            `mapstructure:"scripts" yaml:"scripts" json:"scripts,omitempty"`
+	Scripts          []commonmodels.Script          `mapstructure:"scripts" yaml:"scripts" json:"scripts,omitempty"`
 	ErrorExclusions  DataRestorationErrorExclusions `mapstructure:"insert_error_exclusions" yaml:"insert_error_exclusions" json:"insert_error_exclusions,omitempty"`
+}
+
+func (r *Restore) Validate() error {
+	if err := r.Options.Validate(); err != nil {
+		return fmt.Errorf("validate options: %w", err)
+	}
+	for i, script := range r.Scripts {
+		if err := script.Validate(); err != nil {
+			return fmt.Errorf("validate script #%d name '%s': %w", i, script.Name, err)
+		}
+	}
+	return nil
 }
 
 func NewRestore() Restore {
