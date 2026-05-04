@@ -5,6 +5,7 @@ go 1.26
 require (
 	github.com/Masterminds/sprig/v3 v3.3.0
 	github.com/aws/aws-sdk-go v1.55.7
+	github.com/buildkite/interpolate v0.1.5
 	github.com/dchest/siphash v1.2.3
 	github.com/docker/go-connections v0.6.0
 	github.com/expr-lang/expr v1.17.4

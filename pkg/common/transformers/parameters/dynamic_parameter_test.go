@@ -363,7 +363,7 @@ func TestDynamicParameter_Init(t *testing.T) {
 		ctx := validationcollector.WithCollector(context.Background(), validationcollector.NewCollector())
 
 		tableDriver := newTableDriverMock()
-		columnParam := NewStaticParameter(columnDef, tableDriver)
+		columnParam := NewStaticParameter(columnDef, tableDriver, false)
 		tableDriver.On("GetColumnByName", "id2").
 			Return(
 				&models.Column{
@@ -434,7 +434,7 @@ func TestDynamicParameter_Init(t *testing.T) {
 		ctx := validationcollector.WithCollector(context.Background(), validationcollector.NewCollector())
 
 		tableDriver := newTableDriverMock()
-		columnParam := NewStaticParameter(columnDef, tableDriver)
+		columnParam := NewStaticParameter(columnDef, tableDriver, false)
 		tableDriver.On("GetColumnByName", "id2").
 			Return(
 				&models.Column{
@@ -500,7 +500,7 @@ func TestDynamicParameter_Value(t *testing.T) {
 		ctx := validationcollector.WithCollector(context.Background(), validationcollector.NewCollector())
 
 		tableDriver := newTableDriverMock()
-		columnParam := NewStaticParameter(columnDef, tableDriver)
+		columnParam := NewStaticParameter(columnDef, tableDriver, false)
 		tableDriver.On("GetColumnByName", "id2").
 			Return(
 				&models.Column{
@@ -582,7 +582,7 @@ func TestDynamicParameter_Value(t *testing.T) {
 		ctx := validationcollector.WithCollector(context.Background(), validationcollector.NewCollector())
 
 		tableDriver := newTableDriverMock()
-		columnParam := NewStaticParameter(columnDef, tableDriver)
+		columnParam := NewStaticParameter(columnDef, tableDriver, false)
 		tableDriver.On("GetColumnByName", "id2").
 			Return(
 				&models.Column{
@@ -666,7 +666,7 @@ func TestDynamicParameter_Value(t *testing.T) {
 		ctx := validationcollector.WithCollector(context.Background(), validationcollector.NewCollector())
 
 		tableDriver := newTableDriverMock()
-		columnParam := NewStaticParameter(columnDef, tableDriver)
+		columnParam := NewStaticParameter(columnDef, tableDriver, false)
 		tableDriver.On("GetColumnByName", "id2").
 			Return(
 				&models.Column{

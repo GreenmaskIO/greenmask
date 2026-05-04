@@ -125,6 +125,7 @@ func (m *TransformerTestEnvReal) InitParameters(t *testing.T, ctx context.Contex
 		m.Definition.Parameters,
 		m.StaticParameterValues,
 		m.DynamicParameterValues,
+		false,
 	)
 	if err != nil {
 		return err

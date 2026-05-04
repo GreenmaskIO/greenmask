@@ -22,6 +22,7 @@ type TransformerConfig struct {
 	StaticParams       map[string]ParamsValue       `json:"static_params"`
 	DynamicParams      map[string]DynamicParamValue `json:"dynamic_params"`
 	When               string                       `json:"when,omitempty"`
+	ResolveEnv         bool                         `json:"resolve_env,omitempty"`
 }
 
 func NewTransformerConfig(
@@ -30,6 +31,7 @@ func NewTransformerConfig(
 	params map[string]ParamsValue,
 	dynamicParams map[string]DynamicParamValue,
 	when string,
+	resolveEnv bool,
 ) TransformerConfig {
 	return TransformerConfig{
 		Name:               name,
@@ -37,6 +39,7 @@ func NewTransformerConfig(
 		StaticParams:       params,
 		DynamicParams:      dynamicParams,
 		When:               when,
+		ResolveEnv:         resolveEnv,
 	}
 }
 

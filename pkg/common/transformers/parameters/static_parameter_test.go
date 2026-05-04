@@ -40,7 +40,7 @@ func TestStaticParameter_Init(t *testing.T) {
 			}, nil)
 
 		ctx := validationcollector.WithCollector(context.Background(), validationcollector.NewCollector())
-		parameter := NewStaticParameter(columnDef, tableDriver)
+		parameter := NewStaticParameter(columnDef, tableDriver, false)
 		err := parameter.Init(ctx, nil, []byte("test_column"))
 		require.NoError(t, err)
 		assert.False(t, validationcollector.FromContext(ctx).HasWarnings())
@@ -58,7 +58,7 @@ func TestStaticParameter_Init(t *testing.T) {
 			Return(nil, models.ErrUnknownColumnName)
 
 		ctx := validationcollector.WithCollector(context.Background(), validationcollector.NewCollector())
-		parameter := NewStaticParameter(columnDef, tableDriver)
+		parameter := NewStaticParameter(columnDef, tableDriver, false)
 		err := parameter.Init(ctx, nil, []byte("test_column"))
 		require.ErrorIs(t, err, models.ErrFatalValidationError)
 		assert.True(t, validationcollector.FromContext(ctx).IsFatal())
@@ -81,7 +81,7 @@ func TestStaticParameter_Init(t *testing.T) {
 			}, nil)
 
 		ctx := validationcollector.WithCollector(context.Background(), validationcollector.NewCollector())
-		parameter := NewStaticParameter(columnDef, tableDriver)
+		parameter := NewStaticParameter(columnDef, tableDriver, false)
 		err := parameter.Init(ctx, nil, []byte("test_column"))
 		require.ErrorIs(t, err, models.ErrFatalValidationError)
 		assert.True(t, validationcollector.FromContext(ctx).IsFatal())
@@ -94,7 +94,7 @@ func TestStaticParameter_Init(t *testing.T) {
 	t.Run("string value", func(t *testing.T) {
 		columnDef := MustNewParameterDefinition("param", "some desc").
 			SetAllowedValues([]byte("valid value2"), []byte("valid value"))
-		parameter := NewStaticParameter(columnDef, nil)
+		parameter := NewStaticParameter(columnDef, nil, false)
 		ctx := validationcollector.WithCollector(context.Background(), validationcollector.NewCollector())
 		err := parameter.Init(ctx, nil, []byte("valid value"))
 		require.NoError(t, err)
@@ -104,7 +104,7 @@ func TestStaticParameter_Init(t *testing.T) {
 	t.Run("invalid value", func(t *testing.T) {
 		columnDef := MustNewParameterDefinition("param", "some desc").
 			SetAllowedValues([]byte("valid value2"), []byte("valid value"))
-		parameter := NewStaticParameter(columnDef, nil)
+		parameter := NewStaticParameter(columnDef, nil, false)
 		ctx := validationcollector.WithCollector(context.Background(), validationcollector.NewCollector())
 		err := parameter.Init(ctx, nil, []byte("invalid value"))
 		require.ErrorIs(t, err, models.ErrFatalValidationError)
@@ -127,7 +127,7 @@ func TestStaticParameter_Init(t *testing.T) {
 		}
 		columnDef := MustNewParameterDefinition("param", "some desc").
 			SetRawValueValidator(validator)
-		parameter := NewStaticParameter(columnDef, nil)
+		parameter := NewStaticParameter(columnDef, nil, false)
 		ctx := validationcollector.WithCollector(context.Background(), validationcollector.NewCollector())
 		err := parameter.Init(ctx, nil, []byte("any"))
 		require.ErrorIs(t, err, models.ErrFatalValidationError)
@@ -145,7 +145,7 @@ func TestStaticParameter_Init(t *testing.T) {
 		}
 		columnDef := MustNewParameterDefinition("param", "some desc").
 			SetRawValueValidator(validator)
-		parameter := NewStaticParameter(columnDef, nil)
+		parameter := NewStaticParameter(columnDef, nil, false)
 		ctx := validationcollector.WithCollector(context.Background(), validationcollector.NewCollector())
 		err := parameter.Init(ctx, nil, []byte("any"))
 		require.NoError(t, err)
@@ -155,7 +155,7 @@ func TestStaticParameter_Init(t *testing.T) {
 	t.Run("required parameter is empty", func(t *testing.T) {
 		columnDef := MustNewParameterDefinition("param", "some desc").
 			SetRequired(true)
-		parameter := NewStaticParameter(columnDef, nil)
+		parameter := NewStaticParameter(columnDef, nil, false)
 		ctx := validationcollector.WithCollector(context.Background(), validationcollector.NewCollector())
 		err := parameter.Init(ctx, nil, nil)
 		require.ErrorIs(t, err, models.ErrFatalValidationError)
@@ -167,7 +167,7 @@ func TestStaticParameter_Init(t *testing.T) {
 		columnDef := MustNewParameterDefinition("param", "some desc").
 			SetDefaultValue([]byte("default value")).
 			SetRequired(true)
-		parameter := NewStaticParameter(columnDef, nil)
+		parameter := NewStaticParameter(columnDef, nil, false)
 		ctx := validationcollector.WithCollector(context.Background(), validationcollector.NewCollector())
 		err := parameter.Init(ctx, nil, nil)
 		require.NoError(t, err)
@@ -178,7 +178,7 @@ func TestStaticParameter_Init(t *testing.T) {
 	t.Run("not required parameter is empty but has a default value", func(t *testing.T) {
 		columnDef := MustNewParameterDefinition("param", "some desc").
 			SetDefaultValue([]byte("default value"))
-		parameter := NewStaticParameter(columnDef, nil)
+		parameter := NewStaticParameter(columnDef, nil, false)
 		ctx := validationcollector.WithCollector(context.Background(), validationcollector.NewCollector())
 		err := parameter.Init(ctx, nil, nil)
 		require.NoError(t, err)
@@ -200,7 +200,7 @@ func TestStaticParameter_Init(t *testing.T) {
 				TypeName: "int2",
 			}, nil)
 
-		columnParameter := NewStaticParameter(columnDef, tableDriver)
+		columnParameter := NewStaticParameter(columnDef, tableDriver, false)
 		ctx := validationcollector.WithCollector(context.Background(), validationcollector.NewCollector())
 		err := columnParameter.Init(ctx, nil, []byte("test_column"))
 		require.NoError(t, err)
@@ -208,7 +208,7 @@ func TestStaticParameter_Init(t *testing.T) {
 
 		linkedParameterDef := MustNewParameterDefinition("min", "min val").
 			LinkParameter("column")
-		linkedParameter := NewStaticParameter(linkedParameterDef, tableDriver)
+		linkedParameter := NewStaticParameter(linkedParameterDef, tableDriver, false)
 		err = linkedParameter.Init(
 			ctx,
 			map[string]*StaticParameter{
@@ -225,7 +225,7 @@ func TestStaticParameter_Init(t *testing.T) {
 		linkedParameterDef := MustNewParameterDefinition("min", "min val").
 			LinkParameter("column")
 		tableDriver := newTableDriverMock()
-		linkedParameter := NewStaticParameter(linkedParameterDef, tableDriver)
+		linkedParameter := NewStaticParameter(linkedParameterDef, tableDriver, false)
 		ctx := validationcollector.WithCollector(context.Background(), validationcollector.NewCollector())
 		err := linkedParameter.Init(ctx, nil, []byte("test_column"))
 		require.ErrorIs(t, err, errParameterIsNotFound)
@@ -235,7 +235,7 @@ func TestStaticParameter_Init(t *testing.T) {
 		linkedParameterDef := MustNewParameterDefinition("min", "min val").
 			SetSupportTemplate(true)
 		tableDriver := newTableDriverMock()
-		linkedParameter := NewStaticParameter(linkedParameterDef, tableDriver)
+		linkedParameter := NewStaticParameter(linkedParameterDef, tableDriver, false)
 		ctx := validationcollector.WithCollector(context.Background(), validationcollector.NewCollector())
 		err := linkedParameter.Init(ctx, nil, []byte("{{ 1 }}"))
 		require.NoError(t, err)
@@ -247,7 +247,7 @@ func TestStaticParameter_Init(t *testing.T) {
 		linkedParameterDef := MustNewParameterDefinition("min", "min val").
 			SetSupportTemplate(true)
 		tableDriver := newTableDriverMock()
-		linkedParameter := NewStaticParameter(linkedParameterDef, tableDriver)
+		linkedParameter := NewStaticParameter(linkedParameterDef, tableDriver, false)
 		ctx := validationcollector.WithCollector(context.Background(), validationcollector.NewCollector())
 		err := linkedParameter.Init(ctx, nil, []byte("1"))
 		require.NoError(t, err)
@@ -259,7 +259,7 @@ func TestStaticParameter_Init(t *testing.T) {
 		linkedParameterDef := MustNewParameterDefinition("min", "min val").
 			SetSupportTemplate(true)
 		tableDriver := newTableDriverMock()
-		linkedParameter := NewStaticParameter(linkedParameterDef, tableDriver)
+		linkedParameter := NewStaticParameter(linkedParameterDef, tableDriver, false)
 		ctx := validationcollector.WithCollector(context.Background(), validationcollector.NewCollector())
 		err := linkedParameter.Init(ctx, nil, []byte("{{ asad }}"))
 		require.ErrorIs(t, err, models.ErrFatalValidationError)
@@ -273,7 +273,7 @@ func TestStaticParameter_Init(t *testing.T) {
 		linkedParameterDef := MustNewParameterDefinition("min", "min val").
 			SetSupportTemplate(true)
 		tableDriver := newTableDriverMock()
-		linkedParameter := NewStaticParameter(linkedParameterDef, tableDriver)
+		linkedParameter := NewStaticParameter(linkedParameterDef, tableDriver, false)
 		ctx := validationcollector.WithCollector(context.Background(), validationcollector.NewCollector())
 		err := linkedParameter.Init(ctx, nil, []byte(`{{ "asdad" | noiseInt 0.2 }}`))
 		require.ErrorIs(t, err, models.ErrFatalValidationError)

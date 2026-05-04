@@ -25,7 +25,7 @@ import (
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
 
-	config2 "github.com/greenmaskio/greenmask/pkg/config"
+	"github.com/greenmaskio/greenmask/pkg/config"
 )
 
 var (
@@ -33,13 +33,14 @@ var (
 	errFlagIsNotRegistered = errors.New("flag is not registered")
 )
 
-func initConfig(cfgFile string, cfg *config2.Config) error {
+func initConfig(cfgFile string, cfg *config.Config) error {
 	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 	viper.AutomaticEnv()
 
 	decoderCfg := func(cfg *mapstructure.DecoderConfig) {
 		cfg.DecodeHook = mapstructure.ComposeDecodeHookFunc(
-			config2.ParamsToByteSliceHookFunc(),
+			config.InterpolateEnvVarsHookFunc(),
+			config.ParamsToByteSliceHookFunc(),
 			mapstructure.StringToTimeDurationHookFunc(),
 			mapstructure.StringToSliceHookFunc(","),
 		)
@@ -55,7 +56,7 @@ func initConfig(cfgFile string, cfg *config2.Config) error {
 		}
 		// This solves problem with map structure described -> https://github.com/spf13/viper/issues/373
 		// that caused issue in Greenmask https://github.com/GreenmaskIO/greenmask/issues/76
-		if err := config2.ParseTransformerParamsManually(cfgFile, cfg); err != nil {
+		if err := config.ParseTransformerParamsManually(cfgFile, cfg); err != nil {
 			return fmt.Errorf("parse transformation config: %w", err)
 		}
 	}
@@ -66,7 +67,7 @@ type Command struct {
 	*cobra.Command
 	parent     *Command
 	configPath string
-	config     *config2.Config
+	config     *config.Config
 	IsRoot     bool
 }
 
@@ -87,7 +88,7 @@ func NewRootCommand(cobraCmd *cobra.Command, version string, flags ...Flag) (*Co
 		&rootCmd.configPath, "config", "",
 		"Path to config file. Can be JSON or YAML format.",
 	)
-	rootCmd.config = config2.NewConfig()
+	rootCmd.config = config.NewConfig()
 	rootCmd.Version = version
 	rootCmd.IsRoot = true
 	rootCmd.PersistentPreRunE = func(cmd *cobra.Command, args []string) error {
@@ -341,7 +342,7 @@ func (c *Command) Parent() *Command {
 	return c.parent
 }
 
-func (c *Command) MustGetConfig() *config2.Config {
+func (c *Command) MustGetConfig() *config.Config {
 	if c.IsRoot {
 		if c.config != nil {
 			return c.config

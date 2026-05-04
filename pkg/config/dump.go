@@ -67,6 +67,7 @@ func (t Table) ToTableConfig() commonmodels.TableConfig {
 
 type TransformerConfig struct {
 	Name               string `mapstructure:"name" yaml:"name" json:"name,omitempty"`
+	ResolveEnv         bool   `mapstructure:"resolve_env" yaml:"resolve_env" json:"resolve_env,omitempty"`
 	ApplyForReferences bool   `mapstructure:"apply_for_references" yaml:"apply_for_references" json:"apply_for_references,omitempty"`
 	// Params - transformation parameters. It might be any type. If structure should be stored as raw json
 	// This cannot be parsed with mapstructure due to uncontrollable lowercasing
@@ -93,6 +94,7 @@ func (tc TransformerConfig) ToTransformerConfig() commonmodels.TransformerConfig
 		tc.Params.ToParamsValue(),
 		tc.DynamicParams.ToDynamicParamValue(),
 		tc.When,
+		tc.ResolveEnv,
 	)
 }
 
