@@ -16,13 +16,15 @@ package context
 
 import (
 	"context"
+	"encoding/hex"
 	"fmt"
+	"os"
 	"slices"
 
 	"github.com/greenmaskio/greenmask/pkg/common/conditions"
 	"github.com/greenmaskio/greenmask/pkg/common/interfaces"
 	"github.com/greenmaskio/greenmask/pkg/common/models"
-	parameters2 "github.com/greenmaskio/greenmask/pkg/common/transformers/parameters"
+	"github.com/greenmaskio/greenmask/pkg/common/transformers/parameters"
 	transformerutils "github.com/greenmaskio/greenmask/pkg/common/transformers/registry"
 	"github.com/greenmaskio/greenmask/pkg/common/utils"
 	"github.com/greenmaskio/greenmask/pkg/common/validationcollector"
@@ -62,10 +64,27 @@ func New(
 	}
 }
 
+func withSalt(ctx context.Context) (context.Context, error) {
+	var salt []byte
+	saltHex := os.Getenv("GREENMASK_GLOBAL_SALT")
+	if saltHex != "" {
+		salt = make([]byte, hex.DecodedLen(len(saltHex)))
+		_, err := hex.Decode(salt, []byte(saltHex))
+		if err != nil {
+			return nil, fmt.Errorf("error decoding salt from hex: %w", err)
+		}
+	}
+	return utils.WithSalt(ctx, salt), nil
+}
+
 // Build - returns list of TableContext objects that are used in the TaskProducer interface.
 func (p *TableContextBuilder) Build(ctx context.Context) ([]TableContext, error) {
 	var err error
 	tableRuntimes := make([]TableContext, len(p.tables))
+	ctx, err = withSalt(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("set salt: %w", err)
+	}
 	for i := range p.tables {
 		var transformationConfig models.TableConfig
 		idx := slices.IndexFunc(p.tableConfigs, func(config models.TableConfig) bool {
@@ -148,8 +167,8 @@ func (p *TableContextBuilder) initTableTransformers(
 
 type tranInitRes struct {
 	transformer       interfaces.Transformer
-	staticParameters  map[string]*parameters2.DynamicParameter
-	dynamicParameters map[string]*parameters2.DynamicParameter
+	staticParameters  map[string]*parameters.DynamicParameter
+	dynamicParameters map[string]*parameters.DynamicParameter
 }
 
 func (p *TableContextBuilder) initTransformer(
@@ -168,24 +187,25 @@ func (p *TableContextBuilder) initTransformer(
 				SetMsg("transformer is not found"))
 		return tranInitRes{}, fmt.Errorf("get transformer from registry: %w", models.ErrFatalValidationError)
 	}
-	params, err := parameters2.InitParameters(
+	params, err := parameters.InitParameters(
 		ctx,
 		driver,
 		transformerDefinition.Parameters,
 		config.StaticParams,
 		config.DynamicParams,
+		config.ResolveEnv,
 	)
 	if err != nil {
 		return tranInitRes{}, err
 	}
 
-	dynamicParams := make(map[string]*parameters2.DynamicParameter)
-	staticParams := make(map[string]*parameters2.StaticParameter)
+	dynamicParams := make(map[string]*parameters.DynamicParameter)
+	staticParams := make(map[string]*parameters.StaticParameter)
 	for name, pp := range params {
 		switch v := pp.(type) {
-		case *parameters2.StaticParameter:
+		case *parameters.StaticParameter:
 			staticParams[name] = v
-		case *parameters2.DynamicParameter:
+		case *parameters.DynamicParameter:
 			dynamicParams[name] = v
 		}
 	}

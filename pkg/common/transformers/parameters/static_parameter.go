@@ -29,6 +29,7 @@ import (
 	commonmodels "github.com/greenmaskio/greenmask/pkg/common/models"
 	gmtemplate "github.com/greenmaskio/greenmask/pkg/common/transformers/template"
 	"github.com/greenmaskio/greenmask/pkg/common/utils"
+	"github.com/greenmaskio/greenmask/pkg/common/utils/env"
 	"github.com/greenmaskio/greenmask/pkg/common/validationcollector"
 )
 
@@ -53,13 +54,17 @@ type StaticParameter struct {
 	// value - cached parsed value after Scan or Value
 	value any
 	// rawValue - original raw value received from config
-	rawValue commonmodels.ParamsValue
+	rawValue    commonmodels.ParamsValue
+	interpolate bool
 }
 
-func NewStaticParameter(def *ParameterDefinition, driver commonininterfaces.TableDriver) *StaticParameter {
+func NewStaticParameter(
+	def *ParameterDefinition, driver commonininterfaces.TableDriver, interpolate bool,
+) *StaticParameter {
 	return &StaticParameter{
-		definition: def,
-		driver:     driver,
+		definition:  def,
+		driver:      driver,
+		interpolate: interpolate,
 	}
 }
 
@@ -293,14 +298,51 @@ func (sp *StaticParameter) validateValue(ctx context.Context, rawValue commonmod
 	return nil
 }
 
+func (sp *StaticParameter) interpolateEvnVars(
+	ctx context.Context,
+	rawValue commonmodels.ParamsValue,
+) (commonmodels.ParamsValue, error) {
+	if !sp.interpolate || rawValue == nil {
+		return rawValue, nil
+	}
+	interpolatedValue, err := env.InterpolateEnvVars(string(rawValue))
+	if err != nil {
+		validationcollector.FromContext(ctx).Add(commonmodels.NewValidationWarning().
+			SetSeverity(commonmodels.ValidationSeverityError).
+			SetMsg("error interpolating environment variables in parameter value").
+			AddMeta("Error", err.Error()).
+			AddMeta("ParameterName", sp.definition.Name).
+			AddMeta("ParameterValue", string(rawValue)))
+		return nil, commonmodels.ErrFatalValidationError
+	}
+	return []byte(interpolatedValue), nil
+}
+
+func (sp *StaticParameter) lookupEnvValue(
+	rawValue commonmodels.ParamsValue,
+) commonmodels.ParamsValue {
+	if sp.definition.GetFromGlobalEnvVariable == "" {
+		return rawValue
+	}
+	val, found := os.LookupEnv(sp.definition.GetFromGlobalEnvVariable)
+	if !found {
+		return rawValue
+	}
+	return []byte(val)
+}
+
 func (sp *StaticParameter) Init(
 	ctx context.Context,
 	columnParams map[string]*StaticParameter,
 	rawValue commonmodels.ParamsValue,
-) error {
+) (err error) {
 	sp.rawValue = slices.Clone(rawValue)
-	if sp.definition.GetFromGlobalEnvVariable != "" {
-		sp.rawValue = []byte(os.Getenv(sp.definition.GetFromGlobalEnvVariable))
+
+	sp.rawValue = sp.lookupEnvValue(rawValue)
+
+	sp.rawValue, err = sp.interpolateEvnVars(ctx, sp.rawValue)
+	if err != nil {
+		return fmt.Errorf("interpolate env vars: %w", err)
 	}
 
 	if err := sp.linkColumnParameter(columnParams); err != nil {
