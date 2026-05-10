@@ -51,10 +51,11 @@ type Validate struct {
 	*Dump
 	tmpDir   string
 	mainSt   storages.Storager
+	remoteSt storages.Storager
 	exitCode int
 }
 
-func NewValidate(cfg *domains.Config, registry *utils.TransformerRegistry, st storages.Storager) (*Validate, error) {
+func NewValidate(cfg *domains.Config, registry *utils.TransformerRegistry, st storages.Storager, remoteSt storages.Storager) (*Validate, error) {
 	mainSt := st
 	tmpDirName := strconv.FormatInt(time.Now().UnixMilli(), 10)
 	st = st.SubStorage(tmpDirName, true)
@@ -69,6 +70,7 @@ func NewValidate(cfg *domains.Config, registry *utils.TransformerRegistry, st st
 		tmpDir:   tmpDirName,
 		exitCode: zeroExitCode,
 		mainSt:   mainSt,
+		remoteSt: remoteSt,
 	}, nil
 }
 
@@ -380,7 +382,7 @@ func (v *Validate) printSchemaDiff(diff []*toolkit.DiffNode, previousDumpId stri
 func (v *Validate) getPreviousDumpId(ctx context.Context) (string, error) {
 	var backupNames []string
 
-	_, dirs, err := v.mainSt.ListDir(ctx)
+	_, dirs, err := v.remoteSt.ListDir(ctx)
 	if err != nil {
 		return "", fmt.Errorf("cannot walk through directory: %w", err)
 	}
@@ -410,7 +412,7 @@ func (v *Validate) getPreviousDumpId(ctx context.Context) (string, error) {
 
 func (v *Validate) getPreviousMetadata(ctx context.Context, dumpId string) (*storageDto.Metadata, error) {
 
-	st := v.mainSt.SubStorage(dumpId, true)
+	st := v.remoteSt.SubStorage(dumpId, true)
 
 	f, err := st.GetObject(ctx, MetadataJsonFileName)
 	if err != nil {

@@ -16,7 +16,7 @@
 cd $TMP_DIR
 if [ ! -f $FILE_DUMP ]; then
     echo "Downloading dump file"
-    wget https://edu.postgrespro.com/$FILE_DUMP
+    wget --no-check-certificate https://edu.postgrespro.com/$FILE_DUMP
 fi
 IFS="," read -ra PG_VERSIONS_CHECK <<< "${PG_VERSIONS_CHECK}"
 for pgver in ${PG_VERSIONS_CHECK[@]}; do

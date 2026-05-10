@@ -129,6 +129,7 @@ nav:
       - Contributors:
           - Supporting New Postgres: supporting_new_postgres.md
   - Release notes:
+      - Greenmask 0.2.20: release_notes/greenmask_0_2_20.md
       - Greenmask 0.2.19: release_notes/greenmask_0_2_19.md
       - Greenmask 0.2.18: release_notes/greenmask_0_2_18.md
       - Greenmask 0.2.17: release_notes/greenmask_0_2_17.md

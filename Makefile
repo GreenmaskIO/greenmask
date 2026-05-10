@@ -32,6 +32,21 @@ lint:
 up:
 	docker-compose up playground-dbs-filler
 
+local-build:
+	DOCKER_BUILDKIT=1 \
+		docker build \
+			-f docker/greenmask/Dockerfile \
+			. \
+			-t greenmask-from-source:latest \
+			--platform linux/amd64 \
+			--target build
+
+greenmask-latest:
+	docker compose -f docker-compose.yml run greenmask
+
+greenmask-from-source: local-build
+	docker compose -f docker-compose.yml run greenmask-from-source
+
 integration:
 	docker buildx build --load -t greenmask-test-dbs-filler:latest -f docker/integration/filldb/Dockerfile docker/integration/filldb
 	docker buildx build --load -t greenmask-integration:latest -f docker/integration/tests/Dockerfile .
@@ -39,4 +54,11 @@ integration:
                 --renew-anon-volumes --force-recreate \
                 --exit-code-from greenmask --abort-on-container-exit greenmask \
 				--profile all
+
+integration-local:
+	docker buildx build --load -t greenmask-test-dbs-filler:latest -f docker/integration/filldb/Dockerfile docker/integration/filldb
+	docker buildx build --load -t greenmask-integration:latest -f docker/integration/tests/Dockerfile .
+	COMPOSE_PROFILES=all docker compose -f docker-compose-integration.yml -p greenmask up \
+                --renew-anon-volumes --force-recreate \
+                --exit-code-from greenmask --abort-on-container-exit greenmask
 
