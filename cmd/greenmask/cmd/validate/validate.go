@@ -25,6 +25,8 @@ import (
 	cmdInternals "github.com/greenmaskio/greenmask/internal/db/postgres/cmd"
 	"github.com/greenmaskio/greenmask/internal/db/postgres/transformers/utils"
 	"github.com/greenmaskio/greenmask/internal/domains"
+	"github.com/greenmaskio/greenmask/internal/storages"
+	"github.com/greenmaskio/greenmask/internal/storages/builder"
 	"github.com/greenmaskio/greenmask/internal/storages/validate"
 	"github.com/greenmaskio/greenmask/internal/utils/logger"
 )
@@ -69,7 +71,16 @@ func run(cmd *cobra.Command, args []string) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	validateCmd, err := cmdInternals.NewValidate(Config, utils.DefaultTransformerRegistry, validate.New(""))
+	var remoteSt storages.Storager
+	if Config.Validate.Schema {
+		var err error
+		remoteSt, err = builder.GetStorage(ctx, &Config.Storage, &Config.Log)
+		if err != nil {
+			log.Fatal().Err(err).Msg("cannot initialize remote storage for schema diff")
+		}
+	}
+
+	validateCmd, err := cmdInternals.NewValidate(Config, utils.DefaultTransformerRegistry, validate.New(""), remoteSt)
 	if err != nil {
 		log.Fatal().Err(err).Msg("")
 	}
