@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package cmdrun
+package cli
 
 import (
 	"context"
@@ -25,18 +25,9 @@ import (
 	"github.com/greenmaskio/greenmask/pkg/common/utils"
 	"github.com/greenmaskio/greenmask/pkg/common/validationcollector"
 	"github.com/greenmaskio/greenmask/pkg/config"
-	"github.com/greenmaskio/greenmask/pkg/mysql/cmdrun/dump"
 )
 
-const (
-	engineNameMySQL    = commonmodels.DBMSEngineMySQL
-	engineNamePostgres = commonmodels.DBMSEnginePostgreSQL
-)
-
-var (
-	errUnsupportedEngine  = errors.New("unsupported DBMS engine")
-	errEngineNotSpecified = errors.New("dbms engine is not specified")
-)
+var errEngineNotSpecified = errors.New("dbms engine is not specified")
 
 func SetupContext(ctx context.Context, cfg *config.Config) context.Context {
 	ctx = log.Ctx(ctx).With().Str(commonmodels.MetaKeyEngine, string(cfg.Engine)).Logger().WithContext(ctx)
@@ -58,30 +49,18 @@ func SetupInfrastructure(cfg *config.Config) error {
 	return nil
 }
 
-func RunDumpWithContext(ctx context.Context, cfg *config.Config) error {
-	st, err := utils.GetStorage(ctx, cfg)
-	if err != nil {
-		return fmt.Errorf("get storage: %w", err)
-	}
-	switch cfg.Engine {
-	case engineNameMySQL:
-		if err := dump.RunDump(ctx, cfg, st, dump.GetMySQLDumpOpts(cfg)...); err != nil {
-			return fmt.Errorf("mysql engine dump: %w", err)
-		}
-	case engineNamePostgres:
-		panic("not implemented yet")
-	default:
-		return fmt.Errorf("engine \"%s\" is not supported: %w", cfg.Engine, errUnsupportedEngine)
-	}
-	return nil
-}
+type OutputFormat string
 
-// RunDump - runs dump for the specified DBMS engine.
-func RunDumpCmd(cfg *config.Config) error {
-	ctx := context.Background()
-	ctx = SetupContext(ctx, cfg)
-	if err := SetupInfrastructure(cfg); err != nil {
-		return fmt.Errorf("setup infrastructure: %w", err)
+const (
+	OutputFormatJSON OutputFormat = "json"
+	OutputFormatText OutputFormat = "text"
+)
+
+func (of OutputFormat) Validate() error {
+	switch of {
+	case OutputFormatJSON, OutputFormatText:
+		return nil
+	default:
+		return fmt.Errorf("format '%s': %w", of, commonmodels.ErrValueValidationFailed)
 	}
-	return RunDumpWithContext(ctx, cfg)
 }

@@ -15,12 +15,12 @@
 package main
 
 import (
-	"log"
+	"context"
 
-	"github.com/spf13/cobra"
-
-	"github.com/greenmaskio/greenmask/pkg/cmdrun"
+	"github.com/greenmaskio/greenmask/pkg/cli"
 	"github.com/greenmaskio/greenmask/pkg/common/cmd"
+	"github.com/rs/zerolog/log"
+	"github.com/spf13/cobra"
 )
 
 var (
@@ -166,8 +166,8 @@ var (
 		Use:   "dump",
 		Short: "Dump database, transform and store into storage.",
 		Run: func(cmd *cobra.Command, args []string) {
-			if err := cmdrun.RunDumpCmd(rootCmd.MustGetConfig()); err != nil {
-				log.Fatal(err)
+			if err := cli.New(rootCmd.MustGetConfig()).Dump(context.Background()); err != nil {
+				log.Fatal().Err(err).Msg("dump command failed")
 			}
 		},
 	}, dumpFlags...)

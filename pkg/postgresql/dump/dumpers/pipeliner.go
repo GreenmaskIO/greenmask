@@ -1,4 +1,4 @@
-// Copyright 2025 Greenmask
+// Copyright 2023 Greenmask
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,9 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package cmdrun provides a command initialization on the config settings.
-//
-// It injects all the dependencies in accordance to the config. For example
-// if mysql is provided then the dumper of mysql must be initialized. It might initialize
-// some common object and engine or purpose-specific.
-package cmdrun
+package dumpers
+
+import (
+	"context"
+)
+
+type Pipeliner interface {
+	Dump(ctx context.Context, data []byte) error
+	Init(ctx context.Context) error
+	Done(ctx context.Context) error
+	CompleteDump() error
+}

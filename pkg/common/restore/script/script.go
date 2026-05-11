@@ -43,6 +43,10 @@ func (s *Scheduler) Exec(
 
 type TxExec func(ctx context.Context, query string) error
 
+// TxExecBuilder opens an engine-specific DB connection for script execution.
+// Returning (nil, no-op, nil) is valid — it means no SQL scripts will run.
+type TxExecBuilder func(ctx context.Context) (TxExec, func(), error)
+
 var errNothingToExecute = errors.New("nothing to execute")
 
 type Executor struct {

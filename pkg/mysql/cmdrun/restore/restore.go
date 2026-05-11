@@ -22,13 +22,14 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"github.com/greenmaskio/greenmask/pkg/common/interfaces"
+	"github.com/greenmaskio/greenmask/pkg/common/metadata"
 	"github.com/greenmaskio/greenmask/pkg/common/models"
 	"github.com/greenmaskio/greenmask/pkg/common/restore/processor"
+	"github.com/greenmaskio/greenmask/pkg/common/restore/script"
 	"github.com/greenmaskio/greenmask/pkg/common/restore/taskmapper"
 	"github.com/greenmaskio/greenmask/pkg/common/utils"
 	"github.com/greenmaskio/greenmask/pkg/common/validationcollector"
 	"github.com/greenmaskio/greenmask/pkg/config"
-	"github.com/greenmaskio/greenmask/pkg/mysql/metadata"
 	mysqlmodels "github.com/greenmaskio/greenmask/pkg/mysql/models"
 	"github.com/greenmaskio/greenmask/pkg/mysql/restore/schema"
 	"github.com/greenmaskio/greenmask/pkg/mysql/restore/taskproducer"
@@ -177,13 +178,37 @@ func (d *Restore) Run(ctx context.Context) error {
 	}
 	sr := schema.NewRestorer(d.st, &d.cfg.Restore.MysqlConfig, d.cfg.Restore.Options.SSL, d.cmd, meta.SchemaDump, schemaOpts...)
 
+	var txExecBuilder script.TxExecBuilder
+	if len(d.cfg.Restore.Scripts) > 0 {
+		connConfig := d.connConfig
+		txExecBuilder = func(ctx context.Context) (script.TxExec, func(), error) {
+			uri, err := connConfig.URI()
+			if err != nil {
+				return nil, func() {}, fmt.Errorf("build script exec: get URI: %w", err)
+			}
+			db, err := sql.Open("mysql", uri)
+			if err != nil {
+				return nil, func() {}, fmt.Errorf("build script exec: open connection: %w", err)
+			}
+			exec := script.TxExec(func(ctx context.Context, q string) error {
+				_, err := db.ExecContext(ctx, q)
+				return err
+			})
+			return exec, func() {
+				if err := db.Close(); err != nil {
+					log.Ctx(ctx).Warn().Err(err).Msg("close script db connection")
+				}
+			}, nil
+		}
+	}
+
 	if err := processor.NewDefaultRestoreProcessor(ctx, tp, sr, processor.Config{
 		Jobs:           d.cfg.Restore.Options.Jobs,
 		RestoreInOrder: d.cfg.Restore.Options.RestoreInOrder,
 		DataOnly:       d.cfg.Restore.Options.DataOnly,
 		SchemaOnly:     d.cfg.Restore.Options.SchemaOnly,
 		Section:        d.cfg.Restore.Options.Section,
-	}, d.cfg.Restore.Scripts, d.connConfig).Run(ctx); err != nil {
+	}, d.cfg.Restore.Scripts, txExecBuilder).Run(ctx); err != nil {
 		return fmt.Errorf("run restore processor: %w", err)
 	}
 	return nil

@@ -16,11 +16,9 @@ package processor
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
 
 	"github.com/greenmaskio/greenmask/pkg/common/restore/script"
-	mysqlmodels "github.com/greenmaskio/greenmask/pkg/mysql/models"
 	"github.com/rs/zerolog/log"
 	"golang.org/x/sync/errgroup"
 
@@ -82,7 +80,7 @@ type DefaultRestoreProcessor struct {
 	sr              schemaRestorer
 	cfg             Config
 	scriptScheduler *script.Scheduler
-	connConfig      *mysqlmodels.ConnConfig
+	txExecBuilder   script.TxExecBuilder
 }
 
 func NewDefaultRestoreProcessor(
@@ -91,7 +89,7 @@ func NewDefaultRestoreProcessor(
 	sr schemaRestorer,
 	cfg Config,
 	scripts []commonmodels.Script,
-	connConfig *mysqlmodels.ConnConfig,
+	txExecBuilder script.TxExecBuilder,
 ) *DefaultRestoreProcessor {
 	cfg.SetDefault(ctx)
 	return &DefaultRestoreProcessor{
@@ -99,7 +97,7 @@ func NewDefaultRestoreProcessor(
 		sr:              sr,
 		cfg:             cfg,
 		scriptScheduler: script.NewScheduler(scripts),
-		connConfig:      connConfig,
+		txExecBuilder:   txExecBuilder,
 	}
 }
 
@@ -241,30 +239,13 @@ func (p *DefaultRestoreProcessor) dataRestore(ctx context.Context) error {
 	return nil
 }
 
-// buildTxExec opens a MySQL connection from connConfig and returns a TxExec
-// that executes SQL statements against it, plus a cleanup that closes the connection.
-// Returns (nil, no-op, nil) when connConfig is not set (no SQL scripts possible).
+// buildTxExec delegates to the engine-provided TxExecBuilder.
+// Returns (nil, no-op, nil) when no builder is set (no SQL scripts configured).
 func (p *DefaultRestoreProcessor) buildTxExec(ctx context.Context) (script.TxExec, func(), error) {
-	if p.connConfig == nil {
+	if p.txExecBuilder == nil {
 		return nil, func() {}, nil
 	}
-	uri, err := p.connConfig.URI()
-	if err != nil {
-		return nil, func() {}, fmt.Errorf("build script TxExec: get connection URI: %w", err)
-	}
-	db, err := sql.Open("mysql", uri)
-	if err != nil {
-		return nil, func() {}, fmt.Errorf("build script TxExec: open connection: %w", err)
-	}
-	exec := script.TxExec(func(ctx context.Context, query string) error {
-		_, err := db.ExecContext(ctx, query)
-		return err
-	})
-	return exec, func() {
-		if err := db.Close(); err != nil {
-			log.Ctx(ctx).Warn().Err(err).Msg("close script db connection")
-		}
-	}, nil
+	return p.txExecBuilder(ctx)
 }
 
 func (p *DefaultRestoreProcessor) restorePreDataSchema(ctx context.Context) error {

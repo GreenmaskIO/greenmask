@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/greenmaskio/greenmask/pkg/common/metadata"
 	"github.com/rs/zerolog/log"
 	"golang.org/x/sync/errgroup"
 
@@ -33,7 +34,6 @@ import (
 	"github.com/greenmaskio/greenmask/pkg/mysql/dump/introspect"
 	schemadump "github.com/greenmaskio/greenmask/pkg/mysql/dump/schema"
 	"github.com/greenmaskio/greenmask/pkg/mysql/dump/taskproducer"
-	"github.com/greenmaskio/greenmask/pkg/mysql/metadata"
 	mysqlmodels "github.com/greenmaskio/greenmask/pkg/mysql/models"
 	"github.com/greenmaskio/greenmask/pkg/mysql/pool"
 	"github.com/greenmaskio/greenmask/pkg/storages"
@@ -578,4 +578,23 @@ func (d *Dump) getKindsTopologicalOrder() map[models.ObjectKind][]models.TaskID 
 
 func (d *Dump) GetDumpID() models.DumpID {
 	return d.dumpID
+}
+
+func (d *Dump) Introspection() []models.Table {
+	if d.introsp == nil {
+		return nil
+	}
+	return d.introsp.GetCommonTables()
+}
+
+func (d *Dump) DumpSample(_ context.Context, _ bool, _ []models.TableFilter) error {
+	return nil
+}
+
+func (d *Dump) SchemaDiff(_ context.Context) error {
+	return nil
+}
+
+func (d *Dump) Warnings() []*models.ValidationWarning {
+	return nil
 }

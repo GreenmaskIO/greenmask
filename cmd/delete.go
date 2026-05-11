@@ -15,10 +15,12 @@
 package main
 
 import (
+	"context"
+
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 
-	"github.com/greenmaskio/greenmask/pkg/cmdrun"
+	"github.com/greenmaskio/greenmask/pkg/cli"
 	"github.com/greenmaskio/greenmask/pkg/common/cmd"
 )
 
@@ -107,7 +109,7 @@ func runDelete(_ *cobra.Command, args []string) {
 			"--before-date, --retain-for")
 	}
 
-	opts := cmdrun.DeleteOptions{
+	opts := cli.DeleteOptions{
 		DumpID:       dumpId,
 		RetainRecent: retainRecent,
 		PruneFailed:  pruneFailed,
@@ -117,7 +119,7 @@ func runDelete(_ *cobra.Command, args []string) {
 		DryRun:       dryRun,
 	}
 
-	if err := cmdrun.RunDelete(rootCmd.MustGetConfig(), opts); err != nil {
-		log.Fatal().Err(err).Msg("")
+	if err := cli.New(rootCmd.MustGetConfig()).ForDelete(opts).Delete(context.Background()); err != nil {
+		log.Fatal().Err(err).Msg("delete command failed")
 	}
 }

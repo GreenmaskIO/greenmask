@@ -15,12 +15,12 @@
 package main
 
 import (
-	"log"
+	"context"
 
-	"github.com/spf13/cobra"
-
-	"github.com/greenmaskio/greenmask/pkg/cmdrun"
+	"github.com/greenmaskio/greenmask/pkg/cli"
 	"github.com/greenmaskio/greenmask/pkg/common/cmd"
+	"github.com/rs/zerolog/log"
+	"github.com/spf13/cobra"
 )
 
 var (
@@ -71,16 +71,21 @@ var (
 		Use:   "list-dumps",
 		Short: "list all dumps in the storage",
 		Run: func(cmd *cobra.Command, args []string) {
-			f, err := cmdrun.NewFilter(tags, statuses)
+			f, err := cli.NewFilter(tags, statuses)
 			if err != nil {
-				log.Fatal(err)
+				log.Fatal().Err(err).Msg("list-dumps command failed")
 			}
-			fType := cmdrun.OutputFormat(listDumpsFormat)
+			fType := cli.OutputFormat(listDumpsFormat)
 			if err := fType.Validate(); err != nil {
-				log.Fatal(err)
+				log.Fatal().Err(err).Msg("list-dumps command failed")
 			}
-			if err := cmdrun.RunListDumps(rootCmd.MustGetConfig(), quiet, fType, f); err != nil {
-				log.Fatal(err)
+			if err := cli.RunListDumps(rootCmd.MustGetConfig(), quiet, fType, f); err != nil {
+				log.Fatal().Err(err).Msg("list-dumps command failed")
+			}
+			cmdRun := cli.New(rootCmd.MustGetConfig()).
+				ForListDumps(quiet, fType, f)
+			if err := cmdRun.ListDumps(context.Background()); err != nil {
+				log.Fatal().Err(err).Msg("list-dumps command failed")
 			}
 		},
 	}, listDumpsFlags...)
