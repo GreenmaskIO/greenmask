@@ -3,8 +3,8 @@ package testutils
 import (
 	"context"
 	"fmt"
+	"strings"
 
-	"github.com/docker/go-connections/nat"
 	"github.com/jackc/pgx/v5"
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/stretchr/testify/suite"
@@ -40,10 +40,11 @@ func (s *PgContainerSuite) SetupSuite() {
 			"POSTGRES_PASSWORD": testContainerPassword,
 			"POSTGRES_DB":       testContainerDatabase,
 		},
-		WaitingFor: wait.ForSQL(testContainerExposedPort, "pgx", func(host string, port nat.Port) string {
+		WaitingFor: wait.ForSQL(testContainerExposedPort, "pgx", func(host string, port string) string {
+			portNum, _, _ := strings.Cut(port, "/")
 			return fmt.Sprintf(
 				"postgres://%s:%s@%s:%s/%s?sslmode=disable",
-				testContainerUser, testContainerPassword, host, port.Port(), testContainerDatabase,
+				testContainerUser, testContainerPassword, host, portNum, testContainerDatabase,
 			)
 		}),
 	}
