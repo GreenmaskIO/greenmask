@@ -47,7 +47,7 @@ type Row struct {
 	newValues []*toolkit.RawValue
 	// columnPos - list of the column pos within the raw data
 	columnPos []*columnPos
-	// columnPos - list of the column pos within the raw data
+	// tupleSize - the number of column slots allocated in the row buffer
 	tupleSize int
 	// isDynamic - flag that indicates that row size will be determined in runtime
 	isDynamic bool
