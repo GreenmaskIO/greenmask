@@ -14,7 +14,8 @@
 
 package models
 
-type MysqlDumpRelatedSettings struct {
+type DumpScope struct {
+	AllowedDatabases []string
 	AllowedSchemas   []string
 	ExcludeTables    map[string][]string // Fully qualified db.table
 	IncludeTables    map[string][]string // Fully qualified db.table

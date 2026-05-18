@@ -52,19 +52,19 @@ func NewTableRawDumper(
 	}
 }
 
-func (t *TableRawDumper) Dump(ctx context.Context) (models.TaskStat, error) {
+func (t *TableRawDumper) Dump(ctx context.Context) (models.ObjectDumpStat, error) {
 	startedAt := time.Now()
 
 	// Stream records and transform them one by one.
 	if err := t.stream(ctx); err != nil {
-		return models.TaskStat{}, models.NewDumpError(
+		return models.ObjectDumpStat{}, models.NewDumpError(
 			t.lineNum, fmt.Errorf("stream data: %w", err),
 		)
 	}
 
 	objectDefinition, err := json.Marshal(*t.table)
 	if err != nil {
-		return models.TaskStat{}, fmt.Errorf("marshalling table definition: %w", err)
+		return models.ObjectDumpStat{}, fmt.Errorf("marshalling table definition: %w", err)
 	}
 
 	return models.NewDumpStat(

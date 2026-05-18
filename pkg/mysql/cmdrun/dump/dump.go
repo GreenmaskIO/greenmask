@@ -249,13 +249,13 @@ type Dump struct {
 	synchronizeTx         bool
 	lockTimeout           time.Duration
 	startedAt             time.Time
-	dumpStats             models.DumpStat
+	dumpStats             models.DataDumpStat
 	hbw                   *heartbeat.Worker
 	hbwEg                 *errgroup.Group
 	txPool                *pool.ConsistentTxPool
 	format                models.DumpFormat
 	cmd                   utils.CmdProducer
-	dumpedDatabaseSchema  []models.DumpedDatabaseSchemaStat
+	dumpedDatabaseSchema  []models.SchemaDumpStat
 }
 
 func NewDump(
@@ -375,8 +375,8 @@ func (d *Dump) IntrospectAndGetTables(ctx context.Context) ([]models.Table, erro
 	return d.introsp.GetCommonTables(), nil
 }
 
-func (d *Dump) SchemaDump(ctx context.Context) ([]models.DumpedDatabaseSchemaStat, error) {
-	settings := d.introsp.GetSchemaRelatedSettings()
+func (d *Dump) SchemaDump(ctx context.Context) ([]models.SchemaDumpStat, error) {
+	settings := d.introsp.GetDumpScope()
 	envs, err := d.cfg.Dump.MysqlConfig.Env()
 	if err != nil {
 		return nil, fmt.Errorf("get environment variables: %w", err)
@@ -385,7 +385,7 @@ func (d *Dump) SchemaDump(ctx context.Context) ([]models.DumpedDatabaseSchemaSta
 	vendorOptions := d.cfg.Dump.MysqlConfig.VendorOptions
 	sd := schemadump.New(d.cmd, d.st, envs, connParams, vendorOptions, settings, d.compressionEnabled, d.compressionPgzip)
 
-	var stats []models.DumpedDatabaseSchemaStat
+	var stats []models.SchemaDumpStat
 
 	if d.sectionEnabled(models.DumpSectionPreData) {
 		preDataStats, err := sd.DumpPreDataSchema(ctx)
@@ -468,7 +468,6 @@ func (d *Dump) DataDump(ctx context.Context) (err error) {
 func (d *Dump) GetDumpMetadata(completedAt time.Time) (models.Metadata, error) {
 	dataDump := models.NewDataDumpMetadata(
 		d.cfg.Dump.Transformation.ToTransformationConfig(),
-		d.getKindsTopologicalOrder(),
 		d.dumpStats,
 	)
 	schemaDump := models.NewSchemaDumpMetadata(
@@ -539,7 +538,7 @@ func (d *Dump) Run(ctx context.Context) (err error) {
 			Bool("data_only", d.dataOnly).
 			Bool("schema_only", d.schemaOnly).
 			Msg("dumping schema")
-		var schemaStats []models.DumpedDatabaseSchemaStat
+		var schemaStats []models.SchemaDumpStat
 		if schemaStats, err = d.SchemaDump(ctx); err != nil {
 			return fmt.Errorf("dump schema: %w", err)
 		}

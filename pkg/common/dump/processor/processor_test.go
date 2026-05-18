@@ -30,12 +30,12 @@ type dumpTaskMock struct {
 	mock.Mock
 }
 
-func (d *dumpTaskMock) Dump(ctx context.Context) (models.TaskStat, error) {
+func (d *dumpTaskMock) Dump(ctx context.Context) (models.ObjectDumpStat, error) {
 	args := d.Called(ctx)
 	if args.Error(1) != nil {
-		return models.TaskStat{}, args.Error(1)
+		return models.ObjectDumpStat{}, args.Error(1)
 	}
-	return args.Get(0).(models.TaskStat), args.Error(1)
+	return args.Get(0).(models.ObjectDumpStat), args.Error(1)
 }
 
 func (d *dumpTaskMock) Meta() map[string]any {
@@ -53,12 +53,12 @@ type taskProducerMock struct {
 
 func (t *taskProducerMock) Produce(
 	ctx context.Context,
-) ([]commonininterfaces.Dumper, models.RestorationContext, error) {
+) ([]commonininterfaces.ObjectDumper, models.RestorationContext, error) {
 	args := t.Called(ctx)
 	if args.Error(2) != nil {
 		return nil, models.RestorationContext{}, args.Error(2)
 	}
-	return args.Get(0).([]commonininterfaces.Dumper), args.Get(1).(models.RestorationContext), args.Error(2)
+	return args.Get(0).([]commonininterfaces.ObjectDumper), args.Get(1).(models.RestorationContext), args.Error(2)
 }
 
 func (t *taskProducerMock) Metadata(ctx context.Context) any {
@@ -73,17 +73,17 @@ func TestProcessor_Run(t *testing.T) {
 		task1.On("DebugInfo").
 			Return("task1")
 		task1.On("Dump", mock.Anything).
-			Return(models.TaskStat{}, nil)
+			Return(models.ObjectDumpStat{}, nil)
 		task2 := &dumpTaskMock{}
 		task2.On("Dump", mock.Anything).
-			Return(models.TaskStat{}, nil)
+			Return(models.ObjectDumpStat{}, nil)
 		task2.On("DebugInfo").
 			Return("task2")
 
 		tp := &taskProducerMock{}
 		// Produce the task list by the producer.
 		tp.On("Produce", mock.Anything).
-			Return([]commonininterfaces.Dumper{task1, task2}, models.RestorationContext{}, nil)
+			Return([]commonininterfaces.ObjectDumper{task1, task2}, models.RestorationContext{}, nil)
 
 		vc := validationcollector.NewCollector()
 		ctx := validationcollector.WithCollector(context.Background(), vc)

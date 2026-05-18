@@ -13,7 +13,7 @@
 // limitations under the License.
 
 // Package listtransformers provides engine-agnostic transformer discovery.
-// It maps the internal transformer registry into serialisable models suitable
+// It maps the internal transformer registry into serialisable config suitable
 // for programmatic consumption (gm-backend, REST API, CLI). All
 // formatting/printing belongs to the caller.
 package listtransformers
@@ -61,7 +61,7 @@ type TransformerItem struct {
 	Parameters  []ParameterItem `json:"parameters,omitempty"`
 }
 
-// Lister queries the transformer registry and returns structured models.
+// Lister queries the transformer registry and returns structured config.
 type Lister struct {
 	reg *registry.TransformerRegistry
 }

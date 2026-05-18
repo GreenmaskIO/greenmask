@@ -52,7 +52,7 @@ type Dumper struct {
 	envs             []string
 	mysqlParams      []string // connection/auth params only
 	vendorOptions    []string // user-specified vendor options
-	genericSettings  commonmodels.MysqlDumpRelatedSettings
+	genericSettings  commonmodels.DumpScope
 	compression      bool
 	compressionPgzip bool
 }
@@ -63,7 +63,7 @@ func New(
 	envs []string,
 	mysqlParams []string,
 	vendorOptions []string,
-	genericSettings commonmodels.MysqlDumpRelatedSettings,
+	genericSettings commonmodels.DumpScope,
 	compression bool,
 	compressionPgzip bool,
 ) *Dumper {
@@ -155,8 +155,8 @@ func (d *Dumper) getPostDataCliParameters(dbname string) []string {
 
 // DumpPreDataSchema dumps the pre-data section (tables, views — no triggers/routines/events)
 // for every allowed schema.
-func (d *Dumper) DumpPreDataSchema(ctx context.Context) ([]commonmodels.DumpedDatabaseSchemaStat, error) {
-	res := make([]commonmodels.DumpedDatabaseSchemaStat, 0, len(d.genericSettings.AllowedSchemas))
+func (d *Dumper) DumpPreDataSchema(ctx context.Context) ([]commonmodels.SchemaDumpStat, error) {
+	res := make([]commonmodels.SchemaDumpStat, 0, len(d.genericSettings.AllowedSchemas))
 	for _, dbname := range d.genericSettings.AllowedSchemas {
 		stat, err := d.dumpDatabaseSection(ctx, dbname, commonmodels.DumpSectionPreData)
 		if err != nil {
@@ -169,8 +169,8 @@ func (d *Dumper) DumpPreDataSchema(ctx context.Context) ([]commonmodels.DumpedDa
 
 // DumpPostDataSchema dumps the post-data section (triggers, routines, events)
 // for every allowed schema.
-func (d *Dumper) DumpPostDataSchema(ctx context.Context) ([]commonmodels.DumpedDatabaseSchemaStat, error) {
-	res := make([]commonmodels.DumpedDatabaseSchemaStat, 0, len(d.genericSettings.AllowedSchemas))
+func (d *Dumper) DumpPostDataSchema(ctx context.Context) ([]commonmodels.SchemaDumpStat, error) {
+	res := make([]commonmodels.SchemaDumpStat, 0, len(d.genericSettings.AllowedSchemas))
 	for _, dbname := range d.genericSettings.AllowedSchemas {
 		stat, err := d.dumpDatabaseSection(ctx, dbname, commonmodels.DumpSectionPostData)
 		if err != nil {
@@ -185,7 +185,7 @@ func (d *Dumper) dumpDatabaseSection(
 	ctx context.Context,
 	dbname string,
 	section commonmodels.DumpSection,
-) (commonmodels.DumpedDatabaseSchemaStat, error) {
+) (commonmodels.SchemaDumpStat, error) {
 	// Resolve CLI params before creating the pipe. An unknown-section error
 	// here would otherwise leave w and r unclosed (pipe-end leak).
 	var params []string
@@ -195,7 +195,7 @@ func (d *Dumper) dumpDatabaseSection(
 	case commonmodels.DumpSectionPostData:
 		params = d.getPostDataCliParameters(dbname)
 	default:
-		return commonmodels.DumpedDatabaseSchemaStat{}, fmt.Errorf("unknown schema section: %s", section)
+		return commonmodels.SchemaDumpStat{}, fmt.Errorf("unknown schema section: %s", section)
 	}
 
 	var r utils.CountReadCloser
@@ -250,7 +250,7 @@ func (d *Dumper) dumpDatabaseSection(
 	})
 
 	if err := eg.Wait(); err != nil {
-		return commonmodels.DumpedDatabaseSchemaStat{}, err
+		return commonmodels.SchemaDumpStat{}, err
 	}
 
 	compression := commonmodels.CompressionNone
@@ -261,7 +261,7 @@ func (d *Dumper) dumpDatabaseSection(
 		}
 	}
 
-	return commonmodels.DumpedDatabaseSchemaStat{
+	return commonmodels.SchemaDumpStat{
 		DatabaseName:   dbname,
 		FileName:       fileName,
 		Section:        section,

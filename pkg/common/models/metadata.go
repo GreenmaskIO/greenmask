@@ -21,6 +21,13 @@ import (
 // TaskID - global unique identifier for objects the object that are stored in the system.
 type TaskID int
 
+type TaskIDSequence TaskID
+
+func (m *TaskIDSequence) Next() TaskID {
+	*m = *m + 1
+	return TaskID(*m + 1)
+}
+
 type RestorationItem struct {
 	TaskID           TaskID      `json:"task_id"`
 	Filename         string      `json:"filename"`
@@ -37,6 +44,7 @@ type RestorationContext struct {
 	RestorationOrder         []TaskID            `json:"restoration_order"`
 	TaskDependencies         map[TaskID][]TaskID `json:"dependencies"`
 	TableIDToAffectedColumns map[ObjectID][]int  `json:"table_id_to_affected_columns"`
+	TopologicalOrder         []TaskID
 }
 
 type TableMetadata struct {
@@ -70,43 +78,40 @@ type DataSectionEntry struct {
 }
 
 type DataDumpMetadata struct {
-	Transformers          []TableConfig           `yaml:"transformers" json:"transformers"`
-	KindsTopologicalOrder map[ObjectKind][]TaskID `yaml:"kinds_topological_order" json:"kinds_topological_order"`
-	DumpStat              DumpStat                `yaml:"dump_stat" json:"dump_stat"`
-	OriginalSize          int64                   `yaml:"original_size" json:"original_size"`
-	CompressedSize        int64                   `yaml:"compressed_size" json:"compressed_size"`
+	Transformers   []TableConfig `yaml:"transformers" json:"transformers"`
+	DumpStat       DataDumpStat  `yaml:"dump_stat" json:"dump_stat"`
+	OriginalSize   int64         `yaml:"original_size" json:"original_size"`
+	CompressedSize int64         `yaml:"compressed_size" json:"compressed_size"`
 }
 
 func NewDataDumpMetadata(
 	transformers []TableConfig,
-	kindsTopologicalOrder map[ObjectKind][]TaskID,
-	dumpStat DumpStat,
+	dataDumpStat DataDumpStat,
 ) *DataDumpMetadata {
-	if len(dumpStat.TaskStats) == 0 {
+	if len(dataDumpStat.TaskStats) == 0 {
 		return nil
 	}
 	var originalSize, compressedSize int64
-	for _, stat := range dumpStat.TaskStats {
+	for _, stat := range dataDumpStat.TaskStats {
 		originalSize += stat.ObjectStat.OriginalSize
 		compressedSize += stat.ObjectStat.CompressedSize
 	}
 	return &DataDumpMetadata{
-		Transformers:          transformers,
-		KindsTopologicalOrder: kindsTopologicalOrder,
-		DumpStat:              dumpStat,
-		OriginalSize:          originalSize,
-		CompressedSize:        compressedSize,
+		Transformers:   transformers,
+		DumpStat:       dataDumpStat,
+		OriginalSize:   originalSize,
+		CompressedSize: compressedSize,
 	}
 }
 
 type SchemaDumpMetadata struct {
-	DumpedDatabaseSchema []DumpedDatabaseSchemaStat `yaml:"dumped_database_schema" json:"dumped_database_schema"`
-	OriginalSize         int64                      `yaml:"original_size" json:"original_size"`
-	CompressedSize       int64                      `yaml:"compressed_size" json:"compressed_size"`
+	DumpedDatabaseSchema []SchemaDumpStat `yaml:"dumped_database_schema" json:"dumped_database_schema"`
+	OriginalSize         int64            `yaml:"original_size" json:"original_size"`
+	CompressedSize       int64            `yaml:"compressed_size" json:"compressed_size"`
 }
 
 func NewSchemaDumpMetadata(
-	dumpedDatabaseSchema []DumpedDatabaseSchemaStat,
+	dumpedDatabaseSchema []SchemaDumpStat,
 ) *SchemaDumpMetadata {
 	if len(dumpedDatabaseSchema) == 0 {
 		return nil
@@ -131,7 +136,7 @@ type Metadata struct {
 	CompressedSize int64               `yaml:"compressed_size" json:"compressed_size"`
 	Description    string              `yaml:"description" json:"description"`
 	Tags           []string            `yaml:"tags" json:"tags"`
-	Introspection  []Table             `yaml:"introspection" json:"introspection"`
+	Introspection  IntrospectionResult `yaml:"introspection" json:"introspection"`
 	DataDump       *DataDumpMetadata   `yaml:"data_dump" json:"data_dump"`
 	SchemaDump     *SchemaDumpMetadata `yaml:"schema_dump" json:"schema_dump"`
 	Databases      []string            `yaml:"databases" json:"databases"`
@@ -143,7 +148,7 @@ func NewMetadata(
 	completedAt time.Time,
 	description string,
 	tags []string,
-	introspection []Table,
+	introspection IntrospectionResult,
 	dataDump *DataDumpMetadata,
 	schemaDump *SchemaDumpMetadata,
 	databases []string,

@@ -20,8 +20,14 @@ import (
 	commonmodels "github.com/greenmaskio/greenmask/pkg/common/models"
 )
 
-type Dumper interface {
-	Dump(ctx context.Context) (commonmodels.TaskStat, error)
+type ObjectDumper interface {
+	Dump(ctx context.Context) (commonmodels.ObjectDumpStat, error)
+	DebugInfo() string
+	Meta() map[string]any
+}
+
+type SchemaDumper interface {
+	Dump(ctx context.Context) (commonmodels.SchemaDumpStat, error)
 	DebugInfo() string
 	Meta() map[string]any
 }

@@ -130,7 +130,7 @@ func TestTransformerBase_Init(t *testing.T) {
 
 		tableCond := &whenMock{}
 
-		tableContext := &dumpcontext.TableContext{
+		tableContext := &dumpcontext.TableDumpContextPayload{
 			Table: &table,
 			TransformerContext: []*dumpcontext.TransformerContext{
 				tranCtx1,
@@ -229,7 +229,7 @@ func TestTransformerBase_Transform(t *testing.T) {
 		tableCond.On("Evaluate", mock.Anything).
 			Return(true, nil)
 
-		tableContext := &dumpcontext.TableContext{
+		tableContext := &dumpcontext.TableDumpContextPayload{
 			Table: &table,
 			TransformerContext: []*dumpcontext.TransformerContext{
 				tranCtx1,
@@ -325,7 +325,7 @@ func TestTransformerBase_Transform(t *testing.T) {
 		tableCond.On("Evaluate", mock.Anything).
 			Return(true, nil)
 
-		tableContext := &dumpcontext.TableContext{
+		tableContext := &dumpcontext.TableDumpContextPayload{
 			Table: &table,
 			TransformerContext: []*dumpcontext.TransformerContext{
 				tranCtx1,

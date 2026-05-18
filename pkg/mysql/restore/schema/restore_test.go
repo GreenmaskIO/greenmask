@@ -64,7 +64,7 @@ func (s *restoreSuite) TestRestorer_RestoreSchema() {
 	s.Require().NoError(err)
 	defer r.Close()
 	schemaMeta := &commonmodels.SchemaDumpMetadata{
-		DumpedDatabaseSchema: []commonmodels.DumpedDatabaseSchemaStat{
+		DumpedDatabaseSchema: []commonmodels.SchemaDumpStat{
 			{
 				DatabaseName: "testdb",
 				FileName:     "schema_testdb.sql",

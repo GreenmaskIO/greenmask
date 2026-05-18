@@ -30,6 +30,12 @@ type DB interface {
 type Introspector interface {
 	GetCommonTables() []commonmodels.Table
 	Introspect(ctx context.Context, tx DB) error
-	GetSchemaRelatedSettings() commonmodels.MysqlDumpRelatedSettings
+	GetDumpScope() commonmodels.DumpScope
 	GetMatchedDatabases() []string
+}
+
+type IntrospectorV2 interface {
+	// Introspect - receives transaction that has been started with synchronized snapshot
+	// and returns introspection results. Introspector does not roll transaction back
+	Introspect(ctx context.Context, tx DB) (commonmodels.IntrospectionResult, error)
 }

@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package streamers
+package table
 
 import (
 	"context"
@@ -153,7 +153,7 @@ func (t *TableDataWriter) Close(_ context.Context) error {
 	return nil
 }
 
-func (t *TableDataWriter) Stat() models.ObjectStat {
+func (t *TableDataWriter) Stat() models.DumpedObjectStat {
 	if t.cw == nil {
 		panic("writer is not opened")
 	}

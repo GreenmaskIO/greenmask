@@ -91,7 +91,7 @@ func TestProducer_Produce(t *testing.T) {
 		//		newFunc,
 		//		parameters.MustNewParameterDefinition("Test", "test desc").
 		//			SetColumnProperties(
-		//				models.NewColumnProperties().
+		//				config.NewColumnProperties().
 		//					SetAllowedColumnTypes("int"),
 		//			),
 		//	),

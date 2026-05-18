@@ -26,6 +26,12 @@ type ObjectKind string
 
 const (
 	ObjectKindTable ObjectKind = "table"
+
+	ObjectKindPostgresTable    ObjectKind = "pg.table"
+	ObjectKindPostgresSequence ObjectKind = "pg.sequence"
+	ObjectKindPostgresBlobs    ObjectKind = "pg.large_objects"
+
+	ObjectKindMysqlTable ObjectKind = "pg.table"
 )
 
 type Compression string
@@ -71,15 +77,15 @@ func (f DumpFormat) Validate() error {
 	}
 }
 
-type DumpStat struct {
+type DataDumpStat struct {
 	RestorationContext RestorationContext                 `json:"restoration_context"`
 	RestorationItems   map[TaskID]RestorationItem         `json:"restoration_items"`
-	TaskStats          map[TaskID]TaskStat                `json:"task_stats"`
+	TaskStats          map[TaskID]ObjectDumpStat          `json:"task_stats"`
 	TaskID2ObjectID    map[ObjectKind]map[TaskID]ObjectID `json:"task_id_2_object_id"`
 	ObjectID2TaskID    map[ObjectKind]map[ObjectID]TaskID `json:"object_id_2_task_id"`
 }
 
-type ObjectStat struct {
+type DumpedObjectStat struct {
 	Engine          DBMSEngine  `json:"engine"`
 	ID              ObjectID    `json:"id"`
 	Kind            ObjectKind  `json:"kind"`
@@ -101,8 +107,8 @@ func NewObjectStat(
 	fileName string,
 	compression Compression,
 	format DumpFormat,
-) ObjectStat {
-	return ObjectStat{
+) DumpedObjectStat {
+	return DumpedObjectStat{
 		Engine:          engine,
 		Kind:            kind,
 		ID:              id,
@@ -115,27 +121,27 @@ func NewObjectStat(
 	}
 }
 
-type TaskStat struct {
-	ObjectStat  ObjectStat    `json:"object_stat"`
-	ID          TaskID        `json:"id"`
-	Engine      DBMSEngine    `json:"engine"`
-	Duration    time.Duration `json:"duration"`
-	DumperType  string        `json:"dumper_type"`
-	RecordCount int64         `json:"record_count"`
+type ObjectDumpStat struct {
+	ObjectStat  DumpedObjectStat `json:"object_stat"`
+	ID          TaskID           `json:"id"`
+	Engine      DBMSEngine       `json:"engine"`
+	Duration    time.Duration    `json:"duration"`
+	DumperType  string           `json:"dumper_type"`
+	RecordCount int64            `json:"record_count"`
 	// ObjectDefinition - definition of the object in JSON bytes.
 	ObjectDefinition []byte `json:"table"`
 }
 
 func NewDumpStat(
 	taskID TaskID,
-	objectStat ObjectStat,
+	objectStat DumpedObjectStat,
 	duration time.Duration,
 	dumperType string,
 	recordCount int64,
 	engine DBMSEngine,
 	objectDefinition []byte,
-) TaskStat {
-	return TaskStat{
+) ObjectDumpStat {
+	return ObjectDumpStat{
 		ID:               taskID,
 		ObjectStat:       objectStat,
 		Duration:         duration,
@@ -152,6 +158,7 @@ const (
 	DumpSectionPreData  DumpSection = "pre-data"
 	DumpSectionPostData DumpSection = "post-data"
 	DumpSectionData     DumpSection = "data"
+	DumpSectionAll      DumpSection = "all"
 )
 
 func (m DumpSection) Validate() error {
@@ -163,7 +170,8 @@ func (m DumpSection) Validate() error {
 	}
 }
 
-type DumpedDatabaseSchemaStat struct {
+type SchemaDumpStat struct {
+	TaskID         TaskID      `json:"task_id"`
 	DatabaseName   string      `json:"database_name"`
 	FileName       string      `json:"file_name"`
 	Section        DumpSection `json:"section"`

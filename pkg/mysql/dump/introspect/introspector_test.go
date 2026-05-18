@@ -698,7 +698,7 @@ func (s *mysqlSuite) TestIntrospector_GetSchemaRelatedSettings() {
 		i.tm, err2 = newObjectMatcher(opt)
 		s.Require().NoError(err2)
 
-		settings := i.GetSchemaRelatedSettings()
+		settings := i.GetDumpScope()
 
 		s.Equal([]string{"testdb"}, settings.AllowedSchemas)
 
@@ -735,7 +735,7 @@ func (s *mysqlSuite) TestIntrospector_GetSchemaRelatedSettings() {
 		i.tm, err2 = newObjectMatcher(opt)
 		s.Require().NoError(err2)
 
-		settings := i.GetSchemaRelatedSettings()
+		settings := i.GetDumpScope()
 
 		s.Equal([]string{"testdb"}, settings.AllowedSchemas)
 

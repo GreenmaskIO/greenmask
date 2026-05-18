@@ -46,9 +46,9 @@ func (tc *TransformerContext) EvaluateWhen(r interfaces.Recorder) (bool, error) 
 	return tc.Condition.Evaluate(r)
 }
 
-// TableContext - everything related to the table that must be applied for a record.
+// TableDumpContextPayload - everything related to the table that must be applied for a record.
 // It contains table, transformers, dump query, table driver and conditions.
-type TableContext struct {
+type TableDumpContextPayload struct {
 	Table              *commonmodels.Table
 	TransformerContext []*TransformerContext
 	// Condition - table level condition to evaluate before applying any transformers.
@@ -57,11 +57,11 @@ type TableContext struct {
 	TableDriver interfaces.TableDriver
 }
 
-func (tc *TableContext) HasTransformer() bool {
+func (tc *TableDumpContextPayload) HasTransformer() bool {
 	return len(tc.TransformerContext) > 0
 }
 
-func (tc *TableContext) GetAffectedColumns() []int {
+func (tc *TableDumpContextPayload) GetAffectedColumns() []int {
 	affectedColumns := make(map[int]struct{})
 	for _, transformerCtx := range tc.TransformerContext {
 		ac := transformerCtx.Transformer.GetAffectedColumns()
@@ -75,7 +75,7 @@ func (tc *TableContext) GetAffectedColumns() []int {
 	}
 	return res
 }
-func (tc *TableContext) EvaluateWhen(r interfaces.Recorder) (bool, error) {
+func (tc *TableDumpContextPayload) EvaluateWhen(r interfaces.Recorder) (bool, error) {
 	if tc.Condition == nil {
 		return true, nil
 	}

@@ -22,12 +22,12 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// col is a helper to build a models.Column concisely.
+// col is a helper to build a config.Column concisely.
 func col(idx int, name string, typeOID models.VirtualOID, typeName string) models.Column {
 	return models.Column{Idx: idx, Name: name, TypeOID: typeOID, TypeName: typeName}
 }
 
-// mkTable is a helper to build a models.Table concisely.
+// mkTable is a helper to build a config.Table concisely.
 func mkTable(id int, schema, name string, cols ...models.Column) models.Table {
 	return models.Table{ID: id, Schema: schema, Name: name, Columns: cols}
 }

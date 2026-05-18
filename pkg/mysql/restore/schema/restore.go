@@ -198,7 +198,7 @@ func (r *Restorer) RestorePostDataSchema(ctx context.Context) error {
 	return nil
 }
 
-func (r *Restorer) restoreDatabaseSchema(ctx context.Context, schemaStat commonmodels.DumpedDatabaseSchemaStat) error {
+func (r *Restorer) restoreDatabaseSchema(ctx context.Context, schemaStat commonmodels.SchemaDumpStat) error {
 	target := r.remapDB(schemaStat.DatabaseName)
 	log.Ctx(ctx).Info().
 		Str("Database", schemaStat.DatabaseName).

@@ -39,7 +39,7 @@ type NewTableDriverFunc func(
 	columnsTypeOverride map[string]string,
 ) (interfaces.TableDriver, error)
 
-// TableContextBuilder - produces list of TableContext that will be used in the task producer.
+// TableContextBuilder - produces list of TableDumpContextPayload that will be used in the task producer.
 type TableContextBuilder struct {
 	tables              []models.Table
 	dumpQueries         []string
@@ -77,10 +77,10 @@ func withSalt(ctx context.Context) (context.Context, error) {
 	return utils.WithSalt(ctx, salt), nil
 }
 
-// Build - returns list of TableContext objects that are used in the TaskProducer interface.
-func (p *TableContextBuilder) Build(ctx context.Context) ([]TableContext, error) {
+// Build - returns list of TableDumpContextPayload objects that are used in the TaskProducer interface.
+func (p *TableContextBuilder) Build(ctx context.Context) ([]TableDumpContextPayload, error) {
 	var err error
-	tableRuntimes := make([]TableContext, len(p.tables))
+	tableRuntimes := make([]TableDumpContextPayload, len(p.tables))
 	ctx, err = withSalt(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("set salt: %w", err)
@@ -108,27 +108,27 @@ func (p *TableContextBuilder) initTable(
 	table models.Table,
 	tableConfig models.TableConfig,
 	dumpQueries string,
-) (TableContext, error) {
+) (TableDumpContextPayload, error) {
 	ctx = log.Ctx(ctx).With().
 		Str(models.MetaKeyTableSchema, table.Schema).
 		Str(models.MetaKeyTableName, table.Name).
 		Logger().WithContext(ctx)
 	driver, err := p.newTableDriver(ctx, table, tableConfig.ColumnsTypeOverride)
 	if err != nil {
-		return TableContext{}, fmt.Errorf("new driver: %w", err)
+		return TableDumpContextPayload{}, fmt.Errorf("new driver: %w", err)
 	}
 	if dumpQueries == "" && tableConfig.Query != "" {
 		dumpQueries = tableConfig.Query
 	}
 	tableCondition, err := p.compileTableCondition(ctx, utils.Value(driver.Table()), tableConfig)
 	if err != nil {
-		return TableContext{}, fmt.Errorf("compile table condition: %w", err)
+		return TableDumpContextPayload{}, fmt.Errorf("compile table condition: %w", err)
 	}
 	transformationRuntimes, err := p.initTableTransformers(ctx, driver, tableConfig.Transformers)
 	if err != nil {
-		return TableContext{}, fmt.Errorf("init transformation runtimes: %w", err)
+		return TableDumpContextPayload{}, fmt.Errorf("init transformation runtimes: %w", err)
 	}
-	return TableContext{
+	return TableDumpContextPayload{
 		Table:              &table,
 		Condition:          tableCondition,
 		TransformerContext: transformationRuntimes,

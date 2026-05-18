@@ -1,4 +1,4 @@
-package streamers
+package table
 
 import (
 	"bytes"

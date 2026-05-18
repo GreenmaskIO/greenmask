@@ -33,7 +33,7 @@ const (
 
 type taskProducer interface {
 	Produce(ctx context.Context) (
-		[]interfaces.Dumper,
+		[]interfaces.ObjectDumper,
 		models.RestorationContext,
 		error,
 	)
@@ -42,8 +42,8 @@ type taskProducer interface {
 type DefaultDumpProcessor struct {
 	tp        taskProducer
 	jobs      int
-	taskList  []interfaces.Dumper
-	taskStats map[models.TaskID]models.TaskStat
+	taskList  []interfaces.ObjectDumper
+	taskStats map[models.TaskID]models.ObjectDumpStat
 	mx        sync.Mutex
 }
 
@@ -63,7 +63,7 @@ func NewDefaultDataDumpProcessor(
 	res := &DefaultDumpProcessor{
 		tp:        tp,
 		jobs:      defaultJobCount,
-		taskStats: make(map[models.TaskID]models.TaskStat),
+		taskStats: make(map[models.TaskID]models.ObjectDumpStat),
 	}
 	for _, opt := range opts {
 		if err := opt(res); err != nil {
@@ -76,16 +76,16 @@ func NewDefaultDataDumpProcessor(
 // Run - runs the dump command
 func (dr *DefaultDumpProcessor) Run(
 	ctx context.Context,
-) (models.DumpStat, error) {
+) (models.DataDumpStat, error) {
 	var err error
 	var restorationContext models.RestorationContext
 	dr.taskList, restorationContext, err = dr.tp.Produce(ctx)
 	if err != nil {
-		return models.DumpStat{}, fmt.Errorf("produce tasks: %w", err)
+		return models.DataDumpStat{}, fmt.Errorf("produce tasks: %w", err)
 	}
 
 	if err := dr.dataDump(ctx); err != nil {
-		return models.DumpStat{}, fmt.Errorf("data dump: %w", err)
+		return models.DataDumpStat{}, fmt.Errorf("data dump: %w", err)
 	}
 	taskID2ObjectID := make(map[models.ObjectKind]map[models.TaskID]models.ObjectID)
 	objectID2TaskID := make(map[models.ObjectKind]map[models.ObjectID]models.TaskID)
@@ -115,7 +115,7 @@ func (dr *DefaultDumpProcessor) Run(
 			Compression:      s.ObjectStat.Compression,
 		}
 	}
-	return models.DumpStat{
+	return models.DataDumpStat{
 		RestorationContext: restorationContext,
 		TaskStats:          dr.taskStats,
 		TaskID2ObjectID:    taskID2ObjectID,
@@ -125,7 +125,7 @@ func (dr *DefaultDumpProcessor) Run(
 }
 
 func (dr *DefaultDumpProcessor) dataDump(ctx context.Context) error {
-	tasks := make(chan interfaces.Dumper, dr.jobs)
+	tasks := make(chan interfaces.ObjectDumper, dr.jobs)
 
 	log.Ctx(ctx).Debug().Msgf("planned %d workers", dr.jobs)
 	done := make(chan struct{})
@@ -143,7 +143,7 @@ func (dr *DefaultDumpProcessor) dataDump(ctx context.Context) error {
 }
 
 // taskProducer - produces tasks and sends them to tasks channel.
-func (dr *DefaultDumpProcessor) taskProducer(ctx context.Context, tasks chan<- interfaces.Dumper) func() error {
+func (dr *DefaultDumpProcessor) taskProducer(ctx context.Context, tasks chan<- interfaces.ObjectDumper) func() error {
 	return func() error {
 		defer close(tasks)
 		for _, t := range dr.taskList {
@@ -162,7 +162,7 @@ func (dr *DefaultDumpProcessor) taskProducer(ctx context.Context, tasks chan<- i
 // It waits until all the workers are done and then closes the done channel to signal the end.
 func (dr *DefaultDumpProcessor) dumpWorkerPlanner(
 	ctx context.Context,
-	tasks <-chan interfaces.Dumper,
+	tasks <-chan interfaces.ObjectDumper,
 	done chan struct{},
 ) func() error {
 	return func() error {
@@ -182,7 +182,7 @@ func (dr *DefaultDumpProcessor) dumpWorkerPlanner(
 
 // dumpWorkerRunner - runs dumpWorker or validateDumpWorker depending on the mode.
 func (dr *DefaultDumpProcessor) dumpWorkerRunner(
-	ctx context.Context, tasks <-chan interfaces.Dumper, jobId int,
+	ctx context.Context, tasks <-chan interfaces.ObjectDumper, jobId int,
 ) func() error {
 	return func() error {
 		return dr.dumpWorker(ctx, tasks, jobId)
@@ -192,11 +192,11 @@ func (dr *DefaultDumpProcessor) dumpWorkerRunner(
 // dumpWorker - runs a dumpWorker that consumes tasks from tasks channel and executes them.
 func (dr *DefaultDumpProcessor) dumpWorker(
 	ctx context.Context,
-	tasks <-chan interfaces.Dumper,
+	tasks <-chan interfaces.ObjectDumper,
 	id int,
 ) error {
 	for {
-		var task interfaces.Dumper
+		var task interfaces.ObjectDumper
 		var ok bool
 		select {
 		case <-ctx.Done():

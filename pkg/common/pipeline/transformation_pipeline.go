@@ -26,10 +26,10 @@ import (
 )
 
 type TransformationPipeline struct {
-	tableContext *dumpcontext.TableContext
+	tableContext *dumpcontext.TableDumpContextPayload
 }
 
-func NewTransformationPipeline(tableContext *dumpcontext.TableContext) *TransformationPipeline {
+func NewTransformationPipeline(tableContext *dumpcontext.TableDumpContextPayload) *TransformationPipeline {
 	return &TransformationPipeline{
 		tableContext: tableContext,
 	}

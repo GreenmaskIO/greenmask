@@ -146,7 +146,9 @@ type MysqlDumpConfig struct {
 }
 
 type PostgresqlDumpConfig struct {
-	Options any `mapstructure:"options" yaml:"options" json:"options"`
+	VendorOptions          []string `mapstructure:"vendor-options" json:"vendor_options,omitempty"`
+	SerializableDeferrable bool     `mapstructure:"serializable-deferrable"`
+	Snapshot               string   `mapstructure:"snapshot"`
 }
 
 type CommonDumpOptions struct {

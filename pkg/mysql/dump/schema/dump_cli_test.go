@@ -34,7 +34,7 @@ func newTestDumper(st *mocks.StorageMock, vendorOptions []string) *Dumper {
 		[]string{"_TEST=1"},
 		[]string{},
 		vendorOptions,
-		commonmodels.MysqlDumpRelatedSettings{
+		commonmodels.DumpScope{
 			AllowedSchemas: []string{"testdb"},
 			IncludeTables:  map[string][]string{"testdb": nil},
 		},

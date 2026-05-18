@@ -86,11 +86,11 @@ func (i *Introspector) GetTables() []mysqlmodels.Table {
 	return i.tables
 }
 
-// GetSchemaRelatedSettings - generates the GenericSchemaRelatedSettings based on the introspected tables and the
+// GetDumpScope - generates the GetDumpScope based on the introspected tables and the
 // user's filter settings. This is required to implement a bridge between vendor clike tools (e.g. mysqldump) and
 // greenmask's internal filtering and dumping logic.
-func (i *Introspector) GetSchemaRelatedSettings() commonmodels.MysqlDumpRelatedSettings {
-	res := commonmodels.MysqlDumpRelatedSettings{
+func (i *Introspector) GetDumpScope() commonmodels.DumpScope {
+	res := commonmodels.DumpScope{
 		ExcludeTables:    make(map[string][]string),
 		IncludeTables:    make(map[string][]string),
 		ExcludeTableData: make(map[string][]string),

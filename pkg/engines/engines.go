@@ -40,7 +40,7 @@ type Dumper interface {
 	StopHBWorker(ctx context.Context, err error) error
 	Introspect(ctx context.Context) error
 	IntrospectAndGetTables(ctx context.Context) ([]models.Table, error)
-	SchemaDump(ctx context.Context) ([]models.DumpedDatabaseSchemaStat, error)
+	SchemaDump(ctx context.Context) ([]models.SchemaDumpStat, error)
 	DataDump(ctx context.Context) error
 	GetDumpMetadata(completedAt time.Time) (models.Metadata, error)
 	WriteMetadata(ctx context.Context) error

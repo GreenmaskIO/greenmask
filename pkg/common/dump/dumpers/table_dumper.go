@@ -86,13 +86,13 @@ func NewTableDumper(
 	return res, nil
 }
 
-func (t *TableDumper) Dump(ctx context.Context) (models.TaskStat, error) {
+func (t *TableDumper) Dump(ctx context.Context) (models.ObjectDumpStat, error) {
 	startedAt := time.Now()
 	// Initialize transformation pipeline.
 	// It gets transformers ready to transform. For example if external transformer
 	// is used then it starts its process.
 	if err := t.pipeline.Init(ctx); err != nil {
-		return models.TaskStat{}, models.NewDumpError(
+		return models.ObjectDumpStat{}, models.NewDumpError(
 			t.lineNum, fmt.Errorf("init transformation pipeline: %w", err),
 		)
 	}
@@ -109,14 +109,14 @@ func (t *TableDumper) Dump(ctx context.Context) (models.TaskStat, error) {
 
 	// Stream records and transform them one by one.
 	if err := t.streamRecords(ctx); err != nil {
-		return models.TaskStat{}, models.NewDumpError(
+		return models.ObjectDumpStat{}, models.NewDumpError(
 			t.lineNum, fmt.Errorf("stream data: %w", err),
 		)
 	}
 
 	objectDefinition, err := json.Marshal(*t.table)
 	if err != nil {
-		return models.TaskStat{}, fmt.Errorf("marshalling table definition: %w", err)
+		return models.ObjectDumpStat{}, fmt.Errorf("marshalling table definition: %w", err)
 	}
 
 	return models.NewDumpStat(

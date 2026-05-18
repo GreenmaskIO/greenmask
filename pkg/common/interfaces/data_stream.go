@@ -39,5 +39,5 @@ type RowStreamWriter interface {
 	Close(ctx context.Context) error
 	// Stat - returns a statistic of written and compressed data
 	// and some additional info.
-	Stat() models.ObjectStat
+	Stat() models.DumpedObjectStat
 }
