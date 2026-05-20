@@ -16,16 +16,9 @@ package interfaces
 
 import (
 	"context"
-	"database/sql"
 
 	commonmodels "github.com/greenmaskio/greenmask/pkg/common/models"
 )
-
-type DB interface {
-	QueryContext(ctx context.Context, query string, args ...any) (*sql.Rows, error)
-	ExecContext(ctx context.Context, query string, args ...any) (sql.Result, error)
-	QueryRowContext(ctx context.Context, query string, args ...any) *sql.Row
-}
 
 type Introspector interface {
 	GetCommonTables() []commonmodels.Table

@@ -11,6 +11,15 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
+type DumpStages struct {
+	Introspector           interfaces.IntrospectorV2
+	DependencyGraphBuilder DependencyGraphBuilder
+	SubsetBuilder          SubsetBuilder
+	DumpContextBuilder     DumpContextBuilder
+	DumpPlanBuilder        DumpPlanBuilder
+	DumpProcessor          DumpProcessor
+}
+
 type DefaultDumpProcessorV2 struct {
 	objectDumpFactory interfaces.ObjectDumpFactoryRegistry
 	schemaDumpFactory interfaces.SchemaDumpFactoryRegistry

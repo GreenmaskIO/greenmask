@@ -6,6 +6,6 @@ import (
 	commonmodels "github.com/greenmaskio/greenmask/pkg/common/models"
 )
 
-type DumpPlanner interface {
-	BuildPlan(ctx context.Context, result commonmodels.IntrospectionResult) (commonmodels.DumpPlan, error)
+type RestorationContextBuilder interface {
+	BuildRestorationContext(ctx context.Context, result commonmodels.DumpContext) (commonmodels.RestorationContext, error)
 }

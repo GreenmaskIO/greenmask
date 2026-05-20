@@ -129,17 +129,18 @@ func NewSchemaDumpMetadata(
 }
 
 type Metadata struct {
-	Engine         DBMSEngine          `yaml:"engine" json:"engine"`
-	StartedAt      time.Time           `yaml:"started_at" json:"started_at"`
-	CompletedAt    time.Time           `yaml:"completed_at" json:"completed_at"`
-	OriginalSize   int64               `yaml:"original_size" json:"original_size"`
-	CompressedSize int64               `yaml:"compressed_size" json:"compressed_size"`
-	Description    string              `yaml:"description" json:"description"`
-	Tags           []string            `yaml:"tags" json:"tags"`
-	Introspection  IntrospectionResult `yaml:"introspection" json:"introspection"`
-	DataDump       *DataDumpMetadata   `yaml:"data_dump" json:"data_dump"`
-	SchemaDump     *SchemaDumpMetadata `yaml:"schema_dump" json:"schema_dump"`
-	Databases      []string            `yaml:"databases" json:"databases"`
+	Engine              DBMSEngine          `yaml:"engine" json:"engine"`
+	StartedAt           time.Time           `yaml:"started_at" json:"started_at"`
+	CompletedAt         time.Time           `yaml:"completed_at" json:"completed_at"`
+	OriginalSize        int64               `yaml:"original_size" json:"original_size"`
+	CompressedSize      int64               `yaml:"compressed_size" json:"compressed_size"`
+	Description         string              `yaml:"description" json:"description"`
+	Tags                []string            `yaml:"tags" json:"tags"`
+	Introspection       IntrospectionResult `yaml:"introspection" json:"introspection"`
+	DataDump            *DataDumpMetadata   `yaml:"data_dump" json:"data_dump"`
+	SchemaDump          *SchemaDumpMetadata `yaml:"schema_dump" json:"schema_dump"`
+	Databases           []string            `yaml:"databases" json:"databases"`
+	DumpContextSnapshot DumpContextSnapshot `yaml:"dump_context_snapshot" json:"dump_context_snapshot"`
 }
 
 func NewMetadata(

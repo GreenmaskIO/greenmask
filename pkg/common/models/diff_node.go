@@ -37,3 +37,7 @@ type DiffNode struct {
 	Msg       string            `json:"msg,omitempty"`
 	Signature map[string]string `json:"signature,omitempty"`
 }
+
+type DiffResult struct {
+	DiffNodes []DiffNode `json:"diff_nodes,omitempty"`
+}
