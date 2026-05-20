@@ -245,6 +245,20 @@ func TestDecode_dynamicSize(t *testing.T) {
 	}
 }
 
+// TestDecode_extraColumnsTupleSizeMismatch is a regression for #432.
+// When a transformation's `query:` adds extra columns beyond the table's
+// declared schema, the COPY stream produces more columns than the row was
+// constructed for. The decoder used to walk past the end of columnPos and
+// crash with `panic: runtime error: index out of range`. It now returns a
+// typed error so the caller can surface it cleanly.
+func TestDecode_extraColumnsTupleSizeMismatch(t *testing.T) {
+	// Row sized for 2 columns, but the wire format carries 5.
+	row := NewRow(2)
+	err := row.Decode([]byte("a\tb\tc\td\te"))
+	require.Error(t, err)
+	assert.ErrorIs(t, err, ErrTupleSizeMismatch)
+}
+
 func TestRow_GetColumn(t *testing.T) {
 
 	tests := []struct {
