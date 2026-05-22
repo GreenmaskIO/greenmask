@@ -1,5 +1,7 @@
 # [Greenmask](https://greenmask.io)
 
+![greenmask.png](greenmask.png)
+
 **Greenmask** is a powerful open-source utility for logical database dumping, anonymization, synthetic data generation, and restoration. Designed for **PostgreSQL** and **MySQL** (in progress), it is stateless and creates logical backups compatible with standard tools like `pg_restore` or `mysqldump`.
 
 [![Discord](https://img.shields.io/discord/1179422525294399488?label=Discord&logo=discord)](https://discord.com/invite/rKBKvDECfd)
