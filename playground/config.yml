@@ -2,9 +2,6 @@ common:
   pg_bin_path: "/usr/lib/postgresql/16/bin"
   tmp_dir: "/tmp"
 
-log:
-    level: "debug"
-
 storage:
   type: "s3"
   s3:
@@ -24,17 +21,6 @@ dump:
     jobs: 10
 
   transformation: # List of tables to transform
-#    - schema: "public"
-#      name: "wide_table"  # Table schema
-#      subset_conds:
-#        - "public.wide_table.col001 = 1"
-#      transformers: # List of transformers to apply
-#        - name: "RandomInt" # name of transformers
-#          params: # Transformer parameters
-#            min: 1
-#            max: 10
-#            column: "col129" # Column parameter - this transforme
-
     - schema: "humanresources" # Table schema
       name: "employee"  # Table name
       transformers: # List of transformers to apply
