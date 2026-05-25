@@ -7,5 +7,5 @@ import (
 )
 
 type DumpMetadataLoader interface {
-	LoadPrevious(ctx context.Context, input models.PreviousMetadataLoadInput) (models.Metadata, error)
+	LoadPrevious(ctx context.Context, input models.PreviousMetadataLoadInput) (*models.Metadata, error)
 }

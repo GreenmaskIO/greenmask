@@ -1,7 +1,11 @@
 package interfaces
 
-import commonmodels "github.com/greenmaskio/greenmask/pkg/common/models"
+import (
+	"context"
+
+	commonmodels "github.com/greenmaskio/greenmask/pkg/common/models"
+)
 
 type SchemaDriftValidator interface {
-	Compare(input commonmodels.SchemaDriftValidatorInput) commonmodels.DiffResult
+	Compare(ctx context.Context, input commonmodels.SchemaDriftValidatorInput) commonmodels.SchemaDriftResult
 }

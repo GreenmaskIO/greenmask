@@ -1,7 +1,15 @@
 package interfaces
 
-import "context"
+import (
+	"context"
+
+	commonmodels "github.com/greenmaskio/greenmask/pkg/common/models"
+)
 
 type DumpPlanValidator interface {
-	Validate(ctx context.Context, input DumpPlanValidationInput) (DumpValidationReport, error)
+	Validate(ctx context.Context, input commonmodels.DumpPlanValidationInput) (commonmodels.DumpValidationReport, error)
+}
+
+type DumpContextValidator interface {
+	Validate(ctx context.Context, input commonmodels.DumpContextValidatorInput) (commonmodels.DumpContextValidatorResult, error)
 }

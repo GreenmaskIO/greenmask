@@ -34,6 +34,7 @@ var (
 	ErrFatalError                                  = errors.New("fatal error")
 	ErrDumpStreamTerminated                        = errors.New("dump stream terminated")
 	ErrFileNotFound                                = errors.New("file not found")
+	ErrPreviousMetadataNotFound                    = errors.New("previous metadata not found")
 )
 
 type DumpError struct {

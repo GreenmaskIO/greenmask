@@ -1,7 +1,11 @@
 package interfaces
 
-import commonmodels "github.com/greenmaskio/greenmask/pkg/common/models"
+import (
+	"context"
+
+	commonmodels "github.com/greenmaskio/greenmask/pkg/common/models"
+)
 
 type ConfigEditor interface {
-	EditConfig(input commonmodels.ConfigEditInput) []commonmodels.TableConfig
+	EditConfig(ctx context.Context, input commonmodels.ConfigEditInput) []commonmodels.TableConfig
 }

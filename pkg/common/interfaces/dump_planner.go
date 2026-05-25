@@ -7,5 +7,5 @@ import (
 )
 
 type RestorationContextBuilder interface {
-	BuildRestorationContext(ctx context.Context, result commonmodels.DumpContext) (commonmodels.RestorationContext, error)
+	Build(ctx context.Context, input commonmodels.RestorationContextInput) (commonmodels.RestorationContext, error)
 }

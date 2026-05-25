@@ -1,13 +1,15 @@
 package interfaces
 
 import (
+	"context"
+
 	"github.com/greenmaskio/greenmask/pkg/common/models"
 )
 
 type ExplicitDumpContextBuilder interface {
-	BuildDumpContext(in models.ExplicitDumpContextInput) (models.DumpContext, error)
+	BuildDumpContext(ctx context.Context, in models.ExplicitDumpContextInput) (models.DumpContext, error)
 }
 
 type DerivedDumpContextBuilder interface {
-	BuildDumpContext(in models.DerivedDumpContextInput, explicit models.DumpContext) (models.DumpContext, error)
+	BuildDumpContext(ctx context.Context, in models.DerivedDumpContextInput) (models.DumpContext, error)
 }
