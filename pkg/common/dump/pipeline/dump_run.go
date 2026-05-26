@@ -1,6 +1,9 @@
 package pipeline
 
 import (
+	"fmt"
+	"strings"
+
 	"github.com/greenmaskio/greenmask/pkg/common/models"
 	"github.com/greenmaskio/greenmask/pkg/config"
 )
@@ -51,16 +54,8 @@ type BuildPlanArtifacts struct {
 //	DumpPlan *models.DumpPlan `json:"-"`
 //}
 
-type ContextValidationArtifacts struct {
-	Report *models.DumpValidationReport
-}
-
 type ExecuteStageArtifacts struct {
 	Metadata *models.Metadata `json:"metadata,omitempty"`
-}
-
-type PlanValidationArtifacts struct {
-	Report *models.DumpValidationReport `json:"report,omitempty"`
 }
 
 type RunState struct {
@@ -70,9 +65,7 @@ type RunState struct {
 	Discovery            DiscoveryStageArtifacts       `json:"discovery"`
 	Context              ContextStageArtifacts         `json:"context"`
 	BuildSnapshotAndDiff BuildSnapshotAndDiffArtifacts `json:"build_snapshot_and_diff"`
-	ContextValidation    ContextValidationArtifacts    `json:"context_validation"`
 	BuildPlan            BuildPlanArtifacts            `json:"build_plan_artifacts"`
-	PlanValidation       PlanValidationArtifacts       `json:"plan_validation"`
 	ExecuteStage         ExecuteStageArtifacts         `json:"execute_stage_artifacts"`
 }
 
@@ -89,11 +82,6 @@ func NewRunState(cfg config.Config) *RunState {
 	}
 	return &RunState{
 		ExecutedStages: executedStages,
-		Durable: DurableRunArtifacts{
-			Discovery: DiscoveryStageArtifacts{
-				Config: &cfg,
-			},
-		},
 	}
 }
 
@@ -102,11 +90,15 @@ func (r *RunState) MarkExecuted(stage StageName) {
 	r.ExecutedStages[stage] = true
 }
 
-func (r *RunState) Require(stages ...StageName) bool {
+func (r *RunState) Require(stages ...StageName) error {
+	var missing []string
 	for _, stage := range stages {
 		if !r.ExecutedStages[stage] {
-			return false
+			missing = append(missing, string(stage))
 		}
 	}
-	return true
+	if len(missing) == 0 {
+		return nil
+	}
+	return fmt.Errorf("required stages not executed: [%s]", strings.Join(missing, ", "))
 }

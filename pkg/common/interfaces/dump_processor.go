@@ -7,5 +7,5 @@ import (
 )
 
 type DumpProcessor interface {
-	Run(ctx context.Context, session DumpSession, plan models.DumpPlan) (models.Metadata, error)
+	Run(ctx context.Context, session DumpSession, plan models.DumpPlan, opts ...models.DumpProcessorOption) (models.Metadata, error)
 }

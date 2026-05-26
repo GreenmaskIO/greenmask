@@ -26,6 +26,25 @@ import (
 // The resulting DumpPlan represents an immutable executable snapshot
 // of the planned dump operation.
 type DumpStages struct {
+	// ConnectionConfigurerBuilder translates the generic config.Config into a
+	// DBMS-specific ConnectionConfigurer that carries the connection parameters
+	// required by DumpSessionBuilder.
+	//
+	// This stage is the only place in the pipeline that knows about DBMS-specific
+	// config layout (e.g. which fields come from CommonDumpOptions vs MysqlDumpConfig).
+	// The pipeline itself never imports DBMS packages.
+	ConnectionConfigurerBuilder commonininterfaces.ConnectionConfigurerBuilder
+
+	// DumpSessionBuilder opens a DBMS-specific runtime session for the dump pipeline.
+	//
+	// It receives the ConnectionConfigurer produced by ConnectionConfigurerBuilder,
+	// asserts it to the concrete DBMS type, and initialises all resources required
+	// for a consistent dump execution:
+	//
+	//   - connection pools
+	//   - transactional / snapshot-isolated connections
+	//   - protocol-level clients
+	//   - engine-specific runtime handles
 	DumpSessionBuilder commonininterfaces.DumpSessionBuilder
 
 	// Introspector performs database schema introspection and collects
@@ -112,6 +131,19 @@ type DumpStages struct {
 	// This stage produces the final semantic dump context.
 	DerivedDumpContextBuilder commonininterfaces.DerivedDumpContextBuilder
 
+	// DumpContextSnapshotBuilder converts the final DumpContext into a
+	// serialisable, deterministic snapshot (DumpContextSnapshot).
+	//
+	// The snapshot captures a stable fingerprint of the dump intent at a
+	// point in time, including:
+	//   - source identity and vendor parameters (snapshot ID, GTID, SCN …)
+	//   - per-object subset queries and their hashes
+	//   - transformation configurations and their fingerprints
+	//   - object-level conditions
+	//
+	// The snapshot is later consumed by DumpContextDiffer to produce a
+	// semantic diff against the previous dump, and is stored inside
+	// Metadata so future runs can compare against it.
 	DumpContextSnapshotBuilder commonininterfaces.DumpContextSnapshotBuilder
 
 	// DumpContextDiffer compares dump contexts and produces
@@ -123,7 +155,6 @@ type DumpStages struct {
 	//   - UI visualization
 	//   - audit history
 	//   - dry-run analysis
-	// TODO: 2026-05-19 I've stopped here
 	DumpContextDiffer commonininterfaces.DumpContextDiffer
 
 	// DumpContextValidator validates semantic correctness
