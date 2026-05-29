@@ -147,7 +147,13 @@ func getTableConstraints(ctx context.Context, tx pgx.Tx, tableOid toolkit.Oid, v
 				Definition: constraintDefinition,
 			}
 		case 'p':
-			pk = toolkit.NewPrimaryKey(constraintSchema, constraintName, constraintDefinition, constraintOid, constraintColumns)
+			pk = toolkit.NewPrimaryKey(
+				constraintSchema,
+				constraintName,
+				constraintDefinition,
+				constraintOid,
+				constraintColumns,
+			)
 			c = pk
 		case 'u':
 			c = &toolkit.Unique{
@@ -165,6 +171,14 @@ func getTableConstraints(ctx context.Context, tx pgx.Tx, tableOid toolkit.Oid, v
 				Columns:    constraintColumns,
 				Definition: constraintDefinition,
 			}
+		case 'x':
+			c = toolkit.NewExclusion(
+				constraintSchema,
+				constraintName,
+				constraintDefinition,
+				constraintOid,
+				constraintColumns,
+			)
 		case 'n':
 			// Ignore not null constraint as it's introspected in table definition query.
 			// Before pg18 it was only for domain types, since 18 all null constraints
@@ -174,7 +188,13 @@ func getTableConstraints(ctx context.Context, tx pgx.Tx, tableOid toolkit.Oid, v
 				Msg("ignoring table constraint")
 			continue
 		default:
-			return nil, fmt.Errorf("unknown constraint type %c", constraintType)
+			log.Warn().
+				Str("ConstraintType", string(constraintType)).
+				Str("ConstraintName", constraintName).
+				Str("ConstraintSchema", constraintSchema).
+				Msg("unknown constraint type: skipping; " +
+					"please report a bug at https://github.com/GreenmaskIO/greenmask/issues/new")
+			continue
 		}
 		constraints = append(constraints, c)
 	}
