@@ -863,6 +863,48 @@ func Test_validateDoesInheritedConditionHaveAllColumns(t *testing.T) {
 	}
 }
 
+func Test_getTableConstraints_exclusionConstraint(t *testing.T) {
+	ctx := context.Background()
+	connStr, cleanup, err := runPostgresContainer(ctx)
+	require.NoError(t, err)
+	defer cleanup()
+
+	con, err := pgx.Connect(ctx, connStr)
+	require.NoError(t, err)
+	defer con.Close(ctx) // nolint: errcheck
+
+	const schema = `
+		CREATE TABLE test_exclusion (
+			id INT,
+			EXCLUDE USING btree (id WITH =)
+		);
+	`
+	require.NoError(t, initTables(ctx, con, schema))
+
+	tx, err := con.Begin(ctx)
+	require.NoError(t, err)
+	defer tx.Rollback(ctx) // nolint: errcheck
+
+	// Resolve the OID of the test table
+	var tableOid toolkit.Oid
+	err = tx.QueryRow(ctx,
+		`SELECT c.oid FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace WHERE n.nspname = 'public' AND c.relname = 'test_exclusion'`,
+	).Scan(&tableOid)
+	require.NoError(t, err)
+
+	constraints, err := getTableConstraints(ctx, tx, tableOid, testContainerPgVersion*10000)
+	require.NoError(t, err)
+
+	var exclusionFound bool
+	for _, c := range constraints {
+		if c.Type() == toolkit.ExclusionConstraintType {
+			exclusionFound = true
+			break
+		}
+	}
+	require.True(t, exclusionFound, "expected exclusion constraint to be present in result")
+}
+
 // runPostgresContainer starts a PostgreSQL container and returns the connection string
 func runPostgresContainer(ctx context.Context) (string, func(), error) {
 	req := testcontainers.ContainerRequest{
