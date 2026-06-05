@@ -46,3 +46,24 @@ func NewEdge(id int, from, to string, tables []commonmodels.Table) Edge {
 		commonVertexes: tables,
 	}
 }
+
+// ID - returns the unique identifier of the edge.
+func (e Edge) ID() int {
+	return e.id
+}
+
+// From - returns the identifier of the cycle group the edge starts from.
+func (e Edge) From() string {
+	return e.from
+}
+
+// To - returns the identifier of the cycle group the edge points to.
+func (e Edge) To() string {
+	return e.to
+}
+
+// CommonVertexes - returns the vertexes shared between the two cycle groups,
+// which can be used to join them.
+func (e Edge) CommonVertexes() []commonmodels.Table {
+	return e.commonVertexes
+}

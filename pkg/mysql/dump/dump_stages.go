@@ -16,6 +16,7 @@ package dump
 
 import (
 	"github.com/greenmaskio/greenmask/pkg/common/dump/pipeline"
+	"github.com/greenmaskio/greenmask/pkg/common/graphbuilder"
 	"github.com/greenmaskio/greenmask/pkg/common/models"
 )
 
@@ -30,7 +31,7 @@ func NewDumpStages() pipeline.DumpStages {
 		ConnectionConfigurerBuilder: &ConnectionConfigurerBuilder{},
 		DumpSessionBuilder:          &DumpSessionBuilder{},
 		Introspector:                &IntrospectorV2{},
-		DependencyGraphBuilder:      &DependencyGraphBuilder{},
+		DependencyGraphBuilder:      graphbuilder.New(),
 		DumpMetadataLoader:          &DumpMetadataLoader{},
 		SchemaDriftValidator:        &SchemaDriftValidator{},
 		SubsetBuilder:               &SubsetBuilder{},
