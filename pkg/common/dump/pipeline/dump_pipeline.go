@@ -16,6 +16,10 @@ type DumpPipeline struct {
 	engine models.DBMSEngine
 }
 
+func NewDumpPipeline(stages DumpStages, engine models.DBMSEngine) *DumpPipeline {
+	return &DumpPipeline{Stages: stages, engine: engine}
+}
+
 const (
 	defaultSessionCloseTimeout = 5 * time.Second
 )
@@ -110,16 +114,22 @@ func (p *DumpPipeline) BuildContext(
 		return fmt.Errorf("check requirements: %w", err)
 	}
 	discoveryArtefacts := state.Discovery
+
+	var schemaDrift models.SchemaDriftResult
+	if discoveryArtefacts.SchemaDrift != nil {
+		schemaDrift = *discoveryArtefacts.SchemaDrift
+	}
+
 	editedCfg := p.Stages.ConfigEditor.EditConfig(ctx, models.ConfigEditInput{
 		Config:      state.Discovery.Config.Dump.Transformation.ToTransformationConfig(),
-		SchemaDrift: discoveryArtefacts.SchemaDrift,
+		SchemaDrift: &schemaDrift,
 	})
 	explicitCtxIn := models.ExplicitDumpContextInput{
 		Config:              discoveryArtefacts.Config,
 		TableConfigs:        editedCfg,
 		IntrospectionResult: *discoveryArtefacts.Introspection,
 		Subset:              *discoveryArtefacts.Subset,
-		SchemaDrift:         *discoveryArtefacts.SchemaDrift,
+		SchemaDrift:         schemaDrift,
 	}
 	explicitCtx, err := p.Stages.ExplicitDumpContextBuilder.BuildDumpContext(ctx, explicitCtxIn)
 	if err != nil {
@@ -130,7 +140,7 @@ func (p *DumpPipeline) BuildContext(
 		TableConfigs:          editedCfg,
 		IntrospectionResult:   *discoveryArtefacts.Introspection,
 		Subset:                *discoveryArtefacts.Subset,
-		SchemaDrift:           *discoveryArtefacts.SchemaDrift,
+		SchemaDrift:           schemaDrift,
 		DependencyGraphResult: *discoveryArtefacts.DependencyGraph,
 		ExplicitCtx:           explicitCtx,
 	})
@@ -152,6 +162,9 @@ func (p *DumpPipeline) BuildSnapshotAndDiff(
 	ctx context.Context,
 	state *RunState,
 ) error {
+	if err := state.Require(StageNameContextBuilding); err != nil {
+		return fmt.Errorf("check requirements: %w", err)
+	}
 	discoveryStageArtifacts := state.Discovery
 	contextStageArtifacts := state.Context
 	currentSnapshot, err := p.Stages.DumpContextSnapshotBuilder.Build(ctx, *contextStageArtifacts.FinalCtx)
@@ -285,74 +298,78 @@ func (p *DumpPipeline) Execute(
 	return nil
 }
 
-func (p *DumpPipeline) RunDump(ctx context.Context, cfg config.Config, opts ...models.DumpProcessorOption) (*RunState, error) {
-	state := p.NewRun(cfg)
-
+// withRuntime opens a Runtime, calls fn with it, then closes the session
+// regardless of the outcome. It is the shared lifecycle wrapper used by all
+// Run* methods that need a live DB connection scoped to a single operation.
+//
+// The deferred close intentionally uses context.Background() with a fixed
+// timeout rather than ctx, so cancellation of the operation context does not
+// prevent the session from being cleaned up.
+//
+// StageNameSessionInitialization is recorded on the state after a successful
+// open, before fn is called.
+//
+// Callers whose session lifetime cannot be scoped to a single function call
+// (e.g. Temporal workflow activities in gm-backend) should call OpenRuntime
+// and runtime.Close directly instead.
+func (p *DumpPipeline) withRuntime(
+	ctx context.Context,
+	cfg config.Config,
+	state *RunState,
+	fn func(runtime *Runtime) error,
+) error {
 	runtime, err := p.OpenRuntime(ctx, cfg)
 	if err != nil {
-		return nil, fmt.Errorf("open dump session: %w", err)
+		return fmt.Errorf("open runtime: %w", err)
 	}
 	defer func() {
-		ctx, cancel := context.WithTimeout(context.Background(), defaultSessionCloseTimeout)
+		closeCtx, cancel := context.WithTimeout(context.Background(), defaultSessionCloseTimeout)
 		defer cancel()
-		if err := runtime.Close(ctx); err != nil {
-			log.Ctx(ctx).Err(err).Msg("close runtime object")
+		if err := runtime.Close(closeCtx); err != nil {
+			log.Ctx(closeCtx).Err(err).Msg("close runtime object")
 		}
 	}()
 	state.MarkExecuted(StageNameSessionInitialization)
+	return fn(runtime)
+}
 
-	if err := p.Discover(ctx, runtime, state); err != nil {
-		return nil, fmt.Errorf("discovery stage: %w", err)
-	}
-
-	if err := p.BuildContext(ctx, state); err != nil {
-		return nil, fmt.Errorf("build context stage: %w", err)
-	}
-
-	if err := p.BuildSnapshotAndDiff(ctx, state); err != nil {
-		return nil, fmt.Errorf("build snapshot and diff stage: %w", err)
-	}
-
-	if err := p.ValidateContext(ctx, state); err != nil {
-		return nil, fmt.Errorf("validate context stage: %w", err)
-	}
-
-	if err := p.BuildPlan(ctx, state); err != nil {
-		return nil, fmt.Errorf("build plan stage: %w", err)
-	}
-
-	if err := p.ValidatePlan(ctx, state); err != nil {
-		return nil, fmt.Errorf("validate plan stage: %w", err)
-	}
-
-	if err := p.Execute(ctx, runtime, state, opts...); err != nil {
-		return nil, fmt.Errorf("execute stage: %w", err)
+func (p *DumpPipeline) RunDump(ctx context.Context, cfg config.Config, opts ...models.DumpProcessorOption) (*RunState, error) {
+	state := p.NewRun(cfg)
+	if err := p.withRuntime(ctx, cfg, state, func(runtime *Runtime) error {
+		if err := p.Discover(ctx, runtime, state); err != nil {
+			return fmt.Errorf("discovery stage: %w", err)
+		}
+		if err := p.BuildContext(ctx, state); err != nil {
+			return fmt.Errorf("build context stage: %w", err)
+		}
+		if err := p.BuildSnapshotAndDiff(ctx, state); err != nil {
+			return fmt.Errorf("build snapshot and diff stage: %w", err)
+		}
+		if err := p.ValidateContext(ctx, state); err != nil {
+			return fmt.Errorf("validate context stage: %w", err)
+		}
+		if err := p.BuildPlan(ctx, state); err != nil {
+			return fmt.Errorf("build plan stage: %w", err)
+		}
+		if err := p.ValidatePlan(ctx, state); err != nil {
+			return fmt.Errorf("validate plan stage: %w", err)
+		}
+		return p.Execute(ctx, runtime, state, opts...)
+	}); err != nil {
+		return nil, err
 	}
 	return state, nil
 }
 
 func (p *DumpPipeline) RunValidateConfig(ctx context.Context, cfg config.Config) (*RunState, error) {
 	state := p.NewRun(cfg)
-
-	runtime, err := p.OpenRuntime(ctx, cfg)
-	if err != nil {
-		return nil, fmt.Errorf("open dump session: %w", err)
-	}
-	defer func() {
-		ctx, cancel := context.WithTimeout(context.Background(), defaultSessionCloseTimeout)
-		defer cancel()
-		if err := runtime.Close(ctx); err != nil {
-			log.Ctx(ctx).Err(err).Msg("close runtime object")
+	if err := p.withRuntime(ctx, cfg, state, func(runtime *Runtime) error {
+		if err := p.Discover(ctx, runtime, state); err != nil {
+			return fmt.Errorf("discovery stage: %w", err)
 		}
-	}()
-	state.MarkExecuted(StageNameSessionInitialization)
-
-	if err := p.Discover(ctx, runtime, state); err != nil {
-		return nil, fmt.Errorf("discovery stage: %w", err)
-	}
-
-	if err := p.BuildContext(ctx, state); err != nil {
-		return nil, fmt.Errorf("build context stage: %w", err)
+		return p.BuildContext(ctx, state)
+	}); err != nil {
+		return nil, err
 	}
 	return state, nil
 }
@@ -401,21 +418,10 @@ func (p *DumpPipeline) RunValidatePlan(ctx context.Context, state *RunState) err
 
 func (p *DumpPipeline) RunShowSchemaDrift(ctx context.Context, cfg config.Config) (*RunState, error) {
 	state := p.NewRun(cfg)
-
-	runtime, err := p.OpenRuntime(ctx, cfg)
-	if err != nil {
-		return state, fmt.Errorf("open runtime: %w", err)
-	}
-	defer func() {
-		ctx, cancel := context.WithTimeout(context.Background(), defaultSessionCloseTimeout)
-		defer cancel()
-		if err := runtime.Close(ctx); err != nil {
-			log.Ctx(ctx).Err(err).Msg("close runtime object")
-		}
-	}()
-	state.MarkExecuted(StageNameSessionInitialization)
-	if err := p.Discover(ctx, runtime, state); err != nil {
-		return state, fmt.Errorf("discovery stage: %w", err)
+	if err := p.withRuntime(ctx, cfg, state, func(runtime *Runtime) error {
+		return p.Discover(ctx, runtime, state)
+	}); err != nil {
+		return state, err
 	}
 	return state, nil
 }
@@ -424,30 +430,16 @@ func (p *DumpPipeline) RunShowSchemaDrift(ctx context.Context, cfg config.Config
 // returning the state so callers can inspect the DumpContextDiff artifact.
 func (p *DumpPipeline) RunShowDumpDiff(ctx context.Context, cfg config.Config) (*RunState, error) {
 	state := p.NewRun(cfg)
-
-	runtime, err := p.OpenRuntime(ctx, cfg)
-	if err != nil {
-		return nil, fmt.Errorf("open runtime: %w", err)
-	}
-	defer func() {
-		ctx, cancel := context.WithTimeout(context.Background(), defaultSessionCloseTimeout)
-		defer cancel()
-		if err := runtime.Close(ctx); err != nil {
-			log.Ctx(ctx).Err(err).Msg("close runtime object")
+	if err := p.withRuntime(ctx, cfg, state, func(runtime *Runtime) error {
+		if err := p.Discover(ctx, runtime, state); err != nil {
+			return fmt.Errorf("discovery stage: %w", err)
 		}
-	}()
-	state.MarkExecuted(StageNameSessionInitialization)
-
-	if err := p.Discover(ctx, runtime, state); err != nil {
-		return nil, fmt.Errorf("discovery stage: %w", err)
-	}
-
-	if err := p.BuildContext(ctx, state); err != nil {
-		return nil, fmt.Errorf("build context stage: %w", err)
-	}
-
-	if err := p.BuildSnapshotAndDiff(ctx, state); err != nil {
-		return nil, fmt.Errorf("build snapshot and diff stage: %w", err)
+		if err := p.BuildContext(ctx, state); err != nil {
+			return fmt.Errorf("build context stage: %w", err)
+		}
+		return p.BuildSnapshotAndDiff(ctx, state)
+	}); err != nil {
+		return nil, err
 	}
 	return state, nil
 }

@@ -21,6 +21,9 @@ const (
 	StageNameExecution             StageName = "execution"
 )
 
+// DiscoveryStageArtifacts holds everything produced by the Discover stage:
+// a live DB introspection, the dependency graph, previous-run metadata (nil on
+// first run), schema drift compared to that metadata, and the resolved subset.
 type DiscoveryStageArtifacts struct {
 	Config           *config.Config                `json:"config"`
 	Introspection    *models.IntrospectionResult   `json:"introspection"`
@@ -30,17 +33,25 @@ type DiscoveryStageArtifacts struct {
 	Subset           *models.SubsetResult          `json:"subset,omitempty"`
 }
 
+// ContextStageArtifacts holds the outputs of BuildContext: the config after
+// any drift-driven edits, the explicitly configured DumpContext, and the final
+// derived DumpContext that all subsequent stages consume.
 type ContextStageArtifacts struct {
 	EditedConfig any                 `json:"edited_config,omitempty"`
 	ExplicitCtx  *models.DumpContext `json:"explicit_ctx,omitempty"`
 	FinalCtx     *models.DumpContext `json:"final_ctx,omitempty"`
 }
 
+// BuildSnapshotAndDiffArtifacts holds the serialisable snapshot of the current
+// DumpContext and the diff against the previous run's snapshot. Both are
+// required by ValidateContext and BuildPlan.
 type BuildSnapshotAndDiffArtifacts struct {
 	DumpContextSnapshot *models.DumpContextSnapshot `json:"dump_context_snapshot,omitempty"`
 	DumpContextDiff     *models.DumpContextDiff     `json:"dump_context_diff,omitempty"`
 }
 
+// BuildPlanArtifacts holds the assembled DumpPlan produced by BuildPlan.
+// It is the sole input to Execute.
 type BuildPlanArtifacts struct {
 	Plan *models.DumpPlan `json:"plan,omitempty"`
 }
@@ -54,10 +65,22 @@ type BuildPlanArtifacts struct {
 //	DumpPlan *models.DumpPlan `json:"-"`
 //}
 
+// ExecuteStageArtifacts holds the Metadata written to storage after a
+// successful Execute call.
 type ExecuteStageArtifacts struct {
 	Metadata *models.Metadata `json:"metadata,omitempty"`
 }
 
+// RunState is the shared mutable ledger that flows through an entire dump
+// operation. Each stage appends its outputs to the relevant artifact field and
+// records itself via MarkExecuted; subsequent stages call Require to gate on
+// their prerequisites.
+//
+// All artifact fields carry JSON tags so RunState can be serialised between
+// process boundaries — for example, across Temporal workflow activities in
+// gm-backend. RunState deliberately holds no live resources (connections,
+// file handles); those belong to Runtime, which is passed as a separate
+// parameter to the stages that need them.
 type RunState struct {
 	ExecutedStages      map[StageName]bool
 	ExecutedStagesOrder []StageName
@@ -69,6 +92,9 @@ type RunState struct {
 	ExecuteStage         ExecuteStageArtifacts         `json:"execute_stage_artifacts"`
 }
 
+// NewRunState creates a RunState with all stages marked as not yet executed
+// and the supplied config stored in Discovery so every subsequent stage can
+// access it without an extra parameter.
 func NewRunState(cfg config.Config) *RunState {
 	executedStages := map[StageName]bool{
 		StageNameSessionInitialization: false,
@@ -82,14 +108,21 @@ func NewRunState(cfg config.Config) *RunState {
 	}
 	return &RunState{
 		ExecutedStages: executedStages,
+		Discovery: DiscoveryStageArtifacts{
+			Config: &cfg,
+		},
 	}
 }
 
+// MarkExecuted records stage as completed, both in the map (for O(1) Require
+// checks) and in the ordered slice (for diagnostics / audit trails).
 func (r *RunState) MarkExecuted(stage StageName) {
 	r.ExecutedStagesOrder = append(r.ExecutedStagesOrder, stage)
 	r.ExecutedStages[stage] = true
 }
 
+// Require returns an error listing every stage in stages that has not yet been
+// executed. Call it at the top of each pipeline stage to enforce ordering.
 func (r *RunState) Require(stages ...StageName) error {
 	var missing []string
 	for _, stage := range stages {
