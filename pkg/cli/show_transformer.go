@@ -24,7 +24,7 @@ import (
 
 	"github.com/olekukonko/tablewriter"
 
-	"github.com/greenmaskio/greenmask/pkg/common/listtransformers"
+	"github.com/greenmaskio/greenmask/pkg/common/commands/listtransformers"
 	"github.com/greenmaskio/greenmask/pkg/common/transformers/registry"
 )
 

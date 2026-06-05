@@ -106,18 +106,17 @@ func TestConsistentTxPool_SynchronizedSnapshot(t *testing.T) {
 	// All workers must see exactly 2 rows (id=1 and id=2).
 	// id=3 was committed after FTWRL — it must not appear in any worker snapshot.
 	for i := 0; i < poolSize; i++ {
-		worker, err := p.GetConn(ctx)
+		err := p.RunWithConn(ctx, func(ctx context.Context, worker WorkerConn) error {
+			// Verify the worker's own snapshot via its raw connection: the shared
+			// meta tx is no longer carried per-worker.
+			res, err := worker.RawConn().Execute("SELECT COUNT(*) FROM test_table")
+			require.NoError(t, err)
+			count, err := res.GetInt(0, 0)
+			assert.NoError(t, err)
+			assert.Equal(t, int64(2), count, "Worker %d should see exactly 2 rows", i)
+			return nil
+		})
 		require.NoError(t, err)
-
-		var count int
-		metaTx, err := worker.GetMetaTx(ctx)
-		require.NoError(t, err)
-		err = metaTx.QueryRowContext(ctx, "SELECT COUNT(*) FROM test_table").Scan(&count)
-		assert.NoError(t, err)
-		assert.Equal(t, 2, count, "Worker %d should see exactly 2 rows", i)
-
-		err = p.PutConn(ctx, worker)
-		assert.NoError(t, err)
 	}
 
 	var finalCount int
@@ -161,20 +160,18 @@ func TestConsistentTxPool_Heartbeat(t *testing.T) {
 
 	time.Sleep(1200 * time.Millisecond)
 
-	worker1, err := p.GetConn(ctx)
-	require.NoError(t, err)
-	worker2, err := p.GetConn(ctx)
+	// Borrow both pooled connections (poolSize == 2) so a heartbeat cycle runs
+	// against an empty pool, then release them and let the heartbeat ping the
+	// now-idle sessions again before closing.
+	err = p.RunWithConn(ctx, func(ctx context.Context, worker1 WorkerConn) error {
+		return p.RunWithConn(ctx, func(ctx context.Context, worker2 WorkerConn) error {
+			time.Sleep(600 * time.Millisecond)
+			return nil
+		})
+	})
 	require.NoError(t, err)
 
 	time.Sleep(600 * time.Millisecond)
-
-	err = p.PutConn(ctx, worker1)
-	require.NoError(t, err)
-
-	time.Sleep(600 * time.Millisecond)
-
-	err = p.PutConn(ctx, worker2)
-	require.NoError(t, err)
 
 	err = p.Close(ctx)
 	require.NoError(t, err)

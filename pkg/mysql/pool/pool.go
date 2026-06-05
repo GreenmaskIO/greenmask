@@ -28,46 +28,29 @@ type MetaTx interface {
 	QueryRowContext(ctx context.Context, query string, args ...any) *sql.Row
 }
 
+// WorkerConn is a single pooled connection bound to the consistent snapshot.
+//
+// A worker only owns its raw protocol connection (RawConn). The shared
+// snapshot-isolated SQL meta-transaction is not a per-worker concern: it lives on
+// the pool and is reached through the dump session's OperationalDB (or the pool's
+// GetMetaTx). Engine-specific dumpers that need raw connections borrow them via
+// the pool's RunWithConn (surfaced by the session's RunWithEngineResource).
 type WorkerConn interface {
 	ID() int
 	RawConn() *client.Conn
-	GetMetaTx(ctx context.Context) (MetaTx, error)
-	PutMetaTx(ctx context.Context, tx MetaTx) error
 }
 
 type workerConn struct {
-	id     int
-	Conn   *client.Conn
-	metaTx *sql.Tx
-	cfg    *mysqlmodels.ConnConfig
+	id   int
+	Conn *client.Conn
 }
 
 func (wc *workerConn) ID() int {
 	return wc.id
 }
 
-func (wc *workerConn) QueryContext(ctx context.Context, query string, args ...any) (*sql.Rows, error) {
-	return wc.metaTx.QueryContext(ctx, query, args...)
-}
-
-func (wc *workerConn) ExecContext(ctx context.Context, query string, args ...any) (sql.Result, error) {
-	return wc.metaTx.ExecContext(ctx, query, args...)
-}
-
-func (wc *workerConn) QueryRowContext(ctx context.Context, query string, args ...any) *sql.Row {
-	return wc.metaTx.QueryRowContext(ctx, query, args...)
-}
-
 func (wc *workerConn) RawConn() *client.Conn {
 	return wc.Conn
-}
-
-func (wc *workerConn) GetMetaTx(ctx context.Context) (MetaTx, error) {
-	return &metaTx{tx: wc.metaTx}, nil
-}
-
-func (wc *workerConn) PutMetaTx(ctx context.Context, tx MetaTx) error {
-	return nil
 }
 
 type metaTx struct {
@@ -103,13 +86,15 @@ func (m *metaTx) QueryRowContext(ctx context.Context, query string, args ...any)
 //	}
 //	defer pool.Close(ctx)
 //
-//	worker, _ := pool.GetConn(ctx)
-//	// ... perform work with worker.Tx ...
-//	pool.PutConn(ctx, worker) // CRITICAL: Always return connection to the queue
+//	err := pool.RunWithConn(ctx, func(ctx context.Context, worker WorkerConn) error {
+//	    // ... perform work with worker.RawConn() ...
+//	    return nil
+//	}) // the connection is returned to the pool automatically
 //
 // Leak Notes:
-//   - Connection Leak (Queue): Every GetConn call must be paired with exactly one PutConn call.
-//     Failure to return a worker to the queue will eventually exhaust the pool, causing callers to block.
+//   - Connection Leak (Queue): borrowing is only possible via RunWithConn, which
+//     always returns the connection to the queue when the callback exits, so a
+//     worker cannot be leaked by forgetting to release it.
 //   - Resource Leak (System): ALWAYS call Close(ctx). Even if Init fails partway, some connections
 //     may have been opened and stored in the internal pool. Close iterates the raw pool slice
 //     (not the queue) to ensure all transactions are rolled back and connections are closed.
@@ -246,7 +231,6 @@ func (p *ConsistentTxPool) prepareWorkerConns(ctx context.Context) error {
 		p.pool[i] = &workerConn{
 			id:   i,
 			Conn: rawConn,
-			cfg:  p.cfg,
 		}
 	}
 	return nil
@@ -314,7 +298,6 @@ func (p *ConsistentTxPool) synchronizeSnapshots(ctx context.Context) error {
 	g, _ := errgroup.WithContext(ctx)
 	for i := 0; i < p.poolSize; i++ {
 		worker := p.pool[i]
-		worker.metaTx = p.metaTx
 		g.Go(func() error {
 			log.Ctx(ctx).Debug().
 				Int("connID", worker.id).
@@ -375,24 +358,33 @@ func (p *ConsistentTxPool) Init(ctx context.Context) (err error) {
 	return nil
 }
 
-func (p *ConsistentTxPool) GetConn(ctx context.Context) (WorkerConn, error) {
+// RunWithConn borrows a worker connection from the pool, invokes fn with it, and
+// always returns the connection to the pool once fn completes — including when fn
+// returns an error or panics.
+//
+// It is the only way to obtain a pooled connection. Hand-paired acquire/release
+// is intentionally not exposed: a missed release permanently shrinks the pool and
+// eventually blocks every caller, so the borrow is scoped to fn instead.
+//
+// The connection is returned via a deferred send that runs even on panic. The
+// queue always has room for a connection that was just taken from it, so the
+// return never blocks and needs no context.
+func (p *ConsistentTxPool) RunWithConn(
+	ctx context.Context,
+	fn func(ctx context.Context, conn WorkerConn) error,
+) error {
+	var conn WorkerConn
 	select {
-	case conn := <-p.queue:
+	case conn = <-p.queue:
 		log.Ctx(ctx).Debug().Int("connID", conn.ID()).Msg("acquired connection from pool")
-		return conn, nil
 	case <-ctx.Done():
-		return nil, ctx.Err()
+		return fmt.Errorf("acquire worker connection: %w", ctx.Err())
 	}
-}
-
-func (p *ConsistentTxPool) PutConn(ctx context.Context, conn WorkerConn) error {
-	select {
-	case p.queue <- conn:
+	defer func() {
+		p.queue <- conn
 		log.Ctx(ctx).Debug().Int("connID", conn.ID()).Msg("returned connection to pool")
-		return nil
-	case <-ctx.Done():
-		return ctx.Err()
-	}
+	}()
+	return fn(ctx, conn)
 }
 
 func (p *ConsistentTxPool) Close(ctx context.Context) error {

@@ -6,9 +6,10 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/rs/zerolog/log"
+
 	"github.com/greenmaskio/greenmask/pkg/common/models"
 	"github.com/greenmaskio/greenmask/pkg/config"
-	"github.com/rs/zerolog/log"
 )
 
 type DumpPipeline struct {
@@ -54,12 +55,7 @@ func (p *DumpPipeline) Discover(
 		return fmt.Errorf("runtime session is required for discovery")
 	}
 
-	operationalDB, err := runtime.Session.OperationalDB(ctx)
-	if err != nil {
-		return fmt.Errorf("get operational db: %w", err)
-	}
-
-	introspection, err := p.Stages.Introspector.Introspect(ctx, operationalDB)
+	introspection, err := p.Stages.Introspector.Introspect(ctx, runtime.Session)
 	if err != nil {
 		return fmt.Errorf("introspect: %w", err)
 	}

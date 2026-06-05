@@ -39,7 +39,6 @@ var (
 )
 
 type TableDataReader struct {
-	tx           pool.WorkerConn
 	txPool       *pool.ConsistentTxPool
 	columnLength int
 	connConfig   *mysqlmodels.ConnConfig
@@ -120,48 +119,46 @@ func deepCopyRow(row [][]byte) [][]byte {
 	return copied
 }
 
-func (r *TableDataReader) stream(ctx context.Context) func() error {
-	return func() error {
-		defer close(r.errorCh)
-		var result mysql.Result
-		recordData := make([][]byte, r.columnLength)
-		var lineNum int64
-		err := r.tx.RawConn().ExecuteSelectStreaming(r.query, &result, func(row []mysql.FieldValue) error {
-			lineNum++
-			if len(row) != r.columnLength {
-				return fmt.Errorf("%w: expected %d, got %d at line %d for table %s",
-					errRowColumnCountMismatch, r.columnLength, len(row), lineNum, r.table.Name)
+// streamRows reads the table over the borrowed worker connection and pushes each
+// row to dataCh until the result set is exhausted or ctx is cancelled.
+func (r *TableDataReader) streamRows(ctx context.Context, conn pool.WorkerConn) error {
+	var result mysql.Result
+	recordData := make([][]byte, r.columnLength)
+	var lineNum int64
+	err := conn.RawConn().ExecuteSelectStreaming(r.query, &result, func(row []mysql.FieldValue) error {
+		lineNum++
+		if len(row) != r.columnLength {
+			return fmt.Errorf("%w: expected %d, got %d at line %d for table %s",
+				errRowColumnCountMismatch, r.columnLength, len(row), lineNum, r.table.Name)
+		}
+		for i := range row {
+			v, err := fieldValueToString(row[i])
+			if err != nil {
+				return fmt.Errorf(`parse column "%s" value: %w`, string(result.Fields[i].Name), err)
 			}
-			for i := range row {
-				v, err := fieldValueToString(row[i])
-				if err != nil {
-					return fmt.Errorf(`parse column "%s" value: %w`, string(result.Fields[i].Name), err)
-				}
-				recordData[i] = v
-			}
-			select {
-			// We have to clone the recordData slice because it may be changed
-			// when the next row is read and the data writing side is not yet ready.
-			// We could optimize this, but it would require more complex logic.
-			// TODO: Consider optimizing this with a buffer pool.
-			case r.dataCh <- deepCopyRow(recordData):
-			case <-ctx.Done():
-				log.Ctx(ctx).Debug().
-					Int("LineNum", int(lineNum)).
-					Str("TableName", r.table.Name).
-					Str("SchemaName", r.table.Schema).
-					Err(ctx.Err()).
-					Msg("data reader context done - ignore it in validate command")
-				return errors.Join(models.ErrDumpStreamTerminated, ctx.Err())
-			}
-			return nil
-		}, nil)
-		if err != nil {
-			r.errorCh <- err
-			return fmt.Errorf("stream table data at line %d: %w", lineNum, err)
+			recordData[i] = v
+		}
+		select {
+		// We have to clone the recordData slice because it may be changed
+		// when the next row is read and the data writing side is not yet ready.
+		// We could optimize this, but it would require more complex logic.
+		// TODO: Consider optimizing this with a buffer pool.
+		case r.dataCh <- deepCopyRow(recordData):
+		case <-ctx.Done():
+			log.Ctx(ctx).Debug().
+				Int("LineNum", int(lineNum)).
+				Str("TableName", r.table.Name).
+				Str("SchemaName", r.table.Schema).
+				Err(ctx.Err()).
+				Msg("data reader context done - ignore it in validate command")
+			return errors.Join(models.ErrDumpStreamTerminated, ctx.Err())
 		}
 		return nil
+	}, nil)
+	if err != nil {
+		return fmt.Errorf("stream table data at line %d: %w", lineNum, err)
 	}
+	return nil
 }
 
 func (r *TableDataReader) SetTxPool(txPool *pool.ConsistentTxPool) {
@@ -172,15 +169,21 @@ func (r *TableDataReader) Open(ctx context.Context) error {
 	if r.txPool == nil {
 		return fmt.Errorf("transaction pool is not set")
 	}
-	tx, err := r.txPool.GetConn(ctx)
-	if err != nil {
-		return fmt.Errorf("get connection from pool: %w", err)
-	}
-	r.tx = tx
 
 	ctx, r.cancel = context.WithCancel(ctx)
 	r.eg, ctx = errgroup.WithContext(ctx)
-	r.eg.Go(r.stream(ctx))
+	// The borrow is scoped to this goroutine: RunWithConn acquires a pooled
+	// connection, streams over it, and returns it to the pool when the callback
+	// exits (on EOF, error, or Close-triggered cancellation). Any error —
+	// acquisition or streaming — is surfaced to the consumer via errorCh.
+	r.eg.Go(func() error {
+		defer close(r.errorCh)
+		err := r.txPool.RunWithConn(ctx, r.streamRows)
+		if err != nil {
+			r.errorCh <- err
+		}
+		return err
+	})
 	return nil
 }
 
@@ -204,17 +207,14 @@ func (r *TableDataReader) ReadRow(ctx context.Context) ([][]byte, error) {
 }
 
 func (r *TableDataReader) Close(ctx context.Context) error {
-	if r.tx == nil {
+	if r.cancel == nil {
 		return errConnectionWasNotOpened
 	}
 	r.cancel()
+	// Wait for the streaming goroutine to finish; RunWithConn returns the
+	// connection to the pool as it unwinds.
 	err := r.eg.Wait()
-
-	// Return connection to the pool
-	if putErr := r.txPool.PutConn(ctx, r.tx); putErr != nil {
-		log.Ctx(ctx).Warn().Err(putErr).Msg("failed to return connection to pool")
-	}
-	r.tx = nil
+	r.cancel = nil
 
 	if err != nil {
 		return fmt.Errorf("stream reader exited with error: %w", err)

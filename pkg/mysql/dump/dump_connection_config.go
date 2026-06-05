@@ -7,6 +7,10 @@ import "github.com/greenmaskio/greenmask/pkg/config"
 type DumpConnectionConfig struct {
 	Common config.CommonDumpOptions
 	MySQL  config.MysqlDumpConfig
+	// ConnectionPoolSize is the number of snapshot-synchronized worker
+	// connections the dump session opens. It is derived from the dump jobs count
+	// by ConnectionConfigurerBuilder and is always >= 1.
+	ConnectionPoolSize int
 }
 
 func (c *DumpConnectionConfig) ConnectionConfig() any {

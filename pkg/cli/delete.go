@@ -19,7 +19,7 @@ import (
 	"errors"
 	"fmt"
 
-	commondelete "github.com/greenmaskio/greenmask/pkg/common/delete"
+	commondelete "github.com/greenmaskio/greenmask/pkg/common/commands/delete"
 	"github.com/greenmaskio/greenmask/pkg/common/interfaces"
 )
 

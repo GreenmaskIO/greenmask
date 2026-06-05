@@ -32,20 +32,12 @@ import "context"
 //   - dump protocol pools
 //   - operational SQL connections
 //
-// OperationalDB provides a minimal common SQL-like interface
-// used by generic stages such as introspection, validation,
-// and metadata collection.
-//
-// Runtime exposes engine-specific runtime capabilities required
-// by DBMS-specific dumpers and factories.
-//
-// Runtime intentionally returns any because different DBMS engines
-// require fundamentally different runtime implementations and
-// connection management models.
-//
-// Concrete runtime type assertions are expected to happen only
-// inside DBMS-specific implementations such as dump factories
-// and dumpers.
+// Both resource accessors are functional: RunWithOperationalDB scopes a minimal
+// SQL-like DB to a callback, and RunWithEngineResource scopes an engine-specific
+// runtime resource (as any) to a callback. The session implementation owns the
+// resource lifecycle in both cases — acquiring it before fn and releasing it
+// after — so callers cannot leak pooled connections or snapshots by holding a
+// resource past its intended scope.
 type DumpSession interface {
 
 	// Close releases all runtime resources associated with the session.
@@ -57,34 +49,33 @@ type DumpSession interface {
 	//   - cleaning temporary runtime resources
 	Close(ctx context.Context) error
 
-	// OperationalDB returns a minimal common SQL-like database interface
-	// used by generic planning stages.
+	// RunWithOperationalDB scopes a minimal common SQL-like DB to fn for the
+	// duration of the call, with the session owning its lifecycle. It is used by
+	// generic planning stages for introspection, metadata queries, validation,
+	// and other lightweight operational SQL.
 	//
-	// This connection is intended for:
-	//   - introspection
-	//   - metadata queries
-	//   - validation
-	//   - lightweight operational SQL
-	OperationalDB(ctx context.Context) (DB, error)
+	// The DB is valid only while fn runs and must not be retained afterwards.
+	// As with RunWithEngineResource, a raw accessor is intentionally not offered
+	// so the session impl always controls acquisition and release.
+	RunWithOperationalDB(ctx context.Context, fn func(ctx context.Context, db DB) error) error
 
-	// EngineResources returns DBMS-specific runtime resources
-	// associated with the current dump session.
+	// RunWithEngineResource borrows a DBMS-specific runtime resource for the
+	// duration of fn and guarantees its release afterwards, even if fn returns
+	// an error or panics.
 	//
-	// Examples:
-	//   - *PostgresResources
-	//   - *MySQLResources
-	//   - *OracleResources
+	// The resource is scoped to the fn call: it is valid only while fn runs and
+	// must not be retained after fn returns. This functional form is the only way
+	// to reach engine resources — handing them out for the caller to release by
+	// hand is intentionally not offered, since a missed release leaks pooled
+	// connections and snapshots.
 	//
-	// Resources may include:
-	//   - connection pools
-	//   - transactional connections
-	//   - snapshot/session managers
-	//   - protocol-level clients
-	//   - execution-specific infrastructure
+	// The concrete type of res is engine-specific and consumers type-assert it:
+	//   - MySQL:      a pooled connection bound to the dump snapshot
+	//   - PostgreSQL: e.g. a snapshot-isolated connection / pgproto3 client
 	//
-	// EngineResources is primarily consumed by DBMS-specific
-	// factories, dumpers, and low-level execution components.
-	EngineResources(ctx context.Context) (any, error)
+	// Resources may include connection pools, transactional/snapshot connections,
+	// protocol-level clients, and other execution infrastructure.
+	RunWithEngineResource(ctx context.Context, fn func(ctx context.Context, res any) error) error
 }
 
 type DumpSessionBuilder interface {
