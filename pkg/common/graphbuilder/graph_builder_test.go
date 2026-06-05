@@ -16,6 +16,7 @@ package graphbuilder_test
 
 import (
 	"context"
+	"maps"
 	"slices"
 	"testing"
 
@@ -348,6 +349,158 @@ func TestGraphBuilder_PayloadExtraction(t *testing.T) {
 		_, err := graphbuilder.New().BuildGraph(ctx, in)
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "nil table payload")
+	})
+}
+
+// TestGraphBuilder_EdgeCases covers structurally tricky but common real-world
+// shapes: self-referencing tables, multiple foreign keys to the same parent,
+// dangling references, and the presence of non-table object kinds.
+func TestGraphBuilder_EdgeCases(t *testing.T) {
+	ctx := context.Background()
+
+	t.Run("self-referencing table forms a single-member cycle", func(t *testing.T) {
+		// e.g. employee.manager_id -> employee.id
+		const idEmp models.ObjectID = 7
+		in := introspection(
+			tableObject(idEmp, namedTable("employee", fk("employee", "fk_manager", "manager_id"))),
+		)
+
+		res, err := graphbuilder.New().BuildGraph(ctx, in)
+		require.NoError(t, err)
+
+		// The self-reference is a foreign-key edge from the table to itself.
+		selfEdge, ok := findEdge(res.ObjectGraph.Edges[idEmp], idEmp)
+		require.True(t, ok, "expected a self-edge")
+		fkPayload, ok := selfEdge.Link.Payload.(models.ForeignKeyLinkPayload)
+		require.True(t, ok)
+		assert.Equal(t, []string{"manager_id"}, fkPayload.Columns)
+
+		// A self-loop is a one-member cyclic SCC.
+		require.Len(t, res.CondensedGraph.Nodes, 1)
+		node := res.CondensedGraph.Nodes[res.ObjectToSCC[idEmp]]
+		assert.Equal(t, []models.ObjectID{idEmp}, node.Members)
+		require.NotNil(t, node.Cycles, "self-reference must be reported as a cycle")
+		require.Len(t, node.Cycles.Cycles, 1)
+		require.Len(t, node.Cycles.Cycles[0].Edges, 1)
+		assert.Equal(t, idEmp, node.Cycles.Cycles[0].Edges[0].From)
+		assert.Equal(t, idEmp, node.Cycles.Cycles[0].Edges[0].To)
+	})
+
+	t.Run("multiple foreign keys to the same parent", func(t *testing.T) {
+		// e.g. message.sender_id -> user.id and message.receiver_id -> user.id
+		const (
+			idUser models.ObjectID = 1
+			idMsg  models.ObjectID = 2
+		)
+		in := introspection(
+			tableObject(idUser, namedTable("user")),
+			tableObject(idMsg, namedTable("message",
+				fk("user", "fk_sender", "sender_id"),
+				fk("user", "fk_receiver", "receiver_id"),
+			)),
+		)
+
+		res, err := graphbuilder.New().BuildGraph(ctx, in)
+		require.NoError(t, err)
+
+		// Both foreign keys appear as distinct parallel object edges.
+		edges := res.ObjectGraph.Edges[idMsg]
+		require.Len(t, edges, 2)
+		var objConstraints []string
+		for _, e := range edges {
+			assert.Equal(t, idMsg, e.From)
+			assert.Equal(t, idUser, e.To)
+			objConstraints = append(objConstraints, e.Link.Payload.(models.ForeignKeyLinkPayload).ConstraintName)
+		}
+		assert.ElementsMatch(t, []string{"fk_sender", "fk_receiver"}, objConstraints)
+
+		// The condensed edge collapses both into one SCCEdge carrying both links.
+		cond := requireCondensedEdge(t, res.CondensedGraph,
+			res.ObjectToSCC[idMsg], res.ObjectToSCC[idUser])
+		require.Len(t, cond.Links, 2)
+		var condConstraints []string
+		for _, l := range cond.Links {
+			condConstraints = append(condConstraints, l.Link.Payload.(models.ForeignKeyLinkPayload).ConstraintName)
+		}
+		assert.ElementsMatch(t, []string{"fk_sender", "fk_receiver"}, condConstraints)
+	})
+
+	t.Run("dangling reference returns an error", func(t *testing.T) {
+		in := introspection(
+			tableObject(1, namedTable("a", fk("ghost", "fk_ghost", "ghost_id"))),
+		)
+		_, err := graphbuilder.New().BuildGraph(ctx, in)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "reference table not found")
+	})
+
+	t.Run("sparse and unordered object IDs", func(t *testing.T) {
+		// ObjectID is global and may be sparse; positions in KindsMap are unrelated
+		// to ID order. Use large, gapped, scrambled IDs and a cycle to ensure the
+		// result is keyed purely by ObjectID with no dense-index assumption.
+		const (
+			idA models.ObjectID = 5
+			idB models.ObjectID = 42
+			idC models.ObjectID = 900900
+		)
+		// a <-> b (cycle), b -> c. Listed out of ID order on purpose.
+		in := introspection(
+			tableObject(idB, namedTable("b",
+				fk("a", "fk_b_a", "a_id"),
+				fk("c", "fk_b_c", "c_id"),
+			)),
+			tableObject(idC, namedTable("c")),
+			tableObject(idA, namedTable("a", fk("b", "fk_a_b", "b_id"))),
+		)
+
+		res, err := graphbuilder.New().BuildGraph(ctx, in)
+		require.NoError(t, err)
+
+		// Nodes and the object->SCC map are keyed by the exact sparse IDs.
+		assert.ElementsMatch(t,
+			[]models.ObjectID{idA, idB, idC},
+			slices.Collect(maps.Keys(res.ObjectGraph.Nodes)),
+		)
+		require.Len(t, res.ObjectToSCC, 3)
+
+		// a and b collapse into one cyclic SCC; c is a separate singleton.
+		sccAB := res.ObjectToSCC[idA]
+		require.Equal(t, sccAB, res.ObjectToSCC[idB])
+		require.NotEqual(t, sccAB, res.ObjectToSCC[idC])
+
+		node := res.CondensedGraph.Nodes[sccAB]
+		assert.Equal(t, []models.ObjectID{idA, idB}, node.Members) // sorted by ID
+		require.NotNil(t, node.Cycles)
+		require.NotEmpty(t, node.Cycles.Cycles)
+		for _, e := range node.Cycles.Cycles[0].Edges {
+			assert.Contains(t, []models.ObjectID{idA, idB}, e.From)
+			assert.Contains(t, []models.ObjectID{idA, idB}, e.To)
+		}
+
+		// The cross-SCC link b -> c carries the sparse IDs verbatim.
+		bridge := requireCondensedEdge(t, res.CondensedGraph, sccAB, res.ObjectToSCC[idC])
+		require.Len(t, bridge.Links, 1)
+		assert.Equal(t, idB, bridge.Links[0].From)
+		assert.Equal(t, idC, bridge.Links[0].To)
+	})
+
+	t.Run("non-table object kinds are ignored", func(t *testing.T) {
+		in := models.IntrospectionResult{
+			KindsMap: map[models.ObjectKind][]models.Object{
+				models.ObjectKindTable: {
+					tableObject(1, namedTable("a")),
+				},
+				models.ObjectKindPostgresSequence: {
+					{ID: 2, Kind: models.ObjectKindPostgresSequence, Name: "a_id_seq"},
+				},
+			},
+		}
+		res, err := graphbuilder.New().BuildGraph(ctx, in)
+		require.NoError(t, err)
+		require.Len(t, res.ObjectGraph.Nodes, 1)
+		_, ok := res.ObjectGraph.Nodes[1]
+		assert.True(t, ok, "only the table object participates in the graph")
+		require.Len(t, res.ObjectToSCC, 1)
 	})
 }
 

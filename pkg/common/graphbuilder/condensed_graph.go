@@ -32,13 +32,15 @@ func (t *translator) buildCondensedGraph(
 	for _, scc := range cg.SCC {
 		sccID := commonmodels.SCCID(scc.ID())
 
-		members := make([]commonmodels.ObjectID, 0, len(scc.Vertexes()))
-		for _, tbl := range scc.Vertexes() {
-			oid := t.objectIDByIndex[tbl.ID]
+		// SCCGraph is keyed by the vertex positions that make up the component
+		// (every member has an entry, with possibly-nil intra-SCC edges).
+		members := make([]commonmodels.ObjectID, 0, len(scc.SCCGraph))
+		for pos := range scc.SCCGraph {
+			oid := t.idAt(pos)
 			members = append(members, oid)
 			objectToSCC[oid] = sccID
 		}
-		// scc.Vertexes() iterates a map; sort members for a stable result.
+		// SCCGraph iterates a map; sort members for a stable result.
 		slices.Sort(members)
 
 		node := commonmodels.SCCNode{
@@ -85,9 +87,9 @@ func (t *translator) buildCondensedGraph(
 // stay within the component). For acyclic single-table SCCs this is just the node
 // with no edges.
 func (t *translator) sccSubgraph(scc condensationgraph.SCC) commonmodels.ObjectGraph {
-	nodes := make(map[commonmodels.ObjectID]commonmodels.ObjectNode, len(scc.Vertexes()))
-	for _, tbl := range scc.Vertexes() {
-		node := t.objectNode(tbl.ID)
+	nodes := make(map[commonmodels.ObjectID]commonmodels.ObjectNode, len(scc.SCCGraph))
+	for pos := range scc.SCCGraph {
+		node := t.nodeAt(pos)
 		nodes[node.ID] = node
 	}
 

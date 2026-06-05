@@ -53,7 +53,7 @@ func (t *translator) cycleGraph(cg cyclesgraph.Graph) commonmodels.CycleGraph {
 		for _, ci := range cycleIdxs {
 			indexes = append(indexes, commonmodels.CycleIndex(ci))
 			for _, e := range cg.Cycles[ci] {
-				oid := t.objectIDByIndex[e.To().TableID()]
+				oid := t.idAt(e.To().TableID())
 				if _, ok := seen[oid]; ok {
 					continue
 				}
@@ -70,9 +70,11 @@ func (t *translator) cycleGraph(cg cyclesgraph.Graph) commonmodels.CycleGraph {
 
 	for _, fromGroup := range sortedStringKeys(cg.Graph) {
 		for _, e := range cg.Graph[fromGroup] {
+			// CommonVertexes are reported as tables (not positions); resolve them to
+			// ObjectIDs by their fully-qualified name.
 			shared := make([]commonmodels.ObjectID, 0, len(e.CommonVertexes()))
 			for _, tbl := range e.CommonVertexes() {
-				shared = append(shared, t.objectIDByIndex[tbl.ID])
+				shared = append(shared, t.objectIDByName[tbl.FullTableName()])
 			}
 			// Links (the specific object edges between the groups) are not set:
 			// the source cycle graph only records the shared vertexes, not the

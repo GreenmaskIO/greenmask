@@ -26,8 +26,14 @@
 // The heavy graph algorithms (reference graph construction, Kosaraju SCC
 // condensation and cycle detection) are reused from the engine-agnostic
 // pkg/common/subset/{tablegraph,condensationgraph,cyclesgraph} packages; this
-// package orchestrates them and translates their index-based output into the
+// package orchestrates them and translates their position-based output into the
 // ObjectID/SCCID-based models.DependencyGraphResult consumed by the pipeline.
+//
+// ObjectID is a global identifier (unique across object kinds) and may be sparse.
+// The algorithm packages, however, identify each vertex by a dense slice position
+// (0..n-1). The translator below keeps these two worlds apart: vertex data is
+// addressed by position only through a single position->ObjectID bridge, and
+// everything the caller sees is keyed by ObjectID.
 package graphbuilder
 
 import (
@@ -62,22 +68,31 @@ func (b *GraphBuilder) BuildGraph(
 ) (commonmodels.DependencyGraphResult, error) {
 	tableObjects := introspection.KindsMap[commonmodels.ObjectKindTable]
 
-	// tables drives the underlying graph algorithms, which key everything on the
-	// table's slice position. objectIDByIndex maps that slice position back to the
-	// introspection ObjectID so the result is expressed in ObjectIDs.
+	// tables is positional (index == dense graph vertex position) and is only used
+	// to feed the algorithm packages. Everything the translator exposes is keyed by
+	// the global ObjectID instead.
 	tables := make([]commonmodels.Table, len(tableObjects))
-	objectIDByIndex := make([]commonmodels.ObjectID, len(tableObjects))
+	tr := &translator{
+		objectIDByPos:  make([]commonmodels.ObjectID, len(tableObjects)),
+		objectIDByName: make(map[string]commonmodels.ObjectID, len(tableObjects)),
+		nodes:          make(map[commonmodels.ObjectID]commonmodels.ObjectNode, len(tableObjects)),
+		refsByID:       make(map[commonmodels.ObjectID][]commonmodels.Reference, len(tableObjects)),
+	}
 	for i, obj := range tableObjects {
-		t, err := tableFromObject(obj)
+		tbl, err := tableFromObject(obj)
 		if err != nil {
 			return commonmodels.DependencyGraphResult{}, err
 		}
-		// Reindex so the table's ID equals its slice position: the graph packages
-		// identify vertexes by slice index and surface tables (not indexes) back,
-		// so this keeps the index<->ObjectID mapping unambiguous.
-		t.ID = i
-		tables[i] = t
-		objectIDByIndex[i] = obj.ID
+		tables[i] = tbl
+		tr.objectIDByPos[i] = obj.ID
+		tr.objectIDByName[tbl.FullTableName()] = obj.ID
+		tr.nodes[obj.ID] = commonmodels.ObjectNode{
+			ID:      obj.ID,
+			Kind:    obj.Kind,
+			Name:    obj.Name,
+			Payload: obj.Payload,
+		}
+		tr.refsByID[obj.ID] = tbl.References
 	}
 
 	result := commonmodels.DependencyGraphResult{
@@ -101,23 +116,39 @@ func (b *GraphBuilder) BuildGraph(
 	}
 	cg := condensationgraph.NewGraph(tg)
 
-	t := &translator{
-		tableObjects:    tableObjects,
-		tables:          tables,
-		objectIDByIndex: objectIDByIndex,
-	}
-
-	result.ObjectGraph = t.buildObjectGraph(tg)
-	result.CondensedGraph, result.ObjectToSCC = t.buildCondensedGraph(cg)
+	result.ObjectGraph = tr.buildObjectGraph(tg)
+	result.CondensedGraph, result.ObjectToSCC = tr.buildCondensedGraph(cg)
 	return result, nil
 }
 
-// translator carries the index<->ObjectID mapping and source metadata used while
-// converting the index-based subgraphs into the ObjectID-based result model.
+// translator converts the position-based subgraphs produced by the algorithm
+// packages into the ObjectID-based result model.
+//
+// Vertexes are addressed by dense graph position only where the algorithm
+// packages hand back a position; objectIDByPos is the single crossover point to
+// the global ObjectID. All other state is keyed by ObjectID.
 type translator struct {
-	tableObjects    []commonmodels.Object
-	tables          []commonmodels.Table
-	objectIDByIndex []commonmodels.ObjectID
+	// objectIDByPos maps a dense graph vertex position (0..n-1) to its ObjectID.
+	objectIDByPos []commonmodels.ObjectID
+	// objectIDByName maps a table's fully-qualified name to its ObjectID. It
+	// resolves the shared vertexes that the cycle graph reports as tables rather
+	// than positions.
+	objectIDByName map[string]commonmodels.ObjectID
+	// nodes holds every table object node keyed by its ObjectID.
+	nodes map[commonmodels.ObjectID]commonmodels.ObjectNode
+	// refsByID holds each table's foreign-key references keyed by its ObjectID,
+	// used to recover constraint names for edges.
+	refsByID map[commonmodels.ObjectID][]commonmodels.Reference
+}
+
+// idAt returns the ObjectID of the vertex at the given dense graph position.
+func (t *translator) idAt(pos int) commonmodels.ObjectID {
+	return t.objectIDByPos[pos]
+}
+
+// nodeAt returns the object node of the vertex at the given dense graph position.
+func (t *translator) nodeAt(pos int) commonmodels.ObjectNode {
+	return t.nodes[t.objectIDByPos[pos]]
 }
 
 // tableFromObject extracts a commonmodels.Table from an introspection object's
@@ -141,27 +172,14 @@ func tableFromObject(obj commonmodels.Object) (commonmodels.Table, error) {
 	}
 }
 
-// objectNode builds the node for the table at the given slice index.
-func (t *translator) objectNode(idx int) commonmodels.ObjectNode {
-	obj := t.tableObjects[idx]
-	return commonmodels.ObjectNode{
-		ID:      t.objectIDByIndex[idx],
-		Kind:    obj.Kind,
-		Name:    obj.Name,
-		Payload: obj.Payload,
-	}
-}
-
 // objectEdge converts a table-graph foreign-key edge into the result model.
 //
 // In the table graph the edge points from the referencing (child) table to the
 // referenced (parent) table; From carries the foreign-key columns and To carries
 // the referenced primary-key columns.
 func (t *translator) objectEdge(e tablegraph.Edge) commonmodels.ObjectEdge {
-	fromIdx := e.From().TableID()
-	toIdx := e.To().TableID()
-	fromID := t.objectIDByIndex[fromIdx]
-	toID := t.objectIDByIndex[toIdx]
+	fromID := t.idAt(e.From().TableID())
+	toID := t.idAt(e.To().TableID())
 
 	fromCols := keyNames(e.From().Keys())
 	toCols := keyNames(e.To().Keys())
@@ -174,7 +192,7 @@ func (t *translator) objectEdge(e tablegraph.Edge) commonmodels.ObjectEdge {
 			From: commonmodels.ObjectLinkEndpoint{ObjectID: fromID, Fields: fieldRefs(e.From().Keys())},
 			To:   commonmodels.ObjectLinkEndpoint{ObjectID: toID, Fields: fieldRefs(e.To().Keys())},
 			Payload: commonmodels.ForeignKeyLinkPayload{
-				ConstraintName: t.constraintName(fromIdx, e.To().Table(), fromCols),
+				ConstraintName: t.constraintName(fromID, e.To().Table(), fromCols),
 				Columns:        fromCols,
 				RefColumns:     toCols,
 				IsNullable:     e.IsNullable(),
@@ -184,11 +202,12 @@ func (t *translator) objectEdge(e tablegraph.Edge) commonmodels.ObjectEdge {
 }
 
 // constraintName recovers the foreign-key constraint name for an edge by matching
-// the referencing table's references against the referenced table and key columns.
-// The table graph does not carry the constraint name on the edge, so OnDelete and
-// OnUpdate remain unset (the introspection Reference model does not expose them).
-func (t *translator) constraintName(fromIdx int, refTable commonmodels.Table, fromCols []string) string {
-	for _, ref := range t.tables[fromIdx].References {
+// the referencing object's references against the referenced table and key
+// columns. The table graph does not carry the constraint name on the edge, so
+// OnDelete and OnUpdate remain unset (the introspection Reference model does not
+// expose them).
+func (t *translator) constraintName(fromID commonmodels.ObjectID, refTable commonmodels.Table, fromCols []string) string {
+	for _, ref := range t.refsByID[fromID] {
 		if ref.ReferencedSchema == refTable.Schema &&
 			ref.ReferencedName == refTable.Name &&
 			slices.Equal(ref.Keys, fromCols) {

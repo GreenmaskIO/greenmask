@@ -15,6 +15,8 @@
 package graphbuilder
 
 import (
+	"maps"
+
 	commonmodels "github.com/greenmaskio/greenmask/pkg/common/models"
 	"github.com/greenmaskio/greenmask/pkg/common/subset/tablegraph"
 )
@@ -22,15 +24,13 @@ import (
 // buildObjectGraph converts the directed table graph into the object graph: one
 // node per table object and one edge per foreign-key reference (child -> parent).
 func (t *translator) buildObjectGraph(tg tablegraph.Graph) commonmodels.ObjectGraph {
-	nodes := make(map[commonmodels.ObjectID]commonmodels.ObjectNode, len(t.tableObjects))
-	for idx := range t.tableObjects {
-		node := t.objectNode(idx)
-		nodes[node.ID] = node
-	}
+	// Every table object is a node; clone so the result does not alias translator
+	// state.
+	nodes := maps.Clone(t.nodes)
 
 	edges := make(map[commonmodels.ObjectID][]commonmodels.ObjectEdge)
-	for vertexIdx := range tg.Graph {
-		for _, e := range tg.Graph[vertexIdx] {
+	for vertexPos := range tg.Graph {
+		for _, e := range tg.Graph[vertexPos] {
 			oe := t.objectEdge(e)
 			edges[oe.From] = append(edges[oe.From], oe)
 		}
