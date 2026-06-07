@@ -18,17 +18,47 @@ import (
 	"context"
 
 	core "github.com/greenmaskio/greenmask/pkg/common/core"
+	"github.com/greenmaskio/greenmask/pkg/common/objectfilter"
+	mysqlmodels "github.com/greenmaskio/greenmask/pkg/mysql/models"
 )
 
 var _ core.ObjectFilter = (*ObjectFilter)(nil)
 
-// ObjectFilter is the MySQL implementation of core.ObjectFilter.
-// Currently a pass-through: an empty AllowedObjects map means all objects are allowed.
-type ObjectFilter struct{}
+// mysqlSystemSchemas are excluded by default unless explicitly included via the
+// config include lists.
+var mysqlSystemSchemas = []string{"information_schema", "mysql", "performance_schema", "sys"}
+
+// ObjectFilter is the MySQL implementation of core.ObjectFilter. It delegates to
+// the generic objectfilter.Filter, configured with the MySQL table kind, the
+// MySQL system schemas, and an identity resolver for the MySQL table payload.
+type ObjectFilter struct {
+	filter *objectfilter.Filter
+}
+
+// NewObjectFilter builds the MySQL ObjectFilter.
+func NewObjectFilter() *ObjectFilter {
+	return &ObjectFilter{
+		filter: objectfilter.New(objectfilter.Options{
+			RelationKinds: []core.ObjectKind{core.ObjectKindTable},
+			SystemSchemas: mysqlSystemSchemas,
+			Resolve:       resolveTableIdentity,
+		}),
+	}
+}
 
 func (f *ObjectFilter) FilterObjects(
 	ctx context.Context,
 	input core.ObjectFilterInput,
 ) (core.ObjectFilterResult, error) {
-	return core.ObjectFilterResult{}, nil
+	return f.filter.FilterObjects(ctx, input)
+}
+
+// resolveTableIdentity extracts the schema-qualified identity from the MySQL
+// table payload set by the introspector.
+func resolveTableIdentity(obj core.Object) (objectfilter.Identity, bool) {
+	t, ok := obj.Payload.(*mysqlmodels.Table)
+	if !ok {
+		return objectfilter.Identity{}, false
+	}
+	return objectfilter.Identity{Schema: t.Schema, Name: t.Name}, true
 }

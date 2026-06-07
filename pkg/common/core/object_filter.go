@@ -2,15 +2,42 @@ package core
 
 import "context"
 
+// FilterConfig carries the DBMS-agnostic include/exclude filtering options
+// extracted from the user config by a FilterConfigBuilder. It formalizes the
+// higher-level object-selection options (databases, schemas, table patterns)
+// that ObjectFilter uses to decide which introspected objects participate in
+// the dump.
+type FilterConfig struct {
+	IncludeDatabase        []string
+	ExcludeDatabase        []string
+	IncludeSchema          []string
+	ExcludeSchema          []string
+	IncludeTableData       []string
+	ExcludeTableData       []string
+	IncludeTable           []string
+	ExcludeTable           []string
+	IncludeTableDefinition []string
+	ExcludeTableDefinition []string
+	DataOnly               bool
+	SchemaOnly             bool
+}
+
+// FilterConfigBuilder extracts the DBMS-agnostic include/exclude filter options
+// from the full config into a FilterConfig consumed by ObjectFilter.
+//
+// Build receives the full config as any to avoid an import cycle
+// (pkg/config already imports this package). Implementations type-assert to
+// config.Config internally.
+type FilterConfigBuilder interface {
+	Build(cfg any) (FilterConfig, error)
+}
+
 // ObjectFilterInput is passed to ObjectFilter.FilterObjects.
 type ObjectFilterInput struct {
 	IntrospectionResult IntrospectionResult
-	// DumpConfig is the DBMS-specific dump configuration produced by ConfigEditor.
-	// It is opaque at the core level; each ObjectFilter implementation asserts it
-	// to the concrete type it expects (e.g. []TableConfig for MySQL).
-	// It may carry table-level configs as well as higher-level include/exclude
-	// options (databases, schemas, patterns).
-	DumpConfig any
+	// FilterConfig carries the DBMS-agnostic include/exclude filtering options
+	// produced by FilterConfigBuilder.
+	FilterConfig FilterConfig
 }
 
 // ObjectFilterResult declares which objects from the introspection are

@@ -70,9 +70,11 @@ func (p *DumpPipeline) Discover(
 	previousMetadata, err := p.Stages.DumpMetadataLoader.LoadPrevious(ctx, core.PreviousMetadataLoadInput{
 		Engine: p.engine,
 	})
-	if errors.Is(err, core.ErrPreviousMetadataNotFound) {
-		state.Discovery.PreviousMetadata = nil
-	} else if err != nil {
+	switch {
+	case errors.Is(err, core.ErrPreviousMetadataNotFound):
+		// No previous run to compare against — treat as a first run.
+		previousMetadata = nil
+	case err != nil:
 		return fmt.Errorf("load previous metadata: %w", err)
 	}
 	state.Discovery.PreviousMetadata = previousMetadata
@@ -120,9 +122,13 @@ func (p *DumpPipeline) BuildContext(
 		Config:      state.Discovery.Config.Dump.Transformation.ToTransformationConfig(),
 		SchemaDrift: &schemaDrift,
 	})
+	filterConfig, err := p.Stages.FilterConfigBuilder.Build(*discoveryArtefacts.Config)
+	if err != nil {
+		return fmt.Errorf("build filter config: %w", err)
+	}
 	filterResult, err := p.Stages.ObjectFilter.FilterObjects(ctx, core.ObjectFilterInput{
 		IntrospectionResult: *discoveryArtefacts.Introspection,
-		DumpConfig:          editedCfg,
+		FilterConfig:        filterConfig,
 	})
 	if err != nil {
 		return fmt.Errorf("filter objects: %w", err)
@@ -202,7 +208,10 @@ func (p *DumpPipeline) ValidateContext(
 	ctx context.Context,
 	state *RunState,
 ) error {
-	if err := state.Require(StageNameContextBuilding); err != nil {
+	// SnapshotDiffBuilding is required as well: the validator consumes the
+	// DumpContextDiff it produces, so gating on ContextBuilding alone would let a
+	// caller reach a nil-dereference instead of a clean requirements error.
+	if err := state.Require(StageNameContextBuilding, StageNameSnapshotDiffBuilding); err != nil {
 		return fmt.Errorf("check requirements: %w", err)
 	}
 

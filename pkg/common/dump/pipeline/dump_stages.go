@@ -122,6 +122,11 @@ type DumpStages struct {
 	// IntrospectionResult in state.Discovery to detect anomalies.
 	ObjectFilter core.ObjectFilter
 
+	// FilterConfigBuilder withdraws the DBMS-agnostic include/exclude filtering
+	// options from the user config into a core.FilterConfig, which is handed to
+	// ObjectFilter alongside the introspection result.
+	FilterConfigBuilder core.FilterConfigBuilder
+
 	// ExplicitDumpContextBuilder constructs the initial dump context
 	// directly from explicit user configuration and introspection results.
 	//

@@ -20,6 +20,7 @@ import (
 
 	core "github.com/greenmaskio/greenmask/pkg/common/core"
 	"github.com/greenmaskio/greenmask/pkg/common/dump/pipeline"
+	"github.com/greenmaskio/greenmask/pkg/common/filterconfig"
 	"github.com/greenmaskio/greenmask/pkg/common/graphbuilder"
 	"github.com/greenmaskio/greenmask/pkg/common/subsetbuilder"
 )
@@ -45,8 +46,9 @@ func NewDumpStages() pipeline.DumpStages {
 		SchemaDriftValidator:        &SchemaDriftValidator{},
 		SubsetBuilder:               subsetbuilder.New(subsetbuilder.DialectMySQL),
 		ConfigEditor:                &ConfigEditor{},
-		ObjectFilter:                &ObjectFilter{},
-		ExplicitDumpContextBuilder:  &ExplicitDumpContextBuilder{},
+		ObjectFilter:                NewObjectFilter(),
+		FilterConfigBuilder:         filterconfig.New(),
+		ExplicitDumpContextBuilder:  NewExplicitDumpContextBuilder(),
 		DerivedDumpContextBuilder:   &DerivedDumpContextBuilder{},
 		DumpContextSnapshotBuilder:  &DumpContextSnapshotBuilder{},
 		DumpContextDiffer:           &DumpContextDiffer{},

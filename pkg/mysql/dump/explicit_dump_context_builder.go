@@ -18,18 +18,35 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/rs/zerolog/log"
+
 	"github.com/greenmaskio/greenmask/pkg/common/core"
 	"github.com/greenmaskio/greenmask/pkg/common/dump/tablebuilder"
 	"github.com/greenmaskio/greenmask/pkg/common/tabledriver"
 	transformercontext "github.com/greenmaskio/greenmask/pkg/common/transformers/context"
 	"github.com/greenmaskio/greenmask/pkg/common/utils"
 	"github.com/greenmaskio/greenmask/pkg/mysql/dbmsdriver"
-	"github.com/rs/zerolog/log"
 )
 
 var _ core.ExplicitDumpContextBuilder = (*ExplicitDumpContextBuilder)(nil)
 
-func newMysqlTableDriver(
+// tableInitDeps abstracts the per-table collaborators required to build an
+// ObjectDumpSpec: constructing the table driver, compiling the table-level
+// condition, and initialising the transformer runtimes.
+//
+// It is an interface so the builder can be unit-tested with stubs instead of
+// constructing a real DBMS driver and a populated transformer registry.
+type tableInitDeps interface {
+	NewTableDriver(ctx context.Context, table core.Table, columnsTypeOverride map[string]string) (core.TableDriver, error)
+	CompileCondition(ctx context.Context, table core.Table, tableConfig *core.TableConfig) (core.CondEvaluator, error)
+	InitTransformers(ctx context.Context, driver core.TableDriver, configs []core.TransformerConfig, registry core.TransformerRegistry) ([]core.TransformerContexter, error)
+}
+
+// defaultTableInitDeps is the production implementation of tableInitDeps, wired
+// to the real MySQL driver and the shared tablebuilder helpers.
+type defaultTableInitDeps struct{}
+
+func (defaultTableInitDeps) NewTableDriver(
 	ctx context.Context,
 	table core.Table,
 	columnsTypeOverride map[string]string,
@@ -37,8 +54,33 @@ func newMysqlTableDriver(
 	return tabledriver.New(ctx, dbmsdriver.New(), &table, columnsTypeOverride)
 }
 
+func (defaultTableInitDeps) CompileCondition(
+	ctx context.Context,
+	table core.Table,
+	tableConfig *core.TableConfig,
+) (core.CondEvaluator, error) {
+	return tablebuilder.CompileTableCondition(ctx, table, tableConfig)
+}
+
+func (defaultTableInitDeps) InitTransformers(
+	ctx context.Context,
+	driver core.TableDriver,
+	configs []core.TransformerConfig,
+	registry core.TransformerRegistry,
+) ([]core.TransformerContexter, error) {
+	return tablebuilder.InitTableTransformers(ctx, driver, configs, registry)
+}
+
 // ExplicitDumpContextBuilder builds the dump context from explicit configuration.
-type ExplicitDumpContextBuilder struct{}
+type ExplicitDumpContextBuilder struct {
+	deps tableInitDeps
+}
+
+// NewExplicitDumpContextBuilder builds an ExplicitDumpContextBuilder wired to the
+// production table-init collaborators.
+func NewExplicitDumpContextBuilder() *ExplicitDumpContextBuilder {
+	return &ExplicitDumpContextBuilder{deps: defaultTableInitDeps{}}
+}
 
 func validateSupportedKinds(kinds []core.ObjectKind) error {
 	for _, kind := range kinds {
@@ -114,12 +156,9 @@ func (b *ExplicitDumpContextBuilder) initTable(
 		Str(core.MetaKeyTableName, table.Name).
 		Logger().WithContext(ctx)
 
+	// No user config for this table — raw dump with no transformations and no
+	// driver: a driver is only required to initialise transformers.
 	if tableConfig == nil {
-		// No user config for this table — raw dump with no transformations.
-		tableDriver, err := newMysqlTableDriver(ctx, table, nil)
-		if err != nil {
-			return core.ObjectDumpSpec{}, fmt.Errorf("init raw table driver: %w", err)
-		}
 		return core.ObjectDumpSpec{
 			TaskID:   seq.Next(),
 			Kind:     core.ObjectKindMysqlTable,
@@ -127,39 +166,53 @@ func (b *ExplicitDumpContextBuilder) initTable(
 			Name:     obj.Name,
 			Mode:     core.DumpModeRaw,
 			Payload: transformercontext.TableDumpContext{
-				Table:       &table,
-				Query:       subsetQuery,
-				TableDriver: tableDriver,
+				Table: &table,
+				Query: subsetQuery,
 			},
 		}, nil
 	}
 
-	tableDriver, err := newMysqlTableDriver(ctx, table, tableConfig.ColumnsTypeOverride)
-	if err != nil {
-		return core.ObjectDumpSpec{}, fmt.Errorf("init table driver: %w", err)
-	}
 	dumpQuery := subsetQuery
 	if dumpQuery == "" && tableConfig.Query != "" {
 		dumpQuery = tableConfig.Query
 	}
-	tableCondition, err := tablebuilder.CompileTableCondition(ctx, table, tableConfig)
+	tableCondition, err := b.deps.CompileCondition(ctx, table, tableConfig)
 	if err != nil {
 		return core.ObjectDumpSpec{}, fmt.Errorf("compile table condition: %w", err)
 	}
-	transformerContext, err := tablebuilder.InitTableTransformers(ctx, tableDriver, tableConfig.Transformers, registry)
+
+	// Without transformers there is nothing to drive, so skip building the table
+	// driver entirely and emit a raw spec (the table-level condition is still
+	// honoured).
+	if len(tableConfig.Transformers) == 0 {
+		return core.ObjectDumpSpec{
+			TaskID:   seq.Next(),
+			Kind:     core.ObjectKindMysqlTable,
+			ObjectID: obj.ID,
+			Name:     obj.Name,
+			Mode:     core.DumpModeRaw,
+			Payload: transformercontext.TableDumpContext{
+				Table:     &table,
+				Condition: tableCondition,
+				Query:     dumpQuery,
+			},
+		}, nil
+	}
+
+	tableDriver, err := b.deps.NewTableDriver(ctx, table, tableConfig.ColumnsTypeOverride)
+	if err != nil {
+		return core.ObjectDumpSpec{}, fmt.Errorf("init table driver: %w", err)
+	}
+	transformerContext, err := b.deps.InitTransformers(ctx, tableDriver, tableConfig.Transformers, registry)
 	if err != nil {
 		return core.ObjectDumpSpec{}, fmt.Errorf("init transformation runtimes: %w", err)
-	}
-	mode := core.DumpModeRaw
-	if len(tableConfig.Transformers) > 0 {
-		mode = core.DumpModeTransformed
 	}
 	return core.ObjectDumpSpec{
 		TaskID:   seq.Next(),
 		Kind:     core.ObjectKindMysqlTable,
 		ObjectID: obj.ID,
 		Name:     obj.Name,
-		Mode:     mode,
+		Mode:     core.DumpModeTransformed,
 		Payload: transformercontext.TableDumpContext{
 			Table:              &table,
 			Condition:          tableCondition,
@@ -198,6 +251,10 @@ func (b *ExplicitDumpContextBuilder) buildDumpObjectSpecs(
 	for i := range tableObjects {
 		if len(allowedSet) > 0 {
 			if _, allowed := allowedSet[tableObjects[i].ID]; !allowed {
+				log.Ctx(ctx).Debug().
+					Any("ObjectKind", tableObjects[i].Kind).
+					Str("ObjectName", tableObjects[i].Name).
+					Msg("skipping table dump object because it is filtered")
 				continue
 			}
 		}

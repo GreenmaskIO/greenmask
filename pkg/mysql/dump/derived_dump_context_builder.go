@@ -26,5 +26,7 @@ var _ core.DerivedDumpContextBuilder = (*DerivedDumpContextBuilder)(nil)
 type DerivedDumpContextBuilder struct{}
 
 func (s *DerivedDumpContextBuilder) BuildDumpContext(ctx context.Context, in core.DerivedDumpContextInput) (core.DumpContext, error) {
-	return core.DumpContext{}, errNotImplemented
+	// Placeholder: semantic derivation is not implemented yet, so the explicit
+	// dump context is passed through unchanged.
+	return in.ExplicitCtx, nil
 }
