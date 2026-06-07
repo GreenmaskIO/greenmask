@@ -108,6 +108,20 @@ func newIntrospection(objs ...core.Object) core.IntrospectionResult {
 	}
 }
 
+func dbObj(id core.ObjectID, name string) core.Object {
+	return core.Object{ID: id, Kind: core.ObjectKindMysqlDatabase, Name: name}
+}
+
+func introspectionWithDatabases(tables, databases []core.Object) core.IntrospectionResult {
+	return core.IntrospectionResult{
+		Engine: core.DBMSEngineMySQL,
+		KindsMap: map[core.ObjectKind][]core.Object{
+			core.ObjectKindMysqlTable:    tables,
+			core.ObjectKindMysqlDatabase: databases,
+		},
+	}
+}
+
 // --- validateSupportedKinds -------------------------------------------------
 
 func TestValidateSupportedKinds(t *testing.T) {
@@ -117,8 +131,8 @@ func TestValidateSupportedKinds(t *testing.T) {
 		wantErr bool
 	}{
 		{"table data section", []core.ObjectKind{core.ObjectKindMysqlTable}, false},
-		{"schema sections", []core.ObjectKind{core.ObjectKindMysqlDatabase, core.ObjectKindMysqlSchema}, false},
-		{"mixed valid", []core.ObjectKind{core.ObjectKindMysqlTable, core.ObjectKindMysqlSchema}, false},
+		{"schema sections", []core.ObjectKind{core.ObjectKindMysqlDatabase}, false},
+		{"mixed valid", []core.ObjectKind{core.ObjectKindMysqlTable}, false},
 		{"empty", nil, false},
 		{"foreign data section kind", []core.ObjectKind{core.ObjectKindPostgresTable}, true},
 		{"unsupported schema section kind", []core.ObjectKind{core.ObjectKindPostgresSchema}, true},
@@ -152,7 +166,7 @@ func TestPayloadToTableDefinition(t *testing.T) {
 		},
 		{
 			name:    "wrong kind",
-			obj:     core.Object{Kind: core.ObjectKindMysqlSchema, Payload: core.Table{}},
+			obj:     core.Object{Kind: core.ObjectKindMysqlDatabase, Payload: core.Table{}},
 			wantErr: true,
 		},
 		{
@@ -177,17 +191,84 @@ func TestPayloadToTableDefinition(t *testing.T) {
 // --- buildSchemaDumpSpecs ----------------------------------------------------
 
 func TestBuildSchemaDumpSpecs(t *testing.T) {
-	specs, err := NewExplicitDumpContextBuilder().buildSchemaDumpSpecs(new(core.TaskIDSequence))
-	require.NoError(t, err)
-	require.Len(t, specs, 2)
+	t.Run("one pre-data and one post-data spec per database", func(t *testing.T) {
+		in := core.ExplicitDumpContextInput{
+			IntrospectionResult: newIntrospection(
+				tableObj(1, "shop", "users"),
+				tableObj(2, "shop", "orders"), // same db -> not duplicated
+				tableObj(3, "warehouse", "items"),
+			),
+		}
+		specs, err := NewExplicitDumpContextBuilder().buildSchemaDumpSpecs(context.Background(), in, new(core.TaskIDSequence))
+		require.NoError(t, err)
 
-	assert.Equal(t, string(core.SchemaDumpKindMySQLPreData), specs[0].Name)
-	assert.Equal(t, string(core.SchemaDumpKindMySQLPostData), specs[1].Name)
-	for _, s := range specs {
-		assert.Equal(t, core.ObjectKindMysqlTable, s.Kind)
-		assert.True(t, s.NeedDumpData)
-	}
-	assert.NotEqual(t, specs[0].TaskID, specs[1].TaskID, "task IDs come from the shared sequence and are distinct")
+		// 2 databases x 2 sections, grouped section-first. Every spec carries the
+		// engine-level kind; section and database distinguish them.
+		require.Len(t, specs, 4)
+		for _, s := range specs {
+			assert.Equal(t, core.SchemaObjectKindMysqlDatabase, s.Kind)
+		}
+
+		assert.Equal(t, []string{"shop", "warehouse", "shop", "warehouse"},
+			[]string{specs[0].Name, specs[1].Name, specs[2].Name, specs[3].Name})
+		assert.Equal(t,
+			[]core.DumpSection{
+				core.DumpSectionPreData, core.DumpSectionPreData,
+				core.DumpSectionPostData, core.DumpSectionPostData,
+			},
+			[]core.DumpSection{specs[0].Section, specs[1].Section, specs[2].Section, specs[3].Section})
+
+		ids := map[core.TaskID]struct{}{}
+		for _, s := range specs {
+			_, dup := ids[s.TaskID]
+			assert.False(t, dup, "duplicate task id %d", s.TaskID)
+			ids[s.TaskID] = struct{}{}
+		}
+	})
+
+	t.Run("respects AllowedObjects when collecting databases", func(t *testing.T) {
+		in := core.ExplicitDumpContextInput{
+			IntrospectionResult: newIntrospection(
+				tableObj(1, "shop", "users"),
+				tableObj(2, "warehouse", "items"),
+			),
+			AllowedObjects: map[core.ObjectKind][]core.ObjectID{
+				core.ObjectKindMysqlTable: {1}, // only the shop table is allowed
+			},
+		}
+		specs, err := NewExplicitDumpContextBuilder().buildSchemaDumpSpecs(context.Background(), in, new(core.TaskIDSequence))
+		require.NoError(t, err)
+		require.Len(t, specs, 2)
+		for _, s := range specs {
+			assert.Equal(t, "shop", s.Name)
+		}
+	})
+
+	t.Run("no tables yields no schema specs", func(t *testing.T) {
+		specs, err := NewExplicitDumpContextBuilder().buildSchemaDumpSpecs(
+			context.Background(), core.ExplicitDumpContextInput{}, new(core.TaskIDSequence))
+		require.NoError(t, err)
+		assert.Empty(t, specs)
+	})
+
+	t.Run("resolves ObjectID from introspected database objects", func(t *testing.T) {
+		in := core.ExplicitDumpContextInput{
+			IntrospectionResult: introspectionWithDatabases(
+				[]core.Object{tableObj(1, "shop", "users"), tableObj(2, "warehouse", "items")},
+				[]core.Object{dbObj(10, "shop"), dbObj(11, "warehouse")},
+			),
+		}
+		specs, err := NewExplicitDumpContextBuilder().buildSchemaDumpSpecs(context.Background(), in, new(core.TaskIDSequence))
+		require.NoError(t, err)
+		require.Len(t, specs, 4)
+
+		byName := map[string]core.ObjectID{}
+		for _, s := range specs {
+			byName[s.Name] = s.ObjectID
+		}
+		assert.Equal(t, core.ObjectID(10), byName["shop"])
+		assert.Equal(t, core.ObjectID(11), byName["warehouse"])
+	})
 }
 
 // --- initTable --------------------------------------------------------------
@@ -354,7 +435,7 @@ func TestBuildDumpContext(t *testing.T) {
 		assert     func(t *testing.T, ctx core.DumpContext)
 	}{
 		{
-			name: "happy path: one spec per table plus two schema specs, unique task IDs",
+			name: "happy path: one spec per table plus per-database schema specs, unique task IDs",
 			input: core.ExplicitDumpContextInput{
 				IntrospectionResult: newIntrospection(
 					tableObj(1, "public", "users"),
@@ -365,7 +446,13 @@ func TestBuildDumpContext(t *testing.T) {
 				require.Len(t, ctx.DumpObjectSpecs, 2)
 				assert.Equal(t, "users", ctx.DumpObjectSpecs[0].Name)
 				assert.Equal(t, "orders", ctx.DumpObjectSpecs[1].Name)
+				// One database ("public") -> pre-data + post-data schema specs.
 				require.Len(t, ctx.SchemaDumpSpecs, 2)
+				assert.Equal(t, "public", ctx.SchemaDumpSpecs[0].Name)
+				assert.Equal(t, core.SchemaObjectKindMysqlDatabase, ctx.SchemaDumpSpecs[0].Kind)
+				assert.Equal(t, core.DumpSectionPreData, ctx.SchemaDumpSpecs[0].Section)
+				assert.Equal(t, core.SchemaObjectKindMysqlDatabase, ctx.SchemaDumpSpecs[1].Kind)
+				assert.Equal(t, core.DumpSectionPostData, ctx.SchemaDumpSpecs[1].Section)
 
 				seen := map[core.TaskID]struct{}{}
 				for _, s := range ctx.DumpObjectSpecs {
@@ -412,7 +499,7 @@ func TestBuildDumpContext(t *testing.T) {
 			},
 		},
 		{
-			name: "no table kind: no object specs, schema specs still emitted",
+			name: "no table kind: neither object nor schema specs",
 			input: core.ExplicitDumpContextInput{
 				IntrospectionResult: core.IntrospectionResult{
 					Engine:   core.DBMSEngineMySQL,
@@ -421,7 +508,7 @@ func TestBuildDumpContext(t *testing.T) {
 			},
 			assert: func(t *testing.T, ctx core.DumpContext) {
 				assert.Empty(t, ctx.DumpObjectSpecs)
-				assert.Len(t, ctx.SchemaDumpSpecs, 2)
+				assert.Empty(t, ctx.SchemaDumpSpecs, "no databases in scope -> no schema specs")
 			},
 		},
 		{

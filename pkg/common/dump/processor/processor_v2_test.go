@@ -82,15 +82,15 @@ func (r *mockObjectRegistry) New(kind core.ObjectKind, spec core.ObjectDumpSpec)
 // mockSchemaRegistry implements core.SchemaDumpFactoryRegistry.
 type mockSchemaRegistry struct{ mock.Mock }
 
-func (r *mockSchemaRegistry) Register(core.DumpFactory[core.SchemaDumpKind, core.SchemaDumpSpec, core.SchemaDumper]) error {
+func (r *mockSchemaRegistry) Register(core.DumpFactory[core.SchemaObjectKind, core.SchemaDumpSpec, core.SchemaDumper]) error {
 	return nil
 }
 
-func (r *mockSchemaRegistry) Get(core.SchemaDumpKind) (core.DumpFactory[core.SchemaDumpKind, core.SchemaDumpSpec, core.SchemaDumper], error) {
+func (r *mockSchemaRegistry) Get(core.SchemaObjectKind) (core.DumpFactory[core.SchemaObjectKind, core.SchemaDumpSpec, core.SchemaDumper], error) {
 	return nil, nil
 }
 
-func (r *mockSchemaRegistry) New(kind core.SchemaDumpKind, spec core.SchemaDumpSpec) (core.SchemaDumper, error) {
+func (r *mockSchemaRegistry) New(kind core.SchemaObjectKind, spec core.SchemaDumpSpec) (core.SchemaDumper, error) {
 	args := r.Called(kind, spec)
 	d, _ := args.Get(0).(core.SchemaDumper)
 	return d, args.Error(1)
@@ -105,7 +105,7 @@ func objectSpec(id core.TaskID) core.ObjectDumpSpec {
 }
 
 func schemaSpec(id core.TaskID) core.SchemaDumpSpec {
-	return core.SchemaDumpSpec{TaskID: id, Kind: core.ObjectKindTable}
+	return core.SchemaDumpSpec{TaskID: id, Kind: core.SchemaObjectKindMysqlDatabase}
 }
 
 // newProc creates a processor and fails the test on construction error.

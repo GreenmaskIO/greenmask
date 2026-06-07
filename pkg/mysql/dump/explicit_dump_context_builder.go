@@ -90,7 +90,7 @@ func validateSupportedKinds(kinds []core.ObjectKind) error {
 			}
 		} else {
 			switch kind {
-			case core.ObjectKindMysqlDatabase, core.ObjectKindMysqlSchema:
+			case core.ObjectKindMysqlDatabase:
 			default:
 				return fmt.Errorf("%w %q: MySQL dump only supports mysql.database and mysql.schema as schema sections", errUnsupportedObjectKind, kind)
 			}
@@ -117,7 +117,7 @@ func (b *ExplicitDumpContextBuilder) BuildDumpContext(
 		return core.DumpContext{}, fmt.Errorf("build dump objects: %w", err)
 	}
 
-	schemaDumpSpecs, err := b.buildSchemaDumpSpecs(seq)
+	schemaDumpSpecs, err := b.buildSchemaDumpSpecs(ctx, in, seq)
 	if err != nil {
 		return core.DumpContext{}, fmt.Errorf("build schema dump specs: %w", err)
 	}
@@ -232,16 +232,13 @@ func (b *ExplicitDumpContextBuilder) buildDumpObjectSpecs(
 	in core.ExplicitDumpContextInput,
 	seq *core.TaskIDSequence,
 ) ([]core.ObjectDumpSpec, error) {
-	tableObjects, ok := in.IntrospectionResult.KindsMap[core.ObjectKindMysqlTable]
-	if !ok {
-		log.Ctx(ctx).Debug().Msg("no table config for dump objects")
+	tableObjects := in.IntrospectionResult.KindsMap[core.ObjectKindMysqlTable]
+	if len(tableObjects) == 0 {
+		log.Ctx(ctx).Debug().Msg("no table objects to dump")
 		return nil, nil
 	}
 
-	allowedSet := make(map[core.ObjectID]struct{}, len(in.AllowedObjects[core.ObjectKindMysqlTable]))
-	for _, id := range in.AllowedObjects[core.ObjectKindMysqlTable] {
-		allowedSet[id] = struct{}{}
-	}
+	allowed, filterActive := tableAllowedFilter(in)
 
 	ctx, err := utils.WithSaltFromEnv(ctx)
 	if err != nil {
@@ -249,12 +246,13 @@ func (b *ExplicitDumpContextBuilder) buildDumpObjectSpecs(
 	}
 	var tableDumpContextPayloads []core.ObjectDumpSpec
 	for i := range tableObjects {
-		if len(allowedSet) > 0 {
-			if _, allowed := allowedSet[tableObjects[i].ID]; !allowed {
+		if filterActive {
+			if _, ok := allowed[tableObjects[i].ID]; !ok {
 				log.Ctx(ctx).Debug().
-					Any("ObjectKind", tableObjects[i].Kind).
+					Str("ObjectKind", string(tableObjects[i].Kind)).
 					Str("ObjectName", tableObjects[i].Name).
-					Msg("skipping table dump object because it is filtered")
+					Int("ObjectID", int(tableObjects[i].ID)).
+					Msg("skipping table dump object: filtered out by allowed objects")
 				continue
 			}
 		}
@@ -275,23 +273,134 @@ func (b *ExplicitDumpContextBuilder) buildDumpObjectSpecs(
 	return tableDumpContextPayloads, nil
 }
 
-// buildSchemaDumpSpecs returns specs for the two MySQL schema sections:
-// pre-data (DDL: CREATE TABLE statements) and post-data (indexes, triggers, etc.).
-func (b *ExplicitDumpContextBuilder) buildSchemaDumpSpecs(seq *core.TaskIDSequence) ([]core.SchemaDumpSpec, error) {
-	return []core.SchemaDumpSpec{
-		{
-			TaskID:       seq.Next(),
-			Kind:         core.ObjectKindMysqlTable,
-			Name:         string(core.SchemaDumpKindMySQLPreData),
-			NeedDumpData: true,
-			Payload:      nil,
-		},
-		{
-			TaskID:       seq.Next(),
-			Kind:         core.ObjectKindMysqlTable,
-			Name:         string(core.SchemaDumpKindMySQLPostData),
-			NeedDumpData: true,
-			Payload:      nil,
-		},
-	}, nil
+// tableAllowedFilter returns the set of allowed table ObjectIDs and whether a
+// filter is active. A nil/empty AllowedObjects entry means no filter is active
+// and every table is allowed (see core.ObjectFilterResult).
+func tableAllowedFilter(in core.ExplicitDumpContextInput) (allowed map[core.ObjectID]struct{}, active bool) {
+	ids := in.AllowedObjects[core.ObjectKindMysqlTable]
+	if len(ids) == 0 {
+		return nil, false
+	}
+	allowed = make(map[core.ObjectID]struct{}, len(ids))
+	for _, id := range ids {
+		allowed[id] = struct{}{}
+	}
+	return allowed, true
+}
+
+// allowedTableObjects returns the MySQL table objects from the introspection
+// result that participate in the dump.
+func allowedTableObjects(in core.ExplicitDumpContextInput) []core.Object {
+	tableObjects := in.IntrospectionResult.KindsMap[core.ObjectKindMysqlTable]
+	allowed, active := tableAllowedFilter(in)
+	if !active {
+		return tableObjects
+	}
+	res := make([]core.Object, 0, len(tableObjects))
+	for i := range tableObjects {
+		if _, ok := allowed[tableObjects[i].ID]; ok {
+			res = append(res, tableObjects[i])
+		}
+	}
+	return res
+}
+
+// mysqlSchemaDumpSections are the schema sections MySQL produces per database, in
+// restore order (pre-data DDL before post-data triggers/routines/events).
+var mysqlSchemaDumpSections = []core.DumpSection{
+	core.DumpSectionPreData,
+	core.DumpSectionPostData,
+}
+
+// distinctSchemas returns the distinct schema (database) names across the given
+// table objects, preserving first-seen order for deterministic output.
+func distinctSchemas(objects []core.Object) ([]string, error) {
+	seen := make(map[string]struct{})
+	var schemas []string
+	for _, obj := range objects {
+		table, err := payloadToTableDefinition(obj)
+		if err != nil {
+			return nil, fmt.Errorf("get table definition: %w", err)
+		}
+		if _, ok := seen[table.Schema]; ok {
+			continue
+		}
+		seen[table.Schema] = struct{}{}
+		schemas = append(schemas, table.Schema)
+	}
+	return schemas, nil
+}
+
+// schemaDumpDatabases returns the distinct MySQL databases (schemas) that own at
+// least one allowed table, preserving first-seen order for deterministic output.
+func schemaDumpDatabases(in core.ExplicitDumpContextInput) ([]string, error) {
+	return distinctSchemas(allowedTableObjects(in))
+}
+
+// logSkippedSchemaDumps emits a debug log for every database present in the
+// introspection that has no tables allowed by the filter, so its schema dump is
+// skipped entirely.
+func logSkippedSchemaDumps(ctx context.Context, in core.ExplicitDumpContextInput, inScopeDatabases []string) {
+	allDatabases, err := distinctSchemas(in.IntrospectionResult.KindsMap[core.ObjectKindMysqlTable])
+	if err != nil {
+		// Best-effort logging only; payloads were already validated upstream.
+		return
+	}
+	inScope := make(map[string]struct{}, len(inScopeDatabases))
+	for _, d := range inScopeDatabases {
+		inScope[d] = struct{}{}
+	}
+	for _, d := range allDatabases {
+		if _, ok := inScope[d]; !ok {
+			log.Ctx(ctx).Debug().
+				Str("Database", d).
+				Msg("skipping schema dump for database: no tables allowed by filter")
+		}
+	}
+}
+
+// buildSchemaDumpSpecs produces, for every in-scope database, a pre-data and a
+// post-data schema dump spec. Specs are grouped by section (all pre-data first,
+// then all post-data) so restore ordering is preserved. All MySQL schema dumps
+// are delegated to a single mysqldump-backed dumper, so every spec carries the
+// engine-level kind; the database is in Name and the section in Section.
+func (b *ExplicitDumpContextBuilder) buildSchemaDumpSpecs(
+	ctx context.Context,
+	in core.ExplicitDumpContextInput,
+	seq *core.TaskIDSequence,
+) ([]core.SchemaDumpSpec, error) {
+	databases, err := schemaDumpDatabases(in)
+	if err != nil {
+		return nil, fmt.Errorf("collect schema dump databases: %w", err)
+	}
+	logSkippedSchemaDumps(ctx, in, databases)
+
+	databaseIDs := databaseObjectIDs(in)
+
+	var specs []core.SchemaDumpSpec
+	for _, section := range mysqlSchemaDumpSections {
+		for _, database := range databases {
+			specs = append(specs, core.SchemaDumpSpec{
+				TaskID: seq.Next(),
+				Kind:   core.SchemaObjectKindMysqlDatabase,
+				// ObjectID is a runtime handle to the introspected database object
+				// (zero if the database object was not introspected).
+				ObjectID: databaseIDs[database],
+				Name:     database,
+				Section:  section,
+			})
+		}
+	}
+	return specs, nil
+}
+
+// databaseObjectIDs maps each introspected database name to its runtime
+// ObjectID, so a schema dump spec can reference the database object it targets.
+func databaseObjectIDs(in core.ExplicitDumpContextInput) map[string]core.ObjectID {
+	databaseObjects := in.IntrospectionResult.KindsMap[core.ObjectKindMysqlDatabase]
+	ids := make(map[string]core.ObjectID, len(databaseObjects))
+	for _, obj := range databaseObjects {
+		ids[obj.Name] = obj.ID
+	}
+	return ids
 }

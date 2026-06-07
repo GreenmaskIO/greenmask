@@ -23,6 +23,7 @@ import (
 	"github.com/greenmaskio/greenmask/pkg/common/filterconfig"
 	"github.com/greenmaskio/greenmask/pkg/common/graphbuilder"
 	"github.com/greenmaskio/greenmask/pkg/common/subsetbuilder"
+	"github.com/greenmaskio/greenmask/pkg/config"
 )
 
 var (
@@ -36,11 +37,14 @@ var (
 // packages; only this constructor knows about the concrete MySQL stage types.
 // Most stages are currently placeholder stubs (see stages.go) and will be
 // replaced incrementally with real MySQL logic.
-func NewDumpStages() pipeline.DumpStages {
+//
+// The config is needed up front for the introspector, which scopes introspection
+// to the configured schemas/databases.
+func NewDumpStages(cfg config.Config) pipeline.DumpStages {
 	return pipeline.DumpStages{
 		ConnectionConfigurerBuilder: &ConnectionConfigurerBuilder{},
 		DumpSessionBuilder:          &DumpSessionBuilder{},
-		Introspector:                &IntrospectorV2{},
+		Introspector:                NewIntrospectorV2(&cfg.Dump.Options),
 		DependencyGraphBuilder:      graphbuilder.New(),
 		DumpMetadataLoader:          &DumpMetadataLoader{},
 		SchemaDriftValidator:        &SchemaDriftValidator{},
@@ -61,6 +65,6 @@ func NewDumpStages() pipeline.DumpStages {
 }
 
 // NewDumpPipeline builds a dump pipeline backed by the MySQL stages.
-func NewDumpPipeline() *pipeline.DumpPipeline {
-	return pipeline.NewDumpPipeline(NewDumpStages(), core.DBMSEngineMySQL)
+func NewDumpPipeline(cfg config.Config) *pipeline.DumpPipeline {
+	return pipeline.NewDumpPipeline(NewDumpStages(cfg), core.DBMSEngineMySQL)
 }

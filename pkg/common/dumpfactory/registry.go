@@ -53,5 +53,5 @@ func NewObjectDumpFactoryRegistry() core.ObjectDumpFactoryRegistry {
 }
 
 func NewSchemaDumpFactoryRegistry() core.SchemaDumpFactoryRegistry {
-	return NewRegistry[core.SchemaDumpKind, core.SchemaDumpSpec, core.SchemaDumper]()
+	return NewRegistry[core.SchemaObjectKind, core.SchemaDumpSpec, core.SchemaDumper]()
 }

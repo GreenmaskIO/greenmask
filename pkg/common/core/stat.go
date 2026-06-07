@@ -35,7 +35,6 @@ const (
 
 	ObjectKindMysqlTable    ObjectKind = "mysql.table"
 	ObjectKindMysqlDatabase ObjectKind = "mysql.database"
-	ObjectKindMysqlSchema   ObjectKind = "mysql.schema"
 )
 
 func (o ObjectKind) IsDataSection() bool {
@@ -51,7 +50,7 @@ func (o ObjectKind) IsDataSection() bool {
 func (o ObjectKind) IsSchemaSection() bool {
 	switch o {
 	case ObjectKindPostgresSchema, ObjectKindPostgresDatabase,
-		ObjectKindMysqlDatabase, ObjectKindMysqlSchema:
+		ObjectKindMysqlDatabase:
 		return true
 	default:
 		return false

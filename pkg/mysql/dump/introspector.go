@@ -20,7 +20,6 @@ import (
 
 	core "github.com/greenmaskio/greenmask/pkg/common/core"
 	"github.com/greenmaskio/greenmask/pkg/config"
-	"github.com/greenmaskio/greenmask/pkg/mysql/dump/introspect"
 )
 
 var _ core.IntrospectorV2 = (*IntrospectorV2)(nil)
@@ -29,40 +28,56 @@ var _ core.IntrospectorV2 = (*IntrospectorV2)(nil)
 // snapshot-synchronized operational DB and folds the result into the pipeline's
 // IntrospectionResult.
 //
-// It introspects the whole database — no include/exclude filtering is applied
-// here. Introspection must stay config-independent so it can be compared across
-// runs (schema drift) and persisted into Metadata. The dump scope (which objects
-// to actually dump, plus the vendor-CLI include/exclude lists) is a derived
-// artifact computed by a later context-building stage from config.Dump and this
-// result; see core.IntrospectionResult.
+// Scope: introspection applies database/schema-level scoping only — it skips
+// excluded schemas/databases (we should not, and may not be permitted to,
+// introspect databases the user excluded) and introspects EVERY table in the
+// allowed schemas. Table/data include/exclude is deliberately NOT applied here;
+// that is the ObjectFilter layer's responsibility. Introspection is therefore
+// config-dependent at the schema level (a schema brought in/out of scope between
+// runs will show up in schema-drift comparison).
 //
-// MySQL exposes only one kind of dumpable object — the table — so the resulting
-// KindsMap has a single ObjectKindTable entry, with each Object carrying the
-// engine-specific *mysqlmodels.Table as its payload.
-type IntrospectorV2 struct{}
+// The resulting KindsMap holds tables under ObjectKindTable (each Object carrying
+// the engine-specific *mysqlmodels.Table payload) and one ObjectKindMysqlDatabase
+// object per allowed schema, so the schema dump can reference databases by
+// runtime ObjectID.
+type IntrospectorV2 struct {
+	includeSchemas   []string
+	excludeSchemas   []string
+	includeDatabases []string
+	excludeDatabases []string
+}
+
+// NewIntrospectorV2 builds the MySQL introspector with the schema/database
+// include/exclude scope taken from the dump options.
+func NewIntrospectorV2(opts *config.CommonDumpOptions) *IntrospectorV2 {
+	return &IntrospectorV2{
+		includeSchemas:   opts.IncludeSchema,
+		excludeSchemas:   opts.ExcludeSchema,
+		includeDatabases: opts.IncludeDatabase,
+		excludeDatabases: opts.ExcludeDatabase,
+	}
+}
 
 func (s *IntrospectorV2) Introspect(ctx context.Context, session core.DumpSession) (core.IntrospectionResult, error) {
-	// Permissive (empty) options: introspect every user table without applying
-	// include/exclude filters. Filtering is the job of the downstream scope stage.
-	introspector, err := introspect.NewIntrospector(&config.CommonDumpOptions{})
+	scope, err := newSchemaScope(s.includeSchemas, s.excludeSchemas, s.includeDatabases, s.excludeDatabases)
 	if err != nil {
-		return core.IntrospectionResult{}, fmt.Errorf("create mysql introspector: %w", err)
+		return core.IntrospectionResult{}, fmt.Errorf("build schema scope: %w", err)
 	}
+	engine := newIntrospectEngine(scope)
 
 	// The session owns the snapshot-synchronized operational DB; scope
 	// introspection to it via RunWithOperationalDB so the session controls the
 	// connection lifecycle.
 	if err := session.RunWithOperationalDB(ctx, func(ctx context.Context, db core.DB) error {
-		return introspector.Introspect(ctx, db)
+		return engine.introspect(ctx, db)
 	}); err != nil {
 		return core.IntrospectionResult{}, fmt.Errorf("introspect mysql: %w", err)
 	}
 
-	tables := introspector.GetTables()
-	objects := make([]core.Object, 0, len(tables))
-	for idx := range tables {
-		t := tables[idx]
-		objects = append(objects, core.Object{
+	tableObjects := make([]core.Object, 0, len(engine.tables))
+	for idx := range engine.tables {
+		t := engine.tables[idx]
+		tableObjects = append(tableObjects, core.Object{
 			ID:      core.ObjectID(t.ID),
 			Kind:    core.ObjectKindTable,
 			Name:    t.Name,
@@ -70,10 +85,24 @@ func (s *IntrospectorV2) Introspect(ctx context.Context, session core.DumpSessio
 		})
 	}
 
+	// One database object per allowed schema (a schema section, delegated to
+	// mysqldump — greenmask does not dump its DDL itself). ObjectID is a per-run
+	// handle in the database id space.
+	databaseObjects := make([]core.Object, 0, len(engine.allowedSchemas))
+	for i, schema := range engine.allowedSchemas {
+		databaseObjects = append(databaseObjects, core.Object{
+			ID:   core.ObjectID(i),
+			Kind: core.ObjectKindMysqlDatabase,
+			Name: schema,
+		})
+	}
+
 	return core.IntrospectionResult{
-		Engine: core.DBMSEngineMySQL,
+		Engine:  core.DBMSEngineMySQL,
+		Version: engine.version,
 		KindsMap: map[core.ObjectKind][]core.Object{
-			core.ObjectKindTable: objects,
+			core.ObjectKindTable:         tableObjects,
+			core.ObjectKindMysqlDatabase: databaseObjects,
 		},
 	}, nil
 }

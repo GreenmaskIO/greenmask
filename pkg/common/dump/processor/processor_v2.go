@@ -10,15 +10,6 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
-type DumpStages struct {
-	Introspector           core.IntrospectorV2
-	DependencyGraphBuilder DependencyGraphBuilder
-	SubsetBuilder          SubsetBuilder
-	DumpContextBuilder     DumpContextBuilder
-	DumpPlanBuilder        DumpPlanBuilder
-	DumpProcessor          DumpProcessor
-}
-
 type DefaultDumpProcessorV2 struct {
 	objectDumpFactory core.ObjectDumpFactoryRegistry
 	schemaDumpFactory core.SchemaDumpFactoryRegistry
@@ -61,7 +52,7 @@ func NewDataDumpProcessorV2(
 func (dr *DefaultDumpProcessorV2) initSchemaDumpers(plan core.DumpPlan) ([]core.SchemaDumper, error) {
 	res := make([]core.SchemaDumper, 0, len(plan.SchemaDumpSpecs))
 	for _, item := range plan.SchemaDumpSpecs {
-		task, err := dr.schemaDumpFactory.New(core.SchemaDumpKind(item.Kind), item)
+		task, err := dr.schemaDumpFactory.New(item.Kind, item)
 		if err != nil {
 			return nil, fmt.Errorf("new schema dump task: %w", err)
 		}
