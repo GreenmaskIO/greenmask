@@ -20,7 +20,7 @@ import (
 
 	"github.com/greenmaskio/greenmask/pkg/common/conditions"
 	core "github.com/greenmaskio/greenmask/pkg/common/core"
-	context2 "github.com/greenmaskio/greenmask/pkg/common/dump/context"
+	transformercontext "github.com/greenmaskio/greenmask/pkg/common/transformers/context"
 	parameters2 "github.com/greenmaskio/greenmask/pkg/common/transformers/parameters"
 	"github.com/greenmaskio/greenmask/pkg/common/utils"
 	"github.com/greenmaskio/greenmask/pkg/common/validationcollector"
@@ -75,7 +75,7 @@ func (d *TransformerDefinition) Init(
 	ctx context.Context,
 	driver core.TableDriver,
 	config core.TransformerConfig,
-) (core.TransformerContext, error) {
+) (core.TransformerContexter, error) {
 	ctx = validationcollector.WithMeta(ctx,
 		core.MetaKeyTransformerName, config.Name,
 	)
@@ -88,7 +88,7 @@ func (d *TransformerDefinition) Init(
 		config.ResolveEnv,
 	)
 	if err != nil {
-		return context2.TransformerContext{}, fmt.Errorf("init parameters: %w", err)
+		return nil, fmt.Errorf("init parameters: %w", err)
 	}
 
 	dynamicParams := make(map[string]*parameters2.DynamicParameter)
@@ -110,13 +110,13 @@ func (d *TransformerDefinition) Init(
 		staticParams,
 	)
 	if err != nil {
-		return context2.TransformerContext{}, fmt.Errorf("schema validation error: %w", err)
+		return nil, fmt.Errorf("schema validation error: %w", err)
 	}
 
 	// Create a new transformer
 	tran, err := d.New(ctx, driver, params)
 	if err != nil {
-		return context2.TransformerContext{}, fmt.Errorf("new transformer: %w", err)
+		return nil, fmt.Errorf("new transformer: %w", err)
 	}
 	ctx = log.Ctx(ctx).With().
 		Any(core.MetaKeyConditionScope, "Transformer").
@@ -126,11 +126,11 @@ func (d *TransformerDefinition) Init(
 	if config.When != "" {
 		whenCond, err = conditions.NewWhenCond(ctx, config.When, utils.Value(driver.Table()))
 		if err != nil {
-			return context2.TransformerContext{}, nil
+			return nil, err
 		}
 	}
 
-	return context2.TransformerContext{
+	return &transformercontext.TransformerContext{
 		Transformer:       tran,
 		Condition:         whenCond,
 		StaticParameters:  staticParams,

@@ -151,7 +151,7 @@ func (p *TableContextBuilder) initTableTransformers(
 
 type tranInitRes struct {
 	transformer       core.Transformer
-	staticParameters  map[string]*parameters.DynamicParameter
+	staticParameters  map[string]*parameters.StaticParameter
 	dynamicParameters map[string]*parameters.DynamicParameter
 }
 
@@ -213,7 +213,7 @@ func (p *TableContextBuilder) initTransformer(
 	return tranInitRes{
 		transformer:       tran,
 		dynamicParameters: dynamicParams,
-		staticParameters:  dynamicParams,
+		staticParameters:  staticParams,
 	}, nil
 }
 
