@@ -37,9 +37,10 @@ type DiscoveryStageArtifacts struct {
 // any drift-driven edits, the explicitly configured DumpContext, and the final
 // derived DumpContext that all subsequent stages consume.
 type ContextStageArtifacts struct {
-	EditedConfig any               `json:"edited_config,omitempty"`
-	ExplicitCtx  *core.DumpContext `json:"explicit_ctx,omitempty"`
-	FinalCtx     *core.DumpContext `json:"final_ctx,omitempty"`
+	EditedConfig       any                     `json:"edited_config,omitempty"`
+	ObjectFilterResult core.ObjectFilterResult `json:"object_filter_result,omitempty"`
+	ExplicitCtx        *core.DumpContext       `json:"explicit_ctx,omitempty"`
+	FinalCtx           *core.DumpContext       `json:"final_ctx,omitempty"`
 }
 
 // BuildSnapshotAndDiffArtifacts holds the serialisable snapshot of the current

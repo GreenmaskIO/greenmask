@@ -45,6 +45,7 @@ func NewDumpStages() pipeline.DumpStages {
 		SchemaDriftValidator:        &SchemaDriftValidator{},
 		SubsetBuilder:               subsetbuilder.New(subsetbuilder.DialectMySQL),
 		ConfigEditor:                &ConfigEditor{},
+		ObjectFilter:                &ObjectFilter{},
 		ExplicitDumpContextBuilder:  &ExplicitDumpContextBuilder{},
 		DerivedDumpContextBuilder:   &DerivedDumpContextBuilder{},
 		DumpContextSnapshotBuilder:  &DumpContextSnapshotBuilder{},

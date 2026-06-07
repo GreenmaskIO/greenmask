@@ -114,6 +114,26 @@ func (b *ExplicitDumpContextBuilder) initTable(
 		Str(core.MetaKeyTableName, table.Name).
 		Logger().WithContext(ctx)
 
+	if tableConfig == nil {
+		// No user config for this table — raw dump with no transformations.
+		tableDriver, err := newMysqlTableDriver(ctx, table, nil)
+		if err != nil {
+			return core.ObjectDumpSpec{}, fmt.Errorf("init raw table driver: %w", err)
+		}
+		return core.ObjectDumpSpec{
+			TaskID:   seq.Next(),
+			Kind:     core.ObjectKindMysqlTable,
+			ObjectID: obj.ID,
+			Name:     obj.Name,
+			Mode:     core.DumpModeRaw,
+			Payload: transformercontext.TableDumpContext{
+				Table:       &table,
+				Query:       subsetQuery,
+				TableDriver: tableDriver,
+			},
+		}, nil
+	}
+
 	tableDriver, err := newMysqlTableDriver(ctx, table, tableConfig.ColumnsTypeOverride)
 	if err != nil {
 		return core.ObjectDumpSpec{}, fmt.Errorf("init table driver: %w", err)
@@ -130,25 +150,29 @@ func (b *ExplicitDumpContextBuilder) initTable(
 	if err != nil {
 		return core.ObjectDumpSpec{}, fmt.Errorf("init transformation runtimes: %w", err)
 	}
-	payload := transformercontext.TableDumpContext{
-		Table:              &table,
-		Condition:          tableCondition,
-		TransformerContext: transformerContext,
-		Query:              dumpQuery,
-		TableDriver:        tableDriver,
+	mode := core.DumpModeRaw
+	if len(tableConfig.Transformers) > 0 {
+		mode = core.DumpModeTransformed
 	}
-
 	return core.ObjectDumpSpec{
 		TaskID:   seq.Next(),
 		Kind:     core.ObjectKindMysqlTable,
 		ObjectID: obj.ID,
 		Name:     obj.Name,
-		Payload:  payload,
+		Mode:     mode,
+		Payload: transformercontext.TableDumpContext{
+			Table:              &table,
+			Condition:          tableCondition,
+			TransformerContext: transformerContext,
+			Query:              dumpQuery,
+			TableDriver:        tableDriver,
+		},
 	}, nil
 }
 
 // buildDumpObjectSpecs creates an ObjectDumpSpec for every table object found in
-// the introspection result. Mode is set to transformed when the table has
+// the introspection result that is present in AllowedObjects (or all tables if
+// AllowedObjects is empty). Mode is set to transformed when the table has
 // transformer configuration, raw otherwise.
 func (b *ExplicitDumpContextBuilder) buildDumpObjectSpecs(
 	ctx context.Context,
@@ -160,12 +184,23 @@ func (b *ExplicitDumpContextBuilder) buildDumpObjectSpecs(
 		log.Ctx(ctx).Debug().Msg("no table config for dump objects")
 		return nil, nil
 	}
-	tableDumpContextPayloads := make([]core.ObjectDumpSpec, len(tableObjects))
+
+	allowedSet := make(map[core.ObjectID]struct{}, len(in.AllowedObjects[core.ObjectKindMysqlTable]))
+	for _, id := range in.AllowedObjects[core.ObjectKindMysqlTable] {
+		allowedSet[id] = struct{}{}
+	}
+
 	ctx, err := utils.WithSaltFromEnv(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("set salt: %w", err)
 	}
+	var tableDumpContextPayloads []core.ObjectDumpSpec
 	for i := range tableObjects {
+		if len(allowedSet) > 0 {
+			if _, allowed := allowedSet[tableObjects[i].ID]; !allowed {
+				continue
+			}
+		}
 		table, err := payloadToTableDefinition(tableObjects[i])
 		if err != nil {
 			return nil, fmt.Errorf("build table dump specs: %w", err)

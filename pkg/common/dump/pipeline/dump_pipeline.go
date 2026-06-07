@@ -120,10 +120,18 @@ func (p *DumpPipeline) BuildContext(
 		Config:      state.Discovery.Config.Dump.Transformation.ToTransformationConfig(),
 		SchemaDrift: &schemaDrift,
 	})
+	filterResult, err := p.Stages.ObjectFilter.FilterObjects(ctx, core.ObjectFilterInput{
+		IntrospectionResult: *discoveryArtefacts.Introspection,
+		DumpConfig:          editedCfg,
+	})
+	if err != nil {
+		return fmt.Errorf("filter objects: %w", err)
+	}
 	explicitCtxIn := core.ExplicitDumpContextInput{
 		Config:              discoveryArtefacts.Config,
 		TableConfigs:        editedCfg,
 		IntrospectionResult: *discoveryArtefacts.Introspection,
+		AllowedObjects:      filterResult.AllowedObjects,
 		Subset:              *discoveryArtefacts.Subset,
 		SchemaDrift:         schemaDrift,
 	}
@@ -135,6 +143,7 @@ func (p *DumpPipeline) BuildContext(
 		Config:                discoveryArtefacts.Config,
 		TableConfigs:          editedCfg,
 		IntrospectionResult:   *discoveryArtefacts.Introspection,
+		AllowedObjects:        filterResult.AllowedObjects,
 		Subset:                *discoveryArtefacts.Subset,
 		SchemaDrift:           schemaDrift,
 		DependencyGraphResult: *discoveryArtefacts.DependencyGraph,
@@ -145,9 +154,10 @@ func (p *DumpPipeline) BuildContext(
 	}
 
 	state.Context = ContextStageArtifacts{
-		EditedConfig: editedCfg,
-		ExplicitCtx:  &explicitCtx,
-		FinalCtx:     &finalCtx,
+		EditedConfig:       editedCfg,
+		ObjectFilterResult: filterResult,
+		ExplicitCtx:        &explicitCtx,
+		FinalCtx:           &finalCtx,
 	}
 	state.MarkExecuted(StageNameContextBuilding)
 	return nil

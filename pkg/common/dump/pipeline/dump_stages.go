@@ -108,6 +108,20 @@ type DumpStages struct {
 	//   - auto-generated include/exclude rules
 	ConfigEditor core.ConfigEditor
 
+	// ObjectFilter declares which introspected objects participate in the dump.
+	// It sits between ConfigEditor and ExplicitDumpContextBuilder, receiving the
+	// DBMS-specific dump config (from ConfigEditor) and returning the allowed
+	// ObjectID set per kind.
+	//
+	// Note: highest-scope filtering (databases, schemas) is the Introspector's
+	// responsibility. ObjectFilter handles per-object inclusion/exclusion within
+	// the already-scoped introspection result.
+	//
+	// Downstream builders use AllowedObjects to skip excluded objects.
+	// Validation stages can compare AllowedObjects against the full
+	// IntrospectionResult in state.Discovery to detect anomalies.
+	ObjectFilter core.ObjectFilter
+
 	// ExplicitDumpContextBuilder constructs the initial dump context
 	// directly from explicit user configuration and introspection results.
 	//
