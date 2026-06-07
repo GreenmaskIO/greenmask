@@ -17,7 +17,7 @@ package cmd
 import (
 	"testing"
 
-	"github.com/greenmaskio/greenmask/pkg/common/models"
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 	mysqldbmsdriver "github.com/greenmaskio/greenmask/pkg/mysql/dbmsdriver"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -25,7 +25,7 @@ import (
 
 func TestTextRecord_Encode(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
-		columns := []models.Column{
+		columns := []core.Column{
 			{
 				Idx:      0,
 				Name:     "first_name",
@@ -51,7 +51,7 @@ func TestTextRecord_Encode(t *testing.T) {
 			affectedColumn,
 		)
 		require.NoError(t, err)
-		val1 := models.NewColumnRawValue([]byte("value1"), false)
+		val1 := core.NewColumnRawValue([]byte("value1"), false)
 		err = record.SetColumn(&columns[0], val1)
 		require.NoError(t, err)
 
@@ -66,7 +66,7 @@ func TestTextRecord_Encode(t *testing.T) {
 func TestTextRecord_Decode(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		rawData := []byte("value1")
-		columns := []models.Column{
+		columns := []core.Column{
 			{
 				Idx:  0,
 				Name: "first_name",

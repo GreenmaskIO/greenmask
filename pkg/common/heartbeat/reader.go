@@ -21,16 +21,16 @@ import (
 	"io"
 	"time"
 
-	"github.com/greenmaskio/greenmask/pkg/common/interfaces"
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 	"github.com/rs/zerolog/log"
 )
 
 type Reader struct {
-	st           interfaces.Storager
+	st           core.Storager
 	staleTimeout time.Duration
 }
 
-func NewReader(st interfaces.Storager) *Reader {
+func NewReader(st core.Storager) *Reader {
 	return &Reader{
 		st:           st,
 		staleTimeout: DefaultWriteInterval,

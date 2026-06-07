@@ -18,8 +18,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/greenmaskio/greenmask/pkg/common/interfaces"
-	"github.com/greenmaskio/greenmask/pkg/common/models"
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 	"github.com/greenmaskio/greenmask/pkg/common/transformers/parameters"
 	"github.com/greenmaskio/greenmask/pkg/common/transformers/utils"
 	"github.com/greenmaskio/greenmask/pkg/common/validationcollector"
@@ -39,7 +38,7 @@ var ReplaceTransformerDefinition = utils.NewTransformerDefinition(
 	parameters.MustNewParameterDefinition(
 		"column",
 		"column name",
-	).SetIsColumn(models.NewColumnProperties().
+	).SetIsColumn(core.NewColumnProperties().
 		SetAffected(true),
 	).SetRequired(true),
 
@@ -63,10 +62,10 @@ var ReplaceTransformerDefinition = utils.NewTransformerDefinition(
 type ReplaceTransformer struct {
 	columnName          string
 	columnIdx           int
-	rawValue            *models.ColumnRawValue
+	rawValue            *core.ColumnRawValue
 	affectedColumns     map[int]string
 	needValidate        bool
-	columnOIDToValidate models.VirtualOID
+	columnOIDToValidate core.VirtualOID
 
 	valueParam parameters.Parameterizer
 
@@ -78,9 +77,9 @@ type ReplaceTransformer struct {
 
 func NewReplaceTransformer(
 	ctx context.Context,
-	tableDriver interfaces.TableDriver,
+	tableDriver core.TableDriver,
 	parameters map[string]parameters.Parameterizer,
-) (interfaces.Transformer, error) {
+) (core.Transformer, error) {
 	columnName, column, err := getColumnParameterValue(ctx, tableDriver, parameters)
 	if err != nil {
 		return nil, err
@@ -96,36 +95,36 @@ func NewReplaceTransformer(
 	}
 
 	valueParam := parameters["value"]
-	var rawValue *models.ColumnRawValue
+	var rawValue *core.ColumnRawValue
 
 	if !valueParam.IsDynamic() {
 		// Get value from parameter
 		value, err := valueParam.RawValue()
 		if err != nil {
 			validationcollector.FromContext(ctx).
-				Add(models.NewValidationWarning().
-					SetSeverity(models.ValidationSeverityError).
-					AddMeta(models.MetaKeyParameterName, valueParam.Name()).
+				Add(core.NewValidationWarning().
+					SetSeverity(core.ValidationSeverityError).
+					AddMeta(core.MetaKeyParameterName, valueParam.Name()).
 					SetError(err).
 					SetMsg("error getting parameter value"))
-			return nil, models.ErrFatalValidationError
+			return nil, core.ErrFatalValidationError
 		}
 		// Validate the value if requested
 		if needValidate {
 			_, err = tableDriver.DecodeValueByTypeOid(column.TypeOID, value)
 			if err != nil {
 				validationcollector.FromContext(ctx).
-					Add(models.NewValidationWarning().
-						SetSeverity(models.ValidationSeverityError).
+					Add(core.NewValidationWarning().
+						SetSeverity(core.ValidationSeverityError).
 						SetMsg("error validating parameter value").
-						AddMeta(models.MetaKeyColumnTypeName, column.TypeName).
-						AddMeta(models.MetaKeyParameterName, valueParam.Name()).
-						AddMeta(models.MetaKeyParameterValue, string(value)).
+						AddMeta(core.MetaKeyColumnTypeName, column.TypeName).
+						AddMeta(core.MetaKeyParameterName, valueParam.Name()).
+						AddMeta(core.MetaKeyParameterValue, string(value)).
 						SetError(err))
-				return nil, models.ErrFatalValidationError
+				return nil, core.ErrFatalValidationError
 			}
 		}
-		rawValue = models.NewColumnRawValue(value, false)
+		rawValue = core.NewColumnRawValue(value, false)
 	}
 
 	t := &ReplaceTransformer{
@@ -153,8 +152,8 @@ func NewReplaceTransformer(
 }
 
 func (t *ReplaceTransformer) getValueToReplace(
-	driver interfaces.TableDriver,
-) (*models.ColumnRawValue, error) {
+	driver core.TableDriver,
+) (*core.ColumnRawValue, error) {
 	// Check if the current dynamic value is empty (is null).
 	isEmpty, err := t.valueParam.IsEmpty()
 	if err != nil {
@@ -165,7 +164,7 @@ func (t *ReplaceTransformer) getValueToReplace(
 		// Note: we allow null values, though for dynamic values this may cause
 		// 		 constraint violation due to unexpected null values that
 		//       was got from the dynamic parameter.
-		return models.NewColumnRawValue(nil, true), nil
+		return core.NewColumnRawValue(nil, true), nil
 	}
 	// If not empty just get the raw value from the parameter
 	v, err := t.valueParam.RawValue()
@@ -182,12 +181,12 @@ func (t *ReplaceTransformer) getValueToReplace(
 		}
 	}
 
-	return models.NewColumnRawValue(v, false), nil
+	return core.NewColumnRawValue(v, false), nil
 }
 
 func (t *ReplaceTransformer) transformDynamic(
 	_ context.Context,
-	r interfaces.Recorder,
+	r core.Recorder,
 ) error {
 	newValue, err := t.getValueToReplace(r.TableDriver())
 	if err != nil {
@@ -202,7 +201,7 @@ func (t *ReplaceTransformer) transformDynamic(
 
 func (t *ReplaceTransformer) transformStatic(
 	_ context.Context,
-	r interfaces.Recorder,
+	r core.Recorder,
 ) error {
 	if err := r.SetRawColumnValueByIdx(t.columnIdx, t.rawValue); err != nil {
 		return fmt.Errorf("unable to set new value: %w", err)
@@ -210,7 +209,7 @@ func (t *ReplaceTransformer) transformStatic(
 	return nil
 }
 
-func (t *ReplaceTransformer) Transform(ctx context.Context, r interfaces.Recorder) error {
+func (t *ReplaceTransformer) Transform(ctx context.Context, r core.Recorder) error {
 	return t.transform(ctx, r)
 }
 

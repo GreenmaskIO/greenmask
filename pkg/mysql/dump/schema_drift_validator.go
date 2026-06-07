@@ -17,15 +17,14 @@ package dump
 import (
 	"context"
 
-	"github.com/greenmaskio/greenmask/pkg/common/interfaces"
-	"github.com/greenmaskio/greenmask/pkg/common/models"
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 )
 
-var _ interfaces.SchemaDriftValidator = (*SchemaDriftValidator)(nil)
+var _ core.SchemaDriftValidator = (*SchemaDriftValidator)(nil)
 
 // SchemaDriftValidator compares previous and current introspection results.
 type SchemaDriftValidator struct{}
 
-func (s *SchemaDriftValidator) Compare(ctx context.Context, input models.SchemaDriftValidatorInput) models.SchemaDriftResult {
-	return models.SchemaDriftResult{}
+func (s *SchemaDriftValidator) Compare(ctx context.Context, input core.SchemaDriftValidatorInput) core.SchemaDriftResult {
+	return core.SchemaDriftResult{}
 }

@@ -18,8 +18,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/greenmaskio/greenmask/pkg/common/interfaces"
-	"github.com/greenmaskio/greenmask/pkg/common/models"
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 	"github.com/greenmaskio/greenmask/pkg/config"
 )
 
@@ -27,12 +26,12 @@ import (
 // Run returns "not implemented yet" until the PostgreSQL port is complete.
 type Restore struct {
 	cfg    *config.Config
-	st     interfaces.Storager
-	dumpID models.DumpID
+	st     core.Storager
+	dumpID core.DumpID
 }
 
 // New returns a Restore for use as an engines.Restorer.
-func New(cfg *config.Config, st interfaces.Storager, dumpID models.DumpID) (*Restore, error) {
+func New(cfg *config.Config, st core.Storager, dumpID core.DumpID) (*Restore, error) {
 	return &Restore{cfg: cfg, st: st, dumpID: dumpID}, nil
 }
 

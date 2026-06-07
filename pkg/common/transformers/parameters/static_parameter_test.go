@@ -18,7 +18,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/greenmaskio/greenmask/pkg/common/models"
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 	"github.com/greenmaskio/greenmask/pkg/common/validationcollector"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -28,13 +28,13 @@ func TestStaticParameter_Init(t *testing.T) {
 	t.Run("column success", func(t *testing.T) {
 		columnDef := MustNewParameterDefinition("column", "some desc").
 			SetIsColumn(
-				models.NewColumnProperties().
+				core.NewColumnProperties().
 					SetAllowedColumnTypes("int2", "int4", "int8"),
 			)
 
 		tableDriver := newTableDriverMock()
 		tableDriver.On("GetColumnByName", "test_column").
-			Return(&models.Column{
+			Return(&core.Column{
 				Name:     "test_column",
 				TypeName: "int2",
 			}, nil)
@@ -49,18 +49,18 @@ func TestStaticParameter_Init(t *testing.T) {
 	t.Run("column unknown", func(t *testing.T) {
 		columnDef := MustNewParameterDefinition("column", "some desc").
 			SetIsColumn(
-				models.NewColumnProperties().
+				core.NewColumnProperties().
 					SetAllowedColumnTypes("int2", "int4", "int8"),
 			)
 
 		tableDriver := newTableDriverMock()
 		tableDriver.On("GetColumnByName", "test_column").
-			Return(nil, models.ErrUnknownColumnName)
+			Return(nil, core.ErrUnknownColumnName)
 
 		ctx := validationcollector.WithCollector(context.Background(), validationcollector.NewCollector())
 		parameter := NewStaticParameter(columnDef, tableDriver, false)
 		err := parameter.Init(ctx, nil, []byte("test_column"))
-		require.ErrorIs(t, err, models.ErrFatalValidationError)
+		require.ErrorIs(t, err, core.ErrFatalValidationError)
 		assert.True(t, validationcollector.FromContext(ctx).IsFatal())
 		assert.Contains(t, validationcollector.FromContext(ctx).GetWarnings()[0].Err.Error(),
 			"unknown column name")
@@ -69,13 +69,13 @@ func TestStaticParameter_Init(t *testing.T) {
 	t.Run("column type is not allowed", func(t *testing.T) {
 		columnDef := MustNewParameterDefinition("column", "some desc").
 			SetIsColumn(
-				models.NewColumnProperties().
+				core.NewColumnProperties().
 					SetAllowedColumnTypes("int2", "int4", "int8"),
 			)
 
 		tableDriver := newTableDriverMock()
 		tableDriver.On("GetColumnByName", "test_column").
-			Return(&models.Column{
+			Return(&core.Column{
 				Name:     "test_column",
 				TypeName: "text",
 			}, nil)
@@ -83,7 +83,7 @@ func TestStaticParameter_Init(t *testing.T) {
 		ctx := validationcollector.WithCollector(context.Background(), validationcollector.NewCollector())
 		parameter := NewStaticParameter(columnDef, tableDriver, false)
 		err := parameter.Init(ctx, nil, []byte("test_column"))
-		require.ErrorIs(t, err, models.ErrFatalValidationError)
+		require.ErrorIs(t, err, core.ErrFatalValidationError)
 		assert.True(t, validationcollector.FromContext(ctx).IsFatal())
 		assert.Contains(t,
 			validationcollector.FromContext(ctx).GetWarnings()[0].Msg,
@@ -107,7 +107,7 @@ func TestStaticParameter_Init(t *testing.T) {
 		parameter := NewStaticParameter(columnDef, nil, false)
 		ctx := validationcollector.WithCollector(context.Background(), validationcollector.NewCollector())
 		err := parameter.Init(ctx, nil, []byte("invalid value"))
-		require.ErrorIs(t, err, models.ErrFatalValidationError)
+		require.ErrorIs(t, err, core.ErrFatalValidationError)
 		assert.True(t, validationcollector.FromContext(ctx).IsFatal())
 		assert.Contains(t, validationcollector.FromContext(ctx).GetWarnings()[0].Msg,
 			"unknown parameter value")
@@ -117,20 +117,20 @@ func TestStaticParameter_Init(t *testing.T) {
 		validator := func(
 			ctx context.Context,
 			p *ParameterDefinition,
-			v models.ParamsValue,
+			v core.ParamsValue,
 		) error {
 			validationcollector.FromContext(ctx).
-				Add(models.NewValidationWarning().
-					SetSeverity(models.ValidationSeverityError).
+				Add(core.NewValidationWarning().
+					SetSeverity(core.ValidationSeverityError).
 					SetMsg("Test warning"))
-			return models.ErrFatalValidationError
+			return core.ErrFatalValidationError
 		}
 		columnDef := MustNewParameterDefinition("param", "some desc").
 			SetRawValueValidator(validator)
 		parameter := NewStaticParameter(columnDef, nil, false)
 		ctx := validationcollector.WithCollector(context.Background(), validationcollector.NewCollector())
 		err := parameter.Init(ctx, nil, []byte("any"))
-		require.ErrorIs(t, err, models.ErrFatalValidationError)
+		require.ErrorIs(t, err, core.ErrFatalValidationError)
 		assert.True(t, validationcollector.FromContext(ctx).IsFatal())
 		assert.Contains(t, validationcollector.FromContext(ctx).GetWarnings()[0].Msg, "Test warning")
 	})
@@ -139,7 +139,7 @@ func TestStaticParameter_Init(t *testing.T) {
 		validator := func(
 			ctx context.Context,
 			p *ParameterDefinition,
-			v models.ParamsValue,
+			v core.ParamsValue,
 		) error {
 			return nil
 		}
@@ -158,7 +158,7 @@ func TestStaticParameter_Init(t *testing.T) {
 		parameter := NewStaticParameter(columnDef, nil, false)
 		ctx := validationcollector.WithCollector(context.Background(), validationcollector.NewCollector())
 		err := parameter.Init(ctx, nil, nil)
-		require.ErrorIs(t, err, models.ErrFatalValidationError)
+		require.ErrorIs(t, err, core.ErrFatalValidationError)
 		assert.True(t, validationcollector.FromContext(ctx).IsFatal())
 		assert.Contains(t, validationcollector.FromContext(ctx).GetWarnings()[0].Msg, "parameter is required")
 	})
@@ -172,7 +172,7 @@ func TestStaticParameter_Init(t *testing.T) {
 		err := parameter.Init(ctx, nil, nil)
 		require.NoError(t, err)
 		assert.False(t, validationcollector.FromContext(ctx).HasWarnings())
-		require.Equal(t, parameter.rawValue, models.ParamsValue("default value"))
+		require.Equal(t, parameter.rawValue, core.ParamsValue("default value"))
 	})
 
 	t.Run("not required parameter is empty but has a default value", func(t *testing.T) {
@@ -183,19 +183,19 @@ func TestStaticParameter_Init(t *testing.T) {
 		err := parameter.Init(ctx, nil, nil)
 		require.NoError(t, err)
 		assert.False(t, validationcollector.FromContext(ctx).HasWarnings())
-		require.Equal(t, parameter.rawValue, models.ParamsValue("default value"))
+		require.Equal(t, parameter.rawValue, core.ParamsValue("default value"))
 	})
 
 	t.Run("link column parameter", func(t *testing.T) {
 		columnDef := MustNewParameterDefinition("column", "some desc").
 			SetIsColumn(
-				models.NewColumnProperties().
+				core.NewColumnProperties().
 					SetAllowedColumnTypes("int2", "int4", "int8"),
 			)
 
 		tableDriver := newTableDriverMock()
 		tableDriver.On("GetColumnByName", "test_column").
-			Return(&models.Column{
+			Return(&core.Column{
 				Name:     "test_column",
 				TypeName: "int2",
 			}, nil)
@@ -240,7 +240,7 @@ func TestStaticParameter_Init(t *testing.T) {
 		err := linkedParameter.Init(ctx, nil, []byte("{{ 1 }}"))
 		require.NoError(t, err)
 		assert.False(t, validationcollector.FromContext(ctx).HasWarnings())
-		assert.Equal(t, linkedParameter.rawValue, models.ParamsValue("1"))
+		assert.Equal(t, linkedParameter.rawValue, core.ParamsValue("1"))
 	})
 
 	t.Run("template support and just a raw value", func(t *testing.T) {
@@ -252,7 +252,7 @@ func TestStaticParameter_Init(t *testing.T) {
 		err := linkedParameter.Init(ctx, nil, []byte("1"))
 		require.NoError(t, err)
 		assert.False(t, validationcollector.FromContext(ctx).HasWarnings())
-		assert.Equal(t, linkedParameter.rawValue, models.ParamsValue("1"))
+		assert.Equal(t, linkedParameter.rawValue, core.ParamsValue("1"))
 	})
 
 	t.Run("template parsing error", func(t *testing.T) {
@@ -262,7 +262,7 @@ func TestStaticParameter_Init(t *testing.T) {
 		linkedParameter := NewStaticParameter(linkedParameterDef, tableDriver, false)
 		ctx := validationcollector.WithCollector(context.Background(), validationcollector.NewCollector())
 		err := linkedParameter.Init(ctx, nil, []byte("{{ asad }}"))
-		require.ErrorIs(t, err, models.ErrFatalValidationError)
+		require.ErrorIs(t, err, core.ErrFatalValidationError)
 		assert.True(t, validationcollector.FromContext(ctx).HasWarnings())
 		assert.Equal(t,
 			validationcollector.FromContext(ctx).GetWarnings()[0].Msg,
@@ -276,7 +276,7 @@ func TestStaticParameter_Init(t *testing.T) {
 		linkedParameter := NewStaticParameter(linkedParameterDef, tableDriver, false)
 		ctx := validationcollector.WithCollector(context.Background(), validationcollector.NewCollector())
 		err := linkedParameter.Init(ctx, nil, []byte(`{{ "asdad" | noiseInt 0.2 }}`))
-		require.ErrorIs(t, err, models.ErrFatalValidationError)
+		require.ErrorIs(t, err, core.ErrFatalValidationError)
 		assert.True(t, validationcollector.FromContext(ctx).HasWarnings())
 		assert.Equal(t, validationcollector.FromContext(ctx).GetWarnings()[0].Msg,
 			"error executing template in the parameter")

@@ -27,18 +27,17 @@ import (
 	"github.com/huandu/go-sqlbuilder"
 	"github.com/rs/zerolog/log"
 
-	"github.com/greenmaskio/greenmask/pkg/common/interfaces"
-	"github.com/greenmaskio/greenmask/pkg/common/models"
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 	"github.com/greenmaskio/greenmask/pkg/common/utils"
 	mysqlmodels "github.com/greenmaskio/greenmask/pkg/mysql/models"
 )
 
 type TableDataRestorerInsert struct {
-	table                  *models.Table
-	meta                   models.RestorationItem
+	table                  *core.Table
+	meta                   core.RestorationItem
 	connConfig             *mysqlmodels.ConnConfig
-	st                     interfaces.Storager
-	taskResolver           interfaces.TaskMapper
+	st                     core.Storager
+	taskResolver           core.TaskMapper
 	compress               bool
 	pgzip                  bool
 	printWarnings          bool
@@ -60,13 +59,13 @@ type TableDataRestorerInsert struct {
 }
 
 func NewTableDataRestorerInsert(
-	meta models.RestorationItem,
+	meta core.RestorationItem,
 	connConfig *mysqlmodels.ConnConfig,
-	st interfaces.Storager,
-	taskResolver interfaces.TaskMapper,
+	st core.Storager,
+	taskResolver core.TaskMapper,
 	opts ...Option,
 ) (*TableDataRestorerInsert, error) {
-	var table models.Table
+	var table core.Table
 	if err := json.Unmarshal(meta.ObjectDefinition, &table); err != nil {
 		return nil, err
 	}
@@ -159,9 +158,9 @@ func (r *TableDataRestorerInsert) buildBatch(tuples [][]byte) string {
 
 func (r *TableDataRestorerInsert) Meta() map[string]any {
 	return map[string]any{
-		models.MetaKeyTableSchema:      r.table.Schema,
-		models.MetaKeyTableName:        r.table.Name,
-		models.MetaKeyUniqueDumpTaskID: r.DebugInfo(),
+		core.MetaKeyTableSchema:      r.table.Schema,
+		core.MetaKeyTableName:        r.table.Name,
+		core.MetaKeyUniqueDumpTaskID: r.DebugInfo(),
 	}
 }
 
@@ -242,8 +241,8 @@ func (r *TableDataRestorerInsert) Init(ctx context.Context) error {
 
 func (r *TableDataRestorerInsert) Restore(ctx context.Context) error {
 	ctx = log.Ctx(ctx).With().
-		Str(models.MetaKeyTableSchema, r.table.Schema).
-		Str(models.MetaKeyTableName, r.table.Name).
+		Str(core.MetaKeyTableSchema, r.table.Schema).
+		Str(core.MetaKeyTableName, r.table.Name).
 		Logger().WithContext(ctx)
 
 	if err := r.restoreTable(ctx); err != nil {

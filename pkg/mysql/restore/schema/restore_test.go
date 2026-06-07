@@ -25,8 +25,8 @@ import (
 	"github.com/stretchr/testify/suite"
 
 	commonconfig "github.com/greenmaskio/greenmask/pkg/common/config"
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 	"github.com/greenmaskio/greenmask/pkg/common/mocks"
-	commonmodels "github.com/greenmaskio/greenmask/pkg/common/models"
 	"github.com/greenmaskio/greenmask/pkg/common/utils"
 	mysqlconfig "github.com/greenmaskio/greenmask/pkg/mysql/config"
 	"github.com/greenmaskio/greenmask/pkg/testutils"
@@ -63,12 +63,12 @@ func (s *restoreSuite) TestRestorer_RestoreSchema() {
 	r, err := os.Open(filepath.Join("testdata", "schema.sql"))
 	s.Require().NoError(err)
 	defer r.Close()
-	schemaMeta := &commonmodels.SchemaDumpMetadata{
-		DumpedDatabaseSchema: []commonmodels.SchemaDumpStat{
+	schemaMeta := &core.SchemaDumpMetadata{
+		DumpedDatabaseSchema: []core.SchemaDumpStat{
 			{
 				DatabaseName: "testdb",
 				FileName:     "schema_testdb.sql",
-				Compression:  commonmodels.CompressionNone,
+				Compression:  core.CompressionNone,
 			},
 		},
 	}

@@ -20,16 +20,15 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/greenmaskio/greenmask/pkg/common/interfaces"
-	"github.com/greenmaskio/greenmask/pkg/common/models"
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 )
 
 const metadataFileName = "metadata.json"
 
 func WriteMetadata(
 	ctx context.Context,
-	st interfaces.Storager,
-	meta models.Metadata,
+	st core.Storager,
+	meta core.Metadata,
 ) error {
 	buf := bytes.NewBuffer(nil)
 	if err := json.NewEncoder(buf).Encode(meta); err != nil {

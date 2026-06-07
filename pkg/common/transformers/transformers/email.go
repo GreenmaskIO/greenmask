@@ -25,8 +25,7 @@ import (
 	"strconv"
 	"text/template"
 
-	"github.com/greenmaskio/greenmask/pkg/common/interfaces"
-	"github.com/greenmaskio/greenmask/pkg/common/models"
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 	generators2 "github.com/greenmaskio/greenmask/pkg/common/transformers/generators"
 	"github.com/greenmaskio/greenmask/pkg/common/transformers/parameters"
 	template3 "github.com/greenmaskio/greenmask/pkg/common/transformers/template"
@@ -73,15 +72,15 @@ var EmailTransformerDefinition = utils.NewTransformerDefinition(
 	parameters.MustNewParameterDefinition(
 		"column",
 		"column name",
-	).SetIsColumn(models.NewColumnProperties().
+	).SetIsColumn(core.NewColumnProperties().
 		SetAffected(true).
-		SetAllowedColumnTypeClasses(models.TypeClassText),
+		SetAllowedColumnTypeClasses(core.TypeClassText),
 	).SetRequired(true),
 
 	parameters.MustNewParameterDefinition(
 		"keep_original_domain",
 		`Keep original domain`,
-	).SetDefaultValue(models.ParamsValue("false")),
+	).SetDefaultValue(core.ParamsValue("false")),
 
 	parameters.MustNewParameterDefinition(
 		"local_part_template",
@@ -101,35 +100,35 @@ var EmailTransformerDefinition = utils.NewTransformerDefinition(
 	parameters.MustNewParameterDefinition(
 		"validate",
 		`validate generated email if using template`,
-	).SetDefaultValue(models.ParamsValue("false")),
+	).SetDefaultValue(core.ParamsValue("false")),
 
 	parameters.MustNewParameterDefinition(
 		"max_random_length",
 		`max length of randomly generated part of the email`,
-	).SetDefaultValue(models.ParamsValue("32")).
+	).SetDefaultValue(core.ParamsValue("32")).
 		SetRawValueValidator(
-			func(ctx context.Context, p *parameters.ParameterDefinition, v models.ParamsValue) error {
+			func(ctx context.Context, p *parameters.ParameterDefinition, v core.ParamsValue) error {
 				// Validate that the value is a positive integer
 				intVal, err := strconv.ParseInt(string(v), 10, 64)
 				if err != nil {
 					validationcollector.FromContext(ctx).Add(
-						models.NewValidationWarning().
+						core.NewValidationWarning().
 							SetMsg("error parsing max_random_length").
 							AddMeta("ParameterValue", string(v)).
 							SetError(err).
-							SetSeverity(models.ValidationSeverityError),
+							SetSeverity(core.ValidationSeverityError),
 					)
-					return models.ErrFatalValidationError
+					return core.ErrFatalValidationError
 				}
 
 				if intVal <= 0 {
 					validationcollector.FromContext(ctx).Add(
-						models.NewValidationWarning().
+						core.NewValidationWarning().
 							SetMsg("max_random_length must be greater than 0").
 							AddMeta("ParameterValue", string(v)).
-							SetSeverity(models.ValidationSeverityError),
+							SetSeverity(core.ValidationSeverityError),
 					)
-					return models.ErrFatalValidationError
+					return core.ErrFatalValidationError
 				}
 				return nil
 			},
@@ -162,7 +161,7 @@ type EmailTransformer struct {
 // The functions are closures that capture the column name and return a function that retrieves
 // the raw column value from the RecordContextReadOnly.
 func getFuncMapWithColumnGetters(
-	tableDriver interfaces.TableDriver,
+	tableDriver core.TableDriver,
 	rrctx *template3.RecordContextReadOnly,
 ) template.FuncMap {
 	funcMap := template3.FuncMap()
@@ -178,9 +177,9 @@ func getFuncMapWithColumnGetters(
 
 func NewEmailTransformer(
 	ctx context.Context,
-	tableDriver interfaces.TableDriver,
+	tableDriver core.TableDriver,
 	parameters map[string]parameters.Parameterizer,
-) (interfaces.Transformer, error) {
+) (core.Transformer, error) {
 	var domainTmpl, localTmpl *template.Template
 
 	columnName, column, err := getColumnParameterValue(ctx, tableDriver, parameters)
@@ -284,7 +283,7 @@ func (t *EmailTransformer) Done(context.Context) error {
 	return nil
 }
 
-func (t *EmailTransformer) Transform(_ context.Context, r interfaces.Recorder) error {
+func (t *EmailTransformer) Transform(_ context.Context, r core.Recorder) error {
 	val, err := r.GetRawColumnValueByIdx(t.columnIdx)
 	if err != nil {
 		return fmt.Errorf("unable to scan value: %w", err)
@@ -313,7 +312,7 @@ func (t *EmailTransformer) Transform(_ context.Context, r interfaces.Recorder) e
 		return fmt.Errorf("unable to generate email: %w", err)
 	}
 
-	if err = r.SetRawColumnValueByIdx(t.columnIdx, models.NewColumnRawValue(newVal, false)); err != nil {
+	if err = r.SetRawColumnValueByIdx(t.columnIdx, core.NewColumnRawValue(newVal, false)); err != nil {
 		return fmt.Errorf("unable to set new raw value: %w", err)
 	}
 	return nil
@@ -323,7 +322,7 @@ func (t *EmailTransformer) Describe() string {
 	return TransformerNameRandomEmail
 }
 
-func (t *EmailTransformer) setupTemplateContext(originalEmail []byte, r interfaces.Recorder) error {
+func (t *EmailTransformer) setupTemplateContext(originalEmail []byte, r core.Recorder) error {
 	if t.localPartTemplate == nil && t.domainTemplate == nil && !t.keepOriginalDomain {
 		return nil
 	}

@@ -22,9 +22,8 @@ import (
 
 	"github.com/rs/zerolog/log"
 
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 	heartbeat2 "github.com/greenmaskio/greenmask/pkg/common/heartbeat"
-	"github.com/greenmaskio/greenmask/pkg/common/interfaces"
-	commonmodels "github.com/greenmaskio/greenmask/pkg/common/models"
 	"github.com/greenmaskio/greenmask/pkg/common/utils"
 	"github.com/greenmaskio/greenmask/pkg/config"
 )
@@ -41,7 +40,7 @@ var (
 )
 
 func getDumpStatus(
-	ctx context.Context, cfg *config.Config, st interfaces.Storager, dumpID commonmodels.DumpID,
+	ctx context.Context, cfg *config.Config, st core.Storager, dumpID core.DumpID,
 ) (heartbeat2.Status, error) {
 	if dumpID == DumpIDLatest {
 		return "", errEmptyDumpID
@@ -54,8 +53,8 @@ func getDumpStatus(
 	return status, nil
 }
 
-func getLatestDumpID(ctx context.Context, cfg *config.Config, st interfaces.Storager) (commonmodels.DumpID, error) {
-	var dumpIDs []commonmodels.DumpID
+func getLatestDumpID(ctx context.Context, cfg *config.Config, st core.Storager) (core.DumpID, error) {
+	var dumpIDs []core.DumpID
 
 	_, dirs, err := st.ListDir(ctx)
 	if err != nil {
@@ -67,12 +66,12 @@ func getLatestDumpID(ctx context.Context, cfg *config.Config, st interfaces.Stor
 			log.Fatal().Err(err).Msg("cannot check file existence")
 		}
 		if exists {
-			dumpIDs = append(dumpIDs, commonmodels.DumpID(dir.Dirname()))
+			dumpIDs = append(dumpIDs, core.DumpID(dir.Dirname()))
 		}
 	}
 
 	slices.SortFunc(
-		dumpIDs, func(a, b commonmodels.DumpID) int {
+		dumpIDs, func(a, b core.DumpID) int {
 			if a > b {
 				return -1
 			}
@@ -94,8 +93,8 @@ func getLatestDumpID(ctx context.Context, cfg *config.Config, st interfaces.Stor
 }
 
 func verifyConcreteDumpID(
-	ctx context.Context, st interfaces.Storager, dumpId commonmodels.DumpID,
-) (commonmodels.DumpID, error) {
+	ctx context.Context, st core.Storager, dumpId core.DumpID,
+) (core.DumpID, error) {
 	exists, err := st.Exists(ctx, path.Join(string(dumpId), MetadataJsonFileName))
 	if err != nil {
 		return "", fmt.Errorf("check dumpID=%s exists: %w", dumpId, err)
@@ -107,8 +106,8 @@ func verifyConcreteDumpID(
 }
 
 func getStorageByDumpID(
-	ctx context.Context, cfg *config.Config, st interfaces.Storager, dumpID commonmodels.DumpID,
-) (interfaces.Storager, error) {
+	ctx context.Context, cfg *config.Config, st core.Storager, dumpID core.DumpID,
+) (core.Storager, error) {
 	var err error
 	if dumpID == DumpIDLatest {
 		dumpID, err = getLatestDumpID(ctx, cfg, st)
@@ -125,9 +124,9 @@ func getStorageByDumpID(
 }
 
 func RunRestore(
-	ctx context.Context, cfg *config.Config, st interfaces.Storager, dumpIDArg string,
+	ctx context.Context, cfg *config.Config, st core.Storager, dumpIDArg string,
 ) error {
-	dumpID := commonmodels.DumpID(dumpIDArg)
+	dumpID := core.DumpID(dumpIDArg)
 	if err := dumpID.Validate(); err != nil {
 		return fmt.Errorf("validate dumpID: %w", err)
 	}

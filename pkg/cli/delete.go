@@ -20,7 +20,7 @@ import (
 	"fmt"
 
 	commondelete "github.com/greenmaskio/greenmask/pkg/common/commands/delete"
-	"github.com/greenmaskio/greenmask/pkg/common/interfaces"
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 )
 
 var ErrDeleteWrongOptions = errors.New("wrong delete options")
@@ -90,7 +90,7 @@ func (g *Cli) Delete(ctx context.Context) error {
 	return g.runDeleteWithStorage(ctx, st)
 }
 
-func (g *Cli) runDeleteWithStorage(ctx context.Context, st interfaces.Storager) error {
+func (g *Cli) runDeleteWithStorage(ctx context.Context, st core.Storager) error {
 	if err := g.deleteOpts.Validate(); err != nil {
 		return err
 	}

@@ -32,8 +32,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 	"golang.org/x/exp/constraints"
 
-	"github.com/greenmaskio/greenmask/pkg/common/interfaces"
-	"github.com/greenmaskio/greenmask/pkg/common/models"
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 	generators2 "github.com/greenmaskio/greenmask/pkg/common/transformers/generators"
 	"github.com/greenmaskio/greenmask/pkg/common/transformers/generators/transformers"
 	"github.com/greenmaskio/greenmask/pkg/common/transformers/parameters"
@@ -68,12 +67,12 @@ var (
 	defaultKeepNullParameterDefinition = parameters.MustNewParameterDefinition(
 		ParameterNameKeepNull,
 		"indicates that NULL values must not be replaced with transformed values",
-	).SetDefaultValue(models.ParamsValue("true"))
+	).SetDefaultValue(core.ParamsValue("true"))
 
 	defaultValidateParameterDefinition = parameters.MustNewParameterDefinition(
 		ParameterNameValidate,
 		"validate the value via driver decoding procedure",
-	).SetDefaultValue(models.ParamsValue("true"))
+	).SetDefaultValue(core.ParamsValue("true"))
 
 	defaultEngineParameterDefinition = parameters.MustNewParameterDefinition(
 		ParameterNameEngine,
@@ -84,24 +83,24 @@ var (
 	defaultMinRatioParameterDefinition = parameters.MustNewParameterDefinition(
 		ParameterNameMinRatio,
 		"min random percentage for noise",
-	).SetDefaultValue(models.ParamsValue("0.05"))
+	).SetDefaultValue(core.ParamsValue("0.05"))
 
 	defaultMaxRatioParameterDefinition = parameters.MustNewParameterDefinition(
 		ParameterNameMaxRatio,
 		"max random percentage for noise",
-	).SetDefaultValue(models.ParamsValue("0.2"))
+	).SetDefaultValue(core.ParamsValue("0.2"))
 
 	defaultFloatTypeSizeParameterDefinition = parameters.MustNewParameterDefinition(
 		"type_size",
 		"float size (4 or 8). It is used if greenmask can't detect it from column length",
-	).SetRawValueValidator(func(ctx context.Context, p *parameters.ParameterDefinition, v models.ParamsValue) error {
+	).SetRawValueValidator(func(ctx context.Context, p *parameters.ParameterDefinition, v core.ParamsValue) error {
 		val, err := strconv.ParseInt(string(v), 10, 64)
 		if err != nil {
 			validationcollector.FromContext(ctx).Add(
-				models.NewValidationWarning().
+				core.NewValidationWarning().
 					AddMeta("ParameterValue", string(v)).
 					SetError(err).
-					SetSeverity(models.ValidationSeverityError).
+					SetSeverity(core.ValidationSeverityError).
 					SetMsg("unable to parse int value"),
 			)
 		}
@@ -110,27 +109,27 @@ var (
 			return nil
 		}
 		validationcollector.FromContext(ctx).Add(
-			models.NewValidationWarning().
+			core.NewValidationWarning().
 				AddMeta("ParameterValue", string(v)).
 				AddMeta("AllowedValues", []int{float4Length, float8Length}).
-				SetSeverity(models.ValidationSeverityError).
+				SetSeverity(core.ValidationSeverityError).
 				SetMsg("invalid int size"),
 		)
-		return models.ErrFatalValidationError
-	}).SetDefaultValue(models.ParamsValue("4"))
+		return core.ErrFatalValidationError
+	}).SetDefaultValue(core.ParamsValue("4"))
 
 	defaultIntTypeSizeParameterDefinition = parameters.MustNewParameterDefinition(
 		"type_size",
 		"int size (2, 4 or 8). It is used if greenmask can't detect it from column length",
-	).SetDefaultValue(models.ParamsValue("4")).
-		SetRawValueValidator(func(ctx context.Context, p *parameters.ParameterDefinition, v models.ParamsValue) error {
+	).SetDefaultValue(core.ParamsValue("4")).
+		SetRawValueValidator(func(ctx context.Context, p *parameters.ParameterDefinition, v core.ParamsValue) error {
 			val, err := strconv.ParseInt(string(v), 10, 64)
 			if err != nil {
 				validationcollector.FromContext(ctx).Add(
-					models.NewValidationWarning().
+					core.NewValidationWarning().
 						AddMeta("ParameterValue", string(v)).
 						SetError(err).
-						SetSeverity(models.ValidationSeverityError).
+						SetSeverity(core.ValidationSeverityError).
 						SetMsg("unable to parse int value"),
 				)
 			}
@@ -139,13 +138,13 @@ var (
 				return nil
 			}
 			validationcollector.FromContext(ctx).Add(
-				models.NewValidationWarning().
+				core.NewValidationWarning().
 					AddMeta("ParameterValue", string(v)).
 					AddMeta("AllowedValues", []int{Int2Length, Int4Length, Int8Length}).
-					SetSeverity(models.ValidationSeverityError).
+					SetSeverity(core.ValidationSeverityError).
 					SetMsg("invalid int size"),
 			)
-			return models.ErrFatalValidationError
+			return core.ErrFatalValidationError
 		})
 
 	truncateParts = []string{
@@ -169,45 +168,45 @@ var (
 func validateDateTruncationParameterValue(
 	ctx context.Context,
 	_ *parameters.ParameterDefinition,
-	v models.ParamsValue,
+	v core.ParamsValue,
 ) error {
 	if string(v) == "" || slices.Contains(truncateParts, string(v)) {
 		return nil
 	}
 	validationcollector.FromContext(ctx).Add(
-		models.NewValidationWarning().
-			SetSeverity(models.ValidationSeverityError).
+		core.NewValidationWarning().
+			SetSeverity(core.ValidationSeverityError).
 			AddMeta("ParameterValue", string(v)).
 			AddMeta("AllowedValues", truncateParts).
 			SetMsg("wrong truncation part value"),
 	)
-	return models.ErrFatalValidationError
+	return core.ErrFatalValidationError
 }
 
-func engineValidator(ctx context.Context, p *parameters.ParameterDefinition, v models.ParamsValue) error {
+func engineValidator(ctx context.Context, p *parameters.ParameterDefinition, v core.ParamsValue) error {
 	value := string(v)
 	switch value {
 	case EngineParameterValueRandom, EngineParameterValueDeterministic, EngineParameterValueHash:
 		return nil
 	default:
 		validationcollector.FromContext(ctx).
-			Add(models.NewValidationWarning().
+			Add(core.NewValidationWarning().
 				SetMsg("invalid engine value").
 				AddMeta("ParameterValue", value).
-				SetSeverity(models.ValidationSeverityError))
+				SetSeverity(core.ValidationSeverityError))
 	}
 	return nil
 }
 
 // TransformationFunc - a transformation function. It has the same signature as
 // commonininterfaces.Transformer.Transform method.
-type TransformationFunc func(_ context.Context, r interfaces.Recorder) error
+type TransformationFunc func(_ context.Context, r core.Recorder) error
 
 // TransformWithKeepNull - wrapper that simplifies the logic of keep null parameter. You can set
 // the keep_null logic on transformer initialization. Just provide the main transformation function
 // and the columnIdx (the index of the column to be transformed).
 func TransformWithKeepNull(tf TransformationFunc, columnIdx int) TransformationFunc {
-	return func(ctx context.Context, r interfaces.Recorder) error {
+	return func(ctx context.Context, r core.Recorder) error {
 		isNull, err := r.IsNullByColumnIdx(columnIdx)
 		if err != nil {
 			return fmt.Errorf("unable to scan column value: %w", err)
@@ -226,7 +225,7 @@ func panicParameterDoesNotExists(parameterName string) {
 	panic(
 		fmt.Errorf(`parameter "%s" is not found: %w`,
 			parameterName,
-			models.ErrCheckTransformerImplementation),
+			core.ErrCheckTransformerImplementation),
 	)
 }
 
@@ -244,12 +243,12 @@ func getParameterValueWithName[T any](
 	var res T
 	if err := parameter.Scan(&res); err != nil {
 		validationcollector.FromContext(ctx).
-			Add(models.NewValidationWarning().
-				SetSeverity(models.ValidationSeverityError).
-				AddMeta(models.MetaKeyParameterName, parameterName).
+			Add(core.NewValidationWarning().
+				SetSeverity(core.ValidationSeverityError).
+				AddMeta(core.MetaKeyParameterName, parameterName).
 				SetError(err).
 				SetMsg("error scanning parameter"))
-		return res, models.ErrFatalValidationError
+		return res, core.ErrFatalValidationError
 	}
 	return res, nil
 }
@@ -272,12 +271,12 @@ func getParameterValueWithNameAndDefault[T any](
 	var res T
 	if err := parameter.Scan(&res); err != nil {
 		validationcollector.FromContext(ctx).
-			Add(models.NewValidationWarning().
-				SetSeverity(models.ValidationSeverityError).
-				AddMeta(models.MetaKeyParameterName, parameterName).
+			Add(core.NewValidationWarning().
+				SetSeverity(core.ValidationSeverityError).
+				AddMeta(core.MetaKeyParameterName, parameterName).
 				SetError(err).
 				SetMsg("error scanning parameter"))
-		return res, models.ErrFatalValidationError
+		return res, core.ErrFatalValidationError
 	}
 	return res, nil
 }
@@ -286,23 +285,23 @@ func getParameterValueWithNameAndDefault[T any](
 // It gets the column name, get column definition.
 func getColumnParameterValueWithName(
 	ctx context.Context,
-	tableDriver interfaces.TableDriver,
+	tableDriver core.TableDriver,
 	parameters map[string]parameters.Parameterizer,
 	parameterName string,
-) (string, *models.Column, error) {
+) (string, *core.Column, error) {
 	columnName, err := getParameterValueWithName[string](ctx, parameters, parameterName)
 	if err != nil {
 		return "", nil, err
 	}
 	c, err := tableDriver.GetColumnByName(columnName)
 	if err != nil {
-		validationcollector.FromContext(ctx).Add(models.NewValidationWarning().
-			SetSeverity(models.ValidationSeverityError).
-			AddMeta(models.MetaKeyParameterName, parameterName).
-			AddMeta(models.MetaKeyParameterValue, columnName).
+		validationcollector.FromContext(ctx).Add(core.NewValidationWarning().
+			SetSeverity(core.ValidationSeverityError).
+			AddMeta(core.MetaKeyParameterName, parameterName).
+			AddMeta(core.MetaKeyParameterValue, columnName).
 			SetError(err).
 			SetMsg("error getting column value"))
-		return "", nil, models.ErrFatalValidationError
+		return "", nil, core.ErrFatalValidationError
 	}
 	return columnName, c, nil
 }
@@ -311,15 +310,15 @@ func getColumnParameterValueWithName(
 // as getColumnParameterValueWithName helper.
 func getColumnParameterValue(
 	ctx context.Context,
-	tableDriver interfaces.TableDriver,
+	tableDriver core.TableDriver,
 	parameters map[string]parameters.Parameterizer,
-) (string, *models.Column, error) {
+) (string, *core.Column, error) {
 	return getColumnParameterValueWithName(ctx, tableDriver, parameters, ParameterNameColumn)
 }
 
 func getColumnContainerParameter[T parameters.ColumnContainer](
 	ctx context.Context,
-	tableDriver interfaces.TableDriver,
+	tableDriver core.TableDriver,
 	parameters map[string]parameters.Parameterizer,
 	parameterName string,
 ) ([]T, map[int]string, error) {
@@ -330,12 +329,12 @@ func getColumnContainerParameter[T parameters.ColumnContainer](
 	var res []T
 	if err := parameter.Scan(&res); err != nil {
 		validationcollector.FromContext(ctx).
-			Add(models.NewValidationWarning().
-				SetSeverity(models.ValidationSeverityError).
-				AddMeta(models.MetaKeyParameterName, parameterName).
+			Add(core.NewValidationWarning().
+				SetSeverity(core.ValidationSeverityError).
+				AddMeta(core.MetaKeyParameterName, parameterName).
 				SetError(err).
 				SetMsg("error scanning parameter"))
-		return nil, nil, models.ErrFatalValidationError
+		return nil, nil, core.ErrFatalValidationError
 	}
 	columns := make(map[int]string)
 	for idx := range res {
@@ -344,14 +343,14 @@ func getColumnContainerParameter[T parameters.ColumnContainer](
 		}
 		c, err := tableDriver.GetColumnByName(res[idx].ColumnName())
 		if err != nil {
-			validationcollector.FromContext(ctx).Add(models.NewValidationWarning().
-				SetSeverity(models.ValidationSeverityError).
-				AddMeta(models.MetaKeyParameterName, parameterName).
-				AddMeta(models.MetaKeyParameterValue, res[idx].ColumnName()).
+			validationcollector.FromContext(ctx).Add(core.NewValidationWarning().
+				SetSeverity(core.ValidationSeverityError).
+				AddMeta(core.MetaKeyParameterName, parameterName).
+				AddMeta(core.MetaKeyParameterValue, res[idx].ColumnName()).
 				AddMeta("ContainerIdx", idx).
 				SetError(err).
 				SetMsg("error getting column value"))
-			return nil, nil, models.ErrFatalValidationError
+			return nil, nil, core.ErrFatalValidationError
 		}
 		columns[c.Idx] = c.Name
 	}
@@ -438,25 +437,25 @@ func (d *Duration) IsZero() bool {
 func defaultRatioValidator(
 	ctx context.Context,
 	p *parameters.ParameterDefinition,
-	raw models.ParamsValue,
+	raw core.ParamsValue,
 ) error {
 	var v Duration
 	if err := json.Unmarshal(raw, &v); err != nil {
 		validationcollector.FromContext(ctx).
-			Add(models.NewValidationWarning().
-				SetSeverity(models.ValidationSeverityError).
-				AddMeta(models.MetaKeyParameterName, p.Name).
+			Add(core.NewValidationWarning().
+				SetSeverity(core.ValidationSeverityError).
+				AddMeta(core.MetaKeyParameterName, p.Name).
 				SetError(err).
 				SetMsg("error parsing parameter value"))
-		return errors.Join(err, models.ErrFatalValidationError)
+		return errors.Join(err, core.ErrFatalValidationError)
 	}
 	if v.IsZero() {
 		validationcollector.FromContext(ctx).
-			Add(models.NewValidationWarning().
-				SetSeverity(models.ValidationSeverityError).
-				AddMeta(models.MetaKeyParameterName, p.Name).
+			Add(core.NewValidationWarning().
+				SetSeverity(core.ValidationSeverityError).
+				AddMeta(core.MetaKeyParameterName, p.Name).
 				SetMsg("parameter value must not be zero"))
-		return models.ErrFatalValidationError
+		return core.ErrFatalValidationError
 	}
 	return nil
 }
@@ -574,7 +573,7 @@ func scanMacAddr(src []byte, dest *net.HardwareAddr) error {
 }
 
 func defaultColumnContainerUnmarshaler[T parameters.ColumnContainer](
-	_ context.Context, _ *parameters.ParameterDefinition, data models.ParamsValue,
+	_ context.Context, _ *parameters.ParameterDefinition, data core.ParamsValue,
 ) (
 	[]parameters.ColumnContainer, error,
 ) {

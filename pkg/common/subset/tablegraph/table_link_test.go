@@ -17,20 +17,20 @@ package tablegraph
 import (
 	"testing"
 
-	commonmodels "github.com/greenmaskio/greenmask/pkg/common/models"
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 	"github.com/stretchr/testify/require"
 )
 
 func TestNewTableLink(t *testing.T) {
 	actual := NewTableLink(
 		1,
-		commonmodels.Table{Schema: "test", Name: "test1"},
+		core.Table{Schema: "test", Name: "test1"},
 		[]Key{{Name: "test"}},
 		[]string{"test"},
 	)
 	expected := TableLink{
 		ID: 1,
-		table: commonmodels.Table{
+		table: core.Table{
 			Schema: "test",
 			Name:   "test1",
 		},
@@ -43,7 +43,7 @@ func TestNewTableLink(t *testing.T) {
 func TestTableLink_Index(t *testing.T) {
 	tableLink := NewTableLink(
 		1,
-		commonmodels.Table{Schema: "test", Name: "test1"},
+		core.Table{Schema: "test", Name: "test1"},
 		[]Key{{Name: "test"}},
 		[]string{"test"},
 	)
@@ -54,18 +54,18 @@ func TestTableLink_Index(t *testing.T) {
 func TestTableLink_Table(t *testing.T) {
 	tableLink := NewTableLink(
 		1,
-		commonmodels.Table{Schema: "test", Name: "test1"},
+		core.Table{Schema: "test", Name: "test1"},
 		[]Key{{Name: "test"}},
 		[]string{"test"},
 	)
 	actual := tableLink.Table()
-	require.Equal(t, commonmodels.Table{Schema: "test", Name: "test1"}, actual)
+	require.Equal(t, core.Table{Schema: "test", Name: "test1"}, actual)
 }
 
 func TestTableLink_GetTableName(t *testing.T) {
 	tableLink := NewTableLink(
 		1,
-		commonmodels.Table{Schema: "test", Name: "test1"},
+		core.Table{Schema: "test", Name: "test1"},
 		[]Key{{Name: "test"}},
 		[]string{"test"},
 	)
@@ -76,7 +76,7 @@ func TestTableLink_GetTableName(t *testing.T) {
 func TestTableLink_Keys(t *testing.T) {
 	tableLink := NewTableLink(
 		1,
-		commonmodels.Table{Schema: "test", Name: "test1"},
+		core.Table{Schema: "test", Name: "test1"},
 		[]Key{{Name: "test"}},
 		[]string{"test"},
 	)
@@ -87,7 +87,7 @@ func TestTableLink_Keys(t *testing.T) {
 func TestTableLink_PolymorphicExpressions(t *testing.T) {
 	tableLink := NewTableLink(
 		1,
-		commonmodels.Table{Schema: "test", Name: "test1"},
+		core.Table{Schema: "test", Name: "test1"},
 		[]Key{{Name: "test"}},
 		[]string{"test"},
 	)

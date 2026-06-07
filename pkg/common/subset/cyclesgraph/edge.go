@@ -15,7 +15,7 @@
 package cyclesgraph
 
 import (
-	commonmodels "github.com/greenmaskio/greenmask/pkg/common/models"
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 )
 
 // Edge - represents an edge in the Graph in Cycles.
@@ -31,11 +31,11 @@ type Edge struct {
 	// to - the to cycle identifier.
 	to string
 	// commonVertexes - the commonmodels vertexes that can be used to join the Cycles.
-	commonVertexes []commonmodels.Table
+	commonVertexes []core.Table
 }
 
 // NewEdge - creates a new Edge instance.
-func NewEdge(id int, from, to string, tables []commonmodels.Table) Edge {
+func NewEdge(id int, from, to string, tables []core.Table) Edge {
 	if len(tables) == 0 {
 		panic("empty commonVertexes provided for cycle edge")
 	}
@@ -64,6 +64,6 @@ func (e Edge) To() string {
 
 // CommonVertexes - returns the vertexes shared between the two cycle groups,
 // which can be used to join them.
-func (e Edge) CommonVertexes() []commonmodels.Table {
+func (e Edge) CommonVertexes() []core.Table {
 	return e.commonVertexes
 }

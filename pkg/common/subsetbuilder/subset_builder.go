@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package subsetbuilder implements interfaces.SubsetBuilder by adapting the
+// Package subsetbuilder implements core.SubsetBuilder by adapting the
 // query-building logic from pkg/common/subset to operate directly on the
 // DependencyGraphResult produced by GraphBuilder.
 //
@@ -33,29 +33,27 @@ import (
 	"fmt"
 	"slices"
 
-	"github.com/greenmaskio/greenmask/pkg/common/interfaces"
-	commonmodels "github.com/greenmaskio/greenmask/pkg/common/models"
-	"github.com/greenmaskio/greenmask/pkg/common/subset"
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 )
 
-var _ interfaces.SubsetBuilder = (*SubsetBuilder)(nil)
+var _ core.SubsetBuilder = (*SubsetBuilder)(nil)
 
 // sccQueryBuilder is the internal interface dispatched by buildSubsetQuery.
 // It mirrors the queryBuilder interface in pkg/common/subset/subset.go.
 // The map key is ObjectID; for DAG SCCs it contains a single entry, for cyclic
 // SCCs it may contain one entry per table in the cycle.
 type sccQueryBuilder interface {
-	build() (map[commonmodels.ObjectID]string, error)
+	build() (map[core.ObjectID]string, error)
 }
 
-// SubsetBuilder implements interfaces.SubsetBuilder.
+// SubsetBuilder implements core.SubsetBuilder.
 type SubsetBuilder struct {
-	dialect subset.Dialect
+	dialect Dialect
 }
 
 // New creates a SubsetBuilder for the given SQL dialect.
 // Table configs carrying subset_conds are passed per-call via SubsetBuilderInput.
-func New(dialect subset.Dialect) *SubsetBuilder {
+func New(dialect Dialect) *SubsetBuilder {
 	return &SubsetBuilder{dialect: dialect}
 }
 
@@ -66,16 +64,16 @@ func New(dialect subset.Dialect) *SubsetBuilder {
 // no graph is rebuilt here.
 func (b *SubsetBuilder) BuildSubset(
 	_ context.Context,
-	in commonmodels.SubsetBuilderInput,
-) (commonmodels.SubsetResult, error) {
+	in core.SubsetBuilderInput,
+) (core.SubsetResult, error) {
 	subsetConds := buildSubsetCondsMap(in.Introspection, in.TableConfigs)
 	subgraphs := searchSubsetGraphs(in.DependencyGraph, subsetConds)
 
-	subsetMap := make(map[commonmodels.ObjectID]string)
+	subsetMap := make(map[core.ObjectID]string)
 	for _, sg := range subgraphs {
 		queries, err := buildSubsetQuery(sg, in.DependencyGraph, subsetConds, b.dialect)
 		if err != nil {
-			return commonmodels.SubsetResult{}, fmt.Errorf("build query for SCC %d: %w", sg.rootSCCID, err)
+			return core.SubsetResult{}, fmt.Errorf("build query for SCC %d: %w", sg.rootSCCID, err)
 		}
 		for oid, q := range queries {
 			if q != "" {
@@ -84,7 +82,7 @@ func (b *SubsetBuilder) BuildSubset(
 		}
 	}
 
-	return commonmodels.SubsetResult{SubsetMap: subsetMap}, nil
+	return core.SubsetResult{SubsetMap: subsetMap}, nil
 }
 
 // buildSubsetQuery dispatches to dagQueryBuilder or cyclesQueryBuilder based on
@@ -92,10 +90,10 @@ func (b *SubsetBuilder) BuildSubset(
 // Mirrors Subset.buildQueryForSCC in pkg/common/subset/subset.go.
 func buildSubsetQuery(
 	sg *sccSubgraph,
-	dg commonmodels.DependencyGraphResult,
-	subsetConds map[commonmodels.ObjectID][]string,
-	dialect subset.Dialect,
-) (map[commonmodels.ObjectID]string, error) {
+	dg core.DependencyGraphResult,
+	subsetConds map[core.ObjectID][]string,
+	dialect Dialect,
+) (map[core.ObjectID]string, error) {
 	rootNode := dg.CondensedGraph.Nodes[sg.rootSCCID]
 	var b sccQueryBuilder
 	if len(rootNode.Members) > 1 {
@@ -109,16 +107,16 @@ func buildSubsetQuery(
 // buildSubsetCondsMap builds a map from ObjectID to its subset conditions by
 // matching tableConfigs (schema+name) against the introspection objects.
 func buildSubsetCondsMap(
-	introspection commonmodels.IntrospectionResult,
-	tableConfigs []commonmodels.TableConfig,
-) map[commonmodels.ObjectID][]string {
-	nameToID := make(map[string]commonmodels.ObjectID)
-	for _, obj := range introspection.KindsMap[commonmodels.ObjectKindTable] {
+	introspection core.IntrospectionResult,
+	tableConfigs []core.TableConfig,
+) map[core.ObjectID][]string {
+	nameToID := make(map[string]core.ObjectID)
+	for _, obj := range introspection.KindsMap[core.ObjectKindTable] {
 		if tbl, err := tableFromPayload(obj.Payload); err == nil {
 			nameToID[tbl.Schema+"."+tbl.Name] = obj.ID
 		}
 	}
-	result := make(map[commonmodels.ObjectID][]string)
+	result := make(map[core.ObjectID][]string)
 	for _, tc := range tableConfigs {
 		if len(tc.SubsetConds) == 0 {
 			continue
@@ -137,33 +135,33 @@ func buildSubsetCondsMap(
 // subsetGraph in pkg/common/subset/subset_graph.go but uses SCCID keys and
 // the DependencyGraphResult's SCCEdge type.
 type sccSubgraph struct {
-	rootSCCID commonmodels.SCCID
+	rootSCCID core.SCCID
 	// graph: SCCID → outgoing SCCEdges within this sub-graph.
 	// A nil slice value means the SCC is present but has no outgoing edges.
-	graph map[commonmodels.SCCID][]commonmodels.SCCEdge
+	graph map[core.SCCID][]core.SCCEdge
 }
 
-func newSCCSubgraph(rootSCCID commonmodels.SCCID) *sccSubgraph {
+func newSCCSubgraph(rootSCCID core.SCCID) *sccSubgraph {
 	return &sccSubgraph{
 		rootSCCID: rootSCCID,
-		graph:     make(map[commonmodels.SCCID][]commonmodels.SCCEdge),
+		graph:     make(map[core.SCCID][]core.SCCEdge),
 	}
 }
 
-func (sg *sccSubgraph) addVertex(sccID commonmodels.SCCID) {
+func (sg *sccSubgraph) addVertex(sccID core.SCCID) {
 	if _, ok := sg.graph[sccID]; !ok {
 		sg.graph[sccID] = nil
 	}
 }
 
-func (sg *sccSubgraph) addEdge(e commonmodels.SCCEdge) {
+func (sg *sccSubgraph) addEdge(e core.SCCEdge) {
 	sg.graph[e.From] = append(sg.graph[e.From], e)
 	if _, ok := sg.graph[e.To]; !ok {
 		sg.graph[e.To] = nil
 	}
 }
 
-func (sg *sccSubgraph) addPath(path []commonmodels.SCCEdge) {
+func (sg *sccSubgraph) addPath(path []core.SCCEdge) {
 	for _, e := range path {
 		sg.addEdge(e)
 	}
@@ -174,9 +172,9 @@ func (sg *sccSubgraph) addPath(path []commonmodels.SCCEdge) {
 // sccHasSubsetConds reports whether any member of sccID has user-defined
 // subset conditions.
 func sccHasSubsetConds(
-	sccID commonmodels.SCCID,
-	dg commonmodels.DependencyGraphResult,
-	subsetConds map[commonmodels.ObjectID][]string,
+	sccID core.SCCID,
+	dg core.DependencyGraphResult,
+	subsetConds map[core.ObjectID][]string,
 ) bool {
 	node, ok := dg.CondensedGraph.Nodes[sccID]
 	if !ok {
@@ -194,8 +192,8 @@ func sccHasSubsetConds(
 // i.e. has at least one path to a subset-conditioned SCC.  This mirrors
 // Subset.searchTablesGraph in pkg/common/subset/subset.go.
 func searchSubsetGraphs(
-	dg commonmodels.DependencyGraphResult,
-	subsetConds map[commonmodels.ObjectID][]string,
+	dg core.DependencyGraphResult,
+	subsetConds map[core.ObjectID][]string,
 ) []*sccSubgraph {
 	sccIDs := sortedSCCIDs(dg.CondensedGraph)
 
@@ -205,7 +203,7 @@ func searchSubsetGraphs(
 		if sccHasSubsetConds(sccID, dg, subsetConds) {
 			sg.addVertex(sccID)
 		}
-		var from []commonmodels.SCCEdge
+		var from []core.SCCEdge
 		searchDFS(sccID, dg, subsetConds, &from, sg)
 		if len(sg.graph) > 0 {
 			result = append(result, sg)
@@ -217,16 +215,16 @@ func searchSubsetGraphs(
 // searchDFS is the recursive DFS used by searchSubsetGraphs.  It mirrors
 // Subset.searchTablesGraphDFS in pkg/common/subset/subset.go.
 func searchDFS(
-	v commonmodels.SCCID,
-	dg commonmodels.DependencyGraphResult,
-	subsetConds map[commonmodels.ObjectID][]string,
-	from *[]commonmodels.SCCEdge,
+	v core.SCCID,
+	dg core.DependencyGraphResult,
+	subsetConds map[core.ObjectID][]string,
+	from *[]core.SCCEdge,
 	sg *sccSubgraph,
 ) {
 	edges := dg.CondensedGraph.Edges[v]
-	sorted := make([]commonmodels.SCCEdge, len(edges))
+	sorted := make([]core.SCCEdge, len(edges))
 	copy(sorted, edges)
-	slices.SortFunc(sorted, func(a, b commonmodels.SCCEdge) int { return cmp.Compare(a.To, b.To) })
+	slices.SortFunc(sorted, func(a, b core.SCCEdge) int { return cmp.Compare(a.To, b.To) })
 
 	for _, edge := range sorted {
 		*from = append(*from, edge)
@@ -243,26 +241,26 @@ func searchDFS(
 
 // ── Shared utilities ──────────────────────────────────────────────────────────
 
-// tableFromPayload extracts a commonmodels.Table from an ObjectNode or Object
+// tableFromPayload extracts a core.Table from an ObjectNode or Object
 // payload.  Accepts Table, *Table, or any type implementing ToCommonTable().
-func tableFromPayload(payload any) (commonmodels.Table, error) {
+func tableFromPayload(payload any) (core.Table, error) {
 	switch p := payload.(type) {
-	case commonmodels.Table:
+	case core.Table:
 		return p, nil
-	case *commonmodels.Table:
+	case *core.Table:
 		if p == nil {
-			return commonmodels.Table{}, fmt.Errorf("nil *Table payload")
+			return core.Table{}, fmt.Errorf("nil *Table payload")
 		}
 		return *p, nil
-	case interface{ ToCommonTable() commonmodels.Table }:
+	case interface{ ToCommonTable() core.Table }:
 		return p.ToCommonTable(), nil
 	default:
-		return commonmodels.Table{}, fmt.Errorf("unsupported payload type %T", p)
+		return core.Table{}, fmt.Errorf("unsupported payload type %T", p)
 	}
 }
 
-func sortedSCCIDs(cg commonmodels.CondensedGraph) []commonmodels.SCCID {
-	ids := make([]commonmodels.SCCID, 0, len(cg.Nodes))
+func sortedSCCIDs(cg core.CondensedGraph) []core.SCCID {
+	ids := make([]core.SCCID, 0, len(cg.Nodes))
 	for id := range cg.Nodes {
 		ids = append(ids, id)
 	}
@@ -270,8 +268,8 @@ func sortedSCCIDs(cg commonmodels.CondensedGraph) []commonmodels.SCCID {
 	return ids
 }
 
-func sortedSCCIDsFromMap(m map[commonmodels.SCCID][]commonmodels.SCCEdge) []commonmodels.SCCID {
-	ids := make([]commonmodels.SCCID, 0, len(m))
+func sortedSCCIDsFromMap(m map[core.SCCID][]core.SCCEdge) []core.SCCID {
+	ids := make([]core.SCCID, 0, len(m))
 	for id := range m {
 		ids = append(ids, id)
 	}

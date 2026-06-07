@@ -17,16 +17,15 @@ package dump
 import (
 	"context"
 
-	"github.com/greenmaskio/greenmask/pkg/common/interfaces"
-	"github.com/greenmaskio/greenmask/pkg/common/models"
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 )
 
-var _ interfaces.ConfigEditor = (*ConfigEditor)(nil)
+var _ core.ConfigEditor = (*ConfigEditor)(nil)
 
 // ConfigEditor enriches user configuration. The stub passes the config through
 // unchanged so downstream stages observe the explicit user configuration.
 type ConfigEditor struct{}
 
-func (s *ConfigEditor) EditConfig(ctx context.Context, input models.ConfigEditInput) []models.TableConfig {
+func (s *ConfigEditor) EditConfig(ctx context.Context, input core.ConfigEditInput) []core.TableConfig {
 	return input.Config
 }

@@ -23,8 +23,7 @@ import (
 	"github.com/rs/zerolog/log"
 	"golang.org/x/sync/errgroup"
 
-	"github.com/greenmaskio/greenmask/pkg/common/interfaces"
-	"github.com/greenmaskio/greenmask/pkg/common/models"
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 )
 
 const (
@@ -33,8 +32,8 @@ const (
 
 type taskProducer interface {
 	Produce(ctx context.Context) (
-		[]interfaces.ObjectDumper,
-		models.RestorationContext,
+		[]core.ObjectDumper,
+		core.RestorationContext,
 		error,
 	)
 }
@@ -42,8 +41,8 @@ type taskProducer interface {
 type DefaultDumpProcessor struct {
 	tp        taskProducer
 	jobs      int
-	taskList  []interfaces.ObjectDumper
-	taskStats map[models.TaskID]models.ObjectDumpStat
+	taskList  []core.ObjectDumper
+	taskStats map[core.TaskID]core.ObjectDumpStat
 	mx        sync.Mutex
 }
 
@@ -63,7 +62,7 @@ func NewDefaultDataDumpProcessor(
 	res := &DefaultDumpProcessor{
 		tp:        tp,
 		jobs:      defaultJobCount,
-		taskStats: make(map[models.TaskID]models.ObjectDumpStat),
+		taskStats: make(map[core.TaskID]core.ObjectDumpStat),
 	}
 	for _, opt := range opts {
 		if err := opt(res); err != nil {
@@ -76,35 +75,35 @@ func NewDefaultDataDumpProcessor(
 // Run - runs the dump command
 func (dr *DefaultDumpProcessor) Run(
 	ctx context.Context,
-) (models.DataDumpStat, error) {
+) (core.DataDumpStat, error) {
 	var err error
-	var restorationContext models.RestorationContext
+	var restorationContext core.RestorationContext
 	dr.taskList, restorationContext, err = dr.tp.Produce(ctx)
 	if err != nil {
-		return models.DataDumpStat{}, fmt.Errorf("produce tasks: %w", err)
+		return core.DataDumpStat{}, fmt.Errorf("produce tasks: %w", err)
 	}
 
 	if err := dr.dataDump(ctx); err != nil {
-		return models.DataDumpStat{}, fmt.Errorf("data dump: %w", err)
+		return core.DataDumpStat{}, fmt.Errorf("data dump: %w", err)
 	}
-	taskID2ObjectID := make(map[models.ObjectKind]map[models.TaskID]models.ObjectID)
-	objectID2TaskID := make(map[models.ObjectKind]map[models.ObjectID]models.TaskID)
-	restorationItems := make(map[models.TaskID]models.RestorationItem, len(dr.taskList))
+	taskID2ObjectID := make(map[core.ObjectKind]map[core.TaskID]core.ObjectID)
+	objectID2TaskID := make(map[core.ObjectKind]map[core.ObjectID]core.TaskID)
+	restorationItems := make(map[core.TaskID]core.RestorationItem, len(dr.taskList))
 	for _, s := range dr.taskStats {
 		kindTask2Object, ok := taskID2ObjectID[s.ObjectStat.Kind]
 		if !ok {
-			kindTask2Object = make(map[models.TaskID]models.ObjectID)
+			kindTask2Object = make(map[core.TaskID]core.ObjectID)
 		}
 		kindObject2Task, ok := objectID2TaskID[s.ObjectStat.Kind]
 		if !ok {
-			kindObject2Task = make(map[models.ObjectID]models.TaskID)
+			kindObject2Task = make(map[core.ObjectID]core.TaskID)
 		}
 		kindTask2Object[s.ID] = s.ObjectStat.ID
 		kindObject2Task[s.ObjectStat.ID] = s.ID
 		taskID2ObjectID[s.ObjectStat.Kind] = kindTask2Object
 		objectID2TaskID[s.ObjectStat.Kind] = kindObject2Task
 
-		restorationItems[s.ID] = models.RestorationItem{
+		restorationItems[s.ID] = core.RestorationItem{
 			TaskID:           s.ID,
 			ObjectKind:       s.ObjectStat.Kind,
 			ObjectID:         s.ObjectStat.ID,
@@ -115,7 +114,7 @@ func (dr *DefaultDumpProcessor) Run(
 			Compression:      s.ObjectStat.Compression,
 		}
 	}
-	return models.DataDumpStat{
+	return core.DataDumpStat{
 		RestorationContext: restorationContext,
 		TaskStats:          dr.taskStats,
 		TaskID2ObjectID:    taskID2ObjectID,
@@ -125,7 +124,7 @@ func (dr *DefaultDumpProcessor) Run(
 }
 
 func (dr *DefaultDumpProcessor) dataDump(ctx context.Context) error {
-	tasks := make(chan interfaces.ObjectDumper, dr.jobs)
+	tasks := make(chan core.ObjectDumper, dr.jobs)
 
 	log.Ctx(ctx).Debug().Msgf("planned %d workers", dr.jobs)
 	done := make(chan struct{})
@@ -143,7 +142,7 @@ func (dr *DefaultDumpProcessor) dataDump(ctx context.Context) error {
 }
 
 // taskProducer - produces tasks and sends them to tasks channel.
-func (dr *DefaultDumpProcessor) taskProducer(ctx context.Context, tasks chan<- interfaces.ObjectDumper) func() error {
+func (dr *DefaultDumpProcessor) taskProducer(ctx context.Context, tasks chan<- core.ObjectDumper) func() error {
 	return func() error {
 		defer close(tasks)
 		for _, t := range dr.taskList {
@@ -162,7 +161,7 @@ func (dr *DefaultDumpProcessor) taskProducer(ctx context.Context, tasks chan<- i
 // It waits until all the workers are done and then closes the done channel to signal the end.
 func (dr *DefaultDumpProcessor) dumpWorkerPlanner(
 	ctx context.Context,
-	tasks <-chan interfaces.ObjectDumper,
+	tasks <-chan core.ObjectDumper,
 	done chan struct{},
 ) func() error {
 	return func() error {
@@ -182,7 +181,7 @@ func (dr *DefaultDumpProcessor) dumpWorkerPlanner(
 
 // dumpWorkerRunner - runs dumpWorker or validateDumpWorker depending on the mode.
 func (dr *DefaultDumpProcessor) dumpWorkerRunner(
-	ctx context.Context, tasks <-chan interfaces.ObjectDumper, jobId int,
+	ctx context.Context, tasks <-chan core.ObjectDumper, jobId int,
 ) func() error {
 	return func() error {
 		return dr.dumpWorker(ctx, tasks, jobId)
@@ -192,11 +191,11 @@ func (dr *DefaultDumpProcessor) dumpWorkerRunner(
 // dumpWorker - runs a dumpWorker that consumes tasks from tasks channel and executes them.
 func (dr *DefaultDumpProcessor) dumpWorker(
 	ctx context.Context,
-	tasks <-chan interfaces.ObjectDumper,
+	tasks <-chan core.ObjectDumper,
 	id int,
 ) error {
 	for {
-		var task interfaces.ObjectDumper
+		var task core.ObjectDumper
 		var ok bool
 		select {
 		case <-ctx.Done():

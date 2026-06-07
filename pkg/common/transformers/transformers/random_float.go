@@ -21,8 +21,7 @@ import (
 
 	"github.com/rs/zerolog/log"
 
-	"github.com/greenmaskio/greenmask/pkg/common/interfaces"
-	"github.com/greenmaskio/greenmask/pkg/common/models"
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 	"github.com/greenmaskio/greenmask/pkg/common/transformers/generators/transformers"
 	"github.com/greenmaskio/greenmask/pkg/common/transformers/parameters"
 	"github.com/greenmaskio/greenmask/pkg/common/transformers/utils"
@@ -44,9 +43,9 @@ var RamdomFloatTransformerDefinition = utils.NewTransformerDefinition(
 		"column",
 		"column name",
 	).SetIsColumn(
-		models.NewColumnProperties().
+		core.NewColumnProperties().
 			SetAffected(true).
-			SetAllowedColumnTypeClasses(models.TypeClassFloat),
+			SetAllowedColumnTypeClasses(core.TypeClassFloat),
 	).SetRequired(true),
 
 	parameters.MustNewParameterDefinition(
@@ -57,10 +56,10 @@ var RamdomFloatTransformerDefinition = utils.NewTransformerDefinition(
 		SetDynamicMode(
 			parameters.NewDynamicModeProperties().
 				SetColumnProperties(
-					models.NewColumnProperties().
+					core.NewColumnProperties().
 						SetAllowedColumnTypeClasses(
-							models.TypeClassInt,
-							models.TypeClassFloat,
+							core.TypeClassInt,
+							core.TypeClassFloat,
 						),
 				),
 		),
@@ -73,10 +72,10 @@ var RamdomFloatTransformerDefinition = utils.NewTransformerDefinition(
 		SetDynamicMode(
 			parameters.NewDynamicModeProperties().
 				SetColumnProperties(
-					models.NewColumnProperties().
+					core.NewColumnProperties().
 						SetAllowedColumnTypeClasses(
-							models.TypeClassInt,
-							models.TypeClassFloat,
+							core.TypeClassInt,
+							core.TypeClassFloat,
 						),
 				),
 		),
@@ -85,7 +84,7 @@ var RamdomFloatTransformerDefinition = utils.NewTransformerDefinition(
 		"decimal",
 		"Numbers of decimal",
 	).SetSupportTemplate(true).
-		SetDefaultValue(models.ParamsValue("4")),
+		SetDefaultValue(core.ParamsValue("4")),
 
 	defaultFloatTypeSizeParameterDefinition,
 
@@ -112,9 +111,9 @@ type FloatTransformer struct {
 
 func NewFloatTransformer(
 	ctx context.Context,
-	tableDriver interfaces.TableDriver,
+	tableDriver core.TableDriver,
 	parameters map[string]parameters.Parameterizer,
-) (interfaces.Transformer, error) {
+) (core.Transformer, error) {
 	minParam := parameters["min"]
 	maxParam := parameters["max"]
 
@@ -243,7 +242,7 @@ func (t *FloatTransformer) dynamicTransform(v []byte) (float64, error) {
 	return res, nil
 }
 
-func (t *FloatTransformer) Transform(_ context.Context, r interfaces.Recorder) error {
+func (t *FloatTransformer) Transform(_ context.Context, r core.Recorder) error {
 	val, err := r.GetRawColumnValueByIdx(t.columnIdx)
 	if err != nil {
 		return fmt.Errorf("scan value: %w", err)
@@ -323,26 +322,26 @@ func validateFloatTypeAndSetLimit(
 
 	if !isValueInLimits(*requestedMinValue, minValue, maxValue) {
 		validationcollector.FromContext(ctx).Add(
-			models.NewValidationWarning().
+			core.NewValidationWarning().
 				SetMsgf("requested min value is out of float%d range", size).
-				SetSeverity(models.ValidationSeverityError).
+				SetSeverity(core.ValidationSeverityError).
 				AddMeta("AllowedMinValue", minValue).
 				AddMeta("AllowedMaxValue", maxValue).
 				AddMeta("ParameterName", "min").
 				AddMeta("ParameterValue", requestedMinValue))
-		return nil, models.ErrFatalValidationError
+		return nil, core.ErrFatalValidationError
 	}
 
 	if !isValueInLimits(*requestedMaxValue, minValue, maxValue) {
 		validationcollector.FromContext(ctx).Add(
-			models.NewValidationWarning().
+			core.NewValidationWarning().
 				SetMsgf("requested max value is out of float%d range", size).
-				SetSeverity(models.ValidationSeverityError).
+				SetSeverity(core.ValidationSeverityError).
 				AddMeta("AllowedMinValue", minValue).
 				AddMeta("AllowedMaxValue", maxValue).
 				AddMeta("ParameterName", "max").
 				AddMeta("ParameterValue", requestedMaxValue))
-		return nil, models.ErrFatalValidationError
+		return nil, core.ErrFatalValidationError
 	}
 
 	limiter, err = transformers.NewFloat64Limiter(*requestedMinValue, *requestedMaxValue, decimal)

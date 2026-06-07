@@ -17,21 +17,21 @@ package cyclesgraph
 import (
 	"testing"
 
-	commonmodels "github.com/greenmaskio/greenmask/pkg/common/models"
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 	tablegraph2 "github.com/greenmaskio/greenmask/pkg/common/subset/tablegraph"
 	"github.com/stretchr/testify/require"
 )
 
 func Test_NewGraph(t *testing.T) {
-	table1 := commonmodels.Table{
+	table1 := core.Table{
 		Schema: "test",
 		Name:   "a",
 	}
-	table2 := commonmodels.Table{
+	table2 := core.Table{
 		Schema: "test",
 		Name:   "b",
 	}
-	table3 := commonmodels.Table{
+	table3 := core.Table{
 		Schema: "test",
 		Name:   "c",
 	}
@@ -103,15 +103,15 @@ func Test_getCycleGroupId(t *testing.T) {
 	edge1 := tablegraph2.NewEdge(
 		4,
 		false,
-		tablegraph2.NewTableLink(2, commonmodels.Table{}, nil, nil),
-		tablegraph2.NewTableLink(3, commonmodels.Table{}, nil, nil),
+		tablegraph2.NewTableLink(2, core.Table{}, nil, nil),
+		tablegraph2.NewTableLink(3, core.Table{}, nil, nil),
 	)
 
 	edge2 := tablegraph2.NewEdge(
 		5,
 		false,
-		tablegraph2.NewTableLink(3, commonmodels.Table{}, nil, nil),
-		tablegraph2.NewTableLink(2, commonmodels.Table{}, nil, nil),
+		tablegraph2.NewTableLink(3, core.Table{}, nil, nil),
+		tablegraph2.NewTableLink(2, core.Table{}, nil, nil),
 	)
 	cycle := []tablegraph2.Edge{edge1, edge2}
 
@@ -124,15 +124,15 @@ func Test_getCycleId(t *testing.T) {
 	edge1 := tablegraph2.NewEdge(
 		5,
 		false,
-		tablegraph2.NewTableLink(2, commonmodels.Table{}, nil, nil),
-		tablegraph2.NewTableLink(3, commonmodels.Table{}, nil, nil),
+		tablegraph2.NewTableLink(2, core.Table{}, nil, nil),
+		tablegraph2.NewTableLink(3, core.Table{}, nil, nil),
 	)
 
 	edge2 := tablegraph2.NewEdge(
 		4,
 		false,
-		tablegraph2.NewTableLink(3, commonmodels.Table{}, nil, nil),
-		tablegraph2.NewTableLink(2, commonmodels.Table{}, nil, nil),
+		tablegraph2.NewTableLink(3, core.Table{}, nil, nil),
+		tablegraph2.NewTableLink(2, core.Table{}, nil, nil),
 	)
 	cycle := []tablegraph2.Edge{edge1, edge2}
 

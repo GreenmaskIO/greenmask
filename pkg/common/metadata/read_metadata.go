@@ -19,18 +19,17 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/greenmaskio/greenmask/pkg/common/interfaces"
-	commonmodels "github.com/greenmaskio/greenmask/pkg/common/models"
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 	"github.com/rs/zerolog/log"
 )
 
 func ReadMetadata(
 	ctx context.Context,
-	st interfaces.Storager,
-) (commonmodels.Metadata, error) {
+	st core.Storager,
+) (core.Metadata, error) {
 	f, err := st.GetObject(ctx, metadataFileName)
 	if err != nil {
-		return commonmodels.Metadata{}, fmt.Errorf("get metadata object: %w", err)
+		return core.Metadata{}, fmt.Errorf("get metadata object: %w", err)
 	}
 	defer func() {
 		if err := f.Close(); err != nil {
@@ -38,9 +37,9 @@ func ReadMetadata(
 		}
 	}()
 
-	var meta commonmodels.Metadata
+	var meta core.Metadata
 	if err := json.NewDecoder(f).Decode(&meta); err != nil {
-		return commonmodels.Metadata{}, fmt.Errorf("decode json metadata: %w", err)
+		return core.Metadata{}, fmt.Errorf("decode json metadata: %w", err)
 	}
 	return meta, nil
 }

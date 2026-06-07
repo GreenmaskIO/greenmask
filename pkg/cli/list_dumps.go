@@ -23,7 +23,7 @@ import (
 
 	"github.com/olekukonko/tablewriter"
 
-	"github.com/greenmaskio/greenmask/pkg/common/interfaces"
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 	"github.com/greenmaskio/greenmask/pkg/common/listdump"
 	"github.com/greenmaskio/greenmask/pkg/common/utils"
 	"github.com/greenmaskio/greenmask/pkg/config"
@@ -77,7 +77,7 @@ func RunListDumps(cfg *config.Config, quiet bool, format OutputFormat, f *Filter
 	return listDumpsWithStorage(ctx, cfg, st, quiet, format, f)
 }
 
-func listDumpsWithStorage(ctx context.Context, cfg *config.Config, st interfaces.Storager, quiet bool, format OutputFormat, f *Filter) error {
+func listDumpsWithStorage(ctx context.Context, cfg *config.Config, st core.Storager, quiet bool, format OutputFormat, f *Filter) error {
 	if f == nil {
 		f = &Filter{}
 	}

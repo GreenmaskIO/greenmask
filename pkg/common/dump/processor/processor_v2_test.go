@@ -6,8 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/greenmaskio/greenmask/pkg/common/interfaces"
-	"github.com/greenmaskio/greenmask/pkg/common/models"
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -17,15 +16,15 @@ import (
 // Mock types
 // ──────────────────────────────────────────────────────────────────────────────
 
-// mockObjectDumper implements interfaces.ObjectDumper.
+// mockObjectDumper implements core.ObjectDumper.
 type mockObjectDumper struct{ mock.Mock }
 
-func (m *mockObjectDumper) Dump(ctx context.Context) (models.ObjectDumpStat, error) {
+func (m *mockObjectDumper) Dump(ctx context.Context) (core.ObjectDumpStat, error) {
 	args := m.Called(ctx)
 	if args.Error(1) != nil {
-		return models.ObjectDumpStat{}, args.Error(1)
+		return core.ObjectDumpStat{}, args.Error(1)
 	}
-	return args.Get(0).(models.ObjectDumpStat), nil
+	return args.Get(0).(core.ObjectDumpStat), nil
 }
 
 func (m *mockObjectDumper) DebugInfo() string    { return m.Called().String(0) }
@@ -34,66 +33,66 @@ func (m *mockObjectDumper) Meta() map[string]any { return nil }
 // newObjectDumper returns a dumper preconfigured with a fixed stat/err response.
 // DebugInfo is set up as optional (Maybe) because the processor calls it in debug
 // logs and error formatting without a guaranteed fixed count.
-func newObjectDumper(stat models.ObjectDumpStat, err error) *mockObjectDumper {
+func newObjectDumper(stat core.ObjectDumpStat, err error) *mockObjectDumper {
 	d := &mockObjectDumper{}
 	d.On("Dump", mock.Anything).Return(stat, err)
 	d.On("DebugInfo").Return("mock-object-task").Maybe()
 	return d
 }
 
-// mockSchemaDumper implements interfaces.SchemaDumper.
+// mockSchemaDumper implements core.SchemaDumper.
 type mockSchemaDumper struct{ mock.Mock }
 
-func (m *mockSchemaDumper) Dump(ctx context.Context) (models.SchemaDumpStat, error) {
+func (m *mockSchemaDumper) Dump(ctx context.Context) (core.SchemaDumpStat, error) {
 	args := m.Called(ctx)
 	if args.Error(1) != nil {
-		return models.SchemaDumpStat{}, args.Error(1)
+		return core.SchemaDumpStat{}, args.Error(1)
 	}
-	return args.Get(0).(models.SchemaDumpStat), nil
+	return args.Get(0).(core.SchemaDumpStat), nil
 }
 
 func (m *mockSchemaDumper) DebugInfo() string    { return "mock-schema-task" }
 func (m *mockSchemaDumper) Meta() map[string]any { return nil }
 
 // newSchemaDumper returns a schema dumper preconfigured with a fixed stat/err response.
-func newSchemaDumper(stat models.SchemaDumpStat, err error) *mockSchemaDumper {
+func newSchemaDumper(stat core.SchemaDumpStat, err error) *mockSchemaDumper {
 	d := &mockSchemaDumper{}
 	d.On("Dump", mock.Anything).Return(stat, err)
 	return d
 }
 
-// mockObjectRegistry implements interfaces.ObjectDumpFactoryRegistry.
+// mockObjectRegistry implements core.ObjectDumpFactoryRegistry.
 // Register and Get are no-ops — the processor only calls New.
 type mockObjectRegistry struct{ mock.Mock }
 
-func (r *mockObjectRegistry) Register(interfaces.DumpFactory[models.ObjectKind, models.ObjectDumpSpec, interfaces.ObjectDumper]) error {
+func (r *mockObjectRegistry) Register(core.DumpFactory[core.ObjectKind, core.ObjectDumpSpec, core.ObjectDumper]) error {
 	return nil
 }
 
-func (r *mockObjectRegistry) Get(models.ObjectKind) (interfaces.DumpFactory[models.ObjectKind, models.ObjectDumpSpec, interfaces.ObjectDumper], error) {
+func (r *mockObjectRegistry) Get(core.ObjectKind) (core.DumpFactory[core.ObjectKind, core.ObjectDumpSpec, core.ObjectDumper], error) {
 	return nil, nil
 }
 
-func (r *mockObjectRegistry) New(kind models.ObjectKind, spec models.ObjectDumpSpec) (interfaces.ObjectDumper, error) {
+func (r *mockObjectRegistry) New(kind core.ObjectKind, spec core.ObjectDumpSpec) (core.ObjectDumper, error) {
 	args := r.Called(kind, spec)
-	d, _ := args.Get(0).(interfaces.ObjectDumper) // safe: handles untyped nil
+	d, _ := args.Get(0).(core.ObjectDumper) // safe: handles untyped nil
 	return d, args.Error(1)
 }
 
-// mockSchemaRegistry implements interfaces.SchemaDumpFactoryRegistry.
+// mockSchemaRegistry implements core.SchemaDumpFactoryRegistry.
 type mockSchemaRegistry struct{ mock.Mock }
 
-func (r *mockSchemaRegistry) Register(interfaces.DumpFactory[models.SchemaDumpKind, models.SchemaDumpSpec, interfaces.SchemaDumper]) error {
+func (r *mockSchemaRegistry) Register(core.DumpFactory[core.SchemaDumpKind, core.SchemaDumpSpec, core.SchemaDumper]) error {
 	return nil
 }
 
-func (r *mockSchemaRegistry) Get(models.SchemaDumpKind) (interfaces.DumpFactory[models.SchemaDumpKind, models.SchemaDumpSpec, interfaces.SchemaDumper], error) {
+func (r *mockSchemaRegistry) Get(core.SchemaDumpKind) (core.DumpFactory[core.SchemaDumpKind, core.SchemaDumpSpec, core.SchemaDumper], error) {
 	return nil, nil
 }
 
-func (r *mockSchemaRegistry) New(kind models.SchemaDumpKind, spec models.SchemaDumpSpec) (interfaces.SchemaDumper, error) {
+func (r *mockSchemaRegistry) New(kind core.SchemaDumpKind, spec core.SchemaDumpSpec) (core.SchemaDumper, error) {
 	args := r.Called(kind, spec)
-	d, _ := args.Get(0).(interfaces.SchemaDumper)
+	d, _ := args.Get(0).(core.SchemaDumper)
 	return d, args.Error(1)
 }
 
@@ -101,18 +100,18 @@ func (r *mockSchemaRegistry) New(kind models.SchemaDumpKind, spec models.SchemaD
 // Helpers
 // ──────────────────────────────────────────────────────────────────────────────
 
-func objectSpec(id models.TaskID) models.ObjectDumpSpec {
-	return models.ObjectDumpSpec{TaskID: id, Kind: models.ObjectKindTable}
+func objectSpec(id core.TaskID) core.ObjectDumpSpec {
+	return core.ObjectDumpSpec{TaskID: id, Kind: core.ObjectKindTable}
 }
 
-func schemaSpec(id models.TaskID) models.SchemaDumpSpec {
-	return models.SchemaDumpSpec{TaskID: id, Kind: models.ObjectKindTable}
+func schemaSpec(id core.TaskID) core.SchemaDumpSpec {
+	return core.SchemaDumpSpec{TaskID: id, Kind: core.ObjectKindTable}
 }
 
 // newProc creates a processor and fails the test on construction error.
-func newProc(t *testing.T, obj interfaces.ObjectDumpFactoryRegistry, schema interfaces.SchemaDumpFactoryRegistry, opts ...OptionV2) *DefaultDumpProcessorV2 {
+func newProc(t *testing.T, obj core.ObjectDumpFactoryRegistry, schema core.SchemaDumpFactoryRegistry, opts ...OptionV2) *DefaultDumpProcessorV2 {
 	t.Helper()
-	p, err := NewDataDumpProcessorV2(obj, schema, models.DBMSEnginePostgreSQL, opts...)
+	p, err := NewDataDumpProcessorV2(obj, schema, core.DBMSEnginePostgreSQL, opts...)
 	require.NoError(t, err)
 	return p
 }
@@ -136,7 +135,7 @@ func TestWithJobsV2(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			_, err := NewDataDumpProcessorV2(
 				&mockObjectRegistry{}, &mockSchemaRegistry{},
-				models.DBMSEnginePostgreSQL, WithJobsV2(tc.jobs),
+				core.DBMSEnginePostgreSQL, WithJobsV2(tc.jobs),
 			)
 			if tc.wantErr {
 				require.Error(t, err)
@@ -157,7 +156,7 @@ func TestRun_schemaDump(t *testing.T) {
 
 	tests := []struct {
 		name          string
-		specs         []models.SchemaDumpSpec
+		specs         []core.SchemaDumpSpec
 		setupSchema   func(*mockSchemaRegistry)
 		wantErr       string
 		wantSchemaNil bool
@@ -170,25 +169,25 @@ func TestRun_schemaDump(t *testing.T) {
 		},
 		{
 			name:  "single task succeeds",
-			specs: []models.SchemaDumpSpec{schemaSpec(1)},
+			specs: []core.SchemaDumpSpec{schemaSpec(1)},
 			setupSchema: func(r *mockSchemaRegistry) {
 				r.On("New", mock.Anything, mock.Anything).
-					Return(newSchemaDumper(models.SchemaDumpStat{OriginalSize: 100}, nil), nil)
+					Return(newSchemaDumper(core.SchemaDumpStat{OriginalSize: 100}, nil), nil)
 			},
 			wantSchemaNil: false,
 		},
 		{
 			name:  "multiple tasks all succeed",
-			specs: []models.SchemaDumpSpec{schemaSpec(1), schemaSpec(2), schemaSpec(3)},
+			specs: []core.SchemaDumpSpec{schemaSpec(1), schemaSpec(2), schemaSpec(3)},
 			setupSchema: func(r *mockSchemaRegistry) {
 				r.On("New", mock.Anything, mock.Anything).
-					Return(newSchemaDumper(models.SchemaDumpStat{OriginalSize: 50}, nil), nil)
+					Return(newSchemaDumper(core.SchemaDumpStat{OriginalSize: 50}, nil), nil)
 			},
 			wantSchemaNil: false,
 		},
 		{
 			name:  "factory error propagates",
-			specs: []models.SchemaDumpSpec{schemaSpec(1)},
+			specs: []core.SchemaDumpSpec{schemaSpec(1)},
 			setupSchema: func(r *mockSchemaRegistry) {
 				r.On("New", mock.Anything, mock.Anything).Return(nil, errFactory)
 			},
@@ -196,10 +195,10 @@ func TestRun_schemaDump(t *testing.T) {
 		},
 		{
 			name:  "dump error propagates",
-			specs: []models.SchemaDumpSpec{schemaSpec(1)},
+			specs: []core.SchemaDumpSpec{schemaSpec(1)},
 			setupSchema: func(r *mockSchemaRegistry) {
 				r.On("New", mock.Anything, mock.Anything).
-					Return(newSchemaDumper(models.SchemaDumpStat{}, errDump), nil)
+					Return(newSchemaDumper(core.SchemaDumpStat{}, errDump), nil)
 			},
 			wantErr: "dump error",
 		},
@@ -212,7 +211,7 @@ func TestRun_schemaDump(t *testing.T) {
 			t.Cleanup(func() { schemaReg.AssertExpectations(t) })
 
 			proc := newProc(t, &mockObjectRegistry{}, schemaReg)
-			meta, err := proc.Run(context.Background(), models.DumpPlan{SchemaDumpSpecs: tc.specs})
+			meta, err := proc.Run(context.Background(), core.DumpPlan{SchemaDumpSpecs: tc.specs})
 
 			if tc.wantErr != "" {
 				require.Error(t, err)
@@ -239,7 +238,7 @@ func TestRun_dataDump(t *testing.T) {
 
 	tests := []struct {
 		name        string
-		specs       []models.ObjectDumpSpec
+		specs       []core.ObjectDumpSpec
 		setupObject func(*mockObjectRegistry)
 		jobs        int
 		wantErr     string
@@ -254,11 +253,11 @@ func TestRun_dataDump(t *testing.T) {
 		},
 		{
 			name:  "single task single worker succeeds",
-			specs: []models.ObjectDumpSpec{objectSpec(1)},
+			specs: []core.ObjectDumpSpec{objectSpec(1)},
 			setupObject: func(r *mockObjectRegistry) {
 				r.On("New", mock.Anything, mock.Anything).
-					Return(newObjectDumper(models.ObjectDumpStat{
-						ID: 1, ObjectStat: models.DumpedObjectStat{ID: 1, OriginalSize: 1},
+					Return(newObjectDumper(core.ObjectDumpStat{
+						ID: 1, ObjectStat: core.DumpedObjectStat{ID: 1, OriginalSize: 1},
 					}, nil), nil)
 			},
 			jobs:        1,
@@ -266,27 +265,27 @@ func TestRun_dataDump(t *testing.T) {
 		},
 		{
 			name:  "multiple tasks single worker — all complete",
-			specs: []models.ObjectDumpSpec{objectSpec(1), objectSpec(2), objectSpec(3)},
+			specs: []core.ObjectDumpSpec{objectSpec(1), objectSpec(2), objectSpec(3)},
 			setupObject: func(r *mockObjectRegistry) {
 				r.On("New", mock.Anything, mock.Anything).
-					Return(newObjectDumper(models.ObjectDumpStat{ObjectStat: models.DumpedObjectStat{OriginalSize: 1}}, nil), nil)
+					Return(newObjectDumper(core.ObjectDumpStat{ObjectStat: core.DumpedObjectStat{OriginalSize: 1}}, nil), nil)
 			},
 			jobs:        1,
 			wantDataNil: false,
 		},
 		{
 			name:  "multiple tasks multiple workers — all complete",
-			specs: []models.ObjectDumpSpec{objectSpec(1), objectSpec(2), objectSpec(3), objectSpec(4)},
+			specs: []core.ObjectDumpSpec{objectSpec(1), objectSpec(2), objectSpec(3), objectSpec(4)},
 			setupObject: func(r *mockObjectRegistry) {
 				r.On("New", mock.Anything, mock.Anything).
-					Return(newObjectDumper(models.ObjectDumpStat{ObjectStat: models.DumpedObjectStat{OriginalSize: 1}}, nil), nil)
+					Return(newObjectDumper(core.ObjectDumpStat{ObjectStat: core.DumpedObjectStat{OriginalSize: 1}}, nil), nil)
 			},
 			jobs:        4,
 			wantDataNil: false,
 		},
 		{
 			name:  "factory error propagates",
-			specs: []models.ObjectDumpSpec{objectSpec(1)},
+			specs: []core.ObjectDumpSpec{objectSpec(1)},
 			setupObject: func(r *mockObjectRegistry) {
 				r.On("New", mock.Anything, mock.Anything).Return(nil, errFactory)
 			},
@@ -295,10 +294,10 @@ func TestRun_dataDump(t *testing.T) {
 		},
 		{
 			name:  "dump error propagates",
-			specs: []models.ObjectDumpSpec{objectSpec(1)},
+			specs: []core.ObjectDumpSpec{objectSpec(1)},
 			setupObject: func(r *mockObjectRegistry) {
 				r.On("New", mock.Anything, mock.Anything).
-					Return(newObjectDumper(models.ObjectDumpStat{}, errDump), nil)
+					Return(newObjectDumper(core.ObjectDumpStat{}, errDump), nil)
 			},
 			jobs:    1,
 			wantErr: "dump error",
@@ -312,7 +311,7 @@ func TestRun_dataDump(t *testing.T) {
 			t.Cleanup(func() { objReg.AssertExpectations(t) })
 
 			proc := newProc(t, objReg, &mockSchemaRegistry{}, WithJobsV2(tc.jobs))
-			meta, err := proc.Run(context.Background(), models.DumpPlan{DumpObjectSpecs: tc.specs})
+			meta, err := proc.Run(context.Background(), core.DumpPlan{DumpObjectSpecs: tc.specs})
 
 			if tc.wantErr != "" {
 				require.Error(t, err)
@@ -337,19 +336,19 @@ func TestRun_parallelWorkers_allTasksDumped(t *testing.T) {
 	const taskCount = 20
 	const jobs = 4
 
-	specs := make([]models.ObjectDumpSpec, taskCount)
+	specs := make([]core.ObjectDumpSpec, taskCount)
 	for i := range specs {
-		specs[i] = objectSpec(models.TaskID(i + 1))
+		specs[i] = objectSpec(core.TaskID(i + 1))
 	}
 
 	// A single shared dumper; the factory returns it for every spec.
-	dumper := newObjectDumper(models.ObjectDumpStat{ObjectStat: models.DumpedObjectStat{OriginalSize: 1}}, nil)
+	dumper := newObjectDumper(core.ObjectDumpStat{ObjectStat: core.DumpedObjectStat{OriginalSize: 1}}, nil)
 
 	objReg := &mockObjectRegistry{}
 	objReg.On("New", mock.Anything, mock.Anything).Return(dumper, nil)
 
 	proc := newProc(t, objReg, &mockSchemaRegistry{}, WithJobsV2(jobs))
-	_, err := proc.Run(context.Background(), models.DumpPlan{DumpObjectSpecs: specs})
+	_, err := proc.Run(context.Background(), core.DumpPlan{DumpObjectSpecs: specs})
 	require.NoError(t, err)
 
 	dumper.AssertNumberOfCalls(t, "Dump", taskCount)
@@ -367,7 +366,7 @@ func TestRun_contextCancelled_betweenSchemaTasks(t *testing.T) {
 	firstDumper := &mockSchemaDumper{}
 	firstDumper.On("Dump", mock.Anything).
 		Run(func(mock.Arguments) { cancel() }).
-		Return(models.SchemaDumpStat{}, nil)
+		Return(core.SchemaDumpStat{}, nil)
 
 	secondDumper := &mockSchemaDumper{}
 	// No Dump expectation — panics if called, which makes the test self-verifying.
@@ -377,8 +376,8 @@ func TestRun_contextCancelled_betweenSchemaTasks(t *testing.T) {
 	schemaReg.On("New", mock.Anything, mock.Anything).Return(secondDumper, nil).Once()
 
 	proc := newProc(t, &mockObjectRegistry{}, schemaReg)
-	_, err := proc.Run(ctx, models.DumpPlan{
-		SchemaDumpSpecs: []models.SchemaDumpSpec{schemaSpec(1), schemaSpec(2)},
+	_, err := proc.Run(ctx, core.DumpPlan{
+		SchemaDumpSpecs: []core.SchemaDumpSpec{schemaSpec(1), schemaSpec(2)},
 	})
 
 	require.Error(t, err)
@@ -401,7 +400,7 @@ func TestRun_contextCancelled_duringDataDump(t *testing.T) {
 			// Block until the context is cancelled, then return.
 			<-args.Get(0).(context.Context).Done()
 		}).
-		Return(models.ObjectDumpStat{}, context.Canceled)
+		Return(core.ObjectDumpStat{}, context.Canceled)
 
 	objReg := &mockObjectRegistry{}
 	objReg.On("New", mock.Anything, mock.Anything).Return(dumper, nil)
@@ -410,7 +409,7 @@ func TestRun_contextCancelled_duringDataDump(t *testing.T) {
 
 	go func() { time.Sleep(10 * time.Millisecond); cancel() }()
 
-	_, err := proc.Run(ctx, models.DumpPlan{DumpObjectSpecs: []models.ObjectDumpSpec{objectSpec(1)}})
+	_, err := proc.Run(ctx, core.DumpPlan{DumpObjectSpecs: []core.ObjectDumpSpec{objectSpec(1)}})
 	require.Error(t, err)
 	assert.ErrorIs(t, err, context.Canceled)
 }
@@ -422,21 +421,21 @@ func TestRun_contextCancelled_duringDataDump(t *testing.T) {
 func TestRun_metadataFields(t *testing.T) {
 	schemaReg := &mockSchemaRegistry{}
 	schemaReg.On("New", mock.Anything, mock.Anything).
-		Return(newSchemaDumper(models.SchemaDumpStat{OriginalSize: 200, CompressedSize: 100}, nil), nil)
+		Return(newSchemaDumper(core.SchemaDumpStat{OriginalSize: 200, CompressedSize: 100}, nil), nil)
 
 	objReg := &mockObjectRegistry{}
 	objReg.On("New", mock.Anything, mock.Anything).
-		Return(newObjectDumper(models.ObjectDumpStat{
+		Return(newObjectDumper(core.ObjectDumpStat{
 			ID:         2,
-			ObjectStat: models.DumpedObjectStat{ID: 2, OriginalSize: 500, CompressedSize: 250},
+			ObjectStat: core.DumpedObjectStat{ID: 2, OriginalSize: 500, CompressedSize: 250},
 		}, nil), nil)
 
-	p, err := NewDataDumpProcessorV2(objReg, schemaReg, models.DBMSEngineMySQL)
+	p, err := NewDataDumpProcessorV2(objReg, schemaReg, core.DBMSEngineMySQL)
 	require.NoError(t, err)
 
-	plan := models.DumpPlan{
-		SchemaDumpSpecs:  []models.SchemaDumpSpec{schemaSpec(1)},
-		DumpObjectSpecs:  []models.ObjectDumpSpec{objectSpec(2)},
+	plan := core.DumpPlan{
+		SchemaDumpSpecs:  []core.SchemaDumpSpec{schemaSpec(1)},
+		DumpObjectSpecs:  []core.ObjectDumpSpec{objectSpec(2)},
 		Description:      "test dump",
 		Tags:             []string{"smoke", "ci"},
 		MatchedDatabases: []string{"testdb"},
@@ -447,7 +446,7 @@ func TestRun_metadataFields(t *testing.T) {
 	after := time.Now()
 
 	require.NoError(t, err)
-	assert.Equal(t, models.DBMSEngineMySQL, meta.Engine)
+	assert.Equal(t, core.DBMSEngineMySQL, meta.Engine)
 	assert.Equal(t, "test dump", meta.Description)
 	assert.Equal(t, []string{"smoke", "ci"}, meta.Tags)
 	assert.Equal(t, []string{"testdb"}, meta.Databases)
@@ -465,16 +464,16 @@ func TestRun_metadataFields(t *testing.T) {
 // ──────────────────────────────────────────────────────────────────────────────
 
 func TestRun_processorIsReusable(t *testing.T) {
-	dumper := newObjectDumper(models.ObjectDumpStat{
+	dumper := newObjectDumper(core.ObjectDumpStat{
 		ID:         1,
-		ObjectStat: models.DumpedObjectStat{ID: 1, OriginalSize: 1},
+		ObjectStat: core.DumpedObjectStat{ID: 1, OriginalSize: 1},
 	}, nil)
 
 	objReg := &mockObjectRegistry{}
 	objReg.On("New", mock.Anything, mock.Anything).Return(dumper, nil)
 
 	proc := newProc(t, objReg, &mockSchemaRegistry{})
-	plan := models.DumpPlan{DumpObjectSpecs: []models.ObjectDumpSpec{objectSpec(1)}}
+	plan := core.DumpPlan{DumpObjectSpecs: []core.ObjectDumpSpec{objectSpec(1)}}
 
 	_, err := proc.Run(context.Background(), plan)
 	require.NoError(t, err)

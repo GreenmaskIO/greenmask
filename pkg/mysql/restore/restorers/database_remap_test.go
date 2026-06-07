@@ -21,25 +21,25 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/greenmaskio/greenmask/pkg/common/models"
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 	commonutils "github.com/greenmaskio/greenmask/pkg/common/utils"
 	mysqlmodels "github.com/greenmaskio/greenmask/pkg/mysql/models"
 )
 
-func minimalMeta(schema, name string) models.RestorationItem {
-	table := models.Table{Schema: schema, Name: name}
-	return models.RestorationItem{
+func minimalMeta(schema, name string) core.RestorationItem {
+	table := core.Table{Schema: schema, Name: name}
+	return core.RestorationItem{
 		ObjectDefinition: commonutils.Must(json.Marshal(table)),
 	}
 }
 
-func insertMeta(schema, name string, columns ...string) models.RestorationItem {
-	cols := make([]models.Column, len(columns))
+func insertMeta(schema, name string, columns ...string) core.RestorationItem {
+	cols := make([]core.Column, len(columns))
 	for i, c := range columns {
-		cols[i] = models.Column{Name: c}
+		cols[i] = core.Column{Name: c}
 	}
-	table := models.Table{Schema: schema, Name: name, Columns: cols}
-	return models.RestorationItem{
+	table := core.Table{Schema: schema, Name: name, Columns: cols}
+	return core.RestorationItem{
 		ObjectDefinition: commonutils.Must(json.Marshal(table)),
 	}
 }
@@ -91,7 +91,7 @@ func TestWithDatabaseRemap_CSV(t *testing.T) {
 				WithDatabaseRemap(tc.remap),
 			)
 			require.NoError(t, err)
-			assert.Equal(t, tc.wantSchema, rr.Meta()[models.MetaKeyTableSchema])
+			assert.Equal(t, tc.wantSchema, rr.Meta()[core.MetaKeyTableSchema])
 		})
 	}
 }
@@ -136,7 +136,7 @@ func TestWithDatabaseRemap_Insert(t *testing.T) {
 				WithDatabaseRemap(tc.remap),
 			)
 			require.NoError(t, err)
-			assert.Equal(t, tc.wantSchema, rr.Meta()[models.MetaKeyTableSchema])
+			assert.Equal(t, tc.wantSchema, rr.Meta()[core.MetaKeyTableSchema])
 		})
 	}
 }

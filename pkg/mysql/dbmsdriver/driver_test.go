@@ -19,7 +19,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/greenmaskio/greenmask/pkg/common/models"
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -108,7 +108,7 @@ func TestDriver_DecodeValueByTypeOid(t *testing.T) {
 
 	tests := []struct {
 		name     string
-		oid      models.VirtualOID
+		oid      core.VirtualOID
 		input    []byte
 		expected any
 	}{
@@ -250,7 +250,7 @@ func TestDriver_EncodeValueByTypeOid(t *testing.T) {
 
 	tests := []struct {
 		name     string
-		oid      models.VirtualOID
+		oid      core.VirtualOID
 		input    any
 		expected []byte
 	}{
@@ -321,7 +321,7 @@ func TestDriver_ScanValueByTypeOid(t *testing.T) {
 
 	tests := []struct {
 		name     string
-		oid      models.VirtualOID
+		oid      core.VirtualOID
 		input    []byte
 		dest     any
 		expected any

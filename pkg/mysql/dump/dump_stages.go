@@ -15,9 +15,18 @@
 package dump
 
 import (
+	"errors"
+	"fmt"
+
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 	"github.com/greenmaskio/greenmask/pkg/common/dump/pipeline"
 	"github.com/greenmaskio/greenmask/pkg/common/graphbuilder"
-	"github.com/greenmaskio/greenmask/pkg/common/models"
+	"github.com/greenmaskio/greenmask/pkg/common/subsetbuilder"
+)
+
+var (
+	errNotImplemented        = fmt.Errorf("mysql dump stage: not implemented")
+	errUnsupportedObjectKind = errors.New("unsupported object kind")
 )
 
 // NewDumpStages assembles the MySQL implementation of pipeline.DumpStages.
@@ -34,7 +43,7 @@ func NewDumpStages() pipeline.DumpStages {
 		DependencyGraphBuilder:      graphbuilder.New(),
 		DumpMetadataLoader:          &DumpMetadataLoader{},
 		SchemaDriftValidator:        &SchemaDriftValidator{},
-		SubsetBuilder:               &SubsetBuilder{},
+		SubsetBuilder:               subsetbuilder.New(subsetbuilder.DialectMySQL),
 		ConfigEditor:                &ConfigEditor{},
 		ExplicitDumpContextBuilder:  &ExplicitDumpContextBuilder{},
 		DerivedDumpContextBuilder:   &DerivedDumpContextBuilder{},
@@ -50,5 +59,5 @@ func NewDumpStages() pipeline.DumpStages {
 
 // NewDumpPipeline builds a dump pipeline backed by the MySQL stages.
 func NewDumpPipeline() *pipeline.DumpPipeline {
-	return pipeline.NewDumpPipeline(NewDumpStages(), models.DBMSEngineMySQL)
+	return pipeline.NewDumpPipeline(NewDumpStages(), core.DBMSEngineMySQL)
 }

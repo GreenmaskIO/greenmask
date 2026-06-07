@@ -18,10 +18,10 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/greenmaskio/greenmask/pkg/common/interfaces"
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 )
 
-// ConsistentTxPool is itself the MySQL implementation of interfaces.DumpSession
+// ConsistentTxPool is itself the MySQL implementation of core.DumpSession
 // consumed by the common dump pipeline — there is no separate adapter type.
 //
 // The pipeline opens one session at the start of a dump and shares it across all
@@ -38,7 +38,7 @@ import (
 //
 // Close (defined in pool.go) completes the contract: it rolls back the snapshot
 // transactions and releases all connections.
-var _ interfaces.DumpSession = (*ConsistentTxPool)(nil)
+var _ core.DumpSession = (*ConsistentTxPool)(nil)
 
 // RunWithOperationalDB invokes fn with the shared snapshot meta-transaction as a
 // generic DB.
@@ -49,7 +49,7 @@ var _ interfaces.DumpSession = (*ConsistentTxPool)(nil)
 // wrapper; routing through it keeps every operational read under the session's
 // control. It is read-oriented; engine-specific dumping uses per-worker
 // connections via RunWithEngineResource instead.
-func (p *ConsistentTxPool) RunWithOperationalDB(ctx context.Context, fn func(ctx context.Context, db interfaces.DB) error) error {
+func (p *ConsistentTxPool) RunWithOperationalDB(ctx context.Context, fn func(ctx context.Context, db core.DB) error) error {
 	if p.metaTx == nil {
 		return fmt.Errorf("dump session: pool is not initialised")
 	}

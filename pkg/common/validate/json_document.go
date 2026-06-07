@@ -7,8 +7,7 @@ import (
 	"maps"
 	"slices"
 
-	"github.com/greenmaskio/greenmask/pkg/common/interfaces"
-	commonmodels "github.com/greenmaskio/greenmask/pkg/common/models"
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 )
 
 type Documenter interface {
@@ -58,7 +57,7 @@ type jsonRecordPlain map[string]string
 
 type JsonDocument struct {
 	result                    JsonDocumentResult
-	table                     commonmodels.Table
+	table                     core.Table
 	withDiff                  bool
 	expectedAffectedColumns   map[int]struct{}
 	unexpectedAffectedColumns map[int]struct{}
@@ -66,7 +65,7 @@ type JsonDocument struct {
 }
 
 func NewJsonDocument(
-	table commonmodels.Table,
+	table core.Table,
 	affectedColumns []int,
 	withDiff bool,
 	onlyTransformed bool,
@@ -92,7 +91,7 @@ func NewJsonDocument(
 	}
 }
 
-func (jc *JsonDocument) Append(original, transformed interfaces.RowDriver) error {
+func (jc *JsonDocument) Append(original, transformed core.RowDriver) error {
 	r := make(jsonRecordWithDiff)
 	for i := range jc.table.Columns {
 		col := jc.table.Columns[i]
@@ -188,7 +187,7 @@ func (jc *JsonDocument) GetColumnsToPrint() map[int]struct{} {
 	if jc.onlyTransformed {
 		columnsToPrint := jc.GetAffectedColumns()
 		for _, colName := range jc.result.PrimaryKeyColumns {
-			idx := slices.IndexFunc(jc.table.Columns, func(column commonmodels.Column) bool {
+			idx := slices.IndexFunc(jc.table.Columns, func(column core.Column) bool {
 				return column.Name == colName
 			})
 			if idx == -1 {

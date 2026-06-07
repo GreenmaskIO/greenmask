@@ -14,7 +14,7 @@
 
 // Package graphbuilder builds the dependency graph for a dump from an
 // introspection result. It is the reusable home of the "graph" pipeline stage
-// (interfaces.DependencyGraphBuilder).
+// (core.DependencyGraphBuilder).
 //
 // It produces all parts of the dependency model in a single pass:
 //
@@ -41,16 +41,15 @@ import (
 	"fmt"
 	"slices"
 
-	"github.com/greenmaskio/greenmask/pkg/common/interfaces"
-	commonmodels "github.com/greenmaskio/greenmask/pkg/common/models"
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 	"github.com/greenmaskio/greenmask/pkg/common/subset/condensationgraph"
 	"github.com/greenmaskio/greenmask/pkg/common/subset/tablegraph"
 )
 
-var _ interfaces.DependencyGraphBuilder = (*GraphBuilder)(nil)
+var _ core.DependencyGraphBuilder = (*GraphBuilder)(nil)
 
 // GraphBuilder is the engine-agnostic implementation of
-// interfaces.DependencyGraphBuilder.
+// core.DependencyGraphBuilder.
 type GraphBuilder struct{}
 
 // New creates a GraphBuilder.
@@ -64,29 +63,29 @@ func New() *GraphBuilder {
 // Other object kinds, if present, are ignored here.
 func (b *GraphBuilder) BuildGraph(
 	_ context.Context,
-	introspection commonmodels.IntrospectionResult,
-) (commonmodels.DependencyGraphResult, error) {
-	tableObjects := introspection.KindsMap[commonmodels.ObjectKindTable]
+	introspection core.IntrospectionResult,
+) (core.DependencyGraphResult, error) {
+	tableObjects := introspection.KindsMap[core.ObjectKindTable]
 
 	// tables is positional (index == dense graph vertex position) and is only used
 	// to feed the algorithm packages. Everything the translator exposes is keyed by
 	// the global ObjectID instead.
-	tables := make([]commonmodels.Table, len(tableObjects))
+	tables := make([]core.Table, len(tableObjects))
 	tr := &translator{
-		objectIDByPos:  make([]commonmodels.ObjectID, len(tableObjects)),
-		objectIDByName: make(map[string]commonmodels.ObjectID, len(tableObjects)),
-		nodes:          make(map[commonmodels.ObjectID]commonmodels.ObjectNode, len(tableObjects)),
-		refsByID:       make(map[commonmodels.ObjectID][]commonmodels.Reference, len(tableObjects)),
+		objectIDByPos:  make([]core.ObjectID, len(tableObjects)),
+		objectIDByName: make(map[string]core.ObjectID, len(tableObjects)),
+		nodes:          make(map[core.ObjectID]core.ObjectNode, len(tableObjects)),
+		refsByID:       make(map[core.ObjectID][]core.Reference, len(tableObjects)),
 	}
 	for i, obj := range tableObjects {
 		tbl, err := tableFromObject(obj)
 		if err != nil {
-			return commonmodels.DependencyGraphResult{}, err
+			return core.DependencyGraphResult{}, err
 		}
 		tables[i] = tbl
 		tr.objectIDByPos[i] = obj.ID
 		tr.objectIDByName[tbl.FullTableName()] = obj.ID
-		tr.nodes[obj.ID] = commonmodels.ObjectNode{
+		tr.nodes[obj.ID] = core.ObjectNode{
 			ID:      obj.ID,
 			Kind:    obj.Kind,
 			Name:    obj.Name,
@@ -95,16 +94,16 @@ func (b *GraphBuilder) BuildGraph(
 		tr.refsByID[obj.ID] = tbl.References
 	}
 
-	result := commonmodels.DependencyGraphResult{
-		ObjectGraph: commonmodels.ObjectGraph{
-			Nodes: map[commonmodels.ObjectID]commonmodels.ObjectNode{},
-			Edges: map[commonmodels.ObjectID][]commonmodels.ObjectEdge{},
+	result := core.DependencyGraphResult{
+		ObjectGraph: core.ObjectGraph{
+			Nodes: map[core.ObjectID]core.ObjectNode{},
+			Edges: map[core.ObjectID][]core.ObjectEdge{},
 		},
-		CondensedGraph: commonmodels.CondensedGraph{
-			Nodes: map[commonmodels.SCCID]commonmodels.SCCNode{},
-			Edges: map[commonmodels.SCCID][]commonmodels.SCCEdge{},
+		CondensedGraph: core.CondensedGraph{
+			Nodes: map[core.SCCID]core.SCCNode{},
+			Edges: map[core.SCCID][]core.SCCEdge{},
 		},
-		ObjectToSCC: map[commonmodels.ObjectID]commonmodels.SCCID{},
+		ObjectToSCC: map[core.ObjectID]core.SCCID{},
 	}
 	if len(tables) == 0 {
 		return result, nil
@@ -112,7 +111,7 @@ func (b *GraphBuilder) BuildGraph(
 
 	tg, err := tablegraph.NewGraph(tables)
 	if err != nil {
-		return commonmodels.DependencyGraphResult{}, fmt.Errorf("build table graph: %w", err)
+		return core.DependencyGraphResult{}, fmt.Errorf("build table graph: %w", err)
 	}
 	cg := condensationgraph.NewGraph(tg)
 
@@ -129,44 +128,44 @@ func (b *GraphBuilder) BuildGraph(
 // the global ObjectID. All other state is keyed by ObjectID.
 type translator struct {
 	// objectIDByPos maps a dense graph vertex position (0..n-1) to its ObjectID.
-	objectIDByPos []commonmodels.ObjectID
+	objectIDByPos []core.ObjectID
 	// objectIDByName maps a table's fully-qualified name to its ObjectID. It
 	// resolves the shared vertexes that the cycle graph reports as tables rather
 	// than positions.
-	objectIDByName map[string]commonmodels.ObjectID
+	objectIDByName map[string]core.ObjectID
 	// nodes holds every table object node keyed by its ObjectID.
-	nodes map[commonmodels.ObjectID]commonmodels.ObjectNode
+	nodes map[core.ObjectID]core.ObjectNode
 	// refsByID holds each table's foreign-key references keyed by its ObjectID,
 	// used to recover constraint names for edges.
-	refsByID map[commonmodels.ObjectID][]commonmodels.Reference
+	refsByID map[core.ObjectID][]core.Reference
 }
 
 // idAt returns the ObjectID of the vertex at the given dense graph position.
-func (t *translator) idAt(pos int) commonmodels.ObjectID {
+func (t *translator) idAt(pos int) core.ObjectID {
 	return t.objectIDByPos[pos]
 }
 
 // nodeAt returns the object node of the vertex at the given dense graph position.
-func (t *translator) nodeAt(pos int) commonmodels.ObjectNode {
+func (t *translator) nodeAt(pos int) core.ObjectNode {
 	return t.nodes[t.objectIDByPos[pos]]
 }
 
-// tableFromObject extracts a commonmodels.Table from an introspection object's
+// tableFromObject extracts a core.Table from an introspection object's
 // payload. It accepts a common table directly or any engine-specific payload that
 // can convert itself via ToCommonTable (e.g. *mysql.Table, *postgres.Table).
-func tableFromObject(obj commonmodels.Object) (commonmodels.Table, error) {
+func tableFromObject(obj core.Object) (core.Table, error) {
 	switch p := obj.Payload.(type) {
-	case commonmodels.Table:
+	case core.Table:
 		return p, nil
-	case *commonmodels.Table:
+	case *core.Table:
 		if p == nil {
-			return commonmodels.Table{}, fmt.Errorf("object %d (%q): nil table payload", obj.ID, obj.Name)
+			return core.Table{}, fmt.Errorf("object %d (%q): nil table payload", obj.ID, obj.Name)
 		}
 		return *p, nil
-	case interface{ ToCommonTable() commonmodels.Table }:
+	case interface{ ToCommonTable() core.Table }:
 		return p.ToCommonTable(), nil
 	default:
-		return commonmodels.Table{}, fmt.Errorf(
+		return core.Table{}, fmt.Errorf(
 			"object %d (%q): unsupported table payload type %T", obj.ID, obj.Name, obj.Payload,
 		)
 	}
@@ -177,21 +176,21 @@ func tableFromObject(obj commonmodels.Object) (commonmodels.Table, error) {
 // In the table graph the edge points from the referencing (child) table to the
 // referenced (parent) table; From carries the foreign-key columns and To carries
 // the referenced primary-key columns.
-func (t *translator) objectEdge(e tablegraph.Edge) commonmodels.ObjectEdge {
+func (t *translator) objectEdge(e tablegraph.Edge) core.ObjectEdge {
 	fromID := t.idAt(e.From().TableID())
 	toID := t.idAt(e.To().TableID())
 
 	fromCols := keyNames(e.From().Keys())
 	toCols := keyNames(e.To().Keys())
 
-	return commonmodels.ObjectEdge{
+	return core.ObjectEdge{
 		From: fromID,
 		To:   toID,
-		Link: commonmodels.ObjectLink{
-			Kind: commonmodels.ObjectLinkKindForeignKey,
-			From: commonmodels.ObjectLinkEndpoint{ObjectID: fromID, Fields: fieldRefs(e.From().Keys())},
-			To:   commonmodels.ObjectLinkEndpoint{ObjectID: toID, Fields: fieldRefs(e.To().Keys())},
-			Payload: commonmodels.ForeignKeyLinkPayload{
+		Link: core.ObjectLink{
+			Kind: core.ObjectLinkKindForeignKey,
+			From: core.ObjectLinkEndpoint{ObjectID: fromID, Fields: fieldRefs(e.From().Keys())},
+			To:   core.ObjectLinkEndpoint{ObjectID: toID, Fields: fieldRefs(e.To().Keys())},
+			Payload: core.ForeignKeyLinkPayload{
 				ConstraintName: t.constraintName(fromID, e.To().Table(), fromCols),
 				Columns:        fromCols,
 				RefColumns:     toCols,
@@ -206,7 +205,7 @@ func (t *translator) objectEdge(e tablegraph.Edge) commonmodels.ObjectEdge {
 // columns. The table graph does not carry the constraint name on the edge, so
 // OnDelete and OnUpdate remain unset (the introspection Reference model does not
 // expose them).
-func (t *translator) constraintName(fromID commonmodels.ObjectID, refTable commonmodels.Table, fromCols []string) string {
+func (t *translator) constraintName(fromID core.ObjectID, refTable core.Table, fromCols []string) string {
 	for _, ref := range t.refsByID[fromID] {
 		if ref.ReferencedSchema == refTable.Schema &&
 			ref.ReferencedName == refTable.Name &&
@@ -231,18 +230,18 @@ func keyNames(keys []tablegraph.Key) []string {
 }
 
 // fieldRefs converts join keys into typed object field references.
-func fieldRefs(keys []tablegraph.Key) []commonmodels.ObjectFieldRef {
-	res := make([]commonmodels.ObjectFieldRef, 0, len(keys))
+func fieldRefs(keys []tablegraph.Key) []core.ObjectFieldRef {
+	res := make([]core.ObjectFieldRef, 0, len(keys))
 	for _, k := range keys {
 		if k.Expression != "" {
-			res = append(res, commonmodels.ObjectFieldRef{
-				Kind:  commonmodels.FieldRefKindExpression,
+			res = append(res, core.ObjectFieldRef{
+				Kind:  core.FieldRefKindExpression,
 				Value: k.Expression,
 			})
 			continue
 		}
-		res = append(res, commonmodels.ObjectFieldRef{
-			Kind:  commonmodels.FieldRefKindColumn,
+		res = append(res, core.ObjectFieldRef{
+			Kind:  core.FieldRefKindColumn,
 			Value: k.Name,
 		})
 	}

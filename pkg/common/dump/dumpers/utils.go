@@ -17,15 +17,15 @@ package dumpers
 import (
 	"fmt"
 
-	commonmodels "github.com/greenmaskio/greenmask/pkg/common/models"
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 )
 
 func getUniqueDumpTaskID(dumperType string, meta map[string]any) string {
-	tableSchema, ok := meta[commonmodels.MetaKeyTableSchema].(string)
+	tableSchema, ok := meta[core.MetaKeyTableSchema].(string)
 	if !ok {
 		tableSchema = "!!!UNKNOWN!!!"
 	}
-	tableName, ok := meta[commonmodels.MetaKeyTableName].(string)
+	tableName, ok := meta[core.MetaKeyTableName].(string)
 	if !ok {
 		tableName = "!!!UNKNOWN!!!"
 	}

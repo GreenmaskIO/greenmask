@@ -17,14 +17,14 @@ package cmd
 import (
 	"testing"
 
-	"github.com/greenmaskio/greenmask/pkg/common/models"
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 	mysqldbmsdriver "github.com/greenmaskio/greenmask/pkg/mysql/dbmsdriver"
 	"github.com/stretchr/testify/require"
 )
 
 func TestJsonRecordWithAttrIndexes_Encode(t *testing.T) {
 	t.Run("success text", func(t *testing.T) {
-		columns := []models.Column{
+		columns := []core.Column{
 			{
 				Idx:      0,
 				Name:     "first_name",
@@ -68,8 +68,8 @@ func TestJsonRecordWithAttrIndexes_Encode(t *testing.T) {
 			affectedColumn,
 			NewJsonAttrRawValueText,
 		)
-		val1 := models.NewColumnRawValue([]byte("value1"), false)
-		val2 := models.NewColumnRawValue([]byte("value2"), false)
+		val1 := core.NewColumnRawValue([]byte("value1"), false)
+		val2 := core.NewColumnRawValue([]byte("value2"), false)
 		err := record.SetColumn(&columns[0], val1)
 		require.NoError(t, err)
 		err = record.SetColumn(&columns[2], val2)
@@ -83,7 +83,7 @@ func TestJsonRecordWithAttrIndexes_Encode(t *testing.T) {
 	})
 
 	t.Run("success bytes", func(t *testing.T) {
-		columns := []models.Column{
+		columns := []core.Column{
 			{
 				Idx:      0,
 				Name:     "first_name",
@@ -127,8 +127,8 @@ func TestJsonRecordWithAttrIndexes_Encode(t *testing.T) {
 			affectedColumn,
 			NewJsonAttrRawValueBytes,
 		)
-		val1 := models.NewColumnRawValue([]byte("value1"), false)
-		val2 := models.NewColumnRawValue([]byte("value2"), false)
+		val1 := core.NewColumnRawValue([]byte("value1"), false)
+		val2 := core.NewColumnRawValue([]byte("value2"), false)
 		err := record.SetColumn(&columns[0], val1)
 		require.NoError(t, err)
 		err = record.SetColumn(&columns[2], val2)
@@ -145,7 +145,7 @@ func TestJsonRecordWithAttrIndexes_Encode(t *testing.T) {
 func TestJsonRecordWithAttrIndexes_Decode(t *testing.T) {
 	t.Run("success text", func(t *testing.T) {
 		rawData := []byte(`[{"d":"value1","n":false},{"d":"value2","n":false}]`)
-		columns := []models.Column{
+		columns := []core.Column{
 			{
 				Idx:  0,
 				Name: "first_name",
@@ -196,7 +196,7 @@ func TestJsonRecordWithAttrIndexes_Decode(t *testing.T) {
 
 	t.Run("success bytes", func(t *testing.T) {
 		rawData := []byte(`[{"d":"dmFsdWUx","n":false},{"d":"dmFsdWUy","n":false}]`)
-		columns := []models.Column{
+		columns := []core.Column{
 			{
 				Idx:  0,
 				Name: "first_name",

@@ -8,16 +8,16 @@ import (
 
 	"github.com/rs/zerolog/log"
 
-	"github.com/greenmaskio/greenmask/pkg/common/models"
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 	"github.com/greenmaskio/greenmask/pkg/config"
 )
 
 type DumpPipeline struct {
 	Stages DumpStages
-	engine models.DBMSEngine
+	engine core.DBMSEngine
 }
 
-func NewDumpPipeline(stages DumpStages, engine models.DBMSEngine) *DumpPipeline {
+func NewDumpPipeline(stages DumpStages, engine core.DBMSEngine) *DumpPipeline {
 	return &DumpPipeline{Stages: stages, engine: engine}
 }
 
@@ -67,10 +67,10 @@ func (p *DumpPipeline) Discover(
 	}
 	state.Discovery.DependencyGraph = &graph
 
-	previousMetadata, err := p.Stages.DumpMetadataLoader.LoadPrevious(ctx, models.PreviousMetadataLoadInput{
+	previousMetadata, err := p.Stages.DumpMetadataLoader.LoadPrevious(ctx, core.PreviousMetadataLoadInput{
 		Engine: p.engine,
 	})
-	if errors.Is(err, models.ErrPreviousMetadataNotFound) {
+	if errors.Is(err, core.ErrPreviousMetadataNotFound) {
 		state.Discovery.PreviousMetadata = nil
 	} else if err != nil {
 		return fmt.Errorf("load previous metadata: %w", err)
@@ -78,14 +78,14 @@ func (p *DumpPipeline) Discover(
 	state.Discovery.PreviousMetadata = previousMetadata
 
 	if previousMetadata != nil {
-		schemaDrift := p.Stages.SchemaDriftValidator.Compare(ctx, models.SchemaDriftValidatorInput{
+		schemaDrift := p.Stages.SchemaDriftValidator.Compare(ctx, core.SchemaDriftValidatorInput{
 			Previous: previousMetadata.Introspection,
 			Current:  introspection,
 		})
 		state.Discovery.SchemaDrift = &schemaDrift
 	}
 
-	subset, err := p.Stages.SubsetBuilder.BuildSubset(ctx, models.SubsetBuilderInput{
+	subset, err := p.Stages.SubsetBuilder.BuildSubset(ctx, core.SubsetBuilderInput{
 		Introspection:   introspection,
 		DependencyGraph: graph,
 	})
@@ -111,16 +111,16 @@ func (p *DumpPipeline) BuildContext(
 	}
 	discoveryArtefacts := state.Discovery
 
-	var schemaDrift models.SchemaDriftResult
+	var schemaDrift core.SchemaDriftResult
 	if discoveryArtefacts.SchemaDrift != nil {
 		schemaDrift = *discoveryArtefacts.SchemaDrift
 	}
 
-	editedCfg := p.Stages.ConfigEditor.EditConfig(ctx, models.ConfigEditInput{
+	editedCfg := p.Stages.ConfigEditor.EditConfig(ctx, core.ConfigEditInput{
 		Config:      state.Discovery.Config.Dump.Transformation.ToTransformationConfig(),
 		SchemaDrift: &schemaDrift,
 	})
-	explicitCtxIn := models.ExplicitDumpContextInput{
+	explicitCtxIn := core.ExplicitDumpContextInput{
 		Config:              discoveryArtefacts.Config,
 		TableConfigs:        editedCfg,
 		IntrospectionResult: *discoveryArtefacts.Introspection,
@@ -131,7 +131,7 @@ func (p *DumpPipeline) BuildContext(
 	if err != nil {
 		return fmt.Errorf("build explicit dump context: %w", err)
 	}
-	finalCtx, err := p.Stages.DerivedDumpContextBuilder.BuildDumpContext(ctx, models.DerivedDumpContextInput{
+	finalCtx, err := p.Stages.DerivedDumpContextBuilder.BuildDumpContext(ctx, core.DerivedDumpContextInput{
 		Config:                discoveryArtefacts.Config,
 		TableConfigs:          editedCfg,
 		IntrospectionResult:   *discoveryArtefacts.Introspection,
@@ -168,12 +168,12 @@ func (p *DumpPipeline) BuildSnapshotAndDiff(
 		return fmt.Errorf("build dump context snapshot: %w", err)
 	}
 
-	var previousSnapshot *models.DumpContextSnapshot
+	var previousSnapshot *core.DumpContextSnapshot
 	if discoveryStageArtifacts.PreviousMetadata != nil {
 		previousSnapshot = &discoveryStageArtifacts.PreviousMetadata.DumpContextSnapshot
 	}
 
-	diff, err := p.Stages.DumpContextDiffer.Diff(ctx, models.DumpContextDiffInput{
+	diff, err := p.Stages.DumpContextDiffer.Diff(ctx, core.DumpContextDiffInput{
 		Previous: previousSnapshot,
 		Current:  currentSnapshot,
 	})
@@ -198,7 +198,7 @@ func (p *DumpPipeline) ValidateContext(
 
 	buildSnapshotAndDiff := state.BuildSnapshotAndDiff
 
-	if err := p.Stages.DumpContextValidator.Validate(ctx, models.DumpContextValidatorInput{
+	if err := p.Stages.DumpContextValidator.Validate(ctx, core.DumpContextValidatorInput{
 		DumpContext: *state.Context.FinalCtx,
 		Diff:        *buildSnapshotAndDiff.DumpContextDiff,
 	}); err != nil {
@@ -224,7 +224,7 @@ func (p *DumpPipeline) BuildPlan(
 	contextBuildingArtefacts := state.Context
 	discoveryArtefacts := state.Discovery
 
-	restorationCtx, err := p.Stages.RestorationContextBuilder.Build(ctx, models.RestorationContextInput{
+	restorationCtx, err := p.Stages.RestorationContextBuilder.Build(ctx, core.RestorationContextInput{
 		DumpContext:     *contextBuildingArtefacts.FinalCtx,
 		DependencyGraph: *discoveryArtefacts.DependencyGraph,
 	})
@@ -235,7 +235,7 @@ func (p *DumpPipeline) BuildPlan(
 	discoveryStageArtifacts := state.Discovery
 	contextStageArtifacts := state.Context
 	buildSnapshotAndDiffArtifacts := state.BuildSnapshotAndDiff
-	plan, err := p.Stages.DumpPlanAssembler.Assemble(ctx, models.DumpPlanInput{
+	plan, err := p.Stages.DumpPlanAssembler.Assemble(ctx, core.DumpPlanInput{
 		DumpContext:         *contextStageArtifacts.FinalCtx,
 		DumpContextSnapshot: *buildSnapshotAndDiffArtifacts.DumpContextSnapshot,
 		DumpContextDiff:     *buildSnapshotAndDiffArtifacts.DumpContextDiff,
@@ -261,7 +261,7 @@ func (p *DumpPipeline) ValidatePlan(
 	if err := state.Require(StageNamePlanBuilding); err != nil {
 		return fmt.Errorf("check requirements: %w", err)
 	}
-	if err := p.Stages.DumpPlanValidator.Validate(ctx, models.DumpPlanValidationInput{
+	if err := p.Stages.DumpPlanValidator.Validate(ctx, core.DumpPlanValidationInput{
 		Plan: *state.BuildPlan.Plan,
 	}); err != nil {
 		return fmt.Errorf("validate dump plan: %w", err)
@@ -277,7 +277,7 @@ func (p *DumpPipeline) Execute(
 	ctx context.Context,
 	runtime *Runtime,
 	state *RunState,
-	opts ...models.DumpProcessorOption,
+	opts ...core.DumpProcessorOption,
 ) error {
 	if err := state.Require(StageNamePlanValidation); err != nil {
 		return fmt.Errorf("check requirements: %w", err)
@@ -329,7 +329,7 @@ func (p *DumpPipeline) withRuntime(
 	return fn(runtime)
 }
 
-func (p *DumpPipeline) RunDump(ctx context.Context, cfg config.Config, opts ...models.DumpProcessorOption) (*RunState, error) {
+func (p *DumpPipeline) RunDump(ctx context.Context, cfg config.Config, opts ...core.DumpProcessorOption) (*RunState, error) {
 	state := p.NewRun(cfg)
 	if err := p.withRuntime(ctx, cfg, state, func(runtime *Runtime) error {
 		if err := p.Discover(ctx, runtime, state); err != nil {

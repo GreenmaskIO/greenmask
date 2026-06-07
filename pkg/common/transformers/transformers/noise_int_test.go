@@ -19,8 +19,7 @@ import (
 	"math"
 	"testing"
 
-	commonininterfaces "github.com/greenmaskio/greenmask/pkg/common/interfaces"
-	"github.com/greenmaskio/greenmask/pkg/common/models"
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 	"github.com/greenmaskio/greenmask/pkg/common/validationcollector"
 	mysqldbmsdriver "github.com/greenmaskio/greenmask/pkg/mysql/dbmsdriver"
 	"github.com/rs/zerolog/log"
@@ -33,32 +32,32 @@ func TestNoiseIntTransformer_Transform(t *testing.T) {
 	// Positive cases
 	tests := []struct {
 		name             string
-		staticParameters map[string]models.ParamsValue
-		dynamicParameter map[string]models.DynamicParamValue
-		original         []*models.ColumnRawValue
-		validateFn       func(t *testing.T, recorder commonininterfaces.Recorder)
+		staticParameters map[string]core.ParamsValue
+		dynamicParameter map[string]core.DynamicParamValue
+		original         []*core.ColumnRawValue
+		validateFn       func(t *testing.T, recorder core.Recorder)
 		expectedErr      string
-		columns          []models.Column
+		columns          []core.Column
 		isNull           bool
 	}{
 		{
 			name: "int8",
-			staticParameters: map[string]models.ParamsValue{
-				"column":    models.ParamsValue("data"),
-				"min_ratio": models.ParamsValue("0.2"),
-				"max_ratio": models.ParamsValue("0.9"),
+			staticParameters: map[string]core.ParamsValue{
+				"column":    core.ParamsValue("data"),
+				"min_ratio": core.ParamsValue("0.2"),
+				"max_ratio": core.ParamsValue("0.9"),
 			},
-			columns: []models.Column{
+			columns: []core.Column{
 				{
 					Idx:       0,
 					Name:      "data",
 					TypeName:  mysqldbmsdriver.TypeInt,
 					TypeOID:   mysqldbmsdriver.VirtualOidInt,
-					TypeClass: models.TypeClassInt,
+					TypeClass: core.TypeClassInt,
 					Size:      8,
 				},
 			},
-			validateFn: func(t *testing.T, recorder commonininterfaces.Recorder) {
+			validateFn: func(t *testing.T, recorder core.Recorder) {
 				var val int64
 				isNull, err := recorder.ScanColumnValueByName("data", &val)
 				require.NoError(t, err)
@@ -67,28 +66,28 @@ func TestNoiseIntTransformer_Transform(t *testing.T) {
 				assert.LessOrEqual(t, val, int64(234))
 				log.Info().Int64("value", val).Msg("Transformed value")
 			},
-			original: []*models.ColumnRawValue{models.NewColumnRawValue([]byte("123"), false)},
+			original: []*core.ColumnRawValue{core.NewColumnRawValue([]byte("123"), false)},
 		},
 		{
 			name: "int8",
-			staticParameters: map[string]models.ParamsValue{
-				"column":    models.ParamsValue("data"),
-				"min_ratio": models.ParamsValue("0.2"),
-				"max_ratio": models.ParamsValue("0.9"),
-				"min":       models.ParamsValue("0"),
-				"max":       models.ParamsValue("110"),
+			staticParameters: map[string]core.ParamsValue{
+				"column":    core.ParamsValue("data"),
+				"min_ratio": core.ParamsValue("0.2"),
+				"max_ratio": core.ParamsValue("0.9"),
+				"min":       core.ParamsValue("0"),
+				"max":       core.ParamsValue("110"),
 			},
-			columns: []models.Column{
+			columns: []core.Column{
 				{
 					Idx:       0,
 					Name:      "data",
 					TypeName:  mysqldbmsdriver.TypeInt,
 					TypeOID:   mysqldbmsdriver.VirtualOidInt,
-					TypeClass: models.TypeClassInt,
+					TypeClass: core.TypeClassInt,
 					Size:      8,
 				},
 			},
-			validateFn: func(t *testing.T, recorder commonininterfaces.Recorder) {
+			validateFn: func(t *testing.T, recorder core.Recorder) {
 				var val int64
 				isNull, err := recorder.ScanColumnValueByName("data", &val)
 				require.NoError(t, err)
@@ -97,16 +96,16 @@ func TestNoiseIntTransformer_Transform(t *testing.T) {
 				assert.LessOrEqual(t, val, int64(110))
 				log.Info().Int64("value", val).Msg("Transformed value")
 			},
-			original: []*models.ColumnRawValue{models.NewColumnRawValue([]byte("123"), false)},
+			original: []*core.ColumnRawValue{core.NewColumnRawValue([]byte("123"), false)},
 		},
 		{
 			name: "dynamic mode",
-			staticParameters: map[string]models.ParamsValue{
-				"column":    models.ParamsValue("data"),
-				"min_ratio": models.ParamsValue("0.2"),
-				"max_ratio": models.ParamsValue("0.9"),
+			staticParameters: map[string]core.ParamsValue{
+				"column":    core.ParamsValue("data"),
+				"min_ratio": core.ParamsValue("0.2"),
+				"max_ratio": core.ParamsValue("0.9"),
 			},
-			dynamicParameter: map[string]models.DynamicParamValue{
+			dynamicParameter: map[string]core.DynamicParamValue{
 				"min": {
 					Column: "min_val",
 				},
@@ -114,13 +113,13 @@ func TestNoiseIntTransformer_Transform(t *testing.T) {
 					Column: "max_val",
 				},
 			},
-			columns: []models.Column{
+			columns: []core.Column{
 				{
 					Idx:       0,
 					Name:      "data",
 					TypeName:  mysqldbmsdriver.TypeInt,
 					TypeOID:   mysqldbmsdriver.VirtualOidInt,
-					TypeClass: models.TypeClassInt,
+					TypeClass: core.TypeClassInt,
 					Size:      8,
 				},
 				{
@@ -128,7 +127,7 @@ func TestNoiseIntTransformer_Transform(t *testing.T) {
 					Name:      "min_val",
 					TypeName:  mysqldbmsdriver.TypeInt,
 					TypeOID:   mysqldbmsdriver.VirtualOidInt,
-					TypeClass: models.TypeClassInt,
+					TypeClass: core.TypeClassInt,
 					Size:      8,
 				},
 				{
@@ -136,11 +135,11 @@ func TestNoiseIntTransformer_Transform(t *testing.T) {
 					Name:      "max_val",
 					TypeName:  mysqldbmsdriver.TypeInt,
 					TypeOID:   mysqldbmsdriver.VirtualOidInt,
-					TypeClass: models.TypeClassInt,
+					TypeClass: core.TypeClassInt,
 					Size:      8,
 				},
 			},
-			validateFn: func(t *testing.T, recorder commonininterfaces.Recorder) {
+			validateFn: func(t *testing.T, recorder core.Recorder) {
 				var val int64
 				isNull, err := recorder.ScanColumnValueByName("data", &val)
 				require.NoError(t, err)
@@ -149,37 +148,37 @@ func TestNoiseIntTransformer_Transform(t *testing.T) {
 				assert.LessOrEqual(t, val, int64(110))
 				log.Info().Int64("value", val).Msg("Transformed value")
 			},
-			original: []*models.ColumnRawValue{
-				models.NewColumnRawValue([]byte("123"), false),
-				models.NewColumnRawValue([]byte("0"), false),
-				models.NewColumnRawValue([]byte("110"), false),
+			original: []*core.ColumnRawValue{
+				core.NewColumnRawValue([]byte("123"), false),
+				core.NewColumnRawValue([]byte("0"), false),
+				core.NewColumnRawValue([]byte("110"), false),
 			},
 		},
 		{
 			name: "dynamic mode with min and empty max",
 			// This should use the default max value for float8.
-			staticParameters: map[string]models.ParamsValue{
-				"column":    models.ParamsValue("data"),
-				"min_ratio": models.ParamsValue("0.2"),
-				"max_ratio": models.ParamsValue("0.9"),
+			staticParameters: map[string]core.ParamsValue{
+				"column":    core.ParamsValue("data"),
+				"min_ratio": core.ParamsValue("0.2"),
+				"max_ratio": core.ParamsValue("0.9"),
 			},
-			dynamicParameter: map[string]models.DynamicParamValue{
+			dynamicParameter: map[string]core.DynamicParamValue{
 				"min": {
 					Column: "min_val",
 				},
 			},
-			original: []*models.ColumnRawValue{
-				models.NewColumnRawValue([]byte("123"), false),
-				models.NewColumnRawValue([]byte("0"), false),
-				models.NewColumnRawValue([]byte("110"), false),
+			original: []*core.ColumnRawValue{
+				core.NewColumnRawValue([]byte("123"), false),
+				core.NewColumnRawValue([]byte("0"), false),
+				core.NewColumnRawValue([]byte("110"), false),
 			},
-			columns: []models.Column{
+			columns: []core.Column{
 				{
 					Idx:       0,
 					Name:      "data",
 					TypeName:  mysqldbmsdriver.TypeInt,
 					TypeOID:   mysqldbmsdriver.VirtualOidInt,
-					TypeClass: models.TypeClassInt,
+					TypeClass: core.TypeClassInt,
 					Size:      8,
 				},
 				{
@@ -187,7 +186,7 @@ func TestNoiseIntTransformer_Transform(t *testing.T) {
 					Name:      "min_val",
 					TypeName:  mysqldbmsdriver.TypeInt,
 					TypeOID:   mysqldbmsdriver.VirtualOidInt,
-					TypeClass: models.TypeClassInt,
+					TypeClass: core.TypeClassInt,
 					Size:      8,
 				},
 				{
@@ -195,11 +194,11 @@ func TestNoiseIntTransformer_Transform(t *testing.T) {
 					Name:      "max_val",
 					TypeName:  mysqldbmsdriver.TypeInt,
 					TypeOID:   mysqldbmsdriver.VirtualOidInt,
-					TypeClass: models.TypeClassInt,
+					TypeClass: core.TypeClassInt,
 					Size:      8,
 				},
 			},
-			validateFn: func(t *testing.T, record commonininterfaces.Recorder) {
+			validateFn: func(t *testing.T, record core.Recorder) {
 				var value int64
 				isNull, err := record.ScanColumnValueByName("data", &value)
 				require.NoError(t, err)
@@ -212,28 +211,28 @@ func TestNoiseIntTransformer_Transform(t *testing.T) {
 		{
 			name: "dynamic mode with max and empty min",
 			// This should use the default max value for float8.
-			staticParameters: map[string]models.ParamsValue{
-				"column":    models.ParamsValue("data"),
-				"min_ratio": models.ParamsValue("0.2"),
-				"max_ratio": models.ParamsValue("0.9"),
+			staticParameters: map[string]core.ParamsValue{
+				"column":    core.ParamsValue("data"),
+				"min_ratio": core.ParamsValue("0.2"),
+				"max_ratio": core.ParamsValue("0.9"),
 			},
-			dynamicParameter: map[string]models.DynamicParamValue{
+			dynamicParameter: map[string]core.DynamicParamValue{
 				"max": {
 					Column: "max_val",
 				},
 			},
-			original: []*models.ColumnRawValue{
-				models.NewColumnRawValue([]byte("123"), false),
-				models.NewColumnRawValue([]byte("0"), false),
-				models.NewColumnRawValue([]byte("110"), false),
+			original: []*core.ColumnRawValue{
+				core.NewColumnRawValue([]byte("123"), false),
+				core.NewColumnRawValue([]byte("0"), false),
+				core.NewColumnRawValue([]byte("110"), false),
 			},
-			columns: []models.Column{
+			columns: []core.Column{
 				{
 					Idx:       0,
 					Name:      "data",
 					TypeName:  mysqldbmsdriver.TypeInt,
 					TypeOID:   mysqldbmsdriver.VirtualOidInt,
-					TypeClass: models.TypeClassInt,
+					TypeClass: core.TypeClassInt,
 					Size:      8,
 				},
 				{
@@ -241,7 +240,7 @@ func TestNoiseIntTransformer_Transform(t *testing.T) {
 					Name:      "min_val",
 					TypeName:  mysqldbmsdriver.TypeInt,
 					TypeOID:   mysqldbmsdriver.VirtualOidInt,
-					TypeClass: models.TypeClassInt,
+					TypeClass: core.TypeClassInt,
 					Size:      8,
 				},
 				{
@@ -249,11 +248,11 @@ func TestNoiseIntTransformer_Transform(t *testing.T) {
 					Name:      "max_val",
 					TypeName:  mysqldbmsdriver.TypeInt,
 					TypeOID:   mysqldbmsdriver.VirtualOidInt,
-					TypeClass: models.TypeClassInt,
+					TypeClass: core.TypeClassInt,
 					Size:      8,
 				},
 			},
-			validateFn: func(t *testing.T, record commonininterfaces.Recorder) {
+			validateFn: func(t *testing.T, record core.Recorder) {
 				var value int64
 				isNull, err := record.ScanColumnValueByName("data", &value)
 				require.NoError(t, err)

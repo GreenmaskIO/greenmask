@@ -27,10 +27,9 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 	"github.com/greenmaskio/greenmask/pkg/common/heartbeat"
-	"github.com/greenmaskio/greenmask/pkg/common/interfaces"
 	"github.com/greenmaskio/greenmask/pkg/common/mocks"
-	"github.com/greenmaskio/greenmask/pkg/common/models"
 )
 
 // ---- helpers ----------------------------------------------------------------
@@ -41,7 +40,7 @@ func hbReader(status heartbeat.Status) io.ReadCloser {
 }
 
 func metaReader(startedAt time.Time, databases ...string) io.ReadCloser {
-	md := models.Metadata{StartedAt: startedAt, Databases: databases}
+	md := core.Metadata{StartedAt: startedAt, Databases: databases}
 	b, _ := json.Marshal(md)
 	return io.NopCloser(bytes.NewReader(b))
 }
@@ -60,7 +59,7 @@ func dumpMock(id string, hbStatus heartbeat.Status, startedAt time.Time, withMet
 
 // rootMock creates a root storage mock whose ListDir returns the given dumps.
 func rootMock(dumps ...*mocks.StorageMock) *mocks.StorageMock {
-	dirs := make([]interfaces.Storager, len(dumps))
+	dirs := make([]core.Storager, len(dumps))
 	for i, d := range dumps {
 		dirs[i] = d
 	}

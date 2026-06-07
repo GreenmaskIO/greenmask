@@ -17,15 +17,14 @@ package dump
 import (
 	"context"
 
-	"github.com/greenmaskio/greenmask/pkg/common/interfaces"
-	"github.com/greenmaskio/greenmask/pkg/common/models"
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 )
 
-var _ interfaces.DerivedDumpContextBuilder = (*DerivedDumpContextBuilder)(nil)
+var _ core.DerivedDumpContextBuilder = (*DerivedDumpContextBuilder)(nil)
 
 // DerivedDumpContextBuilder enriches the dump context via semantic derivation.
 type DerivedDumpContextBuilder struct{}
 
-func (s *DerivedDumpContextBuilder) BuildDumpContext(ctx context.Context, in models.DerivedDumpContextInput) (models.DumpContext, error) {
-	return models.DumpContext{}, errNotImplemented
+func (s *DerivedDumpContextBuilder) BuildDumpContext(ctx context.Context, in core.DerivedDumpContextInput) (core.DumpContext, error) {
+	return core.DumpContext{}, errNotImplemented
 }

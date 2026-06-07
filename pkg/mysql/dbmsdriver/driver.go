@@ -19,12 +19,11 @@ import (
 	"strconv"
 	"time"
 
-	commonininterfaces "github.com/greenmaskio/greenmask/pkg/common/interfaces"
-	"github.com/greenmaskio/greenmask/pkg/common/models"
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 )
 
 var (
-	_ commonininterfaces.DBMSDriver = (*Driver)(nil)
+	_ core.DBMSDriver = (*Driver)(nil)
 )
 
 type Driver struct {
@@ -38,7 +37,7 @@ func New() *Driver {
 	}
 }
 
-func (e *Driver) EncodeValueByTypeOid(oid models.VirtualOID, src any, buf []byte) ([]byte, error) {
+func (e *Driver) EncodeValueByTypeOid(oid core.VirtualOID, src any, buf []byte) ([]byte, error) {
 	typeName, ok := VirtualOidToTypeName[oid]
 	if !ok {
 		return nil, fmt.Errorf("unsupported oid %d", oid)
@@ -46,7 +45,7 @@ func (e *Driver) EncodeValueByTypeOid(oid models.VirtualOID, src any, buf []byte
 	return e.EncodeValueByTypeName(string(typeName), src, buf)
 }
 
-func (e *Driver) DecodeValueByTypeOid(oid models.VirtualOID, src []byte) (any, error) {
+func (e *Driver) DecodeValueByTypeOid(oid core.VirtualOID, src []byte) (any, error) {
 	typeName, ok := VirtualOidToTypeName[oid]
 	if !ok {
 		return nil, fmt.Errorf("unsupported oid %d", oid)
@@ -54,7 +53,7 @@ func (e *Driver) DecodeValueByTypeOid(oid models.VirtualOID, src []byte) (any, e
 	return e.DecodeValueByTypeName(typeName, src)
 }
 
-func (e *Driver) ScanValueByTypeOid(oid models.VirtualOID, src []byte, dest any) error {
+func (e *Driver) ScanValueByTypeOid(oid core.VirtualOID, src []byte, dest any) error {
 	typeName, ok := VirtualOidToTypeName[oid]
 	if !ok {
 		return fmt.Errorf("unsupported oid %d", oid)
@@ -67,12 +66,12 @@ func (e *Driver) TypeExistsByName(name string) bool {
 	return ok
 }
 
-func (e *Driver) TypeExistsByOid(oid models.VirtualOID) bool {
+func (e *Driver) TypeExistsByOid(oid core.VirtualOID) bool {
 	_, ok := VirtualOidToTypeName[oid]
 	return ok
 }
 
-func (e *Driver) GetTypeOid(name string) (models.VirtualOID, error) {
+func (e *Driver) GetTypeOid(name string) (core.VirtualOID, error) {
 	oid, ok := TypeNameToVirtualOid[name]
 	if !ok {
 		return 0, fmt.Errorf("unsupported type %s", name)
@@ -188,7 +187,7 @@ func (e *Driver) ScanValueByTypeName(name string, src []byte, dest any) error {
 	return fmt.Errorf("unsupported type %s", name)
 }
 
-func (e *Driver) GetCanonicalTypeClassName(typeName string, typeOid models.VirtualOID) (models.TypeClass, error) {
+func (e *Driver) GetCanonicalTypeClassName(typeName string, typeOid core.VirtualOID) (core.TypeClass, error) {
 	className, ok := TypeDataNameTypeToClass[typeName]
 	if ok {
 		return className, nil
@@ -197,13 +196,13 @@ func (e *Driver) GetCanonicalTypeClassName(typeName string, typeOid models.Virtu
 	if ok {
 		return oidClassName, nil
 	}
-	return "", fmt.Errorf("find type class \"%s\": %w", typeName, models.ErrUnknownDBMSTypeClass)
+	return "", fmt.Errorf("find type class \"%s\": %w", typeName, core.ErrUnknownDBMSTypeClass)
 }
 
-func (e *Driver) GetCanonicalTypeName(_ string, oid models.VirtualOID) (string, error) {
+func (e *Driver) GetCanonicalTypeName(_ string, oid core.VirtualOID) (string, error) {
 	typeName, ok := VirtualOidToTypeName[oid]
 	if !ok {
-		return "", fmt.Errorf("find type \"%s\": %w", typeName, models.ErrUnknownDBMSType)
+		return "", fmt.Errorf("find type \"%s\": %w", typeName, core.ErrUnknownDBMSType)
 	}
 	return string(typeName), nil
 }

@@ -17,7 +17,7 @@ package template
 import (
 	"slices"
 
-	"github.com/greenmaskio/greenmask/pkg/common/models"
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 )
 
 type dbmsDriver interface {
@@ -42,15 +42,15 @@ func NewTypeCaster(
 	inputType,
 	outputType,
 	castFunction string,
-) (*TypeCaster, models.ValidationWarnings, error) {
-	var warnings models.ValidationWarnings
+) (*TypeCaster, core.ValidationWarnings, error) {
+	var warnings core.ValidationWarnings
 	var castFunc TypeCastFunc
 
 	inputTypeOID, ok := driver.GetTypeOIDByName(inputType)
 	if !ok {
 		warnings = append(warnings,
-			models.NewValidationWarning().
-				SetSeverity(models.ValidationSeverityError).
+			core.NewValidationWarning().
+				SetSeverity(core.ValidationSeverityError).
 				AddMeta("RequestedInputType", inputType).
 				SetMsg("unsupported input type"),
 		)
@@ -58,8 +58,8 @@ func NewTypeCaster(
 	outputTypeOID, ok := driver.GetTypeOIDByName(outputType)
 	if !ok {
 		warnings = append(warnings,
-			models.NewValidationWarning().
-				SetSeverity(models.ValidationSeverityError).
+			core.NewValidationWarning().
+				SetSeverity(core.ValidationSeverityError).
 				AddMeta("RequestedOutputType", outputType).
 				SetMsg("unsupported output type"),
 		)
@@ -67,8 +67,8 @@ func NewTypeCaster(
 
 	if inputTypeOID == outputTypeOID {
 		warnings = append(warnings,
-			models.NewValidationWarning().
-				SetSeverity(models.ValidationSeverityError).
+			core.NewValidationWarning().
+				SetSeverity(core.ValidationSeverityError).
 				AddMeta("RequestedOutputType", outputType).
 				AddMeta("RequestedInputType", outputType).
 				SetMsg("casting is not required for equal type"),
@@ -82,8 +82,8 @@ func NewTypeCaster(
 	castFuncDef, ok := CastFunctionsMap[castFunction]
 	if !ok {
 		warnings = append(warnings,
-			models.NewValidationWarning().
-				SetSeverity(models.ValidationSeverityError).
+			core.NewValidationWarning().
+				SetSeverity(core.ValidationSeverityError).
 				AddMeta("CastFuncName", castFunction).
 				SetMsg("unable to find cast function"),
 		)
@@ -95,8 +95,8 @@ func NewTypeCaster(
 	if !slices.Contains(castFuncDef.InputTypes, inputType) {
 
 		warnings = append(warnings,
-			models.NewValidationWarning().
-				SetSeverity(models.ValidationSeverityError).
+			core.NewValidationWarning().
+				SetSeverity(core.ValidationSeverityError).
 				AddMeta("AllowedInputTypes", castFuncDef.InputTypes).
 				AddMeta("RequestedInputType", inputType).
 				AddMeta("CastFuncName", castFunction).
@@ -105,8 +105,8 @@ func NewTypeCaster(
 	}
 	if !slices.Contains(castFuncDef.OutputTypes, outputType) {
 		warnings = append(warnings,
-			models.NewValidationWarning().
-				SetSeverity(models.ValidationSeverityError).
+			core.NewValidationWarning().
+				SetSeverity(core.ValidationSeverityError).
 				AddMeta("AllowedOutputTypes", castFuncDef.OutputTypes).
 				AddMeta("RequestedOutputType", outputType).
 				AddMeta("CastFuncName", castFunction).

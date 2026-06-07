@@ -25,8 +25,7 @@ import (
 	"text/template"
 	"time"
 
-	commonininterfaces "github.com/greenmaskio/greenmask/pkg/common/interfaces"
-	commonmodels "github.com/greenmaskio/greenmask/pkg/common/models"
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 	gmtemplate "github.com/greenmaskio/greenmask/pkg/common/transformers/template"
 	"github.com/greenmaskio/greenmask/pkg/common/utils"
 	"github.com/greenmaskio/greenmask/pkg/common/utils/env"
@@ -44,22 +43,22 @@ type StaticParameter struct {
 	// definition - the parameter definition
 	definition *ParameterDefinition
 	// Driver - table driver
-	driver commonininterfaces.TableDriver
+	driver core.TableDriver
 	// linkedColumnParameter - column-like parameter that has been linked during parsing procedure. Warning, do not
 	// assign it manually, if you don't know the consequences
 	linkedColumnParameter *StaticParameter
 	// Column - column of the table that was assigned in the parsing procedure according to provided Column name in
 	// parameter value. In this case value has textual column name
-	Column *commonmodels.Column
+	Column *core.Column
 	// value - cached parsed value after Scan or Value
 	value any
 	// rawValue - original raw value received from config
-	rawValue    commonmodels.ParamsValue
+	rawValue    core.ParamsValue
 	interpolate bool
 }
 
 func NewStaticParameter(
-	def *ParameterDefinition, driver commonininterfaces.TableDriver, interpolate bool,
+	def *ParameterDefinition, driver core.TableDriver, interpolate bool,
 ) *StaticParameter {
 	return &StaticParameter{
 		definition:  def,
@@ -120,12 +119,12 @@ func (sp *StaticParameter) executeTemplate(ctx context.Context) error {
 		Funcs(gmtemplate.FuncMap()).
 		Parse(string(sp.rawValue))
 	if err != nil {
-		vc.Add(commonmodels.NewValidationWarning().
-			SetSeverity(commonmodels.ValidationSeverityError).
+		vc.Add(core.NewValidationWarning().
+			SetSeverity(core.ValidationSeverityError).
 			SetMsg("error parsing template in the parameter").
 			AddMeta("Error", err.Error()).
 			AddMeta("ParameterName", sp.definition.Name))
-		return commonmodels.ErrFatalValidationError
+		return core.ErrFatalValidationError
 	}
 	buf := bytes.NewBuffer(nil)
 	var columnName string
@@ -134,19 +133,19 @@ func (sp *StaticParameter) executeTemplate(ctx context.Context) error {
 	}
 	spc := NewStaticParameterContext(sp.driver, columnName)
 	if err = tmpl.Execute(buf, spc); err != nil {
-		vc.Add(commonmodels.NewValidationWarning().
-			SetSeverity(commonmodels.ValidationSeverityError).
+		vc.Add(core.NewValidationWarning().
+			SetSeverity(core.ValidationSeverityError).
 			SetMsg("error executing template in the parameter").
 			AddMeta("Error", err.Error()).
 			AddMeta("ParameterValue", sp.rawValue),
 		)
-		return commonmodels.ErrFatalValidationError
+		return core.ErrFatalValidationError
 	}
 	sp.rawValue = buf.Bytes()
 	return nil
 }
 
-func validateColumnTypeIsSupported(ctx context.Context, properties *commonmodels.ColumnProperties, c *commonmodels.Column) error {
+func validateColumnTypeIsSupported(ctx context.Context, properties *core.ColumnProperties, c *core.Column) error {
 	if properties == nil {
 		return nil
 	}
@@ -156,44 +155,44 @@ func validateColumnTypeIsSupported(ctx context.Context, properties *commonmodels
 		"ColumnTypeClass": c.TypeClass,
 	})
 	if !properties.IsColumnTypeAllowed(c.TypeName) {
-		vc.Add(commonmodels.NewValidationWarning().
-			SetSeverity(commonmodels.ValidationSeverityError).
+		vc.Add(core.NewValidationWarning().
+			SetSeverity(core.ValidationSeverityError).
 			SetMsg("column type is not allowed").
 			AddMeta("AllowedTypes", properties.AllowedTypes),
 		)
-		return commonmodels.ErrFatalValidationError
+		return core.ErrFatalValidationError
 	}
 
 	if !properties.IsColumnTypeClassAllowed(c.TypeClass) {
-		vc.Add(commonmodels.NewValidationWarning().
-			SetSeverity(commonmodels.ValidationSeverityError).
+		vc.Add(core.NewValidationWarning().
+			SetSeverity(core.ValidationSeverityError).
 			SetMsg("column type class is not allowed").
 			AddMeta("AllowedTypeClasses", properties.AllowedTypeClasses),
 		)
-		return commonmodels.ErrFatalValidationError
+		return core.ErrFatalValidationError
 	}
 
 	if properties.IsColumnTypeDenied(c.TypeName) {
-		vc.Add(commonmodels.NewValidationWarning().
-			SetSeverity(commonmodels.ValidationSeverityError).
+		vc.Add(core.NewValidationWarning().
+			SetSeverity(core.ValidationSeverityError).
 			SetMsg("column type is denied").
 			AddMeta("DeniedTypes", properties.DeniedTypes),
 		)
-		return commonmodels.ErrFatalValidationError
+		return core.ErrFatalValidationError
 	}
 
 	if properties.IsColumnTypeClassDenied(c.TypeClass) {
-		vc.Add(commonmodels.NewValidationWarning().
-			SetSeverity(commonmodels.ValidationSeverityError).
+		vc.Add(core.NewValidationWarning().
+			SetSeverity(core.ValidationSeverityError).
 			SetMsg("column type class is denied").
 			AddMeta("DeniedTypeClasses", properties.DeniedTypeClasses),
 		)
-		return commonmodels.ErrFatalValidationError
+		return core.ErrFatalValidationError
 	}
 	return nil
 }
 
-func (sp *StaticParameter) validateColumnContainer(ctx context.Context, rawValue commonmodels.ParamsValue) error {
+func (sp *StaticParameter) validateColumnContainer(ctx context.Context, rawValue core.ParamsValue) error {
 	if sp.definition.ColumnContainerProperties.Unmarshaler == nil {
 		return nil
 	}
@@ -204,16 +203,16 @@ func (sp *StaticParameter) validateColumnContainer(ctx context.Context, rawValue
 	for i, container := range cc {
 		column, err := sp.driver.GetColumnByName(container.ColumnName())
 		if err != nil {
-			if errors.Is(err, commonmodels.ErrUnknownColumnName) {
+			if errors.Is(err, core.ErrUnknownColumnName) {
 				validationcollector.FromContext(ctx).
-					Add(commonmodels.NewValidationWarning().
-						SetSeverity(commonmodels.ValidationSeverityError).
+					Add(core.NewValidationWarning().
+						SetSeverity(core.ValidationSeverityError).
 						SetMsg("get column by name failed").
 						SetError(err).
 						AddMeta("ColumnName", container.ColumnName()).
 						AddMeta("ColumnContainerItem", i).
 						AddMeta("ParameterName", sp.definition.Name))
-				return commonmodels.ErrFatalValidationError
+				return core.ErrFatalValidationError
 			}
 		}
 		if err := validateColumnTypeIsSupported(
@@ -225,18 +224,18 @@ func (sp *StaticParameter) validateColumnContainer(ctx context.Context, rawValue
 	return nil
 }
 
-func (sp *StaticParameter) validateValue(ctx context.Context, rawValue commonmodels.ParamsValue) error {
+func (sp *StaticParameter) validateValue(ctx context.Context, rawValue core.ParamsValue) error {
 	// We are comparing to nil because there can be empty string "" and it shouldn't be a nil pointer
 	// and an empty value itself.
 	vc := validationcollector.FromContext(ctx)
 
 	if rawValue == nil {
 		if sp.definition.Required && sp.definition.DefaultValue == nil {
-			vc.Add(commonmodels.NewValidationWarning().
-				SetSeverity(commonmodels.ValidationSeverityError).
+			vc.Add(core.NewValidationWarning().
+				SetSeverity(core.ValidationSeverityError).
 				SetMsg("parameter is required").
 				AddMeta("ParameterName", sp.definition.Name))
-			return commonmodels.ErrFatalValidationError
+			return core.ErrFatalValidationError
 		} else if sp.definition.DefaultValue != nil {
 			sp.rawValue = slices.Clone(sp.definition.DefaultValue)
 		}
@@ -256,13 +255,13 @@ func (sp *StaticParameter) validateValue(ctx context.Context, rawValue commonmod
 		columnName := string(rawValue)
 		column, err := sp.driver.GetColumnByName(columnName)
 		if err != nil {
-			vc.Add(commonmodels.NewValidationWarning().
-				SetSeverity(commonmodels.ValidationSeverityError).
+			vc.Add(core.NewValidationWarning().
+				SetSeverity(core.ValidationSeverityError).
 				SetMsg("get column by name failed").
 				SetError(err).
 				AddMeta("ColumnName", columnName).
 				AddMeta("ParameterName", sp.definition.Name))
-			return commonmodels.ErrFatalValidationError
+			return core.ErrFatalValidationError
 		}
 		sp.Column = column
 		if sp.Column == nil {
@@ -284,15 +283,15 @@ func (sp *StaticParameter) validateValue(ctx context.Context, rawValue commonmod
 	}
 
 	if sp.definition.AllowedValues != nil {
-		if !slices.ContainsFunc(sp.definition.AllowedValues, func(allowedItem commonmodels.ParamsValue) bool {
+		if !slices.ContainsFunc(sp.definition.AllowedValues, func(allowedItem core.ParamsValue) bool {
 			return slices.Compare(allowedItem, sp.rawValue) == 0
 		}) {
-			vc.Add(commonmodels.NewValidationWarning().
-				SetSeverity(commonmodels.ValidationSeverityError).
+			vc.Add(core.NewValidationWarning().
+				SetSeverity(core.ValidationSeverityError).
 				SetMsg("unknown parameter value").
 				AddMeta("ParameterValue", string(sp.rawValue)).
 				AddMeta("AllowedValues", parameterValuesToString(sp.definition.AllowedValues)))
-			return commonmodels.ErrFatalValidationError
+			return core.ErrFatalValidationError
 		}
 	}
 	return nil
@@ -300,27 +299,27 @@ func (sp *StaticParameter) validateValue(ctx context.Context, rawValue commonmod
 
 func (sp *StaticParameter) interpolateEvnVars(
 	ctx context.Context,
-	rawValue commonmodels.ParamsValue,
-) (commonmodels.ParamsValue, error) {
+	rawValue core.ParamsValue,
+) (core.ParamsValue, error) {
 	if !sp.interpolate || rawValue == nil {
 		return rawValue, nil
 	}
 	interpolatedValue, err := env.InterpolateEnvVars(string(rawValue))
 	if err != nil {
-		validationcollector.FromContext(ctx).Add(commonmodels.NewValidationWarning().
-			SetSeverity(commonmodels.ValidationSeverityError).
+		validationcollector.FromContext(ctx).Add(core.NewValidationWarning().
+			SetSeverity(core.ValidationSeverityError).
 			SetMsg("error interpolating environment variables in parameter value").
 			AddMeta("Error", err.Error()).
 			AddMeta("ParameterName", sp.definition.Name).
 			AddMeta("ParameterValue", string(rawValue)))
-		return nil, commonmodels.ErrFatalValidationError
+		return nil, core.ErrFatalValidationError
 	}
 	return []byte(interpolatedValue), nil
 }
 
 func (sp *StaticParameter) lookupEnvValue(
-	rawValue commonmodels.ParamsValue,
-) commonmodels.ParamsValue {
+	rawValue core.ParamsValue,
+) core.ParamsValue {
 	if sp.definition.GetFromGlobalEnvVariable == "" {
 		return rawValue
 	}
@@ -334,7 +333,7 @@ func (sp *StaticParameter) lookupEnvValue(
 func (sp *StaticParameter) Init(
 	ctx context.Context,
 	columnParams map[string]*StaticParameter,
-	rawValue commonmodels.ParamsValue,
+	rawValue core.ParamsValue,
 ) (err error) {
 	sp.rawValue = slices.Clone(rawValue)
 
@@ -376,7 +375,7 @@ func (sp *StaticParameter) Value() (any, error) {
 	return res, nil
 }
 
-func (sp *StaticParameter) RawValue() (commonmodels.ParamsValue, error) {
+func (sp *StaticParameter) RawValue() (core.ParamsValue, error) {
 	return sp.rawValue, nil
 }
 
@@ -404,9 +403,9 @@ func (sp *StaticParameter) Scan(dest any) error {
 
 // TODO: Add unit tests
 func getValue(
-	driver commonininterfaces.DBMSDriver,
+	driver core.DBMSDriver,
 	definition *ParameterDefinition,
-	rawValue commonmodels.ParamsValue,
+	rawValue core.ParamsValue,
 	linkedColumnParameter *StaticParameter,
 ) (res any, err error) {
 	switch {
@@ -433,9 +432,9 @@ func getValue(
 
 // TODO: Add unit tests
 func scanValue(
-	driver commonininterfaces.DBMSDriver,
+	driver core.DBMSDriver,
 	definition *ParameterDefinition,
-	rawValue commonmodels.ParamsValue,
+	rawValue core.ParamsValue,
 	linkedColumnParameter *StaticParameter,
 	dest any,
 ) error {
@@ -494,7 +493,7 @@ func scanValue(
 	}
 }
 
-func parameterValuesToString(values []commonmodels.ParamsValue) []string {
+func parameterValuesToString(values []core.ParamsValue) []string {
 	var res []string
 	for _, val := range values {
 		res = append(res, string(val))

@@ -18,7 +18,7 @@ import (
 	"context"
 	"testing"
 
-	commonininterfaces "github.com/greenmaskio/greenmask/pkg/common/interfaces"
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 )
@@ -67,11 +67,11 @@ func (d *restoreTaskMock) Close(ctx context.Context) error {
 
 type taskProducerMock struct {
 	mock.Mock
-	tasks   []commonininterfaces.Restorer
+	tasks   []core.Restorer
 	current int
 }
 
-func newTaskProducerMock(tasks []commonininterfaces.Restorer) *taskProducerMock {
+func newTaskProducerMock(tasks []core.Restorer) *taskProducerMock {
 	return &taskProducerMock{
 		tasks:   tasks,
 		current: -1,
@@ -92,7 +92,7 @@ func (t *taskProducerMock) Err() error {
 	return args.Error(0)
 }
 
-func (t *taskProducerMock) Task() (commonininterfaces.Restorer, error) {
+func (t *taskProducerMock) Task() (core.Restorer, error) {
 	t.Called()
 	return t.tasks[t.current], nil
 }
@@ -126,7 +126,7 @@ func TestProcessor_Run(t *testing.T) {
 		task2.On("Close", mock.Anything).
 			Return(nil)
 
-		tp := newTaskProducerMock([]commonininterfaces.Restorer{task1, task2})
+		tp := newTaskProducerMock([]core.Restorer{task1, task2})
 		//Produce the task list by the producer.
 		tp.On("Next", mock.Anything)
 		tp.On("Err").Return(nil)

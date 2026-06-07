@@ -23,45 +23,45 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 	"github.com/greenmaskio/greenmask/pkg/common/graphbuilder"
-	"github.com/greenmaskio/greenmask/pkg/common/models"
 )
 
 // tableObject wraps a common table as an introspection object with the given ID.
-func tableObject(id models.ObjectID, t models.Table) models.Object {
-	return models.Object{
+func tableObject(id core.ObjectID, t core.Table) core.Object {
+	return core.Object{
 		ID:      id,
-		Kind:    models.ObjectKindTable,
+		Kind:    core.ObjectKindTable,
 		Name:    t.Name,
 		Payload: t,
 	}
 }
 
-func introspection(objs ...models.Object) models.IntrospectionResult {
-	return models.IntrospectionResult{
-		Engine: models.DBMSEngineMySQL,
-		KindsMap: map[models.ObjectKind][]models.Object{
-			models.ObjectKindTable: objs,
+func introspection(objs ...core.Object) core.IntrospectionResult {
+	return core.IntrospectionResult{
+		Engine: core.DBMSEngineMySQL,
+		KindsMap: map[core.ObjectKind][]core.Object{
+			core.ObjectKindTable: objs,
 		},
 	}
 }
 
-func findEdge(edges []models.ObjectEdge, to models.ObjectID) (models.ObjectEdge, bool) {
+func findEdge(edges []core.ObjectEdge, to core.ObjectID) (core.ObjectEdge, bool) {
 	for _, e := range edges {
 		if e.To == to {
 			return e, true
 		}
 	}
-	return models.ObjectEdge{}, false
+	return core.ObjectEdge{}, false
 }
 
-func findCondensedEdge(cg models.CondensedGraph, from, to models.SCCID) (models.SCCEdge, bool) {
+func findCondensedEdge(cg core.CondensedGraph, from, to core.SCCID) (core.SCCEdge, bool) {
 	for _, e := range cg.Edges[from] {
 		if e.To == to {
 			return e, true
 		}
 	}
-	return models.SCCEdge{}, false
+	return core.SCCEdge{}, false
 }
 
 func TestGraphBuilder_BuildGraph(t *testing.T) {
@@ -71,11 +71,11 @@ func TestGraphBuilder_BuildGraph(t *testing.T) {
 		/*
 			a -> b -> c   (edges point from child/referencing to parent/referenced)
 		*/
-		tableA := models.Table{
+		tableA := core.Table{
 			Schema:     "public",
 			Name:       "a",
 			PrimaryKey: []string{"id"},
-			References: []models.Reference{
+			References: []core.Reference{
 				{
 					ReferencedSchema: "public",
 					ReferencedName:   "b",
@@ -85,11 +85,11 @@ func TestGraphBuilder_BuildGraph(t *testing.T) {
 				},
 			},
 		}
-		tableB := models.Table{
+		tableB := core.Table{
 			Schema:     "public",
 			Name:       "b",
 			PrimaryKey: []string{"id"},
-			References: []models.Reference{
+			References: []core.Reference{
 				{
 					ReferencedSchema: "public",
 					ReferencedName:   "c",
@@ -99,16 +99,16 @@ func TestGraphBuilder_BuildGraph(t *testing.T) {
 				},
 			},
 		}
-		tableC := models.Table{
+		tableC := core.Table{
 			Schema:     "public",
 			Name:       "c",
 			PrimaryKey: []string{"id"},
 		}
 
 		const (
-			idA models.ObjectID = 100
-			idB models.ObjectID = 101
-			idC models.ObjectID = 102
+			idA core.ObjectID = 100
+			idB core.ObjectID = 101
+			idC core.ObjectID = 102
 		)
 		in := introspection(
 			tableObject(idA, tableA),
@@ -122,27 +122,27 @@ func TestGraphBuilder_BuildGraph(t *testing.T) {
 		// Object graph: nodes keyed by introspection ObjectID, payload preserved.
 		require.Len(t, res.ObjectGraph.Nodes, 3)
 		require.Equal(t, "a", res.ObjectGraph.Nodes[idA].Name)
-		require.Equal(t, models.ObjectKindTable, res.ObjectGraph.Nodes[idA].Kind)
+		require.Equal(t, core.ObjectKindTable, res.ObjectGraph.Nodes[idA].Kind)
 		require.Equal(t, tableA, res.ObjectGraph.Nodes[idA].Payload)
 
 		// Edge a -> b with foreign-key link payload.
 		ab, ok := findEdge(res.ObjectGraph.Edges[idA], idB)
 		require.True(t, ok, "expected edge a -> b")
-		assert.Equal(t, models.ObjectLinkKindForeignKey, ab.Link.Kind)
-		fk, ok := ab.Link.Payload.(models.ForeignKeyLinkPayload)
+		assert.Equal(t, core.ObjectLinkKindForeignKey, ab.Link.Kind)
+		fk, ok := ab.Link.Payload.(core.ForeignKeyLinkPayload)
 		require.True(t, ok, "expected ForeignKeyLinkPayload")
 		assert.Equal(t, "fk_a_b", fk.ConstraintName)
 		assert.Equal(t, []string{"b_id"}, fk.Columns)
 		assert.Equal(t, []string{"id"}, fk.RefColumns)
 		assert.False(t, fk.IsNullable)
-		assert.Equal(t, []models.ObjectFieldRef{{Kind: models.FieldRefKindColumn, Value: "b_id"}}, ab.Link.From.Fields)
+		assert.Equal(t, []core.ObjectFieldRef{{Kind: core.FieldRefKindColumn, Value: "b_id"}}, ab.Link.From.Fields)
 		assert.Equal(t, idA, ab.Link.From.ObjectID)
 		assert.Equal(t, idB, ab.Link.To.ObjectID)
 
 		// Edge b -> c is nullable.
 		bc, ok := findEdge(res.ObjectGraph.Edges[idB], idC)
 		require.True(t, ok, "expected edge b -> c")
-		fkBC := bc.Link.Payload.(models.ForeignKeyLinkPayload)
+		fkBC := bc.Link.Payload.(core.ForeignKeyLinkPayload)
 		assert.True(t, fkBC.IsNullable)
 
 		// c has no outgoing edges.
@@ -156,7 +156,7 @@ func TestGraphBuilder_BuildGraph(t *testing.T) {
 		assert.NotEqual(t, sccB, sccC)
 		for id, scc := range res.ObjectToSCC {
 			node := res.CondensedGraph.Nodes[scc]
-			assert.Equal(t, []models.ObjectID{id}, node.Members)
+			assert.Equal(t, []core.ObjectID{id}, node.Members)
 			assert.Nil(t, node.Cycles, "acyclic SCC must not carry a cycle graph")
 		}
 
@@ -175,35 +175,35 @@ func TestGraphBuilder_BuildGraph(t *testing.T) {
 			a <-> b   (mutual references form a cycle)
 			c  -> a   (singleton referencing the cycle)
 		*/
-		tableA := models.Table{
+		tableA := core.Table{
 			Schema:     "public",
 			Name:       "a",
 			PrimaryKey: []string{"id"},
-			References: []models.Reference{
+			References: []core.Reference{
 				{ReferencedSchema: "public", ReferencedName: "b", ConstraintName: "fk_a_b", Keys: []string{"b_id"}, IsNullable: true},
 			},
 		}
-		tableB := models.Table{
+		tableB := core.Table{
 			Schema:     "public",
 			Name:       "b",
 			PrimaryKey: []string{"id"},
-			References: []models.Reference{
+			References: []core.Reference{
 				{ReferencedSchema: "public", ReferencedName: "a", ConstraintName: "fk_b_a", Keys: []string{"a_id"}, IsNullable: true},
 			},
 		}
-		tableC := models.Table{
+		tableC := core.Table{
 			Schema:     "public",
 			Name:       "c",
 			PrimaryKey: []string{"id"},
-			References: []models.Reference{
+			References: []core.Reference{
 				{ReferencedSchema: "public", ReferencedName: "a", ConstraintName: "fk_c_a", Keys: []string{"a_id"}, IsNullable: false},
 			},
 		}
 
 		const (
-			idA models.ObjectID = 1
-			idB models.ObjectID = 2
-			idC models.ObjectID = 3
+			idA core.ObjectID = 1
+			idB core.ObjectID = 2
+			idC core.ObjectID = 3
 		)
 		in := introspection(
 			tableObject(idA, tableA),
@@ -220,7 +220,7 @@ func TestGraphBuilder_BuildGraph(t *testing.T) {
 		require.NotEqual(t, sccAB, res.ObjectToSCC[idC])
 
 		cyclic := res.CondensedGraph.Nodes[sccAB]
-		assert.Equal(t, []models.ObjectID{idA, idB}, cyclic.Members) // sorted
+		assert.Equal(t, []core.ObjectID{idA, idB}, cyclic.Members) // sorted
 
 		// The cyclic SCC exposes a cycle graph with at least one cycle.
 		require.NotNil(t, cyclic.Cycles)
@@ -253,10 +253,10 @@ func TestGraphBuilder_BuildGraph(t *testing.T) {
 	})
 
 	t.Run("result is deterministic across runs", func(t *testing.T) {
-		tableA := models.Table{Schema: "public", Name: "a", PrimaryKey: []string{"id"}}
-		tableB := models.Table{
+		tableA := core.Table{Schema: "public", Name: "a", PrimaryKey: []string{"id"}}
+		tableB := core.Table{
 			Schema: "public", Name: "b", PrimaryKey: []string{"id"},
-			References: []models.Reference{
+			References: []core.Reference{
 				{ReferencedSchema: "public", ReferencedName: "a", Keys: []string{"a_id"}},
 			},
 		}
@@ -273,10 +273,10 @@ func TestGraphBuilder_BuildGraph(t *testing.T) {
 // commonTableAdapter is an engine-specific payload that exposes itself as a
 // common table via ToCommonTable, mirroring how *mysql.Table is wrapped.
 type commonTableAdapter struct {
-	table models.Table
+	table core.Table
 }
 
-func (a commonTableAdapter) ToCommonTable() models.Table {
+func (a commonTableAdapter) ToCommonTable() core.Table {
 	return a.table
 }
 
@@ -284,19 +284,19 @@ func TestGraphBuilder_PayloadExtraction(t *testing.T) {
 	ctx := context.Background()
 
 	t.Run("accepts ToCommonTable payloads", func(t *testing.T) {
-		tableA := models.Table{Schema: "public", Name: "a", PrimaryKey: []string{"id"}}
-		tableB := models.Table{
+		tableA := core.Table{Schema: "public", Name: "a", PrimaryKey: []string{"id"}}
+		tableB := core.Table{
 			Schema: "public", Name: "b", PrimaryKey: []string{"id"},
-			References: []models.Reference{
+			References: []core.Reference{
 				{ReferencedSchema: "public", ReferencedName: "a", Keys: []string{"a_id"}},
 			},
 		}
 		payloadA := commonTableAdapter{table: tableA}
-		in := models.IntrospectionResult{
-			KindsMap: map[models.ObjectKind][]models.Object{
-				models.ObjectKindTable: {
-					{ID: 1, Kind: models.ObjectKindTable, Name: "a", Payload: payloadA},
-					{ID: 2, Kind: models.ObjectKindTable, Name: "b", Payload: commonTableAdapter{table: tableB}},
+		in := core.IntrospectionResult{
+			KindsMap: map[core.ObjectKind][]core.Object{
+				core.ObjectKindTable: {
+					{ID: 1, Kind: core.ObjectKindTable, Name: "a", Payload: payloadA},
+					{ID: 2, Kind: core.ObjectKindTable, Name: "b", Payload: commonTableAdapter{table: tableB}},
 				},
 			},
 		}
@@ -311,11 +311,11 @@ func TestGraphBuilder_PayloadExtraction(t *testing.T) {
 	})
 
 	t.Run("accepts pointer-to-table payloads", func(t *testing.T) {
-		tableA := models.Table{Schema: "public", Name: "a", PrimaryKey: []string{"id"}}
-		in := models.IntrospectionResult{
-			KindsMap: map[models.ObjectKind][]models.Object{
-				models.ObjectKindTable: {
-					{ID: 1, Kind: models.ObjectKindTable, Name: "a", Payload: &tableA},
+		tableA := core.Table{Schema: "public", Name: "a", PrimaryKey: []string{"id"}}
+		in := core.IntrospectionResult{
+			KindsMap: map[core.ObjectKind][]core.Object{
+				core.ObjectKindTable: {
+					{ID: 1, Kind: core.ObjectKindTable, Name: "a", Payload: &tableA},
 				},
 			},
 		}
@@ -325,10 +325,10 @@ func TestGraphBuilder_PayloadExtraction(t *testing.T) {
 	})
 
 	t.Run("rejects unsupported payloads", func(t *testing.T) {
-		in := models.IntrospectionResult{
-			KindsMap: map[models.ObjectKind][]models.Object{
-				models.ObjectKindTable: {
-					{ID: 1, Kind: models.ObjectKindTable, Name: "a", Payload: "not a table"},
+		in := core.IntrospectionResult{
+			KindsMap: map[core.ObjectKind][]core.Object{
+				core.ObjectKindTable: {
+					{ID: 1, Kind: core.ObjectKindTable, Name: "a", Payload: "not a table"},
 				},
 			},
 		}
@@ -338,11 +338,11 @@ func TestGraphBuilder_PayloadExtraction(t *testing.T) {
 	})
 
 	t.Run("rejects nil table pointer payloads", func(t *testing.T) {
-		var nilTable *models.Table
-		in := models.IntrospectionResult{
-			KindsMap: map[models.ObjectKind][]models.Object{
-				models.ObjectKindTable: {
-					{ID: 1, Kind: models.ObjectKindTable, Name: "a", Payload: nilTable},
+		var nilTable *core.Table
+		in := core.IntrospectionResult{
+			KindsMap: map[core.ObjectKind][]core.Object{
+				core.ObjectKindTable: {
+					{ID: 1, Kind: core.ObjectKindTable, Name: "a", Payload: nilTable},
 				},
 			},
 		}
@@ -360,7 +360,7 @@ func TestGraphBuilder_EdgeCases(t *testing.T) {
 
 	t.Run("self-referencing table forms a single-member cycle", func(t *testing.T) {
 		// e.g. employee.manager_id -> employee.id
-		const idEmp models.ObjectID = 7
+		const idEmp core.ObjectID = 7
 		in := introspection(
 			tableObject(idEmp, namedTable("employee", fk("employee", "fk_manager", "manager_id"))),
 		)
@@ -371,14 +371,14 @@ func TestGraphBuilder_EdgeCases(t *testing.T) {
 		// The self-reference is a foreign-key edge from the table to itself.
 		selfEdge, ok := findEdge(res.ObjectGraph.Edges[idEmp], idEmp)
 		require.True(t, ok, "expected a self-edge")
-		fkPayload, ok := selfEdge.Link.Payload.(models.ForeignKeyLinkPayload)
+		fkPayload, ok := selfEdge.Link.Payload.(core.ForeignKeyLinkPayload)
 		require.True(t, ok)
 		assert.Equal(t, []string{"manager_id"}, fkPayload.Columns)
 
 		// A self-loop is a one-member cyclic SCC.
 		require.Len(t, res.CondensedGraph.Nodes, 1)
 		node := res.CondensedGraph.Nodes[res.ObjectToSCC[idEmp]]
-		assert.Equal(t, []models.ObjectID{idEmp}, node.Members)
+		assert.Equal(t, []core.ObjectID{idEmp}, node.Members)
 		require.NotNil(t, node.Cycles, "self-reference must be reported as a cycle")
 		require.Len(t, node.Cycles.Cycles, 1)
 		require.Len(t, node.Cycles.Cycles[0].Edges, 1)
@@ -389,8 +389,8 @@ func TestGraphBuilder_EdgeCases(t *testing.T) {
 	t.Run("multiple foreign keys to the same parent", func(t *testing.T) {
 		// e.g. message.sender_id -> user.id and message.receiver_id -> user.id
 		const (
-			idUser models.ObjectID = 1
-			idMsg  models.ObjectID = 2
+			idUser core.ObjectID = 1
+			idMsg  core.ObjectID = 2
 		)
 		in := introspection(
 			tableObject(idUser, namedTable("user")),
@@ -410,7 +410,7 @@ func TestGraphBuilder_EdgeCases(t *testing.T) {
 		for _, e := range edges {
 			assert.Equal(t, idMsg, e.From)
 			assert.Equal(t, idUser, e.To)
-			objConstraints = append(objConstraints, e.Link.Payload.(models.ForeignKeyLinkPayload).ConstraintName)
+			objConstraints = append(objConstraints, e.Link.Payload.(core.ForeignKeyLinkPayload).ConstraintName)
 		}
 		assert.ElementsMatch(t, []string{"fk_sender", "fk_receiver"}, objConstraints)
 
@@ -420,7 +420,7 @@ func TestGraphBuilder_EdgeCases(t *testing.T) {
 		require.Len(t, cond.Links, 2)
 		var condConstraints []string
 		for _, l := range cond.Links {
-			condConstraints = append(condConstraints, l.Link.Payload.(models.ForeignKeyLinkPayload).ConstraintName)
+			condConstraints = append(condConstraints, l.Link.Payload.(core.ForeignKeyLinkPayload).ConstraintName)
 		}
 		assert.ElementsMatch(t, []string{"fk_sender", "fk_receiver"}, condConstraints)
 	})
@@ -439,9 +439,9 @@ func TestGraphBuilder_EdgeCases(t *testing.T) {
 		// to ID order. Use large, gapped, scrambled IDs and a cycle to ensure the
 		// result is keyed purely by ObjectID with no dense-index assumption.
 		const (
-			idA models.ObjectID = 5
-			idB models.ObjectID = 42
-			idC models.ObjectID = 900900
+			idA core.ObjectID = 5
+			idB core.ObjectID = 42
+			idC core.ObjectID = 900900
 		)
 		// a <-> b (cycle), b -> c. Listed out of ID order on purpose.
 		in := introspection(
@@ -458,7 +458,7 @@ func TestGraphBuilder_EdgeCases(t *testing.T) {
 
 		// Nodes and the object->SCC map are keyed by the exact sparse IDs.
 		assert.ElementsMatch(t,
-			[]models.ObjectID{idA, idB, idC},
+			[]core.ObjectID{idA, idB, idC},
 			slices.Collect(maps.Keys(res.ObjectGraph.Nodes)),
 		)
 		require.Len(t, res.ObjectToSCC, 3)
@@ -469,12 +469,12 @@ func TestGraphBuilder_EdgeCases(t *testing.T) {
 		require.NotEqual(t, sccAB, res.ObjectToSCC[idC])
 
 		node := res.CondensedGraph.Nodes[sccAB]
-		assert.Equal(t, []models.ObjectID{idA, idB}, node.Members) // sorted by ID
+		assert.Equal(t, []core.ObjectID{idA, idB}, node.Members) // sorted by ID
 		require.NotNil(t, node.Cycles)
 		require.NotEmpty(t, node.Cycles.Cycles)
 		for _, e := range node.Cycles.Cycles[0].Edges {
-			assert.Contains(t, []models.ObjectID{idA, idB}, e.From)
-			assert.Contains(t, []models.ObjectID{idA, idB}, e.To)
+			assert.Contains(t, []core.ObjectID{idA, idB}, e.From)
+			assert.Contains(t, []core.ObjectID{idA, idB}, e.To)
 		}
 
 		// The cross-SCC link b -> c carries the sparse IDs verbatim.
@@ -485,13 +485,13 @@ func TestGraphBuilder_EdgeCases(t *testing.T) {
 	})
 
 	t.Run("non-table object kinds are ignored", func(t *testing.T) {
-		in := models.IntrospectionResult{
-			KindsMap: map[models.ObjectKind][]models.Object{
-				models.ObjectKindTable: {
+		in := core.IntrospectionResult{
+			KindsMap: map[core.ObjectKind][]core.Object{
+				core.ObjectKindTable: {
 					tableObject(1, namedTable("a")),
 				},
-				models.ObjectKindPostgresSequence: {
-					{ID: 2, Kind: models.ObjectKindPostgresSequence, Name: "a_id_seq"},
+				core.ObjectKindPostgresSequence: {
+					{ID: 2, Kind: core.ObjectKindPostgresSequence, Name: "a_id_seq"},
 				},
 			},
 		}
@@ -504,8 +504,8 @@ func TestGraphBuilder_EdgeCases(t *testing.T) {
 	})
 }
 
-func fk(refName, constraint, key string) models.Reference {
-	return models.Reference{
+func fk(refName, constraint, key string) core.Reference {
+	return core.Reference{
 		ReferencedSchema: "public",
 		ReferencedName:   refName,
 		ConstraintName:   constraint,
@@ -513,8 +513,8 @@ func fk(refName, constraint, key string) models.Reference {
 	}
 }
 
-func namedTable(name string, refs ...models.Reference) models.Table {
-	return models.Table{
+func namedTable(name string, refs ...core.Reference) core.Table {
+	return core.Table{
 		Schema:     "public",
 		Name:       name,
 		PrimaryKey: []string{"id"},
@@ -522,7 +522,7 @@ func namedTable(name string, refs ...models.Reference) models.Table {
 	}
 }
 
-func requireCondensedEdge(t *testing.T, cg models.CondensedGraph, from, to models.SCCID) models.SCCEdge {
+func requireCondensedEdge(t *testing.T, cg core.CondensedGraph, from, to core.SCCID) core.SCCEdge {
 	t.Helper()
 	e, ok := findCondensedEdge(cg, from, to)
 	require.Truef(t, ok, "expected condensed edge SCC(%d) -> SCC(%d)", from, to)
@@ -530,11 +530,11 @@ func requireCondensedEdge(t *testing.T, cg models.CondensedGraph, from, to model
 }
 
 // cycleMembers returns the distinct object IDs touched by a cycle's edges.
-func cycleMembers(c models.Cycle) []models.ObjectID {
-	seen := map[models.ObjectID]struct{}{}
-	var out []models.ObjectID
+func cycleMembers(c core.Cycle) []core.ObjectID {
+	seen := map[core.ObjectID]struct{}{}
+	var out []core.ObjectID
 	for _, e := range c.Edges {
-		for _, id := range []models.ObjectID{e.From, e.To} {
+		for _, id := range []core.ObjectID{e.From, e.To} {
 			if _, ok := seen[id]; ok {
 				continue
 			}
@@ -547,8 +547,8 @@ func cycleMembers(c models.Cycle) []models.ObjectID {
 }
 
 // sortedObjectIDs returns a sorted copy of the given object IDs.
-func sortedObjectIDs(ids []models.ObjectID) []models.ObjectID {
-	out := append([]models.ObjectID(nil), ids...)
+func sortedObjectIDs(ids []core.ObjectID) []core.ObjectID {
+	out := append([]core.ObjectID(nil), ids...)
 	slices.Sort(out)
 	return out
 }
@@ -572,14 +572,14 @@ func TestGraphBuilder_Cycles(t *testing.T) {
 		// Object IDs are deliberately spread out (and not equal to slice positions)
 		// to exercise the index<->ObjectID mapping.
 		const (
-			idY  models.ObjectID = 10 // table1_y
-			idX  models.ObjectID = 20 // table1_x
-			idA  models.ObjectID = 30 // table1_a
-			idB  models.ObjectID = 40 // table1_b
-			idC  models.ObjectID = 50 // table1_c
-			id2A models.ObjectID = 60 // table2_a
-			id2B models.ObjectID = 70 // table2_b
-			id3A models.ObjectID = 80 // table3_a
+			idY  core.ObjectID = 10 // table1_y
+			idX  core.ObjectID = 20 // table1_x
+			idA  core.ObjectID = 30 // table1_a
+			idB  core.ObjectID = 40 // table1_b
+			idC  core.ObjectID = 50 // table1_c
+			id2A core.ObjectID = 60 // table2_a
+			id2B core.ObjectID = 70 // table2_b
+			id3A core.ObjectID = 80 // table3_a
 		)
 
 		in := introspection(
@@ -619,13 +619,13 @@ func TestGraphBuilder_Cycles(t *testing.T) {
 		require.Equal(t, scc1, res.ObjectToSCC[idB])
 		require.Equal(t, scc1, res.ObjectToSCC[idC])
 		node1 := res.CondensedGraph.Nodes[scc1]
-		assert.Equal(t, []models.ObjectID{idA, idB, idC}, node1.Members) // sorted
+		assert.Equal(t, []core.ObjectID{idA, idB, idC}, node1.Members) // sorted
 		require.NotNil(t, node1.Cycles, "component 1 SCC must carry a cycle graph")
 		require.Len(t, node1.Cycles.Cycles, 1, "component 1 has a single 3-table cycle")
 		assert.Len(t, node1.Cycles.Cycles[0].Edges, 3)
 		require.Len(t, node1.Cycles.Groups, 1)
 		for _, g := range node1.Cycles.Groups {
-			assert.ElementsMatch(t, []models.ObjectID{idA, idB, idC}, g.Members)
+			assert.ElementsMatch(t, []core.ObjectID{idA, idB, idC}, g.Members)
 		}
 		assert.Empty(t, node1.Cycles.GroupGraph, "a single cycle group has no inter-group edges")
 		// Intra-SCC subgraph: 3 nodes and the 3 cycle edges.
@@ -640,15 +640,15 @@ func TestGraphBuilder_Cycles(t *testing.T) {
 		scc2 := res.ObjectToSCC[id2A]
 		require.Equal(t, scc2, res.ObjectToSCC[id2B])
 		node2 := res.CondensedGraph.Nodes[scc2]
-		assert.Equal(t, []models.ObjectID{id2A, id2B}, node2.Members)
+		assert.Equal(t, []core.ObjectID{id2A, id2B}, node2.Members)
 		require.NotNil(t, node2.Cycles)
 		require.Len(t, node2.Cycles.Cycles, 1)
 		assert.Len(t, node2.Cycles.Cycles[0].Edges, 2)
 
 		// Singletons carry no cycle.
-		for _, id := range []models.ObjectID{idX, idY, id3A} {
+		for _, id := range []core.ObjectID{idX, idY, id3A} {
 			n := res.CondensedGraph.Nodes[res.ObjectToSCC[id]]
-			assert.Equal(t, []models.ObjectID{id}, n.Members)
+			assert.Equal(t, []core.ObjectID{id}, n.Members)
 			assert.Nil(t, n.Cycles)
 			assert.Empty(t, n.Subgraph.Edges, "singleton SCC has no intra edges")
 		}
@@ -667,7 +667,7 @@ func TestGraphBuilder_Cycles(t *testing.T) {
 		require.Len(t, bridge.Links, 1)
 		assert.Equal(t, idC, bridge.Links[0].From)
 		assert.Equal(t, id2A, bridge.Links[0].To)
-		fkPayload, ok := bridge.Links[0].Link.Payload.(models.ForeignKeyLinkPayload)
+		fkPayload, ok := bridge.Links[0].Link.Payload.(core.ForeignKeyLinkPayload)
 		require.True(t, ok)
 		assert.Equal(t, "fk_table2_a", fkPayload.ConstraintName)
 		assert.Equal(t, []string{"table2_a_id"}, fkPayload.Columns)
@@ -678,7 +678,7 @@ func TestGraphBuilder_Cycles(t *testing.T) {
 		assert.False(t, ok, "SCC1 must reach table3_a only through SCC2")
 
 		// Every object maps to exactly one of the five SCCs.
-		distinct := map[models.SCCID]struct{}{}
+		distinct := map[core.SCCID]struct{}{}
 		for _, scc := range res.ObjectToSCC {
 			distinct[scc] = struct{}{}
 		}
@@ -692,9 +692,9 @@ func TestGraphBuilder_Cycles(t *testing.T) {
 		//
 		//   a <-> b   and   b <-> c
 		const (
-			idA models.ObjectID = 1
-			idB models.ObjectID = 2
-			idC models.ObjectID = 3
+			idA core.ObjectID = 1
+			idB core.ObjectID = 2
+			idC core.ObjectID = 3
 		)
 		in := introspection(
 			tableObject(idA, namedTable("a", fk("b", "fk_a_b", "b_id"))),
@@ -720,7 +720,7 @@ func TestGraphBuilder_Cycles(t *testing.T) {
 		// Two 2-table cycles: {a,b} and {b,c}. Verify the actual edge contents, not
 		// just the counts.
 		require.Len(t, cg.Cycles, 2)
-		cycleMemberSets := make([][]models.ObjectID, 0, len(cg.Cycles))
+		cycleMemberSets := make([][]core.ObjectID, 0, len(cg.Cycles))
 		for _, c := range cg.Cycles {
 			assert.NotEmpty(t, c.ID, "every cycle has an ID")
 			require.Len(t, c.Edges, 2)
@@ -731,7 +731,7 @@ func TestGraphBuilder_Cycles(t *testing.T) {
 			cycleMemberSets = append(cycleMemberSets, members)
 		}
 		assert.ElementsMatch(t,
-			[][]models.ObjectID{{idA, idB}, {idB, idC}},
+			[][]core.ObjectID{{idA, idB}, {idB, idC}},
 			cycleMemberSets,
 			"the two cycles are {a,b} and {b,c}",
 		)
@@ -780,10 +780,10 @@ func TestGraphBuilder_Cycles(t *testing.T) {
 		// The adjacent groups are linked through the shared tables b and c; the
 		// non-adjacent groups {a,b} and {c,d} share nothing and must not be linked.
 		const (
-			idA models.ObjectID = 1
-			idB models.ObjectID = 2
-			idC models.ObjectID = 3
-			idD models.ObjectID = 4
+			idA core.ObjectID = 1
+			idB core.ObjectID = 2
+			idC core.ObjectID = 3
+			idD core.ObjectID = 4
 		)
 		in := introspection(
 			tableObject(idA, namedTable("a", fk("b", "fk_a_b", "b_id"))),
@@ -804,42 +804,42 @@ func TestGraphBuilder_Cycles(t *testing.T) {
 		// One SCC holding all four tables.
 		require.Len(t, res.CondensedGraph.Nodes, 1)
 		scc := res.ObjectToSCC[idA]
-		for _, id := range []models.ObjectID{idB, idC, idD} {
+		for _, id := range []core.ObjectID{idB, idC, idD} {
 			require.Equalf(t, scc, res.ObjectToSCC[id], "table %d must be in the single SCC", id)
 		}
 		node := res.CondensedGraph.Nodes[scc]
-		require.Equal(t, []models.ObjectID{idA, idB, idC, idD}, node.Members)
+		require.Equal(t, []core.ObjectID{idA, idB, idC, idD}, node.Members)
 		require.NotNil(t, node.Cycles)
 		cg := node.Cycles
 
 		// Three overlapping 2-cycles: {a,b}, {b,c}, {c,d}.
 		require.Len(t, cg.Cycles, 3)
-		var cycleSets [][]models.ObjectID
+		var cycleSets [][]core.ObjectID
 		for _, c := range cg.Cycles {
 			require.Len(t, c.Edges, 2)
 			cycleSets = append(cycleSets, cycleMembers(c))
 		}
 		assert.ElementsMatch(t,
-			[][]models.ObjectID{{idA, idB}, {idB, idC}, {idC, idD}},
+			[][]core.ObjectID{{idA, idB}, {idB, idC}, {idC, idD}},
 			cycleSets,
 		)
 
 		// Three cycle groups, one per distinct vertex pair.
 		require.Len(t, cg.Groups, 3)
-		var groupSets [][]models.ObjectID
+		var groupSets [][]core.ObjectID
 		for gid, g := range cg.Groups {
 			assert.Equal(t, gid, g.ID)
 			groupSets = append(groupSets, sortedObjectIDs(g.Members))
 		}
 		assert.ElementsMatch(t,
-			[][]models.ObjectID{{idA, idB}, {idB, idC}, {idC, idD}},
+			[][]core.ObjectID{{idA, idB}, {idB, idC}, {idC, idD}},
 			groupSets,
 		)
 
 		// The links between groups are the heart of this case: exactly two adjacency
 		// links, joined through b and through c (the shared hubs), never through the
 		// chain endpoints a/d, and never between the non-adjacent {a,b} and {c,d}.
-		var sharedSets [][]models.ObjectID
+		var sharedSets [][]core.ObjectID
 		edgeCount := 0
 		for from, edges := range cg.GroupGraph {
 			_, fromKnown := cg.Groups[from]
@@ -857,7 +857,7 @@ func TestGraphBuilder_Cycles(t *testing.T) {
 		}
 		require.Equal(t, 2, edgeCount, "two adjacency links: {a,b}-{b,c} and {b,c}-{c,d}")
 		assert.ElementsMatch(t,
-			[][]models.ObjectID{{idB}, {idC}},
+			[][]core.ObjectID{{idB}, {idC}},
 			sharedSets,
 			"adjacent groups are joined through b and c respectively",
 		)

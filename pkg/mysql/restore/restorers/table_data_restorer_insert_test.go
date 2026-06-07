@@ -20,8 +20,8 @@ import (
 	"io"
 	"strings"
 
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 	"github.com/greenmaskio/greenmask/pkg/common/mocks"
-	"github.com/greenmaskio/greenmask/pkg/common/models"
 	utils2 "github.com/greenmaskio/greenmask/pkg/common/utils"
 	"github.com/rs/zerolog"
 	"github.com/stretchr/testify/mock"
@@ -47,16 +47,16 @@ func (s *restoreSuite) TestRestorerInsert_RestoreData() {
 		"('insertUser2', 'insertUser2@example.com')\n"
 	r := strings.NewReader(fileContent)
 
-	table := models.Table{
+	table := core.Table{
 		Schema: "playground",
 		Name:   "users",
-		Columns: []models.Column{
+		Columns: []core.Column{
 			{Name: "username"},
 			{Name: "email"},
 		},
 	}
 	rawData := utils2.Must(json.Marshal(table))
-	meta := models.RestorationItem{
+	meta := core.RestorationItem{
 		Filename:         "playground__users.sql",
 		RecordCount:      2,
 		ObjectDefinition: rawData,
@@ -119,16 +119,16 @@ func (s *restoreSuite) TestRestorerInsert_RestoreData_Batched() {
 		"('insertUser6', 'insertUser6@example.com')\n"
 	r := strings.NewReader(fileContent)
 
-	table := models.Table{
+	table := core.Table{
 		Schema: "playground",
 		Name:   "users",
-		Columns: []models.Column{
+		Columns: []core.Column{
 			{Name: "username"},
 			{Name: "email"},
 		},
 	}
 	rawData := utils2.Must(json.Marshal(table))
-	meta := models.RestorationItem{
+	meta := core.RestorationItem{
 		Filename:         "playground__users.sql",
 		RecordCount:      6,
 		ObjectDefinition: rawData,
@@ -194,16 +194,16 @@ func (s *restoreSuite) TestRestorerInsert_RestoreData_SingleRow() {
 		"('insertUser6', 'insertUser6@example.com')\n"
 	r := strings.NewReader(fileContent)
 
-	table := models.Table{
+	table := core.Table{
 		Schema: "playground",
 		Name:   "users",
-		Columns: []models.Column{
+		Columns: []core.Column{
 			{Name: "username"},
 			{Name: "email"},
 		},
 	}
 	rawData := utils2.Must(json.Marshal(table))
-	meta := models.RestorationItem{
+	meta := core.RestorationItem{
 		Filename:         "playground__users.sql",
 		RecordCount:      6,
 		ObjectDefinition: rawData,

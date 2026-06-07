@@ -19,8 +19,7 @@ import (
 	"fmt"
 	"net"
 
-	"github.com/greenmaskio/greenmask/pkg/common/interfaces"
-	"github.com/greenmaskio/greenmask/pkg/common/models"
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 	"github.com/greenmaskio/greenmask/pkg/common/transformers/generators/transformers"
 	"github.com/greenmaskio/greenmask/pkg/common/transformers/parameters"
 	"github.com/greenmaskio/greenmask/pkg/common/transformers/utils"
@@ -40,11 +39,11 @@ var RandomIPDefinition = utils.NewTransformerDefinition(
 	parameters.MustNewParameterDefinition(
 		"column",
 		"Column name",
-	).SetIsColumn(models.NewColumnProperties().
+	).SetIsColumn(core.NewColumnProperties().
 		SetAffected(true).
 		SetAllowedColumnTypeClasses(
-			models.TypeClassText,
-			models.TypeClassInet,
+			core.TypeClassText,
+			core.TypeClassInet,
 		),
 	).SetRequired(true),
 
@@ -56,14 +55,14 @@ var RandomIPDefinition = utils.NewTransformerDefinition(
 		SetDynamicMode(
 			parameters.NewDynamicModeProperties().
 				SetColumnProperties(
-					models.NewColumnProperties().
+					core.NewColumnProperties().
 						SetAllowedColumnTypeClasses(
-							models.TypeClassText,
-							models.TypeClassCidr,
+							core.TypeClassText,
+							core.TypeClassCidr,
 						),
 				),
 		).SetUnmarshaler(
-		func(_ *parameters.ParameterDefinition, _ interfaces.DBMSDriver, src models.ParamsValue) (any, error) {
+		func(_ *parameters.ParameterDefinition, _ core.DBMSDriver, src core.ParamsValue) (any, error) {
 			dest := &net.IPNet{}
 			err := scanIPNet(src, dest)
 			return dest, err
@@ -83,9 +82,9 @@ type RandomIp struct {
 
 func NewIpTransformer(
 	ctx context.Context,
-	tableDriver interfaces.TableDriver,
+	tableDriver core.TableDriver,
 	parameters map[string]parameters.Parameterizer,
-) (interfaces.Transformer, error) {
+) (core.Transformer, error) {
 
 	subnetParam := parameters["subnet"]
 	var subnet *net.IPNet
@@ -146,7 +145,7 @@ func (t *RandomIp) Done(context.Context) error {
 	return nil
 }
 
-func (t *RandomIp) Transform(_ context.Context, r interfaces.Recorder) error {
+func (t *RandomIp) Transform(_ context.Context, r core.Recorder) error {
 
 	val, err := r.GetRawColumnValueByIdx(t.columnIdx)
 	if err != nil {
@@ -166,7 +165,7 @@ func (t *RandomIp) Transform(_ context.Context, r interfaces.Recorder) error {
 		return fmt.Errorf("unable to transform value: %w", err)
 	}
 
-	newVal := models.NewColumnRawValue([]byte(ipVal.String()), false)
+	newVal := core.NewColumnRawValue([]byte(ipVal.String()), false)
 	if err = r.SetRawColumnValueByIdx(t.columnIdx, newVal); err != nil {
 		return fmt.Errorf("unable to set new value: %w", err)
 	}

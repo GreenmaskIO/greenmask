@@ -20,7 +20,7 @@ import (
 	"fmt"
 	"slices"
 
-	commonmodels "github.com/greenmaskio/greenmask/pkg/common/models"
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 	"github.com/greenmaskio/greenmask/pkg/common/validationcollector"
 	"github.com/rs/zerolog/log"
 )
@@ -40,7 +40,7 @@ func PrintValidationWarnings(ctx context.Context, resolvedWarnings []string, pri
 			log.Ctx(ctx).Debug().
 				Str("Hash", w.Hash).
 				Msg("resolved warning has been excluded")
-			if w.Severity == commonmodels.ValidationSeverityError {
+			if w.Severity == core.ValidationSeverityError {
 				return fmt.Errorf(
 					"exclude warning %s with hash: %w", w.Hash, errCannotExcludeWarningWithErrorSeverity,
 				)
@@ -48,7 +48,7 @@ func PrintValidationWarnings(ctx context.Context, resolvedWarnings []string, pri
 			continue
 		}
 
-		if w.Severity == commonmodels.ValidationSeverityError {
+		if w.Severity == core.ValidationSeverityError {
 			// The warnings with error severity must be printed anyway
 			log.Error().Any("ValidationWarning", w).Msg("")
 		} else {

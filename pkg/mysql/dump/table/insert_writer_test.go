@@ -6,7 +6,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/greenmaskio/greenmask/pkg/common/models"
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 	"github.com/greenmaskio/greenmask/pkg/common/rawrecord"
 	"github.com/greenmaskio/greenmask/pkg/mysql/dbmsdriver"
 )
@@ -14,10 +14,10 @@ import (
 func TestInsertWriter_Write(t *testing.T) {
 
 	t.Run("single_row", func(t *testing.T) {
-		table := models.Table{
+		table := core.Table{
 			Schema: "public",
 			Name:   "users",
-			Columns: []models.Column{
+			Columns: []core.Column{
 				{Name: "id"},
 				{Name: "name"},
 				{Name: "email"},
@@ -36,10 +36,10 @@ func TestInsertWriter_Write(t *testing.T) {
 	})
 
 	t.Run("multiple_rows", func(t *testing.T) {
-		table := models.Table{
+		table := core.Table{
 			Schema: "public",
 			Name:   "users",
-			Columns: []models.Column{
+			Columns: []core.Column{
 				{Name: "id"},
 				{Name: "name"},
 			},
@@ -60,9 +60,9 @@ func TestInsertWriter_Write(t *testing.T) {
 	})
 
 	t.Run("null_values", func(t *testing.T) {
-		table := models.Table{
+		table := core.Table{
 			Name: "test",
-			Columns: []models.Column{
+			Columns: []core.Column{
 				{Name: "id"},
 				{Name: "val"},
 			},
@@ -80,9 +80,9 @@ func TestInsertWriter_Write(t *testing.T) {
 	})
 
 	t.Run("literal_null_sequence", func(t *testing.T) {
-		table := models.Table{
+		table := core.Table{
 			Name: "test",
-			Columns: []models.Column{
+			Columns: []core.Column{
 				{Name: "id"},
 				{Name: "val"},
 			},
@@ -92,9 +92,9 @@ func TestInsertWriter_Write(t *testing.T) {
 		iw := NewInsertWriter(table, &buf, false)
 
 		rr := rawrecord.NewRawRecord(2, dbmsdriver.NullValueSeq)
-		err := rr.SetColumn(0, models.NewColumnRawValue([]byte("1"), false))
+		err := rr.SetColumn(0, core.NewColumnRawValue([]byte("1"), false))
 		assert.NoError(t, err)
-		err = rr.SetColumn(1, models.NewColumnRawValue(dbmsdriver.NullValueSeq, false))
+		err = rr.SetColumn(1, core.NewColumnRawValue(dbmsdriver.NullValueSeq, false))
 		assert.NoError(t, err)
 
 		err = iw.Write(rr.GetRow())
@@ -108,9 +108,9 @@ func TestInsertWriter_Write(t *testing.T) {
 	})
 
 	t.Run("flush_is_noop", func(t *testing.T) {
-		table := models.Table{
+		table := core.Table{
 			Name:    "empty_table",
-			Columns: []models.Column{{Name: "id"}},
+			Columns: []core.Column{{Name: "id"}},
 		}
 
 		var buf bytes.Buffer
@@ -125,8 +125,8 @@ func TestInsertWriter_Write(t *testing.T) {
 func TestInsertWriter_HexBlob(t *testing.T) {
 	// binaryCol mirrors what the introspector produces: TypeName may include a length
 	// suffix (e.g. "binary(16)"), so TypeClass is the reliable signal.
-	binaryCol := func(typeName string) models.Column {
-		return models.Column{Name: "data", TypeName: typeName, TypeClass: models.TypeClassBinary}
+	binaryCol := func(typeName string) core.Column {
+		return core.Column{Name: "data", TypeName: typeName, TypeClass: core.TypeClassBinary}
 	}
 
 	binaryTypes := []string{
@@ -141,9 +141,9 @@ func TestInsertWriter_HexBlob(t *testing.T) {
 	t.Run("all_binary_types_produce_hex_literal", func(t *testing.T) {
 		for _, typeName := range binaryTypes {
 			var buf bytes.Buffer
-			table := models.Table{
+			table := core.Table{
 				Name:    "t",
-				Columns: []models.Column{binaryCol(typeName)},
+				Columns: []core.Column{binaryCol(typeName)},
 			}
 			iw := NewInsertWriter(table, &buf, true)
 			err := iw.Write([][]byte{{0xDE, 0xAD, 0xBE, 0xEF}})
@@ -153,9 +153,9 @@ func TestInsertWriter_HexBlob(t *testing.T) {
 	})
 
 	t.Run("high_bytes_invalid_utf8", func(t *testing.T) {
-		table := models.Table{
+		table := core.Table{
 			Name:    "t",
-			Columns: []models.Column{binaryCol(dbmsdriver.TypeBlob)},
+			Columns: []core.Column{binaryCol(dbmsdriver.TypeBlob)},
 		}
 		var buf bytes.Buffer
 		iw := NewInsertWriter(table, &buf, true)
@@ -166,9 +166,9 @@ func TestInsertWriter_HexBlob(t *testing.T) {
 	})
 
 	t.Run("null_byte_and_escape_chars", func(t *testing.T) {
-		table := models.Table{
+		table := core.Table{
 			Name:    "t",
-			Columns: []models.Column{binaryCol(dbmsdriver.TypeVarBinary)},
+			Columns: []core.Column{binaryCol(dbmsdriver.TypeVarBinary)},
 		}
 		var buf bytes.Buffer
 		iw := NewInsertWriter(table, &buf, true)
@@ -179,9 +179,9 @@ func TestInsertWriter_HexBlob(t *testing.T) {
 	})
 
 	t.Run("null_binary_value", func(t *testing.T) {
-		table := models.Table{
+		table := core.Table{
 			Name:    "t",
-			Columns: []models.Column{binaryCol(dbmsdriver.TypeBlob)},
+			Columns: []core.Column{binaryCol(dbmsdriver.TypeBlob)},
 		}
 		var buf bytes.Buffer
 		iw := NewInsertWriter(table, &buf, true)
@@ -191,9 +191,9 @@ func TestInsertWriter_HexBlob(t *testing.T) {
 	})
 
 	t.Run("empty_binary_value", func(t *testing.T) {
-		table := models.Table{
+		table := core.Table{
 			Name:    "t",
-			Columns: []models.Column{binaryCol(dbmsdriver.TypeBlob)},
+			Columns: []core.Column{binaryCol(dbmsdriver.TypeBlob)},
 		}
 		var buf bytes.Buffer
 		iw := NewInsertWriter(table, &buf, true)
@@ -203,12 +203,12 @@ func TestInsertWriter_HexBlob(t *testing.T) {
 	})
 
 	t.Run("mixed_binary_and_text_columns", func(t *testing.T) {
-		table := models.Table{
+		table := core.Table{
 			Name: "t",
-			Columns: []models.Column{
-				{Name: "id", TypeName: dbmsdriver.TypeInt, TypeClass: models.TypeClassInt},
-				{Name: "name", TypeName: dbmsdriver.TypeVarChar, TypeClass: models.TypeClassText},
-				{Name: "data", TypeName: dbmsdriver.TypeBlob, TypeClass: models.TypeClassBinary},
+			Columns: []core.Column{
+				{Name: "id", TypeName: dbmsdriver.TypeInt, TypeClass: core.TypeClassInt},
+				{Name: "name", TypeName: dbmsdriver.TypeVarChar, TypeClass: core.TypeClassText},
+				{Name: "data", TypeName: dbmsdriver.TypeBlob, TypeClass: core.TypeClassBinary},
 			},
 		}
 		var buf bytes.Buffer
@@ -223,9 +223,9 @@ func TestInsertWriter_HexBlob(t *testing.T) {
 	})
 
 	t.Run("hex_blob_disabled_binary_col_is_string", func(t *testing.T) {
-		table := models.Table{
+		table := core.Table{
 			Name:    "t",
-			Columns: []models.Column{binaryCol(dbmsdriver.TypeBlob)},
+			Columns: []core.Column{binaryCol(dbmsdriver.TypeBlob)},
 		}
 		var buf bytes.Buffer
 		iw := NewInsertWriter(table, &buf, false)

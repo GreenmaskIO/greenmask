@@ -15,13 +15,13 @@
 package parameters
 
 import (
-	"github.com/greenmaskio/greenmask/pkg/common/models"
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 )
 
 type Parameterizer interface {
 	Name() string
 	Value() (value any, err error)
-	RawValue() (rawValue models.ParamsValue, err error)
+	RawValue() (rawValue core.ParamsValue, err error)
 	Scan(dest any) (err error)
 	GetDefinition() *ParameterDefinition
 	IsDynamic() bool

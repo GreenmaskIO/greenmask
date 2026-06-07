@@ -19,8 +19,7 @@ import (
 	"testing"
 	"time"
 
-	commonininterfaces "github.com/greenmaskio/greenmask/pkg/common/interfaces"
-	"github.com/greenmaskio/greenmask/pkg/common/models"
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 	"github.com/greenmaskio/greenmask/pkg/common/validationcollector"
 	mysqldbmsdriver "github.com/greenmaskio/greenmask/pkg/mysql/dbmsdriver"
 	"github.com/stretchr/testify/assert"
@@ -32,19 +31,19 @@ func TestNoiseDateTransformer_Transform(t *testing.T) {
 	tests := []struct {
 		name             string
 		columnName       string
-		staticParameters map[string]models.ParamsValue
-		dynamicParameter map[string]models.DynamicParamValue
-		original         []*models.ColumnRawValue
-		validateFn       func(t *testing.T, recorder commonininterfaces.Recorder)
+		staticParameters map[string]core.ParamsValue
+		dynamicParameter map[string]core.DynamicParamValue
+		original         []*core.ColumnRawValue
+		validateFn       func(t *testing.T, recorder core.Recorder)
 		expectedErr      string
-		columns          []models.Column
+		columns          []core.Column
 		isNull           bool
 	}{
 		{
 			name:       "test date type",
 			columnName: "data",
-			staticParameters: map[string]models.ParamsValue{
-				"max_ratio": models.ParamsValue(`
+			staticParameters: map[string]core.ParamsValue{
+				"max_ratio": core.ParamsValue(`
 					{
 						"years": 1,
 						"months": 1,
@@ -55,7 +54,7 @@ func TestNoiseDateTransformer_Transform(t *testing.T) {
 						"milliseconds": 1
 					}
 				`),
-				"min_ratio": models.ParamsValue(`
+				"min_ratio": core.ParamsValue(`
 					{
 						"months": 1,
 						"days": 1,
@@ -65,21 +64,21 @@ func TestNoiseDateTransformer_Transform(t *testing.T) {
 						"milliseconds": 1
 					}
 				`),
-				"column": models.ParamsValue("data"),
+				"column": core.ParamsValue("data"),
 			},
-			columns: []models.Column{
+			columns: []core.Column{
 				{
 					Idx:       0,
 					Name:      "data",
 					TypeName:  mysqldbmsdriver.TypeTimestamp,
 					TypeOID:   mysqldbmsdriver.VirtualOidTimestamp,
-					TypeClass: models.TypeClassDateTime,
+					TypeClass: core.TypeClassDateTime,
 				},
 			},
-			original: []*models.ColumnRawValue{
-				models.NewColumnRawValue([]byte("2023-06-25 00:00:00"), false),
+			original: []*core.ColumnRawValue{
+				core.NewColumnRawValue([]byte("2023-06-25 00:00:00"), false),
 			},
-			validateFn: func(t *testing.T, record commonininterfaces.Recorder) {
+			validateFn: func(t *testing.T, record core.Recorder) {
 				minDate := time.Date(2022, 3, 1, 22, 00, 0, 0, loc)
 				maxDate := time.Date(2024, 8, 29, 1, 1, 1, 1000, loc)
 				// ^\d{4}-\d{2}-\d{2}$
@@ -94,8 +93,8 @@ func TestNoiseDateTransformer_Transform(t *testing.T) {
 		{
 			name:       "test truncate",
 			columnName: "data",
-			staticParameters: map[string]models.ParamsValue{
-				"max_ratio": models.ParamsValue(`
+			staticParameters: map[string]core.ParamsValue{
+				"max_ratio": core.ParamsValue(`
 					{
 						"years": 1,
 						"months": 1,
@@ -106,7 +105,7 @@ func TestNoiseDateTransformer_Transform(t *testing.T) {
 						"milliseconds": 1
 					}
 				`),
-				"min_ratio": models.ParamsValue(`
+				"min_ratio": core.ParamsValue(`
 					{
 						"months": 1,
 						"days": 1,
@@ -116,22 +115,22 @@ func TestNoiseDateTransformer_Transform(t *testing.T) {
 						"milliseconds": 1
 					}
 				`),
-				"column":   models.ParamsValue("data"),
-				"truncate": models.ParamsValue("month"),
+				"column":   core.ParamsValue("data"),
+				"truncate": core.ParamsValue("month"),
 			},
-			columns: []models.Column{
+			columns: []core.Column{
 				{
 					Idx:       0,
 					Name:      "data",
 					TypeName:  mysqldbmsdriver.TypeTimestamp,
 					TypeOID:   mysqldbmsdriver.VirtualOidTimestamp,
-					TypeClass: models.TypeClassDateTime,
+					TypeClass: core.TypeClassDateTime,
 				},
 			},
-			original: []*models.ColumnRawValue{
-				models.NewColumnRawValue([]byte("2023-06-25 00:00:00"), false),
+			original: []*core.ColumnRawValue{
+				core.NewColumnRawValue([]byte("2023-06-25 00:00:00"), false),
 			},
-			validateFn: func(t *testing.T, record commonininterfaces.Recorder) {
+			validateFn: func(t *testing.T, record core.Recorder) {
 				minDate := time.Date(2022, 3, 1, 22, 00, 0, 0, loc)
 				maxDate := time.Date(2024, 8, 29, 1, 1, 1, 1000, loc)
 				// ^\d{4}-\d{2}-\d{2}$
@@ -149,8 +148,8 @@ func TestNoiseDateTransformer_Transform(t *testing.T) {
 		{
 			name:       "dynamic",
 			columnName: "data",
-			staticParameters: map[string]models.ParamsValue{
-				"max_ratio": models.ParamsValue(`
+			staticParameters: map[string]core.ParamsValue{
+				"max_ratio": core.ParamsValue(`
 					{
 						"years": 1,
 						"months": 1,
@@ -161,7 +160,7 @@ func TestNoiseDateTransformer_Transform(t *testing.T) {
 						"milliseconds": 1
 					}
 				`),
-				"min_ratio": models.ParamsValue(`
+				"min_ratio": core.ParamsValue(`
 					{
 						"months": 1,
 						"days": 1,
@@ -171,10 +170,10 @@ func TestNoiseDateTransformer_Transform(t *testing.T) {
 						"milliseconds": 1
 					}
 				`),
-				"column":   models.ParamsValue("data"),
-				"truncate": models.ParamsValue("month"),
+				"column":   core.ParamsValue("data"),
+				"truncate": core.ParamsValue("month"),
 			},
-			dynamicParameter: map[string]models.DynamicParamValue{
+			dynamicParameter: map[string]core.DynamicParamValue{
 				"min": {
 					Column: "min_col",
 				},
@@ -182,35 +181,35 @@ func TestNoiseDateTransformer_Transform(t *testing.T) {
 					Column: "max_col",
 				},
 			},
-			columns: []models.Column{
+			columns: []core.Column{
 				{
 					Idx:       0,
 					Name:      "data",
 					TypeName:  mysqldbmsdriver.TypeTimestamp,
 					TypeOID:   mysqldbmsdriver.VirtualOidTimestamp,
-					TypeClass: models.TypeClassDateTime,
+					TypeClass: core.TypeClassDateTime,
 				},
 				{
 					Idx:       1,
 					Name:      "min_col",
 					TypeName:  mysqldbmsdriver.TypeTimestamp,
 					TypeOID:   mysqldbmsdriver.VirtualOidTimestamp,
-					TypeClass: models.TypeClassDateTime,
+					TypeClass: core.TypeClassDateTime,
 				},
 				{
 					Idx:       1,
 					Name:      "max_col",
 					TypeName:  mysqldbmsdriver.TypeTimestamp,
 					TypeOID:   mysqldbmsdriver.VirtualOidTimestamp,
-					TypeClass: models.TypeClassDateTime,
+					TypeClass: core.TypeClassDateTime,
 				},
 			},
-			original: []*models.ColumnRawValue{
-				models.NewColumnRawValue([]byte("2023-01-01 00:00:00"), false),
-				models.NewColumnRawValue([]byte("2022-11-01 00:00:00"), false),
-				models.NewColumnRawValue([]byte("2023-02-01 00:00:00"), false),
+			original: []*core.ColumnRawValue{
+				core.NewColumnRawValue([]byte("2023-01-01 00:00:00"), false),
+				core.NewColumnRawValue([]byte("2022-11-01 00:00:00"), false),
+				core.NewColumnRawValue([]byte("2023-02-01 00:00:00"), false),
 			},
-			validateFn: func(t *testing.T, record commonininterfaces.Recorder) {
+			validateFn: func(t *testing.T, record core.Recorder) {
 				minDate := time.Date(2022, 11, 1, 0, 00, 0, 0, loc)
 				maxDate := time.Date(2023, 2, 1, 0, 0, 0, 0, loc)
 				// ^\d{4}-\d{2}-\d{2}$

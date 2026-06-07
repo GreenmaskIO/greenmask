@@ -21,16 +21,16 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 	mocks2 "github.com/greenmaskio/greenmask/pkg/common/mocks"
-	"github.com/greenmaskio/greenmask/pkg/common/models"
 	"github.com/greenmaskio/greenmask/pkg/common/validationcollector"
 )
 
 func TestWhenCond_Evaluate(t *testing.T) {
-	table := models.Table{
+	table := core.Table{
 		Schema: "public",
 		Name:   "test",
-		Columns: []models.Column{
+		Columns: []core.Column{
 			{
 				Idx:      0,
 				Name:     "id",
@@ -76,7 +76,7 @@ func TestWhenCond_Evaluate(t *testing.T) {
 			when: "record.id == 1",
 			setupExpectation: func(r *mocks2.RecorderMock) {
 				r.On("GetColumnValueByName", "id").
-					Return(&models.ColumnValue{
+					Return(&core.ColumnValue{
 						Value:  1,
 						IsNull: false,
 					}, nil)
@@ -88,7 +88,7 @@ func TestWhenCond_Evaluate(t *testing.T) {
 			when: "raw_record.id == \"1\"",
 			setupExpectation: func(r *mocks2.RecorderMock) {
 				r.On("GetRawColumnValueByName", "id").
-					Return(&models.ColumnRawValue{
+					Return(&core.ColumnRawValue{
 						Data:   []byte("1"),
 						IsNull: false,
 					}, nil)
@@ -100,7 +100,7 @@ func TestWhenCond_Evaluate(t *testing.T) {
 			when: "record.title == null",
 			setupExpectation: func(r *mocks2.RecorderMock) {
 				r.On("GetColumnValueByName", "title").
-					Return(&models.ColumnValue{
+					Return(&core.ColumnValue{
 						Value:  nil,
 						IsNull: true,
 					}, nil)
@@ -112,7 +112,7 @@ func TestWhenCond_Evaluate(t *testing.T) {
 			when: "record.created_at > now()",
 			setupExpectation: func(r *mocks2.RecorderMock) {
 				r.On("GetColumnValueByName", "created_at").
-					Return(&models.ColumnValue{
+					Return(&core.ColumnValue{
 						Value:  time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC),
 						IsNull: false,
 					}, nil)
@@ -124,7 +124,7 @@ func TestWhenCond_Evaluate(t *testing.T) {
 			when: `raw_record.json_data | jsonGet("a") == 1`,
 			setupExpectation: func(r *mocks2.RecorderMock) {
 				r.On("GetRawColumnValueByName", "json_data").
-					Return(&models.ColumnRawValue{
+					Return(&core.ColumnRawValue{
 						Data:   []byte(`{"a": 1}`),
 						IsNull: false,
 					}, nil)
@@ -136,7 +136,7 @@ func TestWhenCond_Evaluate(t *testing.T) {
 			when: `record.id | has([1, 2, 3, 9223372036854775807])`,
 			setupExpectation: func(r *mocks2.RecorderMock) {
 				r.On("GetColumnValueByName", "id").
-					Return(&models.ColumnValue{
+					Return(&core.ColumnValue{
 						Value:  1,
 						IsNull: false,
 					}, nil)
@@ -148,7 +148,7 @@ func TestWhenCond_Evaluate(t *testing.T) {
 			when: `record.float_data | has([123.0, 1., 10.])`,
 			setupExpectation: func(r *mocks2.RecorderMock) {
 				r.On("GetColumnValueByName", "float_data").
-					Return(&models.ColumnValue{
+					Return(&core.ColumnValue{
 						Value:  1.,
 						IsNull: false,
 					}, nil)

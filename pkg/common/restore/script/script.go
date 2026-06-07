@@ -8,16 +8,16 @@ import (
 	"os"
 	"strings"
 
-	commonmodels "github.com/greenmaskio/greenmask/pkg/common/models"
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 	"github.com/greenmaskio/greenmask/pkg/common/utils"
 	"github.com/rs/zerolog/log"
 )
 
 type Scheduler struct {
-	scripts []commonmodels.Script
+	scripts []core.Script
 }
 
-func NewScheduler(scripts []commonmodels.Script) *Scheduler {
+func NewScheduler(scripts []core.Script) *Scheduler {
 	return &Scheduler{
 		scripts: scripts,
 	}
@@ -26,8 +26,8 @@ func NewScheduler(scripts []commonmodels.Script) *Scheduler {
 func (s *Scheduler) Exec(
 	ctx context.Context,
 	exec TxExec,
-	currentSection commonmodels.DumpSection,
-	currentWhen commonmodels.ScriptEventType,
+	currentSection core.DumpSection,
+	currentWhen core.ScriptEventType,
 ) error {
 	for i := range s.scripts {
 		script := s.scripts[i]
@@ -50,10 +50,10 @@ type TxExecBuilder func(ctx context.Context) (TxExec, func(), error)
 var errNothingToExecute = errors.New("nothing to execute")
 
 type Executor struct {
-	commonmodels.Script
+	core.Script
 }
 
-func NewExecutor(script commonmodels.Script) *Executor {
+func NewExecutor(script core.Script) *Executor {
 	return &Executor{
 		Script: script,
 	}

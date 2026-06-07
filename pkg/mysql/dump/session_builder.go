@@ -4,13 +4,13 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/greenmaskio/greenmask/pkg/common/interfaces"
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 	"github.com/greenmaskio/greenmask/pkg/mysql/pool"
 )
 
 type DumpSessionBuilder struct{}
 
-func (b *DumpSessionBuilder) Open(ctx context.Context, cfg interfaces.ConnectionConfigurer) (interfaces.DumpSession, error) {
+func (b *DumpSessionBuilder) Open(ctx context.Context, cfg core.ConnectionConfigurer) (core.DumpSession, error) {
 	c, ok := cfg.ConnectionConfig().(*DumpConnectionConfig)
 	if !ok {
 		return nil, fmt.Errorf("unexpected connection config type %T, want *DumpConnectionConfig", cfg.ConnectionConfig())

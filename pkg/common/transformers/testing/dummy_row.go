@@ -17,28 +17,28 @@ package testing
 import (
 	"errors"
 
-	commonmodels "github.com/greenmaskio/greenmask/pkg/common/models"
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 )
 
 type DummyRow struct {
-	data []*commonmodels.ColumnRawValue
+	data []*core.ColumnRawValue
 }
 
 func NewDummyRow(numCols int) *DummyRow {
 	if numCols <= 0 {
 		panic("number of Columns should be greater than zero")
 	}
-	return &DummyRow{data: make([]*commonmodels.ColumnRawValue, numCols)}
+	return &DummyRow{data: make([]*core.ColumnRawValue, numCols)}
 }
 
-func (d *DummyRow) GetColumn(idx int) (*commonmodels.ColumnRawValue, error) {
+func (d *DummyRow) GetColumn(idx int) (*core.ColumnRawValue, error) {
 	if idx < 0 || idx >= len(d.data) {
 		return nil, errors.New("index out of range")
 	}
 	return d.data[idx], nil
 }
 
-func (d *DummyRow) SetColumn(idx int, v *commonmodels.ColumnRawValue) error {
+func (d *DummyRow) SetColumn(idx int, v *core.ColumnRawValue) error {
 	if idx < 0 || idx >= len(d.data) {
 		return errors.New("index out of range")
 	}
@@ -46,7 +46,7 @@ func (d *DummyRow) SetColumn(idx int, v *commonmodels.ColumnRawValue) error {
 	return nil
 }
 
-func (d *DummyRow) SetRowRawColumnValue(row []*commonmodels.ColumnRawValue) {
+func (d *DummyRow) SetRowRawColumnValue(row []*core.ColumnRawValue) {
 	if len(row) != len(d.data) {
 		panic("row length does not match")
 	}

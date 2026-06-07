@@ -18,8 +18,7 @@ import (
 	"context"
 	"testing"
 
-	commonininterfaces "github.com/greenmaskio/greenmask/pkg/common/interfaces"
-	"github.com/greenmaskio/greenmask/pkg/common/models"
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 	commonutils "github.com/greenmaskio/greenmask/pkg/common/utils"
 	"github.com/greenmaskio/greenmask/pkg/common/validationcollector"
 	mysqldbmsdriver "github.com/greenmaskio/greenmask/pkg/mysql/dbmsdriver"
@@ -29,35 +28,35 @@ import (
 func TestRandomStringTransformer_Transform(t *testing.T) {
 	tests := []struct {
 		name             string
-		staticParameters map[string]models.ParamsValue
-		dynamicParameter map[string]models.DynamicParamValue
-		original         []*models.ColumnRawValue
-		validateFn       func(t *testing.T, recorder commonininterfaces.Recorder)
+		staticParameters map[string]core.ParamsValue
+		dynamicParameter map[string]core.DynamicParamValue
+		original         []*core.ColumnRawValue
+		validateFn       func(t *testing.T, recorder core.Recorder)
 		expectedErr      string
-		columns          []models.Column
+		columns          []core.Column
 		isNull           bool
 	}{
 		{
 			name: "default fixed string",
-			columns: []models.Column{
+			columns: []core.Column{
 				{
 					Idx:       0,
 					Name:      "data",
 					TypeName:  mysqldbmsdriver.TypeText,
-					TypeClass: models.TypeClassText,
+					TypeClass: core.TypeClassText,
 					TypeOID:   mysqldbmsdriver.VirtualOidText,
 					Length:    0,
 				},
 			},
-			original: []*models.ColumnRawValue{
-				models.NewColumnRawValue([]byte("some"), false)},
-			staticParameters: map[string]models.ParamsValue{
-				"column":     models.ParamsValue("data"),
-				"min_length": models.ParamsValue("10"),
-				"max_length": models.ParamsValue("10"),
-				"engine":     models.ParamsValue("random"),
+			original: []*core.ColumnRawValue{
+				core.NewColumnRawValue([]byte("some"), false)},
+			staticParameters: map[string]core.ParamsValue{
+				"column":     core.ParamsValue("data"),
+				"min_length": core.ParamsValue("10"),
+				"max_length": core.ParamsValue("10"),
+				"engine":     core.ParamsValue("random"),
 			},
-			validateFn: func(t *testing.T, recorder commonininterfaces.Recorder) {
+			validateFn: func(t *testing.T, recorder core.Recorder) {
 				val, err := recorder.GetRawColumnValueByName("data")
 				require.NoError(t, err)
 				require.Regexp(t, `^\w{10}$`, val.String())
@@ -65,25 +64,25 @@ func TestRandomStringTransformer_Transform(t *testing.T) {
 		},
 		{
 			name: "default variadic string",
-			columns: []models.Column{
+			columns: []core.Column{
 				{
 					Idx:       0,
 					Name:      "data",
 					TypeName:  mysqldbmsdriver.TypeText,
-					TypeClass: models.TypeClassText,
+					TypeClass: core.TypeClassText,
 					TypeOID:   mysqldbmsdriver.VirtualOidText,
 					Length:    0,
 				},
 			},
-			original: []*models.ColumnRawValue{
-				models.NewColumnRawValue([]byte("some"), false)},
-			staticParameters: map[string]models.ParamsValue{
-				"column":     models.ParamsValue("data"),
-				"min_length": models.ParamsValue("2"),
-				"max_length": models.ParamsValue("30"),
-				"engine":     models.ParamsValue("random"),
+			original: []*core.ColumnRawValue{
+				core.NewColumnRawValue([]byte("some"), false)},
+			staticParameters: map[string]core.ParamsValue{
+				"column":     core.ParamsValue("data"),
+				"min_length": core.ParamsValue("2"),
+				"max_length": core.ParamsValue("30"),
+				"engine":     core.ParamsValue("random"),
 			},
-			validateFn: func(t *testing.T, recorder commonininterfaces.Recorder) {
+			validateFn: func(t *testing.T, recorder core.Recorder) {
 				val, err := recorder.GetRawColumnValueByName("data")
 				require.NoError(t, err)
 				require.Regexp(t, `^\w{2,30}$`, val.String())
@@ -91,26 +90,26 @@ func TestRandomStringTransformer_Transform(t *testing.T) {
 		},
 		{
 			name: "custom variadic string",
-			columns: []models.Column{
+			columns: []core.Column{
 				{
 					Idx:       0,
 					Name:      "data",
 					TypeName:  mysqldbmsdriver.TypeText,
-					TypeClass: models.TypeClassText,
+					TypeClass: core.TypeClassText,
 					TypeOID:   mysqldbmsdriver.VirtualOidText,
 					Length:    0,
 				},
 			},
-			original: []*models.ColumnRawValue{
-				models.NewColumnRawValue([]byte("some"), false)},
-			staticParameters: map[string]models.ParamsValue{
-				"column":     models.ParamsValue("data"),
-				"min_length": models.ParamsValue("10"),
-				"max_length": models.ParamsValue("10"),
-				"symbols":    models.ParamsValue("1234567890"),
-				"engine":     models.ParamsValue("random"),
+			original: []*core.ColumnRawValue{
+				core.NewColumnRawValue([]byte("some"), false)},
+			staticParameters: map[string]core.ParamsValue{
+				"column":     core.ParamsValue("data"),
+				"min_length": core.ParamsValue("10"),
+				"max_length": core.ParamsValue("10"),
+				"symbols":    core.ParamsValue("1234567890"),
+				"engine":     core.ParamsValue("random"),
 			},
-			validateFn: func(t *testing.T, recorder commonininterfaces.Recorder) {
+			validateFn: func(t *testing.T, recorder core.Recorder) {
 				val, err := recorder.GetRawColumnValueByName("data")
 				require.NoError(t, err)
 				require.Regexp(t, `^\d{10}$`, val.String())
@@ -118,27 +117,27 @@ func TestRandomStringTransformer_Transform(t *testing.T) {
 		},
 		{
 			name: "keep_null",
-			columns: []models.Column{
+			columns: []core.Column{
 				{
 					Idx:       0,
 					Name:      "data",
 					TypeName:  mysqldbmsdriver.TypeText,
-					TypeClass: models.TypeClassText,
+					TypeClass: core.TypeClassText,
 					TypeOID:   mysqldbmsdriver.VirtualOidText,
 					Length:    0,
 				},
 			},
-			original: []*models.ColumnRawValue{
-				models.NewColumnRawValue(nil, true)},
-			staticParameters: map[string]models.ParamsValue{
-				"column":     models.ParamsValue("data"),
-				"min_length": models.ParamsValue("10"),
-				"max_length": models.ParamsValue("10"),
-				"symbols":    models.ParamsValue("1234567890"),
-				"engine":     models.ParamsValue("random"),
-				"keep_null":  models.ParamsValue("true"),
+			original: []*core.ColumnRawValue{
+				core.NewColumnRawValue(nil, true)},
+			staticParameters: map[string]core.ParamsValue{
+				"column":     core.ParamsValue("data"),
+				"min_length": core.ParamsValue("10"),
+				"max_length": core.ParamsValue("10"),
+				"symbols":    core.ParamsValue("1234567890"),
+				"engine":     core.ParamsValue("random"),
+				"keep_null":  core.ParamsValue("true"),
 			},
-			validateFn: func(t *testing.T, recorder commonininterfaces.Recorder) {
+			validateFn: func(t *testing.T, recorder core.Recorder) {
 				val, err := recorder.GetRawColumnValueByName("data")
 				require.NoError(t, err)
 				require.True(t, val.IsNull)

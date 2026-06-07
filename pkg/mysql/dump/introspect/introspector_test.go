@@ -20,7 +20,7 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/greenmaskio/greenmask/pkg/common/models"
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 	models2 "github.com/greenmaskio/greenmask/pkg/mysql/models"
 	"github.com/greenmaskio/greenmask/pkg/testutils"
 	"github.com/stretchr/testify/assert"
@@ -892,7 +892,7 @@ func (s *mysqlSuite) TestIntrospector_getForeignKeyConstraints() {
 		s.Require().NoError(err)
 		actual, err := i.getForeignKeyConstraints(ctx, &txMock{tx}, "testdb", "simple_ref_table_not_nullable")
 		s.Require().NoError(err)
-		expected := []models.Reference{
+		expected := []core.Reference{
 			{
 				ReferencedSchema: "testdb",
 				ReferencedName:   "simple_main_table",
@@ -942,7 +942,7 @@ func (s *mysqlSuite) TestIntrospector_getForeignKeyConstraints() {
 		s.Require().NoError(err)
 		actual, err := i.getForeignKeyConstraints(ctx, &txMock{tx}, "testdb", "simple_ref_table_nullable")
 		s.Require().NoError(err)
-		expected := []models.Reference{
+		expected := []core.Reference{
 			{
 				ReferencedSchema: "testdb",
 				ReferencedName:   "simple_main_table",
@@ -998,7 +998,7 @@ func (s *mysqlSuite) TestIntrospector_getForeignKeyConstraints() {
 		s.Require().NoError(err)
 		actual, err := i.getForeignKeyConstraints(ctx, &txMock{tx}, "testdb", "complex_pk_ref_table_not_nullable")
 		s.Require().NoError(err)
-		expected := []models.Reference{
+		expected := []core.Reference{
 			{
 				ReferencedSchema: "testdb",
 				ReferencedName:   "complex_pk_main_table",
@@ -1057,7 +1057,7 @@ func (s *mysqlSuite) TestIntrospector_getForeignKeyConstraints() {
 		s.Require().NoError(err)
 		actual, err := i.getForeignKeyConstraints(ctx, &txMock{tx}, "testdb", "complex_pk_ref_table_nullable")
 		s.Require().NoError(err)
-		expected := []models.Reference{
+		expected := []core.Reference{
 			{
 				ReferencedSchema: "testdb",
 				ReferencedName:   "complex_pk_main_table",

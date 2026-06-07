@@ -20,8 +20,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/greenmaskio/greenmask/pkg/common/interfaces"
-	"github.com/greenmaskio/greenmask/pkg/common/models"
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 	"github.com/greenmaskio/greenmask/pkg/common/restore/taskmapper"
 
 	mysqlmodels "github.com/greenmaskio/greenmask/pkg/mysql/models"
@@ -37,23 +36,23 @@ var (
 )
 
 type taskMapper interface {
-	IsTaskCompleted(taskID models.TaskID) bool
-	SetTaskCompleted(taskID models.TaskID)
+	IsTaskCompleted(taskID core.TaskID) bool
+	SetTaskCompleted(taskID core.TaskID)
 }
 
 type ProducerWithOrder struct {
-	meta         models.Metadata
-	st           interfaces.Storager
+	meta         core.Metadata
+	st           core.Storager
 	conn         *mysqlmodels.ConnConfig
 	opts         RestoreOptions
 	err          error
 	lastIdx      int
-	taskResolver interfaces.TaskMapper
+	taskResolver core.TaskMapper
 }
 
 func NewWithOrder(
-	meta models.Metadata,
-	st interfaces.Storager,
+	meta core.Metadata,
+	st core.Storager,
 	conn *mysqlmodels.ConnConfig,
 	opts RestoreOptions,
 	taskResolver *taskmapper.TaskResolver,
@@ -72,7 +71,7 @@ func (p *ProducerWithOrder) Err() error {
 	return p.err
 }
 
-func allDependenciesAreCompleted(taskMapper taskMapper, dependencies []models.TaskID) bool {
+func allDependenciesAreCompleted(taskMapper taskMapper, dependencies []core.TaskID) bool {
 	for _, dependency := range dependencies {
 		if !taskMapper.IsTaskCompleted(dependency) {
 			return false
@@ -81,7 +80,7 @@ func allDependenciesAreCompleted(taskMapper taskMapper, dependencies []models.Ta
 	return true
 }
 
-func (p *ProducerWithOrder) waitForTasks(ctx context.Context, dependencies []models.TaskID) {
+func (p *ProducerWithOrder) waitForTasks(ctx context.Context, dependencies []core.TaskID) {
 	t := time.NewTicker(defaultTaskCompletionRefreshTime)
 	for {
 		select {
@@ -116,7 +115,7 @@ func (p *ProducerWithOrder) Next(ctx context.Context) bool {
 	return true
 }
 
-func (p *ProducerWithOrder) Task() (interfaces.Restorer, error) {
+func (p *ProducerWithOrder) Task() (core.Restorer, error) {
 	if p.err != nil {
 		return nil, p.err
 	}
@@ -127,7 +126,7 @@ func (p *ProducerWithOrder) Task() (interfaces.Restorer, error) {
 		panic("no restoration item")
 	}
 	switch restorationItem.ObjectKind {
-	case models.ObjectKindTable:
+	case core.ObjectKindTable:
 		opts := []restorers.Option{
 			restorers.WithCompression(
 				restorationItem.Compression.IsEnabled(),
@@ -149,11 +148,11 @@ func (p *ProducerWithOrder) Task() (interfaces.Restorer, error) {
 		}
 		stat := p.meta.DataDump.DumpStat.TaskStats[currentTaskID]
 		switch stat.ObjectStat.Format {
-		case models.DumpFormatInsert:
+		case core.DumpFormatInsert:
 			return restorers.NewTableDataRestorerInsert(
 				restorationItem, p.conn, p.st, p.taskResolver, opts...,
 			)
-		case models.DumpFormatCsv:
+		case core.DumpFormatCsv:
 			return restorers.NewTableDataRestorerCsv(
 				restorationItem, p.conn, p.st, p.taskResolver, opts...,
 			)

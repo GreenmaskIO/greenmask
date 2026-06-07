@@ -1,15 +1,14 @@
 package runtime
 
 import (
-	commonininterfaces "github.com/greenmaskio/greenmask/pkg/common/interfaces"
-	commonmodels "github.com/greenmaskio/greenmask/pkg/common/models"
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 	"github.com/greenmaskio/greenmask/pkg/mysql/dump/taskproducer"
 )
 
 type Runtime struct {
-	EngineName   commonmodels.DBMSEngine
+	EngineName   core.DBMSEngine
 	Capabilities Capabilities
-	Introspector commonininterfaces.IntrospectorV2
+	Introspector core.IntrospectorV2
 	Planner      taskproducer.DumpObjectPoducer
 	Executors    TaskExecutorRegistry
 }
@@ -24,8 +23,8 @@ type Capabilities struct {
 }
 
 type Object struct {
-	ID   commonmodels.ObjectID
-	Kind commonmodels.ObjectKind
+	ID   core.ObjectID
+	Kind core.ObjectKind
 	Name string
 	// Engine specific payload.
 	// e.g. *postgres.Table, *oracle.Package, *mongo.Collection

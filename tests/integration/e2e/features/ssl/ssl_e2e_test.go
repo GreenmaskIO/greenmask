@@ -50,7 +50,7 @@ import (
 	"github.com/testcontainers/testcontainers-go"
 
 	commonconfig "github.com/greenmaskio/greenmask/pkg/common/config"
-	commonmodels "github.com/greenmaskio/greenmask/pkg/common/models"
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 	"github.com/greenmaskio/greenmask/pkg/common/transformers/registry"
 	"github.com/greenmaskio/greenmask/pkg/common/utils"
 	"github.com/greenmaskio/greenmask/pkg/common/validationcollector"
@@ -322,7 +322,7 @@ func (s *SSLSuite) countRows(ctx context.Context) int {
 // that test ordering does not affect results.
 func (s *SSLSuite) baseDumpCfg(user, password string) *config.Config {
 	cfg := config.NewConfig()
-	cfg.Engine = commonmodels.DBMSEngineMySQL
+	cfg.Engine = core.DBMSEngineMySQL
 	cfg.Log.Level = "debug"
 	cfg.Log.Format = "text"
 
@@ -345,7 +345,7 @@ func (s *SSLSuite) baseDumpCfg(user, password string) *config.Config {
 // It explicitly resets all fields that tests may have mutated on the shared singleton.
 func (s *SSLSuite) baseRestoreCfg(user, password string) *config.Config {
 	cfg := config.NewConfig()
-	cfg.Engine = commonmodels.DBMSEngineMySQL
+	cfg.Engine = core.DBMSEngineMySQL
 	cfg.Log.Level = "debug"
 	cfg.Log.Format = "text"
 
@@ -365,14 +365,14 @@ func (s *SSLSuite) baseRestoreCfg(user, password string) *config.Config {
 // setupCtx wires logging and a validation collector into the context.
 func setupCtx(ctx context.Context, cfg *config.Config) context.Context {
 	_ = utils.SetDefaultContextLogger(cfg.Log.Level, cfg.Log.Format)
-	ctx = log.Ctx(ctx).With().Str(commonmodels.MetaKeyEngine, "mysql").Logger().WithContext(ctx)
-	vc := validationcollector.NewCollectorWithMeta(commonmodels.MetaKeyEngine, "mysql")
+	ctx = log.Ctx(ctx).With().Str(core.MetaKeyEngine, "mysql").Logger().WithContext(ctx)
+	vc := validationcollector.NewCollectorWithMeta(core.MetaKeyEngine, "mysql")
 	return validationcollector.WithCollector(ctx, vc)
 }
 
 // runDump runs the dump and returns the dumpID. The dumpDir is the temp directory
 // used as the root storage. It is the caller's responsibility to clean it up.
-func (s *SSLSuite) runDump(ctx context.Context, cfg *config.Config, dumpDir string) (commonmodels.DumpID, error) {
+func (s *SSLSuite) runDump(ctx context.Context, cfg *config.Config, dumpDir string) (core.DumpID, error) {
 	dirSt, err := directory.New(directory.NewDirectoryConfig(dumpDir))
 	if err != nil {
 		return "", fmt.Errorf("create directory storage: %w", err)
@@ -394,7 +394,7 @@ func (s *SSLSuite) runDump(ctx context.Context, cfg *config.Config, dumpDir stri
 }
 
 // runRestore restores from dumpDir using the given config.
-func (s *SSLSuite) runRestore(ctx context.Context, cfg *config.Config, dumpDir string, dumpID commonmodels.DumpID) error {
+func (s *SSLSuite) runRestore(ctx context.Context, cfg *config.Config, dumpDir string, dumpID core.DumpID) error {
 	dirSt, err := directory.New(directory.NewDirectoryConfig(dumpDir))
 	if err != nil {
 		return fmt.Errorf("create directory storage: %w", err)

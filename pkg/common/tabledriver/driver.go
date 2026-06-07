@@ -19,13 +19,12 @@ import (
 	"errors"
 	"fmt"
 
-	commonininterfaces "github.com/greenmaskio/greenmask/pkg/common/interfaces"
-	"github.com/greenmaskio/greenmask/pkg/common/models"
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 	"github.com/greenmaskio/greenmask/pkg/common/validationcollector"
 )
 
 var (
-	_ commonininterfaces.TableDriver = (*TableDriver)(nil)
+	_ core.TableDriver = (*TableDriver)(nil)
 )
 
 var (
@@ -36,12 +35,12 @@ var (
 )
 
 type TableDriver struct {
-	commonininterfaces.DBMSDriver
-	table *models.Table
+	core.DBMSDriver
+	table *core.Table
 	// columnMap - map column name to Column object
-	columnMap map[string]*models.Column
+	columnMap map[string]*core.Column
 	// columnIdxToTypeOID - map with column index to its type OID
-	columnIdxToTypeOID map[int]models.VirtualOID
+	columnIdxToTypeOID map[int]core.VirtualOID
 	// columnIdxMap - the number of attributes in tuple
 	columnIdxMap map[string]int
 	// unsupportedColumnNames - map with unsupported column types that cannot perform encode-decode operations
@@ -51,27 +50,27 @@ type TableDriver struct {
 	// typeOverride - map with column names and their overridden types.
 	typeOverride map[string]string
 	// columnTypeOidOverrideMap - map with column names and their overridden types by OID.
-	columnTypeOidOverrideMap map[string]models.VirtualOID
+	columnTypeOidOverrideMap map[string]core.VirtualOID
 	// columnIdxTypeOidOverrideMap - map with column indexes and their overridden types by OID.
-	columnIdxTypeOidOverrideMap map[int]models.VirtualOID
+	columnIdxTypeOidOverrideMap map[int]core.VirtualOID
 	// maxIdx - the maximum index of the column in the table.
 	maxIdx int
 }
 
 func New(
 	ctx context.Context,
-	d commonininterfaces.DBMSDriver,
-	t *models.Table,
+	d core.DBMSDriver,
+	t *core.Table,
 	typeOverride map[string]string,
 ) (*TableDriver, error) {
 
-	columnMap := make(map[string]*models.Column, len(t.Columns))
-	columnIdxToTypeOID := make(map[int]models.VirtualOID, len(t.Columns))
+	columnMap := make(map[string]*core.Column, len(t.Columns))
+	columnIdxToTypeOID := make(map[int]core.VirtualOID, len(t.Columns))
 	columnIdxMap := make(map[string]int, len(t.Columns))
 	unsupportedColumnNames := make(map[string]string)
 	unsupportedColumnIdxs := make(map[int]string)
-	columnTypeOidOverrideMap := make(map[string]models.VirtualOID)
-	columnIdxTypeOidOverrideMap := make(map[int]models.VirtualOID)
+	columnTypeOidOverrideMap := make(map[string]core.VirtualOID)
+	columnIdxTypeOidOverrideMap := make(map[int]core.VirtualOID)
 
 	for idx, c := range t.Columns {
 		columnMap[c.Name] = &c
@@ -80,12 +79,12 @@ func New(
 		// Check column type is supported by driver
 		if !d.TypeExistsByOid(c.TypeOID) && typeOverride[c.Name] == "" {
 			validationcollector.FromContext(ctx).Add(
-				models.NewValidationWarning().
+				core.NewValidationWarning().
 					AddMeta("TableSchema", t.Schema).
 					AddMeta("TableName", t.Name).
 					AddMeta("ColumnName", c.Name).
 					AddMeta("ColumnType", c.TypeName).
-					SetSeverity(models.ValidationSeverityWarning).
+					SetSeverity(core.ValidationSeverityWarning).
 					SetMsg("cannot match encoder/decoder for type: encode and decode operations is not supported"),
 			)
 			unsupportedColumnNames[c.Name] = c.TypeName
@@ -97,8 +96,8 @@ func New(
 				// In case type is overridden but does not exist in DBMS driver
 				// we consider it as a fatal error.
 				validationcollector.FromContext(ctx).Add(
-					models.NewValidationWarning().
-						SetSeverity(models.ValidationSeverityError).
+					core.NewValidationWarning().
+						SetSeverity(core.ValidationSeverityError).
 						SetMsg("unknown or unsupported overridden type name by DBMS driver:"+
 							" encode and decode operations are not supported").
 						AddMeta("OverriddenColumnName", c.Name).
@@ -212,10 +211,10 @@ func (d *TableDriver) DecodeValueByColumnName(name string, src []byte) (any, err
 	return d.DecodeValueByColumnIdx(idx, src)
 }
 
-func (d *TableDriver) GetColumnByName(name string) (*models.Column, error) {
+func (d *TableDriver) GetColumnByName(name string) (*core.Column, error) {
 	v, ok := d.columnMap[name]
 	if !ok {
-		return nil, models.ErrUnknownColumnName
+		return nil, core.ErrUnknownColumnName
 	}
 	return v, nil
 }
@@ -223,12 +222,12 @@ func (d *TableDriver) GetColumnByName(name string) (*models.Column, error) {
 func (d *TableDriver) GetColumnIdxByName(name string) (int, error) {
 	idx, ok := d.columnIdxMap[name]
 	if !ok {
-		return 0, models.ErrUnknownColumnName
+		return 0, core.ErrUnknownColumnName
 	}
 	return idx, nil
 }
 
-func (d *TableDriver) Table() *models.Table {
+func (d *TableDriver) Table() *core.Table {
 	return d.table
 }
 

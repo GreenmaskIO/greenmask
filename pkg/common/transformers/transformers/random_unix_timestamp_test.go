@@ -18,8 +18,7 @@ import (
 	"context"
 	"testing"
 
-	commonininterfaces "github.com/greenmaskio/greenmask/pkg/common/interfaces"
-	"github.com/greenmaskio/greenmask/pkg/common/models"
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 	commonutils "github.com/greenmaskio/greenmask/pkg/common/utils"
 	"github.com/greenmaskio/greenmask/pkg/common/validationcollector"
 	mysqldbmsdriver "github.com/greenmaskio/greenmask/pkg/mysql/dbmsdriver"
@@ -30,38 +29,38 @@ import (
 func TestUnixTimestampTransformer_Transform(t *testing.T) {
 	tests := []struct {
 		name             string
-		staticParameters map[string]models.ParamsValue
-		dynamicParameter map[string]models.DynamicParamValue
-		original         []*models.ColumnRawValue
-		validateFn       func(t *testing.T, recorder commonininterfaces.Recorder)
+		staticParameters map[string]core.ParamsValue
+		dynamicParameter map[string]core.DynamicParamValue
+		original         []*core.ColumnRawValue
+		validateFn       func(t *testing.T, recorder core.Recorder)
 		expectedErr      string
-		columns          []models.Column
+		columns          []core.Column
 	}{
 		{
 			name: "seconds",
-			columns: []models.Column{
+			columns: []core.Column{
 				{
 					Idx:       0,
 					Name:      "data",
 					TypeName:  mysqldbmsdriver.TypeBigInt,
 					TypeOID:   mysqldbmsdriver.VirtualOidBigInt,
-					TypeClass: models.TypeClassInt,
+					TypeClass: core.TypeClassInt,
 					Length:    0,
 					Size:      8,
 				},
 			},
-			original: []*models.ColumnRawValue{
-				models.NewColumnRawValue([]byte("123"), false)},
-			staticParameters: map[string]models.ParamsValue{
-				"column":   models.ParamsValue("data"),
-				"min":      models.ParamsValue("1616842649"),
-				"max":      models.ParamsValue("1711537049"),
-				"unit":     models.ParamsValue(secondsUnit),
-				"min_unit": models.ParamsValue(secondsUnit),
-				"max_unit": models.ParamsValue(secondsUnit),
-				"engine":   models.ParamsValue("random"),
+			original: []*core.ColumnRawValue{
+				core.NewColumnRawValue([]byte("123"), false)},
+			staticParameters: map[string]core.ParamsValue{
+				"column":   core.ParamsValue("data"),
+				"min":      core.ParamsValue("1616842649"),
+				"max":      core.ParamsValue("1711537049"),
+				"unit":     core.ParamsValue(secondsUnit),
+				"min_unit": core.ParamsValue(secondsUnit),
+				"max_unit": core.ParamsValue(secondsUnit),
+				"engine":   core.ParamsValue("random"),
 			},
-			validateFn: func(t *testing.T, recorder commonininterfaces.Recorder) {
+			validateFn: func(t *testing.T, recorder core.Recorder) {
 				var val int64
 				isNull, err := recorder.ScanColumnValueByName("data", &val)
 				require.NoError(t, err)
@@ -72,29 +71,29 @@ func TestUnixTimestampTransformer_Transform(t *testing.T) {
 		},
 		{
 			name: "milliseconds",
-			columns: []models.Column{
+			columns: []core.Column{
 				{
 					Idx:       0,
 					Name:      "data",
 					TypeName:  mysqldbmsdriver.TypeBigInt,
 					TypeOID:   mysqldbmsdriver.VirtualOidBigInt,
-					TypeClass: models.TypeClassInt,
+					TypeClass: core.TypeClassInt,
 					Length:    0,
 					Size:      8,
 				},
 			},
-			original: []*models.ColumnRawValue{
-				models.NewColumnRawValue([]byte("123"), false)},
-			staticParameters: map[string]models.ParamsValue{
-				"column":   models.ParamsValue("data"),
-				"min":      models.ParamsValue("1611546399134"),
-				"max":      models.ParamsValue("1711546399134"),
-				"unit":     models.ParamsValue(milliUnit),
-				"min_unit": models.ParamsValue(milliUnit),
-				"max_unit": models.ParamsValue(milliUnit),
-				"engine":   models.ParamsValue("random"),
+			original: []*core.ColumnRawValue{
+				core.NewColumnRawValue([]byte("123"), false)},
+			staticParameters: map[string]core.ParamsValue{
+				"column":   core.ParamsValue("data"),
+				"min":      core.ParamsValue("1611546399134"),
+				"max":      core.ParamsValue("1711546399134"),
+				"unit":     core.ParamsValue(milliUnit),
+				"min_unit": core.ParamsValue(milliUnit),
+				"max_unit": core.ParamsValue(milliUnit),
+				"engine":   core.ParamsValue("random"),
 			},
-			validateFn: func(t *testing.T, recorder commonininterfaces.Recorder) {
+			validateFn: func(t *testing.T, recorder core.Recorder) {
 				var val int64
 				isNull, err := recorder.ScanColumnValueByName("data", &val)
 				require.NoError(t, err)
@@ -105,29 +104,29 @@ func TestUnixTimestampTransformer_Transform(t *testing.T) {
 		},
 		{
 			name: "microseconds",
-			columns: []models.Column{
+			columns: []core.Column{
 				{
 					Idx:       0,
 					Name:      "data",
 					TypeName:  mysqldbmsdriver.TypeBigInt,
 					TypeOID:   mysqldbmsdriver.VirtualOidBigInt,
-					TypeClass: models.TypeClassInt,
+					TypeClass: core.TypeClassInt,
 					Length:    0,
 					Size:      8,
 				},
 			},
-			original: []*models.ColumnRawValue{
-				models.NewColumnRawValue([]byte("123"), false)},
-			staticParameters: map[string]models.ParamsValue{
-				"column":   models.ParamsValue("data"),
-				"min":      models.ParamsValue("1611546399134"),
-				"max":      models.ParamsValue("1711546399134"),
-				"unit":     models.ParamsValue(microUnit),
-				"min_unit": models.ParamsValue(microUnit),
-				"max_unit": models.ParamsValue(microUnit),
-				"engine":   models.ParamsValue("random"),
+			original: []*core.ColumnRawValue{
+				core.NewColumnRawValue([]byte("123"), false)},
+			staticParameters: map[string]core.ParamsValue{
+				"column":   core.ParamsValue("data"),
+				"min":      core.ParamsValue("1611546399134"),
+				"max":      core.ParamsValue("1711546399134"),
+				"unit":     core.ParamsValue(microUnit),
+				"min_unit": core.ParamsValue(microUnit),
+				"max_unit": core.ParamsValue(microUnit),
+				"engine":   core.ParamsValue("random"),
 			},
-			validateFn: func(t *testing.T, recorder commonininterfaces.Recorder) {
+			validateFn: func(t *testing.T, recorder core.Recorder) {
 				var val int64
 				isNull, err := recorder.ScanColumnValueByName("data", &val)
 				require.NoError(t, err)
@@ -138,29 +137,29 @@ func TestUnixTimestampTransformer_Transform(t *testing.T) {
 		},
 		{
 			name: "nanoseconds",
-			columns: []models.Column{
+			columns: []core.Column{
 				{
 					Idx:       0,
 					Name:      "data",
 					TypeName:  mysqldbmsdriver.TypeBigInt,
 					TypeOID:   mysqldbmsdriver.VirtualOidBigInt,
-					TypeClass: models.TypeClassInt,
+					TypeClass: core.TypeClassInt,
 					Length:    0,
 					Size:      8,
 				},
 			},
-			original: []*models.ColumnRawValue{
-				models.NewColumnRawValue([]byte("123"), false)},
-			staticParameters: map[string]models.ParamsValue{
-				"column":   models.ParamsValue("data"),
-				"min":      models.ParamsValue("1616842649000000000"),
-				"max":      models.ParamsValue("1716842649000000000"),
-				"unit":     models.ParamsValue(nanoUnit),
-				"min_unit": models.ParamsValue(nanoUnit),
-				"max_unit": models.ParamsValue(nanoUnit),
-				"engine":   models.ParamsValue("random"),
+			original: []*core.ColumnRawValue{
+				core.NewColumnRawValue([]byte("123"), false)},
+			staticParameters: map[string]core.ParamsValue{
+				"column":   core.ParamsValue("data"),
+				"min":      core.ParamsValue("1616842649000000000"),
+				"max":      core.ParamsValue("1716842649000000000"),
+				"unit":     core.ParamsValue(nanoUnit),
+				"min_unit": core.ParamsValue(nanoUnit),
+				"max_unit": core.ParamsValue(nanoUnit),
+				"engine":   core.ParamsValue("random"),
 			},
-			validateFn: func(t *testing.T, recorder commonininterfaces.Recorder) {
+			validateFn: func(t *testing.T, recorder core.Recorder) {
 				var val int64
 				isNull, err := recorder.ScanColumnValueByName("data", &val)
 				require.NoError(t, err)
@@ -171,31 +170,31 @@ func TestUnixTimestampTransformer_Transform(t *testing.T) {
 		},
 		{
 			name: "nanoseconds_truncate",
-			columns: []models.Column{
+			columns: []core.Column{
 				{
 					Idx:       0,
 					Name:      "data",
 					TypeName:  mysqldbmsdriver.TypeBigInt,
 					TypeOID:   mysqldbmsdriver.VirtualOidBigInt,
-					TypeClass: models.TypeClassInt,
+					TypeClass: core.TypeClassInt,
 					Length:    0,
 					Size:      8,
 				},
 			},
-			original: []*models.ColumnRawValue{
-				models.NewColumnRawValue([]byte("123"), false)},
-			staticParameters: map[string]models.ParamsValue{
-				"column":    models.ParamsValue("data"),
-				"min":       models.ParamsValue("1616842649000000000"),
-				"max":       models.ParamsValue("1716842649000000000"),
-				"unit":      models.ParamsValue(nanoUnit),
-				"min_unit":  models.ParamsValue(nanoUnit),
-				"max_unit":  models.ParamsValue(nanoUnit),
-				"engine":    models.ParamsValue("random"),
-				"keep_null": models.ParamsValue("true"),
-				"truncate":  models.ParamsValue("day"),
+			original: []*core.ColumnRawValue{
+				core.NewColumnRawValue([]byte("123"), false)},
+			staticParameters: map[string]core.ParamsValue{
+				"column":    core.ParamsValue("data"),
+				"min":       core.ParamsValue("1616842649000000000"),
+				"max":       core.ParamsValue("1716842649000000000"),
+				"unit":      core.ParamsValue(nanoUnit),
+				"min_unit":  core.ParamsValue(nanoUnit),
+				"max_unit":  core.ParamsValue(nanoUnit),
+				"engine":    core.ParamsValue("random"),
+				"keep_null": core.ParamsValue("true"),
+				"truncate":  core.ParamsValue("day"),
 			},
-			validateFn: func(t *testing.T, recorder commonininterfaces.Recorder) {
+			validateFn: func(t *testing.T, recorder core.Recorder) {
 				var val int64
 				isNull, err := recorder.ScanColumnValueByName("data", &val)
 				require.NoError(t, err)
@@ -212,30 +211,30 @@ func TestUnixTimestampTransformer_Transform(t *testing.T) {
 		},
 		{
 			name: "keep_null true and original is null",
-			columns: []models.Column{
+			columns: []core.Column{
 				{
 					Idx:       0,
 					Name:      "data",
 					TypeName:  mysqldbmsdriver.TypeBigInt,
 					TypeOID:   mysqldbmsdriver.VirtualOidBigInt,
-					TypeClass: models.TypeClassInt,
+					TypeClass: core.TypeClassInt,
 					Length:    0,
 					Size:      8,
 				},
 			},
-			original: []*models.ColumnRawValue{
-				models.NewColumnRawValue(nil, true)},
-			staticParameters: map[string]models.ParamsValue{
-				"column":    models.ParamsValue("data"),
-				"min":       models.ParamsValue("1616842649000000000"),
-				"max":       models.ParamsValue("1716842649000000000"),
-				"unit":      models.ParamsValue(nanoUnit),
-				"min_unit":  models.ParamsValue(nanoUnit),
-				"max_unit":  models.ParamsValue(nanoUnit),
-				"engine":    models.ParamsValue("random"),
-				"keep_null": models.ParamsValue("true"),
+			original: []*core.ColumnRawValue{
+				core.NewColumnRawValue(nil, true)},
+			staticParameters: map[string]core.ParamsValue{
+				"column":    core.ParamsValue("data"),
+				"min":       core.ParamsValue("1616842649000000000"),
+				"max":       core.ParamsValue("1716842649000000000"),
+				"unit":      core.ParamsValue(nanoUnit),
+				"min_unit":  core.ParamsValue(nanoUnit),
+				"max_unit":  core.ParamsValue(nanoUnit),
+				"engine":    core.ParamsValue("random"),
+				"keep_null": core.ParamsValue("true"),
 			},
-			validateFn: func(t *testing.T, recorder commonininterfaces.Recorder) {
+			validateFn: func(t *testing.T, recorder core.Recorder) {
 				var val int64
 				isNull, err := recorder.ScanColumnValueByName("data", &val)
 				require.NoError(t, err)
@@ -244,30 +243,30 @@ func TestUnixTimestampTransformer_Transform(t *testing.T) {
 		},
 		{
 			name: "keep_null true and original is not null",
-			columns: []models.Column{
+			columns: []core.Column{
 				{
 					Idx:       0,
 					Name:      "data",
 					TypeName:  mysqldbmsdriver.TypeBigInt,
 					TypeOID:   mysqldbmsdriver.VirtualOidBigInt,
-					TypeClass: models.TypeClassInt,
+					TypeClass: core.TypeClassInt,
 					Length:    0,
 					Size:      8,
 				},
 			},
-			original: []*models.ColumnRawValue{
-				models.NewColumnRawValue([]byte("123"), false)},
-			staticParameters: map[string]models.ParamsValue{
-				"column":    models.ParamsValue("data"),
-				"min":       models.ParamsValue("1616842649000000000"),
-				"max":       models.ParamsValue("1716842649000000000"),
-				"unit":      models.ParamsValue(nanoUnit),
-				"min_unit":  models.ParamsValue(nanoUnit),
-				"max_unit":  models.ParamsValue(nanoUnit),
-				"engine":    models.ParamsValue("random"),
-				"keep_null": models.ParamsValue("true"),
+			original: []*core.ColumnRawValue{
+				core.NewColumnRawValue([]byte("123"), false)},
+			staticParameters: map[string]core.ParamsValue{
+				"column":    core.ParamsValue("data"),
+				"min":       core.ParamsValue("1616842649000000000"),
+				"max":       core.ParamsValue("1716842649000000000"),
+				"unit":      core.ParamsValue(nanoUnit),
+				"min_unit":  core.ParamsValue(nanoUnit),
+				"max_unit":  core.ParamsValue(nanoUnit),
+				"engine":    core.ParamsValue("random"),
+				"keep_null": core.ParamsValue("true"),
 			},
-			validateFn: func(t *testing.T, recorder commonininterfaces.Recorder) {
+			validateFn: func(t *testing.T, recorder core.Recorder) {
 				var val int64
 				isNull, err := recorder.ScanColumnValueByName("data", &val)
 				require.NoError(t, err)
@@ -276,14 +275,14 @@ func TestUnixTimestampTransformer_Transform(t *testing.T) {
 		},
 		{
 			name: "dynamic mode",
-			staticParameters: map[string]models.ParamsValue{
-				"column":   models.ParamsValue("data"),
-				"unit":     models.ParamsValue(nanoUnit),
-				"min_unit": models.ParamsValue(nanoUnit),
-				"max_unit": models.ParamsValue(nanoUnit),
-				"engine":   models.ParamsValue("random"),
+			staticParameters: map[string]core.ParamsValue{
+				"column":   core.ParamsValue("data"),
+				"unit":     core.ParamsValue(nanoUnit),
+				"min_unit": core.ParamsValue(nanoUnit),
+				"max_unit": core.ParamsValue(nanoUnit),
+				"engine":   core.ParamsValue("random"),
 			},
-			dynamicParameter: map[string]models.DynamicParamValue{
+			dynamicParameter: map[string]core.DynamicParamValue{
 				"min": {
 					Column: "min_val",
 				},
@@ -291,18 +290,18 @@ func TestUnixTimestampTransformer_Transform(t *testing.T) {
 					Column: "max_val",
 				},
 			},
-			original: []*models.ColumnRawValue{
-				models.NewColumnRawValue([]byte("1234"), false),
-				models.NewColumnRawValue([]byte("1616842649000000000"), false),
-				models.NewColumnRawValue([]byte("1716842649000000000"), false),
+			original: []*core.ColumnRawValue{
+				core.NewColumnRawValue([]byte("1234"), false),
+				core.NewColumnRawValue([]byte("1616842649000000000"), false),
+				core.NewColumnRawValue([]byte("1716842649000000000"), false),
 			},
-			columns: []models.Column{
+			columns: []core.Column{
 				{
 					Idx:       0,
 					Name:      "data",
 					TypeName:  mysqldbmsdriver.TypeBigInt,
 					TypeOID:   mysqldbmsdriver.VirtualOidBigInt,
-					TypeClass: models.TypeClassInt,
+					TypeClass: core.TypeClassInt,
 					Length:    0,
 					Size:      8,
 				},
@@ -311,7 +310,7 @@ func TestUnixTimestampTransformer_Transform(t *testing.T) {
 					Name:      "min_val",
 					TypeName:  mysqldbmsdriver.TypeBigInt,
 					TypeOID:   mysqldbmsdriver.VirtualOidBigInt,
-					TypeClass: models.TypeClassInt,
+					TypeClass: core.TypeClassInt,
 					Length:    0,
 					Size:      8,
 				},
@@ -320,12 +319,12 @@ func TestUnixTimestampTransformer_Transform(t *testing.T) {
 					Name:      "max_val",
 					TypeName:  mysqldbmsdriver.TypeBigInt,
 					TypeOID:   mysqldbmsdriver.VirtualOidBigInt,
-					TypeClass: models.TypeClassInt,
+					TypeClass: core.TypeClassInt,
 					Length:    0,
 					Size:      8,
 				},
 			},
-			validateFn: func(t *testing.T, recorder commonininterfaces.Recorder) {
+			validateFn: func(t *testing.T, recorder core.Recorder) {
 				var val int64
 				isNull, err := recorder.ScanColumnValueByName("data", &val)
 				require.NoError(t, err)

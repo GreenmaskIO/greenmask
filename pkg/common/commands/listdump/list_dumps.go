@@ -30,9 +30,8 @@ import (
 
 	"github.com/rs/zerolog/log"
 
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 	"github.com/greenmaskio/greenmask/pkg/common/heartbeat"
-	"github.com/greenmaskio/greenmask/pkg/common/interfaces"
-	"github.com/greenmaskio/greenmask/pkg/common/models"
 )
 
 const MetadataFileName = "metadata.json"
@@ -60,7 +59,7 @@ func NewFilter(tags []string, statuses []string) (*Filter, error) {
 // Match reports whether a dump with the given metadata and heartbeat status
 // satisfies the filter. All specified tags must be present; status must be
 // in the allowed set (if any are set).
-func (f *Filter) Match(metadata models.Metadata, status heartbeat.Status) bool {
+func (f *Filter) Match(metadata core.Metadata, status heartbeat.Status) bool {
 	if len(f.Tags) == 0 && len(f.Statuses) == 0 {
 		return true
 	}
@@ -104,13 +103,13 @@ func (d *DumpListItem) TagList() string {
 
 // Lister retrieves dump metadata from a storage root.
 type Lister struct {
-	st                interfaces.Storager
+	st                core.Storager
 	heartbeatInterval time.Duration
 }
 
 // New returns a Lister backed by st. heartbeatInterval is the stale-timeout
 // forwarded to the heartbeat reader when determining dump status.
-func New(st interfaces.Storager, heartbeatInterval time.Duration) *Lister {
+func New(st core.Storager, heartbeatInterval time.Duration) *Lister {
 	return &Lister{st: st, heartbeatInterval: heartbeatInterval}
 }
 
@@ -177,7 +176,7 @@ func (l *Lister) IDs(ctx context.Context, f *Filter) ([]string, error) {
 // readDumpItem reads heartbeat + metadata for a single dump directory,
 // applies the filter, and constructs a DumpListItem.
 // ok=false means the dump was filtered out (not an error).
-func (l *Lister) readDumpItem(ctx context.Context, backup interfaces.Storager, f *Filter) (DumpListItem, bool, error) {
+func (l *Lister) readDumpItem(ctx context.Context, backup core.Storager, f *Filter) (DumpListItem, bool, error) {
 	status, metadata, err := l.metadataAndStatus(ctx, backup)
 	if err != nil {
 		return DumpListItem{}, false, fmt.Errorf("get metadata and status: %w", err)
@@ -194,42 +193,42 @@ func (l *Lister) readDumpItem(ctx context.Context, backup interfaces.Storager, f
 // metadataAndStatus reads the heartbeat status and metadata.json for a dump.
 // When the heartbeat says "done" but metadata.json is absent, the status is
 // downgraded to "failed" (consistent with list-dumps behaviour).
-func (l *Lister) metadataAndStatus(ctx context.Context, st interfaces.Storager) (heartbeat.Status, models.Metadata, error) {
+func (l *Lister) metadataAndStatus(ctx context.Context, st core.Storager) (heartbeat.Status, core.Metadata, error) {
 	status, err := heartbeat.NewReader(st).SetStaleTimeout(l.heartbeatInterval).Read(ctx)
 	if err != nil {
-		return "", models.Metadata{}, fmt.Errorf("read heartbeat: %w", err)
+		return "", core.Metadata{}, fmt.Errorf("read heartbeat: %w", err)
 	}
 	metadata, err := readMetadata(ctx, st)
 	if err != nil {
-		if errors.Is(err, models.ErrFileNotFound) {
+		if errors.Is(err, core.ErrFileNotFound) {
 			if status == heartbeat.StatusDone {
-				return heartbeat.StatusFailed, models.Metadata{}, nil
+				return heartbeat.StatusFailed, core.Metadata{}, nil
 			}
-			return status, models.Metadata{}, nil
+			return status, core.Metadata{}, nil
 		}
-		return "", models.Metadata{}, fmt.Errorf("read metadata: %w", err)
+		return "", core.Metadata{}, fmt.Errorf("read metadata: %w", err)
 	}
 	return status, metadata, nil
 }
 
-func readMetadata(ctx context.Context, st interfaces.Storager) (models.Metadata, error) {
+func readMetadata(ctx context.Context, st core.Storager) (core.Metadata, error) {
 	r, err := st.GetObject(ctx, MetadataFileName)
 	if err != nil {
-		return models.Metadata{}, err
+		return core.Metadata{}, err
 	}
 	defer func() {
 		if err := r.Close(); err != nil {
 			log.Ctx(ctx).Warn().Err(err).Msg("close metadata.json")
 		}
 	}()
-	var md models.Metadata
+	var md core.Metadata
 	if err := json.NewDecoder(r).Decode(&md); err != nil {
-		return models.Metadata{}, fmt.Errorf("decode metadata.json: %w", err)
+		return core.Metadata{}, fmt.Errorf("decode metadata.json: %w", err)
 	}
 	return md, nil
 }
 
-func buildItem(dumpID string, status heartbeat.Status, md models.Metadata) DumpListItem {
+func buildItem(dumpID string, status heartbeat.Status, md core.Metadata) DumpListItem {
 	var date, duration string
 	var size, compressedSize int64
 	var transformed bool

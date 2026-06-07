@@ -20,26 +20,25 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 	"github.com/greenmaskio/greenmask/pkg/common/graphbuilder"
-	commonmodels "github.com/greenmaskio/greenmask/pkg/common/models"
-	"github.com/greenmaskio/greenmask/pkg/common/subset"
 )
 
 // makeIntrospection builds an IntrospectionResult with the given tables as
 // ObjectKindTable payloads. objectIDs must be the same length as tables.
-func makeIntrospection(objectIDs []commonmodels.ObjectID, tables []commonmodels.Table) commonmodels.IntrospectionResult {
-	objects := make([]commonmodels.Object, len(tables))
+func makeIntrospection(objectIDs []core.ObjectID, tables []core.Table) core.IntrospectionResult {
+	objects := make([]core.Object, len(tables))
 	for i, tbl := range tables {
-		objects[i] = commonmodels.Object{
+		objects[i] = core.Object{
 			ID:      objectIDs[i],
-			Kind:    commonmodels.ObjectKindTable,
+			Kind:    core.ObjectKindTable,
 			Name:    tbl.Schema + "." + tbl.Name,
 			Payload: tbl,
 		}
 	}
-	return commonmodels.IntrospectionResult{
-		KindsMap: map[commonmodels.ObjectKind][]commonmodels.Object{
-			commonmodels.ObjectKindTable: objects,
+	return core.IntrospectionResult{
+		KindsMap: map[core.ObjectKind][]core.Object{
+			core.ObjectKindTable: objects,
 		},
 	}
 }
@@ -48,7 +47,7 @@ func makeIntrospection(objectIDs []commonmodels.ObjectID, tables []commonmodels.
 // using the shared GraphBuilder.  Tests use this to populate the DependencyGraph
 // field of SubsetBuilderInput because the new implementation consumes the
 // already-computed graph rather than rebuilding it internally.
-func makeDependencyGraph(t *testing.T, introspection commonmodels.IntrospectionResult) commonmodels.DependencyGraphResult {
+func makeDependencyGraph(t *testing.T, introspection core.IntrospectionResult) core.DependencyGraphResult {
 	t.Helper()
 	dg, err := graphbuilder.New().BuildGraph(context.Background(), introspection)
 	require.NoError(t, err)
@@ -56,8 +55,8 @@ func makeDependencyGraph(t *testing.T, introspection commonmodels.IntrospectionR
 }
 
 // tableConfig is a shorthand for building a TableConfig with subset conditions.
-func tableConfig(schema, name string, conds ...string) commonmodels.TableConfig {
-	return commonmodels.TableConfig{Schema: schema, Name: name, SubsetConds: conds}
+func tableConfig(schema, name string, conds ...string) core.TableConfig {
+	return core.TableConfig{Schema: schema, Name: name, SubsetConds: conds}
 }
 
 func TestBuildSubset_DAGWithAmbiguousTables(t *testing.T) {
@@ -76,57 +75,57 @@ func TestBuildSubset_DAGWithAmbiguousTables(t *testing.T) {
 
 		This mirrors the "dag with ambiguous tables in join" test from subset_test.go.
 	*/
-	tableE := commonmodels.Table{
+	tableE := core.Table{
 		Schema:     "public",
 		Name:       "e",
 		PrimaryKey: []string{"id"},
 	}
-	tableA := commonmodels.Table{
+	tableA := core.Table{
 		Schema:     "public",
 		Name:       "a",
 		PrimaryKey: []string{"id"},
-		References: []commonmodels.Reference{
+		References: []core.Reference{
 			{ReferencedSchema: "public", ReferencedName: "e", Keys: []string{"e_id"}},
 		},
 	}
-	tableB := commonmodels.Table{
+	tableB := core.Table{
 		Schema:     "public",
 		Name:       "b",
 		PrimaryKey: []string{"id"},
-		References: []commonmodels.Reference{
+		References: []core.Reference{
 			{ReferencedSchema: "public", ReferencedName: "a", Keys: []string{"a_id"}},
 		},
 	}
-	tableC := commonmodels.Table{
+	tableC := core.Table{
 		Schema:     "public",
 		Name:       "c",
 		PrimaryKey: []string{"id"},
-		References: []commonmodels.Reference{
+		References: []core.Reference{
 			{ReferencedSchema: "public", ReferencedName: "b", Keys: []string{"b_id"}},
 			{ReferencedSchema: "public", ReferencedName: "a", Keys: []string{"a_id"}},
 		},
 	}
-	tableD := commonmodels.Table{
+	tableD := core.Table{
 		Schema:     "public",
 		Name:       "d",
 		PrimaryKey: []string{"id"},
-		References: []commonmodels.Reference{
+		References: []core.Reference{
 			{ReferencedSchema: "public", ReferencedName: "c", Keys: []string{"c_id"}},
 		},
 	}
 
 	// ObjectIDs are intentionally non-sequential to exercise the ObjectID→position mapping.
-	objectIDs := []commonmodels.ObjectID{10, 11, 12, 13, 14}
-	tables := []commonmodels.Table{tableE, tableA, tableB, tableC, tableD}
+	objectIDs := []core.ObjectID{10, 11, 12, 13, 14}
+	tables := []core.Table{tableE, tableA, tableB, tableC, tableD}
 	introspection := makeIntrospection(objectIDs, tables)
 
-	cfgs := []commonmodels.TableConfig{
+	cfgs := []core.TableConfig{
 		tableConfig("public", "a", "public.a.id = 1"),
 		tableConfig("public", "c", "public.c.id = 1"),
 	}
 
-	b := New(subset.DialectMySQL)
-	result, err := b.BuildSubset(context.Background(), commonmodels.SubsetBuilderInput{
+	b := New(DialectMySQL)
+	result, err := b.BuildSubset(context.Background(), core.SubsetBuilderInput{
 		Introspection:   introspection,
 		DependencyGraph: makeDependencyGraph(t, introspection),
 		TableConfigs:    cfgs,
@@ -134,7 +133,7 @@ func TestBuildSubset_DAGWithAmbiguousTables(t *testing.T) {
 	require.NoError(t, err)
 
 	// Table e has no subset conditions and is not downstream of any — not in map.
-	require.NotContains(t, result.SubsetMap, commonmodels.ObjectID(10))
+	require.NotContains(t, result.SubsetMap, core.ObjectID(10))
 
 	require.Equal(t,
 		"SELECT `public`.`a`.* FROM `public`.`a` WHERE (public.a.id = 1)",
@@ -162,40 +161,40 @@ func TestBuildSubset_DAGWithNullableEdges(t *testing.T) {
 
 		This mirrors the "dag with nullable edges" test from subset_test.go.
 	*/
-	tableA := commonmodels.Table{
+	tableA := core.Table{
 		Schema:     "public",
 		Name:       "a",
 		PrimaryKey: []string{"id"},
 	}
-	tableB := commonmodels.Table{
+	tableB := core.Table{
 		Schema:     "public",
 		Name:       "b",
 		PrimaryKey: []string{"id"},
-		References: []commonmodels.Reference{
+		References: []core.Reference{
 			{ReferencedSchema: "public", ReferencedName: "a", Keys: []string{"a_id"}, IsNullable: true},
 		},
 	}
-	tableC := commonmodels.Table{
+	tableC := core.Table{
 		Schema:     "public",
 		Name:       "c",
 		PrimaryKey: []string{"id"},
-		References: []commonmodels.Reference{
+		References: []core.Reference{
 			{ReferencedSchema: "public", ReferencedName: "b", Keys: []string{"b_id"}, IsNullable: true},
 		},
 	}
 
-	objectIDs := []commonmodels.ObjectID{20, 21, 22}
-	tables := []commonmodels.Table{tableA, tableB, tableC}
+	objectIDs := []core.ObjectID{20, 21, 22}
+	tables := []core.Table{tableA, tableB, tableC}
 	introspection := makeIntrospection(objectIDs, tables)
 
-	cfgs := []commonmodels.TableConfig{
+	cfgs := []core.TableConfig{
 		tableConfig("public", "a", "public.a.id = 1"),
 		tableConfig("public", "b", "public.b.id = 1"),
 		tableConfig("public", "c", "public.c.id = 1"),
 	}
 
-	b := New(subset.DialectMySQL)
-	result, err := b.BuildSubset(context.Background(), commonmodels.SubsetBuilderInput{
+	b := New(DialectMySQL)
+	result, err := b.BuildSubset(context.Background(), core.SubsetBuilderInput{
 		Introspection:   introspection,
 		DependencyGraph: makeDependencyGraph(t, introspection),
 		TableConfigs:    cfgs,
@@ -220,59 +219,59 @@ func TestBuildSubset_DAGWithNullableEdges(t *testing.T) {
 func TestBuildSubset_PostgreSQL_DAGWithAmbiguousTables(t *testing.T) {
 	// PostgreSQL counterpart of TestBuildSubset_DAGWithAmbiguousTables.
 	// Verifies double-quote identifier escaping produced by DialectPostgres.
-	tableE := commonmodels.Table{Schema: "public", Name: "e", PrimaryKey: []string{"id"}}
-	tableA := commonmodels.Table{
+	tableE := core.Table{Schema: "public", Name: "e", PrimaryKey: []string{"id"}}
+	tableA := core.Table{
 		Schema:     "public",
 		Name:       "a",
 		PrimaryKey: []string{"id"},
-		References: []commonmodels.Reference{
+		References: []core.Reference{
 			{ReferencedSchema: "public", ReferencedName: "e", Keys: []string{"e_id"}},
 		},
 	}
-	tableB := commonmodels.Table{
+	tableB := core.Table{
 		Schema:     "public",
 		Name:       "b",
 		PrimaryKey: []string{"id"},
-		References: []commonmodels.Reference{
+		References: []core.Reference{
 			{ReferencedSchema: "public", ReferencedName: "a", Keys: []string{"a_id"}},
 		},
 	}
-	tableC := commonmodels.Table{
+	tableC := core.Table{
 		Schema:     "public",
 		Name:       "c",
 		PrimaryKey: []string{"id"},
-		References: []commonmodels.Reference{
+		References: []core.Reference{
 			{ReferencedSchema: "public", ReferencedName: "b", Keys: []string{"b_id"}},
 			{ReferencedSchema: "public", ReferencedName: "a", Keys: []string{"a_id"}},
 		},
 	}
-	tableD := commonmodels.Table{
+	tableD := core.Table{
 		Schema:     "public",
 		Name:       "d",
 		PrimaryKey: []string{"id"},
-		References: []commonmodels.Reference{
+		References: []core.Reference{
 			{ReferencedSchema: "public", ReferencedName: "c", Keys: []string{"c_id"}},
 		},
 	}
 
-	objectIDs := []commonmodels.ObjectID{10, 11, 12, 13, 14}
-	tables := []commonmodels.Table{tableE, tableA, tableB, tableC, tableD}
+	objectIDs := []core.ObjectID{10, 11, 12, 13, 14}
+	tables := []core.Table{tableE, tableA, tableB, tableC, tableD}
 	introspection := makeIntrospection(objectIDs, tables)
 
-	cfgs := []commonmodels.TableConfig{
+	cfgs := []core.TableConfig{
 		tableConfig("public", "a", "public.a.id = 1"),
 		tableConfig("public", "c", "public.c.id = 1"),
 	}
 
-	b := New(subset.DialectPostgres)
-	result, err := b.BuildSubset(context.Background(), commonmodels.SubsetBuilderInput{
+	b := New(DialectPostgres)
+	result, err := b.BuildSubset(context.Background(), core.SubsetBuilderInput{
 		Introspection:   introspection,
 		DependencyGraph: makeDependencyGraph(t, introspection),
 		TableConfigs:    cfgs,
 	})
 	require.NoError(t, err)
 
-	require.NotContains(t, result.SubsetMap, commonmodels.ObjectID(10))
+	require.NotContains(t, result.SubsetMap, core.ObjectID(10))
 
 	require.Equal(t,
 		`SELECT "public"."a".* FROM "public"."a" WHERE (public.a.id = 1)`,
@@ -295,36 +294,36 @@ func TestBuildSubset_PostgreSQL_DAGWithAmbiguousTables(t *testing.T) {
 
 func TestBuildSubset_PostgreSQL_DAGWithNullableEdges(t *testing.T) {
 	// PostgreSQL counterpart of TestBuildSubset_DAGWithNullableEdges.
-	tableA := commonmodels.Table{Schema: "public", Name: "a", PrimaryKey: []string{"id"}}
-	tableB := commonmodels.Table{
+	tableA := core.Table{Schema: "public", Name: "a", PrimaryKey: []string{"id"}}
+	tableB := core.Table{
 		Schema:     "public",
 		Name:       "b",
 		PrimaryKey: []string{"id"},
-		References: []commonmodels.Reference{
+		References: []core.Reference{
 			{ReferencedSchema: "public", ReferencedName: "a", Keys: []string{"a_id"}, IsNullable: true},
 		},
 	}
-	tableC := commonmodels.Table{
+	tableC := core.Table{
 		Schema:     "public",
 		Name:       "c",
 		PrimaryKey: []string{"id"},
-		References: []commonmodels.Reference{
+		References: []core.Reference{
 			{ReferencedSchema: "public", ReferencedName: "b", Keys: []string{"b_id"}, IsNullable: true},
 		},
 	}
 
-	objectIDs := []commonmodels.ObjectID{20, 21, 22}
-	tables := []commonmodels.Table{tableA, tableB, tableC}
+	objectIDs := []core.ObjectID{20, 21, 22}
+	tables := []core.Table{tableA, tableB, tableC}
 	introspection := makeIntrospection(objectIDs, tables)
 
-	cfgs := []commonmodels.TableConfig{
+	cfgs := []core.TableConfig{
 		tableConfig("public", "a", "public.a.id = 1"),
 		tableConfig("public", "b", "public.b.id = 1"),
 		tableConfig("public", "c", "public.c.id = 1"),
 	}
 
-	b := New(subset.DialectPostgres)
-	result, err := b.BuildSubset(context.Background(), commonmodels.SubsetBuilderInput{
+	b := New(DialectPostgres)
+	result, err := b.BuildSubset(context.Background(), core.SubsetBuilderInput{
 		Introspection:   introspection,
 		DependencyGraph: makeDependencyGraph(t, introspection),
 		TableConfigs:    cfgs,
@@ -348,22 +347,22 @@ func TestBuildSubset_PostgreSQL_DAGWithNullableEdges(t *testing.T) {
 
 func TestBuildSubset_NoSubsetConditions(t *testing.T) {
 	// Tables without any subset conditions produce an empty SubsetMap.
-	tableA := commonmodels.Table{Schema: "public", Name: "a", PrimaryKey: []string{"id"}}
-	tableB := commonmodels.Table{
+	tableA := core.Table{Schema: "public", Name: "a", PrimaryKey: []string{"id"}}
+	tableB := core.Table{
 		Schema:     "public",
 		Name:       "b",
 		PrimaryKey: []string{"id"},
-		References: []commonmodels.Reference{
+		References: []core.Reference{
 			{ReferencedSchema: "public", ReferencedName: "a", Keys: []string{"a_id"}},
 		},
 	}
 	introspection := makeIntrospection(
-		[]commonmodels.ObjectID{30, 31},
-		[]commonmodels.Table{tableA, tableB},
+		[]core.ObjectID{30, 31},
+		[]core.Table{tableA, tableB},
 	)
 
-	b := New(subset.DialectMySQL)
-	result, err := b.BuildSubset(context.Background(), commonmodels.SubsetBuilderInput{
+	b := New(DialectMySQL)
+	result, err := b.BuildSubset(context.Background(), core.SubsetBuilderInput{
 		Introspection:   introspection,
 		DependencyGraph: makeDependencyGraph(t, introspection),
 	})
@@ -373,11 +372,11 @@ func TestBuildSubset_NoSubsetConditions(t *testing.T) {
 
 func TestBuildSubset_EmptyIntrospection(t *testing.T) {
 	// No tables at all — should return an empty result without error.
-	introspection := commonmodels.IntrospectionResult{
-		KindsMap: map[commonmodels.ObjectKind][]commonmodels.Object{},
+	introspection := core.IntrospectionResult{
+		KindsMap: map[core.ObjectKind][]core.Object{},
 	}
-	b := New(subset.DialectMySQL)
-	result, err := b.BuildSubset(context.Background(), commonmodels.SubsetBuilderInput{
+	b := New(DialectMySQL)
+	result, err := b.BuildSubset(context.Background(), core.SubsetBuilderInput{
 		Introspection:   introspection,
 		DependencyGraph: makeDependencyGraph(t, introspection),
 	})
@@ -387,24 +386,24 @@ func TestBuildSubset_EmptyIntrospection(t *testing.T) {
 
 func TestBuildSubset_PointerTablePayload(t *testing.T) {
 	// Object payload is *models.Table — the *Table branch of tableFromPayload.
-	tbl := commonmodels.Table{
+	tbl := core.Table{
 		Schema:     "public",
 		Name:       "a",
 		PrimaryKey: []string{"id"},
 	}
-	introspection := commonmodels.IntrospectionResult{
-		KindsMap: map[commonmodels.ObjectKind][]commonmodels.Object{
-			commonmodels.ObjectKindTable: {
-				{ID: 40, Kind: commonmodels.ObjectKindTable, Name: "public.a", Payload: &tbl},
+	introspection := core.IntrospectionResult{
+		KindsMap: map[core.ObjectKind][]core.Object{
+			core.ObjectKindTable: {
+				{ID: 40, Kind: core.ObjectKindTable, Name: "public.a", Payload: &tbl},
 			},
 		},
 	}
-	cfgs := []commonmodels.TableConfig{
+	cfgs := []core.TableConfig{
 		tableConfig("public", "a", "public.a.id = 1"),
 	}
 
-	b := New(subset.DialectMySQL)
-	result, err := b.BuildSubset(context.Background(), commonmodels.SubsetBuilderInput{
+	b := New(DialectMySQL)
+	result, err := b.BuildSubset(context.Background(), core.SubsetBuilderInput{
 		Introspection:   introspection,
 		DependencyGraph: makeDependencyGraph(t, introspection),
 		TableConfigs:    cfgs,
@@ -420,25 +419,25 @@ func TestBuildSubset_ToCommonTablePayload(t *testing.T) {
 	// Object payload implements ToCommonTable() — the interface branch of tableFromPayload.
 	// tableWithToCommonTable is defined at package level (below) since methods
 	// cannot be declared on local types inside a function body.
-	payload := &tableWithToCommonTable{tbl: commonmodels.Table{
+	payload := &tableWithToCommonTable{tbl: core.Table{
 		Schema:     "public",
 		Name:       "a",
 		PrimaryKey: []string{"id"},
 	}}
 
-	introspection := commonmodels.IntrospectionResult{
-		KindsMap: map[commonmodels.ObjectKind][]commonmodels.Object{
-			commonmodels.ObjectKindTable: {
-				{ID: 50, Kind: commonmodels.ObjectKindTable, Name: "public.a", Payload: payload},
+	introspection := core.IntrospectionResult{
+		KindsMap: map[core.ObjectKind][]core.Object{
+			core.ObjectKindTable: {
+				{ID: 50, Kind: core.ObjectKindTable, Name: "public.a", Payload: payload},
 			},
 		},
 	}
-	cfgs := []commonmodels.TableConfig{
+	cfgs := []core.TableConfig{
 		tableConfig("public", "a", "public.a.id = 1"),
 	}
 
-	b := New(subset.DialectMySQL)
-	result, err := b.BuildSubset(context.Background(), commonmodels.SubsetBuilderInput{
+	b := New(DialectMySQL)
+	result, err := b.BuildSubset(context.Background(), core.SubsetBuilderInput{
 		Introspection:   introspection,
 		DependencyGraph: makeDependencyGraph(t, introspection),
 		TableConfigs:    cfgs,
@@ -455,18 +454,18 @@ func TestBuildSubset_InvalidPayload(t *testing.T) {
 	// In the new implementation buildSubsetCondsMap silently skips objects with
 	// unparseable payloads — the error would have been caught earlier by GraphBuilder.
 	// The result is an empty SubsetMap (no matching conditions could be resolved).
-	introspection := commonmodels.IntrospectionResult{
-		KindsMap: map[commonmodels.ObjectKind][]commonmodels.Object{
-			commonmodels.ObjectKindTable: {
-				{ID: 60, Kind: commonmodels.ObjectKindTable, Name: "public.a", Payload: "not-a-table"},
+	introspection := core.IntrospectionResult{
+		KindsMap: map[core.ObjectKind][]core.Object{
+			core.ObjectKindTable: {
+				{ID: 60, Kind: core.ObjectKindTable, Name: "public.a", Payload: "not-a-table"},
 			},
 		},
 	}
 
-	b := New(subset.DialectMySQL)
-	result, err := b.BuildSubset(context.Background(), commonmodels.SubsetBuilderInput{
+	b := New(DialectMySQL)
+	result, err := b.BuildSubset(context.Background(), core.SubsetBuilderInput{
 		Introspection:   introspection,
-		DependencyGraph: commonmodels.DependencyGraphResult{},
+		DependencyGraph: core.DependencyGraphResult{},
 	})
 	require.NoError(t, err)
 	require.Empty(t, result.SubsetMap)
@@ -475,19 +474,19 @@ func TestBuildSubset_InvalidPayload(t *testing.T) {
 func TestBuildSubset_NilPointerPayload(t *testing.T) {
 	// Object payload is a nil *models.Table pointer.
 	// Same as InvalidPayload: silently skipped in buildSubsetCondsMap.
-	var nilTable *commonmodels.Table
-	introspection := commonmodels.IntrospectionResult{
-		KindsMap: map[commonmodels.ObjectKind][]commonmodels.Object{
-			commonmodels.ObjectKindTable: {
-				{ID: 70, Kind: commonmodels.ObjectKindTable, Name: "public.a", Payload: nilTable},
+	var nilTable *core.Table
+	introspection := core.IntrospectionResult{
+		KindsMap: map[core.ObjectKind][]core.Object{
+			core.ObjectKindTable: {
+				{ID: 70, Kind: core.ObjectKindTable, Name: "public.a", Payload: nilTable},
 			},
 		},
 	}
 
-	b := New(subset.DialectMySQL)
-	result, err := b.BuildSubset(context.Background(), commonmodels.SubsetBuilderInput{
+	b := New(DialectMySQL)
+	result, err := b.BuildSubset(context.Background(), core.SubsetBuilderInput{
 		Introspection:   introspection,
-		DependencyGraph: commonmodels.DependencyGraphResult{},
+		DependencyGraph: core.DependencyGraphResult{},
 	})
 	require.NoError(t, err)
 	require.Empty(t, result.SubsetMap)
@@ -495,15 +494,15 @@ func TestBuildSubset_NilPointerPayload(t *testing.T) {
 
 func TestBuildSubset_SubsetCondOnlyForMatchingTable(t *testing.T) {
 	// A TableConfig whose schema+name does not match any introspected table is silently ignored.
-	tableA := commonmodels.Table{Schema: "public", Name: "a", PrimaryKey: []string{"id"}}
-	introspection := makeIntrospection([]commonmodels.ObjectID{80}, []commonmodels.Table{tableA})
+	tableA := core.Table{Schema: "public", Name: "a", PrimaryKey: []string{"id"}}
+	introspection := makeIntrospection([]core.ObjectID{80}, []core.Table{tableA})
 
-	cfgs := []commonmodels.TableConfig{
+	cfgs := []core.TableConfig{
 		tableConfig("public", "nonexistent", "public.nonexistent.id = 1"),
 	}
 
-	b := New(subset.DialectMySQL)
-	result, err := b.BuildSubset(context.Background(), commonmodels.SubsetBuilderInput{
+	b := New(DialectMySQL)
+	result, err := b.BuildSubset(context.Background(), core.SubsetBuilderInput{
 		Introspection:   introspection,
 		DependencyGraph: makeDependencyGraph(t, introspection),
 		TableConfigs:    cfgs,
@@ -515,9 +514,9 @@ func TestBuildSubset_SubsetCondOnlyForMatchingTable(t *testing.T) {
 // tableWithToCommonTable is a package-level type used by TestBuildSubset_ToCommonTablePayload
 // to exercise the ToCommonTable() interface branch of tableFromPayload.
 type tableWithToCommonTable struct {
-	tbl commonmodels.Table
+	tbl core.Table
 }
 
-func (w *tableWithToCommonTable) ToCommonTable() commonmodels.Table {
+func (w *tableWithToCommonTable) ToCommonTable() core.Table {
 	return w.tbl
 }

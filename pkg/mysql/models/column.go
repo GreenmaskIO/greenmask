@@ -15,7 +15,7 @@
 package models
 
 import (
-	"github.com/greenmaskio/greenmask/pkg/common/models"
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 )
 
 type Column struct {
@@ -27,8 +27,8 @@ type Column struct {
 	NumericScale      *int
 	DateTimePrecision *int
 	NotNull           bool
-	TypeOID           models.VirtualOID
-	TypeClass         models.TypeClass
+	TypeOID           core.VirtualOID
+	TypeClass         core.TypeClass
 }
 
 func NewColumn(
@@ -37,8 +37,8 @@ func NewColumn(
 	dataType *string,
 	numericPrecision, numericScale, dateTimePrecision *int,
 	notNull bool,
-	typeOID models.VirtualOID,
-	typeClass models.TypeClass,
+	typeOID core.VirtualOID,
+	typeClass core.TypeClass,
 ) Column {
 	return Column{
 		Idx:               idx,

@@ -17,15 +17,14 @@ package dump
 import (
 	"context"
 
-	"github.com/greenmaskio/greenmask/pkg/common/interfaces"
-	"github.com/greenmaskio/greenmask/pkg/common/models"
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 )
 
-var _ interfaces.RestorationContextBuilder = (*RestorationContextBuilder)(nil)
+var _ core.RestorationContextBuilder = (*RestorationContextBuilder)(nil)
 
 // RestorationContextBuilder builds restoration ordering and dependency metadata.
 type RestorationContextBuilder struct{}
 
-func (s *RestorationContextBuilder) Build(ctx context.Context, input models.RestorationContextInput) (models.RestorationContext, error) {
-	return models.RestorationContext{}, errNotImplemented
+func (s *RestorationContextBuilder) Build(ctx context.Context, input core.RestorationContextInput) (core.RestorationContext, error) {
+	return core.RestorationContext{}, errNotImplemented
 }

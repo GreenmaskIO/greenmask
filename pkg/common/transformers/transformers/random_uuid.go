@@ -18,8 +18,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/greenmaskio/greenmask/pkg/common/interfaces"
-	"github.com/greenmaskio/greenmask/pkg/common/models"
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 	"github.com/greenmaskio/greenmask/pkg/common/transformers/generators/transformers"
 	"github.com/greenmaskio/greenmask/pkg/common/transformers/parameters"
 	"github.com/greenmaskio/greenmask/pkg/common/transformers/utils"
@@ -40,11 +39,11 @@ var UUIDTransformerDefinition = utils.NewTransformerDefinition(
 		"column",
 		"column name",
 	).SetIsColumn(
-		models.NewColumnProperties().
+		core.NewColumnProperties().
 			SetAffected(true).
 			SetAllowedColumnTypeClasses(
-				models.TypeClassText,
-				models.TypeClassUuid,
+				core.TypeClassText,
+				core.TypeClassUuid,
 			),
 	).SetRequired(true),
 
@@ -63,9 +62,9 @@ type RandomUuidTransformer struct {
 
 func NewRandomUuidTransformer(
 	ctx context.Context,
-	tableDriver interfaces.TableDriver,
+	tableDriver core.TableDriver,
 	parameters map[string]parameters.Parameterizer,
-) (interfaces.Transformer, error) {
+) (core.Transformer, error) {
 	columnName, column, err := getColumnParameterValue(ctx, tableDriver, parameters)
 	if err != nil {
 		return nil, fmt.Errorf("get \"column\" parameter: %w", err)
@@ -114,7 +113,7 @@ func (t *RandomUuidTransformer) Done(context.Context) error {
 	return nil
 }
 
-func (t *RandomUuidTransformer) Transform(_ context.Context, r interfaces.Recorder) error {
+func (t *RandomUuidTransformer) Transform(_ context.Context, r core.Recorder) error {
 	val, err := r.GetRawColumnValueByIdx(t.columnIdx)
 	if err != nil {
 		return fmt.Errorf("scan value: %w", err)
@@ -132,7 +131,7 @@ func (t *RandomUuidTransformer) Transform(_ context.Context, r interfaces.Record
 	if err != nil {
 		return fmt.Errorf("error unmarshal uuid: %w", err)
 	}
-	if err = r.SetRawColumnValueByIdx(t.columnIdx, models.NewColumnRawValue(data, false)); err != nil {
+	if err = r.SetRawColumnValueByIdx(t.columnIdx, core.NewColumnRawValue(data, false)); err != nil {
 		return fmt.Errorf("set new value: %w", err)
 	}
 	return nil

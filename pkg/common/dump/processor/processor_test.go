@@ -21,8 +21,7 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
-	commonininterfaces "github.com/greenmaskio/greenmask/pkg/common/interfaces"
-	"github.com/greenmaskio/greenmask/pkg/common/models"
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 	"github.com/greenmaskio/greenmask/pkg/common/validationcollector"
 )
 
@@ -30,12 +29,12 @@ type dumpTaskMock struct {
 	mock.Mock
 }
 
-func (d *dumpTaskMock) Dump(ctx context.Context) (models.ObjectDumpStat, error) {
+func (d *dumpTaskMock) Dump(ctx context.Context) (core.ObjectDumpStat, error) {
 	args := d.Called(ctx)
 	if args.Error(1) != nil {
-		return models.ObjectDumpStat{}, args.Error(1)
+		return core.ObjectDumpStat{}, args.Error(1)
 	}
-	return args.Get(0).(models.ObjectDumpStat), args.Error(1)
+	return args.Get(0).(core.ObjectDumpStat), args.Error(1)
 }
 
 func (d *dumpTaskMock) Meta() map[string]any {
@@ -53,12 +52,12 @@ type taskProducerMock struct {
 
 func (t *taskProducerMock) Produce(
 	ctx context.Context,
-) ([]commonininterfaces.ObjectDumper, models.RestorationContext, error) {
+) ([]core.ObjectDumper, core.RestorationContext, error) {
 	args := t.Called(ctx)
 	if args.Error(2) != nil {
-		return nil, models.RestorationContext{}, args.Error(2)
+		return nil, core.RestorationContext{}, args.Error(2)
 	}
-	return args.Get(0).([]commonininterfaces.ObjectDumper), args.Get(1).(models.RestorationContext), args.Error(2)
+	return args.Get(0).([]core.ObjectDumper), args.Get(1).(core.RestorationContext), args.Error(2)
 }
 
 func (t *taskProducerMock) Metadata(ctx context.Context) any {
@@ -73,17 +72,17 @@ func TestProcessor_Run(t *testing.T) {
 		task1.On("DebugInfo").
 			Return("task1")
 		task1.On("Dump", mock.Anything).
-			Return(models.ObjectDumpStat{}, nil)
+			Return(core.ObjectDumpStat{}, nil)
 		task2 := &dumpTaskMock{}
 		task2.On("Dump", mock.Anything).
-			Return(models.ObjectDumpStat{}, nil)
+			Return(core.ObjectDumpStat{}, nil)
 		task2.On("DebugInfo").
 			Return("task2")
 
 		tp := &taskProducerMock{}
 		// Produce the task list by the producer.
 		tp.On("Produce", mock.Anything).
-			Return([]commonininterfaces.ObjectDumper{task1, task2}, models.RestorationContext{}, nil)
+			Return([]core.ObjectDumper{task1, task2}, core.RestorationContext{}, nil)
 
 		vc := validationcollector.NewCollector()
 		ctx := validationcollector.WithCollector(context.Background(), vc)

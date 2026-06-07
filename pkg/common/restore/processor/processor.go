@@ -22,8 +22,7 @@ import (
 	"github.com/rs/zerolog/log"
 	"golang.org/x/sync/errgroup"
 
-	"github.com/greenmaskio/greenmask/pkg/common/interfaces"
-	commonmodels "github.com/greenmaskio/greenmask/pkg/common/models"
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 )
 
 const (
@@ -45,18 +44,18 @@ type Config struct {
 
 // sectionEnabled reports whether the given section should be restored.
 // When no explicit sections are configured it falls back to the DataOnly/SchemaOnly flags.
-func (p *DefaultRestoreProcessor) sectionEnabled(section commonmodels.DumpSection) bool {
+func (p *DefaultRestoreProcessor) sectionEnabled(section core.DumpSection) bool {
 	if len(p.cfg.Section) == 0 {
 		switch section {
-		case commonmodels.DumpSectionPreData, commonmodels.DumpSectionPostData:
+		case core.DumpSectionPreData, core.DumpSectionPostData:
 			return !p.cfg.DataOnly
-		case commonmodels.DumpSectionData:
+		case core.DumpSectionData:
 			return !p.cfg.SchemaOnly
 		}
 		return true
 	}
 	for _, s := range p.cfg.Section {
-		if commonmodels.DumpSection(s) == section {
+		if core.DumpSection(s) == section {
 			return true
 		}
 	}
@@ -76,7 +75,7 @@ func (c *Config) SetDefault(ctx context.Context) {
 }
 
 type DefaultRestoreProcessor struct {
-	tp              interfaces.RestoreTaskProducer
+	tp              core.RestoreTaskProducer
 	sr              schemaRestorer
 	cfg             Config
 	scriptScheduler *script.Scheduler
@@ -85,10 +84,10 @@ type DefaultRestoreProcessor struct {
 
 func NewDefaultRestoreProcessor(
 	ctx context.Context,
-	tp interfaces.RestoreTaskProducer,
+	tp core.RestoreTaskProducer,
 	sr schemaRestorer,
 	cfg Config,
-	scripts []commonmodels.Script,
+	scripts []core.Script,
 	txExecBuilder script.TxExecBuilder,
 ) *DefaultRestoreProcessor {
 	cfg.SetDefault(ctx)
@@ -104,7 +103,7 @@ func NewDefaultRestoreProcessor(
 // taskProducer - produces tasks and sends them to tasks channel.
 func (p *DefaultRestoreProcessor) taskProducer(
 	ctx context.Context,
-	tasks chan<- interfaces.Restorer,
+	tasks chan<- core.Restorer,
 ) func() error {
 	return func() error {
 		defer close(tasks)
@@ -126,7 +125,7 @@ func (p *DefaultRestoreProcessor) taskProducer(
 	}
 }
 
-func runTask(ctx context.Context, task interfaces.Restorer) error {
+func runTask(ctx context.Context, task core.Restorer) error {
 	if err := task.Init(ctx); err != nil {
 		return fmt.Errorf(`init task: %w`, err)
 	}
@@ -134,7 +133,7 @@ func runTask(ctx context.Context, task interfaces.Restorer) error {
 		if err := task.Close(ctx); err != nil {
 			log.Ctx(ctx).Error().
 				Err(err).
-				Str(commonmodels.MetaKeyUniqueDumpTaskID, task.DebugInfo()).
+				Str(core.MetaKeyUniqueDumpTaskID, task.DebugInfo()).
 				Msg("error closing task")
 		}
 	}()
@@ -147,11 +146,11 @@ func runTask(ctx context.Context, task interfaces.Restorer) error {
 // restoreWorker - runs a restoreWorker that consumes tasks from tasks channel and executes them.
 func (p *DefaultRestoreProcessor) restoreWorker(
 	ctx context.Context,
-	tasks <-chan interfaces.Restorer,
+	tasks <-chan core.Restorer,
 	id int,
 ) error {
 	for {
-		var task interfaces.Restorer
+		var task core.Restorer
 		var ok bool
 		select {
 		case <-ctx.Done():
@@ -191,7 +190,7 @@ func (p *DefaultRestoreProcessor) restoreWorker(
 
 // restoreWorkerRunner - runs restoreWorker.
 func (p *DefaultRestoreProcessor) restoreWorkerRunner(
-	ctx context.Context, tasks <-chan interfaces.Restorer, jobId int,
+	ctx context.Context, tasks <-chan core.Restorer, jobId int,
 ) func() error {
 	return func() error {
 		return p.restoreWorker(ctx, tasks, jobId)
@@ -203,7 +202,7 @@ func (p *DefaultRestoreProcessor) restoreWorkerRunner(
 // It waits until all the workers are done and then closes the done channel to signal the end.
 func (p *DefaultRestoreProcessor) restoreWorkerPlanner(
 	ctx context.Context,
-	tasks <-chan interfaces.Restorer,
+	tasks <-chan core.Restorer,
 	done chan struct{},
 ) func() error {
 	return func() error {
@@ -222,7 +221,7 @@ func (p *DefaultRestoreProcessor) restoreWorkerPlanner(
 }
 
 func (p *DefaultRestoreProcessor) dataRestore(ctx context.Context) error {
-	tasks := make(chan interfaces.Restorer, p.cfg.Jobs)
+	tasks := make(chan core.Restorer, p.cfg.Jobs)
 
 	log.Ctx(ctx).Debug().Msgf("planned %d workers", p.cfg.Jobs)
 	done := make(chan struct{})
@@ -256,17 +255,17 @@ func (p *DefaultRestoreProcessor) restorePreDataSchema(ctx context.Context) erro
 	defer closeDB()
 
 	if err := p.scriptScheduler.Exec(
-		ctx, exec, commonmodels.DumpSectionPreData, commonmodels.ScriptEventTypeBefore,
+		ctx, exec, core.DumpSectionPreData, core.ScriptEventTypeBefore,
 	); err != nil {
-		return fmt.Errorf("execute scripts section='%s' when='%s': %w", commonmodels.DumpSectionPreData, commonmodels.ScriptEventTypeBefore, err)
+		return fmt.Errorf("execute scripts section='%s' when='%s': %w", core.DumpSectionPreData, core.ScriptEventTypeBefore, err)
 	}
 	if err := p.sr.RestorePreDataSchema(ctx); err != nil {
 		return fmt.Errorf("pre-data schema restore: %w", err)
 	}
 	if err := p.scriptScheduler.Exec(
-		ctx, exec, commonmodels.DumpSectionPreData, commonmodels.ScriptEventTypeAfter,
+		ctx, exec, core.DumpSectionPreData, core.ScriptEventTypeAfter,
 	); err != nil {
-		return fmt.Errorf("execute scripts section='%s' when='%s': %w", commonmodels.DumpSectionPreData, commonmodels.ScriptEventTypeAfter, err)
+		return fmt.Errorf("execute scripts section='%s' when='%s': %w", core.DumpSectionPreData, core.ScriptEventTypeAfter, err)
 	}
 	return nil
 }
@@ -279,17 +278,17 @@ func (p *DefaultRestoreProcessor) restoreData(ctx context.Context) error {
 	defer closeDB()
 
 	if err := p.scriptScheduler.Exec(
-		ctx, exec, commonmodels.DumpSectionData, commonmodels.ScriptEventTypeBefore,
+		ctx, exec, core.DumpSectionData, core.ScriptEventTypeBefore,
 	); err != nil {
-		return fmt.Errorf("execute scripts section='%s' when='%s': %w", commonmodels.DumpSectionData, commonmodels.ScriptEventTypeBefore, err)
+		return fmt.Errorf("execute scripts section='%s' when='%s': %w", core.DumpSectionData, core.ScriptEventTypeBefore, err)
 	}
 	if err := p.dataRestore(ctx); err != nil {
 		return fmt.Errorf("data restore: %w", err)
 	}
 	if err := p.scriptScheduler.Exec(
-		ctx, exec, commonmodels.DumpSectionData, commonmodels.ScriptEventTypeAfter,
+		ctx, exec, core.DumpSectionData, core.ScriptEventTypeAfter,
 	); err != nil {
-		return fmt.Errorf("execute scripts section='%s' when='%s': %w", commonmodels.DumpSectionData, commonmodels.ScriptEventTypeAfter, err)
+		return fmt.Errorf("execute scripts section='%s' when='%s': %w", core.DumpSectionData, core.ScriptEventTypeAfter, err)
 	}
 	return nil
 }
@@ -302,35 +301,35 @@ func (p *DefaultRestoreProcessor) restorePostDataSchema(ctx context.Context) err
 	defer closeDB()
 
 	if err := p.scriptScheduler.Exec(
-		ctx, exec, commonmodels.DumpSectionPostData, commonmodels.ScriptEventTypeBefore,
+		ctx, exec, core.DumpSectionPostData, core.ScriptEventTypeBefore,
 	); err != nil {
-		return fmt.Errorf("execute scripts section='%s' when='%s': %w", commonmodels.DumpSectionPostData, commonmodels.ScriptEventTypeBefore, err)
+		return fmt.Errorf("execute scripts section='%s' when='%s': %w", core.DumpSectionPostData, core.ScriptEventTypeBefore, err)
 	}
 	if err := p.sr.RestorePostDataSchema(ctx); err != nil {
 		return fmt.Errorf("post-data schema restore: %w", err)
 	}
 	if err := p.scriptScheduler.Exec(
-		ctx, exec, commonmodels.DumpSectionPostData, commonmodels.ScriptEventTypeAfter,
+		ctx, exec, core.DumpSectionPostData, core.ScriptEventTypeAfter,
 	); err != nil {
-		return fmt.Errorf("execute scripts section='%s' when='%s': %w", commonmodels.DumpSectionPostData, commonmodels.ScriptEventTypeAfter, err)
+		return fmt.Errorf("execute scripts section='%s' when='%s': %w", core.DumpSectionPostData, core.ScriptEventTypeAfter, err)
 	}
 	return nil
 }
 
 func (p *DefaultRestoreProcessor) Run(ctx context.Context) error {
-	if p.sectionEnabled(commonmodels.DumpSectionPreData) {
+	if p.sectionEnabled(core.DumpSectionPreData) {
 		if err := p.restorePreDataSchema(ctx); err != nil {
 			return fmt.Errorf("pre-data schema restore: %w", err)
 		}
 	}
 
-	if p.sectionEnabled(commonmodels.DumpSectionData) {
+	if p.sectionEnabled(core.DumpSectionData) {
 		if err := p.restoreData(ctx); err != nil {
 			return fmt.Errorf("data restore: %w", err)
 		}
 	}
 
-	if p.sectionEnabled(commonmodels.DumpSectionPostData) {
+	if p.sectionEnabled(core.DumpSectionPostData) {
 		if err := p.restorePostDataSchema(ctx); err != nil {
 			return fmt.Errorf("post-data schema restore: %w", err)
 		}

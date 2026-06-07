@@ -19,8 +19,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/greenmaskio/greenmask/pkg/common/interfaces"
-	commonmodels "github.com/greenmaskio/greenmask/pkg/common/models"
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 	"github.com/greenmaskio/greenmask/pkg/common/transformers/generators/transformers"
 	"github.com/greenmaskio/greenmask/pkg/common/transformers/parameters"
 	"github.com/greenmaskio/greenmask/pkg/common/transformers/utils"
@@ -40,9 +39,9 @@ var RandomDateTransformerDefinition = utils.NewTransformerDefinition(
 	parameters.MustNewParameterDefinition(
 		"column",
 		"column name",
-	).SetIsColumn(commonmodels.NewColumnProperties().
+	).SetIsColumn(core.NewColumnProperties().
 		SetAffected(true).
-		SetAllowedColumnTypeClasses(commonmodels.TypeClassDateTime),
+		SetAllowedColumnTypeClasses(core.TypeClassDateTime),
 	).SetRequired(true),
 
 	parameters.MustNewParameterDefinition(
@@ -54,8 +53,8 @@ var RandomDateTransformerDefinition = utils.NewTransformerDefinition(
 		SetDynamicMode(
 			parameters.NewDynamicModeProperties().
 				SetColumnProperties(
-					commonmodels.NewColumnProperties().
-						SetAllowedColumnTypeClasses(commonmodels.TypeClassDateTime),
+					core.NewColumnProperties().
+						SetAllowedColumnTypeClasses(core.TypeClassDateTime),
 				),
 		),
 
@@ -68,8 +67,8 @@ var RandomDateTransformerDefinition = utils.NewTransformerDefinition(
 		SetDynamicMode(
 			parameters.NewDynamicModeProperties().
 				SetColumnProperties(
-					commonmodels.NewColumnProperties().
-						SetAllowedColumnTypeClasses(commonmodels.TypeClassDateTime),
+					core.NewColumnProperties().
+						SetAllowedColumnTypeClasses(core.TypeClassDateTime),
 				),
 		),
 
@@ -100,10 +99,10 @@ type timestampMinMaxEncoder func(parameters.Parameterizer, parameters.Parameteri
 
 func NewTimestampTransformerBase(
 	ctx context.Context,
-	tableDriver interfaces.TableDriver,
+	tableDriver core.TableDriver,
 	parameters map[string]parameters.Parameterizer,
 	encoder timestampMinMaxEncoder,
-) (interfaces.Transformer, error) {
+) (core.Transformer, error) {
 	maxParam := parameters["max"]
 	minParam := parameters["min"]
 
@@ -175,8 +174,8 @@ func NewTimestampTransformerBase(
 }
 
 func NewTimestampTransformer(ctx context.Context,
-	tableDriver interfaces.TableDriver,
-	parameters map[string]parameters.Parameterizer) (interfaces.Transformer, error) {
+	tableDriver core.TableDriver,
+	parameters map[string]parameters.Parameterizer) (core.Transformer, error) {
 	return NewTimestampTransformerBase(ctx, tableDriver, parameters, getTimestampMinAndMaxThresholds)
 }
 
@@ -218,7 +217,7 @@ func (t *TimestampTransformer) dynamicTransform(v []byte) (time.Time, error) {
 	return res, nil
 }
 
-func (t *TimestampTransformer) Transform(_ context.Context, r interfaces.Recorder) error {
+func (t *TimestampTransformer) Transform(_ context.Context, r core.Recorder) error {
 	valAny, err := r.GetRawColumnValueByIdx(t.columnIdx)
 	if err != nil {
 		return fmt.Errorf("scan value: %w", err)

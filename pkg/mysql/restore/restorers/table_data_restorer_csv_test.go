@@ -23,8 +23,8 @@ import (
 	"strings"
 	"testing"
 
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 	"github.com/greenmaskio/greenmask/pkg/common/mocks"
-	"github.com/greenmaskio/greenmask/pkg/common/models"
 	utils2 "github.com/greenmaskio/greenmask/pkg/common/utils"
 	"github.com/greenmaskio/greenmask/pkg/testutils"
 	"github.com/rs/zerolog"
@@ -35,11 +35,11 @@ import (
 
 type dummyTaskMapper struct{}
 
-func (*dummyTaskMapper) SetTaskCompleted(_ models.TaskID) {
+func (*dummyTaskMapper) SetTaskCompleted(_ core.TaskID) {
 	// no-op
 }
 
-func (*dummyTaskMapper) IsTaskCompleted(_ models.TaskID) bool {
+func (*dummyTaskMapper) IsTaskCompleted(_ core.TaskID) bool {
 	return true
 }
 
@@ -115,12 +115,12 @@ func (s *restoreSuite) TestRestorer_RestoreData() {
 	s.Require().NoError(err)
 	defer r.Close()
 
-	table := models.Table{
+	table := core.Table{
 		Schema: "playground",
 		Name:   "users",
 	}
 	rawData := utils2.Must(json.Marshal(table))
-	meta := models.RestorationItem{
+	meta := core.RestorationItem{
 		Filename:         "playground__users.csv.gz",
 		RecordCount:      3,
 		ObjectDefinition: rawData,

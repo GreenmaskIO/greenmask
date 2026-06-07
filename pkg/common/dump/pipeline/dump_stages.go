@@ -1,7 +1,7 @@
 package pipeline
 
 import (
-	commonininterfaces "github.com/greenmaskio/greenmask/pkg/common/interfaces"
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 )
 
 // DumpStages represents the complete database dump planning and execution pipeline.
@@ -33,7 +33,7 @@ type DumpStages struct {
 	// This stage is the only place in the pipeline that knows about DBMS-specific
 	// config layout (e.g. which fields come from CommonDumpOptions vs MysqlDumpConfig).
 	// The pipeline itself never imports DBMS packages.
-	ConnectionConfigurerBuilder commonininterfaces.ConnectionConfigurerBuilder
+	ConnectionConfigurerBuilder core.ConnectionConfigurerBuilder
 
 	// DumpSessionBuilder opens a DBMS-specific runtime session for the dump pipeline.
 	//
@@ -45,7 +45,7 @@ type DumpStages struct {
 	//   - transactional / snapshot-isolated connections
 	//   - protocol-level clients
 	//   - engine-specific runtime handles
-	DumpSessionBuilder commonininterfaces.DumpSessionBuilder
+	DumpSessionBuilder core.DumpSessionBuilder
 
 	// Introspector performs database schema introspection and collects
 	// runtime metadata required for dump planning.
@@ -58,7 +58,7 @@ type DumpStages struct {
 	//   - sequences
 	//   - extensions
 	//   - object ownership
-	Introspector commonininterfaces.IntrospectorV2
+	Introspector core.IntrospectorV2
 
 	// DependencyGraphBuilder constructs the object dependency graph
 	// from introspection results.
@@ -74,9 +74,9 @@ type DumpStages struct {
 	//   - transformation propagation
 	//   - restoration ordering
 	//   - integrity validation
-	DependencyGraphBuilder commonininterfaces.DependencyGraphBuilder
+	DependencyGraphBuilder core.DependencyGraphBuilder
 
-	DumpMetadataLoader commonininterfaces.DumpMetadataLoader
+	DumpMetadataLoader core.DumpMetadataLoader
 
 	// SchemaDriftValidator analyzes differences between previous dump metadata
 	// and current database introspection results.
@@ -89,14 +89,14 @@ type DumpStages struct {
 	//   - transformation invalidation
 	//
 	// The result may later influence derived dump context generation.
-	SchemaDriftValidator commonininterfaces.SchemaDriftValidator
+	SchemaDriftValidator core.SchemaDriftValidator
 
 	// SubsetBuilder generates subset queries and subset dependency metadata
 	// using the dependency graph and configuration rules.
 	//
 	// This stage is responsible for planning partial data extraction
 	// while preserving referential integrity.
-	SubsetBuilder commonininterfaces.SubsetBuilder
+	SubsetBuilder core.SubsetBuilder
 
 	// ConfigEditor updates and enriches the original user configuration
 	// using additional semantic information.
@@ -106,7 +106,7 @@ type DumpStages struct {
 	//   - policy-generated transformations
 	//   - inherited defaults
 	//   - auto-generated include/exclude rules
-	ConfigEditor commonininterfaces.ConfigEditor
+	ConfigEditor core.ConfigEditor
 
 	// ExplicitDumpContextBuilder constructs the initial dump context
 	// directly from explicit user configuration and introspection results.
@@ -116,7 +116,7 @@ type DumpStages struct {
 	//   - explicit dump object specs
 	//   - schema dump specs
 	//   - initial runtime payloads
-	ExplicitDumpContextBuilder commonininterfaces.ExplicitDumpContextBuilder
+	ExplicitDumpContextBuilder core.ExplicitDumpContextBuilder
 
 	// DerivedDumpContextBuilder enriches the dump context using
 	// semantic derivation and dependency analysis.
@@ -129,7 +129,7 @@ type DumpStages struct {
 	//   - semantic inheritance
 	//
 	// This stage produces the final semantic dump context.
-	DerivedDumpContextBuilder commonininterfaces.DerivedDumpContextBuilder
+	DerivedDumpContextBuilder core.DerivedDumpContextBuilder
 
 	// DumpContextSnapshotBuilder converts the final DumpContext into a
 	// serialisable, deterministic snapshot (DumpContextSnapshot).
@@ -144,7 +144,7 @@ type DumpStages struct {
 	// The snapshot is later consumed by DumpContextDiffer to produce a
 	// semantic diff against the previous dump, and is stored inside
 	// Metadata so future runs can compare against it.
-	DumpContextSnapshotBuilder commonininterfaces.DumpContextSnapshotBuilder
+	DumpContextSnapshotBuilder core.DumpContextSnapshotBuilder
 
 	// DumpContextDiffer compares dump contexts and produces
 	// deterministic semantic diffs.
@@ -155,7 +155,7 @@ type DumpStages struct {
 	//   - UI visualization
 	//   - audit history
 	//   - dry-run analysis
-	DumpContextDiffer commonininterfaces.DumpContextDiffer
+	DumpContextDiffer core.DumpContextDiffer
 
 	// DumpContextValidator validates semantic correctness
 	// of the final dump context.
@@ -166,14 +166,14 @@ type DumpStages struct {
 	//   - incompatible transformations
 	//   - missing referenced objects
 	//   - unsupported semantic combinations
-	DumpContextValidator commonininterfaces.DumpContextValidator
+	DumpContextValidator core.DumpContextValidator
 
 	// RestorationContextBuilder builds restoration ordering
 	// and restoration dependency metadata.
 	//
 	// The result is later used during restore planning
 	// and restoration execution.
-	RestorationContextBuilder commonininterfaces.RestorationContextBuilder
+	RestorationContextBuilder core.RestorationContextBuilder
 
 	// DumpPlanAssembler combines all generated runtime artifacts
 	// into a final immutable executable dump plan.
@@ -185,7 +185,7 @@ type DumpStages struct {
 	//   - metadata
 	//   - transformation configuration
 	//   - introspection snapshot
-	DumpPlanAssembler commonininterfaces.DumpPlanAssembler
+	DumpPlanAssembler core.DumpPlanAssembler
 
 	// DumpPlanValidator validates the final executable dump plan.
 	//
@@ -197,7 +197,7 @@ type DumpStages struct {
 	//   - subset integrity violations
 	//   - execution deadlocks
 	//   - unsupported runtime combinations
-	DumpPlanValidator commonininterfaces.DumpPlanValidator
+	DumpPlanValidator core.DumpPlanValidator
 
 	// DumpProcessor executes the final dump plan.
 	//
@@ -208,5 +208,5 @@ type DumpStages struct {
 	//   - performs dumping
 	//   - collects dump metadata
 	//   - produces dump artifacts
-	DumpProcessor commonininterfaces.DumpProcessor
+	DumpProcessor core.DumpProcessor
 }

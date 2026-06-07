@@ -17,15 +17,14 @@ package dump
 import (
 	"context"
 
-	"github.com/greenmaskio/greenmask/pkg/common/interfaces"
-	"github.com/greenmaskio/greenmask/pkg/common/models"
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 )
 
-var _ interfaces.DumpPlanAssembler = (*DumpPlanAssembler)(nil)
+var _ core.DumpPlanAssembler = (*DumpPlanAssembler)(nil)
 
 // DumpPlanAssembler combines runtime artifacts into the executable dump plan.
 type DumpPlanAssembler struct{}
 
-func (s *DumpPlanAssembler) Assemble(ctx context.Context, input models.DumpPlanInput) (models.DumpPlan, error) {
-	return models.DumpPlan{}, errNotImplemented
+func (s *DumpPlanAssembler) Assemble(ctx context.Context, input core.DumpPlanInput) (core.DumpPlan, error) {
+	return core.DumpPlan{}, errNotImplemented
 }

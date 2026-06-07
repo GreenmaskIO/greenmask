@@ -17,16 +17,15 @@ package dump
 import (
 	"context"
 
-	"github.com/greenmaskio/greenmask/pkg/common/interfaces"
-	"github.com/greenmaskio/greenmask/pkg/common/models"
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 )
 
-var _ interfaces.DumpPlanValidator = (*DumpPlanValidator)(nil)
+var _ core.DumpPlanValidator = (*DumpPlanValidator)(nil)
 
 // DumpPlanValidator validates the final executable dump plan.
 // The stub is a no-op pass; validation findings flow through validationcollector.
 type DumpPlanValidator struct{}
 
-func (s *DumpPlanValidator) Validate(ctx context.Context, input models.DumpPlanValidationInput) error {
+func (s *DumpPlanValidator) Validate(ctx context.Context, input core.DumpPlanValidationInput) error {
 	return nil
 }

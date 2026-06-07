@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/greenmaskio/greenmask/pkg/common/models"
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 	"github.com/greenmaskio/greenmask/pkg/config"
 )
 
@@ -25,50 +25,50 @@ const (
 // a live DB introspection, the dependency graph, previous-run metadata (nil on
 // first run), schema drift compared to that metadata, and the resolved subset.
 type DiscoveryStageArtifacts struct {
-	Config           *config.Config                `json:"config"`
-	Introspection    *models.IntrospectionResult   `json:"introspection"`
-	DependencyGraph  *models.DependencyGraphResult `json:"dependency_graph"`
-	PreviousMetadata *models.Metadata              `json:"previous_metadata,omitempty"`
-	SchemaDrift      *models.SchemaDriftResult     `json:"schema_drift,omitempty"`
-	Subset           *models.SubsetResult          `json:"subset,omitempty"`
+	Config           *config.Config              `json:"config"`
+	Introspection    *core.IntrospectionResult   `json:"introspection"`
+	DependencyGraph  *core.DependencyGraphResult `json:"dependency_graph"`
+	PreviousMetadata *core.Metadata              `json:"previous_metadata,omitempty"`
+	SchemaDrift      *core.SchemaDriftResult     `json:"schema_drift,omitempty"`
+	Subset           *core.SubsetResult          `json:"subset,omitempty"`
 }
 
 // ContextStageArtifacts holds the outputs of BuildContext: the config after
 // any drift-driven edits, the explicitly configured DumpContext, and the final
 // derived DumpContext that all subsequent stages consume.
 type ContextStageArtifacts struct {
-	EditedConfig any                 `json:"edited_config,omitempty"`
-	ExplicitCtx  *models.DumpContext `json:"explicit_ctx,omitempty"`
-	FinalCtx     *models.DumpContext `json:"final_ctx,omitempty"`
+	EditedConfig any               `json:"edited_config,omitempty"`
+	ExplicitCtx  *core.DumpContext `json:"explicit_ctx,omitempty"`
+	FinalCtx     *core.DumpContext `json:"final_ctx,omitempty"`
 }
 
 // BuildSnapshotAndDiffArtifacts holds the serialisable snapshot of the current
 // DumpContext and the diff against the previous run's snapshot. Both are
 // required by ValidateContext and BuildPlan.
 type BuildSnapshotAndDiffArtifacts struct {
-	DumpContextSnapshot *models.DumpContextSnapshot `json:"dump_context_snapshot,omitempty"`
-	DumpContextDiff     *models.DumpContextDiff     `json:"dump_context_diff,omitempty"`
+	DumpContextSnapshot *core.DumpContextSnapshot `json:"dump_context_snapshot,omitempty"`
+	DumpContextDiff     *core.DumpContextDiff     `json:"dump_context_diff,omitempty"`
 }
 
 // BuildPlanArtifacts holds the assembled DumpPlan produced by BuildPlan.
 // It is the sole input to Execute.
 type BuildPlanArtifacts struct {
-	Plan *models.DumpPlan `json:"plan,omitempty"`
+	Plan *core.DumpPlan `json:"plan,omitempty"`
 }
 
 //type RuntimeRunArtifacts struct {
 //	Runtime *Runtime `json:"-"`
 //
-//	ExplicitDumpContext *models.DumpContext `json:"-"`
-//	FinalDumpContext    *models.DumpContext `json:"-"`
+//	ExplicitDumpContext *core.DumpContext `json:"-"`
+//	FinalDumpContext    *core.DumpContext `json:"-"`
 //
-//	DumpPlan *models.DumpPlan `json:"-"`
+//	DumpPlan *core.DumpPlan `json:"-"`
 //}
 
 // ExecuteStageArtifacts holds the Metadata written to storage after a
 // successful Execute call.
 type ExecuteStageArtifacts struct {
-	Metadata *models.Metadata `json:"metadata,omitempty"`
+	Metadata *core.Metadata `json:"metadata,omitempty"`
 }
 
 // RunState is the shared mutable ledger that flows through an entire dump

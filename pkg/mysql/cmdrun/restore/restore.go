@@ -21,9 +21,8 @@ import (
 
 	"github.com/rs/zerolog/log"
 
-	"github.com/greenmaskio/greenmask/pkg/common/interfaces"
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 	"github.com/greenmaskio/greenmask/pkg/common/metadata"
-	"github.com/greenmaskio/greenmask/pkg/common/models"
 	"github.com/greenmaskio/greenmask/pkg/common/restore/processor"
 	"github.com/greenmaskio/greenmask/pkg/common/restore/script"
 	"github.com/greenmaskio/greenmask/pkg/common/restore/taskmapper"
@@ -38,8 +37,8 @@ import (
 // Restore it's responsible for initialization and perform the whole
 // dump procedure of mysql instance.
 type Restore struct {
-	dumpID     models.DumpID
-	st         interfaces.Storager
+	dumpID     core.DumpID
+	st         core.Storager
 	vc         *validationcollector.Collector
 	cfg        *config.Config
 	connConfig *mysqlmodels.ConnConfig
@@ -48,13 +47,13 @@ type Restore struct {
 
 func NewRestore(
 	cfg *config.Config,
-	st interfaces.Storager,
-	dumpID models.DumpID,
+	st core.Storager,
+	dumpID core.DumpID,
 	cmd utils.CmdProducer,
 ) *Restore {
 	vc := validationcollector.NewCollectorWithMeta(
-		models.MetaKeyDumpID, dumpID,
-		models.MetaKeyEngine, "mysql",
+		core.MetaKeyDumpID, dumpID,
+		core.MetaKeyEngine, "mysql",
 	)
 	return &Restore{
 		cfg:    cfg,
@@ -82,23 +81,23 @@ func (d *Restore) connect() (*sql.DB, error) {
 	return conn, nil
 }
 
-func (d *Restore) remapDB(meta models.Metadata) (map[string]string, error) {
+func (d *Restore) remapDB(meta core.Metadata) (map[string]string, error) {
 	remap := d.cfg.Restore.Options.RemapDatabase
 	if len(remap) == 0 {
 		return nil, nil
 	}
 	mode := d.cfg.Restore.Options.DatabaseReplaceMode
 	if mode == "" {
-		mode = models.DatabaseReplaceModeStrict
+		mode = core.DatabaseReplaceModeStrict
 	}
 	switch mode {
-	case models.DatabaseReplaceModeStrict:
+	case core.DatabaseReplaceModeStrict:
 		for _, db := range meta.Databases {
 			if _, ok := remap[db]; !ok {
 				return nil, fmt.Errorf("database-replace-mode=strict: database %q has no entry in remap-database", db)
 			}
 		}
-	case models.DatabaseReplaceModeRelaxed:
+	case core.DatabaseReplaceModeRelaxed:
 	default:
 		return nil, fmt.Errorf("unknown database-replace-mode %q", mode)
 	}
@@ -140,7 +139,7 @@ func (d *Restore) Run(ctx context.Context) error {
 		return fmt.Errorf("remapDB: %w", err)
 	}
 
-	var tp interfaces.RestoreTaskProducer
+	var tp core.RestoreTaskProducer
 	opts := taskproducer.RestoreOptions{
 		PrintWarnings:           d.cfg.Restore.MysqlConfig.PrintWarnings,
 		MaxFetchWarnings:        d.cfg.Restore.MysqlConfig.MaxFetchWarnings,

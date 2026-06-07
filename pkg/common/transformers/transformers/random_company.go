@@ -22,8 +22,7 @@ import (
 	"slices"
 	"text/template"
 
-	"github.com/greenmaskio/greenmask/pkg/common/interfaces"
-	"github.com/greenmaskio/greenmask/pkg/common/models"
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 	"github.com/greenmaskio/greenmask/pkg/common/transformers/generators/transformers"
 	"github.com/greenmaskio/greenmask/pkg/common/transformers/parameters"
 	gmtemplate "github.com/greenmaskio/greenmask/pkg/common/transformers/template"
@@ -49,11 +48,11 @@ var RandomCompanyTransformerDefinition = utils.NewTransformerDefinition(
 		SetColumnContainer(
 			parameters.NewColumnContainerProperties().
 				SetColumnProperties(
-					models.NewColumnProperties().
-						SetAllowedColumnTypeClasses(models.TypeClassText),
+					core.NewColumnProperties().
+						SetAllowedColumnTypeClasses(core.TypeClassText),
 				).
 				SetUnmarshaler(
-					func(_ context.Context, _ *parameters.ParameterDefinition, data models.ParamsValue) (
+					func(_ context.Context, _ *parameters.ParameterDefinition, data core.ParamsValue) (
 						[]parameters.ColumnContainer, error,
 					) {
 						var columns []*randomCompanyNameColumn
@@ -102,9 +101,9 @@ type RandomCompanyTransformer struct {
 
 func NewRandomCompanyTransformer(
 	ctx context.Context,
-	tableDriver interfaces.TableDriver,
+	tableDriver core.TableDriver,
 	parameters map[string]parameters.Parameterizer,
-) (interfaces.Transformer, error) {
+) (core.Transformer, error) {
 	columns, affectedColumns, err := getColumnContainerParameter[*randomCompanyNameColumn](
 		ctx, tableDriver, parameters, "columns",
 	)
@@ -163,7 +162,7 @@ func (t *RandomCompanyTransformer) Done(context.Context) error {
 	return nil
 }
 
-func (t *RandomCompanyTransformer) Transform(_ context.Context, r interfaces.Recorder) error {
+func (t *RandomCompanyTransformer) Transform(_ context.Context, r core.Recorder) error {
 	// if we are in hash engine mode, we need to clear buffer before filling it with new data
 	t.originalData = t.originalData[:0]
 	for _, c := range t.columns {
@@ -202,7 +201,7 @@ func (t *RandomCompanyTransformer) Transform(_ context.Context, r interfaces.Rec
 		if err != nil {
 			return fmt.Errorf("execute template for column %s: %w", c.Name, err)
 		}
-		newRawVal := models.NewColumnRawValue(slices.Clone(t.buf.Bytes()), false)
+		newRawVal := core.NewColumnRawValue(slices.Clone(t.buf.Bytes()), false)
 		if err = r.SetRawColumnValueByIdx(c.columnIdx, newRawVal); err != nil {
 			return fmt.Errorf("set new value for column \"%s\": %w", c.Name, err)
 		}
@@ -216,7 +215,7 @@ func (t *RandomCompanyTransformer) Describe() string {
 
 func validateRandomCompanyColumnsAndSetDefault(
 	ctx context.Context,
-	tableDriver interfaces.TableDriver,
+	tableDriver core.TableDriver,
 	columns []*randomCompanyNameColumn,
 	engineMode int,
 ) error {
@@ -230,22 +229,22 @@ func validateRandomCompanyColumnsAndSetDefault(
 		c.columnIdx = column.Idx
 		if c.Name == "" {
 			validationcollector.FromContext(ctx).
-				Add(models.NewValidationWarning().
-					SetSeverity(models.ValidationSeverityError).
+				Add(core.NewValidationWarning().
+					SetSeverity(core.ValidationSeverityError).
 					AddMeta("ParameterName", "columns").
 					AddMeta("ListIdx", idx).
 					SetMsg("name is required"))
-			return models.ErrFatalValidationError
+			return core.ErrFatalValidationError
 		}
 
 		if c.Template == "" {
 			validationcollector.FromContext(ctx).
-				Add(models.NewValidationWarning().
-					SetSeverity(models.ValidationSeverityError).
+				Add(core.NewValidationWarning().
+					SetSeverity(core.ValidationSeverityError).
 					AddMeta("ParameterName", "columns").
 					AddMeta("ListIdx", idx).
 					SetMsg("\"template\" parameters is required: received empty"))
-			return models.ErrFatalValidationError
+			return core.ErrFatalValidationError
 		}
 
 		if c.Template != "" {
@@ -254,13 +253,13 @@ func validateRandomCompanyColumnsAndSetDefault(
 				Parse(c.Template)
 			if err != nil {
 				validationcollector.FromContext(ctx).
-					Add(models.NewValidationWarning().
-						SetSeverity(models.ValidationSeverityError).
+					Add(core.NewValidationWarning().
+						SetSeverity(core.ValidationSeverityError).
 						AddMeta("Error", err.Error()).
 						AddMeta("ParameterName", "columns").
 						AddMeta("ListIdx", idx).
 						SetMsg("error parsing template"))
-				return models.ErrFatalValidationError
+				return core.ErrFatalValidationError
 			}
 			c.tmpl = tmpl
 		}

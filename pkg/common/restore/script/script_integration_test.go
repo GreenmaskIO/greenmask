@@ -22,7 +22,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	commonmodels "github.com/greenmaskio/greenmask/pkg/common/models"
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 	"github.com/greenmaskio/greenmask/pkg/testutils"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
@@ -68,7 +68,7 @@ func (s *scriptIntegrationSuite) TearDownSuite() {
 
 func (s *scriptIntegrationSuite) TestExecuteQuery_Success() {
 	ctx := context.Background()
-	e := NewExecutor(commonmodels.Script{
+	e := NewExecutor(core.Script{
 		Name:  "insert-row",
 		Query: "INSERT INTO script_test (id, value) VALUES (1, 'hello')",
 	})
@@ -84,7 +84,7 @@ func (s *scriptIntegrationSuite) TestExecuteQuery_Success() {
 
 func (s *scriptIntegrationSuite) TestExecuteQuery_InvalidSQL_Error() {
 	ctx := context.Background()
-	e := NewExecutor(commonmodels.Script{Name: "bad", Query: "THIS IS NOT SQL"})
+	e := NewExecutor(core.Script{Name: "bad", Query: "THIS IS NOT SQL"})
 	err := e.executeQuery(ctx, dbTxExec(s.db))
 	s.Require().Error(err)
 	s.Contains(err.Error(), "execute script name='bad'")
@@ -98,7 +98,7 @@ func (s *scriptIntegrationSuite) TestExecuteQueryFile_Success() {
 	path := filepath.Join(dir, "insert.sql")
 	require.NoError(s.T(), os.WriteFile(path, []byte("INSERT INTO script_test (id, value) VALUES (2, 'from-file')"), 0600))
 
-	e := NewExecutor(commonmodels.Script{Name: "file-script", QueryFile: path})
+	e := NewExecutor(core.Script{Name: "file-script", QueryFile: path})
 	err := e.executeQueryFile(ctx, dbTxExec(s.db))
 	s.Require().NoError(err)
 
@@ -111,7 +111,7 @@ func (s *scriptIntegrationSuite) TestExecuteQueryFile_Success() {
 
 func (s *scriptIntegrationSuite) TestExecuteQueryFile_FileNotFound() {
 	ctx := context.Background()
-	e := NewExecutor(commonmodels.Script{Name: "s", QueryFile: "/nonexistent/missing.sql"})
+	e := NewExecutor(core.Script{Name: "s", QueryFile: "/nonexistent/missing.sql"})
 	err := e.executeQueryFile(ctx, dbTxExec(s.db))
 	s.Require().Error(err)
 	s.Contains(err.Error(), "cannot open script file")
@@ -123,7 +123,7 @@ func (s *scriptIntegrationSuite) TestExecuteQueryFile_InvalidSQL_Error() {
 	path := filepath.Join(dir, "bad.sql")
 	require.NoError(s.T(), os.WriteFile(path, []byte("NOT VALID SQL"), 0600))
 
-	e := NewExecutor(commonmodels.Script{Name: "bad-file", QueryFile: path})
+	e := NewExecutor(core.Script{Name: "bad-file", QueryFile: path})
 	err := e.executeQueryFile(ctx, dbTxExec(s.db))
 	s.Require().Error(err)
 	s.Contains(err.Error(), "execute script name='bad-file'")
@@ -134,23 +134,23 @@ func (s *scriptIntegrationSuite) TestExecuteQueryFile_InvalidSQL_Error() {
 func (s *scriptIntegrationSuite) TestScheduler_Exec_OnlyMatchingScriptsRun() {
 	ctx := context.Background()
 
-	scripts := []commonmodels.Script{
+	scripts := []core.Script{
 		{
 			Name:    "skip-wrong-section",
-			Section: commonmodels.DumpSectionPostData,
-			When:    commonmodels.ScriptEventTypeBefore,
+			Section: core.DumpSectionPostData,
+			When:    core.ScriptEventTypeBefore,
 			Query:   "INSERT INTO script_test (id, value) VALUES (10, 'should-not-run')",
 		},
 		{
 			Name:    "run-match",
-			Section: commonmodels.DumpSectionPreData,
-			When:    commonmodels.ScriptEventTypeBefore,
+			Section: core.DumpSectionPreData,
+			When:    core.ScriptEventTypeBefore,
 			Query:   "INSERT INTO script_test (id, value) VALUES (11, 'should-run')",
 		},
 	}
 
 	sched := NewScheduler(scripts)
-	err := sched.Exec(ctx, dbTxExec(s.db), commonmodels.DumpSectionPreData, commonmodels.ScriptEventTypeBefore)
+	err := sched.Exec(ctx, dbTxExec(s.db), core.DumpSectionPreData, core.ScriptEventTypeBefore)
 	s.Require().NoError(err)
 
 	var count int
@@ -166,17 +166,17 @@ func (s *scriptIntegrationSuite) TestScheduler_Exec_OnlyMatchingScriptsRun() {
 func (s *scriptIntegrationSuite) TestScheduler_Exec_ErrorPropagated() {
 	ctx := context.Background()
 
-	scripts := []commonmodels.Script{
+	scripts := []core.Script{
 		{
 			Name:    "fail",
-			Section: commonmodels.DumpSectionData,
-			When:    commonmodels.ScriptEventTypeAfter,
+			Section: core.DumpSectionData,
+			When:    core.ScriptEventTypeAfter,
 			Query:   "INVALID SQL STATEMENT",
 		},
 	}
 
 	sched := NewScheduler(scripts)
-	err := sched.Exec(ctx, dbTxExec(s.db), commonmodels.DumpSectionData, commonmodels.ScriptEventTypeAfter)
+	err := sched.Exec(ctx, dbTxExec(s.db), core.DumpSectionData, core.ScriptEventTypeAfter)
 	s.Require().Error(err)
 	s.Contains(err.Error(), "execute script #0")
 }
@@ -184,23 +184,23 @@ func (s *scriptIntegrationSuite) TestScheduler_Exec_ErrorPropagated() {
 func (s *scriptIntegrationSuite) TestScheduler_Exec_MultipleMatchingScripts() {
 	ctx := context.Background()
 
-	scripts := []commonmodels.Script{
+	scripts := []core.Script{
 		{
 			Name:    "first",
-			Section: commonmodels.DumpSectionPostData,
-			When:    commonmodels.ScriptEventTypeAfter,
+			Section: core.DumpSectionPostData,
+			When:    core.ScriptEventTypeAfter,
 			Query:   "INSERT INTO script_test (id, value) VALUES (20, 'first')",
 		},
 		{
 			Name:    "second",
-			Section: commonmodels.DumpSectionPostData,
-			When:    commonmodels.ScriptEventTypeAfter,
+			Section: core.DumpSectionPostData,
+			When:    core.ScriptEventTypeAfter,
 			Query:   "INSERT INTO script_test (id, value) VALUES (21, 'second')",
 		},
 	}
 
 	sched := NewScheduler(scripts)
-	err := sched.Exec(ctx, dbTxExec(s.db), commonmodels.DumpSectionPostData, commonmodels.ScriptEventTypeAfter)
+	err := sched.Exec(ctx, dbTxExec(s.db), core.DumpSectionPostData, core.ScriptEventTypeAfter)
 	s.Require().NoError(err)
 
 	var count int
@@ -220,7 +220,7 @@ func (s *scriptIntegrationSuite) TestExecutorExec_QueryDispatch() {
 		_, err := s.db.ExecContext(ctx, q)
 		return err
 	})
-	e := NewExecutor(commonmodels.Script{
+	e := NewExecutor(core.Script{
 		Name:  "dispatch-query",
 		Query: "INSERT INTO script_test (id, value) VALUES (30, 'dispatch')",
 	})
@@ -231,7 +231,7 @@ func (s *scriptIntegrationSuite) TestExecutorExec_QueryDispatch() {
 
 func (s *scriptIntegrationSuite) TestExecutorExec_ErrNothingToExecute() {
 	ctx := context.Background()
-	e := NewExecutor(commonmodels.Script{Name: "empty"})
+	e := NewExecutor(core.Script{Name: "empty"})
 	err := e.Exec(ctx, dbTxExec(s.db))
 	s.Require().Error(err)
 	s.True(errors.Is(err, errNothingToExecute))

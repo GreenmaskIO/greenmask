@@ -23,10 +23,9 @@ import (
 	"github.com/rs/zerolog/log"
 	"golang.org/x/sync/errgroup"
 
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 	"github.com/greenmaskio/greenmask/pkg/common/dump/processor"
 	"github.com/greenmaskio/greenmask/pkg/common/heartbeat"
-	"github.com/greenmaskio/greenmask/pkg/common/interfaces"
-	"github.com/greenmaskio/greenmask/pkg/common/models"
 	"github.com/greenmaskio/greenmask/pkg/common/transformers/registry"
 	"github.com/greenmaskio/greenmask/pkg/common/utils"
 	"github.com/greenmaskio/greenmask/pkg/common/validationcollector"
@@ -42,7 +41,7 @@ import (
 type Option func(dump *Dump) error
 
 func WithFilter(
-	filter models.TaskProducerFilter,
+	filter core.TaskProducerFilter,
 ) Option {
 	return func(dump *Dump) error {
 		dump.filter = &filter
@@ -84,9 +83,9 @@ func WithSchemaOnly() Option {
 
 func WithSections(sections []string) Option {
 	return func(dump *Dump) error {
-		dump.sections = make(map[models.DumpSection]struct{}, len(sections))
+		dump.sections = make(map[core.DumpSection]struct{}, len(sections))
 		for _, s := range sections {
-			ss := models.DumpSection(s)
+			ss := core.DumpSection(s)
 			if err := ss.Validate(); err != nil {
 				return fmt.Errorf("validate section %q: %w", s, err)
 			}
@@ -98,12 +97,12 @@ func WithSections(sections []string) Option {
 
 // sectionEnabled reports whether the given section (pre-data, data, post-data) should be dumped.
 // When no explicit sections are configured it falls back to the dataOnly/schemaOnly flags.
-func (d *Dump) sectionEnabled(section models.DumpSection) bool {
+func (d *Dump) sectionEnabled(section core.DumpSection) bool {
 	if len(d.sections) == 0 {
 		switch section {
-		case models.DumpSectionPreData, models.DumpSectionPostData:
+		case core.DumpSectionPreData, core.DumpSectionPostData:
 			return !d.dataOnly
-		case models.DumpSectionData:
+		case core.DumpSectionData:
 			return !d.schemaOnly
 		}
 		return true
@@ -124,7 +123,7 @@ func WithCompression(
 }
 
 func WithDumpID(
-	dumpID models.DumpID,
+	dumpID core.DumpID,
 ) Option {
 	return func(dump *Dump) error {
 		dump.dumpID = dumpID
@@ -149,7 +148,7 @@ func WithTransformedTablesOnly() Option {
 	}
 }
 
-func WithFormat(format models.DumpFormat) Option {
+func WithFormat(format core.DumpFormat) Option {
 	return func(dump *Dump) error {
 		dump.format = format
 		return nil
@@ -157,15 +156,15 @@ func WithFormat(format models.DumpFormat) Option {
 }
 
 func getMySQLDumpFilter(cfg config.Validate) (Option, error) {
-	filters := make([]models.TableFilter, 0, len(cfg.Tables))
+	filters := make([]core.TableFilter, 0, len(cfg.Tables))
 	for i := range cfg.Tables {
-		tf, err := models.NewTableFilterItemFromString(cfg.Tables[i])
+		tf, err := core.NewTableFilterItemFromString(cfg.Tables[i])
 		if err != nil {
 			return nil, fmt.Errorf("create table filter from string %q: %w", cfg.Tables[i], err)
 		}
 		filters = append(filters, tf)
 	}
-	return WithFilter(models.TaskProducerFilter{Tables: filters}), nil
+	return WithFilter(core.TaskProducerFilter{Tables: filters}), nil
 }
 
 func GetMySQLDumpOpts(cfg *config.Config) []Option {
@@ -177,9 +176,9 @@ func GetMySQLDumpOpts(cfg *config.Config) []Option {
 		opts = append(opts, WithSchemaOnly())
 	}
 
-	filter := models.TaskProducerFilter{}
+	filter := core.TaskProducerFilter{}
 	for _, t := range cfg.Dump.Options.ExcludeTableData {
-		tf, err := models.NewTableFilterItemFromString(t)
+		tf, err := core.NewTableFilterItemFromString(t)
 		if err != nil {
 			log.Warn().Err(err).Str("table", t).Msg("invalid table name in exclude-table-data")
 			continue
@@ -197,7 +196,7 @@ func GetMySQLDumpOpts(cfg *config.Config) []Option {
 
 	format := cfg.Dump.MysqlConfig.DumpFormat
 	if format == "" {
-		format = models.DumpFormatInsert
+		format = core.DumpFormatInsert
 	}
 	opts = append(opts, WithFormat(format))
 	opts = append(opts, WithCompression(cfg.Dump.Options.Compress, cfg.Dump.Options.Pgzip))
@@ -230,18 +229,18 @@ func GetMySQLDumpOptsWithValidate(cfg *config.Config) ([]Option, error) {
 // Dump it's responsible for initialization and perform the whole
 // dump procedure of mysql instance.
 type Dump struct {
-	dumpID             models.DumpID
-	introsp            interfaces.Introspector
-	st                 interfaces.Storager
+	dumpID             core.DumpID
+	introsp            core.Introspector
+	st                 core.Storager
 	cfg                *config.Config
 	connConfig         *mysqlmodels.ConnConfig
 	registry           *registry.TransformerRegistry
-	filter             *models.TaskProducerFilter
+	filter             *core.TaskProducerFilter
 	saveOriginal       bool
 	rowsLimit          int64
 	dataOnly           bool
 	schemaOnly         bool
-	sections           map[models.DumpSection]struct{}
+	sections           map[core.DumpSection]struct{}
 	compressionEnabled bool
 	compressionPgzip   bool
 	// transformedTablesOnly - dump only transformed tables. This is used in validate command.
@@ -249,23 +248,23 @@ type Dump struct {
 	synchronizeTx         bool
 	lockTimeout           time.Duration
 	startedAt             time.Time
-	dumpStats             models.DataDumpStat
+	dumpStats             core.DataDumpStat
 	hbw                   *heartbeat.Worker
 	hbwEg                 *errgroup.Group
 	txPool                *pool.ConsistentTxPool
-	format                models.DumpFormat
+	format                core.DumpFormat
 	cmd                   utils.CmdProducer
-	dumpedDatabaseSchema  []models.SchemaDumpStat
+	dumpedDatabaseSchema  []core.SchemaDumpStat
 }
 
 func NewDump(
 	cfg *config.Config,
 	registry *registry.TransformerRegistry,
-	st interfaces.Storager,
+	st core.Storager,
 	cmd utils.CmdProducer,
 	opts ...Option,
 ) (*Dump, error) {
-	dumpID := models.NewDumpID()
+	dumpID := core.NewDumpID()
 	st = storages.SubStorageWithDumpID(st, dumpID)
 	res := &Dump{
 		cfg:      cfg,
@@ -353,8 +352,8 @@ func (d *Dump) StopHBWorker(ctx context.Context, err error) error {
 
 func (d *Dump) Introspect(ctx context.Context) (err error) {
 	ctx = validationcollector.WithMeta(ctx,
-		models.MetaKeyDumpID, d.dumpID,
-		models.MetaKeyEngine, models.DBMSEngineMySQL,
+		core.MetaKeyDumpID, d.dumpID,
+		core.MetaKeyEngine, core.DBMSEngineMySQL,
 	)
 
 	d.introsp, err = introspect.NewIntrospector(&d.cfg.Dump.Options)
@@ -368,14 +367,14 @@ func (d *Dump) Introspect(ctx context.Context) (err error) {
 	return nil
 }
 
-func (d *Dump) IntrospectAndGetTables(ctx context.Context) ([]models.Table, error) {
+func (d *Dump) IntrospectAndGetTables(ctx context.Context) ([]core.Table, error) {
 	if err := d.Introspect(ctx); err != nil {
 		return nil, fmt.Errorf("introspect mysql server: %w", err)
 	}
 	return d.introsp.GetCommonTables(), nil
 }
 
-func (d *Dump) SchemaDump(ctx context.Context) ([]models.SchemaDumpStat, error) {
+func (d *Dump) SchemaDump(ctx context.Context) ([]core.SchemaDumpStat, error) {
 	settings := d.introsp.GetDumpScope()
 	envs, err := d.cfg.Dump.MysqlConfig.Env()
 	if err != nil {
@@ -385,9 +384,9 @@ func (d *Dump) SchemaDump(ctx context.Context) ([]models.SchemaDumpStat, error) 
 	vendorOptions := d.cfg.Dump.MysqlConfig.VendorOptions
 	sd := schemadump.New(d.cmd, d.st, envs, connParams, vendorOptions, settings, d.compressionEnabled, d.compressionPgzip)
 
-	var stats []models.SchemaDumpStat
+	var stats []core.SchemaDumpStat
 
-	if d.sectionEnabled(models.DumpSectionPreData) {
+	if d.sectionEnabled(core.DumpSectionPreData) {
 		preDataStats, err := sd.DumpPreDataSchema(ctx)
 		if err != nil {
 			return nil, fmt.Errorf("dump pre-data schema: %w", err)
@@ -395,7 +394,7 @@ func (d *Dump) SchemaDump(ctx context.Context) ([]models.SchemaDumpStat, error) 
 		stats = append(stats, preDataStats...)
 	}
 
-	if d.sectionEnabled(models.DumpSectionPostData) {
+	if d.sectionEnabled(core.DumpSectionPostData) {
 		postDataStats, err := sd.DumpPostDataSchema(ctx)
 		if err != nil {
 			return nil, fmt.Errorf("dump post-data schema: %w", err)
@@ -465,17 +464,17 @@ func (d *Dump) DataDump(ctx context.Context) (err error) {
 	return nil
 }
 
-func (d *Dump) GetDumpMetadata(completedAt time.Time) (models.Metadata, error) {
-	dataDump := models.NewDataDumpMetadata(
+func (d *Dump) GetDumpMetadata(completedAt time.Time) (core.Metadata, error) {
+	dataDump := core.NewDataDumpMetadata(
 		d.cfg.Dump.Transformation.ToTransformationConfig(),
 		d.dumpStats,
 	)
-	schemaDump := models.NewSchemaDumpMetadata(
+	schemaDump := core.NewSchemaDumpMetadata(
 		d.dumpedDatabaseSchema,
 	)
 
-	meta := models.NewMetadata(
-		models.DBMSEngineMySQL,
+	meta := core.NewMetadata(
+		core.DBMSEngineMySQL,
 		d.startedAt,
 		completedAt,
 		d.cfg.Dump.Description,
@@ -502,8 +501,8 @@ func (d *Dump) WriteMetadata(ctx context.Context) (err error) {
 func (d *Dump) Run(ctx context.Context) (err error) {
 	d.startedAt = time.Now()
 	ctx = validationcollector.WithMeta(ctx,
-		models.MetaKeyDumpID, d.dumpID,
-		models.MetaKeyEngine, models.DBMSEngineMySQL,
+		core.MetaKeyDumpID, d.dumpID,
+		core.MetaKeyEngine, core.DBMSEngineMySQL,
 	)
 
 	if err := d.Init(ctx); err != nil {
@@ -530,7 +529,7 @@ func (d *Dump) Run(ctx context.Context) (err error) {
 		}
 	}()
 
-	if d.sectionEnabled(models.DumpSectionPreData) || d.sectionEnabled(models.DumpSectionPostData) {
+	if d.sectionEnabled(core.DumpSectionPreData) || d.sectionEnabled(core.DumpSectionPostData) {
 		// TODO: You need to implement a wrapper that does not release a lock until
 		//       schema dump is not finished. This requires to achieve consistent
 		//       snapshot for data and schema dump.
@@ -538,7 +537,7 @@ func (d *Dump) Run(ctx context.Context) (err error) {
 			Bool("data_only", d.dataOnly).
 			Bool("schema_only", d.schemaOnly).
 			Msg("dumping schema")
-		var schemaStats []models.SchemaDumpStat
+		var schemaStats []core.SchemaDumpStat
 		if schemaStats, err = d.SchemaDump(ctx); err != nil {
 			return fmt.Errorf("dump schema: %w", err)
 		}
@@ -562,8 +561,8 @@ func (d *Dump) Run(ctx context.Context) (err error) {
 	return nil
 }
 
-func (d *Dump) getKindsTopologicalOrder() map[models.ObjectKind][]models.TaskID {
-	res := make(map[models.ObjectKind][]models.TaskID)
+func (d *Dump) getKindsTopologicalOrder() map[core.ObjectKind][]core.TaskID {
+	res := make(map[core.ObjectKind][]core.TaskID)
 	for _, taskID := range d.dumpStats.RestorationContext.RestorationOrder {
 		stat, ok := d.dumpStats.TaskStats[taskID]
 		if !ok {
@@ -575,18 +574,18 @@ func (d *Dump) getKindsTopologicalOrder() map[models.ObjectKind][]models.TaskID 
 	return res
 }
 
-func (d *Dump) GetDumpID() models.DumpID {
+func (d *Dump) GetDumpID() core.DumpID {
 	return d.dumpID
 }
 
-func (d *Dump) Introspection() []models.Table {
+func (d *Dump) Introspection() []core.Table {
 	if d.introsp == nil {
 		return nil
 	}
 	return d.introsp.GetCommonTables()
 }
 
-func (d *Dump) DumpSample(_ context.Context, _ bool, _ []models.TableFilter) error {
+func (d *Dump) DumpSample(_ context.Context, _ bool, _ []core.TableFilter) error {
 	return nil
 }
 
@@ -594,6 +593,6 @@ func (d *Dump) SchemaDiff(_ context.Context) error {
 	return nil
 }
 
-func (d *Dump) Warnings() []*models.ValidationWarning {
+func (d *Dump) Warnings() []*core.ValidationWarning {
 	return nil
 }

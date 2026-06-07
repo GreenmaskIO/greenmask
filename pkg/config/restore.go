@@ -18,7 +18,7 @@ import (
 	"fmt"
 
 	commonconfig "github.com/greenmaskio/greenmask/pkg/common/config"
-	commonmodels "github.com/greenmaskio/greenmask/pkg/common/models"
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 	mysqlcommonconfig "github.com/greenmaskio/greenmask/pkg/mysql/config"
 )
 
@@ -89,9 +89,9 @@ type CommonRestoreOptions struct {
 	RemapDatabase map[string]string `mapstructure:"remap-database" yaml:"remap-database" json:"remap-database,omitempty"`
 	// DatabaseReplaceMode controls mapping strictness: "strict" (default) requires all databases in the dump
 	// to have a mapping entry; "relaxed" renames only the listed databases and keeps the rest as-is.
-	DatabaseReplaceMode commonmodels.DatabaseReplacementMode `mapstructure:"database-replace-mode" yaml:"database-replace-mode" json:"database-replace-mode,omitempty"`
-	Section             []string                             `mapstructure:"section"               yaml:"section"               json:"section,omitempty"`
-	SSL                 commonconfig.SSLOpts                 `mapstructure:",squash"               json:",squash,omitempty"` //nolint:staticcheck
+	DatabaseReplaceMode core.DatabaseReplacementMode `mapstructure:"database-replace-mode" yaml:"database-replace-mode" json:"database-replace-mode,omitempty"`
+	Section             []string                     `mapstructure:"section"               yaml:"section"               json:"section,omitempty"`
+	SSL                 commonconfig.SSLOpts         `mapstructure:",squash"               json:",squash,omitempty"` //nolint:staticcheck
 }
 
 func (o *CommonRestoreOptions) Validate() error {
@@ -119,7 +119,7 @@ type Restore struct {
 	Options          CommonRestoreOptions           `mapstructure:"options" yaml:"options" json:"options"`
 	MysqlConfig      MysqlRestoreConfig             `mapstructure:"mysql" yaml:"mysql"`
 	PostgresqlConfig PostgresqlRestoreConfig        `mapstructure:"postgresql" yaml:"postgresql"`
-	Scripts          []commonmodels.Script          `mapstructure:"scripts" yaml:"scripts" json:"scripts,omitempty"`
+	Scripts          []core.Script                  `mapstructure:"scripts" yaml:"scripts" json:"scripts,omitempty"`
 	ErrorExclusions  DataRestorationErrorExclusions `mapstructure:"insert_error_exclusions" yaml:"insert_error_exclusions" json:"insert_error_exclusions,omitempty"`
 }
 
@@ -146,7 +146,7 @@ func NewRestore() Restore {
 		},
 		Options: CommonRestoreOptions{
 			RemapDatabase:       make(map[string]string),
-			DatabaseReplaceMode: commonmodels.DatabaseReplaceModeStrict,
+			DatabaseReplaceMode: core.DatabaseReplaceModeStrict,
 		},
 	}
 }

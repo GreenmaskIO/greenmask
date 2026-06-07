@@ -18,8 +18,7 @@ import (
 	"context"
 	"testing"
 
-	commonininterfaces "github.com/greenmaskio/greenmask/pkg/common/interfaces"
-	"github.com/greenmaskio/greenmask/pkg/common/models"
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 	commonutils "github.com/greenmaskio/greenmask/pkg/common/utils"
 	"github.com/greenmaskio/greenmask/pkg/common/validationcollector"
 	mysqldbmsdriver "github.com/greenmaskio/greenmask/pkg/mysql/dbmsdriver"
@@ -31,32 +30,32 @@ func TestRandomBoolTransformer_Transform(t *testing.T) {
 
 	tests := []struct {
 		name             string
-		staticParameters map[string]models.ParamsValue
-		dynamicParameter map[string]models.DynamicParamValue
-		original         []*models.ColumnRawValue
-		validateFn       func(t *testing.T, recorder commonininterfaces.Recorder)
+		staticParameters map[string]core.ParamsValue
+		dynamicParameter map[string]core.DynamicParamValue
+		original         []*core.ColumnRawValue
+		validateFn       func(t *testing.T, recorder core.Recorder)
 		expectedErr      string
-		columns          []models.Column
+		columns          []core.Column
 		isNull           bool
 	}{
 		{
 			name: "common",
-			columns: []models.Column{
+			columns: []core.Column{
 				{
 					Idx:       0,
 					Name:      "data",
 					TypeName:  mysqldbmsdriver.TypeBoolean,
 					TypeOID:   mysqldbmsdriver.VirtualOidBoolean,
-					TypeClass: models.TypeClassBoolean,
+					TypeClass: core.TypeClassBoolean,
 					Length:    0,
 				},
 			},
-			original: []*models.ColumnRawValue{
-				models.NewColumnRawValue([]byte("t"), false)},
-			staticParameters: map[string]models.ParamsValue{
-				"column": models.ParamsValue("data"),
+			original: []*core.ColumnRawValue{
+				core.NewColumnRawValue([]byte("t"), false)},
+			staticParameters: map[string]core.ParamsValue{
+				"column": core.ParamsValue("data"),
 			},
-			validateFn: func(t *testing.T, recorder commonininterfaces.Recorder) {
+			validateFn: func(t *testing.T, recorder core.Recorder) {
 				var value bool
 				isNull, err := recorder.ScanColumnValueByName("data", &value)
 				require.NoError(t, err)
@@ -65,23 +64,23 @@ func TestRandomBoolTransformer_Transform(t *testing.T) {
 		},
 		{
 			name: "keep_null false and NULL seq",
-			columns: []models.Column{
+			columns: []core.Column{
 				{
 					Idx:       0,
 					Name:      "data",
 					TypeName:  mysqldbmsdriver.TypeBoolean,
 					TypeOID:   mysqldbmsdriver.VirtualOidBoolean,
-					TypeClass: models.TypeClassBoolean,
+					TypeClass: core.TypeClassBoolean,
 					Length:    0,
 				},
 			},
-			original: []*models.ColumnRawValue{
-				models.NewColumnRawValue(nil, true)},
-			staticParameters: map[string]models.ParamsValue{
-				"column":    models.ParamsValue("data"),
-				"keep_null": models.ParamsValue("false"),
+			original: []*core.ColumnRawValue{
+				core.NewColumnRawValue(nil, true)},
+			staticParameters: map[string]core.ParamsValue{
+				"column":    core.ParamsValue("data"),
+				"keep_null": core.ParamsValue("false"),
 			},
-			validateFn: func(t *testing.T, recorder commonininterfaces.Recorder) {
+			validateFn: func(t *testing.T, recorder core.Recorder) {
 				var value bool
 				isNull, err := recorder.ScanColumnValueByName("data", &value)
 				require.NoError(t, err)
@@ -90,23 +89,23 @@ func TestRandomBoolTransformer_Transform(t *testing.T) {
 		},
 		{
 			name: "keep_null true and NULL seq",
-			columns: []models.Column{
+			columns: []core.Column{
 				{
 					Idx:       0,
 					Name:      "data",
 					TypeName:  mysqldbmsdriver.TypeBoolean,
 					TypeOID:   mysqldbmsdriver.VirtualOidBoolean,
-					TypeClass: models.TypeClassBoolean,
+					TypeClass: core.TypeClassBoolean,
 					Length:    0,
 				},
 			},
-			original: []*models.ColumnRawValue{
-				models.NewColumnRawValue(nil, true)},
-			staticParameters: map[string]models.ParamsValue{
-				"column":    models.ParamsValue("data"),
-				"keep_null": models.ParamsValue("true"),
+			original: []*core.ColumnRawValue{
+				core.NewColumnRawValue(nil, true)},
+			staticParameters: map[string]core.ParamsValue{
+				"column":    core.ParamsValue("data"),
+				"keep_null": core.ParamsValue("true"),
 			},
-			validateFn: func(t *testing.T, recorder commonininterfaces.Recorder) {
+			validateFn: func(t *testing.T, recorder core.Recorder) {
 				var value bool
 				isNull, err := recorder.ScanColumnValueByName("data", &value)
 				require.NoError(t, err)

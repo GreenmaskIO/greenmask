@@ -28,9 +28,8 @@ import (
 	"github.com/rs/zerolog/log"
 	gostr "github.com/xhit/go-str2duration/v2"
 
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 	"github.com/greenmaskio/greenmask/pkg/common/heartbeat"
-	"github.com/greenmaskio/greenmask/pkg/common/interfaces"
-	"github.com/greenmaskio/greenmask/pkg/common/models"
 )
 
 const metadataFileName = "metadata.json"
@@ -63,13 +62,13 @@ type storageResponse struct {
 
 // Deleter executes targeted delete operations against dump storage.
 type Deleter struct {
-	st                interfaces.Storager
+	st                core.Storager
 	heartbeatInterval time.Duration
 }
 
 // New returns a Deleter backed by the given storage root. heartbeatInterval
 // is the stale-timeout forwarded to the heartbeat reader.
-func New(st interfaces.Storager, heartbeatInterval time.Duration) *Deleter {
+func New(st core.Storager, heartbeatInterval time.Duration) *Deleter {
 	return &Deleter{st: st, heartbeatInterval: heartbeatInterval}
 }
 
@@ -80,10 +79,10 @@ func (d *Deleter) ByDumpID(ctx context.Context, dumpID string, dryRun bool) erro
 	if err != nil {
 		return fmt.Errorf("list storage directory: %w", err)
 	}
-	if !slices.ContainsFunc(dirs, func(s interfaces.Storager) bool {
+	if !slices.ContainsFunc(dirs, func(s core.Storager) bool {
 		return s.Dirname() == dumpID
 	}) {
-		return fmt.Errorf("dump with id %q is not found: %w", dumpID, models.ErrFatalError)
+		return fmt.Errorf("dump with id %q is not found: %w", dumpID, core.ErrFatalError)
 	}
 	e := log.Ctx(ctx).Info().Str("DumpID", dumpID)
 	if dryRun {
@@ -244,7 +243,7 @@ func (d *Deleter) getSortedDumps(ctx context.Context) (*storageResponse, error) 
 // readDumpInfo reads heartbeat and metadata for a single dump directory.
 // When heartbeat says "done" but metadata.json is missing, the dump is
 // treated as failed (consistent with the list-dumps behaviour).
-func (d *Deleter) readDumpInfo(ctx context.Context, backup interfaces.Storager) (*DumpInfo, error) {
+func (d *Deleter) readDumpInfo(ctx context.Context, backup core.Storager) (*DumpInfo, error) {
 	hbStatus, err := heartbeat.NewReader(backup).SetStaleTimeout(d.heartbeatInterval).Read(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("read heartbeat: %w", err)
@@ -258,7 +257,7 @@ func (d *Deleter) readDumpInfo(ctx context.Context, backup interfaces.Storager) 
 	}
 	md, err := readMetadata(ctx, backup)
 	if err != nil {
-		if errors.Is(err, models.ErrFileNotFound) {
+		if errors.Is(err, core.ErrFileNotFound) {
 			info.Status = DumpStatusFailed
 			return info, nil
 		}
@@ -269,19 +268,19 @@ func (d *Deleter) readDumpInfo(ctx context.Context, backup interfaces.Storager) 
 	return info, nil
 }
 
-func readMetadata(ctx context.Context, st interfaces.Storager) (models.Metadata, error) {
+func readMetadata(ctx context.Context, st core.Storager) (core.Metadata, error) {
 	r, err := st.GetObject(ctx, metadataFileName)
 	if err != nil {
-		return models.Metadata{}, err
+		return core.Metadata{}, err
 	}
 	defer func() {
 		if err := r.Close(); err != nil {
 			log.Ctx(ctx).Warn().Err(err).Msg("close metadata file")
 		}
 	}()
-	var md models.Metadata
+	var md core.Metadata
 	if err := json.NewDecoder(r).Decode(&md); err != nil {
-		return models.Metadata{}, fmt.Errorf("decode metadata: %w", err)
+		return core.Metadata{}, fmt.Errorf("decode metadata: %w", err)
 	}
 	return md, nil
 }

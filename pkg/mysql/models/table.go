@@ -17,7 +17,7 @@ package models
 import (
 	"fmt"
 
-	commonmodels "github.com/greenmaskio/greenmask/pkg/common/models"
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 )
 
 type Table struct {
@@ -27,15 +27,15 @@ type Table struct {
 	Columns        []Column
 	Size           *int64
 	PrimaryKey     []string
-	References     []commonmodels.Reference
+	References     []core.Reference
 	NeedDumpSchema bool
 	NeedDumpData   bool
 }
 
-func (t *Table) ToCommonTable() commonmodels.Table {
-	columns := make([]commonmodels.Column, len(t.Columns))
+func (t *Table) ToCommonTable() core.Table {
+	columns := make([]core.Column, len(t.Columns))
 	for i, col := range t.Columns {
-		columns[i] = commonmodels.NewColumn(
+		columns[i] = core.NewColumn(
 			i,
 			col.Name,
 			col.TypeName,
@@ -44,7 +44,7 @@ func (t *Table) ToCommonTable() commonmodels.Table {
 			col.TypeClass,
 		)
 	}
-	return commonmodels.Table{
+	return core.Table{
 		ID:             t.ID,
 		Schema:         t.Schema,
 		Name:           t.Name,
@@ -64,7 +64,7 @@ func (t *Table) SetPrimaryKey(pk []string) {
 	t.PrimaryKey = pk
 }
 
-func (t *Table) SetReferences(refs []commonmodels.Reference) {
+func (t *Table) SetReferences(refs []core.Reference) {
 	t.References = refs
 }
 

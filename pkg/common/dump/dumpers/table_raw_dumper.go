@@ -22,26 +22,25 @@ import (
 	"maps"
 	"time"
 
-	commonininterfaces "github.com/greenmaskio/greenmask/pkg/common/interfaces"
-	"github.com/greenmaskio/greenmask/pkg/common/models"
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 	"github.com/rs/zerolog/log"
 )
 
 const dumperTypeTableRawDumper = "table_raw_dumper"
 
 type TableRawDumper struct {
-	ID               models.TaskID
-	dataStreamReader commonininterfaces.RowStreamReader
-	dataStreamWriter commonininterfaces.RowStreamWriter
+	ID               core.TaskID
+	dataStreamReader core.RowStreamReader
+	dataStreamWriter core.RowStreamWriter
 	lineNum          int64
-	table            *models.Table
+	table            *core.Table
 }
 
 func NewTableRawDumper(
-	id models.TaskID,
-	dataStreamReader commonininterfaces.RowStreamReader,
-	dataStreamWriter commonininterfaces.RowStreamWriter,
-	table *models.Table,
+	id core.TaskID,
+	dataStreamReader core.RowStreamReader,
+	dataStreamWriter core.RowStreamWriter,
+	table *core.Table,
 ) *TableRawDumper {
 	return &TableRawDumper{
 		ID:               id,
@@ -52,28 +51,28 @@ func NewTableRawDumper(
 	}
 }
 
-func (t *TableRawDumper) Dump(ctx context.Context) (models.ObjectDumpStat, error) {
+func (t *TableRawDumper) Dump(ctx context.Context) (core.ObjectDumpStat, error) {
 	startedAt := time.Now()
 
 	// Stream records and transform them one by one.
 	if err := t.stream(ctx); err != nil {
-		return models.ObjectDumpStat{}, models.NewDumpError(
+		return core.ObjectDumpStat{}, core.NewDumpError(
 			t.lineNum, fmt.Errorf("stream data: %w", err),
 		)
 	}
 
 	objectDefinition, err := json.Marshal(*t.table)
 	if err != nil {
-		return models.ObjectDumpStat{}, fmt.Errorf("marshalling table definition: %w", err)
+		return core.ObjectDumpStat{}, fmt.Errorf("marshalling table definition: %w", err)
 	}
 
-	return models.NewDumpStat(
+	return core.NewDumpStat(
 		t.ID,
 		t.dataStreamWriter.Stat(),
 		time.Since(startedAt),
 		dumperTypeTableRawDumper,
 		t.lineNum-1,
-		models.DBMSEngineMySQL,
+		core.DBMSEngineMySQL,
 		objectDefinition,
 	), nil
 }
@@ -83,7 +82,7 @@ func (t *TableRawDumper) streamRecords(ctx context.Context) error {
 		t.lineNum++
 		row, err := t.dataStreamReader.ReadRow(ctx)
 		if err != nil {
-			if errors.Is(err, models.ErrEndOfStream) {
+			if errors.Is(err, core.ErrEndOfStream) {
 				return nil
 			}
 			return fmt.Errorf("read row from stream: %w", err)
@@ -156,7 +155,7 @@ func (t *TableRawDumper) Meta() map[string]any {
 	meta := t.dataStreamReader.DebugInfo()
 	uniqueDumpTaskID := getUniqueDumpTaskID(dumperTypeTableDumper, meta)
 	meta = maps.Clone(meta)
-	meta[models.MetaKeyUniqueDumpTaskID] = uniqueDumpTaskID
+	meta[core.MetaKeyUniqueDumpTaskID] = uniqueDumpTaskID
 	return meta
 }
 

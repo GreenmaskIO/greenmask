@@ -18,8 +18,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/greenmaskio/greenmask/pkg/common/interfaces"
-	"github.com/greenmaskio/greenmask/pkg/common/models"
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 	"github.com/greenmaskio/greenmask/pkg/common/transformers/parameters"
 	"github.com/greenmaskio/greenmask/pkg/common/transformers/utils"
 	"github.com/greenmaskio/greenmask/pkg/common/validationcollector"
@@ -42,7 +41,7 @@ var DictTransformerDefinition = utils.NewTransformerDefinition(
 	parameters.MustNewParameterDefinition(
 		"column",
 		"column name",
-	).SetIsColumn(models.NewColumnProperties().
+	).SetIsColumn(core.NewColumnProperties().
 		SetAffected(true),
 	).SetRequired(true),
 	parameters.MustNewParameterDefinition(
@@ -57,7 +56,7 @@ var DictTransformerDefinition = utils.NewTransformerDefinition(
 		"fail_not_matched",
 		`fail if value is not matched with dict otherwise keep value`,
 	).SetRequired(false).
-		SetDefaultValue(models.ParamsValue("true")),
+		SetDefaultValue(core.ParamsValue("true")),
 
 	// validate parameter definition
 	defaultValidateParameterDefinition,
@@ -66,15 +65,15 @@ var DictTransformerDefinition = utils.NewTransformerDefinition(
 type DictTransformer struct {
 	columnName      string
 	columnIdx       int
-	dict            map[string]*models.ColumnRawValue
-	defaultValue    *models.ColumnRawValue
+	dict            map[string]*core.ColumnRawValue
+	defaultValue    *core.ColumnRawValue
 	failNotMatched  bool
 	validate        bool
 	affectedColumns map[int]string
 }
 
 // dictValidateValue - validate value via table driver decode procedure.
-func dictValidateValue(data []byte, tableDriver interfaces.TableDriver, columnIdx int) error {
+func dictValidateValue(data []byte, tableDriver core.TableDriver, columnIdx int) error {
 	_, err := tableDriver.DecodeValueByColumnIdx(columnIdx, data)
 	if err != nil {
 		return fmt.Errorf(`"unable to decode value: %w"`, err)
@@ -85,7 +84,7 @@ func dictValidateValue(data []byte, tableDriver interfaces.TableDriver, columnId
 // validateKeyAndValue - validate key and value if they are not NULL sequence.
 func validateKeyAndValue(
 	ctx context.Context,
-	tableDriver interfaces.TableDriver,
+	tableDriver core.TableDriver,
 	columnIdx int,
 	key string,
 	value string,
@@ -93,8 +92,8 @@ func validateKeyAndValue(
 	if key != defaultNullSeq {
 		if err := dictValidateValue([]byte(key), tableDriver, columnIdx); err != nil {
 			validationcollector.FromContext(ctx).
-				Add(models.NewValidationWarning().
-					SetSeverity(models.ValidationSeverityError).
+				Add(core.NewValidationWarning().
+					SetSeverity(core.ValidationSeverityError).
 					AddMeta("KeyValue", key).
 					AddMeta("Error", err.Error()).
 					AddMeta("ParameterName", "values").
@@ -106,8 +105,8 @@ func validateKeyAndValue(
 	if string(value) != defaultNullSeq {
 		if err := dictValidateValue([]byte(value), tableDriver, columnIdx); err != nil {
 			validationcollector.FromContext(ctx).
-				Add(models.NewValidationWarning().
-					SetSeverity(models.ValidationSeverityError).
+				Add(core.NewValidationWarning().
+					SetSeverity(core.ValidationSeverityError).
 					AddMeta("ValueValue", value).
 					AddMeta("ParameterName", "values").
 					AddMeta("Error", err.Error()).
@@ -121,7 +120,7 @@ func validateKeyAndValue(
 // If not set then nil is returned.
 func geDefaultParameterValue(
 	parameter parameters.Parameterizer,
-) (res *models.ColumnRawValue, _ error) {
+) (res *core.ColumnRawValue, _ error) {
 	isEmpty, err := parameter.IsEmpty()
 	if err != nil {
 		return nil, fmt.Errorf("error checking is parameter \"default\" empty: %w", err)
@@ -135,18 +134,18 @@ func geDefaultParameterValue(
 		return nil, fmt.Errorf(`unable to scan "default" param: %w`, err)
 	}
 	if string(rawDefaultValue) == defaultNullSeq {
-		res = models.NewColumnRawValue(nil, true)
+		res = core.NewColumnRawValue(nil, true)
 	} else {
-		res = models.NewColumnRawValue(rawDefaultValue, false)
+		res = core.NewColumnRawValue(rawDefaultValue, false)
 	}
 	return res, nil
 }
 
 func validateDefaultValue(
 	ctx context.Context,
-	tableDriver interfaces.TableDriver,
+	tableDriver core.TableDriver,
 	columnIdx int,
-	value *models.ColumnRawValue,
+	value *core.ColumnRawValue,
 ) {
 	if value == nil {
 		return
@@ -156,8 +155,8 @@ func validateDefaultValue(
 	}
 	if err := dictValidateValue(value.Data, tableDriver, columnIdx); err != nil {
 		validationcollector.FromContext(ctx).
-			Add(models.NewValidationWarning().
-				SetSeverity(models.ValidationSeverityError).
+			Add(core.NewValidationWarning().
+				SetSeverity(core.ValidationSeverityError).
 				AddMeta("ParameterValue", string(value.Data)).
 				AddMeta("ParameterName", "default").
 				AddMeta("Error", err.Error()).
@@ -167,9 +166,9 @@ func validateDefaultValue(
 
 func NewDictTransformer(
 	ctx context.Context,
-	tableDriver interfaces.TableDriver,
+	tableDriver core.TableDriver,
 	parameters map[string]parameters.Parameterizer,
-) (interfaces.Transformer, error) {
+) (core.Transformer, error) {
 	columnName, column, err := getColumnParameterValue(ctx, tableDriver, parameters)
 	if err != nil {
 		return nil, err
@@ -183,15 +182,15 @@ func NewDictTransformer(
 		return nil, err
 	}
 
-	dict := make(map[string]*models.ColumnRawValue, len(values))
+	dict := make(map[string]*core.ColumnRawValue, len(values))
 	for key, value := range values {
 		if validate {
 			validateKeyAndValue(ctx, tableDriver, column.Idx, key, value)
 		}
 
-		dict[key] = models.NewColumnRawValue(nil, true)
+		dict[key] = core.NewColumnRawValue(nil, true)
 		if string(value) != defaultNullSeq {
-			dict[key] = models.NewColumnRawValue([]byte(value), false)
+			dict[key] = core.NewColumnRawValue([]byte(value), false)
 		}
 	}
 
@@ -233,15 +232,15 @@ func (t *DictTransformer) Done(context.Context) error {
 	return nil
 }
 
-func (t *DictTransformer) Transform(_ context.Context, r interfaces.Recorder) error {
-	var val *models.ColumnRawValue
+func (t *DictTransformer) Transform(_ context.Context, r core.Recorder) error {
+	var val *core.ColumnRawValue
 	var err error
 	val, err = r.GetRawColumnValueByIdx(t.columnIdx)
 	if err != nil {
 		return fmt.Errorf("unable to scan attribute value: %w", err)
 	}
 
-	var newVal *models.ColumnRawValue
+	var newVal *core.ColumnRawValue
 	var isSet bool
 	if val.IsNull {
 		newVal, isSet = t.dict[defaultNullSeq]

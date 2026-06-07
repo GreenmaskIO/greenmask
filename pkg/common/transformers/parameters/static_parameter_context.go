@@ -17,7 +17,7 @@ package parameters
 import (
 	"fmt"
 
-	commonininterfaces "github.com/greenmaskio/greenmask/pkg/common/interfaces"
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 	"github.com/greenmaskio/greenmask/pkg/common/transformers/template"
 )
 
@@ -30,7 +30,7 @@ type StaticParameterContext struct {
 	linkedColumnName string
 }
 
-func NewStaticParameterContext(td commonininterfaces.TableDriver, linkedColumnName string) *StaticParameterContext {
+func NewStaticParameterContext(td core.TableDriver, linkedColumnName string) *StaticParameterContext {
 	return &StaticParameterContext{
 		TableDriverContext: template.NewTableDriverContext(td),
 		linkedColumnName:   linkedColumnName,

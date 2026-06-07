@@ -23,7 +23,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	commonmodels "github.com/greenmaskio/greenmask/pkg/common/models"
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 )
 
 func TestCommonRestoreOptions_Validate(t *testing.T) {
@@ -39,11 +39,11 @@ func TestCommonRestoreOptions_Validate(t *testing.T) {
 		},
 		{
 			name: "strict mode is valid",
-			opts: CommonRestoreOptions{DatabaseReplaceMode: commonmodels.DatabaseReplaceModeStrict},
+			opts: CommonRestoreOptions{DatabaseReplaceMode: core.DatabaseReplaceModeStrict},
 		},
 		{
 			name: "relaxed mode is valid",
-			opts: CommonRestoreOptions{DatabaseReplaceMode: commonmodels.DatabaseReplaceModeRelaxed},
+			opts: CommonRestoreOptions{DatabaseReplaceMode: core.DatabaseReplaceModeRelaxed},
 		},
 		{
 			name:        "unknown mode is invalid",
@@ -80,7 +80,7 @@ func TestCommonRestoreOptions_RemapDatabase_ViaViper(t *testing.T) {
 		name      string
 		yaml      string
 		wantRemap map[string]string
-		wantMode  commonmodels.DatabaseReplacementMode
+		wantMode  core.DatabaseReplacementMode
 	}{
 		{
 			name: "remap-database with relaxed mode",
@@ -92,7 +92,7 @@ restore:
     database-replace-mode: relaxed
 `,
 			wantRemap: map[string]string{"mydb": "targetdb"},
-			wantMode:  commonmodels.DatabaseReplaceModeRelaxed,
+			wantMode:  core.DatabaseReplaceModeRelaxed,
 		},
 		{
 			name: "remap-database without explicit mode",
@@ -116,7 +116,7 @@ restore:
     database-replace-mode: strict
 `,
 			wantRemap: map[string]string{"db1": "tgt1", "db2": "tgt2"},
-			wantMode:  commonmodels.DatabaseReplaceModeStrict,
+			wantMode:  core.DatabaseReplaceModeStrict,
 		},
 		{
 			name:      "no remap config",

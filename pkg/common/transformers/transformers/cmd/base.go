@@ -27,8 +27,7 @@ import (
 
 	"github.com/rs/zerolog/log"
 
-	"github.com/greenmaskio/greenmask/pkg/common/interfaces"
-	commonmodels "github.com/greenmaskio/greenmask/pkg/common/models"
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 	"github.com/greenmaskio/greenmask/pkg/common/utils"
 )
 
@@ -38,7 +37,7 @@ type TransformerBase struct {
 	ExpectedExitCode int
 	TableName        string
 	TableSchema      string
-	//Driver                   interfaces.TableDriver
+	//Driver                   core.TableDriver
 	Proto                    CMDProto
 	ProcessedLines           int
 	RowTransformationTimeout time.Duration
@@ -58,7 +57,7 @@ func NewTransformerBase(
 	name string,
 	expectedExitCode int,
 	rowTransformationTimeout time.Duration,
-	table *commonmodels.Table,
+	table *core.Table,
 	proto CMDProto,
 ) *TransformerBase {
 	return &TransformerBase{
@@ -90,7 +89,7 @@ func (t *TransformerBase) Done(ctx context.Context) error {
 	return nil
 }
 
-func (t *TransformerBase) Transform(ctx context.Context, r interfaces.Recorder) error {
+func (t *TransformerBase) Transform(ctx context.Context, r core.Recorder) error {
 	t.ProcessedLines++
 	// It might be too expensive to have a timeout for each row transformation,
 	// but we need to protect from hanging transformers.

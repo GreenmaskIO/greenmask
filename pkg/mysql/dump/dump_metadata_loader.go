@@ -17,17 +17,16 @@ package dump
 import (
 	"context"
 
-	"github.com/greenmaskio/greenmask/pkg/common/interfaces"
-	"github.com/greenmaskio/greenmask/pkg/common/models"
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 )
 
-var _ interfaces.DumpMetadataLoader = (*DumpMetadataLoader)(nil)
+var _ core.DumpMetadataLoader = (*DumpMetadataLoader)(nil)
 
 // DumpMetadataLoader loads the previous dump metadata for diffing. Until storage
 // wiring exists it reports that no previous metadata is present, which the
 // pipeline handles gracefully as a first-run dump.
 type DumpMetadataLoader struct{}
 
-func (s *DumpMetadataLoader) LoadPrevious(ctx context.Context, input models.PreviousMetadataLoadInput) (*models.Metadata, error) {
-	return nil, models.ErrPreviousMetadataNotFound
+func (s *DumpMetadataLoader) LoadPrevious(ctx context.Context, input core.PreviousMetadataLoadInput) (*core.Metadata, error) {
+	return nil, core.ErrPreviousMetadataNotFound
 }

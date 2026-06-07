@@ -18,9 +18,8 @@ import (
 	"context"
 	"testing"
 
-	commonininterfaces "github.com/greenmaskio/greenmask/pkg/common/interfaces"
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 	mocks2 "github.com/greenmaskio/greenmask/pkg/common/mocks"
-	"github.com/greenmaskio/greenmask/pkg/common/models"
 	parameters2 "github.com/greenmaskio/greenmask/pkg/common/transformers/parameters"
 	"github.com/greenmaskio/greenmask/pkg/common/transformers/registry"
 	utils2 "github.com/greenmaskio/greenmask/pkg/common/transformers/utils"
@@ -31,11 +30,11 @@ import (
 )
 
 func TestProducer_Produce(t *testing.T) {
-	tables := []models.Table{
+	tables := []core.Table{
 		{
 			Schema: "public",
 			Name:   "test",
-			Columns: []models.Column{
+			Columns: []core.Column{
 				{
 					Idx:      0,
 					Name:     "id",
@@ -76,9 +75,9 @@ func TestProducer_Produce(t *testing.T) {
 		tableDriverMock.On("Table").Return(&tables[0])
 		newDriverFuncMock := func(
 			ctx context.Context,
-			table models.Table,
+			table core.Table,
 			columnsTypeOverride map[string]string,
-		) (commonininterfaces.TableDriver, error) {
+		) (core.TableDriver, error) {
 			return tableDriverMock, nil
 		}
 
@@ -120,9 +119,9 @@ func TestProducer_Produce(t *testing.T) {
 		tableDriverMock.On("Table").Return(&tables[0])
 		newDriverFuncMock := func(
 			ctx context.Context,
-			table models.Table,
+			table core.Table,
 			columnsTypeOverride map[string]string,
-		) (commonininterfaces.TableDriver, error) {
+		) (core.TableDriver, error) {
 			return tableDriverMock, nil
 		}
 
@@ -150,13 +149,13 @@ func TestProducer_Produce(t *testing.T) {
 		tableDriverMock.On("Table").Return(&tables[0])
 		newDriverFuncMock := func(
 			ctx context.Context,
-			table models.Table,
+			table core.Table,
 			columnsTypeOverride map[string]string,
-		) (commonininterfaces.TableDriver, error) {
+		) (core.TableDriver, error) {
 			return tableDriverMock, nil
 		}
 
-		tableConfigs := []models.TableConfig{
+		tableConfigs := []core.TableConfig{
 			{
 				Schema: "public",
 				Name:   "test",
@@ -188,13 +187,13 @@ func TestProducer_Produce(t *testing.T) {
 		tableDriverMock.On("Table").Return(&tables[0])
 		newDriverFuncMock := func(
 			ctx context.Context,
-			table models.Table,
+			table core.Table,
 			columnsTypeOverride map[string]string,
-		) (commonininterfaces.TableDriver, error) {
+		) (core.TableDriver, error) {
 			return tableDriverMock, nil
 		}
 
-		tableConfigs := []models.TableConfig{
+		tableConfigs := []core.TableConfig{
 			{
 				Schema: "public",
 				Name:   "test",
@@ -224,13 +223,13 @@ func TestProducer_Produce(t *testing.T) {
 		tableDriverMock.On("Table").Return(&tables[0])
 		newDriverFuncMock := func(
 			ctx context.Context,
-			table models.Table,
+			table core.Table,
 			columnsTypeOverride map[string]string,
-		) (commonininterfaces.TableDriver, error) {
+		) (core.TableDriver, error) {
 			return tableDriverMock, nil
 		}
 
-		tableConfigs := []models.TableConfig{
+		tableConfigs := []core.TableConfig{
 			{
 				Schema: "public",
 				Name:   "test",
@@ -262,7 +261,7 @@ func TestProducer_Produce(t *testing.T) {
 		tableDriverMock.On("Table").Return(&tables[0])
 		tableDriverMock.On("GetColumnByName", "id").
 			Return(
-				&models.Column{
+				&core.Column{
 					Idx:      1,
 					Name:     "id",
 					TypeName: "int",
@@ -272,15 +271,15 @@ func TestProducer_Produce(t *testing.T) {
 			)
 		newDriverFuncMock := func(
 			ctx context.Context,
-			table models.Table,
+			table core.Table,
 			columnsTypeOverride map[string]string,
-		) (commonininterfaces.TableDriver, error) {
+		) (core.TableDriver, error) {
 			return tableDriverMock, nil
 		}
 
 		transformerMock, newFunc := mocks2.NewTransformerMock(func(
 			ctx context.Context,
-			tableDriver commonininterfaces.TableDriver,
+			tableDriver core.TableDriver,
 			parameters map[string]parameters2.Parameterizer,
 		) error {
 			assert.Equal(t, tableDriverMock, tableDriver)
@@ -296,21 +295,21 @@ func TestProducer_Produce(t *testing.T) {
 				newFunc,
 				parameters2.MustNewParameterDefinition("column", "test desc").
 					SetIsColumn(
-						models.NewColumnProperties().
+						core.NewColumnProperties().
 							SetAllowedColumnTypes("int"),
 					),
 			),
 		)
 
-		tableConfigs := []models.TableConfig{
+		tableConfigs := []core.TableConfig{
 			{
 				Schema: "public",
 				Name:   "test",
-				Transformers: []models.TransformerConfig{
+				Transformers: []core.TransformerConfig{
 					{
 						Name: "TestTransformer",
-						StaticParams: map[string]models.ParamsValue{
-							"column": models.ParamsValue("id"),
+						StaticParams: map[string]core.ParamsValue{
+							"column": core.ParamsValue("id"),
 						},
 						When: `id == 1`,
 					},
@@ -343,7 +342,7 @@ func TestProducer_Produce(t *testing.T) {
 		tableDriverMock.On("Table").Return(&tables[0])
 		tableDriverMock.On("GetColumnByName", "id").
 			Return(
-				&models.Column{
+				&core.Column{
 					Idx:      1,
 					Name:     "id",
 					TypeName: "int",
@@ -353,15 +352,15 @@ func TestProducer_Produce(t *testing.T) {
 			)
 		newDriverFuncMock := func(
 			ctx context.Context,
-			table models.Table,
+			table core.Table,
 			columnsTypeOverride map[string]string,
-		) (commonininterfaces.TableDriver, error) {
+		) (core.TableDriver, error) {
 			return tableDriverMock, nil
 		}
 
 		transformerMock, newFunc := mocks2.NewTransformerMock(func(
 			ctx context.Context,
-			tableDriver commonininterfaces.TableDriver,
+			tableDriver core.TableDriver,
 			parameters map[string]parameters2.Parameterizer,
 		) error {
 			assert.Equal(t, tableDriverMock, tableDriver)
@@ -377,21 +376,21 @@ func TestProducer_Produce(t *testing.T) {
 				newFunc,
 				parameters2.MustNewParameterDefinition("column", "test desc").
 					SetIsColumn(
-						models.NewColumnProperties().
+						core.NewColumnProperties().
 							SetAllowedColumnTypes("int"),
 					),
 			),
 		)
 
-		tableConfigs := []models.TableConfig{
+		tableConfigs := []core.TableConfig{
 			{
 				Schema: "public",
 				Name:   "test",
-				Transformers: []models.TransformerConfig{
+				Transformers: []core.TransformerConfig{
 					{
 						Name: "TestTransformer",
-						StaticParams: map[string]models.ParamsValue{
-							"column": models.ParamsValue("id"),
+						StaticParams: map[string]core.ParamsValue{
+							"column": core.ParamsValue("id"),
 						},
 					},
 				},
@@ -423,23 +422,23 @@ func TestProducer_Produce(t *testing.T) {
 		tableDriverMock.On("Table").Return(&tables[0])
 		newDriverFuncMock := func(
 			ctx context.Context,
-			table models.Table,
+			table core.Table,
 			columnsTypeOverride map[string]string,
-		) (commonininterfaces.TableDriver, error) {
+		) (core.TableDriver, error) {
 			return tableDriverMock, nil
 		}
 
 		tr := registry.NewTransformerRegistry()
 
-		tableConfigs := []models.TableConfig{
+		tableConfigs := []core.TableConfig{
 			{
 				Schema: "public",
 				Name:   "test",
-				Transformers: []models.TransformerConfig{
+				Transformers: []core.TransformerConfig{
 					{
 						Name: "UnknownTransformer",
-						StaticParams: map[string]models.ParamsValue{
-							"column": models.ParamsValue("id"),
+						StaticParams: map[string]core.ParamsValue{
+							"column": core.ParamsValue("id"),
 						},
 					},
 				},
@@ -451,7 +450,7 @@ func TestProducer_Produce(t *testing.T) {
 		vc := validationcollector.NewCollector()
 		ctx = validationcollector.WithCollector(ctx, vc)
 		_, err := p.Build(ctx)
-		require.ErrorIs(t, err, models.ErrFatalValidationError)
+		require.ErrorIs(t, err, core.ErrFatalValidationError)
 		require.True(t, vc.IsFatal())
 		require.Equal(t, vc.Len(), 1)
 		require.Equal(t, vc.GetWarnings()[0].Msg, "transformer is not found")
@@ -464,7 +463,7 @@ func TestProducer_Produce(t *testing.T) {
 		tableDriverMock.On("Table").Return(&tables[0])
 		tableDriverMock.On("GetColumnByName", "id").
 			Return(
-				&models.Column{
+				&core.Column{
 					Idx:      1,
 					Name:     "id",
 					TypeName: "int",
@@ -474,15 +473,15 @@ func TestProducer_Produce(t *testing.T) {
 			)
 		newDriverFuncMock := func(
 			ctx context.Context,
-			table models.Table,
+			table core.Table,
 			columnsTypeOverride map[string]string,
-		) (commonininterfaces.TableDriver, error) {
+		) (core.TableDriver, error) {
 			return tableDriverMock, nil
 		}
 
 		transformerMock, newFunc := mocks2.NewTransformerMock(func(
 			ctx context.Context,
-			tableDriver commonininterfaces.TableDriver,
+			tableDriver core.TableDriver,
 			parameters map[string]parameters2.Parameterizer,
 		) error {
 			assert.Equal(t, tableDriverMock, tableDriver)
@@ -498,27 +497,27 @@ func TestProducer_Produce(t *testing.T) {
 				newFunc,
 				parameters2.MustNewParameterDefinition("column", "test desc").
 					SetIsColumn(
-						models.NewColumnProperties().
+						core.NewColumnProperties().
 							SetAllowedColumnTypes("int"),
 					),
 			).SetSchemaValidator(func(
 				_ context.Context,
-				_ models.Table,
+				_ core.Table,
 				_ *utils2.TransformerProperties,
 				_ map[string]*parameters2.StaticParameter) error {
 				return assert.AnError
 			}),
 		)
 
-		tableConfigs := []models.TableConfig{
+		tableConfigs := []core.TableConfig{
 			{
 				Schema: "public",
 				Name:   "test",
-				Transformers: []models.TransformerConfig{
+				Transformers: []core.TransformerConfig{
 					{
 						Name: "TestTransformer",
-						StaticParams: map[string]models.ParamsValue{
-							"column": models.ParamsValue("id"),
+						StaticParams: map[string]core.ParamsValue{
+							"column": core.ParamsValue("id"),
 						},
 					},
 				},

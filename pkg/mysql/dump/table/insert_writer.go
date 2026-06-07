@@ -22,7 +22,7 @@ import (
 
 	"github.com/huandu/go-sqlbuilder"
 
-	"github.com/greenmaskio/greenmask/pkg/common/models"
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 	"github.com/greenmaskio/greenmask/pkg/mysql/dbmsdriver"
 )
 
@@ -42,14 +42,14 @@ const hexChars = "0123456789ABCDEF"
 // literals instead of escaped string literals, making the dump charset-independent
 // and safe for arbitrary byte values.
 type InsertWriter struct {
-	table      *models.Table
+	table      *core.Table
 	w          io.Writer
 	isBinary   []bool // pre-computed: true for BINARY/VARBINARY/BLOB family columns
 	hasHexCols bool   // true when any column in isBinary is set
 	sb         strings.Builder
 }
 
-func NewInsertWriter(table models.Table, w io.Writer, hexBlob bool) *InsertWriter {
+func NewInsertWriter(table core.Table, w io.Writer, hexBlob bool) *InsertWriter {
 	isBinary := make([]bool, len(table.Columns))
 	hasHexCols := false
 	for i, col := range table.Columns {
@@ -71,8 +71,8 @@ func NewInsertWriter(table models.Table, w io.Writer, hexBlob bool) *InsertWrite
 // "binary(16)" or "varbinary(255)" (with length suffix), which does not match
 // the bare type-name constants. TypeClass is always resolved correctly via the
 // DATA_TYPE fallback in the introspector.
-func isBinaryType(col models.Column) bool {
-	return col.TypeClass == models.TypeClassBinary
+func isBinaryType(col core.Column) bool {
+	return col.TypeClass == core.TypeClassBinary
 }
 
 func (iw *InsertWriter) Write(row [][]byte) error {

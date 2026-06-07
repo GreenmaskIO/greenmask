@@ -19,8 +19,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/greenmaskio/greenmask/pkg/common/interfaces"
-	"github.com/greenmaskio/greenmask/pkg/common/models"
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 	mysqlmodels "github.com/greenmaskio/greenmask/pkg/mysql/models"
 	"github.com/greenmaskio/greenmask/pkg/mysql/restore/restorers"
 )
@@ -42,33 +41,33 @@ type RestoreOptions struct {
 
 type dummyTaskMapper struct{}
 
-func (*dummyTaskMapper) SetTaskCompleted(_ models.TaskID) {
+func (*dummyTaskMapper) SetTaskCompleted(_ core.TaskID) {
 	// no-op
 }
 
-func (*dummyTaskMapper) IsTaskCompleted(_ models.TaskID) bool {
+func (*dummyTaskMapper) IsTaskCompleted(_ core.TaskID) bool {
 	return true
 }
 
 type Producer struct {
-	meta    models.Metadata
-	st      interfaces.Storager
+	meta    core.Metadata
+	st      core.Storager
 	conn    *mysqlmodels.ConnConfig
 	opts    RestoreOptions
 	err     error
 	lastIdx int
-	taskIDs []models.TaskID
+	taskIDs []core.TaskID
 }
 
 func New(
-	meta models.Metadata,
-	st interfaces.Storager,
+	meta core.Metadata,
+	st core.Storager,
 	conn *mysqlmodels.ConnConfig,
 	opts RestoreOptions,
 ) *Producer {
-	var taskIDs []models.TaskID
+	var taskIDs []core.TaskID
 	if meta.DataDump != nil {
-		taskIDs = make([]models.TaskID, 0, len(meta.DataDump.DumpStat.RestorationItems))
+		taskIDs = make([]core.TaskID, 0, len(meta.DataDump.DumpStat.RestorationItems))
 		for taskID := range meta.DataDump.DumpStat.RestorationItems {
 			taskIDs = append(taskIDs, taskID)
 		}
@@ -102,7 +101,7 @@ func (p *Producer) Next(_ context.Context) bool {
 	return true
 }
 
-func (p *Producer) Task() (interfaces.Restorer, error) {
+func (p *Producer) Task() (core.Restorer, error) {
 	if p.err != nil {
 		return nil, p.err
 	}
@@ -112,7 +111,7 @@ func (p *Producer) Task() (interfaces.Restorer, error) {
 		panic("no restoration item")
 	}
 	switch restorationItem.ObjectKind {
-	case models.ObjectKindTable:
+	case core.ObjectKindTable:
 		opts := []restorers.Option{
 			restorers.WithCompression(
 				restorationItem.Compression.IsEnabled(),
@@ -135,11 +134,11 @@ func (p *Producer) Task() (interfaces.Restorer, error) {
 
 		stat := p.meta.DataDump.DumpStat.TaskStats[taskID]
 		switch stat.ObjectStat.Format {
-		case models.DumpFormatInsert:
+		case core.DumpFormatInsert:
 			return restorers.NewTableDataRestorerInsert(
 				restorationItem, p.conn, p.st, &dummyTaskMapper{}, opts...,
 			)
-		case models.DumpFormatCsv:
+		case core.DumpFormatCsv:
 			return restorers.NewTableDataRestorerCsv(
 				restorationItem, p.conn, p.st, &dummyTaskMapper{}, opts...,
 			)

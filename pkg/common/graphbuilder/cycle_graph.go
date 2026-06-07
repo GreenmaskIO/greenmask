@@ -18,40 +18,40 @@ import (
 	"sort"
 	"strconv"
 
-	commonmodels "github.com/greenmaskio/greenmask/pkg/common/models"
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 	"github.com/greenmaskio/greenmask/pkg/common/subset/cyclesgraph"
 )
 
 // cycleGraph converts an SCC's cycle graph into the result model: the list of
 // cycles, the cycle groups (cycles sharing the same vertex set) and the graph
 // between groups (which groups share vertexes and can be joined for integrity).
-func (t *translator) cycleGraph(cg cyclesgraph.Graph) commonmodels.CycleGraph {
-	res := commonmodels.CycleGraph{
-		Cycles:     make([]commonmodels.Cycle, 0, len(cg.Cycles)),
-		Groups:     make(map[commonmodels.CycleGroupID]commonmodels.CycleGroup),
-		GroupGraph: make(map[commonmodels.CycleGroupID][]commonmodels.CycleGroupEdge),
+func (t *translator) cycleGraph(cg cyclesgraph.Graph) core.CycleGraph {
+	res := core.CycleGraph{
+		Cycles:     make([]core.Cycle, 0, len(cg.Cycles)),
+		Groups:     make(map[core.CycleGroupID]core.CycleGroup),
+		GroupGraph: make(map[core.CycleGroupID][]core.CycleGroupEdge),
 	}
 
 	// Cycles keep their slice order so the CycleIndex values referenced by groups
 	// remain valid.
 	for i, cycle := range cg.Cycles {
-		edges := make([]commonmodels.ObjectEdge, 0, len(cycle))
+		edges := make([]core.ObjectEdge, 0, len(cycle))
 		for _, e := range cycle {
 			edges = append(edges, t.objectEdge(e))
 		}
-		res.Cycles = append(res.Cycles, commonmodels.Cycle{
-			ID:    commonmodels.CycleID(strconv.Itoa(i)),
+		res.Cycles = append(res.Cycles, core.Cycle{
+			ID:    core.CycleID(strconv.Itoa(i)),
 			Edges: edges,
 		})
 	}
 
 	for _, groupID := range sortedStringKeys(cg.GroupedCycles) {
 		cycleIdxs := cg.GroupedCycles[groupID]
-		indexes := make([]commonmodels.CycleIndex, 0, len(cycleIdxs))
-		var members []commonmodels.ObjectID
-		seen := make(map[commonmodels.ObjectID]struct{})
+		indexes := make([]core.CycleIndex, 0, len(cycleIdxs))
+		var members []core.ObjectID
+		seen := make(map[core.ObjectID]struct{})
 		for _, ci := range cycleIdxs {
-			indexes = append(indexes, commonmodels.CycleIndex(ci))
+			indexes = append(indexes, core.CycleIndex(ci))
 			for _, e := range cg.Cycles[ci] {
 				oid := t.idAt(e.To().TableID())
 				if _, ok := seen[oid]; ok {
@@ -61,8 +61,8 @@ func (t *translator) cycleGraph(cg cyclesgraph.Graph) commonmodels.CycleGraph {
 				members = append(members, oid)
 			}
 		}
-		res.Groups[commonmodels.CycleGroupID(groupID)] = commonmodels.CycleGroup{
-			ID:      commonmodels.CycleGroupID(groupID),
+		res.Groups[core.CycleGroupID(groupID)] = core.CycleGroup{
+			ID:      core.CycleGroupID(groupID),
 			Cycles:  indexes,
 			Members: members,
 		}
@@ -72,18 +72,18 @@ func (t *translator) cycleGraph(cg cyclesgraph.Graph) commonmodels.CycleGraph {
 		for _, e := range cg.Graph[fromGroup] {
 			// CommonVertexes are reported as tables (not positions); resolve them to
 			// ObjectIDs by their fully-qualified name.
-			shared := make([]commonmodels.ObjectID, 0, len(e.CommonVertexes()))
+			shared := make([]core.ObjectID, 0, len(e.CommonVertexes()))
 			for _, tbl := range e.CommonVertexes() {
 				shared = append(shared, t.objectIDByName[tbl.FullTableName()])
 			}
 			// Links (the specific object edges between the groups) are not set:
 			// the source cycle graph only records the shared vertexes, not the
 			// edges that join the groups, so SharedObjects is the available signal.
-			res.GroupGraph[commonmodels.CycleGroupID(fromGroup)] = append(
-				res.GroupGraph[commonmodels.CycleGroupID(fromGroup)],
-				commonmodels.CycleGroupEdge{
-					From:          commonmodels.CycleGroupID(e.From()),
-					To:            commonmodels.CycleGroupID(e.To()),
+			res.GroupGraph[core.CycleGroupID(fromGroup)] = append(
+				res.GroupGraph[core.CycleGroupID(fromGroup)],
+				core.CycleGroupEdge{
+					From:          core.CycleGroupID(e.From()),
+					To:            core.CycleGroupID(e.To()),
 					SharedObjects: shared,
 				},
 			)

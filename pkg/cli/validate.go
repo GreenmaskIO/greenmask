@@ -23,8 +23,7 @@ import (
 
 	"github.com/rs/zerolog/log"
 
-	"github.com/greenmaskio/greenmask/pkg/common/interfaces"
-	"github.com/greenmaskio/greenmask/pkg/common/models"
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 	"github.com/greenmaskio/greenmask/pkg/common/schemadiff"
 	commonutils "github.com/greenmaskio/greenmask/pkg/common/utils"
 	"github.com/greenmaskio/greenmask/pkg/common/validate"
@@ -44,7 +43,7 @@ const (
 )
 
 // Validate runs the validation pipeline. Fatal validation warnings are
-// returned as models.ErrFatalValidationError so callers can distinguish
+// returned as core.ErrFatalValidationError so callers can distinguish
 // them from infrastructure errors.
 func (g *Cli) Validate(ctx context.Context) error {
 	if err := g.initInfrastructure(); err != nil {
@@ -60,7 +59,7 @@ func (g *Cli) Validate(ctx context.Context) error {
 		return runErr
 	}
 	if exitCode != zeroExitCode {
-		return models.ErrFatalValidationError
+		return core.ErrFatalValidationError
 	}
 	return nil
 }
@@ -74,7 +73,7 @@ func PrintValidateWarning(ctx context.Context, cfg *config.Config) error {
 	}
 	vc := validationcollector.FromContext(ctx)
 	if vc.IsFatal() {
-		return models.ErrFatalValidationError
+		return core.ErrFatalValidationError
 	}
 	return nil
 }
@@ -82,7 +81,7 @@ func PrintValidateWarning(ctx context.Context, cfg *config.Config) error {
 // validateWithStorage runs the full validate pipeline using an already
 // initialised context and storage. It is shared by RunValidate and
 // Cli.Validate so that gm-backend can inject its own storage.
-func (g *Cli) validateWithStorage(ctx context.Context, st interfaces.Storager) (int, error) {
+func (g *Cli) validateWithStorage(ctx context.Context, st core.Storager) (int, error) {
 	validateSt := validatest.New("")
 	validator, err := engines.NewValidator(g.cfg, validateSt)
 	if err != nil {
@@ -92,7 +91,7 @@ func (g *Cli) validateWithStorage(ctx context.Context, st interfaces.Storager) (
 	runErr := validator.Run(ctx)
 
 	if printErr := PrintValidateWarning(ctx, g.cfg); printErr != nil {
-		if errors.Is(runErr, models.ErrFatalValidationError) {
+		if errors.Is(runErr, core.ErrFatalValidationError) {
 			return nonZeroExitCode, nil
 		}
 		if runErr != nil {
@@ -124,7 +123,7 @@ func (g *Cli) validateWithStorage(ctx context.Context, st interfaces.Storager) (
 // diffWithPreviousSchema compares the current DB introspection against the
 // most recent stored dump's schema. Returns nonZeroExitCode when differences
 // are found, zeroExitCode when schemas match or no previous dump exists.
-func (g *Cli) diffWithPreviousSchema(ctx context.Context, st interfaces.Storager, current []models.Table) (int, error) {
+func (g *Cli) diffWithPreviousSchema(ctx context.Context, st core.Storager, current []core.Table) (int, error) {
 	dumpId, err := getPreviousDumpId(ctx, st)
 	if err != nil {
 		return nonZeroExitCode, fmt.Errorf("get previous dump id: %w", err)
@@ -152,7 +151,7 @@ func (g *Cli) diffWithPreviousSchema(ctx context.Context, st interfaces.Storager
 // getPreviousDumpId scans storage for backup directories that contain a
 // metadata file and returns the most recent dump ID (reverse-lexicographic,
 // which is the most recent timestamp-based ID).
-func getPreviousDumpId(ctx context.Context, st interfaces.Storager) (string, error) {
+func getPreviousDumpId(ctx context.Context, st core.Storager) (string, error) {
 	_, dirs, err := st.ListDir(ctx)
 	if err != nil {
 		return "", fmt.Errorf("list storage directory: %w", err)
@@ -180,26 +179,26 @@ func getPreviousDumpId(ctx context.Context, st interfaces.Storager) (string, err
 }
 
 // getPreviousMetadata reads and decodes the metadata.json of a specific dump.
-func getPreviousMetadata(ctx context.Context, st interfaces.Storager, dumpId string) (models.Metadata, error) {
+func getPreviousMetadata(ctx context.Context, st core.Storager, dumpId string) (core.Metadata, error) {
 	sub := st.SubStorage(dumpId, true)
 	f, err := sub.GetObject(ctx, MetadataJsonFileName)
 	if err != nil {
-		return models.Metadata{}, fmt.Errorf("open metadata file: %w", err)
+		return core.Metadata{}, fmt.Errorf("open metadata file: %w", err)
 	}
 	defer func() {
 		if err := f.Close(); err != nil {
 			log.Ctx(ctx).Warn().Err(err).Msg("error closing metadata file")
 		}
 	}()
-	var md models.Metadata
+	var md core.Metadata
 	if err = json.NewDecoder(f).Decode(&md); err != nil {
-		return models.Metadata{}, fmt.Errorf("decode metadata file: %w", err)
+		return core.Metadata{}, fmt.Errorf("decode metadata file: %w", err)
 	}
 	return md, nil
 }
 
 // printSchemaDiff logs schema differences in the configured output format.
-func (g *Cli) printSchemaDiff(ctx context.Context, diff []models.DiffNode, previousDumpId string) error {
+func (g *Cli) printSchemaDiff(ctx context.Context, diff []core.DiffNode, previousDumpId string) error {
 	if validate.Format(g.cfg.Validate.Format) == validate.FormatNameJson {
 		data, err := json.Marshal(diff)
 		if err != nil {

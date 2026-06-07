@@ -22,8 +22,7 @@ import (
 
 	"github.com/huandu/go-sqlbuilder"
 
-	commonmodels "github.com/greenmaskio/greenmask/pkg/common/models"
-	"github.com/greenmaskio/greenmask/pkg/common/subset"
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 )
 
 // dagQueryBuilder builds a SELECT query for a DAG (acyclic) SCC — one whose
@@ -32,23 +31,23 @@ import (
 // model types and also supports DialectPostgres (the original panicked there).
 type dagQueryBuilder struct {
 	sg          *sccSubgraph
-	dg          commonmodels.DependencyGraphResult
-	subsetConds map[commonmodels.ObjectID][]string
-	dialect     subset.Dialect
+	dg          core.DependencyGraphResult
+	subsetConds map[core.ObjectID][]string
+	dialect     Dialect
 }
 
 func newDAGQueryBuilder(
 	sg *sccSubgraph,
-	dg commonmodels.DependencyGraphResult,
-	subsetConds map[commonmodels.ObjectID][]string,
-	dialect subset.Dialect,
+	dg core.DependencyGraphResult,
+	subsetConds map[core.ObjectID][]string,
+	dialect Dialect,
 ) *dagQueryBuilder {
 	return &dagQueryBuilder{sg: sg, dg: dg, subsetConds: subsetConds, dialect: dialect}
 }
 
 // build constructs the SELECT query for the root table of the sub-graph.
 // Returns a single-entry map {rootObjectID: query}.
-func (b *dagQueryBuilder) build() (map[commonmodels.ObjectID]string, error) {
+func (b *dagQueryBuilder) build() (map[core.ObjectID]string, error) {
 	rootNode := b.dg.CondensedGraph.Nodes[b.sg.rootSCCID]
 	rootOID := rootNode.Members[0]
 	rootTable, err := tableFromPayload(b.dg.ObjectGraph.Nodes[rootOID].Payload)
@@ -57,7 +56,7 @@ func (b *dagQueryBuilder) build() (map[commonmodels.ObjectID]string, error) {
 	}
 
 	aliasMap := b.makeAliases()
-	tableAliasMap := make(map[commonmodels.ObjectID]string)
+	tableAliasMap := make(map[core.ObjectID]string)
 
 	flavor := dialectFlavor(b.dialect)
 	rootName := tableName(b.dialect, rootTable, rootOID, tableAliasMap)
@@ -69,24 +68,24 @@ func (b *dagQueryBuilder) build() (map[commonmodels.ObjectID]string, error) {
 
 	b.buildQueryDFS(b.sg.rootSCCID, aliasMap, tableAliasMap, sb)
 
-	return map[commonmodels.ObjectID]string{rootOID: sb.String()}, nil
+	return map[core.ObjectID]string{rootOID: sb.String()}, nil
 }
 
 // buildQueryDFS adds JOINs and WHERE conditions by DFS over the sub-graph.
 func (b *dagQueryBuilder) buildQueryDFS(
-	v commonmodels.SCCID,
+	v core.SCCID,
 	aliasMap map[edgeKey]string,
-	tableAliasMap map[commonmodels.ObjectID]string,
+	tableAliasMap map[core.ObjectID]string,
 	sb *sqlbuilder.SelectBuilder,
 ) {
 	edges := b.sg.graph[v]
-	sorted := make([]commonmodels.SCCEdge, len(edges))
+	sorted := make([]core.SCCEdge, len(edges))
 	copy(sorted, edges)
-	slices.SortFunc(sorted, func(a, c commonmodels.SCCEdge) int { return cmp.Compare(a.To, c.To) })
+	slices.SortFunc(sorted, func(a, c core.SCCEdge) int { return cmp.Compare(a.To, c.To) })
 
 	for _, sccEdge := range sorted {
 		for linkIdx, objEdge := range sccEdge.Links {
-			fkp, ok := objEdge.Link.Payload.(commonmodels.ForeignKeyLinkPayload)
+			fkp, ok := objEdge.Link.Payload.(core.ForeignKeyLinkPayload)
 			if !ok {
 				continue
 			}
@@ -141,9 +140,9 @@ func (b *dagQueryBuilder) buildQueryDFS(
 func (b *dagQueryBuilder) makeAliases() map[edgeKey]string {
 	type edgeEntry struct {
 		key edgeKey
-		tbl commonmodels.Table
+		tbl core.Table
 	}
-	byDest := make(map[commonmodels.ObjectID][]edgeEntry)
+	byDest := make(map[core.ObjectID][]edgeEntry)
 
 	for _, fromSCC := range sortedSCCIDsFromMap(b.sg.graph) {
 		for _, sccEdge := range b.sg.graph[fromSCC] {
@@ -178,70 +177,70 @@ func (b *dagQueryBuilder) makeAliases() map[edgeKey]string {
 // edgeKey uniquely identifies one ObjectEdge within a sub-graph for alias
 // assignment: (fromSCC, toSCC, index within SCCEdge.Links).
 type edgeKey struct {
-	fromSCC commonmodels.SCCID
-	toSCC   commonmodels.SCCID
+	fromSCC core.SCCID
+	toSCC   core.SCCID
 	linkIdx int
 }
 
 // ── SQL helpers ───────────────────────────────────────────────────────────────
 
-func dialectFlavor(d subset.Dialect) sqlbuilder.Flavor {
+func dialectFlavor(d Dialect) sqlbuilder.Flavor {
 	switch d {
-	case subset.DialectMySQL:
+	case DialectMySQL:
 		return sqlbuilder.MySQL
-	case subset.DialectPostgres:
+	case DialectPostgres:
 		return sqlbuilder.PostgreSQL
 	default:
 		panic(fmt.Sprintf("unsupported dialect: %s", d))
 	}
 }
 
-func tableName(d subset.Dialect, t commonmodels.Table, oid commonmodels.ObjectID, aliasMap map[commonmodels.ObjectID]string) string {
+func tableName(d Dialect, t core.Table, oid core.ObjectID, aliasMap map[core.ObjectID]string) string {
 	if alias, ok := aliasMap[oid]; ok {
 		switch d {
-		case subset.DialectPostgres:
+		case DialectPostgres:
 			return fmt.Sprintf(`"%s"`, alias)
-		case subset.DialectMySQL:
+		case DialectMySQL:
 			return fmt.Sprintf("`%s`", alias)
 		}
 	}
 	switch d {
-	case subset.DialectPostgres:
+	case DialectPostgres:
 		return fmt.Sprintf(`"%s"."%s"`, t.Schema, t.Name)
-	case subset.DialectMySQL:
+	case DialectMySQL:
 		return fmt.Sprintf("`%s`.`%s`", t.Schema, t.Name)
 	}
 	panic(fmt.Sprintf("unsupported dialect: %s", d))
 }
 
-func columnName(d subset.Dialect, t commonmodels.Table, oid commonmodels.ObjectID, col string, aliasMap map[commonmodels.ObjectID]string) string {
+func columnName(d Dialect, t core.Table, oid core.ObjectID, col string, aliasMap map[core.ObjectID]string) string {
 	if alias, ok := aliasMap[oid]; ok {
 		switch d {
-		case subset.DialectPostgres:
+		case DialectPostgres:
 			return fmt.Sprintf(`"%s"."%s"`, alias, col)
-		case subset.DialectMySQL:
+		case DialectMySQL:
 			return fmt.Sprintf("`%s`.`%s`", alias, col)
 		}
 	}
 	switch d {
-	case subset.DialectPostgres:
+	case DialectPostgres:
 		return fmt.Sprintf(`"%s"."%s"."%s"`, t.Schema, t.Name, col)
-	case subset.DialectMySQL:
+	case DialectMySQL:
 		return fmt.Sprintf("`%s`.`%s`.`%s`", t.Schema, t.Name, col)
 	}
 	panic(fmt.Sprintf("unsupported dialect: %s", d))
 }
 
 func fieldNames(
-	d subset.Dialect,
-	t commonmodels.Table,
-	oid commonmodels.ObjectID,
-	fields []commonmodels.ObjectFieldRef,
-	aliasMap map[commonmodels.ObjectID]string,
+	d Dialect,
+	t core.Table,
+	oid core.ObjectID,
+	fields []core.ObjectFieldRef,
+	aliasMap map[core.ObjectID]string,
 ) []string {
 	res := make([]string, 0, len(fields))
 	for _, f := range fields {
-		if f.Kind == commonmodels.FieldRefKindExpression {
+		if f.Kind == core.FieldRefKindExpression {
 			panic("expression field refs are not yet supported in subsetbuilder")
 		}
 		res = append(res, columnName(d, t, oid, f.Value, aliasMap))
@@ -278,10 +277,10 @@ func addSubsetCondition(
 // conditionsWithAlias rewrites subset conditions replacing schema.table
 // references with the assigned alias.
 // Mirrors getSubsetConditionsWithTableAlias in pkg/common/subset/common.go.
-func conditionsWithAlias(d subset.Dialect, t commonmodels.Table, alias string, conds []string) []string {
+func conditionsWithAlias(d Dialect, t core.Table, alias string, conds []string) []string {
 	var ptrn string
 	switch d {
-	case subset.DialectMySQL:
+	case DialectMySQL:
 		ptrn = fmt.Sprintf("`?%s`?.`?%s`?", t.Schema, t.Name)
 	default:
 		ptrn = fmt.Sprintf(`"?%s"?."?%s"?`, t.Schema, t.Name)
@@ -296,6 +295,6 @@ func conditionsWithAlias(d subset.Dialect, t commonmodels.Table, alias string, c
 
 // tableAlias generates a deterministic alias for a table occurrence.
 // Mirrors getTableAlias in pkg/common/subset/common.go.
-func tableAlias(t commonmodels.Table, seq int) string {
+func tableAlias(t core.Table, seq int) string {
 	return fmt.Sprintf("%s_%s__%d", t.Schema, t.Name, seq)
 }

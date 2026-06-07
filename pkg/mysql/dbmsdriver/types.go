@@ -17,7 +17,7 @@ package dbmsdriver
 import (
 	"fmt"
 
-	commonmodels "github.com/greenmaskio/greenmask/pkg/common/models"
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 )
 
 var (
@@ -93,7 +93,7 @@ const (
 
 const (
 	// Numeric types with Virtual OIDs
-	VirtualOidTinyInt commonmodels.VirtualOID = iota
+	VirtualOidTinyInt core.VirtualOID = iota
 	VirtualOidSmallInt
 	VirtualOidMediumInt
 	VirtualOidInt
@@ -154,7 +154,7 @@ const (
 )
 
 var (
-	VirtualOidToTypeName = map[commonmodels.VirtualOID]string{
+	VirtualOidToTypeName = map[core.VirtualOID]string{
 		VirtualOidTinyInt:            TypeTinyInt,
 		VirtualOidSmallInt:           TypeSmallInt,
 		VirtualOidMediumInt:          TypeMediumInt,
@@ -198,58 +198,58 @@ var (
 		VirtualOidBool:               TypeBool,
 	}
 
-	TypeNameToVirtualOid = make(map[string]commonmodels.VirtualOID)
+	TypeNameToVirtualOid = make(map[string]core.VirtualOID)
 
 	// TypeDataNameTypeToClass - mapping MySQL data types to common type classes.
-	TypeDataNameTypeToClass = map[string]commonmodels.TypeClass{
-		TypeChar:       commonmodels.TypeClassText,
-		TypeVarChar:    commonmodels.TypeClassText,
-		TypeTinyText:   commonmodels.TypeClassText,
-		TypeText:       commonmodels.TypeClassText,
-		TypeMediumText: commonmodels.TypeClassText,
-		TypeLongText:   commonmodels.TypeClassText,
+	TypeDataNameTypeToClass = map[string]core.TypeClass{
+		TypeChar:       core.TypeClassText,
+		TypeVarChar:    core.TypeClassText,
+		TypeTinyText:   core.TypeClassText,
+		TypeText:       core.TypeClassText,
+		TypeMediumText: core.TypeClassText,
+		TypeLongText:   core.TypeClassText,
 
-		TypeTinyInt:   commonmodels.TypeClassInt,
-		TypeSmallInt:  commonmodels.TypeClassInt,
-		TypeMediumInt: commonmodels.TypeClassInt,
-		TypeInt:       commonmodels.TypeClassInt,
-		TypeBigInt:    commonmodels.TypeClassInt,
+		TypeTinyInt:   core.TypeClassInt,
+		TypeSmallInt:  core.TypeClassInt,
+		TypeMediumInt: core.TypeClassInt,
+		TypeInt:       core.TypeClassInt,
+		TypeBigInt:    core.TypeClassInt,
 
-		TypeFloat:  commonmodels.TypeClassFloat,
-		TypeDouble: commonmodels.TypeClassFloat,
-		TypeReal:   commonmodels.TypeClassFloat,
+		TypeFloat:  core.TypeClassFloat,
+		TypeDouble: core.TypeClassFloat,
+		TypeReal:   core.TypeClassFloat,
 
-		TypeNumeric: commonmodels.TypeClassFloat,
-		TypeDecimal: commonmodels.TypeClassFloat,
+		TypeNumeric: core.TypeClassFloat,
+		TypeDecimal: core.TypeClassFloat,
 
-		TypeBit:     commonmodels.TypeClassBoolean,
-		TypeBool:    commonmodels.TypeClassBoolean,
-		TypeBoolean: commonmodels.TypeClassBoolean,
+		TypeBit:     core.TypeClassBoolean,
+		TypeBool:    core.TypeClassBoolean,
+		TypeBoolean: core.TypeClassBoolean,
 
-		TypeDate:      commonmodels.TypeClassDateTime,
-		TypeDateTime:  commonmodels.TypeClassDateTime,
-		TypeTimestamp: commonmodels.TypeClassDateTime,
-		TypeTime:      commonmodels.TypeClassDateTime,
+		TypeDate:      core.TypeClassDateTime,
+		TypeDateTime:  core.TypeClassDateTime,
+		TypeTimestamp: core.TypeClassDateTime,
+		TypeTime:      core.TypeClassDateTime,
 
-		TypeYear: commonmodels.TypeClassTime,
+		TypeYear: core.TypeClassTime,
 
-		TypeJSON: commonmodels.TypeClassJson,
+		TypeJSON: core.TypeClassJson,
 
-		TypeBinary:     commonmodels.TypeClassBinary,
-		TypeVarBinary:  commonmodels.TypeClassBinary,
-		TypeBlob:       commonmodels.TypeClassBinary,
-		TypeTinyBlob:   commonmodels.TypeClassBinary,
-		TypeMediumBlob: commonmodels.TypeClassBinary,
-		TypeLongBlob:   commonmodels.TypeClassBinary,
+		TypeBinary:     core.TypeClassBinary,
+		TypeVarBinary:  core.TypeClassBinary,
+		TypeBlob:       core.TypeClassBinary,
+		TypeTinyBlob:   core.TypeClassBinary,
+		TypeMediumBlob: core.TypeClassBinary,
+		TypeLongBlob:   core.TypeClassBinary,
 
-		TypeEnum: commonmodels.TypeClassEnum,
-		TypeSet:  commonmodels.TypeClassEnum, // MySQL-specific
+		TypeEnum: core.TypeClassEnum,
+		TypeSet:  core.TypeClassEnum, // MySQL-specific
 	}
 
-	TypeDataOidToClass = make(map[commonmodels.VirtualOID]commonmodels.TypeClass)
+	TypeDataOidToClass = make(map[core.VirtualOID]core.TypeClass)
 
 	// TypeClassToDataTypes - reverse mapping from common type classes to MySQL data types.
-	TypeClassToDataTypes = make(map[commonmodels.TypeClass][]string)
+	TypeClassToDataTypes = make(map[core.TypeClass][]string)
 )
 
 func init() {

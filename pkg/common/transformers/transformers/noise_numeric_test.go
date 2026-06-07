@@ -19,8 +19,7 @@ import (
 	"regexp"
 	"testing"
 
-	commonininterfaces "github.com/greenmaskio/greenmask/pkg/common/interfaces"
-	"github.com/greenmaskio/greenmask/pkg/common/models"
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 	commonutils "github.com/greenmaskio/greenmask/pkg/common/utils"
 	"github.com/greenmaskio/greenmask/pkg/common/validationcollector"
 	mysqldbmsdriver "github.com/greenmaskio/greenmask/pkg/mysql/dbmsdriver"
@@ -32,35 +31,35 @@ import (
 func TestNoiseNumericTransformer_Transform(t *testing.T) {
 	tests := []struct {
 		name             string
-		staticParameters map[string]models.ParamsValue
-		dynamicParameter map[string]models.DynamicParamValue
-		original         []*models.ColumnRawValue
-		validateFn       func(t *testing.T, recorder commonininterfaces.Recorder)
+		staticParameters map[string]core.ParamsValue
+		dynamicParameter map[string]core.DynamicParamValue
+		original         []*core.ColumnRawValue
+		validateFn       func(t *testing.T, recorder core.Recorder)
 		expectedErr      string
-		columns          []models.Column
+		columns          []core.Column
 		isNull           bool
 	}{
 		{
 			name: "numeric",
-			columns: []models.Column{
+			columns: []core.Column{
 				{
 					Idx:       0,
 					Name:      "data",
 					TypeName:  mysqldbmsdriver.TypeNumeric,
 					TypeOID:   mysqldbmsdriver.VirtualOidNumeric,
-					TypeClass: models.TypeClassNumeric,
+					TypeClass: core.TypeClassNumeric,
 					Length:    0,
 				},
 			},
-			original: []*models.ColumnRawValue{
-				models.NewColumnRawValue([]byte("100"), false)},
-			staticParameters: map[string]models.ParamsValue{
-				"column":    models.ParamsValue("data"),
-				"engine":    models.ParamsValue("random"),
-				"min_ratio": models.ParamsValue("0.2"),
-				"max_ratio": models.ParamsValue("0.9"),
+			original: []*core.ColumnRawValue{
+				core.NewColumnRawValue([]byte("100"), false)},
+			staticParameters: map[string]core.ParamsValue{
+				"column":    core.ParamsValue("data"),
+				"engine":    core.ParamsValue("random"),
+				"min_ratio": core.ParamsValue("0.2"),
+				"max_ratio": core.ParamsValue("0.9"),
 			},
-			validateFn: func(t *testing.T, recorder commonininterfaces.Recorder) {
+			validateFn: func(t *testing.T, recorder core.Recorder) {
 				expectedMin := decimal.RequireFromString("10")
 				expectedMax := decimal.RequireFromString("190")
 				var val decimal.Decimal
@@ -72,26 +71,26 @@ func TestNoiseNumericTransformer_Transform(t *testing.T) {
 		},
 		{
 			name: "numeric with 10 decimal places",
-			columns: []models.Column{
+			columns: []core.Column{
 				{
 					Idx:       0,
 					Name:      "data",
 					TypeName:  mysqldbmsdriver.TypeNumeric,
 					TypeOID:   mysqldbmsdriver.VirtualOidNumeric,
-					TypeClass: models.TypeClassNumeric,
+					TypeClass: core.TypeClassNumeric,
 					Length:    0,
 				},
 			},
-			original: []*models.ColumnRawValue{
-				models.NewColumnRawValue([]byte("100"), false)},
-			staticParameters: map[string]models.ParamsValue{
-				"column":    models.ParamsValue("data"),
-				"engine":    models.ParamsValue("random"),
-				"min_ratio": models.ParamsValue("0.2"),
-				"max_ratio": models.ParamsValue("0.9"),
-				"decimal":   models.ParamsValue("10"),
+			original: []*core.ColumnRawValue{
+				core.NewColumnRawValue([]byte("100"), false)},
+			staticParameters: map[string]core.ParamsValue{
+				"column":    core.ParamsValue("data"),
+				"engine":    core.ParamsValue("random"),
+				"min_ratio": core.ParamsValue("0.2"),
+				"max_ratio": core.ParamsValue("0.9"),
+				"decimal":   core.ParamsValue("10"),
 			},
-			validateFn: func(t *testing.T, recorder commonininterfaces.Recorder) {
+			validateFn: func(t *testing.T, recorder core.Recorder) {
 				expectedMin := decimal.RequireFromString("10")
 				expectedMax := decimal.RequireFromString("190")
 				var val decimal.Decimal
@@ -109,26 +108,26 @@ func TestNoiseNumericTransformer_Transform(t *testing.T) {
 		},
 		{
 			name: "numeric without decimal places",
-			columns: []models.Column{
+			columns: []core.Column{
 				{
 					Idx:       0,
 					Name:      "data",
 					TypeName:  mysqldbmsdriver.TypeNumeric,
 					TypeOID:   mysqldbmsdriver.VirtualOidNumeric,
-					TypeClass: models.TypeClassNumeric,
+					TypeClass: core.TypeClassNumeric,
 					Length:    0,
 				},
 			},
-			original: []*models.ColumnRawValue{
-				models.NewColumnRawValue([]byte("100"), false)},
-			staticParameters: map[string]models.ParamsValue{
-				"column":    models.ParamsValue("data"),
-				"engine":    models.ParamsValue("random"),
-				"min_ratio": models.ParamsValue("0.2"),
-				"max_ratio": models.ParamsValue("0.9"),
-				"decimal":   models.ParamsValue("0"),
+			original: []*core.ColumnRawValue{
+				core.NewColumnRawValue([]byte("100"), false)},
+			staticParameters: map[string]core.ParamsValue{
+				"column":    core.ParamsValue("data"),
+				"engine":    core.ParamsValue("random"),
+				"min_ratio": core.ParamsValue("0.2"),
+				"max_ratio": core.ParamsValue("0.9"),
+				"decimal":   core.ParamsValue("0"),
 			},
-			validateFn: func(t *testing.T, recorder commonininterfaces.Recorder) {
+			validateFn: func(t *testing.T, recorder core.Recorder) {
 				expectedMin := decimal.RequireFromString("10")
 				expectedMax := decimal.RequireFromString("190")
 				var val decimal.Decimal
@@ -146,26 +145,26 @@ func TestNoiseNumericTransformer_Transform(t *testing.T) {
 		},
 		{
 			name: "numeric with no decimal and deterministic engine",
-			columns: []models.Column{
+			columns: []core.Column{
 				{
 					Idx:       0,
 					Name:      "data",
 					TypeName:  mysqldbmsdriver.TypeNumeric,
 					TypeOID:   mysqldbmsdriver.VirtualOidNumeric,
-					TypeClass: models.TypeClassNumeric,
+					TypeClass: core.TypeClassNumeric,
 					Length:    0,
 				},
 			},
-			original: []*models.ColumnRawValue{
-				models.NewColumnRawValue([]byte("100"), false)},
-			staticParameters: map[string]models.ParamsValue{
-				"column":    models.ParamsValue("data"),
-				"engine":    models.ParamsValue("deterministic"),
-				"min_ratio": models.ParamsValue("0.2"),
-				"max_ratio": models.ParamsValue("0.9"),
-				"decimal":   models.ParamsValue("0"),
+			original: []*core.ColumnRawValue{
+				core.NewColumnRawValue([]byte("100"), false)},
+			staticParameters: map[string]core.ParamsValue{
+				"column":    core.ParamsValue("data"),
+				"engine":    core.ParamsValue("deterministic"),
+				"min_ratio": core.ParamsValue("0.2"),
+				"max_ratio": core.ParamsValue("0.9"),
+				"decimal":   core.ParamsValue("0"),
 			},
-			validateFn: func(t *testing.T, recorder commonininterfaces.Recorder) {
+			validateFn: func(t *testing.T, recorder core.Recorder) {
 				val, err := recorder.GetRawColumnValueByName("data")
 				require.NoError(t, err)
 				require.False(t, val.IsNull)
@@ -174,27 +173,27 @@ func TestNoiseNumericTransformer_Transform(t *testing.T) {
 		},
 		{
 			name: "numeric with thresholds",
-			columns: []models.Column{
+			columns: []core.Column{
 				{
 					Idx:       0,
 					Name:      "data",
 					TypeName:  mysqldbmsdriver.TypeNumeric,
 					TypeOID:   mysqldbmsdriver.VirtualOidNumeric,
-					TypeClass: models.TypeClassNumeric,
+					TypeClass: core.TypeClassNumeric,
 					Length:    0,
 				},
 			},
-			original: []*models.ColumnRawValue{
-				models.NewColumnRawValue([]byte("100"), false)},
-			staticParameters: map[string]models.ParamsValue{
-				"column":    models.ParamsValue("data"),
-				"engine":    models.ParamsValue("random"),
-				"min_ratio": models.ParamsValue("0.2"),
-				"max_ratio": models.ParamsValue("0.9"),
-				"min":       models.ParamsValue("90"),
-				"max":       models.ParamsValue("110"),
+			original: []*core.ColumnRawValue{
+				core.NewColumnRawValue([]byte("100"), false)},
+			staticParameters: map[string]core.ParamsValue{
+				"column":    core.ParamsValue("data"),
+				"engine":    core.ParamsValue("random"),
+				"min_ratio": core.ParamsValue("0.2"),
+				"max_ratio": core.ParamsValue("0.9"),
+				"min":       core.ParamsValue("90"),
+				"max":       core.ParamsValue("110"),
 			},
-			validateFn: func(t *testing.T, recorder commonininterfaces.Recorder) {
+			validateFn: func(t *testing.T, recorder core.Recorder) {
 				expectedMin := decimal.RequireFromString("90")
 				expectedMax := decimal.RequireFromString("110")
 				var val decimal.Decimal
@@ -206,13 +205,13 @@ func TestNoiseNumericTransformer_Transform(t *testing.T) {
 		},
 		{
 			name: "Dynamic mode",
-			staticParameters: map[string]models.ParamsValue{
-				"column":    models.ParamsValue("data"),
-				"engine":    models.ParamsValue("random"),
-				"min_ratio": models.ParamsValue("0.2"),
-				"max_ratio": models.ParamsValue("0.9"),
+			staticParameters: map[string]core.ParamsValue{
+				"column":    core.ParamsValue("data"),
+				"engine":    core.ParamsValue("random"),
+				"min_ratio": core.ParamsValue("0.2"),
+				"max_ratio": core.ParamsValue("0.9"),
 			},
-			dynamicParameter: map[string]models.DynamicParamValue{
+			dynamicParameter: map[string]core.DynamicParamValue{
 				"min": {
 					Column: "min_val",
 				},
@@ -220,18 +219,18 @@ func TestNoiseNumericTransformer_Transform(t *testing.T) {
 					Column: "max_val",
 				},
 			},
-			original: []*models.ColumnRawValue{
-				models.NewColumnRawValue([]byte("100"), false),
-				models.NewColumnRawValue([]byte("90"), false),
-				models.NewColumnRawValue([]byte("100"), false),
+			original: []*core.ColumnRawValue{
+				core.NewColumnRawValue([]byte("100"), false),
+				core.NewColumnRawValue([]byte("90"), false),
+				core.NewColumnRawValue([]byte("100"), false),
 			},
-			columns: []models.Column{
+			columns: []core.Column{
 				{
 					Idx:       0,
 					Name:      "data",
 					TypeName:  mysqldbmsdriver.TypeNumeric,
 					TypeOID:   mysqldbmsdriver.VirtualOidNumeric,
-					TypeClass: models.TypeClassNumeric,
+					TypeClass: core.TypeClassNumeric,
 					Length:    0,
 				},
 				{
@@ -239,7 +238,7 @@ func TestNoiseNumericTransformer_Transform(t *testing.T) {
 					Name:      "min_val",
 					TypeName:  mysqldbmsdriver.TypeNumeric,
 					TypeOID:   mysqldbmsdriver.VirtualOidNumeric,
-					TypeClass: models.TypeClassNumeric,
+					TypeClass: core.TypeClassNumeric,
 					Length:    0,
 				},
 				{
@@ -247,11 +246,11 @@ func TestNoiseNumericTransformer_Transform(t *testing.T) {
 					Name:      "max_val",
 					TypeName:  mysqldbmsdriver.TypeNumeric,
 					TypeOID:   mysqldbmsdriver.VirtualOidNumeric,
-					TypeClass: models.TypeClassNumeric,
+					TypeClass: core.TypeClassNumeric,
 					Length:    0,
 				},
 			},
-			validateFn: func(t *testing.T, recorder commonininterfaces.Recorder) {
+			validateFn: func(t *testing.T, recorder core.Recorder) {
 				expectedMin := decimal.RequireFromString("90")
 				expectedMax := decimal.RequireFromString("110")
 				var val decimal.Decimal

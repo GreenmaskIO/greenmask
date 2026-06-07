@@ -17,8 +17,7 @@ package parameters
 import (
 	"fmt"
 
-	commonininterfaces "github.com/greenmaskio/greenmask/pkg/common/interfaces"
-	"github.com/greenmaskio/greenmask/pkg/common/models"
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 	"github.com/greenmaskio/greenmask/pkg/common/transformers/template"
 )
 
@@ -33,23 +32,23 @@ import (
 //			   allows to scan not pointer value into pointer receiver
 
 type DynamicParameterContext struct {
-	column       *models.Column
-	linkedColumn *models.Column
+	column       *core.Column
+	linkedColumn *core.Column
 	*template.RecordContextReadOnly
 }
 
-func NewDynamicParameterContext(column *models.Column) *DynamicParameterContext {
+func NewDynamicParameterContext(column *core.Column) *DynamicParameterContext {
 	return &DynamicParameterContext{
 		column:                column,
 		RecordContextReadOnly: template.NewRecordContextReadOnly(),
 	}
 }
 
-func (dpc *DynamicParameterContext) setLinkedColumn(linkedColumn *models.Column) {
+func (dpc *DynamicParameterContext) setLinkedColumn(linkedColumn *core.Column) {
 	dpc.linkedColumn = linkedColumn
 }
 
-func (dpc *DynamicParameterContext) setRecord(r commonininterfaces.Recorder) {
+func (dpc *DynamicParameterContext) setRecord(r core.Recorder) {
 	dpc.SetRecord(r)
 }
 

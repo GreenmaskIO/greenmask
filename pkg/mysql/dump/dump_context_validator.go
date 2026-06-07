@@ -17,16 +17,15 @@ package dump
 import (
 	"context"
 
-	"github.com/greenmaskio/greenmask/pkg/common/interfaces"
-	"github.com/greenmaskio/greenmask/pkg/common/models"
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 )
 
-var _ interfaces.DumpContextValidator = (*DumpContextValidator)(nil)
+var _ core.DumpContextValidator = (*DumpContextValidator)(nil)
 
 // DumpContextValidator validates semantic correctness of the dump context.
 // The stub is a no-op pass; validation findings flow through validationcollector.
 type DumpContextValidator struct{}
 
-func (s *DumpContextValidator) Validate(ctx context.Context, input models.DumpContextValidatorInput) error {
+func (s *DumpContextValidator) Validate(ctx context.Context, input core.DumpContextValidatorInput) error {
 	return nil
 }

@@ -18,8 +18,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/greenmaskio/greenmask/pkg/common/interfaces"
-	"github.com/greenmaskio/greenmask/pkg/common/models"
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 )
 
 var (
@@ -27,24 +26,24 @@ var (
 )
 
 var (
-	_ interfaces.Recorder = (*Record)(nil)
+	_ core.Recorder = (*Record)(nil)
 )
 
-type Tuple map[string]*models.ColumnValue
+type Tuple map[string]*core.ColumnValue
 
 type Record struct {
 	// tableDriver - it's a driver that was initialized with table data like columns.
 	// This driver can encode/decode/scan value from raw data []byte into scalar
 	// type (like int, str, etc.) and vice versa.
-	tableDriver interfaces.TableDriver
+	tableDriver core.TableDriver
 	// row - low level interface to address to the raw value of column in the row (tuple).
 	// It simply can get/set value and encode/decode from/into raw row data (like CSV row).
-	row interfaces.RowDriver
+	row core.RowDriver
 }
 
 func NewRecord(
-	row interfaces.RowDriver,
-	tableDriver interfaces.TableDriver,
+	row core.RowDriver,
+	tableDriver core.TableDriver,
 ) *Record {
 	return &Record{
 		row:         row,
@@ -68,11 +67,11 @@ func (r *Record) IsNullByColumnIdx(columIdx int) (bool, error) {
 	return v.IsNull, nil
 }
 
-func (r *Record) GetColumnByName(columnName string) (*models.Column, error) {
+func (r *Record) GetColumnByName(columnName string) (*core.Column, error) {
 	return r.tableDriver.GetColumnByName(columnName)
 }
 
-func (r *Record) TableDriver() interfaces.TableDriver {
+func (r *Record) TableDriver() core.TableDriver {
 	return r.tableDriver
 }
 
@@ -130,22 +129,22 @@ func (r *Record) ScanColumnValueByName(name string, v any) (bool, error) {
 	return isNull, nil
 }
 
-func (r *Record) GetColumnValueByIdx(idx int) (*models.ColumnValue, error) {
+func (r *Record) GetColumnValueByIdx(idx int) (*core.ColumnValue, error) {
 	rawData, err := r.row.GetColumn(idx)
 	if err != nil {
 		return nil, err
 	}
 	if rawData.IsNull {
-		return models.NewColumnValue(nil, true), nil
+		return core.NewColumnValue(nil, true), nil
 	}
 	decodedValue, err := r.tableDriver.DecodeValueByColumnIdx(idx, rawData.Data)
 	if err != nil {
 		return nil, fmt.Errorf("error decoding arribute: %w", err)
 	}
-	return models.NewColumnValue(decodedValue, false), nil
+	return core.NewColumnValue(decodedValue, false), nil
 }
 
-func (r *Record) GetColumnValueByName(name string) (*models.ColumnValue, error) {
+func (r *Record) GetColumnValueByName(name string) (*core.ColumnValue, error) {
 	idx, err := r.tableDriver.GetColumnIdxByName(name)
 	if err != nil {
 		return nil, err
@@ -175,15 +174,15 @@ func (r *Record) encodeValue(idx int, v any) (res []byte, err error) {
 }
 
 func (r *Record) SetColumnValueByIdx(idx int, v any) error {
-	var value *models.ColumnValue
+	var value *core.ColumnValue
 	switch vv := v.(type) {
-	case *models.ColumnValue:
+	case *core.ColumnValue:
 		value = vv
 	default:
-		value = models.NewColumnValue(v, false)
+		value = core.NewColumnValue(v, false)
 	}
 	if value.IsNull {
-		if err := r.row.SetColumn(idx, models.NewColumnRawValue(nil, true)); err != nil {
+		if err := r.row.SetColumn(idx, core.NewColumnRawValue(nil, true)); err != nil {
 			return fmt.Errorf("error setting column value in RowDriver: %w", err)
 		}
 	} else {
@@ -191,7 +190,7 @@ func (r *Record) SetColumnValueByIdx(idx int, v any) error {
 		if err != nil {
 			return fmt.Errorf("unable to encode attr value: %w", err)
 		}
-		if err = r.row.SetColumn(idx, models.NewColumnRawValue(encodedValue, false)); err != nil {
+		if err = r.row.SetColumn(idx, core.NewColumnRawValue(encodedValue, false)); err != nil {
 			return fmt.Errorf("error setting column value in RowDriver: %w", err)
 		}
 	}
@@ -212,7 +211,7 @@ func (r *Record) SetColumnValueByName(name string, v any) error {
 	return r.SetColumnValueByIdx(idx, v)
 }
 
-func (r *Record) GetRawColumnValueByName(name string) (*models.ColumnRawValue, error) {
+func (r *Record) GetRawColumnValueByName(name string) (*core.ColumnRawValue, error) {
 	idx, err := r.tableDriver.GetColumnIdxByName(name)
 	if err != nil {
 		return nil, err
@@ -220,11 +219,11 @@ func (r *Record) GetRawColumnValueByName(name string) (*models.ColumnRawValue, e
 	return r.row.GetColumn(idx)
 }
 
-func (r *Record) GetRawColumnValueByIdx(idx int) (*models.ColumnRawValue, error) {
+func (r *Record) GetRawColumnValueByIdx(idx int) (*core.ColumnRawValue, error) {
 	return r.row.GetColumn(idx)
 }
 
-func (r *Record) SetRawColumnValueByName(name string, value *models.ColumnRawValue) error {
+func (r *Record) SetRawColumnValueByName(name string, value *core.ColumnRawValue) error {
 	idx, err := r.tableDriver.GetColumnIdxByName(name)
 	if err != nil {
 		return nil
@@ -235,7 +234,7 @@ func (r *Record) SetRawColumnValueByName(name string, value *models.ColumnRawVal
 	return nil
 }
 
-func (r *Record) SetRawColumnValueByIdx(idx int, value *models.ColumnRawValue) error {
+func (r *Record) SetRawColumnValueByIdx(idx int, value *core.ColumnRawValue) error {
 	if err := r.row.SetColumn(idx, value); err != nil {
 		return fmt.Errorf("error setting raw atribute value: %w", err)
 	}

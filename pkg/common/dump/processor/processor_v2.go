@@ -5,14 +5,13 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/greenmaskio/greenmask/pkg/common/interfaces"
-	"github.com/greenmaskio/greenmask/pkg/common/models"
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 	"github.com/rs/zerolog/log"
 	"golang.org/x/sync/errgroup"
 )
 
 type DumpStages struct {
-	Introspector           interfaces.IntrospectorV2
+	Introspector           core.IntrospectorV2
 	DependencyGraphBuilder DependencyGraphBuilder
 	SubsetBuilder          SubsetBuilder
 	DumpContextBuilder     DumpContextBuilder
@@ -21,10 +20,10 @@ type DumpStages struct {
 }
 
 type DefaultDumpProcessorV2 struct {
-	objectDumpFactory interfaces.ObjectDumpFactoryRegistry
-	schemaDumpFactory interfaces.SchemaDumpFactoryRegistry
+	objectDumpFactory core.ObjectDumpFactoryRegistry
+	schemaDumpFactory core.SchemaDumpFactoryRegistry
 	jobs              int
-	engine            models.DBMSEngine
+	engine            core.DBMSEngine
 }
 
 type OptionV2 func(*DefaultDumpProcessorV2) error
@@ -40,9 +39,9 @@ func WithJobsV2(jobs int) OptionV2 {
 }
 
 func NewDataDumpProcessorV2(
-	dumpObjectFactory interfaces.ObjectDumpFactoryRegistry,
-	schemaDumpFactory interfaces.SchemaDumpFactoryRegistry,
-	engine models.DBMSEngine,
+	dumpObjectFactory core.ObjectDumpFactoryRegistry,
+	schemaDumpFactory core.SchemaDumpFactoryRegistry,
+	engine core.DBMSEngine,
 	opts ...OptionV2,
 ) (*DefaultDumpProcessorV2, error) {
 	res := &DefaultDumpProcessorV2{
@@ -59,10 +58,10 @@ func NewDataDumpProcessorV2(
 	return res, nil
 }
 
-func (dr *DefaultDumpProcessorV2) initSchemaDumpers(plan models.DumpPlan) ([]interfaces.SchemaDumper, error) {
-	res := make([]interfaces.SchemaDumper, 0, len(plan.SchemaDumpSpecs))
+func (dr *DefaultDumpProcessorV2) initSchemaDumpers(plan core.DumpPlan) ([]core.SchemaDumper, error) {
+	res := make([]core.SchemaDumper, 0, len(plan.SchemaDumpSpecs))
 	for _, item := range plan.SchemaDumpSpecs {
-		task, err := dr.schemaDumpFactory.New(models.SchemaDumpKind(item.Kind), item)
+		task, err := dr.schemaDumpFactory.New(core.SchemaDumpKind(item.Kind), item)
 		if err != nil {
 			return nil, fmt.Errorf("new schema dump task: %w", err)
 		}
@@ -71,8 +70,8 @@ func (dr *DefaultDumpProcessorV2) initSchemaDumpers(plan models.DumpPlan) ([]int
 	return res, nil
 }
 
-func (dr *DefaultDumpProcessorV2) initObjectDumpers(plan models.DumpPlan) ([]interfaces.ObjectDumper, error) {
-	res := make([]interfaces.ObjectDumper, 0, len(plan.DumpObjectSpecs))
+func (dr *DefaultDumpProcessorV2) initObjectDumpers(plan core.DumpPlan) ([]core.ObjectDumper, error) {
+	res := make([]core.ObjectDumper, 0, len(plan.DumpObjectSpecs))
 	for _, item := range plan.DumpObjectSpecs {
 		task, err := dr.objectDumpFactory.New(item.Kind, item)
 		if err != nil {
@@ -84,25 +83,25 @@ func (dr *DefaultDumpProcessorV2) initObjectDumpers(plan models.DumpPlan) ([]int
 }
 
 // Run - runs the dump command.
-func (dr *DefaultDumpProcessorV2) Run(ctx context.Context, plan models.DumpPlan) (models.Metadata, error) {
+func (dr *DefaultDumpProcessorV2) Run(ctx context.Context, plan core.DumpPlan) (core.Metadata, error) {
 	startedAt := time.Now()
 
 	schemaDumpTasks, err := dr.initSchemaDumpers(plan)
 	if err != nil {
-		return models.Metadata{}, fmt.Errorf("get schema dump tasks: %w", err)
+		return core.Metadata{}, fmt.Errorf("get schema dump tasks: %w", err)
 	}
 	schemaDumpStats, err := dr.schemaDump(ctx, schemaDumpTasks)
 	if err != nil {
-		return models.Metadata{}, fmt.Errorf("schema dump: %w", err)
+		return core.Metadata{}, fmt.Errorf("schema dump: %w", err)
 	}
 
 	dataDumpTasks, err := dr.initObjectDumpers(plan)
 	if err != nil {
-		return models.Metadata{}, fmt.Errorf("get object dump tasks: %w", err)
+		return core.Metadata{}, fmt.Errorf("get object dump tasks: %w", err)
 	}
 	dataDumpStats, err := dr.dataDump(ctx, dataDumpTasks)
 	if err != nil {
-		return models.Metadata{}, fmt.Errorf("data dump: %w", err)
+		return core.Metadata{}, fmt.Errorf("data dump: %w", err)
 	}
 
 	return dr.buildMetadata(plan, startedAt, dataDumpStats, schemaDumpStats)
@@ -110,9 +109,9 @@ func (dr *DefaultDumpProcessorV2) Run(ctx context.Context, plan models.DumpPlan)
 
 func (dr *DefaultDumpProcessorV2) schemaDump(
 	ctx context.Context,
-	tasks []interfaces.SchemaDumper,
-) ([]models.SchemaDumpStat, error) {
-	stats := make([]models.SchemaDumpStat, 0, len(tasks))
+	tasks []core.SchemaDumper,
+) ([]core.SchemaDumpStat, error) {
+	stats := make([]core.SchemaDumpStat, 0, len(tasks))
 	for _, task := range tasks {
 		select {
 		case <-ctx.Done():
@@ -130,14 +129,14 @@ func (dr *DefaultDumpProcessorV2) schemaDump(
 
 func (dr *DefaultDumpProcessorV2) dataDump(
 	ctx context.Context,
-	tasks []interfaces.ObjectDumper,
-) (map[models.TaskID]models.ObjectDumpStat, error) {
-	taskCh := make(chan interfaces.ObjectDumper, dr.jobs)
-	statCh := make(chan models.ObjectDumpStat)
+	tasks []core.ObjectDumper,
+) (map[core.TaskID]core.ObjectDumpStat, error) {
+	taskCh := make(chan core.ObjectDumper, dr.jobs)
+	statCh := make(chan core.ObjectDumpStat)
 
 	// Collect stats concurrently so workers never block on send.
 	// Exits only when statCh is closed by dumpWorkerPlanner — no stats are lost.
-	var collected []models.ObjectDumpStat
+	var collected []core.ObjectDumpStat
 	collectDone := make(chan struct{})
 	go func() {
 		defer close(collectDone)
@@ -156,7 +155,7 @@ func (dr *DefaultDumpProcessorV2) dataDump(
 	}
 	<-collectDone
 
-	stats := make(map[models.TaskID]models.ObjectDumpStat, len(collected))
+	stats := make(map[core.TaskID]core.ObjectDumpStat, len(collected))
 	for _, s := range collected {
 		stats[s.ID] = s
 	}
@@ -167,8 +166,8 @@ func (dr *DefaultDumpProcessorV2) dataDump(
 // taskProducer sends tasks to taskCh and closes it when done.
 func (dr *DefaultDumpProcessorV2) taskProducer(
 	ctx context.Context,
-	taskCh chan<- interfaces.ObjectDumper,
-	tasks []interfaces.ObjectDumper,
+	taskCh chan<- core.ObjectDumper,
+	tasks []core.ObjectDumper,
 ) func() error {
 	return func() error {
 		defer close(taskCh)
@@ -186,8 +185,8 @@ func (dr *DefaultDumpProcessorV2) taskProducer(
 // dumpWorkerPlanner spawns all dump workers and closes statCh when they all finish.
 func (dr *DefaultDumpProcessorV2) dumpWorkerPlanner(
 	ctx context.Context,
-	tasks <-chan interfaces.ObjectDumper,
-	statCh chan<- models.ObjectDumpStat,
+	tasks <-chan core.ObjectDumper,
+	statCh chan<- core.ObjectDumpStat,
 ) func() error {
 	return func() error {
 		defer close(statCh)
@@ -201,8 +200,8 @@ func (dr *DefaultDumpProcessorV2) dumpWorkerPlanner(
 
 func (dr *DefaultDumpProcessorV2) dumpWorkerRunner(
 	ctx context.Context,
-	tasks <-chan interfaces.ObjectDumper,
-	statCh chan<- models.ObjectDumpStat,
+	tasks <-chan core.ObjectDumper,
+	statCh chan<- core.ObjectDumpStat,
 	jobId int,
 ) func() error {
 	return func() error {
@@ -212,12 +211,12 @@ func (dr *DefaultDumpProcessorV2) dumpWorkerRunner(
 
 func (dr *DefaultDumpProcessorV2) dumpWorker(
 	ctx context.Context,
-	tasks <-chan interfaces.ObjectDumper,
-	statCh chan<- models.ObjectDumpStat,
+	tasks <-chan core.ObjectDumper,
+	statCh chan<- core.ObjectDumpStat,
 	id int,
 ) error {
 	for {
-		var task interfaces.ObjectDumper
+		var task core.ObjectDumper
 		var ok bool
 		select {
 		case <-ctx.Done():
@@ -254,32 +253,32 @@ func (dr *DefaultDumpProcessorV2) dumpWorker(
 	}
 }
 
-func (dr *DefaultDumpProcessorV2) buildSchemaDumpMetadata(stats []models.SchemaDumpStat) *models.SchemaDumpMetadata {
-	return models.NewSchemaDumpMetadata(stats)
+func (dr *DefaultDumpProcessorV2) buildSchemaDumpMetadata(stats []core.SchemaDumpStat) *core.SchemaDumpMetadata {
+	return core.NewSchemaDumpMetadata(stats)
 }
 
 func (dr *DefaultDumpProcessorV2) buildDataDumpMetadata(
-	plan models.DumpPlan,
-	stats map[models.TaskID]models.ObjectDumpStat,
-) *models.DataDumpMetadata {
-	taskID2ObjectID := make(map[models.ObjectKind]map[models.TaskID]models.ObjectID)
-	objectID2TaskID := make(map[models.ObjectKind]map[models.ObjectID]models.TaskID)
-	restorationItems := make(map[models.TaskID]models.RestorationItem)
+	plan core.DumpPlan,
+	stats map[core.TaskID]core.ObjectDumpStat,
+) *core.DataDumpMetadata {
+	taskID2ObjectID := make(map[core.ObjectKind]map[core.TaskID]core.ObjectID)
+	objectID2TaskID := make(map[core.ObjectKind]map[core.ObjectID]core.TaskID)
+	restorationItems := make(map[core.TaskID]core.RestorationItem)
 	for _, s := range stats {
 		kindTask2Object, ok := taskID2ObjectID[s.ObjectStat.Kind]
 		if !ok {
-			kindTask2Object = make(map[models.TaskID]models.ObjectID)
+			kindTask2Object = make(map[core.TaskID]core.ObjectID)
 		}
 		kindObject2Task, ok := objectID2TaskID[s.ObjectStat.Kind]
 		if !ok {
-			kindObject2Task = make(map[models.ObjectID]models.TaskID)
+			kindObject2Task = make(map[core.ObjectID]core.TaskID)
 		}
 		kindTask2Object[s.ID] = s.ObjectStat.ID
 		kindObject2Task[s.ObjectStat.ID] = s.ID
 		taskID2ObjectID[s.ObjectStat.Kind] = kindTask2Object
 		objectID2TaskID[s.ObjectStat.Kind] = kindObject2Task
 
-		restorationItems[s.ID] = models.RestorationItem{
+		restorationItems[s.ID] = core.RestorationItem{
 			TaskID:           s.ID,
 			ObjectKind:       s.ObjectStat.Kind,
 			ObjectID:         s.ObjectStat.ID,
@@ -290,23 +289,23 @@ func (dr *DefaultDumpProcessorV2) buildDataDumpMetadata(
 			Compression:      s.ObjectStat.Compression,
 		}
 	}
-	dataDumpStat := models.DataDumpStat{
+	dataDumpStat := core.DataDumpStat{
 		RestorationContext: plan.RestorationContext,
 		TaskStats:          stats,
 		TaskID2ObjectID:    taskID2ObjectID,
 		ObjectID2TaskID:    objectID2TaskID,
 		RestorationItems:   restorationItems,
 	}
-	return models.NewDataDumpMetadata(plan.TransformationConfig, dataDumpStat)
+	return core.NewDataDumpMetadata(plan.TransformationConfig, dataDumpStat)
 }
 
 func (dr *DefaultDumpProcessorV2) buildMetadata(
-	plan models.DumpPlan,
+	plan core.DumpPlan,
 	startedAt time.Time,
-	dataDumpStats map[models.TaskID]models.ObjectDumpStat,
-	schemaDumpStats []models.SchemaDumpStat,
-) (models.Metadata, error) {
-	meta := models.NewMetadata(
+	dataDumpStats map[core.TaskID]core.ObjectDumpStat,
+	schemaDumpStats []core.SchemaDumpStat,
+) (core.Metadata, error) {
+	meta := core.NewMetadata(
 		dr.engine,
 		startedAt,
 		time.Now(),

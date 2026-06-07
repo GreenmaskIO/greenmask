@@ -17,7 +17,7 @@ package cmd
 import (
 	"testing"
 
-	"github.com/greenmaskio/greenmask/pkg/common/models"
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 	mysqldbmsdriver "github.com/greenmaskio/greenmask/pkg/mysql/dbmsdriver"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -25,7 +25,7 @@ import (
 
 func TestCSVRecord_Encode(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
-		columns := []models.Column{
+		columns := []core.Column{
 			{
 				Idx:      0,
 				Name:     "first_name",
@@ -69,8 +69,8 @@ func TestCSVRecord_Encode(t *testing.T) {
 			affectedColumn,
 		)
 		require.NoError(t, err)
-		val1 := models.NewColumnRawValue([]byte("value1"), false)
-		val2 := models.NewColumnRawValue([]byte("value2"), false)
+		val1 := core.NewColumnRawValue([]byte("value1"), false)
+		val2 := core.NewColumnRawValue([]byte("value2"), false)
 		err = record.SetColumn(&columns[0], val1)
 		require.NoError(t, err)
 		err = record.SetColumn(&columns[2], val2)
@@ -87,7 +87,7 @@ func TestCSVRecord_Encode(t *testing.T) {
 func TestCSVRecord_Decode(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		rawData := []byte("value1,value2\n")
-		columns := []models.Column{
+		columns := []core.Column{
 			{
 				Idx:  0,
 				Name: "first_name",

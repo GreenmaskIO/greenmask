@@ -17,13 +17,13 @@ package transformers
 import (
 	"testing"
 
-	"github.com/greenmaskio/greenmask/pkg/common/models"
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 	"github.com/greenmaskio/greenmask/pkg/common/transformers/generators"
 	"github.com/stretchr/testify/require"
 )
 
 func TestChoiceTransformer_Transform(t *testing.T) {
-	data := []*models.ColumnRawValue{
+	data := []*core.ColumnRawValue{
 		{Data: []byte("a")},
 		{Data: []byte("b")},
 	}

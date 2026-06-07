@@ -20,8 +20,7 @@ import (
 	"strings"
 
 	"github.com/ggwhite/go-masker"
-	"github.com/greenmaskio/greenmask/pkg/common/interfaces"
-	commoninmodels "github.com/greenmaskio/greenmask/pkg/common/models"
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 	"github.com/greenmaskio/greenmask/pkg/common/transformers/parameters"
 	"github.com/greenmaskio/greenmask/pkg/common/transformers/utils"
 	"github.com/greenmaskio/greenmask/pkg/common/validationcollector"
@@ -54,16 +53,16 @@ var MaskingTransformerDefinition = utils.NewTransformerDefinition(
 		"column",
 		"column name",
 	).SetIsColumn(
-		commoninmodels.NewColumnProperties().
+		core.NewColumnProperties().
 			SetAffected(true).
-			SetAllowedColumnTypeClasses(commoninmodels.TypeClassText),
+			SetAllowedColumnTypeClasses(core.TypeClassText),
 	).SetRequired(true),
 
 	parameters.MustNewParameterDefinition(
 		"type",
 		"logical type of attribute (default, password, name, addr, email, mobile, tel, id, credit_card, url)",
 	).SetRawValueValidator(maskerTypeValidator).
-		SetDefaultValue(commoninmodels.ParamsValue(MDefault)),
+		SetDefaultValue(core.ParamsValue(MDefault)),
 )
 
 type maskingFunction func(val string) string
@@ -78,9 +77,9 @@ type MaskingTransformer struct {
 
 func NewMaskingTransformer(
 	ctx context.Context,
-	tableDriver interfaces.TableDriver,
+	tableDriver core.TableDriver,
 	parameters map[string]parameters.Parameterizer,
-) (interfaces.Transformer, error) {
+) (core.Transformer, error) {
 
 	var columnName string
 	var dataType string
@@ -146,7 +145,7 @@ func (t *MaskingTransformer) Done(context.Context) error {
 	return nil
 }
 
-func (t *MaskingTransformer) Transform(_ context.Context, r interfaces.Recorder) error {
+func (t *MaskingTransformer) Transform(_ context.Context, r core.Recorder) error {
 	val, err := r.GetRawColumnValueByIdx(t.columnIdx)
 	if err != nil {
 		return fmt.Errorf("unable to scan attribute value: %w", err)
@@ -156,7 +155,7 @@ func (t *MaskingTransformer) Transform(_ context.Context, r interfaces.Recorder)
 	}
 
 	maskedValue := t.maskingFunction(string(val.Data))
-	err = r.SetRawColumnValueByIdx(t.columnIdx, commoninmodels.NewColumnRawValue([]byte(maskedValue), false))
+	err = r.SetRawColumnValueByIdx(t.columnIdx, core.NewColumnRawValue([]byte(maskedValue), false))
 	if err != nil {
 		return fmt.Errorf("unable to set new value: %w", err)
 	}
@@ -170,20 +169,20 @@ func defaultMasker(v string) string {
 func maskerTypeValidator(
 	ctx context.Context,
 	_ *parameters.ParameterDefinition,
-	v commoninmodels.ParamsValue,
+	v core.ParamsValue,
 ) error {
 	switch string(v) {
 	case MDefault, MPassword, MName, MAddress, MEmail, MMobile, MTelephone, MID, MCreditCard, MURL:
 		return nil
 	}
 	validationcollector.FromContext(ctx).Add(
-		commoninmodels.NewValidationWarning().
-			SetSeverity(commoninmodels.ValidationSeverityWarning).
+		core.NewValidationWarning().
+			SetSeverity(core.ValidationSeverityWarning).
 			AddMeta("ParameterValue", string(v)).
 			AddMeta("AllowedValues", []string{
 				MDefault, MPassword, MName, MAddress, MEmail, MMobile, MTelephone, MID, MCreditCard, MURL,
 			}).SetMsg(`unknown masking type`))
-	return fmt.Errorf("unknown masking type: %w", commoninmodels.ErrFatalValidationError)
+	return fmt.Errorf("unknown masking type: %w", core.ErrFatalValidationError)
 }
 
 func (t *MaskingTransformer) Describe() string {

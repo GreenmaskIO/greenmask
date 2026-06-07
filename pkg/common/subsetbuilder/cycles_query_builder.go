@@ -17,8 +17,7 @@ package subsetbuilder
 import (
 	"fmt"
 
-	commonmodels "github.com/greenmaskio/greenmask/pkg/common/models"
-	"github.com/greenmaskio/greenmask/pkg/common/subset"
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 )
 
 // cyclesQueryBuilder builds queries for cyclic SCCs — those whose root has more
@@ -26,20 +25,20 @@ import (
 // It mirrors cyclesQueryBuilder in pkg/common/subset/cycles_query_builder.go.
 type cyclesQueryBuilder struct {
 	sg          *sccSubgraph
-	dg          commonmodels.DependencyGraphResult
-	subsetConds map[commonmodels.ObjectID][]string
-	dialect     subset.Dialect
+	dg          core.DependencyGraphResult
+	subsetConds map[core.ObjectID][]string
+	dialect     Dialect
 }
 
 func newCyclesQueryBuilder(
 	sg *sccSubgraph,
-	dg commonmodels.DependencyGraphResult,
-	subsetConds map[commonmodels.ObjectID][]string,
-	dialect subset.Dialect,
+	dg core.DependencyGraphResult,
+	subsetConds map[core.ObjectID][]string,
+	dialect Dialect,
 ) *cyclesQueryBuilder {
 	return &cyclesQueryBuilder{sg: sg, dg: dg, subsetConds: subsetConds, dialect: dialect}
 }
 
-func (b *cyclesQueryBuilder) build() (map[commonmodels.ObjectID]string, error) {
+func (b *cyclesQueryBuilder) build() (map[core.ObjectID]string, error) {
 	panic(fmt.Sprintf("cyclesQueryBuilder: not yet implemented (SCC %d)", b.sg.rootSCCID))
 }

@@ -25,7 +25,7 @@ import (
 	"github.com/rs/zerolog/log"
 	"golang.org/x/sync/errgroup"
 
-	"github.com/greenmaskio/greenmask/pkg/common/models"
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 	mysqldbmsdriver "github.com/greenmaskio/greenmask/pkg/mysql/dbmsdriver"
 	mysqlmodels "github.com/greenmaskio/greenmask/pkg/mysql/models"
 	"github.com/greenmaskio/greenmask/pkg/mysql/pool"
@@ -45,7 +45,7 @@ type TableDataReader struct {
 	query        string
 	eg           *errgroup.Group
 	cancel       context.CancelFunc
-	table        *models.Table
+	table        *core.Table
 	// dataCh - actually stored data.
 	dataCh chan [][]byte
 	// endOfStreamCh - marks stream as completed successfully. Return ErrEndOfStream.
@@ -53,7 +53,7 @@ type TableDataReader struct {
 }
 
 func NewTableDataReader(
-	table *models.Table,
+	table *core.Table,
 	connConfig mysqlmodels.ConnConfig,
 	query string,
 ) *TableDataReader {
@@ -151,7 +151,7 @@ func (r *TableDataReader) streamRows(ctx context.Context, conn pool.WorkerConn) 
 				Str("SchemaName", r.table.Schema).
 				Err(ctx.Err()).
 				Msg("data reader context done - ignore it in validate command")
-			return errors.Join(models.ErrDumpStreamTerminated, ctx.Err())
+			return errors.Join(core.ErrDumpStreamTerminated, ctx.Err())
 		}
 		return nil
 	}, nil)
@@ -198,7 +198,7 @@ func (r *TableDataReader) ReadRow(ctx context.Context) ([][]byte, error) {
 		if !ok {
 			// If the channel was closed with no items
 			// then streamer exited successfully.
-			return nil, models.ErrEndOfStream
+			return nil, core.ErrEndOfStream
 		}
 		return nil, fmt.Errorf("read row from channel: %w", err)
 	case <-ctx.Done():
@@ -224,8 +224,8 @@ func (r *TableDataReader) Close(ctx context.Context) error {
 
 func (r *TableDataReader) DebugInfo() map[string]any {
 	return map[string]any{
-		models.MetaKeyTableName:      r.table.Name,
-		models.MetaKeyTableSchema:    r.table.Schema,
-		models.MetaKeyTableDumpQuery: r.query,
+		core.MetaKeyTableName:      r.table.Name,
+		core.MetaKeyTableSchema:    r.table.Schema,
+		core.MetaKeyTableDumpQuery: r.query,
 	}
 }

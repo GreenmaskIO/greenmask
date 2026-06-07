@@ -18,8 +18,7 @@ import (
 	"context"
 	"testing"
 
-	commonininterfaces "github.com/greenmaskio/greenmask/pkg/common/interfaces"
-	"github.com/greenmaskio/greenmask/pkg/common/models"
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 	commonutils "github.com/greenmaskio/greenmask/pkg/common/utils"
 	"github.com/greenmaskio/greenmask/pkg/common/validationcollector"
 	mysqldbmsdriver "github.com/greenmaskio/greenmask/pkg/mysql/dbmsdriver"
@@ -29,33 +28,33 @@ import (
 func TestRegexpReplaceTransformer_Transform2(t *testing.T) {
 	tests := []struct {
 		name             string
-		staticParameters map[string]models.ParamsValue
-		dynamicParameter map[string]models.DynamicParamValue
-		original         []*models.ColumnRawValue
-		validateFn       func(t *testing.T, recorder commonininterfaces.Recorder)
+		staticParameters map[string]core.ParamsValue
+		dynamicParameter map[string]core.DynamicParamValue
+		original         []*core.ColumnRawValue
+		validateFn       func(t *testing.T, recorder core.Recorder)
 		expectedErr      string
-		columns          []models.Column
+		columns          []core.Column
 	}{
 		{
 			name: "common",
-			columns: []models.Column{
+			columns: []core.Column{
 				{
 					Idx:       0,
 					Name:      "data",
 					TypeName:  mysqldbmsdriver.TypeText,
-					TypeClass: models.TypeClassText,
+					TypeClass: core.TypeClassText,
 					TypeOID:   mysqldbmsdriver.VirtualOidText,
 					Length:    0,
 				},
 			},
-			original: []*models.ColumnRawValue{
-				models.NewColumnRawValue([]byte("Hello world!!!?"), false)},
-			staticParameters: map[string]models.ParamsValue{
-				"column":  models.ParamsValue("data"),
-				"regexp":  models.ParamsValue(`(Hello)\s*world\s*(\!+\?)`),
-				"replace": models.ParamsValue("$1 Mr NoName $2"),
+			original: []*core.ColumnRawValue{
+				core.NewColumnRawValue([]byte("Hello world!!!?"), false)},
+			staticParameters: map[string]core.ParamsValue{
+				"column":  core.ParamsValue("data"),
+				"regexp":  core.ParamsValue(`(Hello)\s*world\s*(\!+\?)`),
+				"replace": core.ParamsValue("$1 Mr NoName $2"),
 			},
-			validateFn: func(t *testing.T, recorder commonininterfaces.Recorder) {
+			validateFn: func(t *testing.T, recorder core.Recorder) {
 				expected := "Hello Mr NoName !!!?"
 				var val string
 				isNull, err := recorder.ScanColumnValueByName("data", &val)

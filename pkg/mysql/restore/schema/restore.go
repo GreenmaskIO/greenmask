@@ -24,8 +24,7 @@ import (
 	"github.com/rs/zerolog/log"
 
 	commonconfig "github.com/greenmaskio/greenmask/pkg/common/config"
-	"github.com/greenmaskio/greenmask/pkg/common/interfaces"
-	commonmodels "github.com/greenmaskio/greenmask/pkg/common/models"
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 	"github.com/greenmaskio/greenmask/pkg/common/utils"
 )
 
@@ -74,12 +73,12 @@ func (r *Restorer) remapDB(name string) string {
 
 // Restorer restores a MySQL schema from files stored in the dump directory.
 type Restorer struct {
-	st             interfaces.Storager
+	st             core.Storager
 	cfg            options
 	sslOpts        commonconfig.SSLOpts
 	executable     string
 	cmd            utils.CmdProducer
-	schemaMeta     *commonmodels.SchemaDumpMetadata
+	schemaMeta     *core.SchemaDumpMetadata
 	conn           *sql.DB
 	databases      []string
 	createDatabase bool
@@ -88,11 +87,11 @@ type Restorer struct {
 }
 
 func NewRestorer(
-	st interfaces.Storager,
+	st core.Storager,
 	connCfg options,
 	sslOpts commonconfig.SSLOpts,
 	cmd utils.CmdProducer,
-	schemaMeta *commonmodels.SchemaDumpMetadata,
+	schemaMeta *core.SchemaDumpMetadata,
 	opts ...Option,
 ) *Restorer {
 	r := &Restorer{
@@ -170,7 +169,7 @@ func (r *Restorer) RestorePreDataSchema(ctx context.Context) error {
 
 	for _, schemaStat := range r.schemaMeta.DumpedDatabaseSchema {
 		// Backward compat: entries without a section are treated as pre-data.
-		if schemaStat.Section != "" && schemaStat.Section != commonmodels.DumpSectionPreData {
+		if schemaStat.Section != "" && schemaStat.Section != core.DumpSectionPreData {
 			continue
 		}
 		if err := r.restoreDatabaseSchema(ctx, schemaStat); err != nil {
@@ -188,7 +187,7 @@ func (r *Restorer) RestorePostDataSchema(ctx context.Context) error {
 	}
 
 	for _, schemaStat := range r.schemaMeta.DumpedDatabaseSchema {
-		if schemaStat.Section != commonmodels.DumpSectionPostData {
+		if schemaStat.Section != core.DumpSectionPostData {
 			continue
 		}
 		if err := r.restoreDatabaseSchema(ctx, schemaStat); err != nil {
@@ -198,7 +197,7 @@ func (r *Restorer) RestorePostDataSchema(ctx context.Context) error {
 	return nil
 }
 
-func (r *Restorer) restoreDatabaseSchema(ctx context.Context, schemaStat commonmodels.SchemaDumpStat) error {
+func (r *Restorer) restoreDatabaseSchema(ctx context.Context, schemaStat core.SchemaDumpStat) error {
 	target := r.remapDB(schemaStat.DatabaseName)
 	log.Ctx(ctx).Info().
 		Str("Database", schemaStat.DatabaseName).

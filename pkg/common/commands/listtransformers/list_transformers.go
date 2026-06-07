@@ -22,7 +22,7 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/greenmaskio/greenmask/pkg/common/models"
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 	"github.com/greenmaskio/greenmask/pkg/common/transformers/parameters"
 	"github.com/greenmaskio/greenmask/pkg/common/transformers/registry"
 	"github.com/greenmaskio/greenmask/pkg/common/transformers/utils"
@@ -143,7 +143,7 @@ func columnTypes(allowed []string) []string {
 	return []string{AnyTypesValue}
 }
 
-func columnClasses(classes []models.TypeClass) []string {
+func columnClasses(classes []core.TypeClass) []string {
 	if len(classes) == 0 {
 		return []string{AnyTypesValue}
 	}

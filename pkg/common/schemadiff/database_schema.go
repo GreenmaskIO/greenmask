@@ -4,21 +4,21 @@ import (
 	"fmt"
 	"slices"
 
-	"github.com/greenmaskio/greenmask/pkg/common/models"
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 )
 
-func newDiffNode(event string, signature map[string]string) models.DiffNode {
-	return models.DiffNode{
+func newDiffNode(event string, signature map[string]string) core.DiffNode {
+	return core.DiffNode{
 		Event:     event,
-		Msg:       models.DiffEventMsgs[event],
+		Msg:       core.DiffEventMsgs[event],
 		Signature: signature,
 	}
 }
 
-type DatabaseSchema []models.Table
+type DatabaseSchema []core.Table
 
-func (ds DatabaseSchema) Diff(current DatabaseSchema) []models.DiffNode {
-	var res []models.DiffNode
+func (ds DatabaseSchema) Diff(current DatabaseSchema) []core.DiffNode {
+	var res []core.DiffNode
 	for _, currentState := range current {
 		previousState, ok := ds.getTableByID(currentState.ID)
 		if !ok {
@@ -27,7 +27,7 @@ func (ds DatabaseSchema) Diff(current DatabaseSchema) []models.DiffNode {
 		}
 
 		if !ok {
-			res = append(res, newDiffNode(models.TableCreatedDiffEvent, map[string]string{
+			res = append(res, newDiffNode(core.TableCreatedDiffEvent, map[string]string{
 				"SchemaName": currentState.Schema,
 				"TableName":  currentState.Name,
 				"TableID":    fmt.Sprintf("%d", currentState.ID),
@@ -40,31 +40,31 @@ func (ds DatabaseSchema) Diff(current DatabaseSchema) []models.DiffNode {
 	return res
 }
 
-func (ds DatabaseSchema) getTableByID(id int) (models.Table, bool) {
-	idx := slices.IndexFunc(ds, func(table models.Table) bool {
+func (ds DatabaseSchema) getTableByID(id int) (core.Table, bool) {
+	idx := slices.IndexFunc(ds, func(table core.Table) bool {
 		return table.ID == id
 	})
 	if idx == -1 {
-		return models.Table{}, false
+		return core.Table{}, false
 	}
 	return ds[idx], true
 }
 
-func (ds DatabaseSchema) getTableByName(schemaName, tableName string) (models.Table, bool) {
-	idx := slices.IndexFunc(ds, func(table models.Table) bool {
+func (ds DatabaseSchema) getTableByName(schemaName, tableName string) (core.Table, bool) {
+	idx := slices.IndexFunc(ds, func(table core.Table) bool {
 		return table.Schema == schemaName && table.Name == tableName
 	})
 	if idx == -1 {
-		return models.Table{}, false
+		return core.Table{}, false
 	}
 	return ds[idx], true
 }
 
-func diffTables(previous, current models.Table) []models.DiffNode {
-	var res []models.DiffNode
+func diffTables(previous, current core.Table) []core.DiffNode {
+	var res []core.DiffNode
 
 	if previous.Schema != current.Schema {
-		res = append(res, newDiffNode(models.TableMovedToAnotherSchemaDiffEvent, map[string]string{
+		res = append(res, newDiffNode(core.TableMovedToAnotherSchemaDiffEvent, map[string]string{
 			"PreviousSchemaName": previous.Schema,
 			"CurrentSchemaName":  current.Schema,
 			"TableName":          current.Name,
@@ -73,7 +73,7 @@ func diffTables(previous, current models.Table) []models.DiffNode {
 	}
 
 	if previous.Name != current.Name {
-		res = append(res, newDiffNode(models.TableRenamedDiffEvent, map[string]string{
+		res = append(res, newDiffNode(core.TableRenamedDiffEvent, map[string]string{
 			"PreviousTableName": previous.Name,
 			"CurrentTableName":  current.Name,
 			"SchemaName":        current.Schema,
@@ -86,8 +86,8 @@ func diffTables(previous, current models.Table) []models.DiffNode {
 	return res
 }
 
-func diffTableColumns(previous, current models.Table) []models.DiffNode {
-	var res []models.DiffNode
+func diffTableColumns(previous, current core.Table) []core.DiffNode {
+	var res []core.DiffNode
 	for _, currentStateColumn := range current.Columns {
 		previousStateColumn, ok := findColumnByIdx(previous, currentStateColumn.Idx)
 		if !ok {
@@ -95,7 +95,7 @@ func diffTableColumns(previous, current models.Table) []models.DiffNode {
 		}
 
 		if !ok {
-			res = append(res, newDiffNode(models.ColumnCreatedDiffEvent, map[string]string{
+			res = append(res, newDiffNode(core.ColumnCreatedDiffEvent, map[string]string{
 				"TableSchema": previous.Schema,
 				"TableName":   previous.Name,
 				"ColumnName":  currentStateColumn.Name,
@@ -106,7 +106,7 @@ func diffTableColumns(previous, current models.Table) []models.DiffNode {
 		}
 
 		if currentStateColumn.Name != previousStateColumn.Name {
-			res = append(res, newDiffNode(models.ColumnRenamedDiffEvent, map[string]string{
+			res = append(res, newDiffNode(core.ColumnRenamedDiffEvent, map[string]string{
 				"TableSchema":        previous.Schema,
 				"TableName":          previous.Name,
 				"PreviousColumnName": previousStateColumn.Name,
@@ -115,7 +115,7 @@ func diffTableColumns(previous, current models.Table) []models.DiffNode {
 		}
 
 		if currentStateColumn.TypeOID != previousStateColumn.TypeOID {
-			res = append(res, newDiffNode(models.ColumnTypeChangedDiffEvent, map[string]string{
+			res = append(res, newDiffNode(core.ColumnTypeChangedDiffEvent, map[string]string{
 				"TableSchema":           previous.Schema,
 				"TableName":             previous.Name,
 				"ColumnName":            previousStateColumn.Name,
@@ -129,22 +129,22 @@ func diffTableColumns(previous, current models.Table) []models.DiffNode {
 	return res
 }
 
-func findColumnByIdx(t models.Table, idx int) (models.Column, bool) {
-	i := slices.IndexFunc(t.Columns, func(column models.Column) bool {
+func findColumnByIdx(t core.Table, idx int) (core.Column, bool) {
+	i := slices.IndexFunc(t.Columns, func(column core.Column) bool {
 		return column.Idx == idx
 	})
 	if i == -1 {
-		return models.Column{}, false
+		return core.Column{}, false
 	}
 	return t.Columns[i], true
 }
 
-func findColumnByName(t models.Table, name string) (models.Column, bool) {
-	i := slices.IndexFunc(t.Columns, func(column models.Column) bool {
+func findColumnByName(t core.Table, name string) (core.Column, bool) {
+	i := slices.IndexFunc(t.Columns, func(column core.Column) bool {
 		return column.Name == name
 	})
 	if i == -1 {
-		return models.Column{}, false
+		return core.Column{}, false
 	}
 	return t.Columns[i], true
 }

@@ -19,8 +19,7 @@ import (
 	"net"
 	"testing"
 
-	commonininterfaces "github.com/greenmaskio/greenmask/pkg/common/interfaces"
-	"github.com/greenmaskio/greenmask/pkg/common/models"
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 	"github.com/greenmaskio/greenmask/pkg/common/utils"
 	"github.com/greenmaskio/greenmask/pkg/common/validationcollector"
 	mysqldbmsdriver "github.com/greenmaskio/greenmask/pkg/mysql/dbmsdriver"
@@ -30,36 +29,36 @@ import (
 func TestRandomIP_Transform(t *testing.T) {
 	tests := []struct {
 		name             string
-		staticParameters map[string]models.ParamsValue
-		dynamicParameter map[string]models.DynamicParamValue
-		original         []*models.ColumnRawValue
-		validateFn       func(t *testing.T, recorder commonininterfaces.Recorder)
+		staticParameters map[string]core.ParamsValue
+		dynamicParameter map[string]core.DynamicParamValue
+		original         []*core.ColumnRawValue
+		validateFn       func(t *testing.T, recorder core.Recorder)
 		expectedErr      string
-		columns          []models.Column
+		columns          []core.Column
 		isNull           bool
 	}{
 		{
 			name: "dynamic",
-			staticParameters: map[string]models.ParamsValue{
-				"column": models.ParamsValue("data"),
-				"engine": models.ParamsValue("random"),
+			staticParameters: map[string]core.ParamsValue{
+				"column": core.ParamsValue("data"),
+				"engine": core.ParamsValue("random"),
 			},
-			dynamicParameter: map[string]models.DynamicParamValue{
+			dynamicParameter: map[string]core.DynamicParamValue{
 				"subnet": {
 					Column: "subnet",
 				},
 			},
-			original: []*models.ColumnRawValue{
-				models.NewColumnRawValue([]byte("192.168.1.1"), false),
-				models.NewColumnRawValue([]byte("192.168.1.1/24"), false),
+			original: []*core.ColumnRawValue{
+				core.NewColumnRawValue([]byte("192.168.1.1"), false),
+				core.NewColumnRawValue([]byte("192.168.1.1/24"), false),
 			},
-			columns: []models.Column{
+			columns: []core.Column{
 				{
 					Idx:       0,
 					Name:      "data",
 					TypeName:  mysqldbmsdriver.TypeText,
 					TypeOID:   mysqldbmsdriver.VirtualOidText,
-					TypeClass: models.TypeClassText,
+					TypeClass: core.TypeClassText,
 					Length:    -1,
 				},
 				{
@@ -70,7 +69,7 @@ func TestRandomIP_Transform(t *testing.T) {
 					Length:   -1,
 				},
 			},
-			validateFn: func(t *testing.T, record commonininterfaces.Recorder) {
+			validateFn: func(t *testing.T, record core.Recorder) {
 				val, err := record.GetRawColumnValueByName("data")
 				require.NoError(t, err)
 				require.False(t, val.IsNull)
@@ -83,24 +82,24 @@ func TestRandomIP_Transform(t *testing.T) {
 		},
 		{
 			name: "static",
-			staticParameters: map[string]models.ParamsValue{
-				"column": models.ParamsValue("data"),
-				"subnet": models.ParamsValue("192.168.1.1/24"),
-				"engine": models.ParamsValue("random"),
+			staticParameters: map[string]core.ParamsValue{
+				"column": core.ParamsValue("data"),
+				"subnet": core.ParamsValue("192.168.1.1/24"),
+				"engine": core.ParamsValue("random"),
 			},
-			original: []*models.ColumnRawValue{
-				models.NewColumnRawValue([]byte("192.168.1.1"), false)},
-			columns: []models.Column{
+			original: []*core.ColumnRawValue{
+				core.NewColumnRawValue([]byte("192.168.1.1"), false)},
+			columns: []core.Column{
 				{
 					Idx:       0,
 					Name:      "data",
 					TypeName:  mysqldbmsdriver.TypeText,
 					TypeOID:   mysqldbmsdriver.VirtualOidText,
-					TypeClass: models.TypeClassText,
+					TypeClass: core.TypeClassText,
 					Length:    4,
 				},
 			},
-			validateFn: func(t *testing.T, record commonininterfaces.Recorder) {
+			validateFn: func(t *testing.T, record core.Recorder) {
 				val, err := record.GetRawColumnValueByName("data")
 				require.NoError(t, err)
 				require.False(t, val.IsNull)
@@ -113,24 +112,24 @@ func TestRandomIP_Transform(t *testing.T) {
 		},
 		{
 			name: "static deterministic",
-			staticParameters: map[string]models.ParamsValue{
-				"column": models.ParamsValue("data"),
-				"subnet": models.ParamsValue("192.168.1.1/24"),
-				"engine": models.ParamsValue("deterministic"),
+			staticParameters: map[string]core.ParamsValue{
+				"column": core.ParamsValue("data"),
+				"subnet": core.ParamsValue("192.168.1.1/24"),
+				"engine": core.ParamsValue("deterministic"),
 			},
-			original: []*models.ColumnRawValue{
-				models.NewColumnRawValue([]byte("192.168.1.1"), false)},
-			columns: []models.Column{
+			original: []*core.ColumnRawValue{
+				core.NewColumnRawValue([]byte("192.168.1.1"), false)},
+			columns: []core.Column{
 				{
 					Idx:       0,
 					Name:      "data",
 					TypeName:  mysqldbmsdriver.TypeText,
 					TypeOID:   mysqldbmsdriver.VirtualOidText,
-					TypeClass: models.TypeClassText,
+					TypeClass: core.TypeClassText,
 					Length:    4,
 				},
 			},
-			validateFn: func(t *testing.T, record commonininterfaces.Recorder) {
+			validateFn: func(t *testing.T, record core.Recorder) {
 				val, err := record.GetRawColumnValueByName("data")
 				require.NoError(t, err)
 				require.False(t, val.IsNull)

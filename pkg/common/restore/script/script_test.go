@@ -21,7 +21,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	commonmodels "github.com/greenmaskio/greenmask/pkg/common/models"
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -34,9 +34,9 @@ func TestScheduler_Exec(t *testing.T) {
 
 	tests := []struct {
 		name           string
-		scripts        []commonmodels.Script
-		section        commonmodels.DumpSection
-		when           commonmodels.ScriptEventType
+		scripts        []core.Script
+		section        core.DumpSection
+		when           core.ScriptEventType
 		exec           TxExec
 		wantErr        bool
 		wantErrContain string
@@ -45,60 +45,60 @@ func TestScheduler_Exec(t *testing.T) {
 		{
 			name:       "no scripts — no error",
 			scripts:    nil,
-			section:    commonmodels.DumpSectionPreData,
-			when:       commonmodels.ScriptEventTypeBefore,
+			section:    core.DumpSectionPreData,
+			when:       core.ScriptEventTypeBefore,
 			exec:       noopExec,
 			wantCalled: 0,
 		},
 		{
 			name: "script with non-matching section is skipped",
-			scripts: []commonmodels.Script{
-				{Name: "s", Section: commonmodels.DumpSectionPostData, When: commonmodels.ScriptEventTypeBefore, Query: "SELECT 1"},
+			scripts: []core.Script{
+				{Name: "s", Section: core.DumpSectionPostData, When: core.ScriptEventTypeBefore, Query: "SELECT 1"},
 			},
-			section:    commonmodels.DumpSectionPreData,
-			when:       commonmodels.ScriptEventTypeBefore,
+			section:    core.DumpSectionPreData,
+			when:       core.ScriptEventTypeBefore,
 			exec:       noopExec,
 			wantCalled: 0,
 		},
 		{
 			name: "script with non-matching when is skipped",
-			scripts: []commonmodels.Script{
-				{Name: "s", Section: commonmodels.DumpSectionPreData, When: commonmodels.ScriptEventTypeAfter, Query: "SELECT 1"},
+			scripts: []core.Script{
+				{Name: "s", Section: core.DumpSectionPreData, When: core.ScriptEventTypeAfter, Query: "SELECT 1"},
 			},
-			section:    commonmodels.DumpSectionPreData,
-			when:       commonmodels.ScriptEventTypeBefore,
+			section:    core.DumpSectionPreData,
+			when:       core.ScriptEventTypeBefore,
 			exec:       noopExec,
 			wantCalled: 0,
 		},
 		{
 			name: "matching script is executed",
-			scripts: []commonmodels.Script{
-				{Name: "s", Section: commonmodels.DumpSectionPreData, When: commonmodels.ScriptEventTypeBefore, Query: "SELECT 1"},
+			scripts: []core.Script{
+				{Name: "s", Section: core.DumpSectionPreData, When: core.ScriptEventTypeBefore, Query: "SELECT 1"},
 			},
-			section:    commonmodels.DumpSectionPreData,
-			when:       commonmodels.ScriptEventTypeBefore,
+			section:    core.DumpSectionPreData,
+			when:       core.ScriptEventTypeBefore,
 			exec:       noopExec,
 			wantCalled: 1,
 		},
 		{
 			name: "multiple matching scripts all executed",
-			scripts: []commonmodels.Script{
-				{Name: "a", Section: commonmodels.DumpSectionData, When: commonmodels.ScriptEventTypeAfter, Query: "SELECT 1"},
-				{Name: "b", Section: commonmodels.DumpSectionData, When: commonmodels.ScriptEventTypeAfter, Query: "SELECT 2"},
+			scripts: []core.Script{
+				{Name: "a", Section: core.DumpSectionData, When: core.ScriptEventTypeAfter, Query: "SELECT 1"},
+				{Name: "b", Section: core.DumpSectionData, When: core.ScriptEventTypeAfter, Query: "SELECT 2"},
 			},
-			section:    commonmodels.DumpSectionData,
-			when:       commonmodels.ScriptEventTypeAfter,
+			section:    core.DumpSectionData,
+			when:       core.ScriptEventTypeAfter,
 			exec:       noopExec,
 			wantCalled: 2,
 		},
 		{
 			name: "executor error is propagated with script index",
-			scripts: []commonmodels.Script{
-				{Name: "skip", Section: commonmodels.DumpSectionPreData, When: commonmodels.ScriptEventTypeBefore, Query: "SELECT 1"},
-				{Name: "fail", Section: commonmodels.DumpSectionData, When: commonmodels.ScriptEventTypeBefore, Query: "SELECT 1"},
+			scripts: []core.Script{
+				{Name: "skip", Section: core.DumpSectionPreData, When: core.ScriptEventTypeBefore, Query: "SELECT 1"},
+				{Name: "fail", Section: core.DumpSectionData, When: core.ScriptEventTypeBefore, Query: "SELECT 1"},
 			},
-			section: commonmodels.DumpSectionData,
-			when:    commonmodels.ScriptEventTypeBefore,
+			section: core.DumpSectionData,
+			when:    core.ScriptEventTypeBefore,
 			exec: func(_ context.Context, _ string) error {
 				return errors.New("boom")
 			},
@@ -107,12 +107,12 @@ func TestScheduler_Exec(t *testing.T) {
 		},
 		{
 			name: "mixed: only matching scripts executed, non-matching skipped",
-			scripts: []commonmodels.Script{
-				{Name: "skip", Section: commonmodels.DumpSectionPostData, When: commonmodels.ScriptEventTypeBefore, Query: "SELECT 1"},
-				{Name: "run", Section: commonmodels.DumpSectionPreData, When: commonmodels.ScriptEventTypeBefore, Query: "SELECT 2"},
+			scripts: []core.Script{
+				{Name: "skip", Section: core.DumpSectionPostData, When: core.ScriptEventTypeBefore, Query: "SELECT 1"},
+				{Name: "run", Section: core.DumpSectionPreData, When: core.ScriptEventTypeBefore, Query: "SELECT 2"},
 			},
-			section:    commonmodels.DumpSectionPreData,
-			when:       commonmodels.ScriptEventTypeBefore,
+			section:    core.DumpSectionPreData,
+			when:       core.ScriptEventTypeBefore,
 			exec:       noopExec,
 			wantCalled: 1,
 		},
@@ -150,37 +150,37 @@ func TestScheduler_Exec(t *testing.T) {
 func TestExecutor_Validate(t *testing.T) {
 	tests := []struct {
 		name           string
-		script         commonmodels.Script
+		script         core.Script
 		wantErr        bool
 		wantErrContain string
 	}{
 		{
 			name: "valid with query",
-			script: commonmodels.Script{
+			script: core.Script{
 				Name:  "s",
-				When:  commonmodels.ScriptEventTypeBefore,
+				When:  core.ScriptEventTypeBefore,
 				Query: "SELECT 1",
 			},
 		},
 		{
 			name: "valid with query_file",
-			script: commonmodels.Script{
+			script: core.Script{
 				Name:      "s",
-				When:      commonmodels.ScriptEventTypeBefore,
+				When:      core.ScriptEventTypeBefore,
 				QueryFile: "/some/file.sql",
 			},
 		},
 		{
 			name: "valid with command",
-			script: commonmodels.Script{
+			script: core.Script{
 				Name:    "s",
-				When:    commonmodels.ScriptEventTypeBefore,
+				When:    core.ScriptEventTypeBefore,
 				Command: []string{"echo", "hello"},
 			},
 		},
 		{
 			name: "invalid when value",
-			script: commonmodels.Script{
+			script: core.Script{
 				Name:  "s",
 				When:  "always",
 				Query: "SELECT 1",
@@ -190,18 +190,18 @@ func TestExecutor_Validate(t *testing.T) {
 		},
 		{
 			name: "no values set",
-			script: commonmodels.Script{
+			script: core.Script{
 				Name: "s",
-				When: commonmodels.ScriptEventTypeBefore,
+				When: core.ScriptEventTypeBefore,
 			},
 			wantErr:        true,
 			wantErrContain: "has no values",
 		},
 		{
 			name: "more than one value set",
-			script: commonmodels.Script{
+			script: core.Script{
 				Name:      "s",
-				When:      commonmodels.ScriptEventTypeBefore,
+				When:      core.ScriptEventTypeBefore,
 				Query:     "SELECT 1",
 				QueryFile: "/some/file.sql",
 			},
@@ -236,7 +236,7 @@ func TestExecutor_Exec(t *testing.T) {
 			assert.Equal(t, "SELECT 42", q)
 			return nil
 		})
-		e := NewExecutor(commonmodels.Script{Name: "s", Query: "SELECT 42"})
+		e := NewExecutor(core.Script{Name: "s", Query: "SELECT 42"})
 		require.NoError(t, e.Exec(ctx, exec))
 		assert.True(t, called)
 	})
@@ -254,18 +254,18 @@ func TestExecutor_Exec(t *testing.T) {
 			assert.Equal(t, "SELECT 99", q)
 			return nil
 		})
-		e := NewExecutor(commonmodels.Script{Name: "s", QueryFile: f.Name()})
+		e := NewExecutor(core.Script{Name: "s", QueryFile: f.Name()})
 		require.NoError(t, e.Exec(ctx, exec))
 		assert.True(t, called)
 	})
 
 	t.Run("command dispatched to executeCommand", func(t *testing.T) {
-		e := NewExecutor(commonmodels.Script{Name: "s", Command: []string{"echo", "hi"}})
+		e := NewExecutor(core.Script{Name: "s", Command: []string{"echo", "hi"}})
 		require.NoError(t, e.Exec(ctx, nil))
 	})
 
 	t.Run("nothing set returns errNothingToExecute", func(t *testing.T) {
-		e := NewExecutor(commonmodels.Script{Name: "s"})
+		e := NewExecutor(core.Script{Name: "s"})
 		err := e.Exec(ctx, nil)
 		require.ErrorIs(t, err, errNothingToExecute)
 	})
@@ -295,7 +295,7 @@ func TestExecutor_executeQuery(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			e := NewExecutor(commonmodels.Script{Name: "my-script", Query: "SELECT 1"})
+			e := NewExecutor(core.Script{Name: "my-script", Query: "SELECT 1"})
 			err := e.executeQuery(ctx, func(_ context.Context, _ string) error { return tt.execErr })
 			if tt.wantErr {
 				require.Error(t, err)
@@ -313,7 +313,7 @@ func TestExecutor_executeQueryFile(t *testing.T) {
 	ctx := context.Background()
 
 	t.Run("file not found", func(t *testing.T) {
-		e := NewExecutor(commonmodels.Script{Name: "s", QueryFile: "/nonexistent/path/query.sql"})
+		e := NewExecutor(core.Script{Name: "s", QueryFile: "/nonexistent/path/query.sql"})
 		err := e.executeQueryFile(ctx, nil)
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "cannot open script file")
@@ -325,7 +325,7 @@ func TestExecutor_executeQueryFile(t *testing.T) {
 		require.NoError(t, os.WriteFile(path, []byte("SELECT 7"), 0600))
 
 		var gotQuery string
-		e := NewExecutor(commonmodels.Script{Name: "s", QueryFile: path})
+		e := NewExecutor(core.Script{Name: "s", QueryFile: path})
 		err := e.executeQueryFile(ctx, func(_ context.Context, q string) error {
 			gotQuery = q
 			return nil
@@ -339,7 +339,7 @@ func TestExecutor_executeQueryFile(t *testing.T) {
 		path := filepath.Join(dir, "q.sql")
 		require.NoError(t, os.WriteFile(path, []byte("SELECT 1"), 0600))
 
-		e := NewExecutor(commonmodels.Script{Name: "my-script", QueryFile: path})
+		e := NewExecutor(core.Script{Name: "my-script", QueryFile: path})
 		err := e.executeQueryFile(ctx, func(_ context.Context, _ string) error {
 			return errors.New("exec failed")
 		})
@@ -373,7 +373,7 @@ func TestExecutor_executeCommand(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			e := NewExecutor(commonmodels.Script{Name: "s", Command: tt.command})
+			e := NewExecutor(core.Script{Name: "s", Command: tt.command})
 			err := e.executeCommand(ctx)
 			if tt.wantErr {
 				require.Error(t, err)

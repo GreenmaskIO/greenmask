@@ -3,7 +3,7 @@ package table
 import (
 	"context"
 
-	"github.com/greenmaskio/greenmask/pkg/common/models"
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 )
 
 type Writer struct {
@@ -28,7 +28,7 @@ func (w *Writer) Close(ctx context.Context) error {
 	panic("implement me")
 }
 
-func (w *Writer) Stat() models.DumpedObjectStat {
+func (w *Writer) Stat() core.DumpedObjectStat {
 	//TODO implement me
 	panic("implement me")
 }

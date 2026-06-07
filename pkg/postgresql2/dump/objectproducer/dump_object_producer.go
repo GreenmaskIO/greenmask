@@ -4,12 +4,12 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/greenmaskio/greenmask/pkg/common/models"
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 	"github.com/rs/zerolog/log"
 )
 
 type dumpContextBuilder interface {
-	Build(ctx context.Context, result models.IntrospectionResult) (models.DumpContext, error)
+	Build(ctx context.Context, result core.IntrospectionResult) (core.DumpContext, error)
 }
 
 type DumpPlanBuilder struct {
@@ -22,19 +22,19 @@ func NewDumpPlanBuilder(dumpContextBuilder dumpContextBuilder) *DumpPlanBuilder 
 	}
 }
 
-func (p *DumpPlanBuilder) buildRestorationContext(dependencyGraph any) (models.RestorationContext, error) {
+func (p *DumpPlanBuilder) buildRestorationContext(dependencyGraph any) (core.RestorationContext, error) {
 	panic("implement me")
 }
 
 func (p *DumpPlanBuilder) Produce(
-	ctx context.Context, result models.IntrospectionResult, dependencyGraph any,
-) (models.DumpPlan, error) {
+	ctx context.Context, result core.IntrospectionResult, dependencyGraph any,
+) (core.DumpPlan, error) {
 	dumpContext, err := p.dumpContextBuilder.Build(ctx, result)
 	if err != nil {
-		return models.DumpPlan{}, fmt.Errorf("build dump context: %w", err)
+		return core.DumpPlan{}, fmt.Errorf("build dump context: %w", err)
 	}
 
-	var dumpObjectSpecs []models.ObjectDumpSpec
+	var dumpObjectSpecs []core.ObjectDumpSpec
 	for _, dumpObjectSpec := range dumpContext.DumpObjectSpecs {
 		if !dumpObjectSpec.NeedDumpData {
 			log.Ctx(ctx).Debug().
@@ -49,9 +49,9 @@ func (p *DumpPlanBuilder) Produce(
 	}
 	restorationCtx, err := p.buildRestorationContext(dependencyGraph)
 	if err != nil {
-		return models.DumpPlan{}, fmt.Errorf("build restoration context: %w", err)
+		return core.DumpPlan{}, fmt.Errorf("build restoration context: %w", err)
 	}
-	return models.DumpPlan{
+	return core.DumpPlan{
 		DumpObjectSpecs:    dumpObjectSpecs,
 		RestorationContext: restorationCtx,
 	}, nil

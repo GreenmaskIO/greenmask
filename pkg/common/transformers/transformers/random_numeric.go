@@ -18,8 +18,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/greenmaskio/greenmask/pkg/common/interfaces"
-	"github.com/greenmaskio/greenmask/pkg/common/models"
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 	"github.com/greenmaskio/greenmask/pkg/common/transformers/generators/transformers"
 	"github.com/greenmaskio/greenmask/pkg/common/transformers/parameters"
 	"github.com/greenmaskio/greenmask/pkg/common/transformers/utils"
@@ -45,9 +44,9 @@ var RandomNumericTransformerDefinition = utils.NewTransformerDefinition(
 		"column",
 		"column name",
 	).SetIsColumn(
-		models.NewColumnProperties().
+		core.NewColumnProperties().
 			SetAffected(true).
-			SetAllowedColumnTypeClasses(models.TypeClassNumeric),
+			SetAllowedColumnTypeClasses(core.TypeClassNumeric),
 	).SetRequired(true),
 
 	parameters.MustNewParameterDefinition(
@@ -65,11 +64,11 @@ var RandomNumericTransformerDefinition = utils.NewTransformerDefinition(
 		SetDynamicMode(
 			parameters.NewDynamicModeProperties().
 				SetColumnProperties(
-					models.NewColumnProperties().
+					core.NewColumnProperties().
 						SetAllowedColumnTypeClasses(
-							models.TypeClassFloat,
-							models.TypeClassInt,
-							models.TypeClassNumeric,
+							core.TypeClassFloat,
+							core.TypeClassInt,
+							core.TypeClassNumeric,
 						),
 				).SetUnmarshaler(numericTypeUnmarshaler),
 		),
@@ -83,11 +82,11 @@ var RandomNumericTransformerDefinition = utils.NewTransformerDefinition(
 		SetDynamicMode(
 			parameters.NewDynamicModeProperties().
 				SetColumnProperties(
-					models.NewColumnProperties().
+					core.NewColumnProperties().
 						SetAllowedColumnTypeClasses(
-							models.TypeClassFloat,
-							models.TypeClassInt,
-							models.TypeClassNumeric,
+							core.TypeClassFloat,
+							core.TypeClassInt,
+							core.TypeClassNumeric,
 						),
 				).SetUnmarshaler(numericTypeUnmarshaler),
 		),
@@ -95,13 +94,13 @@ var RandomNumericTransformerDefinition = utils.NewTransformerDefinition(
 	parameters.MustNewParameterDefinition(
 		"type_size",
 		"size of the numeric type (total number of digits)",
-	).SetDefaultValue(models.ParamsValue("4")),
+	).SetDefaultValue(core.ParamsValue("4")),
 
 	parameters.MustNewParameterDefinition(
 		"decimal",
 		"Number of decimal places to use",
 	).SetSupportTemplate(true).
-		SetDefaultValue(models.ParamsValue("4")),
+		SetDefaultValue(core.ParamsValue("4")),
 
 	defaultKeepNullParameterDefinition,
 
@@ -128,9 +127,9 @@ type NumericTransformer struct {
 
 func NewRandomNumericTransformer(
 	ctx context.Context,
-	tableDriver interfaces.TableDriver,
+	tableDriver core.TableDriver,
 	parameters map[string]parameters.Parameterizer,
-) (interfaces.Transformer, error) {
+) (core.Transformer, error) {
 	var minVal, maxVal *decimal.Decimal
 
 	minParam := parameters["min"]
@@ -257,7 +256,7 @@ func (t *NumericTransformer) dynamicTransform(v []byte) (decimal.Decimal, error)
 	return t.RandomNumericTransformer.SetDynamicLimiter(limiter).Transform(v)
 }
 
-func (t *NumericTransformer) Transform(_ context.Context, r interfaces.Recorder) error {
+func (t *NumericTransformer) Transform(_ context.Context, r core.Recorder) error {
 	val, err := r.GetRawColumnValueByIdx(t.columnIdx)
 	if err != nil {
 		return fmt.Errorf("scan value: %w", err)
@@ -296,25 +295,25 @@ func getNumericThresholds(ctx context.Context, size int, requestedMinValue, requ
 	}
 
 	if !numericLimitIsValid(*requestedMinValue, minVal, maxVal) {
-		validationcollector.FromContext(ctx).Add(models.NewValidationWarning().
+		validationcollector.FromContext(ctx).Add(core.NewValidationWarning().
 			SetMsgf("requested min value is out of NUMERIC(%d) range", size).
-			SetSeverity(models.ValidationSeverityError).
+			SetSeverity(core.ValidationSeverityError).
 			AddMeta("AllowedMinValue", minVal.String()).
 			AddMeta("AllowedMaxValue", maxVal.String()).
 			AddMeta("ParameterName", "min").
 			AddMeta("ParameterValue", requestedMinValue))
-		return decimal.Decimal{}, decimal.Decimal{}, models.ErrFatalValidationError
+		return decimal.Decimal{}, decimal.Decimal{}, core.ErrFatalValidationError
 	}
 
 	if !numericLimitIsValid(*requestedMaxValue, minVal, maxVal) {
-		validationcollector.FromContext(ctx).Add(models.NewValidationWarning().
+		validationcollector.FromContext(ctx).Add(core.NewValidationWarning().
 			SetMsgf("requested max value is out of NUMERIC(%d) range", size).
-			SetSeverity(models.ValidationSeverityError).
+			SetSeverity(core.ValidationSeverityError).
 			AddMeta("AllowedMinValue", minVal.String()).
 			AddMeta("AllowedMaxValue", maxVal.String()).
 			AddMeta("ParameterName", "min").
 			AddMeta("ParameterValue", requestedMinValue))
-		return decimal.Decimal{}, decimal.Decimal{}, models.ErrFatalValidationError
+		return decimal.Decimal{}, decimal.Decimal{}, core.ErrFatalValidationError
 	}
 	return *requestedMinValue, *requestedMaxValue, nil
 }
@@ -366,7 +365,7 @@ func getRandomNumericLimiterForDynamicParameter(
 	return limiter, nil
 }
 
-func numericTypeUnmarshaler(_ interfaces.DBMSDriver, _ string, v models.ParamsValue) (any, error) {
+func numericTypeUnmarshaler(_ core.DBMSDriver, _ string, v core.ParamsValue) (any, error) {
 	res, err := decimal.NewFromString(string(v))
 	if err != nil {
 		return nil, err

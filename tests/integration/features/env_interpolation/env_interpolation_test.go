@@ -32,7 +32,7 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
 
-	commonmodels "github.com/greenmaskio/greenmask/pkg/common/models"
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 	"github.com/greenmaskio/greenmask/pkg/common/transformers/registry"
 	"github.com/greenmaskio/greenmask/pkg/common/utils"
 	"github.com/greenmaskio/greenmask/pkg/common/validationcollector"
@@ -66,15 +66,15 @@ func (s *EnvInterpolationSuite) SetupSuite() {
 // setupCtx wires a validation collector and logger into ctx.
 func (s *EnvInterpolationSuite) setupCtx(ctx context.Context, cfg *config.Config) context.Context {
 	s.Require().NoError(utils.SetDefaultContextLogger(cfg.Log.Level, cfg.Log.Format))
-	ctx = log.Ctx(ctx).With().Str(commonmodels.MetaKeyEngine, "mysql").Logger().WithContext(ctx)
-	vc := validationcollector.NewCollectorWithMeta(commonmodels.MetaKeyEngine, "mysql")
+	ctx = log.Ctx(ctx).With().Str(core.MetaKeyEngine, "mysql").Logger().WithContext(ctx)
+	vc := validationcollector.NewCollectorWithMeta(core.MetaKeyEngine, "mysql")
 	return validationcollector.WithCollector(ctx, vc)
 }
 
 // baseConfig returns a config pointing at the test container with sensible defaults.
 func (s *EnvInterpolationSuite) baseConfig(ctx context.Context) *config.Config {
 	cfg := config.NewConfig()
-	cfg.Engine = commonmodels.DBMSEngineMySQL
+	cfg.Engine = core.DBMSEngineMySQL
 	cfg.Log.Level = "debug"
 	cfg.Log.Format = "text"
 

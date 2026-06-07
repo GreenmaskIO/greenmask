@@ -18,7 +18,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/greenmaskio/greenmask/pkg/common/interfaces"
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 	commonutils "github.com/greenmaskio/greenmask/pkg/common/utils"
 	"github.com/greenmaskio/greenmask/pkg/config"
 )
@@ -34,7 +34,7 @@ import (
 // method and operation method in its own file.
 type Cli struct {
 	cfg *config.Config
-	st  interfaces.Storager // lazily initialised; shared across calls
+	st  core.Storager // lazily initialised; shared across calls
 
 	// CLI operation parameters — set via For* methods.
 	deleteOpts             *DeleteOptions
@@ -58,7 +58,7 @@ func (g *Cli) initInfrastructure() error {
 }
 
 // storage returns the cached Storager, creating it on the first call.
-func (g *Cli) storage(ctx context.Context) (interfaces.Storager, error) {
+func (g *Cli) storage(ctx context.Context) (core.Storager, error) {
 	if g.st != nil {
 		return g.st, nil
 	}

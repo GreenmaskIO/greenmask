@@ -20,7 +20,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/greenmaskio/greenmask/pkg/common/models"
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 	transformerstesting "github.com/greenmaskio/greenmask/pkg/common/transformers/testing"
 	mysqldbmsdriver "github.com/greenmaskio/greenmask/pkg/mysql/dbmsdriver"
 	"github.com/stretchr/testify/assert"
@@ -29,7 +29,7 @@ import (
 
 func TestTransformerBase_Transform(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
-		columns := []models.Column{
+		columns := []core.Column{
 			{
 				Idx:      0,
 				Name:     "first_name",
@@ -64,10 +64,10 @@ func TestTransformerBase_Transform(t *testing.T) {
 				Position: 0,
 			},
 		}
-		columnValues := []*models.ColumnRawValue{
-			models.NewColumnRawValue([]byte("a"), false),
-			models.NewColumnRawValue([]byte("b"), false),
-			models.NewColumnRawValue([]byte("c"), false),
+		columnValues := []*core.ColumnRawValue{
+			core.NewColumnRawValue([]byte("a"), false),
+			core.NewColumnRawValue([]byte("b"), false),
+			core.NewColumnRawValue([]byte("c"), false),
 		}
 		env := transformerstesting.NewTransformerTestEnvReal(t, nil, columns, nil, nil)
 		env.SetRecord(t, columnValues...)
@@ -103,7 +103,7 @@ func TestTransformerBase_Transform(t *testing.T) {
 	})
 
 	t.Run("init error", func(t *testing.T) {
-		columns := []models.Column{
+		columns := []core.Column{
 			{
 				Idx:      0,
 				Name:     "first_name",
@@ -138,10 +138,10 @@ func TestTransformerBase_Transform(t *testing.T) {
 				Position: 0,
 			},
 		}
-		columnValues := []*models.ColumnRawValue{
-			models.NewColumnRawValue([]byte("a"), false),
-			models.NewColumnRawValue([]byte("b"), false),
-			models.NewColumnRawValue([]byte("c"), false),
+		columnValues := []*core.ColumnRawValue{
+			core.NewColumnRawValue([]byte("a"), false),
+			core.NewColumnRawValue([]byte("b"), false),
+			core.NewColumnRawValue([]byte("c"), false),
 		}
 		env := transformerstesting.NewTransformerTestEnvReal(t, nil, columns, nil, nil)
 		env.SetRecord(t, columnValues...)

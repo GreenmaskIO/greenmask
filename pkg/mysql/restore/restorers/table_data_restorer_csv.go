@@ -24,8 +24,7 @@ import (
 	"github.com/go-sql-driver/mysql"
 	"github.com/rs/zerolog/log"
 
-	"github.com/greenmaskio/greenmask/pkg/common/interfaces"
-	"github.com/greenmaskio/greenmask/pkg/common/models"
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 	commonutils "github.com/greenmaskio/greenmask/pkg/common/utils"
 	mysqlmodels "github.com/greenmaskio/greenmask/pkg/mysql/models"
 )
@@ -33,15 +32,15 @@ import (
 const dumperTypeTableData = "table_restorer"
 
 var (
-	_ interfaces.Restorer = (*TableDataRestorerCsv)(nil)
+	_ core.Restorer = (*TableDataRestorerCsv)(nil)
 )
 
 type TableDataRestorerCsv struct {
-	table               *models.Table
-	meta                models.RestorationItem
+	table               *core.Table
+	meta                core.RestorationItem
 	connConfig          *mysqlmodels.ConnConfig
-	st                  interfaces.Storager
-	taskResolver        interfaces.TaskMapper
+	st                  core.Storager
+	taskResolver        core.TaskMapper
 	compress            bool
 	pgzip               bool
 	printWarnings       bool
@@ -57,9 +56,9 @@ type TableDataRestorerCsv struct {
 
 func (r *TableDataRestorerCsv) Meta() map[string]any {
 	return map[string]any{
-		models.MetaKeyTableSchema:      r.table.Schema,
-		models.MetaKeyTableName:        r.table.Name,
-		models.MetaKeyUniqueDumpTaskID: r.DebugInfo(),
+		core.MetaKeyTableSchema:      r.table.Schema,
+		core.MetaKeyTableName:        r.table.Name,
+		core.MetaKeyUniqueDumpTaskID: r.DebugInfo(),
 	}
 }
 
@@ -153,13 +152,13 @@ func WithDatabaseRemap(remap map[string]string) Option {
 }
 
 func NewTableDataRestorerCsv(
-	meta models.RestorationItem,
+	meta core.RestorationItem,
 	connConfig *mysqlmodels.ConnConfig,
-	st interfaces.Storager,
-	taskResolver interfaces.TaskMapper,
+	st core.Storager,
+	taskResolver core.TaskMapper,
 	opts ...Option,
 ) (*TableDataRestorerCsv, error) {
-	var table models.Table
+	var table core.Table
 	if err := json.Unmarshal(meta.ObjectDefinition, &table); err != nil {
 		return nil, err
 	}
@@ -194,7 +193,7 @@ func NewTableDataRestorerCsv(
 	return res, nil
 }
 
-func getFileHandlerName(t models.Table) string {
+func getFileHandlerName(t core.Table) string {
 	return fmt.Sprintf("%s__%s", t.Schema, t.Name)
 }
 
@@ -223,7 +222,7 @@ func (r *TableDataRestorerCsv) restoreTable(ctx context.Context, tx *sql.Tx) err
 	)
 
 	log.Ctx(ctx).Debug().
-		Str(models.MetaKeyQuery, query).
+		Str(core.MetaKeyQuery, query).
 		Msg("restoring table data")
 
 	res, err := tx.ExecContext(ctx, query)
@@ -323,8 +322,8 @@ func (r *TableDataRestorerCsv) Init(ctx context.Context) error {
 
 func (r *TableDataRestorerCsv) Restore(ctx context.Context) error {
 	ctx = log.Ctx(ctx).With().
-		Str(models.MetaKeyTableSchema, r.table.Schema).
-		Str(models.MetaKeyTableName, r.table.Name).
+		Str(core.MetaKeyTableSchema, r.table.Schema).
+		Str(core.MetaKeyTableName, r.table.Name).
 		Logger().WithContext(ctx)
 
 	if err := r.restoreTable(ctx, r.tx); err != nil {

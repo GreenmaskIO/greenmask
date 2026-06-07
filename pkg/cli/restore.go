@@ -18,7 +18,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/greenmaskio/greenmask/pkg/common/models"
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 	"github.com/greenmaskio/greenmask/pkg/engines"
 )
 
@@ -31,7 +31,7 @@ func (g *Cli) Restore(ctx context.Context, dumpID string) error {
 	if err != nil {
 		return err
 	}
-	parsedDumpID := models.DumpID(dumpID)
+	parsedDumpID := core.DumpID(dumpID)
 	if err := parsedDumpID.Validate(); err != nil {
 		return fmt.Errorf("validate dumpID: %w", err)
 	}

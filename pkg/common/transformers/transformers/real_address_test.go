@@ -18,8 +18,7 @@ import (
 	"context"
 	"testing"
 
-	commonininterfaces "github.com/greenmaskio/greenmask/pkg/common/interfaces"
-	"github.com/greenmaskio/greenmask/pkg/common/models"
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 	commonutils "github.com/greenmaskio/greenmask/pkg/common/utils"
 	"github.com/greenmaskio/greenmask/pkg/common/validationcollector"
 	mysqldbmsdriver "github.com/greenmaskio/greenmask/pkg/mysql/dbmsdriver"
@@ -29,28 +28,28 @@ import (
 func TestRealAddressTransformer_Transform(t *testing.T) {
 	tests := []struct {
 		name             string
-		staticParameters map[string]models.ParamsValue
-		dynamicParameter map[string]models.DynamicParamValue
-		original         []*models.ColumnRawValue
-		validateFn       func(t *testing.T, recorder commonininterfaces.Recorder)
+		staticParameters map[string]core.ParamsValue
+		dynamicParameter map[string]core.DynamicParamValue
+		original         []*core.ColumnRawValue
+		validateFn       func(t *testing.T, recorder core.Recorder)
 		expectedErr      string
-		columns          []models.Column
+		columns          []core.Column
 	}{
 		{
 			name: "seconds",
-			columns: []models.Column{
+			columns: []core.Column{
 				{
 					Idx:       0,
 					Name:      "data",
 					TypeName:  mysqldbmsdriver.TypeText,
-					TypeClass: models.TypeClassText,
+					TypeClass: core.TypeClassText,
 					TypeOID:   mysqldbmsdriver.VirtualOidText,
 					Length:    0,
 				},
 			},
-			original: []*models.ColumnRawValue{
-				models.NewColumnRawValue([]byte("123"), false)},
-			staticParameters: map[string]models.ParamsValue{
+			original: []*core.ColumnRawValue{
+				core.NewColumnRawValue([]byte("123"), false)},
+			staticParameters: map[string]core.ParamsValue{
 				"columns": dumpColumnContainers(
 					realAddressColumn{
 						Name:     "data",
@@ -60,7 +59,7 @@ func TestRealAddressTransformer_Transform(t *testing.T) {
 					},
 				),
 			},
-			validateFn: func(t *testing.T, recorder commonininterfaces.Recorder) {
+			validateFn: func(t *testing.T, recorder core.Recorder) {
 				rawVal, err := recorder.GetRawColumnValueByName("data")
 				require.NoError(t, err)
 				require.False(t, rawVal.IsNull)

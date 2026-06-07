@@ -3,7 +3,7 @@ package pipeline
 import (
 	"context"
 
-	commonininterfaces "github.com/greenmaskio/greenmask/pkg/common/interfaces"
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 )
 
 // Runtime holds the live DB session for the duration of a pipeline run.
@@ -13,7 +13,7 @@ import (
 //
 // Runtime is never serialised — it must not be stored inside RunState.
 type Runtime struct {
-	Session commonininterfaces.DumpSession
+	Session core.DumpSession
 }
 
 // Close shuts down the underlying session. Called by withRuntime via a deferred

@@ -20,11 +20,11 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/greenmaskio/greenmask/pkg/common/models"
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 	"github.com/greenmaskio/greenmask/pkg/config"
 )
 
-func newRestoreWithRemap(remap map[string]string, mode models.DatabaseReplacementMode) *Restore {
+func newRestoreWithRemap(remap map[string]string, mode core.DatabaseReplacementMode) *Restore {
 	cfg := &config.Config{}
 	cfg.Restore.Options.RemapDatabase = remap
 	cfg.Restore.Options.DatabaseReplaceMode = mode
@@ -35,7 +35,7 @@ func TestRestore_remapDB(t *testing.T) {
 	tests := []struct {
 		name        string
 		remap       map[string]string
-		mode        models.DatabaseReplacementMode
+		mode        core.DatabaseReplacementMode
 		databases   []string
 		wantRemap   map[string]string
 		wantErr     bool
@@ -44,28 +44,28 @@ func TestRestore_remapDB(t *testing.T) {
 		{
 			name:      "nil remap returns nil regardless of mode",
 			remap:     nil,
-			mode:      models.DatabaseReplaceModeStrict,
+			mode:      core.DatabaseReplaceModeStrict,
 			databases: []string{"mydb"},
 			wantRemap: nil,
 		},
 		{
 			name:      "empty remap returns nil regardless of mode",
 			remap:     map[string]string{},
-			mode:      models.DatabaseReplaceModeStrict,
+			mode:      core.DatabaseReplaceModeStrict,
 			databases: []string{"mydb"},
 			wantRemap: nil,
 		},
 		{
 			name:      "strict mode — all databases mapped — returns remap",
 			remap:     map[string]string{"src": "dst", "src2": "dst2"},
-			mode:      models.DatabaseReplaceModeStrict,
+			mode:      core.DatabaseReplaceModeStrict,
 			databases: []string{"src", "src2"},
 			wantRemap: map[string]string{"src": "dst", "src2": "dst2"},
 		},
 		{
 			name:        "strict mode — unmapped database — error",
 			remap:       map[string]string{"src": "dst"},
-			mode:        models.DatabaseReplaceModeStrict,
+			mode:        core.DatabaseReplaceModeStrict,
 			databases:   []string{"src", "unmapped"},
 			wantErr:     true,
 			errContains: "unmapped",
@@ -81,14 +81,14 @@ func TestRestore_remapDB(t *testing.T) {
 		{
 			name:      "relaxed mode — unmapped database — no error",
 			remap:     map[string]string{"src": "dst"},
-			mode:      models.DatabaseReplaceModeRelaxed,
+			mode:      core.DatabaseReplaceModeRelaxed,
 			databases: []string{"src", "other"},
 			wantRemap: map[string]string{"src": "dst"},
 		},
 		{
 			name:      "relaxed mode — no databases in dump — no error",
 			remap:     map[string]string{"src": "dst"},
-			mode:      models.DatabaseReplaceModeRelaxed,
+			mode:      core.DatabaseReplaceModeRelaxed,
 			databases: nil,
 			wantRemap: map[string]string{"src": "dst"},
 		},
@@ -104,7 +104,7 @@ func TestRestore_remapDB(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			r := newRestoreWithRemap(tc.remap, tc.mode)
-			meta := models.Metadata{Databases: tc.databases}
+			meta := core.Metadata{Databases: tc.databases}
 			got, err := r.remapDB(meta)
 			if tc.wantErr {
 				require.Error(t, err)

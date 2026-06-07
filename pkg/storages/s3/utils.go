@@ -19,10 +19,10 @@ import (
 	"fmt"
 	"path"
 
-	"github.com/greenmaskio/greenmask/pkg/common/interfaces"
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 )
 
-func walk(ctx context.Context, st interfaces.Storager, parent string) ([]string, error) {
+func walk(ctx context.Context, st core.Storager, parent string) ([]string, error) {
 	var files []string
 	var res []string
 	files, dirs, err := st.ListDir(ctx)

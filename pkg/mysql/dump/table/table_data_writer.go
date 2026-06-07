@@ -20,8 +20,7 @@ import (
 
 	"golang.org/x/sync/errgroup"
 
-	"github.com/greenmaskio/greenmask/pkg/common/interfaces"
-	"github.com/greenmaskio/greenmask/pkg/common/models"
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 	"github.com/greenmaskio/greenmask/pkg/common/utils"
 	"github.com/greenmaskio/greenmask/pkg/csv"
 )
@@ -40,29 +39,29 @@ type RowWriter interface {
 type Option func(*TableDataWriter)
 
 type TableDataWriter struct {
-	st        interfaces.Storager
+	st        core.Storager
 	fileName  string
 	rowWriter RowWriter
 	cw        utils.CountWriteCloser
 	cr        utils.CountReadCloser
 	eg        *errgroup.Group
 	cancel    context.CancelFunc
-	table     *models.Table
+	table     *core.Table
 	enabled   bool
 	pgzip     bool
-	format    models.DumpFormat
+	format    core.DumpFormat
 	hexBlob   bool
 }
 
 func NewTableDataWriter(
-	table models.Table,
-	st interfaces.Storager,
+	table core.Table,
+	st core.Storager,
 	opts ...Option,
 ) *TableDataWriter {
 	res := &TableDataWriter{
 		st:     st,
 		table:  &table,
-		format: models.DumpFormatInsert,
+		format: core.DumpFormatInsert,
 	}
 
 	for _, opt := range opts {
@@ -70,7 +69,7 @@ func NewTableDataWriter(
 	}
 
 	ext := ExtensionCsv
-	if res.format == models.DumpFormatInsert {
+	if res.format == core.DumpFormatInsert {
 		ext = ExtensionSql
 	}
 	if res.enabled {
@@ -80,7 +79,7 @@ func NewTableDataWriter(
 	return res
 }
 
-func WithFormat(format models.DumpFormat) Option {
+func WithFormat(format core.DumpFormat) Option {
 	return func(t *TableDataWriter) {
 		if format != "" {
 			t.format = format
@@ -122,7 +121,7 @@ func (t *TableDataWriter) Open(ctx context.Context) error {
 		t.cw, t.cr = utils.NewPlainPipe()
 	}
 
-	if t.format == models.DumpFormatInsert {
+	if t.format == core.DumpFormatInsert {
 		t.rowWriter = NewInsertWriter(*t.table, t.cw, t.hexBlob)
 	} else {
 		t.rowWriter = csv.NewWriter(t.cw)
@@ -153,25 +152,25 @@ func (t *TableDataWriter) Close(_ context.Context) error {
 	return nil
 }
 
-func (t *TableDataWriter) Stat() models.DumpedObjectStat {
+func (t *TableDataWriter) Stat() core.DumpedObjectStat {
 	if t.cw == nil {
 		panic("writer is not opened")
 	}
 	if t.cr == nil {
 		panic("reader is not opened")
 	}
-	compression := models.CompressionNone
+	compression := core.CompressionNone
 	if t.enabled {
-		compression = models.CompressionGzip
+		compression = core.CompressionGzip
 		if t.pgzip {
-			compression = models.CompressionPgzip
+			compression = core.CompressionPgzip
 		}
 	}
 
-	return models.NewObjectStat(
-		models.DBMSEngineMySQL,
-		models.ObjectKindTable,
-		models.ObjectID(t.table.ID),
+	return core.NewObjectStat(
+		core.DBMSEngineMySQL,
+		core.ObjectKindTable,
+		core.ObjectID(t.table.ID),
 		t.table.FullTableName(),
 		t.cw.GetCount(),
 		t.cr.GetCount(),

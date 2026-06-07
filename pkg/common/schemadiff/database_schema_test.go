@@ -17,19 +17,19 @@ package schemadiff
 import (
 	"testing"
 
-	"github.com/greenmaskio/greenmask/pkg/common/models"
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 // col is a helper to build a config.Column concisely.
-func col(idx int, name string, typeOID models.VirtualOID, typeName string) models.Column {
-	return models.Column{Idx: idx, Name: name, TypeOID: typeOID, TypeName: typeName}
+func col(idx int, name string, typeOID core.VirtualOID, typeName string) core.Column {
+	return core.Column{Idx: idx, Name: name, TypeOID: typeOID, TypeName: typeName}
 }
 
 // mkTable is a helper to build a config.Table concisely.
-func mkTable(id int, schema, name string, cols ...models.Column) models.Table {
-	return models.Table{ID: id, Schema: schema, Name: name, Columns: cols}
+func mkTable(id int, schema, name string, cols ...core.Column) core.Table {
+	return core.Table{ID: id, Schema: schema, Name: name, Columns: cols}
 }
 
 func TestDiff(t *testing.T) {
@@ -40,16 +40,16 @@ func TestDiff(t *testing.T) {
 		previous DatabaseSchema
 		current  DatabaseSchema
 		wantLen  int
-		wantFunc func(t *testing.T, nodes []models.DiffNode)
+		wantFunc func(t *testing.T, nodes []core.DiffNode)
 	}{
 		{
 			name:     "new table not in previous",
 			previous: DatabaseSchema{},
 			current:  DatabaseSchema{mkTable(1, "public", "users", colID)},
 			wantLen:  1,
-			wantFunc: func(t *testing.T, nodes []models.DiffNode) {
-				assert.Equal(t, models.TableCreatedDiffEvent, nodes[0].Event)
-				assert.Equal(t, models.DiffEventMsgs[models.TableCreatedDiffEvent], nodes[0].Msg)
+			wantFunc: func(t *testing.T, nodes []core.DiffNode) {
+				assert.Equal(t, core.TableCreatedDiffEvent, nodes[0].Event)
+				assert.Equal(t, core.DiffEventMsgs[core.TableCreatedDiffEvent], nodes[0].Msg)
 				assert.Equal(t, "public", nodes[0].Signature["SchemaName"])
 				assert.Equal(t, "users", nodes[0].Signature["TableName"])
 				assert.Equal(t, "1", nodes[0].Signature["TableID"])
@@ -83,8 +83,8 @@ func TestDiff(t *testing.T) {
 				mkTable(2, "public", "orders", colID),
 			},
 			wantLen: 1,
-			wantFunc: func(t *testing.T, nodes []models.DiffNode) {
-				assert.Equal(t, models.TableCreatedDiffEvent, nodes[0].Event)
+			wantFunc: func(t *testing.T, nodes []core.DiffNode) {
+				assert.Equal(t, core.TableCreatedDiffEvent, nodes[0].Event)
 				assert.Equal(t, "orders", nodes[0].Signature["TableName"])
 			},
 		},
@@ -106,10 +106,10 @@ func TestDiffTables(t *testing.T) {
 
 	tests := []struct {
 		name     string
-		previous models.Table
-		current  models.Table
+		previous core.Table
+		current  core.Table
 		wantLen  int
-		wantFunc func(t *testing.T, nodes []models.DiffNode)
+		wantFunc func(t *testing.T, nodes []core.DiffNode)
 	}{
 		{
 			name:     "no changes",
@@ -122,9 +122,9 @@ func TestDiffTables(t *testing.T) {
 			previous: mkTable(1, "public", "users"),
 			current:  mkTable(1, "private", "users"),
 			wantLen:  1,
-			wantFunc: func(t *testing.T, nodes []models.DiffNode) {
-				assert.Equal(t, models.TableMovedToAnotherSchemaDiffEvent, nodes[0].Event)
-				assert.Equal(t, models.DiffEventMsgs[models.TableMovedToAnotherSchemaDiffEvent], nodes[0].Msg)
+			wantFunc: func(t *testing.T, nodes []core.DiffNode) {
+				assert.Equal(t, core.TableMovedToAnotherSchemaDiffEvent, nodes[0].Event)
+				assert.Equal(t, core.DiffEventMsgs[core.TableMovedToAnotherSchemaDiffEvent], nodes[0].Msg)
 				assert.Equal(t, "public", nodes[0].Signature["PreviousSchemaName"])
 				assert.Equal(t, "private", nodes[0].Signature["CurrentSchemaName"])
 				assert.Equal(t, "users", nodes[0].Signature["TableName"])
@@ -136,9 +136,9 @@ func TestDiffTables(t *testing.T) {
 			previous: mkTable(1, "public", "users"),
 			current:  mkTable(1, "public", "accounts"),
 			wantLen:  1,
-			wantFunc: func(t *testing.T, nodes []models.DiffNode) {
-				assert.Equal(t, models.TableRenamedDiffEvent, nodes[0].Event)
-				assert.Equal(t, models.DiffEventMsgs[models.TableRenamedDiffEvent], nodes[0].Msg)
+			wantFunc: func(t *testing.T, nodes []core.DiffNode) {
+				assert.Equal(t, core.TableRenamedDiffEvent, nodes[0].Event)
+				assert.Equal(t, core.DiffEventMsgs[core.TableRenamedDiffEvent], nodes[0].Msg)
 				assert.Equal(t, "users", nodes[0].Signature["PreviousTableName"])
 				assert.Equal(t, "accounts", nodes[0].Signature["CurrentTableName"])
 				assert.Equal(t, "public", nodes[0].Signature["SchemaName"])
@@ -150,10 +150,10 @@ func TestDiffTables(t *testing.T) {
 			previous: mkTable(1, "public", "users"),
 			current:  mkTable(1, "private", "accounts"),
 			wantLen:  2,
-			wantFunc: func(t *testing.T, nodes []models.DiffNode) {
+			wantFunc: func(t *testing.T, nodes []core.DiffNode) {
 				events := []string{nodes[0].Event, nodes[1].Event}
-				assert.Contains(t, events, models.TableMovedToAnotherSchemaDiffEvent)
-				assert.Contains(t, events, models.TableRenamedDiffEvent)
+				assert.Contains(t, events, core.TableMovedToAnotherSchemaDiffEvent)
+				assert.Contains(t, events, core.TableRenamedDiffEvent)
 			},
 		},
 	}
@@ -172,10 +172,10 @@ func TestDiffTables(t *testing.T) {
 func TestDiffTableColumns(t *testing.T) {
 	tests := []struct {
 		name     string
-		previous models.Table
-		current  models.Table
+		previous core.Table
+		current  core.Table
 		wantLen  int
-		wantFunc func(t *testing.T, nodes []models.DiffNode)
+		wantFunc func(t *testing.T, nodes []core.DiffNode)
 	}{
 		{
 			name:     "no changes",
@@ -188,9 +188,9 @@ func TestDiffTableColumns(t *testing.T) {
 			previous: mkTable(1, "public", "users", col(0, "id", 23, "integer")),
 			current:  mkTable(1, "public", "users", col(0, "id", 23, "integer"), col(1, "email", 25, "text")),
 			wantLen:  1,
-			wantFunc: func(t *testing.T, nodes []models.DiffNode) {
-				assert.Equal(t, models.ColumnCreatedDiffEvent, nodes[0].Event)
-				assert.Equal(t, models.DiffEventMsgs[models.ColumnCreatedDiffEvent], nodes[0].Msg)
+			wantFunc: func(t *testing.T, nodes []core.DiffNode) {
+				assert.Equal(t, core.ColumnCreatedDiffEvent, nodes[0].Event)
+				assert.Equal(t, core.DiffEventMsgs[core.ColumnCreatedDiffEvent], nodes[0].Msg)
 				assert.Equal(t, "email", nodes[0].Signature["ColumnName"])
 				assert.Equal(t, "text", nodes[0].Signature["ColumnType"])
 				assert.Equal(t, "public", nodes[0].Signature["TableSchema"])
@@ -202,9 +202,9 @@ func TestDiffTableColumns(t *testing.T) {
 			previous: mkTable(1, "public", "users", col(0, "email", 25, "text")),
 			current:  mkTable(1, "public", "users", col(0, "email_address", 25, "text")),
 			wantLen:  1,
-			wantFunc: func(t *testing.T, nodes []models.DiffNode) {
-				assert.Equal(t, models.ColumnRenamedDiffEvent, nodes[0].Event)
-				assert.Equal(t, models.DiffEventMsgs[models.ColumnRenamedDiffEvent], nodes[0].Msg)
+			wantFunc: func(t *testing.T, nodes []core.DiffNode) {
+				assert.Equal(t, core.ColumnRenamedDiffEvent, nodes[0].Event)
+				assert.Equal(t, core.DiffEventMsgs[core.ColumnRenamedDiffEvent], nodes[0].Msg)
 				assert.Equal(t, "email", nodes[0].Signature["PreviousColumnName"])
 				assert.Equal(t, "email_address", nodes[0].Signature["CurrentColumnName"])
 			},
@@ -214,9 +214,9 @@ func TestDiffTableColumns(t *testing.T) {
 			previous: mkTable(1, "public", "users", col(0, "score", 23, "integer")),
 			current:  mkTable(1, "public", "users", col(0, "score", 700, "float8")),
 			wantLen:  1,
-			wantFunc: func(t *testing.T, nodes []models.DiffNode) {
-				assert.Equal(t, models.ColumnTypeChangedDiffEvent, nodes[0].Event)
-				assert.Equal(t, models.DiffEventMsgs[models.ColumnTypeChangedDiffEvent], nodes[0].Msg)
+			wantFunc: func(t *testing.T, nodes []core.DiffNode) {
+				assert.Equal(t, core.ColumnTypeChangedDiffEvent, nodes[0].Event)
+				assert.Equal(t, core.DiffEventMsgs[core.ColumnTypeChangedDiffEvent], nodes[0].Msg)
 				assert.Equal(t, "score", nodes[0].Signature["ColumnName"])
 				assert.Equal(t, "integer", nodes[0].Signature["PreviousColumnType"])
 				assert.Equal(t, "23", nodes[0].Signature["PreviousColumnTypeOID"])
@@ -229,10 +229,10 @@ func TestDiffTableColumns(t *testing.T) {
 			previous: mkTable(1, "public", "users", col(0, "score", 23, "integer")),
 			current:  mkTable(1, "public", "users", col(0, "rating", 700, "float8")),
 			wantLen:  2,
-			wantFunc: func(t *testing.T, nodes []models.DiffNode) {
+			wantFunc: func(t *testing.T, nodes []core.DiffNode) {
 				events := []string{nodes[0].Event, nodes[1].Event}
-				assert.Contains(t, events, models.ColumnRenamedDiffEvent)
-				assert.Contains(t, events, models.ColumnTypeChangedDiffEvent)
+				assert.Contains(t, events, core.ColumnRenamedDiffEvent)
+				assert.Contains(t, events, core.ColumnTypeChangedDiffEvent)
 			},
 		},
 		{

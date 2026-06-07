@@ -17,15 +17,14 @@ package dump
 import (
 	"context"
 
-	"github.com/greenmaskio/greenmask/pkg/common/interfaces"
-	"github.com/greenmaskio/greenmask/pkg/common/models"
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 )
 
-var _ interfaces.SubsetBuilder = (*SubsetBuilder)(nil)
+var _ core.SubsetBuilder = (*SubsetBuilder)(nil)
 
 // SubsetBuilder plans partial data extraction while preserving integrity.
 type SubsetBuilder struct{}
 
-func (s *SubsetBuilder) BuildSubset(ctx context.Context, in models.SubsetBuilderInput) (models.SubsetResult, error) {
-	return models.SubsetResult{}, errNotImplemented
+func (s *SubsetBuilder) BuildSubset(ctx context.Context, in core.SubsetBuilderInput) (core.SubsetResult, error) {
+	return core.SubsetResult{}, errNotImplemented
 }

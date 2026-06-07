@@ -3,10 +3,9 @@ package dumpers
 import (
 	"fmt"
 
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 	dumpcontext "github.com/greenmaskio/greenmask/pkg/common/dump/context"
 	"github.com/greenmaskio/greenmask/pkg/common/dump/dumpers"
-	commonininterfaces "github.com/greenmaskio/greenmask/pkg/common/interfaces"
-	commonmodels "github.com/greenmaskio/greenmask/pkg/common/models"
 	"github.com/greenmaskio/greenmask/pkg/common/pipeline"
 	"github.com/greenmaskio/greenmask/pkg/common/rawrecord"
 	"github.com/greenmaskio/greenmask/pkg/common/record"
@@ -17,12 +16,12 @@ import (
 
 type TableDumpObjectFactory struct {
 	registry *registry.TransformerRegistry
-	queries  map[commonmodels.ObjectID]string
+	queries  map[core.ObjectID]string
 }
 
 func NewTableDumpObjectFactory(
 	registry *registry.TransformerRegistry,
-	queries map[commonmodels.ObjectID]string,
+	queries map[core.ObjectID]string,
 ) *TableDumpObjectFactory {
 	return &TableDumpObjectFactory{
 		registry: registry,
@@ -30,18 +29,18 @@ func NewTableDumpObjectFactory(
 	}
 }
 
-func (f *TableDumpObjectFactory) Kind() commonmodels.ObjectKind {
-	return commonmodels.ObjectKindPostgresTable
+func (f *TableDumpObjectFactory) Kind() core.ObjectKind {
+	return core.ObjectKindPostgresTable
 }
 
 func (f *TableDumpObjectFactory) NewDumpObject(
-	spec commonmodels.ObjectDumpSpec,
-) (commonininterfaces.ObjectDumper, error) {
+	spec core.ObjectDumpSpec,
+) (core.ObjectDumper, error) {
 	tableContext, ok := spec.Payload.(dumpcontext.TableDumpContextPayload)
 	if !ok {
 		return nil, fmt.Errorf("expected context.TableDumpContextPayload, got %T", spec.Payload)
 	}
-	if spec.Kind != commonmodels.ObjectKindPostgresTable {
+	if spec.Kind != core.ObjectKindPostgresTable {
 		return nil, fmt.Errorf("expected context.TableDumpObjectPayload, got %s", spec.Kind)
 	}
 	if tableContext.HasTransformer() {
@@ -51,9 +50,9 @@ func (f *TableDumpObjectFactory) NewDumpObject(
 }
 
 func (f *TableDumpObjectFactory) initTableDumperWithPipeline(
-	spec commonmodels.ObjectDumpSpec,
+	spec core.ObjectDumpSpec,
 	tableContext dumpcontext.TableDumpContextPayload,
-) (commonininterfaces.ObjectDumper, error) {
+) (core.ObjectDumper, error) {
 	tr := table.NewReader()
 	tw := table.NewWriter()
 	rawRecord := rawrecord.NewRawRecord(len(tableContext.Table.Columns), dbmsdriver.NullValueSeq)
@@ -68,9 +67,9 @@ func (f *TableDumpObjectFactory) initTableDumperWithPipeline(
 }
 
 func (f *TableDumpObjectFactory) initTableDumperWithRaw(
-	spec commonmodels.ObjectDumpSpec,
+	spec core.ObjectDumpSpec,
 	tableContext dumpcontext.TableDumpContextPayload,
-) (commonininterfaces.ObjectDumper, error) {
+) (core.ObjectDumper, error) {
 	tr := table.NewReader()
 	tw := table.NewWriter()
 	return dumpers.NewTableRawDumper(spec.TaskID, tr, tw, tableContext.Table), nil

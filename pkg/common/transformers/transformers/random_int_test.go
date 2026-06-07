@@ -18,8 +18,7 @@ import (
 	"context"
 	"testing"
 
-	commonininterfaces "github.com/greenmaskio/greenmask/pkg/common/interfaces"
-	"github.com/greenmaskio/greenmask/pkg/common/models"
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 	commonutils "github.com/greenmaskio/greenmask/pkg/common/utils"
 	"github.com/greenmaskio/greenmask/pkg/common/validationcollector"
 	mysqldbmsdriver "github.com/greenmaskio/greenmask/pkg/mysql/dbmsdriver"
@@ -30,35 +29,35 @@ import (
 func TestRandomIntTransformer_Transform(t *testing.T) {
 	tests := []struct {
 		name             string
-		staticParameters map[string]models.ParamsValue
-		dynamicParameter map[string]models.DynamicParamValue
-		original         []*models.ColumnRawValue
-		validateFn       func(t *testing.T, recorder commonininterfaces.Recorder)
+		staticParameters map[string]core.ParamsValue
+		dynamicParameter map[string]core.DynamicParamValue
+		original         []*core.ColumnRawValue
+		validateFn       func(t *testing.T, recorder core.Recorder)
 		expectedErr      string
-		columns          []models.Column
+		columns          []core.Column
 	}{
 		{
 			name: "int2",
-			columns: []models.Column{
+			columns: []core.Column{
 				{
 					Idx:       0,
 					Name:      "data",
 					TypeName:  mysqldbmsdriver.TypeSmallInt,
 					TypeOID:   mysqldbmsdriver.VirtualOidSmallInt,
-					TypeClass: models.TypeClassInt,
+					TypeClass: core.TypeClassInt,
 					Length:    0,
 					Size:      2,
 				},
 			},
-			original: []*models.ColumnRawValue{
-				models.NewColumnRawValue([]byte("12345"), false)},
-			staticParameters: map[string]models.ParamsValue{
-				"column": models.ParamsValue("data"),
-				"min":    models.ParamsValue("1"),
-				"max":    models.ParamsValue("100"),
-				"engine": models.ParamsValue("random"),
+			original: []*core.ColumnRawValue{
+				core.NewColumnRawValue([]byte("12345"), false)},
+			staticParameters: map[string]core.ParamsValue{
+				"column": core.ParamsValue("data"),
+				"min":    core.ParamsValue("1"),
+				"max":    core.ParamsValue("100"),
+				"engine": core.ParamsValue("random"),
 			},
-			validateFn: func(t *testing.T, recorder commonininterfaces.Recorder) {
+			validateFn: func(t *testing.T, recorder core.Recorder) {
 				var val int64
 				isNull, err := recorder.ScanColumnValueByName("data", &val)
 				require.NoError(t, err)
@@ -69,26 +68,26 @@ func TestRandomIntTransformer_Transform(t *testing.T) {
 		},
 		{
 			name: "int4",
-			columns: []models.Column{
+			columns: []core.Column{
 				{
 					Idx:       0,
 					Name:      "data",
 					TypeName:  mysqldbmsdriver.TypeMediumInt,
 					TypeOID:   mysqldbmsdriver.VirtualOidMediumInt,
-					TypeClass: models.TypeClassInt,
+					TypeClass: core.TypeClassInt,
 					Length:    0,
 					Size:      4,
 				},
 			},
-			original: []*models.ColumnRawValue{
-				models.NewColumnRawValue([]byte("12345"), false)},
-			staticParameters: map[string]models.ParamsValue{
-				"column": models.ParamsValue("data"),
-				"min":    models.ParamsValue("1"),
-				"max":    models.ParamsValue("100"),
-				"engine": models.ParamsValue("random"),
+			original: []*core.ColumnRawValue{
+				core.NewColumnRawValue([]byte("12345"), false)},
+			staticParameters: map[string]core.ParamsValue{
+				"column": core.ParamsValue("data"),
+				"min":    core.ParamsValue("1"),
+				"max":    core.ParamsValue("100"),
+				"engine": core.ParamsValue("random"),
 			},
-			validateFn: func(t *testing.T, recorder commonininterfaces.Recorder) {
+			validateFn: func(t *testing.T, recorder core.Recorder) {
 				var val int64
 				isNull, err := recorder.ScanColumnValueByName("data", &val)
 				require.NoError(t, err)
@@ -100,26 +99,26 @@ func TestRandomIntTransformer_Transform(t *testing.T) {
 		},
 		{
 			name: "int8",
-			columns: []models.Column{
+			columns: []core.Column{
 				{
 					Idx:       0,
 					Name:      "data",
 					TypeName:  mysqldbmsdriver.TypeBigInt,
 					TypeOID:   mysqldbmsdriver.VirtualOidBigInt,
-					TypeClass: models.TypeClassInt,
+					TypeClass: core.TypeClassInt,
 					Length:    0,
 					Size:      8,
 				},
 			},
-			original: []*models.ColumnRawValue{
-				models.NewColumnRawValue([]byte("12345"), false)},
-			staticParameters: map[string]models.ParamsValue{
-				"column": models.ParamsValue("data"),
-				"min":    models.ParamsValue("1"),
-				"max":    models.ParamsValue("100"),
-				"engine": models.ParamsValue("random"),
+			original: []*core.ColumnRawValue{
+				core.NewColumnRawValue([]byte("12345"), false)},
+			staticParameters: map[string]core.ParamsValue{
+				"column": core.ParamsValue("data"),
+				"min":    core.ParamsValue("1"),
+				"max":    core.ParamsValue("100"),
+				"engine": core.ParamsValue("random"),
 			},
-			validateFn: func(t *testing.T, recorder commonininterfaces.Recorder) {
+			validateFn: func(t *testing.T, recorder core.Recorder) {
 				var val int64
 				isNull, err := recorder.ScanColumnValueByName("data", &val)
 				require.NoError(t, err)
@@ -131,27 +130,27 @@ func TestRandomIntTransformer_Transform(t *testing.T) {
 		},
 		{
 			name: "keep_null true and NULL seq",
-			staticParameters: map[string]models.ParamsValue{
-				"column":    models.ParamsValue("data"),
-				"engine":    models.ParamsValue("deterministic"),
-				"min":       models.ParamsValue("1"),
-				"max":       models.ParamsValue("100"),
-				"keep_null": models.ParamsValue("true"),
+			staticParameters: map[string]core.ParamsValue{
+				"column":    core.ParamsValue("data"),
+				"engine":    core.ParamsValue("deterministic"),
+				"min":       core.ParamsValue("1"),
+				"max":       core.ParamsValue("100"),
+				"keep_null": core.ParamsValue("true"),
 			},
-			original: []*models.ColumnRawValue{
-				models.NewColumnRawValue(nil, true)},
-			columns: []models.Column{
+			original: []*core.ColumnRawValue{
+				core.NewColumnRawValue(nil, true)},
+			columns: []core.Column{
 				{
 					Idx:       0,
 					Name:      "data",
 					TypeName:  mysqldbmsdriver.TypeBigInt,
 					TypeOID:   mysqldbmsdriver.VirtualOidBigInt,
-					TypeClass: models.TypeClassInt,
+					TypeClass: core.TypeClassInt,
 					Length:    0,
 					Size:      8,
 				},
 			},
-			validateFn: func(t *testing.T, recorder commonininterfaces.Recorder) {
+			validateFn: func(t *testing.T, recorder core.Recorder) {
 				var val float64
 				isNull, err := recorder.ScanColumnValueByName("data", &val)
 				require.NoError(t, err)
@@ -160,27 +159,27 @@ func TestRandomIntTransformer_Transform(t *testing.T) {
 		},
 		{
 			name: "keep_null true and not NULL seq",
-			staticParameters: map[string]models.ParamsValue{
-				"column":    models.ParamsValue("data"),
-				"engine":    models.ParamsValue("deterministic"),
-				"min":       models.ParamsValue("1"),
-				"max":       models.ParamsValue("100"),
-				"keep_null": models.ParamsValue("true"),
+			staticParameters: map[string]core.ParamsValue{
+				"column":    core.ParamsValue("data"),
+				"engine":    core.ParamsValue("deterministic"),
+				"min":       core.ParamsValue("1"),
+				"max":       core.ParamsValue("100"),
+				"keep_null": core.ParamsValue("true"),
 			},
-			original: []*models.ColumnRawValue{
-				models.NewColumnRawValue([]byte("12345"), false)},
-			columns: []models.Column{
+			original: []*core.ColumnRawValue{
+				core.NewColumnRawValue([]byte("12345"), false)},
+			columns: []core.Column{
 				{
 					Idx:       0,
 					Name:      "data",
 					TypeName:  mysqldbmsdriver.TypeBigInt,
 					TypeOID:   mysqldbmsdriver.VirtualOidBigInt,
-					TypeClass: models.TypeClassInt,
+					TypeClass: core.TypeClassInt,
 					Length:    0,
 					Size:      8,
 				},
 			},
-			validateFn: func(t *testing.T, recorder commonininterfaces.Recorder) {
+			validateFn: func(t *testing.T, recorder core.Recorder) {
 				var val int64
 				isNull, err := recorder.ScanColumnValueByName("data", &val)
 				require.NoError(t, err)
@@ -189,12 +188,12 @@ func TestRandomIntTransformer_Transform(t *testing.T) {
 		},
 		{
 			name: "dynamic mode",
-			staticParameters: map[string]models.ParamsValue{
-				"column":    models.ParamsValue("data"),
-				"engine":    models.ParamsValue("deterministic"),
-				"keep_null": models.ParamsValue("false"),
+			staticParameters: map[string]core.ParamsValue{
+				"column":    core.ParamsValue("data"),
+				"engine":    core.ParamsValue("deterministic"),
+				"keep_null": core.ParamsValue("false"),
 			},
-			dynamicParameter: map[string]models.DynamicParamValue{
+			dynamicParameter: map[string]core.DynamicParamValue{
 				"min": {
 					Column: "min_val",
 				},
@@ -202,18 +201,18 @@ func TestRandomIntTransformer_Transform(t *testing.T) {
 					Column: "max_val",
 				},
 			},
-			original: []*models.ColumnRawValue{
-				models.NewColumnRawValue([]byte("1234"), false),
-				models.NewColumnRawValue([]byte("1"), false),
-				models.NewColumnRawValue([]byte("100"), false),
+			original: []*core.ColumnRawValue{
+				core.NewColumnRawValue([]byte("1234"), false),
+				core.NewColumnRawValue([]byte("1"), false),
+				core.NewColumnRawValue([]byte("100"), false),
 			},
-			columns: []models.Column{
+			columns: []core.Column{
 				{
 					Idx:       0,
 					Name:      "data",
 					TypeName:  mysqldbmsdriver.TypeBigInt,
 					TypeOID:   mysqldbmsdriver.VirtualOidBigInt,
-					TypeClass: models.TypeClassInt,
+					TypeClass: core.TypeClassInt,
 					Length:    0,
 					Size:      8,
 				},
@@ -222,7 +221,7 @@ func TestRandomIntTransformer_Transform(t *testing.T) {
 					Name:      "min_val",
 					TypeName:  mysqldbmsdriver.TypeBigInt,
 					TypeOID:   mysqldbmsdriver.VirtualOidBigInt,
-					TypeClass: models.TypeClassInt,
+					TypeClass: core.TypeClassInt,
 					Length:    0,
 					Size:      8,
 				},
@@ -231,12 +230,12 @@ func TestRandomIntTransformer_Transform(t *testing.T) {
 					Name:      "max_val",
 					TypeName:  mysqldbmsdriver.TypeBigInt,
 					TypeOID:   mysqldbmsdriver.VirtualOidBigInt,
-					TypeClass: models.TypeClassInt,
+					TypeClass: core.TypeClassInt,
 					Length:    0,
 					Size:      8,
 				},
 			},
-			validateFn: func(t *testing.T, recorder commonininterfaces.Recorder) {
+			validateFn: func(t *testing.T, recorder core.Recorder) {
 				var expectedMin int64 = 1
 				var expectedMax int64 = 10
 				var val int64

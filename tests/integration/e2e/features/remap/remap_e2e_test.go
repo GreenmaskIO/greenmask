@@ -35,7 +35,7 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/stretchr/testify/suite"
 
-	commonmodels "github.com/greenmaskio/greenmask/pkg/common/models"
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 	"github.com/greenmaskio/greenmask/pkg/common/transformers/registry"
 	"github.com/greenmaskio/greenmask/pkg/common/utils"
 	"github.com/greenmaskio/greenmask/pkg/common/validationcollector"
@@ -111,14 +111,14 @@ func (s *RemapSuite) SetupSuite() {
 
 func (s *RemapSuite) setupCtx(ctx context.Context, cfg *config.Config) context.Context {
 	s.Require().NoError(utils.SetDefaultContextLogger(cfg.Log.Level, cfg.Log.Format))
-	ctx = log.Ctx(ctx).With().Str(commonmodels.MetaKeyEngine, "mysql").Logger().WithContext(ctx)
-	vc := validationcollector.NewCollectorWithMeta(commonmodels.MetaKeyEngine, "mysql")
+	ctx = log.Ctx(ctx).With().Str(core.MetaKeyEngine, "mysql").Logger().WithContext(ctx)
+	vc := validationcollector.NewCollectorWithMeta(core.MetaKeyEngine, "mysql")
 	return validationcollector.WithCollector(ctx, vc)
 }
 
 func (s *RemapSuite) baseConfig(ctx context.Context) *config.Config {
 	cfg := config.NewConfig()
-	cfg.Engine = commonmodels.DBMSEngineMySQL
+	cfg.Engine = core.DBMSEngineMySQL
 	cfg.Log.Level = "debug"
 	cfg.Log.Format = "text"
 
@@ -143,7 +143,7 @@ func (s *RemapSuite) baseConfig(ctx context.Context) *config.Config {
 	return cfg
 }
 
-func (s *RemapSuite) runDump(ctx context.Context, cfg *config.Config, dumpDir string, schemas []string) commonmodels.DumpID {
+func (s *RemapSuite) runDump(ctx context.Context, cfg *config.Config, dumpDir string, schemas []string) core.DumpID {
 	cfg.Dump.Options.IncludeSchema = schemas
 	dirSt, err := directory.New(directory.NewDirectoryConfig(dumpDir))
 	s.Require().NoError(err, "create dump storage")
@@ -160,7 +160,7 @@ func (s *RemapSuite) runDump(ctx context.Context, cfg *config.Config, dumpDir st
 	return d.GetDumpID()
 }
 
-func (s *RemapSuite) runRestore(ctx context.Context, cfg *config.Config, dumpDir string, dumpID commonmodels.DumpID) error {
+func (s *RemapSuite) runRestore(ctx context.Context, cfg *config.Config, dumpDir string, dumpID core.DumpID) error {
 	dirSt, err := directory.New(directory.NewDirectoryConfig(dumpDir))
 	s.Require().NoError(err, "create restore storage")
 	return mysqlcmdrestore.RunRestore(ctx, cfg, dirSt, string(dumpID))
@@ -200,7 +200,7 @@ func (s *RemapSuite) TestDatabaseRemap() {
 		name        string
 		dumpSchemas []string
 		remap       map[string]string
-		mode        commonmodels.DatabaseReplacementMode
+		mode        core.DatabaseReplacementMode
 		dropBefore  []string
 		wantErr     bool
 		checks      []rowCheck
@@ -209,7 +209,7 @@ func (s *RemapSuite) TestDatabaseRemap() {
 			name:        "strict_all_mapped",
 			dumpSchemas: []string{srcDB, anotherDB},
 			remap:       map[string]string{srcDB: dstDB, anotherDB: altDB},
-			mode:        commonmodels.DatabaseReplaceModeStrict,
+			mode:        core.DatabaseReplaceModeStrict,
 			dropBefore:  []string{dstDB, altDB},
 			checks: []rowCheck{
 				{database: dstDB, table: "users", wantRows: 3},
@@ -221,7 +221,7 @@ func (s *RemapSuite) TestDatabaseRemap() {
 			name:        "strict_missing_entry_fails",
 			dumpSchemas: []string{srcDB, anotherDB},
 			remap:       map[string]string{srcDB: dstDB},
-			mode:        commonmodels.DatabaseReplaceModeStrict,
+			mode:        core.DatabaseReplaceModeStrict,
 			dropBefore:  []string{dstDB},
 			wantErr:     true,
 		},
@@ -230,7 +230,7 @@ func (s *RemapSuite) TestDatabaseRemap() {
 			name:        "relaxed_partial_map",
 			dumpSchemas: []string{srcDB, anotherDB},
 			remap:       map[string]string{srcDB: dstDB},
-			mode:        commonmodels.DatabaseReplaceModeRelaxed,
+			mode:        core.DatabaseReplaceModeRelaxed,
 			dropBefore:  []string{dstDB},
 			checks: []rowCheck{
 				{database: dstDB, table: "users", wantRows: 3},

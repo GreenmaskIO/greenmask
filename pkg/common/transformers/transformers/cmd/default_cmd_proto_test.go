@@ -19,7 +19,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/greenmaskio/greenmask/pkg/common/models"
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 	transformerstesting "github.com/greenmaskio/greenmask/pkg/common/transformers/testing"
 	"github.com/greenmaskio/greenmask/pkg/common/utils"
 	mysqldbmsdriver "github.com/greenmaskio/greenmask/pkg/mysql/dbmsdriver"
@@ -29,7 +29,7 @@ import (
 
 func TestDefaultCMDProto_Send(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
-		columns := []models.Column{
+		columns := []core.Column{
 			{
 				Idx:      0,
 				Name:     "first_name",
@@ -73,17 +73,17 @@ func TestDefaultCMDProto_Send(t *testing.T) {
 			affectedColumn,
 			NewJsonAttrRawValueText,
 		)
-		columnValues := []*models.ColumnRawValue{
-			models.NewColumnRawValue([]byte("a"), false),
-			models.NewColumnRawValue([]byte("b"), false),
-			models.NewColumnRawValue([]byte("c"), false),
+		columnValues := []*core.ColumnRawValue{
+			core.NewColumnRawValue([]byte("a"), false),
+			core.NewColumnRawValue([]byte("b"), false),
+			core.NewColumnRawValue([]byte("c"), false),
 		}
 		env := transformerstesting.NewTransformerTestEnvReal(t, nil, columns, nil, nil)
 		env.SetRecord(t, columnValues...)
-		affectedColumns := []*models.Column{
+		affectedColumns := []*core.Column{
 			&columns[0],
 		}
-		transferringColumns := []*models.Column{
+		transferringColumns := []*core.Column{
 			&columns[0],
 			&columns[2],
 		}
@@ -102,7 +102,7 @@ func TestDefaultCMDProto_Send(t *testing.T) {
 
 func TestDefaultCMDProto_ReceiveAndApply(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
-		columns := []models.Column{
+		columns := []core.Column{
 			{
 				Idx:      0,
 				Name:     "first_name",
@@ -147,10 +147,10 @@ func TestDefaultCMDProto_ReceiveAndApply(t *testing.T) {
 			NewJsonAttrRawValueText,
 		)
 		env := transformerstesting.NewTransformerTestEnvReal(t, nil, columns, nil, nil)
-		affectedColumns := []*models.Column{
+		affectedColumns := []*core.Column{
 			&columns[0],
 		}
-		transferringColumns := []*models.Column{
+		transferringColumns := []*core.Column{
 			&columns[0],
 			&columns[2],
 		}
@@ -162,10 +162,10 @@ func TestDefaultCMDProto_ReceiveAndApply(t *testing.T) {
 		require.NoError(t, err)
 		ctx := context.Background()
 
-		columnValues := []*models.ColumnRawValue{
-			models.NewColumnRawValue([]byte("a1"), false),
-			models.NewColumnRawValue([]byte("b1"), false),
-			models.NewColumnRawValue([]byte("c1"), false),
+		columnValues := []*core.ColumnRawValue{
+			core.NewColumnRawValue([]byte("a1"), false),
+			core.NewColumnRawValue([]byte("b1"), false),
+			core.NewColumnRawValue([]byte("c1"), false),
 		}
 		env.SetRecord(t, columnValues...)
 		reader.Write(append([]byte(`[{"d":"a11","n":false},{"d":"c11","n":false}]`), '\n'))
@@ -175,10 +175,10 @@ func TestDefaultCMDProto_ReceiveAndApply(t *testing.T) {
 		assert.Equal(t, "b1", utils.Must(record.GetRawColumnValueByIdx(1)).String())
 		assert.Equal(t, "c1", utils.Must(record.GetRawColumnValueByIdx(2)).String())
 
-		columnValues = []*models.ColumnRawValue{
-			models.NewColumnRawValue([]byte("a2"), false),
-			models.NewColumnRawValue([]byte("b2"), false),
-			models.NewColumnRawValue([]byte("c2"), false),
+		columnValues = []*core.ColumnRawValue{
+			core.NewColumnRawValue([]byte("a2"), false),
+			core.NewColumnRawValue([]byte("b2"), false),
+			core.NewColumnRawValue([]byte("c2"), false),
 		}
 		env.SetRecord(t, columnValues...)
 		reader.Write(append([]byte(`[{"d":"b22","n":false},{"d":"c22","n":false}]`), '\n'))

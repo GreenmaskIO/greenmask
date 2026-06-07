@@ -4,8 +4,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/greenmaskio/greenmask/pkg/common/interfaces"
-	commonmodels "github.com/greenmaskio/greenmask/pkg/common/models"
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 )
 
 var (
@@ -14,16 +13,16 @@ var (
 )
 
 type Registry[Kind comparable, Spec any, Dumper any] struct {
-	factories map[Kind]interfaces.DumpFactory[Kind, Spec, Dumper]
+	factories map[Kind]core.DumpFactory[Kind, Spec, Dumper]
 }
 
 func NewRegistry[Kind comparable, Spec any, Dumper any]() *Registry[Kind, Spec, Dumper] {
 	return &Registry[Kind, Spec, Dumper]{
-		factories: make(map[Kind]interfaces.DumpFactory[Kind, Spec, Dumper]),
+		factories: make(map[Kind]core.DumpFactory[Kind, Spec, Dumper]),
 	}
 }
 
-func (r *Registry[Kind, Spec, Dumper]) Register(factory interfaces.DumpFactory[Kind, Spec, Dumper]) error {
+func (r *Registry[Kind, Spec, Dumper]) Register(factory core.DumpFactory[Kind, Spec, Dumper]) error {
 	k := factory.Kind()
 	if _, ok := r.factories[k]; ok {
 		return fmt.Errorf("kind '%v': %w", k, ErrAlreadyRegistered)
@@ -32,7 +31,7 @@ func (r *Registry[Kind, Spec, Dumper]) Register(factory interfaces.DumpFactory[K
 	return nil
 }
 
-func (r *Registry[Kind, Spec, Dumper]) Get(kind Kind) (interfaces.DumpFactory[Kind, Spec, Dumper], error) {
+func (r *Registry[Kind, Spec, Dumper]) Get(kind Kind) (core.DumpFactory[Kind, Spec, Dumper], error) {
 	factory, ok := r.factories[kind]
 	if !ok {
 		return nil, fmt.Errorf("kind '%v': %w", kind, ErrUnknownKind)
@@ -49,10 +48,10 @@ func (r *Registry[Kind, Spec, Dumper]) New(kind Kind, spec Spec) (Dumper, error)
 	return factory.New(spec)
 }
 
-func NewObjectDumpFactoryRegistry() interfaces.ObjectDumpFactoryRegistry {
-	return NewRegistry[commonmodels.ObjectKind, commonmodels.ObjectDumpSpec, interfaces.ObjectDumper]()
+func NewObjectDumpFactoryRegistry() core.ObjectDumpFactoryRegistry {
+	return NewRegistry[core.ObjectKind, core.ObjectDumpSpec, core.ObjectDumper]()
 }
 
-func NewSchemaDumpFactoryRegistry() interfaces.SchemaDumpFactoryRegistry {
-	return NewRegistry[commonmodels.SchemaDumpKind, commonmodels.SchemaDumpSpec, interfaces.SchemaDumper]()
+func NewSchemaDumpFactoryRegistry() core.SchemaDumpFactoryRegistry {
+	return NewRegistry[core.SchemaDumpKind, core.SchemaDumpSpec, core.SchemaDumper]()
 }

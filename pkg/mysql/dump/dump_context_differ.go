@@ -17,15 +17,14 @@ package dump
 import (
 	"context"
 
-	"github.com/greenmaskio/greenmask/pkg/common/interfaces"
-	"github.com/greenmaskio/greenmask/pkg/common/models"
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 )
 
-var _ interfaces.DumpContextDiffer = (*DumpContextDiffer)(nil)
+var _ core.DumpContextDiffer = (*DumpContextDiffer)(nil)
 
 // DumpContextDiffer compares dump context snapshots.
 type DumpContextDiffer struct{}
 
-func (s *DumpContextDiffer) Diff(ctx context.Context, input models.DumpContextDiffInput) (models.DumpContextDiff, error) {
-	return models.DumpContextDiff{}, errNotImplemented
+func (s *DumpContextDiffer) Diff(ctx context.Context, input core.DumpContextDiffInput) (core.DumpContextDiff, error) {
+	return core.DumpContextDiff{}, errNotImplemented
 }

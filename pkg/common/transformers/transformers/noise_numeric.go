@@ -18,8 +18,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/greenmaskio/greenmask/pkg/common/interfaces"
-	"github.com/greenmaskio/greenmask/pkg/common/models"
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 	"github.com/greenmaskio/greenmask/pkg/common/transformers/generators/transformers"
 	"github.com/greenmaskio/greenmask/pkg/common/transformers/parameters"
 	"github.com/greenmaskio/greenmask/pkg/common/transformers/utils"
@@ -41,9 +40,9 @@ var NoiseNumericTransformerDefinition = utils.NewTransformerDefinition(
 	parameters.MustNewParameterDefinition(
 		"column",
 		"column name",
-	).SetIsColumn(models.NewColumnProperties().
+	).SetIsColumn(core.NewColumnProperties().
 		SetAffected(true).
-		SetAllowedColumnTypeClasses(models.TypeClassNumeric).
+		SetAllowedColumnTypeClasses(core.TypeClassNumeric).
 		SetSkipOnNull(true),
 	).SetRequired(true),
 
@@ -51,7 +50,7 @@ var NoiseNumericTransformerDefinition = utils.NewTransformerDefinition(
 		"decimal",
 		"Numbers of decimal",
 	).SetSupportTemplate(true).
-		SetDefaultValue(models.ParamsValue("4")),
+		SetDefaultValue(core.ParamsValue("4")),
 
 	parameters.MustNewParameterDefinition(
 		"min",
@@ -61,11 +60,11 @@ var NoiseNumericTransformerDefinition = utils.NewTransformerDefinition(
 		SetDynamicMode(
 			parameters.NewDynamicModeProperties().
 				SetColumnProperties(
-					models.NewColumnProperties().
+					core.NewColumnProperties().
 						SetAllowedColumnTypeClasses(
-							models.TypeClassFloat,
-							models.TypeClassInt,
-							models.TypeClassNumeric,
+							core.TypeClassFloat,
+							core.TypeClassInt,
+							core.TypeClassNumeric,
 						),
 				).SetUnmarshaler(numericTypeUnmarshaler),
 		),
@@ -78,11 +77,11 @@ var NoiseNumericTransformerDefinition = utils.NewTransformerDefinition(
 		SetDynamicMode(
 			parameters.NewDynamicModeProperties().
 				SetColumnProperties(
-					models.NewColumnProperties().
+					core.NewColumnProperties().
 						SetAllowedColumnTypeClasses(
-							models.TypeClassFloat,
-							models.TypeClassInt,
-							models.TypeClassNumeric,
+							core.TypeClassFloat,
+							core.TypeClassInt,
+							core.TypeClassNumeric,
 						),
 				).SetUnmarshaler(numericTypeUnmarshaler),
 		),
@@ -90,7 +89,7 @@ var NoiseNumericTransformerDefinition = utils.NewTransformerDefinition(
 	parameters.MustNewParameterDefinition(
 		"type_size",
 		"size of the numeric type (total number of digits)",
-	).SetDefaultValue(models.ParamsValue("4")),
+	).SetDefaultValue(core.ParamsValue("4")),
 
 	defaultMinRatioParameterDefinition,
 
@@ -120,9 +119,9 @@ type NoiseNumericTransformer struct {
 
 func NewNumericFloatTransformer(
 	ctx context.Context,
-	tableDriver interfaces.TableDriver,
+	tableDriver core.TableDriver,
 	parameters map[string]parameters.Parameterizer,
-) (interfaces.Transformer, error) {
+) (core.Transformer, error) {
 	var minValueThreshold, maxValueThreshold *decimal.Decimal
 
 	minParam := parameters["min"]
@@ -257,7 +256,7 @@ func (t *NoiseNumericTransformer) dynamicTransform(original decimal.Decimal) (de
 	return t.t.SetDynamicLimiter(limiter).Transform(original)
 }
 
-func (t *NoiseNumericTransformer) Transform(_ context.Context, r interfaces.Recorder) error {
+func (t *NoiseNumericTransformer) Transform(_ context.Context, r core.Recorder) error {
 	var val decimal.Decimal
 	isNull, err := r.ScanColumnValueByIdx(t.columnIdx, &val)
 	if err != nil {

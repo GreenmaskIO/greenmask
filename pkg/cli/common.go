@@ -21,7 +21,7 @@ import (
 
 	"github.com/rs/zerolog/log"
 
-	commonmodels "github.com/greenmaskio/greenmask/pkg/common/models"
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 	"github.com/greenmaskio/greenmask/pkg/common/utils"
 	"github.com/greenmaskio/greenmask/pkg/common/validationcollector"
 	"github.com/greenmaskio/greenmask/pkg/config"
@@ -30,8 +30,8 @@ import (
 var errEngineNotSpecified = errors.New("dbms engine is not specified")
 
 func SetupContext(ctx context.Context, cfg *config.Config) context.Context {
-	ctx = log.Ctx(ctx).With().Str(commonmodels.MetaKeyEngine, string(cfg.Engine)).Logger().WithContext(ctx)
-	vc := validationcollector.NewCollectorWithMeta(commonmodels.MetaKeyEngine, cfg.Engine)
+	ctx = log.Ctx(ctx).With().Str(core.MetaKeyEngine, string(cfg.Engine)).Logger().WithContext(ctx)
+	vc := validationcollector.NewCollectorWithMeta(core.MetaKeyEngine, cfg.Engine)
 	ctx = validationcollector.WithCollector(ctx, vc)
 	return ctx
 }
@@ -61,6 +61,6 @@ func (of OutputFormat) Validate() error {
 	case OutputFormatJSON, OutputFormatText:
 		return nil
 	default:
-		return fmt.Errorf("format '%s': %w", of, commonmodels.ErrValueValidationFailed)
+		return fmt.Errorf("format '%s': %w", of, core.ErrValueValidationFailed)
 	}
 }

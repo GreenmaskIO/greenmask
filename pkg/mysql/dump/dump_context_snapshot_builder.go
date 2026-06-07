@@ -17,15 +17,14 @@ package dump
 import (
 	"context"
 
-	"github.com/greenmaskio/greenmask/pkg/common/interfaces"
-	"github.com/greenmaskio/greenmask/pkg/common/models"
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 )
 
-var _ interfaces.DumpContextSnapshotBuilder = (*DumpContextSnapshotBuilder)(nil)
+var _ core.DumpContextSnapshotBuilder = (*DumpContextSnapshotBuilder)(nil)
 
 // DumpContextSnapshotBuilder produces a deterministic snapshot of the context.
 type DumpContextSnapshotBuilder struct{}
 
-func (s *DumpContextSnapshotBuilder) Build(ctx context.Context, input models.DumpContext) (models.DumpContextSnapshot, error) {
-	return models.DumpContextSnapshot{}, errNotImplemented
+func (s *DumpContextSnapshotBuilder) Build(ctx context.Context, input core.DumpContext) (core.DumpContextSnapshot, error) {
+	return core.DumpContextSnapshot{}, errNotImplemented
 }

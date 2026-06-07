@@ -19,9 +19,8 @@ import (
 	"fmt"
 	"time"
 
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 	"github.com/greenmaskio/greenmask/pkg/common/heartbeat"
-	"github.com/greenmaskio/greenmask/pkg/common/interfaces"
-	"github.com/greenmaskio/greenmask/pkg/common/models"
 	"github.com/greenmaskio/greenmask/pkg/common/transformers/registry"
 	"github.com/greenmaskio/greenmask/pkg/common/utils"
 	"github.com/greenmaskio/greenmask/pkg/common/validationcollector"
@@ -45,16 +44,16 @@ func WithSmth(
 // Dump is the PostgreSQL dump orchestrator placeholder.
 // All methods return "not implemented yet" until the PostgreSQL port is complete.
 type Dump struct {
-	dumpID               models.DumpID
+	dumpID               core.DumpID
 	cfg                  *config.Config
-	st                   interfaces.Storager
+	st                   core.Storager
 	registry             *registry.TransformerRegistry
 	cmd                  utils.CmdProducer
 	hbw                  *heartbeat.Worker
 	hbwEg                *errgroup.Group
 	startedAt            time.Time
-	dumpStats            models.DataDumpStat
-	dumpedDatabaseSchema []models.SchemaDumpStat
+	dumpStats            core.DataDumpStat
+	dumpedDatabaseSchema []core.SchemaDumpStat
 	dataOnly             bool
 	schemaOnly           bool
 	currentSnapshot      string
@@ -64,11 +63,11 @@ type Dump struct {
 func New(
 	cfg *config.Config,
 	registry *registry.TransformerRegistry,
-	st interfaces.Storager,
+	st core.Storager,
 	cmd utils.CmdProducer,
 	opts ...Option,
 ) (*Dump, error) {
-	dumpID := models.NewDumpID()
+	dumpID := core.NewDumpID()
 	st = storages.SubStorageWithDumpID(st, dumpID)
 	res := &Dump{
 		cfg:      cfg,
@@ -88,7 +87,7 @@ func New(
 func NewValidator(
 	cfg *config.Config,
 	registry *registry.TransformerRegistry,
-	st interfaces.Storager,
+	st core.Storager,
 	cmd utils.CmdProducer,
 ) (*Dump, error) {
 	return New(cfg, registry, st, cmd)
@@ -209,11 +208,11 @@ func (d *Dump) Introspect(_ context.Context) error {
 	return errNotImplemented("introspect")
 }
 
-func (d *Dump) IntrospectAndGetTables(_ context.Context) ([]models.Table, error) {
+func (d *Dump) IntrospectAndGetTables(_ context.Context) ([]core.Table, error) {
 	return nil, errNotImplemented("introspect-tables")
 }
 
-func (d *Dump) SchemaDump(_ context.Context) ([]models.SchemaDumpStat, error) {
+func (d *Dump) SchemaDump(_ context.Context) ([]core.SchemaDumpStat, error) {
 	return nil, errNotImplemented("schema-dump")
 }
 
@@ -221,20 +220,20 @@ func (d *Dump) DataDump(_ context.Context) error {
 	return errNotImplemented("data-dump")
 }
 
-func (d *Dump) GetDumpMetadata(_ time.Time) (models.Metadata, error) {
-	return models.Metadata{}, errNotImplemented("get-metadata")
+func (d *Dump) GetDumpMetadata(_ time.Time) (core.Metadata, error) {
+	return core.Metadata{}, errNotImplemented("get-metadata")
 }
 
 func (d *Dump) WriteMetadata(_ context.Context) error {
 	return errNotImplemented("write-metadata")
 }
 
-func (d *Dump) sectionEnabled(section models.DumpSection) bool {
+func (d *Dump) sectionEnabled(section core.DumpSection) bool {
 	if len(d.sections) == 0 {
 		switch section {
-		case models.DumpSectionPreData, models.DumpSectionPostData:
+		case core.DumpSectionPreData, core.DumpSectionPostData:
 			return !d.dataOnly
-		case models.DumpSectionData:
+		case core.DumpSectionData:
 			return !d.schemaOnly
 		}
 		return true
@@ -246,8 +245,8 @@ func (d *Dump) sectionEnabled(section models.DumpSection) bool {
 func (d *Dump) Run(ctx context.Context) (err error) {
 	d.startedAt = time.Now()
 	ctx = validationcollector.WithMeta(ctx,
-		models.MetaKeyDumpID, d.dumpID,
-		models.MetaKeyEngine, models.DBMSEngineMySQL,
+		core.MetaKeyDumpID, d.dumpID,
+		core.MetaKeyEngine, core.DBMSEngineMySQL,
 	)
 
 	if err := d.Init(ctx); err != nil {
@@ -270,7 +269,7 @@ func (d *Dump) Run(ctx context.Context) (err error) {
 		}
 	}()
 
-	if d.sectionEnabled(models.DumpSectionPreData) || d.sectionEnabled(models.DumpSectionPostData) {
+	if d.sectionEnabled(core.DumpSectionPreData) || d.sectionEnabled(core.DumpSectionPostData) {
 		// TODO: You need to implement a wrapper that does not release a lock until
 		//       schema dump is not finished. This requires to achieve consistent
 		//       snapshot for data and schema dump.
@@ -278,7 +277,7 @@ func (d *Dump) Run(ctx context.Context) (err error) {
 			Bool("data_only", d.dataOnly).
 			Bool("schema_only", d.schemaOnly).
 			Msg("dumping schema")
-		var schemaStats []models.SchemaDumpStat
+		var schemaStats []core.SchemaDumpStat
 		if schemaStats, err = d.SchemaDump(ctx); err != nil {
 			return fmt.Errorf("dump schema: %w", err)
 		}
@@ -301,8 +300,8 @@ func (d *Dump) Run(ctx context.Context) (err error) {
 	return nil
 }
 
-func (d *Dump) getKindsTopologicalOrder() map[models.ObjectKind][]models.TaskID {
-	res := make(map[models.ObjectKind][]models.TaskID)
+func (d *Dump) getKindsTopologicalOrder() map[core.ObjectKind][]core.TaskID {
+	res := make(map[core.ObjectKind][]core.TaskID)
 	for _, taskID := range d.dumpStats.RestorationContext.RestorationOrder {
 		stat, ok := d.dumpStats.TaskStats[taskID]
 		if !ok {
@@ -314,11 +313,11 @@ func (d *Dump) getKindsTopologicalOrder() map[models.ObjectKind][]models.TaskID 
 	return res
 }
 
-func (d *Dump) GetDumpID() models.DumpID {
+func (d *Dump) GetDumpID() core.DumpID {
 	return ""
 }
 
-func (d *Dump) DumpSample(_ context.Context, _ bool, _ []models.TableFilter) error {
+func (d *Dump) DumpSample(_ context.Context, _ bool, _ []core.TableFilter) error {
 	return errNotImplemented("dump-sample")
 }
 
@@ -326,11 +325,11 @@ func (d *Dump) SchemaDiff(_ context.Context) error {
 	return errNotImplemented("schema-diff")
 }
 
-func (d *Dump) Introspection() []models.Table {
+func (d *Dump) Introspection() []core.Table {
 	return nil
 }
 
-func (d *Dump) Warnings() []*models.ValidationWarning {
+func (d *Dump) Warnings() []*core.ValidationWarning {
 	return nil
 }
 

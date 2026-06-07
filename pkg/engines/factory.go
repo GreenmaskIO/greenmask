@@ -18,8 +18,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/greenmaskio/greenmask/pkg/common/interfaces"
-	"github.com/greenmaskio/greenmask/pkg/common/models"
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 	"github.com/greenmaskio/greenmask/pkg/common/transformers/registry"
 	"github.com/greenmaskio/greenmask/pkg/common/utils"
 	"github.com/greenmaskio/greenmask/pkg/config"
@@ -32,9 +31,9 @@ import (
 var errUnsupportedEngine = errors.New("unsupported DBMS engine")
 
 // NewDumper returns the engine-specific dump orchestrator for cfg.Engine.
-func NewDumper(cfg *config.Config, st interfaces.Storager) (Dumper, error) {
+func NewDumper(cfg *config.Config, st core.Storager) (Dumper, error) {
 	switch cfg.Engine {
-	case models.DBMSEngineMySQL:
+	case core.DBMSEngineMySQL:
 		return mysqldump.NewDump(
 			cfg,
 			registry.DefaultTransformerRegistry,
@@ -42,7 +41,7 @@ func NewDumper(cfg *config.Config, st interfaces.Storager) (Dumper, error) {
 			utils.NewDefaultCmdProducer(),
 			mysqldump.GetMySQLDumpOpts(cfg)...,
 		)
-	case models.DBMSEnginePostgreSQL:
+	case core.DBMSEnginePostgreSQL:
 		return pgdump.New(cfg, st)
 	default:
 		return nil, fmt.Errorf("engine %q: %w", cfg.Engine, errUnsupportedEngine)
@@ -51,11 +50,11 @@ func NewDumper(cfg *config.Config, st interfaces.Storager) (Dumper, error) {
 
 // NewRestorer returns the engine-specific restore orchestrator for cfg.Engine.
 // st is the root storager; dumpID resolution ("latest" → concrete ID) happens inside Run.
-func NewRestorer(cfg *config.Config, st interfaces.Storager, dumpID models.DumpID) (Restorer, error) {
+func NewRestorer(cfg *config.Config, st core.Storager, dumpID core.DumpID) (Restorer, error) {
 	switch cfg.Engine {
-	case models.DBMSEngineMySQL:
+	case core.DBMSEngineMySQL:
 		return mysqlrestore.NewRestore(cfg, st, dumpID, utils.NewDefaultCmdProducer()), nil
-	case models.DBMSEnginePostgreSQL:
+	case core.DBMSEnginePostgreSQL:
 		return pgrestore.New(cfg, st, dumpID)
 	default:
 		return nil, fmt.Errorf("engine %q: %w", cfg.Engine, errUnsupportedEngine)
@@ -65,9 +64,9 @@ func NewRestorer(cfg *config.Config, st interfaces.Storager, dumpID models.DumpI
 // NewValidator returns the engine-specific validate orchestrator for cfg.Engine.
 // st is expected to be a validate.Storage (no-write). The validate result is
 // collected via validationcollector in the context after Run returns.
-func NewValidator(cfg *config.Config, st interfaces.Storager) (Validator, error) {
+func NewValidator(cfg *config.Config, st core.Storager) (Validator, error) {
 	switch cfg.Engine {
-	case models.DBMSEngineMySQL:
+	case core.DBMSEngineMySQL:
 		opts, err := mysqldump.GetMySQLDumpOptsWithValidate(cfg)
 		if err != nil {
 			return nil, fmt.Errorf("get mysql validate opts: %w", err)
@@ -79,7 +78,7 @@ func NewValidator(cfg *config.Config, st interfaces.Storager) (Validator, error)
 			utils.NewDefaultCmdProducer(),
 			opts...,
 		)
-	case models.DBMSEnginePostgreSQL:
+	case core.DBMSEnginePostgreSQL:
 		return pgdump.NewValidator(cfg, st)
 	default:
 		return nil, fmt.Errorf("engine %q: %w", cfg.Engine, errUnsupportedEngine)

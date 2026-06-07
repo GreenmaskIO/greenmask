@@ -21,8 +21,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/greenmaskio/greenmask/pkg/common/interfaces"
-	"github.com/greenmaskio/greenmask/pkg/common/models"
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 	commonrecord "github.com/greenmaskio/greenmask/pkg/common/record"
 	commontabledriver "github.com/greenmaskio/greenmask/pkg/common/tabledriver"
 	"github.com/greenmaskio/greenmask/pkg/common/transformers/parameters"
@@ -32,18 +31,18 @@ import (
 )
 
 type TransformerTestEnvReal struct {
-	Columns                map[string]models.Column
+	Columns                map[string]core.Column
 	Collector              *validationcollector.Collector
 	Definition             *transformerutils.TransformerDefinition
-	Transformer            interfaces.Transformer
-	StaticParameterValues  map[string]models.ParamsValue
-	DynamicParameterValues map[string]models.DynamicParamValue
+	Transformer            core.Transformer
+	StaticParameterValues  map[string]core.ParamsValue
+	DynamicParameterValues map[string]core.DynamicParamValue
 	Ctx                    context.Context
 	New                    transformerutils.NewTransformerFunc
 	t                      *testing.T
 	TableDriverReal        *commontabledriver.TableDriver
 	DBMSDriverReal         *mysqldbmsdriver.Driver
-	Table                  models.Table
+	Table                  core.Table
 	Recorder               *commonrecord.Record
 	Row                    *DummyRow
 	InitializedParameters  map[string]parameters.Parameterizer
@@ -52,9 +51,9 @@ type TransformerTestEnvReal struct {
 func NewTransformerTestEnvReal(
 	t *testing.T,
 	def *transformerutils.TransformerDefinition,
-	columns []models.Column,
-	staticParams map[string]models.ParamsValue,
-	dynamicParams map[string]models.DynamicParamValue,
+	columns []core.Column,
+	staticParams map[string]core.ParamsValue,
+	dynamicParams map[string]core.DynamicParamValue,
 	opt ...func(*TransformerTestEnvReal),
 ) *TransformerTestEnvReal {
 	t.Helper()
@@ -62,7 +61,7 @@ func NewTransformerTestEnvReal(
 	vc := validationcollector.NewCollector()
 	ctx := validationcollector.WithCollector(context.Background(), vc)
 
-	columnsMap := make(map[string]models.Column, len(columns))
+	columnsMap := make(map[string]core.Column, len(columns))
 	for _, c := range columns {
 		if c.Name == "" {
 			panic("column name should be provided")
@@ -76,7 +75,7 @@ func NewTransformerTestEnvReal(
 		columnsMap[c.Name] = c
 	}
 
-	table := models.Table{
+	table := core.Table{
 		Schema:  "public",
 		Name:    "test_table",
 		Columns: columns,
@@ -166,12 +165,12 @@ func (m *TransformerTestEnvReal) InitTransformer(
 }
 
 // SetRecord - init Recorder with mysql-specific record.
-func (m *TransformerTestEnvReal) SetRecord(t *testing.T, record ...*models.ColumnRawValue) {
+func (m *TransformerTestEnvReal) SetRecord(t *testing.T, record ...*core.ColumnRawValue) {
 	t.Helper()
 	m.Row.SetRowRawColumnValue(record)
 }
 
-func (m *TransformerTestEnvReal) GetRecord() interfaces.Recorder {
+func (m *TransformerTestEnvReal) GetRecord() core.Recorder {
 	return m.Recorder
 }
 

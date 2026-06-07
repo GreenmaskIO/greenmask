@@ -17,15 +17,14 @@ package dump
 import (
 	"context"
 
-	"github.com/greenmaskio/greenmask/pkg/common/interfaces"
-	"github.com/greenmaskio/greenmask/pkg/common/models"
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 )
 
-var _ interfaces.DumpProcessor = (*DumpProcessor)(nil)
+var _ core.DumpProcessor = (*DumpProcessor)(nil)
 
 // DumpProcessor executes the final dump plan against the live session.
 type DumpProcessor struct{}
 
-func (s *DumpProcessor) Run(ctx context.Context, session interfaces.DumpSession, plan models.DumpPlan, opts ...models.DumpProcessorOption) (models.Metadata, error) {
-	return models.Metadata{}, errNotImplemented
+func (s *DumpProcessor) Run(ctx context.Context, session core.DumpSession, plan core.DumpPlan, opts ...core.DumpProcessorOption) (core.Metadata, error) {
+	return core.Metadata{}, errNotImplemented
 }

@@ -18,8 +18,8 @@ import (
 	"context"
 	"testing"
 
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 	mocks2 "github.com/greenmaskio/greenmask/pkg/common/mocks"
-	"github.com/greenmaskio/greenmask/pkg/common/models"
 	commonparameters "github.com/greenmaskio/greenmask/pkg/common/transformers/parameters"
 	"github.com/greenmaskio/greenmask/pkg/common/utils"
 	"github.com/greenmaskio/greenmask/pkg/common/validationcollector"
@@ -32,7 +32,7 @@ func TestNewDictTransformer(t *testing.T) {
 	t.Run("success no validate", func(t *testing.T) {
 		vc := validationcollector.NewCollector()
 		ctx := context.Background()
-		column := models.Column{
+		column := core.Column{
 			Idx:      1,
 			Name:     "id",
 			TypeName: "int",
@@ -116,7 +116,7 @@ func TestNewDictTransformer(t *testing.T) {
 	t.Run("success validate", func(t *testing.T) {
 		vc := validationcollector.NewCollector()
 		ctx := context.Background()
-		column := models.Column{
+		column := core.Column{
 			Idx:      1,
 			Name:     "id",
 			TypeName: "int",
@@ -202,7 +202,7 @@ func TestNewDictTransformer(t *testing.T) {
 func TestDictTransformer_Transform(t *testing.T) {
 	t.Run("fail: null - no default - fail not matched", func(t *testing.T) {
 		env := newTransformerTestEnv(t, NewDictTransformer,
-			withColumns(models.Column{
+			withColumns(core.Column{
 				Idx:      0,
 				Name:     "id",
 				TypeName: "int",
@@ -250,7 +250,7 @@ func TestDictTransformer_Transform(t *testing.T) {
 			}),
 			withRecorder(func(recorder *mocks2.RecorderMock, env *transformerTestEnv) {
 				recorder.On("GetRawColumnValueByIdx", env.getColumn("id").Idx).
-					Return(models.NewColumnRawValue(nil, true), nil)
+					Return(core.NewColumnRawValue(nil, true), nil)
 			}),
 		)
 
@@ -261,7 +261,7 @@ func TestDictTransformer_Transform(t *testing.T) {
 
 	t.Run("success: null - default - fail not matched", func(t *testing.T) {
 		env := newTransformerTestEnv(t, NewDictTransformer,
-			withColumns(models.Column{
+			withColumns(core.Column{
 				Idx:      0,
 				Name:     "id",
 				TypeName: "int",
@@ -299,7 +299,7 @@ func TestDictTransformer_Transform(t *testing.T) {
 			withParameter("default", func(param *mocks2.ParametrizerMock, env *transformerTestEnv) {
 				param.On("IsEmpty").
 					Return(false, nil)
-				param.On("RawValue").Return(models.ParamsValue("100"), nil)
+				param.On("RawValue").Return(core.ParamsValue("100"), nil)
 			}),
 			withParameter("fail_not_matched", func(param *mocks2.ParametrizerMock, env *transformerTestEnv) {
 				param.On("Scan", mock.Anything).
@@ -310,9 +310,9 @@ func TestDictTransformer_Transform(t *testing.T) {
 			}),
 			withRecorder(func(recorder *mocks2.RecorderMock, env *transformerTestEnv) {
 				recorder.On("GetRawColumnValueByIdx", env.getColumn("id").Idx).
-					Return(models.NewColumnRawValue(nil, true), nil)
+					Return(core.NewColumnRawValue(nil, true), nil)
 				recorder.On("SetRawColumnValueByIdx", env.getColumn("id").Idx,
-					mock.MatchedBy(func(value *models.ColumnRawValue) bool {
+					mock.MatchedBy(func(value *core.ColumnRawValue) bool {
 						return value != nil && !value.IsNull && string(value.Data) == "100"
 					})).
 					Return(nil).
@@ -327,7 +327,7 @@ func TestDictTransformer_Transform(t *testing.T) {
 
 	t.Run("success: match null", func(t *testing.T) {
 		env := newTransformerTestEnv(t, NewDictTransformer,
-			withColumns(models.Column{
+			withColumns(core.Column{
 				Idx:      0,
 				Name:     "id",
 				TypeName: "int",
@@ -376,9 +376,9 @@ func TestDictTransformer_Transform(t *testing.T) {
 			}),
 			withRecorder(func(recorder *mocks2.RecorderMock, env *transformerTestEnv) {
 				recorder.On("GetRawColumnValueByIdx", env.getColumn("id").Idx).
-					Return(models.NewColumnRawValue(nil, true), nil)
+					Return(core.NewColumnRawValue(nil, true), nil)
 				recorder.On("SetRawColumnValueByIdx", env.getColumn("id").Idx,
-					mock.MatchedBy(func(value *models.ColumnRawValue) bool {
+					mock.MatchedBy(func(value *core.ColumnRawValue) bool {
 						return value != nil && !value.IsNull && string(value.Data) == "2"
 					})).
 					Return(nil).
@@ -393,7 +393,7 @@ func TestDictTransformer_Transform(t *testing.T) {
 
 	t.Run("success: match not null", func(t *testing.T) {
 		env := newTransformerTestEnv(t, NewDictTransformer,
-			withColumns(models.Column{
+			withColumns(core.Column{
 				Idx:      0,
 				Name:     "id",
 				TypeName: "int",
@@ -442,9 +442,9 @@ func TestDictTransformer_Transform(t *testing.T) {
 			}),
 			withRecorder(func(recorder *mocks2.RecorderMock, env *transformerTestEnv) {
 				recorder.On("GetRawColumnValueByIdx", env.getColumn("id").Idx).
-					Return(models.NewColumnRawValue([]byte("3"), false), nil)
+					Return(core.NewColumnRawValue([]byte("3"), false), nil)
 				recorder.On("SetRawColumnValueByIdx", env.getColumn("id").Idx,
-					mock.MatchedBy(func(value *models.ColumnRawValue) bool {
+					mock.MatchedBy(func(value *core.ColumnRawValue) bool {
 						return value != nil && !value.IsNull && string(value.Data) == "2"
 					})).
 					Return(nil).

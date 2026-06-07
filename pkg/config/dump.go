@@ -18,7 +18,7 @@ import (
 	"time"
 
 	commonconfig "github.com/greenmaskio/greenmask/pkg/common/config"
-	commonmodels "github.com/greenmaskio/greenmask/pkg/common/models"
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 	mysqlcommonconfig "github.com/greenmaskio/greenmask/pkg/mysql/config"
 )
 
@@ -32,8 +32,8 @@ const (
 
 type Transformers []TransformerConfig
 
-func (t Transformers) ToTransformerConfig() []commonmodels.TransformerConfig {
-	transformers := make([]commonmodels.TransformerConfig, len(t))
+func (t Transformers) ToTransformerConfig() []core.TransformerConfig {
+	transformers := make([]core.TransformerConfig, len(t))
 	for i, transformer := range t {
 		transformers[i] = transformer.ToTransformerConfig()
 	}
@@ -51,8 +51,8 @@ type Table struct {
 	When                string            `mapstructure:"when" yaml:"when" json:"when,omitempty"`
 }
 
-func (t Table) ToTableConfig() commonmodels.TableConfig {
-	table := commonmodels.NewTableConfig(
+func (t Table) ToTableConfig() core.TableConfig {
+	table := core.NewTableConfig(
 		t.Schema,
 		t.Name,
 		t.Query,
@@ -87,8 +87,8 @@ type TransformerConfig struct {
 	When           string            `mapstructure:"when" yaml:"when" json:"when,omitempty"`
 }
 
-func (tc TransformerConfig) ToTransformerConfig() commonmodels.TransformerConfig {
-	return commonmodels.NewTransformerConfig(
+func (tc TransformerConfig) ToTransformerConfig() core.TransformerConfig {
+	return core.NewTransformerConfig(
 		tc.Name,
 		tc.ApplyForReferences,
 		tc.Params.ToParamsValue(),
@@ -127,8 +127,8 @@ type VirtualReference struct {
 
 type TransformationConfig []Table
 
-func (tc TransformationConfig) ToTransformationConfig() []commonmodels.TableConfig {
-	tables := make([]commonmodels.TableConfig, len(tc))
+func (tc TransformationConfig) ToTransformationConfig() []core.TableConfig {
+	tables := make([]core.TableConfig, len(tc))
 	for i, table := range tc {
 		tables[i] = table.ToTableConfig()
 	}
@@ -137,7 +137,7 @@ func (tc TransformationConfig) ToTransformationConfig() []commonmodels.TableConf
 
 type MysqlDumpConfig struct {
 	mysqlcommonconfig.ConnectionOpts `mapstructure:",squash" json:",squash,omitempty"` //nolint:staticcheck
-	DumpFormat                       commonmodels.DumpFormat                           `mapstructure:"dump-format" json:"dump_format,omitempty"`                         // Format for data dump (csv or insert)
+	DumpFormat                       core.DumpFormat                                   `mapstructure:"dump-format" json:"dump_format,omitempty"`                         // Format for data dump (csv or insert)
 	HexBlob                          bool                                              `mapstructure:"hex-blob" json:"hex_blob,omitempty"`                               // Encode BINARY/VARBINARY/BLOB columns as X'...' hex literals
 	NoTablespaces                    bool                                              `mapstructure:"no-tablespaces" json:"no_databases,omitempty"`                     // Exclude tablespace information (--no-tablespaces)
 	PoolHeartbeatInterval            time.Duration                                     `mapstructure:"pool-heartbeat-interval" json:"pool_heartbeat_interval,omitempty"` // Interval for connection pool heartbeat in seconds
@@ -228,7 +228,7 @@ func NewDump() Dump {
 			ConnectionOpts: mysqlcommonconfig.ConnectionOpts{
 				MaxAllowedPacket: DefaultMaxAllowedPacket,
 			},
-			DumpFormat: commonmodels.DumpFormatInsert,
+			DumpFormat: core.DumpFormatInsert,
 			HexBlob:    true,
 		},
 		Options: CommonDumpOptions{

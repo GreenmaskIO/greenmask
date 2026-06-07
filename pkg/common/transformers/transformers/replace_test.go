@@ -19,8 +19,8 @@ import (
 	"reflect"
 	"testing"
 
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 	mocks2 "github.com/greenmaskio/greenmask/pkg/common/mocks"
-	"github.com/greenmaskio/greenmask/pkg/common/models"
 	commonparameters "github.com/greenmaskio/greenmask/pkg/common/transformers/parameters"
 	"github.com/greenmaskio/greenmask/pkg/common/utils"
 	"github.com/greenmaskio/greenmask/pkg/common/validationcollector"
@@ -34,12 +34,12 @@ func TestNewReplaceTransformer(t *testing.T) {
 	t.Run("success static no validate no keep null", func(t *testing.T) {
 		vc := validationcollector.NewCollector()
 		ctx := context.Background()
-		column := models.Column{
+		column := core.Column{
 			Idx:       1,
 			Name:      "id",
 			TypeName:  mysqldbmsdriver.TypeInt,
 			TypeOID:   mysqldbmsdriver.VirtualOidInt,
-			TypeClass: models.TypeClassInt,
+			TypeClass: core.TypeClassInt,
 		}
 		tableDriver := mocks2.NewTableDriverMock()
 		columnParameter := mocks2.NewParametrizerMock()
@@ -66,7 +66,7 @@ func TestNewReplaceTransformer(t *testing.T) {
 		valueParameter.On("IsDynamic").
 			Return(false)
 		valueParameter.On("RawValue").
-			Return(models.ParamsValue("123"), nil)
+			Return(core.ParamsValue("123"), nil)
 
 		// Keep null parameter calls
 		keepNullParameter.On("Scan", mock.Anything).
@@ -110,12 +110,12 @@ func TestNewReplaceTransformer(t *testing.T) {
 	t.Run("success static and validate and valid and not keep null", func(t *testing.T) {
 		vc := validationcollector.NewCollector()
 		ctx := validationcollector.WithCollector(context.Background(), vc)
-		column := models.Column{
+		column := core.Column{
 			Idx:       1,
 			Name:      "id",
 			TypeName:  mysqldbmsdriver.TypeInt,
 			TypeOID:   mysqldbmsdriver.VirtualOidInt,
-			TypeClass: models.TypeClassInt,
+			TypeClass: core.TypeClassInt,
 		}
 		tableDriver := mocks2.NewTableDriverMock()
 		columnParameter := mocks2.NewParametrizerMock()
@@ -142,9 +142,9 @@ func TestNewReplaceTransformer(t *testing.T) {
 		valueParameter.On("IsDynamic").
 			Return(false)
 		valueParameter.On("RawValue").
-			Return(models.ParamsValue("123"), nil)
+			Return(core.ParamsValue("123"), nil)
 		tableDriver.On("DecodeValueByTypeOid", column.TypeOID, []byte("123")).
-			Return(&models.ColumnValue{
+			Return(&core.ColumnValue{
 				Value:  int64(123),
 				IsNull: false,
 			}, nil)
@@ -191,12 +191,12 @@ func TestNewReplaceTransformer(t *testing.T) {
 	t.Run("failure static and validate and invalid and not keep null", func(t *testing.T) {
 		vc := validationcollector.NewCollector()
 		ctx := validationcollector.WithCollector(context.Background(), vc)
-		column := models.Column{
+		column := core.Column{
 			Idx:       1,
 			Name:      "id",
 			TypeName:  mysqldbmsdriver.TypeInt,
 			TypeOID:   mysqldbmsdriver.VirtualOidInt,
-			TypeClass: models.TypeClassInt,
+			TypeClass: core.TypeClassInt,
 		}
 		tableDriver := mocks2.NewTableDriverMock()
 		columnParameter := mocks2.NewParametrizerMock()
@@ -223,7 +223,7 @@ func TestNewReplaceTransformer(t *testing.T) {
 		valueParameter.On("IsDynamic").
 			Return(false)
 		valueParameter.On("RawValue").
-			Return(models.ParamsValue("abc"), nil)
+			Return(core.ParamsValue("abc"), nil)
 		tableDriver.On("DecodeValueByTypeOid", column.TypeOID, []byte("abc")).
 			Return(nil, assert.AnError)
 		valueParameter.On("Name").
@@ -244,7 +244,7 @@ func TestNewReplaceTransformer(t *testing.T) {
 		}
 
 		_, err := NewReplaceTransformer(ctx, tableDriver, parameters)
-		require.ErrorIs(t, err, models.ErrFatalValidationError)
+		require.ErrorIs(t, err, core.ErrFatalValidationError)
 		assert.True(t, vc.IsFatal())
 		assert.Contains(t, vc.GetWarnings()[0].Msg, "error validating parameter value")
 
@@ -258,12 +258,12 @@ func TestNewReplaceTransformer(t *testing.T) {
 	t.Run("dynamic and validate", func(t *testing.T) {
 		vc := validationcollector.NewCollector()
 		ctx := validationcollector.WithCollector(context.Background(), vc)
-		column := models.Column{
+		column := core.Column{
 			Idx:       1,
 			Name:      "id",
 			TypeName:  mysqldbmsdriver.TypeInt,
 			TypeOID:   mysqldbmsdriver.VirtualOidInt,
-			TypeClass: models.TypeClassInt,
+			TypeClass: core.TypeClassInt,
 		}
 		tableDriver := mocks2.NewTableDriverMock()
 		columnParameter := mocks2.NewParametrizerMock()
@@ -337,7 +337,7 @@ type replaceTestSetup struct {
 	valueParam    *mocks2.ParametrizerMock
 	keepNullParam *mocks2.ParametrizerMock
 	collector     *validationcollector.Collector
-	column        models.Column
+	column        core.Column
 	transformer   *ReplaceTransformer
 }
 
@@ -355,7 +355,7 @@ func newTestReplaceTransformer(t *testing.T, opt ...func(*replaceTestSetup)) *re
 	vc := validationcollector.NewCollector()
 	ctx := validationcollector.WithCollector(context.Background(), vc)
 
-	column := models.Column{
+	column := core.Column{
 		Idx:      1,
 		Name:     "id",
 		TypeName: "int",
@@ -395,7 +395,7 @@ func TestReplaceTransformer_Transform(t *testing.T) {
 	t.Run("static non null no validate", func(t *testing.T) {
 		env := newTransformerTestEnv(t,
 			NewReplaceTransformer,
-			withColumns(models.Column{
+			withColumns(core.Column{
 				Idx:      1,
 				Name:     "id",
 				TypeName: "int",
@@ -424,7 +424,7 @@ func TestReplaceTransformer_Transform(t *testing.T) {
 				param.On("IsDynamic").
 					Return(false)
 				param.On("RawValue").
-					Return(models.ParamsValue("123"), nil)
+					Return(core.ParamsValue("123"), nil)
 			}),
 			withParameter(ParameterNameKeepNull, func(param *mocks2.ParametrizerMock, env *transformerTestEnv) {
 				param.On("Scan", mock.Anything).
@@ -437,7 +437,7 @@ func TestReplaceTransformer_Transform(t *testing.T) {
 				recorder.On("IsNullByColumnIdx", env.getColumn("id").Idx).
 					Return(false, nil)
 				recorder.On("SetRawColumnValueByIdx",
-					env.getColumn("id").Idx, models.NewColumnRawValue([]byte("123"), false),
+					env.getColumn("id").Idx, core.NewColumnRawValue([]byte("123"), false),
 				).Return(nil)
 			}),
 		)
@@ -468,7 +468,7 @@ func TestReplaceTransformer_Transform(t *testing.T) {
 			setup.valueParam.On("IsDynamic").
 				Return(false)
 			setup.valueParam.On("RawValue").
-				Return(models.ParamsValue("123"), nil)
+				Return(core.ParamsValue("123"), nil)
 
 			// Keep null parameter calls
 			setup.keepNullParam.On("Scan", mock.Anything).
@@ -480,7 +480,7 @@ func TestReplaceTransformer_Transform(t *testing.T) {
 
 		recorder := mocks2.NewRecorderMock()
 		recorder.On("SetRawColumnValueByIdx",
-			setup.column.Idx, models.NewColumnRawValue([]byte("123"), false),
+			setup.column.Idx, core.NewColumnRawValue([]byte("123"), false),
 		).Return(nil)
 		err := setup.transformer.Transform(context.Background(), recorder)
 		require.NoError(t, err)
@@ -509,7 +509,7 @@ func TestReplaceTransformer_Transform(t *testing.T) {
 			setup.valueParam.On("IsDynamic").
 				Return(false)
 			setup.valueParam.On("RawValue").
-				Return(models.ParamsValue("123"), nil)
+				Return(core.ParamsValue("123"), nil)
 
 			// Keep null parameter calls
 			setup.keepNullParam.On("Scan", mock.Anything).
@@ -563,9 +563,9 @@ func TestReplaceTransformer_Transform(t *testing.T) {
 		setup.valueParam.On("IsEmpty").
 			Return(false, nil)
 		setup.valueParam.On("RawValue").
-			Return(models.ParamsValue("123"), nil)
+			Return(core.ParamsValue("123"), nil)
 		recorder.On("SetRawColumnValueByIdx",
-			setup.column.Idx, models.NewColumnRawValue([]byte("123"), false),
+			setup.column.Idx, core.NewColumnRawValue([]byte("123"), false),
 		).Return(nil)
 		err := setup.transformer.Transform(context.Background(), recorder)
 		require.NoError(t, err)
@@ -608,11 +608,11 @@ func TestReplaceTransformer_Transform(t *testing.T) {
 		setup.valueParam.On("IsEmpty").
 			Return(false, nil)
 		setup.valueParam.On("RawValue").
-			Return(models.ParamsValue("123"), nil)
+			Return(core.ParamsValue("123"), nil)
 		setup.tableDriver.On("DecodeValueByTypeOid", setup.column.TypeOID, []byte("123")).
 			Return(int64(123), nil)
 		recorder.On("SetRawColumnValueByIdx",
-			setup.column.Idx, models.NewColumnRawValue([]byte("123"), false),
+			setup.column.Idx, core.NewColumnRawValue([]byte("123"), false),
 		).Return(nil)
 		err := setup.transformer.Transform(context.Background(), recorder)
 		require.NoError(t, err)
@@ -690,7 +690,7 @@ func TestReplaceTransformer_Transform(t *testing.T) {
 		setup.valueParam.On("IsEmpty").
 			Return(true, nil)
 		recorder.On("SetRawColumnValueByIdx",
-			setup.column.Idx, models.NewColumnRawValue(nil, true),
+			setup.column.Idx, core.NewColumnRawValue(nil, true),
 		).Return(nil)
 		err := setup.transformer.Transform(context.Background(), recorder)
 		require.NoError(t, err)
