@@ -71,6 +71,10 @@ func TestDiscover_stageErrors(t *testing.T) {
 		assert func(t *testing.T, s *stubSet)
 	}{
 		{
+			name:  "filter config error",
+			setup: func(s *stubSet) { s.filterCfg.err = errBoom },
+		},
+		{
 			name:  "introspect error",
 			setup: func(s *stubSet) { s.introspector.err = errBoom },
 		},
@@ -141,8 +145,10 @@ func TestDiscover_success(t *testing.T) {
 
 	assert.True(t, state.ExecutedStages[StageNameDiscovery])
 	assert.NotNil(t, state.Discovery.Introspection)
+	assert.NotNil(t, state.Discovery.FilterConfig)
 	assert.NotNil(t, state.Discovery.DependencyGraph)
 	assert.NotNil(t, state.Discovery.Subset)
+	assert.Equal(t, 1, s.filterCfg.calls)
 	assert.Equal(t, 1, s.introspector.calls)
 	assert.Equal(t, 1, s.graph.calls)
 	assert.Equal(t, 1, s.subset.calls)
@@ -163,7 +169,6 @@ func TestBuildContext_stageErrors(t *testing.T) {
 		name  string
 		setup func(s *stubSet)
 	}{
-		{"filter config error", func(s *stubSet) { s.filterCfg.err = errBoom }},
 		{"object filter error", func(s *stubSet) { s.objFilter.err = errBoom }},
 		{"explicit context error", func(s *stubSet) { s.explicit.err = errBoom }},
 		{"derived context error", func(s *stubSet) { s.derived.err = errBoom }},
@@ -189,7 +194,6 @@ func TestBuildContext_success(t *testing.T) {
 	assert.NotNil(t, state.Context.FinalCtx)
 	assert.NotNil(t, state.Context.ExplicitCtx)
 	assert.Equal(t, 1, s.cfgEditor.calls)
-	assert.Equal(t, 1, s.filterCfg.calls)
 	assert.Equal(t, 1, s.objFilter.calls)
 	assert.Equal(t, 1, s.explicit.calls)
 	assert.Equal(t, 1, s.derived.calls)

@@ -38,13 +38,15 @@ var (
 // Most stages are currently placeholder stubs (see stages.go) and will be
 // replaced incrementally with real MySQL logic.
 //
-// The config is needed up front for the introspector, which scopes introspection
-// to the configured schemas/databases.
+// The introspector scopes introspection to the configured schemas/databases,
+// but it takes that scope per-run from the FilterConfig handed to Introspect
+// (built by the common FilterConfigBuilder during discovery), so the config is
+// not needed to wire the stages here.
 func NewDumpStages(cfg config.Config) pipeline.DumpStages {
 	return pipeline.DumpStages{
 		ConnectionConfigurerBuilder: &ConnectionConfigurerBuilder{},
 		DumpSessionBuilder:          &DumpSessionBuilder{},
-		Introspector:                NewIntrospectorV2(&cfg.Dump.Options),
+		Introspector:                NewIntrospectorV2(),
 		DependencyGraphBuilder:      graphbuilder.New(),
 		DumpMetadataLoader:          &DumpMetadataLoader{},
 		SchemaDriftValidator:        &SchemaDriftValidator{},

@@ -26,9 +26,15 @@ type Introspector interface {
 }
 
 type IntrospectorV2 interface {
-	// Introspect - receives the dump session and returns introspection results.
-	// The introspector obtains a snapshot-synchronized operational DB from the
-	// session (via RunWithOperationalDB) for the duration of introspection; it
-	// does not roll the underlying transaction back.
-	Introspect(ctx context.Context, session DumpSession) (IntrospectionResult, error)
+	// Introspect - receives the dump session and the DBMS-agnostic FilterConfig
+	// and returns introspection results. The introspector obtains a
+	// snapshot-synchronized operational DB from the session (via
+	// RunWithOperationalDB) for the duration of introspection; it does not roll
+	// the underlying transaction back.
+	//
+	// FilterConfig provides the schema/database-level scope: the introspector
+	// skips excluded schemas/databases and introspects everything within the
+	// allowed scope. Finer-grained per-object include/exclude is the
+	// ObjectFilter layer's responsibility, not the introspector's.
+	Introspect(ctx context.Context, session DumpSession, filterConfig FilterConfig) (IntrospectionResult, error)
 }

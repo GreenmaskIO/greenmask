@@ -26,6 +26,7 @@ const (
 // first run), schema drift compared to that metadata, and the resolved subset.
 type DiscoveryStageArtifacts struct {
 	Config           *config.Config              `json:"config"`
+	FilterConfig     *core.FilterConfig          `json:"filter_config,omitempty"`
 	Introspection    *core.IntrospectionResult   `json:"introspection"`
 	DependencyGraph  *core.DependencyGraphResult `json:"dependency_graph"`
 	PreviousMetadata *core.Metadata              `json:"previous_metadata,omitempty"`

@@ -79,7 +79,7 @@ type stubIntrospector struct {
 	calls  int
 }
 
-func (s *stubIntrospector) Introspect(context.Context, core.DumpSession) (core.IntrospectionResult, error) {
+func (s *stubIntrospector) Introspect(context.Context, core.DumpSession, core.FilterConfig) (core.IntrospectionResult, error) {
 	s.calls++
 	return s.result, s.err
 }

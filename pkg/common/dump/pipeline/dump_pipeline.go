@@ -55,7 +55,13 @@ func (p *DumpPipeline) Discover(
 		return fmt.Errorf("runtime session is required for discovery")
 	}
 
-	introspection, err := p.Stages.Introspector.Introspect(ctx, runtime.Session)
+	filterConfig, err := p.Stages.FilterConfigBuilder.Build(*state.Discovery.Config)
+	if err != nil {
+		return fmt.Errorf("build filter config: %w", err)
+	}
+	state.Discovery.FilterConfig = &filterConfig
+
+	introspection, err := p.Stages.Introspector.Introspect(ctx, runtime.Session, filterConfig)
 	if err != nil {
 		return fmt.Errorf("introspect: %w", err)
 	}
@@ -122,13 +128,11 @@ func (p *DumpPipeline) BuildContext(
 		Config:      state.Discovery.Config.Dump.Transformation.ToTransformationConfig(),
 		SchemaDrift: &schemaDrift,
 	})
-	filterConfig, err := p.Stages.FilterConfigBuilder.Build(*discoveryArtefacts.Config)
-	if err != nil {
-		return fmt.Errorf("build filter config: %w", err)
-	}
+	// FilterConfig was built and stored during discovery (it also scopes the
+	// introspection there); reuse it rather than rebuilding.
 	filterResult, err := p.Stages.ObjectFilter.FilterObjects(ctx, core.ObjectFilterInput{
 		IntrospectionResult: *discoveryArtefacts.Introspection,
-		FilterConfig:        filterConfig,
+		FilterConfig:        *discoveryArtefacts.FilterConfig,
 	})
 	if err != nil {
 		return fmt.Errorf("filter objects: %w", err)

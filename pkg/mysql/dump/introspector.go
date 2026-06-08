@@ -19,7 +19,6 @@ import (
 	"fmt"
 
 	core "github.com/greenmaskio/greenmask/pkg/common/core"
-	"github.com/greenmaskio/greenmask/pkg/config"
 )
 
 var _ core.IntrospectorV2 = (*IntrospectorV2)(nil)
@@ -40,26 +39,22 @@ var _ core.IntrospectorV2 = (*IntrospectorV2)(nil)
 // the engine-specific *mysqlmodels.Table payload) and one ObjectKindMysqlDatabase
 // object per allowed schema, so the schema dump can reference databases by
 // runtime ObjectID.
-type IntrospectorV2 struct {
-	includeSchemas   []string
-	excludeSchemas   []string
-	includeDatabases []string
-	excludeDatabases []string
+type IntrospectorV2 struct{}
+
+// NewIntrospectorV2 builds the MySQL introspector. The schema/database
+// include/exclude scope is supplied per-run via the FilterConfig passed to
+// Introspect, so the introspector itself is stateless.
+func NewIntrospectorV2() *IntrospectorV2 {
+	return &IntrospectorV2{}
 }
 
-// NewIntrospectorV2 builds the MySQL introspector with the schema/database
-// include/exclude scope taken from the dump options.
-func NewIntrospectorV2(opts *config.CommonDumpOptions) *IntrospectorV2 {
-	return &IntrospectorV2{
-		includeSchemas:   opts.IncludeSchema,
-		excludeSchemas:   opts.ExcludeSchema,
-		includeDatabases: opts.IncludeDatabase,
-		excludeDatabases: opts.ExcludeDatabase,
-	}
-}
-
-func (s *IntrospectorV2) Introspect(ctx context.Context, session core.DumpSession) (core.IntrospectionResult, error) {
-	scope, err := newSchemaScope(s.includeSchemas, s.excludeSchemas, s.includeDatabases, s.excludeDatabases)
+func (s *IntrospectorV2) Introspect(ctx context.Context, session core.DumpSession, filterConfig core.FilterConfig) (core.IntrospectionResult, error) {
+	scope, err := newSchemaScope(
+		filterConfig.IncludeSchema,
+		filterConfig.ExcludeSchema,
+		filterConfig.IncludeDatabase,
+		filterConfig.ExcludeDatabase,
+	)
 	if err != nil {
 		return core.IntrospectionResult{}, fmt.Errorf("build schema scope: %w", err)
 	}
