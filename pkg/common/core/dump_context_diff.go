@@ -13,4 +13,8 @@ type DumpContextDiffInput struct {
 type DumpContextDiff struct {
 	Previous *DumpContextSnapshot
 	Current  DumpContextSnapshot
+	// SchemaVersionChanged is true when Previous and Current were produced by
+	// different snapshot schema versions. The differ should suppress false-positive
+	// drift on fields that did not exist in the older schema version.
+	SchemaVersionChanged bool
 }

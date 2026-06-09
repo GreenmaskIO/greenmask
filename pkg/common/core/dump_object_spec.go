@@ -8,13 +8,11 @@ const (
 )
 
 type ObjectDumpSpec struct {
-	TaskID         TaskID
-	Kind           ObjectKind
-	ObjectID       ObjectID
-	Name           string
-	Mode           DumpMode
-	NeedDumpData   bool
-	NeedDumpSchema bool
+	TaskID   TaskID
+	Kind     ObjectKind
+	ObjectID ObjectID
+	Name     string
+	Mode     DumpMode
 	// Payload contains fully resolved object-specific runtime context
 	// required for dump object initialization.
 	//

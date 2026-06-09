@@ -26,5 +26,5 @@ var _ core.DumpContextDiffer = (*DumpContextDiffer)(nil)
 type DumpContextDiffer struct{}
 
 func (s *DumpContextDiffer) Diff(ctx context.Context, input core.DumpContextDiffInput) (core.DumpContextDiff, error) {
-	return core.DumpContextDiff{}, errNotImplemented
+	return core.DumpContextDiff{}, nil
 }

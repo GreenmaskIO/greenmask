@@ -129,6 +129,9 @@ func NewSchemaDumpMetadata(
 }
 
 type Metadata struct {
+	// GreenmaskVersion is the version of the greenmask binary that created this dump.
+	// Empty string means the dump predates version tracking.
+	GreenmaskVersion    string              `yaml:"greenmask_version,omitempty" json:"greenmask_version,omitempty"`
 	Engine              DBMSEngine          `yaml:"engine" json:"engine"`
 	StartedAt           time.Time           `yaml:"started_at" json:"started_at"`
 	CompletedAt         time.Time           `yaml:"completed_at" json:"completed_at"`
@@ -144,6 +147,7 @@ type Metadata struct {
 }
 
 func NewMetadata(
+	greenmaskVersion string,
 	engine DBMSEngine,
 	startedAt time.Time,
 	completedAt time.Time,
@@ -167,16 +171,17 @@ func NewMetadata(
 	}
 
 	return Metadata{
-		Engine:         engine,
-		StartedAt:      startedAt,
-		CompletedAt:    completedAt,
-		OriginalSize:   originalSize,
-		CompressedSize: compressedSize,
-		Tags:           tags,
-		Description:    description,
-		Introspection:  introspection,
-		DataDump:       dataDump,
-		SchemaDump:     schemaDump,
-		Databases:      databases,
+		GreenmaskVersion: greenmaskVersion,
+		Engine:           engine,
+		StartedAt:        startedAt,
+		CompletedAt:      completedAt,
+		OriginalSize:     originalSize,
+		CompressedSize:   compressedSize,
+		Tags:             tags,
+		Description:      description,
+		Introspection:    introspection,
+		DataDump:         dataDump,
+		SchemaDump:       schemaDump,
+		Databases:        databases,
 	}
 }

@@ -1,5 +1,7 @@
 package core
 
+// DumpPlan is the finalized execution plan derived from DumpContext.
+// See DumpContext for the rationale behind the ObjectDumpSpecs/SchemaDumpSpecs split.
 type DumpPlan struct {
 	DumpObjectSpecs    []ObjectDumpSpec
 	SchemaDumpSpecs    []SchemaDumpSpec

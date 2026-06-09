@@ -265,6 +265,8 @@ func (p *DumpPipeline) BuildPlan(
 		RestorationContext:  restorationCtx,
 		IntrospectionResult: *discoveryStageArtifacts.Introspection,
 		Config:              discoveryStageArtifacts.Config.Dump.Transformation.ToTransformationConfig(),
+		Tags:                discoveryStageArtifacts.Config.Dump.Tag,
+		Description:         discoveryStageArtifacts.Config.Dump.Description,
 	})
 	if err != nil {
 		return fmt.Errorf("assemble dump plan: %w", err)

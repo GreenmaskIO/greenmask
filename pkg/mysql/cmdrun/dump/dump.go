@@ -40,6 +40,13 @@ import (
 
 type Option func(dump *Dump) error
 
+func WithGreenmaskVersion(version string) Option {
+	return func(dump *Dump) error {
+		dump.greenmaskVersion = version
+		return nil
+	}
+}
+
 func WithFilter(
 	filter core.TaskProducerFilter,
 ) Option {
@@ -255,6 +262,7 @@ type Dump struct {
 	format                core.DumpFormat
 	cmd                   utils.CmdProducer
 	dumpedDatabaseSchema  []core.SchemaDumpStat
+	greenmaskVersion      string
 }
 
 func NewDump(
@@ -474,12 +482,13 @@ func (d *Dump) GetDumpMetadata(completedAt time.Time) (core.Metadata, error) {
 	)
 
 	meta := core.NewMetadata(
+		d.greenmaskVersion,
 		core.DBMSEngineMySQL,
 		d.startedAt,
 		completedAt,
 		d.cfg.Dump.Description,
 		d.cfg.Dump.Tag,
-		d.introsp.GetCommonTables(),
+		core.IntrospectionResult{},
 		dataDump,
 		schemaDump,
 		d.introsp.GetMatchedDatabases(),

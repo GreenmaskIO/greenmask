@@ -13,10 +13,24 @@ type StableIdentity interface {
 	StableKey() (StableKey, error)
 }
 
+// SnapshotSchemaVersion identifies the schema of DumpContextSnapshot.
+// Increment this constant whenever a field is added that the differ must treat
+// differently from an absent field (i.e. "not captured" vs "empty").
+//
+// Schema evolution rules:
+//   - Adding optional (omitempty) fields: safe; no bump needed unless the differ
+//     must distinguish absence from empty.
+//   - Renaming a JSON key: BREAKING — bump the version and add a migration note.
+//   - Changing a field type: BREAKING — bump the version and add a migration note.
+const SnapshotSchemaVersion = "1"
+
 type DumpContextSnapshot struct {
-	Key     StableKey                    `json:"key"`
-	Source  SourceSnapshot               `json:"source"`
-	Objects map[StableKey]ObjectSnapshot `json:"objects"`
+	// SchemaVersion records the snapshot schema at creation time.
+	// Empty string means the snapshot predates versioning (treat as "0").
+	SchemaVersion string                       `json:"schema_version,omitempty"`
+	Key           StableKey                    `json:"key"`
+	Source        SourceSnapshot               `json:"source"`
+	Objects       map[StableKey]ObjectSnapshot `json:"objects"`
 }
 
 type SourceSnapshot struct {

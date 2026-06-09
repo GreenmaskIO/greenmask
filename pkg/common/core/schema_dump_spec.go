@@ -3,8 +3,7 @@ package core
 // SchemaObjectKind identifies a schema-holding object (a database/schema) whose
 // DDL is dumped by a vendor utility (mysqldump, pg_dump) rather than by greenmask
 // itself. There is one kind per engine: the vendor dumper is selected by this
-// kind, and the pre-data/post-data split is carried separately by
-// SchemaDumpSpec.Section.
+// kind, and the pre-data/post-data split is carried inside the Payload.
 //
 // It is a distinct namespace from ObjectKind (the kinds of objects greenmask
 // dumps itself, e.g. tables), but both reference introspected objects through
@@ -12,11 +11,20 @@ package core
 type SchemaObjectKind string
 
 const (
-	// SchemaObjectKindMysqlDatabase — MySQL schema delegated to mysqldump.
-	SchemaObjectKindMysqlDatabase SchemaObjectKind = "mysql.database"
-	// SchemaObjectKindPostgresSchema — PostgreSQL schema delegated to pg_dump.
-	SchemaObjectKindPostgresSchema SchemaObjectKind = "pg.schema"
+	SchemaObjectKindMysqlDatabase    SchemaObjectKind = "mysql.database"
+	SchemaObjectKindMysqlSchema      SchemaObjectKind = "mysql.schema"
+	SchemaObjectKindPostgresDatabase SchemaObjectKind = "pg.database"
+	SchemaObjectKindPostgresSchema   SchemaObjectKind = "pg.schema"
 )
+
+// SchemaDumpContextPayload is the base schema-dump context consumed by
+// SchemaDumpFactory to initialize a SchemaDumper.
+type SchemaDumpContextPayload struct {
+	// Name is the database/schema name.
+	Name string
+	// Section is the dump section (pre-data or post-data).
+	Section DumpSection
+}
 
 type SchemaDumpSpec struct {
 	TaskID TaskID
@@ -27,15 +35,13 @@ type SchemaDumpSpec struct {
 	// restoration ordering, stats correlation) and must never be compared or
 	// persisted across runs.
 	ObjectID ObjectID
-	// Name is the database/schema name.
-	Name string
-	// Section is the dump section (pre-data/post-data) this spec produces. It is a
-	// first-class field because a single vendor dumper produces all sections; the
-	// section is a parameter of the dump task, not part of its kind.
-	Section DumpSection
-	// Payload contains fully resolved object-specific runtime context required for
-	// dump object initialization. It is kept for forward-compatibility with
-	// engines that need richer context; for MySQL it is nil because Name and
-	// Section fully describe the task.
+	// Payload contains fully resolved object-specific runtime context
+	// required for dump object initialization.
+	//
+	// Examples:
+	//   - SchemaDumpContextPayload
+	//
+	// Payload is produced during DumpContext building phase and later
+	// consumed by SchemaDumpFactory to initialize executable SchemaDumper objects.
 	Payload any
 }

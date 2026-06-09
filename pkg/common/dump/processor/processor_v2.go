@@ -15,6 +15,7 @@ type DefaultDumpProcessorV2 struct {
 	schemaDumpFactory core.SchemaDumpFactoryRegistry
 	jobs              int
 	engine            core.DBMSEngine
+	greenmaskVersion  string
 }
 
 type OptionV2 func(*DefaultDumpProcessorV2) error
@@ -25,6 +26,13 @@ func WithJobsV2(jobs int) OptionV2 {
 			return fmt.Errorf("jobs must be positive")
 		}
 		ddp.jobs = jobs
+		return nil
+	}
+}
+
+func WithGreenmaskVersionV2(version string) OptionV2 {
+	return func(ddp *DefaultDumpProcessorV2) error {
+		ddp.greenmaskVersion = version
 		return nil
 	}
 }
@@ -297,6 +305,7 @@ func (dr *DefaultDumpProcessorV2) buildMetadata(
 	schemaDumpStats []core.SchemaDumpStat,
 ) (core.Metadata, error) {
 	meta := core.NewMetadata(
+		dr.greenmaskVersion,
 		dr.engine,
 		startedAt,
 		time.Now(),

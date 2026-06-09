@@ -381,13 +381,10 @@ func (b *ExplicitDumpContextBuilder) buildSchemaDumpSpecs(
 	for _, section := range mysqlSchemaDumpSections {
 		for _, database := range databases {
 			specs = append(specs, core.SchemaDumpSpec{
-				TaskID: seq.Next(),
-				Kind:   core.SchemaObjectKindMysqlDatabase,
-				// ObjectID is a runtime handle to the introspected database object
-				// (zero if the database object was not introspected).
+				TaskID:   seq.Next(),
+				Kind:     core.SchemaObjectKindMysqlDatabase,
 				ObjectID: databaseIDs[database],
-				Name:     database,
-				Section:  section,
+				Payload:  core.SchemaDumpContextPayload{Name: database, Section: section},
 			})
 		}
 	}

@@ -7,4 +7,6 @@ type DumpPlanInput struct {
 	RestorationContext  RestorationContext
 	IntrospectionResult IntrospectionResult
 	Config              []TableConfig
+	Tags                []string
+	Description         string
 }

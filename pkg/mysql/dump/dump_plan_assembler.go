@@ -26,5 +26,18 @@ var _ core.DumpPlanAssembler = (*DumpPlanAssembler)(nil)
 type DumpPlanAssembler struct{}
 
 func (s *DumpPlanAssembler) Assemble(ctx context.Context, input core.DumpPlanInput) (core.DumpPlan, error) {
-	return core.DumpPlan{}, errNotImplemented
+	databases := make([]string, 0, len(input.IntrospectionResult.KindsMap[core.ObjectKindMysqlDatabase]))
+	for _, obj := range input.IntrospectionResult.KindsMap[core.ObjectKindMysqlDatabase] {
+		databases = append(databases, obj.Name)
+	}
+	return core.DumpPlan{
+		DumpObjectSpecs:      input.DumpContext.DumpObjectSpecs,
+		SchemaDumpSpecs:      input.DumpContext.SchemaDumpSpecs,
+		RestorationContext:   input.RestorationContext,
+		TransformationConfig: input.Config,
+		IntrospectionResult:  input.IntrospectionResult,
+		MatchedDatabases:     databases,
+		Tags:                 input.Tags,
+		Description:          input.Description,
+	}, nil
 }

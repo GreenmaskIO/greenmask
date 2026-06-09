@@ -23,7 +23,6 @@ import (
 	"github.com/greenmaskio/greenmask/pkg/common/filterconfig"
 	"github.com/greenmaskio/greenmask/pkg/common/graphbuilder"
 	"github.com/greenmaskio/greenmask/pkg/common/subsetbuilder"
-	"github.com/greenmaskio/greenmask/pkg/config"
 )
 
 var (
@@ -42,7 +41,7 @@ var (
 // but it takes that scope per-run from the FilterConfig handed to Introspect
 // (built by the common FilterConfigBuilder during discovery), so the config is
 // not needed to wire the stages here.
-func NewDumpStages(cfg config.Config) pipeline.DumpStages {
+func NewDumpStages() pipeline.DumpStages {
 	return pipeline.DumpStages{
 		ConnectionConfigurerBuilder: &ConnectionConfigurerBuilder{},
 		DumpSessionBuilder:          &DumpSessionBuilder{},
@@ -67,6 +66,6 @@ func NewDumpStages(cfg config.Config) pipeline.DumpStages {
 }
 
 // NewDumpPipeline builds a dump pipeline backed by the MySQL stages.
-func NewDumpPipeline(cfg config.Config) *pipeline.DumpPipeline {
-	return pipeline.NewDumpPipeline(NewDumpStages(cfg), core.DBMSEngineMySQL)
+func NewDumpPipeline() *pipeline.DumpPipeline {
+	return pipeline.NewDumpPipeline(NewDumpStages(), core.DBMSEngineMySQL)
 }

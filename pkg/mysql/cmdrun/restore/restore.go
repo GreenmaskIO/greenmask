@@ -151,14 +151,20 @@ func (d *Restore) Run(ctx context.Context) error {
 		DatabaseRemap:           remap,
 	}
 
-	if d.cfg.Restore.Options.RestoreInOrder {
-		log.Ctx(ctx).Info().Msg("restoring tables in topological")
+	hasTopologicalOrder := meta.DataDump != nil &&
+		meta.DataDump.DumpStat.RestorationContext.HasTopologicalOrder
+
+	if d.cfg.Restore.Options.RestoreInOrder && hasTopologicalOrder {
+		log.Ctx(ctx).Info().Msg("restoring tables in topological order")
 		tp = taskproducer.NewWithOrder(
 			meta, d.st, d.connConfig,
 			opts,
 			taskResolver,
 		)
 	} else {
+		if d.cfg.Restore.Options.RestoreInOrder && !hasTopologicalOrder {
+			log.Ctx(ctx).Warn().Msg("restore-in-order requested but schema has FK cycles; falling back to unordered restore")
+		}
 		tp = taskproducer.New(
 			meta, d.st, d.connConfig,
 			opts,

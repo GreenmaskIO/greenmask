@@ -210,13 +210,23 @@ func TestBuildSchemaDumpSpecs(t *testing.T) {
 		}
 
 		assert.Equal(t, []string{"shop", "warehouse", "shop", "warehouse"},
-			[]string{specs[0].Name, specs[1].Name, specs[2].Name, specs[3].Name})
+			[]string{
+				specs[0].Payload.(core.SchemaDumpContextPayload).Name,
+				specs[1].Payload.(core.SchemaDumpContextPayload).Name,
+				specs[2].Payload.(core.SchemaDumpContextPayload).Name,
+				specs[3].Payload.(core.SchemaDumpContextPayload).Name,
+			})
 		assert.Equal(t,
 			[]core.DumpSection{
 				core.DumpSectionPreData, core.DumpSectionPreData,
 				core.DumpSectionPostData, core.DumpSectionPostData,
 			},
-			[]core.DumpSection{specs[0].Section, specs[1].Section, specs[2].Section, specs[3].Section})
+			[]core.DumpSection{
+				specs[0].Payload.(core.SchemaDumpContextPayload).Section,
+				specs[1].Payload.(core.SchemaDumpContextPayload).Section,
+				specs[2].Payload.(core.SchemaDumpContextPayload).Section,
+				specs[3].Payload.(core.SchemaDumpContextPayload).Section,
+			})
 
 		ids := map[core.TaskID]struct{}{}
 		for _, s := range specs {
@@ -240,7 +250,7 @@ func TestBuildSchemaDumpSpecs(t *testing.T) {
 		require.NoError(t, err)
 		require.Len(t, specs, 2)
 		for _, s := range specs {
-			assert.Equal(t, "shop", s.Name)
+			assert.Equal(t, "shop", s.Payload.(core.SchemaDumpContextPayload).Name)
 		}
 	})
 
@@ -264,7 +274,7 @@ func TestBuildSchemaDumpSpecs(t *testing.T) {
 
 		byName := map[string]core.ObjectID{}
 		for _, s := range specs {
-			byName[s.Name] = s.ObjectID
+			byName[s.Payload.(core.SchemaDumpContextPayload).Name] = s.ObjectID
 		}
 		assert.Equal(t, core.ObjectID(10), byName["shop"])
 		assert.Equal(t, core.ObjectID(11), byName["warehouse"])
@@ -448,11 +458,11 @@ func TestBuildDumpContext(t *testing.T) {
 				assert.Equal(t, "orders", ctx.DumpObjectSpecs[1].Name)
 				// One database ("public") -> pre-data + post-data schema specs.
 				require.Len(t, ctx.SchemaDumpSpecs, 2)
-				assert.Equal(t, "public", ctx.SchemaDumpSpecs[0].Name)
+				assert.Equal(t, "public", ctx.SchemaDumpSpecs[0].Payload.(core.SchemaDumpContextPayload).Name)
 				assert.Equal(t, core.SchemaObjectKindMysqlDatabase, ctx.SchemaDumpSpecs[0].Kind)
-				assert.Equal(t, core.DumpSectionPreData, ctx.SchemaDumpSpecs[0].Section)
+				assert.Equal(t, core.DumpSectionPreData, ctx.SchemaDumpSpecs[0].Payload.(core.SchemaDumpContextPayload).Section)
 				assert.Equal(t, core.SchemaObjectKindMysqlDatabase, ctx.SchemaDumpSpecs[1].Kind)
-				assert.Equal(t, core.DumpSectionPostData, ctx.SchemaDumpSpecs[1].Section)
+				assert.Equal(t, core.DumpSectionPostData, ctx.SchemaDumpSpecs[1].Payload.(core.SchemaDumpContextPayload).Section)
 
 				seen := map[core.TaskID]struct{}{}
 				for _, s := range ctx.DumpObjectSpecs {
