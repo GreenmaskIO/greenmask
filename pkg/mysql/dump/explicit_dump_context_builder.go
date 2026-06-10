@@ -122,9 +122,15 @@ func (b *ExplicitDumpContextBuilder) BuildDumpContext(
 		return core.DumpContext{}, fmt.Errorf("build schema dump specs: %w", err)
 	}
 
+	databases, err := schemaDumpDatabases(in)
+	if err != nil {
+		return core.DumpContext{}, fmt.Errorf("collect source databases: %w", err)
+	}
+
 	return core.DumpContext{
 		DumpObjectSpecs: dumpObjectSpecs,
 		SchemaDumpSpecs: schemaDumpSpecs,
+		Source:          mysqlSourceSpec(databases, in.IntrospectionResult.Version),
 	}, nil
 }
 
@@ -164,10 +170,13 @@ func (b *ExplicitDumpContextBuilder) initTable(
 			Kind:     core.ObjectKindMysqlTable,
 			ObjectID: obj.ID,
 			Name:     obj.Name,
+			Identity: mysqlTableIdentity(table.Schema, table.Name),
+			Origin:   core.ObjectOrigin{Kind: core.ObjectOriginExplicit},
 			Mode:     core.DumpModeRaw,
 			Payload: transformercontext.TableDumpContext{
-				Table: &table,
-				Query: subsetQuery,
+				ColumnKind: core.EntityKindMysqlColumn,
+				Table:      &table,
+				Query:      subsetQuery,
 			},
 		}, nil
 	}
@@ -190,11 +199,14 @@ func (b *ExplicitDumpContextBuilder) initTable(
 			Kind:     core.ObjectKindMysqlTable,
 			ObjectID: obj.ID,
 			Name:     obj.Name,
+			Identity: mysqlTableIdentity(table.Schema, table.Name),
+			Origin:   core.ObjectOrigin{Kind: core.ObjectOriginExplicit},
 			Mode:     core.DumpModeRaw,
 			Payload: transformercontext.TableDumpContext{
-				Table:     &table,
-				Condition: tableCondition,
-				Query:     dumpQuery,
+				ColumnKind: core.EntityKindMysqlColumn,
+				Table:      &table,
+				Condition:  tableCondition,
+				Query:      dumpQuery,
 			},
 		}, nil
 	}
@@ -212,8 +224,11 @@ func (b *ExplicitDumpContextBuilder) initTable(
 		Kind:     core.ObjectKindMysqlTable,
 		ObjectID: obj.ID,
 		Name:     obj.Name,
+		Identity: mysqlTableIdentity(table.Schema, table.Name),
+		Origin:   core.ObjectOrigin{Kind: core.ObjectOriginExplicit},
 		Mode:     core.DumpModeTransformed,
 		Payload: transformercontext.TableDumpContext{
+			ColumnKind:         core.EntityKindMysqlColumn,
 			Table:              &table,
 			Condition:          tableCondition,
 			TransformerContext: transformerContext,

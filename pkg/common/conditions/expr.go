@@ -78,6 +78,12 @@ func NewWhenCond(
 	}, nil
 }
 
+// Expression returns the original when condition expression (empty when no
+// condition was configured).
+func (wc *WhenCond) Expression() string {
+	return wc.when
+}
+
 // Evaluate - evaluates when condition. If when condition is empty, it will always return true.
 func (wc *WhenCond) Evaluate(r core.Recorder) (bool, error) {
 	if wc.whenCond == nil {

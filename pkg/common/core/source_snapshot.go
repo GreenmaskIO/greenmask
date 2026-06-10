@@ -7,13 +7,19 @@ import (
 
 type EntityKind string
 
+const (
+	EntityKindMysqlTable  EntityKind = "mysql.table"
+	EntityKindMysqlServer EntityKind = "mysql.server"
+	EntityKindMysqlColumn EntityKind = "mysql.column"
+)
+
 type StableKey string
 
 type StableIdentity interface {
 	StableKey() (StableKey, error)
 }
 
-// SnapshotSchemaVersion identifies the schema of DumpContextSnapshot.
+// SnapshotSchemaVersionV1 identifies the schema of DumpContextSnapshot.
 // Increment this constant whenever a field is added that the differ must treat
 // differently from an absent field (i.e. "not captured" vs "empty").
 //
@@ -22,7 +28,7 @@ type StableIdentity interface {
 //     must distinguish absence from empty.
 //   - Renaming a JSON key: BREAKING — bump the version and add a migration note.
 //   - Changing a field type: BREAKING — bump the version and add a migration note.
-const SnapshotSchemaVersion = "1"
+const SnapshotSchemaVersionV1 = "1"
 
 type DumpContextSnapshot struct {
 	// SchemaVersion records the snapshot schema at creation time.
@@ -31,6 +37,12 @@ type DumpContextSnapshot struct {
 	Key           StableKey                    `json:"key"`
 	Source        SourceSnapshot               `json:"source"`
 	Objects       map[StableKey]ObjectSnapshot `json:"objects"`
+
+	// Meta carries informational, run-specific values (e.g. server version,
+	// gtid/binlog position, snapshot id). It is EXCLUDED from every hash,
+	// fingerprint, and drift diff: these values change every run and would
+	// otherwise produce false-positive drift.
+	Meta map[string]string `json:"meta,omitempty"`
 }
 
 type SourceSnapshot struct {
@@ -58,17 +70,34 @@ type AttributeName string
 type AttributeDefinition string
 
 type ObjectAttribute struct {
-	Key        StableKey           `json:"key"`
-	Name       AttributeName       `json:"name"`
+	// Identity is the stable identity of the attribute, relative to its parent
+	// object (e.g. kind=column, name=column name). Consistent with how objects
+	// and the source identify themselves.
+	Identity EntityIdentity `json:"identity"`
+	// Position is the attribute's ordinal position in the object (column order).
+	Position   int                 `json:"position"`
 	Definition AttributeDefinition `json:"definition"`
 }
 
+// ColumnAttributeIdentity builds the relative identity of a column attribute.
+// kind is the engine-specific column kind (e.g. EntityKindMysqlColumn); the
+// attribute is scoped within its parent object so only the column name is
+// carried.
+func ColumnAttributeIdentity(kind EntityKind, name string) EntityIdentity {
+	return EntityIdentity{
+		Kind:       kind,
+		NameParts:  []string{"column"},
+		NameValues: map[string]string{"column": name},
+	}
+}
+
+// ObjectSnapshot captures a single data object. Schema-dump intent is not
+// recorded here: it is driven separately (vendor tools, scope matching) and is
+// not reliably correlatable across runs, so the snapshot compares data objects
+// only.
 type ObjectSnapshot struct {
 	Key      StableKey      `json:"key"`
 	Identity EntityIdentity `json:"identity"`
-
-	NeedSchemaDump bool `json:"need_schema_dump"`
-	NeedDumpData   bool `json:"need_dump_data"`
 
 	SubsetQuery     string `json:"subset_query,omitempty"`
 	SubsetQueryHash string `json:"subset_query_hash,omitempty"`
@@ -81,7 +110,9 @@ type ObjectSnapshot struct {
 
 	Transformations map[StableKey]TransformationSnapshot `json:"transformations,omitempty"`
 
-	Source SnapshotSource `json:"source,omitempty"`
+	// Origin records whether the object was set by the explicit or derived
+	// context builder.
+	Origin ObjectOrigin `json:"origin,omitempty"`
 }
 
 type EntityIdentity struct {
@@ -131,18 +162,23 @@ func (i EntityIdentity) StableKey() (StableKey, error) {
 
 type TransformationSnapshot struct {
 	// Stable matching key: where transformation is applied.
-	Key                   StableKey                        `json:"key"`
-	Name                  string                           `json:"name"`
-	Field                 ObjectFieldRef                   `json:"field"`
-	Position              int                              `json:"position"`
-	Source                TransformationSource             `json:"source"`
-	ConfigHash            string                           `json:"config_hash,omitempty"`
-	Config                map[string]any                   `json:"config,omitempty"`
-	StaticParametersHash  string                           `json:"static_parameters_hash,omitempty"`
-	StaticParameters      map[string]any                   `json:"static_parameters,omitempty"`
-	DynamicParametersHash string                           `json:"dynamic_parameters_hash,omitempty"`
-	DynamicParameters     map[string]any                   `json:"dynamic_parameters,omitempty"`
-	Condition             *TransformationConditionSnapshot `json:"condition,omitempty"`
+	Key                   StableKey            `json:"key"`
+	Name                  string               `json:"name"`
+	Field                 ObjectFieldRef       `json:"field"`
+	Position              int                  `json:"position"`
+	Source                TransformationSource `json:"source"`
+	ConfigHash            string               `json:"config_hash,omitempty"`
+	Config                map[string]any       `json:"config,omitempty"`
+	StaticParametersHash  string               `json:"static_parameters_hash,omitempty"`
+	StaticParameters      map[string]any       `json:"static_parameters,omitempty"`
+	DynamicParametersHash string               `json:"dynamic_parameters_hash,omitempty"`
+	DynamicParameters     map[string]any       `json:"dynamic_parameters,omitempty"`
+	// AffectedColumns are the columns the transformer writes to, ordered by
+	// column index for determinism.
+	AffectedColumns     []string `json:"affected_columns,omitempty"`
+	AffectedColumnsHash string   `json:"affected_columns_hash,omitempty"`
+	// Condition is the transformer-level when expression (empty when none).
+	Condition string `json:"condition,omitempty"`
 	// Full semantic fingerprint.
 	Fingerprint string `json:"fingerprint,omitempty"`
 }
@@ -173,6 +209,20 @@ func (t TransformationSnapshot) StableKey() (StableKey, error) {
 	), nil
 }
 
+// NewConditionSnapshot builds a condition snapshot from a normalized expression,
+// computing its fingerprint. Returns nil for an empty expression (no condition).
+func NewConditionSnapshot(expression string) *TransformationConditionSnapshot {
+	if expression == "" {
+		return nil
+	}
+	cs := &TransformationConditionSnapshot{
+		Kind:       TransformationConditionKindExpression,
+		Expression: expression,
+	}
+	cs.Fingerprint = HashStrings([]string{string(cs.Kind), cs.Expression})
+	return cs
+}
+
 type TransformationSourceKind string
 
 const (
@@ -198,16 +248,18 @@ type TransformationDerivationRef struct {
 	LinkKind ObjectLinkKind `json:"link_kind,omitempty"`
 }
 
-type SnapshotSource struct {
-	Kind   SnapshotSourceKind `json:"kind,omitempty"`
-	Reason string             `json:"reason,omitempty"`
+// ObjectOrigin records which context builder put an object into the dump:
+// explicit (user configuration) or derived (semantic derivation, e.g. a
+// primary-key transformation inherited by a referencing foreign-key column).
+type ObjectOrigin struct {
+	Kind ObjectOriginKind `json:"kind,omitempty"`
+	// Reason explains a derived origin (e.g. "inherited primary-key transformation").
+	Reason string `json:"reason,omitempty"`
 }
 
-type SnapshotSourceKind string
+type ObjectOriginKind string
 
 const (
-	SnapshotSourceKindExplicit SnapshotSourceKind = "explicit"
-	SnapshotSourceKindDerived  SnapshotSourceKind = "derived"
-	SnapshotSourceKindPolicy   SnapshotSourceKind = "policy"
-	SnapshotSourceKindDrift    SnapshotSourceKind = "drift"
+	ObjectOriginExplicit ObjectOriginKind = "explicit"
+	ObjectOriginDerived  ObjectOriginKind = "derived"
 )

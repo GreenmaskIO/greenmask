@@ -15,16 +15,54 @@
 package dump
 
 import (
-	"context"
+	"fmt"
 
-	core "github.com/greenmaskio/greenmask/pkg/common/core"
+	"github.com/greenmaskio/greenmask/pkg/common/core"
+	"github.com/greenmaskio/greenmask/pkg/common/dump/snapshotbuilder"
+	transformercontext "github.com/greenmaskio/greenmask/pkg/common/transformers/context"
 )
 
-var _ core.DumpContextSnapshotBuilder = (*DumpContextSnapshotBuilder)(nil)
+var _ snapshotbuilder.Dialect = snapshotDialect{}
 
-// DumpContextSnapshotBuilder produces a deterministic snapshot of the context.
-type DumpContextSnapshotBuilder struct{}
+// NewDumpContextSnapshotBuilder builds the MySQL DumpContextSnapshotBuilder. The
+// RDBMS-generic flow lives in snapshotbuilder.Builder; only the MySQL-specific
+// object identity mapping is provided here via snapshotDialect.
+func NewDumpContextSnapshotBuilder() core.DumpContextSnapshotBuilder {
+	return snapshotbuilder.New(snapshotDialect{})
+}
 
-func (s *DumpContextSnapshotBuilder) Build(ctx context.Context, input core.DumpContext) (core.DumpContextSnapshot, error) {
-	return core.DumpContextSnapshot{}, errNotImplemented
+// snapshotDialect supplies the MySQL identity mapping for the shared snapshot
+// builder. Supporting additional data-section object kinds (e.g. sequences) is a
+// matter of switching on spec.Kind here.
+type snapshotDialect struct{}
+
+func (snapshotDialect) Object(spec core.ObjectDumpSpec) (core.ObjectSnapshot, error) {
+	payload, ok := spec.Payload.(transformercontext.TableDumpContext)
+	if !ok {
+		return core.ObjectSnapshot{}, fmt.Errorf("unexpected payload type %T for object %q", spec.Payload, spec.Name)
+	}
+
+	// Engine-agnostic snapshot (attributes, subset query, condition,
+	// transformations with resolved parameters) generated on demand.
+	snapshot, err := payload.GetSnapshot()
+	if err != nil {
+		return core.ObjectSnapshot{}, fmt.Errorf("object %q snapshot: %w", spec.Name, err)
+	}
+	return snapshot, nil
+}
+
+// Source maps the MySQL SourceSpec into a SourceSnapshot, surfacing the server
+// version and vendor parameters from the MySQL source payload.
+func (snapshotDialect) Source(source core.SourceSpec) (core.SourceSnapshot, error) {
+	payload, ok := source.Payload.(MySQLSourceDatabasePayload)
+	if !ok {
+		return core.SourceSnapshot{}, fmt.Errorf("unexpected source payload type %T", source.Payload)
+	}
+	return core.SourceSnapshot{
+		Identity:    source.Identity,
+		DBMSVersion: payload.Version.FullString,
+		// Vendor parameters are run-specific (gtid/binlog/snapshot id); they are
+		// recorded but intentionally not hashed, so they don't cause false drift.
+		VendorParameters: payload.VendorParameters,
+	}, nil
 }

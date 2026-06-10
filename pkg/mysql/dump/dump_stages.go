@@ -55,7 +55,7 @@ func NewDumpStages() pipeline.DumpStages {
 		FilterConfigBuilder:         filterconfig.New(),
 		ExplicitDumpContextBuilder:  NewExplicitDumpContextBuilder(),
 		DerivedDumpContextBuilder:   &DerivedDumpContextBuilder{},
-		DumpContextSnapshotBuilder:  &DumpContextSnapshotBuilder{},
+		DumpContextSnapshotBuilder:  NewDumpContextSnapshotBuilder(),
 		DumpContextDiffer:           &DumpContextDiffer{},
 		DumpContextValidator:        &DumpContextValidator{},
 		RestorationContextBuilder:   &RestorationContextBuilder{},

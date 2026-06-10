@@ -28,5 +28,12 @@ type DerivedDumpContextBuilder struct{}
 func (s *DerivedDumpContextBuilder) BuildDumpContext(ctx context.Context, in core.DerivedDumpContextInput) (core.DumpContext, error) {
 	// Placeholder: semantic derivation is not implemented yet, so the explicit
 	// dump context is passed through unchanged.
+	//
+	// Snapshot contract: when derivation is implemented and it adds or changes a
+	// transformation on a table, it must also append/update the corresponding
+	// entry on that payload's TableDumpContext.SnapshotDescriptor with
+	// TransformationSource.Kind = derived (and DerivedFrom set). The
+	// DumpContextSnapshotBuilder is a pure decoder over the final descriptor, so
+	// any derivation not reflected there is invisible to drift detection.
 	return in.ExplicitCtx, nil
 }

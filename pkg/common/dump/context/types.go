@@ -29,6 +29,9 @@ type TableDumpContextPayload struct {
 	Condition          core.CondEvaluator
 	Query              string
 	TableDriver        core.TableDriver
+	// ColumnKind is the engine-specific kind used for column attribute
+	// identities in the snapshot (e.g. core.EntityKindMysqlColumn).
+	ColumnKind core.EntityKind
 }
 
 func (tc *TableDumpContextPayload) HasTransformer() bool {
@@ -54,4 +57,14 @@ func (tc *TableDumpContextPayload) GetAffectedColumns() []int {
 		res = append(res, col)
 	}
 	return res
+}
+
+// GetSnapshot builds the engine-agnostic portion of an ObjectSnapshot from this
+// payload's runtime context. See transformercontext.BuildObjectSnapshot.
+func (tc *TableDumpContextPayload) GetSnapshot() (core.ObjectSnapshot, error) {
+	transformers := make([]core.TransformerContexter, len(tc.TransformerContext))
+	for i, t := range tc.TransformerContext {
+		transformers[i] = t
+	}
+	return transformercontext.BuildObjectSnapshot(tc.Table, tc.Query, tc.Condition, transformers, tc.ColumnKind)
 }

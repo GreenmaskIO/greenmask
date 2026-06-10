@@ -32,6 +32,7 @@ import (
 type stubCond struct{}
 
 func (stubCond) Evaluate(core.Recorder) (bool, error) { return true, nil }
+func (stubCond) Expression() string                   { return "" }
 
 type stubTransformerContext struct{}
 
@@ -40,6 +41,9 @@ func (stubTransformerContext) EvaluateWhen(core.Recorder) (bool, error)    { ret
 func (stubTransformerContext) Init(context.Context) error                  { return nil }
 func (stubTransformerContext) GetAffectedColumns() map[int]string          { return nil }
 func (stubTransformerContext) Describe() string                            { return "stub" }
+func (stubTransformerContext) GetSnapshot(position int) (core.TransformationSnapshot, error) {
+	return core.TransformationSnapshot{Name: "stub", Position: position}, nil
+}
 
 // stubTableInitDeps is a configurable implementation of tableInitDeps that
 // records how it was invoked and returns canned results/errors.

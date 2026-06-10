@@ -36,6 +36,8 @@ func (w *whenMock) Evaluate(r core.Recorder) (bool, error) {
 	return args.Bool(0), args.Error(1)
 }
 
+func (w *whenMock) Expression() string { return "" }
+
 type transformerMock struct {
 	mock.Mock
 }
