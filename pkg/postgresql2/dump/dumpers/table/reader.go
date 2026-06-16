@@ -2,6 +2,8 @@ package table
 
 import (
 	"context"
+
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 )
 
 type Reader struct {
@@ -11,7 +13,7 @@ func NewReader() *Reader {
 	return &Reader{}
 }
 
-func (r *Reader) Open(ctx context.Context) error {
+func (r *Reader) Open(ctx context.Context, session core.DumpSession) error {
 	//TODO implement me
 	panic("implement me")
 }

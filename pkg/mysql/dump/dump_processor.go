@@ -16,15 +16,41 @@ package dump
 
 import (
 	"context"
+	"fmt"
 
-	core "github.com/greenmaskio/greenmask/pkg/common/core"
+	"github.com/greenmaskio/greenmask/pkg/common/core"
+	"github.com/greenmaskio/greenmask/pkg/common/dump/processor"
+	"github.com/greenmaskio/greenmask/pkg/mysql/dump/factory"
 )
 
 var _ core.DumpProcessor = (*DumpProcessor)(nil)
 
 // DumpProcessor executes the final dump plan against the live session.
+//
+// Runtime resources (session, storage) are injected at execution time via Run;
+// it delegates the actual fan-out to the engine-agnostic DefaultDumpProcessorV2.
 type DumpProcessor struct{}
 
-func (s *DumpProcessor) Run(ctx context.Context, session core.DumpSession, plan core.DumpPlan, opts ...core.DumpProcessorOption) (core.Metadata, error) {
-	return core.Metadata{}, errNotImplemented
+func (s *DumpProcessor) Run(
+	ctx context.Context,
+	session core.DumpSession,
+	st core.Storager,
+	plan core.DumpPlan,
+	opts ...core.DumpProcessorOption,
+) (core.Metadata, error) {
+	objectRegistry, err := factory.NewObjectDumpRegistry()
+	if err != nil {
+		return core.Metadata{}, fmt.Errorf("build object dump registry: %w", err)
+	}
+	schemaRegistry := factory.NewSchemaDumpRegistry()
+
+	proc, err := processor.NewDataDumpProcessorV2(
+		objectRegistry,
+		schemaRegistry,
+		core.DBMSEngineMySQL,
+	)
+	if err != nil {
+		return core.Metadata{}, fmt.Errorf("build dump processor: %w", err)
+	}
+	return proc.Run(ctx, session, st, plan, opts...)
 }

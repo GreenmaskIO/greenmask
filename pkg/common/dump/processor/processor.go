@@ -218,7 +218,10 @@ func (dr *DefaultDumpProcessor) dumpWorker(
 			Any("ObjectMetadata", task.Meta()).
 			Msgf("dumping is started")
 
-		stat, err := task.Dump(ctx)
+		// Legacy task-producer path: the dumper's reader/writer were already
+		// bound to their session and storage at construction time, so no
+		// runtime resources are injected here.
+		stat, err := task.Dump(ctx, nil, nil)
 		if err != nil {
 			return fmt.Errorf(`dump task '%s': %w`, task.DebugInfo(), err)
 		}

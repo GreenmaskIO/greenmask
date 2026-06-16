@@ -8,7 +8,8 @@ import (
 
 	"github.com/rs/zerolog/log"
 
-	core "github.com/greenmaskio/greenmask/pkg/common/core"
+	"github.com/greenmaskio/greenmask/pkg/common/core"
+	"github.com/greenmaskio/greenmask/pkg/common/utils"
 	"github.com/greenmaskio/greenmask/pkg/config"
 )
 
@@ -294,7 +295,6 @@ func (p *DumpPipeline) ValidatePlan(
 
 	state.MarkExecuted(StageNamePlanValidation)
 	return nil
-
 }
 
 // Execution requires runtime/session.
@@ -307,8 +307,20 @@ func (p *DumpPipeline) Execute(
 	if err := state.Require(StageNamePlanValidation); err != nil {
 		return fmt.Errorf("check requirements: %w", err)
 	}
-	buildPlanArtefacts := state.BuildPlan
-	metadata, err := p.Stages.DumpProcessor.Run(ctx, runtime.Session, *buildPlanArtefacts.Plan, opts...)
+	// Storage is an execution-time runtime resource (like the session): the
+	// provisioner builds it from config here, and it is injected into the
+	// processor rather than threaded in at stage-assembly time.
+	st, err := p.Stages.StorageProvisioner.Provision(ctx, *state.Discovery.Config)
+	if err != nil {
+		return fmt.Errorf("provision storage: %w", err)
+	}
+	metadata, err := p.Stages.DumpProcessor.Run(
+		ctx,
+		runtime.Session,
+		st,
+		utils.Value(state.BuildPlan.Plan),
+		opts...,
+	)
 	if err != nil {
 		return fmt.Errorf("dump processor: %w", err)
 	}

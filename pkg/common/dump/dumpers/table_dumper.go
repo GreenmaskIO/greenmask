@@ -85,7 +85,11 @@ func NewTableDumper(
 	return res, nil
 }
 
-func (t *TableDumper) Dump(ctx context.Context) (core.ObjectDumpStat, error) {
+func (t *TableDumper) Dump(
+	ctx context.Context,
+	session core.DumpSession,
+	st core.Storager,
+) (core.ObjectDumpStat, error) {
 	startedAt := time.Now()
 	// Initialize transformation pipeline.
 	// It gets transformers ready to transform. For example if external transformer
@@ -106,8 +110,10 @@ func (t *TableDumper) Dump(ctx context.Context) (core.ObjectDumpStat, error) {
 		}
 	}()
 
-	// Stream records and transform them one by one.
-	if err := t.streamRecords(ctx); err != nil {
+	// Stream records and transform them one by one. session/st are nil on the
+	// legacy task-producer path, where the reader/writer were already bound to
+	// their resources at construction time.
+	if err := t.streamRecords(ctx, session, st); err != nil {
 		return core.ObjectDumpStat{}, core.NewDumpError(
 			t.lineNum, fmt.Errorf("stream data: %w", err),
 		)
@@ -129,9 +135,9 @@ func (t *TableDumper) Dump(ctx context.Context) (core.ObjectDumpStat, error) {
 	), nil
 }
 
-func (t *TableDumper) streamRecords(ctx context.Context) error {
+func (t *TableDumper) streamRecords(ctx context.Context, session core.DumpSession, st core.Storager) error {
 	// Open stream reader - the one that reads data from table in DBMS.
-	if err := t.dataStreamReader.Open(ctx); err != nil {
+	if err := t.dataStreamReader.Open(ctx, session); err != nil {
 		return fmt.Errorf("open data streamer: %w", err)
 	}
 	defer func() {
@@ -147,7 +153,7 @@ func (t *TableDumper) streamRecords(ctx context.Context) error {
 	}()
 	// Open stream writer - the one that writes transformed data
 	// directly to the storage.
-	if err := t.dataStreamWriter.Open(ctx); err != nil {
+	if err := t.dataStreamWriter.Open(ctx, st); err != nil {
 		return fmt.Errorf("open data streamer: %w", err)
 	}
 	defer func() {

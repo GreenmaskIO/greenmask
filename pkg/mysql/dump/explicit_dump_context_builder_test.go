@@ -36,11 +36,13 @@ func (stubCond) Expression() string                   { return "" }
 
 type stubTransformerContext struct{}
 
-func (stubTransformerContext) SetRecordForDynamicParameters(core.Recorder) {}
-func (stubTransformerContext) EvaluateWhen(core.Recorder) (bool, error)    { return true, nil }
-func (stubTransformerContext) Init(context.Context) error                  { return nil }
-func (stubTransformerContext) GetAffectedColumns() map[int]string          { return nil }
-func (stubTransformerContext) Describe() string                            { return "stub" }
+func (stubTransformerContext) SetRecordForDynamicParameters(core.Recorder)    {}
+func (stubTransformerContext) EvaluateWhen(core.Recorder) (bool, error)       { return true, nil }
+func (stubTransformerContext) Init(context.Context) error                     { return nil }
+func (stubTransformerContext) Transform(context.Context, core.Recorder) error { return nil }
+func (stubTransformerContext) Done(context.Context) error                     { return nil }
+func (stubTransformerContext) GetAffectedColumns() map[int]string             { return nil }
+func (stubTransformerContext) Describe() string                               { return "stub" }
 func (stubTransformerContext) GetSnapshot(position int) (core.TransformationSnapshot, error) {
 	return core.TransformationSnapshot{Name: "stub", Position: position}, nil
 }

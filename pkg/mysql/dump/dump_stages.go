@@ -22,6 +22,7 @@ import (
 	"github.com/greenmaskio/greenmask/pkg/common/dump/pipeline"
 	"github.com/greenmaskio/greenmask/pkg/common/filterconfig"
 	"github.com/greenmaskio/greenmask/pkg/common/graphbuilder"
+	"github.com/greenmaskio/greenmask/pkg/common/storageprovisioner"
 	"github.com/greenmaskio/greenmask/pkg/common/subsetbuilder"
 )
 
@@ -41,6 +42,9 @@ var (
 // but it takes that scope per-run from the FilterConfig handed to Introspect
 // (built by the common FilterConfigBuilder during discovery), so the config is
 // not needed to wire the stages here.
+// The destination storage is built by the StorageProvisioner stage from config
+// and injected into the execution stage (DumpProcessor) at Dump time, so it is
+// not a constructor argument here.
 func NewDumpStages() pipeline.DumpStages {
 	return pipeline.DumpStages{
 		ConnectionConfigurerBuilder: &ConnectionConfigurerBuilder{},
@@ -61,6 +65,7 @@ func NewDumpStages() pipeline.DumpStages {
 		RestorationContextBuilder:   &RestorationContextBuilder{},
 		DumpPlanAssembler:           &DumpPlanAssembler{},
 		DumpPlanValidator:           &DumpPlanValidator{},
+		StorageProvisioner:          storageprovisioner.New(),
 		DumpProcessor:               &DumpProcessor{},
 	}
 }

@@ -16,6 +16,7 @@ package context
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"slices"
 	"strings"
@@ -23,6 +24,10 @@ import (
 	core "github.com/greenmaskio/greenmask/pkg/common/core"
 	commonparameters "github.com/greenmaskio/greenmask/pkg/common/transformers/parameters"
 )
+
+// TableDumpContext is a runtime transformation pipeline: it initialises,
+// applies and tears down the table's transformers in order.
+var _ core.Pipeliner = (*TableDumpContext)(nil)
 
 // TransformerContext - supplied transformer and conditions that have to be executed.
 type TransformerContext struct {
@@ -52,6 +57,14 @@ func (tc *TransformerContext) EvaluateWhen(r core.Recorder) (bool, error) {
 
 func (tc *TransformerContext) Init(ctx context.Context) error {
 	return tc.Transformer.Init(ctx)
+}
+
+func (tc *TransformerContext) Transform(ctx context.Context, r core.Recorder) error {
+	return tc.Transformer.Transform(ctx, r)
+}
+
+func (tc *TransformerContext) Done(ctx context.Context) error {
+	return tc.Transformer.Done(ctx)
 }
 
 func (tc *TransformerContext) GetAffectedColumns() map[int]string {
@@ -167,6 +180,53 @@ func (tc *TableDumpContext) Init(ctx context.Context) error {
 				i, transformerCtx.Describe(), err,
 			)
 		}
+	}
+	return nil
+}
+
+// Transform applies every configured transformer to the record in order. The
+// table-level condition is evaluated first; when it is false the record passes
+// through untouched. Each transformer's own condition is then evaluated before
+// it runs. This makes TableDumpContext a core.Pipeliner.
+func (tc *TableDumpContext) Transform(ctx context.Context, r core.Recorder) error {
+	needTransform, err := tc.EvaluateWhen(r)
+	if err != nil {
+		return fmt.Errorf("evaluate table condition: %w", err)
+	}
+	if !needTransform {
+		return nil
+	}
+	for i, transformerCtx := range tc.TransformerContext {
+		transformerCtx.SetRecordForDynamicParameters(r)
+		ok, err := transformerCtx.EvaluateWhen(r)
+		if err != nil {
+			return fmt.Errorf("evaluate transformer pos=%d name='%s' condition: %w",
+				i, transformerCtx.Describe(), err)
+		}
+		if !ok {
+			continue
+		}
+		if err := transformerCtx.Transform(ctx, r); err != nil {
+			return fmt.Errorf("transform record using transformer pos=%d name='%s': %w",
+				i, transformerCtx.Describe(), err)
+		}
+	}
+	return nil
+}
+
+// Done terminates every transformer, accumulating errors so a single failure
+// does not prevent the rest from releasing their resources.
+func (tc *TableDumpContext) Done(ctx context.Context) error {
+	var lastErr error
+	for i, transformerCtx := range tc.TransformerContext {
+		if err := transformerCtx.Done(ctx); err != nil {
+			lastErr = errors.Join(lastErr,
+				fmt.Errorf("terminate transformer pos=%d name='%s': %w",
+					i, transformerCtx.Describe(), err))
+		}
+	}
+	if lastErr != nil {
+		return fmt.Errorf("terminate transformer: %w", lastErr)
 	}
 	return nil
 }

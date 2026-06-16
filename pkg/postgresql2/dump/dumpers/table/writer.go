@@ -13,7 +13,7 @@ func NewWriter() *Writer {
 	return &Writer{}
 }
 
-func (w *Writer) Open(ctx context.Context) error {
+func (w *Writer) Open(ctx context.Context, st core.Storager) error {
 	//TODO implement me
 	panic("implement me")
 }

@@ -25,23 +25,23 @@ import (
 	"github.com/rs/zerolog/log"
 	"golang.org/x/sync/errgroup"
 
-	core "github.com/greenmaskio/greenmask/pkg/common/core"
+	"github.com/greenmaskio/greenmask/pkg/common/core"
 	mysqldbmsdriver "github.com/greenmaskio/greenmask/pkg/mysql/dbmsdriver"
-	mysqlmodels "github.com/greenmaskio/greenmask/pkg/mysql/models"
 	"github.com/greenmaskio/greenmask/pkg/mysql/pool"
 )
 
 var (
 	errConnectionWasNotOpened        = errors.New("connection was not opened")
+	errSessionWasNotSet              = errors.New("dump session is not set: call Init before Open")
+	errUnexpectedEngineResource      = errors.New("unexpected engine resource type")
 	errDataChannelUnexpectedlyClosed = errors.New("data channel was not closed")
 	errUnknownFieldType              = errors.New("unknown field type")
 	errRowColumnCountMismatch        = errors.New("row column count mismatch")
 )
 
 type TableDataReader struct {
-	txPool       *pool.ConsistentTxPool
+	session      core.DumpSession
 	columnLength int
-	connConfig   *mysqlmodels.ConnConfig
 	query        string
 	eg           *errgroup.Group
 	cancel       context.CancelFunc
@@ -54,7 +54,6 @@ type TableDataReader struct {
 
 func NewTableDataReader(
 	table *core.Table,
-	connConfig mysqlmodels.ConnConfig,
 	query string,
 ) *TableDataReader {
 	if len(table.Columns) == 0 {
@@ -66,7 +65,6 @@ func NewTableDataReader(
 	return &TableDataReader{
 		table:        table,
 		query:        query,
-		connConfig:   &connConfig,
 		dataCh:       make(chan [][]byte),
 		errorCh:      make(chan error, 1),
 		columnLength: len(table.Columns),
@@ -161,26 +159,30 @@ func (r *TableDataReader) streamRows(ctx context.Context, conn pool.WorkerConn) 
 	return nil
 }
 
-func (r *TableDataReader) SetTxPool(txPool *pool.ConsistentTxPool) {
-	r.txPool = txPool
-}
-
-// Open opens the stream. The session is ignored on the legacy task-producer
-// path: the connection pool is bound via SetTxPool at construction time.
-func (r *TableDataReader) Open(ctx context.Context, _ core.DumpSession) error {
-	if r.txPool == nil {
-		return fmt.Errorf("transaction pool is not set")
+// Open binds the dump session that owns the engine resources and opens the
+// stream; the connection itself is borrowed lazily when streaming starts.
+func (r *TableDataReader) Open(ctx context.Context, session core.DumpSession) error {
+	if session == nil {
+		return errSessionWasNotSet
 	}
+	r.session = session
 
 	ctx, r.cancel = context.WithCancel(ctx)
 	r.eg, ctx = errgroup.WithContext(ctx)
-	// The borrow is scoped to this goroutine: RunWithConn acquires a pooled
-	// connection, streams over it, and returns it to the pool when the callback
-	// exits (on EOF, error, or Close-triggered cancellation). Any error —
-	// acquisition or streaming — is surfaced to the consumer via errorCh.
+	// The borrow is scoped to this goroutine: RunWithEngineResource acquires a
+	// pooled connection bound to the dump snapshot, streams over it, and returns
+	// it to the pool when the callback exits (on EOF, error, or Close-triggered
+	// cancellation). Any error — acquisition or streaming — is surfaced to the
+	// consumer via errorCh.
 	r.eg.Go(func() error {
 		defer close(r.errorCh)
-		err := r.txPool.RunWithConn(ctx, r.streamRows)
+		err := r.session.RunWithEngineResource(ctx, func(ctx context.Context, res any) error {
+			conn, ok := res.(pool.WorkerConn)
+			if !ok {
+				return fmt.Errorf("%w: %T", errUnexpectedEngineResource, res)
+			}
+			return r.streamRows(ctx, conn)
+		})
 		if err != nil {
 			r.errorCh <- err
 		}

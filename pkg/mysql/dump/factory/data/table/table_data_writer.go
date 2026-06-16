@@ -20,16 +20,16 @@ import (
 
 	"golang.org/x/sync/errgroup"
 
-	core "github.com/greenmaskio/greenmask/pkg/common/core"
+	"github.com/greenmaskio/greenmask/pkg/common/core"
 	"github.com/greenmaskio/greenmask/pkg/common/utils"
-	"github.com/greenmaskio/greenmask/pkg/csv"
 )
 
 const (
-	ExtensionCsv  = "csv"
 	ExtensionSql  = "sql"
 	ExtensionGzip = "gz"
 )
+
+var errStorageWasNotSet = fmt.Errorf("destination storage is not set: call Init before Open")
 
 type RowWriter interface {
 	Write(row [][]byte) error
@@ -49,42 +49,27 @@ type TableDataWriter struct {
 	table     *core.Table
 	enabled   bool
 	pgzip     bool
-	format    core.DumpFormat
 	hexBlob   bool
 }
 
 func NewTableDataWriter(
 	table core.Table,
-	st core.Storager,
 	opts ...Option,
 ) *TableDataWriter {
 	res := &TableDataWriter{
-		st:     st,
-		table:  &table,
-		format: core.DumpFormatInsert,
+		table: &table,
 	}
 
 	for _, opt := range opts {
 		opt(res)
 	}
 
-	ext := ExtensionCsv
-	if res.format == core.DumpFormatInsert {
-		ext = ExtensionSql
-	}
+	ext := ExtensionSql
 	if res.enabled {
 		ext += "." + ExtensionGzip
 	}
 	res.fileName = fmt.Sprintf("%s__%s.%s", table.Schema, table.Name, ext)
 	return res
-}
-
-func WithFormat(format core.DumpFormat) Option {
-	return func(t *TableDataWriter) {
-		if format != "" {
-			t.format = format
-		}
-	}
 }
 
 func WithCompression(enabled bool) Option {
@@ -114,20 +99,19 @@ func (t *TableDataWriter) steam(ctx context.Context) func() error {
 	}
 }
 
-// Open opens the stream. The storage is ignored on the legacy task-producer
-// path: it is bound via the constructor.
-func (t *TableDataWriter) Open(ctx context.Context, _ core.Storager) error {
+// Open binds the destination storage and opens the stream.
+func (t *TableDataWriter) Open(ctx context.Context, st core.Storager) error {
+	if st == nil {
+		return errStorageWasNotSet
+	}
+	t.st = st
 	if t.enabled {
 		t.cw, t.cr = utils.NewGzipPipe(t.pgzip)
 	} else {
 		t.cw, t.cr = utils.NewPlainPipe()
 	}
 
-	if t.format == core.DumpFormatInsert {
-		t.rowWriter = NewInsertWriter(*t.table, t.cw, t.hexBlob)
-	} else {
-		t.rowWriter = csv.NewWriter(t.cw)
-	}
+	t.rowWriter = NewInsertWriter(*t.table, t.cw, t.hexBlob)
 	ctx, t.cancel = context.WithCancel(ctx)
 	t.eg, ctx = errgroup.WithContext(ctx)
 	t.eg.Go(t.steam(ctx))
@@ -178,6 +162,6 @@ func (t *TableDataWriter) Stat() core.DumpedObjectStat {
 		t.cr.GetCount(),
 		t.fileName,
 		compression,
-		t.format,
+		core.DumpFormatInsert,
 	)
 }

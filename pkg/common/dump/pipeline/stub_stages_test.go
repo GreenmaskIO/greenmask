@@ -257,9 +257,20 @@ type stubProcessor struct {
 	calls  int
 }
 
-func (s *stubProcessor) Run(context.Context, core.DumpSession, core.DumpPlan, ...core.DumpProcessorOption) (core.Metadata, error) {
+func (s *stubProcessor) Run(context.Context, core.DumpSession, core.Storager, core.DumpPlan, ...core.DumpProcessorOption) (core.Metadata, error) {
 	s.calls++
 	return s.result, s.err
+}
+
+type stubStorageProvisioner struct {
+	storage core.Storager
+	err     error
+	calls   int
+}
+
+func (s *stubStorageProvisioner) Provision(context.Context, any) (core.Storager, error) {
+	s.calls++
+	return s.storage, s.err
 }
 
 // --- assembly ---------------------------------------------------------------
@@ -286,6 +297,7 @@ type stubSet struct {
 	restoration   *stubRestorationBuilder
 	planAssembler *stubPlanAssembler
 	planValidator *stubPlanValidator
+	storageProv   *stubStorageProvisioner
 	processor     *stubProcessor
 }
 
@@ -311,6 +323,7 @@ func newStubSet() *stubSet {
 		restoration:   &stubRestorationBuilder{},
 		planAssembler: &stubPlanAssembler{},
 		planValidator: &stubPlanValidator{},
+		storageProv:   &stubStorageProvisioner{},
 		processor:     &stubProcessor{},
 	}
 }
@@ -335,6 +348,7 @@ func (s *stubSet) stages() DumpStages {
 		RestorationContextBuilder:   s.restoration,
 		DumpPlanAssembler:           s.planAssembler,
 		DumpPlanValidator:           s.planValidator,
+		StorageProvisioner:          s.storageProv,
 		DumpProcessor:               s.processor,
 	}
 }

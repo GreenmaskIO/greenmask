@@ -5,5 +5,5 @@ import (
 )
 
 type DumpProcessor interface {
-	Run(ctx context.Context, session DumpSession, plan DumpPlan, opts ...DumpProcessorOption) (Metadata, error)
+	Run(ctx context.Context, session DumpSession, st Storager, plan DumpPlan, opts ...DumpProcessorOption) (Metadata, error)
 }

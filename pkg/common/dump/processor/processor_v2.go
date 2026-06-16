@@ -5,14 +5,19 @@ import (
 	"fmt"
 	"time"
 
-	core "github.com/greenmaskio/greenmask/pkg/common/core"
 	"github.com/rs/zerolog/log"
 	"golang.org/x/sync/errgroup"
+
+	"github.com/greenmaskio/greenmask/pkg/common/core"
 )
+
+var _ core.DumpProcessor = (*DefaultDumpProcessorV2)(nil)
 
 type DefaultDumpProcessorV2 struct {
 	objectDumpFactory core.ObjectDumpFactoryRegistry
 	schemaDumpFactory core.SchemaDumpFactoryRegistry
+	st                core.Storager
+	session           core.DumpSession
 	jobs              int
 	engine            core.DBMSEngine
 	greenmaskVersion  string
@@ -81,8 +86,17 @@ func (dr *DefaultDumpProcessorV2) initObjectDumpers(plan core.DumpPlan) ([]core.
 	return res, nil
 }
 
-// Run - runs the dump command.
-func (dr *DefaultDumpProcessorV2) Run(ctx context.Context, plan core.DumpPlan) (core.Metadata, error) {
+// Run - runs the dump command. The session and storage are injected at
+// execution time and forwarded to each object dumper's Dump call.
+func (dr *DefaultDumpProcessorV2) Run(
+	ctx context.Context,
+	session core.DumpSession,
+	st core.Storager,
+	plan core.DumpPlan,
+	_ ...core.DumpProcessorOption,
+) (core.Metadata, error) {
+	dr.session = session
+	dr.st = st
 	startedAt := time.Now()
 
 	schemaDumpTasks, err := dr.initSchemaDumpers(plan)
@@ -234,7 +248,7 @@ func (dr *DefaultDumpProcessorV2) dumpWorker(
 			Any("ObjectMetadata", task.Meta()).
 			Msg("dumping is started")
 
-		stat, err := task.Dump(ctx)
+		stat, err := task.Dump(ctx, dr.session, dr.st)
 		if err != nil {
 			return fmt.Errorf("dump task '%s': %w", task.DebugInfo(), err)
 		}

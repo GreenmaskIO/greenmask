@@ -19,7 +19,12 @@ import (
 )
 
 type ObjectDumper interface {
-	Dump(ctx context.Context) (ObjectDumpStat, error)
+	// Dump executes the object dump. The runtime resources are injected at
+	// execution time: session provides DBMS connections (acquired via
+	// DumpSession.RunWithEngineResource) and st is the destination storage.
+	// Both may be nil for dumpers whose resources were bound at construction
+	// time (the legacy task-producer path).
+	Dump(ctx context.Context, session DumpSession, st Storager) (ObjectDumpStat, error)
 	DebugInfo() string
 	Meta() map[string]any
 }

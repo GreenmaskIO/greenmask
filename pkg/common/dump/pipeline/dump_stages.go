@@ -1,7 +1,7 @@
 package pipeline
 
 import (
-	core "github.com/greenmaskio/greenmask/pkg/common/core"
+	"github.com/greenmaskio/greenmask/pkg/common/core"
 )
 
 // DumpStages represents the complete database dump planning and execution pipeline.
@@ -148,6 +148,7 @@ type DumpStages struct {
 	//   - semantic inheritance
 	//
 	// This stage produces the final semantic dump context.
+	// TODO: Is not required for MVP implementation
 	DerivedDumpContextBuilder core.DerivedDumpContextBuilder
 
 	// DumpContextSnapshotBuilder converts the final DumpContext into a
@@ -174,6 +175,7 @@ type DumpStages struct {
 	//   - UI visualization
 	//   - audit history
 	//   - dry-run analysis
+	// TODO: Is not required for MVP implementation
 	DumpContextDiffer core.DumpContextDiffer
 
 	// DumpContextValidator validates semantic correctness
@@ -216,7 +218,14 @@ type DumpStages struct {
 	//   - subset integrity violations
 	//   - execution deadlocks
 	//   - unsupported runtime combinations
+	// TODO: Is not required for MVP implementation
 	DumpPlanValidator core.DumpPlanValidator
+
+	// StorageProvisioner builds the destination storage for the execution stage
+	// from configuration. Storage is an engine-agnostic, execution-time runtime
+	// resource (like the DB session) — provisioned here and injected into
+	// DumpProcessor.Run, not threaded in at stage-assembly time.
+	StorageProvisioner core.StorageProvisioner
 
 	// DumpProcessor executes the final dump plan.
 	//

@@ -48,11 +48,13 @@ func (c exprCond) Expression() string                   { return c.expr }
 // (covered in the context package tests).
 type cannedTransformer struct{ snap core.TransformationSnapshot }
 
-func (cannedTransformer) SetRecordForDynamicParameters(core.Recorder) {}
-func (cannedTransformer) EvaluateWhen(core.Recorder) (bool, error)    { return true, nil }
-func (cannedTransformer) Init(context.Context) error                  { return nil }
-func (cannedTransformer) GetAffectedColumns() map[int]string          { return nil }
-func (cannedTransformer) Describe() string                            { return "" }
+func (cannedTransformer) SetRecordForDynamicParameters(core.Recorder)    {}
+func (cannedTransformer) EvaluateWhen(core.Recorder) (bool, error)       { return true, nil }
+func (cannedTransformer) Init(context.Context) error                     { return nil }
+func (cannedTransformer) Transform(context.Context, core.Recorder) error { return nil }
+func (cannedTransformer) Done(context.Context) error                     { return nil }
+func (cannedTransformer) GetAffectedColumns() map[int]string             { return nil }
+func (cannedTransformer) Describe() string                               { return "" }
 func (c cannedTransformer) GetSnapshot(int) (core.TransformationSnapshot, error) {
 	return c.snap, nil
 }
