@@ -30,7 +30,11 @@ type ObjectDumper interface {
 }
 
 type SchemaDumper interface {
-	Dump(ctx context.Context) (SchemaDumpStat, error)
+	// Dump executes the schema dump. Like ObjectDumper.Dump, the runtime
+	// resources are injected at execution time: conn carries the connection
+	// attributes the vendor CLI (mysqldump, pg_dump) needs — transformed into
+	// env vars and parameters by the dumper — and st is the destination storage.
+	Dump(ctx context.Context, conn ConnectionConfigurer, st Storager) (SchemaDumpStat, error)
 	DebugInfo() string
 	Meta() map[string]any
 }

@@ -49,7 +49,7 @@ func makeIntrospection(objectIDs []core.ObjectID, tables []core.Table) core.Intr
 // already-computed graph rather than rebuilding it internally.
 func makeDependencyGraph(t *testing.T, introspection core.IntrospectionResult) core.DependencyGraphResult {
 	t.Helper()
-	dg, err := graphbuilder.New().BuildGraph(context.Background(), introspection)
+	dg, err := graphbuilder.New(core.ObjectKindTable).BuildGraph(context.Background(), introspection)
 	require.NoError(t, err)
 	return dg
 }
@@ -124,7 +124,7 @@ func TestBuildSubset_DAGWithAmbiguousTables(t *testing.T) {
 		tableConfig("public", "c", "public.c.id = 1"),
 	}
 
-	b := New(DialectMySQL)
+	b := New(DialectMySQL, core.ObjectKindTable)
 	result, err := b.BuildSubset(context.Background(), core.SubsetBuilderInput{
 		Introspection:   introspection,
 		DependencyGraph: makeDependencyGraph(t, introspection),
@@ -193,7 +193,7 @@ func TestBuildSubset_DAGWithNullableEdges(t *testing.T) {
 		tableConfig("public", "c", "public.c.id = 1"),
 	}
 
-	b := New(DialectMySQL)
+	b := New(DialectMySQL, core.ObjectKindTable)
 	result, err := b.BuildSubset(context.Background(), core.SubsetBuilderInput{
 		Introspection:   introspection,
 		DependencyGraph: makeDependencyGraph(t, introspection),
@@ -263,7 +263,7 @@ func TestBuildSubset_PostgreSQL_DAGWithAmbiguousTables(t *testing.T) {
 		tableConfig("public", "c", "public.c.id = 1"),
 	}
 
-	b := New(DialectPostgres)
+	b := New(DialectPostgres, core.ObjectKindTable)
 	result, err := b.BuildSubset(context.Background(), core.SubsetBuilderInput{
 		Introspection:   introspection,
 		DependencyGraph: makeDependencyGraph(t, introspection),
@@ -322,7 +322,7 @@ func TestBuildSubset_PostgreSQL_DAGWithNullableEdges(t *testing.T) {
 		tableConfig("public", "c", "public.c.id = 1"),
 	}
 
-	b := New(DialectPostgres)
+	b := New(DialectPostgres, core.ObjectKindTable)
 	result, err := b.BuildSubset(context.Background(), core.SubsetBuilderInput{
 		Introspection:   introspection,
 		DependencyGraph: makeDependencyGraph(t, introspection),
@@ -361,7 +361,7 @@ func TestBuildSubset_NoSubsetConditions(t *testing.T) {
 		[]core.Table{tableA, tableB},
 	)
 
-	b := New(DialectMySQL)
+	b := New(DialectMySQL, core.ObjectKindTable)
 	result, err := b.BuildSubset(context.Background(), core.SubsetBuilderInput{
 		Introspection:   introspection,
 		DependencyGraph: makeDependencyGraph(t, introspection),
@@ -375,7 +375,7 @@ func TestBuildSubset_EmptyIntrospection(t *testing.T) {
 	introspection := core.IntrospectionResult{
 		KindsMap: map[core.ObjectKind][]core.Object{},
 	}
-	b := New(DialectMySQL)
+	b := New(DialectMySQL, core.ObjectKindTable)
 	result, err := b.BuildSubset(context.Background(), core.SubsetBuilderInput{
 		Introspection:   introspection,
 		DependencyGraph: makeDependencyGraph(t, introspection),
@@ -402,7 +402,7 @@ func TestBuildSubset_PointerTablePayload(t *testing.T) {
 		tableConfig("public", "a", "public.a.id = 1"),
 	}
 
-	b := New(DialectMySQL)
+	b := New(DialectMySQL, core.ObjectKindTable)
 	result, err := b.BuildSubset(context.Background(), core.SubsetBuilderInput{
 		Introspection:   introspection,
 		DependencyGraph: makeDependencyGraph(t, introspection),
@@ -436,7 +436,7 @@ func TestBuildSubset_ToCommonTablePayload(t *testing.T) {
 		tableConfig("public", "a", "public.a.id = 1"),
 	}
 
-	b := New(DialectMySQL)
+	b := New(DialectMySQL, core.ObjectKindTable)
 	result, err := b.BuildSubset(context.Background(), core.SubsetBuilderInput{
 		Introspection:   introspection,
 		DependencyGraph: makeDependencyGraph(t, introspection),
@@ -462,7 +462,7 @@ func TestBuildSubset_InvalidPayload(t *testing.T) {
 		},
 	}
 
-	b := New(DialectMySQL)
+	b := New(DialectMySQL, core.ObjectKindTable)
 	result, err := b.BuildSubset(context.Background(), core.SubsetBuilderInput{
 		Introspection:   introspection,
 		DependencyGraph: core.DependencyGraphResult{},
@@ -483,7 +483,7 @@ func TestBuildSubset_NilPointerPayload(t *testing.T) {
 		},
 	}
 
-	b := New(DialectMySQL)
+	b := New(DialectMySQL, core.ObjectKindTable)
 	result, err := b.BuildSubset(context.Background(), core.SubsetBuilderInput{
 		Introspection:   introspection,
 		DependencyGraph: core.DependencyGraphResult{},
@@ -501,7 +501,7 @@ func TestBuildSubset_SubsetCondOnlyForMatchingTable(t *testing.T) {
 		tableConfig("public", "nonexistent", "public.nonexistent.id = 1"),
 	}
 
-	b := New(DialectMySQL)
+	b := New(DialectMySQL, core.ObjectKindTable)
 	result, err := b.BuildSubset(context.Background(), core.SubsetBuilderInput{
 		Introspection:   introspection,
 		DependencyGraph: makeDependencyGraph(t, introspection),

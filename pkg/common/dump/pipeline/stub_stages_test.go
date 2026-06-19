@@ -257,7 +257,7 @@ type stubProcessor struct {
 	calls  int
 }
 
-func (s *stubProcessor) Run(context.Context, core.DumpSession, core.Storager, core.DumpPlan, ...core.DumpProcessorOption) (core.Metadata, error) {
+func (s *stubProcessor) Run(context.Context, core.DumpSession, core.ConnectionConfigurer, core.Storager, core.DumpPlan) (core.Metadata, error) {
 	s.calls++
 	return s.result, s.err
 }
@@ -271,6 +271,16 @@ type stubStorageProvisioner struct {
 func (s *stubStorageProvisioner) Provision(context.Context, any) (core.Storager, error) {
 	s.calls++
 	return s.storage, s.err
+}
+
+type stubMetadataWriter struct {
+	err   error
+	calls int
+}
+
+func (s *stubMetadataWriter) Write(context.Context, core.Storager, core.Metadata) error {
+	s.calls++
+	return s.err
 }
 
 // --- assembly ---------------------------------------------------------------
@@ -299,6 +309,7 @@ type stubSet struct {
 	planValidator *stubPlanValidator
 	storageProv   *stubStorageProvisioner
 	processor     *stubProcessor
+	metadataWr    *stubMetadataWriter
 }
 
 func newStubSet() *stubSet {
@@ -325,6 +336,7 @@ func newStubSet() *stubSet {
 		planValidator: &stubPlanValidator{},
 		storageProv:   &stubStorageProvisioner{},
 		processor:     &stubProcessor{},
+		metadataWr:    &stubMetadataWriter{},
 	}
 }
 
@@ -350,6 +362,7 @@ func (s *stubSet) stages() DumpStages {
 		DumpPlanValidator:           s.planValidator,
 		StorageProvisioner:          s.storageProv,
 		DumpProcessor:               s.processor,
+		MetadataWriter:              s.metadataWr,
 	}
 }
 

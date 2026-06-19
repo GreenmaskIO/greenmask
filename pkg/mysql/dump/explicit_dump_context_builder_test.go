@@ -25,6 +25,7 @@ import (
 	core "github.com/greenmaskio/greenmask/pkg/common/core"
 	"github.com/greenmaskio/greenmask/pkg/common/mocks"
 	transformercontext "github.com/greenmaskio/greenmask/pkg/common/transformers/context"
+	schemadump "github.com/greenmaskio/greenmask/pkg/mysql/dump/factory/schema"
 )
 
 // --- test doubles -----------------------------------------------------------
@@ -205,7 +206,7 @@ func TestBuildSchemaDumpSpecs(t *testing.T) {
 				tableObj(3, "warehouse", "items"),
 			),
 		}
-		specs, err := NewExplicitDumpContextBuilder().buildSchemaDumpSpecs(context.Background(), in, new(core.TaskIDSequence))
+		specs, err := NewExplicitDumpContextBuilder(nil).buildSchemaDumpSpecs(context.Background(), in, new(core.TaskIDSequence))
 		require.NoError(t, err)
 
 		// 2 databases x 2 sections, grouped section-first. Every spec carries the
@@ -217,10 +218,10 @@ func TestBuildSchemaDumpSpecs(t *testing.T) {
 
 		assert.Equal(t, []string{"shop", "warehouse", "shop", "warehouse"},
 			[]string{
-				specs[0].Payload.(core.SchemaDumpContextPayload).Name,
-				specs[1].Payload.(core.SchemaDumpContextPayload).Name,
-				specs[2].Payload.(core.SchemaDumpContextPayload).Name,
-				specs[3].Payload.(core.SchemaDumpContextPayload).Name,
+				specs[0].Payload.(schemadump.Payload).Name,
+				specs[1].Payload.(schemadump.Payload).Name,
+				specs[2].Payload.(schemadump.Payload).Name,
+				specs[3].Payload.(schemadump.Payload).Name,
 			})
 		assert.Equal(t,
 			[]core.DumpSection{
@@ -228,10 +229,10 @@ func TestBuildSchemaDumpSpecs(t *testing.T) {
 				core.DumpSectionPostData, core.DumpSectionPostData,
 			},
 			[]core.DumpSection{
-				specs[0].Payload.(core.SchemaDumpContextPayload).Section,
-				specs[1].Payload.(core.SchemaDumpContextPayload).Section,
-				specs[2].Payload.(core.SchemaDumpContextPayload).Section,
-				specs[3].Payload.(core.SchemaDumpContextPayload).Section,
+				specs[0].Payload.(schemadump.Payload).Section,
+				specs[1].Payload.(schemadump.Payload).Section,
+				specs[2].Payload.(schemadump.Payload).Section,
+				specs[3].Payload.(schemadump.Payload).Section,
 			})
 
 		ids := map[core.TaskID]struct{}{}
@@ -252,16 +253,16 @@ func TestBuildSchemaDumpSpecs(t *testing.T) {
 				core.ObjectKindMysqlTable: {1}, // only the shop table is allowed
 			},
 		}
-		specs, err := NewExplicitDumpContextBuilder().buildSchemaDumpSpecs(context.Background(), in, new(core.TaskIDSequence))
+		specs, err := NewExplicitDumpContextBuilder(nil).buildSchemaDumpSpecs(context.Background(), in, new(core.TaskIDSequence))
 		require.NoError(t, err)
 		require.Len(t, specs, 2)
 		for _, s := range specs {
-			assert.Equal(t, "shop", s.Payload.(core.SchemaDumpContextPayload).Name)
+			assert.Equal(t, "shop", s.Payload.(schemadump.Payload).Name)
 		}
 	})
 
 	t.Run("no tables yields no schema specs", func(t *testing.T) {
-		specs, err := NewExplicitDumpContextBuilder().buildSchemaDumpSpecs(
+		specs, err := NewExplicitDumpContextBuilder(nil).buildSchemaDumpSpecs(
 			context.Background(), core.ExplicitDumpContextInput{}, new(core.TaskIDSequence))
 		require.NoError(t, err)
 		assert.Empty(t, specs)
@@ -274,13 +275,13 @@ func TestBuildSchemaDumpSpecs(t *testing.T) {
 				[]core.Object{dbObj(10, "shop"), dbObj(11, "warehouse")},
 			),
 		}
-		specs, err := NewExplicitDumpContextBuilder().buildSchemaDumpSpecs(context.Background(), in, new(core.TaskIDSequence))
+		specs, err := NewExplicitDumpContextBuilder(nil).buildSchemaDumpSpecs(context.Background(), in, new(core.TaskIDSequence))
 		require.NoError(t, err)
 		require.Len(t, specs, 4)
 
 		byName := map[string]core.ObjectID{}
 		for _, s := range specs {
-			byName[s.Payload.(core.SchemaDumpContextPayload).Name] = s.ObjectID
+			byName[s.Payload.(schemadump.Payload).Name] = s.ObjectID
 		}
 		assert.Equal(t, core.ObjectID(10), byName["shop"])
 		assert.Equal(t, core.ObjectID(11), byName["warehouse"])
@@ -464,11 +465,11 @@ func TestBuildDumpContext(t *testing.T) {
 				assert.Equal(t, "orders", ctx.DumpObjectSpecs[1].Name)
 				// One database ("public") -> pre-data + post-data schema specs.
 				require.Len(t, ctx.SchemaDumpSpecs, 2)
-				assert.Equal(t, "public", ctx.SchemaDumpSpecs[0].Payload.(core.SchemaDumpContextPayload).Name)
+				assert.Equal(t, "public", ctx.SchemaDumpSpecs[0].Payload.(schemadump.Payload).Name)
 				assert.Equal(t, core.SchemaObjectKindMysqlDatabase, ctx.SchemaDumpSpecs[0].Kind)
-				assert.Equal(t, core.DumpSectionPreData, ctx.SchemaDumpSpecs[0].Payload.(core.SchemaDumpContextPayload).Section)
+				assert.Equal(t, core.DumpSectionPreData, ctx.SchemaDumpSpecs[0].Payload.(schemadump.Payload).Section)
 				assert.Equal(t, core.SchemaObjectKindMysqlDatabase, ctx.SchemaDumpSpecs[1].Kind)
-				assert.Equal(t, core.DumpSectionPostData, ctx.SchemaDumpSpecs[1].Payload.(core.SchemaDumpContextPayload).Section)
+				assert.Equal(t, core.DumpSectionPostData, ctx.SchemaDumpSpecs[1].Payload.(schemadump.Payload).Section)
 
 				seen := map[core.TaskID]struct{}{}
 				for _, s := range ctx.DumpObjectSpecs {

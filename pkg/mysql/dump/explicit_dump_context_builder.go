@@ -25,7 +25,9 @@ import (
 	"github.com/greenmaskio/greenmask/pkg/common/tabledriver"
 	transformercontext "github.com/greenmaskio/greenmask/pkg/common/transformers/context"
 	"github.com/greenmaskio/greenmask/pkg/common/utils"
+	"github.com/greenmaskio/greenmask/pkg/config"
 	"github.com/greenmaskio/greenmask/pkg/mysql/dbmsdriver"
+	schemadump "github.com/greenmaskio/greenmask/pkg/mysql/dump/factory/schema"
 )
 
 var _ core.ExplicitDumpContextBuilder = (*ExplicitDumpContextBuilder)(nil)
@@ -73,13 +75,15 @@ func (defaultTableInitDeps) InitTransformers(
 
 // ExplicitDumpContextBuilder builds the dump context from explicit configuration.
 type ExplicitDumpContextBuilder struct {
-	deps tableInitDeps
+	deps     tableInitDeps
+	registry core.TransformerRegistry
 }
 
 // NewExplicitDumpContextBuilder builds an ExplicitDumpContextBuilder wired to the
-// production table-init collaborators.
-func NewExplicitDumpContextBuilder() *ExplicitDumpContextBuilder {
-	return &ExplicitDumpContextBuilder{deps: defaultTableInitDeps{}}
+// production table-init collaborators. registry resolves transformer
+// configurations into runtime transformers.
+func NewExplicitDumpContextBuilder(registry core.TransformerRegistry) *ExplicitDumpContextBuilder {
+	return &ExplicitDumpContextBuilder{deps: defaultTableInitDeps{}, registry: registry}
 }
 
 func validateSupportedKinds(kinds []core.ObjectKind) error {
@@ -138,11 +142,21 @@ func payloadToTableDefinition(obj core.Object) (core.Table, error) {
 	if obj.Kind != core.ObjectKindMysqlTable {
 		return core.Table{}, fmt.Errorf("unknown kind %s", obj.Kind)
 	}
-	res, ok := obj.Payload.(core.Table)
-	if !ok {
-		return core.Table{}, fmt.Errorf("unknown payload kind %+v", obj.Payload)
+	// The introspection payload is either a common table or an engine-specific
+	// type that converts itself via ToCommonTable (e.g. *mysqlmodels.Table).
+	switch p := obj.Payload.(type) {
+	case core.Table:
+		return p, nil
+	case *core.Table:
+		if p == nil {
+			return core.Table{}, fmt.Errorf("object %q: nil table payload", obj.Name)
+		}
+		return *p, nil
+	case interface{ ToCommonTable() core.Table }:
+		return p.ToCommonTable(), nil
+	default:
+		return core.Table{}, fmt.Errorf("unsupported table payload type %T", obj.Payload)
 	}
-	return res, nil
 }
 
 func (b *ExplicitDumpContextBuilder) initTable(
@@ -279,7 +293,7 @@ func (b *ExplicitDumpContextBuilder) buildDumpObjectSpecs(
 		subsetQuery := tablebuilder.GetTableSubsetQuery(in.Subset, tableObjects[i])
 
 		res, err := b.initTable(ctx, tableConfig, subsetQuery, tableObjects[i],
-			in.TransformerRegistry, seq)
+			b.registry, seq)
 		if err != nil {
 			return nil, fmt.Errorf("init table %s: %w", tableObjects[i].Name, err)
 		}
@@ -392,6 +406,8 @@ func (b *ExplicitDumpContextBuilder) buildSchemaDumpSpecs(
 
 	databaseIDs := databaseObjectIDs(in)
 
+	compress, pgzip := mysqldumpOutputOptions(in.Config)
+
 	var specs []core.SchemaDumpSpec
 	for _, section := range mysqlSchemaDumpSections {
 		for _, database := range databases {
@@ -399,11 +415,31 @@ func (b *ExplicitDumpContextBuilder) buildSchemaDumpSpecs(
 				TaskID:   seq.Next(),
 				Kind:     core.SchemaObjectKindMysqlDatabase,
 				ObjectID: databaseIDs[database],
-				Payload:  core.SchemaDumpContextPayload{Name: database, Section: section},
+				Payload: schemadump.Payload{
+					Name:        database,
+					Section:     section,
+					Compression: compress,
+					Pgzip:       pgzip,
+				},
 			})
 		}
 	}
 	return specs, nil
+}
+
+// mysqldumpOutputOptions derives the schema-dump output options (compression)
+// from the run configuration. The connection attributes (environment, flags,
+// vendor options) are no longer resolved here: they are injected into the schema
+// dumper at execution time via the ConnectionConfigurer. cfg is the pipeline's
+// config.Config (passed through ExplicitDumpContextInput.Config); a nil/absent
+// config yields defaults (used by unit tests that exercise spec shape without
+// execution).
+func mysqldumpOutputOptions(cfg any) (compress, pgzip bool) {
+	c, ok := cfg.(*config.Config)
+	if !ok || c == nil {
+		return false, false
+	}
+	return c.Dump.Options.Compress, c.Dump.Options.Pgzip
 }
 
 // databaseObjectIDs maps each introspected database name to its runtime

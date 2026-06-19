@@ -122,18 +122,20 @@ func (d *TransformerDefinition) Init(
 		Any(core.MetaKeyConditionScope, "Transformer").
 		Logger().WithContext(ctx)
 
-	var whenCond *conditions.WhenCond
+	tc := &transformercontext.TransformerContext{
+		Transformer:       tran,
+		StaticParameters:  staticParams,
+		DynamicParameters: dynamicParams,
+	}
+	// Only set Condition when a when-expression is configured. Assigning a nil
+	// *WhenCond to the CondEvaluator interface would produce a typed-nil that is
+	// non-nil at the interface level and panics on use (e.g. Expression()).
 	if config.When != "" {
-		whenCond, err = conditions.NewWhenCond(ctx, config.When, utils.Value(driver.Table()))
+		whenCond, err := conditions.NewWhenCond(ctx, config.When, utils.Value(driver.Table()))
 		if err != nil {
 			return nil, err
 		}
+		tc.Condition = whenCond
 	}
-
-	return &transformercontext.TransformerContext{
-		Transformer:       tran,
-		Condition:         whenCond,
-		StaticParameters:  staticParams,
-		DynamicParameters: dynamicParams,
-	}, nil
+	return tc, nil
 }

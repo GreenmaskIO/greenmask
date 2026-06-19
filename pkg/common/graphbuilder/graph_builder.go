@@ -50,11 +50,15 @@ var _ core.DependencyGraphBuilder = (*GraphBuilder)(nil)
 
 // GraphBuilder is the engine-agnostic implementation of
 // core.DependencyGraphBuilder.
-type GraphBuilder struct{}
+type GraphBuilder struct {
+	// tableKind is the engine-specific object kind under which the introspection
+	// result stores table objects (e.g. core.ObjectKindMysqlTable).
+	tableKind core.ObjectKind
+}
 
-// New creates a GraphBuilder.
-func New() *GraphBuilder {
-	return &GraphBuilder{}
+// New creates a GraphBuilder that reads table objects keyed by tableKind.
+func New(tableKind core.ObjectKind) *GraphBuilder {
+	return &GraphBuilder{tableKind: tableKind}
 }
 
 // BuildGraph builds the dependency graph from the introspection result.
@@ -65,7 +69,7 @@ func (b *GraphBuilder) BuildGraph(
 	_ context.Context,
 	introspection core.IntrospectionResult,
 ) (core.DependencyGraphResult, error) {
-	tableObjects := introspection.KindsMap[core.ObjectKindTable]
+	tableObjects := introspection.KindsMap[b.tableKind]
 
 	// tables is positional (index == dense graph vertex position) and is only used
 	// to feed the algorithm packages. Everything the translator exposes is keyed by

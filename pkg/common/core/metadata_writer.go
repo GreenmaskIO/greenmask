@@ -12,13 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package dump
+package core
 
-import "github.com/greenmaskio/greenmask/pkg/testutils"
+import "context"
 
-// The mysqldump/mysql CLI mocks are shared across feature tests; see
-// pkg/testutils/cmd.go. These aliases keep existing &CmdRunnerMock{} usages.
-type (
-	CmdRunnerMock   = testutils.CmdRunnerMock
-	CmdProducerMock = testutils.CmdProducerMock
-)
+// MetadataWriter persists the dump Metadata to storage. It runs as the final
+// pipeline stage, after DumpProcessor produces the in-memory Metadata.
+type MetadataWriter interface {
+	Write(ctx context.Context, st Storager, meta Metadata) error
+}

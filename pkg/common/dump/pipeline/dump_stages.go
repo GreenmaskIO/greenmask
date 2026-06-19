@@ -237,4 +237,9 @@ type DumpStages struct {
 	//   - collects dump metadata
 	//   - produces dump artifacts
 	DumpProcessor core.DumpProcessor
+
+	// MetadataWriter persists the Metadata produced by DumpProcessor to storage
+	// (metadata.json). It is the final execution-stage step and runs after
+	// DumpProcessor, using the same provisioned storage.
+	MetadataWriter core.MetadataWriter
 }

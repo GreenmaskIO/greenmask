@@ -17,6 +17,7 @@ package registry
 import (
 	"fmt"
 
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 	"github.com/greenmaskio/greenmask/pkg/common/transformers/transformers"
 	"github.com/greenmaskio/greenmask/pkg/common/transformers/utils"
 )
@@ -55,6 +56,26 @@ func (tm *TransformerRegistry) MustRegister(definition *utils.TransformerDefinit
 func (tm *TransformerRegistry) Get(name string) (*utils.TransformerDefinition, bool) {
 	t, ok := tm.M[name]
 	return t, ok
+}
+
+// coreAdapter adapts *TransformerRegistry to the core.TransformerRegistry
+// interface, whose Get returns the core.TransformerProvisioner abstraction.
+type coreAdapter struct{ r *TransformerRegistry }
+
+var _ core.TransformerRegistry = coreAdapter{}
+
+func (a coreAdapter) Get(name string) (core.TransformerProvisioner, bool) {
+	d, ok := a.r.Get(name)
+	if !ok {
+		return nil, false
+	}
+	return d, true
+}
+
+// Core returns a core.TransformerRegistry view of this registry, for the V2
+// dump pipeline which consumes the engine-agnostic abstraction.
+func (tm *TransformerRegistry) Core() core.TransformerRegistry {
+	return coreAdapter{r: tm}
 }
 
 func init() {

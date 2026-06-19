@@ -19,11 +19,13 @@ import (
 	"fmt"
 
 	core "github.com/greenmaskio/greenmask/pkg/common/core"
+	"github.com/greenmaskio/greenmask/pkg/common/dump/metadatawriter"
 	"github.com/greenmaskio/greenmask/pkg/common/dump/pipeline"
 	"github.com/greenmaskio/greenmask/pkg/common/filterconfig"
 	"github.com/greenmaskio/greenmask/pkg/common/graphbuilder"
 	"github.com/greenmaskio/greenmask/pkg/common/storageprovisioner"
 	"github.com/greenmaskio/greenmask/pkg/common/subsetbuilder"
+	"github.com/greenmaskio/greenmask/pkg/common/transformers/registry"
 )
 
 var (
@@ -50,14 +52,14 @@ func NewDumpStages() pipeline.DumpStages {
 		ConnectionConfigurerBuilder: &ConnectionConfigurerBuilder{},
 		DumpSessionBuilder:          &DumpSessionBuilder{},
 		Introspector:                NewIntrospectorV2(),
-		DependencyGraphBuilder:      graphbuilder.New(),
+		DependencyGraphBuilder:      graphbuilder.New(core.ObjectKindMysqlTable),
 		DumpMetadataLoader:          &DumpMetadataLoader{},
 		SchemaDriftValidator:        &SchemaDriftValidator{},
-		SubsetBuilder:               subsetbuilder.New(subsetbuilder.DialectMySQL),
+		SubsetBuilder:               subsetbuilder.New(subsetbuilder.DialectMySQL, core.ObjectKindMysqlTable),
 		ConfigEditor:                &ConfigEditor{},
 		ObjectFilter:                NewObjectFilter(),
 		FilterConfigBuilder:         filterconfig.New(),
-		ExplicitDumpContextBuilder:  NewExplicitDumpContextBuilder(),
+		ExplicitDumpContextBuilder:  NewExplicitDumpContextBuilder(registry.DefaultTransformerRegistry.Core()),
 		DerivedDumpContextBuilder:   &DerivedDumpContextBuilder{},
 		DumpContextSnapshotBuilder:  NewDumpContextSnapshotBuilder(),
 		DumpContextDiffer:           &DumpContextDiffer{},
@@ -67,6 +69,7 @@ func NewDumpStages() pipeline.DumpStages {
 		DumpPlanValidator:           &DumpPlanValidator{},
 		StorageProvisioner:          storageprovisioner.New(),
 		DumpProcessor:               &DumpProcessor{},
+		MetadataWriter:              metadatawriter.New(),
 	}
 }
 

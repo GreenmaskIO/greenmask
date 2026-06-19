@@ -39,7 +39,7 @@ type ObjectFilter struct {
 func NewObjectFilter() *ObjectFilter {
 	return &ObjectFilter{
 		filter: objectfilter.New(objectfilter.Options{
-			RelationKinds: []core.ObjectKind{core.ObjectKindTable},
+			RelationKinds: []core.ObjectKind{core.ObjectKindMysqlTable},
 			SystemSchemas: mysqlSystemSchemas,
 			Resolve:       resolveTableIdentity,
 		}),

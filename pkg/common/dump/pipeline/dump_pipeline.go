@@ -302,7 +302,6 @@ func (p *DumpPipeline) Execute(
 	ctx context.Context,
 	runtime *Runtime,
 	state *RunState,
-	opts ...core.DumpProcessorOption,
 ) error {
 	if err := state.Require(StageNamePlanValidation); err != nil {
 		return fmt.Errorf("check requirements: %w", err)
@@ -314,15 +313,26 @@ func (p *DumpPipeline) Execute(
 	if err != nil {
 		return fmt.Errorf("provision storage: %w", err)
 	}
+	// Connection attributes are an execution-time resource too: the schema dumper
+	// transforms them into vendor-CLI env vars and parameters at Dump time. Build
+	// the same configurer used to open the session and inject it into the processor.
+	conn, err := p.Stages.ConnectionConfigurerBuilder.Build(*state.Discovery.Config)
+	if err != nil {
+		return fmt.Errorf("build connection configurer: %w", err)
+	}
 	metadata, err := p.Stages.DumpProcessor.Run(
 		ctx,
 		runtime.Session,
+		conn,
 		st,
 		utils.Value(state.BuildPlan.Plan),
-		opts...,
 	)
 	if err != nil {
 		return fmt.Errorf("dump processor: %w", err)
+	}
+	// Persist the metadata as the final execution step, using the same storage.
+	if err := p.Stages.MetadataWriter.Write(ctx, st, metadata); err != nil {
+		return fmt.Errorf("write metadata: %w", err)
 	}
 	state.ExecuteStage = ExecuteStageArtifacts{
 		Metadata: &metadata,
@@ -366,7 +376,7 @@ func (p *DumpPipeline) withRuntime(
 	return fn(runtime)
 }
 
-func (p *DumpPipeline) RunDump(ctx context.Context, cfg config.Config, opts ...core.DumpProcessorOption) (*RunState, error) {
+func (p *DumpPipeline) RunDump(ctx context.Context, cfg config.Config) (*RunState, error) {
 	state := p.NewRun(cfg)
 	if err := p.withRuntime(ctx, cfg, state, func(runtime *Runtime) error {
 		if err := p.Discover(ctx, runtime, state); err != nil {
@@ -387,7 +397,7 @@ func (p *DumpPipeline) RunDump(ctx context.Context, cfg config.Config, opts ...c
 		if err := p.ValidatePlan(ctx, state); err != nil {
 			return fmt.Errorf("validate plan stage: %w", err)
 		}
-		return p.Execute(ctx, runtime, state, opts...)
+		return p.Execute(ctx, runtime, state)
 	}); err != nil {
 		return nil, err
 	}

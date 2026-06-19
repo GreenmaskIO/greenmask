@@ -16,6 +16,9 @@ package dump
 
 import (
 	"context"
+	"encoding/json"
+	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -28,26 +31,16 @@ import (
 	"github.com/greenmaskio/greenmask/pkg/testutils"
 )
 
-// pipelineEngineSuite drives the v2 dump pipeline (NewDumpPipeline) against a
-// live MySQL server. It verifies which pipeline stages currently function
-// end-to-end and characterises the gaps that still block a full dump.
-//
-// Current status (verified by the tests below):
-//   - Runtime + Discovery (session, introspection, dependency graph, subset)
-//     work against a live server — see TestDiscovery.
-//   - Context building is BLOCKED by an object-kind convention mismatch:
-//     introspection (and the common graph/subset/filter stages) key tables on
-//     core.ObjectKindTable ("table"), but the MySQL ExplicitDumpContextBuilder
-//     reads/validates them as core.ObjectKindMysqlTable ("mysql.table") — see
-//     TestContextBuildingObjectKindGap. This blocks planning and execution, so
-//     the data path (storage provisioner -> DumpProcessor -> table factory ->
-//     writer) cannot yet be exercised end-to-end through the pipeline.
+// pipelineEngineSuite drives the v2 dump pipeline (NewDumpPipeline) end-to-end
+// against a live MySQL server: discovery, planning, schema (DDL) dump, data dump
+// (raw and transformed), and metadata persistence.
 type pipelineEngineSuite struct {
 	testutils.MySQLContainerSuite
 }
 
 func (s *pipelineEngineSuite) SetupSuite() {
-	s.SetImage("mysql:8")
+	// Pin to 8.0 to match the host mysqldump client used by the schema dumper.
+	s.SetImage("mysql:8.0")
 	// Match the flavor-agnostic "port: 3306" startup line (see introspect_engine_test.go).
 	s.SetContainerOptions(testcontainers.CustomizeRequestOption(
 		func(req *testcontainers.GenericContainerRequest) error {
@@ -94,8 +87,7 @@ func (s *pipelineEngineSuite) seedUsers(ctx context.Context) func() {
 
 // TestDiscovery verifies the runtime + discovery half of the pipeline against a
 // live server: connection configuration, session open, introspection,
-// dependency-graph building, previous-metadata load and subset building. These
-// stages all share the generic core.ObjectKindTable convention and work today.
+// dependency-graph building, previous-metadata load and subset building.
 func (s *pipelineEngineSuite) TestDiscovery() {
 	ctx := context.Background()
 	down := s.seedUsers(ctx)
@@ -119,35 +111,112 @@ func (s *pipelineEngineSuite) TestDiscovery() {
 	s.Require().NotNil(state.Discovery.DependencyGraph)
 	s.Require().NotNil(state.Discovery.Subset)
 
-	// The seeded users table is introspected under the generic table kind.
-	tables := state.Discovery.Introspection.KindsMap[core.ObjectKindTable]
+	// The seeded users table is introspected under the engine-specific table kind.
+	tables := state.Discovery.Introspection.KindsMap[core.ObjectKindMysqlTable]
 	var found bool
 	for _, t := range tables {
 		if t.Name == "users" {
 			found = true
 		}
 	}
-	s.True(found, "introspection should discover the users table under ObjectKindTable")
+	s.True(found, "introspection should discover the users table under ObjectKindMysqlTable")
 }
 
-// TestContextBuildingObjectKindGap characterises the bug that currently blocks
-// planning and execution: introspection populates KindsMap under
-// core.ObjectKindTable, but the MySQL ExplicitDumpContextBuilder reads and
-// validates tables as core.ObjectKindMysqlTable, so building the dump context
-// fails with an "unsupported object kind" error.
-//
-// When the builder is reconciled to the generic table kind, this test should be
-// updated to assert success (and the data-execution path can then be verified
-// end-to-end).
-func (s *pipelineEngineSuite) TestContextBuildingObjectKindGap() {
+// TestFullRawDump runs the complete pipeline (RunDump) for an untransformed
+// table and verifies the produced storage artifacts: schema DDL (pre/post-data),
+// table data, and metadata.json.
+func (s *pipelineEngineSuite) TestFullRawDump() {
 	ctx := context.Background()
 	down := s.seedUsers(ctx)
 	defer down()
 
-	cfg := s.baseConfig(ctx, s.T().TempDir())
-	p := NewDumpPipeline()
+	storageDir := s.T().TempDir()
+	cfg := s.baseConfig(ctx, storageDir)
 
-	_, err := p.RunValidateConfig(ctx, cfg)
-	s.Require().Error(err, "context building is currently blocked by the object-kind mismatch")
-	s.ErrorIs(err, errUnsupportedObjectKind)
+	_, err := NewDumpPipeline().RunDump(ctx, cfg)
+	s.Require().NoError(err, "full RunDump should succeed end-to-end")
+
+	files := s.storageFiles(storageDir)
+	s.Contains(files, "schema_pre_testdb.sql", "pre-data schema DDL should be written")
+	s.Contains(files, "schema_post_testdb.sql", "post-data schema DDL should be written")
+	s.Contains(files, "testdb__users.sql", "table data should be written")
+	s.Contains(files, "metadata.json", "metadata should be persisted")
+
+	// Pre-data DDL contains the table definition.
+	s.Contains(s.readFile(files["schema_pre_testdb.sql"]), "CREATE TABLE")
+
+	// Data file carries the original row values.
+	data := s.readFile(files["testdb__users.sql"])
+	for _, name := range []string{"alice", "bob", "carol"} {
+		s.Contains(data, name, "raw data should contain row value %q", name)
+	}
+
+	// Metadata decodes and references both data and schema dumps.
+	var meta core.Metadata
+	s.Require().NoError(json.Unmarshal([]byte(s.readFile(files["metadata.json"])), &meta))
+	s.Equal(core.DBMSEngineMySQL, meta.Engine)
+	s.Require().NotNil(meta.DataDump, "metadata should record the data dump")
+	s.Require().NotNil(meta.SchemaDump, "metadata should record the schema dump")
+	s.NotEmpty(meta.SchemaDump.DumpedDatabaseSchema, "schema dump stats should be present")
+}
+
+// TestFullTransformedDump runs RunDump with a Replace transformer on the name
+// column and verifies the dumped data is transformed (original values gone).
+func (s *pipelineEngineSuite) TestFullTransformedDump() {
+	ctx := context.Background()
+	down := s.seedUsers(ctx)
+	defer down()
+
+	storageDir := s.T().TempDir()
+	cfg := s.baseConfig(ctx, storageDir)
+	cfg.Dump.Transformation = config.TransformationConfig{
+		{
+			Schema: "testdb",
+			Name:   "users",
+			Transformers: config.Transformers{
+				{
+					Name: "Replace",
+					Params: config.StaticParameters{
+						"column": config.ParamsValue("name"),
+						"value":  config.ParamsValue("REDACTED"),
+					},
+				},
+			},
+		},
+	}
+
+	_, err := NewDumpPipeline().RunDump(ctx, cfg)
+	s.Require().NoError(err, "transformed RunDump should succeed end-to-end")
+
+	files := s.storageFiles(storageDir)
+	s.Require().Contains(files, "testdb__users.sql")
+	data := s.readFile(files["testdb__users.sql"])
+
+	s.Contains(data, "REDACTED", "transformed data should contain the replacement value")
+	for _, name := range []string{"alice", "bob", "carol"} {
+		s.NotContains(data, name, "original value %q should be transformed away", name)
+	}
+}
+
+// storageFiles walks the directory-backed storage root and returns a map of
+// base file name to absolute path.
+func (s *pipelineEngineSuite) storageFiles(storageDir string) map[string]string {
+	files := make(map[string]string)
+	err := filepath.WalkDir(storageDir, func(path string, d os.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if !d.IsDir() {
+			files[d.Name()] = path
+		}
+		return nil
+	})
+	s.Require().NoError(err)
+	return files
+}
+
+func (s *pipelineEngineSuite) readFile(path string) string {
+	b, err := os.ReadFile(path)
+	s.Require().NoErrorf(err, "read %s", path)
+	return string(b)
 }

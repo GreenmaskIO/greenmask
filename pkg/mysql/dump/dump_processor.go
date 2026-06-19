@@ -34,15 +34,18 @@ type DumpProcessor struct{}
 func (s *DumpProcessor) Run(
 	ctx context.Context,
 	session core.DumpSession,
+	conn core.ConnectionConfigurer,
 	st core.Storager,
 	plan core.DumpPlan,
-	opts ...core.DumpProcessorOption,
 ) (core.Metadata, error) {
 	objectRegistry, err := factory.NewObjectDumpRegistry()
 	if err != nil {
 		return core.Metadata{}, fmt.Errorf("build object dump registry: %w", err)
 	}
-	schemaRegistry := factory.NewSchemaDumpRegistry()
+	schemaRegistry, err := factory.NewSchemaDumpRegistry()
+	if err != nil {
+		return core.Metadata{}, fmt.Errorf("build schema dump registry: %w", err)
+	}
 
 	proc, err := processor.NewDataDumpProcessorV2(
 		objectRegistry,
@@ -52,5 +55,5 @@ func (s *DumpProcessor) Run(
 	if err != nil {
 		return core.Metadata{}, fmt.Errorf("build dump processor: %w", err)
 	}
-	return proc.Run(ctx, session, st, plan, opts...)
+	return proc.Run(ctx, session, conn, st, plan)
 }

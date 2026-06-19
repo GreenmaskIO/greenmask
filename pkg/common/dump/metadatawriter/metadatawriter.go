@@ -12,13 +12,25 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package dump
+package metadatawriter
 
-import "github.com/greenmaskio/greenmask/pkg/testutils"
+import (
+	"context"
 
-// The mysqldump/mysql CLI mocks are shared across feature tests; see
-// pkg/testutils/cmd.go. These aliases keep existing &CmdRunnerMock{} usages.
-type (
-	CmdRunnerMock   = testutils.CmdRunnerMock
-	CmdProducerMock = testutils.CmdProducerMock
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
+	"github.com/greenmaskio/greenmask/pkg/common/metadata"
 )
+
+var _ core.MetadataWriter = (*Writer)(nil)
+
+// Writer is the engine-agnostic core.MetadataWriter. It serialises the dump
+// Metadata to metadata.json in the destination storage.
+type Writer struct{}
+
+func New() *Writer {
+	return &Writer{}
+}
+
+func (w *Writer) Write(ctx context.Context, st core.Storager, meta core.Metadata) error {
+	return metadata.WriteMetadata(ctx, st, meta)
+}

@@ -35,8 +35,8 @@ var _ core.IntrospectorV2 = (*IntrospectorV2)(nil)
 // config-dependent at the schema level (a schema brought in/out of scope between
 // runs will show up in schema-drift comparison).
 //
-// The resulting KindsMap holds tables under ObjectKindTable (each Object carrying
-// the engine-specific *mysqlmodels.Table payload) and one ObjectKindMysqlDatabase
+// The resulting KindsMap holds tables under ObjectKindMysqlTable (each Object
+// carrying the engine-specific *mysqlmodels.Table payload) and one ObjectKindMysqlDatabase
 // object per allowed schema, so the schema dump can reference databases by
 // runtime ObjectID.
 type IntrospectorV2 struct{}
@@ -74,7 +74,7 @@ func (s *IntrospectorV2) Introspect(ctx context.Context, session core.DumpSessio
 		t := engine.tables[idx]
 		tableObjects = append(tableObjects, core.Object{
 			ID:      core.ObjectID(t.ID),
-			Kind:    core.ObjectKindTable,
+			Kind:    core.ObjectKindMysqlTable,
 			Name:    t.Name,
 			Payload: &t,
 		})
@@ -96,7 +96,7 @@ func (s *IntrospectorV2) Introspect(ctx context.Context, session core.DumpSessio
 		Engine:  core.DBMSEngineMySQL,
 		Version: engine.version,
 		KindsMap: map[core.ObjectKind][]core.Object{
-			core.ObjectKindTable:         tableObjects,
+			core.ObjectKindMysqlTable:    tableObjects,
 			core.ObjectKindMysqlDatabase: databaseObjects,
 		},
 	}, nil

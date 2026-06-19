@@ -18,6 +18,7 @@ type DefaultDumpProcessorV2 struct {
 	schemaDumpFactory core.SchemaDumpFactoryRegistry
 	st                core.Storager
 	session           core.DumpSession
+	conn              core.ConnectionConfigurer
 	jobs              int
 	engine            core.DBMSEngine
 	greenmaskVersion  string
@@ -86,16 +87,19 @@ func (dr *DefaultDumpProcessorV2) initObjectDumpers(plan core.DumpPlan) ([]core.
 	return res, nil
 }
 
-// Run - runs the dump command. The session and storage are injected at
-// execution time and forwarded to each object dumper's Dump call.
+// Run - runs the dump command. The session, connection attributes and storage
+// are injected at execution time and forwarded to each dumper's Dump call (the
+// connection attributes drive the vendor schema CLI; the session drives
+// greenmask's own object dumpers).
 func (dr *DefaultDumpProcessorV2) Run(
 	ctx context.Context,
 	session core.DumpSession,
+	conn core.ConnectionConfigurer,
 	st core.Storager,
 	plan core.DumpPlan,
-	_ ...core.DumpProcessorOption,
 ) (core.Metadata, error) {
 	dr.session = session
+	dr.conn = conn
 	dr.st = st
 	startedAt := time.Now()
 
@@ -131,7 +135,7 @@ func (dr *DefaultDumpProcessorV2) schemaDump(
 			return nil, ctx.Err()
 		default:
 		}
-		stat, err := task.Dump(ctx)
+		stat, err := task.Dump(ctx, dr.conn, dr.st)
 		if err != nil {
 			return nil, fmt.Errorf("dump schema: %w", err)
 		}

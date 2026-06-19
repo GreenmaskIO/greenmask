@@ -116,7 +116,7 @@ func TestGraphBuilder_BuildGraph(t *testing.T) {
 			tableObject(idC, tableC),
 		)
 
-		res, err := graphbuilder.New().BuildGraph(ctx, in)
+		res, err := graphbuilder.New(core.ObjectKindTable).BuildGraph(ctx, in)
 		require.NoError(t, err)
 
 		// Object graph: nodes keyed by introspection ObjectID, payload preserved.
@@ -211,7 +211,7 @@ func TestGraphBuilder_BuildGraph(t *testing.T) {
 			tableObject(idC, tableC),
 		)
 
-		res, err := graphbuilder.New().BuildGraph(ctx, in)
+		res, err := graphbuilder.New(core.ObjectKindTable).BuildGraph(ctx, in)
 		require.NoError(t, err)
 
 		// a and b collapse into the same SCC; c stays separate.
@@ -241,7 +241,7 @@ func TestGraphBuilder_BuildGraph(t *testing.T) {
 	})
 
 	t.Run("empty introspection yields an empty graph", func(t *testing.T) {
-		res, err := graphbuilder.New().BuildGraph(ctx, introspection())
+		res, err := graphbuilder.New(core.ObjectKindTable).BuildGraph(ctx, introspection())
 		require.NoError(t, err)
 		assert.Empty(t, res.ObjectGraph.Nodes)
 		assert.Empty(t, res.CondensedGraph.Nodes)
@@ -262,9 +262,9 @@ func TestGraphBuilder_BuildGraph(t *testing.T) {
 		}
 		in := introspection(tableObject(1, tableA), tableObject(2, tableB))
 
-		first, err := graphbuilder.New().BuildGraph(ctx, in)
+		first, err := graphbuilder.New(core.ObjectKindTable).BuildGraph(ctx, in)
 		require.NoError(t, err)
-		second, err := graphbuilder.New().BuildGraph(ctx, in)
+		second, err := graphbuilder.New(core.ObjectKindTable).BuildGraph(ctx, in)
 		require.NoError(t, err)
 		assert.Equal(t, first, second)
 	})
@@ -301,7 +301,7 @@ func TestGraphBuilder_PayloadExtraction(t *testing.T) {
 			},
 		}
 
-		res, err := graphbuilder.New().BuildGraph(ctx, in)
+		res, err := graphbuilder.New(core.ObjectKindTable).BuildGraph(ctx, in)
 		require.NoError(t, err)
 		require.Len(t, res.ObjectGraph.Nodes, 2)
 		// The original payload (not the converted table) is preserved on the node.
@@ -319,7 +319,7 @@ func TestGraphBuilder_PayloadExtraction(t *testing.T) {
 				},
 			},
 		}
-		res, err := graphbuilder.New().BuildGraph(ctx, in)
+		res, err := graphbuilder.New(core.ObjectKindTable).BuildGraph(ctx, in)
 		require.NoError(t, err)
 		require.Len(t, res.ObjectGraph.Nodes, 1)
 	})
@@ -332,7 +332,7 @@ func TestGraphBuilder_PayloadExtraction(t *testing.T) {
 				},
 			},
 		}
-		_, err := graphbuilder.New().BuildGraph(ctx, in)
+		_, err := graphbuilder.New(core.ObjectKindTable).BuildGraph(ctx, in)
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "unsupported table payload type")
 	})
@@ -346,7 +346,7 @@ func TestGraphBuilder_PayloadExtraction(t *testing.T) {
 				},
 			},
 		}
-		_, err := graphbuilder.New().BuildGraph(ctx, in)
+		_, err := graphbuilder.New(core.ObjectKindTable).BuildGraph(ctx, in)
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "nil table payload")
 	})
@@ -365,7 +365,7 @@ func TestGraphBuilder_EdgeCases(t *testing.T) {
 			tableObject(idEmp, namedTable("employee", fk("employee", "fk_manager", "manager_id"))),
 		)
 
-		res, err := graphbuilder.New().BuildGraph(ctx, in)
+		res, err := graphbuilder.New(core.ObjectKindTable).BuildGraph(ctx, in)
 		require.NoError(t, err)
 
 		// The self-reference is a foreign-key edge from the table to itself.
@@ -400,7 +400,7 @@ func TestGraphBuilder_EdgeCases(t *testing.T) {
 			)),
 		)
 
-		res, err := graphbuilder.New().BuildGraph(ctx, in)
+		res, err := graphbuilder.New(core.ObjectKindTable).BuildGraph(ctx, in)
 		require.NoError(t, err)
 
 		// Both foreign keys appear as distinct parallel object edges.
@@ -429,7 +429,7 @@ func TestGraphBuilder_EdgeCases(t *testing.T) {
 		in := introspection(
 			tableObject(1, namedTable("a", fk("ghost", "fk_ghost", "ghost_id"))),
 		)
-		_, err := graphbuilder.New().BuildGraph(ctx, in)
+		_, err := graphbuilder.New(core.ObjectKindTable).BuildGraph(ctx, in)
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "reference table not found")
 	})
@@ -453,7 +453,7 @@ func TestGraphBuilder_EdgeCases(t *testing.T) {
 			tableObject(idA, namedTable("a", fk("b", "fk_a_b", "b_id"))),
 		)
 
-		res, err := graphbuilder.New().BuildGraph(ctx, in)
+		res, err := graphbuilder.New(core.ObjectKindTable).BuildGraph(ctx, in)
 		require.NoError(t, err)
 
 		// Nodes and the object->SCC map are keyed by the exact sparse IDs.
@@ -495,7 +495,7 @@ func TestGraphBuilder_EdgeCases(t *testing.T) {
 				},
 			},
 		}
-		res, err := graphbuilder.New().BuildGraph(ctx, in)
+		res, err := graphbuilder.New(core.ObjectKindTable).BuildGraph(ctx, in)
 		require.NoError(t, err)
 		require.Len(t, res.ObjectGraph.Nodes, 1)
 		_, ok := res.ObjectGraph.Nodes[1]
@@ -599,7 +599,7 @@ func TestGraphBuilder_Cycles(t *testing.T) {
 			tableObject(id3A, namedTable("table3_a")),
 		)
 
-		res, err := graphbuilder.New().BuildGraph(ctx, in)
+		res, err := graphbuilder.New(core.ObjectKindTable).BuildGraph(ctx, in)
 		require.NoError(t, err)
 
 		// --- object graph: 8 nodes, 9 foreign-key edges ---
@@ -705,7 +705,7 @@ func TestGraphBuilder_Cycles(t *testing.T) {
 			tableObject(idC, namedTable("c", fk("b", "fk_c_b", "b_id"))),
 		)
 
-		res, err := graphbuilder.New().BuildGraph(ctx, in)
+		res, err := graphbuilder.New(core.ObjectKindTable).BuildGraph(ctx, in)
 		require.NoError(t, err)
 
 		// All three tables collapse into a single cyclic SCC.
@@ -798,7 +798,7 @@ func TestGraphBuilder_Cycles(t *testing.T) {
 			tableObject(idD, namedTable("d", fk("c", "fk_d_c", "c_id"))),
 		)
 
-		res, err := graphbuilder.New().BuildGraph(ctx, in)
+		res, err := graphbuilder.New(core.ObjectKindTable).BuildGraph(ctx, in)
 		require.NoError(t, err)
 
 		// One SCC holding all four tables.

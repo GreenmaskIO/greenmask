@@ -49,12 +49,16 @@ type sccQueryBuilder interface {
 // SubsetBuilder implements core.SubsetBuilder.
 type SubsetBuilder struct {
 	dialect Dialect
+	// tableKind is the engine-specific object kind under which the introspection
+	// result stores table objects (e.g. core.ObjectKindMysqlTable).
+	tableKind core.ObjectKind
 }
 
-// New creates a SubsetBuilder for the given SQL dialect.
+// New creates a SubsetBuilder for the given SQL dialect. tableKind is the object
+// kind under which the introspection result stores tables.
 // Table configs carrying subset_conds are passed per-call via SubsetBuilderInput.
-func New(dialect Dialect) *SubsetBuilder {
-	return &SubsetBuilder{dialect: dialect}
+func New(dialect Dialect, tableKind core.ObjectKind) *SubsetBuilder {
+	return &SubsetBuilder{dialect: dialect, tableKind: tableKind}
 }
 
 // BuildSubset generates WHERE-clause queries for every table reachable from a
@@ -66,7 +70,7 @@ func (b *SubsetBuilder) BuildSubset(
 	_ context.Context,
 	in core.SubsetBuilderInput,
 ) (core.SubsetResult, error) {
-	subsetConds := buildSubsetCondsMap(in.Introspection, in.TableConfigs)
+	subsetConds := buildSubsetCondsMap(in.Introspection, in.TableConfigs, b.tableKind)
 	subgraphs := searchSubsetGraphs(in.DependencyGraph, subsetConds)
 
 	subsetMap := make(map[core.ObjectID]string)
@@ -109,9 +113,10 @@ func buildSubsetQuery(
 func buildSubsetCondsMap(
 	introspection core.IntrospectionResult,
 	tableConfigs []core.TableConfig,
+	tableKind core.ObjectKind,
 ) map[core.ObjectID][]string {
 	nameToID := make(map[string]core.ObjectID)
-	for _, obj := range introspection.KindsMap[core.ObjectKindTable] {
+	for _, obj := range introspection.KindsMap[tableKind] {
 		if tbl, err := tableFromPayload(obj.Payload); err == nil {
 			nameToID[tbl.Schema+"."+tbl.Name] = obj.ID
 		}
