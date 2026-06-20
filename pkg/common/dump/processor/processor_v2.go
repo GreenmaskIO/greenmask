@@ -97,7 +97,11 @@ func (dr *DefaultDumpProcessorV2) Run(
 	conn core.ConnectionConfigurer,
 	st core.Storager,
 	plan core.DumpPlan,
+	instruction core.DumpInstruction,
 ) (core.Metadata, error) {
+	if instruction.Jobs > 0 {
+		dr.jobs = instruction.Jobs
+	}
 	dr.session = session
 	dr.conn = conn
 	dr.st = st

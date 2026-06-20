@@ -320,12 +320,17 @@ func (p *DumpPipeline) Execute(
 	if err != nil {
 		return fmt.Errorf("build connection configurer: %w", err)
 	}
+	instruction, err := p.Stages.DumpInstructionBuilder.Build(ctx, *state.Discovery.Config)
+	if err != nil {
+		return fmt.Errorf("build dump instruction: %w", err)
+	}
 	metadata, err := p.Stages.DumpProcessor.Run(
 		ctx,
 		runtime.Session,
 		conn,
 		st,
 		utils.Value(state.BuildPlan.Plan),
+		instruction,
 	)
 	if err != nil {
 		return fmt.Errorf("dump processor: %w", err)

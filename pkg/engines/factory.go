@@ -19,13 +19,16 @@ import (
 	"fmt"
 
 	core "github.com/greenmaskio/greenmask/pkg/common/core"
+	"github.com/greenmaskio/greenmask/pkg/common/dump/pipeline"
 	"github.com/greenmaskio/greenmask/pkg/common/transformers/registry"
 	"github.com/greenmaskio/greenmask/pkg/common/utils"
 	"github.com/greenmaskio/greenmask/pkg/config"
 	mysqldump "github.com/greenmaskio/greenmask/pkg/mysql/cmdrun/dump"
 	mysqlrestore "github.com/greenmaskio/greenmask/pkg/mysql/cmdrun/restore"
+	mysqldumpstages "github.com/greenmaskio/greenmask/pkg/mysql/dump"
 	pgdump "github.com/greenmaskio/greenmask/pkg/postgresql/cmdrun/dump"
 	pgrestore "github.com/greenmaskio/greenmask/pkg/postgresql/cmdrun/restore"
+	pgdump2 "github.com/greenmaskio/greenmask/pkg/postgresql2/dump"
 )
 
 var errUnsupportedEngine = errors.New("unsupported DBMS engine")
@@ -42,7 +45,7 @@ func NewDumper(cfg *config.Config, st core.Storager) (Dumper, error) {
 			mysqldump.GetMySQLDumpOpts(cfg)...,
 		)
 	case core.DBMSEnginePostgreSQL:
-		return pgdump.New(cfg, st)
+		return pgdump.New(cfg, registry.DefaultTransformerRegistry, st, utils.NewDefaultCmdProducer())
 	default:
 		return nil, fmt.Errorf("engine %q: %w", cfg.Engine, errUnsupportedEngine)
 	}
@@ -56,6 +59,20 @@ func NewRestorer(cfg *config.Config, st core.Storager, dumpID core.DumpID) (Rest
 		return mysqlrestore.NewRestore(cfg, st, dumpID, utils.NewDefaultCmdProducer()), nil
 	case core.DBMSEnginePostgreSQL:
 		return pgrestore.New(cfg, st, dumpID)
+	default:
+		return nil, fmt.Errorf("engine %q: %w", cfg.Engine, errUnsupportedEngine)
+	}
+}
+
+// NewDumpPipeline returns the engine-specific DumpPipeline for cfg.Engine.
+// Unlike NewDumper, storage is NOT passed here — the pipeline provisions it
+// internally during Execute via StorageProvisioner.
+func NewDumpPipeline(cfg *config.Config) (*pipeline.DumpPipeline, error) {
+	switch cfg.Engine {
+	case core.DBMSEngineMySQL:
+		return mysqldumpstages.NewDumpPipeline(), nil
+	case core.DBMSEnginePostgreSQL:
+		return pgdump2.NewDumpPipeline()
 	default:
 		return nil, fmt.Errorf("engine %q: %w", cfg.Engine, errUnsupportedEngine)
 	}
@@ -79,7 +96,7 @@ func NewValidator(cfg *config.Config, st core.Storager) (Validator, error) {
 			opts...,
 		)
 	case core.DBMSEnginePostgreSQL:
-		return pgdump.NewValidator(cfg, st)
+		return pgdump.NewValidator(cfg, registry.DefaultTransformerRegistry, st, utils.NewDefaultCmdProducer())
 	default:
 		return nil, fmt.Errorf("engine %q: %w", cfg.Engine, errUnsupportedEngine)
 	}

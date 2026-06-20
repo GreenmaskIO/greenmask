@@ -37,6 +37,7 @@ func (s *DumpProcessor) Run(
 	conn core.ConnectionConfigurer,
 	st core.Storager,
 	plan core.DumpPlan,
+	instruction core.DumpInstruction,
 ) (core.Metadata, error) {
 	objectRegistry, err := factory.NewObjectDumpRegistry()
 	if err != nil {
@@ -47,13 +48,18 @@ func (s *DumpProcessor) Run(
 		return core.Metadata{}, fmt.Errorf("build schema dump registry: %w", err)
 	}
 
+	opts := []processor.OptionV2{}
+	if instruction.Jobs > 0 {
+		opts = append(opts, processor.WithJobsV2(instruction.Jobs))
+	}
 	proc, err := processor.NewDataDumpProcessorV2(
 		objectRegistry,
 		schemaRegistry,
 		core.DBMSEngineMySQL,
+		opts...,
 	)
 	if err != nil {
 		return core.Metadata{}, fmt.Errorf("build dump processor: %w", err)
 	}
-	return proc.Run(ctx, session, conn, st, plan)
+	return proc.Run(ctx, session, conn, st, plan, instruction)
 }

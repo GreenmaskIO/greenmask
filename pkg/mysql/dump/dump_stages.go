@@ -68,6 +68,7 @@ func NewDumpStages() pipeline.DumpStages {
 		DumpPlanAssembler:           &DumpPlanAssembler{},
 		DumpPlanValidator:           &DumpPlanValidator{},
 		StorageProvisioner:          storageprovisioner.New(),
+		DumpInstructionBuilder:      &DumpInstructionBuilder{},
 		DumpProcessor:               &DumpProcessor{},
 		MetadataWriter:              metadatawriter.New(),
 	}

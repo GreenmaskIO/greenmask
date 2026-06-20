@@ -211,7 +211,7 @@ func TestRun_schemaDump(t *testing.T) {
 			t.Cleanup(func() { schemaReg.AssertExpectations(t) })
 
 			proc := newProc(t, &mockObjectRegistry{}, schemaReg)
-			meta, err := proc.Run(context.Background(), nil, nil, nil, core.DumpPlan{SchemaDumpSpecs: tc.specs})
+			meta, err := proc.Run(context.Background(), nil, nil, nil, core.DumpPlan{SchemaDumpSpecs: tc.specs}, core.DumpInstruction{})
 
 			if tc.wantErr != "" {
 				require.Error(t, err)
@@ -311,7 +311,7 @@ func TestRun_dataDump(t *testing.T) {
 			t.Cleanup(func() { objReg.AssertExpectations(t) })
 
 			proc := newProc(t, objReg, &mockSchemaRegistry{}, WithJobsV2(tc.jobs))
-			meta, err := proc.Run(context.Background(), nil, nil, nil, core.DumpPlan{DumpObjectSpecs: tc.specs})
+			meta, err := proc.Run(context.Background(), nil, nil, nil, core.DumpPlan{DumpObjectSpecs: tc.specs}, core.DumpInstruction{})
 
 			if tc.wantErr != "" {
 				require.Error(t, err)
@@ -348,7 +348,7 @@ func TestRun_parallelWorkers_allTasksDumped(t *testing.T) {
 	objReg.On("New", mock.Anything, mock.Anything).Return(dumper, nil)
 
 	proc := newProc(t, objReg, &mockSchemaRegistry{}, WithJobsV2(jobs))
-	_, err := proc.Run(context.Background(), nil, nil, nil, core.DumpPlan{DumpObjectSpecs: specs})
+	_, err := proc.Run(context.Background(), nil, nil, nil, core.DumpPlan{DumpObjectSpecs: specs}, core.DumpInstruction{})
 	require.NoError(t, err)
 
 	dumper.AssertNumberOfCalls(t, "Dump", taskCount)
@@ -378,7 +378,7 @@ func TestRun_contextCancelled_betweenSchemaTasks(t *testing.T) {
 	proc := newProc(t, &mockObjectRegistry{}, schemaReg)
 	_, err := proc.Run(ctx, nil, nil, nil, core.DumpPlan{
 		SchemaDumpSpecs: []core.SchemaDumpSpec{schemaSpec(1), schemaSpec(2)},
-	})
+	}, core.DumpInstruction{})
 
 	require.Error(t, err)
 	assert.ErrorIs(t, err, context.Canceled)
@@ -409,7 +409,7 @@ func TestRun_contextCancelled_duringDataDump(t *testing.T) {
 
 	go func() { time.Sleep(10 * time.Millisecond); cancel() }()
 
-	_, err := proc.Run(ctx, nil, nil, nil, core.DumpPlan{DumpObjectSpecs: []core.ObjectDumpSpec{objectSpec(1)}})
+	_, err := proc.Run(ctx, nil, nil, nil, core.DumpPlan{DumpObjectSpecs: []core.ObjectDumpSpec{objectSpec(1)}}, core.DumpInstruction{})
 	require.Error(t, err)
 	assert.ErrorIs(t, err, context.Canceled)
 }
@@ -442,7 +442,7 @@ func TestRun_metadataFields(t *testing.T) {
 	}
 
 	before := time.Now()
-	meta, err := p.Run(context.Background(), nil, nil, nil, plan)
+	meta, err := p.Run(context.Background(), nil, nil, nil, plan, core.DumpInstruction{})
 	after := time.Now()
 
 	require.NoError(t, err)
@@ -475,10 +475,10 @@ func TestRun_processorIsReusable(t *testing.T) {
 	proc := newProc(t, objReg, &mockSchemaRegistry{})
 	plan := core.DumpPlan{DumpObjectSpecs: []core.ObjectDumpSpec{objectSpec(1)}}
 
-	_, err := proc.Run(context.Background(), nil, nil, nil, plan)
+	_, err := proc.Run(context.Background(), nil, nil, nil, plan, core.DumpInstruction{})
 	require.NoError(t, err)
 
-	_, err = proc.Run(context.Background(), nil, nil, nil, plan)
+	_, err = proc.Run(context.Background(), nil, nil, nil, plan, core.DumpInstruction{})
 	require.NoError(t, err)
 
 	// New and Dump each called once per Run.

@@ -12,24 +12,26 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package cli
+package dump
 
 import (
 	"context"
 	"fmt"
 
-	"github.com/greenmaskio/greenmask/pkg/engines"
+	"github.com/greenmaskio/greenmask/pkg/common/core"
+	"github.com/greenmaskio/greenmask/pkg/config"
 )
 
-func (g *Cli) Dump(ctx context.Context) error {
-	if err := g.initInfrastructure(); err != nil {
-		return fmt.Errorf("setup infrastructure: %w", err)
+var _ core.DumpInstructionBuilder = (*DumpInstructionBuilder)(nil)
+
+type DumpInstructionBuilder struct{}
+
+func (b *DumpInstructionBuilder) Build(_ context.Context, cfg any) (core.DumpInstruction, error) {
+	c, ok := cfg.(config.Config)
+	if !ok {
+		return core.DumpInstruction{}, fmt.Errorf("unexpected config type %T, want config.Config", cfg)
 	}
-	ctx = SetupContext(ctx, g.cfg)
-	p, err := engines.NewDumpPipeline(g.cfg)
-	if err != nil {
-		return fmt.Errorf("create dump pipeline: %w", err)
-	}
-	_, err = p.RunDump(ctx, *g.cfg)
-	return err
+	return core.DumpInstruction{
+		Jobs: c.Dump.Options.Jobs,
+	}, nil
 }

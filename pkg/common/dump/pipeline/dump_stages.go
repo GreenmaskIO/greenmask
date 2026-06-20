@@ -227,6 +227,12 @@ type DumpStages struct {
 	// DumpProcessor.Run, not threaded in at stage-assembly time.
 	StorageProvisioner core.StorageProvisioner
 
+	// DumpInstructionBuilder extracts execution-time parameters from the dump
+	// config (e.g. parallelism, compression) and assembles them into a
+	// DumpInstruction that is passed to DumpProcessor.Run.
+	// It runs immediately before DumpProcessor in the Execute stage.
+	DumpInstructionBuilder core.DumpInstructionBuilder
+
 	// DumpProcessor executes the final dump plan.
 	//
 	// This stage:

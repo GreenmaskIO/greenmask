@@ -23,7 +23,7 @@ services:
       ORIGINAL_DB_PORT: "3306"
     platform: linux/amd64
     build:
-      context: docker/greenmask/mysql/filldb
+      context: ./filldb
     depends_on:
       playground-mysql-db-original:
         condition: service_started
@@ -70,7 +70,7 @@ services:
 
   greenmask:
     volumes:
-      - ./playground/mysql:/var/lib/playground
+      - .:/var/lib/playground
     image: "greenmask/greenmask:mysql-8.0-v1.0.0b1"
     working_dir: /var/lib/playground
     environment:
@@ -97,7 +97,7 @@ services:
   greenmask-from-source:
     working_dir: /var/lib/playground
     volumes:
-      - ./playground/mysql:/var/lib/playground
+      - .:/var/lib/playground
     image: greenmask-from-source:latest
     pull_policy: never
     environment:

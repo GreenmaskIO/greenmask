@@ -23,8 +23,8 @@ import (
 
 	"github.com/olekukonko/tablewriter"
 
+	"github.com/greenmaskio/greenmask/pkg/common/commands/listdump"
 	core "github.com/greenmaskio/greenmask/pkg/common/core"
-	"github.com/greenmaskio/greenmask/pkg/common/listdump"
 	"github.com/greenmaskio/greenmask/pkg/common/utils"
 	"github.com/greenmaskio/greenmask/pkg/config"
 )

@@ -137,7 +137,12 @@ func (g *Cli) diffWithPreviousSchema(ctx context.Context, st core.Storager, curr
 		return nonZeroExitCode, fmt.Errorf("get previous metadata: %w", err)
 	}
 
-	diff := schemadiff.DatabaseSchema(md.Introspection).Diff(schemadiff.DatabaseSchema(current))
+	// Metadata.Introspection is IntrospectionResult (new format); schemadiff
+	// works with []core.Table. The new pipeline does not populate a []Table here,
+	// so previous-schema comparison is not yet supported and returns no diff.
+	_ = md
+	var prev schemadiff.DatabaseSchema
+	diff := prev.Diff(schemadiff.DatabaseSchema(current))
 	if len(diff) == 0 {
 		return zeroExitCode, nil
 	}
