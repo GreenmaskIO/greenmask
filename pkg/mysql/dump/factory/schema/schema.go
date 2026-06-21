@@ -221,6 +221,7 @@ func (d *dumper) Dump(ctx context.Context, conn core.ConnectionConfigurer, st co
 	}
 
 	return core.SchemaDumpStat{
+		Kind:           core.SchemaObjectKindMysqlDatabase,
 		DatabaseName:   d.database,
 		FileName:       fileName,
 		Section:        d.section,

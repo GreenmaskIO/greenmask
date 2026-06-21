@@ -78,9 +78,18 @@ func (p *RestorePipeline) Execute(
 	}
 	state.Metadata = &meta
 
+	if err := validateDatabaseRemap(state.Config, meta.Databases); err != nil {
+		return fmt.Errorf("validate database remap: %w", err)
+	}
+
 	instr, err := p.Stages.RestoreInstructionBuilder.Build(ctx, state.Config)
 	if err != nil {
 		return fmt.Errorf("build restore instruction: %w", err)
+	}
+
+	plan, err := p.Stages.RestorePlanBuilder.Build(ctx, meta)
+	if err != nil {
+		return fmt.Errorf("build restore plan: %w", err)
 	}
 
 	// Build connection configurer a second time so the processor has access to
@@ -95,7 +104,7 @@ func (p *RestorePipeline) Execute(
 		Session:     runtime.Session,
 		Conn:        conn,
 		St:          st,
-		Meta:        meta,
+		Plan:        plan,
 		Instruction: instr,
 	}); err != nil {
 		return fmt.Errorf("restore processor: %w", err)
@@ -148,4 +157,30 @@ func (p *RestorePipeline) RunRestore(
 		return nil, err
 	}
 	return state, nil
+}
+
+// validateDatabaseRemap enforces the DatabaseReplaceMode contract.
+// In strict mode every database present in the dump must have an explicit entry
+// in RemapDatabase; in relaxed mode unmapped databases are passed through as-is.
+func validateDatabaseRemap(cfg config.Config, dumpDatabases []string) error {
+	opts := cfg.Restore.Options
+	if opts.DatabaseReplaceMode != core.DatabaseReplaceModeStrict {
+		return nil
+	}
+	if len(opts.RemapDatabase) == 0 {
+		return nil
+	}
+	var missing []string
+	for _, db := range dumpDatabases {
+		if _, ok := opts.RemapDatabase[db]; !ok {
+			missing = append(missing, db)
+		}
+	}
+	if len(missing) > 0 {
+		return fmt.Errorf(
+			"database-replace-mode is %q but the following databases have no remap entry: %v",
+			core.DatabaseReplaceModeStrict, missing,
+		)
+	}
+	return nil
 }

@@ -9,6 +9,7 @@ import (
 	"golang.org/x/sync/errgroup"
 
 	"github.com/greenmaskio/greenmask/pkg/common/core"
+	"github.com/greenmaskio/greenmask/pkg/common/heartbeat"
 )
 
 var _ core.DumpProcessor = (*DefaultDumpProcessorV2)(nil)
@@ -94,7 +95,7 @@ func (dr *DefaultDumpProcessorV2) initObjectDumpers(plan core.DumpPlan) ([]core.
 func (dr *DefaultDumpProcessorV2) Run(
 	ctx context.Context,
 	input core.DumpRunInput,
-) (core.Metadata, error) {
+) (meta core.Metadata, err error) {
 	if err := input.Validate(); err != nil {
 		return core.Metadata{}, fmt.Errorf("validate dump run input: %w", err)
 	}
@@ -107,6 +108,24 @@ func (dr *DefaultDumpProcessorV2) Run(
 	// callers pass root storage and DumpID without knowing the layout.
 	dr.st = input.St.SubStorage(string(input.DumpID), true)
 	startedAt := time.Now()
+
+	hbInterval := input.Instruction.HeartbeatInterval
+	if hbInterval <= 0 {
+		hbInterval = heartbeat.DefaultWriteInterval
+	}
+	hbw := heartbeat.NewWorker(heartbeat.NewWriter(dr.st)).SetInterval(hbInterval)
+	hbEg, hbEgCtx := errgroup.WithContext(ctx)
+	hbEg.Go(hbw.Run(hbEgCtx))
+	defer func() {
+		status := heartbeat.StatusDone
+		if err != nil {
+			status = heartbeat.StatusFailed
+		}
+		hbw.Terminate(status)
+		if waitErr := hbEg.Wait(); waitErr != nil {
+			log.Ctx(ctx).Warn().Err(waitErr).Msg("heartbeat worker error")
+		}
+	}()
 
 	schemaDumpTasks, err := dr.initSchemaDumpers(input.Plan)
 	if err != nil {
@@ -309,6 +328,7 @@ func (dr *DefaultDumpProcessorV2) buildDataDumpMetadata(
 			Filename:         s.ObjectStat.Filename,
 			RecordCount:      s.RecordCount,
 			Compression:      s.ObjectStat.Compression,
+			Format:           s.ObjectStat.Format,
 		}
 	}
 	dataDumpStat := core.DataDumpStat{

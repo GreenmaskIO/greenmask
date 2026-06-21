@@ -1,3 +1,17 @@
+// Copyright 2025 Greenmask
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package dump
 
 import (
@@ -8,32 +22,30 @@ import (
 	"github.com/greenmaskio/greenmask/pkg/mysql/pool"
 )
 
+var _ core.DatabaseSessionBuilder = (*DumpSessionBuilder)(nil)
+
+// DumpSessionBuilder opens a ConsistentTxPool for a MySQL dump session.
+// It type-asserts cfg.ConnectionConfig() to *DumpConnectionConfig directly —
+// no intermediate interface — so the pool package stays DBMS-agnostic.
 type DumpSessionBuilder struct{}
 
 func (b *DumpSessionBuilder) Open(ctx context.Context, cfg core.ConnectionConfigurer) (core.DatabaseSession, error) {
-	c, ok := cfg.ConnectionConfig().(*DumpConnectionConfig)
+	cc, ok := cfg.ConnectionConfig().(*DumpConnectionConfig)
 	if !ok {
-		return nil, fmt.Errorf("unexpected connection config type %T, want *DumpConnectionConfig", cfg.ConnectionConfig())
+		return nil, fmt.Errorf("dump session builder: expected *DumpConnectionConfig, got %T", cfg.ConnectionConfig())
 	}
-
-	connCfg, err := c.MySQL.ConnectionConfig(c.Common.SSL)
+	connCfg, err := cc.MySQL.ConnectionConfig(cc.Common.SSL)
 	if err != nil {
-		return nil, fmt.Errorf("build mysql connection config: %w", err)
+		return nil, fmt.Errorf("build mysql dump connection config: %w", err)
 	}
-
-	var poolOpts []pool.Option
-	if c.MySQL.PoolHeartbeatInterval > 0 {
-		poolOpts = append(poolOpts, pool.WithHeartbeat(c.MySQL.PoolHeartbeatInterval))
+	var opts []pool.Option
+	if cc.MySQL.PoolHeartbeatInterval > 0 {
+		opts = append(opts, pool.WithHeartbeat(cc.MySQL.PoolHeartbeatInterval))
 	}
-	if c.MySQL.PoolHeartbeatTimeout > 0 {
-		poolOpts = append(poolOpts, pool.WithHeartbeatTimeout(c.MySQL.PoolHeartbeatTimeout))
+	if cc.MySQL.PoolHeartbeatTimeout > 0 {
+		opts = append(opts, pool.WithHeartbeatTimeout(cc.MySQL.PoolHeartbeatTimeout))
 	}
-
-	// The pool is itself the DatabaseSession implementation. Init establishes the
-	// consistent snapshot across all worker connections and the shared meta
-	// transaction; on failure it cleans up the connections it managed to open, so
-	// the caller does not need to Close a failed pool.
-	p := pool.NewConsistentTxPool(connCfg, c.ConnectionPoolSize, poolOpts...)
+	p := pool.NewConsistentTxPool(connCfg, cc.ConnectionPoolSize, opts...)
 	if err := p.Init(ctx); err != nil {
 		return nil, fmt.Errorf("init mysql dump session pool: %w", err)
 	}

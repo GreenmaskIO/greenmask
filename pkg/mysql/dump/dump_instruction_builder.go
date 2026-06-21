@@ -32,6 +32,7 @@ func (b *DumpInstructionBuilder) Build(_ context.Context, cfg any) (core.DumpIns
 		return core.DumpInstruction{}, fmt.Errorf("unexpected config type %T, want config.Config", cfg)
 	}
 	return core.DumpInstruction{
-		Jobs: c.Dump.Options.Jobs,
+		Jobs:              c.Dump.Options.Jobs,
+		HeartbeatInterval: c.Common.HeartbeatInterval,
 	}, nil
 }

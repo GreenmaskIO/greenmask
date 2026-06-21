@@ -79,9 +79,6 @@ var (
 			if err := fType.Validate(); err != nil {
 				log.Fatal().Err(err).Msg("list-dumps command failed")
 			}
-			if err := cli.RunListDumps(rootCmd.MustGetConfig(), quiet, fType, f); err != nil {
-				log.Fatal().Err(err).Msg("list-dumps command failed")
-			}
 			cmdRun := cli.New(rootCmd.MustGetConfig()).
 				ForListDumps(quiet, fType, f)
 			if err := cmdRun.ListDumps(context.Background()); err != nil {

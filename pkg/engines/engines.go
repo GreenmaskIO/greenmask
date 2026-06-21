@@ -48,12 +48,6 @@ type Dumper interface {
 	GetDumpID() core.DumpID
 }
 
-// Restorer is the engine-level restore orchestrator.
-// It mirrors the exported methods of pkg/mysql/cli/restore.Restore.
-type Restorer interface {
-	Run(ctx context.Context) error
-}
-
 // Validator is the engine-level validate orchestrator.
 //
 // Unlike Dumper, Validator exposes a focused set of methods oriented around

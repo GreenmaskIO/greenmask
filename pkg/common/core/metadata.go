@@ -37,6 +37,7 @@ type RestorationItem struct {
 	ObjectDefinition []byte      `json:"object_definition"`
 	RecordCount      int64       `json:"record_count"`
 	Compression      Compression `json:"compression"`
+	Format           DumpFormat  `json:"format"`
 }
 
 type RestorationContext struct {

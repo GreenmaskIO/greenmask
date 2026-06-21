@@ -1,12 +1,16 @@
 package core
 
-import "context"
+import (
+	"context"
+	"time"
+)
 
 // DumpInstruction carries execution-time parameters for the dump processor.
 // It is produced by DumpInstructionBuilder just before execution and passed
 // into DumpProcessor.Run alongside the plan.
 type DumpInstruction struct {
-	Jobs int
+	Jobs              int
+	HeartbeatInterval time.Duration
 }
 
 // DumpInstructionBuilder extracts execution parameters from the dump config

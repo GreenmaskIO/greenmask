@@ -8,7 +8,7 @@ type RestoreRunInput struct {
 	Session     DatabaseSession
 	Conn        ConnectionConfigurer
 	St          Storager
-	Meta        Metadata
+	Plan        RestorePlan
 	Instruction RestoreInstruction
 }
 

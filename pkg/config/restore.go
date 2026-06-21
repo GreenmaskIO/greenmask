@@ -58,6 +58,9 @@ type MysqlRestoreConfig struct {
 }
 
 func (r *MysqlRestoreConfig) Validate() error {
+	if r.InsertIgnore && r.InsertReplace {
+		return fmt.Errorf("insert-ignore and insert-replace are mutually exclusive")
+	}
 	return nil
 }
 
@@ -126,6 +129,9 @@ type Restore struct {
 func (r *Restore) Validate() error {
 	if err := r.Options.Validate(); err != nil {
 		return fmt.Errorf("validate options: %w", err)
+	}
+	if err := r.MysqlConfig.Validate(); err != nil {
+		return fmt.Errorf("validate mysql config: %w", err)
 	}
 	for i, script := range r.Scripts {
 		if err := script.Validate(); err != nil {

@@ -41,6 +41,11 @@ type RestoreStages struct {
 	// (jobs, data-only, schema-only, sections, scripts, vendor options, etc.).
 	RestoreInstructionBuilder core.RestoreInstructionBuilder
 
+	// RestorePlanBuilder converts Metadata into a RestorePlan with typed Payload
+	// fields. It is the deserialization boundary between persisted metadata JSON
+	// and runtime Go structs — each engine registers its own implementation.
+	RestorePlanBuilder core.RestorePlanBuilder
+
 	// RestoreProcessor executes the restore operation: pre-data schema, data,
 	// and post-data schema phases.
 	RestoreProcessor core.RestoreProcessor

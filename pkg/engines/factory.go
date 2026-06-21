@@ -25,11 +25,9 @@ import (
 	"github.com/greenmaskio/greenmask/pkg/common/utils"
 	"github.com/greenmaskio/greenmask/pkg/config"
 	mysqldump "github.com/greenmaskio/greenmask/pkg/mysql/cmdrun/dump"
-	mysqlrestore "github.com/greenmaskio/greenmask/pkg/mysql/cmdrun/restore"
 	mysqldumpstages "github.com/greenmaskio/greenmask/pkg/mysql/dump"
 	mysqlrestorestages "github.com/greenmaskio/greenmask/pkg/mysql/restore"
 	pgdump "github.com/greenmaskio/greenmask/pkg/postgresql/cmdrun/dump"
-	pgrestore "github.com/greenmaskio/greenmask/pkg/postgresql/cmdrun/restore"
 	pgdump2 "github.com/greenmaskio/greenmask/pkg/postgresql2/dump"
 )
 
@@ -48,19 +46,6 @@ func NewDumper(cfg *config.Config, st core.Storager) (Dumper, error) {
 		)
 	case core.DBMSEnginePostgreSQL:
 		return pgdump.New(cfg, registry.DefaultTransformerRegistry, st, utils.NewDefaultCmdProducer())
-	default:
-		return nil, fmt.Errorf("engine %q: %w", cfg.Engine, errUnsupportedEngine)
-	}
-}
-
-// NewRestorer returns the engine-specific restore orchestrator for cfg.Engine.
-// st is the root storager; dumpID resolution ("latest" → concrete ID) happens inside Run.
-func NewRestorer(cfg *config.Config, st core.Storager, dumpID core.DumpID) (Restorer, error) {
-	switch cfg.Engine {
-	case core.DBMSEngineMySQL:
-		return mysqlrestore.NewRestore(cfg, st, dumpID, utils.NewDefaultCmdProducer()), nil
-	case core.DBMSEnginePostgreSQL:
-		return pgrestore.New(cfg, st, dumpID)
 	default:
 		return nil, fmt.Errorf("engine %q: %w", cfg.Engine, errUnsupportedEngine)
 	}
@@ -86,7 +71,7 @@ func NewDumpPipeline(cfg *config.Config) (*pipeline.DumpPipeline, error) {
 func NewRestorePipeline(cfg *config.Config) (*restorepipeline.RestorePipeline, error) {
 	switch cfg.Engine {
 	case core.DBMSEngineMySQL:
-		return mysqlrestorestages.NewRestorePipeline(), nil
+		return mysqlrestorestages.NewRestorePipeline(utils.NewDefaultCmdProducer())
 	case core.DBMSEnginePostgreSQL:
 		return nil, fmt.Errorf("postgresql restore pipeline: %w", errUnsupportedEngine)
 	default:

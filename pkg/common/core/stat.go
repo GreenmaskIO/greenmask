@@ -194,11 +194,12 @@ func (m DumpSection) Validate() error {
 }
 
 type SchemaDumpStat struct {
-	TaskID         TaskID      `json:"task_id"`
-	DatabaseName   string      `json:"database_name"`
-	FileName       string      `json:"file_name"`
-	Section        DumpSection `json:"section"`
-	Compression    Compression `json:"compression"`
-	OriginalSize   int64       `json:"original_size"`
-	CompressedSize int64       `json:"compressed_size"`
+	Kind           SchemaObjectKind `json:"kind"`
+	TaskID         TaskID           `json:"task_id"`
+	DatabaseName   string           `json:"database_name"`
+	FileName       string           `json:"file_name"`
+	Section        DumpSection      `json:"section"`
+	Compression    Compression      `json:"compression"`
+	OriginalSize   int64            `json:"original_size"`
+	CompressedSize int64            `json:"compressed_size"`
 }

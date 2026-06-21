@@ -27,17 +27,14 @@ func (g *Cli) Restore(ctx context.Context, dumpID string) error {
 		return fmt.Errorf("setup infrastructure: %w", err)
 	}
 	ctx = SetupContext(ctx, g.cfg)
-	st, err := g.storage(ctx)
-	if err != nil {
-		return err
-	}
 	parsedDumpID := core.DumpID(dumpID)
 	if err := parsedDumpID.Validate(); err != nil {
 		return fmt.Errorf("validate dumpID: %w", err)
 	}
-	restorer, err := engines.NewRestorer(g.cfg, st, parsedDumpID)
+	p, err := engines.NewRestorePipeline(g.cfg)
 	if err != nil {
-		return fmt.Errorf("create restorer: %w", err)
+		return fmt.Errorf("create restore pipeline: %w", err)
 	}
-	return restorer.Run(ctx)
+	_, err = p.RunRestore(ctx, *g.cfg, parsedDumpID)
+	return err
 }
