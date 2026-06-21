@@ -167,7 +167,7 @@ func (r *TableDataReader) SetTxPool(txPool *pool.ConsistentTxPool) {
 
 // Open opens the stream. The session is ignored on the legacy task-producer
 // path: the connection pool is bound via SetTxPool at construction time.
-func (r *TableDataReader) Open(ctx context.Context, _ core.DumpSession) error {
+func (r *TableDataReader) Open(ctx context.Context, _ core.DatabaseSession) error {
 	if r.txPool == nil {
 		return fmt.Errorf("transaction pool is not set")
 	}

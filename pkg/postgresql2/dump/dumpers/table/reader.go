@@ -13,7 +13,7 @@ func NewReader() *Reader {
 	return &Reader{}
 }
 
-func (r *Reader) Open(ctx context.Context, session core.DumpSession) error {
+func (r *Reader) Open(ctx context.Context, session core.DatabaseSession) error {
 	//TODO implement me
 	panic("implement me")
 }

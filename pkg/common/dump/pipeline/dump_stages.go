@@ -28,14 +28,14 @@ import (
 type DumpStages struct {
 	// ConnectionConfigurerBuilder translates the generic config.Config into a
 	// DBMS-specific ConnectionConfigurer that carries the connection parameters
-	// required by DumpSessionBuilder.
+	// required by DatabaseSessionBuilder.
 	//
 	// This stage is the only place in the pipeline that knows about DBMS-specific
 	// config layout (e.g. which fields come from CommonDumpOptions vs MysqlDumpConfig).
 	// The pipeline itself never imports DBMS packages.
 	ConnectionConfigurerBuilder core.ConnectionConfigurerBuilder
 
-	// DumpSessionBuilder opens a DBMS-specific runtime session for the dump pipeline.
+	// DatabaseSessionBuilder opens a DBMS-specific runtime session for the dump pipeline.
 	//
 	// It receives the ConnectionConfigurer produced by ConnectionConfigurerBuilder,
 	// asserts it to the concrete DBMS type, and initialises all resources required
@@ -45,7 +45,7 @@ type DumpStages struct {
 	//   - transactional / snapshot-isolated connections
 	//   - protocol-level clients
 	//   - engine-specific runtime handles
-	DumpSessionBuilder core.DumpSessionBuilder
+	DatabaseSessionBuilder core.DatabaseSessionBuilder
 
 	// Introspector performs database schema introspection and collects
 	// runtime metadata required for dump planning.

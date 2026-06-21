@@ -3,6 +3,7 @@ package processor
 import (
 	"context"
 	"errors"
+	"io"
 	"testing"
 	"time"
 
@@ -19,7 +20,7 @@ import (
 // mockObjectDumper implements core.ObjectDumper.
 type mockObjectDumper struct{ mock.Mock }
 
-func (m *mockObjectDumper) Dump(ctx context.Context, _ core.DumpSession, _ core.Storager) (core.ObjectDumpStat, error) {
+func (m *mockObjectDumper) Dump(ctx context.Context, _ core.DatabaseSession, _ core.Storager) (core.ObjectDumpStat, error) {
 	args := m.Called(ctx)
 	if args.Error(1) != nil {
 		return core.ObjectDumpStat{}, args.Error(1)
@@ -111,9 +112,56 @@ func schemaSpec(id core.TaskID) core.SchemaDumpSpec {
 // newProc creates a processor and fails the test on construction error.
 func newProc(t *testing.T, obj core.ObjectDumpFactoryRegistry, schema core.SchemaDumpFactoryRegistry, opts ...OptionV2) *DefaultDumpProcessorV2 {
 	t.Helper()
-	p, err := NewDataDumpProcessorV2(obj, schema, core.DBMSEnginePostgreSQL, opts...)
+	p, err := NewDumpProcessorV2(obj, schema, core.DBMSEnginePostgreSQL, opts...)
 	require.NoError(t, err)
 	return p
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// Noop stubs satisfying runtime resource interfaces (not exercised by tests)
+// ──────────────────────────────────────────────────────────────────────────────
+
+type noopSession struct{}
+
+func (noopSession) Close(_ context.Context) error { return nil }
+func (noopSession) RunWithOperationalDB(_ context.Context, _ func(context.Context, core.DB) error) error {
+	return nil
+}
+func (noopSession) RunWithEngineResource(_ context.Context, _ func(context.Context, any) error) error {
+	return nil
+}
+
+type noopConn struct{}
+
+func (noopConn) ConnectionConfig() any { return nil }
+
+type noopStorager struct{}
+
+func (noopStorager) GetCwd() string  { return "" }
+func (noopStorager) Dirname() string { return "" }
+func (noopStorager) ListDir(_ context.Context) ([]string, []core.Storager, error) {
+	return nil, nil, nil
+}
+func (noopStorager) GetObject(_ context.Context, _ string) (io.ReadCloser, error) { return nil, nil }
+func (noopStorager) PutObject(_ context.Context, _ string, _ io.Reader) error     { return nil }
+func (noopStorager) Delete(_ context.Context, _ ...string) error                  { return nil }
+func (noopStorager) DeleteAll(_ context.Context, _ string) error                  { return nil }
+func (noopStorager) Exists(_ context.Context, _ string) (bool, error)             { return false, nil }
+func (noopStorager) SubStorage(_ string, _ bool) core.Storager                    { return nil }
+func (noopStorager) Stat(_ string) (*core.StorageObjectStat, error)               { return nil, nil }
+func (noopStorager) Ping(_ context.Context) error                                 { return nil }
+
+// newRunInput wraps plan and instruction with noop runtime stubs so tests can
+// call Run without constructing real DB connections.
+func newRunInput(plan core.DumpPlan, instruction core.DumpInstruction) core.DumpRunInput {
+	return core.DumpRunInput{
+		Session:     noopSession{},
+		Conn:        noopConn{},
+		St:          noopStorager{},
+		DumpID:      core.DumpIDLatest,
+		Plan:        plan,
+		Instruction: instruction,
+	}
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
@@ -133,7 +181,7 @@ func TestWithJobsV2(t *testing.T) {
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			_, err := NewDataDumpProcessorV2(
+			_, err := NewDumpProcessorV2(
 				&mockObjectRegistry{}, &mockSchemaRegistry{},
 				core.DBMSEnginePostgreSQL, WithJobsV2(tc.jobs),
 			)
@@ -211,7 +259,7 @@ func TestRun_schemaDump(t *testing.T) {
 			t.Cleanup(func() { schemaReg.AssertExpectations(t) })
 
 			proc := newProc(t, &mockObjectRegistry{}, schemaReg)
-			meta, err := proc.Run(context.Background(), nil, nil, nil, core.DumpPlan{SchemaDumpSpecs: tc.specs}, core.DumpInstruction{})
+			meta, err := proc.Run(context.Background(), newRunInput(core.DumpPlan{SchemaDumpSpecs: tc.specs}, core.DumpInstruction{}))
 
 			if tc.wantErr != "" {
 				require.Error(t, err)
@@ -311,7 +359,7 @@ func TestRun_dataDump(t *testing.T) {
 			t.Cleanup(func() { objReg.AssertExpectations(t) })
 
 			proc := newProc(t, objReg, &mockSchemaRegistry{}, WithJobsV2(tc.jobs))
-			meta, err := proc.Run(context.Background(), nil, nil, nil, core.DumpPlan{DumpObjectSpecs: tc.specs}, core.DumpInstruction{})
+			meta, err := proc.Run(context.Background(), newRunInput(core.DumpPlan{DumpObjectSpecs: tc.specs}, core.DumpInstruction{}))
 
 			if tc.wantErr != "" {
 				require.Error(t, err)
@@ -348,7 +396,7 @@ func TestRun_parallelWorkers_allTasksDumped(t *testing.T) {
 	objReg.On("New", mock.Anything, mock.Anything).Return(dumper, nil)
 
 	proc := newProc(t, objReg, &mockSchemaRegistry{}, WithJobsV2(jobs))
-	_, err := proc.Run(context.Background(), nil, nil, nil, core.DumpPlan{DumpObjectSpecs: specs}, core.DumpInstruction{})
+	_, err := proc.Run(context.Background(), newRunInput(core.DumpPlan{DumpObjectSpecs: specs}, core.DumpInstruction{}))
 	require.NoError(t, err)
 
 	dumper.AssertNumberOfCalls(t, "Dump", taskCount)
@@ -376,9 +424,9 @@ func TestRun_contextCancelled_betweenSchemaTasks(t *testing.T) {
 	schemaReg.On("New", mock.Anything, mock.Anything).Return(secondDumper, nil).Once()
 
 	proc := newProc(t, &mockObjectRegistry{}, schemaReg)
-	_, err := proc.Run(ctx, nil, nil, nil, core.DumpPlan{
+	_, err := proc.Run(ctx, newRunInput(core.DumpPlan{
 		SchemaDumpSpecs: []core.SchemaDumpSpec{schemaSpec(1), schemaSpec(2)},
-	}, core.DumpInstruction{})
+	}, core.DumpInstruction{}))
 
 	require.Error(t, err)
 	assert.ErrorIs(t, err, context.Canceled)
@@ -409,7 +457,7 @@ func TestRun_contextCancelled_duringDataDump(t *testing.T) {
 
 	go func() { time.Sleep(10 * time.Millisecond); cancel() }()
 
-	_, err := proc.Run(ctx, nil, nil, nil, core.DumpPlan{DumpObjectSpecs: []core.ObjectDumpSpec{objectSpec(1)}}, core.DumpInstruction{})
+	_, err := proc.Run(ctx, newRunInput(core.DumpPlan{DumpObjectSpecs: []core.ObjectDumpSpec{objectSpec(1)}}, core.DumpInstruction{}))
 	require.Error(t, err)
 	assert.ErrorIs(t, err, context.Canceled)
 }
@@ -430,7 +478,7 @@ func TestRun_metadataFields(t *testing.T) {
 			ObjectStat: core.DumpedObjectStat{ID: 2, OriginalSize: 500, CompressedSize: 250},
 		}, nil), nil)
 
-	p, err := NewDataDumpProcessorV2(objReg, schemaReg, core.DBMSEngineMySQL)
+	p, err := NewDumpProcessorV2(objReg, schemaReg, core.DBMSEngineMySQL)
 	require.NoError(t, err)
 
 	plan := core.DumpPlan{
@@ -442,7 +490,7 @@ func TestRun_metadataFields(t *testing.T) {
 	}
 
 	before := time.Now()
-	meta, err := p.Run(context.Background(), nil, nil, nil, plan, core.DumpInstruction{})
+	meta, err := p.Run(context.Background(), newRunInput(plan, core.DumpInstruction{}))
 	after := time.Now()
 
 	require.NoError(t, err)
@@ -475,10 +523,10 @@ func TestRun_processorIsReusable(t *testing.T) {
 	proc := newProc(t, objReg, &mockSchemaRegistry{})
 	plan := core.DumpPlan{DumpObjectSpecs: []core.ObjectDumpSpec{objectSpec(1)}}
 
-	_, err := proc.Run(context.Background(), nil, nil, nil, plan, core.DumpInstruction{})
+	_, err := proc.Run(context.Background(), newRunInput(plan, core.DumpInstruction{}))
 	require.NoError(t, err)
 
-	_, err = proc.Run(context.Background(), nil, nil, nil, plan, core.DumpInstruction{})
+	_, err = proc.Run(context.Background(), newRunInput(plan, core.DumpInstruction{}))
 	require.NoError(t, err)
 
 	// New and Dump each called once per Run.

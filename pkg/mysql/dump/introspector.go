@@ -48,7 +48,7 @@ func NewIntrospectorV2() *IntrospectorV2 {
 	return &IntrospectorV2{}
 }
 
-func (s *IntrospectorV2) Introspect(ctx context.Context, session core.DumpSession, filterConfig core.FilterConfig) (core.IntrospectionResult, error) {
+func (s *IntrospectorV2) Introspect(ctx context.Context, session core.DatabaseSession, filterConfig core.FilterConfig) (core.IntrospectionResult, error) {
 	scope, err := newSchemaScope(
 		filterConfig.IncludeSchema,
 		filterConfig.ExcludeSchema,

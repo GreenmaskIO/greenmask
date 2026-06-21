@@ -21,7 +21,7 @@ import (
 	core "github.com/greenmaskio/greenmask/pkg/common/core"
 )
 
-// ConsistentTxPool is itself the MySQL implementation of core.DumpSession
+// ConsistentTxPool is itself the MySQL implementation of core.DatabaseSession
 // consumed by the common dump pipeline — there is no separate adapter type.
 //
 // The pipeline opens one session at the start of a dump and shares it across all
@@ -38,7 +38,7 @@ import (
 //
 // Close (defined in pool.go) completes the contract: it rolls back the snapshot
 // transactions and releases all connections.
-var _ core.DumpSession = (*ConsistentTxPool)(nil)
+var _ core.DatabaseSession = (*ConsistentTxPool)(nil)
 
 // RunWithOperationalDB invokes fn with the shared snapshot meta-transaction as a
 // generic DB.

@@ -50,7 +50,7 @@ var (
 func NewDumpStages() pipeline.DumpStages {
 	return pipeline.DumpStages{
 		ConnectionConfigurerBuilder: &ConnectionConfigurerBuilder{},
-		DumpSessionBuilder:          &DumpSessionBuilder{},
+		DatabaseSessionBuilder:      &DumpSessionBuilder{},
 		Introspector:                NewIntrospectorV2(),
 		DependencyGraphBuilder:      graphbuilder.New(core.ObjectKindMysqlTable),
 		DumpMetadataLoader:          &DumpMetadataLoader{},

@@ -40,7 +40,7 @@ var (
 )
 
 type TableDataReader struct {
-	session      core.DumpSession
+	session      core.DatabaseSession
 	columnLength int
 	query        string
 	eg           *errgroup.Group
@@ -161,7 +161,7 @@ func (r *TableDataReader) streamRows(ctx context.Context, conn pool.WorkerConn) 
 
 // Open binds the dump session that owns the engine resources and opens the
 // stream; the connection itself is borrowed lazily when streaming starts.
-func (r *TableDataReader) Open(ctx context.Context, session core.DumpSession) error {
+func (r *TableDataReader) Open(ctx context.Context, session core.DatabaseSession) error {
 	if session == nil {
 		return errSessionWasNotSet
 	}

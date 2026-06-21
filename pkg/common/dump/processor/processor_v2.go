@@ -17,7 +17,7 @@ type DefaultDumpProcessorV2 struct {
 	objectDumpFactory core.ObjectDumpFactoryRegistry
 	schemaDumpFactory core.SchemaDumpFactoryRegistry
 	st                core.Storager
-	session           core.DumpSession
+	session           core.DatabaseSession
 	conn              core.ConnectionConfigurer
 	jobs              int
 	engine            core.DBMSEngine
@@ -43,7 +43,7 @@ func WithGreenmaskVersionV2(version string) OptionV2 {
 	}
 }
 
-func NewDataDumpProcessorV2(
+func NewDumpProcessorV2(
 	dumpObjectFactory core.ObjectDumpFactoryRegistry,
 	schemaDumpFactory core.SchemaDumpFactoryRegistry,
 	engine core.DBMSEngine,
@@ -93,21 +93,22 @@ func (dr *DefaultDumpProcessorV2) initObjectDumpers(plan core.DumpPlan) ([]core.
 // greenmask's own object dumpers).
 func (dr *DefaultDumpProcessorV2) Run(
 	ctx context.Context,
-	session core.DumpSession,
-	conn core.ConnectionConfigurer,
-	st core.Storager,
-	plan core.DumpPlan,
-	instruction core.DumpInstruction,
+	input core.DumpRunInput,
 ) (core.Metadata, error) {
-	if instruction.Jobs > 0 {
-		dr.jobs = instruction.Jobs
+	if err := input.Validate(); err != nil {
+		return core.Metadata{}, fmt.Errorf("validate dump run input: %w", err)
 	}
-	dr.session = session
-	dr.conn = conn
-	dr.st = st
+	if input.Instruction.Jobs > 0 {
+		dr.jobs = input.Instruction.Jobs
+	}
+	dr.session = input.Session
+	dr.conn = input.Conn
+	// Scope storage to this dump's subdirectory. The processor owns this detail;
+	// callers pass root storage and DumpID without knowing the layout.
+	dr.st = input.St.SubStorage(string(input.DumpID), true)
 	startedAt := time.Now()
 
-	schemaDumpTasks, err := dr.initSchemaDumpers(plan)
+	schemaDumpTasks, err := dr.initSchemaDumpers(input.Plan)
 	if err != nil {
 		return core.Metadata{}, fmt.Errorf("get schema dump tasks: %w", err)
 	}
@@ -116,7 +117,7 @@ func (dr *DefaultDumpProcessorV2) Run(
 		return core.Metadata{}, fmt.Errorf("schema dump: %w", err)
 	}
 
-	dataDumpTasks, err := dr.initObjectDumpers(plan)
+	dataDumpTasks, err := dr.initObjectDumpers(input.Plan)
 	if err != nil {
 		return core.Metadata{}, fmt.Errorf("get object dump tasks: %w", err)
 	}
@@ -125,7 +126,7 @@ func (dr *DefaultDumpProcessorV2) Run(
 		return core.Metadata{}, fmt.Errorf("data dump: %w", err)
 	}
 
-	return dr.buildMetadata(plan, startedAt, dataDumpStats, schemaDumpStats)
+	return dr.buildMetadata(input.Plan, startedAt, dataDumpStats, schemaDumpStats)
 }
 
 func (dr *DefaultDumpProcessorV2) schemaDump(

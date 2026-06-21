@@ -13,7 +13,7 @@ import (
 //
 // Runtime is never serialised — it must not be stored inside RunState.
 type Runtime struct {
-	Session core.DumpSession
+	Session core.DatabaseSession
 }
 
 // Close shuts down the underlying session. Called by withRuntime via a deferred

@@ -84,6 +84,7 @@ type ExecuteStageArtifacts struct {
 // file handles); those belong to Runtime, which is passed as a separate
 // parameter to the stages that need them.
 type RunState struct {
+	DumpID              core.DumpID `json:"dump_id"`
 	ExecutedStages      map[StageName]bool
 	ExecutedStagesOrder []StageName
 
@@ -96,7 +97,8 @@ type RunState struct {
 
 // NewRunState creates a RunState with all stages marked as not yet executed
 // and the supplied config stored in Discovery so every subsequent stage can
-// access it without an extra parameter.
+// access it without an extra parameter. A unique DumpID is generated at
+// construction time so it is available (and serialisable) before Execute runs.
 func NewRunState(cfg config.Config) *RunState {
 	executedStages := map[StageName]bool{
 		StageNameSessionInitialization: false,
@@ -109,6 +111,7 @@ func NewRunState(cfg config.Config) *RunState {
 		StageNameExecution:             false,
 	}
 	return &RunState{
+		DumpID:         core.NewDumpID(),
 		ExecutedStages: executedStages,
 		Discovery: DiscoveryStageArtifacts{
 			Config: &cfg,

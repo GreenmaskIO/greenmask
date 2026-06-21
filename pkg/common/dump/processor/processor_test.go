@@ -29,7 +29,7 @@ type dumpTaskMock struct {
 	mock.Mock
 }
 
-func (d *dumpTaskMock) Dump(ctx context.Context, _ core.DumpSession, _ core.Storager) (core.ObjectDumpStat, error) {
+func (d *dumpTaskMock) Dump(ctx context.Context, _ core.DatabaseSession, _ core.Storager) (core.ObjectDumpStat, error) {
 	args := d.Called(ctx)
 	if args.Error(1) != nil {
 		return core.ObjectDumpStat{}, args.Error(1)

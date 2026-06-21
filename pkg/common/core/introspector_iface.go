@@ -36,5 +36,5 @@ type IntrospectorV2 interface {
 	// skips excluded schemas/databases and introspects everything within the
 	// allowed scope. Finer-grained per-object include/exclude is the
 	// ObjectFilter layer's responsibility, not the introspector's.
-	Introspect(ctx context.Context, session DumpSession, filterConfig FilterConfig) (IntrospectionResult, error)
+	Introspect(ctx context.Context, session DatabaseSession, filterConfig FilterConfig) (IntrospectionResult, error)
 }

@@ -53,7 +53,7 @@ func NewTableRawDumper(
 
 func (t *TableRawDumper) Dump(
 	ctx context.Context,
-	session core.DumpSession,
+	session core.DatabaseSession,
 	st core.Storager,
 ) (core.ObjectDumpStat, error) {
 	startedAt := time.Now()
@@ -99,7 +99,7 @@ func (t *TableRawDumper) streamRecords(ctx context.Context) error {
 	}
 }
 
-func (t *TableRawDumper) stream(ctx context.Context, session core.DumpSession, st core.Storager) error {
+func (t *TableRawDumper) stream(ctx context.Context, session core.DatabaseSession, st core.Storager) error {
 	// Open stream reader - the one that reads data from table in DBMS.
 	if err := t.dataStreamReader.Open(ctx, session); err != nil {
 		return fmt.Errorf("open data streamer: %w", err)

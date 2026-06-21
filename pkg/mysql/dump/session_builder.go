@@ -10,7 +10,7 @@ import (
 
 type DumpSessionBuilder struct{}
 
-func (b *DumpSessionBuilder) Open(ctx context.Context, cfg core.ConnectionConfigurer) (core.DumpSession, error) {
+func (b *DumpSessionBuilder) Open(ctx context.Context, cfg core.ConnectionConfigurer) (core.DatabaseSession, error) {
 	c, ok := cfg.ConnectionConfig().(*DumpConnectionConfig)
 	if !ok {
 		return nil, fmt.Errorf("unexpected connection config type %T, want *DumpConnectionConfig", cfg.ConnectionConfig())
@@ -29,7 +29,7 @@ func (b *DumpSessionBuilder) Open(ctx context.Context, cfg core.ConnectionConfig
 		poolOpts = append(poolOpts, pool.WithHeartbeatTimeout(c.MySQL.PoolHeartbeatTimeout))
 	}
 
-	// The pool is itself the DumpSession implementation. Init establishes the
+	// The pool is itself the DatabaseSession implementation. Init establishes the
 	// consistent snapshot across all worker connections and the shared meta
 	// transaction; on failure it cleans up the connections it managed to open, so
 	// the caller does not need to Close a failed pool.

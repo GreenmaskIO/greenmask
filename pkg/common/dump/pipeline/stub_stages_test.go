@@ -16,6 +16,7 @@ package pipeline
 
 import (
 	"context"
+	"io"
 
 	core "github.com/greenmaskio/greenmask/pkg/common/core"
 )
@@ -63,7 +64,7 @@ type stubSessionBuilder struct {
 	calls   int
 }
 
-func (b *stubSessionBuilder) Open(context.Context, core.ConnectionConfigurer) (core.DumpSession, error) {
+func (b *stubSessionBuilder) Open(context.Context, core.ConnectionConfigurer) (core.DatabaseSession, error) {
 	b.calls++
 	if b.err != nil {
 		return nil, b.err
@@ -79,7 +80,7 @@ type stubIntrospector struct {
 	calls  int
 }
 
-func (s *stubIntrospector) Introspect(context.Context, core.DumpSession, core.FilterConfig) (core.IntrospectionResult, error) {
+func (s *stubIntrospector) Introspect(context.Context, core.DatabaseSession, core.FilterConfig) (core.IntrospectionResult, error) {
 	s.calls++
 	return s.result, s.err
 }
@@ -257,8 +258,35 @@ type stubProcessor struct {
 	calls  int
 }
 
-func (s *stubProcessor) Run(context.Context, core.DumpSession, core.ConnectionConfigurer, core.Storager, core.DumpPlan) (core.Metadata, error) {
+func (s *stubProcessor) Run(_ context.Context, _ core.DumpRunInput) (core.Metadata, error) {
 	s.calls++
+	return s.result, s.err
+}
+
+// stubStorager is a no-op Storager. SubStorage returns itself so that
+// Execute's st.SubStorage(dumpID, true) call doesn't panic.
+type stubStorager struct{}
+
+func (stubStorager) GetCwd() string  { return "" }
+func (stubStorager) Dirname() string { return "" }
+func (stubStorager) ListDir(_ context.Context) ([]string, []core.Storager, error) {
+	return nil, nil, nil
+}
+func (stubStorager) GetObject(_ context.Context, _ string) (io.ReadCloser, error) { return nil, nil }
+func (stubStorager) PutObject(_ context.Context, _ string, _ io.Reader) error     { return nil }
+func (stubStorager) Delete(_ context.Context, _ ...string) error                  { return nil }
+func (stubStorager) DeleteAll(_ context.Context, _ string) error                  { return nil }
+func (stubStorager) Exists(_ context.Context, _ string) (bool, error)             { return false, nil }
+func (stubStorager) SubStorage(_ string, _ bool) core.Storager                    { return stubStorager{} }
+func (stubStorager) Stat(_ string) (*core.StorageObjectStat, error)               { return nil, nil }
+func (stubStorager) Ping(_ context.Context) error                                 { return nil }
+
+type stubInstructionBuilder struct {
+	result core.DumpInstruction
+	err    error
+}
+
+func (s *stubInstructionBuilder) Build(context.Context, any) (core.DumpInstruction, error) {
 	return s.result, s.err
 }
 
@@ -307,6 +335,7 @@ type stubSet struct {
 	restoration   *stubRestorationBuilder
 	planAssembler *stubPlanAssembler
 	planValidator *stubPlanValidator
+	instrBuilder  *stubInstructionBuilder
 	storageProv   *stubStorageProvisioner
 	processor     *stubProcessor
 	metadataWr    *stubMetadataWriter
@@ -334,7 +363,8 @@ func newStubSet() *stubSet {
 		restoration:   &stubRestorationBuilder{},
 		planAssembler: &stubPlanAssembler{},
 		planValidator: &stubPlanValidator{},
-		storageProv:   &stubStorageProvisioner{},
+		instrBuilder:  &stubInstructionBuilder{},
+		storageProv:   &stubStorageProvisioner{storage: stubStorager{}},
 		processor:     &stubProcessor{},
 		metadataWr:    &stubMetadataWriter{},
 	}
@@ -343,7 +373,7 @@ func newStubSet() *stubSet {
 func (s *stubSet) stages() DumpStages {
 	return DumpStages{
 		ConnectionConfigurerBuilder: s.connBuilder,
-		DumpSessionBuilder:          s.sessBuilder,
+		DatabaseSessionBuilder:      s.sessBuilder,
 		Introspector:                s.introspector,
 		DependencyGraphBuilder:      s.graph,
 		DumpMetadataLoader:          s.metaLoader,
@@ -360,6 +390,7 @@ func (s *stubSet) stages() DumpStages {
 		RestorationContextBuilder:   s.restoration,
 		DumpPlanAssembler:           s.planAssembler,
 		DumpPlanValidator:           s.planValidator,
+		DumpInstructionBuilder:      s.instrBuilder,
 		StorageProvisioner:          s.storageProv,
 		DumpProcessor:               s.processor,
 		MetadataWriter:              s.metadataWr,

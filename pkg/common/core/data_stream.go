@@ -22,10 +22,10 @@ import (
 type RowStreamReader interface {
 	// Open binds the runtime dump session and opens the stream. The reader
 	// acquires its DBMS connection from the session (e.g. via
-	// DumpSession.RunWithEngineResource) when streaming starts. A nil session
+	// DatabaseSession.RunWithEngineResource) when streaming starts. A nil session
 	// means the reader's runtime resources were supplied at construction time
 	// (legacy task-producer path).
-	Open(ctx context.Context, session DumpSession) error
+	Open(ctx context.Context, session DatabaseSession) error
 	// ReadRow - returns row from stream until ErrEndOfStream
 	// error is returned.
 	ReadRow(ctx context.Context) ([][]byte, error)

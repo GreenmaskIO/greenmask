@@ -39,7 +39,7 @@ func (p *DumpPipeline) OpenRuntime(
 	if err != nil {
 		return nil, fmt.Errorf("build connection configurer: %w", err)
 	}
-	session, err := p.Stages.DumpSessionBuilder.Open(ctx, cc)
+	session, err := p.Stages.DatabaseSessionBuilder.Open(ctx, cc)
 	if err != nil {
 		return nil, fmt.Errorf("open dump session: %w", err)
 	}
@@ -324,19 +324,19 @@ func (p *DumpPipeline) Execute(
 	if err != nil {
 		return fmt.Errorf("build dump instruction: %w", err)
 	}
-	metadata, err := p.Stages.DumpProcessor.Run(
-		ctx,
-		runtime.Session,
-		conn,
-		st,
-		utils.Value(state.BuildPlan.Plan),
-		instruction,
-	)
+	metadata, err := p.Stages.DumpProcessor.Run(ctx, core.DumpRunInput{
+		Session:     runtime.Session,
+		Conn:        conn,
+		St:          st,
+		DumpID:      state.DumpID,
+		Plan:        utils.Value(state.BuildPlan.Plan),
+		Instruction: instruction,
+	})
 	if err != nil {
 		return fmt.Errorf("dump processor: %w", err)
 	}
-	// Persist the metadata as the final execution step, using the same storage.
-	if err := p.Stages.MetadataWriter.Write(ctx, st, metadata); err != nil {
+	// Persist the metadata into the same dump-scoped subdirectory the processor used.
+	if err := p.Stages.MetadataWriter.Write(ctx, st.SubStorage(string(state.DumpID), true), metadata); err != nil {
 		return fmt.Errorf("write metadata: %w", err)
 	}
 	state.ExecuteStage = ExecuteStageArtifacts{

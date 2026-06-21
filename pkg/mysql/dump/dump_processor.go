@@ -33,11 +33,7 @@ type DumpProcessor struct{}
 
 func (s *DumpProcessor) Run(
 	ctx context.Context,
-	session core.DumpSession,
-	conn core.ConnectionConfigurer,
-	st core.Storager,
-	plan core.DumpPlan,
-	instruction core.DumpInstruction,
+	input core.DumpRunInput,
 ) (core.Metadata, error) {
 	objectRegistry, err := factory.NewObjectDumpRegistry()
 	if err != nil {
@@ -49,10 +45,10 @@ func (s *DumpProcessor) Run(
 	}
 
 	opts := []processor.OptionV2{}
-	if instruction.Jobs > 0 {
-		opts = append(opts, processor.WithJobsV2(instruction.Jobs))
+	if input.Instruction.Jobs > 0 {
+		opts = append(opts, processor.WithJobsV2(input.Instruction.Jobs))
 	}
-	proc, err := processor.NewDataDumpProcessorV2(
+	proc, err := processor.NewDumpProcessorV2(
 		objectRegistry,
 		schemaRegistry,
 		core.DBMSEngineMySQL,
@@ -61,5 +57,5 @@ func (s *DumpProcessor) Run(
 	if err != nil {
 		return core.Metadata{}, fmt.Errorf("build dump processor: %w", err)
 	}
-	return proc.Run(ctx, session, conn, st, plan, instruction)
+	return proc.Run(ctx, input)
 }

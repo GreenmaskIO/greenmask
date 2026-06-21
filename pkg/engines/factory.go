@@ -20,12 +20,14 @@ import (
 
 	core "github.com/greenmaskio/greenmask/pkg/common/core"
 	"github.com/greenmaskio/greenmask/pkg/common/dump/pipeline"
+	restorepipeline "github.com/greenmaskio/greenmask/pkg/common/restore/pipeline"
 	"github.com/greenmaskio/greenmask/pkg/common/transformers/registry"
 	"github.com/greenmaskio/greenmask/pkg/common/utils"
 	"github.com/greenmaskio/greenmask/pkg/config"
 	mysqldump "github.com/greenmaskio/greenmask/pkg/mysql/cmdrun/dump"
 	mysqlrestore "github.com/greenmaskio/greenmask/pkg/mysql/cmdrun/restore"
 	mysqldumpstages "github.com/greenmaskio/greenmask/pkg/mysql/dump"
+	mysqlrestorestages "github.com/greenmaskio/greenmask/pkg/mysql/restore"
 	pgdump "github.com/greenmaskio/greenmask/pkg/postgresql/cmdrun/dump"
 	pgrestore "github.com/greenmaskio/greenmask/pkg/postgresql/cmdrun/restore"
 	pgdump2 "github.com/greenmaskio/greenmask/pkg/postgresql2/dump"
@@ -73,6 +75,20 @@ func NewDumpPipeline(cfg *config.Config) (*pipeline.DumpPipeline, error) {
 		return mysqldumpstages.NewDumpPipeline(), nil
 	case core.DBMSEnginePostgreSQL:
 		return pgdump2.NewDumpPipeline()
+	default:
+		return nil, fmt.Errorf("engine %q: %w", cfg.Engine, errUnsupportedEngine)
+	}
+}
+
+// NewRestorePipeline returns the engine-specific RestorePipeline for cfg.Engine.
+// Unlike NewRestorer, storage is NOT passed here — the pipeline provisions it
+// internally during Execute via RestoreStorageProvisioner.
+func NewRestorePipeline(cfg *config.Config) (*restorepipeline.RestorePipeline, error) {
+	switch cfg.Engine {
+	case core.DBMSEngineMySQL:
+		return mysqlrestorestages.NewRestorePipeline(), nil
+	case core.DBMSEnginePostgreSQL:
+		return nil, fmt.Errorf("postgresql restore pipeline: %w", errUnsupportedEngine)
 	default:
 		return nil, fmt.Errorf("engine %q: %w", cfg.Engine, errUnsupportedEngine)
 	}
