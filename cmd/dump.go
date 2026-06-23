@@ -19,6 +19,7 @@ import (
 
 	"github.com/greenmaskio/greenmask/pkg/cli"
 	"github.com/greenmaskio/greenmask/pkg/common/cmd"
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 )
@@ -134,22 +135,13 @@ var (
 			Default:          1,
 		},
 		{
-			Name:             "compress",
-			Usage:            "Compress the dump output.",
+			Name:             "compression",
+			Usage:            "Compression algorithm for the dump output (none, gzip, pgzip).",
 			ConfigPathPrefix: "dump.options",
 			BindToConfig:     true,
-			Type:             cmd.FlagTypeBool,
+			Type:             cmd.FlagTypeString,
 			IsRequired:       false,
-			Default:          true,
-		},
-		{
-			Name:             "pgzip",
-			Usage:            "Use pgzip for compression.",
-			ConfigPathPrefix: "dump.options",
-			BindToConfig:     true,
-			Type:             cmd.FlagTypeBool,
-			IsRequired:       false,
-			Default:          true,
+			Default:          string(core.CompressionPgzip),
 		},
 		{
 			Name:             "section",

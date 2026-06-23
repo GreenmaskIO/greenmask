@@ -206,7 +206,7 @@ func GetMySQLDumpOpts(cfg *config.Config) []Option {
 		format = core.DumpFormatInsert
 	}
 	opts = append(opts, WithFormat(format))
-	opts = append(opts, WithCompression(cfg.Dump.Options.Compress, cfg.Dump.Options.Pgzip))
+	opts = append(opts, WithCompression(cfg.Dump.Options.Compression.IsEnabled(), cfg.Dump.Options.Compression.IsPgzip()))
 	return opts
 }
 
@@ -228,7 +228,7 @@ func GetMySQLDumpOptsWithValidate(cfg *config.Config) ([]Option, error) {
 		}
 		opts = append(opts, filterOpt)
 	}
-	opts = append(opts, WithCompression(cfg.Dump.Options.Compress, cfg.Dump.Options.Pgzip))
+	opts = append(opts, WithCompression(cfg.Dump.Options.Compression.IsEnabled(), cfg.Dump.Options.Compression.IsPgzip()))
 	opts = append(opts, GetMySQLDumpOpts(cfg)...)
 	return opts, nil
 }

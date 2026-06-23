@@ -25,8 +25,7 @@ import (
 )
 
 const (
-	ExtensionSql  = "sql"
-	ExtensionGzip = "gz"
+	ExtensionSql = "sql"
 )
 
 var errStorageWasNotSet = fmt.Errorf("destination storage is not set: call Init before Open")
@@ -39,17 +38,16 @@ type RowWriter interface {
 type Option func(*TableDataWriter)
 
 type TableDataWriter struct {
-	st        core.Storager
-	fileName  string
-	rowWriter RowWriter
-	cw        utils.CountWriteCloser
-	cr        utils.CountReadCloser
-	eg        *errgroup.Group
-	cancel    context.CancelFunc
-	table     *core.Table
-	enabled   bool
-	pgzip     bool
-	hexBlob   bool
+	st          core.Storager
+	fileName    string
+	rowWriter   RowWriter
+	cw          utils.CountWriteCloser
+	cr          utils.CountReadCloser
+	eg          *errgroup.Group
+	cancel      context.CancelFunc
+	table       *core.Table
+	compression core.Compression
+	hexBlob     bool
 }
 
 func NewTableDataWriter(
@@ -64,23 +62,20 @@ func NewTableDataWriter(
 		opt(res)
 	}
 
-	ext := ExtensionSql
-	if res.enabled {
-		ext += "." + ExtensionGzip
+	// An unset option leaves the zero value (""); treat it as no compression so
+	// IsEnabled()/the Open switch behave consistently.
+	if res.compression == "" {
+		res.compression = core.CompressionNone
 	}
+
+	ext := ExtensionSql + res.compression.GetExt()
 	res.fileName = fmt.Sprintf("%s__%s.%s", table.Schema, table.Name, ext)
 	return res
 }
 
-func WithCompression(enabled bool) Option {
+func WithCompression(c core.Compression) Option {
 	return func(t *TableDataWriter) {
-		t.enabled = enabled
-	}
-}
-
-func WithPgzip(enabled bool) Option {
-	return func(t *TableDataWriter) {
-		t.pgzip = enabled
+		t.compression = c
 	}
 }
 
@@ -105,9 +100,12 @@ func (t *TableDataWriter) Open(ctx context.Context, st core.Storager) error {
 		return errStorageWasNotSet
 	}
 	t.st = st
-	if t.enabled {
-		t.cw, t.cr = utils.NewGzipPipe(t.pgzip)
-	} else {
+	switch t.compression {
+	case core.CompressionGzip:
+		t.cw, t.cr = utils.NewGzipPipe(false)
+	case core.CompressionPgzip:
+		t.cw, t.cr = utils.NewGzipPipe(true)
+	default: // CompressionNone
 		t.cw, t.cr = utils.NewPlainPipe()
 	}
 
@@ -145,14 +143,6 @@ func (t *TableDataWriter) Stat() core.DumpedObjectStat {
 	if t.cr == nil {
 		panic("reader is not opened")
 	}
-	compression := core.CompressionNone
-	if t.enabled {
-		compression = core.CompressionGzip
-		if t.pgzip {
-			compression = core.CompressionPgzip
-		}
-	}
-
 	return core.NewObjectStat(
 		core.DBMSEngineMySQL,
 		core.ObjectKindTable,
@@ -161,7 +151,7 @@ func (t *TableDataWriter) Stat() core.DumpedObjectStat {
 		t.cw.GetCount(),
 		t.cr.GetCount(),
 		t.fileName,
-		compression,
+		t.compression,
 		core.DumpFormatInsert,
 	)
 }

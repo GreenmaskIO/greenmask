@@ -167,8 +167,7 @@ type CommonDumpOptions struct {
 	SchemaOnly             bool                 `mapstructure:"schema-only" yaml:"schema-only" json:"schema-only"`
 	Options                []string             `mapstructure:"options" yaml:"options" json:"options"`
 	Jobs                   int                  `mapstructure:"jobs" yaml:"jobs" json:"jobs"`
-	Compress               bool                 `mapstructure:"compress" yaml:"compress" json:"compress"`
-	Pgzip                  bool                 `mapstructure:"pgzip" yaml:"pgzip" json:"pgzip"`
+	Compression            core.Compression     `mapstructure:"compression" yaml:"compression" json:"compression"`
 	Section                []string             `mapstructure:"section"   yaml:"section"   json:"section,omitempty"`
 }
 
@@ -232,9 +231,8 @@ func NewDump() Dump {
 			HexBlob:    true,
 		},
 		Options: CommonDumpOptions{
-			Compress: true,
-			Pgzip:    true,
-			Jobs:     1,
+			Compression: core.CompressionPgzip,
+			Jobs:        1,
 		},
 	}
 }

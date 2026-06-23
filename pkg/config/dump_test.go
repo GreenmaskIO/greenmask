@@ -24,6 +24,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	commonconfig "github.com/greenmaskio/greenmask/pkg/common/config"
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 )
 
 // TestCommonDumpOptions_SSLSquash verifies that the squash tag on the SSL field
@@ -81,20 +82,20 @@ func TestCommonDumpOptions_SSLSquash(t *testing.T) {
 			"ssl_mode":       "REQUIRED",
 			"ssl_ca":         "/ca.pem",
 			"schema-only":    true,
-			"compress":       true,
+			"compression":    "gzip",
 			"include-schema": []any{"mydb"},
 		})
 		require.NoError(t, err)
 		assert.Equal(t, commonconfig.SSLModeRequired, out.SSL.Mode)
 		assert.Equal(t, "/ca.pem", out.SSL.CA)
 		assert.True(t, out.SchemaOnly)
-		assert.True(t, out.Compress)
+		assert.Equal(t, core.CompressionGzip, out.Compression)
 		assert.Equal(t, []string{"mydb"}, out.IncludeSchema)
 	})
 
 	t.Run("empty ssl fields leave SSL zero-valued", func(t *testing.T) {
 		out, err := decode(t, map[string]any{
-			"compress": true,
+			"compression": "gzip",
 		})
 		require.NoError(t, err)
 		assert.Equal(t, commonconfig.SSLOpts{}, out.SSL)
@@ -163,7 +164,7 @@ dump:
 			yaml: `
 dump:
   options:
-    compress: true
+    compression: gzip
 `,
 			want: commonconfig.SSLOpts{},
 		},

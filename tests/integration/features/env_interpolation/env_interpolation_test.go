@@ -85,8 +85,7 @@ func (s *EnvInterpolationSuite) baseConfig(ctx context.Context) *config.Config {
 	cfg.Dump.MysqlConfig.Password = opts.Password
 	cfg.Dump.MysqlConfig.ConnectDatabase = "testdb"
 	cfg.Dump.Options.IncludeSchema = []string{"testdb"}
-	cfg.Dump.Options.Compress = false
-	cfg.Dump.Options.Pgzip = false
+	cfg.Dump.Options.Compression = core.CompressionNone
 	return cfg
 }
 

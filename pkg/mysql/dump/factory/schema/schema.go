@@ -69,9 +69,8 @@ type Payload struct {
 	// Not wired from the dump context builder yet; an empty scope dumps every
 	// table's structure in the database.
 	Scope core.DumpScope
-	// Compression controls gzip output (Pgzip selects the parallel implementation).
-	Compression bool
-	Pgzip       bool
+	// Compression controls gzip output (CompressionPgzip selects the parallel implementation).
+	Compression core.Compression
 }
 
 // connAttributes is the subset of the MySQL connection configurer the schema
@@ -114,7 +113,6 @@ func (f *Factory) New(spec core.SchemaDumpSpec) (core.SchemaDumper, error) {
 		section:     payload.Section,
 		scope:       payload.Scope,
 		compression: payload.Compression,
-		pgzip:       payload.Pgzip,
 	}, nil
 }
 
@@ -127,8 +125,7 @@ type dumper struct {
 	database    string
 	section     core.DumpSection
 	scope       core.DumpScope
-	compression bool
-	pgzip       bool
+	compression core.Compression
 }
 
 func (d *dumper) Dump(ctx context.Context, conn core.ConnectionConfigurer, st core.Storager) (core.SchemaDumpStat, error) {
@@ -157,18 +154,25 @@ func (d *dumper) Dump(ctx context.Context, conn core.ConnectionConfigurer, st co
 		return core.SchemaDumpStat{}, fmt.Errorf("unknown schema section: %s", d.section)
 	}
 
+	// An unset compression leaves the zero value (""); treat it as no
+	// compression so IsEnabled()/the pipe switch behave consistently.
+	compression := d.compression
+	if compression == "" {
+		compression = core.CompressionNone
+	}
+
 	var r utils.CountReadCloser
 	var w utils.CountWriteCloser
-	if d.compression {
-		w, r = utils.NewGzipPipe(d.pgzip)
-	} else {
+	switch compression {
+	case core.CompressionGzip:
+		w, r = utils.NewGzipPipe(false)
+	case core.CompressionPgzip:
+		w, r = utils.NewGzipPipe(true)
+	default: // CompressionNone
 		w, r = utils.NewPlainPipe()
 	}
 
-	fileName := fmt.Sprintf("schema_%s_%s.sql", sectionFilePrefix[d.section], d.database)
-	if d.compression {
-		fileName += ".gz"
-	}
+	fileName := fmt.Sprintf("schema_%s_%s.sql", sectionFilePrefix[d.section], d.database) + compression.GetExt()
 
 	ctx = log.Ctx(ctx).With().
 		Str("Stage", "SchemaDump").
@@ -207,14 +211,6 @@ func (d *dumper) Dump(ctx context.Context, conn core.ConnectionConfigurer, st co
 
 	if err := eg.Wait(); err != nil {
 		return core.SchemaDumpStat{}, err
-	}
-
-	compression := core.CompressionNone
-	if d.compression {
-		compression = core.CompressionGzip
-		if d.pgzip {
-			compression = core.CompressionPgzip
-		}
 	}
 
 	// Record which vendor utility produced this schema dump. A version-probe

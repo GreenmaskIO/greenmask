@@ -182,8 +182,7 @@ func (s *restoreTestSuite) baseDumpConfig(ctx context.Context) *config.Config {
 	cfg.Dump.MysqlConfig.Password = opts.Password
 	cfg.Dump.MysqlConfig.ConnectDatabase = sourceDB
 	cfg.Dump.Options.IncludeSchema = []string{sourceDB}
-	cfg.Dump.Options.Compress = false
-	cfg.Dump.Options.Pgzip = false
+	cfg.Dump.Options.Compression = core.CompressionNone
 	return cfg
 }
 

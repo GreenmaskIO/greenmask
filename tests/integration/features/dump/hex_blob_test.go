@@ -127,8 +127,7 @@ func (s *hexBlobDumpSuite) getBaseConfig(ctx context.Context) *config.Config {
 	cfg.Dump.Options.IncludeTableDefinition = nil
 	cfg.Dump.Options.ExcludeTableDefinition = nil
 	cfg.Dump.MysqlConfig.VendorOptions = nil
-	cfg.Dump.Options.Compress = false
-	cfg.Dump.Options.Pgzip = false
+	cfg.Dump.Options.Compression = core.CompressionNone
 	return cfg
 }
 

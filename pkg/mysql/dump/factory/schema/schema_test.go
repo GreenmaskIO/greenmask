@@ -234,19 +234,19 @@ func TestDumper_Dump_PlainStat(t *testing.T) {
 func TestDumper_Dump_Compression(t *testing.T) {
 	tests := []struct {
 		name            string
-		pgzip           bool
+		compression     core.Compression
 		wantFileName    string
 		wantCompression core.Compression
 	}{
 		{
 			name:            "gzip",
-			pgzip:           false,
+			compression:     core.CompressionGzip,
 			wantFileName:    "schema_pre_shop.sql.gz",
 			wantCompression: core.CompressionGzip,
 		},
 		{
 			name:            "pgzip",
-			pgzip:           true,
+			compression:     core.CompressionPgzip,
 			wantFileName:    "schema_pre_shop.sql.gz",
 			wantCompression: core.CompressionPgzip,
 		},
@@ -262,8 +262,7 @@ func TestDumper_Dump_Compression(t *testing.T) {
 				provider:    prov,
 				database:    "shop",
 				section:     core.DumpSectionPreData,
-				compression: true,
-				pgzip:       tc.pgzip,
+				compression: tc.compression,
 			}
 
 			stat, err := d.Dump(context.Background(), fakeConn{cfg: fakeConnAttrs{}}, storage)
@@ -343,8 +342,7 @@ func TestFactory_New_Wiring(t *testing.T) {
 	sd, err := f.New(core.SchemaDumpSpec{Payload: Payload{
 		Name:        "shop",
 		Section:     core.DumpSectionPreData,
-		Compression: true,
-		Pgzip:       true,
+		Compression: core.CompressionPgzip,
 	}})
 	require.NoError(t, err)
 

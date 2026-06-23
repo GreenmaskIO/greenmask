@@ -91,6 +91,15 @@ func (c Compression) IsPgzip() bool {
 	return c == CompressionPgzip
 }
 
+// GetExt returns the file extension suffix for the compression type:
+// ".gz" for gzip/pgzip and "" for none.
+func (c Compression) GetExt() string {
+	if c.IsEnabled() {
+		return ".gz"
+	}
+	return ""
+}
+
 func (f DumpFormat) Validate() error {
 	switch f {
 	case DumpFormatCsv, DumpFormatInsert:

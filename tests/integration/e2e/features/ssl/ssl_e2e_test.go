@@ -333,8 +333,7 @@ func (s *SSLSuite) baseDumpCfg(user, password string) *config.Config {
 	cfg.Dump.MysqlConfig.ConnectDatabase = mysqlDatabase
 	cfg.Dump.MysqlConfig.VendorOptions = nil
 	cfg.Dump.Options.IncludeSchema = []string{mysqlDatabase}
-	cfg.Dump.Options.Compress = false
-	cfg.Dump.Options.Pgzip = false
+	cfg.Dump.Options.Compression = core.CompressionNone
 	cfg.Dump.Options.SchemaOnly = false
 	cfg.Dump.Options.DataOnly = false
 	cfg.Dump.Options.SSL = commonconfig.SSLOpts{}

@@ -128,8 +128,7 @@ func (s *dumpTestSuite) getBaseConfig(ctx context.Context) *config.Config {
 	cfg.Dump.Options.ExcludeTableDefinition = nil
 	cfg.Dump.MysqlConfig.VendorOptions = nil
 	// Disable compression so test file expectations don't need .gz suffixes.
-	cfg.Dump.Options.Compress = false
-	cfg.Dump.Options.Pgzip = false
+	cfg.Dump.Options.Compression = core.CompressionNone
 	return cfg
 }
 

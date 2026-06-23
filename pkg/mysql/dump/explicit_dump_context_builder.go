@@ -406,7 +406,7 @@ func (b *ExplicitDumpContextBuilder) buildSchemaDumpSpecs(
 
 	databaseIDs := databaseObjectIDs(in)
 
-	compress, pgzip := mysqldumpOutputOptions(in.Config)
+	compression := mysqldumpOutputOptions(in.Config)
 
 	var specs []core.SchemaDumpSpec
 	for _, section := range mysqlSchemaDumpSections {
@@ -418,8 +418,7 @@ func (b *ExplicitDumpContextBuilder) buildSchemaDumpSpecs(
 				Payload: schemadump.Payload{
 					Name:        database,
 					Section:     section,
-					Compression: compress,
-					Pgzip:       pgzip,
+					Compression: compression,
 				},
 			})
 		}
@@ -434,12 +433,12 @@ func (b *ExplicitDumpContextBuilder) buildSchemaDumpSpecs(
 // config.Config (passed through ExplicitDumpContextInput.Config); a nil/absent
 // config yields defaults (used by unit tests that exercise spec shape without
 // execution).
-func mysqldumpOutputOptions(cfg any) (compress, pgzip bool) {
+func mysqldumpOutputOptions(cfg any) core.Compression {
 	c, ok := cfg.(*config.Config)
 	if !ok || c == nil {
-		return false, false
+		return core.CompressionNone
 	}
-	return c.Dump.Options.Compress, c.Dump.Options.Pgzip
+	return c.Dump.Options.Compression
 }
 
 // databaseObjectIDs maps each introspected database name to its runtime

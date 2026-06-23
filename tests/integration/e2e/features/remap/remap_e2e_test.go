@@ -129,8 +129,7 @@ func (s *RemapSuite) baseConfig(ctx context.Context) *config.Config {
 	cfg.Dump.MysqlConfig.Password = opts.Password
 	cfg.Dump.MysqlConfig.ConnectDatabase = srcDB
 	cfg.Dump.MysqlConfig.VendorOptions = []string{"--add-drop-table"}
-	cfg.Dump.Options.Compress = false
-	cfg.Dump.Options.Pgzip = false
+	cfg.Dump.Options.Compression = core.CompressionNone
 
 	cfg.Restore.MysqlConfig.Host = opts.Host
 	cfg.Restore.MysqlConfig.Port = opts.Port
