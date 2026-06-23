@@ -41,7 +41,7 @@ import (
 	"github.com/greenmaskio/greenmask/pkg/common/validationcollector"
 	"github.com/greenmaskio/greenmask/pkg/config"
 	mysqlcmddump "github.com/greenmaskio/greenmask/pkg/mysql/cmdrun/dump"
-	mysqlcmdrestore "github.com/greenmaskio/greenmask/pkg/mysql/cmdrun/restore"
+	mysqlrestore "github.com/greenmaskio/greenmask/pkg/mysql/restore"
 	"github.com/greenmaskio/greenmask/pkg/storages/directory"
 	"github.com/greenmaskio/greenmask/pkg/testutils"
 )
@@ -160,9 +160,15 @@ func (s *RemapSuite) runDump(ctx context.Context, cfg *config.Config, dumpDir st
 }
 
 func (s *RemapSuite) runRestore(ctx context.Context, cfg *config.Config, dumpDir string, dumpID core.DumpID) error {
-	dirSt, err := directory.New(directory.NewDirectoryConfig(dumpDir))
-	s.Require().NoError(err, "create restore storage")
-	return mysqlcmdrestore.RunRestore(ctx, cfg, dirSt, string(dumpID))
+	// The restore pipeline provisions its own storage from cfg.Storage, so point
+	// it at the same directory the dump wrote to.
+	cfg.Storage.Type = "directory"
+	cfg.Storage.Directory.Path = dumpDir
+
+	pipeline, err := mysqlrestore.NewRestorePipeline(utils.NewDefaultCmdProducer())
+	s.Require().NoError(err, "create restore pipeline")
+	_, err = pipeline.RunRestore(ctx, *cfg, dumpID)
+	return err
 }
 
 // countRows queries the given table in the given database using a root

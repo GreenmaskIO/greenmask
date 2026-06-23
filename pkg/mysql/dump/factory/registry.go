@@ -13,9 +13,9 @@ import (
 
 // NewObjectDumpRegistry builds the MySQL object-dump factory registry. The
 // factories are storage- and session-free; runtime resources are injected into
-// the dumpers at execution time. Per-table writer options (compression, pgzip,
-// hex-encoding of binary columns) are not configurable yet — the factory uses
-// its defaults.
+// the dumpers at execution time. Compression is carried per table on the dump
+// spec payload (TableDumpContext.Compression) and applied by the factory at
+// execution time, mirroring the schema dump path.
 func NewObjectDumpRegistry() (core.ObjectDumpFactoryRegistry, error) {
 	reg := dumpfactory.NewObjectDumpFactoryRegistry()
 	if err := reg.Register(tabledump.NewFactory()); err != nil {

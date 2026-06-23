@@ -146,6 +146,11 @@ type TableDumpContext struct {
 	// identities in the snapshot (e.g. core.EntityKindMysqlColumn). Set by the
 	// engine's context builder.
 	ColumnKind core.EntityKind
+	// Compression controls the output compression applied to the dumped table
+	// data file (CompressionPgzip selects the parallel implementation). Set by
+	// the engine's context builder from the run config, mirroring the schema
+	// dump path. An unset value means CompressionNone.
+	Compression core.Compression
 }
 
 func (tc *TableDumpContext) HasTransformer() bool {

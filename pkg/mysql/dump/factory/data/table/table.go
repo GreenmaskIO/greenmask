@@ -62,7 +62,10 @@ func (f *Factory) New(spec core.ObjectDumpSpec) (core.ObjectDumper, error) {
 	}
 
 	tr := NewTableDataReader(payload.Table, payload.Query)
-	tw := NewTableDataWriter(*payload.Table, f.opts...)
+	// Per-table writer options carried on the spec payload (e.g. compression)
+	// take precedence over the factory defaults, mirroring the schema dump path.
+	writerOpts := append(append([]Option{}, f.opts...), WithCompression(payload.Compression))
+	tw := NewTableDataWriter(*payload.Table, writerOpts...)
 
 	if !payload.HasTransformer() {
 		return dumpers.NewTableRawDumper(spec.TaskID, tr, tw, payload.Table), nil

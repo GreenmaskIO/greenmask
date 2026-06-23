@@ -166,6 +166,7 @@ func (b *ExplicitDumpContextBuilder) initTable(
 	obj core.Object,
 	registry core.TransformerRegistry,
 	seq *core.TaskIDSequence,
+	compression core.Compression,
 ) (core.ObjectDumpSpec, error) {
 	table, err := payloadToTableDefinition(obj)
 	if err != nil {
@@ -188,9 +189,10 @@ func (b *ExplicitDumpContextBuilder) initTable(
 			Origin:   core.ObjectOrigin{Kind: core.ObjectOriginExplicit},
 			Mode:     core.DumpModeRaw,
 			Payload: transformercontext.TableDumpContext{
-				ColumnKind: core.EntityKindMysqlColumn,
-				Table:      &table,
-				Query:      subsetQuery,
+				ColumnKind:  core.EntityKindMysqlColumn,
+				Table:       &table,
+				Query:       subsetQuery,
+				Compression: compression,
 			},
 		}, nil
 	}
@@ -217,10 +219,11 @@ func (b *ExplicitDumpContextBuilder) initTable(
 			Origin:   core.ObjectOrigin{Kind: core.ObjectOriginExplicit},
 			Mode:     core.DumpModeRaw,
 			Payload: transformercontext.TableDumpContext{
-				ColumnKind: core.EntityKindMysqlColumn,
-				Table:      &table,
-				Condition:  tableCondition,
-				Query:      dumpQuery,
+				ColumnKind:  core.EntityKindMysqlColumn,
+				Table:       &table,
+				Condition:   tableCondition,
+				Query:       dumpQuery,
+				Compression: compression,
 			},
 		}, nil
 	}
@@ -248,6 +251,7 @@ func (b *ExplicitDumpContextBuilder) initTable(
 			TransformerContext: transformerContext,
 			Query:              dumpQuery,
 			TableDriver:        tableDriver,
+			Compression:        compression,
 		},
 	}, nil
 }
@@ -273,6 +277,10 @@ func (b *ExplicitDumpContextBuilder) buildDumpObjectSpecs(
 	if err != nil {
 		return nil, fmt.Errorf("set salt: %w", err)
 	}
+	// Table data files use the same output compression as the schema dump,
+	// derived from the run config.
+	compression := mysqldumpOutputOptions(in.Config)
+
 	var tableDumpContextPayloads []core.ObjectDumpSpec
 	for i := range tableObjects {
 		if filterActive {
@@ -293,7 +301,7 @@ func (b *ExplicitDumpContextBuilder) buildDumpObjectSpecs(
 		subsetQuery := tablebuilder.GetTableSubsetQuery(in.Subset, tableObjects[i])
 
 		res, err := b.initTable(ctx, tableConfig, subsetQuery, tableObjects[i],
-			b.registry, seq)
+			b.registry, seq, compression)
 		if err != nil {
 			return nil, fmt.Errorf("init table %s: %w", tableObjects[i].Name, err)
 		}

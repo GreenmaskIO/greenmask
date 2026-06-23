@@ -33,7 +33,7 @@ import (
 	"github.com/greenmaskio/greenmask/pkg/common/validationcollector"
 	"github.com/greenmaskio/greenmask/pkg/config"
 	mysqldump "github.com/greenmaskio/greenmask/pkg/mysql/cmdrun/dump"
-	mysqlrestore "github.com/greenmaskio/greenmask/pkg/mysql/cmdrun/restore"
+	mysqlrestore "github.com/greenmaskio/greenmask/pkg/mysql/restore"
 	"github.com/greenmaskio/greenmask/pkg/storages/validate"
 	"github.com/greenmaskio/greenmask/pkg/testutils"
 )
@@ -153,6 +153,10 @@ func (s *restoreTestSuite) runDump(ctx context.Context, cfg *config.Config) *val
 
 // runRestore runs a restore against the container. Schema sections are handled by
 // a no-op mock mysql CLI; data sections execute real INSERTs.
+//
+// The restore pipeline normally provisions its own storage from cfg.Storage; here
+// we override the storage provisioner so the restore reads directly from the same
+// in-memory storage the dump wrote to.
 func (s *restoreTestSuite) runRestore(ctx context.Context, cfg *config.Config, st *validate.Storage) {
 	cmdRunner := &CmdRunnerMock{}
 	cmdRunner.On("ExecuteCmdAndForwardStdout", mock.Anything).Return(nil)
@@ -160,8 +164,12 @@ func (s *restoreTestSuite) runRestore(ctx context.Context, cfg *config.Config, s
 	cmdProducer.On("Produce", "mysql", mock.Anything, mock.Anything, mock.Anything).
 		Return(cmdRunner, nil)
 
-	restoreProcess := mysqlrestore.NewRestore(cfg, st, testDumpID, cmdProducer)
-	s.Require().NoError(restoreProcess.Run(ctx))
+	pipeline, err := mysqlrestore.NewRestorePipeline(cmdProducer)
+	s.Require().NoError(err)
+	pipeline.Stages.RestoreStorageProvisioner = &sharedStorageProvisioner{st: st}
+
+	_, err = pipeline.RunRestore(ctx, *cfg, testDumpID)
+	s.Require().NoError(err)
 }
 
 // baseDumpConfig returns a fully-reset dump config for the container's sourceDB.

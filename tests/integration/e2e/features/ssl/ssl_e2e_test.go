@@ -56,7 +56,7 @@ import (
 	"github.com/greenmaskio/greenmask/pkg/common/validationcollector"
 	"github.com/greenmaskio/greenmask/pkg/config"
 	mysqlcmddump "github.com/greenmaskio/greenmask/pkg/mysql/cmdrun/dump"
-	mysqlcmdrestore "github.com/greenmaskio/greenmask/pkg/mysql/cmdrun/restore"
+	mysqlrestore "github.com/greenmaskio/greenmask/pkg/mysql/restore"
 	"github.com/greenmaskio/greenmask/pkg/storages/directory"
 	"github.com/greenmaskio/greenmask/pkg/testutils"
 )
@@ -394,11 +394,19 @@ func (s *SSLSuite) runDump(ctx context.Context, cfg *config.Config, dumpDir stri
 
 // runRestore restores from dumpDir using the given config.
 func (s *SSLSuite) runRestore(ctx context.Context, cfg *config.Config, dumpDir string, dumpID core.DumpID) error {
-	dirSt, err := directory.New(directory.NewDirectoryConfig(dumpDir))
+	// The restore pipeline provisions its own storage from cfg.Storage, so point
+	// it at the same directory the dump wrote to.
+	cfg.Storage.Type = "directory"
+	cfg.Storage.Directory.Path = dumpDir
+
+	pipeline, err := mysqlrestore.NewRestorePipeline(utils.NewDefaultCmdProducer())
 	if err != nil {
-		return fmt.Errorf("create directory storage: %w", err)
+		return fmt.Errorf("create restore pipeline: %w", err)
 	}
-	return mysqlcmdrestore.RunRestore(ctx, cfg, dirSt, string(dumpID))
+	if _, err := pipeline.RunRestore(ctx, *cfg, dumpID); err != nil {
+		return err
+	}
+	return nil
 }
 
 // ---------------------------------------------------------------------------

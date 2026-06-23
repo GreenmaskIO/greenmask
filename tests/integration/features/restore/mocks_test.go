@@ -14,7 +14,13 @@
 
 package restore
 
-import "github.com/greenmaskio/greenmask/pkg/testutils"
+import (
+	"context"
+
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
+	"github.com/greenmaskio/greenmask/pkg/storages/validate"
+	"github.com/greenmaskio/greenmask/pkg/testutils"
+)
 
 // The mysqldump/mysql CLI mocks are shared across feature tests; see
 // pkg/testutils/cmd.go. These aliases keep existing &CmdRunnerMock{} usages.
@@ -22,3 +28,21 @@ type (
 	CmdRunnerMock   = testutils.CmdRunnerMock
 	CmdProducerMock = testutils.CmdProducerMock
 )
+
+// sharedStorageProvisioner is a RestoreStorageProvisioner that hands the restore
+// pipeline the same in-memory storage the dump wrote to. The validate.Storage is
+// flat (it keys objects by filename regardless of dumpID sub-scoping), so the
+// dumpID is irrelevant and the storage is returned as-is.
+type sharedStorageProvisioner struct {
+	st *validate.Storage
+}
+
+var _ core.RestoreStorageProvisioner = (*sharedStorageProvisioner)(nil)
+
+func (p *sharedStorageProvisioner) Provision(
+	_ context.Context,
+	_ any,
+	_ core.DumpID,
+) (core.Storager, error) {
+	return p.st, nil
+}

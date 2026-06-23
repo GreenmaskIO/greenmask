@@ -426,7 +426,7 @@ func TestInitTable(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			b := &ExplicitDumpContextBuilder{deps: tt.deps}
-			spec, err := b.initTable(context.Background(), tt.cfg, tt.subsetQuery, tt.obj, nil, new(core.TaskIDSequence))
+			spec, err := b.initTable(context.Background(), tt.cfg, tt.subsetQuery, tt.obj, nil, new(core.TaskIDSequence), core.CompressionNone)
 
 			switch {
 			case tt.wantErr != nil:
