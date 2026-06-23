@@ -5,8 +5,10 @@ import (
 
 	core "github.com/greenmaskio/greenmask/pkg/common/core"
 	"github.com/greenmaskio/greenmask/pkg/common/dumpfactory"
+	"github.com/greenmaskio/greenmask/pkg/common/utils"
 	tabledump "github.com/greenmaskio/greenmask/pkg/mysql/dump/factory/data/table"
 	schemadump "github.com/greenmaskio/greenmask/pkg/mysql/dump/factory/schema"
+	"github.com/greenmaskio/greenmask/pkg/mysql/provider"
 )
 
 // NewObjectDumpRegistry builds the MySQL object-dump factory registry. The
@@ -27,7 +29,8 @@ func NewObjectDumpRegistry() (core.ObjectDumpFactoryRegistry, error) {
 // injected into the dumper at execution time, so the factory is resource-free.
 func NewSchemaDumpRegistry() (core.SchemaDumpFactoryRegistry, error) {
 	reg := dumpfactory.NewSchemaDumpFactoryRegistry()
-	if err := reg.Register(schemadump.NewFactory()); err != nil {
+	mysqldumpProvider := provider.NewMysqldumpProvider(utils.NewDefaultCmdProducer())
+	if err := reg.Register(schemadump.NewFactory(mysqldumpProvider)); err != nil {
 		return nil, fmt.Errorf("register mysql schema dump factory: %w", err)
 	}
 	return reg, nil

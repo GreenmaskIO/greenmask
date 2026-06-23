@@ -40,6 +40,10 @@ type RestoreRunState struct {
 	// RestoreMetadataReader.ReadMetadata succeeds.
 	Metadata *core.Metadata
 
+	// TargetIntrospection holds runtime facts about the target database (e.g.
+	// its server version) read by the RestoreIntrospector before execution.
+	TargetIntrospection *core.RestoreIntrospectionResult
+
 	ExecuteStage RestoreExecuteArtifacts
 }
 

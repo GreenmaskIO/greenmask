@@ -84,6 +84,10 @@ type CommonRestoreOptions struct {
 	SchemaOnly     bool `mapstructure:"schema-only" yaml:"schema-only" json:"schema-only"`
 	Jobs           int  `mapstructure:"jobs" yaml:"jobs" json:"jobs"`
 	RestoreInOrder bool `mapstructure:"restore-in-order" yaml:"restore-in-order" json:"restore-in-order"`
+	// SingleTransaction restores the whole dump inside one transaction per
+	// connection, committed only on full success and rolled back on any error
+	// (mirrors pg_restore's --single-transaction).
+	SingleTransaction bool `mapstructure:"single-transaction" yaml:"single-transaction" json:"single-transaction"`
 	// CreateDatabase controls whether greenmask issues CREATE DATABASE statements before restoring schema.
 	CreateDatabase bool `mapstructure:"create-database" yaml:"create-database" json:"create_database"`
 	// IfNotExists adds IF NOT EXISTS to CREATE DATABASE and (in future) other object creation statements.

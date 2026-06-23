@@ -25,7 +25,7 @@ import (
 
 var _ core.DatabaseSessionBuilder = (*RestoreSessionBuilder)(nil)
 
-// RestoreSessionBuilder opens a ConsistentTxPool for a MySQL restore session.
+// RestoreSessionBuilder opens a RestorePool for a MySQL restore session.
 // It type-asserts cfg.ConnectionConfig() to *connconfig.RestoreConnectionConfig directly —
 // no intermediate interface — so the pool package stays DBMS-agnostic.
 type RestoreSessionBuilder struct{}
@@ -39,9 +39,10 @@ func (b *RestoreSessionBuilder) Open(ctx context.Context, cfg core.ConnectionCon
 	if err != nil {
 		return nil, fmt.Errorf("build mysql restore connection config: %w", err)
 	}
-	p := pool.NewConsistentTxPool(connCfg, cc.ConnectionPoolSize)
-	if err := p.Init(ctx); err != nil {
-		return nil, fmt.Errorf("init mysql restore session pool: %w", err)
+	// Construct only — the restore processor owns the session lifecycle and calls
+	// Init / DoneWithError around the run.
+	if cc.Common.SingleTransaction {
+		return pool.NewRestoreSessionSingleTx(connCfg, cc.ConnectionPoolSize), nil
 	}
-	return p, nil
+	return pool.NewRestoreSessionDefault(connCfg, cc.ConnectionPoolSize), nil
 }

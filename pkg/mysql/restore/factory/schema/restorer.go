@@ -19,7 +19,6 @@ package schema
 import (
 	"context"
 	"fmt"
-	"io"
 
 	"github.com/rs/zerolog/log"
 
@@ -41,8 +40,8 @@ type MysqlSchemaPayload struct {
 // the mysql CLI. Runtime resources (session, conn, storage) are injected at
 // Restore time so the restorer is created cheaply by the factory.
 type MysqlSchemaRestorer struct {
-	cmd     utils.CmdProducer
-	payload MysqlSchemaPayload
+	provider core.VendorUtilityProvider
+	payload  MysqlSchemaPayload
 }
 
 func (r *MysqlSchemaRestorer) DebugInfo() string {
@@ -89,7 +88,7 @@ func (r *MysqlSchemaRestorer) createDatabases(
 	remap := opts.RemapDatabase
 	ifNotExists := opts.IfNotExists
 
-	return session.RunWithOperationalDB(ctx, func(ctx context.Context, db core.DB) error {
+	return core.ExecOnSession(ctx, session, func(ctx context.Context, db core.DB) error {
 		for _, dbName := range databases {
 			target := dbName
 			if mapped, ok := remap[dbName]; ok {
@@ -123,7 +122,7 @@ func (r *MysqlSchemaRestorer) restoreSchemaFile(
 		target = mapped
 	}
 
-	log.Ctx(ctx).Info().
+	log.Ctx(ctx).Debug().
 		Str("database", stat.DatabaseName).
 		Str("target", target).
 		Str("section", string(stat.Section)).
@@ -135,7 +134,7 @@ func (r *MysqlSchemaRestorer) restoreSchemaFile(
 		return fmt.Errorf("get schema file %q: %w", stat.FileName, err)
 	}
 
-	var reader io.ReadCloser = f
+	reader := f
 	if stat.Compression.IsEnabled() {
 		reader, err = utils.NewGzipReader(f, stat.Compression.IsPgzip())
 		if err != nil {
@@ -152,12 +151,19 @@ func (r *MysqlSchemaRestorer) restoreSchemaFile(
 		params = append(params, target)
 	}
 
-	cmd, err := r.cmd.Produce("mysql", params, env, reader)
-	if err != nil {
-		return fmt.Errorf("produce mysql command: %w", err)
+	if vu, err := r.provider.Version(ctx); err != nil {
+		log.Ctx(ctx).Warn().Err(err).Str("Executable", r.provider.Name()).
+			Msg("probe vendor utility version")
+	} else {
+		log.Ctx(ctx).Debug().
+			Str("Executable", vu.Name).
+			Str("Version", vu.VersionString).
+			Msg("restoring schema with vendor utility")
 	}
-	if err := cmd.ExecuteCmdAndForwardStdout(ctx); err != nil {
-		return fmt.Errorf("execute mysql for %q section=%s: %w", stat.DatabaseName, stat.Section, err)
+
+	// nil writer → forward stdout to the log (mysql client emits little stdout).
+	if err := r.provider.Stream(ctx, params, env, reader, nil); err != nil {
+		return fmt.Errorf("execute %s for %q section=%s: %w", r.provider.Name(), stat.DatabaseName, stat.Section, err)
 	}
 	return nil
 }

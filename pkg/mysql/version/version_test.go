@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package dump
+package version
 
 import (
 	"testing"
@@ -74,11 +74,18 @@ func TestParseServerVersion(t *testing.T) {
 			wantVendor: core.DBMSVendorMariaDB,
 			wantMajor:  10, wantMinor: 6, wantPatch: 16,
 		},
+		{
+			name:       "percona detected via comment",
+			version:    "8.0.35-27",
+			comment:    "Percona Server (GPL), Release 27, Revision 1234567",
+			wantVendor: core.DBMSVendorPercona,
+			wantMajor:  8, wantMinor: 0, wantPatch: 35,
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := parseServerVersion(tt.version, tt.comment)
+			got := ParseServerVersion(tt.version, tt.comment)
 			assert.Equal(t, tt.version, got.FullString)
 			assert.Equal(t, tt.wantMajor, got.Major)
 			assert.Equal(t, tt.wantMinor, got.Minor)
@@ -94,12 +101,110 @@ func TestParseServerVersion(t *testing.T) {
 
 func TestParseServerVersion_malformed(t *testing.T) {
 	// Missing/garbage components must not panic and default to zero.
-	got := parseServerVersion("", "")
+	got := ParseServerVersion("", "")
 	assert.Equal(t, core.DBMSVendorMySQL, got.Vendor())
 	assert.Equal(t, 0, got.Major)
 
-	got = parseServerVersion("8", "")
+	got = ParseServerVersion("8", "")
 	assert.Equal(t, 8, got.Major)
 	assert.Equal(t, 0, got.Minor)
 	assert.Equal(t, 0, got.Patch)
+}
+
+func TestParseUtilityVersion(t *testing.T) {
+	tests := []struct {
+		name string
+		raw  string
+		want string
+	}{
+		{
+			name: "mysqldump community",
+			raw:  "mysqldump  Ver 8.0.35 for Linux on x86_64 (MySQL Community Server - GPL)",
+			want: "8.0.35",
+		},
+		{
+			name: "mysql client modern",
+			raw:  "mysql  Ver 8.0.35 for Linux on x86_64 (MySQL Community Server - GPL)",
+			want: "8.0.35",
+		},
+		{
+			name: "mysql client legacy distrib form",
+			raw:  "mysql  Ver 14.14 Distrib 5.7.42, for Linux (x86_64) using EditLine wrapper",
+			want: "14.14",
+		},
+		{
+			name: "mariadb dump",
+			raw:  "mysqldump  Ver 10.11.5-MariaDB for debian-linux-gnu on x86_64",
+			want: "10.11.5-MariaDB",
+		},
+		{
+			name: "trailing newline",
+			raw:  "mysqldump  Ver 8.0.35 for Linux\n",
+			want: "8.0.35",
+		},
+		{
+			name: "no version token",
+			raw:  "command not found",
+			want: "",
+		},
+		{
+			name: "empty",
+			raw:  "",
+			want: "",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.want, ParseUtilityVersion(tt.raw))
+		})
+	}
+}
+
+func TestParseUtility(t *testing.T) {
+	tests := []struct {
+		name        string
+		raw         string
+		wantName    string
+		wantVersion string
+	}{
+		{
+			name:        "mysqldump community",
+			raw:         "mysqldump  Ver 8.0.35 for Linux on x86_64 (MySQL Community Server - GPL)",
+			wantName:    "mysqldump",
+			wantVersion: "8.0.35",
+		},
+		{
+			name:        "mysql client legacy distrib form",
+			raw:         "mysql  Ver 14.14 Distrib 5.7.42, for Linux (x86_64) using EditLine wrapper",
+			wantName:    "mysql",
+			wantVersion: "14.14",
+		},
+		{
+			name:        "mariadb dump binary",
+			raw:         "mariadb-dump  Ver 10.11.5-MariaDB for debian-linux-gnu on x86_64",
+			wantName:    "mariadb-dump",
+			wantVersion: "10.11.5-MariaDB",
+		},
+		{
+			name:        "name only, no version token",
+			raw:         "command not found",
+			wantName:    "command",
+			wantVersion: "",
+		},
+		{
+			name:        "empty",
+			raw:         "",
+			wantName:    "",
+			wantVersion: "",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			gotName, gotVersion := ParseUtility(tt.raw)
+			assert.Equal(t, tt.wantName, gotName)
+			assert.Equal(t, tt.wantVersion, gotVersion)
+		})
+	}
 }

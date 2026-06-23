@@ -33,14 +33,6 @@ const (
 	integrationMigrationDown = `DROP TABLE IF EXISTS script_test`
 )
 
-// dbTxExec adapts a *sql.DB into a TxExec function.
-func dbTxExec(db *sql.DB) TxExec {
-	return func(ctx context.Context, query string) error {
-		_, err := db.ExecContext(ctx, query)
-		return err
-	}
-}
-
 type scriptIntegrationSuite struct {
 	testutils.MySQLContainerSuite
 	db *sql.DB
@@ -72,7 +64,7 @@ func (s *scriptIntegrationSuite) TestExecuteQuery_Success() {
 		Name:  "insert-row",
 		Query: "INSERT INTO script_test (id, value) VALUES (1, 'hello')",
 	})
-	err := e.executeQuery(ctx, dbTxExec(s.db))
+	err := e.executeQuery(ctx, realDBSession{db: s.db})
 	s.Require().NoError(err)
 
 	var val string
@@ -85,7 +77,7 @@ func (s *scriptIntegrationSuite) TestExecuteQuery_Success() {
 func (s *scriptIntegrationSuite) TestExecuteQuery_InvalidSQL_Error() {
 	ctx := context.Background()
 	e := NewExecutor(core.Script{Name: "bad", Query: "THIS IS NOT SQL"})
-	err := e.executeQuery(ctx, dbTxExec(s.db))
+	err := e.executeQuery(ctx, realDBSession{db: s.db})
 	s.Require().Error(err)
 	s.Contains(err.Error(), "execute script name='bad'")
 }
@@ -99,7 +91,7 @@ func (s *scriptIntegrationSuite) TestExecuteQueryFile_Success() {
 	require.NoError(s.T(), os.WriteFile(path, []byte("INSERT INTO script_test (id, value) VALUES (2, 'from-file')"), 0600))
 
 	e := NewExecutor(core.Script{Name: "file-script", QueryFile: path})
-	err := e.executeQueryFile(ctx, dbTxExec(s.db))
+	err := e.executeQueryFile(ctx, realDBSession{db: s.db})
 	s.Require().NoError(err)
 
 	var val string
@@ -112,7 +104,7 @@ func (s *scriptIntegrationSuite) TestExecuteQueryFile_Success() {
 func (s *scriptIntegrationSuite) TestExecuteQueryFile_FileNotFound() {
 	ctx := context.Background()
 	e := NewExecutor(core.Script{Name: "s", QueryFile: "/nonexistent/missing.sql"})
-	err := e.executeQueryFile(ctx, dbTxExec(s.db))
+	err := e.executeQueryFile(ctx, realDBSession{db: s.db})
 	s.Require().Error(err)
 	s.Contains(err.Error(), "cannot open script file")
 }
@@ -124,7 +116,7 @@ func (s *scriptIntegrationSuite) TestExecuteQueryFile_InvalidSQL_Error() {
 	require.NoError(s.T(), os.WriteFile(path, []byte("NOT VALID SQL"), 0600))
 
 	e := NewExecutor(core.Script{Name: "bad-file", QueryFile: path})
-	err := e.executeQueryFile(ctx, dbTxExec(s.db))
+	err := e.executeQueryFile(ctx, realDBSession{db: s.db})
 	s.Require().Error(err)
 	s.Contains(err.Error(), "execute script name='bad-file'")
 }
@@ -150,7 +142,7 @@ func (s *scriptIntegrationSuite) TestScheduler_Exec_OnlyMatchingScriptsRun() {
 	}
 
 	sched := NewScheduler(scripts)
-	err := sched.Exec(ctx, dbTxExec(s.db), core.DumpSectionPreData, core.ScriptEventTypeBefore)
+	err := sched.Exec(ctx, realDBSession{db: s.db}, core.DumpSectionPreData, core.ScriptEventTypeBefore)
 	s.Require().NoError(err)
 
 	var count int
@@ -176,7 +168,7 @@ func (s *scriptIntegrationSuite) TestScheduler_Exec_ErrorPropagated() {
 	}
 
 	sched := NewScheduler(scripts)
-	err := sched.Exec(ctx, dbTxExec(s.db), core.DumpSectionData, core.ScriptEventTypeAfter)
+	err := sched.Exec(ctx, realDBSession{db: s.db}, core.DumpSectionData, core.ScriptEventTypeAfter)
 	s.Require().Error(err)
 	s.Contains(err.Error(), "execute script #0")
 }
@@ -200,7 +192,7 @@ func (s *scriptIntegrationSuite) TestScheduler_Exec_MultipleMatchingScripts() {
 	}
 
 	sched := NewScheduler(scripts)
-	err := sched.Exec(ctx, dbTxExec(s.db), core.DumpSectionPostData, core.ScriptEventTypeAfter)
+	err := sched.Exec(ctx, realDBSession{db: s.db}, core.DumpSectionPostData, core.ScriptEventTypeAfter)
 	s.Require().NoError(err)
 
 	var count int
@@ -214,25 +206,23 @@ func (s *scriptIntegrationSuite) TestScheduler_Exec_MultipleMatchingScripts() {
 
 func (s *scriptIntegrationSuite) TestExecutorExec_QueryDispatch() {
 	ctx := context.Background()
-	called := false
-	exec := TxExec(func(_ context.Context, q string) error {
-		called = true
-		_, err := s.db.ExecContext(ctx, q)
-		return err
-	})
 	e := NewExecutor(core.Script{
 		Name:  "dispatch-query",
 		Query: "INSERT INTO script_test (id, value) VALUES (30, 'dispatch')",
 	})
-	s.Require().NoError(e.Exec(ctx, exec))
-	s.True(called)
+	s.Require().NoError(e.Exec(ctx, realDBSession{db: s.db}))
+
+	var val string
+	s.Require().NoError(s.db.QueryRowContext(ctx, "SELECT value FROM script_test WHERE id = 30").Scan(&val))
+	s.Equal("dispatch", val)
+
 	_, _ = s.db.ExecContext(ctx, "DELETE FROM script_test WHERE id = 30")
 }
 
 func (s *scriptIntegrationSuite) TestExecutorExec_ErrNothingToExecute() {
 	ctx := context.Background()
 	e := NewExecutor(core.Script{Name: "empty"})
-	err := e.Exec(ctx, dbTxExec(s.db))
+	err := e.Exec(ctx, realDBSession{db: s.db})
 	s.Require().Error(err)
 	s.True(errors.Is(err, errNothingToExecute))
 }

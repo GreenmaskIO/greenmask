@@ -12,9 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package dump
+// Package version holds MySQL/MariaDB version parsing shared by the dump and
+// restore pipelines: SQL VERSION() parsing (ParseServerVersion) and vendor CLI
+// "--version" output parsing (ParseUtilityVersion).
+package version
 
 import (
+	"regexp"
 	"strconv"
 	"strings"
 
@@ -26,7 +30,15 @@ import (
 // version. We strip it to parse the real version.
 const mariadbCompatPrefix = "5.5.5-"
 
-// parseServerVersion turns the output of `SELECT VERSION(), @@version_comment`
+// utilityVersionRe extracts the "Ver X.Y.Z…" token mysql/mysqldump/mariadb
+// print in their "--version" output, e.g.:
+//
+//	"mysqldump  Ver 8.0.35 for Linux on x86_64 (MySQL Community Server - GPL)"
+//	"mysql  Ver 14.14 Distrib 5.7.42, for Linux (x86_64) using EditLine wrapper"
+//	"mysqldump  Ver 10.11.5-MariaDB for debian-linux-gnu on x86_64"
+var utilityVersionRe = regexp.MustCompile(`Ver\s+([^\s,]+)`)
+
+// ParseServerVersion turns the output of `SELECT VERSION(), @@version_comment`
 // into a core.DBMSVersion, detecting whether the server is MySQL or MariaDB and
 // recording the vendor (and raw comment) in Metadata.
 //
@@ -36,13 +48,20 @@ const mariadbCompatPrefix = "5.5.5-"
 //	"8.0.35-0ubuntu0.20.04.1" -> {8,0,35, vendor=mysql}
 //	"10.11.5-MariaDB"         -> {10,11,5, vendor=mariadb}
 //	"5.5.5-10.11.5-MariaDB"   -> {10,11,5, vendor=mariadb}
-func parseServerVersion(versionString, versionComment string) core.DBMSVersion {
+//	"8.0.35-27" / "Percona Server (GPL)" -> {8,0,35, vendor=percona}
+func ParseServerVersion(versionString, versionComment string) core.DBMSVersion {
 	full := strings.TrimSpace(versionString)
 	comment := strings.TrimSpace(versionComment)
 
+	// Percona reports a MySQL-style VERSION() but identifies itself in
+	// @@version_comment ("Percona Server (GPL)..."); MariaDB tags both fields.
+	lower := strings.ToLower(full + " " + comment)
 	vendor := core.DBMSVendorMySQL
-	if strings.Contains(strings.ToLower(full+" "+comment), "mariadb") {
+	switch {
+	case strings.Contains(lower, "mariadb"):
 		vendor = core.DBMSVendorMariaDB
+	case strings.Contains(lower, "percona"):
+		vendor = core.DBMSVendorPercona
 	}
 
 	numeric := full
@@ -65,6 +84,31 @@ func parseServerVersion(versionString, versionComment string) core.DBMSVersion {
 	}
 }
 
+// ParseUtility extracts the utility's self-reported name (the leading token) and
+// version token from a vendor CLI "--version" output, e.g.:
+//
+//	"mysqldump  Ver 8.0.35 for Linux on x86_64 (MySQL Community Server - GPL)"
+//	  -> ("mysqldump", "8.0.35")
+//
+// Either return value is "" when it cannot be determined. The name is taken from
+// the output rather than the invoked executable, which may be a path.
+func ParseUtility(raw string) (name, version string) {
+	if fields := strings.Fields(raw); len(fields) > 0 {
+		name = fields[0]
+	}
+	return name, ParseUtilityVersion(raw)
+}
+
+// ParseUtilityVersion extracts the version token from a vendor CLI "--version"
+// output (the value following "Ver"). Returns "" when no token is found.
+func ParseUtilityVersion(raw string) string {
+	m := utilityVersionRe.FindStringSubmatch(raw)
+	if len(m) < 2 {
+		return ""
+	}
+	return m[1]
+}
+
 // parseVersionTriplet extracts the leading major.minor.patch from a version
 // string such as "8.0.35-ubuntu" or "10.11.5-MariaDB".
 func parseVersionTriplet(s string) (major, minor, patch int) {
@@ -77,7 +121,10 @@ func parseVersionTriplet(s string) (major, minor, patch int) {
 		if i >= len(parts) {
 			return 0
 		}
-		n, _ := strconv.Atoi(numericPrefix(parts[i]))
+		n, err := strconv.Atoi(numericPrefix(parts[i]))
+		if err != nil {
+			return 0
+		}
 		return n
 	}
 	return at(0), at(1), at(2)

@@ -158,13 +158,9 @@ func (t *TableRawDumper) stream(ctx context.Context, session core.DatabaseSessio
 }
 
 func (t *TableRawDumper) Meta() map[string]any {
-	meta := t.dataStreamReader.DebugInfo()
-	uniqueDumpTaskID := getUniqueDumpTaskID(dumperTypeTableDumper, meta)
-	meta = maps.Clone(meta)
-	meta[core.MetaKeyUniqueDumpTaskID] = uniqueDumpTaskID
-	return meta
+	return maps.Clone(t.dataStreamReader.DebugInfo())
 }
 
 func (t *TableRawDumper) DebugInfo() string {
-	return getUniqueDumpTaskID(dumperTypeTableDumper, t.dataStreamReader.DebugInfo())
+	return tableDebugName(t.dataStreamReader.DebugInfo())
 }

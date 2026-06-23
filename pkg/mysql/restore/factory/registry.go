@@ -22,6 +22,7 @@ import (
 	core "github.com/greenmaskio/greenmask/pkg/common/core"
 	"github.com/greenmaskio/greenmask/pkg/common/restorefactory"
 	"github.com/greenmaskio/greenmask/pkg/common/utils"
+	"github.com/greenmaskio/greenmask/pkg/mysql/provider"
 	"github.com/greenmaskio/greenmask/pkg/mysql/restore/factory/data/table"
 	schemafactory "github.com/greenmaskio/greenmask/pkg/mysql/restore/factory/schema"
 )
@@ -40,7 +41,8 @@ func NewObjectRestoreRegistry() (core.ObjectRestoreFactoryRegistry, error) {
 // with all MySQL schema restore factories.
 func NewSchemaRestoreRegistry(cmd utils.CmdProducer) (core.SchemaRestoreFactoryRegistry, error) {
 	reg := restorefactory.NewSchemaRestoreFactoryRegistry()
-	if err := reg.Register(schemafactory.NewFactory(cmd)); err != nil {
+	mysqlProvider := provider.NewMysqlClientProvider(cmd)
+	if err := reg.Register(schemafactory.NewFactory(mysqlProvider)); err != nil {
 		return nil, fmt.Errorf("register mysql schema restore factory: %w", err)
 	}
 	return reg, nil

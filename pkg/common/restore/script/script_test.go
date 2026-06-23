@@ -30,14 +30,13 @@ import (
 
 func TestScheduler_Exec(t *testing.T) {
 	ctx := context.Background()
-	noopExec := TxExec(func(_ context.Context, _ string) error { return nil })
 
 	tests := []struct {
 		name           string
 		scripts        []core.Script
 		section        core.DumpSection
 		when           core.ScriptEventType
-		exec           TxExec
+		execErr        error
 		wantErr        bool
 		wantErrContain string
 		wantCalled     int
@@ -47,7 +46,6 @@ func TestScheduler_Exec(t *testing.T) {
 			scripts:    nil,
 			section:    core.DumpSectionPreData,
 			when:       core.ScriptEventTypeBefore,
-			exec:       noopExec,
 			wantCalled: 0,
 		},
 		{
@@ -57,7 +55,6 @@ func TestScheduler_Exec(t *testing.T) {
 			},
 			section:    core.DumpSectionPreData,
 			when:       core.ScriptEventTypeBefore,
-			exec:       noopExec,
 			wantCalled: 0,
 		},
 		{
@@ -67,7 +64,6 @@ func TestScheduler_Exec(t *testing.T) {
 			},
 			section:    core.DumpSectionPreData,
 			when:       core.ScriptEventTypeBefore,
-			exec:       noopExec,
 			wantCalled: 0,
 		},
 		{
@@ -77,7 +73,6 @@ func TestScheduler_Exec(t *testing.T) {
 			},
 			section:    core.DumpSectionPreData,
 			when:       core.ScriptEventTypeBefore,
-			exec:       noopExec,
 			wantCalled: 1,
 		},
 		{
@@ -88,7 +83,6 @@ func TestScheduler_Exec(t *testing.T) {
 			},
 			section:    core.DumpSectionData,
 			when:       core.ScriptEventTypeAfter,
-			exec:       noopExec,
 			wantCalled: 2,
 		},
 		{
@@ -97,11 +91,9 @@ func TestScheduler_Exec(t *testing.T) {
 				{Name: "skip", Section: core.DumpSectionPreData, When: core.ScriptEventTypeBefore, Query: "SELECT 1"},
 				{Name: "fail", Section: core.DumpSectionData, When: core.ScriptEventTypeBefore, Query: "SELECT 1"},
 			},
-			section: core.DumpSectionData,
-			when:    core.ScriptEventTypeBefore,
-			exec: func(_ context.Context, _ string) error {
-				return errors.New("boom")
-			},
+			section:        core.DumpSectionData,
+			when:           core.ScriptEventTypeBefore,
+			execErr:        errors.New("boom"),
 			wantErr:        true,
 			wantErrContain: "execute script #1",
 		},
@@ -113,33 +105,24 @@ func TestScheduler_Exec(t *testing.T) {
 			},
 			section:    core.DumpSectionPreData,
 			when:       core.ScriptEventTypeBefore,
-			exec:       noopExec,
 			wantCalled: 1,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			called := 0
-			var execFn TxExec
-			if tt.wantErr {
-				execFn = tt.exec
-			} else {
-				execFn = func(ctx context.Context, query string) error {
-					called++
-					return tt.exec(ctx, query)
-				}
-			}
+			session, db := newFakeSession()
+			db.execErr = tt.execErr
 
 			s := NewScheduler(tt.scripts)
-			err := s.Exec(ctx, execFn, tt.section, tt.when)
+			err := s.Exec(ctx, session, tt.section, tt.when)
 
 			if tt.wantErr {
 				require.Error(t, err)
 				assert.Contains(t, err.Error(), tt.wantErrContain)
 			} else {
 				require.NoError(t, err)
-				assert.Equal(t, tt.wantCalled, called)
+				assert.Len(t, db.queries, tt.wantCalled)
 			}
 		})
 	}
@@ -230,15 +213,10 @@ func TestExecutor_Exec(t *testing.T) {
 	ctx := context.Background()
 
 	t.Run("query dispatched to executeQuery", func(t *testing.T) {
-		called := false
-		exec := TxExec(func(_ context.Context, q string) error {
-			called = true
-			assert.Equal(t, "SELECT 42", q)
-			return nil
-		})
+		session, db := newFakeSession()
 		e := NewExecutor(core.Script{Name: "s", Query: "SELECT 42"})
-		require.NoError(t, e.Exec(ctx, exec))
-		assert.True(t, called)
+		require.NoError(t, e.Exec(ctx, session))
+		assert.Equal(t, []string{"SELECT 42"}, db.queries)
 	})
 
 	t.Run("query_file dispatched to executeQueryFile", func(t *testing.T) {
@@ -248,15 +226,10 @@ func TestExecutor_Exec(t *testing.T) {
 		require.NoError(t, err)
 		require.NoError(t, f.Close())
 
-		called := false
-		exec := TxExec(func(_ context.Context, q string) error {
-			called = true
-			assert.Equal(t, "SELECT 99", q)
-			return nil
-		})
+		session, db := newFakeSession()
 		e := NewExecutor(core.Script{Name: "s", QueryFile: f.Name()})
-		require.NoError(t, e.Exec(ctx, exec))
-		assert.True(t, called)
+		require.NoError(t, e.Exec(ctx, session))
+		assert.Equal(t, []string{"SELECT 99"}, db.queries)
 	})
 
 	t.Run("command dispatched to executeCommand", func(t *testing.T) {
@@ -295,13 +268,18 @@ func TestExecutor_executeQuery(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			session, db := newFakeSession()
+			db.execErr = tt.execErr
 			e := NewExecutor(core.Script{Name: "my-script", Query: "SELECT 1"})
-			err := e.executeQuery(ctx, func(_ context.Context, _ string) error { return tt.execErr })
+			err := e.executeQuery(ctx, session)
 			if tt.wantErr {
 				require.Error(t, err)
 				assert.Contains(t, err.Error(), tt.wantErrContain)
+				assert.True(t, session.rolledBack, "per-call tx should roll back on error")
 			} else {
 				require.NoError(t, err)
+				assert.Equal(t, []string{"SELECT 1"}, db.queries)
+				assert.True(t, session.committed, "per-call tx should commit on success")
 			}
 		})
 	}
@@ -324,14 +302,11 @@ func TestExecutor_executeQueryFile(t *testing.T) {
 		path := filepath.Join(dir, "q.sql")
 		require.NoError(t, os.WriteFile(path, []byte("SELECT 7"), 0600))
 
-		var gotQuery string
+		session, db := newFakeSession()
 		e := NewExecutor(core.Script{Name: "s", QueryFile: path})
-		err := e.executeQueryFile(ctx, func(_ context.Context, q string) error {
-			gotQuery = q
-			return nil
-		})
+		err := e.executeQueryFile(ctx, session)
 		require.NoError(t, err)
-		assert.Equal(t, "SELECT 7", gotQuery)
+		assert.Equal(t, []string{"SELECT 7"}, db.queries)
 	})
 
 	t.Run("exec error wrapped with script name", func(t *testing.T) {
@@ -339,10 +314,10 @@ func TestExecutor_executeQueryFile(t *testing.T) {
 		path := filepath.Join(dir, "q.sql")
 		require.NoError(t, os.WriteFile(path, []byte("SELECT 1"), 0600))
 
+		session, db := newFakeSession()
+		db.execErr = errors.New("exec failed")
 		e := NewExecutor(core.Script{Name: "my-script", QueryFile: path})
-		err := e.executeQueryFile(ctx, func(_ context.Context, _ string) error {
-			return errors.New("exec failed")
-		})
+		err := e.executeQueryFile(ctx, session)
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "execute script name='my-script'")
 	})

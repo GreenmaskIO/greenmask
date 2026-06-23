@@ -222,28 +222,16 @@ func TestInsertRestoreWriter_computeHeaderLen_replaceVerb(t *testing.T) {
 
 // --- showWarnings early-return paths (no DB connection required) ---
 
-func TestInsertRestoreWriter_showWarnings_zeroWarningCount(t *testing.T) {
-	table := testTable("db", "t", "id")
-	w := NewInsertRestoreWriter(table)
-	w.opts = TableRestoreOpts{PrintWarnings: true}
-
-	printed := 0
-	// conn is nil; if reached it would panic — verifies early-return at count == 0.
-	count, err := w.showWarnings(context.Background(), nil, 0, 1, &printed)
-	assert.NoError(t, err)
-	assert.Equal(t, 0, count)
-}
-
 func TestInsertRestoreWriter_showWarnings_printingDisabled(t *testing.T) {
 	table := testTable("db", "t", "id")
 	w := NewInsertRestoreWriter(table)
 	w.opts = TableRestoreOpts{PrintWarnings: false}
 
 	printed := 0
-	// conn is nil; verifies no DB round-trip when PrintWarnings is false.
-	count, err := w.showWarnings(context.Background(), nil, 7, 1, &printed)
+	// db is nil; verifies no DB round-trip when PrintWarnings is false.
+	count, err := w.showWarnings(context.Background(), nil, 1, &printed)
 	assert.NoError(t, err)
-	assert.Equal(t, 7, count)
+	assert.Equal(t, 0, count)
 }
 
 func TestInsertRestoreWriter_showWarnings_maxFetchExhausted(t *testing.T) {
@@ -251,23 +239,8 @@ func TestInsertRestoreWriter_showWarnings_maxFetchExhausted(t *testing.T) {
 	w := NewInsertRestoreWriter(table)
 	w.opts = TableRestoreOpts{PrintWarnings: true, MaxFetchWarnings: 5}
 
-	printed := 5 // already at the cap
-	count, err := w.showWarnings(context.Background(), nil, 3, 2, &printed)
-	assert.NoError(t, err)
-	assert.Equal(t, 3, count)
-}
-
-func TestInsertRestoreWriter_showWarnings_zeroMaxFetch_noEarlyReturn(t *testing.T) {
-	// MaxFetchWarnings == 0 means "no limit" — the code skips the fetchLimit block.
-	// We cannot call the DB path in a unit test, so just confirm the function does
-	// NOT return on the MaxFetch guard when MaxFetchWarnings is 0.
-	// We set warningCount=0 to trigger the outermost guard and avoid the DB call.
-	table := testTable("db", "t", "id")
-	w := NewInsertRestoreWriter(table)
-	w.opts = TableRestoreOpts{PrintWarnings: true, MaxFetchWarnings: 0}
-
-	printed := 999
-	count, err := w.showWarnings(context.Background(), nil, 0, 1, &printed)
+	printed := 5 // already at the cap — early return before any DB call
+	count, err := w.showWarnings(context.Background(), nil, 2, &printed)
 	assert.NoError(t, err)
 	assert.Equal(t, 0, count)
 }

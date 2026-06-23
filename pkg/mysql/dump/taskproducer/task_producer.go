@@ -52,7 +52,7 @@ type DumpObjectPoducer struct {
 	registry              *registry.TransformerRegistry
 	connConfig            mysqlmodels.ConnConfig
 	st                    core.Storager
-	txPool                *pool.ConsistentTxPool
+	txPool                *pool.ConsistentDumpTxPool
 	subset                subset.Subset
 	filter                core.TaskProducerFilter
 	saveOriginal          bool
@@ -147,7 +147,7 @@ func New(
 	registry *registry.TransformerRegistry,
 	connConfig mysqlmodels.ConnConfig,
 	st core.Storager,
-	txPool *pool.ConsistentTxPool,
+	txPool *pool.ConsistentDumpTxPool,
 	opts ...Option,
 ) (*DumpObjectPoducer, error) {
 	tables := enrichWithSubsetQueries(i.GetCommonTables(), tableConfigs)

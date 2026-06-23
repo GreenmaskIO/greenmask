@@ -16,7 +16,9 @@ package processor
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"time"
 
 	"github.com/rs/zerolog/log"
 	"golang.org/x/sync/errgroup"
@@ -27,6 +29,10 @@ import (
 )
 
 const defaultJobCount = 1
+
+// defaultSessionFinalizeTimeout bounds the commit/rollback performed by
+// DoneWithError so a cancelled run context still gets a chance to finalize.
+const defaultSessionFinalizeTimeout = 30 * time.Second
 
 var _ core.RestoreProcessor = (*DefaultRestoreProcessorV2)(nil)
 
@@ -69,10 +75,26 @@ func NewDefaultRestoreProcessorV2(
 	return p, nil
 }
 
-func (p *DefaultRestoreProcessorV2) Run(ctx context.Context, input core.RestoreRunInput) error {
-	if err := input.Validate(); err != nil {
+func (p *DefaultRestoreProcessorV2) Run(ctx context.Context, input core.RestoreRunInput) (err error) {
+	if err = input.Validate(); err != nil {
 		return fmt.Errorf("validate restore run input: %w", err)
 	}
+
+	sess, ok := input.Session.(core.RestoreSession)
+	if !ok {
+		return fmt.Errorf("restore processor: session does not implement core.RestoreSession (%T)", input.Session)
+	}
+	if err = sess.Init(ctx); err != nil {
+		return fmt.Errorf("init restore session: %w", err)
+	}
+	defer func() {
+		// Detached, time-bounded context so a cancelled ctx still allows rollback.
+		doneCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), defaultSessionFinalizeTimeout)
+		defer cancel()
+		if doneErr := sess.DoneWithError(doneCtx, err); doneErr != nil {
+			err = errors.Join(err, fmt.Errorf("finalize restore session: %w", doneErr))
+		}
+	}()
 
 	if input.Instruction.Jobs > 0 {
 		p.jobs = input.Instruction.Jobs
@@ -89,22 +111,21 @@ func (p *DefaultRestoreProcessorV2) Run(ctx context.Context, input core.RestoreR
 	}
 
 	scriptScheduler := script.NewScheduler(input.Instruction.Scripts)
-	txExecBuilder := p.buildTxExecBuilder(input.Session)
 
 	if p.sectionEnabled(input.Instruction, core.DumpSectionPreData) {
-		if err := p.restoreSchemaSection(ctx, input, preDataSpecs, scriptScheduler, txExecBuilder, core.DumpSectionPreData); err != nil {
+		if err := p.restoreSchemaSection(ctx, input, preDataSpecs, scriptScheduler, core.DumpSectionPreData); err != nil {
 			return fmt.Errorf("pre-data schema restore: %w", err)
 		}
 	}
 
 	if p.sectionEnabled(input.Instruction, core.DumpSectionData) {
-		if err := p.restoreData(ctx, input, scriptScheduler, txExecBuilder); err != nil {
+		if err := p.restoreData(ctx, input, scriptScheduler); err != nil {
 			return fmt.Errorf("data restore: %w", err)
 		}
 	}
 
 	if p.sectionEnabled(input.Instruction, core.DumpSectionPostData) {
-		if err := p.restoreSchemaSection(ctx, input, postDataSpecs, scriptScheduler, txExecBuilder, core.DumpSectionPostData); err != nil {
+		if err := p.restoreSchemaSection(ctx, input, postDataSpecs, scriptScheduler, core.DumpSectionPostData); err != nil {
 			return fmt.Errorf("post-data schema restore: %w", err)
 		}
 	}
@@ -130,33 +151,14 @@ func (p *DefaultRestoreProcessorV2) sectionEnabled(instr core.RestoreInstruction
 	return true
 }
 
-func (p *DefaultRestoreProcessorV2) buildTxExecBuilder(session core.DatabaseSession) script.TxExecBuilder {
-	return func(ctx context.Context) (script.TxExec, func(), error) {
-		exec := func(ctx context.Context, q string) error {
-			return session.RunWithOperationalDB(ctx, func(ctx context.Context, db core.DB) error {
-				_, err := db.ExecContext(ctx, q)
-				return err
-			})
-		}
-		return exec, func() {}, nil
-	}
-}
-
 func (p *DefaultRestoreProcessorV2) restoreSchemaSection(
 	ctx context.Context,
 	input core.RestoreRunInput,
 	specs []core.SchemaRestoreSpec,
 	sched *script.Scheduler,
-	txBuilder script.TxExecBuilder,
 	section core.DumpSection,
 ) error {
-	exec, closeDB, err := txBuilder(ctx)
-	if err != nil {
-		return err
-	}
-	defer closeDB()
-
-	if err := sched.Exec(ctx, exec, section, core.ScriptEventTypeBefore); err != nil {
+	if err := sched.Exec(ctx, input.Session, section, core.ScriptEventTypeBefore); err != nil {
 		return fmt.Errorf("scripts before section=%s: %w", section, err)
 	}
 
@@ -171,7 +173,7 @@ func (p *DefaultRestoreProcessorV2) restoreSchemaSection(
 		}
 	}
 
-	if err := sched.Exec(ctx, exec, section, core.ScriptEventTypeAfter); err != nil {
+	if err := sched.Exec(ctx, input.Session, section, core.ScriptEventTypeAfter); err != nil {
 		return fmt.Errorf("scripts after section=%s: %w", section, err)
 	}
 	return nil
@@ -181,15 +183,8 @@ func (p *DefaultRestoreProcessorV2) restoreData(
 	ctx context.Context,
 	input core.RestoreRunInput,
 	sched *script.Scheduler,
-	txBuilder script.TxExecBuilder,
 ) error {
-	exec, closeDB, err := txBuilder(ctx)
-	if err != nil {
-		return err
-	}
-	defer closeDB()
-
-	if err := sched.Exec(ctx, exec, core.DumpSectionData, core.ScriptEventTypeBefore); err != nil {
+	if err := sched.Exec(ctx, input.Session, core.DumpSectionData, core.ScriptEventTypeBefore); err != nil {
 		return fmt.Errorf("scripts before data: %w", err)
 	}
 
@@ -197,7 +192,7 @@ func (p *DefaultRestoreProcessorV2) restoreData(
 		return err
 	}
 
-	if err := sched.Exec(ctx, exec, core.DumpSectionData, core.ScriptEventTypeAfter); err != nil {
+	if err := sched.Exec(ctx, input.Session, core.DumpSectionData, core.ScriptEventTypeAfter); err != nil {
 		return fmt.Errorf("scripts after data: %w", err)
 	}
 	return nil
@@ -243,8 +238,16 @@ func (p *DefaultRestoreProcessorV2) runWithProducer(
 		workerID := i
 		eg.Go(func() error {
 			for spec := range taskCh {
-				log.Ctx(egCtx).Debug().Int("worker", workerID).Str("object", string(spec.Kind)).Msg("restoring object")
-				if err := p.restoreOneObject(egCtx, input, spec); err != nil {
+				// Bind worker/task_id to a per-task logger stored in the context so
+				// every downstream log line (object restore, reader/writer) carries
+				// them without having to thread the fields through each call.
+				taskLogger := log.Ctx(egCtx).With().
+					Int("worker", workerID).
+					Int("task_id", int(spec.TaskID)).
+					Logger()
+				taskCtx := taskLogger.WithContext(egCtx)
+				taskLogger.Debug().Str("kind", string(spec.Kind)).Msg("dispatching restore task")
+				if err := p.restoreOneObject(taskCtx, input, spec); err != nil {
 					return err
 				}
 				mapper.SetTaskCompleted(spec.TaskID)
@@ -265,7 +268,7 @@ func (p *DefaultRestoreProcessorV2) restoreOneObject(
 	if err != nil {
 		return fmt.Errorf("build object restorer kind=%s: %w", spec.Kind, err)
 	}
-	log.Ctx(ctx).Debug().Str("object", restorer.DebugInfo()).Msg("restoring object")
+	log.Ctx(ctx).Debug().Str("kind", string(spec.Kind)).Fields(restorer.Meta()).Msg("restoring object")
 	if err := restorer.Restore(ctx, input.Session, input.Conn, input.St); err != nil {
 		return fmt.Errorf("restore object %s: %w", restorer.DebugInfo(), err)
 	}

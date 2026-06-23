@@ -19,13 +19,11 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/go-mysql-org/go-mysql/client"
 	"github.com/huandu/go-sqlbuilder"
 	"github.com/rs/zerolog/log"
 	"golang.org/x/sync/errgroup"
 
 	core "github.com/greenmaskio/greenmask/pkg/common/core"
-	"github.com/greenmaskio/greenmask/pkg/mysql/pool"
 	"github.com/greenmaskio/greenmask/pkg/mysql/restore/connconfig"
 )
 
@@ -39,11 +37,13 @@ const (
 
 // InsertRestoreWriter is the restore-side symmetric counterpart of TableDataReader.
 //
-// Open borrows one pooled raw connection for the entire table via
-// RunWithEngineResource, starts a single READ WRITE transaction, and receives
-// rows from WriteRow through a channel — mirroring the goroutine-channel pattern
-// used by TableDataReader on the dump side. The full table is written atomically:
-// if any write fails the transaction is rolled back.
+// Open borrows one pooled RestoreConn for the entire table via
+// RunWithEngineResource and receives rows from WriteRow through a channel —
+// mirroring the goroutine-channel pattern used by TableDataReader on the dump side.
+// The transaction lifecycle is owned by the RestoreSession: writeLoop returning nil
+// signals success (the session commits), returning an error signals failure (the
+// session rolls back — per-call in default mode, globally at DoneWithError in
+// single-tx mode).
 type InsertRestoreWriter struct {
 	table   *core.Table // copy with RemapDatabase applied at Open time
 	opts    TableRestoreOpts
@@ -87,11 +87,11 @@ func (w *InsertRestoreWriter) Open(
 
 	w.eg.Go(func() error {
 		err := session.RunWithEngineResource(egCtx, func(ctx context.Context, res any) error {
-			wc, ok := res.(pool.WorkerConn)
+			rc, ok := res.(core.RestoreConn)
 			if !ok {
-				return fmt.Errorf("insert writer: expected pool.WorkerConn, got %T", res)
+				return fmt.Errorf("insert writer: expected core.RestoreConn, got %T", res)
 			}
-			return w.writeLoop(ctx, wc.RawConn())
+			return w.writeLoop(ctx, rc)
 		})
 		if err != nil {
 			// Non-blocking: errorCh is buffered(1) and the goroutine sends at most once.
@@ -116,7 +116,8 @@ func (w *InsertRestoreWriter) WriteRow(ctx context.Context, row []byte) error {
 }
 
 // Close signals the write loop that all rows have been sent and waits for it to
-// flush the remaining batch and commit the transaction.
+// flush the remaining batch. The session finalizes the transaction based on the
+// write loop's return value.
 func (w *InsertRestoreWriter) Close(_ context.Context) error {
 	if w.cancel != nil {
 		defer w.cancel()
@@ -143,26 +144,21 @@ func (w *InsertRestoreWriter) applyTableRemap() {
 	w.table = &tableCopy
 }
 
-// writeLoop runs inside the RunWithEngineResource callback. It owns the
-// connection and transaction for the full table restore.
-func (w *InsertRestoreWriter) writeLoop(ctx context.Context, conn *client.Conn) error {
+// writeLoop runs inside the RunWithEngineResource callback. The session owns the
+// transaction lifecycle: it commits when this function returns nil and rolls back
+// when it returns an error (per-call in default mode, globally in single-tx mode).
+func (w *InsertRestoreWriter) writeLoop(ctx context.Context, rc core.RestoreConn) error {
+	db := rc.DB()
+
 	if w.opts.DisableForeignKeyChecks {
-		if _, err := conn.Execute("SET FOREIGN_KEY_CHECKS=0"); err != nil {
+		if _, err := db.ExecContext(ctx, "SET FOREIGN_KEY_CHECKS=0"); err != nil {
 			return fmt.Errorf("disable foreign key checks: %w", err)
 		}
 	}
 	if w.opts.DisableUniqueChecks {
-		if _, err := conn.Execute("SET UNIQUE_CHECKS=0"); err != nil {
+		if _, err := db.ExecContext(ctx, "SET UNIQUE_CHECKS=0"); err != nil {
 			return fmt.Errorf("disable unique checks: %w", err)
 		}
-	}
-
-	// START TRANSACTION READ WRITE transitions the pooled connection from the
-	// snapshot READ ONLY transaction (used for dump consistency) to a writable
-	// transaction. This is intentional: the dump pool uses REPEATABLE READ
-	// snapshot transactions; for restore we need write access.
-	if _, err := conn.Execute("START TRANSACTION READ WRITE"); err != nil {
-		return fmt.Errorf("start transaction: %w", err)
 	}
 
 	var (
@@ -184,11 +180,10 @@ func (w *InsertRestoreWriter) writeLoop(ctx context.Context, conn *client.Conn) 
 		}
 		batchNum++
 		stmt := w.buildBatch(batch)
-		res, err := conn.Execute(stmt)
-		if err != nil {
+		if _, err := db.ExecContext(ctx, stmt); err != nil {
 			return fmt.Errorf("execute insert batch %d: %w", batchNum, err)
 		}
-		count, warnErr := w.showWarnings(ctx, conn, int(res.Warnings), batchNum, &printedCount)
+		count, warnErr := w.showWarnings(ctx, db, batchNum, &printedCount)
 		if warnErr != nil {
 			log.Ctx(ctx).Warn().Err(warnErr).Msg("failed to show insert warnings")
 		}
@@ -202,36 +197,9 @@ func (w *InsertRestoreWriter) writeLoop(ctx context.Context, conn *client.Conn) 
 		select {
 		case row, ok := <-w.rowCh:
 			if !ok {
-				// Channel closed: flush remaining batch and commit.
-				if err := flush(); err != nil {
-					if _, rb := conn.Execute("ROLLBACK"); rb != nil {
-						log.Ctx(ctx).Error().Err(rb).Msg("rollback failed after flush error")
-					}
-					return err
-				}
-				if w.opts.DisableUniqueChecks {
-					if _, err := conn.Execute("SET UNIQUE_CHECKS=1"); err != nil {
-						log.Ctx(ctx).Error().Err(err).Msg("re-enable unique checks")
-					}
-				}
-				if w.opts.DisableForeignKeyChecks {
-					if _, err := conn.Execute("SET FOREIGN_KEY_CHECKS=1"); err != nil {
-						log.Ctx(ctx).Error().Err(err).Msg("re-enable foreign key checks")
-					}
-				}
-				if _, err := conn.Execute("COMMIT"); err != nil {
-					if _, rb := conn.Execute("ROLLBACK"); rb != nil {
-						log.Ctx(ctx).Error().Err(rb).Msg("rollback failed after commit error")
-					}
-					return fmt.Errorf("commit transaction: %w", err)
-				}
-				if totalWarnings > 0 {
-					log.Ctx(ctx).Warn().
-						Int("totalWarnings", totalWarnings).
-						Str("table", w.table.Schema+"."+w.table.Name).
-						Msg("warnings occurred during table restore")
-				}
-				return nil
+				// Channel closed: all rows sent. Finalize and let the session
+				// commit on the nil return (or at DoneWithError in single-tx mode).
+				return w.finish(ctx, db, flush, &totalWarnings)
 			}
 
 			// Accumulate row; flush before adding if it would exceed max size.
@@ -244,9 +212,6 @@ func (w *InsertRestoreWriter) writeLoop(ctx context.Context, conn *client.Conn) 
 			}
 			if len(batch) > 0 && newSize > maxSize {
 				if err := flush(); err != nil {
-					if _, rb := conn.Execute("ROLLBACK"); rb != nil {
-						log.Ctx(ctx).Error().Err(rb).Msg("rollback failed after flush error")
-					}
 					return err
 				}
 				newSize = w.headerLen + tupleLen + insertTerminatorLen
@@ -257,12 +222,35 @@ func (w *InsertRestoreWriter) writeLoop(ctx context.Context, conn *client.Conn) 
 			batchSize = newSize
 
 		case <-ctx.Done():
-			if _, err := conn.Execute("ROLLBACK"); err != nil {
-				log.Ctx(ctx).Error().Err(err).Msg("rollback on context cancellation")
-			}
 			return fmt.Errorf("insert writer: %w", ctx.Err())
 		}
 	}
+}
+
+// finish flushes the final batch, re-enables any checks disabled at the start of
+// the loop, and logs the accumulated warning count. It runs once the row channel
+// is closed; the session finalizes the transaction based on the returned error.
+func (w *InsertRestoreWriter) finish(ctx context.Context, db core.DB, flush func() error, totalWarnings *int) error {
+	if err := flush(); err != nil {
+		return err
+	}
+	if w.opts.DisableUniqueChecks {
+		if _, err := db.ExecContext(ctx, "SET UNIQUE_CHECKS=1"); err != nil {
+			log.Ctx(ctx).Error().Err(err).Msg("re-enable unique checks")
+		}
+	}
+	if w.opts.DisableForeignKeyChecks {
+		if _, err := db.ExecContext(ctx, "SET FOREIGN_KEY_CHECKS=1"); err != nil {
+			log.Ctx(ctx).Error().Err(err).Msg("re-enable foreign key checks")
+		}
+	}
+	if *totalWarnings > 0 {
+		log.Ctx(ctx).Warn().
+			Int("totalWarnings", *totalWarnings).
+			Str("table", w.table.Schema+"."+w.table.Name).
+			Msg("warnings occurred during table restore")
+	}
+	return nil
 }
 
 // newInsertBuilder creates a fresh InsertBuilder for this table configured with
@@ -313,18 +301,16 @@ func (w *InsertRestoreWriter) buildBatch(tuples [][]byte) string {
 	return stmt
 }
 
-// showWarnings logs any MySQL warnings that followed the most recent INSERT batch.
-// warningCount is taken from res.Warnings (the server's warning counter for the
-// last statement) to avoid an extra round-trip for the common zero-warnings case.
+// showWarnings fetches and logs any MySQL warnings that followed the most recent
+// INSERT batch. It runs SHOW WARNINGS only when PrintWarnings is enabled.
 func (w *InsertRestoreWriter) showWarnings(
 	ctx context.Context,
-	conn *client.Conn,
-	warningCount int,
+	db core.DB,
 	batchNum int,
 	printedCount *int,
 ) (int, error) {
-	if warningCount == 0 || !w.opts.PrintWarnings {
-		return warningCount, nil
+	if !w.opts.PrintWarnings {
+		return 0, nil
 	}
 
 	maxFetch := w.opts.MaxFetchWarnings
@@ -332,34 +318,41 @@ func (w *InsertRestoreWriter) showWarnings(
 	if maxFetch > 0 {
 		fetchLimit = maxFetch - *printedCount
 		if fetchLimit <= 0 {
-			return warningCount, nil
+			return 0, nil
 		}
 	}
 
 	var query string
 	if fetchLimit > 0 {
-		query = fmt.Sprintf("SHOW WARNINGS LIMIT %d;", fetchLimit)
+		query = fmt.Sprintf("SHOW WARNINGS LIMIT %d", fetchLimit)
 	} else {
-		query = "SHOW WARNINGS;"
+		query = "SHOW WARNINGS"
 	}
 
-	result, err := conn.Execute(query)
+	rows, err := db.QueryContext(ctx, query)
 	if err != nil {
 		return 0, fmt.Errorf("fetch warnings: %w", err)
 	}
+	defer func() {
+		if err := rows.Close(); err != nil {
+			log.Ctx(ctx).Warn().Err(err).Msg("close SHOW WARNINGS rows")
+		}
+	}()
 
-	for _, row := range result.Values {
-		if len(row) < 3 {
+	count := 0
+	for rows.Next() {
+		var level, code, msg string
+		if err := rows.Scan(&level, &code, &msg); err != nil {
 			continue
 		}
 		log.Ctx(ctx).Warn().
-			Str("MysqlLevel", string(row[0].AsString())).
-			Str("MysqlCode", string(row[1].AsString())).
-			Str("MysqlWarning", string(row[2].AsString())).
+			Str("MysqlLevel", level).
+			Str("MysqlCode", code).
+			Str("MysqlWarning", msg).
 			Int("BatchNum", batchNum).
 			Msg("warning from MySQL server during table restore")
 		*printedCount++
+		count++
 	}
-
-	return warningCount, nil
+	return count, rows.Err()
 }

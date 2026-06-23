@@ -26,12 +26,22 @@ import (
 )
 
 func TestTableRestorer_DebugInfo(t *testing.T) {
-	table := testTable("mydb", "orders", "id")
-	r := NewTableRestorer(core.ObjectRestoreSpec{}, table, &stubReader{}, &stubWriter{})
-	info := r.DebugInfo()
-	assert.NotEmpty(t, info)
-	assert.Contains(t, info, "mydb")
-	assert.Contains(t, info, "orders")
+	tests := []struct {
+		name   string
+		schema string
+		table  string
+		want   string
+	}{
+		{"simple", "mydb", "orders", "table mydb.orders"},
+		{"another", "public", "users", "table public.users"},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			table := testTable(tc.schema, tc.table, "id")
+			r := NewTableRestorer(core.ObjectRestoreSpec{}, table, &stubReader{}, &stubWriter{})
+			assert.Equal(t, tc.want, r.DebugInfo())
+		})
+	}
 }
 
 func TestTableRestorer_Meta(t *testing.T) {
@@ -40,7 +50,7 @@ func TestTableRestorer_Meta(t *testing.T) {
 	meta := r.Meta()
 	assert.Equal(t, "mydb", meta[core.MetaKeyTableSchema])
 	assert.Equal(t, "orders", meta[core.MetaKeyTableName])
-	assert.NotEmpty(t, meta[core.MetaKeyUniqueDumpTaskID])
+	assert.Len(t, meta, 2)
 }
 
 func TestTableRestorer_Restore_HappyPath(t *testing.T) {

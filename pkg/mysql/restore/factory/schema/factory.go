@@ -18,18 +18,19 @@ import (
 	"fmt"
 
 	core "github.com/greenmaskio/greenmask/pkg/common/core"
-	"github.com/greenmaskio/greenmask/pkg/common/utils"
 )
 
 var _ core.SchemaRestoreFactory = (*Factory)(nil)
 
-// Factory builds MysqlSchemaRestorer instances from SchemaRestoreSpecs.
+// Factory builds MysqlSchemaRestorer instances from SchemaRestoreSpecs. The
+// mysql client vendor-utility provider is injected so the restorer neither
+// builds nor executes the command directly.
 type Factory struct {
-	cmd utils.CmdProducer
+	provider core.VendorUtilityProvider
 }
 
-func NewFactory(cmd utils.CmdProducer) *Factory {
-	return &Factory{cmd: cmd}
+func NewFactory(provider core.VendorUtilityProvider) *Factory {
+	return &Factory{provider: provider}
 }
 
 func (f *Factory) Kind() core.SchemaObjectKind {
@@ -42,7 +43,7 @@ func (f *Factory) New(spec core.SchemaRestoreSpec) (core.SchemaRestorer, error) 
 		return nil, fmt.Errorf("expected schema.MysqlSchemaPayload payload, got %T", spec.Payload)
 	}
 	return &MysqlSchemaRestorer{
-		cmd:     f.cmd,
-		payload: payload,
+		provider: f.provider,
+		payload:  payload,
 	}, nil
 }

@@ -26,8 +26,6 @@ import (
 
 	core "github.com/greenmaskio/greenmask/pkg/common/core"
 	"github.com/greenmaskio/greenmask/pkg/common/mocks"
-	"github.com/greenmaskio/greenmask/pkg/common/utils"
-	"github.com/greenmaskio/greenmask/pkg/testutils"
 )
 
 // fakeConnAttrs satisfies the unexported connAttributes interface so the dumper
@@ -51,28 +49,51 @@ type fakeConn struct{ cfg any }
 
 func (f fakeConn) ConnectionConfig() any { return f.cfg }
 
-// dumpContent is the canned mysqldump stdout the runner mock writes into the
+// dumpContent is the canned mysqldump stdout the stub provider writes into the
 // pipe so the storage mock has something to drain and count.
 const dumpContent = "-- MySQL dump\nCREATE TABLE t (id int);\n"
 
-// newRunnerMock returns a CmdRunnerMock whose ExecuteCmdAndWriteStdout writes
-// dumpContent into the supplied writer (mirroring real mysqldump streaming).
-func newRunnerMock() *testutils.CmdRunnerMock {
-	runner := &testutils.CmdRunnerMock{}
-	runner.On("ExecuteCmdAndWriteStdout", mock.Anything, mock.Anything).
-		Return(nil).
-		Run(func(args mock.Arguments) {
-			w := args.Get(1).(io.Writer)
-			_, _ = w.Write([]byte(dumpContent))
-		})
-	return runner
+var _ core.VendorUtilityProvider = (*stubProvider)(nil)
+
+// stubProvider is a core.VendorUtilityProvider test double. It records the args
+// and env passed to Stream, optionally writes canned content into the writer
+// (mirroring real mysqldump streaming), and returns a canned VendorUtility.
+type stubProvider struct {
+	content      string
+	streamErr    error
+	vendor       core.VendorUtility
+	vendorErr    error
+	streamArgs   []string
+	streamEnv    []string
+	streamCalled bool
+	versionCalls int
 }
 
-// expectProduce wires the producer mock to return runner only when Produce is
-// called with the exact executable/args/env. An unmatched call panics the mock,
-// so this doubles as the assertion on the produced command line.
-func expectProduce(producer *testutils.CmdProducerMock, args, env []string, runner utils.CmdRunnerInterface) {
-	producer.On("Produce", "mysqldump", args, env, mock.Anything).Return(runner, nil)
+func newStubProvider() *stubProvider {
+	return &stubProvider{
+		content: dumpContent,
+		vendor:  core.VendorUtility{Name: "mysqldump", VersionString: "8.0.35", VersionParts: []string{"8", "0", "35"}},
+	}
+}
+
+func (p *stubProvider) Name() string { return "mysqldump" }
+
+func (p *stubProvider) Version(_ context.Context) (core.VendorUtility, error) {
+	p.versionCalls++
+	return p.vendor, p.vendorErr
+}
+
+func (p *stubProvider) Stream(_ context.Context, args, env []string, _ io.Reader, w io.Writer) error {
+	p.streamCalled = true
+	p.streamArgs = append([]string{}, args...)
+	p.streamEnv = append([]string{}, env...)
+	if p.streamErr != nil {
+		return p.streamErr
+	}
+	if w != nil && p.content != "" {
+		_, _ = w.Write([]byte(p.content))
+	}
+	return nil
 }
 
 func TestDumper_Dump_Parameters(t *testing.T) {
@@ -151,16 +172,14 @@ func TestDumper_Dump_Parameters(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			runner := newRunnerMock()
-			producer := &testutils.CmdProducerMock{}
+			prov := newStubProvider()
 			env := []string{"MYSQL_PWD=secret", "MYSQL_HOST=db"}
-			expectProduce(producer, tc.wantArgs, env, runner)
 
 			storage := mocks.NewStorageMock()
 			storage.On("PutObject", mock.Anything, tc.wantFileName, mock.Anything).Return(nil)
 
 			d := &dumper{
-				cmd:      producer,
+				provider: prov,
 				database: "shop",
 				section:  tc.section,
 				scope:    tc.scope,
@@ -179,8 +198,16 @@ func TestDumper_Dump_Parameters(t *testing.T) {
 			assert.Equal(t, tc.wantFileName, stat.FileName)
 			assert.Equal(t, core.CompressionNone, stat.Compression)
 
-			producer.AssertExpectations(t)
-			runner.AssertExpectations(t)
+			// The provider was streamed the exact command line and environment.
+			assert.Equal(t, tc.wantArgs, prov.streamArgs)
+			assert.Equal(t, env, prov.streamEnv)
+
+			// The vendor utility identity rides along on the stat.
+			require.NotNil(t, stat.VendorUtility)
+			assert.Equal(t, "mysqldump", stat.VendorUtility.Name)
+			assert.Equal(t, "8.0.35", stat.VendorUtility.VersionString)
+			assert.Equal(t, []string{"8", "0", "35"}, stat.VendorUtility.VersionParts)
+
 			storage.AssertExpectations(t)
 			// The drained content was streamed through to storage unchanged.
 			assert.Equal(t, dumpContent, storage.Data.String())
@@ -189,20 +216,16 @@ func TestDumper_Dump_Parameters(t *testing.T) {
 }
 
 func TestDumper_Dump_PlainStat(t *testing.T) {
-	runner := newRunnerMock()
-	producer := &testutils.CmdProducerMock{}
-	expectProduce(producer,
-		[]string{"--no-data", "--skip-triggers", "--skip-opt", "shop"},
-		nil, runner,
-	)
+	prov := newStubProvider()
 	storage := mocks.NewStorageMock()
 	storage.On("PutObject", mock.Anything, "schema_pre_shop.sql", mock.Anything).Return(nil)
 
-	d := &dumper{cmd: producer, database: "shop", section: core.DumpSectionPreData}
+	d := &dumper{provider: prov, database: "shop", section: core.DumpSectionPreData}
 
 	stat, err := d.Dump(context.Background(), fakeConn{cfg: fakeConnAttrs{}}, storage)
 	require.NoError(t, err)
 
+	assert.Equal(t, []string{"--no-data", "--skip-triggers", "--skip-opt", "shop"}, prov.streamArgs)
 	assert.Equal(t, int64(len(dumpContent)), stat.OriginalSize)
 	assert.Equal(t, int64(len(dumpContent)), stat.CompressedSize)
 	assert.Equal(t, core.CompressionNone, stat.Compression)
@@ -231,17 +254,12 @@ func TestDumper_Dump_Compression(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			runner := newRunnerMock()
-			producer := &testutils.CmdProducerMock{}
-			expectProduce(producer,
-				[]string{"--no-data", "--skip-triggers", "--skip-opt", "shop"},
-				nil, runner,
-			)
+			prov := newStubProvider()
 			storage := mocks.NewStorageMock()
 			storage.On("PutObject", mock.Anything, tc.wantFileName, mock.Anything).Return(nil)
 
 			d := &dumper{
-				cmd:         producer,
+				provider:    prov,
 				database:    "shop",
 				section:     core.DumpSectionPreData,
 				compression: true,
@@ -258,7 +276,6 @@ func TestDumper_Dump_Compression(t *testing.T) {
 			assert.Positive(t, stat.OriginalSize)
 			assert.Positive(t, stat.CompressedSize)
 
-			producer.AssertExpectations(t)
 			storage.AssertExpectations(t)
 		})
 	}
@@ -266,56 +283,63 @@ func TestDumper_Dump_Compression(t *testing.T) {
 
 func TestDumper_Dump_Errors(t *testing.T) {
 	t.Run("unknown section", func(t *testing.T) {
-		producer := &testutils.CmdProducerMock{}
+		prov := newStubProvider()
 		storage := mocks.NewStorageMock()
-		d := &dumper{cmd: producer, database: "shop", section: core.DumpSectionData}
+		d := &dumper{provider: prov, database: "shop", section: core.DumpSectionData}
 
 		_, err := d.Dump(context.Background(), fakeConn{cfg: fakeConnAttrs{}}, storage)
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "unknown schema section")
-		// Produce/PutObject must not be reached for an unknown section.
-		producer.AssertNotCalled(t, "Produce", mock.Anything, mock.Anything, mock.Anything, mock.Anything)
+		// Stream/PutObject must not be reached for an unknown section.
+		assert.False(t, prov.streamCalled)
 		storage.AssertNotCalled(t, "PutObject", mock.Anything, mock.Anything, mock.Anything)
 	})
 
 	t.Run("environment build failure", func(t *testing.T) {
-		producer := &testutils.CmdProducerMock{}
+		prov := newStubProvider()
 		storage := mocks.NewStorageMock()
-		d := &dumper{cmd: producer, database: "shop", section: core.DumpSectionPreData}
+		d := &dumper{provider: prov, database: "shop", section: core.DumpSectionPreData}
 		conn := fakeConn{cfg: fakeConnAttrs{envErr: errors.New("boom")}}
 
 		_, err := d.Dump(context.Background(), conn, storage)
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "build mysqldump environment")
-		producer.AssertNotCalled(t, "Produce", mock.Anything, mock.Anything, mock.Anything, mock.Anything)
+		assert.False(t, prov.streamCalled)
 	})
 
 	t.Run("connection config without mysqldump attributes", func(t *testing.T) {
-		producer := &testutils.CmdProducerMock{}
+		prov := newStubProvider()
 		storage := mocks.NewStorageMock()
-		d := &dumper{cmd: producer, database: "shop", section: core.DumpSectionPreData}
+		d := &dumper{provider: prov, database: "shop", section: core.DumpSectionPreData}
 		conn := fakeConn{cfg: "not-conn-attributes"}
 
 		_, err := d.Dump(context.Background(), conn, storage)
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "does not provide mysqldump attributes")
-		producer.AssertNotCalled(t, "Produce", mock.Anything, mock.Anything, mock.Anything, mock.Anything)
+		assert.False(t, prov.streamCalled)
+	})
+
+	t.Run("version probe failure does not fail the dump", func(t *testing.T) {
+		prov := newStubProvider()
+		prov.vendorErr = errors.New("mysqldump not found")
+		storage := mocks.NewStorageMock()
+		storage.On("PutObject", mock.Anything, "schema_pre_shop.sql", mock.Anything).Return(nil)
+		d := &dumper{provider: prov, database: "shop", section: core.DumpSectionPreData}
+
+		stat, err := d.Dump(context.Background(), fakeConn{cfg: fakeConnAttrs{}}, storage)
+		require.NoError(t, err)
+		assert.Nil(t, stat.VendorUtility)
 	})
 }
 
 // TestFactory_New_Wiring covers the Payload -> dumper field mapping through the
 // public Factory.New entry point (database, section, compression, pgzip).
 func TestFactory_New_Wiring(t *testing.T) {
-	runner := newRunnerMock()
-	producer := &testutils.CmdProducerMock{}
-	expectProduce(producer,
-		[]string{"--no-data", "--skip-triggers", "--skip-opt", "shop"},
-		nil, runner,
-	)
+	prov := newStubProvider()
 	storage := mocks.NewStorageMock()
 	storage.On("PutObject", mock.Anything, "schema_pre_shop.sql.gz", mock.Anything).Return(nil)
 
-	f := &Factory{cmd: producer}
+	f := NewFactory(prov)
 	sd, err := f.New(core.SchemaDumpSpec{Payload: Payload{
 		Name:        "shop",
 		Section:     core.DumpSectionPreData,
@@ -331,12 +355,11 @@ func TestFactory_New_Wiring(t *testing.T) {
 	assert.Equal(t, core.CompressionPgzip, stat.Compression)
 	assert.Equal(t, core.DumpSectionPreData, stat.Section)
 
-	producer.AssertExpectations(t)
 	storage.AssertExpectations(t)
 }
 
 func TestFactory_New_WrongPayload(t *testing.T) {
-	f := &Factory{cmd: &testutils.CmdProducerMock{}}
+	f := NewFactory(newStubProvider())
 	_, err := f.New(core.SchemaDumpSpec{Payload: "not-a-payload"})
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "expected schema.Payload")

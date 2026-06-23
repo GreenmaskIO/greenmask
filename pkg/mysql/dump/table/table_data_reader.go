@@ -39,7 +39,7 @@ var (
 )
 
 type TableDataReader struct {
-	txPool       *pool.ConsistentTxPool
+	txPool       *pool.ConsistentDumpTxPool
 	columnLength int
 	connConfig   *mysqlmodels.ConnConfig
 	query        string
@@ -161,7 +161,7 @@ func (r *TableDataReader) streamRows(ctx context.Context, conn pool.WorkerConn) 
 	return nil
 }
 
-func (r *TableDataReader) SetTxPool(txPool *pool.ConsistentTxPool) {
+func (r *TableDataReader) SetTxPool(txPool *pool.ConsistentDumpTxPool) {
 	r.txPool = txPool
 }
 

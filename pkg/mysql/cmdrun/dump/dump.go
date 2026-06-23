@@ -258,7 +258,7 @@ type Dump struct {
 	dumpStats             core.DataDumpStat
 	hbw                   *heartbeat.Worker
 	hbwEg                 *errgroup.Group
-	txPool                *pool.ConsistentTxPool
+	txPool                *pool.ConsistentDumpTxPool
 	format                core.DumpFormat
 	cmd                   utils.CmdProducer
 	dumpedDatabaseSchema  []core.SchemaDumpStat

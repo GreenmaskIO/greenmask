@@ -46,7 +46,31 @@ func (p *RestorePipeline) OpenRuntime(
 	if err != nil {
 		return nil, fmt.Errorf("open restore session: %w", err)
 	}
+
+	// Eagerly initialize the session (open connections / begin transactions) so it
+	// is fully alive for the whole run — pre-restore introspection queries the
+	// target through it. Init is idempotent, so the processor's own Init call later
+	// is a safe no-op. DoneWithError (commit/rollback) remains processor-owned.
+	rs, ok := session.(core.RestoreSession)
+	if !ok {
+		closeSession(ctx, session, "close restore session after type-assertion failure")
+		return nil, fmt.Errorf("open restore session: session does not implement core.RestoreSession (%T)", session)
+	}
+	if err := rs.Init(ctx); err != nil {
+		closeSession(ctx, session, "close restore session after init failure")
+		return nil, fmt.Errorf("init restore session: %w", err)
+	}
 	return &RestoreRuntime{Session: session}, nil
+}
+
+// closeSession releases a session on an error path, using its own bounded
+// background context so cleanup is not skipped if ctx is already cancelled.
+func closeSession(ctx context.Context, session core.DatabaseSession, msg string) {
+	closeCtx, cancel := context.WithTimeout(context.Background(), defaultRestoreSessionCloseTimeout)
+	defer cancel()
+	if err := session.Close(closeCtx); err != nil {
+		log.Ctx(ctx).Warn().Err(err).Msg(msg)
+	}
 }
 
 // Execute runs the three steps of the restore execution phase:
@@ -99,6 +123,20 @@ func (p *RestorePipeline) Execute(
 	if err != nil {
 		return fmt.Errorf("build connection configurer for execution: %w", err)
 	}
+
+	// Introspect the target database (e.g. its server version) before restore
+	// executes, querying through the live session opened by the runtime. Capture
+	// only; TODO(TBD): a later stage will compare this against
+	// meta.Introspection.Version to emit compatibility warnings.
+	introspection, err := p.Stages.RestoreIntrospector.Introspect(ctx, runtime.Session)
+	if err != nil {
+		return fmt.Errorf("introspect target database: %w", err)
+	}
+	state.TargetIntrospection = &introspection
+	log.Ctx(ctx).Info().
+		Str("Version", introspection.Version.FullString).
+		Str("Vendor", introspection.Vendor).
+		Msg("introspected target database server version")
 
 	if err := p.Stages.RestoreProcessor.Run(ctx, core.RestoreRunInput{
 		Session:     runtime.Session,

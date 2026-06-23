@@ -25,29 +25,28 @@ import (
 	"github.com/stretchr/testify/require"
 
 	core "github.com/greenmaskio/greenmask/pkg/common/core"
-	"github.com/greenmaskio/greenmask/pkg/common/utils"
 )
 
-// ── CmdProducer / CmdRunnerInterface mocks ─────────────────────────────────────
+// ── VendorUtilityProvider mock ─────────────────────────────────────────────────
 
-// capturingCmdProducer records the args passed to Produce so tests can assert
-// the remapped database name appears there.
-type capturingCmdProducer struct {
+var _ core.VendorUtilityProvider = (*capturingProvider)(nil)
+
+// capturingProvider records the args passed to Stream so tests can assert the
+// remapped database name appears there.
+type capturingProvider struct {
 	lastArgs []string
 }
 
-func (c *capturingCmdProducer) Produce(_ string, args []string, _ []string, _ io.Reader) (utils.CmdRunnerInterface, error) {
-	c.lastArgs = append([]string{}, args...)
-	return &noopCmdRunner{}, nil
+func (c *capturingProvider) Name() string { return "mysql" }
+
+func (c *capturingProvider) Version(_ context.Context) (core.VendorUtility, error) {
+	return core.VendorUtility{Name: "mysql", VersionString: "8.0.35", VersionParts: []string{"8", "0", "35"}}, nil
 }
 
-type noopCmdRunner struct{}
-
-func (n *noopCmdRunner) ExecuteCmdAndForwardStdout(_ context.Context) error { return nil }
-func (n *noopCmdRunner) ExecuteCmdAndWriteStdout(_ context.Context, _ io.Writer) error {
+func (c *capturingProvider) Stream(_ context.Context, args, _ []string, _ io.Reader, _ io.Writer) error {
+	c.lastArgs = append([]string{}, args...)
 	return nil
 }
-func (n *noopCmdRunner) ExecuteCmd(_ context.Context, _ io.Writer, _ int) error { return nil }
 
 // ── Storager mock ─────────────────────────────────────────────────────────────
 
@@ -93,18 +92,27 @@ type callbackSession struct {
 }
 
 func (s *callbackSession) Close(_ context.Context) error { return nil }
-func (s *callbackSession) RunWithOperationalDB(ctx context.Context, fn func(context.Context, core.DB) error) error {
-	return fn(ctx, s.db)
-}
-func (s *callbackSession) RunWithEngineResource(_ context.Context, _ func(context.Context, any) error) error {
+func (s *callbackSession) RunWithOperationalDB(_ context.Context, _ func(context.Context, core.DB) error) error {
 	return core.ErrEngineResourceNotSupported
 }
+func (s *callbackSession) RunWithEngineResource(ctx context.Context, fn func(context.Context, any) error) error {
+	return fn(ctx, &stubRestoreConn{db: s.db})
+}
+
+// stubRestoreConn is a core.RestoreConn carrying only ID/DB — the session owns the
+// transaction lifecycle.
+type stubRestoreConn struct {
+	db core.DB
+}
+
+func (r *stubRestoreConn) ID() int     { return 0 }
+func (r *stubRestoreConn) DB() core.DB { return r.db }
 
 // ── restoreSchemaFile remap tests ──────────────────────────────────────────────
 
 func TestMysqlSchemaRestorer_restoreSchemaFile_remapApplied(t *testing.T) {
-	cmdProd := &capturingCmdProducer{}
-	r := &MysqlSchemaRestorer{cmd: cmdProd}
+	cmdProd := &capturingProvider{}
+	r := &MysqlSchemaRestorer{provider: cmdProd}
 
 	opts := SchemaRestoreOpts{
 		RemapDatabase: map[string]string{"src": "dst"},
@@ -125,8 +133,8 @@ func TestMysqlSchemaRestorer_restoreSchemaFile_remapApplied(t *testing.T) {
 }
 
 func TestMysqlSchemaRestorer_restoreSchemaFile_noRemapKeepsOriginal(t *testing.T) {
-	cmdProd := &capturingCmdProducer{}
-	r := &MysqlSchemaRestorer{cmd: cmdProd}
+	cmdProd := &capturingProvider{}
+	r := &MysqlSchemaRestorer{provider: cmdProd}
 
 	opts := SchemaRestoreOpts{
 		RemapDatabase: map[string]string{"other": "x"},
@@ -146,8 +154,8 @@ func TestMysqlSchemaRestorer_restoreSchemaFile_noRemapKeepsOriginal(t *testing.T
 }
 
 func TestMysqlSchemaRestorer_restoreSchemaFile_emptyDatabaseNameNoArgAppended(t *testing.T) {
-	cmdProd := &capturingCmdProducer{}
-	r := &MysqlSchemaRestorer{cmd: cmdProd}
+	cmdProd := &capturingProvider{}
+	r := &MysqlSchemaRestorer{provider: cmdProd}
 
 	opts := SchemaRestoreOpts{}
 	stat := core.SchemaDumpStat{

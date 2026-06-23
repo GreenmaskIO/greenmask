@@ -109,6 +109,10 @@ type SchemaDumpMetadata struct {
 	DumpedDatabaseSchema []SchemaDumpStat `yaml:"dumped_database_schema" json:"dumped_database_schema"`
 	OriginalSize         int64            `yaml:"original_size" json:"original_size"`
 	CompressedSize       int64            `yaml:"compressed_size" json:"compressed_size"`
+	// VendorUtility identifies the CLI tool (e.g. mysqldump) that produced the
+	// schema dump. It is stored once on the metadata (not per-stat) because the
+	// whole schema dump is produced by a single utility.
+	VendorUtility *VendorUtility `yaml:"vendor_utility,omitempty" json:"vendor_utility,omitempty"`
 }
 
 func NewSchemaDumpMetadata(
@@ -118,14 +122,19 @@ func NewSchemaDumpMetadata(
 		return nil
 	}
 	var originalSize, compressedSize int64
+	var vendorUtility *VendorUtility
 	for _, schemaStat := range dumpedDatabaseSchema {
 		originalSize += schemaStat.OriginalSize
 		compressedSize += schemaStat.CompressedSize
+		if vendorUtility == nil && schemaStat.VendorUtility != nil {
+			vendorUtility = schemaStat.VendorUtility
+		}
 	}
 	return &SchemaDumpMetadata{
 		DumpedDatabaseSchema: dumpedDatabaseSchema,
 		OriginalSize:         originalSize,
 		CompressedSize:       compressedSize,
+		VendorUtility:        vendorUtility,
 	}
 }
 

@@ -14,6 +14,7 @@ const (
 const (
 	DBMSVendorMySQL   = "mysql"
 	DBMSVendorMariaDB = "mariadb"
+	DBMSVendorPercona = "percona"
 )
 
 type DBMSVersion struct {

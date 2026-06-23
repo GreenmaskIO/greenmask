@@ -31,20 +31,19 @@ const (
 )
 
 const (
-	MetaKeyEngine           = "Engine"
-	MetaKeyDumpID           = "DumpID"
-	MetaKeyParameterName    = "ParameterName"
-	MetaKeyColumnName       = "ColumnName"
-	MetaKeyTableName        = "TableName"
-	MetaKeyTableSchema      = "TableSchema"
-	MetaKeyTableDumpQuery   = "TableDumpQuery"
-	MetaKeyParameterValue   = "ParameterValue"
-	MetaKeyColumnTypeName   = "ColumnTypeName"
-	MetaKeyError            = "Error"
-	MetaKeyUniqueDumpTaskID = "UniqueTaskID"
-	MetaKeyTransformerName  = "TransformerName"
-	MetaKeyConditionScope   = "ConditionScope"
-	MetaKeyQuery            = "Query"
+	MetaKeyEngine          = "Engine"
+	MetaKeyDumpID          = "DumpID"
+	MetaKeyParameterName   = "ParameterName"
+	MetaKeyColumnName      = "ColumnName"
+	MetaKeyTableName       = "TableName"
+	MetaKeyTableSchema     = "TableSchema"
+	MetaKeyTableDumpQuery  = "TableDumpQuery"
+	MetaKeyParameterValue  = "ParameterValue"
+	MetaKeyColumnTypeName  = "ColumnTypeName"
+	MetaKeyError           = "Error"
+	MetaKeyTransformerName = "TransformerName"
+	MetaKeyConditionScope  = "ConditionScope"
+	MetaKeyQuery           = "Query"
 )
 
 type ValidationWarnings []*ValidationWarning

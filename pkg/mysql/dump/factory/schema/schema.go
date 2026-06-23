@@ -38,8 +38,6 @@ var (
 	_ core.SchemaDumper      = (*dumper)(nil)
 )
 
-const executable = "mysqldump"
-
 // sectionFilePrefix maps schema sections to their file name prefix.
 var sectionFilePrefix = map[core.DumpSection]string{
 	core.DumpSectionPreData:  "pre",
@@ -89,14 +87,16 @@ type connAttributes interface {
 
 // Factory builds MySQL schema dumpers. Runtime resources (storage, connection
 // attributes) are injected into each dumper's Dump call, so the factory is
-// storage- and connection-free.
+// storage- and connection-free. The vendor-utility provider (mysqldump) is
+// injected so the dumper neither builds nor executes the command directly.
 type Factory struct {
-	cmd utils.CmdProducer
+	provider core.VendorUtilityProvider
 }
 
-// NewFactory creates the MySQL schema dump factory.
-func NewFactory() *Factory {
-	return &Factory{cmd: utils.NewDefaultCmdProducer()}
+// NewFactory creates the MySQL schema dump factory backed by the supplied
+// mysqldump vendor-utility provider.
+func NewFactory(provider core.VendorUtilityProvider) *Factory {
+	return &Factory{provider: provider}
 }
 
 func (f *Factory) Kind() core.SchemaObjectKind {
@@ -109,7 +109,7 @@ func (f *Factory) New(spec core.SchemaDumpSpec) (core.SchemaDumper, error) {
 		return nil, fmt.Errorf("expected schema.Payload, got %T", spec.Payload)
 	}
 	return &dumper{
-		cmd:         f.cmd,
+		provider:    f.provider,
 		database:    payload.Name,
 		section:     payload.Section,
 		scope:       payload.Scope,
@@ -123,7 +123,7 @@ func (f *Factory) New(spec core.SchemaDumpSpec) (core.SchemaDumper, error) {
 // parameters from the connection attributes handed to Dump and streaming the
 // resulting DDL into the supplied storage.
 type dumper struct {
-	cmd         utils.CmdProducer
+	provider    core.VendorUtilityProvider
 	database    string
 	section     core.DumpSection
 	scope       core.DumpScope
@@ -197,13 +197,10 @@ func (d *dumper) Dump(ctx context.Context, conn core.ConnectionConfigurer, st co
 				log.Ctx(ctx).Error().Err(err).Msg("error closing output writer")
 			}
 		}(w)
-		cmd, err := d.cmd.Produce(executable, params, envs, nil)
-		if err != nil {
-			return fmt.Errorf("cannot produce mysqldump command: %w", err)
-		}
-		// Use gtx so the subprocess is cancelled if the reader goroutine fails.
-		if err := cmd.ExecuteCmdAndWriteStdout(gtx, w); err != nil {
-			return fmt.Errorf("cannot run mysqldump for database %s section %s: %w", d.database, d.section, err)
+		// Stream mysqldump stdout into the storage writer. Use gtx so the
+		// subprocess is cancelled if the reader goroutine fails.
+		if err := d.provider.Stream(gtx, params, envs, nil, w); err != nil {
+			return fmt.Errorf("cannot run %s for database %s section %s: %w", d.provider.Name(), d.database, d.section, err)
 		}
 		return nil
 	})
@@ -220,6 +217,16 @@ func (d *dumper) Dump(ctx context.Context, conn core.ConnectionConfigurer, st co
 		}
 	}
 
+	// Record which vendor utility produced this schema dump. A version-probe
+	// failure must not fail the dump itself — the DDL is already persisted — so
+	// it is logged and the utility identity is left unset.
+	var vendorUtility *core.VendorUtility
+	if vu, err := d.provider.Version(ctx); err != nil {
+		log.Ctx(ctx).Warn().Err(err).Str("Executable", d.provider.Name()).Msg("probe vendor utility version")
+	} else {
+		vendorUtility = &vu
+	}
+
 	return core.SchemaDumpStat{
 		Kind:           core.SchemaObjectKindMysqlDatabase,
 		DatabaseName:   d.database,
@@ -228,6 +235,7 @@ func (d *dumper) Dump(ctx context.Context, conn core.ConnectionConfigurer, st co
 		Compression:    compression,
 		OriginalSize:   w.GetCount(),
 		CompressedSize: r.GetCount(),
+		VendorUtility:  vendorUtility,
 	}, nil
 }
 

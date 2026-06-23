@@ -30,6 +30,11 @@ type RestoreStages struct {
 	// DatabaseSessionBuilder opens a DBMS-specific connection to the target DB.
 	DatabaseSessionBuilder core.DatabaseSessionBuilder
 
+	// RestoreIntrospector reads runtime facts about the TARGET database (e.g.
+	// its server version) before restore executes, using its own short-lived
+	// connection built from the ConnectionConfigurer.
+	RestoreIntrospector core.RestoreIntrospector
+
 	// RestoreStorageProvisioner provisions a Storager scoped to the resolved
 	// dumpID. It handles "latest" resolution internally.
 	RestoreStorageProvisioner core.RestoreStorageProvisioner

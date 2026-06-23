@@ -21,7 +21,6 @@ package connconfig
 import (
 	commonconfig "github.com/greenmaskio/greenmask/pkg/common/config"
 	"github.com/greenmaskio/greenmask/pkg/config"
-	mysqlmodels "github.com/greenmaskio/greenmask/pkg/mysql/models"
 	"github.com/greenmaskio/greenmask/pkg/mysql/restore/opts"
 )
 
@@ -57,7 +56,7 @@ func (c *RestoreConnectionConfig) SchemaRestoreOptions() opts.SchemaRestoreOpts 
 	}
 }
 
-// TableRestoreOptions returns the parameters used by InsertRestoreWriter and CsvRestoreWriter.
+// TableRestoreOptions returns the parameters used by InsertRestoreWriter.
 func (c *RestoreConnectionConfig) TableRestoreOptions() opts.TableRestoreOpts {
 	return opts.TableRestoreOpts{
 		PrintWarnings:           c.MySQL.PrintWarnings,
@@ -69,10 +68,4 @@ func (c *RestoreConnectionConfig) TableRestoreOptions() opts.TableRestoreOpts {
 		MaxInsertStatementSize:  c.MySQL.MaxInsertStatementSize,
 		RemapDatabase:           c.Common.RemapDatabase,
 	}
-}
-
-// CsvConnConfig returns a ConnConfig for opening a go-sql-driver/mysql connection
-// needed by the CSV writer (LOAD DATA LOCAL INFILE requires the standard driver).
-func (c *RestoreConnectionConfig) CsvConnConfig() (*mysqlmodels.ConnConfig, error) {
-	return c.MySQL.ConnectionConfig(c.Common.SSL)
 }

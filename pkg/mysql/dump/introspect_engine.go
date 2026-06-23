@@ -26,6 +26,7 @@ import (
 	core "github.com/greenmaskio/greenmask/pkg/common/core"
 	"github.com/greenmaskio/greenmask/pkg/mysql/dbmsdriver"
 	mysqlmodels "github.com/greenmaskio/greenmask/pkg/mysql/models"
+	mysqlversion "github.com/greenmaskio/greenmask/pkg/mysql/version"
 )
 
 var (
@@ -198,7 +199,7 @@ func (e *introspectEngine) getVersion(ctx context.Context, db core.DB) (core.DBM
 		Scan(&versionString, &versionComment); err != nil {
 		return core.DBMSVersion{}, fmt.Errorf("query server version: %w", err)
 	}
-	return parseServerVersion(versionString, versionComment), nil
+	return mysqlversion.ParseServerVersion(versionString, versionComment), nil
 }
 
 // getSchemas fetches all non-system schemas and retains those allowed by the

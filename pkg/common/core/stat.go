@@ -202,4 +202,7 @@ type SchemaDumpStat struct {
 	Compression    Compression      `json:"compression"`
 	OriginalSize   int64            `json:"original_size"`
 	CompressedSize int64            `json:"compressed_size"`
+	// VendorUtility identifies the CLI tool (e.g. mysqldump) that produced this
+	// schema dump. Promoted onto SchemaDumpMetadata by NewSchemaDumpMetadata.
+	VendorUtility *VendorUtility `json:"vendor_utility,omitempty"`
 }

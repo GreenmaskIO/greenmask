@@ -11,6 +11,7 @@ import (
 
 	"github.com/go-mysql-org/go-mysql/client"
 	_ "github.com/go-sql-driver/mysql" // register mysql driver
+	"github.com/greenmaskio/greenmask/pkg/common/core"
 	"github.com/rs/zerolog/log"
 	"golang.org/x/sync/errgroup"
 
@@ -69,13 +70,19 @@ func (m *metaTx) QueryRowContext(ctx context.Context, query string, args ...any)
 	return m.tx.QueryRowContext(ctx, query, args...)
 }
 
-// ConsistentTxPool provides a pool of MySQL connections that share a consistent snapshot.
-// It implements a synchronization protocol to ensure all worker sessions see the exact same
-// database state. This is achieved by:
+// ConsistentDumpTxPool implements core.DatabaseSession for the dump pipeline only.
+// Restore operations must use RestorePool instead.
+var _ core.DatabaseSession = (*ConsistentDumpTxPool)(nil)
+
+// ConsistentDumpTxPool provides a pool of MySQL connections that share a consistent snapshot
+// for dump operations. It implements a synchronization protocol to ensure all worker
+// sessions see the exact same database state. This is achieved by:
 // 1. Preparing N worker sessions with REPEATABLE READ isolation.
 // 2. Acquiring a global read lock (FLUSH TABLES WITH READ LOCK) on a coordinator session.
 // 3. Forcing each worker to establish its snapshot while the lock is held (dummy read).
 // 4. Releasing the global lock on the coordinator session.
+//
+// This type is dump-only. For restore operations use RestorePool.
 //
 // Usage:
 //
@@ -100,7 +107,7 @@ func (m *metaTx) QueryRowContext(ctx context.Context, query string, args ...any)
 //     (not the queue) to ensure all transactions are rolled back and connections are closed.
 //   - Snapshot Persistence: Transactions in the pool remain open indefinitely until Close is called.
 //     Long-lived pools will keep the MySQL undo logs from being purged (History List Length).
-type ConsistentTxPool struct {
+type ConsistentDumpTxPool struct {
 	cfg               *mysqlmodels.ConnConfig
 	db                *sql.DB
 	metaConn          *sql.Conn
@@ -115,14 +122,35 @@ type ConsistentTxPool struct {
 	heartbeatWg       sync.WaitGroup
 }
 
-func (p *ConsistentTxPool) GetMetaTx() MetaTx {
+func (p *ConsistentDumpTxPool) GetMetaTx() MetaTx {
 	return &metaTx{tx: p.metaTx}
 }
 
-type Option func(*ConsistentTxPool)
+// RunWithOperationalDB invokes fn through the shared snapshot-isolated meta
+// transaction. All planning and introspection stages use this for consistent reads.
+func (p *ConsistentDumpTxPool) RunWithOperationalDB(ctx context.Context, fn func(ctx context.Context, db core.DB) error) error {
+	if p.metaTx == nil {
+		return fmt.Errorf("dump session: pool is not initialised")
+	}
+	return fn(ctx, &metaTx{tx: p.metaTx})
+}
+
+// RunWithEngineResource borrows a pooled raw connection for the duration of fn and
+// returns it to the pool afterwards (even on error or panic).
+// The resource passed to fn is a WorkerConn; consumers type-assert it.
+func (p *ConsistentDumpTxPool) RunWithEngineResource(ctx context.Context, fn func(ctx context.Context, res any) error) error {
+	if p.queue == nil {
+		return fmt.Errorf("dump session: pool is not initialised")
+	}
+	return p.RunWithConn(ctx, func(ctx context.Context, conn WorkerConn) error {
+		return fn(ctx, conn)
+	})
+}
+
+type Option func(*ConsistentDumpTxPool)
 
 func WithHeartbeat(interval time.Duration) Option {
-	return func(p *ConsistentTxPool) {
+	return func(p *ConsistentDumpTxPool) {
 		if interval <= 0 {
 			interval = defaultHeartbeatInterval
 		}
@@ -131,7 +159,7 @@ func WithHeartbeat(interval time.Duration) Option {
 }
 
 func WithHeartbeatTimeout(timeout time.Duration) Option {
-	return func(p *ConsistentTxPool) {
+	return func(p *ConsistentDumpTxPool) {
 		if timeout <= 0 {
 			timeout = defaultHeartbeatTimeout
 		}
@@ -139,8 +167,8 @@ func WithHeartbeatTimeout(timeout time.Duration) Option {
 	}
 }
 
-func NewConsistentTxPool(cfg *mysqlmodels.ConnConfig, poolSize int, opts ...Option) *ConsistentTxPool {
-	p := &ConsistentTxPool{
+func NewConsistentTxPool(cfg *mysqlmodels.ConnConfig, poolSize int, opts ...Option) *ConsistentDumpTxPool {
+	p := &ConsistentDumpTxPool{
 		cfg:              cfg,
 		poolSize:         poolSize,
 		heartbeatTimeout: defaultHeartbeatTimeout, // Default heartbeat timeout
@@ -152,7 +180,7 @@ func NewConsistentTxPool(cfg *mysqlmodels.ConnConfig, poolSize int, opts ...Opti
 }
 
 // connectRaw establishes a raw go-mysql connection.
-func (p *ConsistentTxPool) connectRaw(ctx context.Context) (*client.Conn, error) {
+func (p *ConsistentDumpTxPool) connectRaw(ctx context.Context) (*client.Conn, error) {
 	var opts []client.Option
 	if p.cfg.TLSConfig != nil {
 		opts = append(opts, func(c *client.Conn) error {
@@ -186,7 +214,7 @@ func (p *ConsistentTxPool) connectRaw(ctx context.Context) (*client.Conn, error)
 }
 
 // connectSql establishes a database/sql connection.
-func (p *ConsistentTxPool) connectSql(ctx context.Context) (*sql.Conn, error) {
+func (p *ConsistentDumpTxPool) connectSql(ctx context.Context) (*sql.Conn, error) {
 	if p.db == nil {
 		uri, err := p.cfg.URI()
 		if err != nil {
@@ -207,7 +235,7 @@ func (p *ConsistentTxPool) connectSql(ctx context.Context) (*sql.Conn, error) {
 	return conn, nil
 }
 
-func (p *ConsistentTxPool) prepareWorkerConns(ctx context.Context) error {
+func (p *ConsistentDumpTxPool) prepareWorkerConns(ctx context.Context) error {
 	log.Ctx(ctx).Debug().Msgf("phase 0: preparing %d worker sessions", p.poolSize)
 	p.pool = make([]*workerConn, p.poolSize)
 	for i := 0; i < p.poolSize; i++ {
@@ -236,7 +264,7 @@ func (p *ConsistentTxPool) prepareWorkerConns(ctx context.Context) error {
 	return nil
 }
 
-func (p *ConsistentTxPool) synchronizeSnapshots(ctx context.Context) error {
+func (p *ConsistentDumpTxPool) synchronizeSnapshots(ctx context.Context) error {
 	// Phase 1: Acquire Synchronization Lock (Coordinator Session)
 	log.Ctx(ctx).Debug().Msg("phase 1: acquiring synchronization lock")
 	coord, err := p.connectRaw(ctx)
@@ -325,7 +353,7 @@ func (p *ConsistentTxPool) synchronizeSnapshots(ctx context.Context) error {
 	return nil
 }
 
-func (p *ConsistentTxPool) Init(ctx context.Context) (err error) {
+func (p *ConsistentDumpTxPool) Init(ctx context.Context) (err error) {
 	defer func() {
 		if err != nil {
 			// Use a background context for cleanup to ensure it runs even if the original context is cancelled
@@ -369,7 +397,7 @@ func (p *ConsistentTxPool) Init(ctx context.Context) (err error) {
 // The connection is returned via a deferred send that runs even on panic. The
 // queue always has room for a connection that was just taken from it, so the
 // return never blocks and needs no context.
-func (p *ConsistentTxPool) RunWithConn(
+func (p *ConsistentDumpTxPool) RunWithConn(
 	ctx context.Context,
 	fn func(ctx context.Context, conn WorkerConn) error,
 ) error {
@@ -387,7 +415,7 @@ func (p *ConsistentTxPool) RunWithConn(
 	return fn(ctx, conn)
 }
 
-func (p *ConsistentTxPool) Close(ctx context.Context) error {
+func (p *ConsistentDumpTxPool) Close(ctx context.Context) error {
 	done := make(chan error, 1)
 	go func() {
 		logger := log.Ctx(ctx)
@@ -405,7 +433,7 @@ func (p *ConsistentTxPool) Close(ctx context.Context) error {
 
 // closeWorkerConn rolls back and closes a single raw worker connection.
 // Both operations are attempted regardless; all errors are joined and returned.
-func (p *ConsistentTxPool) closeWorkerConn(ctx context.Context, conn *workerConn) error {
+func (p *ConsistentDumpTxPool) closeWorkerConn(ctx context.Context, conn *workerConn) error {
 	if conn == nil || conn.Conn == nil {
 		return nil
 	}
@@ -420,7 +448,7 @@ func (p *ConsistentTxPool) closeWorkerConn(ctx context.Context, conn *workerConn
 	return errors.Join(errs...)
 }
 
-func (p *ConsistentTxPool) close(ctx context.Context) error {
+func (p *ConsistentDumpTxPool) close(ctx context.Context) error {
 	if p.heartbeatCancel != nil {
 		p.heartbeatCancel()
 		p.heartbeatWg.Wait()
@@ -468,7 +496,7 @@ func (p *ConsistentTxPool) close(ctx context.Context) error {
 	return errors.Join(errs...)
 }
 
-func (p *ConsistentTxPool) heartbeatWorker(ctx context.Context) {
+func (p *ConsistentDumpTxPool) heartbeatWorker(ctx context.Context) {
 	defer p.heartbeatWg.Done()
 	ticker := time.NewTicker(p.heartbeatInterval)
 	defer ticker.Stop()
@@ -483,7 +511,7 @@ func (p *ConsistentTxPool) heartbeatWorker(ctx context.Context) {
 	}
 }
 
-func (p *ConsistentTxPool) runHeartbeat(ctx context.Context) {
+func (p *ConsistentDumpTxPool) runHeartbeat(ctx context.Context) {
 	var conns []WorkerConn
 	defer func() {
 		for _, conn := range conns {

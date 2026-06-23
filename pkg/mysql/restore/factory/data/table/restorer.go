@@ -21,7 +21,6 @@ import (
 	"fmt"
 
 	core "github.com/greenmaskio/greenmask/pkg/common/core"
-	"github.com/greenmaskio/greenmask/pkg/common/utils"
 )
 
 var _ core.ObjectRestorer = (*TableRestorer)(nil)
@@ -51,14 +50,13 @@ func NewTableRestorer(
 }
 
 func (r *TableRestorer) DebugInfo() string {
-	return utils.GetUniqueTaskID("table_restorer_v2", r.table.Schema, r.table.Name)
+	return fmt.Sprintf("table %s.%s", r.table.Schema, r.table.Name)
 }
 
 func (r *TableRestorer) Meta() map[string]any {
 	return map[string]any{
-		core.MetaKeyTableSchema:      r.table.Schema,
-		core.MetaKeyTableName:        r.table.Name,
-		core.MetaKeyUniqueDumpTaskID: r.DebugInfo(),
+		core.MetaKeyTableSchema: r.table.Schema,
+		core.MetaKeyTableName:   r.table.Name,
 	}
 }
 

@@ -21,7 +21,7 @@ package opts
 import commonconfig "github.com/greenmaskio/greenmask/pkg/common/config"
 
 // TableRestoreOpts bundles the data-restore parameters extracted from the
-// connection config and passed to InsertRestoreWriter / CsvRestoreWriter.
+// connection config and passed to InsertRestoreWriter.
 type TableRestoreOpts struct {
 	PrintWarnings           bool
 	MaxFetchWarnings        int

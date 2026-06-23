@@ -101,6 +101,7 @@ func NewRestoreStages(cmd utils.CmdProducer) (restorepipeline.RestoreStages, err
 	return restorepipeline.RestoreStages{
 		ConnectionConfigurerBuilder: &RestoreConnectionConfigurerBuilder{},
 		DatabaseSessionBuilder:      &RestoreSessionBuilder{},
+		RestoreIntrospector:         &RestoreIntrospector{},
 		RestoreStorageProvisioner:   &MysqlRestoreStorageProvisioner{},
 		RestoreMetadataReader:       metadatareader.New(),
 		RestoreInstructionBuilder:   &MysqlRestoreInstructionBuilder{},

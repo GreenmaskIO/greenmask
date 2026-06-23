@@ -26,6 +26,53 @@ func (noopSession) RunWithOperationalDB(_ context.Context, _ func(context.Contex
 func (noopSession) RunWithEngineResource(_ context.Context, _ func(context.Context, any) error) error {
 	return core.ErrEngineResourceNotSupported
 }
+func (noopSession) Init(_ context.Context) error                   { return nil }
+func (noopSession) DoneWithError(_ context.Context, _ error) error { return nil }
+
+// plainSession implements only core.DatabaseSession (not core.RestoreSession), so
+// the processor must reject it.
+type plainSession struct{}
+
+func (plainSession) Close(_ context.Context) error { return nil }
+func (plainSession) RunWithOperationalDB(_ context.Context, _ func(context.Context, core.DB) error) error {
+	return nil
+}
+func (plainSession) RunWithEngineResource(_ context.Context, _ func(context.Context, any) error) error {
+	return core.ErrEngineResourceNotSupported
+}
+
+// lifecycleSession is a core.RestoreSession that records Init/DoneWithError calls
+// and lets tests inject an Init error.
+type lifecycleSession struct {
+	mu        sync.Mutex
+	initErr   error
+	initCalls int
+	doneCalls int
+	lastCause error
+	doneSeen  bool
+}
+
+func (s *lifecycleSession) Close(_ context.Context) error { return nil }
+func (s *lifecycleSession) RunWithOperationalDB(_ context.Context, _ func(context.Context, core.DB) error) error {
+	return nil
+}
+func (s *lifecycleSession) RunWithEngineResource(_ context.Context, _ func(context.Context, any) error) error {
+	return core.ErrEngineResourceNotSupported
+}
+func (s *lifecycleSession) Init(_ context.Context) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.initCalls++
+	return s.initErr
+}
+func (s *lifecycleSession) DoneWithError(_ context.Context, cause error) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.doneCalls++
+	s.doneSeen = true
+	s.lastCause = cause
+	return nil
+}
 
 type noopConn struct{}
 
@@ -54,8 +101,13 @@ type mockObjectRestorer struct{ mock.Mock }
 func (m *mockObjectRestorer) Restore(ctx context.Context, _ core.DatabaseSession, _ core.ConnectionConfigurer, _ core.Storager) error {
 	return m.Called(ctx).Error(0)
 }
-func (m *mockObjectRestorer) DebugInfo() string    { return m.Called().String(0) }
-func (m *mockObjectRestorer) Meta() map[string]any { return nil }
+func (m *mockObjectRestorer) DebugInfo() string { return m.Called().String(0) }
+func (m *mockObjectRestorer) Meta() map[string]any {
+	return map[string]any{
+		core.MetaKeyTableSchema: "public",
+		core.MetaKeyTableName:   "users",
+	}
+}
 
 // newObjectRestorer returns a pre-configured ObjectRestorer that returns err.
 func newObjectRestorer(err error) *mockObjectRestorer {
@@ -257,6 +309,80 @@ func TestRun_V2_inputValidation(t *testing.T) {
 			Session: noopSession{}, Conn: noopConn{},
 		})
 		require.Error(t, err)
+	})
+}
+
+// ── Session lifecycle ─────────────────────────────────────────────────────────
+
+func newRestoreInputWithSession(sess core.DatabaseSession, plan core.RestorePlan, instr core.RestoreInstruction) core.RestoreRunInput {
+	return core.RestoreRunInput{
+		Session:     sess,
+		Conn:        noopConn{},
+		St:          noopStorager{},
+		Plan:        plan,
+		Instruction: instr,
+	}
+}
+
+// TestRun_V2_sessionNotRestoreSession verifies Run rejects a session that does not
+// implement core.RestoreSession.
+func TestRun_V2_sessionNotRestoreSession(t *testing.T) {
+	p := newProcV2(t, &mockObjectRegistry{}, &mockSchemaRegistry{})
+	err := p.Run(context.Background(), core.RestoreRunInput{
+		Session: plainSession{}, Conn: noopConn{}, St: noopStorager{},
+	})
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "does not implement core.RestoreSession")
+}
+
+// TestRun_V2_initError verifies an Init failure aborts the run and surfaces.
+func TestRun_V2_initError(t *testing.T) {
+	sess := &lifecycleSession{initErr: errors.New("init boom")}
+	p := newProcV2(t, &mockObjectRegistry{}, &mockSchemaRegistry{})
+
+	err := p.Run(context.Background(), newRestoreInputWithSession(sess, core.RestorePlan{}, core.RestoreInstruction{}))
+	require.Error(t, err)
+	assert.ErrorContains(t, err, "init restore session")
+	assert.Equal(t, 1, sess.initCalls)
+	assert.False(t, sess.doneSeen, "DoneWithError must not run when Init fails")
+}
+
+// TestRun_V2_doneWithError_cause verifies DoneWithError observes the run outcome:
+// nil on success, the run error on failure.
+func TestRun_V2_doneWithError_cause(t *testing.T) {
+	t.Run("commit on success", func(t *testing.T) {
+		sess := &lifecycleSession{}
+		objRestorer := newObjectRestorer(nil)
+		objReg := &mockObjectRegistry{}
+		objReg.On("New", mock.Anything, mock.Anything).Return(objRestorer, nil)
+
+		p := newProcV2(t, objReg, &mockSchemaRegistry{}, WithRestoreJobsV2(1))
+		err := p.Run(context.Background(), newRestoreInputWithSession(sess,
+			core.RestorePlan{ObjectRestoreSpecs: []core.ObjectRestoreSpec{testObjSpec(1)}},
+			core.RestoreInstruction{},
+		))
+		require.NoError(t, err)
+		assert.Equal(t, 1, sess.initCalls)
+		assert.Equal(t, 1, sess.doneCalls)
+		assert.NoError(t, sess.lastCause, "success run must finalize with nil cause")
+	})
+
+	t.Run("rollback on failure", func(t *testing.T) {
+		runErr := errors.New("object restore boom")
+		sess := &lifecycleSession{}
+		objRestorer := newObjectRestorer(runErr)
+		objReg := &mockObjectRegistry{}
+		objReg.On("New", mock.Anything, mock.Anything).Return(objRestorer, nil)
+
+		p := newProcV2(t, objReg, &mockSchemaRegistry{}, WithRestoreJobsV2(1))
+		err := p.Run(context.Background(), newRestoreInputWithSession(sess,
+			core.RestorePlan{ObjectRestoreSpecs: []core.ObjectRestoreSpec{testObjSpec(1)}},
+			core.RestoreInstruction{},
+		))
+		require.Error(t, err)
+		assert.Equal(t, 1, sess.doneCalls)
+		require.Error(t, sess.lastCause, "failed run must finalize with the run error")
+		assert.ErrorIs(t, sess.lastCause, runErr)
 	})
 }
 
