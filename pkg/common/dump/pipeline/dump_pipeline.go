@@ -97,6 +97,7 @@ func (p *DumpPipeline) Discover(
 	subset, err := p.Stages.SubsetBuilder.BuildSubset(ctx, core.SubsetBuilderInput{
 		Introspection:   introspection,
 		DependencyGraph: graph,
+		TableConfigs:    state.Discovery.Config.Dump.Transformation.ToTransformationConfig(),
 	})
 	if err != nil {
 		return fmt.Errorf("build subset: %w", err)
