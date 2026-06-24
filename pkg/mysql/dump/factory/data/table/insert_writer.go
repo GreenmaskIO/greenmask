@@ -20,8 +20,6 @@ import (
 	"io"
 	"strings"
 
-	"github.com/huandu/go-sqlbuilder"
-
 	"github.com/greenmaskio/greenmask/pkg/common/core"
 	"github.com/greenmaskio/greenmask/pkg/mysql/dbmsdriver"
 )
@@ -47,6 +45,7 @@ type InsertWriter struct {
 	isBinary   []bool // pre-computed: true for BINARY/VARBINARY/BLOB family columns
 	hasHexCols bool   // true when any column in isBinary is set
 	sb         strings.Builder
+	scratch    []byte // reusable buffer for the MySQL string escaper, kept across rows
 }
 
 func NewInsertWriter(table core.Table, w io.Writer, hexBlob bool) *InsertWriter {
@@ -93,11 +92,15 @@ func (iw *InsertWriter) Write(row [][]byte) error {
 			}
 			iw.sb.WriteByte('\'')
 		default:
-			s, err := sqlbuilder.MySQL.Interpolate("?", []interface{}{string(val)})
-			if err != nil {
-				return fmt.Errorf("interpolate col %d: %w", i, err)
-			}
-			iw.sb.WriteString(s)
+			// Previous implementation (kept for reference; see AppendMySQLQuotedString and
+			// the differential test/benchmark in pkg/mysql/dbmsdriver):
+			//  s, err := sqlbuilder.MySQL.Interpolate("?", []interface{}{string(val)})
+			//   if err != nil {
+			//       return fmt.Errorf("interpolate col %d: %w", i, err)
+			//   }
+			//   iw.sb.WriteString(s)
+			iw.scratch = dbmsdriver.AppendMySQLQuotedString(iw.scratch[:0], val)
+			iw.sb.Write(iw.scratch)
 		}
 	}
 	iw.sb.WriteString(")\n")
