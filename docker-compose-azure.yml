@@ -1,0 +1,77 @@
+# Azure Blob Storage override for the playground.
+#
+# Layered on top of docker-compose.yml, it overrides the `playground-storage`
+# service so the Minio (S3) backend is swapped for an Azurite Blob Storage
+# emulator. Everything else (playground-db, playground-dbs-filler, greenmask,
+# greenmask-from-source) is inherited from the base file unchanged.
+#
+# Run it (note both -f flags, base first):
+#
+#   docker compose -f docker-compose.yml -f docker-compose-azure.yml run --rm greenmask
+#
+# Inside the shell (config-azure.yml is mounted from ./playground):
+#
+#   greenmask --config config-azure.yml dump
+#   greenmask --config config-azure.yml list-dumps
+#   greenmask --config config-azure.yml restore latest
+#
+# Tear everything down (including the emulator volume):
+#
+#   docker compose -f docker-compose.yml -f docker-compose-azure.yml down -v
+services:
+  # Overrides the base Minio service with an Azurite Blob Storage emulator.
+  # greenmask/greenmask-from-source already depend on `playground-storage`, so
+  # reusing the name is enough to repoint them at Azurite.
+  playground-storage:
+    image: mcr.microsoft.com/azure-storage/azurite:latest
+    # Override the base entrypoint (`sh`) with Azurite's default so `command`
+    # below is interpreted by the emulator and not by a shell.
+    entrypoint: docker-entrypoint.sh
+    # --skipApiVersionCheck lets the emulator accept the API version sent by the
+    # current Azure SDK. --location persists data in the mounted volume.
+    command: azurite-blob --blobHost 0.0.0.0 --skipApiVersionCheck --location /data
+    ports:
+      - "10000:10000"
+    volumes:
+      - azurite-data:/data
+    healthcheck:
+      test: ["CMD", "nc", "-z", "127.0.0.1", "10000"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # One-shot job that creates the "greenmask" container; greenmask assumes the
+  # container already exists.
+  playground-storage-init:
+    image: mcr.microsoft.com/azure-cli:latest
+    depends_on:
+      playground-storage:
+        condition: service_healthy
+    environment:
+      AZURE_STORAGE_CONNECTION_STRING: "DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;BlobEndpoint=http://playground-storage:10000/devstoreaccount1;"
+    # Retry to ride out the brief window before Azurite's DNS name resolves.
+    entrypoint:
+      - /bin/sh
+      - -c
+      # $$ escapes compose interpolation so the shell receives a literal $.
+      - |
+        for i in $$(seq 1 30); do
+          az storage container create --name greenmask && exit 0
+          echo "waiting for azurite ($$i)..."; sleep 2
+        done
+        exit 1
+
+  # Wait for the container-init job in addition to the base dependencies
+  # (merged with the base file's depends_on).
+  greenmask:
+    depends_on:
+      playground-storage-init:
+        condition: service_completed_successfully
+
+  greenmask-from-source:
+    depends_on:
+      playground-storage-init:
+        condition: service_completed_successfully
+
+volumes:
+  azurite-data:
