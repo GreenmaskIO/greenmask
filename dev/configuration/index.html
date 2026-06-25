@@ -4849,8 +4849,8 @@ easy to diagnose.</p>
 </ul>
 <h2 id="storage-section"><code>storage</code> section<a class="headerlink" href="#storage-section" title="Permanent link">&para;</a></h2>
 <p>In the <code>storage</code> section, you can configure the storage driver for storing the dumped data. Currently,
-two storage <code>type</code> options are supported: <code>directory</code> and <code>s3</code>.</p>
-<div class="tabbed-set tabbed-alternate" data-tabs="1:2"><input checked="checked" id="__tabbed_1_1" name="__tabbed_1" type="radio" /><input id="__tabbed_1_2" name="__tabbed_1" type="radio" /><div class="tabbed-labels"><label for="__tabbed_1_1"><code>directory</code> option</label><label for="__tabbed_1_2"><code>s3</code> option</label></div>
+three storage <code>type</code> options are supported: <code>directory</code>, <code>s3</code> and <code>azure</code>.</p>
+<div class="tabbed-set tabbed-alternate" data-tabs="1:3"><input checked="checked" id="__tabbed_1_1" name="__tabbed_1" type="radio" /><input id="__tabbed_1_2" name="__tabbed_1" type="radio" /><input id="__tabbed_1_3" name="__tabbed_1" type="radio" /><div class="tabbed-labels"><label for="__tabbed_1_1"><code>directory</code> option</label><label for="__tabbed_1_2"><code>s3</code> option</label><label for="__tabbed_1_3"><code>azure</code> option</label></div>
 <div class="tabbed-content">
 <div class="tabbed-block">
 <p>The directory storage option refers to a filesystem directory where the dump data will be stored.</p>
@@ -4913,6 +4913,35 @@ such as Amazon S3 or MinIO. Here are the parameters you can configure for S3 sto
 <span class="w">    </span><span class="nt">secret_access_key</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;&lt;secret_key&gt;&quot;</span>
 </code></pre></div>
 </div>
+</div>
+<div class="tabbed-block">
+<p>The <code>azure</code> storage option stores dump data natively in Azure Blob Storage. It supports all three
+Azure authentication methods and sovereign clouds. Here are the parameters you can configure:</p>
+<ul>
+<li><code>container</code> — <strong>(required)</strong> the name of the blob container where the dump data will be stored</li>
+<li><code>storage_account</code> — <strong>(required)</strong> the Azure storage account name</li>
+<li><code>prefix</code> — a prefix for blobs in the container, specified in path format</li>
+<li><code>access_key</code> — storage account shared access key (auth method: shared key)</li>
+<li><code>sas_token</code> — a shared access signature token (auth method: SAS). A leading <code>?</code> is optional</li>
+<li><code>endpoint</code> — a full service URL override, used path-style (e. g. for Azurite or private deployments)</li>
+<li><code>endpoint_suffix</code> — overrides the endpoint suffix derived from <code>environment_name</code></li>
+<li><code>environment_name</code> — the Azure cloud: <code>AzurePublicCloud</code> (default), <code>AzureUSGovernmentCloud</code>, <code>AzureChinaCloud</code> or <code>AzureGermanCloud</code></li>
+<li><code>buffer_size</code> — upload block size in bytes (default <code>8388608</code> = 8 MiB, minimum <code>1024</code>)</li>
+<li><code>max_buffers</code> — upload concurrency (default <code>4</code>, minimum <code>1</code>)</li>
+<li><code>try_timeout</code> — per-try request timeout in minutes (default <code>5</code>)</li>
+<li><code>blob_store_api_version</code> — optional <code>x-ms-version</code> header override for environments that don't support the SDK's default API version</li>
+</ul>
+<p>When neither <code>access_key</code> nor <code>sas_token</code> is set, Greenmask falls back to the default Azure credential
+chain (managed identity, the <code>AZURE_CLIENT_ID</code> / <code>AZURE_TENANT_ID</code> / <code>AZURE_CLIENT_SECRET</code> environment
+variables, or the Azure CLI login).</p>
+<div class="highlight"><span class="filename">azure storage config example</span><pre><span></span><code><span class="nt">storage</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;azure&quot;</span>
+<span class="w">  </span><span class="nt">azure</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">storage_account</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;mystorageaccount&quot;</span>
+<span class="w">    </span><span class="nt">container</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;mycontainer&quot;</span>
+<span class="w">    </span><span class="nt">prefix</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;backups&quot;</span>
+<span class="w">    </span><span class="nt">access_key</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;&lt;account_access_key&gt;&quot;</span>
+</code></pre></div>
 </div>
 </div>
 </div>
