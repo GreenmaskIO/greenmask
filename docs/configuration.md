@@ -115,7 +115,7 @@ three storage `type` options are supported: `directory`, `s3` and `azure`.
 === "`s3` option"
 
     By choosing the `s3` storage option, you can store dump data in an S3-like remote storage service,
-    such as Amazon S3 or Azure Blob Storage. Here are the parameters you can configure for S3 storage:
+    such as Amazon S3 or MinIO. Here are the parameters you can configure for S3 storage:
 
     * `endpoint` — overrides the default AWS endpoint to a custom one for making requests
     * `bucket` — the name of the bucket where the dump data will be stored

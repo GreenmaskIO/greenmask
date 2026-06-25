@@ -25,7 +25,7 @@
 ## Key Features
 
 *   **[Database Subsetting](https://docs.greenmask.io/latest/database_subset/?utm_source=github&utm_medium=repo&utm_campaign=oss)**: Create smaller, referentially intact development databases with support for cyclic and polymorphic references.
-*   **Storage Agnostic**: Supports local directories and S3-compatible storage (AWS S3, MinIO, GCS, Azure, etc.) for flexible backup management.
+*   **Storage Agnostic**: Supports local directories and S3-compatible storage (AWS S3, MinIO, GCS, etc.) for flexible backup management.
 *   **[Deterministic Transformation](https://docs.greenmask.io/latest/built_in_transformers/transformation_engines/?utm_source=github&utm_medium=repo&utm_campaign=oss#hash-engine)**: Reproducible data masking using hash functions, ensuring consistent output for the same input.
 *   **[Dynamic Parameters](https://docs.greenmask.io/latest/built_in_transformers/dynamic_parameters/?utm_source=github&utm_medium=repo&utm_campaign=oss)**: Transformers can adapt based on other column values to maintain logical consistency (e.g., `created_at < updated_at`).
 *   **[Transformation Condition](https://docs.greenmask.io/latest/built_in_transformers/transformation_condition/?utm_source=github&utm_medium=repo&utm_campaign=oss)**: Apply transformations only when specific criteria are met, allowing for conditional logic at the table or transformer scope.
