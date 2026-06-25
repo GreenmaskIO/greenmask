@@ -27,6 +27,13 @@ var (
 
 var (
 	_ core.Recorder = (*Record)(nil)
+	// Per-leaf compile-time proofs: Record satisfies each segregated interface
+	// that Recorder composes, so narrowing a consumer to a leaf stays valid.
+	_ core.RowCodec           = (*Record)(nil)
+	_ core.ColumnReaderByIdx  = (*Record)(nil)
+	_ core.ColumnReaderByName = (*Record)(nil)
+	_ core.ColumnWriterByIdx  = (*Record)(nil)
+	_ core.ColumnWriterByName = (*Record)(nil)
 )
 
 type Tuple map[string]*core.ColumnValue

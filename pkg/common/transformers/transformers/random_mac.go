@@ -211,7 +211,7 @@ func (t *RandomMac) Describe() string {
 	return TransformerNameRandomMac
 }
 
-func scanCastType(_ *parameters.ParameterDefinition, _ core.DBMSDriver, src core.ParamsValue) (any, error) {
+func scanCastType(_ *parameters.ParameterDefinition, _ core.NamedTypeCodec, src core.ParamsValue) (any, error) {
 	var res int
 	switch string(src) {
 	case castTypeNameIndividual:
@@ -226,7 +226,7 @@ func scanCastType(_ *parameters.ParameterDefinition, _ core.DBMSDriver, src core
 	return &res, nil
 }
 
-func scanManagementType(_ *parameters.ParameterDefinition, _ core.DBMSDriver, src core.ParamsValue) (any, error) {
+func scanManagementType(_ *parameters.ParameterDefinition, _ core.NamedTypeCodec, src core.ParamsValue) (any, error) {
 	var res int
 	switch string(src) {
 	case managementTypeNameUniversal:

@@ -25,6 +25,12 @@ import (
 
 var (
 	_ core.TableDriver = (*TableDriver)(nil)
+	// Per-leaf compile-time proofs: the generic TableDriver satisfies each
+	// column-level leaf TableDriver composes (the type-level leaves come from
+	// the embedded core.DBMSDriver).
+	_ core.ColumnCodec      = (*TableDriver)(nil)
+	_ core.NamedColumnCodec = (*TableDriver)(nil)
+	_ core.TableSchema      = (*TableDriver)(nil)
 )
 
 var (

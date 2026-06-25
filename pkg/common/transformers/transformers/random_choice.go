@@ -182,7 +182,7 @@ var (
 
 func randomChoiceValuesUnmarshaller(
 	_ *parameters.ParameterDefinition,
-	_ core.DBMSDriver,
+	_ core.NamedTypeCodec,
 	src core.ParamsValue,
 ) (any, error) {
 	var res []core.ParamsValue

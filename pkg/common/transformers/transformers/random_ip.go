@@ -63,7 +63,7 @@ var RandomIPDefinition = utils.NewTransformerDefinition(
 						),
 				),
 		).SetUnmarshaler(
-		func(_ *parameters.ParameterDefinition, _ core.DBMSDriver, src core.ParamsValue) (any, error) {
+		func(_ *parameters.ParameterDefinition, _ core.NamedTypeCodec, src core.ParamsValue) (any, error) {
 			return netaddr.ParseInet(src)
 		}),
 

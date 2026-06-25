@@ -365,7 +365,7 @@ func getRandomNumericLimiterForDynamicParameter(
 	return limiter, nil
 }
 
-func numericTypeUnmarshaler(_ core.DBMSDriver, _ string, v core.ParamsValue) (any, error) {
+func numericTypeUnmarshaler(_ core.NamedTypeCodec, _ string, v core.ParamsValue) (any, error) {
 	res, err := decimal.NewFromString(string(v))
 	if err != nil {
 		return nil, err

@@ -14,13 +14,28 @@
 
 package core
 
-type DBMSDriver interface {
-	EncodeValueByTypeName(name string, src any, buf []byte) ([]byte, error)
+// The DBMSDriver/TableDriver god-interfaces are decomposed into cohesive leaf
+// interfaces (each ≤6 methods) so a new engine implements only the type-level
+// codecs (its real work — wire format + type catalog) and obtains the column
+// layer for free from the shared pkg/common/tabledriver impl. DBMSDriver and
+// TableDriver are kept as composite aliases so existing references compile.
+
+// TypeCodec encodes/decodes/scans a value by its type id.
+type TypeCodec interface {
 	EncodeValueByTypeID(id TypeID, src any, buf []byte) ([]byte, error)
-	DecodeValueByTypeName(name string, src []byte) (any, error)
 	DecodeValueByTypeID(id TypeID, src []byte) (any, error)
-	ScanValueByTypeName(name string, src []byte, dest any) error
 	ScanValueByTypeID(id TypeID, src []byte, dest any) error
+}
+
+// NamedTypeCodec encodes/decodes/scans a value by its type name.
+type NamedTypeCodec interface {
+	EncodeValueByTypeName(name string, src any, buf []byte) ([]byte, error)
+	DecodeValueByTypeName(name string, src []byte) (any, error)
+	ScanValueByTypeName(name string, src []byte, dest any) error
+}
+
+// TypeIntrospection answers questions about the engine's type catalog.
+type TypeIntrospection interface {
 	TypeExistsByName(name string) bool
 	TypeExistsByID(id TypeID) bool
 	GetTypeID(name string) (TypeID, error)
@@ -32,16 +47,41 @@ type DBMSDriver interface {
 	GetCanonicalTypeClassName(typeName string, typeID TypeID) (TypeClass, error)
 }
 
+// DBMSDriver is the type-level driver an engine must implement. It composes the
+// segregated type-level leaves; consumers should depend on the narrowest leaf.
+type DBMSDriver interface {
+	TypeCodec
+	NamedTypeCodec
+	TypeIntrospection
+}
+
+// ColumnCodec encodes/decodes/scans a value by its column index.
+type ColumnCodec interface {
+	EncodeValueByColumnIdx(idx int, src any, buf []byte) ([]byte, error)
+	DecodeValueByColumnIdx(idx int, src []byte) (any, error)
+	ScanValueByColumnIdx(idx int, src []byte, dest any) error
+}
+
+// NamedColumnCodec encodes/decodes/scans a value by its column name.
+type NamedColumnCodec interface {
+	EncodeValueByColumnName(name string, src any, buf []byte) ([]byte, error)
+	DecodeValueByColumnName(name string, src []byte) (any, error)
+	ScanValueByColumnName(name string, src []byte, dest any) error
+}
+
+// TableSchema exposes the table's column layout.
+type TableSchema interface {
+	Table() *Table
+	GetColumnByName(name string) (*Column, error)
+	GetColumnIdxByName(name string) (int, error)
+}
+
+// TableDriver is the full table-bound driver. It composes the type-level
+// DBMSDriver with the column-level leaves; consumers should depend on the
+// narrowest leaf they use.
 type TableDriver interface {
 	DBMSDriver
-
-	EncodeValueByColumnIdx(idx int, src any, buf []byte) ([]byte, error)
-	EncodeValueByColumnName(name string, src any, buf []byte) ([]byte, error)
-	ScanValueByColumnIdx(idx int, src []byte, dest any) error
-	ScanValueByColumnName(name string, src []byte, dest any) error
-	DecodeValueByColumnIdx(idx int, src []byte) (any, error)
-	DecodeValueByColumnName(name string, src []byte) (any, error)
-	GetColumnByName(name string) (*Column, error)
-	Table() *Table
-	GetColumnIdxByName(name string) (int, error)
+	ColumnCodec
+	NamedColumnCodec
+	TableSchema
 }

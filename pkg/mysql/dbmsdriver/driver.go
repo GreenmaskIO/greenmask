@@ -24,6 +24,11 @@ import (
 
 var (
 	_ core.DBMSDriver = (*Driver)(nil)
+	// Per-leaf compile-time proofs: the MySQL driver satisfies each type-level
+	// leaf DBMSDriver composes.
+	_ core.TypeCodec         = (*Driver)(nil)
+	_ core.NamedTypeCodec    = (*Driver)(nil)
+	_ core.TypeIntrospection = (*Driver)(nil)
 )
 
 type Driver struct {

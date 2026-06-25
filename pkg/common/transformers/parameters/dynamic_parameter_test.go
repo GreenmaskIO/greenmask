@@ -602,7 +602,7 @@ func TestDynamicParameter_Value(t *testing.T) {
 				NewDynamicModeProperties().
 					SetColumnProperties(core.NewColumnProperties().
 						SetAllowedColumnTypes("int2")).
-					SetUnmarshaler(func(driver core.DBMSDriver, typeName string, v core.ParamsValue) (any, error) {
+					SetUnmarshaler(func(driver core.NamedTypeCodec, typeName string, v core.ParamsValue) (any, error) {
 						assert.Equal(t, "int2", typeName)
 						assert.Equal(t, "1234", string(v))
 						return int64(1234), nil

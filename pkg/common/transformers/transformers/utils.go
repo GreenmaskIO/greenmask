@@ -280,7 +280,7 @@ func getParameterValueWithNameAndDefault[T any](
 // It gets the column name, get column definition.
 func getColumnParameterValueWithName(
 	ctx context.Context,
-	tableDriver core.TableDriver,
+	schema core.TableSchema,
 	parameters map[string]parameters.Parameterizer,
 	parameterName string,
 ) (string, *core.Column, error) {
@@ -288,7 +288,7 @@ func getColumnParameterValueWithName(
 	if err != nil {
 		return "", nil, err
 	}
-	c, err := tableDriver.GetColumnByName(columnName)
+	c, err := schema.GetColumnByName(columnName)
 	if err != nil {
 		validationcollector.FromContext(ctx).Add(core.NewValidationWarning().
 			SetSeverity(core.ValidationSeverityError).
@@ -305,15 +305,15 @@ func getColumnParameterValueWithName(
 // as getColumnParameterValueWithName helper.
 func getColumnParameterValue(
 	ctx context.Context,
-	tableDriver core.TableDriver,
+	schema core.TableSchema,
 	parameters map[string]parameters.Parameterizer,
 ) (string, *core.Column, error) {
-	return getColumnParameterValueWithName(ctx, tableDriver, parameters, ParameterNameColumn)
+	return getColumnParameterValueWithName(ctx, schema, parameters, ParameterNameColumn)
 }
 
 func getColumnContainerParameter[T parameters.ColumnContainer](
 	ctx context.Context,
-	tableDriver core.TableDriver,
+	schema core.TableSchema,
 	parameters map[string]parameters.Parameterizer,
 	parameterName string,
 ) ([]T, map[int]string, error) {
@@ -336,7 +336,7 @@ func getColumnContainerParameter[T parameters.ColumnContainer](
 		if !res[idx].IsAffected() {
 			continue
 		}
-		c, err := tableDriver.GetColumnByName(res[idx].ColumnName())
+		c, err := schema.GetColumnByName(res[idx].ColumnName())
 		if err != nil {
 			validationcollector.FromContext(ctx).Add(core.NewValidationWarning().
 				SetSeverity(core.ValidationSeverityError).

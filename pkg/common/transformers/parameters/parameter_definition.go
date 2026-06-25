@@ -20,13 +20,17 @@ import (
 	core "github.com/greenmaskio/greenmask/pkg/common/core"
 )
 
-type Unmarshaler func(parameter *ParameterDefinition, driver core.DBMSDriver, src core.ParamsValue) (any, error)
-type DatabaseTypeUnmarshaler func(driver core.DBMSDriver, typeName string, v core.ParamsValue) (any, error)
+// Unmarshaler and DatabaseTypeUnmarshaler decode a raw param value using the
+// engine's named type codec only — they never introspect the type catalog or
+// touch column-level methods, so they depend on core.NamedTypeCodec rather than
+// the full core.DBMSDriver.
+type Unmarshaler func(parameter *ParameterDefinition, driver core.NamedTypeCodec, src core.ParamsValue) (any, error)
+type DatabaseTypeUnmarshaler func(driver core.NamedTypeCodec, typeName string, v core.ParamsValue) (any, error)
 type RawValueValidator func(ctx context.Context, p *ParameterDefinition, v core.ParamsValue) error
 
 type ColumnContainerUnmarshaler func(ctx context.Context, parameter *ParameterDefinition, data core.ParamsValue) ([]ColumnContainer, error)
 
-func DefaultDatabaseTypeUnmarshaler(driver core.DBMSDriver, typeName string, v core.ParamsValue) (any, error) {
+func DefaultDatabaseTypeUnmarshaler(driver core.NamedTypeCodec, typeName string, v core.ParamsValue) (any, error) {
 	return driver.DecodeValueByTypeName(typeName, v)
 }
 
