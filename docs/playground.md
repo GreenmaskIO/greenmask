@@ -6,7 +6,7 @@ Greenmask Playground is a sandbox environment in Docker with sample databases in
 
 * **Original database** — the source database you'll be working with.
 * **Empty database for restoration** — an empty database where the restored data will be placed.
-* **MinIO storage** — used for storage purposes.
+* **MinIO storage** — used for storage purposes (an Azurite-based Azure Blob backend is also available — see [Using the Azure Blob storage backend](#using-the-azure-blob-storage-backend)).
 * **Greenmask Utility** — Greenmask itself, ready for use.
 
 !!! warning
@@ -26,6 +26,12 @@ Greenmask Playground is a sandbox environment in Docker with sample databases in
     ```shell
     docker-compose run greenmask
     ```
+
+    Alternatively, you can use the `make` target, which wraps the same command:
+
+    ```shell
+    make greenmask-latest
+    ```
 !!! Tip
 
     If you're experiencing problems with pulling images from Docker Hub, you can build the Greenmask image from source by running the following command:
@@ -34,7 +40,46 @@ Greenmask Playground is a sandbox environment in Docker with sample databases in
     docker-compose run greenmask-from-source
     ```
 
+    Or with `make`:
+
+    ```shell
+    make greenmask-from-source
+    ```
+
 Now you have Greenmask Playground up and running with a shell prompt inside the container. All further operations will be carried out within this container's shell.
+
+## Using the Azure Blob storage backend
+
+By default the playground stores dumps in a MinIO (S3-compatible) backend. You can instead run it against an [Azurite](https://github.com/Azure/Azurite) emulator to exercise the `azure` storage backend with a full dump/restore cycle.
+
+Pass `STORAGE_BACKEND=azure` to the `make` targets to switch the backend:
+
+```shell
+# Run with the published image against Azure Blob storage
+make greenmask-latest STORAGE_BACKEND=azure
+
+# Or build from source and run against Azure Blob storage
+make greenmask-from-source STORAGE_BACKEND=azure
+```
+
+The `STORAGE_BACKEND` parameter defaults to `s3`, so omitting it (or passing `STORAGE_BACKEND=s3`) uses the default MinIO (S3) backend.
+
+Inside the container, the matching configuration is mounted as `config-azure.yml`:
+
+```shell
+greenmask --config config-azure.yml dump
+greenmask --config config-azure.yml restore latest
+```
+
+!!! Tip
+
+    If you prefer to invoke Docker Compose directly instead of the `make` targets, run:
+
+    ```shell
+    docker compose -f docker-compose.yml -f docker-compose-azure.yml run greenmask
+    ```
+
+    `docker-compose-azure.yml` is an override that swaps the `playground-storage` service for an Azurite emulator, so the base file must be passed first.
 
 ## Playground Workflow
 

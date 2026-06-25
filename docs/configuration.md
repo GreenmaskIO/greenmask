@@ -97,7 +97,7 @@ In the `log` section of the configuration, you can specify the following setting
 ## `storage` section
 
 In the `storage` section, you can configure the storage driver for storing the dumped data. Currently,
-two storage `type` options are supported: `directory` and `s3`.
+three storage `type` options are supported: `directory`, `s3` and `azure`.
 
 === "`directory` option"
 
@@ -167,6 +167,38 @@ two storage `type` options are supported: `directory` and `s3`.
             access_key_id: "<access_key>"
             secret_access_key: "<secret_key>"
         ```
+
+=== "`azure` option"
+
+    The `azure` storage option stores dump data natively in Azure Blob Storage. It supports all three
+    Azure authentication methods and sovereign clouds. Here are the parameters you can configure:
+
+    * `container` — **(required)** the name of the blob container where the dump data will be stored
+    * `storage_account` — **(required)** the Azure storage account name
+    * `prefix` — a prefix for blobs in the container, specified in path format
+    * `access_key` — storage account shared access key (auth method: shared key)
+    * `sas_token` — a shared access signature token (auth method: SAS). A leading `?` is optional
+    * `endpoint` — a full service URL override, used path-style (e. g. for Azurite or private deployments)
+    * `endpoint_suffix` — overrides the endpoint suffix derived from `environment_name`
+    * `environment_name` — the Azure cloud: `AzurePublicCloud` (default), `AzureUSGovernmentCloud`, `AzureChinaCloud` or `AzureGermanCloud`
+    * `buffer_size` — upload block size in bytes (default `8388608` = 8 MiB, minimum `1024`)
+    * `max_buffers` — upload concurrency (default `4`, minimum `1`)
+    * `try_timeout` — per-try request timeout in minutes (default `5`)
+    * `blob_store_api_version` — optional `x-ms-version` header override for environments that don't support the SDK's default API version
+
+    When neither `access_key` nor `sas_token` is set, Greenmask falls back to the default Azure credential
+    chain (managed identity, the `AZURE_CLIENT_ID` / `AZURE_TENANT_ID` / `AZURE_CLIENT_SECRET` environment
+    variables, or the Azure CLI login).
+
+    ```yaml title="azure storage config example"
+    storage:
+      type: "azure"
+      azure:
+        storage_account: "mystorageaccount"
+        container: "mycontainer"
+        prefix: "backups"
+        access_key: "<account_access_key>"
+    ```
 
 ## `dump` section
 

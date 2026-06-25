@@ -1,0 +1,40 @@
+log:
+  level: debug
+
+common:
+  pg_bin_path: "/opt/homebrew/bin"
+  tmp_dir: "/tmp"
+
+storage:
+  type: "azure"
+  azure:
+    # Path-style endpoint of the Azurite emulator (account name included).
+#    endpoint: "http://playground-storage:10000/devstoreaccount1"
+    endpoint: "http://localhost:10000/devstoreaccount1"
+    storage_account: "devstoreaccount1"
+    # Well-known Azurite account key.
+    access_key: "Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw=="
+    container: "greenmask"
+
+validate:
+#  resolved_warnings:
+#    - "aa808fb574a1359c6606e464833feceb"
+
+dump:
+  pg_dump_options: # pg_dump option that will be provided
+    dbname: "host=localhost port=54316 user=postgres password=example dbname=original"
+    jobs: 10
+
+  transformation: # List of tables to transform
+    - schema: "humanresources" # Table schema
+      name: "employee"  # Table name
+      transformers: # List of transformers to apply
+        - name: "NoiseDate" # name of transformers
+          params: # Transformer parameters
+            max_ratio: "10 year 9 mon 1 day"
+            column: "birthdate" # Column parameter - this transformer affects scheduled_departure column
+
+restore:
+  pg_restore_options: # pg_restore option (you can use the same options as pg_restore has)
+    jobs: 10
+    dbname: "host=localhost port=5431 user=postgres password=example dbname=transformed"

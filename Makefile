@@ -41,11 +41,25 @@ local-build:
 			--platform linux/amd64 \
 			--target build
 
+# Select the storage backend for the playground, e.g.:
+#   make greenmask-from-source STORAGE_BACKEND=azure
+# Supported values: s3 (default, Minio) and azure (Azurite/Azure Blob). The
+# azure value layers docker-compose-azure.yml over the base file, which
+# overrides the `playground-storage` service with an Azurite emulator.
+STORAGE_BACKEND ?= s3
+ifeq ($(STORAGE_BACKEND),azure)
+GREENMASK_COMPOSE := -f docker-compose.yml -f docker-compose-azure.yml
+else ifeq ($(STORAGE_BACKEND),s3)
+GREENMASK_COMPOSE := -f docker-compose.yml
+else
+$(error Unsupported STORAGE_BACKEND "$(STORAGE_BACKEND)"; use "s3" or "azure")
+endif
+
 greenmask-latest:
-	docker compose -f docker-compose.yml run greenmask
+	docker compose $(GREENMASK_COMPOSE) run greenmask
 
 greenmask-from-source: local-build
-	docker compose -f docker-compose.yml run greenmask-from-source
+	docker compose $(GREENMASK_COMPOSE) run greenmask-from-source
 
 integration:
 	docker buildx build --load -t greenmask-test-dbs-filler:latest -f docker/integration/filldb/Dockerfile docker/integration/filldb
