@@ -28,6 +28,7 @@ import (
 
 	core "github.com/greenmaskio/greenmask/pkg/common/core"
 	"github.com/greenmaskio/greenmask/pkg/config"
+	kinds "github.com/greenmaskio/greenmask/pkg/mysql/kinds"
 	"github.com/greenmaskio/greenmask/pkg/testutils"
 )
 
@@ -112,7 +113,7 @@ func (s *pipelineEngineSuite) TestDiscovery() {
 	s.Require().NotNil(state.Discovery.Subset)
 
 	// The seeded users table is introspected under the engine-specific table kind.
-	tables := state.Discovery.Introspection.KindsMap[core.ObjectKindMysqlTable]
+	tables := state.Discovery.Introspection.KindsMap[kinds.ObjectKindTable]
 	var found bool
 	for _, t := range tables {
 		if t.Name == "users" {

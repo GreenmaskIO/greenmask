@@ -16,20 +16,20 @@ package core
 
 type DBMSDriver interface {
 	EncodeValueByTypeName(name string, src any, buf []byte) ([]byte, error)
-	EncodeValueByTypeOid(oid VirtualOID, src any, buf []byte) ([]byte, error)
+	EncodeValueByTypeID(id TypeID, src any, buf []byte) ([]byte, error)
 	DecodeValueByTypeName(name string, src []byte) (any, error)
-	DecodeValueByTypeOid(oid VirtualOID, src []byte) (any, error)
+	DecodeValueByTypeID(id TypeID, src []byte) (any, error)
 	ScanValueByTypeName(name string, src []byte, dest any) error
-	ScanValueByTypeOid(oid VirtualOID, src []byte, dest any) error
+	ScanValueByTypeID(id TypeID, src []byte, dest any) error
 	TypeExistsByName(name string) bool
-	TypeExistsByOid(oid VirtualOID) bool
-	GetTypeOid(name string) (VirtualOID, error)
+	TypeExistsByID(id TypeID) bool
+	GetTypeID(name string) (TypeID, error)
 	// GetCanonicalTypeName - returns a canonical type name of a type provided.
 	// For example if provided timestamp without timezone the value timestamp must be received.
 	// Each DBMS has their own type aliases so this method must return a canonical type for any existing alias
 	// or an error if not found. If not found must return ErrCanonicalTypeMismatch.
-	GetCanonicalTypeName(typeName string, typeOid VirtualOID) (string, error)
-	GetCanonicalTypeClassName(typeName string, typeOid VirtualOID) (TypeClass, error)
+	GetCanonicalTypeName(typeName string, typeID TypeID) (string, error)
+	GetCanonicalTypeClassName(typeName string, typeID TypeID) (TypeClass, error)
 }
 
 type TableDriver interface {

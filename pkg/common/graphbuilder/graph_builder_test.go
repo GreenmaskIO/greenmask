@@ -490,8 +490,8 @@ func TestGraphBuilder_EdgeCases(t *testing.T) {
 				core.ObjectKindTable: {
 					tableObject(1, namedTable("a")),
 				},
-				core.ObjectKindPostgresSequence: {
-					{ID: 2, Kind: core.ObjectKindPostgresSequence, Name: "a_id_seq"},
+				core.ObjectKind("sequence"): {
+					{ID: 2, Kind: core.ObjectKind("sequence"), Name: "a_id_seq"},
 				},
 			},
 		}

@@ -35,8 +35,9 @@ type DefaultConstraintDefinition struct {
 	Schema string `json:"schema"`
 	// Name - constraint name
 	Name string `json:"name"`
-	// Oid - Constraint oid in pg_constraint
-	Oid VirtualOID `json:"oid"`
+	// ID - unique identifier of the constraint within the source database
+	// (the OID in pg_constraint for PostgreSQL).
+	ID TypeID `json:"oid"`
 	// Columns - columns involved into constraint
 	Columns []int `json:"columns,omitempty"`
 	// Definition - real textual constraint definition
@@ -45,11 +46,11 @@ type DefaultConstraintDefinition struct {
 
 type Check DefaultConstraintDefinition
 
-func NewCheck(schema, name, definition string, oid VirtualOID, columns []int) *Check {
+func NewCheck(schema, name, definition string, id TypeID, columns []int) *Check {
 	return &Check{
 		Schema:     schema,
 		Name:       name,
-		Oid:        oid,
+		ID:         id,
 		Columns:    columns,
 		Definition: definition,
 	}
@@ -76,11 +77,11 @@ func (c *Check) Type() string {
 
 type Exclusion DefaultConstraintDefinition
 
-func NewExclusion(schema, name, definition string, oid VirtualOID, columns []int) *Exclusion {
+func NewExclusion(schema, name, definition string, id TypeID, columns []int) *Exclusion {
 	return &Exclusion{
 		Schema:     schema,
 		Name:       name,
-		Oid:        oid,
+		ID:         id,
 		Columns:    columns,
 		Definition: definition,
 	}
@@ -121,12 +122,12 @@ type ForeignKey struct {
 	ReferencedTable LinkedTable `json:"referencedTable,omitempty"`
 }
 
-func NewForeignKey(schema, name, definition string, oid VirtualOID, columns []int, referencedTable LinkedTable) *ForeignKey {
+func NewForeignKey(schema, name, definition string, id TypeID, columns []int, referencedTable LinkedTable) *ForeignKey {
 	return &ForeignKey{
 		DefaultConstraintDefinition: DefaultConstraintDefinition{
 			Schema:     schema,
 			Name:       name,
-			Oid:        oid,
+			ID:         id,
 			Columns:    columns,
 			Definition: definition,
 		},
@@ -158,12 +159,12 @@ type PrimaryKey struct {
 	References []*LinkedTable
 }
 
-func NewPrimaryKey(schema, name, definition string, oid VirtualOID, columns []int) *PrimaryKey {
+func NewPrimaryKey(schema, name, definition string, id TypeID, columns []int) *PrimaryKey {
 	return &PrimaryKey{
 		DefaultConstraintDefinition: DefaultConstraintDefinition{
 			Schema:     schema,
 			Name:       name,
-			Oid:        oid,
+			ID:         id,
 			Columns:    columns,
 			Definition: definition,
 		},
@@ -207,11 +208,11 @@ func (pk *PrimaryKey) Type() string {
 
 type Unique DefaultConstraintDefinition
 
-func NewUnique(schema, name, definition string, oid VirtualOID, columns []int) *Unique {
+func NewUnique(schema, name, definition string, id TypeID, columns []int) *Unique {
 	return &Unique{
 		Schema:     schema,
 		Name:       name,
-		Oid:        oid,
+		ID:         id,
 		Columns:    columns,
 		Definition: definition,
 	}
@@ -238,11 +239,11 @@ func (u *Unique) Type() string {
 
 type TriggerConstraint DefaultConstraintDefinition
 
-func NewTriggerConstraint(schema, name, definition string, oid VirtualOID, columns []int) *TriggerConstraint {
+func NewTriggerConstraint(schema, name, definition string, id TypeID, columns []int) *TriggerConstraint {
 	return &TriggerConstraint{
 		Schema:     schema,
 		Name:       name,
-		Oid:        oid,
+		ID:         id,
 		Columns:    columns,
 		Definition: definition,
 	}

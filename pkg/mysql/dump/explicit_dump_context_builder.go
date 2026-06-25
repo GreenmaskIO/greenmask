@@ -28,6 +28,7 @@ import (
 	"github.com/greenmaskio/greenmask/pkg/config"
 	"github.com/greenmaskio/greenmask/pkg/mysql/dbmsdriver"
 	schemadump "github.com/greenmaskio/greenmask/pkg/mysql/dump/factory/schema"
+	kinds "github.com/greenmaskio/greenmask/pkg/mysql/kinds"
 )
 
 var _ core.ExplicitDumpContextBuilder = (*ExplicitDumpContextBuilder)(nil)
@@ -86,18 +87,17 @@ func NewExplicitDumpContextBuilder(registry core.TransformerRegistry) *ExplicitD
 	return &ExplicitDumpContextBuilder{deps: defaultTableInitDeps{}, registry: registry}
 }
 
-func validateSupportedKinds(kinds []core.ObjectKind) error {
-	for _, kind := range kinds {
-		if kind.IsDataSection() {
-			if kind != core.ObjectKindMysqlTable {
-				return fmt.Errorf("%w %q: MySQL dump only supports tables as data section", errUnsupportedObjectKind, kind)
-			}
-		} else {
-			switch kind {
-			case core.ObjectKindMysqlDatabase:
-			default:
-				return fmt.Errorf("%w %q: MySQL dump only supports mysql.database and mysql.schema as schema sections", errUnsupportedObjectKind, kind)
-			}
+func validateSupportedKinds(objectKinds []core.ObjectKind) error {
+	for _, kind := range objectKinds {
+		switch kind {
+		case kinds.ObjectKindTable, kinds.ObjectKindDatabase:
+			// supported: MySQL dumps tables as the data section and databases
+			// as the schema section.
+		default:
+			return fmt.Errorf(
+				"%w %q: MySQL dump only supports %q (data) and %q (schema)",
+				errUnsupportedObjectKind, kind, kinds.ObjectKindTable, kinds.ObjectKindDatabase,
+			)
 		}
 	}
 	return nil
@@ -139,7 +139,7 @@ func (b *ExplicitDumpContextBuilder) BuildDumpContext(
 }
 
 func payloadToTableDefinition(obj core.Object) (core.Table, error) {
-	if obj.Kind != core.ObjectKindMysqlTable {
+	if obj.Kind != kinds.ObjectKindTable {
 		return core.Table{}, fmt.Errorf("unknown kind %s", obj.Kind)
 	}
 	// The introspection payload is either a common table or an engine-specific
@@ -182,7 +182,7 @@ func (b *ExplicitDumpContextBuilder) initTable(
 	if tableConfig == nil {
 		return core.ObjectDumpSpec{
 			TaskID:   seq.Next(),
-			Kind:     core.ObjectKindMysqlTable,
+			Kind:     kinds.ObjectKindTable,
 			ObjectID: obj.ID,
 			Name:     obj.Name,
 			Identity: mysqlTableIdentity(table.Schema, table.Name),
@@ -212,7 +212,7 @@ func (b *ExplicitDumpContextBuilder) initTable(
 	if len(tableConfig.Transformers) == 0 {
 		return core.ObjectDumpSpec{
 			TaskID:   seq.Next(),
-			Kind:     core.ObjectKindMysqlTable,
+			Kind:     kinds.ObjectKindTable,
 			ObjectID: obj.ID,
 			Name:     obj.Name,
 			Identity: mysqlTableIdentity(table.Schema, table.Name),
@@ -238,7 +238,7 @@ func (b *ExplicitDumpContextBuilder) initTable(
 	}
 	return core.ObjectDumpSpec{
 		TaskID:   seq.Next(),
-		Kind:     core.ObjectKindMysqlTable,
+		Kind:     kinds.ObjectKindTable,
 		ObjectID: obj.ID,
 		Name:     obj.Name,
 		Identity: mysqlTableIdentity(table.Schema, table.Name),
@@ -265,7 +265,7 @@ func (b *ExplicitDumpContextBuilder) buildDumpObjectSpecs(
 	in core.ExplicitDumpContextInput,
 	seq *core.TaskIDSequence,
 ) ([]core.ObjectDumpSpec, error) {
-	tableObjects := in.IntrospectionResult.KindsMap[core.ObjectKindMysqlTable]
+	tableObjects := in.IntrospectionResult.KindsMap[kinds.ObjectKindTable]
 	if len(tableObjects) == 0 {
 		log.Ctx(ctx).Debug().Msg("no table objects to dump")
 		return nil, nil
@@ -314,7 +314,7 @@ func (b *ExplicitDumpContextBuilder) buildDumpObjectSpecs(
 // filter is active. A nil/empty AllowedObjects entry means no filter is active
 // and every table is allowed (see core.ObjectFilterResult).
 func tableAllowedFilter(in core.ExplicitDumpContextInput) (allowed map[core.ObjectID]struct{}, active bool) {
-	ids := in.AllowedObjects[core.ObjectKindMysqlTable]
+	ids := in.AllowedObjects[kinds.ObjectKindTable]
 	if len(ids) == 0 {
 		return nil, false
 	}
@@ -328,7 +328,7 @@ func tableAllowedFilter(in core.ExplicitDumpContextInput) (allowed map[core.Obje
 // allowedTableObjects returns the MySQL table objects from the introspection
 // result that participate in the dump.
 func allowedTableObjects(in core.ExplicitDumpContextInput) []core.Object {
-	tableObjects := in.IntrospectionResult.KindsMap[core.ObjectKindMysqlTable]
+	tableObjects := in.IntrospectionResult.KindsMap[kinds.ObjectKindTable]
 	allowed, active := tableAllowedFilter(in)
 	if !active {
 		return tableObjects
@@ -378,7 +378,7 @@ func schemaDumpDatabases(in core.ExplicitDumpContextInput) ([]string, error) {
 // introspection that has no tables allowed by the filter, so its schema dump is
 // skipped entirely.
 func logSkippedSchemaDumps(ctx context.Context, in core.ExplicitDumpContextInput, inScopeDatabases []string) {
-	allDatabases, err := distinctSchemas(in.IntrospectionResult.KindsMap[core.ObjectKindMysqlTable])
+	allDatabases, err := distinctSchemas(in.IntrospectionResult.KindsMap[kinds.ObjectKindTable])
 	if err != nil {
 		// Best-effort logging only; payloads were already validated upstream.
 		return
@@ -421,7 +421,7 @@ func (b *ExplicitDumpContextBuilder) buildSchemaDumpSpecs(
 		for _, database := range databases {
 			specs = append(specs, core.SchemaDumpSpec{
 				TaskID:   seq.Next(),
-				Kind:     core.SchemaObjectKindMysqlDatabase,
+				Kind:     kinds.SchemaObjectKindDatabase,
 				ObjectID: databaseIDs[database],
 				Payload: schemadump.Payload{
 					Name:        database,
@@ -452,7 +452,7 @@ func mysqldumpOutputOptions(cfg any) core.Compression {
 // databaseObjectIDs maps each introspected database name to its runtime
 // ObjectID, so a schema dump spec can reference the database object it targets.
 func databaseObjectIDs(in core.ExplicitDumpContextInput) map[string]core.ObjectID {
-	databaseObjects := in.IntrospectionResult.KindsMap[core.ObjectKindMysqlDatabase]
+	databaseObjects := in.IntrospectionResult.KindsMap[kinds.ObjectKindDatabase]
 	ids := make(map[string]core.ObjectID, len(databaseObjects))
 	for _, obj := range databaseObjects {
 		ids[obj.Name] = obj.ID

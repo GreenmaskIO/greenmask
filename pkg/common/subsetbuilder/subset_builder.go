@@ -50,7 +50,7 @@ type sccQueryBuilder interface {
 type SubsetBuilder struct {
 	dialect Dialect
 	// tableKind is the engine-specific object kind under which the introspection
-	// result stores table objects (e.g. core.ObjectKindMysqlTable).
+	// result stores table objects (e.g. the engine's "mysql.table" kind).
 	tableKind core.ObjectKind
 }
 

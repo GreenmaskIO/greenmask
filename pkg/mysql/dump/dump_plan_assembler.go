@@ -18,6 +18,7 @@ import (
 	"context"
 
 	core "github.com/greenmaskio/greenmask/pkg/common/core"
+	kinds "github.com/greenmaskio/greenmask/pkg/mysql/kinds"
 )
 
 var _ core.DumpPlanAssembler = (*DumpPlanAssembler)(nil)
@@ -26,8 +27,8 @@ var _ core.DumpPlanAssembler = (*DumpPlanAssembler)(nil)
 type DumpPlanAssembler struct{}
 
 func (s *DumpPlanAssembler) Assemble(ctx context.Context, input core.DumpPlanInput) (core.DumpPlan, error) {
-	databases := make([]string, 0, len(input.IntrospectionResult.KindsMap[core.ObjectKindMysqlDatabase]))
-	for _, obj := range input.IntrospectionResult.KindsMap[core.ObjectKindMysqlDatabase] {
+	databases := make([]string, 0, len(input.IntrospectionResult.KindsMap[kinds.ObjectKindDatabase]))
+	for _, obj := range input.IntrospectionResult.KindsMap[kinds.ObjectKindDatabase] {
 		databases = append(databases, obj.Name)
 	}
 	return core.DumpPlan{

@@ -123,7 +123,7 @@ func TestFilter_FilterObjects_systemSchemaExcluded(t *testing.T) {
 // relations and must be selectable by the same include/exclude rules.
 func TestFilter_FilterObjects_multipleRelationKinds(t *testing.T) {
 	f := New(Options{
-		RelationKinds: []core.ObjectKind{core.ObjectKindPostgresTable, core.ObjectKindPostgresSequence},
+		RelationKinds: []core.ObjectKind{core.ObjectKindTable, core.ObjectKind("sequence")},
 		Resolve:       resolveTestTable,
 	})
 
@@ -132,21 +132,21 @@ func TestFilter_FilterObjects_multipleRelationKinds(t *testing.T) {
 			IncludeSchema: []string{"public"},
 		},
 		IntrospectionResult: introspection(map[core.ObjectKind][]core.Object{
-			core.ObjectKindPostgresTable: {
-				tableObject(1, core.ObjectKindPostgresTable, "public", "users"),
-				tableObject(2, core.ObjectKindPostgresTable, "private", "secrets"),
+			core.ObjectKindTable: {
+				tableObject(1, core.ObjectKindTable, "public", "users"),
+				tableObject(2, core.ObjectKindTable, "private", "secrets"),
 			},
-			core.ObjectKindPostgresSequence: {
-				tableObject(10, core.ObjectKindPostgresSequence, "public", "users_id_seq"),
-				tableObject(11, core.ObjectKindPostgresSequence, "private", "secrets_id_seq"),
+			core.ObjectKind("sequence"): {
+				tableObject(10, core.ObjectKind("sequence"), "public", "users_id_seq"),
+				tableObject(11, core.ObjectKind("sequence"), "private", "secrets_id_seq"),
 			},
 		}),
 	}
 
 	res, err := f.FilterObjects(context.Background(), input)
 	require.NoError(t, err)
-	assert.ElementsMatch(t, []core.ObjectID{1}, res.AllowedObjects[core.ObjectKindPostgresTable])
-	assert.ElementsMatch(t, []core.ObjectID{10}, res.AllowedObjects[core.ObjectKindPostgresSequence])
+	assert.ElementsMatch(t, []core.ObjectID{1}, res.AllowedObjects[core.ObjectKindTable])
+	assert.ElementsMatch(t, []core.ObjectID{10}, res.AllowedObjects[core.ObjectKind("sequence")])
 }
 
 func TestFilter_FilterObjects_unresolvedIdentityKept(t *testing.T) {

@@ -36,7 +36,7 @@ func TestNewDictTransformer(t *testing.T) {
 			Idx:      1,
 			Name:     "id",
 			TypeName: "int",
-			TypeOID:  2,
+			TypeID:   2,
 		}
 		tableDriver := mocks2.NewTableDriverMock()
 		columnParameter := mocks2.NewParametrizerMock()
@@ -120,7 +120,7 @@ func TestNewDictTransformer(t *testing.T) {
 			Idx:      1,
 			Name:     "id",
 			TypeName: "int",
-			TypeOID:  2,
+			TypeID:   2,
 		}
 		tableDriver := mocks2.NewTableDriverMock()
 		columnParameter := mocks2.NewParametrizerMock()
@@ -206,7 +206,7 @@ func TestDictTransformer_Transform(t *testing.T) {
 				Idx:      0,
 				Name:     "id",
 				TypeName: "int",
-				TypeOID:  23,
+				TypeID:   23,
 			}),
 			withParameter(ParameterNameColumn, func(param *mocks2.ParametrizerMock, env *transformerTestEnv) {
 				param.On("Scan", mock.Anything).
@@ -265,7 +265,7 @@ func TestDictTransformer_Transform(t *testing.T) {
 				Idx:      0,
 				Name:     "id",
 				TypeName: "int",
-				TypeOID:  23,
+				TypeID:   23,
 			}),
 			withParameter(ParameterNameColumn, func(param *mocks2.ParametrizerMock, env *transformerTestEnv) {
 				param.On("Scan", mock.Anything).
@@ -331,7 +331,7 @@ func TestDictTransformer_Transform(t *testing.T) {
 				Idx:      0,
 				Name:     "id",
 				TypeName: "int",
-				TypeOID:  23,
+				TypeID:   23,
 			}),
 			withParameter(ParameterNameColumn, func(param *mocks2.ParametrizerMock, env *transformerTestEnv) {
 				param.On("Scan", mock.Anything).
@@ -397,7 +397,7 @@ func TestDictTransformer_Transform(t *testing.T) {
 				Idx:      0,
 				Name:     "id",
 				TypeName: "int",
-				TypeOID:  23,
+				TypeID:   23,
 			}),
 			withParameter(ParameterNameColumn, func(param *mocks2.ParametrizerMock, env *transformerTestEnv) {
 				param.On("Scan", mock.Anything).

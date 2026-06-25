@@ -18,6 +18,7 @@ import (
 	"fmt"
 
 	core "github.com/greenmaskio/greenmask/pkg/common/core"
+	kinds "github.com/greenmaskio/greenmask/pkg/mysql/kinds"
 )
 
 var _ core.SchemaRestoreFactory = (*Factory)(nil)
@@ -34,7 +35,7 @@ func NewFactory(provider core.VendorUtilityProvider) *Factory {
 }
 
 func (f *Factory) Kind() core.SchemaObjectKind {
-	return core.SchemaObjectKindMysqlDatabase
+	return kinds.SchemaObjectKindDatabase
 }
 
 func (f *Factory) New(spec core.SchemaRestoreSpec) (core.SchemaRestorer, error) {

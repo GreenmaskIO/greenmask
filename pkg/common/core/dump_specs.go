@@ -83,14 +83,11 @@ type ObjectDumpSpec struct {
 // It is a distinct namespace from ObjectKind (the kinds of objects greenmask
 // dumps itself, e.g. tables), but both reference introspected objects through
 // the shared runtime ObjectID.
+//
+// Concrete kinds are owned by the engine packages (e.g. pg.database,
+// mysql.database); core defines only the open string type and never enumerates
+// any engine's schema kinds.
 type SchemaObjectKind string
-
-const (
-	SchemaObjectKindMysqlDatabase    SchemaObjectKind = "mysql.database"
-	SchemaObjectKindMysqlSchema      SchemaObjectKind = "mysql.schema"
-	SchemaObjectKindPostgresDatabase SchemaObjectKind = "pg.database"
-	SchemaObjectKindPostgresSchema   SchemaObjectKind = "pg.schema"
-)
 
 // SchemaDumpContextPayload is the base schema-dump context consumed by
 // SchemaDumpFactory to initialize a SchemaDumper.

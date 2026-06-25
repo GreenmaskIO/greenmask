@@ -40,7 +40,7 @@ func (m *DBMSDriverMock) EncodeValueByTypeName(name string, src any, buf []byte)
 	return args.Get(0).([]byte), args.Error(1)
 }
 
-func (m *DBMSDriverMock) EncodeValueByTypeOid(oid core.VirtualOID, src any, buf []byte) ([]byte, error) {
+func (m *DBMSDriverMock) EncodeValueByTypeID(oid core.TypeID, src any, buf []byte) ([]byte, error) {
 	args := m.Called(oid, src, buf)
 	if args.Error(1) != nil {
 		return nil, args.Error(1)
@@ -53,7 +53,7 @@ func (m *DBMSDriverMock) DecodeValueByTypeName(name string, src []byte) (any, er
 	return args.Get(0), args.Error(1)
 }
 
-func (m *DBMSDriverMock) DecodeValueByTypeOid(oid core.VirtualOID, src []byte) (any, error) {
+func (m *DBMSDriverMock) DecodeValueByTypeID(oid core.TypeID, src []byte) (any, error) {
 	args := m.Called(oid, src)
 	return args.Get(0), args.Error(1)
 }
@@ -63,7 +63,7 @@ func (m *DBMSDriverMock) ScanValueByTypeName(name string, src []byte, dest any) 
 	return args.Error(0)
 }
 
-func (m *DBMSDriverMock) ScanValueByTypeOid(oid core.VirtualOID, src []byte, dest any) error {
+func (m *DBMSDriverMock) ScanValueByTypeID(oid core.TypeID, src []byte, dest any) error {
 	args := m.Called(oid, src, dest)
 	if vv, ok := dest.(*string); ok {
 		*vv = string(src)
@@ -78,22 +78,22 @@ func (m *DBMSDriverMock) TypeExistsByName(name string) bool {
 	return args.Bool(0)
 }
 
-func (m *DBMSDriverMock) TypeExistsByOid(oid core.VirtualOID) bool {
+func (m *DBMSDriverMock) TypeExistsByID(oid core.TypeID) bool {
 	args := m.Called(oid)
 	return args.Bool(0)
 }
 
-func (m *DBMSDriverMock) GetTypeOid(name string) (core.VirtualOID, error) {
+func (m *DBMSDriverMock) GetTypeID(name string) (core.TypeID, error) {
 	args := m.Called(name)
-	return args.Get(0).(core.VirtualOID), args.Error(1)
+	return args.Get(0).(core.TypeID), args.Error(1)
 }
 
-func (m *DBMSDriverMock) GetCanonicalTypeName(typeName string, typeOid core.VirtualOID) (string, error) {
+func (m *DBMSDriverMock) GetCanonicalTypeName(typeName string, typeOid core.TypeID) (string, error) {
 	args := m.Called(typeName, typeOid)
 	return args.String(0), args.Error(1)
 }
 
-func (m *DBMSDriverMock) GetCanonicalTypeClassName(typeName string, typeOid core.VirtualOID) (core.TypeClass, error) {
+func (m *DBMSDriverMock) GetCanonicalTypeClassName(typeName string, typeOid core.TypeID) (core.TypeClass, error) {
 	args := m.Called(typeName, typeOid)
 	return args.Get(0).(core.TypeClass), args.Error(1)
 }

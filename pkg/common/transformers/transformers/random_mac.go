@@ -20,6 +20,7 @@ import (
 	"net"
 
 	core "github.com/greenmaskio/greenmask/pkg/common/core"
+	"github.com/greenmaskio/greenmask/pkg/common/coretypes/netaddr"
 	"github.com/greenmaskio/greenmask/pkg/common/transformers/generators/transformers"
 	"github.com/greenmaskio/greenmask/pkg/common/transformers/parameters"
 	"github.com/greenmaskio/greenmask/pkg/common/transformers/utils"
@@ -53,9 +54,10 @@ var RandomMacAddressDefinition = utils.NewTransformerDefinition(
 		"Column name",
 	).SetIsColumn(core.NewColumnProperties().
 		SetAffected(true).
+		// macaddr columns are presented as text across engines; the engine driver
+		// maps its native MAC type onto the generic text class.
 		SetAllowedColumnTypeClasses(
 			core.TypeClassText,
-			core.TypeClassMacAddress,
 		),
 	).SetRequired(true),
 
@@ -187,7 +189,8 @@ func (t *RandomMac) Transform(_ context.Context, r core.Recorder) error {
 		return nil
 	}
 
-	if err := scanMacAddr(rawVal.Data, &t.originalMac); err != nil {
+	t.originalMac, err = netaddr.ParseMacaddr(rawVal.Data)
+	if err != nil {
 		return fmt.Errorf("unable to scan mac address: %w", err)
 	}
 

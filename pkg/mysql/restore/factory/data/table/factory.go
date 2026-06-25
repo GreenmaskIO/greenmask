@@ -18,6 +18,7 @@ import (
 	"fmt"
 
 	core "github.com/greenmaskio/greenmask/pkg/common/core"
+	kinds "github.com/greenmaskio/greenmask/pkg/mysql/kinds"
 )
 
 var _ core.ObjectRestoreFactory = (*Factory)(nil)
@@ -28,7 +29,7 @@ type Factory struct{}
 
 func NewFactory() *Factory { return &Factory{} }
 
-func (f *Factory) Kind() core.ObjectKind { return core.ObjectKindMysqlTable }
+func (f *Factory) Kind() core.ObjectKind { return kinds.ObjectKindTable }
 
 // New assembles a TableRestorer from the spec by pairing a TableRestoreReader
 // (reads the dump file from storage) with the appropriate RestoreRowWriter

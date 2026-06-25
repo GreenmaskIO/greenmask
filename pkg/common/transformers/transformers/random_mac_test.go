@@ -16,10 +16,10 @@ package transformers
 
 import (
 	"context"
-	"net"
 	"testing"
 
 	core "github.com/greenmaskio/greenmask/pkg/common/core"
+	"github.com/greenmaskio/greenmask/pkg/common/coretypes/netaddr"
 	"github.com/greenmaskio/greenmask/pkg/common/transformers/generators/transformers"
 	"github.com/greenmaskio/greenmask/pkg/common/utils"
 	"github.com/greenmaskio/greenmask/pkg/common/validationcollector"
@@ -56,7 +56,7 @@ func TestRandomMacTransformer_Transform(t *testing.T) {
 					Name:      "data",
 					TypeName:  mysqldbmsdriver.TypeText,
 					TypeClass: core.TypeClassText,
-					TypeOID:   mysqldbmsdriver.VirtualOidText,
+					TypeID:    mysqldbmsdriver.TypeIDText,
 					Length:    0,
 				},
 			},
@@ -64,8 +64,8 @@ func TestRandomMacTransformer_Transform(t *testing.T) {
 				val, err := record.GetRawColumnValueByName("data")
 				require.NoError(t, err)
 				require.False(t, val.IsNull)
-				res := &net.HardwareAddr{}
-				err = scanMacAddr(val.Data, res)
+				r, err := netaddr.ParseMacaddr(val.Data)
+				res := &r
 				require.NoError(t, err)
 
 				newMacAddrInfo, err := transformers.ExploreMacAddress(*res)
@@ -94,7 +94,7 @@ func TestRandomMacTransformer_Transform(t *testing.T) {
 					Name:      "data",
 					TypeName:  mysqldbmsdriver.TypeText,
 					TypeClass: core.TypeClassText,
-					TypeOID:   mysqldbmsdriver.VirtualOidText,
+					TypeID:    mysqldbmsdriver.TypeIDText,
 					Length:    0,
 				},
 			},
@@ -102,8 +102,8 @@ func TestRandomMacTransformer_Transform(t *testing.T) {
 				val, err := record.GetRawColumnValueByName("data")
 				require.NoError(t, err)
 				require.False(t, val.IsNull)
-				res := &net.HardwareAddr{}
-				err = scanMacAddr(val.Data, res)
+				r, err := netaddr.ParseMacaddr(val.Data)
+				res := &r
 				require.NoError(t, err)
 
 				newMacAddrInfo, err := transformers.ExploreMacAddress(*res)
@@ -133,7 +133,7 @@ func TestRandomMacTransformer_Transform(t *testing.T) {
 					Name:      "data",
 					TypeName:  mysqldbmsdriver.TypeText,
 					TypeClass: core.TypeClassText,
-					TypeOID:   mysqldbmsdriver.VirtualOidText,
+					TypeID:    mysqldbmsdriver.TypeIDText,
 					Length:    0,
 				},
 			},
@@ -141,8 +141,8 @@ func TestRandomMacTransformer_Transform(t *testing.T) {
 				val, err := record.GetRawColumnValueByName("data")
 				require.NoError(t, err)
 				require.False(t, val.IsNull)
-				res := &net.HardwareAddr{}
-				err = scanMacAddr(val.Data, res)
+				r, err := netaddr.ParseMacaddr(val.Data)
+				res := &r
 				require.NoError(t, err)
 
 				newMacAddrInfo, err := transformers.ExploreMacAddress(*res)
@@ -172,7 +172,7 @@ func TestRandomMacTransformer_Transform(t *testing.T) {
 					Name:      "data",
 					TypeName:  mysqldbmsdriver.TypeText,
 					TypeClass: core.TypeClassText,
-					TypeOID:   mysqldbmsdriver.VirtualOidText,
+					TypeID:    mysqldbmsdriver.TypeIDText,
 					Length:    0,
 				},
 			},
@@ -180,8 +180,8 @@ func TestRandomMacTransformer_Transform(t *testing.T) {
 				val, err := record.GetRawColumnValueByName("data")
 				require.NoError(t, err)
 				require.False(t, val.IsNull)
-				res := &net.HardwareAddr{}
-				err = scanMacAddr(val.Data, res)
+				r, err := netaddr.ParseMacaddr(val.Data)
+				res := &r
 				require.NoError(t, err)
 
 				newMacAddrInfo, err := transformers.ExploreMacAddress(*res)
@@ -211,7 +211,7 @@ func TestRandomMacTransformer_Transform(t *testing.T) {
 					Name:      "data",
 					TypeName:  mysqldbmsdriver.TypeText,
 					TypeClass: core.TypeClassText,
-					TypeOID:   mysqldbmsdriver.VirtualOidText,
+					TypeID:    mysqldbmsdriver.TypeIDText,
 					Length:    0,
 				},
 			},
@@ -219,8 +219,8 @@ func TestRandomMacTransformer_Transform(t *testing.T) {
 				val, err := record.GetRawColumnValueByName("data")
 				require.NoError(t, err)
 				require.False(t, val.IsNull)
-				res := &net.HardwareAddr{}
-				err = scanMacAddr(val.Data, res)
+				r, err := netaddr.ParseMacaddr(val.Data)
+				res := &r
 				require.NoError(t, err)
 
 				newMacAddrInfo, err := transformers.ExploreMacAddress(*res)

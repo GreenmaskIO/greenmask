@@ -30,7 +30,7 @@ func TestTextRecord_Encode(t *testing.T) {
 				Idx:      0,
 				Name:     "first_name",
 				TypeName: mysqldbmsdriver.TypeText,
-				TypeOID:  mysqldbmsdriver.VirtualOidText,
+				TypeID:   mysqldbmsdriver.TypeIDText,
 				Length:   0,
 			},
 		}

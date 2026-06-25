@@ -28,9 +28,9 @@ import (
 )
 
 var (
-	errNoKeysFound                 = errors.New("no keys found")
-	errCannotMatchTypeToVirtualOID = errors.New("cannot match type to virtual OID")
-	errNoSchemasFound              = errors.New("no schemas/databases found according to the filters")
+	errNoKeysFound             = errors.New("no keys found")
+	errCannotMatchTypeToTypeID = errors.New("cannot match type to virtual OID")
+	errNoSchemasFound          = errors.New("no schemas/databases found according to the filters")
 )
 
 type options interface {
@@ -364,21 +364,21 @@ func (i *Introspector) getSchemas(ctx context.Context, tx core.DB) ([]string, er
 	return schemas, nil
 }
 
-func getTypeOID(columnType string, dataType *string) (core.VirtualOID, error) {
-	typeOID, ok := dbmsdriver.TypeNameToVirtualOid[columnType]
+func getTypeID(columnType string, dataType *string) (core.TypeID, error) {
+	typeOID, ok := dbmsdriver.TypeNameToTypeID[columnType]
 	if ok {
 		return typeOID, nil
 	}
 	// If not found, try to use fallback using dataType if provided.
 	if dataType == nil {
-		return 0, fmt.Errorf("match type OID for %s: %w", columnType, errCannotMatchTypeToVirtualOID)
+		return 0, fmt.Errorf("match type OID for %s: %w", columnType, errCannotMatchTypeToTypeID)
 	}
-	typeOID, ok = dbmsdriver.TypeNameToVirtualOid[*dataType]
+	typeOID, ok = dbmsdriver.TypeNameToTypeID[*dataType]
 	if ok {
 		return typeOID, nil
 	}
 	return 0, fmt.Errorf(
-		"match type OID for %s or %s: %w", columnType, *dataType, errCannotMatchTypeToVirtualOID,
+		"match type OID for %s or %s: %w", columnType, *dataType, errCannotMatchTypeToTypeID,
 	)
 }
 
@@ -454,7 +454,7 @@ func (i *Introspector) getColumns(ctx context.Context, tx core.DB, tableSchema s
 		); err != nil {
 			return nil, fmt.Errorf("scan column introspection row: %w", err)
 		}
-		typeOID, err := getTypeOID(columnType, dataType)
+		typeOID, err := getTypeID(columnType, dataType)
 		if err != nil {
 			return nil, fmt.Errorf("get type oid: %w", err)
 		}

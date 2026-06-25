@@ -22,14 +22,11 @@ import (
 	"errors"
 	"fmt"
 	"math"
-	"net"
 	"slices"
 	"strconv"
 	"strings"
 	"time"
 
-	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgtype"
 	"golang.org/x/exp/constraints"
 
 	core "github.com/greenmaskio/greenmask/pkg/common/core"
@@ -60,8 +57,6 @@ const (
 	Int4Length = 4
 	Int8Length = 8
 )
-
-var pgGlobalTypeMap = pgtype.NewMap()
 
 var (
 	defaultKeepNullParameterDefinition = parameters.MustNewParameterDefinition(
@@ -562,14 +557,6 @@ func getIntThresholds(size int) (int64, int64, error) {
 	}
 
 	return 0, 0, fmt.Errorf("unsupported int size %d", size)
-}
-
-func scanIPNet(src []byte, dest *net.IPNet) error {
-	return pgGlobalTypeMap.Scan(pgtype.InetOID, pgx.TextFormatCode, src, dest)
-}
-
-func scanMacAddr(src []byte, dest *net.HardwareAddr) error {
-	return pgGlobalTypeMap.Scan(pgtype.MacaddrOID, pgx.TextFormatCode, src, dest)
 }
 
 func defaultColumnContainerUnmarshaler[T parameters.ColumnContainer](

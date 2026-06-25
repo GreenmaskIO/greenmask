@@ -106,7 +106,7 @@ func objectSpec(id core.TaskID) core.ObjectDumpSpec {
 }
 
 func schemaSpec(id core.TaskID) core.SchemaDumpSpec {
-	return core.SchemaDumpSpec{TaskID: id, Kind: core.SchemaObjectKindMysqlDatabase}
+	return core.SchemaDumpSpec{TaskID: id, Kind: core.SchemaObjectKind("database")}
 }
 
 // newProc creates a processor and fails the test on construction error.
@@ -147,7 +147,7 @@ func (noopStorager) PutObject(_ context.Context, _ string, _ io.Reader) error   
 func (noopStorager) Delete(_ context.Context, _ ...string) error                  { return nil }
 func (noopStorager) DeleteAll(_ context.Context, _ string) error                  { return nil }
 func (noopStorager) Exists(_ context.Context, _ string) (bool, error)             { return false, nil }
-func (noopStorager) SubStorage(_ string, _ bool) core.Storager                    { return nil }
+func (n noopStorager) SubStorage(_ string, _ bool) core.Storager                  { return n }
 func (noopStorager) Stat(_ string) (*core.StorageObjectStat, error)               { return nil, nil }
 func (noopStorager) Ping(_ context.Context) error                                 { return nil }
 

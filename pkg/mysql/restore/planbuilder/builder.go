@@ -25,6 +25,7 @@ import (
 	"fmt"
 
 	core "github.com/greenmaskio/greenmask/pkg/common/core"
+	kinds "github.com/greenmaskio/greenmask/pkg/mysql/kinds"
 	"github.com/greenmaskio/greenmask/pkg/mysql/restore/factory/schema"
 )
 
@@ -68,14 +69,14 @@ func (b *Builder) buildObjectSpecs(meta core.Metadata) ([]core.ObjectRestoreSpec
 	specs := make([]core.ObjectRestoreSpec, 0, len(meta.DataDump.DumpStat.RestorationItems))
 	for _, item := range meta.DataDump.DumpStat.RestorationItems {
 		switch item.ObjectKind {
-		case core.ObjectKindMysqlTable, core.ObjectKindTable:
+		case kinds.ObjectKindTable, core.ObjectKindTable:
 			var table core.Table
 			if err := json.Unmarshal(item.ObjectDefinition, &table); err != nil {
 				return nil, fmt.Errorf("unmarshal table (taskID=%d): %w", item.TaskID, err)
 			}
 			specs = append(specs, core.ObjectRestoreSpec{
 				TaskID:      item.TaskID,
-				Kind:        core.ObjectKindMysqlTable,
+				Kind:        kinds.ObjectKindTable,
 				Filename:    item.Filename,
 				Compression: item.Compression,
 				Format:      item.Format,
@@ -100,7 +101,7 @@ func (b *Builder) buildSchemaSpecs(meta core.Metadata) ([]core.SchemaRestoreSpec
 			Databases: meta.Databases,
 		}
 		specs = append(specs, core.SchemaRestoreSpec{
-			Kind:    core.SchemaObjectKindMysqlDatabase,
+			Kind:    kinds.SchemaObjectKindDatabase,
 			Section: stat.Section,
 			Payload: payload,
 		})

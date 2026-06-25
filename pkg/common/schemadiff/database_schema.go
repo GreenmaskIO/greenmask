@@ -114,15 +114,15 @@ func diffTableColumns(previous, current core.Table) []core.DiffNode {
 			}))
 		}
 
-		if currentStateColumn.TypeOID != previousStateColumn.TypeOID {
+		if currentStateColumn.TypeID != previousStateColumn.TypeID {
 			res = append(res, newDiffNode(core.ColumnTypeChangedDiffEvent, map[string]string{
-				"TableSchema":           previous.Schema,
-				"TableName":             previous.Name,
-				"ColumnName":            previousStateColumn.Name,
-				"PreviousColumnType":    previousStateColumn.TypeName,
-				"PreviousColumnTypeOID": fmt.Sprintf("%d", previousStateColumn.TypeOID),
-				"CurrentColumnType":     currentStateColumn.TypeName,
-				"CurrentColumnTypeOID":  fmt.Sprintf("%d", currentStateColumn.TypeOID),
+				"TableSchema":          previous.Schema,
+				"TableName":            previous.Name,
+				"ColumnName":           previousStateColumn.Name,
+				"PreviousColumnType":   previousStateColumn.TypeName,
+				"PreviousColumnTypeID": fmt.Sprintf("%d", previousStateColumn.TypeID),
+				"CurrentColumnType":    currentStateColumn.TypeName,
+				"CurrentColumnTypeID":  fmt.Sprintf("%d", currentStateColumn.TypeID),
 			}))
 		}
 	}

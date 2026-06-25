@@ -43,7 +43,7 @@ func TestRegexpReplaceTransformer_Transform2(t *testing.T) {
 					Name:      "data",
 					TypeName:  mysqldbmsdriver.TypeText,
 					TypeClass: core.TypeClassText,
-					TypeOID:   mysqldbmsdriver.VirtualOidText,
+					TypeID:    mysqldbmsdriver.TypeIDText,
 					Length:    0,
 				},
 			},

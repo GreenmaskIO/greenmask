@@ -26,6 +26,7 @@ import (
 	"github.com/greenmaskio/greenmask/pkg/common/storageprovisioner"
 	"github.com/greenmaskio/greenmask/pkg/common/subsetbuilder"
 	"github.com/greenmaskio/greenmask/pkg/common/transformers/registry"
+	kinds "github.com/greenmaskio/greenmask/pkg/mysql/kinds"
 )
 
 var (
@@ -52,10 +53,10 @@ func NewDumpStages() pipeline.DumpStages {
 		ConnectionConfigurerBuilder: &ConnectionConfigurerBuilder{},
 		DatabaseSessionBuilder:      &DumpSessionBuilder{},
 		Introspector:                NewIntrospectorV2(),
-		DependencyGraphBuilder:      graphbuilder.New(core.ObjectKindMysqlTable),
+		DependencyGraphBuilder:      graphbuilder.New(kinds.ObjectKindTable),
 		DumpMetadataLoader:          &DumpMetadataLoader{},
 		SchemaDriftValidator:        &SchemaDriftValidator{},
-		SubsetBuilder:               subsetbuilder.New(subsetbuilder.DialectMySQL, core.ObjectKindMysqlTable),
+		SubsetBuilder:               subsetbuilder.New(subsetbuilder.DialectMySQL, kinds.ObjectKindTable),
 		ConfigEditor:                &ConfigEditor{},
 		ObjectFilter:                NewObjectFilter(),
 		FilterConfigBuilder:         filterconfig.New(),

@@ -21,11 +21,12 @@ import (
 	"github.com/stretchr/testify/require"
 
 	core "github.com/greenmaskio/greenmask/pkg/common/core"
+	kinds "github.com/greenmaskio/greenmask/pkg/mysql/kinds"
 )
 
 func TestFactory_Kind(t *testing.T) {
 	f := NewFactory()
-	assert.Equal(t, core.ObjectKindMysqlTable, f.Kind())
+	assert.Equal(t, kinds.ObjectKindTable, f.Kind())
 }
 
 func TestFactory_New(t *testing.T) {

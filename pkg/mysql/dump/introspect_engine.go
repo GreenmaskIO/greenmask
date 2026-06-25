@@ -296,15 +296,15 @@ func (e *introspectEngine) getTables(ctx context.Context, db core.DB) ([]mysqlmo
 	return tables, nil
 }
 
-func introspectTypeOID(columnType string, dataType *string) (core.VirtualOID, error) {
-	typeOID, ok := dbmsdriver.TypeNameToVirtualOid[columnType]
+func introspectTypeID(columnType string, dataType *string) (core.TypeID, error) {
+	typeOID, ok := dbmsdriver.TypeNameToTypeID[columnType]
 	if ok {
 		return typeOID, nil
 	}
 	if dataType == nil {
 		return 0, fmt.Errorf("match type OID for %s: %w", columnType, errIntrospectNoTypeMatch)
 	}
-	typeOID, ok = dbmsdriver.TypeNameToVirtualOid[*dataType]
+	typeOID, ok = dbmsdriver.TypeNameToTypeID[*dataType]
 	if ok {
 		return typeOID, nil
 	}
@@ -376,7 +376,7 @@ func (e *introspectEngine) getColumns(ctx context.Context, db core.DB, tableSche
 		); err != nil {
 			return nil, fmt.Errorf("scan column introspection row: %w", err)
 		}
-		typeOID, err := introspectTypeOID(columnType, dataType)
+		typeOID, err := introspectTypeID(columnType, dataType)
 		if err != nil {
 			return nil, fmt.Errorf("get type oid: %w", err)
 		}

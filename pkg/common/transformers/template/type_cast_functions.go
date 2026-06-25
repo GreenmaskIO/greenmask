@@ -21,7 +21,7 @@ import (
 )
 
 type dbmsDriver interface {
-	GetTypeOIDByName(typeName string) (uint32, bool)
+	GetTypeIDByName(typeName string) (uint32, bool)
 	DecodeValueByTypeName(name string, src []byte) (any, error)
 	EncodeValueByTypeName(name string, src any, buf []byte) ([]byte, error)
 }
@@ -46,7 +46,7 @@ func NewTypeCaster(
 	var warnings core.ValidationWarnings
 	var castFunc TypeCastFunc
 
-	inputTypeOID, ok := driver.GetTypeOIDByName(inputType)
+	inputTypeID, ok := driver.GetTypeIDByName(inputType)
 	if !ok {
 		warnings = append(warnings,
 			core.NewValidationWarning().
@@ -55,7 +55,7 @@ func NewTypeCaster(
 				SetMsg("unsupported input type"),
 		)
 	}
-	outputTypeOID, ok := driver.GetTypeOIDByName(outputType)
+	outputTypeID, ok := driver.GetTypeIDByName(outputType)
 	if !ok {
 		warnings = append(warnings,
 			core.NewValidationWarning().
@@ -65,7 +65,7 @@ func NewTypeCaster(
 		)
 	}
 
-	if inputTypeOID == outputTypeOID {
+	if inputTypeID == outputTypeID {
 		warnings = append(warnings,
 			core.NewValidationWarning().
 				SetSeverity(core.ValidationSeverityError).
@@ -121,8 +121,8 @@ func NewTypeCaster(
 
 	return &TypeCaster{
 		cast:       castFunc,
-		inputType:  columnType{name: inputType, oid: inputTypeOID},
-		outputType: columnType{name: outputType, oid: outputTypeOID},
+		inputType:  columnType{name: inputType, oid: inputTypeID},
+		outputType: columnType{name: outputType, oid: outputTypeID},
 	}, warnings, nil
 }
 

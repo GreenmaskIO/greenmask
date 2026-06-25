@@ -39,7 +39,7 @@ func (t *Table) ToCommonTable() core.Table {
 			i,
 			col.Name,
 			col.TypeName,
-			col.TypeOID,
+			col.TypeID,
 			col.NotNull,
 			col.TypeClass,
 		)

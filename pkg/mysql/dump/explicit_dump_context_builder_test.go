@@ -26,6 +26,7 @@ import (
 	"github.com/greenmaskio/greenmask/pkg/common/mocks"
 	transformercontext "github.com/greenmaskio/greenmask/pkg/common/transformers/context"
 	schemadump "github.com/greenmaskio/greenmask/pkg/mysql/dump/factory/schema"
+	kinds "github.com/greenmaskio/greenmask/pkg/mysql/kinds"
 )
 
 // --- test doubles -----------------------------------------------------------
@@ -93,7 +94,7 @@ func (s *stubTableInitDeps) InitTransformers(
 func tableObj(id core.ObjectID, schema, name string) core.Object {
 	return core.Object{
 		ID:      id,
-		Kind:    core.ObjectKindMysqlTable,
+		Kind:    kinds.ObjectKindTable,
 		Name:    name,
 		Payload: core.Table{ID: int(id), Schema: schema, Name: name},
 	}
@@ -110,21 +111,21 @@ func newIntrospection(objs ...core.Object) core.IntrospectionResult {
 	return core.IntrospectionResult{
 		Engine: core.DBMSEngineMySQL,
 		KindsMap: map[core.ObjectKind][]core.Object{
-			core.ObjectKindMysqlTable: objs,
+			kinds.ObjectKindTable: objs,
 		},
 	}
 }
 
 func dbObj(id core.ObjectID, name string) core.Object {
-	return core.Object{ID: id, Kind: core.ObjectKindMysqlDatabase, Name: name}
+	return core.Object{ID: id, Kind: kinds.ObjectKindDatabase, Name: name}
 }
 
 func introspectionWithDatabases(tables, databases []core.Object) core.IntrospectionResult {
 	return core.IntrospectionResult{
 		Engine: core.DBMSEngineMySQL,
 		KindsMap: map[core.ObjectKind][]core.Object{
-			core.ObjectKindMysqlTable:    tables,
-			core.ObjectKindMysqlDatabase: databases,
+			kinds.ObjectKindTable:    tables,
+			kinds.ObjectKindDatabase: databases,
 		},
 	}
 }
@@ -137,12 +138,12 @@ func TestValidateSupportedKinds(t *testing.T) {
 		kinds   []core.ObjectKind
 		wantErr bool
 	}{
-		{"table data section", []core.ObjectKind{core.ObjectKindMysqlTable}, false},
-		{"schema sections", []core.ObjectKind{core.ObjectKindMysqlDatabase}, false},
-		{"mixed valid", []core.ObjectKind{core.ObjectKindMysqlTable}, false},
+		{"table data section", []core.ObjectKind{kinds.ObjectKindTable}, false},
+		{"schema sections", []core.ObjectKind{kinds.ObjectKindDatabase}, false},
+		{"mixed valid", []core.ObjectKind{kinds.ObjectKindTable}, false},
 		{"empty", nil, false},
-		{"foreign data section kind", []core.ObjectKind{core.ObjectKindPostgresTable}, true},
-		{"unsupported schema section kind", []core.ObjectKind{core.ObjectKindPostgresSchema}, true},
+		{"foreign data section kind", []core.ObjectKind{core.ObjectKind("pg.table")}, true},
+		{"unsupported schema section kind", []core.ObjectKind{core.ObjectKind("pg.schema")}, true},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -168,17 +169,17 @@ func TestPayloadToTableDefinition(t *testing.T) {
 	}{
 		{
 			name: "valid",
-			obj:  core.Object{Kind: core.ObjectKindMysqlTable, Payload: table},
+			obj:  core.Object{Kind: kinds.ObjectKindTable, Payload: table},
 			want: table,
 		},
 		{
 			name:    "wrong kind",
-			obj:     core.Object{Kind: core.ObjectKindMysqlDatabase, Payload: core.Table{}},
+			obj:     core.Object{Kind: kinds.ObjectKindDatabase, Payload: core.Table{}},
 			wantErr: true,
 		},
 		{
 			name:    "wrong payload type",
-			obj:     core.Object{Kind: core.ObjectKindMysqlTable, Payload: "not a table"},
+			obj:     core.Object{Kind: kinds.ObjectKindTable, Payload: "not a table"},
 			wantErr: true,
 		},
 	}
@@ -213,7 +214,7 @@ func TestBuildSchemaDumpSpecs(t *testing.T) {
 		// engine-level kind; section and database distinguish them.
 		require.Len(t, specs, 4)
 		for _, s := range specs {
-			assert.Equal(t, core.SchemaObjectKindMysqlDatabase, s.Kind)
+			assert.Equal(t, kinds.SchemaObjectKindDatabase, s.Kind)
 		}
 
 		assert.Equal(t, []string{"shop", "warehouse", "shop", "warehouse"},
@@ -250,7 +251,7 @@ func TestBuildSchemaDumpSpecs(t *testing.T) {
 				tableObj(2, "warehouse", "items"),
 			),
 			AllowedObjects: map[core.ObjectKind][]core.ObjectID{
-				core.ObjectKindMysqlTable: {1}, // only the shop table is allowed
+				kinds.ObjectKindTable: {1}, // only the shop table is allowed
 			},
 		}
 		specs, err := NewExplicitDumpContextBuilder(nil).buildSchemaDumpSpecs(context.Background(), in, new(core.TaskIDSequence))
@@ -321,7 +322,7 @@ func TestInitTable(t *testing.T) {
 			deps:        &stubTableInitDeps{},
 			assert: func(t *testing.T, spec core.ObjectDumpSpec, deps *stubTableInitDeps) {
 				assert.Equal(t, core.DumpModeRaw, spec.Mode)
-				assert.Equal(t, core.ObjectKindMysqlTable, spec.Kind)
+				assert.Equal(t, kinds.ObjectKindTable, spec.Kind)
 				assert.Equal(t, core.ObjectID(1), spec.ObjectID)
 				assert.Equal(t, "users", spec.Name)
 
@@ -417,7 +418,7 @@ func TestInitTable(t *testing.T) {
 		{
 			name:       "bad payload is rejected",
 			cfg:        nil,
-			obj:        core.Object{ID: 1, Kind: core.ObjectKindMysqlTable, Name: "x", Payload: "not a table"},
+			obj:        core.Object{ID: 1, Kind: kinds.ObjectKindTable, Name: "x", Payload: "not a table"},
 			deps:       &stubTableInitDeps{},
 			wantErrAny: true,
 		},
@@ -466,9 +467,9 @@ func TestBuildDumpContext(t *testing.T) {
 				// One database ("public") -> pre-data + post-data schema specs.
 				require.Len(t, ctx.SchemaDumpSpecs, 2)
 				assert.Equal(t, "public", ctx.SchemaDumpSpecs[0].Payload.(schemadump.Payload).Name)
-				assert.Equal(t, core.SchemaObjectKindMysqlDatabase, ctx.SchemaDumpSpecs[0].Kind)
+				assert.Equal(t, kinds.SchemaObjectKindDatabase, ctx.SchemaDumpSpecs[0].Kind)
 				assert.Equal(t, core.DumpSectionPreData, ctx.SchemaDumpSpecs[0].Payload.(schemadump.Payload).Section)
-				assert.Equal(t, core.SchemaObjectKindMysqlDatabase, ctx.SchemaDumpSpecs[1].Kind)
+				assert.Equal(t, kinds.SchemaObjectKindDatabase, ctx.SchemaDumpSpecs[1].Kind)
 				assert.Equal(t, core.DumpSectionPostData, ctx.SchemaDumpSpecs[1].Payload.(schemadump.Payload).Section)
 
 				seen := map[core.TaskID]struct{}{}
@@ -493,7 +494,7 @@ func TestBuildDumpContext(t *testing.T) {
 					tableObj(3, "public", "audit"),
 				),
 				AllowedObjects: map[core.ObjectKind][]core.ObjectID{
-					core.ObjectKindMysqlTable: {2},
+					kinds.ObjectKindTable: {2},
 				},
 			},
 			assert: func(t *testing.T, ctx core.DumpContext) {
@@ -534,7 +535,7 @@ func TestBuildDumpContext(t *testing.T) {
 				IntrospectionResult: core.IntrospectionResult{
 					Engine: core.DBMSEngineMySQL,
 					KindsMap: map[core.ObjectKind][]core.Object{
-						core.ObjectKindPostgresTable: {},
+						core.ObjectKind("pg.table"): {},
 					},
 				},
 			},
@@ -544,7 +545,7 @@ func TestBuildDumpContext(t *testing.T) {
 			name: "initTable error is propagated",
 			input: core.ExplicitDumpContextInput{
 				IntrospectionResult: newIntrospection(
-					core.Object{ID: 1, Kind: core.ObjectKindMysqlTable, Name: "x", Payload: "not a table"},
+					core.Object{ID: 1, Kind: kinds.ObjectKindTable, Name: "x", Payload: "not a table"},
 				),
 			},
 			wantErrAny: true,

@@ -43,7 +43,7 @@ func TestRealAddressTransformer_Transform(t *testing.T) {
 					Name:      "data",
 					TypeName:  mysqldbmsdriver.TypeText,
 					TypeClass: core.TypeClassText,
-					TypeOID:   mysqldbmsdriver.VirtualOidText,
+					TypeID:    mysqldbmsdriver.TypeIDText,
 					Length:    0,
 				},
 			},

@@ -23,6 +23,7 @@ import (
 	"github.com/greenmaskio/greenmask/pkg/common/record"
 	transformercontext "github.com/greenmaskio/greenmask/pkg/common/transformers/context"
 	"github.com/greenmaskio/greenmask/pkg/mysql/dbmsdriver"
+	kinds "github.com/greenmaskio/greenmask/pkg/mysql/kinds"
 )
 
 var _ core.ObjectDumpFactory = (*Factory)(nil)
@@ -42,7 +43,7 @@ func NewFactory(opts ...Option) *Factory {
 }
 
 func (f *Factory) Kind() core.ObjectKind {
-	return core.ObjectKindMysqlTable
+	return kinds.ObjectKindTable
 }
 
 // New builds a table data dumper from the spec. When the table has transformers
@@ -50,8 +51,8 @@ func (f *Factory) Kind() core.ObjectKind {
 // applies the transformation pipeline and re-encodes it; otherwise it returns a
 // TableRawDumper that streams rows as-is into INSERT value tuples.
 func (f *Factory) New(spec core.ObjectDumpSpec) (core.ObjectDumper, error) {
-	if spec.Kind != core.ObjectKindMysqlTable {
-		return nil, fmt.Errorf("expected kind %q, got %q", core.ObjectKindMysqlTable, spec.Kind)
+	if spec.Kind != kinds.ObjectKindTable {
+		return nil, fmt.Errorf("expected kind %q, got %q", kinds.ObjectKindTable, spec.Kind)
 	}
 	payload, ok := spec.Payload.(transformercontext.TableDumpContext)
 	if !ok {

@@ -20,6 +20,7 @@ import (
 	"net"
 
 	core "github.com/greenmaskio/greenmask/pkg/common/core"
+	"github.com/greenmaskio/greenmask/pkg/common/coretypes/netaddr"
 	"github.com/greenmaskio/greenmask/pkg/common/transformers/generators/transformers"
 	"github.com/greenmaskio/greenmask/pkg/common/transformers/parameters"
 	"github.com/greenmaskio/greenmask/pkg/common/transformers/utils"
@@ -41,9 +42,10 @@ var RandomIPDefinition = utils.NewTransformerDefinition(
 		"Column name",
 	).SetIsColumn(core.NewColumnProperties().
 		SetAffected(true).
+		// inet/cidr columns are presented as text across engines; the engine
+		// driver maps its native network types onto the generic text class.
 		SetAllowedColumnTypeClasses(
 			core.TypeClassText,
-			core.TypeClassInet,
 		),
 	).SetRequired(true),
 
@@ -58,14 +60,11 @@ var RandomIPDefinition = utils.NewTransformerDefinition(
 					core.NewColumnProperties().
 						SetAllowedColumnTypeClasses(
 							core.TypeClassText,
-							core.TypeClassCidr,
 						),
 				),
 		).SetUnmarshaler(
 		func(_ *parameters.ParameterDefinition, _ core.DBMSDriver, src core.ParamsValue) (any, error) {
-			dest := &net.IPNet{}
-			err := scanIPNet(src, dest)
-			return dest, err
+			return netaddr.ParseInet(src)
 		}),
 
 	defaultEngineParameterDefinition,

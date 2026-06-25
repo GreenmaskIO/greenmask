@@ -31,6 +31,7 @@ import (
 
 	"github.com/greenmaskio/greenmask/pkg/common/core"
 	"github.com/greenmaskio/greenmask/pkg/common/utils"
+	kinds "github.com/greenmaskio/greenmask/pkg/mysql/kinds"
 )
 
 var (
@@ -99,7 +100,7 @@ func NewFactory(provider core.VendorUtilityProvider) *Factory {
 }
 
 func (f *Factory) Kind() core.SchemaObjectKind {
-	return core.SchemaObjectKindMysqlDatabase
+	return kinds.SchemaObjectKindDatabase
 }
 
 func (f *Factory) New(spec core.SchemaDumpSpec) (core.SchemaDumper, error) {
@@ -224,7 +225,7 @@ func (d *dumper) Dump(ctx context.Context, conn core.ConnectionConfigurer, st co
 	}
 
 	return core.SchemaDumpStat{
-		Kind:           core.SchemaObjectKindMysqlDatabase,
+		Kind:           kinds.SchemaObjectKindDatabase,
 		DatabaseName:   d.database,
 		FileName:       fileName,
 		Section:        d.section,

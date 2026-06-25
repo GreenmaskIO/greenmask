@@ -26,6 +26,13 @@ var (
 	NullValueSeq = []byte("\\N")
 )
 
+// TypeClassEnum is the MySQL-specific type class for ENUM/SET columns. It is an
+// engine extension over core's generic type-class set: core deliberately does not
+// enumerate single-engine families, so the class lives in the engine driver that
+// produces it. Transformers that do not recognize it simply treat the column as
+// any other unknown class.
+const TypeClassEnum core.TypeClass = "enum"
+
 const (
 	// Numeric types
 	TypeTinyInt   = "tinyint"
@@ -93,112 +100,112 @@ const (
 
 const (
 	// Numeric types with Virtual OIDs
-	VirtualOidTinyInt core.VirtualOID = iota
-	VirtualOidSmallInt
-	VirtualOidMediumInt
-	VirtualOidInt
-	VirtualOidBigInt
-	VirtualOidDecimal
-	VirtualOidNumeric
-	VirtualOidFloat
-	VirtualOidDouble
-	VirtualOidReal
-	VirtualOidBit
+	TypeIDTinyInt core.TypeID = iota
+	TypeIDSmallInt
+	TypeIDMediumInt
+	TypeIDInt
+	TypeIDBigInt
+	TypeIDDecimal
+	TypeIDNumeric
+	TypeIDFloat
+	TypeIDDouble
+	TypeIDReal
+	TypeIDBit
 
 	// Date and time types
-	VirtualOidDate
-	VirtualOidDateTime
-	VirtualOidTimestamp
-	VirtualOidTime
-	VirtualOidYear
+	TypeIDDate
+	TypeIDDateTime
+	TypeIDTimestamp
+	TypeIDTime
+	TypeIDYear
 
 	// String types
-	VirtualOidChar
-	VirtualOidVarChar
+	TypeIDChar
+	TypeIDVarChar
 
-	VirtualOidBoolean
-	VirtualOidBool
+	TypeIDBoolean
+	TypeIDBool
 
 	// Text types
-	VirtualOidTinyText
-	VirtualOidText
-	VirtualOidMediumText
-	VirtualOidLongText
+	TypeIDTinyText
+	TypeIDText
+	TypeIDMediumText
+	TypeIDLongText
 
 	// Binary types
-	VirtualOidBinary
-	VirtualOidVarBinary
+	TypeIDBinary
+	TypeIDVarBinary
 
 	// Blob types
-	VirtualOidTinyBlob
-	VirtualOidBlob
-	VirtualOidMediumBlob
-	VirtualOidLongBlob
+	TypeIDTinyBlob
+	TypeIDBlob
+	TypeIDMediumBlob
+	TypeIDLongBlob
 
 	// Special string types
-	VirtualOidEnum
-	VirtualOidSet
+	TypeIDEnum
+	TypeIDSet
 
 	// Spatial types
-	VirtualOidGeometry
-	VirtualOidPoint
-	VirtualOidLineString
-	VirtualOidPolygon
-	VirtualOidMultiPoint
-	VirtualOidMultiLineString
-	VirtualOidMultiPolygon
-	VirtualOidGeometryCollection
+	TypeIDGeometry
+	TypeIDPoint
+	TypeIDLineString
+	TypeIDPolygon
+	TypeIDMultiPoint
+	TypeIDMultiLineString
+	TypeIDMultiPolygon
+	TypeIDGeometryCollection
 
 	// JSON type
-	VirtualOidJSON
+	TypeIDJSON
 )
 
 var (
-	VirtualOidToTypeName = map[core.VirtualOID]string{
-		VirtualOidTinyInt:            TypeTinyInt,
-		VirtualOidSmallInt:           TypeSmallInt,
-		VirtualOidMediumInt:          TypeMediumInt,
-		VirtualOidInt:                TypeInt,
-		VirtualOidBigInt:             TypeBigInt,
-		VirtualOidDecimal:            TypeDecimal,
-		VirtualOidNumeric:            TypeNumeric,
-		VirtualOidFloat:              TypeFloat,
-		VirtualOidDouble:             TypeDouble,
-		VirtualOidReal:               TypeReal,
-		VirtualOidBit:                TypeBit,
-		VirtualOidDate:               TypeDate,
-		VirtualOidDateTime:           TypeDateTime,
-		VirtualOidTimestamp:          TypeTimestamp,
-		VirtualOidTime:               TypeTime,
-		VirtualOidYear:               TypeYear,
-		VirtualOidChar:               TypeChar,
-		VirtualOidVarChar:            TypeVarChar,
-		VirtualOidBoolean:            TypeBoolean,
-		VirtualOidTinyText:           TypeTinyText,
-		VirtualOidText:               TypeText,
-		VirtualOidMediumText:         TypeMediumText,
-		VirtualOidLongText:           TypeLongText,
-		VirtualOidBinary:             TypeBinary,
-		VirtualOidVarBinary:          TypeVarBinary,
-		VirtualOidTinyBlob:           TypeTinyBlob,
-		VirtualOidBlob:               TypeBlob,
-		VirtualOidMediumBlob:         TypeMediumBlob,
-		VirtualOidLongBlob:           TypeLongBlob,
-		VirtualOidEnum:               TypeEnum,
-		VirtualOidSet:                TypeSet,
-		VirtualOidGeometry:           TypeGeometry,
-		VirtualOidPoint:              TypePoint,
-		VirtualOidLineString:         TypeLineString,
-		VirtualOidPolygon:            TypePolygon,
-		VirtualOidMultiPoint:         TypeMultiPoint,
-		VirtualOidMultiLineString:    TypeMultiLineString,
-		VirtualOidMultiPolygon:       TypeMultiPolygon,
-		VirtualOidGeometryCollection: TypeGeometryCollection,
-		VirtualOidJSON:               TypeJSON,
-		VirtualOidBool:               TypeBool,
+	TypeIDToTypeName = map[core.TypeID]string{
+		TypeIDTinyInt:            TypeTinyInt,
+		TypeIDSmallInt:           TypeSmallInt,
+		TypeIDMediumInt:          TypeMediumInt,
+		TypeIDInt:                TypeInt,
+		TypeIDBigInt:             TypeBigInt,
+		TypeIDDecimal:            TypeDecimal,
+		TypeIDNumeric:            TypeNumeric,
+		TypeIDFloat:              TypeFloat,
+		TypeIDDouble:             TypeDouble,
+		TypeIDReal:               TypeReal,
+		TypeIDBit:                TypeBit,
+		TypeIDDate:               TypeDate,
+		TypeIDDateTime:           TypeDateTime,
+		TypeIDTimestamp:          TypeTimestamp,
+		TypeIDTime:               TypeTime,
+		TypeIDYear:               TypeYear,
+		TypeIDChar:               TypeChar,
+		TypeIDVarChar:            TypeVarChar,
+		TypeIDBoolean:            TypeBoolean,
+		TypeIDTinyText:           TypeTinyText,
+		TypeIDText:               TypeText,
+		TypeIDMediumText:         TypeMediumText,
+		TypeIDLongText:           TypeLongText,
+		TypeIDBinary:             TypeBinary,
+		TypeIDVarBinary:          TypeVarBinary,
+		TypeIDTinyBlob:           TypeTinyBlob,
+		TypeIDBlob:               TypeBlob,
+		TypeIDMediumBlob:         TypeMediumBlob,
+		TypeIDLongBlob:           TypeLongBlob,
+		TypeIDEnum:               TypeEnum,
+		TypeIDSet:                TypeSet,
+		TypeIDGeometry:           TypeGeometry,
+		TypeIDPoint:              TypePoint,
+		TypeIDLineString:         TypeLineString,
+		TypeIDPolygon:            TypePolygon,
+		TypeIDMultiPoint:         TypeMultiPoint,
+		TypeIDMultiLineString:    TypeMultiLineString,
+		TypeIDMultiPolygon:       TypeMultiPolygon,
+		TypeIDGeometryCollection: TypeGeometryCollection,
+		TypeIDJSON:               TypeJSON,
+		TypeIDBool:               TypeBool,
 	}
 
-	TypeNameToVirtualOid = make(map[string]core.VirtualOID)
+	TypeNameToTypeID = make(map[string]core.TypeID)
 
 	// TypeDataNameTypeToClass - mapping MySQL data types to common type classes.
 	TypeDataNameTypeToClass = map[string]core.TypeClass{
@@ -242,19 +249,19 @@ var (
 		TypeMediumBlob: core.TypeClassBinary,
 		TypeLongBlob:   core.TypeClassBinary,
 
-		TypeEnum: core.TypeClassEnum,
-		TypeSet:  core.TypeClassEnum, // MySQL-specific
+		TypeEnum: TypeClassEnum,
+		TypeSet:  TypeClassEnum, // MySQL-specific
 	}
 
-	TypeDataOidToClass = make(map[core.VirtualOID]core.TypeClass)
+	TypeDataIDToClass = make(map[core.TypeID]core.TypeClass)
 
 	// TypeClassToDataTypes - reverse mapping from common type classes to MySQL data types.
 	TypeClassToDataTypes = make(map[core.TypeClass][]string)
 )
 
 func init() {
-	for oid, typeName := range VirtualOidToTypeName {
-		TypeNameToVirtualOid[typeName] = oid
+	for oid, typeName := range TypeIDToTypeName {
+		TypeNameToTypeID[typeName] = oid
 	}
 
 	// Initialize the reverse mapping from type classes to data types.
@@ -263,10 +270,10 @@ func init() {
 	}
 
 	for dt, tc := range TypeDataNameTypeToClass {
-		oid, ok := TypeNameToVirtualOid[dt]
+		oid, ok := TypeNameToTypeID[dt]
 		if !ok {
 			panic(fmt.Sprintf("invalid type name \"%s\"", dt))
 		}
-		TypeDataOidToClass[oid] = tc
+		TypeDataIDToClass[oid] = tc
 	}
 }

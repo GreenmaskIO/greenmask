@@ -37,24 +37,24 @@ func New() *Driver {
 	}
 }
 
-func (e *Driver) EncodeValueByTypeOid(oid core.VirtualOID, src any, buf []byte) ([]byte, error) {
-	typeName, ok := VirtualOidToTypeName[oid]
+func (e *Driver) EncodeValueByTypeID(oid core.TypeID, src any, buf []byte) ([]byte, error) {
+	typeName, ok := TypeIDToTypeName[oid]
 	if !ok {
 		return nil, fmt.Errorf("unsupported oid %d", oid)
 	}
 	return e.EncodeValueByTypeName(string(typeName), src, buf)
 }
 
-func (e *Driver) DecodeValueByTypeOid(oid core.VirtualOID, src []byte) (any, error) {
-	typeName, ok := VirtualOidToTypeName[oid]
+func (e *Driver) DecodeValueByTypeID(oid core.TypeID, src []byte) (any, error) {
+	typeName, ok := TypeIDToTypeName[oid]
 	if !ok {
 		return nil, fmt.Errorf("unsupported oid %d", oid)
 	}
 	return e.DecodeValueByTypeName(typeName, src)
 }
 
-func (e *Driver) ScanValueByTypeOid(oid core.VirtualOID, src []byte, dest any) error {
-	typeName, ok := VirtualOidToTypeName[oid]
+func (e *Driver) ScanValueByTypeID(oid core.TypeID, src []byte, dest any) error {
+	typeName, ok := TypeIDToTypeName[oid]
 	if !ok {
 		return fmt.Errorf("unsupported oid %d", oid)
 	}
@@ -62,17 +62,17 @@ func (e *Driver) ScanValueByTypeOid(oid core.VirtualOID, src []byte, dest any) e
 }
 
 func (e *Driver) TypeExistsByName(name string) bool {
-	_, ok := TypeNameToVirtualOid[name]
+	_, ok := TypeNameToTypeID[name]
 	return ok
 }
 
-func (e *Driver) TypeExistsByOid(oid core.VirtualOID) bool {
-	_, ok := VirtualOidToTypeName[oid]
+func (e *Driver) TypeExistsByID(oid core.TypeID) bool {
+	_, ok := TypeIDToTypeName[oid]
 	return ok
 }
 
-func (e *Driver) GetTypeOid(name string) (core.VirtualOID, error) {
-	oid, ok := TypeNameToVirtualOid[name]
+func (e *Driver) GetTypeID(name string) (core.TypeID, error) {
+	oid, ok := TypeNameToTypeID[name]
 	if !ok {
 		return 0, fmt.Errorf("unsupported type %s", name)
 	}
@@ -187,20 +187,20 @@ func (e *Driver) ScanValueByTypeName(name string, src []byte, dest any) error {
 	return fmt.Errorf("unsupported type %s", name)
 }
 
-func (e *Driver) GetCanonicalTypeClassName(typeName string, typeOid core.VirtualOID) (core.TypeClass, error) {
+func (e *Driver) GetCanonicalTypeClassName(typeName string, typeOid core.TypeID) (core.TypeClass, error) {
 	className, ok := TypeDataNameTypeToClass[typeName]
 	if ok {
 		return className, nil
 	}
-	oidClassName, ok := TypeDataOidToClass[typeOid]
+	oidClassName, ok := TypeDataIDToClass[typeOid]
 	if ok {
 		return oidClassName, nil
 	}
 	return "", fmt.Errorf("find type class \"%s\": %w", typeName, core.ErrUnknownDBMSTypeClass)
 }
 
-func (e *Driver) GetCanonicalTypeName(_ string, oid core.VirtualOID) (string, error) {
-	typeName, ok := VirtualOidToTypeName[oid]
+func (e *Driver) GetCanonicalTypeName(_ string, oid core.TypeID) (string, error) {
+	typeName, ok := TypeIDToTypeName[oid]
 	if !ok {
 		return "", fmt.Errorf("find type \"%s\": %w", typeName, core.ErrUnknownDBMSType)
 	}

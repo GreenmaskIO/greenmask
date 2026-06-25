@@ -27,7 +27,7 @@ type Column struct {
 	NumericScale      *int
 	DateTimePrecision *int
 	NotNull           bool
-	TypeOID           core.VirtualOID
+	TypeID            core.TypeID
 	TypeClass         core.TypeClass
 }
 
@@ -37,7 +37,7 @@ func NewColumn(
 	dataType *string,
 	numericPrecision, numericScale, dateTimePrecision *int,
 	notNull bool,
-	typeOID core.VirtualOID,
+	typeOID core.TypeID,
 	typeClass core.TypeClass,
 ) Column {
 	return Column{
@@ -49,7 +49,7 @@ func NewColumn(
 		NumericScale:      numericScale,
 		DateTimePrecision: dateTimePrecision,
 		NotNull:           notNull,
-		TypeOID:           typeOID,
+		TypeID:            typeOID,
 		TypeClass:         typeClass,
 	}
 }

@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package conditions
+package conditions_test
 
 import (
 	"context"
@@ -21,6 +21,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/greenmaskio/greenmask/pkg/common/conditions"
 	core "github.com/greenmaskio/greenmask/pkg/common/core"
 	mocks2 "github.com/greenmaskio/greenmask/pkg/common/mocks"
 	"github.com/greenmaskio/greenmask/pkg/common/validationcollector"
@@ -35,31 +36,31 @@ func TestWhenCond_Evaluate(t *testing.T) {
 				Idx:      0,
 				Name:     "id",
 				TypeName: "integer",
-				TypeOID:  0,
+				TypeID:   0,
 			},
 			{
 				Idx:      1,
 				Name:     "title",
 				TypeName: "text",
-				TypeOID:  1,
+				TypeID:   1,
 			},
 			{
 				Idx:      2,
 				Name:     "created_at",
 				TypeName: "timestamp",
-				TypeOID:  2,
+				TypeID:   2,
 			},
 			{
 				Idx:      3,
 				Name:     "json_data",
 				TypeName: "jsonb",
-				TypeOID:  3,
+				TypeID:   3,
 			},
 			{
 				Idx:      4,
 				Name:     "float_data",
 				TypeName: "float8",
-				TypeOID:  4,
+				TypeID:   4,
 			},
 		},
 	}
@@ -166,7 +167,7 @@ func TestWhenCond_Evaluate(t *testing.T) {
 			recorderMock.On("TableDriver").Return(tableDriverMock)
 			// GetColumnValueByName(columnName string) (*commonmodels.ColumnValue, error) {
 			tt.setupExpectation(recorderMock)
-			whenCond, warns := NewWhenCond(ctx, tt.when, table)
+			whenCond, warns := conditions.NewWhenCond(ctx, tt.when, table)
 			require.Empty(t, warns)
 			res, err := whenCond.Evaluate(recorderMock)
 			require.NoError(t, err)

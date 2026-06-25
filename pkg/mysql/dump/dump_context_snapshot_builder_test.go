@@ -24,6 +24,7 @@ import (
 
 	core "github.com/greenmaskio/greenmask/pkg/common/core"
 	transformercontext "github.com/greenmaskio/greenmask/pkg/common/transformers/context"
+	kinds "github.com/greenmaskio/greenmask/pkg/mysql/kinds"
 )
 
 // ignoreSnapshotHashes drops the computed hash/fingerprint fields from
@@ -70,7 +71,7 @@ func tableDumpSpec(
 ) core.ObjectDumpSpec {
 	return core.ObjectDumpSpec{
 		TaskID:   taskID,
-		Kind:     core.ObjectKindMysqlTable,
+		Kind:     kinds.ObjectKindTable,
 		ObjectID: objectID,
 		Name:     name,
 		Identity: mysqlTableIdentity(schema, name),
@@ -108,7 +109,7 @@ func mysqlColAttrs() map[core.StableKey]core.ObjectAttribute {
 func schemaDumpSpec(taskID core.TaskID, database string) core.SchemaDumpSpec {
 	return core.SchemaDumpSpec{
 		TaskID:  taskID,
-		Kind:    core.SchemaObjectKindMysqlDatabase,
+		Kind:    kinds.SchemaObjectKindDatabase,
 		Payload: core.SchemaDumpContextPayload{Name: database, Section: core.DumpSectionPreData},
 	}
 }

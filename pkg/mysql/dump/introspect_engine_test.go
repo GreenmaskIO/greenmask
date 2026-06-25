@@ -51,12 +51,16 @@ type txMock struct {
 // MySQL-protocol server flavor. The body is identical across flavors; only the
 // container image and the expected vendor differ, so adding a flavor is just one
 // entry function below. Vendor detection is the key flavor-specific behavior —
-// MariaDB must be distinguished from MySQL, and Percona is a MySQL variant
-// (classified as "mysql").
+// MySQL, MariaDB and Percona are each detected as a distinct vendor.
 type introspectEngineSuite struct {
 	testutils.MySQLContainerSuite
 	containerImage string
 	expectedVendor string
+	// imagePlatform, when set, pins the container to a specific platform (e.g.
+	// "linux/amd64"). Needed for flavors whose image lacks a native arm64
+	// manifest (Percona) so the suite runs under Docker emulation on Apple
+	// Silicon instead of failing with "no matching manifest".
+	imagePlatform string
 }
 
 func (s *introspectEngineSuite) SetupSuite() {
@@ -73,6 +77,9 @@ func (s *introspectEngineSuite) SetupSuite() {
 		func(req *testcontainers.GenericContainerRequest) error {
 			req.WaitingFor = wait.ForLog("port: 3306").
 				WithStartupTimeout(3 * time.Minute)
+			if s.imagePlatform != "" {
+				req.ImagePlatform = s.imagePlatform
+			}
 			return nil
 		},
 	))
@@ -92,7 +99,13 @@ func TestIntrospectEngineMariaDB(t *testing.T) {
 }
 
 func TestIntrospectEnginePercona(t *testing.T) {
-	suite.Run(t, &introspectEngineSuite{containerImage: "percona:8", expectedVendor: core.DBMSVendorMySQL})
+	suite.Run(t, &introspectEngineSuite{
+		containerImage: "percona:8",
+		expectedVendor: core.DBMSVendorPercona,
+		// percona:8 ships no arm64 manifest; pin to amd64 so it runs under
+		// Docker emulation on Apple Silicon rather than failing to pull.
+		imagePlatform: "linux/amd64",
+	})
 }
 
 func (s *introspectEngineSuite) newEngine(inc, exc, incDB, excDB []string) *introspectEngine {

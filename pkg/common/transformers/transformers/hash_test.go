@@ -56,7 +56,7 @@ func TestHashTransformer_Transform(t *testing.T) {
 					Name:      "data",
 					TypeName:  mysqldbmsdriver.TypeText,
 					TypeClass: core.TypeClassText,
-					TypeOID:   mysqldbmsdriver.VirtualOidText,
+					TypeID:    mysqldbmsdriver.TypeIDText,
 				},
 			},
 			validateFn: func(t *testing.T, expected, actual *core.ColumnRawValue) {
@@ -79,7 +79,7 @@ func TestHashTransformer_Transform(t *testing.T) {
 					Name:      "data",
 					TypeName:  mysqldbmsdriver.TypeText,
 					TypeClass: core.TypeClassText,
-					TypeOID:   mysqldbmsdriver.VirtualOidText,
+					TypeID:    mysqldbmsdriver.TypeIDText,
 				},
 			},
 			validateFn: func(t *testing.T, expected, actual *core.ColumnRawValue) {
@@ -102,7 +102,7 @@ func TestHashTransformer_Transform(t *testing.T) {
 					Name:      "data",
 					TypeName:  mysqldbmsdriver.TypeText,
 					TypeClass: core.TypeClassText,
-					TypeOID:   mysqldbmsdriver.VirtualOidText,
+					TypeID:    mysqldbmsdriver.TypeIDText,
 				},
 			},
 			validateFn: func(t *testing.T, expected, actual *core.ColumnRawValue) {
@@ -125,7 +125,7 @@ func TestHashTransformer_Transform(t *testing.T) {
 					Name:      "data",
 					TypeName:  mysqldbmsdriver.TypeText,
 					TypeClass: core.TypeClassText,
-					TypeOID:   mysqldbmsdriver.VirtualOidText,
+					TypeID:    mysqldbmsdriver.TypeIDText,
 				},
 			},
 			validateFn: func(t *testing.T, expected, actual *core.ColumnRawValue) {
@@ -148,7 +148,7 @@ func TestHashTransformer_Transform(t *testing.T) {
 					Name:      "data",
 					TypeName:  mysqldbmsdriver.TypeText,
 					TypeClass: core.TypeClassText,
-					TypeOID:   mysqldbmsdriver.VirtualOidText,
+					TypeID:    mysqldbmsdriver.TypeIDText,
 				},
 			},
 			validateFn: func(t *testing.T, expected, actual *core.ColumnRawValue) {
@@ -171,7 +171,7 @@ func TestHashTransformer_Transform(t *testing.T) {
 					Name:      "data",
 					TypeName:  mysqldbmsdriver.TypeText,
 					TypeClass: core.TypeClassText,
-					TypeOID:   mysqldbmsdriver.VirtualOidText,
+					TypeID:    mysqldbmsdriver.TypeIDText,
 				},
 			},
 			validateFn: func(t *testing.T, expected, actual *core.ColumnRawValue) {
@@ -194,7 +194,7 @@ func TestHashTransformer_Transform(t *testing.T) {
 					Name:      "data",
 					TypeName:  mysqldbmsdriver.TypeText,
 					TypeClass: core.TypeClassText,
-					TypeOID:   mysqldbmsdriver.VirtualOidText,
+					TypeID:    mysqldbmsdriver.TypeIDText,
 				},
 			},
 			validateFn: func(t *testing.T, expected, actual *core.ColumnRawValue) {
@@ -217,7 +217,7 @@ func TestHashTransformer_Transform(t *testing.T) {
 					Name:      "data",
 					TypeName:  mysqldbmsdriver.TypeText,
 					TypeClass: core.TypeClassText,
-					TypeOID:   mysqldbmsdriver.VirtualOidText,
+					TypeID:    mysqldbmsdriver.TypeIDText,
 				},
 			},
 			validateFn: func(t *testing.T, expected, actual *core.ColumnRawValue) {
@@ -241,7 +241,7 @@ func TestHashTransformer_Transform(t *testing.T) {
 					Name:      "data",
 					TypeName:  mysqldbmsdriver.TypeText,
 					TypeClass: core.TypeClassText,
-					TypeOID:   mysqldbmsdriver.VirtualOidText,
+					TypeID:    mysqldbmsdriver.TypeIDText,
 				},
 			},
 			validateFn: func(t *testing.T, expected, actual *core.ColumnRawValue) {
@@ -265,7 +265,7 @@ func TestHashTransformer_Transform(t *testing.T) {
 					Name:      "data",
 					TypeName:  mysqldbmsdriver.TypeText,
 					TypeClass: core.TypeClassText,
-					TypeOID:   mysqldbmsdriver.VirtualOidText,
+					TypeID:    mysqldbmsdriver.TypeIDText,
 				},
 			},
 			validateFn: func(t *testing.T, expected, actual *core.ColumnRawValue) {
@@ -289,7 +289,7 @@ func TestHashTransformer_Transform(t *testing.T) {
 					Name:      "data",
 					TypeName:  mysqldbmsdriver.TypeText,
 					TypeClass: core.TypeClassText,
-					TypeOID:   mysqldbmsdriver.VirtualOidText,
+					TypeID:    mysqldbmsdriver.TypeIDText,
 				},
 			},
 			validateFn: func(t *testing.T, expected, actual *core.ColumnRawValue) {
@@ -406,7 +406,7 @@ func TestHashTransformer_Transform_multiple_iterations(t *testing.T) {
 				Idx:       0,
 				Name:      "data",
 				TypeName:  mysqldbmsdriver.TypeText,
-				TypeOID:   mysqldbmsdriver.VirtualOidText,
+				TypeID:    mysqldbmsdriver.TypeIDText,
 				TypeClass: core.TypeClassText,
 			},
 		},

@@ -156,7 +156,7 @@ func (t *tableDriverMock) EncodeValueByTypeName(name string, src any, buf []byte
 	return args.Get(0).([]byte), args.Error(1)
 }
 
-func (t *tableDriverMock) EncodeValueByTypeOid(oid core.VirtualOID, src any, buf []byte) ([]byte, error) {
+func (t *tableDriverMock) EncodeValueByTypeID(oid core.TypeID, src any, buf []byte) ([]byte, error) {
 	args := t.Called(oid, src, buf)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
@@ -175,7 +175,7 @@ func (t *tableDriverMock) DecodeValueByTypeName(name string, src []byte) (any, e
 	return args.Get(0), args.Error(1)
 }
 
-func (t *tableDriverMock) DecodeValueByTypeOid(oid core.VirtualOID, src []byte) (any, error) {
+func (t *tableDriverMock) DecodeValueByTypeID(oid core.TypeID, src []byte) (any, error) {
 	args := t.Called(oid, src)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
@@ -191,7 +191,7 @@ func (t *tableDriverMock) ScanValueByTypeName(name string, src []byte, dest any)
 	return nil
 }
 
-func (t *tableDriverMock) ScanValueByTypeOid(oid core.VirtualOID, src []byte, dest any) error {
+func (t *tableDriverMock) ScanValueByTypeID(oid core.TypeID, src []byte, dest any) error {
 	args := t.Called(oid, src, dest)
 	if args.Get(0) != nil {
 		return args.Error(0)
@@ -211,7 +211,7 @@ func (t *tableDriverMock) TypeExistsByName(name string) bool {
 	return exists
 }
 
-func (t *tableDriverMock) TypeExistsByOid(oid core.VirtualOID) bool {
+func (t *tableDriverMock) TypeExistsByID(oid core.TypeID) bool {
 	args := t.Called(oid)
 	if args.Get(0) == nil {
 		return false
@@ -223,19 +223,19 @@ func (t *tableDriverMock) TypeExistsByOid(oid core.VirtualOID) bool {
 	return exists
 }
 
-func (t *tableDriverMock) GetTypeOid(name string) (core.VirtualOID, error) {
+func (t *tableDriverMock) GetTypeID(name string) (core.TypeID, error) {
 	args := t.Called(name)
 	if args.Get(0) == nil {
-		return core.VirtualOID(0), args.Error(1)
+		return core.TypeID(0), args.Error(1)
 	}
-	oid, ok := args.Get(0).(core.VirtualOID)
+	oid, ok := args.Get(0).(core.TypeID)
 	if !ok {
-		panic(fmt.Sprintf("expected commonmodels.VirtualOID, got %T", args.Get(0)))
+		panic(fmt.Sprintf("expected commonmodels.TypeID, got %T", args.Get(0)))
 	}
 	return oid, args.Error(1)
 }
 
-func (t *tableDriverMock) GetCanonicalTypeName(typeName string, typeOid core.VirtualOID) (string, error) {
+func (t *tableDriverMock) GetCanonicalTypeName(typeName string, typeOid core.TypeID) (string, error) {
 	args := t.Called(typeName, typeOid)
 	if args.Get(0) == nil {
 		return "", args.Error(1)
@@ -321,7 +321,7 @@ func (t *tableDriverMock) Table() *core.Table {
 	return table
 }
 
-func (t *tableDriverMock) GetCanonicalTypeClassName(typeName string, typeOid core.VirtualOID) (core.TypeClass, error) {
+func (t *tableDriverMock) GetCanonicalTypeClassName(typeName string, typeOid core.TypeID) (core.TypeClass, error) {
 	args := t.Called(typeName, typeOid)
 	return args.Get(0).(core.TypeClass), args.Error(1)
 }
@@ -369,7 +369,7 @@ func TestDynamicParameter_Init(t *testing.T) {
 					Idx:      0,
 					Name:     "id2",
 					TypeName: "int2",
-					TypeOID:  10,
+					TypeID:   10,
 				},
 				nil,
 			)
@@ -394,17 +394,17 @@ func TestDynamicParameter_Init(t *testing.T) {
 					Idx:      1,
 					Name:     "timestamp_column",
 					TypeName: "timestamp",
-					TypeOID:  12,
+					TypeID:   12,
 				},
 				nil,
 			)
-		tableDriver.On("GetCanonicalTypeName", "int2", core.VirtualOID(10)).
+		tableDriver.On("GetCanonicalTypeName", "int2", core.TypeID(10)).
 			Return("int2", nil)
-		tableDriver.On("GetCanonicalTypeClassName", "int2", core.VirtualOID(10)).
+		tableDriver.On("GetCanonicalTypeClassName", "int2", core.TypeID(10)).
 			Return(core.TypeClassInt, nil)
-		tableDriver.On("GetCanonicalTypeName", "timestamp", core.VirtualOID(12)).
+		tableDriver.On("GetCanonicalTypeName", "timestamp", core.TypeID(12)).
 			Return("timestamp", nil)
-		tableDriver.On("GetCanonicalTypeClassName", "timestamp", core.VirtualOID(12)).
+		tableDriver.On("GetCanonicalTypeClassName", "timestamp", core.TypeID(12)).
 			Return(core.TypeClassDateTime, nil)
 		err = timestampParam.Init(
 			ctx,
@@ -440,7 +440,7 @@ func TestDynamicParameter_Init(t *testing.T) {
 					Idx:      0,
 					Name:     "id2",
 					TypeName: "int2",
-					TypeOID:  10,
+					TypeID:   10,
 				},
 				nil,
 			)
@@ -465,14 +465,14 @@ func TestDynamicParameter_Init(t *testing.T) {
 					Idx:      1,
 					Name:     "supported_column",
 					TypeName: "int2",
-					TypeOID:  10,
+					TypeID:   10,
 				},
 				nil,
 			)
-		tableDriver.On("GetCanonicalTypeName", "int2", core.VirtualOID(10)).
+		tableDriver.On("GetCanonicalTypeName", "int2", core.TypeID(10)).
 			Return("int2", nil).
 			Twice()
-		tableDriver.On("GetCanonicalTypeClassName", "int2", core.VirtualOID(10)).
+		tableDriver.On("GetCanonicalTypeClassName", "int2", core.TypeID(10)).
 			Return(core.TypeClassInt, nil).
 			Twice()
 		err = dynamicParameter.Init(
@@ -506,7 +506,7 @@ func TestDynamicParameter_Value(t *testing.T) {
 					Idx:      0,
 					Name:     "id2",
 					TypeName: "int2",
-					TypeOID:  10,
+					TypeID:   10,
 				},
 				nil,
 			)
@@ -531,14 +531,14 @@ func TestDynamicParameter_Value(t *testing.T) {
 					Idx:      1,
 					Name:     "supported_column",
 					TypeName: "int2",
-					TypeOID:  10,
+					TypeID:   10,
 				},
 				nil,
 			)
-		tableDriver.On("GetCanonicalTypeName", "int2", core.VirtualOID(10)).
+		tableDriver.On("GetCanonicalTypeName", "int2", core.TypeID(10)).
 			Return("int2", nil).
 			Twice()
-		tableDriver.On("GetCanonicalTypeClassName", "int2", core.VirtualOID(10)).
+		tableDriver.On("GetCanonicalTypeClassName", "int2", core.TypeID(10)).
 			Return(core.TypeClassInt, nil).
 			Twice()
 		err = dynamicParameter.Init(
@@ -588,7 +588,7 @@ func TestDynamicParameter_Value(t *testing.T) {
 					Idx:      0,
 					Name:     "id2",
 					TypeName: "int2",
-					TypeOID:  10,
+					TypeID:   10,
 				},
 				nil,
 			)
@@ -618,14 +618,14 @@ func TestDynamicParameter_Value(t *testing.T) {
 					Idx:      1,
 					Name:     "supported_column",
 					TypeName: "int2",
-					TypeOID:  10,
+					TypeID:   10,
 				},
 				nil,
 			)
-		tableDriver.On("GetCanonicalTypeName", "int2", core.VirtualOID(10)).
+		tableDriver.On("GetCanonicalTypeName", "int2", core.TypeID(10)).
 			Return("int2", nil).
 			Twice()
-		tableDriver.On("GetCanonicalTypeClassName", "int2", core.VirtualOID(10)).
+		tableDriver.On("GetCanonicalTypeClassName", "int2", core.TypeID(10)).
 			Return(core.TypeClassInt, nil).
 			Twice()
 		err = dynamicParameter.Init(
@@ -672,7 +672,7 @@ func TestDynamicParameter_Value(t *testing.T) {
 					Idx:      0,
 					Name:     "id2",
 					TypeName: "int2",
-					TypeOID:  10,
+					TypeID:   10,
 				},
 				nil,
 			)
@@ -697,14 +697,14 @@ func TestDynamicParameter_Value(t *testing.T) {
 					Idx:      1,
 					Name:     "supported_column",
 					TypeName: "int2",
-					TypeOID:  10,
+					TypeID:   10,
 				},
 				nil,
 			)
-		tableDriver.On("GetCanonicalTypeName", "int2", core.VirtualOID(10)).
+		tableDriver.On("GetCanonicalTypeName", "int2", core.TypeID(10)).
 			Return("int2", nil).
 			Twice()
-		tableDriver.On("GetCanonicalTypeClassName", "int2", core.VirtualOID(10)).
+		tableDriver.On("GetCanonicalTypeClassName", "int2", core.TypeID(10)).
 			Return(core.TypeClassInt, nil).
 			Twice()
 		err = dynamicParameter.Init(

@@ -66,7 +66,7 @@ func NewTransformerTestEnvReal(
 		if c.Name == "" {
 			panic("column name should be provided")
 		}
-		if c.TypeOID == 0 {
+		if c.TypeID == 0 {
 			panic("column type OID should be provided")
 		}
 		if c.TypeName == "" {

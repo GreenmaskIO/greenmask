@@ -64,7 +64,7 @@ func TestJsonTransformer_Transform(t *testing.T) {
 					Name:      "data",
 					TypeName:  dbmsdriver.TypeText,
 					TypeClass: core.TypeClassText,
-					TypeOID:   dbmsdriver.VirtualOidText,
+					TypeID:    dbmsdriver.TypeIDText,
 				},
 			},
 			validateFn: func(t *testing.T, expected, actual *core.ColumnRawValue) {
@@ -80,7 +80,7 @@ func TestJsonTransformer_Transform(t *testing.T) {
 				{
 					"operation": "set", 
 					"path": "name.ts", 
-					"value_template": "{{- .GetOriginalValue | .DecodeValueByType \"timestamp\" | noiseDatePgInterval \"1 year 6 mon 1 day\" | .EncodeValueByType \"timestamp\" | toJsonRawValue -}}"
+					"value_template": "{{- .GetOriginalValue | .DecodeValueByType \"timestamp\" | noiseDate \"541d\" | .EncodeValueByType \"timestamp\" | toJsonRawValue -}}"
 				}
 			]`),
 			},
@@ -99,7 +99,7 @@ func TestJsonTransformer_Transform(t *testing.T) {
 					Name:      "data",
 					TypeName:  dbmsdriver.TypeText,
 					TypeClass: core.TypeClassText,
-					TypeOID:   dbmsdriver.VirtualOidText,
+					TypeID:    dbmsdriver.TypeIDText,
 				},
 			},
 			validateFn: func(t *testing.T, expected, actual *core.ColumnRawValue) {
@@ -139,7 +139,7 @@ func TestJsonTransformer_Transform(t *testing.T) {
 					Name:      "data",
 					TypeName:  dbmsdriver.TypeText,
 					TypeClass: core.TypeClassText,
-					TypeOID:   dbmsdriver.VirtualOidText,
+					TypeID:    dbmsdriver.TypeIDText,
 				},
 			},
 			validateFn: func(t *testing.T, expected, actual *core.ColumnRawValue) {
@@ -167,7 +167,7 @@ func TestJsonTransformer_Transform(t *testing.T) {
 					Name:      "data",
 					TypeName:  dbmsdriver.TypeText,
 					TypeClass: core.TypeClassText,
-					TypeOID:   dbmsdriver.VirtualOidText,
+					TypeID:    dbmsdriver.TypeIDText,
 				},
 			},
 			expectedErr: errInvalidJson.Error(),
@@ -195,7 +195,7 @@ func TestJsonTransformer_Transform(t *testing.T) {
 					Name:      "data",
 					TypeName:  dbmsdriver.TypeText,
 					TypeClass: core.TypeClassText,
-					TypeOID:   dbmsdriver.VirtualOidText,
+					TypeID:    dbmsdriver.TypeIDText,
 				},
 			},
 			validateFn: func(t *testing.T, expected, actual *core.ColumnRawValue) {
@@ -222,7 +222,7 @@ func TestJsonTransformer_Transform(t *testing.T) {
 					Name:      "data",
 					TypeName:  dbmsdriver.TypeText,
 					TypeClass: core.TypeClassText,
-					TypeOID:   dbmsdriver.VirtualOidText,
+					TypeID:    dbmsdriver.TypeIDText,
 				},
 			},
 			validateFn: func(t *testing.T, expected, actual *core.ColumnRawValue) {
@@ -249,7 +249,7 @@ func TestJsonTransformer_Transform(t *testing.T) {
 					Name:      "data",
 					TypeName:  dbmsdriver.TypeText,
 					TypeClass: core.TypeClassText,
-					TypeOID:   dbmsdriver.VirtualOidText,
+					TypeID:    dbmsdriver.TypeIDText,
 				},
 			},
 			validateFn: func(t *testing.T, expected, actual *core.ColumnRawValue) {

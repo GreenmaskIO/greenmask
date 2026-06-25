@@ -23,8 +23,8 @@ import (
 )
 
 // col is a helper to build a config.Column concisely.
-func col(idx int, name string, typeOID core.VirtualOID, typeName string) core.Column {
-	return core.Column{Idx: idx, Name: name, TypeOID: typeOID, TypeName: typeName}
+func col(idx int, name string, typeOID core.TypeID, typeName string) core.Column {
+	return core.Column{Idx: idx, Name: name, TypeID: typeOID, TypeName: typeName}
 }
 
 // mkTable is a helper to build a config.Table concisely.
@@ -219,9 +219,9 @@ func TestDiffTableColumns(t *testing.T) {
 				assert.Equal(t, core.DiffEventMsgs[core.ColumnTypeChangedDiffEvent], nodes[0].Msg)
 				assert.Equal(t, "score", nodes[0].Signature["ColumnName"])
 				assert.Equal(t, "integer", nodes[0].Signature["PreviousColumnType"])
-				assert.Equal(t, "23", nodes[0].Signature["PreviousColumnTypeOID"])
+				assert.Equal(t, "23", nodes[0].Signature["PreviousColumnTypeID"])
 				assert.Equal(t, "float8", nodes[0].Signature["CurrentColumnType"])
-				assert.Equal(t, "700", nodes[0].Signature["CurrentColumnTypeOID"])
+				assert.Equal(t, "700", nodes[0].Signature["CurrentColumnTypeID"])
 			},
 		},
 		{

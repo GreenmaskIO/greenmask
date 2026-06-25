@@ -7,6 +7,7 @@ import (
 	core "github.com/greenmaskio/greenmask/pkg/common/core"
 	dumpcontext "github.com/greenmaskio/greenmask/pkg/common/dump/context"
 	transformerutils "github.com/greenmaskio/greenmask/pkg/common/transformers/registry"
+	kinds "github.com/greenmaskio/greenmask/pkg/postgresql2/kinds"
 )
 
 type DumpContextBuilder struct {
@@ -41,7 +42,7 @@ func (b *DumpContextBuilder) buildTables(
 	result core.IntrospectionResult,
 ) ([]core.ObjectDumpSpec, error) {
 	var tableObjects []core.ObjectDumpSpec
-	for _, obj := range result.KindsMap[core.ObjectKindPostgresTable] {
+	for _, obj := range result.KindsMap[kinds.ObjectKindTable] {
 		dumpContext, err := b.buildTableObject(ctx, obj)
 		if err != nil {
 			return nil, fmt.Errorf("build table dump context: %v", err)
@@ -63,7 +64,7 @@ func (b *DumpContextBuilder) buildSequences(
 	result core.IntrospectionResult,
 ) ([]core.ObjectDumpSpec, error) {
 	var tableObjects []core.ObjectDumpSpec
-	for _, obj := range result.KindsMap[core.ObjectKindPostgresSequence] {
+	for _, obj := range result.KindsMap[kinds.ObjectKindSequence] {
 		dumpContext, err := b.buildSequenceObject(ctx, obj)
 		if err != nil {
 			return nil, fmt.Errorf("build sequence dump context: %v", err)
@@ -85,7 +86,7 @@ func (b *DumpContextBuilder) buildBlobs(
 	result core.IntrospectionResult,
 ) ([]core.ObjectDumpSpec, error) {
 	var tableObjects []core.ObjectDumpSpec
-	for _, obj := range result.KindsMap[core.ObjectKindPostgresBlobs] {
+	for _, obj := range result.KindsMap[kinds.ObjectKindBlobs] {
 		dumpContext, err := b.buildBlobObject(ctx, obj)
 		if err != nil {
 			return nil, fmt.Errorf("build blob dump context: %v", err)

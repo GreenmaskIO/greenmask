@@ -12,6 +12,7 @@ import (
 	"github.com/greenmaskio/greenmask/pkg/common/transformers/registry"
 	"github.com/greenmaskio/greenmask/pkg/mysql/dbmsdriver"
 	"github.com/greenmaskio/greenmask/pkg/postgresql/dump/dumpers2/table"
+	kinds "github.com/greenmaskio/greenmask/pkg/postgresql2/kinds"
 )
 
 type TableDumpObjectFactory struct {
@@ -30,7 +31,7 @@ func NewTableDumpObjectFactory(
 }
 
 func (f *TableDumpObjectFactory) Kind() core.ObjectKind {
-	return core.ObjectKindPostgresTable
+	return kinds.ObjectKindTable
 }
 
 func (f *TableDumpObjectFactory) NewDumpObject(
@@ -40,7 +41,7 @@ func (f *TableDumpObjectFactory) NewDumpObject(
 	if !ok {
 		return nil, fmt.Errorf("expected context.TableDumpContextPayload, got %T", spec.Payload)
 	}
-	if spec.Kind != core.ObjectKindPostgresTable {
+	if spec.Kind != kinds.ObjectKindTable {
 		return nil, fmt.Errorf("expected context.TableDumpObjectPayload, got %s", spec.Kind)
 	}
 	if tableContext.HasTransformer() {

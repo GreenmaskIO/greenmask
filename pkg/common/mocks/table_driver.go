@@ -50,7 +50,7 @@ func (t *TableDriverMock) EncodeValueByTypeName(name string, src any, buf []byte
 	return args.Get(0).([]byte), args.Error(1)
 }
 
-func (t *TableDriverMock) EncodeValueByTypeOid(oid core.VirtualOID, src any, buf []byte) ([]byte, error) {
+func (t *TableDriverMock) EncodeValueByTypeID(oid core.TypeID, src any, buf []byte) ([]byte, error) {
 	args := t.Called(oid, src, buf)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
@@ -69,7 +69,7 @@ func (t *TableDriverMock) DecodeValueByTypeName(name string, src []byte) (any, e
 	return args.Get(0), args.Error(1)
 }
 
-func (t *TableDriverMock) DecodeValueByTypeOid(oid core.VirtualOID, src []byte) (any, error) {
+func (t *TableDriverMock) DecodeValueByTypeID(oid core.TypeID, src []byte) (any, error) {
 	args := t.Called(oid, src)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
@@ -85,7 +85,7 @@ func (t *TableDriverMock) ScanValueByTypeName(name string, src []byte, dest any)
 	return nil
 }
 
-func (t *TableDriverMock) ScanValueByTypeOid(oid core.VirtualOID, src []byte, dest any) error {
+func (t *TableDriverMock) ScanValueByTypeID(oid core.TypeID, src []byte, dest any) error {
 	args := t.Called(oid, src, dest)
 	if args.Get(0) != nil {
 		return args.Error(0)
@@ -105,7 +105,7 @@ func (t *TableDriverMock) TypeExistsByName(name string) bool {
 	return exists
 }
 
-func (t *TableDriverMock) TypeExistsByOid(oid core.VirtualOID) bool {
+func (t *TableDriverMock) TypeExistsByID(oid core.TypeID) bool {
 	args := t.Called(oid)
 	if args.Get(0) == nil {
 		return false
@@ -117,19 +117,19 @@ func (t *TableDriverMock) TypeExistsByOid(oid core.VirtualOID) bool {
 	return exists
 }
 
-func (t *TableDriverMock) GetTypeOid(name string) (core.VirtualOID, error) {
+func (t *TableDriverMock) GetTypeID(name string) (core.TypeID, error) {
 	args := t.Called(name)
 	if args.Get(0) == nil {
-		return core.VirtualOID(0), args.Error(1)
+		return core.TypeID(0), args.Error(1)
 	}
-	oid, ok := args.Get(0).(core.VirtualOID)
+	oid, ok := args.Get(0).(core.TypeID)
 	if !ok {
-		panic(fmt.Sprintf("expected core.VirtualOID, got %T", args.Get(0)))
+		panic(fmt.Sprintf("expected core.TypeID, got %T", args.Get(0)))
 	}
 	return oid, args.Error(1)
 }
 
-func (t *TableDriverMock) GetCanonicalTypeName(typeName string, typeOid core.VirtualOID) (string, error) {
+func (t *TableDriverMock) GetCanonicalTypeName(typeName string, typeOid core.TypeID) (string, error) {
 	args := t.Called(typeName, typeOid)
 	if args.Get(0) == nil {
 		return "", args.Error(1)
@@ -212,7 +212,7 @@ func (t *TableDriverMock) Table() *core.Table {
 	return table
 }
 
-func (t *TableDriverMock) GetCanonicalTypeClassName(typeName string, typeOid core.VirtualOID) (core.TypeClass, error) {
+func (t *TableDriverMock) GetCanonicalTypeClassName(typeName string, typeOid core.TypeID) (core.TypeClass, error) {
 	args := t.Called(typeName, typeOid)
 	if args.Get(0) == nil {
 		return "", args.Error(1)

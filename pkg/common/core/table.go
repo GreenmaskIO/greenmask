@@ -86,31 +86,36 @@ func (t *Table) HasSubsetConditions() bool {
 	return len(t.SubsetConditions) > 0
 }
 
-// VirtualOID - represents OID in PostgreSQL, but at the same time might be used
-// for any other DB by the uint32 mapping to the real type. Don't know,
-// maybe we should rename it to the TaskID or smth like that.
-// This is expected to reduce allocations when accessing to the types or
-// any other database/table objects.
-type VirtualOID uint32
+// TypeID - engine-agnostic identifier of a database type. In PostgreSQL it maps
+// to the type OID; other engines mint their own stable uint32 identifiers for
+// their types. The uint32 underlying type keeps type lookups allocation-free.
+type TypeID uint32
 
 type TypeClass string
 
+// TypeClass is an engine-agnostic family of a database type. core defines only
+// the generic set shared by every engine plus two escape hatches. Engine drivers
+// either map their native types onto this generic set or mint their own extension
+// classes in the engine package (e.g. the MySQL driver's "enum" class). Consumers
+// such as transformers must tolerate a class they do not recognize rather than
+// switch exhaustively over this list.
 const (
+	// TypeClassUnsupported marks a type the engine could not classify.
 	TypeClassUnsupported TypeClass = "unsupported"
-	TypeClassBinary      TypeClass = "binary"
-	TypeClassText        TypeClass = "text"
-	TypeClassInt         TypeClass = "int"
-	TypeClassFloat       TypeClass = "float"
-	TypeClassNumeric     TypeClass = "numeric"
-	TypeClassBoolean     TypeClass = "boolean"
-	TypeClassDateTime    TypeClass = "datetime"
-	TypeClassTime        TypeClass = "time"
-	TypeClassJson        TypeClass = "json"
-	TypeClassUuid        TypeClass = "uuid"
-	TypeClassEnum        TypeClass = "enum"
-	TypeClassInet        TypeClass = "inet"
-	TypeClassCidr        TypeClass = "cidr"
-	TypeClassMacAddress  TypeClass = "macaddr"
+	// TypeClassOther is the escape hatch for a type that is valid but does not
+	// fit any generic class (e.g. an engine-specific family with no generic peer).
+	TypeClassOther TypeClass = "other"
+
+	TypeClassBinary   TypeClass = "binary"
+	TypeClassText     TypeClass = "text"
+	TypeClassInt      TypeClass = "int"
+	TypeClassFloat    TypeClass = "float"
+	TypeClassNumeric  TypeClass = "numeric"
+	TypeClassBoolean  TypeClass = "boolean"
+	TypeClassDateTime TypeClass = "datetime"
+	TypeClassTime     TypeClass = "time"
+	TypeClassJson     TypeClass = "json"
+	TypeClassUuid     TypeClass = "uuid"
 )
 
 type Column struct {
@@ -120,9 +125,9 @@ type Column struct {
 	Name string `json:"name"`
 	// TypeName - name of the column type, e.g. "integer", "text", "boolean", etc.
 	TypeName string `json:"type_name"`
-	// TypeOID - OID of the column type in PostgreSQL. For other DBMS that does not have OIDs,
-	// this is just a unique identifier of the type in the greenmask implementation.
-	TypeOID VirtualOID `json:"type_oid"`
+	// TypeID - engine-agnostic identifier of the column type (the type OID in
+	// PostgreSQL; a stable per-engine identifier for engines without OIDs).
+	TypeID TypeID `json:"type_oid"`
 	// TypeClass - class of the column type, e.g. "numeric", "string", "datetime", etc.
 	TypeClass TypeClass
 	// NotNull - indicates whether the column is NOT NULL.
@@ -139,7 +144,7 @@ func NewColumn(
 	idx int,
 	name string,
 	colTyp string,
-	oid VirtualOID,
+	typeID TypeID,
 	notNull bool,
 	typeClass TypeClass,
 ) Column {
@@ -147,7 +152,7 @@ func NewColumn(
 		Idx:       idx,
 		Name:      name,
 		TypeName:  colTyp,
-		TypeOID:   oid,
+		TypeID:    typeID,
 		NotNull:   notNull,
 		TypeClass: typeClass,
 	}

@@ -65,7 +65,7 @@ type ReplaceTransformer struct {
 	rawValue            *core.ColumnRawValue
 	affectedColumns     map[int]string
 	needValidate        bool
-	columnOIDToValidate core.VirtualOID
+	columnOIDToValidate core.TypeID
 
 	valueParam parameters.Parameterizer
 
@@ -111,7 +111,7 @@ func NewReplaceTransformer(
 		}
 		// Validate the value if requested
 		if needValidate {
-			_, err = tableDriver.DecodeValueByTypeOid(column.TypeOID, value)
+			_, err = tableDriver.DecodeValueByTypeID(column.TypeID, value)
 			if err != nil {
 				validationcollector.FromContext(ctx).
 					Add(core.NewValidationWarning().
@@ -135,7 +135,7 @@ func NewReplaceTransformer(
 		rawValue:            rawValue,
 		columnIdx:           column.Idx,
 		needValidate:        needValidate,
-		columnOIDToValidate: column.TypeOID,
+		columnOIDToValidate: column.TypeID,
 		valueParam:          valueParam,
 	}
 
@@ -175,7 +175,7 @@ func (t *ReplaceTransformer) getValueToReplace(
 		)
 	}
 	if t.needValidate {
-		_, err = driver.DecodeValueByTypeOid(t.columnOIDToValidate, v)
+		_, err = driver.DecodeValueByTypeID(t.columnOIDToValidate, v)
 		if err != nil {
 			return nil, fmt.Errorf("dynamic value validation error: %w", err)
 		}

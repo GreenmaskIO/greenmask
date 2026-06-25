@@ -19,6 +19,7 @@ import (
 
 	core "github.com/greenmaskio/greenmask/pkg/common/core"
 	"github.com/greenmaskio/greenmask/pkg/common/objectfilter"
+	kinds "github.com/greenmaskio/greenmask/pkg/mysql/kinds"
 	mysqlmodels "github.com/greenmaskio/greenmask/pkg/mysql/models"
 )
 
@@ -39,7 +40,7 @@ type ObjectFilter struct {
 func NewObjectFilter() *ObjectFilter {
 	return &ObjectFilter{
 		filter: objectfilter.New(objectfilter.Options{
-			RelationKinds: []core.ObjectKind{core.ObjectKindMysqlTable},
+			RelationKinds: []core.ObjectKind{kinds.ObjectKindTable},
 			SystemSchemas: mysqlSystemSchemas,
 			Resolve:       resolveTableIdentity,
 		}),

@@ -31,16 +31,16 @@ func TestNewTableDriver(t *testing.T) {
 			Schema: "public",
 			Name:   "test_table",
 			Columns: []core.Column{
-				{Name: "col1", TypeOID: 1, TypeName: "int"},
-				{Name: "col2", TypeOID: 2, TypeName: "text"},
+				{Name: "col1", TypeID: 1, TypeName: "int"},
+				{Name: "col2", TypeID: 2, TypeName: "text"},
 			},
 		}
 
 		typeOverride := map[string]string{}
 
 		mockDriver := mocks.NewDBMSDriverMock()
-		mockDriver.On("TypeExistsByOid", core.VirtualOID(1)).Return(true)
-		mockDriver.On("TypeExistsByOid", core.VirtualOID(2)).Return(true)
+		mockDriver.On("TypeExistsByID", core.TypeID(1)).Return(true)
+		mockDriver.On("TypeExistsByID", core.TypeID(2)).Return(true)
 		ctx := context.Background()
 		vc := validationcollector.NewCollector()
 		ctx = validationcollector.WithCollector(ctx, vc)
@@ -52,8 +52,8 @@ func TestNewTableDriver(t *testing.T) {
 
 		// Check columnMap
 		assert.Equal(t, actual.columnMap, map[string]*core.Column{
-			"col1": {Name: "col1", TypeOID: 1, TypeName: "int"},
-			"col2": {Name: "col2", TypeOID: 2, TypeName: "text"},
+			"col1": {Name: "col1", TypeID: 1, TypeName: "int"},
+			"col2": {Name: "col2", TypeID: 2, TypeName: "text"},
 		})
 
 		// Check columnIdxMap
@@ -68,8 +68,8 @@ func TestNewTableDriver(t *testing.T) {
 
 		// Check type override
 		assert.Len(t, actual.typeOverride, 0)
-		assert.Len(t, actual.columnTypeOidOverrideMap, 0)
-		assert.Len(t, actual.columnIdxTypeOidOverrideMap, 0)
+		assert.Len(t, actual.columnTypeIDOverrideMap, 0)
+		assert.Len(t, actual.columnIdxTypeIDOverrideMap, 0)
 
 		// Check maxIdx
 		assert.Equal(t, actual.maxIdx, 1)
@@ -80,16 +80,16 @@ func TestNewTableDriver(t *testing.T) {
 			Schema: "public",
 			Name:   "test_table",
 			Columns: []core.Column{
-				{Name: "col1", TypeOID: 1, TypeName: "int"},
-				{Name: "col2", TypeOID: 2, TypeName: "unknown_type"},
+				{Name: "col1", TypeID: 1, TypeName: "int"},
+				{Name: "col2", TypeID: 2, TypeName: "unknown_type"},
 			},
 		}
 
 		typeOverride := map[string]string{}
 
 		mockDriver := mocks.NewDBMSDriverMock()
-		mockDriver.On("TypeExistsByOid", core.VirtualOID(1)).Return(true)
-		mockDriver.On("TypeExistsByOid", core.VirtualOID(2)).Return(false)
+		mockDriver.On("TypeExistsByID", core.TypeID(1)).Return(true)
+		mockDriver.On("TypeExistsByID", core.TypeID(2)).Return(false)
 
 		ctx := context.Background()
 		vc := validationcollector.NewCollector()
@@ -110,8 +110,8 @@ func TestNewTableDriver(t *testing.T) {
 
 		// Check columnMap
 		assert.Equal(t, actual.columnMap, map[string]*core.Column{
-			"col1": {Name: "col1", TypeOID: 1, TypeName: "int"},
-			"col2": {Name: "col2", TypeOID: 2, TypeName: "unknown_type"},
+			"col1": {Name: "col1", TypeID: 1, TypeName: "int"},
+			"col2": {Name: "col2", TypeID: 2, TypeName: "unknown_type"},
 		})
 
 		// Check columnIdxMap
@@ -130,8 +130,8 @@ func TestNewTableDriver(t *testing.T) {
 
 		// Check type override
 		assert.Len(t, actual.typeOverride, 0)
-		assert.Len(t, actual.columnTypeOidOverrideMap, 0)
-		assert.Len(t, actual.columnIdxTypeOidOverrideMap, 0)
+		assert.Len(t, actual.columnTypeIDOverrideMap, 0)
+		assert.Len(t, actual.columnIdxTypeIDOverrideMap, 0)
 
 		// Check maxIdx
 		assert.Equal(t, actual.maxIdx, 1)
@@ -142,8 +142,8 @@ func TestNewTableDriver(t *testing.T) {
 			Schema: "public",
 			Name:   "test_table",
 			Columns: []core.Column{
-				{Name: "col1", TypeOID: 1, TypeName: "int"},
-				{Name: "col2", TypeOID: 100, TypeName: "unknown_type"},
+				{Name: "col1", TypeID: 1, TypeName: "int"},
+				{Name: "col2", TypeID: 100, TypeName: "unknown_type"},
 			},
 		}
 
@@ -152,10 +152,10 @@ func TestNewTableDriver(t *testing.T) {
 		}
 
 		mockDriver := mocks.NewDBMSDriverMock()
-		mockDriver.On("TypeExistsByOid", core.VirtualOID(1)).Return(true).Once()
-		mockDriver.On("TypeExistsByOid", core.VirtualOID(100)).Return(false).Once()
+		mockDriver.On("TypeExistsByID", core.TypeID(1)).Return(true).Once()
+		mockDriver.On("TypeExistsByID", core.TypeID(100)).Return(false).Once()
 		mockDriver.On("TypeExistsByName", "text").Return(true).Once()
-		mockDriver.On("GetTypeOid", "text").Return(core.VirtualOID(2), nil).Once()
+		mockDriver.On("GetTypeID", "text").Return(core.TypeID(2), nil).Once()
 
 		ctx := context.Background()
 		vc := validationcollector.NewCollector()
@@ -168,8 +168,8 @@ func TestNewTableDriver(t *testing.T) {
 
 		// Check columnMap
 		assert.Equal(t, actual.columnMap, map[string]*core.Column{
-			"col1": {Name: "col1", TypeOID: 1, TypeName: "int"},
-			"col2": {Name: "col2", TypeOID: 100, TypeName: "unknown_type"},
+			"col1": {Name: "col1", TypeID: 1, TypeName: "int"},
+			"col2": {Name: "col2", TypeID: 100, TypeName: "unknown_type"},
 		})
 
 		// Check columnIdxMap
@@ -184,8 +184,8 @@ func TestNewTableDriver(t *testing.T) {
 
 		// Check type override
 		assert.Equal(t, map[string]string{"col2": "text"}, actual.typeOverride)
-		assert.Equal(t, map[string]core.VirtualOID{"col2": core.VirtualOID(2)}, actual.columnTypeOidOverrideMap)
-		assert.Equal(t, actual.columnIdxTypeOidOverrideMap, map[int]core.VirtualOID{1: core.VirtualOID(2)})
+		assert.Equal(t, map[string]core.TypeID{"col2": core.TypeID(2)}, actual.columnTypeIDOverrideMap)
+		assert.Equal(t, actual.columnIdxTypeIDOverrideMap, map[int]core.TypeID{1: core.TypeID(2)})
 
 		// Check maxIdx
 		assert.Equal(t, actual.maxIdx, 1)
@@ -196,8 +196,8 @@ func TestNewTableDriver(t *testing.T) {
 			Schema: "public",
 			Name:   "test_table",
 			Columns: []core.Column{
-				{Name: "col1", TypeOID: 1, TypeName: "int"},
-				{Name: "col2", TypeOID: 100, TypeName: "unknown_type"},
+				{Name: "col1", TypeID: 1, TypeName: "int"},
+				{Name: "col2", TypeID: 100, TypeName: "unknown_type"},
 			},
 		}
 
@@ -206,8 +206,8 @@ func TestNewTableDriver(t *testing.T) {
 		}
 
 		mockDriver := mocks.NewDBMSDriverMock()
-		mockDriver.On("TypeExistsByOid", core.VirtualOID(1)).Return(true).Once()
-		mockDriver.On("TypeExistsByOid", core.VirtualOID(100)).Return(false).Once()
+		mockDriver.On("TypeExistsByID", core.TypeID(1)).Return(true).Once()
+		mockDriver.On("TypeExistsByID", core.TypeID(100)).Return(false).Once()
 		mockDriver.On("TypeExistsByName", "text").Return(false).Once()
 
 		ctx := context.Background()
@@ -228,8 +228,8 @@ func TestNewTableDriver(t *testing.T) {
 
 		// Check columnMap
 		assert.Equal(t, actual.columnMap, map[string]*core.Column{
-			"col1": {Name: "col1", TypeOID: 1, TypeName: "int"},
-			"col2": {Name: "col2", TypeOID: 100, TypeName: "unknown_type"},
+			"col1": {Name: "col1", TypeID: 1, TypeName: "int"},
+			"col2": {Name: "col2", TypeID: 100, TypeName: "unknown_type"},
 		})
 
 		// Check columnIdxMap
@@ -248,8 +248,8 @@ func TestNewTableDriver(t *testing.T) {
 
 		// Check type override
 		assert.Len(t, actual.typeOverride, 1)
-		assert.Len(t, actual.columnTypeOidOverrideMap, 0)
-		assert.Len(t, actual.columnIdxTypeOidOverrideMap, 0)
+		assert.Len(t, actual.columnTypeIDOverrideMap, 0)
+		assert.Len(t, actual.columnIdxTypeIDOverrideMap, 0)
 
 		// Check maxIdx
 		assert.Equal(t, actual.maxIdx, 1)
@@ -259,14 +259,14 @@ func TestNewTableDriver(t *testing.T) {
 func TestDriver_EncodeValueByColumnIdx(t *testing.T) {
 	t.Run("common case", func(t *testing.T) {
 		mockDriver := mocks.NewDBMSDriverMock()
-		mockDriver.On("TypeExistsByOid", core.VirtualOID(1)).Return(true).Once()
-		mockDriver.On("EncodeValueByTypeOid", core.VirtualOID(1), "value", []byte(nil)).Return([]byte("encoded"), nil).Once()
+		mockDriver.On("TypeExistsByID", core.TypeID(1)).Return(true).Once()
+		mockDriver.On("EncodeValueByTypeID", core.TypeID(1), "value", []byte(nil)).Return([]byte("encoded"), nil).Once()
 
 		table := &core.Table{
 			Schema: "public",
 			Name:   "test_table",
 			Columns: []core.Column{
-				{Name: "col1", TypeOID: 1, TypeName: "int"},
+				{Name: "col1", TypeID: 1, TypeName: "int"},
 			},
 		}
 
@@ -285,16 +285,16 @@ func TestDriver_EncodeValueByColumnIdx(t *testing.T) {
 
 	t.Run("type overridden", func(t *testing.T) {
 		mockDriver := mocks.NewDBMSDriverMock()
-		mockDriver.On("TypeExistsByOid", core.VirtualOID(1)).Return(true).Once()
+		mockDriver.On("TypeExistsByID", core.TypeID(1)).Return(true).Once()
 		mockDriver.On("TypeExistsByName", "text").Return(true).Once()
-		mockDriver.On("GetTypeOid", "text").Return(core.VirtualOID(2), nil).Once()
-		mockDriver.On("EncodeValueByTypeOid", core.VirtualOID(2), "value", []byte(nil)).Return([]byte("encoded"), nil).Once()
+		mockDriver.On("GetTypeID", "text").Return(core.TypeID(2), nil).Once()
+		mockDriver.On("EncodeValueByTypeID", core.TypeID(2), "value", []byte(nil)).Return([]byte("encoded"), nil).Once()
 
 		table := &core.Table{
 			Schema: "public",
 			Name:   "test_table",
 			Columns: []core.Column{
-				{Name: "col1", TypeOID: 1, TypeName: "unknown_type"},
+				{Name: "col1", TypeID: 1, TypeName: "unknown_type"},
 			},
 		}
 
@@ -314,13 +314,13 @@ func TestDriver_EncodeValueByColumnIdx(t *testing.T) {
 
 	t.Run("unsupported type", func(t *testing.T) {
 		mockDriver := mocks.NewDBMSDriverMock()
-		mockDriver.On("TypeExistsByOid", core.VirtualOID(1)).Return(false).Once()
+		mockDriver.On("TypeExistsByID", core.TypeID(1)).Return(false).Once()
 
 		table := &core.Table{
 			Schema: "public",
 			Name:   "test_table",
 			Columns: []core.Column{
-				{Name: "col1", TypeOID: 1, TypeName: "unknown_type"},
+				{Name: "col1", TypeID: 1, TypeName: "unknown_type"},
 			},
 		}
 
@@ -340,14 +340,14 @@ func TestDriver_EncodeValueByColumnIdx(t *testing.T) {
 func TestDriver_EncodeValueByColumnName(t *testing.T) {
 	t.Run("common case", func(t *testing.T) {
 		mockDriver := mocks.NewDBMSDriverMock()
-		mockDriver.On("TypeExistsByOid", core.VirtualOID(1)).Return(true).Once()
-		mockDriver.On("EncodeValueByTypeOid", core.VirtualOID(1), "value", []byte(nil)).Return([]byte("encoded"), nil).Once()
+		mockDriver.On("TypeExistsByID", core.TypeID(1)).Return(true).Once()
+		mockDriver.On("EncodeValueByTypeID", core.TypeID(1), "value", []byte(nil)).Return([]byte("encoded"), nil).Once()
 
 		table := &core.Table{
 			Schema: "public",
 			Name:   "test_table",
 			Columns: []core.Column{
-				{Name: "col1", TypeOID: 1, TypeName: "int"},
+				{Name: "col1", TypeID: 1, TypeName: "int"},
 			},
 		}
 
@@ -366,16 +366,16 @@ func TestDriver_EncodeValueByColumnName(t *testing.T) {
 
 	t.Run("type overridden", func(t *testing.T) {
 		mockDriver := mocks.NewDBMSDriverMock()
-		mockDriver.On("TypeExistsByOid", core.VirtualOID(1)).Return(true).Once()
+		mockDriver.On("TypeExistsByID", core.TypeID(1)).Return(true).Once()
 		mockDriver.On("TypeExistsByName", "text").Return(true).Once()
-		mockDriver.On("GetTypeOid", "text").Return(core.VirtualOID(2), nil).Once()
-		mockDriver.On("EncodeValueByTypeOid", core.VirtualOID(2), "value", []byte(nil)).Return([]byte("encoded"), nil).Once()
+		mockDriver.On("GetTypeID", "text").Return(core.TypeID(2), nil).Once()
+		mockDriver.On("EncodeValueByTypeID", core.TypeID(2), "value", []byte(nil)).Return([]byte("encoded"), nil).Once()
 
 		table := &core.Table{
 			Schema: "public",
 			Name:   "test_table",
 			Columns: []core.Column{
-				{Name: "col1", TypeOID: 1, TypeName: "unknown_type"},
+				{Name: "col1", TypeID: 1, TypeName: "unknown_type"},
 			},
 		}
 
@@ -395,13 +395,13 @@ func TestDriver_EncodeValueByColumnName(t *testing.T) {
 
 	t.Run("unsupported type", func(t *testing.T) {
 		mockDriver := mocks.NewDBMSDriverMock()
-		mockDriver.On("TypeExistsByOid", core.VirtualOID(1)).Return(false).Once()
+		mockDriver.On("TypeExistsByID", core.TypeID(1)).Return(false).Once()
 
 		table := &core.Table{
 			Schema: "public",
 			Name:   "test_table",
 			Columns: []core.Column{
-				{Name: "col1", TypeOID: 1, TypeName: "unknown_type"},
+				{Name: "col1", TypeID: 1, TypeName: "unknown_type"},
 			},
 		}
 
@@ -422,8 +422,8 @@ func TestDriver_ScanValueByColumnIdx(t *testing.T) {
 	t.Run("common case", func(t *testing.T) {
 		mockDriver := mocks.NewDBMSDriverMock()
 		actual := ""
-		mockDriver.On("TypeExistsByOid", core.VirtualOID(1)).Return(true).Once()
-		mockDriver.On("ScanValueByTypeOid", core.VirtualOID(1), []byte("value"), &actual).
+		mockDriver.On("TypeExistsByID", core.TypeID(1)).Return(true).Once()
+		mockDriver.On("ScanValueByTypeID", core.TypeID(1), []byte("value"), &actual).
 			Return(nil).
 			Once()
 
@@ -431,7 +431,7 @@ func TestDriver_ScanValueByColumnIdx(t *testing.T) {
 			Schema: "public",
 			Name:   "test_table",
 			Columns: []core.Column{
-				{Name: "col1", TypeOID: 1, TypeName: "int"},
+				{Name: "col1", TypeID: 1, TypeName: "int"},
 			},
 		}
 
@@ -451,10 +451,10 @@ func TestDriver_ScanValueByColumnIdx(t *testing.T) {
 	t.Run("type overridden", func(t *testing.T) {
 		mockDriver := mocks.NewDBMSDriverMock()
 		actual := ""
-		mockDriver.On("TypeExistsByOid", core.VirtualOID(1)).Return(true).Once()
+		mockDriver.On("TypeExistsByID", core.TypeID(1)).Return(true).Once()
 		mockDriver.On("TypeExistsByName", "text").Return(true).Once()
-		mockDriver.On("GetTypeOid", "text").Return(core.VirtualOID(2), nil).Once()
-		mockDriver.On("ScanValueByTypeOid", core.VirtualOID(2), []byte("value"), &actual).
+		mockDriver.On("GetTypeID", "text").Return(core.TypeID(2), nil).Once()
+		mockDriver.On("ScanValueByTypeID", core.TypeID(2), []byte("value"), &actual).
 			Return(nil).
 			Once()
 
@@ -462,7 +462,7 @@ func TestDriver_ScanValueByColumnIdx(t *testing.T) {
 			Schema: "public",
 			Name:   "test_table",
 			Columns: []core.Column{
-				{Name: "col1", TypeOID: 1, TypeName: "unknown_type"},
+				{Name: "col1", TypeID: 1, TypeName: "unknown_type"},
 			},
 		}
 
@@ -482,13 +482,13 @@ func TestDriver_ScanValueByColumnIdx(t *testing.T) {
 
 	t.Run("unsupported type", func(t *testing.T) {
 		mockDriver := mocks.NewDBMSDriverMock()
-		mockDriver.On("TypeExistsByOid", core.VirtualOID(1)).Return(false).Once()
+		mockDriver.On("TypeExistsByID", core.TypeID(1)).Return(false).Once()
 
 		table := &core.Table{
 			Schema: "public",
 			Name:   "test_table",
 			Columns: []core.Column{
-				{Name: "col1", TypeOID: 1, TypeName: "unknown_type"},
+				{Name: "col1", TypeID: 1, TypeName: "unknown_type"},
 			},
 		}
 
@@ -510,8 +510,8 @@ func TestDriver_ScanValueByColumnName(t *testing.T) {
 	t.Run("common case", func(t *testing.T) {
 		mockDriver := mocks.NewDBMSDriverMock()
 		actual := ""
-		mockDriver.On("TypeExistsByOid", core.VirtualOID(1)).Return(true).Once()
-		mockDriver.On("ScanValueByTypeOid", core.VirtualOID(1), []byte("value"), &actual).
+		mockDriver.On("TypeExistsByID", core.TypeID(1)).Return(true).Once()
+		mockDriver.On("ScanValueByTypeID", core.TypeID(1), []byte("value"), &actual).
 			Return(nil).
 			Once()
 
@@ -519,7 +519,7 @@ func TestDriver_ScanValueByColumnName(t *testing.T) {
 			Schema: "public",
 			Name:   "test_table",
 			Columns: []core.Column{
-				{Name: "col1", TypeOID: 1, TypeName: "int"},
+				{Name: "col1", TypeID: 1, TypeName: "int"},
 			},
 		}
 
@@ -539,10 +539,10 @@ func TestDriver_ScanValueByColumnName(t *testing.T) {
 	t.Run("type overridden", func(t *testing.T) {
 		mockDriver := mocks.NewDBMSDriverMock()
 		actual := ""
-		mockDriver.On("TypeExistsByOid", core.VirtualOID(1)).Return(true).Once()
+		mockDriver.On("TypeExistsByID", core.TypeID(1)).Return(true).Once()
 		mockDriver.On("TypeExistsByName", "text").Return(true).Once()
-		mockDriver.On("GetTypeOid", "text").Return(core.VirtualOID(2), nil).Once()
-		mockDriver.On("ScanValueByTypeOid", core.VirtualOID(2), []byte("value"), &actual).
+		mockDriver.On("GetTypeID", "text").Return(core.TypeID(2), nil).Once()
+		mockDriver.On("ScanValueByTypeID", core.TypeID(2), []byte("value"), &actual).
 			Return(nil).
 			Once()
 
@@ -550,7 +550,7 @@ func TestDriver_ScanValueByColumnName(t *testing.T) {
 			Schema: "public",
 			Name:   "test_table",
 			Columns: []core.Column{
-				{Name: "col1", TypeOID: 1, TypeName: "unknown_type"},
+				{Name: "col1", TypeID: 1, TypeName: "unknown_type"},
 			},
 		}
 
@@ -570,13 +570,13 @@ func TestDriver_ScanValueByColumnName(t *testing.T) {
 
 	t.Run("unsupported type", func(t *testing.T) {
 		mockDriver := mocks.NewDBMSDriverMock()
-		mockDriver.On("TypeExistsByOid", core.VirtualOID(1)).Return(false).Once()
+		mockDriver.On("TypeExistsByID", core.TypeID(1)).Return(false).Once()
 
 		table := &core.Table{
 			Schema: "public",
 			Name:   "test_table",
 			Columns: []core.Column{
-				{Name: "col1", TypeOID: 1, TypeName: "unknown_type"},
+				{Name: "col1", TypeID: 1, TypeName: "unknown_type"},
 			},
 		}
 
@@ -597,8 +597,8 @@ func TestDriver_ScanValueByColumnName(t *testing.T) {
 func TestDriver_DecodeValueByColumnName(t *testing.T) {
 	t.Run("common case", func(t *testing.T) {
 		mockDriver := mocks.NewDBMSDriverMock()
-		mockDriver.On("TypeExistsByOid", core.VirtualOID(1)).Return(true).Once()
-		mockDriver.On("DecodeValueByTypeOid", core.VirtualOID(1), []byte("value")).
+		mockDriver.On("TypeExistsByID", core.TypeID(1)).Return(true).Once()
+		mockDriver.On("DecodeValueByTypeID", core.TypeID(1), []byte("value")).
 			Return("value", nil).
 			Once()
 
@@ -606,7 +606,7 @@ func TestDriver_DecodeValueByColumnName(t *testing.T) {
 			Schema: "public",
 			Name:   "test_table",
 			Columns: []core.Column{
-				{Name: "col1", TypeOID: 1, TypeName: "int"},
+				{Name: "col1", TypeID: 1, TypeName: "int"},
 			},
 		}
 
@@ -625,10 +625,10 @@ func TestDriver_DecodeValueByColumnName(t *testing.T) {
 
 	t.Run("type overridden", func(t *testing.T) {
 		mockDriver := mocks.NewDBMSDriverMock()
-		mockDriver.On("TypeExistsByOid", core.VirtualOID(1)).Return(true).Once()
+		mockDriver.On("TypeExistsByID", core.TypeID(1)).Return(true).Once()
 		mockDriver.On("TypeExistsByName", "text").Return(true).Once()
-		mockDriver.On("GetTypeOid", "text").Return(core.VirtualOID(2), nil).Once()
-		mockDriver.On("DecodeValueByTypeOid", core.VirtualOID(2), []byte("value")).
+		mockDriver.On("GetTypeID", "text").Return(core.TypeID(2), nil).Once()
+		mockDriver.On("DecodeValueByTypeID", core.TypeID(2), []byte("value")).
 			Return("value", nil).
 			Once()
 
@@ -636,7 +636,7 @@ func TestDriver_DecodeValueByColumnName(t *testing.T) {
 			Schema: "public",
 			Name:   "test_table",
 			Columns: []core.Column{
-				{Name: "col1", TypeOID: 1, TypeName: "unknown_type"},
+				{Name: "col1", TypeID: 1, TypeName: "unknown_type"},
 			},
 		}
 
@@ -656,13 +656,13 @@ func TestDriver_DecodeValueByColumnName(t *testing.T) {
 
 	t.Run("unsupported type", func(t *testing.T) {
 		mockDriver := mocks.NewDBMSDriverMock()
-		mockDriver.On("TypeExistsByOid", core.VirtualOID(1)).Return(false).Once()
+		mockDriver.On("TypeExistsByID", core.TypeID(1)).Return(false).Once()
 
 		table := &core.Table{
 			Schema: "public",
 			Name:   "test_table",
 			Columns: []core.Column{
-				{Name: "col1", TypeOID: 1, TypeName: "unknown_type"},
+				{Name: "col1", TypeID: 1, TypeName: "unknown_type"},
 			},
 		}
 
@@ -682,8 +682,8 @@ func TestDriver_DecodeValueByColumnName(t *testing.T) {
 func TestDriver_DecodeValueByColumnIdx(t *testing.T) {
 	t.Run("common case", func(t *testing.T) {
 		mockDriver := mocks.NewDBMSDriverMock()
-		mockDriver.On("TypeExistsByOid", core.VirtualOID(1)).Return(true).Once()
-		mockDriver.On("DecodeValueByTypeOid", core.VirtualOID(1), []byte("value")).
+		mockDriver.On("TypeExistsByID", core.TypeID(1)).Return(true).Once()
+		mockDriver.On("DecodeValueByTypeID", core.TypeID(1), []byte("value")).
 			Return("value", nil).
 			Once()
 
@@ -691,7 +691,7 @@ func TestDriver_DecodeValueByColumnIdx(t *testing.T) {
 			Schema: "public",
 			Name:   "test_table",
 			Columns: []core.Column{
-				{Name: "col1", TypeOID: 1, TypeName: "int"},
+				{Name: "col1", TypeID: 1, TypeName: "int"},
 			},
 		}
 
@@ -710,10 +710,10 @@ func TestDriver_DecodeValueByColumnIdx(t *testing.T) {
 
 	t.Run("type overridden", func(t *testing.T) {
 		mockDriver := mocks.NewDBMSDriverMock()
-		mockDriver.On("TypeExistsByOid", core.VirtualOID(1)).Return(true).Once()
+		mockDriver.On("TypeExistsByID", core.TypeID(1)).Return(true).Once()
 		mockDriver.On("TypeExistsByName", "text").Return(true).Once()
-		mockDriver.On("GetTypeOid", "text").Return(core.VirtualOID(2), nil).Once()
-		mockDriver.On("DecodeValueByTypeOid", core.VirtualOID(2), []byte("value")).
+		mockDriver.On("GetTypeID", "text").Return(core.TypeID(2), nil).Once()
+		mockDriver.On("DecodeValueByTypeID", core.TypeID(2), []byte("value")).
 			Return("value", nil).
 			Once()
 
@@ -721,7 +721,7 @@ func TestDriver_DecodeValueByColumnIdx(t *testing.T) {
 			Schema: "public",
 			Name:   "test_table",
 			Columns: []core.Column{
-				{Name: "col1", TypeOID: 1, TypeName: "unknown_type"},
+				{Name: "col1", TypeID: 1, TypeName: "unknown_type"},
 			},
 		}
 
@@ -741,13 +741,13 @@ func TestDriver_DecodeValueByColumnIdx(t *testing.T) {
 
 	t.Run("unsupported type", func(t *testing.T) {
 		mockDriver := mocks.NewDBMSDriverMock()
-		mockDriver.On("TypeExistsByOid", core.VirtualOID(1)).Return(false).Once()
+		mockDriver.On("TypeExistsByID", core.TypeID(1)).Return(false).Once()
 
 		table := &core.Table{
 			Schema: "public",
 			Name:   "test_table",
 			Columns: []core.Column{
-				{Name: "col1", TypeOID: 1, TypeName: "unknown_type"},
+				{Name: "col1", TypeID: 1, TypeName: "unknown_type"},
 			},
 		}
 

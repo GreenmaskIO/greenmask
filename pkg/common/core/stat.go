@@ -24,38 +24,13 @@ type ObjectID int
 
 type ObjectKind string
 
+// ObjectKindTable is the only generic object kind defined in core. Engine
+// packages own their own taxonomy of kinds (e.g. pg.table, mysql.database) and
+// register them with the generic registry by value — core never enumerates the
+// kinds of any specific engine, so adding an engine requires no change here.
 const (
 	ObjectKindTable ObjectKind = "table"
-
-	ObjectKindPostgresTable    ObjectKind = "pg.table"
-	ObjectKindPostgresSequence ObjectKind = "pg.sequence"
-	ObjectKindPostgresBlobs    ObjectKind = "pg.large_objects"
-	ObjectKindPostgresSchema   ObjectKind = "pg.schema"
-	ObjectKindPostgresDatabase ObjectKind = "pg.database"
-
-	ObjectKindMysqlTable    ObjectKind = "mysql.table"
-	ObjectKindMysqlDatabase ObjectKind = "mysql.database"
 )
-
-func (o ObjectKind) IsDataSection() bool {
-	switch o {
-	case ObjectKindPostgresTable, ObjectKindPostgresSequence, ObjectKindPostgresBlobs,
-		ObjectKindMysqlTable:
-		return true
-	default:
-		return false
-	}
-}
-
-func (o ObjectKind) IsSchemaSection() bool {
-	switch o {
-	case ObjectKindPostgresSchema, ObjectKindPostgresDatabase,
-		ObjectKindMysqlDatabase:
-		return true
-	default:
-		return false
-	}
-}
 
 type Compression string
 

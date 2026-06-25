@@ -274,24 +274,24 @@ func (dp *DynamicParameter) initLinkColumnParameter(
 	}
 	dp.tmplCtx.setLinkedColumn(dp.linkedColumnParameter.Column)
 
-	dp.columnCanonicalTypeName, err = dp.tableDriver.GetCanonicalTypeName(dp.column.TypeName, dp.column.TypeOID)
+	dp.columnCanonicalTypeName, err = dp.tableDriver.GetCanonicalTypeName(dp.column.TypeName, dp.column.TypeID)
 	if err != nil {
 		return fmt.Errorf("get input canonical type name: %w", err)
 	}
-	dp.columnCanonicalTypeClassName, err = dp.tableDriver.GetCanonicalTypeClassName(dp.column.TypeName, dp.column.TypeOID)
+	dp.columnCanonicalTypeClassName, err = dp.tableDriver.GetCanonicalTypeClassName(dp.column.TypeName, dp.column.TypeID)
 	if err != nil {
 		return fmt.Errorf("get input canonical type class name: %w", err)
 	}
 	linkedParameterColumnType, err := dp.tableDriver.GetCanonicalTypeName(
 		dp.linkedColumnParameter.Column.TypeName,
-		dp.linkedColumnParameter.Column.TypeOID,
+		dp.linkedColumnParameter.Column.TypeID,
 	)
 	if err != nil {
 		return fmt.Errorf("get output canonical type name: %w", err)
 	}
 	linkedParameterColumnTypeClass, err := dp.tableDriver.GetCanonicalTypeClassName(
 		dp.linkedColumnParameter.Column.TypeName,
-		dp.linkedColumnParameter.Column.TypeOID,
+		dp.linkedColumnParameter.Column.TypeID,
 	)
 	if err != nil {
 		return fmt.Errorf("get output canonical type class name: %w", err)
