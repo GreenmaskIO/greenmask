@@ -82,7 +82,7 @@ func (iw *InsertWriter) Write(row [][]byte) error {
 			iw.sb.WriteString(", ")
 		}
 		switch {
-		case bytes.Equal(val, dbmsdriver.NullValueSeq):
+		case bytes.Equal(val, core.NullValueSeq):
 			iw.sb.WriteString("NULL")
 		case iw.hasHexCols && iw.isBinary[i]:
 			iw.sb.WriteString("X'")

@@ -22,7 +22,6 @@ import (
 	"github.com/greenmaskio/greenmask/pkg/common/rawrecord"
 	"github.com/greenmaskio/greenmask/pkg/common/record"
 	transformercontext "github.com/greenmaskio/greenmask/pkg/common/transformers/context"
-	"github.com/greenmaskio/greenmask/pkg/mysql/dbmsdriver"
 	kinds "github.com/greenmaskio/greenmask/pkg/mysql/kinds"
 )
 
@@ -74,7 +73,7 @@ func (f *Factory) New(spec core.ObjectDumpSpec) (core.ObjectDumper, error) {
 
 	// Per-record decoder bound to the table driver, plus the table context which
 	// is itself the transformation pipeline (core.Pipeliner).
-	rawRecord := rawrecord.NewRawRecord(len(payload.Table.Columns), dbmsdriver.NullValueSeq)
+	rawRecord := rawrecord.NewRawRecord(len(payload.Table.Columns), core.NullValueSeq)
 	r := record.NewRecord(rawRecord, payload.TableDriver)
 	dumper, err := dumpers.NewTableDumper(spec.TaskID, tr, tw, r, &payload, payload.Table)
 	if err != nil {

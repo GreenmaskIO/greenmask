@@ -71,7 +71,7 @@ func TestInsertWriter_Write(t *testing.T) {
 		var buf bytes.Buffer
 		iw := NewInsertWriter(table, &buf, false)
 
-		row := [][]byte{[]byte("1"), dbmsdriver.NullValueSeq}
+		row := [][]byte{[]byte("1"), core.NullValueSeq}
 		err := iw.Write(row)
 		assert.NoError(t, err)
 
@@ -91,10 +91,10 @@ func TestInsertWriter_Write(t *testing.T) {
 		var buf bytes.Buffer
 		iw := NewInsertWriter(table, &buf, false)
 
-		rr := rawrecord.NewRawRecord(2, dbmsdriver.NullValueSeq)
+		rr := rawrecord.NewRawRecord(2, core.NullValueSeq)
 		err := rr.SetColumn(0, core.NewColumnRawValue([]byte("1"), false))
 		assert.NoError(t, err)
-		err = rr.SetColumn(1, core.NewColumnRawValue(dbmsdriver.NullValueSeq, false))
+		err = rr.SetColumn(1, core.NewColumnRawValue(core.NullValueSeq, false))
 		assert.NoError(t, err)
 
 		err = iw.Write(rr.GetRow())
@@ -185,7 +185,7 @@ func TestInsertWriter_HexBlob(t *testing.T) {
 		}
 		var buf bytes.Buffer
 		iw := NewInsertWriter(table, &buf, true)
-		err := iw.Write([][]byte{dbmsdriver.NullValueSeq})
+		err := iw.Write([][]byte{core.NullValueSeq})
 		assert.NoError(t, err)
 		assert.Equal(t, "(NULL)\n", buf.String())
 	})

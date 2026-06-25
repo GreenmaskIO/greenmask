@@ -10,7 +10,6 @@ import (
 	"github.com/greenmaskio/greenmask/pkg/common/rawrecord"
 	"github.com/greenmaskio/greenmask/pkg/common/record"
 	"github.com/greenmaskio/greenmask/pkg/common/transformers/registry"
-	"github.com/greenmaskio/greenmask/pkg/mysql/dbmsdriver"
 	"github.com/greenmaskio/greenmask/pkg/postgresql/dump/dumpers2/table"
 	kinds "github.com/greenmaskio/greenmask/pkg/postgresql2/kinds"
 )
@@ -56,7 +55,7 @@ func (f *TableDumpObjectFactory) initTableDumperWithPipeline(
 ) (core.ObjectDumper, error) {
 	tr := table.NewReader()
 	tw := table.NewWriter()
-	rawRecord := rawrecord.NewRawRecord(len(tableContext.Table.Columns), dbmsdriver.NullValueSeq)
+	rawRecord := rawrecord.NewRawRecord(len(tableContext.Table.Columns), core.NullValueSeq)
 	r := record.NewRecord(rawRecord, tableContext.TableDriver)
 	p := pipeline.NewTransformationPipeline(&tableContext)
 

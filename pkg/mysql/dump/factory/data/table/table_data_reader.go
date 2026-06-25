@@ -26,7 +26,6 @@ import (
 	"golang.org/x/sync/errgroup"
 
 	"github.com/greenmaskio/greenmask/pkg/common/core"
-	mysqldbmsdriver "github.com/greenmaskio/greenmask/pkg/mysql/dbmsdriver"
 	"github.com/greenmaskio/greenmask/pkg/mysql/pool"
 )
 
@@ -74,7 +73,7 @@ func NewTableDataReader(
 func fieldValueToString(field mysql.FieldValue) ([]byte, error) {
 	switch field.Type {
 	case mysql.FieldValueTypeNull:
-		return mysqldbmsdriver.NullValueSeq, nil
+		return core.NullValueSeq, nil
 	case mysql.FieldValueTypeUnsigned:
 		val := field.AsUint64()
 		return []byte(strconv.FormatUint(val, 10)), nil
@@ -88,7 +87,7 @@ func fieldValueToString(field mysql.FieldValue) ([]byte, error) {
 		val := field.AsString()
 		// If the string value is the same as the NULL sequence, we need to escape it
 		// to avoid confusion with a real NULL value during record processing.
-		if bytes.Equal(val, mysqldbmsdriver.NullValueSeq) {
+		if bytes.Equal(val, core.NullValueSeq) {
 			return escapeConflictingValue(val), nil
 		}
 		return val, nil

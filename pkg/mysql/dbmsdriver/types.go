@@ -22,8 +22,6 @@ import (
 
 var (
 	DMMSName = "mysql"
-
-	NullValueSeq = []byte("\\N")
 )
 
 // TypeClassEnum is the MySQL-specific type class for ENUM/SET columns. It is an

@@ -208,7 +208,7 @@ func (tp *DumpObjectPoducer) initTableDumper(
 		tablestremers.WithFormat(tp.dumpFormat),
 		tablestremers.WithHexBlob(tp.hexBlob),
 	)
-	rawRecord := rawrecord.NewRawRecord(len(tableContext.Table.Columns), dbmsdriver.NullValueSeq)
+	rawRecord := rawrecord.NewRawRecord(len(tableContext.Table.Columns), core.NullValueSeq)
 	r := record.NewRecord(rawRecord, tableContext.TableDriver)
 	p := pipeline.NewTransformationPipeline(&tableContext)
 	var opts []dumpers.TableDumperOption
