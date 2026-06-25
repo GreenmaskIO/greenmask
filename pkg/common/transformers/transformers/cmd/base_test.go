@@ -21,8 +21,8 @@ import (
 	"time"
 
 	core "github.com/greenmaskio/greenmask/pkg/common/core"
+	coretest "github.com/greenmaskio/greenmask/pkg/common/coretest"
 	transformerstesting "github.com/greenmaskio/greenmask/pkg/common/transformers/testing"
-	mysqldbmsdriver "github.com/greenmaskio/greenmask/pkg/mysql/dbmsdriver"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -33,22 +33,22 @@ func TestTransformerBase_Transform(t *testing.T) {
 			{
 				Idx:      0,
 				Name:     "first_name",
-				TypeName: mysqldbmsdriver.TypeText,
-				TypeID:   mysqldbmsdriver.TypeIDText,
+				TypeName: coretest.TypeText,
+				TypeID:   coretest.TypeIDText,
 				Length:   0,
 			},
 			{
 				Idx:      1,
 				Name:     "last_name",
-				TypeName: mysqldbmsdriver.TypeText,
-				TypeID:   mysqldbmsdriver.TypeIDText,
+				TypeName: coretest.TypeText,
+				TypeID:   coretest.TypeIDText,
 				Length:   0,
 			},
 			{
 				Idx:      2,
 				Name:     "middle_name",
-				TypeName: mysqldbmsdriver.TypeText,
-				TypeID:   mysqldbmsdriver.TypeIDText,
+				TypeName: coretest.TypeText,
+				TypeID:   coretest.TypeIDText,
 				Length:   0,
 			},
 		}
@@ -107,22 +107,22 @@ func TestTransformerBase_Transform(t *testing.T) {
 			{
 				Idx:      0,
 				Name:     "first_name",
-				TypeName: mysqldbmsdriver.TypeText,
-				TypeID:   mysqldbmsdriver.TypeIDText,
+				TypeName: coretest.TypeText,
+				TypeID:   coretest.TypeIDText,
 				Length:   0,
 			},
 			{
 				Idx:      1,
 				Name:     "last_name",
-				TypeName: mysqldbmsdriver.TypeText,
-				TypeID:   mysqldbmsdriver.TypeIDText,
+				TypeName: coretest.TypeText,
+				TypeID:   coretest.TypeIDText,
 				Length:   0,
 			},
 			{
 				Idx:      2,
 				Name:     "middle_name",
-				TypeName: mysqldbmsdriver.TypeText,
-				TypeID:   mysqldbmsdriver.TypeIDText,
+				TypeName: coretest.TypeText,
+				TypeID:   coretest.TypeIDText,
 				Length:   0,
 			},
 		}

@@ -20,9 +20,9 @@ import (
 
 	"github.com/google/uuid"
 	core "github.com/greenmaskio/greenmask/pkg/common/core"
+	coretest "github.com/greenmaskio/greenmask/pkg/common/coretest"
 	commonutils "github.com/greenmaskio/greenmask/pkg/common/utils"
 	"github.com/greenmaskio/greenmask/pkg/common/validationcollector"
-	mysqldbmsdriver "github.com/greenmaskio/greenmask/pkg/mysql/dbmsdriver"
 	"github.com/stretchr/testify/require"
 )
 
@@ -42,9 +42,9 @@ func TestUuidTransformer_Transform_uuid_type(t *testing.T) {
 				{
 					Idx:       0,
 					Name:      "data",
-					TypeName:  mysqldbmsdriver.TypeText,
+					TypeName:  coretest.TypeText,
 					TypeClass: core.TypeClassText,
-					TypeID:    mysqldbmsdriver.TypeIDText,
+					TypeID:    coretest.TypeIDText,
 					Length:    0,
 				},
 			},
@@ -74,9 +74,9 @@ func TestUuidTransformer_Transform_uuid_type(t *testing.T) {
 				{
 					Idx:       0,
 					Name:      "data",
-					TypeName:  mysqldbmsdriver.TypeText,
+					TypeName:  coretest.TypeText,
 					TypeClass: core.TypeClassText,
-					TypeID:    mysqldbmsdriver.TypeIDText,
+					TypeID:    coretest.TypeIDText,
 					Length:    0,
 				},
 			},
@@ -100,9 +100,9 @@ func TestUuidTransformer_Transform_uuid_type(t *testing.T) {
 				{
 					Idx:       0,
 					Name:      "data",
-					TypeName:  mysqldbmsdriver.TypeText,
+					TypeName:  coretest.TypeText,
 					TypeClass: core.TypeClassText,
-					TypeID:    mysqldbmsdriver.TypeIDText,
+					TypeID:    coretest.TypeIDText,
 					Length:    0,
 				},
 			},

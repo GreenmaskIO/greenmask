@@ -19,8 +19,8 @@ import (
 	"testing"
 
 	core "github.com/greenmaskio/greenmask/pkg/common/core"
+	coretest "github.com/greenmaskio/greenmask/pkg/common/coretest"
 	"github.com/greenmaskio/greenmask/pkg/common/validationcollector"
-	mysqldbmsdriver "github.com/greenmaskio/greenmask/pkg/mysql/dbmsdriver"
 	"github.com/stretchr/testify/require"
 )
 
@@ -54,9 +54,9 @@ func TestHashTransformer_Transform(t *testing.T) {
 				{
 					Idx:       0,
 					Name:      "data",
-					TypeName:  mysqldbmsdriver.TypeText,
+					TypeName:  coretest.TypeText,
 					TypeClass: core.TypeClassText,
-					TypeID:    mysqldbmsdriver.TypeIDText,
+					TypeID:    coretest.TypeIDText,
 				},
 			},
 			validateFn: func(t *testing.T, expected, actual *core.ColumnRawValue) {
@@ -77,9 +77,9 @@ func TestHashTransformer_Transform(t *testing.T) {
 				{
 					Idx:       0,
 					Name:      "data",
-					TypeName:  mysqldbmsdriver.TypeText,
+					TypeName:  coretest.TypeText,
 					TypeClass: core.TypeClassText,
-					TypeID:    mysqldbmsdriver.TypeIDText,
+					TypeID:    coretest.TypeIDText,
 				},
 			},
 			validateFn: func(t *testing.T, expected, actual *core.ColumnRawValue) {
@@ -100,9 +100,9 @@ func TestHashTransformer_Transform(t *testing.T) {
 				{
 					Idx:       0,
 					Name:      "data",
-					TypeName:  mysqldbmsdriver.TypeText,
+					TypeName:  coretest.TypeText,
 					TypeClass: core.TypeClassText,
-					TypeID:    mysqldbmsdriver.TypeIDText,
+					TypeID:    coretest.TypeIDText,
 				},
 			},
 			validateFn: func(t *testing.T, expected, actual *core.ColumnRawValue) {
@@ -123,9 +123,9 @@ func TestHashTransformer_Transform(t *testing.T) {
 				{
 					Idx:       0,
 					Name:      "data",
-					TypeName:  mysqldbmsdriver.TypeText,
+					TypeName:  coretest.TypeText,
 					TypeClass: core.TypeClassText,
-					TypeID:    mysqldbmsdriver.TypeIDText,
+					TypeID:    coretest.TypeIDText,
 				},
 			},
 			validateFn: func(t *testing.T, expected, actual *core.ColumnRawValue) {
@@ -146,9 +146,9 @@ func TestHashTransformer_Transform(t *testing.T) {
 				{
 					Idx:       0,
 					Name:      "data",
-					TypeName:  mysqldbmsdriver.TypeText,
+					TypeName:  coretest.TypeText,
 					TypeClass: core.TypeClassText,
-					TypeID:    mysqldbmsdriver.TypeIDText,
+					TypeID:    coretest.TypeIDText,
 				},
 			},
 			validateFn: func(t *testing.T, expected, actual *core.ColumnRawValue) {
@@ -169,9 +169,9 @@ func TestHashTransformer_Transform(t *testing.T) {
 				{
 					Idx:       0,
 					Name:      "data",
-					TypeName:  mysqldbmsdriver.TypeText,
+					TypeName:  coretest.TypeText,
 					TypeClass: core.TypeClassText,
-					TypeID:    mysqldbmsdriver.TypeIDText,
+					TypeID:    coretest.TypeIDText,
 				},
 			},
 			validateFn: func(t *testing.T, expected, actual *core.ColumnRawValue) {
@@ -192,9 +192,9 @@ func TestHashTransformer_Transform(t *testing.T) {
 				{
 					Idx:       0,
 					Name:      "data",
-					TypeName:  mysqldbmsdriver.TypeText,
+					TypeName:  coretest.TypeText,
 					TypeClass: core.TypeClassText,
-					TypeID:    mysqldbmsdriver.TypeIDText,
+					TypeID:    coretest.TypeIDText,
 				},
 			},
 			validateFn: func(t *testing.T, expected, actual *core.ColumnRawValue) {
@@ -215,9 +215,9 @@ func TestHashTransformer_Transform(t *testing.T) {
 				{
 					Idx:       0,
 					Name:      "data",
-					TypeName:  mysqldbmsdriver.TypeText,
+					TypeName:  coretest.TypeText,
 					TypeClass: core.TypeClassText,
-					TypeID:    mysqldbmsdriver.TypeIDText,
+					TypeID:    coretest.TypeIDText,
 				},
 			},
 			validateFn: func(t *testing.T, expected, actual *core.ColumnRawValue) {
@@ -239,9 +239,9 @@ func TestHashTransformer_Transform(t *testing.T) {
 				{
 					Idx:       0,
 					Name:      "data",
-					TypeName:  mysqldbmsdriver.TypeText,
+					TypeName:  coretest.TypeText,
 					TypeClass: core.TypeClassText,
-					TypeID:    mysqldbmsdriver.TypeIDText,
+					TypeID:    coretest.TypeIDText,
 				},
 			},
 			validateFn: func(t *testing.T, expected, actual *core.ColumnRawValue) {
@@ -263,9 +263,9 @@ func TestHashTransformer_Transform(t *testing.T) {
 				{
 					Idx:       0,
 					Name:      "data",
-					TypeName:  mysqldbmsdriver.TypeText,
+					TypeName:  coretest.TypeText,
 					TypeClass: core.TypeClassText,
-					TypeID:    mysqldbmsdriver.TypeIDText,
+					TypeID:    coretest.TypeIDText,
 				},
 			},
 			validateFn: func(t *testing.T, expected, actual *core.ColumnRawValue) {
@@ -287,9 +287,9 @@ func TestHashTransformer_Transform(t *testing.T) {
 				{
 					Idx:       0,
 					Name:      "data",
-					TypeName:  mysqldbmsdriver.TypeText,
+					TypeName:  coretest.TypeText,
 					TypeClass: core.TypeClassText,
-					TypeID:    mysqldbmsdriver.TypeIDText,
+					TypeID:    coretest.TypeIDText,
 				},
 			},
 			validateFn: func(t *testing.T, expected, actual *core.ColumnRawValue) {
@@ -405,8 +405,8 @@ func TestHashTransformer_Transform_multiple_iterations(t *testing.T) {
 			{
 				Idx:       0,
 				Name:      "data",
-				TypeName:  mysqldbmsdriver.TypeText,
-				TypeID:    mysqldbmsdriver.TypeIDText,
+				TypeName:  coretest.TypeText,
+				TypeID:    coretest.TypeIDText,
 				TypeClass: core.TypeClassText,
 			},
 		},

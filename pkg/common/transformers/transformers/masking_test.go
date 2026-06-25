@@ -20,8 +20,8 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	core "github.com/greenmaskio/greenmask/pkg/common/core"
+	coretest "github.com/greenmaskio/greenmask/pkg/common/coretest"
 	"github.com/greenmaskio/greenmask/pkg/common/validationcollector"
-	mysqldbmsdriver "github.com/greenmaskio/greenmask/pkg/mysql/dbmsdriver"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -56,8 +56,8 @@ func TestMaskingTransformer_Transform(t *testing.T) {
 				{
 					Idx:       0,
 					Name:      "data",
-					TypeName:  mysqldbmsdriver.TypeText,
-					TypeID:    mysqldbmsdriver.TypeIDText,
+					TypeName:  coretest.TypeText,
+					TypeID:    coretest.TypeIDText,
 					TypeClass: core.TypeClassText,
 				},
 			},
@@ -82,8 +82,8 @@ func TestMaskingTransformer_Transform(t *testing.T) {
 				{
 					Idx:       0,
 					Name:      "data",
-					TypeName:  mysqldbmsdriver.TypeText,
-					TypeID:    mysqldbmsdriver.TypeIDText,
+					TypeName:  coretest.TypeText,
+					TypeID:    coretest.TypeIDText,
 					TypeClass: core.TypeClassText,
 				},
 			},
@@ -108,8 +108,8 @@ func TestMaskingTransformer_Transform(t *testing.T) {
 				{
 					Idx:       0,
 					Name:      "data",
-					TypeName:  mysqldbmsdriver.TypeText,
-					TypeID:    mysqldbmsdriver.TypeIDText,
+					TypeName:  coretest.TypeText,
+					TypeID:    coretest.TypeIDText,
 					TypeClass: core.TypeClassText,
 				},
 			},
@@ -134,8 +134,8 @@ func TestMaskingTransformer_Transform(t *testing.T) {
 				{
 					Idx:       0,
 					Name:      "data",
-					TypeName:  mysqldbmsdriver.TypeText,
-					TypeID:    mysqldbmsdriver.TypeIDText,
+					TypeName:  coretest.TypeText,
+					TypeID:    coretest.TypeIDText,
 					TypeClass: core.TypeClassText,
 				},
 			},
@@ -190,8 +190,8 @@ func TestNewMaskingTransformer(t *testing.T) {
 			{
 				Idx:       0,
 				Name:      "data",
-				TypeName:  mysqldbmsdriver.TypeText,
-				TypeID:    mysqldbmsdriver.TypeIDText,
+				TypeName:  coretest.TypeText,
+				TypeID:    coretest.TypeIDText,
 				TypeClass: core.TypeClassText,
 			},
 		},

@@ -19,9 +19,9 @@ import (
 	"testing"
 
 	core "github.com/greenmaskio/greenmask/pkg/common/core"
+	coretest "github.com/greenmaskio/greenmask/pkg/common/coretest"
 	commonutils "github.com/greenmaskio/greenmask/pkg/common/utils"
 	"github.com/greenmaskio/greenmask/pkg/common/validationcollector"
-	mysqldbmsdriver "github.com/greenmaskio/greenmask/pkg/mysql/dbmsdriver"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -42,8 +42,8 @@ func TestRandomIntTransformer_Transform(t *testing.T) {
 				{
 					Idx:       0,
 					Name:      "data",
-					TypeName:  mysqldbmsdriver.TypeSmallInt,
-					TypeID:    mysqldbmsdriver.TypeIDSmallInt,
+					TypeName:  coretest.TypeInt2,
+					TypeID:    coretest.TypeIDInt2,
 					TypeClass: core.TypeClassInt,
 					Length:    0,
 					Size:      2,
@@ -72,8 +72,8 @@ func TestRandomIntTransformer_Transform(t *testing.T) {
 				{
 					Idx:       0,
 					Name:      "data",
-					TypeName:  mysqldbmsdriver.TypeMediumInt,
-					TypeID:    mysqldbmsdriver.TypeIDMediumInt,
+					TypeName:  coretest.TypeInt4,
+					TypeID:    coretest.TypeIDInt4,
 					TypeClass: core.TypeClassInt,
 					Length:    0,
 					Size:      4,
@@ -103,8 +103,8 @@ func TestRandomIntTransformer_Transform(t *testing.T) {
 				{
 					Idx:       0,
 					Name:      "data",
-					TypeName:  mysqldbmsdriver.TypeBigInt,
-					TypeID:    mysqldbmsdriver.TypeIDBigInt,
+					TypeName:  coretest.TypeInt8,
+					TypeID:    coretest.TypeIDInt8,
 					TypeClass: core.TypeClassInt,
 					Length:    0,
 					Size:      8,
@@ -143,8 +143,8 @@ func TestRandomIntTransformer_Transform(t *testing.T) {
 				{
 					Idx:       0,
 					Name:      "data",
-					TypeName:  mysqldbmsdriver.TypeBigInt,
-					TypeID:    mysqldbmsdriver.TypeIDBigInt,
+					TypeName:  coretest.TypeInt8,
+					TypeID:    coretest.TypeIDInt8,
 					TypeClass: core.TypeClassInt,
 					Length:    0,
 					Size:      8,
@@ -172,8 +172,8 @@ func TestRandomIntTransformer_Transform(t *testing.T) {
 				{
 					Idx:       0,
 					Name:      "data",
-					TypeName:  mysqldbmsdriver.TypeBigInt,
-					TypeID:    mysqldbmsdriver.TypeIDBigInt,
+					TypeName:  coretest.TypeInt8,
+					TypeID:    coretest.TypeIDInt8,
 					TypeClass: core.TypeClassInt,
 					Length:    0,
 					Size:      8,
@@ -210,8 +210,8 @@ func TestRandomIntTransformer_Transform(t *testing.T) {
 				{
 					Idx:       0,
 					Name:      "data",
-					TypeName:  mysqldbmsdriver.TypeBigInt,
-					TypeID:    mysqldbmsdriver.TypeIDBigInt,
+					TypeName:  coretest.TypeInt8,
+					TypeID:    coretest.TypeIDInt8,
 					TypeClass: core.TypeClassInt,
 					Length:    0,
 					Size:      8,
@@ -219,8 +219,8 @@ func TestRandomIntTransformer_Transform(t *testing.T) {
 				{
 					Idx:       1,
 					Name:      "min_val",
-					TypeName:  mysqldbmsdriver.TypeBigInt,
-					TypeID:    mysqldbmsdriver.TypeIDBigInt,
+					TypeName:  coretest.TypeInt8,
+					TypeID:    coretest.TypeIDInt8,
 					TypeClass: core.TypeClassInt,
 					Length:    0,
 					Size:      8,
@@ -228,8 +228,8 @@ func TestRandomIntTransformer_Transform(t *testing.T) {
 				{
 					Idx:       2,
 					Name:      "max_val",
-					TypeName:  mysqldbmsdriver.TypeBigInt,
-					TypeID:    mysqldbmsdriver.TypeIDBigInt,
+					TypeName:  coretest.TypeInt8,
+					TypeID:    coretest.TypeIDInt8,
 					TypeClass: core.TypeClassInt,
 					Length:    0,
 					Size:      8,

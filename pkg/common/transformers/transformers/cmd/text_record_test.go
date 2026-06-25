@@ -18,7 +18,7 @@ import (
 	"testing"
 
 	core "github.com/greenmaskio/greenmask/pkg/common/core"
-	mysqldbmsdriver "github.com/greenmaskio/greenmask/pkg/mysql/dbmsdriver"
+	coretest "github.com/greenmaskio/greenmask/pkg/common/coretest"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -29,8 +29,8 @@ func TestTextRecord_Encode(t *testing.T) {
 			{
 				Idx:      0,
 				Name:     "first_name",
-				TypeName: mysqldbmsdriver.TypeText,
-				TypeID:   mysqldbmsdriver.TypeIDText,
+				TypeName: coretest.TypeText,
+				TypeID:   coretest.TypeIDText,
 				Length:   0,
 			},
 		}

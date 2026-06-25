@@ -20,8 +20,8 @@ import (
 	"time"
 
 	core "github.com/greenmaskio/greenmask/pkg/common/core"
+	coretest "github.com/greenmaskio/greenmask/pkg/common/coretest"
 	"github.com/greenmaskio/greenmask/pkg/common/validationcollector"
-	"github.com/greenmaskio/greenmask/pkg/mysql/dbmsdriver"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/tidwall/gjson"
@@ -62,9 +62,9 @@ func TestJsonTransformer_Transform(t *testing.T) {
 				{
 					Idx:       0,
 					Name:      "data",
-					TypeName:  dbmsdriver.TypeText,
+					TypeName:  coretest.TypeText,
 					TypeClass: core.TypeClassText,
-					TypeID:    dbmsdriver.TypeIDText,
+					TypeID:    coretest.TypeIDText,
 				},
 			},
 			validateFn: func(t *testing.T, expected, actual *core.ColumnRawValue) {
@@ -97,9 +97,9 @@ func TestJsonTransformer_Transform(t *testing.T) {
 				{
 					Idx:       0,
 					Name:      "data",
-					TypeName:  dbmsdriver.TypeText,
+					TypeName:  coretest.TypeText,
 					TypeClass: core.TypeClassText,
-					TypeID:    dbmsdriver.TypeIDText,
+					TypeID:    coretest.TypeIDText,
 				},
 			},
 			validateFn: func(t *testing.T, expected, actual *core.ColumnRawValue) {
@@ -107,8 +107,8 @@ func TestJsonTransformer_Transform(t *testing.T) {
 				maxValue := time.UnixMilli(1748116489277332000 / int64(time.Millisecond))
 				assert.Equal(t, expected.IsNull, actual.IsNull)
 				resStr := gjson.GetBytes(actual.Data, "name.ts").Str
-				tableDriver := dbmsdriver.New()
-				resAny, err := tableDriver.DecodeValueByTypeName(dbmsdriver.TypeTimestamp, []byte(resStr))
+				tableDriver := coretest.New()
+				resAny, err := tableDriver.DecodeValueByTypeName(coretest.TypeTimestamp, []byte(resStr))
 				require.NoError(t, err)
 				resTime := resAny.(time.Time)
 				assert.WithinRange(t, resTime, minValue, maxValue)
@@ -137,9 +137,9 @@ func TestJsonTransformer_Transform(t *testing.T) {
 				{
 					Idx:       0,
 					Name:      "data",
-					TypeName:  dbmsdriver.TypeText,
+					TypeName:  coretest.TypeText,
 					TypeClass: core.TypeClassText,
-					TypeID:    dbmsdriver.TypeIDText,
+					TypeID:    coretest.TypeIDText,
 				},
 			},
 			validateFn: func(t *testing.T, expected, actual *core.ColumnRawValue) {
@@ -165,9 +165,9 @@ func TestJsonTransformer_Transform(t *testing.T) {
 				{
 					Idx:       0,
 					Name:      "data",
-					TypeName:  dbmsdriver.TypeText,
+					TypeName:  coretest.TypeText,
 					TypeClass: core.TypeClassText,
-					TypeID:    dbmsdriver.TypeIDText,
+					TypeID:    coretest.TypeIDText,
 				},
 			},
 			expectedErr: errInvalidJson.Error(),
@@ -193,9 +193,9 @@ func TestJsonTransformer_Transform(t *testing.T) {
 				{
 					Idx:       0,
 					Name:      "data",
-					TypeName:  dbmsdriver.TypeText,
+					TypeName:  coretest.TypeText,
 					TypeClass: core.TypeClassText,
-					TypeID:    dbmsdriver.TypeIDText,
+					TypeID:    coretest.TypeIDText,
 				},
 			},
 			validateFn: func(t *testing.T, expected, actual *core.ColumnRawValue) {
@@ -220,9 +220,9 @@ func TestJsonTransformer_Transform(t *testing.T) {
 				{
 					Idx:       0,
 					Name:      "data",
-					TypeName:  dbmsdriver.TypeText,
+					TypeName:  coretest.TypeText,
 					TypeClass: core.TypeClassText,
-					TypeID:    dbmsdriver.TypeIDText,
+					TypeID:    coretest.TypeIDText,
 				},
 			},
 			validateFn: func(t *testing.T, expected, actual *core.ColumnRawValue) {
@@ -247,9 +247,9 @@ func TestJsonTransformer_Transform(t *testing.T) {
 				{
 					Idx:       0,
 					Name:      "data",
-					TypeName:  dbmsdriver.TypeText,
+					TypeName:  coretest.TypeText,
 					TypeClass: core.TypeClassText,
-					TypeID:    dbmsdriver.TypeIDText,
+					TypeID:    coretest.TypeIDText,
 				},
 			},
 			validateFn: func(t *testing.T, expected, actual *core.ColumnRawValue) {

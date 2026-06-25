@@ -20,8 +20,8 @@ import (
 	"time"
 
 	core "github.com/greenmaskio/greenmask/pkg/common/core"
+	coretest "github.com/greenmaskio/greenmask/pkg/common/coretest"
 	"github.com/greenmaskio/greenmask/pkg/common/validationcollector"
-	mysqldbmsdriver "github.com/greenmaskio/greenmask/pkg/mysql/dbmsdriver"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -70,8 +70,8 @@ func TestNoiseDateTransformer_Transform(t *testing.T) {
 				{
 					Idx:       0,
 					Name:      "data",
-					TypeName:  mysqldbmsdriver.TypeTimestamp,
-					TypeID:    mysqldbmsdriver.TypeIDTimestamp,
+					TypeName:  coretest.TypeTimestamp,
+					TypeID:    coretest.TypeIDTimestamp,
 					TypeClass: core.TypeClassDateTime,
 				},
 			},
@@ -122,8 +122,8 @@ func TestNoiseDateTransformer_Transform(t *testing.T) {
 				{
 					Idx:       0,
 					Name:      "data",
-					TypeName:  mysqldbmsdriver.TypeTimestamp,
-					TypeID:    mysqldbmsdriver.TypeIDTimestamp,
+					TypeName:  coretest.TypeTimestamp,
+					TypeID:    coretest.TypeIDTimestamp,
 					TypeClass: core.TypeClassDateTime,
 				},
 			},
@@ -185,22 +185,22 @@ func TestNoiseDateTransformer_Transform(t *testing.T) {
 				{
 					Idx:       0,
 					Name:      "data",
-					TypeName:  mysqldbmsdriver.TypeTimestamp,
-					TypeID:    mysqldbmsdriver.TypeIDTimestamp,
+					TypeName:  coretest.TypeTimestamp,
+					TypeID:    coretest.TypeIDTimestamp,
 					TypeClass: core.TypeClassDateTime,
 				},
 				{
 					Idx:       1,
 					Name:      "min_col",
-					TypeName:  mysqldbmsdriver.TypeTimestamp,
-					TypeID:    mysqldbmsdriver.TypeIDTimestamp,
+					TypeName:  coretest.TypeTimestamp,
+					TypeID:    coretest.TypeIDTimestamp,
 					TypeClass: core.TypeClassDateTime,
 				},
 				{
 					Idx:       1,
 					Name:      "max_col",
-					TypeName:  mysqldbmsdriver.TypeTimestamp,
-					TypeID:    mysqldbmsdriver.TypeIDTimestamp,
+					TypeName:  coretest.TypeTimestamp,
+					TypeID:    coretest.TypeIDTimestamp,
 					TypeClass: core.TypeClassDateTime,
 				},
 			},

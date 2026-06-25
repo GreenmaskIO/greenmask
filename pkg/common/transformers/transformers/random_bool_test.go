@@ -19,9 +19,9 @@ import (
 	"testing"
 
 	core "github.com/greenmaskio/greenmask/pkg/common/core"
+	coretest "github.com/greenmaskio/greenmask/pkg/common/coretest"
 	commonutils "github.com/greenmaskio/greenmask/pkg/common/utils"
 	"github.com/greenmaskio/greenmask/pkg/common/validationcollector"
-	mysqldbmsdriver "github.com/greenmaskio/greenmask/pkg/mysql/dbmsdriver"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -44,8 +44,8 @@ func TestRandomBoolTransformer_Transform(t *testing.T) {
 				{
 					Idx:       0,
 					Name:      "data",
-					TypeName:  mysqldbmsdriver.TypeBoolean,
-					TypeID:    mysqldbmsdriver.TypeIDBoolean,
+					TypeName:  coretest.TypeBool,
+					TypeID:    coretest.TypeIDBool,
 					TypeClass: core.TypeClassBoolean,
 					Length:    0,
 				},
@@ -68,8 +68,8 @@ func TestRandomBoolTransformer_Transform(t *testing.T) {
 				{
 					Idx:       0,
 					Name:      "data",
-					TypeName:  mysqldbmsdriver.TypeBoolean,
-					TypeID:    mysqldbmsdriver.TypeIDBoolean,
+					TypeName:  coretest.TypeBool,
+					TypeID:    coretest.TypeIDBool,
 					TypeClass: core.TypeClassBoolean,
 					Length:    0,
 				},
@@ -93,8 +93,8 @@ func TestRandomBoolTransformer_Transform(t *testing.T) {
 				{
 					Idx:       0,
 					Name:      "data",
-					TypeName:  mysqldbmsdriver.TypeBoolean,
-					TypeID:    mysqldbmsdriver.TypeIDBoolean,
+					TypeName:  coretest.TypeBool,
+					TypeID:    coretest.TypeIDBool,
 					TypeClass: core.TypeClassBoolean,
 					Length:    0,
 				},

@@ -20,8 +20,8 @@ import (
 	"testing"
 
 	core "github.com/greenmaskio/greenmask/pkg/common/core"
+	coretest "github.com/greenmaskio/greenmask/pkg/common/coretest"
 	"github.com/greenmaskio/greenmask/pkg/common/validationcollector"
-	mysqldbmsdriver "github.com/greenmaskio/greenmask/pkg/mysql/dbmsdriver"
 	"github.com/rs/zerolog/log"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -51,8 +51,8 @@ func TestNoiseIntTransformer_Transform(t *testing.T) {
 				{
 					Idx:       0,
 					Name:      "data",
-					TypeName:  mysqldbmsdriver.TypeInt,
-					TypeID:    mysqldbmsdriver.TypeIDInt,
+					TypeName:  coretest.TypeInt4,
+					TypeID:    coretest.TypeIDInt4,
 					TypeClass: core.TypeClassInt,
 					Size:      8,
 				},
@@ -81,8 +81,8 @@ func TestNoiseIntTransformer_Transform(t *testing.T) {
 				{
 					Idx:       0,
 					Name:      "data",
-					TypeName:  mysqldbmsdriver.TypeInt,
-					TypeID:    mysqldbmsdriver.TypeIDInt,
+					TypeName:  coretest.TypeInt4,
+					TypeID:    coretest.TypeIDInt4,
 					TypeClass: core.TypeClassInt,
 					Size:      8,
 				},
@@ -117,24 +117,24 @@ func TestNoiseIntTransformer_Transform(t *testing.T) {
 				{
 					Idx:       0,
 					Name:      "data",
-					TypeName:  mysqldbmsdriver.TypeInt,
-					TypeID:    mysqldbmsdriver.TypeIDInt,
+					TypeName:  coretest.TypeInt4,
+					TypeID:    coretest.TypeIDInt4,
 					TypeClass: core.TypeClassInt,
 					Size:      8,
 				},
 				{
 					Idx:       1,
 					Name:      "min_val",
-					TypeName:  mysqldbmsdriver.TypeInt,
-					TypeID:    mysqldbmsdriver.TypeIDInt,
+					TypeName:  coretest.TypeInt4,
+					TypeID:    coretest.TypeIDInt4,
 					TypeClass: core.TypeClassInt,
 					Size:      8,
 				},
 				{
 					Idx:       2,
 					Name:      "max_val",
-					TypeName:  mysqldbmsdriver.TypeInt,
-					TypeID:    mysqldbmsdriver.TypeIDInt,
+					TypeName:  coretest.TypeInt4,
+					TypeID:    coretest.TypeIDInt4,
 					TypeClass: core.TypeClassInt,
 					Size:      8,
 				},
@@ -176,24 +176,24 @@ func TestNoiseIntTransformer_Transform(t *testing.T) {
 				{
 					Idx:       0,
 					Name:      "data",
-					TypeName:  mysqldbmsdriver.TypeInt,
-					TypeID:    mysqldbmsdriver.TypeIDInt,
+					TypeName:  coretest.TypeInt4,
+					TypeID:    coretest.TypeIDInt4,
 					TypeClass: core.TypeClassInt,
 					Size:      8,
 				},
 				{
 					Idx:       1,
 					Name:      "min_val",
-					TypeName:  mysqldbmsdriver.TypeInt,
-					TypeID:    mysqldbmsdriver.TypeIDInt,
+					TypeName:  coretest.TypeInt4,
+					TypeID:    coretest.TypeIDInt4,
 					TypeClass: core.TypeClassInt,
 					Size:      8,
 				},
 				{
 					Idx:       2,
 					Name:      "max_val",
-					TypeName:  mysqldbmsdriver.TypeInt,
-					TypeID:    mysqldbmsdriver.TypeIDInt,
+					TypeName:  coretest.TypeInt4,
+					TypeID:    coretest.TypeIDInt4,
 					TypeClass: core.TypeClassInt,
 					Size:      8,
 				},
@@ -230,24 +230,24 @@ func TestNoiseIntTransformer_Transform(t *testing.T) {
 				{
 					Idx:       0,
 					Name:      "data",
-					TypeName:  mysqldbmsdriver.TypeInt,
-					TypeID:    mysqldbmsdriver.TypeIDInt,
+					TypeName:  coretest.TypeInt4,
+					TypeID:    coretest.TypeIDInt4,
 					TypeClass: core.TypeClassInt,
 					Size:      8,
 				},
 				{
 					Idx:       1,
 					Name:      "min_val",
-					TypeName:  mysqldbmsdriver.TypeInt,
-					TypeID:    mysqldbmsdriver.TypeIDInt,
+					TypeName:  coretest.TypeInt4,
+					TypeID:    coretest.TypeIDInt4,
 					TypeClass: core.TypeClassInt,
 					Size:      8,
 				},
 				{
 					Idx:       2,
 					Name:      "max_val",
-					TypeName:  mysqldbmsdriver.TypeInt,
-					TypeID:    mysqldbmsdriver.TypeIDInt,
+					TypeName:  coretest.TypeInt4,
+					TypeID:    coretest.TypeIDInt4,
 					TypeClass: core.TypeClassInt,
 					Size:      8,
 				},

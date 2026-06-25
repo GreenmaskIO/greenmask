@@ -19,10 +19,10 @@ import (
 	"testing"
 
 	core "github.com/greenmaskio/greenmask/pkg/common/core"
+	coretest "github.com/greenmaskio/greenmask/pkg/common/coretest"
 	"github.com/greenmaskio/greenmask/pkg/common/transformers/generators/transformers"
 	"github.com/greenmaskio/greenmask/pkg/common/utils"
 	"github.com/greenmaskio/greenmask/pkg/common/validationcollector"
-	mysqldbmsdriver "github.com/greenmaskio/greenmask/pkg/mysql/dbmsdriver"
 	"github.com/rs/zerolog/log"
 	"github.com/stretchr/testify/require"
 )
@@ -44,9 +44,9 @@ func TestRandomCompanyTransformer_Transform(t *testing.T) {
 				{
 					Idx:       0,
 					Name:      "data",
-					TypeName:  mysqldbmsdriver.TypeText,
+					TypeName:  coretest.TypeText,
 					TypeClass: core.TypeClassText,
-					TypeID:    mysqldbmsdriver.TypeIDText,
+					TypeID:    coretest.TypeIDText,
 					Length:    0,
 				},
 			},
@@ -78,9 +78,9 @@ func TestRandomCompanyTransformer_Transform(t *testing.T) {
 				{
 					Idx:       0,
 					Name:      "data",
-					TypeName:  mysqldbmsdriver.TypeText,
+					TypeName:  coretest.TypeText,
 					TypeClass: core.TypeClassText,
-					TypeID:    mysqldbmsdriver.TypeIDText,
+					TypeID:    coretest.TypeIDText,
 					Length:    0,
 				},
 			},
@@ -113,9 +113,9 @@ func TestRandomCompanyTransformer_Transform(t *testing.T) {
 				{
 					Idx:       0,
 					Name:      "data",
-					TypeName:  mysqldbmsdriver.TypeText,
+					TypeName:  coretest.TypeText,
 					TypeClass: core.TypeClassText,
-					TypeID:    mysqldbmsdriver.TypeIDText,
+					TypeID:    coretest.TypeIDText,
 					Length:    0,
 				},
 			},
@@ -148,17 +148,17 @@ func TestRandomCompanyTransformer_Transform(t *testing.T) {
 				{
 					Idx:       0,
 					Name:      "name",
-					TypeName:  mysqldbmsdriver.TypeText,
+					TypeName:  coretest.TypeText,
 					TypeClass: core.TypeClassText,
-					TypeID:    mysqldbmsdriver.TypeIDText,
+					TypeID:    coretest.TypeIDText,
 					Length:    0,
 				},
 				{
 					Idx:       1,
 					Name:      "suffix",
-					TypeName:  mysqldbmsdriver.TypeText,
+					TypeName:  coretest.TypeText,
 					TypeClass: core.TypeClassText,
-					TypeID:    mysqldbmsdriver.TypeIDText,
+					TypeID:    coretest.TypeIDText,
 					Length:    0,
 				},
 			},

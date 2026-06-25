@@ -19,9 +19,9 @@ import (
 	"testing"
 
 	core "github.com/greenmaskio/greenmask/pkg/common/core"
+	coretest "github.com/greenmaskio/greenmask/pkg/common/coretest"
 	commonutils "github.com/greenmaskio/greenmask/pkg/common/utils"
 	"github.com/greenmaskio/greenmask/pkg/common/validationcollector"
-	mysqldbmsdriver "github.com/greenmaskio/greenmask/pkg/mysql/dbmsdriver"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -43,8 +43,8 @@ func TestRandomChoiceTransformer_Transform(t *testing.T) {
 				{
 					Idx:       0,
 					Name:      "data",
-					TypeName:  mysqldbmsdriver.TypeDate,
-					TypeID:    mysqldbmsdriver.TypeIDDate,
+					TypeName:  coretest.TypeDate,
+					TypeID:    coretest.TypeIDDate,
 					TypeClass: core.TypeClassDateTime,
 					Length:    0,
 				},
@@ -71,9 +71,9 @@ func TestRandomChoiceTransformer_Transform(t *testing.T) {
 				{
 					Idx:       0,
 					Name:      "data",
-					TypeName:  mysqldbmsdriver.TypeText,
+					TypeName:  coretest.TypeText,
 					TypeClass: core.TypeClassText,
-					TypeID:    mysqldbmsdriver.TypeIDText,
+					TypeID:    coretest.TypeIDText,
 					Length:    0,
 				},
 			},
@@ -136,8 +136,8 @@ func TestNewRandomChoiceTransformer(t *testing.T) {
 			{
 				Idx:      0,
 				Name:     "data",
-				TypeName: mysqldbmsdriver.TypeDate,
-				TypeID:   mysqldbmsdriver.TypeIDDate,
+				TypeName: coretest.TypeDate,
+				TypeID:   coretest.TypeIDDate,
 				Length:   0,
 			},
 		}

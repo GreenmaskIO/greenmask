@@ -22,12 +22,12 @@ import (
 	"github.com/stretchr/testify/require"
 
 	core "github.com/greenmaskio/greenmask/pkg/common/core"
+	"github.com/greenmaskio/greenmask/pkg/common/coretest"
 	commonrecord "github.com/greenmaskio/greenmask/pkg/common/record"
 	commontabledriver "github.com/greenmaskio/greenmask/pkg/common/tabledriver"
 	"github.com/greenmaskio/greenmask/pkg/common/transformers/parameters"
 	transformerutils "github.com/greenmaskio/greenmask/pkg/common/transformers/utils"
 	"github.com/greenmaskio/greenmask/pkg/common/validationcollector"
-	mysqldbmsdriver "github.com/greenmaskio/greenmask/pkg/mysql/dbmsdriver"
 )
 
 type TransformerTestEnvReal struct {
@@ -41,7 +41,7 @@ type TransformerTestEnvReal struct {
 	New                    transformerutils.NewTransformerFunc
 	t                      *testing.T
 	TableDriverReal        *commontabledriver.TableDriver
-	DBMSDriverReal         *mysqldbmsdriver.Driver
+	DBMSDriverReal         *coretest.Driver
 	Table                  core.Table
 	Recorder               *commonrecord.Record
 	Row                    *DummyRow
@@ -81,7 +81,7 @@ func NewTransformerTestEnvReal(
 		Columns: columns,
 	}
 
-	driver := mysqldbmsdriver.New()
+	driver := coretest.New()
 	tableDriver, err := commontabledriver.New(ctx, driver, &table, nil)
 	require.NoError(t, err)
 	require.Empty(t, vc.GetWarnings())

@@ -20,11 +20,11 @@ import (
 	"testing"
 
 	core "github.com/greenmaskio/greenmask/pkg/common/core"
+	coretest "github.com/greenmaskio/greenmask/pkg/common/coretest"
 	mocks2 "github.com/greenmaskio/greenmask/pkg/common/mocks"
 	commonparameters "github.com/greenmaskio/greenmask/pkg/common/transformers/parameters"
 	"github.com/greenmaskio/greenmask/pkg/common/utils"
 	"github.com/greenmaskio/greenmask/pkg/common/validationcollector"
-	mysqldbmsdriver "github.com/greenmaskio/greenmask/pkg/mysql/dbmsdriver"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -37,8 +37,8 @@ func TestNewReplaceTransformer(t *testing.T) {
 		column := core.Column{
 			Idx:       1,
 			Name:      "id",
-			TypeName:  mysqldbmsdriver.TypeInt,
-			TypeID:    mysqldbmsdriver.TypeIDInt,
+			TypeName:  coretest.TypeInt4,
+			TypeID:    coretest.TypeIDInt4,
 			TypeClass: core.TypeClassInt,
 		}
 		tableDriver := mocks2.NewTableDriverMock()
@@ -113,8 +113,8 @@ func TestNewReplaceTransformer(t *testing.T) {
 		column := core.Column{
 			Idx:       1,
 			Name:      "id",
-			TypeName:  mysqldbmsdriver.TypeInt,
-			TypeID:    mysqldbmsdriver.TypeIDInt,
+			TypeName:  coretest.TypeInt4,
+			TypeID:    coretest.TypeIDInt4,
 			TypeClass: core.TypeClassInt,
 		}
 		tableDriver := mocks2.NewTableDriverMock()
@@ -194,8 +194,8 @@ func TestNewReplaceTransformer(t *testing.T) {
 		column := core.Column{
 			Idx:       1,
 			Name:      "id",
-			TypeName:  mysqldbmsdriver.TypeInt,
-			TypeID:    mysqldbmsdriver.TypeIDInt,
+			TypeName:  coretest.TypeInt4,
+			TypeID:    coretest.TypeIDInt4,
 			TypeClass: core.TypeClassInt,
 		}
 		tableDriver := mocks2.NewTableDriverMock()
@@ -261,8 +261,8 @@ func TestNewReplaceTransformer(t *testing.T) {
 		column := core.Column{
 			Idx:       1,
 			Name:      "id",
-			TypeName:  mysqldbmsdriver.TypeInt,
-			TypeID:    mysqldbmsdriver.TypeIDInt,
+			TypeName:  coretest.TypeInt4,
+			TypeID:    coretest.TypeIDInt4,
 			TypeClass: core.TypeClassInt,
 		}
 		tableDriver := mocks2.NewTableDriverMock()
@@ -358,8 +358,8 @@ func newTestReplaceTransformer(t *testing.T, opt ...func(*replaceTestSetup)) *re
 	column := core.Column{
 		Idx:      1,
 		Name:     "id",
-		TypeName: "int",
-		TypeID:   2,
+		TypeName: coretest.TypeInt4,
+		TypeID:   coretest.TypeIDInt4,
 	}
 
 	setup := &replaceTestSetup{
@@ -398,8 +398,8 @@ func TestReplaceTransformer_Transform(t *testing.T) {
 			withColumns(core.Column{
 				Idx:      1,
 				Name:     "id",
-				TypeName: "int",
-				TypeID:   2,
+				TypeName: coretest.TypeInt4,
+				TypeID:   coretest.TypeIDInt4,
 			}),
 			withParameter(ParameterNameColumn, func(param *mocks2.ParametrizerMock, env *transformerTestEnv) {
 				param.On("Scan", mock.Anything).

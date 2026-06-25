@@ -19,6 +19,7 @@ import (
 	"testing"
 
 	core "github.com/greenmaskio/greenmask/pkg/common/core"
+	"github.com/greenmaskio/greenmask/pkg/common/coretest"
 	mocks2 "github.com/greenmaskio/greenmask/pkg/common/mocks"
 	commonparameters "github.com/greenmaskio/greenmask/pkg/common/transformers/parameters"
 	"github.com/greenmaskio/greenmask/pkg/common/utils"
@@ -35,8 +36,8 @@ func TestNewDictTransformer(t *testing.T) {
 		column := core.Column{
 			Idx:      1,
 			Name:     "id",
-			TypeName: "int",
-			TypeID:   2,
+			TypeName: coretest.TypeInt4,
+			TypeID:   coretest.TypeIDInt4,
 		}
 		tableDriver := mocks2.NewTableDriverMock()
 		columnParameter := mocks2.NewParametrizerMock()
@@ -119,8 +120,8 @@ func TestNewDictTransformer(t *testing.T) {
 		column := core.Column{
 			Idx:      1,
 			Name:     "id",
-			TypeName: "int",
-			TypeID:   2,
+			TypeName: coretest.TypeInt4,
+			TypeID:   coretest.TypeIDInt4,
 		}
 		tableDriver := mocks2.NewTableDriverMock()
 		columnParameter := mocks2.NewParametrizerMock()
@@ -205,8 +206,8 @@ func TestDictTransformer_Transform(t *testing.T) {
 			withColumns(core.Column{
 				Idx:      0,
 				Name:     "id",
-				TypeName: "int",
-				TypeID:   23,
+				TypeName: coretest.TypeInt4,
+				TypeID:   coretest.TypeIDInt4,
 			}),
 			withParameter(ParameterNameColumn, func(param *mocks2.ParametrizerMock, env *transformerTestEnv) {
 				param.On("Scan", mock.Anything).
@@ -264,8 +265,8 @@ func TestDictTransformer_Transform(t *testing.T) {
 			withColumns(core.Column{
 				Idx:      0,
 				Name:     "id",
-				TypeName: "int",
-				TypeID:   23,
+				TypeName: coretest.TypeInt4,
+				TypeID:   coretest.TypeIDInt4,
 			}),
 			withParameter(ParameterNameColumn, func(param *mocks2.ParametrizerMock, env *transformerTestEnv) {
 				param.On("Scan", mock.Anything).
@@ -330,8 +331,8 @@ func TestDictTransformer_Transform(t *testing.T) {
 			withColumns(core.Column{
 				Idx:      0,
 				Name:     "id",
-				TypeName: "int",
-				TypeID:   23,
+				TypeName: coretest.TypeInt4,
+				TypeID:   coretest.TypeIDInt4,
 			}),
 			withParameter(ParameterNameColumn, func(param *mocks2.ParametrizerMock, env *transformerTestEnv) {
 				param.On("Scan", mock.Anything).
@@ -396,8 +397,8 @@ func TestDictTransformer_Transform(t *testing.T) {
 			withColumns(core.Column{
 				Idx:      0,
 				Name:     "id",
-				TypeName: "int",
-				TypeID:   23,
+				TypeName: coretest.TypeInt4,
+				TypeID:   coretest.TypeIDInt4,
 			}),
 			withParameter(ParameterNameColumn, func(param *mocks2.ParametrizerMock, env *transformerTestEnv) {
 				param.On("Scan", mock.Anything).

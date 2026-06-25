@@ -19,9 +19,9 @@ import (
 	"testing"
 
 	core "github.com/greenmaskio/greenmask/pkg/common/core"
+	coretest "github.com/greenmaskio/greenmask/pkg/common/coretest"
 	commonutils "github.com/greenmaskio/greenmask/pkg/common/utils"
 	"github.com/greenmaskio/greenmask/pkg/common/validationcollector"
-	mysqldbmsdriver "github.com/greenmaskio/greenmask/pkg/mysql/dbmsdriver"
 	"github.com/stretchr/testify/require"
 )
 
@@ -41,8 +41,8 @@ func TestTemplateRecordTransformer_Transform(t *testing.T) {
 				{
 					Idx:      0,
 					Name:     "data",
-					TypeName: mysqldbmsdriver.TypeDateTime,
-					TypeID:   mysqldbmsdriver.TypeIDDateTime,
+					TypeName: coretest.TypeTimestamp,
+					TypeID:   coretest.TypeIDTimestamp,
 					Length:   0,
 					Size:     2,
 				},
@@ -71,9 +71,9 @@ func TestTemplateRecordTransformer_Transform(t *testing.T) {
 				{
 					Idx:       0,
 					Name:      "data",
-					TypeName:  mysqldbmsdriver.TypeText,
+					TypeName:  coretest.TypeText,
 					TypeClass: core.TypeClassText,
-					TypeID:    mysqldbmsdriver.TypeIDText,
+					TypeID:    coretest.TypeIDText,
 					Length:    0,
 				},
 			},

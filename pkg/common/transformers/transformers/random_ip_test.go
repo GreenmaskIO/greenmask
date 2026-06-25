@@ -20,9 +20,9 @@ import (
 	"testing"
 
 	core "github.com/greenmaskio/greenmask/pkg/common/core"
+	coretest "github.com/greenmaskio/greenmask/pkg/common/coretest"
 	"github.com/greenmaskio/greenmask/pkg/common/utils"
 	"github.com/greenmaskio/greenmask/pkg/common/validationcollector"
-	mysqldbmsdriver "github.com/greenmaskio/greenmask/pkg/mysql/dbmsdriver"
 	"github.com/stretchr/testify/require"
 )
 
@@ -56,16 +56,16 @@ func TestRandomIP_Transform(t *testing.T) {
 				{
 					Idx:       0,
 					Name:      "data",
-					TypeName:  mysqldbmsdriver.TypeText,
-					TypeID:    mysqldbmsdriver.TypeIDText,
+					TypeName:  coretest.TypeText,
+					TypeID:    coretest.TypeIDText,
 					TypeClass: core.TypeClassText,
 					Length:    -1,
 				},
 				{
 					Idx:      1,
 					Name:     "subnet",
-					TypeName: mysqldbmsdriver.TypeText,
-					TypeID:   mysqldbmsdriver.TypeIDText,
+					TypeName: coretest.TypeText,
+					TypeID:   coretest.TypeIDText,
 					Length:   -1,
 				},
 			},
@@ -93,8 +93,8 @@ func TestRandomIP_Transform(t *testing.T) {
 				{
 					Idx:       0,
 					Name:      "data",
-					TypeName:  mysqldbmsdriver.TypeText,
-					TypeID:    mysqldbmsdriver.TypeIDText,
+					TypeName:  coretest.TypeText,
+					TypeID:    coretest.TypeIDText,
 					TypeClass: core.TypeClassText,
 					Length:    4,
 				},
@@ -123,8 +123,8 @@ func TestRandomIP_Transform(t *testing.T) {
 				{
 					Idx:       0,
 					Name:      "data",
-					TypeName:  mysqldbmsdriver.TypeText,
-					TypeID:    mysqldbmsdriver.TypeIDText,
+					TypeName:  coretest.TypeText,
+					TypeID:    coretest.TypeIDText,
 					TypeClass: core.TypeClassText,
 					Length:    4,
 				},

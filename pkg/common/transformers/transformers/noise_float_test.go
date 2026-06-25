@@ -21,8 +21,8 @@ import (
 	"testing"
 
 	core "github.com/greenmaskio/greenmask/pkg/common/core"
+	coretest "github.com/greenmaskio/greenmask/pkg/common/coretest"
 	"github.com/greenmaskio/greenmask/pkg/common/validationcollector"
-	mysqldbmsdriver "github.com/greenmaskio/greenmask/pkg/mysql/dbmsdriver"
 	"github.com/stretchr/testify/require"
 )
 
@@ -50,8 +50,8 @@ func TestNoiseFloatTransformer_Transform(t *testing.T) {
 				{
 					Idx:       0,
 					Name:      "data",
-					TypeName:  mysqldbmsdriver.TypeFloat,
-					TypeID:    mysqldbmsdriver.TypeIDFloat,
+					TypeName:  coretest.TypeFloat8,
+					TypeID:    coretest.TypeIDFloat8,
 					TypeClass: core.TypeClassFloat,
 					Length:    0,
 					Size:      4,
@@ -82,8 +82,8 @@ func TestNoiseFloatTransformer_Transform(t *testing.T) {
 				{
 					Idx:       0,
 					Name:      "data",
-					TypeName:  mysqldbmsdriver.TypeFloat,
-					TypeID:    mysqldbmsdriver.TypeIDFloat,
+					TypeName:  coretest.TypeFloat8,
+					TypeID:    coretest.TypeIDFloat8,
 					TypeClass: core.TypeClassFloat,
 					Length:    0,
 					Size:      8,
@@ -115,8 +115,8 @@ func TestNoiseFloatTransformer_Transform(t *testing.T) {
 				{
 					Idx:       0,
 					Name:      "data",
-					TypeName:  mysqldbmsdriver.TypeFloat,
-					TypeID:    mysqldbmsdriver.TypeIDFloat,
+					TypeName:  coretest.TypeFloat8,
+					TypeID:    coretest.TypeIDFloat8,
 					TypeClass: core.TypeClassFloat,
 					Length:    0,
 					Size:      8,
@@ -146,8 +146,8 @@ func TestNoiseFloatTransformer_Transform(t *testing.T) {
 				{
 					Idx:       0,
 					Name:      "data",
-					TypeName:  mysqldbmsdriver.TypeFloat,
-					TypeID:    mysqldbmsdriver.TypeIDFloat,
+					TypeName:  coretest.TypeFloat8,
+					TypeID:    coretest.TypeIDFloat8,
 					TypeClass: core.TypeClassFloat,
 					Length:    0,
 					Size:      8,
@@ -176,8 +176,8 @@ func TestNoiseFloatTransformer_Transform(t *testing.T) {
 				{
 					Idx:       0,
 					Name:      "data",
-					TypeName:  mysqldbmsdriver.TypeFloat,
-					TypeID:    mysqldbmsdriver.TypeIDFloat,
+					TypeName:  coretest.TypeFloat8,
+					TypeID:    coretest.TypeIDFloat8,
 					TypeClass: core.TypeClassFloat,
 					Length:    0,
 					Size:      8,
@@ -207,8 +207,8 @@ func TestNoiseFloatTransformer_Transform(t *testing.T) {
 				{
 					Idx:       0,
 					Name:      "data",
-					TypeName:  mysqldbmsdriver.TypeFloat,
-					TypeID:    mysqldbmsdriver.TypeIDFloat,
+					TypeName:  coretest.TypeFloat8,
+					TypeID:    coretest.TypeIDFloat8,
 					TypeClass: core.TypeClassFloat,
 					Size:      8,
 				},
@@ -238,8 +238,8 @@ func TestNoiseFloatTransformer_Transform(t *testing.T) {
 				{
 					Idx:       0,
 					Name:      "data",
-					TypeName:  mysqldbmsdriver.TypeFloat,
-					TypeID:    mysqldbmsdriver.TypeIDFloat,
+					TypeName:  coretest.TypeFloat8,
+					TypeID:    coretest.TypeIDFloat8,
 					TypeClass: core.TypeClassFloat,
 					Size:      8,
 				},
@@ -278,24 +278,24 @@ func TestNoiseFloatTransformer_Transform(t *testing.T) {
 				{
 					Idx:       0,
 					Name:      "data",
-					TypeName:  mysqldbmsdriver.TypeFloat,
-					TypeID:    mysqldbmsdriver.TypeIDFloat,
+					TypeName:  coretest.TypeFloat8,
+					TypeID:    coretest.TypeIDFloat8,
 					TypeClass: core.TypeClassFloat,
 					Size:      8,
 				},
 				{
 					Idx:       1,
 					Name:      "min_col",
-					TypeName:  mysqldbmsdriver.TypeFloat,
-					TypeID:    mysqldbmsdriver.TypeIDFloat,
+					TypeName:  coretest.TypeFloat8,
+					TypeID:    coretest.TypeIDFloat8,
 					TypeClass: core.TypeClassFloat,
 					Size:      8,
 				},
 				{
 					Idx:       2,
 					Name:      "max_col",
-					TypeName:  mysqldbmsdriver.TypeFloat,
-					TypeID:    mysqldbmsdriver.TypeIDFloat,
+					TypeName:  coretest.TypeFloat8,
+					TypeID:    coretest.TypeIDFloat8,
 					TypeClass: core.TypeClassFloat,
 					Size:      8,
 				},
@@ -332,24 +332,24 @@ func TestNoiseFloatTransformer_Transform(t *testing.T) {
 				{
 					Idx:       0,
 					Name:      "data",
-					TypeName:  mysqldbmsdriver.TypeFloat,
-					TypeID:    mysqldbmsdriver.TypeIDFloat,
+					TypeName:  coretest.TypeFloat8,
+					TypeID:    coretest.TypeIDFloat8,
 					TypeClass: core.TypeClassFloat,
 					Size:      8,
 				},
 				{
 					Idx:       1,
 					Name:      "min_col",
-					TypeName:  mysqldbmsdriver.TypeFloat,
-					TypeID:    mysqldbmsdriver.TypeIDFloat,
+					TypeName:  coretest.TypeFloat8,
+					TypeID:    coretest.TypeIDFloat8,
 					TypeClass: core.TypeClassFloat,
 					Size:      8,
 				},
 				{
 					Idx:       2,
 					Name:      "max_col",
-					TypeName:  mysqldbmsdriver.TypeFloat,
-					TypeID:    mysqldbmsdriver.TypeIDFloat,
+					TypeName:  coretest.TypeFloat8,
+					TypeID:    coretest.TypeIDFloat8,
 					TypeClass: core.TypeClassFloat,
 					Size:      8,
 				},
@@ -386,24 +386,24 @@ func TestNoiseFloatTransformer_Transform(t *testing.T) {
 				{
 					Idx:       0,
 					Name:      "data",
-					TypeName:  mysqldbmsdriver.TypeFloat,
-					TypeID:    mysqldbmsdriver.TypeIDFloat,
+					TypeName:  coretest.TypeFloat8,
+					TypeID:    coretest.TypeIDFloat8,
 					TypeClass: core.TypeClassFloat,
 					Size:      8,
 				},
 				{
 					Idx:       1,
 					Name:      "min_col",
-					TypeName:  mysqldbmsdriver.TypeFloat,
-					TypeID:    mysqldbmsdriver.TypeIDFloat,
+					TypeName:  coretest.TypeFloat8,
+					TypeID:    coretest.TypeIDFloat8,
 					TypeClass: core.TypeClassFloat,
 					Size:      8,
 				},
 				{
 					Idx:       2,
 					Name:      "max_col",
-					TypeName:  mysqldbmsdriver.TypeFloat,
-					TypeID:    mysqldbmsdriver.TypeIDFloat,
+					TypeName:  coretest.TypeFloat8,
+					TypeID:    coretest.TypeIDFloat8,
 					TypeClass: core.TypeClassFloat,
 					Size:      8,
 				},

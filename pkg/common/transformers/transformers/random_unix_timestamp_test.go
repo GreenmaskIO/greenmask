@@ -19,9 +19,9 @@ import (
 	"testing"
 
 	core "github.com/greenmaskio/greenmask/pkg/common/core"
+	coretest "github.com/greenmaskio/greenmask/pkg/common/coretest"
 	commonutils "github.com/greenmaskio/greenmask/pkg/common/utils"
 	"github.com/greenmaskio/greenmask/pkg/common/validationcollector"
-	mysqldbmsdriver "github.com/greenmaskio/greenmask/pkg/mysql/dbmsdriver"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -42,8 +42,8 @@ func TestUnixTimestampTransformer_Transform(t *testing.T) {
 				{
 					Idx:       0,
 					Name:      "data",
-					TypeName:  mysqldbmsdriver.TypeBigInt,
-					TypeID:    mysqldbmsdriver.TypeIDBigInt,
+					TypeName:  coretest.TypeInt8,
+					TypeID:    coretest.TypeIDInt8,
 					TypeClass: core.TypeClassInt,
 					Length:    0,
 					Size:      8,
@@ -75,8 +75,8 @@ func TestUnixTimestampTransformer_Transform(t *testing.T) {
 				{
 					Idx:       0,
 					Name:      "data",
-					TypeName:  mysqldbmsdriver.TypeBigInt,
-					TypeID:    mysqldbmsdriver.TypeIDBigInt,
+					TypeName:  coretest.TypeInt8,
+					TypeID:    coretest.TypeIDInt8,
 					TypeClass: core.TypeClassInt,
 					Length:    0,
 					Size:      8,
@@ -108,8 +108,8 @@ func TestUnixTimestampTransformer_Transform(t *testing.T) {
 				{
 					Idx:       0,
 					Name:      "data",
-					TypeName:  mysqldbmsdriver.TypeBigInt,
-					TypeID:    mysqldbmsdriver.TypeIDBigInt,
+					TypeName:  coretest.TypeInt8,
+					TypeID:    coretest.TypeIDInt8,
 					TypeClass: core.TypeClassInt,
 					Length:    0,
 					Size:      8,
@@ -141,8 +141,8 @@ func TestUnixTimestampTransformer_Transform(t *testing.T) {
 				{
 					Idx:       0,
 					Name:      "data",
-					TypeName:  mysqldbmsdriver.TypeBigInt,
-					TypeID:    mysqldbmsdriver.TypeIDBigInt,
+					TypeName:  coretest.TypeInt8,
+					TypeID:    coretest.TypeIDInt8,
 					TypeClass: core.TypeClassInt,
 					Length:    0,
 					Size:      8,
@@ -174,8 +174,8 @@ func TestUnixTimestampTransformer_Transform(t *testing.T) {
 				{
 					Idx:       0,
 					Name:      "data",
-					TypeName:  mysqldbmsdriver.TypeBigInt,
-					TypeID:    mysqldbmsdriver.TypeIDBigInt,
+					TypeName:  coretest.TypeInt8,
+					TypeID:    coretest.TypeIDInt8,
 					TypeClass: core.TypeClassInt,
 					Length:    0,
 					Size:      8,
@@ -215,8 +215,8 @@ func TestUnixTimestampTransformer_Transform(t *testing.T) {
 				{
 					Idx:       0,
 					Name:      "data",
-					TypeName:  mysqldbmsdriver.TypeBigInt,
-					TypeID:    mysqldbmsdriver.TypeIDBigInt,
+					TypeName:  coretest.TypeInt8,
+					TypeID:    coretest.TypeIDInt8,
 					TypeClass: core.TypeClassInt,
 					Length:    0,
 					Size:      8,
@@ -247,8 +247,8 @@ func TestUnixTimestampTransformer_Transform(t *testing.T) {
 				{
 					Idx:       0,
 					Name:      "data",
-					TypeName:  mysqldbmsdriver.TypeBigInt,
-					TypeID:    mysqldbmsdriver.TypeIDBigInt,
+					TypeName:  coretest.TypeInt8,
+					TypeID:    coretest.TypeIDInt8,
 					TypeClass: core.TypeClassInt,
 					Length:    0,
 					Size:      8,
@@ -299,8 +299,8 @@ func TestUnixTimestampTransformer_Transform(t *testing.T) {
 				{
 					Idx:       0,
 					Name:      "data",
-					TypeName:  mysqldbmsdriver.TypeBigInt,
-					TypeID:    mysqldbmsdriver.TypeIDBigInt,
+					TypeName:  coretest.TypeInt8,
+					TypeID:    coretest.TypeIDInt8,
 					TypeClass: core.TypeClassInt,
 					Length:    0,
 					Size:      8,
@@ -308,8 +308,8 @@ func TestUnixTimestampTransformer_Transform(t *testing.T) {
 				{
 					Idx:       1,
 					Name:      "min_val",
-					TypeName:  mysqldbmsdriver.TypeBigInt,
-					TypeID:    mysqldbmsdriver.TypeIDBigInt,
+					TypeName:  coretest.TypeInt8,
+					TypeID:    coretest.TypeIDInt8,
 					TypeClass: core.TypeClassInt,
 					Length:    0,
 					Size:      8,
@@ -317,8 +317,8 @@ func TestUnixTimestampTransformer_Transform(t *testing.T) {
 				{
 					Idx:       2,
 					Name:      "max_val",
-					TypeName:  mysqldbmsdriver.TypeBigInt,
-					TypeID:    mysqldbmsdriver.TypeIDBigInt,
+					TypeName:  coretest.TypeInt8,
+					TypeID:    coretest.TypeIDInt8,
 					TypeClass: core.TypeClassInt,
 					Length:    0,
 					Size:      8,

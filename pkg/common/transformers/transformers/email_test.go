@@ -20,11 +20,11 @@ import (
 	"testing"
 
 	core "github.com/greenmaskio/greenmask/pkg/common/core"
+	coretest "github.com/greenmaskio/greenmask/pkg/common/coretest"
 	mocks2 "github.com/greenmaskio/greenmask/pkg/common/mocks"
 	commonparameters "github.com/greenmaskio/greenmask/pkg/common/transformers/parameters"
 	"github.com/greenmaskio/greenmask/pkg/common/utils"
 	"github.com/greenmaskio/greenmask/pkg/common/validationcollector"
-	mysqldbmsdriver "github.com/greenmaskio/greenmask/pkg/mysql/dbmsdriver"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -37,8 +37,8 @@ func TestNewEmailTransformer(t *testing.T) {
 		column := core.Column{
 			Idx:      1,
 			Name:     "id",
-			TypeName: "text",
-			TypeID:   2,
+			TypeName: coretest.TypeText,
+			TypeID:   coretest.TypeIDText,
 		}
 		tableDriver := mocks2.NewTableDriverMock()
 		columnParameter := mocks2.NewParametrizerMock()
@@ -193,7 +193,7 @@ func TestRandomEmailTransformer_Transform(t *testing.T) {
 					Name:      "data",
 					TypeName:  "text",
 					TypeClass: core.TypeClassText,
-					TypeID:    23,
+					TypeID:    coretest.TypeIDText,
 				},
 			},
 		},
@@ -223,7 +223,7 @@ func TestRandomEmailTransformer_Transform(t *testing.T) {
 					Name:      "data",
 					TypeName:  "text",
 					TypeClass: core.TypeClassText,
-					TypeID:    23,
+					TypeID:    coretest.TypeIDText,
 				},
 			},
 		},
@@ -242,7 +242,7 @@ func TestRandomEmailTransformer_Transform(t *testing.T) {
 					Name:      "data",
 					TypeName:  "text",
 					TypeClass: core.TypeClassText,
-					TypeID:    23,
+					TypeID:    coretest.TypeIDText,
 				},
 			},
 		},
@@ -263,7 +263,7 @@ func TestRandomEmailTransformer_Transform(t *testing.T) {
 					Name:      "data",
 					TypeName:  "text",
 					TypeClass: core.TypeClassText,
-					TypeID:    23,
+					TypeID:    coretest.TypeIDText,
 				},
 			},
 		},
@@ -286,7 +286,7 @@ func TestRandomEmailTransformer_Transform(t *testing.T) {
 					Name:      "data",
 					TypeName:  "text",
 					TypeClass: core.TypeClassText,
-					TypeID:    23,
+					TypeID:    coretest.TypeIDText,
 				},
 			},
 		},
@@ -311,7 +311,7 @@ func TestRandomEmailTransformer_Transform(t *testing.T) {
 					Name:      "data",
 					TypeName:  "text",
 					TypeClass: core.TypeClassText,
-					TypeID:    23,
+					TypeID:    coretest.TypeIDText,
 				},
 			},
 		},
@@ -335,7 +335,7 @@ func TestRandomEmailTransformer_Transform(t *testing.T) {
 					Name:      "data",
 					TypeName:  "text",
 					TypeClass: core.TypeClassText,
-					TypeID:    23,
+					TypeID:    coretest.TypeIDText,
 				},
 			},
 		},
@@ -359,7 +359,7 @@ func TestRandomEmailTransformer_Transform(t *testing.T) {
 					Name:      "data",
 					TypeName:  "text",
 					TypeClass: core.TypeClassText,
-					TypeID:    23,
+					TypeID:    coretest.TypeIDText,
 				},
 			},
 		},
@@ -382,7 +382,7 @@ func TestRandomEmailTransformer_Transform(t *testing.T) {
 					Name:      "data",
 					TypeName:  "text",
 					TypeClass: core.TypeClassText,
-					TypeID:    23,
+					TypeID:    coretest.TypeIDText,
 				},
 			},
 		},
@@ -405,7 +405,7 @@ func TestRandomEmailTransformer_Transform(t *testing.T) {
 					Name:      "data",
 					TypeName:  "text",
 					TypeClass: core.TypeClassText,
-					TypeID:    23,
+					TypeID:    coretest.TypeIDText,
 				},
 			},
 		},
@@ -430,7 +430,7 @@ func TestRandomEmailTransformer_Transform(t *testing.T) {
 					Name:      "data",
 					TypeName:  "text",
 					TypeClass: core.TypeClassText,
-					TypeID:    23,
+					TypeID:    coretest.TypeIDText,
 				},
 			},
 		},
@@ -452,7 +452,7 @@ func TestRandomEmailTransformer_Transform(t *testing.T) {
 					Name:      "data",
 					TypeName:  "text",
 					TypeClass: core.TypeClassText,
-					TypeID:    mysqldbmsdriver.TypeIDText,
+					TypeID:    coretest.TypeIDText,
 				},
 			},
 		},

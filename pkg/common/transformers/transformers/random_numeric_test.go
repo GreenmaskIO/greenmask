@@ -20,9 +20,9 @@ import (
 	"testing"
 
 	core "github.com/greenmaskio/greenmask/pkg/common/core"
+	coretest "github.com/greenmaskio/greenmask/pkg/common/coretest"
 	commonutils "github.com/greenmaskio/greenmask/pkg/common/utils"
 	"github.com/greenmaskio/greenmask/pkg/common/validationcollector"
-	mysqldbmsdriver "github.com/greenmaskio/greenmask/pkg/mysql/dbmsdriver"
 	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/require"
 )
@@ -43,8 +43,8 @@ func TestRandomNumericTransformer_Transform(t *testing.T) {
 				{
 					Idx:       0,
 					Name:      "data",
-					TypeName:  mysqldbmsdriver.TypeNumeric,
-					TypeID:    mysqldbmsdriver.TypeIDNumeric,
+					TypeName:  coretest.TypeNumeric,
+					TypeID:    coretest.TypeIDNumeric,
 					TypeClass: core.TypeClassNumeric,
 					Length:    0,
 				},
@@ -82,8 +82,8 @@ func TestRandomNumericTransformer_Transform(t *testing.T) {
 				{
 					Idx:       0,
 					Name:      "data",
-					TypeName:  mysqldbmsdriver.TypeNumeric,
-					TypeID:    mysqldbmsdriver.TypeIDNumeric,
+					TypeName:  coretest.TypeNumeric,
+					TypeID:    coretest.TypeIDNumeric,
 					TypeClass: core.TypeClassNumeric,
 					Length:    0,
 				},
@@ -113,8 +113,8 @@ func TestRandomNumericTransformer_Transform(t *testing.T) {
 				{
 					Idx:       0,
 					Name:      "data",
-					TypeName:  mysqldbmsdriver.TypeNumeric,
-					TypeID:    mysqldbmsdriver.TypeIDNumeric,
+					TypeName:  coretest.TypeNumeric,
+					TypeID:    coretest.TypeIDNumeric,
 					TypeClass: core.TypeClassNumeric,
 					Length:    0,
 				},
@@ -142,8 +142,8 @@ func TestRandomNumericTransformer_Transform(t *testing.T) {
 				{
 					Idx:       0,
 					Name:      "data",
-					TypeName:  mysqldbmsdriver.TypeNumeric,
-					TypeID:    mysqldbmsdriver.TypeIDNumeric,
+					TypeName:  coretest.TypeNumeric,
+					TypeID:    coretest.TypeIDNumeric,
 					TypeClass: core.TypeClassNumeric,
 					Length:    0,
 				},
@@ -187,24 +187,24 @@ func TestRandomNumericTransformer_Transform(t *testing.T) {
 				{
 					Idx:       0,
 					Name:      "data",
-					TypeName:  mysqldbmsdriver.TypeNumeric,
-					TypeID:    mysqldbmsdriver.TypeIDNumeric,
+					TypeName:  coretest.TypeNumeric,
+					TypeID:    coretest.TypeIDNumeric,
 					TypeClass: core.TypeClassNumeric,
 					Length:    0,
 				},
 				{
 					Idx:       1,
 					Name:      "min_val",
-					TypeName:  mysqldbmsdriver.TypeNumeric,
-					TypeID:    mysqldbmsdriver.TypeIDNumeric,
+					TypeName:  coretest.TypeNumeric,
+					TypeID:    coretest.TypeIDNumeric,
 					TypeClass: core.TypeClassNumeric,
 					Length:    0,
 				},
 				{
 					Idx:       2,
 					Name:      "max_val",
-					TypeName:  mysqldbmsdriver.TypeNumeric,
-					TypeID:    mysqldbmsdriver.TypeIDNumeric,
+					TypeName:  coretest.TypeNumeric,
+					TypeID:    coretest.TypeIDNumeric,
 					TypeClass: core.TypeClassNumeric,
 					Length:    0,
 				},

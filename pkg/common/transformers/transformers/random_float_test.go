@@ -21,9 +21,9 @@ import (
 	"testing"
 
 	core "github.com/greenmaskio/greenmask/pkg/common/core"
+	coretest "github.com/greenmaskio/greenmask/pkg/common/coretest"
 	commonutils "github.com/greenmaskio/greenmask/pkg/common/utils"
 	"github.com/greenmaskio/greenmask/pkg/common/validationcollector"
-	mysqldbmsdriver "github.com/greenmaskio/greenmask/pkg/mysql/dbmsdriver"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -44,8 +44,8 @@ func TestRandomFloatTransformer_Transform(t *testing.T) {
 				{
 					Idx:       0,
 					Name:      "data",
-					TypeName:  mysqldbmsdriver.TypeFloat,
-					TypeID:    mysqldbmsdriver.TypeIDFloat,
+					TypeName:  coretest.TypeFloat8,
+					TypeID:    coretest.TypeIDFloat8,
 					TypeClass: core.TypeClassFloat,
 					Length:    0,
 				},
@@ -83,8 +83,8 @@ func TestRandomFloatTransformer_Transform(t *testing.T) {
 				{
 					Idx:       0,
 					Name:      "data",
-					TypeName:  mysqldbmsdriver.TypeFloat,
-					TypeID:    mysqldbmsdriver.TypeIDFloat,
+					TypeName:  coretest.TypeFloat8,
+					TypeID:    coretest.TypeIDFloat8,
 					TypeClass: core.TypeClassFloat,
 					Length:    0,
 				},
@@ -114,8 +114,8 @@ func TestRandomFloatTransformer_Transform(t *testing.T) {
 				{
 					Idx:       0,
 					Name:      "data",
-					TypeName:  mysqldbmsdriver.TypeFloat,
-					TypeID:    mysqldbmsdriver.TypeIDFloat,
+					TypeName:  coretest.TypeFloat8,
+					TypeID:    coretest.TypeIDFloat8,
 					TypeClass: core.TypeClassFloat,
 					Length:    0,
 				},
@@ -143,8 +143,8 @@ func TestRandomFloatTransformer_Transform(t *testing.T) {
 				{
 					Idx:       0,
 					Name:      "data",
-					TypeName:  mysqldbmsdriver.TypeFloat,
-					TypeID:    mysqldbmsdriver.TypeIDFloat,
+					TypeName:  coretest.TypeFloat8,
+					TypeID:    coretest.TypeIDFloat8,
 					TypeClass: core.TypeClassFloat,
 					Length:    0,
 				},
@@ -188,24 +188,24 @@ func TestRandomFloatTransformer_Transform(t *testing.T) {
 				{
 					Idx:       0,
 					Name:      "data",
-					TypeName:  mysqldbmsdriver.TypeFloat,
-					TypeID:    mysqldbmsdriver.TypeIDFloat,
+					TypeName:  coretest.TypeFloat8,
+					TypeID:    coretest.TypeIDFloat8,
 					TypeClass: core.TypeClassFloat,
 					Length:    0,
 				},
 				{
 					Idx:       1,
 					Name:      "min_val",
-					TypeName:  mysqldbmsdriver.TypeFloat,
-					TypeID:    mysqldbmsdriver.TypeIDFloat,
+					TypeName:  coretest.TypeFloat8,
+					TypeID:    coretest.TypeIDFloat8,
 					TypeClass: core.TypeClassFloat,
 					Length:    0,
 				},
 				{
 					Idx:       2,
 					Name:      "max_val",
-					TypeName:  mysqldbmsdriver.TypeFloat,
-					TypeID:    mysqldbmsdriver.TypeIDFloat,
+					TypeName:  coretest.TypeFloat8,
+					TypeID:    coretest.TypeIDFloat8,
 					TypeClass: core.TypeClassFloat,
 					Length:    0,
 				},

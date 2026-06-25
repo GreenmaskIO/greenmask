@@ -23,6 +23,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	core "github.com/greenmaskio/greenmask/pkg/common/core"
+	coretest "github.com/greenmaskio/greenmask/pkg/common/coretest"
 	mocks2 "github.com/greenmaskio/greenmask/pkg/common/mocks"
 	commonrecord "github.com/greenmaskio/greenmask/pkg/common/record"
 	commontabledriver "github.com/greenmaskio/greenmask/pkg/common/tabledriver"
@@ -30,7 +31,6 @@ import (
 	transformerutils "github.com/greenmaskio/greenmask/pkg/common/transformers/utils"
 	utils2 "github.com/greenmaskio/greenmask/pkg/common/utils"
 	"github.com/greenmaskio/greenmask/pkg/common/validationcollector"
-	mysqldbmsdriver "github.com/greenmaskio/greenmask/pkg/mysql/dbmsdriver"
 )
 
 type transformerTestEnv struct {
@@ -44,7 +44,7 @@ type transformerTestEnv struct {
 	new             transformerutils.NewTransformerFunc
 	t               *testing.T
 	tableDriverReal *commontabledriver.TableDriver
-	dbmsDriverReal  *mysqldbmsdriver.Driver
+	dbmsDriverReal  *coretest.Driver
 	table           core.Table
 }
 
@@ -126,7 +126,7 @@ func withColumns(columns ...core.Column) func(*transformerTestEnv) {
 			Columns: columns,
 		}
 
-		driver := mysqldbmsdriver.New()
+		driver := coretest.New()
 		vc := validationcollector.NewCollector()
 		ctx := validationcollector.WithCollector(context.Background(), vc)
 		tableDriver, err := commontabledriver.New(ctx, driver, &e.table, nil)
@@ -226,7 +226,7 @@ type transformerTestEnvReal struct {
 	new                    transformerutils.NewTransformerFunc
 	t                      *testing.T
 	tableDriverReal        *commontabledriver.TableDriver
-	dbmsDriverReal         *mysqldbmsdriver.Driver
+	dbmsDriverReal         *coretest.Driver
 	table                  core.Table
 	recorder               *commonrecord.Record
 	row                    *dummyRow
@@ -266,7 +266,7 @@ func newTransformerTestEnvReal(
 		Columns: columns,
 	}
 
-	driver := mysqldbmsdriver.New()
+	driver := coretest.New()
 	tableDriver, err := commontabledriver.New(ctx, driver, &table, nil)
 	require.NoError(t, err)
 	require.Empty(t, vc.GetWarnings())

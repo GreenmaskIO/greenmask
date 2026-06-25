@@ -20,9 +20,9 @@ import (
 	"time"
 
 	core "github.com/greenmaskio/greenmask/pkg/common/core"
+	coretest "github.com/greenmaskio/greenmask/pkg/common/coretest"
 	commonutils "github.com/greenmaskio/greenmask/pkg/common/utils"
 	"github.com/greenmaskio/greenmask/pkg/common/validationcollector"
-	mysqldbmsdriver "github.com/greenmaskio/greenmask/pkg/mysql/dbmsdriver"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -51,8 +51,8 @@ func TestTimestampTransformer_Transform(t *testing.T) {
 				{
 					Idx:       0,
 					Name:      "data",
-					TypeName:  mysqldbmsdriver.TypeDate,
-					TypeID:    mysqldbmsdriver.TypeIDDate,
+					TypeName:  coretest.TypeDate,
+					TypeID:    coretest.TypeIDDate,
 					TypeClass: core.TypeClassDateTime,
 					Length:    0,
 				},
@@ -83,8 +83,8 @@ func TestTimestampTransformer_Transform(t *testing.T) {
 				{
 					Idx:       0,
 					Name:      "data",
-					TypeName:  mysqldbmsdriver.TypeTimestamp,
-					TypeID:    mysqldbmsdriver.TypeIDTimestamp,
+					TypeName:  coretest.TypeTimestamp,
+					TypeID:    coretest.TypeIDTimestamp,
 					TypeClass: core.TypeClassDateTime,
 					Length:    0,
 				},
@@ -115,8 +115,8 @@ func TestTimestampTransformer_Transform(t *testing.T) {
 				{
 					Idx:       0,
 					Name:      "data",
-					TypeName:  mysqldbmsdriver.TypeTimestamp,
-					TypeID:    mysqldbmsdriver.TypeIDTimestamp,
+					TypeName:  coretest.TypeTimestamp,
+					TypeID:    coretest.TypeIDTimestamp,
 					TypeClass: core.TypeClassDateTime,
 					Length:    0,
 				},
@@ -152,8 +152,8 @@ func TestTimestampTransformer_Transform(t *testing.T) {
 				{
 					Idx:       0,
 					Name:      "data",
-					TypeName:  mysqldbmsdriver.TypeTimestamp,
-					TypeID:    mysqldbmsdriver.TypeIDTimestamp,
+					TypeName:  coretest.TypeTimestamp,
+					TypeID:    coretest.TypeIDTimestamp,
 					TypeClass: core.TypeClassDateTime,
 					Length:    0,
 				},
@@ -185,8 +185,8 @@ func TestTimestampTransformer_Transform(t *testing.T) {
 				{
 					Idx:       0,
 					Name:      "data",
-					TypeName:  mysqldbmsdriver.TypeTimestamp,
-					TypeID:    mysqldbmsdriver.TypeIDTimestamp,
+					TypeName:  coretest.TypeTimestamp,
+					TypeID:    coretest.TypeIDTimestamp,
 					TypeClass: core.TypeClassDateTime,
 					Length:    0,
 				},
