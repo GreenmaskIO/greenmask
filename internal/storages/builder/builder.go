@@ -20,6 +20,7 @@ import (
 
 	"github.com/greenmaskio/greenmask/internal/domains"
 	"github.com/greenmaskio/greenmask/internal/storages"
+	"github.com/greenmaskio/greenmask/internal/storages/azure"
 	"github.com/greenmaskio/greenmask/internal/storages/directory"
 	"github.com/greenmaskio/greenmask/internal/storages/s3"
 )
@@ -27,6 +28,7 @@ import (
 const (
 	DirectoryStorageType = "directory"
 	S3StorageType        = "s3"
+	AzureStorageType     = "azure"
 )
 
 func GetStorage(ctx context.Context, stCfg *domains.StorageConfig, logCgf *domains.LogConfig) (
@@ -41,6 +43,11 @@ func GetStorage(ctx context.Context, stCfg *domains.StorageConfig, logCgf *domai
 		return directory.NewStorage(stCfg.Directory)
 	case S3StorageType:
 		return s3.NewStorage(ctx, stCfg.S3, logCgf.Level)
+	case AzureStorageType:
+		if err := stCfg.Azure.Validate(); err != nil {
+			return nil, fmt.Errorf("azure storage config validation failed: %w", err)
+		}
+		return azure.NewStorage(ctx, stCfg.Azure, logCgf.Level)
 	}
-	return nil, fmt.Errorf("unknown storage type: %s", stCfg.Type)
+	return nil, fmt.Errorf("unknown storage type: '%s'", stCfg.Type)
 }
