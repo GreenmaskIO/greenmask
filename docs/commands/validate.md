@@ -28,13 +28,12 @@ Validate command can exit with non-zero code when:
 * Validate was called with `--strict` flag and there are any unresolved warnings (warnings-as-errors)
 * Validate was called with `--schema` flag and there are schema differences
 
-The `--warnings` flag only controls **printing** of warnings — it does **not** affect the exit code. Use
-`--strict` when you want any unresolved warning to fail the command. In strict mode warnings are always printed 
-regardless of `--warnings`, and warnings whose hash is listed in `resolved_warnings` are not treated as failures.
+The `--warnings` flag only controls **printing** of warnings — it does **not** affect the exit code. In strict mode
+warnings are always printed regardless of `--warnings`, and warnings whose hash is listed in `resolved_warnings` are
+not treated as failures.
 
-All of those cases may be used for CI/CD pipelines to stop the process when something went wrong. This is especially
-useful when `--schema` or `--strict` flag is used - this allows to avoid data leakage when schema changed or to
-enforce a clean validation result.
+These non-zero exit codes let CI/CD pipelines stop on problems — particularly useful with `--schema` or `--strict`,
+which guard against data leakage on schema changes and enforce a clean validation result.
 
 You can use the `--table` flag multiple times to specify the tables you want to check. Tables can be written with
 or without schema names (e.g., `public.table_name` or `table_name`). If you specify multiple tables from different
