@@ -4388,7 +4388,8 @@ optional, with the default format set to <code>text</code>.</li>
 <li><code>--log-level</code> — sets the desired level for log output, which can be one of <code>debug</code>, <code>info</code>, or <code>warn</code>. This parameter
 is optional, with the default log level being <code>info</code>.</li>
 <li><code>--config</code> — requires the specification of a configuration file in YAML format. This configuration file is mandatory
-for Greenmask to operate correctly.</li>
+for Greenmask to operate correctly. The path may also be provided via the <code>GREENMASK_CONFIG</code> environment variable;
+when both are set, the <code>--config</code> flag takes precedence.</li>
 <li><code>--help</code> — displays comprehensive help information for Greenmask, providing guidance on its usage and available
 commands.</li>
 </ul>
