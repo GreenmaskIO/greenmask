@@ -29,9 +29,8 @@ Validate command can exit with non-zero code when:
 * Validate was called with `--schema` flag and there are schema differences
 
 The `--warnings` flag only controls **printing** of warnings — it does **not** affect the exit code. Use
-`--strict` when you want any unresolved warning to fail the command (the equivalent of `gcc -Werror`). In strict
-mode warnings are always printed regardless of `--warnings`, and warnings whose hash is listed in
-`resolved_warnings` are not treated as failures.
+`--strict` when you want any unresolved warning to fail the command. In strict mode warnings are always printed 
+regardless of `--warnings`, and warnings whose hash is listed in `resolved_warnings` are not treated as failures.
 
 All of those cases may be used for CI/CD pipelines to stop the process when something went wrong. This is especially
 useful when `--schema` or `--strict` flag is used - this allows to avoid data leakage when schema changed or to
