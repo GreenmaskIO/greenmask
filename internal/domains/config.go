@@ -79,6 +79,7 @@ type Validate struct {
 	Format           string   `mapstructure:"format" yaml:"format" json:"format,omitempty"`
 	OnlyTransformed  bool     `mapstructure:"transformed_only" yaml:"transformed_only" json:"transformed_only,omitempty"`
 	Warnings         bool     `mapstructure:"warnings" yaml:"warnings" json:"warnings,omitempty"`
+	Strict           bool     `mapstructure:"strict" yaml:"strict" json:"strict,omitempty"`
 }
 
 type Common struct {

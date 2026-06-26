@@ -14,6 +14,7 @@ Flags:
       --format string         Format of output. possible values [text|json] (default "text")
       --rows-limit uint       Check tables dump only for specific tables (default 10)
       --schema                Make a schema diff between previous dump and the current state
+      --strict                Exit with non-zero code if there are any validation warnings (warnings-as-errors)
       --table strings         Check tables dump only for specific tables
       --table-format string   Format of table output (only for --format=text). Possible values [vertical|horizontal] (default "vertical")
       --transformed-only      Print only transformed column and primary key
@@ -23,11 +24,18 @@ Flags:
 Validate command can exit with non-zero code when:
 
 * Any error occurred
-* Validate was called with `--warnings` flag and there are warnings
+* There is a validation warning with severity `"error"`
+* Validate was called with `--strict` flag and there are any unresolved warnings (warnings-as-errors)
 * Validate was called with `--schema` flag and there are schema differences
 
+The `--warnings` flag only controls **printing** of warnings — it does **not** affect the exit code. Use
+`--strict` when you want any unresolved warning to fail the command (the equivalent of `gcc -Werror`). In strict
+mode warnings are always printed regardless of `--warnings`, and warnings whose hash is listed in
+`resolved_warnings` are not treated as failures.
+
 All of those cases may be used for CI/CD pipelines to stop the process when something went wrong. This is especially
-useful when `--schema` flag is used - this allows to avoid data leakage when schema changed.
+useful when `--schema` or `--strict` flag is used - this allows to avoid data leakage when schema changed or to
+enforce a clean validation result.
 
 You can use the `--table` flag multiple times to specify the tables you want to check. Tables can be written with
 or without schema names (e.g., `public.table_name` or `table_name`). If you specify multiple tables from different

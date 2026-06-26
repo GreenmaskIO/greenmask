@@ -181,4 +181,13 @@ func init() {
 		log.Fatal().Err(err).Msg("fatal")
 	}
 
+	strictFlagName := "strict"
+	Cmd.Flags().Bool(
+		strictFlagName, false, "Exit with non-zero code if there are any validation warnings (warnings-as-errors)",
+	)
+	flag = Cmd.Flags().Lookup(strictFlagName)
+	if err := viper.BindPFlag("validate.strict", flag); err != nil {
+		log.Fatal().Err(err).Msg("fatal")
+	}
+
 }

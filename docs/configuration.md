@@ -368,6 +368,7 @@ validate:
   schema: true # (8)
   transformed_only: true # (9)
   warnings: true # (10)
+  strict: true # (11)
 ```
 { .annotate }
 
@@ -380,7 +381,8 @@ validate:
 7. The output format (json or text)
 8. Specifies whether to validate the current schema with the previous and print the differences if any.
 9. If set to `true`, transformation output will be only with the transformed columns and primary keys
-10. If set to then all the warnings be printed
+10. If set to `true` then all the warnings will be printed. This only controls printing and does not affect the exit code.
+11. If set to `true`, the validate command exits with a non-zero code when there are any unresolved warnings (warnings-as-errors). Warnings listed in `resolved_warnings` are not treated as failures. Useful for CI/CD pipelines.
 
 ## `restore` section
 
