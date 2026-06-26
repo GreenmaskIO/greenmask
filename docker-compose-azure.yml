@@ -2,8 +2,10 @@
 #
 # Layered on top of docker-compose.yml, it overrides the `playground-storage`
 # service so the Minio (S3) backend is swapped for an Azurite Blob Storage
-# emulator. Everything else (playground-db, playground-dbs-filler, greenmask,
-# greenmask-from-source) is inherited from the base file unchanged.
+# emulator, adds a one-shot `playground-storage-init` job, and extends
+# greenmask/greenmask-from-source to also wait on that job. Everything else
+# (playground-db, playground-dbs-filler) is inherited from the base file
+# unchanged.
 #
 # Run it (note both -f flags, base first):
 #

@@ -16,6 +16,7 @@ package cmd
 
 import (
 	"fmt"
+	"os"
 	"runtime/debug"
 	"strings"
 
@@ -124,6 +125,10 @@ func init() {
 }
 
 func initConfig() {
+	if cfgFile == "" {
+		cfgFile = os.Getenv("GREENMASK_CONFIG")
+	}
+
 	if cfgFile != "" {
 		viper.SetConfigFile(cfgFile)
 		if err := viper.ReadInConfig(); err != nil {
