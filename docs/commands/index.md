@@ -31,6 +31,7 @@ optional, with the default format set to `text`.
 * `--log-level` — sets the desired level for log output, which can be one of `debug`, `info`, or `warn`. This parameter
 is optional, with the default log level being `info`.
 * `--config` — requires the specification of a configuration file in YAML format. This configuration file is mandatory
-for Greenmask to operate correctly.
+for Greenmask to operate correctly. The path may also be provided via the `GREENMASK_CONFIG` environment variable;
+when both are set, the `--config` flag takes precedence.
 * `--help` — displays comprehensive help information for Greenmask, providing guidance on its usage and available
 commands.
