@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// Package azure implements the Storager interface on top of Azure Blob Storage.
+// The implementation is inspired by wal-g's pkg/storages/azure.
 package azure
 
 import (
@@ -273,6 +275,12 @@ func (s *Storage) Stat(fileName string) (*domains.ObjectStat, error) {
 		LastModified: *props.LastModified,
 		Exist:        true,
 	}, nil
+}
+
+// Close is a no-op: the Azure blob client manages its own pooled HTTP
+// connections, so there is nothing for the storage to release.
+func (s *Storage) Close() error {
+	return nil
 }
 
 // fixPrefix normalizes a path prefix for Azure: it trims any leading slash

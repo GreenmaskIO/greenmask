@@ -97,7 +97,7 @@ In the `log` section of the configuration, you can specify the following setting
 ## `storage` section
 
 In the `storage` section, you can configure the storage driver for storing the dumped data. Currently,
-three storage `type` options are supported: `directory`, `s3` and `azure`.
+four storage `type` options are supported: `directory`, `s3`, `azure` and `ssh`.
 
 === "`directory` option"
 
@@ -198,6 +198,35 @@ three storage `type` options are supported: `directory`, `s3` and `azure`.
         container: "mycontainer"
         prefix: "backups"
         access_key: "<account_access_key>"
+    ```
+
+=== "`ssh` option"
+
+    The `ssh` storage option stores dump data on a remote host over SSH/SFTP. Here are the parameters
+    you can configure:
+
+    * `host` — **(required)** the SSH server hostname or IP address
+    * `user` — **(required)** the SSH user name
+    * `port` — the SSH port (default `22`)
+    * `password` — password authentication (provide at least one of `password` or `private_key_path`)
+    * `private_key_path` — path to a PEM-encoded private key for public-key authentication (provide at least one of `password` or `private_key_path`)
+    * `prefix` — the remote root path where the dump data will be stored
+
+    !!! warning "Host key verification is disabled"
+
+        Host-key checking is currently disabled (the connection trusts any host key).
+        A `known_hosts`-based verification option is a planned `TODO`.
+
+    ```yaml title="ssh storage config example"
+    storage:
+      type: ssh
+      ssh:
+        host: sftp.example.com
+        port: 22
+        user: greenmask
+        private_key_path: /home/greenmask/.ssh/id_ed25519
+        # password: "..."        # alternative to private_key_path
+        prefix: /backups/greenmask
     ```
 
 ## `dump` section

@@ -45,7 +45,7 @@ var (
 		Run: func(cmd *cobra.Command, args []string) {
 			var dumpId string
 
-			if err := logger.SetLogLevel(Config.Log.Level, Config.Log.Format); err != nil {
+			if err := logger.SetDefaultContextLogger(Config.Log.Level, Config.Log.Format); err != nil {
 				log.Fatal().Err(err).Msg("error setting up logger")
 			}
 
@@ -55,6 +55,11 @@ var (
 			if err != nil {
 				log.Fatal().Err(err).Msg("error building storage")
 			}
+			defer func() {
+				if err := st.Close(); err != nil {
+					log.Warn().Err(err).Msg("error closing storage")
+				}
+			}()
 
 			if args[0] == latestDumpName {
 				var backupNames []string

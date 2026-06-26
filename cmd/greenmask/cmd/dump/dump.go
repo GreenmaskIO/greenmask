@@ -36,7 +36,7 @@ var (
 		Use:   "dump",
 		Short: "perform a logical dump, transform data, and store it in storage",
 		Run: func(cmd *cobra.Command, args []string) {
-			if err := logger.SetLogLevel(Config.Log.Level, Config.Log.Format); err != nil {
+			if err := logger.SetDefaultContextLogger(Config.Log.Level, Config.Log.Format); err != nil {
 				log.Fatal().Err(err).Msg("")
 			}
 
@@ -46,6 +46,11 @@ var (
 			if err != nil {
 				log.Fatal().Err(err).Msg("fatal")
 			}
+			defer func() {
+				if err := st.Close(); err != nil {
+					log.Warn().Err(err).Msg("error closing storage")
+				}
+			}()
 			st = st.SubStorage(strconv.FormatInt(time.Now().UnixMilli(), 10), true)
 
 			if Config.Common.TempDirectory == "" {

@@ -49,7 +49,7 @@ var (
 		//Args:  cobra.ExactArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			var dumpId string
-			if err := logger.SetLogLevel(Config.Log.Level, Config.Log.Format); err != nil {
+			if err := logger.SetDefaultContextLogger(Config.Log.Level, Config.Log.Format); err != nil {
 				log.Fatal().Err(err).Msg("")
 			}
 
@@ -72,6 +72,11 @@ func run(dumpId string) error {
 	if err != nil {
 		log.Fatal().Err(err).Msg("")
 	}
+	defer func() {
+		if err := st.Close(); err != nil {
+			log.Warn().Err(err).Msg("error closing storage")
+		}
+	}()
 
 	if pruneUnsafe && !pruneFailed {
 		log.Fatal().Msg("--include-unsafe works only with --prune-failed")
@@ -96,7 +101,7 @@ func run(dumpId string) error {
 			log.Fatal().Err(err).Msg("error deleting dumps elder than date")
 		}
 	} else if dumpId != "" {
-		if err := deleteDump(dumpId); err != nil {
+		if err := deleteDump(ctx, st, dumpId); err != nil {
 			log.Fatal().Err(err).Msg("error deleting dump")
 		}
 	} else {
@@ -106,15 +111,7 @@ func run(dumpId string) error {
 	return nil
 }
 
-func deleteDump(dumpId string) error {
-
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	st, err := builder.GetStorage(ctx, &Config.Storage, &Config.Log)
-	if err != nil {
-		log.Fatal().Err(err).Msg("")
-	}
-
+func deleteDump(ctx context.Context, st storages.Storager, dumpId string) error {
 	_, dirs, err := st.ListDir(ctx)
 	if err != nil {
 		log.Fatal().Err(err).Msg("")
@@ -125,6 +122,10 @@ func deleteDump(dumpId string) error {
 	}) {
 		return fmt.Errorf("dump with id %s was not found", dumpId)
 	}
+
+	log.Info().
+		Str("DumpId", dumpId).
+		Msg("deleting dump")
 
 	if err = st.DeleteAll(ctx, dumpId); err != nil {
 		return fmt.Errorf("storage error: %s", err)

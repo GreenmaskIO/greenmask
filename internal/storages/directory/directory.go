@@ -211,3 +211,8 @@ func (s *Storage) Stat(fileName string) (*domains.ObjectStat, error) {
 		Exist:        true,
 	}, nil
 }
+
+// Close is a no-op: the directory backend holds no resources to release.
+func (s *Storage) Close() error {
+	return nil
+}

@@ -374,6 +374,12 @@ func (s *Storage) Stat(fileName string) (*domains.ObjectStat, error) {
 	}, nil
 }
 
+// Close is a no-op: the S3 client manages its own pooled HTTP connections, so
+// there is nothing for the storage to release.
+func (s *Storage) Close() error {
+	return nil
+}
+
 func fixPrefix(prefix string) string {
 	if prefix != "" && prefix[len(prefix)-1] != '/' {
 		prefix = prefix + "/"

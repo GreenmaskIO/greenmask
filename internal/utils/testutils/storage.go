@@ -66,3 +66,7 @@ func (s *StorageMock) Stat(fileName string) (*domains.ObjectStat, error) {
 	args := s.Called(fileName)
 	return args.Get(0).(*domains.ObjectStat), args.Error(1)
 }
+
+func (s *StorageMock) Close() error {
+	return nil
+}

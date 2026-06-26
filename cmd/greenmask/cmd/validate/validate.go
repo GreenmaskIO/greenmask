@@ -41,7 +41,7 @@ var (
 )
 
 func run(cmd *cobra.Command, args []string) {
-	if err := logger.SetLogLevel(Config.Log.Level, Config.Log.Format); err != nil {
+	if err := logger.SetDefaultContextLogger(Config.Log.Level, Config.Log.Format); err != nil {
 		log.Err(err).Msg("")
 	}
 
@@ -78,6 +78,11 @@ func run(cmd *cobra.Command, args []string) {
 		if err != nil {
 			log.Fatal().Err(err).Msg("cannot initialize remote storage for schema diff")
 		}
+		defer func() {
+			if err := remoteSt.Close(); err != nil {
+				log.Warn().Err(err).Msg("error closing storage")
+			}
+		}()
 	}
 
 	validateCmd, err := cmdInternals.NewValidate(Config, utils.DefaultTransformerRegistry, validate.New(""), remoteSt)

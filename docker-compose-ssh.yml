@@ -1,0 +1,39 @@
+# SSH/SFTP storage override for the playground.
+#
+# Layered on top of docker-compose.yml, it overrides the `playground-storage`
+# service so the Minio (S3) backend is swapped for an atmoz/sftp SFTP server.
+# Everything else (playground-db, playground-dbs-filler, greenmask,
+# greenmask-from-source) is inherited from the base file unchanged.
+#
+# Run it (note both -f flags, base first):
+#
+#   docker compose -f docker-compose.yml -f docker-compose-ssh.yml run --rm greenmask
+#
+# Inside the shell (config-ssh.yml is mounted from ./playground):
+#
+#   greenmask --config config-ssh.yml dump
+#   greenmask --config config-ssh.yml list-dumps
+#   greenmask --config config-ssh.yml restore latest
+#
+# Tear everything down:
+#
+#   docker compose -f docker-compose.yml -f docker-compose-ssh.yml down -v
+services:
+  # Overrides the base Minio service with an atmoz/sftp SFTP server.
+  # greenmask/greenmask-from-source already depend on `playground-storage`, so
+  # reusing the name is enough to repoint them at the SFTP server.
+  playground-storage:
+    image: atmoz/sftp:alpine
+    # Override the base entrypoint (`sh`) with atmoz/sftp's own entrypoint so the
+    # `command` below is interpreted as a user spec and not by a shell.
+    entrypoint: /entrypoint
+    # Creates user "greenmask" with password "greenmask" and an auto-created,
+    # writable "dumps" subdir — so no one-shot init job is needed.
+    command: greenmask:greenmask:::dumps
+    ports:
+      - "2222:22"
+    healthcheck:
+      test: ["CMD", "nc", "-z", "127.0.0.1", "22"]
+      interval: 5s
+      timeout: 5s
+      retries: 10

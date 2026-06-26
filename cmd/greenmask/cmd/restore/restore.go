@@ -45,7 +45,7 @@ var (
 		Short: "restore dump with ID or the latest to the target database",
 		Run: func(cmd *cobra.Command, args []string) {
 
-			if err := logger.SetLogLevel(Config.Log.Level, Config.Log.Format); err != nil {
+			if err := logger.SetDefaultContextLogger(Config.Log.Level, Config.Log.Format); err != nil {
 				log.Fatal().Err(err).Msg("fatal")
 			}
 
@@ -55,6 +55,11 @@ var (
 			if err != nil {
 				log.Fatal().Err(err).Msg("fatal")
 			}
+			defer func() {
+				if err := st.Close(); err != nil {
+					log.Warn().Err(err).Msg("error closing storage")
+				}
+			}()
 
 			dumpId, err := getDumpId(ctx, st, args[0])
 			if err != nil {

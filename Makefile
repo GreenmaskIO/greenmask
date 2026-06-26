@@ -32,34 +32,33 @@ lint:
 up:
 	docker-compose up playground-dbs-filler
 
-local-build:
-	DOCKER_BUILDKIT=1 \
-		docker build \
-			-f docker/greenmask/Dockerfile \
-			. \
-			-t greenmask-from-source:latest \
-			--platform linux/amd64 \
-			--target build
-
 # Select the storage backend for the playground, e.g.:
 #   make greenmask-from-source STORAGE_BACKEND=azure
-# Supported values: s3 (default, Minio) and azure (Azurite/Azure Blob). The
-# azure value layers docker-compose-azure.yml over the base file, which
-# overrides the `playground-storage` service with an Azurite emulator.
+# Supported values: s3 (default, Minio), azure (Azurite/Azure Blob) and ssh
+# (atmoz/sftp SFTP server). The azure and ssh values layer their respective
+# override file over the base file, swapping the `playground-storage` service.
 STORAGE_BACKEND ?= s3
 ifeq ($(STORAGE_BACKEND),azure)
 GREENMASK_COMPOSE := -f docker-compose.yml -f docker-compose-azure.yml
+else ifeq ($(STORAGE_BACKEND),ssh)
+GREENMASK_COMPOSE := -f docker-compose.yml -f docker-compose-ssh.yml
 else ifeq ($(STORAGE_BACKEND),s3)
 GREENMASK_COMPOSE := -f docker-compose.yml
 else
-$(error Unsupported STORAGE_BACKEND "$(STORAGE_BACKEND)"; use "s3" or "azure")
+$(error Unsupported STORAGE_BACKEND "$(STORAGE_BACKEND)"; use "s3", "azure" or "ssh")
 endif
 
 greenmask-latest:
 	docker compose $(GREENMASK_COMPOSE) run greenmask
 
-greenmask-from-source: local-build
-	docker compose $(GREENMASK_COMPOSE) run greenmask-from-source
+# Build the `greenmask-from-source` compose service image and then run it. The
+# explicit build step is required because `docker compose run` does not rebuild
+# on its own, so without it the container keeps running a stale, cached image.
+# DOCKER_BUILD_FLAGS (e.g. --no-cache) is forwarded to this build so a clean
+# rebuild actually reaches the image the container runs.
+greenmask-from-source:
+	docker compose $(GREENMASK_COMPOSE) build $(DOCKER_BUILD_FLAGS) greenmask-from-source
+	docker compose $(GREENMASK_COMPOSE) run --rm greenmask-from-source
 
 integration:
 	docker buildx build --load -t greenmask-test-dbs-filler:latest -f docker/integration/filldb/Dockerfile docker/integration/filldb
