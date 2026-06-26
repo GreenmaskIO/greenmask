@@ -6,7 +6,7 @@ Greenmask Playground is a sandbox environment in Docker with sample databases in
 
 * **Original database** — the source database you'll be working with.
 * **Empty database for restoration** — an empty database where the restored data will be placed.
-* **MinIO storage** — used for storage purposes (an Azurite-based Azure Blob backend is also available — see [Using the Azure Blob storage backend](#using-the-azure-blob-storage-backend)).
+* **MinIO storage** — used for storage purposes (an Azurite-based Azure Blob backend is also available — see [Using the Azure Blob storage backend](#using-the-azure-blob-storage-backend) — as well as an SFTP backend — see [Using the SSH storage backend](#using-the-ssh-storage-backend)).
 * **Greenmask Utility** — Greenmask itself, ready for use.
 
 !!! warning
@@ -80,6 +80,40 @@ greenmask --config config-azure.yml restore latest
     ```
 
     `docker-compose-azure.yml` is an override that swaps the `playground-storage` service for an Azurite emulator, so the base file must be passed first.
+
+## Using the SSH storage backend
+
+You can also run the playground against an [atmoz/sftp](https://github.com/atmoz/sftp) SFTP server to exercise the `ssh` storage backend with a full dump/restore cycle.
+
+Pass `STORAGE_BACKEND=ssh` to the `make` targets to switch the backend:
+
+```shell
+# Run with the published image against the SFTP server
+make greenmask-latest STORAGE_BACKEND=ssh
+
+# Or build from source and run against the SFTP server
+make greenmask-from-source STORAGE_BACKEND=ssh
+```
+
+The `STORAGE_BACKEND` parameter defaults to `s3`, so omitting it (or passing `STORAGE_BACKEND=s3`) uses the default MinIO (S3) backend.
+
+Inside the container, the matching configuration is mounted as `config-ssh.yml`:
+
+```shell
+greenmask --config config-ssh.yml dump
+greenmask --config config-ssh.yml list-dumps
+greenmask --config config-ssh.yml restore latest
+```
+
+!!! Tip
+
+    If you prefer to invoke Docker Compose directly instead of the `make` targets, run:
+
+    ```shell
+    docker compose -f docker-compose.yml -f docker-compose-ssh.yml run greenmask
+    ```
+
+    `docker-compose-ssh.yml` is an override that swaps the `playground-storage` service for an atmoz/sftp SFTP server, so the base file must be passed first.
 
 ## Playground Workflow
 

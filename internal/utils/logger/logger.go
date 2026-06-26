@@ -29,7 +29,11 @@ const (
 	LogFormatTextValue = "text"
 )
 
-func SetLogLevel(logLevelStr string, logFormat string) error {
+var errUnknownLogFormat = fmt.Errorf("unknown log format")
+
+// GetLogger builds a zerolog.Logger for the given level and format without
+// mutating any global state.
+func GetLogger(logLevelStr string, logFormat string) (zerolog.Logger, error) {
 
 	var logLevel zerolog.Level
 	switch logLevelStr {
@@ -40,8 +44,7 @@ func SetLogLevel(logLevelStr string, logFormat string) error {
 	case zerolog.LevelWarnValue:
 		logLevel = zerolog.WarnLevel
 	default:
-		return fmt.Errorf("unknown log level %s", logLevelStr)
-
+		return zerolog.Logger{}, fmt.Errorf("log level %s: %w", logLevelStr, errUnknownLogFormat)
 	}
 
 	var formatWriter io.Writer
@@ -53,18 +56,31 @@ func SetLogLevel(logLevelStr string, logFormat string) error {
 	}
 
 	if logLevelStr == zerolog.LevelDebugValue {
-		log.Logger = zerolog.New(formatWriter).
+		return zerolog.New(formatWriter).
 			Level(logLevel).
 			With().
 			Timestamp().
 			Caller().
-			Int("pid", os.Getpid()).Logger()
-	} else {
-		log.Logger = zerolog.New(formatWriter).
-			Level(logLevel).
-			With().
-			Timestamp().
-			Logger()
+			Int("pid", os.Getpid()).Logger(), nil
 	}
+	return zerolog.New(formatWriter).
+		Level(logLevel).
+		With().
+		Timestamp().
+		Logger(), nil
+}
+
+// SetDefaultContextLogger builds a logger and installs it as both the global
+// log.Logger and zerolog.DefaultContextLogger. Installing it as the default
+// context logger makes log.Ctx(ctx) fall back to the configured logger when no
+// logger is attached to the context (greenmask does not attach one), so the
+// context-based logging idiom works everywhere instead of silently no-oping.
+func SetDefaultContextLogger(logLevelStr string, logFormat string) error {
+	l, err := GetLogger(logLevelStr, logFormat)
+	if err != nil {
+		return fmt.Errorf("get logger: %w", err)
+	}
+	zerolog.DefaultContextLogger = &l
+	log.Logger = l
 	return nil
 }

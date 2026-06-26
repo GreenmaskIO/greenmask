@@ -96,7 +96,7 @@ func (c *Cmd) setupDefaultCmd() {
 
 func (c *Cmd) run(cmd *cobra.Command, args []string) {
 
-	if err := logger.SetLogLevel(c.logLevel, c.logFormat); err != nil {
+	if err := logger.SetDefaultContextLogger(c.logLevel, c.logFormat); err != nil {
 		log.Err(err).Msg("")
 	}
 

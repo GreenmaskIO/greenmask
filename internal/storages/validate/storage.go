@@ -153,3 +153,8 @@ func (s *Storage) Stat(fileName string) (*domains.ObjectStat, error) {
 		LastModified: obj.lastModified,
 	}, nil
 }
+
+// Close is a no-op: this in-memory storage holds no external resources.
+func (s *Storage) Close() error {
+	return nil
+}

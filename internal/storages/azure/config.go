@@ -19,7 +19,7 @@ import (
 	"strings"
 )
 
-// Defaults and constants ported from wal-g pkg/storages/azure/configure.go
+// Defaults and constants for the Azure Blob Storage backend.
 const (
 	minBufferSize     = 1024
 	defaultBufferSize = 8 * 1024 * 1024
@@ -87,9 +87,8 @@ func (c *Config) Validate() error {
 }
 
 // resolveAuth picks the credential method based on which secret is set and
-// normalizes the SAS token's leading "?". This mirrors wal-g's
-// configureAuthType and is factored out so auth dispatch is unit-testable
-// without creating a real client.
+// normalizes the SAS token's leading "?". It is factored out so auth dispatch
+// is unit-testable without creating a real client.
 func resolveAuth(c *Config) (at authType, sasToken, accessKey string) {
 	if c.AccessKey != "" {
 		return authTypeAccessKey, "", c.AccessKey

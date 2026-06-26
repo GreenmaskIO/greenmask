@@ -38,7 +38,7 @@ var (
 		Args:  cobra.ExactArgs(1),
 		Short: "show transformer details",
 		Run: func(cmd *cobra.Command, args []string) {
-			if err := logger.SetLogLevel(Config.Log.Level, Config.Log.Format); err != nil {
+			if err := logger.SetDefaultContextLogger(Config.Log.Level, Config.Log.Format); err != nil {
 				log.Err(err).Msg("")
 			}
 

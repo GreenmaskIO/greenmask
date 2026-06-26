@@ -6,15 +6,13 @@ common:
   tmp_dir: "/tmp"
 
 storage:
-  type: "azure"
-  azure:
-    # Path-style endpoint of the Azurite emulator (account name included).
-    endpoint: "http://playground-storage:10000/devstoreaccount1"
-#    endpoint: "http://localhost:10000/devstoreaccount1"
-    storage_account: "devstoreaccount1"
-    # Well-known Azurite account key.
-    access_key: "Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw=="
-    container: "greenmask"
+  type: ssh
+  ssh:
+    host: playground-storage
+    port: 22
+    user: greenmask
+    password: greenmask
+    prefix: /dumps
 
 validate:
 #  resolved_warnings:
@@ -22,7 +20,6 @@ validate:
 
 dump:
   pg_dump_options: # pg_dump option that will be provided
-#    dbname: "host=localhost port=54316 user=postgres password=example dbname=original"
     dbname: "host=playground-db user=postgres password=example dbname=original"
     jobs: 10
 
@@ -38,5 +35,4 @@ dump:
 restore:
   pg_restore_options: # pg_restore option (you can use the same options as pg_restore has)
     jobs: 10
-#    dbname: "host=localhost port=5431 user=postgres password=example dbname=transformed"
     dbname: "host=playground-db port=5432 user=postgres password=example dbname=transformed"

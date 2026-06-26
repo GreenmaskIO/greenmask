@@ -43,4 +43,9 @@ type Storager interface {
 	SubStorage(subPath string, relative bool) Storager
 	// Stat - get the metadata info about object from the storage
 	Stat(fileName string) (*domains.ObjectStat, error)
+	// Close - release any resources held by the storage (e.g. a persistent
+	// connection). It must be called once by the lifecycle owner when the
+	// storage and all of its sub-storages are no longer needed. Backends that
+	// hold no resources implement it as a no-op.
+	Close() error
 }

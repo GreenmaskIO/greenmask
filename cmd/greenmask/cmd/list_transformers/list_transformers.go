@@ -38,7 +38,7 @@ var (
 		Use:   "list-transformers",
 		Short: "list of the allowed transformers with documentation",
 		Run: func(cmd *cobra.Command, args []string) {
-			if err := logger.SetLogLevel(Config.Log.Level, Config.Log.Format); err != nil {
+			if err := logger.SetDefaultContextLogger(Config.Log.Level, Config.Log.Format); err != nil {
 				log.Err(err).Msg("")
 			}
 

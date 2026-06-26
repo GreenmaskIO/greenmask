@@ -18,22 +18,27 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/rs/zerolog/log"
+
 	"github.com/greenmaskio/greenmask/internal/domains"
 	"github.com/greenmaskio/greenmask/internal/storages"
 	"github.com/greenmaskio/greenmask/internal/storages/azure"
 	"github.com/greenmaskio/greenmask/internal/storages/directory"
 	"github.com/greenmaskio/greenmask/internal/storages/s3"
+	sshstorage "github.com/greenmaskio/greenmask/internal/storages/ssh"
 )
 
 const (
 	DirectoryStorageType = "directory"
 	S3StorageType        = "s3"
 	AzureStorageType     = "azure"
+	SSHStorageType       = "ssh"
 )
 
 func GetStorage(ctx context.Context, stCfg *domains.StorageConfig, logCgf *domains.LogConfig) (
 	storages.Storager, error,
 ) {
+	log.Ctx(ctx).Debug().Str("type", stCfg.Type).Msg("creating storage")
 
 	switch stCfg.Type {
 	case DirectoryStorageType:
@@ -48,6 +53,11 @@ func GetStorage(ctx context.Context, stCfg *domains.StorageConfig, logCgf *domai
 			return nil, fmt.Errorf("azure storage config validation failed: %w", err)
 		}
 		return azure.NewStorage(ctx, stCfg.Azure, logCgf.Level)
+	case SSHStorageType:
+		if err := stCfg.SSH.Validate(); err != nil {
+			return nil, fmt.Errorf("ssh storage config validation failed: %w", err)
+		}
+		return sshstorage.NewStorage(stCfg.SSH)
 	}
 	return nil, fmt.Errorf("unknown storage type: '%s'", stCfg.Type)
 }

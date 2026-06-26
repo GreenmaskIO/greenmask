@@ -71,7 +71,7 @@ func init() {
 }
 
 func init() {
-	if err := logger.SetLogLevel(zerolog.LevelDebugValue, logger.LogFormatTextValue); err != nil {
+	if err := logger.SetDefaultContextLogger(zerolog.LevelDebugValue, logger.LogFormatTextValue); err != nil {
 		panic(err)
 	}
 }

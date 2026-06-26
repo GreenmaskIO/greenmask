@@ -40,7 +40,7 @@ var (
 		Use:   "list-dumps",
 		Short: "list all dumps in the storage",
 		Run: func(cmd *cobra.Command, args []string) {
-			if err := logger.SetLogLevel(Config.Log.Level, Config.Log.Format); err != nil {
+			if err := logger.SetDefaultContextLogger(Config.Log.Level, Config.Log.Format); err != nil {
 				log.Err(err).Msg("")
 			}
 
@@ -76,6 +76,11 @@ func listDumps(quiet bool) error {
 	if err != nil {
 		log.Fatal().Err(err).Msg("")
 	}
+	defer func() {
+		if err := st.Close(); err != nil {
+			log.Warn().Err(err).Msg("error closing storage")
+		}
+	}()
 
 	_, dirs, err := st.ListDir(ctx)
 	if err != nil {
