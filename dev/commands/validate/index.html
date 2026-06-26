@@ -4363,6 +4363,7 @@ Flags:
       --format string         Format of output. possible values [text|json] (default &quot;text&quot;)
       --rows-limit uint       Check tables dump only for specific tables (default 10)
       --schema                Make a schema diff between previous dump and the current state
+      --strict                Exit with non-zero code if there are any validation warnings (warnings-as-errors)
       --table strings         Check tables dump only for specific tables
       --table-format string   Format of table output (only for --format=text). Possible values [vertical|horizontal] (default &quot;vertical&quot;)
       --transformed-only      Print only transformed column and primary key
@@ -4371,11 +4372,15 @@ Flags:
 <p>Validate command can exit with non-zero code when:</p>
 <ul>
 <li>Any error occurred</li>
-<li>Validate was called with <code>--warnings</code> flag and there are warnings</li>
+<li>There is a validation warning with severity <code>"error"</code></li>
+<li>Validate was called with <code>--strict</code> flag and there are any unresolved warnings (warnings-as-errors)</li>
 <li>Validate was called with <code>--schema</code> flag and there are schema differences</li>
 </ul>
-<p>All of those cases may be used for CI/CD pipelines to stop the process when something went wrong. This is especially
-useful when <code>--schema</code> flag is used - this allows to avoid data leakage when schema changed.</p>
+<p>The <code>--warnings</code> flag only controls <strong>printing</strong> of warnings — it does <strong>not</strong> affect the exit code. In strict mode
+warnings are always printed regardless of <code>--warnings</code>, and warnings whose hash is listed in <code>resolved_warnings</code> are
+not treated as failures.</p>
+<p>These non-zero exit codes let CI/CD pipelines stop on problems — particularly useful with <code>--schema</code> or <code>--strict</code>,
+which guard against data leakage on schema changes and enforce a clean validation result.</p>
 <p>You can use the <code>--table</code> flag multiple times to specify the tables you want to check. Tables can be written with
 or without schema names (e.g., <code>public.table_name</code> or <code>table_name</code>). If you specify multiple tables from different
 schemas, an error will be thrown.</p>
