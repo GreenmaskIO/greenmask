@@ -38,6 +38,19 @@ func (re ValidationWarnings) IsFatal() bool {
 	})
 }
 
+// HasUnresolved reports whether any warning of severity "warning" or "error"
+// has not been explicitly resolved via resolvedWarnings. It is used by the
+// validate command's strict mode to treat warnings as errors.
+func (re ValidationWarnings) HasUnresolved(resolvedWarnings []string) bool {
+	return slices.ContainsFunc(re, func(warning *ValidationWarning) bool {
+		if warning.Severity != WarningValidationSeverity && warning.Severity != ErrorValidationSeverity {
+			return false
+		}
+		warning.MakeHash()
+		return slices.Index(resolvedWarnings, warning.Hash) == -1
+	})
+}
+
 type ValidationWarning struct {
 	Msg      string         `json:"msg,omitempty"`
 	Severity string         `json:"severity,omitempty"`

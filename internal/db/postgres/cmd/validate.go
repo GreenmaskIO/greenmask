@@ -133,13 +133,17 @@ func (v *Validate) Run(ctx context.Context) (int, error) {
 	}
 
 	err = toolkit.PrintValidationWarnings(
-		v.context.Warnings, v.config.Validate.ResolvedWarnings, v.config.Validate.Warnings,
+		v.context.Warnings, v.config.Validate.ResolvedWarnings,
+		v.config.Validate.Warnings || v.config.Validate.Strict,
 	)
 	if err != nil {
 		return nonZeroExitCode, err
 	}
 	if v.context.IsFatal() {
 		return nonZeroExitCode, fmt.Errorf("fatal validation error")
+	}
+	if v.config.Validate.Strict && v.context.Warnings.HasUnresolved(v.config.Validate.ResolvedWarnings) {
+		v.exitCode = nonZeroExitCode
 	}
 
 	if err = v.diffWithPreviousSchema(ctx); err != nil {
