@@ -539,6 +539,17 @@ You're not viewing the latest version.
 </li>
       
         <li class="md-nav__item">
+  <a href="#using-the-ssh-storage-backend" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Using the SSH storage backend
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#playground-workflow" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -4463,6 +4474,17 @@ You're not viewing the latest version.
 </li>
       
         <li class="md-nav__item">
+  <a href="#using-the-ssh-storage-backend" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Using the SSH storage backend
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#playground-workflow" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -4532,7 +4554,7 @@ You're not viewing the latest version.
 <ul>
 <li><strong>Original database</strong> — the source database you'll be working with.</li>
 <li><strong>Empty database for restoration</strong> — an empty database where the restored data will be placed.</li>
-<li><strong>MinIO storage</strong> — used for storage purposes (an Azurite-based Azure Blob backend is also available — see <a href="#using-the-azure-blob-storage-backend">Using the Azure Blob storage backend</a>).</li>
+<li><strong>MinIO storage</strong> — used for storage purposes (an Azurite-based Azure Blob backend is also available — see <a href="#using-the-azure-blob-storage-backend">Using the Azure Blob storage backend</a> — as well as an SFTP backend — see <a href="#using-the-ssh-storage-backend">Using the SSH storage backend</a>).</li>
 <li><strong>Greenmask Utility</strong> — Greenmask itself, ready for use.</li>
 </ul>
 <div class="admonition warning">
@@ -4585,6 +4607,28 @@ greenmask<span class="w"> </span>--config<span class="w"> </span>config-azure.ym
 <div class="highlight"><pre><span></span><code>docker<span class="w"> </span>compose<span class="w"> </span>-f<span class="w"> </span>docker-compose.yml<span class="w"> </span>-f<span class="w"> </span>docker-compose-azure.yml<span class="w"> </span>run<span class="w"> </span>greenmask
 </code></pre></div>
 <p><code>docker-compose-azure.yml</code> is an override that swaps the <code>playground-storage</code> service for an Azurite emulator, so the base file must be passed first.</p>
+</div>
+<h2 id="using-the-ssh-storage-backend">Using the SSH storage backend<a class="headerlink" href="#using-the-ssh-storage-backend" title="Permanent link">&para;</a></h2>
+<p>You can also run the playground against an <a href="https://github.com/atmoz/sftp">atmoz/sftp</a> SFTP server to exercise the <code>ssh</code> storage backend with a full dump/restore cycle.</p>
+<p>Pass <code>STORAGE_BACKEND=ssh</code> to the <code>make</code> targets to switch the backend:</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Run with the published image against the SFTP server</span>
+make<span class="w"> </span>greenmask-latest<span class="w"> </span><span class="nv">STORAGE_BACKEND</span><span class="o">=</span>ssh
+
+<span class="c1"># Or build from source and run against the SFTP server</span>
+make<span class="w"> </span>greenmask-from-source<span class="w"> </span><span class="nv">STORAGE_BACKEND</span><span class="o">=</span>ssh
+</code></pre></div>
+<p>The <code>STORAGE_BACKEND</code> parameter defaults to <code>s3</code>, so omitting it (or passing <code>STORAGE_BACKEND=s3</code>) uses the default MinIO (S3) backend.</p>
+<p>Inside the container, the matching configuration is mounted as <code>config-ssh.yml</code>:</p>
+<div class="highlight"><pre><span></span><code>greenmask<span class="w"> </span>--config<span class="w"> </span>config-ssh.yml<span class="w"> </span>dump
+greenmask<span class="w"> </span>--config<span class="w"> </span>config-ssh.yml<span class="w"> </span>list-dumps
+greenmask<span class="w"> </span>--config<span class="w"> </span>config-ssh.yml<span class="w"> </span>restore<span class="w"> </span>latest
+</code></pre></div>
+<div class="admonition tip">
+<p class="admonition-title">Tip</p>
+<p>If you prefer to invoke Docker Compose directly instead of the <code>make</code> targets, run:</p>
+<div class="highlight"><pre><span></span><code>docker<span class="w"> </span>compose<span class="w"> </span>-f<span class="w"> </span>docker-compose.yml<span class="w"> </span>-f<span class="w"> </span>docker-compose-ssh.yml<span class="w"> </span>run<span class="w"> </span>greenmask
+</code></pre></div>
+<p><code>docker-compose-ssh.yml</code> is an override that swaps the <code>playground-storage</code> service for an atmoz/sftp SFTP server, so the base file must be passed first.</p>
 </div>
 <h2 id="playground-workflow">Playground Workflow<a class="headerlink" href="#playground-workflow" title="Permanent link">&para;</a></h2>
 <p>To simplify your experience in the playground, use the following workflow:</p>
