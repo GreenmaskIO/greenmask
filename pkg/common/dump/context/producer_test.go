@@ -36,34 +36,44 @@ func TestProducer_Produce(t *testing.T) {
 			Name:   "test",
 			Columns: []core.Column{
 				{
-					Idx:      0,
-					Name:     "id",
-					TypeName: "integer",
-					TypeID:   0,
+					Idx:  0,
+					Name: "id",
+					Type: core.Type{
+						Name: "integer",
+						ID:   0,
+					},
 				},
 				{
-					Idx:      1,
-					Name:     "title",
-					TypeName: "text",
-					TypeID:   1,
+					Idx:  1,
+					Name: "title",
+					Type: core.Type{
+						Name: "text",
+						ID:   1,
+					},
 				},
 				{
-					Idx:      2,
-					Name:     "created_at",
-					TypeName: "timestamp",
-					TypeID:   2,
+					Idx:  2,
+					Name: "created_at",
+					Type: core.Type{
+						Name: "timestamp",
+						ID:   2,
+					},
 				},
 				{
-					Idx:      3,
-					Name:     "json_data",
-					TypeName: "jsonb",
-					TypeID:   3,
+					Idx:  3,
+					Name: "json_data",
+					Type: core.Type{
+						Name: "jsonb",
+						ID:   3,
+					},
 				},
 				{
-					Idx:      4,
-					Name:     "float_data",
-					TypeName: "float8",
-					TypeID:   4,
+					Idx:  4,
+					Name: "float_data",
+					Type: core.Type{
+						Name: "float8",
+						ID:   4,
+					},
 				},
 			},
 		},
@@ -262,10 +272,12 @@ func TestProducer_Produce(t *testing.T) {
 		tableDriverMock.On("GetColumnByName", "id").
 			Return(
 				&core.Column{
-					Idx:      1,
-					Name:     "id",
-					TypeName: "int",
-					TypeID:   12,
+					Idx:  1,
+					Name: "id",
+					Type: core.Type{
+						Name: "int",
+						ID:   12,
+					},
 				},
 				nil,
 			)
@@ -343,10 +355,12 @@ func TestProducer_Produce(t *testing.T) {
 		tableDriverMock.On("GetColumnByName", "id").
 			Return(
 				&core.Column{
-					Idx:      1,
-					Name:     "id",
-					TypeName: "int",
-					TypeID:   12,
+					Idx:  1,
+					Name: "id",
+					Type: core.Type{
+						Name: "int",
+						ID:   12,
+					},
 				},
 				nil,
 			)
@@ -464,10 +478,12 @@ func TestProducer_Produce(t *testing.T) {
 		tableDriverMock.On("GetColumnByName", "id").
 			Return(
 				&core.Column{
-					Idx:      1,
-					Name:     "id",
-					TypeName: "int",
-					TypeID:   12,
+					Idx:  1,
+					Name: "id",
+					Type: core.Type{
+						Name: "int",
+						ID:   12,
+					},
 				},
 				nil,
 			)

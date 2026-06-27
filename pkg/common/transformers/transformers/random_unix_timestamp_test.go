@@ -40,13 +40,15 @@ func TestUnixTimestampTransformer_Transform(t *testing.T) {
 			name: "seconds",
 			columns: []core.Column{
 				{
-					Idx:       0,
-					Name:      "data",
-					TypeName:  coretest.TypeInt8,
-					TypeID:    coretest.TypeIDInt8,
-					TypeClass: core.TypeClassInt,
-					Length:    0,
-					Size:      8,
+					Idx:  0,
+					Name: "data",
+					Type: core.Type{
+						Name:   coretest.TypeInt8,
+						ID:     coretest.TypeIDInt8,
+						Class:  core.TypeClassInt,
+						Length: 0,
+						Size:   8,
+					},
 				},
 			},
 			original: []*core.ColumnRawValue{
@@ -73,13 +75,15 @@ func TestUnixTimestampTransformer_Transform(t *testing.T) {
 			name: "milliseconds",
 			columns: []core.Column{
 				{
-					Idx:       0,
-					Name:      "data",
-					TypeName:  coretest.TypeInt8,
-					TypeID:    coretest.TypeIDInt8,
-					TypeClass: core.TypeClassInt,
-					Length:    0,
-					Size:      8,
+					Idx:  0,
+					Name: "data",
+					Type: core.Type{
+						Name:   coretest.TypeInt8,
+						ID:     coretest.TypeIDInt8,
+						Class:  core.TypeClassInt,
+						Length: 0,
+						Size:   8,
+					},
 				},
 			},
 			original: []*core.ColumnRawValue{
@@ -106,13 +110,15 @@ func TestUnixTimestampTransformer_Transform(t *testing.T) {
 			name: "microseconds",
 			columns: []core.Column{
 				{
-					Idx:       0,
-					Name:      "data",
-					TypeName:  coretest.TypeInt8,
-					TypeID:    coretest.TypeIDInt8,
-					TypeClass: core.TypeClassInt,
-					Length:    0,
-					Size:      8,
+					Idx:  0,
+					Name: "data",
+					Type: core.Type{
+						Name:   coretest.TypeInt8,
+						ID:     coretest.TypeIDInt8,
+						Class:  core.TypeClassInt,
+						Length: 0,
+						Size:   8,
+					},
 				},
 			},
 			original: []*core.ColumnRawValue{
@@ -139,13 +145,15 @@ func TestUnixTimestampTransformer_Transform(t *testing.T) {
 			name: "nanoseconds",
 			columns: []core.Column{
 				{
-					Idx:       0,
-					Name:      "data",
-					TypeName:  coretest.TypeInt8,
-					TypeID:    coretest.TypeIDInt8,
-					TypeClass: core.TypeClassInt,
-					Length:    0,
-					Size:      8,
+					Idx:  0,
+					Name: "data",
+					Type: core.Type{
+						Name:   coretest.TypeInt8,
+						ID:     coretest.TypeIDInt8,
+						Class:  core.TypeClassInt,
+						Length: 0,
+						Size:   8,
+					},
 				},
 			},
 			original: []*core.ColumnRawValue{
@@ -172,13 +180,15 @@ func TestUnixTimestampTransformer_Transform(t *testing.T) {
 			name: "nanoseconds_truncate",
 			columns: []core.Column{
 				{
-					Idx:       0,
-					Name:      "data",
-					TypeName:  coretest.TypeInt8,
-					TypeID:    coretest.TypeIDInt8,
-					TypeClass: core.TypeClassInt,
-					Length:    0,
-					Size:      8,
+					Idx:  0,
+					Name: "data",
+					Type: core.Type{
+						Name:   coretest.TypeInt8,
+						ID:     coretest.TypeIDInt8,
+						Class:  core.TypeClassInt,
+						Length: 0,
+						Size:   8,
+					},
 				},
 			},
 			original: []*core.ColumnRawValue{
@@ -213,13 +223,15 @@ func TestUnixTimestampTransformer_Transform(t *testing.T) {
 			name: "keep_null true and original is null",
 			columns: []core.Column{
 				{
-					Idx:       0,
-					Name:      "data",
-					TypeName:  coretest.TypeInt8,
-					TypeID:    coretest.TypeIDInt8,
-					TypeClass: core.TypeClassInt,
-					Length:    0,
-					Size:      8,
+					Idx:  0,
+					Name: "data",
+					Type: core.Type{
+						Name:   coretest.TypeInt8,
+						ID:     coretest.TypeIDInt8,
+						Class:  core.TypeClassInt,
+						Length: 0,
+						Size:   8,
+					},
 				},
 			},
 			original: []*core.ColumnRawValue{
@@ -245,13 +257,15 @@ func TestUnixTimestampTransformer_Transform(t *testing.T) {
 			name: "keep_null true and original is not null",
 			columns: []core.Column{
 				{
-					Idx:       0,
-					Name:      "data",
-					TypeName:  coretest.TypeInt8,
-					TypeID:    coretest.TypeIDInt8,
-					TypeClass: core.TypeClassInt,
-					Length:    0,
-					Size:      8,
+					Idx:  0,
+					Name: "data",
+					Type: core.Type{
+						Name:   coretest.TypeInt8,
+						ID:     coretest.TypeIDInt8,
+						Class:  core.TypeClassInt,
+						Length: 0,
+						Size:   8,
+					},
 				},
 			},
 			original: []*core.ColumnRawValue{
@@ -297,31 +311,37 @@ func TestUnixTimestampTransformer_Transform(t *testing.T) {
 			},
 			columns: []core.Column{
 				{
-					Idx:       0,
-					Name:      "data",
-					TypeName:  coretest.TypeInt8,
-					TypeID:    coretest.TypeIDInt8,
-					TypeClass: core.TypeClassInt,
-					Length:    0,
-					Size:      8,
+					Idx:  0,
+					Name: "data",
+					Type: core.Type{
+						Name:   coretest.TypeInt8,
+						ID:     coretest.TypeIDInt8,
+						Class:  core.TypeClassInt,
+						Length: 0,
+						Size:   8,
+					},
 				},
 				{
-					Idx:       1,
-					Name:      "min_val",
-					TypeName:  coretest.TypeInt8,
-					TypeID:    coretest.TypeIDInt8,
-					TypeClass: core.TypeClassInt,
-					Length:    0,
-					Size:      8,
+					Idx:  1,
+					Name: "min_val",
+					Type: core.Type{
+						Name:   coretest.TypeInt8,
+						ID:     coretest.TypeIDInt8,
+						Class:  core.TypeClassInt,
+						Length: 0,
+						Size:   8,
+					},
 				},
 				{
-					Idx:       2,
-					Name:      "max_val",
-					TypeName:  coretest.TypeInt8,
-					TypeID:    coretest.TypeIDInt8,
-					TypeClass: core.TypeClassInt,
-					Length:    0,
-					Size:      8,
+					Idx:  2,
+					Name: "max_val",
+					Type: core.Type{
+						Name:   coretest.TypeInt8,
+						ID:     coretest.TypeIDInt8,
+						Class:  core.TypeClassInt,
+						Length: 0,
+						Size:   8,
+					},
 				},
 			},
 			validateFn: func(t *testing.T, recorder core.Recorder) {

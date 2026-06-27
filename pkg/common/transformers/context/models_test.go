@@ -152,7 +152,7 @@ func TestTableDumpContext_GetSnapshot(t *testing.T) {
 					Table: &core.Table{
 						Schema:  "app",
 						Name:    "users",
-						Columns: []core.Column{{Idx: 0, Name: "id", TypeName: "int"}, {Idx: 1, Name: "email", TypeName: "varchar"}},
+						Columns: []core.Column{{Idx: 0, Name: "id", Type: core.Type{Name: "int"}}, {Idx: 1, Name: "email", Type: core.Type{Name: "varchar"}}},
 					},
 					Query:              "SELECT * FROM users",
 					Condition:          exprCond{expr: "id > 100"},

@@ -307,9 +307,9 @@ func buildAttributes(columns []core.Column, columnKind core.EntityKind) (map[cor
 		attributes[key] = core.ObjectAttribute{
 			Identity:   identity,
 			Position:   col.Idx,
-			Definition: core.AttributeDefinition(col.TypeName),
+			Definition: core.AttributeDefinition(col.Type.Name),
 		}
-		signatures = append(signatures, fmt.Sprintf("%d:%s=%s", col.Idx, col.Name, col.TypeName))
+		signatures = append(signatures, fmt.Sprintf("%d:%s=%s", col.Idx, col.Name, col.Type.Name))
 	}
 	return attributes, core.HashStrings(signatures), nil
 }

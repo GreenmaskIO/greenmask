@@ -103,5 +103,7 @@ func (tdc *TableDriverContext) GetColumnType(name string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return c.TypeName, nil
+	// Surface the vendor's fully-declared type ("int unsigned") for fidelity,
+	// falling back to the canonical base name.
+	return c.Type.GetFullName(), nil
 }

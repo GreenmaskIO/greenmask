@@ -39,13 +39,15 @@ func TestTemplateTransformer_Transform(t *testing.T) {
 			name: "success",
 			columns: []core.Column{
 				{
-					Idx:       0,
-					Name:      "data",
-					TypeName:  coretest.TypeInt4,
-					TypeID:    coretest.TypeIDInt4,
-					TypeClass: core.TypeClassInt,
-					Length:    0,
-					Size:      2,
+					Idx:  0,
+					Name: "data",
+					Type: core.Type{
+						Name:   coretest.TypeInt4,
+						ID:     coretest.TypeIDInt4,
+						Class:  core.TypeClassInt,
+						Length: 0,
+						Size:   2,
+					},
 				},
 			},
 			original: []*core.ColumnRawValue{
@@ -75,13 +77,15 @@ func TestTemplateTransformer_Transform(t *testing.T) {
 			name: "validation error",
 			columns: []core.Column{
 				{
-					Idx:       0,
-					Name:      "data",
-					TypeName:  coretest.TypeInt4,
-					TypeID:    coretest.TypeIDInt4,
-					TypeClass: core.TypeClassInt,
-					Length:    0,
-					Size:      2,
+					Idx:  0,
+					Name: "data",
+					Type: core.Type{
+						Name:   coretest.TypeInt4,
+						ID:     coretest.TypeIDInt4,
+						Class:  core.TypeClassInt,
+						Length: 0,
+						Size:   2,
+					},
 				},
 			},
 			original: []*core.ColumnRawValue{

@@ -26,8 +26,8 @@ var (
 	_ core.DBMSDriver = (*Driver)(nil)
 	// Per-leaf compile-time proofs: the MySQL driver satisfies each type-level
 	// leaf DBMSDriver composes.
-	_ core.TypeCodec         = (*Driver)(nil)
 	_ core.NamedTypeCodec    = (*Driver)(nil)
+	_ core.TypedCodec        = (*Driver)(nil)
 	_ core.TypeIntrospection = (*Driver)(nil)
 )
 
@@ -42,28 +42,37 @@ func New() *Driver {
 	}
 }
 
-func (e *Driver) EncodeValueByTypeID(oid core.TypeID, src any, buf []byte) ([]byte, error) {
-	typeName, ok := TypeIDToTypeName[oid]
-	if !ok {
-		return nil, fmt.Errorf("unsupported oid %d", oid)
+// typeName resolves the base type name a Type descriptor dispatches on. Dispatch
+// is on Name (the authoritative key); only when Name is empty is the base name
+// resolved from the type id. A present ID never overrides a present Name — this
+// avoids the id-0 footgun (TypeIDTinyInt == 0) that would otherwise mis-resolve a
+// name-only descriptor as tinyint.
+func (e *Driver) typeName(t core.Type) string {
+	if t.Name != "" {
+		return t.Name
 	}
-	return e.EncodeValueByTypeName(string(typeName), src, buf)
+	if n, ok := TypeIDToTypeName[t.ID]; ok {
+		return n
+	}
+	return t.Name
 }
 
-func (e *Driver) DecodeValueByTypeID(oid core.TypeID, src []byte) (any, error) {
-	typeName, ok := TypeIDToTypeName[oid]
-	if !ok {
-		return nil, fmt.Errorf("unsupported oid %d", oid)
-	}
-	return e.DecodeValueByTypeName(typeName, src)
+// EncodeValueByType encodes using a full Type descriptor. Encoding is value-driven
+// (the Go value carries signedness), so it dispatches on the base name like the
+// id/name encoders, just keyed off the self-describing Type.
+func (e *Driver) EncodeValueByType(t core.Type, src any, buf []byte) ([]byte, error) {
+	return e.EncodeValueByTypeName(e.typeName(t), src, buf)
 }
 
-func (e *Driver) ScanValueByTypeID(oid core.TypeID, src []byte, dest any) error {
-	typeName, ok := TypeIDToTypeName[oid]
-	if !ok {
-		return fmt.Errorf("unsupported oid %d", oid)
-	}
-	return e.ScanValueByTypeName(typeName, src, dest)
+// DecodeValueByType decodes using a full Type descriptor, so signedness (and
+// future limits/constraints) drive decoding rather than a bare type id.
+func (e *Driver) DecodeValueByType(t core.Type, src []byte) (any, error) {
+	return e.decode(e.typeName(t), t.IsSigned(), src)
+}
+
+// ScanValueByType scans using a full Type descriptor, dispatching on the base name.
+func (e *Driver) ScanValueByType(t core.Type, src []byte, dest any) error {
+	return e.ScanValueByTypeName(e.typeName(t), src, dest)
 }
 
 func (e *Driver) TypeExistsByName(name string) bool {
@@ -122,7 +131,17 @@ func (e *Driver) EncodeValueByTypeName(name string, src any, buf []byte) ([]byte
 	return nil, fmt.Errorf("unsupported type %s", name)
 }
 
+// DecodeValueByTypeName decodes a value by its canonical base type name. It is
+// a context-less entry point, so integer types are decoded as signed; callers
+// that know a column's signedness must use DecodeValueByType.
 func (e *Driver) DecodeValueByTypeName(name string, src []byte) (any, error) {
+	return e.decode(name, true, src)
+}
+
+// decode is the single type-keyed decode switch shared by every decode entry
+// point. Integer types consult the signed flag (the only type-class whose Go
+// type depends on a modifier); all other branches are modifier-independent.
+func (e *Driver) decode(name string, signed bool, src []byte) (any, error) {
 	// Consider opts pattern usage
 	switch name {
 	case TypeJSON:
@@ -134,8 +153,10 @@ func (e *Driver) DecodeValueByTypeName(name string, src []byte) (any, error) {
 	case TypeTime:
 		return decodeTime(src)
 	case TypeTinyInt, TypeSmallInt, TypeMediumInt, TypeInt, TypeBigInt, TypeYear:
-		// Here may be unsigned type consider to add it but it is likely redundant
-		return strconv.ParseInt(string(src), 10, 64)
+		if signed {
+			return decodeInt(src)
+		}
+		return decodeUint(src)
 	case TypeFloat, TypeDouble, TypeReal:
 		return strconv.ParseFloat(string(src), 64)
 	case TypeChar, TypeVarChar, TypeTinyText, TypeText, TypeMediumText, TypeLongText:

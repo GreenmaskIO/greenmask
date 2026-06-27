@@ -25,6 +25,43 @@ import (
 	core "github.com/greenmaskio/greenmask/pkg/common/core"
 )
 
+// TestDriver_DecodeValueByType asserts the canonical harness decodes integers
+// strictly by signedness: an unsigned int yields uint64 for both a small value
+// and a value above int64; a signed int yields int64; non-integer classes ignore
+// signedness.
+func TestDriver_DecodeValueByType(t *testing.T) {
+	d := New()
+	const maxUint64 = "18446744073709551615"
+
+	tests := []struct {
+		name string
+		typ  core.Type
+		raw  string
+		want any
+	}{
+		{"unsigned small", core.Type{Name: TypeInt8, ID: TypeIDInt8, Class: core.TypeClassInt, Unsigned: true}, "42", uint64(42)},
+		{"unsigned above int64", core.Type{Name: TypeInt8, ID: TypeIDInt8, Class: core.TypeClassInt, Unsigned: true}, maxUint64, uint64(18446744073709551615)},
+		{"signed small", core.Type{Name: TypeInt8, ID: TypeIDInt8, Class: core.TypeClassInt}, "42", int64(42)},
+		{"text ignores signedness", core.Type{Name: TypeText, ID: TypeIDText, Class: core.TypeClassText, Unsigned: true}, "abc", "abc"},
+		// Name wins over id: a descriptor whose Name is text but whose ID is an
+		// integer id decodes as text, never as an unsigned integer. This proves the
+		// id never overrides a present Name.
+		{"name wins over id", core.Type{Name: TypeText, ID: TypeIDInt8}, "abc", "abc"},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := d.DecodeValueByType(tc.typ, []byte(tc.raw))
+			require.NoError(t, err)
+			assert.Equal(t, tc.want, got)
+		})
+	}
+
+	// Resolution by id alone (no name) still works.
+	got, err := d.DecodeValueByType(core.Type{ID: TypeIDInt8, Class: core.TypeClassInt, Unsigned: true}, []byte("7"))
+	require.NoError(t, err)
+	assert.Equal(t, uint64(7), got)
+}
+
 // TestCatalogueCoversEveryTypeClass asserts the acceptance-criteria contract:
 // every core.TypeClass except TypeClassUnsupported has at least one canonical
 // catalogue entry, so a transformer that branches on any class can be exercised.
@@ -98,20 +135,20 @@ func TestDriver_RoundTrip(t *testing.T) {
 			require.NoError(t, err)
 			assert.Equal(t, tc.typeID, gotID)
 
-			// Scan the raw value by id.
+			// Scan by name and by the full Type yield the same result.
 			dest := tc.scanInto()
-			require.NoError(t, d.ScanValueByTypeID(tc.typeID, []byte(tc.raw), dest))
+			require.NoError(t, d.ScanValueByTypeName(tc.typeName, []byte(tc.raw), dest))
 			assert.Equal(t, tc.want, deref(dest))
 
-			// Scan by name yields the same result.
+			typ := core.Type{Name: tc.typeName, ID: tc.typeID}
 			dest2 := tc.scanInto()
-			require.NoError(t, d.ScanValueByTypeName(tc.typeName, []byte(tc.raw), dest2))
+			require.NoError(t, d.ScanValueByType(typ, []byte(tc.raw), dest2))
 			assert.Equal(t, tc.want, deref(dest2))
 
-			// Decode then re-encode reproduces the canonical wire value.
-			decoded, err := d.DecodeValueByTypeID(tc.typeID, []byte(tc.raw))
+			// Decode then re-encode by Type reproduces the canonical wire value.
+			decoded, err := d.DecodeValueByType(typ, []byte(tc.raw))
 			require.NoError(t, err)
-			encoded, err := d.EncodeValueByTypeID(tc.typeID, decoded, nil)
+			encoded, err := d.EncodeValueByType(typ, decoded, nil)
 			require.NoError(t, err)
 			assert.Equal(t, tc.raw, string(encoded))
 		})
@@ -168,7 +205,7 @@ func TestDriver_UnknownType(t *testing.T) {
 
 	_, err = d.EncodeValueByTypeName("no_such_type", "x", nil)
 	require.Error(t, err)
-	_, err = d.DecodeValueByTypeID(core.TypeID(1), []byte("x"))
+	_, err = d.DecodeValueByType(core.Type{Name: "no_such_type", ID: core.TypeID(1)}, []byte("x"))
 	require.Error(t, err)
 }
 
@@ -176,7 +213,7 @@ func TestDriver_NullAndEmptyBoundaries(t *testing.T) {
 	d := New()
 
 	t.Run("nil scan destination errors", func(t *testing.T) {
-		err := d.ScanValueByTypeID(TypeIDText, []byte("x"), nil)
+		err := d.ScanValueByTypeName(TypeText, []byte("x"), nil)
 		require.Error(t, err)
 	})
 

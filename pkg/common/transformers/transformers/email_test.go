@@ -35,10 +35,12 @@ func TestNewEmailTransformer(t *testing.T) {
 		vc := validationcollector.NewCollector()
 		ctx := context.Background()
 		column := core.Column{
-			Idx:      1,
-			Name:     "id",
-			TypeName: coretest.TypeText,
-			TypeID:   coretest.TypeIDText,
+			Idx:  1,
+			Name: "id",
+			Type: core.Type{
+				Name: coretest.TypeText,
+				ID:   coretest.TypeIDText,
+			},
 		}
 		tableDriver := mocks2.NewTableDriverMock()
 		columnParameter := mocks2.NewParametrizerMock()
@@ -189,11 +191,13 @@ func TestRandomEmailTransformer_Transform(t *testing.T) {
 			},
 			columns: []core.Column{
 				{
-					Idx:       0,
-					Name:      "data",
-					TypeName:  "text",
-					TypeClass: core.TypeClassText,
-					TypeID:    coretest.TypeIDText,
+					Idx:  0,
+					Name: "data",
+					Type: core.Type{
+						Name:  "text",
+						Class: core.TypeClassText,
+						ID:    coretest.TypeIDText,
+					},
 				},
 			},
 		},
@@ -219,11 +223,13 @@ func TestRandomEmailTransformer_Transform(t *testing.T) {
 			},
 			columns: []core.Column{
 				{
-					Idx:       0,
-					Name:      "data",
-					TypeName:  "text",
-					TypeClass: core.TypeClassText,
-					TypeID:    coretest.TypeIDText,
+					Idx:  0,
+					Name: "data",
+					Type: core.Type{
+						Name:  "text",
+						Class: core.TypeClassText,
+						ID:    coretest.TypeIDText,
+					},
 				},
 			},
 		},
@@ -238,11 +244,13 @@ func TestRandomEmailTransformer_Transform(t *testing.T) {
 			isNull: true,
 			columns: []core.Column{
 				{
-					Idx:       0,
-					Name:      "data",
-					TypeName:  "text",
-					TypeClass: core.TypeClassText,
-					TypeID:    coretest.TypeIDText,
+					Idx:  0,
+					Name: "data",
+					Type: core.Type{
+						Name:  "text",
+						Class: core.TypeClassText,
+						ID:    coretest.TypeIDText,
+					},
 				},
 			},
 		},
@@ -259,11 +267,13 @@ func TestRandomEmailTransformer_Transform(t *testing.T) {
 			},
 			columns: []core.Column{
 				{
-					Idx:       0,
-					Name:      "data",
-					TypeName:  "text",
-					TypeClass: core.TypeClassText,
-					TypeID:    coretest.TypeIDText,
+					Idx:  0,
+					Name: "data",
+					Type: core.Type{
+						Name:  "text",
+						Class: core.TypeClassText,
+						ID:    coretest.TypeIDText,
+					},
 				},
 			},
 		},
@@ -282,11 +292,13 @@ func TestRandomEmailTransformer_Transform(t *testing.T) {
 			},
 			columns: []core.Column{
 				{
-					Idx:       0,
-					Name:      "data",
-					TypeName:  "text",
-					TypeClass: core.TypeClassText,
-					TypeID:    coretest.TypeIDText,
+					Idx:  0,
+					Name: "data",
+					Type: core.Type{
+						Name:  "text",
+						Class: core.TypeClassText,
+						ID:    coretest.TypeIDText,
+					},
 				},
 			},
 		},
@@ -307,11 +319,13 @@ func TestRandomEmailTransformer_Transform(t *testing.T) {
 			},
 			columns: []core.Column{
 				{
-					Idx:       0,
-					Name:      "data",
-					TypeName:  "text",
-					TypeClass: core.TypeClassText,
-					TypeID:    coretest.TypeIDText,
+					Idx:  0,
+					Name: "data",
+					Type: core.Type{
+						Name:  "text",
+						Class: core.TypeClassText,
+						ID:    coretest.TypeIDText,
+					},
 				},
 			},
 		},
@@ -331,11 +345,13 @@ func TestRandomEmailTransformer_Transform(t *testing.T) {
 			},
 			columns: []core.Column{
 				{
-					Idx:       0,
-					Name:      "data",
-					TypeName:  "text",
-					TypeClass: core.TypeClassText,
-					TypeID:    coretest.TypeIDText,
+					Idx:  0,
+					Name: "data",
+					Type: core.Type{
+						Name:  "text",
+						Class: core.TypeClassText,
+						ID:    coretest.TypeIDText,
+					},
 				},
 			},
 		},
@@ -355,11 +371,13 @@ func TestRandomEmailTransformer_Transform(t *testing.T) {
 			},
 			columns: []core.Column{
 				{
-					Idx:       0,
-					Name:      "data",
-					TypeName:  "text",
-					TypeClass: core.TypeClassText,
-					TypeID:    coretest.TypeIDText,
+					Idx:  0,
+					Name: "data",
+					Type: core.Type{
+						Name:  "text",
+						Class: core.TypeClassText,
+						ID:    coretest.TypeIDText,
+					},
 				},
 			},
 		},
@@ -378,11 +396,13 @@ func TestRandomEmailTransformer_Transform(t *testing.T) {
 			},
 			columns: []core.Column{
 				{
-					Idx:       0,
-					Name:      "data",
-					TypeName:  "text",
-					TypeClass: core.TypeClassText,
-					TypeID:    coretest.TypeIDText,
+					Idx:  0,
+					Name: "data",
+					Type: core.Type{
+						Name:  "text",
+						Class: core.TypeClassText,
+						ID:    coretest.TypeIDText,
+					},
 				},
 			},
 		},
@@ -401,11 +421,13 @@ func TestRandomEmailTransformer_Transform(t *testing.T) {
 			},
 			columns: []core.Column{
 				{
-					Idx:       0,
-					Name:      "data",
-					TypeName:  "text",
-					TypeClass: core.TypeClassText,
-					TypeID:    coretest.TypeIDText,
+					Idx:  0,
+					Name: "data",
+					Type: core.Type{
+						Name:  "text",
+						Class: core.TypeClassText,
+						ID:    coretest.TypeIDText,
+					},
 				},
 			},
 		},
@@ -426,11 +448,13 @@ func TestRandomEmailTransformer_Transform(t *testing.T) {
 			expectedErr: "generated email is invalid",
 			columns: []core.Column{
 				{
-					Idx:       0,
-					Name:      "data",
-					TypeName:  "text",
-					TypeClass: core.TypeClassText,
-					TypeID:    coretest.TypeIDText,
+					Idx:  0,
+					Name: "data",
+					Type: core.Type{
+						Name:  "text",
+						Class: core.TypeClassText,
+						ID:    coretest.TypeIDText,
+					},
 				},
 			},
 		},
@@ -448,11 +472,13 @@ func TestRandomEmailTransformer_Transform(t *testing.T) {
 			},
 			columns: []core.Column{
 				{
-					Idx:       0,
-					Name:      "data",
-					TypeName:  "text",
-					TypeClass: core.TypeClassText,
-					TypeID:    coretest.TypeIDText,
+					Idx:  0,
+					Name: "data",
+					Type: core.Type{
+						Name:  "text",
+						Class: core.TypeClassText,
+						ID:    coretest.TypeIDText,
+					},
 				},
 			},
 		},

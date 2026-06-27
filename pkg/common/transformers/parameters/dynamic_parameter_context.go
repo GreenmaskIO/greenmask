@@ -53,7 +53,7 @@ func (dpc *DynamicParameterContext) setRecord(r core.Recorder) {
 }
 
 func (dpc *DynamicParameterContext) GetColumnType() string {
-	return dpc.column.TypeName
+	return dpc.column.Type.Name
 }
 
 func (dpc *DynamicParameterContext) GetValue() (any, error) {
@@ -75,5 +75,5 @@ func (dpc *DynamicParameterContext) DecodeValue(v any) (any, error) {
 	if dpc.linkedColumn == nil {
 		return nil, fmt.Errorf("unable to decode not linked prameter use .DecodeValueByColumn or DecodeValueByType intead")
 	}
-	return dpc.DecodeValueByColumn(dpc.linkedColumn.TypeName, v)
+	return dpc.DecodeValueByColumn(dpc.linkedColumn.Type.Name, v)
 }

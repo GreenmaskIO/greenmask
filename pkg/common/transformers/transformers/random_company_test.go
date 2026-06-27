@@ -42,12 +42,14 @@ func TestRandomCompanyTransformer_Transform(t *testing.T) {
 			name: "numeric",
 			columns: []core.Column{
 				{
-					Idx:       0,
-					Name:      "data",
-					TypeName:  coretest.TypeText,
-					TypeClass: core.TypeClassText,
-					TypeID:    coretest.TypeIDText,
-					Length:    0,
+					Idx:  0,
+					Name: "data",
+					Type: core.Type{
+						Name:   coretest.TypeText,
+						Class:  core.TypeClassText,
+						ID:     coretest.TypeIDText,
+						Length: 0,
+					},
 				},
 			},
 			original: []*core.ColumnRawValue{
@@ -76,12 +78,14 @@ func TestRandomCompanyTransformer_Transform(t *testing.T) {
 			name: "keep_null and original is not null",
 			columns: []core.Column{
 				{
-					Idx:       0,
-					Name:      "data",
-					TypeName:  coretest.TypeText,
-					TypeClass: core.TypeClassText,
-					TypeID:    coretest.TypeIDText,
-					Length:    0,
+					Idx:  0,
+					Name: "data",
+					Type: core.Type{
+						Name:   coretest.TypeText,
+						Class:  core.TypeClassText,
+						ID:     coretest.TypeIDText,
+						Length: 0,
+					},
 				},
 			},
 			original: []*core.ColumnRawValue{
@@ -111,12 +115,14 @@ func TestRandomCompanyTransformer_Transform(t *testing.T) {
 			name: "keep_null and original is not null",
 			columns: []core.Column{
 				{
-					Idx:       0,
-					Name:      "data",
-					TypeName:  coretest.TypeText,
-					TypeClass: core.TypeClassText,
-					TypeID:    coretest.TypeIDText,
-					Length:    0,
+					Idx:  0,
+					Name: "data",
+					Type: core.Type{
+						Name:   coretest.TypeText,
+						Class:  core.TypeClassText,
+						ID:     coretest.TypeIDText,
+						Length: 0,
+					},
 				},
 			},
 			original: []*core.ColumnRawValue{
@@ -146,20 +152,24 @@ func TestRandomCompanyTransformer_Transform(t *testing.T) {
 			name: "keep_null and original is null multiple columns",
 			columns: []core.Column{
 				{
-					Idx:       0,
-					Name:      "name",
-					TypeName:  coretest.TypeText,
-					TypeClass: core.TypeClassText,
-					TypeID:    coretest.TypeIDText,
-					Length:    0,
+					Idx:  0,
+					Name: "name",
+					Type: core.Type{
+						Name:   coretest.TypeText,
+						Class:  core.TypeClassText,
+						ID:     coretest.TypeIDText,
+						Length: 0,
+					},
 				},
 				{
-					Idx:       1,
-					Name:      "suffix",
-					TypeName:  coretest.TypeText,
-					TypeClass: core.TypeClassText,
-					TypeID:    coretest.TypeIDText,
-					Length:    0,
+					Idx:  1,
+					Name: "suffix",
+					Type: core.Type{
+						Name:   coretest.TypeText,
+						Class:  core.TypeClassText,
+						ID:     coretest.TypeIDText,
+						Length: 0,
+					},
 				},
 			},
 			original: []*core.ColumnRawValue{

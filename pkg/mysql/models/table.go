@@ -35,14 +35,7 @@ type Table struct {
 func (t *Table) ToCommonTable() core.Table {
 	columns := make([]core.Column, len(t.Columns))
 	for i, col := range t.Columns {
-		columns[i] = core.NewColumn(
-			i,
-			col.Name,
-			col.TypeName,
-			col.TypeID,
-			col.NotNull,
-			col.TypeClass,
-		)
+		columns[i] = core.NewColumn(i, col.Name, col.NotNull, col.toCoreType())
 	}
 	return core.Table{
 		ID:             t.ID,

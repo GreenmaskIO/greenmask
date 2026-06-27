@@ -116,8 +116,8 @@ func schemaDumpSpec(taskID core.TaskID, database string) core.SchemaDumpSpec {
 
 func TestDumpContextSnapshotBuilder_Build(t *testing.T) {
 	cols := []core.Column{
-		{Idx: 0, Name: "id", TypeName: "int"},
-		{Idx: 1, Name: "email", TypeName: "varchar"},
+		{Idx: 0, Name: "id", Type: core.Type{Name: "int"}},
+		{Idx: 1, Name: "email", Type: core.Type{Name: "varchar"}},
 	}
 	transform := core.TransformationSnapshot{
 		Key:              "column:email:0:RandomEmail",
@@ -204,7 +204,7 @@ func TestDumpContextSnapshotBuilder_Build(t *testing.T) {
 }
 
 func TestDumpContextSnapshotBuilder_Deterministic(t *testing.T) {
-	cols := []core.Column{{Idx: 0, Name: "id", TypeName: "int"}}
+	cols := []core.Column{{Idx: 0, Name: "id", Type: core.Type{Name: "int"}}}
 	transform := core.TransformationSnapshot{
 		Key:              "column:id:0:Noise",
 		Name:             "Noise",

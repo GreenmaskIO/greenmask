@@ -42,12 +42,14 @@ func TestRandomBoolTransformer_Transform(t *testing.T) {
 			name: "common",
 			columns: []core.Column{
 				{
-					Idx:       0,
-					Name:      "data",
-					TypeName:  coretest.TypeBool,
-					TypeID:    coretest.TypeIDBool,
-					TypeClass: core.TypeClassBoolean,
-					Length:    0,
+					Idx:  0,
+					Name: "data",
+					Type: core.Type{
+						Name:   coretest.TypeBool,
+						ID:     coretest.TypeIDBool,
+						Class:  core.TypeClassBoolean,
+						Length: 0,
+					},
 				},
 			},
 			original: []*core.ColumnRawValue{
@@ -66,12 +68,14 @@ func TestRandomBoolTransformer_Transform(t *testing.T) {
 			name: "keep_null false and NULL seq",
 			columns: []core.Column{
 				{
-					Idx:       0,
-					Name:      "data",
-					TypeName:  coretest.TypeBool,
-					TypeID:    coretest.TypeIDBool,
-					TypeClass: core.TypeClassBoolean,
-					Length:    0,
+					Idx:  0,
+					Name: "data",
+					Type: core.Type{
+						Name:   coretest.TypeBool,
+						ID:     coretest.TypeIDBool,
+						Class:  core.TypeClassBoolean,
+						Length: 0,
+					},
 				},
 			},
 			original: []*core.ColumnRawValue{
@@ -91,12 +95,14 @@ func TestRandomBoolTransformer_Transform(t *testing.T) {
 			name: "keep_null true and NULL seq",
 			columns: []core.Column{
 				{
-					Idx:       0,
-					Name:      "data",
-					TypeName:  coretest.TypeBool,
-					TypeID:    coretest.TypeIDBool,
-					TypeClass: core.TypeClassBoolean,
-					Length:    0,
+					Idx:  0,
+					Name: "data",
+					Type: core.Type{
+						Name:   coretest.TypeBool,
+						ID:     coretest.TypeIDBool,
+						Class:  core.TypeClassBoolean,
+						Length: 0,
+					},
 				},
 			},
 			original: []*core.ColumnRawValue{

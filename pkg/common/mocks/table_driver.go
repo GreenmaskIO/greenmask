@@ -50,8 +50,16 @@ func (t *TableDriverMock) EncodeValueByTypeName(name string, src any, buf []byte
 	return args.Get(0).([]byte), args.Error(1)
 }
 
-func (t *TableDriverMock) EncodeValueByTypeID(oid core.TypeID, src any, buf []byte) ([]byte, error) {
-	args := t.Called(oid, src, buf)
+func (t *TableDriverMock) DecodeValueByTypeName(name string, src []byte) (any, error) {
+	args := t.Called(name, src)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0), args.Error(1)
+}
+
+func (t *TableDriverMock) EncodeValueByType(typ core.Type, src any, buf []byte) ([]byte, error) {
+	args := t.Called(typ, src, buf)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
@@ -61,32 +69,24 @@ func (t *TableDriverMock) EncodeValueByTypeID(oid core.TypeID, src any, buf []by
 	return args.Get(0).([]byte), args.Error(1)
 }
 
-func (t *TableDriverMock) DecodeValueByTypeName(name string, src []byte) (any, error) {
-	args := t.Called(name, src)
+func (t *TableDriverMock) DecodeValueByType(typ core.Type, src []byte) (any, error) {
+	args := t.Called(typ, src)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
 	return args.Get(0), args.Error(1)
 }
 
-func (t *TableDriverMock) DecodeValueByTypeID(oid core.TypeID, src []byte) (any, error) {
-	args := t.Called(oid, src)
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-	return args.Get(0), args.Error(1)
-}
-
-func (t *TableDriverMock) ScanValueByTypeName(name string, src []byte, dest any) error {
-	args := t.Called(name, src, dest)
+func (t *TableDriverMock) ScanValueByType(typ core.Type, src []byte, dest any) error {
+	args := t.Called(typ, src, dest)
 	if args.Get(0) != nil {
 		return args.Error(0)
 	}
 	return nil
 }
 
-func (t *TableDriverMock) ScanValueByTypeID(oid core.TypeID, src []byte, dest any) error {
-	args := t.Called(oid, src, dest)
+func (t *TableDriverMock) ScanValueByTypeName(name string, src []byte, dest any) error {
+	args := t.Called(name, src, dest)
 	if args.Get(0) != nil {
 		return args.Error(0)
 	}

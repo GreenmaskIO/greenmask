@@ -42,12 +42,14 @@ func TestRandomFloatTransformer_Transform(t *testing.T) {
 			name: "float4",
 			columns: []core.Column{
 				{
-					Idx:       0,
-					Name:      "data",
-					TypeName:  coretest.TypeFloat8,
-					TypeID:    coretest.TypeIDFloat8,
-					TypeClass: core.TypeClassFloat,
-					Length:    0,
+					Idx:  0,
+					Name: "data",
+					Type: core.Type{
+						Name:   coretest.TypeFloat8,
+						ID:     coretest.TypeIDFloat8,
+						Class:  core.TypeClassFloat,
+						Length: 0,
+					},
 				},
 			},
 			original: []*core.ColumnRawValue{
@@ -81,12 +83,14 @@ func TestRandomFloatTransformer_Transform(t *testing.T) {
 				core.NewColumnRawValue(nil, true)},
 			columns: []core.Column{
 				{
-					Idx:       0,
-					Name:      "data",
-					TypeName:  coretest.TypeFloat8,
-					TypeID:    coretest.TypeIDFloat8,
-					TypeClass: core.TypeClassFloat,
-					Length:    0,
+					Idx:  0,
+					Name: "data",
+					Type: core.Type{
+						Name:   coretest.TypeFloat8,
+						ID:     coretest.TypeIDFloat8,
+						Class:  core.TypeClassFloat,
+						Length: 0,
+					},
 				},
 			},
 			validateFn: func(t *testing.T, recorder core.Recorder) {
@@ -112,12 +116,14 @@ func TestRandomFloatTransformer_Transform(t *testing.T) {
 				core.NewColumnRawValue(nil, true)},
 			columns: []core.Column{
 				{
-					Idx:       0,
-					Name:      "data",
-					TypeName:  coretest.TypeFloat8,
-					TypeID:    coretest.TypeIDFloat8,
-					TypeClass: core.TypeClassFloat,
-					Length:    0,
+					Idx:  0,
+					Name: "data",
+					Type: core.Type{
+						Name:   coretest.TypeFloat8,
+						ID:     coretest.TypeIDFloat8,
+						Class:  core.TypeClassFloat,
+						Length: 0,
+					},
 				},
 			},
 			validateFn: func(t *testing.T, recorder core.Recorder) {
@@ -141,12 +147,14 @@ func TestRandomFloatTransformer_Transform(t *testing.T) {
 				core.NewColumnRawValue(nil, true)},
 			columns: []core.Column{
 				{
-					Idx:       0,
-					Name:      "data",
-					TypeName:  coretest.TypeFloat8,
-					TypeID:    coretest.TypeIDFloat8,
-					TypeClass: core.TypeClassFloat,
-					Length:    0,
+					Idx:  0,
+					Name: "data",
+					Type: core.Type{
+						Name:   coretest.TypeFloat8,
+						ID:     coretest.TypeIDFloat8,
+						Class:  core.TypeClassFloat,
+						Length: 0,
+					},
 				},
 			},
 			validateFn: func(t *testing.T, recorder core.Recorder) {
@@ -186,28 +194,34 @@ func TestRandomFloatTransformer_Transform(t *testing.T) {
 			},
 			columns: []core.Column{
 				{
-					Idx:       0,
-					Name:      "data",
-					TypeName:  coretest.TypeFloat8,
-					TypeID:    coretest.TypeIDFloat8,
-					TypeClass: core.TypeClassFloat,
-					Length:    0,
+					Idx:  0,
+					Name: "data",
+					Type: core.Type{
+						Name:   coretest.TypeFloat8,
+						ID:     coretest.TypeIDFloat8,
+						Class:  core.TypeClassFloat,
+						Length: 0,
+					},
 				},
 				{
-					Idx:       1,
-					Name:      "min_val",
-					TypeName:  coretest.TypeFloat8,
-					TypeID:    coretest.TypeIDFloat8,
-					TypeClass: core.TypeClassFloat,
-					Length:    0,
+					Idx:  1,
+					Name: "min_val",
+					Type: core.Type{
+						Name:   coretest.TypeFloat8,
+						ID:     coretest.TypeIDFloat8,
+						Class:  core.TypeClassFloat,
+						Length: 0,
+					},
 				},
 				{
-					Idx:       2,
-					Name:      "max_val",
-					TypeName:  coretest.TypeFloat8,
-					TypeID:    coretest.TypeIDFloat8,
-					TypeClass: core.TypeClassFloat,
-					Length:    0,
+					Idx:  2,
+					Name: "max_val",
+					Type: core.Type{
+						Name:   coretest.TypeFloat8,
+						ID:     coretest.TypeIDFloat8,
+						Class:  core.TypeClassFloat,
+						Length: 0,
+					},
 				},
 			},
 			validateFn: func(t *testing.T, recorder core.Recorder) {

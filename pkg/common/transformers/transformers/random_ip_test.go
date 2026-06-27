@@ -54,19 +54,23 @@ func TestRandomIP_Transform(t *testing.T) {
 			},
 			columns: []core.Column{
 				{
-					Idx:       0,
-					Name:      "data",
-					TypeName:  coretest.TypeText,
-					TypeID:    coretest.TypeIDText,
-					TypeClass: core.TypeClassText,
-					Length:    -1,
+					Idx:  0,
+					Name: "data",
+					Type: core.Type{
+						Name:   coretest.TypeText,
+						ID:     coretest.TypeIDText,
+						Class:  core.TypeClassText,
+						Length: -1,
+					},
 				},
 				{
-					Idx:      1,
-					Name:     "subnet",
-					TypeName: coretest.TypeText,
-					TypeID:   coretest.TypeIDText,
-					Length:   -1,
+					Idx:  1,
+					Name: "subnet",
+					Type: core.Type{
+						Name:   coretest.TypeText,
+						ID:     coretest.TypeIDText,
+						Length: -1,
+					},
 				},
 			},
 			validateFn: func(t *testing.T, record core.Recorder) {
@@ -91,12 +95,14 @@ func TestRandomIP_Transform(t *testing.T) {
 				core.NewColumnRawValue([]byte("192.168.1.1"), false)},
 			columns: []core.Column{
 				{
-					Idx:       0,
-					Name:      "data",
-					TypeName:  coretest.TypeText,
-					TypeID:    coretest.TypeIDText,
-					TypeClass: core.TypeClassText,
-					Length:    4,
+					Idx:  0,
+					Name: "data",
+					Type: core.Type{
+						Name:   coretest.TypeText,
+						ID:     coretest.TypeIDText,
+						Class:  core.TypeClassText,
+						Length: 4,
+					},
 				},
 			},
 			validateFn: func(t *testing.T, record core.Recorder) {
@@ -121,12 +127,14 @@ func TestRandomIP_Transform(t *testing.T) {
 				core.NewColumnRawValue([]byte("192.168.1.1"), false)},
 			columns: []core.Column{
 				{
-					Idx:       0,
-					Name:      "data",
-					TypeName:  coretest.TypeText,
-					TypeID:    coretest.TypeIDText,
-					TypeClass: core.TypeClassText,
-					Length:    4,
+					Idx:  0,
+					Name: "data",
+					Type: core.Type{
+						Name:   coretest.TypeText,
+						ID:     coretest.TypeIDText,
+						Class:  core.TypeClassText,
+						Length: 4,
+					},
 				},
 			},
 			validateFn: func(t *testing.T, record core.Recorder) {

@@ -52,12 +52,14 @@ func TestRandomMacTransformer_Transform(t *testing.T) {
 				core.NewColumnRawValue([]byte("00:1a:2b:3c:4d:5e"), false)},
 			columns: []core.Column{
 				{
-					Idx:       0,
-					Name:      "data",
-					TypeName:  coretest.TypeText,
-					TypeClass: core.TypeClassText,
-					TypeID:    coretest.TypeIDText,
-					Length:    0,
+					Idx:  0,
+					Name: "data",
+					Type: core.Type{
+						Name:   coretest.TypeText,
+						Class:  core.TypeClassText,
+						ID:     coretest.TypeIDText,
+						Length: 0,
+					},
 				},
 			},
 			validateFn: func(t *testing.T, record core.Recorder) {
@@ -90,12 +92,14 @@ func TestRandomMacTransformer_Transform(t *testing.T) {
 				core.NewColumnRawValue([]byte("01:1a:2b:3c:4d:5e"), false)},
 			columns: []core.Column{
 				{
-					Idx:       0,
-					Name:      "data",
-					TypeName:  coretest.TypeText,
-					TypeClass: core.TypeClassText,
-					TypeID:    coretest.TypeIDText,
-					Length:    0,
+					Idx:  0,
+					Name: "data",
+					Type: core.Type{
+						Name:   coretest.TypeText,
+						Class:  core.TypeClassText,
+						ID:     coretest.TypeIDText,
+						Length: 0,
+					},
 				},
 			},
 			validateFn: func(t *testing.T, record core.Recorder) {
@@ -129,12 +133,14 @@ func TestRandomMacTransformer_Transform(t *testing.T) {
 				core.NewColumnRawValue([]byte("03:1a:2b:3c:4d:5e"), false)},
 			columns: []core.Column{
 				{
-					Idx:       0,
-					Name:      "data",
-					TypeName:  coretest.TypeText,
-					TypeClass: core.TypeClassText,
-					TypeID:    coretest.TypeIDText,
-					Length:    0,
+					Idx:  0,
+					Name: "data",
+					Type: core.Type{
+						Name:   coretest.TypeText,
+						Class:  core.TypeClassText,
+						ID:     coretest.TypeIDText,
+						Length: 0,
+					},
 				},
 			},
 			validateFn: func(t *testing.T, record core.Recorder) {
@@ -168,12 +174,14 @@ func TestRandomMacTransformer_Transform(t *testing.T) {
 				core.NewColumnRawValue([]byte("03:1a:2b:3c:4d:5e"), false)},
 			columns: []core.Column{
 				{
-					Idx:       0,
-					Name:      "data",
-					TypeName:  coretest.TypeText,
-					TypeClass: core.TypeClassText,
-					TypeID:    coretest.TypeIDText,
-					Length:    0,
+					Idx:  0,
+					Name: "data",
+					Type: core.Type{
+						Name:   coretest.TypeText,
+						Class:  core.TypeClassText,
+						ID:     coretest.TypeIDText,
+						Length: 0,
+					},
 				},
 			},
 			validateFn: func(t *testing.T, record core.Recorder) {
@@ -207,12 +215,14 @@ func TestRandomMacTransformer_Transform(t *testing.T) {
 				core.NewColumnRawValue([]byte("03:1a:2b:3c:4d:5e"), false)},
 			columns: []core.Column{
 				{
-					Idx:       0,
-					Name:      "data",
-					TypeName:  coretest.TypeText,
-					TypeClass: core.TypeClassText,
-					TypeID:    coretest.TypeIDText,
-					Length:    0,
+					Idx:  0,
+					Name: "data",
+					Type: core.Type{
+						Name:   coretest.TypeText,
+						Class:  core.TypeClassText,
+						ID:     coretest.TypeIDText,
+						Length: 0,
+					},
 				},
 			},
 			validateFn: func(t *testing.T, record core.Recorder) {

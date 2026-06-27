@@ -71,7 +71,7 @@ func NewInsertWriter(table core.Table, w io.Writer, hexBlob bool) *InsertWriter 
 // the bare type-name constants. TypeClass is always resolved correctly via the
 // DATA_TYPE fallback in the introspector.
 func isBinaryType(col core.Column) bool {
-	return col.TypeClass == core.TypeClassBinary
+	return col.Type.Class == core.TypeClassBinary
 }
 
 func (iw *InsertWriter) Write(row [][]byte) error {

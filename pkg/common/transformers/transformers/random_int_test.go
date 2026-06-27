@@ -40,13 +40,15 @@ func TestRandomIntTransformer_Transform(t *testing.T) {
 			name: "int2",
 			columns: []core.Column{
 				{
-					Idx:       0,
-					Name:      "data",
-					TypeName:  coretest.TypeInt2,
-					TypeID:    coretest.TypeIDInt2,
-					TypeClass: core.TypeClassInt,
-					Length:    0,
-					Size:      2,
+					Idx:  0,
+					Name: "data",
+					Type: core.Type{
+						Name:   coretest.TypeInt2,
+						ID:     coretest.TypeIDInt2,
+						Class:  core.TypeClassInt,
+						Length: 0,
+						Size:   2,
+					},
 				},
 			},
 			original: []*core.ColumnRawValue{
@@ -70,13 +72,15 @@ func TestRandomIntTransformer_Transform(t *testing.T) {
 			name: "int4",
 			columns: []core.Column{
 				{
-					Idx:       0,
-					Name:      "data",
-					TypeName:  coretest.TypeInt4,
-					TypeID:    coretest.TypeIDInt4,
-					TypeClass: core.TypeClassInt,
-					Length:    0,
-					Size:      4,
+					Idx:  0,
+					Name: "data",
+					Type: core.Type{
+						Name:   coretest.TypeInt4,
+						ID:     coretest.TypeIDInt4,
+						Class:  core.TypeClassInt,
+						Length: 0,
+						Size:   4,
+					},
 				},
 			},
 			original: []*core.ColumnRawValue{
@@ -101,13 +105,15 @@ func TestRandomIntTransformer_Transform(t *testing.T) {
 			name: "int8",
 			columns: []core.Column{
 				{
-					Idx:       0,
-					Name:      "data",
-					TypeName:  coretest.TypeInt8,
-					TypeID:    coretest.TypeIDInt8,
-					TypeClass: core.TypeClassInt,
-					Length:    0,
-					Size:      8,
+					Idx:  0,
+					Name: "data",
+					Type: core.Type{
+						Name:   coretest.TypeInt8,
+						ID:     coretest.TypeIDInt8,
+						Class:  core.TypeClassInt,
+						Length: 0,
+						Size:   8,
+					},
 				},
 			},
 			original: []*core.ColumnRawValue{
@@ -141,13 +147,15 @@ func TestRandomIntTransformer_Transform(t *testing.T) {
 				core.NewColumnRawValue(nil, true)},
 			columns: []core.Column{
 				{
-					Idx:       0,
-					Name:      "data",
-					TypeName:  coretest.TypeInt8,
-					TypeID:    coretest.TypeIDInt8,
-					TypeClass: core.TypeClassInt,
-					Length:    0,
-					Size:      8,
+					Idx:  0,
+					Name: "data",
+					Type: core.Type{
+						Name:   coretest.TypeInt8,
+						ID:     coretest.TypeIDInt8,
+						Class:  core.TypeClassInt,
+						Length: 0,
+						Size:   8,
+					},
 				},
 			},
 			validateFn: func(t *testing.T, recorder core.Recorder) {
@@ -170,13 +178,15 @@ func TestRandomIntTransformer_Transform(t *testing.T) {
 				core.NewColumnRawValue([]byte("12345"), false)},
 			columns: []core.Column{
 				{
-					Idx:       0,
-					Name:      "data",
-					TypeName:  coretest.TypeInt8,
-					TypeID:    coretest.TypeIDInt8,
-					TypeClass: core.TypeClassInt,
-					Length:    0,
-					Size:      8,
+					Idx:  0,
+					Name: "data",
+					Type: core.Type{
+						Name:   coretest.TypeInt8,
+						ID:     coretest.TypeIDInt8,
+						Class:  core.TypeClassInt,
+						Length: 0,
+						Size:   8,
+					},
 				},
 			},
 			validateFn: func(t *testing.T, recorder core.Recorder) {
@@ -208,31 +218,37 @@ func TestRandomIntTransformer_Transform(t *testing.T) {
 			},
 			columns: []core.Column{
 				{
-					Idx:       0,
-					Name:      "data",
-					TypeName:  coretest.TypeInt8,
-					TypeID:    coretest.TypeIDInt8,
-					TypeClass: core.TypeClassInt,
-					Length:    0,
-					Size:      8,
+					Idx:  0,
+					Name: "data",
+					Type: core.Type{
+						Name:   coretest.TypeInt8,
+						ID:     coretest.TypeIDInt8,
+						Class:  core.TypeClassInt,
+						Length: 0,
+						Size:   8,
+					},
 				},
 				{
-					Idx:       1,
-					Name:      "min_val",
-					TypeName:  coretest.TypeInt8,
-					TypeID:    coretest.TypeIDInt8,
-					TypeClass: core.TypeClassInt,
-					Length:    0,
-					Size:      8,
+					Idx:  1,
+					Name: "min_val",
+					Type: core.Type{
+						Name:   coretest.TypeInt8,
+						ID:     coretest.TypeIDInt8,
+						Class:  core.TypeClassInt,
+						Length: 0,
+						Size:   8,
+					},
 				},
 				{
-					Idx:       2,
-					Name:      "max_val",
-					TypeName:  coretest.TypeInt8,
-					TypeID:    coretest.TypeIDInt8,
-					TypeClass: core.TypeClassInt,
-					Length:    0,
-					Size:      8,
+					Idx:  2,
+					Name: "max_val",
+					Type: core.Type{
+						Name:   coretest.TypeInt8,
+						ID:     coretest.TypeIDInt8,
+						Class:  core.TypeClassInt,
+						Length: 0,
+						Size:   8,
+					},
 				},
 			},
 			validateFn: func(t *testing.T, recorder core.Recorder) {

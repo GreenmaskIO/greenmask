@@ -52,11 +52,13 @@ func TestHashTransformer_Transform(t *testing.T) {
 			columnName: "data",
 			columns: []core.Column{
 				{
-					Idx:       0,
-					Name:      "data",
-					TypeName:  coretest.TypeText,
-					TypeClass: core.TypeClassText,
-					TypeID:    coretest.TypeIDText,
+					Idx:  0,
+					Name: "data",
+					Type: core.Type{
+						Name:  coretest.TypeText,
+						Class: core.TypeClassText,
+						ID:    coretest.TypeIDText,
+					},
 				},
 			},
 			validateFn: func(t *testing.T, expected, actual *core.ColumnRawValue) {
@@ -75,11 +77,13 @@ func TestHashTransformer_Transform(t *testing.T) {
 			columnName: "data",
 			columns: []core.Column{
 				{
-					Idx:       0,
-					Name:      "data",
-					TypeName:  coretest.TypeText,
-					TypeClass: core.TypeClassText,
-					TypeID:    coretest.TypeIDText,
+					Idx:  0,
+					Name: "data",
+					Type: core.Type{
+						Name:  coretest.TypeText,
+						Class: core.TypeClassText,
+						ID:    coretest.TypeIDText,
+					},
 				},
 			},
 			validateFn: func(t *testing.T, expected, actual *core.ColumnRawValue) {
@@ -98,11 +102,13 @@ func TestHashTransformer_Transform(t *testing.T) {
 			columnName: "data",
 			columns: []core.Column{
 				{
-					Idx:       0,
-					Name:      "data",
-					TypeName:  coretest.TypeText,
-					TypeClass: core.TypeClassText,
-					TypeID:    coretest.TypeIDText,
+					Idx:  0,
+					Name: "data",
+					Type: core.Type{
+						Name:  coretest.TypeText,
+						Class: core.TypeClassText,
+						ID:    coretest.TypeIDText,
+					},
 				},
 			},
 			validateFn: func(t *testing.T, expected, actual *core.ColumnRawValue) {
@@ -121,11 +127,13 @@ func TestHashTransformer_Transform(t *testing.T) {
 			columnName: "data",
 			columns: []core.Column{
 				{
-					Idx:       0,
-					Name:      "data",
-					TypeName:  coretest.TypeText,
-					TypeClass: core.TypeClassText,
-					TypeID:    coretest.TypeIDText,
+					Idx:  0,
+					Name: "data",
+					Type: core.Type{
+						Name:  coretest.TypeText,
+						Class: core.TypeClassText,
+						ID:    coretest.TypeIDText,
+					},
 				},
 			},
 			validateFn: func(t *testing.T, expected, actual *core.ColumnRawValue) {
@@ -144,11 +152,13 @@ func TestHashTransformer_Transform(t *testing.T) {
 			columnName: "data",
 			columns: []core.Column{
 				{
-					Idx:       0,
-					Name:      "data",
-					TypeName:  coretest.TypeText,
-					TypeClass: core.TypeClassText,
-					TypeID:    coretest.TypeIDText,
+					Idx:  0,
+					Name: "data",
+					Type: core.Type{
+						Name:  coretest.TypeText,
+						Class: core.TypeClassText,
+						ID:    coretest.TypeIDText,
+					},
 				},
 			},
 			validateFn: func(t *testing.T, expected, actual *core.ColumnRawValue) {
@@ -167,11 +177,13 @@ func TestHashTransformer_Transform(t *testing.T) {
 			columnName: "data",
 			columns: []core.Column{
 				{
-					Idx:       0,
-					Name:      "data",
-					TypeName:  coretest.TypeText,
-					TypeClass: core.TypeClassText,
-					TypeID:    coretest.TypeIDText,
+					Idx:  0,
+					Name: "data",
+					Type: core.Type{
+						Name:  coretest.TypeText,
+						Class: core.TypeClassText,
+						ID:    coretest.TypeIDText,
+					},
 				},
 			},
 			validateFn: func(t *testing.T, expected, actual *core.ColumnRawValue) {
@@ -190,11 +202,13 @@ func TestHashTransformer_Transform(t *testing.T) {
 			columnName: "data",
 			columns: []core.Column{
 				{
-					Idx:       0,
-					Name:      "data",
-					TypeName:  coretest.TypeText,
-					TypeClass: core.TypeClassText,
-					TypeID:    coretest.TypeIDText,
+					Idx:  0,
+					Name: "data",
+					Type: core.Type{
+						Name:  coretest.TypeText,
+						Class: core.TypeClassText,
+						ID:    coretest.TypeIDText,
+					},
 				},
 			},
 			validateFn: func(t *testing.T, expected, actual *core.ColumnRawValue) {
@@ -213,11 +227,13 @@ func TestHashTransformer_Transform(t *testing.T) {
 			columnName: "data",
 			columns: []core.Column{
 				{
-					Idx:       0,
-					Name:      "data",
-					TypeName:  coretest.TypeText,
-					TypeClass: core.TypeClassText,
-					TypeID:    coretest.TypeIDText,
+					Idx:  0,
+					Name: "data",
+					Type: core.Type{
+						Name:  coretest.TypeText,
+						Class: core.TypeClassText,
+						ID:    coretest.TypeIDText,
+					},
 				},
 			},
 			validateFn: func(t *testing.T, expected, actual *core.ColumnRawValue) {
@@ -237,11 +253,13 @@ func TestHashTransformer_Transform(t *testing.T) {
 			columnName: "data",
 			columns: []core.Column{
 				{
-					Idx:       0,
-					Name:      "data",
-					TypeName:  coretest.TypeText,
-					TypeClass: core.TypeClassText,
-					TypeID:    coretest.TypeIDText,
+					Idx:  0,
+					Name: "data",
+					Type: core.Type{
+						Name:  coretest.TypeText,
+						Class: core.TypeClassText,
+						ID:    coretest.TypeIDText,
+					},
 				},
 			},
 			validateFn: func(t *testing.T, expected, actual *core.ColumnRawValue) {
@@ -261,11 +279,13 @@ func TestHashTransformer_Transform(t *testing.T) {
 			columnName: "data",
 			columns: []core.Column{
 				{
-					Idx:       0,
-					Name:      "data",
-					TypeName:  coretest.TypeText,
-					TypeClass: core.TypeClassText,
-					TypeID:    coretest.TypeIDText,
+					Idx:  0,
+					Name: "data",
+					Type: core.Type{
+						Name:  coretest.TypeText,
+						Class: core.TypeClassText,
+						ID:    coretest.TypeIDText,
+					},
 				},
 			},
 			validateFn: func(t *testing.T, expected, actual *core.ColumnRawValue) {
@@ -285,11 +305,13 @@ func TestHashTransformer_Transform(t *testing.T) {
 			columnName: "data",
 			columns: []core.Column{
 				{
-					Idx:       0,
-					Name:      "data",
-					TypeName:  coretest.TypeText,
-					TypeClass: core.TypeClassText,
-					TypeID:    coretest.TypeIDText,
+					Idx:  0,
+					Name: "data",
+					Type: core.Type{
+						Name:  coretest.TypeText,
+						Class: core.TypeClassText,
+						ID:    coretest.TypeIDText,
+					},
 				},
 			},
 			validateFn: func(t *testing.T, expected, actual *core.ColumnRawValue) {
@@ -403,11 +425,13 @@ func TestHashTransformer_Transform_multiple_iterations(t *testing.T) {
 		HashTransformerDefinition,
 		[]core.Column{
 			{
-				Idx:       0,
-				Name:      "data",
-				TypeName:  coretest.TypeText,
-				TypeID:    coretest.TypeIDText,
-				TypeClass: core.TypeClassText,
+				Idx:  0,
+				Name: "data",
+				Type: core.Type{
+					Name:  coretest.TypeText,
+					ID:    coretest.TypeIDText,
+					Class: core.TypeClassText,
+				},
 			},
 		},
 		map[string]core.ParamsValue{

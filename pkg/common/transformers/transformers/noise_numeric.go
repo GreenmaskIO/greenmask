@@ -170,7 +170,7 @@ func NewNumericFloatTransformer(
 		return nil, fmt.Errorf("get \"max_ratio\" param: %w", err)
 	}
 
-	typeSize := column.Size
+	typeSize := column.Type.Size
 	if typeSize == 0 {
 		log.Ctx(ctx).
 			Info().

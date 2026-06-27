@@ -44,11 +44,13 @@ func TestCMD_Transform(t *testing.T) {
 			name: "success",
 			columns: []core.Column{
 				{
-					Idx:      0,
-					Name:     "data",
-					TypeName: coretest.TypeText,
-					TypeID:   coretest.TypeIDText,
-					Length:   0,
+					Idx:  0,
+					Name: "data",
+					Type: core.Type{
+						Name:   coretest.TypeText,
+						ID:     coretest.TypeIDText,
+						Length: 0,
+					},
 				},
 			},
 			original: []*core.ColumnRawValue{
@@ -83,11 +85,13 @@ func TestCMD_Transform(t *testing.T) {
 			name: "timeout err",
 			columns: []core.Column{
 				{
-					Idx:      0,
-					Name:     "data",
-					TypeName: coretest.TypeText,
-					TypeID:   coretest.TypeIDText,
-					Length:   0,
+					Idx:  0,
+					Name: "data",
+					Type: core.Type{
+						Name:   coretest.TypeText,
+						ID:     coretest.TypeIDText,
+						Length: 0,
+					},
 				},
 			},
 			original: []*core.ColumnRawValue{
@@ -116,11 +120,13 @@ func TestCMD_Transform(t *testing.T) {
 			name: "validate err",
 			columns: []core.Column{
 				{
-					Idx:      0,
-					Name:     "data",
-					TypeName: coretest.TypeInt4,
-					TypeID:   coretest.TypeIDInt4,
-					Length:   0,
+					Idx:  0,
+					Name: "data",
+					Type: core.Type{
+						Name:   coretest.TypeInt4,
+						ID:     coretest.TypeIDInt4,
+						Length: 0,
+					},
 				},
 			},
 			original: []*core.ColumnRawValue{
@@ -149,11 +155,13 @@ func TestCMD_Transform(t *testing.T) {
 			name: "unexpected exit code",
 			columns: []core.Column{
 				{
-					Idx:      0,
-					Name:     "data",
-					TypeName: coretest.TypeText,
-					TypeID:   coretest.TypeIDText,
-					Length:   0,
+					Idx:  0,
+					Name: "data",
+					Type: core.Type{
+						Name:   coretest.TypeText,
+						ID:     coretest.TypeIDText,
+						Length: 0,
+					},
 				},
 			},
 			original: []*core.ColumnRawValue{
@@ -183,11 +191,13 @@ func TestCMD_Transform(t *testing.T) {
 			name: "skip",
 			columns: []core.Column{
 				{
-					Idx:      0,
-					Name:     "data",
-					TypeName: coretest.TypeText,
-					TypeID:   coretest.TypeIDText,
-					Length:   0,
+					Idx:  0,
+					Name: "data",
+					Type: core.Type{
+						Name:   coretest.TypeText,
+						ID:     coretest.TypeIDText,
+						Length: 0,
+					},
 				},
 			},
 			original: []*core.ColumnRawValue{

@@ -158,120 +158,92 @@ const (
 	TypeIDJSON
 )
 
+// typeDef is the immutable per-base-type record in the MySQL type catalog. It is
+// keyed by the modifier-free base name (DATA_TYPE, e.g. "int") and holds the
+// stable facts of that base type. Per-column modifiers — signedness, precision,
+// scale, length — are NOT catalog keys; they are overlaid at projection time by
+// ResolveType, which keeps the catalog free of the type×sign×precision
+// combinatorial blow-up. A class of "" means the base type has no canonical
+// class (e.g. spatial types), matching the pre-consolidation behavior where such
+// types resolved to TypeClassUnsupported.
+type typeDef struct {
+	name  string
+	id    core.TypeID
+	class core.TypeClass
+}
+
+// typeDefs is the single source of truth for the MySQL type catalog. All lookup
+// maps below are derived from it in init().
+var typeDefs = []typeDef{
+	{TypeTinyInt, TypeIDTinyInt, core.TypeClassInt},
+	{TypeSmallInt, TypeIDSmallInt, core.TypeClassInt},
+	{TypeMediumInt, TypeIDMediumInt, core.TypeClassInt},
+	{TypeInt, TypeIDInt, core.TypeClassInt},
+	{TypeBigInt, TypeIDBigInt, core.TypeClassInt},
+	{TypeDecimal, TypeIDDecimal, core.TypeClassFloat},
+	{TypeNumeric, TypeIDNumeric, core.TypeClassFloat},
+	{TypeFloat, TypeIDFloat, core.TypeClassFloat},
+	{TypeDouble, TypeIDDouble, core.TypeClassFloat},
+	{TypeReal, TypeIDReal, core.TypeClassFloat},
+	{TypeBit, TypeIDBit, core.TypeClassBoolean},
+	{TypeDate, TypeIDDate, core.TypeClassDateTime},
+	{TypeDateTime, TypeIDDateTime, core.TypeClassDateTime},
+	{TypeTimestamp, TypeIDTimestamp, core.TypeClassDateTime},
+	{TypeTime, TypeIDTime, core.TypeClassDateTime},
+	{TypeYear, TypeIDYear, core.TypeClassTime},
+	{TypeChar, TypeIDChar, core.TypeClassText},
+	{TypeVarChar, TypeIDVarChar, core.TypeClassText},
+	{TypeBoolean, TypeIDBoolean, core.TypeClassBoolean},
+	{TypeBool, TypeIDBool, core.TypeClassBoolean},
+	{TypeTinyText, TypeIDTinyText, core.TypeClassText},
+	{TypeText, TypeIDText, core.TypeClassText},
+	{TypeMediumText, TypeIDMediumText, core.TypeClassText},
+	{TypeLongText, TypeIDLongText, core.TypeClassText},
+	{TypeBinary, TypeIDBinary, core.TypeClassBinary},
+	{TypeVarBinary, TypeIDVarBinary, core.TypeClassBinary},
+	{TypeTinyBlob, TypeIDTinyBlob, core.TypeClassBinary},
+	{TypeBlob, TypeIDBlob, core.TypeClassBinary},
+	{TypeMediumBlob, TypeIDMediumBlob, core.TypeClassBinary},
+	{TypeLongBlob, TypeIDLongBlob, core.TypeClassBinary},
+	{TypeEnum, TypeIDEnum, TypeClassEnum},
+	{TypeSet, TypeIDSet, TypeClassEnum}, // MySQL-specific
+	{TypeGeometry, TypeIDGeometry, ""},
+	{TypePoint, TypeIDPoint, ""},
+	{TypeLineString, TypeIDLineString, ""},
+	{TypePolygon, TypeIDPolygon, ""},
+	{TypeMultiPoint, TypeIDMultiPoint, ""},
+	{TypeMultiLineString, TypeIDMultiLineString, ""},
+	{TypeMultiPolygon, TypeIDMultiPolygon, ""},
+	{TypeGeometryCollection, TypeIDGeometryCollection, ""},
+	{TypeJSON, TypeIDJSON, core.TypeClassJson},
+}
+
 var (
-	TypeIDToTypeName = map[core.TypeID]string{
-		TypeIDTinyInt:            TypeTinyInt,
-		TypeIDSmallInt:           TypeSmallInt,
-		TypeIDMediumInt:          TypeMediumInt,
-		TypeIDInt:                TypeInt,
-		TypeIDBigInt:             TypeBigInt,
-		TypeIDDecimal:            TypeDecimal,
-		TypeIDNumeric:            TypeNumeric,
-		TypeIDFloat:              TypeFloat,
-		TypeIDDouble:             TypeDouble,
-		TypeIDReal:               TypeReal,
-		TypeIDBit:                TypeBit,
-		TypeIDDate:               TypeDate,
-		TypeIDDateTime:           TypeDateTime,
-		TypeIDTimestamp:          TypeTimestamp,
-		TypeIDTime:               TypeTime,
-		TypeIDYear:               TypeYear,
-		TypeIDChar:               TypeChar,
-		TypeIDVarChar:            TypeVarChar,
-		TypeIDBoolean:            TypeBoolean,
-		TypeIDTinyText:           TypeTinyText,
-		TypeIDText:               TypeText,
-		TypeIDMediumText:         TypeMediumText,
-		TypeIDLongText:           TypeLongText,
-		TypeIDBinary:             TypeBinary,
-		TypeIDVarBinary:          TypeVarBinary,
-		TypeIDTinyBlob:           TypeTinyBlob,
-		TypeIDBlob:               TypeBlob,
-		TypeIDMediumBlob:         TypeMediumBlob,
-		TypeIDLongBlob:           TypeLongBlob,
-		TypeIDEnum:               TypeEnum,
-		TypeIDSet:                TypeSet,
-		TypeIDGeometry:           TypeGeometry,
-		TypeIDPoint:              TypePoint,
-		TypeIDLineString:         TypeLineString,
-		TypeIDPolygon:            TypePolygon,
-		TypeIDMultiPoint:         TypeMultiPoint,
-		TypeIDMultiLineString:    TypeMultiLineString,
-		TypeIDMultiPolygon:       TypeMultiPolygon,
-		TypeIDGeometryCollection: TypeGeometryCollection,
-		TypeIDJSON:               TypeJSON,
-		TypeIDBool:               TypeBool,
-	}
+	// TypeIDToTypeName / TypeNameToTypeID - id<->name lookups for every base type.
+	TypeIDToTypeName = make(map[core.TypeID]string, len(typeDefs))
+	TypeNameToTypeID = make(map[string]core.TypeID, len(typeDefs))
 
-	TypeNameToTypeID = make(map[string]core.TypeID)
-
-	// TypeDataNameTypeToClass - mapping MySQL data types to common type classes.
-	TypeDataNameTypeToClass = map[string]core.TypeClass{
-		TypeChar:       core.TypeClassText,
-		TypeVarChar:    core.TypeClassText,
-		TypeTinyText:   core.TypeClassText,
-		TypeText:       core.TypeClassText,
-		TypeMediumText: core.TypeClassText,
-		TypeLongText:   core.TypeClassText,
-
-		TypeTinyInt:   core.TypeClassInt,
-		TypeSmallInt:  core.TypeClassInt,
-		TypeMediumInt: core.TypeClassInt,
-		TypeInt:       core.TypeClassInt,
-		TypeBigInt:    core.TypeClassInt,
-
-		TypeFloat:  core.TypeClassFloat,
-		TypeDouble: core.TypeClassFloat,
-		TypeReal:   core.TypeClassFloat,
-
-		TypeNumeric: core.TypeClassFloat,
-		TypeDecimal: core.TypeClassFloat,
-
-		TypeBit:     core.TypeClassBoolean,
-		TypeBool:    core.TypeClassBoolean,
-		TypeBoolean: core.TypeClassBoolean,
-
-		TypeDate:      core.TypeClassDateTime,
-		TypeDateTime:  core.TypeClassDateTime,
-		TypeTimestamp: core.TypeClassDateTime,
-		TypeTime:      core.TypeClassDateTime,
-
-		TypeYear: core.TypeClassTime,
-
-		TypeJSON: core.TypeClassJson,
-
-		TypeBinary:     core.TypeClassBinary,
-		TypeVarBinary:  core.TypeClassBinary,
-		TypeBlob:       core.TypeClassBinary,
-		TypeTinyBlob:   core.TypeClassBinary,
-		TypeMediumBlob: core.TypeClassBinary,
-		TypeLongBlob:   core.TypeClassBinary,
-
-		TypeEnum: TypeClassEnum,
-		TypeSet:  TypeClassEnum, // MySQL-specific
-	}
-
-	TypeDataIDToClass = make(map[core.TypeID]core.TypeClass)
+	// TypeDataNameTypeToClass / TypeDataIDToClass - name/id -> class lookups. Only
+	// base types that carry a canonical class are present (matching the historical
+	// maps); spatial types with class "" are intentionally absent.
+	TypeDataNameTypeToClass = make(map[string]core.TypeClass)
+	TypeDataIDToClass       = make(map[core.TypeID]core.TypeClass)
 
 	// TypeClassToDataTypes - reverse mapping from common type classes to MySQL data types.
 	TypeClassToDataTypes = make(map[core.TypeClass][]string)
 )
 
 func init() {
-	for oid, typeName := range TypeIDToTypeName {
-		TypeNameToTypeID[typeName] = oid
-	}
-
-	// Initialize the reverse mapping from type classes to data types.
-	for dt, tc := range TypeDataNameTypeToClass {
-		TypeClassToDataTypes[tc] = append(TypeClassToDataTypes[tc], dt)
-	}
-
-	for dt, tc := range TypeDataNameTypeToClass {
-		oid, ok := TypeNameToTypeID[dt]
-		if !ok {
-			panic(fmt.Sprintf("invalid type name \"%s\"", dt))
+	for _, td := range typeDefs {
+		if _, dup := TypeNameToTypeID[td.name]; dup {
+			panic(fmt.Sprintf("duplicate type name %q in typeDefs", td.name))
 		}
-		TypeDataIDToClass[oid] = tc
+		TypeIDToTypeName[td.id] = td.name
+		TypeNameToTypeID[td.name] = td.id
+		if td.class != "" {
+			TypeDataNameTypeToClass[td.name] = td.class
+			TypeDataIDToClass[td.id] = td.class
+			TypeClassToDataTypes[td.class] = append(TypeClassToDataTypes[td.class], td.name)
+		}
 	}
 }

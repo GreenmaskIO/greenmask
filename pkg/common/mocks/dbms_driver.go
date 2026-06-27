@@ -40,36 +40,36 @@ func (m *DBMSDriverMock) EncodeValueByTypeName(name string, src any, buf []byte)
 	return args.Get(0).([]byte), args.Error(1)
 }
 
-func (m *DBMSDriverMock) EncodeValueByTypeID(oid core.TypeID, src any, buf []byte) ([]byte, error) {
-	args := m.Called(oid, src, buf)
+func (m *DBMSDriverMock) DecodeValueByTypeName(name string, src []byte) (any, error) {
+	args := m.Called(name, src)
+	return args.Get(0), args.Error(1)
+}
+
+func (m *DBMSDriverMock) EncodeValueByType(t core.Type, src any, buf []byte) ([]byte, error) {
+	args := m.Called(t, src, buf)
 	if args.Error(1) != nil {
 		return nil, args.Error(1)
 	}
 	return args.Get(0).([]byte), args.Error(1)
 }
 
-func (m *DBMSDriverMock) DecodeValueByTypeName(name string, src []byte) (any, error) {
-	args := m.Called(name, src)
+func (m *DBMSDriverMock) DecodeValueByType(t core.Type, src []byte) (any, error) {
+	args := m.Called(t, src)
 	return args.Get(0), args.Error(1)
 }
 
-func (m *DBMSDriverMock) DecodeValueByTypeID(oid core.TypeID, src []byte) (any, error) {
-	args := m.Called(oid, src)
-	return args.Get(0), args.Error(1)
-}
-
-func (m *DBMSDriverMock) ScanValueByTypeName(name string, src []byte, dest any) error {
-	args := m.Called(name, src, dest)
-	return args.Error(0)
-}
-
-func (m *DBMSDriverMock) ScanValueByTypeID(oid core.TypeID, src []byte, dest any) error {
-	args := m.Called(oid, src, dest)
+func (m *DBMSDriverMock) ScanValueByType(t core.Type, src []byte, dest any) error {
+	args := m.Called(t, src, dest)
 	if vv, ok := dest.(*string); ok {
 		*vv = string(src)
 	} else {
 		panic("unable to assert string")
 	}
+	return args.Error(0)
+}
+
+func (m *DBMSDriverMock) ScanValueByTypeName(name string, src []byte, dest any) error {
+	args := m.Called(name, src, dest)
 	return args.Error(0)
 }
 

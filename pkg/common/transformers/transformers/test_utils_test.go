@@ -111,10 +111,10 @@ func withColumns(columns ...core.Column) func(*transformerTestEnv) {
 			if c.Name == "" {
 				panic("column name should be provided")
 			}
-			if c.TypeID == 0 {
+			if c.Type.ID == 0 {
 				panic("column type OID should be provided")
 			}
-			if c.TypeName == "" {
+			if c.Type.Name == "" {
 				panic("column type name should be provided")
 			}
 			e.columns[c.Name] = c
@@ -251,10 +251,10 @@ func newTransformerTestEnvReal(
 		if c.Name == "" {
 			panic("column name should be provided")
 		}
-		if c.TypeID == 0 {
+		if c.Type.ID == 0 {
 			panic("column type OID should be provided")
 		}
-		if c.TypeName == "" {
+		if c.Type.Name == "" {
 			panic("column type name should be provided")
 		}
 		columnsMap[c.Name] = c

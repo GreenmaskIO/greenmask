@@ -121,6 +121,13 @@ func decodeInt64(src []byte) (any, error) {
 	return strconv.ParseInt(string(src), 10, 64)
 }
 
+// decodeUint64 strictly decodes an unsigned integer to uint64 for every value,
+// so an unsigned column yields uint64 regardless of magnitude. It mirrors the
+// real engine drivers' strict, non-value-dependent integer typing.
+func decodeUint64(src []byte) (any, error) {
+	return strconv.ParseUint(string(src), 10, 64)
+}
+
 func scanInt64(data []byte, dest any) error {
 	if dest == nil {
 		return errors.New("destination is nil")

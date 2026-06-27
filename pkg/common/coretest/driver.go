@@ -20,7 +20,13 @@ import (
 	core "github.com/greenmaskio/greenmask/pkg/common/core"
 )
 
-var _ core.DBMSDriver = (*Driver)(nil)
+var (
+	_ core.DBMSDriver = (*Driver)(nil)
+	// Per-leaf compile-time proofs mirroring the real engine drivers.
+	_ core.NamedTypeCodec    = (*Driver)(nil)
+	_ core.TypedCodec        = (*Driver)(nil)
+	_ core.TypeIntrospection = (*Driver)(nil)
+)
 
 // Driver is the canonical engine-neutral core.DBMSDriver for transformer unit
 // tests. Its type vocabulary is anchored on core.TypeClass, not on any vendor
@@ -43,24 +49,8 @@ func (d *Driver) entryByName(name string) (*typeEntry, error) {
 	return e, nil
 }
 
-func (d *Driver) entryByID(id core.TypeID) (*typeEntry, error) {
-	e, ok := byID[id]
-	if !ok {
-		return nil, fmt.Errorf("unsupported type id %d", id)
-	}
-	return e, nil
-}
-
 func (d *Driver) EncodeValueByTypeName(name string, src any, buf []byte) ([]byte, error) {
 	e, err := d.entryByName(name)
-	if err != nil {
-		return nil, err
-	}
-	return e.encode(src, buf)
-}
-
-func (d *Driver) EncodeValueByTypeID(id core.TypeID, src any, buf []byte) ([]byte, error) {
-	e, err := d.entryByID(id)
 	if err != nil {
 		return nil, err
 	}
@@ -75,24 +65,57 @@ func (d *Driver) DecodeValueByTypeName(name string, src []byte) (any, error) {
 	return e.decode(src)
 }
 
-func (d *Driver) DecodeValueByTypeID(id core.TypeID, src []byte) (any, error) {
-	e, err := d.entryByID(id)
+// entryByType resolves the catalogue entry a Type descriptor dispatches on.
+// Dispatch is on Name (the authoritative key); only when Name has no match is the
+// entry resolved by id — a present name is never overridden by the id.
+func (d *Driver) entryByType(t core.Type) (*typeEntry, error) {
+	if e, ok := byName[t.Name]; ok {
+		return e, nil
+	}
+	if e, ok := byID[t.ID]; ok {
+		return e, nil
+	}
+	return nil, fmt.Errorf("unsupported type id %d name %q", t.ID, t.Name)
+}
+
+// EncodeValueByType encodes using a full Type descriptor. Encoding is value-driven
+// (the Go value carries signedness), so it dispatches on the catalogue entry like
+// the id/name encoders, just keyed off the self-describing Type.
+func (d *Driver) EncodeValueByType(t core.Type, src any, buf []byte) ([]byte, error) {
+	e, err := d.entryByType(t)
 	if err != nil {
 		return nil, err
+	}
+	return e.encode(src, buf)
+}
+
+// DecodeValueByType decodes using a full Type descriptor. For integer types it
+// honors the descriptor's Unsigned flag, so an unsigned column decodes to uint64
+// for every value (not just large ones); all other classes use the catalogue
+// decoder.
+func (d *Driver) DecodeValueByType(t core.Type, src []byte) (any, error) {
+	e, err := d.entryByType(t)
+	if err != nil {
+		return nil, err
+	}
+	if e.class == core.TypeClassInt && !t.IsSigned() {
+		return decodeUint64(src)
 	}
 	return e.decode(src)
 }
 
-func (d *Driver) ScanValueByTypeName(name string, src []byte, dest any) error {
-	e, err := d.entryByName(name)
+// ScanValueByType scans using a full Type descriptor, dispatching on the
+// catalogue entry.
+func (d *Driver) ScanValueByType(t core.Type, src []byte, dest any) error {
+	e, err := d.entryByType(t)
 	if err != nil {
 		return err
 	}
 	return e.scan(src, dest)
 }
 
-func (d *Driver) ScanValueByTypeID(id core.TypeID, src []byte, dest any) error {
-	e, err := d.entryByID(id)
+func (d *Driver) ScanValueByTypeName(name string, src []byte, dest any) error {
+	e, err := d.entryByName(name)
 	if err != nil {
 		return err
 	}

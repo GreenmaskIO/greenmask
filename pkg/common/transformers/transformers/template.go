@@ -102,7 +102,7 @@ func NewTemplateTransformer(
 		},
 		tmpl:     tmpl,
 		buf:      bytes.NewBuffer(nil),
-		tctx:     NewColumnContext(column.TypeName, columnName),
+		tctx:     NewColumnContext(column.Type.Name, columnName),
 		validate: validate,
 	}, nil
 }

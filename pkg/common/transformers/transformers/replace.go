@@ -60,12 +60,12 @@ var ReplaceTransformerDefinition = utils.NewTransformerDefinition(
 )
 
 type ReplaceTransformer struct {
-	columnName          string
-	columnIdx           int
-	rawValue            *core.ColumnRawValue
-	affectedColumns     map[int]string
-	needValidate        bool
-	columnOIDToValidate core.TypeID
+	columnName           string
+	columnIdx            int
+	rawValue             *core.ColumnRawValue
+	affectedColumns      map[int]string
+	needValidate         bool
+	columnTypeToValidate core.Type
 
 	valueParam parameters.Parameterizer
 
@@ -111,13 +111,13 @@ func NewReplaceTransformer(
 		}
 		// Validate the value if requested
 		if needValidate {
-			_, err = tableDriver.DecodeValueByTypeID(column.TypeID, value)
+			_, err = tableDriver.DecodeValueByType(column.Type, value)
 			if err != nil {
 				validationcollector.FromContext(ctx).
 					Add(core.NewValidationWarning().
 						SetSeverity(core.ValidationSeverityError).
 						SetMsg("error validating parameter value").
-						AddMeta(core.MetaKeyColumnTypeName, column.TypeName).
+						AddMeta(core.MetaKeyColumnTypeName, column.Type.Name).
 						AddMeta(core.MetaKeyParameterName, valueParam.Name()).
 						AddMeta(core.MetaKeyParameterValue, string(value)).
 						SetError(err))
@@ -132,11 +132,11 @@ func NewReplaceTransformer(
 		affectedColumns: map[int]string{
 			column.Idx: column.Name,
 		},
-		rawValue:            rawValue,
-		columnIdx:           column.Idx,
-		needValidate:        needValidate,
-		columnOIDToValidate: column.TypeID,
-		valueParam:          valueParam,
+		rawValue:             rawValue,
+		columnIdx:            column.Idx,
+		needValidate:         needValidate,
+		columnTypeToValidate: column.Type,
+		valueParam:           valueParam,
 	}
 
 	// Set the transform function based on the value parameter type.
@@ -175,7 +175,7 @@ func (t *ReplaceTransformer) getValueToReplace(
 		)
 	}
 	if t.needValidate {
-		_, err = driver.DecodeValueByTypeID(t.columnOIDToValidate, v)
+		_, err = driver.DecodeValueByType(t.columnTypeToValidate, v)
 		if err != nil {
 			return nil, fmt.Errorf("dynamic value validation error: %w", err)
 		}

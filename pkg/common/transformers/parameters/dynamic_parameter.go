@@ -274,24 +274,24 @@ func (dp *DynamicParameter) initLinkColumnParameter(
 	}
 	dp.tmplCtx.setLinkedColumn(dp.linkedColumnParameter.Column)
 
-	dp.columnCanonicalTypeName, err = dp.tableDriver.GetCanonicalTypeName(dp.column.TypeName, dp.column.TypeID)
+	dp.columnCanonicalTypeName, err = dp.tableDriver.GetCanonicalTypeName(dp.column.Type.Name, dp.column.Type.ID)
 	if err != nil {
 		return fmt.Errorf("get input canonical type name: %w", err)
 	}
-	dp.columnCanonicalTypeClassName, err = dp.tableDriver.GetCanonicalTypeClassName(dp.column.TypeName, dp.column.TypeID)
+	dp.columnCanonicalTypeClassName, err = dp.tableDriver.GetCanonicalTypeClassName(dp.column.Type.Name, dp.column.Type.ID)
 	if err != nil {
 		return fmt.Errorf("get input canonical type class name: %w", err)
 	}
 	linkedParameterColumnType, err := dp.tableDriver.GetCanonicalTypeName(
-		dp.linkedColumnParameter.Column.TypeName,
-		dp.linkedColumnParameter.Column.TypeID,
+		dp.linkedColumnParameter.Column.Type.Name,
+		dp.linkedColumnParameter.Column.Type.ID,
 	)
 	if err != nil {
 		return fmt.Errorf("get output canonical type name: %w", err)
 	}
 	linkedParameterColumnTypeClass, err := dp.tableDriver.GetCanonicalTypeClassName(
-		dp.linkedColumnParameter.Column.TypeName,
-		dp.linkedColumnParameter.Column.TypeID,
+		dp.linkedColumnParameter.Column.Type.Name,
+		dp.linkedColumnParameter.Column.Type.ID,
 	)
 	if err != nil {
 		return fmt.Errorf("get output canonical type class name: %w", err)
@@ -310,11 +310,11 @@ func (dp *DynamicParameter) initLinkColumnParameter(
 		vc := validationcollector.FromContext(ctx).
 			WithMeta(map[string]any{
 				"DynamicParameterAttribute":  "column",
-				"DynamicParameterColumnType": dp.column.TypeName,
+				"DynamicParameterColumnType": dp.column.Type.Name,
 				"DynamicParameterColumnName": dp.column.Name,
 				"LinkedParameterName":        dp.definition.LinkColumnParameter,
 				"LinkedColumnName":           dp.linkedColumnParameter.Column.Name,
-				"LinkedColumnType":           dp.linkedColumnParameter.Column.TypeName,
+				"LinkedColumnType":           dp.linkedColumnParameter.Column.Type.Name,
 			})
 
 		// If types are different, then we must check compatibility.

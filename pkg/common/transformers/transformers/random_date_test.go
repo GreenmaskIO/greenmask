@@ -49,12 +49,14 @@ func TestTimestampTransformer_Transform(t *testing.T) {
 			name: "test date type",
 			columns: []core.Column{
 				{
-					Idx:       0,
-					Name:      "data",
-					TypeName:  coretest.TypeDate,
-					TypeID:    coretest.TypeIDDate,
-					TypeClass: core.TypeClassDateTime,
-					Length:    0,
+					Idx:  0,
+					Name: "data",
+					Type: core.Type{
+						Name:   coretest.TypeDate,
+						ID:     coretest.TypeIDDate,
+						Class:  core.TypeClassDateTime,
+						Length: 0,
+					},
 				},
 			},
 			original: []*core.ColumnRawValue{
@@ -81,12 +83,14 @@ func TestTimestampTransformer_Transform(t *testing.T) {
 			name: "test timestamp without timezone type",
 			columns: []core.Column{
 				{
-					Idx:       0,
-					Name:      "data",
-					TypeName:  coretest.TypeTimestamp,
-					TypeID:    coretest.TypeIDTimestamp,
-					TypeClass: core.TypeClassDateTime,
-					Length:    0,
+					Idx:  0,
+					Name: "data",
+					Type: core.Type{
+						Name:   coretest.TypeTimestamp,
+						ID:     coretest.TypeIDTimestamp,
+						Class:  core.TypeClassDateTime,
+						Length: 0,
+					},
 				},
 			},
 			original: []*core.ColumnRawValue{
@@ -113,12 +117,14 @@ func TestTimestampTransformer_Transform(t *testing.T) {
 			name: "test timestamp type with Truncate till day",
 			columns: []core.Column{
 				{
-					Idx:       0,
-					Name:      "data",
-					TypeName:  coretest.TypeTimestamp,
-					TypeID:    coretest.TypeIDTimestamp,
-					TypeClass: core.TypeClassDateTime,
-					Length:    0,
+					Idx:  0,
+					Name: "data",
+					Type: core.Type{
+						Name:   coretest.TypeTimestamp,
+						ID:     coretest.TypeIDTimestamp,
+						Class:  core.TypeClassDateTime,
+						Length: 0,
+					},
 				},
 			},
 			original: []*core.ColumnRawValue{
@@ -150,12 +156,14 @@ func TestTimestampTransformer_Transform(t *testing.T) {
 			name: "keep_null false and NULL seq",
 			columns: []core.Column{
 				{
-					Idx:       0,
-					Name:      "data",
-					TypeName:  coretest.TypeTimestamp,
-					TypeID:    coretest.TypeIDTimestamp,
-					TypeClass: core.TypeClassDateTime,
-					Length:    0,
+					Idx:  0,
+					Name: "data",
+					Type: core.Type{
+						Name:   coretest.TypeTimestamp,
+						ID:     coretest.TypeIDTimestamp,
+						Class:  core.TypeClassDateTime,
+						Length: 0,
+					},
 				},
 			},
 			original: []*core.ColumnRawValue{
@@ -183,12 +191,14 @@ func TestTimestampTransformer_Transform(t *testing.T) {
 			name: "keep_null true and NULL seq",
 			columns: []core.Column{
 				{
-					Idx:       0,
-					Name:      "data",
-					TypeName:  coretest.TypeTimestamp,
-					TypeID:    coretest.TypeIDTimestamp,
-					TypeClass: core.TypeClassDateTime,
-					Length:    0,
+					Idx:  0,
+					Name: "data",
+					Type: core.Type{
+						Name:   coretest.TypeTimestamp,
+						ID:     coretest.TypeIDTimestamp,
+						Class:  core.TypeClassDateTime,
+						Length: 0,
+					},
 				},
 			},
 			original: []*core.ColumnRawValue{

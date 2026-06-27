@@ -35,11 +35,13 @@ func TestNewReplaceTransformer(t *testing.T) {
 		vc := validationcollector.NewCollector()
 		ctx := context.Background()
 		column := core.Column{
-			Idx:       1,
-			Name:      "id",
-			TypeName:  coretest.TypeInt4,
-			TypeID:    coretest.TypeIDInt4,
-			TypeClass: core.TypeClassInt,
+			Idx:  1,
+			Name: "id",
+			Type: core.Type{
+				Name:  coretest.TypeInt4,
+				ID:    coretest.TypeIDInt4,
+				Class: core.TypeClassInt,
+			},
 		}
 		tableDriver := mocks2.NewTableDriverMock()
 		columnParameter := mocks2.NewParametrizerMock()
@@ -91,7 +93,7 @@ func TestNewReplaceTransformer(t *testing.T) {
 		assert.Equal(t, replaceTransformer.columnIdx, column.Idx)
 		assert.Equal(t, replaceTransformer.affectedColumns, map[int]string{1: "id"})
 		assert.Equal(t, replaceTransformer.needValidate, false)
-		assert.Equal(t, replaceTransformer.columnOIDToValidate, column.TypeID)
+		assert.Equal(t, replaceTransformer.columnTypeToValidate, column.Type)
 
 		expectedTransformationFunc := reflect.ValueOf(replaceTransformer.transformStatic).Pointer()
 		actualTransformationFunc := reflect.ValueOf(replaceTransformer.transform).Pointer()
@@ -111,11 +113,13 @@ func TestNewReplaceTransformer(t *testing.T) {
 		vc := validationcollector.NewCollector()
 		ctx := validationcollector.WithCollector(context.Background(), vc)
 		column := core.Column{
-			Idx:       1,
-			Name:      "id",
-			TypeName:  coretest.TypeInt4,
-			TypeID:    coretest.TypeIDInt4,
-			TypeClass: core.TypeClassInt,
+			Idx:  1,
+			Name: "id",
+			Type: core.Type{
+				Name:  coretest.TypeInt4,
+				ID:    coretest.TypeIDInt4,
+				Class: core.TypeClassInt,
+			},
 		}
 		tableDriver := mocks2.NewTableDriverMock()
 		columnParameter := mocks2.NewParametrizerMock()
@@ -143,7 +147,7 @@ func TestNewReplaceTransformer(t *testing.T) {
 			Return(false)
 		valueParameter.On("RawValue").
 			Return(core.ParamsValue("123"), nil)
-		tableDriver.On("DecodeValueByTypeID", column.TypeID, []byte("123")).
+		tableDriver.On("DecodeValueByType", column.Type, []byte("123")).
 			Return(&core.ColumnValue{
 				Value:  int64(123),
 				IsNull: false,
@@ -172,7 +176,7 @@ func TestNewReplaceTransformer(t *testing.T) {
 		assert.Equal(t, replaceTransformer.columnIdx, column.Idx)
 		assert.Equal(t, replaceTransformer.affectedColumns, map[int]string{1: "id"})
 		assert.Equal(t, replaceTransformer.needValidate, true)
-		assert.Equal(t, replaceTransformer.columnOIDToValidate, column.TypeID)
+		assert.Equal(t, replaceTransformer.columnTypeToValidate, column.Type)
 
 		expectedTransformationFunc := reflect.ValueOf(replaceTransformer.transformStatic).Pointer()
 		actualTransformationFunc := reflect.ValueOf(replaceTransformer.transform).Pointer()
@@ -192,11 +196,13 @@ func TestNewReplaceTransformer(t *testing.T) {
 		vc := validationcollector.NewCollector()
 		ctx := validationcollector.WithCollector(context.Background(), vc)
 		column := core.Column{
-			Idx:       1,
-			Name:      "id",
-			TypeName:  coretest.TypeInt4,
-			TypeID:    coretest.TypeIDInt4,
-			TypeClass: core.TypeClassInt,
+			Idx:  1,
+			Name: "id",
+			Type: core.Type{
+				Name:  coretest.TypeInt4,
+				ID:    coretest.TypeIDInt4,
+				Class: core.TypeClassInt,
+			},
 		}
 		tableDriver := mocks2.NewTableDriverMock()
 		columnParameter := mocks2.NewParametrizerMock()
@@ -224,7 +230,7 @@ func TestNewReplaceTransformer(t *testing.T) {
 			Return(false)
 		valueParameter.On("RawValue").
 			Return(core.ParamsValue("abc"), nil)
-		tableDriver.On("DecodeValueByTypeID", column.TypeID, []byte("abc")).
+		tableDriver.On("DecodeValueByType", column.Type, []byte("abc")).
 			Return(nil, assert.AnError)
 		valueParameter.On("Name").
 			Return("validate")
@@ -259,11 +265,13 @@ func TestNewReplaceTransformer(t *testing.T) {
 		vc := validationcollector.NewCollector()
 		ctx := validationcollector.WithCollector(context.Background(), vc)
 		column := core.Column{
-			Idx:       1,
-			Name:      "id",
-			TypeName:  coretest.TypeInt4,
-			TypeID:    coretest.TypeIDInt4,
-			TypeClass: core.TypeClassInt,
+			Idx:  1,
+			Name: "id",
+			Type: core.Type{
+				Name:  coretest.TypeInt4,
+				ID:    coretest.TypeIDInt4,
+				Class: core.TypeClassInt,
+			},
 		}
 		tableDriver := mocks2.NewTableDriverMock()
 		columnParameter := mocks2.NewParametrizerMock()
@@ -313,7 +321,7 @@ func TestNewReplaceTransformer(t *testing.T) {
 		assert.Equal(t, replaceTransformer.columnIdx, column.Idx)
 		assert.Equal(t, replaceTransformer.affectedColumns, map[int]string{1: "id"})
 		assert.Equal(t, replaceTransformer.needValidate, true)
-		assert.Equal(t, replaceTransformer.columnOIDToValidate, column.TypeID)
+		assert.Equal(t, replaceTransformer.columnTypeToValidate, column.Type)
 
 		expectedTransformationFunc := reflect.ValueOf(replaceTransformer.transformDynamic).Pointer()
 		actualTransformationFunc := reflect.ValueOf(replaceTransformer.transform).Pointer()
@@ -356,10 +364,12 @@ func newTestReplaceTransformer(t *testing.T, opt ...func(*replaceTestSetup)) *re
 	ctx := validationcollector.WithCollector(context.Background(), vc)
 
 	column := core.Column{
-		Idx:      1,
-		Name:     "id",
-		TypeName: coretest.TypeInt4,
-		TypeID:   coretest.TypeIDInt4,
+		Idx:  1,
+		Name: "id",
+		Type: core.Type{
+			Name: coretest.TypeInt4,
+			ID:   coretest.TypeIDInt4,
+		},
 	}
 
 	setup := &replaceTestSetup{
@@ -396,10 +406,12 @@ func TestReplaceTransformer_Transform(t *testing.T) {
 		env := newTransformerTestEnv(t,
 			NewReplaceTransformer,
 			withColumns(core.Column{
-				Idx:      1,
-				Name:     "id",
-				TypeName: coretest.TypeInt4,
-				TypeID:   coretest.TypeIDInt4,
+				Idx:  1,
+				Name: "id",
+				Type: core.Type{
+					Name: coretest.TypeInt4,
+					ID:   coretest.TypeIDInt4,
+				},
 			}),
 			withParameter(ParameterNameColumn, func(param *mocks2.ParametrizerMock, env *transformerTestEnv) {
 				param.On("Scan", mock.Anything).
@@ -609,7 +621,7 @@ func TestReplaceTransformer_Transform(t *testing.T) {
 			Return(false, nil)
 		setup.valueParam.On("RawValue").
 			Return(core.ParamsValue("123"), nil)
-		setup.tableDriver.On("DecodeValueByTypeID", setup.column.TypeID, []byte("123")).
+		setup.tableDriver.On("DecodeValueByType", setup.column.Type, []byte("123")).
 			Return(int64(123), nil)
 		recorder.On("SetRawColumnValueByIdx",
 			setup.column.Idx, core.NewColumnRawValue([]byte("123"), false),

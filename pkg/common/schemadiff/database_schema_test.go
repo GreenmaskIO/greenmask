@@ -24,7 +24,7 @@ import (
 
 // col is a helper to build a config.Column concisely.
 func col(idx int, name string, typeOID core.TypeID, typeName string) core.Column {
-	return core.Column{Idx: idx, Name: name, TypeID: typeOID, TypeName: typeName}
+	return core.Column{Idx: idx, Name: name, Type: core.Type{ID: typeOID, Name: typeName}}
 }
 
 // mkTable is a helper to build a config.Table concisely.

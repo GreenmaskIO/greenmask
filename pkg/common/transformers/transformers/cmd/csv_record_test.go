@@ -27,25 +27,31 @@ func TestCSVRecord_Encode(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		columns := []core.Column{
 			{
-				Idx:      0,
-				Name:     "first_name",
-				TypeName: coretest.TypeText,
-				TypeID:   coretest.TypeIDText,
-				Length:   0,
+				Idx:  0,
+				Name: "first_name",
+				Type: core.Type{
+					Name:   coretest.TypeText,
+					ID:     coretest.TypeIDText,
+					Length: 0,
+				},
 			},
 			{
-				Idx:      1,
-				Name:     "last_name",
-				TypeName: coretest.TypeText,
-				TypeID:   coretest.TypeIDText,
-				Length:   0,
+				Idx:  1,
+				Name: "last_name",
+				Type: core.Type{
+					Name:   coretest.TypeText,
+					ID:     coretest.TypeIDText,
+					Length: 0,
+				},
 			},
 			{
-				Idx:      2,
-				Name:     "middle_name",
-				TypeName: coretest.TypeText,
-				TypeID:   coretest.TypeIDText,
-				Length:   0,
+				Idx:  2,
+				Name: "middle_name",
+				Type: core.Type{
+					Name:   coretest.TypeText,
+					ID:     coretest.TypeIDText,
+					Length: 0,
+				},
 			},
 		}
 		transferColumn := []*ColumnMapping{

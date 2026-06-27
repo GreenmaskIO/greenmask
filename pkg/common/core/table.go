@@ -123,37 +123,28 @@ type Column struct {
 	Idx int `json:"idx"`
 	// Name - name of the column.
 	Name string `json:"name"`
-	// TypeName - name of the column type, e.g. "integer", "text", "boolean", etc.
-	TypeName string `json:"type_name"`
-	// TypeID - engine-agnostic identifier of the column type (the type OID in
-	// PostgreSQL; a stable per-engine identifier for engines without OIDs).
-	TypeID TypeID `json:"type_oid"`
-	// TypeClass - class of the column type, e.g. "numeric", "string", "datetime", etc.
-	TypeClass TypeClass
 	// NotNull - indicates whether the column is NOT NULL.
 	NotNull bool `json:"not_null"`
-	// Length - length of the column type, e.g. for varchar(255) it will be 255.
-	Length int `json:"length"`
-	// Size - size of the column in bytes.
-	Size int `json:"size"`
 	// Pos
 	Pos int `json:"pos"`
+	// Type - the canonical, engine-agnostic descriptor of the column's data type.
+	// All type metadata (name, id, class, signedness, precision/scale, ...) lives
+	// here. It is built once before the column exists (engine projection on
+	// introspection, JSON deserialization on restore, or a literal in tests) and
+	// is never re-assembled afterward.
+	Type Type `json:"type"`
 }
 
 func NewColumn(
 	idx int,
 	name string,
-	colTyp string,
-	typeID TypeID,
 	notNull bool,
-	typeClass TypeClass,
+	t Type,
 ) Column {
 	return Column{
-		Idx:       idx,
-		Name:      name,
-		TypeName:  colTyp,
-		TypeID:    typeID,
-		NotNull:   notNull,
-		TypeClass: typeClass,
+		Idx:     idx,
+		Name:    name,
+		NotNull: notNull,
+		Type:    t,
 	}
 }

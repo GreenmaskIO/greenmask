@@ -40,12 +40,14 @@ func TestUuidTransformer_Transform_uuid_type(t *testing.T) {
 			name: "text",
 			columns: []core.Column{
 				{
-					Idx:       0,
-					Name:      "data",
-					TypeName:  coretest.TypeText,
-					TypeClass: core.TypeClassText,
-					TypeID:    coretest.TypeIDText,
-					Length:    0,
+					Idx:  0,
+					Name: "data",
+					Type: core.Type{
+						Name:   coretest.TypeText,
+						Class:  core.TypeClassText,
+						ID:     coretest.TypeIDText,
+						Length: 0,
+					},
 				},
 			},
 			original: []*core.ColumnRawValue{
@@ -72,12 +74,14 @@ func TestUuidTransformer_Transform_uuid_type(t *testing.T) {
 				core.NewColumnRawValue(nil, true)},
 			columns: []core.Column{
 				{
-					Idx:       0,
-					Name:      "data",
-					TypeName:  coretest.TypeText,
-					TypeClass: core.TypeClassText,
-					TypeID:    coretest.TypeIDText,
-					Length:    0,
+					Idx:  0,
+					Name: "data",
+					Type: core.Type{
+						Name:   coretest.TypeText,
+						Class:  core.TypeClassText,
+						ID:     coretest.TypeIDText,
+						Length: 0,
+					},
 				},
 			},
 			validateFn: func(t *testing.T, recorder core.Recorder) {
@@ -98,12 +102,14 @@ func TestUuidTransformer_Transform_uuid_type(t *testing.T) {
 				core.NewColumnRawValue([]byte(""), false)},
 			columns: []core.Column{
 				{
-					Idx:       0,
-					Name:      "data",
-					TypeName:  coretest.TypeText,
-					TypeClass: core.TypeClassText,
-					TypeID:    coretest.TypeIDText,
-					Length:    0,
+					Idx:  0,
+					Name: "data",
+					Type: core.Type{
+						Name:   coretest.TypeText,
+						Class:  core.TypeClassText,
+						ID:     coretest.TypeIDText,
+						Length: 0,
+					},
 				},
 			},
 			validateFn: func(t *testing.T, recorder core.Recorder) {

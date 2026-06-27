@@ -151,10 +151,10 @@ func validateColumnTypeIsSupported(ctx context.Context, properties *core.ColumnP
 	}
 	vc := validationcollector.FromContext(ctx).WithMeta(map[string]any{
 		"ColumnName":      c.Name,
-		"ColumnTypeName":  c.TypeName,
-		"ColumnTypeClass": c.TypeClass,
+		"ColumnTypeName":  c.Type.Name,
+		"ColumnTypeClass": c.Type.Class,
 	})
-	if !properties.IsColumnTypeAllowed(c.TypeName) {
+	if !properties.IsColumnTypeAllowed(c.Type.Name) {
 		vc.Add(core.NewValidationWarning().
 			SetSeverity(core.ValidationSeverityError).
 			SetMsg("column type is not allowed").
@@ -163,7 +163,7 @@ func validateColumnTypeIsSupported(ctx context.Context, properties *core.ColumnP
 		return core.ErrFatalValidationError
 	}
 
-	if !properties.IsColumnTypeClassAllowed(c.TypeClass) {
+	if !properties.IsColumnTypeClassAllowed(c.Type.Class) {
 		vc.Add(core.NewValidationWarning().
 			SetSeverity(core.ValidationSeverityError).
 			SetMsg("column type class is not allowed").
@@ -172,7 +172,7 @@ func validateColumnTypeIsSupported(ctx context.Context, properties *core.ColumnP
 		return core.ErrFatalValidationError
 	}
 
-	if properties.IsColumnTypeDenied(c.TypeName) {
+	if properties.IsColumnTypeDenied(c.Type.Name) {
 		vc.Add(core.NewValidationWarning().
 			SetSeverity(core.ValidationSeverityError).
 			SetMsg("column type is denied").
@@ -181,7 +181,7 @@ func validateColumnTypeIsSupported(ctx context.Context, properties *core.ColumnP
 		return core.ErrFatalValidationError
 	}
 
-	if properties.IsColumnTypeClassDenied(c.TypeClass) {
+	if properties.IsColumnTypeClassDenied(c.Type.Class) {
 		vc.Add(core.NewValidationWarning().
 			SetSeverity(core.ValidationSeverityError).
 			SetMsg("column type class is denied").
@@ -415,9 +415,11 @@ func getValue(
 			return false, fmt.Errorf("execute custom unmarshaler: %w", err)
 		}
 	case linkedColumnParameter != nil:
-		// Parsing dynamically - default value and type are unknown
-		// TODO: Be careful - this may cause an error in Scan func if the the returning value is not a pointer
-		res, err = driver.DecodeValueByTypeName(linkedColumnParameter.Column.TypeName, rawValue)
+		// Parsing dynamically - default value and type are unknown. Decode via the
+		// column's full Type descriptor so signedness selects the strict Go type
+		// (and so an unsigned column whose base name differs from its declared
+		// "int unsigned" string still resolves its codec).
+		res, err = driver.DecodeValueByType(linkedColumnParameter.Column.Type, rawValue)
 		if err != nil {
 			return nil, fmt.Errorf("scan parameter via TableDriver: %w", err)
 		}
@@ -455,7 +457,7 @@ func scanValue(
 		}
 		return utils.ScanPointer(value, dest)
 	case linkedColumnParameter != nil:
-		if err := driver.ScanValueByTypeName(linkedColumnParameter.Column.TypeName, rawValue, dest); err != nil {
+		if err := driver.ScanValueByTypeName(linkedColumnParameter.Column.Type.Name, rawValue, dest); err != nil {
 			return fmt.Errorf("unable to scan parameter via Driver: %w", err)
 		}
 		return nil

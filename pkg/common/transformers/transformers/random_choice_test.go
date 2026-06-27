@@ -41,12 +41,14 @@ func TestRandomChoiceTransformer_Transform(t *testing.T) {
 			name: "success date type",
 			columns: []core.Column{
 				{
-					Idx:       0,
-					Name:      "data",
-					TypeName:  coretest.TypeDate,
-					TypeID:    coretest.TypeIDDate,
-					TypeClass: core.TypeClassDateTime,
-					Length:    0,
+					Idx:  0,
+					Name: "data",
+					Type: core.Type{
+						Name:   coretest.TypeDate,
+						ID:     coretest.TypeIDDate,
+						Class:  core.TypeClassDateTime,
+						Length: 0,
+					},
 				},
 			},
 			original: []*core.ColumnRawValue{
@@ -69,12 +71,14 @@ func TestRandomChoiceTransformer_Transform(t *testing.T) {
 			name: "success json type",
 			columns: []core.Column{
 				{
-					Idx:       0,
-					Name:      "data",
-					TypeName:  coretest.TypeText,
-					TypeClass: core.TypeClassText,
-					TypeID:    coretest.TypeIDText,
-					Length:    0,
+					Idx:  0,
+					Name: "data",
+					Type: core.Type{
+						Name:   coretest.TypeText,
+						Class:  core.TypeClassText,
+						ID:     coretest.TypeIDText,
+						Length: 0,
+					},
 				},
 			},
 			original: []*core.ColumnRawValue{
@@ -134,11 +138,13 @@ func TestNewRandomChoiceTransformer(t *testing.T) {
 	t.Run("validation failure", func(t *testing.T) {
 		columns := []core.Column{
 			{
-				Idx:      0,
-				Name:     "data",
-				TypeName: coretest.TypeDate,
-				TypeID:   coretest.TypeIDDate,
-				Length:   0,
+				Idx:  0,
+				Name: "data",
+				Type: core.Type{
+					Name:   coretest.TypeDate,
+					ID:     coretest.TypeIDDate,
+					Length: 0,
+				},
 			},
 		}
 		staticParameters := map[string]core.ParamsValue{

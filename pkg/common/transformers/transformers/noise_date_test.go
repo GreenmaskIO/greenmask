@@ -68,11 +68,13 @@ func TestNoiseDateTransformer_Transform(t *testing.T) {
 			},
 			columns: []core.Column{
 				{
-					Idx:       0,
-					Name:      "data",
-					TypeName:  coretest.TypeTimestamp,
-					TypeID:    coretest.TypeIDTimestamp,
-					TypeClass: core.TypeClassDateTime,
+					Idx:  0,
+					Name: "data",
+					Type: core.Type{
+						Name:  coretest.TypeTimestamp,
+						ID:    coretest.TypeIDTimestamp,
+						Class: core.TypeClassDateTime,
+					},
 				},
 			},
 			original: []*core.ColumnRawValue{
@@ -120,11 +122,13 @@ func TestNoiseDateTransformer_Transform(t *testing.T) {
 			},
 			columns: []core.Column{
 				{
-					Idx:       0,
-					Name:      "data",
-					TypeName:  coretest.TypeTimestamp,
-					TypeID:    coretest.TypeIDTimestamp,
-					TypeClass: core.TypeClassDateTime,
+					Idx:  0,
+					Name: "data",
+					Type: core.Type{
+						Name:  coretest.TypeTimestamp,
+						ID:    coretest.TypeIDTimestamp,
+						Class: core.TypeClassDateTime,
+					},
 				},
 			},
 			original: []*core.ColumnRawValue{
@@ -183,25 +187,31 @@ func TestNoiseDateTransformer_Transform(t *testing.T) {
 			},
 			columns: []core.Column{
 				{
-					Idx:       0,
-					Name:      "data",
-					TypeName:  coretest.TypeTimestamp,
-					TypeID:    coretest.TypeIDTimestamp,
-					TypeClass: core.TypeClassDateTime,
+					Idx:  0,
+					Name: "data",
+					Type: core.Type{
+						Name:  coretest.TypeTimestamp,
+						ID:    coretest.TypeIDTimestamp,
+						Class: core.TypeClassDateTime,
+					},
 				},
 				{
-					Idx:       1,
-					Name:      "min_col",
-					TypeName:  coretest.TypeTimestamp,
-					TypeID:    coretest.TypeIDTimestamp,
-					TypeClass: core.TypeClassDateTime,
+					Idx:  1,
+					Name: "min_col",
+					Type: core.Type{
+						Name:  coretest.TypeTimestamp,
+						ID:    coretest.TypeIDTimestamp,
+						Class: core.TypeClassDateTime,
+					},
 				},
 				{
-					Idx:       1,
-					Name:      "max_col",
-					TypeName:  coretest.TypeTimestamp,
-					TypeID:    coretest.TypeIDTimestamp,
-					TypeClass: core.TypeClassDateTime,
+					Idx:  1,
+					Name: "max_col",
+					Type: core.Type{
+						Name:  coretest.TypeTimestamp,
+						ID:    coretest.TypeIDTimestamp,
+						Class: core.TypeClassDateTime,
+					},
 				},
 			},
 			original: []*core.ColumnRawValue{

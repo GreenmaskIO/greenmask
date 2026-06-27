@@ -54,11 +54,13 @@ func TestMaskingTransformer_Transform(t *testing.T) {
 			columnName: "data",
 			columns: []core.Column{
 				{
-					Idx:       0,
-					Name:      "data",
-					TypeName:  coretest.TypeText,
-					TypeID:    coretest.TypeIDText,
-					TypeClass: core.TypeClassText,
+					Idx:  0,
+					Name: "data",
+					Type: core.Type{
+						Name:  coretest.TypeText,
+						ID:    coretest.TypeIDText,
+						Class: core.TypeClassText,
+					},
 				},
 			},
 			validateFn: func(t *testing.T, expected, actual *core.ColumnRawValue) {
@@ -80,11 +82,13 @@ func TestMaskingTransformer_Transform(t *testing.T) {
 			columnName: "data",
 			columns: []core.Column{
 				{
-					Idx:       0,
-					Name:      "data",
-					TypeName:  coretest.TypeText,
-					TypeID:    coretest.TypeIDText,
-					TypeClass: core.TypeClassText,
+					Idx:  0,
+					Name: "data",
+					Type: core.Type{
+						Name:  coretest.TypeText,
+						ID:    coretest.TypeIDText,
+						Class: core.TypeClassText,
+					},
 				},
 			},
 			validateFn: func(t *testing.T, expected, actual *core.ColumnRawValue) {
@@ -106,11 +110,13 @@ func TestMaskingTransformer_Transform(t *testing.T) {
 			columnName: "data",
 			columns: []core.Column{
 				{
-					Idx:       0,
-					Name:      "data",
-					TypeName:  coretest.TypeText,
-					TypeID:    coretest.TypeIDText,
-					TypeClass: core.TypeClassText,
+					Idx:  0,
+					Name: "data",
+					Type: core.Type{
+						Name:  coretest.TypeText,
+						ID:    coretest.TypeIDText,
+						Class: core.TypeClassText,
+					},
 				},
 			},
 			validateFn: func(t *testing.T, expected, actual *core.ColumnRawValue) {
@@ -132,11 +138,13 @@ func TestMaskingTransformer_Transform(t *testing.T) {
 			columnName: "data",
 			columns: []core.Column{
 				{
-					Idx:       0,
-					Name:      "data",
-					TypeName:  coretest.TypeText,
-					TypeID:    coretest.TypeIDText,
-					TypeClass: core.TypeClassText,
+					Idx:  0,
+					Name: "data",
+					Type: core.Type{
+						Name:  coretest.TypeText,
+						ID:    coretest.TypeIDText,
+						Class: core.TypeClassText,
+					},
 				},
 			},
 			validateFn: func(t *testing.T, expected, actual *core.ColumnRawValue) {
@@ -188,11 +196,13 @@ func TestNewMaskingTransformer(t *testing.T) {
 		MaskingTransformerDefinition,
 		[]core.Column{
 			{
-				Idx:       0,
-				Name:      "data",
-				TypeName:  coretest.TypeText,
-				TypeID:    coretest.TypeIDText,
-				TypeClass: core.TypeClassText,
+				Idx:  0,
+				Name: "data",
+				Type: core.Type{
+					Name:  coretest.TypeText,
+					ID:    coretest.TypeIDText,
+					Class: core.TypeClassText,
+				},
 			},
 		},
 		map[string]core.ParamsValue{

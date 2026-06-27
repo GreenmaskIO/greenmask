@@ -136,7 +136,7 @@ func NewFloatTransformer(
 		return nil, fmt.Errorf("get \"engine\" param: %w", err)
 	}
 
-	typeSize := column.Size
+	typeSize := column.Type.Size
 	if typeSize == 0 {
 		log.Ctx(ctx).
 			Info().

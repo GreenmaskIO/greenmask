@@ -34,10 +34,12 @@ func TestNewDictTransformer(t *testing.T) {
 		vc := validationcollector.NewCollector()
 		ctx := context.Background()
 		column := core.Column{
-			Idx:      1,
-			Name:     "id",
-			TypeName: coretest.TypeInt4,
-			TypeID:   coretest.TypeIDInt4,
+			Idx:  1,
+			Name: "id",
+			Type: core.Type{
+				Name: coretest.TypeInt4,
+				ID:   coretest.TypeIDInt4,
+			},
 		}
 		tableDriver := mocks2.NewTableDriverMock()
 		columnParameter := mocks2.NewParametrizerMock()
@@ -118,10 +120,12 @@ func TestNewDictTransformer(t *testing.T) {
 		vc := validationcollector.NewCollector()
 		ctx := context.Background()
 		column := core.Column{
-			Idx:      1,
-			Name:     "id",
-			TypeName: coretest.TypeInt4,
-			TypeID:   coretest.TypeIDInt4,
+			Idx:  1,
+			Name: "id",
+			Type: core.Type{
+				Name: coretest.TypeInt4,
+				ID:   coretest.TypeIDInt4,
+			},
 		}
 		tableDriver := mocks2.NewTableDriverMock()
 		columnParameter := mocks2.NewParametrizerMock()
@@ -204,10 +208,12 @@ func TestDictTransformer_Transform(t *testing.T) {
 	t.Run("fail: null - no default - fail not matched", func(t *testing.T) {
 		env := newTransformerTestEnv(t, NewDictTransformer,
 			withColumns(core.Column{
-				Idx:      0,
-				Name:     "id",
-				TypeName: coretest.TypeInt4,
-				TypeID:   coretest.TypeIDInt4,
+				Idx:  0,
+				Name: "id",
+				Type: core.Type{
+					Name: coretest.TypeInt4,
+					ID:   coretest.TypeIDInt4,
+				},
 			}),
 			withParameter(ParameterNameColumn, func(param *mocks2.ParametrizerMock, env *transformerTestEnv) {
 				param.On("Scan", mock.Anything).
@@ -263,10 +269,12 @@ func TestDictTransformer_Transform(t *testing.T) {
 	t.Run("success: null - default - fail not matched", func(t *testing.T) {
 		env := newTransformerTestEnv(t, NewDictTransformer,
 			withColumns(core.Column{
-				Idx:      0,
-				Name:     "id",
-				TypeName: coretest.TypeInt4,
-				TypeID:   coretest.TypeIDInt4,
+				Idx:  0,
+				Name: "id",
+				Type: core.Type{
+					Name: coretest.TypeInt4,
+					ID:   coretest.TypeIDInt4,
+				},
 			}),
 			withParameter(ParameterNameColumn, func(param *mocks2.ParametrizerMock, env *transformerTestEnv) {
 				param.On("Scan", mock.Anything).
@@ -329,10 +337,12 @@ func TestDictTransformer_Transform(t *testing.T) {
 	t.Run("success: match null", func(t *testing.T) {
 		env := newTransformerTestEnv(t, NewDictTransformer,
 			withColumns(core.Column{
-				Idx:      0,
-				Name:     "id",
-				TypeName: coretest.TypeInt4,
-				TypeID:   coretest.TypeIDInt4,
+				Idx:  0,
+				Name: "id",
+				Type: core.Type{
+					Name: coretest.TypeInt4,
+					ID:   coretest.TypeIDInt4,
+				},
 			}),
 			withParameter(ParameterNameColumn, func(param *mocks2.ParametrizerMock, env *transformerTestEnv) {
 				param.On("Scan", mock.Anything).
@@ -395,10 +405,12 @@ func TestDictTransformer_Transform(t *testing.T) {
 	t.Run("success: match not null", func(t *testing.T) {
 		env := newTransformerTestEnv(t, NewDictTransformer,
 			withColumns(core.Column{
-				Idx:      0,
-				Name:     "id",
-				TypeName: coretest.TypeInt4,
-				TypeID:   coretest.TypeIDInt4,
+				Idx:  0,
+				Name: "id",
+				Type: core.Type{
+					Name: coretest.TypeInt4,
+					ID:   coretest.TypeIDInt4,
+				},
 			}),
 			withParameter(ParameterNameColumn, func(param *mocks2.ParametrizerMock, env *transformerTestEnv) {
 				param.On("Scan", mock.Anything).

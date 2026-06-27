@@ -41,12 +41,14 @@ func TestRandomNumericTransformer_Transform(t *testing.T) {
 			name: "numeric",
 			columns: []core.Column{
 				{
-					Idx:       0,
-					Name:      "data",
-					TypeName:  coretest.TypeNumeric,
-					TypeID:    coretest.TypeIDNumeric,
-					TypeClass: core.TypeClassNumeric,
-					Length:    0,
+					Idx:  0,
+					Name: "data",
+					Type: core.Type{
+						Name:   coretest.TypeNumeric,
+						ID:     coretest.TypeIDNumeric,
+						Class:  core.TypeClassNumeric,
+						Length: 0,
+					},
 				},
 			},
 			original: []*core.ColumnRawValue{
@@ -80,12 +82,14 @@ func TestRandomNumericTransformer_Transform(t *testing.T) {
 				core.NewColumnRawValue(nil, true)},
 			columns: []core.Column{
 				{
-					Idx:       0,
-					Name:      "data",
-					TypeName:  coretest.TypeNumeric,
-					TypeID:    coretest.TypeIDNumeric,
-					TypeClass: core.TypeClassNumeric,
-					Length:    0,
+					Idx:  0,
+					Name: "data",
+					Type: core.Type{
+						Name:   coretest.TypeNumeric,
+						ID:     coretest.TypeIDNumeric,
+						Class:  core.TypeClassNumeric,
+						Length: 0,
+					},
 				},
 			},
 			validateFn: func(t *testing.T, recorder core.Recorder) {
@@ -111,12 +115,14 @@ func TestRandomNumericTransformer_Transform(t *testing.T) {
 				core.NewColumnRawValue(nil, true)},
 			columns: []core.Column{
 				{
-					Idx:       0,
-					Name:      "data",
-					TypeName:  coretest.TypeNumeric,
-					TypeID:    coretest.TypeIDNumeric,
-					TypeClass: core.TypeClassNumeric,
-					Length:    0,
+					Idx:  0,
+					Name: "data",
+					Type: core.Type{
+						Name:   coretest.TypeNumeric,
+						ID:     coretest.TypeIDNumeric,
+						Class:  core.TypeClassNumeric,
+						Length: 0,
+					},
 				},
 			},
 			validateFn: func(t *testing.T, recorder core.Recorder) {
@@ -140,12 +146,14 @@ func TestRandomNumericTransformer_Transform(t *testing.T) {
 				core.NewColumnRawValue(nil, true)},
 			columns: []core.Column{
 				{
-					Idx:       0,
-					Name:      "data",
-					TypeName:  coretest.TypeNumeric,
-					TypeID:    coretest.TypeIDNumeric,
-					TypeClass: core.TypeClassNumeric,
-					Length:    0,
+					Idx:  0,
+					Name: "data",
+					Type: core.Type{
+						Name:   coretest.TypeNumeric,
+						ID:     coretest.TypeIDNumeric,
+						Class:  core.TypeClassNumeric,
+						Length: 0,
+					},
 				},
 			},
 			validateFn: func(t *testing.T, recorder core.Recorder) {
@@ -185,28 +193,34 @@ func TestRandomNumericTransformer_Transform(t *testing.T) {
 			},
 			columns: []core.Column{
 				{
-					Idx:       0,
-					Name:      "data",
-					TypeName:  coretest.TypeNumeric,
-					TypeID:    coretest.TypeIDNumeric,
-					TypeClass: core.TypeClassNumeric,
-					Length:    0,
+					Idx:  0,
+					Name: "data",
+					Type: core.Type{
+						Name:   coretest.TypeNumeric,
+						ID:     coretest.TypeIDNumeric,
+						Class:  core.TypeClassNumeric,
+						Length: 0,
+					},
 				},
 				{
-					Idx:       1,
-					Name:      "min_val",
-					TypeName:  coretest.TypeNumeric,
-					TypeID:    coretest.TypeIDNumeric,
-					TypeClass: core.TypeClassNumeric,
-					Length:    0,
+					Idx:  1,
+					Name: "min_val",
+					Type: core.Type{
+						Name:   coretest.TypeNumeric,
+						ID:     coretest.TypeIDNumeric,
+						Class:  core.TypeClassNumeric,
+						Length: 0,
+					},
 				},
 				{
-					Idx:       2,
-					Name:      "max_val",
-					TypeName:  coretest.TypeNumeric,
-					TypeID:    coretest.TypeIDNumeric,
-					TypeClass: core.TypeClassNumeric,
-					Length:    0,
+					Idx:  2,
+					Name: "max_val",
+					Type: core.Type{
+						Name:   coretest.TypeNumeric,
+						ID:     coretest.TypeIDNumeric,
+						Class:  core.TypeClassNumeric,
+						Length: 0,
+					},
 				},
 			},
 			validateFn: func(t *testing.T, recorder core.Recorder) {

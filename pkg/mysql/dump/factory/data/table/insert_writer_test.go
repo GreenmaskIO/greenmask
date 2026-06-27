@@ -126,7 +126,7 @@ func TestInsertWriter_HexBlob(t *testing.T) {
 	// binaryCol mirrors what the introspector produces: TypeName may include a length
 	// suffix (e.g. "binary(16)"), so TypeClass is the reliable signal.
 	binaryCol := func(typeName string) core.Column {
-		return core.Column{Name: "data", TypeName: typeName, TypeClass: core.TypeClassBinary}
+		return core.Column{Name: "data", Type: core.Type{Name: typeName, Class: core.TypeClassBinary}}
 	}
 
 	binaryTypes := []string{
@@ -206,9 +206,9 @@ func TestInsertWriter_HexBlob(t *testing.T) {
 		table := core.Table{
 			Name: "t",
 			Columns: []core.Column{
-				{Name: "id", TypeName: dbmsdriver.TypeInt, TypeClass: core.TypeClassInt},
-				{Name: "name", TypeName: dbmsdriver.TypeVarChar, TypeClass: core.TypeClassText},
-				{Name: "data", TypeName: dbmsdriver.TypeBlob, TypeClass: core.TypeClassBinary},
+				{Name: "id", Type: core.Type{Name: dbmsdriver.TypeInt, Class: core.TypeClassInt}},
+				{Name: "name", Type: core.Type{Name: dbmsdriver.TypeVarChar, Class: core.TypeClassText}},
+				{Name: "data", Type: core.Type{Name: dbmsdriver.TypeBlob, Class: core.TypeClassBinary}},
 			},
 		}
 		var buf bytes.Buffer

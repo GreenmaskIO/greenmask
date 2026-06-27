@@ -35,8 +35,10 @@ func TestStaticParameter_Init(t *testing.T) {
 		tableDriver := newTableDriverMock()
 		tableDriver.On("GetColumnByName", "test_column").
 			Return(&core.Column{
-				Name:     "test_column",
-				TypeName: "int2",
+				Name: "test_column",
+				Type: core.Type{
+					Name: "int2",
+				},
 			}, nil)
 
 		ctx := validationcollector.WithCollector(context.Background(), validationcollector.NewCollector())
@@ -76,8 +78,10 @@ func TestStaticParameter_Init(t *testing.T) {
 		tableDriver := newTableDriverMock()
 		tableDriver.On("GetColumnByName", "test_column").
 			Return(&core.Column{
-				Name:     "test_column",
-				TypeName: "text",
+				Name: "test_column",
+				Type: core.Type{
+					Name: "text",
+				},
 			}, nil)
 
 		ctx := validationcollector.WithCollector(context.Background(), validationcollector.NewCollector())
@@ -196,8 +200,10 @@ func TestStaticParameter_Init(t *testing.T) {
 		tableDriver := newTableDriverMock()
 		tableDriver.On("GetColumnByName", "test_column").
 			Return(&core.Column{
-				Name:     "test_column",
-				TypeName: "int2",
+				Name: "test_column",
+				Type: core.Type{
+					Name: "int2",
+				},
 			}, nil)
 
 		columnParameter := NewStaticParameter(columnDef, tableDriver, false)

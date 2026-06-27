@@ -20,18 +20,30 @@ package core
 // layer for free from the shared pkg/common/tabledriver impl. DBMSDriver and
 // TableDriver are kept as composite aliases so existing references compile.
 
-// TypeCodec encodes/decodes/scans a value by its type id.
-type TypeCodec interface {
-	EncodeValueByTypeID(id TypeID, src any, buf []byte) ([]byte, error)
-	DecodeValueByTypeID(id TypeID, src []byte) (any, error)
-	ScanValueByTypeID(id TypeID, src []byte, dest any) error
-}
-
-// NamedTypeCodec encodes/decodes/scans a value by its type name.
+// NamedTypeCodec encodes/decodes/scans a value by its canonical type name. It is
+// the strict-name codec path for callers that hold a bare type name (e.g.
+// template casts like "timestamp"/"int8"); callers holding a full descriptor use
+// the TypedCodec path instead. There is deliberately no by-id codec: the type id
+// is a field of Type (cross-engine identity, schema diffing) and an internal
+// Name-empty fallback, never a public codec dispatch key — dispatching on a bare
+// id reintroduces the id-0 footgun the Type-based dispatch avoids.
 type NamedTypeCodec interface {
 	EncodeValueByTypeName(name string, src any, buf []byte) ([]byte, error)
 	DecodeValueByTypeName(name string, src []byte) (any, error)
 	ScanValueByTypeName(name string, src []byte, dest any) error
+}
+
+// TypedCodec encodes/decodes/scans a value from a full Type descriptor, so
+// signedness (and future limits/constraints) drive the codec rather than a bare
+// type id or name. It is a distinct leaf from TypeCodec/NamedTypeCodec because
+// its key is the self-describing Type, not a scalar id/name; the id/name codecs
+// remain for context-less callers and default to the signed integer
+// interpretation. It is the canonical codec path the column layer dispatches to,
+// so every per-column encode/decode/scan flows through one Type.
+type TypedCodec interface {
+	EncodeValueByType(t Type, src any, buf []byte) ([]byte, error)
+	DecodeValueByType(t Type, src []byte) (any, error)
+	ScanValueByType(t Type, src []byte, dest any) error
 }
 
 // TypeIntrospection answers questions about the engine's type catalog.
@@ -50,8 +62,8 @@ type TypeIntrospection interface {
 // DBMSDriver is the type-level driver an engine must implement. It composes the
 // segregated type-level leaves; consumers should depend on the narrowest leaf.
 type DBMSDriver interface {
-	TypeCodec
 	NamedTypeCodec
+	TypedCodec
 	TypeIntrospection
 }
 

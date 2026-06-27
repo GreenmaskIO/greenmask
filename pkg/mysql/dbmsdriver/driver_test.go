@@ -103,7 +103,74 @@ func TestDriver_DecodeValueByTypeName(t *testing.T) {
 	}
 }
 
-func TestDriver_DecodeValueByTypeID(t *testing.T) {
+func TestDriver_DecodeValueByType(t *testing.T) {
+	driver := New().WithLocation(time.UTC)
+
+	const maxUint64 = "18446744073709551615"
+
+	tests := []struct {
+		name     string
+		typ      core.Type
+		input    []byte
+		expected any
+		wantErr  bool
+	}{
+		// Signed integers (Unsigned zero value) always decode to int64, regardless of value.
+		{"signed int small", core.Type{Name: TypeInt, ID: TypeIDInt}, []byte("42"), int64(42), false},
+		{"signed bigint max int64", core.Type{Name: TypeBigInt, ID: TypeIDBigInt},
+			[]byte("9223372036854775807"), int64(9223372036854775807), false},
+		// A signed column value never exceeds int64: out-of-range is a real error,
+		// not a silent widening to uint64.
+		{"signed bigint overflow errors", core.Type{Name: TypeBigInt, ID: TypeIDBigInt},
+			[]byte(maxUint64), nil, true},
+
+		// Unsigned integers always decode to uint64 — for BOTH a small value and a
+		// value above int64, proving the Go type is type-driven, not value-driven.
+		{"unsigned int small", core.Type{Name: TypeInt, ID: TypeIDInt, Unsigned: true}, []byte("42"), uint64(42), false},
+		{"unsigned bigint small", core.Type{Name: TypeBigInt, ID: TypeIDBigInt, Unsigned: true},
+			[]byte("42"), uint64(42), false},
+		{"unsigned bigint max uint64", core.Type{Name: TypeBigInt, ID: TypeIDBigInt, Unsigned: true},
+			[]byte(maxUint64), uint64(18446744073709551615), false},
+		{"unsigned tinyint", core.Type{Name: TypeTinyInt, ID: TypeIDTinyInt, Unsigned: true}, []byte("255"), uint64(255), false},
+
+		// Dispatch is on Name, never overridden by a present ID. A descriptor whose
+		// Name carries the vendor-declared (non-catalog) string is unsupported and
+		// must error — the id no longer rescues it.
+		{"full name in Name is not catalog-dispatchable", core.Type{Name: "int unsigned", ID: TypeIDInt, Unsigned: true},
+			[]byte(maxUint64[:10]), nil, true},
+
+		// id-0 regression: TypeIDTinyInt == 0, so a name-only descriptor whose ID is
+		// the zero value must still dispatch by Name (varchar), not be mis-read as
+		// tinyint.
+		{"id-0 dispatches by name", core.Type{Name: TypeVarChar, ID: 0}, []byte("abc"), "abc", false},
+
+		// name-empty fallback: with no Name the base is resolved from the id, and
+		// the unsigned flag is still honored.
+		{"name empty falls back to id", core.Type{ID: TypeIDInt, Unsigned: true}, []byte("42"), uint64(42), false},
+
+		// Non-integer types ignore signedness.
+		{"decimal", core.Type{Name: TypeDecimal, ID: TypeIDDecimal}, []byte("123.456"),
+			must(decimal.NewFromString("123.456")), false},
+		{"varchar", core.Type{Name: TypeVarChar, ID: TypeIDVarChar}, []byte("abc"), "abc", false},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			val, err := driver.DecodeValueByType(tc.typ, tc.input)
+			if tc.wantErr {
+				require.Error(t, err)
+				return
+			}
+			require.NoError(t, err)
+			assert.Equal(t, tc.expected, val)
+		})
+	}
+}
+
+// TestDriver_DecodeValueByType_Catalog exercises the full type catalog through
+// the Type codec path, keyed by id with an empty Name so the id-fallback resolves
+// the base name. Integers default to signed (Type{}.Unsigned == false).
+func TestDriver_DecodeValueByType_Catalog(t *testing.T) {
 	driver := New().WithLocation(time.UTC)
 
 	tests := []struct {
@@ -167,7 +234,7 @@ func TestDriver_DecodeValueByTypeID(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			val, err := driver.DecodeValueByTypeID(tc.oid, tc.input)
+			val, err := driver.DecodeValueByType(core.Type{ID: tc.oid}, tc.input)
 			require.NoError(t, err)
 			assert.Equal(t, tc.expected, val)
 		})
@@ -245,7 +312,9 @@ func TestDriver_EncodeValueByTypeName(t *testing.T) {
 	}
 }
 
-func TestDriver_EncodeValueByTypeID(t *testing.T) {
+// TestDriver_EncodeValueByType_Catalog exercises the full type catalog through
+// the Type codec path, keyed by id with an empty Name (id-fallback resolution).
+func TestDriver_EncodeValueByType_Catalog(t *testing.T) {
 	driver := New().WithLocation(time.UTC)
 
 	tests := []struct {
@@ -309,14 +378,16 @@ func TestDriver_EncodeValueByTypeID(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			out, err := driver.EncodeValueByTypeID(tc.oid, tc.input, nil)
+			out, err := driver.EncodeValueByType(core.Type{ID: tc.oid}, tc.input, nil)
 			require.NoError(t, err)
 			assert.Equal(t, tc.expected, out)
 		})
 	}
 }
 
-func TestDriver_ScanValueByTypeID(t *testing.T) {
+// TestDriver_ScanValueByType_Catalog exercises the full type catalog through the
+// Type codec path, keyed by id with an empty Name (id-fallback resolution).
+func TestDriver_ScanValueByType_Catalog(t *testing.T) {
 	driver := New().WithLocation(time.UTC)
 
 	tests := []struct {
@@ -391,7 +462,7 @@ func TestDriver_ScanValueByTypeID(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			err := driver.ScanValueByTypeID(tc.oid, tc.input, tc.dest)
+			err := driver.ScanValueByType(core.Type{ID: tc.oid}, tc.input, tc.dest)
 			require.NoError(t, err)
 
 			destVal := reflect.ValueOf(tc.dest)

@@ -27,8 +27,6 @@ import (
 	mysqldump "github.com/greenmaskio/greenmask/pkg/mysql/cmdrun/dump"
 	mysqldumpstages "github.com/greenmaskio/greenmask/pkg/mysql/dump"
 	mysqlrestorestages "github.com/greenmaskio/greenmask/pkg/mysql/restore"
-	pgdump "github.com/greenmaskio/greenmask/pkg/postgresql/cmdrun/dump"
-	pgdump2 "github.com/greenmaskio/greenmask/pkg/postgresql2/dump"
 )
 
 var errUnsupportedEngine = errors.New("unsupported DBMS engine")
@@ -45,7 +43,8 @@ func NewDumper(cfg *config.Config, st core.Storager) (Dumper, error) {
 			mysqldump.GetMySQLDumpOpts(cfg)...,
 		)
 	case core.DBMSEnginePostgreSQL:
-		return pgdump.New(cfg, registry.DefaultTransformerRegistry, st, utils.NewDefaultCmdProducer())
+		//return pgdump.New(cfg, registry.DefaultTransformerRegistry, st, utils.NewDefaultCmdProducer())
+		panic("implement me")
 	default:
 		return nil, fmt.Errorf("engine %q: %w", cfg.Engine, errUnsupportedEngine)
 	}
@@ -59,7 +58,7 @@ func NewDumpPipeline(cfg *config.Config) (*pipeline.DumpPipeline, error) {
 	case core.DBMSEngineMySQL:
 		return mysqldumpstages.NewDumpPipeline(), nil
 	case core.DBMSEnginePostgreSQL:
-		return pgdump2.NewDumpPipeline()
+		panic("implement me")
 	default:
 		return nil, fmt.Errorf("engine %q: %w", cfg.Engine, errUnsupportedEngine)
 	}
@@ -97,7 +96,7 @@ func NewValidator(cfg *config.Config, st core.Storager) (Validator, error) {
 			opts...,
 		)
 	case core.DBMSEnginePostgreSQL:
-		return pgdump.NewValidator(cfg, registry.DefaultTransformerRegistry, st, utils.NewDefaultCmdProducer())
+		panic("implement me")
 	default:
 		return nil, fmt.Errorf("engine %q: %w", cfg.Engine, errUnsupportedEngine)
 	}

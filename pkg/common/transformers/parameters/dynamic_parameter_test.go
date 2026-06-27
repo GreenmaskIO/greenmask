@@ -156,17 +156,6 @@ func (t *tableDriverMock) EncodeValueByTypeName(name string, src any, buf []byte
 	return args.Get(0).([]byte), args.Error(1)
 }
 
-func (t *tableDriverMock) EncodeValueByTypeID(oid core.TypeID, src any, buf []byte) ([]byte, error) {
-	args := t.Called(oid, src, buf)
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-	if buf != nil {
-		return append(buf, args.Get(0).([]byte)...), nil
-	}
-	return args.Get(0).([]byte), args.Error(1)
-}
-
 func (t *tableDriverMock) DecodeValueByTypeName(name string, src []byte) (any, error) {
 	args := t.Called(name, src)
 	if args.Get(0) == nil {
@@ -175,24 +164,32 @@ func (t *tableDriverMock) DecodeValueByTypeName(name string, src []byte) (any, e
 	return args.Get(0), args.Error(1)
 }
 
-func (t *tableDriverMock) DecodeValueByTypeID(oid core.TypeID, src []byte) (any, error) {
-	args := t.Called(oid, src)
+func (t *tableDriverMock) DecodeValueByType(typ core.Type, src []byte) (any, error) {
+	args := t.Called(typ, src)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
 	return args.Get(0), args.Error(1)
 }
 
-func (t *tableDriverMock) ScanValueByTypeName(name string, src []byte, dest any) error {
-	args := t.Called(name, src, dest)
+func (t *tableDriverMock) EncodeValueByType(typ core.Type, src any, buf []byte) ([]byte, error) {
+	args := t.Called(typ, src, buf)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]byte), args.Error(1)
+}
+
+func (t *tableDriverMock) ScanValueByType(typ core.Type, src []byte, dest any) error {
+	args := t.Called(typ, src, dest)
 	if args.Get(0) != nil {
 		return args.Error(0)
 	}
 	return nil
 }
 
-func (t *tableDriverMock) ScanValueByTypeID(oid core.TypeID, src []byte, dest any) error {
-	args := t.Called(oid, src, dest)
+func (t *tableDriverMock) ScanValueByTypeName(name string, src []byte, dest any) error {
+	args := t.Called(name, src, dest)
 	if args.Get(0) != nil {
 		return args.Error(0)
 	}
@@ -366,10 +363,12 @@ func TestDynamicParameter_Init(t *testing.T) {
 		tableDriver.On("GetColumnByName", "id2").
 			Return(
 				&core.Column{
-					Idx:      0,
-					Name:     "id2",
-					TypeName: "int2",
-					TypeID:   10,
+					Idx:  0,
+					Name: "id2",
+					Type: core.Type{
+						Name: "int2",
+						ID:   10,
+					},
 				},
 				nil,
 			)
@@ -391,10 +390,12 @@ func TestDynamicParameter_Init(t *testing.T) {
 		tableDriver.On("GetColumnByName", "timestamp_column").
 			Return(
 				&core.Column{
-					Idx:      1,
-					Name:     "timestamp_column",
-					TypeName: "timestamp",
-					TypeID:   12,
+					Idx:  1,
+					Name: "timestamp_column",
+					Type: core.Type{
+						Name: "timestamp",
+						ID:   12,
+					},
 				},
 				nil,
 			)
@@ -437,10 +438,12 @@ func TestDynamicParameter_Init(t *testing.T) {
 		tableDriver.On("GetColumnByName", "id2").
 			Return(
 				&core.Column{
-					Idx:      0,
-					Name:     "id2",
-					TypeName: "int2",
-					TypeID:   10,
+					Idx:  0,
+					Name: "id2",
+					Type: core.Type{
+						Name: "int2",
+						ID:   10,
+					},
 				},
 				nil,
 			)
@@ -462,10 +465,12 @@ func TestDynamicParameter_Init(t *testing.T) {
 		tableDriver.On("GetColumnByName", "supported_column").
 			Return(
 				&core.Column{
-					Idx:      1,
-					Name:     "supported_column",
-					TypeName: "int2",
-					TypeID:   10,
+					Idx:  1,
+					Name: "supported_column",
+					Type: core.Type{
+						Name: "int2",
+						ID:   10,
+					},
 				},
 				nil,
 			)
@@ -503,10 +508,12 @@ func TestDynamicParameter_Value(t *testing.T) {
 		tableDriver.On("GetColumnByName", "id2").
 			Return(
 				&core.Column{
-					Idx:      0,
-					Name:     "id2",
-					TypeName: "int2",
-					TypeID:   10,
+					Idx:  0,
+					Name: "id2",
+					Type: core.Type{
+						Name: "int2",
+						ID:   10,
+					},
 				},
 				nil,
 			)
@@ -528,10 +535,12 @@ func TestDynamicParameter_Value(t *testing.T) {
 		tableDriver.On("GetColumnByName", "supported_column").
 			Return(
 				&core.Column{
-					Idx:      1,
-					Name:     "supported_column",
-					TypeName: "int2",
-					TypeID:   10,
+					Idx:  1,
+					Name: "supported_column",
+					Type: core.Type{
+						Name: "int2",
+						ID:   10,
+					},
 				},
 				nil,
 			)
@@ -585,10 +594,12 @@ func TestDynamicParameter_Value(t *testing.T) {
 		tableDriver.On("GetColumnByName", "id2").
 			Return(
 				&core.Column{
-					Idx:      0,
-					Name:     "id2",
-					TypeName: "int2",
-					TypeID:   10,
+					Idx:  0,
+					Name: "id2",
+					Type: core.Type{
+						Name: "int2",
+						ID:   10,
+					},
 				},
 				nil,
 			)
@@ -615,10 +626,12 @@ func TestDynamicParameter_Value(t *testing.T) {
 		tableDriver.On("GetColumnByName", "supported_column").
 			Return(
 				&core.Column{
-					Idx:      1,
-					Name:     "supported_column",
-					TypeName: "int2",
-					TypeID:   10,
+					Idx:  1,
+					Name: "supported_column",
+					Type: core.Type{
+						Name: "int2",
+						ID:   10,
+					},
 				},
 				nil,
 			)
@@ -669,10 +682,12 @@ func TestDynamicParameter_Value(t *testing.T) {
 		tableDriver.On("GetColumnByName", "id2").
 			Return(
 				&core.Column{
-					Idx:      0,
-					Name:     "id2",
-					TypeName: "int2",
-					TypeID:   10,
+					Idx:  0,
+					Name: "id2",
+					Type: core.Type{
+						Name: "int2",
+						ID:   10,
+					},
 				},
 				nil,
 			)
@@ -694,10 +709,12 @@ func TestDynamicParameter_Value(t *testing.T) {
 		tableDriver.On("GetColumnByName", "supported_column").
 			Return(
 				&core.Column{
-					Idx:      1,
-					Name:     "supported_column",
-					TypeName: "int2",
-					TypeID:   10,
+					Idx:  1,
+					Name: "supported_column",
+					Type: core.Type{
+						Name: "int2",
+						ID:   10,
+					},
 				},
 				nil,
 			)

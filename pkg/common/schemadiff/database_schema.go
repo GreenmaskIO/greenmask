@@ -100,7 +100,7 @@ func diffTableColumns(previous, current core.Table) []core.DiffNode {
 				"TableName":   previous.Name,
 				"ColumnName":  currentStateColumn.Name,
 				// TODO: Replace it with type def such as NUMERIC(10, 2) VARCHAR(128), etc.
-				"ColumnType": currentStateColumn.TypeName,
+				"ColumnType": currentStateColumn.Type.GetFullName(),
 			}))
 			continue
 		}
@@ -114,15 +114,15 @@ func diffTableColumns(previous, current core.Table) []core.DiffNode {
 			}))
 		}
 
-		if currentStateColumn.TypeID != previousStateColumn.TypeID {
+		if currentStateColumn.Type.ID != previousStateColumn.Type.ID {
 			res = append(res, newDiffNode(core.ColumnTypeChangedDiffEvent, map[string]string{
 				"TableSchema":          previous.Schema,
 				"TableName":            previous.Name,
 				"ColumnName":           previousStateColumn.Name,
-				"PreviousColumnType":   previousStateColumn.TypeName,
-				"PreviousColumnTypeID": fmt.Sprintf("%d", previousStateColumn.TypeID),
-				"CurrentColumnType":    currentStateColumn.TypeName,
-				"CurrentColumnTypeID":  fmt.Sprintf("%d", currentStateColumn.TypeID),
+				"PreviousColumnType":   previousStateColumn.Type.GetFullName(),
+				"PreviousColumnTypeID": fmt.Sprintf("%d", previousStateColumn.Type.ID),
+				"CurrentColumnType":    currentStateColumn.Type.GetFullName(),
+				"CurrentColumnTypeID":  fmt.Sprintf("%d", currentStateColumn.Type.ID),
 			}))
 		}
 	}

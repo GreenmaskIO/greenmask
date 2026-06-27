@@ -62,12 +62,14 @@ func TestRandomPersonTransformer_Transform(t *testing.T) {
 			name: "all fields",
 			columns: []core.Column{
 				{
-					Idx:       0,
-					Name:      "data",
-					TypeName:  coretest.TypeText,
-					TypeID:    coretest.TypeIDText,
-					TypeClass: core.TypeClassText,
-					Length:    0,
+					Idx:  0,
+					Name: "data",
+					Type: core.Type{
+						Name:   coretest.TypeText,
+						ID:     coretest.TypeIDText,
+						Class:  core.TypeClassText,
+						Length: 0,
+					},
 				},
 			},
 			original: []*core.ColumnRawValue{
@@ -100,12 +102,14 @@ func TestRandomPersonTransformer_Transform(t *testing.T) {
 			name: "keep_null and original is not null",
 			columns: []core.Column{
 				{
-					Idx:       0,
-					Name:      "data",
-					TypeName:  coretest.TypeText,
-					TypeID:    coretest.TypeIDText,
-					TypeClass: core.TypeClassText,
-					Length:    0,
+					Idx:  0,
+					Name: "data",
+					Type: core.Type{
+						Name:   coretest.TypeText,
+						ID:     coretest.TypeIDText,
+						Class:  core.TypeClassText,
+						Length: 0,
+					},
 				},
 			},
 			original: []*core.ColumnRawValue{
@@ -137,12 +141,14 @@ func TestRandomPersonTransformer_Transform(t *testing.T) {
 			name: "keep_null and original is null",
 			columns: []core.Column{
 				{
-					Idx:       0,
-					Name:      "data",
-					TypeName:  coretest.TypeText,
-					TypeID:    coretest.TypeIDText,
-					TypeClass: core.TypeClassText,
-					Length:    0,
+					Idx:  0,
+					Name: "data",
+					Type: core.Type{
+						Name:   coretest.TypeText,
+						ID:     coretest.TypeIDText,
+						Class:  core.TypeClassText,
+						Length: 0,
+					},
 				},
 			},
 			original: []*core.ColumnRawValue{
@@ -170,20 +176,24 @@ func TestRandomPersonTransformer_Transform(t *testing.T) {
 			name: "keep_null and original is null multiple columns",
 			columns: []core.Column{
 				{
-					Idx:       0,
-					Name:      "first_name",
-					TypeName:  coretest.TypeText,
-					TypeID:    coretest.TypeIDText,
-					TypeClass: core.TypeClassText,
-					Length:    0,
+					Idx:  0,
+					Name: "first_name",
+					Type: core.Type{
+						Name:   coretest.TypeText,
+						ID:     coretest.TypeIDText,
+						Class:  core.TypeClassText,
+						Length: 0,
+					},
 				},
 				{
-					Idx:       1,
-					Name:      "last_name",
-					TypeName:  coretest.TypeText,
-					TypeID:    coretest.TypeIDText,
-					TypeClass: core.TypeClassText,
-					Length:    0,
+					Idx:  1,
+					Name: "last_name",
+					Type: core.Type{
+						Name:   coretest.TypeText,
+						ID:     coretest.TypeIDText,
+						Class:  core.TypeClassText,
+						Length: 0,
+					},
 				},
 			},
 			original: []*core.ColumnRawValue{
