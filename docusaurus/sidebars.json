@@ -1,0 +1,645 @@
+{
+  "productSidebar": [
+    {
+      "type": "category",
+      "label": "Documentation",
+      "items": [
+        {
+          "type": "doc",
+          "id": "architecture",
+          "label": "Architecture"
+        },
+        {
+          "type": "doc",
+          "id": "playground",
+          "label": "Playground"
+        },
+        {
+          "type": "doc",
+          "id": "installation",
+          "label": "Installation"
+        },
+        {
+          "type": "doc",
+          "id": "configuration",
+          "label": "Configuration"
+        },
+        {
+          "type": "category",
+          "label": "Commands",
+          "link": {
+            "type": "doc",
+            "id": "commands/index"
+          },
+          "items": [
+            {
+              "type": "doc",
+              "id": "commands/list-transformers",
+              "label": "list-transformers"
+            },
+            {
+              "type": "doc",
+              "id": "commands/show-transformer",
+              "label": "show-transformer"
+            },
+            {
+              "type": "doc",
+              "id": "commands/validate",
+              "label": "validate"
+            },
+            {
+              "type": "doc",
+              "id": "commands/dump",
+              "label": "dump"
+            },
+            {
+              "type": "doc",
+              "id": "commands/list-dumps",
+              "label": "list-dumps"
+            },
+            {
+              "type": "doc",
+              "id": "commands/show-dump",
+              "label": "show-dump"
+            },
+            {
+              "type": "doc",
+              "id": "commands/restore",
+              "label": "restore"
+            },
+            {
+              "type": "doc",
+              "id": "commands/delete",
+              "label": "delete"
+            }
+          ]
+        },
+        {
+          "type": "doc",
+          "id": "database_subset",
+          "label": "Database subset"
+        },
+        {
+          "type": "category",
+          "label": "Transformers",
+          "link": {
+            "type": "doc",
+            "id": "built_in_transformers/index"
+          },
+          "items": [
+            {
+              "type": "doc",
+              "id": "built_in_transformers/dynamic_parameters",
+              "label": "Dynamic parameters"
+            },
+            {
+              "type": "doc",
+              "id": "built_in_transformers/transformation_engines",
+              "label": "Transformation engines"
+            },
+            {
+              "type": "doc",
+              "id": "built_in_transformers/parameters_templating",
+              "label": "Parameters templating"
+            },
+            {
+              "type": "doc",
+              "id": "built_in_transformers/parameters_env_vars_interpolation",
+              "label": "Parameters env vars interpolation"
+            },
+            {
+              "type": "doc",
+              "id": "built_in_transformers/transformation_condition",
+              "label": "Transformation conditions"
+            },
+            {
+              "type": "doc",
+              "id": "built_in_transformers/transformation_inheritance",
+              "label": "Transformation inheritance"
+            },
+            {
+              "type": "category",
+              "label": "Standard transformers",
+              "link": {
+                "type": "doc",
+                "id": "built_in_transformers/standard_transformers/index"
+              },
+              "items": [
+                {
+                  "type": "doc",
+                  "id": "built_in_transformers/standard_transformers/cmd",
+                  "label": "Cmd"
+                },
+                {
+                  "type": "doc",
+                  "id": "built_in_transformers/standard_transformers/dict",
+                  "label": "Dict"
+                },
+                {
+                  "type": "doc",
+                  "id": "built_in_transformers/standard_transformers/hash",
+                  "label": "Hash"
+                },
+                {
+                  "type": "doc",
+                  "id": "built_in_transformers/standard_transformers/masking",
+                  "label": "Masking"
+                },
+                {
+                  "type": "doc",
+                  "id": "built_in_transformers/standard_transformers/noise_date",
+                  "label": "NoiseDate"
+                },
+                {
+                  "type": "doc",
+                  "id": "built_in_transformers/standard_transformers/noise_float",
+                  "label": "NoiseFloat"
+                },
+                {
+                  "type": "doc",
+                  "id": "built_in_transformers/standard_transformers/noise_numeric",
+                  "label": "NoiseNumeric"
+                },
+                {
+                  "type": "doc",
+                  "id": "built_in_transformers/standard_transformers/noise_int",
+                  "label": "NoiseInt"
+                },
+                {
+                  "type": "doc",
+                  "id": "built_in_transformers/standard_transformers/random_bool",
+                  "label": "RandomBool"
+                },
+                {
+                  "type": "doc",
+                  "id": "built_in_transformers/standard_transformers/random_choice",
+                  "label": "RandomChoice"
+                },
+                {
+                  "type": "doc",
+                  "id": "built_in_transformers/standard_transformers/random_date",
+                  "label": "RandomDate"
+                },
+                {
+                  "type": "doc",
+                  "id": "built_in_transformers/standard_transformers/random_float",
+                  "label": "RandomFloat"
+                },
+                {
+                  "type": "doc",
+                  "id": "built_in_transformers/standard_transformers/random_numeric",
+                  "label": "RandomNumeric"
+                },
+                {
+                  "type": "doc",
+                  "id": "built_in_transformers/standard_transformers/random_int",
+                  "label": "RandomInt"
+                },
+                {
+                  "type": "doc",
+                  "id": "built_in_transformers/standard_transformers/random_string",
+                  "label": "RandomString"
+                },
+                {
+                  "type": "doc",
+                  "id": "built_in_transformers/standard_transformers/random_uuid",
+                  "label": "RandomUuid"
+                },
+                {
+                  "type": "doc",
+                  "id": "built_in_transformers/standard_transformers/random_latitude",
+                  "label": "RandomLatitude"
+                },
+                {
+                  "type": "doc",
+                  "id": "built_in_transformers/standard_transformers/random_longitude",
+                  "label": "RandomLongitude"
+                },
+                {
+                  "type": "doc",
+                  "id": "built_in_transformers/standard_transformers/random_unix_timestamp",
+                  "label": "RandomUnixTimestamp"
+                },
+                {
+                  "type": "doc",
+                  "id": "built_in_transformers/standard_transformers/random_day_of_week",
+                  "label": "RandomDayOfWeek"
+                },
+                {
+                  "type": "doc",
+                  "id": "built_in_transformers/standard_transformers/random_day_of_month",
+                  "label": "RandomDayOfMonth"
+                },
+                {
+                  "type": "doc",
+                  "id": "built_in_transformers/standard_transformers/random_month_name",
+                  "label": "RandomMonthName"
+                },
+                {
+                  "type": "doc",
+                  "id": "built_in_transformers/standard_transformers/random_year_string",
+                  "label": "RandomYearString"
+                },
+                {
+                  "type": "doc",
+                  "id": "built_in_transformers/standard_transformers/random_century",
+                  "label": "RandomCentury"
+                },
+                {
+                  "type": "doc",
+                  "id": "built_in_transformers/standard_transformers/random_company",
+                  "label": "RandomCompany"
+                },
+                {
+                  "type": "doc",
+                  "id": "built_in_transformers/standard_transformers/random_timezone",
+                  "label": "RandomTimezone"
+                },
+                {
+                  "type": "doc",
+                  "id": "built_in_transformers/standard_transformers/random_email",
+                  "label": "RandomEmail"
+                },
+                {
+                  "type": "doc",
+                  "id": "built_in_transformers/standard_transformers/random_username",
+                  "label": "RandomUsername"
+                },
+                {
+                  "type": "doc",
+                  "id": "built_in_transformers/standard_transformers/random_password",
+                  "label": "RandomPassword"
+                },
+                {
+                  "type": "doc",
+                  "id": "built_in_transformers/standard_transformers/random_domain_name",
+                  "label": "RandomDomainName"
+                },
+                {
+                  "type": "doc",
+                  "id": "built_in_transformers/standard_transformers/random_person",
+                  "label": "RandomPerson"
+                },
+                {
+                  "type": "doc",
+                  "id": "built_in_transformers/standard_transformers/random_url",
+                  "label": "RandomURL"
+                },
+                {
+                  "type": "doc",
+                  "id": "built_in_transformers/standard_transformers/random_mac",
+                  "label": "RandomMac"
+                },
+                {
+                  "type": "doc",
+                  "id": "built_in_transformers/standard_transformers/random_ip",
+                  "label": "RandomIP"
+                },
+                {
+                  "type": "doc",
+                  "id": "built_in_transformers/standard_transformers/random_word",
+                  "label": "RandomWord"
+                },
+                {
+                  "type": "doc",
+                  "id": "built_in_transformers/standard_transformers/random_sentence",
+                  "label": "RandomSentence"
+                },
+                {
+                  "type": "doc",
+                  "id": "built_in_transformers/standard_transformers/random_paragraph",
+                  "label": "RandomParagraph"
+                },
+                {
+                  "type": "doc",
+                  "id": "built_in_transformers/standard_transformers/random_cc_type",
+                  "label": "RandomCCType"
+                },
+                {
+                  "type": "doc",
+                  "id": "built_in_transformers/standard_transformers/random_cc_number",
+                  "label": "RandomCCNumber"
+                },
+                {
+                  "type": "doc",
+                  "id": "built_in_transformers/standard_transformers/random_currency",
+                  "label": "RandomCurrency"
+                },
+                {
+                  "type": "doc",
+                  "id": "built_in_transformers/standard_transformers/random_amount_with_currency",
+                  "label": "RandomAmountWithCurrency"
+                },
+                {
+                  "type": "doc",
+                  "id": "built_in_transformers/standard_transformers/random_phone_number",
+                  "label": "RandomPhoneNumber"
+                },
+                {
+                  "type": "doc",
+                  "id": "built_in_transformers/standard_transformers/random_toll_free_phone_number",
+                  "label": "RandomTollFreePhoneNumber"
+                },
+                {
+                  "type": "doc",
+                  "id": "built_in_transformers/standard_transformers/random_e164_phone_number",
+                  "label": "RandomE164PhoneNumber"
+                },
+                {
+                  "type": "doc",
+                  "id": "built_in_transformers/standard_transformers/real_address",
+                  "label": "RealAddress"
+                },
+                {
+                  "type": "doc",
+                  "id": "built_in_transformers/standard_transformers/regexp_replace",
+                  "label": "RegexpReplace"
+                },
+                {
+                  "type": "doc",
+                  "id": "built_in_transformers/standard_transformers/replace",
+                  "label": "Replace"
+                },
+                {
+                  "type": "doc",
+                  "id": "built_in_transformers/standard_transformers/set_null",
+                  "label": "SetNull"
+                }
+              ]
+            },
+            {
+              "type": "category",
+              "label": "Advanced transformers",
+              "link": {
+                "type": "doc",
+                "id": "built_in_transformers/advanced_transformers/index"
+              },
+              "items": [
+                {
+                  "type": "doc",
+                  "id": "built_in_transformers/advanced_transformers/json",
+                  "label": "Json"
+                },
+                {
+                  "type": "doc",
+                  "id": "built_in_transformers/advanced_transformers/template",
+                  "label": "Template"
+                },
+                {
+                  "type": "doc",
+                  "id": "built_in_transformers/advanced_transformers/template_record",
+                  "label": "TemplateRecord"
+                },
+                {
+                  "type": "category",
+                  "label": "Custom functions",
+                  "link": {
+                    "type": "doc",
+                    "id": "built_in_transformers/advanced_transformers/custom_functions/index"
+                  },
+                  "items": [
+                    {
+                      "type": "doc",
+                      "id": "built_in_transformers/advanced_transformers/custom_functions/core_functions",
+                      "label": "Core custom functions"
+                    },
+                    {
+                      "type": "doc",
+                      "id": "built_in_transformers/advanced_transformers/custom_functions/faker_function",
+                      "label": "Faker function"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "doc",
+          "id": "index",
+          "label": "About"
+        },
+        {
+          "type": "category",
+          "label": "Contributors",
+          "items": [
+            {
+              "type": "doc",
+              "id": "supporting_new_postgres",
+              "label": "Supporting New Postgres"
+            }
+          ]
+        }
+      ],
+      "collapsible": false,
+      "collapsed": false
+    },
+    {
+      "type": "category",
+      "label": "Release notes",
+      "items": [
+        {
+          "type": "doc",
+          "id": "release_notes/greenmask_0_2_21",
+          "label": "Greenmask 0.2.21"
+        },
+        {
+          "type": "doc",
+          "id": "release_notes/greenmask_0_2_20",
+          "label": "Greenmask 0.2.20"
+        },
+        {
+          "type": "doc",
+          "id": "release_notes/greenmask_0_2_19",
+          "label": "Greenmask 0.2.19"
+        },
+        {
+          "type": "doc",
+          "id": "release_notes/greenmask_0_2_18",
+          "label": "Greenmask 0.2.18"
+        },
+        {
+          "type": "doc",
+          "id": "release_notes/greenmask_0_2_17",
+          "label": "Greenmask 0.2.17"
+        },
+        {
+          "type": "doc",
+          "id": "release_notes/greenmask_0_2_16",
+          "label": "Greenmask 0.2.16"
+        },
+        {
+          "type": "doc",
+          "id": "release_notes/greenmask_0_2_15",
+          "label": "Greenmask 0.2.15"
+        },
+        {
+          "type": "doc",
+          "id": "release_notes/greenmask_0_2_14",
+          "label": "Greenmask 0.2.14"
+        },
+        {
+          "type": "doc",
+          "id": "release_notes/greenmask_0_2_13",
+          "label": "Greenmask 0.2.13"
+        },
+        {
+          "type": "doc",
+          "id": "release_notes/greenmask_0_2_12",
+          "label": "Greenmask 0.2.12"
+        },
+        {
+          "type": "doc",
+          "id": "release_notes/greenmask_0_2_11",
+          "label": "Greenmask 0.2.11"
+        },
+        {
+          "type": "doc",
+          "id": "release_notes/greenmask_0_2_10",
+          "label": "Greenmask 0.2.10"
+        },
+        {
+          "type": "doc",
+          "id": "release_notes/greenmask_0_2_9",
+          "label": "Greenmask 0.2.9"
+        },
+        {
+          "type": "doc",
+          "id": "release_notes/greenmask_0_2_8",
+          "label": "Greenmask 0.2.8"
+        },
+        {
+          "type": "doc",
+          "id": "release_notes/greenmask_0_2_7",
+          "label": "Greenmask 0.2.7"
+        },
+        {
+          "type": "doc",
+          "id": "release_notes/greenmask_0_2_6",
+          "label": "Greenmask 0.2.6"
+        },
+        {
+          "type": "doc",
+          "id": "release_notes/greenmask_0_2_5",
+          "label": "Greenmask 0.2.5"
+        },
+        {
+          "type": "doc",
+          "id": "release_notes/greenmask_0_2_4",
+          "label": "Greenmask 0.2.4"
+        },
+        {
+          "type": "doc",
+          "id": "release_notes/greenmask_0_2_3",
+          "label": "Greenmask 0.2.3"
+        },
+        {
+          "type": "doc",
+          "id": "release_notes/greenmask_0_2_2",
+          "label": "Greenmask 0.2.2"
+        },
+        {
+          "type": "doc",
+          "id": "release_notes/greenmask_0_2_1",
+          "label": "Greenmask 0.2.1"
+        },
+        {
+          "type": "doc",
+          "id": "release_notes/greenmask_0_2_0",
+          "label": "Greenmask 0.2.0"
+        },
+        {
+          "type": "doc",
+          "id": "release_notes/greenmask_0_2_0_b2",
+          "label": "Greenmask 0.2.0b2"
+        },
+        {
+          "type": "doc",
+          "id": "release_notes/greenmask_0_2_0_b1",
+          "label": "Greenmask 0.2.0b1"
+        },
+        {
+          "type": "doc",
+          "id": "release_notes/greenmask_0_1_14",
+          "label": "Greenmask 0.1.14"
+        },
+        {
+          "type": "doc",
+          "id": "release_notes/greenmask_0_1_13",
+          "label": "Greenmask 0.1.13"
+        },
+        {
+          "type": "doc",
+          "id": "release_notes/greenmask_0_1_12",
+          "label": "Greenmask 0.1.12"
+        },
+        {
+          "type": "doc",
+          "id": "release_notes/greenmask_0_1_11",
+          "label": "Greenmask 0.1.11"
+        },
+        {
+          "type": "doc",
+          "id": "release_notes/greenmask_0_1_10",
+          "label": "Greenmask 0.1.10"
+        },
+        {
+          "type": "doc",
+          "id": "release_notes/greenmask_0_1_9",
+          "label": "Greenmask 0.1.9"
+        },
+        {
+          "type": "doc",
+          "id": "release_notes/greenmask_0_1_8",
+          "label": "Greenmask 0.1.8"
+        },
+        {
+          "type": "doc",
+          "id": "release_notes/greenmask_0_1_7",
+          "label": "Greenmask 0.1.7"
+        },
+        {
+          "type": "doc",
+          "id": "release_notes/greenmask_0_1_6",
+          "label": "Greenmask 0.1.6"
+        },
+        {
+          "type": "doc",
+          "id": "release_notes/greenmask_0_1_5",
+          "label": "Greenmask 0.1.5"
+        },
+        {
+          "type": "doc",
+          "id": "release_notes/greenmask_0_1_4",
+          "label": "Greenmask 0.1.4"
+        },
+        {
+          "type": "doc",
+          "id": "release_notes/greenmask_0_1_3",
+          "label": "Greenmask 0.1.3"
+        },
+        {
+          "type": "doc",
+          "id": "release_notes/greenmask_0_1_2",
+          "label": "Greenmask 0.1.2"
+        },
+        {
+          "type": "doc",
+          "id": "release_notes/greenmask_0_1_1",
+          "label": "Greenmask 0.1.1"
+        },
+        {
+          "type": "doc",
+          "id": "release_notes/greenmask_0_1_0",
+          "label": "Greenmask 0.1.0"
+        },
+        {
+          "type": "doc",
+          "id": "release_notes/greenmask_0_1_0_beta",
+          "label": "Greenmask 0.1.0 Beta"
+        }
+      ],
+      "collapsed": true
+    }
+  ]
+}
