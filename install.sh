@@ -81,28 +81,10 @@ calc_sha256() {
   if has sha256sum; then sha256sum "$f" | awk '{print $1}'; elif has shasum; then shasum -a 256 "$f" | awk '{print $1}'; else die "need sha256sum or shasum"; fi
 }
 
-verify_checksum_from_archive() {
-  tmpdir="$1"
-  bin="$2"
-
-  sha_file="$tmpdir/greenmask.sha256"
-
-  [ -f "$sha_file" ] || die "checksum file not found in archive"
-
-  expected="$(awk '{print $1}' "$sha_file")"
-  actual="$(calc_sha256 "$bin")"
-
-  if [ "$expected" != "$actual" ]; then
-    die "checksum mismatch: expected $expected, got $actual"
-  fi
-
-  info "Checksum verified ✓"
-}
-
 is_writable() {
   dir="$1"
-  tmp="$dir/.gm_write_test.$$"
-  ( : >"$tmp" ) 2>/dev/null && { rm -f "$tmp"; return 0; }
+  tmp_probe="$dir/.gm_write_test.$$"
+  ( : >"$tmp_probe" ) 2>/dev/null && { rm -f "$tmp_probe"; return 0; }
   return 1
 }
 
@@ -134,16 +116,10 @@ print_path_tips() {
   printf "\n"
 }
 
-unpack_tar_to() {
-  archive="$1"; dest="$2"; 
-  has tar || die "need 'tar' to extract archives"
-  tar xzf "$archive" -C "$dest"
-}
-
 install_asset() {
   os="$1"; arch="$2"; base="$3"
-  asset="${REPO}-${os}-${arch}.tar.gz"
-  url="${base}/${asset}"
+  bin_file="${REPO}-${os}-${arch}"
+  sha_file="${bin_file}.sha256"
 
   has mktemp || die "need 'mktemp' to create temp directories"
   tmp="$(mktemp -d)"
@@ -151,18 +127,17 @@ install_asset() {
   # clean the tmp directory at the end
   trap 'rm -rf "$tmp"' EXIT INT TERM
 
-  info "Downloading: ${url}"
-  fetch "$url" "$tmp/$asset"
+  info "Downloading binary: ${base}/${bin_file}"
+  fetch "${base}/${bin_file}" "$tmp/$bin_file"
 
-  info "Extracting…"
-  unpack_tar_to "$tmp/$asset" "$tmp"
+  info "Downloading checksum: ${base}/${sha_file}"
+  fetch "${base}/${sha_file}" "$tmp/$sha_file"
 
   info "Verifying checksum…"
-  # find the executable file
-  bin_path="$(find "$tmp" -type f -name "$REPO*" \( -perm -u+x -o -perm -g+x -o -perm -o+x \) 2>/dev/null | head -n1 || true)"
-  [ -n "$bin_path" ] || die "binary '$REPO' not found in archive"
-  
-  verify_checksum_from_archive "$tmp" "$bin_path"
+  expected="$(awk '{print $1}' "$tmp/$sha_file")"
+  actual="$(calc_sha256 "$tmp/$bin_file")"
+  [ "$expected" = "$actual" ] || die "checksum mismatch: expected $expected, got $actual"
+  info "Checksum verified ✓"
 
   sudo=""
   if ! is_writable "$BIN_DIR"; then
@@ -173,9 +148,9 @@ install_asset() {
 
   info "Installing to ${BIN_DIR}…"
   if has install; then
-    $sudo install -m 0755 "$bin_path" "$BIN_DIR/$REPO"
+    $sudo install -m 0755 "$tmp/$bin_file" "$BIN_DIR/$REPO"
   else
-    $sudo cp "$bin_path" "$BIN_DIR/$REPO"
+    $sudo cp "$tmp/$bin_file" "$BIN_DIR/$REPO"
     $sudo chmod 0755 "$BIN_DIR/$REPO"
   fi
 
@@ -236,4 +211,3 @@ main() {
 }
 
 main "$@"
-
