@@ -440,6 +440,11 @@
       "items": [
         {
           "type": "doc",
+          "id": "release_notes/greenmask_0_2_22",
+          "label": "Greenmask 0.2.22"
+        },
+        {
+          "type": "doc",
           "id": "release_notes/greenmask_0_2_21",
           "label": "Greenmask 0.2.21"
         },
