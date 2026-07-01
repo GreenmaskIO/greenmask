@@ -27,8 +27,7 @@ import (
 	"github.com/rs/zerolog/log"
 	"golang.org/x/sync/errgroup"
 
-	"github.com/greenmaskio/greenmask/pkg/common/interfaces"
-	models2 "github.com/greenmaskio/greenmask/pkg/common/models"
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 	"github.com/greenmaskio/greenmask/pkg/common/transformers/parameters"
 	cmd2 "github.com/greenmaskio/greenmask/pkg/common/transformers/transformers/cmd"
 	utils2 "github.com/greenmaskio/greenmask/pkg/common/transformers/utils"
@@ -107,25 +106,25 @@ var CMDTransformerDefinition = utils2.NewTransformerDefinition(
 			"The json driver has additional configuration options. See documentation for details.\n"+
 			"Default is json driver with text data format and columns by indexes.",
 	).SetDefaultValue(utils.Must(json.Marshal(cmd2.DefaultRowDriverParams))).
-		SetRawValueValidator(func(ctx context.Context, p *parameters.ParameterDefinition, v models2.ParamsValue) error {
+		SetRawValueValidator(func(ctx context.Context, p *parameters.ParameterDefinition, v core.ParamsValue) error {
 			var res cmd2.RowDriverSetting
 			if err := json.Unmarshal(v, &res); err != nil {
 				validationcollector.FromContext(ctx).
-					Add(models2.NewValidationWarning().
-						SetSeverity(models2.ValidationSeverityError).
-						AddMeta(models2.MetaKeyParameterName, p.Name).
-						AddMeta(models2.MetaKeyParameterValue, string(v)).
+					Add(core.NewValidationWarning().
+						SetSeverity(core.ValidationSeverityError).
+						AddMeta(core.MetaKeyParameterName, p.Name).
+						AddMeta(core.MetaKeyParameterValue, string(v)).
 						SetMsg(fmt.Sprintf("unable to unmarshal driver params: %v", err)))
-				return models2.ErrFatalValidationError
+				return core.ErrFatalValidationError
 			}
 			if err := res.Validate(); err != nil {
 				validationcollector.FromContext(ctx).
-					Add(models2.NewValidationWarning().
-						SetSeverity(models2.ValidationSeverityError).
-						AddMeta(models2.MetaKeyParameterName, p.Name).
-						AddMeta(models2.MetaKeyParameterValue, string(v)).
+					Add(core.NewValidationWarning().
+						SetSeverity(core.ValidationSeverityError).
+						AddMeta(core.MetaKeyParameterName, p.Name).
+						AddMeta(core.MetaKeyParameterValue, string(v)).
 						SetMsg(fmt.Sprintf("invalid driver params: %v", err)))
-				return models2.ErrFatalValidationError
+				return core.ErrFatalValidationError
 			}
 			return nil
 		}),
@@ -168,15 +167,15 @@ type Cmd struct {
 	skipOnBehaviour  int
 	rowDriverParams  *cmd2.RowDriverSetting
 	config           *cmdConfig
-	table            *models2.Table
+	table            *core.Table
 	eg               *errgroup.Group
 }
 
 func NewCmd(
 	ctx context.Context,
-	tableDriver interfaces.TableDriver,
+	tableDriver core.TableDriver,
 	parameters map[string]parameters.Parameterizer,
-) (interfaces.Transformer, error) {
+) (core.Transformer, error) {
 	var skipOnBehaviour = skipOnAll
 	columns, affectedColumns, err := getColumnContainerParameter[*cmdColumnContainer](
 		ctx, tableDriver, parameters, "columns",
@@ -367,7 +366,7 @@ func (t *Cmd) stderrForwarder(ctx context.Context) error {
 	}
 }
 
-func (t *Cmd) needSkip(r interfaces.Recorder) (bool, error) {
+func (t *Cmd) needSkip(r core.Recorder) (bool, error) {
 	var score int
 	for _, c := range t.config.TransferringColumns {
 		v, err := r.GetRawColumnValueByIdx(c.Column.Idx)
@@ -386,11 +385,11 @@ func (t *Cmd) needSkip(r interfaces.Recorder) (bool, error) {
 	return false, nil
 }
 
-func (t *Cmd) validate(r interfaces.Recorder) error {
+func (t *Cmd) validate(r core.Recorder) error {
 	for _, col := range t.config.AffectedColumns {
 		_, err := r.GetColumnValueByIdx(col.Column.Idx)
 		if err != nil {
-			return errors.Join(models2.ErrValueValidationFailed, fmt.Errorf(
+			return errors.Join(core.ErrValueValidationFailed, fmt.Errorf(
 				"validate received column \"%s\" value: %w",
 				r.TableDriver().Table().Columns[col.Column.Idx].Name, err,
 			))
@@ -399,7 +398,7 @@ func (t *Cmd) validate(r interfaces.Recorder) error {
 	return nil
 }
 
-func (t *Cmd) Transform(ctx context.Context, r interfaces.Recorder) error {
+func (t *Cmd) Transform(ctx context.Context, r core.Recorder) error {
 	var err error
 	if t.config.CheckCanSkip {
 		var skip bool
@@ -425,17 +424,17 @@ func (t *Cmd) Transform(ctx context.Context, r interfaces.Recorder) error {
 	return nil
 }
 
-func cmdValidateSkipBehaviour(ctx context.Context, _ *parameters.ParameterDefinition, v models2.ParamsValue) error {
+func cmdValidateSkipBehaviour(ctx context.Context, _ *parameters.ParameterDefinition, v core.ParamsValue) error {
 	switch string(v) {
 	case skipOnAnyName, skipOnAllName:
 		return nil
 	default:
 		validationcollector.FromContext(ctx).
-			Add(models2.NewValidationWarning().
-				SetSeverity(models2.ValidationSeverityError).
+			Add(core.NewValidationWarning().
+				SetSeverity(core.ValidationSeverityError).
 				AddMeta("ParameterValue", string(v)).
 				SetMsg(`unsupported skip_on type: must be one of "all" or "any"`))
-		return models2.ErrFatalValidationError
+		return core.ErrFatalValidationError
 	}
 }
 
@@ -447,7 +446,7 @@ type cmdConfig struct {
 
 func validateCMDColumnsAndSetDefault(
 	ctx context.Context,
-	tableDriver interfaces.TableDriver,
+	tableDriver core.TableDriver,
 	columns []*cmdColumnContainer,
 ) (cmdConfig, error) {
 	var (
@@ -480,12 +479,12 @@ func validateCMDColumnsAndSetDefault(
 		}
 		column, err := tableDriver.GetColumnByName(c.Name)
 		if err != nil {
-			validationcollector.FromContext(ctx).Add(models2.NewValidationWarning().
+			validationcollector.FromContext(ctx).Add(core.NewValidationWarning().
 				AddMeta("ElementNum", i).
 				AddMeta("ColumnName", c.Name).
-				SetSeverity(models2.ValidationSeverityError).
+				SetSeverity(core.ValidationSeverityError).
 				SetMsg("column not found"))
-			return cmdConfig{}, models2.ErrFatalValidationError
+			return cmdConfig{}, core.ErrFatalValidationError
 		}
 
 		if !columns[i].NotAffected {
@@ -504,13 +503,13 @@ func validateCMDColumnsAndSetDefault(
 		}
 
 		if !added {
-			validationcollector.FromContext(ctx).Add(models2.NewValidationWarning().
+			validationcollector.FromContext(ctx).Add(core.NewValidationWarning().
 				AddMeta("ElementNum", i).
 				AddMeta("ColumnName", c.Name).
-				SetSeverity(models2.ValidationSeverityError).
+				SetSeverity(core.ValidationSeverityError).
 				AddMeta("Hint", "ensure that either not_affected is false or skip_original_data is false").
 				SetMsg("column not added either into transferred list or affected list"))
-			return cmdConfig{}, models2.ErrFatalValidationError
+			return cmdConfig{}, core.ErrFatalValidationError
 		}
 	}
 	return cmdConfig{

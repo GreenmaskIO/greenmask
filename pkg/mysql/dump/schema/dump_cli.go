@@ -19,8 +19,7 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/greenmaskio/greenmask/pkg/common/interfaces"
-	commonmodels "github.com/greenmaskio/greenmask/pkg/common/models"
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 	"github.com/greenmaskio/greenmask/pkg/common/utils"
 	"github.com/rs/zerolog/log"
 	"golang.org/x/sync/errgroup"
@@ -29,9 +28,9 @@ import (
 const executable = "mysqldump"
 
 // sectionFilePrefix maps schema sections to their file name prefix.
-var sectionFilePrefix = map[commonmodels.DumpSection]string{
-	commonmodels.DumpSectionPreData:  "pre",
-	commonmodels.DumpSectionPostData: "post",
+var sectionFilePrefix = map[core.DumpSection]string{
+	core.DumpSectionPreData:  "pre",
+	core.DumpSectionPostData: "post",
 }
 
 // postDataVendorOptions are flags that control triggers/routines/events.
@@ -46,24 +45,24 @@ var postDataVendorOptions = map[string]bool{
 }
 
 type Dumper struct {
-	st               interfaces.Storager
+	st               core.Storager
 	cmdProducer      utils.CmdProducer
 	executable       string
 	envs             []string
 	mysqlParams      []string // connection/auth params only
 	vendorOptions    []string // user-specified vendor options
-	genericSettings  commonmodels.MysqlDumpRelatedSettings
+	genericSettings  core.DumpScope
 	compression      bool
 	compressionPgzip bool
 }
 
 func New(
 	cmd utils.CmdProducer,
-	st interfaces.Storager,
+	st core.Storager,
 	envs []string,
 	mysqlParams []string,
 	vendorOptions []string,
-	genericSettings commonmodels.MysqlDumpRelatedSettings,
+	genericSettings core.DumpScope,
 	compression bool,
 	compressionPgzip bool,
 ) *Dumper {
@@ -155,10 +154,10 @@ func (d *Dumper) getPostDataCliParameters(dbname string) []string {
 
 // DumpPreDataSchema dumps the pre-data section (tables, views — no triggers/routines/events)
 // for every allowed schema.
-func (d *Dumper) DumpPreDataSchema(ctx context.Context) ([]commonmodels.DumpedDatabaseSchemaStat, error) {
-	res := make([]commonmodels.DumpedDatabaseSchemaStat, 0, len(d.genericSettings.AllowedSchemas))
+func (d *Dumper) DumpPreDataSchema(ctx context.Context) ([]core.SchemaDumpStat, error) {
+	res := make([]core.SchemaDumpStat, 0, len(d.genericSettings.AllowedSchemas))
 	for _, dbname := range d.genericSettings.AllowedSchemas {
-		stat, err := d.dumpDatabaseSection(ctx, dbname, commonmodels.DumpSectionPreData)
+		stat, err := d.dumpDatabaseSection(ctx, dbname, core.DumpSectionPreData)
 		if err != nil {
 			return nil, fmt.Errorf("database '%s' pre-data: %w", dbname, err)
 		}
@@ -169,10 +168,10 @@ func (d *Dumper) DumpPreDataSchema(ctx context.Context) ([]commonmodels.DumpedDa
 
 // DumpPostDataSchema dumps the post-data section (triggers, routines, events)
 // for every allowed schema.
-func (d *Dumper) DumpPostDataSchema(ctx context.Context) ([]commonmodels.DumpedDatabaseSchemaStat, error) {
-	res := make([]commonmodels.DumpedDatabaseSchemaStat, 0, len(d.genericSettings.AllowedSchemas))
+func (d *Dumper) DumpPostDataSchema(ctx context.Context) ([]core.SchemaDumpStat, error) {
+	res := make([]core.SchemaDumpStat, 0, len(d.genericSettings.AllowedSchemas))
 	for _, dbname := range d.genericSettings.AllowedSchemas {
-		stat, err := d.dumpDatabaseSection(ctx, dbname, commonmodels.DumpSectionPostData)
+		stat, err := d.dumpDatabaseSection(ctx, dbname, core.DumpSectionPostData)
 		if err != nil {
 			return nil, fmt.Errorf("database '%s' post-data: %w", dbname, err)
 		}
@@ -184,18 +183,18 @@ func (d *Dumper) DumpPostDataSchema(ctx context.Context) ([]commonmodels.DumpedD
 func (d *Dumper) dumpDatabaseSection(
 	ctx context.Context,
 	dbname string,
-	section commonmodels.DumpSection,
-) (commonmodels.DumpedDatabaseSchemaStat, error) {
+	section core.DumpSection,
+) (core.SchemaDumpStat, error) {
 	// Resolve CLI params before creating the pipe. An unknown-section error
 	// here would otherwise leave w and r unclosed (pipe-end leak).
 	var params []string
 	switch section {
-	case commonmodels.DumpSectionPreData:
+	case core.DumpSectionPreData:
 		params = d.getPreDataCliParameters(dbname)
-	case commonmodels.DumpSectionPostData:
+	case core.DumpSectionPostData:
 		params = d.getPostDataCliParameters(dbname)
 	default:
-		return commonmodels.DumpedDatabaseSchemaStat{}, fmt.Errorf("unknown schema section: %s", section)
+		return core.SchemaDumpStat{}, fmt.Errorf("unknown schema section: %s", section)
 	}
 
 	var r utils.CountReadCloser
@@ -250,18 +249,18 @@ func (d *Dumper) dumpDatabaseSection(
 	})
 
 	if err := eg.Wait(); err != nil {
-		return commonmodels.DumpedDatabaseSchemaStat{}, err
+		return core.SchemaDumpStat{}, err
 	}
 
-	compression := commonmodels.CompressionNone
+	compression := core.CompressionNone
 	if d.compression {
-		compression = commonmodels.CompressionGzip
+		compression = core.CompressionGzip
 		if d.compressionPgzip {
-			compression = commonmodels.CompressionPgzip
+			compression = core.CompressionPgzip
 		}
 	}
 
-	return commonmodels.DumpedDatabaseSchemaStat{
+	return core.SchemaDumpStat{
 		DatabaseName:   dbname,
 		FileName:       fileName,
 		Section:        section,

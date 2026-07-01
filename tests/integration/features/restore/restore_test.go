@@ -28,12 +28,12 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
 
-	commonmodels "github.com/greenmaskio/greenmask/pkg/common/models"
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 	"github.com/greenmaskio/greenmask/pkg/common/transformers/registry"
 	"github.com/greenmaskio/greenmask/pkg/common/validationcollector"
 	"github.com/greenmaskio/greenmask/pkg/config"
 	mysqldump "github.com/greenmaskio/greenmask/pkg/mysql/cmdrun/dump"
-	mysqlrestore "github.com/greenmaskio/greenmask/pkg/mysql/cmdrun/restore"
+	mysqlrestore "github.com/greenmaskio/greenmask/pkg/mysql/restore"
 	"github.com/greenmaskio/greenmask/pkg/storages/validate"
 	"github.com/greenmaskio/greenmask/pkg/testutils"
 )
@@ -99,8 +99,8 @@ func (s *restoreTestSuite) TearDownSuite() {
 
 // setupInfrastructure attaches logging and a validation collector to ctx.
 func (s *restoreTestSuite) setupInfrastructure(ctx context.Context) context.Context {
-	ctx = log.Ctx(ctx).With().Str(commonmodels.MetaKeyEngine, "mysql").Logger().WithContext(ctx)
-	vc := validationcollector.NewCollectorWithMeta(commonmodels.MetaKeyEngine, "mysql")
+	ctx = log.Ctx(ctx).With().Str(core.MetaKeyEngine, "mysql").Logger().WithContext(ctx)
+	vc := validationcollector.NewCollectorWithMeta(core.MetaKeyEngine, "mysql")
 	return validationcollector.WithCollector(ctx, vc)
 }
 
@@ -153,6 +153,10 @@ func (s *restoreTestSuite) runDump(ctx context.Context, cfg *config.Config) *val
 
 // runRestore runs a restore against the container. Schema sections are handled by
 // a no-op mock mysql CLI; data sections execute real INSERTs.
+//
+// The restore pipeline normally provisions its own storage from cfg.Storage; here
+// we override the storage provisioner so the restore reads directly from the same
+// in-memory storage the dump wrote to.
 func (s *restoreTestSuite) runRestore(ctx context.Context, cfg *config.Config, st *validate.Storage) {
 	cmdRunner := &CmdRunnerMock{}
 	cmdRunner.On("ExecuteCmdAndForwardStdout", mock.Anything).Return(nil)
@@ -160,8 +164,12 @@ func (s *restoreTestSuite) runRestore(ctx context.Context, cfg *config.Config, s
 	cmdProducer.On("Produce", "mysql", mock.Anything, mock.Anything, mock.Anything).
 		Return(cmdRunner, nil)
 
-	restoreProcess := mysqlrestore.NewRestore(cfg, st, testDumpID, cmdProducer)
-	s.Require().NoError(restoreProcess.Run(ctx))
+	pipeline, err := mysqlrestore.NewRestorePipeline(cmdProducer)
+	s.Require().NoError(err)
+	pipeline.Stages.RestoreStorageProvisioner = &sharedStorageProvisioner{st: st}
+
+	_, err = pipeline.RunRestore(ctx, *cfg, testDumpID)
+	s.Require().NoError(err)
 }
 
 // baseDumpConfig returns a fully-reset dump config for the container's sourceDB.
@@ -182,8 +190,7 @@ func (s *restoreTestSuite) baseDumpConfig(ctx context.Context) *config.Config {
 	cfg.Dump.MysqlConfig.Password = opts.Password
 	cfg.Dump.MysqlConfig.ConnectDatabase = sourceDB
 	cfg.Dump.Options.IncludeSchema = []string{sourceDB}
-	cfg.Dump.Options.Compress = false
-	cfg.Dump.Options.Pgzip = false
+	cfg.Dump.Options.Compression = core.CompressionNone
 	return cfg
 }
 
@@ -201,7 +208,7 @@ func (s *restoreTestSuite) baseRestoreConfig(ctx context.Context) *config.Config
 	cfg.Restore.MysqlConfig.User = opts.User
 	cfg.Restore.MysqlConfig.Password = opts.Password
 	cfg.Restore.Options.RemapDatabase = map[string]string{sourceDB: targetDB}
-	cfg.Restore.Options.DatabaseReplaceMode = commonmodels.DatabaseReplaceModeStrict
+	cfg.Restore.Options.DatabaseReplaceMode = core.DatabaseReplaceModeStrict
 	return cfg
 }
 
@@ -452,31 +459,31 @@ func (s *restoreTestSuite) TestRestore_Scripts() {
 
 	tests := []struct {
 		name    string
-		section commonmodels.DumpSection
-		when    commonmodels.ScriptEventType
+		section core.DumpSection
+		when    core.ScriptEventType
 		kind    scriptKind
 	}{
 		// pre-data section
-		{name: "pre_data_before_sql", section: commonmodels.DumpSectionPreData, when: commonmodels.ScriptEventTypeBefore, kind: kindSQL},
-		{name: "pre_data_after_sql", section: commonmodels.DumpSectionPreData, when: commonmodels.ScriptEventTypeAfter, kind: kindSQL},
-		{name: "pre_data_before_sql_file", section: commonmodels.DumpSectionPreData, when: commonmodels.ScriptEventTypeBefore, kind: kindSQLFile},
-		{name: "pre_data_after_sql_file", section: commonmodels.DumpSectionPreData, when: commonmodels.ScriptEventTypeAfter, kind: kindSQLFile},
-		{name: "pre_data_before_command", section: commonmodels.DumpSectionPreData, when: commonmodels.ScriptEventTypeBefore, kind: kindCommand},
-		{name: "pre_data_after_command", section: commonmodels.DumpSectionPreData, when: commonmodels.ScriptEventTypeAfter, kind: kindCommand},
+		{name: "pre_data_before_sql", section: core.DumpSectionPreData, when: core.ScriptEventTypeBefore, kind: kindSQL},
+		{name: "pre_data_after_sql", section: core.DumpSectionPreData, when: core.ScriptEventTypeAfter, kind: kindSQL},
+		{name: "pre_data_before_sql_file", section: core.DumpSectionPreData, when: core.ScriptEventTypeBefore, kind: kindSQLFile},
+		{name: "pre_data_after_sql_file", section: core.DumpSectionPreData, when: core.ScriptEventTypeAfter, kind: kindSQLFile},
+		{name: "pre_data_before_command", section: core.DumpSectionPreData, when: core.ScriptEventTypeBefore, kind: kindCommand},
+		{name: "pre_data_after_command", section: core.DumpSectionPreData, when: core.ScriptEventTypeAfter, kind: kindCommand},
 		// data section
-		{name: "data_before_sql", section: commonmodels.DumpSectionData, when: commonmodels.ScriptEventTypeBefore, kind: kindSQL},
-		{name: "data_after_sql", section: commonmodels.DumpSectionData, when: commonmodels.ScriptEventTypeAfter, kind: kindSQL},
-		{name: "data_before_sql_file", section: commonmodels.DumpSectionData, when: commonmodels.ScriptEventTypeBefore, kind: kindSQLFile},
-		{name: "data_after_sql_file", section: commonmodels.DumpSectionData, when: commonmodels.ScriptEventTypeAfter, kind: kindSQLFile},
-		{name: "data_before_command", section: commonmodels.DumpSectionData, when: commonmodels.ScriptEventTypeBefore, kind: kindCommand},
-		{name: "data_after_command", section: commonmodels.DumpSectionData, when: commonmodels.ScriptEventTypeAfter, kind: kindCommand},
+		{name: "data_before_sql", section: core.DumpSectionData, when: core.ScriptEventTypeBefore, kind: kindSQL},
+		{name: "data_after_sql", section: core.DumpSectionData, when: core.ScriptEventTypeAfter, kind: kindSQL},
+		{name: "data_before_sql_file", section: core.DumpSectionData, when: core.ScriptEventTypeBefore, kind: kindSQLFile},
+		{name: "data_after_sql_file", section: core.DumpSectionData, when: core.ScriptEventTypeAfter, kind: kindSQLFile},
+		{name: "data_before_command", section: core.DumpSectionData, when: core.ScriptEventTypeBefore, kind: kindCommand},
+		{name: "data_after_command", section: core.DumpSectionData, when: core.ScriptEventTypeAfter, kind: kindCommand},
 		// post-data section
-		{name: "post_data_before_sql", section: commonmodels.DumpSectionPostData, when: commonmodels.ScriptEventTypeBefore, kind: kindSQL},
-		{name: "post_data_after_sql", section: commonmodels.DumpSectionPostData, when: commonmodels.ScriptEventTypeAfter, kind: kindSQL},
-		{name: "post_data_before_sql_file", section: commonmodels.DumpSectionPostData, when: commonmodels.ScriptEventTypeBefore, kind: kindSQLFile},
-		{name: "post_data_after_sql_file", section: commonmodels.DumpSectionPostData, when: commonmodels.ScriptEventTypeAfter, kind: kindSQLFile},
-		{name: "post_data_before_command", section: commonmodels.DumpSectionPostData, when: commonmodels.ScriptEventTypeBefore, kind: kindCommand},
-		{name: "post_data_after_command", section: commonmodels.DumpSectionPostData, when: commonmodels.ScriptEventTypeAfter, kind: kindCommand},
+		{name: "post_data_before_sql", section: core.DumpSectionPostData, when: core.ScriptEventTypeBefore, kind: kindSQL},
+		{name: "post_data_after_sql", section: core.DumpSectionPostData, when: core.ScriptEventTypeAfter, kind: kindSQL},
+		{name: "post_data_before_sql_file", section: core.DumpSectionPostData, when: core.ScriptEventTypeBefore, kind: kindSQLFile},
+		{name: "post_data_after_sql_file", section: core.DumpSectionPostData, when: core.ScriptEventTypeAfter, kind: kindSQLFile},
+		{name: "post_data_before_command", section: core.DumpSectionPostData, when: core.ScriptEventTypeBefore, kind: kindCommand},
+		{name: "post_data_after_command", section: core.DumpSectionPostData, when: core.ScriptEventTypeAfter, kind: kindCommand},
 	}
 
 	for _, tc := range tests {
@@ -498,16 +505,16 @@ func (s *restoreTestSuite) TestRestore_Scripts() {
 			cfg := s.baseRestoreConfig(ctx)
 			// DataOnly skips pre-data/post-data sections entirely; only use it
 			// for data-section scripts where schema processing is irrelevant.
-			cfg.Restore.Options.DataOnly = tc.section == commonmodels.DumpSectionData
+			cfg.Restore.Options.DataOnly = tc.section == core.DumpSectionData
 
-			var scr commonmodels.Script
+			var scr core.Script
 			var markerFile string // populated only for kindCommand
 
 			switch tc.kind {
 			case kindSQL:
 				// Use fully-qualified table name: the script connection has no
 				// default database (ConnectDatabase is unset in the restore config).
-				scr = commonmodels.Script{
+				scr = core.Script{
 					Name:    tc.name,
 					Section: tc.section,
 					When:    tc.when,
@@ -525,7 +532,7 @@ func (s *restoreTestSuite) TestRestore_Scripts() {
 					targetDB, tc.name,
 				)
 				s.Require().NoError(os.WriteFile(path, []byte(content), 0600))
-				scr = commonmodels.Script{
+				scr = core.Script{
 					Name:      tc.name,
 					Section:   tc.section,
 					When:      tc.when,
@@ -535,7 +542,7 @@ func (s *restoreTestSuite) TestRestore_Scripts() {
 			case kindCommand:
 				dir := s.T().TempDir()
 				markerFile = filepath.Join(dir, tc.name+".marker")
-				scr = commonmodels.Script{
+				scr = core.Script{
 					Name:    tc.name,
 					Section: tc.section,
 					When:    tc.when,
@@ -543,7 +550,7 @@ func (s *restoreTestSuite) TestRestore_Scripts() {
 				}
 			}
 
-			cfg.Restore.Scripts = []commonmodels.Script{scr}
+			cfg.Restore.Scripts = []core.Script{scr}
 
 			st := s.runDump(ctx, s.baseDumpConfig(ctx))
 			defer st.Cleanup()

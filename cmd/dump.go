@@ -15,12 +15,13 @@
 package main
 
 import (
-	"log"
+	"context"
 
-	"github.com/spf13/cobra"
-
-	"github.com/greenmaskio/greenmask/pkg/cmdrun"
+	"github.com/greenmaskio/greenmask/pkg/cli"
 	"github.com/greenmaskio/greenmask/pkg/common/cmd"
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
+	"github.com/rs/zerolog/log"
+	"github.com/spf13/cobra"
 )
 
 var (
@@ -134,22 +135,13 @@ var (
 			Default:          1,
 		},
 		{
-			Name:             "compress",
-			Usage:            "Compress the dump output.",
+			Name:             "compression",
+			Usage:            "Compression algorithm for the dump output (none, gzip, pgzip).",
 			ConfigPathPrefix: "dump.options",
 			BindToConfig:     true,
-			Type:             cmd.FlagTypeBool,
+			Type:             cmd.FlagTypeString,
 			IsRequired:       false,
-			Default:          true,
-		},
-		{
-			Name:             "pgzip",
-			Usage:            "Use pgzip for compression.",
-			ConfigPathPrefix: "dump.options",
-			BindToConfig:     true,
-			Type:             cmd.FlagTypeBool,
-			IsRequired:       false,
-			Default:          true,
+			Default:          string(core.CompressionPgzip),
 		},
 		{
 			Name:             "section",
@@ -166,8 +158,8 @@ var (
 		Use:   "dump",
 		Short: "Dump database, transform and store into storage.",
 		Run: func(cmd *cobra.Command, args []string) {
-			if err := cmdrun.RunDumpCmd(rootCmd.MustGetConfig()); err != nil {
-				log.Fatal(err)
+			if err := cli.New(rootCmd.MustGetConfig()).Dump(context.Background()); err != nil {
+				log.Fatal().Err(err).Msg("dump command failed")
 			}
 		},
 	}, dumpFlags...)

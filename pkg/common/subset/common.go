@@ -19,7 +19,7 @@ import (
 	"regexp"
 	"sort"
 
-	commonmodels "github.com/greenmaskio/greenmask/pkg/common/models"
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 	condensationgraph2 "github.com/greenmaskio/greenmask/pkg/common/subset/condensationgraph"
 	tablegraph2 "github.com/greenmaskio/greenmask/pkg/common/subset/tablegraph"
 	"github.com/huandu/go-sqlbuilder"
@@ -46,7 +46,7 @@ func (d Dialect) String() string {
 
 // mustGetOneTableFromSCC - retrieves a single table from the strongly connected component (SCC) of the subset graph.
 // If the SCC contains more than one table, it panics.
-func mustGetOneTableFromSCC(scc condensationgraph2.SCC) commonmodels.Table {
+func mustGetOneTableFromSCC(scc condensationgraph2.SCC) core.Table {
 	tables := scc.Vertexes()
 	if len(tables) != 1 {
 		panic(fmt.Sprintf("SCC must contain only one table got %d", len(tables)))
@@ -56,7 +56,7 @@ func mustGetOneTableFromSCC(scc condensationgraph2.SCC) commonmodels.Table {
 
 // getFullTableName - returns the full table name based on the SQL dialect.
 // It escapes the table name and schema name according to the dialect.
-func getFullTableName(dialect Dialect, t commonmodels.Table, tableAliasMap map[int]string) string {
+func getFullTableName(dialect Dialect, t core.Table, tableAliasMap map[int]string) string {
 	alias, hasAlias := tableAliasMap[t.ID]
 	if !hasAlias {
 		switch dialect {
@@ -84,7 +84,7 @@ func getFullTableName(dialect Dialect, t commonmodels.Table, tableAliasMap map[i
 //
 //	If it is an expression, then it should return the expression as it is.
 //	If it's a column name, it escapes the column name, table name, and schema name according to the dialect.
-func getFullColumnsName(dialect Dialect, t commonmodels.Table, keys []tablegraph2.Key, tableAliasMap map[int]string) []string {
+func getFullColumnsName(dialect Dialect, t core.Table, keys []tablegraph2.Key, tableAliasMap map[int]string) []string {
 	res := make([]string, len(keys))
 	for i, k := range keys {
 		if k.Expression != "" {
@@ -99,7 +99,7 @@ func getFullColumnsName(dialect Dialect, t commonmodels.Table, keys []tablegraph
 
 // getFullColumnName - returns the full column name based on the SQL dialect.
 // It escapes the column name, table name, and schema name according to the dialect.
-func getFullColumnName(dialect Dialect, t commonmodels.Table, c string, tableAliasMap map[int]string) string {
+func getFullColumnName(dialect Dialect, t core.Table, c string, tableAliasMap map[int]string) string {
 	alias, hasAlias := tableAliasMap[t.ID]
 	if !hasAlias {
 		switch dialect {
@@ -243,7 +243,7 @@ func setJoinClause(
 
 // getTableAlias - generates a table alias based on the schema, table name, and sequence value.
 // It does not escape the resulting alias, so it should be used with caution.
-func getTableAlias(t commonmodels.Table, seqValue int) string {
+func getTableAlias(t core.Table, seqValue int) string {
 	return fmt.Sprintf("%s_%s__%d", t.Schema, t.Name, seqValue)
 }
 
@@ -284,7 +284,7 @@ func makeTableAliasesForDAG(graph map[int][]condensationgraph2.Edge) map[int]str
 // table name with the alias provided. Returns rewritten conditions.
 func getSubsetConditionsWithTableAlias(
 	dialect Dialect,
-	table commonmodels.Table,
+	table core.Table,
 	alias string,
 ) []string {
 	// If the alias is found we have to replace the table name with the alias

@@ -19,8 +19,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/greenmaskio/greenmask/pkg/common/interfaces"
-	"github.com/greenmaskio/greenmask/pkg/common/models"
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 	"github.com/greenmaskio/greenmask/pkg/common/transformers/generators/transformers"
 	"github.com/greenmaskio/greenmask/pkg/common/transformers/parameters"
 	"github.com/greenmaskio/greenmask/pkg/common/transformers/utils"
@@ -42,7 +41,7 @@ var ChoiceTransformerDefinition = utils.NewTransformerDefinition(
 	parameters.MustNewParameterDefinition(
 		"column",
 		"column name",
-	).SetIsColumn(models.NewColumnProperties().
+	).SetIsColumn(core.NewColumnProperties().
 		SetAffected(true),
 	).SetRequired(true),
 
@@ -56,7 +55,7 @@ var ChoiceTransformerDefinition = utils.NewTransformerDefinition(
 		"validate",
 		`perform decode procedure DBMS driver using column type, ensuring that value has correct type`,
 	).SetRequired(false).
-		SetDefaultValue(models.ParamsValue("true")),
+		SetDefaultValue(core.ParamsValue("true")),
 
 	defaultKeepNullParameterDefinition,
 
@@ -74,9 +73,9 @@ type ChoiceTransformer struct {
 
 func NewRandomChoiceTransformer(
 	ctx context.Context,
-	tableDriver interfaces.TableDriver,
+	tableDriver core.TableDriver,
 	parameters map[string]parameters.Parameterizer,
-) (interfaces.Transformer, error) {
+) (core.Transformer, error) {
 	columnName, column, err := getColumnParameterValue(ctx, tableDriver, parameters)
 	if err != nil {
 		return nil, fmt.Errorf("get \"column\" parameter: %w", err)
@@ -97,7 +96,7 @@ func NewRandomChoiceTransformer(
 		return nil, fmt.Errorf("get \"validate\" param: %w", err)
 	}
 
-	values, err := getParameterValueWithName[[]models.ParamsValue](ctx, parameters, "values")
+	values, err := getParameterValueWithName[[]core.ParamsValue](ctx, parameters, "values")
 	if err != nil {
 		return nil, fmt.Errorf("get \"values\" param: %w", err)
 	}
@@ -108,12 +107,12 @@ func NewRandomChoiceTransformer(
 		}
 	}
 
-	rawValues := make([]*models.ColumnRawValue, 0, len(values))
+	rawValues := make([]*core.ColumnRawValue, 0, len(values))
 	for _, v := range values {
 		if string(v) == defaultNullSeq {
-			rawValues = append(rawValues, models.NewColumnRawValue(nil, true))
+			rawValues = append(rawValues, core.NewColumnRawValue(nil, true))
 		} else {
-			rawValues = append(rawValues, models.NewColumnRawValue(v, false))
+			rawValues = append(rawValues, core.NewColumnRawValue(v, false))
 		}
 	}
 
@@ -151,7 +150,7 @@ func (t *ChoiceTransformer) Done(context.Context) error {
 	return nil
 }
 
-func (t *ChoiceTransformer) Transform(_ context.Context, r interfaces.Recorder) error {
+func (t *ChoiceTransformer) Transform(_ context.Context, r core.Recorder) error {
 	val, err := r.GetRawColumnValueByIdx(t.columnIdx)
 	if err != nil {
 		return fmt.Errorf("scan value: %w", err)
@@ -183,10 +182,10 @@ var (
 
 func randomChoiceValuesUnmarshaller(
 	_ *parameters.ParameterDefinition,
-	_ interfaces.DBMSDriver,
-	src models.ParamsValue,
+	_ core.NamedTypeCodec,
+	src core.ParamsValue,
 ) (any, error) {
-	var res []models.ParamsValue
+	var res []core.ParamsValue
 	getResult := gjson.GetBytes(src, "@this")
 	if !getResult.Exists() {
 		return nil, errRandomChoiceValuesUnmarshallerWrongFormat
@@ -198,15 +197,15 @@ func randomChoiceValuesUnmarshaller(
 	for _, i := range getResult.Array() {
 		switch v := i.Value().(type) {
 		case string:
-			res = append(res, models.ParamsValue(v))
+			res = append(res, core.ParamsValue(v))
 		default:
-			res = append(res, models.ParamsValue(i.Raw))
+			res = append(res, core.ParamsValue(i.Raw))
 		}
 	}
 	return &res, nil
 }
 
-func choiceValidateValueViaDriver(data []byte, tableDriver interfaces.TableDriver, columnName string) error {
+func choiceValidateValueViaDriver(data []byte, tableDriver core.TableDriver, columnName string) error {
 	_, err := tableDriver.DecodeValueByColumnName(columnName, data)
 	if err != nil {
 		return fmt.Errorf(`"decode value: %w"`, err)
@@ -216,20 +215,20 @@ func choiceValidateValueViaDriver(data []byte, tableDriver interfaces.TableDrive
 
 func validateValues(
 	ctx context.Context,
-	values []models.ParamsValue,
-	tableDriver interfaces.TableDriver,
+	values []core.ParamsValue,
+	tableDriver core.TableDriver,
 	columnName string,
 ) (err error) {
 	addedValues := make(map[string]struct{})
 	for idx, v := range values {
 		if _, ok := addedValues[string(v)]; ok {
 			validationcollector.FromContext(ctx).Add(
-				models.NewValidationWarning().
-					SetSeverity(models.ValidationSeverityError).
+				core.NewValidationWarning().
+					SetSeverity(core.ValidationSeverityError).
 					AddMeta("ParameterName", "values").
 					AddMeta(fmt.Sprintf("ParameterItemValue[%d]", idx), v).
 					SetMsg("value already exist in the list"))
-			err = models.ErrFatalValidationError
+			err = core.ErrFatalValidationError
 		}
 
 		if string(v) == defaultNullSeq {
@@ -238,13 +237,13 @@ func validateValues(
 
 		if validationErr := choiceValidateValueViaDriver(v, tableDriver, columnName); validationErr != nil {
 			validationcollector.FromContext(ctx).Add(
-				models.NewValidationWarning().
-					SetSeverity(models.ValidationSeverityError).
+				core.NewValidationWarning().
+					SetSeverity(core.ValidationSeverityError).
 					AddMeta("ParameterName", "values").
 					AddMeta(fmt.Sprintf("ParameterItemValue[%d]", idx), string(v)).
 					AddMeta("Error", validationErr.Error()).
 					SetMsg("error validating value: driver decoding error"))
-			err = models.ErrFatalValidationError
+			err = core.ErrFatalValidationError
 		}
 	}
 	return err

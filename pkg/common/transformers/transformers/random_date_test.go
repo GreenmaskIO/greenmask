@@ -19,11 +19,10 @@ import (
 	"testing"
 	"time"
 
-	commonininterfaces "github.com/greenmaskio/greenmask/pkg/common/interfaces"
-	"github.com/greenmaskio/greenmask/pkg/common/models"
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
+	coretest "github.com/greenmaskio/greenmask/pkg/common/coretest"
 	commonutils "github.com/greenmaskio/greenmask/pkg/common/utils"
 	"github.com/greenmaskio/greenmask/pkg/common/validationcollector"
-	mysqldbmsdriver "github.com/greenmaskio/greenmask/pkg/mysql/dbmsdriver"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -39,34 +38,36 @@ func TestTimestampTransformer_Transform(t *testing.T) {
 
 	tests := []struct {
 		name             string
-		staticParameters map[string]models.ParamsValue
-		dynamicParameter map[string]models.DynamicParamValue
-		original         []*models.ColumnRawValue
-		validateFn       func(t *testing.T, recorder commonininterfaces.Recorder)
+		staticParameters map[string]core.ParamsValue
+		dynamicParameter map[string]core.DynamicParamValue
+		original         []*core.ColumnRawValue
+		validateFn       func(t *testing.T, recorder core.Recorder)
 		expectedErr      string
-		columns          []models.Column
+		columns          []core.Column
 	}{
 		{
 			name: "test date type",
-			columns: []models.Column{
+			columns: []core.Column{
 				{
-					Idx:       0,
-					Name:      "data",
-					TypeName:  mysqldbmsdriver.TypeDate,
-					TypeOID:   mysqldbmsdriver.VirtualOidDate,
-					TypeClass: models.TypeClassDateTime,
-					Length:    0,
+					Idx:  0,
+					Name: "data",
+					Type: core.Type{
+						Name:   coretest.TypeDate,
+						ID:     coretest.TypeIDDate,
+						Class:  core.TypeClassDateTime,
+						Length: 0,
+					},
 				},
 			},
-			original: []*models.ColumnRawValue{
-				models.NewColumnRawValue([]byte("2007-09-14"), false)},
-			staticParameters: map[string]models.ParamsValue{
-				"column": models.ParamsValue("data"),
-				"min":    models.ParamsValue("2017-09-14"),
-				"max":    models.ParamsValue("2023-09-14"),
-				"engine": models.ParamsValue("random"),
+			original: []*core.ColumnRawValue{
+				core.NewColumnRawValue([]byte("2007-09-14"), false)},
+			staticParameters: map[string]core.ParamsValue{
+				"column": core.ParamsValue("data"),
+				"min":    core.ParamsValue("2017-09-14"),
+				"max":    core.ParamsValue("2023-09-14"),
+				"engine": core.ParamsValue("random"),
 			},
-			validateFn: func(t *testing.T, recorder commonininterfaces.Recorder) {
+			validateFn: func(t *testing.T, recorder core.Recorder) {
 				var val time.Time
 				isNull, err := recorder.ScanColumnValueByName("data", &val)
 				require.NoError(t, err)
@@ -80,25 +81,27 @@ func TestTimestampTransformer_Transform(t *testing.T) {
 		},
 		{
 			name: "test timestamp without timezone type",
-			columns: []models.Column{
+			columns: []core.Column{
 				{
-					Idx:       0,
-					Name:      "data",
-					TypeName:  mysqldbmsdriver.TypeTimestamp,
-					TypeOID:   mysqldbmsdriver.VirtualOidTimestamp,
-					TypeClass: models.TypeClassDateTime,
-					Length:    0,
+					Idx:  0,
+					Name: "data",
+					Type: core.Type{
+						Name:   coretest.TypeTimestamp,
+						ID:     coretest.TypeIDTimestamp,
+						Class:  core.TypeClassDateTime,
+						Length: 0,
+					},
 				},
 			},
-			original: []*models.ColumnRawValue{
-				models.NewColumnRawValue([]byte("2008-12-15 23:34:17.946707"), false)},
-			staticParameters: map[string]models.ParamsValue{
-				"column": models.ParamsValue("data"),
-				"min":    models.ParamsValue("2018-12-15 23:34:17.946707"),
-				"max":    models.ParamsValue("2023-09-14 00:00:17.946707"),
-				"engine": models.ParamsValue("random"),
+			original: []*core.ColumnRawValue{
+				core.NewColumnRawValue([]byte("2008-12-15 23:34:17.946707"), false)},
+			staticParameters: map[string]core.ParamsValue{
+				"column": core.ParamsValue("data"),
+				"min":    core.ParamsValue("2018-12-15 23:34:17.946707"),
+				"max":    core.ParamsValue("2023-09-14 00:00:17.946707"),
+				"engine": core.ParamsValue("random"),
 			},
-			validateFn: func(t *testing.T, recorder commonininterfaces.Recorder) {
+			validateFn: func(t *testing.T, recorder core.Recorder) {
 				var val time.Time
 				isNull, err := recorder.ScanColumnValueByName("data", &val)
 				require.NoError(t, err)
@@ -112,26 +115,28 @@ func TestTimestampTransformer_Transform(t *testing.T) {
 		},
 		{
 			name: "test timestamp type with Truncate till day",
-			columns: []models.Column{
+			columns: []core.Column{
 				{
-					Idx:       0,
-					Name:      "data",
-					TypeName:  mysqldbmsdriver.TypeTimestamp,
-					TypeOID:   mysqldbmsdriver.VirtualOidTimestamp,
-					TypeClass: models.TypeClassDateTime,
-					Length:    0,
+					Idx:  0,
+					Name: "data",
+					Type: core.Type{
+						Name:   coretest.TypeTimestamp,
+						ID:     coretest.TypeIDTimestamp,
+						Class:  core.TypeClassDateTime,
+						Length: 0,
+					},
 				},
 			},
-			original: []*models.ColumnRawValue{
-				models.NewColumnRawValue([]byte("2008-12-15 23:34:17.946707"), false)},
-			staticParameters: map[string]models.ParamsValue{
-				"column":   models.ParamsValue("data"),
-				"min":      models.ParamsValue("2018-12-15 23:34:17.946707"),
-				"max":      models.ParamsValue("2023-09-14 00:00:17.946707"),
-				"engine":   models.ParamsValue("random"),
-				"truncate": models.ParamsValue("month"),
+			original: []*core.ColumnRawValue{
+				core.NewColumnRawValue([]byte("2008-12-15 23:34:17.946707"), false)},
+			staticParameters: map[string]core.ParamsValue{
+				"column":   core.ParamsValue("data"),
+				"min":      core.ParamsValue("2018-12-15 23:34:17.946707"),
+				"max":      core.ParamsValue("2023-09-14 00:00:17.946707"),
+				"engine":   core.ParamsValue("random"),
+				"truncate": core.ParamsValue("month"),
 			},
-			validateFn: func(t *testing.T, recorder commonininterfaces.Recorder) {
+			validateFn: func(t *testing.T, recorder core.Recorder) {
 				var val time.Time
 				isNull, err := recorder.ScanColumnValueByName("data", &val)
 				require.NoError(t, err)
@@ -149,26 +154,28 @@ func TestTimestampTransformer_Transform(t *testing.T) {
 		},
 		{
 			name: "keep_null false and NULL seq",
-			columns: []models.Column{
+			columns: []core.Column{
 				{
-					Idx:       0,
-					Name:      "data",
-					TypeName:  mysqldbmsdriver.TypeTimestamp,
-					TypeOID:   mysqldbmsdriver.VirtualOidTimestamp,
-					TypeClass: models.TypeClassDateTime,
-					Length:    0,
+					Idx:  0,
+					Name: "data",
+					Type: core.Type{
+						Name:   coretest.TypeTimestamp,
+						ID:     coretest.TypeIDTimestamp,
+						Class:  core.TypeClassDateTime,
+						Length: 0,
+					},
 				},
 			},
-			original: []*models.ColumnRawValue{
-				models.NewColumnRawValue(nil, true)},
-			staticParameters: map[string]models.ParamsValue{
-				"column":    models.ParamsValue("data"),
-				"min":       models.ParamsValue("2018-12-15 23:34:17.946707"),
-				"max":       models.ParamsValue("2023-09-14 00:00:17.946707"),
-				"engine":    models.ParamsValue("random"),
-				"keep_null": models.ParamsValue("false"),
+			original: []*core.ColumnRawValue{
+				core.NewColumnRawValue(nil, true)},
+			staticParameters: map[string]core.ParamsValue{
+				"column":    core.ParamsValue("data"),
+				"min":       core.ParamsValue("2018-12-15 23:34:17.946707"),
+				"max":       core.ParamsValue("2023-09-14 00:00:17.946707"),
+				"engine":    core.ParamsValue("random"),
+				"keep_null": core.ParamsValue("false"),
 			},
-			validateFn: func(t *testing.T, recorder commonininterfaces.Recorder) {
+			validateFn: func(t *testing.T, recorder core.Recorder) {
 				var val time.Time
 				isNull, err := recorder.ScanColumnValueByName("data", &val)
 				require.NoError(t, err)
@@ -182,26 +189,28 @@ func TestTimestampTransformer_Transform(t *testing.T) {
 		},
 		{
 			name: "keep_null true and NULL seq",
-			columns: []models.Column{
+			columns: []core.Column{
 				{
-					Idx:       0,
-					Name:      "data",
-					TypeName:  mysqldbmsdriver.TypeTimestamp,
-					TypeOID:   mysqldbmsdriver.VirtualOidTimestamp,
-					TypeClass: models.TypeClassDateTime,
-					Length:    0,
+					Idx:  0,
+					Name: "data",
+					Type: core.Type{
+						Name:   coretest.TypeTimestamp,
+						ID:     coretest.TypeIDTimestamp,
+						Class:  core.TypeClassDateTime,
+						Length: 0,
+					},
 				},
 			},
-			original: []*models.ColumnRawValue{
-				models.NewColumnRawValue(nil, true)},
-			staticParameters: map[string]models.ParamsValue{
-				"column":    models.ParamsValue("data"),
-				"min":       models.ParamsValue("2018-12-15 23:34:17.946707"),
-				"max":       models.ParamsValue("2023-09-14 00:00:17.946707"),
-				"engine":    models.ParamsValue("random"),
-				"keep_null": models.ParamsValue("true"),
+			original: []*core.ColumnRawValue{
+				core.NewColumnRawValue(nil, true)},
+			staticParameters: map[string]core.ParamsValue{
+				"column":    core.ParamsValue("data"),
+				"min":       core.ParamsValue("2018-12-15 23:34:17.946707"),
+				"max":       core.ParamsValue("2023-09-14 00:00:17.946707"),
+				"engine":    core.ParamsValue("random"),
+				"keep_null": core.ParamsValue("true"),
 			},
-			validateFn: func(t *testing.T, recorder commonininterfaces.Recorder) {
+			validateFn: func(t *testing.T, recorder core.Recorder) {
 				var val time.Time
 				isNull, err := recorder.ScanColumnValueByName("data", &val)
 				require.NoError(t, err)

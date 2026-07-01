@@ -17,7 +17,7 @@ package tablegraph
 import (
 	"testing"
 
-	"github.com/greenmaskio/greenmask/pkg/common/models"
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 	"github.com/stretchr/testify/require"
 )
 
@@ -38,18 +38,18 @@ func TestNewGraph(t *testing.T) {
 				^	|
 		        |----
 	*/
-	tableA := models.Table{
+	tableA := core.Table{
 		Schema:     "test",
 		Name:       "a",
 		PrimaryKey: []string{"id"},
 		References: nil,
 	}
 
-	tableB := models.Table{
+	tableB := core.Table{
 		Schema:     "test",
 		Name:       "b",
 		PrimaryKey: []string{"id"},
-		References: []models.Reference{
+		References: []core.Reference{
 			{
 				ReferencedSchema: "test",
 				ReferencedName:   "a",
@@ -65,11 +65,11 @@ func TestNewGraph(t *testing.T) {
 		},
 	}
 
-	tableC := models.Table{
+	tableC := core.Table{
 		Schema:     "test",
 		Name:       "c",
 		PrimaryKey: []string{"id"},
-		References: []models.Reference{
+		References: []core.Reference{
 			{
 				ReferencedSchema: "test",
 				ReferencedName:   "b",
@@ -85,11 +85,11 @@ func TestNewGraph(t *testing.T) {
 		},
 	}
 
-	tableD := models.Table{
+	tableD := core.Table{
 		Schema:     "test",
 		Name:       "d",
 		PrimaryKey: []string{"id"},
-		References: []models.Reference{
+		References: []core.Reference{
 			{
 				ReferencedSchema: "test",
 				ReferencedName:   "d",
@@ -99,11 +99,11 @@ func TestNewGraph(t *testing.T) {
 		},
 	}
 
-	tableF := models.Table{
+	tableF := core.Table{
 		Schema:     "test",
 		Name:       "f",
 		PrimaryKey: []string{"id"},
-		References: []models.Reference{
+		References: []core.Reference{
 			{
 				ReferencedSchema: "test",
 				ReferencedName:   "b",
@@ -113,7 +113,7 @@ func TestNewGraph(t *testing.T) {
 		},
 	}
 
-	tables := []models.Table{tableA, tableB, tableC, tableD, tableF}
+	tables := []core.Table{tableA, tableB, tableC, tableD, tableF}
 
 	expected := Graph{
 		Vertexes: tables,

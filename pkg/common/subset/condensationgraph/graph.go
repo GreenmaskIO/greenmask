@@ -17,7 +17,7 @@ package condensationgraph
 import (
 	"slices"
 
-	"github.com/greenmaskio/greenmask/pkg/common/models"
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 	tablegraph2 "github.com/greenmaskio/greenmask/pkg/common/subset/tablegraph"
 )
 
@@ -79,7 +79,7 @@ func (g *Graph) buildSCC() {
 
 	for sccIdx := 0; sccIdx < g.sccCount; sccIdx++ {
 		// Build list of vertexes for the SCC
-		vertexes := make(map[int]models.Table)
+		vertexes := make(map[int]core.Table)
 		for _, vertexIdx := range sccToOriginalVertexes[sccIdx] {
 			vertexes[vertexIdx] = g.tg.Vertexes[vertexIdx]
 		}
@@ -213,7 +213,7 @@ func (g *Graph) HasCycles() bool {
 
 func (g *Graph) GetTopologicalOrder() ([]int, error) {
 	if g.HasCycles() {
-		return nil, models.ErrTableGraphHasCycles
+		return nil, core.ErrTableGraphHasCycles
 	}
 
 	// Since we are using Kosaraju's algorithm in findSCC, the discovered SCCs

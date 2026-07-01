@@ -8,7 +8,7 @@ import (
 
 	"github.com/olekukonko/tablewriter"
 
-	"github.com/greenmaskio/greenmask/pkg/common/models"
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 )
 
 type TableFormat string
@@ -23,7 +23,7 @@ func (m TableFormat) Validate() error {
 	case TableFormatNameHorizontal, TableFormatNameVertical:
 		return nil
 	}
-	return fmt.Errorf("table format '%s': %w", m, models.ErrValueValidationFailed)
+	return fmt.Errorf("table format '%s': %w", m, core.ErrValueValidationFailed)
 }
 
 const maxWrapLength = 64
@@ -41,7 +41,7 @@ type TextDocument struct {
 }
 
 func NewTextDocument(
-	table models.Table,
+	table core.Table,
 	affectedColumns []int,
 	withDiff bool,
 	onlyTransformed bool,
@@ -181,7 +181,7 @@ func (td *TextDocument) getAffectedColumns() map[int]struct{} {
 	res := make(map[int]struct{})
 	colToPrint := td.GetAffectedColumns()
 	for colIdx := range colToPrint {
-		idx := slices.IndexFunc(td.table.Columns, func(column models.Column) bool {
+		idx := slices.IndexFunc(td.table.Columns, func(column core.Column) bool {
 			return column.Idx == colIdx
 		})
 		if idx == -1 {
@@ -196,7 +196,7 @@ func (td *TextDocument) getColumnsIdxsToPrint() []int {
 	var res []int
 	colToPrint := td.GetColumnsToPrint()
 	for colIdx := range colToPrint {
-		idx := slices.IndexFunc(td.table.Columns, func(column models.Column) bool {
+		idx := slices.IndexFunc(td.table.Columns, func(column core.Column) bool {
 			return column.Idx == colIdx
 		})
 		if idx == -1 {

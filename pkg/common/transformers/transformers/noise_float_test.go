@@ -20,45 +20,46 @@ import (
 	"strings"
 	"testing"
 
-	commonininterfaces "github.com/greenmaskio/greenmask/pkg/common/interfaces"
-	"github.com/greenmaskio/greenmask/pkg/common/models"
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
+	coretest "github.com/greenmaskio/greenmask/pkg/common/coretest"
 	"github.com/greenmaskio/greenmask/pkg/common/validationcollector"
-	mysqldbmsdriver "github.com/greenmaskio/greenmask/pkg/mysql/dbmsdriver"
 	"github.com/stretchr/testify/require"
 )
 
 func TestNoiseFloatTransformer_Transform(t *testing.T) {
 	tests := []struct {
 		name             string
-		staticParameters map[string]models.ParamsValue
-		dynamicParameter map[string]models.DynamicParamValue
-		original         []*models.ColumnRawValue
-		validateFn       func(t *testing.T, recorder commonininterfaces.Recorder)
+		staticParameters map[string]core.ParamsValue
+		dynamicParameter map[string]core.DynamicParamValue
+		original         []*core.ColumnRawValue
+		validateFn       func(t *testing.T, recorder core.Recorder)
 		expectedErr      string
-		columns          []models.Column
+		columns          []core.Column
 		isNull           bool
 	}{
 		{
 			name: "float4",
-			staticParameters: map[string]models.ParamsValue{
-				"column":    models.ParamsValue("data"),
-				"min_ratio": models.ParamsValue("0.2"),
-				"max_ratio": models.ParamsValue("0.9"),
+			staticParameters: map[string]core.ParamsValue{
+				"column":    core.ParamsValue("data"),
+				"min_ratio": core.ParamsValue("0.2"),
+				"max_ratio": core.ParamsValue("0.9"),
 			},
-			original: []*models.ColumnRawValue{
-				models.NewColumnRawValue([]byte("100"), false)},
-			columns: []models.Column{
+			original: []*core.ColumnRawValue{
+				core.NewColumnRawValue([]byte("100"), false)},
+			columns: []core.Column{
 				{
-					Idx:       0,
-					Name:      "data",
-					TypeName:  mysqldbmsdriver.TypeFloat,
-					TypeOID:   mysqldbmsdriver.VirtualOidFloat,
-					TypeClass: models.TypeClassFloat,
-					Length:    0,
-					Size:      4,
+					Idx:  0,
+					Name: "data",
+					Type: core.Type{
+						Name:   coretest.TypeFloat8,
+						ID:     coretest.TypeIDFloat8,
+						Class:  core.TypeClassFloat,
+						Length: 0,
+						Size:   4,
+					},
 				},
 			},
-			validateFn: func(t *testing.T, record commonininterfaces.Recorder) {
+			validateFn: func(t *testing.T, record core.Recorder) {
 				var value float64
 				isNull, err := record.ScanColumnValueByName("data", &value)
 				require.NoError(t, err)
@@ -72,25 +73,27 @@ func TestNoiseFloatTransformer_Transform(t *testing.T) {
 		},
 		{
 			name: "float8",
-			staticParameters: map[string]models.ParamsValue{
-				"column":    models.ParamsValue("data"),
-				"min_ratio": models.ParamsValue("0.2"),
-				"max_ratio": models.ParamsValue("0.9"),
+			staticParameters: map[string]core.ParamsValue{
+				"column":    core.ParamsValue("data"),
+				"min_ratio": core.ParamsValue("0.2"),
+				"max_ratio": core.ParamsValue("0.9"),
 			},
-			original: []*models.ColumnRawValue{
-				models.NewColumnRawValue([]byte("100"), false)},
-			columns: []models.Column{
+			original: []*core.ColumnRawValue{
+				core.NewColumnRawValue([]byte("100"), false)},
+			columns: []core.Column{
 				{
-					Idx:       0,
-					Name:      "data",
-					TypeName:  mysqldbmsdriver.TypeFloat,
-					TypeOID:   mysqldbmsdriver.VirtualOidFloat,
-					TypeClass: models.TypeClassFloat,
-					Length:    0,
-					Size:      8,
+					Idx:  0,
+					Name: "data",
+					Type: core.Type{
+						Name:   coretest.TypeFloat8,
+						ID:     coretest.TypeIDFloat8,
+						Class:  core.TypeClassFloat,
+						Length: 0,
+						Size:   8,
+					},
 				},
 			},
-			validateFn: func(t *testing.T, record commonininterfaces.Recorder) {
+			validateFn: func(t *testing.T, record core.Recorder) {
 				var value float64
 				isNull, err := record.ScanColumnValueByName("data", &value)
 				require.NoError(t, err)
@@ -104,26 +107,28 @@ func TestNoiseFloatTransformer_Transform(t *testing.T) {
 		},
 		{
 			name: "10 decimals",
-			staticParameters: map[string]models.ParamsValue{
-				"column":    models.ParamsValue("data"),
-				"min_ratio": models.ParamsValue("0.2"),
-				"max_ratio": models.ParamsValue("0.9"),
-				"decimal":   models.ParamsValue("10"),
+			staticParameters: map[string]core.ParamsValue{
+				"column":    core.ParamsValue("data"),
+				"min_ratio": core.ParamsValue("0.2"),
+				"max_ratio": core.ParamsValue("0.9"),
+				"decimal":   core.ParamsValue("10"),
 			},
-			original: []*models.ColumnRawValue{
-				models.NewColumnRawValue([]byte("100"), false)},
-			columns: []models.Column{
+			original: []*core.ColumnRawValue{
+				core.NewColumnRawValue([]byte("100"), false)},
+			columns: []core.Column{
 				{
-					Idx:       0,
-					Name:      "data",
-					TypeName:  mysqldbmsdriver.TypeFloat,
-					TypeOID:   mysqldbmsdriver.VirtualOidFloat,
-					TypeClass: models.TypeClassFloat,
-					Length:    0,
-					Size:      8,
+					Idx:  0,
+					Name: "data",
+					Type: core.Type{
+						Name:   coretest.TypeFloat8,
+						ID:     coretest.TypeIDFloat8,
+						Class:  core.TypeClassFloat,
+						Length: 0,
+						Size:   8,
+					},
 				},
 			},
-			validateFn: func(t *testing.T, record commonininterfaces.Recorder) {
+			validateFn: func(t *testing.T, record core.Recorder) {
 				val, err := record.GetRawColumnValueByName("data")
 				require.NoError(t, err)
 				require.False(t, val.IsNull)
@@ -135,26 +140,28 @@ func TestNoiseFloatTransformer_Transform(t *testing.T) {
 		},
 		{
 			name: "0 decimals",
-			staticParameters: map[string]models.ParamsValue{
-				"column":    models.ParamsValue("data"),
-				"min_ratio": models.ParamsValue("0.2"),
-				"max_ratio": models.ParamsValue("0.9"),
-				"decimal":   models.ParamsValue("0"),
+			staticParameters: map[string]core.ParamsValue{
+				"column":    core.ParamsValue("data"),
+				"min_ratio": core.ParamsValue("0.2"),
+				"max_ratio": core.ParamsValue("0.9"),
+				"decimal":   core.ParamsValue("0"),
 			},
-			original: []*models.ColumnRawValue{
-				models.NewColumnRawValue([]byte("100"), false)},
-			columns: []models.Column{
+			original: []*core.ColumnRawValue{
+				core.NewColumnRawValue([]byte("100"), false)},
+			columns: []core.Column{
 				{
-					Idx:       0,
-					Name:      "data",
-					TypeName:  mysqldbmsdriver.TypeFloat,
-					TypeOID:   mysqldbmsdriver.VirtualOidFloat,
-					TypeClass: models.TypeClassFloat,
-					Length:    0,
-					Size:      8,
+					Idx:  0,
+					Name: "data",
+					Type: core.Type{
+						Name:   coretest.TypeFloat8,
+						ID:     coretest.TypeIDFloat8,
+						Class:  core.TypeClassFloat,
+						Length: 0,
+						Size:   8,
+					},
 				},
 			},
-			validateFn: func(t *testing.T, record commonininterfaces.Recorder) {
+			validateFn: func(t *testing.T, record core.Recorder) {
 				val, err := record.GetRawColumnValueByName("data")
 				require.NoError(t, err)
 				require.False(t, val.IsNull)
@@ -164,27 +171,29 @@ func TestNoiseFloatTransformer_Transform(t *testing.T) {
 		},
 		{
 			name: "deterministic engine",
-			staticParameters: map[string]models.ParamsValue{
-				"column":    models.ParamsValue("data"),
-				"min_ratio": models.ParamsValue("0.2"),
-				"max_ratio": models.ParamsValue("0.9"),
-				"decimal":   models.ParamsValue("0"),
-				"engine":    models.ParamsValue("deterministic"),
+			staticParameters: map[string]core.ParamsValue{
+				"column":    core.ParamsValue("data"),
+				"min_ratio": core.ParamsValue("0.2"),
+				"max_ratio": core.ParamsValue("0.9"),
+				"decimal":   core.ParamsValue("0"),
+				"engine":    core.ParamsValue("deterministic"),
 			},
-			original: []*models.ColumnRawValue{
-				models.NewColumnRawValue([]byte("100"), false)},
-			columns: []models.Column{
+			original: []*core.ColumnRawValue{
+				core.NewColumnRawValue([]byte("100"), false)},
+			columns: []core.Column{
 				{
-					Idx:       0,
-					Name:      "data",
-					TypeName:  mysqldbmsdriver.TypeFloat,
-					TypeOID:   mysqldbmsdriver.VirtualOidFloat,
-					TypeClass: models.TypeClassFloat,
-					Length:    0,
-					Size:      8,
+					Idx:  0,
+					Name: "data",
+					Type: core.Type{
+						Name:   coretest.TypeFloat8,
+						ID:     coretest.TypeIDFloat8,
+						Class:  core.TypeClassFloat,
+						Length: 0,
+						Size:   8,
+					},
 				},
 			},
-			validateFn: func(t *testing.T, record commonininterfaces.Recorder) {
+			validateFn: func(t *testing.T, record core.Recorder) {
 				// The value must be alway the same!
 				var value float64
 				isNull, err := record.ScanColumnValueByName("data", &value)
@@ -195,26 +204,28 @@ func TestNoiseFloatTransformer_Transform(t *testing.T) {
 		},
 		{
 			name: "with thresholds",
-			staticParameters: map[string]models.ParamsValue{
-				"column":    models.ParamsValue("data"),
-				"min_ratio": models.ParamsValue("0.2"),
-				"max_ratio": models.ParamsValue("0.9"),
-				"min":       models.ParamsValue("90"),
-				"max":       models.ParamsValue("110"),
+			staticParameters: map[string]core.ParamsValue{
+				"column":    core.ParamsValue("data"),
+				"min_ratio": core.ParamsValue("0.2"),
+				"max_ratio": core.ParamsValue("0.9"),
+				"min":       core.ParamsValue("90"),
+				"max":       core.ParamsValue("110"),
 			},
-			original: []*models.ColumnRawValue{
-				models.NewColumnRawValue([]byte("100"), false)},
-			columns: []models.Column{
+			original: []*core.ColumnRawValue{
+				core.NewColumnRawValue([]byte("100"), false)},
+			columns: []core.Column{
 				{
-					Idx:       0,
-					Name:      "data",
-					TypeName:  mysqldbmsdriver.TypeFloat,
-					TypeOID:   mysqldbmsdriver.VirtualOidFloat,
-					TypeClass: models.TypeClassFloat,
-					Size:      8,
+					Idx:  0,
+					Name: "data",
+					Type: core.Type{
+						Name:  coretest.TypeFloat8,
+						ID:    coretest.TypeIDFloat8,
+						Class: core.TypeClassFloat,
+						Size:  8,
+					},
 				},
 			},
-			validateFn: func(t *testing.T, record commonininterfaces.Recorder) {
+			validateFn: func(t *testing.T, record core.Recorder) {
 				var value float64
 				isNull, err := record.ScanColumnValueByName("data", &value)
 				require.NoError(t, err)
@@ -226,26 +237,28 @@ func TestNoiseFloatTransformer_Transform(t *testing.T) {
 		},
 		{
 			name: "with thresholds",
-			staticParameters: map[string]models.ParamsValue{
-				"column":    models.ParamsValue("data"),
-				"min_ratio": models.ParamsValue("0.2"),
-				"max_ratio": models.ParamsValue("0.9"),
-				"min":       models.ParamsValue("0"),
-				"max":       models.ParamsValue("110"),
+			staticParameters: map[string]core.ParamsValue{
+				"column":    core.ParamsValue("data"),
+				"min_ratio": core.ParamsValue("0.2"),
+				"max_ratio": core.ParamsValue("0.9"),
+				"min":       core.ParamsValue("0"),
+				"max":       core.ParamsValue("110"),
 			},
-			original: []*models.ColumnRawValue{
-				models.NewColumnRawValue([]byte("100"), false)},
-			columns: []models.Column{
+			original: []*core.ColumnRawValue{
+				core.NewColumnRawValue([]byte("100"), false)},
+			columns: []core.Column{
 				{
-					Idx:       0,
-					Name:      "data",
-					TypeName:  mysqldbmsdriver.TypeFloat,
-					TypeOID:   mysqldbmsdriver.VirtualOidFloat,
-					TypeClass: models.TypeClassFloat,
-					Size:      8,
+					Idx:  0,
+					Name: "data",
+					Type: core.Type{
+						Name:  coretest.TypeFloat8,
+						ID:    coretest.TypeIDFloat8,
+						Class: core.TypeClassFloat,
+						Size:  8,
+					},
 				},
 			},
-			validateFn: func(t *testing.T, record commonininterfaces.Recorder) {
+			validateFn: func(t *testing.T, record core.Recorder) {
 				var value float64
 				isNull, err := record.ScanColumnValueByName("data", &value)
 				require.NoError(t, err)
@@ -257,12 +270,12 @@ func TestNoiseFloatTransformer_Transform(t *testing.T) {
 		},
 		{
 			name: "dynamic mode with min and max",
-			staticParameters: map[string]models.ParamsValue{
-				"column":    models.ParamsValue("data"),
-				"min_ratio": models.ParamsValue("0.2"),
-				"max_ratio": models.ParamsValue("0.9"),
+			staticParameters: map[string]core.ParamsValue{
+				"column":    core.ParamsValue("data"),
+				"min_ratio": core.ParamsValue("0.2"),
+				"max_ratio": core.ParamsValue("0.9"),
 			},
-			dynamicParameter: map[string]models.DynamicParamValue{
+			dynamicParameter: map[string]core.DynamicParamValue{
 				"min": {
 					Column: "min_col",
 				},
@@ -270,38 +283,44 @@ func TestNoiseFloatTransformer_Transform(t *testing.T) {
 					Column: "max_col",
 				},
 			},
-			original: []*models.ColumnRawValue{
-				models.NewColumnRawValue([]byte("100000.2"), false),
-				models.NewColumnRawValue([]byte("0"), false),
-				models.NewColumnRawValue([]byte("110"), false),
+			original: []*core.ColumnRawValue{
+				core.NewColumnRawValue([]byte("100000.2"), false),
+				core.NewColumnRawValue([]byte("0"), false),
+				core.NewColumnRawValue([]byte("110"), false),
 			},
-			columns: []models.Column{
+			columns: []core.Column{
 				{
-					Idx:       0,
-					Name:      "data",
-					TypeName:  mysqldbmsdriver.TypeFloat,
-					TypeOID:   mysqldbmsdriver.VirtualOidFloat,
-					TypeClass: models.TypeClassFloat,
-					Size:      8,
+					Idx:  0,
+					Name: "data",
+					Type: core.Type{
+						Name:  coretest.TypeFloat8,
+						ID:    coretest.TypeIDFloat8,
+						Class: core.TypeClassFloat,
+						Size:  8,
+					},
 				},
 				{
-					Idx:       1,
-					Name:      "min_col",
-					TypeName:  mysqldbmsdriver.TypeFloat,
-					TypeOID:   mysqldbmsdriver.VirtualOidFloat,
-					TypeClass: models.TypeClassFloat,
-					Size:      8,
+					Idx:  1,
+					Name: "min_col",
+					Type: core.Type{
+						Name:  coretest.TypeFloat8,
+						ID:    coretest.TypeIDFloat8,
+						Class: core.TypeClassFloat,
+						Size:  8,
+					},
 				},
 				{
-					Idx:       2,
-					Name:      "max_col",
-					TypeName:  mysqldbmsdriver.TypeFloat,
-					TypeOID:   mysqldbmsdriver.VirtualOidFloat,
-					TypeClass: models.TypeClassFloat,
-					Size:      8,
+					Idx:  2,
+					Name: "max_col",
+					Type: core.Type{
+						Name:  coretest.TypeFloat8,
+						ID:    coretest.TypeIDFloat8,
+						Class: core.TypeClassFloat,
+						Size:  8,
+					},
 				},
 			},
-			validateFn: func(t *testing.T, record commonininterfaces.Recorder) {
+			validateFn: func(t *testing.T, record core.Recorder) {
 				var value float64
 				isNull, err := record.ScanColumnValueByName("data", &value)
 				require.NoError(t, err)
@@ -314,48 +333,54 @@ func TestNoiseFloatTransformer_Transform(t *testing.T) {
 		{
 			name: "dynamic mode with min and empty max",
 			// This should use the default max value for float8.
-			staticParameters: map[string]models.ParamsValue{
-				"column":    models.ParamsValue("data"),
-				"min_ratio": models.ParamsValue("0.2"),
-				"max_ratio": models.ParamsValue("0.9"),
+			staticParameters: map[string]core.ParamsValue{
+				"column":    core.ParamsValue("data"),
+				"min_ratio": core.ParamsValue("0.2"),
+				"max_ratio": core.ParamsValue("0.9"),
 			},
-			dynamicParameter: map[string]models.DynamicParamValue{
+			dynamicParameter: map[string]core.DynamicParamValue{
 				"min": {
 					Column: "min_col",
 				},
 			},
-			original: []*models.ColumnRawValue{
-				models.NewColumnRawValue([]byte("-100000.2"), false),
-				models.NewColumnRawValue([]byte("0"), false),
-				models.NewColumnRawValue([]byte("110"), false),
+			original: []*core.ColumnRawValue{
+				core.NewColumnRawValue([]byte("-100000.2"), false),
+				core.NewColumnRawValue([]byte("0"), false),
+				core.NewColumnRawValue([]byte("110"), false),
 			},
-			columns: []models.Column{
+			columns: []core.Column{
 				{
-					Idx:       0,
-					Name:      "data",
-					TypeName:  mysqldbmsdriver.TypeFloat,
-					TypeOID:   mysqldbmsdriver.VirtualOidFloat,
-					TypeClass: models.TypeClassFloat,
-					Size:      8,
+					Idx:  0,
+					Name: "data",
+					Type: core.Type{
+						Name:  coretest.TypeFloat8,
+						ID:    coretest.TypeIDFloat8,
+						Class: core.TypeClassFloat,
+						Size:  8,
+					},
 				},
 				{
-					Idx:       1,
-					Name:      "min_col",
-					TypeName:  mysqldbmsdriver.TypeFloat,
-					TypeOID:   mysqldbmsdriver.VirtualOidFloat,
-					TypeClass: models.TypeClassFloat,
-					Size:      8,
+					Idx:  1,
+					Name: "min_col",
+					Type: core.Type{
+						Name:  coretest.TypeFloat8,
+						ID:    coretest.TypeIDFloat8,
+						Class: core.TypeClassFloat,
+						Size:  8,
+					},
 				},
 				{
-					Idx:       2,
-					Name:      "max_col",
-					TypeName:  mysqldbmsdriver.TypeFloat,
-					TypeOID:   mysqldbmsdriver.VirtualOidFloat,
-					TypeClass: models.TypeClassFloat,
-					Size:      8,
+					Idx:  2,
+					Name: "max_col",
+					Type: core.Type{
+						Name:  coretest.TypeFloat8,
+						ID:    coretest.TypeIDFloat8,
+						Class: core.TypeClassFloat,
+						Size:  8,
+					},
 				},
 			},
-			validateFn: func(t *testing.T, record commonininterfaces.Recorder) {
+			validateFn: func(t *testing.T, record core.Recorder) {
 				var value float64
 				isNull, err := record.ScanColumnValueByName("data", &value)
 				require.NoError(t, err)
@@ -368,48 +393,54 @@ func TestNoiseFloatTransformer_Transform(t *testing.T) {
 		{
 			name: "dynamic mode with max and empty min",
 			// This should use the default max value for float8.
-			staticParameters: map[string]models.ParamsValue{
-				"column":    models.ParamsValue("data"),
-				"min_ratio": models.ParamsValue("0.2"),
-				"max_ratio": models.ParamsValue("0.9"),
+			staticParameters: map[string]core.ParamsValue{
+				"column":    core.ParamsValue("data"),
+				"min_ratio": core.ParamsValue("0.2"),
+				"max_ratio": core.ParamsValue("0.9"),
 			},
-			dynamicParameter: map[string]models.DynamicParamValue{
+			dynamicParameter: map[string]core.DynamicParamValue{
 				"max": {
 					Column: "max_col",
 				},
 			},
-			original: []*models.ColumnRawValue{
-				models.NewColumnRawValue([]byte("-100000.2"), false),
-				models.NewColumnRawValue([]byte("0"), false),
-				models.NewColumnRawValue([]byte("110"), false),
+			original: []*core.ColumnRawValue{
+				core.NewColumnRawValue([]byte("-100000.2"), false),
+				core.NewColumnRawValue([]byte("0"), false),
+				core.NewColumnRawValue([]byte("110"), false),
 			},
-			columns: []models.Column{
+			columns: []core.Column{
 				{
-					Idx:       0,
-					Name:      "data",
-					TypeName:  mysqldbmsdriver.TypeFloat,
-					TypeOID:   mysqldbmsdriver.VirtualOidFloat,
-					TypeClass: models.TypeClassFloat,
-					Size:      8,
+					Idx:  0,
+					Name: "data",
+					Type: core.Type{
+						Name:  coretest.TypeFloat8,
+						ID:    coretest.TypeIDFloat8,
+						Class: core.TypeClassFloat,
+						Size:  8,
+					},
 				},
 				{
-					Idx:       1,
-					Name:      "min_col",
-					TypeName:  mysqldbmsdriver.TypeFloat,
-					TypeOID:   mysqldbmsdriver.VirtualOidFloat,
-					TypeClass: models.TypeClassFloat,
-					Size:      8,
+					Idx:  1,
+					Name: "min_col",
+					Type: core.Type{
+						Name:  coretest.TypeFloat8,
+						ID:    coretest.TypeIDFloat8,
+						Class: core.TypeClassFloat,
+						Size:  8,
+					},
 				},
 				{
-					Idx:       2,
-					Name:      "max_col",
-					TypeName:  mysqldbmsdriver.TypeFloat,
-					TypeOID:   mysqldbmsdriver.VirtualOidFloat,
-					TypeClass: models.TypeClassFloat,
-					Size:      8,
+					Idx:  2,
+					Name: "max_col",
+					Type: core.Type{
+						Name:  coretest.TypeFloat8,
+						ID:    coretest.TypeIDFloat8,
+						Class: core.TypeClassFloat,
+						Size:  8,
+					},
 				},
 			},
-			validateFn: func(t *testing.T, record commonininterfaces.Recorder) {
+			validateFn: func(t *testing.T, record core.Recorder) {
 				var value float64
 				isNull, err := record.ScanColumnValueByName("data", &value)
 				require.NoError(t, err)

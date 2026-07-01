@@ -20,7 +20,7 @@ import (
 	"fmt"
 	"text/template"
 
-	"github.com/greenmaskio/greenmask/pkg/common/interfaces"
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 	"github.com/greenmaskio/greenmask/pkg/common/transformers/parameters"
 	template2 "github.com/greenmaskio/greenmask/pkg/common/transformers/template"
 	"github.com/greenmaskio/greenmask/pkg/common/transformers/utils"
@@ -53,9 +53,9 @@ type TemplateRecordTransformer struct {
 
 func NewTemplateRecordTransformer(
 	_ context.Context,
-	_ interfaces.TableDriver,
+	_ core.TableDriver,
 	parameters map[string]parameters.Parameterizer,
-) (interfaces.Transformer, error) {
+) (core.Transformer, error) {
 	var templateStr string
 	var columns []string
 	affectedColumns := make(map[int]string)
@@ -92,7 +92,7 @@ func (t *TemplateRecordTransformer) Done(context.Context) error {
 	return nil
 }
 
-func (t *TemplateRecordTransformer) Transform(_ context.Context, r interfaces.Recorder) error {
+func (t *TemplateRecordTransformer) Transform(_ context.Context, r core.Recorder) error {
 	t.tctx.SetRecord(r)
 
 	if err := t.tmpl.Execute(t.buf, t.tctx); err != nil {

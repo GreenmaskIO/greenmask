@@ -1,0 +1,192 @@
+// Copyright 2025 Greenmask
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+package core
+
+import (
+	"errors"
+	"fmt"
+	"time"
+)
+
+type ObjectID int
+
+type ObjectKind string
+
+// ObjectKindTable is the only generic object kind defined in core. Engine
+// packages own their own taxonomy of kinds (e.g. pg.table, mysql.database) and
+// register them with the generic registry by value — core never enumerates the
+// kinds of any specific engine, so adding an engine requires no change here.
+const (
+	ObjectKindTable ObjectKind = "table"
+)
+
+type Compression string
+
+var ErrModelValidation = errors.New("model validation error")
+
+const (
+	CompressionNone  Compression = "none"
+	CompressionGzip  Compression = "gzip"
+	CompressionPgzip Compression = "pgzip"
+)
+
+type DumpFormat string
+
+const (
+	DumpFormatCsv    DumpFormat = "csv"
+	DumpFormatInsert DumpFormat = "insert"
+)
+
+func (c Compression) Validate() error {
+	switch c {
+	case CompressionNone, CompressionGzip, CompressionPgzip:
+		return nil
+	default:
+		return fmt.Errorf("value = '%s': %w", string(c), ErrModelValidation)
+	}
+}
+
+func (c Compression) IsEnabled() bool {
+	return c != CompressionNone
+}
+
+func (c Compression) IsPgzip() bool {
+	return c == CompressionPgzip
+}
+
+// GetExt returns the file extension suffix for the compression type:
+// ".gz" for gzip/pgzip and "" for none.
+func (c Compression) GetExt() string {
+	if c.IsEnabled() {
+		return ".gz"
+	}
+	return ""
+}
+
+func (f DumpFormat) Validate() error {
+	switch f {
+	case DumpFormatCsv, DumpFormatInsert:
+		return nil
+	default:
+		return fmt.Errorf("value = '%s': %w", string(f), ErrModelValidation)
+	}
+}
+
+type DataDumpStat struct {
+	RestorationContext RestorationContext                 `json:"restoration_context"`
+	RestorationItems   map[TaskID]RestorationItem         `json:"restoration_items"`
+	TaskStats          map[TaskID]ObjectDumpStat          `json:"task_stats"`
+	TaskID2ObjectID    map[ObjectKind]map[TaskID]ObjectID `json:"task_id_2_object_id"`
+	ObjectID2TaskID    map[ObjectKind]map[ObjectID]TaskID `json:"object_id_2_task_id"`
+}
+
+type DumpedObjectStat struct {
+	Engine          DBMSEngine  `json:"engine"`
+	ID              ObjectID    `json:"id"`
+	Kind            ObjectKind  `json:"kind"`
+	HumanReadableID string      `json:"human_readable_id"`
+	OriginalSize    int64       `json:"original_size"`
+	CompressedSize  int64       `json:"compressed_size"`
+	Filename        string      `json:"filename"`
+	Compression     Compression `json:"compression"`
+	Format          DumpFormat  `json:"format"`
+}
+
+func NewObjectStat(
+	engine DBMSEngine,
+	kind ObjectKind,
+	id ObjectID,
+	humanReadableID string,
+	size int64,
+	compressedSize int64,
+	fileName string,
+	compression Compression,
+	format DumpFormat,
+) DumpedObjectStat {
+	return DumpedObjectStat{
+		Engine:          engine,
+		Kind:            kind,
+		ID:              id,
+		HumanReadableID: humanReadableID,
+		OriginalSize:    size,
+		CompressedSize:  compressedSize,
+		Filename:        fileName,
+		Compression:     compression,
+		Format:          format,
+	}
+}
+
+type ObjectDumpStat struct {
+	ObjectStat  DumpedObjectStat `json:"object_stat"`
+	ID          TaskID           `json:"id"`
+	Engine      DBMSEngine       `json:"engine"`
+	Duration    time.Duration    `json:"duration"`
+	DumperType  string           `json:"dumper_type"`
+	RecordCount int64            `json:"record_count"`
+	// ObjectDefinition - definition of the object in JSON bytes.
+	ObjectDefinition []byte `json:"table"`
+}
+
+func NewDumpStat(
+	taskID TaskID,
+	objectStat DumpedObjectStat,
+	duration time.Duration,
+	dumperType string,
+	recordCount int64,
+	engine DBMSEngine,
+	objectDefinition []byte,
+) ObjectDumpStat {
+	return ObjectDumpStat{
+		ID:               taskID,
+		ObjectStat:       objectStat,
+		Duration:         duration,
+		DumperType:       dumperType,
+		RecordCount:      recordCount,
+		Engine:           engine,
+		ObjectDefinition: objectDefinition,
+	}
+}
+
+type DumpSection string
+
+const (
+	DumpSectionPreData  DumpSection = "pre-data"
+	DumpSectionPostData DumpSection = "post-data"
+	DumpSectionData     DumpSection = "data"
+	DumpSectionAll      DumpSection = "all"
+)
+
+func (m DumpSection) Validate() error {
+	switch m {
+	case DumpSectionPreData, DumpSectionPostData, DumpSectionData:
+		return nil
+	default:
+		return fmt.Errorf("value = '%s': %w", string(m), ErrModelValidation)
+	}
+}
+
+type SchemaDumpStat struct {
+	Kind           SchemaObjectKind `json:"kind"`
+	TaskID         TaskID           `json:"task_id"`
+	DatabaseName   string           `json:"database_name"`
+	FileName       string           `json:"file_name"`
+	Section        DumpSection      `json:"section"`
+	Compression    Compression      `json:"compression"`
+	OriginalSize   int64            `json:"original_size"`
+	CompressedSize int64            `json:"compressed_size"`
+	// VendorUtility identifies the CLI tool (e.g. mysqldump) that produced this
+	// schema dump. Promoted onto SchemaDumpMetadata by NewSchemaDumpMetadata.
+	VendorUtility *VendorUtility `json:"vendor_utility,omitempty"`
+}

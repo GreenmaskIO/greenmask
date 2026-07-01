@@ -18,8 +18,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/greenmaskio/greenmask/pkg/common/interfaces"
-	commonmodels "github.com/greenmaskio/greenmask/pkg/common/models"
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 	"github.com/greenmaskio/greenmask/pkg/common/transformers/parameters"
 	"github.com/greenmaskio/greenmask/pkg/common/transformers/utils"
 )
@@ -37,7 +36,7 @@ var SetNullTransformerDefinition = utils.NewTransformerDefinition(
 	parameters.MustNewParameterDefinition(
 		"column",
 		"column name",
-	).SetIsColumn(commonmodels.NewColumnProperties().
+	).SetIsColumn(core.NewColumnProperties().
 		SetAffected(true).
 		SetNullable(true),
 	).SetRequired(true),
@@ -51,9 +50,9 @@ type SetNullTransformer struct {
 
 func NewSetNullTransformer(
 	ctx context.Context,
-	tableDriver interfaces.TableDriver,
+	tableDriver core.TableDriver,
 	parameters map[string]parameters.Parameterizer,
-) (interfaces.Transformer, error) {
+) (core.Transformer, error) {
 	columnName, column, err := getColumnParameterValue(ctx, tableDriver, parameters)
 	if err != nil {
 		return nil, fmt.Errorf("get \"column\" parameter: %w", err)
@@ -80,8 +79,8 @@ func (t *SetNullTransformer) Done(context.Context) error {
 	return nil
 }
 
-func (t *SetNullTransformer) Transform(_ context.Context, r interfaces.Recorder) error {
-	if err := r.SetRawColumnValueByIdx(t.columnIdx, commonmodels.NewColumnRawValue(nil, true)); err != nil {
+func (t *SetNullTransformer) Transform(_ context.Context, r core.Recorder) error {
+	if err := r.SetRawColumnValueByIdx(t.columnIdx, core.NewColumnRawValue(nil, true)); err != nil {
 		return fmt.Errorf("unable to set new value: %w", err)
 	}
 	return nil

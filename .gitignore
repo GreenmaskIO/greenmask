@@ -31,3 +31,6 @@ venv
 .cache
 # Binaries
 cmd/greenmask/greenmask
+
+# Local AI assistant instructions
+CLAUDE.md

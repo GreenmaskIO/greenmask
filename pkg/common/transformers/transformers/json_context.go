@@ -15,7 +15,7 @@
 package transformers
 
 import (
-	"github.com/greenmaskio/greenmask/pkg/common/interfaces"
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 	"github.com/greenmaskio/greenmask/pkg/common/transformers/template"
 	"github.com/tidwall/gjson"
 )
@@ -40,7 +40,7 @@ func (jc *JsonContext) setValue(data []byte, path string) {
 	jc.path = path
 }
 
-func (jc *JsonContext) setRecord(r interfaces.Recorder) {
+func (jc *JsonContext) setRecord(r core.Recorder) {
 	jc.rc.SetRecord(r)
 }
 

@@ -20,12 +20,11 @@ import (
 	"strings"
 	"testing"
 
-	commonininterfaces "github.com/greenmaskio/greenmask/pkg/common/interfaces"
-	"github.com/greenmaskio/greenmask/pkg/common/models"
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
+	coretest "github.com/greenmaskio/greenmask/pkg/common/coretest"
 	"github.com/greenmaskio/greenmask/pkg/common/transformers/generators/transformers"
 	"github.com/greenmaskio/greenmask/pkg/common/utils"
 	"github.com/greenmaskio/greenmask/pkg/common/validationcollector"
-	mysqldbmsdriver "github.com/greenmaskio/greenmask/pkg/mysql/dbmsdriver"
 	"github.com/rs/zerolog/log"
 	"github.com/stretchr/testify/require"
 )
@@ -51,29 +50,31 @@ func assertStringContainsOneOfItemFromList(t *testing.T, val string, values []st
 func TestRandomPersonTransformer_Transform(t *testing.T) {
 	tests := []struct {
 		name             string
-		staticParameters map[string]models.ParamsValue
-		dynamicParameter map[string]models.DynamicParamValue
-		original         []*models.ColumnRawValue
-		validateFn       func(t *testing.T, recorder commonininterfaces.Recorder)
+		staticParameters map[string]core.ParamsValue
+		dynamicParameter map[string]core.DynamicParamValue
+		original         []*core.ColumnRawValue
+		validateFn       func(t *testing.T, recorder core.Recorder)
 		expectedErr      string
-		columns          []models.Column
+		columns          []core.Column
 		isNull           bool
 	}{
 		{
 			name: "all fields",
-			columns: []models.Column{
+			columns: []core.Column{
 				{
-					Idx:       0,
-					Name:      "data",
-					TypeName:  mysqldbmsdriver.TypeText,
-					TypeOID:   mysqldbmsdriver.VirtualOidText,
-					TypeClass: models.TypeClassText,
-					Length:    0,
+					Idx:  0,
+					Name: "data",
+					Type: core.Type{
+						Name:   coretest.TypeText,
+						ID:     coretest.TypeIDText,
+						Class:  core.TypeClassText,
+						Length: 0,
+					},
 				},
 			},
-			original: []*models.ColumnRawValue{
-				models.NewColumnRawValue([]byte("1234567"), false)},
-			staticParameters: map[string]models.ParamsValue{
+			original: []*core.ColumnRawValue{
+				core.NewColumnRawValue([]byte("1234567"), false)},
+			staticParameters: map[string]core.ParamsValue{
 				"columns": dumpColumnContainers(
 					randomPersonColumns{
 						Name:     "data",
@@ -82,10 +83,10 @@ func TestRandomPersonTransformer_Transform(t *testing.T) {
 						HashOnly: false,
 					},
 				),
-				"engine": models.ParamsValue("deterministic"),
-				"gender": models.ParamsValue("Any"),
+				"engine": core.ParamsValue("deterministic"),
+				"gender": core.ParamsValue("Any"),
 			},
-			validateFn: func(t *testing.T, recorder commonininterfaces.Recorder) {
+			validateFn: func(t *testing.T, recorder core.Recorder) {
 				rawVal, err := recorder.GetRawColumnValueByName("data")
 				require.NoError(t, err)
 				require.False(t, rawVal.IsNull)
@@ -99,19 +100,21 @@ func TestRandomPersonTransformer_Transform(t *testing.T) {
 		},
 		{
 			name: "keep_null and original is not null",
-			columns: []models.Column{
+			columns: []core.Column{
 				{
-					Idx:       0,
-					Name:      "data",
-					TypeName:  mysqldbmsdriver.TypeText,
-					TypeOID:   mysqldbmsdriver.VirtualOidText,
-					TypeClass: models.TypeClassText,
-					Length:    0,
+					Idx:  0,
+					Name: "data",
+					Type: core.Type{
+						Name:   coretest.TypeText,
+						ID:     coretest.TypeIDText,
+						Class:  core.TypeClassText,
+						Length: 0,
+					},
 				},
 			},
-			original: []*models.ColumnRawValue{
-				models.NewColumnRawValue([]byte("1234567"), false)},
-			staticParameters: map[string]models.ParamsValue{
+			original: []*core.ColumnRawValue{
+				core.NewColumnRawValue([]byte("1234567"), false)},
+			staticParameters: map[string]core.ParamsValue{
 				"columns": dumpColumnContainers(
 					randomPersonColumns{
 						Name:     "data",
@@ -121,10 +124,10 @@ func TestRandomPersonTransformer_Transform(t *testing.T) {
 						KeepNull: utils.New(true),
 					},
 				),
-				"engine": models.ParamsValue("deterministic"),
-				"gender": models.ParamsValue("Female"),
+				"engine": core.ParamsValue("deterministic"),
+				"gender": core.ParamsValue("Female"),
 			},
-			validateFn: func(t *testing.T, recorder commonininterfaces.Recorder) {
+			validateFn: func(t *testing.T, recorder core.Recorder) {
 				rawVal, err := recorder.GetRawColumnValueByName("data")
 				require.NoError(t, err)
 				require.False(t, rawVal.IsNull)
@@ -136,19 +139,21 @@ func TestRandomPersonTransformer_Transform(t *testing.T) {
 		},
 		{
 			name: "keep_null and original is null",
-			columns: []models.Column{
+			columns: []core.Column{
 				{
-					Idx:       0,
-					Name:      "data",
-					TypeName:  mysqldbmsdriver.TypeText,
-					TypeOID:   mysqldbmsdriver.VirtualOidText,
-					TypeClass: models.TypeClassText,
-					Length:    0,
+					Idx:  0,
+					Name: "data",
+					Type: core.Type{
+						Name:   coretest.TypeText,
+						ID:     coretest.TypeIDText,
+						Class:  core.TypeClassText,
+						Length: 0,
+					},
 				},
 			},
-			original: []*models.ColumnRawValue{
-				models.NewColumnRawValue(nil, true)},
-			staticParameters: map[string]models.ParamsValue{
+			original: []*core.ColumnRawValue{
+				core.NewColumnRawValue(nil, true)},
+			staticParameters: map[string]core.ParamsValue{
 				"columns": dumpColumnContainers(
 					randomPersonColumns{
 						Name:     "data",
@@ -158,10 +163,10 @@ func TestRandomPersonTransformer_Transform(t *testing.T) {
 						KeepNull: utils.New(true),
 					},
 				),
-				"engine": models.ParamsValue("deterministic"),
-				"gender": models.ParamsValue("Any"),
+				"engine": core.ParamsValue("deterministic"),
+				"gender": core.ParamsValue("Any"),
 			},
-			validateFn: func(t *testing.T, recorder commonininterfaces.Recorder) {
+			validateFn: func(t *testing.T, recorder core.Recorder) {
 				rawVal, err := recorder.GetRawColumnValueByName("data")
 				require.NoError(t, err)
 				require.True(t, rawVal.IsNull)
@@ -169,29 +174,33 @@ func TestRandomPersonTransformer_Transform(t *testing.T) {
 		},
 		{
 			name: "keep_null and original is null multiple columns",
-			columns: []models.Column{
+			columns: []core.Column{
 				{
-					Idx:       0,
-					Name:      "first_name",
-					TypeName:  mysqldbmsdriver.TypeText,
-					TypeOID:   mysqldbmsdriver.VirtualOidText,
-					TypeClass: models.TypeClassText,
-					Length:    0,
+					Idx:  0,
+					Name: "first_name",
+					Type: core.Type{
+						Name:   coretest.TypeText,
+						ID:     coretest.TypeIDText,
+						Class:  core.TypeClassText,
+						Length: 0,
+					},
 				},
 				{
-					Idx:       1,
-					Name:      "last_name",
-					TypeName:  mysqldbmsdriver.TypeText,
-					TypeOID:   mysqldbmsdriver.VirtualOidText,
-					TypeClass: models.TypeClassText,
-					Length:    0,
+					Idx:  1,
+					Name: "last_name",
+					Type: core.Type{
+						Name:   coretest.TypeText,
+						ID:     coretest.TypeIDText,
+						Class:  core.TypeClassText,
+						Length: 0,
+					},
 				},
 			},
-			original: []*models.ColumnRawValue{
-				models.NewColumnRawValue([]byte("some"), false),
-				models.NewColumnRawValue(nil, true),
+			original: []*core.ColumnRawValue{
+				core.NewColumnRawValue([]byte("some"), false),
+				core.NewColumnRawValue(nil, true),
 			},
-			staticParameters: map[string]models.ParamsValue{
+			staticParameters: map[string]core.ParamsValue{
 				"columns": dumpColumnContainers(
 					randomPersonColumns{
 						Name:     "first_name",
@@ -208,10 +217,10 @@ func TestRandomPersonTransformer_Transform(t *testing.T) {
 						KeepNull: utils.New(true),
 					},
 				),
-				"engine": models.ParamsValue("deterministic"),
-				"gender": models.ParamsValue("Female"),
+				"engine": core.ParamsValue("deterministic"),
+				"gender": core.ParamsValue("Female"),
 			},
-			validateFn: func(t *testing.T, recorder commonininterfaces.Recorder) {
+			validateFn: func(t *testing.T, recorder core.Recorder) {
 				rawVal, err := recorder.GetRawColumnValueByName("first_name")
 				require.NoError(t, err)
 				require.False(t, rawVal.IsNull)

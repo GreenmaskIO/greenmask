@@ -16,15 +16,14 @@ package transformers
 
 import (
 	"context"
-	"net"
 	"testing"
 
-	commonininterfaces "github.com/greenmaskio/greenmask/pkg/common/interfaces"
-	"github.com/greenmaskio/greenmask/pkg/common/models"
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
+	coretest "github.com/greenmaskio/greenmask/pkg/common/coretest"
+	"github.com/greenmaskio/greenmask/pkg/common/coretypes/netaddr"
 	"github.com/greenmaskio/greenmask/pkg/common/transformers/generators/transformers"
 	"github.com/greenmaskio/greenmask/pkg/common/utils"
 	"github.com/greenmaskio/greenmask/pkg/common/validationcollector"
-	mysqldbmsdriver "github.com/greenmaskio/greenmask/pkg/mysql/dbmsdriver"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -32,41 +31,43 @@ import (
 func TestRandomMacTransformer_Transform(t *testing.T) {
 	tests := []struct {
 		name             string
-		staticParameters map[string]models.ParamsValue
-		dynamicParameter map[string]models.DynamicParamValue
-		original         []*models.ColumnRawValue
-		validateFn       func(t *testing.T, recorder commonininterfaces.Recorder)
+		staticParameters map[string]core.ParamsValue
+		dynamicParameter map[string]core.DynamicParamValue
+		original         []*core.ColumnRawValue
+		validateFn       func(t *testing.T, recorder core.Recorder)
 		expectedErr      string
-		columns          []models.Column
+		columns          []core.Column
 		isNull           bool
 	}{
 		{
 			name: "Random mac addr with keepOriginalVendor with Universal and Individual",
-			staticParameters: map[string]models.ParamsValue{
-				"column":               models.ParamsValue("data"),
-				"engine":               models.ParamsValue("deterministic"),
-				"keep_original_vendor": models.ParamsValue("true"),
-				"cast_type":            models.ParamsValue(castTypeNameIndividual),
-				"management_type":      models.ParamsValue(managementTypeNameUniversal),
+			staticParameters: map[string]core.ParamsValue{
+				"column":               core.ParamsValue("data"),
+				"engine":               core.ParamsValue("deterministic"),
+				"keep_original_vendor": core.ParamsValue("true"),
+				"cast_type":            core.ParamsValue(castTypeNameIndividual),
+				"management_type":      core.ParamsValue(managementTypeNameUniversal),
 			},
-			original: []*models.ColumnRawValue{
-				models.NewColumnRawValue([]byte("00:1a:2b:3c:4d:5e"), false)},
-			columns: []models.Column{
+			original: []*core.ColumnRawValue{
+				core.NewColumnRawValue([]byte("00:1a:2b:3c:4d:5e"), false)},
+			columns: []core.Column{
 				{
-					Idx:       0,
-					Name:      "data",
-					TypeName:  mysqldbmsdriver.TypeText,
-					TypeClass: models.TypeClassText,
-					TypeOID:   mysqldbmsdriver.VirtualOidText,
-					Length:    0,
+					Idx:  0,
+					Name: "data",
+					Type: core.Type{
+						Name:   coretest.TypeText,
+						Class:  core.TypeClassText,
+						ID:     coretest.TypeIDText,
+						Length: 0,
+					},
 				},
 			},
-			validateFn: func(t *testing.T, record commonininterfaces.Recorder) {
+			validateFn: func(t *testing.T, record core.Recorder) {
 				val, err := record.GetRawColumnValueByName("data")
 				require.NoError(t, err)
 				require.False(t, val.IsNull)
-				res := &net.HardwareAddr{}
-				err = scanMacAddr(val.Data, res)
+				r, err := netaddr.ParseMacaddr(val.Data)
+				res := &r
 				require.NoError(t, err)
 
 				newMacAddrInfo, err := transformers.ExploreMacAddress(*res)
@@ -80,31 +81,33 @@ func TestRandomMacTransformer_Transform(t *testing.T) {
 		},
 		{
 			name: "Random mac addr with keepOriginalVendor with Universal and Group",
-			staticParameters: map[string]models.ParamsValue{
-				"column":               models.ParamsValue("data"),
-				"engine":               models.ParamsValue("deterministic"),
-				"keep_original_vendor": models.ParamsValue("true"),
-				"cast_type":            models.ParamsValue(castTypeNameIndividual),
-				"management_type":      models.ParamsValue(managementTypeNameUniversal),
+			staticParameters: map[string]core.ParamsValue{
+				"column":               core.ParamsValue("data"),
+				"engine":               core.ParamsValue("deterministic"),
+				"keep_original_vendor": core.ParamsValue("true"),
+				"cast_type":            core.ParamsValue(castTypeNameIndividual),
+				"management_type":      core.ParamsValue(managementTypeNameUniversal),
 			},
-			original: []*models.ColumnRawValue{
-				models.NewColumnRawValue([]byte("01:1a:2b:3c:4d:5e"), false)},
-			columns: []models.Column{
+			original: []*core.ColumnRawValue{
+				core.NewColumnRawValue([]byte("01:1a:2b:3c:4d:5e"), false)},
+			columns: []core.Column{
 				{
-					Idx:       0,
-					Name:      "data",
-					TypeName:  mysqldbmsdriver.TypeText,
-					TypeClass: models.TypeClassText,
-					TypeOID:   mysqldbmsdriver.VirtualOidText,
-					Length:    0,
+					Idx:  0,
+					Name: "data",
+					Type: core.Type{
+						Name:   coretest.TypeText,
+						Class:  core.TypeClassText,
+						ID:     coretest.TypeIDText,
+						Length: 0,
+					},
 				},
 			},
-			validateFn: func(t *testing.T, record commonininterfaces.Recorder) {
+			validateFn: func(t *testing.T, record core.Recorder) {
 				val, err := record.GetRawColumnValueByName("data")
 				require.NoError(t, err)
 				require.False(t, val.IsNull)
-				res := &net.HardwareAddr{}
-				err = scanMacAddr(val.Data, res)
+				r, err := netaddr.ParseMacaddr(val.Data)
+				res := &r
 				require.NoError(t, err)
 
 				newMacAddrInfo, err := transformers.ExploreMacAddress(*res)
@@ -119,31 +122,33 @@ func TestRandomMacTransformer_Transform(t *testing.T) {
 		},
 		{
 			name: "Random mac addr with keepOriginalVendor with Any and Any",
-			staticParameters: map[string]models.ParamsValue{
-				"column":               models.ParamsValue("data"),
-				"engine":               models.ParamsValue("deterministic"),
-				"keep_original_vendor": models.ParamsValue("true"),
-				"cast_type":            models.ParamsValue(castTypeNameAny),
-				"management_type":      models.ParamsValue(managementTypeNameAny),
+			staticParameters: map[string]core.ParamsValue{
+				"column":               core.ParamsValue("data"),
+				"engine":               core.ParamsValue("deterministic"),
+				"keep_original_vendor": core.ParamsValue("true"),
+				"cast_type":            core.ParamsValue(castTypeNameAny),
+				"management_type":      core.ParamsValue(managementTypeNameAny),
 			},
-			original: []*models.ColumnRawValue{
-				models.NewColumnRawValue([]byte("03:1a:2b:3c:4d:5e"), false)},
-			columns: []models.Column{
+			original: []*core.ColumnRawValue{
+				core.NewColumnRawValue([]byte("03:1a:2b:3c:4d:5e"), false)},
+			columns: []core.Column{
 				{
-					Idx:       0,
-					Name:      "data",
-					TypeName:  mysqldbmsdriver.TypeText,
-					TypeClass: models.TypeClassText,
-					TypeOID:   mysqldbmsdriver.VirtualOidText,
-					Length:    0,
+					Idx:  0,
+					Name: "data",
+					Type: core.Type{
+						Name:   coretest.TypeText,
+						Class:  core.TypeClassText,
+						ID:     coretest.TypeIDText,
+						Length: 0,
+					},
 				},
 			},
-			validateFn: func(t *testing.T, record commonininterfaces.Recorder) {
+			validateFn: func(t *testing.T, record core.Recorder) {
 				val, err := record.GetRawColumnValueByName("data")
 				require.NoError(t, err)
 				require.False(t, val.IsNull)
-				res := &net.HardwareAddr{}
-				err = scanMacAddr(val.Data, res)
+				r, err := netaddr.ParseMacaddr(val.Data)
+				res := &r
 				require.NoError(t, err)
 
 				newMacAddrInfo, err := transformers.ExploreMacAddress(*res)
@@ -158,31 +163,33 @@ func TestRandomMacTransformer_Transform(t *testing.T) {
 		},
 		{
 			name: "Random mac addr without keepOriginalVendor with Universal and Group",
-			staticParameters: map[string]models.ParamsValue{
-				"column":               models.ParamsValue("data"),
-				"engine":               models.ParamsValue("deterministic"),
-				"keep_original_vendor": models.ParamsValue("false"),
-				"cast_type":            models.ParamsValue(castTypeNameGroup),
-				"management_type":      models.ParamsValue(managementTypeNameUniversal),
+			staticParameters: map[string]core.ParamsValue{
+				"column":               core.ParamsValue("data"),
+				"engine":               core.ParamsValue("deterministic"),
+				"keep_original_vendor": core.ParamsValue("false"),
+				"cast_type":            core.ParamsValue(castTypeNameGroup),
+				"management_type":      core.ParamsValue(managementTypeNameUniversal),
 			},
-			original: []*models.ColumnRawValue{
-				models.NewColumnRawValue([]byte("03:1a:2b:3c:4d:5e"), false)},
-			columns: []models.Column{
+			original: []*core.ColumnRawValue{
+				core.NewColumnRawValue([]byte("03:1a:2b:3c:4d:5e"), false)},
+			columns: []core.Column{
 				{
-					Idx:       0,
-					Name:      "data",
-					TypeName:  mysqldbmsdriver.TypeText,
-					TypeClass: models.TypeClassText,
-					TypeOID:   mysqldbmsdriver.VirtualOidText,
-					Length:    0,
+					Idx:  0,
+					Name: "data",
+					Type: core.Type{
+						Name:   coretest.TypeText,
+						Class:  core.TypeClassText,
+						ID:     coretest.TypeIDText,
+						Length: 0,
+					},
 				},
 			},
-			validateFn: func(t *testing.T, record commonininterfaces.Recorder) {
+			validateFn: func(t *testing.T, record core.Recorder) {
 				val, err := record.GetRawColumnValueByName("data")
 				require.NoError(t, err)
 				require.False(t, val.IsNull)
-				res := &net.HardwareAddr{}
-				err = scanMacAddr(val.Data, res)
+				r, err := netaddr.ParseMacaddr(val.Data)
+				res := &r
 				require.NoError(t, err)
 
 				newMacAddrInfo, err := transformers.ExploreMacAddress(*res)
@@ -197,31 +204,33 @@ func TestRandomMacTransformer_Transform(t *testing.T) {
 		},
 		{
 			name: "Random mac addr without keepOriginalVendor with Universal and Individual",
-			staticParameters: map[string]models.ParamsValue{
-				"column":               models.ParamsValue("data"),
-				"engine":               models.ParamsValue("deterministic"),
-				"keep_original_vendor": models.ParamsValue("false"),
-				"cast_type":            models.ParamsValue(castTypeNameGroup),
-				"management_type":      models.ParamsValue(managementTypeNameLocal),
+			staticParameters: map[string]core.ParamsValue{
+				"column":               core.ParamsValue("data"),
+				"engine":               core.ParamsValue("deterministic"),
+				"keep_original_vendor": core.ParamsValue("false"),
+				"cast_type":            core.ParamsValue(castTypeNameGroup),
+				"management_type":      core.ParamsValue(managementTypeNameLocal),
 			},
-			original: []*models.ColumnRawValue{
-				models.NewColumnRawValue([]byte("03:1a:2b:3c:4d:5e"), false)},
-			columns: []models.Column{
+			original: []*core.ColumnRawValue{
+				core.NewColumnRawValue([]byte("03:1a:2b:3c:4d:5e"), false)},
+			columns: []core.Column{
 				{
-					Idx:       0,
-					Name:      "data",
-					TypeName:  mysqldbmsdriver.TypeText,
-					TypeClass: models.TypeClassText,
-					TypeOID:   mysqldbmsdriver.VirtualOidText,
-					Length:    0,
+					Idx:  0,
+					Name: "data",
+					Type: core.Type{
+						Name:   coretest.TypeText,
+						Class:  core.TypeClassText,
+						ID:     coretest.TypeIDText,
+						Length: 0,
+					},
 				},
 			},
-			validateFn: func(t *testing.T, record commonininterfaces.Recorder) {
+			validateFn: func(t *testing.T, record core.Recorder) {
 				val, err := record.GetRawColumnValueByName("data")
 				require.NoError(t, err)
 				require.False(t, val.IsNull)
-				res := &net.HardwareAddr{}
-				err = scanMacAddr(val.Data, res)
+				r, err := netaddr.ParseMacaddr(val.Data)
+				res := &r
 				require.NoError(t, err)
 
 				newMacAddrInfo, err := transformers.ExploreMacAddress(*res)

@@ -18,7 +18,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/greenmaskio/greenmask/pkg/common/models"
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 )
 
 type JsonRecordWithAttrNames[T CMDColumnJson] struct {
@@ -41,15 +41,15 @@ func (rr *JsonRecordWithAttrNames[T]) Decode(data []byte) error {
 	return json.Unmarshal(data, &rr.record)
 }
 
-func (rr *JsonRecordWithAttrNames[T]) GetColumn(c *models.Column) (*models.ColumnRawValue, error) {
+func (rr *JsonRecordWithAttrNames[T]) GetColumn(c *core.Column) (*core.ColumnRawValue, error) {
 	res, ok := rr.record[c.Name]
 	if !ok {
 		return nil, fmt.Errorf("attribute with name=%s is not found", c.Name)
 	}
-	return models.NewColumnRawValue(res.GetData(), res.IsValueNull()), nil
+	return core.NewColumnRawValue(res.GetData(), res.IsValueNull()), nil
 }
 
-func (rr *JsonRecordWithAttrNames[T]) SetColumn(c *models.Column, v *models.ColumnRawValue) error {
+func (rr *JsonRecordWithAttrNames[T]) SetColumn(c *core.Column, v *core.ColumnRawValue) error {
 	col := rr.newFn()
 	col.SetData(v.Data)
 	col.SetNull(v.IsNull)

@@ -19,7 +19,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/greenmaskio/greenmask/pkg/common/models"
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -103,71 +103,138 @@ func TestDriver_DecodeValueByTypeName(t *testing.T) {
 	}
 }
 
-func TestDriver_DecodeValueByTypeOid(t *testing.T) {
+func TestDriver_DecodeValueByType(t *testing.T) {
 	driver := New().WithLocation(time.UTC)
+
+	const maxUint64 = "18446744073709551615"
 
 	tests := []struct {
 		name     string
-		oid      models.VirtualOID
+		typ      core.Type
 		input    []byte
 		expected any
+		wantErr  bool
 	}{
-		// Numeric types
-		{"tinyint", VirtualOidTinyInt, []byte("1"), int64(1)},
-		{"smallint", VirtualOidSmallInt, []byte("32767"), int64(32767)},
-		{"mediumint", VirtualOidMediumInt, []byte("8388607"), int64(8388607)},
-		{"int", VirtualOidInt, []byte("2147483647"), int64(2147483647)},
-		{"bigint", VirtualOidBigInt, []byte("9223372036854775807"), int64(9223372036854775807)},
-		{"decimal", VirtualOidDecimal, []byte("123.456"), must(decimal.NewFromString("123.456"))},
-		{"numeric", VirtualOidNumeric, []byte("789.01"), must(decimal.NewFromString("789.01"))},
-		{"float", VirtualOidFloat, []byte("3.14"), 3.14},
-		{"double", VirtualOidDouble, []byte("2.71828"), 2.71828},
-		{"real", VirtualOidReal, []byte("1.618"), 1.618},
-		{"bit", VirtualOidBit, []byte("1"), int64(1)},
+		// Signed integers (Unsigned zero value) always decode to int64, regardless of value.
+		{"signed int small", core.Type{Name: TypeInt, ID: TypeIDInt}, []byte("42"), int64(42), false},
+		{"signed bigint max int64", core.Type{Name: TypeBigInt, ID: TypeIDBigInt},
+			[]byte("9223372036854775807"), int64(9223372036854775807), false},
+		// A signed column value never exceeds int64: out-of-range is a real error,
+		// not a silent widening to uint64.
+		{"signed bigint overflow errors", core.Type{Name: TypeBigInt, ID: TypeIDBigInt},
+			[]byte(maxUint64), nil, true},
 
-		// Date and time
-		{"date", VirtualOidDate, []byte("2024-01-01"), time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)},
-		{"datetime", VirtualOidDateTime, []byte("2024-01-01 12:30:45"), time.Date(2024, 1, 1, 12, 30, 45, 0, time.UTC)},
-		{"timestamp", VirtualOidTimestamp, []byte("2024-01-01 12:30:45"), time.Date(2024, 1, 1, 12, 30, 45, 0, time.UTC)},
-		{"time", VirtualOidTime, []byte("12:30:45"), time.Duration(45045000000000)},
-		{"year", VirtualOidYear, []byte("2024"), int64(2024)},
+		// Unsigned integers always decode to uint64 — for BOTH a small value and a
+		// value above int64, proving the Go type is type-driven, not value-driven.
+		{"unsigned int small", core.Type{Name: TypeInt, ID: TypeIDInt, Unsigned: true}, []byte("42"), uint64(42), false},
+		{"unsigned bigint small", core.Type{Name: TypeBigInt, ID: TypeIDBigInt, Unsigned: true},
+			[]byte("42"), uint64(42), false},
+		{"unsigned bigint max uint64", core.Type{Name: TypeBigInt, ID: TypeIDBigInt, Unsigned: true},
+			[]byte(maxUint64), uint64(18446744073709551615), false},
+		{"unsigned tinyint", core.Type{Name: TypeTinyInt, ID: TypeIDTinyInt, Unsigned: true}, []byte("255"), uint64(255), false},
 
-		// String types
-		{"char", VirtualOidChar, []byte("a"), "a"},
-		{"varchar", VirtualOidVarChar, []byte("abc"), "abc"},
+		// Dispatch is on Name, never overridden by a present ID. A descriptor whose
+		// Name carries the vendor-declared (non-catalog) string is unsupported and
+		// must error — the id no longer rescues it.
+		{"full name in Name is not catalog-dispatchable", core.Type{Name: "int unsigned", ID: TypeIDInt, Unsigned: true},
+			[]byte(maxUint64[:10]), nil, true},
 
-		// Boolean
-		{"boolean true", VirtualOidBoolean, []byte("1"), true},
-		{"boolean false", VirtualOidBoolean, []byte("0"), false},
+		// id-0 regression: TypeIDTinyInt == 0, so a name-only descriptor whose ID is
+		// the zero value must still dispatch by Name (varchar), not be mis-read as
+		// tinyint.
+		{"id-0 dispatches by name", core.Type{Name: TypeVarChar, ID: 0}, []byte("abc"), "abc", false},
 
-		// Text types
-		{"tinytext", VirtualOidTinyText, []byte("tiny"), "tiny"},
-		{"text", VirtualOidText, []byte("hello"), "hello"},
-		{"mediumtext", VirtualOidMediumText, []byte("medium"), "medium"},
-		{"longtext", VirtualOidLongText, []byte("long"), "long"},
+		// name-empty fallback: with no Name the base is resolved from the id, and
+		// the unsigned flag is still honored.
+		{"name empty falls back to id", core.Type{ID: TypeIDInt, Unsigned: true}, []byte("42"), uint64(42), false},
 
-		// Binary types
-		{"binary", VirtualOidBinary, []byte{0x01, 0x02}, []byte{0x01, 0x02}},
-		{"varbinary", VirtualOidVarBinary, []byte{0x03}, []byte{0x03}},
-
-		// Blob types
-		{"tinyblob", VirtualOidTinyBlob, []byte("tiny"), []byte("tiny")},
-		{"blob", VirtualOidBlob, []byte("blob"), []byte("blob")},
-		{"mediumblob", VirtualOidMediumBlob, []byte("medium"), []byte("medium")},
-		{"longblob", VirtualOidLongBlob, []byte("long"), []byte("long")},
-
-		// Special types
-		{"enum", VirtualOidEnum, []byte("active"), "active"},
-		{"set", VirtualOidSet, []byte("a,b"), "a,b"},
-		// {"json", VirtualOidJSON, []byte(`{"key":"val"}`), `{"key":"val"}`}, // Uncomment if supported
-
-		// Geometry
-		{"geometry", VirtualOidGeometry, []byte{0x01, 0x02, 0x03}, []byte{0x01, 0x02, 0x03}},
+		// Non-integer types ignore signedness.
+		{"decimal", core.Type{Name: TypeDecimal, ID: TypeIDDecimal}, []byte("123.456"),
+			must(decimal.NewFromString("123.456")), false},
+		{"varchar", core.Type{Name: TypeVarChar, ID: TypeIDVarChar}, []byte("abc"), "abc", false},
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			val, err := driver.DecodeValueByTypeOid(tc.oid, tc.input)
+			val, err := driver.DecodeValueByType(tc.typ, tc.input)
+			if tc.wantErr {
+				require.Error(t, err)
+				return
+			}
+			require.NoError(t, err)
+			assert.Equal(t, tc.expected, val)
+		})
+	}
+}
+
+// TestDriver_DecodeValueByType_Catalog exercises the full type catalog through
+// the Type codec path, keyed by id with an empty Name so the id-fallback resolves
+// the base name. Integers default to signed (Type{}.Unsigned == false).
+func TestDriver_DecodeValueByType_Catalog(t *testing.T) {
+	driver := New().WithLocation(time.UTC)
+
+	tests := []struct {
+		name     string
+		oid      core.TypeID
+		input    []byte
+		expected any
+	}{
+		// Numeric types
+		{"tinyint", TypeIDTinyInt, []byte("1"), int64(1)},
+		{"smallint", TypeIDSmallInt, []byte("32767"), int64(32767)},
+		{"mediumint", TypeIDMediumInt, []byte("8388607"), int64(8388607)},
+		{"int", TypeIDInt, []byte("2147483647"), int64(2147483647)},
+		{"bigint", TypeIDBigInt, []byte("9223372036854775807"), int64(9223372036854775807)},
+		{"decimal", TypeIDDecimal, []byte("123.456"), must(decimal.NewFromString("123.456"))},
+		{"numeric", TypeIDNumeric, []byte("789.01"), must(decimal.NewFromString("789.01"))},
+		{"float", TypeIDFloat, []byte("3.14"), 3.14},
+		{"double", TypeIDDouble, []byte("2.71828"), 2.71828},
+		{"real", TypeIDReal, []byte("1.618"), 1.618},
+		{"bit", TypeIDBit, []byte("1"), int64(1)},
+
+		// Date and time
+		{"date", TypeIDDate, []byte("2024-01-01"), time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)},
+		{"datetime", TypeIDDateTime, []byte("2024-01-01 12:30:45"), time.Date(2024, 1, 1, 12, 30, 45, 0, time.UTC)},
+		{"timestamp", TypeIDTimestamp, []byte("2024-01-01 12:30:45"), time.Date(2024, 1, 1, 12, 30, 45, 0, time.UTC)},
+		{"time", TypeIDTime, []byte("12:30:45"), time.Duration(45045000000000)},
+		{"year", TypeIDYear, []byte("2024"), int64(2024)},
+
+		// String types
+		{"char", TypeIDChar, []byte("a"), "a"},
+		{"varchar", TypeIDVarChar, []byte("abc"), "abc"},
+
+		// Boolean
+		{"boolean true", TypeIDBoolean, []byte("1"), true},
+		{"boolean false", TypeIDBoolean, []byte("0"), false},
+
+		// Text types
+		{"tinytext", TypeIDTinyText, []byte("tiny"), "tiny"},
+		{"text", TypeIDText, []byte("hello"), "hello"},
+		{"mediumtext", TypeIDMediumText, []byte("medium"), "medium"},
+		{"longtext", TypeIDLongText, []byte("long"), "long"},
+
+		// Binary types
+		{"binary", TypeIDBinary, []byte{0x01, 0x02}, []byte{0x01, 0x02}},
+		{"varbinary", TypeIDVarBinary, []byte{0x03}, []byte{0x03}},
+
+		// Blob types
+		{"tinyblob", TypeIDTinyBlob, []byte("tiny"), []byte("tiny")},
+		{"blob", TypeIDBlob, []byte("blob"), []byte("blob")},
+		{"mediumblob", TypeIDMediumBlob, []byte("medium"), []byte("medium")},
+		{"longblob", TypeIDLongBlob, []byte("long"), []byte("long")},
+
+		// Special types
+		{"enum", TypeIDEnum, []byte("active"), "active"},
+		{"set", TypeIDSet, []byte("a,b"), "a,b"},
+		// {"json", TypeIDJSON, []byte(`{"key":"val"}`), `{"key":"val"}`}, // Uncomment if supported
+
+		// Geometry
+		{"geometry", TypeIDGeometry, []byte{0x01, 0x02, 0x03}, []byte{0x01, 0x02, 0x03}},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			val, err := driver.DecodeValueByType(core.Type{ID: tc.oid}, tc.input)
 			require.NoError(t, err)
 			assert.Equal(t, tc.expected, val)
 		})
@@ -245,153 +312,157 @@ func TestDriver_EncodeValueByTypeName(t *testing.T) {
 	}
 }
 
-func TestDriver_EncodeValueByTypeOid(t *testing.T) {
+// TestDriver_EncodeValueByType_Catalog exercises the full type catalog through
+// the Type codec path, keyed by id with an empty Name (id-fallback resolution).
+func TestDriver_EncodeValueByType_Catalog(t *testing.T) {
 	driver := New().WithLocation(time.UTC)
 
 	tests := []struct {
 		name     string
-		oid      models.VirtualOID
+		oid      core.TypeID
 		input    any
 		expected []byte
 	}{
 		// Numeric types
-		{"tinyint", VirtualOidTinyInt, int64(1), []byte("1")},
-		{"smallint", VirtualOidSmallInt, int64(32767), []byte("32767")},
-		{"mediumint", VirtualOidMediumInt, int64(8388607), []byte("8388607")},
-		{"int", VirtualOidInt, int64(2147483647), []byte("2147483647")},
-		{"bigint", VirtualOidBigInt, int64(9223372036854775807), []byte("9223372036854775807")},
-		{"decimal", VirtualOidDecimal, "123.456", []byte("123.456")},
-		{"numeric", VirtualOidNumeric, "789.01", []byte("789.01")},
-		{"float", VirtualOidFloat, float64(3.14), []byte("3.14")},
-		{"double", VirtualOidDouble, float64(2.71828), []byte("2.71828")},
-		{"real", VirtualOidReal, float64(1.618), []byte("1.618")},
-		{"bit", VirtualOidBit, int64(1), []byte("1")},
+		{"tinyint", TypeIDTinyInt, int64(1), []byte("1")},
+		{"smallint", TypeIDSmallInt, int64(32767), []byte("32767")},
+		{"mediumint", TypeIDMediumInt, int64(8388607), []byte("8388607")},
+		{"int", TypeIDInt, int64(2147483647), []byte("2147483647")},
+		{"bigint", TypeIDBigInt, int64(9223372036854775807), []byte("9223372036854775807")},
+		{"decimal", TypeIDDecimal, "123.456", []byte("123.456")},
+		{"numeric", TypeIDNumeric, "789.01", []byte("789.01")},
+		{"float", TypeIDFloat, float64(3.14), []byte("3.14")},
+		{"double", TypeIDDouble, float64(2.71828), []byte("2.71828")},
+		{"real", TypeIDReal, float64(1.618), []byte("1.618")},
+		{"bit", TypeIDBit, int64(1), []byte("1")},
 
 		// Date and time
-		{"date", VirtualOidDate, time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC), []byte("2024-01-01")},
-		{"datetime", VirtualOidDateTime, time.Date(2024, 1, 1, 12, 30, 45, 0, time.UTC), []byte("2024-01-01 12:30:45")},
-		{"timestamp", VirtualOidTimestamp, time.Date(2024, 1, 1, 12, 30, 45, 0, time.UTC), []byte("2024-01-01 12:30:45")},
-		{"time", VirtualOidTime, int64(45045000000000), []byte("12:30:45")},
-		{"year", VirtualOidYear, int64(2024), []byte("2024")},
+		{"date", TypeIDDate, time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC), []byte("2024-01-01")},
+		{"datetime", TypeIDDateTime, time.Date(2024, 1, 1, 12, 30, 45, 0, time.UTC), []byte("2024-01-01 12:30:45")},
+		{"timestamp", TypeIDTimestamp, time.Date(2024, 1, 1, 12, 30, 45, 0, time.UTC), []byte("2024-01-01 12:30:45")},
+		{"time", TypeIDTime, int64(45045000000000), []byte("12:30:45")},
+		{"year", TypeIDYear, int64(2024), []byte("2024")},
 
 		// String types
-		{"char", VirtualOidChar, "a", []byte("a")},
-		{"varchar", VirtualOidVarChar, "abc", []byte("abc")},
+		{"char", TypeIDChar, "a", []byte("a")},
+		{"varchar", TypeIDVarChar, "abc", []byte("abc")},
 
 		// Boolean
-		{"boolean true", VirtualOidBoolean, true, []byte("1")},
-		{"boolean false", VirtualOidBoolean, false, []byte("0")},
+		{"boolean true", TypeIDBoolean, true, []byte("1")},
+		{"boolean false", TypeIDBoolean, false, []byte("0")},
 
 		// Text types
-		{"tinytext", VirtualOidTinyText, "tiny", []byte("tiny")},
-		{"text", VirtualOidText, "hello", []byte("hello")},
-		{"mediumtext", VirtualOidMediumText, "medium", []byte("medium")},
-		{"longtext", VirtualOidLongText, "long", []byte("long")},
+		{"tinytext", TypeIDTinyText, "tiny", []byte("tiny")},
+		{"text", TypeIDText, "hello", []byte("hello")},
+		{"mediumtext", TypeIDMediumText, "medium", []byte("medium")},
+		{"longtext", TypeIDLongText, "long", []byte("long")},
 
 		// Binary types
-		{"binary", VirtualOidBinary, []byte{0x01, 0x02}, []byte{0x01, 0x02}},
-		{"varbinary", VirtualOidVarBinary, []byte{0x03}, []byte{0x03}},
+		{"binary", TypeIDBinary, []byte{0x01, 0x02}, []byte{0x01, 0x02}},
+		{"varbinary", TypeIDVarBinary, []byte{0x03}, []byte{0x03}},
 
 		// Blob types
-		{"tinyblob", VirtualOidTinyBlob, []byte("tiny"), []byte("tiny")},
-		{"blob", VirtualOidBlob, []byte("blob"), []byte("blob")},
-		{"mediumblob", VirtualOidMediumBlob, []byte("medium"), []byte("medium")},
-		{"longblob", VirtualOidLongBlob, []byte("long"), []byte("long")},
+		{"tinyblob", TypeIDTinyBlob, []byte("tiny"), []byte("tiny")},
+		{"blob", TypeIDBlob, []byte("blob"), []byte("blob")},
+		{"mediumblob", TypeIDMediumBlob, []byte("medium"), []byte("medium")},
+		{"longblob", TypeIDLongBlob, []byte("long"), []byte("long")},
 
 		// Special types
-		{"enum", VirtualOidEnum, "active", []byte("active")},
-		{"set", VirtualOidSet, "a,b", []byte("a,b")},
-		{"json", VirtualOidJSON, `{"key":"val"}`, []byte(`{"key":"val"}`)},
+		{"enum", TypeIDEnum, "active", []byte("active")},
+		{"set", TypeIDSet, "a,b", []byte("a,b")},
+		{"json", TypeIDJSON, `{"key":"val"}`, []byte(`{"key":"val"}`)},
 
 		// Geometry (pass-through)
-		{"geometry", VirtualOidGeometry, []byte{0x01, 0x02, 0x03}, []byte{0x01, 0x02, 0x03}},
+		{"geometry", TypeIDGeometry, []byte{0x01, 0x02, 0x03}, []byte{0x01, 0x02, 0x03}},
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			out, err := driver.EncodeValueByTypeOid(tc.oid, tc.input, nil)
+			out, err := driver.EncodeValueByType(core.Type{ID: tc.oid}, tc.input, nil)
 			require.NoError(t, err)
 			assert.Equal(t, tc.expected, out)
 		})
 	}
 }
 
-func TestDriver_ScanValueByTypeOid(t *testing.T) {
+// TestDriver_ScanValueByType_Catalog exercises the full type catalog through the
+// Type codec path, keyed by id with an empty Name (id-fallback resolution).
+func TestDriver_ScanValueByType_Catalog(t *testing.T) {
 	driver := New().WithLocation(time.UTC)
 
 	tests := []struct {
 		name     string
-		oid      models.VirtualOID
+		oid      core.TypeID
 		input    []byte
 		dest     any
 		expected any
 	}{
 		// Integer types
-		{"tinyint to int64", VirtualOidTinyInt, []byte("1"), new(int64), int64(1)},
-		{"smallint to int64", VirtualOidSmallInt, []byte("32767"), new(int64), int64(32767)},
-		{"mediumint to int64", VirtualOidMediumInt, []byte("8388607"), new(int64), int64(8388607)},
-		{"int to int64", VirtualOidInt, []byte("2147483647"), new(int64), int64(2147483647)},
-		{"bigint to int64", VirtualOidBigInt, []byte("9223372036854775807"), new(int64), int64(9223372036854775807)},
-		{"year to int64", VirtualOidYear, []byte("2024"), new(int64), int64(2024)},
-		{"bit to int64", VirtualOidBit, []byte("1"), new(int64), int64(1)},
+		{"tinyint to int64", TypeIDTinyInt, []byte("1"), new(int64), int64(1)},
+		{"smallint to int64", TypeIDSmallInt, []byte("32767"), new(int64), int64(32767)},
+		{"mediumint to int64", TypeIDMediumInt, []byte("8388607"), new(int64), int64(8388607)},
+		{"int to int64", TypeIDInt, []byte("2147483647"), new(int64), int64(2147483647)},
+		{"bigint to int64", TypeIDBigInt, []byte("9223372036854775807"), new(int64), int64(9223372036854775807)},
+		{"year to int64", TypeIDYear, []byte("2024"), new(int64), int64(2024)},
+		{"bit to int64", TypeIDBit, []byte("1"), new(int64), int64(1)},
 
 		// Float/Decimal
-		{"float to float64", VirtualOidFloat, []byte("3.14"), new(float64), float64(3.14)},
-		{"double to float64", VirtualOidDouble, []byte("2.71828"), new(float64), float64(2.71828)},
-		{"real to float64", VirtualOidReal, []byte("1.618"), new(float64), float64(1.618)},
-		{"decimal to float64", VirtualOidDecimal, []byte("123.456"), new(float64), float64(123.456)},
-		{"numeric to float64", VirtualOidNumeric, []byte("789.01"), new(float64), float64(789.01)},
-		{"decimal to float32", VirtualOidDecimal, []byte("123.456"), new(float32), float32(123.456)},
-		{"numeric to float32", VirtualOidNumeric, []byte("789.01"), new(float32), float32(789.01)},
-		{"decimal to string", VirtualOidDecimal, []byte("123.456"), new(string), "123.456"},
-		{"numeric to string", VirtualOidNumeric, []byte("789.01"), new(string), "789.01"},
-		{"decimal to decimal", VirtualOidDecimal, []byte("123.456"), new(decimal.Decimal), must(decimal.NewFromString("123.456"))},
-		{"numeric to decimal", VirtualOidNumeric, []byte("789.01"), new(decimal.Decimal), must(decimal.NewFromString("789.01"))},
+		{"float to float64", TypeIDFloat, []byte("3.14"), new(float64), float64(3.14)},
+		{"double to float64", TypeIDDouble, []byte("2.71828"), new(float64), float64(2.71828)},
+		{"real to float64", TypeIDReal, []byte("1.618"), new(float64), float64(1.618)},
+		{"decimal to float64", TypeIDDecimal, []byte("123.456"), new(float64), float64(123.456)},
+		{"numeric to float64", TypeIDNumeric, []byte("789.01"), new(float64), float64(789.01)},
+		{"decimal to float32", TypeIDDecimal, []byte("123.456"), new(float32), float32(123.456)},
+		{"numeric to float32", TypeIDNumeric, []byte("789.01"), new(float32), float32(789.01)},
+		{"decimal to string", TypeIDDecimal, []byte("123.456"), new(string), "123.456"},
+		{"numeric to string", TypeIDNumeric, []byte("789.01"), new(string), "789.01"},
+		{"decimal to decimal", TypeIDDecimal, []byte("123.456"), new(decimal.Decimal), must(decimal.NewFromString("123.456"))},
+		{"numeric to decimal", TypeIDNumeric, []byte("789.01"), new(decimal.Decimal), must(decimal.NewFromString("789.01"))},
 
 		// Boolean
-		{"bool true", VirtualOidBoolean, []byte("1"), new(bool), true},
-		{"bool false", VirtualOidBoolean, []byte("0"), new(bool), false},
+		{"bool true", TypeIDBoolean, []byte("1"), new(bool), true},
+		{"bool false", TypeIDBoolean, []byte("0"), new(bool), false},
 
 		// String types
-		{"char", VirtualOidChar, []byte("c"), new(string), "c"},
-		{"varchar", VirtualOidVarChar, []byte("var"), new(string), "var"},
+		{"char", TypeIDChar, []byte("c"), new(string), "c"},
+		{"varchar", TypeIDVarChar, []byte("var"), new(string), "var"},
 
 		// Text types
-		{"tinytext", VirtualOidTinyText, []byte("tiny"), new(string), "tiny"},
-		{"text", VirtualOidText, []byte("text"), new(string), "text"},
-		{"mediumtext", VirtualOidMediumText, []byte("medium"), new(string), "medium"},
-		{"longtext", VirtualOidLongText, []byte("long"), new(string), "long"},
+		{"tinytext", TypeIDTinyText, []byte("tiny"), new(string), "tiny"},
+		{"text", TypeIDText, []byte("text"), new(string), "text"},
+		{"mediumtext", TypeIDMediumText, []byte("medium"), new(string), "medium"},
+		{"longtext", TypeIDLongText, []byte("long"), new(string), "long"},
 
 		// Date/Time types
-		{"date", VirtualOidDate, []byte("2024-01-01"), new(time.Time), time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)},
-		{"datetime", VirtualOidDateTime, []byte("2024-01-01 12:30:45"), new(time.Time), time.Date(2024, 1, 1, 12, 30, 45, 0, time.UTC)},
-		{"timestamp", VirtualOidTimestamp, []byte("2024-01-01 12:30:45"), new(time.Time), time.Date(2024, 1, 1, 12, 30, 45, 0, time.UTC)},
-		{"time", VirtualOidTime, []byte("12:30:45"), new(time.Duration), 12*time.Hour + 30*time.Minute + 45*time.Second},
+		{"date", TypeIDDate, []byte("2024-01-01"), new(time.Time), time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)},
+		{"datetime", TypeIDDateTime, []byte("2024-01-01 12:30:45"), new(time.Time), time.Date(2024, 1, 1, 12, 30, 45, 0, time.UTC)},
+		{"timestamp", TypeIDTimestamp, []byte("2024-01-01 12:30:45"), new(time.Time), time.Date(2024, 1, 1, 12, 30, 45, 0, time.UTC)},
+		{"time", TypeIDTime, []byte("12:30:45"), new(time.Duration), 12*time.Hour + 30*time.Minute + 45*time.Second},
 
 		// Binary types
-		{"binary", VirtualOidBinary, []byte{0x01, 0x02}, new([]byte), []byte{0x01, 0x02}},
-		{"varbinary", VirtualOidVarBinary, []byte{0x03, 0x04}, new([]byte), []byte{0x03, 0x04}},
+		{"binary", TypeIDBinary, []byte{0x01, 0x02}, new([]byte), []byte{0x01, 0x02}},
+		{"varbinary", TypeIDVarBinary, []byte{0x03, 0x04}, new([]byte), []byte{0x03, 0x04}},
 
 		// Blob types
-		{"tinyblob", VirtualOidTinyBlob, []byte("tiny"), new([]byte), []byte("tiny")},
-		{"blob", VirtualOidBlob, []byte("blob"), new([]byte), []byte("blob")},
-		{"mediumblob", VirtualOidMediumBlob, []byte("medium"), new([]byte), []byte("medium")},
-		{"longblob", VirtualOidLongBlob, []byte("long"), new([]byte), []byte("long")},
+		{"tinyblob", TypeIDTinyBlob, []byte("tiny"), new([]byte), []byte("tiny")},
+		{"blob", TypeIDBlob, []byte("blob"), new([]byte), []byte("blob")},
+		{"mediumblob", TypeIDMediumBlob, []byte("medium"), new([]byte), []byte("medium")},
+		{"longblob", TypeIDLongBlob, []byte("long"), new([]byte), []byte("long")},
 
 		// Special string types
-		{"enum", VirtualOidEnum, []byte("enumval"), new(string), "enumval"},
-		{"set", VirtualOidSet, []byte("a,b"), new(string), "a,b"},
+		{"enum", TypeIDEnum, []byte("enumval"), new(string), "enumval"},
+		{"set", TypeIDSet, []byte("a,b"), new(string), "a,b"},
 
 		// JSON
-		{"json", VirtualOidJSON, []byte(`{"key":"val"}`), new(string), `{"key":"val"}`},
+		{"json", TypeIDJSON, []byte(`{"key":"val"}`), new(string), `{"key":"val"}`},
 
 		// Geometry
-		{"geometry", VirtualOidGeometry, []byte{0x01, 0x02, 0x03}, new([]byte), []byte{0x01, 0x02, 0x03}},
+		{"geometry", TypeIDGeometry, []byte{0x01, 0x02, 0x03}, new([]byte), []byte{0x01, 0x02, 0x03}},
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			err := driver.ScanValueByTypeOid(tc.oid, tc.input, tc.dest)
+			err := driver.ScanValueByType(core.Type{ID: tc.oid}, tc.input, tc.dest)
 			require.NoError(t, err)
 
 			destVal := reflect.ValueOf(tc.dest)

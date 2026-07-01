@@ -23,8 +23,7 @@ import (
 	"slices"
 	"text/template"
 
-	"github.com/greenmaskio/greenmask/pkg/common/interfaces"
-	"github.com/greenmaskio/greenmask/pkg/common/models"
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 	"github.com/greenmaskio/greenmask/pkg/common/transformers/generators/transformers"
 	"github.com/greenmaskio/greenmask/pkg/common/transformers/parameters"
 	gmtemplate "github.com/greenmaskio/greenmask/pkg/common/transformers/template"
@@ -77,11 +76,11 @@ var RandomPersonTransformerDefinition = utils.NewTransformerDefinition(
 		SetColumnContainer(
 			parameters.NewColumnContainerProperties().
 				SetColumnProperties(
-					models.NewColumnProperties().
-						SetAllowedColumnTypeClasses(models.TypeClassText),
+					core.NewColumnProperties().
+						SetAllowedColumnTypeClasses(core.TypeClassText),
 				).
 				SetUnmarshaler(
-					func(_ context.Context, _ *parameters.ParameterDefinition, data models.ParamsValue) (
+					func(_ context.Context, _ *parameters.ParameterDefinition, data core.ParamsValue) (
 						[]parameters.ColumnContainer, error,
 					) {
 						var columns []*randomPersonColumns
@@ -103,15 +102,15 @@ var RandomPersonTransformerDefinition = utils.NewTransformerDefinition(
 	).SetDynamicMode(
 		parameters.NewDynamicModeProperties().
 			SetColumnProperties(
-				models.NewColumnProperties().
-					SetAllowedColumnTypeClasses(models.TypeClassText),
+				core.NewColumnProperties().
+					SetAllowedColumnTypeClasses(core.TypeClassText),
 			),
-	).SetDefaultValue(models.ParamsValue("Any")),
+	).SetDefaultValue(core.ParamsValue("Any")),
 
 	parameters.MustNewParameterDefinition(
 		"gender_mapping",
 		"Specify gender name to possible values when using dynamic mode in \"gender\" parameter",
-	).SetDefaultValue(models.ParamsValue(`{"Male": ["male", "M", "m", "man", "Man"], "Female": ["female", "F", "f", "w", "woman", "Woman"]}`)),
+	).SetDefaultValue(core.ParamsValue(`{"Male": ["male", "M", "m", "man", "Man"], "Female": ["female", "F", "f", "w", "woman", "Woman"]}`)),
 
 	parameters.MustNewParameterDefinition(
 		"database",
@@ -140,9 +139,9 @@ type RandomNameTransformer struct {
 
 func NewRandomNameTransformer(
 	ctx context.Context,
-	tableDriver interfaces.TableDriver,
+	tableDriver core.TableDriver,
 	parameters map[string]parameters.Parameterizer,
-) (interfaces.Transformer, error) {
+) (core.Transformer, error) {
 	var columns []*randomPersonColumns
 	gender := transformers.AnyGenderName
 	reverseGenderMapping := make(map[string]string)
@@ -246,7 +245,7 @@ func (t *RandomNameTransformer) Done(context.Context) error {
 	return nil
 }
 
-func (t *RandomNameTransformer) Transform(ctx context.Context, r interfaces.Recorder) error {
+func (t *RandomNameTransformer) Transform(ctx context.Context, r core.Recorder) error {
 	gender := t.gender
 	if t.dynamicMode {
 		if err := t.genderParam.Scan(&gender); err != nil {
@@ -303,7 +302,7 @@ func (t *RandomNameTransformer) Transform(ctx context.Context, r interfaces.Reco
 		if err != nil {
 			return fmt.Errorf("execute template for column %s: %w", c.Name, err)
 		}
-		newRawVal := models.NewColumnRawValue(slices.Clone(t.buf.Bytes()), false)
+		newRawVal := core.NewColumnRawValue(slices.Clone(t.buf.Bytes()), false)
 		if err = r.SetRawColumnValueByIdx(c.columnIdx, newRawVal); err != nil {
 			return fmt.Errorf("set new value for column \"%s\": %w", c.Name, err)
 		}
@@ -320,19 +319,19 @@ func randomNameTransformerValidateGender(
 ) error {
 	if !slices.Contains(genders, gender) && gender != randomPersonAnyGender {
 		validationcollector.FromContext(ctx).
-			Add(models.NewValidationWarning().
-				SetSeverity(models.ValidationSeverityError).
+			Add(core.NewValidationWarning().
+				SetSeverity(core.ValidationSeverityError).
 				AddMeta("ParameterValue", gender).
 				AddMeta("AllowedValues", append(append([]string{}, genders...), randomPersonAnyGender)).
 				SetMsg("wrong gender name"))
-		return models.ErrFatalValidationError
+		return core.ErrFatalValidationError
 	}
 	return nil
 }
 
 func validateRandomPersonColumnsAndSetDefault(
 	ctx context.Context,
-	tableDriver interfaces.TableDriver,
+	tableDriver core.TableDriver,
 	columns []*randomPersonColumns,
 	engineMode int,
 ) error {
@@ -352,12 +351,12 @@ func validateRandomPersonColumnsAndSetDefault(
 		}
 		if c.Template == "" {
 			validationcollector.FromContext(ctx).
-				Add(models.NewValidationWarning().
-					SetSeverity(models.ValidationSeverityError).
+				Add(core.NewValidationWarning().
+					SetSeverity(core.ValidationSeverityError).
 					AddMeta("ParameterName", "columns").
 					AddMeta("ListIdx", idx).
 					SetMsg("\"template\" parameters is required: received empty"))
-			return models.ErrFatalValidationError
+			return core.ErrFatalValidationError
 		}
 
 		if c.Template != "" {
@@ -366,13 +365,13 @@ func validateRandomPersonColumnsAndSetDefault(
 				Parse(c.Template)
 			if err != nil {
 				validationcollector.FromContext(ctx).
-					Add(models.NewValidationWarning().
-						SetSeverity(models.ValidationSeverityError).
+					Add(core.NewValidationWarning().
+						SetSeverity(core.ValidationSeverityError).
 						AddMeta("Error", err.Error()).
 						AddMeta("ParameterName", "columns").
 						AddMeta("ListIdx", idx).
 						SetMsg("error parsing template"))
-				return models.ErrFatalValidationError
+				return core.ErrFatalValidationError
 			}
 			c.tmpl = tmpl
 		}

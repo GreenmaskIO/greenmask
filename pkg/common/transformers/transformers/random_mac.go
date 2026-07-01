@@ -19,8 +19,8 @@ import (
 	"fmt"
 	"net"
 
-	"github.com/greenmaskio/greenmask/pkg/common/interfaces"
-	"github.com/greenmaskio/greenmask/pkg/common/models"
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
+	"github.com/greenmaskio/greenmask/pkg/common/coretypes/netaddr"
 	"github.com/greenmaskio/greenmask/pkg/common/transformers/generators/transformers"
 	"github.com/greenmaskio/greenmask/pkg/common/transformers/parameters"
 	"github.com/greenmaskio/greenmask/pkg/common/transformers/utils"
@@ -52,11 +52,12 @@ var RandomMacAddressDefinition = utils.NewTransformerDefinition(
 	parameters.MustNewParameterDefinition(
 		"column",
 		"Column name",
-	).SetIsColumn(models.NewColumnProperties().
+	).SetIsColumn(core.NewColumnProperties().
 		SetAffected(true).
+		// macaddr columns are presented as text across engines; the engine driver
+		// maps its native MAC type onto the generic text class.
 		SetAllowedColumnTypeClasses(
-			models.TypeClassText,
-			models.TypeClassMacAddress,
+			core.TypeClassText,
 		),
 	).SetRequired(true),
 
@@ -64,28 +65,28 @@ var RandomMacAddressDefinition = utils.NewTransformerDefinition(
 		"keep_original_vendor",
 		"Keep original vendor. Default false",
 	).SetRequired(false).
-		SetDefaultValue(models.ParamsValue("false")),
+		SetDefaultValue(core.ParamsValue("false")),
 
 	parameters.MustNewParameterDefinition(
 		"cast_type",
 		"Cast type, supported types are: individual, group, any.",
 	).SetRequired(false).
 		SetAllowedValues(
-			models.ParamsValue(castTypeNameIndividual),
-			models.ParamsValue(castTypeNameGroup),
-			models.ParamsValue(castTypeNameAny),
+			core.ParamsValue(castTypeNameIndividual),
+			core.ParamsValue(castTypeNameGroup),
+			core.ParamsValue(castTypeNameAny),
 		).
-		SetDefaultValue(models.ParamsValue(castTypeNameAny)).
+		SetDefaultValue(core.ParamsValue(castTypeNameAny)).
 		SetUnmarshaler(scanCastType),
 
 	parameters.MustNewParameterDefinition(
 		"management_type",
 		"Management type, supported types are: universal, local, any.",
 	).SetRequired(false).SetAllowedValues(
-		models.ParamsValue(managementTypeNameUniversal),
-		models.ParamsValue(managementTypeNameLocal),
-		models.ParamsValue(managementTypeNameAny),
-	).SetDefaultValue(models.ParamsValue(managementTypeNameAny)).
+		core.ParamsValue(managementTypeNameUniversal),
+		core.ParamsValue(managementTypeNameLocal),
+		core.ParamsValue(managementTypeNameAny),
+	).SetDefaultValue(core.ParamsValue(managementTypeNameAny)).
 		SetUnmarshaler(scanManagementType),
 
 	defaultKeepNullParameterDefinition,
@@ -107,9 +108,9 @@ type RandomMac struct {
 
 func NewMacAddressTransformer(
 	ctx context.Context,
-	tableDriver interfaces.TableDriver,
+	tableDriver core.TableDriver,
 	parameters map[string]parameters.Parameterizer,
-) (interfaces.Transformer, error) {
+) (core.Transformer, error) {
 	columnName, column, err := getColumnParameterValue(ctx, tableDriver, parameters)
 	if err != nil {
 		return nil, fmt.Errorf("get \"column\" parameter: %w", err)
@@ -178,7 +179,7 @@ func (t *RandomMac) Done(context.Context) error {
 	return nil
 }
 
-func (t *RandomMac) Transform(_ context.Context, r interfaces.Recorder) error {
+func (t *RandomMac) Transform(_ context.Context, r core.Recorder) error {
 	rawVal, err := r.GetRawColumnValueByIdx(t.columnIdx)
 	if err != nil {
 		return fmt.Errorf("unable to scan value: %w", err)
@@ -188,7 +189,8 @@ func (t *RandomMac) Transform(_ context.Context, r interfaces.Recorder) error {
 		return nil
 	}
 
-	if err := scanMacAddr(rawVal.Data, &t.originalMac); err != nil {
+	t.originalMac, err = netaddr.ParseMacaddr(rawVal.Data)
+	if err != nil {
 		return fmt.Errorf("unable to scan mac address: %w", err)
 	}
 
@@ -197,7 +199,7 @@ func (t *RandomMac) Transform(_ context.Context, r interfaces.Recorder) error {
 		return fmt.Errorf("unable to transform value: %w", err)
 	}
 
-	newVal := models.NewColumnRawValue([]byte(macAddr.String()), false)
+	newVal := core.NewColumnRawValue([]byte(macAddr.String()), false)
 	if err = r.SetRawColumnValueByIdx(t.columnIdx, newVal); err != nil {
 		return fmt.Errorf("unable to set new value: %w", err)
 	}
@@ -209,7 +211,7 @@ func (t *RandomMac) Describe() string {
 	return TransformerNameRandomMac
 }
 
-func scanCastType(_ *parameters.ParameterDefinition, _ interfaces.DBMSDriver, src models.ParamsValue) (any, error) {
+func scanCastType(_ *parameters.ParameterDefinition, _ core.NamedTypeCodec, src core.ParamsValue) (any, error) {
 	var res int
 	switch string(src) {
 	case castTypeNameIndividual:
@@ -224,7 +226,7 @@ func scanCastType(_ *parameters.ParameterDefinition, _ interfaces.DBMSDriver, sr
 	return &res, nil
 }
 
-func scanManagementType(_ *parameters.ParameterDefinition, _ interfaces.DBMSDriver, src models.ParamsValue) (any, error) {
+func scanManagementType(_ *parameters.ParameterDefinition, _ core.NamedTypeCodec, src core.ParamsValue) (any, error) {
 	var res int
 	switch string(src) {
 	case managementTypeNameUniversal:

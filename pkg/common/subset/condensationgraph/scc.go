@@ -15,7 +15,7 @@
 package condensationgraph
 
 import (
-	commonmodels "github.com/greenmaskio/greenmask/pkg/common/models"
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 	"github.com/greenmaskio/greenmask/pkg/common/subset/cyclesgraph"
 	"github.com/greenmaskio/greenmask/pkg/common/subset/tablegraph"
 )
@@ -34,7 +34,7 @@ type SCC struct {
 	// So it's a sub-graph for SCC.
 	SCCGraph map[int][]tablegraph.Edge
 	// vertexes - the vertexes in the SCC.
-	vertexes map[int]commonmodels.Table
+	vertexes map[int]core.Table
 }
 
 // NewSCC - creates a new SCC instance.
@@ -48,7 +48,7 @@ type SCC struct {
 func NewSCC(
 	id int,
 	sccGraph map[int][]tablegraph.Edge,
-	vertexes map[int]commonmodels.Table,
+	vertexes map[int]core.Table,
 ) SCC {
 	cyclesGraph := cyclesgraph.NewGraph(sccGraph)
 	c := SCC{
@@ -88,8 +88,8 @@ func (c SCC) CyclesGroupCount() int {
 
 // Vertexes - returns the vertexes in the SCC.
 // Should we cache it?
-func (c SCC) Vertexes() []commonmodels.Table {
-	var vertexes []commonmodels.Table
+func (c SCC) Vertexes() []core.Table {
+	var vertexes []core.Table
 	for _, table := range c.vertexes {
 		vertexes = append(vertexes, table)
 	}

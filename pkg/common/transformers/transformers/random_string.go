@@ -18,8 +18,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/greenmaskio/greenmask/pkg/common/interfaces"
-	"github.com/greenmaskio/greenmask/pkg/common/models"
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 	"github.com/greenmaskio/greenmask/pkg/common/transformers/generators/transformers"
 	"github.com/greenmaskio/greenmask/pkg/common/transformers/parameters"
 	"github.com/greenmaskio/greenmask/pkg/common/transformers/utils"
@@ -40,9 +39,9 @@ var RandomStringTransformerDefinition = utils.NewTransformerDefinition(
 		"column",
 		"column name",
 	).SetIsColumn(
-		models.NewColumnProperties().
+		core.NewColumnProperties().
 			SetAffected(true).
-			SetAllowedColumnTypeClasses(models.TypeClassText),
+			SetAllowedColumnTypeClasses(core.TypeClassText),
 	).SetRequired(true),
 
 	parameters.MustNewParameterDefinition(
@@ -60,12 +59,12 @@ var RandomStringTransformerDefinition = utils.NewTransformerDefinition(
 	parameters.MustNewParameterDefinition(
 		"symbols",
 		"the characters range for random string",
-	).SetDefaultValue(models.ParamsValue("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890")),
+	).SetDefaultValue(core.ParamsValue("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890")),
 
 	parameters.MustNewParameterDefinition(
 		"keep_null",
 		"indicates that NULL values must not be replaced with transformed values",
-	).SetDefaultValue(models.ParamsValue("true")),
+	).SetDefaultValue(core.ParamsValue("true")),
 
 	defaultKeepNullParameterDefinition,
 
@@ -82,9 +81,9 @@ type RandomStringTransformer struct {
 
 func NewRandomStringTransformer(
 	ctx context.Context,
-	tableDriver interfaces.TableDriver,
+	tableDriver core.TableDriver,
 	parameters map[string]parameters.Parameterizer,
-) (interfaces.Transformer, error) {
+) (core.Transformer, error) {
 	columnName, column, err := getColumnParameterValue(ctx, tableDriver, parameters)
 	if err != nil {
 		return nil, fmt.Errorf("get \"column\" parameter: %w", err)
@@ -151,7 +150,7 @@ func (t *RandomStringTransformer) Done(context.Context) error {
 	return nil
 }
 
-func (t *RandomStringTransformer) Transform(_ context.Context, r interfaces.Recorder) error {
+func (t *RandomStringTransformer) Transform(_ context.Context, r core.Recorder) error {
 	val, err := r.GetRawColumnValueByIdx(t.columnIdx)
 	if err != nil {
 		return fmt.Errorf("scan value: %w", err)
@@ -160,7 +159,7 @@ func (t *RandomStringTransformer) Transform(_ context.Context, r interfaces.Reco
 		return nil
 	}
 
-	res := models.NewColumnRawValue(
+	res := core.NewColumnRawValue(
 		[]byte(string(t.t.Transform(val.Data))),
 		false,
 	)

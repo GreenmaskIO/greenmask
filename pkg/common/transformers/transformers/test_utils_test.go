@@ -22,34 +22,33 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/greenmaskio/greenmask/pkg/common/interfaces"
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
+	coretest "github.com/greenmaskio/greenmask/pkg/common/coretest"
 	mocks2 "github.com/greenmaskio/greenmask/pkg/common/mocks"
-	"github.com/greenmaskio/greenmask/pkg/common/models"
 	commonrecord "github.com/greenmaskio/greenmask/pkg/common/record"
 	commontabledriver "github.com/greenmaskio/greenmask/pkg/common/tabledriver"
 	parameters2 "github.com/greenmaskio/greenmask/pkg/common/transformers/parameters"
 	transformerutils "github.com/greenmaskio/greenmask/pkg/common/transformers/utils"
 	utils2 "github.com/greenmaskio/greenmask/pkg/common/utils"
 	"github.com/greenmaskio/greenmask/pkg/common/validationcollector"
-	mysqldbmsdriver "github.com/greenmaskio/greenmask/pkg/mysql/dbmsdriver"
 )
 
 type transformerTestEnv struct {
-	columns         map[string]models.Column
+	columns         map[string]core.Column
 	tableDriver     *mocks2.TableDriverMock
 	collector       *validationcollector.Collector
-	transformer     interfaces.Transformer
+	transformer     core.Transformer
 	parameters      map[string]*mocks2.ParametrizerMock
 	recorder        *mocks2.RecorderMock
 	ctx             context.Context
 	new             transformerutils.NewTransformerFunc
 	t               *testing.T
 	tableDriverReal *commontabledriver.TableDriver
-	dbmsDriverReal  *mysqldbmsdriver.Driver
-	table           models.Table
+	dbmsDriverReal  *coretest.Driver
+	table           core.Table
 }
 
-func (m *transformerTestEnv) getColumnPtr(name string) *models.Column {
+func (m *transformerTestEnv) getColumnPtr(name string) *core.Column {
 	col, ok := m.columns[name]
 	if !ok {
 		panic("column with name " + name + " not found")
@@ -57,7 +56,7 @@ func (m *transformerTestEnv) getColumnPtr(name string) *models.Column {
 	return utils2.New(col)
 }
 
-func (m *transformerTestEnv) getColumn(name string) models.Column {
+func (m *transformerTestEnv) getColumn(name string) core.Column {
 	col, ok := m.columns[name]
 	if !ok {
 		panic("column with name " + name + " not found")
@@ -100,34 +99,34 @@ func withRecorder(setupFn func(recorder *mocks2.RecorderMock, env *transformerTe
 	}
 }
 
-func withColumns(columns ...models.Column) func(*transformerTestEnv) {
+func withColumns(columns ...core.Column) func(*transformerTestEnv) {
 	if len(columns) == 0 {
 		panic("at least one column should be provided")
 	}
 	return func(e *transformerTestEnv) {
 		if e.columns == nil {
-			e.columns = make(map[string]models.Column)
+			e.columns = make(map[string]core.Column)
 		}
 		for _, c := range columns {
 			if c.Name == "" {
 				panic("column name should be provided")
 			}
-			if c.TypeOID == 0 {
+			if c.Type.ID == 0 {
 				panic("column type OID should be provided")
 			}
-			if c.TypeName == "" {
+			if c.Type.Name == "" {
 				panic("column type name should be provided")
 			}
 			e.columns[c.Name] = c
 		}
 
-		e.table = models.Table{
+		e.table = core.Table{
 			Schema:  "public",
 			Name:    "test_table",
 			Columns: columns,
 		}
 
-		driver := mysqldbmsdriver.New()
+		driver := coretest.New()
 		vc := validationcollector.NewCollector()
 		ctx := validationcollector.WithCollector(context.Background(), vc)
 		tableDriver, err := commontabledriver.New(ctx, driver, &e.table, nil)
@@ -176,24 +175,24 @@ func newTransformerTestEnv(
 ///////////////
 
 type dummyRow struct {
-	data []*models.ColumnRawValue
+	data []*core.ColumnRawValue
 }
 
 func newDummyRow(numCols int) *dummyRow {
 	if numCols <= 0 {
 		panic("number of columns should be greater than zero")
 	}
-	return &dummyRow{data: make([]*models.ColumnRawValue, numCols)}
+	return &dummyRow{data: make([]*core.ColumnRawValue, numCols)}
 }
 
-func (d *dummyRow) GetColumn(idx int) (*models.ColumnRawValue, error) {
+func (d *dummyRow) GetColumn(idx int) (*core.ColumnRawValue, error) {
 	if idx < 0 || idx >= len(d.data) {
 		return nil, errors.New("index out of range")
 	}
 	return d.data[idx], nil
 }
 
-func (d *dummyRow) SetColumn(idx int, v *models.ColumnRawValue) error {
+func (d *dummyRow) SetColumn(idx int, v *core.ColumnRawValue) error {
 	if idx < 0 || idx >= len(d.data) {
 		return errors.New("index out of range")
 	}
@@ -201,7 +200,7 @@ func (d *dummyRow) SetColumn(idx int, v *models.ColumnRawValue) error {
 	return nil
 }
 
-func (d *dummyRow) SetRowRawColumnValue(row []*models.ColumnRawValue) {
+func (d *dummyRow) SetRowRawColumnValue(row []*core.ColumnRawValue) {
 	if len(row) != len(d.data) {
 		panic("row length does not match")
 	}
@@ -217,18 +216,18 @@ func (d *dummyRow) GetRow() [][]byte {
 }
 
 type transformerTestEnvReal struct {
-	columns                map[string]models.Column
+	columns                map[string]core.Column
 	collector              *validationcollector.Collector
 	definition             *transformerutils.TransformerDefinition
-	transformer            interfaces.Transformer
-	staticParameterValues  map[string]models.ParamsValue
-	dynamicParameterValues map[string]models.DynamicParamValue
+	transformer            core.Transformer
+	staticParameterValues  map[string]core.ParamsValue
+	dynamicParameterValues map[string]core.DynamicParamValue
 	ctx                    context.Context
 	new                    transformerutils.NewTransformerFunc
 	t                      *testing.T
 	tableDriverReal        *commontabledriver.TableDriver
-	dbmsDriverReal         *mysqldbmsdriver.Driver
-	table                  models.Table
+	dbmsDriverReal         *coretest.Driver
+	table                  core.Table
 	recorder               *commonrecord.Record
 	row                    *dummyRow
 	initializedParameters  map[string]parameters2.Parameterizer
@@ -237,9 +236,9 @@ type transformerTestEnvReal struct {
 func newTransformerTestEnvReal(
 	t *testing.T,
 	def *transformerutils.TransformerDefinition,
-	columns []models.Column,
-	staticParams map[string]models.ParamsValue,
-	dynamicParams map[string]models.DynamicParamValue,
+	columns []core.Column,
+	staticParams map[string]core.ParamsValue,
+	dynamicParams map[string]core.DynamicParamValue,
 	opt ...func(*transformerTestEnvReal),
 ) *transformerTestEnvReal {
 	t.Helper()
@@ -247,27 +246,27 @@ func newTransformerTestEnvReal(
 	vc := validationcollector.NewCollector()
 	ctx := validationcollector.WithCollector(context.Background(), vc)
 
-	columnsMap := make(map[string]models.Column, len(columns))
+	columnsMap := make(map[string]core.Column, len(columns))
 	for _, c := range columns {
 		if c.Name == "" {
 			panic("column name should be provided")
 		}
-		if c.TypeOID == 0 {
+		if c.Type.ID == 0 {
 			panic("column type OID should be provided")
 		}
-		if c.TypeName == "" {
+		if c.Type.Name == "" {
 			panic("column type name should be provided")
 		}
 		columnsMap[c.Name] = c
 	}
 
-	table := models.Table{
+	table := core.Table{
 		Schema:  "public",
 		Name:    "test_table",
 		Columns: columns,
 	}
 
-	driver := mysqldbmsdriver.New()
+	driver := coretest.New()
 	tableDriver, err := commontabledriver.New(ctx, driver, &table, nil)
 	require.NoError(t, err)
 	require.Empty(t, vc.GetWarnings())
@@ -356,12 +355,12 @@ func (m *transformerTestEnvReal) DoneTransformer(
 }
 
 // SetRecord - init recorder with mysql-specific record.
-func (m *transformerTestEnvReal) SetRecord(t *testing.T, record ...*models.ColumnRawValue) {
+func (m *transformerTestEnvReal) SetRecord(t *testing.T, record ...*core.ColumnRawValue) {
 	t.Helper()
 	m.row.SetRowRawColumnValue(record)
 }
 
-func (m *transformerTestEnvReal) GetRecord() interfaces.Recorder {
+func (m *transformerTestEnvReal) GetRecord() core.Recorder {
 	return m.recorder
 }
 

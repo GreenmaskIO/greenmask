@@ -19,8 +19,7 @@ import (
 	"fmt"
 	"regexp"
 
-	"github.com/greenmaskio/greenmask/pkg/common/interfaces"
-	"github.com/greenmaskio/greenmask/pkg/common/models"
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 	"github.com/greenmaskio/greenmask/pkg/common/transformers/parameters"
 	"github.com/greenmaskio/greenmask/pkg/common/transformers/utils"
 	"github.com/greenmaskio/greenmask/pkg/common/validationcollector"
@@ -40,9 +39,9 @@ var RegexpReplaceTransformerDefinition = utils.NewTransformerDefinition(
 		"column",
 		"column name",
 	).SetIsColumn(
-		models.NewColumnProperties().
+		core.NewColumnProperties().
 			SetAffected(true).
-			SetAllowedColumnTypeClasses(models.TypeClassText),
+			SetAllowedColumnTypeClasses(core.TypeClassText),
 	).SetRequired(true),
 
 	parameters.MustNewParameterDefinition(
@@ -66,9 +65,9 @@ type RegexpReplaceTransformer struct {
 
 func NewRegexpReplaceTransformer(
 	ctx context.Context,
-	tableDriver interfaces.TableDriver,
+	tableDriver core.TableDriver,
 	parameters map[string]parameters.Parameterizer,
-) (interfaces.Transformer, error) {
+) (core.Transformer, error) {
 	columnName, column, err := getColumnParameterValue(ctx, tableDriver, parameters)
 	if err != nil {
 		return nil, fmt.Errorf("get \"column\" parameter: %w", err)
@@ -86,8 +85,8 @@ func NewRegexpReplaceTransformer(
 
 	re, err := regexp.Compile(regexpStr)
 	if err != nil {
-		validationcollector.FromContext(ctx).Add(models.NewValidationWarning().
-			SetSeverity(models.ValidationSeverityError).
+		validationcollector.FromContext(ctx).Add(core.NewValidationWarning().
+			SetSeverity(core.ValidationSeverityError).
 			AddMeta("ParameterName", "regexp").
 			AddMeta("ParameterValue", regexpStr).
 			AddMeta("Error", err.Error()).
@@ -118,7 +117,7 @@ func (t *RegexpReplaceTransformer) Done(context.Context) error {
 	return nil
 }
 
-func (t *RegexpReplaceTransformer) Transform(_ context.Context, r interfaces.Recorder) error {
+func (t *RegexpReplaceTransformer) Transform(_ context.Context, r core.Recorder) error {
 	v, err := r.GetRawColumnValueByIdx(t.columnIdx)
 	if err != nil {
 		return fmt.Errorf("scan value: %w", err)

@@ -19,8 +19,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/greenmaskio/greenmask/pkg/common/interfaces"
-	commonmodels "github.com/greenmaskio/greenmask/pkg/common/models"
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 	generators "github.com/greenmaskio/greenmask/pkg/common/transformers/generators/transformers"
 	"github.com/greenmaskio/greenmask/pkg/common/transformers/parameters"
 	utils2 "github.com/greenmaskio/greenmask/pkg/common/transformers/utils"
@@ -41,9 +40,9 @@ var NoiseDateTransformerDefinition = utils2.NewTransformerDefinition(
 	parameters.MustNewParameterDefinition(
 		"column",
 		"column name",
-	).SetIsColumn(commonmodels.NewColumnProperties().
+	).SetIsColumn(core.NewColumnProperties().
 		SetAffected(true).
-		SetAllowedColumnTypeClasses(commonmodels.TypeClassDateTime).
+		SetAllowedColumnTypeClasses(core.TypeClassDateTime).
 		SetSkipOnNull(true),
 	).SetRequired(true),
 
@@ -69,8 +68,8 @@ var NoiseDateTransformerDefinition = utils2.NewTransformerDefinition(
 		SetDynamicMode(
 			parameters.NewDynamicModeProperties().
 				SetColumnProperties(
-					commonmodels.NewColumnProperties().
-						SetAllowedColumnTypeClasses(commonmodels.TypeClassDateTime),
+					core.NewColumnProperties().
+						SetAllowedColumnTypeClasses(core.TypeClassDateTime),
 				),
 		),
 
@@ -82,8 +81,8 @@ var NoiseDateTransformerDefinition = utils2.NewTransformerDefinition(
 		SetDynamicMode(
 			parameters.NewDynamicModeProperties().
 				SetColumnProperties(
-					commonmodels.NewColumnProperties().
-						SetAllowedColumnTypeClasses(commonmodels.TypeClassDateTime),
+					core.NewColumnProperties().
+						SetAllowedColumnTypeClasses(core.TypeClassDateTime),
 				),
 		),
 
@@ -106,9 +105,9 @@ type NoiseDateTransformer struct {
 
 func NewNoiseDateTransformer(
 	ctx context.Context,
-	tableDriver interfaces.TableDriver,
+	tableDriver core.TableDriver,
 	parameters map[string]parameters.Parameterizer,
-) (interfaces.Transformer, error) {
+) (core.Transformer, error) {
 
 	maxParam := parameters["max"]
 	minParam := parameters["min"]
@@ -221,7 +220,7 @@ func (t *NoiseDateTransformer) dynamicTransform(v time.Time) (time.Time, error) 
 	return res, nil
 }
 
-func (t *NoiseDateTransformer) Transform(_ context.Context, r interfaces.Recorder) error {
+func (t *NoiseDateTransformer) Transform(_ context.Context, r core.Recorder) error {
 	var res time.Time
 	isNull, err := r.ScanColumnValueByIdx(t.columnIdx, &res)
 	if err != nil {

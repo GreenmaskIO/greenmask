@@ -15,12 +15,12 @@
 package main
 
 import (
-	"log"
+	"context"
 
-	"github.com/spf13/cobra"
-
-	"github.com/greenmaskio/greenmask/pkg/cmdrun"
+	"github.com/greenmaskio/greenmask/pkg/cli"
 	"github.com/greenmaskio/greenmask/pkg/common/cmd"
+	"github.com/rs/zerolog/log"
+	"github.com/spf13/cobra"
 )
 
 var (
@@ -43,8 +43,10 @@ var (
 		Use:   "list-transformers",
 		Short: "list of the allowed transformers with documentation",
 		Run: func(cmd *cobra.Command, args []string) {
-			if err := cmdrun.RunListTransformers(rootCmd.MustGetConfig(), cmdrun.OutputFormat(listTransformersFormat)); err != nil {
-				log.Fatal(err)
+			cmdRun := cli.New(rootCmd.MustGetConfig()).
+				ForListTransformers(cli.OutputFormat(listTransformersFormat))
+			if err := cmdRun.ListTransformers(context.Background()); err != nil {
+				log.Fatal().Err(err).Msg("list-transformers command failed")
 			}
 		},
 	}, listTransformersFlags...)

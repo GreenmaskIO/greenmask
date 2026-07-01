@@ -4,17 +4,17 @@ import (
 	"slices"
 	"strings"
 
-	commonmodels "github.com/greenmaskio/greenmask/pkg/common/models"
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 	"github.com/mitchellh/go-wordwrap"
 )
 
 const nullStringValue = "NULL"
 
-func ValuesEqual(a, b *commonmodels.ColumnRawValue) bool {
+func ValuesEqual(a, b *core.ColumnRawValue) bool {
 	return a.IsNull == b.IsNull && slices.Equal(a.Data, b.Data)
 }
 
-func getStringFromRawValue(v *commonmodels.ColumnRawValue) string {
+func getStringFromRawValue(v *core.ColumnRawValue) string {
 	if v.IsNull {
 		return nullStringValue
 	}

@@ -17,7 +17,8 @@ package registry
 import (
 	"fmt"
 
-	transformers2 "github.com/greenmaskio/greenmask/pkg/common/transformers/transformers"
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
+	"github.com/greenmaskio/greenmask/pkg/common/transformers/transformers"
 	"github.com/greenmaskio/greenmask/pkg/common/transformers/utils"
 )
 
@@ -57,34 +58,54 @@ func (tm *TransformerRegistry) Get(name string) (*utils.TransformerDefinition, b
 	return t, ok
 }
 
+// coreAdapter adapts *TransformerRegistry to the core.TransformerRegistry
+// interface, whose Get returns the core.TransformerProvisioner abstraction.
+type coreAdapter struct{ r *TransformerRegistry }
+
+var _ core.TransformerRegistry = coreAdapter{}
+
+func (a coreAdapter) Get(name string) (core.TransformerProvisioner, bool) {
+	d, ok := a.r.Get(name)
+	if !ok {
+		return nil, false
+	}
+	return d, true
+}
+
+// Core returns a core.TransformerRegistry view of this registry, for the V2
+// dump pipeline which consumes the engine-agnostic abstraction.
+func (tm *TransformerRegistry) Core() core.TransformerRegistry {
+	return coreAdapter{r: tm}
+}
+
 func init() {
-	DefaultTransformerRegistry.MustRegister(transformers2.DictTransformerDefinition)
-	DefaultTransformerRegistry.MustRegister(transformers2.EmailTransformerDefinition)
-	DefaultTransformerRegistry.MustRegister(transformers2.HashTransformerDefinition)
-	DefaultTransformerRegistry.MustRegister(transformers2.JsonTransformerDefinition)
-	DefaultTransformerRegistry.MustRegister(transformers2.MaskingTransformerDefinition)
-	DefaultTransformerRegistry.MustRegister(transformers2.NoiseDateTransformerDefinition)
-	DefaultTransformerRegistry.MustRegister(transformers2.NoiseFloatTransformerDefinition)
-	DefaultTransformerRegistry.MustRegister(transformers2.NoiseIntTransformerDefinition)
-	DefaultTransformerRegistry.MustRegister(transformers2.NoiseNumericTransformerDefinition)
-	DefaultTransformerRegistry.MustRegister(transformers2.BoolTransformerDefinition)
-	DefaultTransformerRegistry.MustRegister(transformers2.ChoiceTransformerDefinition)
-	DefaultTransformerRegistry.MustRegister(transformers2.RandomCompanyTransformerDefinition)
-	DefaultTransformerRegistry.MustRegister(transformers2.RandomDateTransformerDefinition)
-	DefaultTransformerRegistry.MustRegister(transformers2.RamdomFloatTransformerDefinition)
-	DefaultTransformerRegistry.MustRegister(transformers2.RandomIntegerTransformerDefinition)
-	DefaultTransformerRegistry.MustRegister(transformers2.RandomIPDefinition)
-	DefaultTransformerRegistry.MustRegister(transformers2.RandomMacAddressDefinition)
-	DefaultTransformerRegistry.MustRegister(transformers2.RandomNumericTransformerDefinition)
-	DefaultTransformerRegistry.MustRegister(transformers2.RandomPersonTransformerDefinition)
-	DefaultTransformerRegistry.MustRegister(transformers2.RandomStringTransformerDefinition)
-	DefaultTransformerRegistry.MustRegister(transformers2.UnixTimestampTransformerDefinition)
-	DefaultTransformerRegistry.MustRegister(transformers2.UUIDTransformerDefinition)
-	DefaultTransformerRegistry.MustRegister(transformers2.RealAddressTransformerDefinition)
-	DefaultTransformerRegistry.MustRegister(transformers2.RegexpReplaceTransformerDefinition)
-	DefaultTransformerRegistry.MustRegister(transformers2.ReplaceTransformerDefinition)
-	DefaultTransformerRegistry.MustRegister(transformers2.SetNullTransformerDefinition)
-	DefaultTransformerRegistry.MustRegister(transformers2.TemplateTransformerDefinition)
-	DefaultTransformerRegistry.MustRegister(transformers2.TemplateRecordTransformerDefinition)
-	DefaultTransformerRegistry.MustRegister(transformers2.CMDTransformerDefinition)
+	DefaultTransformerRegistry.MustRegister(transformers.DictTransformerDefinition)
+	DefaultTransformerRegistry.MustRegister(transformers.EmailTransformerDefinition)
+	DefaultTransformerRegistry.MustRegister(transformers.HashTransformerDefinition)
+	DefaultTransformerRegistry.MustRegister(transformers.JsonTransformerDefinition)
+	DefaultTransformerRegistry.MustRegister(transformers.MaskingTransformerDefinition)
+	DefaultTransformerRegistry.MustRegister(transformers.NoiseDateTransformerDefinition)
+	DefaultTransformerRegistry.MustRegister(transformers.NoiseFloatTransformerDefinition)
+	DefaultTransformerRegistry.MustRegister(transformers.NoiseIntTransformerDefinition)
+	DefaultTransformerRegistry.MustRegister(transformers.NoiseNumericTransformerDefinition)
+	DefaultTransformerRegistry.MustRegister(transformers.BoolTransformerDefinition)
+	DefaultTransformerRegistry.MustRegister(transformers.ChoiceTransformerDefinition)
+	DefaultTransformerRegistry.MustRegister(transformers.RandomCompanyTransformerDefinition)
+	DefaultTransformerRegistry.MustRegister(transformers.RandomDateTransformerDefinition)
+	DefaultTransformerRegistry.MustRegister(transformers.RamdomFloatTransformerDefinition)
+	DefaultTransformerRegistry.MustRegister(transformers.RandomIntegerTransformerDefinition)
+	DefaultTransformerRegistry.MustRegister(transformers.RandomIPDefinition)
+	DefaultTransformerRegistry.MustRegister(transformers.RandomMacAddressDefinition)
+	DefaultTransformerRegistry.MustRegister(transformers.RandomNumericTransformerDefinition)
+	DefaultTransformerRegistry.MustRegister(transformers.RandomPersonTransformerDefinition)
+	DefaultTransformerRegistry.MustRegister(transformers.RandomStringTransformerDefinition)
+	DefaultTransformerRegistry.MustRegister(transformers.UnixTimestampTransformerDefinition)
+	DefaultTransformerRegistry.MustRegister(transformers.UUIDTransformerDefinition)
+	DefaultTransformerRegistry.MustRegister(transformers.RealAddressTransformerDefinition)
+	DefaultTransformerRegistry.MustRegister(transformers.RegexpReplaceTransformerDefinition)
+	DefaultTransformerRegistry.MustRegister(transformers.ReplaceTransformerDefinition)
+	DefaultTransformerRegistry.MustRegister(transformers.SetNullTransformerDefinition)
+	DefaultTransformerRegistry.MustRegister(transformers.TemplateTransformerDefinition)
+	DefaultTransformerRegistry.MustRegister(transformers.TemplateRecordTransformerDefinition)
+	DefaultTransformerRegistry.MustRegister(transformers.CMDTransformerDefinition)
 }

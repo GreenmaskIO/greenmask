@@ -20,7 +20,7 @@ import (
 	"sort"
 	"strings"
 
-	commonmodels "github.com/greenmaskio/greenmask/pkg/common/models"
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 	"github.com/greenmaskio/greenmask/pkg/common/subset/tablegraph"
 )
 
@@ -188,8 +188,8 @@ func (g *Graph) buildCyclesGraph() {
 }
 
 // findCommonVertexes - finds the commonmodels vertexes between the Cycles.
-func (g *Graph) findCommonVertexes(i, j int) []commonmodels.Table {
-	commonTables := make(map[string]commonmodels.Table)
+func (g *Graph) findCommonVertexes(i, j int) []core.Table {
+	commonTables := make(map[string]core.Table)
 	for _, edgeI := range g.Cycles[i] {
 		for _, edgeJ := range g.Cycles[j] {
 			if edgeI.To().TableID() == edgeJ.To().TableID() {
@@ -198,11 +198,11 @@ func (g *Graph) findCommonVertexes(i, j int) []commonmodels.Table {
 			}
 		}
 	}
-	var res []commonmodels.Table
+	var res []core.Table
 	for _, table := range commonTables {
 		res = append(res, table)
 	}
-	slices.SortFunc(res, func(i, j commonmodels.Table) int {
+	slices.SortFunc(res, func(i, j core.Table) int {
 		return strings.Compare(i.FullTableName(), j.FullTableName())
 	})
 	return res

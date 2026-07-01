@@ -19,43 +19,44 @@ import (
 	"testing"
 
 	"github.com/google/uuid"
-	commonininterfaces "github.com/greenmaskio/greenmask/pkg/common/interfaces"
-	"github.com/greenmaskio/greenmask/pkg/common/models"
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
+	coretest "github.com/greenmaskio/greenmask/pkg/common/coretest"
 	commonutils "github.com/greenmaskio/greenmask/pkg/common/utils"
 	"github.com/greenmaskio/greenmask/pkg/common/validationcollector"
-	mysqldbmsdriver "github.com/greenmaskio/greenmask/pkg/mysql/dbmsdriver"
 	"github.com/stretchr/testify/require"
 )
 
 func TestUuidTransformer_Transform_uuid_type(t *testing.T) {
 	tests := []struct {
 		name             string
-		staticParameters map[string]models.ParamsValue
-		dynamicParameter map[string]models.DynamicParamValue
-		original         []*models.ColumnRawValue
-		validateFn       func(t *testing.T, recorder commonininterfaces.Recorder)
+		staticParameters map[string]core.ParamsValue
+		dynamicParameter map[string]core.DynamicParamValue
+		original         []*core.ColumnRawValue
+		validateFn       func(t *testing.T, recorder core.Recorder)
 		expectedErr      string
-		columns          []models.Column
+		columns          []core.Column
 	}{
 		{
 			name: "text",
-			columns: []models.Column{
+			columns: []core.Column{
 				{
-					Idx:       0,
-					Name:      "data",
-					TypeName:  mysqldbmsdriver.TypeText,
-					TypeClass: models.TypeClassText,
-					TypeOID:   mysqldbmsdriver.VirtualOidText,
-					Length:    0,
+					Idx:  0,
+					Name: "data",
+					Type: core.Type{
+						Name:   coretest.TypeText,
+						Class:  core.TypeClassText,
+						ID:     coretest.TypeIDText,
+						Length: 0,
+					},
 				},
 			},
-			original: []*models.ColumnRawValue{
-				models.NewColumnRawValue([]byte(""), false)},
-			staticParameters: map[string]models.ParamsValue{
-				"column": models.ParamsValue("data"),
-				"engine": models.ParamsValue("random"),
+			original: []*core.ColumnRawValue{
+				core.NewColumnRawValue([]byte(""), false)},
+			staticParameters: map[string]core.ParamsValue{
+				"column": core.ParamsValue("data"),
+				"engine": core.ParamsValue("random"),
 			},
-			validateFn: func(t *testing.T, recorder commonininterfaces.Recorder) {
+			validateFn: func(t *testing.T, recorder core.Recorder) {
 				var val uuid.UUID
 				isNull, err := recorder.ScanColumnValueByName("data", &val)
 				require.NoError(t, err)
@@ -64,24 +65,26 @@ func TestUuidTransformer_Transform_uuid_type(t *testing.T) {
 		},
 		{
 			name: "keep_null true and NULL seq",
-			staticParameters: map[string]models.ParamsValue{
-				"column":    models.ParamsValue("data"),
-				"engine":    models.ParamsValue("deterministic"),
-				"keep_null": models.ParamsValue("true"),
+			staticParameters: map[string]core.ParamsValue{
+				"column":    core.ParamsValue("data"),
+				"engine":    core.ParamsValue("deterministic"),
+				"keep_null": core.ParamsValue("true"),
 			},
-			original: []*models.ColumnRawValue{
-				models.NewColumnRawValue(nil, true)},
-			columns: []models.Column{
+			original: []*core.ColumnRawValue{
+				core.NewColumnRawValue(nil, true)},
+			columns: []core.Column{
 				{
-					Idx:       0,
-					Name:      "data",
-					TypeName:  mysqldbmsdriver.TypeText,
-					TypeClass: models.TypeClassText,
-					TypeOID:   mysqldbmsdriver.VirtualOidText,
-					Length:    0,
+					Idx:  0,
+					Name: "data",
+					Type: core.Type{
+						Name:   coretest.TypeText,
+						Class:  core.TypeClassText,
+						ID:     coretest.TypeIDText,
+						Length: 0,
+					},
 				},
 			},
-			validateFn: func(t *testing.T, recorder commonininterfaces.Recorder) {
+			validateFn: func(t *testing.T, recorder core.Recorder) {
 				var val uuid.UUID
 				isNull, err := recorder.ScanColumnValueByName("data", &val)
 				require.NoError(t, err)
@@ -90,24 +93,26 @@ func TestUuidTransformer_Transform_uuid_type(t *testing.T) {
 		},
 		{
 			name: "keep_null true and not NULL seq",
-			staticParameters: map[string]models.ParamsValue{
-				"column":    models.ParamsValue("data"),
-				"engine":    models.ParamsValue("deterministic"),
-				"keep_null": models.ParamsValue("true"),
+			staticParameters: map[string]core.ParamsValue{
+				"column":    core.ParamsValue("data"),
+				"engine":    core.ParamsValue("deterministic"),
+				"keep_null": core.ParamsValue("true"),
 			},
-			original: []*models.ColumnRawValue{
-				models.NewColumnRawValue([]byte(""), false)},
-			columns: []models.Column{
+			original: []*core.ColumnRawValue{
+				core.NewColumnRawValue([]byte(""), false)},
+			columns: []core.Column{
 				{
-					Idx:       0,
-					Name:      "data",
-					TypeName:  mysqldbmsdriver.TypeText,
-					TypeClass: models.TypeClassText,
-					TypeOID:   mysqldbmsdriver.VirtualOidText,
-					Length:    0,
+					Idx:  0,
+					Name: "data",
+					Type: core.Type{
+						Name:   coretest.TypeText,
+						Class:  core.TypeClassText,
+						ID:     coretest.TypeIDText,
+						Length: 0,
+					},
 				},
 			},
-			validateFn: func(t *testing.T, recorder commonininterfaces.Recorder) {
+			validateFn: func(t *testing.T, recorder core.Recorder) {
 				var val uuid.UUID
 				isNull, err := recorder.ScanColumnValueByName("data", &val)
 				require.NoError(t, err)

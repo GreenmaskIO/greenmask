@@ -28,8 +28,7 @@ import (
 	"slices"
 	"text/template"
 
-	"github.com/greenmaskio/greenmask/pkg/common/interfaces"
-	"github.com/greenmaskio/greenmask/pkg/common/models"
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 	"github.com/greenmaskio/greenmask/pkg/common/transformers/parameters"
 	transformerstemplate "github.com/greenmaskio/greenmask/pkg/common/transformers/template"
 	"github.com/greenmaskio/greenmask/pkg/common/transformers/utils"
@@ -58,11 +57,11 @@ var JsonTransformerDefinition = utils.NewTransformerDefinition(
 	parameters.MustNewParameterDefinition(
 		"column",
 		"column name",
-	).SetIsColumn(models.NewColumnProperties().
+	).SetIsColumn(core.NewColumnProperties().
 		SetAffected(true).
 		SetAllowedColumnTypeClasses(
-			models.TypeClassText,
-			models.TypeClassJson,
+			core.TypeClassText,
+			core.TypeClassJson,
 		),
 	).SetRequired(true),
 
@@ -74,7 +73,7 @@ var JsonTransformerDefinition = utils.NewTransformerDefinition(
 	parameters.MustNewParameterDefinition(
 		"skip_invalid_json",
 		"skip invalid json objects instead of raising error",
-	).SetDefaultValue(models.ParamsValue("false")),
+	).SetDefaultValue(core.ParamsValue("false")),
 
 	defaultKeepNullParameterDefinition,
 )
@@ -159,9 +158,9 @@ type JsonTransformer struct {
 
 func NewJsonTransformer(
 	ctx context.Context,
-	tableDriver interfaces.TableDriver,
+	tableDriver core.TableDriver,
 	parameters map[string]parameters.Parameterizer,
-) (interfaces.Transformer, error) {
+) (core.Transformer, error) {
 	columnName, column, err := getColumnParameterValue(ctx, tableDriver, parameters)
 	if err != nil {
 		return nil, fmt.Errorf("error getting column parameter: %w", err)
@@ -220,7 +219,7 @@ func (t *JsonTransformer) Done(context.Context) error {
 	return nil
 }
 
-func (t *JsonTransformer) Transform(_ context.Context, r interfaces.Recorder) error {
+func (t *JsonTransformer) Transform(_ context.Context, r core.Recorder) error {
 	v, err := r.GetRawColumnValueByIdx(t.columnIdx)
 	if err != nil {
 		return fmt.Errorf("cannot scan column value: %w", err)
@@ -246,7 +245,7 @@ func (t *JsonTransformer) Transform(_ context.Context, r interfaces.Recorder) er
 		}
 	}
 
-	if err = r.SetRawColumnValueByIdx(t.columnIdx, models.NewColumnRawValue(res, false)); err != nil {
+	if err = r.SetRawColumnValueByIdx(t.columnIdx, core.NewColumnRawValue(res, false)); err != nil {
 		return fmt.Errorf("unable to set new value: %w", err)
 	}
 

@@ -18,13 +18,13 @@ import (
 	"encoding/json"
 	"fmt"
 
-	models2 "github.com/greenmaskio/greenmask/pkg/common/models"
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 )
 
 type ParamsValue []byte
 
-func (pv *ParamsValue) ToParamsValue() models2.ParamsValue {
-	return models2.NewParamsValue(*pv)
+func (pv *ParamsValue) ToParamsValue() core.ParamsValue {
+	return core.NewParamsValue(*pv)
 }
 
 func (pv *ParamsValue) UnmarshalJSON(data []byte) error {
@@ -44,8 +44,8 @@ func (pv *ParamsValue) UnmarshalJSON(data []byte) error {
 
 type StaticParameters map[string]ParamsValue
 
-func (p *StaticParameters) ToParamsValue() map[string]models2.ParamsValue {
-	res := make(map[string]models2.ParamsValue, len(*p))
+func (p *StaticParameters) ToParamsValue() map[string]core.ParamsValue {
+	res := make(map[string]core.ParamsValue, len(*p))
 	for k, v := range *p {
 		res[k] = v.ToParamsValue()
 	}
@@ -74,10 +74,10 @@ func (p *StaticParameters) MarshalJSON() ([]byte, error) {
 
 type DynamicParameters map[string]DynamicParamValue
 
-func (dp *DynamicParameters) ToDynamicParamValue() map[string]models2.DynamicParamValue {
-	res := make(map[string]models2.DynamicParamValue, len(*dp))
+func (dp *DynamicParameters) ToDynamicParamValue() map[string]core.DynamicParamValue {
+	res := make(map[string]core.DynamicParamValue, len(*dp))
 	for k, v := range *dp {
-		res[k] = models2.NewDynamicParamValue(
+		res[k] = core.NewDynamicParamValue(
 			v.Column,
 			v.CastTo,
 			v.Template,
@@ -94,8 +94,8 @@ type DynamicParamValue struct {
 	DefaultValue ParamsValue `mapstructure:"default_value" json:"default_value,omitempty"`
 }
 
-func (dpv *DynamicParamValue) ToDynamicParamValue() models2.DynamicParamValue {
-	return models2.NewDynamicParamValue(
+func (dpv *DynamicParamValue) ToDynamicParamValue() core.DynamicParamValue {
+	return core.NewDynamicParamValue(
 		dpv.Column,
 		dpv.CastTo,
 		dpv.Template,

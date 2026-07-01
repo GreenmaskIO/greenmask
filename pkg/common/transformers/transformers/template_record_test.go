@@ -18,40 +18,41 @@ import (
 	"context"
 	"testing"
 
-	commonininterfaces "github.com/greenmaskio/greenmask/pkg/common/interfaces"
-	"github.com/greenmaskio/greenmask/pkg/common/models"
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
+	coretest "github.com/greenmaskio/greenmask/pkg/common/coretest"
 	commonutils "github.com/greenmaskio/greenmask/pkg/common/utils"
 	"github.com/greenmaskio/greenmask/pkg/common/validationcollector"
-	mysqldbmsdriver "github.com/greenmaskio/greenmask/pkg/mysql/dbmsdriver"
 	"github.com/stretchr/testify/require"
 )
 
 func TestTemplateRecordTransformer_Transform(t *testing.T) {
 	tests := []struct {
 		name             string
-		staticParameters map[string]models.ParamsValue
-		dynamicParameter map[string]models.DynamicParamValue
-		original         []*models.ColumnRawValue
-		validateFn       func(t *testing.T, recorder commonininterfaces.Recorder)
+		staticParameters map[string]core.ParamsValue
+		dynamicParameter map[string]core.DynamicParamValue
+		original         []*core.ColumnRawValue
+		validateFn       func(t *testing.T, recorder core.Recorder)
 		expectedErr      string
-		columns          []models.Column
+		columns          []core.Column
 	}{
 		{
 			name: "success with date",
-			columns: []models.Column{
+			columns: []core.Column{
 				{
-					Idx:      0,
-					Name:     "data",
-					TypeName: mysqldbmsdriver.TypeDateTime,
-					TypeOID:  mysqldbmsdriver.VirtualOidDateTime,
-					Length:   0,
-					Size:     2,
+					Idx:  0,
+					Name: "data",
+					Type: core.Type{
+						Name:   coretest.TypeTimestamp,
+						ID:     coretest.TypeIDTimestamp,
+						Length: 0,
+						Size:   2,
+					},
 				},
 			},
-			original: []*models.ColumnRawValue{
-				models.NewColumnRawValue([]byte(""), true)},
-			staticParameters: map[string]models.ParamsValue{
-				"template": models.ParamsValue(`
+			original: []*core.ColumnRawValue{
+				core.NewColumnRawValue([]byte(""), true)},
+			staticParameters: map[string]core.ParamsValue{
+				"template": core.ParamsValue(`
 					 {{ $val := .GetColumnValue "data" }}
 					  {{ if isNull $val }}
 						{{ "2023-11-20 01:00:00" | .DecodeValueByColumn "data" | dateModify "24h" | .SetColumnValue "data" }}
@@ -60,7 +61,7 @@ func TestTemplateRecordTransformer_Transform(t *testing.T) {
 					  {{ end }}
 				`),
 			},
-			validateFn: func(t *testing.T, recorder commonininterfaces.Recorder) {
+			validateFn: func(t *testing.T, recorder core.Recorder) {
 				data, err := recorder.GetRawColumnValueByName("data")
 				require.NoError(t, err)
 				require.Equal(t, "2023-11-21 01:00:00", string(data.Data))
@@ -68,25 +69,27 @@ func TestTemplateRecordTransformer_Transform(t *testing.T) {
 		},
 		{
 			name: "success json",
-			columns: []models.Column{
+			columns: []core.Column{
 				{
-					Idx:       0,
-					Name:      "data",
-					TypeName:  mysqldbmsdriver.TypeText,
-					TypeClass: models.TypeClassText,
-					TypeOID:   mysqldbmsdriver.VirtualOidText,
-					Length:    0,
+					Idx:  0,
+					Name: "data",
+					Type: core.Type{
+						Name:   coretest.TypeText,
+						Class:  core.TypeClassText,
+						ID:     coretest.TypeIDText,
+						Length: 0,
+					},
 				},
 			},
-			original: []*models.ColumnRawValue{
-				models.NewColumnRawValue([]byte("{\"name\": \"test\"}"), false)},
-			staticParameters: map[string]models.ParamsValue{
-				"template": models.ParamsValue(`
+			original: []*core.ColumnRawValue{
+				core.NewColumnRawValue([]byte("{\"name\": \"test\"}"), false)},
+			staticParameters: map[string]core.ParamsValue{
+				"template": core.ParamsValue(`
 					{{ $val := .GetRawColumnValue "data" }}
 					{{ jsonSet "name" "hello" $val | jsonValidate | .SetColumnValue "data" }}
 				`),
 			},
-			validateFn: func(t *testing.T, recorder commonininterfaces.Recorder) {
+			validateFn: func(t *testing.T, recorder core.Recorder) {
 				data, err := recorder.GetRawColumnValueByName("data")
 				require.NoError(t, err)
 				require.Equal(t, "{\"name\": \"hello\"}", string(data.Data))

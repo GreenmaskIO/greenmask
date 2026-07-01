@@ -20,8 +20,7 @@ import (
 	"fmt"
 	"io"
 
-	commonininterfaces "github.com/greenmaskio/greenmask/pkg/common/interfaces"
-	commonmodels "github.com/greenmaskio/greenmask/pkg/common/models"
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 	utils2 "github.com/greenmaskio/greenmask/pkg/common/transformers/utils"
 )
 
@@ -36,14 +35,14 @@ type DefaultCMDProto struct {
 	r                   utils2.ContextReader
 	w                   utils2.ContextWriter
 	scanner             *bufio.Scanner
-	transferringColumns []*commonmodels.Column
-	affectedColumns     []*commonmodels.Column
+	transferringColumns []*core.Column
+	affectedColumns     []*core.Column
 }
 
 func NewDefaultCMDProto(
 	rowDriver CMDRowDriver,
-	transferringColumns []*commonmodels.Column,
-	affectedColumns []*commonmodels.Column,
+	transferringColumns []*core.Column,
+	affectedColumns []*core.Column,
 ) *DefaultCMDProto {
 	return &DefaultCMDProto{
 		rowDriver:           rowDriver,
@@ -68,7 +67,7 @@ func (i *DefaultCMDProto) Init(w io.Writer, r io.Reader) error {
 	return nil
 }
 
-func (i *DefaultCMDProto) createDTO(r commonininterfaces.Recorder) (CMDRowDriver, error) {
+func (i *DefaultCMDProto) createDTO(r core.Recorder) (CMDRowDriver, error) {
 	for _, c := range i.transferringColumns {
 		v, err := r.GetRawColumnValueByIdx(c.Idx)
 		if err != nil {
@@ -81,7 +80,7 @@ func (i *DefaultCMDProto) createDTO(r commonininterfaces.Recorder) (CMDRowDriver
 	return i.rowDriver, nil
 }
 
-func (i *DefaultCMDProto) applyReceivedDTO(rd CMDRowDriver, r commonininterfaces.Recorder) error {
+func (i *DefaultCMDProto) applyReceivedDTO(rd CMDRowDriver, r core.Recorder) error {
 	for _, c := range i.affectedColumns {
 		v, err := rd.GetColumn(c)
 		if err != nil {
@@ -95,7 +94,7 @@ func (i *DefaultCMDProto) applyReceivedDTO(rd CMDRowDriver, r commonininterfaces
 	return nil
 }
 
-func (i *DefaultCMDProto) Send(ctx context.Context, r commonininterfaces.Recorder) error {
+func (i *DefaultCMDProto) Send(ctx context.Context, r core.Recorder) error {
 	obj, err := i.createDTO(r)
 	if err != nil {
 		return fmt.Errorf("create DTO: %w", err)
@@ -112,7 +111,7 @@ func (i *DefaultCMDProto) Send(ctx context.Context, r commonininterfaces.Recorde
 	return nil
 }
 
-func (i *DefaultCMDProto) ReceiveAndApply(ctx context.Context, r commonininterfaces.Recorder) error {
+func (i *DefaultCMDProto) ReceiveAndApply(ctx context.Context, r core.Recorder) error {
 	// First set the context to the writer that is used in the scanner.
 	i.r.WithContext(ctx)
 	lineScanned := i.scanner.Scan()

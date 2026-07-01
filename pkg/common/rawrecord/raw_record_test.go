@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"testing"
 
-	"github.com/greenmaskio/greenmask/pkg/common/models"
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -13,7 +13,7 @@ func TestRawRecord_Escaping(t *testing.T) {
 	rr := NewRawRecord(2, nullSeq)
 
 	t.Run("set_null", func(t *testing.T) {
-		err := rr.SetColumn(0, models.NewColumnRawValue(nil, true))
+		err := rr.SetColumn(0, core.NewColumnRawValue(nil, true))
 		assert.NoError(t, err)
 
 		val, err := rr.GetColumn(0)
@@ -25,7 +25,7 @@ func TestRawRecord_Escaping(t *testing.T) {
 
 	t.Run("set_string_matching_null_seq", func(t *testing.T) {
 		// Literal string "\N"
-		err := rr.SetColumn(1, models.NewColumnRawValue(nullSeq, false))
+		err := rr.SetColumn(1, core.NewColumnRawValue(nullSeq, false))
 		assert.NoError(t, err)
 
 		val, err := rr.GetColumn(1)
@@ -39,7 +39,7 @@ func TestRawRecord_Escaping(t *testing.T) {
 
 	t.Run("set_regular_string", func(t *testing.T) {
 		data := []byte("regular string")
-		err := rr.SetColumn(0, models.NewColumnRawValue(data, false))
+		err := rr.SetColumn(0, core.NewColumnRawValue(data, false))
 		assert.NoError(t, err)
 
 		val, err := rr.GetColumn(0)
@@ -61,7 +61,7 @@ func TestRawRecord_Escaping(t *testing.T) {
 
 	t.Run("set_string_starting_with_backslash_but_not_null_seq", func(t *testing.T) {
 		data := []byte("\\NOT_NULL")
-		err := rr.SetColumn(0, models.NewColumnRawValue(data, false))
+		err := rr.SetColumn(0, core.NewColumnRawValue(data, false))
 		assert.NoError(t, err)
 
 		val, err := rr.GetColumn(0)

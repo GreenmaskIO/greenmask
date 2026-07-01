@@ -19,11 +19,10 @@ import (
 	"regexp"
 	"testing"
 
-	commonininterfaces "github.com/greenmaskio/greenmask/pkg/common/interfaces"
-	"github.com/greenmaskio/greenmask/pkg/common/models"
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
+	coretest "github.com/greenmaskio/greenmask/pkg/common/coretest"
 	commonutils "github.com/greenmaskio/greenmask/pkg/common/utils"
 	"github.com/greenmaskio/greenmask/pkg/common/validationcollector"
-	mysqldbmsdriver "github.com/greenmaskio/greenmask/pkg/mysql/dbmsdriver"
 	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/require"
 )
@@ -31,34 +30,36 @@ import (
 func TestRandomNumericTransformer_Transform(t *testing.T) {
 	tests := []struct {
 		name             string
-		staticParameters map[string]models.ParamsValue
-		dynamicParameter map[string]models.DynamicParamValue
-		original         []*models.ColumnRawValue
-		validateFn       func(t *testing.T, recorder commonininterfaces.Recorder)
+		staticParameters map[string]core.ParamsValue
+		dynamicParameter map[string]core.DynamicParamValue
+		original         []*core.ColumnRawValue
+		validateFn       func(t *testing.T, recorder core.Recorder)
 		expectedErr      string
-		columns          []models.Column
+		columns          []core.Column
 	}{
 		{
 			name: "numeric",
-			columns: []models.Column{
+			columns: []core.Column{
 				{
-					Idx:       0,
-					Name:      "data",
-					TypeName:  mysqldbmsdriver.TypeNumeric,
-					TypeOID:   mysqldbmsdriver.VirtualOidNumeric,
-					TypeClass: models.TypeClassNumeric,
-					Length:    0,
+					Idx:  0,
+					Name: "data",
+					Type: core.Type{
+						Name:   coretest.TypeNumeric,
+						ID:     coretest.TypeIDNumeric,
+						Class:  core.TypeClassNumeric,
+						Length: 0,
+					},
 				},
 			},
-			original: []*models.ColumnRawValue{
-				models.NewColumnRawValue([]byte("1234567"), false)},
-			staticParameters: map[string]models.ParamsValue{
-				"column": models.ParamsValue("data"),
-				"engine": models.ParamsValue("deterministic"),
-				"min":    models.ParamsValue("10000000000000000000"),
-				"max":    models.ParamsValue("100000000000000000000"),
+			original: []*core.ColumnRawValue{
+				core.NewColumnRawValue([]byte("1234567"), false)},
+			staticParameters: map[string]core.ParamsValue{
+				"column": core.ParamsValue("data"),
+				"engine": core.ParamsValue("deterministic"),
+				"min":    core.ParamsValue("10000000000000000000"),
+				"max":    core.ParamsValue("100000000000000000000"),
 			},
-			validateFn: func(t *testing.T, recorder commonininterfaces.Recorder) {
+			validateFn: func(t *testing.T, recorder core.Recorder) {
 				expectedMin := decimal.RequireFromString("10000000000000000000")
 				expectedMax := decimal.RequireFromString("100000000000000000000")
 				var val decimal.Decimal
@@ -70,26 +71,28 @@ func TestRandomNumericTransformer_Transform(t *testing.T) {
 		},
 		{
 			name: "keep_null false and NULL seq",
-			staticParameters: map[string]models.ParamsValue{
-				"column":    models.ParamsValue("data"),
-				"engine":    models.ParamsValue("deterministic"),
-				"min":       models.ParamsValue("10000000000000000000"),
-				"max":       models.ParamsValue("100000000000000000000"),
-				"keep_null": models.ParamsValue("false"),
+			staticParameters: map[string]core.ParamsValue{
+				"column":    core.ParamsValue("data"),
+				"engine":    core.ParamsValue("deterministic"),
+				"min":       core.ParamsValue("10000000000000000000"),
+				"max":       core.ParamsValue("100000000000000000000"),
+				"keep_null": core.ParamsValue("false"),
 			},
-			original: []*models.ColumnRawValue{
-				models.NewColumnRawValue(nil, true)},
-			columns: []models.Column{
+			original: []*core.ColumnRawValue{
+				core.NewColumnRawValue(nil, true)},
+			columns: []core.Column{
 				{
-					Idx:       0,
-					Name:      "data",
-					TypeName:  mysqldbmsdriver.TypeNumeric,
-					TypeOID:   mysqldbmsdriver.VirtualOidNumeric,
-					TypeClass: models.TypeClassNumeric,
-					Length:    0,
+					Idx:  0,
+					Name: "data",
+					Type: core.Type{
+						Name:   coretest.TypeNumeric,
+						ID:     coretest.TypeIDNumeric,
+						Class:  core.TypeClassNumeric,
+						Length: 0,
+					},
 				},
 			},
-			validateFn: func(t *testing.T, recorder commonininterfaces.Recorder) {
+			validateFn: func(t *testing.T, recorder core.Recorder) {
 				expectedMin := decimal.RequireFromString("10000000000000000000")
 				expectedMax := decimal.RequireFromString("100000000000000000000")
 				var val decimal.Decimal
@@ -101,26 +104,28 @@ func TestRandomNumericTransformer_Transform(t *testing.T) {
 		},
 		{
 			name: "keep_null false and NULL seq",
-			staticParameters: map[string]models.ParamsValue{
-				"column":    models.ParamsValue("data"),
-				"engine":    models.ParamsValue("deterministic"),
-				"min":       models.ParamsValue("10000000000000000000"),
-				"max":       models.ParamsValue("100000000000000000000"),
-				"keep_null": models.ParamsValue("true"),
+			staticParameters: map[string]core.ParamsValue{
+				"column":    core.ParamsValue("data"),
+				"engine":    core.ParamsValue("deterministic"),
+				"min":       core.ParamsValue("10000000000000000000"),
+				"max":       core.ParamsValue("100000000000000000000"),
+				"keep_null": core.ParamsValue("true"),
 			},
-			original: []*models.ColumnRawValue{
-				models.NewColumnRawValue(nil, true)},
-			columns: []models.Column{
+			original: []*core.ColumnRawValue{
+				core.NewColumnRawValue(nil, true)},
+			columns: []core.Column{
 				{
-					Idx:       0,
-					Name:      "data",
-					TypeName:  mysqldbmsdriver.TypeNumeric,
-					TypeOID:   mysqldbmsdriver.VirtualOidNumeric,
-					TypeClass: models.TypeClassNumeric,
-					Length:    0,
+					Idx:  0,
+					Name: "data",
+					Type: core.Type{
+						Name:   coretest.TypeNumeric,
+						ID:     coretest.TypeIDNumeric,
+						Class:  core.TypeClassNumeric,
+						Length: 0,
+					},
 				},
 			},
-			validateFn: func(t *testing.T, recorder commonininterfaces.Recorder) {
+			validateFn: func(t *testing.T, recorder core.Recorder) {
 				var val decimal.Decimal
 				isNull, err := recorder.ScanColumnValueByName("data", &val)
 				require.NoError(t, err)
@@ -129,27 +134,29 @@ func TestRandomNumericTransformer_Transform(t *testing.T) {
 		},
 		{
 			name: "Implicitly set threshold",
-			staticParameters: map[string]models.ParamsValue{
-				"column":    models.ParamsValue("data"),
-				"engine":    models.ParamsValue("deterministic"),
-				"min":       models.ParamsValue("0.0"),
-				"max":       models.ParamsValue("10.0"),
-				"keep_null": models.ParamsValue("false"),
-				"decimal":   models.ParamsValue("2"),
+			staticParameters: map[string]core.ParamsValue{
+				"column":    core.ParamsValue("data"),
+				"engine":    core.ParamsValue("deterministic"),
+				"min":       core.ParamsValue("0.0"),
+				"max":       core.ParamsValue("10.0"),
+				"keep_null": core.ParamsValue("false"),
+				"decimal":   core.ParamsValue("2"),
 			},
-			original: []*models.ColumnRawValue{
-				models.NewColumnRawValue(nil, true)},
-			columns: []models.Column{
+			original: []*core.ColumnRawValue{
+				core.NewColumnRawValue(nil, true)},
+			columns: []core.Column{
 				{
-					Idx:       0,
-					Name:      "data",
-					TypeName:  mysqldbmsdriver.TypeNumeric,
-					TypeOID:   mysqldbmsdriver.VirtualOidNumeric,
-					TypeClass: models.TypeClassNumeric,
-					Length:    0,
+					Idx:  0,
+					Name: "data",
+					Type: core.Type{
+						Name:   coretest.TypeNumeric,
+						ID:     coretest.TypeIDNumeric,
+						Class:  core.TypeClassNumeric,
+						Length: 0,
+					},
 				},
 			},
-			validateFn: func(t *testing.T, recorder commonininterfaces.Recorder) {
+			validateFn: func(t *testing.T, recorder core.Recorder) {
 				expectedMin := decimal.RequireFromString("0.0")
 				expectedMax := decimal.RequireFromString("10.0")
 				var val decimal.Decimal
@@ -165,13 +172,13 @@ func TestRandomNumericTransformer_Transform(t *testing.T) {
 		},
 		{
 			name: "Dynamic mode",
-			staticParameters: map[string]models.ParamsValue{
-				"column":    models.ParamsValue("data"),
-				"engine":    models.ParamsValue("deterministic"),
-				"keep_null": models.ParamsValue("false"),
-				"decimal":   models.ParamsValue("2"),
+			staticParameters: map[string]core.ParamsValue{
+				"column":    core.ParamsValue("data"),
+				"engine":    core.ParamsValue("deterministic"),
+				"keep_null": core.ParamsValue("false"),
+				"decimal":   core.ParamsValue("2"),
 			},
-			dynamicParameter: map[string]models.DynamicParamValue{
+			dynamicParameter: map[string]core.DynamicParamValue{
 				"min": {
 					Column: "min_val",
 				},
@@ -179,38 +186,44 @@ func TestRandomNumericTransformer_Transform(t *testing.T) {
 					Column: "max_val",
 				},
 			},
-			original: []*models.ColumnRawValue{
-				models.NewColumnRawValue([]byte("1234"), false),
-				models.NewColumnRawValue([]byte("-1000020102102"), false),
-				models.NewColumnRawValue([]byte("10"), false),
+			original: []*core.ColumnRawValue{
+				core.NewColumnRawValue([]byte("1234"), false),
+				core.NewColumnRawValue([]byte("-1000020102102"), false),
+				core.NewColumnRawValue([]byte("10"), false),
 			},
-			columns: []models.Column{
+			columns: []core.Column{
 				{
-					Idx:       0,
-					Name:      "data",
-					TypeName:  mysqldbmsdriver.TypeNumeric,
-					TypeOID:   mysqldbmsdriver.VirtualOidNumeric,
-					TypeClass: models.TypeClassNumeric,
-					Length:    0,
+					Idx:  0,
+					Name: "data",
+					Type: core.Type{
+						Name:   coretest.TypeNumeric,
+						ID:     coretest.TypeIDNumeric,
+						Class:  core.TypeClassNumeric,
+						Length: 0,
+					},
 				},
 				{
-					Idx:       1,
-					Name:      "min_val",
-					TypeName:  mysqldbmsdriver.TypeNumeric,
-					TypeOID:   mysqldbmsdriver.VirtualOidNumeric,
-					TypeClass: models.TypeClassNumeric,
-					Length:    0,
+					Idx:  1,
+					Name: "min_val",
+					Type: core.Type{
+						Name:   coretest.TypeNumeric,
+						ID:     coretest.TypeIDNumeric,
+						Class:  core.TypeClassNumeric,
+						Length: 0,
+					},
 				},
 				{
-					Idx:       2,
-					Name:      "max_val",
-					TypeName:  mysqldbmsdriver.TypeNumeric,
-					TypeOID:   mysqldbmsdriver.VirtualOidNumeric,
-					TypeClass: models.TypeClassNumeric,
-					Length:    0,
+					Idx:  2,
+					Name: "max_val",
+					Type: core.Type{
+						Name:   coretest.TypeNumeric,
+						ID:     coretest.TypeIDNumeric,
+						Class:  core.TypeClassNumeric,
+						Length: 0,
+					},
 				},
 			},
-			validateFn: func(t *testing.T, recorder commonininterfaces.Recorder) {
+			validateFn: func(t *testing.T, recorder core.Recorder) {
 				expectedMin := decimal.RequireFromString("-1000020102102")
 				expectedMax := decimal.RequireFromString("10")
 				var val decimal.Decimal

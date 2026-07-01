@@ -19,12 +19,11 @@ import (
 	"encoding/json"
 	"testing"
 
-	commonininterfaces "github.com/greenmaskio/greenmask/pkg/common/interfaces"
-	"github.com/greenmaskio/greenmask/pkg/common/models"
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
+	coretest "github.com/greenmaskio/greenmask/pkg/common/coretest"
 	"github.com/greenmaskio/greenmask/pkg/common/transformers/transformers/cmd"
 	"github.com/greenmaskio/greenmask/pkg/common/utils"
 	"github.com/greenmaskio/greenmask/pkg/common/validationcollector"
-	mysqldbmsdriver "github.com/greenmaskio/greenmask/pkg/mysql/dbmsdriver"
 	"github.com/rs/zerolog/log"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -33,28 +32,30 @@ import (
 func TestCMD_Transform(t *testing.T) {
 	tests := []struct {
 		name             string
-		staticParameters map[string]models.ParamsValue
-		dynamicParameter map[string]models.DynamicParamValue
-		original         []*models.ColumnRawValue
-		validateFn       func(t *testing.T, recorder commonininterfaces.Recorder)
+		staticParameters map[string]core.ParamsValue
+		dynamicParameter map[string]core.DynamicParamValue
+		original         []*core.ColumnRawValue
+		validateFn       func(t *testing.T, recorder core.Recorder)
 		expectedErr      string
-		columns          []models.Column
+		columns          []core.Column
 		expectedDoneErr  string
 	}{
 		{
 			name: "success",
-			columns: []models.Column{
+			columns: []core.Column{
 				{
-					Idx:      0,
-					Name:     "data",
-					TypeName: mysqldbmsdriver.TypeText,
-					TypeOID:  mysqldbmsdriver.VirtualOidText,
-					Length:   0,
+					Idx:  0,
+					Name: "data",
+					Type: core.Type{
+						Name:   coretest.TypeText,
+						ID:     coretest.TypeIDText,
+						Length: 0,
+					},
 				},
 			},
-			original: []*models.ColumnRawValue{
-				models.NewColumnRawValue([]byte("Some Inc."), false)},
-			staticParameters: map[string]models.ParamsValue{
+			original: []*core.ColumnRawValue{
+				core.NewColumnRawValue([]byte("Some Inc."), false)},
+			staticParameters: map[string]core.ParamsValue{
 				"columns": dumpColumnContainers(
 					cmdColumnContainer{
 						Name:             "data",
@@ -63,16 +64,16 @@ func TestCMD_Transform(t *testing.T) {
 						SkipOriginalData: false,
 					},
 				),
-				"executable": models.ParamsValue("cmd/test/transformer-success.sh"),
+				"executable": core.ParamsValue("cmd/test/transformer-success.sh"),
 				"driver": utils.Must(json.Marshal(&cmd.RowDriverSetting{
 					Name: cmd.RowDriverNameText,
 				})),
-				"validate":           models.ParamsValue("true"),
-				"timeout":            models.ParamsValue("5s"),
-				"expected_exit_code": models.ParamsValue("-1"),
-				"skip_on_behaviour":  models.ParamsValue("all"),
+				"validate":           core.ParamsValue("true"),
+				"timeout":            core.ParamsValue("5s"),
+				"expected_exit_code": core.ParamsValue("-1"),
+				"skip_on_behaviour":  core.ParamsValue("all"),
 			},
-			validateFn: func(t *testing.T, recorder commonininterfaces.Recorder) {
+			validateFn: func(t *testing.T, recorder core.Recorder) {
 				rawVal, err := recorder.GetRawColumnValueByName("data")
 				require.NoError(t, err)
 				require.False(t, rawVal.IsNull)
@@ -82,18 +83,20 @@ func TestCMD_Transform(t *testing.T) {
 		},
 		{
 			name: "timeout err",
-			columns: []models.Column{
+			columns: []core.Column{
 				{
-					Idx:      0,
-					Name:     "data",
-					TypeName: mysqldbmsdriver.TypeText,
-					TypeOID:  mysqldbmsdriver.VirtualOidText,
-					Length:   0,
+					Idx:  0,
+					Name: "data",
+					Type: core.Type{
+						Name:   coretest.TypeText,
+						ID:     coretest.TypeIDText,
+						Length: 0,
+					},
 				},
 			},
-			original: []*models.ColumnRawValue{
-				models.NewColumnRawValue([]byte("Some Inc."), false)},
-			staticParameters: map[string]models.ParamsValue{
+			original: []*core.ColumnRawValue{
+				core.NewColumnRawValue([]byte("Some Inc."), false)},
+			staticParameters: map[string]core.ParamsValue{
 				"columns": dumpColumnContainers(
 					cmdColumnContainer{
 						Name:             "data",
@@ -102,31 +105,33 @@ func TestCMD_Transform(t *testing.T) {
 						SkipOriginalData: false,
 					},
 				),
-				"executable": models.ParamsValue("cmd/test/transformer-timeout.sh"),
+				"executable": core.ParamsValue("cmd/test/transformer-timeout.sh"),
 				"driver": utils.Must(json.Marshal(&cmd.RowDriverSetting{
 					Name: cmd.RowDriverNameText,
 				})),
-				"validate":           models.ParamsValue("true"),
-				"timeout":            models.ParamsValue("500ms"),
-				"expected_exit_code": models.ParamsValue("-1"),
-				"skip_on_behaviour":  models.ParamsValue("all"),
+				"validate":           core.ParamsValue("true"),
+				"timeout":            core.ParamsValue("500ms"),
+				"expected_exit_code": core.ParamsValue("-1"),
+				"skip_on_behaviour":  core.ParamsValue("all"),
 			},
 			expectedErr: context.DeadlineExceeded.Error(),
 		},
 		{
 			name: "validate err",
-			columns: []models.Column{
+			columns: []core.Column{
 				{
-					Idx:      0,
-					Name:     "data",
-					TypeName: mysqldbmsdriver.TypeInt,
-					TypeOID:  mysqldbmsdriver.VirtualOidInt,
-					Length:   0,
+					Idx:  0,
+					Name: "data",
+					Type: core.Type{
+						Name:   coretest.TypeInt4,
+						ID:     coretest.TypeIDInt4,
+						Length: 0,
+					},
 				},
 			},
-			original: []*models.ColumnRawValue{
-				models.NewColumnRawValue([]byte("123"), false)},
-			staticParameters: map[string]models.ParamsValue{
+			original: []*core.ColumnRawValue{
+				core.NewColumnRawValue([]byte("123"), false)},
+			staticParameters: map[string]core.ParamsValue{
 				"columns": dumpColumnContainers(
 					cmdColumnContainer{
 						Name:             "data",
@@ -135,31 +140,33 @@ func TestCMD_Transform(t *testing.T) {
 						SkipOriginalData: false,
 					},
 				),
-				"executable": models.ParamsValue("cmd/test/transformer-success.sh"),
+				"executable": core.ParamsValue("cmd/test/transformer-success.sh"),
 				"driver": utils.Must(json.Marshal(&cmd.RowDriverSetting{
 					Name: cmd.RowDriverNameText,
 				})),
-				"validate":           models.ParamsValue("true"),
-				"timeout":            models.ParamsValue("5s"),
-				"expected_exit_code": models.ParamsValue("-1"),
-				"skip_on_behaviour":  models.ParamsValue("all"),
+				"validate":           core.ParamsValue("true"),
+				"timeout":            core.ParamsValue("5s"),
+				"expected_exit_code": core.ParamsValue("-1"),
+				"skip_on_behaviour":  core.ParamsValue("all"),
 			},
-			expectedErr: models.ErrValueValidationFailed.Error(),
+			expectedErr: core.ErrValueValidationFailed.Error(),
 		},
 		{
 			name: "unexpected exit code",
-			columns: []models.Column{
+			columns: []core.Column{
 				{
-					Idx:      0,
-					Name:     "data",
-					TypeName: mysqldbmsdriver.TypeText,
-					TypeOID:  mysqldbmsdriver.VirtualOidText,
-					Length:   0,
+					Idx:  0,
+					Name: "data",
+					Type: core.Type{
+						Name:   coretest.TypeText,
+						ID:     coretest.TypeIDText,
+						Length: 0,
+					},
 				},
 			},
-			original: []*models.ColumnRawValue{
-				models.NewColumnRawValue([]byte("123"), false)},
-			staticParameters: map[string]models.ParamsValue{
+			original: []*core.ColumnRawValue{
+				core.NewColumnRawValue([]byte("123"), false)},
+			staticParameters: map[string]core.ParamsValue{
 				"columns": dumpColumnContainers(
 					cmdColumnContainer{
 						Name:             "data",
@@ -168,32 +175,34 @@ func TestCMD_Transform(t *testing.T) {
 						SkipOriginalData: false,
 					},
 				),
-				"executable": models.ParamsValue("cmd/test/transformer-success.sh"),
+				"executable": core.ParamsValue("cmd/test/transformer-success.sh"),
 				"driver": utils.Must(json.Marshal(&cmd.RowDriverSetting{
 					Name: cmd.RowDriverNameText,
 				})),
-				"validate":           models.ParamsValue("true"),
-				"timeout":            models.ParamsValue("5s"),
-				"expected_exit_code": models.ParamsValue("0"),
-				"skip_on_behaviour":  models.ParamsValue("all"),
+				"validate":           core.ParamsValue("true"),
+				"timeout":            core.ParamsValue("5s"),
+				"expected_exit_code": core.ParamsValue("0"),
+				"skip_on_behaviour":  core.ParamsValue("all"),
 			},
 			expectedDoneErr: ErrUnexpectedCmdExitCode.Error(),
-			validateFn:      func(t *testing.T, recorder commonininterfaces.Recorder) {},
+			validateFn:      func(t *testing.T, recorder core.Recorder) {},
 		},
 		{
 			name: "skip",
-			columns: []models.Column{
+			columns: []core.Column{
 				{
-					Idx:      0,
-					Name:     "data",
-					TypeName: mysqldbmsdriver.TypeText,
-					TypeOID:  mysqldbmsdriver.VirtualOidText,
-					Length:   0,
+					Idx:  0,
+					Name: "data",
+					Type: core.Type{
+						Name:   coretest.TypeText,
+						ID:     coretest.TypeIDText,
+						Length: 0,
+					},
 				},
 			},
-			original: []*models.ColumnRawValue{
-				models.NewColumnRawValue(nil, true)},
-			staticParameters: map[string]models.ParamsValue{
+			original: []*core.ColumnRawValue{
+				core.NewColumnRawValue(nil, true)},
+			staticParameters: map[string]core.ParamsValue{
 				"columns": dumpColumnContainers(
 					cmdColumnContainer{
 						Name:             "data",
@@ -202,16 +211,16 @@ func TestCMD_Transform(t *testing.T) {
 						SkipOriginalData: false,
 					},
 				),
-				"executable": models.ParamsValue("cmd/test/transformer-success.sh"),
+				"executable": core.ParamsValue("cmd/test/transformer-success.sh"),
 				"driver": utils.Must(json.Marshal(&cmd.RowDriverSetting{
 					Name: cmd.RowDriverNameText,
 				})),
-				"validate":           models.ParamsValue("true"),
-				"timeout":            models.ParamsValue("5s"),
-				"expected_exit_code": models.ParamsValue("-1"),
-				"skip_on_behaviour":  models.ParamsValue("all"),
+				"validate":           core.ParamsValue("true"),
+				"timeout":            core.ParamsValue("5s"),
+				"expected_exit_code": core.ParamsValue("-1"),
+				"skip_on_behaviour":  core.ParamsValue("all"),
 			},
-			validateFn: func(t *testing.T, recorder commonininterfaces.Recorder) {
+			validateFn: func(t *testing.T, recorder core.Recorder) {
 				rawVal, err := recorder.GetRawColumnValueByName("data")
 				require.NoError(t, err)
 				require.True(t, rawVal.IsNull)

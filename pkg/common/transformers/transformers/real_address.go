@@ -23,8 +23,7 @@ import (
 	"text/template"
 
 	"github.com/go-faker/faker/v4"
-	"github.com/greenmaskio/greenmask/pkg/common/interfaces"
-	"github.com/greenmaskio/greenmask/pkg/common/models"
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 	"github.com/greenmaskio/greenmask/pkg/common/transformers/parameters"
 	"github.com/greenmaskio/greenmask/pkg/common/transformers/utils"
 	"github.com/greenmaskio/greenmask/pkg/common/validationcollector"
@@ -53,11 +52,11 @@ var RealAddressTransformerDefinition = utils.NewTransformerDefinition(
 		SetColumnContainer(
 			parameters.NewColumnContainerProperties().
 				SetColumnProperties(
-					models.NewColumnProperties().
-						SetAllowedColumnTypeClasses(models.TypeClassText),
+					core.NewColumnProperties().
+						SetAllowedColumnTypeClasses(core.TypeClassText),
 				).
 				SetUnmarshaler(
-					func(_ context.Context, _ *parameters.ParameterDefinition, data models.ParamsValue) (
+					func(_ context.Context, _ *parameters.ParameterDefinition, data core.ParamsValue) (
 						[]parameters.ColumnContainer, error,
 					) {
 						var columns []*realAddressColumn
@@ -107,9 +106,9 @@ type RealAddressTransformer struct {
 
 func NewRealAddressTransformer(
 	ctx context.Context,
-	tableDriver interfaces.TableDriver,
+	tableDriver core.TableDriver,
 	parameters map[string]parameters.Parameterizer,
-) (interfaces.Transformer, error) {
+) (core.Transformer, error) {
 	columns, affectedColumns, err := getColumnContainerParameter[*realAddressColumn](
 		ctx, tableDriver, parameters, "columns",
 	)
@@ -126,22 +125,22 @@ func NewRealAddressTransformer(
 		col.columnIdx = column.Idx
 
 		if col.Template == "" {
-			validationcollector.FromContext(ctx).Add(models.NewValidationWarning().
+			validationcollector.FromContext(ctx).Add(core.NewValidationWarning().
 				SetMsg("template value must not be empty").
-				SetSeverity(models.ValidationSeverityError).
+				SetSeverity(core.ValidationSeverityError).
 				AddMeta("ColumnName", col.Name).
 				AddMeta("ParameterName", "columns"))
 			return nil, fmt.Errorf(
 				"template value must not be empty for column %s",
-				models.ErrFatalValidationError,
+				core.ErrFatalValidationError,
 			)
 		}
 
 		tmpl, err := template.New("").Parse(col.Template)
 		if err != nil {
-			validationcollector.FromContext(ctx).Add(models.NewValidationWarning().
+			validationcollector.FromContext(ctx).Add(core.NewValidationWarning().
 				SetMsg("error parsing template").
-				SetSeverity(models.ValidationSeverityError).
+				SetSeverity(core.ValidationSeverityError).
 				AddMeta("TemplateString", col.Template).
 				AddMeta("ColumnName", col.Name).
 				AddMeta("ParameterName", "columns").
@@ -149,15 +148,15 @@ func NewRealAddressTransformer(
 			return nil, fmt.Errorf(
 				"error parsing template for column %s: %w",
 				col.Name,
-				models.ErrFatalValidationError,
+				core.ErrFatalValidationError,
 			)
 		}
 
 		testAddress := getRealAddress()
 		if err = tmpl.Execute(testBuf, testAddress); err != nil {
-			validationcollector.FromContext(ctx).Add(models.NewValidationWarning().
+			validationcollector.FromContext(ctx).Add(core.NewValidationWarning().
 				SetMsg("error validating template").
-				SetSeverity(models.ValidationSeverityError).
+				SetSeverity(core.ValidationSeverityError).
 				AddMeta("TemplateString", col.Template).
 				AddMeta("ColumnName", col.Name).
 				AddMeta("ParameterName", "columns").
@@ -165,7 +164,7 @@ func NewRealAddressTransformer(
 			return nil, fmt.Errorf(
 				"error validating template for column %s: %w",
 				col.Name,
-				models.ErrFatalValidationError,
+				core.ErrFatalValidationError,
 			)
 		}
 		col.tmpl = tmpl
@@ -190,7 +189,7 @@ func (t *RealAddressTransformer) Done(context.Context) error {
 	return nil
 }
 
-func (t *RealAddressTransformer) Transform(_ context.Context, r interfaces.Recorder) error {
+func (t *RealAddressTransformer) Transform(_ context.Context, r core.Recorder) error {
 	address := getRealAddress()
 
 	// Iterate over the columns and update the record with generated address data
@@ -208,7 +207,7 @@ func (t *RealAddressTransformer) Transform(_ context.Context, r interfaces.Recor
 			return fmt.Errorf("execute template for column \"%s\": %w", col.Name, err)
 		}
 
-		newRawValue := models.NewColumnRawValue(slices.Clone(t.buf.Bytes()), false)
+		newRawValue := core.NewColumnRawValue(slices.Clone(t.buf.Bytes()), false)
 
 		// Update the record for the current column with the generated value
 		if err := r.SetRawColumnValueByIdx(col.columnIdx, newRawValue); err != nil {

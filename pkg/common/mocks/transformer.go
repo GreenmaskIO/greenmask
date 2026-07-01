@@ -17,14 +17,14 @@ package mocks
 import (
 	"context"
 
-	"github.com/greenmaskio/greenmask/pkg/common/interfaces"
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 	commonparameters "github.com/greenmaskio/greenmask/pkg/common/transformers/parameters"
 	"github.com/greenmaskio/greenmask/pkg/common/transformers/utils"
 	"github.com/stretchr/testify/mock"
 )
 
 var (
-	_ interfaces.Transformer = (*TransformerMock)(nil)
+	_ core.Transformer = (*TransformerMock)(nil)
 )
 
 type TransformerMock struct {
@@ -34,16 +34,16 @@ type TransformerMock struct {
 func NewTransformerMock(
 	newFunctionMock func(
 		ctx context.Context,
-		tableDriver interfaces.TableDriver,
+		tableDriver core.TableDriver,
 		parameters map[string]commonparameters.Parameterizer,
 	) error,
 ) (*TransformerMock, utils.NewTransformerFunc) {
 	tm := &TransformerMock{}
 	return tm, func(
 		ctx context.Context,
-		tableDriver interfaces.TableDriver,
+		tableDriver core.TableDriver,
 		parameters map[string]commonparameters.Parameterizer,
-	) (interfaces.Transformer, error) {
+	) (core.Transformer, error) {
 		if err := newFunctionMock(ctx, tableDriver, parameters); err != nil {
 			return nil, err
 		}
@@ -61,7 +61,7 @@ func (t *TransformerMock) Done(ctx context.Context) error {
 	return args.Error(0)
 }
 
-func (t *TransformerMock) Transform(ctx context.Context, r interfaces.Recorder) error {
+func (t *TransformerMock) Transform(ctx context.Context, r core.Recorder) error {
 	args := t.Called(ctx, r)
 	return args.Error(0)
 }

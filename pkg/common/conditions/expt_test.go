@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package conditions
+package conditions_test
 
 import (
 	"context"
@@ -21,45 +21,56 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/greenmaskio/greenmask/pkg/common/conditions"
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 	mocks2 "github.com/greenmaskio/greenmask/pkg/common/mocks"
-	"github.com/greenmaskio/greenmask/pkg/common/models"
 	"github.com/greenmaskio/greenmask/pkg/common/validationcollector"
 )
 
 func TestWhenCond_Evaluate(t *testing.T) {
-	table := models.Table{
+	table := core.Table{
 		Schema: "public",
 		Name:   "test",
-		Columns: []models.Column{
+		Columns: []core.Column{
 			{
-				Idx:      0,
-				Name:     "id",
-				TypeName: "integer",
-				TypeOID:  0,
+				Idx:  0,
+				Name: "id",
+				Type: core.Type{
+					Name: "integer",
+					ID:   0,
+				},
 			},
 			{
-				Idx:      1,
-				Name:     "title",
-				TypeName: "text",
-				TypeOID:  1,
+				Idx:  1,
+				Name: "title",
+				Type: core.Type{
+					Name: "text",
+					ID:   1,
+				},
 			},
 			{
-				Idx:      2,
-				Name:     "created_at",
-				TypeName: "timestamp",
-				TypeOID:  2,
+				Idx:  2,
+				Name: "created_at",
+				Type: core.Type{
+					Name: "timestamp",
+					ID:   2,
+				},
 			},
 			{
-				Idx:      3,
-				Name:     "json_data",
-				TypeName: "jsonb",
-				TypeOID:  3,
+				Idx:  3,
+				Name: "json_data",
+				Type: core.Type{
+					Name: "jsonb",
+					ID:   3,
+				},
 			},
 			{
-				Idx:      4,
-				Name:     "float_data",
-				TypeName: "float8",
-				TypeOID:  4,
+				Idx:  4,
+				Name: "float_data",
+				Type: core.Type{
+					Name: "float8",
+					ID:   4,
+				},
 			},
 		},
 	}
@@ -76,7 +87,7 @@ func TestWhenCond_Evaluate(t *testing.T) {
 			when: "record.id == 1",
 			setupExpectation: func(r *mocks2.RecorderMock) {
 				r.On("GetColumnValueByName", "id").
-					Return(&models.ColumnValue{
+					Return(&core.ColumnValue{
 						Value:  1,
 						IsNull: false,
 					}, nil)
@@ -88,7 +99,7 @@ func TestWhenCond_Evaluate(t *testing.T) {
 			when: "raw_record.id == \"1\"",
 			setupExpectation: func(r *mocks2.RecorderMock) {
 				r.On("GetRawColumnValueByName", "id").
-					Return(&models.ColumnRawValue{
+					Return(&core.ColumnRawValue{
 						Data:   []byte("1"),
 						IsNull: false,
 					}, nil)
@@ -100,7 +111,7 @@ func TestWhenCond_Evaluate(t *testing.T) {
 			when: "record.title == null",
 			setupExpectation: func(r *mocks2.RecorderMock) {
 				r.On("GetColumnValueByName", "title").
-					Return(&models.ColumnValue{
+					Return(&core.ColumnValue{
 						Value:  nil,
 						IsNull: true,
 					}, nil)
@@ -112,7 +123,7 @@ func TestWhenCond_Evaluate(t *testing.T) {
 			when: "record.created_at > now()",
 			setupExpectation: func(r *mocks2.RecorderMock) {
 				r.On("GetColumnValueByName", "created_at").
-					Return(&models.ColumnValue{
+					Return(&core.ColumnValue{
 						Value:  time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC),
 						IsNull: false,
 					}, nil)
@@ -124,7 +135,7 @@ func TestWhenCond_Evaluate(t *testing.T) {
 			when: `raw_record.json_data | jsonGet("a") == 1`,
 			setupExpectation: func(r *mocks2.RecorderMock) {
 				r.On("GetRawColumnValueByName", "json_data").
-					Return(&models.ColumnRawValue{
+					Return(&core.ColumnRawValue{
 						Data:   []byte(`{"a": 1}`),
 						IsNull: false,
 					}, nil)
@@ -136,7 +147,7 @@ func TestWhenCond_Evaluate(t *testing.T) {
 			when: `record.id | has([1, 2, 3, 9223372036854775807])`,
 			setupExpectation: func(r *mocks2.RecorderMock) {
 				r.On("GetColumnValueByName", "id").
-					Return(&models.ColumnValue{
+					Return(&core.ColumnValue{
 						Value:  1,
 						IsNull: false,
 					}, nil)
@@ -148,7 +159,7 @@ func TestWhenCond_Evaluate(t *testing.T) {
 			when: `record.float_data | has([123.0, 1., 10.])`,
 			setupExpectation: func(r *mocks2.RecorderMock) {
 				r.On("GetColumnValueByName", "float_data").
-					Return(&models.ColumnValue{
+					Return(&core.ColumnValue{
 						Value:  1.,
 						IsNull: false,
 					}, nil)
@@ -166,7 +177,7 @@ func TestWhenCond_Evaluate(t *testing.T) {
 			recorderMock.On("TableDriver").Return(tableDriverMock)
 			// GetColumnValueByName(columnName string) (*commonmodels.ColumnValue, error) {
 			tt.setupExpectation(recorderMock)
-			whenCond, warns := NewWhenCond(ctx, tt.when, table)
+			whenCond, warns := conditions.NewWhenCond(ctx, tt.when, table)
 			require.Empty(t, warns)
 			res, err := whenCond.Evaluate(recorderMock)
 			require.NoError(t, err)

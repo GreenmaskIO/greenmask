@@ -26,8 +26,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/greenmaskio/greenmask/pkg/common/interfaces"
-	commoninmodels "github.com/greenmaskio/greenmask/pkg/common/models"
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 	"github.com/greenmaskio/greenmask/pkg/common/transformers/parameters"
 	"github.com/greenmaskio/greenmask/pkg/common/transformers/utils"
 	"github.com/greenmaskio/greenmask/pkg/common/validationcollector"
@@ -49,9 +48,9 @@ var HashTransformerDefinition = utils.NewTransformerDefinition(
 	parameters.MustNewParameterDefinition(
 		"column",
 		"column name",
-	).SetIsColumn(commoninmodels.NewColumnProperties().
+	).SetIsColumn(core.NewColumnProperties().
 		SetAffected(true).
-		SetAllowedColumnTypeClasses(commoninmodels.TypeClassText),
+		SetAllowedColumnTypeClasses(core.TypeClassText),
 	).SetRequired(true),
 
 	parameters.MustNewParameterDefinition(
@@ -105,9 +104,9 @@ type HashTransformer struct {
 
 func NewHashTransformer(
 	ctx context.Context,
-	tableDriver interfaces.TableDriver,
+	tableDriver core.TableDriver,
 	parameters map[string]parameters.Parameterizer,
-) (interfaces.Transformer, error) {
+) (core.Transformer, error) {
 	columnName, column, err := getColumnParameterValue(ctx, tableDriver, parameters)
 	if err != nil {
 		return nil, err
@@ -192,7 +191,7 @@ func (t *HashTransformer) Done(context.Context) error {
 	return nil
 }
 
-func (t *HashTransformer) Transform(_ context.Context, r interfaces.Recorder) error {
+func (t *HashTransformer) Transform(_ context.Context, r core.Recorder) error {
 	val, err := r.GetRawColumnValueByIdx(t.columnIdx)
 	if err != nil {
 		return fmt.Errorf("unable to scan attribute value: %w", err)
@@ -222,7 +221,7 @@ func (t *HashTransformer) Transform(_ context.Context, r interfaces.Recorder) er
 
 	if err := r.SetRawColumnValueByIdx(
 		t.columnIdx,
-		commoninmodels.NewColumnRawValue(t.resultBuf[:maxLength], false),
+		core.NewColumnRawValue(t.resultBuf[:maxLength], false),
 	); err != nil {
 		return fmt.Errorf("unable to set new value: %w", err)
 	}
@@ -237,7 +236,7 @@ func (t *HashTransformer) Describe() string {
 func validateHashFunctionsParameter(
 	ctx context.Context,
 	_ *parameters.ParameterDefinition,
-	v commoninmodels.ParamsValue,
+	v core.ParamsValue,
 ) error {
 	functionName := string(v)
 	switch functionName {
@@ -249,15 +248,15 @@ func validateHashFunctionsParameter(
 			Str("ParameterValue", functionName).
 			Msg("md5 hash function is deprecated and will be removed in the future")
 		validationcollector.FromContext(ctx).Add(
-			commoninmodels.NewValidationWarning().
-				SetSeverity(commoninmodels.ValidationSeverityWarning).
+			core.NewValidationWarning().
+				SetSeverity(core.ValidationSeverityWarning).
 				AddMeta("ParameterValue", functionName).
 				SetMsg(`md5 hash function is deprecated and will be removed in the future`))
 		return nil
 	}
 	validationcollector.FromContext(ctx).Add(
-		commoninmodels.NewValidationWarning().
-			SetSeverity(commoninmodels.ValidationSeverityError).
+		core.NewValidationWarning().
+			SetSeverity(core.ValidationSeverityError).
 			AddMeta("ParameterValue", functionName).
 			SetMsg(`unknown hash function name`))
 	return nil
@@ -266,25 +265,25 @@ func validateHashFunctionsParameter(
 func validateMaxLengthParameter(
 	ctx context.Context,
 	_ *parameters.ParameterDefinition,
-	v commoninmodels.ParamsValue,
+	v core.ParamsValue,
 ) error {
 	maxLength, err := strconv.ParseInt(string(v), 10, 32)
 	if err != nil {
 		validationcollector.FromContext(ctx).
-			Add(commoninmodels.NewValidationWarning().
+			Add(core.NewValidationWarning().
 				AddMeta("ParameterValue", string(v)).
-				SetSeverity(commoninmodels.ValidationSeverityError).
+				SetSeverity(core.ValidationSeverityError).
 				SetError(err).
 				SetMsg("error parsing integer"))
-		return commoninmodels.ErrFatalValidationError
+		return core.ErrFatalValidationError
 	}
 	if maxLength >= 0 {
 		return nil
 	}
 	validationcollector.FromContext(ctx).
-		Add(commoninmodels.NewValidationWarning().
+		Add(core.NewValidationWarning().
 			AddMeta("ParameterValue", string(v)).
-			SetSeverity(commoninmodels.ValidationSeverityError).
+			SetSeverity(core.ValidationSeverityError).
 			SetMsg(`max_length parameter cannot be less than zero`))
-	return commoninmodels.ErrFatalValidationError
+	return core.ErrFatalValidationError
 }

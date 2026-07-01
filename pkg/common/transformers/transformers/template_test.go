@@ -18,42 +18,43 @@ import (
 	"context"
 	"testing"
 
-	commonininterfaces "github.com/greenmaskio/greenmask/pkg/common/interfaces"
-	"github.com/greenmaskio/greenmask/pkg/common/models"
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
+	coretest "github.com/greenmaskio/greenmask/pkg/common/coretest"
 	commonutils "github.com/greenmaskio/greenmask/pkg/common/utils"
 	"github.com/greenmaskio/greenmask/pkg/common/validationcollector"
-	mysqldbmsdriver "github.com/greenmaskio/greenmask/pkg/mysql/dbmsdriver"
 	"github.com/stretchr/testify/require"
 )
 
 func TestTemplateTransformer_Transform(t *testing.T) {
 	tests := []struct {
 		name             string
-		staticParameters map[string]models.ParamsValue
-		dynamicParameter map[string]models.DynamicParamValue
-		original         []*models.ColumnRawValue
-		validateFn       func(t *testing.T, recorder commonininterfaces.Recorder)
+		staticParameters map[string]core.ParamsValue
+		dynamicParameter map[string]core.DynamicParamValue
+		original         []*core.ColumnRawValue
+		validateFn       func(t *testing.T, recorder core.Recorder)
 		expectedErr      string
-		columns          []models.Column
+		columns          []core.Column
 	}{
 		{
 			name: "success",
-			columns: []models.Column{
+			columns: []core.Column{
 				{
-					Idx:       0,
-					Name:      "data",
-					TypeName:  mysqldbmsdriver.TypeInt,
-					TypeOID:   mysqldbmsdriver.VirtualOidInt,
-					TypeClass: models.TypeClassInt,
-					Length:    0,
-					Size:      2,
+					Idx:  0,
+					Name: "data",
+					Type: core.Type{
+						Name:   coretest.TypeInt4,
+						ID:     coretest.TypeIDInt4,
+						Class:  core.TypeClassInt,
+						Length: 0,
+						Size:   2,
+					},
 				},
 			},
-			original: []*models.ColumnRawValue{
-				models.NewColumnRawValue([]byte("3"), false)},
-			staticParameters: map[string]models.ParamsValue{
-				"column": models.ParamsValue("data"),
-				"template": models.ParamsValue(`
+			original: []*core.ColumnRawValue{
+				core.NewColumnRawValue([]byte("3"), false)},
+			staticParameters: map[string]core.ParamsValue{
+				"column": core.ParamsValue("data"),
+				"template": core.ParamsValue(`
 					{{- $val := .GetValue -}}
 					{{- if isNull $val -}}
 					{{- null -}}
@@ -64,7 +65,7 @@ func TestTemplateTransformer_Transform(t *testing.T) {
 					{{- end -}}
 				`),
 			},
-			validateFn: func(t *testing.T, recorder commonininterfaces.Recorder) {
+			validateFn: func(t *testing.T, recorder core.Recorder) {
 				var val int64
 				isNull, err := recorder.ScanColumnValueByName("data", &val)
 				require.NoError(t, err)
@@ -74,25 +75,27 @@ func TestTemplateTransformer_Transform(t *testing.T) {
 		},
 		{
 			name: "validation error",
-			columns: []models.Column{
+			columns: []core.Column{
 				{
-					Idx:       0,
-					Name:      "data",
-					TypeName:  mysqldbmsdriver.TypeInt,
-					TypeOID:   mysqldbmsdriver.VirtualOidInt,
-					TypeClass: models.TypeClassInt,
-					Length:    0,
-					Size:      2,
+					Idx:  0,
+					Name: "data",
+					Type: core.Type{
+						Name:   coretest.TypeInt4,
+						ID:     coretest.TypeIDInt4,
+						Class:  core.TypeClassInt,
+						Length: 0,
+						Size:   2,
+					},
 				},
 			},
-			original: []*models.ColumnRawValue{
-				models.NewColumnRawValue([]byte("3"), false)},
-			staticParameters: map[string]models.ParamsValue{
-				"column": models.ParamsValue("data"),
-				"template": models.ParamsValue(`
+			original: []*core.ColumnRawValue{
+				core.NewColumnRawValue([]byte("3"), false)},
+			staticParameters: map[string]core.ParamsValue{
+				"column": core.ParamsValue("data"),
+				"template": core.ParamsValue(`
 					{{ "asadasd" -}}
 				`),
-				"validate": models.ParamsValue("true"),
+				"validate": core.ParamsValue("true"),
 			},
 			expectedErr: "validate template output via driver: strconv.ParseInt",
 		},

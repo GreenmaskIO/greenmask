@@ -18,11 +18,10 @@ import (
 	"context"
 	"testing"
 
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
+	coretest "github.com/greenmaskio/greenmask/pkg/common/coretest"
 	dumpcontext "github.com/greenmaskio/greenmask/pkg/common/dump/context"
-	commonininterfaces "github.com/greenmaskio/greenmask/pkg/common/interfaces"
-	"github.com/greenmaskio/greenmask/pkg/common/models"
 	transformerstesting "github.com/greenmaskio/greenmask/pkg/common/transformers/testing"
-	mysqldbmsdriver "github.com/greenmaskio/greenmask/pkg/mysql/dbmsdriver"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -32,10 +31,12 @@ type whenMock struct {
 	mock.Mock
 }
 
-func (w *whenMock) Evaluate(r commonininterfaces.Recorder) (bool, error) {
+func (w *whenMock) Evaluate(r core.Recorder) (bool, error) {
 	args := w.Called(r)
 	return args.Bool(0), args.Error(1)
 }
+
+func (w *whenMock) Expression() string { return "" }
 
 type transformerMock struct {
 	mock.Mock
@@ -56,7 +57,7 @@ func (t *transformerMock) Done(ctx context.Context) error {
 	return args.Error(0)
 }
 
-func (t *transformerMock) Transform(ctx context.Context, r commonininterfaces.Recorder) error {
+func (t *transformerMock) Transform(ctx context.Context, r core.Recorder) error {
 	args := t.Called(ctx, r)
 	return args.Error(0)
 }
@@ -68,42 +69,48 @@ func (t *transformerMock) GetAffectedColumns() map[int]string {
 
 func TestTransformerBase_Init(t *testing.T) {
 	t.Run("init error of the second tran", func(t *testing.T) {
-		columns := []models.Column{
+		columns := []core.Column{
 			{
-				Idx:       0,
-				Name:      "first_name",
-				TypeName:  mysqldbmsdriver.TypeText,
-				TypeOID:   mysqldbmsdriver.VirtualOidText,
-				TypeClass: mysqldbmsdriver.TypeText,
-				Length:    0,
+				Idx:  0,
+				Name: "first_name",
+				Type: core.Type{
+					Name:   coretest.TypeText,
+					ID:     coretest.TypeIDText,
+					Class:  coretest.TypeText,
+					Length: 0,
+				},
 			},
 			{
-				Idx:       1,
-				Name:      "last_name",
-				TypeName:  mysqldbmsdriver.TypeText,
-				TypeOID:   mysqldbmsdriver.VirtualOidText,
-				TypeClass: mysqldbmsdriver.TypeText,
-				Length:    0,
+				Idx:  1,
+				Name: "last_name",
+				Type: core.Type{
+					Name:   coretest.TypeText,
+					ID:     coretest.TypeIDText,
+					Class:  coretest.TypeText,
+					Length: 0,
+				},
 			},
 			{
-				Idx:       2,
-				Name:      "middle_name",
-				TypeName:  mysqldbmsdriver.TypeText,
-				TypeOID:   mysqldbmsdriver.VirtualOidText,
-				TypeClass: mysqldbmsdriver.TypeText,
-				Length:    0,
+				Idx:  2,
+				Name: "middle_name",
+				Type: core.Type{
+					Name:   coretest.TypeText,
+					ID:     coretest.TypeIDText,
+					Class:  coretest.TypeText,
+					Length: 0,
+				},
 			},
 		}
-		table := models.Table{
+		table := core.Table{
 			Schema:  "public",
 			Name:    "users",
 			Columns: columns,
 		}
 
-		columnValues := []*models.ColumnRawValue{
-			models.NewColumnRawValue([]byte("a"), false),
-			models.NewColumnRawValue([]byte("b"), false),
-			models.NewColumnRawValue([]byte("c"), false),
+		columnValues := []*core.ColumnRawValue{
+			core.NewColumnRawValue([]byte("a"), false),
+			core.NewColumnRawValue([]byte("b"), false),
+			core.NewColumnRawValue([]byte("c"), false),
 		}
 		env := transformerstesting.NewTransformerTestEnvReal(t, nil, columns, nil, nil)
 		env.SetRecord(t, columnValues...)
@@ -130,7 +137,7 @@ func TestTransformerBase_Init(t *testing.T) {
 
 		tableCond := &whenMock{}
 
-		tableContext := &dumpcontext.TableContext{
+		tableContext := &dumpcontext.TableDumpContextPayload{
 			Table: &table,
 			TransformerContext: []*dumpcontext.TransformerContext{
 				tranCtx1,
@@ -153,42 +160,48 @@ func TestTransformerBase_Init(t *testing.T) {
 
 func TestTransformerBase_Transform(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
-		columns := []models.Column{
+		columns := []core.Column{
 			{
-				Idx:       0,
-				Name:      "first_name",
-				TypeName:  mysqldbmsdriver.TypeText,
-				TypeOID:   mysqldbmsdriver.VirtualOidText,
-				TypeClass: mysqldbmsdriver.TypeText,
-				Length:    0,
+				Idx:  0,
+				Name: "first_name",
+				Type: core.Type{
+					Name:   coretest.TypeText,
+					ID:     coretest.TypeIDText,
+					Class:  coretest.TypeText,
+					Length: 0,
+				},
 			},
 			{
-				Idx:       1,
-				Name:      "last_name",
-				TypeName:  mysqldbmsdriver.TypeText,
-				TypeOID:   mysqldbmsdriver.VirtualOidText,
-				TypeClass: mysqldbmsdriver.TypeText,
-				Length:    0,
+				Idx:  1,
+				Name: "last_name",
+				Type: core.Type{
+					Name:   coretest.TypeText,
+					ID:     coretest.TypeIDText,
+					Class:  coretest.TypeText,
+					Length: 0,
+				},
 			},
 			{
-				Idx:       2,
-				Name:      "middle_name",
-				TypeName:  mysqldbmsdriver.TypeText,
-				TypeOID:   mysqldbmsdriver.VirtualOidText,
-				TypeClass: mysqldbmsdriver.TypeText,
-				Length:    0,
+				Idx:  2,
+				Name: "middle_name",
+				Type: core.Type{
+					Name:   coretest.TypeText,
+					ID:     coretest.TypeIDText,
+					Class:  coretest.TypeText,
+					Length: 0,
+				},
 			},
 		}
-		table := models.Table{
+		table := core.Table{
 			Schema:  "public",
 			Name:    "users",
 			Columns: columns,
 		}
 
-		columnValues := []*models.ColumnRawValue{
-			models.NewColumnRawValue([]byte("a"), false),
-			models.NewColumnRawValue([]byte("b"), false),
-			models.NewColumnRawValue([]byte("c"), false),
+		columnValues := []*core.ColumnRawValue{
+			core.NewColumnRawValue([]byte("a"), false),
+			core.NewColumnRawValue([]byte("b"), false),
+			core.NewColumnRawValue([]byte("c"), false),
 		}
 		env := transformerstesting.NewTransformerTestEnvReal(t, nil, columns, nil, nil)
 		env.SetRecord(t, columnValues...)
@@ -229,7 +242,7 @@ func TestTransformerBase_Transform(t *testing.T) {
 		tableCond.On("Evaluate", mock.Anything).
 			Return(true, nil)
 
-		tableContext := &dumpcontext.TableContext{
+		tableContext := &dumpcontext.TableDumpContextPayload{
 			Table: &table,
 			TransformerContext: []*dumpcontext.TransformerContext{
 				tranCtx1,
@@ -257,42 +270,48 @@ func TestTransformerBase_Transform(t *testing.T) {
 	})
 
 	t.Run("without conds", func(t *testing.T) {
-		columns := []models.Column{
+		columns := []core.Column{
 			{
-				Idx:       0,
-				Name:      "first_name",
-				TypeName:  mysqldbmsdriver.TypeText,
-				TypeOID:   mysqldbmsdriver.VirtualOidText,
-				TypeClass: mysqldbmsdriver.TypeText,
-				Length:    0,
+				Idx:  0,
+				Name: "first_name",
+				Type: core.Type{
+					Name:   coretest.TypeText,
+					ID:     coretest.TypeIDText,
+					Class:  coretest.TypeText,
+					Length: 0,
+				},
 			},
 			{
-				Idx:       1,
-				Name:      "last_name",
-				TypeName:  mysqldbmsdriver.TypeText,
-				TypeOID:   mysqldbmsdriver.VirtualOidText,
-				TypeClass: mysqldbmsdriver.TypeText,
-				Length:    0,
+				Idx:  1,
+				Name: "last_name",
+				Type: core.Type{
+					Name:   coretest.TypeText,
+					ID:     coretest.TypeIDText,
+					Class:  coretest.TypeText,
+					Length: 0,
+				},
 			},
 			{
-				Idx:       2,
-				Name:      "middle_name",
-				TypeName:  mysqldbmsdriver.TypeText,
-				TypeOID:   mysqldbmsdriver.VirtualOidText,
-				TypeClass: mysqldbmsdriver.TypeText,
-				Length:    0,
+				Idx:  2,
+				Name: "middle_name",
+				Type: core.Type{
+					Name:   coretest.TypeText,
+					ID:     coretest.TypeIDText,
+					Class:  coretest.TypeText,
+					Length: 0,
+				},
 			},
 		}
-		table := models.Table{
+		table := core.Table{
 			Schema:  "public",
 			Name:    "users",
 			Columns: columns,
 		}
 
-		columnValues := []*models.ColumnRawValue{
-			models.NewColumnRawValue([]byte("a"), false),
-			models.NewColumnRawValue([]byte("b"), false),
-			models.NewColumnRawValue([]byte("c"), false),
+		columnValues := []*core.ColumnRawValue{
+			core.NewColumnRawValue([]byte("a"), false),
+			core.NewColumnRawValue([]byte("b"), false),
+			core.NewColumnRawValue([]byte("c"), false),
 		}
 		env := transformerstesting.NewTransformerTestEnvReal(t, nil, columns, nil, nil)
 		env.SetRecord(t, columnValues...)
@@ -325,7 +344,7 @@ func TestTransformerBase_Transform(t *testing.T) {
 		tableCond.On("Evaluate", mock.Anything).
 			Return(true, nil)
 
-		tableContext := &dumpcontext.TableContext{
+		tableContext := &dumpcontext.TableDumpContextPayload{
 			Table: &table,
 			TransformerContext: []*dumpcontext.TransformerContext{
 				tranCtx1,

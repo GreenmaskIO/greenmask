@@ -17,19 +17,20 @@ package dumpers
 import (
 	"fmt"
 
-	commonmodels "github.com/greenmaskio/greenmask/pkg/common/models"
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 )
 
-func getUniqueDumpTaskID(dumperType string, meta map[string]any) string {
-	tableSchema, ok := meta[commonmodels.MetaKeyTableSchema].(string)
+// tableDebugName builds a human-readable identifier ("table <schema>.<name>")
+// for a dumper from its data-stream reader Meta map, used only for log lines and
+// error wrapping.
+func tableDebugName(meta map[string]any) string {
+	tableSchema, ok := meta[core.MetaKeyTableSchema].(string)
 	if !ok {
 		tableSchema = "!!!UNKNOWN!!!"
 	}
-	tableName, ok := meta[commonmodels.MetaKeyTableName].(string)
+	tableName, ok := meta[core.MetaKeyTableName].(string)
 	if !ok {
 		tableName = "!!!UNKNOWN!!!"
 	}
-	return fmt.Sprintf(
-		"%s___%s.%s", dumperType, tableSchema, tableName,
-	)
+	return fmt.Sprintf("table %s.%s", tableSchema, tableName)
 }

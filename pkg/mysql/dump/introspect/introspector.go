@@ -22,16 +22,15 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/rs/zerolog/log"
 
-	"github.com/greenmaskio/greenmask/pkg/common/interfaces"
-	commonmodels "github.com/greenmaskio/greenmask/pkg/common/models"
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 	"github.com/greenmaskio/greenmask/pkg/mysql/dbmsdriver"
 	mysqlmodels "github.com/greenmaskio/greenmask/pkg/mysql/models"
 )
 
 var (
-	errNoKeysFound                 = errors.New("no keys found")
-	errCannotMatchTypeToVirtualOID = errors.New("cannot match type to virtual OID")
-	errNoSchemasFound              = errors.New("no schemas/databases found according to the filters")
+	errNoKeysFound             = errors.New("no keys found")
+	errCannotMatchTypeToTypeID = errors.New("cannot match type to virtual OID")
+	errNoSchemasFound          = errors.New("no schemas/databases found according to the filters")
 )
 
 type options interface {
@@ -86,11 +85,11 @@ func (i *Introspector) GetTables() []mysqlmodels.Table {
 	return i.tables
 }
 
-// GetSchemaRelatedSettings - generates the GenericSchemaRelatedSettings based on the introspected tables and the
+// GetDumpScope - generates the GetDumpScope based on the introspected tables and the
 // user's filter settings. This is required to implement a bridge between vendor clike tools (e.g. mysqldump) and
 // greenmask's internal filtering and dumping logic.
-func (i *Introspector) GetSchemaRelatedSettings() commonmodels.MysqlDumpRelatedSettings {
-	res := commonmodels.MysqlDumpRelatedSettings{
+func (i *Introspector) GetDumpScope() core.DumpScope {
+	res := core.DumpScope{
 		ExcludeTables:    make(map[string][]string),
 		IncludeTables:    make(map[string][]string),
 		ExcludeTableData: make(map[string][]string),
@@ -158,8 +157,8 @@ func (i *Introspector) GetSchemaRelatedSettings() commonmodels.MysqlDumpRelatedS
 	return res
 }
 
-func (i *Introspector) GetCommonTables() []commonmodels.Table {
-	tables := make([]commonmodels.Table, len(i.tables))
+func (i *Introspector) GetCommonTables() []core.Table {
+	tables := make([]core.Table, len(i.tables))
 	for idx, table := range i.tables {
 		tables[idx] = table.ToCommonTable()
 	}
@@ -178,7 +177,7 @@ func (i *Introspector) GetMatchedDatabases() []string {
 
 // Introspect - introspects the mysql instance provided. It received a transaction
 // because the data have to be consistent.
-func (i *Introspector) Introspect(ctx context.Context, tx interfaces.DB) error {
+func (i *Introspector) Introspect(ctx context.Context, tx core.DB) error {
 	schemas, err := i.getSchemas(ctx, tx)
 	if err != nil {
 		return fmt.Errorf("get schemas: %w", err)
@@ -244,7 +243,7 @@ func (i *Introspector) Introspect(ctx context.Context, tx interfaces.DB) error {
 }
 
 // getTables - get all tables from the database excluding system tables
-func (i *Introspector) getTables(ctx context.Context, tx interfaces.DB) ([]mysqlmodels.Table, error) {
+func (i *Introspector) getTables(ctx context.Context, tx core.DB) ([]mysqlmodels.Table, error) {
 	// Build the query to fetch all base tables from all available schemas
 	query := `
 		select t.TABLE_SCHEMA as schema_name, 
@@ -315,7 +314,7 @@ func (i *Introspector) getTables(ctx context.Context, tx interfaces.DB) ([]mysql
 }
 
 // getSchemas - get all possible schemas and databases
-func (i *Introspector) getSchemas(ctx context.Context, tx interfaces.DB) ([]string, error) {
+func (i *Introspector) getSchemas(ctx context.Context, tx core.DB) ([]string, error) {
 	query := `
 		SELECT 
 			SCHEMA_NAME 
@@ -365,21 +364,21 @@ func (i *Introspector) getSchemas(ctx context.Context, tx interfaces.DB) ([]stri
 	return schemas, nil
 }
 
-func getTypeOID(columnType string, dataType *string) (commonmodels.VirtualOID, error) {
-	typeOID, ok := dbmsdriver.TypeNameToVirtualOid[columnType]
+func getTypeID(columnType string, dataType *string) (core.TypeID, error) {
+	typeOID, ok := dbmsdriver.TypeNameToTypeID[columnType]
 	if ok {
 		return typeOID, nil
 	}
 	// If not found, try to use fallback using dataType if provided.
 	if dataType == nil {
-		return 0, fmt.Errorf("match type OID for %s: %w", columnType, errCannotMatchTypeToVirtualOID)
+		return 0, fmt.Errorf("match type OID for %s: %w", columnType, errCannotMatchTypeToTypeID)
 	}
-	typeOID, ok = dbmsdriver.TypeNameToVirtualOid[*dataType]
+	typeOID, ok = dbmsdriver.TypeNameToTypeID[*dataType]
 	if ok {
 		return typeOID, nil
 	}
 	return 0, fmt.Errorf(
-		"match type OID for %s or %s: %w", columnType, *dataType, errCannotMatchTypeToVirtualOID,
+		"match type OID for %s or %s: %w", columnType, *dataType, errCannotMatchTypeToTypeID,
 	)
 }
 
@@ -388,8 +387,8 @@ func getTypeClass(
 	columnName string,
 	typeName string,
 	dataType *string,
-) commonmodels.TypeClass {
-	defaultTypeClass := commonmodels.TypeClassUnsupported
+) core.TypeClass {
+	defaultTypeClass := core.TypeClassUnsupported
 	typeClass, ok := dbmsdriver.TypeDataNameTypeToClass[typeName]
 	if ok {
 		return typeClass
@@ -408,13 +407,13 @@ func getTypeClass(
 			Str("DataType", *dataType).
 			Str("ColumnName", columnName).
 			Msg("cannot match data type to type class, defaulting to unsupported")
-		return commonmodels.TypeClassUnsupported
+		return core.TypeClassUnsupported
 	}
 	return typeClass
 }
 
 // getColumns - get all columns for a given table
-func (i *Introspector) getColumns(ctx context.Context, tx interfaces.DB, tableSchema string, tableName string) ([]mysqlmodels.Column, error) {
+func (i *Introspector) getColumns(ctx context.Context, tx core.DB, tableSchema string, tableName string) ([]mysqlmodels.Column, error) {
 	query := `
 		select c.COLUMN_NAME,
 			   c.COLUMN_TYPE,
@@ -455,7 +454,7 @@ func (i *Introspector) getColumns(ctx context.Context, tx interfaces.DB, tableSc
 		); err != nil {
 			return nil, fmt.Errorf("scan column introspection row: %w", err)
 		}
-		typeOID, err := getTypeOID(columnType, dataType)
+		typeOID, err := getTypeID(columnType, dataType)
 		if err != nil {
 			return nil, fmt.Errorf("get type oid: %w", err)
 		}
@@ -470,7 +469,7 @@ func (i *Introspector) getColumns(ctx context.Context, tx interfaces.DB, tableSc
 }
 
 // getPrimaryKey - get primary key columns for a given table.
-func (i *Introspector) getPrimaryKey(ctx context.Context, tx interfaces.DB, tableSchema string, tableName string) ([]string, error) {
+func (i *Introspector) getPrimaryKey(ctx context.Context, tx core.DB, tableSchema string, tableName string) ([]string, error) {
 	query := `
 		SELECT k.column_name
 		FROM information_schema.table_constraints t
@@ -504,10 +503,10 @@ func (i *Introspector) getPrimaryKey(ctx context.Context, tx interfaces.DB, tabl
 // getForeignKeys - get foreign keys for a given table.
 func (i *Introspector) getForeignKeys(
 	ctx context.Context,
-	tx interfaces.DB,
+	tx core.DB,
 	tableSchema string,
 	tableName string,
-) ([]commonmodels.Reference, error) {
+) ([]core.Reference, error) {
 	constraints, err := i.getForeignKeyConstraints(ctx, tx, tableSchema, tableName)
 	if err != nil {
 		return nil, fmt.Errorf("get foreign key constraints: %w", err)
@@ -524,7 +523,7 @@ func (i *Introspector) getForeignKeys(
 }
 
 // getForeignKeyKeys - get foreign key constraint keys for a given constraint.
-func (i *Introspector) getForeignKeyKeys(ctx context.Context, tx interfaces.DB, constraintSchema, constraintName string) ([]string, error) {
+func (i *Introspector) getForeignKeyKeys(ctx context.Context, tx core.DB, constraintSchema, constraintName string) ([]string, error) {
 	query := `
 		SELECT k.column_name
 		FROM information_schema.key_column_usage k
@@ -562,10 +561,10 @@ func (i *Introspector) getForeignKeyKeys(ctx context.Context, tx interfaces.DB, 
 // getForeignKeyConstraints - get foreign keys for a given table.
 func (i *Introspector) getForeignKeyConstraints(
 	ctx context.Context,
-	tx interfaces.DB,
+	tx core.DB,
 	tableSchema string,
 	tableName string,
-) ([]commonmodels.Reference, error) {
+) ([]core.Reference, error) {
 	query := `
 		SELECT DISTINCT 
 			t.CONSTRAINT_SCHEMA,
@@ -602,7 +601,7 @@ func (i *Introspector) getForeignKeyConstraints(
 		}
 	}()
 
-	var constraints []commonmodels.Reference
+	var constraints []core.Reference
 	for rows.Next() {
 		var (
 			constraintSchema, constantName    string
@@ -614,7 +613,7 @@ func (i *Introspector) getForeignKeyConstraints(
 		); err != nil {
 			return nil, fmt.Errorf("scan referenced tables row: %w", err)
 		}
-		c := commonmodels.NewReference(
+		c := core.NewReference(
 			referencedSchema,
 			referencedTable,
 			constraintSchema,

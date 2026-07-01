@@ -22,7 +22,7 @@ import (
 	"slices"
 	"sync"
 
-	"github.com/greenmaskio/greenmask/pkg/common/models"
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 )
 
 var (
@@ -62,7 +62,7 @@ type Collector struct {
 	// parent - set null on the root.
 	parent *Collector
 	// warning - stored only on the root.
-	warnings []*models.ValidationWarning
+	warnings []*core.ValidationWarning
 	mu       sync.Mutex
 	// Context of the current collector.
 	contextMeta map[string]any
@@ -129,13 +129,13 @@ func (vc *Collector) WithMeta(meta map[string]any) *Collector {
 }
 
 // Add enriches vw with this collector’s metadata, then appends it to the root.
-func (vc *Collector) Add(warnings ...*models.ValidationWarning) {
+func (vc *Collector) Add(warnings ...*core.ValidationWarning) {
 	for i := range warnings {
 		vc.add(warnings[i])
 	}
 }
 
-func (vc *Collector) add(vw *models.ValidationWarning) {
+func (vc *Collector) add(vw *core.ValidationWarning) {
 	if vc.parent != nil {
 		vc.parent.Add(vw)
 	}
@@ -149,7 +149,7 @@ func (vc *Collector) add(vw *models.ValidationWarning) {
 }
 
 // GetWarnings returns the slice of all warnings collected in the root.
-func (vc *Collector) GetWarnings() []*models.ValidationWarning {
+func (vc *Collector) GetWarnings() []*core.ValidationWarning {
 	vc.Root().mu.Lock()
 	defer vc.Root().mu.Unlock()
 	return vc.Root().warnings
@@ -163,8 +163,8 @@ func (vc *Collector) HasWarnings() bool {
 
 // IsFatal returns true if any collected warning is fatal.
 func (vc *Collector) IsFatal() bool {
-	return slices.ContainsFunc(vc.warnings, func(warning *models.ValidationWarning) bool {
-		return warning.Severity == models.ValidationSeverityError
+	return slices.ContainsFunc(vc.warnings, func(warning *core.ValidationWarning) bool {
+		return warning.Severity == core.ValidationSeverityError
 	})
 }
 

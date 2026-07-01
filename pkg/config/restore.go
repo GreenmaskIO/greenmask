@@ -18,7 +18,7 @@ import (
 	"fmt"
 
 	commonconfig "github.com/greenmaskio/greenmask/pkg/common/config"
-	commonmodels "github.com/greenmaskio/greenmask/pkg/common/models"
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 	mysqlcommonconfig "github.com/greenmaskio/greenmask/pkg/mysql/config"
 )
 
@@ -58,6 +58,9 @@ type MysqlRestoreConfig struct {
 }
 
 func (r *MysqlRestoreConfig) Validate() error {
+	if r.InsertIgnore && r.InsertReplace {
+		return fmt.Errorf("insert-ignore and insert-replace are mutually exclusive")
+	}
 	return nil
 }
 
@@ -81,6 +84,10 @@ type CommonRestoreOptions struct {
 	SchemaOnly     bool `mapstructure:"schema-only" yaml:"schema-only" json:"schema-only"`
 	Jobs           int  `mapstructure:"jobs" yaml:"jobs" json:"jobs"`
 	RestoreInOrder bool `mapstructure:"restore-in-order" yaml:"restore-in-order" json:"restore-in-order"`
+	// SingleTransaction restores the whole dump inside one transaction per
+	// connection, committed only on full success and rolled back on any error
+	// (mirrors pg_restore's --single-transaction).
+	SingleTransaction bool `mapstructure:"single-transaction" yaml:"single-transaction" json:"single-transaction"`
 	// CreateDatabase controls whether greenmask issues CREATE DATABASE statements before restoring schema.
 	CreateDatabase bool `mapstructure:"create-database" yaml:"create-database" json:"create_database"`
 	// IfNotExists adds IF NOT EXISTS to CREATE DATABASE and (in future) other object creation statements.
@@ -89,9 +96,9 @@ type CommonRestoreOptions struct {
 	RemapDatabase map[string]string `mapstructure:"remap-database" yaml:"remap-database" json:"remap-database,omitempty"`
 	// DatabaseReplaceMode controls mapping strictness: "strict" (default) requires all databases in the dump
 	// to have a mapping entry; "relaxed" renames only the listed databases and keeps the rest as-is.
-	DatabaseReplaceMode commonmodels.DatabaseReplacementMode `mapstructure:"database-replace-mode" yaml:"database-replace-mode" json:"database-replace-mode,omitempty"`
-	Section             []string                             `mapstructure:"section"               yaml:"section"               json:"section,omitempty"`
-	SSL                 commonconfig.SSLOpts                 `mapstructure:",squash"               json:",squash,omitempty"` //nolint:staticcheck
+	DatabaseReplaceMode core.DatabaseReplacementMode `mapstructure:"database-replace-mode" yaml:"database-replace-mode" json:"database-replace-mode,omitempty"`
+	Section             []string                     `mapstructure:"section"               yaml:"section"               json:"section,omitempty"`
+	SSL                 commonconfig.SSLOpts         `mapstructure:",squash"               json:",squash,omitempty"` //nolint:staticcheck
 }
 
 func (o *CommonRestoreOptions) Validate() error {
@@ -119,13 +126,16 @@ type Restore struct {
 	Options          CommonRestoreOptions           `mapstructure:"options" yaml:"options" json:"options"`
 	MysqlConfig      MysqlRestoreConfig             `mapstructure:"mysql" yaml:"mysql"`
 	PostgresqlConfig PostgresqlRestoreConfig        `mapstructure:"postgresql" yaml:"postgresql"`
-	Scripts          []commonmodels.Script          `mapstructure:"scripts" yaml:"scripts" json:"scripts,omitempty"`
+	Scripts          []core.Script                  `mapstructure:"scripts" yaml:"scripts" json:"scripts,omitempty"`
 	ErrorExclusions  DataRestorationErrorExclusions `mapstructure:"insert_error_exclusions" yaml:"insert_error_exclusions" json:"insert_error_exclusions,omitempty"`
 }
 
 func (r *Restore) Validate() error {
 	if err := r.Options.Validate(); err != nil {
 		return fmt.Errorf("validate options: %w", err)
+	}
+	if err := r.MysqlConfig.Validate(); err != nil {
+		return fmt.Errorf("validate mysql config: %w", err)
 	}
 	for i, script := range r.Scripts {
 		if err := script.Validate(); err != nil {
@@ -146,7 +156,7 @@ func NewRestore() Restore {
 		},
 		Options: CommonRestoreOptions{
 			RemapDatabase:       make(map[string]string),
-			DatabaseReplaceMode: commonmodels.DatabaseReplaceModeStrict,
+			DatabaseReplaceMode: core.DatabaseReplaceModeStrict,
 		},
 	}
 }

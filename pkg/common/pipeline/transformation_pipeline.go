@@ -21,15 +21,15 @@ import (
 
 	"github.com/rs/zerolog/log"
 
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 	dumpcontext "github.com/greenmaskio/greenmask/pkg/common/dump/context"
-	"github.com/greenmaskio/greenmask/pkg/common/interfaces"
 )
 
 type TransformationPipeline struct {
-	tableContext *dumpcontext.TableContext
+	tableContext *dumpcontext.TableDumpContextPayload
 }
 
-func NewTransformationPipeline(tableContext *dumpcontext.TableContext) *TransformationPipeline {
+func NewTransformationPipeline(tableContext *dumpcontext.TableDumpContextPayload) *TransformationPipeline {
 	return &TransformationPipeline{
 		tableContext: tableContext,
 	}
@@ -74,7 +74,7 @@ func (tp *TransformationPipeline) Init(ctx context.Context) error {
 	return nil
 }
 
-func (tp *TransformationPipeline) Transform(ctx context.Context, r interfaces.Recorder) error {
+func (tp *TransformationPipeline) Transform(ctx context.Context, r core.Recorder) error {
 	needTransform, err := tp.tableContext.EvaluateWhen(r)
 	if err != nil {
 		return fmt.Errorf("evaluate table condition: %w", err)
