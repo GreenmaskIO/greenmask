@@ -1,0 +1,78 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# Notify the docs site (greenmaskio.github.io) of a docs change or release.
+#
+# Greenmask is published by the site with a version dropdown:
+#   - `Next` always follows greenmask `main` (the `docusaurus/` tree).
+#   - each released major.minor line follows its latest STABLE tag.
+# This workflow fires a `docs-release` repository_dispatch at the site in both cases:
+#   - a push to `main` touching `docusaurus/**` → payload {product}        (updates Next)
+#   - a STABLE tag push `vMAJOR.MINOR.PATCH`    → payload {product, tag}   (records a line)
+# Prerelease tags (e.g. v1.0.0b1) are ignored. It does NOT touch the MkDocs `docs/` tree.
+#
+# SETUP:
+#   Add a repo (or org) secret DOCS_SITE_DISPATCH_TOKEN: a fine-grained PAT with
+#   "Contents: Read and write" on greenmaskio/greenmaskio.github.io, so it may POST to
+#   that repo's /dispatches endpoint.
+# ─────────────────────────────────────────────────────────────────────────────
+name: Notify docs site of a docs change or release
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+
+# Least-privilege: this workflow only reads the repo for checkout; the cross-repo
+# dispatch uses DOCS_SITE_DISPATCH_TOKEN (a PAT), not the built-in GITHUB_TOKEN.
+permissions:
+  contents: read
+
+env:
+  SITE_REPO: greenmaskio/greenmaskio.github.io
+  PRODUCT_ID: greenmask        # must match the product `id` in the site's .github/products.json
+  DOCS_GLOB: 'docusaurus/'     # greenmask serves its ported docs from docusaurus/
+
+jobs:
+  dispatch:
+    runs-on: ubuntu-latest
+    steps:
+      # Need history to diff a main push for docusaurus/** changes.
+      # Pinned to a commit SHA (supply-chain hardening); # v4 is the moving tag.
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          fetch-depth: 0
+      - name: Decide and send docs-release dispatch
+        env:
+          TOKEN: ${{ secrets.DOCS_SITE_DISPATCH_TOKEN }}
+          BEFORE: ${{ github.event.before }}
+        run: |
+          set -euo pipefail
+          send() { # $1 = client_payload JSON object
+            curl -fsS -X POST \
+              -H "Authorization: Bearer ${TOKEN}" \
+              -H "Accept: application/vnd.github+json" \
+              "https://api.github.com/repos/${SITE_REPO}/dispatches" \
+              -d "{\"event_type\":\"docs-release\",\"client_payload\":$1}"
+          }
+          if [ "${GITHUB_REF_TYPE}" = "tag" ]; then
+            TAG="${GITHUB_REF_NAME}"
+            # Only stable vMAJOR.MINOR.PATCH tags record a version line.
+            if ! printf '%s' "$TAG" | grep -Eq '^v?[0-9]+\.[0-9]+\.[0-9]+$'; then
+              echo "Tag $TAG is a prerelease — not notifying the docs site."
+              exit 0
+            fi
+            send "{\"product\":\"${PRODUCT_ID}\",\"tag\":\"${TAG}\"}"
+            echo "Dispatched release ${PRODUCT_ID}@${TAG} → ${SITE_REPO}"
+          else
+            # main push: only notify when docusaurus/** actually changed.
+            if [ -z "${BEFORE}" ] || [ "${BEFORE}" = "0000000000000000000000000000000000000000" ]; then
+              changed=1
+            else
+              changed=$(git diff --name-only "${BEFORE}" "${GITHUB_SHA}" -- "${DOCS_GLOB}" | wc -l)
+            fi
+            if [ "${changed}" -eq 0 ]; then
+              echo "No ${DOCS_GLOB} changes in this push — skipping."
+              exit 0
+            fi
+            send "{\"product\":\"${PRODUCT_ID}\"}"
+            echo "Dispatched docs-on-main ${PRODUCT_ID} → ${SITE_REPO}"
+          fi
