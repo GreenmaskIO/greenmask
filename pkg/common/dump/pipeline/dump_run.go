@@ -88,6 +88,13 @@ type RunState struct {
 	ExecutedStages      map[StageName]bool
 	ExecutedStagesOrder []StageName
 
+	// Warnings holds the validation warnings collected during the run. Unlike a
+	// live collector it is a plain serialisable slice, so RunState can cross
+	// process boundaries (e.g. Temporal activities in gm-backend) with its
+	// warnings intact. withRuntime populates it on every exit path; the
+	// collector itself is an internal pipeline detail that never escapes.
+	Warnings core.ValidationWarnings `json:"warnings,omitempty"`
+
 	Discovery            DiscoveryStageArtifacts       `json:"discovery"`
 	Context              ContextStageArtifacts         `json:"context"`
 	BuildSnapshotAndDiff BuildSnapshotAndDiffArtifacts `json:"build_snapshot_and_diff"`
@@ -117,6 +124,18 @@ func NewRunState(cfg config.Config) *RunState {
 			Config: &cfg,
 		},
 	}
+}
+
+// HasWarnings reports whether any validation warning was collected during the
+// run. Mirrors Collector.HasWarnings against the serialised slice.
+func (r *RunState) HasWarnings() bool {
+	return r.Warnings.HasWarnings()
+}
+
+// IsFatal reports whether any collected warning has error severity. Mirrors
+// Collector.IsFatal against the serialised slice.
+func (r *RunState) IsFatal() bool {
+	return r.Warnings.IsFatal()
 }
 
 // MarkExecuted records stage as completed, both in the map (for O(1) Require

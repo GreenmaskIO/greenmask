@@ -44,10 +44,23 @@ const (
 	MetaKeyTransformerName = "TransformerName"
 	MetaKeyConditionScope  = "ConditionScope"
 	MetaKeyQuery           = "Query"
+	// MetaKeyStage names the pipeline stage a warning was produced in (e.g.
+	// "discovery", "plan_validation"). Set by the pipeline before each stage so
+	// debug output pinpoints where a warning originated.
+	MetaKeyStage = "Stage"
 )
 
 type ValidationWarnings []*ValidationWarning
 
+// HasWarnings reports whether the slice contains any warning. It mirrors
+// Collector.HasWarnings so a serialised warnings slice exposes the same query
+// surface as the live collector.
+func (re ValidationWarnings) HasWarnings() bool {
+	return len(re) > 0
+}
+
+// IsFatal reports whether any warning has error severity. It mirrors
+// Collector.IsFatal.
 func (re ValidationWarnings) IsFatal() bool {
 	return slices.ContainsFunc(re, func(warning *ValidationWarning) bool {
 		return warning.Severity == ValidationSeverityError

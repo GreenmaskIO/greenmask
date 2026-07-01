@@ -25,7 +25,6 @@ import (
 
 	core "github.com/greenmaskio/greenmask/pkg/common/core"
 	"github.com/greenmaskio/greenmask/pkg/common/schemadiff"
-	commonutils "github.com/greenmaskio/greenmask/pkg/common/utils"
 	"github.com/greenmaskio/greenmask/pkg/common/validate"
 	"github.com/greenmaskio/greenmask/pkg/common/validationcollector"
 	"github.com/greenmaskio/greenmask/pkg/config"
@@ -64,18 +63,13 @@ func (g *Cli) Validate(ctx context.Context) error {
 	return nil
 }
 
-// PrintValidateWarning prints collected validation warnings from ctx and
-// returns an error when fatal warnings are present.
+// PrintValidateWarning prints collected validation warnings from the ctx
+// collector and returns an error when fatal warnings are present. The validate
+// pipeline still collects into the ctx collector (it does not build a RunState),
+// so warnings are sourced from there and handed to the shared printer.
 func PrintValidateWarning(ctx context.Context, cfg *config.Config) error {
-	err := commonutils.PrintValidationWarnings(ctx, cfg.Validate.ResolvedWarnings, cfg.Validate.Warnings)
-	if err != nil {
-		return fmt.Errorf("print validation warnings: %w", err)
-	}
-	vc := validationcollector.FromContext(ctx)
-	if vc.IsFatal() {
-		return core.ErrFatalValidationError
-	}
-	return nil
+	warnings := validationcollector.FromContext(ctx).GetWarnings()
+	return printCollectedWarnings(ctx, warnings, cfg)
 }
 
 // validateWithStorage runs the full validate pipeline using an already

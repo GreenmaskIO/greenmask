@@ -8,6 +8,7 @@ import (
 	"github.com/rs/zerolog/log"
 
 	core "github.com/greenmaskio/greenmask/pkg/common/core"
+	"github.com/greenmaskio/greenmask/pkg/common/validationcollector"
 	"github.com/greenmaskio/greenmask/pkg/config"
 )
 
@@ -86,6 +87,7 @@ func (p *RestorePipeline) Execute(
 	runtime *RestoreRuntime,
 	state *RestoreRunState,
 ) error {
+	ctx = validationcollector.WithMeta(ctx, core.MetaKeyStage, RestoreStageNameExecution)
 	if err := state.Require(RestoreStageNameSessionInitialization); err != nil {
 		return fmt.Errorf("check requirements: %w", err)
 	}
@@ -156,14 +158,28 @@ func (p *RestorePipeline) Execute(
 // close regardless of outcome. StageNameSessionInitialization is recorded on
 // state before fn is called.
 //
+// withRuntime also creates the run-scoped validation collector and injects it
+// into the ctx it threads to fn, so every stage adds warnings into it. The
+// collector is an internal implementation detail that never escapes: on every
+// exit path withRuntime copies its warnings into the serialisable state.Warnings
+// so callers read warnings off the returned state, not a live collector.
+//
 // The deferred close uses context.Background with a fixed timeout so that
 // cancellation of the operation context does not prevent cleanup.
 func (p *RestorePipeline) withRuntime(
 	ctx context.Context,
 	cfg config.Config,
 	state *RestoreRunState,
-	fn func(runtime *RestoreRuntime) error,
+	fn func(ctx context.Context, runtime *RestoreRuntime) error,
 ) error {
+	vc := validationcollector.NewCollectorWithMeta(core.MetaKeyEngine, cfg.Engine)
+	ctx = validationcollector.WithCollector(ctx, vc)
+	// Enrich state with the collected warnings on every exit path (declared
+	// first so it runs last, after the session close below). This keeps the
+	// collector internal while making warnings survive on the serialisable state.
+	defer func() {
+		state.Warnings = vc.GetWarnings()
+	}()
 	runtime, err := p.OpenRuntime(ctx, cfg)
 	if err != nil {
 		return fmt.Errorf("open runtime: %w", err)
@@ -176,7 +192,7 @@ func (p *RestorePipeline) withRuntime(
 		}
 	}()
 	state.MarkExecuted(RestoreStageNameSessionInitialization)
-	return fn(runtime)
+	return fn(ctx, runtime)
 }
 
 // RunRestore is the main entry point for a restore operation.
@@ -189,10 +205,16 @@ func (p *RestorePipeline) RunRestore(
 	dumpID core.DumpID,
 ) (*RestoreRunState, error) {
 	state := NewRestoreRunState(cfg, dumpID)
-	if err := p.withRuntime(ctx, cfg, state, func(runtime *RestoreRuntime) error {
-		return p.Execute(ctx, runtime, state)
+	if err := p.withRuntime(ctx, cfg, state, func(ctx context.Context, runtime *RestoreRuntime) error {
+		if err := p.Execute(ctx, runtime, state); err != nil {
+			return fmt.Errorf("execute restore: %w", err)
+		}
+		return nil
 	}); err != nil {
-		return nil, err
+		// Return state even on error: state.Warnings holds the collected warnings, and
+		// the run error is frequently caused by a fatal warning the caller needs
+		// to surface.
+		return state, err
 	}
 	return state, nil
 }

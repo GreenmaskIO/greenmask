@@ -19,6 +19,7 @@ import (
 	"fmt"
 
 	core "github.com/greenmaskio/greenmask/pkg/common/core"
+	restorepipeline "github.com/greenmaskio/greenmask/pkg/common/restore/pipeline"
 	"github.com/greenmaskio/greenmask/pkg/engines"
 )
 
@@ -35,6 +36,26 @@ func (g *Cli) Restore(ctx context.Context, dumpID string) error {
 	if err != nil {
 		return fmt.Errorf("create restore pipeline: %w", err)
 	}
-	_, err = p.RunRestore(ctx, *g.cfg, parsedDumpID)
-	return err
+	state, runErr := p.RunRestore(ctx, *g.cfg, parsedDumpID)
+	// The pipeline records collected warnings on the returned state (populated
+	// even when runErr is non-nil). Print them first — a fatal warning is usually
+	// the cause of runErr — then decide the return code: fatal warnings take
+	// precedence, otherwise propagate the wrapped run error.
+	if printErr := printCollectedWarnings(ctx, restoreStateWarnings(state), g.cfg); printErr != nil {
+		return fmt.Errorf("print collected warnings: %w", printErr)
+	}
+	if runErr != nil {
+		return fmt.Errorf("run restore: %w", runErr)
+	}
+	return nil
+}
+
+// restoreStateWarnings safely extracts the collected warnings from a
+// RestoreRunState that may be nil (RunRestore returns a *RestoreRunState, so a
+// nil is possible even though the pipeline populates it before any error).
+func restoreStateWarnings(state *restorepipeline.RestoreRunState) core.ValidationWarnings {
+	if state == nil {
+		return nil
+	}
+	return state.Warnings
 }

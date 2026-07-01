@@ -78,10 +78,16 @@ type stubIntrospector struct {
 	result core.IntrospectionResult
 	err    error
 	calls  int
+	// onCtx, when set, is invoked with the stage ctx so tests can e.g. add a
+	// warning to the ctx collector from inside the discovery stage.
+	onCtx func(context.Context)
 }
 
-func (s *stubIntrospector) Introspect(context.Context, core.DatabaseSession, core.FilterConfig) (core.IntrospectionResult, error) {
+func (s *stubIntrospector) Introspect(ctx context.Context, _ core.DatabaseSession, _ core.FilterConfig) (core.IntrospectionResult, error) {
 	s.calls++
+	if s.onCtx != nil {
+		s.onCtx(ctx)
+	}
 	return s.result, s.err
 }
 

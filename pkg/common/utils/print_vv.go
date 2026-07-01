@@ -29,12 +29,28 @@ var (
 	errCannotExcludeWarningWithErrorSeverity = errors.New("cannot exclude warnings with errors severity")
 )
 
+// PrintValidationWarnings prints the warnings collected in the ctx collector.
+// It is a thin wrapper over PrintValidationWarningsList for callers whose
+// warnings still live in the context collector (e.g. the validate pipeline).
 func PrintValidationWarnings(ctx context.Context, resolvedWarnings []string, printAll bool) error {
-	vc := validationcollector.FromContext(ctx)
-	if !vc.HasWarnings() {
+	return PrintValidationWarningsList(ctx, validationcollector.FromContext(ctx).GetWarnings(), resolvedWarnings, printAll)
+}
+
+// PrintValidationWarningsList prints the supplied warnings, honouring the
+// resolved-hash allowlist and the printAll (non-fatal verbosity) flag. Error
+// severity is always printed and can never be excluded. ctx is used only for
+// logging. This slice-based form lets callers print warnings carried on a
+// serialisable RunState without depending on the collector.
+func PrintValidationWarningsList(
+	ctx context.Context,
+	warnings core.ValidationWarnings,
+	resolvedWarnings []string,
+	printAll bool,
+) error {
+	if !warnings.HasWarnings() {
 		return nil
 	}
-	for _, w := range vc.GetWarnings() {
+	for _, w := range warnings {
 		w.MakeHash()
 		if idx := slices.Index(resolvedWarnings, w.Hash); idx != -1 {
 			log.Ctx(ctx).Debug().

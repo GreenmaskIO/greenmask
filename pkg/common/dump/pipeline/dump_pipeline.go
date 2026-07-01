@@ -10,6 +10,7 @@ import (
 
 	"github.com/greenmaskio/greenmask/pkg/common/core"
 	"github.com/greenmaskio/greenmask/pkg/common/utils"
+	"github.com/greenmaskio/greenmask/pkg/common/validationcollector"
 	"github.com/greenmaskio/greenmask/pkg/config"
 )
 
@@ -52,6 +53,7 @@ func (p *DumpPipeline) Discover(
 	runtime *Runtime,
 	state *RunState,
 ) error {
+	ctx = validationcollector.WithMeta(ctx, core.MetaKeyStage, StageNameDiscovery)
 	if runtime == nil || runtime.Session == nil {
 		return fmt.Errorf("runtime session is required for discovery")
 	}
@@ -116,6 +118,7 @@ func (p *DumpPipeline) BuildContext(
 	ctx context.Context,
 	state *RunState,
 ) error {
+	ctx = validationcollector.WithMeta(ctx, core.MetaKeyStage, StageNameContextBuilding)
 	if err := state.Require(StageNameDiscovery); err != nil {
 		return fmt.Errorf("check requirements: %w", err)
 	}
@@ -180,6 +183,7 @@ func (p *DumpPipeline) BuildSnapshotAndDiff(
 	ctx context.Context,
 	state *RunState,
 ) error {
+	ctx = validationcollector.WithMeta(ctx, core.MetaKeyStage, StageNameSnapshotDiffBuilding)
 	if err := state.Require(StageNameContextBuilding); err != nil {
 		return fmt.Errorf("check requirements: %w", err)
 	}
@@ -214,6 +218,7 @@ func (p *DumpPipeline) ValidateContext(
 	ctx context.Context,
 	state *RunState,
 ) error {
+	ctx = validationcollector.WithMeta(ctx, core.MetaKeyStage, StageNameContextValidation)
 	// SnapshotDiffBuilding is required as well: the validator consumes the
 	// DumpContextDiff it produces, so gating on ContextBuilding alone would let a
 	// caller reach a nil-dereference instead of a clean requirements error.
@@ -239,6 +244,7 @@ func (p *DumpPipeline) BuildPlan(
 	ctx context.Context,
 	state *RunState,
 ) error {
+	ctx = validationcollector.WithMeta(ctx, core.MetaKeyStage, StageNamePlanBuilding)
 	if err := state.Require(
 		StageNameSnapshotDiffBuilding,
 		StageNameContextValidation,
@@ -285,6 +291,7 @@ func (p *DumpPipeline) ValidatePlan(
 	ctx context.Context,
 	state *RunState,
 ) error {
+	ctx = validationcollector.WithMeta(ctx, core.MetaKeyStage, StageNamePlanValidation)
 	if err := state.Require(StageNamePlanBuilding); err != nil {
 		return fmt.Errorf("check requirements: %w", err)
 	}
@@ -304,6 +311,7 @@ func (p *DumpPipeline) Execute(
 	runtime *Runtime,
 	state *RunState,
 ) error {
+	ctx = validationcollector.WithMeta(ctx, core.MetaKeyStage, StageNameExecution)
 	if err := state.Require(StageNamePlanValidation); err != nil {
 		return fmt.Errorf("check requirements: %w", err)
 	}
@@ -358,6 +366,12 @@ func (p *DumpPipeline) Execute(
 // StageNameSessionInitialization is recorded on the state after a successful
 // open, before fn is called.
 //
+// withRuntime also creates the run-scoped validation collector and injects it
+// into the ctx it threads to fn, so every stage adds warnings into it. The
+// collector is an internal implementation detail that never escapes: on every
+// exit path withRuntime copies its warnings into the serialisable state.Warnings
+// so callers read warnings off the returned state, not a live collector.
+//
 // Callers whose session lifetime cannot be scoped to a single function call
 // (e.g. Temporal workflow activities in gm-backend) should call OpenRuntime
 // and runtime.Close directly instead.
@@ -365,8 +379,16 @@ func (p *DumpPipeline) withRuntime(
 	ctx context.Context,
 	cfg config.Config,
 	state *RunState,
-	fn func(runtime *Runtime) error,
+	fn func(ctx context.Context, runtime *Runtime) error,
 ) error {
+	vc := validationcollector.NewCollectorWithMeta(core.MetaKeyEngine, p.engine)
+	ctx = validationcollector.WithCollector(ctx, vc)
+	// Enrich state with the collected warnings on every exit path (declared
+	// first so it runs last, after the session close below). This keeps the
+	// collector internal while making warnings survive on the serialisable state.
+	defer func() {
+		state.Warnings = vc.GetWarnings()
+	}()
 	runtime, err := p.OpenRuntime(ctx, cfg)
 	if err != nil {
 		return fmt.Errorf("open runtime: %w", err)
@@ -379,12 +401,12 @@ func (p *DumpPipeline) withRuntime(
 		}
 	}()
 	state.MarkExecuted(StageNameSessionInitialization)
-	return fn(runtime)
+	return fn(ctx, runtime)
 }
 
 func (p *DumpPipeline) RunDump(ctx context.Context, cfg config.Config) (*RunState, error) {
 	state := p.NewRun(cfg)
-	if err := p.withRuntime(ctx, cfg, state, func(runtime *Runtime) error {
+	if err := p.withRuntime(ctx, cfg, state, func(ctx context.Context, runtime *Runtime) error {
 		if err := p.Discover(ctx, runtime, state); err != nil {
 			return fmt.Errorf("discovery stage: %w", err)
 		}
@@ -405,20 +427,24 @@ func (p *DumpPipeline) RunDump(ctx context.Context, cfg config.Config) (*RunStat
 		}
 		return p.Execute(ctx, runtime, state)
 	}); err != nil {
-		return nil, err
+		// Return state even on error: state.Warnings holds the collected warnings, and
+		// the run error is frequently caused by a fatal warning the caller needs
+		// to surface.
+		return state, err
 	}
 	return state, nil
 }
 
 func (p *DumpPipeline) RunValidateConfig(ctx context.Context, cfg config.Config) (*RunState, error) {
 	state := p.NewRun(cfg)
-	if err := p.withRuntime(ctx, cfg, state, func(runtime *Runtime) error {
+	if err := p.withRuntime(ctx, cfg, state, func(ctx context.Context, runtime *Runtime) error {
 		if err := p.Discover(ctx, runtime, state); err != nil {
 			return fmt.Errorf("discovery stage: %w", err)
 		}
 		return p.BuildContext(ctx, state)
 	}); err != nil {
-		return nil, err
+		// Return state even on error so callers can read state.Warnings.
+		return state, err
 	}
 	return state, nil
 }
@@ -467,7 +493,7 @@ func (p *DumpPipeline) RunValidatePlan(ctx context.Context, state *RunState) err
 
 func (p *DumpPipeline) RunShowSchemaDrift(ctx context.Context, cfg config.Config) (*RunState, error) {
 	state := p.NewRun(cfg)
-	if err := p.withRuntime(ctx, cfg, state, func(runtime *Runtime) error {
+	if err := p.withRuntime(ctx, cfg, state, func(ctx context.Context, runtime *Runtime) error {
 		return p.Discover(ctx, runtime, state)
 	}); err != nil {
 		return state, err
@@ -479,7 +505,7 @@ func (p *DumpPipeline) RunShowSchemaDrift(ctx context.Context, cfg config.Config
 // returning the state so callers can inspect the DumpContextDiff artifact.
 func (p *DumpPipeline) RunShowDumpDiff(ctx context.Context, cfg config.Config) (*RunState, error) {
 	state := p.NewRun(cfg)
-	if err := p.withRuntime(ctx, cfg, state, func(runtime *Runtime) error {
+	if err := p.withRuntime(ctx, cfg, state, func(ctx context.Context, runtime *Runtime) error {
 		if err := p.Discover(ctx, runtime, state); err != nil {
 			return fmt.Errorf("discovery stage: %w", err)
 		}
@@ -488,7 +514,8 @@ func (p *DumpPipeline) RunShowDumpDiff(ctx context.Context, cfg config.Config) (
 		}
 		return p.BuildSnapshotAndDiff(ctx, state)
 	}); err != nil {
-		return nil, err
+		// Return state even on error so callers can read state.Warnings.
+		return state, err
 	}
 	return state, nil
 }

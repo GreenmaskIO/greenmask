@@ -23,6 +23,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	core "github.com/greenmaskio/greenmask/pkg/common/core"
+	"github.com/greenmaskio/greenmask/pkg/common/validationcollector"
 	"github.com/greenmaskio/greenmask/pkg/config"
 )
 
@@ -478,9 +479,28 @@ func TestRunDump_errorPropagatesAndClosesSession(t *testing.T) {
 	state, err := s.pipeline().RunDump(context.Background(), config.Config{})
 
 	require.ErrorIs(t, err, errBoom)
-	assert.Nil(t, state, "RunDump returns nil state on failure")
+	require.NotNil(t, state, "RunDump returns state on failure so warnings are readable")
 	assert.Equal(t, 1, s.session.closeCalls, "session must be closed even on error")
 	assert.Zero(t, s.processor.calls, "later stages must not run")
+}
+
+func TestRunDump_warningsCarryStageMeta(t *testing.T) {
+	s := newStubSet()
+	// Raise a warning from inside the discovery stage via the ctx collector.
+	s.introspector.onCtx = func(ctx context.Context) {
+		validationcollector.FromContext(ctx).Add(
+			core.NewValidationWarning().SetMsg("discovery hiccup"),
+		)
+	}
+
+	state, err := s.pipeline().RunDump(context.Background(), config.Config{})
+	require.NoError(t, err)
+	require.NotNil(t, state)
+	require.Len(t, state.Warnings, 1)
+
+	w := state.Warnings[0]
+	assert.Equal(t, StageNameDiscovery, w.Meta[core.MetaKeyStage],
+		"warning must be tagged with the stage it was produced in")
 }
 
 func TestRunDump_openRuntimeError(t *testing.T) {
@@ -488,7 +508,7 @@ func TestRunDump_openRuntimeError(t *testing.T) {
 	s.sessBuilder.err = errBoom
 	state, err := s.pipeline().RunDump(context.Background(), config.Config{})
 	require.ErrorIs(t, err, errBoom)
-	assert.Nil(t, state)
+	require.NotNil(t, state, "state is returned even when the session fails to open")
 	assert.Zero(t, s.session.closeCalls, "no session to close when open failed")
 }
 
@@ -504,12 +524,12 @@ func TestRunValidateConfig(t *testing.T) {
 		assert.Equal(t, 1, s.session.closeCalls)
 	})
 
-	t.Run("error returns nil state", func(t *testing.T) {
+	t.Run("error returns state", func(t *testing.T) {
 		s := newStubSet()
 		s.objFilter.err = errBoom
 		state, err := s.pipeline().RunValidateConfig(context.Background(), config.Config{})
 		require.ErrorIs(t, err, errBoom)
-		assert.Nil(t, state)
+		require.NotNil(t, state)
 		assert.Equal(t, 1, s.session.closeCalls)
 	})
 }
@@ -614,7 +634,7 @@ func TestRunShowDumpDiff_errorPaths(t *testing.T) {
 			setup(s)
 			state, err := s.pipeline().RunShowDumpDiff(context.Background(), config.Config{})
 			require.ErrorIs(t, err, errBoom)
-			assert.Nil(t, state)
+			require.NotNil(t, state)
 			assert.Equal(t, 1, s.session.closeCalls)
 		})
 	}
