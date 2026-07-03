@@ -570,19 +570,6 @@ func (d *Dump) Run(ctx context.Context) (err error) {
 	return nil
 }
 
-func (d *Dump) getKindsTopologicalOrder() map[core.ObjectKind][]core.TaskID {
-	res := make(map[core.ObjectKind][]core.TaskID)
-	for _, taskID := range d.dumpStats.RestorationContext.RestorationOrder {
-		stat, ok := d.dumpStats.TaskStats[taskID]
-		if !ok {
-			continue
-		}
-		kind := stat.ObjectStat.Kind
-		res[kind] = append(res[kind], taskID)
-	}
-	return res
-}
-
 func (d *Dump) GetDumpID() core.DumpID {
 	return d.dumpID
 }

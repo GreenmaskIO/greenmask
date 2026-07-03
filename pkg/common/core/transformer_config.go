@@ -50,5 +50,6 @@ func (tc *TransformerConfig) Clone() *TransformerConfig {
 		StaticParams:       maps.Clone(tc.StaticParams),
 		DynamicParams:      maps.Clone(tc.DynamicParams),
 		When:               tc.When,
+		ResolveEnv:         tc.ResolveEnv,
 	}
 }

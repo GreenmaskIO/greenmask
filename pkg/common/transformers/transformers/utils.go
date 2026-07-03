@@ -352,6 +352,20 @@ func getColumnContainerParameter[T parameters.ColumnContainer](
 	return res, columns, nil
 }
 
+// engineIsDeterministic reports whether an engine parameter value selects a
+// deterministic generator. It mirrors the engine dispatch in getGenerateEngine:
+// the deterministic and (deprecated) hash values both map to the hash-based
+// generator, which reproduces the same output for the same input, while the
+// random value does not.
+func engineIsDeterministic(engine string) bool {
+	switch engine {
+	case EngineParameterValueDeterministic, EngineParameterValueHash:
+		return true
+	default:
+		return false
+	}
+}
+
 func getGenerateEngine(ctx context.Context, engineName string, size int) (generators2.Generator, error) {
 	switch engineName {
 	case EngineParameterValueRandom:

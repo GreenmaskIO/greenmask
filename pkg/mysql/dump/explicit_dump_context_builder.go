@@ -45,6 +45,20 @@ type tableInitDeps interface {
 	InitTransformers(ctx context.Context, driver core.TableDriver, configs []core.TransformerConfig, registry core.TransformerRegistry) ([]core.TransformerContexter, error)
 }
 
+// mysqlDriverFactory constructs a MySQL table driver for a table definition. It
+// is the single place that knows how to assemble the MySQL driver stack, shared
+// by the explicit builder (via defaultTableInitDeps) and the derived builder
+// (which builds drivers for raw children that gain an inherited transformer).
+type mysqlDriverFactory struct{}
+
+func (mysqlDriverFactory) NewTableDriver(
+	ctx context.Context,
+	table core.Table,
+	columnsTypeOverride map[string]string,
+) (core.TableDriver, error) {
+	return tabledriver.New(ctx, dbmsdriver.New(), &table, columnsTypeOverride)
+}
+
 // defaultTableInitDeps is the production implementation of tableInitDeps, wired
 // to the real MySQL driver and the shared tablebuilder helpers.
 type defaultTableInitDeps struct{}
@@ -54,7 +68,7 @@ func (defaultTableInitDeps) NewTableDriver(
 	table core.Table,
 	columnsTypeOverride map[string]string,
 ) (core.TableDriver, error) {
-	return tabledriver.New(ctx, dbmsdriver.New(), &table, columnsTypeOverride)
+	return mysqlDriverFactory{}.NewTableDriver(ctx, table, columnsTypeOverride)
 }
 
 func (defaultTableInitDeps) CompileCondition(

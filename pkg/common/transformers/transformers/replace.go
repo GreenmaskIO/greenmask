@@ -59,6 +59,8 @@ var ReplaceTransformerDefinition = utils.NewTransformerDefinition(
 	defaultValidateParameterDefinition,
 )
 
+var _ core.Transformer = (*ReplaceTransformer)(nil)
+
 type ReplaceTransformer struct {
 	columnName           string
 	columnIdx            int
@@ -215,6 +217,10 @@ func (t *ReplaceTransformer) Transform(ctx context.Context, r core.Recorder) err
 
 func (t *ReplaceTransformer) Describe() string {
 	return TransformerNameReplace
+}
+
+func (t *ReplaceTransformer) IsDeterministic() bool {
+	return true
 }
 
 func (t *ReplaceTransformer) GetAffectedColumns() map[int]string {

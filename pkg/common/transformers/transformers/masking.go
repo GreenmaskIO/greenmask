@@ -67,6 +67,8 @@ var MaskingTransformerDefinition = utils.NewTransformerDefinition(
 
 type maskingFunction func(val string) string
 
+var _ core.Transformer = (*MaskingTransformer)(nil)
+
 type MaskingTransformer struct {
 	columnName      string
 	columnIdx       int
@@ -187,4 +189,8 @@ func maskerTypeValidator(
 
 func (t *MaskingTransformer) Describe() string {
 	return TransformerNameMasking
+}
+
+func (t *MaskingTransformer) IsDeterministic() bool {
+	return true
 }

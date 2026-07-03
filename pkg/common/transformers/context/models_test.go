@@ -36,6 +36,7 @@ func (s stubTransformer) Done(context.Context) error                     { retur
 func (s stubTransformer) Transform(context.Context, core.Recorder) error { return nil }
 func (s stubTransformer) GetAffectedColumns() map[int]string             { return s.affected }
 func (s stubTransformer) Describe() string                               { return s.name }
+func (s stubTransformer) IsDeterministic() bool                          { return false }
 
 // exprCond is a CondEvaluator retaining its expression.
 type exprCond struct{ expr string }

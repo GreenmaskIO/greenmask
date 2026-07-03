@@ -78,6 +78,8 @@ var RandomIntegerTransformerDefinition = utils.NewTransformerDefinition(
 	defaultEngineParameterDefinition,
 )
 
+var _ core.Transformer = (*IntegerTransformer)(nil)
+
 type IntegerTransformer struct {
 	*transformers.RandomInt64Transformer
 	columnName      string
@@ -86,6 +88,7 @@ type IntegerTransformer struct {
 	columnIdx       int
 	dynamicMode     bool
 	intSize         int
+	deterministic   bool
 
 	maxParam parameters.Parameterizer
 	minParam parameters.Parameterizer
@@ -173,8 +176,9 @@ func NewIntegerTransformer(
 		minParam: minParam,
 		maxParam: maxParam,
 
-		dynamicMode: dynamicMode,
-		intSize:     typeSize,
+		dynamicMode:   dynamicMode,
+		intSize:       typeSize,
+		deterministic: engineIsDeterministic(engine),
 
 		transform: func(bytes []byte) (int64, error) {
 			return t.Transform(nil, bytes)
@@ -243,6 +247,10 @@ func (t *IntegerTransformer) Transform(_ context.Context, r core.Recorder) error
 
 func (t *IntegerTransformer) Describe() string {
 	return TransformerNameRandomInt
+}
+
+func (t *IntegerTransformer) IsDeterministic() bool {
+	return t.deterministic
 }
 
 func getRandomInt64LimiterForDynamicParameter(size int, requestedMinValue, requestedMaxValue int64) (*transformers.Int64Limiter, error) {

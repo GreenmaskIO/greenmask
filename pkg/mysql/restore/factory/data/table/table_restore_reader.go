@@ -52,7 +52,7 @@ func (r *TableRestoreReader) Open(ctx context.Context, st core.Storager) error {
 		return fmt.Errorf("open table data file %q: %w", r.filename, err)
 	}
 
-	var rc io.ReadCloser = f
+	rc := f
 	if r.compression.IsEnabled() {
 		rc, err = utils.NewGzipReader(f, r.compression.IsPgzip())
 		if err != nil {

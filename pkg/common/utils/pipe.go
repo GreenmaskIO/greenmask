@@ -16,6 +16,7 @@ package utils
 
 import (
 	"bufio"
+	"errors"
 	"fmt"
 	"io"
 )
@@ -67,8 +68,7 @@ func (b *bufferedWriteCloser) Write(p []byte) (int, error) {
 // the pipe is always unblocked.
 func (b *bufferedWriteCloser) Close() error {
 	if err := b.bw.Flush(); err != nil {
-		_ = b.wc.Close()
-		return fmt.Errorf("flush buffer: %w", err)
+		return errors.Join(fmt.Errorf("flush buffer: %w", err), b.wc.Close())
 	}
 	return b.wc.Close()
 }

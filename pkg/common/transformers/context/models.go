@@ -40,6 +40,21 @@ type TransformerContext struct {
 	// derivation). Zero value is treated as explicit; the derived context builder
 	// sets it to derived.
 	Source core.TransformationSource
+	// ApplyForReferences mirrors the user opt-in (config apply_for_references):
+	// the transformation should be propagated onto referencing foreign-key
+	// columns. Stamped at init time.
+	ApplyForReferences bool
+	// AllowApplyForReferenced mirrors the transformer definition meta
+	// (AllowApplyForReferenced): whether this transformer is on the curated
+	// allow-list for reference propagation. Stamped at init time.
+	AllowApplyForReferenced bool
+}
+
+// IsDeterministic reports whether the underlying transformer produces the same
+// output for the same input. It is a convenience wrapper over the transformer's
+// own IsDeterministic used by the derived dump context builder.
+func (tc *TransformerContext) IsDeterministic() bool {
+	return tc.Transformer.IsDeterministic()
 }
 
 func (tc *TransformerContext) SetRecordForDynamicParameters(r core.Recorder) {

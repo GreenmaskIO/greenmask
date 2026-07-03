@@ -94,6 +94,8 @@ var RandomMacAddressDefinition = utils.NewTransformerDefinition(
 	defaultEngineParameterDefinition,
 )
 
+var _ core.Transformer = (*RandomMac)(nil)
+
 type RandomMac struct {
 	columnName         string
 	affectedColumns    map[int]string
@@ -104,6 +106,7 @@ type RandomMac struct {
 	managementType     int
 	t                  *transformers.MacAddress
 	originalMac        net.HardwareAddr
+	deterministic      bool
 }
 
 func NewMacAddressTransformer(
@@ -164,6 +167,7 @@ func NewMacAddressTransformer(
 		keepOriginalVendor: keepOriginalVendor,
 		castType:           castType,
 		managementType:     managementType,
+		deterministic:      engineIsDeterministic(engine),
 	}, nil
 }
 
@@ -209,6 +213,10 @@ func (t *RandomMac) Transform(_ context.Context, r core.Recorder) error {
 
 func (t *RandomMac) Describe() string {
 	return TransformerNameRandomMac
+}
+
+func (t *RandomMac) IsDeterministic() bool {
+	return t.deterministic
 }
 
 func scanCastType(_ *parameters.ParameterDefinition, _ core.NamedTypeCodec, src core.ParamsValue) (any, error) {

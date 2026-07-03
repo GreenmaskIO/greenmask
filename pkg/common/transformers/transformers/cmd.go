@@ -153,6 +153,8 @@ var CMDTransformerDefinition = utils2.NewTransformerDefinition(
 		SetRawValueValidator(cmdValidateSkipBehaviour),
 )
 
+var _ core.Transformer = (*Cmd)(nil)
+
 type Cmd struct {
 	*cmd2.TransformerBase
 
@@ -268,6 +270,10 @@ func (t *Cmd) GetAffectedColumns() map[int]string {
 
 func (t *Cmd) Describe() string {
 	return TransformerNameCmd
+}
+
+func (t *Cmd) IsDeterministic() bool {
+	return false
 }
 
 func (t *Cmd) Init(ctx context.Context) error {

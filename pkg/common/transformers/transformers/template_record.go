@@ -42,6 +42,8 @@ var TemplateRecordTransformerDefinition = utils.NewTransformerDefinition(
 	).SetRequired(true),
 )
 
+var _ core.Transformer = (*TemplateRecordTransformer)(nil)
+
 type TemplateRecordTransformer struct {
 	template        string
 	affectedColumns map[int]string
@@ -106,4 +108,8 @@ func (t *TemplateRecordTransformer) Transform(_ context.Context, r core.Recorder
 
 func (t *TemplateRecordTransformer) Describe() string {
 	return TransformerNameTemplateRecord
+}
+
+func (t *TemplateRecordTransformer) IsDeterministic() bool {
+	return false
 }

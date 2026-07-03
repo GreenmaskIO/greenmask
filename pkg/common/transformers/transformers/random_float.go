@@ -93,6 +93,8 @@ var RamdomFloatTransformerDefinition = utils.NewTransformerDefinition(
 	defaultEngineParameterDefinition,
 )
 
+var _ core.Transformer = (*FloatTransformer)(nil)
+
 type FloatTransformer struct {
 	t               *transformers.RandomFloat64Transformer
 	columnName      string
@@ -102,6 +104,7 @@ type FloatTransformer struct {
 	dynamicMode     bool
 	floatSize       int
 	decimal         int
+	deterministic   bool
 
 	maxParam parameters.Parameterizer
 	minParam parameters.Parameterizer
@@ -194,8 +197,9 @@ func NewFloatTransformer(
 		minParam: minParam,
 		maxParam: maxParam,
 
-		dynamicMode: dynamicMode,
-		floatSize:   typeSize,
+		dynamicMode:   dynamicMode,
+		floatSize:     typeSize,
+		deterministic: engineIsDeterministic(engine),
 
 		transform: func(bytes []byte) (float64, error) {
 			return t.Transform(nil, bytes)
@@ -264,6 +268,10 @@ func (t *FloatTransformer) Transform(_ context.Context, r core.Recorder) error {
 
 func (t *FloatTransformer) Describe() string {
 	return TransformerNameRandomFloat
+}
+
+func (t *FloatTransformer) IsDeterministic() bool {
+	return t.deterministic
 }
 
 func getFloatThresholds(size int) (float64, float64, error) {

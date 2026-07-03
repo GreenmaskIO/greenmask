@@ -89,6 +89,8 @@ const (
 	md5Name     = "md5"
 )
 
+var _ core.Transformer = (*HashTransformer)(nil)
+
 type HashTransformer struct {
 	columnName          string
 	affectedColumns     map[int]string
@@ -231,6 +233,10 @@ func (t *HashTransformer) Transform(_ context.Context, r core.Recorder) error {
 
 func (t *HashTransformer) Describe() string {
 	return TransformerNameHash
+}
+
+func (t *HashTransformer) IsDeterministic() bool {
+	return true
 }
 
 func validateHashFunctionsParameter(

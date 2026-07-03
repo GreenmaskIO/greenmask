@@ -131,11 +131,14 @@ type RandomNameTransformer struct {
 	genderMapping   map[string]string
 	genderParam     parameters.Parameterizer
 	// originalData is used to store original data for hash engine for further hashing
-	originalData []byte
-	engine       int
-	buf          *bytes.Buffer
-	nullableMap  map[int]bool
+	originalData  []byte
+	engine        int
+	buf           *bytes.Buffer
+	nullableMap   map[int]bool
+	deterministic bool
 }
+
+var _ core.Transformer = (*RandomNameTransformer)(nil)
 
 func NewRandomNameTransformer(
 	ctx context.Context,
@@ -230,6 +233,7 @@ func NewRandomNameTransformer(
 		engine:          engineMode,
 		buf:             bytes.NewBuffer(nil),
 		nullableMap:     make(map[int]bool, len(columns)),
+		deterministic:   engineIsDeterministic(engine),
 	}, nil
 }
 
@@ -312,6 +316,10 @@ func (t *RandomNameTransformer) Transform(ctx context.Context, r core.Recorder) 
 
 func (t *RandomNameTransformer) Describe() string {
 	return TransformerNameRandomPerson
+}
+
+func (t *RandomNameTransformer) IsDeterministic() bool {
+	return t.deterministic
 }
 
 func randomNameTransformerValidateGender(

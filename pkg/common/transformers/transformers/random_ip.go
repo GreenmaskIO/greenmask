@@ -70,6 +70,8 @@ var RandomIPDefinition = utils.NewTransformerDefinition(
 	defaultEngineParameterDefinition,
 )
 
+var _ core.Transformer = (*RandomIp)(nil)
+
 type RandomIp struct {
 	columnName      string
 	affectedColumns map[int]string
@@ -77,6 +79,7 @@ type RandomIp struct {
 	dynamicMode     bool
 	t               *transformers.IpAddress
 	subnetParam     parameters.Parameterizer
+	deterministic   bool
 }
 
 func NewIpTransformer(
@@ -125,10 +128,11 @@ func NewIpTransformer(
 		affectedColumns: map[int]string{
 			column.Idx: columnName,
 		},
-		columnIdx:   column.Idx,
-		t:           t,
-		subnetParam: subnetParam,
-		dynamicMode: dynamicMode,
+		columnIdx:     column.Idx,
+		t:             t,
+		subnetParam:   subnetParam,
+		dynamicMode:   dynamicMode,
+		deterministic: engineIsDeterministic(engine),
 	}, nil
 }
 
@@ -173,4 +177,8 @@ func (t *RandomIp) Transform(_ context.Context, r core.Recorder) error {
 
 func (t *RandomIp) Describe() string {
 	return TransformerNameRandomIp
+}
+
+func (t *RandomIp) IsDeterministic() bool {
+	return t.deterministic
 }

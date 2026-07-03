@@ -62,6 +62,8 @@ var DictTransformerDefinition = utils.NewTransformerDefinition(
 	defaultValidateParameterDefinition,
 )
 
+var _ core.Transformer = (*DictTransformer)(nil)
+
 type DictTransformer struct {
 	columnName      string
 	columnIdx       int
@@ -272,4 +274,8 @@ func (t *DictTransformer) Transform(_ context.Context, r core.Recorder) error {
 
 func (t *DictTransformer) Describe() string {
 	return TransformerNameDict
+}
+
+func (t *DictTransformer) IsDeterministic() bool {
+	return true
 }

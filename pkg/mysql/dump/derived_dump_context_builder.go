@@ -18,22 +18,33 @@ import (
 	"context"
 
 	core "github.com/greenmaskio/greenmask/pkg/common/core"
+	"github.com/greenmaskio/greenmask/pkg/common/dump/derivation"
 )
 
 var _ core.DerivedDumpContextBuilder = (*DerivedDumpContextBuilder)(nil)
 
-// DerivedDumpContextBuilder enriches the dump context via semantic derivation.
-type DerivedDumpContextBuilder struct{}
+// DerivedDumpContextBuilder enriches the explicit dump context with derived
+// transformers (transformation inheritance via apply_for_references). The
+// engine-agnostic algorithm lives in pkg/common/dump/derivation; this builder
+// only supplies the MySQL-specific table driver factory and transformer registry.
+//
+// Snapshot contract: the derivation stamps each propagated transformation's
+// TransformerContext.Source with Kind=derived (and DerivedFrom set) and flips a
+// previously-raw child's ObjectDumpSpec.Origin to derived. The
+// DumpContextSnapshotBuilder is a pure decoder over those two markers, so drift
+// detection sees derived transformations distinctly from explicit config.
+type DerivedDumpContextBuilder struct {
+	deriver *derivation.Deriver
+}
 
-func (s *DerivedDumpContextBuilder) BuildDumpContext(ctx context.Context, in core.DerivedDumpContextInput) (core.DumpContext, error) {
-	// Placeholder: semantic derivation is not implemented yet, so the explicit
-	// dump context is passed through unchanged.
-	//
-	// Snapshot contract: when derivation is implemented and it adds or changes a
-	// transformation on a table, it must also append/update the corresponding
-	// entry on that payload's TableDumpContext.SnapshotDescriptor with
-	// TransformationSource.Kind = derived (and DerivedFrom set). The
-	// DumpContextSnapshotBuilder is a pure decoder over the final descriptor, so
-	// any derivation not reflected there is invisible to drift detection.
-	return in.ExplicitCtx, nil
+// NewDerivedDumpContextBuilder builds the MySQL derived dump context builder.
+// registry resolves derived transformer configurations into runtime transformers.
+func NewDerivedDumpContextBuilder(registry core.TransformerRegistry) *DerivedDumpContextBuilder {
+	return &DerivedDumpContextBuilder{
+		deriver: derivation.New(registry, mysqlDriverFactory{}),
+	}
+}
+
+func (b *DerivedDumpContextBuilder) BuildDumpContext(ctx context.Context, in core.DerivedDumpContextInput) (core.DumpContext, error) {
+	return b.deriver.Derive(ctx, in)
 }

@@ -101,7 +101,10 @@ type NoiseDateTransformer struct {
 	minParam        parameters.Parameterizer
 	dynamicMode     bool
 	transform       func(time.Time) (time.Time, error)
+	deterministic   bool
 }
+
+var _ core.Transformer = (*NoiseDateTransformer)(nil)
 
 func NewNoiseDateTransformer(
 	ctx context.Context,
@@ -175,9 +178,10 @@ func NewNoiseDateTransformer(
 		transform: func(v time.Time) (time.Time, error) {
 			return t.Transform(nil, v)
 		},
-		maxParam:    maxParam,
-		minParam:    minParam,
-		dynamicMode: dynamicMode,
+		maxParam:      maxParam,
+		minParam:      minParam,
+		dynamicMode:   dynamicMode,
+		deterministic: engineIsDeterministic(engine),
 	}, nil
 }
 
@@ -243,6 +247,10 @@ func (t *NoiseDateTransformer) Transform(_ context.Context, r core.Recorder) err
 
 func (t *NoiseDateTransformer) Describe() string {
 	return TransformerNameNoiseDate
+}
+
+func (t *NoiseDateTransformer) IsDeterministic() bool {
+	return t.deterministic
 }
 
 func getNoiseTimestampMinAndMaxThresholds(

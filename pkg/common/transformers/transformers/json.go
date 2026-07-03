@@ -145,6 +145,8 @@ func (o *Operation) Apply(inp []byte, jctx *JsonContext, buf *bytes.Buffer) ([]b
 	return res, nil
 }
 
+var _ core.Transformer = (*JsonTransformer)(nil)
+
 type JsonTransformer struct {
 	columnName      string
 	columnIdx       int
@@ -254,4 +256,8 @@ func (t *JsonTransformer) Transform(_ context.Context, r core.Recorder) error {
 
 func (t *JsonTransformer) Describe() string {
 	return TransformerNameJson
+}
+
+func (t *JsonTransformer) IsDeterministic() bool {
+	return false
 }

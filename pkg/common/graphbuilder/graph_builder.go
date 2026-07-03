@@ -89,12 +89,7 @@ func (b *GraphBuilder) BuildGraph(
 		tables[i] = tbl
 		tr.objectIDByPos[i] = obj.ID
 		tr.objectIDByName[tbl.FullTableName()] = obj.ID
-		tr.nodes[obj.ID] = core.ObjectNode{
-			ID:      obj.ID,
-			Kind:    obj.Kind,
-			Name:    obj.Name,
-			Payload: obj.Payload,
-		}
+		tr.nodes[obj.ID] = core.ObjectNode(obj)
 		tr.refsByID[obj.ID] = tbl.References
 	}
 

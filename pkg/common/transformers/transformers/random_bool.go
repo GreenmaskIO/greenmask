@@ -48,12 +48,15 @@ var BoolTransformerDefinition = utils.NewTransformerDefinition(
 	defaultEngineParameterDefinition,
 )
 
+var _ core.Transformer = (*BooleanTransformer)(nil)
+
 type BooleanTransformer struct {
 	columnName      string
 	keepNull        bool
 	affectedColumns map[int]string
 	columnIdx       int
 	t               *transformers.RandomBoolean
+	deterministic   bool
 }
 
 func NewBooleanTransformer(
@@ -91,8 +94,9 @@ func NewBooleanTransformer(
 		affectedColumns: map[int]string{
 			column.Idx: columnName,
 		},
-		columnIdx: column.Idx,
-		t:         t,
+		columnIdx:     column.Idx,
+		t:             t,
+		deterministic: engineIsDeterministic(engine),
 	}, nil
 }
 
@@ -130,4 +134,8 @@ func (t *BooleanTransformer) Transform(_ context.Context, r core.Recorder) error
 
 func (t *BooleanTransformer) Describe() string {
 	return TransformerNameRandomBool
+}
+
+func (t *BooleanTransformer) IsDeterministic() bool {
+	return t.deterministic
 }

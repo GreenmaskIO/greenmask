@@ -24,4 +24,15 @@ type Transformer interface {
 	Transform(ctx context.Context, r Recorder) error
 	GetAffectedColumns() map[int]string
 	Describe() string
+	// IsDeterministic reports whether the transformer produces the same output
+	// for the same input on every run. It is true when the configured engine
+	// resolves to the deterministic/hash generator, true for inherently
+	// deterministic transformers (e.g. Hash, Replace, SetNull), and false for
+	// random-engine or externally-driven transformers (Cmd, Template, ...).
+	//
+	// The derived dump context builder reads this to decide whether a
+	// transformer flagged apply_for_references may be propagated onto
+	// referencing foreign-key columns: only a deterministic transformer
+	// reproduces the same value on both sides of the FK.
+	IsDeterministic() bool
 }

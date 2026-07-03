@@ -115,7 +115,11 @@ type NoiseNumericTransformer struct {
 	minParam parameters.Parameterizer
 
 	transform func(decimal.Decimal) (decimal.Decimal, error)
+
+	deterministic bool
 }
+
+var _ core.Transformer = (*NoiseNumericTransformer)(nil)
 
 func NewNumericFloatTransformer(
 	ctx context.Context,
@@ -218,6 +222,8 @@ func NewNumericFloatTransformer(
 		dynamicMode:     dynamicMode,
 
 		transform: t.Transform,
+
+		deterministic: engineIsDeterministic(engine),
 	}, nil
 }
 
@@ -279,6 +285,10 @@ func (t *NoiseNumericTransformer) Transform(_ context.Context, r core.Recorder) 
 
 func (t *NoiseNumericTransformer) Describe() string {
 	return TransformerNameNoiseNumeric
+}
+
+func (t *NoiseNumericTransformer) IsDeterministic() bool {
+	return t.deterministic
 }
 
 func validateNoiseNumericTypeAndSetLimit(

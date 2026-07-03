@@ -56,6 +56,8 @@ var TemplateTransformerDefinition = utils.NewTransformerDefinition(
 		SetDefaultValue(core.ParamsValue("false")),
 )
 
+var _ core.Transformer = (*TemplateTransformer)(nil)
+
 type TemplateTransformer struct {
 	columnName      string
 	template        string
@@ -148,6 +150,10 @@ func (t *TemplateTransformer) Transform(_ context.Context, r core.Recorder) erro
 
 func (t *TemplateTransformer) Describe() string {
 	return TransformerNameTemplate
+}
+
+func (t *TemplateTransformer) IsDeterministic() bool {
+	return false
 }
 
 type ColumnContext struct {

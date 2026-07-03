@@ -71,12 +71,15 @@ var RandomStringTransformerDefinition = utils.NewTransformerDefinition(
 	defaultEngineParameterDefinition,
 )
 
+var _ core.Transformer = (*RandomStringTransformer)(nil)
+
 type RandomStringTransformer struct {
 	t               *transformers.RandomStringTransformer
 	columnName      string
 	keepNull        bool
 	affectedColumns map[int]string
 	columnIdx       int
+	deterministic   bool
 }
 
 func NewRandomStringTransformer(
@@ -134,7 +137,8 @@ func NewRandomStringTransformer(
 		affectedColumns: map[int]string{
 			column.Idx: columnName,
 		},
-		columnIdx: column.Idx,
+		columnIdx:     column.Idx,
+		deterministic: engineIsDeterministic(engine),
 	}, nil
 }
 
@@ -173,4 +177,8 @@ func (t *RandomStringTransformer) Transform(_ context.Context, r core.Recorder) 
 
 func (t *RandomStringTransformer) Describe() string {
 	return TransformerNameRandomString
+}
+
+func (t *RandomStringTransformer) IsDeterministic() bool {
+	return t.deterministic
 }

@@ -88,7 +88,10 @@ type NoiseIntTransformer struct {
 	maxParam        parameters.Parameterizer
 	minParam        parameters.Parameterizer
 	transform       func(int64) (int64, error)
+	deterministic   bool
 }
+
+var _ core.Transformer = (*NoiseIntTransformer)(nil)
 
 func NewNoiseIntTransformer(
 	ctx context.Context,
@@ -174,6 +177,7 @@ func NewNoiseIntTransformer(
 		transform: func(i int64) (int64, error) {
 			return t.Transform(nil, i)
 		},
+		deterministic: engineIsDeterministic(engine),
 	}, nil
 }
 
@@ -232,6 +236,10 @@ func (t *NoiseIntTransformer) Transform(_ context.Context, r core.Recorder) erro
 
 func (t *NoiseIntTransformer) Describe() string {
 	return TransformerNameNoiseInt
+}
+
+func (t *NoiseIntTransformer) IsDeterministic() bool {
+	return t.deterministic
 }
 
 func validateIntTypeAndSetNoiseInt64Limiter(

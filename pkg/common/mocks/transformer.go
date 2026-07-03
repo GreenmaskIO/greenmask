@@ -75,3 +75,8 @@ func (t *TransformerMock) Describe() string {
 	args := t.Called()
 	return args.String(0)
 }
+
+func (t *TransformerMock) IsDeterministic() bool {
+	args := t.Called()
+	return args.Bool(0)
+}

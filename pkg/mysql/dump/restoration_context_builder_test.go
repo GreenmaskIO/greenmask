@@ -68,9 +68,7 @@ func buildInput(specs []core.ObjectDumpSpec, graph core.ObjectGraph) core.Restor
 func buildCyclicInput(specs []core.ObjectDumpSpec, graph core.ObjectGraph, cyclicMembers []core.ObjectID) core.RestorationContextInput {
 	cycleEdges := make([]core.ObjectEdge, 0, len(cyclicMembers))
 	for _, id := range cyclicMembers {
-		for _, e := range graph.Edges[id] {
-			cycleEdges = append(cycleEdges, e)
-		}
+		cycleEdges = append(cycleEdges, graph.Edges[id]...)
 	}
 	sccNode := core.SCCNode{
 		ID:      0,

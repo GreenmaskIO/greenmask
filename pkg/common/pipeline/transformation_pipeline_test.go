@@ -67,6 +67,8 @@ func (t *transformerMock) GetAffectedColumns() map[int]string {
 	return args.Get(0).(map[int]string)
 }
 
+func (t *transformerMock) IsDeterministic() bool { return false }
+
 func TestTransformerBase_Init(t *testing.T) {
 	t.Run("init error of the second tran", func(t *testing.T) {
 		columns := []core.Column{

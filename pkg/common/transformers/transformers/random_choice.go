@@ -62,6 +62,8 @@ var ChoiceTransformerDefinition = utils.NewTransformerDefinition(
 	defaultEngineParameterDefinition,
 )
 
+var _ core.Transformer = (*ChoiceTransformer)(nil)
+
 type ChoiceTransformer struct {
 	t               *transformers.RandomChoiceTransformer
 	columnName      string
@@ -69,6 +71,7 @@ type ChoiceTransformer struct {
 	validate        bool
 	affectedColumns map[int]string
 	keepNull        bool
+	deterministic   bool
 }
 
 func NewRandomChoiceTransformer(
@@ -134,7 +137,8 @@ func NewRandomChoiceTransformer(
 		affectedColumns: map[int]string{
 			column.Idx: columnName,
 		},
-		keepNull: keepNull,
+		keepNull:      keepNull,
+		deterministic: engineIsDeterministic(engine),
 	}, nil
 }
 
@@ -173,6 +177,10 @@ func (t *ChoiceTransformer) Transform(_ context.Context, r core.Recorder) error 
 
 func (t *ChoiceTransformer) Describe() string {
 	return TransformerNameRandomChoice
+}
+
+func (t *ChoiceTransformer) IsDeterministic() bool {
+	return t.deterministic
 }
 
 var (

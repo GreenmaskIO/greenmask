@@ -155,7 +155,10 @@ type EmailTransformer struct {
 	originalDomain           []byte
 	hexEncodedRandomBytesBuf []byte
 	rctx                     *template3.RecordContextReadOnly
+	deterministic            bool
 }
+
+var _ core.Transformer = (*EmailTransformer)(nil)
 
 // getFuncMapWithColumnGetters - returns a FuncMap with functions to get column values by name.
 // The functions are closures that capture the column name and return a function that retrieves
@@ -268,6 +271,7 @@ func NewEmailTransformer(
 		buf:                      bytes.NewBuffer(nil),
 		hexEncodedRandomBytesBuf: make([]byte, hex.EncodedLen(maxRandomLength)),
 		rctx:                     rrctx,
+		deterministic:            engineIsDeterministic(engine),
 	}, nil
 }
 
@@ -320,6 +324,10 @@ func (t *EmailTransformer) Transform(_ context.Context, r core.Recorder) error {
 
 func (t *EmailTransformer) Describe() string {
 	return TransformerNameRandomEmail
+}
+
+func (t *EmailTransformer) IsDeterministic() bool {
+	return t.deterministic
 }
 
 func (t *EmailTransformer) setupTemplateContext(originalEmail []byte, r core.Recorder) error {

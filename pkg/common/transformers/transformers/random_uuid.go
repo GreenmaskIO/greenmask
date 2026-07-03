@@ -52,12 +52,15 @@ var UUIDTransformerDefinition = utils.NewTransformerDefinition(
 	defaultEngineParameterDefinition,
 )
 
+var _ core.Transformer = (*RandomUuidTransformer)(nil)
+
 type RandomUuidTransformer struct {
 	t               *transformers.RandomUuidTransformer
 	columnName      string
 	columnIdx       int
 	keepNull        bool
 	affectedColumns map[int]string
+	deterministic   bool
 }
 
 func NewRandomUuidTransformer(
@@ -97,7 +100,8 @@ func NewRandomUuidTransformer(
 		affectedColumns: map[int]string{
 			column.Idx: column.Name,
 		},
-		columnIdx: column.Idx,
+		columnIdx:     column.Idx,
+		deterministic: engineIsDeterministic(engine),
 	}, nil
 }
 
@@ -139,4 +143,8 @@ func (t *RandomUuidTransformer) Transform(_ context.Context, r core.Recorder) er
 
 func (t *RandomUuidTransformer) Describe() string {
 	return TransformerNameRandomUUID
+}
+
+func (t *RandomUuidTransformer) IsDeterministic() bool {
+	return t.deterministic
 }

@@ -61,7 +61,7 @@ func NewDumpStages() pipeline.DumpStages {
 		ObjectFilter:                NewObjectFilter(),
 		FilterConfigBuilder:         filterconfig.New(),
 		ExplicitDumpContextBuilder:  NewExplicitDumpContextBuilder(registry.DefaultTransformerRegistry.Core()),
-		DerivedDumpContextBuilder:   &DerivedDumpContextBuilder{},
+		DerivedDumpContextBuilder:   NewDerivedDumpContextBuilder(registry.DefaultTransformerRegistry.Core()),
 		DumpContextSnapshotBuilder:  NewDumpContextSnapshotBuilder(),
 		DumpContextDiffer:           &DumpContextDiffer{},
 		DumpContextValidator:        &DumpContextValidator{},

@@ -55,6 +55,8 @@ var RegexpReplaceTransformerDefinition = utils.NewTransformerDefinition(
 	).SetRequired(true),
 )
 
+var _ core.Transformer = (*RegexpReplaceTransformer)(nil)
+
 type RegexpReplaceTransformer struct {
 	columnName      string
 	columnIdx       int
@@ -135,4 +137,8 @@ func (t *RegexpReplaceTransformer) Transform(_ context.Context, r core.Recorder)
 
 func (t *RegexpReplaceTransformer) Describe() string {
 	return TransformerNameRegexpReplace
+}
+
+func (t *RegexpReplaceTransformer) IsDeterministic() bool {
+	return true
 }

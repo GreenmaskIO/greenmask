@@ -71,6 +71,18 @@ func (d *TransformerDefinition) SetSchemaValidator(v SchemaValidationFunc) *Tran
 	return d
 }
 
+// allowApplyForReferenced reports whether this transformer is on the curated
+// allow-list for reference propagation (the AllowApplyForReferenced meta). A
+// missing or non-bool meta value means not allowed.
+func (d *TransformerDefinition) allowApplyForReferenced() bool {
+	v, ok := d.Properties.GetMeta(AllowApplyForReferenced)
+	if !ok {
+		return false
+	}
+	allowed, ok := v.(bool)
+	return ok && allowed
+}
+
 func (d *TransformerDefinition) Init(
 	ctx context.Context,
 	driver core.TableDriver,
@@ -126,6 +138,14 @@ func (d *TransformerDefinition) Init(
 		Transformer:       tran,
 		StaticParameters:  staticParams,
 		DynamicParameters: dynamicParams,
+		// Self-describing metadata read by the derived dump context builder to
+		// decide reference propagation. ApplyForReferences is the user opt-in;
+		// AllowApplyForReferenced is the transformer definition's allow-list flag.
+		// (This is the one place with both the config opt-in and the definition
+		// meta in hand — the core registry view exposed to the generic pipeline
+		// drops the meta.)
+		ApplyForReferences:      config.ApplyForReferences,
+		AllowApplyForReferenced: d.allowApplyForReferenced(),
 	}
 	// Only set Condition when a when-expression is configured. Assigning a nil
 	// *WhenCond to the CondEvaluator interface would produce a typed-nil that is

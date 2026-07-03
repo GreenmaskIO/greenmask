@@ -79,6 +79,8 @@ var RandomDateTransformerDefinition = utils.NewTransformerDefinition(
 	defaultEngineParameterDefinition,
 )
 
+var _ core.Transformer = (*TimestampTransformer)(nil)
+
 type TimestampTransformer struct {
 	*transformers.Timestamp
 	columnName      string
@@ -86,9 +88,10 @@ type TimestampTransformer struct {
 	keepNull        bool
 	affectedColumns map[int]string
 
-	maxParam    parameters.Parameterizer
-	minParam    parameters.Parameterizer
-	dynamicMode bool
+	maxParam      parameters.Parameterizer
+	minParam      parameters.Parameterizer
+	dynamicMode   bool
+	deterministic bool
 
 	transform func([]byte) (time.Time, error)
 }
@@ -164,9 +167,10 @@ func NewTimestampTransformerBase(
 		affectedColumns: map[int]string{
 			column.Idx: columnName,
 		},
-		minParam:    minParam,
-		maxParam:    maxParam,
-		dynamicMode: dynamicMode,
+		minParam:      minParam,
+		maxParam:      maxParam,
+		dynamicMode:   dynamicMode,
+		deterministic: engineIsDeterministic(engine),
 		transform: func(bytes []byte) (time.Time, error) {
 			return t.Transform(nil, bytes)
 		},
@@ -237,6 +241,10 @@ func (t *TimestampTransformer) Transform(_ context.Context, r core.Recorder) err
 
 func (t *TimestampTransformer) Describe() string {
 	return TransformerNameRandomDate
+}
+
+func (t *TimestampTransformer) IsDeterministic() bool {
+	return t.deterministic
 }
 
 func getTimestampMinAndMaxThresholds(minParameter, maxParameter parameters.Parameterizer) (time.Time, time.Time, error) {

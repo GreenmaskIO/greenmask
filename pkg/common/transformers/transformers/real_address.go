@@ -102,7 +102,10 @@ type RealAddressTransformer struct {
 	columns         []*realAddressColumn
 	affectedColumns map[int]string
 	buf             *bytes.Buffer
+	deterministic   bool
 }
+
+var _ core.Transformer = (*RealAddressTransformer)(nil)
 
 func NewRealAddressTransformer(
 	ctx context.Context,
@@ -174,6 +177,9 @@ func NewRealAddressTransformer(
 		columns:         columns,
 		affectedColumns: affectedColumns,
 		buf:             bytes.NewBuffer(nil),
+		// RealAddress has no "engine" parameter; it uses faker's random address
+		// generator, so it is never deterministic.
+		deterministic: false,
 	}, nil
 }
 
@@ -220,6 +226,10 @@ func (t *RealAddressTransformer) Transform(_ context.Context, r core.Recorder) e
 
 func (t *RealAddressTransformer) Describe() string {
 	return TransformerNameRealAddress
+}
+
+func (t *RealAddressTransformer) IsDeterministic() bool {
+	return t.deterministic
 }
 
 func getRealAddress() *realAddressValue {

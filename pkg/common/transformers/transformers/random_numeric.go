@@ -107,6 +107,8 @@ var RandomNumericTransformerDefinition = utils.NewTransformerDefinition(
 	defaultEngineParameterDefinition,
 )
 
+var _ core.Transformer = (*NumericTransformer)(nil)
+
 // TODO: Add numeric introspection (getting the Numering settings)
 type NumericTransformer struct {
 	*transformers.RandomNumericTransformer
@@ -116,6 +118,7 @@ type NumericTransformer struct {
 	columnIdx       int
 	dynamicMode     bool
 	numericSize     int
+	deterministic   bool
 
 	minAllowedValue decimal.Decimal
 	maxAllowedValue decimal.Decimal
@@ -218,7 +221,8 @@ func NewRandomNumericTransformer(
 		numericSize: typeSize,
 		transform:   t.Transform,
 
-		dynamicMode: dynamicMode,
+		dynamicMode:   dynamicMode,
+		deterministic: engineIsDeterministic(engine),
 	}, nil
 }
 
@@ -278,6 +282,10 @@ func (t *NumericTransformer) Transform(_ context.Context, r core.Recorder) error
 
 func (t *NumericTransformer) Describe() string {
 	return TransformerNameRandomNumeric
+}
+
+func (t *NumericTransformer) IsDeterministic() bool {
+	return t.deterministic
 }
 
 func getNumericThresholds(ctx context.Context, size int, requestedMinValue, requestedMaxValue *decimal.Decimal,

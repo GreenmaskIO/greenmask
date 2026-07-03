@@ -97,7 +97,10 @@ type RandomCompanyTransformer struct {
 	engine          int
 	buf             *bytes.Buffer
 	nullableMap     map[int]bool
+	deterministic   bool
 }
+
+var _ core.Transformer = (*RandomCompanyTransformer)(nil)
 
 func NewRandomCompanyTransformer(
 	ctx context.Context,
@@ -147,6 +150,7 @@ func NewRandomCompanyTransformer(
 		engine:          engineMode,
 		buf:             bytes.NewBuffer(nil),
 		nullableMap:     make(map[int]bool, len(columns)),
+		deterministic:   engineIsDeterministic(engine),
 	}, nil
 }
 
@@ -211,6 +215,10 @@ func (t *RandomCompanyTransformer) Transform(_ context.Context, r core.Recorder)
 
 func (t *RandomCompanyTransformer) Describe() string {
 	return TransformerNameRandomCompany
+}
+
+func (t *RandomCompanyTransformer) IsDeterministic() bool {
+	return t.deterministic
 }
 
 func validateRandomCompanyColumnsAndSetDefault(

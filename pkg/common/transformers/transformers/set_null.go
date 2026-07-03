@@ -42,6 +42,8 @@ var SetNullTransformerDefinition = utils.NewTransformerDefinition(
 	).SetRequired(true),
 )
 
+var _ core.Transformer = (*SetNullTransformer)(nil)
+
 type SetNullTransformer struct {
 	columnName      string
 	columnIdx       int
@@ -88,4 +90,8 @@ func (t *SetNullTransformer) Transform(_ context.Context, r core.Recorder) error
 
 func (t *SetNullTransformer) Describe() string {
 	return TransformerNameSetNull
+}
+
+func (t *SetNullTransformer) IsDeterministic() bool {
+	return true
 }

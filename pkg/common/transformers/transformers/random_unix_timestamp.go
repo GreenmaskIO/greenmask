@@ -122,10 +122,13 @@ var UnixTimestampTransformerDefinition = utils.NewTransformerDefinition(
 
 type UnixTimestampTransformer struct {
 	*TimestampTransformer
-	unit    string
-	minUnit string
-	maxUnit string
+	unit          string
+	minUnit       string
+	maxUnit       string
+	deterministic bool
 }
+
+var _ core.Transformer = (*UnixTimestampTransformer)(nil)
 
 func NewUnixTimestampTransformer(
 	ctx context.Context,
@@ -151,6 +154,11 @@ func NewUnixTimestampTransformer(
 		return nil, fmt.Errorf("scan \"max_unit\" param: %w", err)
 	}
 
+	engine, err := getParameterValueWithName[string](ctx, parameters, ParameterNameEngine)
+	if err != nil {
+		return nil, fmt.Errorf("get \"engine\" param: %w", err)
+	}
+
 	t, err := NewTimestampTransformerBase(
 		ctx,
 		tableDriver,
@@ -166,6 +174,7 @@ func NewUnixTimestampTransformer(
 		unit:                 unit,
 		minUnit:              minUnit,
 		maxUnit:              maxUnit,
+		deterministic:        engineIsDeterministic(engine),
 	}, nil
 
 }
@@ -227,6 +236,10 @@ func (t *UnixTimestampTransformer) Transform(_ context.Context, r core.Recorder)
 
 func (t *UnixTimestampTransformer) Describe() string {
 	return TransformerNameRandomUnixTimestamp
+}
+
+func (t *UnixTimestampTransformer) IsDeterministic() bool {
+	return t.deterministic
 }
 
 func getTimeByUnit(v int64, unit string) time.Time {
