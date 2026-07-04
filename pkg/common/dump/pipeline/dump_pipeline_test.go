@@ -252,48 +252,6 @@ func TestBuildSnapshotAndDiff_previousSnapshotWiring(t *testing.T) {
 	})
 }
 
-// --- ValidateContext --------------------------------------------------------
-
-func TestValidateContext_requirements(t *testing.T) {
-	t.Run("missing context building", func(t *testing.T) {
-		s := newStubSet()
-		p, state := discoverOK(t, s)
-		err := p.ValidateContext(context.Background(), state)
-		require.Error(t, err)
-	})
-
-	// Guard for the requirements fix: reaching ValidateContext without
-	// BuildSnapshotAndDiff must return a clean error, not a nil-dereference panic.
-	t.Run("missing snapshot/diff returns error, not panic", func(t *testing.T) {
-		s := newStubSet()
-		p, state := contextOK(t, s)
-		err := p.ValidateContext(context.Background(), state)
-		require.Error(t, err)
-		assert.Zero(t, s.ctxValidator.calls)
-	})
-}
-
-func TestValidateContext_validatorError(t *testing.T) {
-	s := newStubSet()
-	s.ctxValidator.err = errBoom
-	p, state := contextOK(t, s)
-	require.NoError(t, p.BuildSnapshotAndDiff(context.Background(), state))
-
-	err := p.ValidateContext(context.Background(), state)
-	require.ErrorIs(t, err, errBoom)
-	assert.False(t, state.ExecutedStages[StageNameContextValidation])
-}
-
-func TestValidateContext_success(t *testing.T) {
-	s := newStubSet()
-	p, state := contextOK(t, s)
-	require.NoError(t, p.BuildSnapshotAndDiff(context.Background(), state))
-	require.NoError(t, p.ValidateContext(context.Background(), state))
-
-	assert.True(t, state.ExecutedStages[StageNameContextValidation])
-	assert.Equal(t, 1, s.ctxValidator.calls)
-}
-
 // --- BuildPlan / ValidatePlan -----------------------------------------------
 
 // planReady advances a state through everything BuildPlan requires.
@@ -301,7 +259,6 @@ func planReady(t *testing.T, s *stubSet) (*DumpPipeline, *RunState) {
 	t.Helper()
 	p, state := contextOK(t, s)
 	require.NoError(t, p.BuildSnapshotAndDiff(context.Background(), state))
-	require.NoError(t, p.ValidateContext(context.Background(), state))
 	return p, state
 }
 
@@ -464,7 +421,7 @@ func TestRunDump_happyPath(t *testing.T) {
 	for _, c := range []int{
 		s.introspector.calls, s.graph.calls, s.subset.calls,
 		s.explicit.calls, s.derived.calls, s.snapshot.calls, s.differ.calls,
-		s.ctxValidator.calls, s.restoration.calls, s.planAssembler.calls,
+		s.restoration.calls, s.planAssembler.calls,
 		s.planValidator.calls, s.processor.calls,
 	} {
 		assert.Equal(t, 1, c)
@@ -560,7 +517,7 @@ func TestRunShowDumpDiff(t *testing.T) {
 	require.NoError(t, err)
 	assert.True(t, state.ExecutedStages[StageNameSnapshotDiffBuilding])
 	assert.NotNil(t, state.BuildSnapshotAndDiff.DumpContextDiff)
-	assert.False(t, state.ExecutedStages[StageNameContextValidation])
+	assert.False(t, state.ExecutedStages[StageNamePlanBuilding])
 }
 
 func TestRunValidateContext(t *testing.T) {
@@ -575,19 +532,12 @@ func TestRunValidateContext(t *testing.T) {
 		s := newStubSet()
 		p, state := contextOK(t, s)
 		require.NoError(t, p.RunValidateContext(context.Background(), state))
-		assert.True(t, state.ExecutedStages[StageNameContextValidation])
+		assert.True(t, state.ExecutedStages[StageNameSnapshotDiffBuilding])
 	})
 
 	t.Run("snapshot/diff error is wrapped", func(t *testing.T) {
 		s := newStubSet()
 		s.snapshot.err = errBoom
-		p, state := contextOK(t, s)
-		require.ErrorIs(t, p.RunValidateContext(context.Background(), state), errBoom)
-	})
-
-	t.Run("validation error is wrapped", func(t *testing.T) {
-		s := newStubSet()
-		s.ctxValidator.err = errBoom
 		p, state := contextOK(t, s)
 		require.ErrorIs(t, p.RunValidateContext(context.Background(), state), errBoom)
 	})
@@ -611,7 +561,6 @@ func TestRunValidatePlan(t *testing.T) {
 	t.Run("stage errors are wrapped", func(t *testing.T) {
 		for _, setup := range []func(s *stubSet){
 			func(s *stubSet) { s.snapshot.err = errBoom },
-			func(s *stubSet) { s.ctxValidator.err = errBoom },
 			func(s *stubSet) { s.planAssembler.err = errBoom },
 			func(s *stubSet) { s.planValidator.err = errBoom },
 		} {

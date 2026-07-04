@@ -216,16 +216,6 @@ func (s *stubDiffer) Diff(_ context.Context, in core.DumpContextDiffInput) (core
 	return s.result, s.err
 }
 
-type stubContextValidator struct {
-	err   error
-	calls int
-}
-
-func (s *stubContextValidator) Validate(context.Context, core.DumpContextValidatorInput) error {
-	s.calls++
-	return s.err
-}
-
 type stubRestorationBuilder struct {
 	result core.RestorationContext
 	err    error
@@ -337,7 +327,6 @@ type stubSet struct {
 	derived       *stubDerivedBuilder
 	snapshot      *stubSnapshotBuilder
 	differ        *stubDiffer
-	ctxValidator  *stubContextValidator
 	restoration   *stubRestorationBuilder
 	planAssembler *stubPlanAssembler
 	planValidator *stubPlanValidator
@@ -365,7 +354,6 @@ func newStubSet() *stubSet {
 		derived:       &stubDerivedBuilder{},
 		snapshot:      &stubSnapshotBuilder{},
 		differ:        &stubDiffer{},
-		ctxValidator:  &stubContextValidator{},
 		restoration:   &stubRestorationBuilder{},
 		planAssembler: &stubPlanAssembler{},
 		planValidator: &stubPlanValidator{},
@@ -392,7 +380,6 @@ func (s *stubSet) stages() DumpStages {
 		DerivedDumpContextBuilder:   s.derived,
 		DumpContextSnapshotBuilder:  s.snapshot,
 		DumpContextDiffer:           s.differ,
-		DumpContextValidator:        s.ctxValidator,
 		RestorationContextBuilder:   s.restoration,
 		DumpPlanAssembler:           s.planAssembler,
 		DumpPlanValidator:           s.planValidator,

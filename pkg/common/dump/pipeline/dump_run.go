@@ -15,7 +15,6 @@ const (
 	StageNameDiscovery             StageName = "discovery"
 	StageNameContextBuilding       StageName = "context_building"
 	StageNameSnapshotDiffBuilding  StageName = "snapshot_diff_building"
-	StageNameContextValidation     StageName = "context_validation"
 	StageNamePlanBuilding          StageName = "plan_building"
 	StageNamePlanValidation        StageName = "plan_validation"
 	StageNameExecution             StageName = "execution"
@@ -46,7 +45,7 @@ type ContextStageArtifacts struct {
 
 // BuildSnapshotAndDiffArtifacts holds the serialisable snapshot of the current
 // DumpContext and the diff against the previous run's snapshot. Both are
-// required by ValidateContext and BuildPlan.
+// required by BuildPlan.
 type BuildSnapshotAndDiffArtifacts struct {
 	DumpContextSnapshot *core.DumpContextSnapshot `json:"dump_context_snapshot,omitempty"`
 	DumpContextDiff     *core.DumpContextDiff     `json:"dump_context_diff,omitempty"`
@@ -112,7 +111,6 @@ func NewRunState(cfg config.Config) *RunState {
 		StageNameDiscovery:             false,
 		StageNameContextBuilding:       false,
 		StageNameSnapshotDiffBuilding:  false,
-		StageNameContextValidation:     false,
 		StageNamePlanBuilding:          false,
 		StageNamePlanValidation:        false,
 		StageNameExecution:             false,

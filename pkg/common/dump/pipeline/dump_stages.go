@@ -178,17 +178,6 @@ type DumpStages struct {
 	// TODO: Is not required for MVP implementation
 	DumpContextDiffer core.DumpContextDiffer
 
-	// DumpContextValidator validates semantic correctness
-	// of the final dump context.
-	//
-	// Examples:
-	//   - invalid transformer propagation
-	//   - unresolved semantic conflicts
-	//   - incompatible transformations
-	//   - missing referenced objects
-	//   - unsupported semantic combinations
-	DumpContextValidator core.DumpContextValidator
-
 	// RestorationContextBuilder builds restoration ordering
 	// and restoration dependency metadata.
 	//
@@ -218,7 +207,6 @@ type DumpStages struct {
 	//   - subset integrity violations
 	//   - execution deadlocks
 	//   - unsupported runtime combinations
-	// TODO: Is not required for MVP implementation
 	DumpPlanValidator core.DumpPlanValidator
 
 	// StorageProvisioner builds the destination storage for the execution stage

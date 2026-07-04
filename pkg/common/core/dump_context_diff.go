@@ -13,7 +13,7 @@ type DumpContextDiffInput struct {
 //
 // Main requirement: report the full added / removed / modified set, like a text
 // diff's + / - / ~, at every level of the snapshot tree — not just a boolean
-// "something changed". Consumers (DumpContextValidator, DumpPlanAssembler, and
+// "something changed". Consumers (DumpPlanValidator, DumpPlanAssembler, and
 // gm-backend approval/GitOps/UI/audit workflows) branch on this, and it is
 // serialized into RunState/Metadata across the Temporal boundary, so the result
 // must be structured (machine-consumable), deterministic, and JSON-serializable.

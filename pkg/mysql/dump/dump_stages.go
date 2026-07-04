@@ -64,7 +64,6 @@ func NewDumpStages() pipeline.DumpStages {
 		DerivedDumpContextBuilder:   NewDerivedDumpContextBuilder(registry.DefaultTransformerRegistry.Core()),
 		DumpContextSnapshotBuilder:  NewDumpContextSnapshotBuilder(),
 		DumpContextDiffer:           &DumpContextDiffer{},
-		DumpContextValidator:        &DumpContextValidator{},
 		RestorationContextBuilder:   &RestorationContextBuilder{},
 		DumpPlanAssembler:           &DumpPlanAssembler{},
 		DumpPlanValidator:           &DumpPlanValidator{},

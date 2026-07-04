@@ -214,41 +214,13 @@ func (p *DumpPipeline) BuildSnapshotAndDiff(
 	return nil
 }
 
-func (p *DumpPipeline) ValidateContext(
-	ctx context.Context,
-	state *RunState,
-) error {
-	ctx = validationcollector.WithMeta(ctx, core.MetaKeyStage, StageNameContextValidation)
-	// SnapshotDiffBuilding is required as well: the validator consumes the
-	// DumpContextDiff it produces, so gating on ContextBuilding alone would let a
-	// caller reach a nil-dereference instead of a clean requirements error.
-	if err := state.Require(StageNameContextBuilding, StageNameSnapshotDiffBuilding); err != nil {
-		return fmt.Errorf("check requirements: %w", err)
-	}
-
-	buildSnapshotAndDiff := state.BuildSnapshotAndDiff
-
-	if err := p.Stages.DumpContextValidator.Validate(ctx, core.DumpContextValidatorInput{
-		DumpContext: *state.Context.FinalCtx,
-		Diff:        *buildSnapshotAndDiff.DumpContextDiff,
-	}); err != nil {
-		return fmt.Errorf("validate dump context: %w", err)
-	}
-
-	state.MarkExecuted(StageNameContextValidation)
-	return nil
-}
-
 // Plan assembly is durable/pure.
 func (p *DumpPipeline) BuildPlan(
 	ctx context.Context,
 	state *RunState,
 ) error {
 	ctx = validationcollector.WithMeta(ctx, core.MetaKeyStage, StageNamePlanBuilding)
-	if err := state.Require(
-		StageNameSnapshotDiffBuilding,
-		StageNameContextValidation,
-	); err != nil {
+	if err := state.Require(StageNameSnapshotDiffBuilding); err != nil {
 		return fmt.Errorf("check requirements: %w", err)
 	}
 
@@ -416,9 +388,6 @@ func (p *DumpPipeline) RunDump(ctx context.Context, cfg config.Config) (*RunStat
 		if err := p.BuildSnapshotAndDiff(ctx, state); err != nil {
 			return fmt.Errorf("build snapshot and diff stage: %w", err)
 		}
-		if err := p.ValidateContext(ctx, state); err != nil {
-			return fmt.Errorf("validate context stage: %w", err)
-		}
 		if err := p.BuildPlan(ctx, state); err != nil {
 			return fmt.Errorf("build plan stage: %w", err)
 		}
@@ -449,8 +418,8 @@ func (p *DumpPipeline) RunValidateConfig(ctx context.Context, cfg config.Config)
 	return state, nil
 }
 
-// RunValidateContext runs snapshot+diff building and context validation against
-// an already-built state (discovery and context building must have completed).
+// RunValidateContext runs snapshot+diff building against an already-built state
+// (discovery and context building must have completed).
 func (p *DumpPipeline) RunValidateContext(ctx context.Context, state *RunState) error {
 	if err := state.Require(StageNameContextBuilding); err != nil {
 		return fmt.Errorf("check requirements: %w", err)
@@ -459,15 +428,11 @@ func (p *DumpPipeline) RunValidateContext(ctx context.Context, state *RunState) 
 	if err := p.BuildSnapshotAndDiff(ctx, state); err != nil {
 		return fmt.Errorf("build snapshot and diff stage: %w", err)
 	}
-
-	if err := p.ValidateContext(ctx, state); err != nil {
-		return fmt.Errorf("validate context stage: %w", err)
-	}
 	return nil
 }
 
-// RunValidatePlan runs the full planning pipeline (snapshot+diff, context
-// validation, plan assembly, plan validation) against an already-built state.
+// RunValidatePlan runs the full planning pipeline (snapshot+diff, plan assembly,
+// plan validation) against an already-built state.
 func (p *DumpPipeline) RunValidatePlan(ctx context.Context, state *RunState) error {
 	if err := state.Require(StageNameContextBuilding); err != nil {
 		return fmt.Errorf("check requirements: %w", err)
@@ -475,10 +440,6 @@ func (p *DumpPipeline) RunValidatePlan(ctx context.Context, state *RunState) err
 
 	if err := p.BuildSnapshotAndDiff(ctx, state); err != nil {
 		return fmt.Errorf("build snapshot and diff stage: %w", err)
-	}
-
-	if err := p.ValidateContext(ctx, state); err != nil {
-		return fmt.Errorf("validate context stage: %w", err)
 	}
 
 	if err := p.BuildPlan(ctx, state); err != nil {
