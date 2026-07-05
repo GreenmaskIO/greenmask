@@ -267,9 +267,17 @@ func (p *DumpPipeline) ValidatePlan(
 	if err := state.Require(StageNamePlanBuilding); err != nil {
 		return fmt.Errorf("check requirements: %w", err)
 	}
-	if err := p.Stages.DumpPlanValidator.Validate(ctx, core.DumpPlanValidationInput{
+	input := core.DumpPlanValidationInput{
 		Plan: *state.BuildPlan.Plan,
-	}); err != nil {
+	}
+	// The dependency graph (built over the full pre-filter schema during discovery)
+	// is the authoritative FK source for referential-hole checks. It lives in the
+	// run state and is not carried on the DumpPlan, so hand it to the validator
+	// explicitly. Guard against a nil graph (e.g. an empty/degenerate run).
+	if state.Discovery.DependencyGraph != nil {
+		input.DependencyGraph = *state.Discovery.DependencyGraph
+	}
+	if err := p.Stages.DumpPlanValidator.Validate(ctx, input); err != nil {
 		return fmt.Errorf("validate dump plan: %w", err)
 	}
 

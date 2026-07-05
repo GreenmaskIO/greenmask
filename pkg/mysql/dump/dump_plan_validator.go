@@ -18,14 +18,17 @@ import (
 	"context"
 
 	core "github.com/greenmaskio/greenmask/pkg/common/core"
+	"github.com/greenmaskio/greenmask/pkg/common/dump/plancheck"
 )
 
 var _ core.DumpPlanValidator = (*DumpPlanValidator)(nil)
 
 // DumpPlanValidator validates the final executable dump plan.
-// The stub is a no-op pass; validation findings flow through validationcollector.
+// It delegates to the engine-agnostic plancheck package; validation findings
+// flow through validationcollector and an error-severity finding returns
+// core.ErrFatalValidationError so the pipeline aborts before Execute.
 type DumpPlanValidator struct{}
 
 func (s *DumpPlanValidator) Validate(ctx context.Context, input core.DumpPlanValidationInput) error {
-	return nil
+	return plancheck.ValidatePlan(ctx, input.Plan, input.DependencyGraph)
 }

@@ -17,9 +17,6 @@ type ObjectLinkKind string
 
 const (
 	ObjectLinkKindForeignKey ObjectLinkKind = "foreign_key"
-	ObjectLinkKindReference  ObjectLinkKind = "reference"
-	ObjectLinkKindOwnership  ObjectLinkKind = "ownership"
-	ObjectLinkKindDependency ObjectLinkKind = "dependency"
 )
 
 type FieldRefKind string
