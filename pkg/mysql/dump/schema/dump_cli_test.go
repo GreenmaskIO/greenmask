@@ -22,8 +22,8 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 	"github.com/greenmaskio/greenmask/pkg/common/mocks"
-	commonmodels "github.com/greenmaskio/greenmask/pkg/common/models"
 	"github.com/greenmaskio/greenmask/pkg/common/utils"
 )
 
@@ -34,7 +34,7 @@ func newTestDumper(st *mocks.StorageMock, vendorOptions []string) *Dumper {
 		[]string{"_TEST=1"},
 		[]string{},
 		vendorOptions,
-		commonmodels.MysqlDumpRelatedSettings{
+		core.DumpScope{
 			AllowedSchemas: []string{"testdb"},
 			IncludeTables:  map[string][]string{"testdb": nil},
 		},

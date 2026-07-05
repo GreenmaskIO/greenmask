@@ -18,24 +18,24 @@ import (
 	"encoding/binary"
 	"fmt"
 
-	commonmodels "github.com/greenmaskio/greenmask/pkg/common/models"
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 	"github.com/greenmaskio/greenmask/pkg/common/transformers/generators"
 )
 
 type RandomChoiceTransformer struct {
-	values     []*commonmodels.ColumnRawValue
+	values     []*core.ColumnRawValue
 	byteLength int
 	generator  generators.Generator
 }
 
-func NewRandomChoiceTransformer(values []*commonmodels.ColumnRawValue) *RandomChoiceTransformer {
+func NewRandomChoiceTransformer(values []*core.ColumnRawValue) *RandomChoiceTransformer {
 	return &RandomChoiceTransformer{
 		values:     values,
 		byteLength: 4,
 	}
 }
 
-func (rc *RandomChoiceTransformer) Transform(original []byte) (*commonmodels.ColumnRawValue, error) {
+func (rc *RandomChoiceTransformer) Transform(original []byte) (*core.ColumnRawValue, error) {
 	resBytes, err := rc.generator.Generate(original)
 	if err != nil {
 		return nil, err

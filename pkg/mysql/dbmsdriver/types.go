@@ -17,14 +17,19 @@ package dbmsdriver
 import (
 	"fmt"
 
-	commonmodels "github.com/greenmaskio/greenmask/pkg/common/models"
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 )
 
 var (
 	DMMSName = "mysql"
-
-	NullValueSeq = []byte("\\N")
 )
+
+// TypeClassEnum is the MySQL-specific type class for ENUM/SET columns. It is an
+// engine extension over core's generic type-class set: core deliberately does not
+// enumerate single-engine families, so the class lives in the engine driver that
+// produces it. Transformers that do not recognize it simply treat the column as
+// any other unknown class.
+const TypeClassEnum core.TypeClass = "enum"
 
 const (
 	// Numeric types
@@ -93,180 +98,152 @@ const (
 
 const (
 	// Numeric types with Virtual OIDs
-	VirtualOidTinyInt commonmodels.VirtualOID = iota
-	VirtualOidSmallInt
-	VirtualOidMediumInt
-	VirtualOidInt
-	VirtualOidBigInt
-	VirtualOidDecimal
-	VirtualOidNumeric
-	VirtualOidFloat
-	VirtualOidDouble
-	VirtualOidReal
-	VirtualOidBit
+	TypeIDTinyInt core.TypeID = iota
+	TypeIDSmallInt
+	TypeIDMediumInt
+	TypeIDInt
+	TypeIDBigInt
+	TypeIDDecimal
+	TypeIDNumeric
+	TypeIDFloat
+	TypeIDDouble
+	TypeIDReal
+	TypeIDBit
 
 	// Date and time types
-	VirtualOidDate
-	VirtualOidDateTime
-	VirtualOidTimestamp
-	VirtualOidTime
-	VirtualOidYear
+	TypeIDDate
+	TypeIDDateTime
+	TypeIDTimestamp
+	TypeIDTime
+	TypeIDYear
 
 	// String types
-	VirtualOidChar
-	VirtualOidVarChar
+	TypeIDChar
+	TypeIDVarChar
 
-	VirtualOidBoolean
-	VirtualOidBool
+	TypeIDBoolean
+	TypeIDBool
 
 	// Text types
-	VirtualOidTinyText
-	VirtualOidText
-	VirtualOidMediumText
-	VirtualOidLongText
+	TypeIDTinyText
+	TypeIDText
+	TypeIDMediumText
+	TypeIDLongText
 
 	// Binary types
-	VirtualOidBinary
-	VirtualOidVarBinary
+	TypeIDBinary
+	TypeIDVarBinary
 
 	// Blob types
-	VirtualOidTinyBlob
-	VirtualOidBlob
-	VirtualOidMediumBlob
-	VirtualOidLongBlob
+	TypeIDTinyBlob
+	TypeIDBlob
+	TypeIDMediumBlob
+	TypeIDLongBlob
 
 	// Special string types
-	VirtualOidEnum
-	VirtualOidSet
+	TypeIDEnum
+	TypeIDSet
 
 	// Spatial types
-	VirtualOidGeometry
-	VirtualOidPoint
-	VirtualOidLineString
-	VirtualOidPolygon
-	VirtualOidMultiPoint
-	VirtualOidMultiLineString
-	VirtualOidMultiPolygon
-	VirtualOidGeometryCollection
+	TypeIDGeometry
+	TypeIDPoint
+	TypeIDLineString
+	TypeIDPolygon
+	TypeIDMultiPoint
+	TypeIDMultiLineString
+	TypeIDMultiPolygon
+	TypeIDGeometryCollection
 
 	// JSON type
-	VirtualOidJSON
+	TypeIDJSON
 )
 
+// typeDef is the immutable per-base-type record in the MySQL type catalog. It is
+// keyed by the modifier-free base name (DATA_TYPE, e.g. "int") and holds the
+// stable facts of that base type. Per-column modifiers — signedness, precision,
+// scale, length — are NOT catalog keys; they are overlaid at projection time by
+// ResolveType, which keeps the catalog free of the type×sign×precision
+// combinatorial blow-up. A class of "" means the base type has no canonical
+// class (e.g. spatial types), matching the pre-consolidation behavior where such
+// types resolved to TypeClassUnsupported.
+type typeDef struct {
+	name  string
+	id    core.TypeID
+	class core.TypeClass
+}
+
+// typeDefs is the single source of truth for the MySQL type catalog. All lookup
+// maps below are derived from it in init().
+var typeDefs = []typeDef{
+	{TypeTinyInt, TypeIDTinyInt, core.TypeClassInt},
+	{TypeSmallInt, TypeIDSmallInt, core.TypeClassInt},
+	{TypeMediumInt, TypeIDMediumInt, core.TypeClassInt},
+	{TypeInt, TypeIDInt, core.TypeClassInt},
+	{TypeBigInt, TypeIDBigInt, core.TypeClassInt},
+	{TypeDecimal, TypeIDDecimal, core.TypeClassFloat},
+	{TypeNumeric, TypeIDNumeric, core.TypeClassFloat},
+	{TypeFloat, TypeIDFloat, core.TypeClassFloat},
+	{TypeDouble, TypeIDDouble, core.TypeClassFloat},
+	{TypeReal, TypeIDReal, core.TypeClassFloat},
+	{TypeBit, TypeIDBit, core.TypeClassBoolean},
+	{TypeDate, TypeIDDate, core.TypeClassDateTime},
+	{TypeDateTime, TypeIDDateTime, core.TypeClassDateTime},
+	{TypeTimestamp, TypeIDTimestamp, core.TypeClassDateTime},
+	{TypeTime, TypeIDTime, core.TypeClassDateTime},
+	{TypeYear, TypeIDYear, core.TypeClassTime},
+	{TypeChar, TypeIDChar, core.TypeClassText},
+	{TypeVarChar, TypeIDVarChar, core.TypeClassText},
+	{TypeBoolean, TypeIDBoolean, core.TypeClassBoolean},
+	{TypeBool, TypeIDBool, core.TypeClassBoolean},
+	{TypeTinyText, TypeIDTinyText, core.TypeClassText},
+	{TypeText, TypeIDText, core.TypeClassText},
+	{TypeMediumText, TypeIDMediumText, core.TypeClassText},
+	{TypeLongText, TypeIDLongText, core.TypeClassText},
+	{TypeBinary, TypeIDBinary, core.TypeClassBinary},
+	{TypeVarBinary, TypeIDVarBinary, core.TypeClassBinary},
+	{TypeTinyBlob, TypeIDTinyBlob, core.TypeClassBinary},
+	{TypeBlob, TypeIDBlob, core.TypeClassBinary},
+	{TypeMediumBlob, TypeIDMediumBlob, core.TypeClassBinary},
+	{TypeLongBlob, TypeIDLongBlob, core.TypeClassBinary},
+	{TypeEnum, TypeIDEnum, TypeClassEnum},
+	{TypeSet, TypeIDSet, TypeClassEnum}, // MySQL-specific
+	{TypeGeometry, TypeIDGeometry, ""},
+	{TypePoint, TypeIDPoint, ""},
+	{TypeLineString, TypeIDLineString, ""},
+	{TypePolygon, TypeIDPolygon, ""},
+	{TypeMultiPoint, TypeIDMultiPoint, ""},
+	{TypeMultiLineString, TypeIDMultiLineString, ""},
+	{TypeMultiPolygon, TypeIDMultiPolygon, ""},
+	{TypeGeometryCollection, TypeIDGeometryCollection, ""},
+	{TypeJSON, TypeIDJSON, core.TypeClassJson},
+}
+
 var (
-	VirtualOidToTypeName = map[commonmodels.VirtualOID]string{
-		VirtualOidTinyInt:            TypeTinyInt,
-		VirtualOidSmallInt:           TypeSmallInt,
-		VirtualOidMediumInt:          TypeMediumInt,
-		VirtualOidInt:                TypeInt,
-		VirtualOidBigInt:             TypeBigInt,
-		VirtualOidDecimal:            TypeDecimal,
-		VirtualOidNumeric:            TypeNumeric,
-		VirtualOidFloat:              TypeFloat,
-		VirtualOidDouble:             TypeDouble,
-		VirtualOidReal:               TypeReal,
-		VirtualOidBit:                TypeBit,
-		VirtualOidDate:               TypeDate,
-		VirtualOidDateTime:           TypeDateTime,
-		VirtualOidTimestamp:          TypeTimestamp,
-		VirtualOidTime:               TypeTime,
-		VirtualOidYear:               TypeYear,
-		VirtualOidChar:               TypeChar,
-		VirtualOidVarChar:            TypeVarChar,
-		VirtualOidBoolean:            TypeBoolean,
-		VirtualOidTinyText:           TypeTinyText,
-		VirtualOidText:               TypeText,
-		VirtualOidMediumText:         TypeMediumText,
-		VirtualOidLongText:           TypeLongText,
-		VirtualOidBinary:             TypeBinary,
-		VirtualOidVarBinary:          TypeVarBinary,
-		VirtualOidTinyBlob:           TypeTinyBlob,
-		VirtualOidBlob:               TypeBlob,
-		VirtualOidMediumBlob:         TypeMediumBlob,
-		VirtualOidLongBlob:           TypeLongBlob,
-		VirtualOidEnum:               TypeEnum,
-		VirtualOidSet:                TypeSet,
-		VirtualOidGeometry:           TypeGeometry,
-		VirtualOidPoint:              TypePoint,
-		VirtualOidLineString:         TypeLineString,
-		VirtualOidPolygon:            TypePolygon,
-		VirtualOidMultiPoint:         TypeMultiPoint,
-		VirtualOidMultiLineString:    TypeMultiLineString,
-		VirtualOidMultiPolygon:       TypeMultiPolygon,
-		VirtualOidGeometryCollection: TypeGeometryCollection,
-		VirtualOidJSON:               TypeJSON,
-		VirtualOidBool:               TypeBool,
-	}
+	// TypeIDToTypeName / TypeNameToTypeID - id<->name lookups for every base type.
+	TypeIDToTypeName = make(map[core.TypeID]string, len(typeDefs))
+	TypeNameToTypeID = make(map[string]core.TypeID, len(typeDefs))
 
-	TypeNameToVirtualOid = make(map[string]commonmodels.VirtualOID)
-
-	// TypeDataNameTypeToClass - mapping MySQL data types to common type classes.
-	TypeDataNameTypeToClass = map[string]commonmodels.TypeClass{
-		TypeChar:       commonmodels.TypeClassText,
-		TypeVarChar:    commonmodels.TypeClassText,
-		TypeTinyText:   commonmodels.TypeClassText,
-		TypeText:       commonmodels.TypeClassText,
-		TypeMediumText: commonmodels.TypeClassText,
-		TypeLongText:   commonmodels.TypeClassText,
-
-		TypeTinyInt:   commonmodels.TypeClassInt,
-		TypeSmallInt:  commonmodels.TypeClassInt,
-		TypeMediumInt: commonmodels.TypeClassInt,
-		TypeInt:       commonmodels.TypeClassInt,
-		TypeBigInt:    commonmodels.TypeClassInt,
-
-		TypeFloat:  commonmodels.TypeClassFloat,
-		TypeDouble: commonmodels.TypeClassFloat,
-		TypeReal:   commonmodels.TypeClassFloat,
-
-		TypeNumeric: commonmodels.TypeClassFloat,
-		TypeDecimal: commonmodels.TypeClassFloat,
-
-		TypeBit:     commonmodels.TypeClassBoolean,
-		TypeBool:    commonmodels.TypeClassBoolean,
-		TypeBoolean: commonmodels.TypeClassBoolean,
-
-		TypeDate:      commonmodels.TypeClassDateTime,
-		TypeDateTime:  commonmodels.TypeClassDateTime,
-		TypeTimestamp: commonmodels.TypeClassDateTime,
-		TypeTime:      commonmodels.TypeClassDateTime,
-
-		TypeYear: commonmodels.TypeClassTime,
-
-		TypeJSON: commonmodels.TypeClassJson,
-
-		TypeBinary:     commonmodels.TypeClassBinary,
-		TypeVarBinary:  commonmodels.TypeClassBinary,
-		TypeBlob:       commonmodels.TypeClassBinary,
-		TypeTinyBlob:   commonmodels.TypeClassBinary,
-		TypeMediumBlob: commonmodels.TypeClassBinary,
-		TypeLongBlob:   commonmodels.TypeClassBinary,
-
-		TypeEnum: commonmodels.TypeClassEnum,
-		TypeSet:  commonmodels.TypeClassEnum, // MySQL-specific
-	}
-
-	TypeDataOidToClass = make(map[commonmodels.VirtualOID]commonmodels.TypeClass)
+	// TypeDataNameTypeToClass / TypeDataIDToClass - name/id -> class lookups. Only
+	// base types that carry a canonical class are present (matching the historical
+	// maps); spatial types with class "" are intentionally absent.
+	TypeDataNameTypeToClass = make(map[string]core.TypeClass)
+	TypeDataIDToClass       = make(map[core.TypeID]core.TypeClass)
 
 	// TypeClassToDataTypes - reverse mapping from common type classes to MySQL data types.
-	TypeClassToDataTypes = make(map[commonmodels.TypeClass][]string)
+	TypeClassToDataTypes = make(map[core.TypeClass][]string)
 )
 
 func init() {
-	for oid, typeName := range VirtualOidToTypeName {
-		TypeNameToVirtualOid[typeName] = oid
-	}
-
-	// Initialize the reverse mapping from type classes to data types.
-	for dt, tc := range TypeDataNameTypeToClass {
-		TypeClassToDataTypes[tc] = append(TypeClassToDataTypes[tc], dt)
-	}
-
-	for dt, tc := range TypeDataNameTypeToClass {
-		oid, ok := TypeNameToVirtualOid[dt]
-		if !ok {
-			panic(fmt.Sprintf("invalid type name \"%s\"", dt))
+	for _, td := range typeDefs {
+		if _, dup := TypeNameToTypeID[td.name]; dup {
+			panic(fmt.Sprintf("duplicate type name %q in typeDefs", td.name))
 		}
-		TypeDataOidToClass[oid] = tc
+		TypeIDToTypeName[td.id] = td.name
+		TypeNameToTypeID[td.name] = td.id
+		if td.class != "" {
+			TypeDataNameTypeToClass[td.name] = td.class
+			TypeDataIDToClass[td.id] = td.class
+			TypeClassToDataTypes[td.class] = append(TypeClassToDataTypes[td.class], td.name)
+		}
 	}
 }

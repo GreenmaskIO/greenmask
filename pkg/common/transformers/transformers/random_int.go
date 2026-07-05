@@ -18,8 +18,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/greenmaskio/greenmask/pkg/common/interfaces"
-	commonmodels "github.com/greenmaskio/greenmask/pkg/common/models"
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 	"github.com/greenmaskio/greenmask/pkg/common/transformers/generators/transformers"
 	"github.com/greenmaskio/greenmask/pkg/common/transformers/parameters"
 	"github.com/greenmaskio/greenmask/pkg/common/transformers/utils"
@@ -41,9 +40,9 @@ var RandomIntegerTransformerDefinition = utils.NewTransformerDefinition(
 		"column",
 		"column name",
 	).SetIsColumn(
-		commonmodels.NewColumnProperties().
+		core.NewColumnProperties().
 			SetAffected(true).
-			SetAllowedColumnTypeClasses(commonmodels.TypeClassInt),
+			SetAllowedColumnTypeClasses(core.TypeClassInt),
 	).SetRequired(true),
 
 	parameters.MustNewParameterDefinition(
@@ -54,8 +53,8 @@ var RandomIntegerTransformerDefinition = utils.NewTransformerDefinition(
 		SetDynamicMode(
 			parameters.NewDynamicModeProperties().
 				SetColumnProperties(
-					commonmodels.NewColumnProperties().
-						SetAllowedColumnTypeClasses(commonmodels.TypeClassInt),
+					core.NewColumnProperties().
+						SetAllowedColumnTypeClasses(core.TypeClassInt),
 				),
 		),
 
@@ -67,8 +66,8 @@ var RandomIntegerTransformerDefinition = utils.NewTransformerDefinition(
 		SetDynamicMode(
 			parameters.NewDynamicModeProperties().
 				SetColumnProperties(
-					commonmodels.NewColumnProperties().
-						SetAllowedColumnTypeClasses(commonmodels.TypeClassInt),
+					core.NewColumnProperties().
+						SetAllowedColumnTypeClasses(core.TypeClassInt),
 				),
 		),
 
@@ -79,6 +78,8 @@ var RandomIntegerTransformerDefinition = utils.NewTransformerDefinition(
 	defaultEngineParameterDefinition,
 )
 
+var _ core.Transformer = (*IntegerTransformer)(nil)
+
 type IntegerTransformer struct {
 	*transformers.RandomInt64Transformer
 	columnName      string
@@ -87,6 +88,7 @@ type IntegerTransformer struct {
 	columnIdx       int
 	dynamicMode     bool
 	intSize         int
+	deterministic   bool
 
 	maxParam parameters.Parameterizer
 	minParam parameters.Parameterizer
@@ -96,9 +98,9 @@ type IntegerTransformer struct {
 
 func NewIntegerTransformer(
 	ctx context.Context,
-	tableDriver interfaces.TableDriver,
+	tableDriver core.TableDriver,
 	parameters map[string]parameters.Parameterizer,
-) (interfaces.Transformer, error) {
+) (core.Transformer, error) {
 	var minVal, maxVal *int64
 
 	maxParam := parameters["max"]
@@ -121,7 +123,7 @@ func NewIntegerTransformer(
 		return nil, fmt.Errorf("get \"engine\" param: %w", err)
 	}
 
-	typeSize := column.Size
+	typeSize := column.Type.Size
 	if typeSize == 0 {
 		log.Ctx(ctx).
 			Warn().
@@ -174,8 +176,9 @@ func NewIntegerTransformer(
 		minParam: minParam,
 		maxParam: maxParam,
 
-		dynamicMode: dynamicMode,
-		intSize:     typeSize,
+		dynamicMode:   dynamicMode,
+		intSize:       typeSize,
+		deterministic: engineIsDeterministic(engine),
 
 		transform: func(bytes []byte) (int64, error) {
 			return t.Transform(nil, bytes)
@@ -222,7 +225,7 @@ func (t *IntegerTransformer) dynamicTransform(v []byte) (int64, error) {
 	return res, nil
 }
 
-func (t *IntegerTransformer) Transform(_ context.Context, r interfaces.Recorder) error {
+func (t *IntegerTransformer) Transform(_ context.Context, r core.Recorder) error {
 	val, err := r.GetRawColumnValueByIdx(t.columnIdx)
 	if err != nil {
 		return fmt.Errorf("scan value: %w", err)
@@ -244,6 +247,10 @@ func (t *IntegerTransformer) Transform(_ context.Context, r interfaces.Recorder)
 
 func (t *IntegerTransformer) Describe() string {
 	return TransformerNameRandomInt
+}
+
+func (t *IntegerTransformer) IsDeterministic() bool {
+	return t.deterministic
 }
 
 func getRandomInt64LimiterForDynamicParameter(size int, requestedMinValue, requestedMaxValue int64) (*transformers.Int64Limiter, error) {

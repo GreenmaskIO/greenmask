@@ -523,7 +523,7 @@ func TestFuncMap_noiseDate(t *testing.T) {
 
 	buf := bytes.NewBuffer(nil)
 	tmplStr := `
-		{{- .Date | noiseDatePgInterval .Interval -}}
+		{{- .Date | noiseDate .Interval -}}
 	`
 	tmpl, err := template.New("test").Funcs(FuncMap()).Parse(tmplStr)
 	require.NoError(t, err)
@@ -548,11 +548,11 @@ func TestFuncMap_noiseDate(t *testing.T) {
 			name: "ok",
 			params: params{
 				Date:     time.Date(2023, 11, 23, 1, 10, 3, 4, time.Now().Location()),
-				Interval: "1 year 1 mon 00:03:00",
+				Interval: "5w2d", // 35d + 2d = 37 days
 			},
 			expected: expected{
-				minDate: time.Date(2022, 10, 23, 1, 8, 3, 4, time.Now().Location()),
-				maxDate: time.Date(2024, 11, 23, 1, 12, 3, 4, time.Now().Location()),
+				minDate: time.Date(2023, 11, 23, 1, 10, 3, 4, time.Now().Location()).Add(-37 * 24 * time.Hour),
+				maxDate: time.Date(2023, 11, 23, 1, 10, 3, 4, time.Now().Location()).Add(37 * 24 * time.Hour),
 			},
 		},
 		{

@@ -19,12 +19,11 @@ import (
 
 	"github.com/stretchr/testify/mock"
 
-	commonininterfaces "github.com/greenmaskio/greenmask/pkg/common/interfaces"
-	commonmodels "github.com/greenmaskio/greenmask/pkg/common/models"
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 )
 
 var (
-	_ commonininterfaces.TableDriver = (*TableDriverMock)(nil)
+	_ core.TableDriver = (*TableDriverMock)(nil)
 )
 
 type TableDriverMock struct {
@@ -51,8 +50,16 @@ func (t *TableDriverMock) EncodeValueByTypeName(name string, src any, buf []byte
 	return args.Get(0).([]byte), args.Error(1)
 }
 
-func (t *TableDriverMock) EncodeValueByTypeOid(oid commonmodels.VirtualOID, src any, buf []byte) ([]byte, error) {
-	args := t.Called(oid, src, buf)
+func (t *TableDriverMock) DecodeValueByTypeName(name string, src []byte) (any, error) {
+	args := t.Called(name, src)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0), args.Error(1)
+}
+
+func (t *TableDriverMock) EncodeValueByType(typ core.Type, src any, buf []byte) ([]byte, error) {
+	args := t.Called(typ, src, buf)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
@@ -62,32 +69,24 @@ func (t *TableDriverMock) EncodeValueByTypeOid(oid commonmodels.VirtualOID, src 
 	return args.Get(0).([]byte), args.Error(1)
 }
 
-func (t *TableDriverMock) DecodeValueByTypeName(name string, src []byte) (any, error) {
-	args := t.Called(name, src)
+func (t *TableDriverMock) DecodeValueByType(typ core.Type, src []byte) (any, error) {
+	args := t.Called(typ, src)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
 	return args.Get(0), args.Error(1)
 }
 
-func (t *TableDriverMock) DecodeValueByTypeOid(oid commonmodels.VirtualOID, src []byte) (any, error) {
-	args := t.Called(oid, src)
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-	return args.Get(0), args.Error(1)
-}
-
-func (t *TableDriverMock) ScanValueByTypeName(name string, src []byte, dest any) error {
-	args := t.Called(name, src, dest)
+func (t *TableDriverMock) ScanValueByType(typ core.Type, src []byte, dest any) error {
+	args := t.Called(typ, src, dest)
 	if args.Get(0) != nil {
 		return args.Error(0)
 	}
 	return nil
 }
 
-func (t *TableDriverMock) ScanValueByTypeOid(oid commonmodels.VirtualOID, src []byte, dest any) error {
-	args := t.Called(oid, src, dest)
+func (t *TableDriverMock) ScanValueByTypeName(name string, src []byte, dest any) error {
+	args := t.Called(name, src, dest)
 	if args.Get(0) != nil {
 		return args.Error(0)
 	}
@@ -106,7 +105,7 @@ func (t *TableDriverMock) TypeExistsByName(name string) bool {
 	return exists
 }
 
-func (t *TableDriverMock) TypeExistsByOid(oid commonmodels.VirtualOID) bool {
+func (t *TableDriverMock) TypeExistsByID(oid core.TypeID) bool {
 	args := t.Called(oid)
 	if args.Get(0) == nil {
 		return false
@@ -118,19 +117,19 @@ func (t *TableDriverMock) TypeExistsByOid(oid commonmodels.VirtualOID) bool {
 	return exists
 }
 
-func (t *TableDriverMock) GetTypeOid(name string) (commonmodels.VirtualOID, error) {
+func (t *TableDriverMock) GetTypeID(name string) (core.TypeID, error) {
 	args := t.Called(name)
 	if args.Get(0) == nil {
-		return commonmodels.VirtualOID(0), args.Error(1)
+		return core.TypeID(0), args.Error(1)
 	}
-	oid, ok := args.Get(0).(commonmodels.VirtualOID)
+	oid, ok := args.Get(0).(core.TypeID)
 	if !ok {
-		panic(fmt.Sprintf("expected commonmodels.VirtualOID, got %T", args.Get(0)))
+		panic(fmt.Sprintf("expected core.TypeID, got %T", args.Get(0)))
 	}
 	return oid, args.Error(1)
 }
 
-func (t *TableDriverMock) GetCanonicalTypeName(typeName string, typeOid commonmodels.VirtualOID) (string, error) {
+func (t *TableDriverMock) GetCanonicalTypeName(typeName string, typeOid core.TypeID) (string, error) {
 	args := t.Called(typeName, typeOid)
 	if args.Get(0) == nil {
 		return "", args.Error(1)
@@ -196,31 +195,31 @@ func (t *TableDriverMock) DecodeValueByColumnName(name string, src []byte) (any,
 	return args.Get(0), args.Error(1)
 }
 
-func (t *TableDriverMock) GetColumnByName(name string) (*commonmodels.Column, error) {
+func (t *TableDriverMock) GetColumnByName(name string) (*core.Column, error) {
 	args := t.Called(name)
-	return args.Get(0).(*commonmodels.Column), args.Error(1)
+	return args.Get(0).(*core.Column), args.Error(1)
 }
 
-func (t *TableDriverMock) Table() *commonmodels.Table {
+func (t *TableDriverMock) Table() *core.Table {
 	args := t.Called()
 	if args.Get(0) == nil {
 		return nil
 	}
-	table, ok := args.Get(0).(*commonmodels.Table)
+	table, ok := args.Get(0).(*core.Table)
 	if !ok {
-		panic(fmt.Sprintf("expected *commonmodels.Table, got %T", args.Get(0)))
+		panic(fmt.Sprintf("expected *core.Table, got %T", args.Get(0)))
 	}
 	return table
 }
 
-func (t *TableDriverMock) GetCanonicalTypeClassName(typeName string, typeOid commonmodels.VirtualOID) (commonmodels.TypeClass, error) {
+func (t *TableDriverMock) GetCanonicalTypeClassName(typeName string, typeOid core.TypeID) (core.TypeClass, error) {
 	args := t.Called(typeName, typeOid)
 	if args.Get(0) == nil {
 		return "", args.Error(1)
 	}
-	canonicalTypeClass, ok := args.Get(0).(commonmodels.TypeClass)
+	canonicalTypeClass, ok := args.Get(0).(core.TypeClass)
 	if !ok {
-		panic(fmt.Sprintf("expected commonmodels.TypeClass, got %T", args.Get(0)))
+		panic(fmt.Sprintf("expected core.TypeClass, got %T", args.Get(0)))
 	}
 	return canonicalTypeClass, args.Error(1)
 }

@@ -17,32 +17,35 @@ package parameters
 import (
 	"context"
 
-	commonininterfaces "github.com/greenmaskio/greenmask/pkg/common/interfaces"
-	commoninmodels "github.com/greenmaskio/greenmask/pkg/common/models"
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 )
 
-type Unmarshaler func(parameter *ParameterDefinition, driver commonininterfaces.DBMSDriver, src commoninmodels.ParamsValue) (any, error)
-type DatabaseTypeUnmarshaler func(driver commonininterfaces.DBMSDriver, typeName string, v commoninmodels.ParamsValue) (any, error)
-type RawValueValidator func(ctx context.Context, p *ParameterDefinition, v commoninmodels.ParamsValue) error
+// Unmarshaler and DatabaseTypeUnmarshaler decode a raw param value using the
+// engine's named type codec only — they never introspect the type catalog or
+// touch column-level methods, so they depend on core.NamedTypeCodec rather than
+// the full core.DBMSDriver.
+type Unmarshaler func(parameter *ParameterDefinition, driver core.NamedTypeCodec, src core.ParamsValue) (any, error)
+type DatabaseTypeUnmarshaler func(driver core.NamedTypeCodec, typeName string, v core.ParamsValue) (any, error)
+type RawValueValidator func(ctx context.Context, p *ParameterDefinition, v core.ParamsValue) error
 
-type ColumnContainerUnmarshaler func(ctx context.Context, parameter *ParameterDefinition, data commoninmodels.ParamsValue) ([]ColumnContainer, error)
+type ColumnContainerUnmarshaler func(ctx context.Context, parameter *ParameterDefinition, data core.ParamsValue) ([]ColumnContainer, error)
 
-func DefaultDatabaseTypeUnmarshaler(driver commonininterfaces.DBMSDriver, typeName string, v commoninmodels.ParamsValue) (any, error) {
+func DefaultDatabaseTypeUnmarshaler(driver core.NamedTypeCodec, typeName string, v core.ParamsValue) (any, error) {
 	return driver.DecodeValueByTypeName(typeName, v)
 }
 
 type DynamicModeProperties struct {
-	*commoninmodels.ColumnProperties
+	*core.ColumnProperties
 	Unmarshal DatabaseTypeUnmarshaler `json:"-"`
 }
 
 func NewDynamicModeProperties() *DynamicModeProperties {
 	return &DynamicModeProperties{
-		ColumnProperties: commoninmodels.NewColumnProperties(),
+		ColumnProperties: core.NewColumnProperties(),
 	}
 }
 
-func (m *DynamicModeProperties) SetColumnProperties(v *commoninmodels.ColumnProperties) *DynamicModeProperties {
+func (m *DynamicModeProperties) SetColumnProperties(v *core.ColumnProperties) *DynamicModeProperties {
 	m.ColumnProperties = v
 	return m
 }
@@ -77,10 +80,10 @@ type ParameterDefinition struct {
 	// DynamicModeProperties - shows that parameter support dynamic mode and contains allowed types and unmarshaler
 	DynamicModeProperties *DynamicModeProperties
 	// DefaultValue - default value of the parameter
-	DefaultValue commoninmodels.ParamsValue `mapstructure:"default_value" json:"default_value,omitempty"`
+	DefaultValue core.ParamsValue `mapstructure:"default_value" json:"default_value,omitempty"`
 	// ColumnProperties - detail info about expected column properties that may help to diagnose the table schema
 	// and perform validation procedure Plays only with IsColumn
-	ColumnProperties *commoninmodels.ColumnProperties `mapstructure:"column_properties" json:"column_properties,omitempty"`
+	ColumnProperties *core.ColumnProperties `mapstructure:"column_properties" json:"column_properties,omitempty"`
 	// SupportTemplate - shows that parameter supports golang template and might be calculated dynamically
 	SupportTemplate bool `mapstructure:"support_template" json:"support_template,omitempty"`
 	// Unmarshaller - unmarshal function for the parameter raw data []byte. Using by default json.Unmarshal function
@@ -89,7 +92,7 @@ type ParameterDefinition struct {
 	// has violations
 	RawValueValidator RawValueValidator `json:"-"`
 	// AllowedValues - slice of values which allowed to use
-	AllowedValues []commoninmodels.ParamsValue `mapstructure:"allowed_values" json:"allowed_values,omitempty"`
+	AllowedValues []core.ParamsValue `mapstructure:"allowed_values" json:"allowed_values,omitempty"`
 	// GlobalEnvVariable - the nane of the global environment variable that can be used on empty input
 	GetFromGlobalEnvVariable string `mapstructure:"get_from_global_env_variable" json:"get_from_global_env_variable,omitempty"`
 }
@@ -119,12 +122,12 @@ func (p *ParameterDefinition) LinkParameter(name string) *ParameterDefinition {
 	return p
 }
 
-func (p *ParameterDefinition) SetAllowedValues(v ...commoninmodels.ParamsValue) *ParameterDefinition {
+func (p *ParameterDefinition) SetAllowedValues(v ...core.ParamsValue) *ParameterDefinition {
 	p.AllowedValues = v
 	return p
 }
 
-func (p *ParameterDefinition) SetIsColumn(columnProperties *commoninmodels.ColumnProperties) *ParameterDefinition {
+func (p *ParameterDefinition) SetIsColumn(columnProperties *core.ColumnProperties) *ParameterDefinition {
 	p.IsColumn = true
 	p.ColumnProperties = columnProperties
 	return p
@@ -141,13 +144,13 @@ type ColumnContainer interface {
 }
 
 type ColumnContainerProperties struct {
-	*commoninmodels.ColumnProperties
+	*core.ColumnProperties
 	Unmarshaler ColumnContainerUnmarshaler `mapstructure:"-" json:"-"`
 }
 
 func NewColumnContainerProperties() *ColumnContainerProperties {
 	return &ColumnContainerProperties{
-		ColumnProperties: commoninmodels.NewColumnProperties(),
+		ColumnProperties: core.NewColumnProperties(),
 	}
 }
 
@@ -156,7 +159,7 @@ func (cp *ColumnContainerProperties) SetUnmarshaler(unmarshaler ColumnContainerU
 	return cp
 }
 
-func (cp *ColumnContainerProperties) SetColumnProperties(v *commoninmodels.ColumnProperties) *ColumnContainerProperties {
+func (cp *ColumnContainerProperties) SetColumnProperties(v *core.ColumnProperties) *ColumnContainerProperties {
 	cp.ColumnProperties = v
 	return cp
 }
@@ -188,7 +191,7 @@ func (p *ParameterDefinition) SetSupportTemplate(v bool) *ParameterDefinition {
 	return p
 }
 
-func (p *ParameterDefinition) SetDefaultValue(v commoninmodels.ParamsValue) *ParameterDefinition {
+func (p *ParameterDefinition) SetDefaultValue(v core.ParamsValue) *ParameterDefinition {
 	p.DefaultValue = v
 	return p
 }

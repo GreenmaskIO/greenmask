@@ -19,9 +19,8 @@ import (
 	"fmt"
 	"testing"
 
-	commonininterfaces "github.com/greenmaskio/greenmask/pkg/common/interfaces"
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 	mocks2 "github.com/greenmaskio/greenmask/pkg/common/mocks"
-	"github.com/greenmaskio/greenmask/pkg/common/models"
 	commonparameters "github.com/greenmaskio/greenmask/pkg/common/transformers/parameters"
 	"github.com/greenmaskio/greenmask/pkg/common/utils"
 	"github.com/greenmaskio/greenmask/pkg/common/validationcollector"
@@ -33,7 +32,7 @@ import (
 func TestTransformWithKeepNull(t *testing.T) {
 	t.Run("success not null", func(t *testing.T) {
 		recorder := mocks2.NewRecorderMock()
-		tr, _ := mocks2.NewTransformerMock(func(ctx context.Context, tableDriver commonininterfaces.TableDriver, parameters map[string]commonparameters.Parameterizer) error {
+		tr, _ := mocks2.NewTransformerMock(func(ctx context.Context, tableDriver core.TableDriver, parameters map[string]commonparameters.Parameterizer) error {
 			return nil
 		})
 		tr.On("Transform", mock.Anything, recorder).
@@ -50,7 +49,7 @@ func TestTransformWithKeepNull(t *testing.T) {
 
 	t.Run("success null", func(t *testing.T) {
 		recorder := mocks2.NewRecorderMock()
-		tr, _ := mocks2.NewTransformerMock(func(ctx context.Context, tableDriver commonininterfaces.TableDriver, parameters map[string]commonparameters.Parameterizer) error {
+		tr, _ := mocks2.NewTransformerMock(func(ctx context.Context, tableDriver core.TableDriver, parameters map[string]commonparameters.Parameterizer) error {
 			return nil
 		})
 
@@ -65,7 +64,7 @@ func TestTransformWithKeepNull(t *testing.T) {
 
 	t.Run("error check is null", func(t *testing.T) {
 		recorder := mocks2.NewRecorderMock()
-		tr, _ := mocks2.NewTransformerMock(func(ctx context.Context, tableDriver commonininterfaces.TableDriver, parameters map[string]commonparameters.Parameterizer) error {
+		tr, _ := mocks2.NewTransformerMock(func(ctx context.Context, tableDriver core.TableDriver, parameters map[string]commonparameters.Parameterizer) error {
 			return nil
 		})
 
@@ -81,7 +80,7 @@ func TestTransformWithKeepNull(t *testing.T) {
 
 	t.Run("error transformer method", func(t *testing.T) {
 		recorder := mocks2.NewRecorderMock()
-		tr, _ := mocks2.NewTransformerMock(func(ctx context.Context, tableDriver commonininterfaces.TableDriver, parameters map[string]commonparameters.Parameterizer) error {
+		tr, _ := mocks2.NewTransformerMock(func(ctx context.Context, tableDriver core.TableDriver, parameters map[string]commonparameters.Parameterizer) error {
 			return nil
 		})
 
@@ -100,7 +99,7 @@ func TestTransformWithKeepNull(t *testing.T) {
 
 func assertPanicParameterDoesNotExists(t *testing.T, paramName string, v any) {
 	t.Helper()
-	assert.ErrorIs(t, v.(error), models.ErrCheckTransformerImplementation)
+	assert.ErrorIs(t, v.(error), core.ErrCheckTransformerImplementation)
 	assert.ErrorContains(t, v.(error), fmt.Sprintf(`parameter "%s" is not found`, paramName))
 }
 
@@ -160,15 +159,15 @@ func TestGetParameterValueWithName(t *testing.T) {
 		boolParameter.On("Scan", mock.Anything).
 			Return(assert.AnError)
 		_, err := getParameterValueWithName[bool](ctx, parameters, parameterName)
-		assert.ErrorIs(t, err, models.ErrFatalValidationError)
+		assert.ErrorIs(t, err, core.ErrFatalValidationError)
 		require.True(t, vc.IsFatal())
 		require.Equal(t, vc.Len(), 1)
 		warning := vc.GetWarnings()[0]
-		assert.Equal(t, warning.Severity, models.ValidationSeverityError)
+		assert.Equal(t, warning.Severity, core.ValidationSeverityError)
 		assert.Equal(t, warning.Msg, "error scanning parameter")
 		assert.Equal(t, warning.Meta, map[string]any{
-			models.MetaKeyParameterName: parameterName,
-			models.MetaKeyError:         assert.AnError.Error(),
+			core.MetaKeyParameterName: parameterName,
+			core.MetaKeyError:         assert.AnError.Error(),
 		})
 		boolParameter.AssertExpectations(t)
 	})
@@ -191,7 +190,7 @@ func TestGetColumnParameterValue(t *testing.T) {
 				dest := args.Get(0)
 				require.NoError(t, utils.ScanPointer(expectedColumnName, dest))
 			}).Return(nil)
-		expectedColumn := &models.Column{
+		expectedColumn := &core.Column{
 			Name: expectedColumnName,
 		}
 		tableDriver.On("GetColumnByName", expectedColumnName).
@@ -221,18 +220,18 @@ func TestGetColumnParameterValue(t *testing.T) {
 				require.NoError(t, utils.ScanPointer(expectedColumnName, dest))
 			}).Return(nil)
 		tableDriver.On("GetColumnByName", expectedColumnName).
-			Return((*models.Column)(nil), models.ErrUnknownColumnName)
+			Return((*core.Column)(nil), core.ErrUnknownColumnName)
 		_, _, err := getColumnParameterValue(ctx, tableDriver, parameters)
-		assert.ErrorIs(t, err, models.ErrFatalValidationError)
+		assert.ErrorIs(t, err, core.ErrFatalValidationError)
 		require.True(t, vc.IsFatal())
 		require.Equal(t, vc.Len(), 1)
 		warning := vc.GetWarnings()[0]
-		assert.Equal(t, models.ValidationSeverityError, warning.Severity)
-		assert.Equal(t, models.ErrUnknownColumnName, warning.Err)
+		assert.Equal(t, core.ValidationSeverityError, warning.Severity)
+		assert.Equal(t, core.ErrUnknownColumnName, warning.Err)
 		assert.Equal(t, map[string]any{
-			models.MetaKeyParameterName:  parameterName,
-			models.MetaKeyParameterValue: expectedColumnName,
-			models.MetaKeyError:          models.ErrUnknownColumnName.Error(),
+			core.MetaKeyParameterName:  parameterName,
+			core.MetaKeyParameterValue: expectedColumnName,
+			core.MetaKeyError:          core.ErrUnknownColumnName.Error(),
 		}, warning.Meta)
 		columnParameter.AssertExpectations(t)
 	})

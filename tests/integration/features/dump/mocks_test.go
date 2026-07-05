@@ -14,39 +14,11 @@
 
 package dump
 
-import (
-	"context"
-	"io"
+import "github.com/greenmaskio/greenmask/pkg/testutils"
 
-	"github.com/stretchr/testify/mock"
-
-	"github.com/greenmaskio/greenmask/pkg/common/utils"
+// The mysqldump/mysql CLI mocks are shared across feature tests; see
+// pkg/testutils/cmd.go. These aliases keep existing &CmdRunnerMock{} usages.
+type (
+	CmdRunnerMock   = testutils.CmdRunnerMock
+	CmdProducerMock = testutils.CmdProducerMock
 )
-
-type CmdRunnerMock struct {
-	mock.Mock
-}
-
-func (m *CmdRunnerMock) ExecuteCmdAndForwardStdout(ctx context.Context) error {
-	args := m.Called(ctx)
-	return args.Error(0)
-}
-
-func (m *CmdRunnerMock) ExecuteCmdAndWriteStdout(ctx context.Context, w io.Writer) error {
-	args := m.Called(ctx, w)
-	return args.Error(0)
-}
-
-func (m *CmdRunnerMock) ExecuteCmd(ctx context.Context, w io.Writer, mode int) error {
-	args := m.Called(ctx, w, mode)
-	return args.Error(0)
-}
-
-type CmdProducerMock struct {
-	mock.Mock
-}
-
-func (m *CmdProducerMock) Produce(executable string, args []string, env []string, stdin io.Reader) (utils.CmdRunnerInterface, error) {
-	callArgs := m.Called(executable, args, env, stdin)
-	return callArgs.Get(0).(utils.CmdRunnerInterface), callArgs.Error(1)
-}

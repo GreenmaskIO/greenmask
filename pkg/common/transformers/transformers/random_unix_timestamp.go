@@ -21,8 +21,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/greenmaskio/greenmask/pkg/common/interfaces"
-	"github.com/greenmaskio/greenmask/pkg/common/models"
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 	"github.com/greenmaskio/greenmask/pkg/common/transformers/generators/transformers"
 	"github.com/greenmaskio/greenmask/pkg/common/transformers/parameters"
 	"github.com/greenmaskio/greenmask/pkg/common/transformers/utils"
@@ -54,9 +53,9 @@ var UnixTimestampTransformerDefinition = utils.NewTransformerDefinition(
 	parameters.MustNewParameterDefinition(
 		"column",
 		"column name",
-	).SetIsColumn(models.NewColumnProperties().
+	).SetIsColumn(core.NewColumnProperties().
 		SetAffected(true).
-		SetAllowedColumnTypeClasses(models.TypeClassInt),
+		SetAllowedColumnTypeClasses(core.TypeClassInt),
 	).SetRequired(true),
 
 	parameters.MustNewParameterDefinition(
@@ -68,8 +67,8 @@ var UnixTimestampTransformerDefinition = utils.NewTransformerDefinition(
 		SetDynamicMode(
 			parameters.NewDynamicModeProperties().
 				SetColumnProperties(
-					models.NewColumnProperties().
-						SetAllowedColumnTypeClasses(models.TypeClassInt),
+					core.NewColumnProperties().
+						SetAllowedColumnTypeClasses(core.TypeClassInt),
 				),
 		),
 
@@ -82,8 +81,8 @@ var UnixTimestampTransformerDefinition = utils.NewTransformerDefinition(
 		SetDynamicMode(
 			parameters.NewDynamicModeProperties().
 				SetColumnProperties(
-					models.NewColumnProperties().
-						SetAllowedColumnTypeClasses(models.TypeClassInt),
+					core.NewColumnProperties().
+						SetAllowedColumnTypeClasses(core.TypeClassInt),
 				),
 		),
 
@@ -123,16 +122,19 @@ var UnixTimestampTransformerDefinition = utils.NewTransformerDefinition(
 
 type UnixTimestampTransformer struct {
 	*TimestampTransformer
-	unit    string
-	minUnit string
-	maxUnit string
+	unit          string
+	minUnit       string
+	maxUnit       string
+	deterministic bool
 }
+
+var _ core.Transformer = (*UnixTimestampTransformer)(nil)
 
 func NewUnixTimestampTransformer(
 	ctx context.Context,
-	tableDriver interfaces.TableDriver,
+	tableDriver core.TableDriver,
 	parameters map[string]parameters.Parameterizer,
-) (interfaces.Transformer, error) {
+) (core.Transformer, error) {
 
 	var unit, minUnit, maxUnit string
 	var err error
@@ -152,6 +154,11 @@ func NewUnixTimestampTransformer(
 		return nil, fmt.Errorf("scan \"max_unit\" param: %w", err)
 	}
 
+	engine, err := getParameterValueWithName[string](ctx, parameters, ParameterNameEngine)
+	if err != nil {
+		return nil, fmt.Errorf("get \"engine\" param: %w", err)
+	}
+
 	t, err := NewTimestampTransformerBase(
 		ctx,
 		tableDriver,
@@ -167,6 +174,7 @@ func NewUnixTimestampTransformer(
 		unit:                 unit,
 		minUnit:              minUnit,
 		maxUnit:              maxUnit,
+		deterministic:        engineIsDeterministic(engine),
 	}, nil
 
 }
@@ -205,7 +213,7 @@ func (t *UnixTimestampTransformer) dynamicTransform(v []byte) (time.Time, error)
 	return res, nil
 }
 
-func (t *UnixTimestampTransformer) Transform(_ context.Context, r interfaces.Recorder) error {
+func (t *UnixTimestampTransformer) Transform(_ context.Context, r core.Recorder) error {
 	valAny, err := r.GetRawColumnValueByIdx(t.columnIdx)
 	if err != nil {
 		return fmt.Errorf("scan value: %w", err)
@@ -228,6 +236,10 @@ func (t *UnixTimestampTransformer) Transform(_ context.Context, r interfaces.Rec
 
 func (t *UnixTimestampTransformer) Describe() string {
 	return TransformerNameRandomUnixTimestamp
+}
+
+func (t *UnixTimestampTransformer) IsDeterministic() bool {
+	return t.deterministic
 }
 
 func getTimeByUnit(v int64, unit string) time.Time {
@@ -267,19 +279,19 @@ func getUnixByUnit(v time.Time, unit string) int64 {
 func validateDateUnitParameterValue(
 	ctx context.Context,
 	_ *parameters.ParameterDefinition,
-	v models.ParamsValue,
+	v core.ParamsValue,
 ) error {
 	if slices.Contains(timestampUnitValues, string(v)) {
 		return nil
 	}
 
 	validationcollector.FromContext(ctx).Add(
-		models.NewValidationWarning().
-			SetSeverity(models.ValidationSeverityError).
+		core.NewValidationWarning().
+			SetSeverity(core.ValidationSeverityError).
 			AddMeta("ParameterValue", string(v)).
 			AddMeta("AllowedValues", truncateParts).
 			SetMsg("wrong timestamp unit value"))
-	return models.ErrFatalValidationError
+	return core.ErrFatalValidationError
 }
 
 func getUnixTimestampMinAndMaxThresholds(minUnit, maxUnit string) timestampMinMaxEncoder {

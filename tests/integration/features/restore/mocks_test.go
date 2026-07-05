@@ -16,37 +16,33 @@ package restore
 
 import (
 	"context"
-	"io"
 
-	"github.com/stretchr/testify/mock"
-
-	"github.com/greenmaskio/greenmask/pkg/common/utils"
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
+	"github.com/greenmaskio/greenmask/pkg/storages/validate"
+	"github.com/greenmaskio/greenmask/pkg/testutils"
 )
 
-type CmdRunnerMock struct {
-	mock.Mock
+// The mysqldump/mysql CLI mocks are shared across feature tests; see
+// pkg/testutils/cmd.go. These aliases keep existing &CmdRunnerMock{} usages.
+type (
+	CmdRunnerMock   = testutils.CmdRunnerMock
+	CmdProducerMock = testutils.CmdProducerMock
+)
+
+// sharedStorageProvisioner is a RestoreStorageProvisioner that hands the restore
+// pipeline the same in-memory storage the dump wrote to. The validate.Storage is
+// flat (it keys objects by filename regardless of dumpID sub-scoping), so the
+// dumpID is irrelevant and the storage is returned as-is.
+type sharedStorageProvisioner struct {
+	st *validate.Storage
 }
 
-func (m *CmdRunnerMock) ExecuteCmdAndForwardStdout(ctx context.Context) error {
-	args := m.Called(ctx)
-	return args.Error(0)
-}
+var _ core.RestoreStorageProvisioner = (*sharedStorageProvisioner)(nil)
 
-func (m *CmdRunnerMock) ExecuteCmdAndWriteStdout(ctx context.Context, w io.Writer) error {
-	args := m.Called(ctx, w)
-	return args.Error(0)
-}
-
-func (m *CmdRunnerMock) ExecuteCmd(ctx context.Context, w io.Writer, mode int) error {
-	args := m.Called(ctx, w, mode)
-	return args.Error(0)
-}
-
-type CmdProducerMock struct {
-	mock.Mock
-}
-
-func (m *CmdProducerMock) Produce(executable string, args []string, env []string, stdin io.Reader) (utils.CmdRunnerInterface, error) {
-	callArgs := m.Called(executable, args, env, stdin)
-	return callArgs.Get(0).(utils.CmdRunnerInterface), callArgs.Error(1)
+func (p *sharedStorageProvisioner) Provision(
+	_ context.Context,
+	_ any,
+	_ core.DumpID,
+) (core.Storager, error) {
+	return p.st, nil
 }

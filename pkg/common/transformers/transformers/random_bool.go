@@ -18,8 +18,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/greenmaskio/greenmask/pkg/common/interfaces"
-	commonmodels "github.com/greenmaskio/greenmask/pkg/common/models"
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 	"github.com/greenmaskio/greenmask/pkg/common/transformers/generators/transformers"
 	"github.com/greenmaskio/greenmask/pkg/common/transformers/parameters"
 	"github.com/greenmaskio/greenmask/pkg/common/transformers/utils"
@@ -39,9 +38,9 @@ var BoolTransformerDefinition = utils.NewTransformerDefinition(
 	parameters.MustNewParameterDefinition(
 		"column",
 		"column name",
-	).SetIsColumn(commonmodels.NewColumnProperties().
+	).SetIsColumn(core.NewColumnProperties().
 		SetAffected(true).
-		SetAllowedColumnTypeClasses(commonmodels.TypeClassBoolean),
+		SetAllowedColumnTypeClasses(core.TypeClassBoolean),
 	).SetRequired(true),
 
 	defaultKeepNullParameterDefinition,
@@ -49,19 +48,22 @@ var BoolTransformerDefinition = utils.NewTransformerDefinition(
 	defaultEngineParameterDefinition,
 )
 
+var _ core.Transformer = (*BooleanTransformer)(nil)
+
 type BooleanTransformer struct {
 	columnName      string
 	keepNull        bool
 	affectedColumns map[int]string
 	columnIdx       int
 	t               *transformers.RandomBoolean
+	deterministic   bool
 }
 
 func NewBooleanTransformer(
 	ctx context.Context,
-	tableDriver interfaces.TableDriver,
+	tableDriver core.TableDriver,
 	parameters map[string]parameters.Parameterizer,
-) (interfaces.Transformer, error) {
+) (core.Transformer, error) {
 	columnName, column, err := getColumnParameterValue(ctx, tableDriver, parameters)
 	if err != nil {
 		return nil, fmt.Errorf("get \"column\" parameter: %w", err)
@@ -92,8 +94,9 @@ func NewBooleanTransformer(
 		affectedColumns: map[int]string{
 			column.Idx: columnName,
 		},
-		columnIdx: column.Idx,
-		t:         t,
+		columnIdx:     column.Idx,
+		t:             t,
+		deterministic: engineIsDeterministic(engine),
 	}, nil
 }
 
@@ -109,7 +112,7 @@ func (t *BooleanTransformer) Done(context.Context) error {
 	return nil
 }
 
-func (t *BooleanTransformer) Transform(_ context.Context, r interfaces.Recorder) error {
+func (t *BooleanTransformer) Transform(_ context.Context, r core.Recorder) error {
 	val, err := r.GetRawColumnValueByIdx(t.columnIdx)
 	if err != nil {
 		return fmt.Errorf("scan value: %w", err)
@@ -131,4 +134,8 @@ func (t *BooleanTransformer) Transform(_ context.Context, r interfaces.Recorder)
 
 func (t *BooleanTransformer) Describe() string {
 	return TransformerNameRandomBool
+}
+
+func (t *BooleanTransformer) IsDeterministic() bool {
+	return t.deterministic
 }

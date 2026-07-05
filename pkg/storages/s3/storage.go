@@ -41,8 +41,7 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 
-	"github.com/greenmaskio/greenmask/pkg/common/interfaces"
-	"github.com/greenmaskio/greenmask/pkg/common/models"
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 )
 
 const s3StorageDefaultDelimiter = "/"
@@ -191,7 +190,7 @@ func (s *Storage) Ping(ctx context.Context) error {
 	return err
 }
 
-func (s *Storage) ListDir(ctx context.Context) (files []string, dirs []interfaces.Storager, err error) {
+func (s *Storage) ListDir(ctx context.Context) (files []string, dirs []core.Storager, err error) {
 
 	listFunc := func(commonPrefixes []*s3.CommonPrefix, contents []*s3.Object) {
 		for _, prefix := range commonPrefixes {
@@ -260,7 +259,7 @@ func (s *Storage) GetObject(ctx context.Context, filePath string) (writer io.Rea
 	if err != nil {
 		var awsErr awserr.Error
 		if errors.As(err, &awsErr) && (awsErr.Code() == s3StorageAwsErrorCodeNotFound || awsErr.Code() == s3StorageAwsErrorCodeNoSuchKey) {
-			return nil, models.ErrFileNotFound
+			return nil, core.ErrFileNotFound
 		}
 		return nil, fmt.Errorf("error getting object: %w", err)
 	}
@@ -317,7 +316,7 @@ func (s *Storage) DeleteAll(ctx context.Context, pathPrefix string) error {
 	return nil
 }
 
-func (s *Storage) SubStorage(subPath string, relative bool) interfaces.Storager {
+func (s *Storage) SubStorage(subPath string, relative bool) core.Storager {
 	prefix := subPath
 	if relative {
 		prefix = fixPrefix(path.Join(s.prefix, prefix))
@@ -349,7 +348,7 @@ func (s *Storage) Exists(ctx context.Context, fileName string) (bool, error) {
 	return true, nil
 }
 
-func (s *Storage) Stat(fileName string) (*models.StorageObjectStat, error) {
+func (s *Storage) Stat(fileName string) (*core.StorageObjectStat, error) {
 	fullPath := path.Join(s.prefix, fileName)
 	headObjectInput := &s3.HeadObjectInput{
 		Bucket: aws.String(s.config.Bucket),
@@ -360,12 +359,12 @@ func (s *Storage) Stat(fileName string) (*models.StorageObjectStat, error) {
 	if err != nil {
 		var awsErr awserr.Error
 		if errors.As(err, &awsErr) && (awsErr.Code() == s3StorageAwsErrorCodeNotFound || awsErr.Code() == s3StorageAwsErrorCodeNoSuchKey) {
-			return nil, models.ErrFileNotFound
+			return nil, core.ErrFileNotFound
 		}
 		return nil, fmt.Errorf("error getting object info: %w", err)
 	}
 
-	return &models.StorageObjectStat{
+	return &core.StorageObjectStat{
 		Name:         fullPath,
 		LastModified: *(headObjectOutput.LastModified),
 		Exist:        true,

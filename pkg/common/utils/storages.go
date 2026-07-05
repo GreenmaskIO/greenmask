@@ -17,12 +17,12 @@ package utils
 import (
 	"context"
 
-	"github.com/greenmaskio/greenmask/pkg/common/interfaces"
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 	"github.com/greenmaskio/greenmask/pkg/config"
 	"github.com/greenmaskio/greenmask/pkg/storages"
 )
 
-func GetStorage(ctx context.Context, cfg *config.Config) (interfaces.Storager, error) {
+func GetStorage(ctx context.Context, cfg *config.Config) (core.Storager, error) {
 	st, err := storages.Get(
 		ctx,
 		cfg.Storage.Type,

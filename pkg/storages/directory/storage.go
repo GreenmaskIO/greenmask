@@ -27,8 +27,7 @@ import (
 
 	"github.com/rs/zerolog/log"
 
-	"github.com/greenmaskio/greenmask/pkg/common/interfaces"
-	"github.com/greenmaskio/greenmask/pkg/common/models"
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 )
 
 var (
@@ -73,7 +72,7 @@ func (s *Storage) Dirname() string {
 	return filepath.Base(s.cwd)
 }
 
-func (s *Storage) ListDir(ctx context.Context) (files []string, dirs []interfaces.Storager, err error) {
+func (s *Storage) ListDir(ctx context.Context) (files []string, dirs []core.Storager, err error) {
 	entries, err := os.ReadDir(s.cwd)
 	if err != nil {
 		return nil, nil, err
@@ -98,7 +97,7 @@ func (s *Storage) GetObject(ctx context.Context, filePath string) (reader io.Rea
 	reader, err = os.Open(path.Join(s.cwd, filePath))
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
-			return nil, models.ErrFileNotFound
+			return nil, core.ErrFileNotFound
 		}
 		return nil, err
 	}
@@ -151,7 +150,7 @@ func (s *Storage) Delete(ctx context.Context, filePaths ...string) error {
 		fileInfo, err := os.Stat(path.Join(s.cwd, fp))
 		if err != nil {
 			if errors.Is(err, os.ErrNotExist) {
-				return models.ErrFileNotFound
+				return core.ErrFileNotFound
 			}
 			return err
 		}
@@ -174,7 +173,7 @@ func (s *Storage) DeleteAll(ctx context.Context, pathPrefix string) error {
 	fileInfo, err := os.Stat(path.Join(s.cwd, pathPrefix))
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
-			return models.ErrFileNotFound
+			return core.ErrFileNotFound
 		}
 		return err
 	}
@@ -203,7 +202,7 @@ func (s *Storage) Exists(ctx context.Context, fileName string) (bool, error) {
 	return true, nil
 }
 
-func (s *Storage) SubStorage(dp string, relative bool) interfaces.Storager {
+func (s *Storage) SubStorage(dp string, relative bool) core.Storager {
 	dirPath := dp
 	if relative {
 		dirPath = path.Join(s.cwd, dp)
@@ -215,17 +214,17 @@ func (s *Storage) SubStorage(dp string, relative bool) interfaces.Storager {
 	}
 }
 
-func (s *Storage) Stat(fileName string) (*models.StorageObjectStat, error) {
+func (s *Storage) Stat(fileName string) (*core.StorageObjectStat, error) {
 	fullPath := path.Join(s.cwd, fileName)
 	fileInfo, err := os.Stat(fullPath)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
-			return nil, models.ErrFileNotFound
+			return nil, core.ErrFileNotFound
 		}
 		return nil, fmt.Errorf("error getting file stat: %w", err)
 	}
 
-	return &models.StorageObjectStat{
+	return &core.StorageObjectStat{
 		Name:         fullPath,
 		LastModified: fileInfo.ModTime(),
 		Exist:        true,

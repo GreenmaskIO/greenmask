@@ -10,8 +10,7 @@ import (
 	"sync"
 	"time"
 
-	commonininterfaces "github.com/greenmaskio/greenmask/pkg/common/interfaces"
-	commonmodels "github.com/greenmaskio/greenmask/pkg/common/models"
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 )
 
 type memoryObject struct {
@@ -52,7 +51,7 @@ func (s *Storage) Dirname() string {
 	return path.Base(s.basePath)
 }
 
-func (s *Storage) ListDir(_ context.Context) (files []string, dirs []commonininterfaces.Storager, err error) {
+func (s *Storage) ListDir(_ context.Context) (files []string, dirs []core.Storager, err error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
@@ -133,7 +132,7 @@ func (s *Storage) Exists(_ context.Context, fileName string) (bool, error) {
 	return ok, nil
 }
 
-func (s *Storage) SubStorage(subPath string, relative bool) commonininterfaces.Storager {
+func (s *Storage) SubStorage(subPath string, relative bool) core.Storager {
 	newBase := subPath
 	if relative {
 		newBase = path.Join(s.basePath, subPath)
@@ -144,7 +143,7 @@ func (s *Storage) SubStorage(subPath string, relative bool) commonininterfaces.S
 	}
 }
 
-func (s *Storage) Stat(fileName string) (*commonmodels.StorageObjectStat, error) {
+func (s *Storage) Stat(fileName string) (*core.StorageObjectStat, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
@@ -153,7 +152,7 @@ func (s *Storage) Stat(fileName string) (*commonmodels.StorageObjectStat, error)
 		return nil, errors.New("file not found")
 	}
 
-	return &commonmodels.StorageObjectStat{
+	return &core.StorageObjectStat{
 		Name:         path.Base(fileName),
 		Exist:        true,
 		LastModified: obj.lastModified,

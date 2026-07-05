@@ -553,21 +553,21 @@ func (s *SSLSuite) TestPlane3() {
 			defer p.Close(ctx)
 
 			if tc.checkCipher {
-				worker, err := p.GetConn(ctx)
+				err := p.RunWithConn(ctx, func(_ context.Context, worker pool.WorkerConn) error {
+					rows, err := worker.RawConn().Execute("SHOW STATUS LIKE 'Ssl_cipher'")
+					s.Require().NoError(err)
+					s.Require().NotNil(rows.Resultset)
+					s.Require().Equal(1, rows.RowNumber())
+					cipher, err := rows.GetString(0, 1)
+					s.Require().NoError(err)
+					if tc.wantTLS {
+						s.NotEmpty(cipher, "expected TLS cipher to be non-empty for raw connection")
+					} else {
+						s.Empty(cipher, "expected no TLS for raw connection without TLSConfig")
+					}
+					return nil
+				})
 				s.Require().NoError(err)
-				defer p.PutConn(ctx, worker)
-
-				rows, err := worker.RawConn().Execute("SHOW STATUS LIKE 'Ssl_cipher'")
-				s.Require().NoError(err)
-				s.Require().NotNil(rows.Resultset)
-				s.Require().Equal(1, rows.RowNumber())
-				cipher, err := rows.GetString(0, 1)
-				s.Require().NoError(err)
-				if tc.wantTLS {
-					s.NotEmpty(cipher, "expected TLS cipher to be non-empty for raw connection")
-				} else {
-					s.Empty(cipher, "expected no TLS for raw connection without TLSConfig")
-				}
 			}
 		})
 	}

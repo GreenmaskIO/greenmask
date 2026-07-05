@@ -20,32 +20,31 @@ import (
 	"maps"
 	"slices"
 
-	commonininterfaces "github.com/greenmaskio/greenmask/pkg/common/interfaces"
-	commoninmodels "github.com/greenmaskio/greenmask/pkg/common/models"
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 	"github.com/greenmaskio/greenmask/pkg/common/validationcollector"
 )
 
 func InitParameters(
 	ctx context.Context,
-	driver commonininterfaces.TableDriver,
+	driver core.TableDriver,
 	paramDef []*ParameterDefinition,
-	staticValues map[string]commoninmodels.ParamsValue,
-	dynamicValues map[string]commoninmodels.DynamicParamValue,
+	staticValues map[string]core.ParamsValue,
+	dynamicValues map[string]core.DynamicParamValue,
 	interpolate bool,
 ) (map[string]Parameterizer, error) {
 	validateRequiredParameters(ctx, paramDef, staticValues, dynamicValues)
 	if validationcollector.FromContext(ctx).IsFatal() {
-		return nil, commoninmodels.ErrFatalValidationError
+		return nil, core.ErrFatalValidationError
 	}
 
 	validateUnknownParameters(ctx, paramDef, staticValues, dynamicValues)
 	if validationcollector.FromContext(ctx).IsFatal() {
-		return nil, commoninmodels.ErrFatalValidationError
+		return nil, core.ErrFatalValidationError
 	}
 
 	validateProvidedDynamicParametersSupportDynamicMode(ctx, paramDef, dynamicValues)
 	if validationcollector.FromContext(ctx).IsFatal() {
-		return nil, commoninmodels.ErrFatalValidationError
+		return nil, core.ErrFatalValidationError
 	}
 
 	columnParamsDef, otherParamsDef := splitColumnsAndCommonParameters(paramDef)
@@ -55,7 +54,7 @@ func InitParameters(
 		return nil, fmt.Errorf("initialize column parameters: %w", err)
 	}
 	if validationcollector.FromContext(ctx).IsFatal() {
-		return nil, commoninmodels.ErrFatalValidationError
+		return nil, core.ErrFatalValidationError
 	}
 
 	otherParams, err := initOtherParameters(
@@ -65,7 +64,7 @@ func InitParameters(
 		return nil, fmt.Errorf("initialize non-column parameters: %w", err)
 	}
 	if validationcollector.FromContext(ctx).IsFatal() {
-		return nil, commoninmodels.ErrFatalValidationError
+		return nil, core.ErrFatalValidationError
 	}
 
 	params := make(map[string]Parameterizer, len(columnParams)+len(otherParams))
@@ -78,23 +77,23 @@ func InitParameters(
 func validateUnknownParameters(
 	ctx context.Context,
 	defs []*ParameterDefinition,
-	staticValues map[string]commoninmodels.ParamsValue,
-	dynamicValues map[string]commoninmodels.DynamicParamValue,
+	staticValues map[string]core.ParamsValue,
+	dynamicValues map[string]core.DynamicParamValue,
 ) {
 	for name := range staticValues {
 		if !slices.ContainsFunc(defs, func(definition *ParameterDefinition) bool {
 			return definition.Name == name
 		}) {
-			validationcollector.FromContext(ctx).Add(commoninmodels.NewValidationWarning().
-				SetSeverity(commoninmodels.ValidationSeverityError).
+			validationcollector.FromContext(ctx).Add(core.NewValidationWarning().
+				SetSeverity(core.ValidationSeverityError).
 				SetMsg("received unknown parameter").
 				AddMeta("ParameterName", name))
 		}
 
 		// Check that value is static and dynamic value did not receive together
 		if _, ok := dynamicValues[name]; ok {
-			validationcollector.FromContext(ctx).Add(commoninmodels.NewValidationWarning().
-				SetSeverity(commoninmodels.ValidationSeverityError).
+			validationcollector.FromContext(ctx).Add(core.NewValidationWarning().
+				SetSeverity(core.ValidationSeverityError).
 				SetMsg("parameter value must be only static or dynamic at the same time").
 				AddMeta("ParameterName", name))
 		}
@@ -104,14 +103,14 @@ func validateUnknownParameters(
 		if !slices.ContainsFunc(defs, func(definition *ParameterDefinition) bool {
 			return definition.Name == name
 		}) {
-			validationcollector.FromContext(ctx).Add(commoninmodels.NewValidationWarning().
-				SetSeverity(commoninmodels.ValidationSeverityError).
+			validationcollector.FromContext(ctx).Add(core.NewValidationWarning().
+				SetSeverity(core.ValidationSeverityError).
 				SetMsg("received unknown parameter").
 				AddMeta("ParameterName", name))
 		}
 		if _, ok := staticValues[name]; ok {
-			validationcollector.FromContext(ctx).Add(commoninmodels.NewValidationWarning().
-				SetSeverity(commoninmodels.ValidationSeverityError).
+			validationcollector.FromContext(ctx).Add(core.NewValidationWarning().
+				SetSeverity(core.ValidationSeverityError).
 				SetMsg("parameter value must be only static or dynamic at the same time").
 				AddMeta("ParameterName", name))
 		}
@@ -121,8 +120,8 @@ func validateUnknownParameters(
 func validateRequiredParameters(
 	ctx context.Context,
 	defs []*ParameterDefinition,
-	staticValues map[string]commoninmodels.ParamsValue,
-	dynamicValues map[string]commoninmodels.DynamicParamValue,
+	staticValues map[string]core.ParamsValue,
+	dynamicValues map[string]core.DynamicParamValue,
 ) {
 	// Check is there any parameters
 	for _, pd := range defs {
@@ -141,31 +140,31 @@ func validateRequiredParameters(
 
 		// Required parameter is not received
 		validationcollector.FromContext(ctx).
-			Add(commoninmodels.NewValidationWarning().
+			Add(core.NewValidationWarning().
 				SetMsg("parameter is required").
 				AddMeta("ParameterName", pd.Name).
-				SetSeverity(commoninmodels.ValidationSeverityError))
+				SetSeverity(core.ValidationSeverityError))
 	}
 }
 
 func validateProvidedDynamicParametersSupportDynamicMode(
 	ctx context.Context,
 	defs []*ParameterDefinition,
-	dynamicValues map[string]commoninmodels.DynamicParamValue,
+	dynamicValues map[string]core.DynamicParamValue,
 ) {
 	for name := range dynamicValues {
 		idx := slices.IndexFunc(defs, func(definition *ParameterDefinition) bool {
 			return definition.Name == name
 		})
 		if idx == -1 {
-			validationcollector.FromContext(ctx).Add(commoninmodels.NewValidationWarning().
-				SetSeverity(commoninmodels.ValidationSeverityError).
+			validationcollector.FromContext(ctx).Add(core.NewValidationWarning().
+				SetSeverity(core.ValidationSeverityError).
 				SetMsg("received unknown parameter").
 				AddMeta("ParameterName", name))
 		}
 		if defs[idx].DynamicModeProperties == nil {
-			validationcollector.FromContext(ctx).Add(commoninmodels.NewValidationWarning().
-				SetSeverity(commoninmodels.ValidationSeverityError).
+			validationcollector.FromContext(ctx).Add(core.NewValidationWarning().
+				SetSeverity(core.ValidationSeverityError).
 				SetMsg("parameter does not support dynamic mode").
 				AddMeta("ParameterName", name))
 		}
@@ -191,9 +190,9 @@ func splitColumnsAndCommonParameters(paramDef []*ParameterDefinition) (
 
 func initColumnParameters(
 	ctx context.Context,
-	driver commonininterfaces.TableDriver,
+	driver core.TableDriver,
 	columnParamsDef []*ParameterDefinition,
-	staticValues map[string]commoninmodels.ParamsValue,
+	staticValues map[string]core.ParamsValue,
 	interpolate bool,
 ) (map[string]Parameterizer, error) {
 	// Initialize column parameters
@@ -226,10 +225,10 @@ func initColumnParameters(
 
 func initOtherParameters(
 	ctx context.Context,
-	driver commonininterfaces.TableDriver,
+	driver core.TableDriver,
 	otherParamsDef []*ParameterDefinition,
-	staticValues map[string]commoninmodels.ParamsValue,
-	dynamicValues map[string]commoninmodels.DynamicParamValue,
+	staticValues map[string]core.ParamsValue,
+	dynamicValues map[string]core.DynamicParamValue,
 	columnParams map[string]Parameterizer,
 	interpolate bool,
 ) (map[string]Parameterizer, error) {

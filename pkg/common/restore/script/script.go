@@ -8,16 +8,16 @@ import (
 	"os"
 	"strings"
 
-	commonmodels "github.com/greenmaskio/greenmask/pkg/common/models"
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 	"github.com/greenmaskio/greenmask/pkg/common/utils"
 	"github.com/rs/zerolog/log"
 )
 
 type Scheduler struct {
-	scripts []commonmodels.Script
+	scripts []core.Script
 }
 
-func NewScheduler(scripts []commonmodels.Script) *Scheduler {
+func NewScheduler(scripts []core.Script) *Scheduler {
 	return &Scheduler{
 		scripts: scripts,
 	}
@@ -25,31 +25,29 @@ func NewScheduler(scripts []commonmodels.Script) *Scheduler {
 
 func (s *Scheduler) Exec(
 	ctx context.Context,
-	exec TxExec,
-	currentSection commonmodels.DumpSection,
-	currentWhen commonmodels.ScriptEventType,
+	session core.DatabaseSession,
+	currentSection core.DumpSection,
+	currentWhen core.ScriptEventType,
 ) error {
 	for i := range s.scripts {
 		script := s.scripts[i]
 		if script.Section != currentSection || script.When != currentWhen {
 			continue
 		}
-		if err := NewExecutor(script).Exec(ctx, exec); err != nil {
+		if err := NewExecutor(script).Exec(ctx, session); err != nil {
 			return fmt.Errorf("execute script #%d: %w", i, err)
 		}
 	}
 	return nil
 }
 
-type TxExec func(ctx context.Context, query string) error
-
 var errNothingToExecute = errors.New("nothing to execute")
 
 type Executor struct {
-	commonmodels.Script
+	core.Script
 }
 
-func NewExecutor(script commonmodels.Script) *Executor {
+func NewExecutor(script core.Script) *Executor {
 	return &Executor{
 		Script: script,
 	}
@@ -76,12 +74,12 @@ func (s *Executor) Validate() error {
 	return nil
 }
 
-func (s *Executor) Exec(ctx context.Context, exec TxExec) error {
+func (s *Executor) Exec(ctx context.Context, session core.DatabaseSession) error {
 	switch {
 	case s.Query != "":
-		return s.executeQuery(ctx, exec)
+		return s.executeQuery(ctx, session)
 	case s.QueryFile != "":
-		return s.executeQueryFile(ctx, exec)
+		return s.executeQueryFile(ctx, session)
 	case len(s.Command) > 0:
 		return s.executeCommand(ctx)
 	default:
@@ -89,14 +87,24 @@ func (s *Executor) Exec(ctx context.Context, exec TxExec) error {
 	}
 }
 
-func (s *Executor) executeQuery(ctx context.Context, exec TxExec) error {
-	if err := exec(ctx, s.Query); err != nil {
+// execQuery applies a single query to the restore session, delegating the
+// transaction lifecycle to core.ExecOnSession.
+func (s *Executor) execQuery(ctx context.Context, session core.DatabaseSession, query string) error {
+	err := core.ExecOnSession(ctx, session, func(ctx context.Context, db core.DB) error {
+		_, err := db.ExecContext(ctx, query)
+		return err
+	})
+	if err != nil {
 		return fmt.Errorf("execute script name='%s': %w", s.Name, err)
 	}
 	return nil
 }
 
-func (s *Executor) executeQueryFile(ctx context.Context, exec TxExec) error {
+func (s *Executor) executeQuery(ctx context.Context, session core.DatabaseSession) error {
+	return s.execQuery(ctx, session, s.Query)
+}
+
+func (s *Executor) executeQueryFile(ctx context.Context, session core.DatabaseSession) error {
 	f, err := os.Open(s.QueryFile)
 	defer func() {
 		if err := f.Close(); err != nil {
@@ -110,10 +118,7 @@ func (s *Executor) executeQueryFile(ctx context.Context, exec TxExec) error {
 	if err != nil {
 		return fmt.Errorf("cannot read query file: %w", err)
 	}
-	if err := exec(ctx, string(query)); err != nil {
-		return fmt.Errorf("execute script name='%s': %w", s.Name, err)
-	}
-	return err
+	return s.execQuery(ctx, session, string(query))
 }
 
 func (s *Executor) executeCommand(ctx context.Context) error {

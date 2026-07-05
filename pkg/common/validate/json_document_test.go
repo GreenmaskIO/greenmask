@@ -5,8 +5,7 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/greenmaskio/greenmask/pkg/common/interfaces"
-	"github.com/greenmaskio/greenmask/pkg/common/models"
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 	ttesting "github.com/greenmaskio/greenmask/pkg/common/transformers/testing"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -142,7 +141,7 @@ func TestJsonDocument_GetRecords(t *testing.T) {
 	})
 }
 
-func getTableAndRows(t *testing.T) (models.Table, []interfaces.RowDriver, []interfaces.RowDriver) {
+func getTableAndRows(t *testing.T) (core.Table, []core.RowDriver, []core.RowDriver) {
 	t.Helper()
 
 	tableDef := `
@@ -199,28 +198,28 @@ func getTableAndRows(t *testing.T) (models.Table, []interfaces.RowDriver, []inte
 		}
 	`
 	originalData := ttesting.NewDummyRow(4)
-	err := originalData.SetColumn(0, models.NewColumnRawValue([]byte("1"), false))
+	err := originalData.SetColumn(0, core.NewColumnRawValue([]byte("1"), false))
 	require.NoError(t, err)
-	err = originalData.SetColumn(1, models.NewColumnRawValue([]byte("alice"), false))
+	err = originalData.SetColumn(1, core.NewColumnRawValue([]byte("alice"), false))
 	require.NoError(t, err)
-	err = originalData.SetColumn(2, models.NewColumnRawValue([]byte("alice@example"), false))
+	err = originalData.SetColumn(2, core.NewColumnRawValue([]byte("alice@example"), false))
 	require.NoError(t, err)
-	err = originalData.SetColumn(3, models.NewColumnRawValue([]byte("2022-05-05 10:15:30.123"), false))
+	err = originalData.SetColumn(3, core.NewColumnRawValue([]byte("2022-05-05 10:15:30.123"), false))
 	require.NoError(t, err)
 
 	transformedData := ttesting.NewDummyRow(4)
-	err = transformedData.SetColumn(0, models.NewColumnRawValue([]byte("1"), false))
+	err = transformedData.SetColumn(0, core.NewColumnRawValue([]byte("1"), false))
 	require.NoError(t, err)
-	err = transformedData.SetColumn(1, models.NewColumnRawValue([]byte("alice"), false))
+	err = transformedData.SetColumn(1, core.NewColumnRawValue([]byte("alice"), false))
 	require.NoError(t, err)
-	err = transformedData.SetColumn(2, models.NewColumnRawValue([]byte("test@example"), false))
+	err = transformedData.SetColumn(2, core.NewColumnRawValue([]byte("test@example"), false))
 	require.NoError(t, err)
-	err = transformedData.SetColumn(3, models.NewColumnRawValue([]byte("2022-05-01 09:00:00.123"), false))
+	err = transformedData.SetColumn(3, core.NewColumnRawValue([]byte("2022-05-01 09:00:00.123"), false))
 	require.NoError(t, err)
 
-	var tab models.Table
+	var tab core.Table
 	err = json.Unmarshal([]byte(tableDef), &tab)
 	require.NoError(nil, err)
 
-	return tab, []interfaces.RowDriver{originalData}, []interfaces.RowDriver{transformedData}
+	return tab, []core.RowDriver{originalData}, []core.RowDriver{transformedData}
 }

@@ -22,6 +22,20 @@ import (
 	"github.com/shopspring/decimal"
 )
 
+// decodeInt strictly decodes a signed MySQL integer to int64. A signed integer
+// column never exceeds the int64 range, so an out-of-range value is a real
+// error, not a reason to silently widen to uint64 (which would make the decoded
+// Go type depend on the row value instead of the column type).
+func decodeInt(buf []byte) (any, error) {
+	return strconv.ParseInt(string(buf), 10, 64)
+}
+
+// decodeUint strictly decodes an unsigned MySQL integer to uint64, for every
+// row regardless of magnitude — so one unsigned column always yields uint64.
+func decodeUint(buf []byte) (any, error) {
+	return strconv.ParseUint(string(buf), 10, 64)
+}
+
 func decodeBool(buf []byte) (any, error) {
 	switch string(buf) {
 	case "1", "true", "TRUE", "True":

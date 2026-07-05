@@ -22,26 +22,25 @@ import (
 	"maps"
 	"time"
 
-	commonininterfaces "github.com/greenmaskio/greenmask/pkg/common/interfaces"
-	"github.com/greenmaskio/greenmask/pkg/common/models"
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 	"github.com/rs/zerolog/log"
 )
 
 const dumperTypeTableRawDumper = "table_raw_dumper"
 
 type TableRawDumper struct {
-	ID               models.TaskID
-	dataStreamReader commonininterfaces.RowStreamReader
-	dataStreamWriter commonininterfaces.RowStreamWriter
+	ID               core.TaskID
+	dataStreamReader core.RowStreamReader
+	dataStreamWriter core.RowStreamWriter
 	lineNum          int64
-	table            *models.Table
+	table            *core.Table
 }
 
 func NewTableRawDumper(
-	id models.TaskID,
-	dataStreamReader commonininterfaces.RowStreamReader,
-	dataStreamWriter commonininterfaces.RowStreamWriter,
-	table *models.Table,
+	id core.TaskID,
+	dataStreamReader core.RowStreamReader,
+	dataStreamWriter core.RowStreamWriter,
+	table *core.Table,
 ) *TableRawDumper {
 	return &TableRawDumper{
 		ID:               id,
@@ -52,28 +51,34 @@ func NewTableRawDumper(
 	}
 }
 
-func (t *TableRawDumper) Dump(ctx context.Context) (models.TaskStat, error) {
+func (t *TableRawDumper) Dump(
+	ctx context.Context,
+	session core.DatabaseSession,
+	st core.Storager,
+) (core.ObjectDumpStat, error) {
 	startedAt := time.Now()
 
-	// Stream records and transform them one by one.
-	if err := t.stream(ctx); err != nil {
-		return models.TaskStat{}, models.NewDumpError(
+	// Stream records and transform them one by one. session/st are nil on the
+	// legacy task-producer path, where the reader/writer were already bound to
+	// their resources at construction time.
+	if err := t.stream(ctx, session, st); err != nil {
+		return core.ObjectDumpStat{}, core.NewDumpError(
 			t.lineNum, fmt.Errorf("stream data: %w", err),
 		)
 	}
 
 	objectDefinition, err := json.Marshal(*t.table)
 	if err != nil {
-		return models.TaskStat{}, fmt.Errorf("marshalling table definition: %w", err)
+		return core.ObjectDumpStat{}, fmt.Errorf("marshalling table definition: %w", err)
 	}
 
-	return models.NewDumpStat(
+	return core.NewDumpStat(
 		t.ID,
 		t.dataStreamWriter.Stat(),
 		time.Since(startedAt),
 		dumperTypeTableRawDumper,
 		t.lineNum-1,
-		models.DBMSEngineMySQL,
+		core.DBMSEngineMySQL,
 		objectDefinition,
 	), nil
 }
@@ -83,7 +88,7 @@ func (t *TableRawDumper) streamRecords(ctx context.Context) error {
 		t.lineNum++
 		row, err := t.dataStreamReader.ReadRow(ctx)
 		if err != nil {
-			if errors.Is(err, models.ErrEndOfStream) {
+			if errors.Is(err, core.ErrEndOfStream) {
 				return nil
 			}
 			return fmt.Errorf("read row from stream: %w", err)
@@ -94,14 +99,14 @@ func (t *TableRawDumper) streamRecords(ctx context.Context) error {
 	}
 }
 
-func (t *TableRawDumper) stream(ctx context.Context) error {
+func (t *TableRawDumper) stream(ctx context.Context, session core.DatabaseSession, st core.Storager) error {
 	// Open stream reader - the one that reads data from table in DBMS.
-	if err := t.dataStreamReader.Open(ctx); err != nil {
+	if err := t.dataStreamReader.Open(ctx, session); err != nil {
 		return fmt.Errorf("open data streamer: %w", err)
 	}
 	// Open stream writer - the one that writes transformed data
 	// directly to the storage.
-	if err := t.dataStreamWriter.Open(ctx); err != nil {
+	if err := t.dataStreamWriter.Open(ctx, st); err != nil {
 		return fmt.Errorf("open data streamer: %w", err)
 	}
 
@@ -153,13 +158,9 @@ func (t *TableRawDumper) stream(ctx context.Context) error {
 }
 
 func (t *TableRawDumper) Meta() map[string]any {
-	meta := t.dataStreamReader.DebugInfo()
-	uniqueDumpTaskID := getUniqueDumpTaskID(dumperTypeTableDumper, meta)
-	meta = maps.Clone(meta)
-	meta[models.MetaKeyUniqueDumpTaskID] = uniqueDumpTaskID
-	return meta
+	return maps.Clone(t.dataStreamReader.DebugInfo())
 }
 
 func (t *TableRawDumper) DebugInfo() string {
-	return getUniqueDumpTaskID(dumperTypeTableDumper, t.dataStreamReader.DebugInfo())
+	return tableDebugName(t.dataStreamReader.DebugInfo())
 }

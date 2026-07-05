@@ -18,8 +18,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/greenmaskio/greenmask/pkg/common/interfaces"
-	"github.com/greenmaskio/greenmask/pkg/common/models"
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 	"github.com/greenmaskio/greenmask/pkg/common/transformers/generators/transformers"
 	"github.com/greenmaskio/greenmask/pkg/common/transformers/parameters"
 	"github.com/greenmaskio/greenmask/pkg/common/transformers/utils"
@@ -46,9 +45,9 @@ var NoiseFloatTransformerDefinition = utils.NewTransformerDefinition(
 	parameters.MustNewParameterDefinition(
 		"column",
 		"column name",
-	).SetIsColumn(models.NewColumnProperties().
+	).SetIsColumn(core.NewColumnProperties().
 		SetAffected(true).
-		SetAllowedColumnTypeClasses(models.TypeClassFloat).
+		SetAllowedColumnTypeClasses(core.TypeClassFloat).
 		SetSkipOnNull(true),
 	).SetRequired(true),
 
@@ -56,7 +55,7 @@ var NoiseFloatTransformerDefinition = utils.NewTransformerDefinition(
 		"decimal",
 		"Number of decimal places to use",
 	).SetSupportTemplate(true).
-		SetDefaultValue(models.ParamsValue("4")),
+		SetDefaultValue(core.ParamsValue("4")),
 
 	parameters.MustNewParameterDefinition(
 		"min",
@@ -66,10 +65,10 @@ var NoiseFloatTransformerDefinition = utils.NewTransformerDefinition(
 		SetDynamicMode(
 			parameters.NewDynamicModeProperties().
 				SetColumnProperties(
-					models.NewColumnProperties().
+					core.NewColumnProperties().
 						SetAllowedColumnTypeClasses(
-							models.TypeClassInt,
-							models.TypeClassFloat,
+							core.TypeClassInt,
+							core.TypeClassFloat,
 						),
 				),
 		),
@@ -82,10 +81,10 @@ var NoiseFloatTransformerDefinition = utils.NewTransformerDefinition(
 		SetDynamicMode(
 			parameters.NewDynamicModeProperties().
 				SetColumnProperties(
-					models.NewColumnProperties().
+					core.NewColumnProperties().
 						SetAllowedColumnTypeClasses(
-							models.TypeClassInt,
-							models.TypeClassFloat,
+							core.TypeClassInt,
+							core.TypeClassFloat,
 						),
 				),
 		),
@@ -112,13 +111,17 @@ type NoiseFloatTransformer struct {
 	minParam parameters.Parameterizer
 
 	transform func(float64) (float64, error)
+
+	deterministic bool
 }
+
+var _ core.Transformer = (*NoiseFloatTransformer)(nil)
 
 func NewNoiseFloatTransformer(
 	ctx context.Context,
-	tableDriver interfaces.TableDriver,
+	tableDriver core.TableDriver,
 	parameters map[string]parameters.Parameterizer,
-) (interfaces.Transformer, error) {
+) (core.Transformer, error) {
 	minParam := parameters["min"]
 	maxParam := parameters["max"]
 
@@ -134,7 +137,7 @@ func NewNoiseFloatTransformer(
 		return nil, fmt.Errorf("get \"engine\" param: %w", err)
 	}
 
-	typeSize := column.Size
+	typeSize := column.Type.Size
 	if typeSize == 0 {
 		log.Ctx(ctx).
 			Info().
@@ -206,6 +209,7 @@ func NewNoiseFloatTransformer(
 		transform: func(f float64) (float64, error) {
 			return t.Transform(nil, f)
 		},
+		deterministic: engineIsDeterministic(engine),
 	}, nil
 }
 
@@ -241,7 +245,7 @@ func (t *NoiseFloatTransformer) dynamicTransform(v float64) (float64, error) {
 	return res, nil
 }
 
-func (t *NoiseFloatTransformer) Transform(_ context.Context, r interfaces.Recorder) error {
+func (t *NoiseFloatTransformer) Transform(_ context.Context, r core.Recorder) error {
 	var val float64
 	isNull, err := r.ScanColumnValueByIdx(t.columnIdx, &val)
 	if err != nil {
@@ -266,6 +270,10 @@ func (t *NoiseFloatTransformer) Describe() string {
 	return TransformerNameNoiseFloat
 }
 
+func (t *NoiseFloatTransformer) IsDeterministic() bool {
+	return t.deterministic
+}
+
 func validateNoiseFloatTypeAndSetLimit(
 	ctx context.Context,
 	size int,
@@ -286,28 +294,28 @@ func validateNoiseFloatTypeAndSetLimit(
 
 	if !isValueInLimits(*requestedMinValue, minValue, maxValue) {
 		validationcollector.FromContext(ctx).Add(
-			models.NewValidationWarning().
+			core.NewValidationWarning().
 				SetMsgf("requested min value is out of float%d range", size).
-				SetSeverity(models.ValidationSeverityError).
+				SetSeverity(core.ValidationSeverityError).
 				AddMeta("AllowedMinValue", minValue).
 				AddMeta("AllowedMaxValue", maxValue).
 				AddMeta("ParameterName", "min").
 				AddMeta("ParameterValue", requestedMinValue),
 		)
-		return nil, models.ErrFatalValidationError
+		return nil, core.ErrFatalValidationError
 	}
 
 	if !isValueInLimits(*requestedMaxValue, minValue, maxValue) {
 		validationcollector.FromContext(ctx).Add(
-			models.NewValidationWarning().
+			core.NewValidationWarning().
 				SetMsgf("requested max value is out of float%d range", size).
-				SetSeverity(models.ValidationSeverityError).
+				SetSeverity(core.ValidationSeverityError).
 				AddMeta("AllowedMinValue", minValue).
 				AddMeta("AllowedMaxValue", maxValue).
 				AddMeta("ParameterName", "min").
 				AddMeta("ParameterValue", requestedMinValue),
 		)
-		return nil, models.ErrFatalValidationError
+		return nil, core.ErrFatalValidationError
 	}
 
 	return transformers.NewNoiseFloat64Limiter(*requestedMinValue, *requestedMaxValue, decimal)

@@ -15,13 +15,12 @@
 package mocks
 
 import (
-	"github.com/greenmaskio/greenmask/pkg/common/interfaces"
-	"github.com/greenmaskio/greenmask/pkg/common/models"
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 	"github.com/stretchr/testify/mock"
 )
 
 var (
-	_ interfaces.Recorder = (*RecorderMock)(nil)
+	_ core.Recorder = (*RecorderMock)(nil)
 )
 
 type RecorderMock struct {
@@ -48,12 +47,12 @@ func (r *RecorderMock) ScanColumnValueByName(name string, v any) (bool, error) {
 	panic("implement me")
 }
 
-func (r *RecorderMock) GetColumnByName(columnName string) (*models.Column, error) {
+func (r *RecorderMock) GetColumnByName(columnName string) (*core.Column, error) {
 	args := r.Called(columnName)
 	if args.Get(1) != nil {
 		return nil, args.Error(1)
 	}
-	return args.Get(0).(*models.Column), nil
+	return args.Get(0).(*core.Column), nil
 }
 
 func NewRecorderMock() *RecorderMock {
@@ -70,36 +69,36 @@ func (r *RecorderMock) IsNullByColumnIdx(columIdx int) (bool, error) {
 	return args.Bool(0), args.Error(1)
 }
 
-func (r *RecorderMock) GetRawColumnValueByIdx(columnIdx int) (*models.ColumnRawValue, error) {
+func (r *RecorderMock) GetRawColumnValueByIdx(columnIdx int) (*core.ColumnRawValue, error) {
 	args := r.Called(columnIdx)
 	if args.Get(1) != nil {
 		return nil, args.Error(1)
 	}
-	return args.Get(0).(*models.ColumnRawValue), nil
+	return args.Get(0).(*core.ColumnRawValue), nil
 }
 
-func (r *RecorderMock) GetColumnValueByIdx(columnIdx int) (*models.ColumnValue, error) {
+func (r *RecorderMock) GetColumnValueByIdx(columnIdx int) (*core.ColumnValue, error) {
 	args := r.Called(columnIdx)
 	if args.Get(1) != nil {
 		return nil, args.Error(1)
 	}
-	return args.Get(0).(*models.ColumnValue), nil
+	return args.Get(0).(*core.ColumnValue), nil
 }
 
-func (r *RecorderMock) GetColumnValueByName(columnName string) (*models.ColumnValue, error) {
+func (r *RecorderMock) GetColumnValueByName(columnName string) (*core.ColumnValue, error) {
 	args := r.Called(columnName)
 	if args.Get(1) != nil {
 		return nil, args.Error(1)
 	}
-	return args.Get(0).(*models.ColumnValue), nil
+	return args.Get(0).(*core.ColumnValue), nil
 }
 
-func (r *RecorderMock) GetRawColumnValueByName(columnName string) (*models.ColumnRawValue, error) {
+func (r *RecorderMock) GetRawColumnValueByName(columnName string) (*core.ColumnRawValue, error) {
 	args := r.Called(columnName)
 	if args.Get(1) != nil {
 		return nil, args.Error(1)
 	}
-	return args.Get(0).(*models.ColumnRawValue), nil
+	return args.Get(0).(*core.ColumnRawValue), nil
 }
 
 func (r *RecorderMock) SetColumnValueByIdx(columnIdx int, v any) error {
@@ -107,7 +106,7 @@ func (r *RecorderMock) SetColumnValueByIdx(columnIdx int, v any) error {
 	return args.Error(0)
 }
 
-func (r *RecorderMock) SetRawColumnValueByIdx(columnIdx int, value *models.ColumnRawValue) error {
+func (r *RecorderMock) SetRawColumnValueByIdx(columnIdx int, value *core.ColumnRawValue) error {
 	args := r.Called(columnIdx, value)
 	return args.Error(0)
 }
@@ -117,12 +116,12 @@ func (r *RecorderMock) SetColumnValueByName(columnName string, v any) error {
 	return args.Error(0)
 }
 
-func (r *RecorderMock) SetRawColumnValueByName(columnName string, value *models.ColumnRawValue) error {
+func (r *RecorderMock) SetRawColumnValueByName(columnName string, value *core.ColumnRawValue) error {
 	args := r.Called(columnName, value)
 	return args.Error(0)
 }
 
-func (r *RecorderMock) TableDriver() interfaces.TableDriver {
+func (r *RecorderMock) TableDriver() core.TableDriver {
 	args := r.Called()
-	return args.Get(0).(interfaces.TableDriver)
+	return args.Get(0).(core.TableDriver)
 }

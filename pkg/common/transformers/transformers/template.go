@@ -21,8 +21,7 @@ import (
 
 	"text/template"
 
-	"github.com/greenmaskio/greenmask/pkg/common/interfaces"
-	"github.com/greenmaskio/greenmask/pkg/common/models"
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 	"github.com/greenmaskio/greenmask/pkg/common/transformers/parameters"
 	template2 "github.com/greenmaskio/greenmask/pkg/common/transformers/template"
 	"github.com/greenmaskio/greenmask/pkg/common/transformers/utils"
@@ -41,7 +40,7 @@ var TemplateTransformerDefinition = utils.NewTransformerDefinition(
 	parameters.MustNewParameterDefinition(
 		"column",
 		"column name",
-	).SetIsColumn(models.NewColumnProperties().
+	).SetIsColumn(core.NewColumnProperties().
 		SetAffected(true),
 	).SetRequired(true),
 
@@ -54,8 +53,10 @@ var TemplateTransformerDefinition = utils.NewTransformerDefinition(
 		"validate",
 		"validate template result via PostgreSQL driver decoding",
 	).SetRequired(false).
-		SetDefaultValue(models.ParamsValue("false")),
+		SetDefaultValue(core.ParamsValue("false")),
 )
+
+var _ core.Transformer = (*TemplateTransformer)(nil)
 
 type TemplateTransformer struct {
 	columnName      string
@@ -70,9 +71,9 @@ type TemplateTransformer struct {
 
 func NewTemplateTransformer(
 	ctx context.Context,
-	tableDriver interfaces.TableDriver,
+	tableDriver core.TableDriver,
 	parameters map[string]parameters.Parameterizer,
-) (interfaces.Transformer, error) {
+) (core.Transformer, error) {
 	columnName, column, err := getColumnParameterValue(ctx, tableDriver, parameters)
 	if err != nil {
 		return nil, fmt.Errorf("get \"column\" parameter: %w", err)
@@ -103,7 +104,7 @@ func NewTemplateTransformer(
 		},
 		tmpl:     tmpl,
 		buf:      bytes.NewBuffer(nil),
-		tctx:     NewColumnContext(column.TypeName, columnName),
+		tctx:     NewColumnContext(column.Type.Name, columnName),
 		validate: validate,
 	}, nil
 }
@@ -120,7 +121,7 @@ func (t *TemplateTransformer) Done(context.Context) error {
 	return nil
 }
 
-func (t *TemplateTransformer) Transform(_ context.Context, r interfaces.Recorder) error {
+func (t *TemplateTransformer) Transform(_ context.Context, r core.Recorder) error {
 	t.tctx.SetRecord(r)
 
 	if err := t.tmpl.Execute(t.buf, t.tctx); err != nil {
@@ -128,16 +129,16 @@ func (t *TemplateTransformer) Transform(_ context.Context, r interfaces.Recorder
 	}
 
 	data := t.buf.Bytes()
-	var res *models.ColumnRawValue
+	var res *core.ColumnRawValue
 	if len(data) == 2 && data[0] == '\\' && data[1] == 'N' {
-		res = models.NewColumnRawValue(nil, true)
+		res = core.NewColumnRawValue(nil, true)
 	} else {
 		if t.validate {
 			if _, err := r.TableDriver().DecodeValueByColumnIdx(t.columnIdx, data); err != nil {
 				return fmt.Errorf("validate template output via driver: %w", err)
 			}
 		}
-		res = models.NewColumnRawValue(data, false)
+		res = core.NewColumnRawValue(data, false)
 	}
 	if err := r.SetRawColumnValueByIdx(t.columnIdx, res); err != nil {
 		return fmt.Errorf("set raw value: %w", err)
@@ -149,6 +150,10 @@ func (t *TemplateTransformer) Transform(_ context.Context, r interfaces.Recorder
 
 func (t *TemplateTransformer) Describe() string {
 	return TransformerNameTemplate
+}
+
+func (t *TemplateTransformer) IsDeterministic() bool {
+	return false
 }
 
 type ColumnContext struct {

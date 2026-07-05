@@ -16,14 +16,11 @@ package context
 
 import (
 	"context"
-	"encoding/hex"
 	"fmt"
-	"os"
 	"slices"
 
 	"github.com/greenmaskio/greenmask/pkg/common/conditions"
-	"github.com/greenmaskio/greenmask/pkg/common/interfaces"
-	"github.com/greenmaskio/greenmask/pkg/common/models"
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 	"github.com/greenmaskio/greenmask/pkg/common/transformers/parameters"
 	transformerutils "github.com/greenmaskio/greenmask/pkg/common/transformers/registry"
 	"github.com/greenmaskio/greenmask/pkg/common/utils"
@@ -35,23 +32,23 @@ import (
 // The column type override can be used in order to override driver encode-decode behaviour.
 type NewTableDriverFunc func(
 	ctx context.Context,
-	table models.Table,
+	table core.Table,
 	columnsTypeOverride map[string]string,
-) (interfaces.TableDriver, error)
+) (core.TableDriver, error)
 
-// TableContextBuilder - produces list of TableContext that will be used in the task producer.
+// TableContextBuilder - produces list of TableDumpContextPayload that will be used in the task producer.
 type TableContextBuilder struct {
-	tables              []models.Table
+	tables              []core.Table
 	dumpQueries         []string
-	tableConfigs        []models.TableConfig
+	tableConfigs        []core.TableConfig
 	newTableDriver      NewTableDriverFunc
 	transformerRegistry *transformerutils.TransformerRegistry
 }
 
 func New(
-	tables []models.Table,
+	tables []core.Table,
 	dumpQueries []string,
-	tableConfigs []models.TableConfig,
+	tableConfigs []core.TableConfig,
 	newDriverFunc NewTableDriverFunc,
 	transformerRegistry *transformerutils.TransformerRegistry,
 ) *TableContextBuilder {
@@ -64,30 +61,17 @@ func New(
 	}
 }
 
-func withSalt(ctx context.Context) (context.Context, error) {
-	var salt []byte
-	saltHex := os.Getenv("GREENMASK_GLOBAL_SALT")
-	if saltHex != "" {
-		salt = make([]byte, hex.DecodedLen(len(saltHex)))
-		_, err := hex.Decode(salt, []byte(saltHex))
-		if err != nil {
-			return nil, fmt.Errorf("error decoding salt from hex: %w", err)
-		}
-	}
-	return utils.WithSalt(ctx, salt), nil
-}
-
-// Build - returns list of TableContext objects that are used in the TaskProducer interface.
-func (p *TableContextBuilder) Build(ctx context.Context) ([]TableContext, error) {
+// Build - returns list of TableDumpContextPayload objects that are used in the TaskProducer interface.
+func (p *TableContextBuilder) Build(ctx context.Context) ([]TableDumpContextPayload, error) {
 	var err error
-	tableRuntimes := make([]TableContext, len(p.tables))
-	ctx, err = withSalt(ctx)
+	tableRuntimes := make([]TableDumpContextPayload, len(p.tables))
+	ctx, err = utils.WithSaltFromEnv(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("set salt: %w", err)
 	}
 	for i := range p.tables {
-		var transformationConfig models.TableConfig
-		idx := slices.IndexFunc(p.tableConfigs, func(config models.TableConfig) bool {
+		var transformationConfig core.TableConfig
+		idx := slices.IndexFunc(p.tableConfigs, func(config core.TableConfig) bool {
 			return p.tables[i].Schema == config.Schema && p.tables[i].Name == config.Name
 		})
 		if idx != -1 {
@@ -105,30 +89,30 @@ func (p *TableContextBuilder) Build(ctx context.Context) ([]TableContext, error)
 // initTable - initialize a table runtime for a specific table.
 func (p *TableContextBuilder) initTable(
 	ctx context.Context,
-	table models.Table,
-	tableConfig models.TableConfig,
+	table core.Table,
+	tableConfig core.TableConfig,
 	dumpQueries string,
-) (TableContext, error) {
+) (TableDumpContextPayload, error) {
 	ctx = log.Ctx(ctx).With().
-		Str(models.MetaKeyTableSchema, table.Schema).
-		Str(models.MetaKeyTableName, table.Name).
+		Str(core.MetaKeyTableSchema, table.Schema).
+		Str(core.MetaKeyTableName, table.Name).
 		Logger().WithContext(ctx)
 	driver, err := p.newTableDriver(ctx, table, tableConfig.ColumnsTypeOverride)
 	if err != nil {
-		return TableContext{}, fmt.Errorf("new driver: %w", err)
+		return TableDumpContextPayload{}, fmt.Errorf("new driver: %w", err)
 	}
 	if dumpQueries == "" && tableConfig.Query != "" {
 		dumpQueries = tableConfig.Query
 	}
 	tableCondition, err := p.compileTableCondition(ctx, utils.Value(driver.Table()), tableConfig)
 	if err != nil {
-		return TableContext{}, fmt.Errorf("compile table condition: %w", err)
+		return TableDumpContextPayload{}, fmt.Errorf("compile table condition: %w", err)
 	}
 	transformationRuntimes, err := p.initTableTransformers(ctx, driver, tableConfig.Transformers)
 	if err != nil {
-		return TableContext{}, fmt.Errorf("init transformation runtimes: %w", err)
+		return TableDumpContextPayload{}, fmt.Errorf("init transformation runtimes: %w", err)
 	}
-	return TableContext{
+	return TableDumpContextPayload{
 		Table:              &table,
 		Condition:          tableCondition,
 		TransformerContext: transformationRuntimes,
@@ -139,13 +123,13 @@ func (p *TableContextBuilder) initTable(
 
 func (p *TableContextBuilder) initTableTransformers(
 	ctx context.Context,
-	driver interfaces.TableDriver,
-	transformerConfigs []models.TransformerConfig,
+	driver core.TableDriver,
+	transformerConfigs []core.TransformerConfig,
 ) ([]*TransformerContext, error) {
 	res := make([]*TransformerContext, len(transformerConfigs))
 	for i := range transformerConfigs {
 		ctx := log.Ctx(ctx).With().
-			Str(models.MetaKeyTransformerName, transformerConfigs[i].Name).
+			Str(core.MetaKeyTransformerName, transformerConfigs[i].Name).
 			Logger().WithContext(ctx)
 		initRes, err := p.initTransformer(ctx, driver, transformerConfigs[i])
 		if err != nil {
@@ -166,26 +150,26 @@ func (p *TableContextBuilder) initTableTransformers(
 }
 
 type tranInitRes struct {
-	transformer       interfaces.Transformer
-	staticParameters  map[string]*parameters.DynamicParameter
+	transformer       core.Transformer
+	staticParameters  map[string]*parameters.StaticParameter
 	dynamicParameters map[string]*parameters.DynamicParameter
 }
 
 func (p *TableContextBuilder) initTransformer(
 	ctx context.Context,
-	driver interfaces.TableDriver,
-	config models.TransformerConfig,
+	driver core.TableDriver,
+	config core.TransformerConfig,
 ) (tranInitRes, error) {
 	ctx = validationcollector.WithMeta(ctx,
-		models.MetaKeyTransformerName, config.Name,
+		core.MetaKeyTransformerName, config.Name,
 	)
 	transformerDefinition, ok := p.transformerRegistry.Get(config.Name)
 	if !ok {
 		validationcollector.FromContext(ctx).
-			Add(models.NewValidationWarning().
-				SetSeverity(models.ValidationSeverityError).
+			Add(core.NewValidationWarning().
+				SetSeverity(core.ValidationSeverityError).
 				SetMsg("transformer is not found"))
-		return tranInitRes{}, fmt.Errorf("get transformer from registry: %w", models.ErrFatalValidationError)
+		return tranInitRes{}, fmt.Errorf("get transformer from registry: %w", core.ErrFatalValidationError)
 	}
 	params, err := parameters.InitParameters(
 		ctx,
@@ -229,17 +213,17 @@ func (p *TableContextBuilder) initTransformer(
 	return tranInitRes{
 		transformer:       tran,
 		dynamicParameters: dynamicParams,
-		staticParameters:  dynamicParams,
+		staticParameters:  staticParams,
 	}, nil
 }
 
 func (p *TableContextBuilder) compileTransformerCondition(
 	ctx context.Context,
-	table models.Table,
-	transformerConfig models.TransformerConfig,
-) (CondEvaluator, error) {
+	table core.Table,
+	transformerConfig core.TransformerConfig,
+) (core.CondEvaluator, error) {
 	ctx = log.Ctx(ctx).With().
-		Any(models.MetaKeyConditionScope, "Transformer").
+		Any(core.MetaKeyConditionScope, "Transformer").
 		Logger().WithContext(ctx)
 	if transformerConfig.When == "" {
 		return nil, nil
@@ -249,11 +233,11 @@ func (p *TableContextBuilder) compileTransformerCondition(
 
 func (p *TableContextBuilder) compileTableCondition(
 	ctx context.Context,
-	table models.Table,
-	tableConfig models.TableConfig,
-) (CondEvaluator, error) {
+	table core.Table,
+	tableConfig core.TableConfig,
+) (core.CondEvaluator, error) {
 	ctx = log.Ctx(ctx).With().
-		Any(models.MetaKeyConditionScope, "Table").
+		Any(core.MetaKeyConditionScope, "Table").
 		Logger().WithContext(ctx)
 	if tableConfig.When == "" {
 		return nil, nil

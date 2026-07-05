@@ -20,16 +20,15 @@ import (
 	"fmt"
 	"io"
 
-	commonininterfaces "github.com/greenmaskio/greenmask/pkg/common/interfaces"
-	"github.com/greenmaskio/greenmask/pkg/common/models"
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 )
 
 // CMDRowDriver - API for interaction with Cmd transformer row representation.
 type CMDRowDriver interface {
 	// GetColumn - get raw []byte value by column idx.
-	GetColumn(c *models.Column) (*models.ColumnRawValue, error)
+	GetColumn(c *core.Column) (*core.ColumnRawValue, error)
 	// SetColumn - set RawValue value by column idx to the current row.
-	SetColumn(c *models.Column, v *models.ColumnRawValue) error
+	SetColumn(c *core.Column, v *core.ColumnRawValue) error
 	// Clean - clean internal state.
 	Clean()
 	// Encode - encode current row to []byte.
@@ -44,9 +43,9 @@ type CMDProto interface {
 	// Init - initialize interactor with io.Writer and io.Reader.
 	Init(w io.Writer, r io.Reader) error
 	// Send - send record to the Cmd transformer.
-	Send(ctx context.Context, r commonininterfaces.Recorder) error
+	Send(ctx context.Context, r core.Recorder) error
 	// ReceiveAndApply - receive record from the Cmd transformer and apply received transferRecord to the record.
-	ReceiveAndApply(ctx context.Context, r commonininterfaces.Recorder) error
+	ReceiveAndApply(ctx context.Context, r core.Recorder) error
 }
 
 var (
@@ -55,7 +54,7 @@ var (
 )
 
 type ColumnMapping struct {
-	Column *models.Column
+	Column *core.Column
 	// Position - position in the message (for positional formats like CSV or JsonIndexes)
 	Position int
 }
@@ -154,11 +153,11 @@ func NewProto(
 		return nil, fmt.Errorf("unknown CMD protocol: %s", settings.Name)
 	}
 
-	transferringCols := make([]*models.Column, len(transferringColumns))
+	transferringCols := make([]*core.Column, len(transferringColumns))
 	for i, c := range transferringColumns {
 		transferringCols[i] = c.Column
 	}
-	affectedCols := make([]*models.Column, len(affectedColumns))
+	affectedCols := make([]*core.Column, len(affectedColumns))
 	for i, c := range affectedColumns {
 		affectedCols[i] = c.Column
 	}

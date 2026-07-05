@@ -18,7 +18,7 @@ import (
 	"fmt"
 	"slices"
 
-	commonmodels "github.com/greenmaskio/greenmask/pkg/common/models"
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 	condensationgraph2 "github.com/greenmaskio/greenmask/pkg/common/subset/condensationgraph"
 	"github.com/greenmaskio/greenmask/pkg/common/subset/tablegraph"
 )
@@ -47,7 +47,7 @@ type queryBuilder interface {
 //
 // It generates the subset queries for the tables.
 type Subset struct {
-	tables            []commonmodels.Table
+	tables            []core.Table
 	tableGraph        tablegraph.Graph
 	condensationGraph condensationgraph2.Graph
 	// subsetGraphs - is a list of sub-graphs assigned to the specific SCC.
@@ -60,7 +60,7 @@ type Subset struct {
 
 // validateTablesHasUniqueIDs - validates that all tables have unique IDs.
 // This will help you to debug cases when IDs are forgotten to be set.
-func validateTablesHasUniqueIDs(tables []commonmodels.Table) {
+func validateTablesHasUniqueIDs(tables []core.Table) {
 	// Validate that all tables have unique IDs
 	seen := make(map[int]struct{})
 	for _, table := range tables {
@@ -76,7 +76,7 @@ func validateTablesHasUniqueIDs(tables []commonmodels.Table) {
 // TODO: I suspect the version of dialect is required as well but a bit later I decide to add it.
 //
 //	I don't know the version format for now
-func NewSubset(tables []commonmodels.Table, dialect Dialect) (Subset, error) {
+func NewSubset(tables []core.Table, dialect Dialect) (Subset, error) {
 	validateTablesHasUniqueIDs(tables)
 	tableGraph, err := tablegraph.NewGraph(tables)
 	if err != nil {

@@ -15,13 +15,12 @@
 package main
 
 import (
-	"log"
-	"os"
+	"context"
 
-	"github.com/spf13/cobra"
-
-	"github.com/greenmaskio/greenmask/pkg/cmdrun"
+	"github.com/greenmaskio/greenmask/pkg/cli"
 	"github.com/greenmaskio/greenmask/pkg/common/cmd"
+	"github.com/rs/zerolog/log"
+	"github.com/spf13/cobra"
 )
 
 var (
@@ -79,7 +78,7 @@ var (
 			BindToConfig:     true,
 			Type:             cmd.FlagTypeString,
 			IsRequired:       false,
-			Default:          cmdrun.VerticalTableFormat,
+			Default:          cli.VerticalTableFormat,
 		},
 		{
 			Name:             "transformed-only",
@@ -114,12 +113,10 @@ var (
 		Short: "Validate database transformation by performing " +
 			"test with limited data dump and print transformation diff",
 		Run: func(cmd *cobra.Command, args []string) {
-			exitCode, err := cmdrun.RunValidate(rootCmd.MustGetConfig())
+			cmdRun := cli.New(rootCmd.MustGetConfig())
+			err := cmdRun.Validate(context.Background())
 			if err != nil {
-				log.Fatal(err)
-			}
-			if exitCode != 0 {
-				os.Exit(exitCode)
+				log.Fatal().Err(err).Msg("validate command failed")
 			}
 		},
 	}, validateFlags...)

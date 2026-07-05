@@ -17,14 +17,14 @@ package template
 import (
 	"fmt"
 
-	commonininterfaces "github.com/greenmaskio/greenmask/pkg/common/interfaces"
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 )
 
 type TableDriverContext struct {
-	td commonininterfaces.TableDriver
+	td core.TableDriver
 }
 
-func NewTableDriverContext(td commonininterfaces.TableDriver) *TableDriverContext {
+func NewTableDriverContext(td core.TableDriver) *TableDriverContext {
 	return &TableDriverContext{
 		td: td,
 	}
@@ -103,5 +103,7 @@ func (tdc *TableDriverContext) GetColumnType(name string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return c.TypeName, nil
+	// Surface the vendor's fully-declared type ("int unsigned") for fidelity,
+	// falling back to the canonical base name.
+	return c.Type.GetFullName(), nil
 }

@@ -1,25 +1,25 @@
 package validate
 
 import (
-	commonmodels "github.com/greenmaskio/greenmask/pkg/common/models"
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 )
 
 type CSVRecord struct {
 	row [][]byte
 }
 
-func (c *CSVRecord) GetColumn(idx int) (*commonmodels.ColumnRawValue, error) {
+func (c *CSVRecord) GetColumn(idx int) (*core.ColumnRawValue, error) {
 	if idx < 0 || idx >= len(c.row) {
 		return nil, nil
 	}
 	val := c.row[idx]
 	if string(val) == "\\N" {
-		return commonmodels.NewColumnRawValue(nil, true), nil
+		return core.NewColumnRawValue(nil, true), nil
 	}
-	return commonmodels.NewColumnRawValue(val, false), nil
+	return core.NewColumnRawValue(val, false), nil
 }
 
-func (c *CSVRecord) SetColumn(int, *commonmodels.ColumnRawValue) error {
+func (c *CSVRecord) SetColumn(int, *core.ColumnRawValue) error {
 	//TODO implement me
 	panic("implement me")
 }

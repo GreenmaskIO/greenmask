@@ -19,7 +19,7 @@ import (
 	"fmt"
 	"slices"
 
-	"github.com/greenmaskio/greenmask/pkg/common/models"
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 )
 
 var DefaultNullSeq = []byte("\\N")
@@ -72,17 +72,17 @@ func (r *TextRecord) Clean() {
 	r.record = r.record[:0]
 }
 
-func (r *TextRecord) GetColumn(c *models.Column) (*models.ColumnRawValue, error) {
+func (r *TextRecord) GetColumn(c *core.Column) (*core.ColumnRawValue, error) {
 	if c.Idx != r.receiverColumnIdx {
 		return nil, fmt.Errorf("column idx=%d name=%s: %w", c.Idx, c.Name, errUnexpectedColumn)
 	}
 	if isNullSeq(r.record) {
-		return models.NewColumnRawValue(nil, true), nil
+		return core.NewColumnRawValue(nil, true), nil
 	}
-	return models.NewColumnRawValue(r.record, false), nil
+	return core.NewColumnRawValue(r.record, false), nil
 }
 
-func (r *TextRecord) SetColumn(c *models.Column, v *models.ColumnRawValue) error {
+func (r *TextRecord) SetColumn(c *core.Column, v *core.ColumnRawValue) error {
 	if c.Idx != r.transferColumnIdx {
 		return fmt.Errorf("column idx=%d name=%s: %w", c.Idx, c.Name, errUnexpectedColumn)
 	}

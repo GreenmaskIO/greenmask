@@ -15,20 +15,20 @@
 package template
 
 import (
-	commonininterfaces "github.com/greenmaskio/greenmask/pkg/common/interfaces"
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 )
 
 // RecordContextReadOnly allows to perform only reading operation. Changes of record are not allowed.
 type RecordContextReadOnly struct {
 	*TableDriverContext
-	record commonininterfaces.Recorder
+	record core.Recorder
 }
 
 func NewRecordContextReadOnly() *RecordContextReadOnly {
 	return &RecordContextReadOnly{}
 }
 
-func (rc *RecordContextReadOnly) SetRecord(r commonininterfaces.Recorder) {
+func (rc *RecordContextReadOnly) SetRecord(r core.Recorder) {
 	rc.record = r
 	rc.TableDriverContext = NewTableDriverContext(r.TableDriver())
 }

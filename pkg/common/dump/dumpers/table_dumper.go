@@ -24,20 +24,19 @@ import (
 
 	"github.com/rs/zerolog/log"
 
-	"github.com/greenmaskio/greenmask/pkg/common/interfaces"
-	"github.com/greenmaskio/greenmask/pkg/common/models"
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 )
 
 const dumperTypeTableDumper = "table_dumper"
 
 type TableDumper struct {
-	ID               models.TaskID
-	pipeline         interfaces.Pipeliner
-	dataStreamReader interfaces.RowStreamReader
-	dataStreamWriter interfaces.RowStreamWriter
-	record           interfaces.Recorder
+	ID               core.TaskID
+	pipeline         core.Pipeliner
+	dataStreamReader core.RowStreamReader
+	dataStreamWriter core.RowStreamWriter
+	record           core.Recorder
 	lineNum          int64
-	table            *models.Table
+	table            *core.Table
 	saveOriginal     bool
 	rowLimit         int64
 }
@@ -62,12 +61,12 @@ func WithRowLimit(limit int64) func(t *TableDumper) error {
 type TableDumperOption func(t *TableDumper) error
 
 func NewTableDumper(
-	id models.TaskID,
-	dataStreamReader interfaces.RowStreamReader,
-	dataStreamWriter interfaces.RowStreamWriter,
-	record interfaces.Recorder,
-	pipeliner interfaces.Pipeliner,
-	table *models.Table,
+	id core.TaskID,
+	dataStreamReader core.RowStreamReader,
+	dataStreamWriter core.RowStreamWriter,
+	record core.Recorder,
+	pipeliner core.Pipeliner,
+	table *core.Table,
 	opts ...TableDumperOption,
 ) (*TableDumper, error) {
 	res := &TableDumper{
@@ -86,13 +85,17 @@ func NewTableDumper(
 	return res, nil
 }
 
-func (t *TableDumper) Dump(ctx context.Context) (models.TaskStat, error) {
+func (t *TableDumper) Dump(
+	ctx context.Context,
+	session core.DatabaseSession,
+	st core.Storager,
+) (core.ObjectDumpStat, error) {
 	startedAt := time.Now()
 	// Initialize transformation pipeline.
 	// It gets transformers ready to transform. For example if external transformer
 	// is used then it starts its process.
 	if err := t.pipeline.Init(ctx); err != nil {
-		return models.TaskStat{}, models.NewDumpError(
+		return core.ObjectDumpStat{}, core.NewDumpError(
 			t.lineNum, fmt.Errorf("init transformation pipeline: %w", err),
 		)
 	}
@@ -107,38 +110,40 @@ func (t *TableDumper) Dump(ctx context.Context) (models.TaskStat, error) {
 		}
 	}()
 
-	// Stream records and transform them one by one.
-	if err := t.streamRecords(ctx); err != nil {
-		return models.TaskStat{}, models.NewDumpError(
+	// Stream records and transform them one by one. session/st are nil on the
+	// legacy task-producer path, where the reader/writer were already bound to
+	// their resources at construction time.
+	if err := t.streamRecords(ctx, session, st); err != nil {
+		return core.ObjectDumpStat{}, core.NewDumpError(
 			t.lineNum, fmt.Errorf("stream data: %w", err),
 		)
 	}
 
 	objectDefinition, err := json.Marshal(*t.table)
 	if err != nil {
-		return models.TaskStat{}, fmt.Errorf("marshalling table definition: %w", err)
+		return core.ObjectDumpStat{}, fmt.Errorf("marshalling table definition: %w", err)
 	}
 
-	return models.NewDumpStat(
+	return core.NewDumpStat(
 		t.ID,
 		t.dataStreamWriter.Stat(),
 		time.Since(startedAt),
 		dumperTypeTableDumper,
 		t.lineNum-1,
-		models.DBMSEngineMySQL,
+		core.DBMSEngineMySQL,
 		objectDefinition,
 	), nil
 }
 
-func (t *TableDumper) streamRecords(ctx context.Context) error {
+func (t *TableDumper) streamRecords(ctx context.Context, session core.DatabaseSession, st core.Storager) error {
 	// Open stream reader - the one that reads data from table in DBMS.
-	if err := t.dataStreamReader.Open(ctx); err != nil {
+	if err := t.dataStreamReader.Open(ctx, session); err != nil {
 		return fmt.Errorf("open data streamer: %w", err)
 	}
 	defer func() {
 		// Close stream reader.
 		if err := t.dataStreamReader.Close(ctx); err != nil {
-			if !errors.Is(err, models.ErrDumpStreamTerminated) {
+			if !errors.Is(err, core.ErrDumpStreamTerminated) {
 				log.Ctx(ctx).
 					Warn().
 					Err(err).
@@ -148,7 +153,7 @@ func (t *TableDumper) streamRecords(ctx context.Context) error {
 	}()
 	// Open stream writer - the one that writes transformed data
 	// directly to the storage.
-	if err := t.dataStreamWriter.Open(ctx); err != nil {
+	if err := t.dataStreamWriter.Open(ctx, st); err != nil {
 		return fmt.Errorf("open data streamer: %w", err)
 	}
 	defer func() {
@@ -165,7 +170,7 @@ func (t *TableDumper) streamRecords(ctx context.Context) error {
 		t.lineNum++
 		row, err := t.dataStreamReader.ReadRow(ctx)
 		if err != nil {
-			if errors.Is(err, models.ErrEndOfStream) {
+			if errors.Is(err, core.ErrEndOfStream) {
 				return nil
 			}
 			return fmt.Errorf("read row from stream: %w", err)
@@ -196,13 +201,9 @@ func (t *TableDumper) streamRecords(ctx context.Context) error {
 }
 
 func (t *TableDumper) Meta() map[string]any {
-	meta := t.dataStreamReader.DebugInfo()
-	uniqueDumpTaskID := getUniqueDumpTaskID(dumperTypeTableDumper, meta)
-	meta = maps.Clone(meta)
-	meta[models.MetaKeyUniqueDumpTaskID] = uniqueDumpTaskID
-	return meta
+	return maps.Clone(t.dataStreamReader.DebugInfo())
 }
 
 func (t *TableDumper) DebugInfo() string {
-	return getUniqueDumpTaskID(dumperTypeTableDumper, t.dataStreamReader.DebugInfo())
+	return tableDebugName(t.dataStreamReader.DebugInfo())
 }

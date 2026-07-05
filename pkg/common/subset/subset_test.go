@@ -17,7 +17,7 @@ package subset
 import (
 	"testing"
 
-	"github.com/greenmaskio/greenmask/pkg/common/models"
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 	"github.com/stretchr/testify/require"
 )
 
@@ -37,7 +37,7 @@ func TestNewSubset(t *testing.T) {
 						|		 ^
 						  -------|
 		*/
-		tableE := models.Table{
+		tableE := core.Table{
 			ID:         0,
 			Schema:     "public",
 			Name:       "e",
@@ -45,12 +45,12 @@ func TestNewSubset(t *testing.T) {
 			References: nil,
 		}
 
-		tableA := models.Table{
+		tableA := core.Table{
 			ID:         1,
 			Schema:     "public",
 			Name:       "a",
 			PrimaryKey: []string{"id"},
-			References: []models.Reference{
+			References: []core.Reference{
 				{
 					ReferencedSchema: "public",
 					ReferencedName:   "e",
@@ -63,12 +63,12 @@ func TestNewSubset(t *testing.T) {
 			},
 		}
 
-		tableB := models.Table{
+		tableB := core.Table{
 			ID:         2,
 			Schema:     "public",
 			Name:       "b",
 			PrimaryKey: []string{"id"},
-			References: []models.Reference{
+			References: []core.Reference{
 				{
 					ReferencedSchema: "public",
 					ReferencedName:   "a",
@@ -78,12 +78,12 @@ func TestNewSubset(t *testing.T) {
 			},
 		}
 
-		tableC := models.Table{
+		tableC := core.Table{
 			ID:         3,
 			Schema:     "public",
 			Name:       "c",
 			PrimaryKey: []string{"id"},
-			References: []models.Reference{
+			References: []core.Reference{
 				{
 					ReferencedSchema: "public",
 					ReferencedName:   "b",
@@ -102,12 +102,12 @@ func TestNewSubset(t *testing.T) {
 			},
 		}
 
-		tableD := models.Table{
+		tableD := core.Table{
 			ID:         4,
 			Schema:     "public",
 			Name:       "d",
 			PrimaryKey: []string{"id"},
-			References: []models.Reference{
+			References: []core.Reference{
 				{
 					ReferencedSchema: "public",
 					ReferencedName:   "c",
@@ -117,7 +117,7 @@ func TestNewSubset(t *testing.T) {
 			},
 		}
 
-		tables := []models.Table{tableE, tableA, tableB, tableC, tableD}
+		tables := []core.Table{tableE, tableA, tableB, tableC, tableD}
 		s, err := NewSubset(tables, DialectMySQL)
 		require.NoError(t, err)
 		require.Len(t, s.subsetGraphs, 5)
@@ -170,7 +170,7 @@ func TestNewSubset(t *testing.T) {
 
 	t.Run("dag with nullable edges", func(t *testing.T) {
 		// Create a graph with one edge and two vertices.
-		tableA := models.Table{
+		tableA := core.Table{
 			ID:         0,
 			Schema:     "public",
 			Name:       "a",
@@ -180,7 +180,7 @@ func TestNewSubset(t *testing.T) {
 			},
 		}
 
-		tableB := models.Table{
+		tableB := core.Table{
 			ID:         1,
 			Schema:     "public",
 			Name:       "b",
@@ -188,7 +188,7 @@ func TestNewSubset(t *testing.T) {
 			SubsetConditions: []string{
 				"public.b.id = 1",
 			},
-			References: []models.Reference{
+			References: []core.Reference{
 				{
 					ReferencedSchema: "public",
 					ReferencedName:   "a",
@@ -198,7 +198,7 @@ func TestNewSubset(t *testing.T) {
 			},
 		}
 
-		tableC := models.Table{
+		tableC := core.Table{
 			ID:         2,
 			Schema:     "public",
 			Name:       "c",
@@ -206,7 +206,7 @@ func TestNewSubset(t *testing.T) {
 			SubsetConditions: []string{
 				"public.c.id = 1",
 			},
-			References: []models.Reference{
+			References: []core.Reference{
 				{
 					ReferencedSchema: "public",
 					ReferencedName:   "b",
@@ -236,7 +236,7 @@ func TestNewSubset(t *testing.T) {
 				2: nil,
 			},
 		}
-		tables := []models.Table{tableA, tableB, tableC}
+		tables := []core.Table{tableA, tableB, tableC}
 		s, err := NewSubset(tables, DialectMySQL)
 		require.NoError(t, err)
 		verifySubGraphs(t, expectedSubGraphs, s)
@@ -251,18 +251,18 @@ func TestNewSubset(t *testing.T) {
 	t.Run("GetTopologicalOrder returns correct restoration order", func(t *testing.T) {
 		// tableB depends on tableA
 		// Edge: B -> A
-		tableA := models.Table{
+		tableA := core.Table{
 			ID:         1,
 			Schema:     "public",
 			Name:       "a",
 			PrimaryKey: []string{"id"},
 		}
-		tableB := models.Table{
+		tableB := core.Table{
 			ID:         2,
 			Schema:     "public",
 			Name:       "b",
 			PrimaryKey: []string{"id"},
-			References: []models.Reference{
+			References: []core.Reference{
 				{
 					ReferencedSchema: "public",
 					ReferencedName:   "a",
@@ -270,7 +270,7 @@ func TestNewSubset(t *testing.T) {
 				},
 			},
 		}
-		tables := []models.Table{tableA, tableB}
+		tables := []core.Table{tableA, tableB}
 		s, err := NewSubset(tables, DialectMySQL)
 		require.NoError(t, err)
 

@@ -25,8 +25,7 @@ import (
 	"github.com/expr-lang/expr"
 	"github.com/expr-lang/expr/ast"
 	"github.com/expr-lang/expr/vm"
-	commonininterfaces "github.com/greenmaskio/greenmask/pkg/common/interfaces"
-	"github.com/greenmaskio/greenmask/pkg/common/models"
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 	template2 "github.com/greenmaskio/greenmask/pkg/common/transformers/template"
 	"github.com/greenmaskio/greenmask/pkg/common/validationcollector"
 	"github.com/rs/zerolog/log"
@@ -56,7 +55,7 @@ type WhenCond struct {
 func NewWhenCond(
 	ctx context.Context,
 	when string,
-	table models.Table,
+	table core.Table,
 ) (*WhenCond, error) {
 	var (
 		rc       *template2.RecordContextReadOnly
@@ -79,8 +78,14 @@ func NewWhenCond(
 	}, nil
 }
 
+// Expression returns the original when condition expression (empty when no
+// condition was configured).
+func (wc *WhenCond) Expression() string {
+	return wc.when
+}
+
 // Evaluate - evaluates when condition. If when condition is empty, it will always return true.
-func (wc *WhenCond) Evaluate(r commonininterfaces.Recorder) (bool, error) {
+func (wc *WhenCond) Evaluate(r core.Recorder) (bool, error) {
 	if wc.whenCond == nil {
 		return true, nil
 	}
@@ -105,7 +110,7 @@ func (wc *WhenCond) Evaluate(r commonininterfaces.Recorder) (bool, error) {
 func compileCond(
 	ctx context.Context,
 	whenCond string,
-	table models.Table,
+	table core.Table,
 ) (*vm.Program, *template2.RecordContextReadOnly, error) {
 	if whenCond == "" {
 		return nil, nil, nil
@@ -125,11 +130,11 @@ func compileCond(
 
 	cond, err := expr.Compile(whenCond, ops...)
 	if err != nil {
-		vc.Add(models.NewValidationWarning().
-			SetSeverity(models.ValidationSeverityError).
+		vc.Add(core.NewValidationWarning().
+			SetSeverity(core.ValidationSeverityError).
 			AddMeta("Error", err.Error()).
 			SetMsg("unable to compile when condition"))
-		return nil, nil, models.ErrFatalValidationError
+		return nil, nil, core.ErrFatalValidationError
 	}
 
 	return cond, rc, nil
@@ -138,7 +143,7 @@ func compileCond(
 // newRecordContext creates a new record context and create kind of column descriptors for the record to access the
 // column values by the column name. For instance if the column name is "name", the function __name will return
 // the value
-func newRecordContext(table models.Table) (*template2.RecordContextReadOnly, []expr.Option) {
+func newRecordContext(table core.Table) (*template2.RecordContextReadOnly, []expr.Option) {
 	intSize := unsafe.Sizeof(int(0)) * 8
 	var funcs []expr.Option
 	rctx := template2.NewRecordContextReadOnly()

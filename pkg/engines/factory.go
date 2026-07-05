@@ -1,0 +1,103 @@
+// Copyright 2025 Greenmask
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+package engines
+
+import (
+	"errors"
+	"fmt"
+
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
+	"github.com/greenmaskio/greenmask/pkg/common/dump/pipeline"
+	restorepipeline "github.com/greenmaskio/greenmask/pkg/common/restore/pipeline"
+	"github.com/greenmaskio/greenmask/pkg/common/transformers/registry"
+	"github.com/greenmaskio/greenmask/pkg/common/utils"
+	"github.com/greenmaskio/greenmask/pkg/config"
+	mysqldump "github.com/greenmaskio/greenmask/pkg/mysql/cmdrun/dump"
+	mysqldumpstages "github.com/greenmaskio/greenmask/pkg/mysql/dump"
+	mysqlrestorestages "github.com/greenmaskio/greenmask/pkg/mysql/restore"
+)
+
+var errUnsupportedEngine = errors.New("unsupported DBMS engine")
+
+// NewDumper returns the engine-specific dump orchestrator for cfg.Engine.
+func NewDumper(cfg *config.Config, st core.Storager) (Dumper, error) {
+	switch cfg.Engine {
+	case core.DBMSEngineMySQL:
+		return mysqldump.NewDump(
+			cfg,
+			registry.DefaultTransformerRegistry,
+			st,
+			utils.NewDefaultCmdProducer(),
+			mysqldump.GetMySQLDumpOpts(cfg)...,
+		)
+	case core.DBMSEnginePostgreSQL:
+		//return pgdump.New(cfg, registry.DefaultTransformerRegistry, st, utils.NewDefaultCmdProducer())
+		panic("implement me")
+	default:
+		return nil, fmt.Errorf("engine %q: %w", cfg.Engine, errUnsupportedEngine)
+	}
+}
+
+// NewDumpPipeline returns the engine-specific DumpPipeline for cfg.Engine.
+// Unlike NewDumper, storage is NOT passed here — the pipeline provisions it
+// internally during Execute via StorageProvisioner.
+func NewDumpPipeline(cfg *config.Config) (*pipeline.DumpPipeline, error) {
+	switch cfg.Engine {
+	case core.DBMSEngineMySQL:
+		return mysqldumpstages.NewDumpPipeline(), nil
+	case core.DBMSEnginePostgreSQL:
+		panic("implement me")
+	default:
+		return nil, fmt.Errorf("engine %q: %w", cfg.Engine, errUnsupportedEngine)
+	}
+}
+
+// NewRestorePipeline returns the engine-specific RestorePipeline for cfg.Engine.
+// Unlike NewRestorer, storage is NOT passed here — the pipeline provisions it
+// internally during Execute via RestoreStorageProvisioner.
+func NewRestorePipeline(cfg *config.Config) (*restorepipeline.RestorePipeline, error) {
+	switch cfg.Engine {
+	case core.DBMSEngineMySQL:
+		return mysqlrestorestages.NewRestorePipeline(utils.NewDefaultCmdProducer())
+	case core.DBMSEnginePostgreSQL:
+		return nil, fmt.Errorf("postgresql restore pipeline: %w", errUnsupportedEngine)
+	default:
+		return nil, fmt.Errorf("engine %q: %w", cfg.Engine, errUnsupportedEngine)
+	}
+}
+
+// NewValidator returns the engine-specific validate orchestrator for cfg.Engine.
+// st is expected to be a validate.Storage (no-write). The validate result is
+// collected via validationcollector in the context after Run returns.
+func NewValidator(cfg *config.Config, st core.Storager) (Validator, error) {
+	switch cfg.Engine {
+	case core.DBMSEngineMySQL:
+		opts, err := mysqldump.GetMySQLDumpOptsWithValidate(cfg)
+		if err != nil {
+			return nil, fmt.Errorf("get mysql validate opts: %w", err)
+		}
+		return mysqldump.NewDump(
+			cfg,
+			registry.DefaultTransformerRegistry,
+			st,
+			utils.NewDefaultCmdProducer(),
+			opts...,
+		)
+	case core.DBMSEnginePostgreSQL:
+		panic("implement me")
+	default:
+		return nil, fmt.Errorf("engine %q: %w", cfg.Engine, errUnsupportedEngine)
+	}
+}

@@ -19,9 +19,9 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/greenmaskio/greenmask/pkg/common/models"
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
+	coretest "github.com/greenmaskio/greenmask/pkg/common/coretest"
 	"github.com/greenmaskio/greenmask/pkg/common/validationcollector"
-	mysqldbmsdriver "github.com/greenmaskio/greenmask/pkg/mysql/dbmsdriver"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -30,38 +30,40 @@ func TestMaskingTransformer_Transform(t *testing.T) {
 	tests := []struct {
 		name             string
 		columnName       string
-		staticParameters map[string]models.ParamsValue
-		dynamicParameter map[string]models.DynamicParamValue
-		original         *models.ColumnRawValue
-		expected         *models.ColumnRawValue
-		validateFn       func(t *testing.T, expected, actual *models.ColumnRawValue)
+		staticParameters map[string]core.ParamsValue
+		dynamicParameter map[string]core.DynamicParamValue
+		original         *core.ColumnRawValue
+		expected         *core.ColumnRawValue
+		validateFn       func(t *testing.T, expected, actual *core.ColumnRawValue)
 		expectedErr      string
-		columns          []models.Column
+		columns          []core.Column
 		isNull           bool
 	}{
 		{
 			name: MMobile,
-			staticParameters: map[string]models.ParamsValue{
-				"column": models.ParamsValue("data"),
-				"type":   models.ParamsValue(MMobile),
+			staticParameters: map[string]core.ParamsValue{
+				"column": core.ParamsValue("data"),
+				"type":   core.ParamsValue(MMobile),
 			},
-			original: models.NewColumnRawValue([]byte("+35798665784"), false),
-			expected: models.NewColumnRawValue(
+			original: core.NewColumnRawValue([]byte("+35798665784"), false),
+			expected: core.NewColumnRawValue(
 				[]byte("+357***65784"),
 				false,
 			),
 			isNull:     false,
 			columnName: "data",
-			columns: []models.Column{
+			columns: []core.Column{
 				{
-					Idx:       0,
-					Name:      "data",
-					TypeName:  mysqldbmsdriver.TypeText,
-					TypeOID:   mysqldbmsdriver.VirtualOidText,
-					TypeClass: models.TypeClassText,
+					Idx:  0,
+					Name: "data",
+					Type: core.Type{
+						Name:  coretest.TypeText,
+						ID:    coretest.TypeIDText,
+						Class: core.TypeClassText,
+					},
 				},
 			},
-			validateFn: func(t *testing.T, expected, actual *models.ColumnRawValue) {
+			validateFn: func(t *testing.T, expected, actual *core.ColumnRawValue) {
 				diff := cmp.Diff(expected, actual)
 				if diff != "" {
 					t.Errorf("mismatch (-expected +actual):\n%s", diff)
@@ -70,24 +72,26 @@ func TestMaskingTransformer_Transform(t *testing.T) {
 		},
 		{
 			name: MName,
-			staticParameters: map[string]models.ParamsValue{
-				"column": models.ParamsValue("data"),
-				"type":   models.ParamsValue(MName),
+			staticParameters: map[string]core.ParamsValue{
+				"column": core.ParamsValue("data"),
+				"type":   core.ParamsValue(MName),
 			},
-			original:   models.NewColumnRawValue([]byte("abcdef test"), false),
-			expected:   models.NewColumnRawValue([]byte("a**def t**t"), false),
+			original:   core.NewColumnRawValue([]byte("abcdef test"), false),
+			expected:   core.NewColumnRawValue([]byte("a**def t**t"), false),
 			isNull:     false,
 			columnName: "data",
-			columns: []models.Column{
+			columns: []core.Column{
 				{
-					Idx:       0,
-					Name:      "data",
-					TypeName:  mysqldbmsdriver.TypeText,
-					TypeOID:   mysqldbmsdriver.VirtualOidText,
-					TypeClass: models.TypeClassText,
+					Idx:  0,
+					Name: "data",
+					Type: core.Type{
+						Name:  coretest.TypeText,
+						ID:    coretest.TypeIDText,
+						Class: core.TypeClassText,
+					},
 				},
 			},
-			validateFn: func(t *testing.T, expected, actual *models.ColumnRawValue) {
+			validateFn: func(t *testing.T, expected, actual *core.ColumnRawValue) {
 				diff := cmp.Diff(expected, actual)
 				if diff != "" {
 					t.Errorf("mismatch (-expected +actual):\n%s", diff)
@@ -96,24 +100,26 @@ func TestMaskingTransformer_Transform(t *testing.T) {
 		},
 		{
 			name: MPassword,
-			staticParameters: map[string]models.ParamsValue{
-				"column": models.ParamsValue("data"),
-				"type":   models.ParamsValue(MPassword),
+			staticParameters: map[string]core.ParamsValue{
+				"column": core.ParamsValue("data"),
+				"type":   core.ParamsValue(MPassword),
 			},
-			original:   models.NewColumnRawValue([]byte("password_secure"), false),
-			expected:   models.NewColumnRawValue([]byte("************"), false),
+			original:   core.NewColumnRawValue([]byte("password_secure"), false),
+			expected:   core.NewColumnRawValue([]byte("************"), false),
 			isNull:     false,
 			columnName: "data",
-			columns: []models.Column{
+			columns: []core.Column{
 				{
-					Idx:       0,
-					Name:      "data",
-					TypeName:  mysqldbmsdriver.TypeText,
-					TypeOID:   mysqldbmsdriver.VirtualOidText,
-					TypeClass: models.TypeClassText,
+					Idx:  0,
+					Name: "data",
+					Type: core.Type{
+						Name:  coretest.TypeText,
+						ID:    coretest.TypeIDText,
+						Class: core.TypeClassText,
+					},
 				},
 			},
-			validateFn: func(t *testing.T, expected, actual *models.ColumnRawValue) {
+			validateFn: func(t *testing.T, expected, actual *core.ColumnRawValue) {
 				diff := cmp.Diff(expected, actual)
 				if diff != "" {
 					t.Errorf("mismatch (-expected +actual):\n%s", diff)
@@ -122,24 +128,26 @@ func TestMaskingTransformer_Transform(t *testing.T) {
 		},
 		{
 			name: MDefault,
-			staticParameters: map[string]models.ParamsValue{
-				"column": models.ParamsValue("data"),
-				"type":   models.ParamsValue(MDefault),
+			staticParameters: map[string]core.ParamsValue{
+				"column": core.ParamsValue("data"),
+				"type":   core.ParamsValue(MDefault),
 			},
-			original:   models.NewColumnRawValue([]byte("123"), false),
-			expected:   models.NewColumnRawValue([]byte("***"), false),
+			original:   core.NewColumnRawValue([]byte("123"), false),
+			expected:   core.NewColumnRawValue([]byte("***"), false),
 			isNull:     false,
 			columnName: "data",
-			columns: []models.Column{
+			columns: []core.Column{
 				{
-					Idx:       0,
-					Name:      "data",
-					TypeName:  mysqldbmsdriver.TypeText,
-					TypeOID:   mysqldbmsdriver.VirtualOidText,
-					TypeClass: models.TypeClassText,
+					Idx:  0,
+					Name: "data",
+					Type: core.Type{
+						Name:  coretest.TypeText,
+						ID:    coretest.TypeIDText,
+						Class: core.TypeClassText,
+					},
 				},
 			},
-			validateFn: func(t *testing.T, expected, actual *models.ColumnRawValue) {
+			validateFn: func(t *testing.T, expected, actual *core.ColumnRawValue) {
 				diff := cmp.Diff(expected, actual)
 				if diff != "" {
 					t.Errorf("mismatch (-expected +actual):\n%s", diff)
@@ -186,23 +194,25 @@ func TestNewMaskingTransformer(t *testing.T) {
 	ctx := validationcollector.WithCollector(context.Background(), vc)
 	env := newTransformerTestEnvReal(t,
 		MaskingTransformerDefinition,
-		[]models.Column{
+		[]core.Column{
 			{
-				Idx:       0,
-				Name:      "data",
-				TypeName:  mysqldbmsdriver.TypeText,
-				TypeOID:   mysqldbmsdriver.VirtualOidText,
-				TypeClass: models.TypeClassText,
+				Idx:  0,
+				Name: "data",
+				Type: core.Type{
+					Name:  coretest.TypeText,
+					ID:    coretest.TypeIDText,
+					Class: core.TypeClassText,
+				},
 			},
 		},
-		map[string]models.ParamsValue{
-			"column": models.ParamsValue("data"),
-			"type":   models.ParamsValue("test"),
+		map[string]core.ParamsValue{
+			"column": core.ParamsValue("data"),
+			"type":   core.ParamsValue("test"),
 		},
 		nil,
 	)
 	err := env.InitParameters(t, ctx)
-	require.ErrorIs(t, err, models.ErrFatalValidationError)
+	require.ErrorIs(t, err, core.ErrFatalValidationError)
 	require.Equal(t, vc.Len(), 1)
 	assert.Contains(t, vc.GetWarnings()[0].Msg, "unknown masking type")
 }

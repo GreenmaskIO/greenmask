@@ -18,8 +18,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/greenmaskio/greenmask/pkg/common/interfaces"
-	commonmodels "github.com/greenmaskio/greenmask/pkg/common/models"
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 	directory2 "github.com/greenmaskio/greenmask/pkg/storages/directory"
 	s4 "github.com/greenmaskio/greenmask/pkg/storages/s3"
 )
@@ -40,7 +39,7 @@ func Get(
 	s3Cfg s4.S3Config,
 	directoryCfg directory2.DirectoryConfig,
 	logLevel string,
-) (interfaces.Storager, error) {
+) (core.Storager, error) {
 	switch storageType {
 	case directoryStorageType:
 		return directory2.New(directoryCfg)
@@ -50,6 +49,6 @@ func Get(
 	return nil, fmt.Errorf("storage type %s: %w", storageType, errUnknownStorageType)
 }
 
-func SubStorageWithDumpID(st interfaces.Storager, dumpID commonmodels.DumpID) interfaces.Storager {
+func SubStorageWithDumpID(st core.Storager, dumpID core.DumpID) core.Storager {
 	return st.SubStorage(string(dumpID), true)
 }

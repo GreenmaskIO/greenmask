@@ -15,12 +15,12 @@
 package main
 
 import (
-	"log"
+	"context"
 
-	"github.com/spf13/cobra"
-
-	"github.com/greenmaskio/greenmask/pkg/cmdrun"
+	"github.com/greenmaskio/greenmask/pkg/cli"
 	"github.com/greenmaskio/greenmask/pkg/common/cmd"
+	"github.com/rs/zerolog/log"
+	"github.com/spf13/cobra"
 )
 
 var (
@@ -95,8 +95,9 @@ var (
 		Args:  cobra.ExactArgs(1),
 		Short: "restore dump with ID or the latest to the target database",
 		Run: func(cmd *cobra.Command, args []string) {
-			if err := cmdrun.RunRestore(rootCmd.MustGetConfig(), args[0]); err != nil {
-				log.Fatal(err)
+			cmdRun := cli.New(rootCmd.MustGetConfig())
+			if err := cmdRun.Restore(context.Background(), args[0]); err != nil {
+				log.Fatal().Err(err).Msg("restore command failed")
 			}
 		},
 	}, restoreFlags...)

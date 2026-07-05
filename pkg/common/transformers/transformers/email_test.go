@@ -19,12 +19,12 @@ import (
 	"regexp"
 	"testing"
 
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
+	coretest "github.com/greenmaskio/greenmask/pkg/common/coretest"
 	mocks2 "github.com/greenmaskio/greenmask/pkg/common/mocks"
-	"github.com/greenmaskio/greenmask/pkg/common/models"
 	commonparameters "github.com/greenmaskio/greenmask/pkg/common/transformers/parameters"
 	"github.com/greenmaskio/greenmask/pkg/common/utils"
 	"github.com/greenmaskio/greenmask/pkg/common/validationcollector"
-	mysqldbmsdriver "github.com/greenmaskio/greenmask/pkg/mysql/dbmsdriver"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -34,11 +34,13 @@ func TestNewEmailTransformer(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		vc := validationcollector.NewCollector()
 		ctx := context.Background()
-		column := models.Column{
-			Idx:      1,
-			Name:     "id",
-			TypeName: "text",
-			TypeOID:  2,
+		column := core.Column{
+			Idx:  1,
+			Name: "id",
+			Type: core.Type{
+				Name: coretest.TypeText,
+				ID:   coretest.TypeIDText,
+			},
 		}
 		tableDriver := mocks2.NewTableDriverMock()
 		columnParameter := mocks2.NewParametrizerMock()
@@ -103,8 +105,8 @@ func TestNewEmailTransformer(t *testing.T) {
 			}).Return(nil)
 
 		// set expectations for getFuncMapWithColumnGetters
-		tableDriver.On("Table").Return(&models.Table{
-			Columns: []models.Column{column},
+		tableDriver.On("Table").Return(&core.Table{
+			Columns: []core.Column{column},
 		})
 
 		// local_part_template parameter calls
@@ -167,33 +169,35 @@ func TestRandomEmailTransformer_Transform(t *testing.T) {
 
 	tests := []struct {
 		name             string
-		staticParameters map[string]models.ParamsValue
-		dynamicParameter map[string]models.DynamicParamValue
+		staticParameters map[string]core.ParamsValue
+		dynamicParameter map[string]core.DynamicParamValue
 		columnName       string
 		original         string
 		isNull           bool
 		validateFn       func(t *testing.T, originalEmail, transformedEmail string)
 		expectedErr      string
-		columns          []models.Column
+		columns          []core.Column
 	}{
 		{
 			name:       "common",
 			original:   "dupont@mycompany.com",
 			columnName: "data",
-			staticParameters: map[string]models.ParamsValue{
-				"column": models.ParamsValue("data"),
+			staticParameters: map[string]core.ParamsValue{
+				"column": core.ParamsValue("data"),
 			},
 			validateFn: func(t *testing.T, originalEmail, transformedEmail string) {
 				assert.True(t, validEmailRegexp.MatchString(transformedEmail))
 				assert.NotEqual(t, originalEmail, transformedEmail)
 			},
-			columns: []models.Column{
+			columns: []core.Column{
 				{
-					Idx:       0,
-					Name:      "data",
-					TypeName:  "text",
-					TypeClass: models.TypeClassText,
-					TypeOID:   23,
+					Idx:  0,
+					Name: "data",
+					Type: core.Type{
+						Name:  "text",
+						Class: core.TypeClassText,
+						ID:    coretest.TypeIDText,
+					},
 				},
 			},
 		},
@@ -201,9 +205,9 @@ func TestRandomEmailTransformer_Transform(t *testing.T) {
 			name:       "random_local_short",
 			original:   "dupond@mycompany.com",
 			columnName: "data",
-			staticParameters: map[string]models.ParamsValue{
-				"column":            models.ParamsValue("data"),
-				"max_random_length": models.ParamsValue("10"),
+			staticParameters: map[string]core.ParamsValue{
+				"column":            core.ParamsValue("data"),
+				"max_random_length": core.ParamsValue("10"),
 			},
 			validateFn: func(t *testing.T, originalEmail, transformedEmail string) {
 				assert.True(t, validEmailRegexp.MatchString(transformedEmail))
@@ -217,13 +221,15 @@ func TestRandomEmailTransformer_Transform(t *testing.T) {
 				assert.NotContains(t, transformedEmail, "\x00", "Email should not contain null characters")
 				assert.NotEqual(t, originalEmail, transformedEmail)
 			},
-			columns: []models.Column{
+			columns: []core.Column{
 				{
-					Idx:       0,
-					Name:      "data",
-					TypeName:  "text",
-					TypeClass: models.TypeClassText,
-					TypeOID:   23,
+					Idx:  0,
+					Name: "data",
+					Type: core.Type{
+						Name:  "text",
+						Class: core.TypeClassText,
+						ID:    coretest.TypeIDText,
+					},
 				},
 			},
 		},
@@ -231,18 +237,20 @@ func TestRandomEmailTransformer_Transform(t *testing.T) {
 			name:       "keep_null true and NULL value",
 			original:   "\\N",
 			columnName: "data",
-			staticParameters: map[string]models.ParamsValue{
-				"column":    models.ParamsValue("data"),
-				"keep_null": models.ParamsValue("true"),
+			staticParameters: map[string]core.ParamsValue{
+				"column":    core.ParamsValue("data"),
+				"keep_null": core.ParamsValue("true"),
 			},
 			isNull: true,
-			columns: []models.Column{
+			columns: []core.Column{
 				{
-					Idx:       0,
-					Name:      "data",
-					TypeName:  "text",
-					TypeClass: models.TypeClassText,
-					TypeOID:   23,
+					Idx:  0,
+					Name: "data",
+					Type: core.Type{
+						Name:  "text",
+						Class: core.TypeClassText,
+						ID:    coretest.TypeIDText,
+					},
 				},
 			},
 		},
@@ -250,20 +258,22 @@ func TestRandomEmailTransformer_Transform(t *testing.T) {
 			name:       "keep_null false and NULL value",
 			original:   "\\N",
 			columnName: "data",
-			staticParameters: map[string]models.ParamsValue{
-				"column":    models.ParamsValue("data"),
-				"keep_null": models.ParamsValue("false"),
+			staticParameters: map[string]core.ParamsValue{
+				"column":    core.ParamsValue("data"),
+				"keep_null": core.ParamsValue("false"),
 			},
 			validateFn: func(t *testing.T, originalEmail, transformedEmail string) {
 				assert.True(t, validEmailRegexp.MatchString(transformedEmail))
 			},
-			columns: []models.Column{
+			columns: []core.Column{
 				{
-					Idx:       0,
-					Name:      "data",
-					TypeName:  "text",
-					TypeClass: models.TypeClassText,
-					TypeOID:   23,
+					Idx:  0,
+					Name: "data",
+					Type: core.Type{
+						Name:  "text",
+						Class: core.TypeClassText,
+						ID:    coretest.TypeIDText,
+					},
 				},
 			},
 		},
@@ -271,22 +281,24 @@ func TestRandomEmailTransformer_Transform(t *testing.T) {
 			name:       "keep_original_domain",
 			original:   "lucky@luke.be",
 			columnName: "data",
-			staticParameters: map[string]models.ParamsValue{
-				"column":               models.ParamsValue("data"),
-				"keep_original_domain": models.ParamsValue("true"),
+			staticParameters: map[string]core.ParamsValue{
+				"column":               core.ParamsValue("data"),
+				"keep_original_domain": core.ParamsValue("true"),
 			},
 			validateFn: func(t *testing.T, originalEmail, transformedEmail string) {
 				assert.True(t, validEmailRegexp.MatchString(transformedEmail))
 				assert.NotEqual(t, originalEmail, transformedEmail)
 				assert.Contains(t, transformedEmail, "@luke.be")
 			},
-			columns: []models.Column{
+			columns: []core.Column{
 				{
-					Idx:       0,
-					Name:      "data",
-					TypeName:  "text",
-					TypeClass: models.TypeClassText,
-					TypeOID:   23,
+					Idx:  0,
+					Name: "data",
+					Type: core.Type{
+						Name:  "text",
+						Class: core.TypeClassText,
+						ID:    coretest.TypeIDText,
+					},
 				},
 			},
 		},
@@ -294,9 +306,9 @@ func TestRandomEmailTransformer_Transform(t *testing.T) {
 			name:       "custom domains",
 			original:   "tintin@milousart.com",
 			columnName: "data",
-			staticParameters: map[string]models.ParamsValue{
-				"column":  models.ParamsValue("data"),
-				"domains": models.ParamsValue(`["haddock.org", "dupont.net"]`),
+			staticParameters: map[string]core.ParamsValue{
+				"column":  core.ParamsValue("data"),
+				"domains": core.ParamsValue(`["haddock.org", "dupont.net"]`),
 			},
 			validateFn: func(t *testing.T, originalEmail, transformedEmail string) {
 				assert.True(t, validEmailRegexp.MatchString(transformedEmail))
@@ -305,13 +317,15 @@ func TestRandomEmailTransformer_Transform(t *testing.T) {
 					transformedEmail[len(transformedEmail)-11:] == "haddock.org" ||
 						transformedEmail[len(transformedEmail)-10:] == "dupont.net")
 			},
-			columns: []models.Column{
+			columns: []core.Column{
 				{
-					Idx:       0,
-					Name:      "data",
-					TypeName:  "text",
-					TypeClass: models.TypeClassText,
-					TypeOID:   23,
+					Idx:  0,
+					Name: "data",
+					Type: core.Type{
+						Name:  "text",
+						Class: core.TypeClassText,
+						ID:    coretest.TypeIDText,
+					},
 				},
 			},
 		},
@@ -320,22 +334,24 @@ func TestRandomEmailTransformer_Transform(t *testing.T) {
 			name:       "local_part_template truncated",
 			original:   "lanfeust@detroy.com",
 			columnName: "data",
-			staticParameters: map[string]models.ParamsValue{
-				"column":              models.ParamsValue("data"),
-				"local_part_template": models.ParamsValue("prefix_{{.random_string | trunc 10}}"),
+			staticParameters: map[string]core.ParamsValue{
+				"column":              core.ParamsValue("data"),
+				"local_part_template": core.ParamsValue("prefix_{{.random_string | trunc 10}}"),
 			},
 			validateFn: func(t *testing.T, originalEmail, transformedEmail string) {
 				assert.True(t, validEmailRegexp.MatchString(transformedEmail))
 				assert.NotEqual(t, originalEmail, transformedEmail)
 				assert.Contains(t, transformedEmail, "prefix_")
 			},
-			columns: []models.Column{
+			columns: []core.Column{
 				{
-					Idx:       0,
-					Name:      "data",
-					TypeName:  "text",
-					TypeClass: models.TypeClassText,
-					TypeOID:   23,
+					Idx:  0,
+					Name: "data",
+					Type: core.Type{
+						Name:  "text",
+						Class: core.TypeClassText,
+						ID:    coretest.TypeIDText,
+					},
 				},
 			},
 		},
@@ -344,22 +360,24 @@ func TestRandomEmailTransformer_Transform(t *testing.T) {
 			name:       "local_part_template",
 			original:   "troll@detroy.com",
 			columnName: "data",
-			staticParameters: map[string]models.ParamsValue{
-				"column":              models.ParamsValue("data"),
-				"local_part_template": models.ParamsValue("prefix_{{.random_string}}"),
+			staticParameters: map[string]core.ParamsValue{
+				"column":              core.ParamsValue("data"),
+				"local_part_template": core.ParamsValue("prefix_{{.random_string}}"),
 			},
 			validateFn: func(t *testing.T, originalEmail, transformedEmail string) {
 				assert.True(t, validEmailRegexp.MatchString(transformedEmail))
 				assert.NotEqual(t, originalEmail, transformedEmail)
 				assert.Contains(t, transformedEmail, "prefix_")
 			},
-			columns: []models.Column{
+			columns: []core.Column{
 				{
-					Idx:       0,
-					Name:      "data",
-					TypeName:  "text",
-					TypeClass: models.TypeClassText,
-					TypeOID:   23,
+					Idx:  0,
+					Name: "data",
+					Type: core.Type{
+						Name:  "text",
+						Class: core.TypeClassText,
+						ID:    coretest.TypeIDText,
+					},
 				},
 			},
 		},
@@ -367,22 +385,24 @@ func TestRandomEmailTransformer_Transform(t *testing.T) {
 			name:       "domain_part_template",
 			original:   "cixi@detroy.com",
 			columnName: "data",
-			staticParameters: map[string]models.ParamsValue{
-				"column":               models.ParamsValue("data"),
-				"domain_part_template": models.ParamsValue("custom-domain.com"),
+			staticParameters: map[string]core.ParamsValue{
+				"column":               core.ParamsValue("data"),
+				"domain_part_template": core.ParamsValue("custom-domain.com"),
 			},
 			validateFn: func(t *testing.T, originalEmail, transformedEmail string) {
 				assert.True(t, validEmailRegexp.MatchString(transformedEmail))
 				assert.NotEqual(t, originalEmail, transformedEmail)
 				assert.Contains(t, transformedEmail, "@custom-domain.com")
 			},
-			columns: []models.Column{
+			columns: []core.Column{
 				{
-					Idx:       0,
-					Name:      "data",
-					TypeName:  "text",
-					TypeClass: models.TypeClassText,
-					TypeOID:   23,
+					Idx:  0,
+					Name: "data",
+					Type: core.Type{
+						Name:  "text",
+						Class: core.TypeClassText,
+						ID:    coretest.TypeIDText,
+					},
 				},
 			},
 		},
@@ -390,22 +410,24 @@ func TestRandomEmailTransformer_Transform(t *testing.T) {
 			name:       "use template to generate an invalid email with validate false",
 			original:   "cian@detroy.com",
 			columnName: "data",
-			staticParameters: map[string]models.ParamsValue{
-				"column":              models.ParamsValue("data"),
-				"local_part_template": models.ParamsValue("prefix@,&@"),
+			staticParameters: map[string]core.ParamsValue{
+				"column":              core.ParamsValue("data"),
+				"local_part_template": core.ParamsValue("prefix@,&@"),
 			},
 			validateFn: func(t *testing.T, originalEmail, transformedEmail string) {
 				assert.False(t, validEmailRegexp.MatchString(transformedEmail))
 				assert.NotEqual(t, originalEmail, transformedEmail)
 				assert.Contains(t, transformedEmail, "prefix@,&@")
 			},
-			columns: []models.Column{
+			columns: []core.Column{
 				{
-					Idx:       0,
-					Name:      "data",
-					TypeName:  "text",
-					TypeClass: models.TypeClassText,
-					TypeOID:   23,
+					Idx:  0,
+					Name: "data",
+					Type: core.Type{
+						Name:  "text",
+						Class: core.TypeClassText,
+						ID:    coretest.TypeIDText,
+					},
 				},
 			},
 		},
@@ -413,10 +435,10 @@ func TestRandomEmailTransformer_Transform(t *testing.T) {
 			name:       "use template to generate an invalid email with validate true",
 			original:   "nicodeme@detroy.com",
 			columnName: "data",
-			staticParameters: map[string]models.ParamsValue{
-				"column":              models.ParamsValue("data"),
-				"validate":            models.ParamsValue("true"),
-				"local_part_template": models.ParamsValue("prefix@,&@"),
+			staticParameters: map[string]core.ParamsValue{
+				"column":              core.ParamsValue("data"),
+				"validate":            core.ParamsValue("true"),
+				"local_part_template": core.ParamsValue("prefix@,&@"),
 			},
 			validateFn: func(t *testing.T, originalEmail, transformedEmail string) {
 				assert.False(t, validEmailRegexp.MatchString(transformedEmail))
@@ -424,13 +446,15 @@ func TestRandomEmailTransformer_Transform(t *testing.T) {
 				assert.Contains(t, transformedEmail, "prefix@,&@")
 			},
 			expectedErr: "generated email is invalid",
-			columns: []models.Column{
+			columns: []core.Column{
 				{
-					Idx:       0,
-					Name:      "data",
-					TypeName:  "text",
-					TypeClass: models.TypeClassText,
-					TypeOID:   23,
+					Idx:  0,
+					Name: "data",
+					Type: core.Type{
+						Name:  "text",
+						Class: core.TypeClassText,
+						ID:    coretest.TypeIDText,
+					},
 				},
 			},
 		},
@@ -438,21 +462,23 @@ func TestRandomEmailTransformer_Transform(t *testing.T) {
 			name:       "common hash",
 			original:   "dupont@mycompany.com",
 			columnName: "data",
-			staticParameters: map[string]models.ParamsValue{
-				"column": models.ParamsValue("data"),
-				"engine": models.ParamsValue("hash"),
+			staticParameters: map[string]core.ParamsValue{
+				"column": core.ParamsValue("data"),
+				"engine": core.ParamsValue("hash"),
 			},
 			validateFn: func(t *testing.T, originalEmail, transformedEmail string) {
 				assert.True(t, validEmailRegexp.MatchString(transformedEmail))
 				assert.NotEqual(t, originalEmail, transformedEmail)
 			},
-			columns: []models.Column{
+			columns: []core.Column{
 				{
-					Idx:       0,
-					Name:      "data",
-					TypeName:  "text",
-					TypeClass: models.TypeClassText,
-					TypeOID:   mysqldbmsdriver.VirtualOidText,
+					Idx:  0,
+					Name: "data",
+					Type: core.Type{
+						Name:  "text",
+						Class: core.TypeClassText,
+						ID:    coretest.TypeIDText,
+					},
 				},
 			},
 		},
@@ -476,7 +502,7 @@ func TestRandomEmailTransformer_Transform(t *testing.T) {
 			require.NoError(t, err)
 			require.False(t, vc.HasWarnings())
 
-			env.SetRecord(t, models.NewColumnRawValue([]byte(tt.original), tt.isNull))
+			env.SetRecord(t, core.NewColumnRawValue([]byte(tt.original), tt.isNull))
 
 			err = env.Transform(t, ctx)
 			if tt.expectedErr != "" {

@@ -18,9 +18,9 @@ import (
 	"context"
 	"testing"
 
-	"github.com/greenmaskio/greenmask/pkg/common/models"
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
+	coretest "github.com/greenmaskio/greenmask/pkg/common/coretest"
 	"github.com/greenmaskio/greenmask/pkg/common/validationcollector"
-	mysqldbmsdriver "github.com/greenmaskio/greenmask/pkg/mysql/dbmsdriver"
 	"github.com/stretchr/testify/require"
 )
 
@@ -28,271 +28,293 @@ func TestHashTransformer_Transform(t *testing.T) {
 	tests := []struct {
 		name             string
 		columnName       string
-		staticParameters map[string]models.ParamsValue
-		dynamicParameter map[string]models.DynamicParamValue
-		original         *models.ColumnRawValue
-		expected         *models.ColumnRawValue
-		validateFn       func(t *testing.T, expected, actual *models.ColumnRawValue)
+		staticParameters map[string]core.ParamsValue
+		dynamicParameter map[string]core.DynamicParamValue
+		original         *core.ColumnRawValue
+		expected         *core.ColumnRawValue
+		validateFn       func(t *testing.T, expected, actual *core.ColumnRawValue)
 		expectedErr      string
-		columns          []models.Column
+		columns          []core.Column
 		isNull           bool
 	}{
 		{
 			name: "md5",
-			staticParameters: map[string]models.ParamsValue{
-				"column":   models.ParamsValue("data"),
-				"function": models.ParamsValue("md5"),
+			staticParameters: map[string]core.ParamsValue{
+				"column":   core.ParamsValue("data"),
+				"function": core.ParamsValue("md5"),
 			},
-			original: models.NewColumnRawValue([]byte("123"), false),
-			expected: models.NewColumnRawValue(
+			original: core.NewColumnRawValue([]byte("123"), false),
+			expected: core.NewColumnRawValue(
 				[]byte("202cb962ac59075b964b07152d234b70"),
 				false,
 			),
 			isNull:     false,
 			columnName: "data",
-			columns: []models.Column{
+			columns: []core.Column{
 				{
-					Idx:       0,
-					Name:      "data",
-					TypeName:  mysqldbmsdriver.TypeText,
-					TypeClass: models.TypeClassText,
-					TypeOID:   mysqldbmsdriver.VirtualOidText,
+					Idx:  0,
+					Name: "data",
+					Type: core.Type{
+						Name:  coretest.TypeText,
+						Class: core.TypeClassText,
+						ID:    coretest.TypeIDText,
+					},
 				},
 			},
-			validateFn: func(t *testing.T, expected, actual *models.ColumnRawValue) {
+			validateFn: func(t *testing.T, expected, actual *core.ColumnRawValue) {
 				require.Equal(t, expected, actual)
 			},
 		},
 		{
 			name: "sha1",
-			staticParameters: map[string]models.ParamsValue{
-				"column":   models.ParamsValue("data"),
-				"function": models.ParamsValue("sha1"),
+			staticParameters: map[string]core.ParamsValue{
+				"column":   core.ParamsValue("data"),
+				"function": core.ParamsValue("sha1"),
 			},
-			original:   models.NewColumnRawValue([]byte("123"), false),
-			expected:   models.NewColumnRawValue([]byte("40bd001563085fc35165329ea1ff5c5ecbdbbeef"), false),
+			original:   core.NewColumnRawValue([]byte("123"), false),
+			expected:   core.NewColumnRawValue([]byte("40bd001563085fc35165329ea1ff5c5ecbdbbeef"), false),
 			isNull:     false,
 			columnName: "data",
-			columns: []models.Column{
+			columns: []core.Column{
 				{
-					Idx:       0,
-					Name:      "data",
-					TypeName:  mysqldbmsdriver.TypeText,
-					TypeClass: models.TypeClassText,
-					TypeOID:   mysqldbmsdriver.VirtualOidText,
+					Idx:  0,
+					Name: "data",
+					Type: core.Type{
+						Name:  coretest.TypeText,
+						Class: core.TypeClassText,
+						ID:    coretest.TypeIDText,
+					},
 				},
 			},
-			validateFn: func(t *testing.T, expected, actual *models.ColumnRawValue) {
+			validateFn: func(t *testing.T, expected, actual *core.ColumnRawValue) {
 				require.Equal(t, expected, actual)
 			},
 		},
 		{
 			name: "sha256",
-			staticParameters: map[string]models.ParamsValue{
-				"column":   models.ParamsValue("data"),
-				"function": models.ParamsValue("sha256"),
+			staticParameters: map[string]core.ParamsValue{
+				"column":   core.ParamsValue("data"),
+				"function": core.ParamsValue("sha256"),
 			},
-			original:   models.NewColumnRawValue([]byte("123"), false),
-			expected:   models.NewColumnRawValue([]byte("a665a45920422f9d417e4867efdc4fb8a04a1f3fff1fa07e998e86f7f7a27ae3"), false),
+			original:   core.NewColumnRawValue([]byte("123"), false),
+			expected:   core.NewColumnRawValue([]byte("a665a45920422f9d417e4867efdc4fb8a04a1f3fff1fa07e998e86f7f7a27ae3"), false),
 			isNull:     false,
 			columnName: "data",
-			columns: []models.Column{
+			columns: []core.Column{
 				{
-					Idx:       0,
-					Name:      "data",
-					TypeName:  mysqldbmsdriver.TypeText,
-					TypeClass: models.TypeClassText,
-					TypeOID:   mysqldbmsdriver.VirtualOidText,
+					Idx:  0,
+					Name: "data",
+					Type: core.Type{
+						Name:  coretest.TypeText,
+						Class: core.TypeClassText,
+						ID:    coretest.TypeIDText,
+					},
 				},
 			},
-			validateFn: func(t *testing.T, expected, actual *models.ColumnRawValue) {
+			validateFn: func(t *testing.T, expected, actual *core.ColumnRawValue) {
 				require.Equal(t, expected, actual)
 			},
 		},
 		{
 			name: "sha512",
-			staticParameters: map[string]models.ParamsValue{
-				"column":   models.ParamsValue("data"),
-				"function": models.ParamsValue("sha512"),
+			staticParameters: map[string]core.ParamsValue{
+				"column":   core.ParamsValue("data"),
+				"function": core.ParamsValue("sha512"),
 			},
-			original:   models.NewColumnRawValue([]byte("123"), false),
-			expected:   models.NewColumnRawValue([]byte("3c9909afec25354d551dae21590bb26e38d53f2173b8d3dc3eee4c047e7ab1c1eb8b85103e3be7ba613b31bb5c9c36214dc9f14a42fd7a2fdb84856bca5c44c2"), false),
+			original:   core.NewColumnRawValue([]byte("123"), false),
+			expected:   core.NewColumnRawValue([]byte("3c9909afec25354d551dae21590bb26e38d53f2173b8d3dc3eee4c047e7ab1c1eb8b85103e3be7ba613b31bb5c9c36214dc9f14a42fd7a2fdb84856bca5c44c2"), false),
 			isNull:     false,
 			columnName: "data",
-			columns: []models.Column{
+			columns: []core.Column{
 				{
-					Idx:       0,
-					Name:      "data",
-					TypeName:  mysqldbmsdriver.TypeText,
-					TypeClass: models.TypeClassText,
-					TypeOID:   mysqldbmsdriver.VirtualOidText,
+					Idx:  0,
+					Name: "data",
+					Type: core.Type{
+						Name:  coretest.TypeText,
+						Class: core.TypeClassText,
+						ID:    coretest.TypeIDText,
+					},
 				},
 			},
-			validateFn: func(t *testing.T, expected, actual *models.ColumnRawValue) {
+			validateFn: func(t *testing.T, expected, actual *core.ColumnRawValue) {
 				require.Equal(t, expected, actual)
 			},
 		},
 		{
 			name: "sha3-224",
-			staticParameters: map[string]models.ParamsValue{
-				"column":   models.ParamsValue("data"),
-				"function": models.ParamsValue("sha3-224"),
+			staticParameters: map[string]core.ParamsValue{
+				"column":   core.ParamsValue("data"),
+				"function": core.ParamsValue("sha3-224"),
 			},
-			original:   models.NewColumnRawValue([]byte("123"), false),
-			expected:   models.NewColumnRawValue([]byte("602bdc204140db016bee5374895e5568ce422fabe17e064061d80097"), false),
+			original:   core.NewColumnRawValue([]byte("123"), false),
+			expected:   core.NewColumnRawValue([]byte("602bdc204140db016bee5374895e5568ce422fabe17e064061d80097"), false),
 			isNull:     false,
 			columnName: "data",
-			columns: []models.Column{
+			columns: []core.Column{
 				{
-					Idx:       0,
-					Name:      "data",
-					TypeName:  mysqldbmsdriver.TypeText,
-					TypeClass: models.TypeClassText,
-					TypeOID:   mysqldbmsdriver.VirtualOidText,
+					Idx:  0,
+					Name: "data",
+					Type: core.Type{
+						Name:  coretest.TypeText,
+						Class: core.TypeClassText,
+						ID:    coretest.TypeIDText,
+					},
 				},
 			},
-			validateFn: func(t *testing.T, expected, actual *models.ColumnRawValue) {
+			validateFn: func(t *testing.T, expected, actual *core.ColumnRawValue) {
 				require.Equal(t, expected, actual)
 			},
 		},
 		{
 			name: "sha3-254",
-			staticParameters: map[string]models.ParamsValue{
-				"column":   models.ParamsValue("data"),
-				"function": models.ParamsValue("sha3-254"),
+			staticParameters: map[string]core.ParamsValue{
+				"column":   core.ParamsValue("data"),
+				"function": core.ParamsValue("sha3-254"),
 			},
-			original:   models.NewColumnRawValue([]byte("123"), false),
-			expected:   models.NewColumnRawValue([]byte("a03ab19b866fc585b5cb1812a2f63ca861e7e7643ee5d43fd7106b623725fd67"), false),
+			original:   core.NewColumnRawValue([]byte("123"), false),
+			expected:   core.NewColumnRawValue([]byte("a03ab19b866fc585b5cb1812a2f63ca861e7e7643ee5d43fd7106b623725fd67"), false),
 			isNull:     false,
 			columnName: "data",
-			columns: []models.Column{
+			columns: []core.Column{
 				{
-					Idx:       0,
-					Name:      "data",
-					TypeName:  mysqldbmsdriver.TypeText,
-					TypeClass: models.TypeClassText,
-					TypeOID:   mysqldbmsdriver.VirtualOidText,
+					Idx:  0,
+					Name: "data",
+					Type: core.Type{
+						Name:  coretest.TypeText,
+						Class: core.TypeClassText,
+						ID:    coretest.TypeIDText,
+					},
 				},
 			},
-			validateFn: func(t *testing.T, expected, actual *models.ColumnRawValue) {
+			validateFn: func(t *testing.T, expected, actual *core.ColumnRawValue) {
 				require.Equal(t, expected, actual)
 			},
 		},
 		{
 			name: "sha3-384",
-			staticParameters: map[string]models.ParamsValue{
-				"column":   models.ParamsValue("data"),
-				"function": models.ParamsValue("sha3-384"),
+			staticParameters: map[string]core.ParamsValue{
+				"column":   core.ParamsValue("data"),
+				"function": core.ParamsValue("sha3-384"),
 			},
-			original:   models.NewColumnRawValue([]byte("123"), false),
-			expected:   models.NewColumnRawValue([]byte("9bd942d1678a25d029b114306f5e1dae49fe8abeeacd03cfab0f156aa2e363c988b1c12803d4a8c9ba38fdc873e5f007"), false),
+			original:   core.NewColumnRawValue([]byte("123"), false),
+			expected:   core.NewColumnRawValue([]byte("9bd942d1678a25d029b114306f5e1dae49fe8abeeacd03cfab0f156aa2e363c988b1c12803d4a8c9ba38fdc873e5f007"), false),
 			isNull:     false,
 			columnName: "data",
-			columns: []models.Column{
+			columns: []core.Column{
 				{
-					Idx:       0,
-					Name:      "data",
-					TypeName:  mysqldbmsdriver.TypeText,
-					TypeClass: models.TypeClassText,
-					TypeOID:   mysqldbmsdriver.VirtualOidText,
+					Idx:  0,
+					Name: "data",
+					Type: core.Type{
+						Name:  coretest.TypeText,
+						Class: core.TypeClassText,
+						ID:    coretest.TypeIDText,
+					},
 				},
 			},
-			validateFn: func(t *testing.T, expected, actual *models.ColumnRawValue) {
+			validateFn: func(t *testing.T, expected, actual *core.ColumnRawValue) {
 				require.Equal(t, expected, actual)
 			},
 		},
 		{
 			name: "sha3-512",
-			staticParameters: map[string]models.ParamsValue{
-				"column":   models.ParamsValue("data"),
-				"function": models.ParamsValue("sha3-512"),
+			staticParameters: map[string]core.ParamsValue{
+				"column":   core.ParamsValue("data"),
+				"function": core.ParamsValue("sha3-512"),
 			},
-			original:   models.NewColumnRawValue([]byte("123"), false),
-			expected:   models.NewColumnRawValue([]byte("48c8947f69c054a5caa934674ce8881d02bb18fb59d5a63eeaddff735b0e9801e87294783281ae49fc8287a0fd86779b27d7972d3e84f0fa0d826d7cb67dfefc"), false),
+			original:   core.NewColumnRawValue([]byte("123"), false),
+			expected:   core.NewColumnRawValue([]byte("48c8947f69c054a5caa934674ce8881d02bb18fb59d5a63eeaddff735b0e9801e87294783281ae49fc8287a0fd86779b27d7972d3e84f0fa0d826d7cb67dfefc"), false),
 			isNull:     false,
 			columnName: "data",
-			columns: []models.Column{
+			columns: []core.Column{
 				{
-					Idx:       0,
-					Name:      "data",
-					TypeName:  mysqldbmsdriver.TypeText,
-					TypeClass: models.TypeClassText,
-					TypeOID:   mysqldbmsdriver.VirtualOidText,
+					Idx:  0,
+					Name: "data",
+					Type: core.Type{
+						Name:  coretest.TypeText,
+						Class: core.TypeClassText,
+						ID:    coretest.TypeIDText,
+					},
 				},
 			},
-			validateFn: func(t *testing.T, expected, actual *models.ColumnRawValue) {
+			validateFn: func(t *testing.T, expected, actual *core.ColumnRawValue) {
 				require.Equal(t, expected, actual)
 			},
 		},
 		{
 			name: "length truncation",
-			staticParameters: map[string]models.ParamsValue{
-				"column":     models.ParamsValue("data"),
-				"function":   models.ParamsValue("sha3-512"),
-				"max_length": models.ParamsValue("4"),
+			staticParameters: map[string]core.ParamsValue{
+				"column":     core.ParamsValue("data"),
+				"function":   core.ParamsValue("sha3-512"),
+				"max_length": core.ParamsValue("4"),
 			},
-			original:   models.NewColumnRawValue([]byte("123"), false),
-			expected:   models.NewColumnRawValue([]byte("48c8"), false),
+			original:   core.NewColumnRawValue([]byte("123"), false),
+			expected:   core.NewColumnRawValue([]byte("48c8"), false),
 			isNull:     false,
 			columnName: "data",
-			columns: []models.Column{
+			columns: []core.Column{
 				{
-					Idx:       0,
-					Name:      "data",
-					TypeName:  mysqldbmsdriver.TypeText,
-					TypeClass: models.TypeClassText,
-					TypeOID:   mysqldbmsdriver.VirtualOidText,
+					Idx:  0,
+					Name: "data",
+					Type: core.Type{
+						Name:  coretest.TypeText,
+						Class: core.TypeClassText,
+						ID:    coretest.TypeIDText,
+					},
 				},
 			},
-			validateFn: func(t *testing.T, expected, actual *models.ColumnRawValue) {
+			validateFn: func(t *testing.T, expected, actual *core.ColumnRawValue) {
 				require.Equal(t, expected, actual)
 			},
 		},
 		{
 			name: "keep null false and null value",
-			staticParameters: map[string]models.ParamsValue{
-				"column":     models.ParamsValue("data"),
-				"function":   models.ParamsValue("sha3-512"),
-				"max_length": models.ParamsValue("4"),
+			staticParameters: map[string]core.ParamsValue{
+				"column":     core.ParamsValue("data"),
+				"function":   core.ParamsValue("sha3-512"),
+				"max_length": core.ParamsValue("4"),
 			},
-			original:   models.NewColumnRawValue([]byte(""), false),
-			expected:   models.NewColumnRawValue([]byte("48c8"), false),
+			original:   core.NewColumnRawValue([]byte(""), false),
+			expected:   core.NewColumnRawValue([]byte("48c8"), false),
 			isNull:     true,
 			columnName: "data",
-			columns: []models.Column{
+			columns: []core.Column{
 				{
-					Idx:       0,
-					Name:      "data",
-					TypeName:  mysqldbmsdriver.TypeText,
-					TypeClass: models.TypeClassText,
-					TypeOID:   mysqldbmsdriver.VirtualOidText,
+					Idx:  0,
+					Name: "data",
+					Type: core.Type{
+						Name:  coretest.TypeText,
+						Class: core.TypeClassText,
+						ID:    coretest.TypeIDText,
+					},
 				},
 			},
-			validateFn: func(t *testing.T, expected, actual *models.ColumnRawValue) {
+			validateFn: func(t *testing.T, expected, actual *core.ColumnRawValue) {
 				require.Equal(t, expected.IsNull, actual.IsNull)
 			},
 		},
 		{
 			name: "keep null true and null value",
-			staticParameters: map[string]models.ParamsValue{
-				"column":     models.ParamsValue("data"),
-				"function":   models.ParamsValue("sha3-512"),
-				"max_length": models.ParamsValue("4"),
+			staticParameters: map[string]core.ParamsValue{
+				"column":     core.ParamsValue("data"),
+				"function":   core.ParamsValue("sha3-512"),
+				"max_length": core.ParamsValue("4"),
 			},
-			original:   models.NewColumnRawValue([]byte(""), false),
-			expected:   models.NewColumnRawValue([]byte("48c8"), false),
+			original:   core.NewColumnRawValue([]byte(""), false),
+			expected:   core.NewColumnRawValue([]byte("48c8"), false),
 			isNull:     true,
 			columnName: "data",
-			columns: []models.Column{
+			columns: []core.Column{
 				{
-					Idx:       0,
-					Name:      "data",
-					TypeName:  mysqldbmsdriver.TypeText,
-					TypeClass: models.TypeClassText,
-					TypeOID:   mysqldbmsdriver.VirtualOidText,
+					Idx:  0,
+					Name: "data",
+					Type: core.Type{
+						Name:  coretest.TypeText,
+						Class: core.TypeClassText,
+						ID:    coretest.TypeIDText,
+					},
 				},
 			},
-			validateFn: func(t *testing.T, expected, actual *models.ColumnRawValue) {
+			validateFn: func(t *testing.T, expected, actual *core.ColumnRawValue) {
 				require.Equal(t, expected.IsNull, actual.IsNull)
 			},
 		},
@@ -390,7 +412,7 @@ func Test_validateHashFunctionsParameter(t *testing.T) {
 		require.Equal(t, vc.Len(), 1)
 
 		warn := vc.GetWarnings()[0]
-		require.Equal(t, models.ValidationSeverityError, warn.Severity)
+		require.Equal(t, core.ValidationSeverityError, warn.Severity)
 		require.Equal(t, "unknown hash function name", warn.Msg)
 	})
 }
@@ -401,18 +423,20 @@ func TestHashTransformer_Transform_multiple_iterations(t *testing.T) {
 	ctx := validationcollector.WithCollector(context.Background(), vc)
 	env := newTransformerTestEnvReal(t,
 		HashTransformerDefinition,
-		[]models.Column{
+		[]core.Column{
 			{
-				Idx:       0,
-				Name:      "data",
-				TypeName:  mysqldbmsdriver.TypeText,
-				TypeOID:   mysqldbmsdriver.VirtualOidText,
-				TypeClass: models.TypeClassText,
+				Idx:  0,
+				Name: "data",
+				Type: core.Type{
+					Name:  coretest.TypeText,
+					ID:    coretest.TypeIDText,
+					Class: core.TypeClassText,
+				},
 			},
 		},
-		map[string]models.ParamsValue{
-			"column":   models.ParamsValue("data"),
-			"function": models.ParamsValue("sha1"),
+		map[string]core.ParamsValue{
+			"column":   core.ParamsValue("data"),
+			"function": core.ParamsValue("sha1"),
 		},
 		nil,
 	)
@@ -452,7 +476,7 @@ func TestHashTransformer_Transform_multiple_iterations(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			env.SetRecord(t, models.NewColumnRawValue([]byte(tt.original), tt.isNull))
+			env.SetRecord(t, core.NewColumnRawValue([]byte(tt.original), tt.isNull))
 
 			err = env.Transform(t, ctx)
 			rec := env.GetRecord()

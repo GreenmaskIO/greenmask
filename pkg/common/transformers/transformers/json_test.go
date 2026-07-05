@@ -19,9 +19,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/greenmaskio/greenmask/pkg/common/models"
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
+	coretest "github.com/greenmaskio/greenmask/pkg/common/coretest"
 	"github.com/greenmaskio/greenmask/pkg/common/validationcollector"
-	"github.com/greenmaskio/greenmask/pkg/mysql/dbmsdriver"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/tidwall/gjson"
@@ -31,19 +31,19 @@ func TestJsonTransformer_Transform(t *testing.T) {
 	tests := []struct {
 		name             string
 		columnName       string
-		staticParameters map[string]models.ParamsValue
-		dynamicParameter map[string]models.DynamicParamValue
-		original         *models.ColumnRawValue
-		expected         *models.ColumnRawValue
-		validateFn       func(t *testing.T, expected, actual *models.ColumnRawValue)
+		staticParameters map[string]core.ParamsValue
+		dynamicParameter map[string]core.DynamicParamValue
+		original         *core.ColumnRawValue
+		expected         *core.ColumnRawValue
+		validateFn       func(t *testing.T, expected, actual *core.ColumnRawValue)
 		expectedErr      string
-		columns          []models.Column
+		columns          []core.Column
 	}{
 		{
 			name: "simple set and delete",
-			staticParameters: map[string]models.ParamsValue{
-				"column": models.ParamsValue("data"),
-				"operations": models.ParamsValue(`
+			staticParameters: map[string]core.ParamsValue{
+				"column": core.ParamsValue("data"),
+				"operations": core.ParamsValue(`
 					[
 						{"operation": "set", "path": "name.first", "value": "Sara"},
 						{"operation": "set", "path": "name.last", "value": "Test"},
@@ -52,63 +52,67 @@ func TestJsonTransformer_Transform(t *testing.T) {
 					]
 				`),
 			},
-			original: models.NewColumnRawValue([]byte("123"), false),
-			expected: models.NewColumnRawValue(
+			original: core.NewColumnRawValue([]byte("123"), false),
+			expected: core.NewColumnRawValue(
 				[]byte(`{"name":{"last":"Test","first":"Sara", "age": 10}}`),
 				false,
 			),
 			columnName: "data",
-			columns: []models.Column{
+			columns: []core.Column{
 				{
-					Idx:       0,
-					Name:      "data",
-					TypeName:  dbmsdriver.TypeText,
-					TypeClass: models.TypeClassText,
-					TypeOID:   dbmsdriver.VirtualOidText,
+					Idx:  0,
+					Name: "data",
+					Type: core.Type{
+						Name:  coretest.TypeText,
+						Class: core.TypeClassText,
+						ID:    coretest.TypeIDText,
+					},
 				},
 			},
-			validateFn: func(t *testing.T, expected, actual *models.ColumnRawValue) {
+			validateFn: func(t *testing.T, expected, actual *core.ColumnRawValue) {
 				assert.Equal(t, expected.IsNull, actual.IsNull)
 				assert.JSONEq(t, string(expected.Data), string(actual.Data))
 			},
 		},
 		{
 			name: "with template",
-			staticParameters: map[string]models.ParamsValue{
-				"column": models.ParamsValue("data"),
-				"operations": models.ParamsValue(`[
+			staticParameters: map[string]core.ParamsValue{
+				"column": core.ParamsValue("data"),
+				"operations": core.ParamsValue(`[
 				{
 					"operation": "set", 
 					"path": "name.ts", 
-					"value_template": "{{- .GetOriginalValue | .DecodeValueByType \"timestamp\" | noiseDatePgInterval \"1 year 6 mon 1 day\" | .EncodeValueByType \"timestamp\" | toJsonRawValue -}}"
+					"value_template": "{{- .GetOriginalValue | .DecodeValueByType \"timestamp\" | noiseDate \"541d\" | .EncodeValueByType \"timestamp\" | toJsonRawValue -}}"
 				}
 			]`),
 			},
-			original: models.NewColumnRawValue(
+			original: core.NewColumnRawValue(
 				[]byte(`{"name":{"ts": "2023-11-23 19:54:49.277332"}}`),
 				false,
 			),
-			expected: models.NewColumnRawValue(
+			expected: core.NewColumnRawValue(
 				nil,
 				false,
 			),
 			columnName: "data",
-			columns: []models.Column{
+			columns: []core.Column{
 				{
-					Idx:       0,
-					Name:      "data",
-					TypeName:  dbmsdriver.TypeText,
-					TypeClass: models.TypeClassText,
-					TypeOID:   dbmsdriver.VirtualOidText,
+					Idx:  0,
+					Name: "data",
+					Type: core.Type{
+						Name:  coretest.TypeText,
+						Class: core.TypeClassText,
+						ID:    coretest.TypeIDText,
+					},
 				},
 			},
-			validateFn: func(t *testing.T, expected, actual *models.ColumnRawValue) {
+			validateFn: func(t *testing.T, expected, actual *core.ColumnRawValue) {
 				minValue := time.UnixMilli(1653249289277332000 / int64(time.Millisecond))
 				maxValue := time.UnixMilli(1748116489277332000 / int64(time.Millisecond))
 				assert.Equal(t, expected.IsNull, actual.IsNull)
 				resStr := gjson.GetBytes(actual.Data, "name.ts").Str
-				tableDriver := dbmsdriver.New()
-				resAny, err := tableDriver.DecodeValueByTypeName(dbmsdriver.TypeTimestamp, []byte(resStr))
+				tableDriver := coretest.New()
+				resAny, err := tableDriver.DecodeValueByTypeName(coretest.TypeTimestamp, []byte(resStr))
 				require.NoError(t, err)
 				resTime := resAny.(time.Time)
 				assert.WithinRange(t, resTime, minValue, maxValue)
@@ -116,9 +120,9 @@ func TestJsonTransformer_Transform(t *testing.T) {
 		},
 		{
 			name: "null value",
-			staticParameters: map[string]models.ParamsValue{
-				"column": models.ParamsValue("data"),
-				"operations": models.ParamsValue(`
+			staticParameters: map[string]core.ParamsValue{
+				"column": core.ParamsValue("data"),
+				"operations": core.ParamsValue(`
 					[
 						{"operation": "set", "path": "name.first", "value": "Sara"},
 						{"operation": "set", "path": "name.last", "value": "Test"},
@@ -127,30 +131,32 @@ func TestJsonTransformer_Transform(t *testing.T) {
 					]
 				`),
 			},
-			original: models.NewColumnRawValue(nil, true),
-			expected: models.NewColumnRawValue(
+			original: core.NewColumnRawValue(nil, true),
+			expected: core.NewColumnRawValue(
 				nil,
 				true,
 			),
 			columnName: "data",
-			columns: []models.Column{
+			columns: []core.Column{
 				{
-					Idx:       0,
-					Name:      "data",
-					TypeName:  dbmsdriver.TypeText,
-					TypeClass: models.TypeClassText,
-					TypeOID:   dbmsdriver.VirtualOidText,
+					Idx:  0,
+					Name: "data",
+					Type: core.Type{
+						Name:  coretest.TypeText,
+						Class: core.TypeClassText,
+						ID:    coretest.TypeIDText,
+					},
 				},
 			},
-			validateFn: func(t *testing.T, expected, actual *models.ColumnRawValue) {
+			validateFn: func(t *testing.T, expected, actual *core.ColumnRawValue) {
 				assert.Equal(t, expected.IsNull, actual.IsNull)
 			},
 		},
 		{
 			name: "invalid json and skip_invalid_json false",
-			staticParameters: map[string]models.ParamsValue{
-				"column": models.ParamsValue("data"),
-				"operations": models.ParamsValue(`
+			staticParameters: map[string]core.ParamsValue{
+				"column": core.ParamsValue("data"),
+				"operations": core.ParamsValue(`
 					[
 						{"operation": "set", "path": "name.first", "value": "Sara"},
 						{"operation": "set", "path": "name.last", "value": "Test"},
@@ -159,24 +165,26 @@ func TestJsonTransformer_Transform(t *testing.T) {
 					]
 				`),
 			},
-			original:   models.NewColumnRawValue([]byte(`{`), false),
+			original:   core.NewColumnRawValue([]byte(`{`), false),
 			columnName: "data",
-			columns: []models.Column{
+			columns: []core.Column{
 				{
-					Idx:       0,
-					Name:      "data",
-					TypeName:  dbmsdriver.TypeText,
-					TypeClass: models.TypeClassText,
-					TypeOID:   dbmsdriver.VirtualOidText,
+					Idx:  0,
+					Name: "data",
+					Type: core.Type{
+						Name:  coretest.TypeText,
+						Class: core.TypeClassText,
+						ID:    coretest.TypeIDText,
+					},
 				},
 			},
 			expectedErr: errInvalidJson.Error(),
 		},
 		{
 			name: "invalid json and skip_invalid_json true",
-			staticParameters: map[string]models.ParamsValue{
-				"column": models.ParamsValue("data"),
-				"operations": models.ParamsValue(`
+			staticParameters: map[string]core.ParamsValue{
+				"column": core.ParamsValue("data"),
+				"operations": core.ParamsValue(`
 					[
 						{"operation": "set", "path": "name.first", "value": "Sara"},
 						{"operation": "set", "path": "name.last", "value": "Test"},
@@ -184,75 +192,81 @@ func TestJsonTransformer_Transform(t *testing.T) {
 						{"operation": "delete", "path": "name.todelete"}
 					]
 				`),
-				"skip_invalid_json": models.ParamsValue("true"),
+				"skip_invalid_json": core.ParamsValue("true"),
 			},
-			original:   models.NewColumnRawValue([]byte(`{`), false),
-			expected:   models.NewColumnRawValue([]byte(`{`), false),
+			original:   core.NewColumnRawValue([]byte(`{`), false),
+			expected:   core.NewColumnRawValue([]byte(`{`), false),
 			columnName: "data",
-			columns: []models.Column{
+			columns: []core.Column{
 				{
-					Idx:       0,
-					Name:      "data",
-					TypeName:  dbmsdriver.TypeText,
-					TypeClass: models.TypeClassText,
-					TypeOID:   dbmsdriver.VirtualOidText,
+					Idx:  0,
+					Name: "data",
+					Type: core.Type{
+						Name:  coretest.TypeText,
+						Class: core.TypeClassText,
+						ID:    coretest.TypeIDText,
+					},
 				},
 			},
-			validateFn: func(t *testing.T, expected, actual *models.ColumnRawValue) {
+			validateFn: func(t *testing.T, expected, actual *core.ColumnRawValue) {
 				assert.Equal(t, expected.IsNull, actual.IsNull)
 				assert.Equal(t, string(expected.Data), string(actual.Data))
 			},
 		},
 		{
 			name: "skip if key does exits and key does not exist",
-			staticParameters: map[string]models.ParamsValue{
-				"column": models.ParamsValue("data"),
-				"operations": models.ParamsValue(`
+			staticParameters: map[string]core.ParamsValue{
+				"column": core.ParamsValue("data"),
+				"operations": core.ParamsValue(`
 					[
 						{"operation": "set", "path": "key1.unknown", "value": "modified", "skip_not_exist": true}
 					]
 				`),
 			},
-			original:   models.NewColumnRawValue([]byte(`{"key1": {"key2": "value"}}`), false),
-			expected:   models.NewColumnRawValue([]byte(`{"key1": {"key2": "value"}}`), false),
+			original:   core.NewColumnRawValue([]byte(`{"key1": {"key2": "value"}}`), false),
+			expected:   core.NewColumnRawValue([]byte(`{"key1": {"key2": "value"}}`), false),
 			columnName: "data",
-			columns: []models.Column{
+			columns: []core.Column{
 				{
-					Idx:       0,
-					Name:      "data",
-					TypeName:  dbmsdriver.TypeText,
-					TypeClass: models.TypeClassText,
-					TypeOID:   dbmsdriver.VirtualOidText,
+					Idx:  0,
+					Name: "data",
+					Type: core.Type{
+						Name:  coretest.TypeText,
+						Class: core.TypeClassText,
+						ID:    coretest.TypeIDText,
+					},
 				},
 			},
-			validateFn: func(t *testing.T, expected, actual *models.ColumnRawValue) {
+			validateFn: func(t *testing.T, expected, actual *core.ColumnRawValue) {
 				assert.Equal(t, expected.IsNull, actual.IsNull)
 				assert.Equal(t, string(expected.Data), string(actual.Data))
 			},
 		},
 		{
 			name: "skip if key does exits and key exists",
-			staticParameters: map[string]models.ParamsValue{
-				"column": models.ParamsValue("data"),
-				"operations": models.ParamsValue(`
+			staticParameters: map[string]core.ParamsValue{
+				"column": core.ParamsValue("data"),
+				"operations": core.ParamsValue(`
 					[
 						{"operation": "set", "path": "key1.key2", "value": "modified", "skip_not_exist": true}
 					]
 				`),
 			},
-			original:   models.NewColumnRawValue([]byte(`{"key1": {"key2": "value"}}`), false),
-			expected:   models.NewColumnRawValue([]byte(`{"key1": {"key2": "modified"}}`), false),
+			original:   core.NewColumnRawValue([]byte(`{"key1": {"key2": "value"}}`), false),
+			expected:   core.NewColumnRawValue([]byte(`{"key1": {"key2": "modified"}}`), false),
 			columnName: "data",
-			columns: []models.Column{
+			columns: []core.Column{
 				{
-					Idx:       0,
-					Name:      "data",
-					TypeName:  dbmsdriver.TypeText,
-					TypeClass: models.TypeClassText,
-					TypeOID:   dbmsdriver.VirtualOidText,
+					Idx:  0,
+					Name: "data",
+					Type: core.Type{
+						Name:  coretest.TypeText,
+						Class: core.TypeClassText,
+						ID:    coretest.TypeIDText,
+					},
 				},
 			},
-			validateFn: func(t *testing.T, expected, actual *models.ColumnRawValue) {
+			validateFn: func(t *testing.T, expected, actual *core.ColumnRawValue) {
 				assert.Equal(t, expected.IsNull, actual.IsNull)
 				assert.Equal(t, string(expected.Data), string(actual.Data))
 			},

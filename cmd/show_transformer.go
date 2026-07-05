@@ -15,12 +15,12 @@
 package main
 
 import (
-	"log"
+	"context"
 
-	"github.com/spf13/cobra"
-
-	cmdrun "github.com/greenmaskio/greenmask/pkg/cmdrun"
+	"github.com/greenmaskio/greenmask/pkg/cli"
 	"github.com/greenmaskio/greenmask/pkg/common/cmd"
+	"github.com/rs/zerolog/log"
+	"github.com/spf13/cobra"
 )
 
 var (
@@ -43,9 +43,10 @@ var (
 		Use:   "show-transformer",
 		Short: "show transformer details",
 		Run: func(cmd *cobra.Command, args []string) {
-			err := cmdrun.RunShowTransformers(rootCmd.MustGetConfig(), cmdrun.OutputFormat(showTransformerFormat), args[0])
-			if err != nil {
-				log.Fatal(err)
+			cmdRun := cli.New(rootCmd.MustGetConfig()).
+				ForShowTransformer(cli.OutputFormat(showTransformerFormat))
+			if err := cmdRun.ShowTransformer(context.Background(), args[0]); err != nil {
+				log.Fatal().Err(err).Msg("show-transformer command failed")
 			}
 		},
 	}, showTransformersFlags...)

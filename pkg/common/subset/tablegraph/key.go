@@ -17,7 +17,7 @@ package tablegraph
 import (
 	"fmt"
 
-	commonmodels "github.com/greenmaskio/greenmask/pkg/common/models"
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 )
 
 // Key - represents a simple primary key or foreign key item. Depending on the context it can represent a column
@@ -44,7 +44,7 @@ func NewKeysByColumn(cols []string) []Key {
 //	return keys
 //}
 
-func (k *Key) GetKeyReference(t commonmodels.Table) string {
+func (k *Key) GetKeyReference(t core.Table) string {
 	if k.Expression != "" {
 		return k.Expression
 	}

@@ -20,7 +20,7 @@ import (
 	"fmt"
 	"slices"
 
-	models2 "github.com/greenmaskio/greenmask/pkg/common/models"
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 	"github.com/greenmaskio/greenmask/pkg/csv"
 )
 
@@ -77,7 +77,7 @@ func NewCSVRecord(
 	}, nil
 }
 
-func (rr *CSVRecord) GetColumn(c *models2.Column) (*models2.ColumnRawValue, error) {
+func (rr *CSVRecord) GetColumn(c *core.Column) (*core.ColumnRawValue, error) {
 	csvIdx, ok := rr.receiveMap[c.Idx]
 	if !ok {
 		return nil, fmt.Errorf("column idx=%d name=%s: %w", c.Idx, c.Name, errUnexpectedColumn)
@@ -88,12 +88,12 @@ func (rr *CSVRecord) GetColumn(c *models2.Column) (*models2.ColumnRawValue, erro
 	val := rr.receiveRecord[csvIdx]
 
 	if isNullSeq(val) {
-		return models2.NewColumnRawValue(nil, true), nil
+		return core.NewColumnRawValue(nil, true), nil
 	}
-	return models2.NewColumnRawValue(val, false), nil
+	return core.NewColumnRawValue(val, false), nil
 }
 
-func (rr *CSVRecord) SetColumn(c *models2.Column, v *models2.ColumnRawValue) error {
+func (rr *CSVRecord) SetColumn(c *core.Column, v *core.ColumnRawValue) error {
 	csvIdx, ok := rr.transferMap[c.Idx]
 	if !ok {
 		return fmt.Errorf("column idx=%d name=%s: %w", c.Idx, c.Name, errUnexpectedColumn)

@@ -25,8 +25,7 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
-	commonininterfaces "github.com/greenmaskio/greenmask/pkg/common/interfaces"
-	"github.com/greenmaskio/greenmask/pkg/common/models"
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 	"github.com/greenmaskio/greenmask/pkg/common/validationcollector"
 )
 
@@ -64,36 +63,36 @@ func (r *recorderMock) IsNullByColumnIdx(columIdx int) (bool, error) {
 	return args.Bool(0), args.Error(1)
 }
 
-func (r *recorderMock) GetRawColumnValueByIdx(columnIdx int) (*models.ColumnRawValue, error) {
+func (r *recorderMock) GetRawColumnValueByIdx(columnIdx int) (*core.ColumnRawValue, error) {
 	args := r.Called(columnIdx)
 	if args.Get(1) != nil {
 		return nil, args.Error(1)
 	}
-	return args.Get(0).(*models.ColumnRawValue), nil
+	return args.Get(0).(*core.ColumnRawValue), nil
 }
 
-func (r *recorderMock) GetColumnValueByIdx(columnIdx int) (*models.ColumnValue, error) {
+func (r *recorderMock) GetColumnValueByIdx(columnIdx int) (*core.ColumnValue, error) {
 	args := r.Called(columnIdx)
 	if args.Get(1) != nil {
 		return nil, args.Error(1)
 	}
-	return args.Get(0).(*models.ColumnValue), nil
+	return args.Get(0).(*core.ColumnValue), nil
 }
 
-func (r *recorderMock) GetColumnValueByName(columnName string) (*models.ColumnValue, error) {
+func (r *recorderMock) GetColumnValueByName(columnName string) (*core.ColumnValue, error) {
 	args := r.Called(columnName)
 	if args.Get(1) != nil {
 		return nil, args.Error(1)
 	}
-	return args.Get(0).(*models.ColumnValue), nil
+	return args.Get(0).(*core.ColumnValue), nil
 }
 
-func (r *recorderMock) GetRawColumnValueByName(columnName string) (*models.ColumnRawValue, error) {
+func (r *recorderMock) GetRawColumnValueByName(columnName string) (*core.ColumnRawValue, error) {
 	args := r.Called(columnName)
 	if args.Get(1) != nil {
 		return nil, args.Error(1)
 	}
-	return args.Get(0).(*models.ColumnRawValue), nil
+	return args.Get(0).(*core.ColumnRawValue), nil
 }
 
 func (r *recorderMock) SetColumnValueByIdx(columnIdx int, v any) error {
@@ -101,7 +100,7 @@ func (r *recorderMock) SetColumnValueByIdx(columnIdx int, v any) error {
 	return args.Error(0)
 }
 
-func (r *recorderMock) SetRawColumnValueByIdx(columnIdx int, value *models.ColumnRawValue) error {
+func (r *recorderMock) SetRawColumnValueByIdx(columnIdx int, value *core.ColumnRawValue) error {
 	args := r.Called(columnIdx, value)
 	return args.Error(0)
 }
@@ -111,22 +110,22 @@ func (r *recorderMock) SetColumnValueByName(columnName string, v any) error {
 	return args.Error(0)
 }
 
-func (r *recorderMock) SetRawColumnValueByName(columnName string, value *models.ColumnRawValue) error {
+func (r *recorderMock) SetRawColumnValueByName(columnName string, value *core.ColumnRawValue) error {
 	args := r.Called(columnName, value)
 	return args.Error(0)
 }
 
-func (r *recorderMock) GetColumnByName(columnName string) (*models.Column, error) {
+func (r *recorderMock) GetColumnByName(columnName string) (*core.Column, error) {
 	args := r.Called(columnName)
 	if args.Error(1) != nil {
 		return nil, args.Error(1)
 	}
-	return args.Get(0).(*models.Column), nil
+	return args.Get(0).(*core.Column), nil
 }
 
-func (r *recorderMock) TableDriver() commonininterfaces.TableDriver {
+func (r *recorderMock) TableDriver() core.TableDriver {
 	args := r.Called()
-	return args.Get(0).(commonininterfaces.TableDriver)
+	return args.Get(0).(core.TableDriver)
 }
 
 func newRecorderMock() *recorderMock {
@@ -157,17 +156,6 @@ func (t *tableDriverMock) EncodeValueByTypeName(name string, src any, buf []byte
 	return args.Get(0).([]byte), args.Error(1)
 }
 
-func (t *tableDriverMock) EncodeValueByTypeOid(oid models.VirtualOID, src any, buf []byte) ([]byte, error) {
-	args := t.Called(oid, src, buf)
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-	if buf != nil {
-		return append(buf, args.Get(0).([]byte)...), nil
-	}
-	return args.Get(0).([]byte), args.Error(1)
-}
-
 func (t *tableDriverMock) DecodeValueByTypeName(name string, src []byte) (any, error) {
 	args := t.Called(name, src)
 	if args.Get(0) == nil {
@@ -176,24 +164,32 @@ func (t *tableDriverMock) DecodeValueByTypeName(name string, src []byte) (any, e
 	return args.Get(0), args.Error(1)
 }
 
-func (t *tableDriverMock) DecodeValueByTypeOid(oid models.VirtualOID, src []byte) (any, error) {
-	args := t.Called(oid, src)
+func (t *tableDriverMock) DecodeValueByType(typ core.Type, src []byte) (any, error) {
+	args := t.Called(typ, src)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
 	return args.Get(0), args.Error(1)
 }
 
-func (t *tableDriverMock) ScanValueByTypeName(name string, src []byte, dest any) error {
-	args := t.Called(name, src, dest)
+func (t *tableDriverMock) EncodeValueByType(typ core.Type, src any, buf []byte) ([]byte, error) {
+	args := t.Called(typ, src, buf)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]byte), args.Error(1)
+}
+
+func (t *tableDriverMock) ScanValueByType(typ core.Type, src []byte, dest any) error {
+	args := t.Called(typ, src, dest)
 	if args.Get(0) != nil {
 		return args.Error(0)
 	}
 	return nil
 }
 
-func (t *tableDriverMock) ScanValueByTypeOid(oid models.VirtualOID, src []byte, dest any) error {
-	args := t.Called(oid, src, dest)
+func (t *tableDriverMock) ScanValueByTypeName(name string, src []byte, dest any) error {
+	args := t.Called(name, src, dest)
 	if args.Get(0) != nil {
 		return args.Error(0)
 	}
@@ -212,7 +208,7 @@ func (t *tableDriverMock) TypeExistsByName(name string) bool {
 	return exists
 }
 
-func (t *tableDriverMock) TypeExistsByOid(oid models.VirtualOID) bool {
+func (t *tableDriverMock) TypeExistsByID(oid core.TypeID) bool {
 	args := t.Called(oid)
 	if args.Get(0) == nil {
 		return false
@@ -224,19 +220,19 @@ func (t *tableDriverMock) TypeExistsByOid(oid models.VirtualOID) bool {
 	return exists
 }
 
-func (t *tableDriverMock) GetTypeOid(name string) (models.VirtualOID, error) {
+func (t *tableDriverMock) GetTypeID(name string) (core.TypeID, error) {
 	args := t.Called(name)
 	if args.Get(0) == nil {
-		return models.VirtualOID(0), args.Error(1)
+		return core.TypeID(0), args.Error(1)
 	}
-	oid, ok := args.Get(0).(models.VirtualOID)
+	oid, ok := args.Get(0).(core.TypeID)
 	if !ok {
-		panic(fmt.Sprintf("expected commonmodels.VirtualOID, got %T", args.Get(0)))
+		panic(fmt.Sprintf("expected commonmodels.TypeID, got %T", args.Get(0)))
 	}
 	return oid, args.Error(1)
 }
 
-func (t *tableDriverMock) GetCanonicalTypeName(typeName string, typeOid models.VirtualOID) (string, error) {
+func (t *tableDriverMock) GetCanonicalTypeName(typeName string, typeOid core.TypeID) (string, error) {
 	args := t.Called(typeName, typeOid)
 	if args.Get(0) == nil {
 		return "", args.Error(1)
@@ -302,49 +298,49 @@ func (t *tableDriverMock) DecodeValueByColumnName(name string, src []byte) (any,
 	return args.Get(0), args.Error(1)
 }
 
-func (t *tableDriverMock) GetColumnByName(name string) (*models.Column, error) {
+func (t *tableDriverMock) GetColumnByName(name string) (*core.Column, error) {
 	args := t.Called(name)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
-	return args.Get(0).(*models.Column), args.Error(1)
+	return args.Get(0).(*core.Column), args.Error(1)
 }
 
-func (t *tableDriverMock) Table() *models.Table {
+func (t *tableDriverMock) Table() *core.Table {
 	args := t.Called()
 	if args.Get(0) == nil {
 		return nil
 	}
-	table, ok := args.Get(0).(*models.Table)
+	table, ok := args.Get(0).(*core.Table)
 	if !ok {
 		panic(fmt.Sprintf("expected *commonmodels.Table, got %T", args.Get(0)))
 	}
 	return table
 }
 
-func (t *tableDriverMock) GetCanonicalTypeClassName(typeName string, typeOid models.VirtualOID) (models.TypeClass, error) {
+func (t *tableDriverMock) GetCanonicalTypeClassName(typeName string, typeOid core.TypeID) (core.TypeClass, error) {
 	args := t.Called(typeName, typeOid)
-	return args.Get(0).(models.TypeClass), args.Error(1)
+	return args.Get(0).(core.TypeClass), args.Error(1)
 }
 
 func TestDynamicParameter_Init(t *testing.T) {
 	t.Run("error column param cannot be dynamic", func(t *testing.T) {
 		columnDef := MustNewParameterDefinition("column", "some desc").
 			SetIsColumn(
-				models.NewColumnProperties().
+				core.NewColumnProperties().
 					SetAllowedColumnTypes("text"),
 			)
 		ctx := validationcollector.WithCollector(context.Background(), validationcollector.NewCollector())
 
 		tableDriver := newTableDriverMock()
 		parameter := NewDynamicParameter(columnDef, tableDriver)
-		err := parameter.Init(ctx, nil, models.DynamicParamValue{
+		err := parameter.Init(ctx, nil, core.DynamicParamValue{
 			Column: "data",
 		})
 		assert.True(t, validationcollector.FromContext(ctx).IsFatal())
-		require.ErrorIs(t, err, models.ErrFatalValidationError)
+		require.ErrorIs(t, err, core.ErrFatalValidationError)
 		assert.True(t, slices.ContainsFunc(validationcollector.FromContext(ctx).GetWarnings(),
-			func(w *models.ValidationWarning) bool {
+			func(w *core.ValidationWarning) bool {
 				return strings.Contains(w.Msg, "parameter does not support dynamic mode")
 			}))
 	})
@@ -356,7 +352,7 @@ func TestDynamicParameter_Init(t *testing.T) {
 
 		columnDef := MustNewParameterDefinition("column", "some desc").
 			SetIsColumn(
-				models.NewColumnProperties().
+				core.NewColumnProperties().
 					SetAllowedColumnTypes("int2", "int4", "int8"),
 			)
 
@@ -366,15 +362,17 @@ func TestDynamicParameter_Init(t *testing.T) {
 		columnParam := NewStaticParameter(columnDef, tableDriver, false)
 		tableDriver.On("GetColumnByName", "id2").
 			Return(
-				&models.Column{
-					Idx:      0,
-					Name:     "id2",
-					TypeName: "int2",
-					TypeOID:  10,
+				&core.Column{
+					Idx:  0,
+					Name: "id2",
+					Type: core.Type{
+						Name: "int2",
+						ID:   10,
+					},
 				},
 				nil,
 			)
-		err := columnParam.Init(ctx, nil, models.ParamsValue("id2"))
+		err := columnParam.Init(ctx, nil, core.ParamsValue("id2"))
 		assert.False(t, validationcollector.FromContext(ctx).HasWarnings())
 		require.NoError(t, err)
 
@@ -382,7 +380,7 @@ func TestDynamicParameter_Init(t *testing.T) {
 			LinkParameter("column").
 			SetDynamicMode(
 				NewDynamicModeProperties().
-					SetColumnProperties(models.NewColumnProperties().
+					SetColumnProperties(core.NewColumnProperties().
 						SetAllowedColumnTypes("int2")),
 			)
 
@@ -391,33 +389,35 @@ func TestDynamicParameter_Init(t *testing.T) {
 		timestampParam := NewDynamicParameter(dynamicParamDef, tableDriver)
 		tableDriver.On("GetColumnByName", "timestamp_column").
 			Return(
-				&models.Column{
-					Idx:      1,
-					Name:     "timestamp_column",
-					TypeName: "timestamp",
-					TypeOID:  12,
+				&core.Column{
+					Idx:  1,
+					Name: "timestamp_column",
+					Type: core.Type{
+						Name: "timestamp",
+						ID:   12,
+					},
 				},
 				nil,
 			)
-		tableDriver.On("GetCanonicalTypeName", "int2", models.VirtualOID(10)).
+		tableDriver.On("GetCanonicalTypeName", "int2", core.TypeID(10)).
 			Return("int2", nil)
-		tableDriver.On("GetCanonicalTypeClassName", "int2", models.VirtualOID(10)).
-			Return(models.TypeClassInt, nil)
-		tableDriver.On("GetCanonicalTypeName", "timestamp", models.VirtualOID(12)).
+		tableDriver.On("GetCanonicalTypeClassName", "int2", core.TypeID(10)).
+			Return(core.TypeClassInt, nil)
+		tableDriver.On("GetCanonicalTypeName", "timestamp", core.TypeID(12)).
 			Return("timestamp", nil)
-		tableDriver.On("GetCanonicalTypeClassName", "timestamp", models.VirtualOID(12)).
-			Return(models.TypeClassDateTime, nil)
+		tableDriver.On("GetCanonicalTypeClassName", "timestamp", core.TypeID(12)).
+			Return(core.TypeClassDateTime, nil)
 		err = timestampParam.Init(
 			ctx,
 			map[string]*StaticParameter{columnDef.Name: columnParam},
-			models.DynamicParamValue{
+			core.DynamicParamValue{
 				Column: "timestamp_column",
 			},
 		)
-		assert.ErrorIs(t, err, models.ErrFatalValidationError)
+		assert.ErrorIs(t, err, core.ErrFatalValidationError)
 		assert.True(t, validationcollector.FromContext(ctx).IsFatal())
 		assert.True(t, slices.ContainsFunc(validationcollector.FromContext(ctx).GetWarnings(),
-			func(w *models.ValidationWarning) bool {
+			func(w *core.ValidationWarning) bool {
 				return strings.Contains(w.Msg, "linked parameter and dynamic parameter column name has different types")
 			}))
 
@@ -427,7 +427,7 @@ func TestDynamicParameter_Init(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		columnDef := MustNewParameterDefinition("column", "some desc").
 			SetIsColumn(
-				models.NewColumnProperties().
+				core.NewColumnProperties().
 					SetAllowedColumnTypes("int2", "int4", "int8"),
 			)
 
@@ -437,15 +437,17 @@ func TestDynamicParameter_Init(t *testing.T) {
 		columnParam := NewStaticParameter(columnDef, tableDriver, false)
 		tableDriver.On("GetColumnByName", "id2").
 			Return(
-				&models.Column{
-					Idx:      0,
-					Name:     "id2",
-					TypeName: "int2",
-					TypeOID:  10,
+				&core.Column{
+					Idx:  0,
+					Name: "id2",
+					Type: core.Type{
+						Name: "int2",
+						ID:   10,
+					},
 				},
 				nil,
 			)
-		err := columnParam.Init(ctx, nil, models.ParamsValue("id2"))
+		err := columnParam.Init(ctx, nil, core.ParamsValue("id2"))
 		assert.False(t, validationcollector.FromContext(ctx).HasWarnings())
 		require.NoError(t, err)
 
@@ -453,7 +455,7 @@ func TestDynamicParameter_Init(t *testing.T) {
 			LinkParameter("column").
 			SetDynamicMode(
 				NewDynamicModeProperties().
-					SetColumnProperties(models.NewColumnProperties().
+					SetColumnProperties(core.NewColumnProperties().
 						SetAllowedColumnTypes("int2")),
 			)
 
@@ -462,24 +464,26 @@ func TestDynamicParameter_Init(t *testing.T) {
 		dynamicParameter := NewDynamicParameter(dynamicParamDef, tableDriver)
 		tableDriver.On("GetColumnByName", "supported_column").
 			Return(
-				&models.Column{
-					Idx:      1,
-					Name:     "supported_column",
-					TypeName: "int2",
-					TypeOID:  10,
+				&core.Column{
+					Idx:  1,
+					Name: "supported_column",
+					Type: core.Type{
+						Name: "int2",
+						ID:   10,
+					},
 				},
 				nil,
 			)
-		tableDriver.On("GetCanonicalTypeName", "int2", models.VirtualOID(10)).
+		tableDriver.On("GetCanonicalTypeName", "int2", core.TypeID(10)).
 			Return("int2", nil).
 			Twice()
-		tableDriver.On("GetCanonicalTypeClassName", "int2", models.VirtualOID(10)).
-			Return(models.TypeClassInt, nil).
+		tableDriver.On("GetCanonicalTypeClassName", "int2", core.TypeID(10)).
+			Return(core.TypeClassInt, nil).
 			Twice()
 		err = dynamicParameter.Init(
 			ctx,
 			map[string]*StaticParameter{columnDef.Name: columnParam},
-			models.DynamicParamValue{
+			core.DynamicParamValue{
 				Column: "supported_column",
 			},
 		)
@@ -493,7 +497,7 @@ func TestDynamicParameter_Value(t *testing.T) {
 	t.Run("common decoding", func(t *testing.T) {
 		columnDef := MustNewParameterDefinition("column", "some desc").
 			SetIsColumn(
-				models.NewColumnProperties().
+				core.NewColumnProperties().
 					SetAllowedColumnTypes("int2", "int4", "int8"),
 			)
 
@@ -503,15 +507,17 @@ func TestDynamicParameter_Value(t *testing.T) {
 		columnParam := NewStaticParameter(columnDef, tableDriver, false)
 		tableDriver.On("GetColumnByName", "id2").
 			Return(
-				&models.Column{
-					Idx:      0,
-					Name:     "id2",
-					TypeName: "int2",
-					TypeOID:  10,
+				&core.Column{
+					Idx:  0,
+					Name: "id2",
+					Type: core.Type{
+						Name: "int2",
+						ID:   10,
+					},
 				},
 				nil,
 			)
-		err := columnParam.Init(ctx, nil, models.ParamsValue("id2"))
+		err := columnParam.Init(ctx, nil, core.ParamsValue("id2"))
 		assert.False(t, validationcollector.FromContext(ctx).HasWarnings())
 		require.NoError(t, err)
 
@@ -519,7 +525,7 @@ func TestDynamicParameter_Value(t *testing.T) {
 			LinkParameter("column").
 			SetDynamicMode(
 				NewDynamicModeProperties().
-					SetColumnProperties(models.NewColumnProperties().
+					SetColumnProperties(core.NewColumnProperties().
 						SetAllowedColumnTypes("int2")),
 			)
 
@@ -528,24 +534,26 @@ func TestDynamicParameter_Value(t *testing.T) {
 		dynamicParameter := NewDynamicParameter(dynamicParamDef, tableDriver)
 		tableDriver.On("GetColumnByName", "supported_column").
 			Return(
-				&models.Column{
-					Idx:      1,
-					Name:     "supported_column",
-					TypeName: "int2",
-					TypeOID:  10,
+				&core.Column{
+					Idx:  1,
+					Name: "supported_column",
+					Type: core.Type{
+						Name: "int2",
+						ID:   10,
+					},
 				},
 				nil,
 			)
-		tableDriver.On("GetCanonicalTypeName", "int2", models.VirtualOID(10)).
+		tableDriver.On("GetCanonicalTypeName", "int2", core.TypeID(10)).
 			Return("int2", nil).
 			Twice()
-		tableDriver.On("GetCanonicalTypeClassName", "int2", models.VirtualOID(10)).
-			Return(models.TypeClassInt, nil).
+		tableDriver.On("GetCanonicalTypeClassName", "int2", core.TypeID(10)).
+			Return(core.TypeClassInt, nil).
 			Twice()
 		err = dynamicParameter.Init(
 			ctx,
 			map[string]*StaticParameter{columnDef.Name: columnParam},
-			models.DynamicParamValue{
+			core.DynamicParamValue{
 				Column: "supported_column",
 			},
 		)
@@ -556,7 +564,7 @@ func TestDynamicParameter_Value(t *testing.T) {
 		record.On("TableDriver").
 			Return(tableDriver)
 		dynamicParameter.SetRecord(record)
-		data := &models.ColumnRawValue{
+		data := &core.ColumnRawValue{
 			Data:   []byte("123"),
 			IsNull: false,
 		}
@@ -575,7 +583,7 @@ func TestDynamicParameter_Value(t *testing.T) {
 	t.Run("with unmarshaler", func(t *testing.T) {
 		columnDef := MustNewParameterDefinition("column", "some desc").
 			SetIsColumn(
-				models.NewColumnProperties().
+				core.NewColumnProperties().
 					SetAllowedColumnTypes("int2", "int4", "int8"),
 			)
 
@@ -585,15 +593,17 @@ func TestDynamicParameter_Value(t *testing.T) {
 		columnParam := NewStaticParameter(columnDef, tableDriver, false)
 		tableDriver.On("GetColumnByName", "id2").
 			Return(
-				&models.Column{
-					Idx:      0,
-					Name:     "id2",
-					TypeName: "int2",
-					TypeOID:  10,
+				&core.Column{
+					Idx:  0,
+					Name: "id2",
+					Type: core.Type{
+						Name: "int2",
+						ID:   10,
+					},
 				},
 				nil,
 			)
-		err := columnParam.Init(ctx, nil, models.ParamsValue("id2"))
+		err := columnParam.Init(ctx, nil, core.ParamsValue("id2"))
 		assert.False(t, validationcollector.FromContext(ctx).HasWarnings())
 		require.NoError(t, err)
 
@@ -601,9 +611,9 @@ func TestDynamicParameter_Value(t *testing.T) {
 			LinkParameter("column").
 			SetDynamicMode(
 				NewDynamicModeProperties().
-					SetColumnProperties(models.NewColumnProperties().
+					SetColumnProperties(core.NewColumnProperties().
 						SetAllowedColumnTypes("int2")).
-					SetUnmarshaler(func(driver commonininterfaces.DBMSDriver, typeName string, v models.ParamsValue) (any, error) {
+					SetUnmarshaler(func(driver core.NamedTypeCodec, typeName string, v core.ParamsValue) (any, error) {
 						assert.Equal(t, "int2", typeName)
 						assert.Equal(t, "1234", string(v))
 						return int64(1234), nil
@@ -615,24 +625,26 @@ func TestDynamicParameter_Value(t *testing.T) {
 		dynamicParameter := NewDynamicParameter(dynamicParamDef, tableDriver)
 		tableDriver.On("GetColumnByName", "supported_column").
 			Return(
-				&models.Column{
-					Idx:      1,
-					Name:     "supported_column",
-					TypeName: "int2",
-					TypeOID:  10,
+				&core.Column{
+					Idx:  1,
+					Name: "supported_column",
+					Type: core.Type{
+						Name: "int2",
+						ID:   10,
+					},
 				},
 				nil,
 			)
-		tableDriver.On("GetCanonicalTypeName", "int2", models.VirtualOID(10)).
+		tableDriver.On("GetCanonicalTypeName", "int2", core.TypeID(10)).
 			Return("int2", nil).
 			Twice()
-		tableDriver.On("GetCanonicalTypeClassName", "int2", models.VirtualOID(10)).
-			Return(models.TypeClassInt, nil).
+		tableDriver.On("GetCanonicalTypeClassName", "int2", core.TypeID(10)).
+			Return(core.TypeClassInt, nil).
 			Twice()
 		err = dynamicParameter.Init(
 			ctx,
 			map[string]*StaticParameter{columnDef.Name: columnParam},
-			models.DynamicParamValue{
+			core.DynamicParamValue{
 				Column: "supported_column",
 			},
 		)
@@ -643,7 +655,7 @@ func TestDynamicParameter_Value(t *testing.T) {
 		record.On("TableDriver").
 			Return(tableDriver)
 		dynamicParameter.SetRecord(record)
-		data := &models.ColumnRawValue{
+		data := &core.ColumnRawValue{
 			Data:   []byte("1234"),
 			IsNull: false,
 		}
@@ -659,7 +671,7 @@ func TestDynamicParameter_Value(t *testing.T) {
 	t.Run("with template", func(t *testing.T) {
 		columnDef := MustNewParameterDefinition("column", "some desc").
 			SetIsColumn(
-				models.NewColumnProperties().
+				core.NewColumnProperties().
 					SetAllowedColumnTypes("int2", "int4", "int8"),
 			)
 
@@ -669,15 +681,17 @@ func TestDynamicParameter_Value(t *testing.T) {
 		columnParam := NewStaticParameter(columnDef, tableDriver, false)
 		tableDriver.On("GetColumnByName", "id2").
 			Return(
-				&models.Column{
-					Idx:      0,
-					Name:     "id2",
-					TypeName: "int2",
-					TypeOID:  10,
+				&core.Column{
+					Idx:  0,
+					Name: "id2",
+					Type: core.Type{
+						Name: "int2",
+						ID:   10,
+					},
 				},
 				nil,
 			)
-		err := columnParam.Init(ctx, nil, models.ParamsValue("id2"))
+		err := columnParam.Init(ctx, nil, core.ParamsValue("id2"))
 		assert.False(t, validationcollector.FromContext(ctx).HasWarnings())
 		require.NoError(t, err)
 
@@ -685,7 +699,7 @@ func TestDynamicParameter_Value(t *testing.T) {
 			LinkParameter("column").
 			SetDynamicMode(
 				NewDynamicModeProperties().
-					SetColumnProperties(models.NewColumnProperties().
+					SetColumnProperties(core.NewColumnProperties().
 						SetAllowedColumnTypes("int2")),
 			)
 
@@ -694,24 +708,26 @@ func TestDynamicParameter_Value(t *testing.T) {
 		dynamicParameter := NewDynamicParameter(dynamicParamDef, tableDriver)
 		tableDriver.On("GetColumnByName", "supported_column").
 			Return(
-				&models.Column{
-					Idx:      1,
-					Name:     "supported_column",
-					TypeName: "int2",
-					TypeOID:  10,
+				&core.Column{
+					Idx:  1,
+					Name: "supported_column",
+					Type: core.Type{
+						Name: "int2",
+						ID:   10,
+					},
 				},
 				nil,
 			)
-		tableDriver.On("GetCanonicalTypeName", "int2", models.VirtualOID(10)).
+		tableDriver.On("GetCanonicalTypeName", "int2", core.TypeID(10)).
 			Return("int2", nil).
 			Twice()
-		tableDriver.On("GetCanonicalTypeClassName", "int2", models.VirtualOID(10)).
-			Return(models.TypeClassInt, nil).
+		tableDriver.On("GetCanonicalTypeClassName", "int2", core.TypeID(10)).
+			Return(core.TypeClassInt, nil).
 			Twice()
 		err = dynamicParameter.Init(
 			ctx,
 			map[string]*StaticParameter{columnDef.Name: columnParam},
-			models.DynamicParamValue{
+			core.DynamicParamValue{
 				Column:   "supported_column",
 				Template: `{{ .GetValue | add 1 | .EncodeValueByColumn "int2" }}`,
 			},
@@ -723,7 +739,7 @@ func TestDynamicParameter_Value(t *testing.T) {
 		record.On("TableDriver").
 			Return(tableDriver)
 		dynamicParameter.SetRecord(record)
-		data := &models.ColumnRawValue{
+		data := &core.ColumnRawValue{
 			Data:   []byte("1234"),
 			IsNull: false,
 		}
@@ -731,7 +747,7 @@ func TestDynamicParameter_Value(t *testing.T) {
 			Return(data, nil).
 			Once()
 		record.On("GetColumnValueByName", "supported_column").
-			Return(&models.ColumnValue{Value: int64(1), IsNull: false}, nil)
+			Return(&core.ColumnValue{Value: int64(1), IsNull: false}, nil)
 		// The value is incremented so we have to return it.
 		tableDriver.On("EncodeValueByColumnName", "int2", int64(2), []byte(nil)).
 			Return([]byte("2"), nil)
@@ -756,7 +772,7 @@ func TestDynamicParameter_Value(t *testing.T) {
 //
 //	columnDef := MustNewParameterDefinition("column", "some desc").
 //		SetColumnProperties(
-//			models.NewColumnProperties().
+//			config.NewColumnProperties().
 //				SetAllowedColumnTypes("date", "timestamp", "timestamptz"),
 //		)
 //

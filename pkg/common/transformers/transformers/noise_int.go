@@ -18,8 +18,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/greenmaskio/greenmask/pkg/common/interfaces"
-	"github.com/greenmaskio/greenmask/pkg/common/models"
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 	"github.com/greenmaskio/greenmask/pkg/common/transformers/generators/transformers"
 	"github.com/greenmaskio/greenmask/pkg/common/transformers/parameters"
 	"github.com/greenmaskio/greenmask/pkg/common/transformers/utils"
@@ -41,9 +40,9 @@ var NoiseIntTransformerDefinition = utils.NewTransformerDefinition(
 	parameters.MustNewParameterDefinition(
 		"column",
 		"column name",
-	).SetIsColumn(models.NewColumnProperties().
+	).SetIsColumn(core.NewColumnProperties().
 		SetAffected(true).
-		SetAllowedColumnTypeClasses(models.TypeClassInt),
+		SetAllowedColumnTypeClasses(core.TypeClassInt),
 	).SetRequired(true),
 
 	parameters.MustNewParameterDefinition(
@@ -53,8 +52,8 @@ var NoiseIntTransformerDefinition = utils.NewTransformerDefinition(
 		SetDynamicMode(
 			parameters.NewDynamicModeProperties().
 				SetColumnProperties(
-					models.NewColumnProperties().
-						SetAllowedColumnTypeClasses(models.TypeClassInt),
+					core.NewColumnProperties().
+						SetAllowedColumnTypeClasses(core.TypeClassInt),
 				),
 		),
 
@@ -65,8 +64,8 @@ var NoiseIntTransformerDefinition = utils.NewTransformerDefinition(
 		SetDynamicMode(
 			parameters.NewDynamicModeProperties().
 				SetColumnProperties(
-					models.NewColumnProperties().
-						SetAllowedColumnTypeClasses(models.TypeClassInt),
+					core.NewColumnProperties().
+						SetAllowedColumnTypeClasses(core.TypeClassInt),
 				),
 		),
 
@@ -89,13 +88,16 @@ type NoiseIntTransformer struct {
 	maxParam        parameters.Parameterizer
 	minParam        parameters.Parameterizer
 	transform       func(int64) (int64, error)
+	deterministic   bool
 }
+
+var _ core.Transformer = (*NoiseIntTransformer)(nil)
 
 func NewNoiseIntTransformer(
 	ctx context.Context,
-	tableDriver interfaces.TableDriver,
+	tableDriver core.TableDriver,
 	parameters map[string]parameters.Parameterizer,
-) (interfaces.Transformer, error) {
+) (core.Transformer, error) {
 	var maxValueThreshold, minValueThreshold *int64
 
 	maxParam := parameters["max"]
@@ -113,7 +115,7 @@ func NewNoiseIntTransformer(
 		return nil, fmt.Errorf("get \"engine\" param: %w", err)
 	}
 
-	typeSize := column.Size
+	typeSize := column.Type.Size
 	if typeSize == 0 {
 		log.Ctx(ctx).
 			Warn().
@@ -175,6 +177,7 @@ func NewNoiseIntTransformer(
 		transform: func(i int64) (int64, error) {
 			return t.Transform(nil, i)
 		},
+		deterministic: engineIsDeterministic(engine),
 	}, nil
 }
 
@@ -210,7 +213,7 @@ func (t *NoiseIntTransformer) dynamicTransform(v int64) (int64, error) {
 	return res, nil
 }
 
-func (t *NoiseIntTransformer) Transform(_ context.Context, r interfaces.Recorder) error {
+func (t *NoiseIntTransformer) Transform(_ context.Context, r core.Recorder) error {
 	var val int64
 	isNull, err := r.ScanColumnValueByIdx(t.columnIdx, &val)
 	if err != nil {
@@ -233,6 +236,10 @@ func (t *NoiseIntTransformer) Transform(_ context.Context, r interfaces.Recorder
 
 func (t *NoiseIntTransformer) Describe() string {
 	return TransformerNameNoiseInt
+}
+
+func (t *NoiseIntTransformer) IsDeterministic() bool {
+	return t.deterministic
 }
 
 func validateIntTypeAndSetNoiseInt64Limiter(
@@ -301,14 +308,14 @@ func validateInt64AndGetLimits(
 
 	if !isValueInLimits(*requestedMinValue, minValue, maxValue) {
 		validationcollector.FromContext(ctx).
-			Add(models.NewValidationWarning().
-				SetSeverity(models.ValidationSeverityError).
+			Add(core.NewValidationWarning().
+				SetSeverity(core.ValidationSeverityError).
 				AddMeta("AllowedMinValue", minValue).
 				AddMeta("AllowedMaxValue", maxValue).
 				AddMeta("ParameterName", "min").
 				AddMeta("ParameterValue", requestedMinValue).
 				SetMsgf("requested min value is out of int%d range", size))
-		return 0, 0, models.ErrFatalValidationError
+		return 0, 0, core.ErrFatalValidationError
 	}
 
 	return *requestedMinValue, *requestedMaxValue, nil

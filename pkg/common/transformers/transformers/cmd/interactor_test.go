@@ -17,13 +17,13 @@ package cmd
 import (
 	"testing"
 
-	commonmodels "github.com/greenmaskio/greenmask/pkg/common/models"
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestNewProto(t *testing.T) {
-	columns := []commonmodels.Column{
+	columns := []core.Column{
 		{
 			Idx:  0,
 			Name: "first_name",

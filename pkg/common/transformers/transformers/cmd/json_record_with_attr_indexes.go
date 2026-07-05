@@ -19,7 +19,7 @@ import (
 	"errors"
 	"fmt"
 
-	models2 "github.com/greenmaskio/greenmask/pkg/common/models"
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 )
 
 var (
@@ -85,7 +85,7 @@ func (m *JsonRecordWithAttrIndexes[T]) Decode(data []byte) error {
 	return json.Unmarshal(data, &m.receiveRecord)
 }
 
-func (m *JsonRecordWithAttrIndexes[T]) GetColumn(c *models2.Column) (*models2.ColumnRawValue, error) {
+func (m *JsonRecordWithAttrIndexes[T]) GetColumn(c *core.Column) (*core.ColumnRawValue, error) {
 	pos, ok := m.receiveMap[c.Idx]
 	if !ok {
 		return nil, fmt.Errorf("column idx=%d name=%s: %w", c.Idx, c.Name, errUnexpectedColumn)
@@ -94,10 +94,10 @@ func (m *JsonRecordWithAttrIndexes[T]) GetColumn(c *models2.Column) (*models2.Co
 		return nil, fmt.Errorf("position %d is out of range: %w", pos, errReceivedRecordLengthMismatch)
 	}
 	res := m.receiveRecord[pos]
-	return models2.NewColumnRawValue(res.GetData(), res.IsValueNull()), nil
+	return core.NewColumnRawValue(res.GetData(), res.IsValueNull()), nil
 }
 
-func (m *JsonRecordWithAttrIndexes[T]) SetColumn(c *models2.Column, v *models2.ColumnRawValue) error {
+func (m *JsonRecordWithAttrIndexes[T]) SetColumn(c *core.Column, v *core.ColumnRawValue) error {
 	pos, ok := m.transferMap[c.Idx]
 	if !ok {
 		return fmt.Errorf("column with idx=%d is not found", c.Idx)

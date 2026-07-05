@@ -23,7 +23,7 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/suite"
 
-	commonmodels "github.com/greenmaskio/greenmask/pkg/common/models"
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 	"github.com/greenmaskio/greenmask/pkg/common/transformers/registry"
 	"github.com/greenmaskio/greenmask/pkg/common/utils"
 	"github.com/greenmaskio/greenmask/pkg/common/validationcollector"
@@ -81,8 +81,8 @@ func (s *dumpTestSuite) SetupSuite() {
 }
 
 func (s *dumpTestSuite) SetupContext(ctx context.Context, cfg *config.Config) context.Context {
-	ctx = log.Ctx(ctx).With().Str(commonmodels.MetaKeyEngine, "mysql").Logger().WithContext(ctx)
-	vc := validationcollector.NewCollectorWithMeta(commonmodels.MetaKeyEngine, "mysql")
+	ctx = log.Ctx(ctx).With().Str(core.MetaKeyEngine, "mysql").Logger().WithContext(ctx)
+	vc := validationcollector.NewCollectorWithMeta(core.MetaKeyEngine, "mysql")
 	ctx = validationcollector.WithCollector(ctx, vc)
 	return ctx
 }
@@ -95,8 +95,8 @@ func (s *dumpTestSuite) SetupInfrastructure(cfg *config.Config) error {
 }
 
 func (s *dumpTestSuite) setupInfrastructure(ctx context.Context) context.Context {
-	ctx = log.Ctx(ctx).With().Str(commonmodels.MetaKeyEngine, "mysql").Logger().WithContext(ctx)
-	vc := validationcollector.NewCollectorWithMeta(commonmodels.MetaKeyEngine, "mysql")
+	ctx = log.Ctx(ctx).With().Str(core.MetaKeyEngine, "mysql").Logger().WithContext(ctx)
+	vc := validationcollector.NewCollectorWithMeta(core.MetaKeyEngine, "mysql")
 	ctx = validationcollector.WithCollector(ctx, vc)
 	s.Require().NoError(utils.SetDefaultContextLogger("debug", "text"))
 	return ctx
@@ -128,8 +128,7 @@ func (s *dumpTestSuite) getBaseConfig(ctx context.Context) *config.Config {
 	cfg.Dump.Options.ExcludeTableDefinition = nil
 	cfg.Dump.MysqlConfig.VendorOptions = nil
 	// Disable compression so test file expectations don't need .gz suffixes.
-	cfg.Dump.Options.Compress = false
-	cfg.Dump.Options.Pgzip = false
+	cfg.Dump.Options.Compression = core.CompressionNone
 	return cfg
 }
 

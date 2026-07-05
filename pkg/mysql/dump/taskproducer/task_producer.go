@@ -21,10 +21,9 @@ import (
 
 	"github.com/rs/zerolog/log"
 
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 	dumpcontext "github.com/greenmaskio/greenmask/pkg/common/dump/context"
 	"github.com/greenmaskio/greenmask/pkg/common/dump/dumpers"
-	"github.com/greenmaskio/greenmask/pkg/common/interfaces"
-	"github.com/greenmaskio/greenmask/pkg/common/models"
 	"github.com/greenmaskio/greenmask/pkg/common/pipeline"
 	"github.com/greenmaskio/greenmask/pkg/common/rawrecord"
 	"github.com/greenmaskio/greenmask/pkg/common/record"
@@ -32,57 +31,57 @@ import (
 	"github.com/greenmaskio/greenmask/pkg/common/tabledriver"
 	"github.com/greenmaskio/greenmask/pkg/common/transformers/registry"
 	"github.com/greenmaskio/greenmask/pkg/mysql/dbmsdriver"
-	dumpstreamers "github.com/greenmaskio/greenmask/pkg/mysql/dump/streamers"
+	tablestremers "github.com/greenmaskio/greenmask/pkg/mysql/dump/table"
 	mysqlmodels "github.com/greenmaskio/greenmask/pkg/mysql/models"
 	"github.com/greenmaskio/greenmask/pkg/mysql/pool"
 )
 
 func newMysqlTableDriver(
 	ctx context.Context,
-	table models.Table,
+	table core.Table,
 	columnsTypeOverride map[string]string,
-) (interfaces.TableDriver, error) {
+) (core.TableDriver, error) {
 	return tabledriver.New(ctx, dbmsdriver.New(), &table, columnsTypeOverride)
 }
 
-type Option func(*TaskProducer) error
+type Option func(*DumpObjectPoducer) error
 
-type TaskProducer struct {
-	introspector          interfaces.Introspector
-	tableConfigs          []models.TableConfig
+type DumpObjectPoducer struct {
+	introspector          core.Introspector
+	tableConfigs          []core.TableConfig
 	registry              *registry.TransformerRegistry
 	connConfig            mysqlmodels.ConnConfig
-	st                    interfaces.Storager
-	txPool                *pool.ConsistentTxPool
+	st                    core.Storager
+	txPool                *pool.ConsistentDumpTxPool
 	subset                subset.Subset
-	filter                models.TaskProducerFilter
+	filter                core.TaskProducerFilter
 	saveOriginal          bool
 	rowLimit              int64
 	compressionEnabled    bool
 	compressionPgzip      bool
 	transformedTablesOnly bool
-	dumpFormat            models.DumpFormat
+	dumpFormat            core.DumpFormat
 	hexBlob               bool
 }
 
 func WithFilter(
-	filter models.TaskProducerFilter,
-) func(*TaskProducer) error {
-	return func(tp *TaskProducer) error {
+	filter core.TaskProducerFilter,
+) func(*DumpObjectPoducer) error {
+	return func(tp *DumpObjectPoducer) error {
 		tp.filter = filter
 		return nil
 	}
 }
 
 func WithSaveOriginalData() Option {
-	return func(tp *TaskProducer) error {
+	return func(tp *DumpObjectPoducer) error {
 		tp.saveOriginal = true
 		return nil
 	}
 }
 
 func WithRowLimit(limit int64) Option {
-	return func(tp *TaskProducer) error {
+	return func(tp *DumpObjectPoducer) error {
 		if limit < 0 {
 			return fmt.Errorf("row limit cannot be negative: %d", limit)
 		}
@@ -92,28 +91,28 @@ func WithRowLimit(limit int64) Option {
 }
 
 func WithCompressionEnabled() Option {
-	return func(tp *TaskProducer) error {
+	return func(tp *DumpObjectPoducer) error {
 		tp.compressionEnabled = true
 		return nil
 	}
 }
 
 func WithCompressionPgzip() Option {
-	return func(tp *TaskProducer) error {
+	return func(tp *DumpObjectPoducer) error {
 		tp.compressionPgzip = true
 		return nil
 	}
 }
 
 func WithTransformedTablesOnly() Option {
-	return func(tp *TaskProducer) error {
+	return func(tp *DumpObjectPoducer) error {
 		tp.transformedTablesOnly = true
 		return nil
 	}
 }
 
-func WithDumpFormat(format models.DumpFormat) Option {
-	return func(tp *TaskProducer) error {
+func WithDumpFormat(format core.DumpFormat) Option {
+	return func(tp *DumpObjectPoducer) error {
 		if format != "" {
 			tp.dumpFormat = format
 		}
@@ -122,13 +121,13 @@ func WithDumpFormat(format models.DumpFormat) Option {
 }
 
 func WithHexBlob() Option {
-	return func(tp *TaskProducer) error {
+	return func(tp *DumpObjectPoducer) error {
 		tp.hexBlob = true
 		return nil
 	}
 }
 
-func enrichWithSubsetQueries(tables []models.Table, tableConfigs []models.TableConfig) []models.Table {
+func enrichWithSubsetQueries(tables []core.Table, tableConfigs []core.TableConfig) []core.Table {
 	for _, tc := range tableConfigs {
 		if len(tc.SubsetConds) > 0 {
 			for i := range tables {
@@ -143,20 +142,20 @@ func enrichWithSubsetQueries(tables []models.Table, tableConfigs []models.TableC
 }
 
 func New(
-	i interfaces.Introspector,
-	tableConfigs []models.TableConfig,
+	i core.Introspector,
+	tableConfigs []core.TableConfig,
 	registry *registry.TransformerRegistry,
 	connConfig mysqlmodels.ConnConfig,
-	st interfaces.Storager,
-	txPool *pool.ConsistentTxPool,
+	st core.Storager,
+	txPool *pool.ConsistentDumpTxPool,
 	opts ...Option,
-) (*TaskProducer, error) {
+) (*DumpObjectPoducer, error) {
 	tables := enrichWithSubsetQueries(i.GetCommonTables(), tableConfigs)
 	s, err := subset.NewSubset(tables, subset.DialectMySQL)
 	if err != nil {
 		return nil, fmt.Errorf("build subset queries: %w", err)
 	}
-	res := &TaskProducer{
+	res := &DumpObjectPoducer{
 		introspector: i,
 		tableConfigs: tableConfigs,
 		registry:     registry,
@@ -173,10 +172,10 @@ func New(
 	return res, nil
 }
 
-func (tp *TaskProducer) getTableContext(ctx context.Context) ([]dumpcontext.TableContext, error) {
+func (tp *DumpObjectPoducer) getTableContext(ctx context.Context) ([]dumpcontext.TableDumpContextPayload, error) {
 	tables := tp.introspector.GetCommonTables()
 	queries := tp.subset.GetTableQueries()
-	allowedTables := make([]models.Table, 0, len(tables))
+	allowedTables := make([]core.Table, 0, len(tables))
 	allowedTableQueries := make([]string, 0, len(tables))
 	for i := range tables {
 		if tp.filter.IsAllowed(tables[i]) {
@@ -198,18 +197,18 @@ func (tp *TaskProducer) getTableContext(ctx context.Context) ([]dumpcontext.Tabl
 	return tableRuntimes, nil
 }
 
-func (tp *TaskProducer) initTableDumper(
-	tableContext dumpcontext.TableContext, objectID models.TaskID,
-) (interfaces.Dumper, error) {
-	tr := dumpstreamers.NewTableDataReader(tableContext.Table, tp.connConfig, tableContext.Query)
+func (tp *DumpObjectPoducer) initTableDumper(
+	tableContext dumpcontext.TableDumpContextPayload, objectID core.TaskID,
+) (core.ObjectDumper, error) {
+	tr := tablestremers.NewTableDataReader(tableContext.Table, tp.connConfig, tableContext.Query)
 	tr.SetTxPool(tp.txPool)
-	tw := dumpstreamers.NewTableDataWriter(*tableContext.Table, tp.st,
-		dumpstreamers.WithCompression(tp.compressionEnabled),
-		dumpstreamers.WithPgzip(tp.compressionPgzip),
-		dumpstreamers.WithFormat(tp.dumpFormat),
-		dumpstreamers.WithHexBlob(tp.hexBlob),
+	tw := tablestremers.NewTableDataWriter(*tableContext.Table, tp.st,
+		tablestremers.WithCompression(tp.compressionEnabled),
+		tablestremers.WithPgzip(tp.compressionPgzip),
+		tablestremers.WithFormat(tp.dumpFormat),
+		tablestremers.WithHexBlob(tp.hexBlob),
 	)
-	rawRecord := rawrecord.NewRawRecord(len(tableContext.Table.Columns), dbmsdriver.NullValueSeq)
+	rawRecord := rawrecord.NewRawRecord(len(tableContext.Table.Columns), core.NullValueSeq)
 	r := record.NewRecord(rawRecord, tableContext.TableDriver)
 	p := pipeline.NewTransformationPipeline(&tableContext)
 	var opts []dumpers.TableDumperOption
@@ -226,32 +225,32 @@ func (tp *TaskProducer) initTableDumper(
 	return dumper, nil
 }
 
-func (tp *TaskProducer) initTableRawDumper(
-	tableContext dumpcontext.TableContext, objectID models.TaskID,
-) interfaces.Dumper {
-	tr := dumpstreamers.NewTableDataReader(tableContext.Table, tp.connConfig, tableContext.Query)
+func (tp *DumpObjectPoducer) initTableRawDumper(
+	tableContext dumpcontext.TableDumpContextPayload, objectID core.TaskID,
+) core.ObjectDumper {
+	tr := tablestremers.NewTableDataReader(tableContext.Table, tp.connConfig, tableContext.Query)
 	tr.SetTxPool(tp.txPool)
-	tw := dumpstreamers.NewTableDataWriter(*tableContext.Table, tp.st,
-		dumpstreamers.WithCompression(tp.compressionEnabled),
-		dumpstreamers.WithPgzip(tp.compressionPgzip),
-		dumpstreamers.WithFormat(tp.dumpFormat),
-		dumpstreamers.WithHexBlob(tp.hexBlob),
+	tw := tablestremers.NewTableDataWriter(*tableContext.Table, tp.st,
+		tablestremers.WithCompression(tp.compressionEnabled),
+		tablestremers.WithPgzip(tp.compressionPgzip),
+		tablestremers.WithFormat(tp.dumpFormat),
+		tablestremers.WithHexBlob(tp.hexBlob),
 	)
 	return dumpers.NewTableRawDumper(objectID, tr, tw, tableContext.Table)
 }
 
-func (tp *TaskProducer) Produce(
+func (tp *DumpObjectPoducer) Produce(
 	ctx context.Context,
-) ([]interfaces.Dumper, models.RestorationContext, error) {
-	var taskID models.TaskID
+) ([]core.ObjectDumper, core.RestorationContext, error) {
+	var taskID core.TaskID
 	tablesContext, err := tp.getTableContext(ctx)
 	if err != nil {
-		return nil, models.RestorationContext{}, fmt.Errorf("get table context: %w", err)
+		return nil, core.RestorationContext{}, fmt.Errorf("get table context: %w", err)
 	}
 
-	tableID2TaskID := make(map[models.ObjectID]models.TaskID)
-	tableIDAffectedColumns := make(map[models.ObjectID][]int)
-	res := make([]interfaces.Dumper, 0, len(tablesContext))
+	tableID2TaskID := make(map[core.ObjectID]core.TaskID)
+	tableIDAffectedColumns := make(map[core.ObjectID][]int)
+	res := make([]core.ObjectDumper, 0, len(tablesContext))
 	for i := range tablesContext {
 		if !tp.filter.IsDataAllowed(*tablesContext[i].Table) || !tablesContext[i].Table.NeedDumpData {
 			continue
@@ -264,34 +263,34 @@ func (tp *TaskProducer) Produce(
 		if tablesContext[i].HasTransformer() {
 			dumper, err := tp.initTableDumper(tablesContext[i], taskID)
 			if err != nil {
-				return nil, models.RestorationContext{}, fmt.Errorf("init table dumper: %w", err)
+				return nil, core.RestorationContext{}, fmt.Errorf("init table dumper: %w", err)
 			}
 			res = append(res, dumper)
 		} else {
 			res = append(res, tp.initTableRawDumper(tablesContext[i], taskID))
 		}
-		tableID2TaskID[models.ObjectID(tablesContext[i].Table.ID)] = taskID
+		tableID2TaskID[core.ObjectID(tablesContext[i].Table.ID)] = taskID
 		affectedColumns := tablesContext[i].GetAffectedColumns()
-		tableIDAffectedColumns[models.ObjectID(tablesContext[i].Table.ID)] = affectedColumns
+		tableIDAffectedColumns[core.ObjectID(tablesContext[i].Table.ID)] = affectedColumns
 	}
 	// TODO: Add scoring for tables so they have to be sorted by size.
 	restorationContext, err := tp.buildRestorationContext(ctx, tableID2TaskID, tableIDAffectedColumns)
 	if err != nil {
-		return nil, models.RestorationContext{}, fmt.Errorf("get topologic order: %w", err)
+		return nil, core.RestorationContext{}, fmt.Errorf("get topologic order: %w", err)
 	}
 
 	return res, restorationContext, nil
 }
 
-func (tp *TaskProducer) getDependsOn(
+func (tp *DumpObjectPoducer) getDependsOn(
 	ctx context.Context,
-	tableID2TaskID map[models.ObjectID]models.TaskID,
-	tableID models.ObjectID,
-) []models.TaskID {
+	tableID2TaskID map[core.ObjectID]core.TaskID,
+	tableID core.ObjectID,
+) []core.TaskID {
 	dependencies := tp.subset.GetTableGraph().Graph[tableID]
-	res := make([]models.TaskID, 0, len(dependencies))
+	res := make([]core.TaskID, 0, len(dependencies))
 	for _, dependency := range dependencies {
-		dependentTableID, ok := tableID2TaskID[models.ObjectID(dependency.To().TableID())]
+		dependentTableID, ok := tableID2TaskID[core.ObjectID(dependency.To().TableID())]
 		if !ok {
 			// TODO: revise it later, maybe we should return an error here
 			log.Ctx(ctx).Debug().
@@ -305,25 +304,25 @@ func (tp *TaskProducer) getDependsOn(
 	return res
 }
 
-func (tp *TaskProducer) buildRestorationContext(
+func (tp *DumpObjectPoducer) buildRestorationContext(
 	ctx context.Context,
-	tableID2TaskID map[models.ObjectID]models.TaskID,
-	tableIDToAffectedColumn map[models.ObjectID][]int,
-) (models.RestorationContext, error) {
+	tableID2TaskID map[core.ObjectID]core.TaskID,
+	tableIDToAffectedColumn map[core.ObjectID][]int,
+) (core.RestorationContext, error) {
 	hasTopologicalOrder := true
 	order, err := tp.subset.GetTopologicalOrder()
 	if err != nil {
-		if errors.Is(err, models.ErrTableGraphHasCycles) {
+		if errors.Is(err, core.ErrTableGraphHasCycles) {
 			hasTopologicalOrder = false
 		} else {
-			return models.RestorationContext{}, fmt.Errorf("get topological order: %w", err)
+			return core.RestorationContext{}, fmt.Errorf("get topological order: %w", err)
 		}
 	}
 
-	taskDependencies := make(map[models.TaskID][]models.TaskID)
-	restorationOrder := make([]models.TaskID, len(order))
+	taskDependencies := make(map[core.TaskID][]core.TaskID)
+	restorationOrder := make([]core.TaskID, len(order))
 	for i, tableID := range order {
-		taskID, ok := tableID2TaskID[models.ObjectID(tableID)]
+		taskID, ok := tableID2TaskID[core.ObjectID(tableID)]
 		if !ok {
 			// TODO: revise it later, maybe we should return an error here
 			log.Ctx(ctx).Debug().
@@ -333,9 +332,9 @@ func (tp *TaskProducer) buildRestorationContext(
 			continue
 		}
 		restorationOrder[i] = taskID
-		taskDependencies[taskID] = tp.getDependsOn(ctx, tableID2TaskID, models.ObjectID(tableID))
+		taskDependencies[taskID] = tp.getDependsOn(ctx, tableID2TaskID, core.ObjectID(tableID))
 	}
-	return models.RestorationContext{
+	return core.RestorationContext{
 		HasTopologicalOrder:      hasTopologicalOrder,
 		TaskDependencies:         taskDependencies,
 		RestorationOrder:         restorationOrder,

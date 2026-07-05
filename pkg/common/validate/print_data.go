@@ -8,8 +8,7 @@ import (
 	"io"
 	"slices"
 
-	interfaces2 "github.com/greenmaskio/greenmask/pkg/common/interfaces"
-	"github.com/greenmaskio/greenmask/pkg/common/models"
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 	"github.com/greenmaskio/greenmask/pkg/config"
 	"github.com/greenmaskio/greenmask/pkg/csv"
 	"github.com/rs/zerolog/log"
@@ -26,7 +25,7 @@ const (
 
 type Printer interface {
 	Marshall() ([]byte, error)
-	Append(original, transformed interfaces2.RowDriver) error
+	Append(original, transformed core.RowDriver) error
 }
 
 func (f Format) Validate() error {
@@ -34,27 +33,27 @@ func (f Format) Validate() error {
 	case FormatNameJson, FormatNameText:
 		return nil
 	}
-	return fmt.Errorf("validate format '%s': %w", f, models.ErrValueValidationFailed)
+	return fmt.Errorf("validate format '%s': %w", f, core.ErrValueValidationFailed)
 }
 
-func getMetadata(ctx context.Context, st interfaces2.Storager) (models.Metadata, error) {
+func getMetadata(ctx context.Context, st core.Storager) (core.Metadata, error) {
 	metaObj, err := st.GetObject(ctx, MetadataJsonFileName)
 	if err != nil {
-		return models.Metadata{}, fmt.Errorf("get metadata object: %w", err)
+		return core.Metadata{}, fmt.Errorf("get metadata object: %w", err)
 	}
 	defer func() {
 		if err := metaObj.Close(); err != nil {
 			log.Ctx(ctx).Warn().Err(err).Msg("error closing metadata object")
 		}
 	}()
-	var metadata models.Metadata
+	var metadata core.Metadata
 	if err := json.NewDecoder(metaObj).Decode(&metadata); err != nil {
-		return models.Metadata{}, fmt.Errorf("decode metadata json: %w", err)
+		return core.Metadata{}, fmt.Errorf("decode metadata json: %w", err)
 	}
 	return metadata, nil
 }
 
-func readOneRow(r *csv.Reader) (interfaces2.RowDriver, error) {
+func readOneRow(r *csv.Reader) (core.RowDriver, error) {
 	rec, err := r.Read()
 	if err != nil {
 		return nil, err
@@ -68,7 +67,7 @@ func readOneRow(r *csv.Reader) (interfaces2.RowDriver, error) {
 
 func readTable(
 	ctx context.Context,
-	st interfaces2.Storager,
+	st core.Storager,
 	fileName string,
 	withDiff bool,
 	printer Printer,
@@ -105,25 +104,25 @@ func readTable(
 
 func printTable(
 	ctx context.Context,
-	st interfaces2.Storager,
+	st core.Storager,
 	withDiff bool,
 	transformedOnly bool,
 	format Format,
 	tableFormat TableFormat,
-	item models.RestorationItem,
-	meta models.Metadata,
+	item core.RestorationItem,
+	meta core.Metadata,
 ) error {
-	if item.ObjectKind != models.ObjectKindTable {
+	if item.ObjectKind != core.ObjectKindTable {
 		return fmt.Errorf(
 			"print table: unsupported object kind '%s': %w", item.ObjectKind,
-			models.ErrValueValidationFailed,
+			core.ErrValueValidationFailed,
 		)
 	}
-	var table models.Table
+	var table core.Table
 	if err := json.Unmarshal(item.ObjectDefinition, &table); err != nil {
 		return fmt.Errorf("unmarshal table data: %w", err)
 	}
-	affectedColumns, ok := meta.DataDump.DumpStat.RestorationContext.TableIDToAffectedColumns[models.ObjectID(table.ID)]
+	affectedColumns, ok := meta.DataDump.DumpStat.RestorationContext.TableIDToAffectedColumns[core.ObjectID(table.ID)]
 	if !ok {
 		affectedColumns = []int{}
 	}
@@ -134,7 +133,7 @@ func printTable(
 	case FormatNameText:
 		printer = NewTextDocument(table, affectedColumns, withDiff, transformedOnly, tableFormat)
 	default:
-		return fmt.Errorf("unsupported format '%s': %w", format, models.ErrValueValidationFailed)
+		return fmt.Errorf("unsupported format '%s': %w", format, core.ErrValueValidationFailed)
 	}
 	if err := readTable(ctx, st, item.Filename, withDiff, printer); err != nil {
 		return fmt.Errorf("read table data: %w", err)
@@ -149,7 +148,7 @@ func printTable(
 
 func PrintData(
 	ctx context.Context,
-	st interfaces2.Storager,
+	st core.Storager,
 	cfg *config.Config,
 ) error {
 	format := Format(cfg.Validate.Format)
@@ -167,16 +166,16 @@ func PrintData(
 	if err != nil {
 		return fmt.Errorf("get metadata: %w", err)
 	}
-	items := make([]models.RestorationItem, 0, len(meta.DataDump.DumpStat.RestorationItems))
+	items := make([]core.RestorationItem, 0, len(meta.DataDump.DumpStat.RestorationItems))
 	for _, item := range meta.DataDump.DumpStat.RestorationItems {
 		items = append(items, item)
 	}
-	slices.SortFunc(items, func(a, b models.RestorationItem) int {
+	slices.SortFunc(items, func(a, b core.RestorationItem) int {
 		return cmp.Compare(a.ObjectID, b.ObjectID)
 	})
 
 	for _, item := range items {
-		if item.ObjectKind != models.ObjectKindTable {
+		if item.ObjectKind != core.ObjectKindTable {
 			continue
 		}
 		if err := printTable(

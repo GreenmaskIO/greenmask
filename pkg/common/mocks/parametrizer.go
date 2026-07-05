@@ -17,7 +17,7 @@ package mocks
 import (
 	"github.com/stretchr/testify/mock"
 
-	commonmodels "github.com/greenmaskio/greenmask/pkg/common/models"
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 	commonparameters "github.com/greenmaskio/greenmask/pkg/common/transformers/parameters"
 )
 
@@ -39,9 +39,9 @@ func (p *ParametrizerMock) Value() (value any, err error) {
 	return args.Get(0), args.Error(1)
 }
 
-func (p *ParametrizerMock) RawValue() (rawValue commonmodels.ParamsValue, err error) {
+func (p *ParametrizerMock) RawValue() (rawValue core.ParamsValue, err error) {
 	args := p.Called()
-	return args.Get(0).(commonmodels.ParamsValue), args.Error(1)
+	return args.Get(0).(core.ParamsValue), args.Error(1)
 }
 
 func (p *ParametrizerMock) Scan(dest any) (err error) {

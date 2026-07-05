@@ -21,8 +21,7 @@ import (
 	"slices"
 	"text/template"
 
-	"github.com/greenmaskio/greenmask/pkg/common/interfaces"
-	"github.com/greenmaskio/greenmask/pkg/common/models"
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 	template2 "github.com/greenmaskio/greenmask/pkg/common/transformers/template"
 	"github.com/greenmaskio/greenmask/pkg/common/utils"
 	"github.com/greenmaskio/greenmask/pkg/common/validationcollector"
@@ -36,13 +35,13 @@ var (
 
 type DynamicParameter struct {
 	// DynamicValue - The dynamic value settings that received from config.
-	DynamicValue *models.DynamicParamValue
+	DynamicValue *core.DynamicParamValue
 	// definition - the parameter definition
 	definition *ParameterDefinition
 	// tableDriver - table driver.
-	tableDriver interfaces.TableDriver
+	tableDriver core.TableDriver
 	// record - Record object for getting the value from record dynamically
-	record interfaces.Recorder
+	record core.Recorder
 	// tmpl - parsed and compiled template for casting the value from original to expected
 	tmpl *template.Template
 	// linkedColumnParameter - column-like parameter that has been linked during parsing procedure. Warning, do not
@@ -51,22 +50,22 @@ type DynamicParameter struct {
 	// columnIdx - column number in the tuple
 	columnIdx int
 	buf       *bytes.Buffer
-	column    *models.Column
+	column    *core.Column
 	//defaultValueFromDynamicParamValue any
 	//defaultValueFromDefinition        any
 
 	hasDefaultValue     bool
 	defaultValueScanned any
 	defaultValueGot     any
-	rawDefaultValue     models.ParamsValue
+	rawDefaultValue     core.ParamsValue
 	tmplCtx             *DynamicParameterContext
 	castToFunc          template2.TypeCastFunc
 	// columnCanonicalTypeName - canonical type name of the column that is used for dynamic parameter.
 	columnCanonicalTypeName      string
-	columnCanonicalTypeClassName models.TypeClass
+	columnCanonicalTypeClassName core.TypeClass
 }
 
-func NewDynamicParameter(def *ParameterDefinition, driver interfaces.TableDriver) *DynamicParameter {
+func NewDynamicParameter(def *ParameterDefinition, driver core.TableDriver) *DynamicParameter {
 	return &DynamicParameter{
 		definition:  def,
 		tableDriver: driver,
@@ -103,7 +102,7 @@ func (dp *DynamicParameter) GetDefinition() *ParameterDefinition {
 	return dp.definition
 }
 
-func (dp *DynamicParameter) SetRecord(r interfaces.Recorder) {
+func (dp *DynamicParameter) SetRecord(r core.Recorder) {
 	dp.record = r
 	dp.tmplCtx.setRecord(r)
 }
@@ -111,7 +110,7 @@ func (dp *DynamicParameter) SetRecord(r interfaces.Recorder) {
 func (dp *DynamicParameter) Init(
 	ctx context.Context,
 	columnParameters map[string]*StaticParameter,
-	dynamicValue models.DynamicParamValue,
+	dynamicValue core.DynamicParamValue,
 ) error {
 	dp.DynamicValue = &dynamicValue
 
@@ -148,14 +147,14 @@ func (dp *DynamicParameter) Init(
 
 func (dp *DynamicParameter) validate(
 	ctx context.Context,
-	v *models.DynamicParamValue,
+	v *core.DynamicParamValue,
 ) error {
 	if dp.definition.DynamicModeProperties == nil {
 		validationcollector.FromContext(ctx).
-			Add(models.NewValidationWarning().
-				SetSeverity(models.ValidationSeverityError).
+			Add(core.NewValidationWarning().
+				SetSeverity(core.ValidationSeverityError).
 				SetMsg("parameter does not support dynamic mode"))
-		return models.ErrFatalValidationError
+		return core.ErrFatalValidationError
 	}
 
 	if v == nil {
@@ -164,19 +163,19 @@ func (dp *DynamicParameter) validate(
 
 	if dp.DynamicValue.Column == "" {
 		validationcollector.FromContext(ctx).
-			Add(models.NewValidationWarning().
-				SetSeverity(models.ValidationSeverityError).
+			Add(core.NewValidationWarning().
+				SetSeverity(core.ValidationSeverityError).
 				SetMsg("received empty \"column\" parameter").
 				AddMeta("DynamicParameterSetting", "column"))
-		return models.ErrFatalValidationError
+		return core.ErrFatalValidationError
 	}
 
 	if dp.definition.IsColumn {
 		validationcollector.FromContext(ctx).
-			Add(models.NewValidationWarning().
-				SetSeverity(models.ValidationSeverityError).
+			Add(core.NewValidationWarning().
+				SetSeverity(core.ValidationSeverityError).
 				SetMsg("column parameter cannot work in dynamic mode"))
-		return models.ErrFatalValidationError
+		return core.ErrFatalValidationError
 	}
 	return nil
 }
@@ -201,12 +200,12 @@ func (dp *DynamicParameter) renderTemplate(ctx context.Context) error {
 		Parse(dp.DynamicValue.Template)
 	if err != nil {
 		validationcollector.FromContext(ctx).
-			Add(models.NewValidationWarning().
-				SetSeverity(models.ValidationSeverityError).
+			Add(core.NewValidationWarning().
+				SetSeverity(core.ValidationSeverityError).
 				SetMsg("unable to render cast template").
 				SetError(err).
 				AddMeta("DynamicParameterSetting", "cast_template"))
-		return models.ErrFatalValidationError
+		return core.ErrFatalValidationError
 	}
 	return nil
 }
@@ -215,13 +214,13 @@ func (dp *DynamicParameter) initDynamicParameterContext(ctx context.Context) err
 	column, err := dp.tableDriver.GetColumnByName(dp.DynamicValue.Column)
 	if err != nil {
 		validationcollector.FromContext(ctx).
-			Add(models.NewValidationWarning().
-				SetSeverity(models.ValidationSeverityError).
+			Add(core.NewValidationWarning().
+				SetSeverity(core.ValidationSeverityError).
 				SetError(err).
 				SetMsg("error getting column by name").
 				AddMeta("DynamicParameterSetting", "column").
 				AddMeta("ColumnName", dp.definition.Name))
-		return models.ErrFatalValidationError
+		return core.ErrFatalValidationError
 	}
 	dp.column = column
 	dp.columnIdx = column.Idx
@@ -275,24 +274,24 @@ func (dp *DynamicParameter) initLinkColumnParameter(
 	}
 	dp.tmplCtx.setLinkedColumn(dp.linkedColumnParameter.Column)
 
-	dp.columnCanonicalTypeName, err = dp.tableDriver.GetCanonicalTypeName(dp.column.TypeName, dp.column.TypeOID)
+	dp.columnCanonicalTypeName, err = dp.tableDriver.GetCanonicalTypeName(dp.column.Type.Name, dp.column.Type.ID)
 	if err != nil {
 		return fmt.Errorf("get input canonical type name: %w", err)
 	}
-	dp.columnCanonicalTypeClassName, err = dp.tableDriver.GetCanonicalTypeClassName(dp.column.TypeName, dp.column.TypeOID)
+	dp.columnCanonicalTypeClassName, err = dp.tableDriver.GetCanonicalTypeClassName(dp.column.Type.Name, dp.column.Type.ID)
 	if err != nil {
 		return fmt.Errorf("get input canonical type class name: %w", err)
 	}
 	linkedParameterColumnType, err := dp.tableDriver.GetCanonicalTypeName(
-		dp.linkedColumnParameter.Column.TypeName,
-		dp.linkedColumnParameter.Column.TypeOID,
+		dp.linkedColumnParameter.Column.Type.Name,
+		dp.linkedColumnParameter.Column.Type.ID,
 	)
 	if err != nil {
 		return fmt.Errorf("get output canonical type name: %w", err)
 	}
 	linkedParameterColumnTypeClass, err := dp.tableDriver.GetCanonicalTypeClassName(
-		dp.linkedColumnParameter.Column.TypeName,
-		dp.linkedColumnParameter.Column.TypeOID,
+		dp.linkedColumnParameter.Column.Type.Name,
+		dp.linkedColumnParameter.Column.Type.ID,
 	)
 	if err != nil {
 		return fmt.Errorf("get output canonical type class name: %w", err)
@@ -311,51 +310,51 @@ func (dp *DynamicParameter) initLinkColumnParameter(
 		vc := validationcollector.FromContext(ctx).
 			WithMeta(map[string]any{
 				"DynamicParameterAttribute":  "column",
-				"DynamicParameterColumnType": dp.column.TypeName,
+				"DynamicParameterColumnType": dp.column.Type.Name,
 				"DynamicParameterColumnName": dp.column.Name,
 				"LinkedParameterName":        dp.definition.LinkColumnParameter,
 				"LinkedColumnName":           dp.linkedColumnParameter.Column.Name,
-				"LinkedColumnType":           dp.linkedColumnParameter.Column.TypeName,
+				"LinkedColumnType":           dp.linkedColumnParameter.Column.Type.Name,
 			})
 
 		// If types are different, then we must check compatibility.
 		properties := dp.linkedColumnParameter.definition.ColumnProperties
 		if properties != nil && !properties.IsColumnTypeAllowed(dp.columnCanonicalTypeName) {
-			vc.Add(models.NewValidationWarning().
-				SetSeverity(models.ValidationSeverityError).
+			vc.Add(core.NewValidationWarning().
+				SetSeverity(core.ValidationSeverityError).
 				AddMeta("AllowedTypes", properties.AllowedTypes).
 				AddMeta("Hint", "you can use \"cast_template\" for casting value to supported type").
 				AddMeta("Reason", "type is not allowed").
 				SetMsg("linked parameter and dynamic parameter column name has " +
 					"different types and linked one is not allowed"))
-			return models.ErrFatalValidationError
+			return core.ErrFatalValidationError
 		}
 		if properties != nil && !properties.IsColumnTypeClassAllowed(dp.columnCanonicalTypeClassName) {
-			vc.Add(models.NewValidationWarning().
+			vc.Add(core.NewValidationWarning().
 				AddMeta("AllowedTypeClasses", properties.AllowedTypeClasses).
 				AddMeta("Hint", "you can use \"cast_template\" for casting value to supported type").
 				AddMeta("Reason", "type class is not allowed").
 				SetMsg("linked parameter and dynamic parameter column name has " +
 					"different type classes and linked one is not allowed"))
-			return models.ErrFatalValidationError
+			return core.ErrFatalValidationError
 		}
 		if properties != nil && properties.IsColumnTypeDenied(dp.columnCanonicalTypeName) {
-			vc.Add(models.NewValidationWarning().
+			vc.Add(core.NewValidationWarning().
 				AddMeta("DeniedTypes", properties.DeniedTypes).
 				AddMeta("Hint", "you can use \"cast_template\" for casting value to supported type").
 				AddMeta("Reason", "type is denied").
 				SetMsg("linked parameter and dynamic parameter column name has " +
 					"different types and linked one is not allowed"))
-			return models.ErrFatalValidationError
+			return core.ErrFatalValidationError
 		}
 		if properties != nil && properties.IsColumnTypeClassDenied(dp.columnCanonicalTypeClassName) {
-			vc.Add(models.NewValidationWarning().
+			vc.Add(core.NewValidationWarning().
 				AddMeta("DeniedTypes", properties.DeniedTypeClasses).
 				AddMeta("Reason", "type class is denied").
 				AddMeta("Hint", "you can use \"cast_template\" for casting value to supported type").
 				SetMsg("linked parameter and dynamic parameter column name has " +
 					"different column class and linked one is not allowed"))
-			return models.ErrFatalValidationError
+			return core.ErrFatalValidationError
 		}
 	}
 
@@ -450,7 +449,7 @@ func (dp *DynamicParameter) Value() (value any, err error) {
 
 }
 
-func (dp *DynamicParameter) RawValue() (models.ParamsValue, error) {
+func (dp *DynamicParameter) RawValue() (core.ParamsValue, error) {
 	if dp.record == nil {
 		return nil, errCheckTransformerImplementation
 	}

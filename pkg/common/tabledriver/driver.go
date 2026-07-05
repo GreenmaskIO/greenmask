@@ -19,29 +19,31 @@ import (
 	"errors"
 	"fmt"
 
-	commonininterfaces "github.com/greenmaskio/greenmask/pkg/common/interfaces"
-	"github.com/greenmaskio/greenmask/pkg/common/models"
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 	"github.com/greenmaskio/greenmask/pkg/common/validationcollector"
 )
 
 var (
-	_ commonininterfaces.TableDriver = (*TableDriver)(nil)
+	_ core.TableDriver = (*TableDriver)(nil)
+	// Per-leaf compile-time proofs: the generic TableDriver satisfies each
+	// column-level leaf TableDriver composes (the type-level leaves come from
+	// the embedded core.DBMSDriver).
+	_ core.ColumnCodec      = (*TableDriver)(nil)
+	_ core.NamedColumnCodec = (*TableDriver)(nil)
+	_ core.TableSchema      = (*TableDriver)(nil)
 )
 
 var (
-	ErrorColumnTypeIsNotSupported      = errors.New("encode-decode operation is not supported for column")
-	ErrorColumnIndexOutOfRange         = errors.New("index out ouf range")
-	ErrorUnknownColumnName             = errors.New("unknown column")
-	ErrorCannotMatchColumnIdxToTypeOID = errors.New("cannot match column index to type OID")
+	ErrorColumnTypeIsNotSupported = errors.New("encode-decode operation is not supported for column")
+	ErrorColumnIndexOutOfRange    = errors.New("index out ouf range")
+	ErrorUnknownColumnName        = errors.New("unknown column")
 )
 
 type TableDriver struct {
-	commonininterfaces.DBMSDriver
-	table *models.Table
+	core.DBMSDriver
+	table *core.Table
 	// columnMap - map column name to Column object
-	columnMap map[string]*models.Column
-	// columnIdxToTypeOID - map with column index to its type OID
-	columnIdxToTypeOID map[int]models.VirtualOID
+	columnMap map[string]*core.Column
 	// columnIdxMap - the number of attributes in tuple
 	columnIdxMap map[string]int
 	// unsupportedColumnNames - map with unsupported column types that cannot perform encode-decode operations
@@ -50,46 +52,47 @@ type TableDriver struct {
 	unsupportedColumnIdxs map[int]string
 	// typeOverride - map with column names and their overridden types.
 	typeOverride map[string]string
-	// columnTypeOidOverrideMap - map with column names and their overridden types by OID.
-	columnTypeOidOverrideMap map[string]models.VirtualOID
-	// columnIdxTypeOidOverrideMap - map with column indexes and their overridden types by OID.
-	columnIdxTypeOidOverrideMap map[int]models.VirtualOID
+	// columnIdxTypeOverride - map with column indexes and their overridden types
+	// resolved once at New into a full core.Type (Name+ID). It is the single
+	// override seam every column codec (encode/decode/scan) consults, so an
+	// override dispatches by Name like any other column with no per-call rebuild.
+	columnIdxTypeOverride map[int]core.Type
 	// maxIdx - the maximum index of the column in the table.
 	maxIdx int
 }
 
 func New(
 	ctx context.Context,
-	d commonininterfaces.DBMSDriver,
-	t *models.Table,
+	d core.DBMSDriver,
+	t *core.Table,
 	typeOverride map[string]string,
 ) (*TableDriver, error) {
 
-	columnMap := make(map[string]*models.Column, len(t.Columns))
-	columnIdxToTypeOID := make(map[int]models.VirtualOID, len(t.Columns))
+	columnMap := make(map[string]*core.Column, len(t.Columns))
 	columnIdxMap := make(map[string]int, len(t.Columns))
 	unsupportedColumnNames := make(map[string]string)
 	unsupportedColumnIdxs := make(map[int]string)
-	columnTypeOidOverrideMap := make(map[string]models.VirtualOID)
-	columnIdxTypeOidOverrideMap := make(map[int]models.VirtualOID)
+	columnIdxTypeOverride := make(map[int]core.Type)
 
+	// Every column already carries a fully-built Type (from engine projection,
+	// JSON deserialization, or a test literal), so New is read-only with respect
+	// to the table — it never mutates t.Columns.
 	for idx, c := range t.Columns {
 		columnMap[c.Name] = &c
 		columnIdxMap[c.Name] = idx
-		columnIdxToTypeOID[idx] = c.TypeOID
 		// Check column type is supported by driver
-		if !d.TypeExistsByOid(c.TypeOID) && typeOverride[c.Name] == "" {
+		if !d.TypeExistsByID(c.Type.ID) && typeOverride[c.Name] == "" {
 			validationcollector.FromContext(ctx).Add(
-				models.NewValidationWarning().
+				core.NewValidationWarning().
 					AddMeta("TableSchema", t.Schema).
 					AddMeta("TableName", t.Name).
 					AddMeta("ColumnName", c.Name).
-					AddMeta("ColumnType", c.TypeName).
-					SetSeverity(models.ValidationSeverityWarning).
+					AddMeta("ColumnType", c.Type.Name).
+					SetSeverity(core.ValidationSeverityWarning).
 					SetMsg("cannot match encoder/decoder for type: encode and decode operations is not supported"),
 			)
-			unsupportedColumnNames[c.Name] = c.TypeName
-			unsupportedColumnIdxs[idx] = c.TypeName
+			unsupportedColumnNames[c.Name] = c.Type.Name
+			unsupportedColumnIdxs[idx] = c.Type.Name
 		}
 
 		if typeOverride[c.Name] != "" {
@@ -97,39 +100,43 @@ func New(
 				// In case type is overridden but does not exist in DBMS driver
 				// we consider it as a fatal error.
 				validationcollector.FromContext(ctx).Add(
-					models.NewValidationWarning().
-						SetSeverity(models.ValidationSeverityError).
+					core.NewValidationWarning().
+						SetSeverity(core.ValidationSeverityError).
 						SetMsg("unknown or unsupported overridden type name by DBMS driver:"+
 							" encode and decode operations are not supported").
 						AddMeta("OverriddenColumnName", c.Name).
 						AddMeta("OverriddenTypeName", typeOverride[c.Name]),
 				)
-				unsupportedColumnNames[c.Name] = c.TypeName
-				unsupportedColumnIdxs[idx] = c.TypeName
+				unsupportedColumnNames[c.Name] = c.Type.Name
+				unsupportedColumnIdxs[idx] = c.Type.Name
 				continue
 			}
-			oid, err := d.GetTypeOid(typeOverride[c.Name])
+			oid, err := d.GetTypeID(typeOverride[c.Name])
 			if err != nil {
 				return nil, fmt.Errorf("get type oid: %w", err)
 			}
-			columnTypeOidOverrideMap[c.Name] = oid
-			columnIdxTypeOidOverrideMap[idx] = oid
-			columnIdxToTypeOID[idx] = oid
+			// Resolve the override into a full Type once, so every column codec
+			// dispatches it by Name like any other column with no per-call rebuild.
+			// The column's own Type is never touched. Class is left zero: codecs
+			// dispatch on Name and never consult the override's Class.
+			columnIdxTypeOverride[idx] = core.Type{
+				Name:     typeOverride[c.Name],
+				FullName: typeOverride[c.Name],
+				ID:       oid,
+			}
 		}
 	}
 
 	return &TableDriver{
-		DBMSDriver:                  d,
-		table:                       t,
-		columnMap:                   columnMap,
-		columnIdxMap:                columnIdxMap,
-		unsupportedColumnNames:      unsupportedColumnNames,
-		unsupportedColumnIdxs:       unsupportedColumnIdxs,
-		typeOverride:                typeOverride,
-		columnTypeOidOverrideMap:    columnTypeOidOverrideMap,
-		columnIdxTypeOidOverrideMap: columnIdxTypeOidOverrideMap,
-		maxIdx:                      len(t.Columns) - 1,
-		columnIdxToTypeOID:          columnIdxToTypeOID,
+		DBMSDriver:             d,
+		table:                  t,
+		columnMap:              columnMap,
+		columnIdxMap:           columnIdxMap,
+		unsupportedColumnNames: unsupportedColumnNames,
+		unsupportedColumnIdxs:  unsupportedColumnIdxs,
+		typeOverride:           typeOverride,
+		columnIdxTypeOverride:  columnIdxTypeOverride,
+		maxIdx:                 len(t.Columns) - 1,
 	}, nil
 
 }
@@ -141,14 +148,7 @@ func (d *TableDriver) EncodeValueByColumnIdx(idx int, src any, buf []byte) ([]by
 	if err := validateColumnIndexOutOfRange(d.maxIdx, idx); err != nil {
 		return nil, err
 	}
-	oid, ok := d.columnIdxToTypeOID[idx]
-	if !ok {
-		return nil, ErrorCannotMatchColumnIdxToTypeOID
-	}
-	if overrideOid, ok := d.columnIdxTypeOidOverrideMap[idx]; ok {
-		oid = overrideOid
-	}
-	return d.EncodeValueByTypeOid(oid, src, buf)
+	return d.EncodeValueByType(d.columnType(idx), src, buf)
 }
 
 func (d *TableDriver) EncodeValueByColumnName(name string, src any, buf []byte) ([]byte, error) {
@@ -166,14 +166,7 @@ func (d *TableDriver) ScanValueByColumnIdx(idx int, src []byte, dest any) error 
 	if err := validateColumnIndexOutOfRange(d.maxIdx, idx); err != nil {
 		return err
 	}
-	oid, ok := d.columnIdxToTypeOID[idx]
-	if !ok {
-		return ErrorCannotMatchColumnIdxToTypeOID
-	}
-	if overrideOid, ok := d.columnIdxTypeOidOverrideMap[idx]; ok {
-		oid = overrideOid
-	}
-	return d.ScanValueByTypeOid(oid, src, dest)
+	return d.ScanValueByType(d.columnType(idx), src, dest)
 }
 
 func (d *TableDriver) ScanValueByColumnName(name string, src []byte, dest any) error {
@@ -194,14 +187,19 @@ func (d *TableDriver) DecodeValueByColumnIdx(idx int, src []byte) (any, error) {
 	if err := validateColumnIndexOutOfRange(d.maxIdx, idx); err != nil {
 		return nil, err
 	}
-	oid, ok := d.columnIdxToTypeOID[idx]
-	if !ok {
-		return nil, ErrorCannotMatchColumnIdxToTypeOID
+	return d.DecodeValueByType(d.columnType(idx), src)
+}
+
+// columnType returns the full Type descriptor the column codecs dispatch on: the
+// column's own declared Type, or — when present — the explicit override resolved
+// once at New. Every per-column encode/decode/scan funnels through this single
+// Type, so signedness (and future modifiers) drive the codec rather than a bare
+// id, and an override behaves like any other column.
+func (d *TableDriver) columnType(idx int) core.Type {
+	if ot, ok := d.columnIdxTypeOverride[idx]; ok {
+		return ot
 	}
-	if overrideOid, ok := d.columnIdxTypeOidOverrideMap[idx]; ok {
-		oid = overrideOid
-	}
-	return d.DecodeValueByTypeOid(oid, src)
+	return d.table.Columns[idx].Type
 }
 
 func (d *TableDriver) DecodeValueByColumnName(name string, src []byte) (any, error) {
@@ -212,10 +210,10 @@ func (d *TableDriver) DecodeValueByColumnName(name string, src []byte) (any, err
 	return d.DecodeValueByColumnIdx(idx, src)
 }
 
-func (d *TableDriver) GetColumnByName(name string) (*models.Column, error) {
+func (d *TableDriver) GetColumnByName(name string) (*core.Column, error) {
 	v, ok := d.columnMap[name]
 	if !ok {
-		return nil, models.ErrUnknownColumnName
+		return nil, core.ErrUnknownColumnName
 	}
 	return v, nil
 }
@@ -223,12 +221,12 @@ func (d *TableDriver) GetColumnByName(name string) (*models.Column, error) {
 func (d *TableDriver) GetColumnIdxByName(name string) (int, error) {
 	idx, ok := d.columnIdxMap[name]
 	if !ok {
-		return 0, models.ErrUnknownColumnName
+		return 0, core.ErrUnknownColumnName
 	}
 	return idx, nil
 }
 
-func (d *TableDriver) Table() *models.Table {
+func (d *TableDriver) Table() *core.Table {
 	return d.table
 }
 

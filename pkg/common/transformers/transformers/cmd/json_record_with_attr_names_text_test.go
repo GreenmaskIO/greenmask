@@ -17,20 +17,20 @@ package cmd
 import (
 	"testing"
 
-	"github.com/greenmaskio/greenmask/pkg/common/models"
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 	"github.com/stretchr/testify/require"
 )
 
 func TestJsonRecordWithAttrNames_Encode(t *testing.T) {
 	t.Run("success text", func(t *testing.T) {
 		record := NewJsonRecordWithAttrNames[*JsonAttrRawValueText](NewJsonAttrRawValueText)
-		val1 := models.NewColumnRawValue([]byte("value1"), false)
-		val2 := models.NewColumnRawValue([]byte("value2"), false)
-		column1 := &models.Column{
+		val1 := core.NewColumnRawValue([]byte("value1"), false)
+		val2 := core.NewColumnRawValue([]byte("value2"), false)
+		column1 := &core.Column{
 			Idx:  1,
 			Name: "column1",
 		}
-		column2 := &models.Column{
+		column2 := &core.Column{
 			Idx:  2,
 			Name: "column2",
 		}
@@ -48,13 +48,13 @@ func TestJsonRecordWithAttrNames_Encode(t *testing.T) {
 
 	t.Run("success bytes", func(t *testing.T) {
 		record := NewJsonRecordWithAttrNames[*JsonAttrRawValueBytes](NewJsonAttrRawValueBytes)
-		val1 := models.NewColumnRawValue([]byte("value1"), false)
-		val2 := models.NewColumnRawValue([]byte("value2"), false)
-		column1 := &models.Column{
+		val1 := core.NewColumnRawValue([]byte("value1"), false)
+		val2 := core.NewColumnRawValue([]byte("value2"), false)
+		column1 := &core.Column{
 			Idx:  1,
 			Name: "column1",
 		}
-		column2 := &models.Column{
+		column2 := &core.Column{
 			Idx:  2,
 			Name: "column2",
 		}
@@ -79,11 +79,11 @@ func TestJsonRecordWithAttrNames_Decode(t *testing.T) {
 		err := record.Decode(rawData)
 		require.NoError(t, err)
 
-		column1 := &models.Column{
+		column1 := &core.Column{
 			Idx:  1,
 			Name: "column1",
 		}
-		column2 := &models.Column{
+		column2 := &core.Column{
 			Idx:  2,
 			Name: "column2",
 		}
@@ -106,11 +106,11 @@ func TestJsonRecordWithAttrNames_Decode(t *testing.T) {
 		err := record.Decode(rawData)
 		require.NoError(t, err)
 
-		column1 := &models.Column{
+		column1 := &core.Column{
 			Idx:  1,
 			Name: "column1",
 		}
-		column2 := &models.Column{
+		column2 := &core.Column{
 			Idx:  2,
 			Name: "column2",
 		}

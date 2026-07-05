@@ -26,11 +26,10 @@ import (
 	"github.com/Masterminds/sprig/v3"
 	"github.com/ggwhite/go-masker"
 	"github.com/go-faker/faker/v4"
-	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/spf13/cast"
 	"github.com/tidwall/gjson"
 	"github.com/tidwall/sjson"
+	gostr "github.com/xhit/go-str2duration/v2"
 )
 
 var NullValue NullType = "\\N"
@@ -71,7 +70,6 @@ var typeAliases = map[string]string{
 func FuncMap() template.FuncMap {
 
 	randGen := rand.New(rand.NewSource(time.Now().UnixMicro()))
-	typeMap := pgtype.NewMap()
 	m := &masker.Masker{}
 	faker.SetGenerateUniqueValues(false)
 
@@ -104,14 +102,11 @@ func FuncMap() template.FuncMap {
 		"masking":      func(dataType string, v string) (string, error) { return masking(m, dataType, v) },
 		"truncateDate": truncateDate,
 		"tsModify": func(interval string, val time.Time) (time.Time, error) {
-			return tsModify(typeMap, interval, val)
+			return tsModify(interval, val)
 		},
-		"noiseDatePgInterval": func(interval string, val time.Time) (time.Time, error) { // TODO: Implement interval validation, do not rely on driver
-			return noiseDatePgInterval(typeMap, randGen, interval, val)
+		"noiseDate": func(interval string, val time.Time) (time.Time, error) {
+			return noiseDate(randGen, interval, val)
 		},
-		//"noiseDate": func(interval int64, val time.Time) time.Time { // TODO: tests
-		//	return *(utils.NoiseDate(randGen, interval, &val))
-		//},
 		"noiseFloat": func(ratio any, decimal int, value any) (float64, error) {
 			return noiseFloat(randGen, decimal, ratio, value)
 		},
@@ -377,38 +372,26 @@ func truncateDate(part string, t time.Time) (time.Time, error) {
 	return *res, nil
 }
 
-func tsModify(typeMap *pgtype.Map, interval string, val time.Time) (time.Time, error) {
-	t, _ := typeMap.TypeForName("interval")
-	ratioInterval, err := t.Codec.DecodeValue(typeMap, t.OID, pgx.TextFormatCode, []byte(interval))
+// tsModify shifts a timestamp by a duration expressed in the greenmask duration
+// notation (e.g. "1w2d3h4m5s6ms7us8ns"), the same notation accepted elsewhere
+// in the tool. Days and weeks are fixed (24h, 168h); there are no calendar
+// months or years.
+func tsModify(interval string, val time.Time) (time.Time, error) {
+	dur, err := gostr.ParseDuration(interval)
 	if err != nil {
-		return time.Time{}, fmt.Errorf("error parsing \"interval\" value \"%s\": %w", interval, err)
+		return time.Time{}, fmt.Errorf("error parsing \"interval\" value %q: %w", interval, err)
 	}
-	intervalValue, ok := ratioInterval.(pgtype.Interval)
-	if !ok {
-		return time.Time{}, fmt.Errorf(`cannot cast "ratio" param to interval value`)
-	}
-	dur := (time.Duration(intervalValue.Days) * time.Hour * 24) +
-		(time.Duration(intervalValue.Months) * 30 * time.Hour * 24) +
-		(time.Duration(intervalValue.Microseconds) * time.Millisecond)
-
 	return val.Add(dur), nil
 }
 
-func noiseDatePgInterval(typeMap *pgtype.Map, randGen *rand.Rand, interval string, val time.Time) (time.Time, error) {
-	t, _ := typeMap.TypeForName("interval")
-	ratioInterval, err := t.Codec.DecodeValue(typeMap, t.OID, pgx.TextFormatCode, []byte(interval))
+// noiseDate randomly shifts a date within ±interval, where interval is a
+// duration in the greenmask duration notation (e.g. "30d", "1w2d3h").
+func noiseDate(randGen *rand.Rand, interval string, val time.Time) (time.Time, error) {
+	dur, err := gostr.ParseDuration(interval)
 	if err != nil {
-		return time.Time{}, fmt.Errorf("error parsing \"interval\" value \"%s\": %w", interval, err)
+		return time.Time{}, fmt.Errorf("error parsing \"interval\" value %q: %w", interval, err)
 	}
-	intervalValue, ok := ratioInterval.(pgtype.Interval)
-	if !ok {
-		return time.Time{}, fmt.Errorf(`cannot cast "ratio" param to interval value`)
-	}
-	ratio := (time.Duration(intervalValue.Days) * time.Hour * 24) +
-		(time.Duration(intervalValue.Months) * 30 * time.Hour * 24) +
-		(time.Duration(intervalValue.Microseconds) * time.Millisecond)
-
-	return *(NoiseDateV2(randGen, ratio, &val)), nil
+	return *(NoiseDateV2(randGen, dur, &val)), nil
 }
 
 func noiseFloat(randGen *rand.Rand, decimal int, ratio any, value any) (float64, error) {

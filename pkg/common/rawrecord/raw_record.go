@@ -18,7 +18,7 @@ import (
 	"bytes"
 	"fmt"
 
-	"github.com/greenmaskio/greenmask/pkg/common/models"
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 	"github.com/greenmaskio/greenmask/pkg/common/utils"
 )
 
@@ -48,22 +48,22 @@ func escapeNullValueSeq(nullValueSeq []byte) []byte {
 	return res
 }
 
-func (c *RawRecord) GetColumn(idx int) (*models.ColumnRawValue, error) {
+func (c *RawRecord) GetColumn(idx int) (*core.ColumnRawValue, error) {
 	if idx < 0 || idx >= c.columnCount {
-		return nil, fmt.Errorf("column index %d out of range: %w", idx, models.ErrUnknownColumnIdx)
+		return nil, fmt.Errorf("column index %d out of range: %w", idx, core.ErrUnknownColumnIdx)
 	}
 	if bytes.Equal(c.nullValueSeq, c.row[idx]) {
-		return models.NewColumnRawValue(nil, true), nil
+		return core.NewColumnRawValue(nil, true), nil
 	}
 	if bytes.Equal(c.escapedNullValueSeq, c.row[idx]) {
-		return models.NewColumnRawValue(c.nullValueSeq, false), nil
+		return core.NewColumnRawValue(c.nullValueSeq, false), nil
 	}
-	return models.NewColumnRawValue(c.row[idx], false), nil
+	return core.NewColumnRawValue(c.row[idx], false), nil
 }
 
-func (c *RawRecord) SetColumn(idx int, v *models.ColumnRawValue) error {
+func (c *RawRecord) SetColumn(idx int, v *core.ColumnRawValue) error {
 	if idx < 0 || idx >= c.columnCount {
-		return fmt.Errorf("column index %d out of range: %w", idx, models.ErrUnknownColumnIdx)
+		return fmt.Errorf("column index %d out of range: %w", idx, core.ErrUnknownColumnIdx)
 	}
 	if v.IsNull {
 		c.row[idx] = utils.CopyAndExtendIfNeeded(c.row[idx], c.nullValueSeq)
@@ -81,7 +81,7 @@ func (c *RawRecord) SetRow(row [][]byte) error {
 	if len(row) != c.columnCount {
 		return fmt.Errorf(
 			"src length %d is not equal to dst length %d: %w",
-			len(row), c.columnCount, models.ErrProvidedRowLengthIsNotEqualToTheDestination,
+			len(row), c.columnCount, core.ErrProvidedRowLengthIsNotEqualToTheDestination,
 		)
 	}
 	for i := range c.row {

@@ -21,6 +21,7 @@ import (
 	"time"
 
 	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
 )
 
 const (
@@ -73,5 +74,6 @@ func SetDefaultContextLogger(logLevelStr string, logFormat string) error {
 		return fmt.Errorf("get logger: %w", err)
 	}
 	zerolog.DefaultContextLogger = &logger
+	log.Logger = logger
 	return nil
 }

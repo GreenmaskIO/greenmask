@@ -17,8 +17,7 @@ package template
 import (
 	"fmt"
 
-	commonininterfaces "github.com/greenmaskio/greenmask/pkg/common/interfaces"
-	models2 "github.com/greenmaskio/greenmask/pkg/common/models"
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 )
 
 type RecordContextReadWrite struct {
@@ -34,7 +33,7 @@ func NewRecordContextReadWrite() *RecordContextReadWrite {
 	}
 }
 
-func (rc *RecordContextReadWrite) SetRecord(r commonininterfaces.Recorder) {
+func (rc *RecordContextReadWrite) SetRecord(r core.Recorder) {
 	rc.record = r
 	rc.td = r.TableDriver()
 }
@@ -51,12 +50,12 @@ func (rc *RecordContextReadWrite) Clean() {
 }
 
 func (rc *RecordContextReadWrite) SetColumnValue(name string, v any) (bool, error) {
-	var val *models2.ColumnValue
+	var val *core.ColumnValue
 	switch v.(type) {
 	case NullType:
-		val = models2.NewColumnValue(nil, true)
+		val = core.NewColumnValue(nil, true)
 	default:
-		val = models2.NewColumnValue(v, false)
+		val = core.NewColumnValue(v, false)
 	}
 	err := rc.record.SetColumnValueByName(name, val)
 	if err != nil {
@@ -66,12 +65,12 @@ func (rc *RecordContextReadWrite) SetColumnValue(name string, v any) (bool, erro
 }
 
 func (rc *RecordContextReadWrite) SetRawColumnValue(name string, v any) (bool, error) {
-	var val *models2.ColumnRawValue
+	var val *core.ColumnRawValue
 	switch vv := v.(type) {
 	case NullType:
-		val = models2.NewColumnRawValue(nil, true)
+		val = core.NewColumnRawValue(nil, true)
 	case string:
-		val = models2.NewColumnRawValue([]byte(vv), false)
+		val = core.NewColumnRawValue([]byte(vv), false)
 	default:
 		return false, fmt.Errorf("the raw value must be NullValue or string received %+v", vv)
 	}

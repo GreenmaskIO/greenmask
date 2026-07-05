@@ -15,13 +15,12 @@
 package mocks
 
 import (
-	commonininterfaces "github.com/greenmaskio/greenmask/pkg/common/interfaces"
-	commonmodels "github.com/greenmaskio/greenmask/pkg/common/models"
+	core "github.com/greenmaskio/greenmask/pkg/common/core"
 	"github.com/stretchr/testify/mock"
 )
 
 var (
-	_ commonininterfaces.DBMSDriver = (*DBMSDriverMock)(nil)
+	_ core.DBMSDriver = (*DBMSDriverMock)(nil)
 )
 
 // DBMSDriverMock is a mock implementation of DBMSDriver for testing using testify/mock
@@ -41,31 +40,26 @@ func (m *DBMSDriverMock) EncodeValueByTypeName(name string, src any, buf []byte)
 	return args.Get(0).([]byte), args.Error(1)
 }
 
-func (m *DBMSDriverMock) EncodeValueByTypeOid(oid commonmodels.VirtualOID, src any, buf []byte) ([]byte, error) {
-	args := m.Called(oid, src, buf)
+func (m *DBMSDriverMock) DecodeValueByTypeName(name string, src []byte) (any, error) {
+	args := m.Called(name, src)
+	return args.Get(0), args.Error(1)
+}
+
+func (m *DBMSDriverMock) EncodeValueByType(t core.Type, src any, buf []byte) ([]byte, error) {
+	args := m.Called(t, src, buf)
 	if args.Error(1) != nil {
 		return nil, args.Error(1)
 	}
 	return args.Get(0).([]byte), args.Error(1)
 }
 
-func (m *DBMSDriverMock) DecodeValueByTypeName(name string, src []byte) (any, error) {
-	args := m.Called(name, src)
+func (m *DBMSDriverMock) DecodeValueByType(t core.Type, src []byte) (any, error) {
+	args := m.Called(t, src)
 	return args.Get(0), args.Error(1)
 }
 
-func (m *DBMSDriverMock) DecodeValueByTypeOid(oid commonmodels.VirtualOID, src []byte) (any, error) {
-	args := m.Called(oid, src)
-	return args.Get(0), args.Error(1)
-}
-
-func (m *DBMSDriverMock) ScanValueByTypeName(name string, src []byte, dest any) error {
-	args := m.Called(name, src, dest)
-	return args.Error(0)
-}
-
-func (m *DBMSDriverMock) ScanValueByTypeOid(oid commonmodels.VirtualOID, src []byte, dest any) error {
-	args := m.Called(oid, src, dest)
+func (m *DBMSDriverMock) ScanValueByType(t core.Type, src []byte, dest any) error {
+	args := m.Called(t, src, dest)
 	if vv, ok := dest.(*string); ok {
 		*vv = string(src)
 	} else {
@@ -74,27 +68,32 @@ func (m *DBMSDriverMock) ScanValueByTypeOid(oid commonmodels.VirtualOID, src []b
 	return args.Error(0)
 }
 
+func (m *DBMSDriverMock) ScanValueByTypeName(name string, src []byte, dest any) error {
+	args := m.Called(name, src, dest)
+	return args.Error(0)
+}
+
 func (m *DBMSDriverMock) TypeExistsByName(name string) bool {
 	args := m.Called(name)
 	return args.Bool(0)
 }
 
-func (m *DBMSDriverMock) TypeExistsByOid(oid commonmodels.VirtualOID) bool {
+func (m *DBMSDriverMock) TypeExistsByID(oid core.TypeID) bool {
 	args := m.Called(oid)
 	return args.Bool(0)
 }
 
-func (m *DBMSDriverMock) GetTypeOid(name string) (commonmodels.VirtualOID, error) {
+func (m *DBMSDriverMock) GetTypeID(name string) (core.TypeID, error) {
 	args := m.Called(name)
-	return args.Get(0).(commonmodels.VirtualOID), args.Error(1)
+	return args.Get(0).(core.TypeID), args.Error(1)
 }
 
-func (m *DBMSDriverMock) GetCanonicalTypeName(typeName string, typeOid commonmodels.VirtualOID) (string, error) {
+func (m *DBMSDriverMock) GetCanonicalTypeName(typeName string, typeOid core.TypeID) (string, error) {
 	args := m.Called(typeName, typeOid)
 	return args.String(0), args.Error(1)
 }
 
-func (m *DBMSDriverMock) GetCanonicalTypeClassName(typeName string, typeOid commonmodels.VirtualOID) (commonmodels.TypeClass, error) {
+func (m *DBMSDriverMock) GetCanonicalTypeClassName(typeName string, typeOid core.TypeID) (core.TypeClass, error) {
 	args := m.Called(typeName, typeOid)
-	return args.Get(0).(commonmodels.TypeClass), args.Error(1)
+	return args.Get(0).(core.TypeClass), args.Error(1)
 }
