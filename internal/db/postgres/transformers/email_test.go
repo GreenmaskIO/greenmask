@@ -211,6 +211,79 @@ func TestRandomEmailTransformer_Transform(t *testing.T) {
 				assert.NotEqual(t, originalEmail, transformedEmail)
 			},
 		},
+		{
+			// Regression test for https://github.com/GreenmaskIO/greenmask/issues/466: a
+			// local_part_template that does not reference original_local_part/original_domain, and
+			// keep_original_domain not set, must not require the source value to be a valid email.
+			name:       "local_part_template with malformed source email and no original_* reference",
+			original:   "not-an-email",
+			columnName: "data",
+			params: map[string]toolkit.ParamsValue{
+				"column":              toolkit.ParamsValue("data"),
+				"engine":              toolkit.ParamsValue("hash"),
+				"local_part_template": toolkit.ParamsValue("user.{{.random_string | trunc 6}}"),
+			},
+			validateFn: func(t *testing.T, originalEmail, transformedEmail string) {
+				assert.True(t, validEmailRegexp.MatchString(transformedEmail))
+				assert.NotEqual(t, originalEmail, transformedEmail)
+				assert.Contains(t, transformedEmail, "user.")
+			},
+		},
+		{
+			// Same as above but for domain_part_template.
+			name:       "domain_part_template with malformed source email and no original_* reference",
+			original:   "not-an-email",
+			columnName: "data",
+			params: map[string]toolkit.ParamsValue{
+				"column":               toolkit.ParamsValue("data"),
+				"engine":               toolkit.ParamsValue("hash"),
+				"domain_part_template": toolkit.ParamsValue("custom-domain.com"),
+			},
+			validateFn: func(t *testing.T, originalEmail, transformedEmail string) {
+				assert.True(t, validEmailRegexp.MatchString(transformedEmail))
+				assert.NotEqual(t, originalEmail, transformedEmail)
+				assert.Contains(t, transformedEmail, "@custom-domain.com")
+			},
+		},
+		{
+			// When the template DOES reference original_local_part on a malformed source email, the
+			// dependency is real and the existing error behavior must be preserved.
+			name:       "local_part_template referencing original_local_part with malformed source email",
+			original:   "not-an-email",
+			columnName: "data",
+			params: map[string]toolkit.ParamsValue{
+				"column":              toolkit.ParamsValue("data"),
+				"engine":              toolkit.ParamsValue("hash"),
+				"local_part_template": toolkit.ParamsValue("prefix.{{.original_local_part}}"),
+			},
+			expectedErr: "unable to parse email",
+		},
+		{
+			// When the template DOES reference original_domain on a malformed source email, the
+			// dependency is real and the existing error behavior must be preserved.
+			name:       "domain_part_template referencing original_domain with malformed source email",
+			original:   "not-an-email",
+			columnName: "data",
+			params: map[string]toolkit.ParamsValue{
+				"column":               toolkit.ParamsValue("data"),
+				"engine":               toolkit.ParamsValue("hash"),
+				"domain_part_template": toolkit.ParamsValue("{{.original_domain}}"),
+			},
+			expectedErr: "unable to parse email",
+		},
+		{
+			// keep_original_domain always needs the original domain, so a malformed source email
+			// must still error, regardless of whether a template is present.
+			name:       "keep_original_domain with malformed source email",
+			original:   "not-an-email",
+			columnName: "data",
+			params: map[string]toolkit.ParamsValue{
+				"column":               toolkit.ParamsValue("data"),
+				"engine":               toolkit.ParamsValue("hash"),
+				"keep_original_domain": toolkit.ParamsValue("true"),
+			},
+			expectedErr: "unable to parse email",
+		},
 	}
 
 	for _, tt := range tests {

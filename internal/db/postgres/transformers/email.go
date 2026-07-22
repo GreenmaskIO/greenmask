@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"regexp"
 	"slices"
+	"strings"
 	"text/template"
 
 	"github.com/rs/zerolog/log"
@@ -93,6 +94,12 @@ type EmailTransformer struct {
 	originalDomain           []byte
 	hexEncodedRandomBytesBuf []byte
 	rctx                     *toolkit.RecordContext
+	// needsOriginalEmailParts - shows whether the original value actually needs to be parsed as an
+	// email. It is only required when keep_original_domain is set, or when local_part_template /
+	// domain_part_template reference the original_local_part or original_domain context variables.
+	// Otherwise, the original value is only used as opaque entropy for the hash/random engine and
+	// does not need to be a valid email, so a malformed source value must not fail the transformation.
+	needsOriginalEmailParts bool
 }
 
 func NewEmailTransformer(ctx context.Context, driver *toolkit.Driver, parameters map[string]toolkit.Parameterizer) (utils.Transformer, toolkit.ValidationWarnings, error) {
@@ -172,6 +179,16 @@ func NewEmailTransformer(ctx context.Context, driver *toolkit.Driver, parameters
 		}
 	}
 
+	// The original value only needs to be parsed as an email when something actually consumes its
+	// local/domain parts: keep_original_domain, or a template referencing original_local_part /
+	// original_domain. Otherwise (e.g. a template that only uses random_string or column values),
+	// the original value is just opaque entropy and must not be required to be a valid email.
+	needsOriginalEmailParts := keepOriginalDomain ||
+		strings.Contains(localPartTemplate, "original_local_part") ||
+		strings.Contains(localPartTemplate, "original_domain") ||
+		strings.Contains(domainTemplate, "original_local_part") ||
+		strings.Contains(domainTemplate, "original_domain")
+
 	if err := keepNullParam.Scan(&keepNull); err != nil {
 		return nil, nil, fmt.Errorf(`unable to scan "keep_null" param: %w`, err)
 	}
@@ -209,6 +226,7 @@ func NewEmailTransformer(ctx context.Context, driver *toolkit.Driver, parameters
 		buf:                      bytes.NewBuffer(nil),
 		hexEncodedRandomBytesBuf: make([]byte, hex.EncodedLen(maxRandomLength)),
 		rctx:                     rrctx,
+		needsOriginalEmailParts:  needsOriginalEmailParts,
 	}, nil, nil
 }
 
@@ -265,16 +283,22 @@ func (rit *EmailTransformer) setupTemplateContext(originalEmail []byte, r *toolk
 	}
 	rit.rctx.SetRecord(r)
 
-	originalLocalPart, originalDomain, err := EmailParse(originalEmail)
-	if err != nil {
-		return fmt.Errorf("unable to parse email perfoming keepOriginalDomain operation: %w", err)
-	}
-	if rit.keepOriginalDomain {
-		rit.originalDomain = slices.Clone(originalDomain)
-	}
+	// Only parse the original value as an email when something actually needs its local/domain
+	// parts (keep_original_domain, or a template referencing original_local_part/original_domain).
+	// Otherwise the original value is just entropy for the generator and may be any arbitrary,
+	// possibly malformed, string - it must not abort the transformation.
+	if rit.needsOriginalEmailParts {
+		originalLocalPart, originalDomain, err := EmailParse(originalEmail)
+		if err != nil {
+			return fmt.Errorf("unable to parse email perfoming keepOriginalDomain operation: %w", err)
+		}
+		if rit.keepOriginalDomain {
+			rit.originalDomain = slices.Clone(originalDomain)
+		}
 
-	rit.templateCtx["original_local_part"] = string(originalLocalPart)
-	rit.templateCtx["original_domain"] = string(originalDomain)
+		rit.templateCtx["original_local_part"] = string(originalLocalPart)
+		rit.templateCtx["original_domain"] = string(originalDomain)
+	}
 	rit.templateCtx["random_string"] = string(rit.hexEncodedRandomBytesBuf)
 
 	return nil
