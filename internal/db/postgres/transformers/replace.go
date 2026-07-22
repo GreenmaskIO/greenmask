@@ -38,6 +38,11 @@ var ReplaceTransformerDefinition = utils.NewTransformerDefinition(
 		"column name",
 	).SetIsColumn(toolkit.NewColumnProperties().
 		SetAffected(true).
+		// Replace is only Nullable, not AlwaysNull: whether a configured instance can actually emit NULL
+		// depends on its "value"/"keep_null" parameters (e.g. a static non-null "value" like the docs'
+		// `value: "programmer"` example, see docs/built_in_transformers/standard_transformers/replace.md,
+		// can never produce NULL), so it is not a static, config-independent certainty the way SetNull's
+		// output is.
 		SetNullable(true),
 	).SetRequired(true),
 

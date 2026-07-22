@@ -31,9 +31,17 @@ func DefaultDatabaseTypeUnmarshaler(driver *Driver, typeName string, v ParamsVal
 
 // ColumnProperties - column-like parameter properties that would help to understand the affection on the consistency
 type ColumnProperties struct {
-	// Nullable - shows that transformer can produce NULL value for the column. Together with Affected shows that
-	// this parameter may generate null values and write it in this column. It only plays with Affected
+	// Nullable - shows that transformer CAN produce NULL value for the column, depending on the specific
+	// configuration/parameters it is given (e.g. a linked dynamic parameter, or keep_null semantics). This is a
+	// possibility, not a certainty: two differently configured instances of the same transformer type may differ
+	// on whether they can actually emit NULL. Together with Affected shows that this parameter may generate null
+	// values and write it in this column. It only plays with Affected
 	Nullable bool `mapstructure:"nullable" json:"nullable,omitempty"`
+	// AlwaysNull - shows that transformer UNCONDITIONALLY produces NULL value for the column, regardless of any
+	// parameter/configuration (e.g. SetNull, which always writes NULL no matter how it's configured). Unlike
+	// Nullable, this is a static certainty about the transformer type itself, not merely a possibility depending on
+	// config. It only plays with Affected, and implies Nullable is also true for that transformer.
+	AlwaysNull bool `mapstructure:"always_null" json:"always_null,omitempty"`
 	// Unique - shows that transformer guarantee that every transformer call the value will be unique. It only plays
 	// with Affected
 	Unique bool `mapstructure:"unique" json:"unique,omitempty"`
@@ -66,6 +74,17 @@ func NewColumnProperties() *ColumnProperties {
 
 func (cp *ColumnProperties) SetNullable(v bool) *ColumnProperties {
 	cp.Nullable = v
+	return cp
+}
+
+// SetAlwaysNull marks the transformer type as unconditionally, deterministically producing NULL for this column
+// regardless of configuration (see the AlwaysNull field doc). Setting it true also sets Nullable true, since an
+// always-NULL transformer is trivially a can-be-NULL transformer.
+func (cp *ColumnProperties) SetAlwaysNull(v bool) *ColumnProperties {
+	cp.AlwaysNull = v
+	if v {
+		cp.Nullable = true
+	}
 	return cp
 }
 

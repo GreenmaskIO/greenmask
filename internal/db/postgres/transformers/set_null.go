@@ -35,7 +35,9 @@ var SetNullTransformerDefinition = utils.NewTransformerDefinition(
 		"column name",
 	).SetIsColumn(toolkit.NewColumnProperties().
 		SetAffected(true).
-		SetNullable(true),
+		// SetNull unconditionally writes NULL regardless of configuration - it takes no parameters that could
+		// change that, so it is AlwaysNull, not merely Nullable.
+		SetAlwaysNull(true),
 	).SetRequired(true),
 )
 

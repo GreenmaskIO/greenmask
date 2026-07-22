@@ -51,16 +51,35 @@ func DefaultSchemaValidator(
 			continue
 		}
 
-		// Checking is transformer can produce NULL value
-		if p.GetDefinition().ColumnProperties.Nullable && p.Column.NotNull {
-			// Unlike the other constraint checks in this function (Check, Unique, ForeignKey, etc.),
-			// this one is not data-dependent: whether the transformer can emit NULL and whether the
-			// column disallows NULL are both known statically from the transformer/column metadata,
-			// so a violation here is a certainty, not a possibility. Treat it as an error so that
-			// `validate`/`dump` abort by default instead of silently producing an unrestorable dump.
+		// Checking is transformer can produce NULL value.
+		//
+		// This is split into two checks that key off two different, distinct capability flags:
+		//
+		//  - AlwaysNull: the transformer type is a static, config-independent certainty to emit NULL
+		//    (e.g. SetNull, which takes no parameter that could change that). Combined with a NOT NULL
+		//    column, a violation here is guaranteed, not merely possible - unlike the other constraint
+		//    checks in this function (Check, Unique, ForeignKey, etc.) which are data-dependent and can only
+		//    ever report a *possible* violation. Treat it as an error so that `validate`/`dump` abort by
+		//    default instead of silently producing an unrestorable dump.
+		//
+		//  - Nullable (and not AlwaysNull): the transformer type is merely *capable* of producing NULL
+		//    depending on how this particular instance is configured (e.g. Replace, whose "value"/"keep_null"
+		//    parameters determine whether a given configured instance can ever actually emit NULL - a static
+		//    non-null "value" never will). Whether this specific instance would violate NOT NULL is not
+		//    knowable from the transformer type alone, so it stays a warning, as it was before the NotNull
+		//    check gained Error severity.
+		if p.GetDefinition().ColumnProperties.AlwaysNull && p.Column.NotNull {
+			warnings = append(warnings, toolkit.NewValidationWarning().
+				SetMsg("transformer always produces NULL values but column has NOT NULL constraint").
+				SetSeverity(toolkit.ErrorValidationSeverity).
+				AddMeta("ConstraintType", toolkit.NotNullConstraintType).
+				AddMeta("ParameterName", p.GetDefinition().Name).
+				AddMeta("ColumnName", p.Column.Name),
+			)
+		} else if p.GetDefinition().ColumnProperties.Nullable && p.Column.NotNull {
 			warnings = append(warnings, toolkit.NewValidationWarning().
 				SetMsg("transformer may produce NULL values but column has NOT NULL constraint").
-				SetSeverity(toolkit.ErrorValidationSeverity).
+				SetSeverity(toolkit.WarningValidationSeverity).
 				AddMeta("ConstraintType", toolkit.NotNullConstraintType).
 				AddMeta("ParameterName", p.GetDefinition().Name).
 				AddMeta("ColumnName", p.Column.Name),
