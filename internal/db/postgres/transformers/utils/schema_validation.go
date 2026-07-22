@@ -53,9 +53,14 @@ func DefaultSchemaValidator(
 
 		// Checking is transformer can produce NULL value
 		if p.GetDefinition().ColumnProperties.Nullable && p.Column.NotNull {
+			// Unlike the other constraint checks in this function (Check, Unique, ForeignKey, etc.),
+			// this one is not data-dependent: whether the transformer can emit NULL and whether the
+			// column disallows NULL are both known statically from the transformer/column metadata,
+			// so a violation here is a certainty, not a possibility. Treat it as an error so that
+			// `validate`/`dump` abort by default instead of silently producing an unrestorable dump.
 			warnings = append(warnings, toolkit.NewValidationWarning().
 				SetMsg("transformer may produce NULL values but column has NOT NULL constraint").
-				SetSeverity(toolkit.WarningValidationSeverity).
+				SetSeverity(toolkit.ErrorValidationSeverity).
 				AddMeta("ConstraintType", toolkit.NotNullConstraintType).
 				AddMeta("ParameterName", p.GetDefinition().Name).
 				AddMeta("ColumnName", p.Column.Name),
