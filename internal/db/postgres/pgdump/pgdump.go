@@ -63,6 +63,7 @@ type Options struct {
 	Clean                      bool     `mapstructure:"clean"`
 	Create                     bool     `mapstructure:"create"`
 	Extension                  []string `mapstructure:"extension"`
+	ExcludeExtension           []string `mapstructure:"exclude-extension"`
 	Encoding                   string   `mapstructure:"encoding"`
 	Schema                     []string `mapstructure:"schema"`
 	ExcludeSchema              []string `mapstructure:"exclude-schema"`
@@ -179,6 +180,11 @@ func (o *Options) GetParams() []string {
 	if len(o.Extension) > 0 {
 		for _, item := range o.Extension {
 			args = append(args, "--extension", item)
+		}
+	}
+	if len(o.ExcludeExtension) > 0 {
+		for _, item := range o.ExcludeExtension {
+			args = append(args, "--exclude-extension", item)
 		}
 	}
 	if o.Encoding != "" {

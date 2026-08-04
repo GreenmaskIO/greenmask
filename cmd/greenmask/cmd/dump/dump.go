@@ -101,6 +101,10 @@ func init() {
 	Cmd.Flags().StringSliceVarP(
 		&Config.Dump.PgDumpOptions.Extension, "extension", "e", []string{}, "dump the specified extension(s) only",
 	)
+	Cmd.Flags().StringSliceVarP(
+		&Config.Dump.PgDumpOptions.ExcludeExtension, "exclude-extension", "", []string{},
+		"do NOT dump the specified extension(s) (requires pg_dump 17 or later)",
+	)
 	Cmd.Flags().StringP("encoding", "E", "", "dump the data in encoding ENCODING")
 	Cmd.Flags().StringSliceVarP(
 		&Config.Dump.PgDumpOptions.Schema, "schema", "n", []string{}, "dump the specified schema(s) only",
@@ -169,7 +173,7 @@ func init() {
 
 		"data-only", "blobs", "no-blobs", "clean", "create", "extension", "encoding", "schema", "exclude-schema",
 		"no-owner", "schema-only", "table", "exclude-table", "no-privileges", "disable-dollar-quoting",
-		"enable-row-security", "exclude-table-data", "extra-float-digits", "if-exists",
+		"enable-row-security", "exclude-table-data", "exclude-extension", "extra-float-digits", "if-exists",
 		"include-foreign-data", "load-via-partition-root", "no-comments", "no-publications", "no-security-labels",
 		"no-subscriptions", "no-synchronized-snapshots", "no-tablespaces", "no-toast-compression",
 		"no-unlogged-table-data", "quote-all-identifiers", "section",
