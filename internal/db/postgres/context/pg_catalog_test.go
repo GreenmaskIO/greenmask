@@ -29,7 +29,7 @@ func TestBuildTableSearchQuery(t *testing.T) {
 	excludeTableData := []string{"bookings.flights"}
 	includeForeignData := []string{"myserver"}
 	res, err := buildTableSearchQuery(includeTable, excludeTable, excludeTableData,
-		includeForeignData, includeSchema, excludeSchema)
+		includeForeignData, includeSchema, excludeSchema, testContainerPgVersion*10000)
 	assert.NoError(t, err)
 	fmt.Println(res)
 }

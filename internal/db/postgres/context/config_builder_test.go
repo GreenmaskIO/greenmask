@@ -907,8 +907,15 @@ func Test_getTableConstraints_exclusionConstraint(t *testing.T) {
 
 // runPostgresContainer starts a PostgreSQL container and returns the connection string
 func runPostgresContainer(ctx context.Context) (string, func(), error) {
+	return runPostgresContainerWithImage(ctx, testContainerImage)
+}
+
+// runPostgresContainerWithImage starts a PostgreSQL container using the requested image and returns
+// the connection string. It allows tests that depend on version specific server behaviour to run
+// against a PostgreSQL version other than the default one.
+func runPostgresContainerWithImage(ctx context.Context, image string) (string, func(), error) {
 	req := testcontainers.ContainerRequest{
-		Image:        testContainerImage,                 // Specify the PostgreSQL image
+		Image:        image,                              // Specify the PostgreSQL image
 		ExposedPorts: []string{testContainerExposedPort}, // Expose the PostgreSQL port
 		Env: map[string]string{
 			"POSTGRES_USER":     testContainerUser,

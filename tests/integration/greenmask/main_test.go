@@ -35,3 +35,7 @@ func TestEnvInterpolation(t *testing.T) {
 func TestRestore(t *testing.T) {
 	suite.Run(t, new(RestoreCreateSuite))
 }
+
+func TestSequencePrivileges(t *testing.T) {
+	suite.Run(t, new(SequencePrivilegesSuite))
+}

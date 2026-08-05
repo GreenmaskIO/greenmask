@@ -75,6 +75,74 @@ var (
 		WHERE kind != 'p';
     `
 
+	// TablesAndSequencesSearchQuery - SQL query for finding all the tables and sequences to dump.
+	// Since PostgreSQL 18 pg_sequence_last_value returns NULL instead of raising on missing sequence
+	// privileges, so "SeqReadable" checks has_sequence_privilege explicitly there.
+	TablesAndSequencesSearchQuery = template.Must(template.New("TablesAndSequencesSearchQuery").Parse(`
+			SELECT
+			   c.oid::TEXT::BIGINT,
+			   n.nspname                              as "Schema",
+			   c.relname                              as "Name",
+			   pg_catalog.pg_get_userbyid(c.relowner) as "Owner",
+			   pg_catalog.pg_relation_size(c.oid) +
+					   coalesce(
+						   pg_catalog.pg_relation_size(
+							   c.reltoastrelid
+						   ),
+						   0
+					   ) 							      as "Size",
+			   c.relkind 							  as "RelKind",
+			   (coalesce(pn.nspname, '')) 			  as "rootPtSchema",
+			   (coalesce(pc.relname, '')) 			  as "rootPtName",
+			   ({{ .ExcludeData }}) 					  as "ExcludeData", -- data exclusion
+			{{ if ge .Version 180000 }}
+			   -- has_sequence_privilege raises on non-sequence relations, hence the relkind guard
+			   CASE
+				   WHEN c.relkind = 'S' THEN
+					   has_sequence_privilege(c.oid, 'SELECT,USAGE')
+				   ELSE
+					   TRUE
+			   END 									  as "SeqReadable",
+			{{ else }}
+			   TRUE 								  as "SeqReadable",
+			{{ end }}
+			   CASE
+				   WHEN c.relkind = 'S' THEN
+					   CASE
+						   WHEN  pg_sequence_last_value(c.oid::regclass) ISNULL THEN
+							   FALSE
+						   ELSE
+							   TRUE
+					   END
+				   ELSE
+						FALSE
+				  END 									AS "IsCalled",
+				CASE
+					WHEN c.relkind = 'S' THEN
+						coalesce(pg_sequence_last_value(c.oid::regclass), sq.seqstart)
+					ELSE
+						0
+				END	  AS "LastVal"
+			FROM pg_catalog.pg_class c
+					JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
+					LEFT JOIN pg_catalog.pg_inherits i ON i.inhrelid = c.oid
+					LEFT JOIN  pg_catalog.pg_class pc ON i.inhparent = pc.oid AND pc.relkind = 'p'
+					LEFT JOIN  pg_catalog.pg_namespace pn ON pc.relnamespace = pn.oid
+					LEFT JOIN pg_catalog.pg_foreign_table ft ON c.oid = ft.ftrelid
+					LEFT JOIN pg_catalog.pg_foreign_server s ON s.oid = ft.ftserver
+					LEFT JOIN pg_catalog.pg_sequence sq ON c.oid = sq.seqrelid
+			WHERE c.relkind IN ('p', 'r', 'f', 'S')
+			  AND {{ .TableInclusion }}     -- relname inclusion
+			  AND NOT {{ .TableExclusion }} -- relname exclusion
+			  AND {{ .SchemaInclusion }} -- schema inclusion
+			  AND NOT {{ .SchemaExclusion }} -- schema exclusion
+			  AND (s.srvname ISNULL OR {{ .ForeignDataInclusion }}) -- include foreign data
+			  AND n.nspname <> 'pg_catalog'
+			  AND n.nspname !~ '^pg_toast'
+			  AND n.nspname <> 'information_schema'
+			ORDER BY 1
+		`))
+
 	// TableColumnsQuery - SQL query for getting all columns of table
 	TableColumnsQuery = template.Must(template.New("TableColumnsQuery").Parse(`
 		SELECT 

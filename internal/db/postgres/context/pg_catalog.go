@@ -15,6 +15,7 @@
 package context
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -57,6 +58,7 @@ func findTablesAndSequences(
 	ctx context.Context,
 	tx pgx.Tx,
 	options *pgdump.Options,
+	version int,
 ) ([]*entries.Table, []*entries.Sequence, error) {
 	// Building relation search query using regexp adaptation rules and pre-defined query templates
 	query, err := buildTableSearchQuery(
@@ -66,6 +68,7 @@ func findTablesAndSequences(
 		options.IncludeForeignData,
 		options.Schema,
 		options.ExcludeSchema,
+		version,
 	)
 	if err != nil {
 		return nil, nil, fmt.Errorf("build table search query: %w", err)
@@ -82,16 +85,17 @@ func findTablesAndSequences(
 	//Tables := make([]*dump_objects.Table, 0)
 	var tables []*entries.Table
 	var sequences []*entries.Sequence
-	defer tableSearchRows.Close()
+	// Sequences the current role may not read, collected to report them all at once
+	var unreadableSequences []string
 	for tableSearchRows.Next() {
 		var oid toc.Oid
 		var lastVal, relSize int64
 		var schemaName, name, owner, rootPtName, rootPtSchema string
 		var relKind rune
-		var excludeData, isCalled bool
+		var excludeData, seqReadable, isCalled bool
 
 		err = tableSearchRows.Scan(&oid, &schemaName, &name, &owner, &relSize, &relKind,
-			&rootPtSchema, &rootPtName, &excludeData, &isCalled, &lastVal,
+			&rootPtSchema, &rootPtName, &excludeData, &seqReadable, &isCalled, &lastVal,
 		)
 		if err != nil {
 			return nil, nil, fmt.Errorf("scan data: %w", err)
@@ -108,6 +112,12 @@ func findTablesAndSequences(
 		var table *entries.Table
 		switch relKind {
 		case 'S': // S - sequence
+			if !seqReadable {
+				unreadableSequences = append(
+					unreadableSequences, fmt.Sprintf(`"%s"."%s"`, schemaName, name),
+				)
+				continue
+			}
 			// Building sequence objects
 			s := &entries.Sequence{
 				Name:      name,
@@ -142,6 +152,21 @@ func findTablesAndSequences(
 			return nil, nil, fmt.Errorf("unknown relkind \"%c\"", relKind)
 		}
 	}
+
+	// pgx reports server-side errors through Err after iteration, not through Next
+	if err = tableSearchRows.Err(); err != nil {
+		return nil, nil, fmt.Errorf("perform query: %w", err)
+	}
+
+	// An error rather than a warning to match PostgreSQL <= 17, where the server fails the dump itself
+	if len(unreadableSequences) > 0 {
+		log.Error().
+			Strs("Sequences", unreadableSequences).
+			Msg("permission denied for sequences")
+		log.Info().Msg("grant SELECT or USAGE on the listed sequences or exclude them with --exclude-table")
+		return nil, nil, errors.New("permission denied for sequences")
+	}
+
 	return tables, sequences, nil
 }
 
@@ -149,7 +174,7 @@ func findTablesAndSequences(
 func getTablesAndSequences(
 	ctx context.Context, version int, tx pgx.Tx, options *pgdump.Options,
 ) ([]*entries.Table, []*entries.Sequence, error) {
-	tables, sequences, err := findTablesAndSequences(ctx, tx, options)
+	tables, sequences, err := findTablesAndSequences(ctx, tx, options, version)
 	if err != nil {
 		return nil, nil, fmt.Errorf("find tables and sequences: %w", err)
 	}
@@ -370,6 +395,7 @@ func renderForeignDataCond(ss []string, defaultCond string) (string, error) {
 func buildTableSearchQuery(
 	includeTable, excludeTable, excludeTableData,
 	includeForeignData, includeSchema, excludeSchema []string,
+	version int,
 ) (string, error) {
 
 	tableInclusionCond, err := renderRelationCond(includeTable, trueCond)
@@ -398,63 +424,21 @@ func buildTableSearchQuery(
 		return "", err
 	}
 
-	// --         WHERE c.relkind IN ('r', 'p', '') (array['r', 'S', 'v', 'm', 'f', 'p'])
-	totalQuery := `
-			SELECT 
-			   c.oid::TEXT::BIGINT, 
-			   n.nspname                              as "Schema",
-			   c.relname                              as "Name",
-			   pg_catalog.pg_get_userbyid(c.relowner) as "Owner",
-			   pg_catalog.pg_relation_size(c.oid) + 
-					   coalesce(
-						   pg_catalog.pg_relation_size(
-							   c.reltoastrelid
-						   ), 
-						   0
-					   ) 							      as "Size",
-			   c.relkind 							  as "RelKind",
-			   (coalesce(pn.nspname, '')) 			  as "rootPtSchema",
-			   (coalesce(pc.relname, '')) 			  as "rootPtName",
-			   (%s) 							      as "ExcludeData", -- data exclusion
-			   CASE 
-				   WHEN c.relkind = 'S' THEN
-					   CASE 
-						   WHEN  pg_sequence_last_value(c.oid::regclass) ISNULL THEN
-							   FALSE
-						   ELSE
-							   TRUE
-					   END
-				   ELSE 
-						FALSE
-				  END 									AS "IsCalled",
-				CASE 
-					WHEN c.relkind = 'S' THEN 
-						coalesce(pg_sequence_last_value(c.oid::regclass), sq.seqstart)
-					ELSE 
-						0
-				END	  AS "LastVal"
-			FROM pg_catalog.pg_class c
-					JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
-					LEFT JOIN pg_catalog.pg_inherits i ON i.inhrelid = c.oid
-					LEFT JOIN  pg_catalog.pg_class pc ON i.inhparent = pc.oid AND pc.relkind = 'p'
-					LEFT JOIN  pg_catalog.pg_namespace pn ON pc.relnamespace = pn.oid
-					LEFT JOIN pg_catalog.pg_foreign_table ft ON c.oid = ft.ftrelid
-					LEFT JOIN pg_catalog.pg_foreign_server s ON s.oid = ft.ftserver
-					LEFT JOIN pg_catalog.pg_sequence sq ON c.oid = sq.seqrelid
-			WHERE c.relkind IN ('p', 'r', 'f', 'S')
-			  AND %s     -- relname inclusion
-			  AND NOT %s -- relname exclusion
-			  AND %s -- schema inclusion
-			  AND NOT %s -- schema exclusion
-			  AND (s.srvname ISNULL OR %s) -- include foreign data
-			  AND n.nspname <> 'pg_catalog'
-			  AND n.nspname !~ '^pg_toast'
-			  AND n.nspname <> 'information_schema'
-			ORDER BY 1
-		`
+	var buf bytes.Buffer
+	err = TablesAndSequencesSearchQuery.Execute(&buf, map[string]any{
+		"Version":              version,
+		"ExcludeData":          tableDataExclusionCond,
+		"TableInclusion":       tableInclusionCond,
+		"TableExclusion":       tableExclusionCond,
+		"SchemaInclusion":      schemaInclusionCond,
+		"SchemaExclusion":      schemaExclusionCond,
+		"ForeignDataInclusion": foreignDataInclusionCond,
+	})
+	if err != nil {
+		return "", fmt.Errorf("error templating TablesAndSequencesSearchQuery: %w", err)
+	}
 
-	return fmt.Sprintf(totalQuery, tableDataExclusionCond, tableInclusionCond, tableExclusionCond,
-		schemaInclusionCond, schemaExclusionCond, foreignDataInclusionCond), nil
+	return buf.String(), nil
 }
 
 // buildSchemaIntrospectionQuery - returns query to introspect schema.
