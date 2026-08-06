@@ -545,7 +545,7 @@ func (g *Graph) generateQueryForTables(path *Path, scopeEdge *ScopeEdge) string 
 	}
 
 	whereConds := slices.Clone(rootTable.SubsetConds)
-	selectClause := fmt.Sprintf(`SELECT "%s"."%s".*`, rootTable.Schema, rootTable.Name)
+	selectClause := generateSelectAllColumns(rootTable)
 	if scopeEdge != nil {
 		selectClause = generateSelectByPrimaryKey(rootTable, rootTable.PrimaryKey)
 	}

@@ -120,3 +120,22 @@ func generateSelectByPrimaryKey(table *entries.Table, pk []string) string {
 		strings.Join(keys, ", "),
 	)
 }
+
+// generateSelectAllColumns - returns the select clause with all the table columns except the
+// generated ones, since those cannot be restored via COPY
+func generateSelectAllColumns(table *entries.Table) string {
+	columns := make([]string, 0, len(table.Columns))
+	for _, column := range table.Columns {
+		if column.IsGenerated {
+			continue
+		}
+		columns = append(
+			columns,
+			fmt.Sprintf(`"%s"."%s"."%s"`, table.Schema, table.Name, column.Name),
+		)
+	}
+	if len(columns) == 0 {
+		return fmt.Sprintf(`SELECT "%s"."%s".*`, table.Schema, table.Name)
+	}
+	return fmt.Sprintf(`SELECT %s`, strings.Join(columns, ", "))
+}
