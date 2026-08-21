@@ -3,10 +3,10 @@ package testutils
 import (
 	"context"
 	"fmt"
-	"strings"
 
 	"github.com/jackc/pgx/v5"
 	_ "github.com/jackc/pgx/v5/stdlib"
+	"github.com/moby/moby/api/types/network"
 	"github.com/stretchr/testify/suite"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
@@ -40,11 +40,10 @@ func (s *PgContainerSuite) SetupSuite() {
 			"POSTGRES_PASSWORD": testContainerPassword,
 			"POSTGRES_DB":       testContainerDatabase,
 		},
-		WaitingFor: wait.ForSQL(testContainerExposedPort, "pgx", func(host string, port string) string {
-			portNum, _, _ := strings.Cut(port, "/")
+		WaitingFor: wait.ForSQL(testContainerExposedPort, "pgx", func(host string, port network.Port) string {
 			return fmt.Sprintf(
 				"postgres://%s:%s@%s:%s/%s?sslmode=disable",
-				testContainerUser, testContainerPassword, host, portNum, testContainerDatabase,
+				testContainerUser, testContainerPassword, host, port.Port(), testContainerDatabase,
 			)
 		}),
 	}
