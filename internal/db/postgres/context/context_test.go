@@ -237,8 +237,8 @@ func TestNewRuntimeContext_regression_247(t *testing.T) {
 	require.False(t, rc.IsFatal())
 
 	expectedTablesWithSubsetQuery := map[string]string{
-		"users":  "SELECT \"public\".\"users\".* FROM \"public\".\"users\"   WHERE ( ( public.users.user_id = '62c8c546-2420-4ca6-9961-d2cce26f7cb2' ) )",
-		"orders": "SELECT \"public\".\"orders\".* FROM \"public\".\"orders\"  LEFT JOIN \"public\".\"users\" ON \"public\".\"orders\".\"user_id\" = \"public\".\"users\".\"user_id\" AND ( public.users.user_id = '62c8c546-2420-4ca6-9961-d2cce26f7cb2' ) WHERE ( ((\"public\".\"orders\".\"user_id\" IS NULL OR \"public\".\"users\".\"user_id\" IS NOT NULL)) )",
+		"users":  "SELECT \"public\".\"users\".\"user_id\", \"public\".\"users\".\"username\" FROM \"public\".\"users\"   WHERE ( ( public.users.user_id = '62c8c546-2420-4ca6-9961-d2cce26f7cb2' ) )",
+		"orders": "SELECT \"public\".\"orders\".\"order_id\", \"public\".\"orders\".\"user_id\", \"public\".\"orders\".\"order_date\" FROM \"public\".\"orders\"  LEFT JOIN \"public\".\"users\" ON \"public\".\"orders\".\"user_id\" = \"public\".\"users\".\"user_id\" AND ( public.users.user_id = '62c8c546-2420-4ca6-9961-d2cce26f7cb2' ) WHERE ( ((\"public\".\"orders\".\"user_id\" IS NULL OR \"public\".\"users\".\"user_id\" IS NOT NULL)) )",
 		"foo":    "",
 	}
 
