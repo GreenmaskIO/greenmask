@@ -8,31 +8,31 @@
       
       
       
-        <link rel="canonical" href="https://docs.greenmask.io/dev/commands/">
+        <link rel="canonical" href="https://docs.greenmask.io/dev/release_notes/greenmask_0_2_23/">
       
       
-        <link rel="prev" href="../configuration/">
+        <link rel="prev" href="../../supporting_new_postgres/">
       
       
-        <link rel="next" href="list-transformers/">
+        <link rel="next" href="../greenmask_0_2_22/">
       
       
         
       
       
-      <link rel="icon" href="../assets/logo.png">
+      <link rel="icon" href="../../assets/logo.png">
       <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
     
     
       
-        <title>Commands - Greenmask — PostgreSQL database anonymization and synthetic data generation tool</title>
+        <title>Greenmask 0.2.23 - Greenmask — PostgreSQL database anonymization and synthetic data generation tool</title>
       
     
     
-      <link rel="stylesheet" href="../assets/stylesheets/main.484c7ddc.min.css">
+      <link rel="stylesheet" href="../../assets/stylesheets/main.484c7ddc.min.css">
       
         
-        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
       
       
 
@@ -51,7 +51,7 @@
       
     
     
-    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
     
       
   
@@ -69,15 +69,15 @@
     
   
 <meta property="og:type" content="website" />
-<meta property="og:title" content="Commands - Greenmask — PostgreSQL database anonymization and synthetic data generation tool" />
-<meta property="og:image" content="https://docs.greenmask.io/dev/assets/images/social/commands/index.png" />
+<meta property="og:title" content="Greenmask 0.2.23 - Greenmask — PostgreSQL database anonymization and synthetic data generation tool" />
+<meta property="og:image" content="https://docs.greenmask.io/dev/assets/images/social/release_notes/greenmask_0_2_23.png" />
 <meta property="og:image:type" content="image/png" />
 <meta property="og:image:width" content="1200" />
 <meta property="og:image:height" content="630" />
-<meta property="og:url" content="https://docs.greenmask.io/dev/commands/" />
+<meta property="og:url" content="https://docs.greenmask.io/dev/release_notes/greenmask_0_2_23/" />
 <meta property="twitter:card" content="summary_large_image" />
-<meta property="twitter:title" content="Commands - Greenmask — PostgreSQL database anonymization and synthetic data generation tool" />
-<meta property="twitter:image" content="https://docs.greenmask.io/dev/assets/images/social/commands/index.png" />
+<meta property="twitter:title" content="Greenmask 0.2.23 - Greenmask — PostgreSQL database anonymization and synthetic data generation tool" />
+<meta property="twitter:image" content="https://docs.greenmask.io/dev/assets/images/social/release_notes/greenmask_0_2_23.png" />
 </head>
   
   
@@ -95,7 +95,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#commands" class="md-skip">
+        <a href="#greenmask-0223" class="md-skip">
           Skip to content
         </a>
       
@@ -128,12 +128,12 @@ A new version 0.2.23 (2026.08.22) is <a
             <div class="md-banner__inner md-grid md-typeset">
               
 You're not viewing the latest version.
-<a href="../..">
+<a href="../../..">
   <strong>Click here to go to latest.</strong>
 </a>
 
             </div>
-            <script>var el=document.querySelector("[data-md-component=outdated]"),base=new URL(".."),outdated=__md_get("__outdated",sessionStorage,base);!0===outdated&&el&&(el.hidden=!1)</script>
+            <script>var el=document.querySelector("[data-md-component=outdated]"),base=new URL("../.."),outdated=__md_get("__outdated",sessionStorage,base);!0===outdated&&el&&(el.hidden=!1)</script>
           </aside>
         
       </div>
@@ -143,9 +143,9 @@ You're not viewing the latest version.
 
 <header class="md-header" data-md-component="header">
   <nav class="md-header__inner md-grid" aria-label="Header">
-    <a href=".." title="Greenmask — PostgreSQL database anonymization and synthetic data generation tool" class="md-header__button md-logo" aria-label="Greenmask — PostgreSQL database anonymization and synthetic data generation tool" data-md-component="logo">
+    <a href="../.." title="Greenmask — PostgreSQL database anonymization and synthetic data generation tool" class="md-header__button md-logo" aria-label="Greenmask — PostgreSQL database anonymization and synthetic data generation tool" data-md-component="logo">
       
-  <img src="../assets/logo.png" alt="logo">
+  <img src="../../assets/logo.png" alt="logo">
 
     </a>
     <label class="md-header__button md-icon" for="__drawer">
@@ -162,7 +162,7 @@ You're not viewing the latest version.
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Commands
+              Greenmask 0.2.23
             
           </span>
         </div>
@@ -252,13 +252,11 @@ You're not viewing the latest version.
   
   
   
-    
-  
   
     
     
-      <li class="md-tabs__item md-tabs__item--active">
-        <a href="../architecture/" class="md-tabs__link">
+      <li class="md-tabs__item">
+        <a href="../../architecture/" class="md-tabs__link">
           
   
   
@@ -276,11 +274,13 @@ You're not viewing the latest version.
   
   
   
+    
+  
   
     
     
-      <li class="md-tabs__item">
-        <a href="../release_notes/greenmask_0_2_23/" class="md-tabs__link">
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="./" class="md-tabs__link">
           
   
   
@@ -316,9 +316,9 @@ You're not viewing the latest version.
 
 <nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
-    <a href=".." title="Greenmask — PostgreSQL database anonymization and synthetic data generation tool" class="md-nav__button md-logo" aria-label="Greenmask — PostgreSQL database anonymization and synthetic data generation tool" data-md-component="logo">
+    <a href="../.." title="Greenmask — PostgreSQL database anonymization and synthetic data generation tool" class="md-nav__button md-logo" aria-label="Greenmask — PostgreSQL database anonymization and synthetic data generation tool" data-md-component="logo">
       
-  <img src="../assets/logo.png" alt="logo">
+  <img src="../../assets/logo.png" alt="logo">
 
     </a>
     Greenmask — PostgreSQL database anonymization and synthetic data generation tool
@@ -342,8 +342,6 @@ You're not viewing the latest version.
       
   
   
-    
-  
   
   
     
@@ -373,21 +371,18 @@ You're not viewing the latest version.
     
     
       
-        
-        
-      
       
     
     
-    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_1" checked>
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_1" >
         
           
           <div class="md-nav__link md-nav__container">
-            <a href=".." class="md-nav__link ">
+            <a href="../.." class="md-nav__link ">
               
   
   
@@ -405,13 +400,13 @@ You're not viewing the latest version.
             </a>
             
               
-              <label class="md-nav__link " for="__nav_1" id="__nav_1_label" tabindex="">
+              <label class="md-nav__link " for="__nav_1" id="__nav_1_label" tabindex="0">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
           </div>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_1_label" aria-expanded="true">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_1_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_1">
             <span class="md-nav__icon md-icon"></span>
             
@@ -429,7 +424,7 @@ You're not viewing the latest version.
   
   
     <li class="md-nav__item">
-      <a href="../architecture/" class="md-nav__link">
+      <a href="../../architecture/" class="md-nav__link">
         
   
   
@@ -457,7 +452,7 @@ You're not viewing the latest version.
   
   
     <li class="md-nav__item">
-      <a href="../playground/" class="md-nav__link">
+      <a href="../../playground/" class="md-nav__link">
         
   
   
@@ -485,7 +480,7 @@ You're not viewing the latest version.
   
   
     <li class="md-nav__item">
-      <a href="../installation/" class="md-nav__link">
+      <a href="../../installation/" class="md-nav__link">
         
   
   
@@ -513,7 +508,7 @@ You're not viewing the latest version.
   
   
     <li class="md-nav__item">
-      <a href="../configuration/" class="md-nav__link">
+      <a href="../../configuration/" class="md-nav__link">
         
   
   
@@ -538,8 +533,6 @@ You're not viewing the latest version.
                 
   
   
-    
-  
   
   
     
@@ -572,15 +565,15 @@ You're not viewing the latest version.
       
     
     
-    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_1_5" checked>
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_1_5" >
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="./" class="md-nav__link md-nav__link--active">
+            <a href="../../commands/" class="md-nav__link ">
               
   
   
@@ -598,13 +591,13 @@ You're not viewing the latest version.
             </a>
             
               
-              <label class="md-nav__link md-nav__link--active" for="__nav_1_5" id="__nav_1_5_label" tabindex="0">
+              <label class="md-nav__link " for="__nav_1_5" id="__nav_1_5_label" tabindex="0">
                 <span class="md-nav__icon md-icon"></span>
               </label>
             
           </div>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_1_5_label" aria-expanded="true">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_1_5_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_1_5">
             <span class="md-nav__icon md-icon"></span>
             
@@ -624,7 +617,7 @@ You're not viewing the latest version.
   
   
     <li class="md-nav__item">
-      <a href="list-transformers/" class="md-nav__link">
+      <a href="../../commands/list-transformers/" class="md-nav__link">
         
   
   
@@ -652,7 +645,7 @@ You're not viewing the latest version.
   
   
     <li class="md-nav__item">
-      <a href="show-transformer/" class="md-nav__link">
+      <a href="../../commands/show-transformer/" class="md-nav__link">
         
   
   
@@ -680,7 +673,7 @@ You're not viewing the latest version.
   
   
     <li class="md-nav__item">
-      <a href="validate/" class="md-nav__link">
+      <a href="../../commands/validate/" class="md-nav__link">
         
   
   
@@ -708,7 +701,7 @@ You're not viewing the latest version.
   
   
     <li class="md-nav__item">
-      <a href="dump/" class="md-nav__link">
+      <a href="../../commands/dump/" class="md-nav__link">
         
   
   
@@ -736,7 +729,7 @@ You're not viewing the latest version.
   
   
     <li class="md-nav__item">
-      <a href="list-dumps/" class="md-nav__link">
+      <a href="../../commands/list-dumps/" class="md-nav__link">
         
   
   
@@ -764,7 +757,7 @@ You're not viewing the latest version.
   
   
     <li class="md-nav__item">
-      <a href="show-dump/" class="md-nav__link">
+      <a href="../../commands/show-dump/" class="md-nav__link">
         
   
   
@@ -792,7 +785,7 @@ You're not viewing the latest version.
   
   
     <li class="md-nav__item">
-      <a href="restore/" class="md-nav__link">
+      <a href="../../commands/restore/" class="md-nav__link">
         
   
   
@@ -820,7 +813,7 @@ You're not viewing the latest version.
   
   
     <li class="md-nav__item">
-      <a href="delete/" class="md-nav__link">
+      <a href="../../commands/delete/" class="md-nav__link">
         
   
   
@@ -856,7 +849,7 @@ You're not viewing the latest version.
   
   
     <li class="md-nav__item">
-      <a href="../database_subset/" class="md-nav__link">
+      <a href="../../database_subset/" class="md-nav__link">
         
   
   
@@ -921,7 +914,7 @@ You're not viewing the latest version.
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../built_in_transformers/" class="md-nav__link ">
+            <a href="../../built_in_transformers/" class="md-nav__link ">
               
   
   
@@ -965,7 +958,7 @@ You're not viewing the latest version.
   
   
     <li class="md-nav__item">
-      <a href="../built_in_transformers/dynamic_parameters/" class="md-nav__link">
+      <a href="../../built_in_transformers/dynamic_parameters/" class="md-nav__link">
         
   
   
@@ -993,7 +986,7 @@ You're not viewing the latest version.
   
   
     <li class="md-nav__item">
-      <a href="../built_in_transformers/transformation_engines/" class="md-nav__link">
+      <a href="../../built_in_transformers/transformation_engines/" class="md-nav__link">
         
   
   
@@ -1021,7 +1014,7 @@ You're not viewing the latest version.
   
   
     <li class="md-nav__item">
-      <a href="../built_in_transformers/parameters_templating/" class="md-nav__link">
+      <a href="../../built_in_transformers/parameters_templating/" class="md-nav__link">
         
   
   
@@ -1049,7 +1042,7 @@ You're not viewing the latest version.
   
   
     <li class="md-nav__item">
-      <a href="../built_in_transformers/parameters_env_vars_interpolation/" class="md-nav__link">
+      <a href="../../built_in_transformers/parameters_env_vars_interpolation/" class="md-nav__link">
         
   
   
@@ -1077,7 +1070,7 @@ You're not viewing the latest version.
   
   
     <li class="md-nav__item">
-      <a href="../built_in_transformers/transformation_condition/" class="md-nav__link">
+      <a href="../../built_in_transformers/transformation_condition/" class="md-nav__link">
         
   
   
@@ -1105,7 +1098,7 @@ You're not viewing the latest version.
   
   
     <li class="md-nav__item">
-      <a href="../built_in_transformers/transformation_inheritance/" class="md-nav__link">
+      <a href="../../built_in_transformers/transformation_inheritance/" class="md-nav__link">
         
   
   
@@ -1250,7 +1243,7 @@ You're not viewing the latest version.
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../built_in_transformers/standard_transformers/" class="md-nav__link ">
+            <a href="../../built_in_transformers/standard_transformers/" class="md-nav__link ">
               
   
   
@@ -1294,7 +1287,7 @@ You're not viewing the latest version.
   
   
     <li class="md-nav__item">
-      <a href="../built_in_transformers/standard_transformers/cmd/" class="md-nav__link">
+      <a href="../../built_in_transformers/standard_transformers/cmd/" class="md-nav__link">
         
   
   
@@ -1322,7 +1315,7 @@ You're not viewing the latest version.
   
   
     <li class="md-nav__item">
-      <a href="../built_in_transformers/standard_transformers/dict/" class="md-nav__link">
+      <a href="../../built_in_transformers/standard_transformers/dict/" class="md-nav__link">
         
   
   
@@ -1350,7 +1343,7 @@ You're not viewing the latest version.
   
   
     <li class="md-nav__item">
-      <a href="../built_in_transformers/standard_transformers/hash/" class="md-nav__link">
+      <a href="../../built_in_transformers/standard_transformers/hash/" class="md-nav__link">
         
   
   
@@ -1378,7 +1371,7 @@ You're not viewing the latest version.
   
   
     <li class="md-nav__item">
-      <a href="../built_in_transformers/standard_transformers/masking/" class="md-nav__link">
+      <a href="../../built_in_transformers/standard_transformers/masking/" class="md-nav__link">
         
   
   
@@ -1406,7 +1399,7 @@ You're not viewing the latest version.
   
   
     <li class="md-nav__item">
-      <a href="../built_in_transformers/standard_transformers/noise_date/" class="md-nav__link">
+      <a href="../../built_in_transformers/standard_transformers/noise_date/" class="md-nav__link">
         
   
   
@@ -1434,7 +1427,7 @@ You're not viewing the latest version.
   
   
     <li class="md-nav__item">
-      <a href="../built_in_transformers/standard_transformers/noise_float/" class="md-nav__link">
+      <a href="../../built_in_transformers/standard_transformers/noise_float/" class="md-nav__link">
         
   
   
@@ -1462,7 +1455,7 @@ You're not viewing the latest version.
   
   
     <li class="md-nav__item">
-      <a href="../built_in_transformers/standard_transformers/noise_numeric/" class="md-nav__link">
+      <a href="../../built_in_transformers/standard_transformers/noise_numeric/" class="md-nav__link">
         
   
   
@@ -1490,7 +1483,7 @@ You're not viewing the latest version.
   
   
     <li class="md-nav__item">
-      <a href="../built_in_transformers/standard_transformers/noise_int/" class="md-nav__link">
+      <a href="../../built_in_transformers/standard_transformers/noise_int/" class="md-nav__link">
         
   
   
@@ -1518,7 +1511,7 @@ You're not viewing the latest version.
   
   
     <li class="md-nav__item">
-      <a href="../built_in_transformers/standard_transformers/random_bool/" class="md-nav__link">
+      <a href="../../built_in_transformers/standard_transformers/random_bool/" class="md-nav__link">
         
   
   
@@ -1546,7 +1539,7 @@ You're not viewing the latest version.
   
   
     <li class="md-nav__item">
-      <a href="../built_in_transformers/standard_transformers/random_choice/" class="md-nav__link">
+      <a href="../../built_in_transformers/standard_transformers/random_choice/" class="md-nav__link">
         
   
   
@@ -1574,7 +1567,7 @@ You're not viewing the latest version.
   
   
     <li class="md-nav__item">
-      <a href="../built_in_transformers/standard_transformers/random_date/" class="md-nav__link">
+      <a href="../../built_in_transformers/standard_transformers/random_date/" class="md-nav__link">
         
   
   
@@ -1602,7 +1595,7 @@ You're not viewing the latest version.
   
   
     <li class="md-nav__item">
-      <a href="../built_in_transformers/standard_transformers/random_float/" class="md-nav__link">
+      <a href="../../built_in_transformers/standard_transformers/random_float/" class="md-nav__link">
         
   
   
@@ -1630,7 +1623,7 @@ You're not viewing the latest version.
   
   
     <li class="md-nav__item">
-      <a href="../built_in_transformers/standard_transformers/random_numeric/" class="md-nav__link">
+      <a href="../../built_in_transformers/standard_transformers/random_numeric/" class="md-nav__link">
         
   
   
@@ -1658,7 +1651,7 @@ You're not viewing the latest version.
   
   
     <li class="md-nav__item">
-      <a href="../built_in_transformers/standard_transformers/random_int/" class="md-nav__link">
+      <a href="../../built_in_transformers/standard_transformers/random_int/" class="md-nav__link">
         
   
   
@@ -1686,7 +1679,7 @@ You're not viewing the latest version.
   
   
     <li class="md-nav__item">
-      <a href="../built_in_transformers/standard_transformers/random_string/" class="md-nav__link">
+      <a href="../../built_in_transformers/standard_transformers/random_string/" class="md-nav__link">
         
   
   
@@ -1714,7 +1707,7 @@ You're not viewing the latest version.
   
   
     <li class="md-nav__item">
-      <a href="../built_in_transformers/standard_transformers/random_uuid/" class="md-nav__link">
+      <a href="../../built_in_transformers/standard_transformers/random_uuid/" class="md-nav__link">
         
   
   
@@ -1742,7 +1735,7 @@ You're not viewing the latest version.
   
   
     <li class="md-nav__item">
-      <a href="../built_in_transformers/standard_transformers/random_latitude/" class="md-nav__link">
+      <a href="../../built_in_transformers/standard_transformers/random_latitude/" class="md-nav__link">
         
   
   
@@ -1770,7 +1763,7 @@ You're not viewing the latest version.
   
   
     <li class="md-nav__item">
-      <a href="../built_in_transformers/standard_transformers/random_longitude/" class="md-nav__link">
+      <a href="../../built_in_transformers/standard_transformers/random_longitude/" class="md-nav__link">
         
   
   
@@ -1798,7 +1791,7 @@ You're not viewing the latest version.
   
   
     <li class="md-nav__item">
-      <a href="../built_in_transformers/standard_transformers/random_unix_timestamp/" class="md-nav__link">
+      <a href="../../built_in_transformers/standard_transformers/random_unix_timestamp/" class="md-nav__link">
         
   
   
@@ -1826,7 +1819,7 @@ You're not viewing the latest version.
   
   
     <li class="md-nav__item">
-      <a href="../built_in_transformers/standard_transformers/random_day_of_week/" class="md-nav__link">
+      <a href="../../built_in_transformers/standard_transformers/random_day_of_week/" class="md-nav__link">
         
   
   
@@ -1854,7 +1847,7 @@ You're not viewing the latest version.
   
   
     <li class="md-nav__item">
-      <a href="../built_in_transformers/standard_transformers/random_day_of_month/" class="md-nav__link">
+      <a href="../../built_in_transformers/standard_transformers/random_day_of_month/" class="md-nav__link">
         
   
   
@@ -1882,7 +1875,7 @@ You're not viewing the latest version.
   
   
     <li class="md-nav__item">
-      <a href="../built_in_transformers/standard_transformers/random_month_name/" class="md-nav__link">
+      <a href="../../built_in_transformers/standard_transformers/random_month_name/" class="md-nav__link">
         
   
   
@@ -1910,7 +1903,7 @@ You're not viewing the latest version.
   
   
     <li class="md-nav__item">
-      <a href="../built_in_transformers/standard_transformers/random_year_string/" class="md-nav__link">
+      <a href="../../built_in_transformers/standard_transformers/random_year_string/" class="md-nav__link">
         
   
   
@@ -1938,7 +1931,7 @@ You're not viewing the latest version.
   
   
     <li class="md-nav__item">
-      <a href="../built_in_transformers/standard_transformers/random_century/" class="md-nav__link">
+      <a href="../../built_in_transformers/standard_transformers/random_century/" class="md-nav__link">
         
   
   
@@ -1966,7 +1959,7 @@ You're not viewing the latest version.
   
   
     <li class="md-nav__item">
-      <a href="../built_in_transformers/standard_transformers/random_company/" class="md-nav__link">
+      <a href="../../built_in_transformers/standard_transformers/random_company/" class="md-nav__link">
         
   
   
@@ -1994,7 +1987,7 @@ You're not viewing the latest version.
   
   
     <li class="md-nav__item">
-      <a href="../built_in_transformers/standard_transformers/random_timezone/" class="md-nav__link">
+      <a href="../../built_in_transformers/standard_transformers/random_timezone/" class="md-nav__link">
         
   
   
@@ -2022,7 +2015,7 @@ You're not viewing the latest version.
   
   
     <li class="md-nav__item">
-      <a href="../built_in_transformers/standard_transformers/random_email/" class="md-nav__link">
+      <a href="../../built_in_transformers/standard_transformers/random_email/" class="md-nav__link">
         
   
   
@@ -2050,7 +2043,7 @@ You're not viewing the latest version.
   
   
     <li class="md-nav__item">
-      <a href="../built_in_transformers/standard_transformers/random_username/" class="md-nav__link">
+      <a href="../../built_in_transformers/standard_transformers/random_username/" class="md-nav__link">
         
   
   
@@ -2078,7 +2071,7 @@ You're not viewing the latest version.
   
   
     <li class="md-nav__item">
-      <a href="../built_in_transformers/standard_transformers/random_password/" class="md-nav__link">
+      <a href="../../built_in_transformers/standard_transformers/random_password/" class="md-nav__link">
         
   
   
@@ -2106,7 +2099,7 @@ You're not viewing the latest version.
   
   
     <li class="md-nav__item">
-      <a href="../built_in_transformers/standard_transformers/random_domain_name/" class="md-nav__link">
+      <a href="../../built_in_transformers/standard_transformers/random_domain_name/" class="md-nav__link">
         
   
   
@@ -2134,7 +2127,7 @@ You're not viewing the latest version.
   
   
     <li class="md-nav__item">
-      <a href="../built_in_transformers/standard_transformers/random_person/" class="md-nav__link">
+      <a href="../../built_in_transformers/standard_transformers/random_person/" class="md-nav__link">
         
   
   
@@ -2162,7 +2155,7 @@ You're not viewing the latest version.
   
   
     <li class="md-nav__item">
-      <a href="../built_in_transformers/standard_transformers/random_url/" class="md-nav__link">
+      <a href="../../built_in_transformers/standard_transformers/random_url/" class="md-nav__link">
         
   
   
@@ -2190,7 +2183,7 @@ You're not viewing the latest version.
   
   
     <li class="md-nav__item">
-      <a href="../built_in_transformers/standard_transformers/random_mac/" class="md-nav__link">
+      <a href="../../built_in_transformers/standard_transformers/random_mac/" class="md-nav__link">
         
   
   
@@ -2218,7 +2211,7 @@ You're not viewing the latest version.
   
   
     <li class="md-nav__item">
-      <a href="../built_in_transformers/standard_transformers/random_ip/" class="md-nav__link">
+      <a href="../../built_in_transformers/standard_transformers/random_ip/" class="md-nav__link">
         
   
   
@@ -2246,7 +2239,7 @@ You're not viewing the latest version.
   
   
     <li class="md-nav__item">
-      <a href="../built_in_transformers/standard_transformers/random_word/" class="md-nav__link">
+      <a href="../../built_in_transformers/standard_transformers/random_word/" class="md-nav__link">
         
   
   
@@ -2274,7 +2267,7 @@ You're not viewing the latest version.
   
   
     <li class="md-nav__item">
-      <a href="../built_in_transformers/standard_transformers/random_sentence/" class="md-nav__link">
+      <a href="../../built_in_transformers/standard_transformers/random_sentence/" class="md-nav__link">
         
   
   
@@ -2302,7 +2295,7 @@ You're not viewing the latest version.
   
   
     <li class="md-nav__item">
-      <a href="../built_in_transformers/standard_transformers/random_paragraph/" class="md-nav__link">
+      <a href="../../built_in_transformers/standard_transformers/random_paragraph/" class="md-nav__link">
         
   
   
@@ -2330,7 +2323,7 @@ You're not viewing the latest version.
   
   
     <li class="md-nav__item">
-      <a href="../built_in_transformers/standard_transformers/random_cc_type/" class="md-nav__link">
+      <a href="../../built_in_transformers/standard_transformers/random_cc_type/" class="md-nav__link">
         
   
   
@@ -2358,7 +2351,7 @@ You're not viewing the latest version.
   
   
     <li class="md-nav__item">
-      <a href="../built_in_transformers/standard_transformers/random_cc_number/" class="md-nav__link">
+      <a href="../../built_in_transformers/standard_transformers/random_cc_number/" class="md-nav__link">
         
   
   
@@ -2386,7 +2379,7 @@ You're not viewing the latest version.
   
   
     <li class="md-nav__item">
-      <a href="../built_in_transformers/standard_transformers/random_currency/" class="md-nav__link">
+      <a href="../../built_in_transformers/standard_transformers/random_currency/" class="md-nav__link">
         
   
   
@@ -2414,7 +2407,7 @@ You're not viewing the latest version.
   
   
     <li class="md-nav__item">
-      <a href="../built_in_transformers/standard_transformers/random_amount_with_currency/" class="md-nav__link">
+      <a href="../../built_in_transformers/standard_transformers/random_amount_with_currency/" class="md-nav__link">
         
   
   
@@ -2442,7 +2435,7 @@ You're not viewing the latest version.
   
   
     <li class="md-nav__item">
-      <a href="../built_in_transformers/standard_transformers/random_phone_number/" class="md-nav__link">
+      <a href="../../built_in_transformers/standard_transformers/random_phone_number/" class="md-nav__link">
         
   
   
@@ -2470,7 +2463,7 @@ You're not viewing the latest version.
   
   
     <li class="md-nav__item">
-      <a href="../built_in_transformers/standard_transformers/random_toll_free_phone_number/" class="md-nav__link">
+      <a href="../../built_in_transformers/standard_transformers/random_toll_free_phone_number/" class="md-nav__link">
         
   
   
@@ -2498,7 +2491,7 @@ You're not viewing the latest version.
   
   
     <li class="md-nav__item">
-      <a href="../built_in_transformers/standard_transformers/random_e164_phone_number/" class="md-nav__link">
+      <a href="../../built_in_transformers/standard_transformers/random_e164_phone_number/" class="md-nav__link">
         
   
   
@@ -2526,7 +2519,7 @@ You're not viewing the latest version.
   
   
     <li class="md-nav__item">
-      <a href="../built_in_transformers/standard_transformers/real_address/" class="md-nav__link">
+      <a href="../../built_in_transformers/standard_transformers/real_address/" class="md-nav__link">
         
   
   
@@ -2554,7 +2547,7 @@ You're not viewing the latest version.
   
   
     <li class="md-nav__item">
-      <a href="../built_in_transformers/standard_transformers/regexp_replace/" class="md-nav__link">
+      <a href="../../built_in_transformers/standard_transformers/regexp_replace/" class="md-nav__link">
         
   
   
@@ -2582,7 +2575,7 @@ You're not viewing the latest version.
   
   
     <li class="md-nav__item">
-      <a href="../built_in_transformers/standard_transformers/replace/" class="md-nav__link">
+      <a href="../../built_in_transformers/standard_transformers/replace/" class="md-nav__link">
         
   
   
@@ -2610,7 +2603,7 @@ You're not viewing the latest version.
   
   
     <li class="md-nav__item">
-      <a href="../built_in_transformers/standard_transformers/set_null/" class="md-nav__link">
+      <a href="../../built_in_transformers/standard_transformers/set_null/" class="md-nav__link">
         
   
   
@@ -2675,7 +2668,7 @@ You're not viewing the latest version.
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../built_in_transformers/advanced_transformers/" class="md-nav__link ">
+            <a href="../../built_in_transformers/advanced_transformers/" class="md-nav__link ">
               
   
   
@@ -2719,7 +2712,7 @@ You're not viewing the latest version.
   
   
     <li class="md-nav__item">
-      <a href="../built_in_transformers/advanced_transformers/json/" class="md-nav__link">
+      <a href="../../built_in_transformers/advanced_transformers/json/" class="md-nav__link">
         
   
   
@@ -2747,7 +2740,7 @@ You're not viewing the latest version.
   
   
     <li class="md-nav__item">
-      <a href="../built_in_transformers/advanced_transformers/template/" class="md-nav__link">
+      <a href="../../built_in_transformers/advanced_transformers/template/" class="md-nav__link">
         
   
   
@@ -2775,7 +2768,7 @@ You're not viewing the latest version.
   
   
     <li class="md-nav__item">
-      <a href="../built_in_transformers/advanced_transformers/template_record/" class="md-nav__link">
+      <a href="../../built_in_transformers/advanced_transformers/template_record/" class="md-nav__link">
         
   
   
@@ -2828,7 +2821,7 @@ You're not viewing the latest version.
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../built_in_transformers/advanced_transformers/custom_functions/" class="md-nav__link ">
+            <a href="../../built_in_transformers/advanced_transformers/custom_functions/" class="md-nav__link ">
               
   
   
@@ -2872,7 +2865,7 @@ You're not viewing the latest version.
   
   
     <li class="md-nav__item">
-      <a href="../built_in_transformers/advanced_transformers/custom_functions/core_functions/" class="md-nav__link">
+      <a href="../../built_in_transformers/advanced_transformers/custom_functions/core_functions/" class="md-nav__link">
         
   
   
@@ -2900,7 +2893,7 @@ You're not viewing the latest version.
   
   
     <li class="md-nav__item">
-      <a href="../built_in_transformers/advanced_transformers/custom_functions/faker_function/" class="md-nav__link">
+      <a href="../../built_in_transformers/advanced_transformers/custom_functions/faker_function/" class="md-nav__link">
         
   
   
@@ -3008,7 +3001,7 @@ You're not viewing the latest version.
   
   
     <li class="md-nav__item">
-      <a href="../supporting_new_postgres/" class="md-nav__link">
+      <a href="../../supporting_new_postgres/" class="md-nav__link">
         
   
   
@@ -3048,8 +3041,10 @@ You're not viewing the latest version.
       
   
   
+    
   
   
+  
     
     
       
@@ -3141,17 +3136,20 @@ You're not viewing the latest version.
     
     
       
+        
+        
+      
       
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" checked>
         
           
-          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="">
             
   
   
@@ -3169,7 +3167,7 @@ You're not viewing the latest version.
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_2">
             <span class="md-nav__icon md-icon"></span>
             
@@ -3184,10 +3182,37 @@ You're not viewing the latest version.
                 
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="../release_notes/greenmask_0_2_23/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Greenmask 0.2.23
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   
@@ -3203,6 +3228,65 @@ You're not viewing the latest version.
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#changes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Changes
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Changes">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#full-changelog-v0222v0223" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Full Changelog: v0.2.22...v0.2.23
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#links" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Links
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -3215,7 +3299,7 @@ You're not viewing the latest version.
   
   
     <li class="md-nav__item">
-      <a href="../release_notes/greenmask_0_2_22/" class="md-nav__link">
+      <a href="../greenmask_0_2_22/" class="md-nav__link">
         
   
   
@@ -3243,7 +3327,7 @@ You're not viewing the latest version.
   
   
     <li class="md-nav__item">
-      <a href="../release_notes/greenmask_0_2_21/" class="md-nav__link">
+      <a href="../greenmask_0_2_21/" class="md-nav__link">
         
   
   
@@ -3271,7 +3355,7 @@ You're not viewing the latest version.
   
   
     <li class="md-nav__item">
-      <a href="../release_notes/greenmask_0_2_20/" class="md-nav__link">
+      <a href="../greenmask_0_2_20/" class="md-nav__link">
         
   
   
@@ -3299,7 +3383,7 @@ You're not viewing the latest version.
   
   
     <li class="md-nav__item">
-      <a href="../release_notes/greenmask_0_2_19/" class="md-nav__link">
+      <a href="../greenmask_0_2_19/" class="md-nav__link">
         
   
   
@@ -3327,7 +3411,7 @@ You're not viewing the latest version.
   
   
     <li class="md-nav__item">
-      <a href="../release_notes/greenmask_0_2_18/" class="md-nav__link">
+      <a href="../greenmask_0_2_18/" class="md-nav__link">
         
   
   
@@ -3355,7 +3439,7 @@ You're not viewing the latest version.
   
   
     <li class="md-nav__item">
-      <a href="../release_notes/greenmask_0_2_17/" class="md-nav__link">
+      <a href="../greenmask_0_2_17/" class="md-nav__link">
         
   
   
@@ -3383,7 +3467,7 @@ You're not viewing the latest version.
   
   
     <li class="md-nav__item">
-      <a href="../release_notes/greenmask_0_2_16/" class="md-nav__link">
+      <a href="../greenmask_0_2_16/" class="md-nav__link">
         
   
   
@@ -3411,7 +3495,7 @@ You're not viewing the latest version.
   
   
     <li class="md-nav__item">
-      <a href="../release_notes/greenmask_0_2_15/" class="md-nav__link">
+      <a href="../greenmask_0_2_15/" class="md-nav__link">
         
   
   
@@ -3439,7 +3523,7 @@ You're not viewing the latest version.
   
   
     <li class="md-nav__item">
-      <a href="../release_notes/greenmask_0_2_14/" class="md-nav__link">
+      <a href="../greenmask_0_2_14/" class="md-nav__link">
         
   
   
@@ -3467,7 +3551,7 @@ You're not viewing the latest version.
   
   
     <li class="md-nav__item">
-      <a href="../release_notes/greenmask_0_2_13/" class="md-nav__link">
+      <a href="../greenmask_0_2_13/" class="md-nav__link">
         
   
   
@@ -3495,7 +3579,7 @@ You're not viewing the latest version.
   
   
     <li class="md-nav__item">
-      <a href="../release_notes/greenmask_0_2_12/" class="md-nav__link">
+      <a href="../greenmask_0_2_12/" class="md-nav__link">
         
   
   
@@ -3523,7 +3607,7 @@ You're not viewing the latest version.
   
   
     <li class="md-nav__item">
-      <a href="../release_notes/greenmask_0_2_11/" class="md-nav__link">
+      <a href="../greenmask_0_2_11/" class="md-nav__link">
         
   
   
@@ -3551,7 +3635,7 @@ You're not viewing the latest version.
   
   
     <li class="md-nav__item">
-      <a href="../release_notes/greenmask_0_2_10/" class="md-nav__link">
+      <a href="../greenmask_0_2_10/" class="md-nav__link">
         
   
   
@@ -3579,7 +3663,7 @@ You're not viewing the latest version.
   
   
     <li class="md-nav__item">
-      <a href="../release_notes/greenmask_0_2_9/" class="md-nav__link">
+      <a href="../greenmask_0_2_9/" class="md-nav__link">
         
   
   
@@ -3607,7 +3691,7 @@ You're not viewing the latest version.
   
   
     <li class="md-nav__item">
-      <a href="../release_notes/greenmask_0_2_8/" class="md-nav__link">
+      <a href="../greenmask_0_2_8/" class="md-nav__link">
         
   
   
@@ -3635,7 +3719,7 @@ You're not viewing the latest version.
   
   
     <li class="md-nav__item">
-      <a href="../release_notes/greenmask_0_2_7/" class="md-nav__link">
+      <a href="../greenmask_0_2_7/" class="md-nav__link">
         
   
   
@@ -3663,7 +3747,7 @@ You're not viewing the latest version.
   
   
     <li class="md-nav__item">
-      <a href="../release_notes/greenmask_0_2_6/" class="md-nav__link">
+      <a href="../greenmask_0_2_6/" class="md-nav__link">
         
   
   
@@ -3691,7 +3775,7 @@ You're not viewing the latest version.
   
   
     <li class="md-nav__item">
-      <a href="../release_notes/greenmask_0_2_5/" class="md-nav__link">
+      <a href="../greenmask_0_2_5/" class="md-nav__link">
         
   
   
@@ -3719,7 +3803,7 @@ You're not viewing the latest version.
   
   
     <li class="md-nav__item">
-      <a href="../release_notes/greenmask_0_2_4/" class="md-nav__link">
+      <a href="../greenmask_0_2_4/" class="md-nav__link">
         
   
   
@@ -3747,7 +3831,7 @@ You're not viewing the latest version.
   
   
     <li class="md-nav__item">
-      <a href="../release_notes/greenmask_0_2_3/" class="md-nav__link">
+      <a href="../greenmask_0_2_3/" class="md-nav__link">
         
   
   
@@ -3775,7 +3859,7 @@ You're not viewing the latest version.
   
   
     <li class="md-nav__item">
-      <a href="../release_notes/greenmask_0_2_2/" class="md-nav__link">
+      <a href="../greenmask_0_2_2/" class="md-nav__link">
         
   
   
@@ -3803,7 +3887,7 @@ You're not viewing the latest version.
   
   
     <li class="md-nav__item">
-      <a href="../release_notes/greenmask_0_2_1/" class="md-nav__link">
+      <a href="../greenmask_0_2_1/" class="md-nav__link">
         
   
   
@@ -3831,7 +3915,7 @@ You're not viewing the latest version.
   
   
     <li class="md-nav__item">
-      <a href="../release_notes/greenmask_0_2_0/" class="md-nav__link">
+      <a href="../greenmask_0_2_0/" class="md-nav__link">
         
   
   
@@ -3859,7 +3943,7 @@ You're not viewing the latest version.
   
   
     <li class="md-nav__item">
-      <a href="../release_notes/greenmask_0_2_0_b2/" class="md-nav__link">
+      <a href="../greenmask_0_2_0_b2/" class="md-nav__link">
         
   
   
@@ -3887,7 +3971,7 @@ You're not viewing the latest version.
   
   
     <li class="md-nav__item">
-      <a href="../release_notes/greenmask_0_2_0_b1/" class="md-nav__link">
+      <a href="../greenmask_0_2_0_b1/" class="md-nav__link">
         
   
   
@@ -3915,7 +3999,7 @@ You're not viewing the latest version.
   
   
     <li class="md-nav__item">
-      <a href="../release_notes/greenmask_0_1_14/" class="md-nav__link">
+      <a href="../greenmask_0_1_14/" class="md-nav__link">
         
   
   
@@ -3943,7 +4027,7 @@ You're not viewing the latest version.
   
   
     <li class="md-nav__item">
-      <a href="../release_notes/greenmask_0_1_13/" class="md-nav__link">
+      <a href="../greenmask_0_1_13/" class="md-nav__link">
         
   
   
@@ -3971,7 +4055,7 @@ You're not viewing the latest version.
   
   
     <li class="md-nav__item">
-      <a href="../release_notes/greenmask_0_1_12/" class="md-nav__link">
+      <a href="../greenmask_0_1_12/" class="md-nav__link">
         
   
   
@@ -3999,7 +4083,7 @@ You're not viewing the latest version.
   
   
     <li class="md-nav__item">
-      <a href="../release_notes/greenmask_0_1_11/" class="md-nav__link">
+      <a href="../greenmask_0_1_11/" class="md-nav__link">
         
   
   
@@ -4027,7 +4111,7 @@ You're not viewing the latest version.
   
   
     <li class="md-nav__item">
-      <a href="../release_notes/greenmask_0_1_10/" class="md-nav__link">
+      <a href="../greenmask_0_1_10/" class="md-nav__link">
         
   
   
@@ -4055,7 +4139,7 @@ You're not viewing the latest version.
   
   
     <li class="md-nav__item">
-      <a href="../release_notes/greenmask_0_1_9/" class="md-nav__link">
+      <a href="../greenmask_0_1_9/" class="md-nav__link">
         
   
   
@@ -4083,7 +4167,7 @@ You're not viewing the latest version.
   
   
     <li class="md-nav__item">
-      <a href="../release_notes/greenmask_0_1_8/" class="md-nav__link">
+      <a href="../greenmask_0_1_8/" class="md-nav__link">
         
   
   
@@ -4111,7 +4195,7 @@ You're not viewing the latest version.
   
   
     <li class="md-nav__item">
-      <a href="../release_notes/greenmask_0_1_7/" class="md-nav__link">
+      <a href="../greenmask_0_1_7/" class="md-nav__link">
         
   
   
@@ -4139,7 +4223,7 @@ You're not viewing the latest version.
   
   
     <li class="md-nav__item">
-      <a href="../release_notes/greenmask_0_1_6/" class="md-nav__link">
+      <a href="../greenmask_0_1_6/" class="md-nav__link">
         
   
   
@@ -4167,7 +4251,7 @@ You're not viewing the latest version.
   
   
     <li class="md-nav__item">
-      <a href="../release_notes/greenmask_0_1_5/" class="md-nav__link">
+      <a href="../greenmask_0_1_5/" class="md-nav__link">
         
   
   
@@ -4195,7 +4279,7 @@ You're not viewing the latest version.
   
   
     <li class="md-nav__item">
-      <a href="../release_notes/greenmask_0_1_4/" class="md-nav__link">
+      <a href="../greenmask_0_1_4/" class="md-nav__link">
         
   
   
@@ -4223,7 +4307,7 @@ You're not viewing the latest version.
   
   
     <li class="md-nav__item">
-      <a href="../release_notes/greenmask_0_1_3/" class="md-nav__link">
+      <a href="../greenmask_0_1_3/" class="md-nav__link">
         
   
   
@@ -4251,7 +4335,7 @@ You're not viewing the latest version.
   
   
     <li class="md-nav__item">
-      <a href="../release_notes/greenmask_0_1_2/" class="md-nav__link">
+      <a href="../greenmask_0_1_2/" class="md-nav__link">
         
   
   
@@ -4279,7 +4363,7 @@ You're not viewing the latest version.
   
   
     <li class="md-nav__item">
-      <a href="../release_notes/greenmask_0_1_1/" class="md-nav__link">
+      <a href="../greenmask_0_1_1/" class="md-nav__link">
         
   
   
@@ -4307,7 +4391,7 @@ You're not viewing the latest version.
   
   
     <li class="md-nav__item">
-      <a href="../release_notes/greenmask_0_1_0/" class="md-nav__link">
+      <a href="../greenmask_0_1_0/" class="md-nav__link">
         
   
   
@@ -4335,7 +4419,7 @@ You're not viewing the latest version.
   
   
     <li class="md-nav__item">
-      <a href="../release_notes/greenmask_0_1_0_beta/" class="md-nav__link">
+      <a href="../greenmask_0_1_0_beta/" class="md-nav__link">
         
   
   
@@ -4390,10 +4474,38 @@ You're not viewing the latest version.
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#introduction" class="md-nav__link">
+  <a href="#changes" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Introduction
+        Changes
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Changes">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#full-changelog-v0222v0223" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Full Changelog: v0.2.22...v0.2.23
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#links" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Links
       
     </span>
   </a>
@@ -4420,38 +4532,35 @@ You're not viewing the latest version.
   
 
 
-<h1 id="commands">Commands<a class="headerlink" href="#commands" title="Permanent link">&para;</a></h1>
-<h2 id="introduction">Introduction<a class="headerlink" href="#introduction" title="Permanent link">&para;</a></h2>
-<div class="highlight"><span class="filename">Greenmask available commands</span><pre><span></span><code>greenmask<span class="w"> </span><span class="se">\</span>
---log-format<span class="o">=[</span>json<span class="p">|</span>text<span class="o">]</span><span class="w"> </span><span class="se">\</span>
---log-level<span class="o">=[</span>debug<span class="p">|</span>info<span class="p">|</span>warn<span class="o">]</span><span class="w"> </span><span class="se">\</span>
---config<span class="o">=</span>config.yml<span class="w"> </span><span class="se">\</span>
-<span class="o">[</span>dump<span class="p">|</span>list-dumps<span class="p">|</span>delete<span class="p">|</span>list-transformers<span class="p">|</span>show-transformer<span class="p">|</span>restore<span class="p">|</span>show-dump<span class="o">]</span><span class="sb">`</span>
-</code></pre></div>
-<p>You can use the following commands within Greenmask:</p>
+<h1 id="greenmask-0223">Greenmask 0.2.23<a class="headerlink" href="#greenmask-0223" title="Permanent link">&para;</a></h1>
+<h2 id="changes">Changes<a class="headerlink" href="#changes" title="Permanent link">&para;</a></h2>
 <ul>
-<li><a href="list-transformers/">list-transformers</a> — displays a list of available transformers along with their documentation</li>
-<li><a href="show-transformer/">show-transformer</a> — displays information about the specified transformer</li>
-<li><a href="validate/">validate</a> - performs a validation procedure by testing config, comparing transformed data, identifying 
-potential issues, and checking for schema changes.</li>
-<li><a href="dump/">dump</a> — initiates the data dumping process</li>
-<li><a href="restore/">restore</a> — restores data to the target database either by specifying a <code>dumpId</code> or using the latest available dump</li>
-<li><a href="list-dumps/">list-dumps</a> — lists all available dumps stored in the system</li>
-<li><a href="show-dump/">show-dump</a> — provides metadata information about a particular dump, offering insights into its structure and
-    attributes</li>
-<li><a href="delete/">delete</a> — deletes a specific dump from the storage</li>
+<li>feat: add <code>--exclude-extension</code> option to the <code>dump</code> command, mirroring <code>--exclude-schema</code> and
+  <code>--exclude-table</code> (requires pg_dump 17 or later) <a href="https://github.com/GreenmaskIO/greenmask/pull/470">#470</a></li>
+<li>fix: fail the dump when sequence privileges are missing on PostgreSQL 18 and later. Since PostgreSQL 18
+  <code>pg_sequence_last_value()</code> returns <code>NULL</code> instead of raising <code>permission denied for sequence</code>, so Greenmask silently
+  dumped <code>setval(&lt;start&gt;, false)</code> and every sequence was reset on restore. Unreadable sequences are now reported
+  together with a remediation hint and the dump
+  fails <a href="https://github.com/GreenmaskIO/greenmask/pull/471">#471</a>. Fixes
+  bug <a href="https://github.com/GreenmaskIO/greenmask/issues/469">#469</a></li>
+<li>fix: exclude generated columns from subset dump queries — subsetted tables were dumped with <code>SELECT "schema"."table".*</code>
+  while restore omits generated columns, so every row was one field
+  too wide <a href="https://github.com/GreenmaskIO/greenmask/pull/472">#472</a></li>
+<li>fix: <code>RandomEmail</code> no longer requires the source value to be a valid email when the configured templates do not
+  reference <code>original_local_part</code> or <code>original_domain</code> <a href="https://github.com/GreenmaskIO/greenmask/pull/468">#468</a>. Fixes
+  bug <a href="https://github.com/GreenmaskIO/greenmask/issues/466">#466</a></li>
+<li>fix: fix subset-related unit test and bump Go
+  dependencies <a href="https://github.com/GreenmaskIO/greenmask/pull/475">#475</a></li>
 </ul>
-<p>For any of the commands mentioned above, you can include the following common flags:</p>
+<h4 id="full-changelog-v0222v0223">Full Changelog: <a href="https://github.com/GreenmaskIO/greenmask/compare/v0.2.22...v0.2.23">v0.2.22...v0.2.23</a><a class="headerlink" href="#full-changelog-v0222v0223" title="Permanent link">&para;</a></h4>
+<h2 id="links">Links<a class="headerlink" href="#links" title="Permanent link">&para;</a></h2>
+<p>Feel free to reach out to us if you have any questions or need assistance:</p>
 <ul>
-<li><code>--log-format</code> — specifies the desired format for log output, which can be either <code>json</code> or <code>text</code>. This parameter is
-optional, with the default format set to <code>text</code>.</li>
-<li><code>--log-level</code> — sets the desired level for log output, which can be one of <code>debug</code>, <code>info</code>, or <code>warn</code>. This parameter
-is optional, with the default log level being <code>info</code>.</li>
-<li><code>--config</code> — requires the specification of a configuration file in YAML format. This configuration file is mandatory
-for Greenmask to operate correctly. The path may also be provided via the <code>GREENMASK_CONFIG</code> environment variable;
-when both are set, the <code>--config</code> flag takes precedence.</li>
-<li><code>--help</code> — displays comprehensive help information for Greenmask, providing guidance on its usage and available
-commands.</li>
+<li><a href="https://discord.gg/tAJegUKSTB">Discord</a></li>
+<li><a href="mailto:support@greenmask.io">Email</a></li>
+<li><a href="https://twitter.com/GreenmaskIO">Twitter</a></li>
+<li><a href="https://t.me/greenmask_ru">Telegram [RU]</a></li>
+<li><a href="https://hub.docker.com/r/greenmask/greenmask">DockerHub</a></li>
 </ul>
 
 
@@ -4683,10 +4792,10 @@ commands.</li>
     
       
       
-      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.indexes", "announce.dismiss", "content.code.annotate", "content.code.copy", "content.tooltips", "navigation.tabs", "navigation.top", "search.highlight", "search.share", "search.suggest"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.indexes", "announce.dismiss", "content.code.annotate", "content.code.copy", "content.tooltips", "navigation.tabs", "navigation.top", "search.highlight", "search.share", "search.suggest"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
     
     
-      <script src="../assets/javascripts/bundle.79ae519e.min.js"></script>
+      <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
       
     
   </body>
