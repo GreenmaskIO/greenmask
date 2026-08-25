@@ -62,4 +62,13 @@ interaction.
 
 ## PostgreSQL version compatibility
 
-Greenmask is compatible with PostgreSQL versions **11 and higher**.
+Greenmask supports PostgreSQL **14, 15, 16, 17 and 18**.
+
+We support only major versions that are still supported upstream (non-EOL). Every listed version is
+exercised by the integration test suite on each release, so compatibility is verified rather than
+assumed. Versions past their upstream EOL date are dropped from the test matrix at the first release
+after that date — Greenmask will most likely keep working against them, but they are untested and
+unsupported.
+
+See [Supporting a New PostgreSQL Version](supporting_new_postgres.md) for the support policy, the
+per-release compatibility procedure, and the current end-of-life dates.
