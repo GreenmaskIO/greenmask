@@ -363,7 +363,7 @@ func (r *Restore) preDataRestore(ctx context.Context) error {
 	var err error
 
 	if !r.restoreOpt.Create {
-		conn, err = pgx.Connect(ctx, r.dsn)
+		conn, err = openConn(ctx, r.dsn)
 		if err != nil {
 			return fmt.Errorf("cannot establish connection to db: %w", err)
 		}
@@ -427,7 +427,7 @@ func (r *Restore) preDataRestore(ctx context.Context) error {
 	}
 
 	if r.restoreOpt.Create {
-		conn, err = pgx.Connect(ctx, r.dsn)
+		conn, err = openConn(ctx, r.dsn)
 		if err != nil {
 			return fmt.Errorf("cannot establish connection to db after creation: %w", err)
 		}
@@ -543,7 +543,7 @@ func (r *Restore) dataRestore(ctx context.Context) error {
 		return nil
 	}
 
-	conn, err := pgx.Connect(ctx, r.dsn)
+	conn, err := openConn(ctx, r.dsn)
 	if err != nil {
 		return fmt.Errorf("cannot establish connection to db: %w", err)
 	}
@@ -618,7 +618,7 @@ func (r *Restore) postDataRestore(ctx context.Context) error {
 		return nil
 	}
 
-	conn, err := pgx.Connect(ctx, r.dsn)
+	conn, err := openConn(ctx, r.dsn)
 	if err != nil {
 		return fmt.Errorf("cannot establish connection to db: %w", err)
 	}
@@ -846,7 +846,7 @@ func (r *Restore) getTableDefinitionFromMeta(dumpId int32) (*toolkit.Table, erro
 
 func (r *Restore) restoreWorker(ctx context.Context, tasks <-chan restorationTask, id int) error {
 	// TODO: You should execute TX for each COPY stmt
-	conn, err := pgx.Connect(ctx, r.dsn)
+	conn, err := openConn(ctx, r.dsn)
 	if err != nil {
 		return fmt.Errorf("cannot connect to server (worker %d): %w", id, err)
 	}
