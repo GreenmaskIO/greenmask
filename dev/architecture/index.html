@@ -4714,7 +4714,14 @@ interaction.</p>
 <p>Furthermore, Greenmask's architecture is designed to be highly extensible, making it possible to introduce other interaction protocols, such as HTTP or Socket, for conducting anonymization procedures.</p>
 </div>
 <h2 id="postgresql-version-compatibility">PostgreSQL version compatibility<a class="headerlink" href="#postgresql-version-compatibility" title="Permanent link">&para;</a></h2>
-<p>Greenmask is compatible with PostgreSQL versions <strong>11 and higher</strong>.</p>
+<p>Greenmask supports PostgreSQL <strong>14, 15, 16, 17 and 18</strong>.</p>
+<p>We support only major versions that are still supported upstream (non-EOL). Every listed version is
+exercised by the integration test suite on each release, so compatibility is verified rather than
+assumed. Versions past their upstream EOL date are dropped from the test matrix at the first release
+after that date — Greenmask will most likely keep working against them, but they are untested and
+unsupported.</p>
+<p>See <a href="../supporting_new_postgres/">Supporting a New PostgreSQL Version</a> for the support policy, the
+per-release compatibility procedure, and the current end-of-life dates.</p>
 
 
 

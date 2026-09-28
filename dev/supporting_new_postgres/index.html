@@ -3098,10 +3098,10 @@ You're not viewing the latest version.
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#overview" class="md-nav__link">
+  <a href="#support-policy" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Overview
+        Support policy
       
     </span>
   </a>
@@ -3109,10 +3109,10 @@ You're not viewing the latest version.
 </li>
       
         <li class="md-nav__item">
-  <a href="#supported-versions" class="md-nav__link">
+  <a href="#where-greenmask-is-coupled-to-postgresql" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Supported Versions
+        Where greenmask is coupled to PostgreSQL
       
     </span>
   </a>
@@ -3120,22 +3120,22 @@ You're not viewing the latest version.
 </li>
       
         <li class="md-nav__item">
-  <a href="#running-tests-locally" class="md-nav__link">
+  <a href="#pre-release-checklist" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Running Tests Locally
+        Pre-release checklist
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Running Tests Locally">
+    <nav class="md-nav" aria-label="Pre-release checklist">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#quick-start" class="md-nav__link">
+  <a href="#1-refresh-the-local-postgresql-checkout" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Quick Start
+        1. Refresh the local PostgreSQL checkout
       
     </span>
   </a>
@@ -3143,10 +3143,98 @@ You're not viewing the latest version.
 </li>
         
           <li class="md-nav__item">
-  <a href="#available-profiles" class="md-nav__link">
+  <a href="#2-check-the-archive-format-version" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Available Profiles
+        2. Check the archive format version
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-diff-the-toc-readwrite-functions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Diff the TOC read/write functions
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#4-diff-the-pg_dump-pg_restore-option-surface" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Diff the pg_dump / pg_restore option surface
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#5-diff-the-toc-entry-desc-strings" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Diff the TOC entry desc strings
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#6-diff-the-catalogs-greenmask-queries" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. Diff the catalogs greenmask queries
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#7-read-the-release-notes-migration-section" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7. Read the release notes migration section
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#8-drop-versions-that-went-eol" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8. Drop versions that went EOL
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#9-run-the-integration-suite-against-every-supported-version" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9. Run the integration suite against every supported version
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#10-update-the-support-table" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        10. Update the support table
       
     </span>
   </a>
@@ -3159,22 +3247,22 @@ You're not viewing the latest version.
 </li>
       
         <li class="md-nav__item">
-  <a href="#adding-support-for-a-new-postgresql-version" class="md-nav__link">
+  <a href="#toc-archive-format-watchlist" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Adding Support for a New PostgreSQL Version
+        TOC archive format watchlist
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Adding Support for a New PostgreSQL Version">
+    <nav class="md-nav" aria-label="TOC archive format watchlist">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#step-1-update-docker-compose" class="md-nav__link">
+  <a href="#format-version-constants" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Step 1: Update Docker Compose
+        Format version constants
       
     </span>
   </a>
@@ -3182,10 +3270,10 @@ You're not viewing the latest version.
 </li>
         
           <li class="md-nav__item">
-  <a href="#step-2-run-the-tests" class="md-nav__link">
+  <a href="#header-readwrite" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Step 2: Run the Tests
+        Header read/write
       
     </span>
   </a>
@@ -3193,10 +3281,43 @@ You're not viewing the latest version.
 </li>
         
           <li class="md-nav__item">
-  <a href="#step-3-fix-any-compatibility-issues" class="md-nav__link">
+  <a href="#toc-entry-readwrite" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Step 3: Fix Any Compatibility Issues
+        TOC entry read/write
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#primitive-encoders" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Primitive encoders
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#directory-format-specifics" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Directory format specifics
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#regression-coverage" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Regression coverage
       
     </span>
   </a>
@@ -3209,10 +3330,104 @@ You're not viewing the latest version.
 </li>
       
         <li class="md-nav__item">
-  <a href="#historical-reference-past-version-updates" class="md-nav__link">
+  <a href="#adding-a-new-major-version" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Historical Reference: Past Version Updates
+        Adding a new major version
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Adding a new major version">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#step-1-run-the-pre-release-checklist-against-the-new-branch" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 1: Run the pre-release checklist against the new branch
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-2-add-the-database-service" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 2: Add the database service
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-3-wire-the-new-profile-into-the-shared-services" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 3: Wire the new profile into the shared services
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-4-install-the-client-binaries-in-the-test-image" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 4: Install the client binaries in the test image
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-5-run-the-tests-for-the-new-version-alone" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 5: Run the tests for the new version alone
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-6-update-this-document-and-the-release-notes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 6: Update this document and the release notes
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#dropping-an-eol-version" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Dropping an EOL version
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#historical-reference" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Historical reference
       
     </span>
   </a>
@@ -4619,10 +4834,10 @@ You're not viewing the latest version.
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#overview" class="md-nav__link">
+  <a href="#support-policy" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Overview
+        Support policy
       
     </span>
   </a>
@@ -4630,10 +4845,10 @@ You're not viewing the latest version.
 </li>
       
         <li class="md-nav__item">
-  <a href="#supported-versions" class="md-nav__link">
+  <a href="#where-greenmask-is-coupled-to-postgresql" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Supported Versions
+        Where greenmask is coupled to PostgreSQL
       
     </span>
   </a>
@@ -4641,22 +4856,22 @@ You're not viewing the latest version.
 </li>
       
         <li class="md-nav__item">
-  <a href="#running-tests-locally" class="md-nav__link">
+  <a href="#pre-release-checklist" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Running Tests Locally
+        Pre-release checklist
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Running Tests Locally">
+    <nav class="md-nav" aria-label="Pre-release checklist">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#quick-start" class="md-nav__link">
+  <a href="#1-refresh-the-local-postgresql-checkout" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Quick Start
+        1. Refresh the local PostgreSQL checkout
       
     </span>
   </a>
@@ -4664,10 +4879,98 @@ You're not viewing the latest version.
 </li>
         
           <li class="md-nav__item">
-  <a href="#available-profiles" class="md-nav__link">
+  <a href="#2-check-the-archive-format-version" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Available Profiles
+        2. Check the archive format version
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#3-diff-the-toc-readwrite-functions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Diff the TOC read/write functions
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#4-diff-the-pg_dump-pg_restore-option-surface" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Diff the pg_dump / pg_restore option surface
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#5-diff-the-toc-entry-desc-strings" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Diff the TOC entry desc strings
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#6-diff-the-catalogs-greenmask-queries" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. Diff the catalogs greenmask queries
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#7-read-the-release-notes-migration-section" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7. Read the release notes migration section
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#8-drop-versions-that-went-eol" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8. Drop versions that went EOL
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#9-run-the-integration-suite-against-every-supported-version" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9. Run the integration suite against every supported version
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#10-update-the-support-table" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        10. Update the support table
       
     </span>
   </a>
@@ -4680,22 +4983,22 @@ You're not viewing the latest version.
 </li>
       
         <li class="md-nav__item">
-  <a href="#adding-support-for-a-new-postgresql-version" class="md-nav__link">
+  <a href="#toc-archive-format-watchlist" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Adding Support for a New PostgreSQL Version
+        TOC archive format watchlist
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Adding Support for a New PostgreSQL Version">
+    <nav class="md-nav" aria-label="TOC archive format watchlist">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#step-1-update-docker-compose" class="md-nav__link">
+  <a href="#format-version-constants" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Step 1: Update Docker Compose
+        Format version constants
       
     </span>
   </a>
@@ -4703,10 +5006,10 @@ You're not viewing the latest version.
 </li>
         
           <li class="md-nav__item">
-  <a href="#step-2-run-the-tests" class="md-nav__link">
+  <a href="#header-readwrite" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Step 2: Run the Tests
+        Header read/write
       
     </span>
   </a>
@@ -4714,10 +5017,43 @@ You're not viewing the latest version.
 </li>
         
           <li class="md-nav__item">
-  <a href="#step-3-fix-any-compatibility-issues" class="md-nav__link">
+  <a href="#toc-entry-readwrite" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Step 3: Fix Any Compatibility Issues
+        TOC entry read/write
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#primitive-encoders" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Primitive encoders
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#directory-format-specifics" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Directory format specifics
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#regression-coverage" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Regression coverage
       
     </span>
   </a>
@@ -4730,10 +5066,104 @@ You're not viewing the latest version.
 </li>
       
         <li class="md-nav__item">
-  <a href="#historical-reference-past-version-updates" class="md-nav__link">
+  <a href="#adding-a-new-major-version" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Historical Reference: Past Version Updates
+        Adding a new major version
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Adding a new major version">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#step-1-run-the-pre-release-checklist-against-the-new-branch" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 1: Run the pre-release checklist against the new branch
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-2-add-the-database-service" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 2: Add the database service
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-3-wire-the-new-profile-into-the-shared-services" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 3: Wire the new profile into the shared services
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-4-install-the-client-binaries-in-the-test-image" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 4: Install the client binaries in the test image
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-5-run-the-tests-for-the-new-version-alone" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 5: Run the tests for the new version alone
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#step-6-update-this-document-and-the-release-notes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Step 6: Update this document and the release notes
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#dropping-an-eol-version" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Dropping an EOL version
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#historical-reference" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Historical reference
       
     </span>
   </a>
@@ -4761,44 +5191,309 @@ You're not viewing the latest version.
 
 
 <h1 id="supporting-a-new-postgresql-version">Supporting a New PostgreSQL Version<a class="headerlink" href="#supporting-a-new-postgresql-version" title="Permanent link">&para;</a></h1>
-<h2 id="overview">Overview<a class="headerlink" href="#overview" title="Permanent link">&para;</a></h2>
-<p>Greenmask supports multiple PostgreSQL versions to ensure backward and forward compatibility. This guide explains how to add support for new PostgreSQL versions and test them. The test suite verifies:</p>
-<ul>
-<li>Successful database dumps with transformations</li>
-<li>Compatibility with native <code>pg_restore</code> tool</li>
-<li>Full restoration of dumped data</li>
-</ul>
-<h2 id="supported-versions">Supported Versions<a class="headerlink" href="#supported-versions" title="Permanent link">&para;</a></h2>
-<p>Currently tested versions: <strong>PostgreSQL 13, 14, 15, 16, 17, 18</strong></p>
-<h2 id="running-tests-locally">Running Tests Locally<a class="headerlink" href="#running-tests-locally" title="Permanent link">&para;</a></h2>
-<h3 id="quick-start">Quick Start<a class="headerlink" href="#quick-start" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code>docker<span class="w"> </span>compose<span class="w"> </span>-f<span class="w"> </span>docker-compose-integration.yml<span class="w"> </span>--profile<span class="w"> </span>pg17<span class="w"> </span>up
-
-<span class="c1"># to run against all versions</span>
-docker<span class="w"> </span>compose<span class="w"> </span>-f<span class="w"> </span>docker-compose-integration.yml<span class="w"> </span>--profile<span class="w"> </span>all<span class="w"> </span>up
-</code></pre></div>
-<h3 id="available-profiles">Available Profiles<a class="headerlink" href="#available-profiles" title="Permanent link">&para;</a></h3>
-<ul>
-<li><strong><code>pg18</code>, <code>pg17</code>, <code>pg16</code>, <code>pg15</code>, <code>pg14</code>, <code>pg13</code></strong> - Test a specific PostgreSQL version</li>
-<li><strong><code>all</code></strong> - Test all supported versions (for CI/CD)</li>
-</ul>
-<p>This will:</p>
+<h2 id="support-policy">Support policy<a class="headerlink" href="#support-policy" title="Permanent link">&para;</a></h2>
+<p><strong>Greenmask supports only PostgreSQL major versions that are still supported upstream (non-EOL).</strong></p>
+<p>We deliberately do not claim support for EOL versions. Every version we list is exercised by the
+integration suite on every release, so we can actually guarantee it works — dump, transform, restore,
+and native <code>pg_restore</code> interoperability. Versions past their upstream EOL date are dropped from the
+matrix at the first release after that date. Greenmask will very likely keep working against them,
+but it is untested and unsupported.</p>
+<table>
+<thead>
+<tr>
+<th>Version</th>
+<th>Upstream EOL</th>
+<th>Status in greenmask</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>19</td>
+<td>~Nov 2031</td>
+<td>beta — support in progress</td>
+</tr>
+<tr>
+<td>18</td>
+<td>Nov 14, 2030</td>
+<td>supported</td>
+</tr>
+<tr>
+<td>17</td>
+<td>Nov 8, 2029</td>
+<td>supported</td>
+</tr>
+<tr>
+<td>16</td>
+<td>Nov 9, 2028</td>
+<td>supported</td>
+</tr>
+<tr>
+<td>15</td>
+<td>Nov 11, 2027</td>
+<td>supported</td>
+</tr>
+<tr>
+<td>14</td>
+<td>Nov 12, 2026</td>
+<td>supported</td>
+</tr>
+<tr>
+<td>13</td>
+<td>Nov 13, 2025</td>
+<td><strong>EOL — to be dropped</strong></td>
+</tr>
+</tbody>
+</table>
+<p>Authoritative source: <a href="https://www.postgresql.org/support/versioning/">PostgreSQL Versioning Policy</a>.</p>
+<p>Keep this table, <code>docker-compose-integration.yml</code>, <code>docker/integration/tests/Dockerfile</code>, and the
+<code>PG_VERSIONS_CHECK</code> environment variables in sync. They are the single definition of "supported".</p>
+<h2 id="where-greenmask-is-coupled-to-postgresql">Where greenmask is coupled to PostgreSQL<a class="headerlink" href="#where-greenmask-is-coupled-to-postgresql" title="Permanent link">&para;</a></h2>
+<p>Three independent coupling points. A new major version can break any one of them, so all three are
+checked separately.</p>
 <ol>
-<li>Spin up the selected PostgreSQL containers based on profile</li>
-<li>Fill each database with test data</li>
-<li>Run the full compatibility test suite against selected versions</li>
-<li>Exit with status code 2 if any version fails</li>
+<li><strong>The ported TOC archive library</strong> — <code>internal/db/postgres/toc</code> is a Go re-implementation of
+   pg_dump's <code>toc.dat</code> reader/writer. It must stay byte-compatible with the C implementation.</li>
+<li><strong>The <code>pg_dump</code> / <code>pg_restore</code> CLI contract</strong> — greenmask shells out to the real binaries for the
+   pre-data and post-data sections (<code>internal/db/postgres/pgdump</code>, <code>internal/db/postgres/pgrestore</code>).</li>
+<li><strong>Catalog introspection</strong> — greenmask runs its own catalog queries instead of reusing pg_dump's
+   (<code>internal/db/postgres/context</code>).</li>
 </ol>
-<h2 id="adding-support-for-a-new-postgresql-version">Adding Support for a New PostgreSQL Version<a class="headerlink" href="#adding-support-for-a-new-postgresql-version" title="Permanent link">&para;</a></h2>
-<h3 id="step-1-update-docker-compose">Step 1: Update Docker Compose<a class="headerlink" href="#step-1-update-docker-compose" title="Permanent link">&para;</a></h3>
-<p>Add a new database service in <code>docker-compose-integration.yml</code>:</p>
-<div class="highlight"><pre><span></span><code><span class="nt">db-18</span><span class="p">:</span><span class="w"> </span><span class="c1"># New version</span>
-<span class="w">  </span><span class="nt">profiles</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="s">&quot;pg18&quot;</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">&quot;all&quot;</span><span class="p p-Indicator">]</span>
+<hr />
+<h2 id="pre-release-checklist">Pre-release checklist<a class="headerlink" href="#pre-release-checklist" title="Permanent link">&para;</a></h2>
+<p>Run this before <strong>every</strong> release, not only when adding a major version. Upstream changes the archive
+format and pg_dump behaviour in minor releases far less often than in majors, but catalog and
+client-tool behaviour does move.</p>
+<h3 id="1-refresh-the-local-postgresql-checkout">1. Refresh the local PostgreSQL checkout<a class="headerlink" href="#1-refresh-the-local-postgresql-checkout" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code><span class="nb">cd</span><span class="w"> </span>/path/to/postgres
+git<span class="w"> </span>fetch<span class="w"> </span>origin<span class="w"> </span>--tags
+git<span class="w"> </span>tag<span class="w"> </span>-l<span class="w"> </span><span class="s1">&#39;REL_1*&#39;</span><span class="w">          </span><span class="c1"># find the newest tag of each supported branch</span>
+</code></pre></div>
+<h3 id="2-check-the-archive-format-version">2. Check the archive format version<a class="headerlink" href="#2-check-the-archive-format-version" title="Permanent link">&para;</a></h3>
+<p>This is the single most important check. If <code>K_VERS_MINOR</code> was bumped, the ported library <strong>must</strong> be
+updated before the release ships.</p>
+<div class="highlight"><pre><span></span><code>git<span class="w"> </span>diff<span class="w"> </span>REL_18_0<span class="w"> </span>REL_19_BETA3<span class="w"> </span>--<span class="w"> </span>src/bin/pg_dump/pg_backup_archiver.h
+</code></pre></div>
+<p>Compare against <code>MaxVersion</code> in <a href="../internal/db/postgres/toc/utils.go"><code>internal/db/postgres/toc/utils.go</code></a>.
+As of PostgreSQL 19 beta 3 the format is still <strong>1.16</strong>, unchanged since PostgreSQL 18.</p>
+<h3 id="3-diff-the-toc-readwrite-functions">3. Diff the TOC read/write functions<a class="headerlink" href="#3-diff-the-toc-readwrite-functions" title="Permanent link">&para;</a></h3>
+<p>Walk the watchlist in <a href="#toc-archive-format-watchlist">TOC archive format watchlist</a> below, function by
+function. Any change in field order, field count, or version gating must be mirrored in
+<code>reader.go</code> / <code>writer.go</code>.</p>
+<div class="highlight"><pre><span></span><code>git<span class="w"> </span>diff<span class="w"> </span>REL_18_0<span class="w"> </span>REL_19_BETA3<span class="w"> </span>--<span class="w"> </span>src/bin/pg_dump/pg_backup_archiver.c<span class="w"> </span><span class="se">\</span>
+<span class="w">                                  </span>src/bin/pg_dump/pg_backup_directory.c
+</code></pre></div>
+<h3 id="4-diff-the-pg_dump-pg_restore-option-surface">4. Diff the <code>pg_dump</code> / <code>pg_restore</code> option surface<a class="headerlink" href="#4-diff-the-pg_dump-pg_restore-option-surface" title="Permanent link">&para;</a></h3>
+<p>Any option greenmask passes that was removed upstream is an immediate runtime failure. Any new option
+is a candidate feature.</p>
+<div class="highlight"><pre><span></span><code>git<span class="w"> </span>diff<span class="w"> </span>REL_18_0<span class="w"> </span>REL_19_BETA3<span class="w"> </span>--<span class="w"> </span>src/bin/pg_dump/pg_dump.c<span class="w"> </span><span class="se">\</span>
+<span class="w">                                  </span>src/bin/pg_dump/pg_restore.c<span class="w"> </span><span class="se">\</span>
+<span class="w">                                  </span>src/bin/pg_dump/pg_backup.h
+</code></pre></div>
+<p>Cross-check every field of <code>Options</code> in
+<a href="../internal/db/postgres/pgdump/pgdump.go"><code>internal/db/postgres/pgdump/pgdump.go</code></a> and
+<a href="../internal/db/postgres/pgrestore/pgrestore.go"><code>internal/db/postgres/pgrestore/pgrestore.go</code></a>.</p>
+<h3 id="5-diff-the-toc-entry-desc-strings">5. Diff the TOC entry <code>desc</code> strings<a class="headerlink" href="#5-diff-the-toc-entry-desc-strings" title="Permanent link">&para;</a></h3>
+<p>New object types add new <code>desc</code> values (<code>STATISTICS DATA</code>, <code>EXTENDED STATISTICS DATA</code>,
+<code>SUBSCRIPTION TABLE</code>, …). Greenmask passes unknown descs through, but the ones it handles explicitly
+in <code>internal/db/postgres/cmd/restore.go</code> and <code>internal/db/postgres/toc/common.go</code> must stay correct.</p>
+<div class="highlight"><pre><span></span><code>git<span class="w"> </span>show<span class="w"> </span>REL_19_BETA3:src/bin/pg_dump/pg_dump.c<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>-oE<span class="w"> </span><span class="s1">&#39;\.description = &quot;[A-Z][A-Z /]*&quot;&#39;</span><span class="w"> </span><span class="p">|</span><span class="w"> </span>sort<span class="w"> </span>-u
+</code></pre></div>
+<h3 id="6-diff-the-catalogs-greenmask-queries">6. Diff the catalogs greenmask queries<a class="headerlink" href="#6-diff-the-catalogs-greenmask-queries" title="Permanent link">&para;</a></h3>
+<p>Greenmask reads <code>pg_class</code>, <code>pg_attribute</code>, <code>pg_type</code>, <code>pg_constraint</code>, <code>pg_sequence</code>, <code>pg_namespace</code>,
+<code>pg_inherits</code>, <code>pg_largeobject_metadata</code>, <code>pg_foreign_table</code>, <code>pg_foreign_server</code>, and <code>pg_roles</code>.</p>
+<div class="highlight"><pre><span></span><code>git<span class="w"> </span>diff<span class="w"> </span>REL_18_0<span class="w"> </span>REL_19_BETA3<span class="w"> </span>--<span class="w"> </span>src/include/catalog/
+</code></pre></div>
+<p>Pay attention to:</p>
+<ul>
+<li><strong>New <code>relkind</code> values</strong> (<a href="https://github.com/postgres/postgres/blob/REL_19_BETA3/src/include/catalog/pg_class.h#L171"><code>pg_class.h</code></a>).
+  PostgreSQL 19 adds <code>'g'</code> (property graph). Every introspection query filters <code>relkind</code>, so new kinds
+  are excluded by default — verify that is still the behaviour you want, and that the
+  <code>unknown relkind</code> branch in <code>internal/db/postgres/context/pg_catalog.go</code> cannot be reached.</li>
+<li><strong>New <code>contype</code> values</strong> — the <code>switch</code> in
+  <a href="../internal/db/postgres/context/tables_introspection.go"><code>internal/db/postgres/context/tables_introspection.go</code></a>
+  must cover them or log the unknown-constraint warning.</li>
+<li><strong>New built-in types</strong> in <code>pg_type.dat</code>. These are not "custom types", so they are invisible to
+  <code>CustomTypesWithTypeChainQuery</code> and depend on <code>pgx</code> knowing their OID. If <code>pgx</code> does not, columns of
+  that type are marked unsupported in <a href="../pkg/toolkit/driver.go"><code>pkg/toolkit/driver.go</code></a> and no
+  transformer can be attached. PostgreSQL 19 adds <code>oid8</code> (6437) and <code>regdatabase</code> (6490).</li>
+<li><strong>Behaviour changes in functions greenmask calls</strong> — <code>pg_sequence_last_value</code>,
+  <code>has_sequence_privilege</code>, <code>pg_get_constraintdef</code>, <code>aclexplode</code>, <code>acldefault</code>, <code>pg_partition_ancestors</code>.</li>
+</ul>
+<h3 id="7-read-the-release-notes-migration-section">7. Read the release notes migration section<a class="headerlink" href="#7-read-the-release-notes-migration-section" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>sed<span class="w"> </span>-n<span class="w"> </span><span class="s1">&#39;/&lt;sect2 .*id=&quot;release-19-migration&quot;/,/^  &lt;\/sect2&gt;/p&#39;</span><span class="w"> </span>doc/src/sgml/release-19.sgml
+</code></pre></div>
+<p>Anything under "Migration to Version N" that mentions <code>pg_dump</code>, <code>pg_restore</code>, dump/restore
+compatibility, or a GUC default change is a candidate for a release-note caveat on our side.</p>
+<h3 id="8-drop-versions-that-went-eol">8. Drop versions that went EOL<a class="headerlink" href="#8-drop-versions-that-went-eol" title="Permanent link">&para;</a></h3>
+<p>If a supported version passed its EOL date since the last release, remove it now — see
+<a href="#dropping-an-eol-version">Dropping an EOL version</a>.</p>
+<h3 id="9-run-the-integration-suite-against-every-supported-version">9. Run the integration suite against every supported version<a class="headerlink" href="#9-run-the-integration-suite-against-every-supported-version" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>docker<span class="w"> </span>compose<span class="w"> </span>-f<span class="w"> </span>docker-compose-integration.yml<span class="w"> </span>--profile<span class="w"> </span>all<span class="w"> </span>up<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--renew-anon-volumes<span class="w"> </span>--force-recreate<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--exit-code-from<span class="w"> </span>greenmask<span class="w"> </span>--abort-on-container-exit<span class="w"> </span>greenmask
+</code></pre></div>
+<p>The suite must be green for every version in the support table. Exit code 2 means at least one version
+failed.</p>
+<h3 id="10-update-the-support-table">10. Update the support table<a class="headerlink" href="#10-update-the-support-table" title="Permanent link">&para;</a></h3>
+<p>Update the table at the top of this file, and note the tested version range in the release notes.</p>
+<hr />
+<h2 id="toc-archive-format-watchlist">TOC archive format watchlist<a class="headerlink" href="#toc-archive-format-watchlist" title="Permanent link">&para;</a></h2>
+<p>These are the upstream functions that define the <code>toc.dat</code> binary layout. <strong>Diff every one of them on
+every revision.</strong> Links are pinned to <code>REL_19_BETA3</code>; swap the tag when a new major branches.</p>
+<h3 id="format-version-constants">Format version constants<a class="headerlink" href="#format-version-constants" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Upstream</th>
+<th>Greenmask counterpart</th>
+<th>What to check</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a href="https://github.com/postgres/postgres/blob/REL_19_BETA3/src/bin/pg_dump/pg_backup_archiver.h#L71-L79"><code>K_VERS_1_16</code> / <code>K_VERS_MAJOR</code> / <code>K_VERS_MINOR</code> / <code>K_VERS_REV</code></a></td>
+<td><a href="../internal/db/postgres/toc/utils.go"><code>MaxVersion</code>, <code>BackupVersions</code></a></td>
+<td>A bumped <code>K_VERS_MINOR</code> means new fields were added to the entry or header layout. Add the new <code>1.N</code> key and gate the new fields identically.</td>
+</tr>
+<tr>
+<td><a href="https://github.com/postgres/postgres/blob/REL_19_BETA3/src/bin/pg_dump/pg_backup_archiver.h#L82"><code>K_VERS_MAX</code></a></td>
+<td>version guard in <a href="../internal/db/postgres/toc/reader.go"><code>readHeader</code></a></td>
+<td>Upper bound accepted by pg_restore; ours must not exceed it.</td>
+</tr>
+<tr>
+<td><a href="https://github.com/postgres/postgres/blob/REL_19_BETA3/src/bin/pg_dump/pg_backup.h#L39-L46"><code>archUnknown</code> / <code>archCustom</code> / <code>archTar</code> / <code>archNull</code> / <code>archDirectory</code></a></td>
+<td><a href="../internal/db/postgres/toc/utils.go"><code>ArchTar</code> and friends</a></td>
+<td>Format byte values.</td>
+</tr>
+<tr>
+<td><a href="https://github.com/postgres/postgres/blob/REL_19_BETA3/src/include/common/compression.h#L21"><code>pg_compress_algorithm</code></a></td>
+<td><a href="../internal/db/postgres/toc/utils.go"><code>PgCompressionNone</code>…<code>PgCompressionZSTD</code></a></td>
+<td>Ordinal values of the compression algorithm byte written since format 1.15.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="header-readwrite">Header read/write<a class="headerlink" href="#header-readwrite" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Upstream</th>
+<th>Greenmask counterpart</th>
+<th>What to check</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a href="https://github.com/postgres/postgres/blob/REL_19_BETA3/src/bin/pg_dump/pg_backup_archiver.c#L4158"><code>WriteHead()</code></a></td>
+<td><a href="../internal/db/postgres/toc/writer.go"><code>Writer.writeHeader</code></a></td>
+<td>Exact field order: magic <code>PGDMP</code>, major, minor, rev, <code>intSize</code>, <code>offSize</code>, format, compression algorithm, seven <code>tm</code> ints, db name, remote version, dump version.</td>
+</tr>
+<tr>
+<td><a href="https://github.com/postgres/postgres/blob/REL_19_BETA3/src/bin/pg_dump/pg_backup_archiver.c#L4184"><code>ReadHead()</code></a></td>
+<td><a href="../internal/db/postgres/toc/reader.go"><code>Reader.readHeader</code></a></td>
+<td>Same order, plus the version gates (<code>&gt;= 1.7</code> offset size, <code>&gt;= 1.15</code> compression algorithm, <code>&gt;= 1.4</code> timestamp and db name, <code>&gt;= 1.10</code> version strings).</td>
+</tr>
+</tbody>
+</table>
+<h3 id="toc-entry-readwrite">TOC entry read/write<a class="headerlink" href="#toc-entry-readwrite" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Upstream</th>
+<th>Greenmask counterpart</th>
+<th>What to check</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a href="https://github.com/postgres/postgres/blob/REL_19_BETA3/src/bin/pg_dump/pg_backup_archiver.c#L2611"><code>WriteToc()</code></a></td>
+<td><a href="../internal/db/postgres/toc/writer.go"><code>Writer.writeEntries</code></a></td>
+<td>Per-entry field order: <code>dumpId</code>, <code>hadDumper</code>, tableoid, oid, tag, desc, section, defn, dropStmt, copyStmt, namespace, tablespace, tableam, <strong>relkind</strong>, owner, literal <code>"false"</code>, dependency list, <code>NULL</code> terminator, then the format's extra TOC.</td>
+</tr>
+<tr>
+<td><a href="https://github.com/postgres/postgres/blob/REL_19_BETA3/src/bin/pg_dump/pg_backup_archiver.c#L2709"><code>ReadToc()</code></a></td>
+<td><a href="../internal/db/postgres/toc/reader.go"><code>Reader.readEntries</code></a></td>
+<td>Same order and the same version gates (<code>&gt;= 1.8</code> tableoid, <code>&gt;= 1.11</code> section, <code>&gt;= 1.3</code> copyStmt, <code>&gt;= 1.6</code> namespace, <code>&gt;= 1.10</code> tablespace, <code>&gt;= 1.14</code> tableam, <code>&gt;= 1.16</code> relkind, <code>&gt;= 1.5</code> dependencies).</td>
+</tr>
+<tr>
+<td><a href="https://github.com/postgres/postgres/blob/REL_19_BETA3/src/bin/pg_dump/pg_backup_archiver.c#L1242"><code>ArchiveEntry()</code></a></td>
+<td><a href="../internal/db/postgres/toc/entry.go"><code>Entry</code> struct</a></td>
+<td>New members on <code>_tocEntry</code> are the early warning that a format bump is coming.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="primitive-encoders">Primitive encoders<a class="headerlink" href="#primitive-encoders" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Upstream</th>
+<th>Greenmask counterpart</th>
+<th>What to check</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a href="https://github.com/postgres/postgres/blob/REL_19_BETA3/src/bin/pg_dump/pg_backup_archiver.c#L2135"><code>WriteInt()</code></a> / <a href="https://github.com/postgres/postgres/blob/REL_19_BETA3/src/bin/pg_dump/pg_backup_archiver.c#L2166"><code>ReadInt()</code></a></td>
+<td><a href="../internal/db/postgres/toc/writer.go"><code>writeInt</code></a> / <a href="../internal/db/postgres/toc/reader.go"><code>readInt</code></a></td>
+<td>Sign byte then <code>intSize</code> little-endian bytes. Only <code>intSize == 4</code> is supported by our port.</td>
+</tr>
+<tr>
+<td><a href="https://github.com/postgres/postgres/blob/REL_19_BETA3/src/bin/pg_dump/pg_backup_archiver.c#L2193"><code>WriteStr()</code></a> / <a href="https://github.com/postgres/postgres/blob/REL_19_BETA3/src/bin/pg_dump/pg_backup_archiver.c#L2212"><code>ReadStr()</code></a></td>
+<td><a href="../internal/db/postgres/toc/writer.go"><code>writeStr</code></a> / <a href="../internal/db/postgres/toc/reader.go"><code>readStr</code></a></td>
+<td>Length-prefixed, <code>-1</code> encodes <code>NULL</code>.</td>
+</tr>
+<tr>
+<td><a href="https://github.com/postgres/postgres/blob/REL_19_BETA3/src/bin/pg_dump/pg_backup_archiver.c#L2054"><code>WriteOffset()</code></a> / <a href="https://github.com/postgres/postgres/blob/REL_19_BETA3/src/bin/pg_dump/pg_backup_archiver.c#L2071"><code>ReadOffset()</code></a></td>
+<td>not ported</td>
+<td>Only used by the custom format. If we ever support <code>-Fc</code>, this is required.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="directory-format-specifics">Directory format specifics<a class="headerlink" href="#directory-format-specifics" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Upstream</th>
+<th>Greenmask counterpart</th>
+<th>What to check</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><a href="https://github.com/postgres/postgres/blob/REL_19_BETA3/src/bin/pg_dump/pg_backup_directory.c#L531"><code>_CloseArchive()</code></a></td>
+<td>format check in <a href="../internal/db/postgres/toc/reader.go"><code>Reader.readHeader</code></a></td>
+<td>The directory format deliberately writes <code>archTar</code> (3) into the format byte of <code>toc.dat</code>. Our reader rejects anything else.</td>
+</tr>
+<tr>
+<td><a href="https://github.com/postgres/postgres/blob/REL_19_BETA3/src/bin/pg_dump/pg_backup_directory.c#L198"><code>_ArchiveEntry()</code></a></td>
+<td><a href="../internal/db/postgres/entries/table.go"><code>entries/table.go</code></a>, <a href="../internal/db/postgres/entries/large_object.go"><code>entries/large_object.go</code></a></td>
+<td>Data file naming: <code>%d.dat</code> for table data, <code>blobs_%d.toc</code> for large objects.</td>
+</tr>
+<tr>
+<td><a href="https://github.com/postgres/postgres/blob/REL_19_BETA3/src/bin/pg_dump/pg_backup_directory.c#L228"><code>_WriteExtraToc()</code></a> / <a href="https://github.com/postgres/postgres/blob/REL_19_BETA3/src/bin/pg_dump/pg_backup_directory.c#L249"><code>_ReadExtraToc()</code></a></td>
+<td>trailing <code>FileName</code> in <a href="../internal/db/postgres/toc/writer.go"><code>writeEntries</code></a> / <a href="../internal/db/postgres/toc/reader.go"><code>readEntries</code></a></td>
+<td>For the directory format the "extra TOC" is a single string — the data file name. If upstream ever writes more than one field here, our entry loop desynchronises.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="regression-coverage">Regression coverage<a class="headerlink" href="#regression-coverage" title="Permanent link">&para;</a></h3>
+<p><code>tests/integration/greenmask/toc_readwriter_test.go</code> round-trips a real <code>toc.dat</code> produced by the
+version under test. It is the practical guard for everything in this section — if the layout changed
+and we did not follow, this test fails against the new version.</p>
+<hr />
+<h2 id="adding-a-new-major-version">Adding a new major version<a class="headerlink" href="#adding-a-new-major-version" title="Permanent link">&para;</a></h2>
+<h3 id="step-1-run-the-pre-release-checklist-against-the-new-branch">Step 1: Run the pre-release checklist against the new branch<a class="headerlink" href="#step-1-run-the-pre-release-checklist-against-the-new-branch" title="Permanent link">&para;</a></h3>
+<p>Steps 1–7 above, diffing the new tag against the newest currently supported one. Fix whatever it
+surfaces before touching the test matrix.</p>
+<h3 id="step-2-add-the-database-service">Step 2: Add the database service<a class="headerlink" href="#step-2-add-the-database-service" title="Permanent link">&para;</a></h3>
+<p>In <code>docker-compose-integration.yml</code>:</p>
+<div class="highlight"><pre><span></span><code><span class="nt">db-19</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">profiles</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="s">&quot;pg19&quot;</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">&quot;all&quot;</span><span class="p p-Indicator">]</span>
 <span class="w">  </span><span class="nt">volumes</span><span class="p">:</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="s">&quot;/var/lib/postgresql/18/data&quot;</span>
-<span class="w">  </span><span class="nt">image</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">postgres:18</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="s">&quot;/var/lib/postgresql/19/data&quot;</span>
+<span class="w">  </span><span class="nt">image</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">postgres:19beta3</span>
 <span class="w">  </span><span class="nt">ports</span><span class="p">:</span>
-<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="s">&quot;54318:5432&quot;</span>
+<span class="w">    </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="s">&quot;54319:5432&quot;</span>
 <span class="w">  </span><span class="nt">restart</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">always</span>
 <span class="w">  </span><span class="nt">environment</span><span class="p">:</span>
 <span class="w">    </span><span class="nt">POSTGRES_PASSWORD</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">example</span>
@@ -4808,39 +5503,67 @@ docker<span class="w"> </span>compose<span class="w"> </span>-f<span class="w"> 
 <span class="w">    </span><span class="nt">timeout</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1s</span>
 <span class="w">    </span><span class="nt">retries</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">3</span>
 </code></pre></div>
-<p>Update the profiles in <code>test-dbs-filler</code> and <code>greenmask</code> services:</p>
+<p>Port convention is <code>543&lt;major&gt;</code>. Beta releases are published as <code>postgres:19beta3</code>; switch to
+<code>postgres:19</code> at GA.</p>
+<h3 id="step-3-wire-the-new-profile-into-the-shared-services">Step 3: Wire the new profile into the shared services<a class="headerlink" href="#step-3-wire-the-new-profile-into-the-shared-services" title="Permanent link">&para;</a></h3>
+<p>In the same file, add <code>"pg19"</code> to the <code>profiles</code> list of <code>storage</code>, <code>test-dbs-filler</code>, and <code>greenmask</code>,
+add the <code>db-19</code> dependency to <code>test-dbs-filler</code>, and extend <code>PG_VERSIONS_CHECK</code> on both
+<code>test-dbs-filler</code> and <code>greenmask</code>:</p>
 <div class="highlight"><pre><span></span><code><span class="nt">test-dbs-filler</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">profiles</span><span class="p">:</span>
-<span class="w">    </span><span class="p p-Indicator">[</span><span class="s">&quot;pg13&quot;</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">&quot;pg14&quot;</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">&quot;pg15&quot;</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">&quot;pg16&quot;</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">&quot;pg17&quot;</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">&quot;pg18&quot;</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">&quot;all&quot;</span><span class="p p-Indicator">]</span>
+<span class="w">  </span><span class="nt">profiles</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="s">&quot;pg14&quot;</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">&quot;pg15&quot;</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">&quot;pg16&quot;</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">&quot;pg17&quot;</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">&quot;pg18&quot;</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">&quot;pg19&quot;</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">&quot;all&quot;</span><span class="p p-Indicator">]</span>
+<span class="w">  </span><span class="nt">environment</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">PG_VERSIONS_CHECK</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;14,15,16,17,18,19&quot;</span>
 <span class="w">  </span><span class="nt">depends_on</span><span class="p">:</span>
-<span class="w">    </span><span class="c1"># ... existing dbs ...</span>
-<span class="w">    </span><span class="nt">db-18</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">db-19</span><span class="p">:</span>
 <span class="w">      </span><span class="nt">condition</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">service_healthy</span>
 <span class="w">      </span><span class="nt">required</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span>
 
 <span class="nt">greenmask</span><span class="p">:</span>
-<span class="w">  </span><span class="nt">profiles</span><span class="p">:</span>
-<span class="w">    </span><span class="p p-Indicator">[</span><span class="s">&quot;pg13&quot;</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">&quot;pg14&quot;</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">&quot;pg15&quot;</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">&quot;pg16&quot;</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">&quot;pg17&quot;</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">&quot;pg18&quot;</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">&quot;all&quot;</span><span class="p p-Indicator">]</span>
+<span class="w">  </span><span class="nt">profiles</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="s">&quot;pg14&quot;</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">&quot;pg15&quot;</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">&quot;pg16&quot;</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">&quot;pg17&quot;</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">&quot;pg18&quot;</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">&quot;pg19&quot;</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="s">&quot;all&quot;</span><span class="p p-Indicator">]</span>
+<span class="w">  </span><span class="nt">environment</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">PG_VERSIONS_CHECK</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;14,15,16,17,18,19&quot;</span>
 </code></pre></div>
-<h3 id="step-2-run-the-tests">Step 2: Run the Tests<a class="headerlink" href="#step-2-run-the-tests" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><span class="c1"># Test only the new version</span>
-docker<span class="w"> </span>compose<span class="w"> </span>-f<span class="w"> </span>docker-compose-integration.yml<span class="w"> </span>--profile<span class="w"> </span>pg18<span class="w"> </span>up
+<p><code>filldb.sh</code> needs no change — it derives the host name <code>db-$pgver</code> from <code>PG_VERSIONS_CHECK</code>.</p>
+<h3 id="step-4-install-the-client-binaries-in-the-test-image">Step 4: Install the client binaries in the test image<a class="headerlink" href="#step-4-install-the-client-binaries-in-the-test-image" title="Permanent link">&para;</a></h3>
+<p>In <code>docker/integration/tests/Dockerfile</code>, add <code>postgresql-19</code> to the apt install list. Greenmask
+resolves <code>pg_dump</code>/<code>pg_restore</code> from <code>/usr/lib/postgresql/${pg_version}/bin/</code>, so the package must be
+present for the version to be testable.</p>
+<p>Beta packages are <strong>not</strong> in the default PGDG repository — they live in <code>-pgdg-testing</code>. Until GA, add:</p>
+<div class="highlight"><pre><span></span><code><span class="k">RUN</span><span class="w"> </span><span class="nb">echo</span><span class="w"> </span><span class="s2">&quot;deb https://apt.postgresql.org/pub/repos/apt </span><span class="k">$(</span>lsb_release<span class="w"> </span>-sc<span class="k">)</span><span class="s2">-pgdg-testing main 19&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">      </span>&gt;<span class="w"> </span>/etc/apt/sources.list.d/pgdg-testing.list
 </code></pre></div>
-<h3 id="step-3-fix-any-compatibility-issues">Step 3: Fix Any Compatibility Issues<a class="headerlink" href="#step-3-fix-any-compatibility-issues" title="Permanent link">&para;</a></h3>
-<p>If tests fail, check:</p>
+<h3 id="step-5-run-the-tests-for-the-new-version-alone">Step 5: Run the tests for the new version alone<a class="headerlink" href="#step-5-run-the-tests-for-the-new-version-alone" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>docker<span class="w"> </span>compose<span class="w"> </span>-f<span class="w"> </span>docker-compose-integration.yml<span class="w"> </span>--profile<span class="w"> </span>pg19<span class="w"> </span>up
+</code></pre></div>
+<h3 id="step-6-update-this-document-and-the-release-notes">Step 6: Update this document and the release notes<a class="headerlink" href="#step-6-update-this-document-and-the-release-notes" title="Permanent link">&para;</a></h3>
+<p>Add the version to the support table with its upstream EOL date, and record any behavioural caveat
+found in step 7 of the checklist.</p>
+<hr />
+<h2 id="dropping-an-eol-version">Dropping an EOL version<a class="headerlink" href="#dropping-an-eol-version" title="Permanent link">&para;</a></h2>
+<p>Do this at the first release after the upstream EOL date.</p>
+<ol>
+<li>Remove the <code>db-&lt;major&gt;</code> service from <code>docker-compose-integration.yml</code>.</li>
+<li>Remove <code>pg&lt;major&gt;</code> from every <code>profiles</code> list and from both <code>PG_VERSIONS_CHECK</code> variables.</li>
+<li>Remove <code>postgresql-&lt;major&gt;</code> from <code>docker/integration/tests/Dockerfile</code>.</li>
+<li>Remove the row from the support table in this document.</li>
+<li>Remove now-dead version gates. Introspection queries are templated on <code>server_version_num</code>
+   (<code>{{ if ge .Version NNNNNN }}</code> in <a href="../internal/db/postgres/context/queries.go"><code>internal/db/postgres/context/queries.go</code></a>
+   and the <code>version &gt;=</code> checks in
+   <a href="../internal/db/postgres/context/tables_introspection.go"><code>tables_introspection.go</code></a>); gates below
+   the new floor can go.</li>
+<li>Note the drop in the release notes.</li>
+</ol>
+<hr />
+<h2 id="historical-reference">Historical reference<a class="headerlink" href="#historical-reference" title="Permanent link">&para;</a></h2>
+<p>Commits that show the shape of a typical version bump:</p>
 <ul>
-<li>New PostgreSQL features that need support</li>
-<li>Deprecated features that were removed</li>
-<li>Changes in <code>pg_dump</code>/<code>pg_restore</code> behavior</li>
-<li>SQL syntax changes</li>
+<li><a href="https://github.com/GreenmaskIO/greenmask/commit/194a08dc7f10d7a44e37919a706a36cfa8e9d3c6">PostgreSQL 17 support</a></li>
+<li><a href="https://github.com/GreenmaskIO/greenmask/commit/3717afcfbb71f6bcd9f9820cfeda72d0507b2d4c">PostgreSQL 18 support</a></li>
+<li><a href="https://github.com/GreenmaskIO/greenmask/pull/471">PostgreSQL 18 sequence privileges</a> — an example
+  of a behaviour change found by step 6 of the checklist rather than by a format diff</li>
 </ul>
-<p>The main test is in: <code>tests/integration/greenmask/backward_compatibility_test.go</code></p>
-<h2 id="historical-reference-past-version-updates">Historical Reference: Past Version Updates<a class="headerlink" href="#historical-reference-past-version-updates" title="Permanent link">&para;</a></h2>
-<p>For developers adding new PostgreSQL versions, these commits serve as examples of the changes typically required:</p>
-<ul>
-<li><a href="https://github.com/GreenmaskIO/greenmask/commit/194a08dc7f10d7a44e37919a706a36cfa8e9d3c6">PostgreSQL 17 Support</a></li>
-<li><a href="https://github.com/GreenmaskIO/greenmask/commit/3717afcfbb71f6bcd9f9820cfeda72d0507b2d4c">PostgreSQL 18 Support</a></li>
-</ul>
+<p>The main integration test is
+<a href="../tests/integration/greenmask/backward_compatibility_test.go"><code>tests/integration/greenmask/backward_compatibility_test.go</code></a>.</p>
 
 
 
