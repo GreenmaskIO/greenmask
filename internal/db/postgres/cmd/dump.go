@@ -128,7 +128,7 @@ func (d *Dump) gatherPgFacts(ctx context.Context, tx pgx.Tx) error {
 
 func (d *Dump) connect(ctx context.Context, dsn string) (*pgx.Conn, error) {
 
-	conn, err := pgx.Connect(ctx, dsn)
+	conn, err := openConn(ctx, dsn)
 	if err != nil {
 		return nil, err
 	}
@@ -589,7 +589,7 @@ func (d *Dump) MergeTocEntries(schemaEntries []*toc.Entry, dataEntries []*toc.En
 	return res, nil
 }
 
-func (d *Dump) getWorkerTransaction(ctx context.Context) (*pgx.Conn, pgx.Tx, error) {
+func (d *Dump) getWorkerTransaction(ctx context.Context, id int) (*pgx.Conn, pgx.Tx, error) {
 	var isolationLevel = "REPEATABLE READ"
 	if d.pgDumpOptions.SerializableDeferrable {
 		isolationLevel = "SERIALIZABLE DEFERRABLE"
@@ -597,9 +597,9 @@ func (d *Dump) getWorkerTransaction(ctx context.Context) (*pgx.Conn, pgx.Tx, err
 	var setIsolationLevelQuery = fmt.Sprintf("SET TRANSACTION ISOLATION LEVEL %s", isolationLevel)
 	var setSnapshotQuery = fmt.Sprintf("SET TRANSACTION SNAPSHOT '%s'", d.pgDumpOptions.Snapshot)
 
-	conn, err := pgx.Connect(ctx, d.dsn)
+	conn, err := openWorkerConn(ctx, d.dsn, id)
 	if err != nil {
-		return nil, nil, fmt.Errorf("cannot connecti to server: %w", err)
+		return nil, nil, fmt.Errorf("cannot connect to server: %w", err)
 	}
 
 	tx, err := conn.Begin(ctx)
@@ -631,7 +631,7 @@ func (d *Dump) dumpWorker(
 	ctx context.Context, tasks <-chan dumpers.DumpTask, id int,
 ) error {
 
-	conn, tx, err := d.getWorkerTransaction(ctx)
+	conn, tx, err := d.getWorkerTransaction(ctx, id)
 
 	if err != nil {
 		return fmt.Errorf("error preparing worker (id=%d) transaction: %w", id, err)
@@ -728,7 +728,7 @@ func (d *Dump) validateDumpExecuteTask(ctx context.Context, id int, task dumpers
 	// We do not need to manage transaction in case of validation - we just close the connection. According to the
 	// documentation, the COPY stream can be interrupted by the client via connection close.
 	// If you try to roll back the transaction we will face the deadlock.
-	conn, tx, err := d.getWorkerTransaction(ctx)
+	conn, tx, err := d.getWorkerTransaction(ctx, id)
 
 	if err != nil {
 		return fmt.Errorf("error preparing worker (id=%v) transaction: %w", id, err)
