@@ -1,13 +1,17 @@
 services:
   storage:
     profiles: ["pg13", "pg14", "pg15", "pg16", "pg17", "pg18", "all"]
-    image: minio/minio:latest
+    image: cgr.dev/chainguard/minio:latest
+    user: "0:0"
     ports:
       - "9000:9000"
       - "9001:9001"
     environment:
       - "MINIO_ROOT_USER=Q3AM3UQ867SPQQA43P2F"
       - "MINIO_ROOT_PASSWORD=zuf+tfteSlswRu7BJ86wekitnifILbZam1KYY3TG"
+      # Built-in single-key KMS. MinIO needs a KMS backend for any server-side
+      # encryption, SSE-S3 included. Test-only key, not a secret.
+      - "MINIO_KMS_SECRET_KEY=greenmask-test-key:Z3JlZW5tYXNrLWludGVncmF0aW9uLXRlc3Qta2V5ISE="
     entrypoint: sh
     command: >
       -c 'mkdir -p /export/testbucket
@@ -170,6 +174,7 @@ services:
       STORAGE_S3_REGION: "us-east-1"
       STORAGE_S3_ACCESS_KEY_ID: "Q3AM3UQ867SPQQA43P2F"
       STORAGE_S3_SECRET_KEY: "zuf+tfteSlswRu7BJ86wekitnifILbZam1KYY3TG"
+      STORAGE_S3_KMS_KEY: "greenmask-test-key"
     build:
       dockerfile: docker/integration/tests/Dockerfile
       context: ./
