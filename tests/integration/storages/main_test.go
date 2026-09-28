@@ -23,3 +23,7 @@ import (
 func TestS3Storage(t *testing.T) {
 	suite.Run(t, new(S3StorageSuite))
 }
+
+func TestS3SSEStorage(t *testing.T) {
+	suite.Run(t, new(S3SSESuite))
+}

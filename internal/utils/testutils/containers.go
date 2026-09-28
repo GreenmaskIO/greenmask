@@ -81,22 +81,28 @@ func (s *PgContainerSuite) GetConnection(ctx context.Context) (
 	return s.GetConnectionWithUser(ctx, testContainerUser, testContainerPassword)
 }
 
-func (s *PgContainerSuite) GetConnectionWithUser(ctx context.Context, username, password string) (
-	conn *pgx.Conn, err error,
-) {
-	// Get the host and port for connecting to the Container
+// GetConnectionString returns the DSN of the test Container, for tests that
+// need to open the connection themselves rather than take a ready-made one.
+func (s *PgContainerSuite) GetConnectionString(ctx context.Context) string {
+	return s.getConnectionString(ctx, testContainerUser, testContainerPassword)
+}
+
+func (s *PgContainerSuite) getConnectionString(ctx context.Context, username, password string) string {
 	host, err := s.Container.Host(ctx)
 	s.Require().NoErrorf(err, "failed to get Container host")
 	port, err := s.Container.MappedPort(ctx, testContainerPort)
 	s.Require().NoErrorf(err, "failed to get Container port")
 
-	// Create the connection string
-	connStr := fmt.Sprintf(
+	return fmt.Sprintf(
 		"postgres://%s:%s@%s:%s/%s?sslmode=disable",
 		username, password, host, port.Port(), testContainerDatabase,
 	)
+}
 
-	return pgx.Connect(ctx, connStr)
+func (s *PgContainerSuite) GetConnectionWithUser(ctx context.Context, username, password string) (
+	conn *pgx.Conn, err error,
+) {
+	return pgx.Connect(ctx, s.getConnectionString(ctx, username, password))
 }
 
 func (s *PgContainerSuite) GetSuperUser() string {

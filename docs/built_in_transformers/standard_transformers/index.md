@@ -5,6 +5,7 @@ Standard transformers are ready-to-use methods that require no customization and
 1. [Cmd](cmd.md) — transforms data via external program using `stdin` and `stdout` interaction.
 1. [Dict](dict.md) — replaces values matched by dictionary keys.
 1. [Hash](dict.md) — generates a hash of the text value.
+1. [HashedPassword](hashed_password.md) — replaces a password hash with a bcrypt hash of one known password.
 1. [Masking](masking.md) — masks a value using one of the masking behaviors depending on your domain.
 1. [NoiseDate](noise_date.md) — randomly adds or subtracts a duration within the provided ratio interval to the original date value.
 1. [NoiseFloat](noise_float.md) — adds or subtracts a random fraction to the original float value.terval to the original date value.

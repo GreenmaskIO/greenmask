@@ -135,6 +135,9 @@ four storage `type` options are supported: `directory`, `s3`, `azure` and `ssh`.
     * `use_list_objects_v1` — use the old v1 `ListObjects` request instead of v2 one
     * `force_path_style` — force the request to use path-style addressing (e. g., `http://s3.amazonaws.com/BUCKET/KEY`) instead of virtual hosted bucket addressing (e. g., `http://BUCKET.s3.amazonaws.com/KEY`)
     * `use_accelerate` — enable S3 Accelerate feature
+    * `sse` — server-side encryption applied to the uploaded dump. One of `AES256` (SSE-S3), `aws:kms` (SSE-KMS) or `aws:kms:dsse` (DSSE-KMS). Applies to both single-part and multipart uploads
+    * `kms_key_arn` — KMS key encrypting the dump when `sse` is `aws:kms` or `aws:kms:dsse`. If omitted, the bucket default KMS key is used. Setting it with any other `sse` value is a config error
+    * `bucket_key_enabled` — enable [S3 Bucket Keys](https://docs.aws.amazon.com/AmazonS3/latest/userguide/bucket-key.html), which cut KMS request cost on large dumps. Requires `sse` to be `aws:kms` or `aws:kms:dsse`
 
     ```yaml title="s3 storage config example for Minio running in Docker"
     storage:  
@@ -398,6 +401,16 @@ In the `restore` section of the configuration, you can specify parameters for th
         * `query` — an SQL query string to be executed
         * `query_file` — the path to an SQL query file to be executed
         * `command` — a command with parameters to be executed. It is provided as a list, where the first item is the command name.
+
+    Messages a script reports to the server — `RAISE NOTICE`, `RAISE WARNING` and friends —
+    are forwarded to the Greenmask log: `WARNING` at `warn` level, `NOTICE`, `INFO` and `LOG`
+    at `info`, `DEBUG` at `debug`. They are logged between the `executing script` and
+    `script execution complete` entries of the script that produced them.
+
+    Notices raised while dumping or restoring table data (for example by row-level triggers)
+    are logged too, tagged with the worker id. On those connections `NOTICE`, `INFO` and `LOG`
+    are logged at `debug` so a trigger raising one per row does not flood the log; `WARNING`
+    stays at `warn`.
 * `insert_error_exclusions` — a list of error codes that should be ignored during the restoration process. This is 
 useful when you want to skip specific errors that are not critical for the restoration process.
 

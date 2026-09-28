@@ -30,6 +30,7 @@ var (
 	storageS3AccessKeyId     string
 	storageS3SecretAccessKey string
 	storageS3Prefix          string
+	storageS3KMSKey          string
 )
 
 const (
@@ -39,6 +40,7 @@ const (
 	storageS3AccessKeyIdEnvVarName     = "STORAGE_S3_ACCESS_KEY_ID"
 	storageS3SecretAccessKeyEnvVarName = "STORAGE_S3_SECRET_KEY"
 	storageS3PrefixEnvVarName          = "STORAGE_S3_PREFIX"
+	storageS3KMSKeyEnvVarName          = "STORAGE_S3_KMS_KEY"
 )
 
 func init() {
@@ -48,6 +50,7 @@ func init() {
 	flag.StringVar(&storageS3AccessKeyId, "storageS3AccessKeyId", "", "s3 access key id")
 	flag.StringVar(&storageS3SecretAccessKey, "storageS3SecretAccessKey", "", "s3 secred access key")
 	flag.StringVar(&storageS3Prefix, "storageS3Prefix", "", "prefix in s3 bucket path")
+	flag.StringVar(&storageS3KMSKey, "storageS3KMSKey", "", "kms key id or arn for sse-kms tests")
 
 	if v := os.Getenv(storageS3EndpointEnvVarName); v != "" {
 		storageS3Endpoint = v
@@ -66,6 +69,9 @@ func init() {
 	}
 	if v := os.Getenv(storageS3PrefixEnvVarName); v != "" {
 		storageS3Prefix = v
+	}
+	if v := os.Getenv(storageS3KMSKeyEnvVarName); v != "" {
+		storageS3KMSKey = v
 	}
 
 }
