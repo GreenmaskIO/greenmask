@@ -4943,6 +4943,8 @@ such as Amazon S3 or MinIO. Here are the parameters you can configure for S3 sto
 <li><code>use_list_objects_v1</code> — use the old v1 <code>ListObjects</code> request instead of v2 one</li>
 <li><code>force_path_style</code> — force the request to use path-style addressing (e. g., <code>http://s3.amazonaws.com/BUCKET/KEY</code>) instead of virtual hosted bucket addressing (e. g., <code>http://BUCKET.s3.amazonaws.com/KEY</code>)</li>
 <li><code>use_accelerate</code> — enable S3 Accelerate feature</li>
+<li><code>sse</code> — sets <code>ServerSideEncryption</code> header for AWS <code>PutObject</code> command (one of <code>AES256</code>, <code>aws:kms</code>, or <code>aws:kms:dsse</code>)</li>
+<li><code>kms_key_arn</code> - when sse is <code>aws:kms</code> or <code>aws:kms:dsse</code>, kms_key_arn will fill in the <code>SSEKMSKeyId</code> header for the AWS <code>PutObject</code> command (unset otherwise)</li>
 </ul>
 <div class="highlight"><span class="filename">s3 storage config example for Minio running in Docker</span><pre><span></span><code><span class="nt">storage</span><span class="p">:</span><span class="w">  </span>
 <span class="w">  </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;s3&quot;</span>
