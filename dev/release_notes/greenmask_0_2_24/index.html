@@ -4595,18 +4595,32 @@ You're not viewing the latest version.
 <h1 id="greenmask-0224">Greenmask 0.2.24<a class="headerlink" href="#greenmask-0224" title="Permanent link">&para;</a></h1>
 <h2 id="changes">Changes<a class="headerlink" href="#changes" title="Permanent link">&para;</a></h2>
 <ul>
+<li>feat: add the <a href="../../built_in_transformers/standard_transformers/hashed_password/">HashedPassword</a> transformer. It
+  writes a bcrypt hash of one known password into a column, so test accounts can log in after the restore. The password
+  is read from an environment variable via <code>resolve_env</code>, so it stays out of the config and the
+  dump <a href="https://github.com/GreenmaskIO/greenmask/pull/482">#482</a>. Closes
+  <a href="https://github.com/GreenmaskIO/greenmask/issues/480">#480</a></li>
 <li>feat: add server-side encryption for the S3 storage. The new <code>sse</code> parameter sets the encryption mode
   (<code>AES256</code>, <code>aws:kms</code> or <code>aws:kms:dsse</code>), <code>kms_key_arn</code> selects the KMS key for the KMS-backed modes, and
   <code>bucket_key_enabled</code> turns on <a href="https://docs.aws.amazon.com/AmazonS3/latest/userguide/bucket-key.html">S3 Bucket Keys</a>
   to cut KMS request cost on large dumps. Encryption is applied to both single-part and multipart uploads, so dumps
   larger than <code>max_part_size</code> are covered as
-  well <a href="https://github.com/GreenmaskIO/greenmask/pull/473">#473</a></li>
+  well <a href="https://github.com/GreenmaskIO/greenmask/pull/473">#473</a> <a href="https://github.com/GreenmaskIO/greenmask/pull/484">#484</a></li>
+<li>feat: forward PostgreSQL notices to the log. Messages raised with <code>RAISE NOTICE</code> or <code>RAISE WARNING</code> were previously
+  discarded at every log level. Notices from restore scripts are logged between the <code>executing script</code> and
+  <code>script execution complete</code> entries: <code>WARNING</code> at <code>warn</code>, <code>NOTICE</code>, <code>INFO</code> and <code>LOG</code> at <code>info</code>, <code>DEBUG</code> at
+  <code>debug</code> <a href="https://github.com/GreenmaskIO/greenmask/pull/479">#479</a>. Notices raised while dumping or restoring table
+  data (for example by row-level triggers) are tagged with the worker id and logged at <code>debug</code>, except <code>WARNING</code>, which
+  stays at <code>warn</code>, so a trigger raising one notice per row does not flood the
+  log <a href="https://github.com/GreenmaskIO/greenmask/pull/485">#485</a></li>
 <li>fix: validate the S3 storage config before the dump starts. An unknown <code>sse</code> value now fails immediately instead of
   on the first upload, once the dump has already been produced. Setting <code>kms_key_arn</code> or <code>bucket_key_enabled</code> without a
   KMS-backed <code>sse</code> is rejected as well — previously the KMS key was silently dropped and the dump was encrypted with a
-  key other than the configured one</li>
+  key other than the configured one <a href="https://github.com/GreenmaskIO/greenmask/pull/484">#484</a></li>
 <li>fix: use the upstream Minio image for the integration test storage
   service <a href="https://github.com/GreenmaskIO/greenmask/pull/483">#483</a></li>
+<li>docs: extend the <a href="../../supporting_new_postgres/">supporting a new PostgreSQL version</a>
+  guide <a href="https://github.com/GreenmaskIO/greenmask/pull/477">#477</a></li>
 </ul>
 <h4 id="full-changelog-v0223v0224">Full Changelog: <a href="https://github.com/GreenmaskIO/greenmask/compare/v0.2.23...v0.2.24">v0.2.23...v0.2.24</a><a class="headerlink" href="#full-changelog-v0223v0224" title="Permanent link">&para;</a></h4>
 <h2 id="links">Links<a class="headerlink" href="#links" title="Permanent link">&para;</a></h2>
