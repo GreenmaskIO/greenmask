@@ -71,6 +71,7 @@ nav:
               - Cmd: built_in_transformers/standard_transformers/cmd.md
               - Dict: built_in_transformers/standard_transformers/dict.md
               - Hash: built_in_transformers/standard_transformers/hash.md
+              - HashedPassword: built_in_transformers/standard_transformers/hashed_password.md
               - Masking: built_in_transformers/standard_transformers/masking.md
               - NoiseDate: built_in_transformers/standard_transformers/noise_date.md
               - NoiseFloat: built_in_transformers/standard_transformers/noise_float.md
