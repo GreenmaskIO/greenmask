@@ -151,6 +151,8 @@ such as Amazon S3 or MinIO. Here are the parameters you can configure for S3 sto
 * `use_list_objects_v1` — use the old v1 `ListObjects` request instead of v2 one
 * `force_path_style` — force the request to use path-style addressing (e. g., `http://s3.amazonaws.com/BUCKET/KEY`) instead of virtual hosted bucket addressing (e. g., `http://BUCKET.s3.amazonaws.com/KEY`)
 * `use_accelerate` — enable S3 Accelerate feature
+* `sse` — sets `ServerSideEncryption` header for AWS `PutObject` command (one of `AES256`, `aws:kms`, or `aws:kms:dsse`)
+* `kms_key_arn` - when sse is `aws:kms` or `aws:kms:dsse`, kms_key_arn will fill in the `SSEKMSKeyId` header for the AWS `PutObject` command (unset otherwise)
 
 ```yaml title="s3 storage config example for Minio running in Docker"
 storage:  
