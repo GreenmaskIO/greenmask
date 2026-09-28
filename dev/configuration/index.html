@@ -5208,7 +5208,11 @@ command. Here is an example of the validate section configuration:</p>
 <p>Messages a script reports to the server — <code>RAISE NOTICE</code>, <code>RAISE WARNING</code> and friends —
 are forwarded to the Greenmask log: <code>WARNING</code> at <code>warn</code> level, <code>NOTICE</code>, <code>INFO</code> and <code>LOG</code>
 at <code>info</code>, <code>DEBUG</code> at <code>debug</code>. They are logged between the <code>executing script</code> and
-<code>script execution complete</code> entries of the script that produced them.
+<code>script execution complete</code> entries of the script that produced them.</p>
+<p>Notices raised while dumping or restoring table data (for example by row-level triggers)
+are logged too, tagged with the worker id. On those connections <code>NOTICE</code>, <code>INFO</code> and <code>LOG</code>
+are logged at <code>debug</code> so a trigger raising one per row does not flood the log; <code>WARNING</code>
+stays at <code>warn</code>.
 * <code>insert_error_exclusions</code> — a list of error codes that should be ignored during the restoration process. This is 
 useful when you want to skip specific errors that are not critical for the restoration process.</p>
 </li>
