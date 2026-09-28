@@ -405,6 +405,11 @@ In the `restore` section of the configuration, you can specify parameters for th
     are forwarded to the Greenmask log: `WARNING` at `warn` level, `NOTICE`, `INFO` and `LOG`
     at `info`, `DEBUG` at `debug`. They are logged between the `executing script` and
     `script execution complete` entries of the script that produced them.
+
+    Notices raised while dumping or restoring table data (for example by row-level triggers)
+    are logged too, tagged with the worker id. On those connections `NOTICE`, `INFO` and `LOG`
+    are logged at `debug` so a trigger raising one per row does not flood the log; `WARNING`
+    stays at `warn`.
 * `insert_error_exclusions` — a list of error codes that should be ignored during the restoration process. This is 
 useful when you want to skip specific errors that are not critical for the restoration process.
 

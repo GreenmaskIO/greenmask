@@ -17,40 +17,57 @@ package cmd
 import (
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/rs/zerolog"
-	"github.com/rs/zerolog/log"
 )
 
-// logServerNotice logs a notice response at the level matching its PostgreSQL
-// severity.
-func logServerNotice(_ *pgconn.PgConn, n *pgconn.Notice) {
-	if n == nil {
-		return
-	}
+const workerIDLogKey = "workerId"
 
-	// Severity is localised according to the server's lc_messages; the
-	// unlocalised copy is the one worth matching on.
-	severity := n.SeverityUnlocalized
-	if severity == "" {
-		severity = n.Severity
-	}
+type noticeLevels map[string]zerolog.Level
 
-	var ev *zerolog.Event
-	switch severity {
-	case "WARNING":
-		ev = log.Warn()
-	case "DEBUG":
-		ev = log.Debug()
-	default:
-		// NOTICE, INFO and LOG are all informational.
-		ev = log.Info()
-	}
+var scriptNoticeLevels = noticeLevels{
+	"WARNING": zerolog.WarnLevel,
+	"NOTICE":  zerolog.InfoLevel,
+	"INFO":    zerolog.InfoLevel,
+	"LOG":     zerolog.InfoLevel,
+	"DEBUG":   zerolog.DebugLevel,
+}
 
-	ev = ev.Str("severity", severity)
-	if n.Detail != "" {
-		ev = ev.Str("detail", n.Detail)
+// workerNoticeLevels demotes informational notices, since row-level triggers may raise one per row.
+var workerNoticeLevels = noticeLevels{
+	"WARNING": zerolog.WarnLevel,
+	"NOTICE":  zerolog.DebugLevel,
+	"INFO":    zerolog.DebugLevel,
+	"LOG":     zerolog.DebugLevel,
+	"DEBUG":   zerolog.DebugLevel,
+}
+
+func (l noticeLevels) of(severity string) zerolog.Level {
+	if level, ok := l[severity]; ok {
+		return level
 	}
-	if n.Hint != "" {
-		ev = ev.Str("hint", n.Hint)
+	return zerolog.InfoLevel
+}
+
+func noticeSeverity(n *pgconn.Notice) string {
+	if n.SeverityUnlocalized != "" {
+		return n.SeverityUnlocalized
 	}
-	ev.Msg(n.Message)
+	return n.Severity
+}
+
+func newNoticeHandler(logger zerolog.Logger, levels noticeLevels) pgconn.NoticeHandler {
+	return func(_ *pgconn.PgConn, n *pgconn.Notice) {
+		if n == nil {
+			return
+		}
+
+		severity := noticeSeverity(n)
+		ev := logger.WithLevel(levels.of(severity)).Str("severity", severity)
+		if n.Detail != "" {
+			ev.Str("detail", n.Detail)
+		}
+		if n.Hint != "" {
+			ev.Str("hint", n.Hint)
+		}
+		ev.Msg(n.Message)
+	}
 }

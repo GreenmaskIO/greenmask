@@ -29,10 +29,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// syncBuffer is an io.Writer safe for concurrent use. logServerNotice runs on
-// pgx's background reader goroutine - one per connection - so capturing its
-// output means capturing writes from several goroutines at once, which a plain
-// bytes.Buffer cannot take.
+// syncBuffer is an io.Writer safe for concurrent use. The notice handler runs on
+// the goroutine using its connection, so with several connections it runs concurrently.
 type syncBuffer struct {
 	mx  sync.Mutex
 	buf bytes.Buffer
@@ -77,10 +75,32 @@ func decodeLine(t *testing.T, buf *syncBuffer) map[string]any {
 	return out
 }
 
-func TestLogServerNotice(t *testing.T) {
+// levelsByMessage decodes every log line and maps its message to its level.
+func levelsByMessage(t *testing.T, buf *syncBuffer) map[string]string {
+	t.Helper()
+	out := make(map[string]string)
+	for _, line := range strings.Split(strings.TrimSpace(buf.String()), "\n") {
+		if line == "" {
+			continue
+		}
+		var entry map[string]any
+		require.NoError(t, json.Unmarshal([]byte(line), &entry))
+		msg, _ := entry["message"].(string)
+		level, _ := entry["level"].(string)
+		out[msg] = level
+	}
+	return out
+}
+
+// scriptNotices returns the handler openConn attaches, bound to the current global logger.
+func scriptNotices() pgconn.NoticeHandler {
+	return newNoticeHandler(log.Logger, scriptNoticeLevels)
+}
+
+func TestNoticeHandler(t *testing.T) {
 	t.Run("NOTICE is logged at info", func(t *testing.T) {
 		buf := captureLog(t, zerolog.DebugLevel)
-		logServerNotice(nil, &pgconn.Notice{
+		scriptNotices()(nil, &pgconn.Notice{
 			SeverityUnlocalized: "NOTICE",
 			Message:             "Re-applied grants: schema=fault",
 		})
@@ -93,7 +113,7 @@ func TestLogServerNotice(t *testing.T) {
 
 	t.Run("WARNING is logged at warn", func(t *testing.T) {
 		buf := captureLog(t, zerolog.DebugLevel)
-		logServerNotice(nil, &pgconn.Notice{
+		scriptNotices()(nil, &pgconn.Notice{
 			SeverityUnlocalized: "WARNING",
 			Message:             "nothing matched",
 		})
@@ -103,7 +123,7 @@ func TestLogServerNotice(t *testing.T) {
 
 	t.Run("DEBUG is logged at debug", func(t *testing.T) {
 		buf := captureLog(t, zerolog.DebugLevel)
-		logServerNotice(nil, &pgconn.Notice{
+		scriptNotices()(nil, &pgconn.Notice{
 			SeverityUnlocalized: "DEBUG",
 			Message:             "internal detail",
 		})
@@ -114,7 +134,7 @@ func TestLogServerNotice(t *testing.T) {
 	t.Run("INFO, LOG and unknown severities are logged at info", func(t *testing.T) {
 		for _, severity := range []string{"INFO", "LOG", "SOMETHING_NEW"} {
 			buf := captureLog(t, zerolog.DebugLevel)
-			logServerNotice(nil, &pgconn.Notice{
+			scriptNotices()(nil, &pgconn.Notice{
 				SeverityUnlocalized: severity, Message: "informational",
 			})
 
@@ -126,7 +146,7 @@ func TestLogServerNotice(t *testing.T) {
 
 	t.Run("detail and hint are attached when present", func(t *testing.T) {
 		buf := captureLog(t, zerolog.DebugLevel)
-		logServerNotice(nil, &pgconn.Notice{
+		scriptNotices()(nil, &pgconn.Notice{
 			SeverityUnlocalized: "NOTICE",
 			Message:             "message",
 			Detail:              "some detail",
@@ -140,7 +160,7 @@ func TestLogServerNotice(t *testing.T) {
 
 	t.Run("detail and hint are omitted when empty", func(t *testing.T) {
 		buf := captureLog(t, zerolog.DebugLevel)
-		logServerNotice(nil, &pgconn.Notice{
+		scriptNotices()(nil, &pgconn.Notice{
 			SeverityUnlocalized: "NOTICE", Message: "message",
 		})
 
@@ -151,7 +171,7 @@ func TestLogServerNotice(t *testing.T) {
 
 	t.Run("falls back to the localised severity", func(t *testing.T) {
 		buf := captureLog(t, zerolog.DebugLevel)
-		logServerNotice(nil, &pgconn.Notice{
+		scriptNotices()(nil, &pgconn.Notice{
 			Severity: "HINWEIS", Message: "localised server",
 		})
 
@@ -162,33 +182,66 @@ func TestLogServerNotice(t *testing.T) {
 
 	t.Run("a nil notice is ignored", func(t *testing.T) {
 		buf := captureLog(t, zerolog.DebugLevel)
-		logServerNotice(nil, nil)
+		scriptNotices()(nil, nil)
 		assert.Empty(t, buf.String())
 	})
 
 	t.Run("notices respect the configured log level", func(t *testing.T) {
 		buf := captureLog(t, zerolog.WarnLevel)
-		logServerNotice(nil, &pgconn.Notice{
-			SeverityUnlocalized: "NOTICE", Message: "suppressed",
-		})
+		h := scriptNotices()
+		h(nil, &pgconn.Notice{SeverityUnlocalized: "NOTICE", Message: "suppressed"})
 		assert.Empty(t, buf.String(), "NOTICE must not appear when level is warn")
 
-		logServerNotice(nil, &pgconn.Notice{
-			SeverityUnlocalized: "WARNING", Message: "shown",
-		})
+		h(nil, &pgconn.Notice{SeverityUnlocalized: "WARNING", Message: "shown"})
 		assert.Contains(t, buf.String(), "shown")
 	})
 }
 
-// TestLogServerNoticeConcurrent exercises the handler the way pgx does: from
-// several connection goroutines at once. Run with -race, this is what shows the
-// handler is safe to attach to every connection in the package.
-func TestLogServerNoticeConcurrent(t *testing.T) {
+func TestWorkerNoticeHandler(t *testing.T) {
+	workerNotices := func() pgconn.NoticeHandler {
+		return newNoticeHandler(log.With().Int(workerIDLogKey, 3).Logger(), workerNoticeLevels)
+	}
+
+	t.Run("informational notices are demoted to debug", func(t *testing.T) {
+		for _, severity := range []string{"NOTICE", "INFO", "LOG"} {
+			buf := captureLog(t, zerolog.DebugLevel)
+			workerNotices()(nil, &pgconn.Notice{SeverityUnlocalized: severity, Message: "per row"})
+
+			assert.Equal(t, "debug", decodeLine(t, buf)["level"], "severity %s", severity)
+		}
+	})
+
+	t.Run("WARNING stays at warn", func(t *testing.T) {
+		buf := captureLog(t, zerolog.DebugLevel)
+		workerNotices()(nil, &pgconn.Notice{SeverityUnlocalized: "WARNING", Message: "bad row"})
+
+		assert.Equal(t, "warn", decodeLine(t, buf)["level"])
+	})
+
+	t.Run("notices carry the worker id", func(t *testing.T) {
+		buf := captureLog(t, zerolog.DebugLevel)
+		workerNotices()(nil, &pgconn.Notice{SeverityUnlocalized: "WARNING", Message: "bad row"})
+
+		assert.EqualValues(t, 3, decodeLine(t, buf)[workerIDLogKey])
+	})
+
+	t.Run("demoted notices are hidden at info", func(t *testing.T) {
+		buf := captureLog(t, zerolog.InfoLevel)
+		workerNotices()(nil, &pgconn.Notice{SeverityUnlocalized: "NOTICE", Message: "per row"})
+
+		assert.Empty(t, buf.String())
+	})
+}
+
+// TestNoticeHandlerConcurrent calls the handler from several goroutines, as
+// happens with one connection per worker. Run with -race.
+func TestNoticeHandlerConcurrent(t *testing.T) {
 	const (
 		goroutines = 8
 		perRoutine = 50
 	)
 	buf := captureLog(t, zerolog.DebugLevel)
+	h := scriptNotices()
 
 	var wg sync.WaitGroup
 	for g := 0; g < goroutines; g++ {
@@ -196,7 +249,7 @@ func TestLogServerNoticeConcurrent(t *testing.T) {
 		go func(g int) {
 			defer wg.Done()
 			for i := 0; i < perRoutine; i++ {
-				logServerNotice(nil, &pgconn.Notice{
+				h(nil, &pgconn.Notice{
 					SeverityUnlocalized: "NOTICE",
 					Message:             fmt.Sprintf("notice g%d-%d", g, i),
 				})

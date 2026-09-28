@@ -51,11 +51,33 @@ func (s *noticeSuite) TestOpenConnLogsServerNotices() {
 		END $$;`)
 	s.Require().NoError(err)
 
-	logged := buf.String()
-	s.Assert().Contains(logged, "Re-applied grants: schema=fault")
-	s.Assert().Contains(logged, `"level":"info"`)
-	s.Assert().Contains(logged, "nothing matched")
-	s.Assert().Contains(logged, `"level":"warn"`)
+	levels := levelsByMessage(s.T(), buf)
+	s.Assert().Equal("info", levels["Re-applied grants: schema=fault"])
+	s.Assert().Equal("warn", levels["nothing matched"])
+}
+
+func (s *noticeSuite) TestOpenWorkerConnDemotesNotices() {
+	ctx := context.Background()
+	buf := captureLog(s.T(), zerolog.DebugLevel)
+
+	conn, err := openWorkerConn(ctx, s.GetConnectionString(ctx), 2)
+	s.Require().NoError(err)
+	defer func() {
+		s.Require().NoError(conn.Close(ctx))
+	}()
+
+	_, err = conn.Exec(ctx, `
+		DO $$
+		BEGIN
+		  RAISE NOTICE 'row processed';
+		  RAISE WARNING 'row rejected';
+		END $$;`)
+	s.Require().NoError(err)
+
+	levels := levelsByMessage(s.T(), buf)
+	s.Assert().Equal("debug", levels["row processed"])
+	s.Assert().Equal("warn", levels["row rejected"])
+	s.Assert().Contains(buf.String(), `"workerId":2`)
 }
 
 // A plain pgx.Connect drops the same message. This is the behaviour the change
