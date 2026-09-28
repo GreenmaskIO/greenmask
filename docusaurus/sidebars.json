@@ -142,6 +142,11 @@
                 },
                 {
                   "type": "doc",
+                  "id": "built_in_transformers/standard_transformers/hashed_password",
+                  "label": "HashedPassword"
+                },
+                {
+                  "type": "doc",
                   "id": "built_in_transformers/standard_transformers/masking",
                   "label": "Masking"
                 },
