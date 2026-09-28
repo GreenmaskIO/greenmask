@@ -135,8 +135,9 @@ four storage `type` options are supported: `directory`, `s3`, `azure` and `ssh`.
     * `use_list_objects_v1` — use the old v1 `ListObjects` request instead of v2 one
     * `force_path_style` — force the request to use path-style addressing (e. g., `http://s3.amazonaws.com/BUCKET/KEY`) instead of virtual hosted bucket addressing (e. g., `http://BUCKET.s3.amazonaws.com/KEY`)
     * `use_accelerate` — enable S3 Accelerate feature
-    * `sse` — sets `ServerSideEncryption` header for AWS `PutObject` command (one of `AES256`, `aws:kms`, or `aws:kms:dsse`)
-    * `kms_key_arn` - when sse is `aws:kms` or `aws:kms:dsse`, kms_key_arn will fill in the `SSEKMSKeyId` header for the AWS `PutObject` command (unset otherwise)
+    * `sse` — server-side encryption applied to the uploaded dump. One of `AES256` (SSE-S3), `aws:kms` (SSE-KMS) or `aws:kms:dsse` (DSSE-KMS). Applies to both single-part and multipart uploads
+    * `kms_key_arn` — KMS key encrypting the dump when `sse` is `aws:kms` or `aws:kms:dsse`. If omitted, the bucket default KMS key is used. Setting it with any other `sse` value is a config error
+    * `bucket_key_enabled` — enable [S3 Bucket Keys](https://docs.aws.amazon.com/AmazonS3/latest/userguide/bucket-key.html), which cut KMS request cost on large dumps. Requires `sse` to be `aws:kms` or `aws:kms:dsse`
 
     ```yaml title="s3 storage config example for Minio running in Docker"
     storage:  

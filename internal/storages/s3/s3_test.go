@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/awsutil"
 	"github.com/aws/aws-sdk-go/aws/request"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/aws/aws-sdk-go/service/s3/s3iface"
@@ -223,10 +224,13 @@ func TestPutObject_KMSKeyOmittedWhenArnEmpty(t *testing.T) {
 	assert.Nil(t, mock.input.SSEKMSKeyId)
 }
 
-func TestPutObject_KMSKeyIgnoredForNonKmsSSE(t *testing.T) {
+// A KMS key alongside a non-KMS sse is rejected by Validate, so PutObject is
+// never reached with that combination. See TestConfigValidate_KMSKeyARN.
+
+func TestPutObject_BucketKeyEnabled(t *testing.T) {
 	mock := &mockUploader{}
 	st := &Storage{
-		config:   &Config{Bucket: "test-bucket", SSE: "AES256", KMSKeyARN: "arn:aws:kms:us-east-1:123456789012:key/test-key"},
+		config:   &Config{Bucket: "test-bucket", SSE: "aws:kms", BucketKeyEnabled: true},
 		uploader: mock,
 		prefix:   "dumps/",
 	}
@@ -234,9 +238,22 @@ func TestPutObject_KMSKeyIgnoredForNonKmsSSE(t *testing.T) {
 	err := st.PutObject(context.Background(), "file.dat", strings.NewReader("data"))
 	require.NoError(t, err)
 	require.NotNil(t, mock.input)
-	require.NotNil(t, mock.input.ServerSideEncryption)
-	assert.Equal(t, "AES256", *mock.input.ServerSideEncryption)
-	assert.Nil(t, mock.input.SSEKMSKeyId)
+	require.NotNil(t, mock.input.BucketKeyEnabled)
+	assert.True(t, *mock.input.BucketKeyEnabled)
+}
+
+func TestPutObject_BucketKeyUnsetByDefault(t *testing.T) {
+	mock := &mockUploader{}
+	st := &Storage{
+		config:   &Config{Bucket: "test-bucket", SSE: "aws:kms"},
+		uploader: mock,
+		prefix:   "dumps/",
+	}
+
+	err := st.PutObject(context.Background(), "file.dat", strings.NewReader("data"))
+	require.NoError(t, err)
+	require.NotNil(t, mock.input)
+	assert.Nil(t, mock.input.BucketKeyEnabled)
 }
 
 func TestPutObject_UploadError(t *testing.T) {
@@ -251,4 +268,27 @@ func TestPutObject_UploadError(t *testing.T) {
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "s3 object uploading error")
 	assert.Contains(t, err.Error(), "upload failure")
+}
+
+// TestUploadInput_EncryptionSurvivesMultipart guards the non-obvious half of
+// SSE: dumps larger than MaxPartSize go through CreateMultipartUpload, which
+// s3manager derives from UploadInput by reflection. If a future SDK bump stops
+// carrying these headers across, large dumps would silently lose encryption
+// while the single-part tests above kept passing.
+func TestUploadInput_EncryptionSurvivesMultipart(t *testing.T) {
+	in := &s3manager.UploadInput{
+		ServerSideEncryption: aws.String("aws:kms"),
+		SSEKMSKeyId:          aws.String("arn:aws:kms:us-east-1:123456789012:key/test-key"),
+		BucketKeyEnabled:     aws.Bool(true),
+	}
+
+	mpu := &s3.CreateMultipartUploadInput{}
+	awsutil.Copy(mpu, in)
+
+	require.NotNil(t, mpu.ServerSideEncryption, "multipart init lost the sse header")
+	assert.Equal(t, "aws:kms", *mpu.ServerSideEncryption)
+	require.NotNil(t, mpu.SSEKMSKeyId, "multipart init lost the kms key")
+	assert.Equal(t, *in.SSEKMSKeyId, *mpu.SSEKMSKeyId)
+	require.NotNil(t, mpu.BucketKeyEnabled, "multipart init lost the bucket key flag")
+	assert.True(t, *mpu.BucketKeyEnabled)
 }
