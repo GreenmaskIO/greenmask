@@ -128,7 +128,7 @@ func (d *Dump) gatherPgFacts(ctx context.Context, tx pgx.Tx) error {
 
 func (d *Dump) connect(ctx context.Context, dsn string) (*pgx.Conn, error) {
 
-	conn, err := pgx.Connect(ctx, dsn)
+	conn, err := openConn(ctx, dsn)
 	if err != nil {
 		return nil, err
 	}
@@ -597,7 +597,7 @@ func (d *Dump) getWorkerTransaction(ctx context.Context) (*pgx.Conn, pgx.Tx, err
 	var setIsolationLevelQuery = fmt.Sprintf("SET TRANSACTION ISOLATION LEVEL %s", isolationLevel)
 	var setSnapshotQuery = fmt.Sprintf("SET TRANSACTION SNAPSHOT '%s'", d.pgDumpOptions.Snapshot)
 
-	conn, err := pgx.Connect(ctx, d.dsn)
+	conn, err := openConn(ctx, d.dsn)
 	if err != nil {
 		return nil, nil, fmt.Errorf("cannot connecti to server: %w", err)
 	}
