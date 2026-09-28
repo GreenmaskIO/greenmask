@@ -5192,7 +5192,9 @@ command. Here is an example of the validate section configuration:</p>
 <ul>
 <li><code>pg_restore_options</code> — a map of <code>pg_restore</code> options that are used to configure the behavior of
   the <code>pg_restore</code> utility during the restoration process. You can refer to the list of supported <code>pg_restore</code> options in the <a href="../commands/restore/">Greenmask restore command documentation</a>.</li>
-<li><code>scripts</code> — a map of custom scripts to be executed during different restoration stages. Each script is associated with a specific restoration stage and includes the following attributes:<ul>
+<li>
+<p><code>scripts</code> — a map of custom scripts to be executed during different restoration stages. Each script is associated with a specific restoration stage and includes the following attributes:</p>
+<ul>
 <li><code>[pre-data|data|post-data]</code> — the name of the restoration stage when the script should be executed; has the following parameters:<ul>
 <li><code>name</code> — the name of the script</li>
 <li><code>when</code> — specifies when to execute the script, which can be either <code>"before"</code> or <code>"after"</code> the
@@ -5203,9 +5205,13 @@ command. Here is an example of the validate section configuration:</p>
 </ul>
 </li>
 </ul>
+<p>Messages a script reports to the server — <code>RAISE NOTICE</code>, <code>RAISE WARNING</code> and friends —
+are forwarded to the Greenmask log: <code>WARNING</code> at <code>warn</code> level, <code>NOTICE</code>, <code>INFO</code> and <code>LOG</code>
+at <code>info</code>, <code>DEBUG</code> at <code>debug</code>. They are logged between the <code>executing script</code> and
+<code>script execution complete</code> entries of the script that produced them.
+* <code>insert_error_exclusions</code> — a list of error codes that should be ignored during the restoration process. This is 
+useful when you want to skip specific errors that are not critical for the restoration process.</p>
 </li>
-<li><code>insert_error_exclusions</code> — a list of error codes that should be ignored during the restoration process. This is 
-useful when you want to skip specific errors that are not critical for the restoration process.</li>
 </ul>
 <p>As mentioned in <a href="../architecture/#backup-process">the architecture</a>, a backup contains three sections: pre-data, data, and post-data. The custom script execution allows you to customize and control the restoration process by executing scripts or commands at specific stages. The available restoration stages and their corresponding execution conditions are as follows:</p>
 <ul>
