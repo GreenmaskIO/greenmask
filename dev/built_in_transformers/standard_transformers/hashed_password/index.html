@@ -4650,7 +4650,7 @@ accepts:</p>
 </ul>
 <p>bcrypt is slow on purpose. With the default <code>per_row_salt: false</code> the password is hashed once and the
 same hash goes to every row, so the dump stays fast. Set <code>per_row_salt: true</code> when rows must not share a
-hash; each row then costs one bcrypt run.</p>
+hash; each row then costs one bcrypt run, which is expensive and adds a large overhead per record.</p>
 <div class="admonition warning">
 <p class="admonition-title">Warning</p>
 <p>Never put a real password into the config file. Pass it through an environment variable with
