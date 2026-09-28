@@ -19,36 +19,34 @@ import (
 	"fmt"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
+	"github.com/rs/zerolog/log"
 )
 
-// newConnConfig parses dsn and attaches the notice handler to the resulting
-// configuration.
-//
-// pgx.Connect is ParseConfig followed by ConnectConfig with no opportunity to
-// touch the config in between, and OnNotice is only reachable through the
-// config - so opening connections goes through here instead.
-func newConnConfig(dsn string) (*pgx.ConnConfig, error) {
+// newConnConfig parses dsn and attaches onNotice. pgx.Connect gives no access to
+// the config, and without OnNotice pgx silently drops server notices.
+func newConnConfig(dsn string, onNotice pgconn.NoticeHandler) (*pgx.ConnConfig, error) {
 	connCfg, err := pgx.ParseConfig(dsn)
 	if err != nil {
 		return nil, fmt.Errorf("cannot parse connection string: %w", err)
 	}
-	connCfg.OnNotice = logServerNotice
+	connCfg.OnNotice = onNotice
 	return connCfg, nil
 }
 
-// openConn establishes a connection that forwards PostgreSQL notice responses
-// to the log.
-//
-// Every connection in this package is opened through openConn on purpose. A
-// connection made with pgx.Connect has no notice handler, so pgx receives
-// NoticeResponse messages and drops them: anything the server reports - a
-// RAISE NOTICE in a restore script, a warning during data load - disappears
-// with no trace. Leaving a second, quieter way to connect in place would make
-// that failure one careless call away.
-func openConn(ctx context.Context, dsn string) (*pgx.Conn, error) {
-	connCfg, err := newConnConfig(dsn)
+func connectWithNotices(ctx context.Context, dsn string, onNotice pgconn.NoticeHandler) (*pgx.Conn, error) {
+	connCfg, err := newConnConfig(dsn, onNotice)
 	if err != nil {
 		return nil, err
 	}
 	return pgx.ConnectConfig(ctx, connCfg)
+}
+
+func openConn(ctx context.Context, dsn string) (*pgx.Conn, error) {
+	return connectWithNotices(ctx, dsn, newNoticeHandler(log.Logger, scriptNoticeLevels))
+}
+
+func openWorkerConn(ctx context.Context, dsn string, workerID int) (*pgx.Conn, error) {
+	logger := log.With().Int(workerIDLogKey, workerID).Logger()
+	return connectWithNotices(ctx, dsn, newNoticeHandler(logger, workerNoticeLevels))
 }

@@ -846,7 +846,7 @@ func (r *Restore) getTableDefinitionFromMeta(dumpId int32) (*toolkit.Table, erro
 
 func (r *Restore) restoreWorker(ctx context.Context, tasks <-chan restorationTask, id int) error {
 	// TODO: You should execute TX for each COPY stmt
-	conn, err := openConn(ctx, r.dsn)
+	conn, err := openWorkerConn(ctx, r.dsn, id)
 	if err != nil {
 		return fmt.Errorf("cannot connect to server (worker %d): %w", id, err)
 	}
