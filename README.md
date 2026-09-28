@@ -2,7 +2,7 @@
 
 [![greenmask.png](greenmask.png)](https://greenmask.io?utm_source=github&utm_medium=repo&utm_campaign=oss)
 
-**Greenmask** is a powerful open-source utility for logical database dumping, anonymization, synthetic data generation, and restoration. Designed for **PostgreSQL** and **MySQL** (in progress), it is stateless and creates logical backups compatible with standard tools like `pg_restore` or `mysqldump`.
+**Greenmask** is a powerful open-source utility for logical database dumping, anonymization, synthetic data generation, and restoration. Designed for **PostgreSQL** and **MySQL** (in progress), it is stateless and creates logical backups compatible with standard tools like `pg_dump` or `mysqldump`.
 
 [![Discord](https://img.shields.io/discord/1179422525294399488?label=Discord&logo=discord)](https://discord.com/invite/rKBKvDECfd)
 [![Telegram](https://img.shields.io/badge/Telegram-Join%20Chat-blue.svg?logo=telegram)](https://t.me/greenmask_ru)
@@ -13,7 +13,6 @@
 [![GitHub Release](https://img.shields.io/github/v/release/greenmaskio/greenmask)](https://github.com/greenmaskio/greenmask/releases/latest)
 [![GitHub Downloads (all assets, all releases)](https://img.shields.io/github/downloads/greenmaskio/greenmask/total)](https://somsubhra.github.io/github-release-stats/?username=greenmaskio&repository=greenmask&page=1&per_page=5)
 [![Docker pulls](https://img.shields.io/docker/pulls/greenmask/greenmask)](https://hub.docker.com/r/greenmask/greenmask)
-[![Go Report Card](https://goreportcard.com/badge/github.com/greenmaskio/greenmask)](https://goreportcard.com/report/github.com/greenmaskio/greenmask)
 
 ![Demo](docs/assets/tapes/playground.gif)
 
