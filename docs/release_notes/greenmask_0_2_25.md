@@ -4,8 +4,9 @@ This is a bugfix release. It fixes a data corruption issue present in every earl
 
 ## Changes
 
-* fix: keep the byte following `\.` or `\N` in values written by transformers. The COPY encoder escaped these sequences and then skipped one byte too many, so the next byte was dropped from the dump. Depending on the dropped byte, the value was silently altered, or the restore of the whole table failed with `invalid input syntax for type json` or `invalid byte sequence for encoding "UTF8"`. Closes [#489](https://github.com/GreenmaskIO/greenmask/issues/489)
-* fix: write ASCII control characters without a named escape (for example `0x01`) once. Previously they were written twice, so the restored value contained the character twice.
+* fix: keep the byte following `\.` or `\N` in values written by transformers. The COPY encoder escaped these sequences and then skipped one byte too many, so the next byte was dropped from the dump. Depending on the dropped byte, the value was silently altered, or the restore of the whole table failed with `invalid input syntax for type json` or `invalid byte sequence for encoding "UTF8"` [#490](https://github.com/GreenmaskIO/greenmask/pull/490). Closes [#489](https://github.com/GreenmaskIO/greenmask/issues/489)
+* fix: write ASCII control characters without a named escape (for example `0x01`) once. Previously they were written twice, so the restored value contained the character twice [#490](https://github.com/GreenmaskIO/greenmask/pull/490)
+* fix: clean the S3 integration test prefix before and after the suites, so objects left by an interrupted run no longer fail the next one, and add `make rebuild-images`, `rebuild-greenmask-image` and `rebuild-integration-image` targets that rebuild the local images without cache [#490](https://github.com/GreenmaskIO/greenmask/pull/490)
 
 ## Am I affected?
 
@@ -33,7 +34,7 @@ Transformers that generate a new value from scratch, such as random numbers, dat
 
 Typical data that triggers the issue: regular expressions (`\.php$`), Windows paths (`C:\Nightly\build`) and web server configuration stored in `text` or `json`/`jsonb` columns.
 
-To check a column in the source database, run the query below for each transformed column. A non-zero count means dumps of this column made before 0.2.25 are affected:
+To check a column in the source database, run the query below for each transformed column. A non-zero count means dumps of this column made before 0.2.25 may be affected:
 
 ```sql
 SELECT count(*)
