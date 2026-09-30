@@ -111,8 +111,8 @@
               </button>
             
             
-A new version 0.2.24 (2026.09.28) is <a
-  href="https://github.com/GreenmaskIO/greenmask/releases/tag/v0.2.24">released</a>
+A new version 0.2.25 (2026-09-30) is <a
+  href="https://github.com/GreenmaskIO/greenmask/releases/tag/v0.2.25">released</a>
 
           </div>
           
@@ -4648,8 +4648,9 @@ You're not viewing the latest version.
 <p>This is a bugfix release. It fixes a data corruption issue present in every earlier release, starting from 0.1.0-beta. Check the <a href="#am-i-affected">Am I affected?</a> section below.</p>
 <h2 id="changes">Changes<a class="headerlink" href="#changes" title="Permanent link">&para;</a></h2>
 <ul>
-<li>fix: keep the byte following <code>\.</code> or <code>\N</code> in values written by transformers. The COPY encoder escaped these sequences and then skipped one byte too many, so the next byte was dropped from the dump. Depending on the dropped byte, the value was silently altered, or the restore of the whole table failed with <code>invalid input syntax for type json</code> or <code>invalid byte sequence for encoding "UTF8"</code>. Closes <a href="https://github.com/GreenmaskIO/greenmask/issues/489">#489</a></li>
-<li>fix: write ASCII control characters without a named escape (for example <code>0x01</code>) once. Previously they were written twice, so the restored value contained the character twice.</li>
+<li>fix: keep the byte following <code>\.</code> or <code>\N</code> in values written by transformers. The COPY encoder escaped these sequences and then skipped one byte too many, so the next byte was dropped from the dump. Depending on the dropped byte, the value was silently altered, or the restore of the whole table failed with <code>invalid input syntax for type json</code> or <code>invalid byte sequence for encoding "UTF8"</code> <a href="https://github.com/GreenmaskIO/greenmask/pull/490">#490</a>. Closes <a href="https://github.com/GreenmaskIO/greenmask/issues/489">#489</a></li>
+<li>fix: write ASCII control characters without a named escape (for example <code>0x01</code>) once. Previously they were written twice, so the restored value contained the character twice <a href="https://github.com/GreenmaskIO/greenmask/pull/490">#490</a></li>
+<li>fix: clean the S3 integration test prefix before and after the suites, so objects left by an interrupted run no longer fail the next one, and add <code>make rebuild-images</code>, <code>rebuild-greenmask-image</code> and <code>rebuild-integration-image</code> targets that rebuild the local images without cache <a href="https://github.com/GreenmaskIO/greenmask/pull/490">#490</a></li>
 </ul>
 <h2 id="am-i-affected">Am I affected?<a class="headerlink" href="#am-i-affected" title="Permanent link">&para;</a></h2>
 <div class="admonition warning">
@@ -4676,7 +4677,7 @@ You're not viewing the latest version.
 </ul>
 <p>Transformers that generate a new value from scratch, such as random numbers, dates, UUIDs or hashes, do not produce these sequences.</p>
 <p>Typical data that triggers the issue: regular expressions (<code>\.php$</code>), Windows paths (<code>C:\Nightly\build</code>) and web server configuration stored in <code>text</code> or <code>json</code>/<code>jsonb</code> columns.</p>
-<p>To check a column in the source database, run the query below for each transformed column. A non-zero count means dumps of this column made before 0.2.25 are affected:</p>
+<p>To check a column in the source database, run the query below for each transformed column. A non-zero count means dumps of this column made before 0.2.25 may be affected:</p>
 <div class="highlight"><pre><span></span><code><span class="k">SELECT</span><span class="w"> </span><span class="k">count</span><span class="p">(</span><span class="o">*</span><span class="p">)</span>
 <span class="k">FROM</span><span class="w"> </span><span class="n">my_schema</span><span class="p">.</span><span class="n">my_table</span>
 <span class="k">WHERE</span><span class="w"> </span><span class="n">my_column</span><span class="p">::</span><span class="nb">text</span><span class="w"> </span><span class="o">~</span><span class="w"> </span><span class="s1">&#39;\\[.N].&#39;</span>
