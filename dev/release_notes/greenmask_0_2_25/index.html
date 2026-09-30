@@ -8,13 +8,13 @@
       
       
       
-        <link rel="canonical" href="https://docs.greenmask.io/dev/release_notes/greenmask_0_1_0/">
+        <link rel="canonical" href="https://docs.greenmask.io/dev/release_notes/greenmask_0_2_25/">
       
       
-        <link rel="prev" href="../greenmask_0_1_1/">
+        <link rel="prev" href="../../supporting_new_postgres/">
       
       
-        <link rel="next" href="../greenmask_0_1_0_beta/">
+        <link rel="next" href="../greenmask_0_2_24/">
       
       
         
@@ -25,7 +25,7 @@
     
     
       
-        <title>Greenmask 0.1.0 - Greenmask — PostgreSQL database anonymization and synthetic data generation tool</title>
+        <title>Greenmask 0.2.25 - Greenmask — PostgreSQL database anonymization and synthetic data generation tool</title>
       
     
     
@@ -69,15 +69,15 @@
     
   
 <meta property="og:type" content="website" />
-<meta property="og:title" content="Greenmask 0.1.0 - Greenmask — PostgreSQL database anonymization and synthetic data generation tool" />
-<meta property="og:image" content="https://docs.greenmask.io/dev/assets/images/social/release_notes/greenmask_0_1_0.png" />
+<meta property="og:title" content="Greenmask 0.2.25 - Greenmask — PostgreSQL database anonymization and synthetic data generation tool" />
+<meta property="og:image" content="https://docs.greenmask.io/dev/assets/images/social/release_notes/greenmask_0_2_25.png" />
 <meta property="og:image:type" content="image/png" />
 <meta property="og:image:width" content="1200" />
 <meta property="og:image:height" content="630" />
-<meta property="og:url" content="https://docs.greenmask.io/dev/release_notes/greenmask_0_1_0/" />
+<meta property="og:url" content="https://docs.greenmask.io/dev/release_notes/greenmask_0_2_25/" />
 <meta property="twitter:card" content="summary_large_image" />
-<meta property="twitter:title" content="Greenmask 0.1.0 - Greenmask — PostgreSQL database anonymization and synthetic data generation tool" />
-<meta property="twitter:image" content="https://docs.greenmask.io/dev/assets/images/social/release_notes/greenmask_0_1_0.png" />
+<meta property="twitter:title" content="Greenmask 0.2.25 - Greenmask — PostgreSQL database anonymization and synthetic data generation tool" />
+<meta property="twitter:image" content="https://docs.greenmask.io/dev/assets/images/social/release_notes/greenmask_0_2_25.png" />
 </head>
   
   
@@ -95,7 +95,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#greenmask-010" class="md-skip">
+        <a href="#greenmask-0225" class="md-skip">
           Skip to content
         </a>
       
@@ -162,7 +162,7 @@ You're not viewing the latest version.
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Greenmask 0.1.0
+              Greenmask 0.2.25
             
           </span>
         </div>
@@ -280,7 +280,7 @@ You're not viewing the latest version.
     
     
       <li class="md-tabs__item md-tabs__item--active">
-        <a href="../greenmask_0_2_25/" class="md-tabs__link">
+        <a href="./" class="md-tabs__link">
           
   
   
@@ -3216,10 +3216,37 @@ You're not viewing the latest version.
                 
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="../greenmask_0_2_25/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Greenmask 0.2.25
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   
@@ -3235,6 +3262,76 @@ You're not viewing the latest version.
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#changes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Changes
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#am-i-affected" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Am I affected?
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Am I affected?">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#full-changelog-v0224v0225" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Full Changelog: v0.2.24...v0.2.25
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#links" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Links
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -4392,37 +4489,10 @@ You're not viewing the latest version.
                 
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Greenmask 0.1.0
-  
-
-    
-  </span>
-  
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../greenmask_0_1_0/" class="md-nav__link">
         
   
   
@@ -4438,81 +4508,6 @@ You're not viewing the latest version.
   
 
       </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#new-features" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        New features
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#improvements" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Improvements
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#fixes" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Fixes
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#ecosystem-changes" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Ecosystem changes
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#assets" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Assets
-      
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -4580,10 +4575,10 @@ You're not viewing the latest version.
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#new-features" class="md-nav__link">
+  <a href="#changes" class="md-nav__link">
     <span class="md-ellipsis">
       
-        New features
+        Changes
       
     </span>
   </a>
@@ -4591,43 +4586,38 @@ You're not viewing the latest version.
 </li>
       
         <li class="md-nav__item">
-  <a href="#improvements" class="md-nav__link">
+  <a href="#am-i-affected" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Improvements
+        Am I affected?
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Am I affected?">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#full-changelog-v0224v0225" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Full Changelog: v0.2.24...v0.2.25
       
     </span>
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
-  <a href="#fixes" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Fixes
-      
-    </span>
-  </a>
+        
+      </ul>
+    </nav>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#ecosystem-changes" class="md-nav__link">
+  <a href="#links" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Ecosystem changes
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#assets" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Assets
+        Links
       
     </span>
   </a>
@@ -4654,113 +4644,54 @@ You're not viewing the latest version.
   
 
 
-<h1 id="greenmask-010">Greenmask 0.1.0<a class="headerlink" href="#greenmask-010" title="Permanent link">&para;</a></h1>
-<p>We are excited to announce the release of Greenmask v0.1.0, marking the first production-ready version. This release addresses various bug fixes, introduces improvements, and includes documentation refactoring for enhanced clarity.</p>
-<h2 id="new-features">New features<a class="headerlink" href="#new-features" title="Permanent link">&para;</a></h2>
+<h1 id="greenmask-0225">Greenmask 0.2.25<a class="headerlink" href="#greenmask-0225" title="Permanent link">&para;</a></h1>
+<p>This is a bugfix release. It fixes a data corruption issue present in every earlier release, starting from 0.1.0-beta. Check the <a href="#am-i-affected">Am I affected?</a> section below.</p>
+<h2 id="changes">Changes<a class="headerlink" href="#changes" title="Permanent link">&para;</a></h2>
 <ul>
-<li>
-<p>Added positional arguments for the list-transformers command, allowing specific transformer information retrieval (e.g., <code>greenmask list-transformers RandomDate</code>).</p>
-</li>
-<li>
-<p>Added a version parameter <code>--version</code> that prints Greenmask version.</p>
-</li>
-<li>
-<p>Added numeric parameters support for <code>-Int</code> and <code>-Float</code> transformers.</p>
-</li>
+<li>fix: keep the byte following <code>\.</code> or <code>\N</code> in values written by transformers. The COPY encoder escaped these sequences and then skipped one byte too many, so the next byte was dropped from the dump. Depending on the dropped byte, the value was silently altered, or the restore of the whole table failed with <code>invalid input syntax for type json</code> or <code>invalid byte sequence for encoding "UTF8"</code>. Closes <a href="https://github.com/GreenmaskIO/greenmask/issues/489">#489</a></li>
+<li>fix: write ASCII control characters without a named escape (for example <code>0x01</code>) once. Previously they were written twice, so the restored value contained the character twice.</li>
 </ul>
-<h2 id="improvements">Improvements<a class="headerlink" href="#improvements" title="Permanent link">&para;</a></h2>
+<h2 id="am-i-affected">Am I affected?<a class="headerlink" href="#am-i-affected" title="Permanent link">&para;</a></h2>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>Dumps made by an earlier release are not repaired by upgrading: the byte was lost when the dump was made. If you are affected, make a new dump with 0.2.25.</p>
+</div>
+<p>A table is affected only if all of the following are true:</p>
+<ol>
+<li>The dump was made with Greenmask 0.2.24 or earlier.</li>
+<li>A transformer targets the column, and the row was not skipped by a <code>when</code> condition. Columns no transformer targets and rows skipped by <code>when</code> are copied byte for byte and are not affected.</li>
+<li>The value the transformer writes back contains one of:<ul>
+<li><code>\.</code> or <code>\N</code> followed by at least one more character, for example <code>a\.b</code>, <code>\.php$</code> or <code>C:\Nightly</code>. In a JSON value this includes a string ending in <code>\.</code>, since the closing quote follows it.</li>
+<li>an ASCII control character other than tab, newline, carriage return, backspace, form feed and vertical tab.</li>
+</ul>
+</li>
+</ol>
+<p>In practice, this affects transformers that keep part of the original value:</p>
 <ul>
-<li>
-<p>Improved verbosity in custom transformer interaction, accumulating <code>stderr</code> data and forwarding it in batches instead of writing it one by one.</p>
-</li>
-<li>
-<p>Updated dependencies to newer versions.</p>
-</li>
-<li>
-<p>Enhanced the stability of the JSON line interaction protocol by utilizing the stdlib JSON encoder/decoder.</p>
-</li>
-<li>
-<p>Modified the method for sending table metadata to custom transformers; now, it is sent via <code>stdin</code> in the first line in JSON format instead of providing it via command arguments.</p>
-</li>
-<li>
-<p>Refactored template functions naming.</p>
-</li>
-<li>
-<p>Refactored <code>NoiseDate</code> transformer implementation for improved stability and predictability.</p>
-</li>
-<li>
-<p>Changed the default value for the <code>Dict</code> transformer: <code>fail_not_matched parameter: true</code>.</p>
-</li>
-<li>
-<p>Refactored the <code>Hash</code> transformer to provide a salt parameter and receive a base64 encoded salt. If salt is not provided, it generates one randomly.</p>
-</li>
-<li>
-<p>Added validation for the truncate parameter of <code>NoiseDate</code> and <code>RandomDate</code> transformers that issues a warning if the provided value is invalid.</p>
-</li>
-<li>
-<p>Increased verbosity of parameter validation warnings, now properly forwarding warnings to <code>stdout</code>.</p>
-</li>
+<li><a href="../../built_in_transformers/advanced_transformers/template/">Template</a> and <a href="../../built_in_transformers/advanced_transformers/template_record/">TemplateRecord</a> that output the original value or part of it, including the <code>jsonSet</code>, <code>jsonSetRaw</code> and <code>jsonDelete</code> functions</li>
+<li><a href="../../built_in_transformers/advanced_transformers/json/">Json</a> — all keys of the document are written back, including the keys the operations do not touch</li>
+<li><a href="../../built_in_transformers/standard_transformers/regexp_replace/">RegexpReplace</a>, and <a href="../../built_in_transformers/standard_transformers/masking/">Masking</a> types that keep part of the value, such as <code>email</code>, <code>url</code> or <code>addr</code></li>
+<li><a href="../../built_in_transformers/standard_transformers/replace/">Replace</a>, <a href="../../built_in_transformers/standard_transformers/dict/">Dict</a> and <a href="../../built_in_transformers/standard_transformers/random_choice/">RandomChoice</a> when the configured values contain these sequences</li>
+<li>custom transformers that return the original value or part of it</li>
 </ul>
-<h2 id="fixes">Fixes<a class="headerlink" href="#fixes" title="Permanent link">&para;</a></h2>
+<p>Transformers that generate a new value from scratch, such as random numbers, dates, UUIDs or hashes, do not produce these sequences.</p>
+<p>Typical data that triggers the issue: regular expressions (<code>\.php$</code>), Windows paths (<code>C:\Nightly\build</code>) and web server configuration stored in <code>text</code> or <code>json</code>/<code>jsonb</code> columns.</p>
+<p>To check a column in the source database, run the query below for each transformed column. A non-zero count means dumps of this column made before 0.2.25 are affected:</p>
+<div class="highlight"><pre><span></span><code><span class="k">SELECT</span><span class="w"> </span><span class="k">count</span><span class="p">(</span><span class="o">*</span><span class="p">)</span>
+<span class="k">FROM</span><span class="w"> </span><span class="n">my_schema</span><span class="p">.</span><span class="n">my_table</span>
+<span class="k">WHERE</span><span class="w"> </span><span class="n">my_column</span><span class="p">::</span><span class="nb">text</span><span class="w"> </span><span class="o">~</span><span class="w"> </span><span class="s1">&#39;\\[.N].&#39;</span>
+<span class="w">   </span><span class="k">OR</span><span class="w"> </span><span class="n">my_column</span><span class="p">::</span><span class="nb">text</span><span class="w"> </span><span class="o">~</span><span class="w"> </span><span class="s1">&#39;[\x01-\x07\x0e-\x1f]&#39;</span><span class="p">;</span>
+</code></pre></div>
+<h4 id="full-changelog-v0224v0225">Full Changelog: <a href="https://github.com/GreenmaskIO/greenmask/compare/v0.2.24...v0.2.25">v0.2.24...v0.2.25</a><a class="headerlink" href="#full-changelog-v0224v0225" title="Permanent link">&para;</a></h4>
+<h2 id="links">Links<a class="headerlink" href="#links" title="Permanent link">&para;</a></h2>
+<p>Feel free to reach out to us if you have any questions or need assistance:</p>
 <ul>
-<li>
-<p>Resolved <code>pgx</code> driver connection leakage issue.</p>
-</li>
-<li>
-<p>Fixed deletion failure of dumps for S3 storage.</p>
-</li>
-<li>
-<p>Corrected cobra autocompletion for the Greenmask utility.</p>
-</li>
-<li>
-<p>Fixed NOT NULL constraint validation.</p>
-</li>
-<li>
-<p>Addressed JSON API interaction issues that previously caused deadlocks and timeouts.</p>
-</li>
-<li>
-<p>Fixed encode-decoding for binary parameters, ensuring accurate forwarding of values to custom transformers.</p>
-</li>
-<li>
-<p>Fixed the <code>RandomChoice</code> transformer to correctly marshal and unmarshal values during validation.</p>
-</li>
-<li>
-<p>Introduced the nullable property for the <code>SetNull</code> transformer to enhance NOT NULL constraint validation.</p>
-</li>
-<li>
-<p>Resolved text wrapping issues for the <code>validate</code> command.</p>
-</li>
-<li>
-<p>Fixed build failures on Windows due to Linux platform dependencies.</p>
-</li>
-<li>
-<p>Corrected <code>stdout</code> readline buffer reading during interaction with custom transformers.</p>
-</li>
-<li>
-<p>Fixed integration tests.</p>
-</li>
+<li><a href="https://discord.gg/tAJegUKSTB">Discord</a></li>
+<li><a href="mailto:support@greenmask.io">Email</a></li>
+<li><a href="https://twitter.com/GreenmaskIO">Twitter</a></li>
+<li><a href="https://t.me/greenmask_ru">Telegram [RU]</a></li>
+<li><a href="https://hub.docker.com/r/greenmask/greenmask">DockerHub</a></li>
 </ul>
-<h2 id="ecosystem-changes">Ecosystem changes<a class="headerlink" href="#ecosystem-changes" title="Permanent link">&para;</a></h2>
-<ul>
-<li>
-<p>Implemented CI/CD pipelines for the entire project.</p>
-</li>
-<li>
-<p>Established a user-friendly playground in Docker compose, including:</p>
-</li>
-<li>
-<p>Deployed Minio storage container.</p>
-</li>
-<li>PostgreSQL container containing both the original database (Adventure Works) and the transformed (empty DB).</li>
-<li>
-<p>Greenmask container itself.</p>
-</li>
-<li>
-<p>Refactored current readme files.</p>
-</li>
-</ul>
-<h2 id="assets">Assets<a class="headerlink" href="#assets" title="Permanent link">&para;</a></h2>
-<p>To download the Greenmask binary compatible with your system, see the <a href="https://github.com/GreenmaskIO/greenmask/releases/tag/v0.1.0">release's assets list</a>.</p>
 
 
 
