@@ -57,6 +57,26 @@ func TestEncodeAttr(t *testing.T) {
 			expected: []byte("\\\\."),
 		},
 		{
+			name:     "Byte after end of pgcopy marker is kept",
+			original: toolkit.NewRawValue([]byte("a\\.b"), false),
+			expected: []byte("a\\\\.b"),
+		},
+		{
+			name:     "Byte after null sequence is kept",
+			original: toolkit.NewRawValue([]byte("a\\Nb"), false),
+			expected: []byte("a\\\\Nb"),
+		},
+		{
+			name:     "Multibyte char after end of pgcopy marker",
+			original: toolkit.NewRawValue([]byte("a\\.é"), false),
+			expected: []byte("a\\\\.é"),
+		},
+		{
+			name:     "Unlisted control character is written as is",
+			original: toolkit.NewRawValue([]byte("a\x01b"), false),
+			expected: []byte("a\x01b"),
+		},
+		{
 			name:     "Escaped attrs delimiter \\t",
 			original: toolkit.NewRawValue([]byte{DefaultCopyDelimiter}, false),
 			expected: []byte("\\t"),
@@ -68,6 +88,22 @@ func TestEncodeAttr(t *testing.T) {
 			println(string(tt.expected))
 			res := EncodeAttr(tt.original, nil)
 			assert.Equal(t, tt.expected, res, "wrong escaped bytes")
+		})
+	}
+}
+
+func TestEncodeDecodeAttrRoundTrip(t *testing.T) {
+	values := []string{
+		`a\.b`, `a\Nb`, `a\.é`, `\.`, `\N`, `a\.`, `\\.`, `a\,b`, `C:\Users\x`,
+		`<FilesMatch \"\\.[0-9a-f]{12}\\.(css|js)$\">`,
+		"a\x01b", "\t\n\r\b\f\v",
+	}
+	for _, v := range values {
+		t.Run(v, func(t *testing.T) {
+			encoded := EncodeAttr(toolkit.NewRawValue([]byte(v), false), nil)
+			decoded := DecodeAttr(encoded, nil)
+			assert.False(t, decoded.IsNull)
+			assert.Equal(t, v, string(decoded.Data))
 		})
 	}
 }

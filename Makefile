@@ -6,7 +6,7 @@ COVERAGE_FILE := coverage.out
 VERSION ?= $(shell git tag --points-at HEAD)
 LDFLAGS ?= -X github.com/greenmaskio/greenmask/cmd/greenmask/cmd.Version=$(VERSION)
 
-.PHONY: build
+.PHONY: build rebuild-images rebuild-greenmask-image rebuild-integration-image
 
 tests: unittest
 
@@ -59,6 +59,16 @@ greenmask-latest:
 greenmask-from-source:
 	docker compose $(GREENMASK_COMPOSE) build $(DOCKER_BUILD_FLAGS) greenmask-from-source
 	docker compose $(GREENMASK_COMPOSE) run --rm greenmask-from-source
+
+# Force rebuild local images from scratch, ignoring the build cache.
+# rebuild-greenmask-image builds the `greenmask-from-source` compose service.
+rebuild-images: rebuild-greenmask-image rebuild-integration-image
+
+rebuild-greenmask-image:
+	docker compose $(GREENMASK_COMPOSE) build --no-cache --pull greenmask-from-source
+
+rebuild-integration-image:
+	docker buildx build --load --no-cache --pull -t greenmask-integration:latest -f docker/integration/tests/Dockerfile .
 
 integration:
 	docker buildx build --load -t greenmask-test-dbs-filler:latest -f docker/integration/filldb/Dockerfile docker/integration/filldb

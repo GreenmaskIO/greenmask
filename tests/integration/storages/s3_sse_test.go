@@ -62,6 +62,13 @@ func (suite *S3SSESuite) SetupSuite() {
 	suite.raw = awss3.New(ses)
 }
 
+// TearDownSuite removes the sse/ objects so they don't leak into other suites
+// sharing the prefix, e.g. the S3StorageSuite walking check.
+func (suite *S3SSESuite) TearDownSuite() {
+	st := suite.newStorage("", "", false, 0)
+	suite.Require().NoError(st.DeleteAll(context.Background(), "sse"))
+}
+
 // newStorage builds a storage with the shared connection settings plus the
 // encryption options under test, running the same validation the CLI runs.
 func (suite *S3SSESuite) newStorage(sse, kmsKey string, bucketKey bool, partSize int64) *gms3.Storage {

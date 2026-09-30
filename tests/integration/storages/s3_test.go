@@ -51,6 +51,9 @@ func (suite *S3StorageSuite) SetupSuite() {
 	var err error
 	suite.st, err = s3.NewStorage(context.Background(), suite.cfg, zerolog.LevelDebugValue)
 	suite.Require().NoError(err)
+
+	// The bucket outlives runs, so objects left by an interrupted run break the ListDir checks
+	suite.Require().NoError(suite.st.DeleteAll(context.Background(), ""))
 }
 
 func (suite *S3StorageSuite) TestS3Ops() {

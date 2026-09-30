@@ -39,3 +39,7 @@ func TestRestore(t *testing.T) {
 func TestSequencePrivileges(t *testing.T) {
 	suite.Run(t, new(SequencePrivilegesSuite))
 }
+
+func TestCopyEscape(t *testing.T) {
+	suite.Run(t, new(CopyEscapeSuite))
+}
