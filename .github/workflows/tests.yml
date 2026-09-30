@@ -27,6 +27,14 @@ jobs:
       - name: Run unit tests
         run: make coverage
 
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v7
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: coverage.out
+          disable_search: true
+          fail_ci_if_error: false
+
       - uses: actions/cache/save@v4
         id: coverage_file_cache
         with:

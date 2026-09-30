@@ -37,6 +37,7 @@ permissions:
 jobs:
   tests:
     uses: ./.github/workflows/tests.yml
+    secrets: inherit
 
   build:
     uses: ./.github/workflows/build.yml
