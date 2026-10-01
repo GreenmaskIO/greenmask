@@ -9,17 +9,23 @@ import (
 )
 
 type cteQuery struct {
-	items []*cteItem
-	c     *Component
+	items      []*cteItem
+	addedNames map[string]struct{}
+	c          *Component
 }
 
 func newCteQuery(c *Component) *cteQuery {
 	return &cteQuery{
-		c: c,
+		c:          c,
+		addedNames: make(map[string]struct{}),
 	}
 }
 
 func (c *cteQuery) addItem(name, query string) {
+	if _, exists := c.addedNames[name]; exists {
+		return
+	}
+	c.addedNames[name] = struct{}{}
 	c.items = append(c.items, &cteItem{
 		name:  name,
 		query: query,
