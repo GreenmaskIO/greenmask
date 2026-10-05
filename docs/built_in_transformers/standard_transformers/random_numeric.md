@@ -7,7 +7,7 @@ Generate a random numeric within the provided interval.
 | column    | The name of the column to be affected                                                           |          | Yes      | numeric, decimal   |
 | min       | The minimum threshold for the random value. The value range depends on the column type.         |          | Yes      | -                  |
 | max       | The maximum threshold for the random value. The value range depends on the column type.         |          | Yes      | -                  |
-| decimal   | The decimal of the random numeric value (number of digits after the decimal point)              | `4`      | No       | -                  |
+| decimal   | The decimal of the random numeric value (number of digits after the decimal point)              | `0`      | No       | -                  |
 | keep_null | Indicates whether NULL values should be replaced with transformed values or not                 | `true`   | No       | -                  |
 | engine    | The engine used for generating the values [`random`, `hash`]. Use hash for deterministic generation | `random` | No       | -                  |
 

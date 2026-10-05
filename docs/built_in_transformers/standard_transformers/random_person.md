@@ -7,7 +7,7 @@ first name, last name, title and gender.
 |-----------------|-----------------------------------------------------------------------------------------------------|----------|----------|-------------------------------------|
 | columns         | The name of the column to be affected                                                               |          | Yes      | text, varchar, char, bpchar, citext |
 | gender          | set specific gender (possible values: Male, Female, Any)                                            | `Any`    | No       | -                                   |
-| gender_mapping  | Specify gender name to possible values when using dynamic mode in "gender" parameter                | `Any`    | No       | -                                   |
+| gender_mapping  | Specify gender name to possible values when using dynamic mode in "gender" parameter                | `{"Male": ["male", "M", "m", "man", "Man"], "Female": ["female", "F", "f", "w", "woman", "Woman"]}` | No       | -                                   |
 | fallback_gender | Specify fallback gender if not mapped when using dynamic mode in "gender" parameter                 | `Any`    | No       | -                                   |
 | engine          | The engine used for generating the values [`random`, `hash`]. Use hash for deterministic generation | `random` | No       | -                                   |
 
