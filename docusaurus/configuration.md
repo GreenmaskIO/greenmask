@@ -397,6 +397,8 @@ validate:
   transformed_only: true # (9)
   warnings: true # (10)
   strict: true # (11)
+  diff_mode: "values" # (12)
+  diff_unchanged_threshold: 50 # (13)
 ```
 
 1. A list of tables to validate. If this list is not empty, the validation operation will only be performed for the specified tables. Tables can be written with or without the schema name (e.g., `"public.cart"` or `"orders"`).
@@ -410,6 +412,8 @@ validate:
 9. If set to `true`, transformation output will be only with the transformed columns and primary keys
 10. If set to `true` then all the warnings will be printed. This only controls printing and does not affect the exit code.
 11. If set to `true`, the validate command exits with a non-zero code when there are any unresolved warnings (warnings-as-errors). Warnings listed in `resolved_warnings` are not treated as failures. Useful for CI/CD pipelines.
+12. How `diff` shows the difference: `values` (default) prints original and transformed values, `summary` prints per-column counts only and no value. See [Summary diff](commands/validate.md#summary-diff).
+13. With `diff_mode: "summary"`, warn when a transformed column keeps more than this percentage (0-100) of its non-NULL values. Default `50`; `100` turns the warning off.
 
 ## `restore` section
 

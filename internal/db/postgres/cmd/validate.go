@@ -41,6 +41,11 @@ const (
 )
 
 const (
+	ValuesDiffMode  = "values"
+	SummaryDiffMode = "summary"
+)
+
+const (
 	nonZeroExitCode = 1
 	zeroExitCode    = 0
 )
@@ -56,6 +61,9 @@ type Validate struct {
 }
 
 func NewValidate(cfg *domains.Config, registry *utils.TransformerRegistry, st storages.Storager, remoteSt storages.Storager) (*Validate, error) {
+	if err := validateDiffOptions(&cfg.Validate); err != nil {
+		return nil, err
+	}
 	mainSt := st
 	tmpDirName := strconv.FormatInt(time.Now().UnixMilli(), 10)
 	st = st.SubStorage(tmpDirName, true)
@@ -72,6 +80,24 @@ func NewValidate(cfg *domains.Config, registry *utils.TransformerRegistry, st st
 		mainSt:   mainSt,
 		remoteSt: remoteSt,
 	}, nil
+}
+
+// validateDiffOptions checks --diff-mode and --diff-unchanged-threshold.
+func validateDiffOptions(cfg *domains.Validate) error {
+	switch cfg.DiffMode {
+	case "", ValuesDiffMode: // unset keeps the behaviour from before --diff-mode existed
+	case SummaryDiffMode:
+		if !cfg.Diff {
+			return fmt.Errorf("--diff-mode=%s requires --diff", SummaryDiffMode)
+		}
+	default:
+		return fmt.Errorf("unknown --diff-mode value %q: possible values [%s|%s]", cfg.DiffMode, ValuesDiffMode, SummaryDiffMode)
+	}
+	// Written as "not inside" so that NaN, which fails every comparison, is rejected too.
+	if !(cfg.DiffUnchangedThreshold >= 0 && cfg.DiffUnchangedThreshold <= 100) {
+		return fmt.Errorf("--diff-unchanged-threshold must be between 0 and 100, got %v", cfg.DiffUnchangedThreshold)
+	}
+	return nil
 }
 
 func (v *Validate) Run(ctx context.Context) (int, error) {
@@ -197,6 +223,11 @@ func (v *Validate) print(ctx context.Context) error {
 }
 
 func (v *Validate) getDocument(table *entries.Table) validate_utils.Documenter {
+	if v.config.Validate.Diff && v.config.Validate.DiffMode == SummaryDiffMode {
+		return validate_utils.NewSummaryDocument(
+			table, v.config.Validate.Format, v.config.Validate.OnlyTransformed, v.config.Validate.DiffUnchangedThreshold,
+		)
+	}
 	switch v.config.Validate.Format {
 	case JsonFormat:
 		return validate_utils.NewJsonDocument(table, v.config.Validate.Diff, v.config.Validate.OnlyTransformed)
