@@ -11,3 +11,8 @@ You're not viewing the latest version.
   <strong>Click here to go to latest.</strong>
 </a>
 {% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script src="https://context7.com/widget.js" data-library="/greenmaskio/greenmask"></script>
+{% endblock %}
