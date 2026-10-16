@@ -749,7 +749,7 @@ func generateQuery(
 		initialSelect, initFromClause, strings.Join(initialJoins, " "), initialWhereClause,
 	)
 
-	recursiveIntegrityChecks := slices.Clone(cycleSubsetConds)
+	recursiveIntegrityChecks := append([]string{"TRUE"}, cycleSubsetConds...)
 	recursiveIntegrityChecks = append(recursiveIntegrityChecks, integrityChecks...)
 	recursiveIntegrityCheck := fmt.Sprintf("(%s) AS valid", strings.Join(recursiveIntegrityChecks, " AND "))
 	recursiveKeys := slices.Clone(selectKeys)
@@ -872,7 +872,7 @@ func generateOverlapQuery(
 		initialJoins = append(initialJoins, generateJoinClauseV2(e, joinType, overriddenTables))
 	}
 
-	integrityChecks := generateIntegrityChecksForNullableEdges(nullabilityMap, edges, overriddenTables)
+	integrityChecks := append([]string{"TRUE"}, generateIntegrityChecksForNullableEdges(nullabilityMap, edges, overriddenTables)...)
 	integrityChecks = append(integrityChecks, cycleSubsetConds...)
 	initialIntegrityCheck := fmt.Sprintf("(%s) AS valid", strings.Join(integrityChecks, " AND "))
 	initialKeys = append(initialKeys, initialIntegrityCheck)
