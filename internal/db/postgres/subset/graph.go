@@ -1002,14 +1002,14 @@ func generateIntegrityChecksForNullableEdges(nullabilityMap map[int]bool, edges 
 				rightTableKey[idx].GetKeyReference(e.to.table),
 				polymorphicExpr,
 			)
-			if _, ok := overriddenTables[e.to.table.Oid]; ok {
+			if override, ok := overriddenTables[e.to.table.Oid]; ok {
 				if polymorphicExpr != "" {
 					panic("IMPLEMENT ME: polymorphic expression for overridden table")
 				}
 				k = fmt.Sprintf(
 					`(%s IS NULL OR "%s"."%s" IS NOT NULL)`,
 					leftTableKey[idx].GetKeyReference(e.from.table),
-					overriddenTables[e.to.table.Oid],
+					getOverrideAlias(e, override),
 					rightTableKey[idx].Name,
 				)
 			}
