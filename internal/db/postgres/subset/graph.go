@@ -398,6 +398,9 @@ func (g *Graph) generateQueriesSccDfs(cq *cteQuery, path *Path, scopeEdge *Scope
 
 	g.generateQueryForScc(cq, scopeId, path, scopeEdge)
 	for _, nextScopeEdge := range path.scopeGraph[scopeId] {
+		if !nextScopeEdge.originalCondensedEdge.to.component.hasCycle() {
+			continue
+		}
 		g.generateQueriesSccDfs(cq, path, nextScopeEdge)
 	}
 }
@@ -415,10 +418,23 @@ func (g *Graph) generateQueryForScc(cq *cteQuery, scopeId int, path *Path, prevS
 	if len(rootVertex.groupedCycles) > 1 {
 		panic("IMPLEMENT ME: more than one cycle group found in SCC")
 	}
+	var cycleScopeEdges []*ScopeEdge
+	var scopeConds []string
+	for _, se := range nextScopeEdges {
+		if se.originalCondensedEdge.to.component.hasCycle() {
+			cycleScopeEdges = append(cycleScopeEdges, se)
+			continue
+		}
+		// The scope was forked because its table is already joined in this scope. Filter by the scope edge
+		// instead of joining the table a second time.
+		if cond := g.generateQueriesDfs(path, se); cond != "" {
+			scopeConds = append(scopeConds, cond)
+		}
+	}
 	cycleGroup := rootVertex.getOneCycleGroup()
 	overlapMap := g.getOverlapMap(cycleGroup)
 	for _, cycle := range cycleGroup {
-		g.generateRecursiveQueriesForCycle(cq, scopeId, cycle, edges, nextScopeEdges, overlapMap)
+		g.generateRecursiveQueriesForCycle(cq, scopeId, cycle, edges, cycleScopeEdges, scopeConds, overlapMap)
 	}
 
 	g.generateFilteredQueries(cq, cycleGroup, scopeId)
@@ -450,7 +466,7 @@ func (g *Graph) generateQueriesForVertexesInCycle(cq *cteQuery, scopeId int, cyc
 }
 
 func (g *Graph) generateRecursiveQueriesForCycle(
-	cq *cteQuery, scopeId int, cycle []*Edge, rest []*CondensedEdge, nextScopeEdges []*ScopeEdge,
+	cq *cteQuery, scopeId int, cycle []*Edge, rest []*CondensedEdge, nextScopeEdges []*ScopeEdge, scopeConds []string,
 	overlapMap map[string][][]*Edge,
 ) {
 	overriddenTableNames := make(map[toolkit.Oid]string)
@@ -466,12 +482,12 @@ func (g *Graph) generateRecursiveQueriesForCycle(
 	shiftedCycle := slices.Clone(cycle)
 	for idx := 1; idx <= len(cycle); idx++ {
 		queryName := getCycleQueryName(scopeId, shiftedCycle, "")
-		query := generateQuery(queryName, shiftedCycle, rest, overriddenTableNames)
+		query := generateQuery(queryName, shiftedCycle, rest, overriddenTableNames, scopeConds)
 		cq.addItem(queryName, query)
 		cycleId := getCycleId(shiftedCycle)
 		if len(overlapMap[cycleId]) > 0 {
 			overlapQueryName := getCycleQueryName(scopeId, shiftedCycle, "overlap")
-			overlapQuery := generateOverlapQuery(scopeId, overlapQueryName, shiftedCycle, rest, overriddenTableNames, overlapMap[cycleId])
+			overlapQuery := generateOverlapQuery(scopeId, overlapQueryName, shiftedCycle, rest, overriddenTableNames, scopeConds, overlapMap[cycleId])
 			cq.addItem(overlapQueryName, overlapQuery)
 		}
 		shiftedCycle = shiftCycle(shiftedCycle)
@@ -675,14 +691,14 @@ func isPathForScc(path *Path, graph *Graph) bool {
 }
 
 func generateQuery(
-	queryName string, cycle []*Edge, rest []*CondensedEdge, overriddenTables map[toolkit.Oid]string,
+	queryName string, cycle []*Edge, rest []*CondensedEdge, overriddenTables map[toolkit.Oid]string, scopeConds []string,
 ) string {
 	var (
 		selectKeys                             []string
 		initialJoins, recursiveJoins           []string
 		initialWhereConds, recursiveWhereConds []string
 		integrityCheck                         string
-		cycleSubsetConds                       []string
+		cycleSubsetConds                       = slices.Clone(scopeConds)
 		edges                                  = slices.Clone(cycle[:len(cycle)-1])
 		droppedEdge                            = cycle[len(cycle)-1]
 	)
@@ -808,14 +824,14 @@ func generateQuery(
 
 func generateOverlapQuery(
 	scopeId int,
-	queryName string, cycle []*Edge, rest []*CondensedEdge, overriddenTables map[toolkit.Oid]string,
+	queryName string, cycle []*Edge, rest []*CondensedEdge, overriddenTables map[toolkit.Oid]string, scopeConds []string,
 	overlap [][]*Edge,
 ) string {
 	var (
 		selectKeys                             []string
 		initialJoins, recursiveJoins           []string
 		initialWhereConds, recursiveWhereConds []string
-		cycleSubsetConds                       []string
+		cycleSubsetConds                       = slices.Clone(scopeConds)
 		edges                                  = slices.Clone(cycle[:len(cycle)-1])
 		droppedEdge                            = cycle[len(cycle)-1]
 	)
