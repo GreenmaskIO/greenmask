@@ -54,7 +54,8 @@ func (c *cteQuery) generateQuery(targetTable *entries.Table) string {
 	}
 
 	resultingQuery := fmt.Sprintf(
-		`SELECT * FROM "%s"."%s" WHERE %s IN (SELECT %s FROM "%s")`,
+		`%s FROM "%s"."%s" WHERE %s IN (SELECT %s FROM "%s")`,
+		generateSelectAllColumns(targetTable),
 		targetTable.Schema,
 		targetTable.Name,
 		fmt.Sprintf("(%s)", strings.Join(leftTableKeys, ",")),
