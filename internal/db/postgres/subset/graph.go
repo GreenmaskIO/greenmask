@@ -217,10 +217,11 @@ func (g *Graph) findSubsetVertexes() {
 	for v := range g.condensedGraph {
 		path := NewPath(v)
 		var from, fullFrom []*CondensedEdge
+		var scopes []int
 		if len(g.scc[v].getSubsetConds()) > 0 || g.scc[v].hasPolymorphicExpressions() {
 			path.AddVertex(v)
 		}
-		g.subsetDfs(path, v, &fullFrom, &from, rootScopeId)
+		g.subsetDfs(path, v, &fullFrom, &from, &scopes)
 
 		if path.Len() > 0 {
 			g.paths[v] = path
@@ -228,19 +229,27 @@ func (g *Graph) findSubsetVertexes() {
 	}
 }
 
-func (g *Graph) subsetDfs(path *Path, v int, fullFrom, from *[]*CondensedEdge, scopeId int) {
+// subsetDfs - scopes[i] is the scope of the vertex that fullFrom[i] leads to
+func (g *Graph) subsetDfs(path *Path, v int, fullFrom, from *[]*CondensedEdge, scopes *[]int) {
 	for _, to := range g.condensedGraph[v] {
 		*fullFrom = append(*fullFrom, to)
 		*from = append(*from, to)
-		currentScopeId := scopeId
+		*scopes = append(*scopes, rootScopeId)
 		if len(g.scc[to.to.idx].getSubsetConds()) > 0 || (*fullFrom)[len(*fullFrom)-1].hasPolymorphicExpressions() {
-			for _, e := range *from {
-				currentScopeId = path.AddEdge(e, currentScopeId)
+			firstPending := len(*fullFrom) - len(*from)
+			currentScopeId := rootScopeId
+			if firstPending > 0 {
+				currentScopeId = (*scopes)[firstPending-1]
+			}
+			for idx := firstPending; idx < len(*fullFrom); idx++ {
+				currentScopeId = path.AddEdge((*fullFrom)[idx], currentScopeId)
+				(*scopes)[idx] = currentScopeId
 			}
 			*from = (*from)[:0]
 		}
-		g.subsetDfs(path, to.to.idx, fullFrom, from, currentScopeId)
+		g.subsetDfs(path, to.to.idx, fullFrom, from, scopes)
 		*fullFrom = (*fullFrom)[:len(*fullFrom)-1]
+		*scopes = (*scopes)[:len(*scopes)-1]
 		if len(*from) > 0 {
 			*from = (*from)[:len(*from)-1]
 		}
