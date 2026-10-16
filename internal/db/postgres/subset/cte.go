@@ -26,6 +26,18 @@ func (c *cteQuery) addItem(name, query string) {
 	})
 }
 
+// addOrIntersectItem - intersects the query with an existing item of the same name (cycle reached from several scopes)
+func (c *cteQuery) addOrIntersectItem(name, query string) {
+	idx := slices.IndexFunc(c.items, func(item *cteItem) bool {
+		return item.name == name
+	})
+	if idx == -1 {
+		c.addItem(name, query)
+		return
+	}
+	c.items[idx].query = fmt.Sprintf("(%s) INTERSECT (%s)", c.items[idx].query, query)
+}
+
 func (c *cteQuery) generateQuery(targetTable *entries.Table) string {
 	var queries []string
 	var excludedCteQueries []string

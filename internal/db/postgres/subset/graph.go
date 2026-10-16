@@ -445,7 +445,7 @@ func (g *Graph) generateQueriesForVertexesInCycle(cq *cteQuery, scopeId int, cyc
 	for _, t := range getTablesFromCycle(cycles[0]) {
 		queryName := fmt.Sprintf("%s__%s__ids", t.Schema, t.Name)
 		query := generateAllTablesValidPkSelection(cycles, scopeId, t)
-		cq.addItem(queryName, query)
+		cq.addOrIntersectItem(queryName, query)
 	}
 }
 
