@@ -513,7 +513,6 @@ func (g *Graph) generateQueriesDfs(path *Path, scopeEdge *ScopeEdge) string {
 		return ""
 	}
 
-	currentScopeQuery := g.generateQueryForTables(path, scopeEdge)
 	var subQueries []string
 	for _, nextScope := range path.scopeGraph[scopeId] {
 		subQuery := g.generateQueriesDfs(path, nextScope)
@@ -521,19 +520,11 @@ func (g *Graph) generateQueriesDfs(path *Path, scopeEdge *ScopeEdge) string {
 			subQueries = append(subQueries, subQuery)
 		}
 	}
-
-	if len(subQueries) == 0 {
-		return currentScopeQuery
-	}
-
-	totalQuery := fmt.Sprintf(
-		"%s AND %s", currentScopeQuery,
-		strings.Join(subQueries, " AND "),
-	)
-	return totalQuery
+	return g.generateQueryForTables(path, scopeEdge, subQueries)
 }
 
-func (g *Graph) generateQueryForTables(path *Path, scopeEdge *ScopeEdge) string {
+// generateQueryForTables - subQueries are the conditions of the nested scopes
+func (g *Graph) generateQueryForTables(path *Path, scopeEdge *ScopeEdge, subQueries []string) string {
 	scopeId := rootScopeId
 	if scopeEdge != nil {
 		scopeId = scopeEdge.scopeId
@@ -543,14 +534,15 @@ func (g *Graph) generateQueryForTables(path *Path, scopeEdge *ScopeEdge) string 
 		edges = append(edges, se.originalEdge)
 	}
 
-	// Use root table as a root table from path
-	rootVertex := g.scc[path.rootVertex]
-	rootTable := rootVertex.getOneTable()
+	var rootTable *entries.Table
 	if scopeEdge != nil {
 		// If it is not a root scope use the right table from the first edge as a root table
 		// And left table from the first edge as a left table for the subquery. It will be used for where in clause
 		rootTable = scopeEdge.originalCondensedEdge.originalEdge.to.table
 		edges = edges[1:]
+	} else {
+		// Use root table as a root table from path
+		rootTable = g.scc[path.rootVertex].getOneTable()
 	}
 
 	whereConds := slices.Clone(rootTable.SubsetConds)
@@ -578,6 +570,7 @@ func (g *Graph) generateQueryForTables(path *Path, scopeEdge *ScopeEdge) string 
 	}
 	integrityChecks := generateIntegrityChecksForNullableEdges(nullabilityMap, edges, make(map[toolkit.Oid]string))
 	whereConds = append(whereConds, integrityChecks...)
+	whereConds = append(whereConds, subQueries...)
 
 	query := fmt.Sprintf(
 		`%s %s %s %s`,
