@@ -1,8 +1,40 @@
 {% extends "base.html" %}
 
 {% block announce %}
-A new version 0.2.25 (2026-09-30) is <a
-  href="https://github.com/GreenmaskIO/greenmask/releases/tag/v0.2.25">released</a>
+<strong>The documentation has moved from docs.greenmask.io to
+  <a href="https://greenmask.io/docs/greenmask/">greenmask.io/docs/greenmask</a></strong>
+{% endblock %}
+
+{% block site_nav %}
+{% if nav %}
+{% if page.meta and page.meta.hide %}
+{% set hidden = "hidden" if "navigation" in page.meta.hide %}
+{% endif %}
+<div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" {{ hidden }}>
+  <div class="md-sidebar__scrollwrap">
+    <div class="md-sidebar__inner">
+      <div class="admonition info" style="margin: 0 0.6rem 1rem; font-size: 0.64rem">
+        <p class="admonition-title">We are moving</p>
+        <p>This site will soon be fully migrated to
+          <a href="https://greenmask.io/docs/greenmask/">greenmask.io/docs/greenmask</a>.</p>
+      </div>
+      {% include "partials/nav.html" %}
+    </div>
+  </div>
+</div>
+{% endif %}
+{% if "toc.integrate" not in features %}
+{% if page.meta and page.meta.hide %}
+{% set hidden = "hidden" if "toc" in page.meta.hide %}
+{% endif %}
+<div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" {{ hidden }}>
+  <div class="md-sidebar__scrollwrap">
+    <div class="md-sidebar__inner">
+      {% include "partials/toc.html" %}
+    </div>
+  </div>
+</div>
+{% endif %}
 {% endblock %}
 
 {% block outdated %}
