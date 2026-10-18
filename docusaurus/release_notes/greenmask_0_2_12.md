@@ -4,7 +4,7 @@
 
 * Added support for dynamic parameters in the Replace transformer, allowing values to be dynamically replaced based on
   column values. This feature enables spreading the same value across multiple columns. See
-  the [documentation](https://docs.greenmask.io/latest/built_in_transformers/standard_transformers/replace/) for
+  the [documentation](../built_in_transformers/standard_transformers/replace.md) for
   examples. [#293](https://github.com/GreenmaskIO/greenmask/pull/293)
 * Updated the `--verbose` flag to a boolean type. It is now `true` if provided and `false`
   otherwise. [#282](https://github.com/GreenmaskIO/greenmask/pull/282)

@@ -4,7 +4,7 @@ This release introduces a new transformer and fixes some bug.
 
 ## Changes
 
-* Implemented [RandomCompany](https://docs.greenmask.io/latest/built_in_transformers/standard_transformers/random_company/) transformer - 
+* Implemented [RandomCompany](../built_in_transformers/standard_transformers/random_company.md) transformer - 
   it's a multi-column transformer, that generates a company data with attributes `CompanyName` and `CompanyName` 
   [#273](https://github.com/GreenmaskIO/greenmask/pull/273) [#274](https://github.com/GreenmaskIO/greenmask/pull/274).
 * Fixed a case when transformers with column containers were not printed on `greenmask list-transformers` command

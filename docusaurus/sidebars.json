@@ -445,6 +445,21 @@
       "items": [
         {
           "type": "doc",
+          "id": "release_notes/greenmask_0_2_25",
+          "label": "Greenmask 0.2.25"
+        },
+        {
+          "type": "doc",
+          "id": "release_notes/greenmask_0_2_24",
+          "label": "Greenmask 0.2.24"
+        },
+        {
+          "type": "doc",
+          "id": "release_notes/greenmask_0_2_23",
+          "label": "Greenmask 0.2.23"
+        },
+        {
+          "type": "doc",
           "id": "release_notes/greenmask_0_2_22",
           "label": "Greenmask 0.2.22"
         },
