@@ -25,6 +25,11 @@
           "label": "Configuration"
         },
         {
+          "type": "doc",
+          "id": "arcave",
+          "label": "Environment resets (arcave)"
+        },
+        {
           "type": "category",
           "label": "Commands",
           "link": {
