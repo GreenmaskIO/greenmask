@@ -161,7 +161,7 @@ To simplify your experience in the playground, use the following workflow:
     psql_t
     ```
 
-:::tip Pair it with arcave
+:::tip[Pair it with arcave]
 
 Once the transformed database looks right, save it with arcave and return to that state in one command after
 every test or experiment, instead of dumping and restoring again. Run arcave on the host, in a second terminal

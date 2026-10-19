@@ -174,7 +174,7 @@ so you will be notified of any errors immediately after each batch is inserted.
 greenmask --config=config.yml restore latest --batch-size 1000
 ```
 
-:::tip Pair it with arcave
+:::tip[Pair it with arcave]
 
 Restoring a large dump takes time. Restore it once into your Docker Compose project, save that state with
 arcave, and reset the whole environment to it in one command instead of restoring again — see
