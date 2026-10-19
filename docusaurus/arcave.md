@@ -32,7 +32,7 @@ storage and other services around it.
   and starts it again. The window grows with volume size and startup time. arcave is a development and CI
   tool, not for production.
 
-:::danger Keep unmasked data out of the project you snapshot
+:::danger[Keep unmasked data out of the project you snapshot]
 
 A savepoint captures **every** volume and container filesystem of the Compose project. If the source
 database you dump from runs in the same project — or in the same Postgres instance as the restore target —
@@ -41,7 +41,7 @@ the "masked" savepoint also holds the original, unmasked data, written to arcave
 savepoint storage as you would the data inside it.
 :::
 
-:::warning A rollback also rolls back dump storage in the project
+:::warning[A rollback also rolls back dump storage in the project]
 
 If Greenmask's dump storage (for example a MinIO or S3-compatible service) runs in the same Compose project,
 a rollback returns it to the state it had when the savepoint was taken. Dumps created after the savepoint
