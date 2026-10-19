@@ -161,7 +161,13 @@ To simplify your experience in the playground, use the following workflow:
     psql_t
     ```
 
+:::tip Pair it with arcave
 
+Once the transformed database looks right, save it with arcave and return to that state in one command after
+every test or experiment, instead of dumping and restoring again. Run arcave on the host, in a second terminal
+in the repository directory, with `ARCAVE_PROJECT_NAME=greenmask`. A rollback also reverts the original
+database and the MinIO dump storage — see [Using it with the Greenmask playground](arcave.md#using-it-with-the-greenmask-playground).
+:::
 
 ## Useful Aliases
 

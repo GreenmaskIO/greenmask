@@ -67,6 +67,9 @@ Greenmask is ideal for various scenarios, including:
   backups, especially when setting up a staging environment or for analytical purposes. It simplifies the deployment of
   a pre-production environment with consistently anonymized data, facilitating faster time-to-market in the development
   lifecycle.
+* **Resettable test environments**. Restore a masked dump into a Docker Compose project once, save it with
+  [arcave](arcave.md), and reset the whole environment in one command after every test, migration, demo or AI agent
+  run.
 
 ## Links
 
