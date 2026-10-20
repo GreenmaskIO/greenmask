@@ -149,7 +149,7 @@ func NewPersonalDatabase(data Database) *PersonDatabase {
 	}
 
 	slices.Sort(attributes)
-
+	slices.Sort(genders)
 	return &PersonDatabase{
 		Db:              data,
 		Attributes:      attributes,
