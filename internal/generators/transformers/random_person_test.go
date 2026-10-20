@@ -20,3 +20,17 @@ func TestRandomNameTransformer_GetFullName(t *testing.T) {
 	require.True(t, slices.Contains(DefaultFirstNamesMale, res["FirstName"]) || slices.Contains(DefaultFirstNamesFemale, res["FirstName"]))
 	require.True(t, slices.Contains(DefaultLastNames, res["LastName"]))
 }
+
+func TestGendersOrderIsStable(t *testing.T) {
+	genders := NewPersonalDatabase(DefaultPersonMap).Genders
+	flips := 0
+	for i := 0; i < 1000; i++ {
+		got := NewPersonalDatabase(DefaultPersonMap).Genders
+		if got[0] != genders[0] {
+			flips++
+		}
+	}
+	if flips > 0 {
+		t.Fatalf("Genders order changed in %d of 1000 builds", flips)
+	}
+}
