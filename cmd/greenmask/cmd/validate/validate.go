@@ -154,6 +154,28 @@ func init() {
 		log.Fatal().Err(err).Msg("fatal")
 	}
 
+	diffModeFlagName := "diff-mode"
+	Cmd.Flags().String(
+		diffModeFlagName, cmdInternals.ValuesDiffMode,
+		"How to show the diff (only with --diff). Possible values [values|summary]. "+
+			"summary prints per-column counts of changed rows and no original or transformed value",
+	)
+	flag = Cmd.Flags().Lookup(diffModeFlagName)
+	if err := viper.BindPFlag("validate.diff_mode", flag); err != nil {
+		log.Fatal().Err(err).Msg("fatal")
+	}
+
+	unchangedThresholdFlagName := "diff-unchanged-threshold"
+	Cmd.Flags().Float64(
+		unchangedThresholdFlagName, 50,
+		"With --diff-mode=summary, warn when a transformed column keeps more than this percentage "+
+			"of its non-NULL values (0-100, 100 turns the warning off). Counts cover --rows-limit rows only",
+	)
+	flag = Cmd.Flags().Lookup(unchangedThresholdFlagName)
+	if err := viper.BindPFlag("validate.diff_unchanged_threshold", flag); err != nil {
+		log.Fatal().Err(err).Msg("fatal")
+	}
+
 	onlyTransformedFlagName := "transformed-only"
 	Cmd.Flags().Bool(
 		onlyTransformedFlagName, false, "Print only transformed column and primary key",

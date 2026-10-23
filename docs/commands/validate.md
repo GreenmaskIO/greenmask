@@ -9,16 +9,18 @@ Usage:
   greenmask validate [flags]
 
 Flags:
-      --data                  Perform test dump for --rows-limit rows and print it pretty
-      --diff                  Find difference between original and transformed data
-      --format string         Format of output. possible values [text|json] (default "text")
-      --rows-limit uint       Check tables dump only for specific tables (default 10)
-      --schema                Make a schema diff between previous dump and the current state
-      --strict                Exit with non-zero code if there are any validation warnings (warnings-as-errors)
-      --table strings         Check tables dump only for specific tables
-      --table-format string   Format of table output (only for --format=text). Possible values [vertical|horizontal] (default "vertical")
-      --transformed-only      Print only transformed column and primary key
-      --warnings              Print warnings
+      --data                             Perform test dump for --rows-limit rows and print it pretty
+      --diff                             Find difference between original and transformed data
+      --diff-mode string                 How to show the diff (only with --diff). Possible values [values|summary]. summary prints per-column counts of changed rows and no original or transformed value (default "values")
+      --diff-unchanged-threshold float   With --diff-mode=summary, warn when a transformed column keeps more than this percentage of its non-NULL values (0-100, 100 turns the warning off). Counts cover --rows-limit rows only (default 50)
+      --format string                    Format of output. possible values [text|json] (default "text")
+      --rows-limit uint                  Check tables dump only for specific tables (default 10)
+      --schema                           Make a schema diff between previous dump and the current state
+      --strict                           Exit with non-zero code if there are any validation warnings (warnings-as-errors)
+      --table strings                    Check tables dump only for specific tables
+      --table-format string              Format of table output (only for --format=text). Possible values [vertical|horizontal] (default "vertical")
+      --transformed-only                 Print only transformed column and primary key
+      --warnings                         Print warnings
 ```
 
 Validate command can exit with non-zero code when:
@@ -263,3 +265,77 @@ The json object result
       ]
     }
     ```
+
+## Summary diff
+
+`--diff` prints original values next to transformed ones. That is fine against a staging copy, but not where
+production data may be read and must not be shown: a CI job whose logs are kept, a shared terminal, or an AI agent's
+transcript. `--diff-mode=summary` compares the same rows and prints **counts only**, per table and column. It prints
+no original or transformed value and no primary key.
+
+```shell
+greenmask --config=config.yml validate \
+  --data \
+  --diff \
+  --diff-mode=summary \
+  --rows-limit=1000
+```
+
+```text title="Summary diff output example"
+	"humanresources"."employee" (290 rows compared, values not shown)
++------------------+-------------+---------+-----------+------------+-------------+--------------------------------+
+|      Column      | Transformed | Changed | Unchanged | NULLs kept | Unchanged % |            Warning             |
++------------------+-------------+---------+-----------+------------+-------------+--------------------------------+
+| businessentityid | no          |       0 |       290 |          0 |       100.0 |                                |
+| birthdate        | yes         |     290 |         0 |          0 |         0.0 |                                |
+| gender           | yes         |      84 |       206 |          0 |        71.0 | transformed column is          |
+|                  |             |         |           |            |             | unchanged in too many rows     |
++------------------+-------------+---------+-----------+------------+-------------+--------------------------------+
+```
+
+For each column:
+
+* **Transformed** — whether a transformer in the config affects the column.
+* **Changed**, **Unchanged** — rows where the value did or did not change.
+* **NULLs kept** — rows where the value was `NULL` before and after. These are left out of the unchanged ratio,
+  because keeping `NULL` is the usual behaviour of most transformers.
+* **Warning**:
+    * `transformed column is unchanged in too many rows` — a transformed column kept more than
+      `--diff-unchanged-threshold` percent (default `50`) of its non-`NULL` values. This usually means a missed or
+      no-op transformer, for example a `Replace` with a value most rows already have. Set the threshold to `100`
+      to turn the warning off.
+    * `column changed but no transformer affects it` — the column changed, but no transformer in the config
+      targets it.
+
+With `--format=json` each table is one JSON object:
+
+```json title="Summary diff in json format"
+{
+  "schema": "humanresources",
+  "name": "employee",
+  "diff_mode": "summary",
+  "rows": 290,
+  "columns": [
+    {
+      "name": "gender",
+      "transformed": true,
+      "changed": 84,
+      "unchanged": 206,
+      "nulls_kept": 0,
+      "unchanged_ratio": 0.7103448275862069,
+      "warning": "transformed column is unchanged in too many rows"
+    }
+  ]
+}
+```
+
+Things to know:
+
+* Like the default diff, the summary needs `--data`: without it no rows are dumped and nothing is compared.
+* The counts cover the `--rows-limit` rows that validate dumps (default `10`). Use a larger `--rows-limit` for a
+  ratio you can trust.
+* With `--transformed-only`, the summary lists transformed columns and any column with a warning.
+  `--table-format` does not apply: the summary has one layout.
+* A transformer with a `when` condition counts as affecting the column in every row, so rows the condition skips
+  count as unchanged.
+* Only the diff output changes. Validation warnings and errors are printed as in the default mode.
