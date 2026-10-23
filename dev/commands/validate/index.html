@@ -694,6 +694,24 @@ You're not viewing the latest version.
         
       
       
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    validate
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
       <a href="./" class="md-nav__link md-nav__link--active">
         
   
@@ -710,6 +728,36 @@ You're not viewing the latest version.
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#summary-diff" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Summary diff
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
       
     </li>
   
@@ -4488,6 +4536,25 @@ You're not viewing the latest version.
     
   
   
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#summary-diff" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Summary diff
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
 </nav>
     </div>
   </div>
@@ -4513,16 +4580,18 @@ You're not viewing the latest version.
   greenmask validate [flags]
 
 Flags:
-      --data                  Perform test dump for --rows-limit rows and print it pretty
-      --diff                  Find difference between original and transformed data
-      --format string         Format of output. possible values [text|json] (default &quot;text&quot;)
-      --rows-limit uint       Check tables dump only for specific tables (default 10)
-      --schema                Make a schema diff between previous dump and the current state
-      --strict                Exit with non-zero code if there are any validation warnings (warnings-as-errors)
-      --table strings         Check tables dump only for specific tables
-      --table-format string   Format of table output (only for --format=text). Possible values [vertical|horizontal] (default &quot;vertical&quot;)
-      --transformed-only      Print only transformed column and primary key
-      --warnings              Print warnings
+      --data                             Perform test dump for --rows-limit rows and print it pretty
+      --diff                             Find difference between original and transformed data
+      --diff-mode string                 How to show the diff (only with --diff). Possible values [values|summary]. summary prints per-column counts of changed rows and no original or transformed value (default &quot;values&quot;)
+      --diff-unchanged-threshold float   With --diff-mode=summary, warn when a transformed column keeps more than this percentage of its non-NULL values (0-100, 100 turns the warning off). Counts cover --rows-limit rows only (default 50)
+      --format string                    Format of output. possible values [text|json] (default &quot;text&quot;)
+      --rows-limit uint                  Check tables dump only for specific tables (default 10)
+      --schema                           Make a schema diff between previous dump and the current state
+      --strict                           Exit with non-zero code if there are any validation warnings (warnings-as-errors)
+      --table strings                    Check tables dump only for specific tables
+      --table-format string              Format of table output (only for --format=text). Possible values [vertical|horizontal] (default &quot;vertical&quot;)
+      --transformed-only                 Print only transformed column and primary key
+      --warnings                         Print warnings
 </code></pre></div>
 <p>Validate command can exit with non-zero code when:</p>
 <ul>
@@ -4744,6 +4813,73 @@ configuration and potential constraint violations.</p>
 </div>
 </div>
 </div>
+<h2 id="summary-diff">Summary diff<a class="headerlink" href="#summary-diff" title="Permanent link">&para;</a></h2>
+<p><code>--diff</code> prints original values next to transformed ones. That is fine against a staging copy, but not where
+production data may be read and must not be shown: a CI job whose logs are kept, a shared terminal, or an AI agent's
+transcript. <code>--diff-mode=summary</code> compares the same rows and prints <strong>counts only</strong>, per table and column. It prints
+no original or transformed value and no primary key.</p>
+<div class="highlight"><pre><span></span><code>greenmask<span class="w"> </span>--config<span class="o">=</span>config.yml<span class="w"> </span>validate<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--data<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--diff<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--diff-mode<span class="o">=</span>summary<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--rows-limit<span class="o">=</span><span class="m">1000</span>
+</code></pre></div>
+<div class="highlight"><span class="filename">Summary diff output example</span><pre><span></span><code>    &quot;humanresources&quot;.&quot;employee&quot; (290 rows compared, values not shown)
++------------------+-------------+---------+-----------+------------+-------------+--------------------------------+
+|      Column      | Transformed | Changed | Unchanged | NULLs kept | Unchanged % |            Warning             |
++------------------+-------------+---------+-----------+------------+-------------+--------------------------------+
+| businessentityid | no          |       0 |       290 |          0 |       100.0 |                                |
+| birthdate        | yes         |     290 |         0 |          0 |         0.0 |                                |
+| gender           | yes         |      84 |       206 |          0 |        71.0 | transformed column is          |
+|                  |             |         |           |            |             | unchanged in too many rows     |
++------------------+-------------+---------+-----------+------------+-------------+--------------------------------+
+</code></pre></div>
+<p>For each column:</p>
+<ul>
+<li><strong>Transformed</strong> — whether a transformer in the config affects the column.</li>
+<li><strong>Changed</strong>, <strong>Unchanged</strong> — rows where the value did or did not change.</li>
+<li><strong>NULLs kept</strong> — rows where the value was <code>NULL</code> before and after. These are left out of the unchanged ratio,
+  because keeping <code>NULL</code> is the usual behaviour of most transformers.</li>
+<li><strong>Warning</strong>:<ul>
+<li><code>transformed column is unchanged in too many rows</code> — a transformed column kept more than
+  <code>--diff-unchanged-threshold</code> percent (default <code>50</code>) of its non-<code>NULL</code> values. This usually means a missed or
+  no-op transformer, for example a <code>Replace</code> with a value most rows already have. Set the threshold to <code>100</code>
+  to turn the warning off.</li>
+<li><code>column changed but no transformer affects it</code> — the column changed, but no transformer in the config
+  targets it.</li>
+</ul>
+</li>
+</ul>
+<p>With <code>--format=json</code> each table is one JSON object:</p>
+<div class="highlight"><span class="filename">Summary diff in json format</span><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;schema&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;humanresources&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;employee&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;diff_mode&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;summary&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;rows&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">290</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">&quot;columns&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">      </span><span class="nt">&quot;name&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;gender&quot;</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;transformed&quot;</span><span class="p">:</span><span class="w"> </span><span class="kc">true</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;changed&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">84</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;unchanged&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">206</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;nulls_kept&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;unchanged_ratio&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">0.7103448275862069</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">&quot;warning&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;transformed column is unchanged in too many rows&quot;</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">  </span><span class="p">]</span>
+<span class="p">}</span>
+</code></pre></div>
+<p>Things to know:</p>
+<ul>
+<li>Like the default diff, the summary needs <code>--data</code>: without it no rows are dumped and nothing is compared.</li>
+<li>The counts cover the <code>--rows-limit</code> rows that validate dumps (default <code>10</code>). Use a larger <code>--rows-limit</code> for a
+  ratio you can trust.</li>
+<li>With <code>--transformed-only</code>, the summary lists transformed columns and any column with a warning.
+  <code>--table-format</code> does not apply: the summary has one layout.</li>
+<li>A transformer with a <code>when</code> condition counts as affecting the column in every row, so rows the condition skips
+  count as unchanged.</li>
+<li>Only the diff output changes. Validation warnings and errors are printed as in the default mode.</li>
+</ul>
 
 
 

@@ -5269,6 +5269,8 @@ command. Here is an example of the validate section configuration:</p>
 <span class="w">  </span><span class="nt">transformed_only</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span><span class="w"> </span><span class="c1"># (9)</span>
 <span class="w">  </span><span class="nt">warnings</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span><span class="w"> </span><span class="c1"># (10)</span>
 <span class="w">  </span><span class="nt">strict</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span><span class="w"> </span><span class="c1"># (11)</span>
+<span class="w">  </span><span class="nt">diff_mode</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;values&quot;</span><span class="w"> </span><span class="c1"># (12)</span>
+<span class="w">  </span><span class="nt">diff_unchanged_threshold</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">50</span><span class="w"> </span><span class="c1"># (13)</span>
 </code></pre></div></p>
 <ol>
 <li>A list of tables to validate. If this list is not empty, the validation operation will only be performed for the specified tables. Tables can be written with or without the schema name (e.g., <code>"public.cart"</code> or <code>"orders"</code>).</li>
@@ -5282,6 +5284,8 @@ command. Here is an example of the validate section configuration:</p>
 <li>If set to <code>true</code>, transformation output will be only with the transformed columns and primary keys</li>
 <li>If set to <code>true</code> then all the warnings will be printed. This only controls printing and does not affect the exit code.</li>
 <li>If set to <code>true</code>, the validate command exits with a non-zero code when there are any unresolved warnings (warnings-as-errors). Warnings listed in <code>resolved_warnings</code> are not treated as failures. Useful for CI/CD pipelines.</li>
+<li>How <code>diff</code> shows the difference: <code>values</code> (default) prints original and transformed values, <code>summary</code> prints per-column counts only and no value. See <a href="../commands/validate/#summary-diff">Summary diff</a>.</li>
+<li>With <code>diff_mode: "summary"</code>, warn when a transformed column keeps more than this percentage (0-100) of its non-NULL values. Default <code>50</code>; <code>100</code> turns the warning off.</li>
 </ol>
 <h2 id="restore-section"><code>restore</code> section<a class="headerlink" href="#restore-section" title="Permanent link">&para;</a></h2>
 <p>In the <code>restore</code> section of the configuration, you can specify parameters for the <code>greenmask restore</code> command. It contains <code>pg_restore</code> settings and custom script execution settings. Below you can find the available parameters:</p>
