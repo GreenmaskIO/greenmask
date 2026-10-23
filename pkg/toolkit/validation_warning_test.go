@@ -63,3 +63,35 @@ func TestValidationWarnings_HasUnresolved(t *testing.T) {
 		assert.True(t, warns.HasUnresolved([]string{resolved.Hash}))
 	})
 }
+
+func TestValidationWarning_MakeHash_StableHashWarningTypes(t *testing.T) {
+	newWarning := func(warningType string, unchanged int) *ValidationWarning {
+		w := NewValidationWarning().
+			SetSeverity(WarningValidationSeverity).
+			SetMsg("msg").
+			AddMeta("WarningType", warningType).
+			AddMeta("SchemaName", "public").
+			AddMeta("TableName", "users").
+			AddMeta("ColumnName", "email").
+			AddMeta("Unchanged", unchanged)
+		w.MakeHash()
+		return w
+	}
+
+	t.Run("counts do not change the hash", func(t *testing.T) {
+		for _, wt := range stableHashWarningTypes {
+			assert.Equal(t, newWarning(wt, 1).Hash, newWarning(wt, 2).Hash)
+		}
+	})
+
+	t.Run("column changes the hash", func(t *testing.T) {
+		a := newWarning(UnchangedRowsPercentageThresholdExceededWarningType, 1)
+		b := newWarning(UnchangedRowsPercentageThresholdExceededWarningType, 1)
+		b.AddMeta("ColumnName", "name").MakeHash()
+		assert.NotEqual(t, a.Hash, b.Hash)
+	})
+
+	t.Run("other warning types hash all meta", func(t *testing.T) {
+		assert.NotEqual(t, newWarning("Other", 1).Hash, newWarning("Other", 2).Hash)
+	})
+}

@@ -4,12 +4,15 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"slices"
 	"strconv"
 
 	"github.com/olekukonko/tablewriter"
+	"github.com/rs/zerolog/log"
 
 	"github.com/greenmaskio/greenmask/internal/db/postgres/entries"
 	"github.com/greenmaskio/greenmask/internal/db/postgres/pgcopy"
+	"github.com/greenmaskio/greenmask/pkg/toolkit"
 )
 
 // The cmd package defines the same values, but importing it here would be an
@@ -19,6 +22,7 @@ const (
 	summaryDiffModeName = "summary"
 )
 
+// The messages are part of the warning hash: changing them breaks users' resolved_warnings.
 const (
 	unchangedWarning  = "transformed column is unchanged in too many rows"
 	unexpectedWarning = "column changed but no transformer affects it"
@@ -42,6 +46,8 @@ type columnSummary struct {
 	NullsKept      uint64  `json:"nulls_kept"`
 	UnchangedRatio float64 `json:"unchanged_ratio"`
 	Warning        string  `json:"warning,omitempty"`
+	Hash           string  `json:"hash,omitempty"`
+	warning        *toolkit.ValidationWarning
 }
 
 type summaryDocumentResponse struct {
@@ -52,24 +58,21 @@ type summaryDocumentResponse struct {
 	Columns  []columnSummary `json:"columns"`
 }
 
-// SummaryDocument compares original and transformed rows and prints, per
-// column, how many rows changed. It prints no original or transformed value
-// and no primary key, so it can run where data may be read but not shown.
+// SummaryDocument prints per-column counts of changed rows and never prints a value or a primary key.
 type SummaryDocument struct {
 	table              *entries.Table
 	format             string
 	onlyTransformed    bool
 	unchangedThreshold float64
+	resolvedWarnings   []string
 	rows               uint64
 	columns            []*columnCounts
+	summary            []columnSummary
 }
 
-// NewSummaryDocument returns a summary document. format is "json" or "text".
-// unchangedThreshold is a percentage from 0 to 100: a transformed column that
-// keeps more than this share of its non-NULL values gets a warning, so 100
-// turns the warning off.
+// NewSummaryDocument returns a summary document. unchangedThreshold is a percentage (0-100), 100 turns the warning off.
 func NewSummaryDocument(
-	table *entries.Table, format string, onlyTransformed bool, unchangedThreshold float64,
+	table *entries.Table, format string, onlyTransformed bool, unchangedThreshold float64, resolvedWarnings []string,
 ) *SummaryDocument {
 	transformedColumns := getAffectedColumns(table)
 	columns := make([]*columnCounts, len(table.Columns))
@@ -82,11 +85,13 @@ func NewSummaryDocument(
 		format:             format,
 		onlyTransformed:    onlyTransformed,
 		unchangedThreshold: unchangedThreshold,
+		resolvedWarnings:   resolvedWarnings,
 		columns:            columns,
 	}
 }
 
 func (sd *SummaryDocument) Append(original, transformed *pgcopy.Row) error {
+	sd.summary = nil
 	for idx, c := range sd.columns {
 		originalValue, err := original.GetColumn(idx)
 		if err != nil {
@@ -133,6 +138,15 @@ func (sd *SummaryDocument) summarize() []columnSummary {
 		case !c.transformed && c.changed > 0:
 			s.Warning = unexpectedWarning
 		}
+		if s.Warning != "" {
+			s.warning = sd.newWarning(s)
+			s.Hash = s.warning.Hash
+		}
+		// Resolved warnings are dropped from the output, like PrintValidationWarnings does.
+		if s.warning != nil && slices.Contains(sd.resolvedWarnings, s.Hash) {
+			log.Debug().Str("hash", s.Hash).Msg("resolved warning has been excluded")
+			s.Warning, s.Hash, s.warning = "", "", nil
+		}
 		res = append(res, s)
 	}
 	return res
@@ -153,8 +167,50 @@ func (sd *SummaryDocument) visible(columns []columnSummary) []columnSummary {
 	return res
 }
 
+// newWarning builds a validation warning for the column, so it can be listed in resolved_warnings.
+func (sd *SummaryDocument) newWarning(s columnSummary) *toolkit.ValidationWarning {
+	warningType := toolkit.UntransformedColumnChangedWarningType
+	if s.Warning == unchangedWarning {
+		warningType = toolkit.UnchangedRowsPercentageThresholdExceededWarningType
+	}
+	w := toolkit.NewValidationWarning().
+		SetSeverity(toolkit.WarningValidationSeverity).
+		SetMsg(s.Warning).
+		AddMeta("WarningType", warningType).
+		AddMeta("SchemaName", sd.table.Schema).
+		AddMeta("TableName", sd.table.Name).
+		AddMeta("ColumnName", s.Name).
+		AddMeta("Changed", s.Changed).
+		AddMeta("Unchanged", s.Unchanged).
+		AddMeta("NullsKept", s.NullsKept)
+	if warningType == toolkit.UnchangedRowsPercentageThresholdExceededWarningType {
+		w.AddMeta("UnchangedThreshold", sd.unchangedThreshold)
+	}
+	w.MakeHash()
+	return w
+}
+
+// summaries computes the summary once, so warnings are built and logged once per table.
+func (sd *SummaryDocument) summaries() []columnSummary {
+	if sd.summary == nil {
+		sd.summary = sd.summarize()
+	}
+	return sd.summary
+}
+
+// Warnings returns the column warnings of the summary.
+func (sd *SummaryDocument) Warnings() toolkit.ValidationWarnings {
+	var res toolkit.ValidationWarnings
+	for _, s := range sd.summaries() {
+		if s.warning != nil {
+			res = append(res, s.warning)
+		}
+	}
+	return res
+}
+
 func (sd *SummaryDocument) Print(w io.Writer) error {
-	columns := sd.visible(sd.summarize())
+	columns := sd.visible(sd.summaries())
 	if sd.format == jsonFormatName {
 		return json.NewEncoder(w).Encode(&summaryDocumentResponse{
 			Schema:   sd.table.Schema,
@@ -174,6 +230,7 @@ func (sd *SummaryDocument) Print(w io.Writer) error {
 	prettyWriter := tablewriter.NewWriter(w)
 	prettyWriter.SetHeader([]string{"Column", "Transformed", "Changed", "Unchanged", "NULLs kept", "Unchanged %", "Warning"})
 	prettyWriter.SetAutoFormatHeaders(false)
+	prettyWriter.SetAutoWrapText(false)
 	for _, c := range columns {
 		transformed := "no"
 		if c.Transformed {

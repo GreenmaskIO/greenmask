@@ -157,7 +157,7 @@ func init() {
 	diffModeFlagName := "diff-mode"
 	Cmd.Flags().String(
 		diffModeFlagName, cmdInternals.ValuesDiffMode,
-		"How to show the diff (only with --diff). Possible values [values|summary]. "+
+		"How to show the diff (only with --data and --diff). Possible values [values|summary]. "+
 			"summary prints per-column counts of changed rows and no original or transformed value",
 	)
 	flag = Cmd.Flags().Lookup(diffModeFlagName)
@@ -167,7 +167,7 @@ func init() {
 
 	unchangedThresholdFlagName := "diff-unchanged-threshold"
 	Cmd.Flags().Float64(
-		unchangedThresholdFlagName, 50,
+		unchangedThresholdFlagName, 90,
 		"With --diff-mode=summary, warn when a transformed column keeps more than this percentage "+
 			"of its non-NULL values (0-100, 100 turns the warning off). Counts cover --rows-limit rows only",
 	)
