@@ -1,3 +1,9 @@
+---
+title: "Index"
+description: "Advanced transformers are modifiable anonymization methods that users can adjust based on their needs by using custom functions."
+keywords: ["advanced transformers", "Go templates", "custom anonymization", "greenmask", "greenmask transformer", "data anonymization", "postgresql", "mysql", "oracle", "Enterprise support", "Open-Source", "PostgreSQL anonymization", "test data management", "compliance", "security", "agentic pipeline", "development cycle"]
+---
+
 # Advanced transformers
 
 Advanced transformers are modifiable anonymization methods that users can adjust based on their needs by using [custom functions](custom_functions/index.md).

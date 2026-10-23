@@ -1,3 +1,9 @@
+---
+title: Installation
+description: Install Greenmask via install script, pre-built binaries, Docker, Homebrew, or build from source. Requires PostgreSQL utilities matching your target server's major version.
+keywords: [install greenmask, greenmask docker, greenmask homebrew, greenmask binary, "Enterprise support", "Open-Source", "PostgreSQL anonymization", "test data management", "compliance", "security", "agentic pipeline", "development cycle"]
+---
+
 # Installation
 
 ## Prerequisites
@@ -42,9 +48,10 @@ To run the greenmask container from GitHub registry, use the following command:
 docker run -it ghcr.io/greenmaskio/greenmask:latest
 ```
 
-!!! info
-    
-    For pre-releases (rc, beta, etc.), use explicit tags like `v0.2.0b2`.
+:::info
+
+For pre-releases (rc, beta, etc.), use explicit tags like `v0.2.0b2`.
+:::
 
 ## Via brew 
 

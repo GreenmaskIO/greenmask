@@ -1,3 +1,9 @@
+---
+title: "SetNull"
+description: "The SetNull transformer assigns NULL value to a column. This transformer generates warning if the affected column has NOT NULL constraint."
+keywords: ["SetNull", "NULL value", "nullification", "greenmask transformer", "data anonymization", "postgresql", "mysql", "oracle", "Enterprise support", "Open-Source", "PostgreSQL anonymization", "test data management", "compliance", "security", "agentic pipeline", "development cycle"]
+---
+
 Set `NULL` value to a column.
 
 ## Parameters

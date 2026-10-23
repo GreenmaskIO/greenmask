@@ -1,3 +1,9 @@
+---
+title: "RandomAmountWithCurrency"
+description: "This transformer automatically generates random financial amounts along with corresponding global currency codes (e.g.,"
+keywords: ["RandomAmountWithCurrency", "currency amount", "financial data anonymization", "greenmask transformer", "data anonymization", "postgresql", "mysql", "oracle", "Enterprise support", "Open-Source", "PostgreSQL anonymization", "test data management", "compliance", "security", "agentic pipeline", "development cycle"]
+---
+
 The `RandomAmountWithCurrency` transformer is specifically designed to populate specified database columns with random
 financial amounts accompanied by currency codes. Ideal for applications requiring the simulation of financial
 transactions, this utility enhances the realism of financial datasets by introducing variability in amounts and

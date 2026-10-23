@@ -1,3 +1,9 @@
+---
+title: "RandomDayOfMonth"
+description: "Utilizing the faker library, the RandomDayOfMonth transformer generates random numerical values representing days of"
+keywords: ["RandomDayOfMonth", "day of month", "date anonymization", "greenmask transformer", "data anonymization", "postgresql", "mysql", "oracle", "Enterprise support", "Open-Source", "PostgreSQL anonymization", "test data management", "compliance", "security", "agentic pipeline", "development cycle"]
+---
+
 The `RandomDayOfMonth` transformer is designed to populate specified database columns with random day-of-the-month
 values. It is particularly useful for scenarios requiring the simulation of dates, such as generating random event
 dates, user sign-up dates, or any situation where the specific day of the month is needed without reference to the

@@ -1,4 +1,13 @@
-    # Configuration
+---
+title: Configuration
+description: Configure Greenmask using YAML files with sections for common settings, logging, storage backends (local or S3), and per-table transformation rules.
+keywords: ["greenmask configuration", "greenmask yaml", "greenmask config file", "anonymization config", "Enterprise support", "Open-Source", "PostgreSQL anonymization", "test data management", "compliance", "security", "agentic pipeline", "development cycle"]
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+# Configuration
 
 The configuration is organized into six sections:
 
@@ -61,20 +70,22 @@ dump:
 - The existing behavior of overriding whole config keys via environment variables (e.g., setting
   `LOG_LEVEL=debug` to override `log.level`) is preserved and unaffected by this feature.
 
-!!! warning
+:::warning
 
-    To apply env vars interpolation to transformer parameters, set `resolve_env: true` on the
-    specific transformer. By default it is `false` — parameter values containing `$` are treated
-    as plain strings, which prevents accidental expansion of literal dollar signs that may appear
-    in stored data or config values. See
-    [Parameters env vars interpolation](built_in_transformers/parameters_env_vars_interpolation.md)
-    for details and examples.
+To apply env vars interpolation to transformer parameters, set `resolve_env: true` on the
+specific transformer. By default it is `false` — parameter values containing `$` are treated
+as plain strings, which prevents accidental expansion of literal dollar signs that may appear
+in stored data or config values. See
+[Parameters env vars interpolation](built_in_transformers/parameters_env_vars_interpolation.md)
+for details and examples.
+:::
 
-!!! tip
+:::tip
 
-    Use `${VAR?your error message}` to mark a variable as required. Greenmask will exit with the
-    provided message if the variable is not set, making misconfiguration errors explicit and
-    easy to diagnose.
+Use `${VAR?your error message}` to mark a variable as required. Greenmask will exit with the
+provided message if the variable is not set, making misconfiguration errors explicit and
+easy to diagnose.
+:::
 
 ## `common` section
 
@@ -83,9 +94,10 @@ In the `common` section of the configuration, you can specify the following sett
 * `pg_bin_path` — path to the PostgreSQL binaries. Note that the PostgreSQL server version must match the provided binaries.
 * `tmp_dir` — temporary directory for storing the table of contents files. Default value is `/tmp`
 
-!!! note
+:::note
 
-    Greenmask exclusively manages data dumping and data restoration processes, delegating schema dumping to the `pg_dump `utility and schema restoration to the `pg_restore` utility. Both `pg_dump` and `pg_restore` rely on a `toc.dat` file located in a specific directory, which contains metadata and object definitions. Therefore, the `tmp_dir` parameter is essential for storing the `toc.dat` file during the dumping or restoration procedure. It is important to note that all artifacts in this directory will be automatically deleted once the Greenmask command is completed.
+Greenmask exclusively manages data dumping and data restoration processes, delegating schema dumping to the `pg_dump `utility and schema restoration to the `pg_restore` utility. Both `pg_dump` and `pg_restore` rely on a `toc.dat` file located in a specific directory, which contains metadata and object definitions. Therefore, the `tmp_dir` parameter is essential for storing the `toc.dat` file during the dumping or restoration procedure. It is important to note that all artifacts in this directory will be automatically deleted once the Greenmask command is completed.
+:::
 
 ## `log` section
 
@@ -99,138 +111,151 @@ In the `log` section of the configuration, you can specify the following setting
 In the `storage` section, you can configure the storage driver for storing the dumped data. Currently,
 four storage `type` options are supported: `directory`, `s3`, `azure` and `ssh`.
 
-=== "`directory` option"
+<Tabs>
+<TabItem value="directory-option" label="`directory` option">
 
-    The directory storage option refers to a filesystem directory where the dump data will be stored.
 
-    Parameters include `path` which specifies the path to the directory in the filesystem where the dumps will be stored.
+The directory storage option refers to a filesystem directory where the dump data will be stored.
 
-    ``` yaml title="directory storage config example"
-    storage:
-      type: "directory"
-      directory:
-        path: "/home/user_name/storage_dir" # (1)
-    ```
+Parameters include `path` which specifies the path to the directory in the filesystem where the dumps will be stored.
 
-=== "`s3` option"
+``` yaml title="directory storage config example"
+storage:
+  type: "directory"
+  directory:
+    path: "/home/user_name/storage_dir" # (1)
+```
 
-    By choosing the `s3` storage option, you can store dump data in an S3-like remote storage service,
-    such as Amazon S3 or MinIO. Here are the parameters you can configure for S3 storage:
+</TabItem>
+<TabItem value="s3-option" label="`s3` option">
 
-    * `endpoint` — overrides the default AWS endpoint to a custom one for making requests
-    * `bucket` — the name of the bucket where the dump data will be stored
-    * `prefix` — a prefix for objects in the bucket, specified in path format
-    * `region` — the S3 service region
-    * `storage_class` — the storage class for performing object requests
-    * `no_verify_ssl` — disable SSL certificate verification
-    * `access_key_id` — access key for authentication
-    * `secret_access_key` — secret access key for authentication
-    * `session_token` — session token for authentication
-    * `role_arn` — Amazon resource name for role-based authentication
-    * `session_name` — role session name to uniquely identify a session
-    * `max_retries` — the number of retries on request failures
-    * `cert_file` — the path to the SSL certificate for making requests
-    * `max_part_size` — the maximum part length for one request
-    * `concurrency` — the number of goroutines to use in parallel for each upload call when sending parts
-    * `use_list_objects_v1` — use the old v1 `ListObjects` request instead of v2 one
-    * `force_path_style` — force the request to use path-style addressing (e. g., `http://s3.amazonaws.com/BUCKET/KEY`) instead of virtual hosted bucket addressing (e. g., `http://BUCKET.s3.amazonaws.com/KEY`)
-    * `use_accelerate` — enable S3 Accelerate feature
-    * `sse` — server-side encryption applied to the uploaded dump. One of `AES256` (SSE-S3), `aws:kms` (SSE-KMS) or `aws:kms:dsse` (DSSE-KMS). Applies to both single-part and multipart uploads
-    * `kms_key_arn` — KMS key encrypting the dump when `sse` is `aws:kms` or `aws:kms:dsse`. If omitted, the bucket default KMS key is used. Setting it with any other `sse` value is a config error
-    * `bucket_key_enabled` — enable [S3 Bucket Keys](https://docs.aws.amazon.com/AmazonS3/latest/userguide/bucket-key.html), which cut KMS request cost on large dumps. Requires `sse` to be `aws:kms` or `aws:kms:dsse`
 
-    ```yaml title="s3 storage config example for Minio running in Docker"
-    storage:  
-      type: "s3"
-      s3:
-        endpoint: "http://localhost:9000"
-        bucket: "testbucket"
-        region: "us-east-1"
-        access_key_id: "Q3AM3UQ867SPQQA43P2F"
-        secret_access_key: "zuf+tfteSlswRu7BJ86wekitnifILbZam1KYY3TG"
-    ```
+By choosing the `s3` storage option, you can store dump data in an S3-like remote storage service,
+such as Amazon S3 or MinIO. Here are the parameters you can configure for S3 storage:
 
-    !!! tip "Cloudflare R2 Compatibility"
+* `endpoint` — overrides the default AWS endpoint to a custom one for making requests
+* `bucket` — the name of the bucket where the dump data will be stored
+* `prefix` — a prefix for objects in the bucket, specified in path format
+* `region` — the S3 service region
+* `storage_class` — the storage class for performing object requests
+* `no_verify_ssl` — disable SSL certificate verification
+* `access_key_id` — access key for authentication
+* `secret_access_key` — secret access key for authentication
+* `session_token` — session token for authentication
+* `role_arn` — Amazon resource name for role-based authentication
+* `session_name` — role session name to uniquely identify a session
+* `max_retries` — the number of retries on request failures
+* `cert_file` — the path to the SSL certificate for making requests
+* `max_part_size` — the maximum part length for one request
+* `concurrency` — the number of goroutines to use in parallel for each upload call when sending parts
+* `use_list_objects_v1` — use the old v1 `ListObjects` request instead of v2 one
+* `force_path_style` — force the request to use path-style addressing (e. g., `http://s3.amazonaws.com/BUCKET/KEY`) instead of virtual hosted bucket addressing (e. g., `http://BUCKET.s3.amazonaws.com/KEY`)
+* `use_accelerate` — enable S3 Accelerate feature
+* `sse` — server-side encryption applied to the uploaded dump. One of `AES256` (SSE-S3), `aws:kms` (SSE-KMS) or `aws:kms:dsse` (DSSE-KMS). Applies to both single-part and multipart uploads
+* `kms_key_arn` — KMS key encrypting the dump when `sse` is `aws:kms` or `aws:kms:dsse`. If omitted, the bucket default KMS key is used. Setting it with any other `sse` value is a config error
+* `bucket_key_enabled` — enable [S3 Bucket Keys](https://docs.aws.amazon.com/AmazonS3/latest/userguide/bucket-key.html), which cut KMS request cost on large dumps. Requires `sse` to be `aws:kms` or `aws:kms:dsse`
 
-        Greenmask is compatible with Cloudflare R2 storage. To ensure it works correctly, you must use the following configuration:
+```yaml title="s3 storage config example for Minio running in Docker"
+storage:  
+  type: "s3"
+  s3:
+    endpoint: "http://localhost:9000"
+    bucket: "testbucket"
+    region: "us-east-1"
+    access_key_id: "Q3AM3UQ867SPQQA43P2F"
+    secret_access_key: "zuf+tfteSlswRu7BJ86wekitnifILbZam1KYY3TG"
+```
 
-        *   **Endpoint**: Use the R2 S3 API endpoint (e.g., `https://<account_id>.r2.cloudflarestorage.com`). Do **not** include the bucket name in the endpoint URL.
-        *   **Force Path Style**: You must set `force_path_style` to `true`.
-        *   **Region**: Set it to `us-east-1` (R2 is regionless, but this value is often required by S3 clients).
+:::tip[Cloudflare R2 Compatibility]
 
-        ```yaml title="S3 storage config example for Cloudflare R2"
-        storage:
-          type: "s3"
-          s3:
-            endpoint: "https://<account_id>.r2.cloudflarestorage.com"
-            bucket: "my-bucket"
-            prefix: "backups"
-            region: "us-east-1"
-            force_path_style: true
-            access_key_id: "<access_key>"
-            secret_access_key: "<secret_key>"
-        ```
+Greenmask is compatible with Cloudflare R2 storage. To ensure it works correctly, you must use the following configuration:
 
-=== "`azure` option"
+*   **Endpoint**: Use the R2 S3 API endpoint (e.g., `https://<account_id>.r2.cloudflarestorage.com`). Do **not** include the bucket name in the endpoint URL.
+*   **Force Path Style**: You must set `force_path_style` to `true`.
+*   **Region**: Set it to `us-east-1` (R2 is regionless, but this value is often required by S3 clients).
 
-    The `azure` storage option stores dump data natively in Azure Blob Storage. It supports all three
-    Azure authentication methods and sovereign clouds. Here are the parameters you can configure:
+```yaml title="S3 storage config example for Cloudflare R2"
+storage:
+  type: "s3"
+  s3:
+    endpoint: "https://<account_id>.r2.cloudflarestorage.com"
+    bucket: "my-bucket"
+    prefix: "backups"
+    region: "us-east-1"
+    force_path_style: true
+    access_key_id: "<access_key>"
+    secret_access_key: "<secret_key>"
+```
+:::
 
-    * `container` — **(required)** the name of the blob container where the dump data will be stored
-    * `storage_account` — **(required)** the Azure storage account name
-    * `prefix` — a prefix for blobs in the container, specified in path format
-    * `access_key` — storage account shared access key (auth method: shared key)
-    * `sas_token` — a shared access signature token (auth method: SAS). A leading `?` is optional
-    * `endpoint` — a full service URL override, used path-style (e. g. for Azurite or private deployments)
-    * `endpoint_suffix` — overrides the endpoint suffix derived from `environment_name`
-    * `environment_name` — the Azure cloud: `AzurePublicCloud` (default), `AzureUSGovernmentCloud`, `AzureChinaCloud` or `AzureGermanCloud`
-    * `buffer_size` — upload block size in bytes (default `8388608` = 8 MiB, minimum `1024`)
-    * `max_buffers` — upload concurrency (default `4`, minimum `1`)
-    * `try_timeout` — per-try request timeout in minutes (default `5`)
-    * `blob_store_api_version` — optional `x-ms-version` header override for environments that don't support the SDK's default API version
+</TabItem>
+<TabItem value="azure-option" label="`azure` option">
 
-    When neither `access_key` nor `sas_token` is set, Greenmask falls back to the default Azure credential
-    chain (managed identity, the `AZURE_CLIENT_ID` / `AZURE_TENANT_ID` / `AZURE_CLIENT_SECRET` environment
-    variables, or the Azure CLI login).
 
-    ```yaml title="azure storage config example"
-    storage:
-      type: "azure"
-      azure:
-        storage_account: "mystorageaccount"
-        container: "mycontainer"
-        prefix: "backups"
-        access_key: "<account_access_key>"
-    ```
+The `azure` storage option stores dump data natively in Azure Blob Storage. It supports all three
+Azure authentication methods and sovereign clouds. Here are the parameters you can configure:
 
-=== "`ssh` option"
+* `container` — **(required)** the name of the blob container where the dump data will be stored
+* `storage_account` — **(required)** the Azure storage account name
+* `prefix` — a prefix for blobs in the container, specified in path format
+* `access_key` — storage account shared access key (auth method: shared key)
+* `sas_token` — a shared access signature token (auth method: SAS). A leading `?` is optional
+* `endpoint` — a full service URL override, used path-style (e. g. for Azurite or private deployments)
+* `endpoint_suffix` — overrides the endpoint suffix derived from `environment_name`
+* `environment_name` — the Azure cloud: `AzurePublicCloud` (default), `AzureUSGovernmentCloud`, `AzureChinaCloud` or `AzureGermanCloud`
+* `buffer_size` — upload block size in bytes (default `8388608` = 8 MiB, minimum `1024`)
+* `max_buffers` — upload concurrency (default `4`, minimum `1`)
+* `try_timeout` — per-try request timeout in minutes (default `5`)
+* `blob_store_api_version` — optional `x-ms-version` header override for environments that don't support the SDK's default API version
 
-    The `ssh` storage option stores dump data on a remote host over SSH/SFTP. Here are the parameters
-    you can configure:
+When neither `access_key` nor `sas_token` is set, Greenmask falls back to the default Azure credential
+chain (managed identity, the `AZURE_CLIENT_ID` / `AZURE_TENANT_ID` / `AZURE_CLIENT_SECRET` environment
+variables, or the Azure CLI login).
 
-    * `host` — **(required)** the SSH server hostname or IP address
-    * `user` — **(required)** the SSH user name
-    * `port` — the SSH port (default `22`)
-    * `password` — password authentication (provide at least one of `password` or `private_key_path`)
-    * `private_key_path` — path to a PEM-encoded private key for public-key authentication (provide at least one of `password` or `private_key_path`)
-    * `prefix` — the remote root path where the dump data will be stored
+```yaml title="azure storage config example"
+storage:
+  type: "azure"
+  azure:
+    storage_account: "mystorageaccount"
+    container: "mycontainer"
+    prefix: "backups"
+    access_key: "<account_access_key>"
+```
 
-    !!! warning "Host key verification is disabled"
+</TabItem>
+<TabItem value="ssh-option" label="`ssh` option">
 
-        Host-key checking is currently disabled (the connection trusts any host key).
-        A `known_hosts`-based verification option is a planned `TODO`.
 
-    ```yaml title="ssh storage config example"
-    storage:
-      type: ssh
-      ssh:
-        host: sftp.example.com
-        port: 22
-        user: greenmask
-        private_key_path: /home/greenmask/.ssh/id_ed25519
-        # password: "..."        # alternative to private_key_path
-        prefix: /backups/greenmask
-    ```
+The `ssh` storage option stores dump data on a remote host over SSH/SFTP. Here are the parameters
+you can configure:
+
+* `host` — **(required)** the SSH server hostname or IP address
+* `user` — **(required)** the SSH user name
+* `port` — the SSH port (default `22`)
+* `password` — password authentication (provide at least one of `password` or `private_key_path`)
+* `private_key_path` — path to a PEM-encoded private key for public-key authentication (provide at least one of `password` or `private_key_path`)
+* `prefix` — the remote root path where the dump data will be stored
+
+:::warning[Host key verification is disabled]
+
+Host-key checking is currently disabled (the connection trusts any host key).
+A `known_hosts`-based verification option is a planned `TODO`.
+:::
+
+```yaml title="ssh storage config example"
+storage:
+  type: ssh
+  ssh:
+    host: sftp.example.com
+    port: 22
+    user: greenmask
+    private_key_path: /home/greenmask/.ssh/id_ed25519
+    # password: "..."        # alternative to private_key_path
+    prefix: /backups/greenmask
+```
+
+</TabItem>
+</Tabs>
 
 ## `dump` section
 
@@ -244,24 +269,25 @@ In the `dump` section of the configuration, you configure the `greenmask dump` c
     * `subset_conds` - list of the conditions to filter the rows to be dumped. The conditions are combined with `AND` operator. For details read [Database subset](database_subset.md)
     * `query` — an optional parameter for specifying a custom query to be used in the COPY command. By default, the entire table is dumped, but you can use this parameter to set a custom query.
         
-        !!! warning
+        :::warning
 
-            Be cautious when using the `query` parameter, as it may lead to constraint violation errors during restoration, and Greenmask currently cannot handle query validation.
+        Be cautious when using the `query` parameter, as it may lead to constraint violation errors during restoration, and Greenmask currently cannot handle query validation.
+        :::
 
     * `columns_type_override` — allows you to override the column types explicitly. You can associate a column with another type that is supported by your transformer. This is useful when the transformer works strictly with specific types of columns. For example, if a column named `post_code` is of the TEXT type, but the `RandomInt` transformer works only with INT family types, you can override it as shown in the example provided.
       ``` yaml title="column type overridden example"
         columns_type_override:
           post_code: "int4"  # (1)
       ```
-      { .annotate }
 
            1. Change the data type of the post_code column to `INT4` (`INTEGER`)
 
     * `apply_for_inherited` — an optional parameter to apply the same transformation to all partitions if the table is partitioned. This can save you from defining the transformation for each partition manually.
 
-        !!! warning
+        :::warning
 
-            It is recommended to use the `--load-via-partition-root` parameter when dealing with partitioned tables, as the partition key value might change.
+        It is recommended to use the `--load-via-partition-root` parameter when dealing with partitioned tables, as the partition key value might change.
+        :::
 
     * `transformers` — a list of transformers to apply to the table, along with their parameters. Each transformation item includes the following sub-parameters:
 
@@ -344,7 +370,6 @@ dump:
             ratio: 0.9
             column: "range"
 ```
-{ .annotate }
 
 1. Override the `post_code` column type to `int4` (INTEGER). This is necessary because the `post_code` column
    originally has a `TEXT` type, but it contains values that resemble integers. By explicitly overriding the type to `int4`, we ensure compatibility with transformers that work with integer types, such as `RandomInt`.
@@ -375,7 +400,6 @@ validate:
   diff_mode: "values" # (12)
   diff_unchanged_threshold: 90 # (13)
 ```
-{ .annotate }
 
 1. A list of tables to validate. If this list is not empty, the validation operation will only be performed for the specified tables. Tables can be written with or without the schema name (e.g., `"public.cart"` or `"orders"`).
 2. Specifies whether to perform data transformation for a limited set of rows. If set to `true`, data transformation will be performed, and the number of rows transformed will be limited to the value specified in the `rows_limit` parameter (default is `10`).
@@ -418,7 +442,7 @@ In the `restore` section of the configuration, you can specify parameters for th
 * `insert_error_exclusions` — a list of error codes that should be ignored during the restoration process. This is 
 useful when you want to skip specific errors that are not critical for the restoration process.
 
-As mentioned in [the architecture](architecture.md/#backup-process), a backup contains three sections: pre-data, data, and post-data. The custom script execution allows you to customize and control the restoration process by executing scripts or commands at specific stages. The available restoration stages and their corresponding execution conditions are as follows:
+As mentioned in [the architecture](architecture.md#backup-process), a backup contains three sections: pre-data, data, and post-data. The custom script execution allows you to customize and control the restoration process by executing scripts or commands at specific stages. The available restoration stages and their corresponding execution conditions are as follows:
 
 * `pre-data` — scripts or commands can be executed before or after restoring the pre-data section
 * `data` — scripts or commands can be executed before or after restoring the data section
@@ -464,7 +488,6 @@ scripts:
       when: "after"
       query_file: "post-data-after.sql"
 ```
-{ .annotate }
 
 1. **List of pre-data stage scripts**. This section contains scripts that are executed before or after the restoration of the pre-data section. The scripts include SQL queries and query files.
 2. **List of data stage scripts**. This section contains scripts that are executed before or after the restoration of the data section. The scripts include shell commands with parameters and SQL query files.

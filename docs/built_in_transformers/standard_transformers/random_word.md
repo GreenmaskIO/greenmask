@@ -1,3 +1,9 @@
+---
+title: "RandomWord"
+description: "The RandomWord transformer employs a mechanism to inject random words into a designated database column, supporting"
+keywords: ["RandomWord", "random word", "text generation", "greenmask transformer", "data anonymization", "postgresql", "mysql", "oracle", "Enterprise support", "Open-Source", "PostgreSQL anonymization", "test data management", "compliance", "security", "agentic pipeline", "development cycle"]
+---
+
 The `RandomWord` transformer populates specified database columns with random words. Ideal for simulating textual
 content, enhancing linguistic datasets, or anonymizing text in databases.
 

@@ -1,3 +1,12 @@
+---
+title: "Cmd"
+description: "Transform PostgreSQL column data via an external program using stdin/stdout interaction, supporting CSV, JSON, and binary row drivers."
+keywords: ["Cmd", "external command", "stdin stdout", "custom transformation", "greenmask transformer", "data anonymization", "postgresql", "mysql", "oracle", "Enterprise support", "Open-Source", "PostgreSQL anonymization", "test data management", "compliance", "security", "agentic pipeline", "development cycle"]
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
 Transform data via external program using `stdin` and `stdout` interaction.
 
 ## Parameters
@@ -13,11 +22,12 @@ Transform data via external program using `stdin` and `stdout` interaction.
 | expected_exit_code | The expected exit code on SIGTERM signal. If the exit code is unexpected, the transformation exits with an error.                                                                                                                                            | `0`               | No       | -                  |
 | skip_on_behaviour  | Skips transformation call if one of the provided columns has a `null` value (`any`) or each of the provided columns has `null` values (`all`). This option works together with the `skip_on_null_input` parameter on columns. Possible values: `all`, `any`. | `all`             | No       | -                  |
 
-!!! warning
+:::warning
 
-    The parameter `validate_output=true` may cause an error if the type does not have a PostgreSQL driver decoder 
-    implementation. Most of the types, such as `int`, `float`, `text`, `varchar`, `date`, `timestamp`, etc., have 
-    encoders and decoders, as well as inherited types like domain types based on them.
+The parameter `validate_output=true` may cause an error if the type does not have a PostgreSQL driver decoder 
+implementation. Most of the types, such as `int`, `float`, `text`, `varchar`, `date`, `timestamp`, etc., have 
+encoders and decoders, as well as inherited types like domain types based on them.
+:::
 
 ## Description
 
@@ -39,35 +49,42 @@ JSON line driver. It has two formats that can be passed through `driver.json_dat
 the `bytes` format for binary datatypes. Use the `text` format for non-binary datatypes and for those that can be
 represented as string literals. The default `json_data_format` is `text`.
 
-=== "Text format with indexes"
+<Tabs>
+<TabItem value="text-format-with-indexes" label="Text format with indexes">
 
-    ```json
-    {
-      "column1": {
-        "d": "some_value1",
-        "n": false,
-      },
-      "column2": {
-        "d": "some_value2",
-        "n": false,
-      }
-    }
-    ```
 
-=== "Bytes format with indexes"
+```json
+{
+  "column1": {
+    "d": "some_value1",
+    "n": false,
+  },
+  "column2": {
+    "d": "some_value2",
+    "n": false,
+  }
+}
+```
 
-    ```json
-    {
-      "column1": {
-        "d": "aGVsbG8gd29ybHNeODcxMjE5MCUlJSUlJQ==",
-        "n": false,
-      },
-      "column2": {
-        "d": "aGVsbG8gd29ybHNeODcxMjE5MCUlJSUlJQ==",
-        "n": false,
-      }
-    }
-    ```
+</TabItem>
+<TabItem value="bytes-format-with-indexes" label="Bytes format with indexes">
+
+
+```json
+{
+  "column1": {
+    "d": "aGVsbG8gd29ybHNeODcxMjE5MCUlJSUlJQ==",
+    "n": false,
+  },
+  "column2": {
+    "d": "aGVsbG8gd29ybHNeODcxMjE5MCUlJSUlJQ==",
+    "n": false,
+  }
+}
+```
+
+</TabItem>
+</Tabs>
 
 where:
 
@@ -198,7 +215,6 @@ for line in sys.stdin:
             skip_on_null_input: true # (3)
 ```
 
-{ .annotate }
 
 1. Validate the received data via decode procedure using the PostgreSQL driver. Note that this may cause an error if the
    type is not supported in the PostgreSQL driver.

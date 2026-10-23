@@ -1,3 +1,9 @@
+---
+title: "RandomParagraph"
+description: "Employing sophisticated text generation algorithms or libraries, the RandomParagraph transformer generates random"
+keywords: ["RandomParagraph", "text generation", "lorem ipsum", "greenmask transformer", "data anonymization", "postgresql", "mysql", "oracle", "Enterprise support", "Open-Source", "PostgreSQL anonymization", "test data management", "compliance", "security", "agentic pipeline", "development cycle"]
+---
+
 The `RandomParagraph` transformer is crafted to populate specified database columns with random paragraphs. This utility
 is indispensable for applications that require the generation of extensive textual content, such as simulating articles,
 enhancing textual datasets for NLP systems, or anonymizing textual content in databases.

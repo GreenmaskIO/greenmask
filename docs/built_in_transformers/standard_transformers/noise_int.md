@@ -1,3 +1,9 @@
+---
+title: "NoiseInt"
+description: "The NoiseInt transformer multiplies the original integer value by randomly generated value that is not higher than"
+keywords: ["NoiseInt", "integer noise", "number anonymization", "greenmask transformer", "data anonymization", "postgresql", "mysql", "oracle", "Enterprise support", "Open-Source", "PostgreSQL anonymization", "test data management", "compliance", "security", "agentic pipeline", "development cycle"]
+---
+
 Add or subtract a random fraction to the original integer value.
 
 ## Parameters
@@ -28,10 +34,11 @@ In case you have constraints on the integer range, you can set the `min` and `ma
 threshold values. The values for `min` and `max` must have the same format as the `column` parameter. Parameters min and
 max support dynamic mode.
 
-!!! info
+:::info
 
-    If the noised value exceeds the `max` threshold, the transformer will set the value to `max`. If the noised value
-    is lower than the `min` threshold, the transformer will set the value to `min`.
+If the noised value exceeds the `max` threshold, the transformer will set the value to `max`. If the noised value
+is lower than the `min` threshold, the transformer will set the value to `min`.
+:::
 
 The `engine` parameter allows you to choose between random and hash engines for generating values. Read more about the
 engines in the [Transformation engines](../transformation_engines.md) section.
@@ -60,6 +67,6 @@ Result
 <th>Column</th><th>OriginalValue</th><th>TransformedValue</th>
 </tr>
 <tr>
-<td>vacationhours</td><td><span style="color:green">99</span></td><td><span style="color:red">69</span></td>
+<td>vacationhours</td><td><span style={{color: 'green'}}>99</span></td><td><span style={{color: 'red'}}>69</span></td>
 </tr>
 </table>

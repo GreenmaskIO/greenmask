@@ -1,3 +1,9 @@
+---
+title: "TemplateRecord"
+description: "TemplateRecord uses Go templates to change data. However, while the Template transformer operates with a single column and automatically applies results,…"
+keywords: ["TemplateRecord", "Go templates", "record transformation", "row editing", "greenmask transformer", "data anonymization", "postgresql", "mysql", "oracle", "Enterprise support", "Open-Source", "PostgreSQL anonymization", "test data management", "compliance", "security", "agentic pipeline", "development cycle"]
+---
+
 Modify records using a Go template and apply changes by using the PostgreSQL driver functions. This transformer provides a way to implement custom transformation logic.
 
 ## Parameters

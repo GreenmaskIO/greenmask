@@ -1,3 +1,9 @@
+---
+title: "NoiseFloat"
+description: "The NoiseFloat transformer multiplies the original float value by randomly generated value that is not higher than"
+keywords: ["NoiseFloat", "float noise", "floating point anonymization", "greenmask transformer", "data anonymization", "postgresql", "mysql", "oracle", "Enterprise support", "Open-Source", "PostgreSQL anonymization", "test data management", "compliance", "security", "agentic pipeline", "development cycle"]
+---
+
 Add or subtract a random fraction to the original float value.
 
 ## Parameters
@@ -30,10 +36,11 @@ values. The values for `min` and `max` must have the same format as the `column`
 support dynamic mode. Engine parameter allows you to choose between random and hash engines for generating values. Read
 more about the engines
 
-!!! info
+:::info
 
-    If the noised value exceeds the `max` threshold, the transformer will set the value to `max`. If the noised value
-    is lower than the `min` threshold, the transformer will set the value to `min`.
+If the noised value exceeds the `max` threshold, the transformer will set the value to `max`. If the noised value
+is lower than the `min` threshold, the transformer will set the value to `min`.
+:::
 
 The `engine` parameter allows you to choose between random and hash engines for generating values. Read more about the
 engines in the [Transformation engines](../transformation_engines.md) section.
@@ -69,7 +76,7 @@ Result
 <th>Column</th><th>OriginalValue</th><th>TransformedValue</th>
 </tr>
 <tr>
-<td>lastreceiptcost</td><td><span style="color:green">50.2635</span></td><td><span style="color:red">47.87</span></td>
+<td>lastreceiptcost</td><td><span style={{color: 'green'}}>50.2635</span></td><td><span style={{color: 'red'}}>47.87</span></td>
 </tr>
 </table>
 

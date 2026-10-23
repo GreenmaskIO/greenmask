@@ -1,3 +1,12 @@
+---
+title: "Template"
+description: "The Template transformer executes Go templates and automatically applies the template result to a specified column. Go template system is designed to be…"
+keywords: ["Template", "Go templates", "custom anonymization", "template transformer", "greenmask transformer", "data anonymization", "postgresql", "mysql", "oracle", "Enterprise support", "Open-Source", "PostgreSQL anonymization", "test data management", "compliance", "security", "agentic pipeline", "development cycle"]
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
 Execute a Go template and automatically apply the result to a specified column.
 
 ## Parameters
@@ -14,10 +23,11 @@ The `Template` transformer executes Go templates and automatically applies the t
 
 With the `Template` transformer, you can implement complicated transformation logic using basic or custom template functions. Below you can get familiar with the basic template functions for the `Template` transformer. For more information about available custom template functions, see [Custom functions](custom_functions/index.md).
 
-!!! warning
+:::warning
 
-    Pay attention to the whitespaces in templates. Use dash-wrapped - brackets `{{- -}}` for
-    trimming the spaces. For example, the value `"2023-12-19"` is not the same as `" 2023-12-19  "` and it may throw an error when restoring.
+Pay attention to the whitespaces in templates. Use dash-wrapped - brackets `{{- -}}` for
+trimming the spaces. For example, the value `"2023-12-19"` is not the same as `" 2023-12-19  "` and it may throw an error when restoring.
+:::
 
 ### Template functions
 
@@ -74,14 +84,21 @@ synthetic names.
 
 Expected result:
 
-=== "Value = Terry"
+<Tabs>
+<TabItem value="value-terry" label="Value = Terry">
 
-    | column name | original value | transformed |
-    |-------------|----------------|-------------|
-    | firstname   | Terri          | Mary        |
 
-=== "Value != Terri"
+| column name | original value | transformed |
+|-------------|----------------|-------------|
+| firstname   | Terri          | Mary        |
 
-    | column name | original value   | transformed |
-    |-------------|------------------|-------------|
-    | firstname   | Ken Jr           | Mike        |
+</TabItem>
+<TabItem value="value-terri" label="Value != Terri">
+
+
+| column name | original value   | transformed |
+|-------------|------------------|-------------|
+| firstname   | Ken Jr           | Mike        |
+
+</TabItem>
+</Tabs>

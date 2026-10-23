@@ -1,3 +1,9 @@
+---
+title: "FakerFunction"
+description: "Greenmask uses go-faker/faker under the hood for generating of synthetic data."
+keywords: ["faker functions", "fake data", "go-faker", "synthetic data", "greenmask transformer", "data anonymization", "postgresql", "mysql", "oracle", "Enterprise support", "Open-Source", "PostgreSQL anonymization", "test data management", "compliance", "security", "agentic pipeline", "development cycle"]
+---
+
 # Faker functions
 
 Greenmask uses [go-faker/faker](https://github.com/go-faker/faker) under the hood for generating of synthetic data.

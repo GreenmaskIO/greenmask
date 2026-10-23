@@ -1,3 +1,9 @@
+---
+title: "RandomDate"
+description: "The RandomDate transformer generates a random date within the provided interval, starting from min to max. It"
+keywords: ["RandomDate", "date generation", "date anonymization", "greenmask transformer", "data anonymization", "postgresql", "mysql", "oracle", "Enterprise support", "Open-Source", "PostgreSQL anonymization", "test data management", "compliance", "security", "agentic pipeline", "development cycle"]
+---
+
 Generate a random date in a specified interval.
 
 ## Parameters
@@ -25,13 +31,14 @@ can also perform date truncation up to the specified part of the date. The forma
 parameters must adhere to PostgreSQL types, including `DATE`, `TIMESTAMP WITHOUT TIMEZONE`,
 or `TIMESTAMP WITH TIMEZONE`.
 
-!!! note
+:::note
 
-    The value of `min` and `max` parameters depends on the column type. For example, for the `date` column, the value 
-    should be in the format `YYYY-MM-DD`, while for the `timestamp` column, the value should be in the format
-    `YYYY-MM-DD HH:MM:SS` or `YYYY-MM-DD HH:MM:SS.SSSSSS`. The `timestamptz` column requires the value to be in the
-    format `YYYY-MM-DD HH:MM:SS.SSSSSS+HH:MM`. Read more about date/time formats in 
-    the [PostgreSQL documentation](https://www.postgresql.org/docs/current/datatype-datetime.html).
+The value of `min` and `max` parameters depends on the column type. For example, for the `date` column, the value 
+should be in the format `YYYY-MM-DD`, while for the `timestamp` column, the value should be in the format
+`YYYY-MM-DD HH:MM:SS` or `YYYY-MM-DD HH:MM:SS.SSSSSS`. The `timestamptz` column requires the value to be in the
+format `YYYY-MM-DD HH:MM:SS.SSSSSS+HH:MM`. Read more about date/time formats in 
+the [PostgreSQL documentation](https://www.postgresql.org/docs/current/datatype-datetime.html).
+:::
 
 The behaviour for `NULL` values can be configured using the `keep_null` parameter. The `engine` parameter allows you to
 choose between random and hash engines for generating values. Read more about the engines in
@@ -62,7 +69,7 @@ Result
 <th>Column</th><th>OriginalValue</th><th>TransformedValue</th>
 </tr>
 <tr>
-<td>modifieddate</td><td><span style="color:green">2014-06-30 00:00:00</span></td><td><span style="color:red">2012-07-27 00:00:00</span></td>
+<td>modifieddate</td><td><span style={{color: 'green'}}>2014-06-30 00:00:00</span></td><td><span style={{color: 'red'}}>2012-07-27 00:00:00</span></td>
 </tr>
 </table>
 
@@ -100,10 +107,10 @@ Result:
 <th>Column</th><th>OriginalValue</th><th>TransformedValue</th>
 </tr>
 <tr>
-<td>birthdate</td><td><span style="color:green">1969-01-29</span></td><td><span style="color:red">1985-10-29</span></td>
+<td>birthdate</td><td><span style={{color: 'green'}}>1969-01-29</span></td><td><span style={{color: 'red'}}>1985-10-29</span></td>
 </tr>
 <tr>
-<td>hiredate</td><td><span style="color:green">2009-01-14</span></td><td><span style="color:red">2023-01-01</span></td>
+<td>hiredate</td><td><span style={{color: 'green'}}>2009-01-14</span></td><td><span style={{color: 'red'}}>2023-01-01</span></td>
 </tr>
 </table>
 

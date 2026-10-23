@@ -1,3 +1,9 @@
+---
+title: "RandomDomainName"
+description: "By leveraging an algorithm or library capable of generating believable domain names, the RandomDomainName transformer"
+keywords: ["RandomDomainName", "domain name", "DNS anonymization", "greenmask transformer", "data anonymization", "postgresql", "mysql", "oracle", "Enterprise support", "Open-Source", "PostgreSQL anonymization", "test data management", "compliance", "security", "agentic pipeline", "development cycle"]
+---
+
 The `RandomDomainName` transformer is designed to populate specified database columns with random domain names. This
 tool is invaluable for simulating web data, testing applications that interact with domain names, or anonymizing real
 domain information in datasets.

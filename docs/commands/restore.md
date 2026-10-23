@@ -1,3 +1,9 @@
+---
+title: "Restore"
+description: "The restore command is used to restore a database from a previously created dump. You can specify the dump to restore"
+keywords: ["greenmask restore", "pg_restore", "database recovery", "backup restore", "greenmask", "Enterprise support", "Open-Source", "PostgreSQL anonymization", "test data management", "compliance", "security", "agentic pipeline", "development cycle"]
+---
+
 ## restore command
 
 The `restore` command is used to restore a database from a previously created dump. You can specify the dump to restore
@@ -70,9 +76,10 @@ Mostly it supports the same flags as the `pg_restore` utility, with some extra f
 
 ### Inserts and error handling
 
-!!! warning
+:::warning
 
-    Insert commands are a lot slower than `COPY` commands. Use this feature only when necessary.
+Insert commands are a lot slower than `COPY` commands. Use this feature only when necessary.
+:::
 
 By default, Greenmask restores data using the `COPY` command. If you prefer to restore data using `INSERT` commands, you
 can
@@ -119,11 +126,12 @@ depend on have been restored.
 This is useful when you have the schema already created with foreign keys and other constraints, and you want to insert
 data into the tables in the correct order or catch-up the target database with the new data.
 
-!!! warning
+:::warning
 
-    Greenmask cannot guarantee restoration in topological order when the schema contains cycles. The only way to restore
-    tables with cyclic dependencies is to temporarily remove the foreign key constraint (to break the cycle), restore the
-    data, and then re-add the foreign key constraint once the data restoration is complete.
+Greenmask cannot guarantee restoration in topological order when the schema contains cycles. The only way to restore
+tables with cyclic dependencies is to temporarily remove the foreign key constraint (to break the cycle), restore the
+data, and then re-add the foreign key constraint once the data restoration is complete.
+:::
 
 If your database has cyclic dependencies you will be notified about it but the restoration will continue.
 
@@ -153,10 +161,11 @@ if all batches are inserted successfully**.
 This is useful when you want to be notified of errors as immediately as possible without waiting for the entire
 table to be restored.
 
-!!! warning
+:::warning
 
-    The batch size should be chosen carefully. If the batch size is too small, the restoration process will be slow. If
-    the batch size is too large, you may not be able to identify the error row.
+The batch size should be chosen carefully. If the batch size is too small, the restoration process will be slow. If
+the batch size is too large, you may not be able to identify the error row.
+:::
 
 In the example below, the batch size is set to 1000 rows. This means that 1000 rows will be inserted in a single batch,
 so you will be notified of any errors immediately after each batch is inserted.
@@ -164,3 +173,10 @@ so you will be notified of any errors immediately after each batch is inserted.
 ```shell title="example with batch size" 
 greenmask --config=config.yml restore latest --batch-size 1000
 ```
+
+:::tip[Pair it with arcave]
+
+Restoring a large dump takes time. Restore it once into your Docker Compose project, save that state with
+arcave, and reset the whole environment to it in one command instead of restoring again — see
+[Save and reset test environments with arcave](../arcave.md).
+:::

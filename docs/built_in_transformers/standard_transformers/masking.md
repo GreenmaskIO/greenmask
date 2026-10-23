@@ -1,3 +1,9 @@
+---
+title: "Masking"
+description: "The Masking transformer replaces characters with asterisk * symbols depending on the provided data type. If the"
+keywords: ["Masking", "data masking", "character masking", "asterisk masking", "greenmask transformer", "data anonymization", "postgresql", "mysql", "oracle", "Enterprise support", "Open-Source", "PostgreSQL anonymization", "test data management", "compliance", "security", "agentic pipeline", "development cycle"]
+---
+
 Mask a value using one of the masking rules depending on your domain. `NULL` values are kept.
 
 ## Parameters

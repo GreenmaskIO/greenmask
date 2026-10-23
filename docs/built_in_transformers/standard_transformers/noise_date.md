@@ -1,3 +1,9 @@
+---
+title: "NoiseDate"
+description: "The NoiseDate transformer randomly generates duration between min_ratio and max_ratio parameter and adds it to or"
+keywords: ["NoiseDate", "date noise", "date anonymization", "greenmask transformer", "data anonymization", "postgresql", "mysql", "oracle", "Enterprise support", "Open-Source", "PostgreSQL anonymization", "test data management", "compliance", "security", "agentic pipeline", "development cycle"]
+---
+
 Randomly add or subtract a duration within the provided `ratio` interval to the original date value.
 
 ## Parameters
@@ -30,10 +36,11 @@ In case you have constraints on the date range, you can set the `min` and `max` 
 values. The values for `min` and `max` must have the same format as the `column` parameter. Parameters min and max
 support dynamic mode.
 
-!!! info
+:::info
 
-    If the noised value exceeds the `max` threshold, the transformer will set the value to `max`. If the noised value
-    is lower than the `min` threshold, the transformer will set the value to `min`.
+If the noised value exceeds the `max` threshold, the transformer will set the value to `max`. If the noised value
+is lower than the `min` threshold, the transformer will set the value to `min`.
+:::
 
 The `engine` parameter allows you to choose between random and hash engines for generating values. Read more about the
 engines in the [Transformation engines](../transformation_engines.md) section.
@@ -87,7 +94,7 @@ Result
 <th>Column</th><th>OriginalValue</th><th>TransformedValue</th>
 </tr>
 <tr>
-<td>hiredate</td><td><span style="color:green">2009-01-14</span></td><td><span style="color:red">2010-08-01</span></td>
+<td>hiredate</td><td><span style={{color: 'green'}}>2009-01-14</span></td><td><span style={{color: 'red'}}>2010-08-01</span></td>
 </tr>
 </table>
 

@@ -1,3 +1,9 @@
+---
+title: "Hash"
+description: "The following example generates a hash from the jobtitle into sha1 and truncates the results after the 10th character."
+keywords: ["Hash", "SHA256", "deterministic anonymization", "one-way hash", "greenmask transformer", "data anonymization", "postgresql", "mysql", "oracle", "Enterprise support", "Open-Source", "PostgreSQL anonymization", "test data management", "compliance", "security", "agentic pipeline", "development cycle"]
+---
+
 Generate a hash of the text value using the `Scrypt` hash function under the hood. `NULL` values are kept.
 
 ## Parameters

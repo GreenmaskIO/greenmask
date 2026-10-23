@@ -1,3 +1,9 @@
+---
+title: "TransformationInheritance"
+description: "If you have partitioned tables or want to apply a transformation to a primary key and propagate it to all tables"
+keywords: ["transformation inheritance", "partitioned tables", "table inheritance", "greenmask", "Enterprise support", "Open-Source", "PostgreSQL anonymization", "test data management", "compliance", "security", "agentic pipeline", "development cycle"]
+---
+
 # Transformation Inheritance
 
 ## Description
@@ -110,10 +116,11 @@ receive a `INFO` message in the logs.
 - The transformation condition will not be applied to the referenced column.
 - Not all transformers support `apply_for_references`
 
-!!! warning
+:::warning
 
-    We do not recommend using `apply_for_references` with transformation conditions, as these conditions are not 
-    inherited by transformers on the referenced columns. This may lead to inconsistencies in the data.
+We do not recommend using `apply_for_references` with transformation conditions, as these conditions are not 
+inherited by transformers on the referenced columns. This may lead to inconsistencies in the data.
+:::
 
 ## Example 1. Partitioned tables
 

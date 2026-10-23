@@ -1,3 +1,9 @@
+---
+title: "RandomEmail"
+description: "The RandomEmail transformer generates random email addresses for the specified database column. By default, the"
+keywords: ["RandomEmail", "email address", "email anonymization", "PII", "greenmask transformer", "data anonymization", "postgresql", "mysql", "oracle", "Enterprise support", "Open-Source", "PostgreSQL anonymization", "test data management", "compliance", "security", "agentic pipeline", "development cycle"]
+---
+
 Generate email addresses for a specified column.
 
 ## Parameters
@@ -81,7 +87,7 @@ Result:
 <th>Column</th><th>OriginalValue</th><th>TransformedValue</th>
 </tr>
 <tr>
-<td>email</td><td><span style="color:green">john.smith@gmail.com</span></td><td><span style="color:red">john.smith.a075d99e2d@gmail.com</span></td>
+<td>email</td><td><span style={{color: 'green'}}>john.smith@gmail.com</span></td><td><span style={{color: 'red'}}>john.smith.a075d99e2d@gmail.com</span></td>
 </tr>
 </table>
 
@@ -107,6 +113,6 @@ Result:
 <th>Column</th><th>OriginalValue</th><th>TransformedValue</th>
 </tr>
 <tr>
-<td>email</td><td><span style="color:green">john.smith@gmail.com</span></td><td><span style="color:red">a075d99e2d@protonmail.com</span></td>
+<td>email</td><td><span style={{color: 'green'}}>john.smith@gmail.com</span></td><td><span style={{color: 'red'}}>a075d99e2d@protonmail.com</span></td>
 </tr>
 </table>

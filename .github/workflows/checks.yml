@@ -8,24 +8,18 @@ on:
     paths-ignore:
       - "README.md"
       - "docs/**"
-      - "mkdocs.yml"
       - "LICENSE"
       - "getting_started.md"
       - "docker-compose.yml"
       - "playground/**"
-      - "CNAME"
-      - "requirements.txt"
   pull_request:
     paths-ignore:
       - "README.md"
       - "docs/**"
-      - "mkdocs.yml"
       - "LICENSE"
       - "getting_started.md"
       - "docker-compose.yml"
       - "playground/**"
-      - "CNAME"
-      - "requirements.txt"
 
 env:
   go-version: "1.26"

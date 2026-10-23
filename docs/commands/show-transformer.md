@@ -1,3 +1,9 @@
+---
+title: "Show-transformer"
+description: "This command prints out detailed information about a transformer by a provided name, including specific attributes to"
+keywords: ["greenmask show-transformer", "transformer documentation", "greenmask", "Enterprise support", "Open-Source", "PostgreSQL anonymization", "test data management", "compliance", "security", "agentic pipeline", "development cycle"]
+---
+
 ## show-transformer command
 
 This command prints out detailed information about a transformer by a provided name, including specific attributes to
@@ -47,9 +53,10 @@ their possible attributes. Below are the key parameters for each transformer:
         * `skip_on_null` — indicates whether the transformer should skip the transformation when the input column value
           is NULL. If the column value is NULL, interaction with the transformer is unnecessary.
 
-!!! warning
+:::warning
 
-    The default value in JSON format is base64 encoded. This might be changed in later version of Greenmask.
+The default value in JSON format is base64 encoded. This might be changed in later version of Greenmask.
+:::
 
 ```json title="JSON output example"
 [

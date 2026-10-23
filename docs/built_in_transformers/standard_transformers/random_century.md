@@ -1,3 +1,9 @@
+---
+title: "RandomCentury"
+description: "The RandomCentury transformer utilizes an algorithm or a library function (hypothetical in this context) to generate"
+keywords: ["RandomCentury", "century generation", "date generation", "greenmask transformer", "data anonymization", "postgresql", "mysql", "oracle", "Enterprise support", "Open-Source", "PostgreSQL anonymization", "test data management", "compliance", "security", "agentic pipeline", "development cycle"]
+---
+
 The `RandomCentury` transformer is crafted to populate specified database columns with random century values. It is
 ideal for applications that require historical data simulation, such as generating random years within specific
 centuries for historical databases, testing datasets with temporal dimensions, or anonymizing dates in historical

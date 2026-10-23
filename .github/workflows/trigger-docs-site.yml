@@ -2,12 +2,12 @@
 # Notify the docs site (greenmaskio.github.io) of a docs change or release.
 #
 # Greenmask is published by the site with a version dropdown:
-#   - `Next` always follows greenmask `main` (the `docusaurus/` tree).
+#   - `Next` always follows greenmask `main` (the `docs/` tree).
 #   - each released major.minor line follows its latest STABLE tag.
 # This workflow fires a `docs-release` repository_dispatch at the site in both cases:
-#   - a push to `main` touching `docusaurus/**` → payload {product}        (updates Next)
+#   - a push to `main` touching `docs/**` → payload {product}              (updates Next)
 #   - a STABLE tag push `vMAJOR.MINOR.PATCH`    → payload {product, tag}   (records a line)
-# Prerelease tags (e.g. v1.0.0b1) are ignored. It does NOT touch the MkDocs `docs/` tree.
+# Prerelease tags (e.g. v1.0.0b1) are ignored.
 #
 # SETUP:
 #   Add a repo (or org) secret DOCS_SITE_DISPATCH_TOKEN: a fine-grained PAT with
@@ -29,13 +29,13 @@ permissions:
 env:
   SITE_REPO: greenmaskio/greenmaskio.github.io
   PRODUCT_ID: greenmask        # must match the product `id` in the site's .github/products.json
-  DOCS_GLOB: 'docusaurus/'     # greenmask serves its ported docs from docusaurus/
+  DOCS_GLOB: 'docs/'           # greenmask serves its Docusaurus docs from docs/
 
 jobs:
   dispatch:
     runs-on: ubuntu-latest
     steps:
-      # Need history to diff a main push for docusaurus/** changes.
+      # Need history to diff a main push for docs/** changes.
       # Pinned to a commit SHA (supply-chain hardening); # v4 is the moving tag.
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
         with:
@@ -63,7 +63,7 @@ jobs:
             send "{\"product\":\"${PRODUCT_ID}\",\"tag\":\"${TAG}\"}"
             echo "Dispatched release ${PRODUCT_ID}@${TAG} → ${SITE_REPO}"
           else
-            # main push: only notify when docusaurus/** actually changed.
+            # main push: only notify when docs/** actually changed.
             if [ -z "${BEFORE}" ] || [ "${BEFORE}" = "0000000000000000000000000000000000000000" ]; then
               changed=1
             else

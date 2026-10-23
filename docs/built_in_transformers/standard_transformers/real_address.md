@@ -1,3 +1,9 @@
+---
+title: "RealAddress"
+description: "The template parameter allows for the injection of real address attributes into a customizable template. The following values can be included in your…"
+keywords: ["RealAddress", "real address", "postal address", "geolocation", "greenmask transformer", "data anonymization", "postgresql", "mysql", "oracle", "Enterprise support", "Open-Source", "PostgreSQL anonymization", "test data management", "compliance", "security", "agentic pipeline", "development cycle"]
+---
+
 Generates real addresses for specified database columns using the `faker` library. It supports customization of the generated address format through Go templates.
 
 ## Parameters

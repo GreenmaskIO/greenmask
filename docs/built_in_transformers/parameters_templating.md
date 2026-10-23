@@ -1,3 +1,9 @@
+---
+title: "ParametersTemplating"
+description: "It is allowed to generate parameter values from templates. It is useful when you don't want to write values manually,"
+keywords: ["parameter templates", "Go templates", "transformer configuration", "greenmask", "Enterprise support", "Open-Source", "PostgreSQL anonymization", "test data management", "compliance", "security", "agentic pipeline", "development cycle"]
+---
+
 # Parameters templating
 
 ## Description
@@ -22,11 +28,12 @@ You can encode and decode objects using the driver function bellow.
 | `.DecodeValue`         | Decodes a value from its raw string representation to a Golang type using the data type assigned to the table column specified in the `column` parameter. Decoding is performed through the PostgreSQL driver. Throws an error if types are incompatible. | `.DecodeValueByColumn(value any) (res any, err error)`              |
 | `.EncodeValue`         | Encodes a value of any type into its string representation using the type assigned to the table column specified in the `column` parameter. Encoding is performed through the PostgreSQL driver. Throws an error if types are incompatible.               | `.EncodeValue(value any) (res any, err error)`                      |
 
-!!! warning
+:::warning
 
-    If column parameter is not linked to column parameter, then functions `.DecodeValue` and `.EncodeValue` will return 
-    an error. You can use `.DecodeValueByType` and `.EncodeValueByType` or `.DecodeValueByColumn` and 
-    `.EncodeValueByColumn` instead.
+If column parameter is not linked to column parameter, then functions `.DecodeValue` and `.EncodeValue` will return 
+an error. You can use `.DecodeValueByType` and `.EncodeValueByType` or `.DecodeValueByColumn` and 
+`.EncodeValueByColumn` instead.
+:::
 
 ### Example
 
@@ -72,6 +79,6 @@ Result
 <th>Column</th><th>OriginalValue</th><th>TransformedValue</th>
 </tr>
 <tr>
-<td>birth_date</td><td><span style="color:green">1980-01-01</span></td><td><span style="color:red">1995-09-06</span></td>
+<td>birth_date</td><td><span style={{color: 'green'}}>1980-01-01</span></td><td><span style={{color: 'red'}}>1995-09-06</span></td>
 </tr>
 </table>

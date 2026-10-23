@@ -1,3 +1,9 @@
+---
+title: "RandomTollFreePhoneNumber"
+description: "The RandomTollFreePhoneNumber transformer utilizes algorithms capable of generating random toll-free phone numbers"
+keywords: ["RandomTollFreePhoneNumber", "toll free phone", "1-800 number", "greenmask transformer", "data anonymization", "postgresql", "mysql", "oracle", "Enterprise support", "Open-Source", "PostgreSQL anonymization", "test data management", "compliance", "security", "agentic pipeline", "development cycle"]
+---
+
 The `RandomTollFreePhoneNumber` transformer is designed to populate specified database columns with random toll-free
 phone numbers. This tool is essential for applications requiring the simulation of contact information, testing phone
 number validation systems, or anonymizing phone number data in datasets while focusing on toll-free numbers.

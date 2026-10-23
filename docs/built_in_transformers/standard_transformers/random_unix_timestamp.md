@@ -1,3 +1,9 @@
+---
+title: "RandomUnixTimestamp"
+description: "The RandomUnixTimestamp transformer generates random Unix timestamps within the provided interval, starting from min"
+keywords: ["RandomUnixTimestamp", "unix timestamp", "epoch time", "greenmask transformer", "data anonymization", "postgresql", "mysql", "oracle", "Enterprise support", "Open-Source", "PostgreSQL anonymization", "test data management", "compliance", "security", "agentic pipeline", "development cycle"]
+---
+
 The `RandomUnixTimestamp` transformer generates random Unix time values (timestamps) for specified database columns. It
 is
 particularly useful for populating columns with timestamp data, simulating time-related data, or anonymizing actual
@@ -77,7 +83,7 @@ Result:
 <th>Column</th><th>OriginalValue</th><th>TransformedValue</th>
 </tr>
 <tr>
-<td>paid_at</td><td><span style="color:green">1684325100000</span></td><td><span style="color:red">1708919030732</span></td>
+<td>paid_at</td><td><span style={{color: 'green'}}>1684325100000</span></td><td><span style={{color: 'red'}}>1708919030732</span></td>
 </tr>
 </table>
 
@@ -107,6 +113,6 @@ Result:
 <th>Column</th><th>OriginalValue</th><th>TransformedValue</th>
 </tr>
 <tr>
-<td>paid_at</td><td><span style="color:green">1684325100000</span></td><td><span style="color:red">1655768292548</span></td>
+<td>paid_at</td><td><span style={{color: 'green'}}>1684325100000</span></td><td><span style={{color: 'red'}}>1655768292548</span></td>
 </tr>
 </table>

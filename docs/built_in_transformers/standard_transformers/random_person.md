@@ -1,3 +1,9 @@
+---
+title: "RandomPerson"
+description: "The RandomPerson transformer utilizes a comprehensive list of first names to inject random first names into the"
+keywords: ["RandomPerson", "person name", "PII anonymization", "fake name", "greenmask transformer", "data anonymization", "postgresql", "mysql", "oracle", "Enterprise support", "Open-Source", "PostgreSQL anonymization", "test data management", "compliance", "security", "agentic pipeline", "development cycle"]
+---
+
 The `RandomPerson` transformer is designed to populate specified database columns with personal attributes such as
 first name, last name, title and gender.
 
@@ -105,10 +111,10 @@ Result
 <th>Column</th><th>OriginalValue</th><th>TransformedValue</th>
 </tr>
 <tr>
-<td>name</td><td><span style="color:green">John</span></td><td><span style="color:red">Zane</span></td>
+<td>name</td><td><span style={{color: 'green'}}>John</span></td><td><span style={{color: 'red'}}>Zane</span></td>
 </tr>
 <tr>
-<td>surname</td><td><span style="color:green">Doe</span></td><td><span style="color:red">McCullough</span></td>
+<td>surname</td><td><span style={{color: 'green'}}>Doe</span></td><td><span style={{color: 'red'}}>McCullough</span></td>
 </tr>
 </table>
 
@@ -141,9 +147,9 @@ Result:
 <th>Column</th><th>OriginalValue</th><th>TransformedValue</th>
 </tr>
 <tr>
-<td>name</td><td><span style="color:green">John</span></td><td><span style="color:red">Martin</span></td>
+<td>name</td><td><span style={{color: 'green'}}>John</span></td><td><span style={{color: 'red'}}>Martin</span></td>
 </tr>
 <tr>
-<td>surname</td><td><span style="color:green">Doe</span></td><td><span style="color:red">Mueller</span></td>
+<td>surname</td><td><span style={{color: 'green'}}>Doe</span></td><td><span style={{color: 'red'}}>Mueller</span></td>
 </tr>
 </table>

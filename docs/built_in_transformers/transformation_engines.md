@@ -1,22 +1,30 @@
+---
+title: "TransformationEngines"
+description: "The greenmask provides two engines random and hash. Most of the transformers has engine parameters that"
+keywords: ["hash engine", "random engine", "deterministic anonymization", "greenmask", "Enterprise support", "Open-Source", "PostgreSQL anonymization", "test data management", "compliance", "security", "agentic pipeline", "development cycle"]
+---
+
 # Transformation engine
 
 The greenmask provides two engines `random` and `hash`. Most of the transformers has `engine` parameters that
 by default is set to `random`. Use `hash` engine when you need to generate deterministic data - the same input
 will always produce the same output.
 
-!!! info
-    
-    Greenmask employs the `SHA-3` algorithm to hash input values. While this function is cryptographically secure, it does
-    exhibit lower performance. We plan to introduce additional hash functions in the future to offer a balance between
-    security and performance. For example, `SipHash`, which provides a good trade-off between security and performance, is
-    currently in development and is expected to be included in the stable `v0.2` release of Greenmask.
+:::info
 
-!!! warning
+Greenmask employs the `SHA-3` algorithm to hash input values. While this function is cryptographically secure, it does
+exhibit lower performance. We plan to introduce additional hash functions in the future to offer a balance between
+security and performance. For example, `SipHash`, which provides a good trade-off between security and performance, is
+currently in development and is expected to be included in the stable `v0.2` release of Greenmask.
+:::
 
-    The hash engine does not guarantee the uniqueness of generated values. Although transformers such as `Hash`, 
-    `RandomEmail`, and `RandomUuid` typically have a low probability of producing duplicate values The **feature to 
-    ensure uniqueness is currently under development** at Greenmask and is expected to be released in future updates. 
-    For the latest status, please visit the [Greenmask roadmap](https://github.com/orgs/GreenmaskIO/projects/6).
+:::warning
+
+The hash engine does not guarantee the uniqueness of generated values. Although transformers such as `Hash`, 
+`RandomEmail`, and `RandomUuid` typically have a low probability of producing duplicate values The **feature to 
+ensure uniqueness is currently under development** at Greenmask and is expected to be released in future updates. 
+For the latest status, please visit the [Greenmask roadmap](https://github.com/orgs/GreenmaskIO/projects/6).
+:::
 
 ## Details
 
@@ -83,7 +91,7 @@ Results:
 <th>Column</th><th>OriginalValue</th><th>TransformedValue</th>
 </tr>
 <tr>
-<td>birth_date</td><td><span style="color:green">1980-01-01</span></td><td><span style="color:red">1970-02-23</span></td>
+<td>birth_date</td><td><span style={{color: 'green'}}>1980-01-01</span></td><td><span style={{color: 'red'}}>1970-02-23</span></td>
 </tr>
 </table>
 
@@ -137,7 +145,7 @@ Result:
 <th>Column</th><th>OriginalValue</th><th>TransformedValue</th>
 </tr>
 <tr>
-<td>id</td><td><span style="color:green">1</span></td><td><span style="color:red">130162079</span></td>
+<td>id</td><td><span style={{color: 'green'}}>1</span></td><td><span style={{color: 'red'}}>130162079</span></td>
 </tr>
 </table>
 
@@ -148,7 +156,7 @@ Result:
 <th>Column</th><th>OriginalValue</th><th>TransformedValue</th>
 </tr>
 <tr>
-<td>account_id</td><td><span style="color:green">1</span></td><td><span style="color:red">130162079</span></td>
+<td>account_id</td><td><span style={{color: 'green'}}>1</span></td><td><span style={{color: 'red'}}>130162079</span></td>
 </tr>
 </table>
 

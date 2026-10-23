@@ -1,3 +1,9 @@
+---
+title: "RandomIp"
+description: "Utilizing a robust algorithm or library for generating IP addresses, the RandomIp transformer injects random IPv4"
+keywords: ["RandomIp", "IP address", "network anonymization", "greenmask transformer", "data anonymization", "postgresql", "mysql", "oracle", "Enterprise support", "Open-Source", "PostgreSQL anonymization", "test data management", "compliance", "security", "agentic pipeline", "development cycle"]
+---
+
 The `RandomIp` transformer is designed to populate specified database columns with random IP v4 or V6 addresses.
 This utility is essential for applications requiring the simulation of network data, testing systems that utilize IP
 addresses, or anonymizing real IP addresses in datasets.
@@ -62,7 +68,7 @@ Result:
 <th>Column</th><th>OriginalValue</th><th>TransformedValue</th>
 </tr>
 <tr>
-<td>ip_address</td><td><span style="color:green">192.168.1.10</span></td><td><span style="color:red">192.168.1.28</span></td>
+<td>ip_address</td><td><span style={{color: 'green'}}>192.168.1.10</span></td><td><span style={{color: 'red'}}>192.168.1.28</span></td>
 </tr>
 </table>
 
@@ -91,6 +97,6 @@ Result:
 <th>Column</th><th>OriginalValue</th><th>TransformedValue</th>
 </tr>
 <tr>
-<td>ip_address</td><td><span style="color:green">192.168.1.10</span></td><td><span style="color:red">192.168.1.111</span></td>
+<td>ip_address</td><td><span style={{color: 'green'}}>192.168.1.10</span></td><td><span style={{color: 'red'}}>192.168.1.111</span></td>
 </tr>
 </table>
