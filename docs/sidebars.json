@@ -450,6 +450,11 @@
       "items": [
         {
           "type": "doc",
+          "id": "release_notes/greenmask_0_2_26",
+          "label": "Greenmask 0.2.26"
+        },
+        {
+          "type": "doc",
           "id": "release_notes/greenmask_0_2_25",
           "label": "Greenmask 0.2.25"
         },
