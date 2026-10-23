@@ -28,3 +28,7 @@ config.yml
 .cache
 # Binaries
 cmd/greenmask/greenmask
+# Docs preview
+tools/docs-preview/node_modules
+tools/docs-preview/build
+tools/docs-preview/.docusaurus
