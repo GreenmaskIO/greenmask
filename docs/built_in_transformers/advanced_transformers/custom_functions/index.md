@@ -1,3 +1,9 @@
+---
+title: "Index"
+description: "Within Greenmask, custom functions play a crucial role, providing a wide array of options for implementing diverse"
+keywords: ["custom functions", "Go functions", "faker library", "data generation", "greenmask transformer", "data anonymization", "postgresql", "mysql", "oracle", "Enterprise support", "Open-Source", "PostgreSQL anonymization", "test data management", "compliance", "security", "agentic pipeline", "development cycle"]
+---
+
 # Template custom functions
 
 Within Greenmask, custom functions play a crucial role, providing a wide array of options for implementing diverse

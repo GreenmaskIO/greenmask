@@ -1,3 +1,9 @@
+---
+title: "RandomUuid"
+description: "The RandomUuid transformer generates a random UUID. The behaviour for NULL values can be configured using"
+keywords: ["RandomUuid", "UUID", "unique identifier", "GUID", "greenmask transformer", "data anonymization", "postgresql", "mysql", "oracle", "Enterprise support", "Open-Source", "PostgreSQL anonymization", "test data management", "compliance", "security", "agentic pipeline", "development cycle"]
+---
+
 Generate random unique user ID using version 4.
 
 ## Parameters
@@ -37,6 +43,6 @@ Result
 <th>Column</th><th>OriginalValue</th><th>TransformedValue</th>
 </tr>
 <tr>
-<td>rowguid</td><td><span style="color:green">f01251e5-96a3-448d-981e-0f99d789110d</span></td><td><span style="color:red">8ed8c4b2-7e7a-1e8d-f0f0-768e0e8ed0d0</span></td>
+<td>rowguid</td><td><span style={{color: 'green'}}>f01251e5-96a3-448d-981e-0f99d789110d</span></td><td><span style={{color: 'red'}}>8ed8c4b2-7e7a-1e8d-f0f0-768e0e8ed0d0</span></td>
 </tr>
 </table>

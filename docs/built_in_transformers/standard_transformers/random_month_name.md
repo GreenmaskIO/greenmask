@@ -1,3 +1,9 @@
+---
+title: "RandomMonthName"
+description: "The RandomMonthName transformer utilizes the faker library to generate the names of months at random. It can be"
+keywords: ["RandomMonthName", "month name", "date anonymization", "greenmask transformer", "data anonymization", "postgresql", "mysql", "oracle", "Enterprise support", "Open-Source", "PostgreSQL anonymization", "test data management", "compliance", "security", "agentic pipeline", "development cycle"]
+---
+
 The `RandomMonthName` transformer is crafted to populate specified database columns with random month names. This
 transformer is especially useful for scenarios requiring the simulation of time-related data, such as user birth months
 or event months, without relying on specific date values.

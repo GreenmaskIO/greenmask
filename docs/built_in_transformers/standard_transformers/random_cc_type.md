@@ -1,3 +1,9 @@
+---
+title: "RandomCcType"
+description: "Utilizing a predefined list of credit card types (e.g., VISA, MasterCard, American Express, Discover), the"
+keywords: ["RandomCcType", "credit card type", "VISA mastercard", "greenmask transformer", "data anonymization", "postgresql", "mysql", "oracle", "Enterprise support", "Open-Source", "PostgreSQL anonymization", "test data management", "compliance", "security", "agentic pipeline", "development cycle"]
+---
+
 The `RandomCCType` transformer is designed to populate specified database columns with random credit card types. This
 tool is essential for applications that require the simulation of financial transaction data, testing payment processing
 systems, or anonymizing credit card type information in datasets.

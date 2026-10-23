@@ -1,3 +1,9 @@
+---
+title: "RandomBool"
+description: "The RandomBool transformer generates a random boolean value. The behaviour for NULL values can be"
+keywords: ["RandomBool", "boolean anonymization", "true false", "greenmask transformer", "data anonymization", "postgresql", "mysql", "oracle", "Enterprise support", "Open-Source", "PostgreSQL anonymization", "test data management", "compliance", "security", "agentic pipeline", "development cycle"]
+---
+
 Generate random boolean values.
 
 ## Parameters
@@ -35,6 +41,6 @@ Result
 <th>Column</th><th>OriginalValue</th><th>TransformedValue</th>
 </tr>
 <tr>
-<td>salariedflag</td><td><span style="color:green">t</span></td><td><span style="color:red">f</span></td>
+<td>salariedflag</td><td><span style={{color: 'green'}}>t</span></td><td><span style={{color: 'red'}}>f</span></td>
 </tr>
 </table>

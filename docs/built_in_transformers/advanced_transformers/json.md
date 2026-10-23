@@ -1,3 +1,9 @@
+---
+title: "Json"
+description: "The Json transformer applies a sequence of changing operations (set and/or delete) to a JSON document. The value can be static or dynamic. For the set…"
+keywords: ["Json", "JSON anonymization", "JSON document editing", "jsonb", "greenmask transformer", "data anonymization", "postgresql", "mysql", "oracle", "Enterprise support", "Open-Source", "PostgreSQL anonymization", "test data management", "compliance", "security", "agentic pipeline", "development cycle"]
+---
+
 Change a JSON document using `delete` and `set` operations. `NULL` values are kept.
 
 ## Parameters

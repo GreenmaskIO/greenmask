@@ -1,3 +1,9 @@
+---
+title: "Index"
+description: "Reference for all Greenmask CLI commands: dump, restore, list-dumps, delete, list-transformers, show-transformer, show-dump, and validate."
+keywords: ["greenmask CLI", "command reference", "command line", "greenmask", "Enterprise support", "Open-Source", "PostgreSQL anonymization", "test data management", "compliance", "security", "agentic pipeline", "development cycle"]
+---
+
 # Commands
 
 ## Introduction

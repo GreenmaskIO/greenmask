@@ -1,6 +1,9 @@
 ---
-hide:
-  - feedback
+title: About Greenmask
+description: Greenmask is an open-source CLI tool for PostgreSQL dump anonymization and synthetic test data generation, designed for CI/CD and Test Data Management workflows.
+keywords: [greenmask, data anonymization, postgresql, test data management, database anonymization, "Enterprise support", "Open-Source", "PostgreSQL anonymization", "test data management", "compliance", "security", "agentic pipeline", "development cycle"]
+sidebar_label: About
+slug: /
 ---
 
 # About Greenmask
@@ -15,7 +18,7 @@ backward-compatible with existing PostgreSQL utilities, fast and reliable.
 
 ## Key features
 
-* **[Deterministic transformers](built_in_transformers/transformation_engines.md/#hash-engine)**
+* **[Deterministic transformers](built_in_transformers/transformation_engines.md#hash-engine)**
   — deterministic approach to data transformation based on the hash
   functions. This ensures that the same input data will always produce the same output data. Almost each transformer
   supports either `random` or `hash` engine making it universal for any use case.
@@ -28,7 +31,7 @@ backward-compatible with existing PostgreSQL utilities, fast and reliable.
   warnings, data transformation diff and schema diff features, allowing you to monitor and maintain transformations
   effectively
   throughout the software lifecycle. Schema diff helps to avoid data leakage when schema changed.
-* **[Partitioned tables transformation inheritance](configuration.md/?h=partition#dump-section)**
+* **[Partitioned tables transformation inheritance](configuration.md#dump-section)**
   — Define transformation configurations once and apply them to all
   partitions within partitioned tables (using `apply_for_inherited` parameter), simplifying the anonymization process.
 * **Stateless** - Greenmask operates as a logical dump and does not impact your existing database schema.
@@ -39,7 +42,7 @@ backward-compatible with existing PostgreSQL utilities, fast and reliable.
 * **Backward compatible** - It fully supports the same features and protocols as existing vanilla PostgreSQL utilities.
   Dumps created by Greenmask can be successfully restored using the pg_restore utility.
 * **Extensible** - Users have the flexibility
-  to [implement domain-based transformations](built_in_transformers/standard_transformers/cmd.md/)
+  to [implement domain-based transformations](built_in_transformers/standard_transformers/cmd.md)
   in any programming language or
   use [predefined templates](built_in_transformers/advanced_transformers/index.md).
 * **Integrable** - Integrate seamlessly into your CI/CD system for automated database anonymization and
@@ -48,7 +51,7 @@ backward-compatible with existing PostgreSQL utilities, fast and reliable.
   to deliver results.
 * **Provide variety of storages** - offers a variety of storage options for local and remote data storage,
   including directories and S3-like storage solutions.
-* **[Pgzip support for faster compression](commands/dump.md/?h=pgzip#pgzip-compression)** — by
+* **[Pgzip support for faster compression](commands/dump.md#pgzip-compression)** — by
   setting `--pgzip`, it can speeds up the dump and restoration
   processes through parallel compression.
 
@@ -64,6 +67,9 @@ Greenmask is ideal for various scenarios, including:
   backups, especially when setting up a staging environment or for analytical purposes. It simplifies the deployment of
   a pre-production environment with consistently anonymized data, facilitating faster time-to-market in the development
   lifecycle.
+* **Resettable test environments**. Restore a masked dump into a Docker Compose project once, save it with
+  [arcave](arcave.md), and reset the whole environment in one command after every test, migration, demo or AI agent
+  run.
 
 ## Links
 

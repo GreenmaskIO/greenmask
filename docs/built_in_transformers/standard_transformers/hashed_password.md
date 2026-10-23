@@ -1,3 +1,9 @@
+---
+title: "HashedPassword"
+description: "Replace a password hash with a bcrypt hash of one known password, so test accounts can log in."
+keywords: ["HashedPassword", "bcrypt", "password hash", "pgcrypto", "credential masking", "greenmask transformer", "data anonymization", "postgresql", "mysql", "oracle", "Enterprise support", "Open-Source", "PostgreSQL anonymization", "test data management", "compliance", "security", "agentic pipeline", "development cycle"]
+---
+
 Replace a password hash with a bcrypt hash of one known password, so test accounts can log in.
 
 ## Parameters
@@ -28,14 +34,15 @@ bcrypt is slow on purpose. With the default `per_row_salt: false` the password i
 same hash goes to every row, so the dump stays fast. Set `per_row_salt: true` when rows must not share a
 hash; each row then costs one bcrypt run, which is expensive and adds a large overhead per record.
 
-!!! warning
+:::warning
 
-    Never put a real password into the config file. Pass it through an environment variable with
-    `resolve_env: true`, as in the example below.
+Never put a real password into the config file. Pass it through an environment variable with
+`resolve_env: true`, as in the example below.
+:::
 
 ## Example: Test logins for the `users` table
 
-``` yaml title="HashedPassword transformer example"
+```yaml title="HashedPassword transformer example"
 - schema: "public"
   name: "users"
   transformers:

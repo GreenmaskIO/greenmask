@@ -1,3 +1,9 @@
+---
+title: "Replace"
+description: "The validate parameter in dynamic mode validates each dynamic value by decoding it value via the PostgreSQL"
+keywords: ["Replace", "value replacement", "static substitution", "greenmask transformer", "data anonymization", "postgresql", "mysql", "oracle", "Enterprise support", "Open-Source", "PostgreSQL anonymization", "test data management", "compliance", "security", "agentic pipeline", "development cycle"]
+---
+
 Replace an original value by the provided one.
 
 ## Parameters
@@ -15,10 +21,11 @@ Replace an original value by the provided one.
 |-----------|-----------------|
 | value     | any             |
 
-!!! warning 
+:::warning
 
-    The `validate` parameter in dynamic mode validates each dynamic value by decoding it value via the PostgreSQL 
-    driver. In case there is type format violation the dump command will be terminated with an error message.
+The `validate` parameter in dynamic mode validates each dynamic value by decoding it value via the PostgreSQL 
+driver. In case there is type format violation the dump command will be terminated with an error message.
+:::
 
 ## Description
 

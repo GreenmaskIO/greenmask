@@ -1,3 +1,9 @@
+---
+title: "ParametersEnvVarsInterpolation"
+description: "Greenmask supports environment variable interpolation in transformer parameter values using"
+keywords: ["environment variables", "parameter interpolation", "runtime config", "greenmask", "Enterprise support", "Open-Source", "PostgreSQL anonymization", "test data management", "compliance", "security", "agentic pipeline", "development cycle"]
+---
+
 # Parameters environment variables interpolation
 
 ## Description
@@ -36,10 +42,11 @@ transformers:
       column: "password"
 ```
 
-!!! warning
+:::warning
 
-    To apply env vars interpolation set `resolve_env: true` on the specific transformer.
-    Without this flag, parameter values containing `$` are treated as plain strings.
+To apply env vars interpolation set `resolve_env: true` on the specific transformer.
+Without this flag, parameter values containing `$` are treated as plain strings.
+:::
 
 ## Example
 
@@ -76,10 +83,11 @@ greenmask --config config.yaml dump
 The `password` column in every dumped row will be replaced with the value of `NEW_PASSWORD`
 resolved at dump time.
 
-!!! tip
+:::tip
 
-    Use `${VAR?your error message}` to make a variable required. Greenmask will exit with
-    the provided message if the variable is not set, making misconfiguration explicit.
+Use `${VAR?your error message}` to make a variable required. Greenmask will exit with
+the provided message if the variable is not set, making misconfiguration explicit.
+:::
 
 ## Playground
 

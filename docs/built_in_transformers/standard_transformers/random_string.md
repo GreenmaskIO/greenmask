@@ -1,3 +1,9 @@
+---
+title: "RandomString"
+description: "The RandomString transformer generates a random string with a length between min_length and max_length using the"
+keywords: ["RandomString", "random string", "text anonymization", "greenmask transformer", "data anonymization", "postgresql", "mysql", "oracle", "Enterprise support", "Open-Source", "PostgreSQL anonymization", "test data management", "compliance", "security", "agentic pipeline", "development cycle"]
+---
+
 Generate a random string using the provided characters within the specified length range.
 
 ## Parameters
@@ -45,6 +51,6 @@ Result
 <th>Column</th><th>OriginalValue</th><th>TransformedValue</th>
 </tr>
 <tr>
-<td>accountnumber</td><td><span style="color:green">AUSTRALI0001</span></td><td><span style="color:red">4VUI6P2OZ</span></td>
+<td>accountnumber</td><td><span style={{color: 'green'}}>AUSTRALI0001</span></td><td><span style={{color: 'red'}}>4VUI6P2OZ</span></td>
 </tr>
 </table>

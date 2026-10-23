@@ -1,3 +1,9 @@
+---
+title: Database Subset
+description: Use Greenmask's subset conditions to dump only a portion of your PostgreSQL database while automatically preserving referential integrity across related tables.
+keywords: ["database subset", "postgresql subset", "greenmask", "referential integrity", "Enterprise support", "Open-Source", "PostgreSQL anonymization", "test data management", "compliance", "security", "agentic pipeline", "development cycle"]
+---
+
 # Database subset
 
 Greenmask allows you to define a subset condition for filtering data during the dump process. This feature is useful
@@ -6,11 +12,12 @@ ensures data consistency by including all related data from other tables that ar
 the subset. The subset condition can be defined using `subset_conds` attribute that can be defined on the table in the
 `transformation` section (see examples).
 
-!!! info
+:::info
 
-    Greenmask genrates queries for subset conditions based on the introspected schema using joins and recursive queries.
-    It cannot be responsible for query optimization. The subset quries might be slow due to the complexity of
-    the queries and/or lack of indexes. Circular are resolved using recursive queries.
+Greenmask genrates queries for subset conditions based on the introspected schema using joins and recursive queries.
+It cannot be responsible for query optimization. The subset quries might be slow due to the complexity of
+the queries and/or lack of indexes. Circular are resolved using recursive queries.
+:::
 
 ## Detail
 
@@ -45,14 +52,15 @@ Greenmask will automatically generate the appropriate queries for the table subs
 system ensures data consistency by validating all records found through the recursive queries. If a record does not meet
 the subset condition, it will be excluded along with its parent records, preventing constraint violations.
 
-!!! warning
+:::warning
 
-    Currently (v0.2b2), Greenmask can resolve multi-cylces in one strogly connected component, but only for one group 
-    of vertexes. If you have SSC that contains 2 groups of vertexes, Greenmask will not be able to 
-    resolve it. For instance we have 2 cycles with tables `A, B, C` (first group) and `B, C, E` (second group). 
-    Greenmask will not be able to resolve it. But if you have only one group of vertexes one and more cycles in the 
-    same group of tables (for instance `A, B, C`), Greenmask works with it. This will be fixed in the future.
-    See second example below. In practice this is quite rare situation and 99% of people will not face this issue. 
+Currently (v0.2b2), Greenmask can resolve multi-cylces in one strogly connected component, but only for one group 
+of vertexes. If you have SSC that contains 2 groups of vertexes, Greenmask will not be able to 
+resolve it. For instance we have 2 cycles with tables `A, B, C` (first group) and `B, C, E` (second group). 
+Greenmask will not be able to resolve it. But if you have only one group of vertexes one and more cycles in the 
+same group of tables (for instance `A, B, C`), Greenmask works with it. This will be fixed in the future.
+See second example below. In practice this is quite rare situation and 99% of people will not face this issue. 
+:::
 
 You can read the Wikipedia article about Circular reference [here](https://en.wikipedia.org/wiki/Circular_reference).
 
@@ -74,10 +82,11 @@ generate `INNER JOIN` instead of `LEFT JOIN` by default it is `false`. The `expr
 want to use some expression to get the value of the column in the referencing table. For instance, if you have JSONB
 column in the `audit_logs` table that contains `order_id` field, you can use this field as FK reference.
 
-!!! info
+:::info
 
-    You do not need to define primary key of the referenced table. Greenmask will automatically resolve it and use it in
-    the join condition.
+You do not need to define primary key of the referenced table. Greenmask will automatically resolve it and use it in
+the join condition.
+:::
 
 ```yaml title="Virtual references example"
 dump:
@@ -141,10 +150,11 @@ dump:
             - name: "commentable_id"
 ```
 
-!!! warning
+:::warning
 
-    The plimorphic references cannot be non_null because the `commentable_id` column can be `NULL` if the 
-    `commentable_type` is not set or different that the values defined in the `polymorphic_exprs` attribute.
+The plimorphic references cannot be non_null because the `commentable_id` column can be `NULL` if the 
+`commentable_type` is not set or different that the values defined in the `polymorphic_exprs` attribute.
+:::
 
 ## Troubleshooting
 
@@ -164,10 +174,11 @@ If you have a table with a removed foreign key and want to filter it by the subs
 virtual reference. For more information on virtual references, refer to the [Virtual References](#virtual-references)
 section.
 
-!!! info
+:::info
 
-     If you find any issues related to the code or greenmask is not working as expected, do not hesitate to contact us 
-     [directly](index.md#links) or by creating an [issue in the repository](https://github.com/GreenmaskIO/greenmask/issues).
+If you find any issues related to the code or greenmask is not working as expected, do not hesitate to contact us 
+[directly](index.md#links) or by creating an [issue in the repository](https://github.com/GreenmaskIO/greenmask/issues).
+:::
 
 ### ERROR: column reference "id" is ambiguous
 
@@ -204,10 +215,11 @@ If the dump process is too slow the generated query might be too complex. In thi
 
 ## Example: Dump a subset of the database
 
-!!! info
+:::info
 
-    All examples based on playground database. Read more about the playground database in the 
-    [Playground](playground.md) section.
+All examples based on playground database. Read more about the playground database in the 
+[Playground](playground.md) section.
+:::
 
 The following example demonstrates how to dump a subset of the `person` schema. The subset condition is applied to the
 `businessentity` and `password` tables. The subset condition filters the data based on the `businessentityid` and

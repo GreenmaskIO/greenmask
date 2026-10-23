@@ -1,3 +1,9 @@
+---
+title: "RandomSentence"
+description: "The RandomSentence transformer employs complex text generation algorithms or libraries to generate random sentences,"
+keywords: ["RandomSentence", "sentence generation", "text anonymization", "greenmask transformer", "data anonymization", "postgresql", "mysql", "oracle", "Enterprise support", "Open-Source", "PostgreSQL anonymization", "test data management", "compliance", "security", "agentic pipeline", "development cycle"]
+---
+
 The `RandomSentence` transformer is designed to populate specified database columns with random sentences. Ideal for
 simulating natural language text for user comments, testing NLP systems, or anonymizing textual data in databases.
 

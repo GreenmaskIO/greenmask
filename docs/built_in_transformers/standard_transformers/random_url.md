@@ -1,3 +1,9 @@
+---
+title: "RandomUrl"
+description: "Utilizing advanced algorithms or libraries for generating URL strings, the RandomURL transformer injects random,"
+keywords: ["RandomUrl", "URL generation", "web address anonymization", "greenmask transformer", "data anonymization", "postgresql", "mysql", "oracle", "Enterprise support", "Open-Source", "PostgreSQL anonymization", "test data management", "compliance", "security", "agentic pipeline", "development cycle"]
+---
+
 The `RandomURL` transformer is designed to populate specified database columns with random URL (Uniform Resource
 Locator) addresses. This tool is highly beneficial for simulating web content, testing applications that require URL
 input, or anonymizing real web addresses in datasets.

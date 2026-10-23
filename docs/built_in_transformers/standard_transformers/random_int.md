@@ -1,3 +1,9 @@
+---
+title: "RandomInt"
+description: "The RandomInt transformer generates a random integer within the specified min and max thresholds. The behaviour"
+keywords: ["RandomInt", "random integer", "number anonymization", "greenmask transformer", "data anonymization", "postgresql", "mysql", "oracle", "Enterprise support", "Open-Source", "PostgreSQL anonymization", "test data management", "compliance", "security", "agentic pipeline", "development cycle"]
+---
+
 Generate a random integer within the provided interval.
 
 ## Parameters
@@ -49,7 +55,7 @@ Result
 <th>Column</th><th>OriginalValue</th><th>TransformedValue</th>
 </tr>
 <tr>
-<td>orderqty</td><td><span style="color:green">1</span></td><td><span style="color:red">29</span></td>
+<td>orderqty</td><td><span style={{color: 'green'}}>1</span></td><td><span style={{color: 'red'}}>29</span></td>
 </tr>
 </table>
 
@@ -79,7 +85,7 @@ Result
 <th>Column</th><th>OriginalValue</th><th>TransformedValue</th>
 </tr>
 <tr>
-<td>sickleavehours</td><td><span style="color:green">69</span></td><td><span style="color:red">99</span></td>
+<td>sickleavehours</td><td><span style={{color: 'green'}}>69</span></td><td><span style={{color: 'red'}}>99</span></td>
 </tr>
 </table>
 

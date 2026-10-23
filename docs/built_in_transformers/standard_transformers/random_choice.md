@@ -1,3 +1,9 @@
+---
+title: "RandomChoice"
+description: "The RandomChoice transformer replaces one randomly chosen value from the list provided in the values parameter. You"
+keywords: ["RandomChoice", "random selection", "value list", "greenmask transformer", "data anonymization", "postgresql", "mysql", "oracle", "Enterprise support", "Open-Source", "PostgreSQL anonymization", "test data management", "compliance", "security", "agentic pipeline", "development cycle"]
+---
+
 Replace values randomly chosen from a provided list.
 
 ## Parameters
@@ -45,7 +51,7 @@ Result
 <th>Column</th><th>OriginalValue</th><th>TransformedValue</th>
 </tr>
 <tr>
-<td>modifieddate</td><td><span style="color:green">2007-06-23 00:00:00</span></td><td><span style="color:red">2023-12-21 07:41:06.891</span></td>
+<td>modifieddate</td><td><span style={{color: 'green'}}>2007-06-23 00:00:00</span></td><td><span style={{color: 'red'}}>2023-12-21 07:41:06.891</span></td>
 </tr>
 </table>
 

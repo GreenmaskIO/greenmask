@@ -1,3 +1,9 @@
+---
+title: "RandomDayOfWeek"
+description: "Utilizing the faker library, the RandomDayOfWeek transformer generates names of days (e.g., Monday, Tuesday) at random."
+keywords: ["RandomDayOfWeek", "day of week", "date anonymization", "greenmask transformer", "data anonymization", "postgresql", "mysql", "oracle", "Enterprise support", "Open-Source", "PostgreSQL anonymization", "test data management", "compliance", "security", "agentic pipeline", "development cycle"]
+---
+
 The `RandomDayOfWeek` transformer is specifically designed to fill specified database columns with random
 day-of-the-week names. It is particularly useful for applications that require simulated weekly schedules, random event
 planning, or any scenario where the day of the week is relevant but the specific date is not.

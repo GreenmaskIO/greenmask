@@ -1,3 +1,9 @@
+---
+title: "Index"
+description: "Standard transformers are ready-to-use methods that require no customization and perform with just as little as parameters input. Below you can find an…"
+keywords: ["standard transformers", "greenmask", "data anonymization", "greenmask transformer", "postgresql", "mysql", "oracle", "Enterprise support", "Open-Source", "PostgreSQL anonymization", "test data management", "compliance", "security", "agentic pipeline", "development cycle"]
+---
+
 # Standard transformers
 
 Standard transformers are ready-to-use methods that require no customization and perform with just as little as parameters input. Below you can find an index of all standard transformers currently available in Greenmask.

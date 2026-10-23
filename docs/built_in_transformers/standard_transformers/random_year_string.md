@@ -1,3 +1,9 @@
+---
+title: "RandomYearString"
+description: "The RandomYearString transformer leverages the faker library to generate strings representing random years. This"
+keywords: ["RandomYearString", "year string", "date anonymization", "greenmask transformer", "data anonymization", "postgresql", "mysql", "oracle", "Enterprise support", "Open-Source", "PostgreSQL anonymization", "test data management", "compliance", "security", "agentic pipeline", "development cycle"]
+---
+
 The `RandomYearString` transformer is designed to populate specified database columns with random year strings. It is
 ideal for scenarios that require the representation of years without specific dates, such as manufacturing years of
 products, birth years of users, or any other context where only the year is relevant.

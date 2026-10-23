@@ -1,3 +1,9 @@
+---
+title: "DynamicParameters"
+description: "Most transformers in Greenmask have dynamic parameters. This functionality is possible because Greenmask utilizes a"
+keywords: ["dynamic parameters", "transformer configuration", "runtime parameters", "greenmask", "Enterprise support", "Open-Source", "PostgreSQL anonymization", "test data management", "compliance", "security", "agentic pipeline", "development cycle"]
+---
+
 # Dynamic parameters
 
 ## Description

@@ -1,3 +1,9 @@
+---
+title: Greenmask Playground
+description: Try Greenmask instantly with the Docker-based playground — includes sample PostgreSQL databases, MinIO storage, and the Greenmask utility pre-configured and ready to run.
+keywords: ["greenmask playground", "docker", "data anonymization demo", "try greenmask", "Enterprise support", "Open-Source", "PostgreSQL anonymization", "test data management", "compliance", "security", "agentic pipeline", "development cycle"]
+---
+
 # Greenmask Playground
 
 ![Demo](assets/tapes/playground.gif)
@@ -9,9 +15,10 @@ Greenmask Playground is a sandbox environment in Docker with sample databases in
 * **MinIO storage** — used for storage purposes (an Azurite-based Azure Blob backend is also available — see [Using the Azure Blob storage backend](#using-the-azure-blob-storage-backend) — as well as an SFTP backend — see [Using the SSH storage backend](#using-the-ssh-storage-backend)).
 * **Greenmask Utility** — Greenmask itself, ready for use.
 
-!!! warning
+:::warning
 
-    To complete this guide, you must have **Docker** and **docker-compose** installed.
+To complete this guide, you must have **Docker** and **docker-compose** installed.
+:::
 
 ## Setting up Greenmask Playground
 
@@ -32,19 +39,20 @@ Greenmask Playground is a sandbox environment in Docker with sample databases in
     ```shell
     make greenmask-latest
     ```
-!!! Tip
+:::tip
 
-    If you're experiencing problems with pulling images from Docker Hub, you can build the Greenmask image from source by running the following command:
+If you're experiencing problems with pulling images from Docker Hub, you can build the Greenmask image from source by running the following command:
 
-    ```shell
-    docker-compose run greenmask-from-source
-    ```
+```shell
+docker-compose run greenmask-from-source
+```
 
-    Or with `make`:
+Or with `make`:
 
-    ```shell
-    make greenmask-from-source
-    ```
+```shell
+make greenmask-from-source
+```
+:::
 
 Now you have Greenmask Playground up and running with a shell prompt inside the container. All further operations will be carried out within this container's shell.
 
@@ -71,15 +79,16 @@ greenmask --config config-azure.yml dump
 greenmask --config config-azure.yml restore latest
 ```
 
-!!! Tip
+:::tip
 
-    If you prefer to invoke Docker Compose directly instead of the `make` targets, run:
+If you prefer to invoke Docker Compose directly instead of the `make` targets, run:
 
-    ```shell
-    docker compose -f docker-compose.yml -f docker-compose-azure.yml run greenmask
-    ```
+```shell
+docker compose -f docker-compose.yml -f docker-compose-azure.yml run greenmask
+```
 
-    `docker-compose-azure.yml` is an override that swaps the `playground-storage` service for an Azurite emulator, so the base file must be passed first.
+`docker-compose-azure.yml` is an override that swaps the `playground-storage` service for an Azurite emulator, so the base file must be passed first.
+:::
 
 ## Using the SSH storage backend
 
@@ -105,15 +114,16 @@ greenmask --config config-ssh.yml list-dumps
 greenmask --config config-ssh.yml restore latest
 ```
 
-!!! Tip
+:::tip
 
-    If you prefer to invoke Docker Compose directly instead of the `make` targets, run:
+If you prefer to invoke Docker Compose directly instead of the `make` targets, run:
 
-    ```shell
-    docker compose -f docker-compose.yml -f docker-compose-ssh.yml run greenmask
-    ```
+```shell
+docker compose -f docker-compose.yml -f docker-compose-ssh.yml run greenmask
+```
 
-    `docker-compose-ssh.yml` is an override that swaps the `playground-storage` service for an atmoz/sftp SFTP server, so the base file must be passed first.
+`docker-compose-ssh.yml` is an override that swaps the `playground-storage` service for an atmoz/sftp SFTP server, so the base file must be passed first.
+:::
 
 ## Playground Workflow
 
@@ -151,7 +161,13 @@ To simplify your experience in the playground, use the following workflow:
     psql_t
     ```
 
+:::tip[Pair it with arcave]
 
+Once the transformed database looks right, save it with arcave and return to that state in one command after
+every test or experiment, instead of dumping and restoring again. Run arcave on the host, in a second terminal
+in the repository directory, with `ARCAVE_PROJECT_NAME=greenmask`. A rollback also reverts the original
+database and the MinIO dump storage — see [Using it with the Greenmask playground](arcave.md#using-it-with-the-greenmask-playground).
+:::
 
 ## Useful Aliases
 

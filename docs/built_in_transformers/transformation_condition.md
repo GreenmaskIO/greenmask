@@ -1,3 +1,9 @@
+---
+title: "TransformationCondition"
+description: "The transformation condition feature allows you to execute a defined transformation only if a specified condition is"
+keywords: ["transformation condition", "conditional anonymization", "column conditions", "greenmask", "Enterprise support", "Open-Source", "PostgreSQL anonymization", "test data management", "compliance", "security", "agentic pipeline", "development cycle"]
+---
+
 # Transformation Condition
 
 ## Description
@@ -25,10 +31,11 @@ the driver-encoded value in its real type or as a raw string.
 You can access a specific column’s value using `record.column_name` for the real type or `raw_record.column_name` for
 the raw string value.
 
-!!! warning
+:::warning
 
-    A record may always be modified by previous transformers before the condition is evaluated. This means Greenmask does
-    not retain the original record value and instead provides the current modified value for condition evaluation.
+A record may always be modified by previous transformers before the condition is evaluated. This means Greenmask does
+not retain the original record value and instead provides the current modified value for condition evaluation.
+:::
 
 ## Null values condition
 
@@ -81,9 +88,10 @@ It is important to create the integer or float value in the correct format. If y
 must write a number without dot (`1`, `2`, etc.). If you want to define the float value you must write a number with
 dot (`1.0`, `2.0`, etc.).
 
-!!! warning
+:::warning
 
-    You may see a wrong comparison result if you compare int and float, for example `1 == 1.0` will return `false`. 
+You may see a wrong comparison result if you compare int and float, for example `1 == 1.0` will return `false`. 
+:::
 
 ## Architecture
 

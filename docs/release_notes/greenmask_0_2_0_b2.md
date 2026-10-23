@@ -16,42 +16,42 @@ security.
   allowing you to scale down the dump size ([#110](https://github.com/GreenmaskIO/greenmask/issues/110)). This is
   robust for multipurpose and especially useful for testing and development environments. It supports:
 
-    * References with [NULL values](../database_subset.md/#references-with-null-values) - generate the LEFT JOIN query
+    * References with [NULL values](../database_subset.md#references-with-null-values) - generate the LEFT JOIN query
       for the FK reference with NULL values to include them in the subset.
-    * Supports [virtual references](../database_subset.md/#virtual-references) (virtual foreign keys) - create a logical
+    * Supports [virtual references](../database_subset.md#virtual-references) (virtual foreign keys) - create a logical
       FK in Greenmask that will be used for subset dependencies graph. The virtual reference can be defined for a column
       or an expression, allowing you to get the value from JSON and similar.
-    * Supports [circular references](../database_subset.md/#circular-reference) - Greenmask will automatically resolve
+    * Supports [circular references](../database_subset.md#circular-reference) - Greenmask will automatically resolve
       circular dependencies in the subset by generating a recursive query. The query is generated with integrity checks
       of the subset ensuring that the data gathered from circular dependencies is consistent.
-    * Fully covered with documentation including [troubleshooting](../database_subset.md/#troubleshooting)
-      and [examples](../database_subset.md/#example-dump-a-subset-of-the-database).
+    * Fully covered with documentation including [troubleshooting](../database_subset.md#troubleshooting)
+      and [examples](../database_subset.md#example-dump-a-subset-of-the-database).
     * Supports FK and PK that have more than one column (or expression).
     * **Multi-cycles resolution in one strong connected component (SCC)** is supported - Greenmask will generate a
       recursive query for the SCC whether it is a single cycle or multiple cycles, making the subset system universal
       for any database schema.
 
-* **pgzip** support for faster [compression](../commands/dump.md/#pgzip-compression)
-  and [decompression](../commands/restore.md/#pgzip-decompression) — setting `--pgzip` can speed up the dump and
+* **pgzip** support for faster [compression](../commands/dump.md#pgzip-compression)
+  and [decompression](../commands/restore.md#pgzip-decompression) — setting `--pgzip` can speed up the dump and
   restoration processes through parallel compression. In some tests, it shows up to 5x faster dump and restore
   operations.
-* [**Restoration in topological order**](../commands/restore.md/#restoration-in-topological-order) - This flag ensures
+* [**Restoration in topological order**](../commands/restore.md#restoration-in-topological-order) - This flag ensures
   that dependent tables are not restored until the tables they depend on have been restored. This is useful when you
   want to be notified of errors as immediately as possible without waiting for the entire table to be restored.
-* **[Insert format](../commands/restore.md/#inserts-and-error-handling)** restoration - For a flexible restoration
+* **[Insert format](../commands/restore.md#inserts-and-error-handling)** restoration - For a flexible restoration
   process, Greenmask now supports data restoration in the `INSERT` format. It generates the insert statements based on
   `COPY` records from the dump. You do not need to re-dump your data to use this feature; it can be defined in the
   `restore` command. The list of new features related to the `INSERT` format:
 
     * Generate `INSERT` statements with the `**ON CONFLICT DO NOTHING**` clause if the flag `--on-conflict-do-nothing`
       is set.
-    * **[Error exclusion list](../configuration.md/#restoration-error-exclusion)** in the config to skip
+    * **[Error exclusion list](../configuration.md#restoration-error-exclusion)** in the config to skip
       certain errors and continue inserting subsequent rows from the dump.
     * Use cases - **incremental dump and restoration** for logical data. For example, if you have a database, and you
       want to insert data periodically from another source, this can be used together with the database subset and
       transformations to catch up the target database.
 
-* [Restore data batching](../commands/restore.md/#restore-data-batching) ([#173](https://github.com/GreenmaskIO/greenmask/pull/174)) -
+* [Restore data batching](../commands/restore.md#restore-data-batching) ([#173](https://github.com/GreenmaskIO/greenmask/pull/174)) -
   By default, the COPY protocol returns the error only on transaction commit. To override this behavior, use the
   `--batch-size` flag to specify the number of rows to insert in a single batch during the COPY command. This is useful
   when you want to control the transaction size and commit.

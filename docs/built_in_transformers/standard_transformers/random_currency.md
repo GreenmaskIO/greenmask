@@ -1,3 +1,9 @@
+---
+title: "RandomCurrency"
+description: "Utilizing a comprehensive list of global currency codes (e.g., USD, EUR, JPY), the RandomCurrency transformer injects"
+keywords: ["RandomCurrency", "currency code", "ISO 4217", "financial anonymization", "greenmask transformer", "data anonymization", "postgresql", "mysql", "oracle", "Enterprise support", "Open-Source", "PostgreSQL anonymization", "test data management", "compliance", "security", "agentic pipeline", "development cycle"]
+---
+
 The `RandomCurrency` transformer is tailored to populate specified database columns with random currency codes. This
 tool is highly beneficial for applications involving the simulation of international financial data, testing currency
 conversion features, or anonymizing currency information in datasets.

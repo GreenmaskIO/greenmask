@@ -1,3 +1,12 @@
+---
+title: "Validate"
+description: "The validate command allows you to perform a validation procedure and compare transformed data."
+keywords: ["greenmask validate", "data validation", "anonymization check", "greenmask", "Enterprise support", "Open-Source", "PostgreSQL anonymization", "test data management", "compliance", "security", "agentic pipeline", "development cycle"]
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
 # validate command
 
 The `validate` command allows you to perform a validation procedure and compare transformed data.
@@ -82,7 +91,6 @@ configuration and potential constraint violations.
   "severity": "warning" // (12)
 }
 ```
-{ .annotate }
 
 1. **Detailed metadata**. The validation output provides comprehensive metadata to pinpoint the source of problems.
 2. **Column name** indicates the name of the affected column.
@@ -118,9 +126,10 @@ configuration and potential constraint violations.
     ```
 13. **Hash** is a unique identifier of the validation warning. It is used to resolve the warning in the config file
 
-!!! note
+:::note
 
-    A validation warning with a severity level of `"error"` is considered critical and must be addressed before the dump operation can proceed. Failure to resolve such warnings will prevent the dump operation from being executed.
+A validation warning with a severity level of `"error"` is considered critical and must be addressed before the dump operation can proceed. Failure to resolve such warnings will prevent the dump operation from being executed.
+:::
 
 ```text title="Schema diff changed output example"
 2024-03-15T19:46:12+02:00 WRN Database schema has been changed Hint="Check schema changes before making new dump" PreviousDumpId=1710520855501
@@ -160,112 +169,121 @@ greenmask --config=config.yml validate \
 
 The json object result
 
-=== "The validation warning"
+<Tabs>
+<TabItem value="the-validation-warning" label="The validation warning">
 
-    ```json
+
+```json
+{
+  "level": "warn",
+  "ValidationWarning": {
+    "msg": "possible constraint violation: column has Check constraint",
+    "severity": "warning",
+    "meta": {
+      "ColumnName": "birthdate",
+      "ConstraintDef": "CHECK (birthdate >= '1930-01-01'::date AND birthdate <= (now() - '18 years'::interval))",
+      "ConstraintName": "humanresources",
+      "ConstraintSchema": "humanresources",
+      "ConstraintType": "Check",
+      "ParameterName": "column",
+      "SchemaName": "humanresources",
+      "TableName": "employee",
+      "TransformerName": "NoiseDate"
+    },
+    "hash": "aa808fb574a1359c6606e464833feceb"
+  },
+  "time": "2024-03-15T20:01:51+02:00"
+}
+```
+
+</TabItem>
+<TabItem value="schema-diff-events" label="Schema diff events">
+
+
+```json
+{
+  "level": "warn",
+  "PreviousDumpId": "1710520855501",
+  "Diff": [
     {
-      "level": "warn",
-      "ValidationWarning": {
-        "msg": "possible constraint violation: column has Check constraint",
-        "severity": "warning",
-        "meta": {
-          "ColumnName": "birthdate",
-          "ConstraintDef": "CHECK (birthdate >= '1930-01-01'::date AND birthdate <= (now() - '18 years'::interval))",
-          "ConstraintName": "humanresources",
-          "ConstraintSchema": "humanresources",
-          "ConstraintType": "Check",
-          "ParameterName": "column",
-          "SchemaName": "humanresources",
-          "TableName": "employee",
-          "TransformerName": "NoiseDate"
-        },
-        "hash": "aa808fb574a1359c6606e464833feceb"
+      "event": "ColumnRenamed",
+      "signature": {
+        "CurrentColumnName": "id1",
+        "PreviousColumnName": "id",
+        "TableName": "test",
+        "TableSchema": "public"
+      }
+    },
+    {
+      "event": "ColumnTypeChanged",
+      "signature": {
+        "ColumnName": "id",
+        "CurrentColumnType": "bigint",
+        "CurrentColumnTypeOid": "20",
+        "PreviousColumnType": "integer",
+        "PreviousColumnTypeOid": "23",
+        "TableName": "test",
+        "TableSchema": "public"
+      }
+    },
+    {
+      "event": "ColumnCreated",
+      "signature": {
+        "ColumnName": "name",
+        "ColumnType": "text",
+        "TableName": "test",
+        "TableSchema": "public"
+      }
+    },
+    {
+      "event": "TableCreated",
+      "signature": {
+        "SchemaName": "public",
+        "TableName": "test1",
+        "TableOid": "20563"
+      }
+    }
+  ],
+  "Hint": "Check schema changes before making new dump",
+  "time": "2024-03-15T20:01:51+02:00",
+  "message": "Database schema has been changed"
+}
+```
+
+</TabItem>
+<TabItem value="transformation-diff-line" label="Transformation diff line">
+
+
+```json
+{
+  "schema": "humanresources",
+  "name": "employee",
+  "primary_key_columns": [
+    "businessentityid"
+  ],
+  "with_diff": true,
+  "transformed_only": true,
+  "records": [
+    {
+      "birthdate": {
+        "original": "1969-01-29",
+        "transformed": "1964-10-20",
+        "equal": false,
+        "implicit": true
       },
-      "time": "2024-03-15T20:01:51+02:00"
+      "businessentityid": {
+        "original": "1",
+        "transformed": "1",
+        "equal": true,
+        "implicit": true
+      }
     }
-    ```
+  ]
+}
+```
 
-=== "Schema diff events"
-
-    ```json
-    {
-      "level": "warn",
-      "PreviousDumpId": "1710520855501",
-      "Diff": [
-        {
-          "event": "ColumnRenamed",
-          "signature": {
-            "CurrentColumnName": "id1",
-            "PreviousColumnName": "id",
-            "TableName": "test",
-            "TableSchema": "public"
-          }
-        },
-        {
-          "event": "ColumnTypeChanged",
-          "signature": {
-            "ColumnName": "id",
-            "CurrentColumnType": "bigint",
-            "CurrentColumnTypeOid": "20",
-            "PreviousColumnType": "integer",
-            "PreviousColumnTypeOid": "23",
-            "TableName": "test",
-            "TableSchema": "public"
-          }
-        },
-        {
-          "event": "ColumnCreated",
-          "signature": {
-            "ColumnName": "name",
-            "ColumnType": "text",
-            "TableName": "test",
-            "TableSchema": "public"
-          }
-        },
-        {
-          "event": "TableCreated",
-          "signature": {
-            "SchemaName": "public",
-            "TableName": "test1",
-            "TableOid": "20563"
-          }
-        }
-      ],
-      "Hint": "Check schema changes before making new dump",
-      "time": "2024-03-15T20:01:51+02:00",
-      "message": "Database schema has been changed"
-    }
-    ```
-
-=== "Transformation diff line"
-
-    ```json
-    {
-      "schema": "humanresources",
-      "name": "employee",
-      "primary_key_columns": [
-        "businessentityid"
-      ],
-      "with_diff": true,
-      "transformed_only": true,
-      "records": [
-        {
-          "birthdate": {
-            "original": "1969-01-29",
-            "transformed": "1964-10-20",
-            "equal": false,
-            "implicit": true
-          },
-          "businessentityid": {
-            "original": "1",
-            "transformed": "1",
-            "equal": true,
-            "implicit": true
-          }
-        }
-      ]
-    }
-    ```
+</TabItem>
+</Tabs>
 
 ## Summary diff
 

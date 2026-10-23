@@ -1,3 +1,9 @@
+---
+title: "Dump"
+description: "Use the Greenmask dump command to export a PostgreSQL database, apply anonymization transformations, validate the output, and store it in local or S3-compatible storage."
+keywords: ["greenmask dump", "pg_dump", "logical backup", "database export", "greenmask", "Enterprise support", "Open-Source", "PostgreSQL anonymization", "test data management", "compliance", "security", "agentic pipeline", "development cycle"]
+---
+
 ## dump command
 
 The `dump` command operates in the following way:

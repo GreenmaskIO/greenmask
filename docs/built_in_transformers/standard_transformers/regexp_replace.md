@@ -1,3 +1,9 @@
+---
+title: "RegexpReplace"
+description: "The RegexpReplace transformer replaces a string according to the applied regular expression. The valid regular"
+keywords: ["RegexpReplace", "regex replace", "pattern replacement", "regexp", "greenmask transformer", "data anonymization", "postgresql", "mysql", "oracle", "Enterprise support", "Open-Source", "PostgreSQL anonymization", "test data management", "compliance", "security", "agentic pipeline", "development cycle"]
+---
+
 Replace a string using a regular expression.
 
 ## Parameters
@@ -37,9 +43,10 @@ replaced with `{{ id_name }}`.
 | loginid     | adventure-works\ken0 | ken0        |
 ```
 
-!!! note
+:::note
 
-    YAML has control symbols, and using them without escaping may result in an error. In the example above, the prefix
-    of `id` is separated by the `\` symbol. Since this symbol is a control symbol, we must escape it using `\\`.
-    However, the '\' symbol is also a control symbol for regular expressions, which is why we need to
-    double-escape it as `\\\\`.
+YAML has control symbols, and using them without escaping may result in an error. In the example above, the prefix
+of `id` is separated by the `\` symbol. Since this symbol is a control symbol, we must escape it using `\\`.
+However, the '\' symbol is also a control symbol for regular expressions, which is why we need to
+double-escape it as `\\\\`.
+:::

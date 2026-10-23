@@ -1,3 +1,9 @@
+---
+title: "List-dumps"
+description: "The list-dumps command provides a list of all dumps stored in the storage."
+keywords: ["greenmask list-dumps", "dump listing", "backup management", "greenmask", "Enterprise support", "Open-Source", "PostgreSQL anonymization", "test data management", "compliance", "security", "agentic pipeline", "development cycle"]
+---
+
 ## list-dumps command
 
 The `list-dumps` command provides a list of all dumps stored in the storage.
@@ -28,11 +34,11 @@ The list includes the following attributes:
 Example of `list-dumps` output:
 ![list_dumps_screen.png](../assets/list_dumps_screen.png)
 
-!!! info
+:::info
 
-    Greenmask uses a heartbeat mechanism to determine the status of a dump.
-    A dump is considered `failed` if it lacks a "done" heartbeat or if the last heartbeat timestamp exceeds 30 minutes.
-    Heartbeats are recorded every 15 minutes by the `dump` command while it is in progress. If `greenmask` fails unexpectedly,
-    the heartbeat stops being updated, and after 30 minutes (twice the interval), the dump is classified as `failed`. 
-    The `in progress` status indicates that a dump is still ongoing.
-
+Greenmask uses a heartbeat mechanism to determine the status of a dump.
+A dump is considered `failed` if it lacks a "done" heartbeat or if the last heartbeat timestamp exceeds 30 minutes.
+Heartbeats are recorded every 15 minutes by the `dump` command while it is in progress. If `greenmask` fails unexpectedly,
+the heartbeat stops being updated, and after 30 minutes (twice the interval), the dump is classified as `failed`. 
+The `in progress` status indicates that a dump is still ongoing.
+:::

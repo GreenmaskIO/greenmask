@@ -10,9 +10,11 @@ This is a bugfix release. It fixes a data corruption issue present in every earl
 
 ## Am I affected?
 
-!!! warning
+:::warning
 
-    Dumps made by an earlier release are not repaired by upgrading: the byte was lost when the dump was made. If you are affected, make a new dump with 0.2.25.
+Dumps made by an earlier release are not repaired by upgrading: the byte was lost when the dump was made. If you are affected, make a new dump with 0.2.25.
+
+:::
 
 A table is affected only if all of the following are true:
 

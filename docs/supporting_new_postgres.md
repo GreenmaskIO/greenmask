@@ -1,3 +1,9 @@
+---
+title: Supporting a New PostgreSQL Version
+description: Step-by-step guide for adding support for a new PostgreSQL major version in Greenmask, including how to update the test suite and verify compatibility.
+keywords: ["postgresql version support", "greenmask compatibility", "postgres upgrade", "Enterprise support", "Open-Source", "PostgreSQL anonymization", "test data management", "compliance", "security", "agentic pipeline", "development cycle"]
+---
+
 # Supporting a New PostgreSQL Version
 
 ## Support policy
@@ -62,7 +68,7 @@ updated before the release ships.
 git diff REL_18_0 REL_19_BETA3 -- src/bin/pg_dump/pg_backup_archiver.h
 ```
 
-Compare against `MaxVersion` in [`internal/db/postgres/toc/utils.go`](../internal/db/postgres/toc/utils.go).
+Compare against `MaxVersion` in [`internal/db/postgres/toc/utils.go`](https://github.com/GreenmaskIO/greenmask/blob/main/internal/db/postgres/toc/utils.go).
 As of PostgreSQL 19 beta 3 the format is still **1.16**, unchanged since PostgreSQL 18.
 
 ### 3. Diff the TOC read/write functions
@@ -88,8 +94,8 @@ git diff REL_18_0 REL_19_BETA3 -- src/bin/pg_dump/pg_dump.c \
 ```
 
 Cross-check every field of `Options` in
-[`internal/db/postgres/pgdump/pgdump.go`](../internal/db/postgres/pgdump/pgdump.go) and
-[`internal/db/postgres/pgrestore/pgrestore.go`](../internal/db/postgres/pgrestore/pgrestore.go).
+[`internal/db/postgres/pgdump/pgdump.go`](https://github.com/GreenmaskIO/greenmask/blob/main/internal/db/postgres/pgdump/pgdump.go) and
+[`internal/db/postgres/pgrestore/pgrestore.go`](https://github.com/GreenmaskIO/greenmask/blob/main/internal/db/postgres/pgrestore/pgrestore.go).
 
 ### 5. Diff the TOC entry `desc` strings
 
@@ -118,11 +124,11 @@ Pay attention to:
   are excluded by default — verify that is still the behaviour you want, and that the
   `unknown relkind` branch in `internal/db/postgres/context/pg_catalog.go` cannot be reached.
 - **New `contype` values** — the `switch` in
-  [`internal/db/postgres/context/tables_introspection.go`](../internal/db/postgres/context/tables_introspection.go)
+  [`internal/db/postgres/context/tables_introspection.go`](https://github.com/GreenmaskIO/greenmask/blob/main/internal/db/postgres/context/tables_introspection.go)
   must cover them or log the unknown-constraint warning.
 - **New built-in types** in `pg_type.dat`. These are not "custom types", so they are invisible to
   `CustomTypesWithTypeChainQuery` and depend on `pgx` knowing their OID. If `pgx` does not, columns of
-  that type are marked unsupported in [`pkg/toolkit/driver.go`](../pkg/toolkit/driver.go) and no
+  that type are marked unsupported in [`pkg/toolkit/driver.go`](https://github.com/GreenmaskIO/greenmask/blob/main/pkg/toolkit/driver.go) and no
   transformer can be attached. PostgreSQL 19 adds `oid8` (6437) and `regdatabase` (6490).
 - **Behaviour changes in functions greenmask calls** — `pg_sequence_last_value`,
   `has_sequence_privilege`, `pg_get_constraintdef`, `aclexplode`, `acldefault`, `pg_partition_ancestors`.
@@ -167,41 +173,41 @@ every revision.** Links are pinned to `REL_19_BETA3`; swap the tag when a new ma
 
 | Upstream | Greenmask counterpart | What to check |
 |---|---|---|
-| [`K_VERS_1_16` / `K_VERS_MAJOR` / `K_VERS_MINOR` / `K_VERS_REV`](https://github.com/postgres/postgres/blob/REL_19_BETA3/src/bin/pg_dump/pg_backup_archiver.h#L71-L79) | [`MaxVersion`, `BackupVersions`](../internal/db/postgres/toc/utils.go) | A bumped `K_VERS_MINOR` means new fields were added to the entry or header layout. Add the new `1.N` key and gate the new fields identically. |
-| [`K_VERS_MAX`](https://github.com/postgres/postgres/blob/REL_19_BETA3/src/bin/pg_dump/pg_backup_archiver.h#L82) | version guard in [`readHeader`](../internal/db/postgres/toc/reader.go) | Upper bound accepted by pg_restore; ours must not exceed it. |
-| [`archUnknown` / `archCustom` / `archTar` / `archNull` / `archDirectory`](https://github.com/postgres/postgres/blob/REL_19_BETA3/src/bin/pg_dump/pg_backup.h#L39-L46) | [`ArchTar` and friends](../internal/db/postgres/toc/utils.go) | Format byte values. |
-| [`pg_compress_algorithm`](https://github.com/postgres/postgres/blob/REL_19_BETA3/src/include/common/compression.h#L21) | [`PgCompressionNone`…`PgCompressionZSTD`](../internal/db/postgres/toc/utils.go) | Ordinal values of the compression algorithm byte written since format 1.15. |
+| [`K_VERS_1_16` / `K_VERS_MAJOR` / `K_VERS_MINOR` / `K_VERS_REV`](https://github.com/postgres/postgres/blob/REL_19_BETA3/src/bin/pg_dump/pg_backup_archiver.h#L71-L79) | [`MaxVersion`, `BackupVersions`](https://github.com/GreenmaskIO/greenmask/blob/main/internal/db/postgres/toc/utils.go) | A bumped `K_VERS_MINOR` means new fields were added to the entry or header layout. Add the new `1.N` key and gate the new fields identically. |
+| [`K_VERS_MAX`](https://github.com/postgres/postgres/blob/REL_19_BETA3/src/bin/pg_dump/pg_backup_archiver.h#L82) | version guard in [`readHeader`](https://github.com/GreenmaskIO/greenmask/blob/main/internal/db/postgres/toc/reader.go) | Upper bound accepted by pg_restore; ours must not exceed it. |
+| [`archUnknown` / `archCustom` / `archTar` / `archNull` / `archDirectory`](https://github.com/postgres/postgres/blob/REL_19_BETA3/src/bin/pg_dump/pg_backup.h#L39-L46) | [`ArchTar` and friends](https://github.com/GreenmaskIO/greenmask/blob/main/internal/db/postgres/toc/utils.go) | Format byte values. |
+| [`pg_compress_algorithm`](https://github.com/postgres/postgres/blob/REL_19_BETA3/src/include/common/compression.h#L21) | [`PgCompressionNone`…`PgCompressionZSTD`](https://github.com/GreenmaskIO/greenmask/blob/main/internal/db/postgres/toc/utils.go) | Ordinal values of the compression algorithm byte written since format 1.15. |
 
 ### Header read/write
 
 | Upstream | Greenmask counterpart | What to check |
 |---|---|---|
-| [`WriteHead()`](https://github.com/postgres/postgres/blob/REL_19_BETA3/src/bin/pg_dump/pg_backup_archiver.c#L4158) | [`Writer.writeHeader`](../internal/db/postgres/toc/writer.go) | Exact field order: magic `PGDMP`, major, minor, rev, `intSize`, `offSize`, format, compression algorithm, seven `tm` ints, db name, remote version, dump version. |
-| [`ReadHead()`](https://github.com/postgres/postgres/blob/REL_19_BETA3/src/bin/pg_dump/pg_backup_archiver.c#L4184) | [`Reader.readHeader`](../internal/db/postgres/toc/reader.go) | Same order, plus the version gates (`>= 1.7` offset size, `>= 1.15` compression algorithm, `>= 1.4` timestamp and db name, `>= 1.10` version strings). |
+| [`WriteHead()`](https://github.com/postgres/postgres/blob/REL_19_BETA3/src/bin/pg_dump/pg_backup_archiver.c#L4158) | [`Writer.writeHeader`](https://github.com/GreenmaskIO/greenmask/blob/main/internal/db/postgres/toc/writer.go) | Exact field order: magic `PGDMP`, major, minor, rev, `intSize`, `offSize`, format, compression algorithm, seven `tm` ints, db name, remote version, dump version. |
+| [`ReadHead()`](https://github.com/postgres/postgres/blob/REL_19_BETA3/src/bin/pg_dump/pg_backup_archiver.c#L4184) | [`Reader.readHeader`](https://github.com/GreenmaskIO/greenmask/blob/main/internal/db/postgres/toc/reader.go) | Same order, plus the version gates (`>= 1.7` offset size, `>= 1.15` compression algorithm, `>= 1.4` timestamp and db name, `>= 1.10` version strings). |
 
 ### TOC entry read/write
 
 | Upstream | Greenmask counterpart | What to check |
 |---|---|---|
-| [`WriteToc()`](https://github.com/postgres/postgres/blob/REL_19_BETA3/src/bin/pg_dump/pg_backup_archiver.c#L2611) | [`Writer.writeEntries`](../internal/db/postgres/toc/writer.go) | Per-entry field order: `dumpId`, `hadDumper`, tableoid, oid, tag, desc, section, defn, dropStmt, copyStmt, namespace, tablespace, tableam, **relkind**, owner, literal `"false"`, dependency list, `NULL` terminator, then the format's extra TOC. |
-| [`ReadToc()`](https://github.com/postgres/postgres/blob/REL_19_BETA3/src/bin/pg_dump/pg_backup_archiver.c#L2709) | [`Reader.readEntries`](../internal/db/postgres/toc/reader.go) | Same order and the same version gates (`>= 1.8` tableoid, `>= 1.11` section, `>= 1.3` copyStmt, `>= 1.6` namespace, `>= 1.10` tablespace, `>= 1.14` tableam, `>= 1.16` relkind, `>= 1.5` dependencies). |
-| [`ArchiveEntry()`](https://github.com/postgres/postgres/blob/REL_19_BETA3/src/bin/pg_dump/pg_backup_archiver.c#L1242) | [`Entry` struct](../internal/db/postgres/toc/entry.go) | New members on `_tocEntry` are the early warning that a format bump is coming. |
+| [`WriteToc()`](https://github.com/postgres/postgres/blob/REL_19_BETA3/src/bin/pg_dump/pg_backup_archiver.c#L2611) | [`Writer.writeEntries`](https://github.com/GreenmaskIO/greenmask/blob/main/internal/db/postgres/toc/writer.go) | Per-entry field order: `dumpId`, `hadDumper`, tableoid, oid, tag, desc, section, defn, dropStmt, copyStmt, namespace, tablespace, tableam, **relkind**, owner, literal `"false"`, dependency list, `NULL` terminator, then the format's extra TOC. |
+| [`ReadToc()`](https://github.com/postgres/postgres/blob/REL_19_BETA3/src/bin/pg_dump/pg_backup_archiver.c#L2709) | [`Reader.readEntries`](https://github.com/GreenmaskIO/greenmask/blob/main/internal/db/postgres/toc/reader.go) | Same order and the same version gates (`>= 1.8` tableoid, `>= 1.11` section, `>= 1.3` copyStmt, `>= 1.6` namespace, `>= 1.10` tablespace, `>= 1.14` tableam, `>= 1.16` relkind, `>= 1.5` dependencies). |
+| [`ArchiveEntry()`](https://github.com/postgres/postgres/blob/REL_19_BETA3/src/bin/pg_dump/pg_backup_archiver.c#L1242) | [`Entry` struct](https://github.com/GreenmaskIO/greenmask/blob/main/internal/db/postgres/toc/entry.go) | New members on `_tocEntry` are the early warning that a format bump is coming. |
 
 ### Primitive encoders
 
 | Upstream | Greenmask counterpart | What to check |
 |---|---|---|
-| [`WriteInt()`](https://github.com/postgres/postgres/blob/REL_19_BETA3/src/bin/pg_dump/pg_backup_archiver.c#L2135) / [`ReadInt()`](https://github.com/postgres/postgres/blob/REL_19_BETA3/src/bin/pg_dump/pg_backup_archiver.c#L2166) | [`writeInt`](../internal/db/postgres/toc/writer.go) / [`readInt`](../internal/db/postgres/toc/reader.go) | Sign byte then `intSize` little-endian bytes. Only `intSize == 4` is supported by our port. |
-| [`WriteStr()`](https://github.com/postgres/postgres/blob/REL_19_BETA3/src/bin/pg_dump/pg_backup_archiver.c#L2193) / [`ReadStr()`](https://github.com/postgres/postgres/blob/REL_19_BETA3/src/bin/pg_dump/pg_backup_archiver.c#L2212) | [`writeStr`](../internal/db/postgres/toc/writer.go) / [`readStr`](../internal/db/postgres/toc/reader.go) | Length-prefixed, `-1` encodes `NULL`. |
+| [`WriteInt()`](https://github.com/postgres/postgres/blob/REL_19_BETA3/src/bin/pg_dump/pg_backup_archiver.c#L2135) / [`ReadInt()`](https://github.com/postgres/postgres/blob/REL_19_BETA3/src/bin/pg_dump/pg_backup_archiver.c#L2166) | [`writeInt`](https://github.com/GreenmaskIO/greenmask/blob/main/internal/db/postgres/toc/writer.go) / [`readInt`](https://github.com/GreenmaskIO/greenmask/blob/main/internal/db/postgres/toc/reader.go) | Sign byte then `intSize` little-endian bytes. Only `intSize == 4` is supported by our port. |
+| [`WriteStr()`](https://github.com/postgres/postgres/blob/REL_19_BETA3/src/bin/pg_dump/pg_backup_archiver.c#L2193) / [`ReadStr()`](https://github.com/postgres/postgres/blob/REL_19_BETA3/src/bin/pg_dump/pg_backup_archiver.c#L2212) | [`writeStr`](https://github.com/GreenmaskIO/greenmask/blob/main/internal/db/postgres/toc/writer.go) / [`readStr`](https://github.com/GreenmaskIO/greenmask/blob/main/internal/db/postgres/toc/reader.go) | Length-prefixed, `-1` encodes `NULL`. |
 | [`WriteOffset()`](https://github.com/postgres/postgres/blob/REL_19_BETA3/src/bin/pg_dump/pg_backup_archiver.c#L2054) / [`ReadOffset()`](https://github.com/postgres/postgres/blob/REL_19_BETA3/src/bin/pg_dump/pg_backup_archiver.c#L2071) | not ported | Only used by the custom format. If we ever support `-Fc`, this is required. |
 
 ### Directory format specifics
 
 | Upstream | Greenmask counterpart | What to check |
 |---|---|---|
-| [`_CloseArchive()`](https://github.com/postgres/postgres/blob/REL_19_BETA3/src/bin/pg_dump/pg_backup_directory.c#L531) | format check in [`Reader.readHeader`](../internal/db/postgres/toc/reader.go) | The directory format deliberately writes `archTar` (3) into the format byte of `toc.dat`. Our reader rejects anything else. |
-| [`_ArchiveEntry()`](https://github.com/postgres/postgres/blob/REL_19_BETA3/src/bin/pg_dump/pg_backup_directory.c#L198) | [`entries/table.go`](../internal/db/postgres/entries/table.go), [`entries/large_object.go`](../internal/db/postgres/entries/large_object.go) | Data file naming: `%d.dat` for table data, `blobs_%d.toc` for large objects. |
-| [`_WriteExtraToc()`](https://github.com/postgres/postgres/blob/REL_19_BETA3/src/bin/pg_dump/pg_backup_directory.c#L228) / [`_ReadExtraToc()`](https://github.com/postgres/postgres/blob/REL_19_BETA3/src/bin/pg_dump/pg_backup_directory.c#L249) | trailing `FileName` in [`writeEntries`](../internal/db/postgres/toc/writer.go) / [`readEntries`](../internal/db/postgres/toc/reader.go) | For the directory format the "extra TOC" is a single string — the data file name. If upstream ever writes more than one field here, our entry loop desynchronises. |
+| [`_CloseArchive()`](https://github.com/postgres/postgres/blob/REL_19_BETA3/src/bin/pg_dump/pg_backup_directory.c#L531) | format check in [`Reader.readHeader`](https://github.com/GreenmaskIO/greenmask/blob/main/internal/db/postgres/toc/reader.go) | The directory format deliberately writes `archTar` (3) into the format byte of `toc.dat`. Our reader rejects anything else. |
+| [`_ArchiveEntry()`](https://github.com/postgres/postgres/blob/REL_19_BETA3/src/bin/pg_dump/pg_backup_directory.c#L198) | [`entries/table.go`](https://github.com/GreenmaskIO/greenmask/blob/main/internal/db/postgres/entries/table.go), [`entries/large_object.go`](https://github.com/GreenmaskIO/greenmask/blob/main/internal/db/postgres/entries/large_object.go) | Data file naming: `%d.dat` for table data, `blobs_%d.toc` for large objects. |
+| [`_WriteExtraToc()`](https://github.com/postgres/postgres/blob/REL_19_BETA3/src/bin/pg_dump/pg_backup_directory.c#L228) / [`_ReadExtraToc()`](https://github.com/postgres/postgres/blob/REL_19_BETA3/src/bin/pg_dump/pg_backup_directory.c#L249) | trailing `FileName` in [`writeEntries`](https://github.com/GreenmaskIO/greenmask/blob/main/internal/db/postgres/toc/writer.go) / [`readEntries`](https://github.com/GreenmaskIO/greenmask/blob/main/internal/db/postgres/toc/reader.go) | For the directory format the "extra TOC" is a single string — the data file name. If upstream ever writes more than one field here, our entry loop desynchronises. |
 
 ### Regression coverage
 
@@ -302,9 +308,9 @@ Do this at the first release after the upstream EOL date.
 3. Remove `postgresql-<major>` from `docker/integration/tests/Dockerfile`.
 4. Remove the row from the support table in this document.
 5. Remove now-dead version gates. Introspection queries are templated on `server_version_num`
-   (`{{ if ge .Version NNNNNN }}` in [`internal/db/postgres/context/queries.go`](../internal/db/postgres/context/queries.go)
+   (`{{ if ge .Version NNNNNN }}` in [`internal/db/postgres/context/queries.go`](https://github.com/GreenmaskIO/greenmask/blob/main/internal/db/postgres/context/queries.go)
    and the `version >=` checks in
-   [`tables_introspection.go`](../internal/db/postgres/context/tables_introspection.go)); gates below
+   [`tables_introspection.go`](https://github.com/GreenmaskIO/greenmask/blob/main/internal/db/postgres/context/tables_introspection.go)); gates below
    the new floor can go.
 6. Note the drop in the release notes.
 
@@ -320,4 +326,4 @@ Commits that show the shape of a typical version bump:
   of a behaviour change found by step 6 of the checklist rather than by a format diff
 
 The main integration test is
-[`tests/integration/greenmask/backward_compatibility_test.go`](../tests/integration/greenmask/backward_compatibility_test.go).
+[`tests/integration/greenmask/backward_compatibility_test.go`](https://github.com/GreenmaskIO/greenmask/blob/main/tests/integration/greenmask/backward_compatibility_test.go).

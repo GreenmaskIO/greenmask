@@ -1,3 +1,9 @@
+---
+title: "Delete"
+description: "Delete dump from the storage with a specific ID"
+keywords: ["greenmask delete", "dump deletion", "backup cleanup", "greenmask", "Enterprise support", "Open-Source", "PostgreSQL anonymization", "test data management", "compliance", "security", "agentic pipeline", "development cycle"]
+---
+
 # delete command
 
 Delete dump from the storage with a specific ID

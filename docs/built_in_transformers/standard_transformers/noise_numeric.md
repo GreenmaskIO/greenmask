@@ -1,3 +1,9 @@
+---
+title: "NoiseNumeric"
+description: "The NoiseNumeric transformer multiplies the original numeric (or decimal) value by randomly generated value that is"
+keywords: ["NoiseNumeric", "numeric noise", "decimal anonymization", "greenmask transformer", "data anonymization", "postgresql", "mysql", "oracle", "Enterprise support", "Open-Source", "PostgreSQL anonymization", "test data management", "compliance", "security", "agentic pipeline", "development cycle"]
+---
+
 Add or subtract a random fraction to the original numeric value.
 
 ## Parameters
@@ -30,19 +36,21 @@ values. The values for `min` and `max` must have the same format as the `column`
 support dynamic mode. Engine parameter allows you to choose between random and hash engines for generating values. Read
 more about the engines
 
-!!! info
+:::info
 
-    If the noised value exceeds the `max` threshold, the transformer will set the value to `max`. If the noised value
-    is lower than the `min` threshold, the transformer will set the value to `min`.
+If the noised value exceeds the `max` threshold, the transformer will set the value to `max`. If the noised value
+is lower than the `min` threshold, the transformer will set the value to `min`.
+:::
 
 The `engine` parameter allows you to choose between random and hash engines for generating values. Read more about the
 engines in the [Transformation engines](../transformation_engines.md) section.
 
-!!! warning
+:::warning
 
-    Greenmask cannot parse the `numeric` type sitteng. For instance `NUMERIC(10, 2)`. You should set `min` and `max` treshholds
-    manually as well as allowed `decimal`. This behaviour will be changed in the later versions. Grenmask will be able
-    to determine the decimal and scale of the column and set the min and max treshholds automatically if were not set.
+Greenmask cannot parse the `numeric` type sitteng. For instance `NUMERIC(10, 2)`. You should set `min` and `max` treshholds
+manually as well as allowed `decimal`. This behaviour will be changed in the later versions. Grenmask will be able
+to determine the decimal and scale of the column and set the min and max treshholds automatically if were not set.
+:::
 
 ## Example: Adding noise to the purchase price
 
@@ -70,6 +78,6 @@ Result
 <th>Column</th><th>OriginalValue</th><th>TransformedValue</th>
 </tr>
 <tr>
-<td>lastreceiptcost</td><td><span style="color:green">50.2635</span></td><td><span style="color:red">57.33</span></td>
+<td>lastreceiptcost</td><td><span style={{color: 'green'}}>50.2635</span></td><td><span style={{color: 'red'}}>57.33</span></td>
 </tr>
 </table>
