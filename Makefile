@@ -6,7 +6,7 @@ COVERAGE_FILE := coverage.out
 VERSION ?= $(shell git tag --points-at HEAD)
 LDFLAGS ?= -X github.com/greenmaskio/greenmask/cmd/greenmask/cmd.Version=$(VERSION)
 
-.PHONY: build rebuild-images rebuild-greenmask-image rebuild-integration-image
+.PHONY: build rebuild-images rebuild-greenmask-image rebuild-integration-image docs-install docs-serve docs-build
 
 tests: unittest
 
@@ -28,6 +28,18 @@ build: $(CMD_FILES)
 
 lint:
 	golangci-lint run ./...
+
+# Preview docs/ locally with the stock Docusaurus theme (requires Node.js 20+).
+DOCS_PREVIEW_DIR := tools/docs-preview
+
+docs-install:
+	npm --prefix $(DOCS_PREVIEW_DIR) ci
+
+docs-serve: docs-install
+	npm --prefix $(DOCS_PREVIEW_DIR) run start
+
+docs-build: docs-install
+	npm --prefix $(DOCS_PREVIEW_DIR) run build
 
 up:
 	docker-compose up playground-dbs-filler
