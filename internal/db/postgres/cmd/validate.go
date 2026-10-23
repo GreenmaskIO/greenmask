@@ -87,15 +87,19 @@ func validateDiffOptions(cfg *domains.Validate) error {
 	switch cfg.DiffMode {
 	case "", ValuesDiffMode: // unset keeps the behaviour from before --diff-mode existed
 	case SummaryDiffMode:
-		if !cfg.Diff {
-			return fmt.Errorf("--diff-mode=%s requires --diff", SummaryDiffMode)
+		// Without --diff, --data prints every value, which summary is meant to prevent.
+		if cfg.Data && !cfg.Diff {
+			return fmt.Errorf("--diff-mode=%s requires --diff when --data is set", SummaryDiffMode)
+		}
+		if !cfg.Data {
+			return nil // without --data nothing is printed, so diff_mode may stay in the config
+		}
+		// Written as "not inside" so that NaN, which fails every comparison, is rejected too.
+		if !(cfg.DiffUnchangedThreshold >= 0 && cfg.DiffUnchangedThreshold <= 100) {
+			return fmt.Errorf("--diff-unchanged-threshold must be between 0 and 100, got %v", cfg.DiffUnchangedThreshold)
 		}
 	default:
 		return fmt.Errorf("unknown --diff-mode value %q: possible values [%s|%s]", cfg.DiffMode, ValuesDiffMode, SummaryDiffMode)
-	}
-	// Written as "not inside" so that NaN, which fails every comparison, is rejected too.
-	if !(cfg.DiffUnchangedThreshold >= 0 && cfg.DiffUnchangedThreshold <= 100) {
-		return fmt.Errorf("--diff-unchanged-threshold must be between 0 and 100, got %v", cfg.DiffUnchangedThreshold)
 	}
 	return nil
 }
@@ -218,6 +222,23 @@ func (v *Validate) print(ctx context.Context) error {
 		if err = doc.Print(os.Stdout); err != nil {
 			return fmt.Errorf("unable to print validation document: %w", err)
 		}
+		if sd, ok := doc.(*validate_utils.SummaryDocument); ok {
+			if err = v.handleSummaryWarnings(sd.Warnings()); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+// handleSummaryWarnings prints summary warnings like validation warnings and, with --strict, fails on unresolved ones.
+func (v *Validate) handleSummaryWarnings(warns toolkit.ValidationWarnings) error {
+	cfg := v.config.Validate
+	if err := toolkit.PrintValidationWarnings(warns, cfg.ResolvedWarnings, cfg.Warnings || cfg.Strict); err != nil {
+		return err
+	}
+	if cfg.Strict && warns.HasUnresolved(cfg.ResolvedWarnings) {
+		v.exitCode = nonZeroExitCode
 	}
 	return nil
 }
@@ -225,7 +246,8 @@ func (v *Validate) print(ctx context.Context) error {
 func (v *Validate) getDocument(table *entries.Table) validate_utils.Documenter {
 	if v.config.Validate.Diff && v.config.Validate.DiffMode == SummaryDiffMode {
 		return validate_utils.NewSummaryDocument(
-			table, v.config.Validate.Format, v.config.Validate.OnlyTransformed, v.config.Validate.DiffUnchangedThreshold,
+			table, v.config.Validate.Format, v.config.Validate.OnlyTransformed,
+			v.config.Validate.DiffUnchangedThreshold, v.config.Validate.ResolvedWarnings,
 		)
 	}
 	switch v.config.Validate.Format {

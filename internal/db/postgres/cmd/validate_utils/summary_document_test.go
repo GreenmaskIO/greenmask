@@ -10,6 +10,7 @@ import (
 
 	"github.com/greenmaskio/greenmask/internal/db/postgres/entries"
 	"github.com/greenmaskio/greenmask/internal/db/postgres/pgcopy"
+	"github.com/greenmaskio/greenmask/pkg/toolkit"
 )
 
 func appendRows(t *testing.T, doc Documenter, tab *entries.Table, original, transformed [][]byte) {
@@ -33,7 +34,7 @@ func summaryByName(columns []columnSummary) map[string]columnSummary {
 
 func TestSummaryDocument_Counts(t *testing.T) {
 	tab, original, transformed := getTableAndRows()
-	sd := NewSummaryDocument(tab, jsonFormatName, false, 50)
+	sd := NewSummaryDocument(tab, jsonFormatName, false, 50, nil)
 	appendRows(t, sd, tab, original, transformed)
 
 	columns := summaryByName(sd.summarize())
@@ -53,6 +54,7 @@ func TestSummaryDocument_Counts(t *testing.T) {
 	// "modifieddate" became NULL in one row without a transformer.
 	assert.Equal(t, uint64(1), columns["modifieddate"].Changed)
 	assert.Equal(t, unexpectedWarning, columns["modifieddate"].Warning)
+	assert.Len(t, sd.Warnings(), 1)
 }
 
 func TestSummaryDocument_UnchangedThreshold(t *testing.T) {
@@ -79,7 +81,7 @@ func TestSummaryDocument_UnchangedThreshold(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			sd := NewSummaryDocument(tab, jsonFormatName, false, tt.threshold)
+			sd := NewSummaryDocument(tab, jsonFormatName, false, tt.threshold, nil)
 			appendRows(t, sd, tab, original, transformed)
 			name := summaryByName(sd.summarize())["name"]
 			assert.InDelta(t, 0.5, name.UnchangedRatio, 1e-9)
@@ -105,7 +107,7 @@ func TestSummaryDocument_NullsKeptDoNotCountAsUnchanged(t *testing.T) {
 		[]byte("3\ttes3\tC\t2008-04-30 00:00:00"),
 	}
 
-	sd := NewSummaryDocument(tab, jsonFormatName, false, 0)
+	sd := NewSummaryDocument(tab, jsonFormatName, false, 0, nil)
 	appendRows(t, sd, tab, original, transformed)
 	name := summaryByName(sd.summarize())["name"]
 	assert.Equal(t, uint64(2), name.NullsKept)
@@ -116,7 +118,7 @@ func TestSummaryDocument_NullsKeptDoNotCountAsUnchanged(t *testing.T) {
 
 func TestSummaryDocument_OnlyTransformed(t *testing.T) {
 	tab, original, transformed := getTableAndRows()
-	sd := NewSummaryDocument(tab, jsonFormatName, true, 50)
+	sd := NewSummaryDocument(tab, jsonFormatName, true, 50, nil)
 	appendRows(t, sd, tab, original, transformed)
 
 	// "name" is transformed; "modifieddate" is kept because it has a warning.
@@ -126,9 +128,7 @@ func TestSummaryDocument_OnlyTransformed(t *testing.T) {
 	assert.Contains(t, columns, "modifieddate")
 }
 
-// The point of the summary mode: no value from either side, and no primary
-// key, reaches the output. Every value here is a distinct sentinel, so any
-// leak shows up as an exact match.
+// Every value is a distinct sentinel, so any leak of a value or a primary key shows up as a match.
 func TestSummaryDocument_PrintsNoValues(t *testing.T) {
 	tab, _, _ := getTableAndRows()
 	original := [][]byte{
@@ -145,7 +145,7 @@ func TestSummaryDocument_PrintsNoValues(t *testing.T) {
 
 	for _, format := range []string{jsonFormatName, "text"} {
 		t.Run(format, func(t *testing.T) {
-			sd := NewSummaryDocument(tab, format, false, 50)
+			sd := NewSummaryDocument(tab, format, false, 50, nil)
 			appendRows(t, sd, tab, original, transformed)
 			var out bytes.Buffer
 			require.NoError(t, sd.Print(&out))
@@ -159,7 +159,7 @@ func TestSummaryDocument_PrintsNoValues(t *testing.T) {
 
 func TestSummaryDocument_JsonShape(t *testing.T) {
 	tab, original, transformed := getTableAndRows()
-	sd := NewSummaryDocument(tab, jsonFormatName, false, 50)
+	sd := NewSummaryDocument(tab, jsonFormatName, false, 50, nil)
 	appendRows(t, sd, tab, original, transformed)
 	var out bytes.Buffer
 	require.NoError(t, sd.Print(&out))
@@ -185,7 +185,7 @@ func TestSummaryDocument_NullTransitionsCountAsChanged(t *testing.T) {
 		[]byte("2\t\\N\tB\t2008-04-30 00:00:00"),
 	}
 
-	sd := NewSummaryDocument(tab, jsonFormatName, false, 50)
+	sd := NewSummaryDocument(tab, jsonFormatName, false, 50, nil)
 	appendRows(t, sd, tab, original, transformed)
 	name := summaryByName(sd.summarize())["name"]
 	assert.Equal(t, uint64(2), name.Changed)
@@ -196,11 +196,12 @@ func TestSummaryDocument_EmptyTable(t *testing.T) {
 	tab, _, _ := getTableAndRows()
 	for _, format := range []string{jsonFormatName, "text"} {
 		t.Run(format, func(t *testing.T) {
-			sd := NewSummaryDocument(tab, format, false, 0)
+			sd := NewSummaryDocument(tab, format, false, 0, nil)
 			for _, c := range sd.summarize() {
 				assert.Zero(t, c.UnchangedRatio)
 				assert.Empty(t, c.Warning)
 			}
+			assert.Empty(t, sd.Warnings())
 			var out bytes.Buffer
 			require.NoError(t, sd.Print(&out))
 			assert.NotEmpty(t, out.String())
@@ -210,8 +211,87 @@ func TestSummaryDocument_EmptyTable(t *testing.T) {
 
 func TestSummaryDocument_ColumnCountMismatch(t *testing.T) {
 	tab, _, _ := getTableAndRows()
-	sd := NewSummaryDocument(tab, jsonFormatName, false, 50)
+	sd := NewSummaryDocument(tab, jsonFormatName, false, 50, nil)
 	short := pgcopy.NewRow(2)
 	require.NoError(t, short.Decode([]byte("1\tA")))
 	assert.Error(t, sd.Append(short, short))
+}
+
+func TestSummaryDocument_WarningHash(t *testing.T) {
+	tab, original, transformed := getTableAndRows()
+	sd := NewSummaryDocument(tab, jsonFormatName, false, 50, nil)
+	appendRows(t, sd, tab, original, transformed)
+
+	warns := sd.Warnings()
+	require.Len(t, warns, 1)
+	w := warns[0]
+	assert.Equal(t, toolkit.UntransformedColumnChangedWarningType, w.Meta["WarningType"])
+	assert.Equal(t, "modifieddate", w.Meta["ColumnName"])
+	assert.Equal(t, summaryByName(sd.summarize())["modifieddate"].Hash, w.Hash)
+
+	// More rows change the counts but not the hash, so a resolved warning stays resolved.
+	appendRows(t, sd, tab, original, transformed)
+	assert.Equal(t, w.Hash, sd.Warnings()[0].Hash)
+	assert.False(t, sd.Warnings().HasUnresolved([]string{w.Hash}))
+}
+
+func TestSummaryDocument_ResolvedWarningIsExcluded(t *testing.T) {
+	tab, original, transformed := getTableAndRows()
+	// "name" keeps 3 of 6 values, so with threshold 0 it warns next to "modifieddate".
+	transformed[0], transformed[1], transformed[2] = original[0], original[1], original[2]
+	probe := NewSummaryDocument(tab, jsonFormatName, false, 0, nil)
+	appendRows(t, probe, tab, original, transformed)
+	byName := summaryByName(probe.summarize())
+	require.NotEmpty(t, byName["name"].Hash)
+	require.NotEmpty(t, byName["modifieddate"].Hash)
+	resolved := []string{byName["modifieddate"].Hash}
+
+	t.Run("dropped from summary and warnings", func(t *testing.T) {
+		sd := NewSummaryDocument(tab, jsonFormatName, false, 0, resolved)
+		appendRows(t, sd, tab, original, transformed)
+		columns := summaryByName(sd.summarize())
+		assert.Empty(t, columns["modifieddate"].Warning)
+		assert.Empty(t, columns["modifieddate"].Hash)
+		assert.Equal(t, uint64(1), columns["modifieddate"].Changed)
+		assert.Equal(t, unchangedWarning, columns["name"].Warning)
+		warns := sd.Warnings()
+		require.Len(t, warns, 1)
+		assert.Equal(t, "name", warns[0].Meta["ColumnName"])
+	})
+
+	t.Run("dropped from output", func(t *testing.T) {
+		for _, format := range []string{jsonFormatName, "text"} {
+			sd := NewSummaryDocument(tab, format, false, 0, resolved)
+			appendRows(t, sd, tab, original, transformed)
+			var out bytes.Buffer
+			require.NoError(t, sd.Print(&out))
+			assert.NotContains(t, out.String(), unexpectedWarning, format)
+			assert.NotContains(t, out.String(), resolved[0], format)
+			assert.Contains(t, out.String(), unchangedWarning, format)
+		}
+	})
+
+	t.Run("transformed-only hides the untransformed column", func(t *testing.T) {
+		sd := NewSummaryDocument(tab, jsonFormatName, true, 0, resolved)
+		appendRows(t, sd, tab, original, transformed)
+		columns := summaryByName(sd.visible(sd.summarize()))
+		assert.NotContains(t, columns, "modifieddate")
+		assert.Contains(t, columns, "name")
+	})
+}
+
+func TestSummaryDocument_SummaryIsCached(t *testing.T) {
+	tab, original, transformed := getTableAndRows()
+	sd := NewSummaryDocument(tab, jsonFormatName, false, 50, nil)
+	appendRows(t, sd, tab, original, transformed)
+
+	var out bytes.Buffer
+	require.NoError(t, sd.Print(&out))
+	warns := sd.Warnings()
+	require.Len(t, warns, 1)
+	assert.Same(t, summaryByName(sd.summary)["modifieddate"].warning, warns[0])
+
+	// A new row drops the cache, so the counts include it.
+	appendRows(t, sd, tab, original[:1], transformed[:1])
+	assert.Equal(t, uint64(7), summaryByName(sd.summaries())["groupname"].Unchanged)
 }

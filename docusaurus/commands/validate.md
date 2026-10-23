@@ -20,8 +20,8 @@ Usage:
 Flags:
       --data                             Perform test dump for --rows-limit rows and print it pretty
       --diff                             Find difference between original and transformed data
-      --diff-mode string                 How to show the diff (only with --diff). Possible values [values|summary]. summary prints per-column counts of changed rows and no original or transformed value (default "values")
-      --diff-unchanged-threshold float   With --diff-mode=summary, warn when a transformed column keeps more than this percentage of its non-NULL values (0-100, 100 turns the warning off). Counts cover --rows-limit rows only (default 50)
+      --diff-mode string                 How to show the diff (only with --data and --diff). Possible values [values|summary]. summary prints per-column counts of changed rows and no original or transformed value (default "values")
+      --diff-unchanged-threshold float   With --diff-mode=summary, warn when a transformed column keeps more than this percentage of its non-NULL values (0-100, 100 turns the warning off). Counts cover --rows-limit rows only (default 90)
       --format string                    Format of output. possible values [text|json] (default "text")
       --rows-limit uint                  Check tables dump only for specific tables (default 10)
       --schema                           Make a schema diff between previous dump and the current state
@@ -38,6 +38,7 @@ Validate command can exit with non-zero code when:
 * There is a validation warning with severity `"error"`
 * Validate was called with `--strict` flag and there are any unresolved warnings (warnings-as-errors)
 * Validate was called with `--schema` flag and there are schema differences
+* Validate was called with `--strict` and `--diff-mode=summary` and the summary has an unresolved column warning
 
 The `--warnings` flag only controls **printing** of warnings — it does **not** affect the exit code. In strict mode
 warnings are always printed regardless of `--warnings`, and warnings whose hash is listed in `resolved_warnings` are
@@ -301,14 +302,13 @@ greenmask --config=config.yml validate \
 
 ```text title="Summary diff output example"
 	"humanresources"."employee" (290 rows compared, values not shown)
-+------------------+-------------+---------+-----------+------------+-------------+--------------------------------+
-|      Column      | Transformed | Changed | Unchanged | NULLs kept | Unchanged % |            Warning             |
-+------------------+-------------+---------+-----------+------------+-------------+--------------------------------+
-| businessentityid | no          |       0 |       290 |          0 |       100.0 |                                |
-| birthdate        | yes         |     290 |         0 |          0 |         0.0 |                                |
-| gender           | yes         |      84 |       206 |          0 |        71.0 | transformed column is          |
-|                  |             |         |           |            |             | unchanged in too many rows     |
-+------------------+-------------+---------+-----------+------------+-------------+--------------------------------+
++------------------+-------------+---------+-----------+------------+-------------+--------------------------------------------------+
+|      Column      | Transformed | Changed | Unchanged | NULLs kept | Unchanged % |                     Warning                      |
++------------------+-------------+---------+-----------+------------+-------------+--------------------------------------------------+
+| businessentityid | no          |       0 |       290 |          0 |       100.0 |                                                  |
+| birthdate        | yes         |     290 |         0 |          0 |         0.0 |                                                  |
+| loginid          | yes         |      12 |       278 |          0 |        95.9 | transformed column is unchanged in too many rows |
++------------------+-------------+---------+-----------+------------+-------------+--------------------------------------------------+
 ```
 
 For each column:
@@ -319,11 +319,27 @@ For each column:
   because keeping `NULL` is the usual behaviour of most transformers.
 * **Warning**:
     * `transformed column is unchanged in too many rows` — a transformed column kept more than
-      `--diff-unchanged-threshold` percent (default `50`) of its non-`NULL` values. This usually means a missed or
+      `--diff-unchanged-threshold` percent (default `90`) of its non-`NULL` values. This usually means a missed or
       no-op transformer, for example a `Replace` with a value most rows already have. Set the threshold to `100`
       to turn the warning off.
+      The warning is a hint, not a proof: a transformer with few possible outputs keeps many values by design.
+      `RandomBool` keeps about half of them, `RandomChoice` with two values the same, and a small-range `NoiseInt`
+      or `NoiseDate` can keep more. Small `--rows-limit` samples make the ratio noisy too.
     * `column changed but no transformer affects it` — the column changed, but no transformer in the config
       targets it.
+
+Each column warning is also a validation warning with a hash, printed with `--warnings` or `--strict` like any other
+warning. Its `meta.WarningType` is `UnchangedRowsPercentageThresholdExceeded` or `UntransformedColumnChanged`. With
+`--format=json` the hash is also in the column's `hash` field; with `--format=text` it is only in that log output. The
+hash covers the message, severity, warning type, schema, table and column but not the row counts, so it stays the
+same when the counts change. Add it to `validate.resolved_warnings` to accept the warning, for example for a
+`RandomBool` column:
+
+```yaml title="Resolving a summary warning"
+validate:
+  resolved_warnings:
+    - "e2550a86b34552c742bc1dafffa632de"
+```
 
 With `--format=json` each table is one JSON object:
 
@@ -335,13 +351,14 @@ With `--format=json` each table is one JSON object:
   "rows": 290,
   "columns": [
     {
-      "name": "gender",
+      "name": "loginid",
       "transformed": true,
-      "changed": 84,
-      "unchanged": 206,
+      "changed": 12,
+      "unchanged": 278,
       "nulls_kept": 0,
-      "unchanged_ratio": 0.7103448275862069,
-      "warning": "transformed column is unchanged in too many rows"
+      "unchanged_ratio": 0.9586206896551724,
+      "warning": "transformed column is unchanged in too many rows",
+      "hash": "e2550a86b34552c742bc1dafffa632de"
     }
   ]
 }
@@ -349,11 +366,15 @@ With `--format=json` each table is one JSON object:
 
 Things to know:
 
-* Like the default diff, the summary needs `--data`: without it no rows are dumped and nothing is compared.
+* The summary needs `--diff`: `--data` with `--diff-mode=summary` and without `--diff` is an error, because plain
+  `--data` prints every value. Without `--data` `diff_mode` is ignored, so `diff_mode: summary` can stay in the config.
 * The counts cover the `--rows-limit` rows that validate dumps (default `10`). Use a larger `--rows-limit` for a
   ratio you can trust.
-* With `--transformed-only`, the summary lists transformed columns and any column with a warning.
+* With `--transformed-only`, the summary lists transformed columns and any column with an unresolved warning.
   `--table-format` does not apply: the summary has one layout.
 * A transformer with a `when` condition counts as affecting the column in every row, so rows the condition skips
   count as unchanged.
-* Only the diff output changes. Validation warnings and errors are printed as in the default mode.
+* With `--strict`, any column warning not listed in `resolved_warnings` makes validate exit with a non-zero code.
+* Resolved warnings are not shown in the summary table or json, like any other resolved warning. The column itself
+  and its counts stay.
+* `--diff-unchanged-threshold` is checked only with `--diff-mode=summary`.

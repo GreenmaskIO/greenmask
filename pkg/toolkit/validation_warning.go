@@ -30,6 +30,20 @@ const (
 	DebugValidationSeverity   = "debug"
 )
 
+const (
+	UnchangedRowsPercentageThresholdExceededWarningType = "UnchangedRowsPercentageThresholdExceeded"
+	UntransformedColumnChangedWarningType               = "UntransformedColumnChanged"
+)
+
+// stableHashMetaKeys are the only meta keys hashed for stableHashWarningTypes, so row counts do not change the hash.
+// Temporary workaround: ValidationWarning has no type yet, so the type is read from meta.WarningType.
+var stableHashMetaKeys = []string{"WarningType", "SchemaName", "TableName", "ColumnName"}
+
+var stableHashWarningTypes = []string{
+	UnchangedRowsPercentageThresholdExceededWarningType,
+	UntransformedColumnChangedWarningType,
+}
+
 type ValidationWarnings []*ValidationWarning
 
 func (re ValidationWarnings) IsFatal() bool {
@@ -91,6 +105,12 @@ func (re *ValidationWarning) MakeHash() {
 
 	for key := range re.Meta {
 		keys = append(keys, key)
+	}
+	// TODO: temporary workaround until ValidationWarning has a type field; then hash by type instead of meta.
+	if wt, ok := re.Meta["WarningType"].(string); ok && slices.Contains(stableHashWarningTypes, wt) {
+		keys = slices.DeleteFunc(keys, func(key string) bool {
+			return !slices.Contains(stableHashMetaKeys, key)
+		})
 	}
 	slices.Sort(keys)
 	for _, key := range keys {
