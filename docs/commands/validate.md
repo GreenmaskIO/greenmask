@@ -348,8 +348,8 @@ With `--format=json` each table is one JSON object:
 
 Things to know:
 
-* The summary applies only with `--data` and `--diff`. Without them `diff_mode` is ignored, so `diff_mode: summary`
-  can stay in the config.
+* The summary needs `--diff`: `--data` with `--diff-mode=summary` and without `--diff` is an error, because plain
+  `--data` prints every value. Without `--data` `diff_mode` is ignored, so `diff_mode: summary` can stay in the config.
 * The counts cover the `--rows-limit` rows that validate dumps (default `10`). Use a larger `--rows-limit` for a
   ratio you can trust.
 * With `--transformed-only`, the summary lists transformed columns and any column with an unresolved warning.

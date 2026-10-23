@@ -87,8 +87,12 @@ func validateDiffOptions(cfg *domains.Validate) error {
 	switch cfg.DiffMode {
 	case "", ValuesDiffMode: // unset keeps the behaviour from before --diff-mode existed
 	case SummaryDiffMode:
-		if !cfg.Data || !cfg.Diff {
-			return nil // summary applies only with --data and --diff
+		// Without --diff, --data prints every value, which summary is meant to prevent.
+		if cfg.Data && !cfg.Diff {
+			return fmt.Errorf("--diff-mode=%s requires --diff when --data is set", SummaryDiffMode)
+		}
+		if !cfg.Data {
+			return nil // without --data nothing is printed, so diff_mode may stay in the config
 		}
 		// Written as "not inside" so that NaN, which fails every comparison, is rejected too.
 		if !(cfg.DiffUnchangedThreshold >= 0 && cfg.DiffUnchangedThreshold <= 100) {
