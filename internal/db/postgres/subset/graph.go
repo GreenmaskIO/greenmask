@@ -217,10 +217,11 @@ func (g *Graph) findSubsetVertexes() {
 	for v := range g.condensedGraph {
 		path := NewPath(v)
 		var from, fullFrom []*CondensedEdge
+		var scopes []int
 		if len(g.scc[v].getSubsetConds()) > 0 || g.scc[v].hasPolymorphicExpressions() {
 			path.AddVertex(v)
 		}
-		g.subsetDfs(path, v, &fullFrom, &from, rootScopeId)
+		g.subsetDfs(path, v, &fullFrom, &from, &scopes)
 
 		if path.Len() > 0 {
 			g.paths[v] = path
@@ -228,19 +229,27 @@ func (g *Graph) findSubsetVertexes() {
 	}
 }
 
-func (g *Graph) subsetDfs(path *Path, v int, fullFrom, from *[]*CondensedEdge, scopeId int) {
+// subsetDfs - scopes[i] is the scope of the vertex that fullFrom[i] leads to
+func (g *Graph) subsetDfs(path *Path, v int, fullFrom, from *[]*CondensedEdge, scopes *[]int) {
 	for _, to := range g.condensedGraph[v] {
 		*fullFrom = append(*fullFrom, to)
 		*from = append(*from, to)
-		currentScopeId := scopeId
+		*scopes = append(*scopes, rootScopeId)
 		if len(g.scc[to.to.idx].getSubsetConds()) > 0 || (*fullFrom)[len(*fullFrom)-1].hasPolymorphicExpressions() {
-			for _, e := range *from {
-				currentScopeId = path.AddEdge(e, currentScopeId)
+			firstPending := len(*fullFrom) - len(*from)
+			currentScopeId := rootScopeId
+			if firstPending > 0 {
+				currentScopeId = (*scopes)[firstPending-1]
+			}
+			for idx := firstPending; idx < len(*fullFrom); idx++ {
+				currentScopeId = path.AddEdge((*fullFrom)[idx], currentScopeId)
+				(*scopes)[idx] = currentScopeId
 			}
 			*from = (*from)[:0]
 		}
-		g.subsetDfs(path, to.to.idx, fullFrom, from, currentScopeId)
+		g.subsetDfs(path, to.to.idx, fullFrom, from, scopes)
 		*fullFrom = (*fullFrom)[:len(*fullFrom)-1]
+		*scopes = (*scopes)[:len(*scopes)-1]
 		if len(*from) > 0 {
 			*from = (*from)[:len(*from)-1]
 		}
@@ -389,6 +398,9 @@ func (g *Graph) generateQueriesSccDfs(cq *cteQuery, path *Path, scopeEdge *Scope
 
 	g.generateQueryForScc(cq, scopeId, path, scopeEdge)
 	for _, nextScopeEdge := range path.scopeGraph[scopeId] {
+		if !nextScopeEdge.originalCondensedEdge.to.component.hasCycle() {
+			continue
+		}
 		g.generateQueriesSccDfs(cq, path, nextScopeEdge)
 	}
 }
@@ -406,10 +418,23 @@ func (g *Graph) generateQueryForScc(cq *cteQuery, scopeId int, path *Path, prevS
 	if len(rootVertex.groupedCycles) > 1 {
 		panic("IMPLEMENT ME: more than one cycle group found in SCC")
 	}
+	var cycleScopeEdges []*ScopeEdge
+	var scopeConds []string
+	for _, se := range nextScopeEdges {
+		if se.originalCondensedEdge.to.component.hasCycle() {
+			cycleScopeEdges = append(cycleScopeEdges, se)
+			continue
+		}
+		// The scope was forked because its table is already joined in this scope. Filter by the scope edge
+		// instead of joining the table a second time.
+		if cond := g.generateQueriesDfs(path, se); cond != "" {
+			scopeConds = append(scopeConds, cond)
+		}
+	}
 	cycleGroup := rootVertex.getOneCycleGroup()
 	overlapMap := g.getOverlapMap(cycleGroup)
 	for _, cycle := range cycleGroup {
-		g.generateRecursiveQueriesForCycle(cq, scopeId, cycle, edges, nextScopeEdges, overlapMap)
+		g.generateRecursiveQueriesForCycle(cq, scopeId, cycle, edges, cycleScopeEdges, scopeConds, overlapMap)
 	}
 
 	g.generateFilteredQueries(cq, cycleGroup, scopeId)
@@ -436,12 +461,12 @@ func (g *Graph) generateQueriesForVertexesInCycle(cq *cteQuery, scopeId int, cyc
 	for _, t := range getTablesFromCycle(cycles[0]) {
 		queryName := fmt.Sprintf("%s__%s__ids", t.Schema, t.Name)
 		query := generateAllTablesValidPkSelection(cycles, scopeId, t)
-		cq.addItem(queryName, query)
+		cq.addOrIntersectItem(queryName, query)
 	}
 }
 
 func (g *Graph) generateRecursiveQueriesForCycle(
-	cq *cteQuery, scopeId int, cycle []*Edge, rest []*CondensedEdge, nextScopeEdges []*ScopeEdge,
+	cq *cteQuery, scopeId int, cycle []*Edge, rest []*CondensedEdge, nextScopeEdges []*ScopeEdge, scopeConds []string,
 	overlapMap map[string][][]*Edge,
 ) {
 	overriddenTableNames := make(map[toolkit.Oid]string)
@@ -457,12 +482,12 @@ func (g *Graph) generateRecursiveQueriesForCycle(
 	shiftedCycle := slices.Clone(cycle)
 	for idx := 1; idx <= len(cycle); idx++ {
 		queryName := getCycleQueryName(scopeId, shiftedCycle, "")
-		query := generateQuery(queryName, shiftedCycle, rest, overriddenTableNames)
+		query := generateQuery(queryName, shiftedCycle, rest, overriddenTableNames, scopeConds)
 		cq.addItem(queryName, query)
 		cycleId := getCycleId(shiftedCycle)
 		if len(overlapMap[cycleId]) > 0 {
 			overlapQueryName := getCycleQueryName(scopeId, shiftedCycle, "overlap")
-			overlapQuery := generateOverlapQuery(scopeId, overlapQueryName, shiftedCycle, rest, overriddenTableNames, overlapMap[cycleId])
+			overlapQuery := generateOverlapQuery(scopeId, overlapQueryName, shiftedCycle, rest, overriddenTableNames, scopeConds, overlapMap[cycleId])
 			cq.addItem(overlapQueryName, overlapQuery)
 		}
 		shiftedCycle = shiftCycle(shiftedCycle)
@@ -504,7 +529,6 @@ func (g *Graph) generateQueriesDfs(path *Path, scopeEdge *ScopeEdge) string {
 		return ""
 	}
 
-	currentScopeQuery := g.generateQueryForTables(path, scopeEdge)
 	var subQueries []string
 	for _, nextScope := range path.scopeGraph[scopeId] {
 		subQuery := g.generateQueriesDfs(path, nextScope)
@@ -512,19 +536,11 @@ func (g *Graph) generateQueriesDfs(path *Path, scopeEdge *ScopeEdge) string {
 			subQueries = append(subQueries, subQuery)
 		}
 	}
-
-	if len(subQueries) == 0 {
-		return currentScopeQuery
-	}
-
-	totalQuery := fmt.Sprintf(
-		"%s AND %s", currentScopeQuery,
-		strings.Join(subQueries, " AND "),
-	)
-	return totalQuery
+	return g.generateQueryForTables(path, scopeEdge, subQueries)
 }
 
-func (g *Graph) generateQueryForTables(path *Path, scopeEdge *ScopeEdge) string {
+// generateQueryForTables - subQueries are the conditions of the nested scopes
+func (g *Graph) generateQueryForTables(path *Path, scopeEdge *ScopeEdge, subQueries []string) string {
 	scopeId := rootScopeId
 	if scopeEdge != nil {
 		scopeId = scopeEdge.scopeId
@@ -534,14 +550,15 @@ func (g *Graph) generateQueryForTables(path *Path, scopeEdge *ScopeEdge) string 
 		edges = append(edges, se.originalEdge)
 	}
 
-	// Use root table as a root table from path
-	rootVertex := g.scc[path.rootVertex]
-	rootTable := rootVertex.getOneTable()
+	var rootTable *entries.Table
 	if scopeEdge != nil {
 		// If it is not a root scope use the right table from the first edge as a root table
 		// And left table from the first edge as a left table for the subquery. It will be used for where in clause
 		rootTable = scopeEdge.originalCondensedEdge.originalEdge.to.table
 		edges = edges[1:]
+	} else {
+		// Use root table as a root table from path
+		rootTable = g.scc[path.rootVertex].getOneTable()
 	}
 
 	whereConds := slices.Clone(rootTable.SubsetConds)
@@ -569,6 +586,7 @@ func (g *Graph) generateQueryForTables(path *Path, scopeEdge *ScopeEdge) string 
 	}
 	integrityChecks := generateIntegrityChecksForNullableEdges(nullabilityMap, edges, make(map[toolkit.Oid]string))
 	whereConds = append(whereConds, integrityChecks...)
+	whereConds = append(whereConds, subQueries...)
 
 	query := fmt.Sprintf(
 		`%s %s %s %s`,
@@ -673,14 +691,14 @@ func isPathForScc(path *Path, graph *Graph) bool {
 }
 
 func generateQuery(
-	queryName string, cycle []*Edge, rest []*CondensedEdge, overriddenTables map[toolkit.Oid]string,
+	queryName string, cycle []*Edge, rest []*CondensedEdge, overriddenTables map[toolkit.Oid]string, scopeConds []string,
 ) string {
 	var (
 		selectKeys                             []string
 		initialJoins, recursiveJoins           []string
 		initialWhereConds, recursiveWhereConds []string
 		integrityCheck                         string
-		cycleSubsetConds                       []string
+		cycleSubsetConds                       = slices.Clone(scopeConds)
 		edges                                  = slices.Clone(cycle[:len(cycle)-1])
 		droppedEdge                            = cycle[len(cycle)-1]
 	)
@@ -749,7 +767,7 @@ func generateQuery(
 		initialSelect, initFromClause, strings.Join(initialJoins, " "), initialWhereClause,
 	)
 
-	recursiveIntegrityChecks := slices.Clone(cycleSubsetConds)
+	recursiveIntegrityChecks := append([]string{"TRUE"}, cycleSubsetConds...)
 	recursiveIntegrityChecks = append(recursiveIntegrityChecks, integrityChecks...)
 	recursiveIntegrityCheck := fmt.Sprintf("(%s) AS valid", strings.Join(recursiveIntegrityChecks, " AND "))
 	recursiveKeys := slices.Clone(selectKeys)
@@ -806,14 +824,14 @@ func generateQuery(
 
 func generateOverlapQuery(
 	scopeId int,
-	queryName string, cycle []*Edge, rest []*CondensedEdge, overriddenTables map[toolkit.Oid]string,
+	queryName string, cycle []*Edge, rest []*CondensedEdge, overriddenTables map[toolkit.Oid]string, scopeConds []string,
 	overlap [][]*Edge,
 ) string {
 	var (
 		selectKeys                             []string
 		initialJoins, recursiveJoins           []string
 		initialWhereConds, recursiveWhereConds []string
-		cycleSubsetConds                       []string
+		cycleSubsetConds                       = slices.Clone(scopeConds)
 		edges                                  = slices.Clone(cycle[:len(cycle)-1])
 		droppedEdge                            = cycle[len(cycle)-1]
 	)
@@ -872,7 +890,7 @@ func generateOverlapQuery(
 		initialJoins = append(initialJoins, generateJoinClauseV2(e, joinType, overriddenTables))
 	}
 
-	integrityChecks := generateIntegrityChecksForNullableEdges(nullabilityMap, edges, overriddenTables)
+	integrityChecks := append([]string{"TRUE"}, generateIntegrityChecksForNullableEdges(nullabilityMap, edges, overriddenTables)...)
 	integrityChecks = append(integrityChecks, cycleSubsetConds...)
 	initialIntegrityCheck := fmt.Sprintf("(%s) AS valid", strings.Join(integrityChecks, " AND "))
 	initialKeys = append(initialKeys, initialIntegrityCheck)
@@ -1000,14 +1018,14 @@ func generateIntegrityChecksForNullableEdges(nullabilityMap map[int]bool, edges 
 				rightTableKey[idx].GetKeyReference(e.to.table),
 				polymorphicExpr,
 			)
-			if _, ok := overriddenTables[e.to.table.Oid]; ok {
+			if override, ok := overriddenTables[e.to.table.Oid]; ok {
 				if polymorphicExpr != "" {
 					panic("IMPLEMENT ME: polymorphic expression for overridden table")
 				}
 				k = fmt.Sprintf(
 					`(%s IS NULL OR "%s"."%s" IS NOT NULL)`,
 					leftTableKey[idx].GetKeyReference(e.from.table),
-					overriddenTables[e.to.table.Oid],
+					getOverrideAlias(e, override),
 					rightTableKey[idx].Name,
 				)
 			}

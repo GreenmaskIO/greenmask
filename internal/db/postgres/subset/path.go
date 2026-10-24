@@ -66,12 +66,7 @@ func (p *Path) addEdge(e *CondensedEdge, scopeId int) int {
 	if e.to.component.hasCycle() || vertexIsInScope(p.scopeEdges[scopeId], e) {
 		scopeId = p.createScopeWithParent(scopeId, e)
 	} else {
-		isNullable := e.originalEdge.isNullable
-		if !isNullable {
-			isNullable = slices.ContainsFunc(p.scopeEdges[scopeId], func(edge *CondensedEdge) bool {
-				return edge.originalEdge.to.idx == e.from.idx && edge.originalEdge.isNullable
-			})
-		}
+		isNullable := e.originalEdge.isNullable || p.scopeEdgesNullable[scopeId][e.from.idx]
 		p.scopeEdgesNullable[scopeId][e.to.idx] = isNullable
 		p.scopeEdges[scopeId] = append(p.scopeEdges[scopeId], e)
 	}
