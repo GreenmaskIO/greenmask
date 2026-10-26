@@ -13,7 +13,7 @@ number validation systems, or anonymizing phone number data in datasets while fo
 | Name      | Description                                       | Default | Required | Supported DB types                  |
 |-----------|---------------------------------------------------|---------|----------|-------------------------------------|
 | column    | The name of the column to be affected             |         | Yes      | text, varchar, char, bpchar, citext |
-| keep_null | Indicates whether NULL values should be preserved | `false` | No       | -                                   |
+| keep_null | Indicates whether NULL values should be preserved | `true`  | No       | -                                   |
 
 ## Description
 

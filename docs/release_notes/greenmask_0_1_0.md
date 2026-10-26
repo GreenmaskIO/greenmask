@@ -1,6 +1,6 @@
 # Greenmask 0.1.0
 
-We are excited to announce the release of Greenmask v0.1.0, marking the first production-ready version. This release addresses various bug fixes, introduces improvements, and includes documentation refactoring for enhanced clarity.
+Greenmask 0.1.0 was released on 2024-01-09. We are excited to announce the release of Greenmask v0.1.0, marking the first production-ready version. This release addresses various bug fixes, introduces improvements, and includes documentation refactoring for enhanced clarity.
 
 ## New features
 

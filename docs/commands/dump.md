@@ -70,6 +70,15 @@ Mostly it supports the same flags as the `pg_dump` utility, with some extra flag
   -v, --verbose string                  verbose mode
 ```
 
+### Validation before the dump
+
+Before it dumps anything, `dump` checks the `transformation` config against the database schema, the same way
+[`validate`](validate.md#validation-errors-and-warnings) does. Any validation warning with severity `error`, such as a
+transformer whose column does not exist (`column does not exist`) or a table that does not exist
+(`table is not found`), is logged and the dump stops with `context error: fatal validation error`. Greenmask does not
+skip the transformer, and nothing is written to storage. Warnings with a lower severity are not printed and do not
+stop the dump. Run `greenmask validate --warnings` to see them.
+
 ### Pgzip compression
 
 By default, Greenmask uses gzip compression to restore data. In mist cases it is quite slow and does not utilize all

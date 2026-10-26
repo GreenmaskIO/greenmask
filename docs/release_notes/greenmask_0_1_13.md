@@ -1,6 +1,6 @@
 # Greenmask 0.1.13
 
-This release introduces only improvements in documentation deployment. The core greenmask utility does not contain any changes.
+Greenmask 0.1.13 was released on 2024-05-07. This release introduces only improvements in documentation deployment. The core greenmask utility does not contain any changes.
 
 ## Changes
 

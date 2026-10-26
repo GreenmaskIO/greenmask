@@ -1,6 +1,6 @@
 # Greenmask 0.2.5
 
-This release introduces bug fixes.
+Greenmask 0.2.5 was released on 2024-11-16. This release introduces bug fixes. It fixes a subset query that was not generated when provided.
 
 ## Changes
 

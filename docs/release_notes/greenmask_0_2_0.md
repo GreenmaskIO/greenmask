@@ -1,7 +1,6 @@
 # Greenmask 0.2.0
 
-This is one of the biggest releases since Greenmask was founded. We've been in close contact with our users, gathering
-feedback, and working hard to make Greenmask more flexible, reliable, and user-friendly.
+Greenmask 0.2.0 was released on 2024-10-09. This is one of the biggest releases since Greenmask was founded. We've been in close contact with our users, gathering feedback, and working hard to make Greenmask more flexible, reliable, and user-friendly.
 
 This major release introduces exciting new features such as database subsetting, pgzip support, restoration in
 topological order, and refactored transformers, significantly enhancing Greenmask's flexibility to better meet business

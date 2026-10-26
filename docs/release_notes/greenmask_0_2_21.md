@@ -1,5 +1,7 @@
 # Greenmask 0.2.21
 
+Greenmask 0.2.21 was released on 2026-05-29. It is a bugfix release that handles exclusion constraints (`EXCLUDE`) during table introspection instead of failing with an error.
+
 ## Changes
 
 * fix: handle exclusion constraints (`EXCLUDE`) during table introspection instead of returning a hard

@@ -128,7 +128,7 @@ configuration and potential constraint violations.
 
 :::note
 
-A validation warning with a severity level of `"error"` is considered critical and must be addressed before the dump operation can proceed. Failure to resolve such warnings will prevent the dump operation from being executed.
+A validation warning with a severity level of `"error"` is considered critical and must be addressed before the dump operation can proceed. Failure to resolve such warnings will prevent the dump operation from being executed. See [Validation errors and warnings](#validation-errors-and-warnings).
 :::
 
 ```text title="Schema diff changed output example"
@@ -284,6 +284,56 @@ The json object result
 
 </TabItem>
 </Tabs>
+
+## Validation errors and warnings
+
+`validate` and [`dump`](dump.md) check the configuration in the same way, against the live database schema, before
+any data is read. Each problem is a validation warning with one of these severities:
+
+* `error` — the configuration cannot be applied. It is fatal: `dump` aborts and `validate` exits with a non-zero code.
+* `warning`, `info`, `debug` — a hint, for example a possible constraint violation. It never stops `dump`. With
+  `--strict`, an unresolved `warning` makes `validate` exit with a non-zero code.
+
+Greenmask does not skip a transformer it cannot apply. A table, transformer, parameter or column in the
+`transformation` config that does not exist is an `error`:
+
+| Problem                                                    | `msg`                         | Main `meta` keys                                        |
+|------------------------------------------------------------|-------------------------------|---------------------------------------------------------|
+| Table does not exist                                       | `table is not found`          | `Schema`, `TableName`                                   |
+| Unknown transformer name                                   | `transformer not found`       | `TransformerName`                                       |
+| Unknown parameter name                                     | `received unknown parameter`  | `ParameterName`                                         |
+| Column parameter (such as `column`) names a missing column | `column does not exist`       | `ColumnName`, `ParameterName`                           |
+| Dynamic parameter `column` names a missing column          | `column does not exist`       | `DynamicParameterSetting: column`, `ParameterName`      |
+| `Cmd` transformer `columns` item names a missing column    | `column not found`            | `ColumnName`, `ElementNum`                              |
+
+For example, a `RandomEmail` transformer on a column `email` that the `public.users` table does not have:
+
+```text title="Missing column error"
+2026-10-25T10:12:03+02:00 ERR ValidationWarning={"hash":"","meta":{"ColumnName":"email","ParameterName":"column","SchemaName":"public","TableName":"users","TransformerName":"RandomEmail"},"msg":"column does not exist","severity":"error"}
+```
+
+`validate` prints the same line with the warning hash filled in. If a table in the config is missing, only the
+missing tables are reported: the transformers are checked on the next run, after the tables are fixed. Otherwise
+`error` warnings from all tables and transformers are reported in one run.
+
+How the two commands handle the result:
+
+|                                      | `dump`                                                    | `validate`                                                         |
+|--------------------------------------|-----------------------------------------------------------|--------------------------------------------------------------------|
+| `error` warnings                     | Logged, then the dump stops with `context error: fatal validation error` before the schema is dumped. Nothing is written to storage. | Logged, then exits with code `1` and `fatal validation error`. |
+| `warning`, `info`, `debug` warnings  | Not printed, the dump goes on.                            | Printed with `--warnings` or `--strict`. Exit code `1` only with `--strict` and only for unresolved `warning`. |
+| `validate.resolved_warnings`         | Not used.                                                 | Hides the listed warnings. An `error` hash in the list fails validate with `warning with hash ... cannot be excluded because it is an error`. |
+| Tables checked                       | Every table in `dump.transformation`.                     | The `--table` tables if set, otherwise every table in `dump.transformation`. |
+
+So run `validate` without `--table` to see every error that would stop `dump`.
+
+:::warning
+
+A column in a `when` condition is not checked during validation. If `record.<column>` or `raw_record.<column>` names
+a column that does not exist, the condition fails on the first row of the table with
+`error evaluating when condition: unable to evaluate when condition: invalid operation: cannot call nil`, and `dump`
+stops in the data stage. `validate` finds it only with `--data` and only if the table has rows.
+:::
 
 ## Summary diff
 

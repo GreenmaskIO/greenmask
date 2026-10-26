@@ -13,7 +13,7 @@ products, birth years of users, or any other context where only the year is rele
 | Name      | Description                                       | Default | Required | Supported DB types                                             |
 |-----------|---------------------------------------------------|---------|----------|----------------------------------------------------------------|
 | column    | The name of the column to be affected             |         | Yes      | text, varchar, char, bpchar, citext, int2, int4, int8, numeric |
-| keep_null | Indicates whether NULL values should be preserved | `false` | No       | -                                                              |
+| keep_null | Indicates whether NULL values should be preserved | `true`  | No       | -                                                              |
 
 ## Description
 

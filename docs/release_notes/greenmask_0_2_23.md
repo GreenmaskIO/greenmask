@@ -1,5 +1,7 @@
 # Greenmask 0.2.23
 
+Greenmask 0.2.23 was released on 2026-08-22. It adds the `--exclude-extension` option to `dump`, fails the dump when sequence privileges are missing on PostgreSQL 18 and later, and fixes generated columns in subset dumps and the `RandomEmail` source value check.
+
 ## Changes
 
 * feat: add `--exclude-extension` option to the `dump` command, mirroring `--exclude-schema` and

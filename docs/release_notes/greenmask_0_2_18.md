@@ -1,5 +1,7 @@
 # Greenmask 0.2.18
 
+Greenmask 0.2.18 was released on 2026-03-30. It adds environment variable interpolation in the YAML configuration and batches S3 `DeleteObjects` calls to respect the 1000 object limit.
+
 ## Changes
 
 * Added environment variable interpolation in YAML configuration (`${VAR}`, `${VAR:-default}`, and `${VAR?message}`) [#421](https://github.com/GreenmaskIO/greenmask/pull/421)

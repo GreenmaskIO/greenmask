@@ -1,6 +1,6 @@
 # Greenmask 0.1.8
 
-This release introduces improvements and bug fixes
+Greenmask 0.1.8 was released on 2024-03-22. This release introduces improvements and bug fixes. It adds the `--exit-on-error` parameter for restore and fixes `restore --clean`, the `show-dump` text output, the `delete` operation and downloaded binaries that could not run.
 
 ## Improvements
 

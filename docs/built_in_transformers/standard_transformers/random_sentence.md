@@ -12,7 +12,7 @@ simulating natural language text for user comments, testing NLP systems, or anon
 | Name      | Description                                       | Default | Required | Supported DB types                  |
 |-----------|---------------------------------------------------|---------|----------|-------------------------------------|
 | column    | The name of the column to be affected             |         | Yes      | text, varchar, char, bpchar, citext |
-| keep_null | Indicates whether NULL values should be preserved | `false` | No       | -                                   |
+| keep_null | Indicates whether NULL values should be preserved | `true`  | No       | -                                   |
 
 ## Description
 
@@ -26,13 +26,15 @@ This example shows how to configure the `RandomSentence` transformer to populate
 table with random sentences. It is a straightforward method for simulating diverse user-generated content.
 
 ```yaml title="RandomSentence transformer example"
-- schema: "public"
-  name: "comments"
-  transformers:
-    - name: "RandomSentence"
-      params:
-        column: "comment"
-        keep_null: false
+dump:
+  transformation:
+    - schema: "public"
+      name: "comments"
+      transformers:
+        - name: "RandomSentence"
+          params:
+            column: "comment"
+            keep_null: false
 ```
 
 In this configuration, the `comment` column will be updated with random sentences for each entry, replacing any existing

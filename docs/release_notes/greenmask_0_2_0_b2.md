@@ -1,7 +1,6 @@
 # Greenmask 0.2.0b2 (pre-release)
 
-This **major beta** release introduces new features such as the database subset, pgzip support, restoration in
-topological and many more. It also includes fixes and improvements.
+Greenmask 0.2.0b2 (pre-release) was released on 2024-08-30. This **major beta** release introduces new features such as the database subset, pgzip support, restoration in topological order and many more. It also includes fixes and improvements.
 
 ## Preface
 

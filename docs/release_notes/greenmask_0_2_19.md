@@ -1,5 +1,7 @@
 # Greenmask 0.2.19
 
+Greenmask 0.2.19 was released on 2026-04-15. It adds environment variable interpolation in transformer parameters via the `resolve_env: true` transformer option.
+
 ## Changes
 
 * Added environment variable interpolation in transformer parameters via `resolve_env: true` transformer option [#430](https://github.com/GreenmaskIO/greenmask/pull/430)

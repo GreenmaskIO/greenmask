@@ -1,7 +1,6 @@
 # Greenmask 0.2.1
 
-This release introduces two new features transformation conditions and transformation inheritance for primary and
-foreign keys. It also includes several bug fixes and improvements.
+Greenmask 0.2.1 was released on 2024-11-04. This release introduces two new features: transformation conditions and transformation inheritance for primary and foreign keys. It also includes several bug fixes and improvements.
 
 ## Changes
 

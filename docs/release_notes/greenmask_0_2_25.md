@@ -1,6 +1,6 @@
 # Greenmask 0.2.25
 
-This is a bugfix release. It fixes a data corruption issue present in every earlier release, starting from 0.1.0-beta. Check the [Am I affected?](#am-i-affected) section below.
+Greenmask 0.2.25 was released on 2026-09-30. This is a bugfix release. It fixes a data corruption issue present in every earlier release, starting from 0.1.0-beta. Check the [Am I affected?](#am-i-affected) section below.
 
 ## Changes
 

@@ -1,7 +1,6 @@
 # Greenmask 0.2.0b1 (pre-release)
 
-This **major beta** release introduces new features and refactored transformers, significantly enhancing Greenmask's
-flexibility to better meet business needs.
+Greenmask 0.2.0b1 (pre-release) was released on 2024-05-17. This **major beta** release introduces new features and refactored transformers, significantly enhancing Greenmask's flexibility to better meet business needs.
 
 ## Changes overview
 

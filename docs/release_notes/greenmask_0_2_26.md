@@ -1,5 +1,7 @@
 # Greenmask 0.2.26
 
+Greenmask 0.2.26 was released on 2026-10-23. It adds a summary diff mode to `validate` that prints no values, makes the gender chosen by RandomPerson reproducible and moves the documentation to Docusaurus.
+
 ## Changes
 
 * feat: add `--diff-mode=summary` to the [validate](../commands/validate.md#summary-diff) command. It compares the same rows as `--diff` but prints only counts per table and column — changed, unchanged and NULLs kept — with no original or transformed value and no primary key. This makes `validate` usable where production data may be read but must not be shown, such as kept CI logs, a shared terminal or an AI agent's transcript. Text and `--format=json` output are supported [#495](https://github.com/GreenmaskIO/greenmask/pull/495) [#503](https://github.com/GreenmaskIO/greenmask/pull/503)

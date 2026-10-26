@@ -13,7 +13,7 @@ Generates real addresses for specified database columns using the `faker` librar
 | columns |            | Specifies the affected column names along with additional properties for each column |         | Yes      | Various            |
 | ∟       | name       | The name of the column to be affected                                                |         | Yes      | string             |
 | ∟       | template   | A Go template string for formatting real address attributes                          |         | Yes      | string             |
-| ∟       | keep_null  | Indicates whether NULL values should be preserved                                    |         | No       | bool               |
+| ∟       | keep_null  | Indicates whether NULL values should be preserved                                    | `false` | No       | bool               |
 
 ### Template value descriptions
 

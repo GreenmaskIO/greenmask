@@ -1,5 +1,7 @@
 # Greenmask 0.2.13
 
+Greenmask 0.2.13 was released on 2025-07-21. It is a bugfix release that fixes a panic in introspection when virtual references are set on tables without primary keys, and the hash engine ignoring `GREENMASK_GLOBAL_SALT`.
+
 ## Changes
 
 * Fixed a panic in the introspection function when virtual references were set on tables without primary keys 

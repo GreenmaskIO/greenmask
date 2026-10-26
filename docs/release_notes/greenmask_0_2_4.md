@@ -1,6 +1,6 @@
 # Greenmask 0.2.4
 
-This release introduces bug fixes.
+Greenmask 0.2.4 was released on 2024-11-16. This release introduces bug fixes. It fixes incorrect subset and transformer inheritance behavior.
 
 ## Changes
 

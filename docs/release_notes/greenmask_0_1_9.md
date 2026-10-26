@@ -1,6 +1,6 @@
 # Greenmask 0.1.9
 
-This release introduces improvements and bug fixes
+Greenmask 0.1.9 was released on 2024-04-06. This release introduces improvements and bug fixes. It adds table scoring to spread tables between dump workers, the `no_verify_ssl` S3 parameter and environment variable overrides for config attributes, and makes `--config` optional.
 
 ## Improvements
 

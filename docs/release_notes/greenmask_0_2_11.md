@@ -1,5 +1,7 @@
 # Greenmask 0.2.11
 
+Greenmask 0.2.11 was released on 2025-04-05. It restores the change of the Oid type to uint32 that was lost in 0.2.10.
+
 ## Changes
 
 * Catch up v0.2.10 lost changes. Change Oid type to uint32 [#289](https://github.com/GreenmaskIO/greenmask/pull/289). 

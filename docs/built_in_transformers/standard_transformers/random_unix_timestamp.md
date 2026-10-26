@@ -19,7 +19,7 @@ timestamps in a dataset.
 | unit      | Generated unix timestamp value unit. Possible values [`second`, `millisecond`, `microsecond`, `nanosecond`]                                                                                 | `second` | Yes      | -                  |
 | min_unit  | Min unix timestamp threshold date unit. Possible values [`second`, `millisecond`, `microsecond`, `nanosecond`]                                                                              | `second` | Yes      | -                  |
 | max_unit  | Min unix timestamp threshold date unit. Possible values [`second`, `millisecond`, `microsecond`, `nanosecond`]                                                                              | `second` | Yes      | -                  |
-| keep_null | Indicates whether NULL values should be preserved                                                                                                                                           | `false`  | No       | -                  |
+| keep_null | Indicates whether NULL values should be preserved                                                                                                                                           | `true`   | No       | -                  |
 | truncate  | Truncate the date to the specified part (`nanosecond`, `microsecond`, `millisecond`, `second`, `minute`, `hour`, `day`, `month`, `year`). The truncate operation is not applied by default. |          | No       | -                  |
 | engine    | The engine used for generating the values [`random`, `hash`]. Use hash for deterministic generation                                                                                         | `random` | No       | -                  |
 

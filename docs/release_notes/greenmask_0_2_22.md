@@ -1,5 +1,7 @@
 # Greenmask 0.2.22
 
+Greenmask 0.2.22 was released on 2026-07-01. It adds the Azure Blob Storage and SSH/SFTP storage backends, the `GREENMASK_CONFIG` environment variable for the config file path and the `validate --strict` option.
+
 ## Changes
 
 * feat(storage): add Azure Blob Storage backend (`storage.type: azure`) supporting shared key, SAS token, and default credential chain authentication, as well as sovereign clouds [#457](https://github.com/GreenmaskIO/greenmask/pull/457). Closes [#299](https://github.com/GreenmaskIO/greenmask/issues/299)

@@ -1,5 +1,7 @@
 # Greenmask 0.2.12
 
+Greenmask 0.2.12 was released on 2025-05-28. It adds dynamic parameters to the Replace transformer, makes `--verbose` a boolean flag and fixes minute truncation in the `RandomDate` transformer.
+
 ## Changes
 
 * Added support for dynamic parameters in the Replace transformer, allowing values to be dynamically replaced based on

@@ -8,13 +8,94 @@ keywords: ["standard transformers", "greenmask", "data anonymization", "greenmas
 
 Standard transformers are ready-to-use methods that require no customization and perform with just as little as parameters input. Below you can find an index of all standard transformers currently available in Greenmask.
 
+## Transformer names
+
+Transformer names are case-sensitive and written in PascalCase, exactly as `greenmask list-transformers` prints them. A name such as `random_email` or `nullify` fails validation with `transformer not found`. The table maps common search terms to the actual transformer names:
+
+| You are looking for                     | Transformer name                                                                                  |
+|-----------------------------------------|---------------------------------------------------------------------------------------------------|
+| nullify, set to NULL                    | [SetNull](set_null.md)                                                                            |
+| random text                             | [RandomString](random_string.md), [RandomWord](random_word.md), [RandomSentence](random_sentence.md), [RandomParagraph](random_paragraph.md) |
+| random email                            | [RandomEmail](random_email.md)                                                                    |
+| hash                                    | [Hash](hash.md)                                                                                   |
+| shift a date (date noise)               | [NoiseDate](noise_date.md)                                                                        |
+| random IP address                       | [RandomIp](random_ip.md)                                                                          |
+| constant value                          | [Replace](replace.md)                                                                             |
+
+## Applying transformers in the config
+
+Transformers are set per table under `dump.transformation`. Each table entry has `schema`, `name` and a `transformers` list; each transformer has a `name` and `params`:
+
+```yaml title="dump.transformation example"
+dump:
+  transformation:
+    - schema: "public"
+      name: "account"
+      transformers:
+        - name: "RandomEmail"
+          params:
+            column: "email"
+            engine: "hash"
+        - name: "RandomString"
+          params:
+            column: "login"
+            min_length: 8
+            max_length: 16
+        - name: "RandomSentence"
+          params:
+            column: "bio"
+        - name: "Hash"
+          params:
+            column: "external_id"
+            function: "sha256"
+        - name: "NoiseDate"
+          params:
+            column: "birth_date"
+            max_ratio: "1 year"
+            truncate: "day"
+        - name: "RandomIp"
+          params:
+            column: "last_login_ip"
+            subnet: "10.0.0.0/8"
+        - name: "SetNull"
+          params:
+            column: "notes"
+```
+
+See [Configuration](../../configuration.md) for the rest of the `dump` section.
+
+## The keep_null parameter
+
+`keep_null` controls what happens when the original value is `NULL`:
+
+* `true` — the `NULL` is left as is and nothing is generated for this row.
+* `false` — the transformer generates a value for the row as if the original were not `NULL`.
+
+Non-`NULL` values are transformed either way. Transformers that support `keep_null` and its default:
+
+| Transformers                                                                                                                                                                                                                                                                                                      | Default |
+|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|---------|
+| RandomBool, RandomChoice, RandomDate, RandomUnixTimestamp, RandomEmail, RandomFloat, RandomInt, RandomNumeric, RandomString, RandomUuid, HashedPassword, Replace, [Json](../advanced_transformers/json.md)                                                                                                                             | `true`  |
+| RandomLatitude, RandomLongitude, RandomMonthName, RandomYearString, RandomDayOfWeek, RandomDayOfMonth, RandomCentury, RandomTimezone, RandomDomainName, RandomURL, RandomUsername, RandomPassword, RandomWord, RandomSentence, RandomParagraph, RandomCCType, RandomCCNumber, RandomCurrency, RandomAmountWithCurrency, RandomPhoneNumber, RandomTollFreePhoneNumber, RandomE164PhoneNumber | `true`  |
+| RandomPerson, RandomCompany (set per item in `columns`)                                                                                                                                                                                                                                                           | `true`  |
+| RealAddress (set per item in `columns`)                                                                                                                                                                                                                                                                           | `false` |
+
+Transformers without `keep_null` handle `NULL` in a fixed way:
+
+* `Hash`, `NoiseDate`, `NoiseFloat`, `NoiseInt`, `NoiseNumeric`, `Masking` and `RegexpReplace` always leave `NULL` unchanged.
+* `RandomIp` always generates a value, also for `NULL`.
+* `Dict` can map `NULL` like any other value, see [Dict](dict.md).
+* `SetNull` always writes `NULL`.
+
+## All standard transformers
+
 1. [Cmd](cmd.md) — transforms data via external program using `stdin` and `stdout` interaction.
 1. [Dict](dict.md) — replaces values matched by dictionary keys.
-1. [Hash](dict.md) — generates a hash of the text value.
+1. [Hash](hash.md) — generates a salted hash of the text value.
 1. [HashedPassword](hashed_password.md) — replaces a password hash with a bcrypt hash of one known password.
 1. [Masking](masking.md) — masks a value using one of the masking behaviors depending on your domain.
 1. [NoiseDate](noise_date.md) — randomly adds or subtracts a duration within the provided ratio interval to the original date value.
-1. [NoiseFloat](noise_float.md) — adds or subtracts a random fraction to the original float value.terval to the original date value.
+1. [NoiseFloat](noise_float.md) — adds or subtracts a random fraction to the original float value.
 1. [NoiseNumeric](noise_numeric.md) — adds or subtracts a random fraction to the original numeric value.
 1. [NoiseInt](noise_int.md) — adds or subtracts a random fraction to the original integer value.
 1. [RandomBool](random_bool.md) — generates random boolean values.
@@ -40,7 +121,7 @@ Standard transformers are ready-to-use methods that require no customization and
 1. [RandomDomainName](random_domain_name.md) — generates a random domain name.
 1. [RandomURL](random_url.md) — generates a random URL.
 1. [RandomMac](random_mac.md) — generates a random MAC addresses.
-1. [RandomIP](random_ip.md) — generates a random IPv4 or IPv6 addresses.
+1. [RandomIp](random_ip.md) — generates a random IPv4 or IPv6 addresses.
 1. [RandomWord](random_word.md) — generates a random word.
 1. [RandomSentence](random_sentence.md) — generates a random sentence.
 1. [RandomParagraph](random_paragraph.md) — generates a random paragraph.

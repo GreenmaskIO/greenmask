@@ -1,5 +1,7 @@
 # Greenmask 0.2.15
 
+Greenmask 0.2.15 was released on 2025-12-13. It adds PostgreSQL 18 support, the `postcode` type of the `Masking` transformer and the `skip_not_exist` parameter for `Json` transformer operations, and fixes two schema dump bugs.
+
 ## Changes
 
 * Supported PostgreSQL 18 [#380](https://github.com/GreenmaskIO/greenmask/pull/380)

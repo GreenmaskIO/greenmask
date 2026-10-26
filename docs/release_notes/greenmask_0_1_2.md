@@ -1,6 +1,6 @@
 # Greenmask 0.1.2
 
-This release introduces bug fixes.
+Greenmask 0.1.2 was released on 2024-01-30. This release introduces bug fixes. It fixes parsing of raw COPY lines, the `--version` parameter and URI connection strings in `--dbname`.
 
 ## Fixes
 

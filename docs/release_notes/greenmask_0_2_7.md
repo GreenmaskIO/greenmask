@@ -1,6 +1,6 @@
 # Greenmask 0.2.7
 
-This release fixes several bugs.
+Greenmask 0.2.7 was released on 2025-01-31. This release fixes several bugs. It fixes a lost semicolon in a directory dump converted to a single file with `pg_restore --file` and updates Go dependencies.
 
 ## Changes
 
