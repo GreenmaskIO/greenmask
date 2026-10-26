@@ -114,3 +114,35 @@ func TestMakeNewFakeTransformerFunction_validation_error(t *testing.T) {
 	require.Len(t, warnings, 1)
 	require.Equal(t, "error validating template", warnings[0].Msg)
 }
+
+func TestRealAddressTransformer_KeepNullDoesNotSkipOtherColumns(t *testing.T) {
+	driver, record := getDriverAndRecordByColumns([]string{"data", "first_name"}, "\\N\tJohn")
+
+	transformer, warnings, err := RealAddressTransformerDefinition.Instance(
+		context.Background(),
+		driver,
+		map[string]toolkit.ParamsValue{
+			"columns": toolkit.ParamsValue(`[
+				{"name": "data", "template": "{{ .City }}", "keep_null": true},
+				{"name": "first_name", "template": "{{ .Address }}"}
+			]`),
+		},
+		nil,
+		"",
+		false,
+	)
+	require.NoError(t, err)
+	require.Empty(t, warnings)
+
+	_, err = transformer.Transformer.Transform(context.Background(), record)
+	require.NoError(t, err)
+
+	rawValue, err := record.GetRawColumnValueByName("data")
+	require.NoError(t, err)
+	require.True(t, rawValue.IsNull)
+
+	rawValue, err = record.GetRawColumnValueByName("first_name")
+	require.NoError(t, err)
+	require.False(t, rawValue.IsNull)
+	require.NotEqual(t, "John", string(rawValue.Data))
+}

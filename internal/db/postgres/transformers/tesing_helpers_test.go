@@ -235,7 +235,9 @@ func getDriverAndRecordByColumns(columnNames []string, value string) (*toolkit.D
 		if idx == -1 {
 			panic("cannot find column: " + columnName)
 		}
-		filteredColumns = append(filteredColumns, columnList[idx])
+		c := *columnList[idx]
+		c.Idx = len(filteredColumns)
+		filteredColumns = append(filteredColumns, &c)
 	}
 
 	table := &toolkit.Table{
