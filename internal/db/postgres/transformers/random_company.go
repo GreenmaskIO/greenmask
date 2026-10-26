@@ -119,22 +119,20 @@ func (nft *RandomCompanyTransformer) Done(ctx context.Context) error {
 }
 
 func (nft *RandomCompanyTransformer) Transform(ctx context.Context, r *toolkit.Record) (*toolkit.Record, error) {
-	// if we are in hash engine mode, we need to clear buffer before filling it with new data
-	if nft.engine == hashEngineMode {
-		clear(nft.originalData)
-		for _, c := range nft.columns {
-			rawVal, err := r.GetRawColumnValueByIdx(c.columnIdx)
-			if err != nil {
-				return nil, fmt.Errorf("unable to get raw value by idx %d: %w", c.columnIdx, err)
-			}
-			nft.nullableMap[c.columnIdx] = rawVal.IsNull
-			// we need to hash only columns that are marked for hashing
-			if !c.Hashing {
-				continue
-			}
-			if !rawVal.IsNull {
-				nft.originalData = append(nft.originalData, rawVal.Data...)
-			}
+	// reset the hash input buffer and collect NULL flags for keep_null in every engine mode
+	nft.originalData = nft.originalData[:0]
+	for _, c := range nft.columns {
+		rawVal, err := r.GetRawColumnValueByIdx(c.columnIdx)
+		if err != nil {
+			return nil, fmt.Errorf("unable to get raw value by idx %d: %w", c.columnIdx, err)
+		}
+		nft.nullableMap[c.columnIdx] = rawVal.IsNull
+		// we need to hash only columns that are marked for hashing
+		if nft.engine != hashEngineMode || !c.Hashing {
+			continue
+		}
+		if !rawVal.IsNull {
+			nft.originalData = append(nft.originalData, rawVal.Data...)
 		}
 	}
 
