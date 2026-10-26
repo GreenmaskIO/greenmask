@@ -166,7 +166,7 @@ func (rat *RealAddressTransformer) Transform(ctx context.Context, r *toolkit.Rec
 			return nil, err
 		}
 		if rawValue.IsNull && col.KeepNull {
-			return r, nil
+			continue
 		}
 
 		rat.buf.Reset()
