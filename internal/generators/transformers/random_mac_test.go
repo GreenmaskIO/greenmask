@@ -133,3 +133,12 @@ func TestMacAddress_Generate(t *testing.T) {
 		})
 	}
 }
+
+func TestMacAddress_Generate_keep_vendor_short_original(t *testing.T) {
+	tr, err := NewMacAddress()
+	require.NoError(t, err)
+	g := generators.NewRandomBytes(time.Now().UnixNano(), tr.GetRequiredGeneratorByteLength())
+	require.NoError(t, tr.SetGenerator(g))
+	_, err = tr.Generate(nil, true, CastTypeAny, ManagementTypeAny)
+	require.Error(t, err)
+}

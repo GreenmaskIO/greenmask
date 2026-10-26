@@ -74,6 +74,9 @@ func (macAddr *MacAddress) Generate(original net.HardwareAddr, keepOriginalVendo
 
 func ModifyMacAddress(newMac, original net.HardwareAddr, keepOriginalVendor bool, castType, managementType int) ([]byte, error) {
 	if keepOriginalVendor {
+		if len(original) < 3 {
+			return nil, fmt.Errorf("original mac address is too short to keep vendor: got %d bytes", len(original))
+		}
 		newMac[0] = original[0]
 		newMac[1] = original[1]
 		newMac[2] = original[2]
