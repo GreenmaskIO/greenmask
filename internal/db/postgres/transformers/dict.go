@@ -230,6 +230,9 @@ func (ht *DictTransformer) Transform(ctx context.Context, r *toolkit.Record) (*t
 			newVal = ht.defaultValue
 		} else if ht.failNotMatched {
 			return nil, fmt.Errorf(`unable to match value for "%s"`, string(val.Data))
+		} else {
+			// Keep the current value; a nil set would restore the original raw bytes.
+			return r, nil
 		}
 	}
 
