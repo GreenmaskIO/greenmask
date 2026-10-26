@@ -132,7 +132,7 @@ type Cmd struct {
 	affectedColumns        map[int]string
 	affectedColumnsIdx     []*toolkit.Column
 	transferringColumnsIdx []*toolkit.Column
-	allColumnsIdx          []int
+	skipOnNullColumnsIdx   []int
 	skipOnBehaviour        int
 	checkSkip              bool
 	rowDriverParams        *toolkit.DriverParams
@@ -155,7 +155,9 @@ func NewCmd(
 	var skipOnBehaviourName string
 	var skipOnBehaviour = skipOnAll
 	var checkSkip bool
-	rowDriverParams := &defaultRowDriverParams
+	// copy the defaults: scanning into the package-level value would leak settings between instances
+	defaultParams := defaultRowDriverParams
+	rowDriverParams := &defaultParams
 
 	p := parameters["columns"]
 	if err := p.Scan(&columns); err != nil {
@@ -207,7 +209,7 @@ func NewCmd(
 	var warnings toolkit.ValidationWarnings
 	var affectedColumnsIdx []*toolkit.Column
 	var transferringColumnsIdx []*toolkit.Column
-	var allColumnsIdx []int
+	var skipOnNullColumnsIdx []int
 
 	if len(columns) > 0 {
 		for num, c := range columns {
@@ -225,7 +227,9 @@ func NewCmd(
 					SetMsg("column not found"))
 				continue
 			}
-			allColumnsIdx = append(allColumnsIdx, idx)
+			if c.SkipOnNullInput {
+				skipOnNullColumnsIdx = append(skipOnNullColumnsIdx, idx)
+			}
 
 			if !c.NotAffected {
 				added = true
@@ -250,9 +254,10 @@ func NewCmd(
 			}
 		}
 	} else {
-		for _, c := range driver.Table.Columns {
+		for idx, c := range driver.Table.Columns {
 			transferringColumnsIdx = append(transferringColumnsIdx, c)
 			affectedColumnsIdx = append(affectedColumnsIdx, c)
+			affectedColumns[idx] = c.Name
 		}
 	}
 
@@ -281,7 +286,7 @@ func NewCmd(
 		affectedColumns:        affectedColumns,
 		affectedColumnsIdx:     affectedColumnsIdx,
 		transferringColumnsIdx: transferringColumnsIdx,
-		allColumnsIdx:          allColumnsIdx,
+		skipOnNullColumnsIdx:   skipOnNullColumnsIdx,
 		skipOnBehaviour:        skipOnBehaviour,
 		checkSkip:              checkSkip,
 	}
@@ -345,6 +350,9 @@ func (c *Cmd) Done(ctx context.Context) error {
 	if err := c.BaseDone(); err != nil {
 		return err
 	}
+	if c.eg == nil {
+		return nil
+	}
 	if err := c.eg.Wait(); err != nil {
 		log.Warn().
 			Err(err).
@@ -367,14 +375,18 @@ func (c *Cmd) stderrForwarder(ctx context.Context) error {
 			log.Debug().Err(err).Msg("line reader error")
 			return err
 		}
+		// nil line means the context was cancelled; a real line is still logged
+		if line == nil && ctx.Err() != nil {
+			return nil
+		}
 
 		log.Warn().
 			Str("TableSchema", c.driver.Table.Schema).
 			Str("TableName", c.driver.Table.Name).
 			Str("TransformerName", c.name).
 			Int("TransformerPid", c.Cmd.Process.Pid).
+			Str("Data", string(line)).
 			Msg("stderr forwarding")
-		fmt.Printf("\tDATA: %s\n", string(line))
 
 		select {
 		case <-ctx.Done():
@@ -386,7 +398,7 @@ func (c *Cmd) stderrForwarder(ctx context.Context) error {
 
 func (c *Cmd) needSkip(r *toolkit.Record) (bool, error) {
 	var score int
-	for _, idx := range c.allColumnsIdx {
+	for _, idx := range c.skipOnNullColumnsIdx {
 		v, err := r.GetRawColumnValueByIdx(idx)
 		if err != nil {
 			return false, fmt.Errorf("error getting raw attribute value: %w", err)
@@ -395,7 +407,7 @@ func (c *Cmd) needSkip(r *toolkit.Record) (bool, error) {
 			score++
 		}
 	}
-	if score == len(c.allColumnsIdx) && skipOnAll == c.skipOnBehaviour {
+	if score == len(c.skipOnNullColumnsIdx) && skipOnAll == c.skipOnBehaviour {
 		return true, nil
 	} else if score > 0 && skipOnAny == c.skipOnBehaviour {
 		return true, nil
