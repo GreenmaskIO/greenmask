@@ -66,12 +66,12 @@ func TestUnixTimestampTransformer_Transform__positive_cases__static(t *testing.T
 			maxValue: 1711546399134,
 		},
 		{
-			name:       "milliseconds",
+			name:       "microseconds",
 			columnName: "id8",
 			original:   "123",
 			params: map[string]toolkit.ParamsValue{
-				"min":       toolkit.ParamsValue("1611546399134"),
-				"max":       toolkit.ParamsValue("1711546399134"),
+				"min":       toolkit.ParamsValue("1611546399134123"),
+				"max":       toolkit.ParamsValue("1711546399134123"),
 				"unit":      toolkit.ParamsValue(microUnit),
 				"min_unit":  toolkit.ParamsValue(microUnit),
 				"max_unit":  toolkit.ParamsValue(microUnit),

@@ -59,9 +59,14 @@ func (dt *DateTruncater) Truncate(t time.Time) time.Time {
 	var day = 1
 	var year, hour, minute, second, nano int
 	switch dt.part {
-	// TODO: Add MicrosecondTruncateValue, MillisecondTruncateValue truncate
 	case NanosecondTruncateValue, MicrosecondTruncateValue, MillisecondTruncateValue:
 		nano = t.Nanosecond()
+		switch dt.part {
+		case MillisecondTruncateValue:
+			nano -= nano % int(time.Millisecond)
+		case MicrosecondTruncateValue:
+			nano -= nano % int(time.Microsecond)
+		}
 		fallthrough
 	case SecondTruncateValue:
 		second = t.Second()
@@ -134,11 +139,11 @@ func NewTimestampLimiter(minDate, maxDate time.Time) (*TimestampLimiter, error) 
 
 	minDateThreshold := &timestampThreshold{
 		sec:  minDate.Unix(),
-		nano: int64(minDate.Nanosecond()) + 1,
+		nano: int64(minDate.Nanosecond()),
 	}
 	maxDateThreshold := &timestampThreshold{
 		sec:  maxDate.Unix(),
-		nano: int64(maxDate.Nanosecond()) + 1,
+		nano: int64(maxDate.Nanosecond()),
 	}
 
 	maxValueFromZero := uint64(maxDateThreshold.sec)
@@ -164,13 +169,15 @@ func NewTimestampLimiter(minDate, maxDate time.Time) (*TimestampLimiter, error) 
 
 func (dl *TimestampLimiter) Limit(sec, nano int64) (int64, int64) {
 	sec = (sec % int64(dl.maxValueFromZero)) + dl.offset
-	switch sec {
-	case dl.minDate.sec:
-		nano = nano % dl.minDate.nano
-	case dl.maxDate.sec:
-		nano = nano % dl.maxDate.nano
+	// Nanoseconds are bounded by min and max only at the boundary seconds.
+	minNano, maxNano := int64(0), int64(time.Second-1)
+	if sec == dl.minDate.sec {
+		minNano = dl.minDate.nano
 	}
-	return sec, nano
+	if sec == dl.maxDate.sec {
+		maxNano = dl.maxDate.nano
+	}
+	return sec, minNano + nano%(maxNano-minNano+1)
 }
 
 type Timestamp struct {
@@ -232,10 +239,9 @@ func (d *Timestamp) Transform(l *TimestampLimiter, data []byte) (time.Time, erro
 
 	if limiter != nil {
 		sec, nano = limiter.Limit(sec, nano)
-		res = time.Unix(sec, nano)
-	} else {
-		res = time.Unix(sec, nano)
 	}
+	// UTC keeps the result independent of the machine time zone.
+	res = time.Unix(sec, nano).UTC()
 
 	if d.truncater != nil {
 		res = d.truncater.Truncate(res)

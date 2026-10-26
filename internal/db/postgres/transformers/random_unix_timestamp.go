@@ -206,11 +206,9 @@ func getTimeByUnit(v int64, unit string) time.Time {
 	case milliUnit:
 		return time.UnixMilli(v)
 	case microUnit:
-		return time.UnixMilli(v)
+		return time.UnixMicro(v)
 	case nanoUnit:
-		seconds := v / 1e9
-		nano := v % 999999999
-		return time.Unix(seconds, nano)
+		return time.Unix(0, v)
 	}
 	panic(fmt.Sprintf("unknown unit: %s", unit))
 }
@@ -254,7 +252,7 @@ func getUnixTimestampMinAndMaxThresholds(minUnit, maxUnit string) timestampMinMa
 			return time.Time{}, time.Time{}, fmt.Errorf("error scanning \"max\" parameter: %w", err)
 		}
 
-		return getTimeByUnit(minValInt, minUnit), getTimeByUnit(maxValInt, minUnit), nil
+		return getTimeByUnit(minValInt, minUnit), getTimeByUnit(maxValInt, maxUnit), nil
 	}
 }
 
