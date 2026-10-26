@@ -248,7 +248,8 @@ func (c *Cmd) performTransform(ctx context.Context) error {
 		if err != nil {
 			return fmt.Errorf("transformation error: %w", err)
 		}
-		resultRow, err := record.Encode()
+		var resultRow RowDriver
+		resultRow, err = record.Encode()
 		if err != nil {
 			return fmt.Errorf("error encoding record: %w", err)
 		}
@@ -263,6 +264,9 @@ func (c *Cmd) performTransform(ctx context.Context) error {
 			return ctx.Err()
 		case <-rwChan:
 		}
+		if err != nil {
+			return fmt.Errorf("error encoding data via api: %w", err)
+		}
 	}
 }
 
@@ -275,26 +279,34 @@ func (c *Cmd) init(ctx context.Context) (Transformer, *Driver, ValidationWarning
 	done := make(chan struct{})
 
 	var data []byte
-	var err error
+	var readErr error
 	go func() {
+		defer close(done)
 		buf := make([]byte, 1)
 		for {
-			_, err := os.Stdin.Read(buf)
+			n, err := os.Stdin.Read(buf)
+			if n == 1 {
+				if buf[0] == '\n' {
+					return
+				}
+				data = append(data, buf[0])
+			}
 			if err != nil {
-				log.Error().Err(err).Msg("")
+				// EOF or a broken stdin will never deliver the rest of the line
+				readErr = err
+				return
 			}
-			if buf[0] == '\n' {
-				break
-			}
-			data = append(data, buf[0])
 		}
-		close(done)
 	}()
 
 	select {
 	case <-readLineCtx.Done():
 		return nil, nil, nil, fmt.Errorf("error reading metadata line: %w", readLineCtx.Err())
 	case <-done:
+	}
+	// a complete line without the trailing new line before EOF is accepted
+	if readErr != nil && !(errors.Is(readErr, io.EOF) && len(data) > 0) {
+		return nil, nil, nil, fmt.Errorf("error reading metadata line: %w", readErr)
 	}
 	log.Debug().RawJSON("Meta", data).Msg("received meta")
 

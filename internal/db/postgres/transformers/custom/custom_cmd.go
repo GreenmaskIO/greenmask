@@ -22,12 +22,12 @@ import (
 	"io"
 	"os"
 	"os/exec"
-	"time"
 
 	"github.com/rs/zerolog/log"
 	"golang.org/x/sync/errgroup"
 
 	"github.com/greenmaskio/greenmask/internal/db/postgres/transformers/utils"
+	"github.com/greenmaskio/greenmask/internal/utils/reader"
 	"github.com/greenmaskio/greenmask/pkg/toolkit"
 )
 
@@ -109,7 +109,8 @@ func (ct *CmdTransformer) GetAffectedColumns() map[int]string {
 }
 
 func (ct *CmdTransformer) Init(ctx context.Context) (err error) {
-
+	// drop the finished group left by Validate so Done does not wait on it
+	ct.eg = nil
 	args := make([]string, len(ct.args))
 	copy(args, ct.args)
 	args = append(args, TransformArgName)
@@ -141,7 +142,7 @@ func (ct *CmdTransformer) Init(ctx context.Context) (err error) {
 					return fmt.Errorf("unexpeted transformer exit code: exepected %d received %d",
 						ct.ctd.ExpectedExitCode, ct.Cmd.ProcessState.ExitCode())
 				}
-				return err
+				return nil
 			} else {
 				log.Error().
 					Err(err).
@@ -260,6 +261,13 @@ func (ct *CmdTransformer) Done(ctx context.Context) error {
 	if err := ct.BaseDone(); err != nil {
 		return err
 	}
+	if ct.eg == nil {
+		// Init failed after the process started: reap it to release the pipes
+		if ct.Cmd != nil && ct.Cmd.Process != nil {
+			_ = ct.Cmd.Wait()
+		}
+		return nil
+	}
 	if err := ct.eg.Wait(); err != nil {
 		log.Warn().
 			Err(err).
@@ -303,14 +311,8 @@ func (ct *CmdTransformer) getMetadata() ([]byte, error) {
 }
 
 func (ct *CmdTransformer) stderrForwarder(ctx context.Context) error {
-	t := time.NewTicker(500 * time.Millisecond)
-	lineNum := 0
-	// This is required for convenient verbosity of output.
-	// Write "stderr forwarding" log message each 500ms otherwise just print received stderr data
-	// If it does not use this logic each line would be covered with "stderr forwarding" message,
-	// and it will be complicated to recognize the traceback or multiline message
 	for {
-		line, _, err := ct.StderrReader.ReadLine()
+		line, err := reader.ReadLine(ct.StderrReader, nil)
 		if err != nil {
 			if errors.Is(err, io.EOF) || errors.Is(err, os.ErrClosed) {
 				return nil
@@ -319,24 +321,19 @@ func (ct *CmdTransformer) stderrForwarder(ctx context.Context) error {
 			return err
 		}
 
-		if lineNum == 0 {
-			log.Warn().
-				Str("TableSchema", ct.driver.Table.Schema).
-				Str("TableName", ct.driver.Table.Name).
-				Str("TransformerName", ct.name).
-				Int("TransformerPid", ct.Cmd.Process.Pid).
-				Msg("stderr forwarding")
-		}
-		fmt.Printf("\tDATA: %s\n", string(line))
+		log.Warn().
+			Str("TableSchema", ct.driver.Table.Schema).
+			Str("TableName", ct.driver.Table.Name).
+			Str("TransformerName", ct.name).
+			Int("TransformerPid", ct.Cmd.Process.Pid).
+			Str("Data", string(line)).
+			Msg("stderr forwarding")
 
 		select {
 		case <-ctx.Done():
 			return nil
-		case <-t.C:
-			lineNum = 0
 		default:
 		}
-		lineNum++
 	}
 }
 
