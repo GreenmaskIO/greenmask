@@ -14,6 +14,8 @@
 
 package toolkit
 
+import "bytes"
+
 var DefaultNullSeq RawRecordText = []byte("\\N")
 
 type RawRecordText []byte
@@ -23,7 +25,7 @@ func NewRawRecordText() *RawRecordText {
 }
 
 func (r *RawRecordText) GetColumn(idx int) (*RawValue, error) {
-	if r == &DefaultNullSeq {
+	if bytes.Equal(*r, DefaultNullSeq) {
 		return NewRawValue(nil, true), nil
 	}
 	return NewRawValue(*r, false), nil

@@ -53,7 +53,7 @@ func (rr *JsonRecordWithAttrNamesBinary) GetColumn(idx int) (*RawValue, error) {
 		return nil, fmt.Errorf("attribute with idx=%d is not found", idx)
 	}
 	res, ok := rr.record[name]
-	if !ok {
+	if !ok || res == nil {
 		return nil, fmt.Errorf("attribute with name=%s is not found", name)
 	}
 	return res, nil
@@ -77,8 +77,8 @@ func (rr *JsonRecordWithAttrNamesBinary) Encode() ([]byte, error) {
 }
 
 func (rr *JsonRecordWithAttrNamesBinary) Decode(data []byte) error {
-	record := make(RawRecordAttrs, len(rr.idxToNames))
-	return json.Unmarshal(data, &record)
+	rr.Clean()
+	return json.Unmarshal(data, &rr.record)
 }
 
 func (rr *JsonRecordWithAttrNamesBinary) Length() int {
