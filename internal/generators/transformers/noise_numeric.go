@@ -20,7 +20,7 @@ type NoiseNumericLimiter struct {
 }
 
 func NewNoiseNumericLimiter(minVal, maxVal decimal.Decimal) (*NoiseNumericLimiter, error) {
-	if minVal.GreaterThanOrEqual(maxVal) {
+	if minVal.GreaterThan(maxVal) {
 		return nil, ErrWrongLimits
 	}
 	return &NoiseNumericLimiter{
@@ -37,15 +37,25 @@ func (ni *NoiseNumericLimiter) SetPrecision(v int32) *NoiseNumericLimiter {
 
 func (ni *NoiseNumericLimiter) Limit(v decimal.Decimal) decimal.Decimal {
 	if v.GreaterThan(ni.MaxValue) {
-		return ni.MaxValue
+		v = ni.MaxValue
+	} else if v.LessThan(ni.MinValue) {
+		v = ni.MinValue
 	}
-	if v.LessThan(ni.MinValue) {
-		return ni.MinValue
+	if !ni.withPrecision {
+		return v
 	}
-	if ni.withPrecision {
-		return v.Round(ni.precision)
+	res := v.Round(ni.precision)
+	if res.GreaterThan(ni.MaxValue) {
+		res = ni.MaxValue.RoundFloor(ni.precision)
 	}
-	return v
+	if res.LessThan(ni.MinValue) {
+		res = ni.MinValue.RoundCeil(ni.precision)
+	}
+	if res.GreaterThan(ni.MaxValue) || res.LessThan(ni.MinValue) {
+		// No value with this precision fits into the range.
+		return v
+	}
+	return res
 }
 
 type NoiseNumericTransformer struct {
@@ -106,9 +116,7 @@ func (nt *NoiseNumericTransformer) Transform(original decimal.Decimal) (decimal.
 		res = limiter.Limit(res)
 	}
 
-	if nt.dynamicLimiter != nil {
-		limiter = nil
-	}
+	nt.dynamicLimiter = nil
 
 	return res, nil
 }

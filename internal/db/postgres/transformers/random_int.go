@@ -209,15 +209,14 @@ func (rit *IntegerTransformer) Done(_ context.Context) error {
 }
 
 func (rit *IntegerTransformer) dynamicTransform(v []byte) (int64, error) {
-
-	var minVal, maxVal int64
-	err := rit.minParam.Scan(&minVal)
+	minVal, maxVal, err := getIntThresholds(rit.intSize)
 	if err != nil {
+		return 0, err
+	}
+	if err = scanLimitParam(rit.minParam, &minVal); err != nil {
 		return 0, fmt.Errorf(`unable to scan "min" param: %w`, err)
 	}
-
-	err = rit.maxParam.Scan(&maxVal)
-	if err != nil {
+	if err = scanLimitParam(rit.maxParam, &maxVal); err != nil {
 		return 0, fmt.Errorf(`unable to scan "max" param: %w`, err)
 	}
 
@@ -259,7 +258,7 @@ func getIntThresholds(size int) (int64, int64, error) {
 	case Int4Length:
 		return math.MinInt32, math.MaxInt32, nil
 	case Int8Length:
-		return math.MinInt16, math.MaxInt16, nil
+		return math.MinInt64, math.MaxInt64, nil
 	}
 
 	return 0, 0, fmt.Errorf("unsupported int size %d", size)
@@ -279,22 +278,11 @@ func getRandomInt64LimiterForDynamicParameter(size int, requestedMinValue, reque
 		return nil, fmt.Errorf("requested dynamic parameter max value is out of range of int%d size", size)
 	}
 
-	limiter, err := transformers.NewInt64Limiter(minValue, maxValue)
-	if err != nil {
-		return nil, err
-	}
-
-	if requestedMinValue != 0 || requestedMaxValue != 0 {
-		limiter, err = transformers.NewInt64Limiter(requestedMinValue, requestedMaxValue)
-		if err != nil {
-			return nil, err
-		}
-	}
-	return limiter, nil
+	return transformers.NewInt64Limiter(requestedMinValue, requestedMaxValue)
 }
 
 func limitIsValid[T int64 | float64](requestedThreshold, minValue, maxValue T) bool {
-	return requestedThreshold >= minValue || requestedThreshold <= maxValue
+	return requestedThreshold >= minValue && requestedThreshold <= maxValue
 }
 
 func validateIntTypeAndSetRandomInt64Limiter(
@@ -337,7 +325,7 @@ func validateInt64AndGetLimits(
 			AddMeta("AllowedMinValue", minValue).
 			AddMeta("AllowedMaxValue", maxValue).
 			AddMeta("ParameterName", "min").
-			AddMeta("ParameterValue", requestedMinValue),
+			AddMeta("ParameterValue", *requestedMinValue),
 		)
 	}
 
@@ -347,8 +335,8 @@ func validateInt64AndGetLimits(
 			SetSeverity(toolkit.ErrorValidationSeverity).
 			AddMeta("AllowedMinValue", minValue).
 			AddMeta("AllowedMaxValue", maxValue).
-			AddMeta("ParameterName", "min").
-			AddMeta("ParameterValue", requestedMinValue),
+			AddMeta("ParameterName", "max").
+			AddMeta("ParameterValue", *requestedMaxValue),
 		)
 	}
 

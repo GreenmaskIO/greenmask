@@ -14,7 +14,7 @@ type Float64Limiter struct {
 }
 
 func NewFloat64Limiter(minValue, maxValue float64, precision int) (*Float64Limiter, error) {
-	if minValue >= maxValue {
+	if minValue > maxValue {
 		return nil, ErrWrongLimits
 	}
 	return &Float64Limiter{
@@ -26,7 +26,11 @@ func NewFloat64Limiter(minValue, maxValue float64, precision int) (*Float64Limit
 
 func (fl *Float64Limiter) Limit(v float64) float64 {
 	res := fl.minValue + v*(fl.maxValue-fl.minValue)
-	return Round(fl.precision, res)
+	if math.IsInf(fl.maxValue-fl.minValue, 0) {
+		// max-min overflows for wide ranges, so interpolate without it.
+		res = fl.minValue*(1-v) + fl.maxValue*v
+	}
+	return clampRound(fl.precision, res, fl.minValue, fl.maxValue)
 }
 
 type RandomFloat64Transformer struct {
@@ -77,11 +81,34 @@ func (f *RandomFloat64Transformer) Transform(l *Float64Limiter, original []byte)
 	return res, nil
 }
 
+// maxExactFloat is 2^53, above it float64 has no fractional part and rounding is a no-op.
+const maxExactFloat = 1 << 53
+
 func Round(precision int, num float64) float64 {
-	output := math.Pow(10, float64(precision))
-	return float64(round(num*output)) / output
+	return roundWith(math.Round, precision, num)
 }
 
-func round(num float64) int {
-	return int(num + math.Copysign(0.5, num))
+func roundWith(f func(float64) float64, precision int, num float64) float64 {
+	p := math.Pow(10, float64(precision))
+	scaled := num * p
+	if math.IsInf(scaled, 0) || math.IsNaN(scaled) || math.Abs(scaled) > maxExactFloat {
+		return num
+	}
+	return f(scaled) / p
+}
+
+// clampRound clamps v into [minValue, maxValue] and rounds it without leaving the range.
+func clampRound(precision int, v, minValue, maxValue float64) float64 {
+	res := Round(precision, min(max(v, minValue), maxValue))
+	if res > maxValue {
+		res = roundWith(math.Floor, precision, maxValue)
+	}
+	if res < minValue {
+		res = roundWith(math.Ceil, precision, minValue)
+	}
+	if res < minValue || res > maxValue {
+		// No value with this precision fits into the range.
+		return min(max(v, minValue), maxValue)
+	}
+	return res
 }

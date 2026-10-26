@@ -223,15 +223,14 @@ func (rit *FloatTransformer) Done(_ context.Context) error {
 }
 
 func (rit *FloatTransformer) dynamicTransform(v []byte) (float64, error) {
-
-	var minVal, maxVal float64
-	err := rit.minParam.Scan(&minVal)
+	minVal, maxVal, err := getFloatThresholds(rit.floatSize)
 	if err != nil {
+		return 0, err
+	}
+	if err = scanLimitParam(rit.minParam, &minVal); err != nil {
 		return 0, fmt.Errorf(`unable to scan "min" param: %w`, err)
 	}
-
-	err = rit.maxParam.Scan(&maxVal)
-	if err != nil {
+	if err = scanLimitParam(rit.maxParam, &maxVal); err != nil {
 		return 0, fmt.Errorf(`unable to scan "max" param: %w`, err)
 	}
 
@@ -291,18 +290,7 @@ func getFloat64LimiterForDynamicParameter(size int, requestedMinValue, requested
 		return nil, fmt.Errorf("requested dynamic parameter max value is out of range of float%d size", size)
 	}
 
-	limiter, err := transformers.NewFloat64Limiter(-math.MaxFloat64, math.MaxFloat64, decimal)
-	if err != nil {
-		return nil, err
-	}
-
-	if requestedMinValue != 0 || requestedMaxValue != 0 {
-		limiter, err = transformers.NewFloat64Limiter(requestedMinValue, requestedMaxValue, decimal)
-		if err != nil {
-			return nil, err
-		}
-	}
-	return limiter, nil
+	return transformers.NewFloat64Limiter(requestedMinValue, requestedMaxValue, decimal)
 }
 
 func validateFloatTypeAndSetLimit(
@@ -331,8 +319,8 @@ func validateFloatTypeAndSetLimit(
 			SetSeverity(toolkit.ErrorValidationSeverity).
 			AddMeta("AllowedMinValue", minValue).
 			AddMeta("AllowedMaxValue", maxValue).
-			AddMeta("ParameterName", "min").
-			AddMeta("ParameterValue", requestedMinValue),
+			AddMeta("ParameterName", "max").
+			AddMeta("ParameterValue", requestedMaxValue),
 		)
 	}
 
@@ -340,7 +328,8 @@ func validateFloatTypeAndSetLimit(
 		return nil, warns, nil
 	}
 
-	limiter, err = transformers.NewFloat64Limiter(-math.MaxFloat64, math.MaxFloat64, decimal)
+	// Both limits equal to zero mean the limits are not set.
+	limiter, err = transformers.NewFloat64Limiter(minValue, maxValue, decimal)
 	if err != nil {
 		return nil, nil, err
 	}

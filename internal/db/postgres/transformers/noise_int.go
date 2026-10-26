@@ -157,6 +157,10 @@ func NewNoiseIntTransformer(ctx context.Context, driver *toolkit.Driver, paramet
 		return nil, nil, fmt.Errorf("unable to scan \"max_ratio\" param: %w", err)
 	}
 
+	if warns := validateNoiseRatios(minRatio, maxRatio); warns.IsFatal() {
+		return nil, warns, nil
+	}
+
 	t, err := transformers.NewNoiseInt64Transformer(limiter, minRatio, maxRatio)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error initializing common int transformer: %w", err)
@@ -176,6 +180,7 @@ func NewNoiseIntTransformer(ctx context.Context, driver *toolkit.Driver, paramet
 		affectedColumns: affectedColumns,
 		columnIdx:       idx,
 		intSize:         intSize,
+		dynamicMode:     dynamicMode,
 
 		columnParam:   columnParam,
 		minParam:      minParam,
@@ -261,41 +266,24 @@ func validateIntTypeAndSetNoiseInt64Limiter(
 }
 
 func getMinAndMaxIntDynamicValueNoiseIntTrans(intSize int, minParam, maxParam toolkit.Parameterizer) (int64, int64, error) {
-
-	var requestedMinValue, requestedMaxValue int64
-	var minRequested, maxRequested bool
 	minValue, maxValue, err := getIntThresholds(intSize)
 	if err != nil {
 		return 0, 0, err
 	}
+	allowedMinValue, allowedMaxValue := minValue, maxValue
 
-	if minParam.IsDynamic() {
-		minRequested = true
-		err = minParam.Scan(&requestedMinValue)
-		if err != nil {
-			return 0, 0, fmt.Errorf(`unable to scan "min" dynamic  param: %w`, err)
-		}
-		if !limitIsValid(requestedMinValue, minValue, maxValue) {
-			return 0, 0, fmt.Errorf("requested dynamic parameter min value is out of range of int%d size", intSize)
-		}
+	if err = scanLimitParam(minParam, &minValue); err != nil {
+		return 0, 0, fmt.Errorf(`unable to scan "min" param: %w`, err)
+	}
+	if !limitIsValid(minValue, allowedMinValue, allowedMaxValue) {
+		return 0, 0, fmt.Errorf("requested dynamic parameter min value is out of range of int%d size", intSize)
 	}
 
-	if maxParam.IsDynamic() {
-		maxRequested = true
-		err = minParam.Scan(&maxValue)
-		if err != nil {
-			return 0, 0, fmt.Errorf(`unable to scan "max" dynamic param: %w`, err)
-		}
-		if !limitIsValid(requestedMaxValue, minValue, maxValue) {
-			return 0, 0, fmt.Errorf("requested dynamic parameter max value is out of range of int%d size", intSize)
-		}
+	if err = scanLimitParam(maxParam, &maxValue); err != nil {
+		return 0, 0, fmt.Errorf(`unable to scan "max" param: %w`, err)
 	}
-
-	if minRequested {
-		minValue = requestedMinValue
-	}
-	if maxRequested {
-		maxValue = requestedMaxValue
+	if !limitIsValid(maxValue, allowedMinValue, allowedMaxValue) {
+		return 0, 0, fmt.Errorf("requested dynamic parameter max value is out of range of int%d size", intSize)
 	}
 
 	return minValue, maxValue, nil

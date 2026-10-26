@@ -3,6 +3,7 @@ package transformers
 import (
 	"errors"
 	"fmt"
+	"math"
 
 	"github.com/greenmaskio/greenmask/internal/generators"
 )
@@ -14,27 +15,28 @@ var (
 type Int64Limiter struct {
 	MinValue int64
 	MaxValue int64
+	// distance is max - min computed in uint64 so the full int64 range does not overflow.
 	distance uint64
 }
 
 func NewInt64Limiter(minValue, maxValue int64) (*Int64Limiter, error) {
-	if minValue >= maxValue {
+	if minValue > maxValue {
 		return nil, ErrWrongLimits
 	}
 
 	return &Int64Limiter{
 		MinValue: minValue,
 		MaxValue: maxValue,
-		distance: uint64(maxValue - minValue),
+		distance: uint64(maxValue) - uint64(minValue),
 	}, nil
 }
 
+// Limit maps v into the inclusive range [MinValue, MaxValue].
 func (l *Int64Limiter) Limit(v uint64) int64 {
-	res := l.MinValue + int64(v%l.distance)
-	if res < 0 {
-		return res % l.MinValue
+	if l.distance == math.MaxUint64 {
+		return int64(v + uint64(l.MinValue))
 	}
-	return res % l.MaxValue
+	return int64(uint64(l.MinValue) + v%(l.distance+1))
 }
 
 type RandomInt64Transformer struct {
