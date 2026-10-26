@@ -59,11 +59,6 @@ var stringTransformerDefinition = utils.NewTransformerDefinition(
 		"the characters range for random string",
 	).SetDefaultValue(toolkit.ParamsValue("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890")),
 
-	toolkit.MustNewParameterDefinition(
-		"keep_null",
-		"indicates that NULL values must not be replaced with transformed values",
-	).SetDefaultValue(toolkit.ParamsValue("true")),
-
 	keepNullParameterDefinition,
 
 	engineParameterDefinition,
@@ -115,6 +110,10 @@ func NewRandomStringTransformer(ctx context.Context, driver *toolkit.Driver, par
 		return nil, nil, fmt.Errorf(`unable to scan "keep_null" param: %w`, err)
 	}
 
+	if warns := validateRandomStringParams(minLength, maxLength, symbols); warns.IsFatal() {
+		return nil, warns, nil
+	}
+
 	t, err := transformers.NewRandomStringTransformer([]rune(symbols), minLength, maxLength)
 	if err != nil {
 		return nil, nil, fmt.Errorf("unable to create transformer: %w", err)
@@ -163,16 +162,43 @@ func (rst *RandomStringTransformer) Transform(ctx context.Context, r *toolkit.Re
 		return r, nil
 	}
 
-	res := toolkit.NewRawValue(
-		[]byte(string(rst.t.Transform(val.Data))),
-		false,
-	)
+	newVal, err := rst.t.Transform(val.Data)
+	if err != nil {
+		return nil, fmt.Errorf("unable to transform value: %w", err)
+	}
+	res := toolkit.NewRawValue([]byte(string(newVal)), false)
 
 	if err = r.SetRawColumnValueByIdx(rst.columnIdx, res); err != nil {
 		return nil, fmt.Errorf("unable to set new value: %w", err)
 	}
 
 	return r, nil
+}
+
+func validateRandomStringParams(minLength, maxLength int, symbols string) toolkit.ValidationWarnings {
+	var warns toolkit.ValidationWarnings
+	if minLength < 0 {
+		warns = append(warns, toolkit.NewValidationWarning().
+			SetSeverity(toolkit.ErrorValidationSeverity).
+			AddMeta("ParameterName", "min_length").
+			AddMeta("ParameterValue", minLength).
+			SetMsg("min_length cannot be less than zero"))
+	}
+	if maxLength < minLength {
+		warns = append(warns, toolkit.NewValidationWarning().
+			SetSeverity(toolkit.ErrorValidationSeverity).
+			AddMeta("ParameterName", "max_length").
+			AddMeta("ParameterValue", maxLength).
+			AddMeta("MinLength", minLength).
+			SetMsg("max_length cannot be less than min_length"))
+	}
+	if symbols == "" {
+		warns = append(warns, toolkit.NewValidationWarning().
+			SetSeverity(toolkit.ErrorValidationSeverity).
+			AddMeta("ParameterName", "symbols").
+			SetMsg("symbols cannot be empty"))
+	}
+	return warns
 }
 
 func init() {
