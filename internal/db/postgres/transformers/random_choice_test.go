@@ -100,3 +100,22 @@ func TestRandomChoiceTransformer_Transform_json(t *testing.T) {
 	log.Debug().Msg(val)
 	require.True(t, val == `{"a": 1}` || val == `{"b": 2}` || val == `{"c": 3}`)
 }
+
+func TestRandomChoiceTransformer_empty_values(t *testing.T) {
+	params := map[string]toolkit.ParamsValue{
+		"column":   toolkit.ParamsValue("date_date"),
+		"values":   toolkit.ParamsValue(`[]`),
+		"validate": toolkit.ParamsValue(`true`),
+	}
+
+	driver, _ := getDriverAndRecord(string(params["column"]), "2023-11-10")
+	_, warnings, err := ChoiceTransformerDefinition.Instance(
+		context.Background(),
+		driver, params,
+		nil,
+		"",
+		false,
+	)
+	require.NoError(t, err)
+	require.True(t, warnings.IsFatal())
+}

@@ -13,7 +13,8 @@ func TestChoiceTransformer_Transform(t *testing.T) {
 		{Data: []byte("a")},
 		{Data: []byte("b")},
 	}
-	tr := NewRandomChoiceTransformer(data)
+	tr, err := NewRandomChoiceTransformer(data)
+	require.NoError(t, err)
 	g, err := generators.NewHash([]byte{}, "sha1")
 	require.NoError(t, err)
 	g = generators.NewHashReducer(g, tr.GetRequiredGeneratorByteLength())
@@ -22,4 +23,9 @@ func TestChoiceTransformer_Transform(t *testing.T) {
 	res, err := tr.Transform([]byte{})
 	require.NoError(t, err)
 	require.Contains(t, data, res)
+}
+
+func TestNewRandomChoiceTransformer_empty_values(t *testing.T) {
+	_, err := NewRandomChoiceTransformer(nil)
+	require.Error(t, err)
 }

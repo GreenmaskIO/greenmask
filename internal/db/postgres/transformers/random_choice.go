@@ -145,7 +145,20 @@ func NewRandomChoiceTransformer(
 		return nil, nil, fmt.Errorf(`unable to scan "engine" param: %w`, err)
 	}
 
-	t := transformers.NewRandomChoiceTransformer(rawValues)
+	if len(rawValues) == 0 {
+		if !warnings.IsFatal() {
+			warnings = append(warnings, toolkit.NewValidationWarning().
+				SetSeverity(toolkit.ErrorValidationSeverity).
+				AddMeta("ParameterName", "values").
+				SetMsg("values list is empty"))
+		}
+		return nil, warnings, nil
+	}
+
+	t, err := transformers.NewRandomChoiceTransformer(rawValues)
+	if err != nil {
+		return nil, nil, fmt.Errorf("unable to create transformer: %w", err)
+	}
 
 	g, err := getGenerateEngine(ctx, engine, t.GetRequiredGeneratorByteLength())
 	if err != nil {
