@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"slices"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/ggwhite/go-masker"
 
@@ -169,14 +170,15 @@ func (mt *MaskingTransformer) Transform(ctx context.Context, r *toolkit.Record) 
 }
 
 func defaultMasker(v string) string {
-	return strings.Repeat("*", len(v))
+	return strings.Repeat("*", utf8.RuneCountInString(v))
 }
 
 func postcodeMasker(v string) string {
-	if len(v) <= 2 {
+	runes := []rune(v)
+	if len(runes) <= 2 {
 		return v
 	}
-	return v[:2] + strings.Repeat("*", len(v)-2)
+	return string(runes[:2]) + strings.Repeat("*", len(runes)-2)
 }
 
 func maskerTypeValidator(p *toolkit.ParameterDefinition, v toolkit.ParamsValue) (toolkit.ValidationWarnings, error) {

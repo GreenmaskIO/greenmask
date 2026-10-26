@@ -77,6 +77,24 @@ func TestMaskingTransformer_Transform(t *testing.T) {
 			originalValue: "SW1A 1AA",
 			expectedValue: toolkit.NewValue("SW******", false),
 		},
+		{
+			name: MDefault + " multibyte",
+			params: map[string]toolkit.ParamsValue{
+				"column": toolkit.ParamsValue("data"),
+				"type":   toolkit.ParamsValue(MDefault),
+			},
+			originalValue: "Иван",
+			expectedValue: toolkit.NewValue("****", false),
+		},
+		{
+			name: MPostcode + " multibyte",
+			params: map[string]toolkit.ParamsValue{
+				"column": toolkit.ParamsValue("data"),
+				"type":   toolkit.ParamsValue(MPostcode),
+			},
+			originalValue: "Ц1Б 2Д",
+			expectedValue: toolkit.NewValue("Ц1****", false),
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
