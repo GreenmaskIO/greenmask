@@ -204,7 +204,7 @@ func NewRandomPersonTransformer(gender string, personDb Database) *RandomPersonT
 		// we assume 4 bytes peer attribute + 1 byte for gender
 		db:         db,
 		result:     make(map[string]string, db.AttributesCount),
-		byteLength: db.AttributesCount * 4,
+		byteLength: db.AttributesCount*4 + 1,
 	}
 }
 

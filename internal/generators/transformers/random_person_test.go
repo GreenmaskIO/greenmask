@@ -34,3 +34,29 @@ func TestGendersOrderIsStable(t *testing.T) {
 		t.Fatalf("Genders order changed in %d of 1000 builds", flips)
 	}
 }
+
+func TestRandomPersonTransformer_GeneratorByteLength(t *testing.T) {
+	rpt := NewRandomPersonTransformer(AnyGenderName, nil)
+	// 1 byte for gender and 4 bytes per attribute
+	require.Equal(t, 1+rpt.GetDb().AttributesCount*4, rpt.GetRequiredGeneratorByteLength())
+}
+
+// pins outputs so the generator byte length fix does not change generated values
+func TestRandomPersonTransformer_GetFullName_pinned(t *testing.T) {
+	newTransformer := func(g generators.Generator) *RandomPersonTransformer {
+		rpt := NewRandomPersonTransformer(AnyGenderName, nil)
+		require.NoError(t, rpt.SetGenerator(g))
+		return rpt
+	}
+	size := NewRandomPersonTransformer(AnyGenderName, nil).GetRequiredGeneratorByteLength()
+
+	hashGen, err := generators.GetHashBytesGen([]byte("salt"), size)
+	require.NoError(t, err)
+	res, err := newTransformer(hashGen).GetFullName("", []byte("John Doe"))
+	require.NoError(t, err)
+	require.Equal(t, map[string]string{"FirstName": "Verona", "LastName": "Grimes", "Title": "Queen"}, res)
+
+	res, err = newTransformer(generators.NewRandomBytes(1, size)).GetFullName("", nil)
+	require.NoError(t, err)
+	require.Equal(t, map[string]string{"FirstName": "Eveline", "LastName": "Toy", "Title": "Queen"}, res)
+}
