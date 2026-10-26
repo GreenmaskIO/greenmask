@@ -15,6 +15,7 @@
 package toolkit
 
 import (
+	"math"
 	"math/rand"
 	"testing"
 	"time"
@@ -122,4 +123,42 @@ func TestRandomString(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestRandomString_uses_all_symbols_and_inclusive_length(t *testing.T) {
+	r := rand.New(rand.NewSource(1))
+	symbols := []rune("abcdefghijklmnopqrstuvwxyz")
+	buf := make([]rune, 3)
+	seenSymbols := make(map[rune]struct{})
+	seenLengths := make(map[int]struct{})
+	for i := 0; i < 2000; i++ {
+		res := RandomString(r, 1, 3, symbols, buf)
+		seenLengths[len(res)] = struct{}{}
+		for _, ch := range res {
+			seenSymbols[ch] = struct{}{}
+		}
+	}
+	require.Len(t, seenSymbols, len(symbols))
+	require.Equal(t, map[int]struct{}{1: {}, 2: {}, 3: {}}, seenLengths)
+}
+
+func TestRandomInt_inclusive(t *testing.T) {
+	r := rand.New(rand.NewSource(1))
+	require.Equal(t, int64(5), RandomInt(r, 5, 5))
+	seen := make(map[int64]struct{})
+	for i := 0; i < 1000; i++ {
+		v := RandomInt(r, 1, 3)
+		require.True(t, v >= 1 && v <= 3)
+		seen[v] = struct{}{}
+	}
+	require.Len(t, seen, 3)
+	// the interval is wider than int64 can represent as a difference
+	v := RandomInt(r, math.MinInt64, math.MaxInt64)
+	require.True(t, v >= math.MinInt64 && v <= math.MaxInt64)
+}
+
+func TestRandomDate_equal_bounds(t *testing.T) {
+	r := rand.New(rand.NewSource(1))
+	ts := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
+	require.Equal(t, ts, *RandomDate(r, &ts, &ts))
 }
