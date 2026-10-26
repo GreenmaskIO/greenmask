@@ -40,3 +40,16 @@ func TestNoiseTimestamp_Transform(t *testing.T) {
 		Msg("")
 	require.True(t, res.After(expectedMinValue.Add(-1)) && res.Before(expectedMaxValue.Add(1)))
 }
+
+func TestNoiseTimestamp_Transform_equal_ratios(t *testing.T) {
+	tr, err := NewNoiseTimestamp(time.Hour, time.Hour, "", nil)
+	require.NoError(t, err)
+	require.NoError(t, tr.SetGenerator(generators.NewRandomBytes(0, tr.GetRequiredGeneratorByteLength())))
+	original := time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC)
+	for i := 0; i < 10; i++ {
+		res, err := tr.Transform(nil, original)
+		require.NoError(t, err)
+		diff := res.Sub(original)
+		require.True(t, diff == time.Hour || diff == -time.Hour, "got diff %s", diff)
+	}
+}

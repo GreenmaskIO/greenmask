@@ -47,7 +47,7 @@ type NoiseTimestamp struct {
 
 func NewNoiseTimestamp(minRatio, maxRatio time.Duration, truncatePart string, limiter *NoiseTimestampLimiter) (*NoiseTimestamp, error) {
 
-	if minRatio >= maxRatio {
+	if minRatio > maxRatio {
 		return nil, ErrWrongLimits
 	}
 
@@ -83,9 +83,12 @@ func (d *NoiseTimestamp) Transform(l *NoiseTimestampLimiter, v time.Time) (time.
 	}
 
 	negative := genBytes[0]%2 == 0
-	offset := int64(binary.LittleEndian.Uint64(genBytes[1:9])) % d.distance
-	if offset < 0 {
-		offset = -offset
+	var offset int64
+	if d.distance > 0 {
+		offset = int64(binary.LittleEndian.Uint64(genBytes[1:9])) % d.distance
+		if offset < 0 {
+			offset = -offset
+		}
 	}
 	// TODO: Consider how to add nanoseconds
 	//nano := int64(binary.LittleEndian.Uint64(genBytes[9:]) % 1000000000)
