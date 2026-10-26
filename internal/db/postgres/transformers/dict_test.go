@@ -207,3 +207,36 @@ func TestDictTransformer_Transform_with_int_values(t *testing.T) {
 	require.Equal(t, expected, string(res.Data))
 
 }
+
+func TestDictTransformer_Transform_not_matched_keeps_chained_value(t *testing.T) {
+	params := map[string]toolkit.ParamsValue{
+		"column":           toolkit.ParamsValue("date_date"),
+		"values":           toolkit.ParamsValue(`{"2023-11-10": "2023-01-01"}`),
+		"fail_not_matched": toolkit.ParamsValue(`false`),
+		"validate":         toolkit.ParamsValue(`true`),
+	}
+
+	driver, record := getDriverAndRecord(string(params["column"]), "2023-11-10")
+	transformerCtx, warnings, err := DictTransformerDefinition.Instance(
+		context.Background(),
+		driver, params,
+		nil,
+		"",
+		false,
+	)
+	require.NoError(t, err)
+	require.Empty(t, warnings)
+
+	// Simulate an earlier transformer in the chain that already set a new value
+	idx, _, ok := driver.GetColumnByName("date_date")
+	require.True(t, ok)
+	require.NoError(t, record.SetRawColumnValueByIdx(idx, toolkit.NewRawValue([]byte("2024-05-05"), false)))
+
+	r, err := transformerCtx.Transformer.Transform(context.Background(), record)
+	require.NoError(t, err)
+
+	res, err := r.GetRawColumnValueByName("date_date")
+	require.NoError(t, err)
+	assert.False(t, res.IsNull)
+	assert.Equal(t, "2024-05-05", string(res.Data))
+}
