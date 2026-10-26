@@ -31,7 +31,6 @@ var HashedPasswordTransformerDefinition = utils.NewTransformerDefinition(
 		"column name",
 	).SetIsColumn(toolkit.NewColumnProperties().
 		SetAffected(true).
-		SetNullable(true).
 		SetAllowedColumnTypes("text", "varchar", "char", "bpchar", "citext"),
 	).SetRequired(true),
 

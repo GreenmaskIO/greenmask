@@ -38,7 +38,8 @@ var DictTransformerDefinition = utils.NewTransformerDefinition(
 		"column",
 		"column name",
 	).SetIsColumn(toolkit.NewColumnProperties().
-		SetAffected(true),
+		SetAffected(true).
+		SetNullable(true), // "\N" in values writes NULL
 	).SetRequired(true),
 
 	toolkit.MustNewParameterDefinition(
