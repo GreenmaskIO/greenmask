@@ -11,7 +11,7 @@ Randomly add or subtract a duration within the provided `ratio` interval to the 
 | Name      | Description                                                                                                                                                                                 | Default                      | Required | Supported DB types           |
 |-----------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|------------------------------|----------|------------------------------|
 | column    | The name of the column to be affected                                                                                                                                                       |                              | Yes      | date, timestamp, timestamptz |
-| min_ratio | The minimum random value for noise. The value must be in PostgreSQL interval format, e. g. `1 year 2 mons 3 day 04:05:06.07`                                                                | 5% from max_ration parameter | No       | -                            |
+| min_ratio | The minimum random value for noise. The value must be in PostgreSQL interval format, e. g. `1 year 2 mons 3 day 04:05:06.07`                                                                | 5% of `max_ratio`            | No       | -                            |
 | max_ratio | The maximum random value for noise. The value must be in PostgreSQL interval format, e. g. `1 year 2 mons 3 day 04:05:06.07`                                                                |                              | Yes      | -                            |
 | min       | Min threshold date (and/or time) of value. The value has the same format as `column` parameter                                                                                              |                              | No       | -                            |
 | max       | Max threshold date (and/or time) of value. The value has the same format as `column` parameter                                                                                              |                              | No       | -                            |
@@ -30,7 +30,8 @@ Randomly add or subtract a duration within the provided `ratio` interval to the 
 The `NoiseDate` transformer randomly generates duration between `min_ratio` and `max_ratio` parameter and adds it to or
 subtracts it from the original date value. The `min_ratio` or `max_ratio` parameters must be written in the
 [PostgreSQL interval format](https://www.postgresql.org/docs/current/datatype-datetime.html#DATATYPE-INTERVAL-INPUT).
-You can also truncate the resulted date up to a specified part by setting the `truncate` parameter.
+You can also truncate the resulted date up to a specified part by setting the `truncate` parameter. `NULL` values are
+always kept, the transformer has no `keep_null` parameter.
 
 In case you have constraints on the date range, you can set the `min` and `max` parameters to specify the threshold
 values. The values for `min` and `max` must have the same format as the `column` parameter. Parameters min and max
@@ -50,16 +51,18 @@ engines in the [Transformation engines](../transformation_engines.md) section.
 In the following example, the original `timestamp` value of `modifieddate` will be noised up
 to `1 year 2 months 3 days 4 hours 5 minutes 6 seconds and 7 milliseconds` with truncation up to the `month` part.
 
-``` yaml title="NoiseDate transformer example"
-- schema: "humanresources"
-  name: "jobcandidate"
-  transformers:
-    - name: "NoiseDate"
-      params:
-        column: "hiredate"
-        max_ratio: "1 year 2 mons 3 day 04:05:06.07"
-        truncate: "month"
-        max: "2020-01-01 00:00:00"
+```yaml title="NoiseDate transformer example"
+dump:
+  transformation:
+    - schema: "humanresources"
+      name: "jobcandidate"
+      transformers:
+        - name: "NoiseDate"
+          params:
+            column: "hiredate"
+            max_ratio: "1 year 2 mons 3 day 04:05:06.07"
+            truncate: "month"
+            max: "2020-01-01 00:00:00"
 ```
 
 ## Example: Adding noise to the modified date with dynamic min parameter with hash engine

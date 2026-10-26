@@ -1,6 +1,6 @@
 # Greenmask 0.1.7
 
-This release introduces a new Greenmask command, improvements, bug fixes, and documentation update.
+Greenmask 0.1.7 was released on 2024-03-15. This release introduces a new Greenmask command, improvements, bug fixes, and documentation update. It adds restore filtering by `--table`, `--schema` and `--exclude-schema`, a schema diff via `validate --schema`, and rewrites the `validate` command.
 
 ## New features
 

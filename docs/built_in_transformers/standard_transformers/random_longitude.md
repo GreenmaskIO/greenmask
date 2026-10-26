@@ -11,7 +11,7 @@ The `RandomLongitude` transformer is designed to generate random longitude value
 | Name      | Description                                          | Default | Required | Supported DB types |
 |-----------|------------------------------------------------------|---------|----------|--------------------|
 | column    | The name of the column to be affected               |         | Yes      | float4, float8, numeric |
-| keep_null | Indicates whether NULL values should be preserved  | `false` | No       | -                  |
+| keep_null | Indicates whether NULL values should be preserved  | `true`  | No       | -                  |
 
 ## Description
 

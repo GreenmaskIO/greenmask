@@ -1,6 +1,6 @@
 # Greenmask 0.1.14
 
-This release introduces bug fixes.
+Greenmask 0.1.14 was released on 2024-05-09. This release introduces bug fixes. It fixes a panic in the large object dumper.
 
 ## Changes
 

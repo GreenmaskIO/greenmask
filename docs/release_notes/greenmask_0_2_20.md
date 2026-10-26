@@ -1,5 +1,7 @@
 # Greenmask 0.2.20
 
+Greenmask 0.2.20 was released on 2026-05-11. It is a bugfix release that makes `validate` use the remote storage when `--schema` is provided.
+
 ## Changes
 
 * fix: add remote storage for validate if `--schema` is provided [#443](https://github.com/GreenmaskIO/greenmask/pull/443)

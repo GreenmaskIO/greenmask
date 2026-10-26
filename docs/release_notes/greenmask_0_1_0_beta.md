@@ -1,6 +1,6 @@
-# Greenmask 0.0.1 Beta
+# Greenmask 0.1.0 Beta
 
-We are excited to announce the beta release of Greenmask, a versatile and open-source utility for PostgreSQL logical backup dumping, anonymization, and restoration. Greenmask is perfect for routine backup and restoration tasks. It facilitates anonymization and data masking for staging environments and analytics.
+Greenmask 0.1.0-beta was released on 2023-12-02. We are excited to announce the beta release of Greenmask, a versatile and open-source utility for PostgreSQL logical backup dumping, anonymization, and restoration. Greenmask is perfect for routine backup and restoration tasks. It facilitates anonymization and data masking for staging environments and analytics.
 
 This release introduces a range of features aimed at enhancing database management and security.
 

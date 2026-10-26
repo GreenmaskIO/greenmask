@@ -1,6 +1,6 @@
 # Greenmask 0.1.6
 
-This is a minor release that introduces a bug hotfix
+Greenmask 0.1.6 was released on 2024-02-23. This is a minor release that introduces a bug hotfix. It fixes uncontrolled buffer growth in the restore command.
 
 ## Fixes
 

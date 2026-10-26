@@ -28,6 +28,8 @@ Utilizing a robust algorithm or library for generating IP addresses, the `Random
 or IPv6 addresses into the designated database column, depending on the provided subnet. The transformer automatically
 detects whether to generate an IPv4 or IPv6 address based on the subnet version specified.
 
+The transformer has no `keep_null` parameter: a value is generated for `NULL` rows too.
+
 ## Example: Generate a Random IPv4 Address for a 192.168.1.0/24 Subnet
 
 This example demonstrates how to configure the RandomIp transformer to inject a random IPv4 address into the
@@ -50,15 +52,17 @@ VALUES ('192.168.1.10', '192.168.1.0/24'),
 
 ```
 
-```yaml title="RandomPerson transformer example"
-- schema: public
-  name: ip_networks
-  transformers:
-    - name: "RandomIp"
-      params:
-        subnet: "192.168.1.0/24"
-        column: "ip_address"
-        engine: "random"
+```yaml title="RandomIp transformer example"
+dump:
+  transformation:
+    - schema: "public"
+      name: "ip_networks"
+      transformers:
+        - name: "RandomIp"
+          params:
+            subnet: "192.168.1.0/24"
+            column: "ip_address"
+            engine: "random"
 ```
 
 Result:
@@ -77,7 +81,7 @@ Result:
 This configuration illustrates how to use the RandomIp transformer dynamically, where it reads the subnet information
 from the network column of the database and generates a corresponding random IP address:
 
-```yaml title="RandomPerson transformer example with dynamic mode"
+```yaml title="RandomIp transformer example with dynamic mode"
 - schema: public
   name: ip_networks
   transformers:

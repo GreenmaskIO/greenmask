@@ -12,7 +12,7 @@ content, enhancing linguistic datasets, or anonymizing text in databases.
 | Name      | Description                                       | Default | Required | Supported DB types                  |
 |-----------|---------------------------------------------------|---------|----------|-------------------------------------|
 | column    | The name of the column to be affected             |         | Yes      | text, varchar, char, bpchar, citext |
-| keep_null | Indicates whether NULL values should be preserved | `false` | No       | -                                   |
+| keep_null | Indicates whether NULL values should be preserved | `true`  | No       | -                                   |
 
 ## Description
 

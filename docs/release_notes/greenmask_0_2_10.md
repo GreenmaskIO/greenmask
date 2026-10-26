@@ -1,5 +1,7 @@
 # Greenmask 0.2.10
 
+Greenmask 0.2.10 was released on 2025-04-05. It upgrades Go to 1.24, changes the Oid type in the TOC archive library and revises the documentation of the log level values.
+
 ## Changes
 
 * Bump dependencies and upgraded go to 1.24 [#285](https://github.com/GreenmaskIO/greenmask/pull/285).

@@ -1,6 +1,6 @@
 # Greenmask 0.1.12
 
-This release introduces improvements and bug fixes
+Greenmask 0.1.12 was released on 2024-04-29. This release introduces improvements and bug fixes. It fixes a config decoding issue, the merge of TOC entries when the data section is empty and the S3 storage integration tests.
 
 ## Changes
 

@@ -1,6 +1,6 @@
 # Greenmask 0.2.6
 
-This release introduces new features and bug fixes.
+Greenmask 0.2.6 was released on 2024-12-07. This release introduces new features and bug fixes. It adds the `--disable-triggers`, `--use-session-replication-role-replica` and `--superuser` options for `restore` and fixes skipping unknown types when silent is true.
 
 ## Changes
 

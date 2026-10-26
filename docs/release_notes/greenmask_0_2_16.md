@@ -1,5 +1,7 @@
 # Greenmask 0.2.16
 
+Greenmask 0.2.16 was released on 2026-02-18. It fixes the restoration of ACL entries with `--restore-in-order` and the PK/FK introspection order for composite foreign keys in the subset system, and adds a Cloudflare R2 compatibility guide.
+
 ## Changes
 
 * Added Cloudflare R2 compatibility guide and fixed documentation typos [#401](https://github.com/GreenmaskIO/greenmask/pull/401)

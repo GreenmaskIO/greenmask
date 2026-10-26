@@ -14,7 +14,13 @@ Set `NULL` value to a column.
 
 ## Description
 
-The `SetNull` transformer assigns `NULL` value to a column. This transformer generates warning if the affected column has `NOT NULL` constraint.
+The `SetNull` transformer assigns `NULL` value to a column. It has no other parameters. This transformer generates warning if the affected column has `NOT NULL` constraint.
+
+:::note
+
+There is no `Nullify` transformer. Use `SetNull` to replace values with `NULL`.
+
+:::
 
 ```json title="NULL constraint violation warning"
 {
@@ -32,15 +38,17 @@ The `SetNull` transformer assigns `NULL` value to a column. This transformer gen
 }
 ```
 
-## Example: Set NULL value to `updated_at` column
+## Example: Set NULL value to `jobtitle` column
 
-``` yaml title="SetNull transformer example"
-- schema: "humanresources"
-  name: "employee"
+```yaml title="SetNull transformer example"
+dump:
   transformation:
-    - name: "SetNull"
-      params:
-        column: "jobtitle"
+    - schema: "humanresources"
+      name: "employee"
+      transformers:
+        - name: "SetNull"
+          params:
+            column: "jobtitle"
 ```
 
 ```bash title="Expected result"

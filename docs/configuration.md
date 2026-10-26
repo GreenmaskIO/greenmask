@@ -304,7 +304,7 @@ In the `dump` section of the configuration, you configure the `greenmask dump` c
 
             - name: "NoiseDate"
               params:
-                ratio: "01:00:00"
+                max_ratio: "01:00:00"
                 column: "scheduled_arrival"
         ```
 
@@ -334,7 +334,7 @@ dump:
 
         - name: "NoiseDate"
           params:
-            ratio: "01:00:00"
+            max_ratio: "01:00:00"
             column: "scheduled_arrival"
 
         - name: "RegexpReplace"
@@ -375,6 +375,54 @@ dump:
    originally has a `TEXT` type, but it contains values that resemble integers. By explicitly overriding the type to `int4`, we ensure compatibility with transformers that work with integer types, such as `RandomInt`.
 2. After the type is overridden, we can apply a compatible transformer.
 3. Database subset condition applied to the `aircrafts_data` table. The subset condition filters the data based on the `model` column.
+
+### Excluding columns from a table dump
+
+Greenmask has no per-column include or exclude option. A table entry in `transformation` accepts only `schema`, `name`, `query`, `subset_conds`, `columns_type_override`, `apply_for_inherited`, `when` and `transformers`. Every dumped table keeps its full column list, because the schema is restored unchanged and the data is loaded with `COPY ... (all non-generated columns) FROM stdin`.
+
+To keep a column's values out of the dump, use one of these options instead:
+
+* **Clear or mask the column.** Use [SetNull](built_in_transformers/standard_transformers/set_null.md) for a nullable column, or a masking transformer such as [Replace](built_in_transformers/standard_transformers/replace.md) or [Hash](built_in_transformers/standard_transformers/hash.md) for a `NOT NULL` column. `greenmask validate` warns if a transformer that can produce `NULL` targets a `NOT NULL` column.
+
+    ```yaml title="drop the values of a column"
+    transformation:
+      - schema: "public"
+        name: "users"
+        transformers:
+          - name: "SetNull"
+            params:
+              column: "notes"
+          - name: "Replace"
+            params:
+              column: "password_hash"
+              value: "redacted"
+    ```
+
+* **Use a custom `query`.** The query runs as `COPY (<query>) TO STDOUT`. It must return every non-generated column of the table, in table order and with compatible types, because the restore side expects exactly those columns. You can return `NULL` or a constant for a column, but you cannot omit it. If the table is part of a [subset](database_subset.md), Greenmask replaces `query` with the generated subset query.
+
+    ```yaml title="replace a column with NULL in a custom query"
+    transformation:
+      - schema: "public"
+        name: "users"
+        query: "SELECT id, email, NULL::text AS notes FROM public.users"
+    ```
+
+* **Skip the table data.** Use the `exclude-table-data` option in `pg_dump_options`, or the `--exclude-table-data` flag, to dump the table definition without rows. Use `exclude-table` to skip the table completely.
+
+    ```yaml title="dump the table schema without rows"
+    dump:
+      pg_dump_options:
+        exclude-table-data:
+          - "public.audit_log"
+    ```
+
+### Generated columns
+
+Greenmask handles generated (`GENERATED ALWAYS AS ... STORED`) columns automatically. You do not need to configure anything for them:
+
+* They are not dumped. Greenmask leaves them out of the table columns, the `COPY` statements and the subset queries.
+* PostgreSQL computes them again on restore from the restored base columns, for both `COPY` and `--inserts` restores.
+* Transformers cannot target them. A transformer whose `column` is a generated column fails validation with `column does not exist`. To change a generated value, transform the columns it is computed from.
 
 ## `validate` section
 

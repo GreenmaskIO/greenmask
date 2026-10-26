@@ -14,7 +14,7 @@ Generate a random string using the provided characters within the specified leng
 | min_length | The minimum length of the generated string                                                          |                                                        | Yes      | -                                   |
 | max_length | The maximum length of the generated string                                                          |                                                        | Yes      | -                                   |
 | symbols    | The range of characters that can be used in the random string                                       | `abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890` | No       | -                                   |
-| keep_null  | Indicates whether NULL values should be replaced with transformed values or not                     | `true`                                                 | No       | -                                   |
+| keep_null  | If `true`, NULL values are left as is                                                               | `true`                                                 | No       | -                                   |
 | engine     | The engine used for generating the values [`random`, `hash`]. Use hash for deterministic generation | `random`                                               | No       | -                                   |
 
 ## Description
@@ -32,16 +32,18 @@ In the following example, a random string is generated for the `accountnumber` c
 to `12`. The
 character set used for generation includes `1234567890ABCDEFGHIJKLMNOPQRSTUVWXYZ`.
 
-``` yaml title="RandomString transformer example"
-- schema: "purchasing"
-  name: "vendor"
-  transformers:
-    - name: "RandomString"
-      params:
-        column: "accountnumber"
-        min_length: 9
-        max_length: 12
-        symbols: "1234567890ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+```yaml title="RandomString transformer example"
+dump:
+  transformation:
+    - schema: "purchasing"
+      name: "vendor"
+      transformers:
+        - name: "RandomString"
+          params:
+            column: "accountnumber"
+            min_length: 9
+            max_length: 12
+            symbols: "1234567890ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 ```
 
 Result

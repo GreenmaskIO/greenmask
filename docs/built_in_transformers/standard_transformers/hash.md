@@ -4,16 +4,16 @@ description: "The following example generates a hash from the jobtitle into sha1
 keywords: ["Hash", "SHA256", "deterministic anonymization", "one-way hash", "greenmask transformer", "data anonymization", "postgresql", "mysql", "oracle", "Enterprise support", "Open-Source", "PostgreSQL anonymization", "test data management", "compliance", "security", "agentic pipeline", "development cycle"]
 ---
 
-Generate a hash of the text value using the `Scrypt` hash function under the hood. `NULL` values are kept.
+Generate a salted hash of the text value using the selected hash `function`. The result is hex-encoded. `NULL` values are always kept, the transformer has no `keep_null` parameter.
 
 ## Parameters
 
 | Name       | Description                                                                                                                           | Default | Required | Supported DB types |
 |------------|---------------------------------------------------------------------------------------------------------------------------------------|---------|----------|--------------------|
 | column     | The name of the column to be affected                                                                                                 |         | Yes      | text, varchar      |
-| salt       | Hex encoded salt string. This value may be provided via environment variable `GREENMASK_GLOBAL_SALT`                                  |         | Yes      | text, varchar      |
+| salt       | Salt string written before the value into the hash. Taken from `GREENMASK_GLOBAL_SALT` if not set. Empty means no salt.               |         | No       | -                  |
 | function   | Hash algorithm to anonymize data. Can be any of `md5`, `sha1`, `sha256`, `sha512`, `sha3-224`, `sha3-254`, `sha3-384`, `sha3-512`.    | `sha3-254` | No       | -                  |
-| max_length | Indicates whether to truncate the hash tail and specifies at what length. Can be any integer number, where `0` means "no truncation". | `0`     | No       | -                  |
+| max_length | Truncate the hex-encoded hash to this many characters. `0` means no truncation. Must not be negative.                                 | `0`     | No       | -                  |
 
 The `sha3-254` value selects the SHA3-256 algorithm.
 
@@ -28,14 +28,16 @@ export GREENMASK_GLOBAL_SALT="12343567baaa"
 ```
 
 ```yaml title="Hash transformer example"
-- schema: "humanresources"
-  name: "employee"
-  transformers:
-    - name: "Hash"
-      params:
-        column: "jobtitle"
-        function: "sha1"
-        max_length: 10
+dump:
+  transformation:
+    - schema: "humanresources"
+      name: "employee"
+      transformers:
+        - name: "Hash"
+          params:
+            column: "jobtitle"
+            function: "sha1"
+            max_length: 10
 ```
 
 ```bash title="Expected result"

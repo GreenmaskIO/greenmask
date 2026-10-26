@@ -1,6 +1,6 @@
 # Greenmask 0.2.2
 
-This release introduces bug fixes.
+Greenmask 0.2.2 was released on 2024-11-09. This release introduces bug fixes. It fixes `apply_for_references` validation being applied to all transformations and the latest tag disappearing in the documentation.
 
 ## Changes
 

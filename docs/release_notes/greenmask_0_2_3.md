@@ -1,6 +1,6 @@
 # Greenmask 0.2.3
 
-This release introduces bug fixes.
+Greenmask 0.2.3 was released on 2024-11-12. This release introduces bug fixes. It fixes restoring partitioned tables, the names of template functions and a panic in `dump` when the post-data section is excluded.
 
 ## Changes
 

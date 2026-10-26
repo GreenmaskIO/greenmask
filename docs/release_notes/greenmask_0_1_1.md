@@ -1,6 +1,6 @@
 # Greenmask 0.1.1
 
-This release introduces a suite of new transformers, significantly enhancing Greenmask's capabilities for obfuscating PostgreSQL databases.
+Greenmask 0.1.1 was released on 2024-01-24. This release introduces a suite of new transformers, significantly enhancing Greenmask's capabilities for obfuscating PostgreSQL databases.
 
 ## New features
 

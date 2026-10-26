@@ -1,5 +1,7 @@
 # Greenmask 0.2.24
 
+Greenmask 0.2.24 was released on 2026-09-28. It adds the HashedPassword transformer and server-side encryption for the S3 storage, forwards PostgreSQL notices to the log and validates the S3 storage config before the dump starts.
+
 ## Changes
 
 * feat: add the [HashedPassword](../built_in_transformers/standard_transformers/hashed_password.md) transformer. It

@@ -1,5 +1,7 @@
 # Greenmask 0.2.17
 
+Greenmask 0.2.17 was released on 2026-03-07. It implements the `-C` (`--create`) option for `restore`, adds in-memory storage for the `validate` command and fixes several bugs, including a stack overflow in the inherited DFS logic and the quoting of SQL identifiers.
+
 ## Changes
 
 * Implemented `-C` (`--create`) parameter logic for restoration [#414](https://github.com/GreenmaskIO/greenmask/pull/414)

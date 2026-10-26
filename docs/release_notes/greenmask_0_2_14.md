@@ -1,5 +1,7 @@
 # Greenmask 0.2.14
 
+Greenmask 0.2.14 was released on 2025-09-17. It adds the `--quiet` flag for `list-dumps`, an official installation script and the `--description` flag for `dump`, and fixes several restore bugs.
+
 ## Changes
 
 * Fixed RandomPerson hash generation [#327](https://github.com/GreenmaskIO/greenmask/pull/327)

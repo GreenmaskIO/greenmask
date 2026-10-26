@@ -23,3 +23,9 @@ split into the following groups:
 - [Advanced transformers](advanced_transformers/index.md) — transformers that can be modified according to user's needs
   with the help of [custom functions](advanced_transformers/custom_functions/index.md).
 - Custom transformers — coming soon...
+
+:::note
+
+Transformer names are case-sensitive PascalCase, for example `RandomEmail`, `SetNull`, `NoiseDate`. Run `greenmask list-transformers` to see all of them. See [Standard transformers](standard_transformers/index.md#transformer-names) for a mapping of common terms (nullify, random text) to names, a full `dump.transformation` example and the [`keep_null` parameter](standard_transformers/index.md#the-keep_null-parameter).
+
+:::

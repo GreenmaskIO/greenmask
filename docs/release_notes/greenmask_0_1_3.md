@@ -1,6 +1,6 @@
 # Greenmask 0.1.3
 
-This release introduces bug fixes.
+Greenmask 0.1.3 was released on 2024-02-07. This release introduces bug fixes. It fixes parsing of the JSON transformer's `operations` field and the database connection string builder for `pg_restore` and `pg_dump`.
 
 ## Fixes
 

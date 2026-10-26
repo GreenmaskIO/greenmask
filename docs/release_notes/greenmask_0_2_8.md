@@ -1,6 +1,6 @@
 # Greenmask 0.2.8
 
-This release includes a new feature and bug fixes.
+Greenmask 0.2.8 was released on 2025-02-25. This release includes a new feature and bug fixes. It supports `postgres://` connection URLs, adds the `--blobs` and `--no-blobs` flags, enables all textual types in text transformers and fixes OID casting in introspection queries.
 
 ## Changes
 

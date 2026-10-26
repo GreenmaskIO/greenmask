@@ -1,6 +1,6 @@
 # Greenmask 0.1.5
 
-This release introduces a new Greenmask command, improvements, bug fixes, and numerous documentation updates.
+Greenmask 0.1.5 was released on 2024-02-16. This release introduces a new Greenmask command, improvements, bug fixes, and numerous documentation updates. It adds the `show-transformer` command and remasters the Hash transformer.
 
 ## New features
 

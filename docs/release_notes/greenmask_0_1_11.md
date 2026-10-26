@@ -1,6 +1,6 @@
 # Greenmask 0.1.11
 
-This release introduces improvements and bug fixes
+Greenmask 0.1.11 was released on 2024-04-28. This release introduces improvements and bug fixes. It adds support for generated columns and fixes transformer parameter encoding, table scoring and the connection idle timeout in `restore`.
 
 ## Changes
 

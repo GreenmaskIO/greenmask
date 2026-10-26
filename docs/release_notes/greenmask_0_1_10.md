@@ -1,6 +1,6 @@
 # Greenmask 0.1.10
 
-This release introduces improvements and bug fixes
+Greenmask 0.1.10 was released on 2024-04-17. This release introduces improvements and bug fixes. It fixes a panic in the `RandomString` transformer and the table size calculation, which now includes the TOAST table, and removes the bucket name from the object path prefix.
 
 ## Changes
 

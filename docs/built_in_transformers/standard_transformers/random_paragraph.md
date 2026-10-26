@@ -13,7 +13,7 @@ enhancing textual datasets for NLP systems, or anonymizing textual content in da
 | Name      | Description                                       | Default | Required | Supported DB types                  |
 |-----------|---------------------------------------------------|---------|----------|-------------------------------------|
 | column    | The name of the column to be affected             |         | Yes      | text, varchar, char, bpchar, citext |
-| keep_null | Indicates whether NULL values should be preserved | `false` | No       | -                                   |
+| keep_null | Indicates whether NULL values should be preserved | `true`  | No       | -                                   |
 
 ## Description
 
@@ -29,13 +29,15 @@ table with random paragraphs. It is an effective way to simulate diverse article
 demonstration purposes.
 
 ```yaml title="RandomParagraph transformer example"
-- schema: "public"
-  name: "articles"
-  transformers:
-    - name: "RandomParagraph"
-      params:
-        column: "body"
-        keep_null: false
+dump:
+  transformation:
+    - schema: "public"
+      name: "articles"
+      transformers:
+        - name: "RandomParagraph"
+          params:
+            column: "body"
+            keep_null: false
 ```
 
 With this setup, the `body` column will receive random paragraphs for each entry, replacing any existing non-NULL

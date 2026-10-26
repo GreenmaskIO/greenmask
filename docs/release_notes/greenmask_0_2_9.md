@@ -1,6 +1,6 @@
 # Greenmask 0.2.9
 
-This release introduces a new transformer and fixes some bug.
+Greenmask 0.2.9 was released on 2025-03-28. This release introduces a new transformer and fixes some bugs. It adds the RandomCompany transformer and fixes the `list-transformers` output and a `RandomEmail` buffer size bug.
 
 ## Changes
 

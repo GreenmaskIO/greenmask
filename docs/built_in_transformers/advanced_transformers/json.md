@@ -12,6 +12,7 @@ Change a JSON document using `delete` and `set` operations. `NULL` values are ke
 |------------|-----------------|--------------------------------------------------------------------------------------------------|---------|----------|--------------------|
 | column     |                 | The name of the column to be affected                                                            |         | Yes      | json, jsonb        |
 | operations |                 | A list of operations that contains editing `delete` and `set`                                    |         | Yes      | -                  |
+| keep_null  |                 | If `true`, a `NULL` value is left as is and the operations are not applied                       | `true`  | No       | -                  |
 |          ∟ | operation       | Specifies the operation type: `set` or `delete`                                                  |         | Yes      | -                  |
 |          ∟ | path            | The path to an object to be modified. See path syntax below.                                     |         | Yes      | -                  |
 |          ∟ | value           | A value to be assigned to the provided path                                                      |         | No       | -                  |
