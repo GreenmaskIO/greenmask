@@ -84,6 +84,7 @@ func (rc *RecordContext) SetColumnValue(name string, v any) (bool, error) {
 	if err != nil {
 		return false, err
 	}
+	rc.markChanged(name)
 	return true, nil
 }
 
@@ -101,7 +102,15 @@ func (rc *RecordContext) SetRawColumnValue(name string, v any) (bool, error) {
 	if err != nil {
 		return false, err
 	}
+	rc.markChanged(name)
 	return true, nil
+}
+
+func (rc *RecordContext) markChanged(name string) {
+	if rc.changedColumns == nil {
+		rc.changedColumns = make(map[string]struct{})
+	}
+	rc.changedColumns[name] = struct{}{}
 }
 
 // EncodeValueByColumn - encode value from real type to the string or NullValue using column type

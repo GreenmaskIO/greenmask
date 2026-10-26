@@ -75,7 +75,7 @@ func (dpc *DynamicParameterContext) DecodeValue(v any) (any, error) {
 	if dpc.linkedColumn == nil {
 		return nil, fmt.Errorf("unable to decode not linked prameter use .DecodeValueByColumn or DecodeValueByType intead")
 	}
-	return dpc.rc.DecodeValueByColumn(dpc.linkedColumn.TypeName, v)
+	return dpc.rc.DecodeValueByColumn(dpc.linkedColumn.Name, v)
 }
 
 func (dpc *DynamicParameterContext) EncodeValueByColumn(name string, v any) (any, error) {
