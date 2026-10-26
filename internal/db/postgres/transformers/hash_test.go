@@ -42,6 +42,42 @@ func TestHashTransformer_Transform_all_functions(t *testing.T) {
 			result:   "202cb962ac59075b964b07152d234b70",
 		},
 		{
+			name: "sha3-256",
+			params: map[string]toolkit.ParamsValue{
+				"column":   columnValue,
+				"function": []byte("sha3-256"),
+			},
+			original: "123",
+			result:   "a03ab19b866fc585b5cb1812a2f63ca861e7e7643ee5d43fd7106b623725fd67",
+		},
+		{
+			name: "sha3-254 legacy name",
+			params: map[string]toolkit.ParamsValue{
+				"column":   columnValue,
+				"function": []byte("sha3-254"),
+			},
+			original: "123",
+			result:   "a03ab19b866fc585b5cb1812a2f63ca861e7e7643ee5d43fd7106b623725fd67",
+		},
+		{
+			name: "default function",
+			params: map[string]toolkit.ParamsValue{
+				"column": columnValue,
+			},
+			original: "123",
+			result:   "a03ab19b866fc585b5cb1812a2f63ca861e7e7643ee5d43fd7106b623725fd67",
+		},
+		{
+			name: "salt is used as is",
+			params: map[string]toolkit.ParamsValue{
+				"column":   columnValue,
+				"function": []byte("sha3-256"),
+				"salt":     []byte("a1b2"),
+			},
+			original: "123",
+			result:   "4fbf227e1cf9dbe1df6df3bf497224c292d08ac9f43d81ea8c9187bbbf954ba4",
+		},
+		{
 			name: "sha1",
 			params: map[string]toolkit.ParamsValue{
 				"column":   columnValue,
