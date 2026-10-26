@@ -101,3 +101,48 @@ func BenchmarkIpAddress_Generate(b *testing.B) {
 		require.True(b, !res.Equal(broadcast) && !res.Equal(subnet.IP), "IP address is subnet or broadcast")
 	}
 }
+
+func TestIpAddress_Generate_hash_regression(t *testing.T) {
+	tests := []struct {
+		subnet   string
+		expected string
+	}{
+		// Pinned outputs for regular subnets; they must not change
+		{subnet: "10.0.0.0/8", expected: "10.83.252.87"},
+		{subnet: "192.168.0.0/16", expected: "192.168.200.51"},
+		{subnet: "192.168.1.0/24", expected: "192.168.1.11"},
+		{subnet: "2001:db8:85a3::/64", expected: "2001:db8:85a3:0:3735:fef:3640:d747"},
+		// Leading zero bytes used to be dropped
+		{subnet: "0.0.0.0/8", expected: "0.83.252.87"},
+		{subnet: "::ffff:10.0.0.0/104", expected: "10.83.252.87"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.subnet, func(t *testing.T) {
+			_, subnet, err := net.ParseCIDR(tt.subnet)
+			require.NoError(t, err)
+			tr, err := NewIpAddress(subnet)
+			require.NoError(t, err)
+			g, err := generators.NewHash([]byte("salt"), "sha1")
+			require.NoError(t, err)
+			require.NoError(t, tr.SetGenerator(g))
+			res, err := tr.Generate([]byte("a"), nil)
+			require.NoError(t, err)
+			require.Equal(t, tt.expected, res.String())
+			require.True(t, subnet.Contains(res))
+		})
+	}
+}
+
+func TestIpAddress_Generate_subnet_with_host_bits(t *testing.T) {
+	// Not produced by net.ParseCIDR, but possible via parameter decoding
+	subnet := &net.IPNet{IP: net.ParseIP("192.168.1.200").To4(), Mask: net.CIDRMask(24, 32)}
+	tr, err := NewIpAddress(subnet)
+	require.NoError(t, err)
+	g := generators.NewRandomBytes(time.Now().UnixNano(), tr.GetRequiredGeneratorByteLength())
+	require.NoError(t, tr.SetGenerator(g))
+	for i := 0; i < 1000; i++ {
+		res, err := tr.Generate([]byte{}, nil)
+		require.NoError(t, err)
+		require.True(t, subnet.Contains(res), res.String())
+	}
+}

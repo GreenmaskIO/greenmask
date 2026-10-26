@@ -44,6 +44,11 @@ func (ip *IpAddress) Generate(original []byte, runtimeSubnet *net.IPNet) (net.IP
 	if runtimeSubnet != nil {
 		subnet = runtimeSubnet
 	}
+	// Drop host bits so that e.g. 192.168.1.200/24 generates inside 192.168.1.0/24
+	network := subnet.IP.Mask(subnet.Mask)
+	if network == nil {
+		return nil, fmt.Errorf("invalid subnet")
+	}
 	ones, bits := subnet.Mask.Size()
 	totalHosts := big.NewInt(1)
 	totalHosts.Lsh(totalHosts, uint(bits-ones))
@@ -59,7 +64,7 @@ func (ip *IpAddress) Generate(original []byte, runtimeSubnet *net.IPNet) (net.IP
 	if err != nil {
 		return nil, fmt.Errorf("error generating random bytes: %w", err)
 	}
-	if subnet.IP.To4() != nil {
+	if network.To4() != nil {
 		hostBytes = hostBytes[:4] // Use only the first 4 bytes for IPv4
 	}
 	// IPv6, use all 16 bytes
@@ -69,17 +74,13 @@ func (ip *IpAddress) Generate(original []byte, runtimeSubnet *net.IPNet) (net.IP
 
 	// Calculate the IP address
 	networkInt := big.NewInt(0)
-	networkInt.SetBytes(subnet.IP)
+	networkInt.SetBytes(network)
 	networkInt.Add(networkInt, randomHostNum)
 
-	ipAddrBytes := networkInt.Bytes()
-	if len(ipAddrBytes) < 16 && subnet.IP.To4() == nil {
-		// Pad the address to 16 bytes if it's an IPv6 address
-		paddedIP := make([]byte, 16)
-		copy(paddedIP[16-len(ipAddrBytes):], ipAddrBytes)
-		return paddedIP, nil
-	}
-	return ipAddrBytes, nil
+	// FillBytes keeps leading zero bytes (0.0.0.0/8, IPv4-mapped IPv6) that Bytes drops
+	res := make(net.IP, len(network))
+	networkInt.FillBytes(res)
+	return res, nil
 }
 
 func (ip *IpAddress) SetGenerator(g generators.Generator) error {
