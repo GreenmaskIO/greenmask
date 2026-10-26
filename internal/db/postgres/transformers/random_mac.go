@@ -85,6 +85,12 @@ var RandomMacAddressDefinition = utils.NewTransformerDefinition(
 	).SetDefaultValue(toolkit.ParamsValue(managementTypeNameAny)).
 		SetUnmarshaler(scanManagementType),
 
+	// Default false keeps the previous behaviour (NULL is replaced with a random MAC)
+	toolkit.MustNewParameterDefinition(
+		"keep_null",
+		"indicates that NULL values must not be replaced with transformed values",
+	).SetDefaultValue(toolkit.ParamsValue("false")),
+
 	engineParameterDefinition,
 )
 
@@ -93,6 +99,7 @@ type RandomMac struct {
 	affectedColumns    map[int]string
 	columnIdx          int
 	keepOriginalVendor bool
+	keepNull           bool
 	castType           int
 	managementType     int
 	t                  *transformers.MacAddress
@@ -109,7 +116,7 @@ func NewMacAddressTransformer(ctx context.Context, driver *toolkit.Driver, param
 
 	var columnName, engine string
 	var castType, managementType int
-	var keepOriginalVendor bool
+	var keepOriginalVendor, keepNull bool
 	if err := columnParam.Scan(&columnName); err != nil {
 		return nil, nil, fmt.Errorf(`unable to scan "column" param: %w`, err)
 	}
@@ -127,6 +134,10 @@ func NewMacAddressTransformer(ctx context.Context, driver *toolkit.Driver, param
 
 	if err := keepOriginalVendorParam.Scan(&keepOriginalVendor); err != nil {
 		return nil, nil, fmt.Errorf(`unable to scan "keep_original_vendor" param: %w`, err)
+	}
+
+	if err := parameters["keep_null"].Scan(&keepNull); err != nil {
+		return nil, nil, fmt.Errorf(`unable to scan "keep_null" param: %w`, err)
 	}
 
 	if err := castTypeParam.Scan(&castType); err != nil {
@@ -155,6 +166,7 @@ func NewMacAddressTransformer(ctx context.Context, driver *toolkit.Driver, param
 		columnIdx:          idx,
 		t:                  t,
 		keepOriginalVendor: keepOriginalVendor,
+		keepNull:           keepNull,
 		castType:           castType,
 		managementType:     managementType,
 	}, nil, nil
@@ -177,6 +189,9 @@ func (rbt *RandomMac) Transform(ctx context.Context, r *toolkit.Record) (*toolki
 	rawVal, err := r.GetRawColumnValueByIdx(rbt.columnIdx)
 	if err != nil {
 		return nil, fmt.Errorf("unable to scan value: %w", err)
+	}
+	if rawVal.IsNull && rbt.keepNull {
+		return r, nil
 	}
 	err = r.Driver.ScanValueByTypeOid(pgtype.MacaddrOID, rawVal.Data, &rbt.originalMac)
 	if err != nil {
@@ -206,7 +221,7 @@ func scanCastType(parameter *toolkit.ParameterDefinition, driver *toolkit.Driver
 	case castTypeNameAny:
 		res = transformers.CastTypeAny
 	default:
-		return fmt.Errorf("unknow value %s", string(src)), nil
+		return nil, fmt.Errorf("unknown value %s", string(src))
 	}
 	return &res, nil
 }
@@ -221,7 +236,7 @@ func scanManagementType(parameter *toolkit.ParameterDefinition, driver *toolkit.
 	case managementTypeNameAny:
 		res = transformers.ManagementTypeAny
 	default:
-		return fmt.Errorf("unknow value %s", string(src)), nil
+		return nil, fmt.Errorf("unknown value %s", string(src))
 	}
 	return &res, nil
 }

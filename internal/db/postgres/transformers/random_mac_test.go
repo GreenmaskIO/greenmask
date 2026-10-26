@@ -191,3 +191,63 @@ func managementTypeNameToIndex(managementTypeName string) (catTypeIndex int) {
 		return transformers.ManagementTypeAny
 	}
 }
+
+func TestRandomMacTransformer_Transform_null(t *testing.T) {
+	tests := []struct {
+		name       string
+		params     map[string]toolkit.ParamsValue
+		expectNull bool
+		expectErr  bool
+	}{
+		{
+			name: "keep_null with keep_original_vendor",
+			params: map[string]toolkit.ParamsValue{
+				"keep_original_vendor": toolkit.ParamsValue("true"),
+				"keep_null":            toolkit.ParamsValue("true"),
+			},
+			expectNull: true,
+		},
+		{
+			name: "no keep_null with keep_original_vendor",
+			params: map[string]toolkit.ParamsValue{
+				"keep_original_vendor": toolkit.ParamsValue("true"),
+			},
+			expectErr: true,
+		},
+		{
+			name: "no keep_null without keep_original_vendor",
+			params: map[string]toolkit.ParamsValue{
+				"keep_original_vendor": toolkit.ParamsValue("false"),
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.params["column"] = toolkit.ParamsValue("macaddress")
+			tt.params["engine"] = toolkit.ParamsValue("hash")
+			driver, record := getDriverAndRecord("macaddress", "\\N")
+			transformer, warnings, err := RandomMacAddressDefinition.Instance(
+				context.Background(), driver, tt.params, nil, "", false,
+			)
+			require.NoError(t, err)
+			require.Empty(t, warnings)
+
+			r, err := transformer.Transformer.Transform(context.Background(), record)
+			if tt.expectErr {
+				require.Error(t, err)
+				return
+			}
+			require.NoError(t, err)
+			rawVal, err := r.GetRawColumnValueByName("macaddress")
+			require.NoError(t, err)
+			require.Equal(t, tt.expectNull, rawVal.IsNull)
+		})
+	}
+}
+
+func TestRandomMac_scan_unknown_types(t *testing.T) {
+	_, err := scanCastType(nil, nil, toolkit.ParamsValue("unknown"))
+	require.Error(t, err)
+	_, err = scanManagementType(nil, nil, toolkit.ParamsValue("unknown"))
+	require.Error(t, err)
+}
