@@ -5,6 +5,7 @@ package toolkit
 
 import (
 	"fmt"
+	"slices"
 	"unsafe"
 
 	"github.com/expr-lang/expr"
@@ -73,7 +74,7 @@ func (wc *WhenCond) Evaluate(r *Record) (bool, error) {
 		return cond, nil
 	}
 
-	return false, fmt.Errorf("when condition should return boolean, got (%T) and value %+v", cond, cond)
+	return false, fmt.Errorf("when condition should return boolean, got (%T) and value %+v", output, output)
 }
 
 // compileCond compiles when condition and returns the compiled program and the record context
@@ -95,7 +96,8 @@ func compileCond(whenCond string, driver *Driver, meta map[string]any) (
 		Any("Meta", meta).
 		Msg("found when condition: compiling")
 	rc, ops := newRecordContext(driver)
-	ops = append(ops, expr.Patch(newExprPatcher(meta)))
+	patcher := newExprPatcher(meta, driver)
+	ops = append(ops, expr.Patch(patcher))
 
 	cond, err := expr.Compile(whenCond, ops...)
 	if err != nil {
@@ -105,6 +107,19 @@ func compileCond(whenCond string, driver *Driver, meta map[string]any) (
 				AddMeta("Error", err.Error()).
 				SetMsg("unable to compile when condition"),
 		}
+	}
+
+	if len(patcher.missingColumns) > 0 {
+		var warnings ValidationWarnings
+		for _, name := range patcher.missingColumns {
+			warnings = append(warnings, NewValidationWarning().
+				SetSeverity(ErrorValidationSeverity).
+				SetMsg("column does not exist").
+				AddMeta("ColumnName", name).
+				AddMeta("Scope", scope).
+				AddMeta("WhenCond", whenCond))
+		}
+		return nil, nil, warnings
 	}
 
 	return cond, rc, nil
@@ -174,12 +189,15 @@ func newRecordContext(driver *Driver) (*RecordContext, []expr.Option) {
 // exprPatcher - patcher for the expression compiler. It patches the expression tree by some identifiers to
 // function calls. For instance is null, is not null, records address
 type exprPatcher struct {
-	meta map[string]any
+	meta           map[string]any
+	driver         *Driver
+	missingColumns []string
 }
 
-func newExprPatcher(meta map[string]any) *exprPatcher {
+func newExprPatcher(meta map[string]any, driver *Driver) *exprPatcher {
 	return &exprPatcher{
-		meta: meta,
+		meta:   meta,
+		driver: driver,
 	}
 }
 
@@ -191,8 +209,24 @@ func (ep *exprPatcher) Visit(node *ast.Node) {
 		Str("NodeFmt", fmt.Sprintf("%+v", *node)).
 		Msg("debugging expr tree nodes")
 	if isRecordOp(node) {
+		ep.checkColumnExists(node)
 		patchRecordOp(node)
 	}
+}
+
+func (ep *exprPatcher) checkColumnExists(node *ast.Node) {
+	mn, ok := (*node).(*ast.MemberNode)
+	if !ok {
+		return
+	}
+	attr, ok := (mn.Property).(*ast.StringNode)
+	if !ok {
+		return
+	}
+	if _, _, ok = ep.driver.GetColumnByName(attr.Value); ok || slices.Contains(ep.missingColumns, attr.Value) {
+		return
+	}
+	ep.missingColumns = append(ep.missingColumns, attr.Value)
 }
 
 // isRecordOp checks if the node is a record operation
