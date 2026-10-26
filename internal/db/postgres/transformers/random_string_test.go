@@ -21,8 +21,22 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/greenmaskio/greenmask/internal/db/postgres/transformers/utils"
 	"github.com/greenmaskio/greenmask/pkg/toolkit"
 )
+
+func TestTransformerDefinitions_unique_parameter_names(t *testing.T) {
+	for name, def := range utils.DefaultTransformerRegistry.M {
+		t.Run(name, func(t *testing.T) {
+			seen := make(map[string]struct{}, len(def.Parameters))
+			for _, p := range def.Parameters {
+				_, ok := seen[p.Name]
+				require.Falsef(t, ok, "duplicate parameter %q", p.Name)
+				seen[p.Name] = struct{}{}
+			}
+		})
+	}
+}
 
 // TODO: Cover error cases
 func TestRandomStringTransformer_Transform(t *testing.T) {
@@ -107,6 +121,53 @@ func TestRandomStringTransformer_Transform(t *testing.T) {
 			res, err := encoded.Encode()
 			require.NoError(t, err)
 			require.Regexp(t, tt.pattern, string(res))
+		})
+	}
+}
+
+func TestRandomStringTransformer_invalid_params(t *testing.T) {
+	tests := []struct {
+		name   string
+		params map[string]toolkit.ParamsValue
+	}{
+		{
+			name: "negative min_length",
+			params: map[string]toolkit.ParamsValue{
+				"min_length": toolkit.ParamsValue("-1"),
+				"max_length": toolkit.ParamsValue("10"),
+			},
+		},
+		{
+			name: "max_length less than min_length",
+			params: map[string]toolkit.ParamsValue{
+				"min_length": toolkit.ParamsValue("10"),
+				"max_length": toolkit.ParamsValue("5"),
+			},
+		},
+		{
+			name: "empty symbols",
+			params: map[string]toolkit.ParamsValue{
+				"min_length": toolkit.ParamsValue("1"),
+				"max_length": toolkit.ParamsValue("5"),
+				"symbols":    toolkit.ParamsValue(""),
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.params["column"] = toolkit.ParamsValue("data")
+			driver, _ := getDriverAndRecord("data", "some")
+			_, warnings, err := stringTransformerDefinition.Instance(
+				context.Background(),
+				driver,
+				tt.params,
+				nil,
+				"",
+				false,
+			)
+			require.NoError(t, err)
+			require.True(t, warnings.IsFatal())
 		})
 	}
 }

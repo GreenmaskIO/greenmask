@@ -53,11 +53,11 @@ func NewRandomStringTransformer(chars []rune, minLength, maxLength int) (*Random
 	}, nil
 }
 
-func (st *RandomStringTransformer) Transform(data []byte) []rune {
+func (st *RandomStringTransformer) Transform(data []byte) ([]rune, error) {
 	clear(st.buf)
 	resBytes, err := st.generator.Generate(data)
 	if err != nil {
-		return nil
+		return nil, err
 	}
 
 	stringLength := int(binary.LittleEndian.Uint32(resBytes[:stringLengthByteSize]))
@@ -74,19 +74,21 @@ func (st *RandomStringTransformer) Transform(data []byte) []rune {
 	subIter := 0
 
 	for idx := 0; idx < stringLength; idx++ {
-		if realIdx >= len(resBytes)-1 {
+		// The second check only fires for 2-byte chars, where it used to panic.
+		if realIdx >= len(resBytes)-1 ||
+			realIdx*st.requiredBytesPerCharLength+st.requiredBytesPerCharLength > len(resBytes) {
 			realIdx = 0
 			subIter++
 		}
 		startPos := realIdx * st.requiredBytesPerCharLength
-		endPos := realIdx*st.requiredBytesPerCharLength + st.requiredBytesPerCharLength
+		endPos := startPos + st.requiredBytesPerCharLength
 
 		charIdx := (getInt(resBytes[startPos:endPos]) + subIter) % len(st.characters)
 		st.buf[idx] = st.characters[charIdx]
 		realIdx += st.requiredBytesPerCharLength
 	}
 
-	return st.buf[:stringLength]
+	return st.buf[:stringLength], nil
 }
 
 func (st *RandomStringTransformer) GetRequiredGeneratorByteLength() int {
