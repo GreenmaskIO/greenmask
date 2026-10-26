@@ -14,11 +14,14 @@ type RandomChoiceTransformer struct {
 	generator  generators.Generator
 }
 
-func NewRandomChoiceTransformer(values []*toolkit.RawValue) *RandomChoiceTransformer {
+func NewRandomChoiceTransformer(values []*toolkit.RawValue) (*RandomChoiceTransformer, error) {
+	if len(values) == 0 {
+		return nil, fmt.Errorf("values list is empty")
+	}
 	return &RandomChoiceTransformer{
 		values:     values,
 		byteLength: 4,
-	}
+	}, nil
 }
 
 func (rc *RandomChoiceTransformer) Transform(original []byte) (*toolkit.RawValue, error) {
