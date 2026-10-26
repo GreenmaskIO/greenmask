@@ -146,3 +146,23 @@ func TestDynamicParameter_Value_simple(t *testing.T) {
 	require.NoError(t, err)
 	require.NotEmpty(t, value)
 }
+
+func TestDynamicParameterContext_DecodeValue(t *testing.T) {
+	driver, record := GetDriverAndRecord(
+		map[string]*RawValue{
+			"id2":  NewRawValue([]byte("123"), false),
+			"data": NewRawValue([]byte("5"), false),
+		},
+	)
+	_, dataColumn, ok := driver.GetColumnByName("data")
+	require.True(t, ok)
+	_, idColumn, ok := driver.GetColumnByName("id2")
+	require.True(t, ok)
+
+	dpc := NewDynamicParameterContext(dataColumn)
+	dpc.setLinkedColumn(idColumn)
+	dpc.setRecord(record)
+	res, err := dpc.DecodeValue("5")
+	require.NoError(t, err)
+	require.EqualValues(t, 5, res)
+}

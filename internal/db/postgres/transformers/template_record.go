@@ -60,6 +60,7 @@ type TemplateRecordTransformer struct {
 	buf             *bytes.Buffer
 	tctx            *toolkit.RecordContext
 	columns         []string
+	validate        bool
 }
 
 func NewTemplateRecordTransformer(ctx context.Context, driver *toolkit.Driver, parameters map[string]toolkit.Parameterizer) (utils.Transformer, toolkit.ValidationWarnings, error) {
@@ -77,6 +78,12 @@ func NewTemplateRecordTransformer(ctx context.Context, driver *toolkit.Driver, p
 		return nil, nil, fmt.Errorf("error parsing template: %w", err)
 	}
 
+	var validate bool
+	p = parameters["validate"]
+	if err := p.Scan(&validate); err != nil {
+		return nil, nil, fmt.Errorf("unable to scan \"validate\" param: %w", err)
+	}
+
 	p = parameters["columns"]
 	if err := p.Scan(&columns); err != nil {
 		return nil, nil, fmt.Errorf("unable to scan \"columns\" param: %w", err)
@@ -88,7 +95,7 @@ func NewTemplateRecordTransformer(ctx context.Context, driver *toolkit.Driver, p
 		if !ok {
 			warnings = append(warnings, toolkit.NewValidationWarning().
 				AddMeta("ElementNum", num).
-				AddMeta("ColumnName", column.Name).
+				AddMeta("ColumnName", columnName).
 				SetSeverity(toolkit.ErrorValidationSeverity).
 				SetMsg("column not found"))
 			continue
@@ -107,6 +114,7 @@ func NewTemplateRecordTransformer(ctx context.Context, driver *toolkit.Driver, p
 		buf:             bytes.NewBuffer(nil),
 		tctx:            toolkit.NewRecordContext(),
 		columns:         columns,
+		validate:        validate,
 	}, warnings, nil
 }
 
@@ -128,6 +136,14 @@ func (sut *TemplateRecordTransformer) Transform(ctx context.Context, r *toolkit.
 
 	if err := sut.tmpl.Execute(sut.buf, sut.tctx); err != nil {
 		return nil, fmt.Errorf("error executing template: %w", err)
+	}
+
+	if sut.validate {
+		for name := range sut.tctx.GetChangedColumns() {
+			if _, err := r.GetColumnValueByName(name); err != nil {
+				return nil, fmt.Errorf("error validating template output for column \"%s\": %w", name, err)
+			}
+		}
 	}
 
 	sut.buf.Reset()

@@ -105,3 +105,35 @@ func TestTemplateTransformer_Transform_timestamp(t *testing.T) {
 	require.NoError(t, err)
 	require.Regexp(t, expectedPattern, string(res))
 }
+
+func TestTemplateTransformer_Transform_validate(t *testing.T) {
+	driver, record := getDriverAndRecordByColumns([]string{"id", "data"}, "1\tx")
+	params := map[string]toolkit.ParamsValue{
+		"column":   toolkit.ParamsValue("id"),
+		"template": toolkit.ParamsValue("not-an-int"),
+		"validate": toolkit.ParamsValue("true"),
+	}
+	transformer, warnings, err := TemplateTransformerDefinition.Instance(context.Background(), driver, params, nil, "", false)
+	require.NoError(t, err)
+	require.Empty(t, warnings)
+
+	_, err = transformer.Transformer.Transform(context.Background(), record)
+	require.ErrorContains(t, err, "error validating template output")
+}
+
+func TestTemplateTransformer_Transform_DecodeValue(t *testing.T) {
+	driver, record := getDriverAndRecordByColumns([]string{"id", "data"}, "1\tx")
+	params := map[string]toolkit.ParamsValue{
+		"column":   toolkit.ParamsValue("id"),
+		"template": toolkit.ParamsValue(`{{ $v := .DecodeValue "5" }}{{ add $v 1 }}`),
+	}
+	transformer, warnings, err := TemplateTransformerDefinition.Instance(context.Background(), driver, params, nil, "", false)
+	require.NoError(t, err)
+	require.Empty(t, warnings)
+
+	r, err := transformer.Transformer.Transform(context.Background(), record)
+	require.NoError(t, err)
+	v, err := r.GetRawColumnValueByName("id")
+	require.NoError(t, err)
+	require.Equal(t, "6", string(v.Data))
+}

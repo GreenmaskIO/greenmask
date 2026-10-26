@@ -83,6 +83,12 @@ func NewTemplateTransformer(ctx context.Context, driver *toolkit.Driver, paramet
 		return nil, nil, fmt.Errorf("unable to scan \"templateStr\" param: %w", err)
 	}
 
+	var validate bool
+	p = parameters["validate"]
+	if err := p.Scan(&validate); err != nil {
+		return nil, nil, fmt.Errorf("unable to scan \"validate\" param: %w", err)
+	}
+
 	t := template.New("tmpl").Funcs(toolkit.FuncMap())
 	tmpl, err := t.Parse(templateStr)
 	if err != nil {
@@ -92,6 +98,7 @@ func NewTemplateTransformer(ctx context.Context, driver *toolkit.Driver, paramet
 	return &TemplateTransformer{
 		columnName:      columnName,
 		template:        templateStr,
+		validate:        validate,
 		columnIdx:       idx,
 		affectedColumns: affectedColumns,
 		tmpl:            tmpl,
@@ -126,7 +133,7 @@ func (sut *TemplateTransformer) Transform(ctx context.Context, r *toolkit.Record
 		res = toolkit.NewRawValue(nil, true)
 	} else {
 		if sut.validate {
-			if _, err := r.Driver.DecodeValueByColumnIdx(sut.columnIdx, res.Data); err != nil {
+			if _, err := r.Driver.DecodeValueByColumnIdx(sut.columnIdx, data); err != nil {
 				return nil, fmt.Errorf("error validating template output via driver: %w", err)
 			}
 		}

@@ -134,3 +134,29 @@ func TestTemplateRecordTransformer_Transform_json(t *testing.T) {
 	}
 
 }
+
+func TestTemplateRecordTransformer_unknown_column(t *testing.T) {
+	driver, _ := getDriverAndRecordByColumns([]string{"id", "data"}, "1\tx")
+	params := map[string]toolkit.ParamsValue{
+		"template": toolkit.ParamsValue(`{{ .SetColumnValue "data" "y" }}`),
+		"columns":  toolkit.ParamsValue(`["unknown"]`),
+	}
+	_, warnings, err := TemplateRecordTransformerDefinition.Instance(context.Background(), driver, params, nil, "", false)
+	require.NoError(t, err)
+	require.True(t, warnings.IsFatal())
+	require.Equal(t, "unknown", warnings[0].Meta["ColumnName"])
+}
+
+func TestTemplateRecordTransformer_Transform_validate(t *testing.T) {
+	driver, record := getDriverAndRecordByColumns([]string{"id", "data"}, "1\tx")
+	params := map[string]toolkit.ParamsValue{
+		"template": toolkit.ParamsValue(`{{ .SetRawColumnValue "id" "not-an-int" }}`),
+		"validate": toolkit.ParamsValue("true"),
+	}
+	transformer, warnings, err := TemplateRecordTransformerDefinition.Instance(context.Background(), driver, params, nil, "", false)
+	require.NoError(t, err)
+	require.Empty(t, warnings)
+
+	_, err = transformer.Transformer.Transform(context.Background(), record)
+	require.ErrorContains(t, err, "error validating template output")
+}

@@ -65,7 +65,7 @@ func (cc *ColumnContext) EncodeValue(v any) (any, error) {
 }
 
 func (cc *ColumnContext) DecodeValue(v any) (any, error) {
-	return cc.rc.DecodeValueByColumn(cc.columnType, v)
+	return cc.rc.DecodeValueByColumn(cc.columnName, v)
 }
 
 func (cc *ColumnContext) EncodeValueByColumn(name string, v any) (any, error) {
