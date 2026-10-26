@@ -270,3 +270,53 @@ func TestJsonTransformer_Transform_skip_does_not_exist(t *testing.T) {
 		require.JSONEq(t, `{"name":{"test":"modified"}}`, string(actual.Data))
 	})
 }
+
+func runJsonTransformer(t *testing.T, originalValue string, params map[string]toolkit.ParamsValue) (*toolkit.RawValue, error) {
+	t.Helper()
+	driver, record := getDriverAndRecord("doc", originalValue)
+	params["column"] = toolkit.ParamsValue("doc")
+	transformerCtx, warnings, err := JsonTransformerDefinition.Instance(context.Background(), driver, params, nil, "", false)
+	require.NoError(t, err)
+	require.Empty(t, warnings)
+	r, err := transformerCtx.Transformer.Transform(context.Background(), record)
+	if err != nil {
+		return nil, err
+	}
+	res, err := r.GetRawColumnValueByName("doc")
+	require.NoError(t, err)
+	return res, nil
+}
+
+func TestJsonTransformer_Transform_static_value_error_not_exist(t *testing.T) {
+	_, err := runJsonTransformer(t, `{"a":1}`, map[string]toolkit.ParamsValue{
+		"operations": toolkit.ParamsValue(`[{"operation":"set","path":"b","value":5,"error_not_exist":true}]`),
+	})
+	require.ErrorContains(t, err, "does not exist")
+}
+
+func TestJsonTransformer_Transform_null_delete_keeps_null(t *testing.T) {
+	res, err := runJsonTransformer(t, `\N`, map[string]toolkit.ParamsValue{
+		"keep_null":  toolkit.ParamsValue("false"),
+		"operations": toolkit.ParamsValue(`[{"operation":"delete","path":"b"}]`),
+	})
+	require.NoError(t, err)
+	require.True(t, res.IsNull)
+}
+
+func TestJsonTransformer_Transform_static_big_int(t *testing.T) {
+	res, err := runJsonTransformer(t, `{"a":1}`, map[string]toolkit.ParamsValue{
+		"operations": toolkit.ParamsValue(`[{"operation":"set","path":"a","value":9007199254740993}]`),
+	})
+	require.NoError(t, err)
+	// JSONEq compares via float64, so compare the raw text
+	require.Equal(t, `{"a":9007199254740993}`, string(res.Data))
+}
+
+func TestJsonTransformer_Transform_invalid_template_output(t *testing.T) {
+	_, err := runJsonTransformer(t, `{"a":"x"}`, map[string]toolkit.ParamsValue{
+		"operations": toolkit.ParamsValue(
+			`[{"operation":"set","path":"a","value_template":"{{ .GetOriginalValue }}-masked"}]`,
+		),
+	})
+	require.ErrorContains(t, err, "not valid json")
+}
