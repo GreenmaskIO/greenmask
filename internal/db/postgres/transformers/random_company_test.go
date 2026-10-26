@@ -158,3 +158,55 @@ func TestRandomCompanyTransformer_Transform_static_nullable(t *testing.T) {
 	require.NoError(t, err)
 	require.True(t, rawVal.IsNull)
 }
+
+func TestRandomCompanyTransformer_Transform_hash_deterministic(t *testing.T) {
+	columnName := "data"
+	params := map[string]toolkit.ParamsValue{
+		"columns": toolkit.ParamsValue(`[{"name": "data", "template": "{{ .CompanyName }} {{ .CompanySuffix }}"}]`),
+		"engine":  toolkit.ParamsValue("hash"),
+	}
+
+	driver, _ := getDriverAndRecord(columnName, "ACME Corp.")
+	def, ok := utils.DefaultTransformerRegistry.Get("RandomCompany")
+	require.True(t, ok)
+
+	transformer, warnings, err := def.Instance(context.Background(), driver, params, nil, "", false)
+	require.NoError(t, err)
+	require.Empty(t, warnings)
+
+	var first string
+	for i := 0; i < 5; i++ {
+		_, record := getDriverAndRecord(columnName, "ACME Corp.")
+		r, err := transformer.Transformer.Transform(context.Background(), record)
+		require.NoError(t, err)
+		rawVal, err := r.GetRawColumnValueByName(columnName)
+		require.NoError(t, err)
+		if i == 0 {
+			first = string(rawVal.Data)
+			continue
+		}
+		require.Equal(t, first, string(rawVal.Data), "row %d", i)
+	}
+}
+
+func TestRandomCompanyTransformer_Transform_random_nullable(t *testing.T) {
+	columnName := "data"
+	params := map[string]toolkit.ParamsValue{
+		"columns": toolkit.ParamsValue(`[{"name": "data", "template": "{{ .CompanyName }}"}]`),
+		"engine":  toolkit.ParamsValue("random"),
+	}
+
+	driver, record := getDriverAndRecord(columnName, "\\N")
+	def, ok := utils.DefaultTransformerRegistry.Get("RandomCompany")
+	require.True(t, ok)
+
+	transformer, warnings, err := def.Instance(context.Background(), driver, params, nil, "", false)
+	require.NoError(t, err)
+	require.Empty(t, warnings)
+
+	r, err := transformer.Transformer.Transform(context.Background(), record)
+	require.NoError(t, err)
+	rawVal, err := r.GetRawColumnValueByName(columnName)
+	require.NoError(t, err)
+	require.True(t, rawVal.IsNull)
+}
