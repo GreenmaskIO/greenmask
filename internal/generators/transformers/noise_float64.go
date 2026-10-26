@@ -18,7 +18,7 @@ type NoiseFloat64Limiter struct {
 }
 
 func NewNoiseFloat64Limiter(minVal, maxVal float64, precision int) (*NoiseFloat64Limiter, error) {
-	if minVal >= maxVal {
+	if minVal > maxVal {
 		return nil, ErrWrongLimits
 	}
 	return &NoiseFloat64Limiter{
@@ -29,13 +29,7 @@ func NewNoiseFloat64Limiter(minVal, maxVal float64, precision int) (*NoiseFloat6
 }
 
 func (ni *NoiseFloat64Limiter) Limit(v float64) float64 {
-	if v < ni.MinValue {
-		return ni.MinValue
-	}
-	if v > ni.MaxValue {
-		return ni.MaxValue
-	}
-	return Round(ni.Precision, v)
+	return clampRound(ni.Precision, v, ni.MinValue, ni.MaxValue)
 }
 
 type NoiseFloat64Transformer struct {

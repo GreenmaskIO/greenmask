@@ -10,24 +10,26 @@ import (
 	"github.com/greenmaskio/greenmask/internal/generators"
 )
 
+const (
+	randomNumericSlackBytes = 8
+	// randomNumericMaxByteLength is the biggest output of the hash engine (sha3-512).
+	randomNumericMaxByteLength = 64
+)
+
 type RandomNumericLimiter struct {
-	MinValue      decimal.Decimal
-	MaxValue      decimal.Decimal
-	distance      decimal.Decimal
-	precision     int32
-	withPrecision bool
+	MinValue decimal.Decimal
+	MaxValue decimal.Decimal
 }
 
 func NewRandomNumericLimiter(minValue, maxValue decimal.Decimal) (*RandomNumericLimiter, error) {
 
-	if minValue.GreaterThanOrEqual(maxValue) {
+	if minValue.GreaterThan(maxValue) {
 		return nil, ErrWrongLimits
 	}
 
 	return &RandomNumericLimiter{
 		MinValue: minValue,
 		MaxValue: maxValue,
-		distance: maxValue.Sub(minValue),
 	}, nil
 }
 
@@ -53,31 +55,31 @@ func NewRandomNumericLimiterFromSize(digitsBeforeDecimal int) (*RandomNumericLim
 	return NewRandomNumericLimiter(minDecimal, maxDecimal)
 }
 
-func (l *RandomNumericLimiter) SetPrecision(v int32) {
-	l.precision = v
-	l.withPrecision = true
+// scaledBounds returns min and max in units of 10^-precision, rounded inwards so results stay within bounds.
+func (l *RandomNumericLimiter) scaledBounds(precision int32) (*big.Int, *big.Int) {
+	return l.MinValue.Shift(precision).Ceil().BigInt(), l.MaxValue.Shift(precision).Floor().BigInt()
 }
 
-func (l *RandomNumericLimiter) ByteLength() int {
-	minValueBitLength := l.MinValue.BigInt().BitLen()
-	maxValueBitLength := l.MaxValue.BigInt().BitLen()
-	if minValueBitLength > maxValueBitLength {
-		return minValueBitLength
+// Limit maps v into the inclusive range [MinValue, MaxValue] with the given number of decimals.
+func (l *RandomNumericLimiter) Limit(v *big.Int, precision int32) decimal.Decimal {
+	lo, hi := l.scaledBounds(precision)
+	if hi.Cmp(lo) < 0 {
+		// No value with this precision fits into the range.
+		return l.MinValue
 	}
-	return maxValueBitLength
+	count := new(big.Int).Sub(hi, lo)
+	count.Add(count, big.NewInt(1))
+	res := new(big.Int).Mod(v, count)
+	res.Add(res, lo)
+	return decimal.NewFromBigInt(res, -precision)
 }
 
-func (l *RandomNumericLimiter) Limit(v decimal.Decimal) decimal.Decimal {
-	res := l.MinValue.Add(v.Mod(l.distance))
-	if res.GreaterThan(l.MaxValue) {
-		res = res.Mod(l.MaxValue)
-	} else if res.LessThan(l.MinValue) {
-		res = res.Mod(l.MinValue)
-	}
-	if l.withPrecision {
-		res = res.Round(l.precision)
-	}
-	return res
+// byteLength returns the generator bytes needed to cover the range with randomNumericSlackBytes to reduce bias.
+func (l *RandomNumericLimiter) byteLength(precision int32) int {
+	lo, hi := l.scaledBounds(precision)
+	distance := new(big.Int).Sub(hi, lo)
+	size := (distance.BitLen()+7)/8 + randomNumericSlackBytes
+	return min(size, randomNumericMaxByteLength)
 }
 
 type RandomNumericTransformer struct {
@@ -93,12 +95,10 @@ func NewRandomNumericTransformer(limiter *RandomNumericLimiter, precision int32)
 		return nil, fmt.Errorf("limiter for BigInt values cannot be nil")
 	}
 
-	maxBytesLength := max(getByteByDecimal(limiter.MinValue), getByteByDecimal(limiter.MaxValue))
-
 	return &RandomNumericTransformer{
 		limiter:    limiter,
-		byteLength: maxBytesLength,
-		precision:  -precision,
+		byteLength: limiter.byteLength(precision),
+		precision:  precision,
 	}, nil
 }
 
@@ -125,10 +125,10 @@ func (ig *RandomNumericTransformer) SetDynamicLimiter(l *RandomNumericLimiter) *
 }
 
 func (ig *RandomNumericTransformer) Transform(original []byte) (decimal.Decimal, error) {
-	var res decimal.Decimal
 	var limiter = ig.limiter
 	if ig.dynamicLimiter != nil {
 		limiter = ig.dynamicLimiter
+		ig.dynamicLimiter = nil
 	}
 
 	resBytes, err := ig.generator.Generate(original)
@@ -136,28 +136,6 @@ func (ig *RandomNumericTransformer) Transform(original []byte) (decimal.Decimal,
 		return decimal.Decimal{}, err
 	}
 
-	res = newDecimalFromBytes(resBytes[:ig.byteLength], ig.precision)
-	if res.LessThan(decimal.NewFromInt(0)) {
-		res = res.Mul(decimal.NewFromInt(-1))
-	}
-	res = limiter.Limit(res)
-
-	if ig.dynamicLimiter != nil {
-		limiter = nil
-	}
-
-	return res, nil
-}
-
-func getByteByDecimal(v decimal.Decimal) int {
-	bitLen := v.BigInt().BitLen()
-	if bitLen%8 > 0 {
-		return bitLen/8 + 1
-	}
-	return bitLen / 8
-}
-
-func newDecimalFromBytes(data []byte, exp int32) decimal.Decimal {
-	v := new(big.Int).SetBytes(data)
-	return decimal.NewFromBigInt(v, exp)
+	v := new(big.Int).SetBytes(resBytes[:ig.byteLength])
+	return limiter.Limit(v, ig.precision), nil
 }

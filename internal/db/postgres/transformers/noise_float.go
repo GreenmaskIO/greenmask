@@ -164,6 +164,10 @@ func NewNoiseFloatTransformer(ctx context.Context, driver *toolkit.Driver, param
 		return nil, nil, fmt.Errorf("unable to scan \"max_ratio\" param: %w", err)
 	}
 
+	if warns := validateNoiseRatios(minRatio, maxRatio); warns.IsFatal() {
+		return nil, warns, nil
+	}
+
 	limiter, limitsWarnings, err := validateNoiseFloatTypeAndSetLimit(floatSize, minValueThreshold, maxValueThreshold, decimal)
 	if err != nil {
 		return nil, nil, err
@@ -281,7 +285,7 @@ func validateNoiseFloatTypeAndSetLimit(
 			AddMeta("AllowedMinValue", minValue).
 			AddMeta("AllowedMaxValue", maxValue).
 			AddMeta("ParameterName", "min").
-			AddMeta("ParameterValue", requestedMinValue),
+			AddMeta("ParameterValue", *requestedMinValue),
 		)
 	}
 
@@ -291,8 +295,8 @@ func validateNoiseFloatTypeAndSetLimit(
 			SetSeverity(toolkit.ErrorValidationSeverity).
 			AddMeta("AllowedMinValue", minValue).
 			AddMeta("AllowedMaxValue", maxValue).
-			AddMeta("ParameterName", "min").
-			AddMeta("ParameterValue", requestedMinValue),
+			AddMeta("ParameterName", "max").
+			AddMeta("ParameterValue", *requestedMaxValue),
 		)
 	}
 
@@ -309,41 +313,24 @@ func validateNoiseFloatTypeAndSetLimit(
 }
 
 func getMinAndMaxFloatDynamicValueNoiseIntTrans(floatSize int, minParam, maxParam toolkit.Parameterizer) (float64, float64, error) {
-
-	var requestedMinValue, requestedMaxValue float64
-	var minRequested, maxRequested bool
 	minValue, maxValue, err := getFloatThresholds(floatSize)
 	if err != nil {
 		return 0, 0, err
 	}
+	allowedMinValue, allowedMaxValue := minValue, maxValue
 
-	if minParam.IsDynamic() {
-		minRequested = true
-		err = minParam.Scan(&requestedMinValue)
-		if err != nil {
-			return 0, 0, fmt.Errorf(`unable to scan "min" dynamic  param: %w`, err)
-		}
-		if !limitIsValid(requestedMinValue, minValue, maxValue) {
-			return 0, 0, fmt.Errorf("requested dynamic parameter min value is out of range of float%d size", floatSize)
-		}
+	if err = scanLimitParam(minParam, &minValue); err != nil {
+		return 0, 0, fmt.Errorf(`unable to scan "min" param: %w`, err)
+	}
+	if !limitIsValid(minValue, allowedMinValue, allowedMaxValue) {
+		return 0, 0, fmt.Errorf("requested dynamic parameter min value is out of range of float%d size", floatSize)
 	}
 
-	if maxParam.IsDynamic() {
-		maxRequested = true
-		err = minParam.Scan(&maxValue)
-		if err != nil {
-			return 0, 0, fmt.Errorf(`unable to scan "max" dynamic param: %w`, err)
-		}
-		if !limitIsValid(requestedMaxValue, minValue, maxValue) {
-			return 0, 0, fmt.Errorf("requested dynamic parameter max value is out of range of float%d size", floatSize)
-		}
+	if err = scanLimitParam(maxParam, &maxValue); err != nil {
+		return 0, 0, fmt.Errorf(`unable to scan "max" param: %w`, err)
 	}
-
-	if minRequested {
-		minValue = requestedMinValue
-	}
-	if maxRequested {
-		maxValue = requestedMaxValue
+	if !limitIsValid(maxValue, allowedMinValue, allowedMaxValue) {
+		return 0, 0, fmt.Errorf("requested dynamic parameter max value is out of range of float%d size", floatSize)
 	}
 
 	return minValue, maxValue, nil

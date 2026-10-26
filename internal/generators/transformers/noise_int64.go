@@ -2,6 +2,7 @@ package transformers
 
 import (
 	"fmt"
+	"math"
 
 	"github.com/greenmaskio/greenmask/internal/generators"
 )
@@ -17,7 +18,7 @@ type NoiseInt64Limiter struct {
 }
 
 func NewNoiseInt64Limiter(minVal, maxVal int64) (*NoiseInt64Limiter, error) {
-	if minVal >= maxVal {
+	if minVal > maxVal {
 		return nil, ErrWrongLimits
 	}
 	return &NoiseInt64Limiter{
@@ -76,7 +77,7 @@ func (ig *NoiseInt64Transformer) Transform(l *NoiseInt64Limiter, original int64)
 		multiplayer = -multiplayer
 	}
 
-	res := original + int64(float64(original)*multiplayer)
+	res := addNoiseSaturated(original, float64(original)*multiplayer)
 
 	if limiter != nil {
 		res = limiter.Limit(res)
@@ -95,4 +96,23 @@ func (ig *NoiseInt64Transformer) SetGenerator(g generators.Generator) error {
 	}
 	ig.generator = g
 	return nil
+}
+
+// addNoiseSaturated returns original + int64(noise), saturating at the int64 bounds instead of wrapping.
+func addNoiseSaturated(original int64, noise float64) int64 {
+	if noise >= math.MaxInt64 {
+		return math.MaxInt64
+	}
+	if noise <= math.MinInt64 {
+		return math.MinInt64
+	}
+	delta := int64(noise)
+	res := original + delta
+	if delta > 0 && res < original {
+		return math.MaxInt64
+	}
+	if delta < 0 && res > original {
+		return math.MinInt64
+	}
+	return res
 }

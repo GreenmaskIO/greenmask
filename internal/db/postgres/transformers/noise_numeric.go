@@ -193,6 +193,10 @@ func NewNumericFloatTransformer(ctx context.Context, driver *toolkit.Driver, par
 		return nil, nil, fmt.Errorf("unable to scan \"max_ratio\" param: %w", err)
 	}
 
+	if warns := validateNoiseRatios(minRatio, maxRatio); warns.IsFatal() {
+		return nil, warns, nil
+	}
+
 	limiter.SetPrecision(precision)
 
 	t := transformers.NewNoiseNumericTransformer(limiter, minRatio, maxRatio)
@@ -245,14 +249,11 @@ func (nft *NoiseNumericTransformer) Done(ctx context.Context) error {
 }
 
 func (nft *NoiseNumericTransformer) dynamicTransform(original decimal.Decimal) (decimal.Decimal, error) {
-	var minVal, maxVal decimal.Decimal
-	err := nft.minParam.Scan(&minVal)
-	if err != nil {
+	minVal, maxVal := nft.minAllowedValue, nft.maxAllowedValue
+	if err := scanLimitParam(nft.minParam, &minVal); err != nil {
 		return decimal.Decimal{}, fmt.Errorf(`unable to scan "min" param: %w`, err)
 	}
-
-	err = nft.maxParam.Scan(&maxVal)
-	if err != nil {
+	if err := scanLimitParam(nft.maxParam, &maxVal); err != nil {
 		return decimal.Decimal{}, fmt.Errorf(`unable to scan "max" param: %w`, err)
 	}
 
@@ -324,18 +325,7 @@ func getNoiseNumericLimiterForDynamicParameter(
 		return nil, fmt.Errorf("requested dynamic parameter max value is out of range of NUMERIC(%d) size", numericSize)
 	}
 
-	limiter, err := transformers.NewNoiseNumericLimiter(minAllowedValue, maxAllowedValue)
-	if err != nil {
-		return nil, err
-	}
-
-	if !requestedMinValue.Equal(decimal.NewFromInt(0)) || !requestedMaxValue.Equal(decimal.NewFromInt(0)) {
-		limiter, err = transformers.NewNoiseNumericLimiter(requestedMinValue, requestedMaxValue)
-		if err != nil {
-			return nil, err
-		}
-	}
-	return limiter, nil
+	return transformers.NewNoiseNumericLimiter(requestedMinValue, requestedMaxValue)
 }
 
 func init() {

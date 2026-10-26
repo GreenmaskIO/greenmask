@@ -175,8 +175,6 @@ func NewRandomNumericTransformer(ctx context.Context, driver *toolkit.Driver, pa
 	if limitsWarnings.IsFatal() {
 		return nil, limitsWarnings, nil
 	}
-	limiter.SetPrecision(precision)
-
 	t, err := transformers.NewRandomNumericTransformer(limiter, precision)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error initializing common int transformer: %w", err)
@@ -228,14 +226,11 @@ func (bit *NumericTransformer) Done(ctx context.Context) error {
 }
 
 func (bit *NumericTransformer) dynamicTransform(v []byte) (decimal.Decimal, error) {
-	var minVal, maxVal decimal.Decimal
-	err := bit.minParam.Scan(&minVal)
-	if err != nil {
+	minVal, maxVal := bit.minAllowedValue, bit.maxAllowedValue
+	if err := scanLimitParam(bit.minParam, &minVal); err != nil {
 		return decimal.Decimal{}, fmt.Errorf(`unable to scan "min" param: %w`, err)
 	}
-
-	err = bit.maxParam.Scan(&maxVal)
-	if err != nil {
+	if err := scanLimitParam(bit.maxParam, &maxVal); err != nil {
 		return decimal.Decimal{}, fmt.Errorf(`unable to scan "max" param: %w`, err)
 	}
 
@@ -288,18 +283,18 @@ func getNumericThresholds(size int, requestedMinValue, requestedMaxValue *decima
 			AddMeta("AllowedMinValue", minVal.String()).
 			AddMeta("AllowedMaxValue", maxVal.String()).
 			AddMeta("ParameterName", "min").
-			AddMeta("ParameterValue", requestedMinValue),
+			AddMeta("ParameterValue", requestedMinValue.String()),
 		)
 	}
 
 	if !numericLimitIsValid(*requestedMaxValue, minVal, maxVal) {
 		warns = append(warns, toolkit.NewValidationWarning().
-			SetMsgf("requested max value is out of NEMERIC(%d) range", size).
+			SetMsgf("requested max value is out of numeric(%d) range", size).
 			SetSeverity(toolkit.ErrorValidationSeverity).
 			AddMeta("AllowedMinValue", minVal.String()).
 			AddMeta("AllowedMaxValue", maxVal.String()).
-			AddMeta("ParameterName", "min").
-			AddMeta("ParameterValue", requestedMinValue),
+			AddMeta("ParameterName", "max").
+			AddMeta("ParameterValue", requestedMaxValue.String()),
 		)
 	}
 	if warns.IsFatal() {
@@ -329,6 +324,8 @@ func validateRandomNumericTypeAndSetLimit(
 }
 
 func numericLimitIsValid(requestedThreshold, minValue, maxValue decimal.Decimal) bool {
+	// TODO: switch to && once the default bounds follow the column precision.
+	//  With && the 20 digit default rejects limits >= 1e20.
 	return requestedThreshold.GreaterThanOrEqual(minValue) || requestedThreshold.LessThanOrEqual(maxValue)
 }
 
@@ -345,18 +342,7 @@ func getRandomNumericLimiterForDynamicParameter(
 		return nil, fmt.Errorf("requested dynamic parameter max value is out of range of NUMERIC(%d) size", numericSize)
 	}
 
-	limiter, err := transformers.NewRandomNumericLimiter(minAllowedValue, maxAllowedValue)
-	if err != nil {
-		return nil, err
-	}
-
-	if !requestedMinValue.Equal(decimal.NewFromInt(0)) || !requestedMaxValue.Equal(decimal.NewFromInt(0)) {
-		limiter, err = transformers.NewRandomNumericLimiter(requestedMinValue, requestedMaxValue)
-		if err != nil {
-			return nil, err
-		}
-	}
-	return limiter, nil
+	return transformers.NewRandomNumericLimiter(requestedMinValue, requestedMaxValue)
 }
 
 func numericTypeUnmarshaler(driver *toolkit.Driver, typeName string, v toolkit.ParamsValue) (any, error) {
