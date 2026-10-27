@@ -153,7 +153,7 @@ var FakerTransformersDes = map[string]*FakerTransformerDef{
 	},
 	RandomCCNumberTransformerName: {
 		Generator:      faker.CCNumber,
-		SupportedTypes: []string{"text", "varchar", "char", "bpchar", "citext", "int8", "numeric"},
+		SupportedTypes: []string{"text", "varchar", "char", "bpchar", "citext", "int4", "int8", "numeric"},
 		Description:    "Generates a random credit card number.",
 	},
 	RandomCurrencyTransformerName: {
