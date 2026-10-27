@@ -1085,7 +1085,7 @@ func (s *mysqlSuite) TestIntrospector_getForeignKeyKeys() {
 		}()
 		i, err := NewIntrospector(newDefaultOptMock())
 		s.Require().NoError(err)
-		_, err = i.getForeignKeyKeys(ctx, &txMock{tx}, "testdb", "unknown_table_ibfk_1")
+		_, err = i.getForeignKeyKeys(ctx, &txMock{tx}, "testdb", "unknown_table_ibfk_1", "unknown_table")
 		s.Require().ErrorIs(err, errNoKeysFound)
 	})
 
@@ -1130,6 +1130,7 @@ func (s *mysqlSuite) TestIntrospector_getForeignKeyKeys() {
 			&txMock{tx},
 			"testdb",
 			"simple_ref_table_not_nullable_ibfk_1",
+			"simple_ref_table_not_nullable",
 		)
 		s.Require().NoError(err)
 		s.Require().Equal([]string{"simple_main_table_id"}, keys)
@@ -1182,6 +1183,7 @@ func (s *mysqlSuite) TestIntrospector_getForeignKeyKeys() {
 			&txMock{tx},
 			"testdb",
 			"complex_pk_ref_table_nullable_ibfk_1",
+			"complex_pk_ref_table_nullable",
 		)
 		s.Require().NoError(err)
 		s.Require().Equal([]string{"complex_pk_main_table_id1", "complex_pk_main_table_id2"}, keys)

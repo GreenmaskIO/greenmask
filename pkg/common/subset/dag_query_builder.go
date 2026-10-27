@@ -53,17 +53,15 @@ const (
 type dagQueryBuilder struct {
 	sg      *subsetGraph
 	dialect Dialect
-	// aliasMap - contains the aliases for the tables that are ambiguous in the query.
-	// The key is a tablegraph.Edge.ID() (edge ID) and the value is an alias to use in the query.
-	aliasMap map[int]string
+	// occurrences - how many times each table ID has been joined so far in the query being built.
+	occurrences map[int]int
 }
 
 func newDAGQueryBuilder(sg *subsetGraph, dialect Dialect) dagQueryBuilder {
-	aliasMap := makeTableAliasesForDAG(sg.graph)
 	return dagQueryBuilder{
-		sg:       sg,
-		dialect:  dialect,
-		aliasMap: aliasMap,
+		sg:          sg,
+		dialect:     dialect,
+		occurrences: make(map[int]int),
 	}
 }
 
@@ -73,6 +71,7 @@ func (b dagQueryBuilder) build() (map[int]string, error) {
 	rootTable := mustGetOneTableFromSCC(b.sg.vertexes[b.sg.rootVertex])
 
 	tableAliasMap := make(map[int]string)
+	b.occurrences[rootTable.ID] = 1
 	// Build the main select ... from clause for root table
 	rootTableName := getFullTableName(b.dialect, rootTable, tableAliasMap)
 	var flavor sqlbuilder.Flavor
@@ -107,18 +106,22 @@ func (b dagQueryBuilder) buildQueryDFS(
 	tableAliasMap map[int]string,
 ) {
 	for _, edge := range b.sg.graph[v] {
-		_, hasTableAlias := b.aliasMap[edge.OriginalEdge().ID()]
-		if hasTableAlias {
-			// If edge has an alias then add it to the tableAliasMap by the tableID
-			// Set an alias for table ID by the edge ID
-			tableAliasMap[edge.OriginalEdge().To().TableID()] = b.aliasMap[edge.OriginalEdge().ID()]
+		// A table can be reached through several FK paths (e.g. a -> b -> c and a -> c).
+		// Every occurrence after the first is a separate join and needs its own alias, which
+		// stays in scope for the whole subtree joined through it.
+		toTable := edge.OriginalEdge().To().Table()
+		prevAlias, hadAlias := tableAliasMap[toTable.ID]
+		if n := b.occurrences[toTable.ID]; n > 0 {
+			tableAliasMap[toTable.ID] = getTableAlias(toTable, n)
 		}
+		b.occurrences[toTable.ID]++
 		joinEdge(b.dialect, sb, edge, tableAliasMap)
 		// Recursively render the query for the next vertex
 		b.buildQueryDFS(edge.To().SCC.ID(), sb, tableAliasMap)
-		if hasTableAlias {
-			// If the edge has an alias then remove it from the tableAliasMap by the To tableID
-			delete(tableAliasMap, edge.OriginalEdge().To().TableID())
+		if hadAlias {
+			tableAliasMap[toTable.ID] = prevAlias
+		} else {
+			delete(tableAliasMap, toTable.ID)
 		}
 	}
 }
@@ -167,7 +170,12 @@ func joinEdge(
 
 	// Get Right table full name, and all columns involved into join condition.
 	rightTable := mustGetOneTableFromSCC(edge.To().SCC)
-	rightTableFullName := getFullTableName(dialect, rightTable, tableAliasMap)
+	// An aliased table must be declared as "<table> AS <alias>" in the JOIN clause;
+	// only its column references use the bare alias.
+	rightTableFullName := getFullTableName(dialect, rightTable, nil)
+	if _, hasAlias := tableAliasMap[rightTable.ID]; hasAlias {
+		rightTableFullName += " AS " + getFullTableName(dialect, rightTable, tableAliasMap)
+	}
 	rightTableFullColumnNames := getFullColumnNames(dialect, joinPartRight, edge, tableAliasMap)
 
 	// Set the join
