@@ -37,7 +37,7 @@ const HashTransformerName = "Hash"
 var HashTransformerDefinition = utils.NewTransformerDefinition(
 	utils.NewTransformerProperties(
 		HashTransformerName,
-		"Generate hash of the text value using Scrypt hash function under the hood",
+		"Generate a salted hex-encoded hash of the text value using the selected hash function",
 	).AddMeta(AllowApplyForReferenced, true).
 		AddMeta(RequireHashEngineParameter, false),
 
@@ -53,7 +53,7 @@ var HashTransformerDefinition = utils.NewTransformerDefinition(
 
 	toolkit.MustNewParameterDefinition(
 		"salt",
-		"hex encoded salt string. This value may be provided via environment variable GREENMASK_GLOBAL_SALT",
+		"salt string written before the value into the hash, used as is (not hex decoded). This value may be provided via environment variable GREENMASK_GLOBAL_SALT",
 	).SetGetFromGlobalEnvVariable("GREENMASK_GLOBAL_SALT"),
 
 	toolkit.MustNewParameterDefinition(
@@ -79,10 +79,12 @@ const (
 	sha256Name  = "sha256"
 	sha512Name  = "sha512"
 	sha3224Name = "sha3-224"
-	sha3256Name = "sha3-254"
-	sha384Name  = "sha3-384"
-	sha5124Name = "sha3-512"
-	md5Name     = "md5"
+	sha3256Name = "sha3-256"
+	// sha3256LegacyName is a misspelled name of sha3-256 kept for backward compatibility.
+	sha3256LegacyName = "sha3-254"
+	sha384Name        = "sha3-384"
+	sha5124Name       = "sha3-512"
+	md5Name           = "md5"
 )
 
 type HashTransformer struct {
@@ -143,7 +145,7 @@ func NewHashTransformer(
 	case sha3224Name:
 		h = sha3.New224()
 		hashFunctionLength = 28
-	case sha3256Name:
+	case sha3256Name, sha3256LegacyName:
 		h = sha3.New256()
 		hashFunctionLength = 32
 	case sha384Name:
@@ -225,7 +227,7 @@ func (ht *HashTransformer) Transform(ctx context.Context, r *toolkit.Record) (*t
 func validateHashFunctionsParameter(p *toolkit.ParameterDefinition, v toolkit.ParamsValue) (toolkit.ValidationWarnings, error) {
 	functionName := string(v)
 	switch functionName {
-	case sha1Name, sha256Name, sha512Name, sha3224Name, sha3256Name, sha384Name, sha5124Name, md5Name:
+	case sha1Name, sha256Name, sha512Name, sha3224Name, sha3256Name, sha3256LegacyName, sha384Name, sha5124Name, md5Name:
 		return nil, nil
 	}
 	return toolkit.ValidationWarnings{
