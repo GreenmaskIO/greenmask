@@ -162,8 +162,8 @@ func TestNewSubset(t *testing.T) {
 			``,
 			"SELECT `public`.`a`.* FROM `public`.`a` WHERE (public.a.id = 1)",
 			"SELECT `public`.`b`.* FROM `public`.`b` INNER JOIN `public`.`a` ON (`public`.`b`.`a_id` = `public`.`a`.`id`) WHERE (public.a.id = 1)",
-			"SELECT `public`.`c`.* FROM `public`.`c` INNER JOIN `public`.`b` ON (`public`.`c`.`b_id` = `public`.`b`.`id`) INNER JOIN `public_a__1` ON (`public`.`b`.`a_id` = `public_a__1`.`id`) INNER JOIN `public_a__0` ON (`public`.`c`.`a_id` = `public_a__0`.`id`) WHERE (public.c.id = 1) AND (public_a__1.id = 1) AND (public_a__0.id = 1)",
-			"SELECT `public`.`d`.* FROM `public`.`d` INNER JOIN `public`.`c` ON (`public`.`d`.`c_id` = `public`.`c`.`id`) INNER JOIN `public`.`b` ON (`public`.`c`.`b_id` = `public`.`b`.`id`) INNER JOIN `public_a__1` ON (`public`.`b`.`a_id` = `public_a__1`.`id`) INNER JOIN `public_a__0` ON (`public`.`c`.`a_id` = `public_a__0`.`id`) WHERE (public.c.id = 1) AND (public_a__1.id = 1) AND (public_a__0.id = 1)",
+			"SELECT `public`.`c`.* FROM `public`.`c` INNER JOIN `public`.`b` ON (`public`.`c`.`b_id` = `public`.`b`.`id`) INNER JOIN `public`.`a` ON (`public`.`b`.`a_id` = `public`.`a`.`id`) INNER JOIN `public`.`a` AS `public_a__1` ON (`public`.`c`.`a_id` = `public_a__1`.`id`) WHERE (public.c.id = 1) AND (public.a.id = 1) AND (public_a__1.id = 1)",
+			"SELECT `public`.`d`.* FROM `public`.`d` INNER JOIN `public`.`c` ON (`public`.`d`.`c_id` = `public`.`c`.`id`) INNER JOIN `public`.`b` ON (`public`.`c`.`b_id` = `public`.`b`.`id`) INNER JOIN `public`.`a` ON (`public`.`b`.`a_id` = `public`.`a`.`id`) INNER JOIN `public`.`a` AS `public_a__1` ON (`public`.`c`.`a_id` = `public_a__1`.`id`) WHERE (public.c.id = 1) AND (public.a.id = 1) AND (public_a__1.id = 1)",
 		}
 		require.Equal(t, expectedTablesQueries, s.tablesQueries)
 	})

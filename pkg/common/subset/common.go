@@ -296,14 +296,14 @@ func getSubsetConditionsWithTableAlias(
 	switch sqlbuilder.Flavor(dialect) {
 	case sqlbuilder.MySQL, sqlbuilder.ClickHouse, sqlbuilder.Doris:
 		//escapeChar = "`"
-		ptrn = fmt.Sprintf("`?%s`?.`?%s`?", table.Schema, table.Name)
+		ptrn = fmt.Sprintf("`?%s`?\\.`?%s`?\\.", table.Schema, table.Name)
 	case sqlbuilder.PostgreSQL, sqlbuilder.SQLServer,
 		sqlbuilder.SQLite, sqlbuilder.Presto,
 		sqlbuilder.Oracle, sqlbuilder.Informix:
-		ptrn = fmt.Sprintf(`"?%s"?."?%s"?`, table.Schema, table.Name)
+		ptrn = fmt.Sprintf(`"?%s"?\."?%s"?\.`, table.Schema, table.Name)
 		//escapeChar = `"`
 	case sqlbuilder.CQL:
-		ptrn = fmt.Sprintf("'?%s'?.'?%s'?", table.Schema, table.Name)
+		ptrn = fmt.Sprintf("'?%s'?\\.'?%s'?\\.", table.Schema, table.Name)
 		//escapeChar = "'"
 	}
 	re, err := regexp.Compile(ptrn)
@@ -312,7 +312,9 @@ func getSubsetConditionsWithTableAlias(
 	}
 	replacedSubsetConditions := make([]string, 0, len(table.SubsetConditions))
 	for _, cond := range table.SubsetConditions {
-		replacedCond := re.ReplaceAllString(cond, alias)
+		// Only column references (schema.table.column) are rewritten; a bare schema.table, e.g. in a
+		// subquery FROM clause, must keep pointing at the real table.
+		replacedCond := re.ReplaceAllLiteralString(cond, alias+".")
 		replacedSubsetConditions = append(replacedSubsetConditions, replacedCond)
 	}
 	return replacedSubsetConditions

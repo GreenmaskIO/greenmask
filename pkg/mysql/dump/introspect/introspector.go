@@ -513,26 +513,39 @@ func (i *Introspector) getForeignKeys(
 		return nil, fmt.Errorf("get foreign key constraints: %w", err)
 	}
 
-	for idx, c := range constraints {
-		keys, err := i.getForeignKeyKeys(ctx, tx, c.ConstraintSchema, c.ConstraintName)
+	res := make([]commonmodels.Reference, 0, len(constraints))
+	for _, c := range constraints {
+		// Self-referencing FKs form single-table cycles, and the subset cycle query builder
+		// is not implemented yet. Skip them so the table is still subset through its other FKs.
+		if c.ReferencedSchema == tableSchema && c.ReferencedName == tableName {
+			log.Ctx(ctx).Warn().
+				Str("Table", tableSchema+"."+tableName).
+				Str("Constraint", c.ConstraintName).
+				Msg("ignoring self-referencing foreign key for subset")
+			continue
+		}
+		keys, err := i.getForeignKeyKeys(ctx, tx, c.ConstraintSchema, c.ConstraintName, tableName)
 		if err != nil {
 			return nil, fmt.Errorf("get foreign key keys: %w", err)
 		}
-		constraints[idx].SetKeys(keys)
+		c.SetKeys(keys)
+		res = append(res, c)
 	}
-	return constraints, nil
+	return res, nil
 }
 
 // getForeignKeyKeys - get foreign key constraint keys for a given constraint.
-func (i *Introspector) getForeignKeyKeys(ctx context.Context, tx interfaces.DB, constraintSchema, constraintName string) ([]string, error) {
+func (i *Introspector) getForeignKeyKeys(ctx context.Context, tx interfaces.DB, constraintSchema, constraintName, tableName string) ([]string, error) {
 	query := `
 		SELECT k.column_name
 		FROM information_schema.key_column_usage k
 		WHERE k.CONSTRAINT_SCHEMA = ?
 		  AND k.CONSTRAINT_NAME = ?
+		  AND k.TABLE_NAME = ?
+		  AND k.REFERENCED_TABLE_NAME IS NOT NULL
 		ORDER BY k.ordinal_position;
 	`
-	rows, err := tx.QueryContext(ctx, query, constraintSchema, constraintName)
+	rows, err := tx.QueryContext(ctx, query, constraintSchema, constraintName, tableName)
 	if err != nil {
 		return nil, fmt.Errorf("execute foreign key keys query: %w", err)
 	}
