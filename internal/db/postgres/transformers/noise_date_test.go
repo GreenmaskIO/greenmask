@@ -276,6 +276,35 @@ func TestNoiseDateTransformer_Transform_interval_time_part(t *testing.T) {
 	}
 }
 
+func TestNoiseDateTransformer_Transform_equal_ratios(t *testing.T) {
+	original := time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC)
+	params := map[string]toolkit.ParamsValue{
+		"column":    toolkit.ParamsValue("date_ts"),
+		"min_ratio": toolkit.ParamsValue("1 day"),
+		"max_ratio": toolkit.ParamsValue("1 day"),
+	}
+	for i := 0; i < 10; i++ {
+		driver, record := getDriverAndRecord("date_ts", original.Format("2006-01-02 15:04:05"))
+		transformerCtx, warnings, err := NoiseDateTransformerDefinition.Instance(
+			context.Background(),
+			driver, params,
+			nil,
+			"",
+			false,
+		)
+		require.NoError(t, err)
+		require.Empty(t, warnings)
+		r, err := transformerCtx.Transformer.Transform(context.Background(), record)
+		require.NoError(t, err)
+
+		var res time.Time
+		_, err = r.ScanColumnValueByName("date_ts", &res)
+		require.NoError(t, err)
+		diff := res.Sub(original)
+		require.True(t, diff == 24*time.Hour || diff == -24*time.Hour, "got diff %s", diff)
+	}
+}
+
 func TestNoiseDateTransformer_Transform_dynamic(t *testing.T) {
 	type expected struct {
 		min time.Time
