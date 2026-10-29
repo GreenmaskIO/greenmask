@@ -115,12 +115,11 @@ type DynamicParameter struct {
 	//defaultValueFromDynamicParamValue any
 	//defaultValueFromDefinition        any
 
-	hasDefaultValue     bool
-	defaultValueScanned any
-	defaultValueGot     any
-	rawDefaultValue     ParamsValue
-	tmplCtx             *DynamicParameterContext
-	castToFunc          TypeCastFunc
+	hasDefaultValue bool
+	defaultValueGot any
+	rawDefaultValue ParamsValue
+	tmplCtx         *DynamicParameterContext
+	castToFunc      TypeCastFunc
 }
 
 func NewDynamicParameter(def *ParameterDefinition, driver *Driver) *DynamicParameter {
@@ -231,7 +230,8 @@ func (dp *DynamicParameter) Init(columnParameters map[string]*StaticParameter, d
 					SetSeverity(ErrorValidationSeverity).
 					SetMsg("column does not exist").
 					AddMeta("DynamicParameterSetting", "column").
-					AddMeta("ColumnName", dp.definition.Name),
+					AddMeta("ColumnName", dp.DynamicValue.Column).
+					AddMeta("ParameterName", dp.definition.Name),
 			},
 			nil
 	}
@@ -466,18 +466,8 @@ func (dp *DynamicParameter) Scan(dest any) error {
 			return fmt.Errorf("received NULL value from dynamic parameter")
 		}
 
-		if dp.defaultValueScanned == nil {
-			err = scanValue(dp.driver, dp.definition, dp.rawDefaultValue, dp.linkedColumnParameter, dest)
-			if err != nil {
-				return err
-			}
-			// TODO: You must copy scanned value since the dest is the pointer receiver otherwise it will cause
-			// 	unexpected behaviour
-			dp.defaultValueScanned = dest
-			return nil
-		}
-
-		return ScanPointer(dp.defaultValueScanned, dest)
+		// scan the raw default each time: caching dest would alias the caller's pointer
+		return scanValue(dp.driver, dp.definition, dp.rawDefaultValue, dp.linkedColumnParameter, dest)
 	}
 
 	rawValue := v.Data
