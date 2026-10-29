@@ -63,7 +63,8 @@ var timestampTransformerDefinition = utils.NewTransformerDefinition(
 		SetLinkParameter("column").
 		SetSupportTemplate(true).
 		SetDynamicMode(
-			toolkit.NewDynamicModeProperties(),
+			toolkit.NewDynamicModeProperties().
+				SetCompatibleTypes("date", "timestamp", "timestamptz"),
 		),
 
 	toolkit.MustNewParameterDefinition(
