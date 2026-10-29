@@ -29,7 +29,7 @@ var ReplaceTransformerDefinition = utils.NewTransformerDefinition(
 		ReplaceTransformerName,
 		"Replace column value to the provided",
 	).AddMeta(AllowApplyForReferenced, true).
-		AddMeta(RequireHashEngineParameter, true),
+		AddMeta(RequireHashEngineParameter, false),
 
 	NewReplaceTransformer,
 

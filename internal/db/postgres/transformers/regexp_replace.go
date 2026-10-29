@@ -30,7 +30,7 @@ var RegexpReplaceTransformerDefinition = utils.NewTransformerDefinition(
 		RegexpReplaceTransformerName,
 		"Replace string using regular expression",
 	).AddMeta(AllowApplyForReferenced, true).
-		AddMeta(RequireHashEngineParameter, true),
+		AddMeta(RequireHashEngineParameter, false),
 
 	NewRegexpReplaceTransformer,
 

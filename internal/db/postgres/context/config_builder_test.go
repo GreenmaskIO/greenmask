@@ -238,6 +238,23 @@ func Test_isTransformerAllowedToApplyForReferences(t *testing.T) {
 		require.False(t, ok)
 	})
 
+	t.Run("deterministic transformers without engine parameter", func(t *testing.T) {
+		for _, name := range []string{
+			transformers.ReplaceTransformerName, transformers.RegexpReplaceTransformerName,
+		} {
+			cfg := &domains.TransformerConfig{
+				Name:               name,
+				ApplyForReferences: true,
+				Params: toolkit.StaticParameters{
+					"column": toolkit.ParamsValue("id"),
+				},
+			}
+			ok, w := isTransformerAllowedToApplyForReferences(cfg, r)
+			require.Empty(t, w, name)
+			require.True(t, ok, name)
+		}
+	})
+
 	t.Run("Template", func(t *testing.T) {
 		cfg := &domains.TransformerConfig{
 			Name:               transformers.TemplateTransformerName,
