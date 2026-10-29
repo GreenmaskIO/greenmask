@@ -153,8 +153,7 @@ func TestRandomInt_inclusive(t *testing.T) {
 	}
 	require.Len(t, seen, 3)
 	// the interval is wider than int64 can represent as a difference
-	v := RandomInt(r, math.MinInt64, math.MaxInt64)
-	require.True(t, v >= math.MinInt64 && v <= math.MaxInt64)
+	require.NotPanics(t, func() { RandomInt(r, math.MinInt64, math.MaxInt64) })
 }
 
 func TestRandomDate_equal_bounds(t *testing.T) {
