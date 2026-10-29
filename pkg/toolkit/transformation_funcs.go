@@ -17,6 +17,7 @@ package toolkit
 import (
 	"fmt"
 	"math"
+	"math/bits"
 	"math/rand"
 	"time"
 )
@@ -108,10 +109,21 @@ func RandomBool(r *rand.Rand) bool {
 	return r.Int63n(2) == 1
 }
 
+// RandomDate - returns a random time in the inclusive interval [min, max]
 func RandomDate(r *rand.Rand, min, max *time.Time) *time.Time {
-	delta := time.Duration(r.Int63n(int64(max.Sub(*min))))
-	res := min.Add(delta)
+	res := min.Add(time.Duration(randomInt63Inclusive(r, int64(max.Sub(*min)))))
 	return &res
+}
+
+// randomInt63Inclusive - returns a random value in [0, n] for n >= 0
+func randomInt63Inclusive(r *rand.Rand, n int64) int64 {
+	if n <= 0 {
+		return 0
+	}
+	if n == math.MaxInt64 {
+		return r.Int63()
+	}
+	return r.Int63n(n + 1)
 }
 
 func RandomFloat(r *rand.Rand, min, max float64, precision int) float64 {
@@ -128,18 +140,33 @@ func Round(precision int, num float64) float64 {
 	return float64(round(num*output)) / output
 }
 
+// RandomInt - returns a random value in the inclusive interval [min, max], min if min >= max
 func RandomInt(r *rand.Rand, min, max int64) int64 {
-	return r.Int63n(max-min) + min
+	if min >= max {
+		return min
+	}
+	delta := max - min
+	if delta < 0 {
+		// the interval does not fit into int64, so scale a 128-bit random fraction
+		// to its width, the bias is below 2^-64
+		n := uint64(max) - uint64(min) + 1
+		if n == 0 {
+			return int64(r.Uint64())
+		}
+		hi, lo := bits.Mul64(r.Uint64(), n)
+		mid, _ := bits.Mul64(r.Uint64(), n)
+		_, carry := bits.Add64(lo, mid, 0)
+		return int64(uint64(min) + hi + carry)
+	}
+	return min + randomInt63Inclusive(r, delta)
 }
 
+// RandomString - returns a random string with length in the inclusive interval [minLength, maxLength]
 func RandomString(randGen *rand.Rand, minLength, maxLength int64, symbols []rune, buf []rune) string {
-	length := maxLength
-	if minLength != maxLength {
-		length = minLength + randGen.Int63n(maxLength-minLength)
-	}
+	length := minLength + randomInt63Inclusive(randGen, maxLength-minLength)
 
 	for i := int64(0); i < length; i++ {
-		buf[i] = symbols[rand.Int63n(maxLength)%int64(len(symbols))]
+		buf[i] = symbols[randGen.Intn(len(symbols))]
 	}
 	return string(buf[:length])
 }

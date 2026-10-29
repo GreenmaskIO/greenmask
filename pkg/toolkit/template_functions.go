@@ -514,6 +514,9 @@ func randomString(randGen *rand.Rand, minLength, maxLength any, symbols ...strin
 	if len(symbols) > 0 {
 		s = []rune(symbols[0])
 	}
+	if len(s) == 0 {
+		return "", fmt.Errorf("symbols must not be empty")
+	}
 
 	minLengthInt, err := cast.ToInt64E(minLength)
 	if err != nil {
