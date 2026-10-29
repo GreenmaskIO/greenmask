@@ -17,6 +17,7 @@ package toolkit
 import (
 	"fmt"
 	"math"
+	"math/bits"
 	"math/rand"
 	"time"
 )
@@ -139,16 +140,23 @@ func Round(precision int, num float64) float64 {
 	return float64(round(num*output)) / output
 }
 
-// RandomInt - returns a random value in the inclusive interval [min, max]
+// RandomInt - returns a random value in the inclusive interval [min, max], min if min >= max
 func RandomInt(r *rand.Rand, min, max int64) int64 {
+	if min >= max {
+		return min
+	}
 	delta := max - min
 	if delta < 0 {
-		// the interval does not fit into int64, so pick values until one is in range
-		for {
-			if v := int64(r.Uint64()); v >= min && v <= max {
-				return v
-			}
+		// the interval does not fit into int64, so scale a 128-bit random fraction
+		// to its width, the bias is below 2^-64
+		n := uint64(max) - uint64(min) + 1
+		if n == 0 {
+			return int64(r.Uint64())
 		}
+		hi, lo := bits.Mul64(r.Uint64(), n)
+		mid, _ := bits.Mul64(r.Uint64(), n)
+		_, carry := bits.Add64(lo, mid, 0)
+		return int64(uint64(min) + hi + carry)
 	}
 	return min + randomInt63Inclusive(r, delta)
 }

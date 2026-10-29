@@ -145,6 +145,7 @@ func TestRandomString_uses_all_symbols_and_inclusive_length(t *testing.T) {
 func TestRandomInt_inclusive(t *testing.T) {
 	r := rand.New(rand.NewSource(1))
 	require.Equal(t, int64(5), RandomInt(r, 5, 5))
+	require.Equal(t, int64(5), RandomInt(r, 5, 1))
 	seen := make(map[int64]struct{})
 	for i := 0; i < 1000; i++ {
 		v := RandomInt(r, 1, 3)
@@ -154,6 +155,13 @@ func TestRandomInt_inclusive(t *testing.T) {
 	require.Len(t, seen, 3)
 	// the interval is wider than int64 can represent as a difference
 	require.NotPanics(t, func() { RandomInt(r, math.MinInt64, math.MaxInt64) })
+	var neg, pos bool
+	for i := 0; i < 1000; i++ {
+		v := RandomInt(r, -5e18, 5e18)
+		require.True(t, v >= -5e18 && v <= 5e18)
+		neg, pos = neg || v < 0, pos || v > 0
+	}
+	require.True(t, neg && pos)
 }
 
 func TestRandomDate_equal_bounds(t *testing.T) {
