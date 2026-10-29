@@ -24,6 +24,8 @@ package transformers
 import (
 	"bytes"
 	"context"
+	"encoding/json"
+	"errors"
 	"fmt"
 	"slices"
 	"text/template"
@@ -70,6 +72,8 @@ var JsonTransformerDefinition = utils.NewTransformerDefinition(
 	).SetDefaultValue(toolkit.ParamsValue("true")),
 )
 
+var errInvalidJsonTemplateOutput = errors.New("template output is not valid json")
+
 var jsonSetOpt = &sjson.Options{
 	ReplaceInPlace: true,
 }
@@ -82,6 +86,30 @@ type Operation struct {
 	ErrorNotExist bool        `mapstructure:"error_not_exist" json:"error_not_exist"`
 	SkipNotExist  bool        `mapstructure:"skip_not_exist" json:"skip_not_exist"`
 	tmpl          *template.Template
+	// rawValue keeps the original JSON of Value so numbers are not rounded via float64
+	rawValue json.RawMessage
+}
+
+func (o *Operation) UnmarshalJSON(data []byte) error {
+	type operationAlias Operation
+	aux := struct {
+		*operationAlias
+		Value json.RawMessage `json:"value"`
+	}{operationAlias: (*operationAlias)(o)}
+	if err := json.Unmarshal(data, &aux); err != nil {
+		return err
+	}
+	o.rawValue = nil
+	o.Value = nil
+	if len(aux.Value) == 0 {
+		return nil
+	}
+	compacted := bytes.NewBuffer(nil)
+	if err := json.Compact(compacted, aux.Value); err != nil {
+		return err
+	}
+	o.rawValue = compacted.Bytes()
+	return json.Unmarshal(aux.Value, &o.Value)
 }
 
 func doesKeyExist(data []byte, path string) bool {
@@ -97,19 +125,27 @@ func (o *Operation) Apply(inp []byte, tctx *JsonContext, buf *bytes.Buffer) ([]b
 		if o.SkipNotExist && !doesKeyExist(inp, o.Path) {
 			return inp, nil
 		}
+		if o.ErrorNotExist && !doesKeyExist(inp, o.Path) {
+			return nil, fmt.Errorf("value by path \"%s\" does not exist", o.Path)
+		}
 		if o.tmpl != nil {
 			buf.Reset()
 			tctx.setValue(inp, o.Path)
-			if o.ErrorNotExist && !tctx.exists {
-				return nil, fmt.Errorf("value by path \"%s\" does not exist", o.Path)
-			}
 			if err = o.tmpl.Execute(buf, tctx); err != nil {
 				return nil, fmt.Errorf("error executing template: %w", err)
 			}
 			newValue := buf.Bytes()
+			if !gjson.ValidBytes(newValue) {
+				return nil, errInvalidJsonTemplateOutput
+			}
 			res, err = sjson.SetRawBytesOptions(inp, o.Path, newValue, jsonSetOpt)
 			if err != nil {
 				return nil, fmt.Errorf("error applying set raw operation: %w", err)
+			}
+		} else if len(o.rawValue) > 0 {
+			res, err = sjson.SetRawBytesOptions(inp, o.Path, o.rawValue, jsonSetOpt)
+			if err != nil {
+				return nil, fmt.Errorf("error applying set operation: %w", err)
 			}
 		} else {
 			res, err = sjson.SetBytesOptions(inp, o.Path, o.Value, jsonSetOpt)
@@ -226,6 +262,11 @@ func (jt *JsonTransformer) Transform(ctx context.Context, r *toolkit.Record) (*t
 		if err != nil {
 			return nil, fmt.Errorf("cannot apply \"%s\" operation[%d] with path %s: %w", op.Operation, idx, op.Path, err)
 		}
+	}
+
+	// NULL input with nothing set (e.g. only delete ops) stays NULL instead of an invalid empty json
+	if v.IsNull && len(res) == 0 {
+		return r, nil
 	}
 
 	if err = r.SetRawColumnValueByIdx(jt.columnIdx, toolkit.NewRawValue(res, false)); err != nil {
