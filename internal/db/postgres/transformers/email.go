@@ -20,7 +20,8 @@ import (
 
 const RandomEmailTransformerName = "RandomEmail"
 
-var emailTransformerRegexp = regexp.MustCompile(`^([a-zA-Z0-9_.+-]+)@([a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+)$`)
+// The local part accepts the RFC 5322 atext characters, so addresses such as o'brien@example.com are valid.
+var emailTransformerRegexp = regexp.MustCompile("^([a-zA-Z0-9!#$%&'*+/=?^_`{|}~.-]+)@([a-zA-Z0-9-]+\\.[a-zA-Z0-9-.]+)$")
 
 //var emailTransformerAllowedChars = []rune("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!#$%&'*+-/=?^_`{|}~.")
 
