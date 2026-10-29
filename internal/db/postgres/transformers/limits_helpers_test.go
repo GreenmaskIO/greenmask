@@ -16,7 +16,6 @@ package transformers
 
 import (
 	"context"
-	"strconv"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -93,23 +92,4 @@ func paramValues(kv ...string) map[string]toolkit.ParamsValue {
 		res[kv[i]] = toolkit.ParamsValue(kv[i+1])
 	}
 	return res
-}
-
-func parseFloats(t *testing.T, values []string) []float64 {
-	t.Helper()
-	res := make([]float64, 0, len(values))
-	for _, v := range values {
-		f, err := strconv.ParseFloat(v, 64)
-		require.NoError(t, err)
-		res = append(res, f)
-	}
-	return res
-}
-
-func requireAllInRange(t *testing.T, values []float64, minValue, maxValue float64) {
-	t.Helper()
-	for _, v := range values {
-		require.GreaterOrEqual(t, v, minValue)
-		require.LessOrEqual(t, v, maxValue)
-	}
 }
