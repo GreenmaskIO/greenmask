@@ -24,7 +24,7 @@ type RawRecordStr map[int]*RawValueStr
 
 func (rrs *RawRecordStr) GetColumn(idx int) (*RawValue, error) {
 	res, ok := (*rrs)[idx]
-	if !ok {
+	if !ok || res == nil {
 		return nil, fmt.Errorf("column with idx=%d is not found", idx)
 	}
 	var data []byte

@@ -18,11 +18,32 @@ import (
 	"bytes"
 	"encoding/csv"
 	"fmt"
+	"io"
 
 	"github.com/rs/zerolog/log"
 )
 
 const nullSeqStr = "\\N"
+
+// csvSingleEmptyField - csv.Writer writes a blank line for one empty field and csv.Reader skips blank lines
+var csvSingleEmptyField = []byte("\"\"\n")
+
+// writeCsvRecord writes the record, quoting a single empty field so the reader does not skip it
+func writeCsvRecord(cw *csv.Writer, w io.Writer, record []string) error {
+	if len(record) == 1 && record[0] == "" {
+		cw.Flush()
+		if err := cw.Error(); err != nil {
+			return err
+		}
+		_, err := w.Write(csvSingleEmptyField)
+		return err
+	}
+	if err := cw.Write(record); err != nil {
+		return err
+	}
+	cw.Flush()
+	return cw.Error()
+}
 
 type RawRecordCsv struct {
 	buf                  *bytes.Buffer
@@ -69,18 +90,21 @@ func (rr *RawRecordCsv) GetColumn(idx int) (*RawValue, error) {
 			return nil, fmt.Errorf("error parsing csv record: %w", err)
 		}
 	}
-	if idx > rr.size || idx < 0 {
+	if idx >= rr.size || idx < 0 {
 		return nil, fmt.Errorf("attribute with idx=%d is not found", idx)
 	}
-	var ok bool
+	pos := idx
 	if len(rr.originalIdxToOrdered) > 0 {
-		idx, ok = rr.originalIdxToOrdered[idx]
-		if !ok {
+		var ok bool
+		if pos, ok = rr.originalIdxToOrdered[idx]; !ok {
 			return nil, fmt.Errorf("attribute with idx=%d is not found", idx)
 		}
 	}
+	if pos >= len(rr.Data) {
+		return nil, fmt.Errorf("attribute with idx=%d is not found: record has %d fields", idx, len(rr.Data))
+	}
 
-	val := rr.Data[idx]
+	val := rr.Data[pos]
 
 	if val == nullSeqStr {
 		return NewRawValue(nil, true), nil
@@ -89,30 +113,33 @@ func (rr *RawRecordCsv) GetColumn(idx int) (*RawValue, error) {
 }
 
 func (rr *RawRecordCsv) SetColumn(idx int, v *RawValue) error {
-	if idx > rr.size || idx < 0 {
+	if idx >= rr.size || idx < 0 {
 		return fmt.Errorf("attribute with idx=%d is not found", idx)
 	}
-	var ok bool
+	pos := idx
 	if len(rr.originalIdxToOrdered) > 0 {
-		idx, ok = rr.originalIdxToOrdered[idx]
-		if !ok {
+		var ok bool
+		if pos, ok = rr.originalIdxToOrdered[idx]; !ok {
 			return fmt.Errorf("attribute with idx=%d is not found", idx)
 		}
 	}
+	if pos >= len(rr.Data) {
+		return fmt.Errorf("attribute with idx=%d is not found: record has %d fields", idx, len(rr.Data))
+	}
 
 	if v.IsNull {
-		rr.Data[idx] = nullSeqStr
+		rr.Data[pos] = nullSeqStr
+	} else {
+		rr.Data[pos] = string(v.Data)
 	}
-	rr.Data[idx] = string(v.Data)
 	return nil
 }
 
 func (rr *RawRecordCsv) Encode() ([]byte, error) {
 	var err error
-	if err = rr.w.Write(rr.Data); err != nil {
+	if err = writeCsvRecord(rr.w, rr.buf, rr.Data); err != nil {
 		return nil, fmt.Errorf("error writing to buf: %w", err)
 	}
-	rr.w.Flush()
 	data, err := rr.buf.ReadBytes('\n')
 	if err != nil {
 		return nil, fmt.Errorf("erro reading decoded bytes: %w", err)
