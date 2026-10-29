@@ -149,19 +149,9 @@ func NewNoiseDateTransformerBase(ctx context.Context, driver *toolkit.Driver, pa
 		if err != nil {
 			return nil, nil, fmt.Errorf("error getting min and max values: %w", err)
 		}
-		// TODO: There might be another limiter
-		limiter, err = transformers.NewNoiseTimestampLimiter(maxValueThreshold, maxValueThreshold)
+		limiter, err = transformers.NewNoiseTimestampLimiter(minValueThreshold, maxValueThreshold)
 		if err != nil {
 			return nil, nil, fmt.Errorf("unable to create timestamp limiter: %w", err)
-		}
-	}
-
-	if !dynamicMode {
-		if err = minParam.Scan(&maxValueThreshold); err != nil {
-			return nil, nil, fmt.Errorf("error scanning \"min\" parameter: %w", err)
-		}
-		if err = maxParam.Scan(&minValueThreshold); err != nil {
-			return nil, nil, fmt.Errorf("error scanning \"max\" parameter: %w", err)
 		}
 	}
 
@@ -186,9 +176,7 @@ func NewNoiseDateTransformerBase(ctx context.Context, driver *toolkit.Driver, pa
 		warns = append(warns, warn)
 	}
 
-	maxRatioDuration := (time.Duration(maxRatio.Days) * time.Hour * 24) +
-		(time.Duration(maxRatio.Months) * 30 * time.Hour * 24) +
-		(time.Duration(maxRatio.Microseconds) * time.Millisecond)
+	maxRatioDuration := toolkit.IntervalToDuration(maxRatio)
 
 	// By default min ration is 0.05% of max_ratio
 	minRatioDuration := time.Duration(float64(maxRatioDuration) * 0.05)
@@ -206,9 +194,7 @@ func NewNoiseDateTransformerBase(ctx context.Context, driver *toolkit.Driver, pa
 			return nil, warns, nil
 		}
 
-		minRatioDuration = (time.Duration(minRatio.Days) * time.Hour * 24) +
-			(time.Duration(minRatio.Months) * 30 * time.Hour * 24) +
-			(time.Duration(minRatio.Microseconds) * time.Millisecond)
+		minRatioDuration = toolkit.IntervalToDuration(minRatio)
 	}
 
 	if err = truncateParam.Scan(&truncate); err != nil {
@@ -270,14 +256,14 @@ func (ndt *NoiseDateTransformer) Done(ctx context.Context) error {
 }
 
 func (ndt *NoiseDateTransformer) dynamicTransform(v time.Time) (time.Time, error) {
-	minVal := &time.Time{}
-	maxVal := &time.Time{}
+	var minVal, maxVal *time.Time
 
 	empty, err := ndt.minParam.IsEmpty()
 	if err != nil {
 		return time.Time{}, fmt.Errorf(`unable to check "min" param: %w`, err)
 	}
 	if !empty {
+		minVal = &time.Time{}
 		if err = ndt.minParam.Scan(minVal); err != nil {
 			return time.Time{}, fmt.Errorf(`unable to scan "min" param: %w`, err)
 		}
@@ -289,6 +275,7 @@ func (ndt *NoiseDateTransformer) dynamicTransform(v time.Time) (time.Time, error
 
 	}
 	if !empty {
+		maxVal = &time.Time{}
 		if err = ndt.maxParam.Scan(maxVal); err != nil {
 			return time.Time{}, fmt.Errorf(`unable to scan "max" param: %w`, err)
 		}
@@ -340,22 +327,24 @@ func validateIntervalValue(v pgtype.Interval) *toolkit.ValidationWarning {
 
 func getNoiseTimestampMinAndMaxThresholds(minParameter, maxParameter toolkit.Parameterizer) (*time.Time, *time.Time, error) {
 	var minVal, maxVal *time.Time
-	if empty, err := minParameter.IsEmpty(); !empty {
-		if err != nil {
-			return nil, nil, fmt.Errorf("error checking \"min\" parameter: %w", err)
-		}
+	empty, err := minParameter.IsEmpty()
+	if err != nil {
+		return nil, nil, fmt.Errorf("error checking \"min\" parameter: %w", err)
+	}
+	if !empty {
 		minVal = &time.Time{}
-		if err := minParameter.Scan(&minVal); err != nil {
+		if err = minParameter.Scan(minVal); err != nil {
 			return nil, nil, fmt.Errorf("error scanning \"min\" parameter: %w", err)
 		}
 	}
 
-	if empty, err := minParameter.IsEmpty(); !empty {
-		if err != nil {
-			return nil, nil, fmt.Errorf("error checking \"max\" parameter: %w", err)
-		}
+	empty, err = maxParameter.IsEmpty()
+	if err != nil {
+		return nil, nil, fmt.Errorf("error checking \"max\" parameter: %w", err)
+	}
+	if !empty {
 		maxVal = &time.Time{}
-		if err := maxParameter.Scan(&maxVal); err != nil {
+		if err = maxParameter.Scan(maxVal); err != nil {
 			return nil, nil, fmt.Errorf("error scanning \"max\" parameter: %w", err)
 		}
 	}

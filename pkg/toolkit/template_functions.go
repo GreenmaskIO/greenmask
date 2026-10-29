@@ -377,6 +377,13 @@ func truncateDate(part string, t time.Time) (time.Time, error) {
 	return *res, nil
 }
 
+// IntervalToDuration converts an interval to a duration, a month is approximated as 30 days.
+func IntervalToDuration(v pgtype.Interval) time.Duration {
+	return time.Duration(v.Months)*30*24*time.Hour +
+		time.Duration(v.Days)*24*time.Hour +
+		time.Duration(v.Microseconds)*time.Microsecond
+}
+
 func tsModify(typeMap *pgtype.Map, interval string, val time.Time) (time.Time, error) {
 	t, _ := typeMap.TypeForName("interval")
 	ratioInterval, err := t.Codec.DecodeValue(typeMap, t.OID, pgx.TextFormatCode, []byte(interval))
@@ -387,9 +394,7 @@ func tsModify(typeMap *pgtype.Map, interval string, val time.Time) (time.Time, e
 	if !ok {
 		return time.Time{}, fmt.Errorf(`cannot cast "ratio" param to interval value`)
 	}
-	dur := (time.Duration(intervalValue.Days) * time.Hour * 24) +
-		(time.Duration(intervalValue.Months) * 30 * time.Hour * 24) +
-		(time.Duration(intervalValue.Microseconds) * time.Millisecond)
+	dur := IntervalToDuration(intervalValue)
 
 	return val.Add(dur), nil
 }
@@ -404,9 +409,7 @@ func noiseDatePgInterval(typeMap *pgtype.Map, randGen *rand.Rand, interval strin
 	if !ok {
 		return time.Time{}, fmt.Errorf(`cannot cast "ratio" param to interval value`)
 	}
-	ratio := (time.Duration(intervalValue.Days) * time.Hour * 24) +
-		(time.Duration(intervalValue.Months) * 30 * time.Hour * 24) +
-		(time.Duration(intervalValue.Microseconds) * time.Millisecond)
+	ratio := IntervalToDuration(intervalValue)
 
 	return *(NoiseDateV2(randGen, ratio, &val)), nil
 }

@@ -154,6 +154,157 @@ func TestNoiseDateTransformer_Transform(t *testing.T) {
 	}
 }
 
+func TestNoiseDateTransformer_Transform_static_limits(t *testing.T) {
+	tests := []struct {
+		name     string
+		params   map[string]toolkit.ParamsValue
+		original string
+		expected time.Time
+	}{
+		{
+			name: "min only",
+			params: map[string]toolkit.ParamsValue{
+				"max_ratio": toolkit.ParamsValue("1 day"),
+				"min":       toolkit.ParamsValue("2024-01-01 00:00:00"),
+			},
+			original: "2023-06-25 00:00:00",
+			expected: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
+		},
+		{
+			name: "max only",
+			params: map[string]toolkit.ParamsValue{
+				"max_ratio": toolkit.ParamsValue("1 day"),
+				"max":       toolkit.ParamsValue("2020-01-01 00:00:00"),
+			},
+			original: "2023-06-25 00:00:00",
+			expected: time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC),
+		},
+		{
+			name: "min and max below min",
+			params: map[string]toolkit.ParamsValue{
+				"max_ratio": toolkit.ParamsValue("1 day"),
+				"min":       toolkit.ParamsValue("2024-01-01 00:00:00"),
+				"max":       toolkit.ParamsValue("2024-02-01 00:00:00"),
+			},
+			original: "2023-06-25 00:00:00",
+			expected: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
+		},
+		{
+			name: "min and max above max",
+			params: map[string]toolkit.ParamsValue{
+				"max_ratio": toolkit.ParamsValue("1 day"),
+				"min":       toolkit.ParamsValue("2020-01-01 00:00:00"),
+				"max":       toolkit.ParamsValue("2020-02-01 00:00:00"),
+			},
+			original: "2023-06-25 00:00:00",
+			expected: time.Date(2020, 2, 1, 0, 0, 0, 0, time.UTC),
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.params["column"] = toolkit.ParamsValue("date_ts")
+			driver, record := getDriverAndRecord("date_ts", tt.original)
+			transformerCtx, warnings, err := NoiseDateTransformerDefinition.Instance(
+				context.Background(),
+				driver, tt.params,
+				nil,
+				"",
+				false,
+			)
+			require.NoError(t, err)
+			require.Empty(t, warnings)
+			r, err := transformerCtx.Transformer.Transform(context.Background(), record)
+			require.NoError(t, err)
+
+			var res time.Time
+			empty, err := r.ScanColumnValueByName("date_ts", &res)
+			require.NoError(t, err)
+			require.False(t, empty)
+			assert.True(t, tt.expected.Equal(res), "expected %s got %s", tt.expected, res)
+		})
+	}
+}
+
+func TestNoiseDateTransformer_Transform_interval_time_part(t *testing.T) {
+	tests := []struct {
+		name     string
+		maxRatio string
+		ratio    time.Duration
+		original time.Time
+	}{
+		{
+			name:     "one second",
+			maxRatio: "00:00:01",
+			ratio:    time.Second,
+			original: time.Date(2023, 6, 25, 12, 0, 0, 0, time.UTC),
+		},
+		{
+			name:     "one minute",
+			maxRatio: "00:01:00",
+			ratio:    time.Minute,
+			original: time.Date(2023, 6, 25, 12, 0, 0, 0, time.UTC),
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			params := map[string]toolkit.ParamsValue{
+				"column":    toolkit.ParamsValue("date_ts"),
+				"max_ratio": toolkit.ParamsValue(tt.maxRatio),
+			}
+			for i := 0; i < 50; i++ {
+				driver, record := getDriverAndRecord("date_ts", tt.original.Format("2006-01-02 15:04:05"))
+				transformerCtx, warnings, err := NoiseDateTransformerDefinition.Instance(
+					context.Background(),
+					driver, params,
+					nil,
+					"",
+					false,
+				)
+				require.NoError(t, err)
+				require.Empty(t, warnings)
+				r, err := transformerCtx.Transformer.Transform(context.Background(), record)
+				require.NoError(t, err)
+
+				var res time.Time
+				_, err = r.ScanColumnValueByName("date_ts", &res)
+				require.NoError(t, err)
+				assert.WithinRange(t, res, tt.original.Add(-tt.ratio), tt.original.Add(tt.ratio))
+			}
+		})
+	}
+}
+
+func TestNoiseDateTransformer_Transform_equal_ratios(t *testing.T) {
+	original := time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC)
+	params := map[string]toolkit.ParamsValue{
+		"column":    toolkit.ParamsValue("date_ts"),
+		"min_ratio": toolkit.ParamsValue("1 day"),
+		"max_ratio": toolkit.ParamsValue("1 day"),
+	}
+	for i := 0; i < 10; i++ {
+		driver, record := getDriverAndRecord("date_ts", original.Format("2006-01-02 15:04:05"))
+		transformerCtx, warnings, err := NoiseDateTransformerDefinition.Instance(
+			context.Background(),
+			driver, params,
+			nil,
+			"",
+			false,
+		)
+		require.NoError(t, err)
+		require.Empty(t, warnings)
+		r, err := transformerCtx.Transformer.Transform(context.Background(), record)
+		require.NoError(t, err)
+
+		var res time.Time
+		_, err = r.ScanColumnValueByName("date_ts", &res)
+		require.NoError(t, err)
+		diff := res.Sub(original)
+		require.True(t, diff == 24*time.Hour || diff == -24*time.Hour, "got diff %s", diff)
+	}
+}
+
 func TestNoiseDateTransformer_Transform_dynamic(t *testing.T) {
 	type expected struct {
 		min time.Time
@@ -189,6 +340,27 @@ func TestNoiseDateTransformer_Transform_dynamic(t *testing.T) {
 			expected: expected{
 				min: time.Date(1996, 1, 1, 0, 0, 0, 0, time.UTC),
 				max: time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC),
+			},
+		},
+		{
+			name:       "NoiseDate with dynamic min and no max",
+			columnName: "hiredate",
+			record: map[string]*toolkit.RawValue{
+				"hiredate":  toolkit.NewRawValue([]byte("2009-01-01 00:00:00"), false),
+				"birthdate": toolkit.NewRawValue([]byte("2015-01-01 00:00:00"), false),
+			},
+			params: map[string]toolkit.ParamsValue{
+				"max_ratio": toolkit.ParamsValue("1 day"),
+				"engine":    toolkit.ParamsValue("hash"),
+			},
+			dynamicParams: map[string]*toolkit.DynamicParamValue{
+				"min": {
+					Column: "birthdate",
+				},
+			},
+			expected: expected{
+				min: time.Date(2014, 12, 31, 0, 0, 0, 0, time.UTC),
+				max: time.Date(2015, 1, 2, 0, 0, 0, 0, time.UTC),
 			},
 		},
 	}

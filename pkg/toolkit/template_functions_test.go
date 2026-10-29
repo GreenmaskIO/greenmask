@@ -21,6 +21,7 @@ import (
 	"text/template"
 	"time"
 
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -1008,4 +1009,82 @@ func TestFuncMap_unixToTime(t *testing.T) {
 	res = res.In(time.UTC)
 	require.NoError(t, err)
 	require.Equal(t, expected, res)
+}
+
+func TestIntervalToDuration(t *testing.T) {
+	tests := []struct {
+		name     string
+		interval pgtype.Interval
+		expected time.Duration
+	}{
+		{
+			name:     "microseconds",
+			interval: pgtype.Interval{Microseconds: 1_500_000},
+			expected: 1500 * time.Millisecond,
+		},
+		{
+			name:     "days",
+			interval: pgtype.Interval{Days: 2},
+			expected: 48 * time.Hour,
+		},
+		{
+			name:     "months",
+			interval: pgtype.Interval{Months: 1},
+			expected: 30 * 24 * time.Hour,
+		},
+		{
+			name:     "all parts",
+			interval: pgtype.Interval{Months: 1, Days: 1, Microseconds: 3_661_000_000},
+			expected: 31*24*time.Hour + time.Hour + time.Minute + time.Second,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.expected, IntervalToDuration(tt.interval))
+		})
+	}
+}
+
+func TestFuncMap_tsModify(t *testing.T) {
+	buf := bytes.NewBuffer(nil)
+	tmpl, err := template.New("test").Funcs(FuncMap()).Parse(`{{- .Date | tsModify .Interval -}}`)
+	require.NoError(t, err)
+
+	type params struct {
+		Date     time.Time
+		Interval string
+	}
+
+	tests := []struct {
+		name     string
+		params   params
+		expected time.Time
+	}{
+		{
+			name: "time part",
+			params: params{
+				Date:     time.Date(2023, 11, 23, 1, 0, 0, 0, time.UTC),
+				Interval: "00:03:00",
+			},
+			expected: time.Date(2023, 11, 23, 1, 3, 0, 0, time.UTC),
+		},
+		{
+			name: "days and time part",
+			params: params{
+				Date:     time.Date(2023, 11, 23, 1, 0, 0, 0, time.UTC),
+				Interval: "1 day 00:00:01.5",
+			},
+			expected: time.Date(2023, 11, 24, 1, 0, 1, 500_000_000, time.UTC),
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err = tmpl.Execute(buf, tt.params)
+			require.NoError(t, err)
+			require.Equal(t, tt.expected.String(), buf.String())
+			buf.Reset()
+		})
+	}
 }
