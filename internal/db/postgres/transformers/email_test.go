@@ -20,6 +20,7 @@ import (
 	"github.com/greenmaskio/greenmask/pkg/toolkit"
 	"github.com/stretchr/testify/require"
 	"regexp"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -272,6 +273,21 @@ func TestRandomEmailTransformer_Transform(t *testing.T) {
 			expectedErr: "unable to parse email",
 		},
 		{
+			name:       "keep_original_domain with apostrophe in local part",
+			original:   "o'brien@example.com",
+			columnName: "data",
+			params: map[string]toolkit.ParamsValue{
+				"column":               toolkit.ParamsValue("data"),
+				"engine":               toolkit.ParamsValue("hash"),
+				"keep_original_domain": toolkit.ParamsValue("true"),
+			},
+			validateFn: func(t *testing.T, originalEmail, transformedEmail string) {
+				assert.True(t, validEmailRegexp.MatchString(transformedEmail))
+				assert.NotEqual(t, originalEmail, transformedEmail)
+				assert.True(t, strings.HasSuffix(transformedEmail, "@example.com"))
+			},
+		},
+		{
 			// keep_original_domain always needs the original domain, so a malformed source email
 			// must still error, regardless of whether a template is present.
 			name:       "keep_original_domain with malformed source email",
@@ -343,6 +359,20 @@ func TestEmailParse(t *testing.T) {
 			name:          "valid email with complex local part",
 			email:         "test.user+tag@example.com",
 			wantLocalPart: "test.user+tag",
+			wantDomain:    "example.com",
+			wantErr:       false,
+		},
+		{
+			name:          "valid email with apostrophe in local part",
+			email:         "o'brien@example.com",
+			wantLocalPart: "o'brien",
+			wantDomain:    "example.com",
+			wantErr:       false,
+		},
+		{
+			name:          "valid email with RFC 5322 special characters in local part",
+			email:         "a!#$%&'*+/=?^_`{|}~-b@example.com",
+			wantLocalPart: "a!#$%&'*+/=?^_`{|}~-b",
 			wantDomain:    "example.com",
 			wantErr:       false,
 		},
