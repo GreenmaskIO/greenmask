@@ -591,12 +591,8 @@ func (g *Graph) generateQueryForTables(path *Path, scopeEdge *ScopeEdge) string 
 		}
 		query = fmt.Sprintf("((%s) IN (%s))", strings.Join(leftTableConds, ", "), query)
 		if len(exprs) > 0 {
-			query = fmt.Sprintf(
-				"((%s) AND (%s) IN (%s))",
-				strings.Join(leftTableConds, ", "),
-				strings.Join(exprs, "AND"),
-				query,
-			)
+			// A reference of another polymorphic type must not constrain this scope.
+			query = fmt.Sprintf("(NOT (%s) OR %s)", strings.Join(exprs, " AND "), query)
 		}
 
 		if scopeEdge.isNullable {
