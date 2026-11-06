@@ -33,7 +33,7 @@ lint:
 DOCS_PREVIEW_DIR := tools/docs-preview
 
 docs-install:
-	npm --prefix $(DOCS_PREVIEW_DIR) ci
+	npm --prefix $(DOCS_PREVIEW_DIR) install
 
 docs-serve: docs-install
 	npm --prefix $(DOCS_PREVIEW_DIR) run start
