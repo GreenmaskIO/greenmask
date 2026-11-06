@@ -55,7 +55,7 @@ jobs:
         with:
           go-version: ${{ env.go-version }}
 
-      - uses: actions/cache/restore@v4
+      - uses: actions/cache/restore@v6
         id: restore-cache
         with:
           path: coverage.out
