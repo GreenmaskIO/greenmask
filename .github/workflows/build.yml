@@ -126,7 +126,7 @@ jobs:
         run: echo "TAG=$(git tag --points-at HEAD)" >> $GITHUB_ENV
 
       - name: Build docker image and push
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v7
         with:
           file: docker/greenmask/Dockerfile
           context: .
@@ -137,7 +137,7 @@ jobs:
             ghcr.io/${{ env.docker-ghcr-registry }}/${{ env.app-name }}:${{ env.TAG }}
 
       - name: Build docker imaget with latest tag and push
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v7
         if: | 
           ! contains(github.ref, 'rc') &&
           ! contains(github.ref, 'dev') &&
