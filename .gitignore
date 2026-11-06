@@ -32,3 +32,4 @@ cmd/greenmask/greenmask
 tools/docs-preview/node_modules
 tools/docs-preview/build
 tools/docs-preview/.docusaurus
+tools/docs-preview/package-lock.json
