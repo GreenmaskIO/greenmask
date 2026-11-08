@@ -2,6 +2,7 @@ package context
 
 import (
 	"context"
+	"fmt"
 	"slices"
 	"testing"
 
@@ -87,6 +88,43 @@ values ('da-DK', 'Opsæt din konto hos {{coachName}}',
         'Bonjour {{firstName}},\n\nVotre programme d''entraînement est maintenant prêt - il est joint à cet email en format PDF.\nVous pouvez le télécharger et l''imprimer afin de le transporter avec vous.\nVous pouvez également y accéder directement depuis votre portable.\n\nJ''espère vraiment que vous apprécierez de suivre ce plan. Si vous vous y tenez, je suis sûr que vous obtiendrez d''excellents résultats.\n\nMerci d''avoir passé votre commande.\n\nBien cordialement\n{{coachName}})');
 `
 )
+
+const subsetSelfReferenceTestDb = `
+CREATE TABLE account
+(
+    id INT PRIMARY KEY
+);
+
+CREATE TABLE project
+(
+    id         INT PRIMARY KEY,
+    account_id INT NOT NULL REFERENCES account (id)
+);
+
+-- references itself and reaches account directly and via project
+CREATE TABLE cost_element
+(
+    id         INT PRIMARY KEY,
+    account_id INT NOT NULL REFERENCES account (id),
+    project_id INT NOT NULL REFERENCES project (id),
+    parent_id  INT REFERENCES cost_element (id)
+);
+
+-- references itself and reaches account only directly
+CREATE TABLE category
+(
+    id         INT PRIMARY KEY,
+    account_id INT NOT NULL REFERENCES account (id),
+    parent_id  INT REFERENCES category (id)
+);
+
+INSERT INTO account (id) VALUES (1), (2);
+INSERT INTO project (id, account_id) VALUES (10, 1), (20, 2);
+INSERT INTO cost_element (id, account_id, project_id, parent_id)
+VALUES (15, 1, 10, NULL), (16, 1, 10, 15), (25, 2, 20, NULL);
+INSERT INTO category (id, account_id, parent_id)
+VALUES (17, 1, NULL), (18, 1, 17), (27, 2, NULL);
+`
 
 func TestNewRuntimeContext(t *testing.T) {
 	ctx := context.Background()
@@ -248,5 +286,52 @@ func TestNewRuntimeContext_regression_247(t *testing.T) {
 			continue
 		}
 		assert.Equalf(t, expectedTablesWithSubsetQuery[tab.Name], tab.Query, "Table %s", tab.Name)
+	}
+}
+
+func TestNewRuntimeContext_subsetSelfReference(t *testing.T) {
+	ctx := context.Background()
+	connStr, cleanup, err := runPostgresContainer(ctx)
+	require.NoError(t, err)
+	defer cleanup()
+
+	con, err := pgx.Connect(ctx, connStr)
+	require.NoError(t, err)
+	defer con.Close(ctx) // nolint: errcheck
+	require.NoError(t, initTables(ctx, con, subsetSelfReferenceTestDb))
+	tx, err := con.Begin(ctx)
+	require.NoError(t, err)
+	defer tx.Rollback(ctx) // nolint: errcheck
+	cfg := &domains.Dump{
+		Transformation: []*domains.Table{
+			{
+				Schema:      "public",
+				Name:        "account",
+				SubsetConds: []string{"public.account.id = 1"},
+			},
+		},
+	}
+
+	rc, err := NewRuntimeContext(ctx, tx, cfg, utils.DefaultTransformerRegistry, nil, testContainerPgVersion*10000)
+	require.NoError(t, err)
+	require.False(t, rc.IsFatal())
+
+	expectedIds := map[string][]int{
+		"account":      {1},
+		"project":      {10},
+		"cost_element": {15, 16},
+		"category":     {17, 18},
+	}
+	for _, table := range rc.DataSectionObjects {
+		tab, ok := table.(*entries.Table)
+		if !ok {
+			continue
+		}
+		rows, err := tx.Query(ctx, fmt.Sprintf("SELECT id FROM (%s) q", tab.Query))
+		require.NoErrorf(t, err, "Table %s", tab.Name)
+		ids, err := pgx.CollectRows(rows, pgx.RowTo[int])
+		require.NoErrorf(t, err, "Table %s", tab.Name)
+		slices.Sort(ids)
+		assert.Equalf(t, expectedIds[tab.Name], ids, "Table %s", tab.Name)
 	}
 }

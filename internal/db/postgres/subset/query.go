@@ -59,21 +59,23 @@ func generateJoinClauseV2(edge *Edge, joinType string, overriddenTables map[tool
 	var conds []string
 
 	leftTable, rightTable := edge.from.table, edge.to.table
+	override, isOverridden := overriddenTables[rightTable.Oid]
 	for idx := 0; idx < len(edge.from.keys); idx++ {
 
 		leftPart := edge.from.keys[idx].GetKeyReference(leftTable)
 		rightPart := edge.to.keys[idx].GetKeyReference(rightTable)
 
-		if override, ok := overriddenTables[rightTable.Oid]; ok {
+		if isOverridden {
 			rightPart = fmt.Sprintf(
 				`"%s"."%s"`,
-				override,
+				getOverrideAlias(edge, override),
 				edge.to.keys[idx].Name,
 			)
 		}
 
 		conds = append(conds, fmt.Sprintf(`%s = %s`, leftPart, rightPart))
-		if len(edge.to.table.SubsetConds) > 0 {
+		// The overriding CTE is already subset and the original table is not part of the query
+		if len(edge.to.table.SubsetConds) > 0 && !isOverridden {
 			conds = append(conds, edge.to.table.SubsetConds...)
 		}
 	}
@@ -86,8 +88,8 @@ func generateJoinClauseV2(edge *Edge, joinType string, overriddenTables map[tool
 	}
 
 	rightTableName := fmt.Sprintf(`"%s"."%s"`, rightTable.Schema, rightTable.Name)
-	if override, ok := overriddenTables[rightTable.Oid]; ok {
-		rightTableName = override
+	if isOverridden {
+		rightTableName = fmt.Sprintf(`"%s" AS "%s"`, override, getOverrideAlias(edge, override))
 	}
 
 	joinClause := fmt.Sprintf(
@@ -97,6 +99,12 @@ func generateJoinClauseV2(edge *Edge, joinType string, overriddenTables map[tool
 		strings.Join(conds, " AND "),
 	)
 	return joinClause
+}
+
+// getOverrideAlias - the same overriding CTE might be joined via several edges in one query, so each join gets its
+// own alias. The edge id goes first so that identifier truncation keeps the aliases unique.
+func getOverrideAlias(edge *Edge, override string) string {
+	return fmt.Sprintf("e%d__%s", edge.id, override)
 }
 
 func generateWhereClause(subsetConds []string) string {
