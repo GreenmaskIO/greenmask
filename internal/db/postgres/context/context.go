@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"os"
 	"slices"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -60,17 +61,17 @@ type RuntimeContext struct {
 //
 //	warnings are fatal procedure must be terminated immediately due to lack of objects required on the next step
 func NewRuntimeContext(
-	ctx context.Context, tx pgx.Tx, cfg *domains.Dump,
+	ctx context.Context, tx pgx.Tx, cfg *domains.Dump, common *domains.Common,
 	r *transformersUtils.TransformerRegistry,
 	vr []*domains.VirtualReference, version int,
 ) (*RuntimeContext, error) {
 	var warnings toolkit.ValidationWarnings
 
-	// Get salt from env and set it to the context
-	ctx, err := withSalt(ctx)
+	opts, err := buildRuntimeOptions(common)
 	if err != nil {
-		return nil, fmt.Errorf("cannot set salt: %w", err)
+		return nil, err
 	}
+	ctx = utils.WithRuntimeOptions(ctx, opts)
 	// Get custom types used in Tables and register them in the type map
 	typeMap := tx.Conn().TypeMap()
 	types, err := buildTypeMap(ctx, tx, typeMap)
@@ -201,17 +202,28 @@ func debugQueries(tables []*entries.Table) {
 	}
 }
 
-func withSalt(ctx context.Context) (context.Context, error) {
+// buildRuntimeOptions reads the salt from GREENMASK_GLOBAL_SALT and loads common.timezone.
+func buildRuntimeOptions(common *domains.Common) (utils.RuntimeOptions, error) {
 	var salt []byte
 	saltHex := os.Getenv("GREENMASK_GLOBAL_SALT")
 	if saltHex != "" {
 		salt = make([]byte, hex.DecodedLen(len(saltHex)))
 		_, err := hex.Decode(salt, []byte(saltHex))
 		if err != nil {
-			return nil, fmt.Errorf("error decoding salt from hex: %w", err)
+			return utils.RuntimeOptions{}, fmt.Errorf("cannot set salt: error decoding salt from hex: %w", err)
 		}
 	}
-	return utils.WithSalt(ctx, salt), nil
+
+	// An empty name loads UTC.
+	loc, err := time.LoadLocation(common.Timezone)
+	if err != nil {
+		log.Error().Err(err).Str("Timezone", common.Timezone).Msg("cannot load timezone")
+		log.Info().Msg("set common.timezone to a case-sensitive IANA name, e.g. UTC or Europe/Berlin")
+		return utils.RuntimeOptions{}, fmt.Errorf("invalid common.timezone")
+	}
+	log.Debug().Str("Timezone", loc.String()).Msg("timestamptz values are decoded in this timezone")
+
+	return utils.RuntimeOptions{Salt: salt, Timezone: loc}, nil
 }
 
 func buildTypeMap(ctx context.Context, tx pgx.Tx, tm *pgtype.Map) ([]*toolkit.Type, error) {

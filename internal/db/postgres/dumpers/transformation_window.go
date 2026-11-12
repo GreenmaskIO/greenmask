@@ -33,6 +33,7 @@ type asyncContext struct {
 
 type transformationWindow struct {
 	affectedColumns map[string]struct{}
+	readColumns     map[string]struct{} // columns read by dynamic parameters in the window
 	window          []*asyncContext
 	done            chan struct{}
 	wg              *sync.WaitGroup
@@ -44,6 +45,7 @@ type transformationWindow struct {
 func newTransformationWindow(ctx context.Context, eg *errgroup.Group) *transformationWindow {
 	return &transformationWindow{
 		affectedColumns: map[string]struct{}{},
+		readColumns:     map[string]struct{}{},
 		done:            make(chan struct{}, 1),
 		wg:              &sync.WaitGroup{},
 		eg:              eg,
@@ -51,7 +53,20 @@ func newTransformationWindow(ctx context.Context, eg *errgroup.Group) *transform
 	}
 }
 
+// tryAdd - adds the transformer to the window if it can run concurrently with the transformers already
+// there and still observe the same record state as in sequential execution
 func (tw *transformationWindow) tryAdd(table *entries.Table, t *utils.TransformerContext) bool {
+	// the when condition is evaluated while previous window members run, so it must be the first one
+	if t.When != nil && t.When.Condition() != "" && len(tw.window) > 0 {
+		return false
+	}
+
+	readColumns := getDynamicParametersColumns(t)
+	for _, name := range readColumns {
+		if _, ok := tw.affectedColumns[name]; ok {
+			return false
+		}
+	}
 
 	affectedColumn := t.Transformer.GetAffectedColumns()
 	if len(affectedColumn) == 0 {
@@ -67,10 +82,16 @@ func (tw *transformationWindow) tryAdd(table *entries.Table, t *utils.Transforme
 			if _, ok := tw.affectedColumns[name]; ok {
 				return false
 			}
+			if _, ok := tw.readColumns[name]; ok {
+				return false
+			}
 		}
 		for _, name := range affectedColumn {
 			tw.affectedColumns[name] = struct{}{}
 		}
+	}
+	for _, name := range readColumns {
+		tw.readColumns[name] = struct{}{}
 	}
 
 	tw.window = append(tw.window, &asyncContext{
@@ -79,6 +100,16 @@ func (tw *transformationWindow) tryAdd(table *entries.Table, t *utils.Transforme
 	})
 
 	return true
+}
+
+func getDynamicParametersColumns(t *utils.TransformerContext) []string {
+	var res []string
+	for _, dp := range t.DynamicParameters {
+		if dp != nil && dp.DynamicValue != nil && dp.DynamicValue.Column != "" {
+			res = append(res, dp.DynamicValue.Column)
+		}
+	}
+	return res
 }
 
 // init - runs all transformers in the goroutines and waits for the ac.ch signal to run the transformer

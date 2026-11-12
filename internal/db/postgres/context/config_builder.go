@@ -16,6 +16,7 @@ import (
 	"github.com/greenmaskio/greenmask/internal/db/postgres/transformers"
 	transformersUtils "github.com/greenmaskio/greenmask/internal/db/postgres/transformers/utils"
 	"github.com/greenmaskio/greenmask/internal/domains"
+	"github.com/greenmaskio/greenmask/internal/utils"
 	"github.com/greenmaskio/greenmask/pkg/toolkit"
 )
 
@@ -82,7 +83,7 @@ func validateAndBuildEntriesConfig(
 		setQuery(cfgMapping.entry, cfgMapping.config)
 
 		// Set global driver for the table
-		driverWarnings, err := setGlobalDriverForTable(cfgMapping.entry, types)
+		driverWarnings, err := setGlobalDriverForTable(ctx, cfgMapping.entry, types)
 		warnings = append(warnings, driverWarnings...)
 		if err != nil {
 			return nil, fmt.Errorf(
@@ -532,9 +533,11 @@ func setQuery(t *entries.Table, cfg *domains.Table) {
 }
 
 func setGlobalDriverForTable(
-	t *entries.Table, types []*toolkit.Type,
+	ctx context.Context, t *entries.Table, types []*toolkit.Type,
 ) (toolkit.ValidationWarnings, error) {
-	driver, driverWarnings, err := toolkit.NewDriver(t.Table, types)
+	driver, driverWarnings, err := toolkit.NewDriver(
+		t.Table, types, toolkit.WithTimestamptzLocation(utils.TimezoneFromCtx(ctx)),
+	)
 	if err != nil {
 		return nil, fmt.Errorf("cannot initialise driver: %w", err)
 	}

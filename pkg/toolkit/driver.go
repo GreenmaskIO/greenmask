@@ -17,6 +17,7 @@ package toolkit
 import (
 	"fmt"
 	"sync"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -41,10 +42,33 @@ type Driver struct {
 	unsupportedColumnIdxs  map[int]string
 	mx                     *sync.Mutex
 	maxIdx                 int
+	tstzLocation           *time.Location
 }
 
-func NewDriver(table *Table, customTypes []*Type) (*Driver, ValidationWarnings, error) {
+type driverOptions struct {
+	tstzLocation *time.Location
+}
+
+// DriverOption configures a Driver created by NewDriver.
+type DriverOption func(*driverOptions)
+
+// WithTimestamptzLocation sets the location timestamptz values are decoded into. nil means UTC.
+func WithTimestamptzLocation(loc *time.Location) DriverOption {
+	return func(o *driverOptions) {
+		o.tstzLocation = loc
+	}
+}
+
+func NewDriver(table *Table, customTypes []*Type, opts ...DriverOption) (*Driver, ValidationWarnings, error) {
 	var warnings ValidationWarnings
+
+	o := driverOptions{}
+	for _, opt := range opts {
+		opt(&o)
+	}
+	if o.tstzLocation == nil {
+		o.tstzLocation = time.UTC
+	}
 
 	columnMap := make(map[string]*Column, len(table.Columns))
 	attrIdxMap := make(map[string]int, len(table.Columns))
@@ -55,6 +79,8 @@ func NewDriver(table *Table, customTypes []*Type) (*Driver, ValidationWarnings, 
 
 	for idx := 0; idx < len(typeMapPool); idx++ {
 		tm := pgtype.NewMap()
+		// Before custom types: domains copy the base type codec.
+		registerTimestamptzLocation(tm, o.tstzLocation)
 		if len(customTypes) > 0 {
 			TryRegisterCustomTypes(tm, customTypes, false)
 		}
@@ -112,9 +138,15 @@ func NewDriver(table *Table, customTypes []*Type) (*Driver, ValidationWarnings, 
 		maxIdx:                 len(table.Columns) - 1,
 		unsupportedColumnNames: unsupportedColumnNames,
 		unsupportedColumnIdxs:  unsupportedColumnIdxs,
+		tstzLocation:           o.tstzLocation,
 	}
 
 	return d, warnings, nil
+}
+
+// TimestamptzLocation returns the location timestamptz values are decoded into.
+func (d *Driver) TimestamptzLocation() *time.Location {
+	return d.tstzLocation
 }
 
 func (d *Driver) GetTypeMap() *pgtype.Map {

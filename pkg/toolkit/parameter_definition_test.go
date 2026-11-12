@@ -78,7 +78,9 @@ func TestInitParametersV2(t *testing.T) {
 	res = time.Time{}
 	err = minDateValue.Scan(&res)
 	require.NoError(t, err)
-	assert.Equal(t, expected, res)
+	resTime, ok := res.(time.Time)
+	require.True(t, ok)
+	assert.True(t, expected.Equal(resTime), "expected %s, got %s", expected, resTime)
 
 	maxDateValue, ok := params["max_date"]
 	require.True(t, ok)
@@ -87,5 +89,7 @@ func TestInitParametersV2(t *testing.T) {
 	res = time.Time{}
 	err = maxDateValue.Scan(&res)
 	require.NoError(t, err)
-	assert.Equal(t, expected, res)
+	resTime, ok = res.(time.Time)
+	require.True(t, ok)
+	assert.True(t, expected.Equal(resTime), "expected %s, got %s", expected, resTime)
 }
