@@ -77,7 +77,8 @@ func (d *NoiseTimestamp) Transform(l *NoiseTimestampLimiter, v time.Time) (time.
 		limiter = l
 	}
 
-	genBytes, err := d.generator.Generate([]byte(v.String()))
+	// Seed from the instant in UTC, so the result does not depend on the decoding time zone.
+	genBytes, err := d.generator.Generate([]byte(v.UTC().String()))
 	if err != nil {
 		return time.Time{}, fmt.Errorf("error generating noise timestamp: %w", err)
 	}

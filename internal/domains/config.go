@@ -83,6 +83,7 @@ type Validate struct {
 type Common struct {
 	PgBinPath     string `mapstructure:"pg_bin_path" yaml:"pg_bin_path,omitempty" json:"pg_bin_path,omitempty"`
 	TempDirectory string `mapstructure:"tmp_dir" yaml:"tmp_dir,omitempty" json:"tmp_dir,omitempty"`
+	Timezone      string `mapstructure:"timezone" yaml:"timezone,omitempty" json:"timezone,omitempty"`
 }
 
 type StorageConfig struct {

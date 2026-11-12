@@ -93,6 +93,7 @@ In the `common` section of the configuration, you can specify the following sett
 
 * `pg_bin_path` — path to the PostgreSQL binaries. Note that the PostgreSQL server version must match the provided binaries.
 * `tmp_dir` — temporary directory for storing the table of contents files. Default value is `/tmp`
+* `timezone` — time zone in which `dump` and `validate` read `timestamptz` values from the data. It affects everything that depends on the local date and time of a value, for example `truncate` in [NoiseDate](built_in_transformers/standard_transformers/noise_date.md) and templates that use `truncateDate` or read fields such as the year or hour. The value written to the dump is the same instant in any zone. Use a case-sensitive IANA name, such as `UTC` or `Europe/Berlin`. Default value is `UTC`. Can be set with the `COMMON_TIMEZONE` environment variable. `restore` does not use it.
 
 :::note
 

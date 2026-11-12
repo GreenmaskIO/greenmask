@@ -14,11 +14,39 @@
 
 package toolkit
 
+import (
+	"fmt"
+	"time"
+)
+
 type Meta struct {
 	Table               *Table            `json:"table"`
 	Parameters          *Parameters       `json:"parameters"`
 	Types               []*Type           `json:"types"`
 	ColumnsTypeOverride map[string]string `json:"columns_type_override"`
+	// Timezone - IANA name of the location timestamptz values are decoded into. Empty means UTC.
+	Timezone string `json:"timezone,omitempty"`
+}
+
+// TimestamptzLocation loads Timezone. Empty means UTC, e.g. when meta comes from an older greenmask.
+func (m *Meta) TimestamptzLocation() (*time.Location, error) {
+	loc, err := time.LoadLocation(m.Timezone)
+	if err != nil {
+		return nil, fmt.Errorf("invalid timezone in meta: %w", err)
+	}
+	return loc, nil
+}
+
+func newDriverFromMeta(m *Meta) (*Driver, ValidationWarnings, error) {
+	loc, err := m.TimestamptzLocation()
+	if err != nil {
+		return nil, nil, err
+	}
+	driver, warnings, err := NewDriver(m.Table, m.Types, WithTimestamptzLocation(loc))
+	if err != nil {
+		return nil, nil, fmt.Errorf("error initilizing Driver: %w", err)
+	}
+	return driver, warnings, nil
 }
 
 type Parameters struct {

@@ -159,7 +159,7 @@ func (v *Validate) Run(ctx context.Context) (int, error) {
 	v.config.Dump.Transformation = tablesToValidate
 
 	v.context, err = runtimeContext.NewRuntimeContext(
-		ctx, tx, &v.config.Dump, v.registry,
+		ctx, tx, &v.config.Dump, &v.config.Common, v.registry,
 		v.config.Dump.VirtualReferences, v.version,
 	)
 	if err != nil {
