@@ -102,7 +102,6 @@ func TestGenerateQueryForTablesPolymorphicScope(t *testing.T) {
 	}
 }
 
-
 func TestPathPropagatesNullableScopeAcrossRequiredEdges(t *testing.T) {
 	path := NewPath(0)
 	edge := func(from, to int, nullable bool) *CondensedEdge {
