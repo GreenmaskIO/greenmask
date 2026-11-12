@@ -539,6 +539,10 @@ func TestFuncMap_noiseDate(t *testing.T) {
 		maxDate time.Time
 	}
 
+	date := time.Date(2023, 11, 23, 1, 10, 3, 4, time.Now().Location())
+	// IntervalToDuration counts a month as 30 days: "1 year 1 mon 00:03:00" is 390 days and 3 minutes.
+	ratio := 390*24*time.Hour + 3*time.Minute
+
 	tests := []struct {
 		name        string
 		params      params
@@ -548,12 +552,12 @@ func TestFuncMap_noiseDate(t *testing.T) {
 		{
 			name: "ok",
 			params: params{
-				Date:     time.Date(2023, 11, 23, 1, 10, 3, 4, time.Now().Location()),
+				Date:     date,
 				Interval: "1 year 1 mon 00:03:00",
 			},
 			expected: expected{
-				minDate: time.Date(2022, 10, 23, 1, 8, 3, 4, time.Now().Location()),
-				maxDate: time.Date(2024, 11, 23, 1, 12, 3, 4, time.Now().Location()),
+				minDate: date.Add(-ratio),
+				maxDate: date.Add(ratio),
 			},
 		},
 		{
