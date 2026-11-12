@@ -21,10 +21,6 @@ import (
 	"github.com/greenmaskio/greenmask/internal/db/postgres/pgdump"
 	"github.com/greenmaskio/greenmask/internal/db/postgres/pgrestore"
 	"github.com/greenmaskio/greenmask/internal/db/postgres/transformers/custom"
-	"github.com/greenmaskio/greenmask/internal/storages/azure"
-	"github.com/greenmaskio/greenmask/internal/storages/directory"
-	"github.com/greenmaskio/greenmask/internal/storages/s3"
-	sshstorage "github.com/greenmaskio/greenmask/internal/storages/ssh"
 	"github.com/greenmaskio/greenmask/pkg/toolkit"
 )
 
@@ -47,10 +43,10 @@ func NewConfig() *Config {
 				},
 				Storage: StorageConfig{
 					Type:      defaultStorageType,
-					S3:        s3.NewConfig(),
-					Azure:     azure.NewConfig(),
-					Directory: directory.NewConfig(),
-					SSH:       sshstorage.NewConfig(),
+					S3:        NewS3StorageConfig(),
+					Azure:     NewAzureStorageConfig(),
+					Directory: NewDirectoryStorageConfig(),
+					SSH:       NewSSHStorageConfig(),
 				},
 			}
 		},
@@ -90,11 +86,11 @@ type Common struct {
 }
 
 type StorageConfig struct {
-	Type      string             `mapstructure:"type" yaml:"type" json:"type,omitempty"`
-	S3        *s3.Config         `mapstructure:"s3"  json:"s3,omitempty" yaml:"s3"`
-	Azure     *azure.Config      `mapstructure:"azure" json:"azure,omitempty" yaml:"azure"`
-	Directory *directory.Config  `mapstructure:"directory" json:"directory,omitempty" yaml:"directory"`
-	SSH       *sshstorage.Config `mapstructure:"ssh" json:"ssh,omitempty" yaml:"ssh"`
+	Type      string                  `mapstructure:"type" yaml:"type" json:"type,omitempty"`
+	S3        *S3StorageConfig        `mapstructure:"s3"  json:"s3,omitempty" yaml:"s3"`
+	Azure     *AzureStorageConfig     `mapstructure:"azure" json:"azure,omitempty" yaml:"azure"`
+	Directory *DirectoryStorageConfig `mapstructure:"directory" json:"directory,omitempty" yaml:"directory"`
+	SSH       *SSHStorageConfig       `mapstructure:"ssh" json:"ssh,omitempty" yaml:"ssh"`
 }
 
 type LogConfig struct {

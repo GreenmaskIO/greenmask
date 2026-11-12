@@ -21,147 +21,175 @@ import (
 	"path"
 	"slices"
 
+	"github.com/greenmaskio/storages"
 	"github.com/rs/zerolog"
 	"github.com/stretchr/testify/suite"
 
-	"github.com/greenmaskio/greenmask/internal/storages"
-	"github.com/greenmaskio/greenmask/internal/storages/s3"
+	"github.com/greenmaskio/greenmask/internal/domains"
+	"github.com/greenmaskio/greenmask/internal/storages/builder"
 )
 
 type S3StorageSuite struct {
 	suite.Suite
-	cfg *s3.Config
-	st  *s3.Storage
+	st storages.Storager
+}
+
+func requireS3Settings(s *suite.Suite) {
+	s.Require().NotEmpty(storageS3Endpoint, "-storageS3Endpoint non-empty flag required")
+	s.Require().NotEmpty(storageS3Bucket, "-storageS3Bucket non-empty flag required")
+	s.Require().NotEmpty(storageS3Region, "-storageS3Region non-empty flag required")
+	s.Require().NotEmpty(storageS3AccessKeyId, "-storageS3AccessKeyId non-empty flag required")
+	s.Require().NotEmpty(storageS3SecretAccessKey, "-storageS3SecretAccessKey non-empty flag required")
+}
+
+// newS3Storage builds the storage the way the CLI does, through builder and its config mapping.
+func newS3Storage(s *suite.Suite, tweak func(cfg *domains.S3StorageConfig)) storages.Storager {
+	cfg := domains.NewS3StorageConfig()
+	cfg.Endpoint = storageS3Endpoint
+	cfg.Bucket = storageS3Bucket
+	cfg.Region = storageS3Region
+	cfg.AccessKeyId = storageS3AccessKeyId
+	cfg.SecretAccessKey = storageS3SecretAccessKey
+	cfg.Prefix = storageS3Prefix
+	if tweak != nil {
+		tweak(cfg)
+	}
+	st, err := builder.GetStorage(
+		context.Background(),
+		&domains.StorageConfig{Type: builder.S3StorageType, S3: cfg},
+		&domains.LogConfig{Level: zerolog.LevelDebugValue},
+	)
+	s.Require().NoError(err)
+	return st
+}
+
+// wipe empties the storage; DeleteAll refuses the storage root itself.
+func wipe(ctx context.Context, st storages.Storager) error {
+	files, dirs, err := st.ListDir(ctx)
+	if err != nil {
+		return err
+	}
+	if len(files) > 0 {
+		if err := st.Delete(ctx, files...); err != nil {
+			return err
+		}
+	}
+	for _, d := range dirs {
+		if err := st.DeleteAll(ctx, d.Dirname()); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func put(s *suite.Suite, st storages.Storager, key, body string) {
+	s.Require().NoError(st.PutObject(context.Background(), key, bytes.NewBufferString(body)))
 }
 
 func (suite *S3StorageSuite) SetupSuite() {
-	suite.Require().NotEmpty(storageS3Endpoint, "-storageS3Endpoint non-empty flag required")
-	suite.Require().NotEmpty(storageS3Bucket, "-storageS3Bucket non-empty flag required")
-	suite.Require().NotEmpty(storageS3Region, "-storageS3Region non-empty flag required")
-	suite.Require().NotEmpty(storageS3AccessKeyId, "-storageS3AccessKeyId non-empty flag required")
-	suite.Require().NotEmpty(storageS3SecretAccessKey, "-storageS3SecretAccessKey non-empty flag required")
-	suite.cfg = s3.NewConfig()
-	suite.cfg.Endpoint = storageS3Endpoint
-	suite.cfg.Bucket = storageS3Bucket
-	suite.cfg.Region = storageS3Region
-	suite.cfg.AccessKeyId = storageS3AccessKeyId
-	suite.cfg.SecretAccessKey = storageS3SecretAccessKey
-	suite.cfg.Prefix = storageS3Prefix
-
-	var err error
-	suite.st, err = s3.NewStorage(context.Background(), suite.cfg, zerolog.LevelDebugValue)
-	suite.Require().NoError(err)
-
+	requireS3Settings(&suite.Suite)
+	suite.st = newS3Storage(&suite.Suite, nil)
 	// The bucket outlives runs, so objects left by an interrupted run break the ListDir checks
-	suite.Require().NoError(suite.st.DeleteAll(context.Background(), ""))
+	suite.Require().NoError(wipe(context.Background(), suite.st))
+}
+
+func (suite *S3StorageSuite) TearDownSuite() {
+	suite.Require().NoError(wipe(context.Background(), suite.st))
 }
 
 func (suite *S3StorageSuite) TestS3Ops() {
-	suite.Run("new storage", func() {
-		_, err := s3.NewStorage(context.Background(), suite.cfg, zerolog.LevelDebugValue)
-		suite.Require().NoError(err)
-	})
+	ctx := context.Background()
 
-	suite.Run("put object", func() {
-		buf := bytes.NewBuffer([]byte("1234567890"))
-		err := suite.st.PutObject(context.Background(), "/test.txt", buf)
-		suite.Require().NoError(err)
-		buf = bytes.NewBuffer([]byte("1234567890"))
-		err = suite.st.PutObject(context.Background(), "/testdb/test.txt", buf)
-		suite.Require().NoError(err)
-	})
+	suite.Run("put and get object", func() {
+		put(&suite.Suite, suite.st, "test.txt", "1234567890")
+		put(&suite.Suite, suite.st, "testdb/test.txt", "1234567890")
 
-	suite.Run("get object", func() {
-		obj, err := suite.st.GetObject(context.Background(), "/test.txt")
+		obj, err := suite.st.GetObject(ctx, "test.txt")
 		suite.Require().NoError(err)
 		data, err := io.ReadAll(obj)
 		suite.Require().NoError(err)
-		bytes.Equal(data, []byte("1234567890"))
+		suite.Require().NoError(obj.Close())
+		suite.Require().Equal("1234567890", string(data))
+	})
+
+	suite.Run("missing object", func() {
+		_, err := suite.st.GetObject(ctx, "missing.txt")
+		suite.Require().ErrorIs(err, storages.ErrFileNotFound)
+
+		exists, err := suite.st.Exists(ctx, "missing.txt")
+		suite.Require().NoError(err)
+		suite.Require().False(exists)
+
+		stat, err := suite.st.Stat("missing.txt")
+		suite.Require().NoError(err)
+		suite.Require().False(stat.Exist)
 	})
 
 	suite.Run("walking", func() {
-		buf := bytes.NewBuffer([]byte("1234567890"))
-		err := suite.st.PutObject(context.Background(), "/test.txt", buf)
+		files, dirs, err := suite.st.ListDir(ctx)
 		suite.Require().NoError(err)
-		buf = bytes.NewBuffer([]byte("1234567890"))
-		err = suite.st.PutObject(context.Background(), "/testdb/test.txt", buf)
-		suite.Require().NoError(err)
-
-		files, dirs, err := suite.st.ListDir(context.Background())
-		suite.Require().NoError(err)
-		suite.Require().Len(files, 1)
+		suite.Require().Equal([]string{"test.txt"}, files)
 		suite.Require().Len(dirs, 1)
-		suite.Require().Equal("test.txt", files[0])
-		s3Dir := dirs[0].(*s3.Storage)
-		suite.Require().Equal(path.Join(suite.cfg.Prefix, "testdb")+"/", s3Dir.GetCwd())
+		suite.Require().Equal("testdb", dirs[0].Dirname())
+		// The dump id is the directory name, so the key layout must not change between versions.
+		suite.Require().Equal(path.Join(storageS3Prefix, "testdb")+"/", dirs[0].GetCwd())
 
-		nextDir := dirs[0]
-		files, dirs, err = nextDir.ListDir(context.Background())
+		files, dirs, err = dirs[0].ListDir(ctx)
 		suite.Require().NoError(err)
-		suite.Require().Len(files, 1)
-		suite.Require().Len(dirs, 0)
-		suite.Require().Equal("test.txt", files[0])
+		suite.Require().Equal([]string{"test.txt"}, files)
+		suite.Require().Empty(dirs)
+	})
+
+	suite.Run("sub storage", func() {
+		sub, err := suite.st.SubStorage("testdb", true)
+		suite.Require().NoError(err)
+		suite.Require().Equal("testdb", sub.Dirname())
+		exists, err := sub.Exists(ctx, "test.txt")
+		suite.Require().NoError(err)
+		suite.Require().True(exists)
+
+		_, err = suite.st.SubStorage("../outside", true)
+		suite.Require().ErrorIs(err, storages.ErrUnsafeKey)
 	})
 
 	suite.Run("delete", func() {
-		buf := bytes.NewBuffer([]byte("1234567890"))
-		err := suite.st.PutObject(context.Background(), "/test_to_del.txt", buf)
-		suite.Require().NoError(err)
+		put(&suite.Suite, suite.st, "test_to_del.txt", "1234567890")
 
-		files, _, err := suite.st.ListDir(context.Background())
+		files, _, err := suite.st.ListDir(ctx)
 		suite.Require().NoError(err)
 		suite.Require().Contains(files, "test_to_del.txt")
 
-		err = suite.st.Delete(context.Background(), "/test_to_del.txt")
-		suite.Require().NoError(err)
+		suite.Require().NoError(suite.st.Delete(ctx, "test_to_del.txt"))
 
-		files, _, err = suite.st.ListDir(context.Background())
+		files, _, err = suite.st.ListDir(ctx)
 		suite.Require().NoError(err)
 		suite.Require().NotContains(files, "test_to_del.txt")
 	})
 
+	// DeleteAll sends DeleteObjects, the call where S3-compatible stores may reject v2 checksums.
 	suite.Run("delete_all", func() {
-		buf := bytes.NewBuffer([]byte("1234567890"))
-		err := suite.st.PutObject(context.Background(), "/test_to_del.txt", buf)
-		suite.Require().NoError(err)
+		put(&suite.Suite, suite.st, "dir1/test_to_del2.txt", "1234567890")
+		put(&suite.Suite, suite.st, "dir1/subdir2/test_to_del3.txt", "1234567890")
 
-		buf = bytes.NewBuffer([]byte("1234567890"))
-		err = suite.st.PutObject(context.Background(), "/dir1/test_to_del2.txt", buf)
+		_, dirs, err := suite.st.ListDir(ctx)
 		suite.Require().NoError(err)
+		idx := slices.IndexFunc(dirs, func(s storages.Storager) bool { return s.Dirname() == "dir1" })
+		suite.Require().NotEqual(-1, idx)
 
-		buf = bytes.NewBuffer([]byte("1234567890"))
-		err = suite.st.PutObject(context.Background(), "/dir1/subdir2/test_to_del3.txt", buf)
+		files, dirs, err := dirs[idx].ListDir(ctx)
 		suite.Require().NoError(err)
-
-		files, dirs, err := suite.st.ListDir(context.Background())
-		suite.Require().NoError(err)
-		suite.Require().Contains(files, "test_to_del.txt")
-		idx := slices.IndexFunc(dirs, func(s storages.Storager) bool {
-			return s.Dirname() == "dir1"
-		})
-		suite.Require().True(idx != -1)
-
-		files, dirs, err = dirs[idx].ListDir(context.Background())
-		suite.Require().NoError(err)
-		suite.Require().Contains(files, "test_to_del2.txt")
+		suite.Require().Equal([]string{"test_to_del2.txt"}, files)
 		suite.Require().Len(dirs, 1)
-		idx = slices.IndexFunc(dirs, func(s storages.Storager) bool {
-			return s.Dirname() == "subdir2"
-		})
-		suite.Require().True(idx != -1)
+		suite.Require().Equal("subdir2", dirs[0].Dirname())
 
-		files, dirs, err = dirs[idx].ListDir(context.Background())
-		suite.Require().NoError(err)
-		suite.Require().Contains(files, "test_to_del3.txt")
-		suite.Require().Empty(dirs)
+		suite.Require().NoError(suite.st.DeleteAll(ctx, "dir1"))
 
-		err = suite.st.DeleteAll(context.Background(), "/")
+		_, dirs, err = suite.st.ListDir(ctx)
 		suite.Require().NoError(err)
-
-		files, dirs, err = suite.st.ListDir(context.Background())
-		suite.Require().NoError(err)
-		suite.Require().NotContains(files, "test_to_del.txt")
-		suite.Require().Empty(dirs)
+		suite.Require().False(slices.ContainsFunc(dirs, func(s storages.Storager) bool { return s.Dirname() == "dir1" }))
 	})
 
+	suite.Run("delete_all refuses the root", func() {
+		suite.Require().ErrorIs(suite.st.DeleteAll(ctx, ""), storages.ErrUnsafeKey)
+	})
 }

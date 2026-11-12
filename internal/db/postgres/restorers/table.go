@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"io"
 
+	"github.com/greenmaskio/storages"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/rs/zerolog/log"
@@ -28,7 +29,6 @@ import (
 	"github.com/greenmaskio/greenmask/internal/db/postgres/pgrestore"
 	"github.com/greenmaskio/greenmask/internal/db/postgres/toc"
 	"github.com/greenmaskio/greenmask/internal/db/postgres/utils"
-	"github.com/greenmaskio/greenmask/internal/storages"
 	"github.com/greenmaskio/greenmask/internal/utils/pgerrors"
 	"github.com/greenmaskio/greenmask/internal/utils/reader"
 )

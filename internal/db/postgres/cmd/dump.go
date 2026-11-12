@@ -24,6 +24,7 @@ import (
 	"slices"
 	"time"
 
+	"github.com/greenmaskio/storages"
 	pgxdecimal "github.com/jackc/pgx-shopspring-decimal"
 	"github.com/jackc/pgx/v5"
 	"github.com/rs/zerolog/log"
@@ -39,7 +40,6 @@ import (
 	"github.com/greenmaskio/greenmask/internal/db/postgres/transformers/custom"
 	"github.com/greenmaskio/greenmask/internal/db/postgres/transformers/utils"
 	"github.com/greenmaskio/greenmask/internal/domains"
-	"github.com/greenmaskio/greenmask/internal/storages"
 	"github.com/greenmaskio/greenmask/pkg/toolkit"
 )
 

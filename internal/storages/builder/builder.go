@@ -18,14 +18,17 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/greenmaskio/storages"
+	"github.com/greenmaskio/storages/azure"
+	"github.com/greenmaskio/storages/directory"
+	"github.com/greenmaskio/storages/s3"
+	"github.com/greenmaskio/storages/ssh"
+	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 
 	"github.com/greenmaskio/greenmask/internal/domains"
-	"github.com/greenmaskio/greenmask/internal/storages"
-	"github.com/greenmaskio/greenmask/internal/storages/azure"
-	"github.com/greenmaskio/greenmask/internal/storages/directory"
-	"github.com/greenmaskio/greenmask/internal/storages/s3"
-	sshstorage "github.com/greenmaskio/greenmask/internal/storages/ssh"
+	"github.com/greenmaskio/greenmask/internal/utils/logger"
 )
 
 const (
@@ -39,28 +42,37 @@ func GetStorage(ctx context.Context, stCfg *domains.StorageConfig, logCgf *domai
 	storages.Storager, error,
 ) {
 	log.Ctx(ctx).Debug().Str("type", stCfg.Type).Msg("creating storage")
+	slogger := logger.NewSlog("storages")
 
 	switch stCfg.Type {
 	case DirectoryStorageType:
 		if err := stCfg.Directory.Validate(); err != nil {
 			return nil, fmt.Errorf("directory storage config validation failed: %w", err)
 		}
-		return directory.NewStorage(stCfg.Directory)
+		return directory.NewStorage(toDirectory(stCfg.Directory), directory.WithLogger(slogger))
 	case S3StorageType:
 		if err := stCfg.S3.Validate(); err != nil {
 			return nil, fmt.Errorf("s3 storage config validation failed: %w", err)
 		}
-		return s3.NewStorage(ctx, stCfg.S3, logCgf.Level)
+		opts := []s3.Option{s3.WithLogger(slogger)}
+		if logCgf.Level == zerolog.LevelDebugValue {
+			opts = append(opts, s3.WithAWSLogLevel(aws.LogRequest|aws.LogRetries))
+		}
+		if stCfg.S3.RoleArn != "" {
+			// The library assumes the role lazily, so this cannot report success.
+			log.Ctx(ctx).Info().Str("RoleArn", stCfg.S3.RoleArn).Msg("s3 storage will assume role on first request")
+		}
+		return s3.New(ctx, toS3(stCfg.S3), opts...)
 	case AzureStorageType:
 		if err := stCfg.Azure.Validate(); err != nil {
 			return nil, fmt.Errorf("azure storage config validation failed: %w", err)
 		}
-		return azure.NewStorage(ctx, stCfg.Azure, logCgf.Level)
+		return azure.New(ctx, toAzure(stCfg.Azure), azure.WithLogger(slogger))
 	case SSHStorageType:
 		if err := stCfg.SSH.Validate(); err != nil {
 			return nil, fmt.Errorf("ssh storage config validation failed: %w", err)
 		}
-		return sshstorage.NewStorage(stCfg.SSH)
+		return ssh.New(toSSH(stCfg.SSH), ssh.WithLogger(slogger))
 	}
 	return nil, fmt.Errorf("unknown storage type: '%s'", stCfg.Type)
 }

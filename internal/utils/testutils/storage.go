@@ -4,11 +4,11 @@ import (
 	"context"
 	"io"
 
+	"github.com/greenmaskio/storages"
 	"github.com/stretchr/testify/mock"
-
-	"github.com/greenmaskio/greenmask/internal/storages"
-	"github.com/greenmaskio/greenmask/internal/storages/domains"
 )
+
+var _ storages.Storager = (*StorageMock)(nil)
 
 type StorageMock struct {
 	mock.Mock
@@ -37,6 +37,14 @@ func (s *StorageMock) GetObject(ctx context.Context, filePath string) (reader io
 	return args.Get(0).(io.ReadCloser), args.Error(1)
 }
 
+func (s *StorageMock) GetObjectRange(ctx context.Context, filePath string, offset, length int64) (io.ReadCloser, error) {
+	args := s.Called(ctx, filePath, offset, length)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(io.ReadCloser), args.Error(1)
+}
+
 func (s *StorageMock) PutObject(ctx context.Context, filePath string, body io.Reader) error {
 	args := s.Called(ctx, filePath, body)
 	return args.Error(0)
@@ -52,19 +60,52 @@ func (s *StorageMock) DeleteAll(ctx context.Context, pathPrefix string) error {
 	return args.Error(0)
 }
 
+func (s *StorageMock) List(ctx context.Context, prefix string) ([]storages.ObjectStat, error) {
+	args := s.Called(ctx, prefix)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]storages.ObjectStat), args.Error(1)
+}
+
 func (s *StorageMock) Exists(ctx context.Context, fileName string) (bool, error) {
 	args := s.Called(ctx, fileName)
 	return args.Bool(0), args.Error(1)
 }
 
-func (s *StorageMock) SubStorage(subPath string, relative bool) storages.Storager {
+func (s *StorageMock) SubStorage(subPath string, relative bool) (storages.Storager, error) {
 	args := s.Called(subPath, relative)
-	return args.Get(0).(storages.Storager)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(storages.Storager), args.Error(1)
 }
 
-func (s *StorageMock) Stat(fileName string) (*domains.ObjectStat, error) {
+func (s *StorageMock) Stat(fileName string) (*storages.ObjectStat, error) {
 	args := s.Called(fileName)
-	return args.Get(0).(*domains.ObjectStat), args.Error(1)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*storages.ObjectStat), args.Error(1)
+}
+
+func (s *StorageMock) Copy(
+	ctx context.Context, srcPath, dstPath string, opts ...storages.CopyOption,
+) (storages.CopyStat, error) {
+	args := s.Called(ctx, srcPath, dstPath, opts)
+	return args.Get(0).(storages.CopyStat), args.Error(1)
+}
+
+func (s *StorageMock) CopyAll(
+	ctx context.Context, srcPrefix, dstPrefix string, opts ...storages.CopyAllOption,
+) (storages.CopyStat, error) {
+	args := s.Called(ctx, srcPrefix, dstPrefix, opts)
+	return args.Get(0).(storages.CopyStat), args.Error(1)
+}
+
+func (s *StorageMock) Ping(ctx context.Context) error {
+	args := s.Called(ctx)
+	return args.Error(0)
 }
 
 func (s *StorageMock) Close() error {

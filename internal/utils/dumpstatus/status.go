@@ -12,7 +12,7 @@ import (
 
 	"github.com/greenmaskio/greenmask/internal/db/postgres/cmd"
 	"github.com/greenmaskio/greenmask/internal/db/postgres/storage"
-	"github.com/greenmaskio/greenmask/internal/storages"
+	"github.com/greenmaskio/storages"
 )
 
 const (

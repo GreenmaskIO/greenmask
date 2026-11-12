@@ -20,6 +20,7 @@ import (
 	"path"
 	"slices"
 
+	"github.com/greenmaskio/storages"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
@@ -27,7 +28,6 @@ import (
 
 	cmdInternals "github.com/greenmaskio/greenmask/internal/db/postgres/cmd"
 	pgDomains "github.com/greenmaskio/greenmask/internal/domains"
-	"github.com/greenmaskio/greenmask/internal/storages"
 	"github.com/greenmaskio/greenmask/internal/storages/builder"
 	"github.com/greenmaskio/greenmask/internal/utils/logger"
 )
@@ -66,10 +66,13 @@ var (
 				log.Fatal().Err(err).Msg("")
 			}
 
-			st = st.SubStorage(dumpId, true)
+			dumpSt, err := st.SubStorage(dumpId, true)
+			if err != nil {
+				log.Fatal().Err(err).Str("DumpId", dumpId).Msg("cannot open dump")
+			}
 
 			restore := cmdInternals.NewRestore(
-				Config.Common.PgBinPath, st, &Config.Restore, Config.Restore.Scripts,
+				Config.Common.PgBinPath, dumpSt, &Config.Restore, Config.Restore.Scripts,
 				Config.Common.TempDirectory,
 			)
 
@@ -117,7 +120,8 @@ func getDumpId(ctx context.Context, st storages.Storager, dumpId string) (string
 		dumpId = backupNames[0]
 	} else {
 		exists, err := st.Exists(ctx, path.Join(dumpId, cmdInternals.MetadataJsonFileName))
-		if err != nil {
+		// An id escaping the storage, such as ../x, cannot name a dump.
+		if err != nil && !errors.Is(err, storages.ErrUnsafeKey) {
 			log.Fatal().
 				Err(err).
 				Msg("cannot check file existence")

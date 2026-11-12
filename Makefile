@@ -11,10 +11,10 @@ LDFLAGS ?= -X github.com/greenmaskio/greenmask/cmd/greenmask/cmd.Version=$(VERSI
 tests: unittest
 
 unittest:
-	go list ./... | grep -E 'internal|pkg' | xargs go test -v
+	go list ./... | grep -E 'internal|pkg' | xargs go test -tags=viper_bind_struct -v
 
 coverage:
-	go list ./... | grep -E 'internal|pkg' | xargs go test -v -coverprofile=$(COVERAGE_FILE)
+	go list ./... | grep -E 'internal|pkg' | xargs go test -tags=viper_bind_struct -v -coverprofile=$(COVERAGE_FILE)
 
 coverage-view:
 	go tool cover -html=$(COVERAGE_FILE)

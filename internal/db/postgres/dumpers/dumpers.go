@@ -19,7 +19,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 
-	"github.com/greenmaskio/greenmask/internal/storages"
+	"github.com/greenmaskio/storages"
 )
 
 type DumpTask interface {
