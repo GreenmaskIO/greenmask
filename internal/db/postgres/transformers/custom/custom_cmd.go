@@ -293,7 +293,8 @@ func (ct *CmdTransformer) getMetadata() ([]byte, error) {
 			Static:  staticParamValues,
 			Dynamic: dynamicParamValues,
 		},
-		Types: ct.driver.CustomTypes,
+		Types:    ct.driver.CustomTypes,
+		Timezone: ct.driver.TimestamptzLocation().String(),
 	}
 	res, err := json.Marshal(&meta)
 	if err != nil {

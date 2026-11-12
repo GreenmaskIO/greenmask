@@ -20,10 +20,13 @@ import (
 	"testing"
 	"time"
 
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/greenmaskio/greenmask/internal/db/postgres/pgcopy"
 	"github.com/greenmaskio/greenmask/internal/db/postgres/transformers/utils"
+	commonutils "github.com/greenmaskio/greenmask/internal/utils"
 	"github.com/greenmaskio/greenmask/pkg/toolkit"
 )
 
@@ -402,6 +405,116 @@ func TestNoiseDateTransformer_Transform_dynamic(t *testing.T) {
 			require.False(t, empty)
 			require.NoError(t, err)
 			require.True(t, res.After(tt.expected.min) && res.Before(tt.expected.max))
+		})
+	}
+}
+
+func runNoiseDateOnTstz(
+	t *testing.T, ctx context.Context, params map[string]toolkit.ParamsValue, value string,
+) time.Time {
+	t.Helper()
+	params["column"] = toolkit.ParamsValue("date_tstz")
+	driver, record := getDriverAndRecord("date_tstz", value)
+	transformerCtx, warnings, err := NoiseDateTransformerDefinition.Instance(ctx, driver, params, nil, "", false)
+	require.NoError(t, err)
+	require.Empty(t, warnings)
+	require.NoError(t, transformerCtx.Transformer.Init(ctx))
+	r, err := transformerCtx.Transformer.Transform(ctx, record)
+	require.NoError(t, err)
+	var res time.Time
+	_, err = r.ScanColumnValueByName("date_tstz", &res)
+	require.NoError(t, err)
+	return res
+}
+
+func setTimeLocal(t *testing.T, name string) {
+	t.Helper()
+	loc, err := time.LoadLocation(name)
+	require.NoError(t, err)
+	old := time.Local
+	time.Local = loc
+	t.Cleanup(func() { time.Local = old })
+}
+
+func TestNoiseDateTransformer_Transform_truncate_tstz_host_timezone(t *testing.T) {
+	setTimeLocal(t, "America/New_York")
+	params := map[string]toolkit.ParamsValue{
+		"max_ratio": toolkit.ParamsValue("10 days"),
+		"truncate":  toolkit.ParamsValue("day"),
+	}
+	res := runNoiseDateOnTstz(t, context.Background(), params, "2024-01-12 23:30:00+00")
+	res = res.UTC()
+	assert.Equal(t, 0, res.Hour())
+	assert.Equal(t, 0, res.Minute())
+	assert.Equal(t, 0, res.Second())
+	assert.Equal(t, 0, res.Nanosecond())
+}
+
+func TestNoiseDateTransformer_Transform_hash_tstz_host_timezone(t *testing.T) {
+	// Expected values were produced by greenmask 0.2.26 (pgx 5.10) under TZ=UTC.
+	tests := []struct {
+		name     string
+		truncate string
+		expected time.Time
+	}{
+		{name: "no truncate", expected: time.Date(2024, 1, 4, 7, 5, 19, 374654000, time.UTC)},
+		{name: "truncate day", truncate: "day", expected: time.Date(2024, 1, 4, 0, 0, 0, 0, time.UTC)},
+	}
+	for _, tt := range tests {
+		for _, tz := range []string{"UTC", "America/New_York", "Europe/Berlin", "Asia/Kolkata"} {
+			t.Run(tt.name+"/"+tz, func(t *testing.T) {
+				setTimeLocal(t, tz)
+				params := map[string]toolkit.ParamsValue{
+					"max_ratio": toolkit.ParamsValue("10 days"),
+					"engine":    toolkit.ParamsValue("hash"),
+				}
+				if tt.truncate != "" {
+					params["truncate"] = toolkit.ParamsValue(tt.truncate)
+				}
+				ctx := commonutils.WithSalt(context.Background(), []byte("0123456789abcdef0123456789abcdef"))
+				res := runNoiseDateOnTstz(t, ctx, params, "2024-01-12 23:30:00+00")
+				assert.True(t, tt.expected.Equal(res), "expected %s, got %s", tt.expected, res.UTC())
+			})
+		}
+	}
+}
+
+func TestNoiseDateTransformer_Transform_hash_tstz_common_timezone(t *testing.T) {
+	// The hash seed is the instant in UTC, so common.timezone must not change the result.
+	expected := time.Date(2024, 1, 4, 7, 5, 19, 374654000, time.UTC)
+	for _, tz := range []string{"UTC", "Europe/Berlin", "Asia/Kolkata", "America/New_York"} {
+		t.Run(tz, func(t *testing.T) {
+			loc, err := time.LoadLocation(tz)
+			require.NoError(t, err)
+			table := &toolkit.Table{
+				Schema: "public", Name: "test", Oid: 1224,
+				Columns: []*toolkit.Column{
+					{Name: "date_tstz", TypeName: "timestamptz", TypeOid: pgtype.TimestamptzOID, Num: 1, Length: -1},
+				},
+			}
+			driver, _, err := toolkit.NewDriver(table, nil, toolkit.WithTimestamptzLocation(loc))
+			require.NoError(t, err)
+			row := pgcopy.NewRow(1)
+			require.NoError(t, row.Decode([]byte("2024-01-12 23:30:00+00")))
+			record := toolkit.NewRecord(driver)
+			record.SetRow(row)
+
+			ctx := commonutils.WithSalt(context.Background(), []byte("0123456789abcdef0123456789abcdef"))
+			params := map[string]toolkit.ParamsValue{
+				"column":    toolkit.ParamsValue("date_tstz"),
+				"max_ratio": toolkit.ParamsValue("10 days"),
+				"engine":    toolkit.ParamsValue("hash"),
+			}
+			transformerCtx, warnings, err := NoiseDateTransformerDefinition.Instance(ctx, driver, params, nil, "", false)
+			require.NoError(t, err)
+			require.Empty(t, warnings)
+			require.NoError(t, transformerCtx.Transformer.Init(ctx))
+			r, err := transformerCtx.Transformer.Transform(ctx, record)
+			require.NoError(t, err)
+			var res time.Time
+			_, err = r.ScanColumnValueByName("date_tstz", &res)
+			require.NoError(t, err)
+			assert.True(t, expected.Equal(res), "expected %s, got %s", expected, res.UTC())
 		})
 	}
 }
