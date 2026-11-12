@@ -18,11 +18,11 @@ import (
 	"cmp"
 	"context"
 	"fmt"
+	"io"
 	"os"
 	"slices"
 	"time"
 
-	"github.com/olekukonko/tablewriter"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 
@@ -31,6 +31,7 @@ import (
 	"github.com/greenmaskio/greenmask/internal/storages/builder"
 	"github.com/greenmaskio/greenmask/internal/utils/dumpstatus"
 	"github.com/greenmaskio/greenmask/internal/utils/logger"
+	"github.com/greenmaskio/greenmask/internal/utils/tableprinter"
 )
 
 var (
@@ -123,11 +124,16 @@ func printDumpTablePretty(ctx context.Context, dirs []storages.Storager) error {
 	slices.SortFunc(data, func(a, b []string) int {
 		return cmp.Compare(b[0], a[0]) // reverse order by id
 	})
-	table := tablewriter.NewWriter(os.Stdout)
-	table.SetHeader([]string{"id", "date", "database", "size", "compressed size", "duration", "transformed", "status", "description"})
-	table.AppendBulk(data)
-	table.Render()
-	return nil
+	return renderDumpTable(os.Stdout, data)
+}
+
+func renderDumpTable(w io.Writer, rows [][]string) error {
+	t := tableprinter.New()
+	t.AppendHeader(tableprinter.Row([]string{
+		"id", "date", "database", "size", "compressed size", "duration", "transformed", "status", "description",
+	}))
+	tableprinter.AppendRows(t, rows)
+	return tableprinter.Render(w, t)
 }
 
 func renderListItem(ctx context.Context, st storages.Storager, data *[][]string) error {

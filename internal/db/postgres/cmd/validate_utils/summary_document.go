@@ -7,11 +7,13 @@ import (
 	"slices"
 	"strconv"
 
-	"github.com/olekukonko/tablewriter"
+	"github.com/jedib0t/go-pretty/v6/table"
+	"github.com/jedib0t/go-pretty/v6/text"
 	"github.com/rs/zerolog/log"
 
 	"github.com/greenmaskio/greenmask/internal/db/postgres/entries"
 	"github.com/greenmaskio/greenmask/internal/db/postgres/pgcopy"
+	"github.com/greenmaskio/greenmask/internal/utils/tableprinter"
 	"github.com/greenmaskio/greenmask/pkg/toolkit"
 )
 
@@ -227,16 +229,15 @@ func (sd *SummaryDocument) Print(w io.Writer) error {
 	if err != nil {
 		return fmt.Errorf("error writing title: %w", err)
 	}
-	prettyWriter := tablewriter.NewWriter(w)
-	prettyWriter.SetHeader([]string{"Column", "Transformed", "Changed", "Unchanged", "NULLs kept", "Unchanged %", "Warning"})
-	prettyWriter.SetAutoFormatHeaders(false)
-	prettyWriter.SetAutoWrapText(false)
+	prettyWriter := tableprinter.New()
+	prettyWriter.Style().Format.Header = text.FormatDefault
+	prettyWriter.AppendHeader(table.Row{"Column", "Transformed", "Changed", "Unchanged", "NULLs kept", "Unchanged %", "Warning"})
 	for _, c := range columns {
 		transformed := "no"
 		if c.Transformed {
 			transformed = "yes"
 		}
-		prettyWriter.Append([]string{
+		prettyWriter.AppendRow(table.Row{
 			c.Name,
 			transformed,
 			strconv.FormatUint(c.Changed, 10),
@@ -246,6 +247,5 @@ func (sd *SummaryDocument) Print(w io.Writer) error {
 			c.Warning,
 		})
 	}
-	prettyWriter.Render()
-	return nil
+	return tableprinter.Render(w, prettyWriter)
 }
