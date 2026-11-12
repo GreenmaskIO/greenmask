@@ -16,9 +16,11 @@ package show_dump
 
 import (
 	"context"
+	"errors"
 	"path"
 	"slices"
 
+	"github.com/greenmaskio/storages"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 
@@ -88,7 +90,8 @@ var (
 			} else {
 				dumpId = args[0]
 				exists, err := st.Exists(ctx, path.Join(dumpId, cmdInternals.MetadataJsonFileName))
-				if err != nil {
+				// An id escaping the storage, such as ../x, cannot name a dump.
+				if err != nil && !errors.Is(err, storages.ErrUnsafeKey) {
 					log.Fatal().Err(err).Msg("cannot check file existence")
 				}
 				if !exists {

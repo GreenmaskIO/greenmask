@@ -39,7 +39,11 @@ The core PostgreSQL utilities, `pg_dump` and `pg_restore`, traditionally operate
 Greenmask introduces the concept of storages.
 
 * `s3` — this option supports any S3-like storage system, including AWS S3, which makes it versatile and adaptable to various cloud-based storage solutions.
+* `azure` — Azure Blob Storage.
+* `ssh` — a directory on a remote host, over SSH/SFTP.
 * `directory` — this is the standard choice, representing the ordinary filesystem directory for local storage.
+
+The storage backends come from the [greenmaskio/storages](https://github.com/greenmaskio/storages) library. See the [`storage` section](configuration.md#storage-section) for their settings.
 
 ## Restoration process
 

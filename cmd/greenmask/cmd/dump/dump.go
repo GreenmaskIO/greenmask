@@ -51,13 +51,16 @@ var (
 					log.Warn().Err(err).Msg("error closing storage")
 				}
 			}()
-			st = st.SubStorage(strconv.FormatInt(time.Now().UnixMilli(), 10), true)
+			dumpSt, err := st.SubStorage(strconv.FormatInt(time.Now().UnixMilli(), 10), true)
+			if err != nil {
+				log.Fatal().Err(err).Msg("cannot create dump directory")
+			}
 
 			if Config.Common.TempDirectory == "" {
 				log.Fatal().Msg("common.tmp_dir cannot be empty")
 			}
 
-			dump := cmdInternals.NewDump(Config, st, utils.DefaultTransformerRegistry)
+			dump := cmdInternals.NewDump(Config, dumpSt, utils.DefaultTransformerRegistry)
 
 			if err := dump.Run(ctx); err != nil {
 				log.Fatal().Err(err).Msg("cannot make a backup")

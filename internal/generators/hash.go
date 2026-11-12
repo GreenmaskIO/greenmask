@@ -3,11 +3,10 @@ package generators
 import (
 	"crypto/sha1"
 	"crypto/sha256"
+	"crypto/sha3"
 	"crypto/sha512"
 	"fmt"
 	"hash"
-
-	"golang.org/x/crypto/sha3"
 )
 
 const (
