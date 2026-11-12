@@ -68,9 +68,7 @@ func (p *Path) addEdge(e *CondensedEdge, scopeId int) int {
 	} else {
 		isNullable := e.originalEdge.isNullable
 		if !isNullable {
-			isNullable = slices.ContainsFunc(p.scopeEdges[scopeId], func(edge *CondensedEdge) bool {
-				return edge.originalEdge.to.idx == e.from.idx && edge.originalEdge.isNullable
-			})
+			isNullable = p.scopeEdgesNullable[scopeId][e.from.idx]
 		}
 		p.scopeEdgesNullable[scopeId][e.to.idx] = isNullable
 		p.scopeEdges[scopeId] = append(p.scopeEdges[scopeId], e)
@@ -106,6 +104,7 @@ func (p *Path) createScopeWithParent(parentScopeId int, e *CondensedEdge) int {
 	if !isNullable {
 		isNullable = p.scopeEdgesNullable[parentScopeId][e.from.idx]
 	}
+	p.scopeEdgesNullable[scopeId][e.to.idx] = isNullable
 
 	scopeEdge := &ScopeEdge{
 		scopeId:               scopeId,
