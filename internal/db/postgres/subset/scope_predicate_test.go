@@ -38,6 +38,15 @@ func TestGenerateQueryForTablesPolymorphicScope(t *testing.T) {
 			nullable: true,
 		},
 		{
+			name:   "OR in discriminator expression",
+			target: "controls",
+			exprs: []string{
+				"public.comments.commentable_type = 'Post' OR public.comments.commentable_type = 'Video'",
+				"public.comments.is_active",
+			},
+			nullable: true,
+		},
+		{
 			name:     "ordinary nullable reference",
 			target:   "controls",
 			nullable: true,
@@ -75,7 +84,11 @@ func TestGenerateQueryForTablesPolymorphicScope(t *testing.T) {
 			inPredicate := `((` + foreignKey + `) IN (SELECT "public"."` + tc.target + `"."id"`
 
 			if len(tc.exprs) > 0 {
-				require.Contains(t, query, "(NOT ("+strings.Join(tc.exprs, " AND ")+") OR "+inPredicate)
+				var guardedExprs []string
+				for _, expr := range tc.exprs {
+					guardedExprs = append(guardedExprs, "("+expr+")")
+				}
+				require.Contains(t, query, "(NOT ("+strings.Join(guardedExprs, " AND ")+") OR "+inPredicate)
 			} else {
 				require.Contains(t, query, inPredicate)
 				require.NotContains(t, query, "NOT (")
