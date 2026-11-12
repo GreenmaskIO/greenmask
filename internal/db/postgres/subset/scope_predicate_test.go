@@ -102,3 +102,33 @@ func TestGenerateQueryForTablesPolymorphicScope(t *testing.T) {
 	}
 }
 
+
+func TestPathPropagatesNullableScopeAcrossRequiredEdges(t *testing.T) {
+	path := NewPath(0)
+	edge := func(from, to int, nullable bool) *CondensedEdge {
+		return NewCondensedEdge(to,
+			NewComponentLink(from, &Component{}),
+			NewComponentLink(to, &Component{}),
+			NewEdge(to, to, nullable,
+				NewTableLink(from, nil, nil, nil),
+				NewTableLink(to, nil, nil, nil)),
+		)
+	}
+
+	path.AddEdge(edge(0, 1, true), rootScopeId)
+	path.AddEdge(edge(1, 2, false), rootScopeId)
+	path.AddEdge(edge(2, 3, false), rootScopeId)
+	require.True(t, path.scopeEdgesNullable[rootScopeId][3])
+
+	// Reaching an existing vertex opens a new scope. The upstream nullable
+	// join still applies to that scope and its subsequent required edges.
+	scopeID := path.AddEdge(edge(3, 1, false), rootScopeId)
+	require.NotEqual(t, rootScopeId, scopeID)
+	require.True(t, path.scopeGraph[rootScopeId][0].isNullable)
+	require.True(t, path.scopeEdgesNullable[scopeID][1])
+	path.AddEdge(edge(1, 4, false), scopeID)
+	require.True(t, path.scopeEdgesNullable[scopeID][4])
+
+	path.AddEdge(edge(0, 5, false), rootScopeId)
+	require.False(t, path.scopeEdgesNullable[rootScopeId][5])
+}
