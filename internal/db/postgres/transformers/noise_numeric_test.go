@@ -16,6 +16,8 @@ package transformers
 
 import (
 	"context"
+	"fmt"
+	"strings"
 	"testing"
 
 	"github.com/rs/zerolog/log"
@@ -147,6 +149,27 @@ func TestNoiseNumericTransformer_Transform(t *testing.T) {
 				require.Regexp(t, tt.result.regexp, string(rawValue.Data))
 				require.NoError(t, err)
 			}
+		})
+	}
+}
+
+func TestNoiseNumericTransformer_Transform_max_scale(t *testing.T) {
+	// PostgreSQL numeric allows up to 16383 digits after the decimal point.
+	for _, scale := range []int{10001, 16383} {
+		t.Run(fmt.Sprintf("scale %d", scale), func(t *testing.T) {
+			params := map[string]toolkit.ParamsValue{
+				"column":    toolkit.ParamsValue("id_numeric"),
+				"min_ratio": toolkit.ParamsValue("0.2"),
+				"max_ratio": toolkit.ParamsValue("0.9"),
+			}
+			driver, record := getDriverAndRecord("id_numeric", "1."+strings.Repeat("0", scale-1)+"1")
+			transformerCtx, warnings, err := NoiseNumericTransformerDefinition.Instance(
+				context.Background(), driver, params, nil, "", false,
+			)
+			require.NoError(t, err)
+			require.Empty(t, warnings)
+			_, err = transformerCtx.Transformer.Transform(context.Background(), record)
+			require.NoError(t, err)
 		})
 	}
 }
