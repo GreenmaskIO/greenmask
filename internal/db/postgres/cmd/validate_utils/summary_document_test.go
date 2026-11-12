@@ -10,6 +10,7 @@ import (
 
 	"github.com/greenmaskio/greenmask/internal/db/postgres/entries"
 	"github.com/greenmaskio/greenmask/internal/db/postgres/pgcopy"
+	"github.com/greenmaskio/greenmask/internal/utils/testutils"
 	"github.com/greenmaskio/greenmask/pkg/toolkit"
 )
 
@@ -294,4 +295,17 @@ func TestSummaryDocument_SummaryIsCached(t *testing.T) {
 	// A new row drops the cache, so the counts include it.
 	appendRows(t, sd, tab, original[:1], transformed[:1])
 	assert.Equal(t, uint64(7), summaryByName(sd.summaries())["groupname"].Unchanged)
+}
+
+func TestSummaryDocument_Print_text(t *testing.T) {
+	tab, original, transformed := getTableAndRows()
+	sd := NewSummaryDocument(tab, "text", false, 50, nil)
+	appendRows(t, sd, tab, original, transformed)
+	var out bytes.Buffer
+	require.NoError(t, sd.Print(&out))
+	got := out.String()
+	testutils.AssertGolden(t, "summary_document_text.golden", got)
+	// The warning is longer than 30 characters and is not wrapped.
+	assert.Contains(t, got, unexpectedWarning)
+	assert.Contains(t, got, "NULLs kept")
 }

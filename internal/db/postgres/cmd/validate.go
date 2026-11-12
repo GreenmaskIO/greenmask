@@ -27,6 +27,7 @@ import (
 	"github.com/greenmaskio/greenmask/internal/db/postgres/transformers/utils"
 	"github.com/greenmaskio/greenmask/internal/domains"
 	"github.com/greenmaskio/greenmask/internal/utils/reader"
+	"github.com/greenmaskio/greenmask/internal/utils/tableprinter"
 	"github.com/greenmaskio/greenmask/pkg/toolkit"
 )
 
@@ -200,6 +201,7 @@ func (v *Validate) Run(ctx context.Context) (int, error) {
 }
 
 func (v *Validate) print(ctx context.Context) error {
+	tableprinter.SetupColors(os.Stdout)
 	for _, e := range v.dataEntries {
 		idx := slices.IndexFunc(v.context.DataSectionObjectsToValidate, func(entry entries.Entry) bool {
 			t, ok := entry.(*entries.Table)

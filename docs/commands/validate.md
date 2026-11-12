@@ -148,6 +148,7 @@ The validation diff is presented in a neatly formatted table. In this table:
 * Columns that are affected by the transformation are highlighted with a red background.
 * The pre-transformation values are displayed in green.
 * The post-transformation values are shown in red.
+* Colors are printed only when stdout is a terminal. Set `NO_COLOR=1` to turn them off, or `FORCE_COLOR=1` to keep them when the output goes to a pipe or a file, for example `| less -R`.
 * The result in `--format=text` can be displayed in either horizontal (`--table-format=horizontal`) or 
   vertical (`--table-format=vertical`) format, making it easy to visualize and understand the 
   differences between the original and transformed data.
@@ -353,7 +354,7 @@ greenmask --config=config.yml validate \
 ```text title="Summary diff output example"
 	"humanresources"."employee" (290 rows compared, values not shown)
 +------------------+-------------+---------+-----------+------------+-------------+--------------------------------------------------+
-|      Column      | Transformed | Changed | Unchanged | NULLs kept | Unchanged % |                     Warning                      |
+|      Column      | Transformed | Changed | Unchanged | NULLs kept | Unchanged % |                      Warning                     |
 +------------------+-------------+---------+-----------+------------+-------------+--------------------------------------------------+
 | businessentityid | no          |       0 |       290 |          0 |       100.0 |                                                  |
 | birthdate        | yes         |     290 |         0 |          0 |         0.0 |                                                  |

@@ -18,12 +18,12 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"slices"
 	"strings"
 
 	"github.com/greenmaskio/greenmask/pkg/toolkit"
-	"github.com/olekukonko/tablewriter"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 
@@ -31,6 +31,7 @@ import (
 	"github.com/greenmaskio/greenmask/internal/db/postgres/transformers/utils"
 	"github.com/greenmaskio/greenmask/internal/domains"
 	"github.com/greenmaskio/greenmask/internal/utils/logger"
+	"github.com/greenmaskio/greenmask/internal/utils/tableprinter"
 )
 
 var (
@@ -84,7 +85,7 @@ func run() error {
 	case JsonFormatName:
 		err = listTransformersJson(utils.DefaultTransformerRegistry)
 	case TextFormatName:
-		err = listTransformersText(utils.DefaultTransformerRegistry)
+		err = listTransformersText(os.Stdout, utils.DefaultTransformerRegistry)
 	default:
 		return fmt.Errorf(`unknown format %s`, format)
 	}
@@ -125,16 +126,13 @@ func listTransformersJson(registry *utils.TransformerRegistry) error {
 	return nil
 }
 
-func listTransformersText(registry *utils.TransformerRegistry) error {
-
+func listTransformersText(w io.Writer, registry *utils.TransformerRegistry) error {
 	var data [][]string
-	table := tablewriter.NewWriter(os.Stdout)
 	var names []string
 	for name := range registry.M {
 		names = append(names, name)
 	}
 	slices.Sort(names)
-	table.SetHeader([]string{"name", "description", "column parameter name", "supported types"})
 	for _, name := range names {
 		def := registry.M[name]
 		//allowedTypes := getAllowedTypesList(def)
@@ -147,12 +145,11 @@ func listTransformersText(registry *utils.TransformerRegistry) error {
 		}
 	}
 
-	table.AppendBulk(data)
-	table.SetRowLine(true)
-	table.SetAutoMergeCellsByColumnIndex([]int{0, 1})
-	table.Render()
-
-	return nil
+	t := tableprinter.New()
+	t.Style().Options.SeparateRows = true
+	t.AppendHeader(tableprinter.Row([]string{"name", "description", "column parameter name", "supported types"}))
+	tableprinter.AppendRows(t, data, 1, 2)
+	return tableprinter.Render(w, t)
 }
 
 func getColumnTypes(p *toolkit.ParameterDefinition) []string {

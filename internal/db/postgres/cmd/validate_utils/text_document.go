@@ -3,13 +3,13 @@ package validate_utils
 import (
 	"fmt"
 	"io"
-	"os"
 	"slices"
 
-	"github.com/olekukonko/tablewriter"
+	"github.com/jedib0t/go-pretty/v6/table"
+	"github.com/jedib0t/go-pretty/v6/text"
 
 	"github.com/greenmaskio/greenmask/internal/db/postgres/entries"
-	stringsUtils "github.com/greenmaskio/greenmask/internal/utils/strings"
+	"github.com/greenmaskio/greenmask/internal/utils/tableprinter"
 	"github.com/greenmaskio/greenmask/pkg/toolkit"
 )
 
@@ -18,14 +18,8 @@ const (
 	verticalTableFormatName   = "vertical"
 )
 
-const maxWrapLength = 64
-
-type printSettings struct {
-	OriginalColors    []tablewriter.Colors
-	TransformedColors []tablewriter.Colors
-	HeaderColors      []tablewriter.Colors
-	ColumnsAlignments []int
-}
+// maxWordLength is the length in runes at which the horizontal table cuts a long word.
+const maxWordLength = 64
 
 type TextDocument struct {
 	*JsonDocument
@@ -56,72 +50,68 @@ func (td *TextDocument) Print(w io.Writer) error {
 	return nil
 }
 
-func (td *TextDocument) getVerticalRowColors(affectedColumns map[int]struct{}, value *valueWithDiff) []tablewriter.Colors {
-	var colors []tablewriter.Colors
-
-	colors = make([]tablewriter.Colors, 4)
-	if !td.withDiff {
-		colors = make([]tablewriter.Colors, 3)
-	}
-	colors[0] = tablewriter.Colors{}
-
-	colors[1] = tablewriter.Colors{}
-	if !value.Equal {
-		colors[1] = tablewriter.Colors{tablewriter.BgRedColor}
-	}
-
+func (td *TextDocument) getVerticalRowColors(value *valueWithDiff) []text.Colors {
+	colors := make([]text.Colors, 3)
 	if td.withDiff {
-		colors[2] = tablewriter.Colors{}
-		colors[3] = tablewriter.Colors{}
-		if !value.Equal {
-			colors[2] = tablewriter.Colors{tablewriter.FgHiGreenColor}
-			colors[3] = tablewriter.Colors{tablewriter.FgHiRedColor}
-		}
-	} else {
-		colors[2] = tablewriter.Colors{}
-		if !value.Equal {
-			colors[2] = tablewriter.Colors{tablewriter.FgHiRedColor}
+		colors = make([]text.Colors, 4)
+	}
+	if !value.Equal {
+		colors[1] = text.Colors{text.BgRed}
+		colors[len(colors)-1] = text.Colors{text.FgHiRed}
+		if td.withDiff {
+			colors[2] = text.Colors{text.FgHiGreen}
 		}
 	}
 	return colors
 }
 
+// newTable returns a validate table: headers printed as the column names are, cells aligned left and wrapped,
+// and the first column, the record number, merged.
+func newTable(header []string, headerColors []text.Colors, headerAlign text.Align) table.Writer {
+	t := tableprinter.New()
+	t.Style().Format.Header = text.FormatDefault
+	t.Style().Options.SeparateRows = true
+	configs := make([]table.ColumnConfig, len(header))
+	for idx := range header {
+		configs[idx] = table.ColumnConfig{
+			Number:       idx + 1,
+			Align:        text.AlignLeft,
+			AlignHeader:  headerAlign,
+			ColorsHeader: headerColors[idx],
+		}
+	}
+	configs[0].AutoMerge = true
+	t.SetColumnConfigs(configs)
+	t.AppendHeader(tableprinter.Row(header))
+	return t
+}
+
+// richRow wraps every cell and colors it. Colors are added after wrapping, so the table can measure the cells.
+func richRow(record []string, colors []text.Colors) table.Row {
+	row := make(table.Row, len(record))
+	for idx, v := range record {
+		row[idx] = tableprinter.Colorize(colors[idx], tableprinter.Wrap(v, tableprinter.WrapWidth))
+	}
+	return row
+}
+
 func (td *TextDocument) printVertical(w io.Writer) error {
-
-	recordSize := 3
-	if td.withDiff {
-		recordSize = 4
-	}
-
-	headerColorSetting := []int{tablewriter.Bold}
-	alignmentSettings := tablewriter.ALIGN_LEFT
-	headerColors := make([]tablewriter.Colors, recordSize)
-	columnAlignments := make([]int, recordSize)
-	for idx := range headerColors {
-		headerColors[idx] = headerColorSetting
-		columnAlignments[idx] = alignmentSettings
-	}
-
-	prettyWriter := tablewriter.NewWriter(os.Stdout)
-	prettyWriter.SetAutoMergeCellsByColumnIndex([]int{0})
-	prettyWriter.SetColumnAlignment(columnAlignments)
-	prettyWriter.SetAutoWrapText(true)
-	prettyWriter.SetHeaderLine(true)
-	prettyWriter.SetRowLine(true)
-
 	header := []string{"%LineNum%", "Column", "Value"}
 	if td.withDiff {
 		header = []string{"%LineNum%", "Column", "OriginalValue", "TransformedValue"}
 	}
-	prettyWriter.Rich(header, headerColors)
-	affectedColumns := td.getAffectedColumns()
+	headerColors := make([]text.Colors, len(header))
+	for idx := range headerColors {
+		headerColors[idx] = text.Colors{text.Bold}
+	}
+	prettyWriter := newTable(header, headerColors, text.AlignLeft)
 
 	result := td.Get()
 	colIdxsToPrint := td.getColumnsIdxsToPrint()
 
 	for lineIdx, res := range result.RecordsWithDiff {
 		for _, colIdx := range colIdxsToPrint {
-			record := make([]string, recordSize)
+			record := make([]string, len(header))
 			record[0] = fmt.Sprintf("%d", lineIdx)
 			colName := td.table.Columns[colIdx].Name
 			colValue := res[colName]
@@ -133,20 +123,18 @@ func (td *TextDocument) printVertical(w io.Writer) error {
 				record[2] = colValue.Transformed
 			}
 
-			colors := td.getVerticalRowColors(affectedColumns, colValue)
+			colors := td.getVerticalRowColors(colValue)
 			if !colValue.Expected {
 				record[1] = fmt.Sprintf("%s (!!!)", colName)
 			}
-			prettyWriter.Rich(record, colors)
+			prettyWriter.AppendRow(richRow(record, colors))
 		}
 	}
 
 	if err := td.writeTableTitle(w); err != nil {
 		return err
 	}
-	prettyWriter.Render()
-
-	return nil
+	return tableprinter.Render(w, prettyWriter)
 }
 
 func (td *TextDocument) getAffectedColumns() map[int]struct{} {
@@ -180,84 +168,88 @@ func (td *TextDocument) getColumnsIdxsToPrint() []int {
 	return res
 }
 
-func (td *TextDocument) getVerticalHorizontalColors() []tablewriter.Colors {
-	columnsToPrint := td.getColumnsIdxsToPrint()
+// newHorizontalTable returns a horizontal table whose header has the line number and the columns to print.
+func (td *TextDocument) newHorizontalTable(colIdxsToPrint []int) table.Writer {
+	unexpectedlyChanged := td.GetUnexpectedlyChangedColumns()
 	affectedColumns := td.getAffectedColumns()
 
-	headerColors := make([]tablewriter.Colors, len(columnsToPrint))
-	for tableColIdx, colIdx := range columnsToPrint {
-		if _, ok := affectedColumns[colIdx]; ok {
-			headerColors[tableColIdx] = []int{tablewriter.BgRedColor}
-		} else {
-			headerColors[tableColIdx] = []int{}
+	header := []string{"%LineNum%"}
+	headerColors := []text.Colors{nil}
+	for _, colIdx := range colIdxsToPrint {
+		name := td.table.Columns[colIdx].Name
+		if _, ok := unexpectedlyChanged[name]; ok {
+			name = fmt.Sprintf("%s (!!!)", name)
 		}
+		header = append(header, name)
+
+		var colors text.Colors
+		if _, ok := affectedColumns[colIdx]; ok {
+			colors = text.Colors{text.BgRed}
+		}
+		headerColors = append(headerColors, colors)
 	}
-	// Adding formatting setting for LineNum
-	headerColors = slices.Insert(headerColors, 0, tablewriter.Colors{})
-	return headerColors
+	return newTable(header, headerColors, text.AlignCenter)
 }
 
 func (td *TextDocument) printWithDiffHorizontal(w io.Writer) error {
-	settings := td.getHorizontalSettings()
-	prettyWriter := tablewriter.NewWriter(w)
-	prettyWriter.SetColumnAlignment(settings.ColumnsAlignments)
-
 	result := td.Get()
 	colIdxsToPrint := td.getColumnsIdxsToPrint()
+	prettyWriter := td.newHorizontalTable(colIdxsToPrint)
 
 	for lineIdx, res := range result.RecordsWithDiff {
-		originalRecord := make([]string, len(colIdxsToPrint))
-		transformedRecord := make([]string, len(colIdxsToPrint))
-		originalRecordColors := make([]tablewriter.Colors, len(colIdxsToPrint))
-		transformedRecordColors := make([]tablewriter.Colors, len(colIdxsToPrint))
-		for tableColIdx, colIdx := range colIdxsToPrint {
-			colName := td.table.Columns[colIdx].Name
-			colValue := res[colName]
-			originalRecord[tableColIdx] = stringsUtils.WrapString(colValue.Original, maxWrapLength)
-			transformedRecord[tableColIdx] = stringsUtils.WrapString(colValue.Transformed, maxWrapLength)
+		lineNum := fmt.Sprintf("%d", lineIdx)
+		originalRecord := []string{lineNum}
+		transformedRecord := []string{lineNum}
+		originalRecordColors := []text.Colors{nil}
+		transformedRecordColors := []text.Colors{nil}
+		for _, colIdx := range colIdxsToPrint {
+			colValue := res[td.table.Columns[colIdx].Name]
+			originalRecord = append(originalRecord, tableprinter.CutLongWords(colValue.Original, maxWordLength))
+			transformedRecord = append(transformedRecord, tableprinter.CutLongWords(colValue.Transformed, maxWordLength))
 
-			originalRecordColors[tableColIdx] = []int{}
-			transformedRecordColors[tableColIdx] = []int{}
+			var originalColors, transformedColors text.Colors
 			if !colValue.Equal {
-				originalRecordColors[tableColIdx] = tablewriter.Colors{tablewriter.FgHiGreenColor}
-				transformedRecordColors[tableColIdx] = tablewriter.Colors{tablewriter.FgHiRedColor}
+				originalColors = text.Colors{text.FgHiGreen}
+				transformedColors = text.Colors{text.FgHiRed}
 			}
+			originalRecordColors = append(originalRecordColors, originalColors)
+			transformedRecordColors = append(transformedRecordColors, transformedColors)
 		}
-
-		// Adding Line number columns
-		originalRecordColors = slices.Insert(originalRecordColors, 0, tablewriter.Colors{})
-		transformedRecordColors = slices.Insert(transformedRecordColors, 0, tablewriter.Colors{})
-		originalRecord = slices.Insert(originalRecord, 0, fmt.Sprintf("%d", lineIdx))
-		transformedRecord = slices.Insert(transformedRecord, 0, fmt.Sprintf("%d", lineIdx))
-
-		prettyWriter.Rich(originalRecord, originalRecordColors)
-		prettyWriter.Rich(transformedRecord, transformedRecordColors)
+		prettyWriter.AppendRow(richRow(originalRecord, originalRecordColors))
+		prettyWriter.AppendRow(richRow(transformedRecord, transformedRecordColors))
 	}
-
-	unexpectedlyChanged := td.GetUnexpectedlyChangedColumns()
-	header := make([]string, len(colIdxsToPrint))
-	for tableColIdx, colIdx := range colIdxsToPrint {
-		c := td.table.Columns[colIdx]
-		header[tableColIdx] = c.Name
-		if _, ok := unexpectedlyChanged[c.Name]; ok {
-			header[tableColIdx] = fmt.Sprintf("%s (!!!)", c.Name)
-		}
-	}
-	header = slices.Insert(header, 0, "%LineNum%")
-	headerColors := td.getVerticalHorizontalColors()
 
 	if err := td.writeTableTitle(w); err != nil {
 		return err
 	}
-	prettyWriter.SetHeader(header)
-	prettyWriter.SetRowLine(true)
-	prettyWriter.SetAutoMergeCellsByColumnIndex([]int{0})
-	prettyWriter.SetAutoWrapText(true)
-	prettyWriter.SetHeaderLine(true)
-	prettyWriter.SetHeaderColor(headerColors...)
+	return tableprinter.Render(w, prettyWriter)
+}
 
-	prettyWriter.Render()
-	return nil
+func (td *TextDocument) printPlainHorizontal(w io.Writer) error {
+	result := td.Get()
+	colIdxsToPrint := td.getColumnsIdxsToPrint()
+	prettyWriter := td.newHorizontalTable(colIdxsToPrint)
+
+	for lineIdx, res := range result.RecordsWithDiff {
+		transformedRecord := []string{fmt.Sprintf("%d", lineIdx)}
+		transformedRecordColors := []text.Colors{nil}
+		for _, colIdx := range colIdxsToPrint {
+			colValue := res[td.table.Columns[colIdx].Name]
+			transformedRecord = append(transformedRecord, tableprinter.CutLongWords(colValue.Transformed, maxWordLength))
+
+			var transformedColors text.Colors
+			if !colValue.Equal {
+				transformedColors = text.Colors{text.FgHiRed}
+			}
+			transformedRecordColors = append(transformedRecordColors, transformedColors)
+		}
+		prettyWriter.AppendRow(richRow(transformedRecord, transformedRecordColors))
+	}
+
+	if err := td.writeTableTitle(w); err != nil {
+		return err
+	}
+	return tableprinter.Render(w, prettyWriter)
 }
 
 func (td *TextDocument) writeTableTitle(w io.Writer) error {
@@ -266,93 +258,4 @@ func (td *TextDocument) writeTableTitle(w io.Writer) error {
 		return fmt.Errorf("error writing title: %w", err)
 	}
 	return nil
-}
-
-func (td *TextDocument) printPlainHorizontal(w io.Writer) error {
-	settings := td.getHorizontalSettings()
-	prettyWriter := tablewriter.NewWriter(w)
-	prettyWriter.SetColumnAlignment(settings.ColumnsAlignments)
-
-	result := td.Get()
-	colIdxsToPrint := td.getColumnsIdxsToPrint()
-
-	for lineIdx, res := range result.RecordsWithDiff {
-		transformedRecord := make([]string, len(colIdxsToPrint))
-		transformedRecordColors := make([]tablewriter.Colors, len(colIdxsToPrint))
-		for tableColIdx, colIdx := range colIdxsToPrint {
-			colName := td.table.Columns[colIdx].Name
-			colValue := res[colName]
-			transformedRecord[tableColIdx] = stringsUtils.WrapString(colValue.Transformed, maxWrapLength)
-
-			transformedRecordColors[tableColIdx] = []int{}
-			if !colValue.Equal {
-				transformedRecordColors[tableColIdx] = tablewriter.Colors{tablewriter.FgHiRedColor}
-			}
-		}
-
-		// Adding Line number columns
-		transformedRecordColors = slices.Insert(transformedRecordColors, 0, tablewriter.Colors{})
-		transformedRecord = slices.Insert(transformedRecord, 0, fmt.Sprintf("%d", lineIdx))
-
-		prettyWriter.Rich(transformedRecord, transformedRecordColors)
-	}
-
-	unexpectedlyChanged := td.GetUnexpectedlyChangedColumns()
-	header := make([]string, len(colIdxsToPrint))
-	for tableColIdx, colIdx := range colIdxsToPrint {
-		c := td.table.Columns[colIdx]
-		header[tableColIdx] = c.Name
-		if _, ok := unexpectedlyChanged[c.Name]; ok {
-			header[tableColIdx] = fmt.Sprintf("%s (!!!)", c.Name)
-		}
-	}
-	header = slices.Insert(header, 0, "%LineNum%")
-	headerColors := td.getVerticalHorizontalColors()
-
-	if err := td.writeTableTitle(w); err != nil {
-		return err
-	}
-	prettyWriter.SetHeader(header)
-	prettyWriter.SetRowLine(true)
-	prettyWriter.SetAutoMergeCellsByColumnIndex([]int{0})
-	prettyWriter.SetAutoWrapText(true)
-	prettyWriter.SetHeaderLine(true)
-	prettyWriter.SetHeaderColor(headerColors...)
-
-	prettyWriter.Render()
-	return nil
-}
-
-func (td *TextDocument) getHorizontalSettings() *printSettings {
-	columnsToPrint := td.getColumnsIdxsToPrint()
-	affectedColumns := td.getAffectedColumns()
-
-	originalColumnsColors := make([]tablewriter.Colors, len(columnsToPrint))
-	transformedColumnsColors := make([]tablewriter.Colors, len(columnsToPrint))
-	headerColors := make([]tablewriter.Colors, len(columnsToPrint))
-	columnsAlignments := make([]int, len(columnsToPrint))
-	for tableColIdx, colIdx := range columnsToPrint {
-		if _, ok := affectedColumns[colIdx]; ok {
-			originalColumnsColors[tableColIdx] = []int{tablewriter.FgHiGreenColor}
-			transformedColumnsColors[tableColIdx] = []int{tablewriter.FgHiRedColor}
-			headerColors[tableColIdx] = []int{tablewriter.BgRedColor}
-		} else {
-			originalColumnsColors[tableColIdx] = []int{}
-			transformedColumnsColors[tableColIdx] = []int{}
-			headerColors[tableColIdx] = []int{}
-		}
-		columnsAlignments[tableColIdx] = tablewriter.ALIGN_LEFT
-	}
-	// Adding formatting setting for LineNum
-	originalColumnsColors = slices.Insert(originalColumnsColors, 0, tablewriter.Colors{})
-	headerColors = slices.Insert(headerColors, 0, tablewriter.Colors{})
-	transformedColumnsColors = slices.Insert(transformedColumnsColors, 0, tablewriter.Colors{})
-	columnsAlignments = slices.Insert(columnsAlignments, 0, tablewriter.ALIGN_LEFT)
-
-	return &printSettings{
-		OriginalColors:    originalColumnsColors,
-		TransformedColors: transformedColumnsColors,
-		HeaderColors:      headerColors,
-		ColumnsAlignments: columnsAlignments,
-	}
 }

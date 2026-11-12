@@ -17,10 +17,9 @@ require (
 	github.com/greenmaskio/storages v0.5.0
 	github.com/jackc/pgx-shopspring-decimal v0.0.0-20220624020537-1d36b5a1853e
 	github.com/jackc/pgx/v5 v5.12.0
+	github.com/jedib0t/go-pretty/v6 v6.8.3
 	github.com/klauspost/pgzip v1.3.0
-	github.com/mitchellh/go-wordwrap v1.0.1
 	github.com/moby/moby/api v1.56.1
-	github.com/olekukonko/tablewriter v0.0.5
 	github.com/pkg/errors v0.9.1
 	github.com/rs/zerolog v1.35.1
 	github.com/shopspring/decimal v1.6.0
@@ -35,6 +34,7 @@ require (
 	github.com/xhit/go-str2duration/v2 v2.2.0
 	golang.org/x/crypto v0.59.0
 	golang.org/x/sync v0.25.0
+	golang.org/x/term v0.48.0
 	gopkg.in/yaml.v3 v3.0.1
 )
 

@@ -18,11 +18,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"strconv"
 	"strings"
 
-	"github.com/olekukonko/tablewriter"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 
@@ -30,6 +30,7 @@ import (
 	"github.com/greenmaskio/greenmask/internal/db/postgres/transformers/utils"
 	"github.com/greenmaskio/greenmask/internal/domains"
 	"github.com/greenmaskio/greenmask/internal/utils/logger"
+	"github.com/greenmaskio/greenmask/internal/utils/tableprinter"
 )
 
 var (
@@ -70,7 +71,7 @@ func run(name string) error {
 	case JsonFormatName:
 		err = showTransformerJson(utils.DefaultTransformerRegistry, name)
 	case TextFormatName:
-		err = showTransformerText(utils.DefaultTransformerRegistry, name)
+		err = showTransformerText(os.Stdout, utils.DefaultTransformerRegistry, name)
 	default:
 		return fmt.Errorf(`unknown format \"%s\"`, format)
 	}
@@ -97,10 +98,8 @@ func showTransformerJson(registry *utils.TransformerRegistry, transformerName st
 	return nil
 }
 
-func showTransformerText(registry *utils.TransformerRegistry, name string) error {
-
+func showTransformerText(w io.Writer, registry *utils.TransformerRegistry, name string) error {
 	var data [][]string
-	table := tablewriter.NewWriter(os.Stdout)
 
 	def, err := getTransformerDefinition(registry, name)
 	if err != nil {
@@ -138,12 +137,10 @@ func showTransformerText(registry *utils.TransformerRegistry, name string) error
 		}
 	}
 
-	table.AppendBulk(data)
-	table.SetRowLine(true)
-	table.SetAutoMergeCellsByColumnIndex([]int{0, 1, 2, 3})
-	table.Render()
-
-	return nil
+	t := tableprinter.New()
+	t.Style().Options.SeparateRows = true
+	tableprinter.AppendRows(t, data, 1, 2, 3, 4)
+	return tableprinter.Render(w, t)
 }
 
 func getTransformerDefinition(registry *utils.TransformerRegistry, name string) (*utils.TransformerDefinition, error) {

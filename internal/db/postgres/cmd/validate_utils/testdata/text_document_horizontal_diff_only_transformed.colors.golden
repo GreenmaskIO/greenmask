@@ -1,0 +1,28 @@
+
+
+	"public"."people"
++-----------+----+------------+------------------------------------------------------------------+------------+
+| %LineNum% | id |<bg-red> first_name <reset>|<bg-red>                                bio                               <reset>|<bg-red> note (!!!) <reset>|
++-----------+----+------------+------------------------------------------------------------------+------------+
+| 0         | 1  | <fg-hi-green>John<reset>       | <fg-hi-green>Lorem ipsum dolor sit amet<reset>                                       |            |
+|           |    |            | <fg-hi-green>consectetur adipiscing elit<reset>                                      |            |
+|           |    |            | <fg-hi-green>sed do eiusmod tempor<reset>                                            |            |
+|           |    |            | <fg-hi-green>incididunt ut labore<reset>                                             |            |
+|           +----+------------+------------------------------------------------------------------+------------+
+|           | 1  | <fg-hi-red>Mark<reset>       | <fg-hi-red>Ut enim ad minim veniam quis<reset>                                     |            |
+|           |    |            | <fg-hi-red>nostrud exercitation ullamco<reset>                                     |            |
+|           |    |            | <fg-hi-red>laboris nisi ut aliquip<reset>                                          |            |
++-----------+----+------------+------------------------------------------------------------------+------------+
+| 1         | 2  | Anna       | https://example.com/very/long/path/without/any/spaces/that/is/lo | NULL       |
+|           |    |            | nger/than/sixty/four/bytes                                       |            |
+|           +----+------------+------------------------------------------------------------------+------------+
+|           | 2  | Anna       | https://example.com/very/long/path/without/any/spaces/that/is/lo | NULL       |
+|           |    |            | nger/than/sixty/four/bytes                                       |            |
++-----------+----+------------+------------------------------------------------------------------+------------+
+| 2         | 3  | <fg-hi-green>Ivan<reset>       | <fg-hi-green>Съешь же ещё этих мягких<reset>                                         | <fg-hi-green>keep<reset>       |
+|           |    |            | <fg-hi-green>французских булок да выпей чаю<reset>                                   |            |
+|           |    |            | <fg-hi-green>и снова съешь этих булок<reset>                                         |            |
+|           +----+------------+------------------------------------------------------------------+------------+
+|           | 3  | <fg-hi-red>NULL<reset>       | <fg-hi-red>Длинноесловобезпробеловкотороедлиннеечемшестьдесятчетыресимволаи<reset> | <fg-hi-red>changed<reset>    |
+|           |    |            | <fg-hi-red>байта<reset>                                                            |            |
++-----------+----+------------+------------------------------------------------------------------+------------+
