@@ -20,6 +20,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"os"
 	"os/exec"
 	"strings"
 	"sync"
@@ -52,7 +53,6 @@ type CmdTransformerBase struct {
 
 	sendChan    chan struct{}
 	receiveChan chan struct{}
-	opIsDone    chan struct{}
 	terminated  bool
 }
 
@@ -74,7 +74,6 @@ func NewCmdTransformerBase(
 		Api:                      api,
 		ProcessedLines:           -1,
 		RowTransformationTimeout: rowTransformationTimeout,
-		opIsDone:                 make(chan struct{}),
 	}
 }
 
@@ -85,6 +84,10 @@ func (ctb *CmdTransformerBase) BaseDone() error {
 		Str("TransformerName", ctb.Name).
 		Msg("terminating custom transformer")
 
+	if ctb.Cancel == nil {
+		// initialization failed before the process pipes were created
+		return nil
+	}
 	if err := ctb.Cancel(); err != nil {
 		log.Debug().
 			Err(err).
@@ -115,9 +118,11 @@ func (ctb *CmdTransformerBase) Transform(ctx context.Context, r *toolkit.Record)
 		return nil, fmt.Errorf("dto api error: error getting dto: %w", err)
 	}
 
+	// a channel per operation: a late signal after timeout must not release the next wait
+	encodeDone := make(chan struct{}, 1)
 	go func() {
 		err = ctb.Api.Encode(ctx, rd)
-		ctb.opIsDone <- struct{}{}
+		encodeDone <- struct{}{}
 	}()
 
 	select {
@@ -126,16 +131,17 @@ func (ctb *CmdTransformerBase) Transform(ctx context.Context, r *toolkit.Record)
 			return nil, ErrRowTransformationTimeout
 		}
 		return nil, ctx.Err()
-	case <-ctb.opIsDone:
+	case <-encodeDone:
 	}
 
 	if err != nil {
 		return nil, fmt.Errorf("interaction api error: cannot send tuple to transformer: %w", err)
 	}
 
+	decodeDone := make(chan struct{}, 1)
 	go func() {
 		rd, err = ctb.Api.Decode(ctx)
-		ctb.opIsDone <- struct{}{}
+		decodeDone <- struct{}{}
 	}()
 
 	select {
@@ -144,7 +150,7 @@ func (ctb *CmdTransformerBase) Transform(ctx context.Context, r *toolkit.Record)
 			return nil, ErrRowTransformationTimeout
 		}
 		return nil, ctx.Err()
-	case <-ctb.opIsDone:
+	case <-decodeDone:
 	}
 
 	if err != nil {
@@ -262,36 +268,27 @@ func (ctb *CmdTransformerBase) init() error {
 			Str("TransformerName", ctb.Name).
 			Msg("running closing function")
 
-		if ctb.Cmd.Process != nil && ctb.Cmd.ProcessState == nil ||
-			ctb.Cmd.Process != nil && ctb.Cmd.ProcessState != nil && !ctb.Cmd.ProcessState.Exited() {
+		// ProcessState is written by Cmd.Wait in another goroutine, so rely on Signal reporting a finished process
+		if ctb.Cmd.Process != nil {
 			log.Debug().
 				Str("TableSchema", ctb.Driver.Table.Schema).
 				Str("TableName", ctb.Driver.Table.Name).
 				Str("TransformerName", ctb.Name).
 				Int("TransformerPid", ctb.Cmd.Process.Pid).
 				Msg("sending SIGTERM to custom transformer process")
-			if err := ctb.Cmd.Process.Signal(syscall.SIGTERM); err != nil {
-				log.Debug().
+			if err := ctb.Cmd.Process.Signal(syscall.SIGTERM); err != nil && !errors.Is(err, os.ErrProcessDone) {
+				log.Warn().
 					Err(err).
 					Str("TableSchema", ctb.Driver.Table.Schema).
 					Str("TableName", ctb.Driver.Table.Name).
 					Str("TransformerName", ctb.Name).
 					Int("TransformerPid", ctb.Cmd.Process.Pid).
-					Msg("error sending SIGTERM to custom transformer process")
-
-				if ctb.Cmd.ProcessState != nil && !ctb.Cmd.ProcessState.Exited() {
+					Msg("error sending SIGTERM to custom transformer process: killing process")
+				if err = ctb.Cmd.Process.Kill(); err != nil && !errors.Is(err, os.ErrProcessDone) {
 					log.Warn().
-						Str("TableSchema", ctb.Driver.Table.Schema).
-						Str("TableName", ctb.Driver.Table.Name).
-						Str("TransformerName", ctb.Name).
-						Int("TransformerPid", ctb.Cmd.Process.Pid).
-						Msg("killing process")
-					if err = ctb.Cmd.Process.Kill(); err != nil {
-						log.Warn().
-							Err(err).
-							Int("pid", ctb.Cmd.Process.Pid).
-							Msg("error terminating custom transformer process")
-					}
+						Err(err).
+						Int("pid", ctb.Cmd.Process.Pid).
+						Msg("error terminating custom transformer process")
 				}
 			}
 		}

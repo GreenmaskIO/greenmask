@@ -81,3 +81,71 @@ package custom
 //	assert.NoError(t, err)
 //	assert.Empty(t, warnings)
 //}
+
+import (
+	"context"
+	"testing"
+	"time"
+
+	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/stretchr/testify/require"
+
+	"github.com/greenmaskio/greenmask/pkg/toolkit"
+)
+
+func newTestCmdTransformer(t *testing.T, ctd *TransformerDefinition) *CmdTransformer {
+	table := &toolkit.Table{
+		Schema: "public",
+		Name:   "test",
+		Oid:    1224,
+		Columns: []*toolkit.Column{
+			{Name: "id", TypeName: "int4", TypeOid: pgtype.Int4OID, Num: 1, Length: -1},
+		},
+	}
+	driver, _, err := toolkit.NewDriver(table, nil)
+	require.NoError(t, err)
+
+	columnDef := toolkit.MustNewParameterDefinition("column", "column name").
+		SetIsColumn(toolkit.NewColumnProperties().SetAffected(true))
+	columnParam := toolkit.NewStaticParameter(columnDef, driver, false)
+	warnings, err := columnParam.Init(nil, toolkit.ParamsValue("id"))
+	require.NoError(t, err)
+	require.Empty(t, warnings)
+
+	ct, warnings, err := NewCustomCmdTransformer(
+		context.Background(), driver, map[string]toolkit.Parameterizer{"column": columnParam}, ctd,
+	)
+	require.NoError(t, err)
+	require.Empty(t, warnings)
+	return ct
+}
+
+func TestCmdTransformer_Done_expected_non_zero_exit_code(t *testing.T) {
+	ct := newTestCmdTransformer(t, &TransformerDefinition{
+		Name:       "test",
+		Executable: "sh",
+		// ignore SIGTERM, report readiness and exit with the expected code once stdin is closed
+		Args:                     []string{"-c", "trap '' TERM; read meta; echo ready; cat >/dev/null; exit 3"},
+		ExpectedExitCode:         3,
+		RowTransformationTimeout: time.Second,
+		Driver:                   &toolkit.DriverParams{Name: toolkit.CsvModeName},
+	})
+	require.NoError(t, ct.Init(context.Background()))
+	line, err := ct.ReceiveStdoutLine(context.Background())
+	require.NoError(t, err)
+	require.Equal(t, "ready", string(line))
+	require.NoError(t, ct.Done(context.Background()))
+}
+
+func TestCmdTransformer_Done_reaps_process_after_failed_Init(t *testing.T) {
+	ct := newTestCmdTransformer(t, &TransformerDefinition{
+		Name:                     "test",
+		Executable:               "sh",
+		RowTransformationTimeout: time.Second,
+		Driver:                   &toolkit.DriverParams{Name: toolkit.CsvModeName},
+	})
+	// the process is started but Init fails before the wait group is created, e.g. on sending metadata
+	require.NoError(t, ct.BaseInit("sh", []string{"-c", "cat >/dev/null"}))
+	require.NoError(t, ct.Done(context.Background()))
+	require.NotNil(t, ct.Cmd.ProcessState)
+}
