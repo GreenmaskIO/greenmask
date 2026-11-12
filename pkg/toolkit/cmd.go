@@ -25,7 +25,6 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
@@ -312,12 +311,9 @@ func (c *Cmd) init(ctx context.Context) (Transformer, *Driver, ValidationWarning
 	}
 	log.Debug().Msg("validation completed")
 
-	typeMap := pgtype.NewMap()
-	TryRegisterCustomTypes(typeMap, meta.Types, false)
-
-	driver, driverWarnings, err := NewDriver(meta.Table, meta.Types)
+	driver, driverWarnings, err := newDriverFromMeta(meta)
 	if err != nil {
-		return nil, nil, nil, fmt.Errorf("error initilizing Driver: %w", err)
+		return nil, nil, nil, err
 	}
 	warnings = append(warnings, driverWarnings...)
 

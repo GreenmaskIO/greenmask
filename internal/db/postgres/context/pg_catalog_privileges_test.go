@@ -117,7 +117,7 @@ func TestFindTablesAndSequences_sequenceWithoutPrivileges(t *testing.T) {
 				defer tx.Rollback(ctx) // nolint: errcheck
 
 				_, err = NewRuntimeContext(
-					ctx, tx, &domains.Dump{}, utils.DefaultTransformerRegistry, nil, version,
+					ctx, tx, &domains.Dump{}, &domains.Common{}, utils.DefaultTransformerRegistry, nil, version,
 				)
 				require.Error(t, err)
 				assert.Contains(t, err.Error(), "permission denied for sequence")

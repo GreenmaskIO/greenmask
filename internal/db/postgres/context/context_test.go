@@ -120,10 +120,103 @@ func TestNewRuntimeContext(t *testing.T) {
 			},
 		},
 	}
-	rc, err := NewRuntimeContext(ctx, tx, cfg, utils.DefaultTransformerRegistry, nil, testContainerPgVersion*10000)
+	rc, err := NewRuntimeContext(ctx, tx, cfg, &domains.Common{}, utils.DefaultTransformerRegistry, nil, testContainerPgVersion*10000)
 	require.NoError(t, err)
 	require.NotNil(t, rc)
 	require.False(t, rc.IsFatal())
+}
+
+func TestNewRuntimeContext_timezone(t *testing.T) {
+	ctx := context.Background()
+	connStr, cleanup, err := runPostgresContainer(ctx)
+	require.NoError(t, err)
+	defer cleanup()
+
+	con, err := pgx.Connect(ctx, connStr)
+	require.NoError(t, err)
+	defer con.Close(ctx) // nolint: errcheck
+	require.NoError(t, initTables(ctx, con, contextTestDb))
+
+	newCfg := func() *domains.Dump {
+		return &domains.Dump{
+			Transformation: []*domains.Table{
+				{
+					Schema: "public",
+					Name:   "users",
+					Transformers: []*domains.TransformerConfig{
+						{
+							Name:   transformers.RandomUuidTransformerName,
+							Params: toolkit.StaticParameters{"column": toolkit.ParamsValue("user_id")},
+						},
+					},
+				},
+			},
+		}
+	}
+
+	t.Run("common.timezone reaches the table driver", func(t *testing.T) {
+		tx, err := con.Begin(ctx)
+		require.NoError(t, err)
+		defer tx.Rollback(ctx) // nolint: errcheck
+
+		rc, err := NewRuntimeContext(
+			ctx, tx, newCfg(), &domains.Common{Timezone: "Europe/Berlin"},
+			utils.DefaultTransformerRegistry, nil, testContainerPgVersion*10000,
+		)
+		require.NoError(t, err)
+		require.False(t, rc.IsFatal())
+		idx := slices.IndexFunc(rc.DataSectionObjects, func(e entries.Entry) bool {
+			tab, ok := e.(*entries.Table)
+			return ok && tab.Name == "users"
+		})
+		require.NotEqual(t, -1, idx)
+		tab, ok := rc.DataSectionObjects[idx].(*entries.Table)
+		require.True(t, ok)
+		require.NotNil(t, tab.Driver)
+		assert.Equal(t, "Europe/Berlin", tab.Driver.TimestamptzLocation().String())
+	})
+
+	t.Run("invalid common.timezone", func(t *testing.T) {
+		tx, err := con.Begin(ctx)
+		require.NoError(t, err)
+		defer tx.Rollback(ctx) // nolint: errcheck
+
+		_, err = NewRuntimeContext(
+			ctx, tx, newCfg(), &domains.Common{Timezone: "Mars/Olympus"},
+			utils.DefaultTransformerRegistry, nil, testContainerPgVersion*10000,
+		)
+		require.ErrorContains(t, err, "invalid common.timezone")
+	})
+}
+
+func TestBuildRuntimeOptions(t *testing.T) {
+	tests := []struct {
+		name         string
+		timezone     string
+		salt         string
+		expectedTz   string
+		expectedSalt []byte
+		wantErr      string
+	}{
+		{name: "defaults", expectedTz: "UTC"},
+		{name: "timezone", timezone: "Europe/Berlin", expectedTz: "Europe/Berlin"},
+		{name: "salt", salt: "0a0b", expectedTz: "UTC", expectedSalt: []byte{0x0a, 0x0b}},
+		{name: "invalid timezone", timezone: "Mars/Olympus", wantErr: "invalid common.timezone"},
+		{name: "invalid salt", salt: "zz", wantErr: "error decoding salt from hex"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Setenv("GREENMASK_GLOBAL_SALT", tt.salt)
+			opts, err := buildRuntimeOptions(&domains.Common{Timezone: tt.timezone})
+			if tt.wantErr != "" {
+				require.ErrorContains(t, err, tt.wantErr)
+				return
+			}
+			require.NoError(t, err)
+			assert.Equal(t, tt.expectedTz, opts.Timezone.String())
+			assert.Equal(t, tt.expectedSalt, opts.Salt)
+		})
+	}
 }
 
 func TestNewRuntimeContext_regression_244(t *testing.T) {
@@ -161,7 +254,7 @@ func TestNewRuntimeContext_regression_244(t *testing.T) {
 			},
 		},
 	}
-	rc, err := NewRuntimeContext(ctx, tx, cfg, utils.DefaultTransformerRegistry, nil, testContainerPgVersion*10000)
+	rc, err := NewRuntimeContext(ctx, tx, cfg, &domains.Common{}, utils.DefaultTransformerRegistry, nil, testContainerPgVersion*10000)
 	require.NoError(t, err)
 	require.NotNil(t, rc)
 	require.False(t, rc.IsFatal())
@@ -231,7 +324,7 @@ func TestNewRuntimeContext_regression_247(t *testing.T) {
 			},
 		},
 	}
-	rc, err := NewRuntimeContext(ctx, tx, cfg, utils.DefaultTransformerRegistry, nil, testContainerPgVersion*10000)
+	rc, err := NewRuntimeContext(ctx, tx, cfg, &domains.Common{}, utils.DefaultTransformerRegistry, nil, testContainerPgVersion*10000)
 	require.NoError(t, err)
 	require.NotNil(t, rc)
 	require.False(t, rc.IsFatal())
