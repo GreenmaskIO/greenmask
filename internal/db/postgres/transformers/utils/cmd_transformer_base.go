@@ -20,6 +20,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"os"
 	"os/exec"
 	"strings"
 	"sync"
@@ -262,36 +263,27 @@ func (ctb *CmdTransformerBase) init() error {
 			Str("TransformerName", ctb.Name).
 			Msg("running closing function")
 
-		if ctb.Cmd.Process != nil && ctb.Cmd.ProcessState == nil ||
-			ctb.Cmd.Process != nil && ctb.Cmd.ProcessState != nil && !ctb.Cmd.ProcessState.Exited() {
+		// ProcessState is written by Cmd.Wait in another goroutine, so rely on Signal reporting a finished process
+		if ctb.Cmd.Process != nil {
 			log.Debug().
 				Str("TableSchema", ctb.Driver.Table.Schema).
 				Str("TableName", ctb.Driver.Table.Name).
 				Str("TransformerName", ctb.Name).
 				Int("TransformerPid", ctb.Cmd.Process.Pid).
 				Msg("sending SIGTERM to custom transformer process")
-			if err := ctb.Cmd.Process.Signal(syscall.SIGTERM); err != nil {
-				log.Debug().
+			if err := ctb.Cmd.Process.Signal(syscall.SIGTERM); err != nil && !errors.Is(err, os.ErrProcessDone) {
+				log.Warn().
 					Err(err).
 					Str("TableSchema", ctb.Driver.Table.Schema).
 					Str("TableName", ctb.Driver.Table.Name).
 					Str("TransformerName", ctb.Name).
 					Int("TransformerPid", ctb.Cmd.Process.Pid).
-					Msg("error sending SIGTERM to custom transformer process")
-
-				if ctb.Cmd.ProcessState != nil && !ctb.Cmd.ProcessState.Exited() {
+					Msg("error sending SIGTERM to custom transformer process: killing process")
+				if err = ctb.Cmd.Process.Kill(); err != nil && !errors.Is(err, os.ErrProcessDone) {
 					log.Warn().
-						Str("TableSchema", ctb.Driver.Table.Schema).
-						Str("TableName", ctb.Driver.Table.Name).
-						Str("TransformerName", ctb.Name).
-						Int("TransformerPid", ctb.Cmd.Process.Pid).
-						Msg("killing process")
-					if err = ctb.Cmd.Process.Kill(); err != nil {
-						log.Warn().
-							Err(err).
-							Int("pid", ctb.Cmd.Process.Pid).
-							Msg("error terminating custom transformer process")
-					}
+						Err(err).
+						Int("pid", ctb.Cmd.Process.Pid).
+						Msg("error terminating custom transformer process")
 				}
 			}
 		}

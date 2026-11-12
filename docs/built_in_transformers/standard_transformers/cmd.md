@@ -41,7 +41,9 @@ symbol `\n` must be included.
 #### text
 
 Textual driver that is used only for one column transformation, thus you cannot provide here more than one column.
-The value encodes into string laterally. For example, `2023-01-03 01:00:00.0+03`.
+The value encodes into string laterally. For example, `2023-01-03 01:00:00.0+03`. Since the interaction is line
+based, a value containing a new line symbol cannot be sent and the transformation fails with an error. Use the `csv`
+or `json` driver for such values.
 
 #### json
 

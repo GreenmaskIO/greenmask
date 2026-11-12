@@ -31,6 +31,7 @@ type CsvApi struct {
 	transferringColumns []*Column
 	affectedColumns     []*Column
 	w                   *csv.Writer
+	rawW                io.Writer
 	r                   *csv.Reader
 	record              *RawRecordCsv
 }
@@ -65,6 +66,7 @@ func NewCsvApi(transferringColumns []*Column, affectedColumns []*Column, driver 
 
 func (ca *CsvApi) SetWriter(w io.Writer) {
 	ca.w = csv.NewWriter(w)
+	ca.rawW = w
 }
 
 func (ca *CsvApi) SetReader(r io.Reader) {
@@ -105,11 +107,10 @@ func (ca *CsvApi) Encode(ctx context.Context, row RowDriver) (err error) {
 		return fmt.Errorf("expected RawRecordCsv but received another driver: %w", err)
 	}
 
-	err = ca.w.Write(csvRow.Data)
+	err = writeCsvRecord(ca.w, ca.rawW, csvRow.Data)
 	if err != nil {
 		return fmt.Errorf("error ecnoding row: %w", err)
 	}
-	ca.w.Flush()
 	if ca.record != nil {
 		ca.record.Clean()
 	}

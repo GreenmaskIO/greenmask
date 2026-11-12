@@ -37,3 +37,56 @@ func TestRawRecordDto(t *testing.T) {
 	require.NoError(t, err)
 	require.JSONEq(t, string(expected), string(res))
 }
+
+func TestRawRecordCsv_null_and_bounds(t *testing.T) {
+	rr := NewRawRecordCsv(2, nil)
+	require.NoError(t, rr.SetColumn(0, NewRawValue([]byte("x"), false)))
+	require.NoError(t, rr.SetColumn(1, NewRawValue(nil, true)))
+	v, err := rr.GetColumn(1)
+	require.NoError(t, err)
+	require.True(t, v.IsNull)
+
+	require.Error(t, rr.SetColumn(2, NewRawValue(nil, true)))
+	_, err = rr.GetColumn(2)
+	require.Error(t, err)
+
+	// a decoded record may have fewer fields than expected
+	rr.Data = []string{"x"}
+	_, err = rr.GetColumn(1)
+	require.Error(t, err)
+}
+
+func TestRawRecordCsv_Encode_single_empty_field(t *testing.T) {
+	rr := NewRawRecordCsv(1, nil)
+	require.NoError(t, rr.SetColumn(0, NewRawValue([]byte(""), false)))
+	data, err := rr.Encode()
+	require.NoError(t, err)
+	require.Equal(t, "\"\"\n", string(data))
+}
+
+func TestRawRecordText_null(t *testing.T) {
+	rr := NewRawRecordText()
+	require.NoError(t, rr.Decode([]byte("\\N")))
+	v, err := rr.GetColumn(0)
+	require.NoError(t, err)
+	require.True(t, v.IsNull)
+}
+
+func TestJsonRecordWithAttrNames_null_without_data(t *testing.T) {
+	columns := []*Column{{Name: "data", Idx: 0}}
+	text := NewJsonRecordWithAttrNamesText(columns)
+	require.NoError(t, json.Unmarshal([]byte(`{"data":{"n":true}}`), text))
+	v, err := text.GetColumn(0)
+	require.NoError(t, err)
+	require.True(t, v.IsNull)
+
+	require.NoError(t, json.Unmarshal([]byte(`{"data":null}`), text))
+	_, err = text.GetColumn(0)
+	require.Error(t, err)
+
+	binary := NewJsonRecordWithAttrNamesBinary(columns)
+	require.NoError(t, binary.Decode([]byte(`{"data":{"d":"eA==","n":false}}`)))
+	v, err = binary.GetColumn(0)
+	require.NoError(t, err)
+	require.Equal(t, "x", string(v.Data))
+}
