@@ -10,6 +10,11 @@ updates:
       default-days: 7
     commit-message:
       prefix: "chore(deps)"
+    ignore:
+      # 1.8.1 makes the container package import github.com/apache/arrow-go (+7.5 MB binary).
+      # Kept in line with greenmaskio/storages; lift it there and here together.
+      - dependency-name: "github.com/Azure/azure-sdk-for-go/sdk/storage/azblob"
+        versions: [">= 1.8.1"]
     groups:
       go-security:
         applies-to: security-updates
