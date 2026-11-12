@@ -26,7 +26,7 @@ import (
 	"gopkg.in/yaml.v3"
 
 	storageDto "github.com/greenmaskio/greenmask/internal/db/postgres/storage"
-	"github.com/greenmaskio/greenmask/internal/storages"
+	"github.com/greenmaskio/storages"
 )
 
 const templateName = "metadataList"

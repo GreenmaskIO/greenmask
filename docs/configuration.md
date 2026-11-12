@@ -134,7 +134,7 @@ storage:
 By choosing the `s3` storage option, you can store dump data in an S3-like remote storage service,
 such as Amazon S3 or MinIO. Here are the parameters you can configure for S3 storage:
 
-* `endpoint` — overrides the default AWS endpoint to a custom one for making requests
+* `endpoint` — overrides the default AWS endpoint to a custom one for making requests. An endpoint without a scheme, such as `minio:9000`, is used as `https://minio:9000`
 * `bucket` — the name of the bucket where the dump data will be stored
 * `prefix` — a prefix for objects in the bucket, specified in path format
 * `region` — the S3 service region
@@ -143,15 +143,16 @@ such as Amazon S3 or MinIO. Here are the parameters you can configure for S3 sto
 * `access_key_id` — access key for authentication
 * `secret_access_key` — secret access key for authentication
 * `session_token` — session token for authentication
-* `role_arn` — Amazon resource name for role-based authentication
-* `session_name` — role session name to uniquely identify a session
-* `max_retries` — the number of retries on request failures
+* `role_arn` — the role to assume. Greenmask works under this role and renews its credentials before they expire. The role is assumed with credentials from the default AWS credential chain (environment variables, `~/.aws` profile, instance or pod role). `access_key_id` and `secret_access_key` are not used for it
+* `session_name` — role session name to uniquely identify a session. If omitted, the AWS SDK generates one
+* `max_retries` — the number of retries after the first attempt fails (default `3`, so up to 4 requests). `0` disables retries
 * `cert_file` — the path to the SSL certificate for making requests
 * `max_part_size` — the maximum part length for one request
 * `concurrency` — the number of goroutines to use in parallel for each upload call when sending parts
 * `use_list_objects_v1` — use the old v1 `ListObjects` request instead of v2 one
 * `force_path_style` — force the request to use path-style addressing (e. g., `http://s3.amazonaws.com/BUCKET/KEY`) instead of virtual hosted bucket addressing (e. g., `http://BUCKET.s3.amazonaws.com/KEY`)
 * `use_accelerate` — enable S3 Accelerate feature
+* `disable_ssl` — deprecated and has no effect. To use plain HTTP, put `http://` in `endpoint`
 * `sse` — server-side encryption applied to the uploaded dump. One of `AES256` (SSE-S3), `aws:kms` (SSE-KMS) or `aws:kms:dsse` (DSSE-KMS). Applies to both single-part and multipart uploads
 * `kms_key_arn` — KMS key encrypting the dump when `sse` is `aws:kms` or `aws:kms:dsse`. If omitted, the bucket default KMS key is used. Setting it with any other `sse` value is a config error
 * `bucket_key_enabled` — enable [S3 Bucket Keys](https://docs.aws.amazon.com/AmazonS3/latest/userguide/bucket-key.html), which cut KMS request cost on large dumps. Requires `sse` to be `aws:kms` or `aws:kms:dsse`
@@ -207,6 +208,7 @@ Azure authentication methods and sovereign clouds. Here are the parameters you c
 * `buffer_size` — upload block size in bytes (default `8388608` = 8 MiB, minimum `1024`)
 * `max_buffers` — upload concurrency (default `4`, minimum `1`)
 * `try_timeout` — per-try request timeout in minutes (default `5`)
+* `max_retries` — the number of retries after a failed try (default `3`). `0` or a negative value disables retries
 * `blob_store_api_version` — optional `x-ms-version` header override for environments that don't support the SDK's default API version
 
 When neither `access_key` nor `sas_token` is set, Greenmask falls back to the default Azure credential
@@ -235,6 +237,8 @@ you can configure:
 * `port` — the SSH port (default `22`)
 * `password` — password authentication (provide at least one of `password` or `private_key_path`)
 * `private_key_path` — path to a PEM-encoded private key for public-key authentication (provide at least one of `password` or `private_key_path`)
+* `private_key_passphrase` — the passphrase of an encrypted private key, requires `private_key_path`
+* `connect_timeout` — the time limit for the TCP connection and the SSH handshake, as a duration such as `30s` or `1m` (default `30s`)
 * `prefix` — the remote root path where the dump data will be stored
 
 :::warning[Host key verification is disabled]

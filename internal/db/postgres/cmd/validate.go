@@ -14,6 +14,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/greenmaskio/storages"
 	"github.com/rs/zerolog/log"
 
 	"github.com/greenmaskio/greenmask/internal/db/postgres/cmd/validate_utils"
@@ -25,7 +26,6 @@ import (
 	"github.com/greenmaskio/greenmask/internal/db/postgres/transformers/custom"
 	"github.com/greenmaskio/greenmask/internal/db/postgres/transformers/utils"
 	"github.com/greenmaskio/greenmask/internal/domains"
-	"github.com/greenmaskio/greenmask/internal/storages"
 	"github.com/greenmaskio/greenmask/internal/utils/reader"
 	"github.com/greenmaskio/greenmask/pkg/toolkit"
 )
@@ -66,7 +66,10 @@ func NewValidate(cfg *domains.Config, registry *utils.TransformerRegistry, st st
 	}
 	mainSt := st
 	tmpDirName := strconv.FormatInt(time.Now().UnixMilli(), 10)
-	st = st.SubStorage(tmpDirName, true)
+	st, err := st.SubStorage(tmpDirName, true)
+	if err != nil {
+		return nil, fmt.Errorf("cannot create temporary storage: %w", err)
+	}
 
 	d := NewDump(cfg, st, registry)
 	d.dumpIdSequence = toc.NewDumpSequence(0)
@@ -110,7 +113,8 @@ func (v *Validate) Run(ctx context.Context) (int, error) {
 		if !v.config.Validate.Diff {
 			return
 		}
-		if err := v.mainSt.Delete(ctx, v.tmpDir); err != nil {
+		// The directory is missing when validate failed before writing to it.
+		if err := v.mainSt.DeleteAll(ctx, v.tmpDir); err != nil && !errors.Is(err, storages.ErrFileNotFound) {
 			log.Warn().Err(err).Msg("error deleting temporary directory")
 		}
 	}()
@@ -469,7 +473,10 @@ func (v *Validate) getPreviousDumpId(ctx context.Context) (string, error) {
 
 func (v *Validate) getPreviousMetadata(ctx context.Context, dumpId string) (*storageDto.Metadata, error) {
 
-	st := v.remoteSt.SubStorage(dumpId, true)
+	st, err := v.remoteSt.SubStorage(dumpId, true)
+	if err != nil {
+		return nil, fmt.Errorf("cannot open dump %s: %w", dumpId, err)
+	}
 
 	f, err := st.GetObject(ctx, MetadataJsonFileName)
 	if err != nil {

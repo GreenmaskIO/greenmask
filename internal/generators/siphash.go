@@ -1,11 +1,11 @@
 package generators
 
 import (
+	"crypto/sha3"
 	"fmt"
 	"hash"
 
 	"github.com/dchest/siphash"
-	"golang.org/x/crypto/sha3"
 )
 
 type SipHash struct {

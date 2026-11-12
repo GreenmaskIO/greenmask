@@ -31,6 +31,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/greenmaskio/storages"
 	"github.com/jackc/pgx/v5"
 	"github.com/rs/zerolog/log"
 	"golang.org/x/sync/errgroup"
@@ -42,7 +43,6 @@ import (
 	"github.com/greenmaskio/greenmask/internal/db/postgres/toc"
 	"github.com/greenmaskio/greenmask/internal/db/postgres/utils"
 	"github.com/greenmaskio/greenmask/internal/domains"
-	"github.com/greenmaskio/greenmask/internal/storages"
 	"github.com/greenmaskio/greenmask/pkg/toolkit"
 )
 
