@@ -40,3 +40,17 @@ func TestOptions_GetParams_excludeExtension(t *testing.T) {
 		options.GetParams(),
 	)
 }
+
+func TestOptions_GetParams_lockWaitTimeout(t *testing.T) {
+	options := &Options{
+		Jobs:            -1,
+		Compression:     -1,
+		LockWaitTimeout: -1,
+		Port:            pgDefaultPort,
+	}
+
+	assert.NotContains(t, options.GetParams(), "--lock-wait-timeout")
+
+	options.LockWaitTimeout = 5000
+	assert.Equal(t, []string{"--lock-wait-timeout", "5000"}, options.GetParams())
+}
