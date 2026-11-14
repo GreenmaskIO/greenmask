@@ -153,7 +153,7 @@ func (o *Options) GetParams() []string {
 		//args = append(args, "--compress", strconv.FormatInt(int64(o.Compression), 10))
 	}
 	if o.LockWaitTimeout != -1 {
-		args = append(args, "--lock-wait-timeout", strconv.FormatInt(int64(o.Compression), 10))
+		args = append(args, "--lock-wait-timeout", strconv.FormatInt(int64(o.LockWaitTimeout), 10))
 	}
 	if o.NoSync {
 		args = append(args, "--no-sync")
