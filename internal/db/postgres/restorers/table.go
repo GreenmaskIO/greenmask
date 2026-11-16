@@ -23,6 +23,7 @@ import (
 
 	"github.com/greenmaskio/storages"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgproto3"
 	"github.com/rs/zerolog/log"
 
@@ -85,7 +86,7 @@ func (td *TableRestorer) Execute(ctx context.Context, conn utils.PGConnector) er
 		Msgf("performing pgcopy statement")
 	f := tx.Conn().PgConn().Frontend()
 
-	if err = td.restoreCopy(ctx, f, r); err != nil {
+	if err = td.restoreCopy(ctx, f, r, copyNoticeHandler(tx.Conn())); err != nil {
 		rollbackTransaction(ctx, tx, td.entry)
 		if td.opt.ExitOnError {
 			return fmt.Errorf("unable to restore table: %w", err)
@@ -111,13 +112,15 @@ func (td *TableRestorer) Execute(ctx context.Context, conn utils.PGConnector) er
 	return nil
 }
 
-func (td *TableRestorer) restoreCopy(ctx context.Context, f *pgproto3.Frontend, r io.Reader) error {
-	if err := td.initCopy(ctx, f); err != nil {
+func (td *TableRestorer) restoreCopy(
+	ctx context.Context, f *pgproto3.Frontend, r io.Reader, onNotice func(*pgproto3.NoticeResponse),
+) error {
+	if err := td.initCopy(ctx, f, onNotice); err != nil {
 		return fmt.Errorf("error initializing pgcopy: %w", err)
 	}
 
 	if td.opt.BatchSize > 0 {
-		if err := td.streamCopyDataByBatch(ctx, f, r); err != nil {
+		if err := td.streamCopyDataByBatch(ctx, f, r, onNotice); err != nil {
 			return fmt.Errorf("error streaming pgcopy data: %w", err)
 		}
 	} else {
@@ -126,13 +129,15 @@ func (td *TableRestorer) restoreCopy(ctx context.Context, f *pgproto3.Frontend, 
 		}
 	}
 
-	if err := td.postStreamingHandle(ctx, f); err != nil {
+	if err := td.postStreamingHandle(ctx, f, onNotice); err != nil {
 		return fmt.Errorf("error post streaming handling: %w", err)
 	}
 	return nil
 }
 
-func (td *TableRestorer) initCopy(ctx context.Context, f *pgproto3.Frontend) error {
+func (td *TableRestorer) initCopy(
+	ctx context.Context, f *pgproto3.Frontend, onNotice func(*pgproto3.NoticeResponse),
+) error {
 	err := sendMessage(f, &pgproto3.Query{String: *td.entry.CopyStmt})
 	if err != nil {
 		return fmt.Errorf("error sending Query message: %w", err)
@@ -155,6 +160,8 @@ func (td *TableRestorer) initCopy(ctx context.Context, f *pgproto3.Frontend) err
 			return nil
 		case *pgproto3.ErrorResponse:
 			return fmt.Errorf("error from postgres connection: %w", pgerrors.NewPgError(v))
+		case *pgproto3.NoticeResponse:
+			onNotice(v)
 		default:
 			return fmt.Errorf("unknown message %+v", v)
 		}
@@ -164,7 +171,9 @@ func (td *TableRestorer) initCopy(ctx context.Context, f *pgproto3.Frontend) err
 // streamCopyDataByBatch - stream pgcopy data from table dump in batches. It handles errors only on the end each batch
 // If the batch size is reached it completes the batch and starts a new one. If an error occurs during the batch it
 // stops immediately and returns the error
-func (td *TableRestorer) streamCopyDataByBatch(ctx context.Context, f *pgproto3.Frontend, r io.Reader) (err error) {
+func (td *TableRestorer) streamCopyDataByBatch(
+	ctx context.Context, f *pgproto3.Frontend, r io.Reader, onNotice func(*pgproto3.NoticeResponse),
+) (err error) {
 	bi := bufio.NewReader(r)
 	buf := make([]byte, defaultBufferSize)
 	var lineNum int64
@@ -188,7 +197,7 @@ func (td *TableRestorer) streamCopyDataByBatch(ctx context.Context, f *pgproto3.
 		}
 
 		if lineNum%td.opt.BatchSize == 0 {
-			if err = td.completeBatch(ctx, f); err != nil {
+			if err = td.completeBatch(ctx, f, onNotice); err != nil {
 				return fmt.Errorf("error completing batch: %w", err)
 			}
 		}
@@ -232,17 +241,21 @@ func (td *TableRestorer) streamCopyData(ctx context.Context, f *pgproto3.Fronten
 }
 
 // completeBatch - complete batch of pgcopy data and initiate new one
-func (td *TableRestorer) completeBatch(ctx context.Context, f *pgproto3.Frontend) error {
-	if err := td.postStreamingHandle(ctx, f); err != nil {
+func (td *TableRestorer) completeBatch(
+	ctx context.Context, f *pgproto3.Frontend, onNotice func(*pgproto3.NoticeResponse),
+) error {
+	if err := td.postStreamingHandle(ctx, f, onNotice); err != nil {
 		return err
 	}
-	if err := td.initCopy(ctx, f); err != nil {
+	if err := td.initCopy(ctx, f, onNotice); err != nil {
 		return err
 	}
 	return nil
 }
 
-func (td *TableRestorer) postStreamingHandle(ctx context.Context, f *pgproto3.Frontend) error {
+func (td *TableRestorer) postStreamingHandle(
+	ctx context.Context, f *pgproto3.Frontend, onNotice func(*pgproto3.NoticeResponse),
+) error {
 	// Perform post streaming handling
 	err := sendMessage(f, &pgproto3.CopyDone{})
 	if err != nil {
@@ -266,8 +279,24 @@ func (td *TableRestorer) postStreamingHandle(ctx context.Context, f *pgproto3.Fr
 			return mainErr
 		case *pgproto3.ErrorResponse:
 			mainErr = fmt.Errorf("error from postgres connection: %w", pgerrors.NewPgError(v))
+		case *pgproto3.NoticeResponse:
+			onNotice(v)
 		default:
 			return fmt.Errorf("unknown message %+v", v)
+		}
+	}
+}
+
+// copyNoticeHandler returns a function that passes a notice the server sends
+// during a COPY, e.g. from a trigger or a generated column, to the connection's
+// notice handler. The COPY reads the connection's messages itself, so pgx does
+// not see these notices and cannot pass them on as it does for other queries.
+func copyNoticeHandler(conn *pgx.Conn) func(*pgproto3.NoticeResponse) {
+	pgConn := conn.PgConn()
+	onNotice := conn.Config().OnNotice
+	return func(n *pgproto3.NoticeResponse) {
+		if onNotice != nil {
+			onNotice(pgConn, (*pgconn.Notice)(pgconn.ErrorResponseToPgError((*pgproto3.ErrorResponse)(n))))
 		}
 	}
 }
