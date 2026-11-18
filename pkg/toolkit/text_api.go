@@ -16,10 +16,14 @@ package toolkit
 
 import (
 	"bufio"
+	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 )
+
+var errTextApiNewLineInValue = errors.New("text driver cannot send values with new line: use csv or json driver")
 
 type TextApi struct {
 	attributeName    string
@@ -32,6 +36,9 @@ type TextApi struct {
 	record *RawRecordText
 	// emptyRecord - allocated static empty object in case wi just send \n
 	emptyRecord *RawRecordText
+	// encBuf and lineBuf - reusable buffers for writing and reading lines
+	encBuf  []byte
+	lineBuf []byte
 }
 
 func NewTextApi(columnIdx int, skipOriginalData bool) (*TextApi, error) {
@@ -84,8 +91,13 @@ func (ta *TextApi) Encode(ctx context.Context, row RowDriver) (err error) {
 	if err != nil {
 		return fmt.Errorf("error encodig row data via text interaction API: %w", err)
 	}
-	data = append(data, '\n')
-	_, err = ta.w.Write(data)
+	// the protocol is line based, so a value with a new line would desync the transformer
+	if bytes.IndexByte(data, '\n') != -1 {
+		return errTextApiNewLineInValue
+	}
+	// copy into own buffer: appending to data may overwrite the shared row memory
+	ta.encBuf = append(append(ta.encBuf[:0], data...), '\n')
+	_, err = ta.w.Write(ta.encBuf)
 
 	if err != nil {
 		return err
@@ -95,12 +107,20 @@ func (ta *TextApi) Encode(ctx context.Context, row RowDriver) (err error) {
 }
 
 func (ta *TextApi) Decode(ctx context.Context) (RowDriver, error) {
-	line, _, err := ta.lineReader.ReadLine()
-	if err != nil {
-		return nil, err
+	// collect the whole line: ReadLine returns long lines in chunks
+	ta.lineBuf = ta.lineBuf[:0]
+	for {
+		line, isPrefix, err := ta.lineReader.ReadLine()
+		if err != nil {
+			return nil, err
+		}
+		ta.lineBuf = append(ta.lineBuf, line...)
+		if !isPrefix {
+			break
+		}
 	}
 
-	if err = ta.record.Decode(line); err != nil {
+	if err := ta.record.Decode(ta.lineBuf); err != nil {
 		return nil, fmt.Errorf("error decoding via text interaction API: %w", err)
 	}
 
