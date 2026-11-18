@@ -24,6 +24,7 @@ import (
 
 	"github.com/rs/zerolog/log"
 
+	"github.com/greenmaskio/greenmask/internal/db/postgres/utils"
 	"github.com/greenmaskio/greenmask/internal/utils/cmd_runner"
 )
 
@@ -42,7 +43,8 @@ func NewPgRestore(binPath string) *PgRestore {
 }
 
 func (pr *PgRestore) Run(ctx context.Context, options *Options) error {
-	log.Debug().Msgf("pg_restore: %s %s\n", path.Join(pr.BinPath, pgRestoreExecutable), strings.Join(options.GetParams(), " "))
+	// The --dbname value can be a connection string with a user and password, so they are hidden in the log.
+	log.Debug().Msgf("pg_restore: %s %s\n", path.Join(pr.BinPath, pgRestoreExecutable), strings.Join(utils.HideCredentialsInArgs(options.GetParams()), " "))
 	return cmd_runner.Run(ctx, &log.Logger, path.Join(pr.BinPath, pgRestoreExecutable), options.GetParams()...)
 }
 
