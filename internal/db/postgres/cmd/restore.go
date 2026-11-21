@@ -100,6 +100,9 @@ type Restore struct {
 	postDataClenUpToc string
 	restoredDumpIds   map[int32]bool
 	maintenanceDbName string
+	// ignoredErrors are the errors the restore carried on after because
+	// exit-on-error is off. Run returns them at the end. Guarded by mx.
+	ignoredErrors []error
 }
 
 func NewRestore(
@@ -146,6 +149,53 @@ func (r *Restore) Run(ctx context.Context) error {
 		return fmt.Errorf("post-data stage restoration error: %w", err)
 	}
 
+	return r.ignoredErrorsResult()
+}
+
+// ignoreError records an error the restore carries on after because
+// exit-on-error is off.
+func (r *Restore) ignoreError(err error) {
+	log.Warn().Err(err).Msg("error ignored because exit-on-error is off")
+	r.mx.Lock()
+	r.ignoredErrors = append(r.ignoredErrors, err)
+	r.mx.Unlock()
+}
+
+// ignoredErrorsResult returns an error listing the ignored errors, or nil if
+// there were none, so a restore that ran to the end despite errors exits with a
+// non-zero code, as pg_restore does.
+func (r *Restore) ignoredErrorsResult() error {
+	r.mx.RLock()
+	defer r.mx.RUnlock()
+	if len(r.ignoredErrors) == 0 {
+		return nil
+	}
+	return fmt.Errorf(
+		"restore finished with %d ignored error(s): %w", len(r.ignoredErrors), errors.Join(r.ignoredErrors...),
+	)
+}
+
+// handlePgRestoreError decides whether a pg_restore failure for a section stops
+// the restore. pg_restore exits with code 1 when it ignored errors and finished
+// the section, which is recorded and does not stop the restore unless
+// exit-on-error is on.
+func (r *Restore) handlePgRestoreError(section string, err error) error {
+	var exitErr *exec.ExitError
+	if r.restoreOpt.ExitOnError || (errors.As(err, &exitErr) && exitErr.ExitCode() != 1) {
+		return fmt.Errorf("cannot restore %s section using pg_restore: %w", section, err)
+	}
+	r.ignoreError(fmt.Errorf("pg_restore reported errors in the %s section: %w", section, err))
+	return nil
+}
+
+// handleTaskError decides whether a failed restoration task stops the worker.
+// A restorers.IgnoredError is recorded and the restore carries on.
+func (r *Restore) handleTaskError(task restorationTask, id int, err error) error {
+	var ignored *restorers.IgnoredError
+	if !errors.As(err, &ignored) {
+		return fmt.Errorf("unable to perform restoration task (worker %d restoring %s): %w", id, task.DebugInfo(), err)
+	}
+	r.ignoreError(fmt.Errorf("%s: %w", task.DebugInfo(), err))
 	return nil
 }
 
@@ -420,9 +470,8 @@ func (r *Restore) preDataRestore(ctx context.Context) error {
 	}
 
 	if err := r.pgRestore.Run(ctx, &options); err != nil {
-		var exitErr *exec.ExitError
-		if r.restoreOpt.ExitOnError || (errors.As(err, &exitErr) && exitErr.ExitCode() != 1) {
-			return fmt.Errorf("cannot restore pre-data section using pg_restore: %w", err)
+		if err := r.handlePgRestoreError("pre-data", err); err != nil {
+			return err
 		}
 	}
 
@@ -641,9 +690,8 @@ func (r *Restore) postDataRestore(ctx context.Context) error {
 	}
 
 	if err = r.pgRestore.Run(ctx, &options); err != nil {
-		var exitErr *exec.ExitError
-		if r.restoreOpt.ExitOnError || (errors.As(err, &exitErr) && exitErr.ExitCode() != 1) {
-			return fmt.Errorf("cannot restore post-data section using pg_restore: %w", err)
+		if err := r.handlePgRestoreError("post-data", err); err != nil {
+			return err
 		}
 	}
 
@@ -877,7 +925,9 @@ func (r *Restore) restoreWorker(ctx context.Context, tasks <-chan restorationTas
 
 		// Open new transaction for each task
 		if err = task.Execute(ctx, utils.NewPGConn(conn)); err != nil {
-			return fmt.Errorf("unable to perform restoration task (worker %d restoring %s): %w", id, task.DebugInfo(), err)
+			if err := r.handleTaskError(task, id, err); err != nil {
+				return err
+			}
 		}
 		r.putDumpId(task)
 		log.Debug().
