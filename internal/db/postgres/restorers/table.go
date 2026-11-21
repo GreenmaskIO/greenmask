@@ -90,11 +90,7 @@ func (td *TableRestorer) Execute(ctx context.Context, conn utils.PGConnector) er
 		if td.opt.ExitOnError {
 			return fmt.Errorf("unable to restore table: %w", err)
 		}
-		log.Warn().
-			Err(err).
-			Str("objectName", td.DebugInfo()).
-			Msg("unable to restore table")
-		return nil
+		return &IgnoredError{Err: fmt.Errorf("unable to restore table: %w", err)}
 	}
 
 	if err := td.resetTx(ctx, tx); err != nil {

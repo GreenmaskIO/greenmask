@@ -103,8 +103,7 @@ func (td *TableRestorerInsertFormat) Execute(ctx context.Context, conn utils.PGC
 		if td.opt.ExitOnError {
 			return fmt.Errorf("error streaming pgcopy data: %w", err)
 		}
-		log.Warn().Err(err).Msg("error streaming pgcopy data")
-		return nil
+		return &IgnoredError{Err: fmt.Errorf("error streaming pgcopy data: %w", err)}
 	}
 	return nil
 }
