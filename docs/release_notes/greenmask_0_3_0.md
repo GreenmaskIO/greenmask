@@ -11,19 +11,22 @@ Greenmask 0.3.0 moves the storage backends to the [greenmaskio/storages](https:/
 * fix: `validate --diff` now deletes its temporary directory after the run
 * fix: storage keys are checked before use. `restore` and `show-dump` with a dump ID that leaves the storage, such as `../x`, report that the dump is not found
 * docs: `s3.disable_ssl` is deprecated. It never had an effect: put `http://` in `endpoint` to use plain HTTP
+* chore: Greenmask is built with Go 1.27.4
+* chore: [greenmaskio/storages](https://github.com/greenmaskio/storages) is updated to v0.5.1, with a newer AWS SDK for the S3 storage
 
 ## Upgrade notes
 
-The dump format and the storage layout have not changed. Dumps made by 0.2.x can be listed, restored and deleted by 0.3.0, and the other way round, so rolling back to 0.2.26 is safe.
+The dump format and the storage layout have not changed. Dumps made by 0.2.x can be listed, restored and deleted by 0.3.0, and the other way round, so rolling back to 0.2.27 is safe.
 
 * **S3 with `role_arn`.** If `role_arn` is set without `access_key_id` and `secret_access_key`, 0.2.x assumed the role but kept using the default credentials. 0.3.0 uses the role, so the role itself needs access to the bucket. The role is assumed with the default AWS credential chain on the first storage request, so a wrong or untrusted role fails there, not at startup.
 * **S3 shared config.** The AWS SDK now always reads `~/.aws/config`, including the region and the credentials of the active profile. Before, it read the file only with `AWS_SDK_LOAD_CONFIG=1`. A `region` set in the Greenmask config takes precedence.
 * **S3 endpoint and retries.** An `endpoint` without a scheme is still used as `https://<endpoint>`, and `max_retries` still counts retries after the first attempt.
 * **Logs.** Debug output of the AWS and Azure SDKs and the wording of some storage errors have changed. Messages about invalid storage config are the same.
 * **SSH.** The connection now times out after `30s` by default. Raise `ssh.connect_timeout` for hosts that are slower to connect.
+* **Go 1.27.** The macOS binaries need macOS 13 Ventura or later. The legacy TLS settings `GODEBUG=tlsrsakex=1`, `tls3des=1` and `tls10server=1` are gone, so a PostgreSQL server or an S3-compatible storage that offers only RSA key exchange or 3DES can no longer be reached. On macOS and Windows, `SSL_CERT_FILE` and `SSL_CERT_DIR` now replace the system certificate store for TLS connections that rely on it, such as the S3 and Azure storages.
 * **Interrupted uploads.** The `directory` and `ssh` storages write each file under a temporary `.copy-*` name and rename it when done. A dump killed in the middle can leave such a file in its directory. It does not affect `list-dumps` or `restore`, and `delete` removes it with the dump.
 
-#### Full Changelog: [v0.2.26...v0.3.0](https://github.com/GreenmaskIO/greenmask/compare/v0.2.26...v0.3.0)
+#### Full Changelog: [v0.2.27...v0.3.0](https://github.com/GreenmaskIO/greenmask/compare/v0.2.27...v0.3.0)
 
 ## Links
 
