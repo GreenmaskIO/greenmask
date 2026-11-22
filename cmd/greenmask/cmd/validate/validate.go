@@ -24,10 +24,10 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
+	"github.com/greenmaskio/greenmask/cmd/greenmask/cmd/internal/cmdutil"
 	cmdInternals "github.com/greenmaskio/greenmask/internal/db/postgres/cmd"
 	"github.com/greenmaskio/greenmask/internal/db/postgres/transformers/utils"
 	"github.com/greenmaskio/greenmask/internal/domains"
-	"github.com/greenmaskio/greenmask/internal/storages/builder"
 	"github.com/greenmaskio/greenmask/internal/utils/logger"
 )
 
@@ -73,11 +73,7 @@ func run(cmd *cobra.Command, args []string) {
 
 	var remoteSt storages.Storager
 	if Config.Validate.Schema {
-		var err error
-		remoteSt, err = builder.GetStorage(ctx, &Config.Storage, &Config.Log)
-		if err != nil {
-			log.Fatal().Err(err).Msg("cannot initialize remote storage for schema diff")
-		}
+		remoteSt = cmdutil.OpenStorage(ctx, Config)
 		defer func() {
 			if err := remoteSt.Close(); err != nil {
 				log.Warn().Err(err).Msg("error closing storage")

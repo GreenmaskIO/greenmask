@@ -76,6 +76,9 @@ When using S3-compatible storage, follow your cloud provider's security best pra
 
 - Use IAM roles or short-lived credentials instead of long-lived access keys where possible.
 - Enable server-side encryption on the target bucket.
+- For data the storage provider must not read, enable client-side encryption (`storage.encryption`), and keep the key in
+  `STORAGE_ENCRYPTION_KEY` rather than in a config file. See
+  [Client-side encryption](docs/configuration.md#client-side-encryption).
 - Restrict bucket access to only the principals that need it.
 
 ### Transformation configuration

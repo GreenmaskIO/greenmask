@@ -190,6 +190,11 @@ func (c *SSHStorageConfig) Validate() error {
 	return nil
 }
 
+// EncryptionConfig turns on client-side encryption when Key is set. Key is a secret.
+type EncryptionConfig struct {
+	Key string `mapstructure:"key" yaml:"-" json:"-"`
+}
+
 type DirectoryStorageConfig struct {
 	Path string `mapstructure:"path"`
 }

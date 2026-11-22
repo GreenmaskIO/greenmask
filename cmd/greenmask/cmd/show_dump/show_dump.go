@@ -24,9 +24,9 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 
+	"github.com/greenmaskio/greenmask/cmd/greenmask/cmd/internal/cmdutil"
 	cmdInternals "github.com/greenmaskio/greenmask/internal/db/postgres/cmd"
 	pgDomains "github.com/greenmaskio/greenmask/internal/domains"
-	"github.com/greenmaskio/greenmask/internal/storages/builder"
 	"github.com/greenmaskio/greenmask/internal/utils/logger"
 )
 
@@ -53,10 +53,7 @@ var (
 
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
-			st, err := builder.GetStorage(ctx, &Config.Storage, &Config.Log)
-			if err != nil {
-				log.Fatal().Err(err).Msg("error building storage")
-			}
+			st := cmdutil.OpenStorage(ctx, Config)
 			defer func() {
 				if err := st.Close(); err != nil {
 					log.Warn().Err(err).Msg("error closing storage")
@@ -99,7 +96,11 @@ var (
 				}
 			}
 
-			if err := cmdInternals.ShowDump(ctx, st, dumpId, format); err != nil {
+			dumpSt, err := st.SubStorage(dumpId, true)
+			if err != nil {
+				log.Fatal().Err(err).Str("DumpId", dumpId).Msg("cannot open dump")
+			}
+			if err := cmdInternals.ShowDump(ctx, dumpSt, format); err != nil {
 				log.Fatal().Err(err).Msg("")
 			}
 		},

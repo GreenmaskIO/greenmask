@@ -16,6 +16,8 @@ Parameters:
 
 * `--format` — format of printing. Can be `text` or `json`.
 
+An [encrypted dump](../configuration.md#client-side-encryption) is shown only with the key it was encrypted to; without it, or with another key, `show-dump` fails.
+
 To display metadata information about a dump, use the following command:
 
 ```shell

@@ -28,6 +28,7 @@ The list includes the following attributes:
     * `failed` — the dump creation process failed
     * `unknown or failed` — the deprecated status of the dump that is used for failed dumps or dumps in progress for 
        version v0.1.14 and earlier
+* `ENCRYPTED` — `true` for a dump with [client-side encryption](../configuration.md#client-side-encryption). Without its key, `DATE`, `DATABASE`, `SIZE`, `COMPRESSED SIZE`, `DURATION` and `DESCRIPTION` are empty and `TRANSFORMED` is `false`
 * `DESCRIPTION` — an optional user-provided note about the dump
 
 

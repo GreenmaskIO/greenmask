@@ -19,6 +19,8 @@ Alternatively, to restore the latest completed dump, use the following command:
 greenmask --config=config.yml restore latest
 ```
 
+To restore an [encrypted dump](../configuration.md#client-side-encryption), set the key it was encrypted to; without it, or with another key, `restore` fails. `latest` picks the newest dump whether it is encrypted or not, so an encrypted latest dump without its key is an error, not a fallback to an older dump.
+
 Note that the `restore` command shares the same parameters and environment variables as `pg_restore`,
 allowing you to configure the restoration process as needed.
 

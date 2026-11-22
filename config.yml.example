@@ -39,6 +39,8 @@ storage:
 #    region: "us-east-1"
 #    access_key_id: "Q3AM3UQ867SPQQA43P2F"
 #    secret_access_key: "zuf+tfteSlswRu7BJ86wekitnifILbZam1KYY3TG"
+#  encryption:
+#    key: "${STORAGE_ENCRYPTION_KEY}" # age identity, AGE-SECRET-KEY-1...; setting it turns encryption on, and the env var alone works too
 
 dump:
   pg_dump_options:

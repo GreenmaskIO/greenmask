@@ -3,7 +3,6 @@ package dumpstatus
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"time"
@@ -24,37 +23,27 @@ const (
 
 const failedTimeoutMultiplayer time.Duration = 2
 
-const heartBeatDoneContent = "done"
-
-func GetDumpStatusAndMetadata(ctx context.Context, st storages.Storager) (string, *storage.Metadata, error) {
+// GetStatus classifies the dump by its heartbeat; it reads no encrypted object, so it needs no key.
+func GetStatus(ctx context.Context, st storages.Storager) (string, error) {
 	objectInfo, err := st.Stat(cmd.HeartBeatFileName)
 	if err != nil {
-		return "", nil, err
+		return "", err
 	}
 	if !objectInfo.Exist {
-		// The logic for legacy
-		// 1. Check metadata exist
-		// 2. Open if exist and return MD and status Done
+		// A legacy dump has no heartbeat: it is done when its metadata exists.
 		exist, err := isMetadataExist(st)
 		if err != nil {
-			return "", nil, err
+			return "", err
 		}
 		if !exist {
-			return UnknownOrFailedStatusName, nil, nil
+			return UnknownOrFailedStatusName, nil
 		}
-		md, err := getMetadata(ctx, st)
-		if err != nil {
-			if errors.Is(err, storages.ErrFileNotFound) {
-				return UnknownOrFailedStatusName, nil, nil
-			}
-			return "", nil, fmt.Errorf("failed to get metadata: %w", err)
-		}
-		return heartBeatDoneContent, md, nil
+		return DoneStatusName, nil
 	}
 
 	f, err := st.GetObject(ctx, cmd.HeartBeatFileName)
 	if err != nil {
-		return "", nil, fmt.Errorf("failed to get heart beat file: %w", err)
+		return "", fmt.Errorf("failed to get heart beat file: %w", err)
 	}
 	defer func() {
 		if err := f.Close(); err != nil {
@@ -63,29 +52,28 @@ func GetDumpStatusAndMetadata(ctx context.Context, st storages.Storager) (string
 	}()
 	data, err := io.ReadAll(f)
 	if err != nil {
-		return "", nil, fmt.Errorf("failed to read heart beat file: %w", err)
+		return "", fmt.Errorf("failed to read heart beat file: %w", err)
 	}
 	if len(data) == 0 {
-		return FailedStatusName, nil, nil
+		return FailedStatusName, nil
 	}
 	switch string(data) {
 	case cmd.HeartBeatDoneContent:
-		// if done - read and parse metadata
-		md, err := getMetadata(ctx, st)
+		exist, err := isMetadataExist(st)
 		if err != nil {
-			if errors.Is(err, storages.ErrFileNotFound) {
-				return UnknownOrFailedStatusName, nil, nil
-			}
-			return "", nil, fmt.Errorf("failed to get metadata: %w", err)
+			return "", err
 		}
-		return heartBeatDoneContent, md, nil
+		if !exist {
+			return UnknownOrFailedStatusName, nil
+		}
+		return DoneStatusName, nil
 	case cmd.HeartBeatInProgressContent:
 		if time.Now().After(objectInfo.LastModified.Add(cmd.HeartBeatWriteInterval * failedTimeoutMultiplayer)) {
-			return FailedStatusName, nil, nil
+			return FailedStatusName, nil
 		}
-		return InProgressStatusName, nil, nil
+		return InProgressStatusName, nil
 	}
-	return UnknownOrFailedStatusName, nil, nil
+	return UnknownOrFailedStatusName, nil
 }
 
 func isMetadataExist(st storages.Storager) (bool, error) {
@@ -96,7 +84,8 @@ func isMetadataExist(st storages.Storager) (bool, error) {
 	return stat.Exist, nil
 }
 
-func getMetadata(ctx context.Context, st storages.Storager) (*storage.Metadata, error) {
+// GetMetadata reads the dump's metadata; an encrypted dump needs its key.
+func GetMetadata(ctx context.Context, st storages.Storager) (*storage.Metadata, error) {
 	mf, err := st.GetObject(ctx, cmd.MetadataJsonFileName)
 	if err != nil {
 		return nil, fmt.Errorf("get metadata from storage: %w", err)

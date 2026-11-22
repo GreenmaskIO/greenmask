@@ -14,10 +14,10 @@ import (
 func TestRenderDumpTable(t *testing.T) {
 	rows := [][]string{
 		{"1731400000000", "2026-11-12T10:00:00Z", "playground", "1.5 MiB", "300.2 KiB", "00:00:03", "true", "done",
-			strings.Repeat("d", 60)},
-		{"1731300000000", "", "", "", "", "", "false", "in progress", ""},
+			"false", strings.Repeat("d", 60)},
+		{"1731300000000", "", "", "", "", "", "false", "in progress", "true", ""},
 		{"1731200000000", "2026-11-10T10:00:00Z", "playground", "2.0 KiB", "1.0 KiB", "00:01:00", "false", "done",
-			strings.Repeat("x", 57) + "..."},
+			"false", strings.Repeat("x", 57) + "..."},
 	}
 	var out bytes.Buffer
 	require.NoError(t, renderDumpTable(&out, rows))

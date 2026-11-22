@@ -87,11 +87,12 @@ type Common struct {
 }
 
 type StorageConfig struct {
-	Type      string                  `mapstructure:"type" yaml:"type" json:"type,omitempty"`
-	S3        *S3StorageConfig        `mapstructure:"s3"  json:"s3,omitempty" yaml:"s3"`
-	Azure     *AzureStorageConfig     `mapstructure:"azure" json:"azure,omitempty" yaml:"azure"`
-	Directory *DirectoryStorageConfig `mapstructure:"directory" json:"directory,omitempty" yaml:"directory"`
-	SSH       *SSHStorageConfig       `mapstructure:"ssh" json:"ssh,omitempty" yaml:"ssh"`
+	Type       string                  `mapstructure:"type" yaml:"type" json:"type,omitempty"`
+	S3         *S3StorageConfig        `mapstructure:"s3"  json:"s3,omitempty" yaml:"s3"`
+	Azure      *AzureStorageConfig     `mapstructure:"azure" json:"azure,omitempty" yaml:"azure"`
+	Directory  *DirectoryStorageConfig `mapstructure:"directory" json:"directory,omitempty" yaml:"directory"`
+	SSH        *SSHStorageConfig       `mapstructure:"ssh" json:"ssh,omitempty" yaml:"ssh"`
+	Encryption EncryptionConfig        `mapstructure:"encryption" json:"encryption,omitempty" yaml:"encryption"`
 }
 
 type LogConfig struct {

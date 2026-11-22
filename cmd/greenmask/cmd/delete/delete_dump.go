@@ -19,6 +19,7 @@ import (
 	"context"
 	"fmt"
 	"slices"
+	"strconv"
 	"time"
 
 	"github.com/greenmaskio/storages"
@@ -27,8 +28,8 @@ import (
 	"github.com/spf13/cobra"
 	gostr "github.com/xhit/go-str2duration/v2"
 
+	"github.com/greenmaskio/greenmask/cmd/greenmask/cmd/internal/cmdutil"
 	pgDomains "github.com/greenmaskio/greenmask/internal/domains"
-	"github.com/greenmaskio/greenmask/internal/storages/builder"
 	"github.com/greenmaskio/greenmask/internal/utils/dumpstatus"
 	"github.com/greenmaskio/greenmask/internal/utils/logger"
 )
@@ -68,10 +69,7 @@ var (
 func run(dumpId string) error {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	st, err := builder.GetStorage(ctx, &Config.Storage, &Config.Log)
-	if err != nil {
-		log.Fatal().Err(err).Msg("")
-	}
+	st := cmdutil.OpenStorage(ctx, Config)
 	defer func() {
 		if err := st.Close(); err != nil {
 			log.Warn().Err(err).Msg("error closing storage")
@@ -231,6 +229,8 @@ func retainRecentNDumps(ctx context.Context, st storages.Storager) error {
 	return nil
 }
 
+// getSortedBackupWithStatuses classifies the dumps; a done dump whose metadata cannot be read is
+// dated by its id, and skipped when the id is no timestamp.
 func getSortedBackupWithStatuses(ctx context.Context, st storages.Storager) (*StorageResponse, error) {
 	var valid, failed, unknownOrFailed []*Dump
 	_, backups, err := st.ListDir(ctx)
@@ -238,7 +238,7 @@ func getSortedBackupWithStatuses(ctx context.Context, st storages.Storager) (*St
 		return nil, err
 	}
 	for _, backup := range backups {
-		status, md, err := dumpstatus.GetDumpStatusAndMetadata(ctx, backup)
+		status, err := dumpstatus.GetStatus(ctx, backup)
 		if err != nil {
 			log.Warn().
 				Str("DumpId", backup.Dirname()).
@@ -250,8 +250,13 @@ func getSortedBackupWithStatuses(ctx context.Context, st storages.Storager) (*St
 			Status: status,
 		}
 		if status == dumpstatus.DoneStatusName {
-			d.Date = md.StartedAt
-			d.Database = md.Header.DbName
+			if md, err := dumpstatus.GetMetadata(ctx, backup); err == nil {
+				d.Date = md.StartedAt
+				d.Database = md.Header.DbName
+			} else if d.Date, err = dumpTime(d.DumpId); err != nil {
+				log.Warn().Str("DumpId", d.DumpId).Err(err).Msg("skipping dump: cannot date it")
+				continue
+			}
 		}
 		switch status {
 		case dumpstatus.DoneStatusName:
@@ -280,6 +285,15 @@ func getSortedBackupWithStatuses(ctx context.Context, st storages.Storager) (*St
 		Failed:          failed,
 		UnknownOrFailed: unknownOrFailed,
 	}, nil
+}
+
+// dumpTime returns when the dump started, from its id.
+func dumpTime(dumpId string) (time.Time, error) {
+	ms, err := strconv.ParseInt(dumpId, 10, 64)
+	if err != nil {
+		return time.Time{}, fmt.Errorf("dump id %q is not a timestamp: %w", dumpId, err)
+	}
+	return time.UnixMilli(ms), nil
 }
 
 func deleteDumpById(ctx context.Context, st storages.Storager, d *Dump, dryRun bool) error {
