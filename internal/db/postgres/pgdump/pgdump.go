@@ -42,8 +42,8 @@ func NewPgDump(binPath string) *PgDump {
 }
 
 func (pd *PgDump) Run(ctx context.Context, options *Options) error {
-	// The --dbname value can be a connection string with a user and password, so they are hidden in the log.
-	log.Debug().Msgf("pg_dump: %s %s\n", path.Join(pd.BinPath, pgDumpExecutable), strings.Join(utils.HideCredentialsInArgs(options.GetParams()), " "))
+	// The --dbname value can be a connection string with a password, so it is hidden in the log.
+	log.Debug().Msgf("pg_dump: %s %s\n", path.Join(pd.BinPath, pgDumpExecutable), strings.Join(utils.HideDbNameInArgs(options.GetParams()), " "))
 	return cmd_runner.Run(ctx, &log.Logger, path.Join(pd.BinPath, pgDumpExecutable), options.GetParams()...)
 }
 
@@ -112,7 +112,7 @@ type Options struct {
 
 func (o *Options) GetPgDSN() (string, error) {
 	// URI or Standard format
-	if strings.HasPrefix(o.DbName, "postgresql://") || strings.HasPrefix(o.DbName, "postgres://") || strings.Contains(o.DbName, "=") {
+	if utils.IsConnString(o.DbName) {
 		return o.DbName, nil
 	}
 
