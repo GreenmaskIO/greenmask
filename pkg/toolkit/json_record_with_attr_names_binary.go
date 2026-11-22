@@ -53,10 +53,14 @@ func (rr *JsonRecordWithAttrNames) GetColumn(idx int) (*RawValue, error) {
 		return nil, fmt.Errorf("attribute with idx=%d is not found", idx)
 	}
 	res, ok := rr.record[name]
-	if !ok {
+	if !ok || res == nil {
 		return nil, fmt.Errorf("attribute with name=%s is not found", name)
 	}
-	return &RawValue{Data: []byte(*res.Data), IsNull: res.IsNull}, nil
+	var data []byte
+	if res.Data != nil {
+		data = []byte(*res.Data)
+	}
+	return NewRawValue(data, res.IsNull), nil
 }
 
 func (rr *JsonRecordWithAttrNames) SetColumn(idx int, v *RawValue) error {
@@ -78,8 +82,8 @@ func (rr *JsonRecordWithAttrNames) Encode() ([]byte, error) {
 }
 
 func (rr *JsonRecordWithAttrNames) Decode(data []byte) error {
-	record := make(RawRecordAttrsText, len(rr.idxToNames))
-	return json.Unmarshal(data, &record)
+	rr.Clean()
+	return json.Unmarshal(data, &rr.record)
 }
 
 func (rr *JsonRecordWithAttrNames) Length() int {
