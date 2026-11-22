@@ -15,14 +15,18 @@
 package cmd
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"os"
 	"os/exec"
 	"strconv"
+	"strings"
 	"sync"
 	"testing"
 
+	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -76,16 +80,34 @@ func TestRestore_IgnoredErrorsResult_NoErrors(t *testing.T) {
 	assert.NoError(t, restoreWithExitOnError(false).ignoredErrorsResult())
 }
 
+func TestRestore_IgnoredErrorsResult_LogsEachError(t *testing.T) {
+	var buf bytes.Buffer
+	previous := log.Logger
+	log.Logger = zerolog.New(&buf)
+	t.Cleanup(func() { log.Logger = previous })
+
+	r := restoreWithExitOnError(false)
+	r.ignoredErrors = []error{errors.New("first failure"), errors.New("second failure")}
+
+	assert.EqualError(t, r.ignoredErrorsResult(), "restore finished with 2 ignored error(s)")
+
+	lines := strings.Split(strings.TrimSpace(buf.String()), "\n")
+	require.Len(t, lines, 2)
+	for i, want := range []string{"first failure", "second failure"} {
+		assert.Contains(t, lines[i], `"level":"error"`)
+		assert.Contains(t, lines[i], want)
+	}
+}
+
 func TestRestore_HandlePgRestoreError(t *testing.T) {
 	t.Run("errors ignored by pg_restore are recorded", func(t *testing.T) {
 		r := restoreWithExitOnError(false)
 
 		require.NoError(t, r.handlePgRestoreError("post-data", exitError(t, 1)))
 
-		err := r.ignoredErrorsResult()
-		require.Error(t, err)
-		assert.Contains(t, err.Error(), "1 ignored error(s)")
-		assert.Contains(t, err.Error(), "pg_restore reported errors in the post-data section")
+		require.Len(t, r.ignoredErrors, 1)
+		assert.Contains(t, r.ignoredErrors[0].Error(), "pg_restore reported errors in the post-data section")
+		assert.EqualError(t, r.ignoredErrorsResult(), "restore finished with 1 ignored error(s)")
 	})
 
 	t.Run("other pg_restore failures stop the restore", func(t *testing.T) {
@@ -112,10 +134,10 @@ func TestRestore_HandleTaskError(t *testing.T) {
 
 		require.NoError(t, r.handleTaskError(fakeTask{}, 1, &restorers.IgnoredError{Err: loadErr}))
 
-		err := r.ignoredErrorsResult()
-		require.Error(t, err)
-		assert.ErrorIs(t, err, loadErr)
-		assert.Contains(t, err.Error(), `table "public"."orders"`)
+		require.Len(t, r.ignoredErrors, 1)
+		assert.ErrorIs(t, r.ignoredErrors[0], loadErr)
+		assert.Contains(t, r.ignoredErrors[0].Error(), `table "public"."orders"`)
+		assert.EqualError(t, r.ignoredErrorsResult(), "restore finished with 1 ignored error(s)")
 	})
 
 	t.Run("other task errors stop the worker", func(t *testing.T) {
@@ -133,8 +155,6 @@ func TestRestore_HandleTaskError(t *testing.T) {
 		require.NoError(t, r.handleTaskError(fakeTask{}, 1, &restorers.IgnoredError{Err: errors.New("a")}))
 		require.NoError(t, r.handlePgRestoreError("post-data", exitError(t, 1)))
 
-		err := r.ignoredErrorsResult()
-		require.Error(t, err)
-		assert.Contains(t, err.Error(), "2 ignored error(s)")
+		assert.EqualError(t, r.ignoredErrorsResult(), "restore finished with 2 ignored error(s)")
 	})
 }

@@ -161,18 +161,20 @@ func (r *Restore) ignoreError(err error) {
 	r.mx.Unlock()
 }
 
-// ignoredErrorsResult returns an error listing the ignored errors, or nil if
-// there were none, so a restore that ran to the end despite errors exits with a
-// non-zero code, as pg_restore does.
+// ignoredErrorsResult logs each ignored error and returns a short error, or nil
+// if there were none, so a restore that ran to the end despite errors exits with
+// a non-zero code, as pg_restore does. The errors are logged at the end so they
+// are not lost among pg_restore's output.
 func (r *Restore) ignoredErrorsResult() error {
 	r.mx.RLock()
 	defer r.mx.RUnlock()
 	if len(r.ignoredErrors) == 0 {
 		return nil
 	}
-	return fmt.Errorf(
-		"restore finished with %d ignored error(s): %w", len(r.ignoredErrors), errors.Join(r.ignoredErrors...),
-	)
+	for _, err := range r.ignoredErrors {
+		log.Error().Err(err).Msg("ignored error")
+	}
+	return fmt.Errorf("restore finished with %d ignored error(s)", len(r.ignoredErrors))
 }
 
 // handlePgRestoreError decides whether a pg_restore failure for a section stops
