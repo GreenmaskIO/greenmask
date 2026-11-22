@@ -98,9 +98,7 @@ func NewTransformationPipeline(ctx context.Context, eg *errgroup.Group, table *e
 
 func (tp *TransformationPipeline) Init(ctx context.Context) error {
 	var lastInitErr error
-	var idx int
-	var t *utils.TransformerContext
-	for idx, t = range tp.table.TransformersContext {
+	for _, t := range tp.table.TransformersContext {
 		if err := t.Transformer.Init(ctx); err != nil {
 			lastInitErr = err
 			log.Warn().Err(err).Msg("error initializing transformer")
@@ -108,14 +106,12 @@ func (tp *TransformationPipeline) Init(ctx context.Context) error {
 	}
 
 	if lastInitErr != nil {
-		lastInitialized := idx
-		for _, t = range tp.table.TransformersContext[:lastInitialized] {
+		// terminate all: a failed Init may have already started a process
+		for _, t := range tp.table.TransformersContext {
 			if err := t.Transformer.Done(ctx); err != nil {
 				log.Warn().Err(err).Msg("error terminating previously initialized transformer")
 			}
 		}
-	}
-	if lastInitErr != nil {
 		return fmt.Errorf("unable to initialize transformer: %w", lastInitErr)
 	}
 	if tp.isAsync {
