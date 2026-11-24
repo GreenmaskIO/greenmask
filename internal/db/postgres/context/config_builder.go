@@ -214,7 +214,7 @@ func setConfigToEntries(
 				warnings = append(warnings, checkWarns...)
 				continue
 			}
-			refTables, warns := getRefTables(tcm.entry, tcm.config, g, cfg)
+			refTables, warns := getRefTables(tcm.entry, tcm.config, g, cfg, r)
 			warnings = append(warnings, warns...)
 			res = append(res, refTables...)
 		}
@@ -244,9 +244,10 @@ func setConfigToEntries(
 
 func getRefTables(
 	rootTable *entries.Table, rootTableCfg *domains.Table, graph *subset.Graph, allTrans []*domains.Table,
+	r *transformersUtils.TransformerRegistry,
 ) ([]*tableConfigMapping, toolkit.ValidationWarnings) {
 	var res []*tableConfigMapping
-	rootTrans := collectRootTransformers(rootTable, rootTableCfg)
+	rootTrans := collectRootTransformers(rootTable, rootTableCfg, r)
 
 	// Start DFS traversal from the root table
 	// visited tracks (EdgeID -> TransformerMappingIndex) to prevent infinite loops
@@ -334,11 +335,16 @@ func buildRefsWithEndToEndDfs(
 	return warnings
 }
 
-// collectRootTransformers gathers all transformers in the root table's configuration
-func collectRootTransformers(rootTable *entries.Table, rootTableCfg *domains.Table) []*transformersMapping {
+// collectRootTransformers gathers the root table's transformers that are allowed to apply for references.
+func collectRootTransformers(
+	rootTable *entries.Table, rootTableCfg *domains.Table, r *transformersUtils.TransformerRegistry,
+) []*transformersMapping {
 	var rootTransformersMapping []*transformersMapping
 	for _, tr := range rootTableCfg.Transformers {
-		if !tr.ApplyForReferences || string(tr.Params[engineParameterName]) != "hash" {
+		if !tr.ApplyForReferences {
+			continue
+		}
+		if allowed, _ := isTransformerAllowedToApplyForReferences(tr, r); !allowed {
 			continue
 		}
 		idx := slices.Index(rootTable.PrimaryKey, string(tr.Params[columnParameterName]))
