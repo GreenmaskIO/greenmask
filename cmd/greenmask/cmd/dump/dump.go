@@ -114,7 +114,7 @@ func init() {
 	)
 	Cmd.Flags().StringSliceVarP(
 		&Config.Dump.PgDumpOptions.ExcludeSchema, "exclude-schema", "N", []string{},
-		"dump the specified schema(s) only",
+		"do NOT dump the specified schema(s)",
 	)
 	Cmd.Flags().BoolP("no-owner", "O", false, "skip restoration of object ownership in plain-text format")
 	Cmd.Flags().BoolP("schema-only", "s", false, "dump only the schema, no data")
