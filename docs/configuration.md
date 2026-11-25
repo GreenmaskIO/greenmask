@@ -501,6 +501,10 @@ As mentioned in [the architecture](architecture.md#backup-process), a backup con
 * `data` — scripts or commands can be executed before or after restoring the data section
 * `post-data` — scripts or commands can be executed before or after restoring the post-data section
 
+:::warning[Skipped sections skip their scripts]
+A section's scripts run only when that section is restored. If a section is skipped — for example with `--data-only`, `--schema-only` or `--section` — its scripts are skipped too, and Greenmask logs a warning naming the skipped section and the option that skipped it. With `--data-only`, put scripts that must run under the `data` section.
+:::
+
 Each stage can have a `"when"` condition with one of the following possible values:
 
 * `before` — execute the script or SQL command before the mentioned restoration stage

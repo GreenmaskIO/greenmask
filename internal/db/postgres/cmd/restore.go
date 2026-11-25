@@ -28,6 +28,7 @@ import (
 	"regexp"
 	"slices"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -175,6 +176,48 @@ func (r *Restore) readMetadata(ctx context.Context) error {
 		return fmt.Errorf("cannot decode metadata: %w", err)
 	}
 	return nil
+}
+
+// skippedSectionReason returns the option(s) that caused section to be
+// skipped, or "" if the section is not skipped.
+func (r *Restore) skippedSectionReason(section string) string {
+	var reasons []string
+	switch section {
+	case preDataSection, postDataSection:
+		if r.restoreOpt.DataOnly {
+			reasons = append(reasons, "--data-only")
+		}
+	case dataSection:
+		if r.restoreOpt.SchemaOnly {
+			reasons = append(reasons, "--schema-only")
+		}
+	}
+	if r.restoreOpt.Section != "" && r.restoreOpt.Section != section {
+		reasons = append(reasons, "--section="+r.restoreOpt.Section)
+	}
+	return strings.Join(reasons, " and ")
+}
+
+// logSkippedSectionScripts warns when a skipped section has scripts
+// configured, so they are not dropped silently.
+func (r *Restore) logSkippedSectionScripts(section string) {
+	scripts, ok := r.scripts[section]
+	if !ok || len(scripts) == 0 {
+		return
+	}
+	reason := r.skippedSectionReason(section)
+	if reason == "" {
+		return
+	}
+	names := make([]string, 0, len(scripts))
+	for _, script := range scripts {
+		names = append(names, script.Name)
+	}
+	log.Warn().
+		Str("section", section).
+		Str("skipped_by", reason).
+		Strs("scripts", names).
+		Msgf("skipping %q section scripts: section is skipped by %s, %d script(s) will not run", section, reason, len(scripts))
 }
 
 func (r *Restore) RunScripts(ctx context.Context, conn *pgx.Conn, section, when string) error {
@@ -356,6 +399,7 @@ func (r *Restore) preDataRestore(ctx context.Context) error {
 	// Do not restore this section if implicitly provided another section
 	if r.restoreOpt.DataOnly ||
 		(r.restoreOpt.Section != "" && r.restoreOpt.Section != preDataSection) {
+		r.logSkippedSectionScripts(preDataSection)
 		return nil
 	}
 
@@ -540,6 +584,7 @@ func (r *Restore) dataRestore(ctx context.Context) error {
 	// Do not restore this section if implicitly provided
 	if r.restoreOpt.SchemaOnly ||
 		(r.restoreOpt.Section != "" && r.restoreOpt.Section != dataSection) {
+		r.logSkippedSectionScripts(dataSection)
 		return nil
 	}
 
@@ -615,6 +660,7 @@ func (r *Restore) postDataRestore(ctx context.Context) error {
 	// Do not restore this section if implicitly provided
 	if r.restoreOpt.DataOnly ||
 		(r.restoreOpt.Section != "" && r.restoreOpt.Section != postDataSection) {
+		r.logSkippedSectionScripts(postDataSection)
 		return nil
 	}
 
