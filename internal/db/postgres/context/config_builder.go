@@ -262,7 +262,7 @@ func getRefTables(
 		activeMappings[rt.attNum] = append(activeMappings[rt.attNum], rt)
 	}
 	warnings := buildRefsWithEndToEndDfs(
-		rootTable, rootTableCfg, rootTrans, graph, allTrans, &res, false, visited, activeMappings,
+		rootTable, rootTableCfg, rootTrans, graph, allTrans, &res, visited, activeMappings,
 	)
 
 	return res, warnings
@@ -274,7 +274,7 @@ func getRefTables(
 func buildRefsWithEndToEndDfs(
 	table *entries.Table, rootTableCfg *domains.Table, rootTrans []*transformersMapping,
 	graph *subset.Graph, allTrans []*domains.Table,
-	res *[]*tableConfigMapping, checkEndToEnd bool, visited map[int]map[int]struct{},
+	res *[]*tableConfigMapping, visited map[int]map[int]struct{},
 	activeMappings map[int][]*transformersMapping) toolkit.ValidationWarnings {
 
 	if len(activeMappings) == 0 {
@@ -300,25 +300,22 @@ func buildRefsWithEndToEndDfs(
 		// We map transformed columns from parent's PK to child's FK, and check if those
 		// child columns are also part of child's PK to allow further end-to-end propagation.
 		childActiveMappings := make(map[int][]*transformersMapping)
-		childPK := r.To().Table().PrimaryKey
+		childTable := r.To().Table()
 		fkKeys := r.To().Keys()
 		for parentIdx, trans := range activeMappings {
 			// child FK column at parentIdx represents the same data as parent PK at parentIdx.
 			childColName := fkKeys[parentIdx].Name
-			// Is this child column part of child's PK?
-			for j, pkColName := range childPK {
-				if pkColName == childColName {
-					// This column is part of child's PK, so we can propagate it further.
-					childActiveMappings[j] = trans
-					break
-				}
+			// Only a column that is part of child's PK can be referenced further.
+			j := slices.Index(childTable.PrimaryKey, childColName)
+			if j == -1 {
+				continue
+			}
+			if trans = excludeTakenOverByChild(trans, allTrans, childTable, childColName); len(trans) > 0 {
+				childActiveMappings[j] = trans
 			}
 		}
 
-		if checkEndToEnd && len(childActiveMappings) == 0 {
-			continue
-		}
-
+		// Every table that references a transformed column gets the transformer, at any depth.
 		ws := processReference(r, rootTableCfg, allTrans, res, activeMappings, visited)
 		warnings = append(warnings, ws...)
 
@@ -326,13 +323,30 @@ func buildRefsWithEndToEndDfs(
 			continue
 		}
 
-		// Recursively call DFS on child reference, setting checkEndToEnd to true after the first level
 		ws = buildRefsWithEndToEndDfs(
-			r.To().Table(), rootTableCfg, rootTrans, graph, allTrans, res, true, visited, childActiveMappings,
+			childTable, rootTableCfg, rootTrans, graph, allTrans, res, visited, childActiveMappings,
 		)
 		warnings = append(warnings, ws...)
 	}
 	return warnings
+}
+
+// excludeTakenOverByChild drops the transformers that the child table configures itself with
+// apply_for_references: the child propagates them as a root, so going on would apply them twice.
+func excludeTakenOverByChild(
+	trans []*transformersMapping, allTrans []*domains.Table, childTable *entries.Table, childColName string,
+) []*transformersMapping {
+	var res []*transformersMapping
+	for _, tr := range trans {
+		found, conf := checkTransformerAlreadyExists(
+			allTrans, childTable.Schema, childTable.Name, tr.cfg.Name, childColName,
+		)
+		if found && conf.ApplyForReferences {
+			continue
+		}
+		res = append(res, tr)
+	}
+	return res
 }
 
 // collectRootTransformers gathers the root table's transformers that are allowed to apply for references.

@@ -9,6 +9,8 @@ Greenmask 0.3.0 moves the storage backends to the [greenmaskio/storages](https:/
 * feat: new `azure.max_retries` key, the number of retries after a failed try (default `3`)
 * fix: with `s3.role_arn`, Greenmask now works under the assumed role and renews its credentials before they expire. Before, the role was applied only when `access_key_id` and `secret_access_key` were also set, and `session_name` was required
 * fix: `Hash`, `Replace` and `RegexpReplace` with `apply_for_references: true` are now applied to the referencing foreign-key columns. Before, the config passed validation, but the transformer was applied only to the primary key, and the referencing columns were dumped unchanged ([#571](https://github.com/GreenmaskIO/greenmask/issues/571))
+* fix: `apply_for_references` now reaches every table that references a transformed column, at any depth. Before, below the first level a table got the transformer only when its foreign key was part of its own primary key, so the foreign key of the last table in a chain was dumped unchanged
+* fix: a transformer with `apply_for_references` set by hand on a table in the middle of a chain is no longer applied twice to the tables below it
 * fix: `validate --diff` now deletes its temporary directory after the run
 * fix: storage keys are checked before use. `restore` and `show-dump` with a dump ID that leaves the storage, such as `../x`, report that the dump is not found
 * docs: `s3.disable_ssl` is deprecated. It never had an effect: put `http://` in `endpoint` to use plain HTTP

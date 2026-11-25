@@ -43,3 +43,7 @@ func TestSequencePrivileges(t *testing.T) {
 func TestCopyEscape(t *testing.T) {
 	suite.Run(t, new(CopyEscapeSuite))
 }
+
+func TestApplyForReferences(t *testing.T) {
+	suite.Run(t, new(ApplyForReferencesSuite))
+}
