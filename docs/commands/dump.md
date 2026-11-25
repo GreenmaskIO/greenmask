@@ -30,7 +30,7 @@ Mostly it supports the same flags as the `pg_dump` utility, with some extra flag
       --enable-row-security             enable row security (dump only content user has access to)
   -E, --encoding string                 dump the data in encoding ENCODING
       --exclude-extension strings       do NOT dump the specified extension(s) (requires pg_dump 17 or later)
-  -N, --exclude-schema strings          dump the specified schema(s) only
+  -N, --exclude-schema strings          do NOT dump the specified schema(s)
   -T, --exclude-table strings           do NOT dump the specified table(s)
       --exclude-table-data strings      do NOT dump data for the specified table(s)
   -e, --extension strings               dump the specified extension(s) only
