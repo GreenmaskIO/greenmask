@@ -204,6 +204,23 @@ VALUES ('user');
 
 INSERT INTO public.posts (title, user_id)
 VALUES ('Hello World', (SELECT id FROM users WHERE username = 'user'));
+
+CREATE TABLE public.customers
+(
+    code text PRIMARY KEY
+);
+
+CREATE TABLE public.orders
+(
+    order_id      int4 PRIMARY KEY,
+    customer_code text REFERENCES public.customers (code)
+);
+
+INSERT INTO public.customers (code)
+VALUES ('ACC-98765-4321');
+
+INSERT INTO public.orders (order_id, customer_code)
+VALUES (1, 'ACC-98765-4321');
 `
 )
 
@@ -412,6 +429,7 @@ func Test_validateAndBuildEntriesConfig(t *testing.T) {
 			"tablea": 2,
 			"tableb": 2,
 			"tablec": 2,
+			"tabled": 2,
 		}
 
 		for _, table := range tables {
@@ -484,6 +502,56 @@ func Test_validateAndBuildEntriesConfig(t *testing.T) {
 		require.NoError(t, err)
 		require.False(t, vw.IsFatal())
 
+		expectedTablesWithTransformer := map[string]int{
+			"tablea": 2,
+			"tableb": 2,
+			"tablec": 2,
+			"tabled": 2,
+		}
+
+		for _, table := range tables {
+			if _, ok := expectedTablesWithTransformer[table.Name]; ok {
+				assert.Equalf(t, expectedTablesWithTransformer[table.Name], len(table.TransformersContext), "Table %s", table.Name)
+			} else {
+				assert.Empty(t, table.TransformersContext, "Table %s", table.Name)
+			}
+		}
+	})
+
+	t.Run("ApplyForReferences is true and ref transformer in the middle created manually", func(t *testing.T) {
+		tables, _, _, err := getDumpObjects(ctx, pgVer, tx, opt)
+		require.NoError(t, err)
+		graph, err := subset.NewGraph(ctx, tx, tables, nil)
+		require.NoError(t, err)
+
+		newTransformers := func() []*domains.TransformerConfig {
+			var res []*domains.TransformerConfig
+			for _, column := range []string{"id1", "id2"} {
+				res = append(res, &domains.TransformerConfig{
+					ApplyForReferences: true,
+					Name:               transformers.RandomIntTransformerName,
+					Params: toolkit.StaticParameters{
+						"column": toolkit.ParamsValue(column),
+						"engine": toolkit.ParamsValue("hash"),
+					},
+				})
+			}
+			return res
+		}
+		cfg := &domains.Dump{
+			Transformation: []*domains.Table{
+				{Schema: "public", Name: "tablea", Transformers: newTransformers()},
+				{Schema: "public", Name: "tableb", Transformers: newTransformers()},
+			},
+		}
+		vw, err := validateAndBuildEntriesConfig(
+			ctx, tx, tables, typeMap, cfg,
+			utils.DefaultTransformerRegistry, pgVer, types, graph,
+		)
+		require.NoError(t, err)
+		require.False(t, vw.IsFatal())
+
+		// Each column is transformed once: tableb takes over the chain from tablea.
 		expectedTablesWithTransformer := map[string]int{
 			"tablea": 2,
 			"tableb": 2,
@@ -660,6 +728,7 @@ func Test_validateAndBuildEntriesConfig(t *testing.T) {
 			"tablea": 2,
 			"tableb": 1,
 			"tablec": 1,
+			"tabled": 1,
 		}
 
 		for _, table := range tables {
@@ -668,6 +737,78 @@ func Test_validateAndBuildEntriesConfig(t *testing.T) {
 			} else {
 				assert.Empty(t, table.TransformersContext, "Table %s", table.Name)
 			}
+		}
+	})
+
+	t.Run("ApplyForReferences for transformers without engine parameter", func(t *testing.T) {
+		tests := []struct {
+			name   string
+			params toolkit.StaticParameters
+		}{
+			{
+				name: transformers.HashTransformerName,
+				params: toolkit.StaticParameters{
+					"column": toolkit.ParamsValue("code"),
+					"salt":   toolkit.ParamsValue("0123456789abcdef0123456789abcdef"),
+				},
+			},
+			{
+				name: transformers.ReplaceTransformerName,
+				params: toolkit.StaticParameters{
+					"column": toolkit.ParamsValue("code"),
+					"value":  toolkit.ParamsValue("REDACTED"),
+				},
+			},
+			{
+				name: transformers.RegexpReplaceTransformerName,
+				params: toolkit.StaticParameters{
+					"column":  toolkit.ParamsValue("code"),
+					"regexp":  toolkit.ParamsValue("^ACC-"),
+					"replace": toolkit.ParamsValue("CUS-"),
+				},
+			},
+		}
+		for _, tt := range tests {
+			t.Run(tt.name, func(t *testing.T) {
+				tables, _, _, err := getDumpObjects(ctx, pgVer, tx, opt)
+				require.NoError(t, err)
+				graph, err := subset.NewGraph(ctx, tx, tables, nil)
+				require.NoError(t, err)
+
+				cfg := &domains.Dump{
+					Transformation: []*domains.Table{
+						{
+							Schema: "public",
+							Name:   "customers",
+							Transformers: []*domains.TransformerConfig{
+								{
+									ApplyForReferences: true,
+									Name:               tt.name,
+									Params:             tt.params,
+								},
+							},
+						},
+					},
+				}
+				vw, err := validateAndBuildEntriesConfig(
+					ctx, tx, tables, typeMap, cfg,
+					utils.DefaultTransformerRegistry, pgVer, types, graph,
+				)
+				require.NoError(t, err)
+				require.False(t, vw.IsFatal())
+
+				expectedTablesWithTransformer := map[string]int{
+					"customers": 1,
+					"orders":    1,
+				}
+				for _, table := range tables {
+					if _, ok := expectedTablesWithTransformer[table.Name]; ok {
+						assert.Equalf(t, expectedTablesWithTransformer[table.Name], len(table.TransformersContext), "Table %s", table.Name)
+					} else {
+						assert.Empty(t, table.TransformersContext, "Table %s", table.Name)
+					}
+				}
+			})
 		}
 	})
 
