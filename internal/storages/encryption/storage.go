@@ -16,17 +16,22 @@ package encryption
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"sync"
 
+	"filippo.io/age"
 	"github.com/greenmaskio/storages"
+	"github.com/greenmaskio/storages/encrypted"
+
+	"github.com/greenmaskio/greenmask/internal/utils/logger"
 )
 
 // rootStorage is the storage of dumps; it hands out its directories wrapped as dumps.
 type rootStorage struct {
 	storages.Storager
-	keys  *keys
-	plain map[string]bool
+	identity *age.X25519Identity
+	plain    map[string]bool
 }
 
 func (s *rootStorage) SubStorage(subPath string, relative bool) (storages.Storager, error) {
@@ -34,13 +39,13 @@ func (s *rootStorage) SubStorage(subPath string, relative bool) (storages.Storag
 	if err != nil {
 		return nil, err
 	}
-	return newDumpStorage(sub, s.keys, s.plain), nil
+	return newDumpStorage(sub, s.identity, s.plain), nil
 }
 
 func (s *rootStorage) ListDir(ctx context.Context) ([]string, []storages.Storager, error) {
 	files, dirs, err := s.Storager.ListDir(ctx)
 	for i, dir := range dirs {
-		dirs[i] = newDumpStorage(dir, s.keys, s.plain)
+		dirs[i] = newDumpStorage(dir, s.identity, s.plain)
 	}
 	return files, dirs, err
 }
@@ -71,12 +76,12 @@ const (
 // dumpState is the encryption mode of one dump, shared by its directory and sub-directories.
 // It is read from the marker on the first object read or write.
 type dumpState struct {
-	root    storages.Storager
-	keys    *keys
-	plain   map[string]bool
-	mx      sync.Mutex
-	mode    mode
-	lockErr error
+	root     storages.Storager
+	identity *age.X25519Identity
+	plain    map[string]bool
+	mx       sync.Mutex
+	mode     mode
+	lockErr  error
 }
 
 // resolve reads the marker once; a failed read is retried on the next call.
@@ -97,8 +102,8 @@ func (d *dumpState) resolveLocked(ctx context.Context) (mode, error) {
 	switch {
 	case !found:
 		d.mode = modePlain
-	case d.keys.lockErr(marker.Recipient) != nil:
-		d.mode, d.lockErr = modeLocked, d.keys.lockErr(marker.Recipient)
+	case marker.Recipient != d.identity.Recipient().String():
+		d.mode, d.lockErr = modeLocked, fmt.Errorf("%w: %s", ErrWrongKey, marker.Recipient)
 	default:
 		d.mode = modeEncrypted
 	}
@@ -126,7 +131,7 @@ func (d *dumpState) resolveWrite(ctx context.Context) (mode, error) {
 	if len(dirs) > 0 {
 		return modeUnknown, ErrPlainDump
 	}
-	if err = putMarker(ctx, d.root, Marker{Recipient: d.keys.recipient()}); err != nil {
+	if err = putMarker(ctx, d.root, Marker{Recipient: d.identity.Recipient().String()}); err != nil {
 		return modeUnknown, err
 	}
 	d.mode = modeEncrypted
@@ -145,8 +150,15 @@ type dumpStorage struct {
 	encErr  error
 }
 
-func newDumpStorage(dir storages.Storager, k *keys, plain map[string]bool) *dumpStorage {
-	return &dumpStorage{Storager: dir, state: &dumpState{root: dir, keys: k, plain: plain}}
+func newDumpStorage(dir storages.Storager, identity *age.X25519Identity, plain map[string]bool) *dumpStorage {
+	return &dumpStorage{
+		Storager: dir,
+		state: &dumpState{
+			root:     dir,
+			identity: identity,
+			plain:    plain,
+		},
+	}
 }
 
 func (s *dumpStorage) isPlain(name string) bool {
@@ -155,7 +167,12 @@ func (s *dumpStorage) isPlain(name string) bool {
 
 func (s *dumpStorage) encrypted() (storages.Storager, error) {
 	s.encOnce.Do(func() {
-		s.enc, s.encErr = s.state.keys.wrap(s.Storager)
+		s.enc, s.encErr = encrypted.New(
+			s.Storager, s.state.identity, encrypted.WithLogger(logger.NewSlog("storages")),
+		)
+		if s.encErr != nil {
+			s.encErr = fmt.Errorf("open encrypted storage: %w", s.encErr)
+		}
 	})
 	return s.enc, s.encErr
 }

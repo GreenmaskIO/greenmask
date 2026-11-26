@@ -140,25 +140,19 @@ func renderDumpTable(w io.Writer, rows [][]string) error {
 func renderListItem(ctx context.Context, st storages.Storager, data *[][]string) error {
 	dumpId := st.Dirname()
 
-	encrypted, err := encryption.IsEncrypted(ctx, st)
+	encrypted, readable, err := encryption.Inspect(ctx, st)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to check encryption: %w", err)
 	}
 	status, err := dumpstatus.GetStatus(ctx, st)
 	if err != nil {
 		return fmt.Errorf("failed to get status: %w", err)
 	}
+	// A dump encrypted to another key keeps its row; only its metadata columns stay empty.
 	var metadata *storage.Metadata
-	if status == dumpstatus.DoneStatusName {
-		readable, err := encryption.Readable(ctx, st)
-		if err != nil {
-			return fmt.Errorf("failed to check encryption: %w", err)
-		}
-		// A dump encrypted to another key keeps its row; only its metadata columns stay empty.
-		if readable {
-			if metadata, err = dumpstatus.GetMetadata(ctx, st); err != nil {
-				return fmt.Errorf("failed to get metadata: %w", err)
-			}
+	if status == dumpstatus.DoneStatusName && readable {
+		if metadata, err = dumpstatus.GetMetadata(ctx, st); err != nil {
+			return fmt.Errorf("failed to get metadata: %w", err)
 		}
 	}
 

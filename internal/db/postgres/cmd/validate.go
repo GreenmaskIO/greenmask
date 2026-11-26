@@ -458,7 +458,7 @@ func (v *Validate) getPreviousDumpId(ctx context.Context) (string, error) {
 		if !exists {
 			continue
 		}
-		readable, err := encryption.Readable(ctx, dir)
+		_, readable, err := encryption.Inspect(ctx, dir)
 		if err != nil {
 			return "", fmt.Errorf("cannot check dump encryption: %w", err)
 		}

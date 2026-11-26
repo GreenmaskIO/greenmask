@@ -94,23 +94,23 @@ func writeEncrypted(t *testing.T, id *age.X25519Identity) storages.Storager {
 func TestParse(t *testing.T) {
 	id := newKey(t)
 	tests := []struct {
-		name          string
-		cfg           domains.EncryptionConfig
-		wantErr       bool
-		wantRecipient string
+		name    string
+		cfg     domains.EncryptionConfig
+		wantErr bool
+		want    *age.X25519Identity
 	}{
 		{name: "no key", cfg: domains.EncryptionConfig{}},
-		{name: "key", cfg: cfgFor(id), wantRecipient: id.Recipient().String()},
+		{name: "key", cfg: cfgFor(id), want: id},
 		{
-			name:          "key with surrounding whitespace",
-			cfg:           domains.EncryptionConfig{Key: " \t" + id.String() + "\n"},
-			wantRecipient: id.Recipient().String(),
+			name: "key with surrounding whitespace",
+			cfg:  domains.EncryptionConfig{Key: " \t" + id.String() + "\n"},
+			want: id,
 		},
 		{name: "garbage key", cfg: domains.EncryptionConfig{Key: "AGE-SECRET-KEY-1GARBAGE"}, wantErr: true},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			k, err := parse(tt.cfg)
+			identity, err := parse(tt.cfg)
 			require.Equal(t, err, Validate(tt.cfg))
 			_, newErr := NewStorage(inmemory.New(""), tt.cfg)
 			if tt.wantErr {
@@ -121,7 +121,11 @@ func TestParse(t *testing.T) {
 			}
 			require.NoError(t, err)
 			require.NoError(t, newErr)
-			assert.Equal(t, tt.wantRecipient, k.recipient())
+			if tt.want == nil {
+				assert.Nil(t, identity)
+				return
+			}
+			assert.Equal(t, tt.want.String(), identity.String())
 		})
 	}
 }
@@ -135,7 +139,7 @@ func TestPlainDump(t *testing.T) {
 			put(t, raw(t, root, "100"), "metadata.json", `{"a":1}`)
 			dump := open(t, root, key, "100")
 			assert.Equal(t, `{"a":1}`, get(t, dump, "metadata.json"))
-			encrypted, err := IsEncrypted(ctx, dump)
+			encrypted, _, err := Inspect(ctx, dump)
 			require.NoError(t, err)
 			assert.False(t, encrypted)
 		})
@@ -167,7 +171,7 @@ func TestEncryptedDump(t *testing.T) {
 	t.Run("with the key", func(t *testing.T) {
 		dump := open(t, root, id, "100")
 		assert.Equal(t, `{"a":1}`, get(t, dump, "metadata.json"))
-		encrypted, err := IsEncrypted(ctx, dump)
+		encrypted, _, err := Inspect(ctx, dump)
 		require.NoError(t, err)
 		assert.True(t, encrypted)
 	})
@@ -184,7 +188,7 @@ func TestEncryptedDump(t *testing.T) {
 		ok, err := dump.Exists(ctx, "metadata.json")
 		require.NoError(t, err)
 		assert.True(t, ok, "names need no key")
-		encrypted, err := IsEncrypted(ctx, dump)
+		encrypted, _, err := Inspect(ctx, dump)
 		require.NoError(t, err)
 		assert.True(t, encrypted)
 	})
@@ -197,7 +201,7 @@ func TestEncryptedDump(t *testing.T) {
 		dump := open(t, root, nil, "100")
 		assert.True(t, strings.HasPrefix(get(t, dump, "metadata.json"), ageHeader), "the ciphertext is read as it is")
 		assert.Equal(t, "done", get(t, dump, "heartbeat"))
-		encrypted, err := IsEncrypted(ctx, dump)
+		encrypted, _, err := Inspect(ctx, dump)
 		require.NoError(t, err)
 		assert.True(t, encrypted)
 	})
@@ -227,7 +231,7 @@ func TestEncryptedDump(t *testing.T) {
 	}
 }
 
-func TestReadable(t *testing.T) {
+func TestInspect(t *testing.T) {
 	ctx := context.Background()
 	id := newKey(t)
 	encRoot := writeEncrypted(t, id)
@@ -235,29 +239,31 @@ func TestReadable(t *testing.T) {
 	put(t, raw(t, plainRoot, "100"), "metadata.json", `{"a":1}`)
 
 	tests := []struct {
-		name string
-		root storages.Storager
-		key  *age.X25519Identity
-		want bool
+		name      string
+		root      storages.Storager
+		key       *age.X25519Identity
+		encrypted bool
+		readable  bool
 	}{
-		{name: "plain without a key", root: plainRoot, want: true},
-		{name: "plain with a key", root: plainRoot, key: id, want: true},
-		{name: "encrypted with its key", root: encRoot, key: id, want: true},
-		{name: "encrypted with another key", root: encRoot, key: newKey(t), want: false},
-		{name: "encrypted without a key", root: encRoot, want: false},
+		{name: "plain without a key", root: plainRoot, readable: true},
+		{name: "plain with a key", root: plainRoot, key: id, readable: true},
+		{name: "encrypted with its key", root: encRoot, key: id, encrypted: true, readable: true},
+		{name: "encrypted with another key", root: encRoot, key: newKey(t), encrypted: true},
+		{name: "encrypted without a key", root: encRoot, encrypted: true},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ok, err := Readable(ctx, open(t, tt.root, tt.key, "100"))
+			encrypted, readable, err := Inspect(ctx, open(t, tt.root, tt.key, "100"))
 			require.NoError(t, err)
-			assert.Equal(t, tt.want, ok)
+			assert.Equal(t, tt.encrypted, encrypted)
+			assert.Equal(t, tt.readable, readable)
 		})
 	}
 
 	t.Run("a broken marker is an error", func(t *testing.T) {
 		root := inmemory.New("")
 		put(t, raw(t, root, "100"), MarkerFileName, "{}")
-		_, err := Readable(ctx, open(t, root, id, "100"))
+		_, _, err := Inspect(ctx, open(t, root, id, "100"))
 		require.Error(t, err)
 	})
 }
@@ -324,10 +330,8 @@ func (s *countingStorage) PutObject(ctx context.Context, filePath string, body i
 
 func newCountingDump(t *testing.T, id *age.X25519Identity) (*countingStorage, storages.Storager) {
 	t.Helper()
-	k, err := parse(cfgFor(id))
-	require.NoError(t, err)
 	dir := &countingStorage{Storager: inmemory.New("")}
-	return dir, newDumpStorage(dir, k, map[string]bool{MarkerFileName: true, "heartbeat": true})
+	return dir, newDumpStorage(dir, id, map[string]bool{MarkerFileName: true, "heartbeat": true})
 }
 
 func TestWrite(t *testing.T) {
