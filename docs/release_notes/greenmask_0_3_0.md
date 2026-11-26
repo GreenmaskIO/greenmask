@@ -5,6 +5,7 @@ Greenmask 0.3.0 moves the storage backends to the [greenmaskio/storages](https:/
 ## Changes
 
 * feat: `directory`, `s3`, `azure` and `ssh` storages now come from the [greenmaskio/storages](https://github.com/greenmaskio/storages) library. The S3 storage runs on `aws-sdk-go-v2`, because support for `aws-sdk-go` v1 ended on 2025-07-31
+* feat: PostgreSQL 19 is supported and tested by the integration suite. The dump format of PostgreSQL 19 is the same as in PostgreSQL 18 (archive version 1.16). See [Supporting a New PostgreSQL Version](../supporting_new_postgres.md)
 * feat: new `ssh.private_key_passphrase` key for encrypted private keys, and `ssh.connect_timeout` to limit the TCP connection and the SSH handshake (default `30s`). See [ssh storage](../configuration.md#storage-section)
 * feat: new `azure.max_retries` key, the number of retries after a failed try (default `3`)
 * fix: with `s3.role_arn`, Greenmask now works under the assumed role and renews its credentials before they expire. Before, the role was applied only when `access_key_id` and `secret_access_key` were also set, and `session_name` was required
