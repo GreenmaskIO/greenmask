@@ -21,14 +21,17 @@ import (
 	"io"
 	"os"
 	"slices"
+	"strconv"
 	"time"
 
 	"github.com/greenmaskio/storages"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 
+	"github.com/greenmaskio/greenmask/cmd/greenmask/cmd/internal/cmdutil"
+	"github.com/greenmaskio/greenmask/internal/db/postgres/storage"
 	"github.com/greenmaskio/greenmask/internal/domains"
-	"github.com/greenmaskio/greenmask/internal/storages/builder"
+	"github.com/greenmaskio/greenmask/internal/storages/encryption"
 	"github.com/greenmaskio/greenmask/internal/utils/dumpstatus"
 	"github.com/greenmaskio/greenmask/internal/utils/logger"
 	"github.com/greenmaskio/greenmask/internal/utils/tableprinter"
@@ -73,10 +76,7 @@ func init() {
 func listDumps(quiet bool) error {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	st, err := builder.GetStorage(ctx, &Config.Storage, &Config.Log)
-	if err != nil {
-		log.Fatal().Err(err).Msg("")
-	}
+	st := cmdutil.OpenStorage(ctx, Config)
 	defer func() {
 		if err := st.Close(); err != nil {
 			log.Warn().Err(err).Msg("error closing storage")
@@ -130,7 +130,8 @@ func printDumpTablePretty(ctx context.Context, dirs []storages.Storager) error {
 func renderDumpTable(w io.Writer, rows [][]string) error {
 	t := tableprinter.New()
 	t.AppendHeader(tableprinter.Row([]string{
-		"id", "date", "database", "size", "compressed size", "duration", "transformed", "status", "description",
+		"id", "date", "database", "size", "compressed size", "duration", "transformed", "status", "encrypted",
+		"description",
 	}))
 	tableprinter.AppendRows(t, rows)
 	return tableprinter.Render(w, t)
@@ -139,14 +140,25 @@ func renderDumpTable(w io.Writer, rows [][]string) error {
 func renderListItem(ctx context.Context, st storages.Storager, data *[][]string) error {
 	dumpId := st.Dirname()
 
-	status, metadata, err := dumpstatus.GetDumpStatusAndMetadata(ctx, st)
+	encrypted, readable, err := encryption.Inspect(ctx, st)
 	if err != nil {
-		return fmt.Errorf("failed to get status and metadata: %w", err)
+		return fmt.Errorf("failed to check encryption: %w", err)
+	}
+	status, err := dumpstatus.GetStatus(ctx, st)
+	if err != nil {
+		return fmt.Errorf("failed to get status: %w", err)
+	}
+	// A dump encrypted to another key keeps its row; only its metadata columns stay empty.
+	var metadata *storage.Metadata
+	if status == dumpstatus.DoneStatusName && readable {
+		if metadata, err = dumpstatus.GetMetadata(ctx, st); err != nil {
+			return fmt.Errorf("failed to get metadata: %w", err)
+		}
 	}
 
 	var creationDate, dbName, size, compressedSize, duration, transformed string
 	transformed = "false"
-	if status == dumpstatus.DoneStatusName {
+	if metadata != nil {
 		creationDate = metadata.Header.CreationDate.Format(time.RFC3339)
 		dbName = metadata.Header.DbName
 		size = SizePretty(metadata.OriginalSize)
@@ -175,6 +187,7 @@ func renderListItem(ctx context.Context, st storages.Storager, data *[][]string)
 		duration,
 		transformed,
 		status,
+		strconv.FormatBool(encrypted),
 		description,
 	})
 	return nil

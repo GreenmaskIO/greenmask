@@ -29,6 +29,7 @@ func TestEnvBinding(t *testing.T) {
 	t.Setenv("STORAGE_S3_MAX_RETRIES", "0")
 	t.Setenv("STORAGE_DIRECTORY_PATH", "/dumps")
 	t.Setenv("STORAGE_SSH_CONNECT_TIMEOUT", "1m")
+	t.Setenv("STORAGE_ENCRYPTION_KEY", "AGE-SECRET-KEY-1TEST")
 
 	v := viper.New()
 	v.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
@@ -40,4 +41,5 @@ func TestEnvBinding(t *testing.T) {
 	assert.Equal(t, 1, s3cfg.MaxRetries)
 	assert.Equal(t, "/dumps", toDirectory(cfg.Directory).RootPath)
 	assert.Equal(t, "1m0s", toSSH(cfg.SSH).ConnectTimeout.String())
+	assert.Equal(t, "AGE-SECRET-KEY-1TEST", cfg.Encryption.Key)
 }

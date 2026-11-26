@@ -262,6 +262,72 @@ storage:
 </TabItem>
 </Tabs>
 
+### Client-side encryption
+
+With `storage.encryption.key` set, `greenmask dump` encrypts the objects of the new dump on the host, before they are sent to the storage, with [age](https://age-encryption.org) and one X25519 key. It works with every storage `type` and is off by default.
+
+What is encrypted and what is not:
+
+* Encrypted: every object in the dump directory except the two below, including `metadata.json`, `toc.dat` and the table data files.
+* Not encrypted: `encryption.json`, which holds the public key the dump is encrypted to, and `heartbeat`, which holds only whether the dump is in progress or done, so that `list-dumps` and `delete` work without the key. The names, sizes and modification times of the objects, and their number, are not encrypted either.
+
+| Parameter | Description |
+|---|---|
+| `key` | The age identity, `AGE-SECRET-KEY-1...`. When it is set, new dumps are encrypted to it and encrypted dumps are read with it; without it, encryption is off. Prefer the `STORAGE_ENCRYPTION_KEY` environment variable to a key in the config file |
+
+Generate a key with [`age-keygen`](https://github.com/FiloSottile/age) and keep a copy in a safe place:
+
+```shell
+age-keygen -o key.txt
+export STORAGE_ENCRYPTION_KEY="$(grep AGE-SECRET-KEY key.txt)"
+```
+
+```yaml title="client-side encryption config example"
+storage:
+  type: "s3"
+  encryption:
+    key: "${STORAGE_ENCRYPTION_KEY}"
+```
+
+The `STORAGE_ENCRYPTION_KEY` variable alone turns encryption on as well, with no `encryption` section in the config.
+
+:::danger[A lost key is a lost dump]
+
+Greenmask keeps no copy of the key. Without it, an encrypted dump cannot be read by anyone, Greenmask included.
+
+:::
+
+How plain and encrypted dumps live together:
+
+* The key controls both writing and reading: with it, `dump` encrypts the new dump. To make plain dumps again and still restore the encrypted ones, run `dump` without the key and `restore` with it.
+* Plain and encrypted dumps can share one storage. A dump without `encryption.json` is plain, and every command reads it as before, with or without a key. Existing dumps are not encrypted in place when you set a key.
+* To change the key, set the new one: new dumps are encrypted to it, and older dumps are read by running Greenmask with the old one.
+
+When a dump cannot be read:
+
+* With a key that is not the one the dump was encrypted to, `restore`, `show-dump` and `validate --schema` fail with `dump is encrypted to another key: age1...`. The error names the public key from `encryption.json`.
+* With no key set, Greenmask reads the storage as it is and knows nothing about encryption, so the same commands fail on an encrypted dump with a metadata parsing error such as `cannot decode metadata`. `list-dumps` shows `true` in the `ENCRYPTED` column for such a dump: set the key to read it.
+* `list-dumps` does not fail: it shows the dump's status and `true` in the `ENCRYPTED` column, and leaves the date, database, sizes, duration and description empty.
+* `delete` needs no key. `--retain-recent`, `--retain-for`, `--before-date` and `--prune-failed` classify an encrypted dump by its `heartbeat`, like a plain dump, and without the key date it by its ID, the time the dump started. `delete <dumpId>` deletes it.
+* A key that is not an age X25519 identity fails with `invalid encryption key: not an age X25519 identity`, before the command touches the storage. The error does not contain the key.
+
+Other things to know:
+
+* An encrypted dump is not readable by native `pg_restore` as it lies in the storage. Decrypt each file except `encryption.json` and `heartbeat` with `age -d`, as below, and the result is a regular directory-format dump.
+* While a command runs, the schema is in plain text in `common.tmp_dir`: `pg_dump` writes the schema there during a dump, and `restore` puts `toc.dat` there. Protect that directory on the host.
+* Client-side encryption differs from the S3 `sse` option: with `sse`, S3 encrypts the objects and decrypts them for anyone with read access to the bucket. With client-side encryption, the storage only ever sees ciphertext. The two can be used together.
+
+```shell title="decrypt a dump for native pg_restore"
+mkdir plain
+for f in <dumpId>/*; do
+  case "$(basename "$f")" in
+    encryption.json|heartbeat) ;;
+    *) age -d -i key.txt -o "plain/$(basename "$f")" "$f" ;;
+  esac
+done
+pg_restore -l plain
+```
+
 ## `dump` section
 
 In the `dump` section of the configuration, you configure the `greenmask dump` command. It includes the following parameters:
@@ -619,6 +685,8 @@ Greenmask will automatically parse any environment variable that matches the con
 log:
   level: debug
 ```
+
+Secrets are better set this way than in the config file. For example, set the client-side encryption key with `STORAGE_ENCRYPTION_KEY`, see [Client-side encryption](#client-side-encryption).
 
 ### Global configuration variables
 

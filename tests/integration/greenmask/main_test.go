@@ -47,3 +47,7 @@ func TestCopyEscape(t *testing.T) {
 func TestApplyForReferences(t *testing.T) {
 	suite.Run(t, new(ApplyForReferencesSuite))
 }
+
+func TestEncryption(t *testing.T) {
+	suite.Run(t, new(EncryptionSuite))
+}

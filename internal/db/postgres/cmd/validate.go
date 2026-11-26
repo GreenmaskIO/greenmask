@@ -26,6 +26,7 @@ import (
 	"github.com/greenmaskio/greenmask/internal/db/postgres/transformers/custom"
 	"github.com/greenmaskio/greenmask/internal/db/postgres/transformers/utils"
 	"github.com/greenmaskio/greenmask/internal/domains"
+	"github.com/greenmaskio/greenmask/internal/storages/encryption"
 	"github.com/greenmaskio/greenmask/internal/utils/reader"
 	"github.com/greenmaskio/greenmask/internal/utils/tableprinter"
 	"github.com/greenmaskio/greenmask/pkg/toolkit"
@@ -454,9 +455,18 @@ func (v *Validate) getPreviousDumpId(ctx context.Context) (string, error) {
 		if err != nil {
 			return "", fmt.Errorf("cannot check file existence: %w", err)
 		}
-		if exists {
-			backupNames = append(backupNames, dir.Dirname())
+		if !exists {
+			continue
 		}
+		_, readable, err := encryption.Inspect(ctx, dir)
+		if err != nil {
+			return "", fmt.Errorf("cannot check dump encryption: %w", err)
+		}
+		if !readable {
+			log.Debug().Str("DumpId", dir.Dirname()).Msg("skipping dump: encrypted to another key")
+			continue
+		}
+		backupNames = append(backupNames, dir.Dirname())
 	}
 
 	slices.SortFunc(

@@ -20,7 +20,6 @@ import (
 	"fmt"
 	"html/template"
 	"os"
-	"path"
 	"regexp"
 
 	"gopkg.in/yaml.v3"
@@ -57,9 +56,10 @@ var templateString = `;
 {{- end }}
 `
 
-func ShowDump(ctx context.Context, st storages.Storager, dumpId string, format string) error {
+// ShowDump prints the metadata of the dump dumpSt holds.
+func ShowDump(ctx context.Context, dumpSt storages.Storager, format string) error {
 	meta := &storageDto.Metadata{}
-	r, err := st.GetObject(ctx, path.Join(dumpId, MetadataJsonFileName))
+	r, err := dumpSt.GetObject(ctx, MetadataJsonFileName)
 	if err != nil {
 		return fmt.Errorf("cannot get metadata: %w", err)
 	}

@@ -8,6 +8,8 @@ keywords: ["greenmask delete", "dump deletion", "backup cleanup", "greenmask", "
 
 Delete dump from the storage with a specific ID
 
+`delete` needs no key for an [encrypted dump](../configuration.md#client-side-encryption): `--before-date`, `--prune-failed`, `--retain-for` and `--retain-recent` treat it like a plain dump. A finished dump whose metadata cannot be read, such as an encrypted dump without its key, is dated by its ID, the time the dump started.
+
 
 ```text title="Supported flags"
 Usage:
