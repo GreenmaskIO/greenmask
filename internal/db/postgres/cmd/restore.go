@@ -200,13 +200,9 @@ func (r *Restore) skippedSectionReason(section string) string {
 
 // logSkippedSectionScripts warns when a skipped section has scripts
 // configured, so they are not dropped silently.
-func (r *Restore) logSkippedSectionScripts(section string) {
-	scripts, ok := r.scripts[section]
-	if !ok || len(scripts) == 0 {
-		return
-	}
-	reason := r.skippedSectionReason(section)
-	if reason == "" {
+func (r *Restore) logSkippedSectionScripts(section, reason string) {
+	scripts := r.scripts[section]
+	if len(scripts) == 0 {
 		return
 	}
 	names := make([]string, 0, len(scripts))
@@ -217,7 +213,7 @@ func (r *Restore) logSkippedSectionScripts(section string) {
 		Str("section", section).
 		Str("skipped_by", reason).
 		Strs("scripts", names).
-		Msgf("skipping %q section scripts: section is skipped by %s, %d script(s) will not run", section, reason, len(scripts))
+		Msg("section scripts skipped")
 }
 
 func (r *Restore) RunScripts(ctx context.Context, conn *pgx.Conn, section, when string) error {
@@ -397,9 +393,8 @@ func (r *Restore) preDataRestore(ctx context.Context) error {
 	//  (non modified) toc.dat file.
 
 	// Do not restore this section if implicitly provided another section
-	if r.restoreOpt.DataOnly ||
-		(r.restoreOpt.Section != "" && r.restoreOpt.Section != preDataSection) {
-		r.logSkippedSectionScripts(preDataSection)
+	if reason := r.skippedSectionReason(preDataSection); reason != "" {
+		r.logSkippedSectionScripts(preDataSection, reason)
 		return nil
 	}
 
@@ -582,9 +577,8 @@ func (r *Restore) dataRestore(ctx context.Context) error {
 	// Execute Data Before scripts
 
 	// Do not restore this section if implicitly provided
-	if r.restoreOpt.SchemaOnly ||
-		(r.restoreOpt.Section != "" && r.restoreOpt.Section != dataSection) {
-		r.logSkippedSectionScripts(dataSection)
+	if reason := r.skippedSectionReason(dataSection); reason != "" {
+		r.logSkippedSectionScripts(dataSection, reason)
 		return nil
 	}
 
@@ -658,9 +652,8 @@ func (r *Restore) postDataRestore(ctx context.Context) error {
 	// Execute Post Data Before scripts
 
 	// Do not restore this section if implicitly provided
-	if r.restoreOpt.DataOnly ||
-		(r.restoreOpt.Section != "" && r.restoreOpt.Section != postDataSection) {
-		r.logSkippedSectionScripts(postDataSection)
+	if reason := r.skippedSectionReason(postDataSection); reason != "" {
+		r.logSkippedSectionScripts(postDataSection, reason)
 		return nil
 	}
 

@@ -27,10 +27,8 @@ import (
 	"github.com/greenmaskio/greenmask/internal/db/postgres/pgrestore"
 )
 
-// Repro for GreenmaskIO/greenmask#575: scripts of a skipped section are
-// dropped silently. Each skipped section that has scripts configured must
-// produce a warning naming the section and the option that skipped it.
-// These tests call the early-return paths only, so no database is needed.
+// A skipped section with scripts must warn, naming the section and the option.
+// Only the early-return paths are called, so no database is needed.
 func TestRestore_SkippedSectionScriptsWarn(t *testing.T) {
 	scripts := map[string][]pgrestore.Script{
 		scriptPreDataSection: {
@@ -71,8 +69,8 @@ func TestRestore_SkippedSectionScriptsWarn(t *testing.T) {
 			if entry["level"] != "warn" {
 				continue
 			}
-			msg, _ := entry["message"].(string)
-			if strings.Contains(msg, section) && strings.Contains(msg, option) {
+			skippedBy, _ := entry["skipped_by"].(string)
+			if entry["section"] == section && strings.Contains(skippedBy, option) {
 				found = true
 			}
 		}
