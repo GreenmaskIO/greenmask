@@ -31,6 +31,8 @@ import (
 	"github.com/spf13/cast"
 	"github.com/tidwall/gjson"
 	"github.com/tidwall/sjson"
+
+	"github.com/greenmaskio/greenmask/internal/utils/maskers"
 )
 
 var NullValue NullType = "\\N"
@@ -356,7 +358,7 @@ func masking(m *masker.Masker, dataType string, v string) (string, error) {
 	case MID:
 		return m.ID(v), nil
 	case MTelephone:
-		return m.Telephone(v), nil
+		return maskers.Telephone(v), nil
 	case MCreditCard:
 		return m.CreditCard(v), nil
 	case MURL:

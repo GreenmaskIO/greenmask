@@ -24,6 +24,7 @@ import (
 	"github.com/ggwhite/go-masker"
 
 	"github.com/greenmaskio/greenmask/internal/db/postgres/transformers/utils"
+	"github.com/greenmaskio/greenmask/internal/utils/maskers"
 	"github.com/greenmaskio/greenmask/pkg/toolkit"
 )
 
@@ -118,7 +119,7 @@ func NewMaskingTransformer(ctx context.Context, driver *toolkit.Driver, paramete
 	case MID:
 		mf = m.ID
 	case MTelephone:
-		mf = telephoneMasker
+		mf = maskers.Telephone
 	case MCreditCard:
 		mf = m.CreditCard
 	case MURL:
@@ -179,23 +180,6 @@ func postcodeMasker(v string) string {
 		return v
 	}
 	return string(runes[:2]) + strings.Repeat("*", len(runes)-2)
-}
-
-var telephoneCleaner = strings.NewReplacer("(", "", ")", "", " ", "", "-", "")
-
-// telephoneMasker removes "(", ")", " " and "-" and masks the last 4 characters.
-// Numbers with 10 or 8 characters are formatted as (??)????-**** and ????-****,
-// as go-masker does. go-masker returns numbers of any other length unmasked.
-func telephoneMasker(v string) string {
-	runes := []rune(telephoneCleaner.Replace(v))
-	switch len(runes) {
-	case 10:
-		return "(" + string(runes[:2]) + ")" + string(runes[2:6]) + "-****"
-	case 8:
-		return string(runes[:4]) + "-****"
-	}
-	keep := max(len(runes)-4, 0)
-	return string(runes[:keep]) + strings.Repeat("*", len(runes)-keep)
 }
 
 func maskerTypeValidator(p *toolkit.ParameterDefinition, v toolkit.ParamsValue) (toolkit.ValidationWarnings, error) {
