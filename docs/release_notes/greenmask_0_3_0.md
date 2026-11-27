@@ -15,6 +15,7 @@ Greenmask 0.3.0 moves the storage backends to the [greenmaskio/storages](https:/
 * fix: a transformer with `apply_for_references` set by hand on a table in the middle of a chain is no longer applied twice to the tables below it
 * fix: `validate --diff` now deletes its temporary directory after the run
 * fix: storage keys are checked before use. `restore` and `show-dump` with a dump ID that leaves the storage, such as `../x`, report that the dump is not found
+* fix: `restore` now warns when scripts configured for a section skipped by `--data-only`, `--schema-only` or `--section` would not run, instead of dropping them silently ([#575](https://github.com/GreenmaskIO/greenmask/issues/575))
 * docs: `s3.disable_ssl` is deprecated. It never had an effect: put `http://` in `endpoint` to use plain HTTP
 * chore: Greenmask is built with Go 1.27.4
 * chore: [greenmaskio/storages](https://github.com/greenmaskio/storages) is updated to v0.5.1, with a newer AWS SDK for the S3 storage
