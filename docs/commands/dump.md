@@ -79,6 +79,14 @@ transformer whose column does not exist (`column does not exist`) or a table tha
 skip the transformer, and nothing is written to storage. Warnings with a lower severity are not printed and do not
 stop the dump. Run `greenmask validate --warnings` to see them.
 
+### Data-only dump
+
+With `--data-only` (or `data-only: true` in `dump.pg_dump_options`), the dump holds the table data, the sequence values and the large objects, without the schema. It can be restored with `greenmask restore` or with `pg_restore` into a database that already has the schema.
+
+Greenmask still runs `pg_dump` to get the archive header, as `pg_dump --data-only` with `--exclude-schema='*'` and `--no-blobs`, so `pg_dump` selects no object and locks no table. That run writes only the entries without data, such as `ENCODING`, `STDSTRINGS`, `SEARCHPATH`, `DATABASE` and `DATABASE PROPERTIES`, and they go into the archive as they are.
+
+`--data-only` cannot be combined with `--schema-only` or `--clean`.
+
 ### Pgzip compression
 
 By default, Greenmask uses gzip compression to restore data. In mist cases it is quite slow and does not utilize all

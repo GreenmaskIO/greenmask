@@ -16,6 +16,7 @@ package pgdump
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"path"
 	"strconv"
@@ -106,6 +107,33 @@ type Options struct {
 	NoPassword bool   `mapstructure:"no-password"`
 	Password   bool   `mapstructure:"password"`
 	Role       string `mapstructure:"role"`
+}
+
+// Validate rejects the combinations pg_dump refuses with --data-only, which the schema stage would hide.
+func (o *Options) Validate() error {
+	if o.DataOnly && o.SchemaOnly {
+		return errors.New("options --data-only and --schema-only cannot be used together")
+	}
+	if o.DataOnly && o.Clean {
+		return errors.New("options --data-only and --clean cannot be used together")
+	}
+	return nil
+}
+
+// HeaderOnlyOptions returns options for a data-only run that selects no object, so it locks no table
+// and writes only the entries without data. --table and --include-foreign-data override --exclude-schema.
+func (o *Options) HeaderOnlyOptions() Options {
+	res := *o
+	res.DataOnly = true
+	res.SchemaOnly = false
+	res.Jobs = -1
+	res.Section = ""
+	res.Blobs = false
+	res.NoBlobs = true
+	res.ExcludeSchema = []string{"*"}
+	res.Table = nil
+	res.IncludeForeignData = nil
+	return res
 }
 
 func (o *Options) GetPgDSN() (string, error) {

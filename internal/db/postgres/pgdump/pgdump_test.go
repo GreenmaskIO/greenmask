@@ -54,3 +54,73 @@ func TestOptions_GetParams_lockWaitTimeout(t *testing.T) {
 	options.LockWaitTimeout = 5000
 	assert.Equal(t, []string{"--lock-wait-timeout", "5000"}, options.GetParams())
 }
+
+func TestOptions_Validate(t *testing.T) {
+	tests := []struct {
+		name    string
+		opts    Options
+		wantErr string
+	}{
+		{name: "empty", opts: Options{}},
+		{name: "data-only", opts: Options{DataOnly: true}},
+		{name: "data-only with create", opts: Options{DataOnly: true, Create: true}},
+		{name: "schema-only with clean", opts: Options{SchemaOnly: true, Clean: true}},
+		{
+			name:    "data-only with schema-only",
+			opts:    Options{DataOnly: true, SchemaOnly: true},
+			wantErr: "options --data-only and --schema-only cannot be used together",
+		},
+		{
+			name:    "data-only with clean",
+			opts:    Options{DataOnly: true, Clean: true},
+			wantErr: "options --data-only and --clean cannot be used together",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := tt.opts.Validate()
+			if tt.wantErr == "" {
+				assert.NoError(t, err)
+				return
+			}
+			assert.EqualError(t, err, tt.wantErr)
+		})
+	}
+}
+
+func TestOptions_HeaderOnlyOptions(t *testing.T) {
+	options := &Options{
+		Jobs:               4,
+		Compression:        -1,
+		LockWaitTimeout:    3000,
+		Port:               pgDefaultPort,
+		DataOnly:           true,
+		Blobs:              true,
+		Create:             true,
+		ExcludeSchema:      []string{"tmp"},
+		Table:              []string{"app.t1"},
+		ExcludeTableData:   []string{"app.t3"},
+		IncludeForeignData: []string{"srv"},
+		Section:            "data",
+		Snapshot:           "00000003-00000002-1",
+		DbName:             "postgres",
+	}
+
+	res := options.HeaderOnlyOptions()
+
+	assert.Equal(t,
+		[]string{
+			"--lock-wait-timeout", "3000",
+			"--data-only",
+			"--no-blobs",
+			"--create",
+			"--exclude-schema", "*",
+			"--exclude-table-data", "app.t3",
+			"--snapshot", "00000003-00000002-1",
+			"--dbname", "postgres",
+		},
+		res.GetParams(),
+	)
+	assert.True(t, options.DataOnly, "the source options must not change")
+	assert.Equal(t, []string{"tmp"}, options.ExcludeSchema, "the source options must not change")
+}
