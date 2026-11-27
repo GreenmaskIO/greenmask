@@ -437,6 +437,30 @@ func TestFuncMap_masking(t *testing.T) {
 			expected: "************",
 		},
 		{
+			name: "tel type 10 characters",
+			params: params{
+				Data: `(02) 2799-3078`,
+				Type: "tel",
+			},
+			expected: "(02)2799-****",
+		},
+		{
+			name: "tel type international",
+			params: params{
+				Data: `+1 (415) 555-2671`,
+				Type: "tel",
+			},
+			expected: "+1415555****",
+		},
+		{
+			name: "tel type 7 characters",
+			params: params{
+				Data: `555-0187`,
+				Type: "tel",
+			},
+			expected: "555****",
+		},
+		{
 
 			name: "wrong type",
 			params: params{

@@ -95,6 +95,60 @@ func TestMaskingTransformer_Transform(t *testing.T) {
 			originalValue: "Ц1Б 2Д",
 			expectedValue: toolkit.NewValue("Ц1****", false),
 		},
+		{
+			name: MTelephone + " 10 characters",
+			params: map[string]toolkit.ParamsValue{
+				"column": toolkit.ParamsValue("data"),
+				"type":   toolkit.ParamsValue(MTelephone),
+			},
+			originalValue: "(02) 2799-3078",
+			expectedValue: toolkit.NewValue("(02)2799-****", false),
+		},
+		{
+			name: MTelephone + " 8 characters",
+			params: map[string]toolkit.ParamsValue{
+				"column": toolkit.ParamsValue("data"),
+				"type":   toolkit.ParamsValue(MTelephone),
+			},
+			originalValue: "2799-3078",
+			expectedValue: toolkit.NewValue("2799-****", false),
+		},
+		{
+			name: MTelephone + " international",
+			params: map[string]toolkit.ParamsValue{
+				"column": toolkit.ParamsValue("data"),
+				"type":   toolkit.ParamsValue(MTelephone),
+			},
+			originalValue: "+1 (415) 555-2671",
+			expectedValue: toolkit.NewValue("+1415555****", false),
+		},
+		{
+			name: MTelephone + " 7 characters",
+			params: map[string]toolkit.ParamsValue{
+				"column": toolkit.ParamsValue("data"),
+				"type":   toolkit.ParamsValue(MTelephone),
+			},
+			originalValue: "555-0187",
+			expectedValue: toolkit.NewValue("555****", false),
+		},
+		{
+			name: MTelephone + " shorter than 4 characters",
+			params: map[string]toolkit.ParamsValue{
+				"column": toolkit.ParamsValue("data"),
+				"type":   toolkit.ParamsValue(MTelephone),
+			},
+			originalValue: "112",
+			expectedValue: toolkit.NewValue("***", false),
+		},
+		{
+			name: MTelephone + " multibyte",
+			params: map[string]toolkit.ParamsValue{
+				"column": toolkit.ParamsValue("data"),
+				"type":   toolkit.ParamsValue(MTelephone),
+			},
+			originalValue: "０２２７９９３０７８",
+			expectedValue: toolkit.NewValue("(０２)２７９９-****", false),
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

@@ -24,6 +24,7 @@ import (
 	"github.com/ggwhite/go-masker"
 
 	"github.com/greenmaskio/greenmask/internal/db/postgres/transformers/utils"
+	"github.com/greenmaskio/greenmask/internal/utils/maskers"
 	"github.com/greenmaskio/greenmask/pkg/toolkit"
 )
 
@@ -118,7 +119,7 @@ func NewMaskingTransformer(ctx context.Context, driver *toolkit.Driver, paramete
 	case MID:
 		mf = m.ID
 	case MTelephone:
-		mf = m.Telephone
+		mf = maskers.Telephone
 	case MCreditCard:
 		mf = m.CreditCard
 	case MURL:

@@ -27,7 +27,7 @@ supports the following masking rules:
 |   address   | Keeps first 6 letters, masks the rest, e. g. input: `Larnaca, makarios st` output: `Larnac*************`                                                             |
 |    email    | Keeps a domain and the first 3 letters, masks the rest, e. g. input: `ggw.chang@gmail.com` output: `ggw****@gmail.com`                                               |
 |   mobile    | Masks 3 digits starting from the 4th digit, e. g. input: `0987654321` output: `0987***321`                                                                           |
-|  telephone  | Removes `(`, `)`, ` `, `-` chart, and masks last 4 digits of telephone number, then formats it to `(??)????-????`, e. g. input: `0227993078` output: `(02)2799-****` |
+|  telephone  | Removes `(`, `)`, ` `, `-` characters and masks the last 4 characters. A number with 10 or 8 characters is formatted as `(??)????-****` or `????-****`, e. g. input: `0227993078` output: `(02)2799-****`, input: `+1 (415) 555-2671` output: `+1415555****` |
 |     id      | Masks last 4 digits of ID number, e. g. input: `A123456789` output: `A12345****`                                                                                     |
 | credit_cart | Masks 6 digits starting from the 7th digit, e. g. input `1234567890123456` output `123456******3456`                                                                 |
 |     url     | Masks the password part of the URL, if applicable, e. g. `http://admin:mysecretpassword@localhost:1234/uri` output: `http://admin:xxxxx@localhost:1234/uri`          |
