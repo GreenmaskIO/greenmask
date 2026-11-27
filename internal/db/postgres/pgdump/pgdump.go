@@ -42,8 +42,7 @@ func NewPgDump(binPath string) *PgDump {
 }
 
 func (pd *PgDump) Run(ctx context.Context, options *Options) error {
-	// The --dbname value can be a connection string with a password, so it is hidden in the log.
-	log.Debug().Msgf("pg_dump: %s %s\n", path.Join(pd.BinPath, pgDumpExecutable), strings.Join(utils.HideDbNameInArgs(options.GetParams()), " "))
+	log.Debug().Msgf("pg_dump: %s %s\n", path.Join(pd.BinPath, pgDumpExecutable), strings.Join(utils.RedactConnStringInArgs(options.GetParams()), " "))
 	return cmd_runner.Run(ctx, &log.Logger, path.Join(pd.BinPath, pgDumpExecutable), options.GetParams()...)
 }
 

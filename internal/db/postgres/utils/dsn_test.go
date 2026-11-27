@@ -20,7 +20,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestHideDbNameInArgs(t *testing.T) {
+func TestRedactConnStringInArgs(t *testing.T) {
 	tests := []struct {
 		name   string
 		dbName string
@@ -35,9 +35,9 @@ func TestHideDbNameInArgs(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			args := []string{"--format", "d", "--dbname", tt.dbName, "--host", "db"}
 
-			hidden := HideDbNameInArgs(args)
+			redacted := RedactConnStringInArgs(args)
 
-			assert.Equal(t, []string{"--format", "d", "--dbname", tt.want, "--host", "db"}, hidden)
+			assert.Equal(t, []string{"--format", "d", "--dbname", tt.want, "--host", "db"}, redacted)
 			assert.Equal(t, tt.dbName, args[3], "the arguments passed to the command must not change")
 		})
 	}

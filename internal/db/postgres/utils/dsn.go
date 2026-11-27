@@ -27,10 +27,10 @@ func IsConnString(dbName string) bool {
 		strings.Contains(dbName, "=")
 }
 
-// HideDbNameInArgs returns a copy of pg_dump or pg_restore arguments with the --dbname value
-// hidden when it is a connection string, since it can hold a password. A plain database name is
-// kept, and the arguments passed to the command are not changed.
-func HideDbNameInArgs(args []string) []string {
+// RedactConnStringInArgs returns a copy of pg_dump or pg_restore arguments with the --dbname
+// value replaced by *** when it is a connection string, since it can hold a password. A plain
+// database name is kept, and the arguments passed to the command are not changed.
+func RedactConnStringInArgs(args []string) []string {
 	res := slices.Clone(args)
 	for i := 0; i < len(res)-1; i++ {
 		if res[i] == "--dbname" && IsConnString(res[i+1]) {

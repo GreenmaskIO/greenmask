@@ -43,8 +43,7 @@ func NewPgRestore(binPath string) *PgRestore {
 }
 
 func (pr *PgRestore) Run(ctx context.Context, options *Options) error {
-	// The --dbname value can be a connection string with a password, so it is hidden in the log.
-	log.Debug().Msgf("pg_restore: %s %s\n", path.Join(pr.BinPath, pgRestoreExecutable), strings.Join(utils.HideDbNameInArgs(options.GetParams()), " "))
+	log.Debug().Msgf("pg_restore: %s %s\n", path.Join(pr.BinPath, pgRestoreExecutable), strings.Join(utils.RedactConnStringInArgs(options.GetParams()), " "))
 	return cmd_runner.Run(ctx, &log.Logger, path.Join(pr.BinPath, pgRestoreExecutable), options.GetParams()...)
 }
 
