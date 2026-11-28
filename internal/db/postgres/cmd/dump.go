@@ -209,7 +209,7 @@ func (d *Dump) buildContextAndValidate(ctx context.Context, tx pgx.Tx) (err erro
 	return nil
 }
 
-func (d *Dump) schemaOnlyDump(ctx context.Context, tx pgx.Tx) error {
+func (d *Dump) schemaOnlyDump(ctx context.Context) error {
 	options := *d.pgDumpOptions
 	if d.pgDumpOptions.DataOnly {
 		options = d.pgDumpOptions.HeaderOnlyOptions()
@@ -535,7 +535,7 @@ func (d *Dump) Run(ctx context.Context) (err error) {
 		return fmt.Errorf("context error: %w", err)
 	}
 
-	if err = d.schemaOnlyDump(ctx, tx); err != nil {
+	if err = d.schemaOnlyDump(ctx); err != nil {
 		return fmt.Errorf("schema only stage dumping error: %w", err)
 	}
 

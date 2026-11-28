@@ -35,3 +35,4 @@ tools/docs-preview/.docusaurus
 tools/docs-preview/package-lock.json
 # Local agent instructions
 CLAUDE.md
+.user
