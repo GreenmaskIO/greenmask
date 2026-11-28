@@ -113,11 +113,11 @@ func NewMaskingTransformer(ctx context.Context, driver *toolkit.Driver, paramete
 	case MAddress:
 		mf = m.Address
 	case MEmail:
-		mf = m.Email
+		mf = maskers.Email
 	case MMobile:
 		mf = m.Mobile
 	case MID:
-		mf = m.ID
+		mf = maskers.ID
 	case MTelephone:
 		mf = maskers.Telephone
 	case MCreditCard:

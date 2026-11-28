@@ -352,11 +352,11 @@ func masking(m *masker.Masker, dataType string, v string) (string, error) {
 	case MAddress:
 		return m.Address(v), nil
 	case MEmail:
-		return m.Email(v), nil
+		return maskers.Email(v), nil
 	case MMobile:
 		return m.Mobile(v), nil
 	case MID:
-		return m.ID(v), nil
+		return maskers.ID(v), nil
 	case MTelephone:
 		return maskers.Telephone(v), nil
 	case MCreditCard:

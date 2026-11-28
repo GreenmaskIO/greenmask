@@ -29,6 +29,5 @@ func Telephone(v string) string {
 	case 8:
 		return string(runes[:4]) + "-****"
 	}
-	keep := max(len(runes)-4, 0)
-	return string(runes[:keep]) + strings.Repeat("*", len(runes)-keep)
+	return maskLast4(runes)
 }
