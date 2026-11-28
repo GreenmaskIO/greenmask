@@ -74,6 +74,8 @@ Mostly it supports the same flags as the `pg_restore` utility, with some extra f
   -v, --verbose string                         verbose mode
 ```
 
+Without `--exit-on-error`, the restore carries on after an error, and, as `pg_restore` does, exits with code 1 at the end if any error was ignored. Each ignored error is logged as a warning when it happens. When the restore ends, each one is logged again as an error, and the final error only gives their count.
+
 ## Extra features
 
 ### Inserts and error handling
