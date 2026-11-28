@@ -210,10 +210,12 @@ func (d *Dump) buildContextAndValidate(ctx context.Context, tx pgx.Tx) (err erro
 }
 
 func (d *Dump) schemaOnlyDump(ctx context.Context, tx pgx.Tx) error {
-	// Dump schema
 	options := *d.pgDumpOptions
+	if d.pgDumpOptions.DataOnly {
+		options = d.pgDumpOptions.HeaderOnlyOptions()
+	}
 	options.Format = "d"
-	options.SchemaOnly = true
+	options.SchemaOnly = !options.DataOnly
 
 	options.FileName = d.tmpDir
 	if err := d.pgDump.Run(ctx, &options); err != nil {
@@ -491,6 +493,10 @@ func (d *Dump) writeMetaData(ctx context.Context, startedAt, completedAt time.Ti
 func (d *Dump) Run(ctx context.Context) (err error) {
 	defer d.prune()
 	startedAt := time.Now()
+
+	if err := d.pgDumpOptions.Validate(); err != nil {
+		return err
+	}
 
 	if err := custom.BootstrapCustomTransformers(ctx, d.registry, d.config.CustomTransformers); err != nil {
 		return fmt.Errorf("error bootstraping custom transformers: %w", err)

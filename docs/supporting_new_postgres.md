@@ -108,6 +108,8 @@ git show REL_19_0:src/bin/pg_dump/pg_dump.c \
   | grep -oE '\.description = "[A-Z][A-Z /]*"' | sort -u
 ```
 
+A data-only dump takes its entries without data from a `pg_dump --data-only` run that selects no object (`pgdump.Options.HeaderOnlyOptions`), so `pg_dump` itself decides which entries these are. `TestDataOnlyDump` compares the archive with the one native `pg_dump --data-only` writes. If it fails on a new version, check whether an object outside schemas is now selected despite `--exclude-schema='*'`.
+
 ### 6. Diff the catalogs greenmask queries
 
 Greenmask reads `pg_class`, `pg_attribute`, `pg_type`, `pg_constraint`, `pg_sequence`, `pg_namespace`,

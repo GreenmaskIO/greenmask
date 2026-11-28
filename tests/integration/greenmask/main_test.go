@@ -51,3 +51,7 @@ func TestApplyForReferences(t *testing.T) {
 func TestEncryption(t *testing.T) {
 	suite.Run(t, new(EncryptionSuite))
 }
+
+func TestDataOnlyDump(t *testing.T) {
+	suite.Run(t, new(DataOnlyDumpSuite))
+}
