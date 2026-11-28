@@ -16,7 +16,6 @@ package restorers
 
 import (
 	"context"
-	"fmt"
 	"net"
 	"testing"
 
@@ -36,112 +35,126 @@ func newPipeFrontendBackend(t *testing.T) (*pgproto3.Frontend, *pgproto3.Backend
 	return pgproto3.NewFrontend(clientConn, clientConn), pgproto3.NewBackend(serverConn, serverConn)
 }
 
-func sendBackendMsgs(backend *pgproto3.Backend, msgs ...pgproto3.BackendMessage) error {
-	for _, msg := range msgs {
-		backend.Send(msg)
+// serveReplies answers each received query message with the next set of replies.
+func serveReplies(backend *pgproto3.Backend, replies ...[]pgproto3.BackendMessage) error {
+	for _, msgs := range replies {
+		for {
+			msg, err := backend.Receive()
+			if err != nil {
+				return err
+			}
+			if _, ok := msg.(*pgproto3.Query); ok || len(msgs) > 0 && isCopyDoneExpected(msg) {
+				break
+			}
+		}
+		for _, msg := range msgs {
+			backend.Send(msg)
+		}
+		if err := backend.Flush(); err != nil {
+			return err
+		}
 	}
-	return backend.Flush()
+	return nil
 }
 
-func TestTableRestorerInitCopySuccess(t *testing.T) {
+func isCopyDoneExpected(msg pgproto3.FrontendMessage) bool {
+	_, ok := msg.(*pgproto3.CopyDone)
+	return ok
+}
+
+func TestTableRestorer_initCopy(t *testing.T) {
+	tests := []struct {
+		name    string
+		replies []pgproto3.BackendMessage
+		wantErr string
+	}{
+		{
+			name: "copy starts after a notice",
+			replies: []pgproto3.BackendMessage{
+				&pgproto3.NoticeResponse{Message: "starting copy"},
+				&pgproto3.CopyInResponse{},
+			},
+		},
+		{
+			name: "error is returned after ReadyForQuery",
+			replies: []pgproto3.BackendMessage{
+				&pgproto3.ErrorResponse{Severity: "ERROR", Code: "42P01", Message: "relation does not exist"},
+				&pgproto3.NoticeResponse{Message: "trailing notice"},
+				&pgproto3.ReadyForQuery{TxStatus: 'E'},
+			},
+			wantErr: "relation does not exist",
+		},
+		{
+			name: "statement is not a copy",
+			replies: []pgproto3.BackendMessage{
+				&pgproto3.EmptyQueryResponse{},
+				&pgproto3.ReadyForQuery{TxStatus: 'I'},
+			},
+			wantErr: "unknown message",
+		},
+		{
+			name: "ReadyForQuery without CopyInResponse",
+			replies: []pgproto3.BackendMessage{
+				&pgproto3.ReadyForQuery{TxStatus: 'I'},
+			},
+			wantErr: "unexpected ReadyForQuery before CopyInResponse",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			frontend, backend := newPipeFrontendBackend(t)
+			stmt := "COPY public.users FROM stdin;"
+			tr := NewTableRestorer(&toc.Entry{CopyStmt: &stmt}, nil, nil)
+
+			replies := [][]pgproto3.BackendMessage{tt.replies}
+			if tt.wantErr != "" {
+				// Next statement on the same connection must still receive its CopyInResponse cleanly.
+				replies = append(replies, []pgproto3.BackendMessage{&pgproto3.CopyInResponse{}})
+			}
+			serverErr := make(chan error, 1)
+			go func() { serverErr <- serveReplies(backend, replies...) }()
+
+			err := tr.initCopy(context.Background(), frontend)
+			if tt.wantErr == "" {
+				require.NoError(t, err)
+			} else {
+				require.ErrorContains(t, err, tt.wantErr)
+				require.NoError(t, tr.initCopy(context.Background(), frontend))
+			}
+			require.NoError(t, <-serverErr)
+		})
+	}
+}
+
+func TestTableRestorer_completeBatch_failedCopyStart(t *testing.T) {
 	frontend, backend := newPipeFrontendBackend(t)
 	stmt := "COPY public.users FROM stdin;"
 	tr := NewTableRestorer(&toc.Entry{CopyStmt: &stmt}, nil, nil)
 
 	serverErr := make(chan error, 1)
 	go func() {
-		defer close(serverErr)
-		msg, err := backend.Receive()
-		if err != nil {
-			serverErr <- err
-			return
-		}
-		q, ok := msg.(*pgproto3.Query)
-		if !ok || q.String != stmt {
-			serverErr <- fmt.Errorf("unexpected frontend message %T (%v)", msg, msg)
-			return
-		}
-		serverErr <- sendBackendMsgs(
+		serverErr <- serveReplies(
 			backend,
-			&pgproto3.NoticeResponse{Message: "starting copy"},
-			&pgproto3.CopyInResponse{OverallFormat: 0},
+			// 1. CopyDone for finishing the previous batch
+			[]pgproto3.BackendMessage{
+				&pgproto3.CommandComplete{CommandTag: []byte("COPY 1")},
+				&pgproto3.ReadyForQuery{TxStatus: 'T'},
+			},
+			// 2. Next batch's COPY fails in initCopy and drains through ReadyForQuery
+			[]pgproto3.BackendMessage{
+				&pgproto3.ErrorResponse{Severity: "ERROR", Code: "42P01", Message: "relation does not exist"},
+				&pgproto3.ReadyForQuery{TxStatus: 'E'},
+			},
+			// 3. Subsequent operation (e.g. ROLLBACK / next table COPY) sees a synchronized stream
+			[]pgproto3.BackendMessage{
+				&pgproto3.CopyInResponse{},
+			},
 		)
 	}()
 
+	err := tr.completeBatch(context.Background(), frontend)
+	require.ErrorContains(t, err, "relation does not exist")
 	require.NoError(t, tr.initCopy(context.Background(), frontend))
-	require.NoError(t, <-serverErr)
-}
-
-func TestTableRestorerInitCopyDrainsReadyForQueryAfterError(t *testing.T) {
-	frontend, backend := newPipeFrontendBackend(t)
-	stmt1 := "COPY public.missing FROM stdin;"
-	stmt2 := "COPY public.ok FROM stdin;"
-	tr1 := NewTableRestorer(&toc.Entry{CopyStmt: &stmt1}, nil, nil)
-	tr2 := NewTableRestorer(&toc.Entry{CopyStmt: &stmt2}, nil, nil)
-
-	receivedQueries := make(chan string, 2)
-	serverDone := make(chan error, 1)
-	go func() {
-		defer close(serverDone)
-
-		msg1, err := backend.Receive()
-		if err != nil {
-			serverDone <- err
-			return
-		}
-		receivedQueries <- msg1.(*pgproto3.Query).String
-		if err := sendBackendMsgs(
-			backend,
-			&pgproto3.ErrorResponse{
-				Severity: "ERROR",
-				Code:     "42P01",
-				Message:  `relation "public.missing" does not exist`,
-			},
-			&pgproto3.NoticeResponse{Message: "trailing notice before ready"},
-			&pgproto3.ReadyForQuery{TxStatus: 'E'},
-		); err != nil {
-			serverDone <- err
-			return
-		}
-
-		msg2, err := backend.Receive()
-		if err != nil {
-			serverDone <- err
-			return
-		}
-		receivedQueries <- msg2.(*pgproto3.Query).String
-		serverDone <- sendBackendMsgs(backend, &pgproto3.CopyInResponse{OverallFormat: 0})
-	}()
-
-	err := tr1.initCopy(context.Background(), frontend)
-	require.Error(t, err)
-	require.Contains(t, err.Error(), `relation "public.missing" does not exist`)
-
-	// Next table on the same worker connection must see CopyInResponse for stmt2,
-	// not a stale ReadyForQuery left over from stmt1's ErrorResponse.
-	require.NoError(t, tr2.initCopy(context.Background(), frontend))
-	require.NoError(t, <-serverDone)
-	require.Equal(t, stmt1, <-receivedQueries)
-	require.Equal(t, stmt2, <-receivedQueries)
-}
-
-func TestTableRestorerInitCopyUnexpectedReadyForQuery(t *testing.T) {
-	frontend, backend := newPipeFrontendBackend(t)
-	stmt := "COPY public.users FROM stdin;"
-	tr := NewTableRestorer(&toc.Entry{CopyStmt: &stmt}, nil, nil)
-
-	serverErr := make(chan error, 1)
-	go func() {
-		defer close(serverErr)
-		if _, err := backend.Receive(); err != nil {
-			serverErr <- err
-			return
-		}
-		serverErr <- sendBackendMsgs(backend, &pgproto3.ReadyForQuery{TxStatus: 'I'})
-	}()
-
-	err := tr.initCopy(context.Background(), frontend)
-	require.Error(t, err)
-	require.Contains(t, err.Error(), "unexpected ReadyForQuery before CopyInResponse")
 	require.NoError(t, <-serverErr)
 }

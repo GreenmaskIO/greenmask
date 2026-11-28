@@ -138,10 +138,8 @@ func (td *TableRestorer) initCopy(ctx context.Context, f *pgproto3.Frontend) err
 		return fmt.Errorf("error sending Query message: %w", err)
 	}
 
-	// Prepare for streaming the pgcopy data. If Postgres rejects the COPY query
-	// with an ErrorResponse, drain remaining messages until ReadyForQuery so the
-	// connection stays synchronized for subsequent operations on the same worker.
-	var mainErr error
+	// On an error read up to ReadyForQuery, so the connection stays in sync
+	var copyErr error
 	for {
 		select {
 		case <-ctx.Done():
@@ -151,31 +149,25 @@ func (td *TableRestorer) initCopy(ctx context.Context, f *pgproto3.Frontend) err
 
 		msg, err := f.Receive()
 		if err != nil {
-			if mainErr != nil {
-				return fmt.Errorf("%w (while draining after error: %w)", mainErr, err)
+			if copyErr != nil {
+				log.Error().Err(copyErr).Msg("COPY failed, and the connection broke before ReadyForQuery")
 			}
 			return fmt.Errorf("unable to perform pgcopy query: %w", err)
 		}
 		switch v := msg.(type) {
 		case *pgproto3.CopyInResponse:
-			if mainErr != nil {
-				return mainErr
-			}
-			return nil
+			return copyErr
 		case *pgproto3.ErrorResponse:
-			if mainErr == nil {
-				mainErr = fmt.Errorf("error from postgres connection: %w", pgerrors.NewPgError(v))
-			}
+			copyErr = fmt.Errorf("error from postgres connection: %w", pgerrors.NewPgError(v))
 		case *pgproto3.ReadyForQuery:
-			if mainErr != nil {
-				return mainErr
+			if copyErr != nil {
+				return copyErr
 			}
 			return fmt.Errorf("unexpected ReadyForQuery before CopyInResponse: %+v", v)
 		case *pgproto3.NoticeResponse, *pgproto3.ParameterStatus, *pgproto3.NotificationResponse:
-			continue
 		default:
-			if mainErr == nil {
-				mainErr = fmt.Errorf("unknown message %+v", v)
+			if copyErr == nil {
+				copyErr = fmt.Errorf("unknown message %+v", v)
 			}
 		}
 	}
@@ -268,24 +260,26 @@ func (td *TableRestorer) postStreamingHandle(ctx context.Context, f *pgproto3.Fr
 	if err != nil {
 		return fmt.Errorf("error sending CopyDone message: %w", err)
 	}
-	var mainErr error
+	var copyErr error
 	for {
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
 		default:
-
 		}
 		msg, err := f.Receive()
 		if err != nil {
+			if copyErr != nil {
+				log.Error().Err(copyErr).Msg("COPY failed, and the connection broke before ReadyForQuery")
+			}
 			return fmt.Errorf("unable to perform pgcopy query: %w", err)
 		}
 		switch v := msg.(type) {
 		case *pgproto3.CommandComplete:
 		case *pgproto3.ReadyForQuery:
-			return mainErr
+			return copyErr
 		case *pgproto3.ErrorResponse:
-			mainErr = fmt.Errorf("error from postgres connection: %w", pgerrors.NewPgError(v))
+			copyErr = fmt.Errorf("error from postgres connection: %w", pgerrors.NewPgError(v))
 		default:
 			return fmt.Errorf("unknown message %+v", v)
 		}

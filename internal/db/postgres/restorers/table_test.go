@@ -127,3 +127,43 @@ func (s *restoresSuite) Test_TableRestorer_check_triggers_errors() {
 		s.Require().NoError(err)
 	})
 }
+
+func (s *restoresSuite) TestTableRestorer_Execute_failed_copy_start() {
+	ctx := context.Background()
+	conn, err := s.GetConnection(ctx)
+	s.Require().NoError(err)
+	defer conn.Close(ctx) // nolint: errcheck
+
+	restore := func(tableName, copyStmt, data string) error {
+		schemaName := "public"
+		fileName := "test_table"
+		entry := &toc.Entry{
+			Namespace: &schemaName,
+			Tag:       &tableName,
+			FileName:  &fileName,
+			CopyStmt:  &copyStmt,
+		}
+		buf := new(bytes.Buffer)
+		gzData := gzip.NewWriter(buf)
+		_, err := gzData.Write([]byte(data))
+		s.Require().NoError(err)
+		s.Require().NoError(gzData.Flush())
+		s.Require().NoError(gzData.Close())
+
+		st := new(testutils.StorageMock)
+		st.On("GetObject", ctx, mock.Anything).Return(&readCloserMock{Buffer: buf}, nil)
+		tr := NewTableRestorer(entry, st, &pgrestore.DataSectionSettings{})
+		return tr.Execute(ctx, utils.NewPGConn(conn))
+	}
+
+	// The failure is ignored, because exit-on-error is off
+	_ = restore("missing", "COPY missing (id) FROM stdin;", "1\n")
+
+	err = restore("users", "COPY users (id, name, email) FROM stdin;", "100\tCarol\tcarol@example.com\n")
+	s.Require().NoError(err)
+
+	var count int
+	err = conn.QueryRow(ctx, "SELECT count(*) FROM users WHERE id = 100").Scan(&count)
+	s.Require().NoError(err)
+	s.Equal(1, count)
+}
