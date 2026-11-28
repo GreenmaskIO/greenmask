@@ -141,6 +141,96 @@ func TestMaskingTransformer_Transform(t *testing.T) {
 			expectedValue: toolkit.NewValue("***", false),
 		},
 		{
+			name: MEmail,
+			params: map[string]toolkit.ParamsValue{
+				"column": toolkit.ParamsValue("data"),
+				"type":   toolkit.ParamsValue(MEmail),
+			},
+			originalValue: "ggw.chang@gmail.com",
+			expectedValue: toolkit.NewValue("ggw****@gmail.com", false),
+		},
+		{
+			name: MEmail + " long local part",
+			params: map[string]toolkit.ParamsValue{
+				"column": toolkit.ParamsValue("data"),
+				"type":   toolkit.ParamsValue(MEmail),
+			},
+			originalValue: "alexandra.johnson@example.com",
+			expectedValue: toolkit.NewValue("ale****@example.com", false),
+		},
+		{
+			name: MEmail + " without domain",
+			params: map[string]toolkit.ParamsValue{
+				"column": toolkit.ParamsValue("data"),
+				"type":   toolkit.ParamsValue(MEmail),
+			},
+			originalValue: "alexandra.johnson",
+			expectedValue: toolkit.NewValue("ale****", false),
+		},
+		{
+			name: MEmail + " short local part",
+			params: map[string]toolkit.ParamsValue{
+				"column": toolkit.ParamsValue("data"),
+				"type":   toolkit.ParamsValue(MEmail),
+			},
+			originalValue: "bob@example.com",
+			expectedValue: toolkit.NewValue("bob****@example.com", false),
+		},
+		{
+			name: MEmail + " multibyte",
+			params: map[string]toolkit.ParamsValue{
+				"column": toolkit.ParamsValue("data"),
+				"type":   toolkit.ParamsValue(MEmail),
+			},
+			originalValue: "иван.петров@example.com",
+			expectedValue: toolkit.NewValue("ива****@example.com", false),
+		},
+		{
+			name: MID + " 10 characters",
+			params: map[string]toolkit.ParamsValue{
+				"column": toolkit.ParamsValue("data"),
+				"type":   toolkit.ParamsValue(MID),
+			},
+			originalValue: "A123456789",
+			expectedValue: toolkit.NewValue("A12345****", false),
+		},
+		{
+			name: MID + " 9 characters",
+			params: map[string]toolkit.ParamsValue{
+				"column": toolkit.ParamsValue("data"),
+				"type":   toolkit.ParamsValue(MID),
+			},
+			originalValue: "295847284",
+			expectedValue: toolkit.NewValue("29584****", false),
+		},
+		{
+			name: MID + " 5 characters",
+			params: map[string]toolkit.ParamsValue{
+				"column": toolkit.ParamsValue("data"),
+				"type":   toolkit.ParamsValue(MID),
+			},
+			originalValue: "12345",
+			expectedValue: toolkit.NewValue("1****", false),
+		},
+		{
+			name: MID + " 13 characters",
+			params: map[string]toolkit.ParamsValue{
+				"column": toolkit.ParamsValue("data"),
+				"type":   toolkit.ParamsValue(MID),
+			},
+			originalValue: "1234567890123",
+			expectedValue: toolkit.NewValue("123456789****", false),
+		},
+		{
+			name: MID + " shorter than 4 characters",
+			params: map[string]toolkit.ParamsValue{
+				"column": toolkit.ParamsValue("data"),
+				"type":   toolkit.ParamsValue(MID),
+			},
+			originalValue: "123",
+			expectedValue: toolkit.NewValue("***", false),
+		},
+		{
 			name: MTelephone + " multibyte",
 			params: map[string]toolkit.ParamsValue{
 				"column": toolkit.ParamsValue("data"),

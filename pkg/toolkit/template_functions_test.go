@@ -461,6 +461,30 @@ func TestFuncMap_masking(t *testing.T) {
 			expected: "555****",
 		},
 		{
+			name: "email type long local part",
+			params: params{
+				Data: `alexandra.johnson@example.com`,
+				Type: "email",
+			},
+			expected: "ale****@example.com",
+		},
+		{
+			name: "id type 13 characters",
+			params: params{
+				Data: `1234567890123`,
+				Type: "id",
+			},
+			expected: "123456789****",
+		},
+		{
+			name: "id type 5 characters",
+			params: params{
+				Data: `12345`,
+				Type: "id",
+			},
+			expected: "1****",
+		},
+		{
 
 			name: "wrong type",
 			params: params{
