@@ -23,6 +23,7 @@ import (
 
 	"github.com/rs/zerolog/log"
 
+	"github.com/greenmaskio/greenmask/internal/db/postgres/utils"
 	"github.com/greenmaskio/greenmask/internal/utils/cmd_runner"
 )
 
@@ -41,7 +42,7 @@ func NewPgDump(binPath string) *PgDump {
 }
 
 func (pd *PgDump) Run(ctx context.Context, options *Options) error {
-	log.Debug().Msgf("pg_dump: %s %s\n", path.Join(pd.BinPath, pgDumpExecutable), strings.Join(options.GetParams(), " "))
+	log.Debug().Msgf("pg_dump: %s %s\n", path.Join(pd.BinPath, pgDumpExecutable), strings.Join(utils.RedactConnStringInArgs(options.GetParams()), " "))
 	return cmd_runner.Run(ctx, &log.Logger, path.Join(pd.BinPath, pgDumpExecutable), options.GetParams()...)
 }
 
@@ -110,7 +111,7 @@ type Options struct {
 
 func (o *Options) GetPgDSN() (string, error) {
 	// URI or Standard format
-	if strings.HasPrefix(o.DbName, "postgresql://") || strings.HasPrefix(o.DbName, "postgres://") || strings.Contains(o.DbName, "=") {
+	if utils.IsConnString(o.DbName) {
 		return o.DbName, nil
 	}
 

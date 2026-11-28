@@ -24,6 +24,7 @@ import (
 
 	"github.com/rs/zerolog/log"
 
+	"github.com/greenmaskio/greenmask/internal/db/postgres/utils"
 	"github.com/greenmaskio/greenmask/internal/utils/cmd_runner"
 )
 
@@ -42,7 +43,7 @@ func NewPgRestore(binPath string) *PgRestore {
 }
 
 func (pr *PgRestore) Run(ctx context.Context, options *Options) error {
-	log.Debug().Msgf("pg_restore: %s %s\n", path.Join(pr.BinPath, pgRestoreExecutable), strings.Join(options.GetParams(), " "))
+	log.Debug().Msgf("pg_restore: %s %s\n", path.Join(pr.BinPath, pgRestoreExecutable), strings.Join(utils.RedactConnStringInArgs(options.GetParams()), " "))
 	return cmd_runner.Run(ctx, &log.Logger, path.Join(pr.BinPath, pgRestoreExecutable), options.GetParams()...)
 }
 
@@ -141,7 +142,7 @@ func (o *Options) ToDataSectionSettings() *DataSectionSettings {
 }
 
 func (o *Options) GetPgDSN() (string, error) {
-	if strings.HasPrefix(o.DbName, "postgresql://") || strings.HasPrefix(o.DbName, "postgres://") || strings.Contains(o.DbName, "=") {
+	if utils.IsConnString(o.DbName) {
 		return o.DbName, nil
 	}
 	return o.GetPgDSNFor(o.DbName)
